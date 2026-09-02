@@ -8,6 +8,7 @@ import { useAgentLibraryModel } from "../hooks/useAgentLibraryModel";
 import {
 	agentDisplayDescription,
 	agentDisplayName,
+	teamDisplayName,
 } from "../lib/preset-presentation";
 import { AgentProfileEditor } from "./AgentProfileEditor";
 
@@ -22,26 +23,29 @@ export function AgentLibraryPage(): JSX.Element {
 	async function requestDelete(): Promise<void> {
 		if (!model.selected || isBuiltinAgentPreset(model.selected)) return;
 		const selected = model.selected;
-		const impact = await model.actions.previewAgent(selected.id);
-		if (impact.teamIds.length > 0) {
-			confirm({
-				title: t("library.deleteBlockedTitle"),
-				message: t("library.deleteBlockedMessage", {
-					count: impact.teamIds.length,
-					teams: impact.teamNames.join("、"),
-				}),
-				confirmLabel: t("library.gotIt"),
-				onConfirm: () => undefined,
-			});
-			return;
-		}
+		const impact = await model.actions.previewAgentDelete(selected.id);
+		if (!impact) return;
+		const impactLabels = impact.teams.map((team) => {
+			const definition = model.document?.teams.find((candidate) => candidate.id === team.teamId);
+			const name = definition ? teamDisplayName(definition, t) : team.teamName;
+			if (team.deletesTeam) return t("library.deleteImpactDeleteTeam", { team: name });
+			if (team.nextLeaderName) {
+				return t("library.deleteImpactTransfer", { team: name, name: team.nextLeaderName });
+			}
+			return t("library.deleteImpactTeam", { team: name });
+		});
 		confirm({
-			title: t("library.deleteTitle"),
-			message: t("library.deleteMessage", { name: agentDisplayName(selected, t) }),
+			title: impact.teams.length ? t("library.deleteCascadeTitle") : t("library.deleteTitle"),
+			message: impact.teams.length
+				? t("library.deleteCascadeMessage", {
+						name: agentDisplayName(selected, t),
+						teams: impactLabels.join("、"),
+					})
+				: t("library.deleteMessage", { name: agentDisplayName(selected, t) }),
 			confirmLabel: t("library.delete"),
 			variant: "danger",
 			onConfirm: () => {
-				void model.actions.deleteAgent(selected).then((deleted) => {
+				void model.actions.deleteAgent(selected, impact).then((deleted) => {
 					if (deleted) notifyAgentTeamConfigurationChanged();
 				});
 			},

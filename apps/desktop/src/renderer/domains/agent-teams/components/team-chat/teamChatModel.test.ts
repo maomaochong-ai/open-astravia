@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
 	buildTeamTimelineItems,
 	reduceTeamStreamState,
+	stripAttachmentContext,
 	type TeamMemberViewModel,
 	updateScopedTeamDraft,
 } from "./teamChatModel";
@@ -35,6 +36,12 @@ describe("team chat stream state", () => {
 		const first = updateScopedTeamDraft({}, "team-a", "draft a");
 		const second = updateScopedTeamDraft(first, "team-b", "draft b");
 		expect(second).toEqual({ "team-a": "draft a", "team-b": "draft b" });
+	});
+
+	it("keeps attachment routing context out of the visible timeline", () => {
+		expect(stripAttachmentContext("Review this\n\n<attachments>\n- file: C:/notes.txt\n</attachments>")).toBe(
+			"Review this",
+		);
 	});
 
 	it("accumulates ordered deltas by turn and ignores replayed sequence numbers", () => {

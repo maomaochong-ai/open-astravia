@@ -19,8 +19,6 @@ interface AgentProfileEditorProps {
 	readonly displayName?: string;
 	readonly displayDescription?: string;
 	readonly identityReadOnly?: boolean;
-	/** A team member handle is a team binding and must not silently mutate the library default. */
-	readonly lockedMentionHandle?: string;
 	readonly onPreview: (agentId: string) => Promise<AgentProfileUpdateImpact>;
 	readonly onSave: (
 		agent: AgentProfile,
@@ -35,14 +33,12 @@ export function AgentProfileEditor({
 	displayName,
 	displayDescription,
 	identityReadOnly = false,
-	lockedMentionHandle,
 	onPreview,
 	onSave,
 }: AgentProfileEditorProps): JSX.Element {
 	const { t } = useTranslation("agent-teams");
 	const [name, setName] = useState(displayName ?? agent.name);
 	const [description, setDescription] = useState(displayDescription ?? agent.description);
-	const [handle, setHandle] = useState(lockedMentionHandle ?? agent.mentionHandle);
 	const [abilities, setAbilities] = useState<AgentAbilitySelection>(agent.abilities);
 	const [saving, setSaving] = useState(false);
 	const [saved, setSaved] = useState(false);
@@ -52,12 +48,11 @@ export function AgentProfileEditor({
 	useEffect(() => {
 		setName(displayName ?? agent.name);
 		setDescription(displayDescription ?? agent.description);
-		setHandle(lockedMentionHandle ?? agent.mentionHandle);
 		setAbilities(agent.abilities);
 		setPendingImpact(undefined);
 		setSaved(false);
 		setError(undefined);
-	}, [agent, displayDescription, displayName, lockedMentionHandle]);
+	}, [agent, displayDescription, displayName]);
 
 	async function save(): Promise<void> {
 		setSaving(true);
@@ -74,7 +69,7 @@ export function AgentProfileEditor({
 			await onSave(agent, {
 				name: identityReadOnly ? agent.name : name,
 				description: identityReadOnly ? agent.description : description,
-				mentionHandle: identityReadOnly || lockedMentionHandle ? agent.mentionHandle : handle,
+				mentionHandle: agent.mentionHandle,
 				abilities,
 			});
 			setPendingImpact(undefined);
@@ -104,15 +99,6 @@ export function AgentProfileEditor({
 					readOnly={identityReadOnly}
 					onChange={setName}
 				/>
-				<TextField
-					label={t("profile.handle")}
-					value={handle}
-					readOnly={identityReadOnly || Boolean(lockedMentionHandle)}
-					onChange={setHandle}
-				/>
-				{lockedMentionHandle && (
-					<p className="-mt-3 text-xs text-muted-foreground/70">{t("profile.teamHandleHint")}</p>
-				)}
 				<label className="text-sm">
 					<span className="mb-1 block text-muted-foreground">{t("profile.description")}</span>
 					<textarea

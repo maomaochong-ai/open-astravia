@@ -6,9 +6,11 @@ import type {
 	CreateAgentProfileInput,
 	CreateTeamInput,
 	DeleteAgentProfileInput,
+	DeleteTeamInput,
 	SendTeamMessageInput,
 	TeamSessionDocument,
 	UpdateAgentProfileInput,
+	UpdateTeamInput,
 } from "./contracts.js";
 import { AGENT_TEAM_SCHEMA_VERSION } from "./contracts.js";
 import { assertTeamInvariants, normalizeMentionHandle } from "./domain.js";
@@ -80,7 +82,13 @@ export const UpdateAgentProfileInputSchema = Type.Object(
 	{ additionalProperties: false },
 );
 export const DeleteAgentProfileInputSchema = Type.Object(
-	{ expectedRevision: Type.Integer({ minimum: 1, maximum: Number.MAX_SAFE_INTEGER }) },
+	{
+		expectedRevision: Type.Integer({ minimum: 1, maximum: Number.MAX_SAFE_INTEGER }),
+		expectedTeamIds: Type.Optional(Type.Array(id, { maxItems: 1_024, uniqueItems: true })),
+		expectedTeamRevisions: Type.Optional(
+			Type.Record(id, Type.Integer({ minimum: 1, maximum: Number.MAX_SAFE_INTEGER })),
+		),
+	},
 	{ additionalProperties: false },
 );
 const createTeamMember = Type.Object(
@@ -100,6 +108,34 @@ export const CreateTeamInputSchema = Type.Object(
 		orchestrationPolicyId: Type.Optional(id),
 		contextPolicyId: Type.Optional(id),
 	},
+	{ additionalProperties: false },
+);
+const updateTeamMember = Type.Union([
+	Type.Object(
+		{ kind: Type.Literal("existing"), memberId: id, leader: Type.Boolean() },
+		{ additionalProperties: false },
+	),
+	Type.Object(
+		{
+			kind: Type.Literal("new"),
+			agentProfileId: id,
+			bindingKind: Type.Union([Type.Literal("reference"), Type.Literal("copy")]),
+			leader: Type.Boolean(),
+		},
+		{ additionalProperties: false },
+	),
+]);
+export const UpdateTeamInputSchema = Type.Object(
+	{
+		expectedRevision: Type.Integer({ minimum: 1, maximum: Number.MAX_SAFE_INTEGER }),
+		name: Type.String({ minLength: 1, maxLength: 128, pattern: "\\S" }),
+		description: text,
+		members: Type.Array(updateTeamMember, { minItems: 1, maxItems: 32 }),
+	},
+	{ additionalProperties: false },
+);
+export const DeleteTeamInputSchema = Type.Object(
+	{ expectedRevision: Type.Integer({ minimum: 1, maximum: Number.MAX_SAFE_INTEGER }) },
 	{ additionalProperties: false },
 );
 export const SendTeamMessageInputSchema = Type.Object(
@@ -171,11 +207,13 @@ export const TeamSessionDocumentSchema = Type.Object(
 		revision,
 		id,
 		teamId: id,
+		teamRevision: Type.Optional(Type.Integer({ minimum: 1, maximum: Number.MAX_SAFE_INTEGER })),
 		name: Type.String({ minLength: 1, maxLength: 128, pattern: "\\S" }),
 		cwd: Type.String({ minLength: 1, maxLength: 4_096 }),
 		orchestrationPolicyId: Type.Optional(id),
 		contextPolicyId: Type.Optional(id),
 		leaderMemberId: id,
+		activeMemberIds: Type.Optional(Type.Array(id, { minItems: 1, maxItems: 32, uniqueItems: true })),
 		memberHandles: Type.Record(id, id),
 		createdAt: timestamp,
 		updatedAt: timestamp,
@@ -243,16 +281,17 @@ export function parseTeamSessionDocument(value: unknown): TeamSessionDocument {
 
 function assertTeamSessionInvariants(session: TeamSessionDocument, eventIds: ReadonlySet<string>): void {
 	const memberIds = new Set(Object.keys(session.memberHandles));
-	if (!memberIds.has(session.leaderMemberId)) throw new Error("Team session leader is not a member");
-	const runtimeMemberIds = Object.keys(session.memberRuntime);
-	if (runtimeMemberIds.length !== memberIds.size || runtimeMemberIds.some((memberId) => !memberIds.has(memberId))) {
-		throw new Error("Team session runtime members do not match the roster");
+	const activeMemberIds = new Set(session.activeMemberIds ?? Object.keys(session.memberRuntime));
+	if (!activeMemberIds.has(session.leaderMemberId)) throw new Error("Team session leader is not an active member");
+	if ([...activeMemberIds].some((memberId) => !memberIds.has(memberId))) {
+		throw new Error("Team session active roster references an unknown historical member");
 	}
-	const handles = new Set<string>();
-	for (const handle of Object.values(session.memberHandles)) {
-		const normalized = normalizeMentionHandle(handle);
-		if (handles.has(normalized)) throw new Error(`Duplicate team session member handle: ${handle}`);
-		handles.add(normalized);
+	const runtimeMemberIds = Object.keys(session.memberRuntime);
+	if (
+		runtimeMemberIds.length !== activeMemberIds.size ||
+		runtimeMemberIds.some((memberId) => !activeMemberIds.has(memberId))
+	) {
+		throw new Error("Team session runtime members do not match the active roster");
 	}
 	for (const event of session.events) {
 		if (event.type === "user-message" && event.targetMemberIds.some((memberId) => !memberIds.has(memberId))) {
@@ -293,6 +332,16 @@ export function parseDeleteAgentProfileInput(value: unknown): DeleteAgentProfile
 export function parseCreateTeamInput(value: unknown): CreateTeamInput {
 	if (!Value.Check(CreateTeamInputSchema, value)) throw new Error("Invalid create team input");
 	return value as CreateTeamInput;
+}
+
+export function parseUpdateTeamInput(value: unknown): UpdateTeamInput {
+	if (!Value.Check(UpdateTeamInputSchema, value)) throw new Error("Invalid update team input");
+	return value as UpdateTeamInput;
+}
+
+export function parseDeleteTeamInput(value: unknown): DeleteTeamInput {
+	if (!Value.Check(DeleteTeamInputSchema, value)) throw new Error("Invalid delete team input");
+	return value as DeleteTeamInput;
 }
 
 export function parseSendTeamMessageInput(value: unknown): SendTeamMessageInput {

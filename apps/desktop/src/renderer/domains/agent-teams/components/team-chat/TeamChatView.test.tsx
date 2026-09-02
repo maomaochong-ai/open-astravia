@@ -64,12 +64,15 @@ const labels = {
 	readyDescription: "Describe the goal",
 	leaderRoute: "Leader",
 	placeholder: "Ask the team",
-	hint: "Use @",
+	hint: "Choose a member when needed",
 	send: "Send",
 	stop: "Stop",
 	sending: "Working",
 	failed: "Failed",
 	retry: "Retry",
+	attachFile: "Add file",
+	attachImage: "Add image",
+	removeAttachment: (name: string) => `Remove ${name}`,
 };
 
 function model(
@@ -80,6 +83,8 @@ function model(
 		title: "Team",
 		status,
 		draft: "ship it",
+		history: [],
+		attachments: [],
 		members: [],
 		timelineItems: [],
 		markdown,
@@ -94,6 +99,9 @@ function actions(): TeamChatActions {
 		setDraft: vi.fn(),
 		selectLeader: vi.fn(),
 		toggleMember: vi.fn(),
+		selectFiles: vi.fn(async () => undefined),
+		selectImages: vi.fn(async () => undefined),
+		removeAttachment: vi.fn(),
 		send: vi.fn(async () => undefined),
 		abort: vi.fn(async () => undefined),
 	};

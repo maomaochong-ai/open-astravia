@@ -34,7 +34,7 @@ describe("TeamComposer", () => {
 		);
 
 		expect(container.querySelector("img")?.getAttribute("src")).toBe("avatar.png");
-		await user.click(screen.getByRole("button", { name: "@research" }));
+		await user.click(screen.getByRole("button", { name: "Research" }));
 		expect(onToggleMember).toHaveBeenCalledWith("researcher");
 	});
 

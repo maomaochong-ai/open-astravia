@@ -16,6 +16,14 @@ describe("createAgentTeamsApi", () => {
 
 		await api.createAgent(agent);
 		await api.deleteAgent("agent", { expectedRevision: 1 });
+		await api.previewAgentDelete("agent");
+		await api.updateTeam("team", {
+			expectedRevision: 1,
+			name: "Team",
+			description: "",
+			members: [{ kind: "existing", memberId: "member", leader: true }],
+		});
+		await api.deleteTeam("team", { expectedRevision: 1 });
 		await api.createSession("team", "C:/workspace");
 		await api.sendMessage("session", message);
 
@@ -23,7 +31,17 @@ describe("createAgentTeamsApi", () => {
 		expect(invoke).toHaveBeenNthCalledWith(2, "vetta:agent-teams:delete-agent", "agent", {
 			expectedRevision: 1,
 		});
-		expect(invoke).toHaveBeenNthCalledWith(3, "vetta:agent-teams:create-session", "team", "C:/workspace");
-		expect(invoke).toHaveBeenNthCalledWith(4, "vetta:agent-teams:send-message", "session", message);
+		expect(invoke).toHaveBeenNthCalledWith(3, "vetta:agent-teams:preview-agent-delete", "agent");
+		expect(invoke).toHaveBeenNthCalledWith(
+			4,
+			"vetta:agent-teams:update-team",
+			"team",
+			expect.objectContaining({ expectedRevision: 1 }),
+		);
+		expect(invoke).toHaveBeenNthCalledWith(5, "vetta:agent-teams:delete-team", "team", {
+			expectedRevision: 1,
+		});
+		expect(invoke).toHaveBeenNthCalledWith(6, "vetta:agent-teams:create-session", "team", "C:/workspace");
+		expect(invoke).toHaveBeenNthCalledWith(7, "vetta:agent-teams:send-message", "session", message);
 	});
 });

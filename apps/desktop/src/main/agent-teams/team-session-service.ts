@@ -163,6 +163,43 @@ export class AgentTeamSessionService {
 		}
 	}
 
+	private async createMemberRuntime(
+		teamSessionId: string,
+		member: AgentTeamDocument["teams"][number]["members"][number],
+		document: AgentTeamDocument,
+		cwd: string,
+	): Promise<TeamSessionDocument["memberRuntime"][string]> {
+		const profile = resolveMemberProfile(document, member);
+		const blueprint = findAgentBlueprint(profile.blueprintId);
+		if (!blueprint) throw new Error(`Unknown agent blueprint: ${profile.blueprintId}`);
+		const resolved = await resolveDesktopSessionConfig(
+			{
+				cwd,
+				appendSystemPrompt: blueprint.systemPrompt,
+				agentConfiguration: {
+					template: null,
+					overrides: toAgentConfigurationOverrides(profile.abilities),
+				},
+				sessionRuntimeTools: [this.createDelegateRegistration(teamSessionId)],
+			},
+			"other",
+			"interactive",
+		);
+		const created = await this.getRuntime().createSession({
+			...resolved.config,
+			sessionDir: this.repository.memberSessionDirectory(teamSessionId, member.id),
+		});
+		const sessionPath = this.getRuntime().getSessionPath(created.sessionId);
+		if (!sessionPath) throw new Error("Runtime did not expose team member session path");
+		return {
+			sessionId: created.sessionId,
+			sessionPath,
+			agentProfileId: profile.id,
+			agentProfileRevision: profile.revision,
+			deliveredEventIds: [],
+		};
+	}
+
 	async create(
 		team: AgentTeamDocument["teams"][number],
 		document: AgentTeamDocument,
@@ -174,37 +211,7 @@ export class AgentTeamSessionService {
 
 		try {
 			for (const member of team.members) {
-				const profile = resolveMemberProfile(document, member);
-				const blueprint = findAgentBlueprint(profile.blueprintId);
-				if (!blueprint) throw new Error(`Unknown agent blueprint: ${profile.blueprintId}`);
-
-				const resolved = await resolveDesktopSessionConfig(
-					{
-						cwd,
-						appendSystemPrompt: blueprint.systemPrompt,
-						agentConfiguration: {
-							template: null,
-							overrides: toAgentConfigurationOverrides(profile.abilities),
-						},
-						sessionRuntimeTools: [this.createDelegateRegistration(id)],
-					},
-					"other",
-					"interactive",
-				);
-				const created = await this.getRuntime().createSession({
-					...resolved.config,
-					sessionDir: this.repository.memberSessionDirectory(id, member.id),
-				});
-				const sessionPath = this.getRuntime().getSessionPath(created.sessionId);
-				if (!sessionPath) throw new Error("Runtime did not expose team member session path");
-
-				memberRuntime[member.id] = {
-					sessionId: created.sessionId,
-					sessionPath,
-					agentProfileId: profile.id,
-					agentProfileRevision: profile.revision,
-					deliveredEventIds: [],
-				};
+				memberRuntime[member.id] = await this.createMemberRuntime(id, member, document, cwd);
 			}
 		} catch (error) {
 			await Promise.allSettled(
@@ -226,11 +233,13 @@ export class AgentTeamSessionService {
 			revision: 0,
 			id,
 			teamId: team.id,
+			teamRevision: team.revision,
 			name: team.name,
 			cwd,
 			orchestrationPolicyId: team.orchestrationPolicyId,
 			contextPolicyId: team.contextPolicyId,
 			leaderMemberId: team.leaderMemberId,
+			activeMemberIds: team.members.map((member) => member.id),
 			memberHandles: Object.fromEntries(team.members.map((member) => [member.id, member.handle])),
 			createdAt: now,
 			updatedAt: now,
@@ -250,20 +259,29 @@ export class AgentTeamSessionService {
 
 	async read(id: string): Promise<TeamSessionDocument> {
 		const cached = this.sessions.get(id);
-		if (cached) return cached;
+		if (cached) return this.reconcileTeamRoster(cached, await this.readDocument());
 
 		try {
 			const persisted = await this.repository.read(id);
 			const document = await this.readDocument();
+			const team = document.teams.find((candidate) => candidate.id === persisted.teamId);
+			if (!team) throw new Error(`Agent team not found: ${persisted.teamId}`);
+			const desiredMemberIds = new Set(team.members.map((member) => member.id));
+			const prepared: TeamSessionDocument = {
+				...persisted,
+				memberRuntime: Object.fromEntries(
+					Object.entries(persisted.memberRuntime).filter(([memberId]) => desiredMemberIds.has(memberId)),
+				),
+			};
 			const restored = await restoreTeamMemberRuntimes({
-				session: persisted,
+				session: prepared,
 				runtime: this.getRuntime(),
 				createRuntimeTools: () => [this.createDelegateRegistration(id)],
 				resolveConfig: async ({ memberId, sessionPath, runtimeTools }) => {
-					const profile = this.resolveMemberProfile(persisted, document, memberId);
+					const profile = this.resolveMemberProfile(prepared, document, memberId);
 					return {
 						config: await this.resolveMemberSessionConfig(
-							persisted,
+							prepared,
 							document,
 							memberId,
 							sessionPath,
@@ -277,10 +295,89 @@ export class AgentTeamSessionService {
 				logger: log,
 			});
 			this.sessions.set(id, restored);
-			return restored;
+			return this.reconcileTeamRoster(restored, document);
 		} catch (error) {
 			log.error("failed to load team session", { teamSessionId: id, error: errorMessage(error) });
 			throw new Error(`Team session could not be loaded: ${id}`, { cause: error });
+		}
+	}
+
+	private async reconcileTeamRoster(
+		session: TeamSessionDocument,
+		document: AgentTeamDocument,
+	): Promise<TeamSessionDocument> {
+		const team = document.teams.find((candidate) => candidate.id === session.teamId);
+		if (!team) throw new Error(`Agent team not found: ${session.teamId}`);
+		const desiredIds = team.members.map((member) => member.id);
+		const currentIds = session.activeMemberIds ?? Object.keys(session.memberRuntime);
+		const handlesChanged = team.members.some((member) => session.memberHandles[member.id] !== member.handle);
+		if (
+			session.teamRevision === team.revision &&
+			session.leaderMemberId === team.leaderMemberId &&
+			sameMemberIds(currentIds, desiredIds) &&
+			!handlesChanged
+		) {
+			return session;
+		}
+		if (this.activeSends.has(session.id)) {
+			throw new Error("Team members cannot be refreshed while a request is running");
+		}
+
+		const desiredIdSet = new Set(desiredIds);
+		const nextRuntime = Object.fromEntries(
+			Object.entries(session.memberRuntime).filter(([memberId]) => desiredIdSet.has(memberId)),
+		);
+		const createdRuntimeIds: string[] = [];
+		try {
+			for (const member of team.members) {
+				if (nextRuntime[member.id]) continue;
+				const runtimeState = await this.createMemberRuntime(session.id, member, document, session.cwd);
+				nextRuntime[member.id] = runtimeState;
+				createdRuntimeIds.push(runtimeState.sessionId);
+			}
+			const next: TeamSessionDocument = {
+				...session,
+				revision: session.revision + 1,
+				teamRevision: team.revision,
+				name: team.name,
+				orchestrationPolicyId: team.orchestrationPolicyId,
+				contextPolicyId: team.contextPolicyId,
+				leaderMemberId: team.leaderMemberId,
+				activeMemberIds: desiredIds,
+				memberHandles: {
+					...session.memberHandles,
+					...Object.fromEntries(team.members.map((member) => [member.id, member.handle])),
+				},
+				memberRuntime: nextRuntime,
+				updatedAt: Date.now(),
+			};
+			await this.persist(next);
+			for (const [memberId, runtimeState] of Object.entries(session.memberRuntime)) {
+				if (desiredIdSet.has(memberId)) continue;
+				const subscription = this.runtimeSubscriptions.get(runtimeState.sessionId);
+				subscription?.unsubscribe();
+				this.runtimeSubscriptions.delete(runtimeState.sessionId);
+				void this.getRuntime()
+					.disposeSession(runtimeState.sessionId)
+					.catch((error: unknown) => {
+						log.warn("failed to dispose removed team member runtime", {
+							teamSessionId: session.id,
+							memberId,
+							error: errorMessage(error),
+						});
+					});
+			}
+			this.attachRuntimeSubscriptions(next);
+			this.publish({
+				type: "session-updated",
+				teamSessionId: next.id,
+				session: next,
+				revision: next.revision,
+			});
+			return next;
+		} catch (error) {
+			await Promise.allSettled(createdRuntimeIds.map((runtimeId) => this.getRuntime().disposeSession(runtimeId)));
+			throw error;
 		}
 	}
 
@@ -675,17 +772,20 @@ export class AgentTeamSessionService {
 	}
 
 	private syntheticTeam(session: TeamSessionDocument) {
+		const activeMemberIds = new Set(session.activeMemberIds ?? Object.keys(session.memberRuntime));
 		return {
 			id: session.teamId,
 			revision: 1,
 			name: session.name,
 			description: "",
 			leaderMemberId: session.leaderMemberId,
-			members: Object.entries(session.memberHandles).map(([id, handle]) => ({
-				id,
-				handle,
-				binding: { kind: "reference" as const, agentProfileId: id },
-			})),
+			members: Object.entries(session.memberHandles)
+				.filter(([id]) => activeMemberIds.has(id))
+				.map(([id, handle]) => ({
+					id,
+					handle,
+					binding: { kind: "reference" as const, agentProfileId: id },
+				})),
 			orchestrationPolicyId: session.orchestrationPolicyId ?? "leader-delegates-v1",
 			contextPolicyId: session.contextPolicyId ?? "public-results-v1",
 			createdAt: session.createdAt,

@@ -79,7 +79,7 @@ describe("AgentTeamStore transaction boundary", () => {
 		expect(created.abilities.selectionMode).toBe("all");
 	});
 
-	it("deletes an unreferenced custom agent and rejects deleting a referenced agent", async () => {
+	it("deletes an unreferenced agent and cascades reviewed team references", async () => {
 		const repository = new MemoryRepository();
 		const store = new AgentTeamStore({ repository, createId: createIdSequence(), now: () => 10 });
 		const removable = await store.createAgent(agentInput("Removable"));
@@ -88,7 +88,7 @@ describe("AgentTeamStore transaction boundary", () => {
 		expect((await store.read()).agents).toHaveLength(BUILTIN_AGENT_PRESETS.length);
 
 		const referenced = await store.createAgent(agentInput("Referenced"));
-		await store.createTeam({
+		const referencedTeam = await store.createTeam({
 			name: "Team",
 			members: [
 				{
@@ -100,8 +100,71 @@ describe("AgentTeamStore transaction boundary", () => {
 			],
 		});
 		await expect(store.deleteAgent(referenced.id, { expectedRevision: referenced.revision })).rejects.toThrow(
-			"referenced",
+			"review affected teams",
 		);
+		const staleImpact = await store.previewAgentDelete(referenced.id);
+		await store.updateTeam(referencedTeam.id, {
+			expectedRevision: referencedTeam.revision,
+			name: referencedTeam.name,
+			description: referencedTeam.description,
+			members: referencedTeam.members.map((member) => ({
+				kind: "existing" as const,
+				memberId: member.id,
+				leader: member.id === referencedTeam.leaderMemberId,
+			})),
+		});
+		await expect(
+			store.deleteAgent(referenced.id, {
+				expectedRevision: referenced.revision,
+				expectedTeamIds: staleImpact.teams.map((team) => team.teamId),
+				expectedTeamRevisions: Object.fromEntries(
+					staleImpact.teams.map((team) => [team.teamId, team.teamRevision]),
+				),
+			}),
+		).rejects.toThrow("review affected teams");
+		const impact = await store.previewAgentDelete(referenced.id);
+		await store.deleteAgent(referenced.id, {
+			expectedRevision: referenced.revision,
+			expectedTeamIds: impact.teams.map((team) => team.teamId),
+			expectedTeamRevisions: Object.fromEntries(impact.teams.map((team) => [team.teamId, team.teamRevision])),
+		});
+		expect((await store.read()).teams.some((team) => team.name === "Team")).toBe(false);
+	});
+
+	it("updates a team roster atomically and transfers responsibility", async () => {
+		const repository = new MemoryRepository();
+		const store = new AgentTeamStore({ repository, createId: createIdSequence(), now: () => 10 });
+		const first = await store.createAgent(agentInput("First"));
+		const second = await store.createAgent(agentInput("Second"));
+		const team = await store.createTeam({
+			name: "Team",
+			members: [
+				{
+					agentProfileId: first.id,
+					handle: first.mentionHandle,
+					bindingKind: "reference",
+					leader: true,
+				},
+			],
+		});
+
+		const updated = await store.updateTeam(team.id, {
+			expectedRevision: team.revision,
+			name: team.name,
+			description: team.description,
+			members: [
+				{
+					kind: "new",
+					agentProfileId: second.id,
+					bindingKind: "reference",
+					leader: true,
+				},
+			],
+		});
+
+		expect(updated.members).toHaveLength(1);
+		expect(updated.members[0]?.binding.agentProfileId).toBe(second.id);
+		expect(updated.leaderMemberId).toBe(updated.members[0]?.id);
 	});
 
 	it("turns a copied built-in preset into an independently editable profile", async () => {

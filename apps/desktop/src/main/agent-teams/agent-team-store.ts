@@ -9,14 +9,17 @@ import {
 	type CreateTeamInput,
 	DEFAULT_AGENT_TEAM_EXTENSIONS,
 	type DeleteAgentProfileInput,
+	type DeleteTeamInput,
 	findAgentBlueprint,
 	isBuiltinAgentPreset,
 	normalizeAgentTeamDocument,
 	normalizeMentionHandle,
+	previewAgentProfileDelete,
 	previewAgentProfileUpdate,
 	requireTeamPolicies,
 	type TeamDefinition,
 	type UpdateAgentProfileInput,
+	type UpdateTeamInput,
 } from "@vetta/agent-team";
 import { getAppLogger } from "../logger.js";
 import { type AgentTeamConfigRepository, createAgentTeamConfigRepository } from "./agent-team-config-repository.js";
@@ -147,15 +150,44 @@ export class AgentTeamStore {
 				throw new Error("Agent profile changed; reload before deleting");
 			}
 			if (isBuiltinAgentPreset(profile)) throw new Error("Built-in agent presets cannot be deleted");
-			const impact = previewAgentProfileUpdate(document, agentProfileId);
-			if (impact.teamIds.length > 0) {
-				throw new Error(`Agent profile is referenced by ${impact.teamIds.length} team(s)`);
+			const impact = previewAgentProfileDelete(document, agentProfileId);
+			const expectedTeamIds = input.expectedTeamIds ?? [];
+			const currentTeamIds = impact.teams.map((team) => team.teamId);
+			const revisionsMatch = impact.teams.every(
+				(team) => input.expectedTeamRevisions?.[team.teamId] === team.teamRevision,
+			);
+			if (!sameIds(expectedTeamIds, currentTeamIds) || !revisionsMatch) {
+				throw new Error("Agent profile references changed; review affected teams before deleting");
 			}
+			const deletedTeamIds = new Set(impact.teams.filter((team) => team.deletesTeam).map((team) => team.teamId));
+			const impactByTeamId = new Map(impact.teams.map((team) => [team.teamId, team]));
+			const now = this.now();
+			const teams = document.teams.flatMap((team) => {
+				const teamImpact = impactByTeamId.get(team.id);
+				if (!teamImpact) return [team];
+				if (teamImpact.deletesTeam) return [];
+				const removedIds = new Set(teamImpact.removedMemberIds);
+				const members = team.members.filter((member) => !removedIds.has(member.id));
+				return [
+					{
+						...team,
+						revision: team.revision + 1,
+						leaderMemberId: teamImpact.nextLeaderMemberId ?? team.leaderMemberId,
+						members,
+						updatedAt: now,
+					},
+				];
+			});
 			return {
 				document: {
 					...document,
 					revision: document.revision + 1,
-					agents: document.agents.filter((agent) => agent.id !== agentProfileId),
+					agents: document.agents.filter(
+						(agent) =>
+							agent.id !== agentProfileId &&
+							!(agent.scope.kind === "team" && deletedTeamIds.has(agent.scope.teamId)),
+					),
+					teams,
 				},
 				result: profile,
 			};
@@ -165,6 +197,10 @@ export class AgentTeamStore {
 
 	async previewAgentUpdate(agentProfileId: string) {
 		return previewAgentProfileUpdate(await this.read(), agentProfileId);
+	}
+
+	async previewAgentDelete(agentProfileId: string) {
+		return previewAgentProfileDelete(await this.read(), agentProfileId);
 	}
 
 	async createTeam(input: CreateTeamInput): Promise<TeamDefinition> {
@@ -177,16 +213,7 @@ export class AgentTeamStore {
 				const source = agents.find((agent) => agent.id === member.agentProfileId);
 				if (!source) throw new Error(`Agent profile not found: ${member.agentProfileId}`);
 				if (member.bindingKind === "copy") {
-					const { presetId: _presetId, ...sourceWithoutPresetIdentity } = source;
-					const copy: AgentProfile = {
-						...sourceWithoutPresetIdentity,
-						id: this.createId(),
-						revision: 1,
-						scope: { kind: "team", teamId },
-						copiedFrom: source.id,
-						createdAt: now,
-						updatedAt: now,
-					};
+					const copy = this.createTeamCopy(source, teamId, now);
 					agents.push(copy);
 					return {
 						id: this.createId(),
@@ -230,6 +257,122 @@ export class AgentTeamStore {
 		});
 		log.info("agent team created", { teamId: team.id, memberCount: team.members.length });
 		return team;
+	}
+
+	async updateTeam(teamId: string, input: UpdateTeamInput): Promise<TeamDefinition> {
+		const updated = await this.mutate("update-team", (document) => {
+			const teamIndex = document.teams.findIndex((team) => team.id === teamId);
+			if (teamIndex < 0) throw new Error(`Agent team not found: ${teamId}`);
+			const current = document.teams[teamIndex];
+			if (current.revision !== input.expectedRevision) {
+				throw new Error("Agent team changed; reload before saving");
+			}
+			const now = this.now();
+			const existingIds = new Set<string>();
+			const newSourceIds = new Set<string>();
+			let agents = [...document.agents];
+			const members = input.members.map((memberInput) => {
+				if (memberInput.kind === "existing") {
+					if (existingIds.has(memberInput.memberId)) {
+						throw new Error(`Duplicate team member id: ${memberInput.memberId}`);
+					}
+					existingIds.add(memberInput.memberId);
+					const member = current.members.find((candidate) => candidate.id === memberInput.memberId);
+					if (!member) throw new Error(`Agent team member not found: ${memberInput.memberId}`);
+					return { ...member, leader: memberInput.leader };
+				}
+				if (newSourceIds.has(memberInput.agentProfileId)) {
+					throw new Error(`Duplicate agent profile in team: ${memberInput.agentProfileId}`);
+				}
+				newSourceIds.add(memberInput.agentProfileId);
+				const source = agents.find((agent) => agent.id === memberInput.agentProfileId);
+				if (!source || source.scope.kind !== "library") {
+					throw new Error(`Library agent profile not found: ${memberInput.agentProfileId}`);
+				}
+				if (memberInput.bindingKind === "copy") {
+					const copy = this.createTeamCopy(source, teamId, now);
+					agents.push(copy);
+					return {
+						id: this.createId(),
+						handle: source.mentionHandle,
+						binding: { kind: "copy" as const, agentProfileId: copy.id },
+						leader: memberInput.leader,
+					};
+				}
+				return {
+					id: this.createId(),
+					handle: source.mentionHandle,
+					binding: { kind: "reference" as const, agentProfileId: source.id },
+					leader: memberInput.leader,
+				};
+			});
+			const retainedMemberIds = new Set(
+				input.members.flatMap((member) => (member.kind === "existing" ? [member.memberId] : [])),
+			);
+			const removedCopyProfileIds = new Set(
+				current.members.flatMap((member) =>
+					!retainedMemberIds.has(member.id) && member.binding.kind === "copy"
+						? [member.binding.agentProfileId]
+						: [],
+				),
+			);
+			agents = agents.filter((agent) => !removedCopyProfileIds.has(agent.id));
+			const leaders = members.filter((member) => member.leader);
+			if (leaders.length !== 1) throw new Error("A team must have exactly one leader");
+			const next: TeamDefinition = {
+				...current,
+				revision: current.revision + 1,
+				name: input.name.trim(),
+				description: input.description.trim(),
+				leaderMemberId: leaders[0].id,
+				members: members.map(({ leader: _leader, ...member }) => member),
+				updatedAt: now,
+			};
+			assertTeamInvariants(next, agents);
+			const teams = [...document.teams];
+			teams[teamIndex] = next;
+			return {
+				document: { ...document, revision: document.revision + 1, agents, teams },
+				result: next,
+			};
+		});
+		log.info("agent team updated", { teamId: updated.id, memberCount: updated.members.length });
+		return updated;
+	}
+
+	async deleteTeam(teamId: string, input: DeleteTeamInput): Promise<void> {
+		const deleted = await this.mutate("delete-team", (document) => {
+			const team = document.teams.find((candidate) => candidate.id === teamId);
+			if (!team) throw new Error(`Agent team not found: ${teamId}`);
+			if (team.revision !== input.expectedRevision) {
+				throw new Error("Agent team changed; reload before deleting");
+			}
+			return {
+				document: {
+					...document,
+					revision: document.revision + 1,
+					agents: document.agents.filter(
+						(agent) => !(agent.scope.kind === "team" && agent.scope.teamId === teamId),
+					),
+					teams: document.teams.filter((candidate) => candidate.id !== teamId),
+				},
+				result: team,
+			};
+		});
+		log.info("agent team deleted", { teamId: deleted.id, revision: deleted.revision });
+	}
+
+	private createTeamCopy(source: AgentProfile, teamId: string, now: number): AgentProfile {
+		const { presetId: _presetId, ...sourceWithoutPresetIdentity } = source;
+		return {
+			...sourceWithoutPresetIdentity,
+			id: this.createId(),
+			revision: 1,
+			scope: { kind: "team", teamId },
+			copiedFrom: source.id,
+			createdAt: now,
+			updatedAt: now,
+		};
 	}
 
 	private ensureUniqueHandle(document: AgentTeamDocument, handle: string, exceptId: string | undefined): void {
@@ -294,4 +437,10 @@ function createAgentAbilities(
 		plugins: [...(source.plugins ?? defaults.plugins)],
 		...(source.extensions ? { extensions: cloneExtensions(source.extensions) } : {}),
 	};
+}
+
+function sameIds(left: readonly string[], right: readonly string[]): boolean {
+	if (left.length !== right.length) return false;
+	const rightSet = new Set(right);
+	return left.every((id) => rightSet.has(id));
 }

@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
 	parseCreateAgentProfileInput,
 	parseCreateTeamInput,
+	parseDeleteAgentProfileInput,
+	parseDeleteTeamInput,
 	parseSendTeamMessageInput,
 	parseTeamSessionDocument,
 	parseUpdateAgentProfileInput,
+	parseUpdateTeamInput,
 } from "../src/validation.js";
 
 describe("Agent Team IPC input validation", () => {
@@ -52,6 +55,40 @@ describe("Agent Team IPC input validation", () => {
 		).toThrow("Invalid send team message input");
 	});
 
+	it("validates reviewed cascade deletion and atomic team roster updates", () => {
+		expect(
+			parseDeleteAgentProfileInput({
+				expectedRevision: 2,
+				expectedTeamIds: ["team-1", "team-2"],
+				expectedTeamRevisions: { "team-1": 3, "team-2": 4 },
+			}),
+		).toEqual({
+			expectedRevision: 2,
+			expectedTeamIds: ["team-1", "team-2"],
+			expectedTeamRevisions: { "team-1": 3, "team-2": 4 },
+		});
+		expect(parseDeleteTeamInput({ expectedRevision: 3 })).toEqual({ expectedRevision: 3 });
+		expect(
+			parseUpdateTeamInput({
+				expectedRevision: 3,
+				name: "Delivery",
+				description: "",
+				members: [
+					{ kind: "existing", memberId: "member-1", leader: false },
+					{ kind: "new", agentProfileId: "agent-2", bindingKind: "copy", leader: true },
+				],
+			}),
+		).toMatchObject({ name: "Delivery", members: [{ kind: "existing" }, { kind: "new" }] });
+		expect(() =>
+			parseUpdateTeamInput({
+				expectedRevision: 3,
+				name: "Delivery",
+				description: "",
+				members: [],
+			}),
+		).toThrow("Invalid update team input");
+	});
+
 	it("rejects sessions whose runtime roster or events reference unknown members", () => {
 		const session = {
 			schemaVersion: 1,
@@ -75,6 +112,13 @@ describe("Agent Team IPC input validation", () => {
 			},
 		};
 		expect(parseTeamSessionDocument(session)).toMatchObject({ id: "session" });
+		expect(
+			parseTeamSessionDocument({
+				...session,
+				activeMemberIds: ["leader"],
+				memberHandles: { leader: "agent", "removed-member": "agent" },
+			}),
+		).toMatchObject({ id: "session" });
 		expect(() =>
 			parseTeamSessionDocument({
 				...session,

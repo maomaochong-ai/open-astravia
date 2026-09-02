@@ -50,6 +50,14 @@ const labels = {
 };
 
 describe("TeamMessageFeed", () => {
+	it("labels empty-state members by display name without exposing handles", () => {
+		render(
+			<TeamMessageFeed status="ready" items={[]} members={[member]} markdown={markdown} labels={labels} />,
+		);
+		expect(screen.getByTitle("Vetta")).toBeTruthy();
+		expect(screen.queryByTitle("@vetta")).toBeNull();
+	});
+
 	it("renders accumulated streaming text instead of hiding it behind a skeleton", () => {
 		const items: TeamTimelineItemViewModel[] = [
 			{

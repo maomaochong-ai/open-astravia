@@ -3,8 +3,10 @@ import {
 	parseCreateAgentProfileInput,
 	parseCreateTeamInput,
 	parseDeleteAgentProfileInput,
+	parseDeleteTeamInput,
 	parseSendTeamMessageInput,
 	parseUpdateAgentProfileInput,
+	parseUpdateTeamInput,
 } from "@vetta/agent-team";
 import { ipcMain } from "electron";
 import { agentTeamStore } from "../agent-teams/agent-team-store.js";
@@ -17,7 +19,10 @@ const CHANNELS = {
 	UPDATE_AGENT: "vetta:agent-teams:update-agent",
 	DELETE_AGENT: "vetta:agent-teams:delete-agent",
 	PREVIEW_AGENT: "vetta:agent-teams:preview-agent-update",
+	PREVIEW_AGENT_DELETE: "vetta:agent-teams:preview-agent-delete",
 	CREATE_TEAM: "vetta:agent-teams:create-team",
+	UPDATE_TEAM: "vetta:agent-teams:update-team",
+	DELETE_TEAM: "vetta:agent-teams:delete-team",
 	CREATE_SESSION: "vetta:agent-teams:create-session",
 	GET_SESSION: "vetta:agent-teams:get-session",
 	SEND_MESSAGE: "vetta:agent-teams:send-message",
@@ -34,7 +39,16 @@ function requiredString(value: unknown, field: string): string {
 export interface AgentTeamsIpcDependencies {
 	readonly store: Pick<
 		typeof agentTeamStore,
-		"read" | "listBlueprints" | "createAgent" | "updateAgent" | "deleteAgent" | "previewAgentUpdate" | "createTeam"
+		| "read"
+		| "listBlueprints"
+		| "createAgent"
+		| "updateAgent"
+		| "deleteAgent"
+		| "previewAgentUpdate"
+		| "previewAgentDelete"
+		| "createTeam"
+		| "updateTeam"
+		| "deleteTeam"
 	>;
 	readonly sessions: Pick<typeof agentTeamSessionService, "create" | "read" | "send" | "subscribe" | "abort">;
 }
@@ -58,7 +72,16 @@ export function registerAgentTeamsIpc(
 	ipcMain.handle(CHANNELS.PREVIEW_AGENT, (_event, agentProfileId: unknown) =>
 		store.previewAgentUpdate(requiredString(agentProfileId, "agentProfileId")),
 	);
+	ipcMain.handle(CHANNELS.PREVIEW_AGENT_DELETE, (_event, agentProfileId: unknown) =>
+		store.previewAgentDelete(requiredString(agentProfileId, "agentProfileId")),
+	);
 	ipcMain.handle(CHANNELS.CREATE_TEAM, (_event, input: unknown) => store.createTeam(parseCreateTeamInput(input)));
+	ipcMain.handle(CHANNELS.UPDATE_TEAM, (_event, teamId: unknown, input: unknown) =>
+		store.updateTeam(requiredString(teamId, "teamId"), parseUpdateTeamInput(input)),
+	);
+	ipcMain.handle(CHANNELS.DELETE_TEAM, (_event, teamId: unknown, input: unknown) =>
+		store.deleteTeam(requiredString(teamId, "teamId"), parseDeleteTeamInput(input)),
+	);
 	ipcMain.handle(CHANNELS.CREATE_SESSION, async (_event, teamId: unknown, cwd: unknown) => {
 		const document = await store.read();
 		const team = document.teams.find((candidate) => candidate.id === requiredString(teamId, "teamId"));

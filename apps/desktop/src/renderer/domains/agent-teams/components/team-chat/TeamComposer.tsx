@@ -27,7 +27,7 @@ export function TeamComposer({
 				<RoutingButton
 					key={member.id}
 					selected={member.selected}
-					label={`@${member.handle}`}
+					label={member.name}
 					onClick={() => onToggleMember(member.id)}
 				>
 					<span className="relative">

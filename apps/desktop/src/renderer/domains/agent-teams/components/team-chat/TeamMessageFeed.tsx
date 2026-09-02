@@ -144,7 +144,7 @@ function TeamEmptyState({
 				</p>
 				<div className="mt-5 flex flex-wrap justify-center gap-2">
 					{members.map((member) => (
-						<div key={member.id} className="flex flex-col items-center gap-1" title={`@${member.handle}`}>
+						<div key={member.id} className="flex flex-col items-center gap-1" title={member.name}>
 							<AgentAvatarView
 								name={member.name}
 								avatar={member.avatar}

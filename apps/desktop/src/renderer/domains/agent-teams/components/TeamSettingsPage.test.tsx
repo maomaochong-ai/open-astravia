@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type { AgentProfile, AgentTeamDocument } from "@vetta/agent-team";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -9,6 +9,8 @@ import type { AgentTeamConfigurationResources } from "../services/load-agent-tea
 import { TeamSettingsPage } from "./TeamSettingsPage";
 
 const loadResources = vi.fn<() => Promise<AgentTeamConfigurationResources>>();
+const translate = (key: string, values?: Record<string, string>) =>
+	values ? `${key}:${Object.values(values).join(":")}` : key;
 
 vi.mock("../services/load-agent-team-resources", () => ({
 	loadAgentTeamConfigurationResources: () => loadResources(),
@@ -20,13 +22,30 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 vi.mock("react-i18next", () => ({
-	useTranslation: () => ({ t: (key: string) => key }),
+	useTranslation: () => ({ t: translate }),
 }));
 
 vi.mock("@vetta/ui", () => ({
 	Button: ({ children, variant: _variant, size: _size, ...props }: { children: ReactNode } & Record<string, unknown>) => (
 		<button {...props}>{children}</button>
 	),
+	Dialog: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+	DialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+	DialogDescription: ({ children }: { children: ReactNode }) => <p>{children}</p>,
+	DialogHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+	DialogTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
+	Input: (props: Record<string, unknown>) => <input {...props} />,
+	Select: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+	SelectContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+	SelectItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+	SelectTrigger: ({ children, ...props }: { children: ReactNode } & Record<string, unknown>) => (
+		<div {...props}>{children}</div>
+	),
+	SelectValue: () => <span />,
+}));
+
+vi.mock("@vetta/theme-ui/chat", () => ({
+	AgentAvatarView: ({ name }: { name: string }) => <span data-testid="avatar">{name}</span>,
 }));
 
 vi.mock("./AgentProfileEditor", () => ({
@@ -85,15 +104,18 @@ function document(): AgentTeamDocument {
 }
 
 describe("TeamSettingsPage", () => {
-	it("explains shared and copied bindings while switching member editors", async () => {
+	it("shows member avatars and manages the roster without exposing handles or binding explanations", async () => {
 		loadResources.mockResolvedValue({ document: document(), blueprints: [], capabilities: [] });
 		const user = userEvent.setup();
 		render(<TeamSettingsPage />);
 
 		expect(await screen.findByText("editor:Shared Agent")).toBeTruthy();
-		expect(screen.getByText("settings.referenceHint")).toBeTruthy();
-		await user.click(screen.getByRole("button", { name: /Copied Agent/ }));
+		expect(screen.getAllByTestId("avatar")).toHaveLength(2);
+		expect(screen.queryByText("@shared")).toBeNull();
+		expect(screen.queryByText("settings.referenceHint")).toBeNull();
+		await user.click(screen.getByRole("button", { name: "Copied Agent" }));
 		expect(await screen.findByText("editor:Copied Agent")).toBeTruthy();
-		expect(screen.getByText("settings.copyHint")).toBeTruthy();
+		await user.click(screen.getByRole("button", { name: "teams.removeMember:Copied Agent" }));
+		await waitFor(() => expect(screen.queryAllByText("Copied Agent")).toHaveLength(0));
 	});
 });

@@ -1,5 +1,6 @@
 import type {
 	AgentProfile,
+	AgentProfileDeleteImpact,
 	AgentProfileUpdateImpact,
 	AgentTeamDocument,
 	TeamDefinition,
@@ -47,6 +48,41 @@ export function previewAgentProfileUpdate(
 		),
 	);
 	return { agentProfileId, teamIds: affected.map((team) => team.id), teamNames: affected.map((team) => team.name) };
+}
+
+export function previewAgentProfileDelete(
+	document: Pick<AgentTeamDocument, "agents" | "teams">,
+	agentProfileId: string,
+): AgentProfileDeleteImpact {
+	const teams = document.teams.flatMap((team) => {
+		const removed = team.members.filter(
+			(member) => member.binding.kind === "reference" && member.binding.agentProfileId === agentProfileId,
+		);
+		if (removed.length === 0) return [];
+		const removedIds = new Set(removed.map((member) => member.id));
+		const remaining = team.members.filter((member) => !removedIds.has(member.id));
+		const currentLeaderRemoved = removedIds.has(team.leaderMemberId);
+		const nextLeader = currentLeaderRemoved ? remaining[0] : undefined;
+		const nextLeaderProfile = nextLeader
+			? document.agents.find((agent) => agent.id === nextLeader.binding.agentProfileId)
+			: undefined;
+		return [
+			{
+				teamId: team.id,
+				teamRevision: team.revision,
+				teamName: team.name,
+				removedMemberIds: removed.map((member) => member.id),
+				deletesTeam: remaining.length === 0,
+				...(nextLeader
+					? {
+							nextLeaderMemberId: nextLeader.id,
+							nextLeaderName: nextLeaderProfile?.name ?? nextLeader.handle,
+						}
+					: {}),
+			},
+		];
+	});
+	return { agentProfileId, teams };
 }
 export function listLibraryAgentProfiles(document: Pick<AgentTeamDocument, "agents">): readonly AgentProfile[] {
 	return document.agents.filter((agent) => agent.scope.kind === "library");

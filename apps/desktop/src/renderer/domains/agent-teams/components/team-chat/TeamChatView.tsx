@@ -5,6 +5,7 @@ import {
 	InputBarPlaceholder,
 	SendButton,
 } from "@vetta/theme-ui/chat";
+import { Button } from "@vetta/ui";
 import { useCallback, useState } from "react";
 import { TeamComposer } from "./TeamComposer";
 import { TeamMessageFeed } from "./TeamMessageFeed";
@@ -54,6 +55,35 @@ export function TeamChatView({ model, actions }: TeamChatViewProps): JSX.Element
 										onToggleMember={actions.toggleMember}
 									/>
 								),
+								attachments:
+									model.attachments.length > 0 ? (
+										<div className="flex flex-wrap gap-1.5 px-3 pt-3">
+											{model.attachments.map((attachment) => (
+												<span
+													key={attachment.path}
+													className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-border/60 bg-muted/40 px-2 py-1 text-[11px] text-muted-foreground"
+												>
+													<span
+														className={
+															attachment.kind === "image"
+																? "icon-[solar--gallery-linear] h-3.5 w-3.5"
+																: "icon-[solar--paperclip-linear] h-3.5 w-3.5"
+														}
+														aria-hidden="true"
+													/>
+													<span className="truncate">{attachment.name}</span>
+													<Button
+														variant="ghost"
+														size="icon-xs"
+														onClick={() => actions.removeAttachment(attachment.path)}
+													>
+														<span className="icon-[solar--close-circle-linear] h-3 w-3" aria-hidden="true" />
+														<span className="sr-only">{model.labels.removeAttachment(attachment.name)}</span>
+													</Button>
+												</span>
+											))}
+										</div>
+									) : undefined,
 								editor: (
 									<div className="px-4 pb-1 pt-3">
 										<div className="relative">
@@ -61,6 +91,7 @@ export function TeamChatView({ model, actions }: TeamChatViewProps): JSX.Element
 												namespace="team-chat"
 												value={model.draft}
 												onValueChange={actions.setDraft}
+												history={model.history}
 												ariaLabel={model.labels.placeholder}
 												editable={model.editorEnabled}
 												onEnter={handleEnter}
@@ -77,9 +108,33 @@ export function TeamChatView({ model, actions }: TeamChatViewProps): JSX.Element
 								toolbar: (
 									<ConversationComposerToolbarView
 										left={
-											<span className="min-w-0 truncate px-1 text-[11px] text-muted-foreground">
-												{model.labels.hint}
-											</span>
+											<>
+												<Button
+													variant="ghost"
+													size="icon-xs"
+													onClick={() => void actions.selectImages()}
+												>
+													<span
+														className="icon-[solar--gallery-linear] h-4 w-4"
+														aria-hidden="true"
+													/>
+													<span className="sr-only">{model.labels.attachImage}</span>
+												</Button>
+												<Button
+													variant="ghost"
+													size="icon-xs"
+													onClick={() => void actions.selectFiles()}
+												>
+													<span
+														className="icon-[solar--paperclip-linear] h-4 w-4"
+														aria-hidden="true"
+													/>
+													<span className="sr-only">{model.labels.attachFile}</span>
+												</Button>
+												<span className="min-w-0 truncate px-1 text-[11px] text-muted-foreground">
+													{model.labels.hint}
+												</span>
+											</>
 										}
 										right={
 											<SendButton

@@ -108,11 +108,15 @@ export interface TeamSessionDocument {
 	readonly revision: number;
 	readonly id: string;
 	readonly teamId: string;
+	/** Team definition revision last reconciled into the active runtime roster. */
+	readonly teamRevision?: number;
 	readonly name: string;
 	readonly cwd: string;
 	readonly orchestrationPolicyId?: string;
 	readonly contextPolicyId?: string;
 	readonly leaderMemberId: string;
+	/** Active roster; omitted by legacy sessions whose runtime map was the roster. */
+	readonly activeMemberIds?: readonly string[];
 	readonly memberHandles: Readonly<Record<string, string>>;
 	readonly createdAt: number;
 	readonly updatedAt: number;
@@ -124,6 +128,21 @@ export interface AgentProfileUpdateImpact {
 	readonly agentProfileId: string;
 	readonly teamIds: readonly string[];
 	readonly teamNames: readonly string[];
+}
+
+export interface AgentProfileDeleteTeamImpact {
+	readonly teamId: string;
+	readonly teamRevision: number;
+	readonly teamName: string;
+	readonly removedMemberIds: readonly string[];
+	readonly deletesTeam: boolean;
+	readonly nextLeaderMemberId?: string;
+	readonly nextLeaderName?: string;
+}
+
+export interface AgentProfileDeleteImpact {
+	readonly agentProfileId: string;
+	readonly teams: readonly AgentProfileDeleteTeamImpact[];
 }
 
 export interface CreateAgentProfileInput {
@@ -144,6 +163,10 @@ export interface UpdateAgentProfileInput {
 }
 export interface DeleteAgentProfileInput {
 	readonly expectedRevision: number;
+	/** Required when references exist so deletion cannot cascade to teams the user did not review. */
+	readonly expectedTeamIds?: readonly string[];
+	/** Reviewed team revisions; prevents a same-team roster change from reusing stale confirmation. */
+	readonly expectedTeamRevisions?: Readonly<Record<string, number>>;
 }
 export interface CreateTeamMemberInput {
 	readonly agentProfileId: string;
@@ -157,6 +180,30 @@ export interface CreateTeamInput {
 	readonly members: readonly CreateTeamMemberInput[];
 	readonly orchestrationPolicyId?: string;
 	readonly contextPolicyId?: string;
+}
+
+export type UpdateTeamMemberInput =
+	| {
+			readonly kind: "existing";
+			readonly memberId: string;
+			readonly leader: boolean;
+	  }
+	| {
+			readonly kind: "new";
+			readonly agentProfileId: string;
+			readonly bindingKind: "reference" | "copy";
+			readonly leader: boolean;
+	  };
+
+export interface UpdateTeamInput {
+	readonly expectedRevision: number;
+	readonly name: string;
+	readonly description: string;
+	readonly members: readonly UpdateTeamMemberInput[];
+}
+
+export interface DeleteTeamInput {
+	readonly expectedRevision: number;
 }
 export interface SendTeamMessageInput {
 	readonly requestId: string;

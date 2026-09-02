@@ -5,6 +5,7 @@ import {
 	listLibraryAgentProfiles,
 } from "@vetta/agent-team";
 import { useNavigate } from "@tanstack/react-router";
+import { AgentAvatarView } from "@vetta/theme-ui/chat";
 import {
 	Button,
 	Input,
@@ -18,7 +19,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { notifyAgentTeamConfigurationChanged } from "../../project/components/sidebar/projects/panel/AgentTeamSidebarList";
 import { useAgentTeamSidebarSelection } from "../hooks/useAgentTeamSidebarSelection";
-import { agentDisplayName, teamDisplayName } from "../lib/preset-presentation";
+import { agentDisplayDescription, agentDisplayName, teamDisplayName } from "../lib/preset-presentation";
 
 interface MemberDraft {
 	readonly handle: string;
@@ -214,6 +215,7 @@ function MemberDraftRow({
 				draft ? "border-primary/40 bg-primary/5" : "border-border"
 			}`}
 		>
+			<AgentAvatarView name={displayName} avatar={agent.avatar} blueprintId={agent.blueprintId} />
 			<Button
 				variant={draft ? "primary" : "ghost"}
 				size="icon-sm"
@@ -231,7 +233,9 @@ function MemberDraftRow({
 			</Button>
 			<div className="min-w-0 flex-1">
 				<div className="truncate text-sm font-medium">{displayName}</div>
-				<div className="text-xs text-muted-foreground">@{agent.mentionHandle}</div>
+				{agentDisplayDescription(agent, t) && (
+					<div className="line-clamp-1 text-xs text-muted-foreground">{agentDisplayDescription(agent, t)}</div>
+				)}
 			</div>
 			{draft && (
 				<div className="flex items-center gap-2">

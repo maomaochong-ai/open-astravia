@@ -15,12 +15,17 @@ export interface TeamChatLabels {
 	readonly sending: string;
 	readonly failed: string;
 	readonly retry: string;
+	readonly attachFile: string;
+	readonly attachImage: string;
+	readonly removeAttachment: (name: string) => string;
 }
 
 export interface TeamChatViewModel {
 	readonly title: string;
 	readonly status: TeamChatStatus;
 	readonly draft: string;
+	readonly history: readonly string[];
+	readonly attachments: readonly TeamAttachmentViewModel[];
 	readonly members: readonly TeamMemberViewModel[];
 	readonly timelineItems: readonly TeamTimelineItemViewModel[];
 	readonly markdown: RendererMarkdownModel;
@@ -34,8 +39,17 @@ export interface TeamChatActions {
 	readonly setDraft: (draft: string) => void;
 	readonly selectLeader: () => void;
 	readonly toggleMember: (memberId: string) => void;
+	readonly selectFiles: () => Promise<void>;
+	readonly selectImages: () => Promise<void>;
+	readonly removeAttachment: (path: string) => void;
 	readonly send: () => Promise<void>;
 	readonly abort: () => Promise<void>;
+}
+
+export interface TeamAttachmentViewModel {
+	readonly path: string;
+	readonly name: string;
+	readonly kind: "file" | "image";
 }
 
 export function updateScopedTeamDraft(
@@ -61,6 +75,7 @@ export interface TeamMemberViewModel {
 export interface TeamPendingRequest {
 	readonly requestId: string;
 	readonly text: string;
+	readonly displayText?: string;
 }
 
 export interface TeamStreamingTurnViewModel {
@@ -197,7 +212,7 @@ export function buildTeamTimelineItems({
 	const memberMap = new Map(members.map((member) => [member.id, member]));
 	const items: TeamTimelineItemViewModel[] = session.events.map((event) => {
 		if (event.type === "user-message") {
-			return { id: event.id, kind: "user", text: event.text, pending: false };
+			return { id: event.id, kind: "user", text: stripAttachmentContext(event.text), pending: false };
 		}
 		if (event.type === "member-delegation") {
 			const source =
@@ -223,7 +238,12 @@ export function buildTeamTimelineItems({
 		? session.events.some((event) => event.type === "user-message" && event.requestId === pending.requestId)
 		: false;
 	if (pending && !userCommitted) {
-		items.push({ id: `pending:${pending.requestId}`, kind: "user", text: pending.text, pending: true });
+		items.push({
+			id: `pending:${pending.requestId}`,
+			kind: "user",
+			text: pending.displayText ?? stripAttachmentContext(pending.text),
+			pending: true,
+		});
 	}
 
 	const persistedResults = new Set(
@@ -252,6 +272,10 @@ export function buildTeamTimelineItems({
 		});
 	}
 	return items;
+}
+
+export function stripAttachmentContext(text: string): string {
+	return text.replace(/\n*<attachments>\n[\s\S]*?\n<\/attachments>\s*$/u, "").trimEnd();
 }
 
 function fallbackMember(

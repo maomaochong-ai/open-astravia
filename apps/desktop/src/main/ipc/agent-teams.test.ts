@@ -26,7 +26,10 @@ function dependencies(): AgentTeamsIpcDependencies {
 			updateAgent: vi.fn(),
 			deleteAgent: vi.fn(),
 			previewAgentUpdate: vi.fn(),
+			previewAgentDelete: vi.fn(),
 			createTeam: vi.fn(),
+			updateTeam: vi.fn(),
+			deleteTeam: vi.fn(),
 		},
 		sessions: {
 			create: vi.fn(),

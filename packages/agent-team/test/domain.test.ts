@@ -4,6 +4,7 @@ import {
 	assertTeamInvariants,
 	listLibraryAgentProfiles,
 	normalizeMentionHandle,
+	previewAgentProfileDelete,
 	previewAgentProfileUpdate,
 	resolveMentionedMemberIds,
 	resolveTeamTargets,
@@ -72,6 +73,34 @@ describe("Agent Team domain", () => {
 		const impact = previewAgentProfileUpdate({ teams: [team] }, "agent-1");
 		expect(impact.teamIds).toEqual(["team-1"]);
 		expect(previewAgentProfileUpdate({ teams: [team] }, "agent-2").teamNames).toEqual(["Team"]);
+	});
+
+	it("previews cascade deletion, including responsibility transfer and empty teams", () => {
+		const impact = previewAgentProfileDelete(
+			{
+				agents: [profile("agent-1"), profile("agent-2")],
+				teams: [
+					team,
+					{
+						...team,
+						id: "solo-team",
+						name: "Solo",
+						members: [team.members[0]],
+					},
+				],
+			},
+			"agent-1",
+		);
+
+		expect(impact.teams).toEqual([
+			expect.objectContaining({
+				teamId: "team-1",
+				deletesTeam: false,
+				nextLeaderMemberId: "member-2",
+				nextLeaderName: "agent-2",
+			}),
+			expect.objectContaining({ teamId: "solo-team", deletesTeam: true }),
+		]);
 	});
 
 	it("routes known @handles while ignoring unrelated mentions", () => {

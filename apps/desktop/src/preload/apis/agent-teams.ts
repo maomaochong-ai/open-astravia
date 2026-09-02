@@ -13,7 +13,10 @@ export function createAgentTeamsApi(ipc: IpcRenderer): Pick<DesktopApi, "agentTe
 			updateAgent: (id, input) => ipc.invoke("vetta:agent-teams:update-agent", id, input),
 			deleteAgent: (id, input) => ipc.invoke("vetta:agent-teams:delete-agent", id, input),
 			previewAgentUpdate: (id) => ipc.invoke("vetta:agent-teams:preview-agent-update", id),
+			previewAgentDelete: (id) => ipc.invoke("vetta:agent-teams:preview-agent-delete", id),
 			createTeam: (input) => ipc.invoke("vetta:agent-teams:create-team", input),
+			updateTeam: (id, input) => ipc.invoke("vetta:agent-teams:update-team", id, input),
+			deleteTeam: (id, input) => ipc.invoke("vetta:agent-teams:delete-team", id, input),
 			createSession: (teamId, cwd) => ipc.invoke("vetta:agent-teams:create-session", teamId, cwd),
 			getSession: (id) => ipc.invoke("vetta:agent-teams:get-session", id),
 			subscribe: (id, handler) =>

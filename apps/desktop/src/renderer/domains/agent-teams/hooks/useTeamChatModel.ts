@@ -1,4 +1,6 @@
 import { useRendererMarkdownModel } from "@shared/hooks/useRendererMarkdownModel";
+import { persistBase64Images } from "@shared/lib/persist-input-images";
+import { pathBasename } from "@shared/lib/utils";
 import { type AgentTeamDocument, resolveMentionedMemberIds, type TeamSessionDocument } from "@vetta/agent-team";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -6,6 +8,7 @@ import {
 	buildTeamTimelineItems,
 	reduceTeamStreamState,
 	resolveTeamMembers,
+	type TeamAttachmentViewModel,
 	type TeamChatActions,
 	type TeamChatStatus,
 	type TeamChatViewModel,
@@ -24,6 +27,10 @@ export function useTeamChatModel(teamId: string): {
 	const [document, setDocument] = useState<AgentTeamDocument>();
 	const [session, setSession] = useState<TeamSessionDocument>();
 	const [draftsByTeam, setDraftsByTeam] = useState<Readonly<Record<string, string>>>({});
+	const [historyByTeam, setHistoryByTeam] = useState<Readonly<Record<string, readonly string[]>>>({});
+	const [attachmentsByTeam, setAttachmentsByTeam] = useState<
+		Readonly<Record<string, readonly TeamAttachmentViewModel[]>>
+	>({});
 	const [selectedMemberIds, setSelectedMemberIds] = useState<readonly string[]>([]);
 	const [pending, setPending] = useState<TeamPendingRequest>();
 	const [streams, setStreams] = useState<TeamStreamState>({});
@@ -34,6 +41,8 @@ export function useTeamChatModel(teamId: string): {
 	const streamsRef = useRef<TeamStreamState>({});
 	pendingRef.current = pending;
 	const draft = draftsByTeam[teamId] ?? "";
+	const history = historyByTeam[teamId] ?? [];
+	const attachments = attachmentsByTeam[teamId] ?? [];
 	const updateDraft = useCallback(
 		(update: string | ((current: string) => string)) => {
 			setDraftsByTeam((current) => updateScopedTeamDraft(current, teamId, update));
@@ -41,6 +50,12 @@ export function useTeamChatModel(teamId: string): {
 		[teamId],
 	);
 	const setDraft = useCallback((next: string) => updateDraft(next), [updateDraft]);
+	const updateAttachments = useCallback(
+		(update: (current: readonly TeamAttachmentViewModel[]) => readonly TeamAttachmentViewModel[]) => {
+			setAttachmentsByTeam((current) => ({ ...current, [teamId]: update(current[teamId] ?? []) }));
+		},
+		[teamId],
+	);
 
 	const team = useMemo(() => document?.teams.find((candidate) => candidate.id === teamId), [document, teamId]);
 	const markdown = useRendererMarkdownModel(session?.cwd ?? null, false);
@@ -149,21 +164,36 @@ export function useTeamChatModel(teamId: string): {
 			setSelectedMemberIds((current) =>
 				current.includes(memberId) ? current.filter((id) => id !== memberId) : [...current, memberId],
 			);
-			const mention = `@${member.handle}`;
-			updateDraft((current) =>
-				current.includes(mention)
-					? current
-					: `${current}${current && !current.endsWith(" ") ? " " : ""}${mention} `,
-			);
 		},
-		[members, updateDraft],
+		[members],
+	);
+	const selectFiles = useCallback(async () => {
+		if (!session) return;
+		const paths = await window.vetta.dialog.selectFiles(session.cwd || undefined);
+		updateAttachments((current) => mergeAttachments(current, paths.map(toFileAttachment)));
+	}, [session, updateAttachments]);
+	const selectImages = useCallback(async () => {
+		if (!session) return;
+		const selected = await window.vetta.dialog.selectImages();
+		const paths = await persistBase64Images(selected, session.id, "image-dialog");
+		updateAttachments((current) => mergeAttachments(current, paths.map(toImageAttachment)));
+	}, [session, updateAttachments]);
+	const removeAttachment = useCallback(
+		(path: string) => updateAttachments((current) => current.filter((attachment) => attachment.path !== path)),
+		[updateAttachments],
 	);
 
 	const send = useCallback(async () => {
-		const text = draft.trim();
-		if (!session || !team || !text || pendingRef.current) return;
+		const draftText = draft.trim();
+		if (!session || !team || (!draftText && attachments.length === 0) || pendingRef.current) return;
+		const text = appendAttachmentContext(draftText, attachments);
 		const requestId = crypto.randomUUID();
-		const nextPending = { requestId, text };
+		const nextPending = {
+			requestId,
+			text,
+			displayText: draftText || attachments.map((attachment) => attachment.name).join("、"),
+		};
+		const sentAttachments = attachments;
 		const targetMemberIds = resolveMentionedMemberIds(team, text, selectedMemberIds);
 		pendingRef.current = nextPending;
 		setPending(nextPending);
@@ -175,6 +205,7 @@ export function useTeamChatModel(teamId: string): {
 		streamsRef.current = activeStreams;
 		setStreams(activeStreams);
 		updateDraft("");
+		updateAttachments(() => []);
 		try {
 			const next = await window.vetta.agentTeams.sendMessage(session.id, {
 				requestId,
@@ -184,6 +215,15 @@ export function useTeamChatModel(teamId: string): {
 			setSession((current) => (!current || next.revision >= current.revision ? next : current));
 			setError(undefined);
 			setStatus("ready");
+			if (draftText) {
+				setHistoryByTeam((current) => {
+					const previous = current[teamId] ?? [];
+					return {
+						...current,
+						[teamId]: [...previous.filter((item) => item !== draftText), draftText].slice(-50),
+					};
+				});
+			}
 		} catch (cause) {
 			if (cancelledRequests.current.delete(requestId)) {
 				setStatus("ready");
@@ -191,12 +231,13 @@ export function useTeamChatModel(teamId: string): {
 				setError(errorMessage(cause));
 				setStatus("error");
 			}
-			updateDraft((current) => current || text);
+			updateDraft((current) => current || draftText);
+			updateAttachments((current) => mergeAttachments(current, sentAttachments));
 		} finally {
 			pendingRef.current = undefined;
 			setPending(undefined);
 		}
-	}, [draft, selectedMemberIds, session, team, updateDraft]);
+	}, [attachments, draft, selectedMemberIds, session, team, teamId, updateAttachments, updateDraft]);
 
 	const abort = useCallback(async () => {
 		const request = pendingRef.current;
@@ -225,6 +266,9 @@ export function useTeamChatModel(teamId: string): {
 			sending: t("chat.sending"),
 			failed: t("chat.failed"),
 			retry: t("chat.retry"),
+			attachFile: t("chat.attachFile"),
+			attachImage: t("chat.attachImage"),
+			removeAttachment: (name: string) => t("chat.removeAttachment", { name }),
 		}),
 		[t],
 	);
@@ -233,22 +277,47 @@ export function useTeamChatModel(teamId: string): {
 			title: team ? teamDisplayName(team, t) : t("teams.title"),
 			status,
 			draft,
+			history,
+			attachments,
 			members,
 			timelineItems,
 			markdown,
 			...(error ? { error } : {}),
 			editorEnabled: Boolean(session),
-			canSend: Boolean(session && draft.trim() && !pending),
+			canSend: Boolean(session && (draft.trim() || attachments.length > 0) && !pending),
 			labels,
 		}),
-		[team, t, status, draft, members, timelineItems, markdown, error, session, pending, labels],
+		[team, t, status, draft, history, attachments, members, timelineItems, markdown, error, session, pending, labels],
 	);
 	const actions = useMemo<TeamChatActions>(
-		() => ({ setDraft, selectLeader, toggleMember, send, abort }),
-		[setDraft, selectLeader, toggleMember, send, abort],
+		() => ({ setDraft, selectLeader, toggleMember, selectFiles, selectImages, removeAttachment, send, abort }),
+		[setDraft, selectLeader, toggleMember, selectFiles, selectImages, removeAttachment, send, abort],
 	);
 
 	return { model, actions };
+}
+
+function mergeAttachments(
+	current: readonly TeamAttachmentViewModel[],
+	additions: readonly TeamAttachmentViewModel[],
+): readonly TeamAttachmentViewModel[] {
+	const byPath = new Map(current.map((attachment) => [attachment.path, attachment]));
+	for (const attachment of additions) byPath.set(attachment.path, attachment);
+	return [...byPath.values()];
+}
+
+function toFileAttachment(path: string): TeamAttachmentViewModel {
+	return { path, name: pathBasename(path), kind: "file" };
+}
+
+function toImageAttachment(path: string): TeamAttachmentViewModel {
+	return { path, name: pathBasename(path), kind: "image" };
+}
+
+export function appendAttachmentContext(text: string, attachments: readonly TeamAttachmentViewModel[]): string {
+	if (attachments.length === 0) return text;
+	const attachmentContext = attachments.map((attachment) => `- ${attachment.kind}: ${attachment.path}`).join("\n");
+	return `${text}${text ? "\n\n" : ""}<attachments>\n${attachmentContext}\n</attachments>`;
 }
 
 function errorMessage(cause: unknown): string {

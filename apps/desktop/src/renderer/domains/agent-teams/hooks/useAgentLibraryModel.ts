@@ -2,6 +2,7 @@ import {
 	type AgentAbilitySelection,
 	type AgentBlueprint,
 	type AgentProfile,
+	type AgentProfileDeleteImpact,
 	type AgentTeamDocument,
 	listLibraryAgentProfiles,
 } from "@vetta/agent-team";
@@ -68,6 +69,14 @@ export function useAgentLibraryModel(copy: AgentLibraryCopy) {
 	const previewAgent = useCallback(async (agentId: string) => {
 		return window.vetta.agentTeams.previewAgentUpdate(agentId);
 	}, []);
+	const previewAgentDelete = useCallback(async (agentId: string) => {
+		try {
+			return await window.vetta.agentTeams.previewAgentDelete(agentId);
+		} catch (cause) {
+			setError(errorMessage(cause));
+			return undefined;
+		}
+	}, []);
 
 	const saveAgent = useCallback(
 		async (agent: AgentProfile, input: AgentProfileEditInput) => {
@@ -91,25 +100,23 @@ export function useAgentLibraryModel(copy: AgentLibraryCopy) {
 		[previewAgent],
 	);
 
-	const deleteAgent = useCallback(
-		async (agent: AgentProfile): Promise<boolean> => {
-			try {
-				await window.vetta.agentTeams.deleteAgent(agent.id, { expectedRevision: agent.revision });
-				setDocument((current) =>
-					current
-						? { ...current, agents: current.agents.filter((candidate) => candidate.id !== agent.id) }
-						: current,
-				);
-				setSelectedId(libraryAgents.find((candidate) => candidate.id !== agent.id)?.id);
-				setError(undefined);
-				return true;
-			} catch (cause) {
-				setError(errorMessage(cause));
-				return false;
-			}
-		},
-		[libraryAgents],
-	);
+	const deleteAgent = useCallback(async (agent: AgentProfile, impact: AgentProfileDeleteImpact): Promise<boolean> => {
+		try {
+			await window.vetta.agentTeams.deleteAgent(agent.id, {
+				expectedRevision: agent.revision,
+				expectedTeamIds: impact.teams.map((team) => team.teamId),
+				expectedTeamRevisions: Object.fromEntries(impact.teams.map((team) => [team.teamId, team.teamRevision])),
+			});
+			const next = await window.vetta.agentTeams.list();
+			setDocument(next);
+			setSelectedId(next.agents.find((candidate) => candidate.scope.kind === "library")?.id);
+			setError(undefined);
+			return true;
+		} catch (cause) {
+			setError(errorMessage(cause));
+			return false;
+		}
+	}, []);
 
 	return {
 		document,
@@ -124,6 +131,7 @@ export function useAgentLibraryModel(copy: AgentLibraryCopy) {
 		actions: {
 			createAgent,
 			previewAgent,
+			previewAgentDelete,
 			saveAgent,
 			deleteAgent,
 			selectAgent: setSelectedId,

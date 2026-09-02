@@ -9,7 +9,12 @@ import {
 	$createParagraphNode,
 	$createTextNode,
 	$getRoot,
+	$getSelection,
+	$isRangeSelection,
 	COMMAND_PRIORITY_HIGH,
+	COMMAND_PRIORITY_LOW,
+	KEY_ARROW_DOWN_COMMAND,
+	KEY_ARROW_UP_COMMAND,
 	KEY_ENTER_COMMAND,
 } from "lexical";
 import { type JSX, type MouseEvent, type ReactNode, useEffect, useRef } from "react";
@@ -32,6 +37,7 @@ export type ConversationEditorViewProps = ControlledEditorProps & {
 	readonly namespace: string;
 	readonly ariaLabel: string;
 	readonly editable: boolean;
+	readonly history?: readonly string[];
 	readonly nodes?: InitialConfigType["nodes"];
 	readonly plugins?: ReactNode;
 	readonly onContextMenu?: (event: MouseEvent<HTMLDivElement>) => void;
@@ -44,6 +50,7 @@ export function ConversationEditorView({
 	namespace,
 	ariaLabel,
 	editable,
+	history,
 	nodes,
 	plugins,
 	value,
@@ -82,9 +89,81 @@ export function ConversationEditorView({
 				<ControlledTextPlugin value={value} onValueChange={onValueChange} />
 			) : null}
 			<SubmitPlugin onEnter={onEnter} />
+			{history && value !== undefined && onValueChange ? (
+				<ControlledHistoryPlugin history={history} value={value} onValueChange={onValueChange} />
+			) : null}
 			{plugins}
 		</LexicalComposer>
 	);
+}
+
+function ControlledHistoryPlugin({
+	history,
+	value,
+	onValueChange,
+}: {
+	readonly history: readonly string[];
+	readonly value: string;
+	readonly onValueChange: (value: string) => void;
+}): null {
+	const [editor] = useLexicalComposerContext();
+	const historyRef = useRef(history);
+	const valueRef = useRef(value);
+	const onValueChangeRef = useRef(onValueChange);
+	const indexRef = useRef(-1);
+	const stashRef = useRef("");
+	historyRef.current = history;
+	valueRef.current = value;
+	onValueChangeRef.current = onValueChange;
+
+	useEffect(() => {
+		indexRef.current = -1;
+		stashRef.current = "";
+	}, [history]);
+
+	useEffect(() => {
+		const canStart = (): boolean =>
+			editor.getEditorState().read(() => {
+				if (valueRef.current.trim().length === 0) return true;
+				const selection = $getSelection();
+				if (!$isRangeSelection(selection) || !selection.isCollapsed()) return false;
+				return selection.anchor.offset === 0;
+			});
+		const onUp = (event: KeyboardEvent | null): boolean => {
+			if (event?.isComposing || historyRef.current.length === 0) return false;
+			if (indexRef.current < 0) {
+				if (!canStart()) return false;
+				stashRef.current = valueRef.current;
+				indexRef.current = historyRef.current.length - 1;
+			} else if (indexRef.current > 0) {
+				indexRef.current -= 1;
+			}
+			onValueChangeRef.current(historyRef.current[indexRef.current] ?? "");
+			event?.preventDefault();
+			return true;
+		};
+		const onDown = (event: KeyboardEvent | null): boolean => {
+			if (event?.isComposing || indexRef.current < 0) return false;
+			if (indexRef.current < historyRef.current.length - 1) {
+				indexRef.current += 1;
+				onValueChangeRef.current(historyRef.current[indexRef.current] ?? "");
+			} else {
+				indexRef.current = -1;
+				onValueChangeRef.current(stashRef.current);
+				stashRef.current = "";
+			}
+			event?.preventDefault();
+			return true;
+		};
+		const unregisterUp = editor.registerCommand(KEY_ARROW_UP_COMMAND, onUp, COMMAND_PRIORITY_LOW);
+		const unregisterDown = editor.registerCommand(KEY_ARROW_DOWN_COMMAND, onDown, COMMAND_PRIORITY_LOW);
+		return () => {
+			unregisterUp();
+			unregisterDown();
+		};
+	}, [editor]);
+
+	return null;
 }
 
 function EditableStatePlugin({ editable }: { readonly editable: boolean }): null {

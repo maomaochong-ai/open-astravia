@@ -91,4 +91,62 @@ describe("AgentTeamSessionService streaming contract", () => {
 		});
 		expect(events.at(-1)).toMatchObject({ type: "member-end", phase: "final", seq: 3 });
 	});
+
+	it("reconciles cached sessions after members are added or removed", async () => {
+		let document = createInitialAgentTeamDocument();
+		const originalTeam = document.teams[0];
+		if (!originalTeam) throw new Error("built-in Agent Team fixture is missing");
+		const removedMember = originalTeam.members.at(-1);
+		const sourceMember = originalTeam.members[1];
+		if (!removedMember || !sourceMember) throw new Error("built-in Agent Team member fixture is missing");
+		const sessions = new Map<string, TeamSessionDocument>();
+		const repository: TeamSessionRepository = {
+			memberSessionDirectory: (sessionId, memberId) => `C:/sessions/${sessionId}/${memberId}`,
+			read: async (id) => {
+				const session = sessions.get(id);
+				if (!session) throw new Error(`missing session: ${id}`);
+				return session;
+			},
+			write: async (session) => {
+				sessions.set(session.id, structuredClone(session));
+			},
+		};
+		let runtimeSequence = 0;
+		const runtime = {
+			createSession: vi.fn(async () => ({ sessionId: `runtime-${++runtimeSequence}` })),
+			getSessionPath: (sessionId: string) => `C:/runtime/${sessionId}.jsonl`,
+			disposeSession: vi.fn(async () => undefined),
+			subscribe: () => () => undefined,
+		} as unknown as RuntimeHost;
+		const service = new AgentTeamSessionService({
+			runtime,
+			repository,
+			readDocument: async () => document,
+		});
+		const created = await service.create(originalTeam, document, "C:/workspace");
+		const addedMember = {
+			...sourceMember,
+			id: "member-added",
+			handle: "additional-reviewer",
+		};
+		const nextTeam = {
+			...originalTeam,
+			revision: originalTeam.revision + 1,
+			members: [...originalTeam.members.filter((member) => member.id !== removedMember.id), addedMember],
+		};
+		document = {
+			...document,
+			revision: document.revision + 1,
+			teams: document.teams.map((team) => (team.id === nextTeam.id ? nextTeam : team)),
+		};
+
+		const reconciled = await service.read(created.id);
+
+		expect(reconciled.teamRevision).toBe(nextTeam.revision);
+		expect(reconciled.activeMemberIds).toEqual(nextTeam.members.map((member) => member.id));
+		expect(reconciled.memberRuntime[removedMember.id]).toBeUndefined();
+		expect(reconciled.memberRuntime[addedMember.id]?.sessionId).toBe(`runtime-${originalTeam.members.length + 1}`);
+		expect(reconciled.memberHandles[removedMember.id]).toBe(removedMember.handle);
+		expect(runtime.disposeSession).toHaveBeenCalledWith(`runtime-${originalTeam.members.length}`);
+	});
 });
