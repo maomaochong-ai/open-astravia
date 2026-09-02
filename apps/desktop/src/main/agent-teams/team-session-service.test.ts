@@ -75,6 +75,7 @@ describe("AgentTeamSessionService streaming contract", () => {
 			requestId: "request",
 			text: "question",
 			targetMemberIds: [team.leaderMemberId],
+			attachments: [{ kind: "file", path: "C:/workspace/brief.md" }],
 		});
 		subscription.unsubscribe();
 
@@ -90,6 +91,12 @@ describe("AgentTeamSessionService streaming contract", () => {
 			text: assistantText,
 		});
 		expect(events.at(-1)).toMatchObject({ type: "member-end", phase: "final", seq: 3 });
+		expect(runtime.prompt).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({
+				attachments: [{ kind: "file", path: "C:/workspace/brief.md" }],
+			}),
+		);
 	});
 
 	it("reconciles cached sessions after members are added or removed", async () => {

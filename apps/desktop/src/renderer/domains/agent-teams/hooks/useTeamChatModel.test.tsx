@@ -68,8 +68,12 @@ describe("useTeamChatModel streaming flow", () => {
 						return () => undefined;
 						},
 					),
-					sendMessage: vi.fn(),
+					sendMessage: vi.fn(async () => baseSession),
 					abort: vi.fn(),
+				},
+				dialog: {
+					selectFiles: vi.fn(async () => ["C:/workspace/brief.md"]),
+					selectImages: vi.fn(async () => []),
 				},
 			},
 		});
@@ -156,5 +160,22 @@ describe("useTeamChatModel streaming flow", () => {
 		expect(result.current.model.timelineItems).toEqual([
 			expect.objectContaining({ kind: "member", text: "partial answer", pending: false }),
 		]);
+	});
+
+	it("submits attachments as structured request data instead of prompt markup", async () => {
+		const { result } = renderHook(() => useTeamChatModel(team.id));
+		await waitFor(() => expect(result.current.model.status).toBe("ready"));
+
+		await act(async () => result.current.actions.selectFiles());
+		expect(result.current.model.canSend).toBe(true);
+		await act(async () => result.current.actions.send());
+
+		expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledWith(
+			baseSession.id,
+			expect.objectContaining({
+				text: "",
+				attachments: [{ kind: "file", path: "C:/workspace/brief.md" }],
+			}),
+		);
 	});
 });

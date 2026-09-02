@@ -18,7 +18,7 @@ import {
 	type TeamStreamingTurnSnapshot,
 } from "@vetta/agent-team";
 import type { CodingAgentRuntimeToolRegistration } from "@vetta/coding-agent/runtime";
-import type { RuntimeHost } from "@vetta/runtime-core";
+import type { PromptAttachmentRef, RuntimeHost } from "@vetta/runtime-core";
 import { resolveDesktopSessionConfig } from "../conversations/resolve-session-config.js";
 import { getAppLogger } from "../logger.js";
 import { getSharedRuntime } from "../runtime.js";
@@ -430,7 +430,12 @@ export class AgentTeamSessionService {
 			(event): event is Extract<TeamFeedEvent, { type: "user-message" }> =>
 				event.type === "user-message" && event.requestId === input.requestId,
 		);
-		if (existingUser && (existingUser.text !== input.text || !sameMemberIds(existingUser.targetMemberIds, targets))) {
+		if (
+			existingUser &&
+			(existingUser.text !== input.text ||
+				!sameMemberIds(existingUser.targetMemberIds, targets) ||
+				!sameAttachments(existingUser.attachments ?? [], input.attachments ?? []))
+		) {
 			throw new Error(`Request id already used with different content: ${input.requestId}`);
 		}
 		const completed = new Set(
@@ -452,6 +457,7 @@ export class AgentTeamSessionService {
 				requestId: input.requestId,
 				text: input.text,
 				targetMemberIds: targets,
+				...(input.attachments?.length ? { attachments: input.attachments } : {}),
 				timestamp: Date.now(),
 			});
 		let next: TeamSessionDocument = existingUser
@@ -483,6 +489,7 @@ export class AgentTeamSessionService {
 				input.requestId,
 				`${input.requestId}:${memberId}`,
 				signal,
+				input.attachments,
 			);
 		}
 
@@ -498,6 +505,7 @@ export class AgentTeamSessionService {
 		requestId: string,
 		sourceTurnId: string,
 		signal?: AbortSignal,
+		attachments?: readonly PromptAttachmentRef[],
 	): Promise<TeamSessionDocument> {
 		const configuredSession = await this.ensureMemberConfiguration(session, document, memberId);
 		const runtimeState = configuredSession.memberRuntime[memberId];
@@ -550,7 +558,10 @@ export class AgentTeamSessionService {
 				seq: 0,
 				timestamp: startedAt,
 			});
-			await this.getRuntime().prompt(runtimeState.sessionId, { text: `${promptText}${contextText}` });
+			await this.getRuntime().prompt(runtimeState.sessionId, {
+				text: `${promptText}${contextText}`,
+				...(attachments?.length ? { attachments: [...attachments] } : {}),
+			});
 			if (signal?.aborted) throw new Error("Team member turn was cancelled");
 		} catch (error) {
 			activeTurn.seq += 1;
@@ -813,6 +824,14 @@ function sameMemberIds(left: readonly string[], right: readonly string[]): boole
 	const sortedLeft = [...left].sort();
 	const sortedRight = [...right].sort();
 	return sortedLeft.every((memberId, index) => memberId === sortedRight[index]);
+}
+
+function sameAttachments(left: readonly PromptAttachmentRef[], right: readonly PromptAttachmentRef[]): boolean {
+	if (left.length !== right.length) return false;
+	const key = (attachment: PromptAttachmentRef) => `${attachment.kind}\u0000${attachment.path}`;
+	const sortedLeft = left.map(key).sort();
+	const sortedRight = right.map(key).sort();
+	return sortedLeft.every((attachment, index) => attachment === sortedRight[index]);
 }
 
 function toAgentConfigurationOverrides(abilities: AgentAbilitySelection): {

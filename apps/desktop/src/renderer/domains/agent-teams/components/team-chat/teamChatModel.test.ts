@@ -44,6 +44,30 @@ describe("team chat stream state", () => {
 		);
 	});
 
+	it("renders an attachments-only structured message without exposing its full path", () => {
+		const items = buildTeamTimelineItems({
+			session: {
+				...session,
+				events: [
+					{
+						type: "user-message",
+						id: "attachment-message",
+						requestId: "attachment-request",
+						text: "",
+						targetMemberIds: [],
+						attachments: [{ kind: "file", path: "C:/workspace/notes.txt" }],
+						timestamp: 1,
+					},
+				],
+			},
+			pending: undefined,
+			streams: {},
+			members: [member],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+		expect(items).toEqual([expect.objectContaining({ kind: "user", text: "notes.txt", pending: false })]);
+	});
+
 	it("accumulates ordered deltas by turn and ignores replayed sequence numbers", () => {
 		const start: TeamSessionStreamEvent = {
 			type: "member-start",

@@ -1,3 +1,4 @@
+import type { PromptAttachmentRef } from "@vetta/runtime-core";
 import type { TeamFeedEvent, TeamSessionDocument, TeamSharedContextRecord } from "./contracts.js";
 import { DEFAULT_AGENT_TEAM_EXTENSIONS } from "./extensions.js";
 
@@ -21,6 +22,7 @@ export function createUserMessageEvent(input: {
 	readonly requestId: string;
 	readonly text: string;
 	readonly targetMemberIds: readonly string[];
+	readonly attachments?: readonly PromptAttachmentRef[];
 	readonly timestamp: number;
 }): Extract<TeamFeedEvent, { type: "user-message" }> {
 	return {
@@ -29,6 +31,7 @@ export function createUserMessageEvent(input: {
 		requestId: input.requestId,
 		text: input.text,
 		targetMemberIds: [...input.targetMemberIds],
+		...(input.attachments?.length ? { attachments: [...input.attachments] } : {}),
 		timestamp: input.timestamp,
 	};
 }

@@ -22,6 +22,13 @@ const text = Type.String({ maxLength: 64_000 });
 const timestamp = Type.Number({ minimum: 0 });
 const revision = Type.Integer({ minimum: 0, maximum: Number.MAX_SAFE_INTEGER });
 const stringList = Type.Array(id, { maxItems: 512, uniqueItems: true });
+const promptAttachment = Type.Object(
+	{
+		kind: Type.Union([Type.Literal("file"), Type.Literal("directory"), Type.Literal("image")]),
+		path: Type.String({ minLength: 1, maxLength: 4_096 }),
+	},
+	{ additionalProperties: false },
+);
 const abilities = Type.Object(
 	{
 		selectionMode: Type.Optional(Type.Union([Type.Literal("all"), Type.Literal("custom")])),
@@ -141,8 +148,9 @@ export const DeleteTeamInputSchema = Type.Object(
 export const SendTeamMessageInputSchema = Type.Object(
 	{
 		requestId: id,
-		text: Type.String({ minLength: 1, maxLength: 64_000 }),
+		text,
 		targetMemberIds: Type.Array(id, { maxItems: 32, uniqueItems: true }),
+		attachments: Type.Optional(Type.Array(promptAttachment, { maxItems: 128 })),
 	},
 	{ additionalProperties: false },
 );
@@ -172,7 +180,15 @@ export const AgentTeamDocumentSchema = Type.Object(
 	{ additionalProperties: false },
 );
 const userEvent = Type.Object(
-	{ type: Type.Literal("user-message"), id, requestId: id, text, targetMemberIds: stringList, timestamp },
+	{
+		type: Type.Literal("user-message"),
+		id,
+		requestId: id,
+		text,
+		targetMemberIds: stringList,
+		attachments: Type.Optional(Type.Array(promptAttachment, { maxItems: 128 })),
+		timestamp,
+	},
 	{ additionalProperties: false },
 );
 const resultEvent = Type.Object(
@@ -346,5 +362,9 @@ export function parseDeleteTeamInput(value: unknown): DeleteTeamInput {
 
 export function parseSendTeamMessageInput(value: unknown): SendTeamMessageInput {
 	if (!Value.Check(SendTeamMessageInputSchema, value)) throw new Error("Invalid send team message input");
-	return value as SendTeamMessageInput;
+	const input = value as SendTeamMessageInput;
+	if (input.text.trim().length === 0 && !input.attachments?.length) {
+		throw new Error("Invalid send team message input");
+	}
+	return input;
 }

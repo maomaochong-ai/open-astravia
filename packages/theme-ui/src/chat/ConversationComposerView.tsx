@@ -3,70 +3,40 @@ import type { JSX, ReactNode } from "react";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 import { SessionDropZoneView, type SessionDropZoneViewProps } from "./SessionDropZoneView";
 
-export interface ConversationComposerRegions {
-	readonly decoration?: ReactNode;
-	readonly routing?: ReactNode;
-	readonly command?: ReactNode;
-	readonly attachments?: ReactNode;
-	readonly editor: ReactNode;
-	readonly toolbar: ReactNode;
-}
-
-export interface ConversationComposerViewClassNames {
-	readonly card?: string;
-	readonly content?: string;
-	readonly routing?: string;
-	readonly command?: string;
-	readonly attachments?: string;
-	readonly editor?: string;
-	readonly toolbar?: string;
-}
-
-export interface ConversationComposerViewProps {
+export interface ConversationComposerRootProps {
 	readonly focused: boolean;
 	readonly topConnected?: boolean;
-	readonly regions: ConversationComposerRegions;
 	readonly dropZone?: Omit<SessionDropZoneViewProps, "children" | "className">;
+	readonly children: ReactNode;
 	readonly className?: string;
-	readonly classNames?: ConversationComposerViewClassNames;
+}
+
+export interface ConversationComposerPartProps {
+	readonly children?: ReactNode;
+	readonly className?: string;
 }
 
 /**
- * Host-neutral conversation composer frame. The host owns draft/editor/business state;
- * this view only renders the stable regions shared by normal and team conversations.
+ * Host-neutral composer surface. Product code composes semantic children instead of
+ * passing a fixed region prop bag, so adding a capability does not change this contract.
  */
-export function ConversationComposerView({
+export function ConversationComposerRoot({
 	focused,
 	topConnected = false,
-	regions,
 	dropZone,
+	children,
 	className,
-	classNames,
-}: ConversationComposerViewProps): JSX.Element {
+}: ConversationComposerRootProps): JSX.Element {
 	const cardClassName = cn(
 		"input-card relative z-10 overflow-visible border bg-input-bar-bg shadow-[0_8px_28px_-14px_rgb(0_0_0/0.10)] transition-[border-color,box-shadow,transform] duration-200 dark:shadow-none",
 		topConnected ? "rounded-b-[20px] rounded-t-none" : "rounded-[20px]",
 		focused ? "border-primary/20" : "border-border",
-		classNames?.card,
 		className,
 	);
 	const content = (
 		<>
 			<ThemeSurface slot="chat.inputBar" />
-			{regions.decoration}
-			<div className={cn("relative z-10 rounded-[inherit]", classNames?.content)}>
-				{regions.routing ? (
-					<div className={classNames?.routing}>{regions.routing}</div>
-				) : null}
-				{regions.command ? (
-					<div className={classNames?.command}>{regions.command}</div>
-				) : null}
-				{regions.attachments ? (
-					<div className={classNames?.attachments}>{regions.attachments}</div>
-				) : null}
-				<div className={classNames?.editor}>{regions.editor}</div>
-				<div className={classNames?.toolbar}>{regions.toolbar}</div>
-			</div>
+			{children}
 		</>
 	);
 
@@ -78,3 +48,40 @@ export function ConversationComposerView({
 		<div className={cardClassName}>{content}</div>
 	);
 }
+
+export function ConversationComposerDecoration({ children }: ConversationComposerPartProps): JSX.Element {
+	return <>{children}</>;
+}
+
+export function ConversationComposerContent({
+	children,
+	className,
+}: ConversationComposerPartProps): JSX.Element {
+	return <div className={cn("relative z-10 rounded-[inherit]", className)}>{children}</div>;
+}
+
+function ConversationComposerRegion({
+	children,
+	className,
+}: ConversationComposerPartProps): JSX.Element | null {
+	if (children === undefined || children === null || children === false) return null;
+	return <div className={className}>{children}</div>;
+}
+
+export const ConversationComposerRouting = ConversationComposerRegion;
+export const ConversationComposerCommand = ConversationComposerRegion;
+export const ConversationComposerAttachments = ConversationComposerRegion;
+export const ConversationComposerEditor = ConversationComposerRegion;
+export const ConversationComposerToolbar = ConversationComposerRegion;
+
+/** Compound API for readable, structurally composable composer layouts. */
+export const ConversationComposer = {
+	Root: ConversationComposerRoot,
+	Decoration: ConversationComposerDecoration,
+	Content: ConversationComposerContent,
+	Routing: ConversationComposerRouting,
+	Command: ConversationComposerCommand,
+	Attachments: ConversationComposerAttachments,
+	Editor: ConversationComposerEditor,
+	Toolbar: ConversationComposerToolbar,
+} as const;

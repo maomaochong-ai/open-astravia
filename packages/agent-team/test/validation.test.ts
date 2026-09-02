@@ -55,6 +55,24 @@ describe("Agent Team IPC input validation", () => {
 		).toThrow("Invalid send team message input");
 	});
 
+	it("accepts structured attachments and rejects an empty team request", () => {
+		expect(
+			parseSendTeamMessageInput({
+				requestId: "request-attachments",
+				text: "",
+				targetMemberIds: [],
+				attachments: [{ kind: "file", path: "C:/workspace/notes.txt" }],
+			}),
+		).toMatchObject({ attachments: [{ kind: "file", path: "C:/workspace/notes.txt" }] });
+		expect(() =>
+			parseSendTeamMessageInput({
+				requestId: "request-empty",
+				text: " ",
+				targetMemberIds: [],
+			}),
+		).toThrow("Invalid send team message input");
+	});
+
 	it("validates reviewed cascade deletion and atomic team roster updates", () => {
 		expect(
 			parseDeleteAgentProfileInput({

@@ -1,3 +1,5 @@
+import type { PromptAttachmentRef } from "@vetta/runtime-core";
+
 export const AGENT_TEAM_SCHEMA_VERSION = 1 as const;
 
 export type AgentAbilityKind = "skill" | "scene" | "mcp" | "plugin" | (string & {});
@@ -82,6 +84,7 @@ export type TeamFeedEvent =
 			readonly requestId: string;
 			readonly text: string;
 			readonly targetMemberIds: readonly string[];
+			readonly attachments?: readonly PromptAttachmentRef[];
 			readonly timestamp: number;
 	  }
 	| {
@@ -209,6 +212,7 @@ export interface SendTeamMessageInput {
 	readonly requestId: string;
 	readonly text: string;
 	readonly targetMemberIds: readonly string[];
+	readonly attachments?: readonly PromptAttachmentRef[];
 }
 
 export interface TeamStreamingTurnSnapshot {

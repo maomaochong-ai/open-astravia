@@ -69,11 +69,20 @@ export { CIRCUMFERENCE as CONTEXT_RING_CIRCUMFERENCE, ContextRingView } from "./
 export type { ConversationComposerToolbarViewProps } from "./ConversationComposerToolbarView";
 export { ConversationComposerToolbarView } from "./ConversationComposerToolbarView";
 export type {
-	ConversationComposerRegions,
-	ConversationComposerViewClassNames,
-	ConversationComposerViewProps,
+	ConversationComposerPartProps,
+	ConversationComposerRootProps,
 } from "./ConversationComposerView";
-export { ConversationComposerView } from "./ConversationComposerView";
+export {
+	ConversationComposer,
+	ConversationComposerAttachments,
+	ConversationComposerCommand,
+	ConversationComposerContent,
+	ConversationComposerDecoration,
+	ConversationComposerEditor,
+	ConversationComposerRoot,
+	ConversationComposerRouting,
+	ConversationComposerToolbar,
+} from "./ConversationComposerView";
 export type { ConversationTimelineViewProps } from "./ConversationTimelineView";
 export { ConversationTimelineView } from "./ConversationTimelineView";
 export type { CopyIconButtonLabels, CopyIconButtonProps } from "./CopyIconButton";

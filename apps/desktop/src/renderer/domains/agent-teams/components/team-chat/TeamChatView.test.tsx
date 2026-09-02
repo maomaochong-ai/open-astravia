@@ -7,17 +7,14 @@ import type { TeamChatActions, TeamChatViewModel } from "./teamChatModel";
 import { TeamChatView } from "./TeamChatView";
 
 vi.mock("@vetta/theme-ui/chat", () => ({
-	ConversationComposerView: ({
-		regions,
-	}: {
-		regions: { routing?: ReactNode; editor: ReactNode; toolbar: ReactNode };
-	}) => (
-		<div>
-			{regions.routing}
-			{regions.editor}
-			{regions.toolbar}
-		</div>
-	),
+	ConversationComposer: {
+		Root: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+		Content: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+		Routing: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+		Attachments: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+		Editor: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+		Toolbar: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+	},
 	ConversationComposerToolbarView: ({
 		left,
 		right,
@@ -134,5 +131,32 @@ describe("TeamChatView composer interaction", () => {
 		view.rerender(<TeamChatView model={model("ready")} actions={viewActions} />);
 
 		await waitFor(() => expect(editor.getAttribute("contenteditable")).toBe("true"));
+	});
+
+	it("installs attachment preview and toolbar actions as one capability", () => {
+		const viewActions = actions();
+		render(
+			<TeamChatView
+				model={{
+					...model("ready"),
+					attachments: [{ path: "C:/workspace/brief.md", name: "brief.md", kind: "file" }],
+				}}
+				actions={viewActions}
+			/>,
+		);
+
+		expect(screen.getByText("brief.md")).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "Remove brief.md" }));
+		expect(viewActions.removeAttachment).toHaveBeenCalledWith("C:/workspace/brief.md");
+		expect(screen.getByRole("button", { name: "Add file" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Add image" })).toBeTruthy();
+	});
+
+	it("keeps attachment actions before the guidance text", () => {
+		render(<TeamChatView model={model("ready")} actions={actions()} />);
+
+		const addFile = screen.getByRole("button", { name: "Add file" });
+		const guidance = screen.getByText("Choose a member when needed");
+		expect(addFile.compareDocumentPosition(guidance) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
 	});
 });

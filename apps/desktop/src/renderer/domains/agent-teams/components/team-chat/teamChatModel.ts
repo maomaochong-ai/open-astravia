@@ -212,7 +212,12 @@ export function buildTeamTimelineItems({
 	const memberMap = new Map(members.map((member) => [member.id, member]));
 	const items: TeamTimelineItemViewModel[] = session.events.map((event) => {
 		if (event.type === "user-message") {
-			return { id: event.id, kind: "user", text: stripAttachmentContext(event.text), pending: false };
+			return {
+				id: event.id,
+				kind: "user",
+				text: stripAttachmentContext(event.text) || attachmentSummary(event.attachments ?? []),
+				pending: false,
+			};
 		}
 		if (event.type === "member-delegation") {
 			const source =
@@ -276,6 +281,12 @@ export function buildTeamTimelineItems({
 
 export function stripAttachmentContext(text: string): string {
 	return text.replace(/\n*<attachments>\n[\s\S]*?\n<\/attachments>\s*$/u, "").trimEnd();
+}
+
+function attachmentSummary(attachments: readonly { readonly path: string }[]): string {
+	return attachments
+		.map((attachment) => attachment.path.split(/[\\/]/u).filter(Boolean).at(-1) ?? attachment.path)
+		.join(", ");
 }
 
 function fallbackMember(

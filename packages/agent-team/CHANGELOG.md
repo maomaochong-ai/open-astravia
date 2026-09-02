@@ -12,3 +12,4 @@
 
 - Team contracts now support atomic roster updates, reviewed cascade deletion, and session roster revisions while preserving historical member identities.
 - Team session streaming now exposes ordered turn lifecycle events and reconnect snapshots while keeping private reasoning and tool data outside the renderer contract.
+- Team messages carry filesystem attachments as validated `PromptAttachmentRef` values instead of encoding paths into prompt text; existing session events remain compatible because attachments are optional.

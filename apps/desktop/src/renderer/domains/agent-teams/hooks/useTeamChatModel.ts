@@ -2,6 +2,7 @@ import { useRendererMarkdownModel } from "@shared/hooks/useRendererMarkdownModel
 import { persistBase64Images } from "@shared/lib/persist-input-images";
 import { pathBasename } from "@shared/lib/utils";
 import { type AgentTeamDocument, resolveMentionedMemberIds, type TeamSessionDocument } from "@vetta/agent-team";
+import type { PromptAttachmentRef } from "@vetta/runtime-core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -186,7 +187,7 @@ export function useTeamChatModel(teamId: string): {
 	const send = useCallback(async () => {
 		const draftText = draft.trim();
 		if (!session || !team || (!draftText && attachments.length === 0) || pendingRef.current) return;
-		const text = appendAttachmentContext(draftText, attachments);
+		const text = draftText;
 		const requestId = crypto.randomUUID();
 		const nextPending = {
 			requestId,
@@ -211,6 +212,7 @@ export function useTeamChatModel(teamId: string): {
 				requestId,
 				text,
 				targetMemberIds,
+				...(attachments.length ? { attachments: attachments.map(toPromptAttachment) } : {}),
 			});
 			setSession((current) => (!current || next.revision >= current.revision ? next : current));
 			setError(undefined);
@@ -314,10 +316,8 @@ function toImageAttachment(path: string): TeamAttachmentViewModel {
 	return { path, name: pathBasename(path), kind: "image" };
 }
 
-export function appendAttachmentContext(text: string, attachments: readonly TeamAttachmentViewModel[]): string {
-	if (attachments.length === 0) return text;
-	const attachmentContext = attachments.map((attachment) => `- ${attachment.kind}: ${attachment.path}`).join("\n");
-	return `${text}${text ? "\n\n" : ""}<attachments>\n${attachmentContext}\n</attachments>`;
+function toPromptAttachment(attachment: TeamAttachmentViewModel): PromptAttachmentRef {
+	return { kind: attachment.kind, path: attachment.path };
 }
 
 function errorMessage(cause: unknown): string {
