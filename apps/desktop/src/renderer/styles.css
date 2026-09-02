@@ -24,6 +24,7 @@
  * 第三方插件仍然只能拿到默认图标，那需要运行时渲染，不在本清单能解决的范围内。 */
 @source inline("icon-[solar--ruler-pen-linear]");
 @source inline("icon-[solar--archive-minimalistic-outline]");
+@source inline("icon-[solar--smartphone-2-linear]");
 
 @custom-variant dark (&:is([data-mode="dark"] *));
 /* Radix sets data-state="open"|"closed"; @vetta/ui uses data-open:/data-closed: utilities. */

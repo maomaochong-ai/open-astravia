@@ -1,0 +1,71 @@
+{
+	"schemaVersion": 1,
+	"type": "plugin",
+	"slug": "build-apple-apps",
+	"version": "0.1.0",
+	"detail": {
+		"blocks": [
+			{
+				"type": "showcase",
+				"showcase": {
+					"template": "chat-over-canvas",
+					"canvas": "code",
+					"user_prompt": "把这个 App 跑起来，进到设置页看看深色模式下对不对。",
+					"assistant_reply": "已构建并安装到 iPhone 17 Pro，切到深色模式后进入设置页——右侧面板就是实时画面，你也可以直接上手点。"
+				}
+			},
+			{
+				"type": "feature-grid",
+				"title": "把模拟器和开发指南搬进对话里",
+				"items": [
+					{
+						"title": "实时投射",
+						"description": "活动面板里直接看到模拟器画面，无需切到 Simulator.app。",
+						"icon": "solar:smartphone-2-linear"
+					},
+					{
+						"title": "人机共用一台设备",
+						"description": "Agent 在点的同时，你也能直接在面板上点击和滑动。",
+						"icon": "solar:hand-shake-linear"
+					},
+					{
+						"title": "按元素操作",
+						"description": "Agent 通过无障碍树按标签定位控件，而不是靠截图猜坐标。",
+						"icon": "solar:accessibility-linear"
+					},
+					{
+						"title": "内置开发指南",
+						"description": "SwiftUI 组件写法、Liquid Glass 适配与性能审计随任务按需展开，不常驻上下文。",
+						"icon": "solar:book-bookmark-linear"
+					},
+					{
+						"title": "构建到运行闭环",
+						"description": "构建、安装、启动、深链跳转与推送模拟都在同一个流程里。",
+						"icon": "solar:refresh-circle-linear"
+					}
+				]
+			},
+			{
+				"type": "comparison",
+				"title": "和「让 Agent 自己开 Xcode」的区别",
+				"left": {
+					"title": "只有命令行",
+					"items": [
+						"改完代码只能靠日志猜结果",
+						"看不到界面，视觉问题无从发现",
+						"交互路径没法验证"
+					]
+				},
+				"right": {
+					"title": "使用「构建 Apple App」",
+					"tone": "accent",
+					"items": [
+						"改完直接看到界面",
+						"Agent 能读屏、能操作、能自查",
+						"你随时接管同一台设备"
+					]
+				}
+			}
+		]
+	}
+}

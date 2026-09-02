@@ -16,7 +16,7 @@
         "comfyui-media-provider",
         "content-creation",
         "browser",
-        "ios-simulator"
+        "build-apple-apps"
       ]
     },
     "production": {
@@ -31,7 +31,7 @@
         "git",
         "plugin-workbench",
         "browser",
-        "ios-simulator"
+        "build-apple-apps"
       ]
     }
   }
