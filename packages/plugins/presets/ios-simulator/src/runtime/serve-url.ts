@@ -24,9 +24,9 @@ export function buildSimulatorsUrl(port: number): string {
 }
 
 /**
- * 单台设备的控制台（画面 + 工具栏）。面板直接进这里而不是列表页：
- * 列表页的 Stream 按钮走 window.open，webview 未开 allowpopups 会被拦下，
- * 点了没反应。直接导航到设备页则没有这个问题。
+ * 单台设备的控制台（画面 + 工具栏）。面板直接进这里而不是列表页：省掉「先选设备
+ * 再点 Stream」这一步，打开就能看到画面。列表页本身在 webview 里工作正常，用户
+ * 仍可从控制台左下角的「打开侧栏视图」进去换设备。
  */
 export function buildDeviceUrl(port: number, udid: string): string {
 	return `http://${HOST}:${port}/simulators/${encodeURIComponent(udid)}`;
