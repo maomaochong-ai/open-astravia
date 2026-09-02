@@ -27,6 +27,7 @@ export function TeamChatView({ model, actions }: TeamChatViewProps): JSX.Element
 		<div className="flex h-full min-h-0 min-w-0 flex-1 bg-background">
 			<div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
 				<TeamMessageFeed
+					feedKey={model.feedKey}
 					status={model.status}
 					items={model.timelineItems}
 					members={model.members}

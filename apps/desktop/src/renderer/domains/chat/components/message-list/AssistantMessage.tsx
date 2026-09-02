@@ -119,6 +119,7 @@ export const AssistantMessage = memo(function AssistantMessage({
 
 	return (
 		<AssistantMessageView
+			author="Vetta"
 			rootClassName={surface?.rootClassName}
 			timestampLabel={message.timestamp ? formatTime(message.timestamp) : undefined}
 			durationLabel={formatTurnDuration(message.durationSeconds ?? 0, t)}

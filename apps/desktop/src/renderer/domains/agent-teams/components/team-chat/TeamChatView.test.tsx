@@ -61,6 +61,19 @@ const labels = {
 	attachFile: "Add file",
 	attachImage: "Add image",
 	removeAttachment: (name: string) => `Remove ${name}`,
+	copy: "Copy",
+	copied: "Copied",
+	navigation: {
+		open: "Open navigation",
+		title: "Navigation",
+		count: (count: number) => `${count} turns`,
+		noResults: "No results",
+		close: "Close",
+		searchPlaceholder: "Search",
+		searchLabel: "Search messages",
+		jumpTo: (preview: string) => `Jump to ${preview}`,
+		emptyRequest: "Empty request",
+	},
 };
 
 function model(
@@ -68,6 +81,7 @@ function model(
 	editorEnabled = true,
 ): TeamChatViewModel {
 	return {
+		feedKey: "team",
 		title: "Team",
 		status,
 		draft: "ship it",

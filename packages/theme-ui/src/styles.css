@@ -4,6 +4,46 @@
 /* VS Code–style syntax token defaults for CodeMirror file editor. */
 @import "./file-preview/syntax-tokens.css";
 
+@keyframes pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.4;
+	}
+}
+
+@keyframes context-ring-spin {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+@keyframes processing-shimmer {
+	0%,
+	100% {
+		opacity: 0.58;
+	}
+	50% {
+		opacity: 1;
+	}
+}
+
+.processing-shimmer {
+	color: var(--foreground);
+	animation: processing-shimmer 1.6s ease-in-out infinite;
+	will-change: opacity;
+}
+
+textarea::placeholder {
+	color: var(--muted-foreground);
+	opacity: 0.5;
+}
+
 @theme inline {
 	--color-accent: var(--accent);
 	--color-accent-foreground: var(--accent-foreground);

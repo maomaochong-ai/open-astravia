@@ -726,12 +726,6 @@ a {
 	}
 }
 
-@keyframes context-ring-spin {
-	to {
-		transform: rotate(360deg);
-	}
-}
-
 @keyframes message-bell-swing {
 	0%,
 	28%,

@@ -2,7 +2,7 @@
 
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { type ComponentProps, Fragment } from "react";
+import { type ComponentProps, Fragment, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MessageListView } from "./MessageListView";
 
@@ -24,21 +24,40 @@ vi.mock("react-virtuoso", () => ({
 }));
 
 vi.mock("@vetta/theme-ui/chat", () => ({
-	ConversationTimelineView: (props: Record<string, unknown>) => {
-		captured.virtuosoProps = props;
-		const data = props.items as Array<{ id: string }>;
-		const itemContent = props.renderItem as (index: number, message: { id: string }) => JSX.Element;
-		return (
-			<div>
-				{data.map((message, index) => (
-					<Fragment key={message.id}>{itemContent(index, message)}</Fragment>
-				))}
-			</div>
-		);
+	MessageFeed: {
+		Root: ({ children }: { children: ReactNode }) => <>{children}</>,
+		VirtualList: (props: Record<string, unknown>) => {
+			captured.virtuosoProps = props;
+			const data = props.items as Array<{ id: string }>;
+			const children = Array.isArray(props.children) ? props.children : [props.children];
+			const itemContent = children.find((child) => typeof child === "function") as (
+				message: { id: string },
+				index: number,
+			) => JSX.Element;
+			return (
+				<div>
+					{data.map((message, index) => (
+						<Fragment key={message.id}>{itemContent(message, index)}</Fragment>
+					))}
+					{children.filter((child) => typeof child !== "function") as ReactNode[]}
+				</div>
+			);
+		},
+		Footer: ({ children }: { children: ReactNode }) => <>{children}</>,
 	},
-	MessageListView: ({ virtuoso }: { virtuoso: JSX.Element }) => virtuoso,
+	MessageFeedLayout: {
+		Frame: ({ children }: { children: ReactNode }) => <>{children}</>,
+		Viewport: ({ children }: { children: ReactNode }) => <>{children}</>,
+		Virtualizer: ({ children }: { children: ReactNode }) => <>{children}</>,
+		List: () => null,
+		LeftRail: ({ children }: { children: ReactNode }) => (
+			<div className="pointer-events-none absolute top-1/2 left-3 z-20 -translate-y-1/2 @max-[52rem]:hidden">
+				{children}
+			</div>
+		),
+		RailContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+	},
 	MessageSelectionContextMenuView: () => null,
-	VirtuosoListContainer: ({ children }: { children?: JSX.Element }) => <div>{children}</div>,
 }));
 
 vi.mock("../../hooks/useMessageSelectionContextMenu", () => ({

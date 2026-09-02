@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { AssistantMessageView, type AssistantMessageViewLabels } from "@vetta/theme-ui/chat";
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@vetta/theme-sdk/appearance", () => ({
@@ -19,11 +19,15 @@ const labels: AssistantMessageViewLabels = {
 };
 
 describe("AssistantMessageView", () => {
-	afterEach(() => vi.useRealTimers());
+	afterEach(() => {
+		cleanup();
+		vi.useRealTimers();
+	});
 
 	it("renders turn actions when the assistant turn has no conclusion text", () => {
 		render(
 			<AssistantMessageView
+				author="Vetta"
 				showDuration={false}
 				isCurrentlyStreaming={false}
 				isPredicting={false}
@@ -47,6 +51,7 @@ describe("AssistantMessageView", () => {
 		vi.setSystemTime(new Date(66_000));
 		render(
 			<AssistantMessageView
+				author="Vetta"
 				showDuration={false}
 				isCurrentlyStreaming
 				isPredicting={false}

@@ -1,19 +1,17 @@
 import {
-	ConversationTimelineView,
-	MessageListView as ThemeMessageListView,
+	MessageFeed,
+	MessageFeedLayout,
 	MessageSelectionContextMenuView,
-	VirtuosoListContainer,
 } from "@vetta/theme-ui/chat";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMessageFeedActiveItem } from "@shared/components/message-feed/useMessageFeedActiveItem";
+import { useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
-import type { ListItem } from "react-virtuoso";
 import { useMessageSelectionContextMenu } from "../../hooks/useMessageSelectionContextMenu";
 import { SuggestionBubbles } from "../SuggestionBubbles";
 import { ForkOriginBanner, resolveForkOriginPlacement } from "./ForkOriginBanner";
 import { MessageItem, ModelSwitchBoundary, ExportMessageList } from "./MessageItem";
 import { MessageListFooter } from "./MessageListFooter";
 import { MessageTimeline } from "./MessageTimeline";
-import { findTopVisibleMessageIndex, type RenderedMessageItem } from "./messageNavigationModel";
 import type { ChatMessage, MessageListModel, MessageListProps } from "./types";
 
 export { ExportMessageList };
@@ -24,7 +22,6 @@ const INITIAL_OVERSCAN = 0;
 const STREAMING_INCREASE_VIEWPORT_BY = { top: 0, bottom: 80 };
 const IDLE_INCREASE_VIEWPORT_BY = { top: 200, bottom: 200 };
 const INITIAL_INCREASE_VIEWPORT_BY = { top: 0, bottom: 0 };
-const VIRTUOSO_STYLE = { overflowX: "hidden" as const };
 /**
  * 未测量条目的高度估算。原值 80 远低于真实中位数（带工具调用的回复动辄几百 px），
  * 往上滚时 Virtuoso 每渲染一批就要大幅修正总高度与 scrollTop，滚动条抖且反复重测量。
@@ -57,48 +54,12 @@ export function MessageListView({
 		showWaiting,
 		tailMessageId,
 	} = model;
-	const [activeMessageIndex, setActiveMessageIndex] = useState(() => Math.max(0, messages.length - 1));
-	useEffect(() => {
-		setActiveMessageIndex(Math.max(0, messages.length - 1));
-	}, [sessionId]);
-	const renderedItemsRef = useRef<RenderedMessageItem[]>([]);
-	const [scrollerElement, setScrollerElement] = useState<HTMLElement | null>(null);
-	const syncActiveMessageIndex = useCallback(() => {
-		if (!scrollerElement) return;
-		const index = findTopVisibleMessageIndex(renderedItemsRef.current, scrollerElement.scrollTop);
-		if (index != null) setActiveMessageIndex(index);
-	}, [scrollerElement]);
-	const onItemsRendered = useCallback(
-		(items: ListItem<ChatMessage>[]) => {
-			renderedItemsRef.current = items.map(({ index, offset, size }) => ({ index, offset, size }));
-			syncActiveMessageIndex();
-		},
-		[syncActiveMessageIndex],
-	);
-	const setScrollerRef = useCallback(
-		(element: HTMLElement | Window | null) => {
-			scroll.scrollerRef(element);
-			setScrollerElement(element instanceof HTMLElement ? element : null);
-		},
-		[scroll.scrollerRef],
-	);
-	useEffect(() => {
-		if (!scrollerElement) return;
-		let frame: number | null = null;
-		const onScroll = (): void => {
-			if (frame != null) return;
-			frame = requestAnimationFrame(() => {
-				frame = null;
-				syncActiveMessageIndex();
-			});
-		};
-		scrollerElement.addEventListener("scroll", onScroll, { passive: true });
-		syncActiveMessageIndex();
-		return () => {
-			if (frame != null) cancelAnimationFrame(frame);
-			scrollerElement.removeEventListener("scroll", onScroll);
-		};
-	}, [scrollerElement, syncActiveMessageIndex]);
+	const scrollerElement = scroll.scrollerElement;
+	const activeItem = useMessageFeedActiveItem<ChatMessage>({
+		scrollerElement,
+		resetKey: sessionId,
+		initialIndex: Math.max(0, messages.length - 1),
+	});
 	const forkOriginPlacement = useMemo(
 		() =>
 			resolveForkOriginPlacement(
@@ -167,18 +128,20 @@ export function MessageListView({
 			tailMessageId,
 		],
 	);
-	const footer = useCallback(
+	const footer = useMemo(
 		() => (
 			// Workflow footer sits above input-suggestion capsules; pb-16 clears the floating InputBar.
-			<div className="pb-16">
-				<MessageListFooter
-					isCompacting={isCompacting}
-					showWaiting={showWaiting}
-					showWorkflows={sessionId != null}
-					pendingLabel={pendingLabel}
-				/>
-				{onSend && <SuggestionBubbles onSend={onSend} />}
-			</div>
+			<MessageFeed.Footer asChild>
+				<div className="pb-16">
+					<MessageListFooter
+						isCompacting={isCompacting}
+						showWaiting={showWaiting}
+						showWorkflows={sessionId != null}
+						pendingLabel={pendingLabel}
+					/>
+					{onSend && <SuggestionBubbles onSend={onSend} />}
+				</div>
+			</MessageFeed.Footer>
 		),
 		[isCompacting, showWaiting, onSend, pendingLabel, sessionId],
 	);
@@ -186,59 +149,61 @@ export function MessageListView({
 
 	return (
 		<>
-			<div
-				ref={selectionMenu.containerRef}
-				className="@container relative flex min-h-0 flex-1 flex-col"
-				data-message-viewport={viewportPhase}
-				onContextMenuCapture={selectionMenu.onContextMenuCapture}
-			>
-				<div className="flex min-h-0 min-w-0 flex-1 flex-col">
-					<ThemeMessageListView
-						virtuoso={
-							<ConversationTimelineView
-								virtuosoRef={scroll.virtuosoRef}
-								scrollerRef={setScrollerRef}
-								items={messages}
-								style={VIRTUOSO_STYLE}
-								atBottomStateChange={scroll.onAtBottomChange}
-								atBottomThreshold={80}
-								itemsRendered={onItemsRendered}
-								overscan={
-									viewportPhase === "initial"
-										? INITIAL_OVERSCAN
-										: isStreaming
-											? STREAMING_OVERSCAN
-											: IDLE_OVERSCAN
-								}
-								increaseViewportBy={
-									viewportPhase === "initial"
-										? INITIAL_INCREASE_VIEWPORT_BY
-										: isStreaming
-											? STREAMING_INCREASE_VIEWPORT_BY
-											: IDLE_INCREASE_VIEWPORT_BY
-								}
-								defaultItemHeight={DEFAULT_ITEM_HEIGHT}
-								list={VirtuosoListContainer}
-								footer={footer}
-								renderItem={itemContent}
-								initialTopMostItemIndex={messages.length > 0 ? messages.length - 1 : 0}
-							/>
-						}
-					/>
-				</div>
-				{/* 悬浮在会话区域左缘，不占消息列宽度；窄于 52rem 时消息列铺满整个会话区，
-				    目录会压住气泡，直接整条隐藏。 */}
-				<div className="pointer-events-none absolute top-1/2 left-3 z-20 -translate-y-1/2 @max-[52rem]:hidden">
-					<div className="pointer-events-auto">
-						<MessageTimeline
-							key={sessionId ?? "message-timeline"}
-							activeMessageIndex={activeMessageIndex}
-							messages={messages}
-							onNavigate={scroll.scrollToMessage}
-						/>
+			<MessageFeed.Root>
+				<MessageFeedLayout.Frame asChild>
+					<div
+						ref={selectionMenu.containerRef}
+						data-message-viewport={viewportPhase}
+						onContextMenuCapture={selectionMenu.onContextMenuCapture}
+					>
+						<MessageFeedLayout.Viewport>
+							<MessageFeedLayout.Virtualizer asChild>
+								<MessageFeed.VirtualList
+									virtuosoRef={scroll.virtuosoRef}
+									scrollerRef={scroll.scrollerRef}
+									items={messages}
+									getKey={(message) => message.entryId ?? message.id}
+									atBottomStateChange={scroll.onAtBottomChange}
+									atBottomThreshold={80}
+									itemsRendered={activeItem.onItemsRendered}
+									overscan={
+										viewportPhase === "initial"
+											? INITIAL_OVERSCAN
+											: isStreaming
+												? STREAMING_OVERSCAN
+												: IDLE_OVERSCAN
+									}
+									increaseViewportBy={
+										viewportPhase === "initial"
+											? INITIAL_INCREASE_VIEWPORT_BY
+											: isStreaming
+												? STREAMING_INCREASE_VIEWPORT_BY
+												: IDLE_INCREASE_VIEWPORT_BY
+									}
+									defaultItemHeight={DEFAULT_ITEM_HEIGHT}
+									initialTopMostItemIndex={messages.length > 0 ? messages.length - 1 : 0}
+								>
+									<MessageFeedLayout.List />
+									{(message, index) => itemContent(index, message)}
+									{footer}
+								</MessageFeed.VirtualList>
+							</MessageFeedLayout.Virtualizer>
+						</MessageFeedLayout.Viewport>
+						{/* 悬浮在会话区域左缘，不占消息列宽度；窄于 52rem 时消息列铺满整个会话区，
+						    目录会压住气泡，直接整条隐藏。 */}
+						<MessageFeedLayout.LeftRail>
+							<MessageFeedLayout.RailContent>
+								<MessageTimeline
+									key={sessionId ?? "message-timeline"}
+									activeMessageIndex={activeItem.activeIndex}
+									messages={messages}
+									onNavigate={scroll.scrollToMessage}
+								/>
+							</MessageFeedLayout.RailContent>
+						</MessageFeedLayout.LeftRail>
 					</div>
-				</div>
-			</div>
+				</MessageFeedLayout.Frame>
+			</MessageFeed.Root>
 			{selectionMenu.contextMenu
 				? createPortal(
 						<MessageSelectionContextMenuView {...selectionMenu.contextMenu} />,
@@ -248,6 +213,3 @@ export function MessageListView({
 		</>
 	);
 }
-
-// re-export for any external consumers that used the local container
-export const MessageListVirtuosoListContainer = VirtuosoListContainer;

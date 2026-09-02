@@ -1,10 +1,9 @@
-import { describe, expect, it } from "vitest";
 import {
-	buildMessageNavigationOutline,
-	buildMessageNavigationTurns,
-	findActiveNavigationTurnIndex,
-	findTopVisibleMessageIndex,
-} from "./messageNavigationModel";
+	buildMessageFeedNavigationOutline,
+	findActiveMessageFeedNavigationTurnIndex,
+} from "@shared/components/message-feed/navigationModel";
+import { describe, expect, it } from "vitest";
+import { buildMessageNavigationTurns, findTopVisibleMessageIndex } from "./messageNavigationModel";
 import type { ChatMessage } from "./types";
 
 const messages: ChatMessage[] = [
@@ -20,11 +19,11 @@ describe("message navigation model", () => {
 		const turns = buildMessageNavigationTurns(messages);
 
 		expect(turns).toHaveLength(2);
-		expect(turns[0].entries.map((entry) => [entry.id, entry.messageIndex, entry.preview])).toEqual([
+		expect(turns[0].entries.map((entry) => [entry.id, entry.itemIndex, entry.preview])).toEqual([
 			["user-1", 0, "First question"],
 			["assistant-1", 1, "First answer"],
 		]);
-		expect(turns[1].entries.map((entry) => [entry.id, entry.messageIndex])).toEqual([
+		expect(turns[1].entries.map((entry) => [entry.id, entry.itemIndex])).toEqual([
 			["user-2", 3],
 			["assistant-2", 4],
 		]);
@@ -36,34 +35,34 @@ describe("message navigation model", () => {
 
 		expect(Array.from(turns[0].entries[0].preview)).toHaveLength(120);
 		expect(turns[0].entries[0].preview.endsWith("…")).toBe(true);
-		expect(buildMessageNavigationOutline(turns, "TARGET")).toHaveLength(1);
+		expect(buildMessageFeedNavigationOutline(turns, "TARGET")).toHaveLength(1);
 	});
 
 	it("lists one outline row per turn and jumps to the matching message", () => {
 		const turns = buildMessageNavigationTurns(messages);
 
-		expect(buildMessageNavigationOutline(turns, "")).toEqual([
+		expect(buildMessageFeedNavigationOutline(turns, "")).toEqual([
 			{
 				id: "turn-user-1",
 				matchPreview: null,
 				preview: "First question",
-				targetMessageIndex: 0,
+				targetItemIndex: 0,
 				turnNumber: 1,
 			},
 			{
 				id: "turn-user-2",
 				matchPreview: null,
 				preview: "Second question",
-				targetMessageIndex: 3,
+				targetItemIndex: 3,
 				turnNumber: 2,
 			},
 		]);
-		expect(buildMessageNavigationOutline(turns, "useful")).toEqual([
+		expect(buildMessageFeedNavigationOutline(turns, "useful")).toEqual([
 			{
 				id: "turn-user-2",
 				matchPreview: "Useful result",
 				preview: "Second question",
-				targetMessageIndex: 4,
+				targetItemIndex: 4,
 				turnNumber: 2,
 			},
 		]);
@@ -90,8 +89,8 @@ describe("message navigation model", () => {
 	it("maps the visible message index back to its containing turn", () => {
 		const turns = buildMessageNavigationTurns(messages);
 
-		expect(findActiveNavigationTurnIndex(turns, 0)).toBe(0);
-		expect(findActiveNavigationTurnIndex(turns, 2)).toBe(0);
-		expect(findActiveNavigationTurnIndex(turns, 4)).toBe(1);
+		expect(findActiveMessageFeedNavigationTurnIndex(turns, 0)).toBe(0);
+		expect(findActiveMessageFeedNavigationTurnIndex(turns, 2)).toBe(0);
+		expect(findActiveMessageFeedNavigationTurnIndex(turns, 4)).toBe(1);
 	});
 });

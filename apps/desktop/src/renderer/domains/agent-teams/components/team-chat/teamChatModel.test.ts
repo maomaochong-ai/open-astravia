@@ -1,6 +1,7 @@
 import type { TeamSessionDocument, TeamSessionStreamEvent } from "@vetta/agent-team";
 import { describe, expect, it } from "vitest";
 import {
+	buildTeamNavigationTurns,
 	buildTeamTimelineItems,
 	reduceTeamStreamState,
 	stripAttachmentContext,
@@ -65,7 +66,14 @@ describe("team chat stream state", () => {
 			members: [member],
 			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
 		});
-		expect(items).toEqual([expect.objectContaining({ kind: "user", text: "notes.txt", pending: false })]);
+		expect(items).toEqual([
+			expect.objectContaining({
+				kind: "user",
+				text: "",
+				pending: false,
+				attachments: [{ kind: "file", path: "C:/workspace/notes.txt" }],
+			}),
+		]);
 	});
 
 	it("accumulates ordered deltas by turn and ignores replayed sequence numbers", () => {
@@ -183,5 +191,54 @@ describe("team chat stream state", () => {
 		});
 		expect(items.filter((item) => item.kind === "user")).toHaveLength(1);
 		expect(items.at(-1)).toMatchObject({ kind: "member", text: "partial", pending: true });
+	});
+
+	it("groups every member response and delegation for one request into a reusable navigation turn", () => {
+		const items = buildTeamTimelineItems({
+			session: {
+				...session,
+				memberHandles: { leader: "vetta", reviewer: "reviewer" },
+				events: [
+					{
+						type: "user-message",
+						id: "user-event",
+						requestId: "request",
+						text: "Review the launch plan",
+						targetMemberIds: ["leader"],
+						timestamp: 1,
+					},
+					{
+						type: "member-delegation",
+						id: "delegation-event",
+						requestId: "request",
+						sourceMemberId: "leader",
+						targetMemberId: "reviewer",
+						objective: "Review risks",
+						timestamp: 2,
+					},
+					{
+						type: "member-result",
+						id: "member-event",
+						requestId: "request",
+						memberId: "reviewer",
+						sourceTurnId: "review-turn",
+						text: "Launch risks found",
+						timestamp: 3,
+					},
+				],
+			},
+			pending: undefined,
+			streams: {},
+			members: [member],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		const turns = buildTeamNavigationTurns(items);
+		expect(turns).toHaveLength(1);
+		expect(turns[0].entries.map((entry) => [entry.role, entry.preview, entry.itemIndex])).toEqual([
+			["request", "Review the launch plan", 0],
+			["response", "Vetta -> reviewer", 1],
+			["response", "Launch risks found", 2],
+		]);
 	});
 });

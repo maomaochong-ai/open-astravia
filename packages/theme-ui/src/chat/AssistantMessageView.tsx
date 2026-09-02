@@ -1,6 +1,8 @@
 import { ThemeSurface } from "../appearance/ThemeSurface";
-import type { JSX, ReactNode } from "react";
+import type { JSX, ReactElement, ReactNode } from "react";
 import { useEffect, useState } from "react";
+import { MessageLayout } from "./MessageLayoutView";
+import { Message } from "./MessageView";
 
 /**
  * 逐字符入场改为纯 CSS：原来每个字符一个 motion.span，流式全程 JS 每帧写内联
@@ -43,7 +45,9 @@ export interface AssistantMessageViewProps {
 		| null;
 	labels: AssistantMessageViewLabels;
 	/** Bot avatar node. */
-	botAvatar: ReactNode;
+	botAvatar: ReactElement | null;
+	/** Scenario-owned author identity. */
+	author: ReactNode;
 	/** Segment list. */
 	segments: ReactNode;
 	/** Export-only process segments panel. */
@@ -167,6 +171,7 @@ export function AssistantMessageView({
 	fold,
 	labels,
 	botAvatar,
+	author,
 	segments,
 	exportProcessSegments,
 	fallbackText,
@@ -175,40 +180,41 @@ export function AssistantMessageView({
 	onToggleExpanded,
 }: AssistantMessageViewProps): JSX.Element {
 	return (
-		<div
-			className={["relative flex flex-col overflow-visible rounded-xl", rootClassName]
-				.filter(Boolean)
-				.join(" ")}
-			data-theme-surface-root="chat.assistantMessage"
-		>
-			<ThemeSurface slot="chat.assistantMessage" />
-			<div className="relative z-10 flex flex-col rounded-[inherit]">
-				<div className="mb-2 flex items-center gap-2">
-					{botAvatar}
-					<span className="text-[13px] font-semibold text-foreground/80">Vetta</span>
-					{timestampLabel && (
-						<span className="text-[11px] text-muted-foreground/35">{timestampLabel}</span>
-					)}
-					{showDuration && durationLabel && (
-						<>
-							<span className="text-[11px] text-muted-foreground/20">·</span>
-							<span className="text-[11px] text-muted-foreground/35">{durationLabel}</span>
-						</>
-					)}
-					{isCurrentlyStreaming && (
-						<div className="flex items-center gap-1">
-							<span
-								className="h-1.5 w-1.5 rounded-full bg-primary/60"
-								style={{ animation: "pulse 1.5s infinite" }}
-							/>
-							<span className="text-[11px] text-muted-foreground/35">
-								{fold?.kind === "streaming" && fold.waitingForFirstActivity
-									? labels.waiting
-									: labels.processing}
-							</span>
-						</div>
-					)}
-				</div>
+		<Message.Root>
+			<MessageLayout.Incoming
+				className={rootClassName}
+				data-theme-surface-root="chat.assistantMessage"
+			>
+				<ThemeSurface slot="chat.assistantMessage" />
+				<MessageLayout.IncomingSurface>
+					<MessageLayout.Header>
+						{botAvatar ? (
+							<MessageLayout.HeaderLeading asChild>
+								<Message.Avatar asChild>{botAvatar}</Message.Avatar>
+							</MessageLayout.HeaderLeading>
+						) : null}
+						<Message.Author>{author}</Message.Author>
+						{timestampLabel && <Message.Meta>{timestampLabel}</Message.Meta>}
+						{showDuration && durationLabel && (
+							<>
+								<span className="text-[11px] text-muted-foreground/20">·</span>
+								<Message.Meta>{durationLabel}</Message.Meta>
+							</>
+						)}
+						{isCurrentlyStreaming && (
+							<Message.Status className="flex">
+								<span
+									className="h-1.5 w-1.5 rounded-full bg-primary/60"
+									style={{ animation: "pulse 1.5s infinite" }}
+								/>
+								<span className="text-[11px] text-muted-foreground/35">
+									{fold?.kind === "streaming" && fold.waitingForFirstActivity
+										? labels.waiting
+										: labels.processing}
+								</span>
+							</Message.Status>
+						)}
+					</MessageLayout.Header>
 				{fold?.kind === "streaming" ? (
 					<AssistantFoldTip
 						state="streaming"
@@ -229,7 +235,7 @@ export function AssistantMessageView({
 						labels={labels}
 					/>
 				) : null}
-				<div>
+				<Message.Content>
 					{segments ? (
 						<div className="flex flex-col gap-0.5">
 							{exportProcessSegments}
@@ -243,22 +249,29 @@ export function AssistantMessageView({
 							{fallbackText}
 						</div>
 					) : null}
-				</div>
+				</Message.Content>
 				{isCurrentlyStreaming && !(fold?.kind === "streaming" && fold.waitingForFirstActivity) && (
 					<div className="mt-2 flex items-center">
 						<StreamingIndicator phrases={labels.streamingPhrases} />
 					</div>
 				)}
 				{(actions || isPredicting) && !isCurrentlyStreaming && (
-					<div className="mt-2 flex items-center gap-2">
-						{actions}
-						{isPredicting && (
-							<span className="processing-shimmer text-[11px] font-medium">{labels.predicting}</span>
-						)}
-					</div>
+					<MessageLayout.Footer asChild>
+						<Message.Actions className="gap-2">
+							{actions}
+							{isPredicting && (
+								<span className="processing-shimmer text-[11px] font-medium">
+									{labels.predicting}
+								</span>
+							)}
+						</Message.Actions>
+					</MessageLayout.Footer>
 				)}
-				<div className="mt-2">{messageCards}</div>
-			</div>
-		</div>
+				<MessageLayout.AfterBody asChild>
+					<Message.Cards>{messageCards}</Message.Cards>
+				</MessageLayout.AfterBody>
+				</MessageLayout.IncomingSurface>
+			</MessageLayout.Incoming>
+		</Message.Root>
 	);
 }

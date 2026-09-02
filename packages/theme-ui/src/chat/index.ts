@@ -66,8 +66,6 @@ export type { ChatHeaderActionsViewProps } from "./ChatHeaderActionsView";
 export { ChatHeaderActionsView } from "./ChatHeaderActionsView";
 export type { ContextRingViewProps } from "./ContextRingView";
 export { CIRCUMFERENCE as CONTEXT_RING_CIRCUMFERENCE, ContextRingView } from "./ContextRingView";
-export type { ConversationTimelineViewProps } from "./ConversationTimelineView";
-export { ConversationTimelineView } from "./ConversationTimelineView";
 export type { CopyIconButtonLabels, CopyIconButtonProps } from "./CopyIconButton";
 export { CopyIconButton } from "./CopyIconButton";
 export {
@@ -98,6 +96,8 @@ export type {
 	ExecutionModeSelectorViewProps,
 } from "./ExecutionModeSelectorView";
 export { ExecutionModeSelectorView } from "./ExecutionModeSelectorView";
+export type { ExportMessageListViewProps } from "./ExportMessageListView";
+export { ExportMessageListView } from "./ExportMessageListView";
 export type {
 	GuideBadgeSwiperViewLabels,
 	GuideBadgeSwiperViewProps,
@@ -146,6 +146,16 @@ export {
 } from "./MessageActions";
 export type { SegmentShellProps, ToolCallGroupViewProps } from "./MessageBlockSegmentsView";
 export { ErrorBlockView, SegmentShell, ToolCallGroupView } from "./MessageBlockSegmentsView";
+export type {
+	CompactionBoundaryViewProps,
+	ForkOriginBannerViewProps,
+	ModelSwitchBoundaryViewProps,
+} from "./MessageBoundaryViews";
+export {
+	CompactionBoundaryView,
+	ForkOriginBannerView,
+	ModelSwitchBoundaryView,
+} from "./MessageBoundaryViews";
 export type { MessageCardsHostViewProps } from "./MessageCardsHostView";
 export { MessageCardsHostView } from "./MessageCardsHostView";
 export type {
@@ -154,6 +164,32 @@ export type {
 	MessageCardsViewProps,
 } from "./MessageCardsView";
 export { MessageCardsView } from "./MessageCardsView";
+export type {
+	MessageFeedLayoutPrimitiveProps,
+	MessageFeedListLayoutProps,
+} from "./MessageFeedLayoutView";
+export {
+	MessageFeedLayout,
+	MessageFeedLayoutFrame,
+	MessageFeedLayoutLeftRail,
+	MessageFeedLayoutList,
+	MessageFeedLayoutRailContent,
+	MessageFeedLayoutState,
+	MessageFeedLayoutViewport,
+	MessageFeedLayoutVirtualizer,
+} from "./MessageFeedLayoutView";
+export type {
+	MessageFeedPrimitiveProps,
+	MessageFeedRootProps,
+	MessageFeedVirtualListChild,
+	MessageFeedVirtualListProps,
+} from "./MessageFeedView";
+export {
+	MessageFeed,
+	MessageFeedFooter,
+	MessageFeedRoot,
+	MessageFeedVirtualList,
+} from "./MessageFeedView";
 export type {
 	MessageInputDecorationProps,
 	MessageInputDropZoneProps,
@@ -176,23 +212,24 @@ export {
 	MessageInputToolbarTrailing,
 } from "./MessageInputView";
 export type {
-	CompactionBoundaryViewProps,
-	ExportMessageListViewProps,
-	ForkOriginBannerViewProps,
-	MessageItemViewProps,
-	ModelSwitchBoundaryViewProps,
-} from "./MessageItemView";
+	MessageLayoutKind,
+	MessageLayoutPrimitiveProps,
+} from "./MessageLayoutView";
 export {
-	CompactionBoundaryView,
-	ExportMessageListView,
-	ForkOriginBannerView,
-	MessageItemView,
-	ModelSwitchBoundaryView,
-} from "./MessageItemView";
+	MessageLayout,
+	MessageLayoutAfterBody,
+	MessageLayoutBeforeBody,
+	MessageLayoutEvent,
+	MessageLayoutFooter,
+	MessageLayoutHeader,
+	MessageLayoutHeaderLeading,
+	MessageLayoutIncoming,
+	MessageLayoutIncomingSurface,
+	MessageLayoutOutgoing,
+	MessageLayoutOutgoingContent,
+} from "./MessageLayoutView";
 export type { MessageListFooterViewProps } from "./MessageListFooterView";
 export { MessageListFooterView } from "./MessageListFooterView";
-export type { MessageListViewProps } from "./MessageListView";
-export { MessageListView, VirtuosoListContainer } from "./MessageListView";
 export type {
 	MessageSelectionContextMenuViewLabels,
 	MessageSelectionContextMenuViewProps,
@@ -209,6 +246,27 @@ export {
 	MessageTimelineTriggerView,
 	MessageTimelineView,
 } from "./MessageTimelineView";
+export type {
+	MessagePrimitiveProps,
+	MessageRootProps,
+} from "./MessageView";
+export {
+	Message,
+	MessageActions,
+	MessageAttachments,
+	MessageAuthor,
+	MessageAvatar,
+	MessageCards,
+	MessageContent,
+	MessageMeta,
+	MessageRoot,
+	MessageStatus,
+} from "./MessageView";
+export {
+	MessageVisual,
+	MessageVisualEventBubble,
+	MessageVisualOutgoingBubble,
+} from "./MessageVisualView";
 export type {
 	ModelSelectorLabels,
 	ModelSelectorOptionView,

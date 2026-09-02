@@ -1,7 +1,6 @@
 import {
 	CompactionBoundaryView,
 	ExportMessageListView,
-	MessageItemView,
 	ModelSwitchBoundaryView,
 } from "@vetta/theme-ui/chat";
 import { forwardRef, memo } from "react";
@@ -50,34 +49,26 @@ export const MessageItem = memo(function MessageItem({
 	exportMode = false,
 }: MessageItemProps) {
 	if (message.role === "compaction") {
-		return (
-			<MessageItemView>
-				<CompactionBoundary />
-			</MessageItemView>
-		);
+		return <CompactionBoundary />;
 	}
 	if (message.role === "user") {
 		return (
-			<MessageItemView>
-				<UserMessage
-					message={message}
-					isLastUserMessage={isLastUserMessage}
-					hasAssistantAfter={hasAssistantAfter}
-					isStreaming={isStreaming}
-					onAbortEdit={onAbortEdit}
-				/>
-			</MessageItemView>
+			<UserMessage
+				message={message}
+				isLastUserMessage={isLastUserMessage}
+				hasAssistantAfter={hasAssistantAfter}
+				isStreaming={isStreaming}
+				onAbortEdit={onAbortEdit}
+			/>
 		);
 	}
 	return (
-		<MessageItemView>
-			<AssistantMessage
-				message={message}
-				isTailMessage={isTailMessage}
-				isStreaming={isStreaming}
-				exportMode={exportMode}
-			/>
-		</MessageItemView>
+		<AssistantMessage
+			message={message}
+			isTailMessage={isTailMessage}
+			isStreaming={isStreaming}
+			exportMode={exportMode}
+		/>
 	);
 });
 

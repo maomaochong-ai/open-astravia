@@ -24,7 +24,7 @@ export function useTeamChatModel(teamId: string): {
 	readonly model: TeamChatViewModel;
 	readonly actions: TeamChatActions;
 } {
-	const { t } = useTranslation("agent-teams");
+	const { t } = useTranslation(["agent-teams", "chat"]);
 	const [document, setDocument] = useState<AgentTeamDocument>();
 	const [session, setSession] = useState<TeamSessionDocument>();
 	const [draftsByTeam, setDraftsByTeam] = useState<Readonly<Record<string, string>>>({});
@@ -189,13 +189,17 @@ export function useTeamChatModel(teamId: string): {
 		if (!session || !team || (!draftText && attachments.length === 0) || pendingRef.current) return;
 		const text = draftText;
 		const requestId = crypto.randomUUID();
+		const sentAttachments = attachments;
+		const targetMemberIds = resolveMentionedMemberIds(team, text, selectedMemberIds);
+		const promptAttachments = attachments.map(toPromptAttachment);
 		const nextPending = {
 			requestId,
 			text,
-			displayText: draftText || attachments.map((attachment) => attachment.name).join("、"),
+			displayText: draftText,
+			attachments: promptAttachments,
+			targetMemberIds,
+			timestamp: Date.now(),
 		};
-		const sentAttachments = attachments;
-		const targetMemberIds = resolveMentionedMemberIds(team, text, selectedMemberIds);
 		pendingRef.current = nextPending;
 		setPending(nextPending);
 		setStatus("sending");
@@ -212,7 +216,7 @@ export function useTeamChatModel(teamId: string): {
 				requestId,
 				text,
 				targetMemberIds,
-				...(attachments.length ? { attachments: attachments.map(toPromptAttachment) } : {}),
+				...(promptAttachments.length ? { attachments: promptAttachments } : {}),
 			});
 			setSession((current) => (!current || next.revision >= current.revision ? next : current));
 			setError(undefined);
@@ -271,11 +275,25 @@ export function useTeamChatModel(teamId: string): {
 			attachFile: t("chat.attachFile"),
 			attachImage: t("chat.attachImage"),
 			removeAttachment: (name: string) => t("chat.removeAttachment", { name }),
+			copy: t("chat:messageList.copyButton.copy"),
+			copied: t("chat:messageList.copyButton.copied"),
+			navigation: {
+				open: t("chat:messageList.navigation.open"),
+				title: t("chat:messageList.navigation.title"),
+				count: (count: number) => t("chat:messageList.navigation.count", { count }),
+				noResults: t("chat:messageList.navigation.noResults"),
+				close: t("chat:messageList.navigation.close"),
+				searchPlaceholder: t("chat:messageList.navigation.searchPlaceholder"),
+				searchLabel: t("chat:messageList.navigation.searchLabel"),
+				jumpTo: (preview: string) => t("chat:messageList.navigation.jumpTo", { preview }),
+				emptyRequest: t("chat:messageList.navigation.emptyUser"),
+			},
 		}),
 		[t],
 	);
 	const model = useMemo<TeamChatViewModel>(
 		() => ({
+			feedKey: teamId,
 			title: team ? teamDisplayName(team, t) : t("teams.title"),
 			status,
 			draft,
@@ -289,7 +307,22 @@ export function useTeamChatModel(teamId: string): {
 			canSend: Boolean(session && (draft.trim() || attachments.length > 0) && !pending),
 			labels,
 		}),
-		[team, t, status, draft, history, attachments, members, timelineItems, markdown, error, session, pending, labels],
+		[
+			teamId,
+			team,
+			t,
+			status,
+			draft,
+			history,
+			attachments,
+			members,
+			timelineItems,
+			markdown,
+			error,
+			session,
+			pending,
+			labels,
+		],
 	);
 	const actions = useMemo<TeamChatActions>(
 		() => ({ setDraft, selectLeader, toggleMember, selectFiles, selectImages, removeAttachment, send, abort }),

@@ -2,6 +2,9 @@ import { motion } from "motion/react";
 import type { Transition } from "motion/react";
 import type { JSX, MouseEvent, ReactNode } from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { MessageLayout } from "./MessageLayoutView";
+import { Message } from "./MessageView";
+import { MessageVisual } from "./MessageVisualView";
 
 const HIDDEN_VISUAL_STATE = { opacity: 0, scale: 0.82, x: 14, y: 12 };
 const VISIBLE_VISUAL_STATE = { opacity: 1, scale: 1, x: 0, y: 0 };
@@ -255,15 +258,15 @@ export function UserMessageView({
 			onContextMenu={onContextMenu}
 			onActionsVisibleChange={onActionsVisibleChange}
 		>
-			<div className="relative flex min-w-0 max-w-[72%] flex-col items-end">
+			<MessageLayout.OutgoingContent>
 				{hasAppshot && <div className="mb-1.5 flex justify-end">{appshot}</div>}
 				{hasImages && <div className="mb-1.5 flex justify-end">{images}</div>}
 				{(hasSkillBadge || hasSettingsAssistBadge) && (
 					<div className="mb-1 flex flex-wrap justify-end gap-1">{badges}</div>
 				)}
 				{displayText && (
-					<div
-						className={`min-w-0 max-w-full cursor-text rounded-2xl rounded-br-md bg-secondary px-3.5 py-2.5 text-[14px] leading-[1.6] text-foreground ${
+					<MessageVisual.OutgoingBubble
+						className={`cursor-text ${
 							isPendingEdit ? "ring-1 ring-primary/40" : ""
 						}`}
 						style={{ wordBreak: "break-word" }}
@@ -276,27 +279,28 @@ export function UserMessageView({
 						>
 							{textBody}
 						</UserMessageTextShell>
-					</div>
+					</MessageVisual.OutgoingBubble>
 				)}
 				{empty && (
-					<div
-						className="cursor-text rounded-2xl rounded-br-md bg-secondary px-3.5 py-2.5 text-[14px] leading-[1.6] text-foreground"
+					<MessageVisual.OutgoingBubble
+						className="cursor-text"
 						style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
 					>
 						{"\u2026"}
-					</div>
+					</MessageVisual.OutgoingBubble>
 				)}
 				{hasFileBadges && (
 					<div className="mt-1 flex flex-wrap justify-end gap-1">{fileBadges}</div>
 				)}
 				{showActions && (
-					<div
-						className={`mt-1 flex flex-col items-end gap-0.5 transition-opacity duration-150 ${
+					<MessageLayout.Footer asChild>
+						<Message.Actions
+							className={`flex-col items-end gap-0.5 transition-opacity duration-150 ${
 							actionsVisible || isPendingEdit || canSwitchBranch
 								? "pointer-events-auto opacity-100"
 								: "pointer-events-none opacity-0"
-						}`}
-					>
+							}`}
+						>
 						{/* Row 1: edit / fork / copy */}
 						{showPrimaryActions && (
 							<div className="flex h-6 items-center justify-end gap-1 whitespace-nowrap">
@@ -363,9 +367,10 @@ export function UserMessageView({
 								{relativeTime}
 							</div>
 						)}
-					</div>
+						</Message.Actions>
+					</MessageLayout.Footer>
 				)}
-			</div>
+			</MessageLayout.OutgoingContent>
 		</UserMessageFrame>
 	);
 }
@@ -399,22 +404,25 @@ function UserMessageFrame({
 	};
 	if (!shouldAnimateIn && !shouldHoldHidden) {
 		return (
-			<div className="flex min-w-0 justify-end" {...handlers}>
-				{children}
-			</div>
+			<Message.Root>
+				<MessageLayout.Outgoing {...handlers}>{children}</MessageLayout.Outgoing>
+			</Message.Root>
 		);
 	}
 	return (
-		<motion.div
-			className="flex min-w-0 justify-end"
-			initial={shouldAnimateIn ? HIDDEN_VISUAL_STATE : false}
-			animate={shouldHoldHidden ? HIDDEN_VISUAL_STATE : VISIBLE_VISUAL_STATE}
-			transition={ENTRY_TRANSITION}
-			onAnimationComplete={shouldAnimateIn ? onEntryComplete : undefined}
-			style={MESSAGE_STYLE}
-			{...handlers}
-		>
-			{children}
-		</motion.div>
+		<Message.Root>
+			<MessageLayout.Outgoing asChild>
+				<motion.div
+					initial={shouldAnimateIn ? HIDDEN_VISUAL_STATE : false}
+					animate={shouldHoldHidden ? HIDDEN_VISUAL_STATE : VISIBLE_VISUAL_STATE}
+					transition={ENTRY_TRANSITION}
+					onAnimationComplete={shouldAnimateIn ? onEntryComplete : undefined}
+					style={MESSAGE_STYLE}
+					{...handlers}
+				>
+					{children}
+				</motion.div>
+			</MessageLayout.Outgoing>
+		</Message.Root>
 	);
 }

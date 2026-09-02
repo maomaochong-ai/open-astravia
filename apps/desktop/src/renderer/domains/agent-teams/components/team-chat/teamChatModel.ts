@@ -1,5 +1,12 @@
+import {
+	createMessageFeedNavigationText,
+	type MessageFeedNavigationEntry,
+	type MessageFeedNavigationLabels,
+	type MessageFeedNavigationTurn,
+} from "@shared/components/message-feed/navigationModel";
 import type { RendererMarkdownModel } from "@shared/models/renderer-markdown-model";
 import type { AgentTeamDocument, TeamDefinition, TeamSessionDocument, TeamSessionStreamEvent } from "@vetta/agent-team";
+import type { PromptAttachmentRef } from "@vetta/runtime-core";
 
 export type TeamChatStatus = "loading" | "ready" | "sending" | "streaming" | "cancelling" | "error";
 
@@ -18,9 +25,13 @@ export interface TeamChatLabels {
 	readonly attachFile: string;
 	readonly attachImage: string;
 	readonly removeAttachment: (name: string) => string;
+	readonly copy: string;
+	readonly copied: string;
+	readonly navigation: MessageFeedNavigationLabels;
 }
 
 export interface TeamChatViewModel {
+	readonly feedKey: string;
 	readonly title: string;
 	readonly status: TeamChatStatus;
 	readonly draft: string;
@@ -76,6 +87,9 @@ export interface TeamPendingRequest {
 	readonly requestId: string;
 	readonly text: string;
 	readonly displayText?: string;
+	readonly attachments?: readonly PromptAttachmentRef[];
+	readonly targetMemberIds?: readonly string[];
+	readonly timestamp?: number;
 }
 
 export interface TeamStreamingTurnViewModel {
@@ -92,16 +106,33 @@ export interface TeamStreamingTurnViewModel {
 export type TeamStreamState = Readonly<Record<string, TeamStreamingTurnViewModel>>;
 
 export type TeamTimelineItemViewModel =
-	| { readonly id: string; readonly kind: "user"; readonly text: string; readonly pending: boolean }
+	| {
+			readonly id: string;
+			readonly kind: "user";
+			readonly requestId: string;
+			readonly text: string;
+			readonly pending: boolean;
+			readonly timestamp: number;
+			readonly attachments: readonly PromptAttachmentRef[];
+			readonly targetMemberIds: readonly string[];
+	  }
 	| {
 			readonly id: string;
 			readonly kind: "member";
+			readonly requestId: string;
 			readonly member: TeamMemberViewModel;
 			readonly text: string;
 			readonly pending: boolean;
+			readonly timestamp: number;
 			readonly error?: string;
 	  }
-	| { readonly id: string; readonly kind: "delegation"; readonly label: string };
+	| {
+			readonly id: string;
+			readonly kind: "delegation";
+			readonly requestId: string;
+			readonly label: string;
+			readonly timestamp: number;
+	  };
 
 export interface TeamTimelineLabels {
 	readonly delegation: (from: string, to: string) => string;
@@ -213,10 +244,14 @@ export function buildTeamTimelineItems({
 	const items: TeamTimelineItemViewModel[] = session.events.map((event) => {
 		if (event.type === "user-message") {
 			return {
-				id: event.id,
+				id: `user:${event.requestId}`,
 				kind: "user",
-				text: stripAttachmentContext(event.text) || attachmentSummary(event.attachments ?? []),
+				requestId: event.requestId,
+				text: stripAttachmentContext(event.text),
 				pending: false,
+				timestamp: event.timestamp,
+				attachments: event.attachments ?? [],
+				targetMemberIds: event.targetMemberIds,
 			};
 		}
 		if (event.type === "member-delegation") {
@@ -228,14 +263,22 @@ export function buildTeamTimelineItems({
 				memberMap.get(event.targetMemberId)?.name ??
 				session.memberHandles[event.targetMemberId] ??
 				labels.unknownMember;
-			return { id: event.id, kind: "delegation", label: labels.delegation(source, target) };
+			return {
+				id: event.id,
+				kind: "delegation",
+				requestId: event.requestId,
+				label: labels.delegation(source, target),
+				timestamp: event.timestamp,
+			};
 		}
 		return {
-			id: event.id,
+			id: `member:${event.sourceTurnId}`,
 			kind: "member",
+			requestId: event.requestId,
 			member: fallbackMember(event.memberId, session, memberMap, labels.unknownMember),
 			text: event.text,
 			pending: false,
+			timestamp: event.timestamp,
 		};
 	});
 
@@ -244,49 +287,79 @@ export function buildTeamTimelineItems({
 		: false;
 	if (pending && !userCommitted) {
 		items.push({
-			id: `pending:${pending.requestId}`,
+			id: `user:${pending.requestId}`,
 			kind: "user",
+			requestId: pending.requestId,
 			text: pending.displayText ?? stripAttachmentContext(pending.text),
 			pending: true,
+			timestamp: pending.timestamp ?? session.updatedAt,
+			attachments: pending.attachments ?? [],
+			targetMemberIds: pending.targetMemberIds ?? [],
 		});
 	}
 
 	const persistedResults = new Set(
-		session.events
-			.filter((event) => event.type === "member-result")
-			.map((event) => `${event.requestId}:${event.memberId}`),
+		session.events.filter((event) => event.type === "member-result").map((event) => event.sourceTurnId),
 	);
 	for (const turn of Object.values(streams).sort((left, right) => left.startedAt - right.startedAt)) {
-		if (persistedResults.has(`${turn.requestId}:${turn.memberId}`)) continue;
+		if (persistedResults.has(turn.turnId)) continue;
 		items.push({
-			id: `stream:${turn.turnId}`,
+			id: `member:${turn.turnId}`,
 			kind: "member",
+			requestId: turn.requestId,
 			member: fallbackMember(turn.memberId, session, memberMap, labels.unknownMember),
 			text: turn.text,
 			pending: turn.phase === "streaming",
+			timestamp: turn.startedAt,
 			...(turn.error ? { error: turn.error } : {}),
 		});
 	}
 	if (pending && Object.keys(streams).length === 0) {
 		items.push({
-			id: `waiting:${pending.requestId}`,
+			id: `waiting:${pending.requestId}:${session.leaderMemberId}`,
 			kind: "member",
+			requestId: pending.requestId,
 			member: fallbackMember(session.leaderMemberId, session, memberMap, labels.unknownMember),
 			text: "",
 			pending: true,
+			timestamp: pending.timestamp ?? session.updatedAt,
 		});
 	}
 	return items;
 }
 
-export function stripAttachmentContext(text: string): string {
-	return text.replace(/\n*<attachments>\n[\s\S]*?\n<\/attachments>\s*$/u, "").trimEnd();
+/** Team adapter: one user request and all member/delegation events sharing requestId form a turn. */
+export function buildTeamNavigationTurns(items: readonly TeamTimelineItemViewModel[]): MessageFeedNavigationTurn[] {
+	const turns: Array<{ id: string; turnNumber: number; entries: MessageFeedNavigationEntry[] }> = [];
+	const byRequest = new Map<string, (typeof turns)[number]>();
+	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+		const item = items[itemIndex];
+		let turn = byRequest.get(item.requestId);
+		if (!turn) {
+			turn = {
+				id: `team-turn:${item.requestId}`,
+				turnNumber: turns.length + 1,
+				entries: [],
+			};
+			turns.push(turn);
+			byRequest.set(item.requestId, turn);
+		}
+		const text = item.kind === "delegation" ? item.label : item.text;
+		const navigationText = createMessageFeedNavigationText(text);
+		turn.entries.push({
+			id: item.id,
+			itemIndex,
+			preview: navigationText.preview,
+			role: item.kind === "user" ? "request" : "response",
+			searchText: navigationText.searchText,
+			turnNumber: turn.turnNumber,
+		});
+	}
+	return turns;
 }
 
-function attachmentSummary(attachments: readonly { readonly path: string }[]): string {
-	return attachments
-		.map((attachment) => attachment.path.split(/[\\/]/u).filter(Boolean).at(-1) ?? attachment.path)
-		.join(", ");
+export function stripAttachmentContext(text: string): string {
+	return text.replace(/\n*<attachments>\n[\s\S]*?\n<\/attachments>\s*$/u, "").trimEnd();
 }
 
 function fallbackMember(
