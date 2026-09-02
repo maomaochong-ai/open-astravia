@@ -1,5 +1,6 @@
 ---
 name: vetta-apple-app-dev-guide
+alias: 构建 Apple App
 description: Build Apple apps inside Vetta — drive the iOS Simulator shown in the Vetta panel (boot, build, install, launch, read the screen through the accessibility tree, tap, swipe, type), and write or review SwiftUI with the bundled guides for components and navigation, Liquid Glass on iOS 26+, and performance audits. Use whenever the task involves an iOS/iPadOS/macOS app, an Xcode or SwiftPM project, SwiftUI code, or a Simulator.
 ---
 

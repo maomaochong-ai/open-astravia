@@ -37,6 +37,13 @@ describe("vetta-apple-app-dev-guide skill", () => {
 		expect(frontmatter).toMatch(/^description: .+/m);
 	});
 
+	it("carries a human-readable alias for the UI", async () => {
+		// name 是模型引用的 slug；命令面板、能力页和输入栏 token 显示的是 alias。
+		// 没有 alias 时用户在界面上看到的就是那串英文 slug。
+		const source = await readFile(resolve(skillDir, "SKILL.md"), "utf8");
+		expect(source).toMatch(/^alias: 构建 Apple App$/m);
+	});
+
 	it("routes to references that exist", async () => {
 		const files = await listMarkdown(skillDir);
 		const missing: string[] = [];
