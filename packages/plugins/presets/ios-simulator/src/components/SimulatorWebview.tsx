@@ -31,12 +31,17 @@ interface SimulatorWebviewProps {
  * 2. **`src` 必须是静态 `about:blank`，真实地址在 `dom-ready` 之后用 `loadURL` 加载**。
  *    直接把地址写进 `src` 时 guest 不会挂载起来（`dom-ready` 不触发），表现为一片黑。
  *    宿主自己的内置浏览器面板用的也是这个写法。
+ * 3. **只在首次就绪时导航一次**。`dom-ready` 每次导航后都会再触发，如果每次都把地址
+ *    拉回 `url`，用户在控制台里点「打开侧栏视图」「返回列表」这类站内链接会被立刻拽
+ *    回来，表现为按钮点了没反应。样式注入则相反——它随文档失效，每次都要重来。
  */
 export function SimulatorWebview({ url }: SimulatorWebviewProps): JSX.Element {
 	const { t } = useTranslation();
 	const hostRef = useRef<HTMLDivElement | null>(null);
 	const webviewRef = useRef<WebviewElement | null>(null);
 	const cssKeyRef = useRef<string | null>(null);
+	/** 是否已经把 guest 导航到目标地址。之后的站内导航交给用户，不再接管。 */
+	const navigatedRef = useRef(false);
 	const [failure, setFailure] = useState<string | null>(null);
 
 	/** 重新注入嵌入样式。先移除上一份，避免主题来回切时叠加出一堆样式表。 */
@@ -56,19 +61,21 @@ export function SimulatorWebview({ url }: SimulatorWebviewProps): JSX.Element {
 	useEffect(() => {
 		const element = webviewRef.current;
 		if (!element) return;
+		// url 变化（换设备或 serve 重启）时重新接管一次导航。
+		navigatedRef.current = false;
 
-		const load = (): void => {
-			if (element.getURL() === url) return;
-			void element.loadURL(url).catch((error: unknown) => {
-				setFailure(error instanceof Error ? error.message : String(error));
-			});
-		};
 		const onReady = (): void => {
 			setFailure(null);
-			// 每次导航后 dom-ready 都会再触发，注入的样式随文档失效需要重新插入。
+			// 样式随文档失效，每次 dom-ready 都要重新注入。
 			cssKeyRef.current = null;
 			void applyEmbedCss();
-			load();
+			// 导航只做一次：之后用户在控制台里的站内跳转不该被拽回来。
+			if (navigatedRef.current || element.getURL() === url) return;
+			navigatedRef.current = true;
+			void element.loadURL(url).catch((error: unknown) => {
+				navigatedRef.current = false;
+				setFailure(error instanceof Error ? error.message : String(error));
+			});
 		};
 		const onFail = (event: Event): void => {
 			// errorCode -3 (ABORTED) 多因重定向或手动停止，不是真实失败。
