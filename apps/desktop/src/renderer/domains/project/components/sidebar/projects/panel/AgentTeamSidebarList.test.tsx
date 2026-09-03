@@ -35,7 +35,7 @@ vi.mock("react-i18next", () => ({
 			key === "chat.sessionLabel" ? `Chat ${values?.index ?? ""}` : key,
 	}),
 }));
-vi.mock("../../../../../agent-teams/lib/preset-presentation", () => ({
+vi.mock("@shared/agent-teams/preset-presentation", () => ({
 	teamDisplayName: (team: { name: string }) => team.name,
 }));
 

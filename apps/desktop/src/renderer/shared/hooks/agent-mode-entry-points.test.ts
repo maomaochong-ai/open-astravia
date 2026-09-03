@@ -32,7 +32,7 @@ it.each(HOSTS_WITHOUT_MODE_ENTRY)("%s renders no agent-mode entry", (relative) =
 
 it("keeps the new-session toggle as the only consumer of the default-mode hook", () => {
 	const toggle = readFileSync(
-		join(rendererRoot, "domains/chat/components/new-session/AgentModeIconToggle.tsx"),
+		join(rendererRoot, "domains/conversation/components/new-session/AgentModeIconToggle.tsx"),
 		"utf8",
 	);
 	expect(toggle).toContain("useDefaultAgentMode");

@@ -10,7 +10,7 @@
 		},
 		{
 			"id": "core-workflow",
-			"source": "apps/desktop/src/renderer/domains/chat",
+			"source": "apps/desktop/src/renderer/domains/conversation",
 			"status": "complete",
 			"pages": [
 				"/getting-started/first-task/",
@@ -22,7 +22,7 @@
 		},
 		{
 			"id": "workflow-examples",
-			"source": "apps/desktop/src/renderer/domains/chat, batch-tasks, knowledge-base and scheduler",
+			"source": "apps/desktop/src/renderer/domains/conversation, batch-tasks, knowledge-base and scheduler",
 			"status": "complete",
 			"pages": [
 				"/examples/",

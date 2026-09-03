@@ -11,7 +11,9 @@ import type { ContextCompositionReport } from "@vetta/runtime-core";
 import { atom } from "jotai";
 import { runningSessionPathsAtom } from "./running-sessions-atoms";
 
-export type ChatTimelineEventViewModel = { readonly kind: "compaction"; readonly summary: string };
+export type ChatTimelineEventViewModel =
+	| { readonly kind: "compaction"; readonly summary: string }
+	| { readonly kind: "delegation"; readonly label: string; readonly requestId: string; readonly timestamp: number };
 export type ChatConversationItem = ConversationTimelineItemViewModel<ChatTimelineEventViewModel>;
 
 export type {

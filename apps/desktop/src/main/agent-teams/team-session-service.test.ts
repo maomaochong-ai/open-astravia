@@ -235,16 +235,44 @@ describe("AgentTeamSessionService streaming contract", () => {
 					? [
 							{
 								type: "message",
+								entryId: "assistant-tool-entry",
+								message: {
+									...createAssistantMessage(
+										{ api: "openai-responses", provider: "openai", model: "model" },
+										{ timestamp: 2 },
+									),
+									content: [
+										{ type: "thinking", thinking: "private execution reasoning" },
+										{
+											type: "toolCall",
+											id: "private-call",
+											name: "read",
+											arguments: { path: "C:/workspace/private.txt" },
+										},
+									],
+								},
+							},
+							{
+								type: "message",
+								entryId: "tool-result-entry",
+								message: {
+									role: "toolResult",
+									toolCallId: "private-call",
+									toolName: "read",
+									content: [{ type: "text", text: "private result" }],
+									isError: false,
+									timestamp: 2,
+								},
+							},
+							{
+								type: "message",
 								entryId: "assistant-entry",
 								message: {
 									...createAssistantMessage(
 										{ api: "openai-responses", provider: "openai", model: "model" },
 										{ timestamp: 3 },
 									),
-									content: [
-										{ type: "thinking", thinking: "private execution reasoning" },
-										{ type: "text", text: assistantText },
-									],
+									content: [{ type: "text", text: assistantText }],
 								},
 							},
 						]
@@ -266,6 +294,7 @@ describe("AgentTeamSessionService streaming contract", () => {
 				expect(request.records).toHaveLength(2);
 				expect(request.records.every((record) => record.modelVisible)).toBe(true);
 				expect(JSON.stringify(request.records)).not.toContain("private execution reasoning");
+				expect(JSON.stringify(request.records)).not.toContain("C:/workspace/private.txt");
 				return { summary: "Shared public decisions summary", tokensBefore: 20 };
 			}),
 			appendSessionMetadataEntry: vi.fn(async (_sessionId: string, customType: string, data: unknown) => {
@@ -309,18 +338,28 @@ describe("AgentTeamSessionService streaming contract", () => {
 		const messageEvents = events.filter((event) => event.type === "conversation.agent-message-event");
 		expect(
 			messageEvents.map((event) => (event.event.type === "text_delta" ? event.event.delta : event.event.type)),
-		).toEqual(["partial ", "answer"]);
-		expect(messageEvents.map((event) => event.sequence)).toEqual([1, 2]);
+		).toEqual(["partial ", "toolcall_start", "answer"]);
+		expect(messageEvents.map((event) => event.sequence)).toEqual([1, 2, 3]);
 		expect(completed.events).toEqual([]);
 		expect(service.snapshot(completed).messages.at(-1)).toMatchObject({
 			kind: "agent",
 			author: { id: team.leaderMemberId },
-			message: { content: [{ type: "text", text: assistantText }] },
+			message: {
+				content: [
+					{
+						type: "toolCall",
+						id: "private-call",
+						name: "read",
+						arguments: { path: "C:/workspace/private.txt" },
+					},
+					{ type: "text", text: assistantText },
+				],
+			},
 		});
 		expect(events.at(-1)).toMatchObject({
 			type: "conversation.agent-message-discard",
 			reason: "completed",
-			sequence: 3,
+			sequence: 4,
 		});
 		expect(runtime.prompt).toHaveBeenCalledWith(
 			expect.any(String),
@@ -340,7 +379,17 @@ describe("AgentTeamSessionService streaming contract", () => {
 			expect.any(String),
 			expect.objectContaining({
 				kind: "agent",
-				message: expect.objectContaining({ content: [{ type: "text", text: assistantText }] }),
+				message: expect.objectContaining({
+					content: [
+						{
+							type: "toolCall",
+							id: "private-call",
+							name: "read",
+							arguments: { path: "C:/workspace/private.txt" },
+						},
+						{ type: "text", text: assistantText },
+					],
+				}),
 			}),
 		);
 		expect(runtime.summarizeSessionContext).toHaveBeenCalledOnce();

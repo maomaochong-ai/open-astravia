@@ -18,8 +18,8 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { notifyAgentTeamConfigurationChanged } from "../../project/components/sidebar/projects/panel/AgentTeamSidebarList";
-import { useAgentTeamSidebarSelection } from "../hooks/useAgentTeamSidebarSelection";
-import { agentDisplayDescription, agentDisplayName, teamDisplayName } from "../lib/preset-presentation";
+import { useAgentTeamSidebarSelection } from "@shared/agent-teams/useAgentTeamSidebarSelection";
+import { agentDisplayDescription, agentDisplayName, teamDisplayName } from "@shared/agent-teams/preset-presentation";
 
 interface MemberDraft {
 	readonly handle: string;

@@ -127,7 +127,7 @@ function mergeTerminalMessage(
 ): ConversationAgentMessageViewModel {
 	let next = message;
 	if (next.blocks.length === 0) {
-		const blocks = terminalBlocks(terminal, messageId);
+		const blocks = projectAssistantMessageBlocks(terminal, messageId);
 		next = {
 			...next,
 			text: blocks.flatMap((block) => (block.type === "text" ? [block.text] : [])).join(""),
@@ -154,7 +154,12 @@ function mergeTerminalMessage(
 	};
 }
 
-function terminalBlocks(message: AssistantMessage, messageId: string): ContentBlock[] {
+/** Projects provider-neutral Assistant content into the shared Renderer block contract. */
+export function projectAssistantMessageBlocks(
+	message: AssistantMessage,
+	messageId: string,
+	toolStatus: ToolCallBlock["status"] = "pending",
+): ContentBlock[] {
 	return message.content.flatMap((part, index): ContentBlock[] => {
 		if (part.type === "text") return [{ type: "text", id: `${messageId}:text:${index}`, text: part.text }];
 		if (part.type === "thinking") {
@@ -167,7 +172,7 @@ function terminalBlocks(message: AssistantMessage, messageId: string): ContentBl
 					toolCallId: part.id,
 					toolName: part.name,
 					args: isRecord(part.arguments) ? part.arguments : {},
-					status: "pending",
+					status: toolStatus,
 				},
 			];
 		}

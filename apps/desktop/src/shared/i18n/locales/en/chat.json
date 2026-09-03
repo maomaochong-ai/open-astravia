@@ -760,6 +760,9 @@
 		"emptyState": {
 			"noPath": "No session path specified"
 		},
+		"error": {
+			"loadPrefix": "Failed to load: "
+		},
 		"export": {
 			"defaultTitle": "Vetta Session"
 		},

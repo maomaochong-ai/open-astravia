@@ -1,4 +1,4 @@
-import { SkillPromptArea } from "@domains/chat/components/SkillPromptArea";
+import { SkillPromptArea } from "@domains/conversation/components/SkillPromptArea";
 import type { SelectedSkill } from "@shared/store/atoms";
 import { useBatchProjectPromptFieldModel } from "../../hooks/useBatchProjectPromptFieldModel";
 

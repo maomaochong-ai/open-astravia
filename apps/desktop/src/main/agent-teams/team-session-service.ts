@@ -66,6 +66,7 @@ import type {
 } from "@vetta/coding-agent/runtime";
 import {
 	type ConversationDocument,
+	type HistoryEntry,
 	type PromptAttachmentRef,
 	type RuntimeHost,
 	readRuntimeFailure,
@@ -94,7 +95,7 @@ import {
 	type TeamLegacySessionMigrationPort,
 } from "./team-legacy-session-migration.js";
 import { restoreTeamMemberPinnedContext } from "./team-member-context.js";
-import { findTeamAttemptResult } from "./team-member-result.js";
+import { findTeamAttemptResult, restoreTeamPublicToolCalls } from "./team-member-result.js";
 import { reconfigureTeamMemberRuntime } from "./team-member-runtime-reconfiguration.js";
 import { TeamMemberScheduler } from "./team-member-scheduler.js";
 import type { TeamMemberTurnRequest } from "./team-member-turn-request.js";
@@ -289,6 +290,13 @@ export class AgentTeamSessionService {
 			return { session, conversationRevision: 0, messages: [], activities: legacyActivities(session) };
 		}
 		const document = this.getRuntime().readSessionDocument(coordination.sessionId);
+		const collaboration = this.collaborationStore.read(session);
+		const publicationByMessageId = new Map(
+			collaboration.publications.flatMap((publication) =>
+				publication.publicMessageEntryId ? [[publication.publicMessageEntryId, publication] as const] : [],
+			),
+		);
+		const historyBySessionId = new Map<string, readonly HistoryEntry[]>();
 		const messages = document.entries.flatMap((entry) => {
 			if (entry.type !== "message" || (entry.kind !== "user" && entry.kind !== "agent")) return [];
 			const record =
@@ -308,7 +316,23 @@ export class AgentTeamSessionService {
 							turnId: entry.turnId,
 							timestamp: entry.message.timestamp,
 							author: entry.author,
-							message: entry.message,
+							message: (() => {
+								const publicMessage = publicAssistantMessage(entry.message);
+								const publication = publicationByMessageId.get(entry.id);
+								if (!publication || publicMessage.content.some((part) => part.type === "toolCall")) {
+									return publicMessage;
+								}
+								try {
+									let history = historyBySessionId.get(publication.sourceParticipantConversationId);
+									if (!history) {
+										history = this.getRuntime().getFullHistory(publication.sourceParticipantConversationId);
+										historyBySessionId.set(publication.sourceParticipantConversationId, history);
+									}
+									return restoreTeamPublicToolCalls(publicMessage, history, publication.sourceMessageEntryId);
+								} catch {
+									return publicMessage;
+								}
+							})(),
 						};
 			return [record];
 		});
@@ -316,7 +340,7 @@ export class AgentTeamSessionService {
 			session,
 			conversationRevision: document.revision,
 			messages,
-			activities: teamActivities(session, this.collaborationStore.read(session).workItems),
+			activities: teamActivities(session, collaboration.workItems),
 		};
 	}
 
@@ -496,20 +520,26 @@ export class AgentTeamSessionService {
 		return [...this.activeMemberTurns.values()]
 			.filter((turn) => turn.teamSessionId === teamSessionId)
 			.flatMap((turn) => {
-				if (turn.text.length === 0) return [];
 				const partial = turn.latestPublicPartial ?? compatibilityPublicAssistantMessage(turn.text, turn.startedAt);
-				return [
-					{
-						type: "conversation.agent-message-event" as const,
+				const visibleParts = partial.content
+					.filter(isPublicAssistantPart)
+					.filter((part) => part.type !== "text" || part.text.length > 0);
+				const sequenceBase = Math.max(0, turn.seq - visibleParts.length);
+				return visibleParts.map(
+					(part, contentIndex): ConversationMessageStreamEvent => ({
+						type: "conversation.agent-message-event",
 						conversationId: turn.teamSessionId,
 						messageId: turn.messageId,
 						turnId: turn.requestId,
 						author: turn.author,
-						sequence: turn.seq,
+						sequence: sequenceBase + contentIndex + 1,
 						timestamp: turn.startedAt,
-						event: { type: "text_delta" as const, contentIndex: 0, delta: turn.text, partial },
-					},
-				];
+						event:
+							part.type === "text"
+								? { type: "text_delta", contentIndex, delta: part.text, partial }
+								: { type: "toolcall_end", contentIndex, toolCall: part, partial },
+					}),
+				);
 			});
 	}
 
@@ -899,7 +929,7 @@ export class AgentTeamSessionService {
 						id: item.assignedToParticipantId,
 						agentId: runtimeState.agentProfileId,
 					},
-					message: assistant,
+					message: publicAssistantMessage(assistant),
 				});
 			}
 			if (publication.state !== "message-published" && publication.state !== "completed") {
@@ -1720,10 +1750,8 @@ export class AgentTeamSessionService {
 			this.detachIdleRuntimeSubscriptions(configuredSession.id);
 		}
 
-		const attemptResult = findTeamAttemptResult(
-			this.getRuntime().getFullHistory(runtimeState.sessionId),
-			previousEntryIds,
-		);
+		const attemptHistory = this.getRuntime().getFullHistory(runtimeState.sessionId);
+		const attemptResult = findTeamAttemptResult(attemptHistory, previousEntryIds);
 		const assistant = attemptResult?.message;
 		const resultText = assistant
 			? assistant.content
@@ -1773,16 +1801,7 @@ export class AgentTeamSessionService {
 				id: memberId,
 				agentId: runtimeState.agentProfileId,
 			},
-			message: {
-				role: "assistant",
-				content: [{ type: "text", text: resultText }],
-				api: assistant.api,
-				provider: assistant.provider,
-				model: assistant.model,
-				usage: assistant.usage,
-				stopReason: assistant.stopReason,
-				timestamp: assistant.timestamp,
-			},
+			message: publicAttemptAssistantMessage(attemptHistory, previousEntryIds, assistant),
 		});
 		const messagePublished = {
 			...publication,
@@ -2361,18 +2380,46 @@ function isTeamSessionStateRecord(value: unknown): value is TeamSessionStateReco
 
 function projectPublicAssistantEvent(event: AssistantMessageEvent): AssistantMessageEvent | undefined {
 	if (event.type === "start") return { ...event, partial: publicAssistantMessage(event.partial) };
-	if (event.type !== "text_start" && event.type !== "text_delta" && event.type !== "text_end") {
+	if (
+		event.type !== "text_start" &&
+		event.type !== "text_delta" &&
+		event.type !== "text_end" &&
+		event.type !== "toolcall_start" &&
+		event.type !== "toolcall_delta" &&
+		event.type !== "toolcall_end"
+	)
 		return undefined;
-	}
 	const partial = publicAssistantMessage(event.partial);
-	const contentIndex = event.partial.content
-		.slice(0, event.contentIndex)
-		.filter((part) => part.type === "text").length;
+	const contentIndex = event.partial.content.slice(0, event.contentIndex).filter(isPublicAssistantPart).length;
 	return { ...event, contentIndex, partial };
 }
 
 function publicAssistantMessage(message: AssistantMessage): AssistantMessage {
-	return { ...message, content: message.content.filter((part) => part.type === "text") };
+	return { ...message, content: message.content.filter(isPublicAssistantPart) };
+}
+
+function publicAttemptAssistantMessage(
+	history: readonly HistoryEntry[],
+	previousEntryIds: ReadonlySet<string>,
+	terminal: AssistantMessage,
+): AssistantMessage {
+	const content = history.flatMap((entry) => {
+		if (
+			entry.type !== "message" ||
+			!entry.entryId ||
+			previousEntryIds.has(entry.entryId) ||
+			entry.message.role !== "assistant"
+		)
+			return [];
+		return publicAssistantMessage(entry.message).content;
+	});
+	return { ...publicAssistantMessage(terminal), content };
+}
+
+function isPublicAssistantPart(
+	part: AssistantMessage["content"][number],
+): part is Extract<AssistantMessage["content"][number], { type: "text" | "toolCall" }> {
+	return part.type === "text" || part.type === "toolCall";
 }
 
 function compatibilityPublicAssistantMessage(text: string, timestamp: number): AssistantMessage {

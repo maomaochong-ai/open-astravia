@@ -75,4 +75,27 @@ describe("Conversation message architecture guard", () => {
 			"packages/agent-team/src/example.ts: Agent Team must not depend on the private subagent runtime",
 		]);
 	});
+
+	it("keeps Team conversations on the shared conversation domain and recipe", () => {
+		expect(
+			findConversationMessageArchitectureViolations([
+				{
+					path: "apps/desktop/src/renderer/domains/chat/components/InputBar.tsx",
+					text: "export function InputBar() {}",
+				},
+				{
+					path: "apps/desktop/src/renderer/domains/conversation/connectors/team/TeamChatView.tsx",
+					text: "return <ConversationEditorView />;",
+				},
+				{
+					path: "apps/desktop/src/renderer/example.tsx",
+					text: "const feed = <TeamConversationFeed />;",
+				},
+			]),
+		).toEqual([
+			"apps/desktop/src/renderer/domains/chat/components/InputBar.tsx: retired chat domain must remain migrated to domains/conversation",
+			"apps/desktop/src/renderer/domains/conversation/connectors/team/TeamChatView.tsx: Team connector must compose the shared conversation recipe",
+			"apps/desktop/src/renderer/example.tsx:1: retired message identifier TeamConversationFeed",
+		]);
+	});
 });

@@ -15,7 +15,7 @@ import type { WorkflowSwitcherItem } from "@vetta/theme-ui/activity";
 import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { fullHistoryToChat } from "../../chat/services/chat-service";
+import { fullHistoryToChat } from "../../conversation/services/chat-service";
 
 export interface WorkflowTabPanelModel {
 	items: WorkflowSwitcherItem[];

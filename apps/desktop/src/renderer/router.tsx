@@ -2,7 +2,7 @@ import { createRootRoute, createRoute, createRouter, createHashHistory, redirect
 import { lazy } from "react";
 import { RouteContentLoadingView } from "@vetta/theme-ui/app";
 import { RootLayout } from "./App";
-import { loadNewSessionPage } from "./domains/chat/components/loadNewSessionPage";
+import { loadNewSessionPage } from "./domains/conversation/components/loadNewSessionPage";
 import { RouteErrorPage } from "./shared/components/RouteErrorPage";
 import {
 	PLUGIN_HOSTED_ROUTE_PATH,
@@ -10,11 +10,11 @@ import {
 } from "./shared/hosted-routes/hosted-route-descriptors";
 
 const ChatPage = lazy(async () => ({
-	default: (await import("./domains/chat/components/ChatPage")).ChatPage,
+	default: (await import("./domains/conversation/components/ChatPage")).ChatPage,
 }));
 const NewSessionPage = lazy(loadNewSessionPage);
 const SessionViewerPage = lazy(async () => ({
-	default: (await import("./domains/chat/components/SessionViewerPage")).SessionViewerPage,
+	default: (await import("./domains/conversation/components/SessionViewerPage")).SessionViewerPage,
 }));
 const AutomationPage = lazy(async () => ({
 	default: (await import("./domains/scheduler/components/AutomationPage")).AutomationPage,
@@ -32,7 +32,7 @@ const TeamListPage = lazy(async () => ({
 	default: (await import("./domains/agent-teams/components/TeamListPage")).TeamListPage,
 }));
 const TeamChatPage = lazy(async () => ({
-	default: (await import("./domains/agent-teams/components/TeamChatPage")).TeamChatPage,
+	default: (await import("./domains/conversation/connectors/team/TeamChatPage")).TeamChatPage,
 }));
 const TeamSettingsPage = lazy(async () => ({
 	default: (await import("./domains/agent-teams/components/TeamSettingsPage")).TeamSettingsPage,

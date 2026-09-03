@@ -3,7 +3,7 @@
 ### Added
 
 - Agent Team 现在支持一个团队下创建、深链和切换多个独立会话，并在侧栏显示子会话；团队拥有稳定共享工作空间，输入区可按会话选择模型与推理档位，File/Browser 活动页签按工作空间共享。底层仍使用普通 Conversation，但新增归属目录会从普通列表、Quick Panel 与搜索中排除协调及成员执行会话。见 ADR-0105。
-- Chat 与 Agent Team 现在通过同一个严格 User/Agent 消息 ViewModel 和流式 reducer 展示普通 Conversation 消息；Team Snapshot 不再包装第二种消息结构，多成员流按消息与作者身份独立归约，私有 thinking/tool 过程仍不会进入公共会话。
+- Chat 与 Agent Team 现在通过同一个严格 User/Agent 消息 ViewModel、流式 reducer 和工具调用卡片展示普通 Conversation 消息；Team 会在本机用户可见的 transcript 中保留成员工具调用，重新打开后仍可见，同时 Context Policy 继续阻止 thinking、工具输入输出和 subagent transcript 进入其他成员的模型上下文。
 - Agent Team 的结果发布事务新增 `prepared/message-published/completed/needs-recovery` 生命周期 observation；崩溃恢复阶段会标记 `recovered`，仅携带稳定关联 ID，不复制成员私有执行正文。Team 共享操作契约与成员身份也分别进入 Coding Agent 的稳定/易变系统提示词段。
 - Agent Team 将成员 attempt 的自动重试和外部条件恢复统一到持久工作项结算链路：网络/限流按截止时间重试，欠费/认证保持 `attention-required`，只有宿主确认对应条件变化后才按 Provider/Model 精确唤醒；认证配置成功更新会发出该信号，额度系统也可复用同一无敏感数据的宿主通道。恢复过程继续使用原成员普通 Conversation，并发布带触发来源的类型化 observation，不新增 UI 或具体 Observer。
 - Agent Team 复用成员 Runtime 已有的完整工具执行观察流，并额外发布不含参数值和结果正文的 Team 关联事件，将 Runtime Session/Turn/Tool Call 与成员、工作项、attempt 及可选 delivery 连接起来；由协作工具创建的工作项会持久保存来源 Tool Call ID，当前仍不新增 UI 或具体 Observer。
@@ -43,7 +43,7 @@
   同时提供工作区配置页：查看运行时与服务状态、重启服务、在浏览器中打开完整控制台，并可选择「始终显示模拟器
   标签」（工程不在仓库顶层时用）与「打开面板时自动启动服务」。
 - 新增 Agent Team 工作区：可配置预设智能体的名称、职责和能力，团队支持引用或复制成员、选择 Leader，并以群聊
-- 新增 Agent Team：团队作为“对话”下拉框中的会话来源出现，首次启动内置默认团队与 Leader/研究/执行/审查预设，无需先创建即可对话；智能体能力默认全部启用，并提供图标、搜索、分组虚拟列表和独立开关。团队支持引用或复制成员、选择 Leader、自定义智能体安全删除，并以复用普通对话组件的群聊形式运行；成员间仅共享用户消息与最终文本结果，团队会话按请求幂等处理，配置变化从下一回合重建成员 Runtime 后生效。见 ADR-0099。
+- 新增 Agent Team：团队作为“对话”下拉框中的会话来源出现，首次启动内置默认团队与 Leader/研究/执行/审查预设，无需先创建即可对话；智能体能力默认全部启用，并提供图标、搜索、分组虚拟列表和独立开关。团队支持引用或复制成员、选择 Leader、自定义智能体安全删除，并以复用普通对话组件的群聊形式运行；成员间仅共享用户消息与最终文本结果，面向用户的 transcript 可展示关联工具调用，团队会话按请求幂等处理，配置变化从下一回合重建成员 Runtime 后生效。见 ADR-0099、ADR-0103。
 
 - 插件可声明宿主管理的 CLI Provider：启用后按真实阶段检查、安装并验证 executable，Provider 就绪前不发布该插件的
   Agent 贡献；新增能力详情设置 Slot、安装状态订阅、重试、上游配置进程与二维码生成 API。Agent 仍通过既有 Shell
@@ -96,6 +96,7 @@
 - Agent Team 消息列表现在复用普通对话的可组合虚拟 Feed、流式跟随、长对话导航与显式布局骨架；用户消息保留并展示附件，用户与成员消息均可复制。Chat 与 Team 各自保留领域消息合同，通过独立的行为、位置和视觉 Primitive 组合列表，同一位置可替换不同能力，不再维护一套功能残缺的 Team 专用列表机制。见 ADR-0101。
 - 重构 Agent Team 管理流程：团队配置显示成员头像并支持直接增删成员、更换负责人和删除团队；删除被团队引用的智能体时会在一次确认中列出影响并原子更新相关团队，无需逐个团队清理。团队对话不再展示或自动写入 `@handle`，输入框补回普通对话的附件、发送历史、多行输入和草稿恢复能力，已存在的团队会话会在成员变化后同步 Runtime roster。
 - Agent Team 对话改用普通对话相同的 Lexical 输入框、工具栏布局与虚拟时间线 UI 基础设施，成员以头像展示，团队草稿不再污染普通会话；流式回复按 turn/seq 增量显示，并可在订阅重连后通过 snapshot 恢复，已有 partial text 不再被等待骨架遮住；同时修复虚拟列表包装层用 `undefined` 覆盖默认 key 与 viewport 配置，进入页面触发 `C is not a function` 或消息结果已完成但列表空白的运行时错误。
+- Agent Team 与普通对话现在直接复用同一个 `DefaultChatView`、`MessageList` 和 `InputBar` 产品组件；Team 只在 Conversation Connector 中提供成员路由、作者和会话数据。团队页头移除重复的会话下拉框并复用图标操作，侧栏会话行统一只显示一个按状态决策的图标。
 - 修复 Windows 打开内置 Agent Team 时因成员 ID 中包含 `:`，成员会话目录创建失败并返回 `ENOENT` 的问题；成员 ID 现在编码为跨平台安全的目录名。
 - 修复会话搜索框同时显示浏览器原生叉号和项目清除按钮的问题；仅隐藏该搜索框的原生清除控件，保留统一按钮、搜索语义与清空后的焦点恢复。
 - 会话搜索输入框复用项目基础 `Input`，统一边框、背景和焦点反馈；清空、输入限制及焦点恢复行为保持不变。

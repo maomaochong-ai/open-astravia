@@ -1,5 +1,5 @@
 import { QueueCardView } from "@vetta/theme-ui/chat";
-import { useQueueCardModel } from "@domains/chat/hooks/useQueueCardModel";
+import { useQueueCardModel } from "@domains/conversation/hooks/useQueueCardModel";
 
 interface QueueCardProps {
 	runtimeId: string;

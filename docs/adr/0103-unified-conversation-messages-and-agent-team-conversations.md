@@ -36,8 +36,10 @@ ADR-0099 将 Team Session 与普通会话存储隔离，ADR-0101 要求 Chat 与
    公共用户/Agent 内容使用标准 message entry，Team 编排事实使用标准 custom/context entry；Runtime Core
    不解释 Team custom type。
 5. 成员只能直接读取自己的执行 Conversation。系统在 Turn admission 固定一个不可变的共享 generation，将协调
-   Conversation 中所有允许共享的用户消息、Agent 公开发言和必要编排状态投影给目标成员。投影不包含其他成员的
-   thinking、工具输入输出、未发布草稿或 subagent transcript。
+   Conversation 中所有允许共享的用户消息、Agent 公开发言和必要编排状态投影给目标成员。面向本机用户的 Team
+   transcript 可以保留 Agent 公开发言关联的 `toolCall` block，以复用普通 Conversation 的工具卡片；Context Policy
+   在模型可见投影时仍只提取公开文本与允许的产物引用，不向其他成员提供 thinking、工具输入输出、未发布草稿或
+   subagent transcript。Renderer Snapshot 同样不得包含 thinking。
 6. 公共历史只由 Coordinator 压缩一次并生成不可变 checkpoint；成员私有 compaction 只压缩自身执行历史并引用
    checkpoint。模型调用上下文按“公共稳定前缀、成员私有历史、当前工作”组装。同一 Team generation 的公共
    system/message prefix 必须确定性一致；成员身份、成员特有工具和当前任务位于缓存边界之后。
@@ -62,13 +64,15 @@ ADR-0099 将 Team Session 与普通会话存储隔离，ADR-0101 要求 Chat 与
 - 旧 `TeamFeedEvent.user-message/member-result` 确定性导入协调 Conversation 的普通 User/Agent message；
   delegation 导入 Team custom entry，并保留稳定请求、来源 Turn 和作者身份。
 - 旧成员 Session 注册或导入普通 Conversation catalog，私有 transcript 不合并到协调 Conversation。
+- 已发布结果若来自旧版本、协调消息尚未保留 `toolCall`，Snapshot 可通过既有 publication source entry
+  从成员 Conversation 只读恢复工具调用；不回写旧文件，thinking 与 tool result 仍不进入协调消息。
 - 临时目标 Conversations 全部通过数量、顺序、作者、关联与 fingerprint 校验后才切换 binding。旧目录在兼容窗口
   只读保留，新生产路径不再写入。
 - Renderer 兼容读取旧事件只存在于迁移边界；新生产代码不得继续构造 Team 专属消息类型。
 
 ## 后果
 
-- 普通 Chat 与 Team 可以复用相同消息合同、Recipe 和 Message Feed 基础设施，同时保持各自命令与权限所有权。
+- 普通 Chat 与 Team 可以复用相同消息合同、Recipe、工具调用卡片和 Message Feed 基础设施，同时保持各自命令与权限所有权。
 - 底层 Conversation 存储不增加 Team 分支；Team 协作通过公开扩展 entry 演进。
 - 多成员执行隔离、公共信息共享、压缩与缓存拥有明确且可测试的边界。
 - 工作项可以准确表达等待外部资源、继续、重试和恢复，不会把所有 Provider/网络问题误判成 Agent 失败。

@@ -1,10 +1,10 @@
-import { TEAM_SESSIONS_CHANGED_EVENT } from "../../../../../agent-teams/services/team-session-events";
+import { teamDisplayName } from "@shared/agent-teams/preset-presentation";
+import { TEAM_SESSIONS_CHANGED_EVENT } from "@shared/agent-teams/team-session-events";
 import type { AgentTeamDocument, TeamSessionListItem } from "@vetta/agent-team";
 import { useMatches, useNavigate } from "@tanstack/react-router";
 import { DefaultSessionRowView } from "@vetta/theme-ui/project";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { teamDisplayName } from "../../../../../agent-teams/lib/preset-presentation";
 
 const CONFIGURATION_CHANGED_EVENT = "vetta:agent-team-configuration-changed";
 
@@ -99,7 +99,6 @@ export function AgentTeamSidebarList(): JSX.Element {
 										key={session.id}
 										active={session.id === activeSessionId}
 										contextMenuEnabled={false}
-										iconClassName="icon-[solar--chat-round-line-linear]"
 										label={t("chat.sessionLabel", { index: sessions.length - index })}
 										renaming={false}
 										running={false}

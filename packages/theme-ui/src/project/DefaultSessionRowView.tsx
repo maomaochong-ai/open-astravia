@@ -47,6 +47,15 @@ export const DefaultSessionRowView = memo(function DefaultSessionRowView({
 	timeLabel,
 }: DefaultSessionRowViewProps): JSX.Element {
 	const title = renaming ? undefined : titleExtra ? `${label}\n${titleExtra}` : label;
+	const leadingIconClassName = running
+		? "project-running-icon icon-[solar--refresh-linear] animate-spin"
+		: scheduled
+			? "icon-[solar--clock-circle-linear] text-primary/80"
+			: forked
+				? "icon-[mdi--source-fork]"
+				: pinned
+					? "icon-[solar--pin-linear] text-primary/80"
+					: iconClassName ?? "icon-[solar--chat-round-line-linear]";
 	return (
 		<button
 			type="button"
@@ -76,41 +85,15 @@ export const DefaultSessionRowView = memo(function DefaultSessionRowView({
 				/>
 			) : (
 				<>
-					{iconClassName ? (
-						<span
-							className={cn(
-								iconClassName,
-								"h-3.5 w-3.5 shrink-0",
-								active ? "text-foreground/70" : "text-muted-foreground/50",
-							)}
-						/>
-					) : pinned ? (
-						<span className="icon-[solar--pin-linear] h-3.5 w-3.5 shrink-0 text-primary/80" />
-					) : null}
-					{running ? (
-						<span
-							className={cn(
-								"project-running-icon icon-[solar--refresh-linear] h-3.5 w-3.5 shrink-0 animate-spin",
-								active ? "text-primary" : "text-muted-foreground",
-							)}
-						/>
-					) : scheduled ? (
-						<span className="icon-[solar--clock-circle-linear] h-3.5 w-3.5 shrink-0 text-primary/80" />
-					) : forked ? (
-						<span
-							className={cn(
-								"icon-[mdi--source-fork] h-3.5 w-3.5 shrink-0",
-								active ? "text-primary/80" : "text-muted-foreground/60",
-							)}
-						/>
-					) : (
-						<span
-							className={cn(
-								"icon-[solar--chat-round-line-linear] h-3.5 w-3.5 shrink-0",
-								active ? "text-foreground/70" : "text-muted-foreground/50",
-							)}
-						/>
-					)}
+					<span
+						data-session-leading-icon="true"
+						aria-hidden="true"
+						className={cn(
+							leadingIconClassName,
+							"h-3.5 w-3.5 shrink-0",
+							active ? "text-foreground/70" : "text-muted-foreground/50",
+						)}
+					/>
 					<span
 						className={cn(
 							"min-w-0 flex-1 truncate text-[13px]",

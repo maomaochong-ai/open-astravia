@@ -9,7 +9,7 @@ import {
 	agentDisplayDescription,
 	agentDisplayName,
 	teamDisplayName,
-} from "../lib/preset-presentation";
+} from "@shared/agent-teams/preset-presentation";
 import { AgentProfileEditor } from "./AgentProfileEditor";
 
 export function AgentLibraryPage(): JSX.Element {

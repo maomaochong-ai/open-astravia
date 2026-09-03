@@ -1,7 +1,7 @@
 import { createAssistantMessage } from "@vetta/ai";
 import type { HistoryEntry } from "@vetta/runtime-core";
 import { describe, expect, it } from "vitest";
-import { findTeamAttemptResult } from "./team-member-result.js";
+import { findTeamAttemptResult, restoreTeamPublicToolCalls } from "./team-member-result.js";
 
 const assistant = createAssistantMessage(
 	{ api: "openai-responses", provider: "openai", model: "model" },
@@ -45,5 +45,41 @@ describe("Team attempt result identity", () => {
 				new Set(),
 			),
 		).toEqual({ entryId: "terminal", message: error });
+	});
+
+	it("restores tool calls for a legacy public result without exposing thinking or tool results", () => {
+		const publicMessage = { ...assistant, content: [{ type: "text" as const, text: "Done" }] };
+		const history: HistoryEntry[] = [
+			{ type: "message", entryId: "prompt", message: { role: "user", content: "Read", timestamp: 1 } },
+			{
+				type: "message",
+				entryId: "tool-call",
+				message: {
+					...assistant,
+					content: [
+						{ type: "thinking", thinking: "private" },
+						{ type: "toolCall", id: "read-call", name: "read", arguments: { path: "brief.md" } },
+					],
+				},
+			},
+			{
+				type: "message",
+				entryId: "tool-result",
+				message: {
+					role: "toolResult",
+					toolCallId: "read-call",
+					toolName: "read",
+					content: [{ type: "text", text: "private result" }],
+					isError: false,
+					timestamp: 2,
+				},
+			},
+			{ type: "message", entryId: "final", message: publicMessage },
+		];
+
+		expect(restoreTeamPublicToolCalls(publicMessage, history, "final").content).toEqual([
+			{ type: "toolCall", id: "read-call", name: "read", arguments: { path: "brief.md" } },
+			{ type: "text", text: "Done" },
+		]);
 	});
 });

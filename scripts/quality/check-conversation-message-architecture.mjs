@@ -21,6 +21,10 @@ const RETIRED_IDENTIFIERS = Object.freeze([
 	"createLegacyTeamDelegationPort",
 	"createTeamDelegateTool",
 	"ConversationMessageActionModel",
+	"TeamConversationFeed",
+	"TeamInputBar",
+	"TeamMessageList",
+	"TeamRecipientSelector",
 	"renderActions",
 	"actionSlot",
 ]);
@@ -28,6 +32,15 @@ const RETIRED_IDENTIFIERS = Object.freeze([
 export function findConversationMessageArchitectureViolations(files) {
 	const violations = [];
 	for (const file of files) {
+		if (file.path.startsWith("apps/desktop/src/renderer/domains/chat/")) {
+			violations.push(`${file.path}: retired chat domain must remain migrated to domains/conversation`);
+		}
+		if (
+			file.path.startsWith("apps/desktop/src/renderer/domains/conversation/connectors/team/") &&
+			/(?:MessageInput|MessageFeed\.VirtualList|ConversationEditorView)/u.test(file.text)
+		) {
+			violations.push(`${file.path}: Team connector must compose the shared conversation recipe`);
+		}
 		if (
 			file.path.includes("/shared/components/message-feed/") &&
 			/(?:domains\/(?:chat|agent-teams)|@shared\/store|@preload\/api|shared\/conversation)/u.test(file.text)

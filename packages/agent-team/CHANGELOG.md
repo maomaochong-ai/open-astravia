@@ -24,5 +24,5 @@
 - Public-context policies receive ordinary coordination messages and retain selection authority; projected records preserve authors and artifact references, deduplicate legacy events, and exclude private execution content.
 - Team user and member output now use attributed ordinary Conversation messages; member runtimes use the normal Conversation path allocator and receive structured public-context imports instead of prompt-text concatenation.
 - Team contracts now support atomic roster updates, reviewed cascade deletion, and session roster revisions while preserving historical member identities.
-- Team session streaming now exposes ordinary attributed Agent message events and reconnect snapshots while keeping private reasoning and tool data outside the renderer contract.
+- Team session streaming now exposes attributed text and tool-call events plus reconnect snapshots to the local user interface. Public-context projection still excludes reasoning and tool input/output from other members' model context.
 - Team messages carry filesystem attachments as validated `PromptAttachmentRef` values instead of encoding paths into prompt text; existing session events remain compatible because attachments are optional.

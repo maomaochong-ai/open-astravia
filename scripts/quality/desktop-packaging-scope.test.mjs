@@ -15,7 +15,7 @@ describe("Desktop packaging risk classification", () => {
 	});
 
 	it("does not require packaged smoke for unrelated renderer work", () => {
-		const result = classifyDesktopPackagingRisk(["apps/desktop/src/renderer/domains/chat/ChatPage.tsx"]);
+		const result = classifyDesktopPackagingRisk(["apps/desktop/src/renderer/domains/conversation/ChatPage.tsx"]);
 		expect(result).toEqual({ packagedSmokeRequired: false, reasons: [] });
 	});
 

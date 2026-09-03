@@ -139,10 +139,10 @@ location.reload();
 
 核心实现位于：
 
-- `apps/desktop/src/renderer/domains/chat/services/staged-new-session-send.ts`：冻结、提交和恢复 staged send。
-- `apps/desktop/src/renderer/domains/chat/components/new-session/useNewSessionSend.ts`：提交入口和失败恢复。
-- `apps/desktop/src/renderer/domains/chat/hooks/useSessionOpener.ts`：先导航、等待 paint，再创建和订阅。
-- `apps/desktop/src/renderer/domains/chat/hooks/useSessionMessageSender.ts`：发送已暂存的快照，并避免第二个乐观气泡。
+- `apps/desktop/src/renderer/domains/conversation/services/staged-new-session-send.ts`：冻结、提交和恢复 staged send。
+- `apps/desktop/src/renderer/domains/conversation/components/new-session/useNewSessionSend.ts`：提交入口和失败恢复。
+- `apps/desktop/src/renderer/domains/conversation/hooks/useSessionOpener.ts`：先导航、等待 paint，再创建和订阅。
+- `apps/desktop/src/renderer/domains/conversation/hooks/useSessionMessageSender.ts`：发送已暂存的快照，并避免第二个乐观气泡。
 - `apps/desktop/src/renderer/shared/store/chat-atoms.ts`：保存独立的 pending session 状态。
 - `apps/desktop/src/renderer/root-layout/useRootLayoutModel.ts`：在 pending 期间避免恢复旧会话覆盖新路由。
 
@@ -197,12 +197,12 @@ prompt-dispatched       954.7 ms
 
 ```powershell
 bun scripts/quality/run-vitest.mjs --run `
-  apps/desktop/src/renderer/domains/chat/hooks/useSessionManager.session-switch.test.ts `
-  apps/desktop/src/renderer/domains/chat/hooks/useSessionManager.queue.test.ts `
-  apps/desktop/src/renderer/domains/chat/hooks/useSessionManager.stale-instance-send.test.ts `
-  apps/desktop/src/renderer/domains/chat/components/new-session/useNewSessionSend.test.tsx `
-  apps/desktop/src/renderer/domains/chat/services/staged-new-session-send.test.ts `
-  apps/desktop/src/renderer/domains/chat/hooks/useChatViewModel.header.test.tsx
+  apps/desktop/src/renderer/domains/conversation/hooks/useSessionManager.session-switch.test.ts `
+  apps/desktop/src/renderer/domains/conversation/hooks/useSessionManager.queue.test.ts `
+  apps/desktop/src/renderer/domains/conversation/hooks/useSessionManager.stale-instance-send.test.ts `
+  apps/desktop/src/renderer/domains/conversation/components/new-session/useNewSessionSend.test.tsx `
+  apps/desktop/src/renderer/domains/conversation/services/staged-new-session-send.test.ts `
+  apps/desktop/src/renderer/domains/conversation/hooks/useChatViewModel.header.test.tsx
 ```
 
 覆盖的关键风险包括：

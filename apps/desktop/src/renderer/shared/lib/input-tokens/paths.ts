@@ -1,5 +1,5 @@
 /**
- * 附件路径判定。原本住在 domains/chat/services/chat-service.ts，
+ * 附件路径判定。原本住在 domains/conversation/services/chat-service.ts，
  * 因 input-tokens 需要而下沉到 shared（shared 不允许反向依赖 domains）；
  * chat-service 仍以原名重新导出，调用方无需改动。
  */
