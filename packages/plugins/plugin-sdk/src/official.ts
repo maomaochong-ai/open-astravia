@@ -529,6 +529,7 @@ export interface PluginOfficialApi {
 		assertModelKeyExists(modelKey: string, operation?: string): Promise<void>;
 		setDefault(modelKey: string): Promise<{ defaultModel: string }>;
 		upsertProvider(provider: string, data: PluginOfficialProviderUpsertData): Promise<PluginOfficialProviderDetail>;
+		/** Removes the provider when present. Repeated removal is an idempotent no-op. */
 		removeProvider(provider: string): Promise<void>;
 	};
 	projects: {

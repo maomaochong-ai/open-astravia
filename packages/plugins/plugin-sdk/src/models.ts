@@ -20,5 +20,6 @@ export interface PluginModelProviderConfig {
 /** Manages only provider ids derived from the calling plugin and a plugin-local id. */
 export interface PluginModelsApi {
 	upsertProvider(providerId: string, data: PluginModelProviderConfig): Promise<void>;
+	/** Removes the plugin-owned provider when present. Repeated removal is an idempotent no-op. */
 	removeProvider(providerId: string): Promise<void>;
 }

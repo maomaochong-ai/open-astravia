@@ -210,4 +210,23 @@ describe("ModelSettingsService", () => {
 		expect(config).toEqual({ providers: {} });
 		expect(credentials.values.has("openai-credential")).toBe(false);
 	});
+
+	it("treats removing an absent provider as an idempotent no-op", async () => {
+		const config: ModelsConfig = { providers: {} };
+		const writeConfig = vi.fn<(next: ModelsConfig) => Promise<void>>(async () => {});
+		const refreshRegistry = vi.fn<() => Promise<void>>(async () => {});
+		const credentials = createCredentialStore();
+		const service = new ModelSettingsService({
+			readConfig: async () => config,
+			writeConfig,
+			refreshRegistry,
+			credentials,
+		});
+
+		await expect(service.removeProvider("cli-proxy-api.google")).resolves.toBeUndefined();
+
+		expect(writeConfig).not.toHaveBeenCalled();
+		expect(refreshRegistry).not.toHaveBeenCalled();
+		expect(credentials.values).toEqual(new Map());
+	});
 });

@@ -11,6 +11,11 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
   获授权插件只能维护以自身 plugin id 命名的模型 Provider。宿主不包含任何上游服务专用路由或 Provider 语义
   （ADR-0104）。
 
+### Fixed
+
+- `ctx.models.removeProvider()` 改为幂等删除；插件进行启动恢复或重复目录对账时，删除尚未注册的自有 Provider 会
+  直接成功，已存在 Provider 的默认模型与凭据清理行为保持不变。
+
 ## [0.2.0] — 2026-09-01
 
 ### Breaking Changes

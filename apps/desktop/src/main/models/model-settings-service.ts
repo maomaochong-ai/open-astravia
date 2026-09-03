@@ -324,7 +324,7 @@ export class ModelSettingsService {
 		await this.runMutation(async () => {
 			await this.ensureLegacyCredentialsMigrated();
 			const config = await this.options.readConfig();
-			if (!config.providers[providerId]) throw new Error(`Provider not found: ${providerId}`);
+			if (!config.providers[providerId]) return;
 			const providers = { ...config.providers };
 			delete providers[providerId];
 			const next = { ...config, providers };
