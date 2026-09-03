@@ -11,6 +11,7 @@ export const PLUGIN_CAPABILITY_PERMISSIONS = {
 	STORAGE_READ: "storage.read",
 	STORAGE_WRITE: "storage.write",
 	MEDIA_GENERATE: "media.generate",
+	MODELS_MANAGE: "models.manage",
 	BROWSER_READ: "browser.read",
 	BROWSER_OPEN: "browser.open",
 	BROWSER_INTERACT: "browser.interact",

@@ -2,6 +2,10 @@
 
 ### Added
 
+- 插件可自行下载固定摘要本地服务运行时，并交给 Desktop 的通用服务 API 安全部署、管理生命周期和访问自身回环 HTTP
+  接口；获 `models.manage` 授权的插件可注册或撤销自身命名空间下的动态模型 Provider。具体服务的 OAuth、路由与
+  模型映射仍完全由插件实现，不进入客户端（ADR-0104）。
+
 - Agent Team 新建普通协调 Conversation 与每成员独立普通 Conversation；成员自动获得 roster、职责与带作者/附件引用的公共历史，持久工作项/attempt 提供等待状态和继续、重试、恢复服务入口。结果按持久 entry id 识别，不因成员历史压缩而漏判；旧事件与 Renderer 兼容路径暂时保留，异步多成员调度及共享 checkpoint 尚在迁移中。
 - Desktop 会话流改为直接校验和投影 Runtime 的原始 Assistant 事件；文本、思考与工具生成按 wire 顺序批处理，
   重连使用宿主 sequence 去重，不再因分类缓冲而重排内容。

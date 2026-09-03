@@ -95,6 +95,10 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.IM_AGENT_MODEL_SET, sessionId, modelKey, reasoningLevel),
 				},
 				models: {
+					upsertOwnedProvider: (sessionId, providerId, data) =>
+						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MODEL_OWNED_PROVIDER_UPSERT, sessionId, providerId, data),
+					removeOwnedProvider: (sessionId, providerId) =>
+						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MODEL_OWNED_PROVIDER_REMOVE, sessionId, providerId),
 					list: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MODEL_LIST, sessionId),
 					getConfig: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MODEL_CONFIG_GET, sessionId),
 					getProvider: (sessionId, provider) =>
@@ -340,6 +344,22 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 				onIpcEvent(ipc, PLUGIN_EXECUTION_CHANNELS.CLI_PROVIDER_STATUS, handler),
 			onCliProviderSpawnExit: (handler) =>
 				onIpcEvent(ipc, PLUGIN_EXECUTION_CHANNELS.CLI_PROVIDER_SPAWN_EXIT, handler),
+			getServiceStatus: (sessionId, serviceId) =>
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.SERVICE_STATUS_GET, sessionId, serviceId),
+			getServicePlatform: (sessionId) => ipc.invoke(PLUGIN_EXECUTION_CHANNELS.SERVICE_PLATFORM_GET, sessionId),
+			installService: (sessionId, serviceId, artifacts) =>
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.SERVICE_INSTALL, sessionId, serviceId, artifacts),
+			startService: (sessionId, serviceId) =>
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.SERVICE_START, sessionId, serviceId),
+			stopService: (sessionId, serviceId) =>
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.SERVICE_STOP, sessionId, serviceId),
+			restartService: (sessionId, serviceId) =>
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.SERVICE_RESTART, sessionId, serviceId),
+			getServiceConnection: (sessionId, serviceId, credentialId) =>
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.SERVICE_CONNECTION, sessionId, serviceId, credentialId),
+			requestService: (sessionId, serviceId, request) =>
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.SERVICE_REQUEST, sessionId, serviceId, request),
+			onServiceStatusChanged: (handler) => onIpcEvent(ipc, PLUGIN_EXECUTION_CHANNELS.SERVICE_STATUS, handler),
 			runCommand: (sessionId, file, args, options) =>
 				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.COMMAND_RUN, sessionId, file, args, options),
 			spawnCommand: (sessionId, file, args, options) =>

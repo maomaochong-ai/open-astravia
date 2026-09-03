@@ -58,6 +58,7 @@ function createHarness(plugin = installedPlugin()) {
 		stopSpawns: vi.fn(() => events.push("stop-spawns")),
 		ensureCliProviders: vi.fn(() => events.push("ensure-cli-providers")),
 		stopCliProviders: vi.fn(() => events.push("stop-cli-providers")),
+		stopServices: vi.fn(() => events.push("stop-services")),
 		destroyOffscreenSessions: vi.fn(() => events.push("destroy-offscreen")),
 		hardRevokeAgentHandlers: vi.fn((_id: string, reason: string) => events.push(`hard-revoke:${reason}`)),
 		refreshRuntime: vi.fn(() => events.push("refresh-runtime")),
@@ -71,7 +72,7 @@ describe("PluginLifecycleService", () => {
 		const harness = createHarness();
 
 		await harness.service.installArchive(new ArrayBuffer(0));
-		expect(harness.events).toEqual(["record-event", "refresh-runtime"]);
+		expect(harness.events).toEqual(["record-event", "ensure-cli-providers", "refresh-runtime"]);
 	});
 
 	it("owns the complete disable lifecycle", () => {
@@ -82,6 +83,7 @@ describe("PluginLifecycleService", () => {
 			"stop-watch",
 			"stop-spawns",
 			"stop-cli-providers",
+			"stop-services",
 			"destroy-offscreen",
 			"set-enabled:false",
 			"clear-actions",
@@ -99,6 +101,7 @@ describe("PluginLifecycleService", () => {
 			"stop-watch",
 			"stop-spawns",
 			"stop-cli-providers",
+			"stop-services",
 			"destroy-offscreen",
 			"uninstall",
 			"clear-actions",

@@ -34,6 +34,8 @@ export const PLUGIN_CAPABILITY_CHANNELS = {
 	MODEL_DEFAULT_SET: "vetta:plugins:capabilities:model:default:set",
 	MODEL_PROVIDER_UPSERT: "vetta:plugins:capabilities:model:provider:upsert",
 	MODEL_PROVIDER_REMOVE: "vetta:plugins:capabilities:model:provider:remove",
+	MODEL_OWNED_PROVIDER_UPSERT: "vetta:plugins:capabilities:model:owned-provider:upsert",
+	MODEL_OWNED_PROVIDER_REMOVE: "vetta:plugins:capabilities:model:owned-provider:remove",
 	MEDIA_PROVIDER_LIST: "vetta:plugins:capabilities:media:provider:list",
 	MEDIA_SUBMIT: "vetta:plugins:capabilities:media:submit",
 	JOB_GET: "vetta:plugins:capabilities:job:get",

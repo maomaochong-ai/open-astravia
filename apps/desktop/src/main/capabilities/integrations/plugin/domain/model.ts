@@ -9,7 +9,41 @@ import {
 } from "@vetta/capability-sdk";
 import type { PluginCapabilitySessionAccess } from "../types.js";
 
+const OWNED_PROVIDER_ID_PATTERN = /^[a-z0-9][a-z0-9_-]{0,31}$/;
+
+function ownedProviderId(pluginId: string, localProviderId: string): string {
+	if (!OWNED_PROVIDER_ID_PATTERN.test(localProviderId)) {
+		throw new Error("Plugin-owned model provider id must be 1-32 lowercase slug characters");
+	}
+	return `${pluginId}.${localProviderId}`;
+}
+
 export const pluginModelMethods = {
+	upsertOwnedModelProvider(
+		this: PluginCapabilitySessionAccess,
+		sessionId: string,
+		providerId: string,
+		data: unknown,
+	): Promise<ModelProviderConfigSnapshot> {
+		const session = this.session(sessionId, { permission: "models.manage" });
+		const input = DOMAIN_MODEL_CAPABILITIES.UPSERT_PROVIDER.parseInput({
+			provider: ownedProviderId(session.pluginId, providerId),
+			data,
+		});
+		return session.access.client.invoke(DOMAIN_MODEL_CAPABILITIES.UPSERT_PROVIDER, input);
+	},
+
+	removeOwnedModelProvider(
+		this: PluginCapabilitySessionAccess,
+		sessionId: string,
+		providerId: string,
+	): Promise<undefined> {
+		const session = this.session(sessionId, { permission: "models.manage" });
+		return session.access.client.invoke(DOMAIN_MODEL_CAPABILITIES.REMOVE_PROVIDER, {
+			provider: ownedProviderId(session.pluginId, providerId),
+		});
+	},
+
 	listModels(this: PluginCapabilitySessionAccess, sessionId: string): Promise<ModelListResult> {
 		return this.client(sessionId, { official: true }).invoke(DOMAIN_MODEL_CAPABILITIES.LIST, {});
 	},

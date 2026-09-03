@@ -42,6 +42,7 @@ export const PLUGIN_PERMISSIONS = [
 	"app.actionHandler.execute",
 	"ai.models.list",
 	"ai.complete",
+	"models.manage",
 	"fs.read",
 	"fs.write",
 	"network.fetch",

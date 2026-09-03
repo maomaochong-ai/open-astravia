@@ -20,6 +20,7 @@ import { pluginCliProviderService } from "./plugin-cli-provider-service.js";
 import { stopPluginDevWatch } from "./plugin-dev-watch.js";
 import { type PluginLifecycleDependencies, PluginLifecycleService } from "./plugin-lifecycle-service.js";
 import { refreshAgentPlugins } from "./plugin-runtime-service.js";
+import { pluginServiceProviderService } from "./plugin-service-provider-service.js";
 
 const dependencies: PluginLifecycleDependencies = {
 	listPlugins,
@@ -37,6 +38,7 @@ const dependencies: PluginLifecycleDependencies = {
 	stopSpawns: stopAllSpawnsForPlugin,
 	ensureCliProviders: (id) => pluginCliProviderService.ensurePlugin(id),
 	stopCliProviders: (id) => pluginCliProviderService.disablePlugin(id),
+	stopServices: (id) => pluginServiceProviderService.disablePlugin(id),
 	destroyOffscreenSessions: destroyOffscreenSessionsForPlugin,
 	hardRevokeAgentHandlers: (id, reason, kinds) => {
 		pluginAgentContributionService.hardRevokeHandlers(id, reason, kinds);

@@ -177,6 +177,7 @@ export class PluginDevLinkService {
 			moduleFederation: manifest.moduleFederation,
 			agent: manifest.agent,
 			cliProviders: manifest.providers?.cli ?? [],
+			serviceProviders: manifest.providers?.services ?? [],
 			styleUrls: link.entryUrl
 				? []
 				: (manifest.styles ?? []).map((style) => toDevPluginUrl(plugin.id, style, link.reloadToken)),
@@ -233,6 +234,7 @@ export class PluginDevLinkService {
 			moduleFederation: manifest.moduleFederation,
 			agent: manifest.agent,
 			cliProviders: manifest.providers?.cli ?? [],
+			serviceProviders: manifest.providers?.services ?? [],
 			styleUrls: (manifest.styles ?? []).map((style) => toDevPluginUrl(manifest.id, style, now)),
 			permissions,
 			grantedPermissions: permissions,

@@ -21,8 +21,10 @@ import {
 	createStorageApi,
 } from "./plugin-host-apis";
 import type { PluginLocalContributions } from "./plugin-local-contributions";
+import { createPluginModelsApi } from "./plugin-models-api";
 import { createPluginOfficialApi } from "./plugin-official-api";
 import { createPluginPermissionApi as createPermissionApi } from "./plugin-permissions";
+import { createPluginServiceApi } from "./plugin-service-api";
 import { createPluginUiApi } from "./plugin-ui-context";
 
 export interface CreatePluginContextOptions {
@@ -88,6 +90,8 @@ export function createPluginContext({
 		fs,
 		command: createCommandApi(plugin, capabilitySessionId, disposers),
 		cliProviders: createPluginCliProviderApi(plugin, disposers),
+		services: createPluginServiceApi(plugin, capabilitySessionId, disposers),
+		models: createPluginModelsApi(permissions, capabilitySessionId),
 		media: createMediaApi(plugin, capabilitySessionId, activationId, disposers, pendingRuntimeRegistrations),
 		jobs: createJobsApi(plugin, capabilitySessionId),
 		artifacts: createArtifactsApi(plugin, capabilitySessionId),

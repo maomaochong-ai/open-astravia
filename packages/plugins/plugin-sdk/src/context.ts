@@ -14,10 +14,12 @@ import type { PluginGatewayApi } from "./gateway.js";
 import type { PluginI18nApi } from "./i18n.js";
 import type { PluginJobsApi } from "./jobs.js";
 import type { PluginMediaApi } from "./media.js";
+import type { PluginModelsApi } from "./models.js";
 import type { PluginNetworkApi } from "./network.js";
 import type { PluginOfficialApi } from "./official.js";
 import type { PluginPermission } from "./permissions.js";
 import type { PluginSettingsApi } from "./settings.js";
+import type { PluginServiceApi } from "./service-provider.js";
 import type { PluginStorageApi } from "./storage.js";
 import type { PluginUiApi } from "./ui.js";
 
@@ -54,6 +56,10 @@ export interface PluginContext {
 	fs: PluginFsApi;
 	command: PluginCommandApi;
 	cliProviders: PluginCliProviderApi;
+	/** Plugin-provisioned, host-managed local services declared by `plugin.json#providers.services`. */
+	services: PluginServiceApi;
+	/** Explicitly permissioned model provider owned by this plugin's id namespace. */
+	models: PluginModelsApi;
 	media: PluginMediaApi;
 	jobs: PluginJobsApi;
 	artifacts: PluginArtifactsApi;

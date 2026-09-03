@@ -161,6 +161,12 @@ export function buildPluginCapabilityGrants(
 					createCapabilityGrant(FOUNDATION_ARTIFACT_CAPABILITIES.RELEASE),
 				]
 			: []),
+		...(permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.MODELS_MANAGE)
+			? [
+					createCapabilityGrant(DOMAIN_MODEL_CAPABILITIES.UPSERT_PROVIDER),
+					createCapabilityGrant(DOMAIN_MODEL_CAPABILITIES.REMOVE_PROVIDER),
+				]
+			: []),
 		...(official ? buildOfficialDomainGrants() : []),
 	];
 }

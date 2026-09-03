@@ -15,6 +15,9 @@ export type {
 	PluginAgentManifest,
 	PluginBrowserManifest,
 	PluginCliProviderManifest,
+	PluginServiceArtifact,
+	PluginServicePlatform,
+	PluginServiceProviderManifest,
 	PluginManifest,
 	PluginManifestInput,
 	PluginManifestResourceReference,
@@ -229,6 +232,17 @@ export type {
 	PluginCliProviderPhase,
 	PluginCliProviderStatus,
 } from "./cli-provider.js";
+export type {
+	PluginServiceApi,
+	PluginServiceArtifactPayload,
+	PluginServiceConnection,
+	PluginServiceHostPlatform,
+	PluginServicePhase,
+	PluginServiceRequest,
+	PluginServiceResponse,
+	PluginServiceStatus,
+} from "./service-provider.js";
+export type { PluginModelDefinition, PluginModelProviderConfig, PluginModelsApi } from "./models.js";
 export type {
 	PluginBrowserAction,
 	PluginBrowserActionResult,

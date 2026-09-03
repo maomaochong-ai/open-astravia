@@ -86,6 +86,23 @@ Agent 贡献。插件 Renderer 通过 `ctx.cliProviders` 订阅状态、重试�
 停用或卸载插件会停止宿主持有的进程，但不会卸载全局 CLI 或清除上游凭据。完整决策见
 [ADR-0098](../../docs/adr/0098-plugin-cli-providers-and-ability-setup-slots.md)。
 
+## 受管本地服务
+
+需要长期运行本地 HTTP 服务的插件使用 `plugin.json#providers.services`，按 `win32|darwin|linux` 与
+`x64|arm64` 声明固定版本、SHA-256、归档落点、可执行文件、配置模板、启动参数和健康检查。插件通过
+`ctx.network` 自己选择并下载固定资源、完成首次摘要校验，再调用 `ctx.services.install()` 交付归档。
+Desktop 不管理下载源或上游版本策略，只负责二次摘要校验、安全解包、版本化原子安装、动态回环端口、稳定数据目录和进程生命周期。
+
+插件通过 `ctx.services` 只操作自己声明的服务。`request()` 只接受根相对 path，宿主将请求固定发往该服务的
+`127.0.0.1` origin，并可按 manifest 中的 `credentialId` 注入认证。服务特定的路由、OAuth Provider、响应解析、
+账号状态和模型映射必须保留在插件中，不能加入 Desktop 专用 client。
+
+动态模型使用 `models.manage` 权限和 `ctx.models`；插件传入本地 Provider id，宿主将真实 id 固定为
+`<plugin-id>.<local-id>`（local id 为不含点号的 1–32 位小写 slug），所以插件可按协议拆分多个 Provider，但不能覆盖用户或其它插件的模型配置。
+模板 `create` 仅首次写入数据目录，`render` 每次启动写入缓存目录；动态端口和版本目录应使用 `render`，认证数据保留在数据目录。
+完整生命周期、供应链和边界决策见
+[ADR-0104](../../docs/adr/0104-plugin-managed-local-services-and-owned-model-providers.md)。
+
 ## 通用浏览器扩展
 
 插件可通过 `ctx.browser` 使用宿主管理的浏览器自动化，不需要依赖 Browser 系统插件或执行 CLI。清单必须声明所需的 `browser.*` 权限以及最大 `browser.allowedHosts`；session 可以进一步收窄域名范围，不能扩大清单授权。

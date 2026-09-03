@@ -1,9 +1,72 @@
-import { CAPABILITY_ERROR_CODES } from "@vetta/capability-sdk";
+import { CAPABILITY_ERROR_CODES, DOMAIN_MODEL_CAPABILITIES } from "@vetta/capability-sdk";
 import { describe, expect, it } from "vitest";
 import { PluginCapabilityAdapter } from "../index.js";
 import { RecordingAccessFactory } from "./helpers/recording-access-factory.js";
 
 describe("PluginCapabilityAdapter community plugins", () => {
+	it("rejects local ids that could overlap another plugin's namespace", () => {
+		const access = new RecordingAccessFactory();
+		const adapter = new PluginCapabilityAdapter(access, {
+			isOfficialPlugin: () => false,
+			resolvePermissions: () => ["models.manage"],
+		});
+		const sessionId = adapter.openSession("community");
+		for (const id of ["other.provider", "../other", "", "X", "a".repeat(33)]) {
+			expect(() => adapter.upsertOwnedModelProvider(sessionId, id, {})).toThrow("lowercase slug");
+			expect(() => adapter.removeOwnedModelProvider(sessionId, id)).toThrow("lowercase slug");
+		}
+		expect(access.invocations).toEqual([]);
+	});
+	it("allows a permitted plugin to manage only its own model provider namespace", async () => {
+		const access = new RecordingAccessFactory();
+		const adapter = new PluginCapabilityAdapter(access, {
+			isOfficialPlugin: () => false,
+			resolvePermissions: () => ["models.manage"],
+		});
+		const sessionId = adapter.openSession("community");
+
+		await adapter.upsertOwnedModelProvider(sessionId, "openai", {
+			baseUrl: "http://127.0.0.1:12345/v1",
+			apiKey: "generated-service-key",
+			models: [{ id: "dynamic-model" }],
+		});
+		await adapter.removeOwnedModelProvider(sessionId, "openai");
+
+		expect(access.invocations).toEqual([
+			{
+				capabilityId: DOMAIN_MODEL_CAPABILITIES.UPSERT_PROVIDER.id,
+				input: {
+					provider: "community.openai",
+					data: {
+						baseUrl: "http://127.0.0.1:12345/v1",
+						apiKey: "generated-service-key",
+						models: [{ id: "dynamic-model" }],
+					},
+				},
+			},
+			{
+				capabilityId: DOMAIN_MODEL_CAPABILITIES.REMOVE_PROVIDER.id,
+				input: { provider: "community.openai" },
+			},
+		]);
+	});
+
+	it("denies owned model provider mutation without models.manage", async () => {
+		const access = new RecordingAccessFactory();
+		const adapter = new PluginCapabilityAdapter(access, {
+			isOfficialPlugin: () => false,
+			resolvePermissions: () => [],
+		});
+		const sessionId = adapter.openSession("community");
+
+		expect(() => adapter.upsertOwnedModelProvider(sessionId, "openai", {})).toThrowError(
+			expect.objectContaining({
+				code: CAPABILITY_ERROR_CODES.ACCESS_DENIED,
+			}),
+		);
+		expect(access.invocations).toEqual([]);
+	});
+
 	it("does not grant official domain capabilities to non-official plugins", () => {
 		const access = new RecordingAccessFactory();
 		const adapter = new PluginCapabilityAdapter(access, {

@@ -48,6 +48,7 @@ export const PLUGIN_PERMISSION_LABEL_KEYS = {
 	"app.actionHandler.execute": "permission.appActionHandlerExecute",
 	"ai.models.list": "permission.aiModelsList",
 	"ai.complete": "permission.aiComplete",
+	"models.manage": "permission.modelsManage",
 	"fs.read": "permission.fsRead",
 	"fs.write": "permission.fsWrite",
 	"network.fetch": "permission.networkFetch",
@@ -401,6 +402,12 @@ export const PLUGIN_PERMISSION_PRESENTATIONS = {
 	},
 	"ai.complete": {
 		descriptionKey: "permission.description.aiComplete",
+		group: "intelligence",
+		risk: "high",
+		visual: "intelligence",
+	},
+	"models.manage": {
+		descriptionKey: "permission.description.modelsManage",
 		group: "intelligence",
 		risk: "high",
 		visual: "intelligence",

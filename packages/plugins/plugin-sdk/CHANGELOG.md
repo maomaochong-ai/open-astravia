@@ -4,6 +4,13 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- 新增声明式 `plugin.json#providers.services` 与 `ctx.services`：插件通过 `ctx.network` 自行下载并校验固定制品，
+  再交给 Desktop 二次校验、安全解包、启动、健康检查并限制在自身回环 origin；新增 `models.manage` 与 `ctx.models`，
+  获授权插件只能维护以自身 plugin id 命名的模型 Provider。宿主不包含任何上游服务专用路由或 Provider 语义
+  （ADR-0104）。
+
 ## [0.2.0] — 2026-09-01
 
 ### Breaking Changes

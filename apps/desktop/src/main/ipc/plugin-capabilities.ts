@@ -204,6 +204,23 @@ export function registerPluginCapabilitiesIpc(): () => void {
 	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.MODEL_LIST, (_event, sessionId: unknown) =>
 		adapter.listModels(requireString(sessionId, "sessionId")),
 	);
+	ipcMain.handle(
+		PLUGIN_CAPABILITY_CHANNELS.MODEL_OWNED_PROVIDER_UPSERT,
+		(_event, sessionId: unknown, providerId: unknown, data: unknown) =>
+			adapter.upsertOwnedModelProvider(
+				requireString(sessionId, "sessionId"),
+				requireString(providerId, "providerId"),
+				data,
+			),
+	);
+	ipcMain.handle(
+		PLUGIN_CAPABILITY_CHANNELS.MODEL_OWNED_PROVIDER_REMOVE,
+		(_event, sessionId: unknown, providerId: unknown) =>
+			adapter.removeOwnedModelProvider(
+				requireString(sessionId, "sessionId"),
+				requireString(providerId, "providerId"),
+			),
+	);
 	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.MODEL_CONFIG_GET, (_event, sessionId: unknown) =>
 		adapter.getModelConfig(requireString(sessionId, "sessionId")),
 	);

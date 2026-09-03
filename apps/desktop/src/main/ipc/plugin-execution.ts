@@ -1,5 +1,10 @@
 import { ipcMain } from "electron";
-import type { PluginCommandRunOptions, PluginOffscreenCaptureOptions } from "../../preload/api-types/plugins.js";
+import type {
+	PluginCommandRunOptions,
+	PluginOffscreenCaptureOptions,
+	PluginServiceArtifactPayload,
+	PluginServiceRequest,
+} from "../../preload/api-types/plugins.js";
 import { PLUGIN_EXECUTION_CHANNELS } from "../../shared/plugin-ipc.js";
 import { getDesktopCapabilityHost } from "../capabilities/capability-host.js";
 import { runPluginCommand } from "../plugins/command-runner.js";
@@ -16,13 +21,15 @@ import {
 	releasePluginOffscreenSession,
 } from "../plugins/offscreen-capture-service.js";
 import { pluginCliProviderService } from "../plugins/plugin-cli-provider-service.js";
+import { pluginServiceProviderService } from "../plugins/plugin-service-provider-service.js";
 import { asPluginId } from "./plugin-input-parsers.js";
 
 const handlerChannels = Object.values(PLUGIN_EXECUTION_CHANNELS).filter(
 	(channel) =>
 		channel !== PLUGIN_EXECUTION_CHANNELS.COMMAND_SPAWN_EXIT &&
 		channel !== PLUGIN_EXECUTION_CHANNELS.CLI_PROVIDER_STATUS &&
-		channel !== PLUGIN_EXECUTION_CHANNELS.CLI_PROVIDER_SPAWN_EXIT,
+		channel !== PLUGIN_EXECUTION_CHANNELS.CLI_PROVIDER_SPAWN_EXIT &&
+		channel !== PLUGIN_EXECUTION_CHANNELS.SERVICE_STATUS,
 );
 
 export function registerPluginExecutionIpc(): () => void {
@@ -87,6 +94,61 @@ export function registerPluginExecutionIpc(): () => void {
 	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.CLI_PROVIDER_SPAWN_STATUS, (_event, pluginId: unknown, spawnId: unknown) =>
 		pluginCliProviderService.getSpawnStatus(asPluginId(pluginId), asPluginId(spawnId)),
 	);
+	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.SERVICE_STATUS_GET, (_event, sessionId: unknown, serviceId: unknown) =>
+		pluginServiceProviderService.getStatus(
+			capabilityAdapter.pluginIdForSession(asPluginId(sessionId)),
+			asPluginId(serviceId),
+		),
+	);
+	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.SERVICE_PLATFORM_GET, (_event, sessionId: unknown) => {
+		capabilityAdapter.pluginIdForSession(asPluginId(sessionId));
+		return pluginServiceProviderService.getPlatform();
+	});
+	ipcMain.handle(
+		PLUGIN_EXECUTION_CHANNELS.SERVICE_INSTALL,
+		(_event, sessionId: unknown, serviceId: unknown, artifacts: unknown) =>
+			pluginServiceProviderService.install(
+				capabilityAdapter.pluginIdForSession(asPluginId(sessionId)),
+				asPluginId(serviceId),
+				artifacts as PluginServiceArtifactPayload[],
+			),
+	);
+	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.SERVICE_START, (_event, sessionId: unknown, serviceId: unknown) =>
+		pluginServiceProviderService.start(
+			capabilityAdapter.pluginIdForSession(asPluginId(sessionId)),
+			asPluginId(serviceId),
+		),
+	);
+	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.SERVICE_STOP, (_event, sessionId: unknown, serviceId: unknown) =>
+		pluginServiceProviderService.stop(
+			capabilityAdapter.pluginIdForSession(asPluginId(sessionId)),
+			asPluginId(serviceId),
+		),
+	);
+	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.SERVICE_RESTART, (_event, sessionId: unknown, serviceId: unknown) =>
+		pluginServiceProviderService.restart(
+			capabilityAdapter.pluginIdForSession(asPluginId(sessionId)),
+			asPluginId(serviceId),
+		),
+	);
+	ipcMain.handle(
+		PLUGIN_EXECUTION_CHANNELS.SERVICE_CONNECTION,
+		(_event, sessionId: unknown, serviceId: unknown, credentialId: unknown) =>
+			pluginServiceProviderService.connection(
+				capabilityAdapter.pluginIdForSession(asPluginId(sessionId)),
+				asPluginId(serviceId),
+				credentialId === undefined ? undefined : asPluginId(credentialId),
+			),
+	);
+	ipcMain.handle(
+		PLUGIN_EXECUTION_CHANNELS.SERVICE_REQUEST,
+		(_event, sessionId: unknown, serviceId: unknown, request: unknown) =>
+			pluginServiceProviderService.request(
+				capabilityAdapter.pluginIdForSession(asPluginId(sessionId)),
+				asPluginId(serviceId),
+				request as PluginServiceRequest,
+			),
+	);
 	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.OFFSCREEN_CAPTURE, (_event, pluginId: unknown, options: unknown) =>
 		capturePluginOffscreen(asPluginId(pluginId), (options ?? undefined) as PluginOffscreenCaptureOptions | undefined),
 	);
@@ -137,6 +199,7 @@ export function registerPluginExecutionIpc(): () => void {
 		for (const channel of handlerChannels) ipcMain.removeHandler(channel);
 		stopAllPluginSpawns();
 		pluginCliProviderService.stopAll();
+		pluginServiceProviderService.stopAll();
 		destroyAllOffscreenSessions();
 	};
 }

@@ -5,6 +5,7 @@ import {
 	PluginCommandNameSchema,
 	PluginCommandNamesSchema,
 	PluginCliProviderManifestSchema,
+	PluginServiceProviderManifestSchema,
 	PluginIdSchema,
 	PluginManifestSchema,
 	PluginMcpServerConfigSchema,
@@ -12,6 +13,7 @@ import {
 	type PluginAgentManifest,
 	type PluginBrowserManifest,
 	type PluginCliProviderManifest,
+	type PluginServiceProviderManifest,
 	type PluginManifest,
 	type PluginManifestInput,
 	type PluginMcpServerConfig,
@@ -26,6 +28,9 @@ export {
 	PluginCommandNameSchema,
 	PluginCommandNamesSchema,
 	PluginCliProviderManifestSchema,
+	PluginServiceArtifactSchema,
+	PluginServicePlatformSchema,
+	PluginServiceProviderManifestSchema,
 	PluginIdSchema,
 	PluginManifestSchema,
 	PluginMcpHttpServerConfigSchema,
@@ -42,6 +47,9 @@ export type {
 	PluginAgentManifest,
 	PluginBrowserManifest,
 	PluginCliProviderManifest,
+	PluginServiceArtifact,
+	PluginServicePlatform,
+	PluginServiceProviderManifest,
 	PluginManifest,
 	PluginManifestInput,
 	PluginMcpServerConfig,
@@ -244,6 +252,69 @@ function normalizeCliProviders(providers: PluginCliProviderManifest[] | undefine
 	});
 }
 
+function normalizeServiceProviders(
+	providers: PluginServiceProviderManifest[] | undefined,
+): PluginServiceProviderManifest[] | undefined {
+	if (!providers || providers.length === 0) return undefined;
+	const ids = new Set<string>();
+	return providers.map((provider) => {
+		if (ids.has(provider.id)) throw new Error(`Duplicate service provider id: ${provider.id}`);
+		ids.add(provider.id);
+		const platforms: PluginServiceProviderManifest["runtime"]["platforms"] = {};
+		for (const [platformTag, platform] of Object.entries(provider.runtime.platforms)) {
+			const destinations = new Set<string>();
+			platforms[platformTag] = {
+				executable: validatePluginRelativePath(platform.executable, `providers.services.${provider.id}.executable`),
+				artifacts: platform.artifacts.map((artifact) => {
+					const destination = validatePluginRelativePath(
+						artifact.destination,
+						`providers.services.${provider.id}.artifacts.destination`,
+					);
+					if (destinations.has(destination)) {
+						throw new Error(`Duplicate service artifact destination: ${provider.id}/${platformTag}/${destination}`);
+					}
+					destinations.add(destination);
+					return { ...artifact, destination };
+				}),
+			};
+		}
+		if (Object.keys(platforms).length === 0) {
+			throw new Error(`Service provider must declare at least one platform: ${provider.id}`);
+		}
+		const credentialIds = new Set<string>();
+		const credentials = provider.credentials?.map((credential) => {
+			if (credentialIds.has(credential.id)) throw new Error(`Duplicate service credential id: ${provider.id}/${credential.id}`);
+			credentialIds.add(credential.id);
+			return { id: credential.id, bytes: credential.bytes };
+		});
+		if (provider.health.credentialId && !credentialIds.has(provider.health.credentialId)) {
+			throw new Error(`Unknown service health credential: ${provider.id}/${provider.health.credentialId}`);
+		}
+		const templateDestinations = new Set<string>();
+		const templates = provider.templates?.map((template) => {
+			const source = validatePluginRelativePath(template.source, `providers.services.${provider.id}.templates.source`);
+			const destination = validatePluginRelativePath(
+				template.destination,
+				`providers.services.${provider.id}.templates.destination`,
+			);
+			if (templateDestinations.has(destination)) throw new Error(`Duplicate service template destination: ${provider.id}/${destination}`);
+			templateDestinations.add(destination);
+			return { source, destination, mode: template.mode };
+		});
+		return {
+			id: provider.id,
+			runtime: { version: provider.runtime.version, platforms },
+			credentials,
+			templates,
+			process: {
+				args: provider.process.args ? [...provider.process.args] : undefined,
+				env: provider.process.env ? { ...provider.process.env } : undefined,
+			},
+			health: { ...provider.health },
+		};
+	});
+}
+
 function normalizePluginMcpServerConfig(config: PluginMcpServerConfig): PluginMcpServerConfig {
 	const common = {
 		disabled: config.disabled,
@@ -367,7 +438,12 @@ export function parsePluginManifest(raw: unknown): PluginManifest {
 		entry: validatePluginRelativePath(trimString(raw.entry), "entry"),
 		moduleFederation: normalizeModuleFederation(raw.moduleFederation),
 		agent: normalizeAgentManifest(raw.agent),
-		providers: raw.providers ? { cli: normalizeCliProviders(raw.providers.cli) } : undefined,
+		providers: raw.providers
+			? {
+					cli: normalizeCliProviders(raw.providers.cli),
+					services: normalizeServiceProviders(raw.providers.services),
+				}
+			: undefined,
 		styles: normalizeStringArray(raw.styles).map((style) => validatePluginRelativePath(style, "styles")),
 		permissions,
 		network,
@@ -414,6 +490,11 @@ export function listPluginManifestResources(
 	}
 	if (typeof manifest.agent?.mcpServers === "string") {
 		resources.push({ field: "agent.mcpServers", path: manifest.agent.mcpServers, kind: "file" });
+	}
+	for (const service of manifest.providers?.services ?? []) {
+		for (const template of service.templates ?? []) {
+			resources.push({ field: `providers.services.${service.id}.templates.source`, path: template.source, kind: "file" });
+		}
 	}
 	return resources;
 }

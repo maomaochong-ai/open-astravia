@@ -53,9 +53,92 @@ export const PluginCliProviderManifestSchema = Type.Object(
 	{ additionalProperties: false },
 );
 
+const PluginServiceArchiveSchema = Type.Union([
+	Type.Literal("file"),
+	Type.Literal("zip"),
+	Type.Literal("tar.gz"),
+]);
+
+export const PluginServiceArtifactSchema = Type.Object(
+	{
+		sha256: Type.String({ pattern: "^[a-f0-9]{64}$" }),
+		archive: PluginServiceArchiveSchema,
+		/** Relative file (archive=file) or directory (archive=zip/tar.gz) below the managed runtime root. */
+		destination: Type.String({ minLength: 1, maxLength: 512 }),
+	},
+	{ additionalProperties: false },
+);
+
+export const PluginServicePlatformSchema = Type.Object(
+	{
+		executable: Type.String({ minLength: 1, maxLength: 512 }),
+		artifacts: Type.Array(PluginServiceArtifactSchema, { minItems: 1, maxItems: 8 }),
+	},
+	{ additionalProperties: false },
+);
+
+export const PluginServiceProviderManifestSchema = Type.Object(
+	{
+		id: PluginIdSchema,
+		runtime: Type.Object(
+			{
+				version: PluginVersionSchema,
+				platforms: Type.Record(
+					Type.String({ pattern: "^(win32|darwin|linux)-(x64|arm64)$" }),
+					PluginServicePlatformSchema,
+				),
+			},
+			{ additionalProperties: false },
+		),
+		credentials: Type.Optional(
+			Type.Array(
+				Type.Object(
+					{
+						id: PluginIdSchema,
+						bytes: Type.Optional(Type.Integer({ minimum: 16, maximum: 64 })),
+					},
+					{ additionalProperties: false },
+				),
+				{ minItems: 1, maxItems: 8 },
+			),
+		),
+		templates: Type.Optional(
+			Type.Array(
+				Type.Object(
+					{
+						source: Type.String({ minLength: 1, maxLength: 512 }),
+						destination: Type.String({ minLength: 1, maxLength: 512 }),
+						/** create preserves a data file; render regenerates a cache file on every start. */
+						mode: Type.Union([Type.Literal("create"), Type.Literal("render")]),
+					},
+					{ additionalProperties: false },
+				),
+				{ minItems: 1, maxItems: 16 },
+			),
+		),
+		process: Type.Object(
+			{
+				args: Type.Optional(Type.Array(Type.String(), { maxItems: 64 })),
+				env: Type.Optional(Type.Record(Type.String({ minLength: 1 }), Type.String())),
+			},
+			{ additionalProperties: false },
+		),
+		health: Type.Object(
+			{
+				path: Type.String({ minLength: 1, maxLength: 1_024, pattern: "^/[^/]*" }),
+				credentialId: Type.Optional(PluginIdSchema),
+				timeoutMs: Type.Optional(Type.Integer({ minimum: 1_000, maximum: 120_000 })),
+			},
+			{ additionalProperties: false },
+		),
+	},
+	{ additionalProperties: false },
+);
+
 export const PluginProvidersManifestSchema = Type.Object(
 	{
 		cli: Type.Optional(Type.Array(PluginCliProviderManifestSchema, { minItems: 1, maxItems: 16 })),
+		services: Type.Optional(Type.Array(PluginServiceProviderManifestSchema, { minItems: 1, maxItems: 8 })),
 	},
 	{ additionalProperties: false },
 );
@@ -266,6 +349,9 @@ export type PluginSettingSchema = Static<typeof PluginSettingDefinitionSchema>;
 export type PluginMcpServerConfig = Static<typeof PluginMcpServerConfigSchema>;
 export type PluginAgentManifest = Static<typeof PluginAgentManifestSchema>;
 export type PluginCliProviderManifest = Static<typeof PluginCliProviderManifestSchema>;
+export type PluginServiceArtifact = Static<typeof PluginServiceArtifactSchema>;
+export type PluginServicePlatform = Static<typeof PluginServicePlatformSchema>;
+export type PluginServiceProviderManifest = Static<typeof PluginServiceProviderManifestSchema>;
 export type PluginProvidersManifest = Static<typeof PluginProvidersManifestSchema>;
 export type PluginNetworkManifest = Static<typeof PluginNetworkManifestSchema>;
 export type PluginBrowserManifest = Static<typeof PluginBrowserManifestSchema>;

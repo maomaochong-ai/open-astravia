@@ -44,7 +44,7 @@ import { PluginRegistryStore, SystemPluginPreferenceStore } from "./plugin-regis
 import { PluginSettingsStore } from "./plugin-settings-store.js";
 import { SystemPluginCatalog } from "./plugin-system-catalog.js";
 
-export const PLUGIN_API_VERSION = "1.4.0";
+export const PLUGIN_API_VERSION = "1.5.0";
 export const CORE_ACTION_PLUGIN_ID = "vetta-actions";
 
 const REQUIRED_SYSTEM_PLUGIN_IDS = new Set<string>([CORE_ACTION_PLUGIN_ID]);

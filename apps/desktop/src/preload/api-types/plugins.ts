@@ -90,6 +90,13 @@ import type {
 	PluginMediaTransferResponse,
 	PluginPermission,
 	PluginPutBlobFromFileInput,
+	PluginServiceArtifactPayload,
+	PluginServiceConnection,
+	PluginServiceHostPlatform,
+	PluginServiceProviderManifest,
+	PluginServiceRequest,
+	PluginServiceResponse,
+	PluginServiceStatus,
 	PluginSettingSchema,
 } from "@vetta-org/plugin-sdk";
 
@@ -99,6 +106,10 @@ export type {
 	PluginManifest,
 	PluginMcpServerConfig,
 	PluginPermission,
+	PluginServiceArtifactPayload,
+	PluginServiceHostPlatform,
+	PluginServiceProviderManifest,
+	PluginServiceRequest,
 	PluginSettingSchema,
 } from "@vetta-org/plugin-sdk";
 
@@ -154,6 +165,8 @@ export interface InstalledPlugin {
 	agent?: PluginAgentManifest;
 	/** Host-managed executable dependencies declared by this plugin. */
 	cliProviders?: PluginCliProviderManifest[];
+	/** Host-managed local services declared by this plugin. */
+	serviceProviders?: PluginServiceProviderManifest[];
 	styleUrls: string[];
 	permissions: PluginPermission[];
 	grantedPermissions: PluginPermission[];
@@ -448,6 +461,12 @@ export interface DesktopPluginCapabilityAiApi {
 }
 
 export interface DesktopPluginCapabilityModelsApi {
+	upsertOwnedProvider(
+		sessionId: string,
+		providerId: string,
+		data: ModelProviderUpsertData,
+	): Promise<ModelProviderConfigSnapshot>;
+	removeOwnedProvider(sessionId: string, providerId: string): Promise<void>;
 	list(sessionId: string): Promise<ModelListResult>;
 	getConfig(sessionId: string): Promise<ModelConfigSnapshot>;
 	getProvider(sessionId: string, provider: string): Promise<ModelProviderDetail>;
@@ -726,6 +745,23 @@ export interface DesktopPluginsApi {
 		handler: (event: { pluginId: string; status: PluginCliProviderStatus }) => void,
 	): () => void;
 	onCliProviderSpawnExit(handler: (event: PluginCommandSpawnExitEvent) => void): () => void;
+	getServiceStatus(sessionId: string, serviceId: string): Promise<PluginServiceStatus>;
+	getServicePlatform(sessionId: string): Promise<PluginServiceHostPlatform>;
+	installService(
+		sessionId: string,
+		serviceId: string,
+		artifacts: PluginServiceArtifactPayload[],
+	): Promise<PluginServiceStatus>;
+	startService(sessionId: string, serviceId: string): Promise<PluginServiceStatus>;
+	stopService(sessionId: string, serviceId: string): Promise<PluginServiceStatus>;
+	restartService(sessionId: string, serviceId: string): Promise<PluginServiceStatus>;
+	getServiceConnection(sessionId: string, serviceId: string, credentialId?: string): Promise<PluginServiceConnection>;
+	requestService<T = unknown>(
+		sessionId: string,
+		serviceId: string,
+		request: PluginServiceRequest,
+	): Promise<PluginServiceResponse<T>>;
+	onServiceStatusChanged(handler: (event: { pluginId: string; status: PluginServiceStatus }) => void): () => void;
 	/** Run an allowed command for a plugin via the main process (execFile, no shell). */
 	runCommand(
 		sessionId: string,
