@@ -8,7 +8,7 @@ import {
 	activityPanelTabByProjectAtom,
 	filePreviewAtom,
 	openInlineFilePreviewAtom,
-	openUrlInBrowserAtom,
+	openUrlInActivityWorkspaceAtom,
 	resolvedThemeAtom,
 } from "@shared/store/atoms";
 import { getFileIcon } from "@vetta/theme-ui/file-explorer";
@@ -20,6 +20,7 @@ import { useTranslation } from "react-i18next";
 export function useRendererMarkdownModel(
 	cwdOverride?: string | null,
 	preferInlinePreview = true,
+	workspaceIdOverride?: string,
 ): RendererMarkdownModel {
 	const { t } = useTranslation("chat");
 	const theme = useAtomValue(resolvedThemeAtom);
@@ -28,9 +29,10 @@ export function useRendererMarkdownModel(
 	const openInlineFilePreview = useSetAtom(openInlineFilePreviewAtom);
 	const setActivityPanelOpen = useSetAtom(activityPanelOpenAtom);
 	const setActivityTabByProject = useSetAtom(activityPanelTabByProjectAtom);
-	const openUrlInBrowser = useSetAtom(openUrlInBrowserAtom);
+	const openUrlInWorkspace = useSetAtom(openUrlInActivityWorkspaceAtom);
 	const narrow = useNarrowScreen();
 	const cwd = cwdOverride === undefined ? (activeSession?.cwd ?? null) : cwdOverride;
+	const workspaceId = workspaceIdOverride ?? cwd;
 
 	const onOpenFile = useCallback(
 		(path: string) => {
@@ -38,7 +40,9 @@ export function useRendererMarkdownModel(
 			const name = pathBasename(resolved);
 			if (preferInlinePreview && !narrow && cwd && isSubPath(resolved, cwd)) {
 				setActivityPanelOpen(true);
-				setActivityTabByProject((previous) => new Map(previous).set(cwd, "file"));
+				if (workspaceId) {
+					setActivityTabByProject((previous) => new Map(previous).set(workspaceId, "file"));
+				}
 				openInlineFilePreview({ name, path: resolved });
 				return;
 			}
@@ -48,13 +52,19 @@ export function useRendererMarkdownModel(
 			preferInlinePreview,
 			narrow,
 			cwd,
+			workspaceId,
 			setFilePreview,
 			openInlineFilePreview,
 			setActivityPanelOpen,
 			setActivityTabByProject,
 		],
 	);
-	const onOpenUrl = useCallback((url: string) => openUrlInBrowser(url), [openUrlInBrowser]);
+	const onOpenUrl = useCallback(
+		(url: string) => {
+			if (workspaceId) openUrlInWorkspace({ workspaceId, url });
+		},
+		[openUrlInWorkspace, workspaceId],
+	);
 	const getFileIconClass = useCallback((fileName: string) => getFileIcon(fileName, false, false), []);
 	const labels = useMemo(() => ({ copy: t("copyButton.label"), copied: t("copyButton.copied") }), [t]);
 

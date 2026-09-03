@@ -7,6 +7,9 @@ import type { RuntimeConversationSessionRoot } from "@vetta/runtime-node/convers
 import { FileConversationRuntimeSessionFileHistoryReader } from "@vetta/runtime-node/conversation";
 import { UNAVAILABLE_RUNTIME_SESSION_ACCESS } from "../../shared/session-access.js";
 import type { DesktopSessionSearchEvent } from "../../shared/session-search.js";
+import { agentTeamConversationOwnershipRecords } from "../agent-teams/team-ownership-backfill.js";
+import { listLegacyTeamSessionDocuments } from "../agent-teams/team-session-legacy-source.js";
+import { ConversationOwnershipCatalog, conversationOwnershipPathKey } from "./conversation-ownership-catalog.js";
 import { SessionSearchService } from "./session-search-service.js";
 import type { SessionSearchWorkerRequest } from "./session-search-worker-protocol.js";
 
@@ -21,14 +24,28 @@ export function startSessionSearchWorker(port: Pick<MessagePort, "on" | "postMes
 		historical.sessionFileHistoryReader,
 		new FileConversationRuntimeSessionFileHistoryReader(),
 	]);
+	const ownership = new ConversationOwnershipCatalog();
+	const legacyOwnedPaths = listLegacyTeamSessionDocuments().then(
+		(sessions) =>
+			new Set(
+				sessions
+					.flatMap(agentTeamConversationOwnershipRecords)
+					.map((record) => conversationOwnershipPathKey(record.sessionPath)),
+			),
+	);
 	const search = new SessionSearchService({
-		listSessions: async (source) =>
-			(await catalog.listSessions(source.cwd, source.sessionDir)).map((session) => ({
+		listSessions: async (source) => {
+			const legacyOwned = await legacyOwnedPaths;
+			const sessions = (
+				await ownership.filterUserSessions(await catalog.listSessions(source.cwd, source.sessionDir))
+			).filter((session) => !legacyOwned.has(conversationOwnershipPathKey(session.path)));
+			return sessions.map((session) => ({
 				...session,
 				firstMessage: session.firstMessage.slice(0, 200),
 				lastMessagePreview: undefined,
 				access: UNAVAILABLE_RUNTIME_SESSION_ACCESS,
-			})),
+			}));
+		},
 		readHistory: (path) => reader.read(path),
 		readFingerprint: async (path) => {
 			const info = await stat(path);

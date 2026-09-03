@@ -8,10 +8,12 @@ import {
 	parseSendTeamMessageInput,
 	parseUpdateAgentProfileInput,
 	parseUpdateTeamInput,
+	parseUpdateTeamSessionModelSettingsInput,
 } from "@vetta/agent-team";
 import { ipcMain } from "electron";
 import { agentTeamStore } from "../agent-teams/agent-team-store.js";
 import { agentTeamSessionService } from "../agent-teams/team-session-service.js";
+import { ensureTeamWorkspace } from "../agent-teams/team-workspace.js";
 
 const CHANNELS = {
 	LIST: "vetta:agent-teams:list",
@@ -25,6 +27,8 @@ const CHANNELS = {
 	UPDATE_TEAM: "vetta:agent-teams:update-team",
 	DELETE_TEAM: "vetta:agent-teams:delete-team",
 	CREATE_SESSION: "vetta:agent-teams:create-session",
+	LIST_SESSIONS: "vetta:agent-teams:list-sessions",
+	UPDATE_MODEL_SETTINGS: "vetta:agent-teams:update-model-settings",
 	GET_SESSION: "vetta:agent-teams:get-session",
 	SEND_MESSAGE: "vetta:agent-teams:send-message",
 	SUBSCRIBE: "vetta:agent-teams:subscribe",
@@ -71,7 +75,7 @@ export interface AgentTeamsIpcDependencies {
 	>;
 	readonly sessions: Pick<
 		typeof agentTeamSessionService,
-		"create" | "readSnapshot" | "send" | "snapshot" | "subscribe" | "abort"
+		"create" | "listSessions" | "updateModelSettings" | "readSnapshot" | "send" | "snapshot" | "subscribe" | "abort"
 	>;
 }
 
@@ -104,12 +108,25 @@ export function registerAgentTeamsIpc(
 	ipcMain.handle(CHANNELS.DELETE_TEAM, (_event, teamId: unknown, input: unknown) =>
 		store.deleteTeam(requiredString(teamId, "teamId"), parseDeleteTeamInput(input)),
 	);
-	ipcMain.handle(CHANNELS.CREATE_SESSION, async (_event, teamId: unknown, cwd: unknown) => {
+	ipcMain.handle(CHANNELS.CREATE_SESSION, async (_event, teamId: unknown) => {
 		const document = await store.read();
-		const team = document.teams.find((candidate) => candidate.id === requiredString(teamId, "teamId"));
+		const parsedTeamId = requiredString(teamId, "teamId");
+		const team = document.teams.find((candidate) => candidate.id === parsedTeamId);
 		if (!team) throw new Error("Team not found");
-		return sessions.snapshot(await sessions.create(team, document, requiredString(cwd, "cwd")));
+		const cwd = await ensureTeamWorkspace(parsedTeamId);
+		return sessions.snapshot(await sessions.create(team, document, cwd));
 	});
+	ipcMain.handle(CHANNELS.LIST_SESSIONS, (_event, teamId: unknown) =>
+		sessions.listSessions(requiredString(teamId, "teamId")),
+	);
+	ipcMain.handle(CHANNELS.UPDATE_MODEL_SETTINGS, async (_event, id: unknown, input: unknown) =>
+		sessions.snapshot(
+			await sessions.updateModelSettings(
+				requiredString(id, "sessionId"),
+				parseUpdateTeamSessionModelSettingsInput(input),
+			),
+		),
+	);
 	ipcMain.handle(CHANNELS.GET_SESSION, (_event, value: unknown) => {
 		const reference = teamSessionReference(value);
 		return sessions.readSnapshot(reference.id, reference.coordinationSessionPath);

@@ -1,11 +1,11 @@
 import {
-	activeSessionAtom,
-	browserUrlBySessionAtom,
-	getBrowserUrlForSession,
+	browserUrlByWorkspaceAtom,
+	getBrowserUrlForWorkspace,
 } from "@shared/store/atoms";
 import { useAtomValue } from "jotai";
 import { useTranslation } from "react-i18next";
 import { BrowserPanel } from "../components/BrowserPanel";
+import { useActivityWorkspace } from "../registry/context";
 import type { ActivityTabDefinition } from "../registry/types";
 
 function BrowserActivityTab(): JSX.Element {
@@ -20,9 +20,9 @@ export const browserTabDefinition: ActivityTabDefinition = {
 	retention: "pinned",
 	useMeta: () => {
 		const { t } = useTranslation("chat");
-		const activeSession = useAtomValue(activeSessionAtom);
-		const browserUrlMap = useAtomValue(browserUrlBySessionAtom);
-		const browserUrl = getBrowserUrlForSession(browserUrlMap, activeSession?.sessionPath ?? null);
+		const workspace = useActivityWorkspace();
+		const browserUrlMap = useAtomValue(browserUrlByWorkspaceAtom);
+		const browserUrl = getBrowserUrlForWorkspace(browserUrlMap, workspace.cwd ? workspace.id : null);
 		if (!browserUrl) return null;
 		return {
 			label: t("browser.tab"),

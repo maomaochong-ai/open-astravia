@@ -7,7 +7,10 @@ import {
 	type TeamSessionStreamEvent,
 } from "@vetta/agent-team";
 import { createAssistantMessage } from "@vetta/ai";
+import { reasoningByModelAtom, selectedModelAtom } from "@shared/store/atoms";
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { createStore, Provider } from "jotai";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadTeamChatSession } from "../services/team-chat-session-service";
 import { useTeamChatModel } from "./useTeamChatModel";
@@ -29,6 +32,7 @@ vi.mock("react-i18next", () => ({
 }));
 vi.mock("../services/team-chat-session-service", () => ({
 	loadTeamChatSession: vi.fn(),
+	createTeamChatSession: vi.fn(),
 }));
 
 const document = createInitialAgentTeamDocument();
@@ -85,7 +89,19 @@ describe("useTeamChatModel streaming flow", () => {
 
 	beforeEach(() => {
 		streamListener = undefined;
-		vi.mocked(loadTeamChatSession).mockResolvedValue({ document, snapshot: baseSnapshot });
+		vi.mocked(loadTeamChatSession).mockResolvedValue({
+			document,
+			snapshot: baseSnapshot,
+			sessions: [
+				{
+					id: baseSession.id,
+					coordinationSessionPath: "C:/sessions/team.conversation.jsonl",
+					title: baseSession.name,
+					createdAt: baseSession.createdAt,
+					updatedAt: baseSession.updatedAt,
+				},
+			],
+		});
 		Object.defineProperty(window, "vetta", {
 			configurable: true,
 			value: {
@@ -97,6 +113,10 @@ describe("useTeamChatModel streaming flow", () => {
 						},
 					),
 					sendMessage: vi.fn(async () => baseSnapshot),
+					updateModelSettings: vi.fn(async (_id, settings) => ({
+						...baseSnapshot,
+						session: { ...baseSession, modelSettings: settings },
+					})),
 					abort: vi.fn(),
 				},
 				dialog: {
@@ -199,6 +219,45 @@ describe("useTeamChatModel streaming flow", () => {
 			expect.objectContaining({
 				text: "",
 				attachments: [{ kind: "file", path: "C:/workspace/brief.md" }],
+			}),
+		);
+	});
+
+	it("persists model configuration on the active Team session and uses it for prompts", async () => {
+		const { result } = renderHook(() => useTeamChatModel(team.id));
+		await waitFor(() => expect(result.current.model.status).toBe("ready"));
+
+		await act(async () => result.current.actions.selectModel("openai/gpt-5"));
+		expect(window.vetta.agentTeams.updateModelSettings).toHaveBeenCalledWith(
+			baseSession.id,
+			expect.objectContaining({ modelKey: "openai/gpt-5" }),
+		);
+		expect(result.current.model.modelKey).toBe("openai/gpt-5");
+
+		act(() => result.current.actions.setDraft("Ship it"));
+		await act(async () => result.current.actions.selectReasoning("high"));
+		await act(async () => result.current.actions.send());
+		expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledWith(
+			baseSession.id,
+			expect.objectContaining({
+				modelKey: "openai/gpt-5",
+				reasoning: "high",
+			}),
+		);
+	});
+
+	it("snapshots the global default into an unconfigured Team session", async () => {
+		const store = createStore();
+		store.set(selectedModelAtom, "openai/default");
+		store.set(reasoningByModelAtom, { "openai/default": "medium" });
+		const wrapper = ({ children }: { children: ReactNode }) => <Provider store={store}>{children}</Provider>;
+
+		renderHook(() => useTeamChatModel(team.id), { wrapper });
+
+		await waitFor(() =>
+			expect(window.vetta.agentTeams.updateModelSettings).toHaveBeenCalledWith(baseSession.id, {
+				modelKey: "openai/default",
+				reasoning: "medium",
 			}),
 		);
 	});

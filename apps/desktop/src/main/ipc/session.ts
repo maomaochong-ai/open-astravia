@@ -41,6 +41,7 @@ import { SESSION_SEARCH_CHANNELS } from "../../shared/session-search.js";
 import { DEFAULT_AGENT_MODE, isAgentMode, MODE_PROMPTS } from "../agent-modes/index.js";
 import { stopMonitoringRuntimeSession } from "../app-monitor/app-monitor-service.js";
 import { onConversationListChanged } from "../conversations/conversation-list-events.js";
+import { assertOrdinaryConversationPath } from "../conversations/conversation-ownership-guard.js";
 import { getDesktopConversationService } from "../conversations/desktop-conversation-service.js";
 import { desktopSessionSearch } from "../conversations/desktop-session-search.js";
 import { getDesktopMcpElicitationBroker } from "../conversations/mcp-elicitation-broker.js";
@@ -1121,6 +1122,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 
 	ipcMain.handle(CHANNELS.DELETE, async (_event, sessionPath: unknown) => {
 		assertNonEmptyString(sessionPath, "sessionPath");
+		await assertOrdinaryConversationPath(sessionPath);
 		// ADR-0007: 「对话」项目下的 session cwd 是独立子目录；删除 session 时
 		// 连带回收子目录里的产物。读 header 先取 cwd，再 delete，最后 rm 子目录。
 		const cwdFromHeader = await readSessionCwdFromHeader(sessionPath);
@@ -1148,6 +1150,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	ipcMain.handle(CHANNELS.RENAME, async (_event, sessionPath: unknown, name: unknown) => {
 		assertNonEmptyString(sessionPath, "sessionPath");
 		assertNonEmptyString(name, "name");
+		await assertOrdinaryConversationPath(sessionPath);
 		await runtime.renameSession(sessionPath, name);
 	});
 

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { type RuntimeHost, runtimeError } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { onConversationListChanged } from "./conversation-list-events.js";
+import type { ConversationOwnershipCatalogPort } from "./conversation-ownership-catalog.js";
 import { type DesktopConversationError, DesktopConversationService } from "./desktop-conversation-service.js";
 
 vi.mock("../logger.js", () => ({
@@ -169,6 +170,94 @@ describe("DesktopConversationService session access", () => {
 			}),
 		]);
 		expect(resolveSessionAccess).toHaveBeenCalledWith(sessionPath);
+	});
+
+	it("removes product-owned Conversations before resolving ordinary-session capabilities", async () => {
+		const cwd = await createTemporaryRoot();
+		const teamPath = join(cwd, "team.conversation.jsonl");
+		const ordinaryPath = join(cwd, "ordinary.conversation.jsonl");
+		const listSessions = vi.fn(async () => [
+			{ id: "team", path: teamPath, cwd, firstMessage: "team", modifiedAt: 2 },
+			{ id: "ordinary", path: ordinaryPath, cwd, firstMessage: "hello", modifiedAt: 1 },
+		]);
+		const resolveSessionAccess = vi.fn(async () => ({
+			readHistory: true,
+			resume: true,
+			rename: true,
+			delete: true,
+		}));
+		const ownership: Pick<ConversationOwnershipCatalogPort, "filterUserSessions"> = {
+			async filterUserSessions<T extends { readonly path: string }>(sessions: readonly T[]): Promise<T[]> {
+				return sessions.filter((session) => session.path === ordinaryPath);
+			},
+		};
+		const runtime = { listSessions, resolveSessionAccess } as unknown as RuntimeHost;
+		const ensureOwnershipReady = vi.fn(async () => undefined);
+		const service = new DesktopConversationService(runtime, ownership, ensureOwnershipReady);
+
+		await expect(service.listSessions(cwd)).resolves.toEqual([expect.objectContaining({ id: "ordinary" })]);
+		expect(ensureOwnershipReady).toHaveBeenCalledOnce();
+		expect(resolveSessionAccess).toHaveBeenCalledOnce();
+		expect(resolveSessionAccess).toHaveBeenCalledWith(ordinaryPath);
+	});
+
+	it("rejects direct ordinary-chat opens for Team-owned Conversations", async () => {
+		const root = await createTemporaryRoot();
+		const sessionPath = join(root, "team.conversation.jsonl");
+		await writeFile(sessionPath, "{}\n", "utf8");
+		const runtime = {
+			resolveSessionAccess: vi.fn(),
+			createSession: vi.fn(),
+		} as unknown as RuntimeHost;
+		const ownership = {
+			filterUserSessions: async <T extends { readonly path: string }>(sessions: readonly T[]) => [...sessions],
+			getOwner: vi.fn(async () => ({
+				kind: "agent-team" as const,
+				teamId: "team-1",
+				teamSessionId: "team-session-1",
+				role: "coordination" as const,
+			})),
+		};
+		const ensureOwnershipReady = vi.fn(async () => undefined);
+		const service = new DesktopConversationService(runtime, ownership, ensureOwnershipReady);
+
+		const error = await service.openSession(sessionPath, "sandbox", "interactive").catch((reason: unknown) => reason);
+
+		expect(error).toMatchObject<Partial<DesktopConversationError>>({
+			code: "INVALID_SESSION_PATH",
+			details: { teamId: "team-1", teamSessionId: "team-session-1" },
+		});
+		expect(ensureOwnershipReady).toHaveBeenCalledOnce();
+		expect(runtime.resolveSessionAccess).not.toHaveBeenCalled();
+		expect(runtime.createSession).not.toHaveBeenCalled();
+	});
+
+	it("rejects direct ordinary-session creation from a Team-owned path", async () => {
+		const root = await createTemporaryRoot();
+		const sessionPath = join(root, "team.conversation.jsonl");
+		const runtime = { createSession: vi.fn() } as unknown as RuntimeHost;
+		const ownership = {
+			filterUserSessions: async <T extends { readonly path: string }>(sessions: readonly T[]) => [...sessions],
+			getOwner: vi.fn(async () => ({
+				kind: "agent-team" as const,
+				teamId: "team-1",
+				teamSessionId: "team-session-1",
+				role: "member" as const,
+			})),
+		};
+		const ensureOwnershipReady = vi.fn(async () => undefined);
+		const service = new DesktopConversationService(runtime, ownership, ensureOwnershipReady);
+
+		const error = await service
+			.createSession({ cwd: root, sessionPath }, "other", "interactive")
+			.catch((reason: unknown) => reason);
+
+		expect(error).toMatchObject<Partial<DesktopConversationError>>({
+			code: "INVALID_SESSION_PATH",
+			details: { teamId: "team-1", teamSessionId: "team-session-1" },
+		});
+		expect(ensureOwnershipReady).toHaveBeenCalledOnce();
+		expect(runtime.createSession).not.toHaveBeenCalled();
 	});
 
 	it("rejects history-only sessions before handing them to the interactive backend", async () => {

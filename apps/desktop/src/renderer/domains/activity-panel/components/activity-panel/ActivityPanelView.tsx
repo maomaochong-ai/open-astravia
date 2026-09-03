@@ -1,7 +1,7 @@
 import { TabBar } from "@shared/components/ui/tab-bar";
 import type { ActivityTabKey } from "@shared/lib/project-profile";
-import { ActivityPanelView as ThemeActivityPanelView } from "@vetta/theme-ui/activity";
-import { type ComponentType, useMemo } from "react";
+import { ActivityPanel as ActivityPanelPrimitive } from "@vetta/theme-ui/activity";
+import type { ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 import { useDockedOutlet } from "../../hooks/useDockedOutlet";
 import { PluginTabPicker } from "../PluginTabPicker";
@@ -22,9 +22,8 @@ export function ActivityPanelView({
 }: ActivityPanelViewProps): JSX.Element {
 	const { t } = useTranslation("project");
 	const removeLabel = t("tabPicker.hideTab");
-	const tabBar = useMemo(
-		() =>
-			model.tabItems.length > 0 || model.floatingTabs.length > 0 || model.showTabPicker ? (
+	const tabBar =
+		model.tabItems.length > 0 || model.floatingTabs.length > 0 || model.showTabPicker ? (
 				<TabBar
 					className="min-w-0 flex-1"
 					items={model.tabItems}
@@ -41,30 +40,9 @@ export function ActivityPanelView({
 					onReorder={model.knowledgeHistory ? undefined : actions.onReorderTabs}
 					onOverflowChange={model.knowledgeHistory ? undefined : actions.onOverflowChange}
 				/>
-			) : null,
-		[
-			actions.onOverflowChange,
-			actions.onRemoveTab,
-			actions.onReorderTabs,
-			actions.onTabChange,
-			actions.onTabDragEnd,
-			actions.onTabDragMove,
-			actions.onTabDragStart,
-			removeLabel,
-			model.activeTab,
-			model.isResizing,
-			model.floatingTabs.length,
-			model.knowledgeHistory,
-			model.mainTabListRef,
-			model.narrowSheet,
-			model.showTabPicker,
-			model.tabItems,
-		],
-	);
+			) : null;
 
-	const tabPicker = useMemo(
-		() =>
-			model.showTabPicker ? (
+	const tabPicker = model.showTabPicker ? (
 				<PluginTabPicker
 					hiddenTabs={model.restorableTabs}
 					onRestore={actions.onRestoreTab}
@@ -73,47 +51,48 @@ export function ActivityPanelView({
 					availablePluginTabs={model.availablePluginTabs}
 					onAttachPlugin={actions.onAttachPluginTab}
 				/>
-			) : null,
-		[
-			actions.onAttachPluginTab,
-			actions.onRestoreTab,
-			actions.onTabChange,
-			model.availablePluginTabs,
-			model.overflowTabs,
-			model.restorableTabs,
-			model.showTabPicker,
-		],
-	);
+			) : null;
 	const [dockedOutlet, registerDockedOutlet] = useDockedOutlet();
 
-	const panelContent = useMemo(
-		() => (
-			<div ref={model.panelRef} className="flex min-h-0 flex-1 flex-col">
-				<div ref={registerDockedOutlet} className="flex min-h-0 flex-1 flex-col" />
-			</div>
-		),
-		[model.panelRef, registerDockedOutlet],
+	const panelBody = (
+		<>
+			{tabBar || tabPicker ? (
+				<ActivityPanelPrimitive.Header>
+					{tabBar}
+					{tabPicker}
+				</ActivityPanelPrimitive.Header>
+			) : null}
+			<Frame>
+				<ActivityPanelPrimitive.Body ref={model.panelRef}>
+					<div ref={registerDockedOutlet} className="flex min-h-0 flex-1 flex-col" />
+				</ActivityPanelPrimitive.Body>
+			</Frame>
+		</>
 	);
 
 	return (
 		<>
-			<ThemeActivityPanelView
-				Frame={Frame}
+			<ActivityPanelPrimitive.Root
 				isOpen={model.isOpen}
 				isResizing={model.isResizing}
 				width={model.width}
 				minWidth={model.minWidth}
 				maxWidth={model.maxWidth}
-				narrowSheet={model.narrowSheet}
-				bottomSheet={model.bottomSheet}
-				tabBar={tabBar}
-				tabPicker={tabPicker}
-				panelContent={panelContent}
-				onClose={actions.onClose}
+				onOpenChange={(open) => {
+					if (!open) actions.onClose();
+				}}
 				onResizeStart={actions.onResizeStart}
 				onResize={actions.onResize}
 				onResizeEnd={actions.onResizeEnd}
-			/>
+			>
+				<ActivityPanelPrimitive.Desktop present={!model.narrowSheet}>
+					<ActivityPanelPrimitive.Surface>{panelBody}</ActivityPanelPrimitive.Surface>
+					<ActivityPanelPrimitive.ResizeHandle />
+				</ActivityPanelPrimitive.Desktop>
+				<ActivityPanelPrimitive.Sheet present={model.bottomSheet}>
+					{panelBody}
+				</ActivityPanelPrimitive.Sheet>
+			</ActivityPanelPrimitive.Root>
 			{model.dockPreviewBounds && (
 				<div
 					aria-hidden
@@ -130,7 +109,7 @@ export function ActivityPanelView({
 				const floating = model.floatingTabs.find((placement) => placement.key === tab.id) ?? null;
 				return (
 					<ActivityTabSurface
-						key={`${model.cwd ?? "__none__"}:${tab.id}`}
+						key={`${model.workspaceId}:${tab.id}`}
 						actions={actions}
 						dockedOutlet={dockedOutlet}
 						Frame={Frame}

@@ -5,6 +5,9 @@ import {
 	type QuickPanelConfigSnapshot,
 	type QuickPanelSession,
 } from "../../shared/quickpanel-ipc.js";
+import { ensureLegacyAgentTeamOwnershipCatalog } from "../agent-teams/team-ownership-backfill.js";
+import { conversationOwnershipCatalog } from "../conversations/conversation-ownership-catalog.js";
+import { assertOrdinaryConversationPath } from "../conversations/conversation-ownership-guard.js";
 import { NOTIFICATION_NAVIGATE_CHANNEL } from "../notifications/notification-service.js";
 import { stopQuickPanelTrigger } from "../quickpanel-trigger.js";
 import { hideQuickPanelWindow } from "../quickpanel-window.js";
@@ -53,7 +56,10 @@ export function registerQuickPanelIpc(): () => void {
 
 	ipcMain.handle(QUICK_PANEL_CHANNELS.LIST_RECENT, async (_event, limit: unknown): Promise<QuickPanelSession[]> => {
 		const max = typeof limit === "number" && Number.isInteger(limit) && limit > 0 ? limit : DEFAULT_RECENT_LIMIT;
-		const sessions = await runtime.listSessions(DEFAULT_CONVERSATION_CWD, DEFAULT_CONVERSATION_SESSION_DIR);
+		await ensureLegacyAgentTeamOwnershipCatalog();
+		const sessions = await conversationOwnershipCatalog.filterUserSessions(
+			await runtime.listSessions(DEFAULT_CONVERSATION_CWD, DEFAULT_CONVERSATION_SESSION_DIR),
+		);
 		// listSessions 已按 modifiedAt 倒序返回，仍显式排序以防实现变化。
 		const sorted = [...sessions].sort((a, b) => b.modifiedAt - a.modifiedAt);
 		return sorted.slice(0, max).map(toQuickPanelSession);
@@ -76,6 +82,7 @@ export function registerQuickPanelIpc(): () => void {
 
 	ipcMain.handle(QUICK_PANEL_CHANNELS.OPEN_SESSION, async (_event, target: unknown): Promise<void> => {
 		assertOpenTarget(target);
+		await assertOrdinaryConversationPath(target.sessionPath);
 		const mainWindow = showMainWindow();
 		if (!mainWindow.isDestroyed()) {
 			// 复用通知路由：把用户带到对应 session 的聊天页。

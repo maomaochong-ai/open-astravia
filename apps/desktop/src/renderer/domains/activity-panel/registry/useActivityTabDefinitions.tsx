@@ -1,8 +1,8 @@
 import { PluginActivityTabPanel } from "@domains/plugins/components/PluginActivityTabPanel";
 import { usePluginTextResolver } from "@domains/plugins/runtime/plugin-i18n";
+import type { ConversationScenario } from "@vetta-org/plugin-sdk";
 import {
 	activeInputActionIdsAtom,
-	currentScenarioAtom,
 	pluginActivityTabsAtom,
 	pluginInputActionsAtom,
 	type RegisteredActivityTab,
@@ -63,6 +63,8 @@ export interface UseActivityTabDefinitionsOptions {
 	enablePluginTabs?: boolean;
 	/** 知识库会话：仅保留 knowledge-history。 */
 	knowledgeHistory?: boolean;
+	enabledBuiltinTabs?: readonly string[];
+	pluginScenario?: ConversationScenario;
 }
 
 /**
@@ -72,11 +74,12 @@ export interface UseActivityTabDefinitionsOptions {
 export function useActivityTabDefinitions({
 	enablePluginTabs = true,
 	knowledgeHistory = false,
+	enabledBuiltinTabs,
+	pluginScenario,
 }: UseActivityTabDefinitionsOptions = {}): ActivityTabDefinition[] {
 	const registeredPluginTabs = useAtomValue(pluginActivityTabsAtom);
 	const pluginInputActions = useAtomValue(pluginInputActionsAtom);
 	const activeInputActionIds = useAtomValue(activeInputActionIdsAtom);
-	const currentScenario = useAtomValue(currentScenarioAtom);
 	const trPlugin = usePluginTextResolver();
 
 	const hardIsolationOffPluginIds = useMemo(() => {
@@ -94,24 +97,29 @@ export function useActivityTabDefinitions({
 			return BUILTIN_ACTIVITY_TABS.filter((tab) => tab.id === "knowledge-history");
 		}
 
-		const builtins = BUILTIN_ACTIVITY_TABS.filter((tab) => tab.id !== "knowledge-history");
+		const builtins = BUILTIN_ACTIVITY_TABS.filter(
+			(tab) =>
+				tab.id !== "knowledge-history" &&
+				(enabledBuiltinTabs === undefined || enabledBuiltinTabs.includes(tab.id)),
+		);
 
-		if (!enablePluginTabs || currentScenario === null) {
+		if (!enablePluginTabs || pluginScenario === undefined) {
 			return [...builtins];
 		}
 
 		const plugins = registeredPluginTabs
 			.filter(
 				(tab) =>
-					tab.scope_use?.includes(currentScenario) && !hardIsolationOffPluginIds.has(tab.pluginId),
+					tab.scope_use?.includes(pluginScenario) && !hardIsolationOffPluginIds.has(tab.pluginId),
 			)
 			.map((tab) => toPluginDefinition(tab, trPlugin));
 
 		return [...builtins, ...plugins];
 	}, [
 		knowledgeHistory,
+		enabledBuiltinTabs,
 		enablePluginTabs,
-		currentScenario,
+		pluginScenario,
 		registeredPluginTabs,
 		hardIsolationOffPluginIds,
 		trPlugin,

@@ -1,19 +1,14 @@
 // @vitest-environment jsdom
 
-import { ActivityPanelView } from "@vetta/theme-ui/activity";
+import { ActivityPanel } from "@vetta/theme-ui/activity";
 import { act, createElement, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ActivityPanelFrameProps } from "./ActivityPanelFrame";
 
 vi.mock("motion/react", () => ({
 	AnimatePresence: ({ children }: { children: ReactNode }) => children,
 	motion: { div: ({ children }: { children: ReactNode }) => createElement("div", null, children) },
 }));
-
-function frame({ children }: ActivityPanelFrameProps): ReturnType<typeof createElement> {
-	return createElement("div", { "data-frame": "" }, children as ReactNode);
-}
 
 function pointerEvent(type: string, clientX: number): Event {
 	return new MouseEvent(type, { bubbles: true, clientX });
@@ -58,22 +53,26 @@ describe("ActivityPanelView resize shell", () => {
 
 		act(() => {
 			root.render(
-				<ActivityPanelView
-					Frame={frame}
+				<ActivityPanel.Root
 					isOpen
 					isResizing={false}
 					width={360}
 					minWidth={320}
 					maxWidth={800}
-					narrowSheet={false}
-					bottomSheet={false}
-					tabBar={null}
-					panelContent={<Content />}
-					onClose={vi.fn()}
+					onOpenChange={vi.fn()}
 					onResizeStart={onResizeStart}
 					onResize={onResize}
 					onResizeEnd={onResizeEnd}
-				/>,
+				>
+					<ActivityPanel.Desktop>
+						<ActivityPanel.Surface>
+							<div data-frame="">
+								<Content />
+							</div>
+						</ActivityPanel.Surface>
+						<ActivityPanel.ResizeHandle />
+					</ActivityPanel.Desktop>
+				</ActivityPanel.Root>,
 			);
 		});
 

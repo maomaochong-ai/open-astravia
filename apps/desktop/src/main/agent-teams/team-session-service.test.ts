@@ -21,6 +21,10 @@ import {
 	type RuntimeObservationRecord,
 } from "@vetta/runtime-core/observation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type {
+	ConversationOwnershipCatalogPort,
+	ConversationOwnershipRecord,
+} from "../conversations/conversation-ownership-catalog.js";
 import type { LegacyTeamSessionRepository } from "./team-session-repository.js";
 import { AgentTeamSessionService } from "./team-session-service.js";
 
@@ -34,6 +38,71 @@ vi.mock("../runtime.js", () => ({ getSharedRuntime: vi.fn() }));
 
 describe("AgentTeamSessionService streaming contract", () => {
 	beforeEach(() => vi.clearAllMocks());
+
+	it("backfills legacy ownership before listing Team sessions", async () => {
+		const document = createInitialAgentTeamDocument();
+		const team = document.teams[0];
+		const member = team?.members[0];
+		if (!team || !member) throw new Error("built-in Agent Team fixture is missing");
+		const session = (id: string, coordination: boolean): TeamSessionDocument => ({
+			schemaVersion: 1,
+			revision: 0,
+			id,
+			teamId: team.id,
+			name: team.name,
+			cwd: "C:/legacy-workspace",
+			leaderMemberId: member.id,
+			activeMemberIds: [member.id],
+			memberHandles: { [member.id]: member.handle },
+			createdAt: 1,
+			updatedAt: id === "visible" ? 3 : 2,
+			...(coordination
+				? { coordinationRuntime: { sessionId: `${id}-coordination`, sessionPath: `C:/sessions/${id}.jsonl` } }
+				: {}),
+			events: [],
+			memberRuntime: {
+				[member.id]: {
+					sessionId: `${id}-member`,
+					sessionPath: `C:/sessions/${id}-member.jsonl`,
+					agentProfileRevision: 1,
+					deliveredEventIds: [],
+				},
+			},
+		});
+		const legacySessions = [session("visible", true), session("members-only", false)];
+		const listLegacySessions = vi.fn(async () => legacySessions);
+		const records: ConversationOwnershipRecord[] = [];
+		const ownershipCatalog: ConversationOwnershipCatalogPort = {
+			register: async (next) => {
+				records.push(...next);
+			},
+			listByTeam: async (teamId) => records.filter((record) => record.owner.teamId === teamId),
+			getOwner: async () => undefined,
+			filterUserSessions: async (sessions) => [...sessions],
+		};
+		const service = new AgentTeamSessionService({
+			repository: { read: async () => legacySessions[0] as TeamSessionDocument, list: listLegacySessions },
+			ownershipCatalog,
+			readDocument: async () => document,
+		});
+
+		await expect(service.listSessions(team.id)).resolves.toEqual([
+			{
+				id: "visible",
+				coordinationSessionPath: "C:/sessions/visible.jsonl",
+				title: team.name,
+				createdAt: 1,
+				updatedAt: 3,
+			},
+		]);
+		await service.listSessions(team.id);
+		expect(listLegacySessions).toHaveBeenCalledTimes(1);
+		expect(records.map((record) => record.sessionPath).sort()).toEqual([
+			"C:/sessions/members-only-member.jsonl",
+			"C:/sessions/visible-member.jsonl",
+			"C:/sessions/visible.jsonl",
+		]);
+	});
 
 	it("publishes ordered deltas and persists the same non-empty final answer", async () => {
 		const document = createInitialAgentTeamDocument();
@@ -208,6 +277,7 @@ describe("AgentTeamSessionService streaming contract", () => {
 				revision: conversationEntries.length,
 			}),
 			abort: vi.fn(async () => undefined),
+			updateSettings: vi.fn(async () => undefined),
 		} as unknown as RuntimeHost;
 		const service = new AgentTeamSessionService({
 			runtime,
@@ -219,6 +289,11 @@ describe("AgentTeamSessionService streaming contract", () => {
 		expect(createSession.mock.calls.every(([config]) => config === undefined || !("sessionDir" in config))).toBe(
 			true,
 		);
+		const configured = await service.updateModelSettings(created.id, {
+			modelKey: "openai/gpt-test",
+			reasoning: "high",
+		});
+		expect(configured.modelSettings).toEqual({ modelKey: "openai/gpt-test", reasoning: "high" });
 		const events: TeamSessionStreamEvent[] = [];
 		const subscription = service.subscribe(created.id, (event) => events.push(event));
 
@@ -251,8 +326,14 @@ describe("AgentTeamSessionService streaming contract", () => {
 			expect.any(String),
 			expect.objectContaining({
 				attachments: [{ kind: "file", path: "C:/workspace/brief.md" }],
+				modelKey: "openai/gpt-test",
+				reasoning: "high",
 			}),
 		);
+		expect(runtime.updateSettings).toHaveBeenCalledWith(expect.any(String), {
+			modelKey: "openai/gpt-test",
+			thinkingLevel: "high",
+		});
 		expect(runtime.appendConversationMessage).toHaveBeenCalledTimes(2);
 		expect(runtime.appendConversationMessage).toHaveBeenNthCalledWith(
 			2,

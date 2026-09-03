@@ -12,6 +12,7 @@ import type {
 } from "@shared/conversation";
 import { reduceConversationMessageEvent } from "@shared/conversation";
 import type { RendererMarkdownModel } from "@shared/models/renderer-markdown-model";
+import type { ActivityWorkspace } from "@shared/workspace/activity-workspace";
 import type { AgentTeamDocument, TeamDefinition, TeamSessionSnapshot, TeamSessionStreamEvent } from "@vetta/agent-team";
 import type { PromptAttachmentRef } from "@vetta/runtime-core";
 
@@ -50,6 +51,12 @@ export interface TeamChatViewModel {
 	readonly error?: string;
 	readonly editorEnabled: boolean;
 	readonly canSend: boolean;
+	readonly workspace: ActivityWorkspace | null;
+	readonly activeSessionId: string | null;
+	readonly sessions: readonly { readonly id: string; readonly label: string }[];
+	readonly sessionActionsDisabled: boolean;
+	readonly modelKey: string | null;
+	readonly reasoning?: string;
 	readonly labels: TeamChatLabels;
 }
 
@@ -62,6 +69,10 @@ export interface TeamChatActions {
 	readonly removeAttachment: (path: string) => void;
 	readonly send: () => Promise<void>;
 	readonly abort: () => Promise<void>;
+	readonly createSession: () => Promise<string | undefined>;
+	readonly openSession: (sessionId: string) => Promise<void>;
+	readonly selectModel: (modelKey: string, defaultReasoning?: string) => Promise<void>;
+	readonly selectReasoning: (reasoning: string) => Promise<void>;
 }
 
 export interface TeamAttachmentViewModel {

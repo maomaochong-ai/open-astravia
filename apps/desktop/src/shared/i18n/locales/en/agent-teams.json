@@ -113,6 +113,10 @@
   "chat": {
     "hint": "The team lead handles requests when no member is selected.",
     "configure": "Configure member abilities",
+	"newSession": "New chat",
+	"selectSession": "Choose team chat",
+	"sessionLabel": "Chat {{index}}",
+	"activity": "Activity",
     "leaderRoute": "Lead",
     "you": "You",
     "member": "Team member",

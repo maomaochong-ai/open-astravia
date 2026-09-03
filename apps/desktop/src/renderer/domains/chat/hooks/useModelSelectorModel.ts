@@ -19,6 +19,13 @@ export interface ModelSelectorModel {
 	viewProps: ModelSelectorViewProps;
 }
 
+export interface ModelSelectorScope {
+	readonly modelKey: string | null;
+	readonly reasoning?: string;
+	readonly onModelSelect: (modelKey: string, defaultReasoning?: string) => void;
+	readonly onReasoningSelect: (reasoning: string) => void;
+}
+
 function persistSelectedModel(key: string): void {
 	try {
 		localStorage.setItem(SELECTED_MODEL_STORAGE_KEY, key);
@@ -46,10 +53,17 @@ function fallbackOptionFromKey(key: string): ModelOption {
  * (including "off" to disable thinking). Reasoning is per-model: each model remembers
  * its last-chosen level (reasoningByModelAtom) and the value rides the prompt.
  */
-export function useModelSelectorModel(): ModelSelectorModel {
+export function useModelSelectorModel({
+	updateActiveSession = true,
+	scope,
+}: {
+	readonly updateActiveSession?: boolean;
+	readonly scope?: ModelSelectorScope;
+} = {}): ModelSelectorModel {
 	const { t } = useTranslation("common");
-	const [selectedModel, setSelectedModel] = useAtom(selectedModelAtom);
+	const [globalSelectedModel, setSelectedModel] = useAtom(selectedModelAtom);
 	const [reasoningByModel, setReasoningByModel] = useAtom(reasoningByModelAtom);
+	const selectedModel = scope ? scope.modelKey : globalSelectedModel;
 	const activeSession = useAtomValue(activeSessionAtom);
 	const setModelSupportsImages = useSetAtom(modelSupportsImagesAtom);
 	const { options, grouped, defaultKey, iconFor, labelFor } = useModelOptions();
@@ -81,9 +95,9 @@ export function useModelSelectorModel(): ModelSelectorModel {
 
 	const currentLevel = useMemo(() => {
 		if (!selectedModel || !resolved) return undefined;
-		const remembered = reasoningByModel[selectedModel];
+		const remembered = scope ? scope.reasoning : reasoningByModel[selectedModel];
 		return remembered && isValidLevel(remembered) ? remembered : resolved.default;
-	}, [selectedModel, resolved, reasoningByModel, isValidLevel]);
+	}, [selectedModel, resolved, reasoningByModel, isValidLevel, scope]);
 
 	const levelLabel = useCallback(
 		(value: string) => t(`modelSelect.reasoningLevel.${value}`, { defaultValue: value }),
@@ -93,10 +107,15 @@ export function useModelSelectorModel(): ModelSelectorModel {
 	// Auto-apply the configured default model when nothing is selected yet.
 	useEffect(() => {
 		if (!selectedModel && defaultKey) {
-			setSelectedModel(defaultKey);
-			persistSelectedModel(defaultKey);
+			if (scope) {
+				const defaultReasoning = resolveReasoning(options.find((option) => option.key === defaultKey))?.default;
+				scope.onModelSelect(defaultKey, defaultReasoning);
+			} else {
+				setSelectedModel(defaultKey);
+				persistSelectedModel(defaultKey);
+			}
 		}
-	}, [selectedModel, defaultKey, setSelectedModel]);
+	}, [selectedModel, defaultKey, setSelectedModel, scope, options]);
 
 	// Keep image-support flag in sync with the resolved catalog selection only.
 	useEffect(() => {
@@ -107,23 +126,28 @@ export function useModelSelectorModel(): ModelSelectorModel {
 	// Persist the effective default level for the selected model when none is remembered,
 	// so the prompt sender always has a value to send (per-model memory seeded with default).
 	useEffect(() => {
-		if (!selectedModel || !resolved) return;
+		if (scope || !selectedModel || !resolved) return;
 		const remembered = reasoningByModel[selectedModel];
 		if (!remembered || !isValidLevel(remembered)) {
 			setReasoningByModel({ ...reasoningByModel, [selectedModel]: resolved.default });
 		}
-	}, [selectedModel, resolved, reasoningByModel, setReasoningByModel, isValidLevel]);
+	}, [selectedModel, resolved, reasoningByModel, setReasoningByModel, isValidLevel, scope]);
 
 	const handleModelSelect = useCallback(
 		(key: string) => {
-			setSelectedModel(key);
-			// 全局新会话偏好；已有会话另写 session settings。
-			persistSelectedModel(key);
-			if (activeSession?.runtimeId) {
+			if (scope) {
+				const defaultReasoning = resolveReasoning(options.find((option) => option.key === key))?.default;
+				scope.onModelSelect(key, defaultReasoning);
+			} else {
+				setSelectedModel(key);
+				// 全局新会话偏好；已有会话另写 session settings。
+				persistSelectedModel(key);
+			}
+			if (!scope && updateActiveSession && activeSession?.runtimeId) {
 				void window.vetta.session.updateSettings(activeSession.runtimeId, { modelKey: key });
 			}
 		},
-		[setSelectedModel, activeSession],
+		[setSelectedModel, activeSession, updateActiveSession, scope, options],
 	);
 
 	/**
@@ -149,9 +173,10 @@ export function useModelSelectorModel(): ModelSelectorModel {
 	const handleReasoningSelect = useCallback(
 		(value: string) => {
 			if (!selectedModel) return;
-			setReasoningByModel({ ...reasoningByModel, [selectedModel]: value });
+			if (scope) scope.onReasoningSelect(value);
+			else setReasoningByModel({ ...reasoningByModel, [selectedModel]: value });
 		},
-		[selectedModel, reasoningByModel, setReasoningByModel],
+		[selectedModel, reasoningByModel, setReasoningByModel, scope],
 	);
 
 	return {

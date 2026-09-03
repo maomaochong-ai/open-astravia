@@ -2,6 +2,7 @@ import { ActivityPanel } from "@domains/activity-panel/components/ActivityPanel"
 import { cn } from "@shared/lib/utils";
 import { useThemeSurface } from "@vetta/theme-sdk/appearance";
 import { SessionViewerPageView } from "@vetta/theme-ui/chat";
+import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
 import { useSessionViewerPageModel } from "../hooks/useSessionViewerPageModel";
 import { ChatExportHost } from "./ChatExportHost";
 import { MessageList } from "./MessageList";
@@ -33,9 +34,16 @@ export function SessionViewerPage(): JSX.Element {
 			messageList={<MessageList messages={model.messages} isStreaming={false} sessionId={null} />}
 			activityPanel={
 				model.isKnowledge ? (
-					<ActivityPanel cwd={model.kbCwd || null} enablePluginTabs={false} knowledgeHistory />
+					<ActivityPanel
+						workspace={createActivityWorkspace(model.kbCwd || "knowledge:unbound", model.kbCwd || null)}
+						enablePluginTabs={false}
+						knowledgeHistory
+					/>
 				) : (
-					<ActivityPanel cwd={model.imCwd || null} enablePluginTabs={false} />
+					<ActivityPanel
+						workspace={createActivityWorkspace(model.imCwd || "viewer:unbound", model.imCwd || null)}
+						enablePluginTabs={false}
+					/>
 				)
 			}
 		/>

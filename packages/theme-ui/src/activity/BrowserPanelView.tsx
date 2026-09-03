@@ -15,8 +15,8 @@ export interface BrowserPanelLabels {
 }
 
 export interface BrowserPanelViewProps {
-	/** Null when no active session — show empty state. */
-	sessionPath: string | null;
+	/** Null when the host has no bound workspace — show empty state. */
+	workspaceId: string | null;
 	labels: BrowserPanelLabels;
 	address: string;
 	canBack: boolean;
@@ -66,7 +66,7 @@ function ToolbarButton({
  * Session-scoped built-in browser shell. Host owns webview event wiring via ref.
  */
 export function BrowserPanelView({
-	sessionPath,
+	workspaceId,
 	labels,
 	address,
 	canBack,
@@ -86,7 +86,7 @@ export function BrowserPanelView({
 	onOpenExternal,
 	onRetry,
 }: BrowserPanelViewProps): JSX.Element {
-	if (!sessionPath) {
+	if (!workspaceId) {
 		return (
 			<div className="flex min-h-0 flex-1 items-center justify-center p-6 text-center text-[12px] text-muted-foreground/60">
 				{labels.noSession}
@@ -131,7 +131,7 @@ export function BrowserPanelView({
 				{/* src 用静态 about:blank 让 guest 立即挂载（dom-ready 才会触发），
 				    真实地址由 effect 通过 loadURL 加载；src 不绑 targetUrl 以免页内跳转触发重载。 */}
 				<webview
-					key={sessionPath}
+					key={workspaceId}
 					ref={webviewRef}
 					src="about:blank"
 					partition={partition}

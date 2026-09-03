@@ -6,10 +6,26 @@ declare module "@vetta/theme-sdk" {
 	}
 }
 
+export type {
+	ActivityPanelBodyProps,
+	ActivityPanelDesktopProps,
+	ActivityPanelHeaderProps,
+	ActivityPanelRootProps,
+	ActivityPanelSheetProps,
+	ActivityPanelSurfaceProps,
+} from "./ActivityPanel";
+export {
+	ActivityPanel,
+	ActivityPanelBody,
+	ActivityPanelDesktop,
+	ActivityPanelHeader,
+	ActivityPanelResizeHandle,
+	ActivityPanelRoot,
+	ActivityPanelSheet,
+	ActivityPanelSurface,
+} from "./ActivityPanel";
 export type { ActivityPanelFrameProps } from "./ActivityPanelFrame";
 export { ActivityPanelFrame } from "./ActivityPanelFrame";
-export type { ActivityPanelViewProps } from "./ActivityPanelView";
-export { ActivityPanelView } from "./ActivityPanelView";
 export type {
 	BackgroundTaskStatus,
 	BackgroundTasksTabPanelViewProps,

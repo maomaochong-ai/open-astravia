@@ -50,6 +50,14 @@ describe("createLegacyTeamSessionRepository", () => {
 		await writeFile(join(root, `${session.id}.json`), JSON.stringify(session), "utf8");
 
 		await expect(repository.read(session.id)).resolves.toEqual(session);
+		await expect(repository.list?.()).resolves.toEqual([session]);
 		expect("write" in repository).toBe(false);
+	});
+
+	it("returns an empty migration catalog when the legacy directory does not exist", async () => {
+		const root = join(tmpdir(), `missing-vetta-team-session-${crypto.randomUUID()}`);
+		const repository = createLegacyTeamSessionRepository(root);
+
+		await expect(repository.list?.()).resolves.toEqual([]);
 	});
 });

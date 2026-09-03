@@ -54,7 +54,12 @@ it("拉满态的面板宽度随窗口 resize 变窄再变宽", { timeout: 10_000
 	const widths: number[] = [];
 
 	function Probe() {
-		const { model } = useActivityPanelModel({ cwd: null, definitions: [], metaById: new Map() });
+		const { model } = useActivityPanelModel({
+			cwd: null,
+			workspaceId: "test",
+			definitions: [],
+			metaById: new Map(),
+		});
 		widths.push(model.width);
 		return null;
 	}
@@ -93,7 +98,12 @@ it("用户手动展开侧边栏时，过宽的面板仍被压到 openLimit 并�
 	const widths: number[] = [];
 
 	function Probe() {
-		const { model } = useActivityPanelModel({ cwd: null, definitions: [], metaById: new Map() });
+		const { model } = useActivityPanelModel({
+			cwd: null,
+			workspaceId: "test",
+			definitions: [],
+			metaById: new Map(),
+		});
 		widths.push(model.width);
 		return null;
 	}
@@ -126,7 +136,12 @@ it("面板拖动期间只同步离散阈值，结束时才提交并持久化最�
 	let latest: ReturnType<typeof useActivityPanelModel> | null = null;
 
 	function Probe() {
-		latest = useActivityPanelModel({ cwd: null, definitions: [], metaById: new Map() });
+		latest = useActivityPanelModel({
+			cwd: null,
+			workspaceId: "test",
+			definitions: [],
+			metaById: new Map(),
+		});
 		return null;
 	}
 

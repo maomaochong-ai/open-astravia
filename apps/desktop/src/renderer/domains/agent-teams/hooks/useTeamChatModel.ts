@@ -1,8 +1,12 @@
 import { useRendererMarkdownModel } from "@shared/hooks/useRendererMarkdownModel";
 import { persistBase64Images } from "@shared/lib/persist-input-images";
 import { pathBasename } from "@shared/lib/utils";
+import { reasoningByModelAtom, selectedModelAtom } from "@shared/store/atoms";
+import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
+import type { TeamSessionListItem } from "@vetta/agent-team";
 import { type AgentTeamDocument, resolveMentionedMemberIds, type TeamSessionSnapshot } from "@vetta/agent-team";
 import type { PromptAttachmentRef } from "@vetta/runtime-core";
+import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -18,16 +22,26 @@ import {
 	updateScopedTeamDraft,
 } from "../components/team-chat/teamChatModel";
 import { agentDisplayName, teamDisplayName } from "../lib/preset-presentation";
-import { loadTeamChatSession } from "../services/team-chat-session-service";
+import { createTeamChatSession, loadTeamChatSession } from "../services/team-chat-session-service";
+import { notifyTeamSessionsChanged } from "../services/team-session-events";
 
-export function useTeamChatModel(teamId: string): {
+export function useTeamChatModel(
+	teamId: string,
+	preferredSessionId?: string,
+): {
 	readonly model: TeamChatViewModel;
 	readonly actions: TeamChatActions;
 } {
 	const { t } = useTranslation(["agent-teams", "chat"]);
+	const selectedModel = useAtomValue(selectedModelAtom);
+	const reasoningByModel = useAtomValue(reasoningByModelAtom);
 	const [document, setDocument] = useState<AgentTeamDocument>();
 	const [snapshot, setSnapshot] = useState<TeamSessionSnapshot>();
+	const [sessions, setSessions] = useState<readonly TeamSessionListItem[]>([]);
 	const session = snapshot?.session;
+	const effectiveModelKey = session?.modelSettings?.modelKey ?? selectedModel;
+	const effectiveReasoning =
+		session?.modelSettings?.reasoning ?? (effectiveModelKey ? reasoningByModel[effectiveModelKey] : undefined);
 	const [draftsByTeam, setDraftsByTeam] = useState<Readonly<Record<string, string>>>({});
 	const [historyByTeam, setHistoryByTeam] = useState<Readonly<Record<string, readonly string[]>>>({});
 	const [attachmentsByTeam, setAttachmentsByTeam] = useState<
@@ -42,25 +56,39 @@ export function useTeamChatModel(teamId: string): {
 	const pendingRef = useRef<TeamPendingRequest | undefined>(undefined);
 	const streamsRef = useRef<TeamStreamState>({});
 	pendingRef.current = pending;
-	const draft = draftsByTeam[teamId] ?? "";
-	const history = historyByTeam[teamId] ?? [];
-	const attachments = attachmentsByTeam[teamId] ?? [];
+	const draftScope = session?.id ?? teamId;
+	const draft = draftsByTeam[draftScope] ?? "";
+	const history = historyByTeam[draftScope] ?? [];
+	const attachments = attachmentsByTeam[draftScope] ?? [];
 	const updateDraft = useCallback(
 		(update: string | ((current: string) => string)) => {
-			setDraftsByTeam((current) => updateScopedTeamDraft(current, teamId, update));
+			setDraftsByTeam((current) => updateScopedTeamDraft(current, draftScope, update));
 		},
-		[teamId],
+		[draftScope],
 	);
 	const setDraft = useCallback((next: string) => updateDraft(next), [updateDraft]);
 	const updateAttachments = useCallback(
 		(update: (current: readonly TeamAttachmentViewModel[]) => readonly TeamAttachmentViewModel[]) => {
-			setAttachmentsByTeam((current) => ({ ...current, [teamId]: update(current[teamId] ?? []) }));
+			setAttachmentsByTeam((current) => ({
+				...current,
+				[draftScope]: update(current[draftScope] ?? []),
+			}));
 		},
-		[teamId],
+		[draftScope],
 	);
 
 	const team = useMemo(() => document?.teams.find((candidate) => candidate.id === teamId), [document, teamId]);
-	const markdown = useRendererMarkdownModel(session?.cwd ?? null, false);
+	const markdown = useRendererMarkdownModel(
+		session?.cwd ?? null,
+		false,
+		session?.workspaceId ?? `agent-team:${teamId}`,
+	);
+	const applyLoadedSession = useCallback((loaded: Awaited<ReturnType<typeof loadTeamChatSession>>) => {
+		setDocument(loaded.document);
+		setSnapshot(loaded.snapshot);
+		setSessions(loaded.sessions);
+		setStatus("ready");
+	}, []);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -71,12 +99,10 @@ export function useTeamChatModel(teamId: string): {
 		setStreams({});
 		setPending(undefined);
 		setSelectedMemberIds([]);
-		void loadTeamChatSession(teamId)
+		void loadTeamChatSession(teamId, preferredSessionId)
 			.then((loaded) => {
 				if (cancelled) return;
-				setDocument(loaded.document);
-				setSnapshot(loaded.snapshot);
-				setStatus("ready");
+				applyLoadedSession(loaded);
 			})
 			.catch((cause: unknown) => {
 				if (cancelled) return;
@@ -86,7 +112,67 @@ export function useTeamChatModel(teamId: string): {
 		return () => {
 			cancelled = true;
 		};
-	}, [teamId]);
+	}, [teamId, preferredSessionId, applyLoadedSession]);
+
+	const openSession = useCallback(
+		async (sessionId: string) => {
+			if (sessionId === session?.id || pendingRef.current) return;
+			setStatus("loading");
+			setError(undefined);
+			try {
+				applyLoadedSession(await loadTeamChatSession(teamId, sessionId));
+			} catch (cause) {
+				setError(errorMessage(cause));
+				setStatus("error");
+			}
+		},
+		[applyLoadedSession, session?.id, teamId],
+	);
+	const createSession = useCallback(async () => {
+		if (pendingRef.current) return undefined;
+		setStatus("loading");
+		setError(undefined);
+		try {
+			const loaded = await createTeamChatSession(teamId, document, sessions);
+			applyLoadedSession(loaded);
+			notifyTeamSessionsChanged();
+			return loaded.snapshot.session.id;
+		} catch (cause) {
+			setError(errorMessage(cause));
+			setStatus("error");
+			return undefined;
+		}
+	}, [applyLoadedSession, document, sessions, teamId]);
+	const updateModelSettings = useCallback(
+		async (modelKey: string, reasoning?: string) => {
+			if (!session) return;
+			setError(undefined);
+			try {
+				const next = await window.vetta.agentTeams.updateModelSettings(session.id, {
+					modelKey,
+					...(reasoning ? { reasoning } : {}),
+				});
+				setSnapshot(next);
+			} catch (cause) {
+				setError(errorMessage(cause));
+			}
+		},
+		[session],
+	);
+	const selectModel = useCallback(
+		(modelKey: string, defaultReasoning?: string) =>
+			updateModelSettings(modelKey, reasoningByModel[modelKey] ?? defaultReasoning),
+		[reasoningByModel, updateModelSettings],
+	);
+	const selectReasoning = useCallback(
+		(reasoning: string) =>
+			effectiveModelKey ? updateModelSettings(effectiveModelKey, reasoning) : Promise.resolve(),
+		[effectiveModelKey, updateModelSettings],
+	);
+	useEffect(() => {
+		if (!session || session.modelSettings || !selectedModel) return;
+		void updateModelSettings(selectedModel, reasoningByModel[selectedModel]);
+	}, [reasoningByModel, selectedModel, session, updateModelSettings]);
 
 	useEffect(() => {
 		if (!session?.id) return;
@@ -227,6 +313,8 @@ export function useTeamChatModel(teamId: string): {
 				text,
 				targetMemberIds,
 				...(promptAttachments.length ? { attachments: promptAttachments } : {}),
+				...(effectiveModelKey ? { modelKey: effectiveModelKey } : {}),
+				...(effectiveReasoning ? { reasoning: effectiveReasoning } : {}),
 			});
 			setSnapshot((current) =>
 				!current ||
@@ -239,10 +327,10 @@ export function useTeamChatModel(teamId: string): {
 			setStatus("ready");
 			if (draftText) {
 				setHistoryByTeam((current) => {
-					const previous = current[teamId] ?? [];
+					const previous = current[draftScope] ?? [];
 					return {
 						...current,
-						[teamId]: [...previous.filter((item) => item !== draftText), draftText].slice(-50),
+						[draftScope]: [...previous.filter((item) => item !== draftText), draftText].slice(-50),
 					};
 				});
 			}
@@ -259,7 +347,18 @@ export function useTeamChatModel(teamId: string): {
 			pendingRef.current = undefined;
 			setPending(undefined);
 		}
-	}, [attachments, draft, selectedMemberIds, session, team, teamId, updateAttachments, updateDraft]);
+	}, [
+		attachments,
+		draft,
+		selectedMemberIds,
+		session,
+		team,
+		draftScope,
+		updateAttachments,
+		updateDraft,
+		effectiveModelKey,
+		effectiveReasoning,
+	]);
 
 	const abort = useCallback(async () => {
 		const request = pendingRef.current;
@@ -309,7 +408,7 @@ export function useTeamChatModel(teamId: string): {
 	);
 	const model = useMemo<TeamChatViewModel>(
 		() => ({
-			feedKey: teamId,
+			feedKey: session?.id ?? teamId,
 			title: team ? teamDisplayName(team, t) : t("teams.title"),
 			status,
 			draft,
@@ -321,6 +420,17 @@ export function useTeamChatModel(teamId: string): {
 			...(error ? { error } : {}),
 			editorEnabled: Boolean(session),
 			canSend: Boolean(session && (draft.trim() || attachments.length > 0) && !pending),
+			workspace: session
+				? createActivityWorkspace(session.workspaceId ?? `agent-team:${teamId}`, session.cwd)
+				: null,
+			activeSessionId: session?.id ?? null,
+			modelKey: effectiveModelKey,
+			...(effectiveReasoning ? { reasoning: effectiveReasoning } : {}),
+			sessions: sessions.map((item, index) => ({
+				id: item.id,
+				label: t("chat.sessionLabel", { index: sessions.length - index }),
+			})),
+			sessionActionsDisabled: status === "loading" || Boolean(pending),
 			labels,
 		}),
 		[
@@ -337,12 +447,41 @@ export function useTeamChatModel(teamId: string): {
 			error,
 			session,
 			pending,
+			sessions,
+			effectiveModelKey,
+			effectiveReasoning,
 			labels,
 		],
 	);
 	const actions = useMemo<TeamChatActions>(
-		() => ({ setDraft, selectLeader, toggleMember, selectFiles, selectImages, removeAttachment, send, abort }),
-		[setDraft, selectLeader, toggleMember, selectFiles, selectImages, removeAttachment, send, abort],
+		() => ({
+			setDraft,
+			selectLeader,
+			toggleMember,
+			selectFiles,
+			selectImages,
+			removeAttachment,
+			send,
+			abort,
+			createSession,
+			openSession,
+			selectModel,
+			selectReasoning,
+		}),
+		[
+			setDraft,
+			selectLeader,
+			toggleMember,
+			selectFiles,
+			selectImages,
+			removeAttachment,
+			send,
+			abort,
+			createSession,
+			openSession,
+			selectModel,
+			selectReasoning,
+		],
 	);
 
 	return { model, actions };

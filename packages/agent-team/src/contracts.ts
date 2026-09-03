@@ -127,6 +127,9 @@ export interface TeamSessionDocument {
 	readonly revision: number;
 	readonly id: string;
 	readonly teamId: string;
+	/** Stable owner workspace shared by every session created under the Team. */
+	readonly workspaceId?: string;
+	readonly modelSettings?: TeamSessionModelSettings;
 	/** Team definition revision last reconciled into the active runtime roster. */
 	readonly teamRevision?: number;
 	readonly name: string;
@@ -145,6 +148,13 @@ export interface TeamSessionDocument {
 	readonly events: readonly LegacyTeamFeedEvent[];
 	readonly memberRuntime: Readonly<Record<string, TeamMemberRuntimeState>>;
 }
+
+export interface TeamSessionModelSettings {
+	readonly modelKey: string;
+	readonly reasoning?: string;
+}
+
+export interface UpdateTeamSessionModelSettingsInput extends TeamSessionModelSettings {}
 
 export interface AgentProfileUpdateImpact {
 	readonly agentProfileId: string;
@@ -232,6 +242,9 @@ export interface SendTeamMessageInput {
 	readonly text: string;
 	readonly targetMemberIds: readonly string[];
 	readonly attachments?: readonly PromptAttachmentRef[];
+	/** Per-turn model selection applied consistently to every initially addressed member. */
+	readonly modelKey?: string;
+	readonly reasoning?: string;
 }
 
 /** Business activity remains separate from the ordinary message type. */
@@ -258,6 +271,13 @@ export interface TeamSessionSnapshot {
 export interface TeamSessionReference {
 	readonly id: string;
 	readonly coordinationSessionPath: string;
+}
+
+/** Team-owned catalog projection; Conversation remains the only message/session storage format. */
+export interface TeamSessionListItem extends TeamSessionReference {
+	readonly title: string;
+	readonly createdAt: number;
+	readonly updatedAt: number;
 }
 
 /** Safe renderer-facing updates plus product-neutral ordinary message events. */

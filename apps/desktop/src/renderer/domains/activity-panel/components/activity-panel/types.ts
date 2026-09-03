@@ -1,15 +1,20 @@
 import type { TabBarDragEvent, TabBarItem } from "@shared/components/ui/tab-bar";
 import type { ActivityTabKey } from "@shared/lib/project-profile";
 import type { FloatingActivityTabPlacement } from "@shared/store/atoms";
+import type { ActivityWorkspace } from "@shared/workspace/activity-workspace";
+import type { ConversationScenario } from "@vetta-org/plugin-sdk";
 import type { RefObject } from "react";
 import type { ResolvedActivityTab } from "../../registry/types";
 import type { ActivityTabBounds, ActivityTabPoint } from "../../services/floating-activity-tab";
 import type { HiddenTabEntry } from "../PluginTabPicker";
 
 export interface ActivityPanelProps {
-	cwd?: string | null;
+	workspace: ActivityWorkspace;
 	enablePluginTabs?: boolean;
 	knowledgeHistory?: boolean;
+	/** Host-selected static abilities. Omitted means every built-in contribution. */
+	enabledBuiltinTabs?: readonly string[];
+	pluginScenario?: ConversationScenario;
 }
 
 export interface ActivityPanelModel {
@@ -18,6 +23,7 @@ export interface ActivityPanelModel {
 	availablePluginTabs: HiddenTabEntry[];
 	bottomSheet: boolean;
 	cwd: string | null;
+	workspaceId: string;
 	dockPreviewBounds: ActivityTabBounds | null;
 	floatingTabs: readonly FloatingActivityTabPlacement[];
 	isOpen: boolean;

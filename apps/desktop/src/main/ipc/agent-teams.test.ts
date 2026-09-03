@@ -1,4 +1,4 @@
-import { createEmptyAgentTeamDocument } from "@vetta/agent-team";
+import { createEmptyAgentTeamDocument, createInitialAgentTeamDocument } from "@vetta/agent-team";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type AgentTeamsIpcDependencies, registerAgentTeamsIpc } from "./agent-teams.js";
 
@@ -16,6 +16,9 @@ vi.mock("electron", () => ({
 
 vi.mock("../agent-teams/agent-team-store.js", () => ({ agentTeamStore: {} }));
 vi.mock("../agent-teams/team-session-service.js", () => ({ agentTeamSessionService: {} }));
+vi.mock("../agent-teams/team-workspace.js", () => ({
+	ensureTeamWorkspace: vi.fn(async (teamId: string) => `C:/teams/${teamId}/workspace`),
+}));
 
 function dependencies(): AgentTeamsIpcDependencies {
 	return {
@@ -33,8 +36,10 @@ function dependencies(): AgentTeamsIpcDependencies {
 		},
 		sessions: {
 			create: vi.fn(),
+			listSessions: vi.fn(async () => []),
 			readSnapshot: vi.fn(),
 			send: vi.fn(),
+			updateModelSettings: vi.fn(),
 			snapshot: vi.fn((session) => ({ session, conversationRevision: 0, messages: [], activities: [] })),
 			subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
 			abort: vi.fn(),
@@ -96,6 +101,43 @@ describe("Agent Team IPC contract", () => {
 		expect(() =>
 			getSession({}, { id: "session", coordinationSessionPath: "C:/runtime/session.jsonl", privateState: true }),
 		).toThrow("Invalid Team session reference");
+	});
+
+	it("creates every Team session in the Team-owned workspace and lists the Team catalog", async () => {
+		const deps = dependencies();
+		const document = createInitialAgentTeamDocument();
+		const team = document.teams[0];
+		if (!team) throw new Error("missing Team fixture");
+		deps.store.read = vi.fn(async () => document);
+		deps.sessions.create = vi.fn(async (_team, _document, cwd) => ({ cwd }) as never);
+		deps.sessions.listSessions = vi.fn(async () => []);
+		registerAgentTeamsIpc(deps);
+
+		const createSession = ipc.handlers.get("vetta:agent-teams:create-session");
+		const listSessions = ipc.handlers.get("vetta:agent-teams:list-sessions");
+		if (!createSession || !listSessions) throw new Error("Team session handlers were not registered");
+		await createSession({}, team.id);
+		await listSessions({}, team.id);
+
+		expect(deps.sessions.create).toHaveBeenCalledWith(team, document, `C:/teams/${team.id}/workspace`);
+		expect(deps.sessions.listSessions).toHaveBeenCalledWith(team.id);
+	});
+
+	it("validates and forwards Team-session model settings", async () => {
+		const deps = dependencies();
+		registerAgentTeamsIpc(deps);
+		const updateModelSettings = ipc.handlers.get("vetta:agent-teams:update-model-settings");
+		if (!updateModelSettings) throw new Error("update-model-settings handler was not registered");
+
+		await updateModelSettings({}, "session", { modelKey: "openai/gpt-5", reasoning: "high" });
+		expect(deps.sessions.updateModelSettings).toHaveBeenCalledWith("session", {
+			modelKey: "openai/gpt-5",
+			reasoning: "high",
+		});
+
+		await expect(updateModelSettings({}, "session", { reasoning: "high" })).rejects.toThrow(
+			"Invalid Team session model settings input",
+		);
 	});
 
 	it("bridges stream subscriptions and abort requests", async () => {

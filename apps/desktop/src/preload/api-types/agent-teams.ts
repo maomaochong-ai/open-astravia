@@ -10,11 +10,13 @@ import type {
 	DeleteTeamInput,
 	SendTeamMessageInput,
 	TeamDefinition,
+	TeamSessionListItem,
 	TeamSessionReference,
 	TeamSessionSnapshot,
 	TeamSessionStreamEvent,
 	UpdateAgentProfileInput,
 	UpdateTeamInput,
+	UpdateTeamSessionModelSettingsInput,
 } from "@vetta/agent-team";
 
 export interface DesktopAgentTeamsApi {
@@ -28,7 +30,9 @@ export interface DesktopAgentTeamsApi {
 	createTeam(input: CreateTeamInput): Promise<TeamDefinition>;
 	updateTeam(id: string, input: UpdateTeamInput): Promise<TeamDefinition>;
 	deleteTeam(id: string, input: DeleteTeamInput): Promise<void>;
-	createSession(teamId: string, cwd: string): Promise<TeamSessionSnapshot>;
+	createSession(teamId: string): Promise<TeamSessionSnapshot>;
+	listSessions(teamId: string): Promise<readonly TeamSessionListItem[]>;
+	updateModelSettings(id: string, input: UpdateTeamSessionModelSettingsInput): Promise<TeamSessionSnapshot>;
 	getSession(reference: TeamSessionReference | string): Promise<TeamSessionSnapshot>;
 	subscribe(id: string, handler: (event: TeamSessionStreamEvent) => void): Promise<() => void>;
 	abort(id: string): Promise<void>;

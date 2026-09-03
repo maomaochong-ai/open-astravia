@@ -134,7 +134,7 @@ describe("PluginContext browser facade", () => {
 	it("opens the built-in panel with only browser.open and cannot invoke automation", () => {
 		const ctx = createContext(["browser.open"]);
 		ctx.browser.open("example.com/posts");
-		expect(store.get(browserUrlBySessionAtom).get(session.sessionPath)).toBe("https://example.com/posts");
+		expect(store.get(browserUrlBySessionAtom).get(session.cwd)).toBe("https://example.com/posts");
 		expect(store.get(activityPanelOpenAtom)).toBe(true);
 		expect(store.get(activityPanelTabByProjectAtom).get(session.cwd)).toBe("browser");
 		expect(() => ctx.browser.sessions.create()).toThrow("Plugin permission denied: browser.read");

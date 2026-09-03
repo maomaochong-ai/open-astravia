@@ -117,6 +117,13 @@ const teamChatRoute = createRoute({
 	pendingComponent: NoPendingComponent,
 });
 
+const teamSessionRoute = createRoute({
+	getParentRoute: () => rootRoute,
+	path: "/agent-teams/$teamId/sessions/$sessionId",
+	component: TeamChatPage,
+	pendingComponent: NoPendingComponent,
+});
+
 const teamSettingsRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/agent-teams/$teamId/settings",
@@ -231,6 +238,7 @@ const routeTree = rootRoute.addChildren([
 	agentLibraryRoute,
 	teamListRoute,
 	teamChatRoute,
+	teamSessionRoute,
 	teamSettingsRoute,
 	knowledgeRoute,
 	knowledgeListRoute,

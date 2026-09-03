@@ -46,6 +46,7 @@ import {
 	type TeamObservationPublisher,
 	type TeamPublicationOperationRecord,
 	type TeamSessionDocument,
+	type TeamSessionListItem,
 	type TeamSessionSnapshot,
 	type TeamSessionStateRecord,
 	type TeamSessionStreamEvent,
@@ -56,6 +57,7 @@ import {
 	type TeamWorkItem,
 	teamMemberResultMessageId,
 	teamUserMessageId,
+	type UpdateTeamSessionModelSettingsInput,
 } from "@vetta/agent-team";
 import { type AssistantMessage, type AssistantMessageEvent, createAssistantMessage } from "@vetta/ai";
 import type {
@@ -75,6 +77,10 @@ import type {
 } from "@vetta/runtime-core/conversation";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import { runtimeObservationFailure } from "@vetta/runtime-core/observation";
+import {
+	type ConversationOwnershipCatalogPort,
+	conversationOwnershipCatalog,
+} from "../conversations/conversation-ownership-catalog.js";
 import { resolveDesktopSessionConfig } from "../conversations/resolve-session-config.js";
 import { getAppLogger } from "../logger.js";
 import { getSharedRuntime } from "../runtime.js";
@@ -94,8 +100,9 @@ import { TeamMemberScheduler } from "./team-member-scheduler.js";
 import type { TeamMemberTurnRequest } from "./team-member-turn-request.js";
 import { TeamMessageControlService } from "./team-message-control-service.js";
 import { TeamOperationQueue } from "./team-operation-queue.js";
+import { ensureLegacyAgentTeamOwnershipCatalog, registerAgentTeamSessionOwnership } from "./team-ownership-backfill.js";
 import { restoreTeamMemberRuntimes } from "./team-runtime-restorer.js";
-import { createLegacyTeamSessionRepository, type LegacyTeamSessionRepository } from "./team-session-repository.js";
+import { type LegacyTeamSessionRepository, legacyTeamSessionRepository } from "./team-session-repository.js";
 import { TeamTaskControlService } from "./team-task-control-service.js";
 
 const log = getAppLogger("agent-team-sessions");
@@ -106,6 +113,7 @@ export interface AgentTeamSessionServiceOptions {
 	readonly extensions?: AgentTeamExtensionRegistry;
 	readonly repository?: LegacyTeamSessionRepository;
 	readonly readDocument?: () => Promise<AgentTeamDocument>;
+	readonly ownershipCatalog?: ConversationOwnershipCatalogPort;
 	readonly externalConditionChanges?: {
 		subscribe(listener: (change: TeamExternalConditionChange) => void): () => void;
 	};
@@ -155,6 +163,7 @@ export class AgentTeamSessionService {
 	private readonly extensions: AgentTeamExtensionRegistry;
 	private readonly repository: LegacyTeamSessionRepository;
 	private readonly readDocument: () => Promise<AgentTeamDocument>;
+	private readonly ownershipCatalog: ConversationOwnershipCatalogPort | undefined;
 	private readonly collaborationStore: TeamCollaborationStore;
 	private readonly taskControl: TeamTaskControlService;
 	private readonly messageControl: TeamMessageControlService;
@@ -163,9 +172,10 @@ export class AgentTeamSessionService {
 	constructor(options: AgentTeamSessionServiceOptions = {}) {
 		this.runtime = options.runtime;
 		this.extensions = options.extensions ?? DEFAULT_AGENT_TEAM_EXTENSIONS;
-		this.repository = options.repository ?? createLegacyTeamSessionRepository();
+		this.repository = options.repository ?? legacyTeamSessionRepository;
 		this.readDocument =
 			options.readDocument ?? (() => Promise.reject(new Error("Agent Team configuration reader is unavailable")));
+		this.ownershipCatalog = options.ownershipCatalog;
 		this.sharedContextCompaction = options.sharedContextCompaction ?? {
 			maxCharacters: 48_000,
 			keepRecentCharacters: 16_000,
@@ -645,6 +655,7 @@ export class AgentTeamSessionService {
 			revision: 0,
 			id,
 			teamId: team.id,
+			workspaceId: `agent-team:${team.id}`,
 			teamRevision: team.revision,
 			name: team.name,
 			cwd,
@@ -688,8 +699,42 @@ export class AgentTeamSessionService {
 		return session;
 	}
 
+	async listSessions(teamId: string): Promise<readonly TeamSessionListItem[]> {
+		if (!this.ownershipCatalog) return [];
+		await ensureLegacyAgentTeamOwnershipCatalog(this.repository, this.ownershipCatalog);
+		const records = await this.ownershipCatalog.listByTeam(teamId);
+		return records
+			.filter((record) => record.owner.role === "coordination")
+			.map((record) => ({
+				id: record.owner.teamSessionId,
+				coordinationSessionPath: record.sessionPath,
+				title: record.title,
+				createdAt: record.createdAt,
+				updatedAt: record.updatedAt,
+			}))
+			.sort((left, right) => right.updatedAt - left.updatedAt);
+	}
+
+	async updateModelSettings(id: string, settings: UpdateTeamSessionModelSettingsInput): Promise<TeamSessionDocument> {
+		return this.coordinate(id, async (session) => {
+			const next: TeamSessionDocument = {
+				...session,
+				modelSettings: { ...settings },
+				revision: session.revision + 1,
+				updatedAt: Date.now(),
+			};
+			await this.persist(next);
+			this.publishSessionUpdated(next);
+			return next;
+		});
+	}
+
 	async read(id: string, coordinationSessionPath?: string): Promise<TeamSessionDocument> {
-		return this.coordination.run(id, () => this.readInternal(id, coordinationSessionPath));
+		return this.coordination.run(id, async () => {
+			const session = await this.readInternal(id, coordinationSessionPath);
+			await this.registerSessionOwnership(session);
+			return session;
+		});
 	}
 
 	private async readInternal(id: string, coordinationSessionPath?: string): Promise<TeamSessionDocument> {
@@ -709,6 +754,7 @@ export class AgentTeamSessionService {
 			const desiredMemberIds = new Set(team.members.map((member) => member.id));
 			const prepared: TeamSessionDocument = {
 				...persisted,
+				workspaceId: persisted.workspaceId ?? `agent-team:${persisted.teamId}`,
 				memberRuntime: Object.fromEntries(
 					Object.entries(persisted.memberRuntime).filter(([memberId]) => desiredMemberIds.has(memberId)),
 				),
@@ -1096,6 +1142,8 @@ export class AgentTeamSessionService {
 					createdByParticipantId: "local-user",
 					signal,
 					attachments: input.attachments,
+					modelKey: input.modelKey,
+					reasoning: input.reasoning,
 				}),
 			),
 		);
@@ -1268,14 +1316,22 @@ export class AgentTeamSessionService {
 
 	private async scheduleMemberTurn(input: TeamMemberTurnRequest): Promise<TeamSessionDocument> {
 		const session = await this.read(input.teamSessionId);
+		const modelKey = input.modelKey ?? session.modelSettings?.modelKey;
+		const reasoning =
+			input.reasoning ?? (input.modelKey === undefined ? session.modelSettings?.reasoning : undefined);
+		const resolvedInput: TeamMemberTurnRequest = {
+			...input,
+			...(modelKey ? { modelKey } : {}),
+			...(reasoning ? { reasoning } : {}),
+		};
 		const admission = await this.collaborationStore.enqueue({
 			session,
-			memberId: input.memberId,
-			requestId: input.requestId,
-			createdByParticipantId: input.createdByParticipantId,
-			objective: input.promptText,
-			attachments: input.attachments,
-			kind: input.workItemKind,
+			memberId: resolvedInput.memberId,
+			requestId: resolvedInput.requestId,
+			createdByParticipantId: resolvedInput.createdByParticipantId,
+			objective: resolvedInput.promptText,
+			attachments: resolvedInput.attachments,
+			kind: resolvedInput.workItemKind,
 		});
 		if (admission.created) {
 			this.observations(session)?.publishWorkItem({
@@ -1292,8 +1348,8 @@ export class AgentTeamSessionService {
 			return await this.memberScheduler.schedule({
 				teamSessionId: session.id,
 				memberId: input.memberId,
-				waitingMemberId: input.waitingMemberId,
-				signal: input.signal,
+				waitingMemberId: resolvedInput.waitingMemberId,
+				signal: resolvedInput.signal,
 				run: async () => {
 					const latest = this.sessions.get(session.id) ?? session;
 					const workItem = this.collaborationStore
@@ -1307,15 +1363,17 @@ export class AgentTeamSessionService {
 					) {
 						return latest;
 					}
-					input.signal?.throwIfAborted();
+					resolvedInput.signal?.throwIfAborted();
 					const controller = new AbortController();
 					const cancellations = this.memberCancellations.get(session.id) ?? new Map<string, AbortController>();
 					cancellations.set(admission.workItem.id, controller);
 					this.memberCancellations.set(session.id, cancellations);
 					try {
 						return await this.runMemberTurn({
-							...input,
-							signal: input.signal ? AbortSignal.any([input.signal, controller.signal]) : controller.signal,
+							...resolvedInput,
+							signal: resolvedInput.signal
+								? AbortSignal.any([resolvedInput.signal, controller.signal])
+								: controller.signal,
 						});
 					} finally {
 						cancellations.delete(admission.workItem.id);
@@ -1327,7 +1385,7 @@ export class AgentTeamSessionService {
 			const released = await this.collaborationStore.releaseQueued(
 				session,
 				admission.workItem.id,
-				input.signal?.aborted ? "cancelled" : "waiting",
+				resolvedInput.signal?.aborted ? "cancelled" : "waiting",
 			);
 			if (released) {
 				this.observations(session)?.publishWorkItem({
@@ -1618,6 +1676,12 @@ export class AgentTeamSessionService {
 		signal?.addEventListener("abort", abortTarget, { once: true });
 		try {
 			this.attachRuntimeSubscriptions(configuredSession);
+			if (input.modelKey || input.reasoning) {
+				await this.getRuntime().updateSettings(runtimeState.sessionId, {
+					...(input.modelKey ? { modelKey: input.modelKey } : {}),
+					...(input.reasoning ? { thinkingLevel: input.reasoning } : {}),
+				});
+			}
 			if (mode === "continue" || mode === "recovery") {
 				await this.getRuntime().continue(runtimeState.sessionId);
 			} else if (mode === "retry") {
@@ -1626,6 +1690,8 @@ export class AgentTeamSessionService {
 				await this.getRuntime().prompt(runtimeState.sessionId, {
 					text: promptText,
 					...(attachments?.length ? { attachments: [...attachments] } : {}),
+					...(input.modelKey ? { modelKey: input.modelKey } : {}),
+					...(input.reasoning ? { reasoning: input.reasoning } : {}),
 				});
 			}
 			if (signal?.aborted) throw new Error("Team member turn was cancelled");
@@ -2206,7 +2272,13 @@ export class AgentTeamSessionService {
 		) {
 			await this.getRuntime().appendSessionMetadataEntry(coordination.sessionId, record.customType, record);
 		}
+		await this.registerSessionOwnership(session);
 		this.sessions.set(session.id, session);
+	}
+
+	private registerSessionOwnership(session: TeamSessionDocument): Promise<void> {
+		if (!this.ownershipCatalog) return Promise.resolve();
+		return registerAgentTeamSessionOwnership(session, this.ownershipCatalog);
 	}
 
 	/** Re-read inside the lane; callers must not return a document derived from a stale snapshot. */
@@ -2220,6 +2292,7 @@ export class AgentTeamSessionService {
 export const agentTeamSessionService = new AgentTeamSessionService({
 	extensions: agentTeamExtensionHost,
 	readDocument: () => agentTeamStore.read(),
+	ownershipCatalog: conversationOwnershipCatalog,
 	externalConditionChanges: agentTeamExternalConditionChanges,
 });
 

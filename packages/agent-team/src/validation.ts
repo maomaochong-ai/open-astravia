@@ -11,6 +11,7 @@ import type {
 	TeamSessionDocument,
 	UpdateAgentProfileInput,
 	UpdateTeamInput,
+	UpdateTeamSessionModelSettingsInput,
 } from "./contracts.js";
 import { AGENT_TEAM_SCHEMA_VERSION } from "./contracts.js";
 import { assertTeamInvariants, normalizeMentionHandle } from "./domain.js";
@@ -151,6 +152,15 @@ export const SendTeamMessageInputSchema = Type.Object(
 		text,
 		targetMemberIds: Type.Array(id, { maxItems: 32, uniqueItems: true }),
 		attachments: Type.Optional(Type.Array(promptAttachment, { maxItems: 128 })),
+		modelKey: Type.Optional(id),
+		reasoning: Type.Optional(id),
+	},
+	{ additionalProperties: false },
+);
+export const UpdateTeamSessionModelSettingsInputSchema = Type.Object(
+	{
+		modelKey: id,
+		reasoning: Type.Optional(id),
 	},
 	{ additionalProperties: false },
 );
@@ -231,6 +241,8 @@ export const TeamSessionDocumentSchema = Type.Object(
 		revision,
 		id,
 		teamId: id,
+		workspaceId: Type.Optional(id),
+		modelSettings: Type.Optional(UpdateTeamSessionModelSettingsInputSchema),
 		teamRevision: Type.Optional(Type.Integer({ minimum: 1, maximum: Number.MAX_SAFE_INTEGER })),
 		name: Type.String({ minLength: 1, maxLength: 128, pattern: "\\S" }),
 		cwd: Type.String({ minLength: 1, maxLength: 4_096 }),
@@ -302,6 +314,13 @@ export function parseTeamSessionDocument(value: unknown): TeamSessionDocument {
 	}
 	assertTeamSessionInvariants(session);
 	return session;
+}
+
+export function parseUpdateTeamSessionModelSettingsInput(value: unknown): UpdateTeamSessionModelSettingsInput {
+	if (!Value.Check(UpdateTeamSessionModelSettingsInputSchema, value)) {
+		throw new Error("Invalid Team session model settings input");
+	}
+	return value;
 }
 
 function assertTeamSessionInvariants(session: TeamSessionDocument): void {

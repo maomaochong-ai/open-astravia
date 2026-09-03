@@ -113,6 +113,10 @@
   "chat": {
     "hint": "未指定成员时由负责人处理。",
     "configure": "配置成员能力",
+	"newSession": "新对话",
+	"selectSession": "选择团队对话",
+	"sessionLabel": "对话 {{index}}",
+	"activity": "活动",
     "leaderRoute": "负责人",
     "you": "你",
     "member": "团队成员",

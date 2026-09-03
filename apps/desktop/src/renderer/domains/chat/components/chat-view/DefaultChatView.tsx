@@ -1,4 +1,4 @@
-import { ActivityPanel } from "@domains/activity-panel/components/ActivityPanel";
+import { ConversationActivityPanel } from "@domains/activity-panel/components/ActivityPanel";
 import { cn } from "@shared/lib/utils";
 import { PerfSendProfiler } from "@shared/lib/perf-send";
 import { ChatExportHost } from "../ChatExportHost";
@@ -48,7 +48,7 @@ export function DefaultChatView({
 						</PerfSendProfiler>
 					</div>
 				</div>
-				<ActivityPanel />
+				<ConversationActivityPanel />
 			</div>
 		</div>
 		</PerfSendProfiler>

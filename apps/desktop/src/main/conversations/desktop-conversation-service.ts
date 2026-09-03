@@ -14,12 +14,17 @@ import {
 } from "@vetta/runtime-core";
 import { sanitizeRuntimeErrorMessage } from "@vetta/runtime-desktop";
 import { type DesktopSessionHistoryInfo, UNAVAILABLE_RUNTIME_SESSION_ACCESS } from "../../shared/session-access.js";
+import { ensureLegacyAgentTeamOwnershipCatalog } from "../agent-teams/team-ownership-backfill.js";
 import { monitorRuntimeSession } from "../app-monitor/app-monitor-service.js";
 import { allowProjectRoot, readDesktopConfig } from "../ipc/fs.js";
 import { getAppLogger } from "../logger.js";
 import { getSharedRuntime } from "../runtime.js";
 import { assertSandboxAvailableForMode } from "../sandbox/capability.js";
 import { emitConversationListChanged } from "./conversation-list-events.js";
+import {
+	type ConversationOwnershipCatalogPort,
+	conversationOwnershipCatalog,
+} from "./conversation-ownership-catalog.js";
 import {
 	type DesktopCodingAgentSessionConfig,
 	type DesktopConversationSource,
@@ -123,7 +128,12 @@ function findLastAssistantMessage(
 export class DesktopConversationService {
 	private readonly autoTitleScheduledSessions = new Set<string>();
 
-	constructor(private readonly runtime: RuntimeHost) {}
+	constructor(
+		private readonly runtime: RuntimeHost,
+		private readonly ownershipCatalog?: Pick<ConversationOwnershipCatalogPort, "filterUserSessions"> &
+			Partial<Pick<ConversationOwnershipCatalogPort, "getOwner">>,
+		private readonly ensureOwnershipReady?: () => Promise<void>,
+	) {}
 
 	subscribe(sessionId: string, handler: (event: SessionEvent) => void): () => void {
 		return this.runtime.subscribe(sessionId, handler);
@@ -137,6 +147,18 @@ export class DesktopConversationService {
 	): Promise<DesktopConversationSession> {
 		const trace = new DesktopSessionCreationTrace(log, traceContext?.interactionId);
 		try {
+			if (config?.sessionPath && isAbsolute(config.sessionPath)) {
+				const absolutePath = resolve(config.sessionPath);
+				await this.ensureOwnershipReady?.();
+				const owner = await this.ownershipCatalog?.getOwner?.(absolutePath);
+				if (owner) {
+					throw new DesktopConversationError("INVALID_SESSION_PATH", "Session is managed by Agent Team.", {
+						sessionPath: absolutePath,
+						teamId: owner.teamId,
+						teamSessionId: owner.teamSessionId,
+					});
+				}
+			}
 			await trace.measure("sandbox-check", () =>
 				assertSandboxAvailableForMode(config?.executionMode, async () => {
 					const desktopConfig = await readDesktopConfig();
@@ -195,6 +217,15 @@ export class DesktopConversationService {
 			throw new DesktopConversationError("INVALID_SESSION_PATH", "sessionPath must be an absolute .jsonl path.");
 		}
 		const absolutePath = resolve(sessionPath);
+		await this.ensureOwnershipReady?.();
+		const owner = await this.ownershipCatalog?.getOwner?.(absolutePath);
+		if (owner) {
+			throw new DesktopConversationError("INVALID_SESSION_PATH", "Session is managed by Agent Team.", {
+				sessionPath: absolutePath,
+				teamId: owner.teamId,
+				teamSessionId: owner.teamSessionId,
+			});
+		}
 		try {
 			const file = await stat(absolutePath);
 			if (!file.isFile()) {
@@ -291,7 +322,11 @@ export class DesktopConversationService {
 		}
 		const absoluteCwd = resolve(cwd);
 		allowProjectRoot(absoluteCwd);
-		const sessions = await this.runtime.listSessions(absoluteCwd, resolveSessionDirForCwd(absoluteCwd));
+		await this.ensureOwnershipReady?.();
+		const catalogSessions = await this.runtime.listSessions(absoluteCwd, resolveSessionDirForCwd(absoluteCwd));
+		const sessions = this.ownershipCatalog
+			? await this.ownershipCatalog.filterUserSessions(catalogSessions)
+			: catalogSessions;
 		return Promise.all(
 			sessions.map(async (session) => ({
 				...session,
@@ -476,7 +511,9 @@ let sharedService: DesktopConversationService | undefined;
 
 export function getDesktopConversationService(): DesktopConversationService {
 	if (!sharedService) {
-		sharedService = new DesktopConversationService(getSharedRuntime());
+		sharedService = new DesktopConversationService(getSharedRuntime(), conversationOwnershipCatalog, () =>
+			ensureLegacyAgentTeamOwnershipCatalog(),
+		);
 	}
 	return sharedService;
 }

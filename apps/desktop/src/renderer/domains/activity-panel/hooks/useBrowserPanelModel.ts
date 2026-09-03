@@ -1,13 +1,13 @@
 import {
-	activeSessionAtom,
-	browserUrlBySessionAtom,
-	getBrowserUrlForSession,
-	setBrowserUrlForSessionAtom,
+	browserUrlByWorkspaceAtom,
+	getBrowserUrlForWorkspace,
+	setBrowserUrlForWorkspaceAtom,
 } from "@shared/store/atoms";
 import type { BrowserPanelLabels } from "@vetta/theme-ui/activity";
 import { useAtomValue, useSetAtom } from "jotai";
 import { type FormEvent, type Ref, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useActivityWorkspace } from "../registry/context";
 
 /** 所有会话的内置浏览器共享一份持久 cookie/会话，登录一次到处复用。 */
 const BROWSER_PARTITION = "persist:vetta-browser";
@@ -33,7 +33,7 @@ function normalizeUrl(input: string): string | null {
 }
 
 export interface BrowserPanelModel {
-	sessionPath: string | null;
+	workspaceId: string | null;
 	labels: BrowserPanelLabels;
 	address: string;
 	canBack: boolean;
@@ -56,11 +56,11 @@ export interface BrowserPanelModel {
 
 export function useBrowserPanelModel(): BrowserPanelModel {
 	const { t } = useTranslation("chat");
-	const activeSession = useAtomValue(activeSessionAtom);
-	const sessionPath = activeSession?.sessionPath ?? null;
-	const urlMap = useAtomValue(browserUrlBySessionAtom);
-	const targetUrl = getBrowserUrlForSession(urlMap, sessionPath);
-	const setSessionUrl = useSetAtom(setBrowserUrlForSessionAtom);
+	const workspace = useActivityWorkspace();
+	const workspaceId = workspace.cwd ? workspace.id : null;
+	const urlMap = useAtomValue(browserUrlByWorkspaceAtom);
+	const targetUrl = getBrowserUrlForWorkspace(urlMap, workspaceId);
+	const setWorkspaceUrl = useSetAtom(setBrowserUrlForWorkspaceAtom);
 
 	const webviewRef = useRef<WebviewElement | null>(null);
 	const readyRef = useRef(false);
@@ -75,7 +75,7 @@ export function useBrowserPanelModel(): BrowserPanelModel {
 	// 绑定 webview 事件：导航/加载状态同步到工具栏与会话记忆。
 	useEffect(() => {
 		const el = webviewRef.current;
-		if (!el || !sessionPath) return;
+		if (!el || !workspaceId) return;
 		const syncNav = (): void => {
 			setCanBack(el.canGoBack());
 			setCanForward(el.canGoForward());
@@ -101,7 +101,7 @@ export function useBrowserPanelModel(): BrowserPanelModel {
 			setCurrentUrl(url);
 			setAddress(url);
 			syncNav();
-			setSessionUrl({ sessionPath, url });
+			setWorkspaceUrl({ workspaceId, url });
 		};
 		const onInPage = (event: Event): void => {
 			const ev = event as unknown as { url: string; isMainFrame: boolean };
@@ -109,7 +109,7 @@ export function useBrowserPanelModel(): BrowserPanelModel {
 			setCurrentUrl(ev.url);
 			setAddress(ev.url);
 			syncNav();
-			setSessionUrl({ sessionPath, url: ev.url });
+			setWorkspaceUrl({ workspaceId, url: ev.url });
 		};
 		const onFail = (event: Event): void => {
 			// errorCode -3 (ABORTED) 多因重定向/手动停止，非真实失败，忽略。
@@ -133,7 +133,7 @@ export function useBrowserPanelModel(): BrowserPanelModel {
 			el.removeEventListener("did-navigate-in-page", onInPage);
 			el.removeEventListener("did-fail-load", onFail);
 		};
-	}, [sessionPath, setSessionUrl]);
+	}, [workspaceId, setWorkspaceUrl]);
 
 	// 外部 targetUrl 变化（点会话链接 / 地址栏导航）→ 与当前页不同则加载；未就绪先挂起。
 	useEffect(() => {
@@ -149,10 +149,10 @@ export function useBrowserPanelModel(): BrowserPanelModel {
 	const navigate = useCallback(
 		(raw: string) => {
 			const url = normalizeUrl(raw);
-			if (!url || !sessionPath) return;
-			setSessionUrl({ sessionPath, url });
+			if (!url || !workspaceId) return;
+			setWorkspaceUrl({ workspaceId, url });
 		},
-		[sessionPath, setSessionUrl],
+		[workspaceId, setWorkspaceUrl],
 	);
 
 	const onAddressSubmit = useCallback(
@@ -192,7 +192,7 @@ export function useBrowserPanelModel(): BrowserPanelModel {
 	);
 
 	return {
-		sessionPath,
+		workspaceId,
 		labels,
 		address,
 		canBack,

@@ -6,6 +6,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TeamChatActions, TeamChatViewModel } from "./teamChatModel";
 import { TeamChatView } from "./TeamChatView";
 
+const modelSelector = vi.hoisted(() => ({ props: vi.fn() }));
+
 vi.mock("@vetta/theme-ui/chat", () => ({
 	MessageInput: {
 		Root: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -36,6 +38,13 @@ vi.mock("@vetta/theme-ui/chat", () => ({
 }));
 vi.mock("./TeamConversationFeed", () => ({ TeamConversationFeed: () => <div>timeline</div> }));
 vi.mock("./TeamRecipientSelector", () => ({ TeamRecipientSelector: () => <div>members</div> }));
+vi.mock("@domains/chat/components/ModelSelector", () => ({
+	ModelSelector: (props: unknown) => {
+		modelSelector.props(props);
+		return <div>model</div>;
+	},
+}));
+vi.mock("@domains/activity-panel/components/ActivityPanel", () => ({ ActivityPanel: () => <div>activity</div> }));
 
 afterEach(cleanup);
 
@@ -92,6 +101,12 @@ function model(
 		markdown,
 		editorEnabled,
 		canSend: status === "ready",
+		workspace: null,
+		activeSessionId: "session",
+		modelKey: "openai/gpt-5",
+		reasoning: "high",
+		sessions: [{ id: "session", label: "Chat 1" }],
+		sessionActionsDisabled: false,
 		labels,
 	};
 }
@@ -106,6 +121,10 @@ function actions(): TeamChatActions {
 		removeAttachment: vi.fn(),
 		send: vi.fn(async () => undefined),
 		abort: vi.fn(async () => undefined),
+		createSession: vi.fn(async () => undefined),
+		openSession: vi.fn(async () => undefined),
+		selectModel: vi.fn(async () => undefined),
+		selectReasoning: vi.fn(async () => undefined),
 	};
 }
 
@@ -163,5 +182,21 @@ describe("TeamChatView composer interaction", () => {
 		const addFile = screen.getByRole("button", { name: "Add file" });
 		const guidance = screen.getByText("Choose a member when needed");
 		expect(addFile.compareDocumentPosition(guidance) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+	});
+
+	it("binds the shared model selector to the active Team session", () => {
+		const viewActions = actions();
+		render(<TeamChatView model={model("ready")} actions={viewActions} />);
+		const props = modelSelector.props.mock.calls.at(-1)?.[0] as {
+			scope: {
+				onModelSelect: (modelKey: string, defaultReasoning?: string) => void;
+				onReasoningSelect: (reasoning: string) => void;
+			};
+		};
+
+		props.scope.onModelSelect("anthropic/claude", "medium");
+		props.scope.onReasoningSelect("medium");
+		expect(viewActions.selectModel).toHaveBeenCalledWith("anthropic/claude", "medium");
+		expect(viewActions.selectReasoning).toHaveBeenCalledWith("medium");
 	});
 });

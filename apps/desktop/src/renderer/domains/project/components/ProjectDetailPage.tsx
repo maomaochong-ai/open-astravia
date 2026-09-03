@@ -1,8 +1,9 @@
-import { ActivityPanel } from "@domains/activity-panel/components/ActivityPanel";
+import { CurrentScenarioActivityPanel } from "@domains/activity-panel/components/ActivityPanel";
 import { ProjectDetailPageView } from "@vetta/theme-ui/project";
 import { motion } from "motion/react";
 import { BatchQueueStatus } from "./BatchQueueStatus";
 import { useProjectDetailPageModel } from "../hooks/useProjectDetailPageModel";
+import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
 
 const easeOut = [0.22, 1, 0.36, 1] as const;
 
@@ -24,7 +25,11 @@ export function ProjectDetailPage(): JSX.Element {
 	return (
 		<ProjectDetailPageView
 			activityOpen={model.activityOpen}
-			activityPanel={<ActivityPanel cwd={model.decodedCwd} />}
+			activityPanel={
+				<CurrentScenarioActivityPanel
+					workspace={createActivityWorkspace(model.decodedCwd, model.decodedCwd)}
+				/>
+			}
 			batchSection={batchSection}
 			content={model.content}
 			createdAtLabel={model.createdAtLabel}

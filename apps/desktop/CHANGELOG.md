@@ -2,6 +2,7 @@
 
 ### Added
 
+- Agent Team 现在支持一个团队下创建、深链和切换多个独立会话，并在侧栏显示子会话；团队拥有稳定共享工作空间，输入区可按会话选择模型与推理档位，File/Browser 活动页签按工作空间共享。底层仍使用普通 Conversation，但新增归属目录会从普通列表、Quick Panel 与搜索中排除协调及成员执行会话。见 ADR-0105。
 - Chat 与 Agent Team 现在通过同一个严格 User/Agent 消息 ViewModel 和流式 reducer 展示普通 Conversation 消息；Team Snapshot 不再包装第二种消息结构，多成员流按消息与作者身份独立归约，私有 thinking/tool 过程仍不会进入公共会话。
 - Agent Team 的结果发布事务新增 `prepared/message-published/completed/needs-recovery` 生命周期 observation；崩溃恢复阶段会标记 `recovered`，仅携带稳定关联 ID，不复制成员私有执行正文。Team 共享操作契约与成员身份也分别进入 Coding Agent 的稳定/易变系统提示词段。
 - Agent Team 将成员 attempt 的自动重试和外部条件恢复统一到持久工作项结算链路：网络/限流按截止时间重试，欠费/认证保持 `attention-required`，只有宿主确认对应条件变化后才按 Provider/Model 精确唤醒；认证配置成功更新会发出该信号，额度系统也可复用同一无敏感数据的宿主通道。恢复过程继续使用原成员普通 Conversation，并发布带触发来源的类型化 observation，不新增 UI 或具体 Observer。

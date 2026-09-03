@@ -8,6 +8,7 @@ import {
 	parseTeamSessionDocument,
 	parseUpdateAgentProfileInput,
 	parseUpdateTeamInput,
+	parseUpdateTeamSessionModelSettingsInput,
 } from "../src/validation.js";
 
 describe("Agent Team IPC input validation", () => {
@@ -71,6 +72,19 @@ describe("Agent Team IPC input validation", () => {
 				targetMemberIds: [],
 			}),
 		).toThrow("Invalid send team message input");
+	});
+
+	it("validates Team-session model settings as a closed contract", () => {
+		expect(parseUpdateTeamSessionModelSettingsInput({ modelKey: "openai/gpt-5", reasoning: "high" })).toEqual({
+			modelKey: "openai/gpt-5",
+			reasoning: "high",
+		});
+		expect(() => parseUpdateTeamSessionModelSettingsInput({ reasoning: "high" })).toThrow(
+			"Invalid Team session model settings input",
+		);
+		expect(() => parseUpdateTeamSessionModelSettingsInput({ modelKey: "openai/gpt-5", privateTrace: true })).toThrow(
+			"Invalid Team session model settings input",
+		);
 	});
 
 	it("validates reviewed cascade deletion and atomic team roster updates", () => {

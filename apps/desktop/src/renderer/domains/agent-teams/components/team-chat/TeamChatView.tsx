@@ -1,14 +1,14 @@
 import { ConversationEditorView } from "@shared/components/conversation-editor/ConversationEditorView";
-import {
-	MessageInput,
-	InputBarPlaceholder,
-	SendButton,
-} from "@vetta/theme-ui/chat";
+import { ActivityPanel } from "@domains/activity-panel/components/ActivityPanel";
+import { ModelSelector } from "@domains/chat/components/ModelSelector";
+import { InputBarPlaceholder, MessageInput, SendButton } from "@vetta/theme-ui/chat";
 import { Button } from "@vetta/ui";
-import { useCallback, useState } from "react";
-import { TeamRecipientSelector } from "./TeamRecipientSelector";
+import { useCallback, useMemo, useState } from "react";
 import { TeamConversationFeed } from "./TeamConversationFeed";
+import { TeamRecipientSelector } from "./TeamRecipientSelector";
 import type { TeamChatActions, TeamChatViewModel } from "./teamChatModel";
+
+const TEAM_WORKSPACE_BUILTIN_TABS = ["file", "browser"] as const;
 
 export interface TeamChatViewProps {
 	readonly model: TeamChatViewModel;
@@ -23,6 +23,16 @@ export function TeamChatView({ model, actions }: TeamChatViewProps): JSX.Element
 		void actions.send();
 		return true;
 	}, [actions, model.canSend]);
+	const modelSelectorScope = useMemo(
+		() => ({
+			modelKey: model.modelKey,
+			...(model.reasoning ? { reasoning: model.reasoning } : {}),
+			onModelSelect: (modelKey: string, defaultReasoning?: string) =>
+				void actions.selectModel(modelKey, defaultReasoning),
+			onReasoningSelect: (reasoning: string) => void actions.selectReasoning(reasoning),
+		}),
+		[actions, model.modelKey, model.reasoning],
+	);
 	return (
 		<div className="flex h-full min-h-0 min-w-0 flex-1 bg-background">
 			<div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
@@ -138,8 +148,11 @@ export function TeamChatView({ model, actions }: TeamChatViewProps): JSX.Element
 											<span className="min-w-0 truncate px-1 text-[11px] text-muted-foreground">
 												{model.labels.hint}
 											</span>
-										</MessageInput.ToolbarLeading>
-										<MessageInput.ToolbarTrailing>
+									</MessageInput.ToolbarLeading>
+									<MessageInput.ToolbarTrailing>
+										<div className="min-w-0 shrink">
+											<ModelSelector updateActiveSession={false} scope={modelSelectorScope} />
+										</div>
 											<SendButton
 												canSend={model.canSend}
 												isStreaming={isActive}
@@ -163,6 +176,13 @@ export function TeamChatView({ model, actions }: TeamChatViewProps): JSX.Element
 					</div>
 				</div>
 			</div>
+			{model.workspace ? (
+				<ActivityPanel
+					workspace={model.workspace}
+					enablePluginTabs={false}
+					enabledBuiltinTabs={TEAM_WORKSPACE_BUILTIN_TABS}
+				/>
+			) : null}
 		</div>
 	);
 }

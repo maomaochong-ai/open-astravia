@@ -10,6 +10,7 @@ const capturedProps = vi.hoisted(() => ({
 
 vi.mock("@domains/activity-panel/components/ActivityPanel", () => ({
 	ActivityPanel: () => createElement("aside", { "data-testid": "activity-panel" }),
+	ConversationActivityPanel: () => createElement("aside", { "data-testid": "activity-panel" }),
 }));
 
 vi.mock("../ChatExportHost", () => ({

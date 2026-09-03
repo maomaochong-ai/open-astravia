@@ -1,4 +1,4 @@
-import { ActivityPanel } from "@domains/activity-panel/components/ActivityPanel";
+import { CurrentScenarioActivityPanel } from "@domains/activity-panel/components/ActivityPanel";
 import { motion, useReducedMotion } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@shared/lib/utils";
@@ -15,6 +15,7 @@ import { NewSessionOptionsRow } from "./NewSessionOptionsRow";
 import type { ProjectOption, ProjectSelection } from "./project-selector/project-selection";
 import { InputBar } from "../InputBar";
 import type { SendInteractionContext } from "../input-bar/types";
+import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
 
 
 /** 命令区展开时输入栏下移的距离：面板向上生长，下方留白同步收掉。 */
@@ -148,7 +149,12 @@ export function NewSessionPageView({
 			/>
 			{/* 会话尚未创建：选中项目时活动面板按项目根取上下文；「对话」与待创建项目没有
 			    可浏览目录，传 null 走空态（conversation 根是所有会话工作区的父目录，不展示）。 */}
-			<ActivityPanel cwd={activityPanelCwd} />
+			<CurrentScenarioActivityPanel
+				workspace={createActivityWorkspace(
+					activityPanelCwd ?? "new-session:unbound",
+					activityPanelCwd,
+				)}
+			/>
 		</div>
 	);
 }

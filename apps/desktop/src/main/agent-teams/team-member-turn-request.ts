@@ -10,6 +10,8 @@ export interface TeamMemberTurnRequest {
 	readonly createdByParticipantId: string;
 	readonly signal?: AbortSignal;
 	readonly attachments?: readonly PromptAttachmentRef[];
+	readonly modelKey?: string;
+	readonly reasoning?: string;
 	readonly mode?: TeamMemberTurnAttemptMode;
 	readonly waitingMemberId?: string;
 	readonly expectedWorkItemRevision?: number;
