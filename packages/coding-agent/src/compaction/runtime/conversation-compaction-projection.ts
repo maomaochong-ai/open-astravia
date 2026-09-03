@@ -24,6 +24,37 @@ export function toCompactionSessionEntries(document: ConversationDocument): Sess
 	});
 }
 
+/**
+ * Reconstructs the model-visible history governed by the latest compaction marker.
+ *
+ * The persisted branch keeps the original entries before the marker for UI/history fidelity.
+ * A later compaction must instead start from the latest summary plus that marker's retained
+ * tail and any entries appended afterwards, otherwise same-Turn checkpoints repeatedly
+ * compact the pre-compaction branch or lose the retained tail from the next summary.
+ */
+export function toActiveCompactionSessionEntries(document: ConversationDocument): SessionEntry[] {
+	const entries = toCompactionSessionEntries(document);
+	let latestCompactionIndex = -1;
+	for (let index = entries.length - 1; index >= 0; index -= 1) {
+		if (entries[index]?.type === "compaction") {
+			latestCompactionIndex = index;
+			break;
+		}
+	}
+	if (latestCompactionIndex < 0) return entries;
+
+	const latestCompaction = entries[latestCompactionIndex];
+	if (!latestCompaction || latestCompaction.type !== "compaction") return entries;
+	const firstKeptIndex = entries.findIndex(({ id }) => id === latestCompaction.firstKeptEntryId);
+	if (firstKeptIndex < 0 || firstKeptIndex >= latestCompactionIndex) return entries;
+
+	return [
+		latestCompaction,
+		...entries.slice(firstKeptIndex, latestCompactionIndex).filter((entry) => entry.type !== "compaction"),
+		...entries.slice(latestCompactionIndex + 1),
+	];
+}
+
 export function isOverflowFromCurrentModel(
 	message: AssistantMessage | undefined,
 	model: Model<Api>,

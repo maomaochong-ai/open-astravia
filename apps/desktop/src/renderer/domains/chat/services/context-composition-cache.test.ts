@@ -2,6 +2,7 @@ import type { ContextCompositionReport } from "@vetta/runtime-core";
 import { describe, expect, it } from "vitest";
 import {
 	type ContextCompositionStorage,
+	clearCachedContextComposition,
 	readCachedContextComposition,
 	resolveSessionContextComposition,
 	writeCachedContextComposition,
@@ -38,6 +39,17 @@ describe("context composition cache", () => {
 		expect(readCachedContextComposition("session-11", storage)?.callId).toBe("call-new");
 		expect(readCachedContextComposition("session-0", storage)).toBeUndefined();
 		expect(readCachedContextComposition("session-2", storage)?.callId).toBe("call-2");
+	});
+
+	it("clears only the compacted session's stale report", () => {
+		const storage = new MemoryStorage();
+		writeCachedContextComposition("session-a", report("call-a"), storage);
+		writeCachedContextComposition("session-b", report("call-b"), storage);
+
+		clearCachedContextComposition("session-a", storage);
+
+		expect(readCachedContextComposition("session-a", storage)).toBeUndefined();
+		expect(readCachedContextComposition("session-b", storage)?.callId).toBe("call-b");
 	});
 
 	it("rejects malformed persisted reports instead of trusting local storage", () => {

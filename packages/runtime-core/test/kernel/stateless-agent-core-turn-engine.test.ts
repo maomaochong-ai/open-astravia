@@ -75,6 +75,7 @@ describe("StatelessAgentCoreTurnEngine", () => {
 		const durable = user("durable");
 		const events: TurnEngineEvent[] = [];
 		let modelCheckpoints = 0;
+		const modelCallIndexes: number[] = [];
 		const tool: RuntimeToolDefinition = {
 			name: "echo",
 			label: "Echo",
@@ -91,8 +92,10 @@ describe("StatelessAgentCoreTurnEngine", () => {
 			snapshot: snapshot([tool]),
 			messages: [user("initial")],
 			signal: new AbortController().signal,
-			checkpoint: async ({ reason, messages }) => {
+			checkpoint: async ({ reason, messages, modelCallIndex }) => {
 				if (reason !== "model_call") return { messages };
+				if (modelCallIndex === undefined) throw new Error("Missing model call index");
+				modelCallIndexes.push(modelCallIndex);
 				modelCheckpoints += 1;
 				return modelCheckpoints === 1 ? { messages: [user("provider")], contextMessages: [durable] } : { messages };
 			},
@@ -103,6 +106,7 @@ describe("StatelessAgentCoreTurnEngine", () => {
 		expect(contexts[0]).toEqual([user("provider")]);
 		expect(contexts[1]?.map(({ role }) => role)).toEqual(["user", "assistant", "toolResult"]);
 		expect(contexts[1]?.[0]).toEqual(durable);
+		expect(modelCallIndexes).toEqual([0, 1]);
 		expect(
 			events
 				.filter(

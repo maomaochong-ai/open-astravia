@@ -529,7 +529,10 @@ export class TurnPipeline {
 						snapshot,
 						modelBinding,
 						providerMessages,
-						compactionSourceDocument: request.reason === "model_call" ? conversationDocument : undefined,
+						compactionSourceDocument:
+							request.reason === "model_call" && (request.modelCallIndex ?? 0) === 0
+								? conversationDocument
+								: undefined,
 						request,
 						state,
 						signal: checkpointSignal,
@@ -706,6 +709,7 @@ export class TurnPipeline {
 			historyMessages,
 			transientMessages: checkpoint.providerMessages,
 			reason: request.reason,
+			modelCallIndex: request.modelCallIndex,
 			triggeringAssistantMessage: request.assistantMessage,
 			recoveryAttempt: request.recoveryAttempt,
 			tokenBudget: snapshot.tokenBudget,

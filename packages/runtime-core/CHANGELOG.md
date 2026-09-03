@@ -6,6 +6,7 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Fixed
 
+- 模型调用检查点透传调用序号，首个调用保留 Turn 准入视图，后续调用读取最新 Conversation Document；成功压缩事件同时携带提交后的上下文占用，供宿主立即刷新状态。
 - 会话 continuation 后的观测使用新 Session ID；已取得的 Turn 快照保留原身份，定义 rollout 不改变在途 Trace 归属。
 - Runtime Agent Session Backend 关闭会拒绝新创建，并等待已准入的 Session 激活、装配与回滚收敛后释放 Instance Pool，
   避免异步创建越过关闭边界；并发和失败后的关闭仍可重试。

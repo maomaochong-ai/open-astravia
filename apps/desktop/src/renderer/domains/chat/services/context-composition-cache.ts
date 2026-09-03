@@ -61,6 +61,23 @@ export function writeCachedContextComposition(
 	}
 }
 
+export function clearCachedContextComposition(
+	sessionPath: string,
+	storage: ContextCompositionStorage | null = browserStorage(),
+): void {
+	if (!sessionPath || !storage) return;
+	const entries = readEnvelope(storage).entries.filter((entry) => entry.sessionPath !== sessionPath);
+	try {
+		if (entries.length === 0) {
+			storage.removeItem(STORAGE_KEY);
+			return;
+		}
+		storage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, entries } satisfies ContextCompositionCacheEnvelope));
+	} catch {
+		// An unavailable cache must not block the live compaction state update.
+	}
+}
+
 function browserStorage(): ContextCompositionStorage | null {
 	return typeof localStorage === "undefined" ? null : localStorage;
 }

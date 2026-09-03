@@ -829,8 +829,17 @@ class RuntimeSessionEventSink implements EventSink {
 	}
 
 	private withDynamicState(event: SessionEvent): SessionEvent {
-		if (event.type !== "usage.update" || !this.stateSource) return event;
+		if (!this.stateSource) return event;
 		const state = this.stateSource.read();
+		if (event.type === "compaction.end" && event.success) {
+			return {
+				...event,
+				contextPercent: state.contextPercent,
+				contextWindow: state.contextWindow,
+				...(state.contextTokens !== undefined ? { contextTokens: state.contextTokens } : {}),
+			};
+		}
+		if (event.type !== "usage.update") return event;
 		const contextTokens = state.contextTokens ?? event.input + event.output + event.cacheRead + event.cacheWrite;
 		return {
 			...event,

@@ -120,6 +120,9 @@ export type RuntimeSessionObservationEvent = RuntimeSessionObservationBase &
 				readonly success: boolean;
 				readonly reason?: "threshold" | "overflow";
 				readonly tokensBefore?: number;
+				readonly contextPercent?: number | null;
+				readonly contextTokens?: number | null;
+				readonly contextWindow?: number;
 				readonly errorMessage?: string;
 				readonly failure?: RuntimeFailure;
 		  }

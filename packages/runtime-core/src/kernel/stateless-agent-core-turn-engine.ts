@@ -291,6 +291,7 @@ export class StatelessAgentCoreTurnEngine implements TurnEnginePort {
 								{
 									reason: checkpointRequest.reason,
 									messages: checkpointMessages,
+									modelCallIndex: checkpointRequest.modelCallIndex,
 									assistantMessage: checkpointRequest.assistantMessage,
 									recoveryAttempt: checkpointRequest.recoveryAttempt,
 								},

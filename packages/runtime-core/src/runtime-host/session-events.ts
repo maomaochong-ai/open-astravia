@@ -166,6 +166,9 @@ export function mapRuntimeSessionObservationEvent(
 				success: event.success,
 				reason: event.reason,
 				tokensBefore: event.tokensBefore,
+				...(event.contextPercent !== undefined ? { contextPercent: event.contextPercent } : {}),
+				...(event.contextTokens !== undefined ? { contextTokens: event.contextTokens } : {}),
+				...(event.contextWindow !== undefined ? { contextWindow: event.contextWindow } : {}),
 				errorMessage: event.errorMessage,
 				...(event.failure ? { failure: event.failure } : {}),
 			};

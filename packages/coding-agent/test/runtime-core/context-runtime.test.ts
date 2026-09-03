@@ -20,6 +20,7 @@ import type {
 } from "@vetta/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
 import type { CompactionPreparation, CompactionResult, CompactionSettings } from "../../src/compaction/index.js";
+import { toActiveCompactionSessionEntries } from "../../src/compaction/runtime/conversation-compaction-projection.js";
 import {
 	DefaultCodingAgentContextRuntime as CodingAgentContextRuntime,
 	type CodingAgentContextRuntimeOptions,
@@ -28,6 +29,47 @@ import { COMPACTION_SUMMARY_PREFIX, COMPACTION_SUMMARY_SUFFIX } from "../../src/
 import type { CodingAgentCompactionExtensionRuntime } from "../../src/runtime-contracts/index.js";
 
 describe("DefaultCodingAgentContextRuntime", () => {
+	it("rebuilds the active compaction source from the latest summary, its kept tail, and later growth", () => {
+		let document = documentFromMessages([
+			userMessage("discarded", 1),
+			userMessage("kept", 2),
+			assistantMessage("kept response", 20, 3),
+		]);
+		document = applyStoredEventToConversationDocument(
+			document,
+			{
+				type: "context.compacted",
+				sessionId: "session-1",
+				turnId: "turn-1",
+				record: {
+					summary: "previous summary",
+					summaryMessage: userMessage("previous summary", 4),
+					firstKeptEntryId: "event-2",
+					tokensBefore: 20,
+					reason: "threshold",
+				},
+				timestamp: 4,
+			},
+			4,
+		);
+		document = applyStoredEventToConversationDocument(
+			document,
+			{
+				type: "message.appended",
+				sessionId: "session-1",
+				turnId: "turn-1",
+				message: userMessage("new growth", 5),
+				timestamp: 5,
+			},
+			5,
+		);
+
+		const entries = toActiveCompactionSessionEntries(document);
+
+		expect(entries.map(({ id }) => id)).toEqual(["event-4", "event-2", "event-3", "event-5"]);
+		expect(entries.map(({ type }) => type)).toEqual(["compaction", "message", "message", "message"]);
+	});
+
 	it("freezes time-based projection decisions for every model call in a Turn", async () => {
 		let now = 100_000;
 		const runtime = new CodingAgentContextRuntime({
@@ -98,6 +140,44 @@ describe("DefaultCodingAgentContextRuntime", () => {
 		expect(nextTurn.compaction).toBeUndefined();
 		expect(generateCompaction).toHaveBeenCalledOnce();
 		await bound.releaseTurnBinding?.();
+	});
+
+	it("does not generate an automatic compaction when the keep-tail policy would retain every message", async () => {
+		const history = [
+			userMessage("old request", 1),
+			assistantMessage("old response", 90, 2),
+			userMessage("current input", 3),
+		] satisfies Message[];
+		const observations: RuntimeSessionObservationEvent[] = [];
+		const generateCompaction = vi.fn(async (): Promise<CompactionResult> => {
+			throw new Error("must not run");
+		});
+		const hooks = createHookRuntime();
+		const runtime = new CodingAgentContextRuntime({
+			hookRuntime: hooks,
+			resolveApiKey: () => "key",
+			resolveSettings: () => ({ ...compactingSettings(), keepRecentTokens: 50_000 }),
+			generateCompaction,
+		});
+		const input: ContextPreparationInput = {
+			...preparationInput(documentFromMessages(history), history, history, observations),
+			reason: "model_call",
+		};
+
+		const prepared = await runtime.prepare(input, new AbortController().signal);
+
+		expect(prepared.compaction).toBeUndefined();
+		expect(generateCompaction).not.toHaveBeenCalled();
+		expect(hooks.runPreCompact).not.toHaveBeenCalled();
+		expect(observations).toMatchObject([
+			{ type: "compaction.start", reason: "threshold" },
+			{
+				type: "compaction.end",
+				success: false,
+				reason: "threshold",
+				errorMessage: "No eligible history prefix remained after applying the compaction keep-tail policy",
+			},
+		]);
 	});
 
 	it("persists a threshold compaction while keeping transient turn input outside the summary", async () => {

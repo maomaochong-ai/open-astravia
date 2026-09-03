@@ -654,6 +654,7 @@ describe("greenfield runtime kernel", () => {
 					{
 						reason: "model_call",
 						messages: checkpointMessages,
+						modelCallIndex: 0,
 						recoveryAttempt: 0,
 					},
 					request.signal,
@@ -693,6 +694,75 @@ describe("greenfield runtime kernel", () => {
 		]);
 	});
 
+	it("uses the admitted document only for the first model call and the latest document afterwards", async () => {
+		const admissionDocument = createEmptyConversationDocument({ sessionId: "session-1", createdAt: 1 });
+		const firstCheckpointDocument = { ...admissionDocument, journalVersion: 1 };
+		const secondCheckpointDocument = { ...admissionDocument, journalVersion: 2 };
+		const documents = [admissionDocument, firstCheckpointDocument, secondCheckpointDocument];
+		let documentReadIndex = 0;
+		const checkpointInputs: Array<{
+			readonly modelCallIndex: number | undefined;
+			readonly document: ConversationDocument | undefined;
+			readonly source: ConversationDocument | undefined;
+		}> = [];
+		const contextStrategy: ContextStrategy = {
+			async prepare(input) {
+				if (input.reason === "model_call") {
+					checkpointInputs.push({
+						modelCallIndex: input.modelCallIndex,
+						document: input.document,
+						source: input.compactionSourceDocument,
+					});
+				}
+				return { messages: input.messages, estimatedTokens: input.messages.length };
+			},
+		};
+		const engine: TurnEnginePort = {
+			async *execute(request) {
+				await request.checkpoint?.(
+					{
+						reason: "model_call",
+						messages: [userMessage("current input")],
+						modelCallIndex: 0,
+						recoveryAttempt: 0,
+					},
+					request.signal,
+				);
+				yield { type: "message", message: toolResultMessage("call-1") };
+				await request.checkpoint?.(
+					{
+						reason: "model_call",
+						messages: [userMessage("current input"), toolResultMessage("call-1")],
+						modelCallIndex: 1,
+						recoveryAttempt: 0,
+					},
+					request.signal,
+				);
+				yield { type: "message", message: assistantMessage("done") };
+				yield { type: "completed", stopReason: "stop" };
+			},
+		};
+		const harness = await createHarness({
+			contextStrategy,
+			turnEngine: engine,
+			conversationDocumentReader: {
+				async readDocument() {
+					const document = documents[documentReadIndex];
+					if (!document) throw new Error(`Unexpected document read ${documentReadIndex}`);
+					documentReadIndex += 1;
+					return document;
+				},
+			},
+		});
+
+		await harness.session.send({ message: userMessage("current input") });
+
+		expect(checkpointInputs).toEqual([
+			{ modelCallIndex: 0, document: firstCheckpointDocument, source: admissionDocument },
+			{ modelCallIndex: 1, document: secondCheckpointDocument, source: undefined },
+		]);
+	});
+
 	it("returns a transient assistant-error retry without requiring a compaction record", async () => {
 		const retryMessages = [userMessage("retry without images")];
 		let checkpointResult: TurnEngineContextCheckpointResult | undefined;
@@ -711,6 +781,7 @@ describe("greenfield runtime kernel", () => {
 					{
 						reason: "assistant_error",
 						messages: [userMessage("current input"), rejected],
+						modelCallIndex: 0,
 						assistantMessage: rejected,
 						recoveryAttempt: 0,
 					},
@@ -757,6 +828,7 @@ describe("greenfield runtime kernel", () => {
 						{
 							reason: "model_call",
 							messages: [userMessage("current input")],
+							modelCallIndex: 0,
 							recoveryAttempt: 0,
 						},
 						request.signal,

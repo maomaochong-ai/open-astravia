@@ -26,7 +26,7 @@ import {
 	isOverflowFromCurrentModel,
 	projectCompactedHistory,
 	removeAssistantMessage,
-	toCompactionSessionEntries,
+	toActiveCompactionSessionEntries,
 } from "./conversation-compaction-projection.js";
 import { hasImageRetryPlaceholder } from "./image-request-failure-recovery.js";
 
@@ -93,7 +93,7 @@ export class CodingAgentAutomaticCompactionStrategy {
 			return unchanged(callMessages, assembledTokens);
 		}
 
-		const entries = toCompactionSessionEntries(input.compactionSourceDocument ?? input.document);
+		const entries = toActiveCompactionSessionEntries(input.compactionSourceDocument ?? input.document);
 		if (reason === "assistant_error" && !overflow) return unchanged(callMessages, assembledTokens);
 		if (!overflow && !shouldCompact(estimate.tokens, contextWindow, settings)) {
 			if (shouldPrefire(estimate.tokens, contextWindow, settings)) {
@@ -139,7 +139,10 @@ export class CodingAgentAutomaticCompactionStrategy {
 				return unchanged(callMessages, assembledTokens);
 			}
 			const preparation = prepareCompaction(entries, settings);
-			if (!preparation) {
+			if (
+				!preparation ||
+				(preparation.messagesToSummarize.length === 0 && preparation.turnPrefixMessages.length === 0)
+			) {
 				await input.reportObservation({
 					type: "compaction.end",
 					success: false,

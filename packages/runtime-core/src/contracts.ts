@@ -226,6 +226,10 @@ export interface CompactionEndEvent extends SessionEventBase {
 	success: boolean;
 	reason?: "threshold" | "overflow";
 	tokensBefore?: number;
+	/** Compaction commit 后的活动模型上下文占用。 */
+	contextPercent?: number | null;
+	contextTokens?: number | null;
+	contextWindow?: number;
 	errorMessage?: string;
 	failure?: RuntimeFailure;
 }

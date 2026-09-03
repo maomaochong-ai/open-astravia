@@ -222,6 +222,7 @@ class CheckpointTurnEngine implements TurnEnginePort {
 			{
 				reason: this.checkpointReason,
 				messages: request.messages,
+				modelCallIndex: 0,
 				recoveryAttempt: 0,
 			},
 			request.signal,

@@ -22,10 +22,10 @@ import type {
 } from "../../src/kernel/contracts.js";
 import {
 	ContextCompactionCommitter,
-	type ConversationContinuedEvent,
 	createAgentSession,
 	type EventSink,
 	KERNEL_ERROR_CODES,
+	type KernelEvent,
 	type ManualContextCompactionRuntime,
 	type RuntimeInputRequestPreparationContext,
 	type RuntimeSnapshot,
@@ -316,7 +316,7 @@ function createBackend(
 				},
 			},
 		}),
-		publish: async (event: ConversationContinuedEvent) => {
+		publish: async (event: KernelEvent) => {
 			if (!runtimeEventSink) throw new Error("Runtime event sink is not initialized");
 			await runtimeEventSink.publish(event);
 		},
@@ -372,6 +372,51 @@ describe("KernelRuntimeSessionBackend", () => {
 		expect(events.find((event) => event.type === "usage.update")).toMatchObject({
 			type: "usage.update",
 			contextComposition: composition,
+		});
+	});
+
+	it("attaches the post-compaction context usage to a successful compaction event", async () => {
+		const { backend, publish } = createBackend(
+			new CompletingTurnEngine(),
+			new RecordingPromptAdapter(),
+			undefined,
+			undefined,
+			{
+				stateSource: {
+					read: () => ({
+						contextTokens: 24_000,
+						contextPercent: 24,
+						contextWindow: 100_000,
+						activeToolNames: [],
+					}),
+				},
+			},
+		);
+		const session = await backend.create({ id: "session-1" });
+		const events: SessionEvent[] = [];
+		session.subscribe((event) => events.push(event));
+
+		await publish({
+			type: "context.compacted",
+			sessionId: "session-1",
+			turnId: "turn-1",
+			record: {
+				summary: "summary",
+				summaryMessage: userMessage("summary"),
+				firstKeptEntryId: "event-1",
+				tokensBefore: 91_000,
+				reason: "threshold",
+			},
+			timestamp: 10,
+		});
+
+		expect(events.at(-1)).toMatchObject({
+			type: "compaction.end",
+			success: true,
+			tokensBefore: 91_000,
+			contextTokens: 24_000,
+			contextPercent: 24,
+			contextWindow: 100_000,
 		});
 	});
 

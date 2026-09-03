@@ -205,11 +205,13 @@ export interface ContextPreparationInput {
 	/** 未写入会话历史、但必须保留在本次模型调用中的 Provider 消息。 */
 	readonly transientMessages?: readonly Message[];
 	readonly reason?: "turn_start" | "model_call" | "assistant_result" | "assistant_error";
+	/** Agent Engine 内当前模型调用的零基序号；Turn 起始准备阶段不存在。 */
+	readonly modelCallIndex?: number;
 	readonly triggeringAssistantMessage?: AssistantMessage;
 	readonly recoveryAttempt?: number;
 	/** 准备发生时已经持久化的最新活动 Conversation Document。 */
 	readonly document?: ConversationDocument;
-	/** 计算压缩切点的稳定分支；模型调用前压缩通常固定为当前 Turn 的进入时视图。 */
+	/** 计算压缩切点的显式稳定分支；首个模型调用可固定为当前 Turn 的进入时视图。 */
 	readonly compactionSourceDocument?: ConversationDocument;
 	reportObservation(observation: RuntimeSessionObservationEvent): Promise<void>;
 }
@@ -909,6 +911,8 @@ export interface TurnEngineContextCheckpointResult {
 export interface TurnEngineContextCheckpointRequest {
 	readonly reason: "model_call" | "assistant_result" | "assistant_error";
 	readonly messages: readonly Message[];
+	/** Agent Engine 内当前模型调用的零基序号；旧 TurnEngine 未提供时按首个调用处理。 */
+	readonly modelCallIndex?: number;
 	readonly assistantMessage?: AssistantMessage;
 	readonly recoveryAttempt: number;
 }

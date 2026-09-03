@@ -49,7 +49,7 @@ import {
 	toChatErrorDetails,
 	turnStatsCache,
 } from "../services/chat-service";
-import { writeCachedContextComposition } from "../services/context-composition-cache";
+import { clearCachedContextComposition, writeCachedContextComposition } from "../services/context-composition-cache";
 import { ConversationProjection } from "../services/conversation-projection";
 import {
 	reconcileOptimisticUserMessages,
@@ -462,6 +462,17 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 			// ── Compaction end ──
 			if (event.type === "compaction.end") {
 				setIsCompacting(false);
+				if (event.success) {
+					const sessionPath = activeSessionRef.current?.sessionPath;
+					if (sessionPath) clearCachedContextComposition(sessionPath);
+					if (event.contextWindow !== undefined) {
+						setContextUsage({
+							percent: event.contextPercent ?? null,
+							contextTokens: event.contextTokens ?? null,
+							contextWindow: event.contextWindow,
+						});
+					}
+				}
 				return;
 			}
 
