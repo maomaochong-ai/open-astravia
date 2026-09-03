@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
-import type { OpenSessionOptions, SessionExecutionMode } from "@shared/store/atoms";
+import { createConversationUserMessage } from "@shared/conversation";
+import type { ChatConversationItem, OpenSessionOptions, SessionExecutionMode } from "@shared/store/atoms";
 import { getDefaultStore } from "jotai";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -16,6 +17,10 @@ const mocks = vi.hoisted(() => ({
 	perfSessionSwitchMark: vi.fn(),
 	prompt: vi.fn(),
 }));
+
+function visibleTexts(messages: readonly ChatConversationItem[]): Array<string | undefined> {
+	return messages.flatMap((message) => (message.kind === "event" ? [] : [message.text]));
+}
 
 vi.mock("@tanstack/react-router", () => ({
 	useNavigate: () => mocks.navigate,
@@ -208,7 +213,7 @@ it("切回仍在执行的会话时保留尚未进入历史快照的乐观用户�
 		await Promise.resolve();
 	});
 	expect(mocks.prompt).toHaveBeenCalledTimes(1);
-	expect(store.get(chatMessagesAtom).map((message) => message.text)).toContain("keep this user message");
+	expect(visibleTexts(store.get(chatMessagesAtom))).toContain("keep this user message");
 
 	await act(async () => {
 		await manager?.openSession(cwd, secondSessionPath);
@@ -216,7 +221,7 @@ it("切回仍在执行的会话时保留尚未进入历史快照的乐观用户�
 	});
 
 	// canonical 历史仍为空，但按 runtimeId 保存的待确认气泡必须跨过会话水合继续显示。
-	expect(store.get(chatMessagesAtom).map((message) => message.text)).toContain("keep this user message");
+	expect(visibleTexts(store.get(chatMessagesAtom))).toContain("keep this user message");
 	expect(store.get(activeSessionAtom)?.sessionPath).toBe(firstCanonicalPath);
 	expect(mocks.perfSessionSwitchBegin).toHaveBeenCalledTimes(2);
 	expect(sessionApi.create).toHaveBeenNthCalledWith(
@@ -281,7 +286,8 @@ it("新会话先导航并完成一帧绘制，再创建 runtime，同时保留�
 		},
 	});
 	store.set(activeSessionAtom, null);
-	store.set(chatMessagesAtom, [{ id: "staged-user", role: "user", text: "hello" }]);
+	const stagedUser = createConversationUserMessage({ id: "staged-user", text: "hello" });
+	store.set(chatMessagesAtom, [stagedUser]);
 
 	function Probe() {
 		manager = useSessionManager();
@@ -307,7 +313,7 @@ it("新会话先导航并完成一帧绘制，再创建 runtime，同时保留�
 	expect(mocks.navigate).toHaveBeenCalledWith({ to: "/" });
 	expect(sessionApi.create).not.toHaveBeenCalled();
 	expect(store.get(pendingSessionCreationAtom)).toEqual({ cwd, interactionId: "interaction-new" });
-	expect(store.get(chatMessagesAtom)).toEqual([{ id: "staged-user", role: "user", text: "hello" }]);
+	expect(store.get(chatMessagesAtom)).toEqual([stagedUser]);
 
 	await act(async () => {
 		frames.shift()?.(0);
@@ -319,7 +325,7 @@ it("新会话先导航并完成一帧绘制，再创建 runtime，同时保留�
 	expect(onPromptReady).toHaveBeenCalledOnce();
 	expect(store.get(pendingSessionCreationAtom)).toBeNull();
 	expect(store.get(activeSessionAtom)?.runtimeId).toBe("runtime-new");
-	expect(store.get(chatMessagesAtom)).toEqual([{ id: "staged-user", role: "user", text: "hello" }]);
+	expect(store.get(chatMessagesAtom)).toEqual([stagedUser]);
 });
 
 it("已有会话先提交加载态，快速切换时只有最后一次打开可以提交", { timeout: 10_000 }, async () => {
@@ -372,7 +378,7 @@ it("已有会话先提交加载态，快速切换时只有最后一次打开可�
 		},
 	});
 	store.set(activeSessionAtom, { cwd, runtimeId: "runtime-current", sessionPath: "C:\\sessions\\current.jsonl" });
-	store.set(chatMessagesAtom, [{ id: "old", role: "user", text: "old session" }]);
+	store.set(chatMessagesAtom, [createConversationUserMessage({ id: "old", text: "old session" })]);
 
 	function Probe() {
 		manager = useSessionManager();
@@ -414,7 +420,7 @@ it("已有会话先提交加载态，快速切换时只有最后一次打开可�
 		await Promise.resolve();
 	});
 	expect(store.get(activeSessionAtom)).toBeNull();
-	expect(store.get(chatMessagesAtom).map((message) => message.text)).toEqual(["second preview"]);
+	expect(visibleTexts(store.get(chatMessagesAtom))).toEqual(["second preview"]);
 	expect(mocks.perfSessionSwitchMark).toHaveBeenCalledWith("session-preview-history-committed", "open-second");
 	expect(mocks.perfSessionSwitchMark).not.toHaveBeenCalledWith("session-create-end", "open-second");
 	expect(sessionApi.create).not.toHaveBeenCalled();
@@ -519,7 +525,7 @@ it("会话恢复期间立即接受发送并在订阅就绪后派发到目标 Run
 	});
 
 	expect(store.get(pendingSessionOpenAtom)?.interactionId).toBe("open-send");
-	expect(store.get(chatMessagesAtom).map((message) => message.text)).toEqual(["history", "send while restoring"]);
+	expect(visibleTexts(store.get(chatMessagesAtom))).toEqual(["history", "send while restoring"]);
 	expect(store.get(inputValueAtom)).toBe("");
 	expect(mocks.prompt).not.toHaveBeenCalled();
 
@@ -535,7 +541,7 @@ it("会话恢复期间立即接受发送并在订阅就绪后派发到目标 Run
 		expect.objectContaining({ text: "send while restoring" }),
 		undefined,
 	);
-	expect(store.get(chatMessagesAtom).map((message) => message.text)).toEqual(["history", "send while restoring"]);
+	expect(visibleTexts(store.get(chatMessagesAtom))).toEqual(["history", "send while restoring"]);
 
 	pendingPrompt?.resolve(undefined);
 	await sending;
@@ -578,7 +584,10 @@ it("已有会话创建失败时退出加载态并保留可诊断错误", { timeo
 
 	expect(store.get(pendingSessionOpenAtom)).toBeNull();
 	expect(store.get(activeSessionAtom)).toBeNull();
-	expect(store.get(chatMessagesAtom).at(-1)?.blocks?.at(-1)).toMatchObject({ type: "error", text: failure.message });
+	expect(store.get(chatMessagesAtom).at(-1)).toMatchObject({
+		kind: "agent",
+		blocks: [expect.objectContaining({ type: "error", text: failure.message })],
+	});
 	expect(mocks.perfSessionSwitchComplete).toHaveBeenCalledWith("failed", "open-failed");
 });
 
@@ -638,7 +647,7 @@ it("只读历史预览失败时回退到 Runtime 历史水合", { timeout: 10_00
 
 	expect(store.get(activeSessionAtom)?.runtimeId).toBe("runtime-fallback");
 	expect(store.get(pendingSessionOpenAtom)).toBeNull();
-	expect(store.get(chatMessagesAtom).map((message) => message.text)).toEqual(["runtime fallback"]);
+	expect(visibleTexts(store.get(chatMessagesAtom))).toEqual(["runtime fallback"]);
 	expect(mocks.perfSessionSwitchMark).toHaveBeenCalledWith("session-preview-history-failed", "open-fallback");
 	expect(mocks.perfSessionSwitchComplete).toHaveBeenCalledWith("completed", "open-fallback");
 });
@@ -691,7 +700,7 @@ it("新会话首发不等整轮 prompt 跑完就回填会话状态", { timeout: 
 		},
 	});
 	store.set(activeSessionAtom, null);
-	store.set(chatMessagesAtom, [{ id: "staged-user", role: "user", text: "design something" }]);
+	store.set(chatMessagesAtom, [createConversationUserMessage({ id: "staged-user", text: "design something" })]);
 	store.set(currentScenarioAtom, "conversation");
 	store.set(activeToolNamesAtom, new Set(["read_file"]));
 

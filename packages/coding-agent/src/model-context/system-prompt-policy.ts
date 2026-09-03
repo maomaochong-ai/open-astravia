@@ -142,6 +142,10 @@ export interface BuildSystemPromptOptions {
 	promptBudgetTokens?: number;
 	/** Text to append to system prompt. */
 	appendSystemPrompt?: string;
+	/** Trusted host text placed before an explicit cache boundary. */
+	systemPromptCachePrefixAddon?: string;
+	/** Trusted host text that starts the volatile system-prompt suffix. */
+	systemPromptVolatileAddon?: string;
 	/** Working directory. Runtime composition should provide it; direct helpers fall back to ".". */
 	cwd?: string;
 	/** Command tool used only when selectedTools is omitted. Default: "bash". */
@@ -359,6 +363,8 @@ export function buildSystemPromptDraft(options: BuildSystemPromptOptions = {}): 
 		toolDescriptions: runtimeToolDescriptions,
 		promptBudgetTokens,
 		appendSystemPrompt,
+		systemPromptCachePrefixAddon,
+		systemPromptVolatileAddon,
 		cwd,
 		defaultCommandTool = "bash",
 		contextFiles: providedContextFiles,
@@ -386,6 +392,11 @@ export function buildSystemPromptDraft(options: BuildSystemPromptOptions = {}): 
 
 	blocks.push(coreBlock("core.subconscious", "subconscious", SUBCONSCIOUS, 100));
 	blocks.push(coreBlock("core.base", "base", customPrompt ?? "", 150));
+	blocks.push(coreBlock("core.cache-prefix-addon", "append", systemPromptCachePrefixAddon ?? "", 175));
+	blocks.push({
+		...coreBlock("core.volatile-addon", "append", systemPromptVolatileAddon ?? "", 180),
+		cacheability: "volatile",
+	});
 	// 不再渲染 `core.tools` 工具清单：其 `- name: description` 与 params.tools 中每个 tool 的
 	// description 是同一份字符串，模型会读到两遍。增量信息只有下面的 guidelines。
 	blocks.push(coreBlock("core.mcp", "mcp", renderMcpToolsSection(mcpTools, false, mcpDeferred), 250));

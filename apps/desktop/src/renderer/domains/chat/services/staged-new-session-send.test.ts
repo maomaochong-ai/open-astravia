@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { createConversationAgentMessage } from "@shared/conversation";
 import { getDefaultStore } from "jotai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -55,7 +56,7 @@ describe("staged new-session send", () => {
 
 	it("appends an accepted pending-session send without replacing visible history", () => {
 		const store = getDefaultStore();
-		const history = { id: "assistant-1", role: "assistant" as const, text: "ready" };
+		const history = createConversationAgentMessage({ id: "assistant-1", text: "ready", blocks: [] });
 		store.set(atoms.chatMessagesAtom, [history]);
 
 		const staged = stagePendingSessionSend(undefined, "interaction-1");

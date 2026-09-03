@@ -1,5 +1,9 @@
 import type { PromptAttachmentRef } from "@vetta/runtime-core";
-import type { ConversationAuthorReference } from "@vetta/runtime-core/conversation";
+import type {
+	ConversationAuthorReference,
+	ConversationMessageRecord,
+	ConversationMessageStreamEvent,
+} from "@vetta/runtime-core/conversation";
 
 export const AGENT_TEAM_SCHEMA_VERSION = 1 as const;
 
@@ -76,6 +80,8 @@ export interface TeamMemberRuntimeState {
 	readonly agentProfileId?: string;
 	readonly agentProfileRevision: number;
 	readonly deliveredEventIds: readonly string[];
+	/** Latest immutable public checkpoint referenced by this member's private context. */
+	readonly sharedCheckpointId?: string;
 }
 
 export interface TeamCoordinationRuntimeState {
@@ -83,7 +89,11 @@ export interface TeamCoordinationRuntimeState {
 	readonly sessionPath: string;
 }
 
-export type TeamFeedEvent =
+/**
+ * Schema-v1 compatibility payload. Current Team conversations store ordinary
+ * Conversation messages and durable work items instead of this event union.
+ */
+export type LegacyTeamFeedEvent =
 	| {
 			readonly type: "user-message";
 			readonly id: string;
@@ -131,8 +141,8 @@ export interface TeamSessionDocument {
 	readonly updatedAt: number;
 	/** Ordinary Conversation that stores the public Team timeline. Optional only for legacy sessions. */
 	readonly coordinationRuntime?: TeamCoordinationRuntimeState;
-	/** @deprecated Compatibility projection for schema-v1 sessions. New messages are also written to coordinationRuntime. */
-	readonly events: readonly TeamFeedEvent[];
+	/** @deprecated Read-only schema-v1 migration input. New messages exist only in coordinationRuntime. */
+	readonly events: readonly LegacyTeamFeedEvent[];
 	readonly memberRuntime: Readonly<Record<string, TeamMemberRuntimeState>>;
 }
 
@@ -224,59 +234,46 @@ export interface SendTeamMessageInput {
 	readonly attachments?: readonly PromptAttachmentRef[];
 }
 
-export interface TeamStreamingTurnSnapshot {
-	readonly turnId: string;
-	readonly memberId: string;
+/** Business activity remains separate from the ordinary message type. */
+export interface TeamSessionActivity {
+	readonly kind: "delegation";
+	readonly id: string;
 	readonly requestId: string;
-	readonly seq: number;
-	readonly text: string;
-	readonly startedAt: number;
+	readonly sourceMemberId: string;
+	readonly targetMemberId: string;
+	readonly objective: string;
+	readonly state: "queued" | "running" | "waiting" | "attention-required" | "completed" | "failed" | "cancelled";
+	readonly timestamp: number;
 }
 
-/** Safe renderer-facing updates for a team session. Tool arguments and reasoning are never forwarded. */
+/** Renderer/IPC read model; never persisted as a second Conversation format. */
+export interface TeamSessionSnapshot {
+	readonly session: TeamSessionDocument;
+	readonly conversationRevision: number;
+	readonly messages: readonly ConversationMessageRecord[];
+	readonly activities: readonly TeamSessionActivity[];
+}
+
+/** Stable renderer bookmark for reopening an ordinary coordination Conversation. */
+export interface TeamSessionReference {
+	readonly id: string;
+	readonly coordinationSessionPath: string;
+}
+
+/** Safe renderer-facing updates plus product-neutral ordinary message events. */
 export type TeamSessionStreamEvent =
 	| {
 			type: "session-snapshot";
 			teamSessionId: string;
-			session: TeamSessionDocument;
-			activeTurns: readonly TeamStreamingTurnSnapshot[];
-	  }
-	| {
-			type: "member-start";
-			teamSessionId: string;
-			memberId: string;
-			requestId: string;
-			turnId: string;
-			seq: number;
-			timestamp: number;
-	  }
-	| {
-			type: "member-delta";
-			teamSessionId: string;
-			memberId: string;
-			requestId: string;
-			turnId: string;
-			seq: number;
-			delta: string;
-			timestamp: number;
-	  }
-	| {
-			type: "member-end";
-			teamSessionId: string;
-			memberId: string;
-			requestId: string;
-			turnId: string;
-			seq: number;
-			phase: "final" | "waiting" | "attention-required" | "error" | "aborted";
-			error?: string;
-			timestamp: number;
+			snapshot: TeamSessionSnapshot;
+			activeMessageEvents: readonly ConversationMessageStreamEvent[];
 	  }
 	| {
 			type: "session-updated";
 			teamSessionId: string;
-			session: TeamSessionDocument;
-			revision: number;
-	  };
+			snapshot: TeamSessionSnapshot;
+	  }
+	| ConversationMessageStreamEvent;
 
 export interface TeamSharedContextRecord {
 	readonly eventId: string;

@@ -85,6 +85,28 @@ describe("prompt cache verification", () => {
 		expect(modePrompt.length).toBeGreaterThan(7_000);
 		expect(compiled.content.slice(compiled.stableLength)).toContain(modePrompt);
 	});
+
+	it("places a host-owned shared prefix before a volatile participant identity", () => {
+		const draft = buildSystemPromptDraft({
+			cwd: "C:\\workspace",
+			selectedTools: [],
+			systemPromptCachePrefixAddon: "Shared Team roster revision 7",
+			systemPromptVolatileAddon: "Current participant: builder",
+		});
+		const compiled = compileSystemPromptDraft(draft);
+		const stable = compiled.content.slice(0, compiled.stableLength);
+		const volatile = compiled.content.slice(compiled.stableLength);
+
+		expect(stable).toContain("Shared Team roster revision 7");
+		expect(stable).not.toContain("Current participant: builder");
+		expect(volatile).toContain("Current participant: builder");
+		expect(compiled.promptCacheBlocks.find(({ id }) => id === "core.cache-prefix-addon")).toMatchObject({
+			cacheability: "stable",
+		});
+		expect(compiled.promptCacheBlocks.find(({ id }) => id === "core.volatile-addon")).toMatchObject({
+			cacheability: "volatile",
+		});
+	});
 });
 
 async function project(messages: readonly Message[], contextWindow: number): Promise<readonly Message[]> {

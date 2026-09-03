@@ -60,6 +60,11 @@ export interface StreamOptions {
 	 */
 	sessionId?: string;
 	/**
+	 * Optional cache partition independent of the provider session identity.
+	 * Hosts use this when multiple isolated sessions intentionally share a stable prompt prefix.
+	 */
+	promptCacheKey?: string;
+	/**
 	 * Optional callback for inspecting provider payloads before sending.
 	 */
 	onPayload?: (payload: unknown) => void;

@@ -9,7 +9,9 @@
  * quota 必不可重试，rate_limit / server / network 必可重试。改任一侧的正则前
  * 先跑那个测试。
  */
-export type ChatErrorKind = "rate_limit" | "quota" | "network" | "auth" | "server" | "unknown";
+import type { ChatErrorKind } from "@shared/conversation";
+
+export type { ChatErrorKind } from "@shared/conversation";
 
 /**
  * 配额 / 余额耗尽。重置时间通常在数小时后，重试无意义，只能等或充值。

@@ -68,6 +68,7 @@ export async function resolveModelCallFrame(
 			composed.instructions,
 			[...composed.tools.values()],
 			composed.contextCompositionSections,
+			composed.promptCacheKey,
 		);
 		const resolved = resolveComposedPromptCacheLayout(
 			composedFrame,
@@ -188,6 +189,7 @@ function createModelCallFrame(
 	instructionValues: readonly InstructionBlock[],
 	toolValues: readonly RuntimeToolDefinition[],
 	contextCompositionSections?: readonly ContextCompositionSectionInput[],
+	promptCacheKey?: string,
 ): ModelCallFrame {
 	const instructions = uniqueValues("instruction", instructionValues, ({ id }) => id)
 		.sort(compareInstruction)
@@ -197,6 +199,7 @@ function createModelCallFrame(
 	return Object.freeze({
 		instructions: Object.freeze(instructions),
 		tools: new ImmutableReadonlyMap(tools.map((tool) => [tool.name, tool])),
+		...(promptCacheKey !== undefined ? { promptCacheKey } : {}),
 		contextCompositionSections: contextCompositionSections
 			? Object.freeze(
 					contextCompositionSections.map((section) =>

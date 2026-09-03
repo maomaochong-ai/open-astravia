@@ -204,6 +204,7 @@ export class StatelessAgentCoreTurnEngine implements TurnEnginePort {
 					...this.options.streamOptions,
 					...(request.modelBinding ? { reasoning: request.modelBinding.reasoning } : {}),
 					sessionId: request.sessionId,
+					...(frame.promptCacheKey ? { promptCacheKey: frame.promptCacheKey } : {}),
 					signal,
 				};
 				const generation = telemetry.startGeneration(context, effectiveStreamOptions);

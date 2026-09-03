@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { act, renderHook } from "@testing-library/react";
+import { createConversationUserMessage } from "@shared/conversation";
 import type { OpenSessionOptions, SessionExecutionMode, StagedSendInput } from "@shared/store/atoms";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useNewSessionSend } from "./useNewSessionSend";
@@ -20,7 +21,7 @@ const stagedSend = vi.hoisted(() => ({
 		mentionedFiles: [],
 		appshot: null,
 		selectedModel: null,
-		optimisticMessage: { id: "user-staged", role: "user" as const, text: "hello" },
+		optimisticMessage: createConversationUserMessage({ id: "user-staged", text: "hello" }),
 	})),
 }));
 
@@ -76,7 +77,7 @@ describe("useNewSessionSend", () => {
 			mentionedFiles: [],
 			appshot: null,
 			selectedModel: null,
-			optimisticMessage: { id: "user-staged", role: "user", text: "hello" },
+			optimisticMessage: createConversationUserMessage({ id: "user-staged", text: "hello" }),
 		});
 	});
 

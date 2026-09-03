@@ -284,11 +284,36 @@ export interface ManualContextCompactionInput {
 	readonly customInstructions?: string;
 }
 
+export interface ContextSummaryInput {
+	readonly sessionId: string;
+	readonly records: readonly SessionContextRecord[];
+	readonly modelBinding?: RuntimeTurnModelBinding;
+	readonly previousSummary?: string;
+	readonly customInstructions?: string;
+}
+
+export interface ContextSummaryResult {
+	readonly summary: string;
+	readonly tokensBefore: number;
+	readonly details?: unknown;
+}
+
+/** Generates a summary from caller-authorized transient records without mutating a Conversation. */
+export interface ContextSummaryStrategy {
+	bindForTurn?(context: RuntimeSnapshotAcquireContext): Promise<ContextSummaryStrategy> | ContextSummaryStrategy;
+	releaseTurnBinding?(): Promise<void> | void;
+	summarizeContext(input: ContextSummaryInput, signal: AbortSignal): Promise<ContextSummaryResult>;
+}
+
 /**
  * Session 级手动压缩能力；摘要策略属于产品层，Kernel 只编排取消、提交和生命周期。
  * 实现可以与自动 ContextStrategy 为同一 Session-local 实例。
  */
-export interface ManualContextCompactionRuntime {
+export interface ManualContextCompactionStrategy {
+	bindForTurn?(
+		context: RuntimeSnapshotAcquireContext,
+	): Promise<ManualContextCompactionStrategy> | ManualContextCompactionStrategy;
+	releaseTurnBinding?(): Promise<void> | void;
 	compactManual(input: ManualContextCompactionInput, signal: AbortSignal): Promise<ContextCompactionRecord>;
 	onManualCompactionCommitted?(
 		record: ContextCompactionRecord,
@@ -296,6 +321,10 @@ export interface ManualContextCompactionRuntime {
 		signal: AbortSignal,
 		document?: ConversationDocument,
 	): Promise<void>;
+}
+
+/** Session controls remain live; manual execution uses the admitted snapshot strategy. */
+export interface ManualContextCompactionRuntime extends ManualContextCompactionStrategy {
 	readAutoCompactionEnabled(): boolean;
 	setAutoCompactionEnabled(enabled: boolean): void;
 }
@@ -371,6 +400,8 @@ export interface ModelCallFrame {
 	 * 消费方必须丢弃，否则断点会切在另一段文本的错误偏移上。
 	 */
 	readonly systemPromptStableLength?: number;
+	/** Provider cache partition; independent from the isolated Runtime Session identity. */
+	readonly promptCacheKey?: string;
 	/** Block layout corresponding to the composed system prompt. */
 	readonly promptCacheSystemPromptBlocks?: readonly PromptCacheSystemPromptBlockSpan[];
 	/** Call-scoped sensitive inputs; reporters must not expose their content. */
@@ -473,6 +504,8 @@ export interface RuntimeSnapshot {
 	readonly conversationContextProjector?: ConversationContextProjector;
 	readonly contextProviders: readonly ContextProvider[];
 	readonly contextStrategy: ContextStrategy;
+	readonly manualCompactionStrategy?: ManualContextCompactionStrategy;
+	readonly contextSummaryStrategy?: ContextSummaryStrategy;
 	readonly toolPolicy: ToolPolicy;
 	readonly tokenBudget: number;
 	readonly reservedOutputTokens: number;
@@ -487,7 +520,7 @@ export interface RuntimeSnapshotLease {
 	release(): Promise<void>;
 }
 
-export type RuntimeSnapshotAcquireReason = "turn" | "manual_compaction" | "preview";
+export type RuntimeSnapshotAcquireReason = "turn" | "manual_compaction" | "context_summary" | "preview";
 
 /**
  * Turn binder 的原子性依赖各实现被调用后、第一次 await 前同步捕获 published pointer。
@@ -594,6 +627,8 @@ export interface RuntimeCapabilityDefinition {
 	readonly modelCallMessageFinalizer?: ModelCallMessageFinalizer;
 	readonly conversationContextProjector?: ConversationContextProjector;
 	readonly contextStrategy: ContextStrategy;
+	readonly manualCompactionStrategy?: ManualContextCompactionStrategy;
+	readonly contextSummaryStrategy?: ContextSummaryStrategy;
 	readonly toolPolicy: ToolPolicy;
 	readonly tokenBudget: number;
 	readonly reservedOutputTokens: number;

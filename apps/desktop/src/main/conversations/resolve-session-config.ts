@@ -1,7 +1,10 @@
 import { VETTA_CLI_GUIDANCE } from "@vetta/coding-agent/cli-guidance";
 import { createCodingAgentRuntimeSessionSelection } from "@vetta/coding-agent/composition";
 import type { AgentConfigurationSelection, ConversationScenario } from "@vetta/coding-agent/profile";
-import type { CodingAgentRuntimeToolRegistration } from "@vetta/coding-agent/runtime";
+import type {
+	CodingAgentPinnedModelContextBinder,
+	CodingAgentRuntimeToolRegistration,
+} from "@vetta/coding-agent/runtime";
 import type { SessionConfig } from "@vetta/runtime-core";
 import { allowProjectRoot, readDesktopConfig } from "../ipc/fs.js";
 import { type DesktopAgentMode, LEGACY_SESSION_AGENT_MODE, readSessionAgentMode } from "./session-agent-mode-store.js";
@@ -20,10 +23,14 @@ export interface DesktopCodingAgentSessionConfig extends SessionConfig {
 	readonly scenario?: ConversationScenario;
 	readonly agentMode?: DesktopAgentMode;
 	readonly appendSystemPrompt?: string;
+	readonly systemPromptCachePrefixAddon?: string;
+	readonly systemPromptVolatileAddon?: string;
 	readonly enableBackgroundTasks?: boolean;
 	readonly includeAgentSkills?: boolean;
 	readonly agentConfiguration?: AgentConfigurationSelection;
 	readonly sessionRuntimeTools?: readonly CodingAgentRuntimeToolRegistration[];
+	readonly bindPinnedModelContext?: CodingAgentPinnedModelContextBinder;
+	readonly promptCacheKey?: string;
 }
 
 export interface ResolvedDesktopSessionConfig {
@@ -80,8 +87,12 @@ export async function resolveDesktopSessionConfig(
 		scenario: _scenario,
 		agentMode: _agentMode,
 		appendSystemPrompt: _appendSystemPrompt,
+		systemPromptCachePrefixAddon: _systemPromptCachePrefixAddon,
+		systemPromptVolatileAddon: _systemPromptVolatileAddon,
 		enableBackgroundTasks: _enableBackgroundTasks,
 		includeAgentSkills: _includeAgentSkills,
+		bindPinnedModelContext: _bindPinnedModelContext,
+		promptCacheKey: _promptCacheKey,
 		agentConfiguration: _agentConfiguration,
 		sessionRuntimeTools: _sessionRuntimeTools,
 		...runtimeConfig
@@ -95,10 +106,14 @@ export async function resolveDesktopSessionConfig(
 					scenario,
 					agentMode,
 					systemPromptAddon: appendSystemPrompt,
+					systemPromptCachePrefixAddon: config?.systemPromptCachePrefixAddon,
+					systemPromptVolatileAddon: config?.systemPromptVolatileAddon,
 					enableBackgroundTasks,
 					includeAgentSkills,
 					agentConfiguration: config?.agentConfiguration,
 					sessionRuntimeTools: config?.sessionRuntimeTools,
+					bindPinnedModelContext: config?.bindPinnedModelContext,
+					promptCacheKey: config?.promptCacheKey,
 				},
 				config?.agent,
 			),

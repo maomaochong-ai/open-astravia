@@ -214,6 +214,7 @@ const memberRuntime = Type.Object(
 		agentProfileId: Type.Optional(id),
 		agentProfileRevision: Type.Integer({ minimum: 1 }),
 		deliveredEventIds: stringList,
+		sharedCheckpointId: Type.Optional(id),
 	},
 	{ additionalProperties: false },
 );
@@ -299,11 +300,11 @@ export function parseTeamSessionDocument(value: unknown): TeamSessionDocument {
 		if (eventIds.has(event.id)) throw new Error(`Duplicate team event id: ${event.id}`);
 		eventIds.add(event.id);
 	}
-	assertTeamSessionInvariants(session, eventIds);
+	assertTeamSessionInvariants(session);
 	return session;
 }
 
-function assertTeamSessionInvariants(session: TeamSessionDocument, eventIds: ReadonlySet<string>): void {
+function assertTeamSessionInvariants(session: TeamSessionDocument): void {
 	const memberIds = new Set(Object.keys(session.memberHandles));
 	const activeMemberIds = new Set(session.activeMemberIds ?? Object.keys(session.memberRuntime));
 	if (!activeMemberIds.has(session.leaderMemberId)) throw new Error("Team session leader is not an active member");
@@ -331,11 +332,8 @@ function assertTeamSessionInvariants(session: TeamSessionDocument, eventIds: Rea
 			throw new Error(`Team session delegation references an unknown member: ${event.id}`);
 		}
 	}
-	for (const runtime of Object.values(session.memberRuntime)) {
-		if (runtime.deliveredEventIds.some((eventId) => !eventIds.has(eventId))) {
-			throw new Error("Team session runtime references an unknown delivered event");
-		}
-	}
+	// Delivery receipts may reference ordinary coordination Conversation messages,
+	// which intentionally are not duplicated into the legacy `events` array.
 }
 
 export function parseCreateAgentProfileInput(value: unknown): CreateAgentProfileInput {

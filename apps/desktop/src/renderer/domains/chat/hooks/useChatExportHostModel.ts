@@ -1,4 +1,4 @@
-import type { ChatMessage } from "@shared/store/atoms";
+import type { ChatConversationItem } from "@shared/store/atoms";
 import { authUserAtom } from "@shared/store/auth-atoms";
 import { useAtomValue } from "jotai";
 import { type RefObject, useEffect, useRef } from "react";
@@ -23,7 +23,7 @@ export function useChatExportHostModel({
 	title,
 	onFinished,
 }: {
-	messages: ChatMessage[];
+	messages: ChatConversationItem[];
 	title: string;
 	onFinished: () => void;
 }): ChatExportHostModel {

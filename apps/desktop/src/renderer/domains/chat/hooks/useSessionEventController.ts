@@ -1,9 +1,10 @@
+import { createConversationUserMessage } from "@shared/conversation";
 import {
 	activeSessionStreamingAtom,
 	activeToolNamesAtom,
 	type BackgroundTask,
 	backgroundTasksBySessionAtom,
-	type ChatMessage,
+	type ChatConversationItem,
 	chatMessagesAtom,
 	contextUsageAtom,
 	isCompactingAtom,
@@ -188,12 +189,12 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 					conversationProjectionRef.current.reset();
 				}
 				for (const consumed of consumedEntries) {
-					const consumedMsg: ChatMessage = {
+					const consumedMsg = createConversationUserMessage({
 						id: nextId("user"),
-						role: "user",
+						deliveryPhase: "pending",
 						text: consumed.displayText,
 						timestamp: Date.now(),
-					};
+					});
 					// 镜像条目只有 displayText（无 attachments/promptRef 元数据），
 					// 规范消息回流后按文本吸收即可，避免元数据不等造成气泡残留。
 					rememberOptimisticUserMessage(sessionId, consumedMsg, queueStore.get(chatMessagesAtom), {
@@ -249,12 +250,13 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 							);
 							if (elapsed > 0) {
 								for (let i = mapped.length - 1; i >= 0; i--) {
-									if (mapped[i].role === "assistant") {
+									const message = mapped[i];
+									if (message.kind === "agent") {
 										mapped[i] = {
-											...mapped[i],
-											startedAt: mapped[i].startedAt ?? startedAt,
-											endedAt: mapped[i].endedAt ?? endedAt,
-											durationSeconds: mapped[i].durationSeconds ?? elapsed,
+											...message,
+											startedAt: message.startedAt ?? startedAt,
+											endedAt: message.endedAt ?? endedAt,
+											durationSeconds: message.durationSeconds ?? elapsed,
 										};
 										break;
 									}
@@ -275,7 +277,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 						// 输入预测：仅交互式会话（排除批量 / 流转），且开关开启时。每轮
 						// 正常完成后基于最近几轮对话异步生成 0-3 条建议，回填时校验过期。
 						if (rid && projectType !== "batch") {
-							let predictSnapshot: ChatMessage[] = [];
+							let predictSnapshot: ChatConversationItem[] = [];
 							setChatMessages((prev) => {
 								predictSnapshot = prev;
 								return prev;
@@ -566,12 +568,12 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 	return { bumpSuggestionToken, createSessionEventHandler, resetEventBuffers };
 }
 
-function buildRecentConversation(messages: ChatMessage[]): string {
-	const relevant = messages.filter((message) => message.role === "user" || message.role === "assistant");
+function buildRecentConversation(messages: ChatConversationItem[]): string {
+	const relevant = messages.filter((message) => message.kind !== "event");
 	let startIndex = relevant.length;
 	let userCount = 0;
 	for (let index = relevant.length - 1; index >= 0; index--) {
-		if (relevant[index].role === "user") {
+		if (relevant[index].kind === "user") {
 			userCount++;
 			startIndex = index;
 			if (userCount >= 3) break;
@@ -581,7 +583,7 @@ function buildRecentConversation(messages: ChatMessage[]): string {
 	for (const message of relevant.slice(startIndex)) {
 		const text = (message.text ?? "").trim();
 		if (!text) continue;
-		lines.push(`${message.role === "user" ? "User" : "Assistant"}: ${text.slice(0, 600)}`);
+		lines.push(`${message.kind === "user" ? "User" : "Assistant"}: ${text.slice(0, 600)}`);
 	}
 	return lines.join("\n\n").slice(0, 4000);
 }

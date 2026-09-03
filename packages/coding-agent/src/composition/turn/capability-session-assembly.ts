@@ -77,6 +77,9 @@ export interface CodingAgentTurnCapabilitySessionIdentity {
 	readonly agentDir?: string;
 	readonly includeAgentSkills?: boolean;
 	readonly systemPromptAddon?: string;
+	readonly systemPromptCachePrefixAddon?: string;
+	readonly systemPromptVolatileAddon?: string;
+	readonly promptCacheKey?: string;
 }
 
 export interface CodingAgentTurnCapabilityActivationPort {
@@ -263,6 +266,14 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 				joinPromptAddons(promptOptions.appendSystemPrompt, options.session.systemPromptAddon),
 				configuration.appendSystemPrompt,
 			),
+			systemPromptCachePrefixAddon: joinPromptAddons(
+				promptOptions.systemPromptCachePrefixAddon,
+				options.session.systemPromptCachePrefixAddon,
+			),
+			systemPromptVolatileAddon: joinPromptAddons(
+				promptOptions.systemPromptVolatileAddon,
+				options.session.systemPromptVolatileAddon,
+			),
 			...(memory ? { memory } : {}),
 		};
 	};
@@ -342,6 +353,7 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 	const bindToolSelection = () =>
 		createAgentToolSelection(options.agentConfiguration.readAdmitted(), options.mcpController?.readCatalog() ?? []);
 	const modelCallFrameComposer = new CodingAgentModelCallFrameComposer({
+		promptCacheKey: options.session.promptCacheKey,
 		allowsTool: (name) => bindToolSelection()(name),
 		bindToolSelection,
 		readMcpPromptState: mcpController ? () => mcpController.readPromptState() : undefined,
@@ -435,6 +447,8 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 			...(options.memoryRuntime ? [options.memoryRuntime] : []),
 		],
 		contextStrategy: options.contextRuntime,
+		contextSummaryStrategy: options.contextRuntime,
+		manualCompactionStrategy: options.contextRuntime,
 		contextCompositionPublisher: options.contextRuntime,
 		modelCallContextTransformer: options.contextRuntime,
 		modelCallMessageFinalizer,

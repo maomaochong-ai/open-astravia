@@ -2,10 +2,11 @@
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { createConversationAgentMessage, createConversationUserMessage } from "@shared/conversation";
 import { Fragment, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { MessageTimeline } from "./MessageTimeline";
-import type { ChatMessage } from "./types";
+import type { ChatConversationItem } from "./types";
 
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({
@@ -46,10 +47,10 @@ vi.mock("react-virtuoso", () => ({
 	),
 }));
 
-function conversation(turns: number): ChatMessage[] {
+function conversation(turns: number): ChatConversationItem[] {
 	return Array.from({ length: turns }).flatMap((_, index) => [
-		{ id: `user-${index}`, role: "user" as const, text: index === 5 ? "Find the launch plan" : `Question ${index}` },
-		{ id: `assistant-${index}`, role: "assistant" as const, text: `Answer ${index}` },
+		createConversationUserMessage({ id: `user-${index}`, text: index === 5 ? "Find the launch plan" : `Question ${index}` }),
+		createConversationAgentMessage({ id: `assistant-${index}`, text: `Answer ${index}`, blocks: [] }),
 	]);
 }
 
@@ -99,8 +100,8 @@ describe("MessageTimeline", () => {
 		const question =
 			"请帮我检查登录页提交后白屏的问题，控制台会出现 hydration mismatch，并对照最近一次改动里表单校验、错误边界和路由守卫的先后顺序，给出可以落地的修复建议。";
 		const messages = Array.from({ length: 8 }).flatMap((_, index) => [
-			{ id: `user-${index}`, role: "user" as const, text: index === 0 ? question : `Question ${index}` },
-			{ id: `assistant-${index}`, role: "assistant" as const, text: `Answer ${index}` },
+			createConversationUserMessage({ id: `user-${index}`, text: index === 0 ? question : `Question ${index}` }),
+			createConversationAgentMessage({ id: `assistant-${index}`, text: `Answer ${index}`, blocks: [] }),
 		]);
 		render(<MessageTimeline activeMessageIndex={0} messages={messages} onNavigate={vi.fn()} />);
 

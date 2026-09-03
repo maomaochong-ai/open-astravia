@@ -1,242 +1,38 @@
-import type { ChatErrorKind } from "@domains/chat/services/classifyChatError";
-import type { DesktopMcpAppAttachment, DesktopMcpElicitationRequest } from "@preload/api";
-import type { Usage } from "@vetta/ai";
-import type { ContextCompositionReport, PromptAttachmentRef, PromptResourceRef } from "@vetta/runtime-core";
-import type { CardDescriptor } from "@vetta-org/plugin-sdk";
+import type { DesktopMcpElicitationRequest } from "@preload/api";
+import type {
+	AppshotAttachment,
+	ChatErrorDetails,
+	ConversationTimelineItemViewModel,
+	ConversationUserMessageViewModel,
+	MentionedFile,
+	PendingQuestion,
+} from "@shared/conversation";
+import type { ContextCompositionReport } from "@vetta/runtime-core";
 import { atom } from "jotai";
 import { runningSessionPathsAtom } from "./running-sessions-atoms";
 
-// ─── Rich content blocks ───
+export type ChatTimelineEventViewModel = { readonly kind: "compaction"; readonly summary: string };
+export type ChatConversationItem = ConversationTimelineItemViewModel<ChatTimelineEventViewModel>;
 
-export interface TextBlock {
-	type: "text";
-	/** Stable id for React keying — survives reorder of surrounding blocks. */
-	id: string;
-	text: string;
-}
-
-export interface ThinkingBlock {
-	type: "thinking";
-	/** Stable id for React keying. */
-	id: string;
-	text: string;
-}
-
-export interface ToolPhaseInfo {
-	label: string;
-	atMs: number;
-}
-
-export interface ToolImagePreview {
-	data: string;
-	mimeType: string;
-	originalPath?: string;
-	originalMimeType?: string;
-	originalSizeBytes?: number;
-	originalWidth?: number;
-	originalHeight?: number;
-	processedSizeBytes?: number;
-	processedWidth?: number;
-	processedHeight?: number;
-	wasResized?: boolean;
-}
-
-export interface ToolAudioPreview {
-	data: string;
-	mimeType: string;
-}
-
-export interface ToolCallUiDetails {
-	/** Unified diff for UI rendering only. Never sent back to the model. */
-	diff?: string;
-	/** First changed line in the new file, for compact path display. */
-	firstChangedLine?: number;
-	/** ask_user_question 的用户作答结果，供 transcript 富视图回显（不回传模型）。 */
-	askUserQuestion?: AskUserQuestionResolution;
-	/** 知识库工具（kb_*）的结构化结果，供富视图渲染（不回传模型）。 */
-	knowledge?: KnowledgeToolUiDetails;
-}
-
-/** 知识库工具结果的 UI 结构（来自工具的 details）。 */
-export type KnowledgeToolUiDetails =
-	| {
-			kind: "filter";
-			count: number;
-			pages: Array<{ id: string; absolutePath: string; title: string; summary: string; tags: string[] }>;
-	  }
-	| { kind: "tags"; tags: Array<{ tag: string; count: number }> }
-	| { kind: "write"; action: string; id: string; absolutePath: string; movedFrom?: string };
-
-/** ask_user_question：单个选项。 */
-export interface QuestionOption {
-	readonly label: string;
-	readonly description: string;
-	readonly badges?: readonly string[];
-}
-
-/** ask_user_question：单个问题（问题组成员）。 */
-export interface QuestionItem {
-	readonly question: string;
-	readonly header: string;
-	readonly options: readonly QuestionOption[];
-	readonly multiSelect?: boolean;
-}
-
-/** ask_user_question：一次提问的用户作答（每题选中的标签 / 自由文本）。 */
-export interface QuestionAnswer {
-	question: string;
-	answers: string[];
-}
-
-/** ask_user_question：作答结果（取消 or 各题答案）。 */
-export interface AskUserQuestionResolution {
-	cancelled: boolean;
-	answers: QuestionAnswer[];
-}
-
-/** 一次待答的 ask_user_question 请求，绑定到发起它的 session。 */
-export interface PendingQuestion {
-	readonly requestId: string;
-	readonly sessionId: string;
-	readonly questions: readonly QuestionItem[];
-}
-
-export interface ToolCallBlock {
-	type: "tool_call";
-	toolCallId: string;
-	toolName: string;
-	args: Record<string, unknown>;
-	/** "pending" = waiting for result, "success" = completed, "error" = failed */
-	status: "pending" | "success" | "error";
-	result?: string;
-	imagePreview?: ToolImagePreview;
-	/** All MCP image blocks, retained for a gallery while imagePreview stays backwards compatible. */
-	imagePreviews?: ToolImagePreview[];
-	audioPreviews?: ToolAudioPreview[];
-	/** Opaque handle to a Main-owned untrusted MCP App surface. */
-	mcpApp?: DesktopMcpAppAttachment;
-	uiDetails?: ToolCallUiDetails;
-	/**
-	 * Settled card descriptors this tool produced (from the result's out-of-band
-	 * `details.cards`). The per-message card host resolves each by `type` to a
-	 * plugin card renderer. Never sent to the LLM.
-	 */
-	cards?: CardDescriptor[];
-	isError?: boolean;
-	/**
-	 * Out-of-band timing metadata. Never sent to LLMs.
-	 * - startedAt: absolute ms when execution began (from tool.start event)
-	 * - durationMs: total execution time (from tool.end event or ToolTimingEntry)
-	 * - phases: tool-reported phase boundaries; each phase ends when the next
-	 *   one starts (or when execution ends)
-	 * - currentPhase: only set while status === "pending" — the most recent
-	 *   tool.phase event's label, for live display.
-	 */
-	startedAt?: number;
-	durationMs?: number;
-	phases?: ToolPhaseInfo[];
-	currentPhase?: string;
-}
-
-export interface ToolResultBlock {
-	type: "tool_result";
-	toolCallId: string;
-	toolName: string;
-	content: string;
-	isError: boolean;
-}
-
-export interface ErrorBlock {
-	type: "error";
-	/** Stable id for React keying. */
-	id: string;
-	/** Stable runtime turn identity used to make live/history projections idempotent. */
-	turnId?: string;
-	/** Provider / 网关的原始错误串，只在错误卡的折叠区展示。 */
-	text: string;
-	/**
-	 * 归类结果，写入时由 classifyChatError 计算（live 与历史回放共用），决定
-	 * 卡片的图标、文案与是否给跳转按钮。
-	 */
-	kind: ChatErrorKind;
-	/** 发出这条错误前自动重试过的次数；0 或缺省表示没重试过。 */
-	attempts?: number;
-	/**
-	 * 历史回放时被折叠进来的同类错误条数（含自身）。>1 时卡片显示「重复 N 次」。
-	 * live 链路不会产生 >1 的值——那边靠 attempts 表达。
-	 */
-	repeated?: number;
-	/** Safe structured diagnostics retained across live updates and history replay. */
-	details?: ChatErrorDetails;
-}
-
-export interface ChatErrorDetails {
-	code?: string;
-	origin?: "runtime" | "provider" | "tool" | "extension";
-	retryable?: boolean;
-	statusCode?: number;
-	provider?: string;
-	modelId?: string;
-	requestId?: string;
-	providerCode?: string;
-	phase?: "resolve" | "request" | "response" | "stream" | "decode";
-	retryAfterMs?: number;
-}
-
-export type ContentBlock = TextBlock | ThinkingBlock | ToolCallBlock | ToolResultBlock | ErrorBlock;
-
-/** Sibling user-message versions under the same parent (session tree). */
-export interface ChatMessageBranch {
-	/** Session entryIds of sibling user messages, oldest → newest */
-	siblings: string[];
-	/** Index of this message in siblings */
-	index: number;
-}
-
-export interface ChatMessage {
-	id: string;
-	role: "user" | "assistant" | "compaction";
-	/** Plain text for user messages; for assistant messages this is the concatenated text blocks */
-	text: string;
-	/**
-	 * Session tree entry id (coding-agent). Present for history-backed messages;
-	 * optimistic bubbles may omit until history reload.
-	 */
-	entryId?: string;
-	/** Session parent entry id (null for root). */
-	parentId?: string | null;
-	/** User-message sibling branch info for ‹ i/n › switcher. */
-	branch?: ChatMessageBranch;
-	/** Rich content blocks for assistant messages */
-	blocks?: ContentBlock[];
-	/** One normalized usage record per model call in this assistant turn. */
-	usages?: Usage[];
-	/** Attached images for user messages */
-	images?: Array<{ data: string; mimeType: string; name: string }>;
-	/** Timestamp when the message was created (Date.now()) */
-	timestamp?: number;
-	/** Timestamp when this assistant turn started (agent_start) */
-	startedAt?: number;
-	/** Timestamp when this assistant turn ended (agent_end/aborted) */
-	endedAt?: number;
-	/** Total duration of this assistant turn in seconds (agent_start → agent_end) */
-	durationSeconds?: number;
-	/** 该 user turn 实际使用的模型，用于 MessageList 派生"切换了模型"分隔条 */
-	model?: { provider: string; id: string };
-	/** Appshot 全局手势捕获的前台窗口附件（乐观气泡携带，供消息里特殊渲染） */
-	appshot?: AppshotAttachment;
-	/** 用户通过 @ 面板手动选择的文件（仅面板选择，不含手打 @/path 文本） */
-	mentionedFiles?: MentionedFile[];
-	/**
-	 * 来自设置页「让 AI 协助配置」的 tab id（如 mcp / models），气泡展示「MCP配置协助」等标签。
-	 * 乐观发送与历史回放中的 Coding Agent 自定义标记都会设置。
-	 */
-	settingsAssistTabId?: string;
-	/** Structured Skill / Scene selection associated with this user turn. */
-	promptRef?: PromptResourceRef;
-	/** Structured filesystem attachments associated with this user turn. */
-	attachments?: PromptAttachmentRef[];
-}
+export type {
+	AskUserQuestionResolution,
+	ChatErrorDetails,
+	ContentBlock,
+	ErrorBlock,
+	KnowledgeToolUiDetails,
+	PendingQuestion,
+	QuestionAnswer,
+	QuestionItem,
+	QuestionOption,
+	TextBlock,
+	ThinkingBlock,
+	ToolAudioPreview,
+	ToolCallBlock,
+	ToolCallUiDetails,
+	ToolImagePreview,
+	ToolPhaseInfo,
+	ToolResultBlock,
+} from "@shared/conversation";
 
 /**
  * Pending replacement of the latest user message. The destructive backend change
@@ -309,17 +105,6 @@ export interface AttachedImage {
 // ─── Appshot attachment ───
 
 /** Appshot 全局手势捕获的前台窗口附件（v1 单附件，新捕获覆盖旧的）。 */
-export interface AppshotAttachment {
-	id: string;
-	appName: string;
-	windowTitle: string;
-	documentPath: string | null;
-	imagePath: string | null;
-	iconPath: string | null;
-	textPath: string | null;
-	capturedAt: number;
-}
-
 export const appshotAttachmentAtom = atom<AppshotAttachment | null>(null);
 
 /** 聚焦输入框请求计数器：bump 后 InputBar 的 effect focus textarea。 */
@@ -355,16 +140,9 @@ export interface SelectedSkill {
 
 // ─── Mentioned files (@file selection) ───
 
-export interface MentionedFile {
-	/** Absolute path */
-	path: string;
-	/** Display name (file or dir name) */
-	name: string;
-	isDirectory: boolean;
-	sizeBytes?: number;
-}
+export type { AppshotAttachment, MentionedFile } from "@shared/conversation";
 
-export const chatMessagesAtom = atom<ChatMessage[]>([]);
+export const chatMessagesAtom = atom<ChatConversationItem[]>([]);
 
 /** Pending latest-message replacement, deferred until send. */
 export const pendingMessageEditAtom = atom<PendingMessageEdit | null>(null);
@@ -615,7 +393,7 @@ export interface StagedSendInput {
 	mentionedFiles: MentionedFile[];
 	appshot: AppshotAttachment | null;
 	selectedModel: string | null;
-	optimisticMessage: ChatMessage;
+	optimisticMessage: ConversationUserMessageViewModel;
 }
 
 /** Global callback to open a session (set by useSessionManager, consumed by other pages) */

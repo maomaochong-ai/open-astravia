@@ -1,4 +1,5 @@
-import type { ChatMessage, ErrorBlock } from "@shared/store/atoms";
+import { createConversationAgentMessage, type ErrorBlock } from "@shared/conversation";
+import type { ChatConversationItem } from "@shared/store/atoms";
 
 function sameTerminalError(left: ErrorBlock, right: ErrorBlock): boolean {
 	if (left.turnId && right.turnId) return left.turnId === right.turnId;
@@ -19,32 +20,32 @@ function cloneErrorBlock(block: ErrorBlock): ErrorBlock {
  * other content; only the latest live assistant's error blocks are reconciled.
  */
 export function reconcileHistoryWithLiveTerminalErrors(
-	history: ChatMessage[],
-	liveMessages: readonly ChatMessage[],
-): ChatMessage[] {
+	history: ChatConversationItem[],
+	liveMessages: readonly ChatConversationItem[],
+): ChatConversationItem[] {
 	const liveAssistant = liveMessages.at(-1);
-	if (liveAssistant?.role !== "assistant") return history;
-	const liveErrors = (liveAssistant.blocks ?? []).filter((block): block is ErrorBlock => block.type === "error");
+	if (liveAssistant?.kind !== "agent") return history;
+	const liveErrors = liveAssistant.blocks.filter((block): block is ErrorBlock => block.type === "error");
 	if (liveErrors.length === 0) return history;
 
 	const lastHistoryMessage = history.at(-1);
-	if (lastHistoryMessage?.role !== "assistant") {
+	if (lastHistoryMessage?.kind !== "agent") {
 		return [
 			...history,
-			{
+			createConversationAgentMessage({
 				id: liveAssistant.id,
-				role: "assistant",
 				text: liveAssistant.text || liveErrors[0]?.text || "",
 				blocks: liveErrors.map(cloneErrorBlock),
+				phase: "failed",
 				...(liveAssistant.timestamp === undefined ? {} : { timestamp: liveAssistant.timestamp }),
 				...(liveAssistant.startedAt === undefined ? {} : { startedAt: liveAssistant.startedAt }),
 				...(liveAssistant.endedAt === undefined ? {} : { endedAt: liveAssistant.endedAt }),
 				...(liveAssistant.durationSeconds === undefined ? {} : { durationSeconds: liveAssistant.durationSeconds }),
-			},
+			}),
 		];
 	}
 
-	const blocks = [...(lastHistoryMessage.blocks ?? [])];
+	const blocks = [...lastHistoryMessage.blocks];
 	for (const liveError of liveErrors) {
 		const existingIndex = blocks.findIndex((block) => block.type === "error" && sameTerminalError(block, liveError));
 		if (existingIndex < 0) {

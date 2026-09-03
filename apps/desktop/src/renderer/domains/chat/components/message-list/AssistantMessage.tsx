@@ -1,5 +1,5 @@
 import { BotAvatar } from "@shared/components/BotAvatar";
-import type { ChatMessage } from "@shared/store/atoms";
+import type { ConversationAgentMessageViewModel } from "@shared/conversation";
 import { useThemeSurface } from "@vetta/theme-sdk/appearance";
 import { ThemeSurface } from "@vetta/theme-ui/appearance";
 import {
@@ -34,7 +34,7 @@ interface AssistantMessageProps {
 	exportMode?: boolean;
 	isStreaming: boolean;
 	isTailMessage: boolean;
-	message: ChatMessage;
+	message: ConversationAgentMessageViewModel;
 }
 
 export const AssistantMessage = memo(function AssistantMessage({
@@ -100,12 +100,12 @@ export const AssistantMessage = memo(function AssistantMessage({
 		};
 	}, [t, stagedNarration]);
 
-	const hasBlocks = Boolean(message.blocks?.length);
-	const isAwaitingFirstActivity = isCurrentlyStreaming && !hasBlocks && message.text.length === 0;
+	const hasBlocks = message.blocks.length > 0;
+	const isAwaitingFirstActivity = isCurrentlyStreaming && !hasBlocks && (message.text?.length ?? 0) === 0;
 	const fold = isCurrentlyStreaming
 		? {
 				kind: "streaming" as const,
-				count: message.blocks?.length ?? 0,
+				count: message.blocks.length,
 				startedAt: message.startedAt ?? message.timestamp,
 				waitingForFirstActivity: isAwaitingFirstActivity,
 			}

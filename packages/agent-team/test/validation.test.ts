@@ -133,6 +133,18 @@ describe("Agent Team IPC input validation", () => {
 		expect(
 			parseTeamSessionDocument({
 				...session,
+				memberRuntime: {
+					leader: {
+						...session.memberRuntime.leader,
+						deliveredEventIds: ["ordinary-coordination-message"],
+						sharedCheckpointId: "checkpoint-1",
+					},
+				},
+			}),
+		).toMatchObject({ id: "session" });
+		expect(
+			parseTeamSessionDocument({
+				...session,
 				activeMemberIds: ["leader"],
 				memberHandles: { leader: "agent", "removed-member": "agent" },
 			}),

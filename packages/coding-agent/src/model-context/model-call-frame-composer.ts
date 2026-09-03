@@ -31,6 +31,7 @@ export type {
 } from "../runtime-contracts/index.js";
 
 export interface CodingAgentModelCallFrameComposerOptions {
+	readonly promptCacheKey?: string;
 	readonly resolveSystemPromptOptions: CodingAgentSystemPromptOptionsResolver;
 	readonly bindSystemPromptOptions?: (
 		context: RuntimeSnapshotAcquireContext,
@@ -274,6 +275,7 @@ export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer
 			// 整段 Prompt 只落在这一个 InstructionBlock 里，因此编译期算出的切分点可以直接透传给 Provider。
 			systemPromptStableLength: compiledPrompt.stableLength,
 			promptCacheSystemPromptBlocks: compiledPrompt.promptCacheBlocks,
+			...(this.options.promptCacheKey ? { promptCacheKey: this.options.promptCacheKey } : {}),
 			contextCompositionSections: composeContextSections(draft, tools),
 		};
 	}

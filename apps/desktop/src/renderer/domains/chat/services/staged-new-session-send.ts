@@ -1,3 +1,4 @@
+import { createConversationUserMessage } from "@shared/conversation";
 import { MultipleSceneReferencesError, prepareInputPrompt } from "@shared/lib/input-tokens";
 import { perfSendMark } from "@shared/lib/perf-send";
 import {
@@ -71,16 +72,16 @@ function stageSessionSend(
 		if (appshot?.textPath) attachmentsByPath.set(appshot.textPath, { kind: "file", path: appshot.textPath });
 	}
 
-	const optimisticMessage: StagedSendInput["optimisticMessage"] = {
+	const optimisticMessage = createConversationUserMessage({
 		id: nextId("user"),
-		role: "user",
+		deliveryPhase: "pending",
 		text: hasOverride ? rawText : preparedInput.text,
 		timestamp: Date.now(),
 		model: modelKeyToParts(selectedModel),
 		promptRef,
 		attachments: [...attachmentsByPath.values()],
 		mentionedFiles,
-	};
+	});
 	if (attachedImages.length > 0) {
 		optimisticMessage.images = attachedImages.map((image) => ({
 			data: image.data,

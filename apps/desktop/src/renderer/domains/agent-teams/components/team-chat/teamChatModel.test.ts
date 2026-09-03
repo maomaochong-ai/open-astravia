@@ -1,8 +1,9 @@
-import type { TeamSessionDocument, TeamSessionStreamEvent } from "@vetta/agent-team";
+import type { TeamSessionDocument, TeamSessionSnapshot, TeamSessionStreamEvent } from "@vetta/agent-team";
+import { createAssistantMessage } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
 import {
 	buildTeamNavigationTurns,
-	buildTeamTimelineItems,
+	projectTeamConversationFeed,
 	reduceTeamStreamState,
 	stripAttachmentContext,
 	type TeamMemberViewModel,
@@ -33,6 +34,70 @@ const member: TeamMemberViewModel = {
 	status: "idle",
 };
 
+function snapshot(input: Partial<TeamSessionSnapshot> = {}): TeamSessionSnapshot {
+	return { session, conversationRevision: 0, messages: [], activities: [], ...input };
+}
+
+function userMessage(
+	id: string,
+	turnId: string,
+	text: string,
+	timestamp: number,
+	attachments?: readonly { readonly kind: "file" | "image"; readonly path: string }[],
+) {
+	return {
+		kind: "user" as const,
+		id,
+		turnId,
+		author: { kind: "user" as const, id: "local-user" },
+		message: { role: "user" as const, content: text, timestamp },
+		timestamp,
+		...(attachments?.length ? { attachments } : {}),
+	};
+}
+
+function agentMessage(id: string, turnId: string, authorId: string, text: string, timestamp: number) {
+	return {
+		kind: "agent" as const,
+		id,
+		turnId,
+		author: { kind: "agent" as const, id: authorId },
+		message: {
+			...createAssistantMessage(
+				{ api: "agent-team-test", provider: "agent-team-test", model: "fixture" },
+				{ timestamp },
+			),
+			content: [{ type: "text" as const, text }],
+		},
+		timestamp,
+	};
+}
+
+function streamEvent(
+	messageId: string,
+	sequence: number,
+	delta: string,
+	authorId = "leader",
+): Extract<TeamSessionStreamEvent, { type: "conversation.agent-message-event" }> {
+	const partial = {
+		...createAssistantMessage(
+			{ api: "agent-team-test", provider: "agent-team-test", model: "fixture" },
+			{ timestamp: sequence },
+		),
+		content: [{ type: "text" as const, text: delta }],
+	};
+	return {
+		type: "conversation.agent-message-event",
+		conversationId: "session",
+		messageId,
+		turnId: "request",
+		author: { kind: "agent", id: authorId },
+		sequence,
+		timestamp: sequence,
+		event: { type: "text_delta", contentIndex: 0, delta, partial },
+	};
+}
+
 describe("team chat stream state", () => {
 	it("keeps drafts isolated by team scope", () => {
 		const first = updateScopedTeamDraft({}, "team-a", "draft a");
@@ -47,21 +112,14 @@ describe("team chat stream state", () => {
 	});
 
 	it("renders an attachments-only structured message without exposing its full path", () => {
-		const items = buildTeamTimelineItems({
-			session: {
-				...session,
-				events: [
-					{
-						type: "user-message",
-						id: "attachment-message",
-						requestId: "attachment-request",
-						text: "",
-						targetMemberIds: [],
-						attachments: [{ kind: "file", path: "C:/workspace/notes.txt" }],
-						timestamp: 1,
-					},
+		const items = projectTeamConversationFeed({
+			snapshot: snapshot({
+				messages: [
+					userMessage("attachment-message", "attachment-request", "", 1, [
+						{ kind: "file", path: "C:/workspace/notes.txt" },
+					]),
 				],
-			},
+			}),
 			pending: undefined,
 			streams: {},
 			members: [member],
@@ -81,37 +139,20 @@ describe("team chat stream state", () => {
 	});
 
 	it("accumulates ordered deltas by turn and ignores replayed sequence numbers", () => {
-		const start: TeamSessionStreamEvent = {
-			type: "member-start",
-			teamSessionId: "session",
-			memberId: "leader",
-			requestId: "request",
-			turnId: "turn",
-			seq: 0,
-			timestamp: 1,
-		};
-		const first = reduceTeamStreamState({}, start);
-		const next = reduceTeamStreamState(first, {
-			type: "member-delta",
-			teamSessionId: "session",
-			memberId: "leader",
-			requestId: "request",
-			turnId: "turn",
-			seq: 1,
-			delta: "partial",
-			timestamp: 2,
-		});
-		const replayed = reduceTeamStreamState(next, {
-			type: "member-delta",
-			teamSessionId: "session",
-			memberId: "leader",
-			requestId: "request",
-			turnId: "turn",
-			seq: 1,
-			delta: " duplicate",
-			timestamp: 3,
-		});
-		expect(replayed.turn?.text).toBe("partial");
+		const first = reduceTeamStreamState({}, streamEvent("turn", 1, "partial"));
+		const replayed = reduceTeamStreamState(first, streamEvent("turn", 1, " duplicate"));
+		expect(replayed.turn?.message.text).toBe("partial");
+	});
+
+	it("reduces interleaved member streams independently by message identity", () => {
+		const leader = reduceTeamStreamState({}, streamEvent("leader-message", 1, "lead", "leader"));
+		const interleaved = reduceTeamStreamState(
+			reduceTeamStreamState(leader, streamEvent("reviewer-message", 1, "review", "reviewer")),
+			streamEvent("leader-message", 2, "er", "leader"),
+		);
+
+		expect(interleaved["leader-message"]?.message).toMatchObject({ authorId: "leader", text: "leader" });
+		expect(interleaved["reviewer-message"]?.message).toMatchObject({ authorId: "reviewer", text: "review" });
 	});
 
 	it("restores in-flight text from a reconnect snapshot", () => {
@@ -120,76 +161,32 @@ describe("team chat stream state", () => {
 			{
 				type: "session-snapshot",
 				teamSessionId: "session",
-				session,
-				activeTurns: [
-					{
-						turnId: "turn",
-						memberId: "leader",
-						requestId: "request",
-						seq: 4,
-						text: "restored partial",
-						startedAt: 1,
-					},
-				],
+				snapshot: snapshot(),
+				activeMessageEvents: [streamEvent("turn", 4, "restored partial")],
 			},
 		);
-		expect(state.turn?.text).toBe("restored partial");
+		expect(state.turn?.message.text).toBe("restored partial");
 	});
 
 	it("removes an aborted turn so a cancelled request does not remain pending", () => {
-		const state = reduceTeamStreamState(
-			{
-				turn: {
-					turnId: "turn",
-					requestId: "request",
-					memberId: "leader",
-					seq: 1,
-					text: "partial",
-					startedAt: 1,
-					phase: "streaming",
-				},
-			},
-			{
-				type: "member-end",
-				teamSessionId: "session",
-				memberId: "leader",
-				requestId: "request",
-				turnId: "turn",
-				seq: 2,
-				phase: "aborted",
-				timestamp: 2,
-			},
-		);
+		const state = reduceTeamStreamState(reduceTeamStreamState({}, streamEvent("turn", 1, "partial")), {
+			type: "conversation.agent-message-discard",
+			conversationId: "session",
+			messageId: "turn",
+			turnId: "request",
+			author: { kind: "agent", id: "leader" },
+			sequence: 2,
+			reason: "aborted",
+			timestamp: 2,
+		});
 		expect(state.turn).toBeUndefined();
 	});
 
 	it("deduplicates optimistic user messages by request id and keeps partial member output visible", () => {
-		const items = buildTeamTimelineItems({
-			session: {
-				...session,
-				events: [
-					{
-						type: "user-message",
-						id: "message",
-						requestId: "request",
-						text: "hello",
-						targetMemberIds: [],
-						timestamp: 1,
-					},
-				],
-			},
+		const items = projectTeamConversationFeed({
+			snapshot: snapshot({ messages: [userMessage("message", "request", "hello", 1)] }),
 			pending: { requestId: "request", text: "hello" },
-			streams: {
-				turn: {
-					turnId: "turn",
-					requestId: "request",
-					memberId: "leader",
-					seq: 1,
-					text: "partial",
-					startedAt: 2,
-					phase: "streaming",
-				},
-			},
+			streams: reduceTeamStreamState({}, streamEvent("turn", 1, "partial")),
 			members: [member],
 			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
 		});
@@ -201,39 +198,26 @@ describe("team chat stream state", () => {
 	});
 
 	it("groups every member response and delegation for one request into a reusable navigation turn", () => {
-		const items = buildTeamTimelineItems({
-			session: {
-				...session,
-				memberHandles: { leader: "vetta", reviewer: "reviewer" },
-				events: [
+		const items = projectTeamConversationFeed({
+			snapshot: snapshot({
+				session: { ...session, memberHandles: { leader: "vetta", reviewer: "reviewer" } },
+				messages: [
+					userMessage("user-event", "request", "Review the launch plan", 1),
+					agentMessage("member-event", "request", "reviewer", "Launch risks found", 3),
+				],
+				activities: [
 					{
-						type: "user-message",
-						id: "user-event",
-						requestId: "request",
-						text: "Review the launch plan",
-						targetMemberIds: ["leader"],
-						timestamp: 1,
-					},
-					{
-						type: "member-delegation",
+						kind: "delegation",
 						id: "delegation-event",
 						requestId: "request",
 						sourceMemberId: "leader",
 						targetMemberId: "reviewer",
 						objective: "Review risks",
+						state: "completed",
 						timestamp: 2,
 					},
-					{
-						type: "member-result",
-						id: "member-event",
-						requestId: "request",
-						memberId: "reviewer",
-						sourceTurnId: "review-turn",
-						text: "Launch risks found",
-						timestamp: 3,
-					},
 				],
-			},
+			}),
 			pending: undefined,
 			streams: {},
 			members: [member],

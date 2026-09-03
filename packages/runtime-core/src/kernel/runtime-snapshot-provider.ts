@@ -2,6 +2,7 @@ import type {
 	AgentRunPreparer,
 	CompiledRuntimeSnapshot,
 	ContextStrategy,
+	ContextSummaryStrategy,
 	ContinuationPolicy,
 	ModelCallContextTransformer,
 	ModelCallContributionProvider,
@@ -157,6 +158,7 @@ export async function bindRuntimeSnapshotForTurn(
 	readonly release: () => Promise<void>;
 }> {
 	context.signal.throwIfAborted();
+	const capture = createTurnBindingCapture();
 	const [
 		providerResults,
 		composerResult,
@@ -166,46 +168,58 @@ export async function bindRuntimeSnapshotForTurn(
 		messageFinalizerResult,
 		contextStrategyResult,
 		contextTransformerResult,
+		manualCompactionResult,
+		contextSummaryResult,
 	] = await Promise.all([
 		Promise.all(
 			(snapshot.modelCallProviders ?? []).map((provider) =>
-				settle(() => (provider.bindForTurn ? provider.bindForTurn(context) : provider)),
+				capture(provider, () => (provider.bindForTurn ? provider.bindForTurn(context) : provider)),
 			),
 		),
-		settle(() =>
+		capture(snapshot.modelCallFrameComposer, () =>
 			snapshot.modelCallFrameComposer?.bindForTurn
 				? snapshot.modelCallFrameComposer.bindForTurn(context)
 				: snapshot.modelCallFrameComposer,
 		),
-		settle(() =>
+		capture(snapshot.inputRequestPreparer, () =>
 			snapshot.inputRequestPreparer?.bindForTurn
 				? snapshot.inputRequestPreparer.bindForTurn(context)
 				: snapshot.inputRequestPreparer,
 		),
-		settle(() =>
+		capture(snapshot.agentRunPreparer, () =>
 			snapshot.agentRunPreparer?.bindForTurn
 				? snapshot.agentRunPreparer.bindForTurn(context)
 				: snapshot.agentRunPreparer,
 		),
-		settle(() =>
+		capture(snapshot.continuationPolicy, () =>
 			snapshot.continuationPolicy?.bindForTurn
 				? snapshot.continuationPolicy.bindForTurn(context)
 				: snapshot.continuationPolicy,
 		),
-		settle(() =>
+		capture(snapshot.modelCallMessageFinalizer, () =>
 			snapshot.modelCallMessageFinalizer?.bindForTurn
 				? snapshot.modelCallMessageFinalizer.bindForTurn(context)
 				: snapshot.modelCallMessageFinalizer,
 		),
-		settle(() =>
+		capture(snapshot.contextStrategy, () =>
 			snapshot.contextStrategy.bindForTurn
 				? snapshot.contextStrategy.bindForTurn(context)
 				: snapshot.contextStrategy,
 		),
-		settle(() =>
+		capture(snapshot.modelCallContextTransformer, () =>
 			snapshot.modelCallContextTransformer?.bindForTurn
 				? snapshot.modelCallContextTransformer.bindForTurn(context)
 				: snapshot.modelCallContextTransformer,
+		),
+		capture(snapshot.manualCompactionStrategy, () =>
+			snapshot.manualCompactionStrategy?.bindForTurn
+				? snapshot.manualCompactionStrategy.bindForTurn(context)
+				: snapshot.manualCompactionStrategy,
+		),
+		capture(snapshot.contextSummaryStrategy, () =>
+			snapshot.contextSummaryStrategy?.bindForTurn
+				? snapshot.contextSummaryStrategy.bindForTurn(context)
+				: snapshot.contextSummaryStrategy,
 		),
 	]);
 	const modelCallProviders = snapshot.modelCallProviders
@@ -226,6 +240,9 @@ export async function bindRuntimeSnapshotForTurn(
 	const contextStrategy = contextStrategyResult.status === "fulfilled" ? contextStrategyResult.value : undefined;
 	const modelCallContextTransformer =
 		contextTransformerResult.status === "fulfilled" ? contextTransformerResult.value : undefined;
+	const manualCompactionStrategy =
+		manualCompactionResult.status === "fulfilled" ? manualCompactionResult.value : undefined;
+	const contextSummaryStrategy = contextSummaryResult.status === "fulfilled" ? contextSummaryResult.value : undefined;
 	const release = createTurnBindingRelease(
 		modelCallProviders,
 		modelCallFrameComposer,
@@ -235,19 +252,27 @@ export async function bindRuntimeSnapshotForTurn(
 		modelCallMessageFinalizer,
 		contextStrategy,
 		modelCallContextTransformer,
+		manualCompactionStrategy,
+		contextSummaryStrategy,
 	);
 	const bindingErrors = [
-		...providerResults,
-		composerResult,
-		inputPreparerResult,
-		agentRunPreparerResult,
-		continuationPolicyResult,
-		messageFinalizerResult,
-		contextStrategyResult,
-		contextTransformerResult,
-	]
-		.filter((result): result is PromiseRejectedResult => result.status === "rejected")
-		.map(({ reason }) => reason);
+		...new Set(
+			[
+				...providerResults,
+				composerResult,
+				inputPreparerResult,
+				agentRunPreparerResult,
+				continuationPolicyResult,
+				messageFinalizerResult,
+				contextStrategyResult,
+				contextTransformerResult,
+				manualCompactionResult,
+				contextSummaryResult,
+			]
+				.filter((result): result is PromiseRejectedResult => result.status === "rejected")
+				.map(({ reason }) => reason),
+		),
+	];
 	if (bindingErrors.length > 0) {
 		await release();
 		throw bindingErrors.length === 1
@@ -268,7 +293,9 @@ export async function bindRuntimeSnapshotForTurn(
 		continuationPolicy === snapshot.continuationPolicy &&
 		modelCallMessageFinalizer === snapshot.modelCallMessageFinalizer &&
 		contextStrategy === snapshot.contextStrategy &&
-		modelCallContextTransformer === snapshot.modelCallContextTransformer
+		modelCallContextTransformer === snapshot.modelCallContextTransformer &&
+		manualCompactionStrategy === snapshot.manualCompactionStrategy &&
+		contextSummaryStrategy === snapshot.contextSummaryStrategy
 			? snapshot
 			: Object.freeze({
 					...snapshot,
@@ -280,6 +307,8 @@ export async function bindRuntimeSnapshotForTurn(
 					...(modelCallMessageFinalizer ? { modelCallMessageFinalizer } : {}),
 					contextStrategy: contextStrategy ?? snapshot.contextStrategy,
 					...(modelCallContextTransformer ? { modelCallContextTransformer } : {}),
+					...(manualCompactionStrategy ? { manualCompactionStrategy } : {}),
+					...(contextSummaryStrategy ? { contextSummaryStrategy } : {}),
 				});
 	return { snapshot: boundSnapshot, release };
 }
@@ -293,12 +322,14 @@ function createTurnBindingRelease(
 	messageFinalizer: ModelCallMessageFinalizer | undefined,
 	contextStrategy: ContextStrategy | undefined,
 	contextTransformer: ModelCallContextTransformer | undefined,
+	manualCompaction: RuntimeSnapshotLease["snapshot"]["manualCompactionStrategy"],
+	contextSummary: ContextSummaryStrategy | undefined,
 ): () => Promise<void> {
 	let released = false;
 	return async () => {
 		if (released) return;
 		released = true;
-		const resources = [
+		const resources = new Set([
 			...(providers ?? []),
 			...(composer ? [composer] : []),
 			...(inputPreparer ? [inputPreparer] : []),
@@ -307,12 +338,30 @@ function createTurnBindingRelease(
 			...(messageFinalizer ? [messageFinalizer] : []),
 			...(contextStrategy ? [contextStrategy] : []),
 			...(contextTransformer ? [contextTransformer] : []),
-		];
-		const results = await Promise.allSettled(resources.map((resource) => resource.releaseTurnBinding?.()));
+			...(manualCompaction ? [manualCompaction] : []),
+			...(contextSummary ? [contextSummary] : []),
+		]);
+		const results = await Promise.allSettled(
+			[...resources].map((resource) => Promise.resolve().then(() => resource.releaseTurnBinding?.())),
+		);
 		const errors = results
 			.filter((result): result is PromiseRejectedResult => result.status === "rejected")
 			.map(({ reason }) => reason);
 		if (errors.length > 0) throw new AggregateError(errors, "Failed to release Turn-bound runtime resources");
+	};
+}
+
+function createTurnBindingCapture() {
+	const captures = new Map<object, Promise<PromiseSettledResult<unknown>>>();
+	return <T>(owner: object | undefined, read: () => T | PromiseLike<T>): Promise<PromiseSettledResult<T>> => {
+		if (!owner) return settle(read);
+		const existing = captures.get(owner);
+		// An owner has one bindForTurn method, even when registered through several port types.
+		if (existing) return existing as Promise<PromiseSettledResult<T>>;
+		// Start synchronously so all owners capture before the first asynchronous continuation.
+		const capture = settle(read);
+		captures.set(owner, capture);
+		return capture;
 	};
 }
 

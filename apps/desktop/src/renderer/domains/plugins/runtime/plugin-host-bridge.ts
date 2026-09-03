@@ -746,7 +746,12 @@ function useActiveConversation(): ConversationState {
 function useConversationMessages(): ConversationMessage[] {
 	const messages = useAtomValue(chatMessagesAtom);
 	return useMemo(
-		() => messages.map((m) => ({ id: m.id, role: m.role, text: m.text, timestamp: m.timestamp })),
+		() =>
+			messages.flatMap((message) =>
+				message.kind === "event"
+					? []
+					: [{ id: message.id, role: message.role, text: message.text ?? "", timestamp: message.timestamp }],
+			),
 		[messages],
 	);
 }

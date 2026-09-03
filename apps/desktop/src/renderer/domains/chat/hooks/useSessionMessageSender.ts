@@ -1,6 +1,7 @@
 import { waitForPluginHostFirstReady } from "@domains/plugins/runtime/plugin-events";
 import { useProjectActions } from "@domains/project/hooks/useProjects";
 import type { PersistedImageResult } from "@preload/api";
+import { type ConversationUserMessageViewModel, createConversationUserMessage } from "@shared/conversation";
 import { i18n } from "@shared/i18n";
 import {
 	BUILTIN_KNOWLEDGE_RETRIEVAL_ACTION_ID,
@@ -17,7 +18,6 @@ import {
 	appshotAttachmentAtom,
 	attachedImagesAtom,
 	batchProjectsAtom,
-	type ChatMessage,
 	chatMessagesAtom,
 	conversationBucketCwd,
 	defaultConversationCwdAtom,
@@ -220,7 +220,9 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				const stagedId = stagedInput.optimisticMessage.id;
 				setChatMessages((messages) =>
 					messages.map((message) =>
-						message.id === stagedId ? { ...message, attachments, images: undefined } : message,
+						message.id === stagedId && message.kind === "user"
+							? { ...message, attachments, images: undefined }
+							: message,
 					),
 				);
 			}
@@ -317,15 +319,16 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 					const lastMsg = currentMsgs.at(-1);
 					let lastUserIdx = -1;
 					for (let i = currentMsgs.length - 1; i >= 0; i--) {
-						if (currentMsgs[i].role === "user") {
+						if (currentMsgs[i].kind === "user") {
 							lastUserIdx = i;
 							break;
 						}
 					}
-					const lastUser = lastUserIdx >= 0 ? currentMsgs[lastUserIdx] : undefined;
+					const lastUserCandidate = lastUserIdx >= 0 ? currentMsgs[lastUserIdx] : undefined;
+					const lastUser = lastUserCandidate?.kind === "user" ? lastUserCandidate : undefined;
 					if (
-						lastMsg?.role === "assistant" &&
-						lastMsg.blocks?.some((block) => block.type === "error") &&
+						lastMsg?.kind === "agent" &&
+						lastMsg.blocks.some((block) => block.type === "error") &&
 						lastUser?.entryId &&
 						lastUser.text === text
 					) {
@@ -338,15 +341,15 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 						}
 					}
 				}
-				const userMsg: ChatMessage = {
+				const userMsg: ConversationUserMessageViewModel = createConversationUserMessage({
 					id: nextId("user"),
-					role: "user",
+					deliveryPhase: "pending",
 					text,
 					timestamp: Date.now(),
 					model: modelKeyToParts(selectedModel),
 					promptRef,
 					attachments,
-				};
+				});
 				// Base64 preview only when persistence failed; structured image paths
 				// are otherwise the canonical source for optimistic and restored UI.
 				if (images && imagePaths.length === 0) {
@@ -577,8 +580,8 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				console.error("[useSessionManager.sendMessage] prompt rejected:", err);
 				setChatMessages((prev) => {
 					const last = prev.at(-1);
-					const lastError = last?.blocks?.at(-1);
-					if (last?.role === "assistant" && lastError?.type === "error" && lastError.text === message) return prev;
+					const lastError = last?.kind === "agent" ? last.blocks.at(-1) : undefined;
+					if (last?.kind === "agent" && lastError?.type === "error" && lastError.text === message) return prev;
 					return appendError(prev, message);
 				});
 				sendResult = { status: "failed", error: { message } };

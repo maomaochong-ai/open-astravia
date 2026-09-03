@@ -5,11 +5,15 @@ import {
 	type Api,
 	type AssistantMessage,
 	type AssistantMessageEvent,
+	type Context,
+	createPromptCacheDiagnostics,
 	EventStream,
 	type Message,
 	type Model,
 } from "@vetta/ai";
+import type { RuntimeSnapshotAcquireContext } from "@vetta/runtime-core/kernel";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { CompactionPreparation } from "../../src/compaction/index.js";
 import type { CodingAgentRuntimeComposition } from "../../src/composition/index.js";
 import { CodingAgentTodoRuntime } from "../../src/features/todo/todo-runtime.js";
 import {
@@ -34,6 +38,171 @@ describe("Coding Agent continuation orchestration", () => {
 		for (const directory of temporaryDirectories.splice(0).reverse()) {
 			await rm(directory, { recursive: true, force: true });
 		}
+	});
+
+	it("manually compacts through the admitted Runtime capability and preserves the transient prefix afterwards", async () => {
+		const conversationDir = await mkdtemp(join(tmpdir(), "manual-pinned-runtime-"));
+		temporaryDirectories.push(conversationDir);
+		const requests: Context[] = [];
+		const afterCommit = vi.fn(async () => undefined);
+		const manualRelease = vi.fn();
+		const generation = vi.fn(async (preparation: CompactionPreparation) => ({
+			summary: "PRIVATE_SUMMARY",
+			firstKeptEntryId: preparation.firstKeptEntryId,
+			tokensBefore: preparation.tokensBefore,
+		}));
+		const composition = await createCodingAgentRuntimeComposition({
+			conversationDir,
+			modelRegistry: modelRegistry(),
+			initialModel: MODEL,
+			initialThinkingLevel: "off",
+			activation: { mode: "explicit", toolNames: [] },
+			resolveCompactionSettings: () => ({
+				enabled: false,
+				keepRecentTokens: 1,
+				reserveTokens: 20,
+				minFreePercent: 20,
+			}),
+			generateCompaction: generation,
+			createCompactionExtensionRuntime: () => ({
+				beforeCompaction: async () => {
+					throw new Error("Manual compaction used an unbound extension");
+				},
+				afterCompaction: async () => {
+					throw new Error("Manual commit used an unbound extension");
+				},
+				bindForTurn: (context) => ({
+					beforeCompaction: async () => undefined,
+					afterCompaction: afterCommit,
+					releaseTurnBinding: () => {
+						if (context.reason === "manual_compaction") manualRelease();
+					},
+				}),
+			}),
+			streamFn: (_model, context) => {
+				requests.push(structuredClone(context));
+				return new RecordedAssistantStream(assistantMessage("private answer"));
+			},
+		});
+		compositions.push(composition);
+		const bindPinnedModelContext = vi.fn((_context: RuntimeSnapshotAcquireContext) => ({
+			id: "shared",
+			records: [{ type: "public", content: "PUBLIC_PIN", modelVisible: true, timestamp: 1 }],
+		}));
+		const session = await composition.createSession({
+			sessionId: "manual-member",
+			cwd: conversationDir,
+			bindPinnedModelContext,
+		});
+		try {
+			await session.prompt({ text: "private task ".repeat(40) });
+			await session.prompt({ text: "current task" });
+			await expect(session.compact()).resolves.toMatchObject({ summary: "PRIVATE_SUMMARY" });
+			expect(generation).toHaveBeenCalledOnce();
+			expect(JSON.stringify(generation.mock.calls[0])).not.toContain("PUBLIC_PIN");
+			expect(JSON.stringify(generation.mock.calls[0])).toContain("private task");
+			expect(afterCommit).toHaveBeenCalledOnce();
+			expect(manualRelease).toHaveBeenCalledOnce();
+			expect(
+				bindPinnedModelContext.mock.calls.filter(([context]) => context.reason === "manual_compaction"),
+			).toHaveLength(1);
+			await session.prompt({ text: "after compact" });
+			expect(JSON.stringify(requests.at(-1))).toContain("PUBLIC_PIN");
+			expect(JSON.stringify(requests.at(-1))).toContain("PRIVATE_SUMMARY");
+			expect(JSON.stringify(await session.readMessages())).not.toContain("PUBLIC_PIN");
+		} finally {
+			await session.dispose();
+		}
+	});
+
+	it("keeps the pinned prefix transient across real Runtime model calls and distinct member sessions", async () => {
+		const conversationDir = await mkdtemp(join(tmpdir(), "pinned-context-runtime-"));
+		temporaryDirectories.push(conversationDir);
+		const calls: { sessionId?: string; promptCacheKey?: string; context: Context }[] = [];
+		const countBySession = new Map<string, number>();
+		const composition = await createCodingAgentRuntimeComposition({
+			conversationDir,
+			modelRegistry: modelRegistry(),
+			initialModel: MODEL,
+			initialThinkingLevel: "off",
+			activation: { mode: "explicit", toolNames: [] },
+			streamFn: (_model, context, options) => {
+				calls.push({
+					sessionId: options?.sessionId,
+					promptCacheKey: options?.promptCacheKey,
+					context: structuredClone(context),
+				});
+				const id = options?.sessionId ?? "unknown";
+				const count = countBySession.get(id) ?? 0;
+				countBySession.set(id, count + 1);
+				return new RecordedAssistantStream(
+					assistantMessage(count === 0 ? "" : "done", count === 0 ? "length" : "stop"),
+				);
+			},
+		});
+		compositions.push(composition);
+		let publicText = "public generation one";
+		const bindPinnedModelContext = vi.fn((_context: RuntimeSnapshotAcquireContext) => ({
+			id: publicText,
+			records: [{ type: "shared.context", content: publicText, modelVisible: true, timestamp: 1 }],
+		}));
+		for (const id of ["member-one", "member-two"]) {
+			const session = await composition.createSession({
+				sessionId: id,
+				cwd: conversationDir,
+				promptCacheKey: "shared-team-cache",
+				systemPromptCachePrefixAddon: "Shared Team roster and collaboration contract",
+				systemPromptVolatileAddon: `Trusted identity: ${id}`,
+				bindPinnedModelContext,
+			});
+			try {
+				await session.prompt({ text: "start" });
+				expect(
+					(await session.readMessages()).some((message) => JSON.stringify(message).includes("public generation")),
+				).toBe(false);
+				if (id === "member-two") {
+					publicText = "public generation two";
+					await session.prompt({ text: "next" });
+				}
+			} finally {
+				await session.dispose();
+			}
+		}
+		const turnBindings = bindPinnedModelContext.mock.calls
+			.map(([context]) => context)
+			.filter((context) => context.reason === "turn");
+		expect(turnBindings).toHaveLength(3);
+		expect(new Set(turnBindings.map((context) => context.operationId)).size).toBe(3);
+		expect(calls).toHaveLength(5);
+		expect(new Set(calls.map((call) => call.sessionId)).size).toBe(2);
+		expect(calls.every((call) => call.promptCacheKey === "shared-team-cache")).toBe(true);
+		const firstMemberFrame = calls[0]?.context;
+		const secondMemberFrame = calls[2]?.context;
+		if (!firstMemberFrame || !secondMemberFrame) throw new Error("Expected both member Provider frames");
+		expect(firstMemberFrame.systemPrompt).not.toBe(secondMemberFrame.systemPrompt);
+		expect(firstMemberFrame.systemPromptStableLength).toBeGreaterThan(0);
+		expect(firstMemberFrame.systemPromptStableLength).toBe(secondMemberFrame.systemPromptStableLength);
+		const stableLength = firstMemberFrame.systemPromptStableLength ?? 0;
+		expect(firstMemberFrame.systemPrompt?.slice(0, stableLength)).toBe(
+			secondMemberFrame.systemPrompt?.slice(0, stableLength),
+		);
+		expect(firstMemberFrame.systemPrompt?.slice(0, stableLength)).toContain("Shared Team roster");
+		expect(firstMemberFrame.systemPrompt?.slice(stableLength)).toContain("Trusted identity: member-one");
+		expect(secondMemberFrame.systemPrompt?.slice(stableLength)).toContain("Trusted identity: member-two");
+		const firstCache = createPromptCacheDiagnostics(firstMemberFrame);
+		const secondCache = createPromptCacheDiagnostics(secondMemberFrame);
+		expect(firstCache.cachePrefixHash).toBe(secondCache.cachePrefixHash);
+		expect(firstCache.stableSystemPromptHash).toBe(secondCache.stableSystemPromptHash);
+		expect(firstCache.volatileSystemPromptHash).not.toBe(secondCache.volatileSystemPromptHash);
+		for (const call of calls.slice(0, 4)) {
+			expect(call.context.messages[0]).toMatchObject({ role: "user", content: "public generation one" });
+			expect(
+				call.context.messages.filter((message) => JSON.stringify(message).includes("public generation one")),
+			).toHaveLength(1);
+			expect(call.context.systemPrompt).toContain("Trusted identity:");
+		}
+		expect(calls[4]?.context.messages[0]).toMatchObject({ content: "public generation two" });
+		expect(JSON.stringify(calls[4])).not.toContain("public generation one");
 	});
 
 	it("runs Todo, Plugin and Stop Hook continuations in the established order", async () => {

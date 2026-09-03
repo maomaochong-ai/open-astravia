@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { render, renderHook, screen } from "@testing-library/react";
+import { createConversationUserMessage } from "@shared/conversation";
 import userEvent from "@testing-library/user-event";
 import { getDefaultStore } from "jotai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -30,12 +31,11 @@ describe("useUserMessageModel clipboard", () => {
 		});
 		const { result } = renderHook(() =>
 			useUserMessageModel({
-				message: {
+				message: createConversationUserMessage({
 					id: "user-with-image",
-					role: "user",
 					text: "describe this image",
 					images: [{ data: "AQID", mimeType: "image/png", name: "sample.png" }],
-				},
+				}),
 			}),
 		);
 

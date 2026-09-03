@@ -1,3 +1,4 @@
+import { createConversationUserMessage } from "@shared/conversation";
 import type { ErrorBlock } from "@shared/store/atoms";
 import type { AssistantMessage } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
@@ -10,7 +11,9 @@ function failed(errorMessage: string) {
 }
 
 function errorBlocksOf(messages: ReturnType<typeof historyToChat>): ErrorBlock[] {
-	return messages.flatMap((m) => (m.blocks ?? []).filter((b): b is ErrorBlock => b.type === "error"));
+	return messages.flatMap((message) =>
+		message.kind === "agent" ? message.blocks.filter((block): block is ErrorBlock => block.type === "error") : [],
+	);
 }
 
 describe("历史回放的错误折叠", () => {
@@ -60,7 +63,7 @@ describe("历史回放的错误折叠", () => {
 describe("appendError", () => {
 	it("写入时归类，并记下自动重试次数", () => {
 		const messages = appendError([], "429 rate limit", 3);
-		const block = (messages.at(-1)?.blocks ?? []).at(-1) as ErrorBlock;
+		const block = errorBlocksOf(messages).at(-1) as ErrorBlock;
 
 		expect(block.kind).toBe("rate_limit");
 		expect(block.attempts).toBe(3);
@@ -68,7 +71,7 @@ describe("appendError", () => {
 
 	it("没重试过时不写 attempts", () => {
 		const messages = appendError([], "401 Unauthorized");
-		const block = (messages.at(-1)?.blocks ?? []).at(-1) as ErrorBlock;
+		const block = errorBlocksOf(messages).at(-1) as ErrorBlock;
 
 		expect(block.kind).toBe("auth");
 		expect(block.attempts).toBeUndefined();
@@ -176,7 +179,7 @@ describe("fullHistoryToChat error entries", () => {
 describe("reconcileHistoryWithLiveTerminalErrors", () => {
 	it("preserves a live terminal error when the agent_end history snapshot is stale", () => {
 		const live = appendError(
-			[{ id: "user-live", role: "user", text: "hello" }],
+			[createConversationUserMessage({ id: "user-live", text: "hello" })],
 			"provider quota exhausted",
 			undefined,
 			"turn-1",

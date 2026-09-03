@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
 	AtomicRuntimeSnapshotProvider,
 	type CompiledRuntimeSnapshot,
+	type ContextStrategy,
+	type ContextSummaryStrategy,
 	KERNEL_ERROR_CODES,
+	type ManualContextCompactionStrategy,
+	type ModelCallContextTransformer,
 	PassthroughContextStrategy,
 	type RuntimeSnapshot,
 } from "../../src/kernel/index.js";
@@ -35,6 +39,183 @@ function compiledSnapshot(id: string, disposed: string[]): CompiledRuntimeSnapsh
 }
 
 describe("AtomicRuntimeSnapshotProvider", () => {
+	it("reports a shared binding failure once and releases other acquired owners", async () => {
+		const failure = new Error("shared capture failed");
+		const released: string[] = [];
+		let captures = 0;
+		const owner: ContextStrategy & ModelCallContextTransformer = {
+			prepare: async ({ messages }) => ({ messages, estimatedTokens: 0 }),
+			transform: async ({ messages }) => messages,
+			bindForTurn() {
+				captures += 1;
+				throw failure;
+			},
+		};
+		const compiled = compiledSnapshot("snapshot-1", []);
+		const provider = new AtomicRuntimeSnapshotProvider({
+			...compiled,
+			snapshot: {
+				...compiled.snapshot,
+				contextStrategy: owner,
+				modelCallContextTransformer: owner,
+				modelCallProviders: [
+					{
+						id: "other-owner",
+						contribute: async () => ({}),
+						releaseTurnBinding: () => {
+							released.push("other");
+						},
+					},
+				],
+			},
+		});
+		await expect(provider.acquire(turnContext("turn-1"))).rejects.toBe(failure);
+		await provider.close();
+		expect(captures).toBe(1);
+		expect(released).toEqual(["other"]);
+	});
+
+	it("releases a shared asynchronous binding once if acquisition is cancelled", async () => {
+		const controller = new AbortController();
+		const cancelled = new Error("cancel capture");
+		let releases = 0;
+		const owner: ContextStrategy & ModelCallContextTransformer = {
+			prepare: async ({ messages }) => ({ messages, estimatedTokens: 0 }),
+			transform: async ({ messages }) => messages,
+			async bindForTurn() {
+				await Promise.resolve();
+				controller.abort(cancelled);
+				return {
+					prepare: owner.prepare,
+					transform: owner.transform,
+					releaseTurnBinding: () => {
+						releases += 1;
+					},
+				};
+			},
+		};
+		const compiled = compiledSnapshot("snapshot-1", []);
+		const provider = new AtomicRuntimeSnapshotProvider({
+			...compiled,
+			snapshot: { ...compiled.snapshot, contextStrategy: owner, modelCallContextTransformer: owner },
+		});
+		await expect(provider.acquire({ ...turnContext("turn-1"), signal: controller.signal })).rejects.toBe(cancelled);
+		await provider.close();
+		expect(releases).toBe(1);
+	});
+
+	it("shares one owner binding across ports, but not across concurrent acquisitions", async () => {
+		const disposed: string[] = [];
+		const released: string[] = [];
+		const captures: string[] = [];
+		const owner: ContextStrategy &
+			ModelCallContextTransformer &
+			ManualContextCompactionStrategy &
+			ContextSummaryStrategy = {
+			prepare: async ({ messages }) => ({ messages, estimatedTokens: 0 }),
+			transform: async ({ messages }) => messages,
+			compactManual: async () => {
+				throw new Error("not used");
+			},
+			summarizeContext: async () => ({ summary: "unused", tokensBefore: 0 }),
+			bindForTurn(context) {
+				captures.push(context.operationId);
+				return {
+					prepare: owner.prepare,
+					transform: owner.transform,
+					compactManual: owner.compactManual,
+					summarizeContext: owner.summarizeContext,
+					releaseTurnBinding: () => {
+						released.push(context.operationId);
+					},
+				};
+			},
+		};
+		const compiled = compiledSnapshot("snapshot-1", disposed);
+		const provider = new AtomicRuntimeSnapshotProvider({
+			...compiled,
+			snapshot: {
+				...compiled.snapshot,
+				contextStrategy: owner,
+				modelCallContextTransformer: owner,
+				manualCompactionStrategy: owner,
+				contextSummaryStrategy: owner,
+			},
+		});
+		const [first, second] = await Promise.all([
+			provider.acquire(turnContext("turn-1")),
+			provider.acquire(turnContext("turn-2")),
+		]);
+		try {
+			expect(captures).toEqual(["turn-1", "turn-2"]);
+			expect(first.snapshot.contextStrategy).toBe(first.snapshot.modelCallContextTransformer);
+			expect(first.snapshot.manualCompactionStrategy).toBe(first.snapshot.contextStrategy);
+			expect(first.snapshot.contextSummaryStrategy).toBe(first.snapshot.contextStrategy);
+			expect(second.snapshot.manualCompactionStrategy).toBe(second.snapshot.contextStrategy);
+			expect(second.snapshot.contextStrategy).toBe(second.snapshot.modelCallContextTransformer);
+			expect(first.snapshot.contextStrategy).not.toBe(second.snapshot.contextStrategy);
+		} finally {
+			await first.release();
+			await first.release();
+			await second.release();
+			await provider.close();
+		}
+		expect(released).toEqual(["turn-1", "turn-2"]);
+	});
+
+	it("releases a shared owner once even when it has no dynamic binder", async () => {
+		const released: string[] = [];
+		const owner: ContextStrategy & ModelCallContextTransformer = {
+			prepare: async ({ messages }) => ({ messages, estimatedTokens: 0 }),
+			transform: async ({ messages }) => messages,
+			releaseTurnBinding: () => {
+				released.push("shared");
+			},
+		};
+		const compiled = compiledSnapshot("snapshot-1", []);
+		const provider = new AtomicRuntimeSnapshotProvider({
+			...compiled,
+			snapshot: { ...compiled.snapshot, contextStrategy: owner, modelCallContextTransformer: owner },
+		});
+		const lease = await provider.acquire(turnContext("turn-1"));
+		await lease.release();
+		await provider.close();
+		expect(released).toEqual(["shared"]);
+	});
+
+	it("attempts every owner cleanup after a synchronous release error", async () => {
+		const released: string[] = [];
+		const cleanupError = new Error("cleanup failed");
+		const compiled = compiledSnapshot("snapshot-1", []);
+		const provider = new AtomicRuntimeSnapshotProvider({
+			...compiled,
+			snapshot: {
+				...compiled.snapshot,
+				modelCallProviders: [
+					{
+						id: "throwing-cleanup",
+						contribute: async () => ({}),
+						releaseTurnBinding: () => {
+							released.push("first");
+							throw cleanupError;
+						},
+					},
+				],
+				contextStrategy: {
+					prepare: async ({ messages }) => ({ messages, estimatedTokens: 0 }),
+					releaseTurnBinding: () => {
+						released.push("second");
+					},
+				},
+			},
+		});
+		const lease = await provider.acquire(turnContext("turn-1"));
+		await expect(lease.release()).rejects.toMatchObject({ errors: [cleanupError] });
+		await lease.release();
+		await provider.close();
+		expect(released).toEqual(["first", "second"]);
+	});
+
 	it("starts model and snapshot capture before either asynchronous binder can yield", async () => {
 		const disposed: string[] = [];
 		let revision = "r1";

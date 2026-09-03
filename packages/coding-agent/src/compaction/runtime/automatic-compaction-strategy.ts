@@ -9,6 +9,7 @@ import type {
 	CodingAgentCompactionExtensionRuntime,
 	CodingAgentContextRuntimeOptions,
 	CodingAgentModelCallFailureRecovery,
+	CodingAgentPinnedModelContext,
 } from "../../runtime-contracts/index.js";
 import {
 	type CompactionSettings,
@@ -29,6 +30,8 @@ import {
 	toActiveCompactionSessionEntries,
 } from "./conversation-compaction-projection.js";
 import { hasImageRetryPlaceholder } from "./image-request-failure-recovery.js";
+import { projectPinnedConversationDocument } from "./pinned-conversation-projection.js";
+import { applyPinnedModelContext } from "./pinned-model-context-projection.js";
 
 export interface CodingAgentAutomaticCompactionStrategyOptions {
 	readonly resolveApiKey: CodingAgentContextRuntimeOptions["resolveApiKey"];
@@ -51,6 +54,7 @@ export class CodingAgentAutomaticCompactionStrategy {
 		signal: AbortSignal,
 		baseSettings: CompactionSettings,
 		extensionRuntime: CodingAgentCompactionExtensionRuntime | undefined,
+		pinnedContext?: CodingAgentPinnedModelContext,
 	): Promise<PreparedContext> {
 		signal.throwIfAborted();
 		const reason = input.reason ?? "turn_start";
@@ -93,7 +97,10 @@ export class CodingAgentAutomaticCompactionStrategy {
 			return unchanged(callMessages, assembledTokens);
 		}
 
-		const entries = toActiveCompactionSessionEntries(input.compactionSourceDocument ?? input.document);
+		const entries = toActiveCompactionSessionEntries(
+			projectPinnedConversationDocument(input.compactionSourceDocument ?? input.document, pinnedContext),
+		);
+
 		if (reason === "assistant_error" && !overflow) return unchanged(callMessages, assembledTokens);
 		if (!overflow && !shouldCompact(estimate.tokens, contextWindow, settings)) {
 			if (shouldPrefire(estimate.tokens, contextWindow, settings)) {
@@ -193,13 +200,22 @@ export class CodingAgentAutomaticCompactionStrategy {
 				extensionResult?.compaction !== undefined,
 				this.options.recordFactory,
 			);
-			const compactedHistory = projectCompactedHistory(input.document, input.sessionId, input.turnId, record);
-			const messages = assemblePreparedMessages(
-				compactedHistory,
-				input,
-				reason,
-				compactionReason,
-				input.triggeringAssistantMessage,
+			const compactedHistory = projectCompactedHistory(
+				input.document,
+				input.sessionId,
+				input.turnId,
+				record,
+				pinnedContext,
+			);
+			const messages = applyPinnedModelContext(
+				assemblePreparedMessages(
+					compactedHistory,
+					input,
+					reason,
+					compactionReason,
+					input.triggeringAssistantMessage,
+				),
+				pinnedContext,
 			);
 			const compactedEstimate = estimateContextTokens(messages).tokens;
 			this.options.recordEstimatedTokens(compactedEstimate);

@@ -1,4 +1,4 @@
-import type { ChatMessage } from "@shared/store/atoms";
+import { type ConversationUserMessageViewModel, createConversationUserMessage } from "@shared/conversation";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
 	clearOptimisticUserMessages,
@@ -6,8 +6,8 @@ import {
 	rememberOptimisticUserMessage,
 } from "./optimistic-user-message-cache";
 
-function user(id: string, text: string): ChatMessage {
-	return { id, role: "user", text };
+function user(id: string, text: string): ConversationUserMessageViewModel {
+	return createConversationUserMessage({ id, text });
 }
 
 beforeEach(() => clearOptimisticUserMessages());

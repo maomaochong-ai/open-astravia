@@ -1,4 +1,5 @@
-import type { ChatMessage, RegisteredCardRenderer } from "@shared/store/atoms";
+import type { ConversationAgentMessageViewModel } from "@shared/conversation";
+import type { RegisteredCardRenderer } from "@shared/store/atoms";
 import {
 	type RawCard,
 	useMessageCardsHostModel,
@@ -12,7 +13,7 @@ import { MessageCards } from "./MessageCards";
  * 两段式：先只看这条消息自己有没有产出卡片——绝大多数消息没有，直接返回 null，
  * 不去订阅「全局 card key 归属表」。只有真的有卡片的消息才挂内层组件、订阅那张表。
  */
-export function MessageCardsHost({ message }: { message: ChatMessage }): JSX.Element | null {
+export function MessageCardsHost({ message }: { message: ConversationAgentMessageViewModel }): JSX.Element | null {
 	const { rawCards, renderers } = useMessageRawCards(message);
 	if (rawCards.length === 0) return null;
 	return <ResolvedMessageCards message={message} rawCards={rawCards} renderers={renderers} />;
@@ -23,7 +24,7 @@ function ResolvedMessageCards({
 	rawCards,
 	renderers,
 }: {
-	message: ChatMessage;
+	message: ConversationAgentMessageViewModel;
 	rawCards: RawCard[];
 	renderers: RegisteredCardRenderer[];
 }): JSX.Element | null {

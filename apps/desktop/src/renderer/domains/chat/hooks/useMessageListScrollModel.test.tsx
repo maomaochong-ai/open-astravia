@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { act, renderHook } from "@testing-library/react";
+import { createConversationUserMessage } from "@shared/conversation";
 import type { VirtuosoHandle } from "react-virtuoso";
 import { describe, expect, it, vi } from "vitest";
 import { useMessageListScrollModel } from "./useMessageListScrollModel";
@@ -11,7 +12,7 @@ describe("useMessageListScrollModel navigation", () => {
 		const { result } = renderHook(() =>
 			useMessageListScrollModel({
 				isStreaming: true,
-				messages: [{ id: "message-1", role: "user", text: "hello" }],
+				messages: [createConversationUserMessage({ id: "message-1", text: "hello" })],
 				sessionId: "session-1",
 			}),
 		);

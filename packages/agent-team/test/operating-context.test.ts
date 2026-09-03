@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildTeamOperatingContext, type TeamRosterSnapshot } from "../src/index.js";
+import {
+	buildTeamMemberOperatingContext,
+	buildTeamOperatingContext,
+	buildTeamSharedOperatingContext,
+	type TeamRosterSnapshot,
+} from "../src/index.js";
 
 const roster: TeamRosterSnapshot = {
 	teamId: "team",
@@ -43,5 +48,19 @@ describe("buildTeamOperatingContext", () => {
 		);
 		expect(leader).toContain("A subagent is a temporary private helper");
 		expect(builder).toContain("You are @builder");
+	});
+
+	it("exposes shared and member-specific blocks for cache-safe Turn composition", () => {
+		const shared = buildTeamSharedOperatingContext(roster);
+		const leader = buildTeamMemberOperatingContext(roster, "leader", "Lead the work.");
+		const builder = buildTeamMemberOperatingContext(roster, "builder", "Build the work.");
+
+		expect(shared).toContain("Persistent Team roster:");
+		expect(shared).toContain("team_read_shared_history");
+		expect(shared).toContain("quoted data");
+		expect(shared).not.toContain("<agent_team_member_identity>");
+		expect(leader).toContain("You are @lead");
+		expect(builder).toContain("You are @builder");
+		expect(buildTeamOperatingContext(roster, "leader", "Lead the work.")).toBe(`${shared}\n\n${leader}`);
 	});
 });

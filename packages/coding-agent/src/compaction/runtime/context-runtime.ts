@@ -7,6 +7,9 @@ import {
 	type ContextCompositionPublisher,
 	type ContextPreparationInput,
 	type ContextStrategy,
+	type ContextSummaryInput,
+	type ContextSummaryResult,
+	type ContextSummaryStrategy,
 	type ConversationContinuationResult,
 	type ManualContextCompactionInput,
 	type ManualContextCompactionRuntime,
@@ -18,19 +21,23 @@ import {
 	type TurnObserver,
 } from "@vetta/runtime-core/kernel";
 import type {
+	CodingAgentBoundContextRuntime,
 	CodingAgentCompactionExtensionRuntime,
 	CodingAgentContextRuntime as CodingAgentContextRuntimeContract,
 	CodingAgentContextRuntimeOptions,
 	CodingAgentContextUsage,
+	CodingAgentPinnedModelContext,
 } from "../../runtime-contracts/index.js";
 import { type CompactionSettings, compact, DEFAULT_COMPACTION_SETTINGS, estimateContextTokens } from "../index.js";
 import { CodingAgentAutomaticCompactionStrategy } from "./automatic-compaction-strategy.js";
 import { CodingAgentCompactionCommitLifecycle } from "./compaction-commit-lifecycle.js";
 import { CompactionPrefireCache } from "./compaction-prefire-cache.js";
+import { CodingAgentContextSummaryStrategy } from "./context-summary-strategy.js";
 import { isRuntimeMessage } from "./conversation-compaction-projection.js";
 import { CodingAgentImageRequestFailureRecovery } from "./image-request-failure-recovery.js";
 import { CodingAgentManualCompactionStrategy } from "./manual-compaction-strategy.js";
 import { projectModelCallContext } from "./model-call-context-projection.js";
+import { requireCodingAgentPinnedModelContext } from "./pinned-model-context-projection.js";
 
 /**
  * Session-local facade that binds one immutable Turn generation and delegates Coding compaction responsibilities.
@@ -40,6 +47,7 @@ export class DefaultCodingAgentContextRuntime
 	implements
 		CodingAgentContextRuntimeContract,
 		ContextStrategy,
+		ContextSummaryStrategy,
 		ManualContextCompactionRuntime,
 		ModelCallContextTransformer,
 		TurnObserver,
@@ -53,6 +61,7 @@ export class DefaultCodingAgentContextRuntime
 	private readonly prefire: CompactionPrefireCache;
 	private readonly automaticCompaction: CodingAgentAutomaticCompactionStrategy;
 	private readonly manualCompaction: CodingAgentManualCompactionStrategy;
+	private readonly contextSummary: CodingAgentContextSummaryStrategy;
 	private readonly commitLifecycle: CodingAgentCompactionCommitLifecycle;
 	private autoCompactionEnabledOverride: boolean | undefined;
 
@@ -97,6 +106,10 @@ export class DefaultCodingAgentContextRuntime
 			readSettings: () => this.readSettings(),
 			recordFactory,
 		});
+		this.contextSummary = new CodingAgentContextSummaryStrategy({
+			resolveApiKey: options.resolveApiKey,
+			generateCompaction,
+		});
 		this.commitLifecycle = new CodingAgentCompactionCommitLifecycle({
 			hookRuntime: options.hookRuntime,
 			memoryRollover: options.memoryRollover,
@@ -112,15 +125,60 @@ export class DefaultCodingAgentContextRuntime
 		this.usage.onDocumentChanged(document);
 	}
 
-	async bindForTurn(context: RuntimeSnapshotAcquireContext): Promise<ContextStrategy & ModelCallContextTransformer> {
+	async bindForTurn(context: RuntimeSnapshotAcquireContext): Promise<CodingAgentBoundContextRuntime> {
 		context.signal.throwIfAborted();
 		const settings = Object.freeze({ ...this.readSettings() });
-		const transformBinding = this.options.bindTransformAgentContext?.(context);
-		const extensionRuntime = (await this.extensionRuntime?.bindForTurn?.(context)) ?? this.extensionRuntime;
 		const projectionTimeBoundary = this.now();
+		const pinnedSource = this.options.bindPinnedModelContext?.(context);
+		const pinnedCapture =
+			pinnedSource && "then" in pinnedSource
+				? pinnedSource.then(requireCodingAgentPinnedModelContext)
+				: requireCodingAgentPinnedModelContext(pinnedSource);
+		// Every contributor captures before the first await; failures settle before releasing acquired resources.
+		const [pinnedResult, extensionResult, transformResult] = await Promise.allSettled([
+			pinnedCapture,
+			(async () => (await this.extensionRuntime?.bindForTurn?.(context)) ?? this.extensionRuntime)(),
+			(async () => this.options.bindTransformAgentContext?.(context))(),
+		]);
+		const pinnedContext = pinnedResult.status === "fulfilled" ? pinnedResult.value : undefined;
+		const extensionRuntime = extensionResult.status === "fulfilled" ? extensionResult.value : undefined;
+		const transformBinding = transformResult.status === "fulfilled" ? transformResult.value : undefined;
 		let released = false;
+		const release = async () => {
+			if (released) return;
+			released = true;
+			const results = await Promise.allSettled([
+				Promise.resolve().then(() => extensionRuntime?.releaseTurnBinding?.()),
+				Promise.resolve().then(() => transformBinding?.release()),
+			]);
+			const errors = results
+				.filter((result): result is PromiseRejectedResult => result.status === "rejected")
+				.map(({ reason }) => reason);
+			if (errors.length > 0) throw new AggregateError(errors, "Failed to release Turn-bound context resources");
+		};
+		try {
+			const failures = [pinnedResult, extensionResult, transformResult]
+				.filter((result): result is PromiseRejectedResult => result.status === "rejected")
+				.map(({ reason }) => reason);
+			if (failures.length > 0)
+				throw failures.length === 1 ? failures[0] : new AggregateError(failures, "Failed to bind Turn context");
+			context.signal.throwIfAborted();
+		} catch (error) {
+			try {
+				await release();
+			} catch (cleanupError) {
+				throw new AggregateError([error, cleanupError], "Failed to bind and release Turn context");
+			}
+			throw error;
+		}
 		return {
-			prepare: (input, signal) => this.automaticCompaction.prepare(input, signal, settings, extensionRuntime),
+			summarizeContext: (input, signal) => this.contextSummary.summarize(input, signal, settings),
+			compactManual: (input, signal) =>
+				this.manualCompaction.compact(input, signal, extensionRuntime, pinnedContext, settings),
+			onManualCompactionCommitted: (record, _input, signal, document) =>
+				this.commitLifecycle.onManualCommitted(record, signal, document, extensionRuntime),
+			prepare: (input, signal) =>
+				this.automaticCompaction.prepare(input, signal, settings, extensionRuntime, pinnedContext),
 			onCompactionCommitted: async (record, _input, signal, document) =>
 				await this.commitLifecycle.onAutomaticCommitted(record, signal, document, extensionRuntime),
 			onCompactionContinuationCommitted: (record, _input, result, signal) =>
@@ -132,20 +190,14 @@ export class DefaultCodingAgentContextRuntime
 					signal,
 					transformBinding?.transform ?? this.options.transformAgentContext,
 					projectionTimeBoundary,
+					pinnedContext,
 				),
-			async releaseTurnBinding() {
-				if (released) return;
-				released = true;
-				const results = await Promise.allSettled([
-					extensionRuntime?.releaseTurnBinding?.(),
-					transformBinding?.release(),
-				]);
-				const errors = results
-					.filter((result): result is PromiseRejectedResult => result.status === "rejected")
-					.map(({ reason }) => reason);
-				if (errors.length > 0) throw new AggregateError(errors, "Failed to release Turn-bound context resources");
-			},
+			releaseTurnBinding: release,
 		};
+	}
+
+	summarizeContext(input: ContextSummaryInput, signal: AbortSignal): Promise<ContextSummaryResult> {
+		return this.contextSummary.summarize(input, signal, this.readSettings());
 	}
 
 	prepare(input: ContextPreparationInput, signal: AbortSignal): Promise<PreparedContext> {
@@ -220,8 +272,12 @@ export class DefaultCodingAgentContextRuntime
 		signal: AbortSignal,
 		transformAgentContext: CodingAgentContextRuntimeOptions["transformAgentContext"],
 		timeBoundary?: number,
+		pinnedContext?: CodingAgentPinnedModelContext,
 	): Promise<readonly Message[]> {
-		const projected = await projectModelCallContext(input, transformAgentContext, signal, { timeBoundary });
+		const projected = await projectModelCallContext(input, transformAgentContext, signal, {
+			timeBoundary,
+			pinnedContext,
+		});
 		this.usage.recordEstimatedTokens(projected.estimatedTokens);
 		return projected.messages;
 	}

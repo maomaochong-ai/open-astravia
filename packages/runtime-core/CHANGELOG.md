@@ -6,7 +6,11 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Fixed
 
+- 手动压缩从本次 Snapshot 取得已绑定策略，并用同一策略执行摘要和提交回调；动态策略未注册时明确拒绝，释放异常也不会遗留忙碌状态。
+- 同一对象承担多个 Runtime 端口时，每次 Snapshot acquisition 只绑定、释放一次；并发 acquisition 仍隔离，同步清理异常不再阻止其余资源释放。
+- Model Call Frame 重建时保留 Composer 的 `promptCacheKey`，缓存分区不再丢失，也不替换独立的 Provider Session ID。
 - 模型调用检查点透传调用序号，首个调用保留 Turn 准入视图，后续调用读取最新 Conversation Document；成功压缩事件同时携带提交后的上下文占用，供宿主立即刷新状态。
+
 - 会话 continuation 后的观测使用新 Session ID；已取得的 Turn 快照保留原身份，定义 rollout 不改变在途 Trace 归属。
 - Runtime Agent Session Backend 关闭会拒绝新创建，并等待已准入的 Session 激活、装配与回滚收敛后释放 Instance Pool，
   避免异步创建越过关闭边界；并发和失败后的关闭仍可重试。
@@ -24,6 +28,10 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Added
 
+- 新增产品无关的 `ConversationAgentMessageEvent`/`ConversationMessageStreamEvent` 信封，以普通 Conversation、消息、Turn、Agent 作者和序列身份承载标准 `AssistantMessageEvent`，供不同产品复用同一流式投影。
+- 新增无副作用的 `ContextSummaryStrategy` 与 Session 摘要控制面：调用方提交已授权的上下文记录，Runtime 负责 Snapshot/模型绑定、取消和释放，但不读取或改写 Conversation。
+- 新增可组合的 `ManualContextCompactionStrategy`，通过能力编译和 Snapshot acquisition 绑定；可与自动压缩、模型投影共用同一 owner，绑定和释放仍只执行一次。
+- Model Call Frame 支持独立 `promptCacheKey`；消息 Envelope 可携带持久 entry ID，供产品上下文投影按来源去重而不猜测正文或时间戳。
 - 新增严格区分 User/Agent 的 `ConversationMessageRecord` 与命名作者引用，并提供幂等的普通 Conversation 外部消息追加端口和产品编排观测 scope。
 - 新增 `RuntimeHost.createConversation()`、scoped Session 字符串 prompt 与 `stream()` 异步事件流，
   自动按 subscribe-before-prompt 顺序接线并负责退订。

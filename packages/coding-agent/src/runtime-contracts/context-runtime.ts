@@ -9,9 +9,12 @@ import type {
 import type {
 	ContextCompositionPublisher,
 	ContextStrategy,
+	ContextSummaryStrategy,
 	ManualContextCompactionRuntime,
+	ManualContextCompactionStrategy,
 	ModelCallContextTransformer,
 	RuntimeSnapshotAcquireContext,
+	SessionContextRecord,
 	TurnObserver,
 } from "@vetta/runtime-core/kernel";
 import type { CompactionPreparation, CompactionResult, CompactionSettings } from "../compaction/index.js";
@@ -38,6 +41,23 @@ export interface CodingAgentModelCallFailureRecovery {
 	): Promise<CodingAgentModelCallFailureRecoveryResult | undefined>;
 }
 
+export type CodingAgentPinnedConversationProjection = {
+	readonly entryId: string;
+	readonly kind: "omit-entry" | "omit-assistant-text";
+};
+
+/** Immutable, host-provided prefix captured with the Turn generation. */
+export interface CodingAgentPinnedModelContext {
+	readonly id: string;
+	readonly records: readonly SessionContextRecord[];
+	/** Model-only projections for content already represented by the prefix; storage is unchanged. */
+	readonly conversationProjections?: readonly CodingAgentPinnedConversationProjection[];
+}
+
+export type CodingAgentPinnedModelContextBinder = (
+	context: RuntimeSnapshotAcquireContext,
+) => CodingAgentPinnedModelContext | undefined | Promise<CodingAgentPinnedModelContext | undefined>;
+
 export interface CodingAgentContextRuntimeOptions {
 	readonly hookRuntime: ContextHookRuntime;
 	readonly resolveApiKey: (model: Model<Api>) => Promise<string | undefined> | string | undefined;
@@ -59,6 +79,7 @@ export interface CodingAgentContextRuntimeOptions {
 		transform(messages: readonly AgentMessage[], signal: AbortSignal): Promise<readonly AgentMessage[]>;
 		release(): Promise<void> | void;
 	};
+	readonly bindPinnedModelContext?: CodingAgentPinnedModelContextBinder;
 	readonly failureRecovery?: CodingAgentModelCallFailureRecovery;
 	readonly now?: () => number;
 	readonly readCompactionWorkState?: () => CompactionWorkStateSnapshot;
@@ -74,13 +95,16 @@ export interface CodingAgentContextUsage {
 }
 
 export type CodingAgentBoundContextRuntime = Omit<ContextStrategy, "bindForTurn" | "releaseTurnBinding"> &
+	Omit<ContextSummaryStrategy, "bindForTurn" | "releaseTurnBinding"> &
+	Omit<ManualContextCompactionStrategy, "bindForTurn" | "releaseTurnBinding"> &
 	Omit<ModelCallContextTransformer, "bindForTurn" | "releaseTurnBinding"> & {
 		releaseTurnBinding?(): Promise<void> | void;
 	};
 
 /** Session-local Coding Agent context capability consumed through Runtime Core ports. */
 export type CodingAgentContextRuntime = Omit<ContextStrategy, "bindForTurn" | "releaseTurnBinding"> &
-	ManualContextCompactionRuntime &
+	Omit<ContextSummaryStrategy, "bindForTurn" | "releaseTurnBinding"> &
+	Omit<ManualContextCompactionRuntime, "bindForTurn" | "releaseTurnBinding"> &
 	Omit<ModelCallContextTransformer, "bindForTurn" | "releaseTurnBinding"> &
 	TurnObserver &
 	ContextCompositionPublisher &

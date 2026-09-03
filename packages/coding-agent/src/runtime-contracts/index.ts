@@ -3,6 +3,7 @@ export {
 	literalCodingAgentConfigurationValueResolver,
 } from "./configuration-runtime.js";
 export type {
+	CodingAgentBoundContextRuntime,
 	CodingAgentCompactionExtensionRuntime,
 	CodingAgentCompactionRuntimeOptions,
 	CodingAgentContextRuntime,
@@ -12,6 +13,9 @@ export type {
 	CodingAgentModelCallFailureRecovery,
 	CodingAgentModelCallFailureRecoveryInput,
 	CodingAgentModelCallFailureRecoveryResult,
+	CodingAgentPinnedConversationProjection,
+	CodingAgentPinnedModelContext,
+	CodingAgentPinnedModelContextBinder,
 	ContextHookRuntime,
 } from "./context-runtime.js";
 export type { CodingAgentContinuationSource } from "./continuation-runtime.js";

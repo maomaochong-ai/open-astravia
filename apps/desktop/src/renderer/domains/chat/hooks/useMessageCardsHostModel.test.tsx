@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { renderHook } from "@testing-library/react";
+import { createConversationAgentMessage, type ConversationAgentMessageViewModel } from "@shared/conversation";
 import type { CardDescriptor } from "@vetta-org/plugin-sdk";
 import { createStore, Provider } from "jotai";
 import type { ReactNode } from "react";
@@ -13,7 +14,7 @@ vi.mock("../../plugins/runtime/plugin-i18n", () => ({
 }));
 
 import { chatMessagesAtom, pluginCardRenderersAtom, type RegisteredCardRenderer } from "@shared/store/atoms";
-import type { ChatMessage } from "@shared/store/chat-atoms";
+import type { ChatConversationItem } from "@shared/store/chat-atoms";
 import {
 	resetPendingCardCacheForTests,
 	useMessageCardsHostModel,
@@ -27,16 +28,16 @@ function descriptor(key: string): CardDescriptor {
 }
 
 /** 一条带在途 tool call 的 assistant 消息；每次调用换引用，模拟流式重建。 */
-function streamingMessage(text: string): ChatMessage {
-	return {
+function streamingMessage(text: string): ConversationAgentMessageViewModel {
+	return createConversationAgentMessage({
 		id: "m1",
-		role: "assistant",
+		phase: "streaming",
 		text,
 		blocks: [
 			{ type: "text", id: "blk-text", text },
 			{ type: "tool_call", toolCallId: "tc-1", toolName: "vetd_screenshot", args: { frame: "Hero" }, status: "pending" },
 		],
-	};
+	});
 }
 
 function renderer(pendingFor: RegisteredCardRenderer["pendingFor"]): RegisteredCardRenderer {
@@ -49,7 +50,7 @@ function renderer(pendingFor: RegisteredCardRenderer["pendingFor"]): RegisteredC
 	};
 }
 
-function setup(renderers: RegisteredCardRenderer[], messages: ChatMessage[]) {
+function setup(renderers: RegisteredCardRenderer[], messages: ChatConversationItem[]) {
 	const store = createStore();
 	store.set(pluginCardRenderersAtom, renderers);
 	store.set(chatMessagesAtom, messages);
@@ -58,7 +59,7 @@ function setup(renderers: RegisteredCardRenderer[], messages: ChatMessage[]) {
 }
 
 /** 走完 host 的两段式：先算本条消息的原始卡片，再解析成可渲染卡片。 */
-function useHost(message: ChatMessage) {
+function useHost(message: ConversationAgentMessageViewModel) {
 	const { rawCards, renderers } = useMessageRawCards(message);
 	const model = useMessageCardsHostModel(message, rawCards, renderers);
 	return { rawCards, model };
@@ -76,7 +77,7 @@ describe("useMessageCardsHostModel", () => {
 		const first = streamingMessage("a");
 		const { store, wrapper } = setup(renderers, [first]);
 
-		const { result, rerender } = renderHook(({ message }: { message: ChatMessage }) => useHost(message), {
+		const { result, rerender } = renderHook(({ message }: { message: ConversationAgentMessageViewModel }) => useHost(message), {
 			initialProps: { message: first },
 			wrapper,
 		});
@@ -95,7 +96,7 @@ describe("useMessageCardsHostModel", () => {
 		const first = streamingMessage("a");
 		const { store, wrapper } = setup(renderers, [first]);
 
-		const { result, rerender } = renderHook(({ message }: { message: ChatMessage }) => useHost(message), {
+		const { result, rerender } = renderHook(({ message }: { message: ConversationAgentMessageViewModel }) => useHost(message), {
 			initialProps: { message: first },
 			wrapper,
 		});
@@ -111,9 +112,8 @@ describe("useMessageCardsHostModel", () => {
 	});
 
 	it("同 key 的卡片仍然只挂在最后产出它的那条消息下", () => {
-		const older: ChatMessage = {
+		const older = createConversationAgentMessage({
 			id: "m0",
-			role: "assistant",
 			text: "older",
 			blocks: [
 				{
@@ -125,7 +125,7 @@ describe("useMessageCardsHostModel", () => {
 					cards: [descriptor("vetd#Hero")],
 				},
 			],
-		};
+		});
 		const renderers = [renderer(() => descriptor("vetd#Hero"))];
 		const newer = streamingMessage("a");
 		const { wrapper } = setup(renderers, [older, newer]);
@@ -142,13 +142,13 @@ describe("useMessageCardsHostModel", () => {
 		const pending = streamingMessage("a");
 		const { store, wrapper } = setup(renderers, [pending]);
 
-		const { result, rerender } = renderHook(({ message }: { message: ChatMessage }) => useHost(message), {
+		const { result, rerender } = renderHook(({ message }: { message: ConversationAgentMessageViewModel }) => useHost(message), {
 			initialProps: { message: pending },
 			wrapper,
 		});
 		expect(result.current.model?.cards[0]?.pending).toBe(true);
 
-		const settled: ChatMessage = {
+		const settled: ConversationAgentMessageViewModel = {
 			...pending,
 			blocks: [
 				{ type: "text", id: "blk-text", text: "a" },

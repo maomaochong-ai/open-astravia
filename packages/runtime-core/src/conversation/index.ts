@@ -52,3 +52,8 @@ export {
 	type ConversationUserMessageRecord,
 	isConversationMessageRecord,
 } from "./message-contract.js";
+export type {
+	ConversationAgentMessageDiscardEvent,
+	ConversationAgentMessageEvent,
+	ConversationMessageStreamEvent,
+} from "./message-stream-contract.js";

@@ -1,4 +1,5 @@
-import type { ChatMessage } from "@shared/store/atoms";
+import { createConversationAgentMessage, createConversationUserMessage } from "@shared/conversation";
+import type { ChatConversationItem } from "@shared/store/atoms";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	appendTextDelta,
@@ -17,7 +18,7 @@ describe("assistant turn projection", () => {
 
 	it("agent_start immediately creates a stable empty assistant draft", () => {
 		const startedAt = 1_700_000_000_000;
-		const user: ChatMessage = { id: "user-1", role: "user", text: "hello", timestamp: startedAt - 20 };
+		const user = createConversationUserMessage({ id: "user-1", text: "hello", timestamp: startedAt - 20 });
 
 		const started = startAssistantTurn([user], startedAt);
 		const draft = started.at(-1);
@@ -32,12 +33,12 @@ describe("assistant turn projection", () => {
 		const withText = appendTextDelta(started, "first token");
 		expect(withText).toHaveLength(2);
 		expect(withText.at(-1)?.id).toBe(draft?.id);
-		expect(withText.at(-1)?.text).toBe("first token");
+		expect(withText.at(-1)).toMatchObject({ kind: "agent", text: "first token" });
 	});
 
 	it("restores an in-flight turn even when history has no assistant after the latest user", () => {
 		const startedAt = 1_700_000_000_000;
-		const messages: ChatMessage[] = [{ id: "user-1", role: "user", text: "slow request" }];
+		const messages: ChatConversationItem[] = [createConversationUserMessage({ id: "user-1", text: "slow request" })];
 
 		const restored = restoreAssistantTurn(messages, startedAt);
 
@@ -48,9 +49,8 @@ describe("assistant turn projection", () => {
 
 	it("restores unresolved history tools as pending on the same assistant message", () => {
 		const startedAt = 1_700_000_000_000;
-		const assistant: ChatMessage = {
+		const assistant = createConversationAgentMessage({
 			id: "assistant-1",
-			role: "assistant",
 			text: "",
 			blocks: [
 				{
@@ -61,19 +61,25 @@ describe("assistant turn projection", () => {
 					status: "success",
 				},
 			],
-		};
+		});
 
-		const restored = restoreAssistantTurn([{ id: "user-1", role: "user", text: "inspect" }, assistant], startedAt);
+		const restored = restoreAssistantTurn(
+			[createConversationUserMessage({ id: "user-1", text: "inspect" }), assistant],
+			startedAt,
+		);
 
 		expect(restored.at(-1)?.id).toBe("assistant-1");
-		expect(restored.at(-1)?.startedAt).toBe(startedAt);
-		expect(restored.at(-1)?.blocks?.[0]).toMatchObject({ type: "tool_call", status: "pending" });
+		expect(restored.at(-1)).toMatchObject({
+			kind: "agent",
+			startedAt,
+			blocks: [expect.objectContaining({ type: "tool_call", status: "pending" })],
+		});
 	});
 
 	it("computes completion from the message absolute start after stream state was reset", () => {
 		const startedAt = 1_700_000_000_000;
 		const endedAt = startedAt + 128_400;
-		const started = startAssistantTurn([{ id: "user-1", role: "user", text: "work" }], startedAt);
+		const started = startAssistantTurn([createConversationUserMessage({ id: "user-1", text: "work" })], startedAt);
 		resetStreamState();
 
 		const finished = finishAssistantTurn(started, endedAt);
@@ -87,11 +93,11 @@ describe("assistant turn projection", () => {
 
 	it("keeps aborted then agent_end terminal events idempotent", () => {
 		const startedAt = 1_700_000_000_000;
-		const started = startAssistantTurn([{ id: "user-1", role: "user", text: "work" }], startedAt);
+		const started = startAssistantTurn([createConversationUserMessage({ id: "user-1", text: "work" })], startedAt);
 		const aborted = finishAssistantTurn(started, startedAt + 5_000);
 
 		expect(getActiveAssistantTurnStartedAt(aborted)).toBeUndefined();
 		expect(finishAssistantTurn(aborted, startedAt + 8_000)).toBe(aborted);
-		expect(aborted.at(-1)?.durationSeconds).toBe(5);
+		expect(aborted.at(-1)).toMatchObject({ kind: "agent", durationSeconds: 5 });
 	});
 });

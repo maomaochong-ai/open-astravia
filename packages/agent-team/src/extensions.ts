@@ -1,9 +1,17 @@
 import type { ConversationMessageRecord } from "@vetta/runtime-core/conversation";
-import type { TeamDefinition, TeamFeedEvent, TeamSharedContextRecord } from "./contracts.js";
-import { projectPublicTeamContext } from "./public-context.js";
+import type { TeamDefinition, TeamSharedContextRecord } from "./contracts.js";
+import { projectPublicTeamCheckpointContext, projectPublicTeamContext } from "./public-context.js";
+import type { TeamTaskAction } from "./task-control.js";
 
 export interface TeamOrchestrationPolicy {
 	readonly id: string;
+	/** Omission retains the default leader/assignee permission boundary. */
+	authorizeTask?(input: {
+		readonly action: TeamTaskAction;
+		readonly team: TeamDefinition;
+		readonly sourceMemberId: string;
+		readonly targetMemberId: string;
+	}): boolean;
 	resolveTargets(input: {
 		readonly team: TeamDefinition;
 		readonly requestedMemberIds: readonly string[];
@@ -12,10 +20,16 @@ export interface TeamOrchestrationPolicy {
 
 export interface TeamContextProjectionPolicy {
 	readonly id: string;
+	/** Optional Team-wide projection. Omission falls back to the safe intersection of member projections. */
+	projectSharedCheckpoint?(input: {
+		readonly session: { readonly id: string };
+		readonly messages: readonly ConversationMessageRecord[];
+		readonly currentRequestId?: string;
+	}): readonly TeamSharedContextRecord[];
 	project(input: {
-		readonly session: { readonly id: string; readonly events: readonly TeamFeedEvent[] };
-		/** Ordinary coordination messages; legacy events remain a migration fallback. */
-		readonly messages?: readonly ConversationMessageRecord[];
+		readonly session: { readonly id: string };
+		/** Ordinary coordination messages are the only current public-history source. */
+		readonly messages: readonly ConversationMessageRecord[];
 		readonly targetMemberId: string;
 		readonly deliveredEventIds: ReadonlySet<string>;
 		readonly currentRequestId?: string;
@@ -47,6 +61,7 @@ const PUBLIC_RESULTS_ORCHESTRATION: TeamOrchestrationPolicy = {
 
 const PUBLIC_RESULTS_CONTEXT: TeamContextProjectionPolicy = {
 	id: "public-results-v1",
+	projectSharedCheckpoint: projectPublicTeamCheckpointContext,
 	project: projectPublicTeamContext,
 };
 

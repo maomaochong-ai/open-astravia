@@ -2,6 +2,9 @@
 
 ### Added
 
+- Runtime Session 可分别提供宿主拥有的稳定 system cache-prefix addon 与易变 trusted addon；最终 Frame 在首个易变块前建立明确断点，使共享 Team 契约与成员身份无需混成同一提示词字符串。
+- Context Runtime 新增对调用方已裁剪记录的瞬时摘要策略，复用当前 Turn admission 的模型、凭证与压缩生成器，但不运行 Conversation 选择、扩展 Hook 或提交逻辑。
+- 新增调用期 `bindPinnedModelContext`：在 Runtime acquisition 捕获不可变前缀，模型投影与压缩共用按 entry ID 的正文省略规则；已公开回复的私有 thinking/tool blocks 仍保留，持久 Conversation 不改写。Session 可独立指定 `promptCacheKey`。
 - 新增多主 Agent 进阶开发示例与功能测试，使用公开 API 展示 MCP Source/Turn binding、真实 Skill 发现与调用、
   Session Extension 的 Tool/Service/Endpoint/Signal 组合，以及 Agent/Session 隔离和资源生命周期；
   `@vetta/coding-agent/resources` 同步公开通用 `createInvokeSkillTool()` 与输入合同，外部组合无需深度导入。
@@ -15,7 +18,11 @@
 
 ### Fixed
 
+- 手动压缩使用本次 Runtime admission 捕获的共享上下文、设置及扩展，后续 preview/Turn 绑定不再覆盖它；移除 Session 上隐式的“最近一次 pinned context”状态。
+- 共享上下文异步物化时，扩展和模型投影仍在首次 await 前捕获自己的 generation；物化失败或取消会清理已捕获资源，避免同一次 admission 混用新旧版本。
+- 自动压缩后重建模型输入时重新加入本轮固定前缀，避免摘要成功后公共上下文丢失；上下文绑定失败和同步释放异常均继续清理已取得资源。
 - 修复自动上下文压缩在同一 Turn 内反复使用旧分支、并把“保留全部历史”的空摘要误记为成功压缩的问题；后续模型调用现在基于最新摘要、保留尾部与新增消息继续计算切点。
+
 - Execution Definition 自定义转换失败时释放已经准备的 Session Plan，保留初始化和清理失败，避免遗漏资源回滚。
 - 修复本地与远程模型列表缺少 `maxTokens` 时被统一写成 16384、导致长推理在真实模型上提前触发长度截断的问题；未知上限现在保持未知，由 AI Provider 按模型元数据、调用覆盖或协议要求解析。
 - 修复模型输出达到长度上限时被误判为正常完成、界面没有可见回复且不会自动重试的问题；Coding Agent 现在会在同一 Turn 内有限次数地请求模型从截断位置继续回答，次数耗尽后进入明确的错误链路。
@@ -28,6 +35,7 @@
 
 ### Changed
 
+- 自定义 Context Runtime 的 `bindForTurn` 返回值需同时提供 `compactManual`，并按需提供对应提交回调；默认产品组合会将同一个 owner 注册到自动、手动和模型投影端口，不再依赖未绑定实例补齐手动能力。
 - **破坏性变更**：每个活动会话现在拥有独立 Agent Instance；同一 Composition 的新会话读取当前 Definition revision，
   已有会话保持原 revision。Composition 继续复用基础设施，`agentRuntime` 只返回 `agentId`，完整运行身份改由
   `readSessionAgentIdentity(sessionId)` 查询；移除 Composition 级 `instanceId` 选项。恢复历史创建新实例，Turn generation 不变。

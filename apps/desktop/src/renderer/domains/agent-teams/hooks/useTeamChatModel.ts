@@ -1,12 +1,12 @@
 import { useRendererMarkdownModel } from "@shared/hooks/useRendererMarkdownModel";
 import { persistBase64Images } from "@shared/lib/persist-input-images";
 import { pathBasename } from "@shared/lib/utils";
-import { type AgentTeamDocument, resolveMentionedMemberIds, type TeamSessionDocument } from "@vetta/agent-team";
+import { type AgentTeamDocument, resolveMentionedMemberIds, type TeamSessionSnapshot } from "@vetta/agent-team";
 import type { PromptAttachmentRef } from "@vetta/runtime-core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-	buildTeamTimelineItems,
+	projectTeamConversationFeed,
 	reduceTeamStreamState,
 	resolveTeamMembers,
 	type TeamAttachmentViewModel,
@@ -26,7 +26,8 @@ export function useTeamChatModel(teamId: string): {
 } {
 	const { t } = useTranslation(["agent-teams", "chat"]);
 	const [document, setDocument] = useState<AgentTeamDocument>();
-	const [session, setSession] = useState<TeamSessionDocument>();
+	const [snapshot, setSnapshot] = useState<TeamSessionSnapshot>();
+	const session = snapshot?.session;
 	const [draftsByTeam, setDraftsByTeam] = useState<Readonly<Record<string, string>>>({});
 	const [historyByTeam, setHistoryByTeam] = useState<Readonly<Record<string, readonly string[]>>>({});
 	const [attachmentsByTeam, setAttachmentsByTeam] = useState<
@@ -65,7 +66,7 @@ export function useTeamChatModel(teamId: string): {
 		let cancelled = false;
 		setStatus("loading");
 		setError(undefined);
-		setSession(undefined);
+		setSnapshot(undefined);
 		streamsRef.current = {};
 		setStreams({});
 		setPending(undefined);
@@ -74,7 +75,7 @@ export function useTeamChatModel(teamId: string): {
 			.then((loaded) => {
 				if (cancelled) return;
 				setDocument(loaded.document);
-				setSession(loaded.session);
+				setSnapshot(loaded.snapshot);
 				setStatus("ready");
 			})
 			.catch((cause: unknown) => {
@@ -92,28 +93,37 @@ export function useTeamChatModel(teamId: string): {
 		let mounted = true;
 		let unsubscribe: (() => void) | undefined;
 		const subscription = window.vetta.agentTeams.subscribe(session.id, (event) => {
-			if (!mounted || event.teamSessionId !== session.id) return;
+			const eventSessionId =
+				event.type === "session-snapshot" || event.type === "session-updated"
+					? event.teamSessionId
+					: event.conversationId;
+			if (!mounted || eventSessionId !== session.id) return;
 			if (event.type === "session-snapshot" || event.type === "session-updated") {
-				setSession((current) => (!current || event.session.revision >= current.revision ? event.session : current));
+				setSnapshot((current) =>
+					!current ||
+					event.snapshot.session.revision > current.session.revision ||
+					event.snapshot.conversationRevision >= current.conversationRevision
+						? event.snapshot
+						: current,
+				);
 			}
 			const nextStreams = reduceTeamStreamState(streamsRef.current, event);
 			streamsRef.current = nextStreams;
 			setStreams(nextStreams);
 			if (
-				event.type === "member-start" ||
-				event.type === "member-delta" ||
-				(event.type === "session-snapshot" && event.activeTurns.length > 0)
+				event.type === "conversation.agent-message-event" ||
+				(event.type === "session-snapshot" && event.activeMessageEvents.length > 0)
 			) {
 				setStatus("streaming");
 			} else if (event.type === "session-snapshot") {
 				setStatus("ready");
-			} else if (event.type === "member-end") {
-				if (event.phase === "error") {
+			} else if (event.type === "conversation.agent-message-discard") {
+				if (event.reason === "failed") {
 					setError(event.error ?? t("chat.failed"));
 					setStatus("error");
-				} else if (event.phase === "aborted") {
+				} else if (event.reason === "aborted") {
 					setStatus("ready");
-				} else if (!Object.values(nextStreams).some((turn) => turn.phase === "streaming")) {
+				} else if (!Object.values(nextStreams).some((turn) => turn.message.phase === "streaming")) {
 					setStatus("ready");
 				}
 			}
@@ -142,10 +152,10 @@ export function useTeamChatModel(teamId: string): {
 			}),
 		[document, selectedMemberIds, streams, t, team],
 	);
-	const timelineItems = useMemo(
+	const feedItems = useMemo(
 		() =>
-			buildTeamTimelineItems({
-				session,
+			projectTeamConversationFeed({
+				snapshot,
 				pending,
 				streams,
 				members,
@@ -154,7 +164,7 @@ export function useTeamChatModel(teamId: string): {
 					unknownMember: t("chat.member"),
 				},
 			}),
-		[members, pending, session, streams, t],
+		[members, pending, snapshot, streams, t],
 	);
 
 	const selectLeader = useCallback(() => setSelectedMemberIds([]), []);
@@ -205,7 +215,7 @@ export function useTeamChatModel(teamId: string): {
 		setStatus("sending");
 		setError(undefined);
 		const activeStreams = Object.fromEntries(
-			Object.entries(streamsRef.current).filter(([, turn]) => turn.phase === "streaming"),
+			Object.entries(streamsRef.current).filter(([, turn]) => turn.message.phase === "streaming"),
 		);
 		streamsRef.current = activeStreams;
 		setStreams(activeStreams);
@@ -218,7 +228,13 @@ export function useTeamChatModel(teamId: string): {
 				targetMemberIds,
 				...(promptAttachments.length ? { attachments: promptAttachments } : {}),
 			});
-			setSession((current) => (!current || next.revision >= current.revision ? next : current));
+			setSnapshot((current) =>
+				!current ||
+				next.session.revision > current.session.revision ||
+				next.conversationRevision >= current.conversationRevision
+					? next
+					: current,
+			);
 			setError(undefined);
 			setStatus("ready");
 			if (draftText) {
@@ -300,7 +316,7 @@ export function useTeamChatModel(teamId: string): {
 			history,
 			attachments,
 			members,
-			timelineItems,
+			feedItems,
 			markdown,
 			...(error ? { error } : {}),
 			editorEnabled: Boolean(session),
@@ -316,7 +332,7 @@ export function useTeamChatModel(teamId: string): {
 			history,
 			attachments,
 			members,
-			timelineItems,
+			feedItems,
 			markdown,
 			error,
 			session,

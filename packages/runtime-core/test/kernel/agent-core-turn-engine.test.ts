@@ -672,6 +672,30 @@ describe("AgentCoreTurnEngine", () => {
 		]);
 	});
 
+	it("uses a frame cache partition without replacing the isolated provider session id", async () => {
+		let observedOptions: { readonly sessionId?: string; readonly promptCacheKey?: string } | undefined;
+		const engine = new AgentCoreTurnEngine({
+			model: model(),
+			streamFn: (_model, _context, options) => {
+				observedOptions = options;
+				return new RecordedAssistantStream(assistantMessage([{ type: "text", text: "done" }]));
+			},
+		});
+
+		await collect(
+			engine,
+			snapshot({
+				modelCallFrameComposer: {
+					async compose(context) {
+						return { ...context.frame, promptCacheKey: "team-cache" };
+					},
+				},
+			}),
+		);
+
+		expect(observedOptions).toMatchObject({ sessionId: "session-1", promptCacheKey: "team-cache" });
+	});
+
 	it("drops the cache breakpoint when instructionOverride replaces the prompt", async () => {
 		const contexts: Context[] = [];
 		const engine = new AgentCoreTurnEngine({

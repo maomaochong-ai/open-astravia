@@ -47,7 +47,7 @@ export function buildAzureOpenAIResponsesParams(
 		model: deploymentName,
 		input: messages,
 		stream: true,
-		prompt_cache_key: options?.sessionId,
+		prompt_cache_key: options?.promptCacheKey ?? options?.sessionId,
 	};
 
 	if (options?.maxTokens) params.max_output_tokens = options.maxTokens;

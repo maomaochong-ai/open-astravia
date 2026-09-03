@@ -1,5 +1,6 @@
+import type { ContentBlock, ConversationAgentMessageViewModel } from "@shared/conversation";
 import { chatMessagesAtom, pluginCardRenderersAtom, type RegisteredCardRenderer } from "@shared/store/atoms";
-import type { ChatMessage, ContentBlock } from "@shared/store/chat-atoms";
+import type { ChatConversationItem } from "@shared/store/chat-atoms";
 import type { CardDescriptor, PluginCardProps } from "@vetta-org/plugin-sdk";
 import { atom, useAtomValue } from "jotai";
 import { selectAtom } from "jotai/utils";
@@ -35,8 +36,8 @@ const pendingDescriptorCache = new Map<string, Map<string, CardDescriptor>>();
  *  - pending — for each in-flight tool_call, every renderer's `pendingFor` gets
  *    a shot at synthesizing a provisional descriptor.
  */
-function cardsForMessage(message: ChatMessage, renderers: RegisteredCardRenderer[]): RawCard[] {
-	const blocks: ContentBlock[] = message.blocks ?? [];
+function cardsForMessage(message: ConversationAgentMessageViewModel, renderers: RegisteredCardRenderer[]): RawCard[] {
+	const blocks: ContentBlock[] = message.blocks;
 	const cards: RawCard[] = [];
 	for (const block of blocks) {
 		if (block.type !== "tool_call") continue;
@@ -70,11 +71,12 @@ function cardsForMessage(message: ChatMessage, renderers: RegisteredCardRenderer
 }
 
 /** 丢掉已经不在消息列表里、或已不再处于 pending 的 tool call 记忆。 */
-function collectPendingDescriptorCache(messages: readonly ChatMessage[]): void {
+function collectPendingDescriptorCache(messages: readonly ChatConversationItem[]): void {
 	if (pendingDescriptorCache.size === 0) return;
 	const live = new Set<string>();
 	for (const message of messages) {
-		for (const block of message.blocks ?? []) {
+		if (message.kind !== "agent") continue;
+		for (const block of message.blocks) {
 			if (block.type === "tool_call" && block.status === "pending") live.add(block.toolCallId);
 		}
 	}
@@ -105,6 +107,7 @@ const rawCardOwnerByKeyAtom = atom((get) => {
 	const renderers = get(pluginCardRenderersAtom);
 	const owner = new Map<string, string>();
 	for (const message of messages) {
+		if (message.kind !== "agent") continue;
 		for (const card of cardsForMessage(message, renderers)) {
 			if (card.descriptor.key) owner.set(card.descriptor.key, message.id);
 		}
@@ -124,7 +127,7 @@ const latestCardOwnerByKeyAtom = selectAtom(rawCardOwnerByKeyAtom, (owner) => ow
 
 export interface MessageCardsHostModel {
 	cards: ResolvedCard[];
-	convMessage: { id: string; role: ChatMessage["role"]; text: string; timestamp?: number };
+	convMessage: { id: string; role: "assistant"; text: string; timestamp?: number };
 }
 
 /** 同一条消息产出的原始卡片列表是否等价（descriptor 身份已由缓存固定）。 */
@@ -147,7 +150,7 @@ function sameRawCards(a: RawCard[], b: RawCard[]): boolean {
  * 流式期间尾部消息每 token 换引用，但它产出的卡片通常一模一样；内容等价时复用旧数组，
  * 让下游 memo 真正命中。
  */
-export function useMessageRawCards(message: ChatMessage): {
+export function useMessageRawCards(message: ConversationAgentMessageViewModel): {
 	rawCards: RawCard[];
 	renderers: RegisteredCardRenderer[];
 } {
@@ -163,7 +166,7 @@ export function useMessageRawCards(message: ChatMessage): {
 }
 
 export function useMessageCardsHostModel(
-	message: ChatMessage,
+	message: ConversationAgentMessageViewModel,
 	rawCards: RawCard[],
 	renderers: RegisteredCardRenderer[],
 ): MessageCardsHostModel | null {
@@ -202,7 +205,7 @@ export function useMessageCardsHostModel(
 	}, [message.id, rawCards, rendererByType, latestOwnerByKey, trPlugin]);
 
 	const convMessage = useMemo(
-		() => ({ id: message.id, role: message.role, text: message.text, timestamp: message.timestamp }),
+		() => ({ id: message.id, role: message.role, text: message.text ?? "", timestamp: message.timestamp }),
 		[message.id, message.role, message.text, message.timestamp],
 	);
 

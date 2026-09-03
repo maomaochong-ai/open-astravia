@@ -7,7 +7,7 @@ import {
 import { Button } from "@vetta/ui";
 import { useCallback, useState } from "react";
 import { TeamRecipientSelector } from "./TeamRecipientSelector";
-import { TeamMessageFeed } from "./TeamMessageFeed";
+import { TeamConversationFeed } from "./TeamConversationFeed";
 import type { TeamChatActions, TeamChatViewModel } from "./teamChatModel";
 
 export interface TeamChatViewProps {
@@ -26,10 +26,10 @@ export function TeamChatView({ model, actions }: TeamChatViewProps): JSX.Element
 	return (
 		<div className="flex h-full min-h-0 min-w-0 flex-1 bg-background">
 			<div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-				<TeamMessageFeed
+				<TeamConversationFeed
 					feedKey={model.feedKey}
 					status={model.status}
-					items={model.timelineItems}
+					items={model.feedItems}
 					members={model.members}
 					markdown={model.markdown}
 					{...(model.error ? { error: model.error } : {})}

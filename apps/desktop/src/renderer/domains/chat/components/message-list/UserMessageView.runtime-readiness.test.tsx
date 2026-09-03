@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { render, screen } from "@testing-library/react";
+import { createConversationUserMessage } from "@shared/conversation";
 import userEvent from "@testing-library/user-event";
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
 
@@ -69,7 +70,7 @@ it("Runtime 恢复期间消息操作保持可用并立即接受点击", async ()
 	const user = userEvent.setup();
 	render(
 		<UserMessage
-			message={{ id: "user-1", role: "user", text: "message" }}
+			message={createConversationUserMessage({ id: "user-1", text: "message" })}
 			isLastUserMessage
 		/>,
 	);

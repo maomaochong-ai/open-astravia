@@ -9,9 +9,9 @@ import {
 	mentionedFilesAtom,
 	openSessionFnRef,
 	pendingMessageEditAtom,
-	type ChatMessage,
 	type FilePreviewItem,
 } from "@shared/store/atoms";
+import type { ConversationUserMessageViewModel } from "@shared/conversation";
 import {
 	parseInputSegments,
 	segmentsToText,
@@ -135,8 +135,8 @@ async function reloadChatHistory(runtimeId: string): Promise<void> {
  */
 function fillInputFromUserText(
 	rawText: string,
-	promptRef?: ChatMessage["promptRef"],
-	attachments?: ChatMessage["attachments"],
+	promptRef?: ConversationUserMessageViewModel["promptRef"],
+	attachments?: ConversationUserMessageViewModel["attachments"],
 ): void {
 	const store = getDefaultStore();
 	const { segments, legacyRef } = parseInputSegments(rawText);
@@ -189,7 +189,7 @@ export interface UserMessageModelInput {
 	hasAssistantAfter?: boolean;
 	isLastUserMessage?: boolean;
 	isStreaming?: boolean;
-	message: ChatMessage;
+	message: ConversationUserMessageViewModel;
 	onAbortEdit?: () => void;
 }
 

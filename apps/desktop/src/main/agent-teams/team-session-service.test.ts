@@ -1,17 +1,31 @@
 import {
+	AGENT_TEAM_MEMBER_TOOL_EXECUTION,
+	AGENT_TEAM_PUBLICATION_LIFECYCLE,
 	createAgentTeamExtensionRegistry,
 	createInitialAgentTeamDocument,
 	type TeamSessionDocument,
 	type TeamSessionStreamEvent,
 } from "@vetta/agent-team";
 import { createAssistantMessage } from "@vetta/ai";
-import type { RuntimeHost, SessionConfig, SessionEvent } from "@vetta/runtime-core";
+import type {
+	RuntimeContextSummaryRequest,
+	RuntimeHost,
+	RuntimeSessionExecutionObservation,
+	SessionConfig,
+	SessionEvent,
+} from "@vetta/runtime-core";
+import type { ConversationMessageRecord } from "@vetta/runtime-core/conversation";
+import {
+	createRuntimeObservationPublisher,
+	type RuntimeObservationContext,
+	type RuntimeObservationRecord,
+} from "@vetta/runtime-core/observation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { TeamSessionRepository } from "./team-session-repository.js";
+import type { LegacyTeamSessionRepository } from "./team-session-repository.js";
 import { AgentTeamSessionService } from "./team-session-service.js";
 
 vi.mock("../conversations/resolve-session-config.js", () => ({
-	resolveDesktopSessionConfig: vi.fn(async ({ cwd }: { cwd: string }) => ({ config: { cwd } })),
+	resolveDesktopSessionConfig: vi.fn(async (config: SessionConfig) => ({ config })),
 }));
 vi.mock("../logger.js", () => ({
 	getAppLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
@@ -26,23 +40,53 @@ describe("AgentTeamSessionService streaming contract", () => {
 		const team = document.teams[0];
 		if (!team) throw new Error("built-in Agent Team fixture is missing");
 		const sessions = new Map<string, TeamSessionDocument>();
-		const repository: TeamSessionRepository = {
+		const repository: LegacyTeamSessionRepository = {
 			read: async (id) => {
 				const session = sessions.get(id);
 				if (!session) throw new Error(`missing session: ${id}`);
 				return session;
-			},
-			write: async (session) => {
-				sessions.set(session.id, structuredClone(session));
 			},
 		};
 
 		let runtimeSequence = 0;
 		let prompted = false;
 		const runtimeListeners = new Map<string, (event: SessionEvent) => void>();
-		const conversationEntries: Array<Record<string, unknown>> = [];
+		const executionListeners = new Map<
+			string,
+			(observation: RuntimeSessionExecutionObservation) => Promise<void> | void
+		>();
+		const observationRecords: RuntimeObservationRecord[] = [];
+		const observationPublisher = createRuntimeObservationPublisher({
+			port: {
+				record: (record) => {
+					observationRecords.push(record);
+				},
+			},
+		});
+		const conversationEntries: Array<Record<string, unknown>> = [
+			{
+				type: "message",
+				kind: "user",
+				id: "public-1",
+				turnId: "public-turn-1",
+				timestamp: new Date(1).toISOString(),
+				author: { kind: "user", id: "local-user" },
+				message: { role: "user", content: "First public decision", timestamp: 1 },
+			},
+			{
+				type: "message",
+				kind: "agent",
+				id: "public-2",
+				turnId: "public-turn-2",
+				timestamp: new Date(2).toISOString(),
+				author: { kind: "agent", id: team.leaderMemberId },
+				message: { role: "assistant", content: [{ type: "text", text: "Second public result" }], timestamp: 2 },
+			},
+		];
 		const assistantText = "partial answer";
-		const createSession = vi.fn(async (_config?: SessionConfig) => ({ sessionId: `runtime-${++runtimeSequence}` }));
+		const createSession = vi.fn(async (config?: SessionConfig) => ({
+			sessionId: config?.sessionId ?? `runtime-${++runtimeSequence}`,
+		}));
 		const runtime = {
 			createSession,
 			getSessionPath: (sessionId: string) => `C:/runtime/${sessionId}.jsonl`,
@@ -53,11 +97,70 @@ describe("AgentTeamSessionService streaming contract", () => {
 			},
 			prompt: vi.fn(async (sessionId: string) => {
 				const listener = runtimeListeners.get(sessionId);
-				listener?.({ type: "message.delta", delta: "partial ", timestamp: 2 } as SessionEvent);
-				listener?.({ type: "message.delta", delta: "answer", timestamp: 3 } as SessionEvent);
+				const partial = {
+					...createAssistantMessage(
+						{ api: "openai-responses", provider: "openai", model: "model" },
+						{ timestamp: 2 },
+					),
+					content: [
+						{ type: "thinking" as const, thinking: "private execution reasoning" },
+						{ type: "text" as const, text: "partial answer" },
+						{ type: "toolCall" as const, id: "private-call", name: "read", arguments: { path: "secret" } },
+					],
+				};
+				const assistantEvent = (event: Record<string, unknown>, sequence: number): SessionEvent =>
+					({
+						schemaVersion: 1,
+						channel: "assistant",
+						sessionId,
+						eventId: `assistant-${sequence}`,
+						timestamp: sequence,
+						source: "agent",
+						sequence,
+						turnId: "runtime-turn-1",
+						modelCallIndex: 0,
+						...event,
+					}) as SessionEvent;
+				listener?.(assistantEvent({ type: "thinking_delta", contentIndex: 0, delta: "private", partial }, 1));
+				listener?.(assistantEvent({ type: "text_delta", contentIndex: 1, delta: "partial ", partial }, 2));
+				listener?.(assistantEvent({ type: "toolcall_start", contentIndex: 2, partial }, 3));
+				listener?.(assistantEvent({ type: "text_delta", contentIndex: 1, delta: "answer", partial }, 4));
+				await executionListeners.get(sessionId)?.({
+					turnId: "runtime-turn-1",
+					timestamp: 3,
+					event: {
+						type: "tool.execution.start",
+						toolCallId: "tool-call-1",
+						toolName: "read",
+						args: { path: "C:/workspace/private.txt" },
+						startedAt: 2,
+					},
+				});
+				await executionListeners.get(sessionId)?.({
+					turnId: "runtime-turn-1",
+					timestamp: 4,
+					event: {
+						type: "tool.execution.end",
+						toolCallId: "tool-call-1",
+						toolName: "read",
+						result: { content: [{ type: "text", text: "private result" }] },
+						isError: false,
+						startedAt: 2,
+						durationMs: 2,
+						phases: [],
+					},
+				});
 				prompted = true;
 				return {};
 			}),
+			subscribeExecutionObservations: (
+				sessionId: string,
+				listener: (observation: RuntimeSessionExecutionObservation) => Promise<void> | void,
+			) => {
+				executionListeners.set(sessionId, listener);
+				return () => executionListeners.delete(sessionId);
+			},
+			createObservationScope: (context: RuntimeObservationContext) => observationPublisher.scope(context),
 			getFullHistory: () =>
 				prompted
 					? [
@@ -77,17 +180,40 @@ describe("AgentTeamSessionService streaming contract", () => {
 							},
 						]
 					: [],
-			appendConversationMessage: vi.fn(async () => ({ entryId: "entry" })),
+			appendConversationMessage: vi.fn(async (_sessionId: string, record: ConversationMessageRecord) => {
+				conversationEntries.push({
+					type: "message",
+					id: record.id,
+					turnId: record.turnId,
+					kind: record.kind,
+					author: record.author,
+					message: record.message,
+					...(record.kind === "user" && record.attachments?.length ? { attachments: record.attachments } : {}),
+				});
+				return { entryId: record.id };
+			}),
+			deliverSessionContext: vi.fn(async () => undefined),
+			summarizeSessionContext: vi.fn(async (_sessionId: string, request: RuntimeContextSummaryRequest) => {
+				expect(request.records).toHaveLength(2);
+				expect(request.records.every((record) => record.modelVisible)).toBe(true);
+				expect(JSON.stringify(request.records)).not.toContain("private execution reasoning");
+				return { summary: "Shared public decisions summary", tokensBefore: 20 };
+			}),
 			appendSessionMetadataEntry: vi.fn(async (_sessionId: string, customType: string, data: unknown) => {
 				conversationEntries.push({ type: "custom", customType, data });
 			}),
-			readSessionDocument: () => ({ entries: conversationEntries, activeLeafId: "assistant-entry" }),
+			readSessionDocument: () => ({
+				entries: conversationEntries,
+				activeLeafId: "assistant-entry",
+				revision: conversationEntries.length,
+			}),
 			abort: vi.fn(async () => undefined),
 		} as unknown as RuntimeHost;
 		const service = new AgentTeamSessionService({
 			runtime,
 			repository,
 			readDocument: async () => document,
+			sharedContextCompaction: { maxCharacters: 1, keepRecentCharacters: 0 },
 		});
 		const created = await service.create(team, document, "C:/workspace");
 		expect(createSession.mock.calls.every(([config]) => config === undefined || !("sessionDir" in config))).toBe(
@@ -102,20 +228,25 @@ describe("AgentTeamSessionService streaming contract", () => {
 			targetMemberIds: [team.leaderMemberId],
 			attachments: [{ kind: "file", path: "C:/workspace/brief.md" }],
 		});
+		await observationPublisher.flush();
 		subscription.unsubscribe();
 
+		const messageEvents = events.filter((event) => event.type === "conversation.agent-message-event");
 		expect(
-			events
-				.filter((event) => event.type !== "session-updated")
-				.map((event) => (event.type === "member-delta" ? `${event.type}:${event.delta}` : event.type)),
-		).toEqual(["member-start", "member-delta:partial ", "member-delta:answer", "member-end"]);
-		expect(events.filter((event) => event.type === "member-delta").map((event) => event.seq)).toEqual([1, 2]);
-		expect(completed.events.at(-1)).toMatchObject({ type: "member-result", text: assistantText });
-		expect(sessions.get(created.id)?.events.at(-1)).toMatchObject({
-			type: "member-result",
-			text: assistantText,
+			messageEvents.map((event) => (event.event.type === "text_delta" ? event.event.delta : event.event.type)),
+		).toEqual(["partial ", "answer"]);
+		expect(messageEvents.map((event) => event.sequence)).toEqual([1, 2]);
+		expect(completed.events).toEqual([]);
+		expect(service.snapshot(completed).messages.at(-1)).toMatchObject({
+			kind: "agent",
+			author: { id: team.leaderMemberId },
+			message: { content: [{ type: "text", text: assistantText }] },
 		});
-		expect(events.at(-1)).toMatchObject({ type: "member-end", phase: "final", seq: 3 });
+		expect(events.at(-1)).toMatchObject({
+			type: "conversation.agent-message-discard",
+			reason: "completed",
+			sequence: 3,
+		});
 		expect(runtime.prompt).toHaveBeenCalledWith(
 			expect.any(String),
 			expect.objectContaining({
@@ -131,6 +262,67 @@ describe("AgentTeamSessionService streaming contract", () => {
 				message: expect.objectContaining({ content: [{ type: "text", text: assistantText }] }),
 			}),
 		);
+		expect(runtime.summarizeSessionContext).toHaveBeenCalledOnce();
+		const toolObservations = observationRecords.filter((record) => record.token === AGENT_TEAM_MEMBER_TOOL_EXECUTION);
+		expect(toolObservations).toHaveLength(2);
+		expect(toolObservations.map(({ payload }) => payload)).toEqual([
+			expect.objectContaining({
+				participantId: team.leaderMemberId,
+				requestTurnId: "request",
+				runtimeTurnId: "runtime-turn-1",
+				toolCallId: "tool-call-1",
+				toolName: "read",
+				phase: "started",
+				inputFieldCount: 1,
+				workItemId: expect.any(String),
+				attemptId: expect.any(String),
+			}),
+			expect.objectContaining({
+				phase: "completed",
+				contentItemCount: 1,
+				hasDetails: false,
+				durationMs: 2,
+				isError: false,
+			}),
+		]);
+		expect(JSON.stringify(toolObservations)).not.toContain("C:/workspace/private.txt");
+		expect(JSON.stringify(toolObservations)).not.toContain("private result");
+		const publicationObservations = observationRecords.filter(
+			(record) => record.token === AGENT_TEAM_PUBLICATION_LIFECYCLE,
+		);
+		expect(publicationObservations.map(({ payload }) => payload)).toEqual([
+			expect.objectContaining({
+				phase: "prepared",
+				participantId: team.leaderMemberId,
+				requestTurnId: "request",
+				workItemId: expect.any(String),
+				attemptId: expect.any(String),
+				sourceParticipantConversationId: expect.stringMatching(/^runtime-/),
+				sourceMessageEntryId: "assistant-entry",
+				generation: 1,
+				recovered: false,
+			}),
+			expect.objectContaining({ phase: "message-published", recovered: false }),
+			expect.objectContaining({
+				phase: "completed",
+				resultMessageId: expect.any(String),
+				recovered: false,
+			}),
+		]);
+		expect(
+			conversationEntries.find(
+				(entry) => entry.type === "custom" && entry.customType === "agent-team.shared-checkpoint.v1",
+			)?.data,
+		).toMatchObject({
+			sourceEntryIds: ["public-1", "public-2"],
+			summarizedSourceEntryIds: ["public-1", "public-2"],
+			summaryRecords: [
+				{
+					kind: "summary",
+					content: expect.stringContaining('"summary":"Shared public decisions summary"'),
+				},
+			],
+		});
 	});
 
 	it("reconciles cached sessions after members are added or removed", async () => {
@@ -141,23 +333,24 @@ describe("AgentTeamSessionService streaming contract", () => {
 		const sourceMember = originalTeam.members[1];
 		if (!removedMember || !sourceMember) throw new Error("built-in Agent Team member fixture is missing");
 		const sessions = new Map<string, TeamSessionDocument>();
-		const repository: TeamSessionRepository = {
+		const repository: LegacyTeamSessionRepository = {
 			read: async (id) => {
 				const session = sessions.get(id);
 				if (!session) throw new Error(`missing session: ${id}`);
 				return session;
 			},
-			write: async (session) => {
-				sessions.set(session.id, structuredClone(session));
-			},
 		};
 		let runtimeSequence = 0;
 		const runtime = {
-			createSession: vi.fn(async () => ({ sessionId: `runtime-${++runtimeSequence}` })),
+			createSession: vi.fn(async (config?: SessionConfig) => ({
+				sessionId: config?.sessionId ?? `runtime-${++runtimeSequence}`,
+			})),
 			getSessionPath: (sessionId: string) => `C:/runtime/${sessionId}.jsonl`,
 			disposeSession: vi.fn(async () => undefined),
 			subscribe: () => () => undefined,
 			appendConversationMessage: vi.fn(async () => ({ entryId: "entry" })),
+			appendSessionMetadataEntry: vi.fn(async () => undefined),
+			readSessionDocument: () => ({ entries: [], activeLeafId: null, revision: 0 }),
 		} as unknown as RuntimeHost;
 		const service = new AgentTeamSessionService({
 			runtime,
@@ -186,9 +379,9 @@ describe("AgentTeamSessionService streaming contract", () => {
 		expect(reconciled.teamRevision).toBe(nextTeam.revision);
 		expect(reconciled.activeMemberIds).toEqual(nextTeam.members.map((member) => member.id));
 		expect(reconciled.memberRuntime[removedMember.id]).toBeUndefined();
-		expect(reconciled.memberRuntime[addedMember.id]?.sessionId).toBe(`runtime-${originalTeam.members.length + 2}`);
+		expect(reconciled.memberRuntime[addedMember.id]?.sessionId).toBe(`runtime-${originalTeam.members.length + 1}`);
 		expect(reconciled.memberHandles[removedMember.id]).toBe(removedMember.handle);
-		expect(runtime.disposeSession).toHaveBeenCalledWith(`runtime-${originalTeam.members.length + 1}`);
+		expect(runtime.disposeSession).toHaveBeenCalledWith(`runtime-${originalTeam.members.length}`);
 	});
 
 	it("keeps a work item waiting when a member turn has no publishable final message", async () => {
@@ -197,19 +390,18 @@ describe("AgentTeamSessionService streaming contract", () => {
 		if (!team) throw new Error("built-in Agent Team fixture is missing");
 		const sessions = new Map<string, TeamSessionDocument>();
 		const entries: Array<Record<string, unknown>> = [];
-		const repository: TeamSessionRepository = {
+		const repository: LegacyTeamSessionRepository = {
 			read: async (id) => {
 				const session = sessions.get(id);
 				if (!session) throw new Error(`missing session: ${id}`);
 				return session;
 			},
-			write: async (session) => {
-				sessions.set(session.id, structuredClone(session));
-			},
 		};
 		let sequence = 0;
 		const runtime = {
-			createSession: vi.fn(async () => ({ sessionId: `runtime-${++sequence}` })),
+			createSession: vi.fn(async (config?: SessionConfig) => ({
+				sessionId: config?.sessionId ?? `runtime-${++sequence}`,
+			})),
 			getSessionPath: (sessionId: string) => `C:/runtime/${sessionId}.jsonl`,
 			disposeSession: vi.fn(async () => undefined),
 			subscribe: () => () => undefined,
@@ -222,6 +414,7 @@ describe("AgentTeamSessionService streaming contract", () => {
 			],
 			getFullHistory: () => [],
 			appendConversationMessage: vi.fn(async () => ({ entryId: "entry" })),
+			deliverSessionContext: vi.fn(async () => undefined),
 			appendSessionMetadataEntry: vi.fn(async (_sessionId: string, customType: string, data: unknown) => {
 				entries.push({ type: "custom", customType, data });
 			}),
@@ -248,7 +441,10 @@ describe("AgentTeamSessionService streaming contract", () => {
 		expect(collaboration.workItems).toHaveLength(1);
 		expect(collaboration.workItems[0]?.state).toBe("waiting");
 		expect(collaboration.attempts[0]?.state).toBe("interrupted");
-		expect(stream.at(-1)).toMatchObject({ type: "member-end", phase: "waiting" });
+		expect(stream.at(-1)).toMatchObject({
+			type: "conversation.agent-message-discard",
+			reason: "waiting",
+		});
 	});
 
 	it.each([true, false])(
@@ -269,19 +465,18 @@ describe("AgentTeamSessionService streaming contract", () => {
 					message: { role: "user", content: "Earlier public context", timestamp: 1 },
 				},
 			];
-			const repository: TeamSessionRepository = {
+			const repository: LegacyTeamSessionRepository = {
 				read: async (id) => {
 					const session = sessions.get(id);
 					if (!session) throw new Error(`missing session: ${id}`);
 					return session;
 				},
-				write: async (session) => {
-					sessions.set(session.id, structuredClone(session));
-				},
 			};
 			let sequence = 0;
 			const runtime = {
-				createSession: vi.fn(async () => ({ sessionId: `runtime-${++sequence}` })),
+				createSession: vi.fn(async (config?: SessionConfig) => ({
+					sessionId: config?.sessionId ?? `runtime-${++sequence}`,
+				})),
 				getSessionPath: (sessionId: string) => `C:/runtime/${sessionId}.jsonl`,
 				disposeSession: vi.fn(async () => undefined),
 				subscribe: () => () => undefined,
@@ -328,19 +523,28 @@ describe("AgentTeamSessionService streaming contract", () => {
 			const collaboration = await service.readCollaborationState(created.id);
 
 			if (!allowed) {
-				expect(runtime.deliverSessionContext).not.toHaveBeenCalled();
-				expect(runtime.prompt).toHaveBeenCalled();
-				return;
+				expect(runtime.deliverSessionContext).toHaveBeenCalledWith(
+					expect.any(String),
+					[
+						expect.objectContaining({
+							type: "agent-team.compaction-reference.v1",
+							modelVisible: false,
+						}),
+					],
+					"record",
+				);
+			} else {
+				expect(runtime.deliverSessionContext).toHaveBeenCalledWith(
+					expect.any(String),
+					[
+						expect.objectContaining({
+							type: "agent-team.compaction-reference.v1",
+							modelVisible: false,
+						}),
+					],
+					"record",
+				);
 			}
-			expect(runtime.deliverSessionContext).toHaveBeenCalledWith(
-				expect.any(String),
-				[
-					expect.objectContaining({
-						content: expect.stringContaining('"author":{"kind":"user","id":"local-user"}'),
-					}),
-				],
-				"record",
-			);
 			expect(runtime.prompt).not.toHaveBeenCalled();
 			expect(collaboration.workItems[0]).toMatchObject({
 				state: "waiting",

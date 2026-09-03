@@ -3,25 +3,25 @@ import {
 	type MessageFeedNavigationEntry,
 	type MessageFeedNavigationTurn,
 } from "@shared/components/message-feed/navigationModel";
-import type { ChatMessage } from "./types";
+import type { ChatConversationItem } from "./types";
 
 export type { RenderedFeedItem as RenderedMessageItem } from "@shared/components/message-feed/visibleItemModel";
 export { findTopVisibleItemIndex as findTopVisibleMessageIndex } from "@shared/components/message-feed/visibleItemModel";
 
 export const MESSAGE_NAVIGATION_MIN_TURNS = 8;
 
-function visibleMessageText(message: ChatMessage): string {
-	if (message.text.trim()) return message.text;
-	return (
-		message.blocks
-			?.filter((block) => block.type === "text")
-			.map((block) => block.text)
-			.join("\n") ?? ""
-	);
+function visibleMessageText(message: ChatConversationItem): string {
+	if (message.kind === "event") return "";
+	if (message.text?.trim()) return message.text;
+	if (message.kind === "user") return message.text;
+	return message.blocks
+		.filter((block) => block.type === "text")
+		.map((block) => block.text)
+		.join("\n");
 }
 
 /** Chat adapter: projects the domain message schema into the shared navigation contract. */
-export function buildMessageNavigationTurns(messages: ChatMessage[]): MessageFeedNavigationTurn[] {
+export function buildMessageNavigationTurns(messages: ChatConversationItem[]): MessageFeedNavigationTurn[] {
 	const turns: Array<{
 		id: string;
 		turnNumber: number;
@@ -31,9 +31,9 @@ export function buildMessageNavigationTurns(messages: ChatMessage[]): MessageFee
 
 	for (let messageIndex = 0; messageIndex < messages.length; messageIndex++) {
 		const message = messages[messageIndex];
-		if (message.role === "compaction") continue;
+		if (message.kind === "event") continue;
 
-		if (message.role === "user" || !current) {
+		if (message.kind === "user" || !current) {
 			current = {
 				id: `turn-${message.id}`,
 				turnNumber: turns.length + 1,
@@ -47,7 +47,7 @@ export function buildMessageNavigationTurns(messages: ChatMessage[]): MessageFee
 			id: message.id,
 			itemIndex: messageIndex,
 			preview: navigationText.preview,
-			role: message.role === "user" ? "request" : "response",
+			role: message.kind === "user" ? "request" : "response",
 			searchText: navigationText.searchText,
 			turnNumber: current.turnNumber,
 		});

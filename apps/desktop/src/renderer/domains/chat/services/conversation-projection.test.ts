@@ -40,8 +40,16 @@ describe("ConversationProjection", () => {
 		const messages = projection.flush([]);
 
 		expect(messages).toHaveLength(1);
-		expect(messages[0]?.blocks?.map((block) => block.type)).toEqual(["thinking", "text", "tool_call", "text"]);
-		expect(messages[0]?.text).toBe("ab");
+		expect(messages[0]).toMatchObject({
+			kind: "agent",
+			text: "ab",
+			blocks: [
+				expect.objectContaining({ type: "thinking" }),
+				expect.objectContaining({ type: "text" }),
+				expect.objectContaining({ type: "tool_call" }),
+				expect.objectContaining({ type: "text" }),
+			],
+		});
 	});
 
 	it("deduplicates replayed events by the host sequence", () => {
@@ -51,6 +59,6 @@ describe("ConversationProjection", () => {
 		projection.enqueue(event);
 		projection.enqueue(event);
 
-		expect(projection.flush([])[0]?.text).toBe("a");
+		expect(projection.flush([])[0]).toMatchObject({ kind: "agent", text: "a" });
 	});
 });

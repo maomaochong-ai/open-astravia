@@ -2,6 +2,12 @@
 
 ### Added
 
+- Chat 与 Agent Team 现在通过同一个严格 User/Agent 消息 ViewModel 和流式 reducer 展示普通 Conversation 消息；Team Snapshot 不再包装第二种消息结构，多成员流按消息与作者身份独立归约，私有 thinking/tool 过程仍不会进入公共会话。
+- Agent Team 的结果发布事务新增 `prepared/message-published/completed/needs-recovery` 生命周期 observation；崩溃恢复阶段会标记 `recovered`，仅携带稳定关联 ID，不复制成员私有执行正文。Team 共享操作契约与成员身份也分别进入 Coding Agent 的稳定/易变系统提示词段。
+- Agent Team 将成员 attempt 的自动重试和外部条件恢复统一到持久工作项结算链路：网络/限流按截止时间重试，欠费/认证保持 `attention-required`，只有宿主确认对应条件变化后才按 Provider/Model 精确唤醒；认证配置成功更新会发出该信号，额度系统也可复用同一无敏感数据的宿主通道。恢复过程继续使用原成员普通 Conversation，并发布带触发来源的类型化 observation，不新增 UI 或具体 Observer。
+- Agent Team 复用成员 Runtime 已有的完整工具执行观察流，并额外发布不含参数值和结果正文的 Team 关联事件，将 Runtime Session/Turn/Tool Call 与成员、工作项、attempt 及可选 delivery 连接起来；由协作工具创建的工作项会持久保存来源 Tool Call ID，当前仍不新增 UI 或具体 Observer。
+- Agent Team 在公共上下文超过预算时，通过协调 Session 的 Runtime Snapshot 生成全员一致的共享摘要与最近原文 tail；并发成员只生成/切换一次检查点，模型欠费、认证、网络或取消仍进入既有等待/恢复状态，不会提交半成品摘要。
+- Agent Team 成员可通过 `team_read_shared_history` 分页读取当前 Context Policy 允许的公开原文；游标固定读取开始时的公共范围，新消息不会混入当前分页，已覆盖内容或策略变化则要求重新读取。该能力不访问其他成员的私有会话、工具过程、thinking 或 subagent transcript，也不会启动任何 Agent。
 - 插件可自行下载固定摘要本地服务运行时，并交给 Desktop 的通用服务 API 安全部署、管理生命周期和访问自身回环 HTTP
   接口；获 `models.manage` 授权的插件可注册或撤销自身命名空间下的动态模型 Provider。具体服务的 OAuth、路由与
   模型映射仍完全由插件实现，不进入客户端（ADR-0104）。
@@ -75,11 +81,14 @@
 
 ### Fixed
 
+- Agent Team 共享上下文改从持久 checkpoint 与成员交付回执恢复，Turn 结束或 Runtime 重建后仍可供手动压缩使用；不再依赖活动 Turn 内存 Map，也不会把另一成员的新版本或变化后的自定义策略结果当作原上下文。回执持久化成功后才推进成员引用，失败可重新准入。
+- Agent Team 不同成员可并行执行，同一成员按持久工作项排队；协调状态更新基于串行读取的最新快照，避免同时发布结果或投递历史时互相覆盖。取消会覆盖运行中及排队请求，恢复一个成员不再阻塞其他成员；重复请求/恢复不会重复启动，迟到的旧 attempt 不能覆盖新状态，同步委派的循环等待会被拒绝。
 - 模型 Provider 删除改为幂等操作；插件启动或重复同步模型目录时，撤销一个尚未注册的自有 Provider 不再产生
   `Capability provider failed` 错误，也不会触发无效的配置写入或模型注册表刷新。
 - 插件网络请求在 Electron Chromium 网络栈中可安全处理 GitHub 等站点的跨域重定向；底层诊断错误链继续写入日志，
   插件 UI 只收到不含 URL、凭证与内部路径的稳定失败原因。
 - 上下文压缩成功后立即刷新上下文环的 Token 与百分比，并清除压缩前的组成明细缓存，避免控制台显示完成但界面仍停留在旧占用。
+
 - Agent Team 使用严格 User/Agent 消息 ViewModel，不再以 `member` 作为独立消息类型，多成员流式状态由每条 Agent 消息独立持有；Chat 与 Team 直接组合已有消息布局、视觉和行为叶子，移除只有名称的 `ConversationMessage` Slot/Provider。普通 Chat 的完整数据模型迁移仍在进行，不以空 Provider 宣称已完成复用。
 - Agent Team 消息列表现在复用普通对话的可组合虚拟 Feed、流式跟随、长对话导航与显式布局骨架；用户消息保留并展示附件，用户与成员消息均可复制。Chat 与 Team 各自保留领域消息合同，通过独立的行为、位置和视觉 Primitive 组合列表，同一位置可替换不同能力，不再维护一套功能残缺的 Team 专用列表机制。见 ADR-0101。
 - 重构 Agent Team 管理流程：团队配置显示成员头像并支持直接增删成员、更换负责人和删除团队；删除被团队引用的智能体时会在一次确认中列出影响并原子更新相关团队，无需逐个团队清理。团队对话不再展示或自动写入 `@handle`，输入框补回普通对话的附件、发送历史、多行输入和草稿恢复能力，已存在的团队会话会在成员变化后同步 Runtime roster。

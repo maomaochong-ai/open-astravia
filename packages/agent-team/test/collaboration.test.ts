@@ -4,11 +4,15 @@ import {
 	classifyTeamAttemptTerminal,
 	classifyTeamExecutionIssue,
 	filterTeamMemberActiveToolNames,
+	isTeamMessageDelivery,
+	matchesTeamExternalConditionChange,
 	type TeamExecutionIssue,
 	type TeamWorkItem,
+	transitionTeamMessageDelivery,
 	transitionTeamWorkItem,
 } from "../src/collaboration.js";
 import type { AgentProfile, TeamDefinition } from "../src/contracts.js";
+import { isDefaultTeamTaskActionAllowed } from "../src/task-control.js";
 
 const profile: AgentProfile = {
 	id: "profile-builder",
@@ -57,10 +61,76 @@ function workItem(state: TeamWorkItem["state"] = "queued"): TeamWorkItem {
 }
 
 describe("Agent Team collaboration contracts", () => {
+	it("keeps default task ownership with the leader while allowing an assignee to resume itself", () => {
+		expect(
+			isDefaultTeamTaskActionAllowed({
+				action: "delegate",
+				leaderMemberId: "leader",
+				sourceMemberId: "leader",
+				targetMemberId: "member",
+			}),
+		).toBe(true);
+		expect(
+			isDefaultTeamTaskActionAllowed({
+				action: "delegate",
+				leaderMemberId: "leader",
+				sourceMemberId: "member",
+				targetMemberId: "leader",
+			}),
+		).toBe(false);
+		expect(
+			isDefaultTeamTaskActionAllowed({
+				action: "cancel",
+				leaderMemberId: "leader",
+				sourceMemberId: "member",
+				targetMemberId: "member",
+			}),
+		).toBe(false);
+		expect(
+			isDefaultTeamTaskActionAllowed({
+				action: "resume",
+				leaderMemberId: "leader",
+				sourceMemberId: "member",
+				targetMemberId: "member",
+			}),
+		).toBe(true);
+		expect(
+			isDefaultTeamTaskActionAllowed({
+				action: "resume",
+				leaderMemberId: "leader",
+				sourceMemberId: "other",
+				targetMemberId: "member",
+			}),
+		).toBe(false);
+	});
+
+	it("enforces independent delivery terminal states", () => {
+		const delivery = {
+			id: "delivery",
+			messageId: "message",
+			fromParticipantId: "leader",
+			toParticipantId: "member",
+			intent: "question" as const,
+			state: "pending" as const,
+			createdAt: 1,
+			updatedAt: 1,
+		};
+		expect(isTeamMessageDelivery(delivery)).toBe(true);
+		const waiting = transitionTeamMessageDelivery(delivery, { state: "waiting", updatedAt: 2 });
+		expect(
+			transitionTeamMessageDelivery(waiting, { state: "responded", replyMessageId: "reply", updatedAt: 3 }),
+		).toMatchObject({ state: "responded", replyMessageId: "reply" });
+		expect(() =>
+			transitionTeamMessageDelivery(delivery, { state: "responded", replyMessageId: "reply", updatedAt: 2 }),
+		).toThrow("pending -> responded");
+		expect(() => transitionTeamMessageDelivery(waiting, { state: "responded", updatedAt: 3 })).toThrow(
+			"requires a reply",
+		);
+	});
 	it("removes private subagent controls from the default Team member tool surface", () => {
-		expect(filterTeamMemberActiveToolNames(["read", "spawn_agent", "team_delegate", "wait_agent"])).toEqual([
+		expect(filterTeamMemberActiveToolNames(["read", "spawn_agent", "team_delegate_task", "wait_agent"])).toEqual([
 			"read",
-			"team_delegate",
+			"team_delegate_task",
 		]);
 	});
 	it("keeps billing and network failures recoverable without calling them Agent failures", () => {
@@ -70,8 +140,14 @@ describe("Agent Team collaboration contracts", () => {
 				message: "billing",
 				retryable: false,
 				origin: "provider",
+				details: { provider: "openai", modelId: "gpt-5" },
 			}),
-		).toMatchObject({ category: "insufficient-credit", retryability: "after-external-change" });
+		).toMatchObject({
+			category: "insufficient-credit",
+			retryability: "after-external-change",
+			provider: "openai",
+			modelId: "gpt-5",
+		});
 		expect(
 			classifyTeamExecutionIssue({
 				code: "NETWORK_TIMEOUT",
@@ -80,6 +156,36 @@ describe("Agent Team collaboration contracts", () => {
 				origin: "provider",
 			}),
 		).toMatchObject({ category: "network", retryability: "automatic" });
+	});
+	it("matches external changes by retry policy and the available provider identity", () => {
+		const issue: TeamExecutionIssue = {
+			category: "authentication",
+			retryability: "after-external-change",
+			code: "unauthorized",
+			provider: "openai",
+			modelId: "gpt-5",
+		};
+		expect(matchesTeamExternalConditionChange(issue, { category: "authentication", provider: "openai" })).toBe(true);
+		expect(matchesTeamExternalConditionChange(issue, { category: "authentication", provider: "anthropic" })).toBe(
+			false,
+		);
+		expect(matchesTeamExternalConditionChange(issue, { category: "insufficient-credit", provider: "openai" })).toBe(
+			false,
+		);
+		expect(
+			matchesTeamExternalConditionChange(
+				{ category: "network", retryability: "automatic", code: "timeout" },
+				{ category: "authentication" },
+			),
+		).toBe(false);
+		// Legacy records did not persist provider/model identity. A category-scoped host
+		// signal remains a valid, conservative wake-up for those records.
+		expect(
+			matchesTeamExternalConditionChange(
+				{ category: "authentication", retryability: "after-external-change", code: "unauthorized" },
+				{ category: "authentication", provider: "openai" },
+			),
+		).toBe(true);
 	});
 	it("builds a roster from stable profiles and resolved runtime capabilities", () => {
 		const snapshot = buildTeamRosterSnapshot({ agents: [profile] }, team, {

@@ -56,6 +56,8 @@ export interface ModelSettingsServiceOptions {
 	readonly refreshRegistry: () => Promise<void>;
 	readonly writeConfig: (config: ModelsConfig) => Promise<void>;
 	readonly credentials: ModelCredentialStore;
+	/** Post-commit signal; observers must not receive credential values. */
+	readonly onProviderAccessChanged?: (providerIds: readonly string[]) => void;
 }
 
 const MODELS_CONFIG_PATH = join(getVettaHomePath(), "agent", "models.json");
@@ -337,6 +339,7 @@ export class ModelSettingsService {
 		const persisted = cloneModelsConfig(config);
 		const writes = new Map<string, string>();
 		const nextRefs = new Map<string, string>();
+		const credentialWriteProviders = new Set<string>();
 
 		for (const [providerId, provider] of Object.entries(persisted.providers)) {
 			const currentProvider = current.providers[providerId];
@@ -382,6 +385,7 @@ export class ModelSettingsService {
 			provider.credentialRef = credentialRef;
 			delete provider.apiKey;
 			writes.set(credentialRef, value);
+			credentialWriteProviders.add(providerId);
 			this.registerCredentialRef(nextRefs, credentialRef, providerId);
 		}
 
@@ -406,6 +410,12 @@ export class ModelSettingsService {
 			throw error;
 		}
 		await this.options.refreshRegistry();
+		const accessChangedProviders = Object.keys(persisted.providers).filter(
+			(providerId) =>
+				credentialWriteProviders.has(providerId) ||
+				!sameProviderAccess(current.providers[providerId], persisted.providers[providerId]),
+		);
+		if (accessChangedProviders.length > 0) this.notifyProviderAccessChanged(accessChangedProviders);
 		return persisted;
 	}
 
@@ -439,8 +449,9 @@ export class ModelSettingsService {
 		const migrated = cloneModelsConfig(config);
 		const snapshots = new Map<string, string | undefined>();
 		let changed = false;
+		const changedProviderIds: string[] = [];
 		try {
-			for (const provider of Object.values(migrated.providers)) {
+			for (const [providerId, provider] of Object.entries(migrated.providers)) {
 				if (!provider.apiKey) continue;
 				const externalSource = normalizeExternalApiKeySource(provider.apiKey);
 				if (externalSource) {
@@ -455,6 +466,7 @@ export class ModelSettingsService {
 				provider.credentialRef = credentialRef;
 				delete provider.apiKey;
 				changed = true;
+				changedProviderIds.push(providerId);
 			}
 			if (!changed) return;
 			await this.options.writeConfig(migrated);
@@ -463,6 +475,15 @@ export class ModelSettingsService {
 			throw error;
 		}
 		await this.options.refreshRegistry();
+		this.notifyProviderAccessChanged(changedProviderIds);
+	}
+
+	private notifyProviderAccessChanged(providerIds: readonly string[]): void {
+		try {
+			this.options.onProviderAccessChanged?.(providerIds);
+		} catch {
+			// Configuration is already committed; an optional wake-up observer cannot roll it back.
+		}
 	}
 
 	private registerCredentialRef(refs: Map<string, string>, credentialRef: string, providerId: string): void {
@@ -492,4 +513,28 @@ export class ModelSettingsService {
 		);
 		return result;
 	}
+}
+
+function sameProviderAccess(left: ProviderConfig | undefined, right: ProviderConfig | undefined): boolean {
+	if (!left || !right) return left === right;
+	return (
+		left.baseUrl === right.baseUrl &&
+		left.apiKey === right.apiKey &&
+		left.credentialRef === right.credentialRef &&
+		left.api === right.api &&
+		left.authHeader === right.authHeader &&
+		sameStringRecord(left.headers, right.headers)
+	);
+}
+
+function sameStringRecord(
+	left: Readonly<Record<string, string>> | undefined,
+	right: Readonly<Record<string, string>> | undefined,
+): boolean {
+	const leftEntries = Object.entries(left ?? {}).sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey));
+	const rightEntries = Object.entries(right ?? {}).sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey));
+	return (
+		leftEntries.length === rightEntries.length &&
+		leftEntries.every(([key, value], index) => key === rightEntries[index]?.[0] && value === rightEntries[index]?.[1])
+	);
 }

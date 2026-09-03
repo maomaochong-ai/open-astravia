@@ -46,6 +46,8 @@ import type {
 	RuntimeContextCompactionRequest,
 	RuntimeContextCompactionResult,
 	RuntimeContextCompactionState,
+	RuntimeContextSummaryRequest,
+	RuntimeContextSummaryResult,
 	RuntimeSessionContextDeliveryMode,
 	RuntimeSessionContextUsage,
 	RuntimeSessionExecutionObservation,
@@ -391,6 +393,13 @@ export class RuntimeHost implements SessionFacade {
 		request?: RuntimeContextCompactionRequest,
 	): Promise<RuntimeContextCompactionResult> {
 		return this.sessionOperations.compactSessionContext(sessionId, request);
+	}
+
+	async summarizeSessionContext(
+		sessionId: string,
+		request: RuntimeContextSummaryRequest,
+	): Promise<RuntimeContextSummaryResult> {
+		return this.sessionOperations.summarizeSessionContext(sessionId, request);
 	}
 
 	abortSessionContextCompaction(sessionId: string): void {

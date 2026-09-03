@@ -22,7 +22,7 @@ import {
 	buildTeamNavigationTurns,
 	type TeamChatStatus,
 	type TeamMemberViewModel,
-	type TeamTimelineItemViewModel,
+	type TeamConversationFeedItem,
 } from "./teamChatModel";
 
 const ACTIVE_OVERSCAN = 80;
@@ -31,10 +31,10 @@ const NAVIGATION_MIN_TURNS = 8;
 const ACTIVE_VIEWPORT = { top: 0, bottom: 80 };
 const IDLE_VIEWPORT = { top: 200, bottom: 200 };
 
-export interface TeamMessageFeedProps {
+export interface TeamConversationFeedProps {
 	readonly feedKey: string;
 	readonly status: TeamChatStatus;
-	readonly items: readonly TeamTimelineItemViewModel[];
+	readonly items: readonly TeamConversationFeedItem[];
 	readonly members: readonly TeamMemberViewModel[];
 	readonly markdown: RendererMarkdownModel;
 	readonly error?: string;
@@ -50,10 +50,10 @@ export interface TeamMessageFeedProps {
 	};
 }
 
-const shouldFollowUserItem = (item: TeamTimelineItemViewModel): boolean =>
+const shouldFollowUserItem = (item: TeamConversationFeedItem): boolean =>
 	item.kind === "message" && item.message.kind === "user";
 
-export function TeamMessageFeed({
+export function TeamConversationFeed({
 	feedKey,
 	status,
 	items,
@@ -61,7 +61,7 @@ export function TeamMessageFeed({
 	markdown,
 	error,
 	labels,
-}: TeamMessageFeedProps): JSX.Element {
+}: TeamConversationFeedProps): JSX.Element {
 	const active = status === "sending" || status === "streaming" || status === "cancelling";
 	const scroll = useMessageFeedScrollModel({
 		active,
@@ -69,7 +69,7 @@ export function TeamMessageFeed({
 		resetKey: feedKey,
 		shouldFollowOnAppend: shouldFollowUserItem,
 	});
-	const activeItem = useMessageFeedActiveItem<TeamTimelineItemViewModel>({
+	const activeItem = useMessageFeedActiveItem<TeamConversationFeedItem>({
 		scrollerElement: scroll.scrollerElement,
 		resetKey: feedKey,
 		initialIndex: Math.max(0, items.length - 1),
@@ -143,10 +143,10 @@ function TeamFeedItem({
 	markdown,
 	labels,
 }: {
-	readonly item: TeamTimelineItemViewModel;
+	readonly item: TeamConversationFeedItem;
 	readonly members: readonly TeamMemberViewModel[];
 	readonly markdown: RendererMarkdownModel;
-	readonly labels: TeamMessageFeedProps["labels"];
+	readonly labels: TeamConversationFeedProps["labels"];
 }): JSX.Element {
 	if (item.kind === "event") {
 		return (
@@ -296,7 +296,7 @@ function TeamEmptyState({
 	labels,
 }: {
 	readonly members: readonly TeamMemberViewModel[];
-	readonly labels: TeamMessageFeedProps["labels"];
+	readonly labels: TeamConversationFeedProps["labels"];
 }): JSX.Element {
 	return (
 		<div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto px-6 py-10">

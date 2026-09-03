@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { render, screen } from "@testing-library/react";
+import { createConversationAgentMessage } from "@shared/conversation";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -52,13 +53,13 @@ describe("AssistantMessage first-response waiting state", () => {
 			<AssistantMessage
 				isStreaming
 				isTailMessage
-				message={{
+				message={createConversationAgentMessage({
 					id: "assistant-waiting",
-					role: "assistant",
+					phase: "streaming",
 					text: "",
 					blocks: [],
 					startedAt: 1_000,
-				}}
+				})}
 			/>,
 		);
 

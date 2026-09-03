@@ -2,7 +2,7 @@ import { subagentErrorPresentation, subagentObjective, subagentUsageLabel } from
 import { workflowProgressLabel, workflowStatusMeta } from "@shared/lib/workflow-status";
 import {
 	activeSessionAtom,
-	type ChatMessage,
+	type ChatConversationItem,
 	getSubagentsForSession,
 	isSubagentActive,
 	isWorkflowTask,
@@ -20,7 +20,7 @@ import { fullHistoryToChat } from "../../chat/services/chat-service";
 export interface WorkflowTabPanelModel {
 	items: WorkflowSwitcherItem[];
 	selected: SubagentTask | null;
-	messages: ChatMessage[];
+	messages: ChatConversationItem[];
 	emptyLabel: string;
 	stopLabel: string;
 	noTranscriptLabel: string;
@@ -33,7 +33,7 @@ export function useWorkflowTabPanelModel(): WorkflowTabPanelModel {
 	const activeSession = useAtomValue(activeSessionAtom);
 	const subagentsMap = useAtomValue(subagentsBySessionAtom);
 	const [selectedId, setSelectedId] = useAtom(selectedWorkflowIdAtom);
-	const [messages, setMessages] = useState<ChatMessage[]>([]);
+	const [messages, setMessages] = useState<ChatConversationItem[]>([]);
 	const runtimeId = activeSession?.runtimeId ?? null;
 
 	const workflows = useMemo(

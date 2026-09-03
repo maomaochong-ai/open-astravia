@@ -22,13 +22,16 @@ import type {
 } from "../../src/kernel/contracts.js";
 import {
 	ContextCompactionCommitter,
+	type ContextSummaryStrategy,
 	createAgentSession,
 	type EventSink,
 	KERNEL_ERROR_CODES,
 	type KernelEvent,
 	type ManualContextCompactionRuntime,
+	type ManualContextCompactionStrategy,
 	type RuntimeInputRequestPreparationContext,
 	type RuntimeSnapshot,
+	type RuntimeSnapshotAcquireContext,
 	resumeAgentSession,
 	type SessionInputRequest,
 	StaticRuntimeSnapshotProvider,
@@ -49,6 +52,25 @@ import {
 
 interface TestCreateOptions {
 	readonly id: string;
+}
+
+type CombinedContextRuntimeBinding = Omit<ManualContextCompactionStrategy, "bindForTurn" | "releaseTurnBinding"> &
+	Omit<ContextSummaryStrategy, "bindForTurn" | "releaseTurnBinding"> & {
+		releaseTurnBinding?(): Promise<void> | void;
+	};
+
+type CombinedContextRuntime = Omit<ManualContextCompactionRuntime, "bindForTurn" | "releaseTurnBinding"> &
+	Omit<ContextSummaryStrategy, "bindForTurn" | "releaseTurnBinding"> & {
+		bindForTurn?(
+			context: RuntimeSnapshotAcquireContext,
+		): Promise<CombinedContextRuntimeBinding> | CombinedContextRuntimeBinding;
+		releaseTurnBinding?(): Promise<void> | void;
+	};
+
+function isCombinedContextRuntime(
+	runtime: ManualContextCompactionRuntime | CombinedContextRuntime | undefined,
+): runtime is CombinedContextRuntime {
+	return runtime !== undefined && "summarizeContext" in runtime;
 }
 
 class InMemoryConversationRepository implements ConversationRepository {
@@ -255,8 +277,10 @@ function createBackend(
 	turnEngine: TurnEnginePort,
 	promptAdapter: RuntimePromptAdapter = new RecordingPromptAdapter(),
 	dispose = vi.fn(async () => {}),
-	contextRuntime?: ManualContextCompactionRuntime,
+	contextRuntime?: ManualContextCompactionRuntime | CombinedContextRuntime,
 	assemblyOverrides: Partial<KernelRuntimeAssembly> = {},
+	registerManualCompactionStrategy = true,
+	registerContextSummaryStrategy = true,
 ) {
 	let runtimeEventSink: EventSink | undefined;
 	return {
@@ -267,7 +291,16 @@ function createBackend(
 					let turnIndex = 0;
 					const repository = new InMemoryConversationRepository();
 					const details = runtimeAssemblyDetails(options.id);
-					const snapshotProvider = new StaticRuntimeSnapshotProvider(snapshot(), details.modelRuntime);
+					const snapshotProvider = new StaticRuntimeSnapshotProvider(
+						{
+							...snapshot(),
+							...(registerManualCompactionStrategy ? { manualCompactionStrategy: contextRuntime } : {}),
+							...(registerContextSummaryStrategy && isCombinedContextRuntime(contextRuntime)
+								? { contextSummaryStrategy: contextRuntime }
+								: {}),
+						},
+						details.modelRuntime,
+					);
 					const clock = { now: () => Date.now() };
 					const contextCompactionCommitter = new ContextCompactionCommitter({
 						repository,
@@ -770,6 +803,209 @@ describe("KernelRuntimeSessionBackend", () => {
 		expect(contextController.readState()).toEqual({ isCompacting: false, autoCompactionEnabled: true });
 		contextController.setAutoCompactionEnabled(false);
 		expect(contextController.readState().autoCompactionEnabled).toBe(false);
+	});
+
+	it("summarizes caller-projected records through the admitted snapshot without mutating conversation history", async () => {
+		const release = vi.fn();
+		const summarizeContext = vi.fn<ContextSummaryStrategy["summarizeContext"]>(async (input) => {
+			expect(input.records).toEqual([
+				{ type: "team.public", content: "approved public context", modelVisible: true, timestamp: 5 },
+			]);
+			expect(input.previousSummary).toBe("previous public summary");
+			expect(input.customInstructions).toBe("preserve owners");
+			expect(input.modelBinding?.model).toBe(TEST_MODEL);
+			return { summary: "projected summary", tokensBefore: 42, details: { source: "test" } };
+		});
+		const contextRuntime = {
+			compactManual: async () => {
+				throw new Error("not used");
+			},
+			summarizeContext,
+			readAutoCompactionEnabled: () => true,
+			setAutoCompactionEnabled() {},
+			bindForTurn: vi.fn((_context: RuntimeSnapshotAcquireContext) => ({
+				compactManual: contextRuntime.compactManual,
+				summarizeContext,
+				releaseTurnBinding: release,
+			})),
+		};
+		const { backend } = createBackend(new CompletingTurnEngine(), undefined, undefined, contextRuntime);
+		const session = await backend.create({ id: "session-1" });
+		await session.prompt({ text: "existing conversation" });
+		contextRuntime.bindForTurn.mockClear();
+		release.mockClear();
+		const controller = session.createCoreAssembly().contextController!;
+		const historyBefore = session.readHistory();
+
+		await expect(
+			controller.summarize({
+				records: [{ type: "team.public", content: "approved public context", modelVisible: true, timestamp: 5 }],
+				previousSummary: "previous public summary",
+				customInstructions: "preserve owners",
+			}),
+		).resolves.toEqual({ summary: "projected summary", tokensBefore: 42, details: { source: "test" } });
+
+		expect(contextRuntime.bindForTurn).toHaveBeenLastCalledWith(
+			expect.objectContaining({ reason: "context_summary", operationId: "session-1:context-summary" }),
+		);
+		expect(summarizeContext).toHaveBeenCalledOnce();
+		expect(release).toHaveBeenCalledOnce();
+		expect(session.readHistory()).toEqual(historyBefore);
+		expect(controller.readState().isCompacting).toBe(false);
+	});
+
+	it("rejects an unregistered dynamic summary owner instead of executing it outside the snapshot", async () => {
+		const summarizeContext = vi.fn(async () => ({ summary: "unbound", tokensBefore: 1 }));
+		const contextRuntime = {
+			compactManual: async () => {
+				throw new Error("not used");
+			},
+			summarizeContext,
+			readAutoCompactionEnabled: () => true,
+			setAutoCompactionEnabled() {},
+			bindForTurn: () => ({ compactManual: contextRuntime.compactManual, summarizeContext }),
+		};
+		const { backend } = createBackend(
+			new CompletingTurnEngine(),
+			undefined,
+			undefined,
+			contextRuntime,
+			{},
+			true,
+			false,
+		);
+		const session = await backend.create({ id: "session-1" });
+		const controller = session.createCoreAssembly().contextController!;
+
+		await expect(
+			controller.summarize({ records: [{ type: "public", content: "safe", modelVisible: true }] }),
+		).rejects.toThrow("not registered");
+		expect(summarizeContext).not.toHaveBeenCalled();
+		expect(controller.readState().isCompacting).toBe(false);
+	});
+
+	it("propagates caller cancellation to context summary and releases the admitted binding", async () => {
+		let markStarted: (() => void) | undefined;
+		const started = new Promise<void>((resolve) => {
+			markStarted = resolve;
+		});
+		const release = vi.fn();
+		const contextRuntime = {
+			compactManual: async () => {
+				throw new Error("not used");
+			},
+			summarizeContext: async (_input: unknown, signal: AbortSignal) => {
+				markStarted?.();
+				await waitForAbort(signal);
+				return { summary: "unreachable", tokensBefore: 0 };
+			},
+			readAutoCompactionEnabled: () => true,
+			setAutoCompactionEnabled() {},
+			bindForTurn: () => ({
+				compactManual: contextRuntime.compactManual,
+				summarizeContext: contextRuntime.summarizeContext,
+				releaseTurnBinding: release,
+			}),
+		};
+		const { backend } = createBackend(new CompletingTurnEngine(), undefined, undefined, contextRuntime);
+		const session = await backend.create({ id: "session-1" });
+		const contextController = session.createCoreAssembly().contextController!;
+		const cancellation = new AbortController();
+		const summary = contextController.summarize({
+			records: [{ type: "public", content: "safe", modelVisible: true }],
+			signal: cancellation.signal,
+		});
+		await started;
+		cancellation.abort("cancel shared summary");
+
+		await expect(summary).rejects.toMatchObject({ name: "AbortError" });
+		expect(release).toHaveBeenCalledOnce();
+		expect(contextController.readState().isCompacting).toBe(false);
+	});
+
+	it("rejects a dynamic manual owner omitted from the snapshot instead of executing it unbound", async () => {
+		const compactManual = vi.fn(async () => {
+			throw new Error("unbound execution");
+		});
+		const contextRuntime = {
+			compactManual,
+			readAutoCompactionEnabled: () => true,
+			setAutoCompactionEnabled() {},
+			bindForTurn: () => ({ compactManual }),
+		};
+		const { backend } = createBackend(new CompletingTurnEngine(), undefined, undefined, contextRuntime, {}, false);
+		const session = await backend.create({ id: "session-1" });
+		await session.prompt({ text: "hello" });
+		const controller = session.createCoreAssembly().contextController!;
+		await expect(controller.compact()).rejects.toThrow("not registered");
+		expect(compactManual).not.toHaveBeenCalled();
+		expect(controller.readState().isCompacting).toBe(false);
+	});
+
+	it("uses the admitted manual strategy for generation, commit hooks and release", async () => {
+		const release = vi.fn();
+		const afterCommit = vi.fn();
+		const compactManual = vi.fn(async () => {
+			throw new Error("Unbound manual strategy must not execute");
+		});
+		const bindForTurn = vi.fn(() => ({
+			compactManual: async () => ({
+				summary: "bound summary",
+				summaryMessage: userMessage("bound summary"),
+				firstKeptEntryId: "event-2",
+				tokensBefore: 120,
+				reason: "manual" as const,
+			}),
+			onManualCompactionCommitted: afterCommit,
+			releaseTurnBinding: release,
+		}));
+		const contextRuntime = {
+			compactManual,
+			bindForTurn,
+			readAutoCompactionEnabled: () => true,
+			setAutoCompactionEnabled() {},
+		};
+		const { backend } = createBackend(new CompletingTurnEngine(), undefined, undefined, contextRuntime);
+		const session = await backend.create({ id: "session-1" });
+		await session.prompt({ text: "hello" });
+		bindForTurn.mockClear();
+		release.mockClear();
+		const controller = session.createCoreAssembly().contextController!;
+		await expect(controller.compact()).resolves.toMatchObject({ summary: "bound summary" });
+		expect(bindForTurn).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ reason: "manual_compaction" }));
+		expect(compactManual).not.toHaveBeenCalled();
+		expect(afterCommit).toHaveBeenCalledOnce();
+		expect(release).toHaveBeenCalledOnce();
+		expect(session.readHistory().at(-1)).toMatchObject({ type: "compaction", summary: "bound summary" });
+		expect(controller.readState().isCompacting).toBe(false);
+	});
+
+	it("clears the manual-compaction busy state even when its admitted resource release fails", async () => {
+		const contextRuntime = {
+			compactManual: async () => ({
+				summary: "summary",
+				summaryMessage: userMessage("summary"),
+				firstKeptEntryId: "event-2",
+				tokensBefore: 120,
+				reason: "manual" as const,
+			}),
+			readAutoCompactionEnabled: () => true,
+			setAutoCompactionEnabled() {},
+			bindForTurn: (context: RuntimeSnapshotAcquireContext) => ({
+				compactManual: contextRuntime.compactManual,
+				releaseTurnBinding: () => {
+					if (context.reason === "manual_compaction") throw new Error("release failed");
+				},
+			}),
+		};
+		const { backend } = createBackend(new CompletingTurnEngine(), undefined, undefined, contextRuntime);
+		const session = await backend.create({ id: "session-1" });
+		await session.prompt({ text: "hello" });
+		const controller = session.createCoreAssembly().contextController!;
+		await expect(controller.compact()).rejects.toThrow("release");
+		expect(controller.readState().isCompacting).toBe(false);
+		expect(session.readHistory().at(-1)).toMatchObject({ type: "compaction", summary: "summary" });
+		await expect(session.prompt({ text: "still available" })).resolves.toMatchObject({ status: "completed" });
 	});
 
 	it("blocks turn operations during manual compaction and exposes explicit cancellation", async () => {

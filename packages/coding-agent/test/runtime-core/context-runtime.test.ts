@@ -26,7 +26,10 @@ import {
 	type CodingAgentContextRuntimeOptions,
 } from "../../src/compaction/runtime/index.js";
 import { COMPACTION_SUMMARY_PREFIX, COMPACTION_SUMMARY_SUFFIX } from "../../src/model-context/index.js";
-import type { CodingAgentCompactionExtensionRuntime } from "../../src/runtime-contracts/index.js";
+import type {
+	CodingAgentCompactionExtensionRuntime,
+	CodingAgentPinnedModelContext,
+} from "../../src/runtime-contracts/index.js";
 
 describe("DefaultCodingAgentContextRuntime", () => {
 	it("rebuilds the active compaction source from the latest summary, its kept tail, and later growth", () => {
@@ -68,6 +71,481 @@ describe("DefaultCodingAgentContextRuntime", () => {
 
 		expect(entries.map(({ id }) => id)).toEqual(["event-4", "event-2", "event-3", "event-5"]);
 		expect(entries.map(({ type }) => type)).toEqual(["compaction", "message", "message", "message"]);
+	});
+
+	it("summarizes only supplied records with the admitted model settings and no compaction hooks", async () => {
+		let settings = compactingSettings();
+		const hooks = createHookRuntime();
+		const generateCompaction = vi.fn(
+			async (
+				preparation: CompactionPreparation,
+				_model: Model<Api>,
+				_apiKey: string,
+				customInstructions: string | undefined,
+			) => ({
+				summary: "shared public summary",
+				firstKeptEntryId: preparation.firstKeptEntryId,
+				tokensBefore: preparation.tokensBefore,
+				details: { instructions: customInstructions },
+			}),
+		);
+		const runtime = new CodingAgentContextRuntime({
+			hookRuntime: hooks,
+			resolveApiKey: () => "key",
+			resolveSettings: () => settings,
+			generateCompaction,
+		});
+		const signal = new AbortController().signal;
+		const bound = await runtime.bindForTurn({
+			sessionId: "leader-session",
+			operationId: "shared-summary",
+			reason: "context_summary",
+			signal,
+		});
+		settings = { ...settings, keepRecentTokens: settings.keepRecentTokens + 1 };
+
+		await expect(
+			bound.summarizeContext(
+				{
+					sessionId: "leader-session",
+					records: [
+						{
+							type: "team.public",
+							content: "member-visible decision",
+							modelVisible: true,
+							metadata: { authorAgentId: "leader" },
+							timestamp: 5,
+						},
+					],
+					modelBinding: { model: MODEL },
+					previousSummary: "older public summary",
+					customInstructions: "preserve author attribution",
+				},
+				signal,
+			),
+		).resolves.toMatchObject({
+			summary: "shared public summary",
+			details: { instructions: "preserve author attribution" },
+		});
+
+		const preparation = generateCompaction.mock.calls[0]?.[0];
+		expect(preparation).toMatchObject({
+			firstKeptEntryId: "transient-context-summary-boundary",
+			previousSummary: "older public summary",
+			isSplitTurn: false,
+			settings: compactingSettings(),
+		});
+		expect(preparation?.messagesToSummarize).toEqual([
+			expect.objectContaining({
+				role: "custom",
+				customType: "team.public",
+				content: "member-visible decision",
+				details: { authorAgentId: "leader" },
+			}),
+		]);
+		expect(hooks.runPreCompact).not.toHaveBeenCalled();
+		expect(hooks.runPostCompact).not.toHaveBeenCalled();
+		await bound.releaseTurnBinding?.();
+	});
+
+	it("rejects non-model-visible records before resolving summary credentials", async () => {
+		const resolveApiKey = vi.fn(() => "key");
+		const runtime = new CodingAgentContextRuntime({
+			hookRuntime: createHookRuntime(),
+			resolveApiKey,
+		});
+		await expect(
+			runtime.summarizeContext(
+				{
+					sessionId: "session-1",
+					records: [{ type: "private", content: "secret", modelVisible: false }],
+					modelBinding: { model: MODEL },
+				},
+				new AbortController().signal,
+			),
+		).rejects.toThrow("non-model-visible");
+		expect(resolveApiKey).not.toHaveBeenCalled();
+	});
+
+	it("captures all context contributors synchronously before awaiting pinned materialization", async () => {
+		let resolvePinned!: (value: CodingAgentPinnedModelContext) => void;
+		const pending = new Promise<CodingAgentPinnedModelContext>((resolve) => {
+			resolvePinned = resolve;
+		});
+		let version = 1;
+		const captures: number[] = [];
+		const runtime = new CodingAgentContextRuntime({
+			hookRuntime: createHookRuntime(),
+			resolveApiKey: () => "key",
+			bindPinnedModelContext: () => pending,
+			extensionRuntime: createExtensionRuntime({
+				bindForTurn: () => {
+					captures.push(version);
+					return createExtensionRuntime({});
+				},
+			}),
+			bindTransformAgentContext: () => {
+				const capturedVersion = version;
+				captures.push(version);
+				return {
+					transform: async (messages) => [...messages, userMessage(`transform-${capturedVersion}`, 2)],
+					release() {},
+				};
+			},
+		});
+		const signal = new AbortController().signal;
+		const binding = runtime.bindForTurn({ sessionId: "session-1", operationId: "turn", reason: "turn", signal });
+		version = 2;
+		resolvePinned({
+			id: "shared",
+			records: [{ type: "public", content: "shared", timestamp: 1, modelVisible: true }],
+		});
+		const bound = await binding;
+		try {
+			expect(captures).toEqual([1, 1]);
+			expect(
+				(
+					await bound.transform(
+						{ sessionId: "session-1", turnId: "turn", messages: [], modelBinding: { model: MODEL } },
+						signal,
+					)
+				).map(messageText),
+			).toEqual(["shared", "transform-1"]);
+		} finally {
+			await bound.releaseTurnBinding?.();
+		}
+	});
+
+	it.each(["invalid", "cancelled"] as const)(
+		"releases captures when asynchronous pinned materialization is %s",
+		async (failure) => {
+			let resolvePinned!: (value: CodingAgentPinnedModelContext) => void;
+			const pending = new Promise<CodingAgentPinnedModelContext>((resolve) => {
+				resolvePinned = resolve;
+			});
+			const extensionRelease = vi.fn();
+			const transformRelease = vi.fn();
+			const runtime = new CodingAgentContextRuntime({
+				hookRuntime: createHookRuntime(),
+				resolveApiKey: () => "key",
+				bindPinnedModelContext: () => pending,
+				extensionRuntime: createExtensionRuntime({
+					bindForTurn: async () => createExtensionRuntime({ releaseTurnBinding: extensionRelease }),
+				}),
+				bindTransformAgentContext: () => ({ transform: async (messages) => messages, release: transformRelease }),
+			});
+			const controller = new AbortController();
+			const binding = runtime.bindForTurn({
+				sessionId: "session-1",
+				operationId: "manual",
+				reason: "manual_compaction",
+				signal: controller.signal,
+			});
+			if (failure === "cancelled") controller.abort();
+			resolvePinned({ id: failure === "invalid" ? "" : "valid", records: [] });
+			await expect(binding).rejects.toThrow();
+			expect(extensionRelease).toHaveBeenCalledOnce();
+			expect(transformRelease).toHaveBeenCalledOnce();
+		},
+	);
+
+	it("keeps manual compaction context, settings and extension hooks isolated from later bindings", async () => {
+		let omittedEntry = "event-1";
+		let settings = compactingSettings();
+		const before = vi.fn(async () => undefined);
+		const after = vi.fn(async () => undefined);
+		const release = vi.fn();
+		const generateCompaction = vi.fn(async (preparation: CompactionPreparation) => ({
+			summary: "private summary",
+			firstKeptEntryId: preparation.firstKeptEntryId,
+			tokensBefore: preparation.tokensBefore,
+		}));
+		const runtime = new CodingAgentContextRuntime({
+			hookRuntime: createHookRuntime(),
+			resolveApiKey: () => "key",
+			resolveSettings: () => settings,
+			generateCompaction,
+			bindPinnedModelContext: () => ({
+				id: omittedEntry,
+				records: [],
+				conversationProjections: [{ entryId: omittedEntry, kind: "omit-entry" }],
+			}),
+			extensionRuntime: createExtensionRuntime({
+				beforeCompaction: async () => {
+					throw new Error("Unbound extension");
+				},
+				bindForTurn: () =>
+					createExtensionRuntime({
+						beforeCompaction: before,
+						afterCompaction: after,
+						releaseTurnBinding: release,
+					}),
+			}),
+		});
+		const signal = new AbortController().signal;
+		const admission = {
+			sessionId: "session-1",
+			operationId: "manual-1",
+			reason: "manual_compaction" as const,
+			signal,
+		};
+		const first = await runtime.bindForTurn(admission);
+		omittedEntry = "event-2";
+		settings = { ...settings, keepRecentTokens: 100_000 };
+		const second = await runtime.bindForTurn({ ...admission, operationId: "preview", reason: "preview" });
+		const document = documentFromMessages([
+			userMessage("PUBLIC_IMPORT", 1),
+			userMessage("PRIVATE_REQUEST".repeat(40), 2),
+			assistantMessage("private answer", 90, 3),
+			userMessage("current", 4),
+		]);
+		const input = { sessionId: "session-1", document, modelBinding: { model: MODEL } };
+		try {
+			const record = await first.compactManual(input, signal);
+			const committed = applyStoredEventToConversationDocument(
+				document,
+				{
+					type: "context.compacted",
+					sessionId: "session-1",
+					record,
+					timestamp: 42,
+				},
+				document.journalVersion + 1,
+			);
+			await first.onManualCompactionCommitted?.(record, input, signal, committed);
+			expect(generateCompaction).toHaveBeenCalledOnce();
+			expect(JSON.stringify(generateCompaction.mock.calls[0])).not.toContain("PUBLIC_IMPORT");
+			expect(JSON.stringify(generateCompaction.mock.calls[0])).toContain("PRIVATE_REQUEST");
+			expect(before).toHaveBeenCalledOnce();
+			expect(after).toHaveBeenCalledOnce();
+			expect(document.entries).toHaveLength(4);
+		} finally {
+			await first.releaseTurnBinding?.();
+			await second.releaseTurnBinding?.();
+		}
+		expect(release).toHaveBeenCalledTimes(2);
+	});
+
+	it.each(["automatic", "manual"] as const)(
+		"preserves private execution blocks of a published answer during %s compaction",
+		async (mode) => {
+			const published: AssistantMessage = {
+				...assistantMessage("PUBLIC_ANSWER", 90, 2),
+				content: [
+					{ type: "thinking", thinking: "PRIVATE_REASONING", thinkingSignature: "signature" },
+					{ type: "toolCall", id: "tool-1", name: "read", arguments: { path: "file" } },
+					{ type: "text", text: "PUBLIC_ANSWER" },
+				],
+			};
+			const history: Message[] = [
+				userMessage("private request".repeat(40), 1),
+				published,
+				{
+					role: "toolResult",
+					toolCallId: "tool-1",
+					toolName: "read",
+					content: [{ type: "text", text: "PRIVATE_TOOL_RESULT" }],
+					isError: false,
+					timestamp: 3,
+				},
+				userMessage("current", 4),
+			];
+			const document = documentFromMessages(history);
+			const generateCompaction = vi.fn(async (preparation: CompactionPreparation) => ({
+				summary: "private summary",
+				firstKeptEntryId: preparation.firstKeptEntryId,
+				tokensBefore: preparation.tokensBefore,
+			}));
+			const runtime = new CodingAgentContextRuntime({
+				hookRuntime: createHookRuntime(),
+				resolveApiKey: () => "key",
+				resolveSettings: compactingSettings,
+				generateCompaction,
+				bindPinnedModelContext: () => ({
+					id: "generation",
+					records: [{ type: "public", content: "PUBLIC_ANSWER", timestamp: 2, modelVisible: true }],
+					conversationProjections: [{ entryId: "event-2", kind: "omit-assistant-text" }],
+				}),
+			});
+			const signal = new AbortController().signal;
+			const bound = await runtime.bindForTurn({
+				sessionId: "session-1",
+				operationId: "turn-1",
+				reason: "turn",
+				signal,
+			});
+			try {
+				if (mode === "automatic")
+					await bound.prepare(
+						{ ...preparationInput(document, history, history, []), reason: "model_call" },
+						signal,
+					);
+				else
+					await bound.compactManual({ sessionId: "session-1", document, modelBinding: { model: MODEL } }, signal);
+				const preparation = JSON.stringify(generateCompaction.mock.calls[0]);
+				expect(preparation).not.toContain("PUBLIC_ANSWER");
+				expect(preparation).toContain("PRIVATE_REASONING");
+				expect(preparation).toContain("signature");
+				expect(preparation).toContain("PRIVATE_TOOL_RESULT");
+				expect(preparation).toContain('"type":"toolCall"');
+				expect(document.entries.find((entry) => entry.id === "event-2")).toMatchObject({ message: published });
+			} finally {
+				await bound.releaseTurnBinding?.();
+			}
+		},
+	);
+
+	it("snapshots nested pinned content for the whole Turn and refreshes it on the next Turn", async () => {
+		const content = [{ type: "text" as const, text: "shared-v1" }];
+		const bind = vi.fn(() => ({
+			id: "shared",
+			records: [{ type: "public", content, timestamp: 1, modelVisible: true }],
+		}));
+		const runtime = new CodingAgentContextRuntime({
+			hookRuntime: createHookRuntime(),
+			resolveApiKey: () => "key",
+			bindPinnedModelContext: bind,
+		});
+		const admission = {
+			sessionId: "session-1",
+			operationId: "turn-1",
+			reason: "turn" as const,
+			signal: new AbortController().signal,
+		};
+		const first = await runtime.bindForTurn(admission);
+		content[0]!.text = "shared-v2";
+		const input = {
+			sessionId: "session-1",
+			turnId: "turn-1",
+			messages: [userMessage("current", 2)],
+			modelBinding: { model: MODEL },
+		};
+		expect((await first.transform(input, admission.signal)).map(messageText)).toEqual(["shared-v1", "current"]);
+		expect((await first.transform(input, admission.signal)).map(messageText)).toEqual(["shared-v1", "current"]);
+		expect(bind).toHaveBeenCalledOnce();
+		await first.releaseTurnBinding?.();
+		const second = await runtime.bindForTurn({ ...admission, operationId: "turn-2" });
+		expect((await second.transform(input, admission.signal)).map(messageText)).toEqual(["shared-v2", "current"]);
+		await second.releaseTurnBinding?.();
+	});
+
+	it.each(["automatic", "manual"] as const)("keeps pinned public history out of %s compaction", async (mode) => {
+		const history = [
+			userMessage("PUBLIC_IMPORT", 1),
+			userMessage("private request".repeat(40), 2),
+			assistantMessage("private response", 90, 3),
+			userMessage("current", 4),
+		];
+		const document = documentFromMessages(history);
+		const generateCompaction = vi.fn(async (preparation: CompactionPreparation) => ({
+			summary: "private summary",
+			firstKeptEntryId: preparation.firstKeptEntryId,
+			tokensBefore: preparation.tokensBefore,
+		}));
+		const runtime = new CodingAgentContextRuntime({
+			hookRuntime: createHookRuntime(),
+			resolveApiKey: () => "key",
+			resolveSettings: compactingSettings,
+			generateCompaction,
+			bindPinnedModelContext: () => ({
+				id: "shared-generation",
+				records: [{ type: "public", content: "PUBLIC_IMPORT", timestamp: 1, modelVisible: true }],
+				conversationProjections: [{ entryId: "event-1", kind: "omit-entry" }],
+			}),
+		});
+		const signal = new AbortController().signal;
+		const bound = await runtime.bindForTurn({
+			sessionId: "session-1",
+			operationId: "turn-1",
+			reason: "turn",
+			signal,
+		});
+		if (mode === "automatic") {
+			const prepared = await bound.prepare(
+				{ ...preparationInput(document, history, history, []), reason: "model_call" },
+				signal,
+			);
+			expect(prepared.compaction).toBeDefined();
+			expect(prepared.messages.map(messageText).filter((text) => text === "PUBLIC_IMPORT")).toEqual([
+				"PUBLIC_IMPORT",
+			]);
+			expect(messageText(prepared.messages[0]!)).toBe("PUBLIC_IMPORT");
+		} else {
+			await bound.compactManual({ sessionId: "session-1", document, modelBinding: { model: MODEL } }, signal);
+		}
+		expect(generateCompaction).toHaveBeenCalledOnce();
+		expect(JSON.stringify(generateCompaction.mock.calls[0])).not.toContain("PUBLIC_IMPORT");
+		expect(JSON.stringify(generateCompaction.mock.calls[0])).toContain("private request");
+		expect(document.entries[0]?.id).toBe("event-1");
+		await bound.releaseTurnBinding?.();
+	});
+
+	it("rejects invalid pinned context before acquiring extension resources", async () => {
+		const bindExtension = vi.fn();
+		const runtime = new CodingAgentContextRuntime({
+			hookRuntime: createHookRuntime(),
+			resolveApiKey: () => "key",
+			bindPinnedModelContext: () => ({
+				id: "invalid",
+				records: [{ type: "hidden", content: "secret", timestamp: 1, modelVisible: false }],
+			}),
+			extensionRuntime: createExtensionRuntime({ bindForTurn: bindExtension }),
+		});
+		await expect(
+			runtime.bindForTurn({
+				sessionId: "session-1",
+				operationId: "turn",
+				reason: "turn",
+				signal: new AbortController().signal,
+			}),
+		).rejects.toThrow("invalid record");
+		expect(bindExtension).not.toHaveBeenCalled();
+	});
+
+	it("releases an acquired extension binding if the following transform binding fails", async () => {
+		const release = vi.fn();
+		const runtime = new CodingAgentContextRuntime({
+			hookRuntime: createHookRuntime(),
+			resolveApiKey: () => "key",
+			extensionRuntime: createExtensionRuntime({
+				bindForTurn: () => createExtensionRuntime({ releaseTurnBinding: release }),
+			}),
+			bindTransformAgentContext: () => {
+				throw new Error("transform binding failed");
+			},
+		});
+		await expect(
+			runtime.bindForTurn({
+				sessionId: "session-1",
+				operationId: "turn",
+				reason: "turn",
+				signal: new AbortController().signal,
+			}),
+		).rejects.toThrow("transform binding failed");
+		expect(release).toHaveBeenCalledOnce();
+	});
+
+	it("releases every binding once even when a cleanup throws synchronously", async () => {
+		const releaseTransform = vi.fn();
+		const releaseExtension = vi.fn(() => {
+			throw new Error("cleanup failed");
+		});
+		const runtime = new CodingAgentContextRuntime({
+			hookRuntime: createHookRuntime(),
+			resolveApiKey: () => "key",
+			extensionRuntime: createExtensionRuntime({ releaseTurnBinding: releaseExtension }),
+			bindTransformAgentContext: () => ({ transform: async (messages) => messages, release: releaseTransform }),
+		});
+		const bound = await runtime.bindForTurn({
+			sessionId: "session-1",
+			operationId: "turn",
+			reason: "turn",
+			signal: new AbortController().signal,
+		});
+		await expect(bound.releaseTurnBinding?.()).rejects.toThrow("Failed to release");
+		await bound.releaseTurnBinding?.();
+		expect(releaseTransform).toHaveBeenCalledOnce();
+		expect(releaseExtension).toHaveBeenCalledOnce();
 	});
 
 	it("freezes time-based projection decisions for every model call in a Turn", async () => {
@@ -829,6 +1307,12 @@ function createHookRuntime(preCompactOutcome: HookDispatchOutcome = emptyHookOut
 		runPostCompact: vi.fn(async () => emptyHookOutcome()),
 		markSessionStart: vi.fn(),
 	} satisfies CodingAgentContextRuntimeOptions["hookRuntime"];
+}
+
+function createExtensionRuntime(
+	overrides: Partial<CodingAgentCompactionExtensionRuntime>,
+): CodingAgentCompactionExtensionRuntime {
+	return { beforeCompaction: async () => undefined, afterCompaction: async () => undefined, ...overrides };
 }
 
 function emptyHookOutcome(): HookDispatchOutcome {

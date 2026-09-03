@@ -1,4 +1,4 @@
-import type { ChatMessage } from "@shared/store/atoms";
+import type { ConversationUserMessageViewModel } from "@shared/conversation";
 import {
 	Message,
 	MessageLayout,
@@ -14,7 +14,7 @@ interface UserMessageProps {
 	hasAssistantAfter?: boolean;
 	isLastUserMessage?: boolean;
 	isStreaming?: boolean;
-	message: ChatMessage;
+	message: ConversationUserMessageViewModel;
 	onAbortEdit?: () => void;
 }
 

@@ -8,6 +8,7 @@ export function buildBaseOptions(model: Model<Api>, options?: SimpleStreamOption
 		apiKey: apiKey || options?.apiKey,
 		cacheRetention: options?.cacheRetention,
 		sessionId: options?.sessionId,
+		promptCacheKey: options?.promptCacheKey,
 		headers: options?.headers,
 		onPayload: options?.onPayload,
 		maxRetryDelayMs: options?.maxRetryDelayMs,

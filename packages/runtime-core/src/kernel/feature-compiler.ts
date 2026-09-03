@@ -163,6 +163,8 @@ function createSnapshot(
 		agentRunPreparer: definition.agentRunPreparer,
 		continuationPolicy: definition.continuationPolicy,
 		modelCallContextTransformer: definition.modelCallContextTransformer,
+		manualCompactionStrategy: definition.manualCompactionStrategy,
+		contextSummaryStrategy: definition.contextSummaryStrategy,
 		modelCallMessageFinalizer: definition.modelCallMessageFinalizer,
 		conversationContextProjector: definition.conversationContextProjector,
 		contextProviders: Object.freeze(contextProviders),

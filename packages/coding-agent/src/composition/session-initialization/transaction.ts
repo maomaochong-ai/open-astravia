@@ -284,6 +284,9 @@ async function initializeSession<TOwnershipBinding>(
 					agentDir: profile.agentDir,
 					includeAgentSkills: sessionOptions.includeAgentSkills,
 					systemPromptAddon: sessionOptions.systemPromptAddon,
+					systemPromptCachePrefixAddon: sessionOptions.systemPromptCachePrefixAddon,
+					systemPromptVolatileAddon: sessionOptions.systemPromptVolatileAddon,
+					promptCacheKey: sessionOptions.promptCacheKey,
 				},
 				activation: {
 					resolve: (context) =>

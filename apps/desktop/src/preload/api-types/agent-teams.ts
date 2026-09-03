@@ -10,7 +10,8 @@ import type {
 	DeleteTeamInput,
 	SendTeamMessageInput,
 	TeamDefinition,
-	TeamSessionDocument,
+	TeamSessionReference,
+	TeamSessionSnapshot,
 	TeamSessionStreamEvent,
 	UpdateAgentProfileInput,
 	UpdateTeamInput,
@@ -27,9 +28,9 @@ export interface DesktopAgentTeamsApi {
 	createTeam(input: CreateTeamInput): Promise<TeamDefinition>;
 	updateTeam(id: string, input: UpdateTeamInput): Promise<TeamDefinition>;
 	deleteTeam(id: string, input: DeleteTeamInput): Promise<void>;
-	createSession(teamId: string, cwd: string): Promise<TeamSessionDocument>;
-	getSession(id: string): Promise<TeamSessionDocument>;
+	createSession(teamId: string, cwd: string): Promise<TeamSessionSnapshot>;
+	getSession(reference: TeamSessionReference | string): Promise<TeamSessionSnapshot>;
 	subscribe(id: string, handler: (event: TeamSessionStreamEvent) => void): Promise<() => void>;
 	abort(id: string): Promise<void>;
-	sendMessage(id: string, input: SendTeamMessageInput): Promise<TeamSessionDocument>;
+	sendMessage(id: string, input: SendTeamMessageInput): Promise<TeamSessionSnapshot>;
 }

@@ -347,8 +347,8 @@ export function useSessionOpener(): SessionOpenerController {
 				console.error("[useSessionOpener] session.create failed:", error);
 				setChatMessages((prev) => {
 					const last = prev.at(-1);
-					const lastError = last?.blocks?.at(-1);
-					if (last?.role === "assistant" && lastError?.type === "error" && lastError.text === message) return prev;
+					const lastError = last?.kind === "agent" ? last.blocks.at(-1) : undefined;
+					if (last?.kind === "agent" && lastError?.type === "error" && lastError.text === message) return prev;
 					return appendError(prev, message);
 				});
 				setActiveSession(null);
@@ -624,7 +624,7 @@ export function useSessionOpener(): SessionOpenerController {
 					if (!cachedKey) return;
 					const listed = getDefaultStore().get(sessionsMapAtom).get(bucketCwd) ?? [];
 					if (listed.some((s) => s.path === cachedKey)) return;
-					const firstUser = mapped.find((m) => m.role === "user");
+					const firstUser = mapped.find((m) => m.kind === "user");
 					const firstMessage =
 						(firstUser?.text ?? "").trim().slice(0, 80) || i18n.t("chat:session.emptyMessageLabel");
 					ensureLocalSession(bucketCwd, {

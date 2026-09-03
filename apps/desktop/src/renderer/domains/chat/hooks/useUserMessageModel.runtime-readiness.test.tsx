@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { createConversationUserMessage } from "@shared/conversation";
 import { getDefaultStore } from "jotai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -63,7 +64,7 @@ describe("useUserMessageModel Runtime readiness", () => {
 			sessionPath: "C:/sessions/target.jsonl",
 			interactionId: "open-1",
 		});
-		const message = { id: "user-1", entryId: "entry-1", role: "user" as const, text: "fork me" };
+		const message = createConversationUserMessage({ id: "user-1", entryId: "entry-1", text: "fork me" });
 
 		const { result } = renderHook(() => useUserMessageModel({ message, isLastUserMessage: true }));
 		act(() => result.current.onFork());

@@ -3,11 +3,13 @@ import type { ContextCompactionRecord, ManualContextCompactionInput } from "@vet
 import type {
 	CodingAgentCompactionExtensionRuntime,
 	CodingAgentContextRuntimeOptions,
+	CodingAgentPinnedModelContext,
 } from "../../runtime-contracts/index.js";
 import { type CompactionSettings, prepareCompaction } from "../index.js";
 import type { CodingAgentCompactionRecordFactoryOptions } from "./compaction-record-factory.js";
 import { createCodingAgentCompactionRecord } from "./compaction-record-factory.js";
 import { toCompactionSessionEntries } from "./conversation-compaction-projection.js";
+import { projectPinnedConversationDocument } from "./pinned-conversation-projection.js";
 
 export interface CodingAgentManualCompactionStrategyOptions {
 	readonly resolveApiKey: CodingAgentContextRuntimeOptions["resolveApiKey"];
@@ -25,6 +27,8 @@ export class CodingAgentManualCompactionStrategy {
 		input: ManualContextCompactionInput,
 		signal: AbortSignal,
 		extensionRuntime: CodingAgentCompactionExtensionRuntime | undefined,
+		pinnedContext?: CodingAgentPinnedModelContext,
+		settings: CompactionSettings = this.options.readSettings(),
 	): Promise<ContextCompactionRecord> {
 		signal.throwIfAborted();
 		const model = input.modelBinding?.model;
@@ -36,8 +40,8 @@ export class CodingAgentManualCompactionStrategy {
 			throw providerAuthenticationError(model, `No credentials configured for ${model.provider}/${model.id}`);
 		}
 
-		const entries = toCompactionSessionEntries(input.document);
-		const preparation = prepareCompaction(entries, this.options.readSettings());
+		const entries = toCompactionSessionEntries(projectPinnedConversationDocument(input.document, pinnedContext));
+		const preparation = prepareCompaction(entries, settings);
 		if (!preparation) {
 			const lastEntry = entries[entries.length - 1];
 			if (lastEntry?.type === "compaction") throw new Error("Already compacted");

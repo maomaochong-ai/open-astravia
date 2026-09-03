@@ -1,9 +1,14 @@
+import {
+	type ConversationAgentMessageViewModel,
+	createConversationAgentMessage,
+	createConversationUserMessage,
+} from "@shared/conversation";
 import { isAttachmentPath, isImagePath } from "@shared/lib/input-tokens";
 import { pathBasename } from "@shared/lib/utils";
 import type {
 	AskUserQuestionResolution,
+	ChatConversationItem,
 	ChatErrorDetails,
-	ChatMessage,
 	ContentBlock,
 	KnowledgeToolUiDetails,
 	ToolAudioPreview,
@@ -424,20 +429,19 @@ export function historyToChat(
 		model?: string;
 		usage?: Usage;
 	}>,
-): ChatMessage[] {
-	const messages: ChatMessage[] = [];
+): ChatConversationItem[] {
+	const messages: ChatConversationItem[] = [];
 	const toolCallIndex = new Map<string, ToolCallBlock>();
 
 	/** Get or create the current assistant message to accumulate blocks into. */
-	function currentAssistant(): ChatMessage {
+	function currentAssistant(): ConversationAgentMessageViewModel {
 		const last = messages.at(-1);
-		if (last?.role === "assistant") return last;
-		const msg: ChatMessage = {
+		if (last?.kind === "agent") return last;
+		const msg = createConversationAgentMessage({
 			id: `hist-asst-${messages.length}`,
-			role: "assistant",
 			text: "",
 			blocks: [],
-		};
+		});
 		messages.push(msg);
 		return msg;
 	}
@@ -450,15 +454,14 @@ export function historyToChat(
 				parsedUser.skillName && parsedUser.skillType
 					? { kind: parsedUser.skillType, name: parsedUser.skillName }
 					: undefined;
-			const userMsg: ChatMessage = {
+			const userMsg = createConversationUserMessage({
 				id: `hist-user-${messages.length}`,
-				role: "user",
 				text,
 				promptRef: legacyPromptRef,
 				// Only absolute (panel/system) prefixes; hand-typed @text stays in body.
 				// Exclude image-cache so system images/appshot don't become file badges.
 				mentionedFiles: toMentionedFilesFromPrefixes(parsedUser.files),
-			};
+			});
 			messages.push(userMsg);
 		} else if (m.role === "assistant") {
 			// Merge consecutive assistant messages into one (same agent turn)
@@ -504,19 +507,18 @@ export function historyToChat(
  * Convert full history entries (including compaction boundaries) into ChatMessages.
  * Unlike historyToChat, this preserves the complete conversation across compactions.
  */
-export function fullHistoryToChat(entries: HistoryEntry[]): ChatMessage[] {
-	const messages: ChatMessage[] = [];
+export function fullHistoryToChat(entries: HistoryEntry[]): ChatConversationItem[] {
+	const messages: ChatConversationItem[] = [];
 	const toolCallIndex = new Map<string, ToolCallBlock>();
 
-	function currentAssistant(): ChatMessage {
+	function currentAssistant(): ConversationAgentMessageViewModel {
 		const last = messages.at(-1);
-		if (last?.role === "assistant") return last;
-		const msg: ChatMessage = {
+		if (last?.kind === "agent") return last;
+		const msg = createConversationAgentMessage({
 			id: `hist-asst-${messages.length}`,
-			role: "assistant",
 			text: "",
 			blocks: [],
-		};
+		});
 		messages.push(msg);
 		return msg;
 	}
@@ -534,10 +536,10 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatMessage[] {
 			pendingPromptRef = undefined;
 			pendingAttachments = undefined;
 			messages.push({
+				kind: "event",
 				id: entry.entryId ?? `hist-compact-${messages.length}`,
 				entryId: entry.entryId,
-				role: "compaction",
-				text: entry.summary,
+				event: { kind: "compaction", summary: entry.summary },
 				timestamp: new Date(entry.timestamp).getTime(),
 			});
 			continue;
@@ -569,7 +571,7 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatMessage[] {
 			let patchedAssistant = false;
 			for (let i = messages.length - 1; i >= 0; i--) {
 				const message = messages[i];
-				if (!patchedAssistant && message.role === "assistant") {
+				if (!patchedAssistant && message.kind === "agent") {
 					messages[i] = {
 						...message,
 						startedAt,
@@ -580,7 +582,7 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatMessage[] {
 					continue;
 				}
 				// 用户消息无独立持久化时间戳，用本轮开始时间近似其发送时刻。
-				if (message.role === "user" && message.timestamp === undefined) {
+				if (message.kind === "user" && message.timestamp === undefined) {
 					messages[i] = { ...message, timestamp: startedAt };
 					break;
 				}
@@ -642,19 +644,18 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatMessage[] {
 			const entryId = entry.type === "message" ? entry.entryId : undefined;
 			const parentId = entry.type === "message" ? entry.parentId : undefined;
 			const branch = entry.type === "message" ? entry.branch : undefined;
-			const userMsg: ChatMessage = {
+			const userMsg = createConversationUserMessage({
 				id: entryId ?? `hist-user-${messages.length}`,
 				entryId,
 				parentId,
 				branch: branch ? { siblings: branch.siblings, index: branch.index } : undefined,
-				role: "user",
 				text,
 				promptRef: pendingPromptRef ?? legacyPromptRef,
 				attachments: pendingAttachments,
 				// Only absolute (panel/system) prefixes; hand-typed @text stays in body.
 				// Exclude image-cache so system images/appshot don't become file badges.
 				mentionedFiles: toMentionedFilesFromPrefixes(parsedUser.files),
-			};
+			});
 			if (pendingSettingsAssistTabId) {
 				userMsg.settingsAssistTabId = pendingSettingsAssistTabId;
 				pendingSettingsAssistTabId = undefined;
@@ -694,7 +695,7 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatMessage[] {
 			if (m.provider && m.model) {
 				for (let i = messages.length - 1; i >= 0; i--) {
 					const message = messages[i];
-					if (message.role === "user" && message.model === undefined) {
+					if (message.kind === "user" && message.model === undefined) {
 						messages[i] = { ...message, model: { provider: m.provider, id: m.model } };
 						break;
 					}
@@ -741,6 +742,11 @@ export function getOpenSessionToken(): number {
 	return openSessionToken;
 }
 
+function requireAgentMessage(item: ChatConversationItem | undefined): ConversationAgentMessageViewModel {
+	if (item?.kind !== "agent") throw new Error("Expected an Agent conversation message");
+	return item;
+}
+
 /**
  * ID of the current "draft" assistant message being streamed.
  * - Set when the first delta (text or thinking) of a turn arrives.
@@ -762,9 +768,13 @@ export function resetStreamState(): void {
 	draftId = null;
 }
 
-function activateAssistantTurn(prev: ChatMessage[], startedAt: number, restorePendingTools: boolean): ChatMessage[] {
+function activateAssistantTurn(
+	prev: ChatConversationItem[],
+	startedAt: number,
+	restorePendingTools: boolean,
+): ChatConversationItem[] {
 	const last = prev.at(-1);
-	if (last?.role !== "assistant") {
+	if (last?.kind !== "agent") {
 		return ensureDraft(prev, startedAt)[0];
 	}
 
@@ -777,6 +787,7 @@ function activateAssistantTurn(prev: ChatMessage[], startedAt: number, restorePe
 	const copy = [...prev];
 	copy[copy.length - 1] = {
 		...last,
+		phase: "streaming",
 		startedAt,
 		timestamp: last.timestamp ?? startedAt,
 		endedAt: undefined,
@@ -787,29 +798,30 @@ function activateAssistantTurn(prev: ChatMessage[], startedAt: number, restorePe
 }
 
 /** Project agent_start into the message list before the provider emits its first content event. */
-export function startAssistantTurn(prev: ChatMessage[], startedAt: number): ChatMessage[] {
+export function startAssistantTurn(prev: ChatConversationItem[], startedAt: number): ChatConversationItem[] {
 	return activateAssistantTurn(prev, startedAt, false);
 }
 
 /** Restore the live assistant draft and unresolved tool state after switching back to a running session. */
-export function restoreAssistantTurn(prev: ChatMessage[], startedAt: number): ChatMessage[] {
+export function restoreAssistantTurn(prev: ChatConversationItem[], startedAt: number): ChatConversationItem[] {
 	return activateAssistantTurn(prev, startedAt, true);
 }
 
 /** Absolute start time for the assistant draft that currently owns the tail of the conversation. */
-export function getActiveAssistantTurnStartedAt(messages: ChatMessage[]): number | undefined {
+export function getActiveAssistantTurnStartedAt(messages: ChatConversationItem[]): number | undefined {
 	const last = messages.at(-1);
-	return last?.role === "assistant" && last.endedAt === undefined ? last.startedAt : undefined;
+	return last?.kind === "agent" && last.endedAt === undefined ? last.startedAt : undefined;
 }
 
 /** Finish the current assistant turn using its message-owned absolute start time. */
-export function finishAssistantTurn(prev: ChatMessage[], endedAt: number): ChatMessage[] {
+export function finishAssistantTurn(prev: ChatConversationItem[], endedAt: number): ChatConversationItem[] {
 	for (let index = prev.length - 1; index >= 0; index--) {
 		const message = prev[index];
-		if (message.role !== "assistant" || message.startedAt === undefined || message.endedAt !== undefined) continue;
+		if (message.kind !== "agent" || message.startedAt === undefined || message.endedAt !== undefined) continue;
 		const copy = [...prev];
 		copy[index] = {
 			...message,
+			phase: message.blocks.some((block) => block.type === "error") ? "failed" : "completed",
 			endedAt,
 			durationSeconds: Math.max(0, endedAt - message.startedAt) / 1000,
 		};
@@ -826,7 +838,10 @@ export function finishAssistantTurn(prev: ChatMessage[], endedAt: number): ChatM
  * Ensure a draft assistant message exists for the current turn.
  * Returns [newMessages, draftIndex]. Creates a new draft if needed.
  */
-export function ensureDraft(prev: ChatMessage[], startedAt: number = Date.now()): [ChatMessage[], number] {
+export function ensureDraft(
+	prev: ChatConversationItem[],
+	startedAt: number = Date.now(),
+): [ChatConversationItem[], number] {
 	if (draftId) {
 		// Find existing draft
 		for (let i = prev.length - 1; i >= 0; i--) {
@@ -841,14 +856,14 @@ export function ensureDraft(prev: ChatMessage[], startedAt: number = Date.now())
 	const id = nextId("draft");
 	draftId = id;
 	const draftTimestamp = startedAt;
-	const draft: ChatMessage = {
+	const draft = createConversationAgentMessage({
 		id,
-		role: "assistant",
+		phase: "streaming",
 		text: "",
 		blocks: [],
 		timestamp: draftTimestamp,
 		startedAt: draftTimestamp,
-	};
+	});
 	const copy = [...prev, draft];
 	return [copy, copy.length - 1];
 }
@@ -856,10 +871,10 @@ export function ensureDraft(prev: ChatMessage[], startedAt: number = Date.now())
 /**
  * Append a text delta to a draft message's last text block (or create one).
  */
-export function appendTextDelta(prev: ChatMessage[], delta: string): ChatMessage[] {
+export function appendTextDelta(prev: ChatConversationItem[], delta: string): ChatConversationItem[] {
 	const [msgs, idx] = ensureDraft(prev);
-	const msg = msgs[idx];
-	const blocks = [...(msg.blocks ?? [])];
+	const msg = requireAgentMessage(msgs[idx]);
+	const blocks = [...msg.blocks];
 	const last = blocks.at(-1);
 
 	if (last?.type === "text") {
@@ -868,17 +883,17 @@ export function appendTextDelta(prev: ChatMessage[], delta: string): ChatMessage
 		blocks.push({ type: "text", id: nextId("blk"), text: delta });
 	}
 
-	msgs[idx] = { ...msg, text: msg.text + delta, blocks };
+	msgs[idx] = { ...msg, text: `${msg.text ?? ""}${delta}`, blocks };
 	return msgs;
 }
 
 /**
  * Append a thinking delta to a draft message's last thinking block (or create one).
  */
-export function appendThinkingDelta(prev: ChatMessage[], delta: string): ChatMessage[] {
+export function appendThinkingDelta(prev: ChatConversationItem[], delta: string): ChatConversationItem[] {
 	const [msgs, idx] = ensureDraft(prev);
-	const msg = msgs[idx];
-	const blocks = [...(msg.blocks ?? [])];
+	const msg = requireAgentMessage(msgs[idx]);
+	const blocks = [...msg.blocks];
 	const last = blocks.at(-1);
 
 	if (last?.type === "thinking") {
@@ -904,7 +919,7 @@ export function appendThinkingDelta(prev: ChatMessage[], delta: string): ChatMes
  *   blocks exist with correct args.
  * - draftId is NOT cleared here — it persists until resetStreamState() at agent_end.
  */
-export function finalizeMessage(prev: ChatMessage[], content: unknown, usage?: Usage): ChatMessage[] {
+export function finalizeMessage(prev: ChatConversationItem[], content: unknown, usage?: Usage): ChatConversationItem[] {
 	const copy = [...prev];
 
 	// Parse tool calls from the final message
@@ -934,7 +949,7 @@ export function finalizeMessage(prev: ChatMessage[], content: unknown, usage?: U
 	if (targetIdx === -1) {
 		// No draft — find last assistant message or create one
 		for (let i = copy.length - 1; i >= 0; i--) {
-			if (copy[i].role === "assistant") {
+			if (copy[i].kind === "agent") {
 				targetIdx = i;
 				break;
 			}
@@ -943,20 +958,22 @@ export function finalizeMessage(prev: ChatMessage[], content: unknown, usage?: U
 			const id = nextId("final");
 			draftId = id;
 			const draftTimestamp = Date.now();
-			copy.push({
-				id,
-				role: "assistant",
-				text: "",
-				blocks: [],
-				timestamp: draftTimestamp,
-				startedAt: draftTimestamp,
-			});
+			copy.push(
+				createConversationAgentMessage({
+					id,
+					phase: "streaming",
+					text: "",
+					blocks: [],
+					timestamp: draftTimestamp,
+					startedAt: draftTimestamp,
+				}),
+			);
 			targetIdx = copy.length - 1;
 		}
 	}
 
-	const msg = copy[targetIdx];
-	const blocks = [...(msg.blocks ?? [])];
+	const msg = requireAgentMessage(copy[targetIdx]);
+	const blocks = [...msg.blocks];
 
 	// Collect existing tool_call IDs
 	const existingToolIds = new Set<string>();
@@ -1007,20 +1024,20 @@ export function finalizeMessage(prev: ChatMessage[], content: unknown, usage?: U
  * Handle tool.start: find or create a tool_call block on the last assistant message.
  */
 export function handleToolStart(
-	prev: ChatMessage[],
+	prev: ChatConversationItem[],
 	toolCallId: string,
 	toolName: string,
 	args: Record<string, unknown>,
 	startedAt?: number,
-): ChatMessage[] {
+): ChatConversationItem[] {
 	// First: search for a finalized message from the current turn (not a draft)
 	// or the current draft. We only want to attach to the LAST assistant message
 	// that belongs to the current turn, not older history messages.
 	const lastMsg = prev.length > 0 ? prev[prev.length - 1] : null;
 
 	// If the last message is an assistant message, attach to it
-	if (lastMsg?.role === "assistant") {
-		const blocks = [...(lastMsg.blocks ?? [])];
+	if (lastMsg?.kind === "agent") {
+		const blocks = [...lastMsg.blocks];
 
 		// Check if this tool_call block already exists (from toolcall.start or message.final)
 		const existing = blocks.findIndex((b) => b.type === "tool_call" && b.toolCallId === toolCallId);
@@ -1057,8 +1074,8 @@ export function handleToolStart(
 
 	// No recent assistant message — use ensureDraft to keep one turn = one message
 	const [msgs, idx] = ensureDraft(prev);
-	const msg = msgs[idx];
-	const blocks = [...(msg.blocks ?? [])];
+	const msg = requireAgentMessage(msgs[idx]);
+	const blocks = [...msg.blocks];
 	blocks.push({
 		type: "tool_call",
 		toolCallId,
@@ -1075,12 +1092,12 @@ export function handleToolStart(
  * Handle tool.end: find the matching tool_call block and update it with the result.
  */
 export function handleToolEnd(
-	prev: ChatMessage[],
+	prev: ChatConversationItem[],
 	toolCallId: string,
 	result: unknown,
 	isError: boolean,
 	timing?: { startedAt: number; durationMs: number; phases: Array<{ label: string; atMs: number }> },
-): ChatMessage[] {
+): ChatConversationItem[] {
 	const resultText = extractResultText(result);
 	const imagePreviews = extractToolImagePreviews(result, undefined);
 	const imagePreview = imagePreviews[0];
@@ -1092,7 +1109,7 @@ export function handleToolEnd(
 	// Search backwards for the matching tool_call block
 	for (let i = prev.length - 1; i >= 0; i--) {
 		const msg = prev[i];
-		if (msg.role !== "assistant" || !msg.blocks) continue;
+		if (msg.kind !== "agent") continue;
 
 		const blockIdx = msg.blocks.findIndex((b) => b.type === "tool_call" && b.toolCallId === toolCallId);
 		if (blockIdx === -1) continue;
@@ -1129,10 +1146,15 @@ export function handleToolEnd(
  * while it's still streaming, and mark it as the live "currentPhase" for header
  * display. Both are out-of-band metadata — never sent to the LLM.
  */
-export function handleToolPhase(prev: ChatMessage[], toolCallId: string, label: string, atMs: number): ChatMessage[] {
+export function handleToolPhase(
+	prev: ChatConversationItem[],
+	toolCallId: string,
+	label: string,
+	atMs: number,
+): ChatConversationItem[] {
 	for (let i = prev.length - 1; i >= 0; i--) {
 		const msg = prev[i];
-		if (msg.role !== "assistant" || !msg.blocks) continue;
+		if (msg.kind !== "agent") continue;
 
 		const blockIdx = msg.blocks.findIndex((b) => b.type === "tool_call" && b.toolCallId === toolCallId);
 		if (blockIdx === -1) continue;
@@ -1158,15 +1180,15 @@ export function handleToolPhase(prev: ChatMessage[], toolCallId: string, label: 
  * @param attempts 这条错误发出前自动重试过的次数（runtime-core 随 error 事件带出）。
  */
 export function appendError(
-	prev: ChatMessage[],
+	prev: ChatConversationItem[],
 	errorMessage: string,
 	attempts?: number,
 	turnId?: string,
 	details?: ChatErrorDetails,
-): ChatMessage[] {
+): ChatConversationItem[] {
 	const [msgs, idx] = ensureDraft(prev);
-	const msg = msgs[idx];
-	const blocks = [...(msg.blocks ?? [])];
+	const msg = requireAgentMessage(msgs[idx]);
+	const blocks = [...msg.blocks];
 	if (turnId) {
 		const existingIndex = blocks.findIndex((block) => block.type === "error" && block.turnId === turnId);
 		const existing = existingIndex >= 0 ? blocks[existingIndex] : undefined;
@@ -1198,7 +1220,10 @@ export function appendError(
 // Ref-based variants (for components that manage their own draft state)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function ensureDraftWithRef(prev: ChatMessage[], draftIdRef: { current: string | null }): [ChatMessage[], number] {
+function ensureDraftWithRef(
+	prev: ChatConversationItem[],
+	draftIdRef: { current: string | null },
+): [ChatConversationItem[], number] {
 	if (draftIdRef.current) {
 		for (let i = prev.length - 1; i >= 0; i--) {
 			if (prev[i].id === draftIdRef.current) {
@@ -1209,19 +1234,22 @@ function ensureDraftWithRef(prev: ChatMessage[], draftIdRef: { current: string |
 	const id = nextId("draft");
 	draftIdRef.current = id;
 	const draftTimestamp = Date.now();
-	const draft: ChatMessage = {
+	const draft = createConversationAgentMessage({
 		id,
-		role: "assistant",
+		phase: "streaming",
 		text: "",
 		blocks: [],
 		timestamp: draftTimestamp,
 		startedAt: draftTimestamp,
-	};
+	});
 	const copy = [...prev, draft];
 	return [copy, copy.length - 1];
 }
 
-export function clearDraftMessage(prev: ChatMessage[], draftIdRef: { current: string | null }): ChatMessage[] {
+export function clearDraftMessage(
+	prev: ChatConversationItem[],
+	draftIdRef: { current: string | null },
+): ChatConversationItem[] {
 	const did = draftIdRef.current;
 	if (!did) return prev;
 	const idx = prev.findIndex((m) => m.id === did);
@@ -1233,31 +1261,31 @@ export function clearDraftMessage(prev: ChatMessage[], draftIdRef: { current: st
 }
 
 export function appendTextDeltaWithRef(
-	prev: ChatMessage[],
+	prev: ChatConversationItem[],
 	delta: string,
 	draftIdRef: { current: string | null },
-): ChatMessage[] {
+): ChatConversationItem[] {
 	const [msgs, idx] = ensureDraftWithRef(prev, draftIdRef);
-	const msg = msgs[idx];
-	const blocks = [...(msg.blocks ?? [])];
+	const msg = requireAgentMessage(msgs[idx]);
+	const blocks = [...msg.blocks];
 	const last = blocks.at(-1);
 	if (last?.type === "text") {
 		blocks[blocks.length - 1] = { ...last, text: last.text + delta };
 	} else {
 		blocks.push({ type: "text", id: nextId("blk"), text: delta });
 	}
-	msgs[idx] = { ...msg, text: msg.text + delta, blocks };
+	msgs[idx] = { ...msg, text: `${msg.text ?? ""}${delta}`, blocks };
 	return msgs;
 }
 
 export function appendThinkingDeltaWithRef(
-	prev: ChatMessage[],
+	prev: ChatConversationItem[],
 	delta: string,
 	draftIdRef: { current: string | null },
-): ChatMessage[] {
+): ChatConversationItem[] {
 	const [msgs, idx] = ensureDraftWithRef(prev, draftIdRef);
-	const msg = msgs[idx];
-	const blocks = [...(msg.blocks ?? [])];
+	const msg = requireAgentMessage(msgs[idx]);
+	const blocks = [...msg.blocks];
 	const last = blocks.at(-1);
 	if (last?.type === "thinking") {
 		blocks[blocks.length - 1] = { ...last, text: last.text + delta };

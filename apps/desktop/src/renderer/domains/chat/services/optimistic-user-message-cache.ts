@@ -1,7 +1,8 @@
-import type { ChatMessage } from "@shared/store/atoms";
+import type { ConversationUserMessageViewModel } from "@shared/conversation";
+import type { ChatConversationItem } from "@shared/store/atoms";
 
 interface PendingOptimisticUserMessage {
-	message: ChatMessage;
+	message: ConversationUserMessageViewModel;
 	precedingUserCount: number;
 	/**
 	 * 队列镜像补的气泡只有 displayText，没有规范消息才有的 attachments /
@@ -20,8 +21,8 @@ const pendingByRuntimeId = new Map<string, PendingOptimisticUserMessage[]>();
  */
 export function rememberOptimisticUserMessage(
 	runtimeId: string,
-	message: ChatMessage,
-	currentMessages: readonly ChatMessage[],
+	message: ConversationUserMessageViewModel,
+	currentMessages: readonly ChatConversationItem[],
 	options?: { matchTextOnly?: boolean },
 ): void {
 	const pending = pendingByRuntimeId.get(runtimeId) ?? [];
@@ -29,7 +30,7 @@ export function rememberOptimisticUserMessage(
 		...pending,
 		{
 			message,
-			precedingUserCount: currentMessages.filter((item) => item.role === "user").length,
+			precedingUserCount: currentMessages.filter((item) => item.kind === "user").length,
 			...(options?.matchTextOnly ? { matchTextOnly: true } : {}),
 		},
 	]);
@@ -40,11 +41,16 @@ export function rememberOptimisticUserMessage(
  * Text is checked at the recorded ordinal so an identical older prompt cannot
  * accidentally acknowledge a newer pending send.
  */
-export function reconcileOptimisticUserMessages(runtimeId: string, history: readonly ChatMessage[]): ChatMessage[] {
+export function reconcileOptimisticUserMessages(
+	runtimeId: string,
+	history: readonly ChatConversationItem[],
+): ChatConversationItem[] {
 	const pending = pendingByRuntimeId.get(runtimeId);
 	if (!pending?.length) return [...history];
 
-	const canonicalUsers = history.filter((message) => message.role === "user");
+	const canonicalUsers = history.filter(
+		(message): message is ConversationUserMessageViewModel => message.kind === "user",
+	);
 	const unresolved = pending.filter(({ message, precedingUserCount, matchTextOnly }) => {
 		const canonical = canonicalUsers[precedingUserCount];
 		if (!canonical) return true;
@@ -69,7 +75,10 @@ export function clearOptimisticUserMessages(runtimeId?: string): void {
 	pendingByRuntimeId.clear();
 }
 
-function sameUserMessage(canonical: ChatMessage, optimistic: ChatMessage): boolean {
+function sameUserMessage(
+	canonical: ConversationUserMessageViewModel,
+	optimistic: ConversationUserMessageViewModel,
+): boolean {
 	return (
 		sameText(canonical.text, optimistic.text) &&
 		canonical.settingsAssistTabId === optimistic.settingsAssistTabId &&
@@ -82,12 +91,18 @@ function sameText(canonical: string, optimistic: string): boolean {
 	return canonical === optimistic || (optimistic === "" && canonical === "(see attached content)");
 }
 
-function samePromptRef(a: ChatMessage["promptRef"], b: ChatMessage["promptRef"]): boolean {
+function samePromptRef(
+	a: ConversationUserMessageViewModel["promptRef"],
+	b: ConversationUserMessageViewModel["promptRef"],
+): boolean {
 	if (!a || !b) return a === b;
 	return a.kind === b.kind && a.name === b.name;
 }
 
-function sameAttachments(a: ChatMessage["attachments"], b: ChatMessage["attachments"]): boolean {
+function sameAttachments(
+	a: ConversationUserMessageViewModel["attachments"],
+	b: ConversationUserMessageViewModel["attachments"],
+): boolean {
 	const left = a ?? [];
 	const right = b ?? [];
 	return (

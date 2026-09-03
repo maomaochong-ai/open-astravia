@@ -14,8 +14,10 @@ import {
 	selectConversationDocumentModelMessages,
 } from "@vetta/runtime-core/conversation";
 import type { ContextCompactionRecord, ContextPreparationInput } from "@vetta/runtime-core/kernel";
+import type { CodingAgentPinnedModelContext } from "../../runtime-contracts/index.js";
 import type { CodingAgentSessionEntry as SessionEntry } from "../../sessions/index.js";
 import { restoreCodingAgentSessionAgentMessageEntry } from "../../sessions/index.js";
+import { projectPinnedConversationDocument } from "./pinned-conversation-projection.js";
 
 export function toCompactionSessionEntries(document: ConversationDocument): SessionEntry[] {
 	return selectConversationDocumentEntries(document).flatMap((entry) => {
@@ -117,6 +119,7 @@ export function projectCompactedHistory(
 	sessionId: string,
 	turnId: string,
 	record: ContextCompactionRecord,
+	pinnedContext?: CodingAgentPinnedModelContext,
 ): readonly Message[] {
 	const sequence = document.journalVersion + 1;
 	const projected = applyStoredEventToConversationDocument(
@@ -135,7 +138,7 @@ export function projectCompactedHistory(
 			timestamp: new Date(record.summaryMessage.timestamp).toISOString(),
 		},
 	);
-	return selectConversationDocumentModelMessages(projected);
+	return selectConversationDocumentModelMessages(projectPinnedConversationDocument(projected, pinnedContext));
 }
 
 export function isRuntimeMessage(value: unknown): value is Message {

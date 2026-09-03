@@ -1,12 +1,12 @@
-import type { ChatMessage } from "@shared/store/atoms";
+import type { ChatConversationItem } from "@shared/store/atoms";
 import type { MessageListScrollModel } from "../../hooks/useMessageListScrollModel";
 import type { AssistantFoldData, BlockSegment } from "./messageBlockModel";
 import type { WorkSegment } from "./progressGroupModel";
 
-export type { ChatMessage };
+export type { ChatConversationItem };
 
 export interface MessageListProps {
-	messages: ChatMessage[];
+	messages: ChatConversationItem[];
 	isStreaming: boolean;
 	sessionId?: string | null;
 	pendingLabel?: string;
@@ -19,7 +19,7 @@ export interface MessageListModel {
 	parentSessionPath?: string;
 	isCompacting: boolean;
 	isStreaming: boolean;
-	messages: ChatMessage[];
+	messages: ChatConversationItem[];
 	modelSwitchLabels: Map<string, string>;
 	scroll: MessageListScrollModel;
 	waitingForResponse: boolean;

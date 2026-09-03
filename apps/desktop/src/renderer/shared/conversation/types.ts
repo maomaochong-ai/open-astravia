@@ -1,37 +1,89 @@
 import type { Usage } from "@vetta/ai";
-import type { PromptAttachmentRef } from "@vetta/runtime-core";
-import type { ContentBlock } from "../store/chat-atoms";
+import type { PromptAttachmentRef, PromptResourceRef } from "@vetta/runtime-core";
+import type { ContentBlock } from "./content-blocks";
 
 export interface ConversationMessageViewModelBase {
-	readonly id: string;
-	readonly entryId?: string;
-	readonly parentId?: string | null;
-	readonly turnId: string;
-	readonly authorId: string;
-	readonly timestamp?: number;
+	id: string;
+	entryId?: string;
+	parentId?: string | null;
+	turnId: string;
+	authorId: string;
+	timestamp?: number;
 }
 
 export interface ConversationUserMessageViewModel extends ConversationMessageViewModelBase {
-	readonly kind: "user";
-	readonly role: "user";
-	readonly deliveryPhase: "pending" | "completed" | "failed";
-	readonly text: string;
-	readonly images?: readonly { readonly id: string; readonly url: string; readonly alt: string }[];
-	readonly attachments?: readonly PromptAttachmentRef[];
+	kind: "user";
+	role: "user";
+	deliveryPhase: "pending" | "completed" | "failed";
+	text: string;
+	branch?: ConversationMessageBranchViewModel;
+	images?: ConversationMessageImageViewModel[];
+	model?: { provider: string; id: string };
+	appshot?: AppshotAttachment;
+	mentionedFiles?: MentionedFile[];
+	settingsAssistTabId?: string;
+	promptRef?: PromptResourceRef;
+	attachments?: PromptAttachmentRef[];
 }
 
 export interface ConversationAgentMessageViewModel extends ConversationMessageViewModelBase {
-	readonly kind: "agent";
-	readonly role: "assistant";
-	readonly phase: "pending" | "streaming" | "completed" | "failed" | "aborted" | "waiting";
-	readonly blocks: readonly ContentBlock[];
-	readonly usages?: readonly Usage[];
-	readonly startedAt?: number;
-	readonly endedAt?: number;
-	readonly durationSeconds?: number;
+	kind: "agent";
+	role: "assistant";
+	phase: "pending" | "streaming" | "completed" | "failed" | "aborted" | "waiting";
+	/** Optional derived plain text used by search/export; rich rendering always uses blocks. */
+	text?: string;
+	blocks: ContentBlock[];
+	usages?: Usage[];
+	startedAt?: number;
+	endedAt?: number;
+	durationSeconds?: number;
 }
 
 export type ConversationMessageViewModel = ConversationUserMessageViewModel | ConversationAgentMessageViewModel;
+
+export interface ConversationMessageBranchViewModel {
+	siblings: string[];
+	index: number;
+}
+
+export interface ConversationMessageImageViewModel {
+	data: string;
+	mimeType: string;
+	name: string;
+}
+
+export interface AppshotAttachment {
+	id: string;
+	appName: string;
+	windowTitle: string;
+	documentPath: string | null;
+	imagePath: string | null;
+	iconPath: string | null;
+	textPath: string | null;
+	capturedAt: number;
+}
+
+export interface MentionedFile {
+	path: string;
+	name: string;
+	isDirectory: boolean;
+	sizeBytes?: number;
+}
+
+export interface ConversationCompactionEventViewModel {
+	readonly kind: "compaction";
+	readonly summary: string;
+}
+
+export type ConversationTimelineItemViewModel<EventViewModel extends { readonly kind: string }> =
+	| ConversationMessageViewModel
+	| {
+			readonly kind: "event";
+			readonly id: string;
+			readonly entryId?: string;
+			readonly timestamp?: number;
+			readonly event: EventViewModel;
+	  };
 
 export interface ConversationParticipantViewModel {
 	readonly id: string;

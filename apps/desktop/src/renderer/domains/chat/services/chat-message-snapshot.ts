@@ -1,7 +1,7 @@
-import type { ChatMessage } from "@shared/store/atoms";
+import type { ChatConversationItem } from "@shared/store/atoms";
 
 export interface SharedChatMessageSnapshot {
-	messages: ChatMessage[];
+	messages: ChatConversationItem[];
 	reusedCount: number;
 }
 
@@ -14,18 +14,18 @@ export interface SharedChatMessageSnapshot {
  * contract is unchanged. React.memo can then retain already-painted rows while
  * still replacing any message that Runtime canonicalization actually changed.
  *
- * ChatMessage is a JSON-compatible renderer DTO. Keep this comparison out of
+ * ChatConversationItem is a JSON-compatible renderer DTO. Keep this comparison out of
  * render paths: it is only meant for the one-off preview -> canonical handoff.
  */
 export function shareChatMessageSnapshot(
-	preview: readonly ChatMessage[],
-	canonical: readonly ChatMessage[],
+	preview: readonly ChatConversationItem[],
+	canonical: readonly ChatConversationItem[],
 ): SharedChatMessageSnapshot {
 	if (preview === canonical) {
-		return { messages: preview as ChatMessage[], reusedCount: preview.length };
+		return { messages: preview as ChatConversationItem[], reusedCount: preview.length };
 	}
 	if (preview.length === 0 || canonical.length === 0) {
-		return { messages: canonical as ChatMessage[], reusedCount: 0 };
+		return { messages: canonical as ChatConversationItem[], reusedCount: 0 };
 	}
 
 	const previewById = new Map(preview.map((message) => [message.id, message]));
@@ -44,7 +44,7 @@ export function shareChatMessageSnapshot(
 		reusedCount === canonical.length &&
 		messages.every((message, index) => message === preview[index])
 	) {
-		return { messages: preview as ChatMessage[], reusedCount };
+		return { messages: preview as ChatConversationItem[], reusedCount };
 	}
 	return { messages, reusedCount };
 }
@@ -54,11 +54,11 @@ export function shareChatMessageSnapshot(
  * replacing that persisted base with Runtime-canonical history.
  */
 export function preserveMessagesAddedAfterSnapshot(
-	preview: readonly ChatMessage[],
-	canonical: readonly ChatMessage[],
-	current: readonly ChatMessage[],
-): ChatMessage[] {
+	preview: readonly ChatConversationItem[],
+	canonical: readonly ChatConversationItem[],
+	current: readonly ChatConversationItem[],
+): ChatConversationItem[] {
 	const previewIds = new Set(preview.map((message) => message.id));
 	const additions = current.filter((message) => !previewIds.has(message.id));
-	return additions.length === 0 ? (canonical as ChatMessage[]) : [...canonical, ...additions];
+	return additions.length === 0 ? (canonical as ChatConversationItem[]) : [...canonical, ...additions];
 }

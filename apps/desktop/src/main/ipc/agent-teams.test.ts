@@ -33,8 +33,9 @@ function dependencies(): AgentTeamsIpcDependencies {
 		},
 		sessions: {
 			create: vi.fn(),
-			read: vi.fn(),
+			readSnapshot: vi.fn(),
 			send: vi.fn(),
+			snapshot: vi.fn((session) => ({ session, conversationRevision: 0, messages: [], activities: [] })),
 			subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
 			abort: vi.fn(),
 		},
@@ -68,19 +69,33 @@ describe("Agent Team IPC contract", () => {
 		expect(deps.store.createAgent).toHaveBeenCalledOnce();
 	});
 
-	it("rejects unknown message fields and removes every registered handler", () => {
+	it("rejects unknown message fields and removes every registered handler", async () => {
 		const deps = dependencies();
 		const teardown = registerAgentTeamsIpc(deps);
 		const sendMessage = ipc.handlers.get("vetta:agent-teams:send-message");
 		if (!sendMessage) throw new Error("send-message handler was not registered");
 
-		expect(() =>
+		await expect(
 			sendMessage({}, "session", { requestId: "request", text: "Hello", targetMemberIds: [], privateTrace: true }),
-		).toThrow("Invalid send team message input");
+		).rejects.toThrow("Invalid send team message input");
 		expect(deps.sessions.send).not.toHaveBeenCalled();
 
 		teardown();
 		expect(ipc.removed).toHaveLength(ipc.handlers.size);
+	});
+
+	it("passes an ordinary Conversation bookmark when reopening a Team session", async () => {
+		const deps = dependencies();
+		registerAgentTeamsIpc(deps);
+		const getSession = ipc.handlers.get("vetta:agent-teams:get-session");
+		if (!getSession) throw new Error("get-session handler was not registered");
+
+		await getSession({}, { id: "session", coordinationSessionPath: "C:/runtime/session.jsonl" });
+		expect(deps.sessions.readSnapshot).toHaveBeenCalledWith("session", "C:/runtime/session.jsonl");
+
+		expect(() =>
+			getSession({}, { id: "session", coordinationSessionPath: "C:/runtime/session.jsonl", privateState: true }),
+		).toThrow("Invalid Team session reference");
 	});
 
 	it("bridges stream subscriptions and abort requests", async () => {
@@ -94,21 +109,26 @@ describe("Agent Team IPC contract", () => {
 				snapshot: {
 					type: "session-snapshot" as const,
 					teamSessionId: "session",
-					session: {
-						schemaVersion: 1 as const,
-						revision: 0,
-						id: "session",
-						teamId: "team",
-						name: "Team",
-						cwd: "C:/workspace",
-						leaderMemberId: "leader",
-						memberHandles: { leader: "vetta" },
-						createdAt: 1,
-						updatedAt: 1,
-						events: [],
-						memberRuntime: {},
+					snapshot: {
+						session: {
+							schemaVersion: 1 as const,
+							revision: 0,
+							id: "session",
+							teamId: "team",
+							name: "Team",
+							cwd: "C:/workspace",
+							leaderMemberId: "leader",
+							memberHandles: { leader: "vetta" },
+							createdAt: 1,
+							updatedAt: 1,
+							events: [],
+							memberRuntime: {},
+						},
+						conversationRevision: 0,
+						messages: [],
+						activities: [],
 					},
-					activeTurns: [],
+					activeMessageEvents: [],
 				},
 			};
 		});
@@ -127,19 +147,19 @@ describe("Agent Team IPC contract", () => {
 		};
 		expect(result.initial.type).toBe("session-snapshot");
 		streamHandler({
-			type: "member-delta",
-			teamSessionId: "session",
-			memberId: "m",
-			requestId: "r",
-			turnId: "turn",
-			seq: 1,
-			delta: "hi",
+			type: "conversation.agent-message-discard",
+			conversationId: "session",
+			messageId: "message",
+			turnId: "request",
+			author: { kind: "agent", id: "m" },
+			sequence: 1,
+			reason: "completed",
 			timestamp: 1,
 		});
 		expect(sender.send).toHaveBeenCalledWith(
 			"vetta:agent-teams:stream-event",
 			result.subscriptionId,
-			expect.objectContaining({ type: "member-delta", delta: "hi" }),
+			expect.objectContaining({ type: "conversation.agent-message-discard", reason: "completed" }),
 		);
 		const onDestroyed = sender.once.mock.calls[0]?.[1] as (() => void) | undefined;
 		onDestroyed?.();

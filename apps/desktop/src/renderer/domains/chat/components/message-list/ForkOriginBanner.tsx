@@ -9,11 +9,12 @@ import { ForkOriginBannerView } from "@vetta/theme-ui/chat";
 import { getDefaultStore, useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import type { ChatMessage } from "./types";
+import type { ConversationUserMessageViewModel } from "@shared/conversation";
+import type { ChatConversationItem } from "./types";
 
 interface ForkOriginBannerProps {
 	/** Source user message text for preview (the forked bubble). */
-	sourceMessage?: ChatMessage;
+	sourceMessage?: ConversationUserMessageViewModel;
 }
 
 function previewText(text: string | undefined, max = 48): string {
@@ -71,7 +72,7 @@ export interface ForkOriginPlacement {
  * (user + following non-user messages; tip = last assistant/compaction in that turn).
  */
 export function resolveForkOriginPlacement(
-	messages: ChatMessage[],
+	messages: ChatConversationItem[],
 	parentEntryId: string | undefined,
 	hasParentSession: boolean,
 ): ForkOriginPlacement | null {
@@ -80,13 +81,13 @@ export function resolveForkOriginPlacement(
 	let sourceUserIndex = -1;
 	if (parentEntryId) {
 		sourceUserIndex = messages.findIndex(
-			(m) => m.role === "user" && (m.entryId === parentEntryId || m.id === parentEntryId),
+			(m) => m.kind === "user" && (m.entryId === parentEntryId || m.id === parentEntryId),
 		);
 	}
 	if (sourceUserIndex < 0) {
 		// Older forks without parentEntryId: last user message in the export.
 		for (let i = messages.length - 1; i >= 0; i--) {
-			if (messages[i].role === "user") {
+			if (messages[i].kind === "user") {
 				sourceUserIndex = i;
 				break;
 			}
@@ -97,7 +98,7 @@ export function resolveForkOriginPlacement(
 	// Walk forward past assistant/compaction of this turn; stop before next user.
 	let anchorIndex = sourceUserIndex;
 	for (let i = sourceUserIndex + 1; i < messages.length; i++) {
-		if (messages[i].role === "user") break;
+		if (messages[i].kind === "user") break;
 		anchorIndex = i;
 	}
 	return { anchorIndex, sourceUserIndex };

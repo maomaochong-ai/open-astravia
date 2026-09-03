@@ -34,7 +34,7 @@ vi.mock("@vetta/theme-ui/chat", () => ({
 		</button>
 	),
 }));
-vi.mock("./TeamMessageFeed", () => ({ TeamMessageFeed: () => <div>timeline</div> }));
+vi.mock("./TeamConversationFeed", () => ({ TeamConversationFeed: () => <div>timeline</div> }));
 vi.mock("./TeamRecipientSelector", () => ({ TeamRecipientSelector: () => <div>members</div> }));
 
 afterEach(cleanup);
@@ -88,7 +88,7 @@ function model(
 		history: [],
 		attachments: [],
 		members: [],
-		timelineItems: [],
+		feedItems: [],
 		markdown,
 		editorEnabled,
 		canSend: status === "ready",

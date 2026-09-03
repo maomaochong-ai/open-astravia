@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { TeamSessionReference } from "@vetta/agent-team";
 import {
 	parseCreateAgentProfileInput,
 	parseCreateTeamInput,
@@ -36,6 +37,24 @@ function requiredString(value: unknown, field: string): string {
 	return value;
 }
 
+function teamSessionReference(value: unknown): { readonly id: string; readonly coordinationSessionPath?: string } {
+	if (typeof value === "string") return { id: requiredString(value, "sessionId") };
+	if (
+		typeof value !== "object" ||
+		value === null ||
+		Object.keys(value).some((key) => key !== "id" && key !== "coordinationSessionPath") ||
+		!("id" in value) ||
+		!("coordinationSessionPath" in value)
+	) {
+		throw new Error("Invalid Team session reference");
+	}
+	const reference = value as TeamSessionReference;
+	return {
+		id: requiredString(reference.id, "sessionId"),
+		coordinationSessionPath: requiredString(reference.coordinationSessionPath, "coordinationSessionPath"),
+	};
+}
+
 export interface AgentTeamsIpcDependencies {
 	readonly store: Pick<
 		typeof agentTeamStore,
@@ -50,7 +69,10 @@ export interface AgentTeamsIpcDependencies {
 		| "updateTeam"
 		| "deleteTeam"
 	>;
-	readonly sessions: Pick<typeof agentTeamSessionService, "create" | "read" | "send" | "subscribe" | "abort">;
+	readonly sessions: Pick<
+		typeof agentTeamSessionService,
+		"create" | "readSnapshot" | "send" | "snapshot" | "subscribe" | "abort"
+	>;
 }
 
 export function registerAgentTeamsIpc(
@@ -86,11 +108,14 @@ export function registerAgentTeamsIpc(
 		const document = await store.read();
 		const team = document.teams.find((candidate) => candidate.id === requiredString(teamId, "teamId"));
 		if (!team) throw new Error("Team not found");
-		return sessions.create(team, document, requiredString(cwd, "cwd"));
+		return sessions.snapshot(await sessions.create(team, document, requiredString(cwd, "cwd")));
 	});
-	ipcMain.handle(CHANNELS.GET_SESSION, (_event, id: unknown) => sessions.read(requiredString(id, "sessionId")));
-	ipcMain.handle(CHANNELS.SEND_MESSAGE, (_event, id: unknown, input: unknown) =>
-		sessions.send(requiredString(id, "sessionId"), parseSendTeamMessageInput(input)),
+	ipcMain.handle(CHANNELS.GET_SESSION, (_event, value: unknown) => {
+		const reference = teamSessionReference(value);
+		return sessions.readSnapshot(reference.id, reference.coordinationSessionPath);
+	});
+	ipcMain.handle(CHANNELS.SEND_MESSAGE, async (_event, id: unknown, input: unknown) =>
+		sessions.snapshot(await sessions.send(requiredString(id, "sessionId"), parseSendTeamMessageInput(input))),
 	);
 	ipcMain.handle(CHANNELS.ABORT, (_event, id: unknown) => sessions.abort(requiredString(id, "sessionId")));
 	ipcMain.handle(CHANNELS.SUBSCRIBE, async (event, id: unknown) => {

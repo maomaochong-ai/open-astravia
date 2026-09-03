@@ -16,6 +16,21 @@ import {
 import { preparePrompt } from "./prompt-adapter-test-fixture.js";
 
 describe("Coding Agent model call and prompt runtime", () => {
+	it("projects a session cache partition into every composed frame", async () => {
+		const composer = new CodingAgentModelCallFrameComposer({
+			promptCacheKey: "team-cache",
+			resolveSystemPromptOptions: () => ({ customPrompt: "test", cwd: "C:/workspace" }),
+		});
+		const frame = await composer.compose({
+			sessionId: "member-session",
+			turnId: "turn-1",
+			signal: new AbortController().signal,
+			messages: [],
+			frame: { instructions: [], tools: new Map() },
+		});
+		expect(frame.promptCacheKey).toBe("team-cache");
+	});
+
 	it("projects the complete final Tool surface and maps model-only input before execution", async () => {
 		let executedInput: Readonly<Record<string, unknown>> | undefined;
 		const baseTool = {

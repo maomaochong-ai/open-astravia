@@ -4,6 +4,7 @@
 
 ### Added
 
+- `StreamOptions` 支持独立 `promptCacheKey`；OpenAI、Azure 与 Codex Responses 请求优先用它选择缓存分区，未提供时保持 `sessionId` 回退，连接/会话身份不变。
 - 工具参数校验失败新增公开的 `ToolArgumentsValidationError` 与结构化 `issues`；跨 UI/日志边界可使用
   `formatToolArgumentValidationIssues()` 返回不含原始参数的字段级摘要，原有详细 `message` 保持兼容。
 - `PromptCacheDiagnostics` 新增隐私安全的逐块系统提示词与逐工具指纹，并报告具体 ID/名称的新增、删除、内容和顺序变化；诊断不持久化 Prompt 正文、工具描述或 Schema。

@@ -201,7 +201,7 @@ it("新会话在订阅建立后立即发送，不等待空历史与状态水合"
 	expect(mocks.prompt).toHaveBeenCalledOnce();
 	expect(stateResolved).toBe(true);
 	expect(getFullHistory).not.toHaveBeenCalled();
-	expect(store.get(chatMessagesAtom).some((message) => message.role === "user" && message.text === "立即发送")).toBe(
+	expect(store.get(chatMessagesAtom).some((message) => message.kind === "user" && message.text === "立即发送")).toBe(
 		true,
 	);
 });
@@ -243,7 +243,7 @@ it("失步竞态：以为空闲实则已在跑（回执 queued）时撤掉抢先
 		await manager?.sendMessage();
 	});
 
-	expect(store.get(chatMessagesAtom).filter((m) => m.role === "user")).toEqual([]);
+	expect(store.get(chatMessagesAtom).filter((message) => message.kind === "user")).toEqual([]);
 });
 
 it("turn 内接力消费：第二条回复的流式内容开新气泡、排在补出的用户气泡之后", async () => {
@@ -295,8 +295,9 @@ it("turn 内接力消费：第二条回复的流式内容开新气泡、排在�
 
 	const shape = store
 		.get(chatMessagesAtom)
-		.filter((m) => m.text.length > 0)
-		.map((m) => [m.role, m.text]);
+		.flatMap((message) =>
+			message.kind !== "event" && (message.text?.length ?? 0) > 0 ? [[message.role, message.text]] : [],
+		);
 	expect(shape).toEqual([
 		["assistant", "回答一"],
 		["user", "第二条消息"],
@@ -400,8 +401,9 @@ it("立即发送打断插队：上一回合已 streaming 的部分回复保留�
 
 	const shape = store
 		.get(chatMessagesAtom)
-		.filter((m) => m.text.length > 0)
-		.map((m) => [m.role, m.text]);
+		.flatMap((message) =>
+			message.kind !== "event" && (message.text?.length ?? 0) > 0 ? [[message.role, message.text]] : [],
+		);
 	// 中途快照与 canonical 落地后都必须保留「部分回复」，且顺序正确。
 	expect(shape).toEqual([
 		["user", "第一条"],
@@ -421,7 +423,9 @@ it("空闲发送：正常上屏乐观气泡并返回 sent", async () => {
 	});
 
 	expect(result).toEqual({ status: "sent" });
-	expect(store.get(chatMessagesAtom).map((m) => m.text)).toContain("普通消息");
+	expect(store.get(chatMessagesAtom).flatMap((message) => (message.kind === "event" ? [] : [message.text]))).toContain(
+		"普通消息",
+	);
 });
 
 it("失败回执：即使 error 事件未到达也上屏错误并返回 failed", async () => {
@@ -498,9 +502,10 @@ it("失败收尾：agent_end 的落后历史快照不会清掉刚显示的错误
 			},
 		});
 	});
-	expect(store.get(chatMessagesAtom).at(-1)?.blocks).toEqual([
-		expect.objectContaining({ type: "error", turnId: "turn-failed-1", text: "供应商额度已用完" }),
-	]);
+	expect(store.get(chatMessagesAtom).at(-1)).toMatchObject({
+		kind: "agent",
+		blocks: [expect.objectContaining({ type: "error", turnId: "turn-failed-1", text: "供应商额度已用完" })],
+	});
 
 	await act(async () => {
 		eventHandler?.({ ...base, eventId: "event-end", type: "session.lifecycle", phase: "agent_end" });
@@ -508,8 +513,9 @@ it("失败收尾：agent_end 的落后历史快照不会清掉刚显示的错误
 		await Promise.resolve();
 	});
 
-	expect(store.get(chatMessagesAtom).at(-1)?.blocks).toEqual([
-		expect.objectContaining({ type: "error", turnId: "turn-failed-1", text: "供应商额度已用完" }),
-	]);
+	expect(store.get(chatMessagesAtom).at(-1)).toMatchObject({
+		kind: "agent",
+		blocks: [expect.objectContaining({ type: "error", turnId: "turn-failed-1", text: "供应商额度已用完" })],
+	});
 	expect(autoTitle).not.toHaveBeenCalled();
 });

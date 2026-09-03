@@ -158,6 +158,8 @@ export type {
 	RuntimeContextCompactionRequest,
 	RuntimeContextCompactionResult,
 	RuntimeContextCompactionState,
+	RuntimeContextSummaryRequest,
+	RuntimeContextSummaryResult,
 	RuntimeExecutionModeUpdate,
 	RuntimeModelSelectionStrategy,
 	RuntimeSessionConfigurationController,

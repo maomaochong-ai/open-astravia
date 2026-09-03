@@ -95,6 +95,7 @@ describe("ModelSettingsService", () => {
 	it("keeps an encrypted key when a capability updates provider metadata", async () => {
 		let config = createConfig();
 		const credentials = createCredentialStore({ "openai-credential": "secret" });
+		const onProviderAccessChanged = vi.fn();
 		const service = new ModelSettingsService({
 			readConfig: async () => config,
 			writeConfig: async (next) => {
@@ -102,6 +103,7 @@ describe("ModelSettingsService", () => {
 			},
 			refreshRegistry: async () => {},
 			credentials,
+			onProviderAccessChanged,
 		});
 
 		await expect(
@@ -117,11 +119,13 @@ describe("ModelSettingsService", () => {
 		expect(config.providers.openai?.credentialRef).toBe("openai-credential");
 		expect(config.providers.openai?.apiKey).toBeUndefined();
 		expect(credentials.values.get("openai-credential")).toBe("secret");
+		expect(onProviderAccessChanged).not.toHaveBeenCalled();
 	});
 
 	it("replaces and clears an encrypted key without writing plaintext", async () => {
 		let config = createConfig();
 		const credentials = createCredentialStore({ "openai-credential": "secret" });
+		const onProviderAccessChanged = vi.fn();
 		const service = new ModelSettingsService({
 			readConfig: async () => config,
 			writeConfig: async (next) => {
@@ -129,6 +133,7 @@ describe("ModelSettingsService", () => {
 			},
 			refreshRegistry: async () => {},
 			credentials,
+			onProviderAccessChanged,
 		});
 
 		const replacement = await service.getRendererConfig();
@@ -144,6 +149,8 @@ describe("ModelSettingsService", () => {
 
 		expect(config.providers.openai?.credentialRef).toBeUndefined();
 		expect(credentials.values.has("openai-credential")).toBe(false);
+		expect(onProviderAccessChanged).toHaveBeenNthCalledWith(1, ["openai"]);
+		expect(onProviderAccessChanged).toHaveBeenNthCalledWith(2, ["openai"]);
 	});
 
 	it("keeps an encrypted key when its provider is renamed", async () => {

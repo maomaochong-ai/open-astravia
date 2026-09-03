@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
+import { createConversationAgentMessage } from "@shared/conversation";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("react-i18next", () => ({
@@ -72,12 +73,12 @@ describe("AssistantMessage live activity wiring", () => {
 			<AssistantMessage
 				isStreaming
 				isTailMessage
-				message={{
+				message={createConversationAgentMessage({
 					id: "assistant-1",
-					role: "assistant",
+					phase: "streaming",
 					text: "",
 					blocks: [{ type: "thinking", id: "source-block", text: "分析中" }],
-				}}
+				})}
 			/>,
 		);
 
@@ -90,12 +91,12 @@ describe("AssistantMessage live activity wiring", () => {
 			<AssistantMessage
 				isStreaming
 				isTailMessage
-				message={{
+				message={createConversationAgentMessage({
 					id: "assistant-1",
-					role: "assistant",
+					phase: "streaming",
 					text: "",
 					blocks: [{ type: "thinking", id: "source-block", text: "分析中" }],
-				}}
+				})}
 			/>,
 		);
 

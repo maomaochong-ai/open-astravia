@@ -5,6 +5,9 @@ export {
 } from "../adapters/extensions/compaction-extension-adapter.js";
 export type {
 	CodingAgentCompactionExtensionRuntime,
+	CodingAgentPinnedConversationProjection,
+	CodingAgentPinnedModelContext,
+	CodingAgentPinnedModelContextBinder,
 	CodingAgentRuntimeToolRegistration,
 } from "../runtime-contracts/index.js";
 export {

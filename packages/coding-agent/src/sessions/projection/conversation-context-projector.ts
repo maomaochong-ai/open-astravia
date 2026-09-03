@@ -30,13 +30,14 @@ export class CodingAgentConversationContextProjector implements ConversationCont
 						? undefined
 						: convertToLlm([message])[0];
 			if (!modelMessage) {
-				envelopes.push({ kind: "opaque", identity: message, timestamp: message.timestamp });
+				envelopes.push({ kind: "opaque", identity: message, entryId: entry.id, timestamp: message.timestamp });
 				continue;
 			}
 			if (isRuntimeMessage(message)) {
 				envelopes.push({
 					kind: "message",
 					message,
+					entryId: entry.id,
 					...(source?.type === "message" && source.origin ? { origin: source.origin } : {}),
 				});
 				continue;
@@ -45,6 +46,7 @@ export class CodingAgentConversationContextProjector implements ConversationCont
 				kind: "opaque",
 				identity: message,
 				modelMessage,
+				entryId: entry.id,
 				timestamp: message.timestamp,
 			});
 		}

@@ -1,4 +1,5 @@
 import { getOrCreateSharedModelRuntime, syncSharedModelRuntimeCredentials } from "../agent-runtime/host-services.js";
+import { agentTeamExternalConditionChanges } from "../agent-teams/team-external-condition-channel.js";
 import { getAppLogger } from "../logger.js";
 import { getDesktopModelCredentialStore } from "./model-credential-store.js";
 import {
@@ -21,6 +22,11 @@ export function getDesktopModelSettingsService(): ModelSettingsService {
 			refreshRegistry: async () => {
 				syncSharedModelRuntimeCredentials(credentials, readModelsConfigSync().providers);
 				getOrCreateSharedModelRuntime().refresh();
+			},
+			onProviderAccessChanged: (providerIds) => {
+				for (const provider of providerIds) {
+					agentTeamExternalConditionChanges.publish({ category: "authentication", provider });
+				}
 			},
 		});
 		void desktopModelSettingsService.getConfig().catch((error) => {

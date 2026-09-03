@@ -17,6 +17,8 @@ import type { RuntimeHost } from "./runtime-host.js";
 import type {
 	RuntimeContextCompactionResult,
 	RuntimeContextCompactionState,
+	RuntimeContextSummaryRequest,
+	RuntimeContextSummaryResult,
 	RuntimeSessionContextDeliveryMode,
 	RuntimeSessionContextUsage,
 	RuntimeSessionExecutionObservation,
@@ -193,6 +195,10 @@ export class RuntimeHostSession implements RuntimeActiveSession {
 			this.sessionId,
 			customInstructions === undefined ? undefined : { customInstructions },
 		);
+	}
+
+	summarizeContext(request: RuntimeContextSummaryRequest): Promise<RuntimeContextSummaryResult> {
+		return this.host.summarizeSessionContext(this.sessionId, request);
 	}
 
 	abortCompaction(): void {

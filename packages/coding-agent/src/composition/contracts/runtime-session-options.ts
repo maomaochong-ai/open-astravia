@@ -15,6 +15,7 @@ import type {
 } from "../../model-context/plugin-runtime.js";
 import { type ConversationScenario, isConversationScenario } from "../../profiles/index.js";
 import type {
+	CodingAgentPinnedModelContextBinder,
 	CodingAgentRuntimeToolRegistration,
 	CodingAgentSessionToolRegistration,
 } from "../../runtime-contracts/index.js";
@@ -50,6 +51,14 @@ export interface CodingAgentRuntimeSessionOptions {
 	readonly memoryCharLimit?: number;
 	/** 子 Session 内部 Profile 使用；根宿主无需设置。 */
 	readonly systemPromptAddon?: string;
+	/** Host-owned system instructions shared byte-for-byte before a cache boundary. */
+	readonly systemPromptCachePrefixAddon?: string;
+	/** Host-owned trusted instructions that must remain outside the shared cache prefix. */
+	readonly systemPromptVolatileAddon?: string;
+	/** Host-owned immutable model prefix captured once per Turn. */
+	readonly bindPinnedModelContext?: CodingAgentPinnedModelContextBinder;
+	/** Provider cache partition independent from this isolated Session identity. */
+	readonly promptCacheKey?: string;
 	/** Workflow 子 Session 的父分支只读快照。 */
 	readonly forkContextMessages?: readonly Message[];
 	/** Workflow 子 Session 的初始 Todo。 */
@@ -97,6 +106,9 @@ export function parseCodingAgentRuntimeSessionConfiguration(value: unknown): Cod
 		"parentEntryId",
 		"memoryFile",
 		"systemPromptAddon",
+		"systemPromptCachePrefixAddon",
+		"systemPromptVolatileAddon",
+		"promptCacheKey",
 		"initialTodoLockSource",
 	]);
 	if (value.scenario !== undefined && !isConversationScenario(value.scenario)) {
@@ -105,7 +117,12 @@ export function parseCodingAgentRuntimeSessionConfiguration(value: unknown): Cod
 	assertOptionalBooleanFields(value, ["enableBackgroundTasks", "includeAgentSkills", "memoryMode"]);
 	assertOptionalNumberFields(value, ["memoryCharLimit"]);
 	assertOptionalArrayFields(value, ["forkContextMessages", "initialTodos", "sessionTools", "sessionRuntimeTools"]);
-	assertOptionalFunctionFields(value, ["invokePluginTool", "invokePluginContinuation", "invokePluginSystemPrompt"]);
+	assertOptionalFunctionFields(value, [
+		"invokePluginTool",
+		"invokePluginContinuation",
+		"invokePluginSystemPrompt",
+		"bindPinnedModelContext",
+	]);
 	assertOptionalRecordFields(value, [
 		"model",
 		"agentPlugins",

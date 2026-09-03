@@ -1,10 +1,10 @@
-import type { ChatMessage } from "@shared/store/atoms";
+import type { ChatConversationItem } from "@shared/store/atoms";
 import { ChatExportHostView } from "@vetta/theme-ui/chat";
 import { useChatExportHostModel } from "../hooks/useChatExportHostModel";
 import { ExportMessageList } from "./MessageList";
 
 interface ChatExportHostProps {
-	messages: ChatMessage[];
+	messages: ChatConversationItem[];
 	title: string;
 	onFinished: () => void;
 }

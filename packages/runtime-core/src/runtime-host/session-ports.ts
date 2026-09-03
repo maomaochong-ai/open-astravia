@@ -231,6 +231,20 @@ export interface RuntimeContextCompactionResult {
 	readonly details?: unknown;
 }
 
+/** 对调用方已裁剪的上下文生成摘要；不会读取或改写 Session 文档。 */
+export interface RuntimeContextSummaryRequest {
+	readonly records: readonly SessionContextRecord[];
+	readonly previousSummary?: string;
+	readonly customInstructions?: string;
+	readonly signal?: AbortSignal;
+}
+
+export interface RuntimeContextSummaryResult {
+	readonly summary: string;
+	readonly tokensBefore: number;
+	readonly details?: unknown;
+}
+
 export interface RuntimeContextCompactionState {
 	readonly isCompacting: boolean;
 	readonly autoCompactionEnabled: boolean;
@@ -240,6 +254,7 @@ export interface RuntimeContextCompactionState {
 export interface RuntimeSessionContextController {
 	readState(): RuntimeContextCompactionState;
 	compact(request?: RuntimeContextCompactionRequest): Promise<RuntimeContextCompactionResult>;
+	summarize(request: RuntimeContextSummaryRequest): Promise<RuntimeContextSummaryResult>;
 	abortCompaction(): void;
 	setAutoCompactionEnabled(enabled: boolean): void;
 }

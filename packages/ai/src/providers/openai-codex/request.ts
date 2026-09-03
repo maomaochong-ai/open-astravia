@@ -36,7 +36,7 @@ export function buildCodexRequestBody(
 		}),
 		text: { verbosity: options?.textVerbosity || "medium" },
 		include: ["reasoning.encrypted_content"],
-		prompt_cache_key: options?.sessionId,
+		prompt_cache_key: options?.promptCacheKey ?? options?.sessionId,
 		prompt_cache_retention: options?.sessionId ? "in-memory" : undefined,
 		tool_choice: "auto",
 		parallel_tool_calls: true,

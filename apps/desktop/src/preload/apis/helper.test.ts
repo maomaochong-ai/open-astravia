@@ -9,13 +9,13 @@ describe("subscribeById", () => {
 		const harness = createIpcHarness(
 			["subscription"],
 			[{ type: "session-snapshot" }],
-			[{ type: "member-delta", delta: "buffered" }],
+			[{ type: "conversation.agent-message-event", delta: "buffered" }],
 		);
 		const handler = vi.fn();
 		await subscribeById(harness.ipc, "subscribe", "event", "unsubscribe", handler, ["session"]);
 		expect(handler.mock.calls).toEqual([
 			[{ type: "session-snapshot" }],
-			[{ type: "member-delta", delta: "buffered" }],
+			[{ type: "conversation.agent-message-event", delta: "buffered" }],
 		]);
 		expect(harness.listenerCount("event")).toBe(1);
 	});

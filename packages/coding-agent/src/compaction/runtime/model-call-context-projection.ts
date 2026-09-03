@@ -3,8 +3,10 @@ import type { Message } from "@vetta/ai";
 import type { RuntimeMessageEnvelope } from "@vetta/runtime-core";
 import type { ModelCallContextTransformationInput } from "@vetta/runtime-core/kernel";
 import { convertToLlm, createCustomMessage } from "../../model-context/index.js";
-import type { CodingAgentContextRuntimeOptions } from "../../runtime-contracts/index.js";
+import type { CodingAgentContextRuntimeOptions, CodingAgentPinnedModelContext } from "../../runtime-contracts/index.js";
 import { estimateContextTokens, microcompact, reduceContextByPressure } from "../index.js";
+import { projectPinnedMessageEnvelopes } from "./pinned-conversation-projection.js";
+import { applyPinnedModelContext } from "./pinned-model-context-projection.js";
 
 export interface ProjectedModelCallContext {
 	readonly messages: readonly Message[];
@@ -14,6 +16,7 @@ export interface ProjectedModelCallContext {
 export interface ModelCallContextProjectionOptions {
 	/** Fixed time boundary shared by every model call admitted for a Turn. */
 	readonly timeBoundary?: number;
+	readonly pinnedContext?: CodingAgentPinnedModelContext;
 }
 
 export async function projectModelCallContext(
@@ -23,7 +26,10 @@ export async function projectModelCallContext(
 	options: ModelCallContextProjectionOptions = {},
 ): Promise<ProjectedModelCallContext> {
 	signal.throwIfAborted();
-	const envelopes = input.messageEnvelopes ?? input.messages.map(toMessageEnvelope);
+	const envelopes = projectPinnedMessageEnvelopes(
+		input.messageEnvelopes ?? input.messages.map(toMessageEnvelope),
+		options.pinnedContext,
+	);
 	const continuationMessages = new WeakSet<object>();
 	for (const envelope of envelopes) {
 		if (envelope.kind === "message" && envelope.origin?.kind === "continuation") {
@@ -41,12 +47,15 @@ export async function projectModelCallContext(
 		now: options.timeBoundary,
 	});
 	const visibleMessages = projectedMessages.filter((message) => !consumeIdentity(invisibleIdentities, message));
-	const messages = convertToLlm(
-		reduceContextByPressure(visibleMessages, {
-			contextWindow: input.modelBinding.model.contextWindow,
-			estimatedTokens: estimateContextTokens(visibleMessages).tokens,
-			isRealUserTurn: (message) => message.role === "user" && !continuationMessages.has(message),
-		}),
+	const messages = applyPinnedModelContext(
+		convertToLlm(
+			reduceContextByPressure(visibleMessages, {
+				contextWindow: input.modelBinding.model.contextWindow,
+				estimatedTokens: estimateContextTokens(visibleMessages).tokens,
+				isRealUserTurn: (message) => message.role === "user" && !continuationMessages.has(message),
+			}),
+		),
+		options.pinnedContext,
 	);
 	return { messages, estimatedTokens: estimateContextTokens(messages).tokens };
 }

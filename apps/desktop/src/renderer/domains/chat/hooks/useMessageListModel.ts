@@ -15,7 +15,7 @@ export function useMessageListModel({ messages, isStreaming, sessionId }: Messag
 		const switches = new Map<string, string>();
 		let previousKey: string | null = null;
 		for (const message of messages) {
-			if (message.role !== "user") continue;
+			if (message.kind !== "user") continue;
 			const key = message.model ? `${message.model.provider}/${message.model.id}` : null;
 			if (key && previousKey && key !== previousKey) {
 				switches.set(message.id, modelNames.get(key) ?? key);
@@ -33,7 +33,7 @@ export function useMessageListModel({ messages, isStreaming, sessionId }: Messag
 		messages,
 		modelSwitchLabels,
 		scroll,
-		waitingForResponse: isStreaming && messages.at(-1)?.role !== "assistant",
+		waitingForResponse: isStreaming && messages.at(-1)?.kind !== "agent",
 		tailMessageId: messages.at(-1)?.id ?? null,
 	};
 }

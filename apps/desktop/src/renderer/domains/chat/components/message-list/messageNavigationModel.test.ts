@@ -2,16 +2,17 @@ import {
 	buildMessageFeedNavigationOutline,
 	findActiveMessageFeedNavigationTurnIndex,
 } from "@shared/components/message-feed/navigationModel";
+import { createConversationAgentMessage, createConversationUserMessage } from "@shared/conversation";
 import { describe, expect, it } from "vitest";
 import { buildMessageNavigationTurns, findTopVisibleMessageIndex } from "./messageNavigationModel";
-import type { ChatMessage } from "./types";
+import type { ChatConversationItem } from "./types";
 
-const messages: ChatMessage[] = [
-	{ id: "user-1", role: "user", text: "  First   question  " },
-	{ id: "assistant-1", role: "assistant", text: "First answer" },
-	{ id: "compact", role: "compaction", text: "summary" },
-	{ id: "user-2", role: "user", text: "Second question" },
-	{ id: "assistant-2", role: "assistant", text: "Useful result" },
+const messages: ChatConversationItem[] = [
+	createConversationUserMessage({ id: "user-1", text: "  First   question  " }),
+	createConversationAgentMessage({ id: "assistant-1", text: "First answer", blocks: [] }),
+	{ id: "compact", kind: "event", event: { kind: "compaction", summary: "summary" } },
+	createConversationUserMessage({ id: "user-2", text: "Second question" }),
+	createConversationAgentMessage({ id: "assistant-2", text: "Useful result", blocks: [] }),
 ];
 
 describe("message navigation model", () => {
@@ -31,7 +32,7 @@ describe("message navigation model", () => {
 
 	it("keeps the full normalized text searchable while showing a bounded preview", () => {
 		const longText = `${"前".repeat(130)} target`;
-		const turns = buildMessageNavigationTurns([{ id: "user", role: "user", text: longText }]);
+		const turns = buildMessageNavigationTurns([createConversationUserMessage({ id: "user", text: longText })]);
 
 		expect(Array.from(turns[0].entries[0].preview)).toHaveLength(120);
 		expect(turns[0].entries[0].preview.endsWith("…")).toBe(true);

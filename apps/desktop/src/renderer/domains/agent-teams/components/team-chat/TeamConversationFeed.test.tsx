@@ -4,8 +4,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { TeamMemberViewModel, TeamTimelineItemViewModel } from "./teamChatModel";
-import { TeamMessageFeed } from "./TeamMessageFeed";
+import type { TeamMemberViewModel, TeamConversationFeedItem } from "./teamChatModel";
+import { TeamConversationFeed } from "./TeamConversationFeed";
 
 vi.mock("react-virtuoso", () => ({
 	Virtuoso: ({
@@ -67,12 +67,12 @@ const labels = {
 	},
 };
 
-describe("TeamMessageFeed", () => {
+describe("TeamConversationFeed", () => {
 	it.each(["user", "agent"] as const)(
 		"keeps %s copy behavior when using message primitives directly",
 		async (kind) => {
 			const user = userEvent.setup();
-			const message: Extract<TeamTimelineItemViewModel, { kind: "message" }>["message"] = kind === "user"
+			const message: Extract<TeamConversationFeedItem, { kind: "message" }>["message"] = kind === "user"
 				? {
 					id: "message",
 					turnId: "turn",
@@ -92,7 +92,7 @@ describe("TeamMessageFeed", () => {
 					blocks: [{ id: "text", type: "text", text: "Public text" }],
 				};
 			render(
-				<TeamMessageFeed
+				<TeamConversationFeed
 					feedKey="team"
 					status="ready"
 					items={[{ kind: "message", id: message.id, message }]}
@@ -109,7 +109,7 @@ describe("TeamMessageFeed", () => {
 
 	it("does not mount a copy capability for an attachment-only message", () => {
 		render(
-			<TeamMessageFeed
+			<TeamConversationFeed
 				feedKey="team"
 				status="ready"
 				items={[{
@@ -137,14 +137,14 @@ describe("TeamMessageFeed", () => {
 
 	it("labels empty-state members by display name without exposing handles", () => {
 		render(
-			<TeamMessageFeed feedKey="team" status="ready" items={[]} members={[member]} markdown={markdown} labels={labels} />,
+			<TeamConversationFeed feedKey="team" status="ready" items={[]} members={[member]} markdown={markdown} labels={labels} />,
 		);
 		expect(screen.getByTitle("Vetta")).toBeTruthy();
 		expect(screen.queryByTitle("@vetta")).toBeNull();
 	});
 
 	it("renders accumulated streaming text instead of hiding it behind a skeleton", () => {
-		const items: TeamTimelineItemViewModel[] = [
+		const items: TeamConversationFeedItem[] = [
 			{
 				id: "member:request:leader",
 				kind: "message",
@@ -161,7 +161,7 @@ describe("TeamMessageFeed", () => {
 			},
 		];
 		render(
-			<TeamMessageFeed
+			<TeamConversationFeed
 				feedKey="team"
 				status="streaming"
 				items={items}
@@ -174,7 +174,7 @@ describe("TeamMessageFeed", () => {
 	});
 
 	it("composes attachment rendering into user messages and opens files through the host model", async () => {
-		const items: TeamTimelineItemViewModel[] = [
+		const items: TeamConversationFeedItem[] = [
 			{
 				id: "user:request",
 				kind: "message",
@@ -192,7 +192,7 @@ describe("TeamMessageFeed", () => {
 			},
 		];
 		render(
-			<TeamMessageFeed
+			<TeamConversationFeed
 				feedKey="team"
 				status="ready"
 				items={items}

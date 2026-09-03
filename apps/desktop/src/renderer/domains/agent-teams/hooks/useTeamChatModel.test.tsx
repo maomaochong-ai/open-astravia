@@ -3,8 +3,10 @@
 import {
 	createInitialAgentTeamDocument,
 	type TeamSessionDocument,
+	type TeamSessionSnapshot,
 	type TeamSessionStreamEvent,
 } from "@vetta/agent-team";
+import { createAssistantMessage } from "@vetta/ai";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadTeamChatSession } from "../services/team-chat-session-service";
@@ -51,13 +53,39 @@ const baseSession: TeamSessionDocument = {
 	events: [],
 	memberRuntime: {},
 };
+const baseSnapshot: TeamSessionSnapshot = {
+	session: baseSession,
+	conversationRevision: 0,
+	messages: [],
+	activities: [],
+};
+
+function streamEvent(sequence: number, delta: string): TeamSessionStreamEvent {
+	const partial = {
+		...createAssistantMessage(
+			{ api: "agent-team-test", provider: "agent-team-test", model: "fixture" },
+			{ timestamp: sequence },
+		),
+		content: [{ type: "text" as const, text: delta }],
+	};
+	return {
+		type: "conversation.agent-message-event",
+		conversationId: baseSession.id,
+		messageId: "result",
+		turnId: "request",
+		author: { kind: "agent", id: team.leaderMemberId },
+		sequence,
+		timestamp: sequence,
+		event: { type: "text_delta", contentIndex: 0, delta, partial },
+	};
+}
 
 describe("useTeamChatModel streaming flow", () => {
 	let streamListener: ((event: TeamSessionStreamEvent) => void) | undefined;
 
 	beforeEach(() => {
 		streamListener = undefined;
-		vi.mocked(loadTeamChatSession).mockResolvedValue({ document, session: baseSession });
+		vi.mocked(loadTeamChatSession).mockResolvedValue({ document, snapshot: baseSnapshot });
 		Object.defineProperty(window, "vetta", {
 			configurable: true,
 			value: {
@@ -68,7 +96,7 @@ describe("useTeamChatModel streaming flow", () => {
 						return () => undefined;
 						},
 					),
-					sendMessage: vi.fn(async () => baseSession),
+					sendMessage: vi.fn(async () => baseSnapshot),
 					abort: vi.fn(),
 				},
 				dialog: {
@@ -85,39 +113,12 @@ describe("useTeamChatModel streaming flow", () => {
 		await waitFor(() => expect(streamListener).toBeTypeOf("function"));
 
 		act(() => {
-			streamListener?.({
-				type: "member-start",
-				teamSessionId: baseSession.id,
-				memberId: leader.id,
-				requestId: "request",
-				turnId: "turn",
-				seq: 0,
-				timestamp: 2,
-			});
-			streamListener?.({
-				type: "member-delta",
-				teamSessionId: baseSession.id,
-				memberId: leader.id,
-				requestId: "request",
-				turnId: "turn",
-				seq: 1,
-				delta: "partial ",
-				timestamp: 3,
-			});
-			streamListener?.({
-				type: "member-delta",
-				teamSessionId: baseSession.id,
-				memberId: leader.id,
-				requestId: "request",
-				turnId: "turn",
-				seq: 2,
-				delta: "answer",
-				timestamp: 4,
-			});
+			streamListener?.(streamEvent(1, "partial "));
+			streamListener?.(streamEvent(2, "answer"));
 		});
 
 		expect(result.current.model.status).toBe("streaming");
-		expect(result.current.model.timelineItems).toEqual([
+		expect(result.current.model.feedItems).toEqual([
 			expect.objectContaining({
 				kind: "message",
 				message: expect.objectContaining({
@@ -132,39 +133,48 @@ describe("useTeamChatModel streaming flow", () => {
 			...baseSession,
 			revision: 1,
 			updatedAt: 5,
-			events: [
+		};
+		const finalSnapshot: TeamSessionSnapshot = {
+			session: finalSession,
+			conversationRevision: 1,
+			messages: [
 				{
-					type: "member-result",
+					kind: "agent",
 					id: "result",
-					requestId: "request",
-					memberId: leader.id,
-					sourceTurnId: "turn",
-					text: "partial answer",
+					turnId: "request",
+					author: { kind: "agent", id: leader.id },
+					message: {
+						...createAssistantMessage(
+							{ api: "agent-team-test", provider: "agent-team-test", model: "fixture" },
+							{ timestamp: 5 },
+						),
+						content: [{ type: "text", text: "partial answer" }],
+					},
 					timestamp: 5,
 				},
 			],
+			activities: [],
 		};
 		act(() => {
 			streamListener?.({
 				type: "session-updated",
 				teamSessionId: baseSession.id,
-				session: finalSession,
-				revision: finalSession.revision,
+				snapshot: finalSnapshot,
 			});
 			streamListener?.({
-				type: "member-end",
-				teamSessionId: baseSession.id,
-				memberId: leader.id,
-				requestId: "request",
-				turnId: "turn",
-				seq: 3,
-				phase: "final",
+				type: "conversation.agent-message-discard",
+				conversationId: baseSession.id,
+				messageId: "result",
+				turnId: "request",
+				author: { kind: "agent", id: leader.id },
+				sequence: 3,
+				reason: "completed",
 				timestamp: 5,
 			});
 		});
 
 		expect(result.current.model.status).toBe("ready");
-		expect(result.current.model.timelineItems).toEqual([
+		expect(result.current.model.feedItems).toEqual([
 			expect.objectContaining({
 				kind: "message",
 				message: expect.objectContaining({

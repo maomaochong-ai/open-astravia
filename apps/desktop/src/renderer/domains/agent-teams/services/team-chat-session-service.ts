@@ -1,10 +1,10 @@
-import type { AgentTeamDocument, TeamSessionDocument } from "@vetta/agent-team";
+import type { AgentTeamDocument, TeamSessionReference, TeamSessionSnapshot } from "@vetta/agent-team";
 
 const SESSION_STORAGE_PREFIX = "vetta.agent-team.session.";
 
 export interface LoadedTeamChatSession {
 	readonly document: AgentTeamDocument;
-	readonly session: TeamSessionDocument;
+	readonly snapshot: TeamSessionSnapshot;
 }
 
 export async function loadTeamChatSession(teamId: string): Promise<LoadedTeamChatSession> {
@@ -14,10 +14,12 @@ export async function loadTeamChatSession(teamId: string): Promise<LoadedTeamCha
 	}
 
 	const storageKey = `${SESSION_STORAGE_PREFIX}${teamId}`;
-	const storedId = window.localStorage.getItem(storageKey);
-	if (storedId) {
+	const stored = window.localStorage.getItem(storageKey);
+	if (stored) {
 		try {
-			return { document, session: await window.vetta.agentTeams.getSession(storedId) };
+			const snapshot = await window.vetta.agentTeams.getSession(parseStoredReference(stored));
+			window.localStorage.setItem(storageKey, JSON.stringify(toReference(snapshot)));
+			return { document, snapshot };
 		} catch {
 			window.localStorage.removeItem(storageKey);
 		}
@@ -25,7 +27,32 @@ export async function loadTeamChatSession(teamId: string): Promise<LoadedTeamCha
 
 	const config = await window.vetta.config.get();
 	const cwd = config.defaultConversationCwd ?? config.workspacePath;
-	const session = await window.vetta.agentTeams.createSession(teamId, cwd);
-	window.localStorage.setItem(storageKey, session.id);
-	return { document, session };
+	const snapshot = await window.vetta.agentTeams.createSession(teamId, cwd);
+	window.localStorage.setItem(storageKey, JSON.stringify(toReference(snapshot)));
+	return { document, snapshot };
+}
+
+function toReference(snapshot: TeamSessionSnapshot): TeamSessionReference {
+	const coordinationSessionPath = snapshot.session.coordinationRuntime?.sessionPath;
+	if (!coordinationSessionPath) throw new Error("Team coordination Conversation is unavailable");
+	return { id: snapshot.session.id, coordinationSessionPath };
+}
+
+function parseStoredReference(value: string): TeamSessionReference | string {
+	try {
+		const parsed: unknown = JSON.parse(value);
+		if (
+			typeof parsed === "object" &&
+			parsed !== null &&
+			"id" in parsed &&
+			typeof parsed.id === "string" &&
+			"coordinationSessionPath" in parsed &&
+			typeof parsed.coordinationSessionPath === "string"
+		) {
+			return { id: parsed.id, coordinationSessionPath: parsed.coordinationSessionPath };
+		}
+	} catch {
+		// Previous releases stored only the legacy Team sidecar id.
+	}
+	return value;
 }

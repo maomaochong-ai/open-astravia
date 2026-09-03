@@ -10,7 +10,7 @@ import {
 	inlineFilePreviewContextReadonlyAtom,
 	knowledgeProcessingCwdAtom,
 	pageHeaderRightSlotAtom,
-	type ChatMessage,
+	type ChatConversationItem,
 } from "@shared/store/atoms";
 import { fullHistoryToChat } from "../services/chat-service";
 
@@ -27,7 +27,7 @@ function isPathUnderDir(filePath: string, dir: string): boolean {
 export interface SessionViewerPageModel {
 	path: string;
 	error: string | null;
-	messages: ChatMessage[];
+	messages: ChatConversationItem[];
 	exporting: boolean;
 	exportTitle: string;
 	isKnowledge: boolean;
@@ -45,7 +45,7 @@ export function useSessionViewerPageModel(): SessionViewerPageModel {
 	const encodedPath = params.path as string | undefined;
 	const path = encodedPath ? decodeURIComponent(encodedPath) : "";
 
-	const [messages, setMessages] = useState<ChatMessage[]>([]);
+	const [messages, setMessages] = useState<ChatConversationItem[]>([]);
 	const [error, setError] = useState<string | null>(null);
 	const [exporting, setExporting] = useState(false);
 	const setHeaderRight = useSetAtom(pageHeaderRightSlotAtom);

@@ -1,5 +1,5 @@
 import { useAgentModeNarration } from "@shared/agent-modes/agent-mode-registry";
-import type { ChatMessage, TextBlock } from "@shared/store/atoms";
+import type { ConversationAgentMessageViewModel, TextBlock } from "@shared/conversation";
 import {
 	activeSessionAtom,
 	pluginToolCallSlotsAtom,
@@ -30,7 +30,7 @@ interface AssistantMessageModelInput {
 	exportMode: boolean;
 	isStreaming: boolean;
 	isTailMessage: boolean;
-	message: ChatMessage;
+	message: ConversationAgentMessageViewModel;
 }
 
 export function useAssistantMessageModel({
@@ -55,13 +55,13 @@ export function useAssistantMessageModel({
 	// mode id（新增模式对本渲染层零改动）。未指定模式回退 staged（与历史会话按 work 恢复口径一致）。
 	const stagedNarration = useAgentModeNarration(useAtomValue(sessionAgentModeAtom)) === "staged";
 	const foldData = useMemo(
-		() => getAssistantFoldData(message.blocks ?? [], customToolNames),
+		() => getAssistantFoldData(message.blocks, customToolNames),
 		[message.blocks, customToolNames],
 	);
 	const visibleBlocks = useMemo(() => {
 		// 收起时渲染整个答案区（含插件产物卡片），而不是只留文本。
 		if (exportMode && foldData) return foldData.answerBlocks;
-		if (!foldData || expanded || isCurrentlyStreaming) return message.blocks ?? [];
+		if (!foldData || expanded || isCurrentlyStreaming) return message.blocks;
 		return foldData.answerBlocks;
 	}, [expanded, exportMode, foldData, isCurrentlyStreaming, message.blocks]);
 	const segments = useMemo(
@@ -83,7 +83,7 @@ export function useAssistantMessageModel({
 		[customToolNames, exportMode, foldData],
 	);
 	const liveThinkingId = useMemo(
-		() => selectLiveThinkingId(message.blocks ?? [], isCurrentlyStreaming),
+		() => selectLiveThinkingId(message.blocks, isCurrentlyStreaming),
 		[message.blocks, isCurrentlyStreaming],
 	);
 	const streamingTailIndex = useMemo(() => {
@@ -99,7 +99,7 @@ export function useAssistantMessageModel({
 	// foldData 上面已经算过一遍，这里复用；deps 也收窄到 blocks/text，
 	// 否则 message 引用一变（流式每帧都变）就整段重算。
 	const conclusionText = useMemo(() => {
-		const blocks = message.blocks ?? [];
+		const blocks = message.blocks;
 		if (blocks.length === 0) return (message.text ?? "").trim();
 		if (foldData) {
 			return foldData.outputBlocks

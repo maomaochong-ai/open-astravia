@@ -12,7 +12,7 @@ import { ForkOriginBanner, resolveForkOriginPlacement } from "./ForkOriginBanner
 import { MessageItem, ModelSwitchBoundary, ExportMessageList } from "./MessageItem";
 import { MessageListFooter } from "./MessageListFooter";
 import { MessageTimeline } from "./MessageTimeline";
-import type { ChatMessage, MessageListModel, MessageListProps } from "./types";
+import type { ChatConversationItem, MessageListModel, MessageListProps } from "./types";
 
 export { ExportMessageList };
 
@@ -55,7 +55,7 @@ export function MessageListView({
 		tailMessageId,
 	} = model;
 	const scrollerElement = scroll.scrollerElement;
-	const activeItem = useMessageFeedActiveItem<ChatMessage>({
+	const activeItem = useMessageFeedActiveItem<ChatConversationItem>({
 		scrollerElement,
 		resetKey: sessionId,
 		initialIndex: Math.max(0, messages.length - 1),
@@ -76,7 +76,7 @@ export function MessageListView({
 		let nonUserIndex = -1;
 		for (let index = messages.length - 1; index >= 0; index--) {
 			const message = messages[index];
-			if (message.role === "user") {
+			if (message.kind === "user") {
 				if (userId === null) userId = message.id;
 			} else if (nonUserIndex === -1) {
 				nonUserIndex = index;
@@ -86,7 +86,7 @@ export function MessageListView({
 		return { lastUserMessageId: userId, lastNonUserIndex: nonUserIndex };
 	}, [messages]);
 	const itemContent = useCallback(
-		(index: number, message: ChatMessage) => {
+		(index: number, message: ChatConversationItem) => {
 			const showForkOrigin = forkOriginPlacement?.anchorIndex === index;
 			const sourceUser =
 				showForkOrigin && forkOriginPlacement
@@ -96,7 +96,7 @@ export function MessageListView({
 				<div
 					data-entry-id={message.entryId ?? message.id}
 					className={
-						index === messages.length - 1 && message.role === "user" && !showForkOrigin
+						index === messages.length - 1 && message.kind === "user" && !showForkOrigin
 							? "pb-9"
 							: "pb-5"
 					}
@@ -112,7 +112,7 @@ export function MessageListView({
 						hasAssistantAfter={index < lastNonUserIndex}
 						onAbortEdit={onAbort}
 					/>
-					{showForkOrigin ? <ForkOriginBanner sourceMessage={sourceUser} /> : null}
+					{showForkOrigin && sourceUser?.kind === "user" ? <ForkOriginBanner sourceMessage={sourceUser} /> : null}
 				</div>
 			);
 		},

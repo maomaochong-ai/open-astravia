@@ -1,6 +1,4 @@
-import type { PromptAttachmentRef } from "@vetta/runtime-core";
-import type { TeamFeedEvent, TeamSessionDocument, TeamSharedContextRecord } from "./contracts.js";
-import { DEFAULT_AGENT_TEAM_EXTENSIONS } from "./extensions.js";
+import type { TeamSessionDocument } from "./contracts.js";
 
 const FNV_OFFSET = 0xcbf29ce484222325n;
 const FNV_PRIME = 0x100000001b3n;
@@ -17,78 +15,31 @@ export function stableTeamEventId(parts: readonly string[]): string {
 	const canonical = parts.map((part) => `${part.length}:${part}`).join("|");
 	return `team-v1-${fnv64(canonical, FNV_OFFSET)}${fnv64(canonical, FNV_OFFSET ^ MASK_64)}`;
 }
-export function createUserMessageEvent(input: {
-	readonly teamSessionId: string;
-	readonly requestId: string;
-	readonly text: string;
-	readonly targetMemberIds: readonly string[];
-	readonly attachments?: readonly PromptAttachmentRef[];
-	readonly timestamp: number;
-}): Extract<TeamFeedEvent, { type: "user-message" }> {
-	return {
-		type: "user-message",
-		id: stableTeamEventId(["user-message", input.teamSessionId, input.requestId]),
-		requestId: input.requestId,
-		text: input.text,
-		targetMemberIds: [...input.targetMemberIds],
-		...(input.attachments?.length ? { attachments: [...input.attachments] } : {}),
-		timestamp: input.timestamp,
-	};
-}
-export function createMemberResultEvent(input: {
-	readonly teamSessionId: string;
-	readonly requestId: string;
-	readonly memberId: string;
-	readonly sourceTurnId: string;
-	readonly text: string;
-	readonly timestamp: number;
-}): Extract<TeamFeedEvent, { type: "member-result" }> {
-	return {
-		type: "member-result",
-		id: stableTeamEventId([
-			"member-result",
-			input.teamSessionId,
-			input.requestId,
-			input.memberId,
-			input.sourceTurnId,
-		]),
-		requestId: input.requestId,
-		memberId: input.memberId,
-		sourceTurnId: input.sourceTurnId,
-		text: input.text,
-		timestamp: input.timestamp,
-	};
+export function teamUserMessageId(teamSessionId: string, requestId: string): string {
+	return stableTeamEventId(["user-message", teamSessionId, requestId]);
 }
 
-export function createMemberDelegationEvent(input: {
-	readonly teamSessionId: string;
-	readonly requestId: string;
-	readonly sourceMemberId: string;
-	readonly targetMemberId: string;
-	readonly objective: string;
-	readonly timestamp: number;
-}): Extract<TeamFeedEvent, { type: "member-delegation" }> {
-	return {
-		type: "member-delegation",
-		id: stableTeamEventId([
-			"member-delegation",
-			input.teamSessionId,
-			input.requestId,
-			input.sourceMemberId,
-			input.targetMemberId,
-		]),
-		requestId: input.requestId,
-		sourceMemberId: input.sourceMemberId,
-		targetMemberId: input.targetMemberId,
-		objective: input.objective,
-		timestamp: input.timestamp,
-	};
+export function teamMemberResultMessageId(
+	teamSessionId: string,
+	requestId: string,
+	memberId: string,
+	sourceTurnId: string,
+): string {
+	return stableTeamEventId(["member-result", teamSessionId, requestId, memberId, sourceTurnId]);
 }
 
-export function finalizeTeamMemberTurn(input: {
+export function teamDelegationActivityId(
+	teamSessionId: string,
+	requestId: string,
+	sourceMemberId: string,
+	targetMemberId: string,
+): string {
+	return stableTeamEventId(["member-delegation", teamSessionId, requestId, sourceMemberId, targetMemberId]);
+}
+/** Updates the member's private shared-context cursor without duplicating a public message in TeamSessionDocument. */
+export function markTeamMemberContextDelivered(input: {
 	readonly session: TeamSessionDocument;
 	readonly memberId: string;
-	readonly result: Extract<TeamFeedEvent, { type: "member-result" }>;
 	readonly deliveredEventIds: readonly string[];
 	readonly timestamp: number;
 }): TeamSessionDocument {
@@ -98,7 +49,6 @@ export function finalizeTeamMemberTurn(input: {
 		...input.session,
 		revision: input.session.revision + 1,
 		updatedAt: input.timestamp,
-		events: [...input.session.events.filter((event) => event.id !== input.result.id), input.result],
 		memberRuntime: {
 			...input.session.memberRuntime,
 			[input.memberId]: {
@@ -107,14 +57,4 @@ export function finalizeTeamMemberTurn(input: {
 			},
 		},
 	};
-}
-export function projectUndeliveredTeamContext(
-	session: Pick<TeamSessionDocument, "id" | "events">,
-	targetMemberId: string,
-	deliveredEventIds: ReadonlySet<string>,
-	currentRequestId?: string,
-): readonly TeamSharedContextRecord[] {
-	const policy = DEFAULT_AGENT_TEAM_EXTENSIONS.contextPolicies.get("public-results-v1");
-	if (!policy) throw new Error("Default team context policy is not registered");
-	return policy.project({ session, targetMemberId, deliveredEventIds, currentRequestId });
 }

@@ -135,6 +135,7 @@ export function createCodingAgentSessionContextAssembly(
 				release: () => bound.releaseTurnBinding(),
 			};
 		},
+		bindPinnedModelContext: sessionOptions.bindPinnedModelContext,
 		readCompactionWorkState: () => ({
 			todos: peripherals.todoRuntime.getAll().map((item) => ({ ...item })),
 			backgroundTasks: peripherals.executionRuntime.backgroundService.list().map((task) => ({

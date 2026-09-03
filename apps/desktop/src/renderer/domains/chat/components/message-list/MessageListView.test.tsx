@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { cleanup, render, screen } from "@testing-library/react";
+import { createConversationAgentMessage } from "@shared/conversation";
 import userEvent from "@testing-library/user-event";
 import { type ComponentProps, Fragment, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -97,7 +98,7 @@ function props(
 		model: {
 			isCompacting: false,
 			isStreaming: false,
-			messages: [{ id: "message-1", role: "assistant", text: "full content" }],
+			messages: [createConversationAgentMessage({ id: "message-1", text: "full content", blocks: [] })],
 			modelSwitchLabels: new Map(),
 			scroll: {
 				virtuosoRef: { current: null },

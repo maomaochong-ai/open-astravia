@@ -5,7 +5,7 @@ import {
 } from "@vetta/theme-ui/chat";
 import { forwardRef, memo } from "react";
 import { useTranslation } from "react-i18next";
-import type { ChatMessage } from "./types";
+import type { ChatConversationItem } from "./types";
 import { AssistantMessage } from "./AssistantMessage";
 import { UserMessage } from "./UserMessage";
 
@@ -35,7 +35,7 @@ interface MessageItemProps {
 	isLastUserMessage?: boolean;
 	isStreaming: boolean;
 	isTailMessage: boolean;
-	message: ChatMessage;
+	message: ChatConversationItem;
 	onAbortEdit?: () => void;
 }
 
@@ -48,10 +48,10 @@ export const MessageItem = memo(function MessageItem({
 	onAbortEdit,
 	exportMode = false,
 }: MessageItemProps) {
-	if (message.role === "compaction") {
+	if (message.kind === "event") {
 		return <CompactionBoundary />;
 	}
-	if (message.role === "user") {
+	if (message.kind === "user") {
 		return (
 			<UserMessage
 				message={message}
@@ -72,7 +72,7 @@ export const MessageItem = memo(function MessageItem({
 	);
 });
 
-export const ExportMessageList = forwardRef<HTMLDivElement, { messages: ChatMessage[] }>(
+export const ExportMessageList = forwardRef<HTMLDivElement, { messages: ChatConversationItem[] }>(
 	function ExportMessageList({ messages }, ref) {
 		const tailMessageId = messages.at(-1)?.id ?? null;
 		return (

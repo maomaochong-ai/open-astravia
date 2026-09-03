@@ -15,7 +15,7 @@ describe("chat message usage projection", () => {
 		]);
 
 		expect(messages).toHaveLength(2);
-		expect(messages[1]?.usages).toEqual([first, second]);
+		expect(messages[1]).toMatchObject({ kind: "agent", usages: [first, second] });
 	});
 
 	it("projects persisted full history and live final messages with the same usage shape", () => {
@@ -27,13 +27,13 @@ describe("chat message usage projection", () => {
 			{ type: "message", entryId: "assistant-2", message: assistant("done", second) },
 		];
 
-		expect(fullHistoryToChat(entries)[1]?.usages).toEqual([first, second]);
+		expect(fullHistoryToChat(entries)[1]).toMatchObject({ kind: "agent", usages: [first, second] });
 
 		resetStreamState();
 		const [draft] = ensureDraft([]);
 		const afterFirst = finalizeMessage(draft, [{ type: "text", text: "working" }], first);
 		const afterSecond = finalizeMessage(afterFirst, [{ type: "text", text: "done" }], second);
-		expect(afterSecond[0]?.usages).toEqual([first, second]);
+		expect(afterSecond[0]).toMatchObject({ kind: "agent", usages: [first, second] });
 		resetStreamState();
 	});
 });

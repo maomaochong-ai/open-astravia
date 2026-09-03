@@ -223,6 +223,8 @@ Definition，不必为每个 Agent 创建 route。
 | Prompt、Tool、MCP、上下文与模型调用级动态能力 | `RuntimeCapabilityDefinition`、Feature 与 Contribution Provider |
 | Prompt 缓存稳定性例外 | `InstructionBlock.cacheability` 或最终 `ModelCallFrameComposer` layout |
 | Tool 授权或会改变行为的决策 | Tool Policy 或领域 Typed Interceptor |
+| 手动上下文压缩 | `RuntimeCapabilityDefinition.manualCompactionStrategy` + Snapshot admission；Session Controller 负责取消与提交 |
+| 已授权记录的瞬时摘要 | `RuntimeCapabilityDefinition.contextSummaryStrategy` + Snapshot admission；不读取或改写 Session 文档 |
 | Session 状态、服务、端点、持久化参与者与 continuation | Session Extension |
 | Definition 的代码/文件/Plugin/远端动态发布 | Definition Source + Registry revision |
 | 日志、Trace、Metrics、JSONL 或 UI 诊断 | 只读 `RuntimeObservationHub` + `RuntimeObservationPort` Adapter |
@@ -232,3 +234,14 @@ Definition，不必为每个 Agent 创建 route。
 `RuntimeObservationHubView.publisher()` 取得 scoped Publisher，把自己创建的 RuntimeHost、活动 Session 切换器或其它
 子模块汇入同一个 Hub；关闭子模块不能关闭 Hub。`Profile`、Persona 和 Mode 属于具体产品，产品在
 创建 Definition 前把它们解析为普通 Instruction/Feature，不能向 Runtime Agent 合同下传。
+
+手动压缩使用 `reason: "manual_compaction"` 获取 Snapshot，并调用该次绑定的摘要策略及提交回调。
+同一对象若同时实现自动压缩、模型上下文投影和手动压缩，必须在对应 capability 字段显式注册同一 owner；
+Runtime 每次 acquisition 只绑定、释放一次。Session 的自动压缩开关仍由 Session 级控制面拥有，
+不能用一个可变的“最近绑定”对象向手动压缩传递上下文。未声明动态 binder 的旧静态手动实现仍可直接使用；
+动态实现未注册进 Snapshot 时明确失败，不回退到未绑定执行。
+
+`summarizeSessionContext()` 与手动压缩不是同一操作：调用者必须先完成权限和业务投影，再提交明确的
+`SessionContextRecord[]`。Runtime 只绑定该次 Snapshot 的模型/凭证、传播取消并释放资源，不加载 Conversation、
+不选择历史边界、也不提交 compaction entry。这样 Team、索引或其它产品可以复用摘要基础设施，而不会把各自的
+可见性规则下沉到通用 Runtime。

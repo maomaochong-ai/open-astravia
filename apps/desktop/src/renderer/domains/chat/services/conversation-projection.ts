@@ -1,55 +1,41 @@
-import type { ChatMessage } from "@shared/store/atoms";
-import type { AssistantMessageEvent } from "@vetta/ai";
+import { type ConversationMessageEventState, reduceConversationMessageEvent } from "@shared/conversation";
+import type { ChatConversationItem } from "@shared/store/atoms";
 import type { AssistantSessionEvent, HistoryEntry } from "@vetta/runtime-core";
-import {
-	appendTextDelta,
-	appendThinkingDelta,
-	finalizeMessage,
-	fullHistoryToChat,
-	handleToolStart,
-	resetStreamState,
-} from "./chat-service";
+import type { ConversationAgentMessageEvent } from "@vetta/runtime-core/conversation";
+import { fullHistoryToChat, resetStreamState } from "./chat-service";
 
-function partialToolCall(
-	event: AssistantMessageEvent,
-): { readonly id: string; readonly name: string; readonly arguments: Record<string, unknown> } | undefined {
-	if (event.type !== "toolcall_start" && event.type !== "toolcall_delta" && event.type !== "toolcall_end") {
-		return undefined;
-	}
-	const part = event.partial.content[event.contentIndex];
-	if (part?.type !== "toolCall") return undefined;
-	return {
-		id: part.id,
-		name: part.name,
-		arguments:
-			part.arguments && typeof part.arguments === "object" && !Array.isArray(part.arguments)
-				? (part.arguments as Record<string, unknown>)
-				: {},
-	};
+interface QueuedAssistantEvent {
+	readonly event: AssistantSessionEvent;
+	readonly sequence: number;
 }
 
 /**
- * Desktop 对 Conversation 的唯一消息投影入口。
- *
- * 历史由 durable HistoryEntry 投影；实时更新直接消费无损的
- * AssistantMessageEvent。事件批处理只降低 React 提交频率，不按类型合并，
- * 因而 thinking/text/tool 的交错顺序不会被改变。
+ * Chat connector for the shared identity-scoped Conversation message reducer.
+ * Runtime events remain lossless; batching changes only React commit frequency.
  */
 export class ConversationProjection {
-	private pendingAssistantEvents: AssistantSessionEvent[] = [];
-	private lastSequence: number | undefined;
+	private pendingAssistantEvents: QueuedAssistantEvent[] = [];
+	private lastHostSequence: number | undefined;
+	private localSequence = 0;
 	private rawAssistantStream = false;
+	private targetMessageId: string | undefined;
 
-	projectHistory(history: HistoryEntry[]): ChatMessage[] {
+	projectHistory(history: HistoryEntry[]): ChatConversationItem[] {
 		return fullHistoryToChat(history);
 	}
 
 	enqueue(event: AssistantSessionEvent): void {
-		if (event.sequence !== undefined && this.lastSequence !== undefined && event.sequence <= this.lastSequence)
+		if (
+			event.sequence !== undefined &&
+			this.lastHostSequence !== undefined &&
+			event.sequence <= this.lastHostSequence
+		) {
 			return;
-		if (event.sequence !== undefined) this.lastSequence = event.sequence;
+		}
+		if (event.sequence !== undefined) this.lastHostSequence = event.sequence;
+		this.localSequence = Math.max(this.localSequence + 1, event.sequence ?? 0);
 		this.rawAssistantStream = true;
-		this.pendingAssistantEvents.push(event);
+		this.pendingAssistantEvents.push({ event, sequence: this.localSequence });
 	}
 
 	hasRawAssistantStream(): boolean {
@@ -60,39 +46,60 @@ export class ConversationProjection {
 		return this.pendingAssistantEvents.length > 0;
 	}
 
-	flush(messages: ChatMessage[]): ChatMessage[] {
+	flush(messages: ChatConversationItem[]): ChatConversationItem[] {
 		const pending = this.pendingAssistantEvents;
 		this.pendingAssistantEvents = [];
-		let projected = messages;
-		for (const event of pending) {
-			if (event.type === "text_delta") {
-				projected = appendTextDelta(projected, event.delta);
-				continue;
-			}
-			if (event.type === "thinking_delta") {
-				projected = appendThinkingDelta(projected, event.delta);
-				continue;
-			}
-			const toolCall = partialToolCall(event);
-			if (toolCall) {
-				projected = handleToolStart(projected, toolCall.id, toolCall.name, toolCall.arguments);
-				continue;
-			}
-			if (event.type === "done") {
-				projected = finalizeMessage(projected, event.message.content, event.message.usage);
-				continue;
-			}
-			if (event.type === "error") {
-				projected = finalizeMessage(projected, event.error.content, event.error.usage);
-			}
+		if (pending.length === 0) return messages;
+
+		const first = pending[0];
+		if (!first) return messages;
+		const existing = findTargetAgentMessage(messages, this.targetMessageId);
+		this.targetMessageId ??=
+			existing?.id ?? `assistant:${first.event.sessionId}:${first.event.turnId ?? "unscoped-turn"}`;
+		let state: ConversationMessageEventState | undefined = existing
+			? { conversationId: first.event.sessionId, sequence: -1, message: existing }
+			: undefined;
+		for (const queued of pending) {
+			state = reduceConversationMessageEvent(state, toConversationEnvelope(queued, this.targetMessageId));
 		}
-		return projected;
+		if (!state) return messages;
+
+		const index = messages.findIndex((item) => item.kind === "agent" && item.id === state?.message.id);
+		if (index < 0) return [...messages, state.message];
+		const next = [...messages];
+		next[index] = state.message;
+		return next;
 	}
 
 	reset(): void {
 		this.pendingAssistantEvents = [];
-		this.lastSequence = undefined;
+		this.lastHostSequence = undefined;
+		this.localSequence = 0;
 		this.rawAssistantStream = false;
+		this.targetMessageId = undefined;
 		resetStreamState();
 	}
+}
+
+function findTargetAgentMessage(messages: readonly ChatConversationItem[], targetMessageId: string | undefined) {
+	if (targetMessageId) {
+		const target = messages.find((item) => item.kind === "agent" && item.id === targetMessageId);
+		if (target?.kind === "agent") return target;
+	}
+	const tail = messages.at(-1);
+	return tail?.kind === "agent" && tail.phase === "streaming" ? tail : undefined;
+}
+
+function toConversationEnvelope(queued: QueuedAssistantEvent, messageId: string): ConversationAgentMessageEvent {
+	const { event, sequence } = queued;
+	return {
+		type: "conversation.agent-message-event",
+		conversationId: event.sessionId,
+		messageId,
+		turnId: event.turnId ?? messageId,
+		author: { kind: "agent", id: "default-agent" },
+		sequence,
+		timestamp: event.timestamp,
+		event,
+	};
 }

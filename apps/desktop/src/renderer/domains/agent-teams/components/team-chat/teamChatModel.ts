@@ -6,11 +6,13 @@ import {
 } from "@shared/components/message-feed/navigationModel";
 import type {
 	ConversationFeedItemViewModel,
+	ConversationMessageEventState,
 	ConversationMessageViewModel,
 	ConversationParticipantViewModel,
 } from "@shared/conversation";
+import { reduceConversationMessageEvent } from "@shared/conversation";
 import type { RendererMarkdownModel } from "@shared/models/renderer-markdown-model";
-import type { AgentTeamDocument, TeamDefinition, TeamSessionDocument, TeamSessionStreamEvent } from "@vetta/agent-team";
+import type { AgentTeamDocument, TeamDefinition, TeamSessionSnapshot, TeamSessionStreamEvent } from "@vetta/agent-team";
 import type { PromptAttachmentRef } from "@vetta/runtime-core";
 
 export type TeamChatStatus = "loading" | "ready" | "sending" | "streaming" | "cancelling" | "error";
@@ -43,7 +45,7 @@ export interface TeamChatViewModel {
 	readonly history: readonly string[];
 	readonly attachments: readonly TeamAttachmentViewModel[];
 	readonly members: readonly TeamMemberViewModel[];
-	readonly timelineItems: readonly TeamTimelineItemViewModel[];
+	readonly feedItems: readonly TeamConversationFeedItem[];
 	readonly markdown: RendererMarkdownModel;
 	readonly error?: string;
 	readonly editorEnabled: boolean;
@@ -98,18 +100,7 @@ export interface TeamPendingRequest {
 	readonly timestamp?: number;
 }
 
-export interface TeamStreamingTurnViewModel {
-	readonly turnId: string;
-	readonly requestId: string;
-	readonly memberId: string;
-	readonly seq: number;
-	readonly text: string;
-	readonly startedAt: number;
-	readonly phase: "streaming" | "waiting" | "error" | "aborted";
-	readonly error?: string;
-}
-
-export type TeamStreamState = Readonly<Record<string, TeamStreamingTurnViewModel>>;
+export type TeamStreamState = Readonly<Record<string, ConversationMessageEventState>>;
 
 export interface TeamTimelineEventViewModel {
 	readonly kind: "delegation";
@@ -118,7 +109,7 @@ export interface TeamTimelineEventViewModel {
 	readonly timestamp: number;
 }
 
-export type TeamTimelineItemViewModel = ConversationFeedItemViewModel<TeamTimelineEventViewModel>;
+export type TeamConversationFeedItem = ConversationFeedItemViewModel<TeamTimelineEventViewModel>;
 
 export interface TeamTimelineLabels {
 	readonly delegation: (from: string, to: string) => string;
@@ -127,56 +118,24 @@ export interface TeamTimelineLabels {
 
 export function reduceTeamStreamState(state: TeamStreamState, event: TeamSessionStreamEvent): TeamStreamState {
 	if (event.type === "session-snapshot") {
-		return Object.fromEntries(
-			event.activeTurns.map((turn) => [
-				turn.turnId,
-				{
-					...turn,
-					phase: "streaming" as const,
-				},
-			]),
-		);
+		return event.activeMessageEvents.reduce(reduceTeamStreamState, {});
 	}
-	if (event.type === "session-updated") return state;
-	if (event.type === "member-start") {
-		return {
-			...state,
-			[event.turnId]: {
-				turnId: event.turnId,
-				requestId: event.requestId,
-				memberId: event.memberId,
-				seq: event.seq,
-				text: "",
-				startedAt: event.timestamp,
-				phase: "streaming",
-			},
-		};
+	if (event.type === "session-updated") {
+		const persisted = new Set(event.snapshot.messages.map((record) => record.id));
+		return Object.fromEntries(Object.entries(state).filter(([messageId]) => !persisted.has(messageId)));
 	}
-	const current = state[event.turnId];
-	if (!current || event.seq <= current.seq) return state;
-	if (event.type === "member-delta") {
-		return {
-			...state,
-			[event.turnId]: {
-				...current,
-				seq: event.seq,
-				text: `${current.text}${event.delta}`,
-			},
-		};
-	}
-	if (event.phase === "final" || event.phase === "aborted") {
+	if (event.type === "conversation.agent-message-discard") {
+		const current = state[event.messageId];
+		if (!current || event.sequence <= current.sequence) return state;
 		const next = { ...state };
-		delete next[event.turnId];
+		delete next[event.messageId];
 		return next;
 	}
+	const current = state[event.messageId];
+	const next = reduceConversationMessageEvent(current, event);
 	return {
 		...state,
-		[event.turnId]: {
-			...current,
-			seq: event.seq,
-			phase: event.phase === "attention-required" ? "error" : event.phase,
-			...(event.error ? { error: event.error } : {}),
-		},
+		[event.messageId]: next,
 	};
 }
 
@@ -190,13 +149,8 @@ export function resolveTeamMembers(
 	if (!team) return [];
 	const workingMembers = new Set(
 		Object.values(streams)
-			.filter((turn) => turn.phase === "streaming")
-			.map((turn) => turn.memberId),
-	);
-	const errorMembers = new Set(
-		Object.values(streams)
-			.filter((turn) => turn.phase === "error")
-			.map((turn) => turn.memberId),
+			.filter((turn) => turn.message.phase === "streaming")
+			.map((turn) => turn.message.authorId),
 	);
 	return team.members.map((member) => {
 		const profile = document?.agents.find((candidate) => candidate.id === member.binding.agentProfileId);
@@ -208,82 +162,92 @@ export function resolveTeamMembers(
 			...(profile?.avatar ? { avatar: profile.avatar } : {}),
 			blueprintId: profile?.blueprintId ?? "leader",
 			selected: selectedMemberIds.includes(member.id),
-			status: errorMembers.has(member.id) ? "error" : workingMembers.has(member.id) ? "working" : "idle",
+			status: workingMembers.has(member.id) ? "working" : "idle",
 		};
 	});
 }
 
-export function buildTeamTimelineItems({
-	session,
+export function projectTeamConversationFeed({
+	snapshot,
 	pending,
 	streams,
 	members,
 	labels,
 }: {
-	readonly session: TeamSessionDocument | undefined;
+	readonly snapshot: TeamSessionSnapshot | undefined;
 	readonly pending: TeamPendingRequest | undefined;
 	readonly streams: TeamStreamState;
 	readonly members: readonly TeamMemberViewModel[];
 	readonly labels: TeamTimelineLabels;
-}): TeamTimelineItemViewModel[] {
-	if (!session) return [];
+}): TeamConversationFeedItem[] {
+	if (!snapshot) return [];
+	const { session } = snapshot;
 	const memberMap = new Map(members.map((member) => [member.id, member]));
-	const items: TeamTimelineItemViewModel[] = session.events.map((event) => {
-		if (event.type === "user-message") {
+	const items: TeamConversationFeedItem[] = snapshot.messages.map((record) => {
+		if (record.kind === "user") {
 			return {
-				id: `user:${event.requestId}`,
+				id: record.id,
 				kind: "message",
 				message: {
-					id: `user:${event.requestId}`,
-					turnId: event.requestId,
-					authorId: "local-user",
+					id: record.id,
+					entryId: record.id,
+					turnId: record.turnId,
+					authorId: record.author.id,
 					kind: "user",
 					role: "user",
 					deliveryPhase: "completed",
-					text: stripAttachmentContext(event.text),
-					timestamp: event.timestamp,
-					attachments: event.attachments ?? [],
-				},
-			};
-		}
-		if (event.type === "member-delegation") {
-			const source =
-				memberMap.get(event.sourceMemberId)?.name ??
-				session.memberHandles[event.sourceMemberId] ??
-				labels.unknownMember;
-			const target =
-				memberMap.get(event.targetMemberId)?.name ??
-				session.memberHandles[event.targetMemberId] ??
-				labels.unknownMember;
-			return {
-				id: event.id,
-				kind: "event",
-				event: {
-					kind: "delegation",
-					requestId: event.requestId,
-					label: labels.delegation(source, target),
-					timestamp: event.timestamp,
+					text: stripAttachmentContext(userMessageText(record.message.content)),
+					timestamp: record.timestamp,
+					attachments: [...(record.attachments ?? [])],
 				},
 			};
 		}
 		return {
-			id: `member:${event.sourceTurnId}`,
+			id: record.id,
 			kind: "message",
 			message: {
-				id: `member:${event.sourceTurnId}`,
-				turnId: event.requestId,
-				authorId: event.memberId,
+				id: record.id,
+				entryId: record.id,
+				turnId: record.turnId,
+				authorId: record.author.id,
 				kind: "agent",
 				role: "assistant",
 				phase: "completed",
-				blocks: [{ type: "text", id: `text:${event.id}`, text: event.text }],
-				timestamp: event.timestamp,
+				text: record.message.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("\n"),
+				blocks: record.message.content.flatMap((block, index) =>
+					block.type === "text"
+						? [{ type: "text" as const, id: `text:${record.id}:${index}`, text: block.text }]
+						: [],
+				),
+				usages: [record.message.usage],
+				timestamp: record.timestamp,
 			},
 		};
 	});
+	for (const activity of snapshot.activities) {
+		const source =
+			memberMap.get(activity.sourceMemberId)?.name ??
+			session.memberHandles[activity.sourceMemberId] ??
+			labels.unknownMember;
+		const target =
+			memberMap.get(activity.targetMemberId)?.name ??
+			session.memberHandles[activity.targetMemberId] ??
+			labels.unknownMember;
+		items.push({
+			id: activity.id,
+			kind: "event",
+			event: {
+				kind: "delegation",
+				requestId: activity.requestId,
+				label: labels.delegation(source, target),
+				timestamp: activity.timestamp,
+			},
+		});
+	}
+	items.sort((left, right) => itemTimestamp(left) - itemTimestamp(right));
 
 	const userCommitted = pending
-		? session.events.some((event) => event.type === "user-message" && event.requestId === pending.requestId)
+		? snapshot.messages.some((record) => record.kind === "user" && record.turnId === pending.requestId)
 		: false;
 	if (pending && !userCommitted) {
 		items.push({
@@ -298,32 +262,20 @@ export function buildTeamTimelineItems({
 				deliveryPhase: "pending",
 				text: pending.displayText ?? stripAttachmentContext(pending.text),
 				timestamp: pending.timestamp ?? session.updatedAt,
-				attachments: pending.attachments ?? [],
+				attachments: [...(pending.attachments ?? [])],
 			},
 		});
 	}
 
-	const persistedResults = new Set(
-		session.events.filter((event) => event.type === "member-result").map((event) => event.sourceTurnId),
-	);
-	for (const turn of Object.values(streams).sort((left, right) => left.startedAt - right.startedAt)) {
-		if (persistedResults.has(turn.turnId)) continue;
+	const persistedResults = new Set(snapshot.messages.map((record) => record.id));
+	for (const turn of Object.values(streams).sort(
+		(left, right) => (left.message.startedAt ?? 0) - (right.message.startedAt ?? 0),
+	)) {
+		if (persistedResults.has(turn.message.id)) continue;
 		items.push({
-			id: `member:${turn.turnId}`,
+			id: turn.message.id,
 			kind: "message",
-			message: {
-				id: `member:${turn.turnId}`,
-				turnId: turn.requestId,
-				authorId: turn.memberId,
-				kind: "agent",
-				role: "assistant",
-				phase: turn.phase === "error" ? "failed" : turn.phase,
-				blocks: [
-					...(turn.text ? [{ type: "text" as const, id: `text:${turn.turnId}`, text: turn.text }] : []),
-					...(turn.error ? [{ type: "text" as const, id: `error:${turn.turnId}`, text: turn.error }] : []),
-				],
-				timestamp: turn.startedAt,
-			},
+			message: turn.message,
 		});
 	}
 	if (pending && Object.keys(streams).length === 0) {
@@ -337,6 +289,7 @@ export function buildTeamTimelineItems({
 				kind: "agent",
 				role: "assistant",
 				phase: "pending",
+				text: "",
 				blocks: [],
 				timestamp: pending.timestamp ?? session.updatedAt,
 			},
@@ -345,8 +298,17 @@ export function buildTeamTimelineItems({
 	return items;
 }
 
+function userMessageText(content: string | readonly { readonly type: string; readonly text?: string }[]): string {
+	if (typeof content === "string") return content;
+	return content.flatMap((block) => (block.type === "text" && block.text ? [block.text] : [])).join("\n");
+}
+
+function itemTimestamp(item: TeamConversationFeedItem): number {
+	return item.kind === "message" ? (item.message.timestamp ?? 0) : item.event.timestamp;
+}
+
 /** Team adapter: one user request and all member/delegation events sharing requestId form a turn. */
-export function buildTeamNavigationTurns(items: readonly TeamTimelineItemViewModel[]): MessageFeedNavigationTurn[] {
+export function buildTeamNavigationTurns(items: readonly TeamConversationFeedItem[]): MessageFeedNavigationTurn[] {
 	const turns: Array<{ id: string; turnNumber: number; entries: MessageFeedNavigationEntry[] }> = [];
 	const byRequest = new Map<string, (typeof turns)[number]>();
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
