@@ -36,6 +36,17 @@
 	"card": {
 		"noDescription": "暂无能力说明"
 	},
+	"operation": {
+		"processing": "正在处理…",
+		"installing": "正在添加…",
+		"updating": "正在更新…",
+		"applyingUpdate": "正在重载新版本…",
+		"removing": "正在移除…",
+		"enabling": "正在启用…",
+		"disabling": "正在停用…",
+		"reloading": "正在重载…",
+		"saving": "正在保存…"
+	},
 	"actions": {
 		"add": "添加",
 		"update": "更新",
@@ -88,6 +99,7 @@
 		"uninstalled": "已移除 {{name}}",
 		"uninstalledCount": "已移除 {{count}} 项能力",
 		"imported": "已导入 {{name}}",
+		"updatedAndReloaded": "已更新并重载 {{name}} {{version}}",
 		"reloaded": "已重载 {{name}} {{version}}"
 	},
 	"detail": {
@@ -146,7 +158,7 @@
 			"system": "系统内置",
 			"local": "本地 zip"
 		},
-		"reloadable": "可重载到 {{version}}",
+		"reloadVersion": "重载至 {{version}}",
 		"permissions": "权限",
 		"permissionsSystemHint": "系统插件自动授予，不可更改",
 		"setupDialog": "启用与权限",
@@ -194,6 +206,11 @@
 		}
 	},
 	"permission": {
+		"detailUnavailable": {
+			"title": "插件配置面板未显示",
+			"description": "尚未允许此插件在详情页显示配置面板。请前往权限设置，查看并开启所需权限。",
+			"review": "检查插件权限"
+		},
 		"page": {
 			"open": "了解与配置权限",
 			"title": "权限与数据访问",
@@ -342,7 +359,7 @@
 			"shellOpenExternal": "使用系统默认浏览器或应用打开插件指定的外部链接。"
 		},
 		"uiSlotGlobal": "全局 UI Slot",
-		"uiSlotAbilityDetail": "能力详情页 Slot",
+		"uiSlotAbilityDetail": "显示详情配置面板",
 		"uiSlotFilePreview": "文件预览 Slot",
 		"uiSlotActivityTab": "活动面板 Tab",
 		"uiSlotInputAction": "输入栏动作 Slot",

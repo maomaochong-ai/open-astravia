@@ -10,6 +10,7 @@ import {
 import { useAbilityText } from "../../hooks/useAbilityText";
 import type { AbilityItem } from "../../types";
 import { AbilityIcon } from "../AbilityIcon";
+import { AbilityOperationStatus } from "../AbilityOperationStatus";
 import { AbilityStatusBadges, AbilityTypeBadge } from "../AbilityBadges";
 
 const SECONDARY_ICONS: Record<AbilitySecondaryAction, string> = {
@@ -141,11 +142,11 @@ export function AbilityDetailHeader({
 							onClick={onPrimary}
 						>
 							{item.busy ? (
-								<span className="icon-[solar--refresh-linear] h-4 w-4 animate-spin" />
+								<AbilityOperationStatus operation={item.operation} iconClassName="h-4 w-4" />
 							) : (
 								<span className="icon-[solar--play-circle-bold] h-4 w-4" />
 							)}
-							{t(`detail.primary.${primary}`)}
+							{item.busy ? null : t(`detail.primary.${primary}`)}
 						</Button>
 					) : null}
 					{secondaries

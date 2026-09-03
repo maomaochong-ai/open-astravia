@@ -66,7 +66,7 @@ export async function installOpenMarketplaceAbilityInDesktop(
 		const installed = await installPluginFromArchive(createOpenMarketplacePluginArchive(sourceDir), {
 			source: "remote",
 			enable: false,
-			grantedPermissions: [],
+			// Omit grants: fresh installs default to none; updates retain the user's existing consent.
 		});
 		recordAbilityInstall("plugin", installed.id, installed.activeVersion, {
 			origin,

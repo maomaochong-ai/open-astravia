@@ -6,12 +6,13 @@ import type { McpServerConfigData, PluginPermission } from "@preload/api";
 import { i18n } from "@shared/i18n";
 import { abilityToMarketMcpServer, downloadAbility, type MarketAbility } from "@shared/lib/api";
 import { authTokenAtom } from "@shared/store/atoms";
+import { showToast } from "@shared/store/toast-atoms";
 import { useAtomValue } from "jotai";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { notifyPluginsChanged } from "../../plugins/runtime/plugin-events";
 import type { McpSettingsModel } from "../../settings/components/useMcpSettingsModel";
 import { type InstallOutcome, installSelectedBundleMembers } from "../lib/install-bundle-members";
-import type { AbilityItem, BundleAbility, McpAbility, PluginAbility } from "../types";
+import type { AbilityItem, AbilityOperation, BundleAbility, McpAbility, PluginAbility } from "../types";
 
 function errorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -19,6 +20,7 @@ function errorMessage(error: unknown): string {
 
 export interface AbilityActions {
 	busyIds: ReadonlySet<string>;
+	operationById: ReadonlyMap<string, AbilityOperation>;
 	error: string | null;
 	install: (item: AbilityItem) => void;
 	installBundleMembers: (bundle: BundleAbility, members: AbilityItem[]) => void;
@@ -43,20 +45,30 @@ export interface AbilityActions {
 
 export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; refresh: () => void }): AbilityActions {
 	const token = useAtomValue(authTokenAtom);
-	const [busyIds, setBusyIds] = useState<ReadonlySet<string>>(() => new Set<string>());
+	const [operationById, setOperationById] = useState<ReadonlyMap<string, AbilityOperation>>(
+		() => new Map<string, AbilityOperation>(),
+	);
+	const busyIds = useMemo<ReadonlySet<string>>(() => new Set(operationById.keys()), [operationById]);
 	const [error, setError] = useState<string | null>(null);
 	const [importing, setImporting] = useState(false);
 	const [permissionPromptSlug, setPermissionPromptSlug] = useState<string | null>(null);
 
 	const run = useCallback(
-		(id: string, operation: () => Promise<void>) => {
-			setBusyIds((prev) => new Set(prev).add(id));
+		(
+			id: string,
+			initialOperation: AbilityOperation,
+			operation: (setOperation: (next: AbilityOperation) => void) => Promise<void>,
+		) => {
+			setOperationById((prev) => new Map(prev).set(id, initialOperation));
 			setError(null);
-			void operation()
+			const setOperation = (nextOperation: AbilityOperation): void => {
+				setOperationById((prev) => new Map(prev).set(id, nextOperation));
+			};
+			void operation(setOperation)
 				.catch((err: unknown) => setError(errorMessage(err)))
 				.finally(() => {
-					setBusyIds((prev) => {
-						const next = new Set(prev);
+					setOperationById((prev) => {
+						const next = new Map(prev);
 						next.delete(id);
 						return next;
 					});
@@ -85,12 +97,33 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 		[token],
 	);
 
+	const finishPluginInstall = useCallback(
+		async (item: PluginAbility, setOperation?: (next: AbilityOperation) => void): Promise<void> => {
+			if (item.installed) {
+				setOperation?.("applyingUpdate");
+				await window.vetta.plugins.reload(item.slug);
+			}
+			notifyPluginsChanged();
+			if (item.installed) {
+				showToast({
+					variant: "success",
+					message: i18n.t("abilities:message.updatedAndReloaded", {
+						name: item.title,
+						version: item.version,
+					}),
+				});
+				return;
+			}
+			setPermissionPromptSlug(item.slug);
+		},
+		[],
+	);
+
 	const installPlugin = useCallback(
-		async (item: PluginAbility): Promise<InstallOutcome> => {
+		async (item: PluginAbility, setOperation?: (next: AbilityOperation) => void): Promise<InstallOutcome> => {
 			if (item.origin?.kind === "github-marketplace") {
 				await window.vetta.abilities.installOpenAbility("plugin", item.slug, item.origin.sourceId);
-				notifyPluginsChanged();
-				setPermissionPromptSlug(item.slug);
+				await finishPluginInstall(item, setOperation);
 				return "installed";
 			}
 			const buffer = await downloadAbility("plugin", item.slug, token);
@@ -98,11 +131,10 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 				source: "remote",
 				expectedSha256: item.sha256,
 			});
-			notifyPluginsChanged();
-			setPermissionPromptSlug(item.slug);
+			await finishPluginInstall(item, setOperation);
 			return "installed";
 		},
-		[token],
+		[finishPluginInstall, token],
 	);
 
 	const installMcp = useCallback(
@@ -158,11 +190,11 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 	);
 
 	const installOne = useCallback(
-		async (item: AbilityItem): Promise<InstallOutcome> => {
+		async (item: AbilityItem, setOperation?: (next: AbilityOperation) => void): Promise<InstallOutcome> => {
 			if (item.installConflictIds?.length) {
 				throw new Error(i18n.t("abilities:error.installSourceConflict"));
 			}
-			if (item.type === "plugin") return installPlugin(item);
+			if (item.type === "plugin") return installPlugin(item, setOperation);
 			if (item.type === "mcp") return installMcp(item);
 			if (item.type === "bundle") return "skipped";
 			return installSkill(item);
@@ -192,9 +224,13 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 	const installBundleMembers = useCallback(
 		(bundle: BundleAbility, members: AbilityItem[]) => {
 			if (members.length === 0) return;
-			run(bundle.id, async () => {
-				await installSelectedBundleMembers(members, installOne);
-			});
+			run(
+				bundle.id,
+				members.some((member) => member.installed) ? "updating" : "installing",
+				async (setOperation) => {
+					await installSelectedBundleMembers(members, (member) => installOne(member, setOperation));
+				},
+			);
 		},
 		[installOne, run],
 	);
@@ -207,8 +243,8 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 				setError(i18n.t("abilities:error.installSourceConflict"));
 				return;
 			}
-			run(item.id, async () => {
-				await installOne(item);
+			run(item.id, item.installed ? "updating" : "installing", async (setOperation) => {
+				await installOne(item, setOperation);
 			});
 		},
 		[installOne, run],
@@ -217,7 +253,7 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 	const uninstall = useCallback(
 		(item: AbilityItem) => {
 			if (item.readonly || item.type === "bundle") return;
-			run(item.id, () => uninstallOne(item));
+			run(item.id, "removing", () => uninstallOne(item));
 		},
 		[run, uninstallOne],
 	);
@@ -227,7 +263,7 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 			if (members.length === 0) return;
 			const first = members[0];
 			if (!first) return;
-			run(first.id, async () => {
+			run(first.id, "removing", async () => {
 				for (const member of members) {
 					await uninstallOne(member);
 				}
@@ -259,12 +295,12 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 			if (item.readonly) return;
 			if (item.type === "bundle") {
 				const targets = item.memberItems.filter((member) => member.installed && member.enabled === item.enabled);
-				run(item.id, async () => {
+				run(item.id, item.enabled ? "disabling" : "enabling", async () => {
 					for (const member of targets) await toggleOne(member);
 				});
 				return;
 			}
-			run(item.id, async () => {
+			run(item.id, item.enabled ? "disabling" : "enabling", async () => {
 				await toggleOne(item);
 			});
 		},
@@ -273,7 +309,7 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 
 	const setPluginPermission = useCallback(
 		(item: PluginAbility, permission: PluginPermission, granted: boolean) => {
-			run(`${item.id}:permission:${permission}`, async () => {
+			run(`${item.id}:permission:${permission}`, "saving", async () => {
 				if (granted) await window.vetta.plugins.grantPermissions(item.slug, [permission]);
 				else await window.vetta.plugins.revokePermissions(item.slug, [permission]);
 				notifyPluginsChanged();
@@ -287,7 +323,7 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 			item: PluginAbility,
 			next: { enabled: boolean; grantedPermissions: PluginPermission[]; grantedCommands: string[] },
 		) => {
-			run(`${item.id}:setup`, async () => {
+			run(`${item.id}:setup`, "saving", async () => {
 				const grant = next.grantedPermissions.filter((permission) => !item.grantedPermissions.includes(permission));
 				const revoke = item.grantedPermissions.filter(
 					(permission) => !next.grantedPermissions.includes(permission),
@@ -308,7 +344,7 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 
 	const setPluginCommand = useCallback(
 		(item: PluginAbility, command: string, granted: boolean) => {
-			run(`${item.id}:command:${command}`, async () => {
+			run(`${item.id}:command:${command}`, "saving", async () => {
 				if (granted) await window.vetta.plugins.grantCommands(item.slug, [command]);
 				else await window.vetta.plugins.revokeCommands(item.slug, [command]);
 				notifyPluginsChanged();
@@ -319,9 +355,16 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 
 	const reloadPlugin = useCallback(
 		(item: PluginAbility) => {
-			run(item.id, async () => {
+			run(item.id, "reloading", async () => {
 				await window.vetta.plugins.reload(item.slug);
 				notifyPluginsChanged();
+				showToast({
+					variant: "success",
+					message: i18n.t("abilities:message.reloaded", {
+						name: item.title,
+						version: item.pendingVersion ?? item.localVersion ?? item.version,
+					}),
+				});
 			});
 		},
 		[run],
@@ -367,6 +410,7 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 
 	return {
 		busyIds,
+		operationById,
 		error,
 		install,
 		installBundleMembers,

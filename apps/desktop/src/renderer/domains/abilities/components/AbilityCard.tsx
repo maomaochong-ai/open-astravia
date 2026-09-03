@@ -13,6 +13,7 @@ import { useAbilityText } from "../hooks/useAbilityText";
 import type { AbilitiesModel, AbilityItem, McpAbility } from "../types";
 import { AbilityIcon } from "./AbilityIcon";
 import { AbilityStatusBadges } from "./AbilityBadges";
+import { AbilityOperationStatus } from "./AbilityOperationStatus";
 
 function McpMenuItems({ item, model }: { item: McpAbility; model: AbilitiesModel }): JSX.Element {
 	const { t } = useTranslation("abilities");
@@ -66,16 +67,19 @@ function InstalledMoreMenu({
 
 	// 只读能力没有可执行的操作，右侧留空即可，不用「锁」占位。
 	if (item.readonly) return null;
+	if (item.busy) {
+		return (
+			<div className="px-2 py-1 text-[11px] text-muted-foreground">
+				<AbilityOperationStatus operation={item.operation} />
+			</div>
+		);
+	}
 
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<Button variant="ghost" size="icon-sm" disabled={item.busy} aria-label={t("actions.more")}>
-					{item.busy ? (
-						<span className="icon-[solar--refresh-linear] h-3.5 w-3.5 animate-spin" />
-					) : (
-						<span className="icon-[solar--menu-dots-bold] h-3.5 w-3.5" />
-					)}
+				<Button variant="ghost" size="icon-sm" aria-label={t("actions.more")}>
+					<span className="icon-[solar--menu-dots-bold] h-3.5 w-3.5" />
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end" className="w-44">
@@ -83,6 +87,14 @@ function InstalledMoreMenu({
 					<span className="icon-[solar--eye-linear] h-3.5 w-3.5" />
 					{t("actions.viewDetails")}
 				</DropdownMenuItem>
+				{item.type === "plugin" && (
+					<DropdownMenuItem onSelect={() => model.reloadPlugin(item)}>
+						<span className="icon-[solar--restart-linear] h-3.5 w-3.5" />
+						{item.pendingVersion
+							? t("plugin.reloadVersion", { version: item.pendingVersion })
+							: t("actions.reload")}
+					</DropdownMenuItem>
+				)}
 				{item.needsUpdate && (
 					<DropdownMenuItem onSelect={() => (item.type === "bundle" ? onOpenDetail() : model.install(item))}>
 						<span className="icon-[solar--refresh-linear] h-3.5 w-3.5" />
@@ -90,12 +102,6 @@ function InstalledMoreMenu({
 					</DropdownMenuItem>
 				)}
 				{item.type === "mcp" && <McpMenuItems item={item} model={model} />}
-				{item.type === "plugin" && (
-					<DropdownMenuItem onSelect={() => model.reloadPlugin(item)}>
-						<span className="icon-[solar--restart-linear] h-3.5 w-3.5" />
-						{t("actions.reload")}
-					</DropdownMenuItem>
-				)}
 				<DropdownMenuItem onSelect={() => model.toggle(item)}>
 					<span
 						className={cn(
@@ -157,8 +163,7 @@ export function AbilityCard({ item, model }: { item: AbilityItem; model: Abiliti
 						className="border border-border bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
 						onClick={() => (item.type === "bundle" ? openDetail() : model.install(item))}
 					>
-						{item.busy ? <span className="icon-[solar--refresh-linear] h-3.5 w-3.5 animate-spin" /> : null}
-						{t("actions.add")}
+						{item.busy ? <AbilityOperationStatus operation={item.operation} /> : t("actions.add")}
 					</Button>
 				)}
 			</div>

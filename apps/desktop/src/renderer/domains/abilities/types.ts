@@ -39,6 +39,17 @@ export const ABILITY_CATEGORY_CONNECTORS = "__connectors__";
  */
 export const ABILITY_CATEGORY_VETTA_BUILTIN = "__vetta_builtin__";
 
+/** 用户触发的能力操作阶段；用于让列表与详情说明当前正在发生什么。 */
+export type AbilityOperation =
+	| "installing"
+	| "updating"
+	| "applyingUpdate"
+	| "removing"
+	| "enabling"
+	| "disabling"
+	| "reloading"
+	| "saving";
+
 export interface AbilityBase {
 	/** 来源感知的目录唯一标识；同 type + slug 可以跨来源并存。 */
 	id: string;
@@ -69,6 +80,8 @@ export interface AbilityBase {
 	/** 缺凭证或未授权，装了也用不了。 */
 	setupRequired: boolean;
 	busy: boolean;
+	/** 只在当前条目有可见异步操作时存在；busy 仍兼容聚合/子操作状态。 */
+	operation?: AbilityOperation;
 	downloadCount: number;
 	/** 用户自行导入（本地 zip / 从路径安装）。 */
 	isCustom: boolean;

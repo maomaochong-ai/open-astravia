@@ -72,7 +72,22 @@ describe("createInstalledPluginFromManifest", () => {
 			version: "2.0.0",
 			activeVersion: "1.0.0",
 			pendingVersion: "2.0.0",
+			grantedPermissions: ["agent.skills.control"],
 			entryUrl: "vetta-plugin://demo/versions/1.0.0/dist/mf-manifest.json?v=1.0.0",
 		});
+	});
+
+	it("prunes removed permissions without granting new declarations on update", () => {
+		const installed = createInstalledPluginFromManifest({
+			manifest: { ...manifest, permissions: ["agent.command.run"] },
+			previous: previousPlugin(),
+			options: { source: "remote" },
+			locales: {},
+			hostApiVersion: "1.3.0",
+			rootPath: "C:/plugins/demo/versions/1.0.0",
+		});
+
+		expect(installed.permissions).toEqual(["agent.command.run"]);
+		expect(installed.grantedPermissions).toEqual([]);
 	});
 });

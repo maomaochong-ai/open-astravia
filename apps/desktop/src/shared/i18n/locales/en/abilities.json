@@ -36,6 +36,17 @@
 	"card": {
 		"noDescription": "No description"
 	},
+	"operation": {
+		"processing": "Working…",
+		"installing": "Adding…",
+		"updating": "Updating…",
+		"applyingUpdate": "Reloading the new version…",
+		"removing": "Removing…",
+		"enabling": "Enabling…",
+		"disabling": "Disabling…",
+		"reloading": "Reloading…",
+		"saving": "Saving…"
+	},
 	"actions": {
 		"add": "Add",
 		"update": "Update",
@@ -88,6 +99,7 @@
 		"uninstalled": "Removed {{name}}",
 		"uninstalledCount": "Removed {{count}} abilities",
 		"imported": "Imported {{name}}",
+		"updatedAndReloaded": "Updated and reloaded {{name}} {{version}}",
 		"reloaded": "Reloaded {{name}} {{version}}"
 	},
 	"detail": {
@@ -146,7 +158,7 @@
 			"system": "Built-in",
 			"local": "Local zip"
 		},
-		"reloadable": "Reloadable to {{version}}",
+		"reloadVersion": "Reload to {{version}}",
 		"permissions": "Permissions",
 		"permissionsSystemHint": "Granted automatically for system plugins, not editable",
 		"setupDialog": "Enable and permissions",
@@ -194,6 +206,11 @@
 		}
 	},
 	"permission": {
+		"detailUnavailable": {
+			"title": "Plugin configuration panel is hidden",
+			"description": "This plugin has not been allowed to show its configuration panel here. Review its permissions and enable the ones you need.",
+			"review": "Check plugin permissions"
+		},
 		"page": {
 			"open": "Review permissions",
 			"title": "Permissions and data access",
@@ -342,7 +359,7 @@
 			"shellOpenExternal": "Opens a plugin-selected external link in the system browser or default app."
 		},
 		"uiSlotGlobal": "Global UI slot",
-		"uiSlotAbilityDetail": "Ability detail slot",
+		"uiSlotAbilityDetail": "Show detail configuration panel",
 		"uiSlotFilePreview": "File preview slot",
 		"uiSlotActivityTab": "Activity panel tab",
 		"uiSlotInputAction": "Input bar action slot",

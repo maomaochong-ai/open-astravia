@@ -1,4 +1,4 @@
-import { Button, Switch } from "@vetta/ui";
+import { Switch } from "@vetta/ui";
 import { useTranslation } from "react-i18next";
 import { PLUGIN_PERMISSION_LABEL_KEYS, pluginSourceLabelKey } from "../../lib/plugin-permission-labels";
 import type { AbilitiesModel, PluginAbility } from "../../types";
@@ -39,19 +39,6 @@ export function PluginAbilitySection({
 					</div>
 				</div>
 			) : null}
-
-			{item.pendingVersion ? (
-				<div className="flex items-center justify-between gap-3 border-l border-amber-500/40 py-1 pl-3">
-					<div className="text-[12px] text-amber-400">
-						{t("plugin.reloadable", { version: item.pendingVersion })}
-					</div>
-					<Button variant="outline" size="sm" disabled={item.busy} onClick={() => model.reloadPlugin(item)}>
-						<span className="icon-[solar--refresh-linear] h-3.5 w-3.5" />
-						{t("actions.reload")}
-					</Button>
-				</div>
-			) : null}
-
 
 			<PluginContributionsSection item={item} />
 

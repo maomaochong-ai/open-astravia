@@ -16,6 +16,7 @@ import { BundleUninstallDialog } from "./BundleUninstallDialog";
 import { McpAbilitySection } from "./McpAbilitySection";
 import { PluginAbilitySection } from "./PluginAbilitySection";
 import { PluginAbilityDetailSlotHost } from "./PluginAbilityDetailSlotHost";
+import { PluginAbilityHeaderActions } from "./PluginAbilityHeaderActions";
 import { PluginPermissionsView } from "./PluginPermissionsView";
 
 interface DetailPageTransition {
@@ -96,22 +97,12 @@ export function AbilityDetailView({
 	// 主 CTA 右侧的次要入口：插件是权限配置，mcp 是凭证 / 配置编辑。
 	const primaryAside = ((): JSX.Element | undefined => {
 		if (item.type === "plugin") {
-			if (item.permissions.length === 0 && !item.installed) return undefined;
 			return (
-				<>
-					{item.permissions.length > 0 ? (
-						<Button variant="secondary" size="lg" onClick={() => setPage("permissions")}>
-							<span className="icon-[solar--shield-keyhole-linear] h-4 w-4" />
-							{t("permission.page.open")}
-						</Button>
-					) : null}
-					{item.installed ? (
-						<Button variant="secondary" size="lg" disabled={item.busy} onClick={() => model.reloadPlugin(item)}>
-							<span className="icon-[solar--restart-linear] h-4 w-4" />
-							{t("actions.reload")}
-						</Button>
-					) : null}
-				</>
+				<PluginAbilityHeaderActions
+					item={item}
+					onReload={() => model.reloadPlugin(item)}
+					onOpenPermissions={() => setPage("permissions")}
+				/>
 			);
 		}
 		if (item.type === "mcp" && item.canConfigure) {
@@ -160,7 +151,7 @@ export function AbilityDetailView({
 				</div>
 			) : null}
 
-			<PluginAbilityDetailSlotHost item={item} />
+			<PluginAbilityDetailSlotHost item={item} onOpenPermissions={() => setPage("permissions")} />
 
 			{detail.blocks.length > 0 ? (
 				<AbilityDetailEnter index={1}>
