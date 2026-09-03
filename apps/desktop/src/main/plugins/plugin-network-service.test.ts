@@ -68,4 +68,54 @@ describe("plugin network host policy", () => {
 		).rejects.toThrow("Plugin network host is not declared: 127.0.0.1");
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
+
+	it("follows allowed redirects and strips credentials across origins", async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(
+				new Response(null, {
+					status: 302,
+					headers: { location: "https://downloads.example.com/runtime.zip" },
+				}),
+			)
+			.mockResolvedValueOnce(new Response("runtime", { status: 200 }));
+		vi.stubGlobal("fetch", fetchMock);
+
+		await expect(
+			requestForPlugin(
+				{ id: "runtime-plugin", allowedNetworkHosts: ["example.com", "downloads.example.com"] },
+				{
+					url: "https://example.com/runtime.zip",
+					headers: { authorization: "Bearer secret", cookie: "session=secret", "x-request": "kept" },
+					responseType: "text",
+				},
+			),
+		).resolves.toMatchObject({ ok: true, status: 200, body: "runtime" });
+
+		const redirectedInit = fetchMock.mock.calls[1]?.[1];
+		const redirectedHeaders = new Headers(redirectedInit?.headers);
+		expect(fetchMock.mock.calls[1]?.[0].toString()).toBe("https://downloads.example.com/runtime.zip");
+		expect(redirectedHeaders.has("authorization")).toBe(false);
+		expect(redirectedHeaders.has("cookie")).toBe(false);
+		expect(redirectedHeaders.get("x-request")).toBe("kept");
+	});
+
+	it("retains transport diagnostics while exposing only a safe network failure", async () => {
+		const transportError = Object.assign(new Error("request to https://example.com/?token=secret failed"), {
+			code: "ERR_CONNECTION_RESET",
+		});
+		vi.stubGlobal("fetch", vi.fn().mockRejectedValue(transportError));
+
+		const failure = await requestForPlugin(
+			{ id: "safe-plugin", allowedNetworkHosts: ["example.com"] },
+			{ url: "https://example.com/data", responseType: "text" },
+		).catch((error: unknown) => error);
+
+		expect(failure).toMatchObject({
+			message: "Plugin network request failed (ERR_CONNECTION_RESET)",
+			reason: "transport-failed",
+			cause: transportError,
+		});
+		expect(String(failure)).not.toContain("token=secret");
+	});
 });

@@ -31,6 +31,7 @@ import {
 } from "../filesystem/filesystem-service.js";
 import type { JobManager } from "../jobs/job-manager.js";
 import { listPlugins } from "../plugins/plugin-catalog.js";
+import { electronManualRedirectFetch } from "../plugins/plugin-network-electron-fetch.js";
 import { requestForPlugin as requestNetwork } from "../plugins/plugin-network-service.js";
 import {
 	getPluginBlobRef as getNamespacedBlobRef,
@@ -52,6 +53,7 @@ import {
 import { registerDesktopBrowserProvider } from "./browser-provider.js";
 import { themeIdFromStorageCapabilityNamespace } from "./integrations/theme-capability-adapter.js";
 import { registerDesktopJobProvider } from "./job-provider.js";
+import { toPluginNetworkCapabilityError } from "./plugin-network-error.js";
 
 const FOUNDATION_STORAGE_PROVIDER_OWNER = "vetta.foundation.storage";
 const FOUNDATION_FILESYSTEM_PROVIDER_OWNER = "vetta.foundation.filesystem";
@@ -213,13 +215,21 @@ export function registerDesktopFoundationProviders(
 			execute: async ({ namespace, request }, context) => {
 				assertNotAborted(context.signal);
 				const plugin = listPlugins().find((candidate) => candidate.id === namespace);
-				if (!plugin || !plugin.enabled) throw new Error(`Network policy namespace is not enabled: ${namespace}`);
-				const response = await requestNetwork(
-					plugin,
-					request as unknown as Parameters<typeof requestNetwork>[1],
-					context.signal as Parameters<typeof requestNetwork>[2],
-				);
-				return parseCapabilityJsonValue(response);
+				if (!plugin || !plugin.enabled) {
+					throw new CapabilityError(CAPABILITY_ERROR_CODES.ACCESS_DENIED, "Plugin network access is unavailable");
+				}
+				try {
+					const response = await requestNetwork(
+						plugin,
+						request as unknown as Parameters<typeof requestNetwork>[1],
+						context.signal as Parameters<typeof requestNetwork>[2],
+						electronManualRedirectFetch,
+					);
+					return parseCapabilityJsonValue(response);
+				} catch (error) {
+					assertNotAborted(context.signal);
+					throw toPluginNetworkCapabilityError(error);
+				}
 			},
 		}),
 		bindCapability(FOUNDATION_GATEWAY_CAPABILITIES.REQUEST, {
