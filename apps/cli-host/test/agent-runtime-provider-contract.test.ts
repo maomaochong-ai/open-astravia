@@ -36,6 +36,9 @@ const PROVIDER_CONTRACT_HOST_OPTIONS = {
 	scenario: "im-claw",
 } as const satisfies StartAgentRpcOptions;
 const rolloverTriggeredFixtures = new Set<string>();
+const ROLLOVER_SUMMARY =
+	"The session created and completed the continuity todo, then started a background shell process. " +
+	"Preserve both resources across storage continuation and inspect the retained todo in the next turn.";
 let executable: AgentRpcExecutable;
 
 beforeAll(async () => {
@@ -282,6 +285,13 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 				);
 				const targetPath = pathChange.to;
 				if (typeof targetPath !== "string") throw new Error("Expected rollover target path");
+				expect(await readFile(targetPath, "utf8")).toContain(ROLLOVER_SUMMARY);
+				expect(
+					server.requests.some(
+						(request) =>
+							isContextSummarizationRequest(request) && request.rawBody.includes("seed-continuation-resources"),
+					),
+				).toBe(true);
 				const targetState = await process.request("continuation-target", "get_state");
 				const sourceLock = persistentSessionLockPath(sourcePath);
 				const targetLock = persistentSessionLockPath(targetPath);
@@ -318,9 +328,16 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 				};
 			},
 			(request, _index, fixture) => sessionContinuityResponse(request, fixture, "continuation"),
-			(fixture) => ({
-				extraArgs: ["--memory-mode", "--memory-file", join(fixture.workspace, "MEMORY.md")],
-			}),
+			async (fixture) => {
+				// Keep a real summarizable prefix in this short fixture; production's
+				// default tail would retain every message and correctly skip compaction.
+				await writeFile(
+					join(fixture.agentDir, "settings.json"),
+					JSON.stringify({ compaction: { keepRecentTokens: 1 } }),
+					"utf8",
+				);
+				return { extraArgs: ["--memory-mode", "--memory-file", join(fixture.workspace, "MEMORY.md")] };
+			},
 		);
 
 		expect(replacement).toEqual({
@@ -794,7 +811,7 @@ function sessionContinuityResponse(
 	if (requestText.includes("You are a context summarization assistant")) {
 		return {
 			kind: "events",
-			events: textResponseEvents("<summary>provider rollover summary</summary>"),
+			events: textResponseEvents(`<summary>${ROLLOVER_SUMMARY}</summary>`),
 		};
 	}
 	if (request.rawBody.includes(`inspect-${semantic}-todos`)) {
