@@ -8,6 +8,7 @@ function createBrowser(statuses: PluginBrowserRuntimeStatus[]): PluginBrowserApi
 	return {
 		runtime: { status: vi.fn(next), install: vi.fn(next) },
 		sessions: { create: vi.fn(), get: vi.fn(), close: vi.fn() },
+		open: vi.fn(),
 		navigate: vi.fn(),
 		snapshot: vi.fn(),
 		readText: vi.fn(),

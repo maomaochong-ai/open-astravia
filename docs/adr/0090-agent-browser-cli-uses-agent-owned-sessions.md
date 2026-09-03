@@ -18,11 +18,13 @@ ADR-0088 将浏览器进程、profile、策略与生命周期收敛为 Desktop F
 
 1. Browser 系统插件只向 Agent 贡献按需 Skill，不再注册 `browser_operate` 或其它浏览器专用 Tool。Agent
    通过现有 shell Tool 直接调用 PATH 中的 `agent-browser`。
-2. Desktop 继续通过托管 npm 前缀安装锁定版本的 `agent-browser`，并把该前缀加入 Agent 命令环境 PATH。
-   插件面板继续负责安装、升级、浏览器下载与状态诊断。
-3. 每个 Coding Agent Session 的命令环境注入宿主确认的 `VETTA_AGENT_SESSION_ID`。Skill 要求每条
-   `agent-browser` 命令显式以该值作为 `--session`，并使用 `--pin-tab`。同一 Agent Session 的连续命令复用
-   自己的浏览器；不同 Agent Session 不从 cwd 推导或共享 session。
+2. Desktop 继续把托管 npm 前缀加入 Agent 命令环境 PATH，并在该前缀安装锁定版本的 `agent-browser`。
+   Skill 在首次使用时检查版本、Vetta 私有 `npm_config_prefix` 与浏览器健康状态；CLI 缺失或过旧时自行安装锁定版本，
+   浏览器缺失时自行下载 Chrome for Testing。它不得在私有 prefix 缺失时回落系统级全局安装，也不得自动执行绕过
+   版本锁定的升级或会清理状态的修复。插件面板继续提供人工安装、升级与诊断兜底。
+3. 每个 Coding Agent Session 的命令环境注入宿主确认的 `VETTA_AGENT_SESSION_ID`。Skill 要求所有浏览器与页面
+   状态操作显式以该值作为 `--session`，并使用 `--pin-tab`；安装、诊断和内置手册读取不绑定 session。同一
+   Agent Session 的连续操作复用自己的浏览器；不同 Agent Session 不从 cwd 推导或共享 session。
 4. 同一任务操作多个账号时，以 `<agent-session-id>-<account-key>` 形成独立 upstream session，并用稳定
    `--restore <account-key>` 保存 Cookie 与 localStorage。需要完整 Chrome profile 时可显式使用 upstream
    `--profile`，但该 profile 不属于 `BrowserAutomationService`。
@@ -48,6 +50,8 @@ Capability 两条执行路径”的结论；ADR-0088 对 Plugin API、Foundation
 
 - Agent 获得 upstream 的完整 CLI、JSON、batch、refs、profiles、restore 与版本匹配 Skill，不需要等待 Vetta
   为每个新命令增加 Tool Schema。
+- Browser Skill 的运行时安装属于已请求浏览器任务的准备步骤；自动安装仅限 Vetta 私有 npm prefix 中的锁定 CLI
+  与缺失的 Chrome for Testing，失败后有限停止并转交插件面板，不扩大为任意系统包安装权限。
 - `VETTA_AGENT_SESSION_ID` 成为 Coding Agent 命令环境的公开宿主合同；宿主提供的值覆盖调用方同名 env。
 - Agent CLI 的 Chrome、daemon 和持久状态不受 `ctx.browser` 的 namespace、revision、取消与关闭生命周期管理；
   故障诊断需要区分 CLI 与 Capability 两条路径。

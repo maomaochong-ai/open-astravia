@@ -14,8 +14,8 @@ Plugin -> ctx.browser -> Plugin Capability Adapter
        -> BrowserEngine adapter -> agent-browser
 ```
 
-- Desktop 继续通过托管 npm 安装并锁定 `agent-browser` 版本，Agent shell 直接使用该 CLI。
-- 每个 Coding Agent Session 获得唯一的 `VETTA_AGENT_SESSION_ID`；Skill 要求所有命令用它作为 upstream `--session`。
+- Desktop 通过托管 npm 前缀锁定 `agent-browser` 版本，Agent shell 直接使用该 CLI。Skill 会先检查版本与浏览器健康状态；缺失时在确认 Vetta 私有 npm prefix 后自动安装，插件面板保留为人工安装与诊断兜底。
+- 每个 Coding Agent Session 获得唯一的 `VETTA_AGENT_SESSION_ID`；Skill 要求所有浏览器与页面状态操作用它作为 upstream `--session`，安装、诊断和内置手册读取不绑定 session。
 - Agent CLI 的 daemon、页面状态和 profile 不属于 `BrowserAutomationService`，也不与 `ctx.browser` API 共享。
 - `ctx.browser` 公共 API、namespace 隔离和宿主生命周期保持不变。
 
