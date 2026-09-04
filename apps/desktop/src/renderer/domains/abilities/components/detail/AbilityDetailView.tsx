@@ -105,19 +105,7 @@ export function AbilityDetailView({
 				/>
 			);
 		}
-		if (item.type === "mcp" && item.canConfigure) {
-			return (
-				<Button
-					variant="secondary"
-					size="lg"
-					disabled={item.busy}
-					onClick={() => model.configure(item)}
-				>
-					<span className="icon-[solar--key-minimalistic-square-linear] h-4 w-4" />
-					{t("actions.configure")}
-				</Button>
-			);
-		}
+		// 凭证配置由次要操作里的「配置」承担，这里只留编辑原始配置，避免两个按钮同一职责
 		if (item.type === "mcp" && item.canEdit) {
 			return (
 				<Button
