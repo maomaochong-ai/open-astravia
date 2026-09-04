@@ -4,6 +4,10 @@ All notable changes to `@vetta-org/plugin-vite` are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Pin the development server origin to the advertised loopback endpoint so Module Federation does not infer a different hostname on Windows and fail to load the virtual entry.
+
 ## [0.1.0] — 2026-09-01
 
 ### Breaking Changes

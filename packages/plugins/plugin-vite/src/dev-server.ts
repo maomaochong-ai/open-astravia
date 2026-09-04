@@ -167,6 +167,11 @@ export async function startVettaPluginDevServer(
 			host: "127.0.0.1",
 			port,
 			strictPort: true,
+			// Module Federation derives dev share/import URLs from Vite's origin.
+			// Pin it to the same loopback endpoint we advertise to the host instead
+			// of letting Vite infer a hostname (which can become `localhost` or a
+			// LAN address on Windows and make the browser fetch the wrong module).
+			origin: `http://127.0.0.1:${port}`,
 			cors: true,
 			hmr: { overlay: false },
 		},
