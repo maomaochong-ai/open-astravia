@@ -8,6 +8,7 @@ import { validateOpenMarketplaceMcp } from "./open-marketplace-mcp";
 const temporaryRoots: string[] = [];
 const DEMO_API_KEY_PLACEHOLDER = `\${DEMO_API_KEY}`;
 const RUNTIME_COMMAND = `\${VETTA_MCP_EXECUTABLE}`;
+const PORT_TOKEN = `\${VETTA_MCP_PORT}`;
 
 async function fixture(
 	server: Record<string, unknown>,
@@ -19,6 +20,7 @@ async function fixture(
 		schemaVersion?: 1 | 2;
 		runtime?: Record<string, unknown>;
 		setup?: Record<string, unknown>;
+		args?: string[];
 	},
 ) {
 	const root = await mkdtemp(join(tmpdir(), "vetta-open-mcp-test-"));
@@ -280,5 +282,33 @@ describe("validateOpenMarketplaceMcp", () => {
 		);
 
 		expect(() => validateOpenMarketplaceMcp(root, ability)).toThrow();
+	});
+
+	it("accepts a managed local HTTP MCP service", async () => {
+		const platformTag = `${process.platform}-${process.arch}`;
+		const { root, ability } = await fixture(
+			{ command: RUNTIME_COMMAND, args: [`-port=:${PORT_TOKEN}`] },
+			{
+				schemaVersion: 2,
+				runtime: { ...managedRuntime(platformTag), service: { kind: "http-mcp", path: "/mcp" } },
+			},
+		);
+
+		expect(validateOpenMarketplaceMcp(root, ability)).toMatchObject({
+			mcp_runtime: { kind: "managed-binary", supported: true },
+		});
+	});
+
+	it("rejects a managed service that never receives the allocated port", async () => {
+		const platformTag = `${process.platform}-${process.arch}`;
+		const { root, ability } = await fixture(
+			{ command: RUNTIME_COMMAND, args: ["--stdio"] },
+			{
+				schemaVersion: 2,
+				runtime: { ...managedRuntime(platformTag), service: { kind: "http-mcp", path: "/mcp" } },
+			},
+		);
+
+		expect(() => validateOpenMarketplaceMcp(root, ability)).toThrow(/VETTA_MCP_PORT/);
 	});
 });

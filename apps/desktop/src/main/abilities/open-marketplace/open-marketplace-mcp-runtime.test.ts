@@ -10,6 +10,8 @@ import { OpenMarketplaceMcpRuntimeInstaller } from "./open-marketplace-mcp-runti
 const temporaryRoots: string[] = [];
 const PLATFORM_TAG = "win32-x64";
 const RUNTIME_COMMAND = `\${VETTA_MCP_EXECUTABLE}`;
+const PORT_TOKEN = `\${VETTA_MCP_PORT}`;
+const DATA_DIR_TOKEN = `\${VETTA_MCP_DATA_DIR}`;
 
 async function temporaryRoot(): Promise<string> {
 	const root = await mkdtemp(join(tmpdir(), "vetta-mcp-runtime-test-"));
@@ -209,5 +211,44 @@ describe("OpenMarketplaceMcpRuntimeInstaller", () => {
 		// 另一个来源的同名能力有独立数据目录，不能互相认领登录态
 		expect(installer.isSetupComplete("other", "demo-mcp", "cookies.json")).toBe(false);
 		expect(() => installer.isSetupComplete("official", "demo-mcp", "../../escape.json")).toThrow();
+	});
+
+	it("resolves a managed HTTP service into a bridge command", async () => {
+		const buffer = Buffer.from("binary");
+		const root = await temporaryRoot();
+		const installer = new OpenMarketplaceMcpRuntimeInstaller({
+			rootDir: root,
+			platformTag: PLATFORM_TAG,
+			fetchArtifact: async () => response(buffer),
+		});
+
+		const server = await installer.prepare({
+			sourceId: "official",
+			slug: "demo-mcp",
+			version: "1.0.0",
+			runtime: {
+				...runtime(buffer, { archive: "file", executable: "demo.exe" }),
+				service: { kind: "http-mcp", path: "/mcp", readyTimeoutMs: 300_000 },
+			},
+			server: {
+				command: RUNTIME_COMMAND,
+				args: [`-port=:${PORT_TOKEN}`],
+				env: { COOKIES_PATH: `${DATA_DIR_TOKEN}/cookies.json` },
+			} as never,
+		});
+
+		// mcp.json 里落的是桥接：真正的二进制、端口占位符与数据目录都收进 spec
+		expect(server).toMatchObject({ command: process.execPath, env: { ELECTRON_RUN_AS_NODE: "1" } });
+		const args = (server as { args: string[] }).args;
+		expect(args[0]).toMatch(/mcp-http-bridge\.mjs$/);
+		const spec = JSON.parse(args[1] ?? "{}") as Record<string, unknown>;
+		expect(spec).toMatchObject({
+			schemaVersion: 1,
+			args: [`-port=:${PORT_TOKEN}`],
+			path: "/mcp",
+			readyTimeoutMs: 300_000,
+		});
+		expect(spec.command).toMatch(/demo\.exe$/);
+		expect((spec.env as Record<string, string>).COOKIES_PATH).toMatch(/demo-mcp-[0-9a-f]+\/data\/cookies\.json$/);
 	});
 });

@@ -2,8 +2,9 @@ import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { chmod, lstat, mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, posix, relative, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 import AdmZip from "adm-zip";
-import type { McpServerConfigData } from "../../../preload/api-types/mcp.js";
+import type { McpServerConfigData, McpStdioServerConfigData } from "../../../preload/api-types/mcp.js";
 import { validateMcpConfig } from "../../mcp-config-validation.js";
 import type { OpenMarketplaceMcpRuntime } from "./open-marketplace-mcp.js";
 
@@ -15,6 +16,11 @@ const EXECUTABLE_TOKEN = `\${VETTA_MCP_EXECUTABLE}`;
 const RUNTIME_DIRECTORY_TOKEN = `\${VETTA_MCP_RUNTIME_DIR}`;
 const DATA_DIRECTORY_TOKEN = `\${VETTA_MCP_DATA_DIR}`;
 const CACHE_DIRECTORY_TOKEN = `\${VETTA_MCP_CACHE_DIR}`;
+
+/** 桥接产物与 main 同目录输出（见 vite.main.config.ts 的 lib.entry）。 */
+function bridgeScriptPath(): string {
+	return fileURLToPath(new URL(/* @vite-ignore */ "../../mcp-http-bridge.mjs", import.meta.url));
+}
 
 type FetchArtifact = (url: string, init?: RequestInit) => Promise<Response>;
 
@@ -71,6 +77,39 @@ function replaceRuntimeTokens(value: string, paths: Record<string, string>): str
 		.replaceAll(RUNTIME_DIRECTORY_TOKEN, paths.runtimeDirectory)
 		.replaceAll(DATA_DIRECTORY_TOKEN, paths.dataDirectory)
 		.replaceAll(CACHE_DIRECTORY_TOKEN, paths.cacheDirectory);
+}
+
+/**
+ * 服务型受管运行时：mcp.json 里落的是桥接命令，真正的二进制、参数与端口占位符收进 spec。
+ * 桥接跑在 Electron 的 node 模式下，不额外依赖机器上的 node。
+ */
+function resolveBridgedServer(
+	server: McpStdioServerConfigData,
+	service: NonNullable<OpenMarketplaceMcpRuntime["service"]>,
+	paths: Record<string, string>,
+): McpServerConfigData {
+	const spec = {
+		schemaVersion: 1,
+		command: paths.executable,
+		args: (server.args ?? []).map((value) => replaceRuntimeTokens(value, paths)),
+		env: Object.fromEntries(
+			Object.entries(server.env ?? {}).map(([key, value]) => [key, replaceRuntimeTokens(value, paths)]),
+		),
+		...(server.cwd ? { cwd: replaceRuntimeTokens(server.cwd, paths) } : {}),
+		path: service.path,
+		...(service.readyTimeoutMs ? { readyTimeoutMs: service.readyTimeoutMs } : {}),
+	};
+	return validateMcpConfig({
+		mcpServers: {
+			managed: {
+				type: "stdio",
+				command: process.execPath,
+				args: [bridgeScriptPath(), JSON.stringify(spec)],
+				env: { ELECTRON_RUN_AS_NODE: "1" },
+				...(server.startupTimeout ? { startupTimeout: server.startupTimeout } : {}),
+			},
+		},
+	}).mcpServers.managed as McpServerConfigData;
 }
 
 function resolveServer(server: McpServerConfigData, paths: Record<string, string>): McpServerConfigData {
@@ -257,12 +296,17 @@ export class OpenMarketplaceMcpRuntimeInstaller {
 		}
 
 		const executablePath = join(targetDirectory, ...executable.split("/"));
-		return resolveServer(input.server, {
+		const paths = {
 			executable: executablePath,
 			runtimeDirectory: targetDirectory,
 			dataDirectory,
 			cacheDirectory,
-		});
+		};
+		if (input.runtime.service) {
+			if (input.server.type === "http") throw new Error("Managed MCP runtimes require a stdio server");
+			return resolveBridgedServer(input.server, input.runtime.service, paths);
+		}
+		return resolveServer(input.server, paths);
 	}
 
 	/**

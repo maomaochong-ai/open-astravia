@@ -9,6 +9,7 @@ const MCP_MANIFEST_FILE = "mcp.json";
 const PLATFORM_TAG_PATTERN = /^(win32|darwin|linux)-(x64|arm64)$/;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 const RUNTIME_EXECUTABLE_TOKEN = `\${VETTA_MCP_EXECUTABLE}`;
+const RUNTIME_PORT_TOKEN = `\${VETTA_MCP_PORT}`;
 
 function isSafeRuntimeRelativePath(value: string): boolean {
 	const slashPath = value.replace(/\\/g, "/");
@@ -71,9 +72,22 @@ const mcpSetupSchema = z
 	})
 	.strict();
 
+/**
+ * 二进制本身就是个本地 HTTP MCP 服务（只监听端口、没有 stdio 模式）时用这个声明。
+ * 桌面端会拉起它并用桥接把 stdio 转到该端点；端口在启动时分配，用 `${VETTA_MCP_PORT}` 占位。
+ */
+const managedServiceSchema = z
+	.object({
+		kind: z.literal("http-mcp"),
+		path: z.string().startsWith("/"),
+		readyTimeoutMs: z.number().int().positive().max(600_000).optional(),
+	})
+	.strict();
+
 const managedBinaryRuntimeSchema = z
 	.object({
 		kind: z.literal("managed-binary"),
+		service: managedServiceSchema.optional(),
 		platforms: z
 			.record(z.string().regex(PLATFORM_TAG_PATTERN), managedBinaryPlatformSchema)
 			.refine((value) => Object.keys(value).length > 0, "runtime must support at least one platform"),
@@ -104,6 +118,7 @@ const openMarketplaceMcpManifestSchema = z.discriminatedUnion("schemaVersion", [
 
 export type OpenMarketplaceMcpRuntime = z.infer<typeof managedBinaryRuntimeSchema>;
 export type OpenMarketplaceMcpSetup = z.infer<typeof mcpSetupSchema>;
+export type OpenMarketplaceMcpService = z.infer<typeof managedServiceSchema>;
 
 type OpenMarketplaceMcpAbility = Extract<MarketplaceAbilityManifest, { type: "mcp" }>;
 
@@ -160,6 +175,15 @@ function loadOpenMarketplaceMcpPackage(
 		if (server.type === "http") throw new Error("Managed MCP runtimes require a stdio server");
 		if (server.command !== RUNTIME_EXECUTABLE_TOKEN) {
 			throw new Error(`Managed MCP runtime command must be exactly ${RUNTIME_EXECUTABLE_TOKEN}`);
+		}
+		// 端口是桥接分配的，服务必须真的接受它，否则永远等不到就绪
+		if (
+			runtime.service &&
+			![...(server.args ?? []), ...Object.values(server.env ?? {})].some((value) =>
+				value.includes(RUNTIME_PORT_TOKEN),
+			)
+		) {
+			throw new Error(`Managed MCP services must pass ${RUNTIME_PORT_TOKEN} to the process`);
 		}
 	}
 	const setup = manifest.schemaVersion === 2 ? manifest.setup : undefined;
