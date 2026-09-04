@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	canPinMore,
 	EMPTY_SIDEBAR_NAV_LAYOUT,
+	EXTENSIONS_NAV_KEY,
 	MAX_PINNED_NAV_ITEMS,
 	moveNavKeyToRegion,
 	NEW_SESSION_NAV_KEY,
@@ -196,5 +197,53 @@ describe("持久化", () => {
 		const resolved = pinNavKey(resolveSidebarNavLayout(CATALOG, EMPTY_SIDEBAR_NAV_LAYOUT, []), "/knowledge");
 		const round = resolveSidebarNavLayout(CATALOG, parseSidebarNavLayout(toStoredSidebarNavLayout(resolved)), []);
 		expect(round).toEqual(resolved);
+	});
+});
+
+describe("「更多选项」锁定末位", () => {
+	const CATALOG_WITH_EXTENSIONS = [...CATALOG, EXTENSIONS_NAV_KEY];
+	const base = resolveSidebarNavLayout(CATALOG_WITH_EXTENSIONS, EMPTY_SIDEBAR_NAV_LAYOUT, DEFAULT_PINNED);
+
+	it("恒排在收纳区末位", () => {
+		expect(base.more).toEqual(["/batch-tasks", "/settings/models", EXTENSIONS_NAV_KEY]);
+	});
+
+	it("旧布局把它排在别处也会被拉回末位", () => {
+		const resolved = resolveSidebarNavLayout(
+			CATALOG_WITH_EXTENSIONS,
+			{ pinned: [EXTENSIONS_NAV_KEY], more: [EXTENSIONS_NAV_KEY, "/batch-tasks"] },
+			[],
+		);
+		expect(resolved.pinned).not.toContain(EXTENSIONS_NAV_KEY);
+		expect(resolved.more[resolved.more.length - 1]).toBe(EXTENSIONS_NAV_KEY);
+	});
+
+	it("不可置顶、不可重排", () => {
+		expect(pinNavKey(base, EXTENSIONS_NAV_KEY)).toBe(base);
+		expect(unpinNavKey(base, EXTENSIONS_NAV_KEY)).toBe(base);
+		expect(reorderNavKeys(base, "more", EXTENSIONS_NAV_KEY, "/batch-tasks")).toBe(base);
+		expect(moveNavKeyToRegion(base, EXTENSIONS_NAV_KEY, "pinned", null)).toBe(base);
+	});
+
+	it("别的项落到收纳区末尾时停在它之前", () => {
+		expect(reorderNavKeys(base, "more", "/batch-tasks", null).more).toEqual([
+			"/settings/models",
+			"/batch-tasks",
+			EXTENSIONS_NAV_KEY,
+		]);
+		expect(moveNavKeyToRegion(base, "/automation", "more", null).more).toEqual([
+			"/batch-tasks",
+			"/settings/models",
+			"/automation",
+			EXTENSIONS_NAV_KEY,
+		]);
+	});
+
+	it("不进落盘布局（它由目录决定有无）", () => {
+		expect(toStoredSidebarNavLayout(base).more).not.toContain(EXTENSIONS_NAV_KEY);
+		expect(parseSidebarNavLayout({ pinned: [], more: [EXTENSIONS_NAV_KEY, "/a"] })).toEqual({
+			pinned: [],
+			more: ["/a"],
+		});
 	});
 });

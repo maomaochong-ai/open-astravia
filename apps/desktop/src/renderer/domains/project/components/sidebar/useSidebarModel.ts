@@ -20,6 +20,7 @@ import { useNewChatNavigation } from "../../hooks/useNewChatNavigation";
 import { toSidebarNavBadge } from "./sidebar-nav-badge";
 import {
 	canPinMore as canPinMoreKeys,
+	EXTENSIONS_NAV_KEY,
 	moveNavKeyToRegion,
 	NEW_SESSION_NAV_KEY,
 	parseSidebarNavLayout,
@@ -167,14 +168,17 @@ function toNavItem(
 	badge?: SidebarNavBadge,
 ): SidebarNavItem {
 	if ("settingsTab" in item) {
+		const key = `/settings/${item.settingsTab}`;
 		return {
-			key: `/settings/${item.settingsTab}`,
+			key,
 			type: item.type,
 			settingsTab: item.settingsTab,
 			label,
 			labelKey: item.labelKey,
 			icon: item.icon,
-			active: currentPath === `/settings/${item.settingsTab}`,
+			active: currentPath === key,
+			// 「更多选项」锁在收纳区末位：不拖动、不置顶（见 sidebar-nav-layout.ts）。
+			...(key === EXTENSIONS_NAV_KEY ? { locked: true } : {}),
 		};
 	}
 	if (item.type === "new-session") {

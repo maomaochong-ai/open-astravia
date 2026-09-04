@@ -4,7 +4,8 @@
  * 术语：
  * - **置顶区（pinned）**：侧边栏左上方常驻的导航项。「新会话」永远锁在第一位，
  *   其余位置由用户排布，含「新会话」在内**最多 {@link MAX_PINNED_NAV_ITEMS} 个**。
- * - **收纳区（more）**：「更多」弹出菜单里的次要入口，顺序同样可拖拽。
+ * - **收纳区（more）**：「更多」弹出菜单里的次要入口，顺序同样可拖拽；
+ *   「更多选项」锁在这一区的末位，不可拖动也不可置顶。
  *
  * 目录（catalog）由内置入口 + 插件贡献的工作区视图共同组成，随插件启停变化；
  * 布局只存 key 顺序，所以卸载插件不会破坏其它项的位置，装回来也能复位。
@@ -12,6 +13,15 @@
 
 /** 「新会话」的导航 key，永远锁定在置顶区第一位，不可拖走也不可收纳。 */
 export const NEW_SESSION_NAV_KEY = "new-session";
+
+/**
+ * 「更多选项」的导航 key，永远锁定在收纳区**末位**：它是「所有入口的兜底清单」，
+ * 排到别的位置或被置顶都会让这层语义失效，所以既不可拖动也不可置顶。
+ */
+export const EXTENSIONS_NAV_KEY = "/settings/extensions";
+
+/** 位置锁死、不参与用户排布的 key。 */
+const LOCKED_NAV_KEYS: readonly string[] = [NEW_SESSION_NAV_KEY, EXTENSIONS_NAV_KEY];
 
 /** 置顶区容量上限（含「新会话」）。 */
 export const MAX_PINNED_NAV_ITEMS = 5;
@@ -21,14 +31,20 @@ export const SIDEBAR_NAV_LAYOUT_STORAGE_KEY = "vetta-sidebar-nav-layout";
 export interface SidebarNavLayout {
 	/** 置顶区 key 顺序（不含「新会话」——它由渲染层强制置顶）。 */
 	readonly pinned: readonly string[];
-	/** 收纳区 key 顺序。 */
+	/** 收纳区 key 顺序（不含锁定末位的「更多选项」）。 */
 	readonly more: readonly string[];
 }
 
 export interface ResolvedSidebarNavLayout {
 	/** 置顶区最终顺序，第一项恒为「新会话」。 */
 	readonly pinned: readonly string[];
+	/** 收纳区最终顺序，末位恒为「更多选项」（若它在目录里）。 */
 	readonly more: readonly string[];
+}
+
+/** 收纳区里可自由排布的位数（锁定末位的「更多选项」不算）。 */
+function moreCapacity(more: readonly string[]): number {
+	return more[more.length - 1] === EXTENSIONS_NAV_KEY ? more.length - 1 : more.length;
 }
 
 export const EMPTY_SIDEBAR_NAV_LAYOUT: SidebarNavLayout = { pinned: [], more: [] };
@@ -37,7 +53,7 @@ function dedupe(keys: readonly string[]): string[] {
 	const seen = new Set<string>();
 	const result: string[] = [];
 	for (const key of keys) {
-		if (typeof key !== "string" || key.length === 0 || key === NEW_SESSION_NAV_KEY) continue;
+		if (typeof key !== "string" || key.length === 0 || LOCKED_NAV_KEYS.includes(key)) continue;
 		if (seen.has(key)) continue;
 		seen.add(key);
 		result.push(key);
@@ -59,7 +75,7 @@ export function resolveSidebarNavLayout(
 	layout: SidebarNavLayout,
 	defaultPinned: readonly string[] = [],
 ): ResolvedSidebarNavLayout {
-	const catalog = new Set(catalogKeys.filter((key) => key !== NEW_SESSION_NAV_KEY));
+	const catalog = new Set(catalogKeys.filter((key) => !LOCKED_NAV_KEYS.includes(key)));
 	const known = new Set<string>([...layout.pinned, ...layout.more]);
 	const pinned = dedupe(layout.pinned).filter((key) => catalog.has(key));
 	const more = dedupe(layout.more).filter((key) => catalog.has(key));
@@ -67,7 +83,7 @@ export function resolveSidebarNavLayout(
 
 	// 目录里的新 key：按目录顺序补位，默认置顶集合的进置顶区，其余进收纳区。
 	for (const key of catalogKeys) {
-		if (key === NEW_SESSION_NAV_KEY || placed.has(key)) continue;
+		if (LOCKED_NAV_KEYS.includes(key) || placed.has(key)) continue;
 		if (!known.has(key) && defaultPinned.includes(key)) pinned.push(key);
 		else more.push(key);
 		placed.add(key);
@@ -76,7 +92,9 @@ export function resolveSidebarNavLayout(
 	// 「新会话」占一格，用户可自由排布的置顶位是 MAX - 1。
 	const capacity = Math.max(0, MAX_PINNED_NAV_ITEMS - 1);
 	const overflow = pinned.splice(capacity);
-	return { pinned: [NEW_SESSION_NAV_KEY, ...pinned], more: [...overflow, ...more] };
+	// 「更多选项」不进布局存储，渲染时按目录有无补在收纳区末位。
+	const tail = catalogKeys.includes(EXTENSIONS_NAV_KEY) ? [EXTENSIONS_NAV_KEY] : [];
+	return { pinned: [NEW_SESSION_NAV_KEY, ...pinned], more: [...overflow, ...more, ...tail] };
 }
 
 /** 置顶区是否还有空位（含「新会话」计数）。 */
@@ -93,7 +111,7 @@ function withoutKey(keys: readonly string[], key: string): string[] {
  * ——满了直接忽略而不是挤掉别人，避免用户在不知情时丢掉一个入口。
  */
 export function pinNavKey(resolved: ResolvedSidebarNavLayout, key: string): ResolvedSidebarNavLayout {
-	if (key === NEW_SESSION_NAV_KEY) return resolved;
+	if (LOCKED_NAV_KEYS.includes(key)) return resolved;
 	if (resolved.pinned.includes(key)) return resolved;
 	if (!resolved.more.includes(key)) return resolved;
 	if (!canPinMore(resolved)) return resolved;
@@ -102,7 +120,7 @@ export function pinNavKey(resolved: ResolvedSidebarNavLayout, key: string): Reso
 
 /** 把某项从置顶区收回收纳区最前（收回来立刻能看见）。「新会话」不可收纳。 */
 export function unpinNavKey(resolved: ResolvedSidebarNavLayout, key: string): ResolvedSidebarNavLayout {
-	if (key === NEW_SESSION_NAV_KEY) return resolved;
+	if (LOCKED_NAV_KEYS.includes(key)) return resolved;
 	if (!resolved.pinned.includes(key)) return resolved;
 	return { pinned: withoutKey(resolved.pinned, key), more: [key, ...resolved.more] };
 }
@@ -127,11 +145,13 @@ export function reorderNavKeys(
 	const keys = region === "pinned" ? resolved.pinned : resolved.more;
 	const fromIndex = keys.indexOf(fromKey);
 	if (fromIndex < 0) return resolved;
-	if (region === "pinned" && fromKey === NEW_SESSION_NAV_KEY) return resolved;
+	if (LOCKED_NAV_KEYS.includes(fromKey)) return resolved;
 	let toIndex = toKey === null ? keys.length - 1 : keys.indexOf(toKey);
 	if (toIndex < 0 || toIndex === fromIndex) return resolved;
 	// 「新会话」锁死首位：任何想插到它前面的拖拽都落到它后面。
 	if (region === "pinned" && toIndex === 0) toIndex = 1;
+	// 「更多选项」锁死收纳区末位：任何想落到它之后的拖拽都停在它之前。
+	if (region === "more") toIndex = Math.min(toIndex, moreCapacity(keys) - 1);
 	if (toIndex === fromIndex) return resolved;
 	const next = moveWithin(keys, fromIndex, toIndex);
 	return region === "pinned" ? { ...resolved, pinned: next } : { ...resolved, more: next };
@@ -147,7 +167,7 @@ export function moveNavKeyToRegion(
 	region: "pinned" | "more",
 	beforeKey: string | null = null,
 ): ResolvedSidebarNavLayout {
-	if (key === NEW_SESSION_NAV_KEY) return resolved;
+	if (LOCKED_NAV_KEYS.includes(key)) return resolved;
 	const inPinned = resolved.pinned.includes(key);
 	const inMore = resolved.more.includes(key);
 	if (!inPinned && !inMore) return resolved;
@@ -161,14 +181,17 @@ export function moveNavKeyToRegion(
 	const target = region === "pinned" ? pinned : more;
 	const insertAt = beforeKey === null ? target.length : target.indexOf(beforeKey);
 	const index = insertAt < 0 ? target.length : insertAt;
-	// 置顶区首位是锁死的「新会话」，插入位置至少为 1。
-	target.splice(region === "pinned" ? Math.max(1, index) : index, 0, key);
+	// 置顶区首位是锁死的「新会话」、收纳区末位是锁死的「更多选项」，插入位置被夹在中间。
+	target.splice(region === "pinned" ? Math.max(1, index) : Math.min(index, moreCapacity(target)), 0, key);
 	return { pinned, more };
 }
 
-/** 落盘形态（置顶区去掉恒定的「新会话」）。 */
+/** 落盘形态（去掉两个恒定锁位：置顶首位的「新会话」、收纳末位的「更多选项」）。 */
 export function toStoredSidebarNavLayout(resolved: ResolvedSidebarNavLayout): SidebarNavLayout {
-	return { pinned: withoutKey(resolved.pinned, NEW_SESSION_NAV_KEY), more: [...resolved.more] };
+	return {
+		pinned: withoutKey(resolved.pinned, NEW_SESSION_NAV_KEY),
+		more: withoutKey(resolved.more, EXTENSIONS_NAV_KEY),
+	};
 }
 
 /** 宽松解析持久化内容；任何形状不对的部分退化为空，绝不抛错。 */

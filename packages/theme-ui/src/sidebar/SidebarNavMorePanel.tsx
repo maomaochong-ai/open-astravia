@@ -133,6 +133,7 @@ export function SidebarNavMorePanel({
 }: SidebarNavMorePanelProps): JSX.Element {
 	const pinnedRegion = drag.regionProps("pinned");
 	const moreRegion = drag.regionProps("more");
+	const hasLockedTail = moreItems[moreItems.length - 1]?.locked === true;
 
 	return (
 		<div className="flex max-h-[70vh] flex-col gap-1 overflow-y-auto">
@@ -161,21 +162,27 @@ export function SidebarNavMorePanel({
 				{labels.moreTitle}
 			</p>
 			<div className="flex flex-col" onDragOver={moreRegion.onDragOver} onDrop={moreRegion.onDrop}>
-				{moreItems.map((item) => (
-					<div key={item.key}>
-						<DropLine visible={drag.isDropBefore(item.key, "more")} />
-						<NavRow
-							drag={drag}
-							item={item}
-							labels={labels}
-							onClick={() => onItemClick(item)}
-							onTogglePin={() => onPin(item.key)}
-							pinDisabled={!canPinMore}
-							region="more"
-						/>
-					</div>
-				))}
-				<DropLine visible={drag.isDropAtEnd("more")} />
+				{moreItems.map((item, index) => {
+					// 末位锁定项（「更多选项」）之后没有落位，「落到末尾」的指示线要画在它**之前**。
+					const lockedTail = item.locked === true && index === moreItems.length - 1;
+					return (
+						<div key={item.key}>
+							<DropLine
+								visible={drag.isDropBefore(item.key, "more") || (lockedTail && drag.isDropAtEnd("more"))}
+							/>
+							<NavRow
+								drag={drag}
+								item={item}
+								labels={labels}
+								onClick={() => onItemClick(item)}
+								onTogglePin={item.locked === true ? null : () => onPin(item.key)}
+								pinDisabled={!canPinMore}
+								region="more"
+							/>
+						</div>
+					);
+				})}
+				<DropLine visible={!hasLockedTail && drag.isDropAtEnd("more")} />
 			</div>
 
 			<div className="mt-1 flex items-center gap-2 border-t border-border/60 px-2 pb-1 pt-1.5">
