@@ -104,6 +104,6 @@ describe("AgentTeamSidebarList", () => {
 
 		await screen.findByText("Vetta Team");
 		expect(document.querySelectorAll("img")).toHaveLength(3);
-		expect(screen.getByText("…")).toBeTruthy();
+		expect(document.querySelector('[data-session-avatar-overflow="1"]')).toBeTruthy();
 	});
 });
