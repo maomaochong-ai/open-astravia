@@ -17,11 +17,11 @@ import {
 	createI18nApi,
 	createJobsApi,
 	createMediaApi,
-	createNetworkApi,
 	createStorageApi,
 } from "./plugin-host-apis";
 import type { PluginLocalContributions } from "./plugin-local-contributions";
 import { createPluginModelsApi } from "./plugin-models-api";
+import { createPluginNetworkApi } from "./plugin-network-api";
 import { createPluginOfficialApi } from "./plugin-official-api";
 import { createPluginPermissionApi as createPermissionApi } from "./plugin-permissions";
 import { createPluginServiceApi } from "./plugin-service-api";
@@ -106,7 +106,7 @@ export function createPluginContext({
 		}),
 		ai: createPluginAiApi(permissions, capabilitySessionId),
 		official: createPluginOfficialApi(capabilitySessionId),
-		network: createNetworkApi(plugin, capabilitySessionId),
+		network: createPluginNetworkApi(plugin, capabilitySessionId),
 		gateway: plugin.trustLevel === "official" ? createGatewayApi(capabilitySessionId) : undefined,
 		storage: createStorageApi(plugin, capabilitySessionId),
 		secrets: secretsApi,

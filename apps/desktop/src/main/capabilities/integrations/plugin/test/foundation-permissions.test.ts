@@ -163,4 +163,21 @@ describe("PluginCapabilityAdapter foundation permissions", () => {
 			},
 		]);
 	});
+
+	it("rejects an explicitly undefined network field at the Capability boundary", () => {
+		const access = new RecordingAccessFactory();
+		const adapter = new PluginCapabilityAdapter(access, {
+			isOfficialPlugin: () => false,
+			resolvePermissions: () => [PLUGIN_CAPABILITY_PERMISSIONS.NETWORK_FETCH],
+		});
+		const sessionId = adapter.openSession("network-owner");
+
+		expect(() =>
+			adapter.requestNetwork(sessionId, {
+				url: "https://jsk.nbyz.cn/prod-api/gis/cityFeature/tree/current",
+				body: undefined,
+			}),
+		).toThrow(".body is undefined, which is not a JSON value");
+		expect(access.invocations).toEqual([]);
+	});
 });

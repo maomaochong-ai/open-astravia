@@ -16,7 +16,6 @@ import type {
 	PluginJob,
 	PluginJobsApi,
 	PluginMediaApi,
-	PluginNetworkApi,
 	PluginSecretsApi,
 	PluginStorageApi,
 } from "@vetta-org/plugin-sdk";
@@ -159,15 +158,6 @@ export function createPluginSecretsApi(
 		onChange(listener: (keys: readonly string[]) => void): Disposable {
 			listeners.add(listener);
 			return { dispose: () => listeners.delete(listener) };
-		},
-	};
-}
-
-export function createNetworkApi(plugin: InstalledPlugin, capabilitySessionId: string): PluginNetworkApi {
-	return {
-		request: (request) => {
-			createPermissionApi(plugin).require("network.fetch");
-			return window.vetta.plugins.networkRequest(capabilitySessionId, request);
 		},
 	};
 }
