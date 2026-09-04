@@ -35,6 +35,7 @@ export type SidebarLabelKey =
 	| "sidebar.nav.modelSettings"
 	| "sidebar.nav.agentSettings"
 	| "sidebar.nav.appearance"
+	| "sidebar.nav.extensions"
 	| "sidebar.nav.more";
 
 export interface SidebarProps {

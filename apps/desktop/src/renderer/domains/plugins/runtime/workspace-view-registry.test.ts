@@ -5,9 +5,11 @@ import {
 	isValidWorkspaceViewId,
 	normalizePluginNavBadge,
 	parseWorkspaceViewNavKey,
+	parseWorkspaceViewRef,
 	sortWorkspaceViews,
 	workspaceViewNavKey,
 	workspaceViewPath,
+	workspaceViewRef,
 } from "./workspace-view-registry";
 
 function view(pluginId: string, viewId: string, navOrder = 0): RegisteredWorkspaceView {
@@ -18,6 +20,7 @@ function view(pluginId: string, viewId: string, navOrder = 0): RegisteredWorkspa
 		label: viewId,
 		component: () => null,
 		navOrder,
+		sidebar: true,
 	};
 }
 
@@ -80,6 +83,17 @@ describe("sortWorkspaceViews", () => {
 		const sorted = sortWorkspaceViews(input);
 		expect(sorted.map((item) => `${item.pluginId}/${item.viewId}`)).toEqual(["a/w", "a/x", "a/y", "b/z"]);
 		expect(input[0].viewId).toBe("z");
+	});
+});
+
+describe("workspaceViewRef", () => {
+	it("与导航 key 互为反解，且拒绝非法视图 id", () => {
+		expect(workspaceViewRef("demo", "console")).toBe("demo/console");
+		expect(parseWorkspaceViewRef("demo/console")).toEqual({ pluginId: "demo", viewId: "console" });
+		// URL search 里的值是不可信输入：非法段不能变成一次渲染尝试。
+		expect(parseWorkspaceViewRef("demo")).toBeNull();
+		expect(parseWorkspaceViewRef("/console")).toBeNull();
+		expect(parseWorkspaceViewRef("demo/../secret")).toBeNull();
 	});
 });
 

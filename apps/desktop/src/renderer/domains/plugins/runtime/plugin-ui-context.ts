@@ -501,6 +501,8 @@ export function createPluginUiApi({
 				: {}),
 			...(badge ? { badge } : {}),
 			navOrder: Number.isFinite(contribution.navOrder) ? Number(contribution.navOrder) : 0,
+			// 只有显式 false 才退出侧边栏：缺省占位保持既有插件的行为不变。
+			sidebar: contribution.sidebar !== false,
 		};
 		workspaceViews.push(normalized);
 		onChanged();

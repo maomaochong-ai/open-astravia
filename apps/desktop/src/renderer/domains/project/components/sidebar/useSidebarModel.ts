@@ -100,6 +100,12 @@ const BUILTIN_NAV_ITEMS = [
 		labelKey: "sidebar.nav.appearance",
 		icon: "icon-[solar--palette-linear]",
 	},
+	{
+		type: "route",
+		settingsTab: "extensions" as const,
+		labelKey: "sidebar.nav.extensions",
+		icon: "icon-[solar--widget-2-linear]",
+	},
 ] as const;
 
 /**
@@ -251,7 +257,8 @@ export function useSidebarModel({
 					"badgeKey" in item ? { kind: "text", text: t(item.badgeKey) } : undefined,
 				),
 			),
-			...sortWorkspaceViews(workspaceViews).map((view) =>
+			// sidebar:false 的视图不占导航位，只在「设置 → 更多选项」里出现。
+			...sortWorkspaceViews(workspaceViews.filter((view) => view.sidebar)).map((view) =>
 				toWorkspaceNavItem(
 					view,
 					resolvePluginText(view.pluginId, view.label),

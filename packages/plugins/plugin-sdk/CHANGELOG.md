@@ -14,6 +14,10 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Added
 
+- `registerWorkspaceView` 新增 `sidebar?: boolean`（缺省 `true`，既有插件行为不变）：置 `false` 的视图不占侧边栏导航位，
+  只在「设置 → 更多选项」里列出，并由宿主在设置壳内打开——两层侧栏保持可见，用户在多个插件页面之间切换是一次点击。
+  适合配置页、安装引导、诊断台这类不常驻的 surface。
+
 - 新增 `ctx.secrets` 与 `secrets.read` / `secrets.write` 权限：插件读写**自己的**密钥，值存宿主加密凭据库而不是
   明文存储；归属由 capability session 决定，拿不到其它插件的密钥。`keys()` 只返回键名。
 

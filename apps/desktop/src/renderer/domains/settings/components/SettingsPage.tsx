@@ -1,3 +1,4 @@
+import { PluginWorkspaceViewSurface } from "@domains/plugins/components/PluginWorkspaceViewRoute";
 import { useThemeSurface } from "@vetta/theme-sdk/appearance";
 import type { SettingsTab } from "@shared/store/atoms";
 import { lazy, Suspense, type ComponentType, type LazyExoticComponent } from "react";
@@ -65,18 +66,31 @@ export function SettingsPage(): JSX.Element {
 		model.activeTab === "mcp" ? SETTINGS_CONTENT.general : SETTINGS_CONTENT[model.activeTab];
 
 	const activeTab = model.activeTab === "mcp" ? "general" : model.activeTab;
+	const embedded = model.embeddedView;
+
+	// 内嵌的插件视图是整页 surface：给它完整宽高，不套设置页的居中窄栏。
+	// 找不到该视图时退回「更多选项」列表，而不是把用户踢出设置。
+	const content = embedded ? (
+		<PluginWorkspaceViewSurface
+			key={`${embedded.pluginId}:${embedded.viewId}`}
+			pluginId={embedded.pluginId}
+			viewId={embedded.viewId}
+			onMissing={model.onCloseEmbeddedView}
+		/>
+	) : (
+		<Suspense fallback={null}>
+			{/* key=tab：切换侧栏时重挂载，避免不同 tab 复用同一组件实例的残留状态 */}
+			<div key={activeTab} className="w-full min-h-0">
+				<Content />
+			</div>
+		</Suspense>
+	);
 
 	return (
 		<SettingsPageView
-			content={
-				<Suspense fallback={null}>
-					{/* key=tab：切换侧栏时重挂载，避免不同 tab 复用同一组件实例的残留状态 */}
-					<div key={activeTab} className="w-full min-h-0">
-						<Content />
-					</div>
-				</Suspense>
-			}
+			content={content}
 			contentSurfaceRootClassName={contentSurface?.rootClassName}
+			fillContent={Boolean(embedded)}
 			model={model}
 		/>
 	);

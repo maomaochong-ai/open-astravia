@@ -123,6 +123,8 @@ export interface RegisteredWorkspaceView {
 	badge?: PluginNavBadge;
 	component: PluginWorkspaceViewContribution["component"];
 	navOrder: number;
+	/** `false` 表示不占侧边栏入口，只在「设置 → 更多选项」里出现。 */
+	sidebar: boolean;
 }
 
 /**

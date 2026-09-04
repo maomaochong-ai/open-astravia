@@ -65,7 +65,6 @@ export const SETTINGS_TABS: readonly SettingsTabRegistration[] = [
 		macOnly: true,
 	},
 	{ key: "environment", label: "应用环境", labelKey: "tabEnvironment", icon: "icon-[mdi--package-variant-closed]" },
-	{ key: "extensions", label: "扩展设置", labelKey: "tabExtensions", icon: "icon-[solar--widget-2-linear]" },
 	{
 		key: "knowledge",
 		label: "知识库设置",
@@ -80,6 +79,7 @@ export const SETTINGS_TABS: readonly SettingsTabRegistration[] = [
 		icon: "icon-[mdi--shield-lock-outline]",
 		macOnly: true,
 	},
+	{ key: "extensions", label: "更多选项", labelKey: "tabExtensions", icon: "icon-[solar--widget-2-linear]" },
 ] as const;
 
 export const SETTINGS_SECTIONS = [

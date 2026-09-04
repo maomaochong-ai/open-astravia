@@ -10,10 +10,12 @@ import {
 } from "@shared/store/atoms";
 import { authUserAtom } from "@shared/store/auth-atoms";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { parseWorkspaceViewRef, workspaceViewNavKey } from "../../plugins/runtime/workspace-view-registry";
 import { filterVisibleSettingsTabs, findSettingsSection, SETTINGS_TABS } from "../registry";
-import type { SettingsPageModel, SettingsNavigationItem } from "./types";
+import type { SettingsNavigationItem, SettingsPageModel } from "./types";
+import { useExtensionsSettingsModel } from "./useExtensionsSettingsModel";
 
 export function useSettingsPageModel(): SettingsPageModel {
 	const { t } = useTranslation("settings");
@@ -67,6 +69,11 @@ export function useSettingsPageModel(): SettingsPageModel {
 	const activeTab: SettingsTab =
 		rawTab && validTabKeys.has(rawTab as SettingsTab) ? (rawTab as SettingsTab) : "general";
 	const sectionId = getTargetSectionId(search);
+	/** 设置壳内嵌打开的插件工作区视图；只有「更多选项」标签下才有意义。 */
+	const embeddedView = useMemo(() => {
+		const raw = typeof search.view === "string" ? search.view : undefined;
+		return raw && activeTab === "extensions" ? (parseWorkspaceViewRef(raw) ?? undefined) : undefined;
+	}, [activeTab, search.view]);
 	const navigationNonce = typeof search.nav === "string" ? search.nav : undefined;
 	const targetSection = sectionId ? findSettingsSection(sectionId) : undefined;
 
@@ -121,27 +128,60 @@ export function useSettingsPageModel(): SettingsPageModel {
 		};
 	}, [activeTab, navigationNonce, targetSection]);
 
+	const toNavigationItem = useCallback(
+		(tab: (typeof visibleTabRegistrations)[number]): SettingsNavigationItem => {
+			const label = t(tab.labelKey);
+			return {
+				beta: tab.beta,
+				icon: tab.icon,
+				key: tab.key,
+				label,
+				title: narrow ? label : undefined,
+			};
+		},
+		[narrow, t],
+	);
+	// 「更多选项」标签可以就地展开成插件页面清单，省掉一次进页面再选的往返。
+	const extensionEntries = useExtensionsSettingsModel().entries;
+	const extensionsByKey = useMemo(
+		() => new Map(extensionEntries.map((entry) => [entry.key, entry])),
+		[extensionEntries],
+	);
 	const tabs = useMemo<readonly SettingsNavigationItem[]>(
 		() =>
 			visibleTabRegistrations.map((tab) => {
-				const label = t(tab.labelKey);
+				const item = toNavigationItem(tab);
+				if (tab.key !== "extensions" || extensionEntries.length === 0) return item;
 				return {
-					beta: tab.beta,
-					icon: tab.icon,
-					key: tab.key,
-					label,
-					title: narrow ? label : undefined,
+					...item,
+					children: extensionEntries.map((entry) => ({
+						key: entry.key,
+						label: entry.label,
+						icon: entry.icon,
+						...(entry.iconUrl ? { iconUrl: entry.iconUrl } : {}),
+						title: entry.description || entry.pluginName,
+					})),
 				};
 			}),
-		[narrow, t, visibleTabRegistrations],
+		[extensionEntries, toNavigationItem, visibleTabRegistrations],
 	);
 
 	return {
 		activeTab,
+		embeddedView,
+		onSelectNavigationChild: (key) => extensionsByKey.get(key)?.open(),
+		activeNavigationChildKey: embeddedView
+			? workspaceViewNavKey(embeddedView.pluginId, embeddedView.viewId)
+			: undefined,
+		onCloseEmbeddedView: () => {
+			void navigate({ to: "/settings/$tab", params: { tab: "extensions" }, search: {} });
+		},
+		expandLabel: t("extensions.expand"),
 		betaBadgeLabel: t("betaBadge"),
 		narrow,
 		onSelectTab: (tab) => {
-			void navigate({ to: "/settings/$tab", params: { tab } });
+			// 显式落到标签本身：从内嵌的插件视图切回设置项时要把 `view` 清掉。
+			void navigate({ to: "/settings/$tab", params: { tab }, search: {} });
 		},
 		tabs,
 		title: t("title"),

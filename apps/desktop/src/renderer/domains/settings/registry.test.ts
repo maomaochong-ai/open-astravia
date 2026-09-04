@@ -36,3 +36,14 @@ describe("设置标签可见性", () => {
 		}
 	});
 });
+
+describe("更多选项入口", () => {
+	it("排在标签列表最后", () => {
+		expect(SETTINGS_TABS.at(-1)?.key).toBe("extensions");
+	});
+
+	it("不带平台或登录限制，任何环境都能进插件页面", () => {
+		expect(visibleKeys({})).toContain("extensions");
+		expect(visibleKeys({ hasAuthUser: false, isPersonal: false })).toContain("extensions");
+	});
+});

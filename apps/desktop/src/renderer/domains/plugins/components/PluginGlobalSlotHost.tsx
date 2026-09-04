@@ -340,6 +340,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 				badge: view.badge,
 				component: view.component,
 				navOrder: view.navOrder ?? 0,
+				sidebar: view.sidebar !== false,
 			})),
 		);
 		if (workspaceViews.length > 0 || !hostLoading) setWorkspaceViews(workspaceViews);

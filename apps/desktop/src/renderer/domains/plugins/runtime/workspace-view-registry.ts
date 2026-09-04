@@ -28,16 +28,25 @@ export function workspaceViewNavKey(pluginId: string, viewId: string): string {
 	return `${NAV_KEY_PREFIX}${pluginId}/${viewId}`;
 }
 
+/** 该视图的紧凑引用（`<pluginId>/<viewId>`），用于 URL search 等不带前缀的场合。 */
+export function workspaceViewRef(pluginId: string, viewId: string): string {
+	return `${pluginId}/${viewId}`;
+}
+
+/** 从紧凑引用反解出 pluginId / viewId；格式不合法时返回 null。 */
+export function parseWorkspaceViewRef(value: string): { pluginId: string; viewId: string } | null {
+	const separator = value.indexOf("/");
+	if (separator <= 0) return null;
+	const pluginId = value.slice(0, separator);
+	const viewId = value.slice(separator + 1);
+	if (!pluginId || !isValidWorkspaceViewId(viewId)) return null;
+	return { pluginId, viewId };
+}
+
 /** 从导航 key 反解出 pluginId / viewId；不是工作区视图时返回 null。 */
 export function parseWorkspaceViewNavKey(key: string): { pluginId: string; viewId: string } | null {
 	if (!key.startsWith(NAV_KEY_PREFIX)) return null;
-	const rest = key.slice(NAV_KEY_PREFIX.length);
-	const separator = rest.indexOf("/");
-	if (separator <= 0) return null;
-	const pluginId = rest.slice(0, separator);
-	const viewId = rest.slice(separator + 1);
-	if (!pluginId || !isValidWorkspaceViewId(viewId)) return null;
-	return { pluginId, viewId };
+	return parseWorkspaceViewRef(key.slice(NAV_KEY_PREFIX.length));
 }
 
 /** 该视图整页路由的 hash 路径（`openExternal` 之外的宿主内跳转都用它）。 */

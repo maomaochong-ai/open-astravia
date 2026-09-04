@@ -191,10 +191,13 @@ const settingsTabRoute = createRoute({
 		const section = typeof search.section === "string" ? search.section : undefined;
 		const h2 = typeof search.h2 === "string" ? search.h2 : undefined;
 		const nav = typeof search.nav === "string" ? search.nav : undefined;
+		// `<pluginId>/<viewId>`：设置壳内嵌打开某个插件工作区视图（ADR-0105）。
+		const view = typeof search.view === "string" ? search.view : undefined;
 		return {
 			...(section ? { section } : {}),
 			...(h2 ? { h2 } : {}),
 			...(nav ? { nav } : {}),
+			...(view ? { view } : {}),
 		};
 	},
 });

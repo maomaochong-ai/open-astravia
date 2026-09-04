@@ -13,6 +13,9 @@ export function SettingsSidebar({ model }: SettingsSidebarProps): JSX.Element {
 			narrow={model.narrow}
 			onSelectTab={(tab) => model.onSelectTab(tab as typeof model.activeTab)}
 			tabs={model.tabs}
+			onSelectChild={model.onSelectNavigationChild}
+			activeChildKey={model.activeNavigationChildKey}
+			expandLabel={model.expandLabel}
 			title={model.title}
 		/>
 	);

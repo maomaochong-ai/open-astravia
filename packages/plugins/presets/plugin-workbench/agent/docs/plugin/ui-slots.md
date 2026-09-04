@@ -108,6 +108,8 @@ interface PluginGlobalSlotContribution {
 - `icon` 是 **iconify class 字符串**（如 `"icon-[solar--widget-4-linear]"`），不是 ReactNode——宿主要把它渲染进自己的导航按钮，并按 key 持久化布局
 - **不写 `icon` 就用插件自己的 Logo**：宿主回落到 `plugin.json` 的 `icon`。包内图片（`svg` / `png` / `webp` 等）默认按主题前景色 mask 成**单色**，因此自带图形的插件不必去图标集里找一个近似的；Iconify 名照常当 class 用。两者都不存在时才落到宿主默认图标
 - **`iconTint: false` 保留原图色彩**：导航项改用 `<img>` 渲染。选之前先掂量：入口只有 16px、与内置单色图标并排，且固定色彩无法跟随主题——深色 logo 会在深色侧边栏里消失。**只对彩色 logo 有意义**：单色图形 tint 后反而更清晰统一，而整块不透明的彩色图 tint 后会糊成一个纯色块。对 Iconify class 图标无效（它们始终跟随主题色）
+- **`sidebar: false` 不占导航位**：视图只出现在「设置 → 更多选项」，宿主在设置壳内打开它（两层侧栏保留，切换其它插件页面是一次点击）。配置页、安装引导、诊断台这类「装完就不常回来」的 surface 应该选它——侧边栏是用户自己策划的稀缺空间，每个插件都常驻一格，会把用户真正高频的入口挤进收纳菜单
+
 
 ```ts
 interface PluginWorkspaceViewContribution {
@@ -119,6 +121,7 @@ interface PluginWorkspaceViewContribution {
   badge?: PluginNavBadge;           // 导航项角标，见下
   component: ComponentType<PluginWorkspaceViewProps>;
   navOrder?: number;                // 同一插件内多个视图的排序
+  sidebar?: boolean;                // 是否占侧边栏导航位，缺省 true；false = 只在设置 → 更多选项
 }
 ```
 

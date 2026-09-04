@@ -110,6 +110,18 @@ export interface PluginWorkspaceViewContribution {
 	component: ComponentType<PluginWorkspaceViewProps>;
 	/** Sort hint among this plugin's own views (ascending). Defaults to 0. */
 	navOrder?: number;
+	/**
+	 * Whether this view takes a sidebar entry. Defaults to `true`.
+	 *
+	 * Pass `false` for a surface users open occasionally — a setup page, a
+	 * diagnostics console. It then lives only under Settings → More options,
+	 * where the host lists every off-sidebar view and opens it inside the
+	 * settings shell, so switching between such pages stays one click.
+	 *
+	 * The sidebar is a scarce, user-curated space: a plugin that always claims a
+	 * slot pushes the entries someone actually uses into the overflow menu.
+	 */
+	sidebar?: boolean;
 }
 
 /**
