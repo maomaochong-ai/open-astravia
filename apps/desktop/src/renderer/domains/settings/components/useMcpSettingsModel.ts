@@ -14,6 +14,7 @@ import {
 	existingSecretValues,
 	isBuiltinMcpServer,
 	matchBuiltinMcpPreset,
+	presetRequiresSecrets,
 	presetUsesBrowserAuth,
 	presetUsesOAuth,
 	resolveMcpPresetDescription,
@@ -370,8 +371,9 @@ export function useMcpSettingsModel(): McpSettingsModel {
 	const addBuiltinServer = useCallback(
 		async (preset: BuiltinMcpPreset, options?: McpAbilityInstallOptions): Promise<McpBuiltinAddResult> => {
 			if (!configRef.current) return "needs-setup";
-			// 必填密钥 / 浏览器授权说明：都先弹引导，避免用户不知道下一步
-			if (preset.secrets?.length || presetUsesBrowserAuth(preset)) {
+			// 只有必填密钥 / 浏览器授权才先弹引导。全是可选参数时直接安装，
+			// 用户随后可用卡片上的「配置」补填，否则一进来就被无关表单挡住。
+			if (presetRequiresSecrets(preset) || presetUsesBrowserAuth(preset)) {
 				pendingAbilityInstallRef.current = options;
 				setSecretsDialogMode("add");
 				setSecretsDialogTargetName(preset.name);
