@@ -125,7 +125,12 @@ export function isHttpMcpServerConfigData(config: McpServerConfigData): config i
 	return config.type === "http";
 }
 
-export function useMcpSettingsModel(): McpSettingsModel {
+export interface McpSettingsModelOptions {
+	/** 安装台账写入后触发：能力页据此重新拉取台账，否则刚装好的市场 MCP 仍显示未安装。 */
+	onAbilityLedgerChanged?: () => void;
+}
+
+export function useMcpSettingsModel(options?: McpSettingsModelOptions): McpSettingsModel {
 	const { t } = useTranslation("settings");
 	const [config, setConfig] = useState<McpConfigData | null>(null);
 	const [mode, setMode] = useState<McpEditMode>("visual");
@@ -151,6 +156,17 @@ export function useMcpSettingsModel(): McpSettingsModel {
 	const configRef = useRef<McpConfigData | null>(null);
 	/** 引导 Dialog 完成后补记台账用的市场信息。 */
 	const pendingAbilityInstallRef = useRef<McpAbilityInstallOptions | undefined>(undefined);
+	/** 台账变更通知：放进 ref，避免调用方每次渲染换新函数就重建整套回调。 */
+	const onAbilityLedgerChangedRef = useRef(options?.onAbilityLedgerChanged);
+	onAbilityLedgerChangedRef.current = options?.onAbilityLedgerChanged;
+
+	const recordAbilityInstall = useCallback(
+		async (name: string, installOptions: McpAbilityInstallOptions | undefined): Promise<void> => {
+			await recordMcpAbilityInstall(name, installOptions);
+			onAbilityLedgerChangedRef.current?.();
+		},
+		[],
+	);
 
 	const refreshOAuthStatus = useCallback(async (cfg: McpConfigData | null) => {
 		if (!cfg) {
@@ -257,7 +273,7 @@ export function useMcpSettingsModel(): McpSettingsModel {
 						oauthScopes: next.oauthScopes,
 					});
 					await saveConfig(nextConfig);
-					await recordMcpAbilityInstall(targetName, options);
+					await recordAbilityInstall(targetName, options);
 					recordSettingsUsage({
 						tab: "mcp",
 						action: "added",
@@ -292,7 +308,7 @@ export function useMcpSettingsModel(): McpSettingsModel {
 			setBusyPresetName(preset.name);
 			try {
 				await saveConfig(nextConfig);
-				await recordMcpAbilityInstall(targetName, options);
+				await recordAbilityInstall(targetName, options);
 				recordSettingsUsage({
 					tab: "mcp",
 					action: secretsDialogMode === "configure" ? "updated" : "added",
@@ -304,7 +320,7 @@ export function useMcpSettingsModel(): McpSettingsModel {
 				setBusyPresetName(null);
 			}
 		},
-		[closeSecretsDialog, saveConfig, secretsDialogMode, secretsDialogTargetName, t],
+		[closeSecretsDialog, recordAbilityInstall, saveConfig, secretsDialogMode, secretsDialogTargetName, t],
 	);
 
 	const authorizeOAuth = useCallback(
@@ -421,10 +437,10 @@ export function useMcpSettingsModel(): McpSettingsModel {
 			const merged = mergeMarketServer(config.mcpServers[server.name], marketToServer(server));
 			const newServers = { ...config.mcpServers, [server.name]: merged };
 			await saveConfig({ ...config, mcpServers: newServers });
-			await recordMcpAbilityInstall(server.name, options);
+			await recordAbilityInstall(server.name, options);
 			recordSettingsUsage({ tab: "mcp", action: "added", target: "market-server" });
 		},
-		[saveConfig],
+		[recordAbilityInstall, saveConfig],
 	);
 
 	const removeServer = useCallback(

@@ -2,6 +2,7 @@
 /**
  * 市场 MCP 的添加闭环：mcp.json 落盘 → 台账补记 → 卡片状态，
  * 按真实接线（useMcpSettingsModel + useAbilityActions + buildMcpAbilities）验证。
+ * 台账不在装完那一刻刷新时，卡片会停在「未安装」并让用户装出第二个同名 server。
  */
 import type { AbilityLedger, McpConfigData } from "@preload/api";
 import type { MarketAbility } from "@shared/lib/api";
@@ -101,7 +102,7 @@ function setupHarness(entry: MarketAbility) {
 		const refresh = (): void => {
 			ledgerSnapshot = structuredClone(disk.ledger);
 		};
-		const mcp = useMcpSettingsModel();
+		const mcp = useMcpSettingsModel({ onAbilityLedgerChanged: refresh });
 		return { mcp, actions: useAbilityActions({ mcp, refresh }) };
 	});
 
@@ -115,7 +116,6 @@ function setupHarness(entry: MarketAbility) {
 				plugins: [],
 				mcpConfig: rendered.result.current.mcp.config,
 				oauthAuthByName: {},
-				mcpSetupStatus: {},
 				busyIds: new Set(),
 			},
 			t,
@@ -143,4 +143,29 @@ describe("市场 MCP 添加闭环", () => {
 		expect(card().installed).toBe(true);
 	});
 
+	it("引导弹窗完成安装后卡片立即变为已安装，重复点击不会装出第二个 server", async () => {
+		const entry = marketEntry([{ key: "API_KEY", label: "API Key", required: true, secret: true }]);
+		const { disk, rendered, card } = setupHarness(entry);
+		await waitFor(() => expect(rendered.result.current.mcp.config).not.toBeNull());
+
+		await act(async () => {
+			rendered.result.current.actions.install(card());
+		});
+		await waitFor(() => expect(rendered.result.current.mcp.secretsDialogPreset).not.toBeNull());
+		expect(disk.mcp.mcpServers).toEqual({});
+
+		await act(async () => {
+			await rendered.result.current.mcp.onConfirmSecretsDialog({ API_KEY: "secret" });
+		});
+
+		const installed = card();
+		expect(installed.installed).toBe(true);
+		expect(installed.serverName).toBe("demo-mcp");
+
+		await act(async () => {
+			rendered.result.current.actions.install(installed);
+		});
+		await waitFor(() => expect(rendered.result.current.mcp.saving).toBe(false));
+		expect(Object.keys(disk.mcp.mcpServers)).toEqual(["demo-mcp"]);
+	});
 });

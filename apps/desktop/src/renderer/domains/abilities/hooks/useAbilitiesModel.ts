@@ -32,7 +32,9 @@ export function useAbilitiesModel(): AbilitiesModel {
 
 	const data = useAbilityData();
 	const trPlugin = usePluginTextResolver();
-	const mcp = useMcpSettingsModel();
+	// 引导弹窗里完成的安装不走 useAbilityActions，台账要由 mcp 模型回调刷新，
+	// 否则卡片继续显示「添加」，再点一次就会装出第二个同名 server。
+	const mcp = useMcpSettingsModel({ onAbilityLedgerChanged: data.refresh });
 	const actions = useAbilityActions({ mcp, refresh: data.refresh });
 
 	const localState = useMemo<LocalAbilityState>(
