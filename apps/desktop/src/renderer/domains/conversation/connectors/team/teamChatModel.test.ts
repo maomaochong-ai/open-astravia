@@ -38,7 +38,32 @@ const member: TeamMemberViewModel = {
 };
 
 function snapshot(input: Partial<DesktopTeamSessionSnapshot> = {}): DesktopTeamSessionSnapshot {
-	return { session, conversationRevision: 0, messages: [], activities: [], ...input };
+	const messages = input.messages ?? [];
+	const memberId = messages.find((record) => record.kind === "agent")?.author.id ?? "leader";
+	return {
+		session,
+		conversationRevision: 0,
+		messages: [],
+		activities: [],
+		...input,
+		display:
+			input.display ??
+			(messages.some((record) => record.kind === "agent")
+				? {
+						memberConversations: [
+							{
+								memberId,
+								runtimeSessionId: `${memberId}-runtime`,
+								history: messages.map((record) => ({
+									type: "message" as const,
+									entryId: record.id,
+									message: record.message,
+								})),
+							},
+						],
+					}
+				: undefined),
+	};
 }
 
 function userMessage(
@@ -262,14 +287,33 @@ describe("team chat stream state", () => {
 					}),
 				],
 				display: {
-					toolExecutions: [
+					memberConversations: [
 						{
-							messageId: "member-event",
-							toolCallId: "read-call",
-							toolName: "read",
-							args: { path: "C:/workspace/brief.md" },
-							result: { content: [{ type: "text", text: "file contents" }] },
-							isError: false,
+							memberId: "leader",
+							runtimeSessionId: "leader-runtime",
+							history: [
+								{
+									type: "message",
+									entryId: "member-event",
+									message: agentMessage("member-event", "request", "leader", "Read complete", 3, {
+										id: "read-call",
+										name: "read",
+										arguments: { path: "C:/workspace/brief.md" },
+									}).message,
+								},
+								{
+									type: "message",
+									entryId: "tool-result",
+									message: {
+										role: "toolResult",
+										toolCallId: "read-call",
+										toolName: "read",
+										content: [{ type: "text", text: "file contents" }],
+										isError: false,
+										timestamp: 4,
+									},
+								},
+							],
 						},
 					],
 				},

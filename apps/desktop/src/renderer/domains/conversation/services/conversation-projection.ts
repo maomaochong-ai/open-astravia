@@ -2,16 +2,31 @@ import type { DesktopTeamToolExecutionEvent } from "@preload/api-types/team-conv
 import {
 	type ConversationMessageEventState,
 	createConversationAgentMessage,
+	projectAssistantMessageBlocks,
 	reduceConversationMessageEvent,
 } from "@shared/conversation";
 import type { ChatConversationItem } from "@shared/store/atoms";
+import type { AssistantMessage } from "@vetta/ai";
 import type { AssistantSessionEvent, HistoryEntry } from "@vetta/runtime-core";
 import type { ConversationAgentMessageEvent, ConversationToolExecutionEvent } from "@vetta/runtime-core/conversation";
+import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
 import { fullHistoryToChat, handleToolEnd, handleToolPhase, handleToolStart, resetStreamState } from "./chat-service";
 
 interface QueuedAssistantEvent {
 	readonly event: AssistantSessionEvent;
 	readonly sequence: number;
+}
+
+export interface ConversationToolExecutionProjection {
+	readonly messageId: string;
+	readonly toolCallId: string;
+	readonly toolName: string;
+	readonly args: Record<string, unknown>;
+	readonly result?: RuntimeToolResult;
+	readonly isError?: boolean;
+	readonly startedAt?: number;
+	readonly durationMs?: number;
+	readonly phases?: readonly { readonly label: string; readonly atMs: number }[];
 }
 
 /**
@@ -84,6 +99,64 @@ export class ConversationProjection {
 		this.targetMessageId = undefined;
 		resetStreamState();
 	}
+}
+
+/**
+ * Projects a persisted assistant message through the same block contract used
+ * by the ordinary conversation. Execution observations are only an optional
+ * Desktop display input; they never create a second Team message model.
+ */
+export function projectConversationAgentMessage(input: {
+	readonly message: AssistantMessage;
+	readonly messageId: string;
+	readonly entryId?: string;
+	readonly turnId?: string;
+	readonly authorId?: string;
+	readonly timestamp?: number;
+	readonly executions?: readonly ConversationToolExecutionProjection[];
+}): ChatConversationItem {
+	const { message, messageId, entryId, turnId, authorId, timestamp, executions = [] } = input;
+	let items: ChatConversationItem[] = [
+		createConversationAgentMessage({
+			id: messageId,
+			entryId: entryId ?? messageId,
+			turnId: turnId ?? messageId,
+			authorId: authorId,
+			timestamp: timestamp ?? message.timestamp,
+			text: message.content.flatMap((part) => (part.type === "text" ? [part.text] : [])).join(""),
+			blocks: projectAssistantMessageBlocks(message, messageId),
+		}),
+	];
+	for (const execution of executions.filter((item) => item.messageId === messageId)) {
+		const current = items[0];
+		const hasCall =
+			current?.kind === "agent" &&
+			current.blocks.some((block) => block.type === "tool_call" && block.toolCallId === execution.toolCallId);
+		if (!hasCall) {
+			items = handleToolStart(items, execution.toolCallId, execution.toolName, execution.args, execution.startedAt);
+		}
+		for (const phase of execution.phases ?? []) {
+			items = handleToolPhase(items, execution.toolCallId, phase.label, phase.atMs);
+		}
+		if (execution.result) {
+			items = handleToolEnd(
+				items,
+				execution.toolCallId,
+				execution.result,
+				execution.isError === true,
+				execution.startedAt !== undefined && execution.durationMs !== undefined
+					? {
+							startedAt: execution.startedAt,
+							durationMs: execution.durationMs,
+							phases: [...(execution.phases ?? [])],
+						}
+					: undefined,
+			);
+		}
+	}
+	const result = items[0];
+	if (!result) throw new Error("Assistant message projection produced no message");
+	return result;
 }
 
 /**

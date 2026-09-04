@@ -419,6 +419,7 @@ export function historyToChat(
 	history: Array<{
 		role: string;
 		content: unknown;
+		timestamp?: number;
 		toolCallId?: string;
 		toolName?: string;
 		isError?: boolean;
@@ -461,11 +462,13 @@ export function historyToChat(
 				// Only absolute (panel/system) prefixes; hand-typed @text stays in body.
 				// Exclude image-cache so system images/appshot don't become file badges.
 				mentionedFiles: toMentionedFilesFromPrefixes(parsedUser.files),
+				timestamp: m.timestamp,
 			});
 			messages.push(userMsg);
 		} else if (m.role === "assistant") {
 			// Merge consecutive assistant messages into one (same agent turn)
 			const target = currentAssistant();
+			if (target.timestamp === undefined) target.timestamp = m.timestamp;
 			if (m.usage) target.usages = [...(target.usages ?? []), m.usage];
 			const blocks = messageToBlocks(m.content);
 			for (const b of blocks) {
@@ -632,6 +635,7 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatConversationItem
 			provider?: string;
 			model?: string;
 			usage?: Usage;
+			timestamp?: number;
 		};
 
 		if (m.role === "user") {
@@ -652,6 +656,7 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatConversationItem
 				text,
 				promptRef: pendingPromptRef ?? legacyPromptRef,
 				attachments: pendingAttachments,
+				timestamp: m.timestamp,
 				// Only absolute (panel/system) prefixes; hand-typed @text stays in body.
 				// Exclude image-cache so system images/appshot don't become file badges.
 				mentionedFiles: toMentionedFilesFromPrefixes(parsedUser.files),
@@ -670,6 +675,7 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatConversationItem
 			const entryId = entry.type === "message" ? entry.entryId : undefined;
 			const target = currentAssistant();
 			if (m.usage) target.usages = [...(target.usages ?? []), m.usage];
+			if (target.timestamp === undefined && m.timestamp !== undefined) target.timestamp = m.timestamp;
 			// Prefer first assistant entry id for the merged bubble when not set yet.
 			if (entryId && !target.entryId) {
 				target.entryId = entryId;

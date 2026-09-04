@@ -308,4 +308,18 @@ describe("useTeamChatModel streaming flow", () => {
 		act(() => result.current.actions.toggleMember(secondMember.id));
 		expect(result.current.model.contextUsage?.percent).toBe(70);
 	});
+
+	it("does not reload the same session when the route is canonicalized", async () => {
+		const { result, rerender } = renderHook(
+			({ preferredSessionId }: { preferredSessionId?: string }) =>
+				useTeamChatModel(team.id, preferredSessionId),
+			{ initialProps: {} },
+		);
+		await waitFor(() => expect(result.current.model.status).toBe("ready"));
+		const loadCalls = vi.mocked(loadTeamChatSession).mock.calls.length;
+
+		rerender({ preferredSessionId: baseSession.id });
+
+		expect(vi.mocked(loadTeamChatSession).mock.calls.length).toBe(loadCalls);
+	});
 });

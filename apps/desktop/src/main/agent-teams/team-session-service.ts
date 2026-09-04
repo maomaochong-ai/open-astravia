@@ -114,6 +114,7 @@ import { TeamMessageControlService } from "./team-message-control-service.js";
 import { TeamOperationQueue } from "./team-operation-queue.js";
 import { ensureLegacyAgentTeamOwnershipCatalog, registerAgentTeamSessionOwnership } from "./team-ownership-backfill.js";
 import { restoreTeamMemberRuntimes } from "./team-runtime-restorer.js";
+import { readTeamConversationDocument, readTeamConversationHistory } from "./team-session-file-reader.js";
 import { type LegacyTeamSessionRepository, legacyTeamSessionRepository } from "./team-session-repository.js";
 import { TeamTaskControlService } from "./team-task-control-service.js";
 
@@ -160,6 +161,9 @@ interface ActiveTeamMemberTurn {
 export class AgentTeamSessionService {
 	private runtime: RuntimeHost | undefined;
 	private readonly sessions = new Map<string, TeamSessionDocument>();
+	/** Known coordination paths let the bootstrap reader start restoration without blocking IPC. */
+	private readonly coordinationSessionPaths = new Map<string, string>();
+	private readonly warmingSessions = new Map<string, Promise<unknown>>();
 	private readonly coordination = new TeamOperationQueue();
 	private readonly sharedContextCompactions = new TeamOperationQueue();
 	private readonly memberScheduler = new TeamMemberScheduler();
@@ -295,7 +299,7 @@ export class AgentTeamSessionService {
 		};
 	}
 
-	snapshot(session: TeamSessionDocument): TeamSessionSnapshot {
+	snapshot(session: TeamSessionDocument, coordinationDocument?: ConversationDocument): TeamSessionSnapshot {
 		const coordination = session.coordinationRuntime;
 		if (!coordination) {
 			return {
@@ -305,8 +309,10 @@ export class AgentTeamSessionService {
 				activities: legacyActivities(session),
 			};
 		}
-		const document = this.getRuntime().readSessionDocument(coordination.sessionId);
-		const collaboration = this.collaborationStore.read(session);
+		const document = coordinationDocument ?? this.getRuntime().readSessionDocument(coordination.sessionId);
+		const collaboration = coordinationDocument
+			? this.collaborationStore.readFromDocument(coordinationDocument)
+			: this.collaborationStore.read(session);
 		const messages = document.entries.flatMap((entry) => {
 			if (entry.type !== "message" || (entry.kind !== "user" && entry.kind !== "agent")) return [];
 			const record =
@@ -341,17 +347,17 @@ export class AgentTeamSessionService {
 	}
 
 	/** Desktop-only display projection; never persisted or passed to member context. */
-	displayProjection(session: TeamSessionDocument): DesktopTeamConversationDisplay {
-		const coordination = session.coordinationRuntime;
-		if (!coordination) return { toolExecutions: [], executionMode: session.executionMode ?? "full-access" };
+	async displayProjection(session: TeamSessionDocument): Promise<DesktopTeamConversationDisplay> {
 		const runtime = this.getRuntime();
 		const memberStates =
 			typeof runtime.getState === "function"
-				? Object.entries(session.memberRuntime).map(([memberId, member]) => ({
-						memberId,
-						runtimeSessionId: member.sessionId,
-						state: runtime.getState(member.sessionId),
-					}))
+				? Object.entries(session.memberRuntime)
+						.filter(([, member]) => runtime.getSessionPath(member.sessionId) === member.sessionPath)
+						.map(([memberId, member]) => ({
+							memberId,
+							runtimeSessionId: member.sessionId,
+							state: runtime.getState(member.sessionId),
+						}))
 				: [];
 		const contextState = memberStates.reduce<(typeof memberStates)[number] | undefined>((largest, candidate) => {
 			if (!largest) return candidate;
@@ -363,9 +369,10 @@ export class AgentTeamSessionService {
 		}, undefined);
 		return projectTeamConversationDisplay({
 			session,
-			coordination: this.getRuntime().readSessionDocument(coordination.sessionId),
-			publications: this.collaborationStore.read(session).publications,
-			readHistory: (conversationId) => this.getRuntime().getFullHistory(conversationId),
+			readHistory: async (runtimeSessionId, sessionPath) =>
+				runtime.getSessionPath(runtimeSessionId) === sessionPath
+					? runtime.getFullHistory(runtimeSessionId)
+					: readTeamConversationHistory(runtimeSessionId, sessionPath),
 			...(contextState
 				? {
 						runtimeState: (() => {
@@ -386,7 +393,29 @@ export class AgentTeamSessionService {
 	}
 
 	async readSnapshot(id: string, coordinationSessionPath?: string): Promise<TeamSessionSnapshot> {
-		return this.snapshot(await this.read(id, coordinationSessionPath));
+		const cached = this.sessions.get(id);
+		if (cached) return this.snapshot(cached);
+		const path = coordinationSessionPath ?? this.coordinationSessionPaths.get(id);
+		if (!path) return this.snapshot(await this.read(id));
+		this.coordinationSessionPaths.set(id, path);
+		const document = await readTeamConversationDocument(id, path);
+		const session = readTeamSessionStateFromDocument(id, document);
+		const snapshot = this.snapshot(session, document);
+		this.startSessionWarming(id, path);
+		return snapshot;
+	}
+
+	private startSessionWarming(id: string, coordinationSessionPath: string): void {
+		if (this.sessions.has(id) || this.warmingSessions.has(id)) return;
+		const warming = this.read(id, coordinationSessionPath).catch((error: unknown) => {
+			log.error("failed to warm team session after bootstrap", { teamSessionId: id, error: errorMessage(error) });
+			throw error;
+		});
+		this.warmingSessions.set(id, warming);
+		void warming.then(
+			() => this.warmingSessions.delete(id),
+			() => this.warmingSessions.delete(id),
+		);
 	}
 
 	private applyDefaultTeamToolPolicy(runtimeSessionId: string): void {
@@ -407,6 +436,24 @@ export class AgentTeamSessionService {
 		listeners.add(handler);
 		this.subscribers.set(sessionId, listeners);
 		const session = this.sessions.get(sessionId);
+		if (!session) {
+			const path = this.coordinationSessionPaths.get(sessionId);
+			if (path) {
+				this.startSessionWarming(sessionId, path);
+				const warming = this.warmingSessions.get(sessionId);
+				if (warming) {
+					void warming.then(
+						() => {
+							const current = this.sessions.get(sessionId);
+							if (!current || !this.subscribers.has(sessionId)) return;
+							this.attachRuntimeSubscriptions(current);
+							this.publishSessionUpdated(current);
+						},
+						() => undefined,
+					);
+				}
+			}
+		}
 		const snapshot = session
 			? ({
 					type: "session-snapshot",
@@ -942,8 +989,9 @@ export class AgentTeamSessionService {
 	}
 
 	async read(id: string, coordinationSessionPath?: string): Promise<TeamSessionDocument> {
+		if (coordinationSessionPath) this.coordinationSessionPaths.set(id, coordinationSessionPath);
 		return this.coordination.run(id, async () => {
-			const session = await this.readInternal(id, coordinationSessionPath);
+			const session = await this.readInternal(id, coordinationSessionPath ?? this.coordinationSessionPaths.get(id));
 			await this.registerSessionOwnership(session);
 			return session;
 		});
@@ -2575,6 +2623,18 @@ function isTeamSessionStateRecord(value: unknown): value is TeamSessionStateReco
 		value.customType === "agent-team.session-state.v1" &&
 		"session" in value
 	);
+}
+
+function readTeamSessionStateFromDocument(id: string, document: ConversationDocument): TeamSessionDocument {
+	for (let index = document.entries.length - 1; index >= 0; index -= 1) {
+		const entry = document.entries[index];
+		if (entry?.type !== "custom" || entry.customType !== "agent-team.session-state.v1") continue;
+		if (!isTeamSessionStateRecord(entry.data)) continue;
+		const session = parseTeamSessionDocument(entry.data.session);
+		if (session.id !== id) throw new Error("Team coordination Conversation belongs to another session");
+		return session;
+	}
+	throw new Error(`Team session state is missing from coordination Conversation: ${id}`);
 }
 
 function projectPublicAssistantEvent(event: AssistantMessageEvent): AssistantMessageEvent | undefined {

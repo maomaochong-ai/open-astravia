@@ -1,20 +1,18 @@
 import type {
 	DesktopTeamSessionSnapshot,
 	DesktopTeamSessionStreamEvent,
-	DesktopTeamToolExecution,
 } from "@preload/api-types/team-conversation-display";
 import type { ConversationMessageEventState, ConversationParticipantViewModel } from "@shared/conversation";
-import {
-	createConversationAgentMessage,
-	projectAssistantMessageBlocks,
-	reduceConversationMessageEvent,
-} from "@shared/conversation";
+import { reduceConversationMessageEvent } from "@shared/conversation";
 import type { ChatConversationItem, ContextUsageData } from "@shared/store/atoms";
 import type { ActivityWorkspace } from "@shared/workspace/activity-workspace";
 import type { AgentTeamDocument, TeamDefinition } from "@vetta/agent-team";
-import type { PromptAttachmentRef, SessionExecutionMode } from "@vetta/runtime-core";
-import { handleToolEnd, handleToolPhase, handleToolStart } from "../../services/chat-service";
-import { reduceConversationToolExecutionEvent } from "../../services/conversation-projection";
+import type { HistoryEntry, PromptAttachmentRef, SessionExecutionMode } from "@vetta/runtime-core";
+import { fullHistoryToChat } from "../../services/chat-service";
+import {
+	projectConversationAgentMessage,
+	reduceConversationToolExecutionEvent,
+} from "../../services/conversation-projection";
 
 export type TeamChatStatus = "loading" | "ready" | "sending" | "streaming" | "cancelling" | "error";
 
@@ -191,43 +189,13 @@ export function projectTeamConversationTimeline({
 	if (!snapshot) return [];
 	const { session } = snapshot;
 	const memberMap = new Map(members.map((member) => [member.id, member]));
-	const items: ChatConversationItem[] = snapshot.messages.map((record) => {
-		if (record.kind === "user") {
-			return {
-				id: record.id,
-				entryId: record.id,
-				turnId: record.turnId,
-				authorId: record.author.id,
-				kind: "user",
-				role: "user",
-				deliveryPhase: "completed",
-				text: stripAttachmentContext(userMessageText(record.message.content)),
-				timestamp: record.timestamp,
-				attachments: [...(record.attachments ?? [])],
-			};
-		}
-		const blocks = projectTeamAgentBlocks(
-			record.message,
-			record.id,
-			snapshot.display?.toolExecutions ?? [],
-			record.turnId,
-			record.author.id,
-			record.timestamp,
-		);
-		return {
-			id: record.id,
-			entryId: record.id,
-			turnId: record.turnId,
-			authorId: record.author.id,
-			kind: "agent",
-			role: "assistant",
-			phase: "completed",
-			text: blocks.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("\n"),
-			blocks,
-			usages: [record.message.usage],
-			timestamp: record.timestamp,
-		};
-	});
+	const memberConversations = snapshot.display?.memberConversations ?? [];
+	const items: ChatConversationItem[] = memberConversations.flatMap((conversation) =>
+		projectMemberConversation(conversation.memberId, conversation.history),
+	);
+	if (items.length === 0 && memberConversations.length === 0) {
+		items.push(...projectLegacySnapshotMessages(snapshot));
+	}
 	for (const activity of snapshot.activities) {
 		const source =
 			memberMap.get(activity.sourceMemberId)?.name ??
@@ -252,7 +220,8 @@ export function projectTeamConversationTimeline({
 	items.sort((left, right) => itemTimestamp(left) - itemTimestamp(right));
 
 	const userCommitted = pending
-		? snapshot.messages.some((record) => record.kind === "user" && record.turnId === pending.requestId)
+		? snapshot.messages.some((record) => record.kind === "user" && record.turnId === pending.requestId) ||
+			items.some((item) => item.kind === "user" && item.turnId === pending.requestId)
 		: false;
 	if (pending && !userCommitted) {
 		items.push({
@@ -268,7 +237,13 @@ export function projectTeamConversationTimeline({
 		});
 	}
 
-	const persistedResults = new Set(snapshot.messages.map((record) => record.id));
+	const persistedResults = new Set(
+		memberConversations.length > 0
+			? memberConversations.flatMap((conversation) =>
+					fullHistoryToChat([...conversation.history]).map((item) => item.id),
+				)
+			: snapshot.messages.map((record) => record.id),
+	);
 	for (const turn of Object.values(streams).sort(
 		(left, right) => (left.message.startedAt ?? 0) - (right.message.startedAt ?? 0),
 	)) {
@@ -293,61 +268,48 @@ export function projectTeamConversationTimeline({
 	return items;
 }
 
-/** Merge the raw member call/result stream into the shared Chat block model. */
-function projectTeamAgentBlocks(
-	message: Extract<DesktopTeamSessionSnapshot["messages"][number], { kind: "agent" }>["message"],
-	messageId: string,
-	executions: readonly DesktopTeamToolExecution[],
-	turnId: string,
-	authorId: string,
-	timestamp: number,
-) {
-	const projected = projectAssistantMessageBlocks(message, messageId, "success").filter(
-		(block) => block.type !== "thinking",
-	);
-	let items: ChatConversationItem[] = [
-		createConversationAgentMessage({
-			id: messageId,
-			entryId: messageId,
-			turnId,
-			authorId,
-			timestamp,
-			text: "",
-			blocks: projected,
-		}),
-	];
-	for (const execution of executions.filter((item) => item.messageId === messageId)) {
-		const hasCall = projected.some(
-			(block) => block.type === "tool_call" && block.toolCallId === execution.toolCallId,
-		);
-		if (!hasCall) {
-			items = handleToolStart(items, execution.toolCallId, execution.toolName, execution.args, execution.startedAt);
+function projectMemberConversation(memberId: string, history: readonly HistoryEntry[]) {
+	return fullHistoryToChat([...history]).map((item) => {
+		if (item.kind === "agent") {
+			return { ...item, authorId: memberId };
 		}
-		for (const phase of execution.phases ?? []) {
-			items = handleToolPhase(items, execution.toolCallId, phase.label, phase.atMs);
+		if (item.kind === "user") {
+			return { ...item, text: stripAttachmentContext(item.text) };
 		}
-		if (execution.result) {
-			items = handleToolEnd(
-				items,
-				execution.toolCallId,
-				execution.result,
-				execution.isError === true,
-				execution.startedAt !== undefined && execution.durationMs !== undefined
-					? {
-							startedAt: execution.startedAt,
-							durationMs: execution.durationMs,
-							phases: [...(execution.phases ?? [])],
-						}
-					: undefined,
-			);
-		}
-	}
-	return items[0]?.kind === "agent" ? items[0].blocks : projected;
+		return item;
+	});
 }
 
-function userMessageText(content: string | readonly { readonly type: string; readonly text?: string }[]): string {
-	if (typeof content === "string") return content;
-	return content.flatMap((block) => (block.type === "text" && block.text ? [block.text] : [])).join("\n");
+/** Compatibility for legacy Team snapshots that predate member histories. */
+function projectLegacySnapshotMessages(snapshot: DesktopTeamSessionSnapshot): ChatConversationItem[] {
+	return snapshot.messages.map((record) => {
+		if (record.kind === "user") {
+			return {
+				id: record.id,
+				entryId: record.id,
+				turnId: record.turnId,
+				authorId: record.author.id,
+				kind: "user",
+				role: "user",
+				deliveryPhase: "completed",
+				text: stripAttachmentContext(
+					typeof record.message.content === "string"
+						? record.message.content
+						: record.message.content.flatMap((part) => (part.type === "text" ? [part.text] : [])).join("\n"),
+				),
+				timestamp: record.timestamp,
+				attachments: [...(record.attachments ?? [])],
+			};
+		}
+		return projectConversationAgentMessage({
+			message: record.message,
+			messageId: record.id,
+			entryId: record.id,
+			turnId: record.turnId,
+			authorId: record.author.id,
+			timestamp: record.timestamp,
+		});
+	});
 }
 
 function itemTimestamp(item: ChatConversationItem): number {

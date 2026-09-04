@@ -99,9 +99,63 @@ describe("Agent Team IPC contract", () => {
 		await getSession({}, { id: "session", coordinationSessionPath: "C:/runtime/session.jsonl" });
 		expect(deps.sessions.readSnapshot).toHaveBeenCalledWith("session", "C:/runtime/session.jsonl");
 
-		expect(() =>
+		await expect(
 			getSession({}, { id: "session", coordinationSessionPath: "C:/runtime/session.jsonl", privateState: true }),
-		).toThrow("Invalid Team session reference");
+		).rejects.toThrow("Invalid Team session reference");
+	});
+
+	it("keeps the Team service context when projecting a reopened session", async () => {
+		const base = dependencies();
+		const displayProjection = vi.fn(async function (this: { getRuntime: () => unknown }) {
+			this.getRuntime();
+			return { memberConversations: [] };
+		});
+		const sessionServices = {
+			...base.sessions,
+			readSnapshot: vi.fn(async () => ({
+				session: {} as never,
+				conversationRevision: 0,
+				messages: [],
+				activities: [],
+			})),
+			getRuntime: vi.fn(),
+			displayProjection: displayProjection as AgentTeamsIpcDependencies["sessions"]["displayProjection"],
+		};
+		const deps: AgentTeamsIpcDependencies = {
+			...base,
+			sessions: sessionServices as AgentTeamsIpcDependencies["sessions"],
+		};
+		registerAgentTeamsIpc(deps);
+		const getSession = ipc.handlers.get("vetta:agent-teams:get-session");
+		if (!getSession) throw new Error("get-session handler was not registered");
+
+		await expect(getSession({}, "session")).resolves.toMatchObject({ display: { memberConversations: [] } });
+		expect(displayProjection).toHaveBeenCalledOnce();
+	});
+
+	it("returns the bootstrap snapshot without starting the display projection", async () => {
+		const base = dependencies();
+		const displayProjection = vi.fn(async () => ({ memberConversations: [] }));
+		const sessionServices = {
+			...base.sessions,
+			readSnapshot: vi.fn(async () => ({
+				session: {} as never,
+				conversationRevision: 1,
+				messages: [],
+				activities: [],
+			})),
+			displayProjection: displayProjection,
+		};
+		registerAgentTeamsIpc({ ...base, sessions: sessionServices as AgentTeamsIpcDependencies["sessions"] });
+		const getSession = ipc.handlers.get("vetta:agent-teams:get-session");
+		if (!getSession) throw new Error("get-session handler was not registered");
+
+		await expect(
+			getSession({}, { id: "session", coordinationSessionPath: "C:/runtime/session.jsonl" }),
+		).resolves.toMatchObject({
+			display: { memberConversations: [] },
+		});
+		expect(displayProjection).toHaveBeenCalledOnce();
 	});
 
 	it("creates every Team session in the Team-owned workspace and lists the Team catalog", async () => {
@@ -210,6 +264,7 @@ describe("Agent Team IPC contract", () => {
 			reason: "completed",
 			timestamp: 1,
 		});
+		await new Promise<void>((resolve) => queueMicrotask(resolve));
 		expect(sender.send).toHaveBeenCalledWith(
 			"vetta:agent-teams:stream-event",
 			result.subscriptionId,

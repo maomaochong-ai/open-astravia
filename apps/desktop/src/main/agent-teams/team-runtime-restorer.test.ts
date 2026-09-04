@@ -140,4 +140,51 @@ describe("restoreTeamMemberRuntimes", () => {
 		).rejects.toThrow("locked");
 		expect(disposeSession).toHaveBeenCalledWith("restored-leader");
 	});
+
+	it("restores independent missing member runtimes concurrently", async () => {
+		const session = {
+			...sessionDocument(),
+			memberHandles: { leader: "leader", reviewer: "reviewer" },
+			memberRuntime: {
+				...sessionDocument().memberRuntime,
+				reviewer: {
+					sessionId: "old-reviewer",
+					sessionPath: "C:/sessions/reviewer.jsonl",
+					agentProfileRevision: 1,
+					deliveredEventIds: [],
+				},
+			},
+		};
+		const paths = new Map<string, string>();
+		let active = 0;
+		let maxActive = 0;
+		const runtime: TeamRuntimeResumeHost = {
+			getSessionPath: (id) => paths.get(id),
+			createSession: vi.fn(async (config) => {
+				active += 1;
+				maxActive = Math.max(maxActive, active);
+				await Promise.resolve();
+				const id = `restored-${active}`;
+				paths.set(id, String(config.sessionPath));
+				active -= 1;
+				return { sessionId: id };
+			}),
+			disposeSession: vi.fn(async () => undefined),
+		};
+
+		await restoreTeamMemberRuntimes({
+			session,
+			runtime,
+			createRuntimeTools: () => [],
+			resolveConfig: async ({ cwd, sessionPath }) => ({
+				config: { cwd, sessionPath },
+				agentProfileId: "agent",
+				agentProfileRevision: 1,
+			}),
+			persist: vi.fn(async () => undefined),
+			logger,
+		});
+
+		expect(maxActive).toBe(2);
+	});
 });

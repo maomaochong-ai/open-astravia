@@ -1,24 +1,18 @@
 import type { TeamSessionSnapshot, TeamSessionStreamEvent } from "@vetta/agent-team";
-import type { ContextCompositionReport, SessionExecutionMode } from "@vetta/runtime-core";
+import type { ContextCompositionReport, HistoryEntry, SessionExecutionMode } from "@vetta/runtime-core";
 import type { ConversationAgentAuthorReference } from "@vetta/runtime-core/conversation";
 import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
 
-/** Desktop-owned, renderer-facing projection of one member tool execution. */
-export interface DesktopTeamToolExecution {
-	readonly messageId: string;
-	readonly toolCallId: string;
-	readonly toolName: string;
-	readonly args: Record<string, unknown>;
-	readonly result?: RuntimeToolResult;
-	readonly isError?: boolean;
-	readonly startedAt?: number;
-	readonly durationMs?: number;
-	readonly phases?: readonly { readonly label: string; readonly atMs: number }[];
+/** One ordinary member Conversation, read from its native persisted history. */
+export interface DesktopTeamMemberConversation {
+	readonly memberId: string;
+	readonly runtimeSessionId: string;
+	readonly history: readonly HistoryEntry[];
 }
 
 /** UI read model assembled by Desktop Main; never persisted or sent to Agent context. */
 export interface DesktopTeamConversationDisplay {
-	readonly toolExecutions: readonly DesktopTeamToolExecution[];
+	readonly memberConversations: readonly DesktopTeamMemberConversation[];
 	readonly executionMode?: SessionExecutionMode;
 	readonly contextUsage?: {
 		readonly memberId?: string;

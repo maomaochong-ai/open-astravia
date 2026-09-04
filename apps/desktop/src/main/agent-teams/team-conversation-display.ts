@@ -1,21 +1,24 @@
-import type { TeamPublicationOperationRecord, TeamSessionDocument } from "@vetta/agent-team";
-import type {
-	ContextCompositionReport,
-	ConversationDocument,
-	HistoryEntry,
-	SessionExecutionMode,
-} from "@vetta/runtime-core";
+import type { TeamSessionDocument } from "@vetta/agent-team";
+import type { ContextCompositionReport, HistoryEntry, SessionExecutionMode } from "@vetta/runtime-core";
 import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
-import type {
-	DesktopTeamConversationDisplay,
-	DesktopTeamToolExecution,
-} from "../../preload/api-types/team-conversation-display.js";
+import type { DesktopTeamConversationDisplay } from "../../preload/api-types/team-conversation-display.js";
+
+/** @deprecated Kept for compatibility with legacy publication diagnostics. */
+export interface LegacyTeamToolExecution {
+	readonly messageId: string;
+	readonly toolCallId: string;
+	readonly toolName: string;
+	readonly args: Record<string, unknown>;
+	readonly result?: RuntimeToolResult;
+	readonly isError?: boolean;
+	readonly startedAt?: number;
+	readonly durationMs?: number;
+	readonly phases?: readonly { readonly label: string; readonly atMs: number }[];
+}
 
 export interface TeamConversationDisplaySource {
 	readonly session: TeamSessionDocument;
-	readonly coordination: ConversationDocument;
-	readonly publications: readonly TeamPublicationOperationRecord[];
-	readonly readHistory: (conversationId: string) => readonly HistoryEntry[];
+	readonly readHistory: (runtimeSessionId: string, sessionPath: string) => Promise<readonly HistoryEntry[]>;
 	readonly runtimeState?: {
 		readonly memberId: string;
 		readonly runtimeSessionId: string;
@@ -27,31 +30,25 @@ export interface TeamConversationDisplaySource {
 	};
 }
 
-/** Builds the Desktop UI read model without modifying Team or Runtime facts. */
-export function projectTeamConversationDisplay(source: TeamConversationDisplaySource): DesktopTeamConversationDisplay {
-	const publicationByMessageId = new Map(
-		source.publications.flatMap((publication) =>
-			publication.publicMessageEntryId ? [[publication.publicMessageEntryId, publication] as const] : [],
-		),
+/**
+ * Reads every member as an ordinary Conversation. Team adds identity and
+ * aggregation only; message content remains the native persisted history.
+ */
+export async function projectTeamConversationDisplay(
+	source: TeamConversationDisplaySource,
+): Promise<DesktopTeamConversationDisplay> {
+	const memberConversations = await Promise.all(
+		Object.entries(source.session.memberRuntime).map(async ([memberId, runtime]) => ({
+			memberId,
+			runtimeSessionId: runtime.sessionId,
+			history: await source.readHistory(runtime.sessionId, runtime.sessionPath),
+		})),
 	);
-	const historyBySessionId = new Map<string, readonly HistoryEntry[]>();
-	const toolExecutions: DesktopTeamToolExecution[] = [];
-	for (const entry of source.coordination.entries) {
-		if (entry.type !== "message" || entry.kind !== "agent") continue;
-		const publication = publicationByMessageId.get(entry.id);
-		if (!publication) continue;
-		let history = historyBySessionId.get(publication.sourceParticipantConversationId);
-		if (!history) {
-			history = source.readHistory(publication.sourceParticipantConversationId);
-			historyBySessionId.set(publication.sourceParticipantConversationId, history);
-		}
-		toolExecutions.push(...collectPublishedToolExecutions(history, publication.sourceMessageEntryId, entry.id));
-	}
 	return {
-		toolExecutions,
+		memberConversations,
+		executionMode: source.runtimeState?.executionMode ?? source.session.executionMode ?? "full-access",
 		...(source.runtimeState
 			? {
-					executionMode: source.runtimeState.executionMode,
 					contextUsage: {
 						memberId: source.runtimeState.memberId,
 						runtimeSessionId: source.runtimeState.runtimeSessionId,
@@ -67,11 +64,15 @@ export function projectTeamConversationDisplay(source: TeamConversationDisplaySo
 	};
 }
 
+/**
+ * Legacy publication helper. It is intentionally outside the display model;
+ * current Team rendering consumes each member's complete native history.
+ */
 export function collectPublishedToolExecutions(
 	history: readonly HistoryEntry[],
 	sourceMessageEntryId: string,
 	messageId: string,
-): DesktopTeamToolExecution[] {
+): LegacyTeamToolExecution[] {
 	const sourceIndex = history.findIndex((entry) => entry.type === "message" && entry.entryId === sourceMessageEntryId);
 	if (sourceIndex < 0) return [];
 	let startIndex = sourceIndex;
@@ -80,8 +81,7 @@ export function collectPublishedToolExecutions(
 		if (previous?.type === "message" && previous.message.role === "user") break;
 		startIndex -= 1;
 	}
-
-	const executions = new Map<string, DesktopTeamToolExecution>();
+	const executions = new Map<string, LegacyTeamToolExecution>();
 	for (const entry of history.slice(startIndex, sourceIndex + 1)) {
 		if (entry.type === "message") {
 			if (entry.message.role === "assistant") {
@@ -99,7 +99,11 @@ export function collectPublishedToolExecutions(
 				if (current) {
 					executions.set(entry.message.toolCallId, {
 						...current,
-						result: toRuntimeToolResult(entry.message),
+						result: {
+							content: entry.message.content,
+							details: entry.message.details,
+							isError: entry.message.isError,
+						},
 						isError: entry.message.isError,
 					});
 				}
@@ -123,9 +127,4 @@ export function collectPublishedToolExecutions(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function toRuntimeToolResult(message: Extract<HistoryEntry, { type: "message" }>["message"]): RuntimeToolResult {
-	if (message.role !== "toolResult") throw new Error("Expected a tool result message");
-	return { content: message.content, details: message.details, isError: message.isError };
 }

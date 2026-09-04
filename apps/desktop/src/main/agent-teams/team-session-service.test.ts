@@ -37,9 +37,38 @@ vi.mock("../logger.js", () => ({
 vi.mock("../ipc/fs.js", () => ({ readDesktopConfig: vi.fn(async () => ({})) }));
 vi.mock("../sandbox/capability.js", () => ({ assertSandboxAvailableForMode: vi.fn(async () => undefined) }));
 vi.mock("../runtime.js", () => ({ getSharedRuntime: vi.fn() }));
+vi.mock("./team-session-file-reader.js", async (importOriginal) => {
+	const original = await importOriginal<typeof import("./team-session-file-reader.js")>();
+	return {
+		...original,
+		readTeamConversationHistory: vi.fn(async () => []),
+	};
+});
 
 describe("AgentTeamSessionService streaming contract", () => {
 	beforeEach(() => vi.clearAllMocks());
+
+	it("does not query runtime state for persisted members that are not active", async () => {
+		const runtime = {
+			getSessionPath: vi.fn(() => undefined),
+			getState: vi.fn(() => {
+				throw { code: "SESSION_NOT_FOUND", message: "Session not found", retryable: false, origin: "runtime" };
+			}),
+		} as unknown as RuntimeHost;
+		const service = new AgentTeamSessionService({
+			runtime,
+			repository: { read: vi.fn(), list: vi.fn(async () => []) },
+			readDocument: vi.fn(),
+		});
+		const display = await service.displayProjection({
+			memberRuntime: {
+				member: { sessionId: "member-session", sessionPath: "C:/sessions/member.jsonl" },
+			},
+		} as unknown as TeamSessionDocument);
+
+		expect(display.memberConversations).toHaveLength(1);
+		expect(runtime.getState).not.toHaveBeenCalled();
+	});
 
 	it("backfills legacy ownership before listing Team sessions", async () => {
 		const document = createInitialAgentTeamDocument();
@@ -387,19 +416,17 @@ describe("AgentTeamSessionService streaming contract", () => {
 				],
 			},
 		});
-		expect(service.displayProjection(completed).toolExecutions).toMatchObject([
-			{
-				messageId: expect.any(String),
-				toolCallId: "private-call",
-				toolName: "read",
-				args: { path: "C:/workspace/private.txt" },
-				result: {
-					content: [{ type: "text", text: "private result" }],
-					isError: false,
-				},
-				isError: false,
-			},
-		]);
+		const display = await service.displayProjection(completed);
+		expect(display.memberConversations).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					memberId: team.leaderMemberId,
+					history: expect.arrayContaining([
+						expect.objectContaining({ type: "message", message: expect.objectContaining({ role: "assistant" }) }),
+					]),
+				}),
+			]),
+		);
 		expect(events).toContainEqual(
 			expect.objectContaining({
 				type: "desktop.team-context-usage",

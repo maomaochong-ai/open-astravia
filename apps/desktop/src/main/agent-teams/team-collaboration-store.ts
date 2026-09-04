@@ -82,7 +82,12 @@ export class TeamCollaborationStore {
 				contextGenerations: [],
 				contextReceipts: [],
 			};
-		const entries = this.readDocument(session).entries;
+		return this.readFromDocument(this.readDocument(session));
+	}
+
+	/** Pure projection used by the UI bootstrap path before a Runtime is restored. */
+	readFromDocument(document: ConversationDocument): TeamCollaborationState {
+		const entries = document.entries;
 		const workItems = new Map<string, TeamWorkItem>();
 		const attempts = new Map<string, TeamMemberTurnAttempt>();
 		const deliveries = new Map<string, TeamMessageDelivery>();

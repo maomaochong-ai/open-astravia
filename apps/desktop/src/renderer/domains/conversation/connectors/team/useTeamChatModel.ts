@@ -57,6 +57,7 @@ export function useTeamChatModel(
 		Readonly<Record<string, NonNullable<TeamChatViewModel["contextUsage"]>>>
 	>({});
 	const [compactingByRuntime, setCompactingByRuntime] = useState<Readonly<Record<string, boolean>>>({});
+	const loadedSessionRef = useRef<{ readonly teamId: string; readonly sessionId: string } | undefined>(undefined);
 	const cancelledRequests = useRef(new Set<string>());
 	const pendingRef = useRef<TeamPendingRequest | undefined>(undefined);
 	const streamsRef = useRef<TeamStreamState>({});
@@ -94,15 +95,21 @@ export function useTeamChatModel(
 	);
 
 	const team = useMemo(() => document?.teams.find((candidate) => candidate.id === teamId), [document, teamId]);
-	const applyLoadedSession = useCallback((loaded: Awaited<ReturnType<typeof loadTeamChatSession>>) => {
-		setDocument(loaded.document);
-		setSnapshot(loaded.snapshot);
-		setSessions(loaded.sessions);
-		setStatus("ready");
-	}, []);
+	const applyLoadedSession = useCallback(
+		(loaded: Awaited<ReturnType<typeof loadTeamChatSession>>) => {
+			loadedSessionRef.current = { teamId, sessionId: loaded.snapshot.session.id };
+			setDocument(loaded.document);
+			setSnapshot(loaded.snapshot);
+			setSessions(loaded.sessions);
+			setStatus("ready");
+		},
+		[teamId],
+	);
 
 	useEffect(() => {
 		let cancelled = false;
+		const loaded = loadedSessionRef.current;
+		if (loaded?.teamId === teamId && (!preferredSessionId || loaded.sessionId === preferredSessionId)) return;
 		setStatus("loading");
 		setError(undefined);
 		setSnapshot(undefined);
