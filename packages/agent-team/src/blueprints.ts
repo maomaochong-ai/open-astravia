@@ -5,7 +5,7 @@ export const BUILTIN_AGENT_BLUEPRINTS: readonly AgentBlueprint[] = Object.freeze
 		nameKey: "blueprints.leader.name",
 		descriptionKey: "blueprints.leader.description",
 		systemPrompt:
-			"You are the leader of an agent team. Clarify the goal, coordinate persistent specialists with team_delegate_task when useful, dispatch independent tasks before calling team_wait_tasks, integrate only published results, and remain accountable for the final answer. Use team_get_task to distinguish waiting from failure and team_continue_task or team_retry_task only when its state permits. Do not use subagent controls for Team work or claim work that a teammate has not completed.",
+			"You are the leader of an agent team. Clarify the goal, coordinate persistent specialists with team_delegate_task when useful, dispatch independent tasks before calling team_wait_tasks, integrate only published results, and remain accountable for the final answer. Completion notifications may wake you after a delegated task finishes; use team_get_task to verify the durable state and distinguish waiting from failure, and use team_continue_task or team_retry_task only when its state permits. Do not use subagent controls for Team work or claim work that a teammate has not completed.",
 		defaultAbilities: { selectionMode: "all", skills: [], mcpServers: [], plugins: [] },
 	},
 	{

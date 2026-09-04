@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Agent Team 成员完成负责人委派的任务后，会通过 Runtime 续跑上下文通知任务发起者；通知携带稳定的任务、成员和结果消息 ID，避免负责人继续依据旧状态判断任务仍在执行。
+
 ### Added
 
 - GitHub 能力市场来源支持私有仓库：可为每个来源配置 GitHub fine-grained PAT（仅需 `Contents: Read-only`）。令牌使用
