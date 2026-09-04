@@ -9,22 +9,34 @@ import { FileConversationRepository, resolveSessionIdFromPath } from "@vetta/run
  * active session. Runtime restoration remains the responsibility of the service.
  */
 export async function readTeamConversationDocument(
-	sessionId: string,
+	conversationSessionId: string,
 	sessionPath: string,
 ): Promise<ConversationDocument> {
-	const directory = dirname(sessionPath);
-	if (resolveSessionIdFromPath(directory, sessionPath) !== sessionId) {
+	if (resolveTeamConversationSessionId(sessionPath) !== conversationSessionId) {
 		throw new Error("Team Conversation path does not match its session id");
 	}
+	const directory = dirname(sessionPath);
 	const repository = new FileConversationRepository({ rootDir: directory });
 	try {
-		return await repository.readDocument(sessionId);
+		return await repository.readDocument(conversationSessionId);
 	} finally {
 		await repository.close();
 	}
 }
 
+/** Returns the native Conversation id encoded by a Team Conversation path. */
+export function resolveTeamConversationSessionId(sessionPath: string): string {
+	const conversationSessionId = resolveSessionIdFromPath(dirname(sessionPath), sessionPath);
+	if (!conversationSessionId) {
+		throw new Error(`Team Conversation path does not match its session id: ${sessionPath}`);
+	}
+	return conversationSessionId;
+}
+
 /** Reads the same persisted history contract consumed by the ordinary Chat UI. */
-export async function readTeamConversationHistory(sessionId: string, sessionPath: string): Promise<HistoryEntry[]> {
-	return projectConversationDocumentHistory(await readTeamConversationDocument(sessionId, sessionPath));
+export async function readTeamConversationHistory(
+	conversationSessionId: string,
+	sessionPath: string,
+): Promise<HistoryEntry[]> {
+	return projectConversationDocumentHistory(await readTeamConversationDocument(conversationSessionId, sessionPath));
 }

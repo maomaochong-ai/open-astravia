@@ -114,7 +114,11 @@ import { TeamMessageControlService } from "./team-message-control-service.js";
 import { TeamOperationQueue } from "./team-operation-queue.js";
 import { ensureLegacyAgentTeamOwnershipCatalog, registerAgentTeamSessionOwnership } from "./team-ownership-backfill.js";
 import { restoreTeamMemberRuntimes } from "./team-runtime-restorer.js";
-import { readTeamConversationDocument, readTeamConversationHistory } from "./team-session-file-reader.js";
+import {
+	readTeamConversationDocument,
+	readTeamConversationHistory,
+	resolveTeamConversationSessionId,
+} from "./team-session-file-reader.js";
 import { type LegacyTeamSessionRepository, legacyTeamSessionRepository } from "./team-session-repository.js";
 import { TeamTaskControlService } from "./team-task-control-service.js";
 import { deliverTeamTaskCompletionNotification } from "./team-task-notification.js";
@@ -399,7 +403,8 @@ export class AgentTeamSessionService {
 		const path = coordinationSessionPath ?? this.coordinationSessionPaths.get(id);
 		if (!path) return this.snapshot(await this.read(id));
 		this.coordinationSessionPaths.set(id, path);
-		const document = await readTeamConversationDocument(id, path);
+		const conversationSessionId = resolveTeamConversationSessionId(path);
+		const document = await readTeamConversationDocument(conversationSessionId, path);
 		const session = readTeamSessionStateFromDocument(id, document);
 		const snapshot = this.snapshot(session, document);
 		this.startSessionWarming(id, path);
@@ -1064,7 +1069,13 @@ export class AgentTeamSessionService {
 	}
 
 	private async readConversationSessionState(id: string, sessionPath: string): Promise<TeamSessionDocument> {
-		const coordination = await this.createCoordinationRuntime(process.cwd(), sessionPath, id, "full-access");
+		const conversationSessionId = resolveTeamConversationSessionId(sessionPath);
+		const coordination = await this.createCoordinationRuntime(
+			process.cwd(),
+			sessionPath,
+			conversationSessionId,
+			"full-access",
+		);
 		const document = this.getRuntime().readSessionDocument(coordination.sessionId);
 		for (let index = document.entries.length - 1; index >= 0; index -= 1) {
 			const entry = document.entries[index];

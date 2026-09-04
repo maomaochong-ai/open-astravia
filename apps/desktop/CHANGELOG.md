@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- 修复 Agent Team 冷启动恢复旧版 coordination Conversation 时，将 Team session id 错当作文件路径编码 id 导致无法打开会话的问题。
+
 - GitHub 能力市场 MCP 运行时下载改为流式读取并通过能力页展示准备、下载、校验、安装阶段及字节进度，避免安装期间只有笼统的“正在添加”状态。
 
 - 修复 Agent Team 侧栏团队行的新建对话按钮在点击或头像内容变化后向下偏移的问题。

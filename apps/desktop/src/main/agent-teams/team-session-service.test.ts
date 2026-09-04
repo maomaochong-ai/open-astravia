@@ -25,6 +25,7 @@ import type {
 	ConversationOwnershipCatalogPort,
 	ConversationOwnershipRecord,
 } from "../conversations/conversation-ownership-catalog.js";
+import { readTeamConversationDocument } from "./team-session-file-reader.js";
 import type { LegacyTeamSessionRepository } from "./team-session-repository.js";
 import { AgentTeamSessionService } from "./team-session-service.js";
 
@@ -41,12 +42,28 @@ vi.mock("./team-session-file-reader.js", async (importOriginal) => {
 	const original = await importOriginal<typeof import("./team-session-file-reader.js")>();
 	return {
 		...original,
+		readTeamConversationDocument: vi.fn(original.readTeamConversationDocument),
 		readTeamConversationHistory: vi.fn(async () => []),
 	};
 });
 
 describe("AgentTeamSessionService streaming contract", () => {
 	beforeEach(() => vi.clearAllMocks());
+
+	it("uses the Conversation id encoded by the coordination path during bootstrap", async () => {
+		const conversationSessionId = "legacy-coordination-runtime";
+		const path = `C:/sessions/${Buffer.from(conversationSessionId, "utf8").toString("base64url")}.conversation.jsonl`;
+		const reader = vi.mocked(readTeamConversationDocument);
+		reader.mockRejectedValueOnce(new Error("stop after reader invocation"));
+		const service = new AgentTeamSessionService({
+			runtime: {} as RuntimeHost,
+			repository: { read: vi.fn(), list: vi.fn(async () => []) },
+			readDocument: vi.fn(),
+		});
+
+		await expect(service.readSnapshot("team-session", path)).rejects.toThrow("stop after reader invocation");
+		expect(reader).toHaveBeenCalledWith(conversationSessionId, path);
+	});
 
 	it("does not query runtime state for persisted members that are not active", async () => {
 		const runtime = {
