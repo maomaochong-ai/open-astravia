@@ -15,6 +15,7 @@ import type {
 interface DisplayItem {
 	path: string;
 	name: string;
+	id?: string;
 	isDirectory: boolean;
 	relPath?: string;
 	avatar?: string;
@@ -45,6 +46,12 @@ function fuzzyScore(query: string, path: string, name: string): number | null {
 
 const MAX_SEARCH_RESULTS = 100;
 const HIDDEN = new Set(["node_modules", ".git", ".DS_Store", "Thumbs.db"]);
+
+export function normalizeAtPanelDirectory(value: unknown): string | undefined {
+	if (typeof value !== "string") return undefined;
+	const normalized = value.trim();
+	return normalized.length > 0 ? normalized : undefined;
+}
 
 function fileIcon(name: string, isDir: boolean): string {
 	if (isDir) return "icon-[solar--folder-linear]";
@@ -112,7 +119,8 @@ export function useAtPanelModel({
 	classNames,
 }: AtPanelProps): AtPanelModel {
 	const { t } = useTranslation("chat");
-	const [currentDir, setCurrentDir] = useState(cwd);
+	const safeCwd = normalizeAtPanelDirectory(cwd) ?? "";
+	const [currentDir, setCurrentDir] = useState(safeCwd);
 	const [entries, setEntries] = useState<FsEntry[]>([]);
 	const [allFiles, setAllFiles] = useState<FsFileRef[]>([]);
 	const [loading, setLoading] = useState(false);
@@ -123,24 +131,37 @@ export function useAtPanelModel({
 
 	useEffect(() => {
 		if (open) {
-			setCurrentDir(cwd);
+			setCurrentDir(normalizeAtPanelDirectory(cwd) ?? "");
 		}
 	}, [open, cwd]);
 
 	useEffect(() => {
 		if (!open) return;
+		const directory = normalizeAtPanelDirectory(currentDir) ?? "";
+		if (!directory) {
+			setEntries([]);
+			setLoading(false);
+			return;
+		}
 		let cancelled = false;
 		setLoading(true);
-		void window.vetta.fs.readDir(currentDir).then((result) => {
-			if (cancelled) return;
-			const visible = result.filter((e) => !HIDDEN.has(e.name) && !e.name.startsWith("."));
-			visible.sort((a, b) => {
-				if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
-				return a.name.localeCompare(b.name);
-			});
-			setEntries(visible);
-			setLoading(false);
-		});
+		void window.vetta.fs.readDir(directory).then(
+			(result) => {
+				if (cancelled) return;
+				const visible = result.filter((e) => !HIDDEN.has(e.name) && !e.name.startsWith("."));
+				visible.sort((a, b) => {
+					if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
+					return a.name.localeCompare(b.name);
+				});
+				setEntries(visible);
+				setLoading(false);
+			},
+			() => {
+				if (cancelled) return;
+				setEntries([]);
+				setLoading(false);
+			},
+		);
 		return () => {
 			cancelled = true;
 		};
@@ -148,10 +169,20 @@ export function useAtPanelModel({
 
 	useEffect(() => {
 		if (!open) return;
+		const directory = normalizeAtPanelDirectory(cwd) ?? "";
+		if (!directory) {
+			setAllFiles([]);
+			return;
+		}
 		let cancelled = false;
-		void window.vetta.fs.listFilesRecursive(cwd).then((files) => {
-			if (!cancelled) setAllFiles(files);
-		});
+		void window.vetta.fs.listFilesRecursive(directory).then(
+			(files) => {
+				if (!cancelled) setAllFiles(files);
+			},
+			() => {
+				if (!cancelled) setAllFiles([]);
+			},
+		);
 		return () => {
 			cancelled = true;
 		};
@@ -164,6 +195,7 @@ export function useAtPanelModel({
 		(): DisplayItem[] =>
 			items.map((item, index) => ({
 				path: `@item/${item.id}/${index}`,
+				id: item.id,
 				name: item.name,
 				isDirectory: false,
 				avatar: item.avatar,
@@ -196,7 +228,7 @@ export function useAtPanelModel({
 	}, [allFiles, entries, extraItems, isSearching, normalizedFilter]);
 	const isSearchWithNoResults = open && isSearching && (loading || allItems.length === 0);
 
-	const canGoUp = !isSearching && currentDir !== cwd;
+	const canGoUp = !isSearching && currentDir !== safeCwd;
 
 	useEffect(() => {
 		if (isSearchWithNoResults) onClose();
@@ -303,7 +335,7 @@ export function useAtPanelModel({
 		panelRef.current?.querySelector(`[data-index="${activeIndex}"]`)?.scrollIntoView({ block: "nearest" });
 	}, [activeIndex, open]);
 
-	const relDir = currentDir.startsWith(cwd) ? currentDir.slice(cwd.length) || "/" : currentDir;
+	const relDir = currentDir.startsWith(safeCwd) ? currentDir.slice(safeCwd.length) || "/" : currentDir;
 	const viewEntries: AtPanelEntryModel[] = allItems.map((entry, i) => {
 		const index = canGoUp ? i + 1 : i;
 		return {
