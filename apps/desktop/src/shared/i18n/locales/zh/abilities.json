@@ -428,9 +428,14 @@
 		},
 		"empty": "还没有配置任何来源",
 		"builtinBadge": "内置",
+		"credentialConfigured": "已配置 GitHub 访问凭据",
 		"status": {
 			"disabled": "已停用",
 			"pending": "尚未同步",
+			"authRequired": "需要 GitHub 凭据或凭据已失效",
+			"forbidden": "GitHub 凭据无权读取此仓库",
+			"notFound": "仓库、分支或市场清单不存在",
+			"rateLimited": "GitHub 请求频率受限，请稍后重试",
 			"ready": "已同步 · {{version}}",
 			"failed": "同步失败，可重试",
 			"cached": "同步失败，正在显示上次缓存"
@@ -441,6 +446,8 @@
 			"add": "添加来源",
 			"edit": "编辑来源",
 			"remove": "删除来源",
+			"clearCredential": "清除 GitHub 访问凭据",
+			"configureCredential": "配置 GitHub 访问凭据",
 			"confirmRemove": "确认删除",
 			"toggle": "启用来源"
 		},
@@ -449,6 +456,9 @@
 			"editTitle": "编辑来源",
 			"repositoryLabel": "GitHub 仓库",
 			"repositoryPlaceholder": "owner/repo 或 https://github.com/owner/repo",
+			"credentialLabel": "GitHub 访问令牌（可选）",
+			"credentialPlaceholder": "Fine-grained token，Contents 只读",
+			"credentialHint": "令牌只保存在本机安全存储中，不会上传到 Vetta。",
 			"nameLabel": "名称",
 			"namePlaceholder": "留空则取仓库名",
 			"refLabel": "分支",

@@ -24,6 +24,35 @@ const MAX_UNCOMPRESSED_BYTES = 100 * 1024 * 1024;
 const MAX_ARCHIVE_ENTRIES = 10_000;
 const DOWNLOAD_TIMEOUT_MS = 15_000;
 
+type MarketplaceSyncError = NonNullable<OpenMarketplaceSnapshot["error"]>;
+
+class MarketplaceRequestError extends Error {
+	constructor(
+		readonly code: MarketplaceSyncError,
+		message: string,
+	) {
+		super(message);
+	}
+}
+
+function requestError(status: number, operation: string): MarketplaceRequestError {
+	const code: MarketplaceSyncError =
+		status === 401
+			? "auth-required"
+			: status === 403
+				? "forbidden"
+				: status === 404
+					? "not-found"
+					: status === 429
+						? "rate-limited"
+						: "sync-failed";
+	return new MarketplaceRequestError(code, `${operation} failed: ${status}`);
+}
+
+function syncError(error: unknown): MarketplaceSyncError {
+	return error instanceof MarketplaceRequestError ? error.code : "sync-failed";
+}
+
 type FetchArchive = (url: string, init?: RequestInit) => Promise<Response>;
 type InstallAbility = (
 	snapshotRoot: string,
@@ -56,6 +85,7 @@ export interface OpenMarketplaceServiceOptions {
 	repository?: string;
 	fetchArchive?: FetchArchive;
 	fetchManifest?: FetchArchive;
+	getAccessToken?: () => string | undefined;
 	now?: () => Date;
 	syncIntervalMs?: number;
 	updateCheckIntervalMs?: number;
@@ -116,6 +146,36 @@ function marketplaceManifestUrl(repository: string, ref: string): string {
 	const parsed = new URL(repository);
 	const encodedRef = ref.split("/").map(encodeURIComponent).join("/");
 	return `${parsed.origin}${parsed.pathname}/raw/refs/heads/${encodedRef}/.vetta/marketplace.json`;
+}
+
+function githubRepositoryCoordinates(repository: string): { owner: string; repository: string } {
+	const segments = new URL(repository).pathname.split("/").filter(Boolean);
+	const owner = segments[0];
+	const name = segments[1];
+	if (!owner || !name || segments.length !== 2) throw new Error("GitHub repository URL is invalid");
+	return { owner: encodeURIComponent(owner), repository: encodeURIComponent(name) };
+}
+
+function githubManifestUrl(repository: string, ref: string): string {
+	const coordinates = githubRepositoryCoordinates(repository);
+	return `https://api.github.com/repos/${coordinates.owner}/${coordinates.repository}/contents/.vetta/marketplace.json?ref=${encodeURIComponent(ref)}`;
+}
+
+function githubZipballUrl(repository: string, ref: string): string {
+	const coordinates = githubRepositoryCoordinates(repository);
+	return `https://api.github.com/repos/${coordinates.owner}/${coordinates.repository}/zipball/${encodeURIComponent(ref)}`;
+}
+
+function githubHeaders(accept: string): Record<string, string> {
+	return { Accept: accept, "User-Agent": "Vetta-Desktop" };
+}
+
+function githubApiHeaders(accept: string, token: string): Record<string, string> {
+	return {
+		...githubHeaders(accept),
+		Authorization: `Bearer ${token}`,
+		"X-GitHub-Api-Version": "2022-11-28",
+	};
 }
 
 function toOpenMarketplaceAbility(
@@ -183,6 +243,7 @@ export class OpenMarketplaceService {
 	private readonly appVersion: string;
 	private readonly fetchArchive: FetchArchive;
 	private readonly fetchManifest: FetchArchive;
+	private readonly getAccessToken: () => string | undefined;
 	private readonly now: () => Date;
 	private readonly syncIntervalMs: number;
 	private readonly updateCheckIntervalMs: number;
@@ -216,6 +277,7 @@ export class OpenMarketplaceService {
 		this.appVersion = options.appVersion;
 		this.fetchArchive = options.fetchArchive ?? fetch;
 		this.fetchManifest = options.fetchManifest ?? fetch;
+		this.getAccessToken = options.getAccessToken ?? (() => undefined);
 		this.now = options.now ?? (() => new Date());
 		this.syncIntervalMs = options.syncIntervalMs ?? DEFAULT_SYNC_INTERVAL_MS;
 		this.updateCheckIntervalMs = options.updateCheckIntervalMs ?? DEFAULT_UPDATE_CHECK_INTERVAL_MS;
@@ -264,10 +326,11 @@ export class OpenMarketplaceService {
 			this.lastUpdateCheckAt = this.now().getTime();
 			this.memorySnapshot = snapshot;
 			return snapshot;
-		} catch {
+		} catch (error) {
 			const cached = this.memorySnapshot ?? (await this.readCachedSnapshot());
+			const errorCode = syncError(error);
 			const failed = cached
-				? { ...cached, stale: true, error: "sync-failed" as const }
+				? { ...cached, stale: true, error: errorCode }
 				: {
 						sourceId: this.sourceId,
 						abilities: [],
@@ -275,7 +338,7 @@ export class OpenMarketplaceService {
 						repository: this.repository,
 						syncedAt: null,
 						stale: true,
-						error: "sync-failed" as const,
+						error: errorCode,
 					};
 			this.memorySnapshot = failed;
 			return failed;
@@ -392,12 +455,20 @@ export class OpenMarketplaceService {
 		const controller = new AbortController();
 		const timer = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
 		try {
-			const response = await this.fetchArchive(this.archiveUrl, {
-				headers: { Accept: "application/zip", "User-Agent": "Vetta-Desktop" },
-				redirect: "follow",
-				signal: controller.signal,
-			});
-			if (!response.ok) throw new Error(`Open marketplace download failed: ${response.status}`);
+			const token = this.getAccessToken()?.trim();
+			const response = await this.fetchArchive(
+				token ? githubZipballUrl(this.repository, this.sourceRef) : this.archiveUrl,
+				{
+					headers: token
+						? githubApiHeaders("application/vnd.github+json", token)
+						: githubHeaders("application/zip"),
+					// Electron's Chromium fetch cancels manual redirects. Its network stack
+					// strips Authorization when following the cross-origin GitHub download redirect.
+					redirect: "follow",
+					signal: controller.signal,
+				},
+			);
+			if (!response.ok) throw requestError(response.status, "Open marketplace download");
 			const declaredLength = Number(response.headers.get("content-length"));
 			if (Number.isFinite(declaredLength) && declaredLength > MAX_ARCHIVE_BYTES) {
 				throw new Error("Open marketplace archive is too large");
@@ -414,12 +485,20 @@ export class OpenMarketplaceService {
 		const controller = new AbortController();
 		const timer = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
 		try {
-			const response = await this.fetchManifest(marketplaceManifestUrl(this.repository, this.sourceRef), {
-				headers: { Accept: "application/json", "User-Agent": "Vetta-Desktop" },
-				redirect: "follow",
-				signal: controller.signal,
-			});
-			if (!response.ok) throw new Error(`Open marketplace manifest download failed: ${response.status}`);
+			const token = this.getAccessToken()?.trim();
+			const response = await this.fetchManifest(
+				token
+					? githubManifestUrl(this.repository, this.sourceRef)
+					: marketplaceManifestUrl(this.repository, this.sourceRef),
+				{
+					headers: token
+						? githubApiHeaders("application/vnd.github+json", token)
+						: githubHeaders("application/json"),
+					redirect: "follow",
+					signal: controller.signal,
+				},
+			);
+			if (!response.ok) throw requestError(response.status, "Open marketplace manifest download");
 			const declaredLength = Number(response.headers.get("content-length"));
 			if (Number.isFinite(declaredLength) && declaredLength > MAX_MANIFEST_BYTES) {
 				throw new Error("Open marketplace manifest is too large");
@@ -428,7 +507,16 @@ export class OpenMarketplaceService {
 			if (Buffer.byteLength(text, "utf-8") > MAX_MANIFEST_BYTES) {
 				throw new Error("Open marketplace manifest is too large");
 			}
-			return parseMarketplaceManifest(JSON.parse(text) as unknown);
+			if (!token) return parseMarketplaceManifest(JSON.parse(text) as unknown);
+			const payload: unknown = JSON.parse(text);
+			if (payload == null || typeof payload !== "object" || Array.isArray(payload)) {
+				throw new Error("GitHub manifest response is invalid");
+			}
+			const content = (payload as Record<string, unknown>).content;
+			if (typeof content !== "string") throw new Error("GitHub manifest response has no content");
+			return parseMarketplaceManifest(
+				JSON.parse(Buffer.from(content.replace(/\s/g, ""), "base64").toString("utf8")) as unknown,
+			);
 		} finally {
 			clearTimeout(timer);
 		}

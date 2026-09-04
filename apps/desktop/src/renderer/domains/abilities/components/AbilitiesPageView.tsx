@@ -206,6 +206,7 @@ export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Ele
 					}}
 					onUpdate={model.updateMarketplaceSource}
 					onRemove={model.removeMarketplaceSource}
+					onClearCredential={model.clearMarketplaceSourceCredential}
 					onClose={() => setSourcesDialogOpen(false)}
 				/>
 			)}

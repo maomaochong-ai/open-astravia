@@ -173,6 +173,17 @@ function manifestResponse(buffer: Buffer): Response {
 	});
 }
 
+function githubManifestResponse(buffer: Buffer): Response {
+	const entry = new AdmZip(buffer).getEntry("vetta-abilities-main/.vetta/marketplace.json");
+	if (!entry) throw new Error("Marketplace manifest fixture is missing");
+	const content = entry.getData().toString("base64");
+	const body = JSON.stringify({ content, encoding: "base64" });
+	return new Response(body, {
+		status: 200,
+		headers: { "content-type": "application/vnd.github+json", "content-length": String(Buffer.byteLength(body)) },
+	});
+}
+
 beforeEach(() => {
 	process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY = "https://github.com/example/vetta-abilities";
 	process.env.VETTA_OPEN_MARKETPLACE_REF = "main";
@@ -187,6 +198,74 @@ afterEach(async () => {
 });
 
 describe("OpenMarketplaceService", () => {
+	it("uses a GitHub token for the REST archive request and lets Electron follow the signed redirect", async () => {
+		const rootDir = await temporaryRoot();
+		const zip = archive();
+		const fetchArchive = vi.fn(async (_url: string, init?: RequestInit) => {
+			expect(init?.headers).toMatchObject({ Authorization: "Bearer secret-token" });
+			expect(init?.redirect).toBe("follow");
+			return response(zip);
+		});
+		const service = new OpenMarketplaceService({
+			appVersion: APP_VERSION,
+			rootDir,
+			getAccessToken: () => "secret-token",
+			fetchArchive,
+		});
+		const snapshot = await service.refresh();
+		expect(snapshot.error).toBeUndefined();
+		expect(fetchArchive).toHaveBeenCalledWith(
+			"https://api.github.com/repos/example/vetta-abilities/zipball/main",
+			expect.anything(),
+		);
+	});
+
+	it("uses the GitHub Contents API and decodes its base64 manifest payload", async () => {
+		const rootDir = await temporaryRoot();
+		const zip = archive();
+		const initial = new OpenMarketplaceService({
+			appVersion: APP_VERSION,
+			rootDir,
+			fetchArchive: async () => response(zip),
+		});
+		await initial.refresh();
+		const fetchManifest = vi.fn(async (_url: string, init?: RequestInit) => {
+			expect(init?.headers).toMatchObject({ Authorization: "Bearer secret-token" });
+			return githubManifestResponse(zip);
+		});
+		const service = new OpenMarketplaceService({
+			appVersion: APP_VERSION,
+			rootDir,
+			getAccessToken: () => "secret-token",
+			fetchManifest,
+		});
+
+		const snapshot = await service.list();
+
+		expect(snapshot.marketplaceVersion).toBe("2026.07.1");
+		await vi.waitFor(() => expect(fetchManifest).toHaveBeenCalledOnce());
+		expect(fetchManifest).toHaveBeenCalledWith(
+			"https://api.github.com/repos/example/vetta-abilities/contents/.vetta/marketplace.json?ref=main",
+			expect.objectContaining({ redirect: "follow" }),
+		);
+	});
+
+	it.each([
+		[401, "auth-required"],
+		[403, "forbidden"],
+		[404, "not-found"],
+		[429, "rate-limited"],
+	] as const)("maps GitHub status %s to %s", async (status, error) => {
+		const rootDir = await temporaryRoot();
+		const service = new OpenMarketplaceService({
+			appVersion: APP_VERSION,
+			rootDir,
+			getAccessToken: () => "secret-token",
+			fetchArchive: async () => new Response(null, { status }),
+		});
+		expect((await service.refresh()).error).toBe(error);
+	});
+
 	it("returns category translations from fresh and cached snapshots", async () => {
 		const rootDir = await temporaryRoot();
 		const options = {

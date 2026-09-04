@@ -6,6 +6,7 @@ export interface MarketplaceSourceFormValue {
 	repository: string;
 	name: string;
 	ref: string;
+	credential: string;
 }
 
 const inputClassName =
@@ -15,12 +16,14 @@ const inputClassName =
 export function MarketplaceSourceForm({
 	mode,
 	initial,
+	immutableMetadata = false,
 	submitting,
 	onSubmit,
 	onCancel,
 }: {
 	mode: "add" | "edit";
 	initial?: MarketplaceSourceFormValue;
+	immutableMetadata?: boolean;
 	submitting: boolean;
 	onSubmit: (value: MarketplaceSourceFormValue) => void;
 	onCancel: () => void;
@@ -29,11 +32,12 @@ export function MarketplaceSourceForm({
 	const [repository, setRepository] = useState(initial?.repository ?? "");
 	const [name, setName] = useState(initial?.name ?? "");
 	const [ref, setRef] = useState(initial?.ref ?? "main");
+	const [credential, setCredential] = useState("");
 
 	const submit = (event: FormEvent<HTMLFormElement>): void => {
 		event.preventDefault();
 		if (submitting || !repository.trim()) return;
-		onSubmit({ repository: repository.trim(), name: name.trim(), ref: ref.trim() });
+		onSubmit({ repository: repository.trim(), name: name.trim(), ref: ref.trim(), credential: credential.trim() });
 	};
 
 	return (
@@ -54,6 +58,21 @@ export function MarketplaceSourceForm({
 					className={inputClassName}
 				/>
 			</label>
+			<label className="flex flex-col gap-1.5">
+				<span className="text-[11px] font-medium text-muted-foreground/80">
+					{t("abilities:sources.form.credentialLabel")}
+				</span>
+				<input
+					type="password"
+					autoComplete="off"
+					value={credential}
+					disabled={submitting}
+					onChange={(event) => setCredential(event.target.value)}
+					placeholder={t("abilities:sources.form.credentialPlaceholder")}
+					className={inputClassName}
+				/>
+				<span className="text-[10px] text-muted-foreground/60">{t("abilities:sources.form.credentialHint")}</span>
+			</label>
 			<div className="flex gap-3">
 				<label className="flex flex-1 flex-col gap-1.5">
 					<span className="text-[11px] font-medium text-muted-foreground/80">
@@ -61,7 +80,7 @@ export function MarketplaceSourceForm({
 					</span>
 					<input
 						value={name}
-						disabled={submitting}
+						disabled={submitting || immutableMetadata}
 						onChange={(event) => setName(event.target.value)}
 						placeholder={t("abilities:sources.form.namePlaceholder")}
 						className={inputClassName}
@@ -73,7 +92,7 @@ export function MarketplaceSourceForm({
 					</span>
 					<input
 						value={ref}
-						disabled={submitting}
+						disabled={submitting || immutableMetadata}
 						onChange={(event) => setRef(event.target.value)}
 						placeholder={t("abilities:sources.form.refPlaceholder")}
 						className={inputClassName}

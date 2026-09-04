@@ -48,6 +48,7 @@ export interface AbilityData {
 	addMarketplaceSource: (input: AddMarketplaceSourceInput) => Promise<void>;
 	updateMarketplaceSource: (id: string, input: UpdateMarketplaceSourceInput) => Promise<void>;
 	removeMarketplaceSource: (id: string) => Promise<void>;
+	clearMarketplaceSourceCredential: (id: string) => Promise<void>;
 }
 
 export function useAbilityData(): AbilityData {
@@ -170,6 +171,7 @@ export function useAbilityData(): AbilityData {
 		addMarketplaceSource: open.addSource,
 		updateMarketplaceSource: open.updateSource,
 		removeMarketplaceSource: open.removeSource,
+		clearMarketplaceSourceCredential: open.clearCredential,
 		refreshMarketplaceSource: open.refreshSource,
 	};
 }

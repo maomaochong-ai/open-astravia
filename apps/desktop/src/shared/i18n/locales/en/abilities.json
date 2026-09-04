@@ -428,9 +428,14 @@
 		},
 		"empty": "No sources configured yet",
 		"builtinBadge": "Built-in",
+		"credentialConfigured": "GitHub access credential configured",
 		"status": {
 			"disabled": "Disabled",
 			"pending": "Not synced yet",
+			"authRequired": "A GitHub credential is required or has expired",
+			"forbidden": "The GitHub credential cannot read this repository",
+			"notFound": "The repository, branch, or marketplace manifest was not found",
+			"rateLimited": "GitHub rate limit reached; try again later",
 			"ready": "Synced · {{version}}",
 			"failed": "Sync failed; retry available",
 			"cached": "Sync failed; showing cached content"
@@ -441,6 +446,8 @@
 			"add": "Add source",
 			"edit": "Edit source",
 			"remove": "Remove source",
+			"clearCredential": "Clear GitHub access credential",
+			"configureCredential": "Configure GitHub access credential",
 			"confirmRemove": "Confirm removal",
 			"toggle": "Enable source"
 		},
@@ -449,6 +456,9 @@
 			"editTitle": "Edit source",
 			"repositoryLabel": "GitHub repository",
 			"repositoryPlaceholder": "owner/repo or https://github.com/owner/repo",
+			"credentialLabel": "GitHub access token (optional)",
+			"credentialPlaceholder": "Fine-grained token, Contents read-only",
+			"credentialHint": "The token stays in this device's secure storage and is never uploaded to Vetta.",
 			"nameLabel": "Name",
 			"namePlaceholder": "Defaults to the repository name",
 			"refLabel": "Branch",

@@ -179,6 +179,7 @@ export function useAbilitiesModel(): AbilitiesModel {
 		addMarketplaceSource: data.addMarketplaceSource,
 		updateMarketplaceSource: data.updateMarketplaceSource,
 		removeMarketplaceSource: data.removeMarketplaceSource,
+		clearMarketplaceSourceCredential: data.clearMarketplaceSourceCredential,
 		marketplaceSources: data.marketplaceSources,
 		marketplaceCatalog: data.marketplaceCatalog,
 		refreshMarketplaceSource: data.refreshMarketplaceSource,

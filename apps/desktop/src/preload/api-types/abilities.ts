@@ -203,7 +203,7 @@ export interface OpenMarketplaceSnapshot {
 	syncedAt: string | null;
 	stale: boolean;
 	/** 刷新失败但仍返回上次可用快照时携带。 */
-	error?: "sync-failed";
+	error?: "sync-failed" | "auth-required" | "forbidden" | "not-found" | "rate-limited";
 }
 
 export interface MarketplaceSource {
@@ -219,12 +219,16 @@ export interface MarketplaceSource {
 	priority: number;
 	createdAt: string;
 	updatedAt: string;
+	/** Derived by the main process; the credential value is never exposed. */
+	credentialConfigured?: boolean;
 }
 
 export interface AddMarketplaceSourceInput {
 	repository: string;
 	name?: string;
 	ref?: string;
+	/** Optional GitHub fine-grained token; never returned or persisted in source metadata. */
+	credential?: string;
 }
 
 export interface UpdateMarketplaceSourceInput {
@@ -232,6 +236,8 @@ export interface UpdateMarketplaceSourceInput {
 	ref?: string;
 	enabled?: boolean;
 	autoUpdate?: boolean;
+	/** Replace the source credential; an empty value leaves the existing credential unchanged. */
+	credential?: string;
 }
 
 export interface OpenMarketplaceSourceSnapshot extends OpenMarketplaceSnapshot {
@@ -267,6 +273,7 @@ export interface DesktopAbilitiesApi {
 	listMarketplaceSources(): Promise<MarketplaceSource[]>;
 	addMarketplaceSource(input: AddMarketplaceSourceInput): Promise<MarketplaceSource>;
 	updateMarketplaceSource(id: string, input: UpdateMarketplaceSourceInput): Promise<MarketplaceSource>;
+	clearMarketplaceSourceCredential(id: string): Promise<void>;
 	removeMarketplaceSource(id: string): Promise<void>;
 	refreshMarketplaceSource(id: string): Promise<OpenMarketplaceSourceSnapshot>;
 	/** 后台同步激活新快照时触发；调用方重新读取本地目录即可。 */

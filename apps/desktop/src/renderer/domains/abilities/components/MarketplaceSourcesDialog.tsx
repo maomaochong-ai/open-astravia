@@ -33,6 +33,7 @@ export function MarketplaceSourcesDialog({
 	onAdd,
 	onUpdate,
 	onRemove,
+	onClearCredential,
 	onClose,
 }: {
 	sources: MarketplaceSource[];
@@ -42,6 +43,7 @@ export function MarketplaceSourcesDialog({
 	onAdd: (input: AddMarketplaceSourceInput) => Promise<void>;
 	onUpdate: (id: string, input: UpdateMarketplaceSourceInput) => Promise<void>;
 	onRemove: (id: string) => Promise<void>;
+	onClearCredential?: (id: string) => Promise<void>;
 	onClose: () => void;
 }): JSX.Element {
 	const { t } = useTranslation(["abilities", "common"]);
@@ -66,16 +68,20 @@ export function MarketplaceSourcesDialog({
 					repository: value.repository,
 					...(value.name ? { name: value.name } : {}),
 					...(value.ref ? { ref: value.ref } : {}),
+					...(value.credential ? { credential: value.credential } : {}),
 				}),
 				() => setEditing({ kind: "none" }),
 			);
 			return;
 		}
 		if (editing.kind !== "edit") return;
+		const source = sources.find((item) => item.id === editing.id);
+		if (!source) return;
 		run(
 			onUpdate(editing.id, {
-				...(value.name ? { name: value.name } : {}),
-				...(value.ref ? { ref: value.ref } : {}),
+				...(source.builtin ? {} : value.name ? { name: value.name } : {}),
+				...(source.builtin ? {} : value.ref ? { ref: value.ref } : {}),
+				...(value.credential ? { credential: value.credential } : {}),
 			}),
 			() => setEditing({ kind: "none" }),
 		);
@@ -114,6 +120,7 @@ export function MarketplaceSourcesDialog({
 								onToggle={(enabled) => run(onUpdate(source.id, { enabled }))}
 								onEdit={() => setEditing({ kind: "edit", id: source.id })}
 								onRemove={() => run(onRemove(source.id))}
+								onClearCredential={() => run(onClearCredential?.(source.id) ?? Promise.resolve())}
 							/>
 						))
 					)}
@@ -138,7 +145,9 @@ export function MarketplaceSourcesDialog({
 								repository: editingSource.repository,
 								name: editingSource.name,
 								ref: editingSource.ref,
+								credential: "",
 							}}
+							immutableMetadata={editingSource.builtin}
 							submitting={busy}
 							onSubmit={submitForm}
 							onCancel={() => setEditing({ kind: "none" })}

@@ -2,6 +2,10 @@
 
 ### Added
 
+- GitHub 能力市场来源支持私有仓库：可为每个来源配置 GitHub fine-grained PAT（仅需 `Contents: Read-only`）。令牌使用
+  Desktop 系统安全存储加密保存，不进入来源配置、快照、日志或 Vetta 服务；GitHub REST manifest/zipball 请求支持认证，
+  签名归档重定向不会转发令牌，并将认证、权限、未找到和限流错误显示为来源状态。
+
 - Agent Team 成员的实时工具执行现在通过共享 Conversation 消息流投影到普通工具卡片；输入区同时复用普通会话的命令/At 面板、触发器和语音入口，Todo 活动页签按团队 workspace 作用域打开。
 
 - Agent Team 现在支持一个团队下创建、深链和切换多个独立会话，并在侧栏显示子会话；团队拥有稳定共享工作空间，输入区可按会话选择模型与推理档位，File/Browser 活动页签按工作空间共享。底层仍使用普通 Conversation，但新增归属目录会从普通列表、Quick Panel 与搜索中排除协调及成员执行会话。见 ADR-0105。

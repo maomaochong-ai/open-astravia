@@ -86,6 +86,16 @@ export function useOpenMarketplaceData() {
 		[run],
 	);
 
+	const clearCredential = useCallback(
+		async (id: string): Promise<void> => {
+			await run(async () => {
+				await window.vetta.abilities.clearMarketplaceSourceCredential(id);
+				return window.vetta.abilities.listOpenMarketplaces();
+			});
+		},
+		[run],
+	);
+
 	useEffect(() => {
 		mounted.current = true;
 		const unsubscribe = window.vetta.abilities.onOpenMarketplacesUpdated(() => {
@@ -114,5 +124,5 @@ export function useOpenMarketplaceData() {
 		: failedNames.length
 			? i18n.t("abilities:error.sourcesFailed", { names: failedNames.join(", ") })
 			: null;
-	return { catalog, refreshing, error, load, refreshSource, addSource, updateSource, removeSource };
+	return { catalog, refreshing, error, load, refreshSource, addSource, updateSource, removeSource, clearCredential };
 }

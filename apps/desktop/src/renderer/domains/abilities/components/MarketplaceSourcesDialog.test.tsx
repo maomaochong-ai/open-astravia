@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 
 import type { MarketplaceSource } from "@preload/api";
-import { render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({ t: (key: string, options?: Record<string, unknown>) => options?.error ?? key }),
@@ -39,6 +39,7 @@ describe("MarketplaceSourcesDialog", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
+	afterEach(cleanup);
 
 	function renderDialog(sources: MarketplaceSource[]): void {
 		render(
@@ -53,12 +54,11 @@ describe("MarketplaceSourcesDialog", () => {
 		);
 	}
 
-	it("内置来源只显示启停开关，不显示编辑与删除", () => {
+	it("内置来源不显示删除", () => {
 		renderDialog([source({ id: "vetta-official", name: "official", builtin: true })]);
 
 		expect(screen.getByText("abilities:sources.builtinBadge")).toBeTruthy();
 		expect(screen.getByRole("switch", { name: "abilities:sources.actions.toggle" })).toBeTruthy();
-		expect(screen.queryByTitle("abilities:sources.actions.edit")).toBeNull();
 		expect(screen.queryByTitle("abilities:sources.actions.remove")).toBeNull();
 	});
 
@@ -112,10 +112,15 @@ describe("MarketplaceSourcesDialog", () => {
 			screen.getByPlaceholderText("abilities:sources.form.repositoryPlaceholder"),
 			"openvetta/vetta-official-marketplace",
 		);
+		await user.type(screen.getByPlaceholderText("abilities:sources.form.credentialPlaceholder"), "github-token");
 		await user.click(screen.getByText("abilities:sources.form.submitAdd"));
 
 		await waitFor(() =>
-			expect(onAdd).toHaveBeenCalledWith({ repository: "openvetta/vetta-official-marketplace", ref: "main" }),
+			expect(onAdd).toHaveBeenCalledWith({
+				repository: "openvetta/vetta-official-marketplace",
+				ref: "main",
+				credential: "github-token",
+		}),
 		);
 	});
 

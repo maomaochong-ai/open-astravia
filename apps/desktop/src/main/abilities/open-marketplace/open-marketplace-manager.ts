@@ -10,6 +10,10 @@ import type {
 } from "../../../preload/api-types/abilities.js";
 import type { McpServerConfigData } from "../../../preload/api-types/mcp.js";
 import { getApplicationCacheService } from "../../cache/application-cache-service.js";
+import {
+	type GitHubMarketplaceCredentialStore,
+	getGitHubMarketplaceCredentialStore,
+} from "./github-marketplace-credentials.js";
 import { MarketplaceSourceStore } from "./marketplace-source-store.js";
 import { DEFAULT_MARKETPLACE_SOURCE_ID, OpenMarketplaceService } from "./open-marketplace-service.js";
 
@@ -32,18 +36,21 @@ export interface OpenMarketplaceManagerOptions {
 	store?: MarketplaceSourceStore;
 	cacheRoot?: string;
 	workerFactory?: MarketplaceWorkerFactory;
+	credentialStore?: GitHubMarketplaceCredentialStore;
 }
 
 export class OpenMarketplaceManager {
 	private readonly store: MarketplaceSourceStore;
 	private readonly cacheRoot: string;
 	private readonly workerFactory: MarketplaceWorkerFactory;
+	private readonly credentialStore: GitHubMarketplaceCredentialStore;
 	private readonly workers = new Map<string, { fingerprint: string; worker: MarketplaceWorker }>();
 	private readonly updateListeners = new Set<(sourceId: string) => void>();
 
 	constructor(options: OpenMarketplaceManagerOptions) {
 		const marketplaceCache = getApplicationCacheService().namespace("marketplace");
 		this.store = options.store ?? new MarketplaceSourceStore();
+		this.credentialStore = options.credentialStore ?? getGitHubMarketplaceCredentialStore();
 		this.cacheRoot = options.cacheRoot ?? marketplaceCache.rootDir;
 		this.workerFactory =
 			options.workerFactory ??
@@ -54,6 +61,7 @@ export class OpenMarketplaceManager {
 					sourceRef: source.ref,
 					repository: source.repository,
 					archiveUrl: source.archiveUrl,
+					getAccessToken: () => this.readCredential(source.id),
 					appVersion: options.appVersion,
 					onBackgroundUpdate,
 					createTemporaryDirectory: options.cacheRoot
@@ -68,21 +76,36 @@ export class OpenMarketplaceManager {
 	}
 
 	listSources(): MarketplaceSource[] {
-		return this.store.list();
+		return this.store.list().map((source) => this.withCredentialState(source));
 	}
 
 	addSource(input: AddMarketplaceSourceInput): MarketplaceSource {
-		return this.store.add(input);
+		const source = this.store.add(input);
+		try {
+			if (input.credential?.trim()) this.credentialStore.set(source.id, input.credential);
+			return this.withCredentialState(source);
+		} catch (error) {
+			this.store.remove(source.id);
+			throw error;
+		}
 	}
 
 	updateSource(id: string, input: UpdateMarketplaceSourceInput): MarketplaceSource {
 		// workerFor replaces workers only when their cache identity changes, preserving in-flight syncs.
-		return this.store.update(id, input);
+		const source = this.store.update(id, input);
+		if (input.credential?.trim()) this.credentialStore.set(id, input.credential);
+		return this.withCredentialState(source);
 	}
 
 	removeSource(id: string): void {
 		this.store.remove(id);
 		this.workers.delete(id);
+		this.credentialStore.remove(id);
+	}
+
+	clearSourceCredential(id: string): void {
+		this.requireSource(id);
+		this.credentialStore.remove(id);
 	}
 
 	async list(): Promise<OpenMarketplaceCatalog> {
@@ -101,7 +124,7 @@ export class OpenMarketplaceManager {
 			: source.autoUpdate
 				? await worker.list()
 				: await worker.listCached();
-		return { ...snapshot, source };
+		return { ...snapshot, source: this.withCredentialState(source) };
 	}
 
 	async refreshSource(id: string): Promise<OpenMarketplaceSourceSnapshot> {
@@ -130,7 +153,8 @@ export class OpenMarketplaceManager {
 	}
 
 	private async collect(forceRefresh: boolean): Promise<OpenMarketplaceCatalog> {
-		const sources = this.store.list();
+		const storedSources = this.store.list();
+		const sources = storedSources.map((source) => this.withCredentialState(source));
 		const enabled = sources.filter((source) => source.enabled).sort((a, b) => a.priority - b.priority);
 		const settled = await Promise.allSettled(
 			enabled.map(async (source) => {
@@ -167,6 +191,14 @@ export class OpenMarketplaceManager {
 		const source = this.store.list().find((item) => item.id === id);
 		if (!source) throw new Error(`Marketplace source not found: ${id}`);
 		return source;
+	}
+
+	private readCredential(sourceId: string): string | undefined {
+		return this.credentialStore.get(sourceId);
+	}
+
+	private withCredentialState(source: MarketplaceSource): MarketplaceSource {
+		return this.credentialStore.has(source.id) ? { ...source, credentialConfigured: true } : source;
 	}
 
 	private workerFor(source: MarketplaceSource): MarketplaceWorker {

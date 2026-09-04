@@ -16,6 +16,15 @@ function requireString(value: unknown, field: string): string {
 	return value;
 }
 
+const MAX_MARKETPLACE_CREDENTIAL_LENGTH = 1024;
+
+function parseMarketplaceCredential(value: unknown): string | undefined {
+	if (value === undefined) return undefined;
+	if (typeof value !== "string") throw new Error("credential must be a string");
+	if (value.length > MAX_MARKETPLACE_CREDENTIAL_LENGTH) throw new Error("credential is too long");
+	return value;
+}
+
 function parseAddSourceInput(value: unknown): AddMarketplaceSourceInput {
 	if (value == null || typeof value !== "object" || Array.isArray(value)) {
 		throw new Error("addMarketplaceSource requires an input object");
@@ -23,10 +32,12 @@ function parseAddSourceInput(value: unknown): AddMarketplaceSourceInput {
 	const input = value as Record<string, unknown>;
 	if (input.name !== undefined && typeof input.name !== "string") throw new Error("name must be a string");
 	if (input.ref !== undefined && typeof input.ref !== "string") throw new Error("ref must be a string");
+	const credential = parseMarketplaceCredential(input.credential);
 	return {
 		repository: requireString(input.repository, "repository"),
 		...(typeof input.name === "string" ? { name: input.name } : {}),
 		...(typeof input.ref === "string" ? { ref: input.ref } : {}),
+		...(credential === undefined ? {} : { credential }),
 	};
 }
 
@@ -43,11 +54,13 @@ function parseUpdateSourceInput(value: unknown): UpdateMarketplaceSourceInput {
 	if (input.autoUpdate !== undefined && typeof input.autoUpdate !== "boolean") {
 		throw new Error("autoUpdate must be a boolean");
 	}
+	const credential = parseMarketplaceCredential(input.credential);
 	return {
 		...(typeof input.name === "string" ? { name: input.name } : {}),
 		...(typeof input.ref === "string" ? { ref: input.ref } : {}),
 		...(typeof input.enabled === "boolean" ? { enabled: input.enabled } : {}),
 		...(typeof input.autoUpdate === "boolean" ? { autoUpdate: input.autoUpdate } : {}),
+		...(credential === undefined ? {} : { credential }),
 	};
 }
 
@@ -123,6 +136,9 @@ export function registerAbilitiesIpc(): () => void {
 	ipcMain.handle("vetta:abilities:update-marketplace-source", (_event, id: unknown, input: unknown) =>
 		openMarketplace.updateSource(requireString(id, "id"), parseUpdateSourceInput(input)),
 	);
+	ipcMain.handle("vetta:abilities:clear-marketplace-source-credential", (_event, id: unknown) =>
+		openMarketplace.clearSourceCredential(requireString(id, "id")),
+	);
 	ipcMain.handle("vetta:abilities:remove-marketplace-source", (_event, id: unknown) =>
 		openMarketplace.removeSource(requireString(id, "id")),
 	);
@@ -183,6 +199,7 @@ export function registerAbilitiesIpc(): () => void {
 		ipcMain.removeHandler("vetta:abilities:list-marketplace-sources");
 		ipcMain.removeHandler("vetta:abilities:add-marketplace-source");
 		ipcMain.removeHandler("vetta:abilities:update-marketplace-source");
+		ipcMain.removeHandler("vetta:abilities:clear-marketplace-source-credential");
 		ipcMain.removeHandler("vetta:abilities:remove-marketplace-source");
 		ipcMain.removeHandler("vetta:abilities:refresh-marketplace-source");
 		ipcMain.removeHandler("vetta:abilities:install-open-ability");

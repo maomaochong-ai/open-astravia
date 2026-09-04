@@ -3,7 +3,31 @@ import { Button, Switch } from "@vetta/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-/** 单条来源：内置来源只允许开关，自定义来源可编辑分支/名称并删除。 */
+type FailedStatusKey =
+	| "abilities:sources.status.cached"
+	| "abilities:sources.status.authRequired"
+	| "abilities:sources.status.forbidden"
+	| "abilities:sources.status.notFound"
+	| "abilities:sources.status.rateLimited"
+	| "abilities:sources.status.failed";
+
+function failedStatusKey(snapshot?: OpenMarketplaceSourceSnapshot): FailedStatusKey {
+	if (snapshot?.marketplaceVersion) return "abilities:sources.status.cached";
+	switch (snapshot?.error) {
+		case "auth-required":
+			return "abilities:sources.status.authRequired";
+		case "forbidden":
+			return "abilities:sources.status.forbidden";
+		case "not-found":
+			return "abilities:sources.status.notFound";
+		case "rate-limited":
+			return "abilities:sources.status.rateLimited";
+		default:
+			return "abilities:sources.status.failed";
+	}
+}
+
+/** 单条来源：内置来源保留坐标，但允许配置或清除访问凭据。 */
 export function MarketplaceSourceRow({
 	source,
 	snapshot,
@@ -14,6 +38,7 @@ export function MarketplaceSourceRow({
 	onToggle,
 	onEdit,
 	onRemove,
+	onClearCredential,
 }: {
 	source: MarketplaceSource;
 	snapshot?: OpenMarketplaceSourceSnapshot;
@@ -24,6 +49,7 @@ export function MarketplaceSourceRow({
 	onToggle: (enabled: boolean) => void;
 	onEdit: () => void;
 	onRemove: () => void;
+	onClearCredential: () => void;
 }): JSX.Element {
 	const { t } = useTranslation(["abilities", "common"]);
 	const [confirmingRemove, setConfirmingRemove] = useState(false);
@@ -47,11 +73,14 @@ export function MarketplaceSourceRow({
 					{!source.enabled
 						? t("abilities:sources.status.disabled")
 						: failed
-							? t(snapshot?.marketplaceVersion ? "abilities:sources.status.cached" : "abilities:sources.status.failed")
+							? t(failedStatusKey(snapshot))
 							: snapshot?.marketplaceVersion
 								? t("abilities:sources.status.ready", { version: snapshot.marketplaceVersion })
 								: t("abilities:sources.status.pending")}
 				</p>
+				{source.credentialConfigured && (
+					<p className="text-[10px] text-muted-foreground/60">{t("abilities:sources.credentialConfigured")}</p>
+				)}
 				<label className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground/60">
 					<Switch size="sm" checked={source.autoUpdate} disabled={busy} onCheckedChange={onAutoUpdate} />
 					{t("abilities:sources.actions.autoUpdate")}
@@ -84,27 +113,49 @@ export function MarketplaceSourceRow({
 						aria-label={t("abilities:sources.actions.toggle")}
 						onCheckedChange={onToggle}
 					/>
+					{source.credentialConfigured && (
+						<Button
+							size="sm"
+							variant="ghost"
+							disabled={busy}
+							title={t("abilities:sources.actions.clearCredential")}
+							onClick={onClearCredential}
+						>
+							<span className="icon-[solar--key-minimalistic-square-linear] h-3.5 w-3.5" />
+						</Button>
+					)}
 					{!source.builtin && (
-						<>
-							<Button
-								size="sm"
-								variant="ghost"
-								disabled={busy}
-								title={t("abilities:sources.actions.edit")}
-								onClick={onEdit}
-							>
-								<span className="icon-[solar--pen-2-linear] h-3.5 w-3.5" />
-							</Button>
-							<Button
-								size="sm"
-								variant="ghost"
-								disabled={busy}
-								title={t("abilities:sources.actions.remove")}
-								onClick={() => setConfirmingRemove(true)}
-							>
-								<span className="icon-[solar--trash-bin-trash-linear] h-3.5 w-3.5" />
-							</Button>
-						</>
+						<Button
+							size="sm"
+							variant="ghost"
+							disabled={busy}
+							title={t("abilities:sources.actions.edit")}
+							onClick={onEdit}
+						>
+							<span className="icon-[solar--pen-2-linear] h-3.5 w-3.5" />
+						</Button>
+					)}
+					{source.builtin && !source.credentialConfigured && (
+						<Button
+							size="sm"
+							variant="ghost"
+							disabled={busy}
+							title={t("abilities:sources.actions.configureCredential")}
+							onClick={onEdit}
+						>
+							<span className="icon-[solar--key-minimalistic-square-linear] h-3.5 w-3.5" />
+						</Button>
+					)}
+					{!source.builtin && (
+						<Button
+							size="sm"
+							variant="ghost"
+							disabled={busy}
+							title={t("abilities:sources.actions.remove")}
+							onClick={() => setConfirmingRemove(true)}
+						>
+							<span className="icon-[solar--trash-bin-trash-linear] h-3.5 w-3.5" />
+						</Button>
 					)}
 				</div>
 			)}

@@ -206,6 +206,7 @@ export interface AbilitiesModel {
 	addMarketplaceSource: (input: AddMarketplaceSourceInput) => Promise<void>;
 	updateMarketplaceSource: (id: string, input: UpdateMarketplaceSourceInput) => Promise<void>;
 	removeMarketplaceSource: (id: string) => Promise<void>;
+	clearMarketplaceSourceCredential: (id: string) => Promise<void>;
 	/** 已配置的 GitHub 市场来源（含内置默认源）。 */
 	marketplaceSources: MarketplaceSource[];
 	marketplaceCatalog: OpenMarketplaceCatalog;

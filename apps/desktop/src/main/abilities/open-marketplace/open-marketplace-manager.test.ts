@@ -42,6 +42,19 @@ function snapshot(sourceId: string): OpenMarketplaceSnapshot {
 	};
 }
 
+function memoryCredentialStore() {
+	const values = new Map<string, string>();
+	return {
+		store: {
+			has: (sourceId: string) => values.has(sourceId),
+			get: (sourceId: string) => values.get(sourceId),
+			set: (sourceId: string, token: string) => values.set(sourceId, token.trim()),
+			remove: (sourceId: string) => values.delete(sourceId),
+		},
+		values,
+	};
+}
+
 afterEach(async () => {
 	await Promise.all(temporaryRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
@@ -50,11 +63,13 @@ describe("OpenMarketplaceManager", () => {
 	it("isolates source failures and keeps source priority order", async () => {
 		const root = await temporaryRoot();
 		const sources = [source("first", 100), source("broken", 200)];
+		const credentials = memoryCredentialStore();
 		const store = new MarketplaceSourceStore({ filePath: join(root, "sources.json"), defaultSources: sources });
 		const manager = new OpenMarketplaceManager({
 			appVersion: "0.5.11",
 			store,
 			cacheRoot: join(root, "cache"),
+			credentialStore: credentials.store,
 			workerFactory: (item) => ({
 				list:
 					item.id === "broken"
@@ -77,6 +92,7 @@ describe("OpenMarketplaceManager", () => {
 	it("uses cached data when auto update is disabled and routes installs by source", async () => {
 		const root = await temporaryRoot();
 		const cached = source("cached", 100, false);
+		const credentials = memoryCredentialStore();
 		const store = new MarketplaceSourceStore({ filePath: join(root, "sources.json"), defaultSources: [cached] });
 		const list = vi.fn(async () => snapshot(cached.id));
 		const listCached = vi.fn(async () => snapshot(cached.id));
@@ -86,6 +102,7 @@ describe("OpenMarketplaceManager", () => {
 			appVersion: "0.5.11",
 			store,
 			cacheRoot: join(root, "cache"),
+			credentialStore: credentials.store,
 			workerFactory: () => ({ list, listCached, refresh: list, install, prepareMcp }),
 		});
 
@@ -102,12 +119,14 @@ describe("OpenMarketplaceManager", () => {
 	it("uses a different cache directory after source configuration changes", async () => {
 		const root = await temporaryRoot();
 		const catalog = source("catalog", 100);
+		const credentials = memoryCredentialStore();
 		const store = new MarketplaceSourceStore({ filePath: join(root, "sources.json"), defaultSources: [catalog] });
 		const cacheRoots: string[] = [];
 		const manager = new OpenMarketplaceManager({
 			appVersion: "0.5.11",
 			store,
 			cacheRoot: join(root, "cache"),
+			credentialStore: credentials.store,
 			workerFactory: (item, cacheRoot) => {
 				cacheRoots.push(cacheRoot);
 				return {
@@ -141,12 +160,14 @@ describe("OpenMarketplaceManager", () => {
 	it("publishes successful background updates to subscribers", async () => {
 		const root = await temporaryRoot();
 		const catalog = source("catalog", 100);
+		const credentials = memoryCredentialStore();
 		const store = new MarketplaceSourceStore({ filePath: join(root, "sources.json"), defaultSources: [catalog] });
 		let publishBackgroundUpdate: (() => void) | undefined;
 		const manager = new OpenMarketplaceManager({
 			appVersion: "0.5.11",
 			store,
 			cacheRoot: join(root, "cache"),
+			credentialStore: credentials.store,
 			workerFactory: (item, _cacheRoot, onBackgroundUpdate) => {
 				publishBackgroundUpdate = onBackgroundUpdate;
 				return {
@@ -168,5 +189,32 @@ describe("OpenMarketplaceManager", () => {
 		unsubscribe();
 		publishBackgroundUpdate?.();
 		expect(listener).toHaveBeenCalledOnce();
+	});
+
+	it("stores source credentials outside source metadata and can clear them", async () => {
+		const root = await temporaryRoot();
+		const credentials = memoryCredentialStore();
+		const store = new MarketplaceSourceStore({ filePath: join(root, "sources.json"), defaultSources: [] });
+		const manager = new OpenMarketplaceManager({
+			appVersion: "0.5.11",
+			store,
+			cacheRoot: join(root, "cache"),
+			credentialStore: credentials.store,
+			workerFactory: () => ({
+				list: vi.fn(async () => snapshot("unused")),
+				listCached: vi.fn(async () => snapshot("unused")),
+				refresh: vi.fn(async () => snapshot("unused")),
+				install: vi.fn(async () => undefined),
+				prepareMcp: vi.fn(async () => ({ type: "http" as const, url: "https://mcp.example.com" })),
+			}),
+		});
+
+		const added = manager.addSource({ repository: "example/private", credential: " secret-token " });
+		expect(added.credentialConfigured).toBe(true);
+		expect(credentials.values.get(added.id)).toBe("secret-token");
+		expect(JSON.stringify(store.list())).not.toContain("secret-token");
+
+		manager.clearSourceCredential(added.id);
+		expect(manager.listSources().find((item) => item.id === added.id)?.credentialConfigured).toBeUndefined();
 	});
 });
