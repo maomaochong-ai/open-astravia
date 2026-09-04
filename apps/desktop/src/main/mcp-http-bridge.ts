@@ -6,6 +6,7 @@
  */
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
+import { homedir } from "node:os";
 import { applyBridgePort, parseHttpMcpBridgeSpec } from "./mcp/http-bridge/bridge-spec.js";
 import { HttpMcpProxy } from "./mcp/http-bridge/http-mcp-proxy.js";
 
@@ -56,7 +57,9 @@ async function main(): Promise<void> {
 
 	const child = spawn(spec.command, resolved.args, {
 		cwd: spec.cwd,
-		env: { ...process.env, ...resolved.env },
+		// HOME 兜底：受管服务常把浏览器缓存等放在用户目录，宿主若以精简环境启动我们，
+		// 子进程会直接以 "$HOME is not defined" 退出。
+		env: { HOME: process.env.HOME || homedir(), ...process.env, ...resolved.env },
 		stdio: ["ignore", "pipe", "pipe"],
 	});
 	let exited = false;
