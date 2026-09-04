@@ -1,4 +1,4 @@
-import { confirmDialogAtom } from "@shared/store/atoms";
+import { confirmDialogAtom, pageHeaderTitleHiddenAtom } from "@shared/store/atoms";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { isBuiltinAgentPreset, listLibraryAgentProfiles, type AgentProfile } from "@vetta/agent-team";
 import { AgentAvatarView } from "@vetta/theme-ui/chat";
@@ -50,6 +50,7 @@ export function TeamSettingsPage(): JSX.Element {
 	const { teamId } = useParams({ from: "/agent-teams/$teamId/settings" });
 	const navigate = useNavigate();
 	const confirm = useSetAtom(confirmDialogAtom);
+	const setHeaderTitleHidden = useSetAtom(pageHeaderTitleHiddenAtom);
 	const [resources, setResources] = useState<AgentTeamConfigurationResources>();
 	const [name, setName] = useState("");
 	const [drafts, setDrafts] = useState<readonly TeamMemberDraft[]>([]);
@@ -102,6 +103,10 @@ export function TeamSettingsPage(): JSX.Element {
 			cancelled = true;
 		};
 	}, [applyResources]);
+	useEffect(() => {
+		setHeaderTitleHidden(true);
+		return () => setHeaderTitleHidden(false);
+	}, [setHeaderTitleHidden]);
 
 	const team = resources?.document.teams.find((candidate) => candidate.id === teamId);
 	const selected = drafts.find((draft) => draft.key === selectedKey);
@@ -288,82 +293,142 @@ export function TeamSettingsPage(): JSX.Element {
 
 	return (
 		<div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background">
-			<header className="flex shrink-0 flex-wrap items-center gap-4 border-b border-border/60 bg-card/20 px-6 py-4">
-				<Button
-					variant="ghost"
-					size="icon-sm"
-					className="-ml-2 shrink-0 text-muted-foreground"
-					aria-label={t("settings.backToChat")}
-					onClick={() => void navigate({ to: "/agent-teams/$teamId", params: { teamId } })}
-				>
-					<span className="icon-[solar--alt-arrow-left-linear] h-4 w-4" aria-hidden="true" />
-				</Button>
-				<div className="h-8 w-px shrink-0 bg-border/60" aria-hidden="true" />
-				<div className="min-w-0 flex-1">
-					<div className="text-[11px] font-medium tracking-wide text-muted-foreground">{t("teams.name")}</div>
-					<Input
-						name="agent-team-name"
-						autoComplete="off"
-						value={name}
-						onChange={(event) => {
-							setName(event.target.value);
-							setDirty(true);
-							setSaved(false);
-						}}
-						aria-label={t("teams.name")}
-						className="mt-0.5 h-9 w-72 max-w-full rounded-md border-transparent bg-muted/30 px-2 text-xl font-semibold shadow-none transition-colors hover:bg-muted/50 focus-visible:border-transparent focus-visible:bg-muted/40 focus-visible:ring-0"
-					/>
-					<p className="mt-0.5 text-xs text-muted-foreground">{t("settings.subtitle")}</p>
-				</div>
-				<div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-					{error && <span className="max-w-56 text-right text-xs text-destructive">{error}</span>}
-					{saved && <span className="text-xs text-muted-foreground">{t("settings.saved")}</span>}
+			{/* Top Header */}
+			<header className="flex h-14 shrink-0 items-center justify-between border-b border-border/50 bg-card/25 backdrop-blur-md px-5">
+				{/* Left: Back action + Team Identity */}
+				<div className="flex min-w-0 items-center gap-3">
 					<Button
-						className="min-w-24"
+						variant="ghost"
+						size="icon-xs"
+						className="-ml-1 h-8 w-8 shrink-0 rounded-lg text-muted-foreground transition-colors hover:bg-card/80 hover:text-foreground"
+						aria-label={t("settings.backToChat")}
+						title={t("settings.backToChat")}
+						onClick={() => void navigate({ to: "/agent-teams/$teamId", params: { teamId } })}
+					>
+						<span className="icon-[solar--alt-arrow-left-linear] h-4 w-4" aria-hidden="true" />
+					</Button>
+
+					<div className="h-4 w-px shrink-0 bg-border/50" aria-hidden="true" />
+
+					{/* Team Icon */}
+					<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+						<span className="icon-[solar--users-group-rounded-linear] h-4 w-4" aria-hidden="true" />
+					</div>
+
+					{/* Inline Editable Team Name */}
+					<div className="group relative flex min-w-0 items-center">
+						<Input
+							name="agent-team-name"
+							autoComplete="off"
+							value={name}
+							onChange={(event) => {
+								setName(event.target.value);
+								setDirty(true);
+								setSaved(false);
+							}}
+							aria-label={t("teams.name")}
+							className="h-8 w-44 sm:w-56 max-w-full rounded-md border border-transparent bg-transparent px-2 text-base font-bold tracking-tight text-foreground transition-all hover:border-border/60 hover:bg-muted/30 focus-visible:border-primary/50 focus-visible:bg-background/80"
+						/>
+						<span
+							className="icon-[solar--pen-2-linear] pointer-events-none -ml-5 h-3 w-3 text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100"
+							aria-hidden="true"
+						/>
+					</div>
+
+					{/* Member Count Badge */}
+					<span className="hidden items-center rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 text-xs text-muted-foreground sm:inline-flex">
+						{t("teams.memberCount", { count: drafts.length })}
+					</span>
+
+				</div>
+
+				{/* Right: Status & Actions */}
+				<div className="flex items-center gap-2">
+					{error && (
+						<span className="max-w-48 truncate rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-1 text-xs text-destructive">
+							{error}
+						</span>
+					)}
+					{saved && (
+						<span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-400">
+							<span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+							{t("settings.saved")}
+						</span>
+					)}
+					<Button
+						size="sm"
 						variant="primary"
+						className="h-8 gap-1.5 rounded-lg px-3.5 text-xs font-medium"
 						disabled={(!dirty && !agentDirty) || saving || agentSaving || !name.trim()}
 						onClick={() => void saveAll()}
 					>
-						<span className="icon-[solar--diskette-linear] h-4 w-4" aria-hidden="true" />
-						{saving || agentSaving ? t("settings.saving") : t("settings.save")}
+						<span
+							className={[
+								"h-3.5 w-3.5",
+								saving || agentSaving ? "icon-[solar--spinner-linear] animate-spin" : "icon-[solar--diskette-bold]",
+							].join(" ")}
+							aria-hidden="true"
+						/>
+						<span>{saving || agentSaving ? t("settings.saving") : t("settings.save")}</span>
 					</Button>
-					<Button variant="ghost" className="gap-1.5 text-destructive" onClick={requestDeleteTeam}>
-						<span className="icon-[solar--trash-bin-trash-linear] h-4 w-4" aria-hidden="true" />
-						{t("settings.delete")}
+					<Button
+						variant="ghost"
+						size="sm"
+						className="h-8 gap-1.5 rounded-lg px-2.5 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+						onClick={requestDeleteTeam}
+					>
+						<span className="icon-[solar--trash-bin-trash-linear] h-3.5 w-3.5" aria-hidden="true" />
+						<span>{t("settings.delete")}</span>
 					</Button>
 				</div>
 			</header>
 
-			<div className="grid min-h-0 flex-1 grid-cols-[18rem_minmax(0,1fr)]">
-				<aside className="flex min-h-0 flex-col border-r border-border/60 bg-card/10">
-					<div className="flex items-center justify-between gap-2 border-b border-border/50 px-4 py-4">
-						<div>
-							<div className="text-sm font-semibold tracking-tight">{t("settings.members")}</div>
-							<div className="mt-0.5 text-xs text-muted-foreground">{t("teams.memberCount", { count: drafts.length })}</div>
+			{/* Main Workspace Layout */}
+			<div className="grid min-h-0 flex-1 grid-cols-[20rem_minmax(0,1fr)] lg:grid-cols-[22rem_minmax(0,1fr)] bg-background/50">
+				{/* Left Sidebar: Roster */}
+				<aside className="flex min-h-0 flex-col border-r border-border/50 bg-card/15 backdrop-blur-sm">
+					<div className="flex items-center justify-between gap-2 border-b border-border/50 px-4 py-3.5">
+						<div className="flex items-center gap-2">
+							<span className="text-sm font-semibold tracking-tight text-foreground">{t("settings.members")}</span>
+							<span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+								{drafts.length}
+							</span>
 						</div>
-						<Button variant="outline" size="sm" className="gap-1.5" onClick={() => setAddOpen(true)}>
-							<span className="icon-[solar--add-circle-linear] h-4 w-4" aria-hidden="true" />
-							<span className="sr-only sm:not-sr-only">{t("settings.addMember")}</span>
+						<Button
+							variant="outline"
+							size="sm"
+							className="h-8 gap-1.5 rounded-lg border-border/60 hover:border-primary/40 hover:bg-primary/5 transition-colors"
+							onClick={() => setAddOpen(true)}
+						>
+							<span className="icon-[solar--user-plus-linear] h-3.5 w-3.5 text-primary" aria-hidden="true" />
+							<span className="sr-only sm:not-sr-only text-xs font-medium">{t("settings.addMember")}</span>
 						</Button>
 					</div>
-					<div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
+					<div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-3">
 						{drafts.map((draft) => {
 							const profile = resources.document.agents.find(
 								(agent) => agent.id === (draft.kind === "existing" ? draft.profileId : draft.agentProfileId),
 							);
 							const displayName = profile ? agentDisplayName(profile, t) : t("settings.profileMissing");
+							const description = profile ? agentDisplayDescription(profile, t) : "";
+							const isSelected = selectedKey === draft.key;
 							return (
 								<div
 									key={draft.key}
 									className={[
-										"group flex items-center gap-2 rounded-lg px-2 py-2.5 transition-colors",
-										selectedKey === draft.key ? "bg-muted/80 ring-1 ring-border/70" : "hover:bg-muted/40",
+										"group relative flex items-center gap-2.5 rounded-xl p-2.5 transition-all duration-200",
+										isSelected
+											? "border border-primary bg-card"
+											: "border border-border/40 bg-card/25 hover:border-border/80 hover:bg-card/60",
 									].join(" ")}
 								>
+									{isSelected && (
+										<div className="absolute left-0 top-2.5 bottom-2.5 w-1 rounded-r bg-primary" aria-hidden="true" />
+									)}
 									<button
 										type="button"
 										aria-label={displayName}
-										className="flex min-w-0 flex-1 items-center gap-2 rounded-md text-left outline-none focus-visible:ring-1 focus-visible:ring-primary/40"
+										className="flex min-w-0 flex-1 items-center gap-2.5 text-left outline-none"
 										onClick={() => setSelectedKey(draft.key)}
 									>
 										<AgentAvatarView
@@ -372,33 +437,70 @@ export function TeamSettingsPage(): JSX.Element {
 											blueprintId={profile?.blueprintId}
 											size="md"
 										/>
-										<span className="min-w-0 flex-1 truncate text-sm font-medium">{displayName}</span>
+										<div className="min-w-0 flex-1">
+											<div className="flex items-center gap-1.5">
+												<span className={`truncate text-sm font-medium ${isSelected ? "text-foreground font-semibold" : "text-foreground/90"}`}>
+													{displayName}
+												</span>
+												{draft.leader && (
+													<span className="inline-flex shrink-0 items-center gap-0.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.2 text-[10px] font-medium text-amber-400">
+														<span className="icon-[solar--crown-bold] h-2.5 w-2.5" aria-hidden="true" />
+														{t("settings.leader")}
+													</span>
+												)}
+											</div>
+											{description && (
+												<p className="mt-0.5 truncate text-xs text-muted-foreground/70">
+													{description}
+												</p>
+											)}
+										</div>
 									</button>
-									{draft.leader ? (
-											<span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-												{t("settings.leader")}
-											</span>
-									) : (
-										<Button variant="ghost" size="icon-xs" onClick={() => makeLeader(draft.key)}>
-											<span className="icon-[solar--crown-star-linear] h-3.5 w-3.5" aria-hidden="true" />
-											<span className="sr-only">{t("settings.makeLeader", { name: displayName })}</span>
+									<div className="flex shrink-0 items-center gap-0.5">
+										{!draft.leader && (
+											<Button
+												variant="ghost"
+												size="icon-xs"
+												className="h-7 w-7 rounded-lg text-muted-foreground/60 hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
+												onClick={() => makeLeader(draft.key)}
+												title={t("settings.makeLeader", { name: displayName })}
+											>
+												<span className="icon-[solar--crown-star-linear] h-3.5 w-3.5" aria-hidden="true" />
+												<span className="sr-only">{t("settings.makeLeader", { name: displayName })}</span>
+											</Button>
+										)}
+										<Button
+											variant="ghost"
+											size="icon-xs"
+											className="h-7 w-7 rounded-lg text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-colors"
+											onClick={() => removeMember(draft.key)}
+											title={t("teams.removeMember", { name: displayName })}
+										>
+											<span className="icon-[solar--trash-bin-trash-linear] h-3.5 w-3.5" aria-hidden="true" />
+											<span className="sr-only">{t("teams.removeMember", { name: displayName })}</span>
 										</Button>
-									)}
-									<Button variant="ghost" size="icon-xs" onClick={() => removeMember(draft.key)}>
-										<span className="icon-[solar--trash-bin-trash-linear] h-3.5 w-3.5" aria-hidden="true" />
-										<span className="sr-only">{t("teams.removeMember", { name: displayName })}</span>
-									</Button>
+									</div>
 								</div>
 							);
 						})}
 					</div>
 				</aside>
 
-				<main className="min-w-0 overflow-y-auto px-6 py-8 lg:px-10">
+				{/* Right Main Editor */}
+				<main className="min-w-0 overflow-y-auto px-6 py-6 lg:px-10 lg:py-8">
 					{selected?.kind === "new" ? (
-						<div className="mx-auto max-w-3xl rounded-xl border border-border/60 bg-card/30 p-5">
-							<h2 className="text-sm font-semibold">{selectedProfile ? agentDisplayName(selectedProfile, t) : ""}</h2>
-							<p className="mt-1 text-sm text-muted-foreground">{t("settings.saveBeforeEditing")}</p>
+						<div className="mx-auto max-w-4xl rounded-2xl border border-primary/30 bg-primary/5 p-6 backdrop-blur-sm">
+							<div className="flex items-start gap-3.5">
+								<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+									<span className="icon-[solar--info-square-linear] h-5 w-5" aria-hidden="true" />
+								</div>
+								<div>
+									<h2 className="text-base font-semibold text-foreground">
+										{selectedProfile ? agentDisplayName(selectedProfile, t) : ""}
+									</h2>
+									<p className="mt-1 text-sm text-muted-foreground/80">{t("settings.saveBeforeEditing")}</p>
+								</div>
+							</div>
 						</div>
 					) : selectedProfile ? (
 						<AgentProfileEditor
@@ -422,25 +524,29 @@ export function TeamSettingsPage(): JSX.Element {
 				</main>
 			</div>
 
+			{/* Add Member Dialog */}
 			<Dialog open={addOpen} onOpenChange={setAddOpen}>
-				<DialogContent className="max-w-lg">
+				<DialogContent className="max-w-lg rounded-2xl">
 					<DialogHeader>
-						<DialogTitle>{t("settings.addMemberTitle")}</DialogTitle>
-						<DialogDescription>{t("settings.addMemberDescription")}</DialogDescription>
+						<DialogTitle className="text-base font-semibold">{t("settings.addMemberTitle")}</DialogTitle>
+						<DialogDescription className="text-xs text-muted-foreground">{t("settings.addMemberDescription")}</DialogDescription>
 					</DialogHeader>
 					<Select value={addBindingKind} onValueChange={(value) => setAddBindingKind(value as "reference" | "copy")}>
-						<SelectTrigger aria-label={t("teams.bindingType")}>
+						<SelectTrigger aria-label={t("teams.bindingType")} className="h-9.5 rounded-xl">
 							<SelectValue />
 						</SelectTrigger>
-						<SelectContent>
+						<SelectContent className="rounded-xl">
 							<SelectItem value="reference">{t("settings.followLibrary")}</SelectItem>
 							<SelectItem value="copy">{t("settings.teamOnly")}</SelectItem>
 						</SelectContent>
 					</Select>
-					<div className="max-h-80 space-y-1 overflow-y-auto">
+					<div className="max-h-80 space-y-1.5 overflow-y-auto pr-1">
 						{availableAgents.length ? (
 							availableAgents.map((agent) => (
-								<div key={agent.id} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted/60">
+								<div
+									key={agent.id}
+									className="flex items-center gap-3 rounded-xl border border-border/40 bg-card/30 p-2.5 transition-colors hover:border-border hover:bg-card/70"
+								>
 									<AgentAvatarView
 										name={agentDisplayName(agent, t)}
 										avatar={agentAvatarUrl(agent)}
@@ -448,10 +554,10 @@ export function TeamSettingsPage(): JSX.Element {
 										size="md"
 									/>
 									<div className="min-w-0 flex-1">
-										<div className="truncate text-sm font-medium">{agentDisplayName(agent, t)}</div>
-										<div className="truncate text-xs text-muted-foreground">{agentDisplayDescription(agent, t)}</div>
+										<div className="truncate text-sm font-medium text-foreground">{agentDisplayName(agent, t)}</div>
+										<div className="truncate text-xs text-muted-foreground/80">{agentDisplayDescription(agent, t)}</div>
 									</div>
-									<Button variant="outline" size="sm" onClick={() => addMember(agent)}>
+									<Button variant="outline" size="sm" className="h-8 rounded-lg text-xs" onClick={() => addMember(agent)}>
 										{t("settings.add")}
 									</Button>
 								</div>
