@@ -26,6 +26,7 @@ import { normalizeBrowserOpenUrl } from "./browser-open-policy";
 import { trackActivationDisposable } from "./plugin-activation-disposables";
 import { pluginHostBridge, registerPluginMediaProviderHandler } from "./plugin-host-bridge";
 import { createPluginPermissionApi as createPermissionApi } from "./plugin-permissions";
+import { subscribePluginSecretsChanged } from "./plugin-secrets-subscription";
 
 export function createConversationApi(plugin: InstalledPlugin, disposers: Array<() => void>): PluginConversationApi {
 	const permissions = createPermissionApi(plugin);
@@ -126,9 +127,8 @@ export function createPluginSecretsApi(
 ): PluginSecretsApi {
 	const permissions = createPermissionApi(plugin);
 	const listeners = new Set<(keys: readonly string[]) => void>();
-	const unsub = window.vetta.plugins.onSecretsChanged((payload) => {
-		if (payload.pluginId !== plugin.id) return;
-		for (const listener of listeners) listener(payload.keys);
+	const unsub = subscribePluginSecretsChanged(window.vetta.plugins, plugin.id, (keys) => {
+		for (const listener of listeners) listener(keys);
 	});
 	disposers.push(() => {
 		unsub();
