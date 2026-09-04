@@ -8,6 +8,7 @@ import type {
 	InstalledPlugin,
 	MarketplaceSource,
 	OpenMarketplaceCatalog,
+	OpenMarketplaceMcpRuntimeProgress,
 	PluginPermission,
 	UpdateMarketplaceSourceInput,
 } from "@preload/api";
@@ -50,6 +51,8 @@ export type AbilityOperation =
 	| "reloading"
 	| "saving";
 
+export type AbilityOperationProgress = Omit<OpenMarketplaceMcpRuntimeProgress, "sourceId" | "slug">;
+
 export interface AbilityBase {
 	/** 来源感知的目录唯一标识；同 type + slug 可以跨来源并存。 */
 	id: string;
@@ -82,6 +85,8 @@ export interface AbilityBase {
 	busy: boolean;
 	/** 只在当前条目有可见异步操作时存在；busy 仍兼容聚合/子操作状态。 */
 	operation?: AbilityOperation;
+	/** 受管 MCP 运行时准备进度；普通能力操作没有此字段。 */
+	operationProgress?: AbilityOperationProgress;
 	downloadCount: number;
 	/** 用户自行导入（本地 zip / 从路径安装）。 */
 	isCustom: boolean;

@@ -2,7 +2,7 @@
  * 能力操作层：三条安装轨道（skills 目录 / plugins 目录 / mcp.json）的差异只在这里展开。
  * 每个操作统一登记 busy id、刷新数据源，并保留错误反馈。
  */
-import type { McpServerConfigData, PluginPermission } from "@preload/api";
+import type { McpServerConfigData, OpenMarketplaceMcpRuntimeProgress, PluginPermission } from "@preload/api";
 import { i18n } from "@shared/i18n";
 import { abilityToMarketMcpServer, downloadAbility, type MarketAbility } from "@shared/lib/api";
 import { authTokenAtom } from "@shared/store/atoms";
@@ -12,7 +12,14 @@ import { useCallback, useMemo, useState } from "react";
 import { notifyPluginsChanged } from "../../plugins/runtime/plugin-events";
 import type { McpSettingsModel } from "../../settings/components/useMcpSettingsModel";
 import { type InstallOutcome, installSelectedBundleMembers } from "../lib/install-bundle-members";
-import type { AbilityItem, AbilityOperation, BundleAbility, McpAbility, PluginAbility } from "../types";
+import type {
+	AbilityItem,
+	AbilityOperation,
+	AbilityOperationProgress,
+	BundleAbility,
+	McpAbility,
+	PluginAbility,
+} from "../types";
 
 function errorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -21,6 +28,7 @@ function errorMessage(error: unknown): string {
 export interface AbilityActions {
 	busyIds: ReadonlySet<string>;
 	operationById: ReadonlyMap<string, AbilityOperation>;
+	operationProgressById: ReadonlyMap<string, AbilityOperationProgress>;
 	error: string | null;
 	install: (item: AbilityItem) => void;
 	installBundleMembers: (bundle: BundleAbility, members: AbilityItem[]) => void;
@@ -52,6 +60,9 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 	const [operationById, setOperationById] = useState<ReadonlyMap<string, AbilityOperation>>(
 		() => new Map<string, AbilityOperation>(),
 	);
+	const [operationProgressById, setOperationProgressById] = useState<ReadonlyMap<string, AbilityOperationProgress>>(
+		() => new Map<string, AbilityOperationProgress>(),
+	);
 	const busyIds = useMemo<ReadonlySet<string>>(() => new Set(operationById.keys()), [operationById]);
 	const [error, setError] = useState<string | null>(null);
 	const [importing, setImporting] = useState(false);
@@ -62,17 +73,35 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 		(
 			id: string,
 			initialOperation: AbilityOperation,
-			operation: (setOperation: (next: AbilityOperation) => void) => Promise<void>,
+			operation: (
+				setOperation: (next: AbilityOperation, progress?: AbilityOperationProgress) => void,
+			) => Promise<void>,
 		) => {
 			setOperationById((prev) => new Map(prev).set(id, initialOperation));
+			setOperationProgressById((prev) => {
+				const next = new Map(prev);
+				next.delete(id);
+				return next;
+			});
 			setError(null);
-			const setOperation = (nextOperation: AbilityOperation): void => {
+			const setOperation = (nextOperation: AbilityOperation, progress?: AbilityOperationProgress): void => {
 				setOperationById((prev) => new Map(prev).set(id, nextOperation));
+				setOperationProgressById((prev) => {
+					const next = new Map(prev);
+					if (progress) next.set(id, progress);
+					else next.delete(id);
+					return next;
+				});
 			};
 			void operation(setOperation)
 				.catch((err: unknown) => setError(errorMessage(err)))
 				.finally(() => {
 					setOperationById((prev) => {
+						const next = new Map(prev);
+						next.delete(id);
+						return next;
+					});
+					setOperationProgressById((prev) => {
 						const next = new Map(prev);
 						next.delete(id);
 						return next;
@@ -143,7 +172,10 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 	);
 
 	const installMcp = useCallback(
-		async (item: McpAbility): Promise<InstallOutcome> => {
+		async (
+			item: McpAbility,
+			setOperation?: (next: AbilityOperation, progress?: AbilityOperationProgress) => void,
+		): Promise<InstallOutcome> => {
 			// bundle 的私有内联成员：没有市场行，配置直接来自 bundle 声明
 			if (item.inlineConfig) {
 				await mcp.onAddRemoteServer({
@@ -167,10 +199,19 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 						runtimeName: item.serverName,
 					}
 				: undefined;
-			const preparedServer =
-				market && item.origin?.kind === "github-marketplace"
-					? await window.vetta.abilities.prepareOpenMcpAbility(item.slug, item.origin.sourceId)
-					: undefined;
+			let preparedServer: McpServerConfigData | undefined;
+			if (market && item.origin?.kind === "github-marketplace") {
+				const unsubscribe =
+					window.vetta.abilities.onMcpRuntimeProgress?.((progress: OpenMarketplaceMcpRuntimeProgress) => {
+						if (progress.sourceId !== item.origin?.sourceId || progress.slug !== item.slug) return;
+						setOperation?.("installing", progress);
+					}) ?? (() => undefined);
+				try {
+					preparedServer = await window.vetta.abilities.prepareOpenMcpAbility(item.slug, item.origin.sourceId);
+				} finally {
+					unsubscribe();
+				}
+			}
 			if (item.preset) {
 				const result = await mcp.onAddBuiltinServer(
 					preparedServer ? { ...item.preset, config: preparedServer } : item.preset,
@@ -198,12 +239,15 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 	);
 
 	const installOne = useCallback(
-		async (item: AbilityItem, setOperation?: (next: AbilityOperation) => void): Promise<InstallOutcome> => {
+		async (
+			item: AbilityItem,
+			setOperation?: (next: AbilityOperation, progress?: AbilityOperationProgress) => void,
+		): Promise<InstallOutcome> => {
 			if (item.installConflictIds?.length) {
 				throw new Error(i18n.t("abilities:error.installSourceConflict"));
 			}
 			if (item.type === "plugin") return installPlugin(item, setOperation);
-			if (item.type === "mcp") return installMcp(item);
+			if (item.type === "mcp") return installMcp(item, setOperation);
 			if (item.type === "bundle") return "skipped";
 			return installSkill(item);
 		},
@@ -421,6 +465,7 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 	return {
 		busyIds,
 		operationById,
+		operationProgressById,
 		error,
 		install,
 		installBundleMembers,

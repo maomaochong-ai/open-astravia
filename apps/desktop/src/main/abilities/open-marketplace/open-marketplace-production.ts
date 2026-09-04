@@ -1,6 +1,9 @@
 import { join } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
-import type { GitHubMarketplaceOrigin } from "../../../preload/api-types/abilities.js";
+import type {
+	GitHubMarketplaceOrigin,
+	OpenMarketplaceMcpRuntimeProgress,
+} from "../../../preload/api-types/abilities.js";
 import type { McpServerConfigData } from "../../../preload/api-types/mcp.js";
 import { installPluginFromArchive } from "../../plugins/plugin-catalog.js";
 import {
@@ -36,6 +39,7 @@ export async function prepareOpenMarketplaceMcpInDesktop(
 	snapshotRoot: string,
 	ability: Extract<MarketplaceAbilityManifest, { type: "mcp" }>,
 	sourceId: string,
+	onProgress?: (progress: OpenMarketplaceMcpRuntimeProgress) => void,
 ): Promise<McpServerConfigData> {
 	const sourceDir = join(snapshotRoot, ability.source.path);
 	const mcpPackage = readOpenMarketplaceMcpPackage(sourceDir, ability);
@@ -46,6 +50,7 @@ export async function prepareOpenMarketplaceMcpInDesktop(
 		version: ability.version,
 		runtime: mcpPackage.runtime,
 		server: mcpPackage.server,
+		onProgress,
 	});
 }
 

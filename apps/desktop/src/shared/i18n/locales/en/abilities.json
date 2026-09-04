@@ -45,7 +45,13 @@
 		"enabling": "Enabling…",
 		"disabling": "Disabling…",
 		"reloading": "Reloading…",
-		"saving": "Saving…"
+		"saving": "Saving…",
+		"preparingRuntime": "Preparing runtime…",
+		"downloadingRuntime": "Downloading runtime…",
+		"verifyingRuntime": "Verifying runtime…",
+		"installingRuntime": "Installing runtime…",
+		"readyRuntime": "Runtime ready",
+		"failedRuntime": "Runtime preparation failed"
 	},
 	"actions": {
 		"add": "Add",

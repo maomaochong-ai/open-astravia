@@ -4,6 +4,10 @@ import { chmod, lstat, mkdir, mkdtemp, readFile, rename, rm, writeFile } from "n
 import { basename, dirname, isAbsolute, join, posix, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import AdmZip from "adm-zip";
+import type {
+	OpenMarketplaceMcpRuntimeProgress,
+	OpenMarketplaceMcpRuntimeProgressPhase,
+} from "../../../preload/api-types/abilities.js";
 import type { McpServerConfigData, McpStdioServerConfigData } from "../../../preload/api-types/mcp.js";
 import { validateMcpConfig } from "../../mcp-config-validation.js";
 import type { OpenMarketplaceMcpRuntime } from "./open-marketplace-mcp.js";
@@ -40,6 +44,7 @@ export interface PrepareOpenMarketplaceMcpRuntimeInput {
 	version: string;
 	runtime: OpenMarketplaceMcpRuntime;
 	server: McpServerConfigData;
+	onProgress?: (progress: OpenMarketplaceMcpRuntimeProgress) => void;
 }
 
 interface InstalledRuntimeMarker {
@@ -177,7 +182,11 @@ async function isReadyRuntime(
 	}
 }
 
-async function downloadArtifact(url: string, fetchArtifact: FetchArtifact): Promise<Buffer> {
+async function downloadArtifact(
+	url: string,
+	fetchArtifact: FetchArtifact,
+	onProgress?: (downloadedBytes: number, totalBytes?: number) => void,
+): Promise<Buffer> {
 	const controller = new AbortController();
 	const timer = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
 	try {
@@ -191,9 +200,31 @@ async function downloadArtifact(url: string, fetchArtifact: FetchArtifact): Prom
 		if (Number.isFinite(declaredLength) && declaredLength > MAX_ARTIFACT_BYTES) {
 			throw new Error("MCP runtime artifact is too large");
 		}
-		const buffer = Buffer.from(await response.arrayBuffer());
-		if (buffer.byteLength > MAX_ARTIFACT_BYTES) throw new Error("MCP runtime artifact is too large");
-		return buffer;
+		const totalBytes = Number.isFinite(declaredLength) && declaredLength >= 0 ? declaredLength : undefined;
+		onProgress?.(0, totalBytes);
+		if (!response.body) {
+			const buffer = Buffer.from(await response.arrayBuffer());
+			if (buffer.byteLength > MAX_ARTIFACT_BYTES) throw new Error("MCP runtime artifact is too large");
+			onProgress?.(buffer.byteLength, totalBytes ?? buffer.byteLength);
+			return buffer;
+		}
+		const reader = response.body.getReader();
+		const chunks: Buffer[] = [];
+		let downloadedBytes = 0;
+		try {
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
+				if (!value) continue;
+				downloadedBytes += value.byteLength;
+				if (downloadedBytes > MAX_ARTIFACT_BYTES) throw new Error("MCP runtime artifact is too large");
+				chunks.push(Buffer.from(value));
+				onProgress?.(downloadedBytes, totalBytes);
+			}
+		} finally {
+			reader.releaseLock();
+		}
+		return Buffer.concat(chunks, downloadedBytes);
 	} finally {
 		clearTimeout(timer);
 	}
@@ -251,66 +282,90 @@ export class OpenMarketplaceMcpRuntimeInstaller {
 	}
 
 	async prepare(input: PrepareOpenMarketplaceMcpRuntimeInput): Promise<McpServerConfigData> {
-		const platform = input.runtime.platforms[this.platformTag];
-		if (!platform) throw new Error(`MCP runtime does not support platform ${this.platformTag}`);
-		const executable = normalizedRelativePath(platform.executable, "MCP runtime executable");
-		const abilityDirectory = join(this.rootDir, abilityDirectoryName(input.sourceId, input.slug));
-		const versionsDirectory = join(abilityDirectory, "runtime", "versions");
-		const targetDirectory = join(versionsDirectory, input.version);
-		const dataDirectory = join(abilityDirectory, "data");
-		const cacheDirectory = join(abilityDirectory, "cache");
-		await mkdir(dataDirectory, { recursive: true });
-		await mkdir(cacheDirectory, { recursive: true });
-
-		if (!(await isReadyRuntime(targetDirectory, input.version, platform.sha256, executable))) {
-			await mkdir(versionsDirectory, { recursive: true });
-			const stagingDirectory = await mkdtemp(join(versionsDirectory, `.${input.version}-install-`));
-			const preparedDirectory = join(stagingDirectory, "payload");
+		const report = (
+			phase: OpenMarketplaceMcpRuntimeProgressPhase,
+			extra?: Partial<OpenMarketplaceMcpRuntimeProgress>,
+		) => {
 			try {
-				await mkdir(preparedDirectory, { recursive: true });
-				const buffer = await downloadArtifact(platform.url, this.fetchArtifact);
-				const actualSha256 = createHash("sha256").update(buffer).digest("hex");
-				if (actualSha256 !== platform.sha256) throw new Error("MCP runtime artifact SHA-256 mismatch");
-				if (platform.archive === "zip") {
-					await extractZip(buffer, preparedDirectory);
-				} else {
-					const executablePath = join(preparedDirectory, ...executable.split("/"));
-					await mkdir(dirname(executablePath), { recursive: true });
-					await writeFile(executablePath, buffer, { flag: "wx" });
-				}
-				const executablePath = join(preparedDirectory, ...executable.split("/"));
-				const executableInfo = await lstat(executablePath).catch(() => undefined);
-				if (!executableInfo?.isFile()) throw new Error(`MCP runtime executable is missing: ${executable}`);
-				if (process.platform !== "win32") await chmod(executablePath, 0o755);
-				await writeFile(
-					join(preparedDirectory, ".runtime.json"),
-					JSON.stringify({
-						schemaVersion: 1,
-						kind: "managed-binary",
-						version: input.version,
-						artifactSha256: platform.sha256,
-						executable,
-					} satisfies InstalledRuntimeMarker),
-					"utf8",
-				);
-				await replaceRuntimeDirectory(preparedDirectory, targetDirectory);
-			} finally {
-				await rm(stagingDirectory, { recursive: true, force: true });
+				input.onProgress?.({ sourceId: input.sourceId, slug: input.slug, phase, ...extra });
+			} catch {
+				// Progress delivery is best-effort and must never abort runtime preparation.
 			}
-		}
-
-		const executablePath = join(targetDirectory, ...executable.split("/"));
-		const paths = {
-			executable: executablePath,
-			runtimeDirectory: targetDirectory,
-			dataDirectory,
-			cacheDirectory,
 		};
-		if (input.runtime.service) {
-			if (input.server.type === "http") throw new Error("Managed MCP runtimes require a stdio server");
-			return resolveBridgedServer(input.server, input.runtime.service, paths);
+		report("preparing");
+		try {
+			const platform = input.runtime.platforms[this.platformTag];
+			if (!platform) throw new Error(`MCP runtime does not support platform ${this.platformTag}`);
+			const executable = normalizedRelativePath(platform.executable, "MCP runtime executable");
+			const abilityDirectory = join(this.rootDir, abilityDirectoryName(input.sourceId, input.slug));
+			const versionsDirectory = join(abilityDirectory, "runtime", "versions");
+			const targetDirectory = join(versionsDirectory, input.version);
+			const dataDirectory = join(abilityDirectory, "data");
+			const cacheDirectory = join(abilityDirectory, "cache");
+			await mkdir(dataDirectory, { recursive: true });
+			await mkdir(cacheDirectory, { recursive: true });
+
+			if (!(await isReadyRuntime(targetDirectory, input.version, platform.sha256, executable))) {
+				await mkdir(versionsDirectory, { recursive: true });
+				const stagingDirectory = await mkdtemp(join(versionsDirectory, `.${input.version}-install-`));
+				const preparedDirectory = join(stagingDirectory, "payload");
+				try {
+					await mkdir(preparedDirectory, { recursive: true });
+					const buffer = await downloadArtifact(platform.url, this.fetchArtifact, (downloadedBytes, totalBytes) =>
+						report("downloading", { downloadedBytes, ...(totalBytes === undefined ? {} : { totalBytes }) }),
+					);
+					report("verifying", { downloadedBytes: buffer.byteLength, totalBytes: buffer.byteLength });
+					const actualSha256 = createHash("sha256").update(buffer).digest("hex");
+					if (actualSha256 !== platform.sha256) throw new Error("MCP runtime artifact SHA-256 mismatch");
+					report("installing");
+					if (platform.archive === "zip") {
+						await extractZip(buffer, preparedDirectory);
+					} else {
+						const executablePath = join(preparedDirectory, ...executable.split("/"));
+						await mkdir(dirname(executablePath), { recursive: true });
+						await writeFile(executablePath, buffer, { flag: "wx" });
+					}
+					const executablePath = join(preparedDirectory, ...executable.split("/"));
+					const executableInfo = await lstat(executablePath).catch(() => undefined);
+					if (!executableInfo?.isFile()) throw new Error(`MCP runtime executable is missing: ${executable}`);
+					if (process.platform !== "win32") await chmod(executablePath, 0o755);
+					await writeFile(
+						join(preparedDirectory, ".runtime.json"),
+						JSON.stringify({
+							schemaVersion: 1,
+							kind: "managed-binary",
+							version: input.version,
+							artifactSha256: platform.sha256,
+							executable,
+						} satisfies InstalledRuntimeMarker),
+						"utf8",
+					);
+					await replaceRuntimeDirectory(preparedDirectory, targetDirectory);
+				} finally {
+					await rm(stagingDirectory, { recursive: true, force: true });
+				}
+			}
+
+			const executablePath = join(targetDirectory, ...executable.split("/"));
+			const paths = {
+				executable: executablePath,
+				runtimeDirectory: targetDirectory,
+				dataDirectory,
+				cacheDirectory,
+			};
+			const server = input.runtime.service
+				? input.server.type === "http"
+					? (() => {
+							throw new Error("Managed MCP runtimes require a stdio server");
+						})()
+					: resolveBridgedServer(input.server, input.runtime.service, paths)
+				: resolveServer(input.server, paths);
+			report("ready");
+			return server;
+		} catch (error) {
+			report("failed");
+			throw error;
 		}
-		return resolveServer(input.server, paths);
 	}
 
 	/**

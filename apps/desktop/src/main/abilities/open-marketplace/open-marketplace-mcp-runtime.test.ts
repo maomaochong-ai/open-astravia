@@ -58,6 +58,7 @@ describe("OpenMarketplaceMcpRuntimeInstaller", () => {
 		const artifact = Buffer.from("managed-mcp-runtime");
 		const fetchArtifact = vi.fn(async () => response(artifact));
 		const installer = new OpenMarketplaceMcpRuntimeInstaller({ rootDir, platformTag: PLATFORM_TAG, fetchArtifact });
+		const progress: string[] = [];
 
 		const server = await installer.prepare({
 			sourceId: "official",
@@ -72,6 +73,7 @@ describe("OpenMarketplaceMcpRuntimeInstaller", () => {
 					CACHE_DIR: `\${VETTA_MCP_CACHE_DIR}`,
 				},
 			},
+			onProgress: (event) => progress.push(event.phase),
 		});
 
 		expect(server.type).toBeUndefined();
@@ -82,6 +84,7 @@ describe("OpenMarketplaceMcpRuntimeInstaller", () => {
 		expect(server.env?.RUNTIME_DIR).toBe(dirname(server.command));
 		expect(server.env?.CACHE_DIR).toContain(join("demo-mcp-"));
 		expect(fetchArtifact).toHaveBeenCalledOnce();
+		expect(progress).toEqual(["preparing", "downloading", "downloading", "verifying", "installing", "ready"]);
 	});
 
 	it("extracts a ZIP safely and reuses an already verified version", async () => {
@@ -249,6 +252,8 @@ describe("OpenMarketplaceMcpRuntimeInstaller", () => {
 			readyTimeoutMs: 300_000,
 		});
 		expect(spec.command).toMatch(/demo\.exe$/);
-		expect((spec.env as Record<string, string>).COOKIES_PATH).toMatch(/demo-mcp-[0-9a-f]+\/data\/cookies\.json$/);
+		expect((spec.env as Record<string, string>).COOKIES_PATH).toMatch(
+			/demo-mcp-[0-9a-f]+[\\/]data[\\/]cookies\.json$/,
+		);
 	});
 });

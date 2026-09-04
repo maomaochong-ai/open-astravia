@@ -2,7 +2,7 @@
 
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { InstalledPlugin } from "@preload/api";
+import type { InstalledPlugin, McpServerConfigData, OpenMarketplaceMcpRuntimeProgress } from "@preload/api";
 import type { McpSettingsModel } from "../../settings/components/useMcpSettingsModel";
 import type { McpAbility, PluginAbility } from "../types";
 
@@ -87,6 +87,8 @@ function deferred(): { promise: Promise<void>; resolve: () => void; reject: (err
 }
 
 describe("useAbilityActions managed MCP wiring", () => {
+	let progressHandler: ((progress: OpenMarketplaceMcpRuntimeProgress) => void) | undefined;
+
 	beforeEach(() => {
 		showToast.mockClear();
 		notifyPluginsChanged.mockClear();
@@ -94,6 +96,12 @@ describe("useAbilityActions managed MCP wiring", () => {
 			configurable: true,
 			value: {
 				abilities: {
+					onMcpRuntimeProgress: vi.fn((handler: (progress: OpenMarketplaceMcpRuntimeProgress) => void) => {
+						progressHandler = handler;
+						return () => {
+							progressHandler = undefined;
+						};
+					}),
 					prepareOpenMcpAbility: vi.fn(async () => ({
 						command: "C:/Users/test/.vetta/abilities/mcp/demo/runtime/versions/1.0.0/demo.exe",
 						args: ["--stdio"],
@@ -106,6 +114,37 @@ describe("useAbilityActions managed MCP wiring", () => {
 				},
 			},
 		});
+	});
+
+	it("surfaces runtime download progress while preparation is in flight", async () => {
+		let resolvePrepare!: (config: { command: string; args: string[] }) => void;
+		window.vetta.abilities.prepareOpenMcpAbility = vi.fn(
+			() =>
+				new Promise<McpServerConfigData>((resolve) => {
+					resolvePrepare = resolve;
+				}),
+		);
+		const item = githubMcpAbility();
+		const { result } = renderHook(() => useAbilityActions({ mcp: mcpModel(), refresh: vi.fn() }));
+
+		act(() => result.current.install(item));
+		await waitFor(() => expect(progressHandler).toBeDefined());
+		act(() =>
+			progressHandler?.({
+				sourceId: "official",
+				slug: "demo-mcp",
+				phase: "downloading",
+				downloadedBytes: 50,
+				totalBytes: 100,
+			}),
+		);
+		expect(result.current.operationProgressById.get(item.id)).toMatchObject({
+			phase: "downloading",
+			downloadedBytes: 50,
+			totalBytes: 100,
+		});
+		await act(async () => resolvePrepare({ command: "/runtime/demo", args: [] }));
+		await waitFor(() => expect(result.current.operationById.has(item.id)).toBe(false));
 	});
 
 	it("prepares a GitHub MCP runtime before handing its resolved config to the setup flow", async () => {

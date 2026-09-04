@@ -142,7 +142,11 @@ export function AbilityDetailHeader({
 							onClick={onPrimary}
 						>
 							{item.busy ? (
-								<AbilityOperationStatus operation={item.operation} iconClassName="h-4 w-4" />
+								<AbilityOperationStatus
+									operation={item.operation}
+									progress={item.operationProgress}
+									iconClassName="h-4 w-4"
+								/>
 							) : (
 								<span className="icon-[solar--play-circle-bold] h-4 w-4" />
 							)}

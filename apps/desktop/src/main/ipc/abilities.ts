@@ -3,6 +3,7 @@ import type {
 	AbilityInstallMetadata,
 	AbilityInstallOrigin,
 	AddMarketplaceSourceInput,
+	OpenMarketplaceMcpRuntimeProgress,
 	UpdateMarketplaceSourceInput,
 } from "../../preload/api-types/abilities.js";
 import { readAbilityLedger, recordAbilityInstall } from "../abilities/ability-ledger.js";
@@ -155,9 +156,12 @@ export function registerAbilitiesIpc(): () => void {
 			await openMarketplace.install(type, slug, resolvedSourceId);
 		},
 	);
-	ipcMain.handle("vetta:abilities:prepare-open-mcp-ability", (_event, slug: unknown, sourceId: unknown) => {
+	ipcMain.handle("vetta:abilities:prepare-open-mcp-ability", (event, slug: unknown, sourceId: unknown) => {
 		const resolvedSourceId = sourceId === undefined ? undefined : requireString(sourceId, "sourceId");
-		return openMarketplace.prepareMcp(requireString(slug, "slug"), resolvedSourceId);
+		const progress = (payload: OpenMarketplaceMcpRuntimeProgress): void => {
+			if (!event.sender.isDestroyed()) event.sender.send("vetta:abilities:mcp-runtime-progress", payload);
+		};
+		return openMarketplace.prepareMcp(requireString(slug, "slug"), resolvedSourceId, progress);
 	});
 	ipcMain.handle("vetta:abilities:get-open-mcp-setup-status", () => openMarketplace.mcpSetupStatus());
 	ipcMain.handle("vetta:abilities:remove-open-mcp-runtime", (_event, slug: unknown, sourceId: unknown) => {

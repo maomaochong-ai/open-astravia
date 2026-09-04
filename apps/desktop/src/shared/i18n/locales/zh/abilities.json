@@ -45,7 +45,13 @@
 		"enabling": "正在启用…",
 		"disabling": "正在停用…",
 		"reloading": "正在重载…",
-		"saving": "正在保存…"
+		"saving": "正在保存…",
+		"preparingRuntime": "正在准备运行时…",
+		"downloadingRuntime": "正在下载运行时…",
+		"verifyingRuntime": "正在校验运行时…",
+		"installingRuntime": "正在安装运行时…",
+		"readyRuntime": "运行时已就绪",
+		"failedRuntime": "运行时准备失败"
 	},
 	"actions": {
 		"add": "添加",

@@ -70,7 +70,7 @@ function InstalledMoreMenu({
 	if (item.busy) {
 		return (
 			<div className="px-2 py-1 text-[11px] text-muted-foreground">
-				<AbilityOperationStatus operation={item.operation} />
+				<AbilityOperationStatus operation={item.operation} progress={item.operationProgress} />
 			</div>
 		);
 	}
@@ -163,7 +163,11 @@ export function AbilityCard({ item, model }: { item: AbilityItem; model: Abiliti
 						className="border border-border bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
 						onClick={() => (item.type === "bundle" ? openDetail() : model.install(item))}
 					>
-						{item.busy ? <AbilityOperationStatus operation={item.operation} /> : t("actions.add")}
+						{item.busy ? (
+							<AbilityOperationStatus operation={item.operation} progress={item.operationProgress} />
+						) : (
+							t("actions.add")
+						)}
 					</Button>
 				)}
 			</div>

@@ -4,6 +4,7 @@ import type {
 	AddMarketplaceSourceInput,
 	MarketplaceSource,
 	OpenMarketplaceCatalog,
+	OpenMarketplaceMcpRuntimeProgress,
 	OpenMarketplaceSnapshot,
 	OpenMarketplaceSourceSnapshot,
 	UpdateMarketplaceSourceInput,
@@ -22,7 +23,10 @@ interface MarketplaceWorker {
 	listCached(): Promise<OpenMarketplaceSnapshot>;
 	refresh(): Promise<OpenMarketplaceSnapshot>;
 	install(type: "skill" | "scene" | "plugin", slug: string): Promise<void>;
-	prepareMcp(slug: string): Promise<McpServerConfigData>;
+	prepareMcp(
+		slug: string,
+		onProgress?: (progress: OpenMarketplaceMcpRuntimeProgress) => void,
+	): Promise<McpServerConfigData>;
 	mcpSetupStatus(): Promise<Record<string, boolean>>;
 }
 
@@ -142,10 +146,15 @@ export class OpenMarketplaceManager {
 		await this.workerFor(source).install(type, slug);
 	}
 
-	async prepareMcp(slug: string, sourceId = DEFAULT_MARKETPLACE_SOURCE_ID): Promise<McpServerConfigData> {
+	async prepareMcp(
+		slug: string,
+		sourceId = DEFAULT_MARKETPLACE_SOURCE_ID,
+		onProgress?: (progress: OpenMarketplaceMcpRuntimeProgress) => void,
+	): Promise<McpServerConfigData> {
 		const source = this.requireSource(sourceId);
 		if (!source.enabled) throw new Error(`Marketplace source is disabled: ${sourceId}`);
-		return this.workerFor(source).prepareMcp(slug);
+		const worker = this.workerFor(source);
+		return onProgress ? worker.prepareMcp(slug, onProgress) : worker.prepareMcp(slug);
 	}
 
 	/**

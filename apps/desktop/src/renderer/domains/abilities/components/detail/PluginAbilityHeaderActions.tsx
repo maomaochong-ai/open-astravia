@@ -21,7 +21,11 @@ export function PluginAbilityHeaderActions({
 			{item.installed ? (
 				<Button variant="secondary" size="lg" disabled={item.busy} onClick={onReload}>
 					{item.operation === "reloading" ? (
-						<AbilityOperationStatus operation={item.operation} iconClassName="h-4 w-4" />
+					<AbilityOperationStatus
+						operation={item.operation}
+						progress={item.operationProgress}
+						iconClassName="h-4 w-4"
+					/>
 					) : (
 						<>
 							<span className="icon-[solar--restart-linear] h-4 w-4" />

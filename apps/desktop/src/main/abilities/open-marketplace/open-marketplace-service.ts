@@ -6,6 +6,7 @@ import AdmZip from "adm-zip";
 import type {
 	GitHubMarketplaceOrigin,
 	OpenMarketplaceAbility,
+	OpenMarketplaceMcpRuntimeProgress,
 	OpenMarketplaceSnapshot,
 } from "../../../preload/api-types/abilities.js";
 import type { McpServerConfigData } from "../../../preload/api-types/mcp.js";
@@ -63,6 +64,7 @@ type PrepareMcpAbility = (
 	snapshotRoot: string,
 	ability: Extract<MarketplaceManifest["abilities"][number], { type: "mcp" }>,
 	sourceId: string,
+	onProgress?: (progress: OpenMarketplaceMcpRuntimeProgress) => void,
 ) => Promise<McpServerConfigData>;
 /** 返回 undefined 表示该能力没有声明安装后步骤。 */
 type ReadMcpSetupStatus = (
@@ -372,7 +374,10 @@ export class OpenMarketplaceService {
 		});
 	}
 
-	async prepareMcp(slug: string): Promise<McpServerConfigData> {
+	async prepareMcp(
+		slug: string,
+		onProgress?: (progress: OpenMarketplaceMcpRuntimeProgress) => void,
+	): Promise<McpServerConfigData> {
 		await this.ensureSnapshotFresh();
 		const active = await this.readActiveMarketplace();
 		if (!active) throw new Error("No validated open marketplace snapshot is available");
@@ -384,7 +389,9 @@ export class OpenMarketplaceService {
 		const prepareMcp =
 			this.prepareMcpAbilityOverride ??
 			(await import("./open-marketplace-production.js")).prepareOpenMarketplaceMcpInDesktop;
-		return prepareMcp(active.snapshotRoot, ability, this.sourceId);
+		return onProgress
+			? prepareMcp(active.snapshotRoot, ability, this.sourceId, onProgress)
+			: prepareMcp(active.snapshotRoot, ability, this.sourceId);
 	}
 
 	/**

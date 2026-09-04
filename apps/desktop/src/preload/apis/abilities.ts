@@ -1,6 +1,6 @@
 import type { IpcRenderer } from "electron";
 import type { DesktopApi } from "../api.js";
-import { onIpcVoidEvent } from "./helper.js";
+import { onIpcEvent, onIpcVoidEvent } from "./helper.js";
 
 export function createAbilitiesApi(ipc: IpcRenderer): Pick<DesktopApi, "abilities"> {
 	return {
@@ -26,6 +26,7 @@ export function createAbilitiesApi(ipc: IpcRenderer): Pick<DesktopApi, "abilitie
 				ipc.invoke("vetta:abilities:install-open-ability", type, slug, sourceId),
 			prepareOpenMcpAbility: (slug, sourceId) =>
 				ipc.invoke("vetta:abilities:prepare-open-mcp-ability", slug, sourceId),
+			onMcpRuntimeProgress: (handler) => onIpcEvent(ipc, "vetta:abilities:mcp-runtime-progress", handler),
 			getOpenMcpSetupStatus: () => ipc.invoke("vetta:abilities:get-open-mcp-setup-status"),
 			removeOpenMcpRuntime: (slug, sourceId) =>
 				ipc.invoke("vetta:abilities:remove-open-mcp-runtime", slug, sourceId),

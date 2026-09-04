@@ -251,6 +251,22 @@ export interface OpenMarketplaceCatalog {
 	failedSourceIds: string[];
 }
 
+export type OpenMarketplaceMcpRuntimeProgressPhase =
+	| "preparing"
+	| "downloading"
+	| "verifying"
+	| "installing"
+	| "ready"
+	| "failed";
+
+export interface OpenMarketplaceMcpRuntimeProgress {
+	sourceId: string;
+	slug: string;
+	phase: OpenMarketplaceMcpRuntimeProgressPhase;
+	downloadedBytes?: number;
+	totalBytes?: number;
+}
+
 export interface DesktopAbilitiesApi {
 	/** 一次性读取全量台账；读取时会剔除实际已不存在的漂移条目。 */
 	getLedger(): Promise<AbilityLedger>;
@@ -282,6 +298,8 @@ export interface DesktopAbilitiesApi {
 	installOpenAbility(type: "skill" | "scene" | "plugin", slug: string, sourceId?: string): Promise<void>;
 	/** 下载并校验开源市场 MCP 的受管运行时，返回可直接写入 mcp.json 的标准 server 配置。 */
 	prepareOpenMcpAbility(slug: string, sourceId?: string): Promise<McpServerConfigData>;
+	/** 监听受管 MCP 运行时准备阶段；返回取消订阅函数。 */
+	onMcpRuntimeProgress(handler: (progress: OpenMarketplaceMcpRuntimeProgress) => void): () => void;
 	/**
 	 * 声明了安装后步骤的市场 MCP 能力 → 该步骤是否已完成，键为 `<sourceId>:<slug>`。
 	 * 没有声明步骤的能力不出现在结果里。

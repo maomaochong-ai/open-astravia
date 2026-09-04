@@ -74,11 +74,27 @@ export function useAbilitiesModel(): AbilitiesModel {
 			...buildPluginAbilities(market, localState, trPlugin),
 		]
 			.map((item) => withBuiltinAbilityDetail(item, data.builtinPresentations))
-			.map((item) => ({ ...item, operation: actions.operationById.get(item.id) }));
+			.map((item) => ({
+				...item,
+				operation: actions.operationById.get(item.id),
+				operationProgress: actions.operationProgressById.get(item.id),
+			}));
 		return decorateAbilityConflicts([...singles, ...buildBundleAbilities(market, singles, localState, t)]).map(
-			(item) => ({ ...item, operation: actions.operationById.get(item.id) }),
+			(item) => ({
+				...item,
+				operation: actions.operationById.get(item.id),
+				operationProgress: actions.operationProgressById.get(item.id),
+			}),
 		);
-	}, [market, localState, t, trPlugin, data.builtinPresentations, actions.operationById]);
+	}, [
+		market,
+		localState,
+		t,
+		trPlugin,
+		data.builtinPresentations,
+		actions.operationById,
+		actions.operationProgressById,
+	]);
 
 	const changeScope = useCallback((nextScope: AbilityScope) => {
 		setScope(nextScope);
