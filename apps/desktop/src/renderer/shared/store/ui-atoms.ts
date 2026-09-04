@@ -61,7 +61,6 @@ export type SettingsTab =
 	| "archive"
 	| "team"
 	| "context"
-	| "plugins"
 	| "knowledge"
 	| "pet"
 	| "remote";

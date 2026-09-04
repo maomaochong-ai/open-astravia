@@ -46,7 +46,14 @@ async function activate(plugin: InstalledPlugin) {
 	const ctx = createPluginContext({
 		plugin,
 		contributions,
-		settingsApi: { get: () => undefined, getAll: () => ({}), onChange: () => ({ dispose: () => {} }) },
+		secretsApi: {
+			get: async () => undefined,
+			has: async () => false,
+			keys: async () => [],
+			set: async () => {},
+			delete: async () => {},
+			onChange: () => ({ dispose: () => {} }),
+		},
 		onChanged: () => {},
 		disposers,
 		pendingRuntimeRegistrations: [],

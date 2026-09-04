@@ -23,20 +23,6 @@ describe("plugin agent tool configuration parser", () => {
 		expect(parsed).toMatchObject({ name: "demo_tool", scope_use: ["cli"], requires: ["knowledge"] });
 		expect(parsed).not.toHaveProperty("side_effect");
 	});
-
-	it("keeps configuration optional for tools without settings", () => {
-		expect(asAgentToolRegistration(registration()).configuration).toBeUndefined();
-	});
-
-	it("normalizes an adapter association and rejects duplicate setting keys", () => {
-		expect(asAgentToolRegistration(registration({ settingKeys: [" mode "] })).configuration).toEqual({
-			settingKeys: ["mode"],
-			support: "adapter",
-		});
-		expect(() => asAgentToolRegistration(registration({ settingKeys: ["mode", "mode"] }))).toThrow(
-			"must not contain duplicates",
-		);
-	});
 });
 
 describe("plugin App Action usage parser", () => {

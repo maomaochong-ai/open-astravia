@@ -1,4 +1,5 @@
-import type { PluginNetworkApi, PluginSettingsApi } from "@vetta-org/plugin-sdk";
+import type { PluginNetworkApi } from "@vetta-org/plugin-sdk";
+import type { ContentSettingsReader } from "../settings/content-settings";
 import type {
 	ContentGenerationReference,
 	ContentProviderGenerationContext,
@@ -9,12 +10,12 @@ export interface ResolvedContentGenerationReference extends Omit<ContentGenerati
 	data: string;
 }
 
-export function readStringSetting(settings: PluginSettingsApi, key: string): string {
-	const value = settings.get<unknown>(key);
+export function readStringSetting(settings: ContentSettingsReader, key: string): string {
+	const value = settings.get(key);
 	return typeof value === "string" ? value.trim() : "";
 }
 
-export function requireStringSetting(settings: PluginSettingsApi, key: string, providerId: string): string {
+export function requireStringSetting(settings: ContentSettingsReader, key: string, providerId: string): string {
 	const value = readStringSetting(settings, key);
 	if (!value) throw new Error(`content provider credential is not configured: ${providerId}`);
 	return value;

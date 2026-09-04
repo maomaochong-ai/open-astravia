@@ -45,11 +45,6 @@ Schema 只描述 `plugin.json` 数据本身；Plugin API 版本是否兼容、�
   "description": "一句话说明这个插件做什么",
   "author": "你的名字",
   "guidingWords": ["%guidingWords.summarize%", "把这段代码加上注释"],
-  "contributes": {
-    "settings": [
-      { "key": "apiKey", "type": "secret", "title": "%settings.apiKey.title%", "description": "服务的密钥" }
-    ]
-  },
   "agent": {
     "systemPrompt": { "promptPaths": ["prompts/extra.md"] },
     "skillPaths": ["skills/"],
@@ -78,7 +73,6 @@ Schema 只描述 `plugin.json` 数据本身；Plugin API 版本是否兼容、�
 | `icon` | ❌ | string | 能力页/插件列表展示的图标，也是[工作区视图](./ui-slots.md#工作区视图-registerworkspaceview)与活动 Tab 未声明图标时的回落。三态：省略（按类型落默认图）、Iconify 名（如 `solar:widget-add-bold`）、`http(s)://` 外链，或包内相对路径（如 `assets/icon.png`）。 |
 | `defaultLocale` | ❌ | string | i18n 缺译回退 locale，默认 `"zh"`。见 [i18n](#i18n)。 |
 | `guidingWords` | ❌ | string[] | 新会话引导词，见 [下文](#guidingwords引导词)。条目可用 `%key%`。 |
-| `contributes.settings` | ❌ | object[] | 插件设置项 schema，见 [配置项](#contributessettings配置项)。 |
 | `agent` | ❌ | object | Agent 侧贡献（prompt / skill / **MCP** / toolPolicy），见 [Agent 清单](#agent-agent-侧贡献)。 |
 | `contributionMode` | ❌ | object | 贡献硬隔离，见 [contributionMode](#contributionmode)。 |
 | `agent_mode` | ❌ | string \| string[] | **已废弃**（ADR-0071）：无任何运行时语义，容忍存在但被忽略，见 [agent_mode](#agent_mode已废弃)。 |
@@ -141,7 +135,7 @@ Schema 只描述 `plugin.json` 数据本身；Plugin API 版本是否兼容、�
 
 1. 包内 **`locales/<lang>.json`**：扁平 `key → 译文`（如 `zh.json` / `en.json`）。宿主 main 加载，随 `InstalledPlugin` 下发。
 2. **`defaultLocale`**：缺译回退链 = 当前宿主语言 → defaultLocale → 裸 key。省略默认 `"zh"`。
-3. **宿主渲染的字符串**（`name` / `description` / settings 文案 / `register*` 的 `label` / `registerTool({ label })` / guidingWords 等）：值为 **`%catalogKey%`** 时查 catalog；其它字符串当字面量（向后兼容）。
+3. **宿主渲染的字符串**（`name` / `description` / `register*` 的 `label` / `registerTool({ label })` / guidingWords 等）：值为 **`%catalogKey%`** 时查 catalog；其它字符串当字面量（向后兼容）。
 4. **插件自己的 React 组件内文案**：用 `useTranslation().t("catalogKey")` 或 `ctx.i18n.t`（裸 key，无 `%`），见 [conversation-and-agent 插件 i18n](./conversation-and-agent.md#插件-i18n)。
 
 打包时 `locales/` 会打进 zip。
@@ -154,51 +148,23 @@ Schema 只描述 `plugin.json` 数据本身；Plugin API 版本是否兼容、�
 - 点击一条引导词＝以其文本立即发起一轮对话（不填入输入框）。
 - 展示限额（轮播，非数据截断）：同时最多 3 组、每组最多 4 词；超出则组级 / 词级轮播。
 
-## contributes.settings（配置项）
+## 插件配置放哪里
 
-声明插件设置项，宿主在**设置页**统一渲染，值持久化后由插件经 `ctx.settings` 读取（见 [conversation-and-agent.md](./conversation-and-agent.md#设置-api)）。
+**宿主不再提供设置页配置槽**：`plugin.json#contributes.settings` 与只读的 `ctx.settings` 已在
+Plugin API 1.6.0 移除（ADR-0105）。配置由插件自己渲染、自己持久化：
 
-每个设置项：
+| 需求 | 用什么 |
+| --- | --- |
+| 完整配置界面（推荐） | `ctx.ui.registerWorkspaceView` 注册一个工作区配置页，配置与连通性检查、模型列表、预览放在同一屏 |
+| 只有一两个开关 | 直接放进插件已有的活动 Tab、能力详情槽或全局槽 |
+| 普通配置值 | `ctx.storage.readJson("settings")` / `writeJson("settings")`（插件私有存储，按 plugin id 隔离） |
+| API Key 等密钥 | `ctx.secrets`（宿主加密凭据库），需要 `secrets.read` / `secrets.write` 权限 |
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `key` | string | 设置键（`ctx.settings.get(key)` 用它读）。`desc` 类型可省。 |
-| `type` | `"string"` \| `"number"` \| `"boolean"` \| `"secret"` \| `"enum"` \| `"desc"` | 控件类型。 |
-| `title` | string | 标签。`desc` 类型可选。可用 `%key%`。 |
-| `description` | string | 说明文本。`desc` 类型里 http(s) 链接会渲染成可点外链。可用 `%key%`。 |
-| `default` | any | 默认值。 |
-| `enum` | string[] | `type:"enum"` 的可选值。 |
-| `visibleWhen` | `{ key, in }` | 按**另一个设置项**的当前值决定本项是否显示（`in` 是允许值数组）。 |
+`settings` 这个 storage key 是宿主迁移旧 `contributes.settings` 值时的落点：升级时宿主会把
+`plugin-settings.json` 里该插件的非密钥字段一次性写进去，插件读回后自行归一化。密钥的凭据库命名空间
+未变，无需迁移。
 
-示例（按服务商显隐不同字段）：
-
-```json
-{
-  "contributes": {
-    "settings": [
-      {
-        "key": "provider", "type": "enum", "title": "服务商",
-        "enum": ["openai", "custom"], "default": "openai"
-      },
-      {
-        "key": "openaiApiKey", "type": "secret", "title": "API Key",
-        "visibleWhen": { "key": "provider", "in": ["openai"] }
-      },
-      {
-        "key": "baseUrl", "type": "string", "title": "API Base URL",
-        "visibleWhen": { "key": "provider", "in": ["custom"] }
-      },
-      {
-        "key": "note", "type": "desc",
-        "description": "需要 Key？前往 https://example.com/keys 申请。"
-      }
-    ]
-  }
-}
-```
-
-- `secret` 值加密存储、UI 以密码框呈现。
-- 值按**插件 id 命名空间**隔离；写入只能经宿主设置 UI，插件侧**只读**。
+带 `contributes` 字段的旧清单不会校验失败（顶层允许额外字段），但该字段不再有任何运行时语义。
 
 ## agent（Agent 侧贡献）
 

@@ -2,7 +2,7 @@ import type { IpcRenderer, IpcRendererEvent, WebUtils } from "electron";
 import { describe, expect, it, vi } from "vitest";
 import { createPluginsApi } from "./plugins";
 
-const SETTINGS_CHANGED_CHANNEL = "vetta:plugins:settings-changed";
+const SECRETS_CHANGED_CHANNEL = "vetta:plugins:secrets:changed";
 type IpcListener = Parameters<IpcRenderer["on"]>[1];
 const webUtils = { getPathForFile: vi.fn() } as unknown as WebUtils;
 
@@ -59,13 +59,13 @@ describe("createPluginsApi settings events", () => {
 		const harness = createIpcHarness();
 		const plugins = createPluginsApi(harness.ipc, webUtils).plugins;
 		const listeners = Array.from({ length: 12 }, () => vi.fn());
-		const unsubscribers = listeners.map((listener) => plugins.onSettingsChanged(listener));
-		const payload = { pluginId: "plugin", values: { enabled: true } };
+		const unsubscribers = listeners.map((listener) => plugins.onSecretsChanged(listener));
+		const payload = { pluginId: "plugin", keys: ["token"] };
 
-		expect(harness.listenerCount(SETTINGS_CHANGED_CHANNEL)).toBe(1);
+		expect(harness.listenerCount(SECRETS_CHANGED_CHANNEL)).toBe(1);
 		expect(harness.on).toHaveBeenCalledTimes(1);
 
-		harness.emit(SETTINGS_CHANGED_CHANNEL, payload);
+		harness.emit(SECRETS_CHANGED_CHANNEL, payload);
 		for (const listener of listeners) expect(listener).toHaveBeenCalledOnce();
 
 		for (const unsubscribe of unsubscribers) unsubscribe();
@@ -76,17 +76,17 @@ describe("createPluginsApi settings events", () => {
 		const plugins = createPluginsApi(harness.ipc, webUtils).plugins;
 		const first = vi.fn();
 		const second = vi.fn();
-		const unsubscribeFirst = plugins.onSettingsChanged(first);
-		const unsubscribeSecond = plugins.onSettingsChanged(second);
+		const unsubscribeFirst = plugins.onSecretsChanged(first);
+		const unsubscribeSecond = plugins.onSecretsChanged(second);
 
 		unsubscribeFirst();
-		harness.emit(SETTINGS_CHANGED_CHANNEL, { pluginId: "plugin", values: {} });
+		harness.emit(SECRETS_CHANGED_CHANNEL, { pluginId: "plugin", keys: [] });
 		expect(first).not.toHaveBeenCalled();
 		expect(second).toHaveBeenCalledOnce();
-		expect(harness.listenerCount(SETTINGS_CHANGED_CHANNEL)).toBe(1);
+		expect(harness.listenerCount(SECRETS_CHANGED_CHANNEL)).toBe(1);
 
 		unsubscribeSecond();
-		expect(harness.listenerCount(SETTINGS_CHANGED_CHANNEL)).toBe(0);
+		expect(harness.listenerCount(SECRETS_CHANGED_CHANNEL)).toBe(0);
 		expect(harness.removeListener).toHaveBeenCalledTimes(1);
 	});
 });

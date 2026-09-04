@@ -86,6 +86,19 @@ export class CredentialVault {
 		rmSync(this.recordPath(ref), { force: true });
 	}
 
+	/** 只枚举引用，不解密——列出键名时不应要求解密后端可用。 */
+	listRefs(namespace?: string): CredentialRef[] {
+		if (!existsSync(this.rootDirectory)) return [];
+		const refs: CredentialRef[] = [];
+		for (const fileName of readdirSync(this.rootDirectory).sort()) {
+			if (!fileName.endsWith(RECORD_SUFFIX)) continue;
+			const record = parseCredentialRecord(readFileSync(join(this.rootDirectory, fileName), "utf8"));
+			if (namespace !== undefined && record.ref.namespace !== namespace) continue;
+			refs.push({ ...record.ref });
+		}
+		return refs;
+	}
+
 	list(namespace?: string): CredentialEntry[] {
 		if (!existsSync(this.rootDirectory)) return [];
 		const entries: CredentialEntry[] = [];

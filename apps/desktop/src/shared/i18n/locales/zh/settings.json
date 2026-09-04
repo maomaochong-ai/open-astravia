@@ -304,9 +304,6 @@
     "pluginCount": "已安装 {{count}} 个插件"
   },
   "runtimeConfiguration": {
-    "title": "工具与运行时配置",
-    "empty": "当前没有工具或运行时提供可配置项。",
-    "consumers": "使用方",
     "applyLabel": "生效时间",
     "secretConfigured": "已安全保存；输入新值可替换",
     "secretPlaceholder": "输入后按回车或移开焦点保存",
@@ -1041,7 +1038,6 @@
   "tabAppshot": "应用快照",
   "betaBadge": "BETA",
   "tabEnvironment": "应用环境",
-  "tabPlugins": "工具配置",
   "tabKnowledge": "知识库设置",
   "tabPet": "Vetta Vivi",
   "tabPermissions": "权限管理",
@@ -1097,6 +1093,7 @@
   "section_agent-personalization": "个性化",
   "section_agent-images": "图片",
   "section_agent-experimental": "扩展功能",
+  "section_agent-runtime": "运行时",
   "section_knowledge-processing": "后台加工",
   "section_knowledge-actions": "手动操作",
   "section_pet-display": "显示与窗口",
@@ -1218,7 +1215,6 @@
       "im": "例如：开启 Claw 并帮我配置飞书…",
       "webhook": "例如：新增一个任务完成时推送的渠道…",
       "appearance": "例如：切到深色模式，并把指针换成白鼬…",
-      "plugins": "例如：帮我填好某个插件的设置项…",
       "pet": "例如：显示桌宠，并把气泡换成节日样式…",
       "environment": "例如：检查 Node/Python 运行时是否正常…",
       "shortcuts": "例如：看看全局快捷键，或恢复默认…",
@@ -1234,7 +1230,6 @@
       "im": "设置 → Claw",
       "webhook": "设置 → 消息推送",
       "appearance": "设置 → 外观",
-      "plugins": "设置 → 插件设置",
       "pet": "设置 → 桌宠",
       "environment": "设置 → 应用环境",
       "shortcuts": "设置 → 快捷键",
@@ -1250,7 +1245,6 @@
       "im": "我想配置 Claw（即时消息桥接）。请先了解当前状态与渠道，再引导我完成配置。",
       "webhook": "我想配置消息推送。请先了解当前渠道，再引导我完成配置。",
       "appearance": "我想调整外观。请先了解当前主题与相关设置，再引导我完成配置。",
-      "plugins": "我想配置插件。请先了解已安装插件与其设置项，再引导我完成配置。",
       "pet": "我想配置桌宠。请先了解当前显示与窗口设置，再引导我完成配置。",
       "environment": "我想了解或调整应用环境（运行时/镜像）。请先查看当前状态，再引导我完成配置。",
       "shortcuts": "我想配置快捷键。请先了解当前快捷键，再引导我完成配置。",
@@ -1302,11 +1296,6 @@
         "dark": "切换到深色模式",
         "theme": "换一个界面主题",
         "cursor": "把鼠标指针改成白鼬样式"
-      },
-      "plugins": {
-        "list": "看看有哪些插件可以配置",
-        "configure": "帮我填好某个插件的设置项",
-        "enable": "启用或关闭某个插件能力"
       },
       "pet": {
         "show": "显示桌宠",

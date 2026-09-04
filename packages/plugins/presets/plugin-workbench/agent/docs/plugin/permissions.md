@@ -74,12 +74,14 @@ ctx.permissions.require("fs.read");  // 缺则抛 Plugin permission denied: fs.r
 | `browser.runtime.manage` | 安装/修复浏览器运行时 | [browser](./browser.md) |
 | `storage.read` | `ctx.storage.readJson/list/readFile/readBlob/getBlobRef` | [conversation-and-agent](./conversation-and-agent.md#插件私有存储-api) |
 | `storage.write` | `ctx.storage.writeJson/writeFile/putBlob` | 同上 |
+| `secrets.read` | `ctx.secrets.get/has/keys` | [conversation-and-agent](./conversation-and-agent.md#密钥-api) |
+| `secrets.write` | `ctx.secrets.set/delete` | 同上 |
 | `media.generate` | `ctx.media.listProviders/createJob/getJob/cancelJob` | [media](./media.md) |
 | `media.provider.register` | `ctx.media.registerProvider`（注册媒体 Provider） | [media](./media.md#注册-provider) |
 | `ai.models.list` | `ctx.ai.listModels()` | [ai](./ai.md) |
 | `ai.complete` | `ctx.ai.complete()` / `ctx.ai.chat()` | [ai](./ai.md) |
 
-> `ctx.settings` / `ctx.i18n` / **`ctx.ui.notify`** **不需要权限**——分别读本插件设置命名空间、本插件 catalog、以及向宿主右下角推送 Toast（含错误堆栈复制）。错误上报规范见 [ui-slots → notify](./ui-slots.md#全局通知-notify)。
+> `ctx.i18n` / **`ctx.ui.notify`** **不需要权限**——分别读本插件 catalog、以及向宿主右下角推送 Toast（含错误堆栈复制）。错误上报规范见 [ui-slots → notify](./ui-slots.md#全局通知-notify)。
 
 ## 占位符权限（已声明、暂无对应 API）
 

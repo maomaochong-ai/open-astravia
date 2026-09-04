@@ -4,6 +4,7 @@ import type {
 	PluginMediaProviderHandlerContext,
 	PluginNetworkRequest,
 } from "@vetta-org/plugin-sdk";
+import { getSettingsStore } from "./settings/settings-instance.js";
 import { isCompatibleMinimaxPrompt, type ComfyPrompt } from "./workflow-adapter";
 
 interface HistoryEntry {
@@ -42,7 +43,7 @@ export class ComfyUiClient {
 	constructor(private readonly ctx: PluginContext) {}
 
 	get baseUrl(): string {
-		return normalizeBaseUrl(this.ctx.settings.get("baseUrl"));
+		return normalizeBaseUrl(getSettingsStore().current().baseUrl);
 	}
 
 	private async request<T>(path: string, init?: { method?: "GET" | "POST"; body?: unknown }): Promise<T> {
@@ -73,8 +74,8 @@ export class ComfyUiClient {
 	}
 
 	async loadTemplate(mode: PluginMediaGenerationMode): Promise<ComfyPrompt> {
-		const settingKey = mode === "reference-to-video" ? "referenceTemplatePromptId" : "templatePromptId";
-		const configuredId = this.ctx.settings.get<string>(settingKey)?.trim();
+		const settingKey = mode === "reference-to-video" ? "referenceTemplatePromptId" : ("templatePromptId" as const);
+		const configuredId = getSettingsStore().current()[settingKey].trim();
 		const history = await this.request<Record<string, HistoryEntry>>(
 			configuredId ? `/history/${encodeURIComponent(configuredId)}` : "/history?max_items=20",
 		);

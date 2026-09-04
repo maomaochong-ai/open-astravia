@@ -17,7 +17,7 @@ import type {
 	PluginJobsApi,
 	PluginMediaApi,
 	PluginNetworkApi,
-	PluginSettingsApi,
+	PluginSecretsApi,
 	PluginStorageApi,
 } from "@vetta-org/plugin-sdk";
 import { resolveCatalogKey, resolvePluginText } from "@vetta-org/plugin-sdk";
@@ -120,30 +120,43 @@ export function createFsApi(plugin: InstalledPlugin, capabilitySessionId: string
 	};
 }
 
-export function createPluginSettingsApi(
+export function createPluginSecretsApi(
 	plugin: InstalledPlugin,
-	initial: Record<string, unknown>,
+	capabilitySessionId: string,
 	disposers: Array<() => void>,
-): PluginSettingsApi {
-	let values = initial;
-	const listeners = new Set<(values: Record<string, unknown>) => void>();
-	const unsub = window.vetta.plugins.onSettingsChanged((payload) => {
+): PluginSecretsApi {
+	const permissions = createPermissionApi(plugin);
+	const listeners = new Set<(keys: readonly string[]) => void>();
+	const unsub = window.vetta.plugins.onSecretsChanged((payload) => {
 		if (payload.pluginId !== plugin.id) return;
-		values = payload.values;
-		for (const listener of listeners) listener(values);
+		for (const listener of listeners) listener(payload.keys);
 	});
 	disposers.push(() => {
 		unsub();
 		listeners.clear();
 	});
 	return {
-		get<T = unknown>(key: string): T | undefined {
-			return values[key] as T | undefined;
+		get(key: string): Promise<string | undefined> {
+			permissions.require("secrets.read");
+			return window.vetta.plugins.secretsGet(capabilitySessionId, key);
 		},
-		getAll(): Record<string, unknown> {
-			return { ...values };
+		has(key: string): Promise<boolean> {
+			permissions.require("secrets.read");
+			return window.vetta.plugins.secretsHas(capabilitySessionId, key);
 		},
-		onChange(listener: (values: Record<string, unknown>) => void): Disposable {
+		keys(): Promise<string[]> {
+			permissions.require("secrets.read");
+			return window.vetta.plugins.secretsKeys(capabilitySessionId);
+		},
+		set(key: string, value: string): Promise<void> {
+			permissions.require("secrets.write");
+			return window.vetta.plugins.secretsSet(capabilitySessionId, key, value);
+		},
+		delete(key: string): Promise<void> {
+			permissions.require("secrets.write");
+			return window.vetta.plugins.secretsDelete(capabilitySessionId, key);
+		},
+		onChange(listener: (keys: readonly string[]) => void): Disposable {
 			listeners.add(listener);
 			return { dispose: () => listeners.delete(listener) };
 		},

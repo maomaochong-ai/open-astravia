@@ -354,6 +354,8 @@
 			"storageWrite": "Writes persistent data private to this plugin for state or configuration.",
 			"mediaGenerate": "Calls configured image, audio, or other media-generation services.",
 			"mediaProviderRegister": "Registers a media-generation service provided by the plugin with Vetta.",
+			"secretsRead": "Reads secrets this plugin stored itself, such as API keys.",
+			"secretsWrite": "Writes or deletes secrets this plugin stored itself, such as API keys.",
 			"settingsRead": "Reads app settings the host exposes to plugins.",
 			"settingsWrite": "Changes app settings the host exposes to plugins and may alter app behavior.",
 			"shellOpenExternal": "Opens a plugin-selected external link in the system browser or default app."
@@ -409,6 +411,8 @@
 		"storageWrite": "Write private plugin data",
 		"mediaGenerate": "Use media generation providers",
 		"mediaProviderRegister": "Provide media generation providers",
+		"secretsRead": "Read own secrets",
+		"secretsWrite": "Manage own secrets",
 		"settingsRead": "Read settings",
 		"settingsWrite": "Modify settings",
 		"shellOpenExternal": "Open links in the system browser"

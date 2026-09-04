@@ -12,7 +12,9 @@
 			"@vetta-org/plugin-sdk/*": ["../../plugin-sdk/src/*"]
 		},
 		"isolatedModules": true,
+		"jsx": "react-jsx",
+		"jsxImportSource": "react",
 		"noEmit": true
 	},
-	"include": ["src/**/*.ts", "test/**/*.ts"]
+	"include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx"]
 }

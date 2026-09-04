@@ -97,7 +97,6 @@ import type {
 	PluginServiceRequest,
 	PluginServiceResponse,
 	PluginServiceStatus,
-	PluginSettingSchema,
 } from "@vetta-org/plugin-sdk";
 
 export type {
@@ -110,7 +109,6 @@ export type {
 	PluginServiceHostPlatform,
 	PluginServiceProviderManifest,
 	PluginServiceRequest,
-	PluginSettingSchema,
 } from "@vetta-org/plugin-sdk";
 
 /** 一份扁平 catalog：翻译 key → 本地化字符串。 */
@@ -178,7 +176,6 @@ export interface InstalledPlugin {
 	declaredCommands: string[];
 	/** Subset of declaredCommands the user currently allows (toggleable per command). */
 	grantedCommandNames: string[];
-	settingsSchema?: PluginSettingSchema[];
 	description?: string;
 	author?: string;
 	/**
@@ -242,8 +239,6 @@ export interface PluginAgentToolRegistration {
 	scope_use?: readonly string[];
 	/** 需要的会话能力 slug。 */
 	requires?: string[];
-	/** 与本插件 contributes.settings 的可选 Adapter 关联；缺省表示工具不提供配置。 */
-	configuration?: { settingKeys?: readonly string[] };
 	context?: { conversation?: "summary" | "messages" };
 	/**
 	 * 该工具带有自渲染卡片（同一插件为它注册了 tool-call slot）。由渲染进程自动探测，
@@ -295,7 +290,6 @@ export interface PluginAppActionInvocationRequest {
 	actionId: string;
 	localActionId: string;
 	handlerId: string;
-	settings: Record<string, unknown>;
 	input: unknown;
 	phase: "assert-ready" | "run";
 }
@@ -309,7 +303,6 @@ export interface PluginHandlerInvocationBase {
 	pluginId: string;
 	handlerId: string;
 	activationId?: string;
-	settings: Record<string, unknown>;
 	session: { id: string; cwd: string; scenario: string };
 	model: {
 		provider: string;
@@ -338,7 +331,6 @@ export interface PluginAgentHookInvocationRequest {
 	pluginId: string;
 	handlerId: string;
 	activationId?: string;
-	settings: Record<string, unknown>;
 	hookId: string;
 	session: { id: string; cwd: string; scenario: string };
 	event: PluginCodingAgentHookEvent;
@@ -850,17 +842,18 @@ export interface DesktopPluginsApi {
 		inputId: string,
 		request: PluginMediaInputUploadRequest,
 	): Promise<PluginMediaTransferResponse<T>>;
-	/** Effective setting values for a plugin (schema defaults merged with stored). */
-	getSettings(id: string): Promise<Record<string, unknown>>;
-	/** Persist setting values for a plugin (merged over existing). */
-	setSettings(id: string, values: Record<string, unknown>): Promise<void>;
-	/** Subscribe to setting changes for any plugin. Returns an unsubscribe fn. */
-	onSettingsChanged(listener: (payload: { pluginId: string; values: Record<string, unknown> }) => void): () => void;
 	/** Fired when plugins are installed/uninstalled/enabled/reloaded (host should re-load remotes). */
 	onPluginsChanged(listener: (event?: PluginsChangedEvent) => void): () => void;
 	networkRequest<T = unknown>(sessionId: string, request: PluginNetworkRequest): Promise<PluginNetworkResponse<T>>;
 	/** 带登录身份打 Vetta 服务端；仅 official 插件的 session 会被主进程放行（ADR-0056）。 */
 	gatewayRequest<T = unknown>(sessionId: string, request: PluginGatewayRequest): Promise<PluginGatewayResponse<T>>;
+	secretsGet(sessionId: string, key: string): Promise<string | undefined>;
+	secretsHas(sessionId: string, key: string): Promise<boolean>;
+	secretsKeys(sessionId: string): Promise<string[]>;
+	secretsSet(sessionId: string, key: string, value: string): Promise<void>;
+	secretsDelete(sessionId: string, key: string): Promise<void>;
+	/** Subscribe to secret changes for any plugin. Returns an unsubscribe fn. */
+	onSecretsChanged(listener: (payload: { pluginId: string; keys: string[] }) => void): () => void;
 	storageReadJson<T>(sessionId: string, key: string): Promise<T | null>;
 	storageWriteJson(sessionId: string, key: string, value: unknown): Promise<void>;
 	storageList(sessionId: string, prefix?: string): Promise<string[]>;

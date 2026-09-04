@@ -3,8 +3,8 @@ import type {
 	PluginNetworkApi,
 	PluginNetworkRequest,
 	PluginNetworkResponse,
-	PluginSettingsApi,
 } from "@vetta-org/plugin-sdk";
+import type { ContentSettingsReader } from "../src/settings/content-settings";
 import { describe, expect, it } from "vitest";
 import { OpenAiImageProvider } from "../src/generation/openai-image-provider";
 
@@ -74,12 +74,8 @@ describe("OpenAiImageProvider", () => {
 	});
 });
 
-function createSettings(values: Record<string, unknown>): PluginSettingsApi {
-	return {
-		get: <T = unknown>(key: string) => values[key] as T | undefined,
-		getAll: () => ({ ...values }),
-		onChange: (): Disposable => ({ dispose: () => undefined }),
-	};
+function createSettings(values: Record<string, string>): ContentSettingsReader {
+	return { get: (key: string) => values[key] };
 }
 
 class QueueNetwork implements PluginNetworkApi {

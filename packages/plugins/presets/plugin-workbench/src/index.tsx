@@ -91,7 +91,7 @@ export default definePlugin({
 			name: REINSTALL_TOOL_NAME,
 			label: "提示重新安装插件",
 			description:
-				"When hot reload cannot apply changes (new/changed permissions, commands, settingsSchema, or other install-time registry fields), call this tool to show a message-list card with a user-clickable「重新安装」button. Do NOT call install-from-path yourself (that pops a confirmation sheet). The card rebuilds the zip, re-applies the plugin, and reloads the whole Vetta app. Only use when reinstall is actually required — not for ordinary source edits under hot reload.",
+				"When hot reload cannot apply changes (new/changed permissions, commands, or other install-time registry fields), call this tool to show a message-list card with a user-clickable「重新安装」button. Do NOT call install-from-path yourself (that pops a confirmation sheet). The card rebuilds the zip, re-applies the plugin, and reloads the whole Vetta app. Only use when reinstall is actually required — not for ordinary source edits under hot reload.",
 			parameters: offerReinstallSchema,
 			timeoutMs: 15_000,
 			scope_use: ["project", "conversation"],

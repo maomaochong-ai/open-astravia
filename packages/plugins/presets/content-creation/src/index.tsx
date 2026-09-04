@@ -5,6 +5,8 @@ import { ContentRunApprovalDialog } from "./plugin/ContentRunApprovalDialog";
 import { registerContentCreationTools } from "./plugin/tools";
 import { ContentCreationPanel } from "./panel/ContentCreationPanel";
 import { ContentCreationPluginRuntime } from "./plugin/runtime";
+import { ContentSettingsView } from "./settings/SettingsView";
+import { SETTINGS_VIEW_ID } from "./settings/view-id";
 
 export default definePlugin({
 	async activate(ctx) {
@@ -28,6 +30,16 @@ export default definePlugin({
 				scope_use: ["conversation", "project"],
 				// 默认上栏；工具注入由 agent.tools 与路由独立贡献，不再经输入栏开关门控。
 				initiallyVisible: true,
+			});
+			ctx.ui.registerWorkspaceView({
+				id: SETTINGS_VIEW_ID,
+				label: "%settings.page.title%",
+				description: "%settings.page.tagline%",
+				// 不声明 icon：宿主回落到 plugin.json 里的品牌图标。
+				iconTint: false,
+				component: function ContentCreationSettingsView() {
+					return <ContentSettingsView store={runtime.settings} />;
+				},
 			});
 			ctx.ui.registerGlobalSlot({ id: "run-approval", component: RunApprovalDialog });
 			registerContentCreationTools(ctx, runtime.agent, runtime.runApprovals, runtime.localAssets);

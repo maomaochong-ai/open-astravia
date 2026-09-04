@@ -94,34 +94,4 @@ describe("PluginAgentContributionRegistry", () => {
 		});
 		expect(registry.getTools("demo")).toMatchObject([{ name: "published_tool", activationId: "published" }]);
 	});
-
-	it("reports only tools that explicitly associate with plugin settings", () => {
-		const registry = createRegistry();
-		registry.beginLoad("demo", "configured");
-		registry.registerTool("demo", {
-			id: "configured-tool",
-			name: "configured_tool",
-			description: "configured",
-			parameters: {},
-			handlerId: "handler",
-			activationId: "configured",
-			configuration: { support: "adapter", settingKeys: ["mode"] },
-		});
-		registry.registerTool("demo", {
-			id: "plain-tool",
-			name: "plain_tool",
-			description: "plain",
-			parameters: {},
-			handlerId: "plain-handler",
-			activationId: "configured",
-		});
-		registry.commit("demo", "configured");
-
-		expect(registry.getConfiguredToolSummary()).toEqual([
-			{
-				pluginId: "demo",
-				tools: [{ name: "configured_tool", settingKeys: ["mode"], support: "adapter" }],
-			},
-		]);
-	});
 });

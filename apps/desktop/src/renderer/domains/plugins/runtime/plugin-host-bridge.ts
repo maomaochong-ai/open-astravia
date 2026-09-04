@@ -269,7 +269,6 @@ function startToolRequestListener(): void {
 				plugin: {
 					id: request.pluginId,
 					contributionId: request.toolId,
-					settings: request.settings,
 				},
 				session: {
 					...request.session,
@@ -318,7 +317,6 @@ function startHookRequestListener(): void {
 				plugin: {
 					id: request.pluginId,
 					contributionId: request.hookId,
-					settings: request.settings,
 				},
 				session: request.session as Parameters<typeof entry.handler>[0]["session"],
 				event: request.event,
@@ -379,7 +377,6 @@ function startAppActionRequestListener(): void {
 			plugin: {
 				id: request.pluginId,
 				actionId: request.actionId,
-				settings: request.settings,
 			},
 			input: request.input,
 			signal: controller.signal,
@@ -438,7 +435,6 @@ function startContinuationRequestListener(): void {
 				plugin: {
 					id: request.pluginId,
 					contributionId: request.providerId,
-					settings: request.settings,
 				},
 				session: {
 					...request.session,
@@ -483,7 +479,6 @@ function startSystemPromptRequestListener(): void {
 				plugin: {
 					id: request.pluginId,
 					contributionId: request.providerId,
-					settings: request.settings,
 				},
 				session: {
 					id: request.session.id,

@@ -23,7 +23,6 @@ export type {
 	PluginManifestResourceReference,
 	PluginMcpServerConfig,
 	PluginNetworkManifest,
-	PluginSettingSchema,
 } from "./manifest.js";
 
 // File explorer
@@ -209,7 +208,7 @@ export type {
 	PluginOfficialApi,
 } from "./official.js";
 
-// Files / command / images / settings
+// Files / command / images / secrets
 export type {
 	PluginFsEntry,
 	PluginFsFileRef,
@@ -333,7 +332,7 @@ export type {
 	PluginStoredBlob,
 	PluginStoredBlobRef,
 } from "./storage.js";
-export type { PluginSettingsApi } from "./settings.js";
+export type { PluginSecretsApi } from "./secrets.js";
 
 // i18n
 export type {

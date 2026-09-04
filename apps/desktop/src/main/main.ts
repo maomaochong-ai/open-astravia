@@ -62,6 +62,7 @@ import { PluginActionService } from "./plugins/plugin-action-service.js";
 import { discoverSystemPlugins } from "./plugins/plugin-catalog.js";
 import { startConfiguredPluginDevWatches } from "./plugins/plugin-dev-bootstrap.js";
 import { stopAllPluginDevWatches } from "./plugins/plugin-dev-watch.js";
+import { migrateLegacyPluginSettings } from "./plugins/plugin-legacy-settings-migration.js";
 import { PLUGIN_PROTOCOL_PRIVILEGES, registerPluginProtocols } from "./plugins/plugin-protocol.js";
 import { stopAllUiohookConsumers } from "./quickpanel-trigger.js";
 import { createQuickPanelWindow } from "./quickpanel-window.js";
@@ -480,6 +481,9 @@ if (!gotSingleLock) {
 
 		// 提前发现系统插件（ADR-0024）：填充 id 集合供协议解析，staging 不完整时早告警。
 		discoverSystemPlugins();
+
+		// 旧 contributes.settings 值搬进插件私有存储（ADR-0105）；只在首次启动做一次。
+		void migrateLegacyPluginSettings(mainLog);
 
 		const initializeSandbox = async (): Promise<void> => {
 			const sandboxProbeStartedAt = Date.now();

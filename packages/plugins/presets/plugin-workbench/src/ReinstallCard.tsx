@@ -30,7 +30,7 @@ function RefreshIcon({ className }: { className?: string }): ReactNode {
 
 /**
  * Tool-driven message card: user confirms reinstall when hot reload cannot
- * pick up permissions / commands / settingsSchema (etc.).
+ * pick up permissions / commands (etc.).
  */
 export function ReinstallCard({ descriptor, pending }: PluginCardProps): ReactNode {
 	const { t } = useTranslation();

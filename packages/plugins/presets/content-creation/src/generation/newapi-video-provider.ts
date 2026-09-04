@@ -1,4 +1,5 @@
-import type { PluginNetworkApi, PluginSettingsApi } from "@vetta-org/plugin-sdk";
+import type { PluginNetworkApi } from "@vetta-org/plugin-sdk";
+import type { ContentSettingsReader } from "../settings/content-settings";
 import { delay, dimensionsFor, downloadGeneratedContent, readStringSetting, requireStringSetting } from "./adapter-utils";
 import type {
 	ContentGenerationRequest,
@@ -31,7 +32,7 @@ export class NewApiVideoProvider implements ContentProviderAdapter {
 
 	constructor(
 		private readonly network: PluginNetworkApi,
-		private readonly settings: PluginSettingsApi,
+		private readonly settings: ContentSettingsReader,
 		private readonly options: NewApiVideoProviderOptions,
 	) {
 		this.id = options.id;

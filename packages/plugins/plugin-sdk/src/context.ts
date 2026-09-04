@@ -18,7 +18,7 @@ import type { PluginModelsApi } from "./models.js";
 import type { PluginNetworkApi } from "./network.js";
 import type { PluginOfficialApi } from "./official.js";
 import type { PluginPermission } from "./permissions.js";
-import type { PluginSettingsApi } from "./settings.js";
+import type { PluginSecretsApi } from "./secrets.js";
 import type { PluginServiceApi } from "./service-provider.js";
 import type { PluginStorageApi } from "./storage.js";
 import type { PluginUiApi } from "./ui.js";
@@ -74,7 +74,8 @@ export interface PluginContext {
 	 */
 	gateway?: PluginGatewayApi;
 	storage: PluginStorageApi;
-	settings: PluginSettingsApi;
+	/** Encrypted per-plugin secret storage (`secrets.read` / `secrets.write`). */
+	secrets: PluginSecretsApi;
 	i18n: PluginI18nApi;
 	/**
 	 * 当前的**新会话默认工作模式**（agent_mode 轴，见 ADR-0046 及其 2026-08 修订）。

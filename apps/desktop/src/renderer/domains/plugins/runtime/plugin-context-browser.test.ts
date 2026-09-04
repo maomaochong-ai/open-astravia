@@ -63,7 +63,14 @@ function createContext(permissions: PluginPermission[] = [], grantedPermissions 
 	return createPluginContext({
 		plugin,
 		contributions: new PluginLocalContributions(),
-		settingsApi: { get: () => undefined, getAll: () => ({}), onChange: () => ({ dispose: () => {} }) },
+		secretsApi: {
+			get: async () => undefined,
+			has: async () => false,
+			keys: async () => [],
+			set: async () => {},
+			delete: async () => {},
+			onChange: () => ({ dispose: () => {} }),
+		},
 		onChanged: () => {},
 		disposers,
 		pendingRuntimeRegistrations: [],

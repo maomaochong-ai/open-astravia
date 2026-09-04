@@ -21,7 +21,6 @@ export interface PluginAppActionHandlerContext<TInput = unknown> {
 	plugin: {
 		id: string;
 		actionId: string;
-		settings: Readonly<Record<string, unknown>>;
 	};
 	input: TInput;
 	signal: AbortSignal;

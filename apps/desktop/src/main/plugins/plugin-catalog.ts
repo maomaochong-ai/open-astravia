@@ -12,7 +12,6 @@ import type {
 	InstalledPlugin,
 	PluginInstallOptions,
 	PluginPermission,
-	PluginSettingSchema,
 	PluginsChangedEvent,
 } from "../../preload/api-types/plugins.js";
 import { PLUGIN_CONTRIBUTION_CHANNELS } from "../../shared/plugin-ipc.js";
@@ -41,10 +40,10 @@ import {
 	grantDeclaredPluginCommands,
 } from "./plugin-permission-policy.js";
 import { PluginRegistryStore, SystemPluginPreferenceStore } from "./plugin-registry-store.js";
-import { PluginSettingsStore } from "./plugin-settings-store.js";
+import { PluginSecretsStore } from "./plugin-secrets-store.js";
 import { SystemPluginCatalog } from "./plugin-system-catalog.js";
 
-export const PLUGIN_API_VERSION = "1.5.0";
+export const PLUGIN_API_VERSION = "1.6.0";
 export const CORE_ACTION_PLUGIN_ID = "vetta-actions";
 
 const REQUIRED_SYSTEM_PLUGIN_IDS = new Set<string>([CORE_ACTION_PLUGIN_ID]);
@@ -127,29 +126,39 @@ export function getPluginsBaseDir(): string {
 }
 
 // =============================================================================
-// 插件设置（VSCode 式）—— 按 plugin id 命名空间存值，与声明 schema 分离。
+// 插件密钥 —— 只走凭据库，普通配置由插件自己用 ctx.storage 持久化（ADR-0105）。
 // =============================================================================
 
-const pluginSettingsPath = join(getVettaHomePath(), "plugin-settings.json");
-const pluginSettingsStore = new PluginSettingsStore(pluginSettingsPath, getDesktopCredentialVault());
+const pluginSecretsStore = new PluginSecretsStore(getDesktopCredentialVault());
 
-function getPluginSettingsSchema(pluginId: string): readonly PluginSettingSchema[] {
-	return listPlugins().find((plugin) => plugin.id === pluginId)?.settingsSchema ?? [];
+export function getPluginSecret(pluginId: string, key: string): string | undefined {
+	validatePluginId(pluginId);
+	return pluginSecretsStore.get(pluginId, key);
 }
 
-/** Effective values: schema defaults merged with stored values (stored wins). */
-export function getPluginSettings(pluginId: string): Record<string, unknown> {
+export function hasPluginSecret(pluginId: string, key: string): boolean {
 	validatePluginId(pluginId);
-	return pluginSettingsStore.get(pluginId, getPluginSettingsSchema(pluginId));
+	return pluginSecretsStore.has(pluginId, key);
 }
 
-/** Merge values over the stored namespace; returns the new effective values. */
-export function setPluginSettings(pluginId: string, values: Record<string, unknown>): Record<string, unknown> {
+export function listPluginSecretKeys(pluginId: string): string[] {
 	validatePluginId(pluginId);
-	if (values == null || typeof values !== "object" || Array.isArray(values)) {
-		throw new Error("Invalid plugin settings values");
-	}
-	return pluginSettingsStore.set(pluginId, values, getPluginSettingsSchema(pluginId));
+	return pluginSecretsStore.keys(pluginId);
+}
+
+export function setPluginSecret(pluginId: string, key: string, value: string): void {
+	validatePluginId(pluginId);
+	pluginSecretsStore.set(pluginId, key, value);
+}
+
+export function deletePluginSecret(pluginId: string, key: string): void {
+	validatePluginId(pluginId);
+	pluginSecretsStore.delete(pluginId, key);
+}
+
+export function clearPluginSecrets(pluginId: string): void {
+	validatePluginId(pluginId);
+	pluginSecretsStore.clear(pluginId);
 }
 
 export function listPlugins(): InstalledPlugin[] {

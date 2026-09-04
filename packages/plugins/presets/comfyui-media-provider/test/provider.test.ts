@@ -7,8 +7,10 @@ import type {
 	PluginNetworkRequest,
 	PluginNetworkResponse,
 } from "@vetta-org/plugin-sdk";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { setPluginCtx } from "../src/plugin-context";
 import { createComfyUiProvider } from "../src/provider";
+import { getSettingsStore, resetSettingsStore } from "../src/settings/settings-instance";
 import type { ComfyPrompt } from "../src/workflow-adapter";
 
 const template: ComfyPrompt = {
@@ -34,11 +36,28 @@ function response<T>(body: T): PluginNetworkResponse<T> {
 	return { ok: true, status: 200, statusText: "OK", headers: {}, body };
 }
 
+/** 配置现在存在插件私有存储里，Provider 同步读单例 store（ADR-0105）。 */
+async function primeSettings(baseUrl = "http://comfy.local:8188"): Promise<void> {
+	let stored: unknown = null;
+	setPluginCtx({
+		storage: {
+			readJson: async () => stored,
+			writeJson: async (_key: string, value: unknown) => {
+				stored = value;
+			},
+		},
+	} as unknown as PluginContext);
+	await getSettingsStore().update({ baseUrl });
+}
+
 describe("ComfyUI media provider", () => {
+	beforeEach(() => {
+		resetSettingsStore();
+	});
+
 	it("advertises text, frame, and omni-reference generation without requiring pinned template ids", () => {
 		const context = {
 			network: { request: vi.fn() },
-			settings: { get: () => undefined },
 			i18n: { t: () => "ComfyUI · MiniMax H3" },
 		} as unknown as PluginContext;
 		const provider = createComfyUiProvider(context);
@@ -96,9 +115,9 @@ describe("ComfyUI media provider", () => {
 			}
 			throw new Error(`Unexpected request: ${request.url}`);
 		});
+		await primeSettings();
 		const ctx = {
 			network: { request: networkRequest as PluginNetworkApi["request"] },
-			settings: { get: (key: string) => (key === "baseUrl" ? "http://comfy.local:8188" : undefined) },
 			i18n: { t: () => "ComfyUI · MiniMax H3" },
 		} as unknown as PluginContext;
 		const uploadInputMock = vi.fn();
@@ -200,9 +219,9 @@ describe("ComfyUI media provider", () => {
 			}
 			throw new Error(`Unexpected request: ${request.url}`);
 		});
+		await primeSettings();
 		const ctx = {
 			network: { request: networkRequest as PluginNetworkApi["request"] },
-			settings: { get: (key: string) => (key === "baseUrl" ? "http://comfy.local:8188" : undefined) },
 			i18n: { t: () => "ComfyUI · MiniMax H3" },
 		} as unknown as PluginContext;
 		const uploadInput = vi.fn();
@@ -230,9 +249,9 @@ describe("ComfyUI media provider", () => {
 	it("rejects an unknown resolution before loading a template or uploading media", async () => {
 		const networkRequest = vi.fn();
 		const uploadInput = vi.fn();
+		await primeSettings();
 		const ctx = {
 			network: { request: networkRequest },
-			settings: { get: () => "http://comfy.local:8188" },
 			i18n: { t: () => "ComfyUI · MiniMax H3" },
 		} as unknown as PluginContext;
 		const provider = createComfyUiProvider(ctx);

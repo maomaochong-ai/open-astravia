@@ -12,7 +12,6 @@ export type SettingsTabLabelKey =
 	| "tabShortcuts"
 	| "tabAppshot"
 	| "tabEnvironment"
-	| "tabPlugins"
 	| "tabKnowledge"
 	| "tabPet"
 	| "tabPermissions"
@@ -65,7 +64,6 @@ export const SETTINGS_TABS: readonly SettingsTabRegistration[] = [
 		macOnly: true,
 	},
 	{ key: "environment", label: "应用环境", labelKey: "tabEnvironment", icon: "icon-[mdi--package-variant-closed]" },
-	{ key: "plugins", label: "工具配置", labelKey: "tabPlugins", icon: "icon-[solar--settings-linear]" },
 	{
 		key: "knowledge",
 		label: "知识库设置",
@@ -129,6 +127,7 @@ export const SETTINGS_SECTIONS = [
 	{ tab: "archive", id: "archived-list", title: "归档列表", titleKey: "section_archived-list" },
 	{ tab: "context", id: "agent-personalization", title: "个性化", titleKey: "section_agent-personalization" },
 	{ tab: "context", id: "agent-experimental", title: "扩展功能", titleKey: "section_agent-experimental" },
+	{ tab: "context", id: "agent-runtime", title: "运行时", titleKey: "section_agent-runtime" },
 	{ tab: "knowledge", id: "knowledge-processing", title: "后台加工", titleKey: "section_knowledge-processing" },
 	{ tab: "knowledge", id: "knowledge-actions", title: "手动操作", titleKey: "section_knowledge-actions" },
 	{ tab: "pet", id: "pet-display", title: "显示与窗口", titleKey: "section_pet-display" },

@@ -52,6 +52,8 @@ export const PLUGIN_PERMISSIONS = [
 	"media.provider.register",
 	"settings.read",
 	"settings.write",
+	"secrets.read",
+	"secrets.write",
 	"shell.openExternal",
 ] as const;
 

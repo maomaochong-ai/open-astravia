@@ -12,7 +12,6 @@ export type SettingsAiAssistTabId =
 	| "im"
 	| "webhook"
 	| "appearance"
-	| "plugins"
 	| "pet"
 	| "environment"
 	| "shortcuts"
@@ -128,18 +127,6 @@ const CATALOG = [
 			"aiAssist.examples.appearance.dark",
 			"aiAssist.examples.appearance.theme",
 			"aiAssist.examples.appearance.cursor",
-		],
-	},
-	{
-		tabId: "plugins",
-		contextLabelKey: "aiAssist.context.plugins",
-		defaultIntentKey: "aiAssist.defaultIntent.plugins",
-		placeholderKey: "aiAssist.placeholder.plugins",
-		exampleKeys: [
-			WHAT_CAN_YOU_CONFIGURE,
-			"aiAssist.examples.plugins.list",
-			"aiAssist.examples.plugins.configure",
-			"aiAssist.examples.plugins.enable",
 		],
 	},
 	{

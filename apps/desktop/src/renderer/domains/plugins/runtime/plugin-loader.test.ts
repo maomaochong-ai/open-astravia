@@ -20,7 +20,7 @@ vi.mock("./plugin-agent-context", () => ({
 	debugPluginAgent: vi.fn(),
 }));
 vi.mock("./plugin-context", () => ({ createPluginContext: mocks.createContext }));
-vi.mock("./plugin-host-apis", () => ({ createPluginSettingsApi: () => ({}) }));
+vi.mock("./plugin-host-apis", () => ({ createPluginSecretsApi: () => ({}) }));
 vi.mock("./plugin-module-loader", () => ({
 	loadPluginDefinition: async () => ({ activate: mocks.activate, deactivate: mocks.deactivate }),
 }));

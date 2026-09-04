@@ -53,6 +53,12 @@ export const PLUGIN_EXECUTION_CHANNELS = {
 	STORAGE_PUT_BLOB_FROM_FILE: "vetta:plugins:storage:put-blob-from-file",
 	STORAGE_READ_BLOB: "vetta:plugins:storage:read-blob",
 	STORAGE_GET_BLOB_REF: "vetta:plugins:storage:get-blob-ref",
+	SECRETS_GET: "vetta:plugins:secrets:get",
+	SECRETS_HAS: "vetta:plugins:secrets:has",
+	SECRETS_KEYS: "vetta:plugins:secrets:keys",
+	SECRETS_SET: "vetta:plugins:secrets:set",
+	SECRETS_DELETE: "vetta:plugins:secrets:delete",
+	SECRETS_CHANGED: "vetta:plugins:secrets:changed",
 } as const;
 
 export const PLUGIN_CONTRIBUTION_CHANNELS = {
@@ -84,9 +90,6 @@ export const PLUGIN_CONTRIBUTION_CHANNELS = {
 	SYSTEM_PROMPT_UNREGISTER: "vetta:plugins:system-prompt-provider-unregister",
 	SYSTEM_PROMPT_REQUEST: "vetta:plugins:system-prompt-request",
 	SYSTEM_PROMPT_RESPONSE: "vetta:plugins:system-prompt-response",
-	GET_SETTINGS: "vetta:plugins:get-settings",
-	SET_SETTINGS: "vetta:plugins:set-settings",
-	SETTINGS_CHANGED: "vetta:plugins:settings-changed",
 	PLUGINS_CHANGED: "vetta:plugins:changed",
 } as const;
 

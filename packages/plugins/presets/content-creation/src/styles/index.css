@@ -9,3 +9,4 @@
 /* Component / feature styles (React Flow internals + local animations). */
 @import "../canvas/GraphWorkspace.css";
 @import "../node/ContentNodeSurface.css";
+@import "../settings/settings.css";

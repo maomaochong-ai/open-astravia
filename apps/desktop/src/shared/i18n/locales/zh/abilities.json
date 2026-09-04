@@ -354,6 +354,8 @@
 			"storageWrite": "写入只属于当前插件的持久化数据，用于保存状态或配置。",
 			"mediaGenerate": "调用已配置的图片、音频等媒体生成服务。",
 			"mediaProviderRegister": "向 Vetta 注册插件提供的媒体生成服务。",
+			"secretsRead": "读取该插件自己保存的密钥（如 API Key）。",
+			"secretsWrite": "写入或删除该插件自己保存的密钥（如 API Key）。",
 			"settingsRead": "读取宿主向插件开放的应用设置。",
 			"settingsWrite": "修改宿主向插件开放的应用设置，可能改变应用行为。",
 			"shellOpenExternal": "使用系统默认浏览器或应用打开插件指定的外部链接。"
@@ -409,6 +411,8 @@
 		"storageWrite": "写入插件私有数据",
 		"mediaGenerate": "调用媒体生成 Provider",
 		"mediaProviderRegister": "提供媒体生成 Provider",
+		"secretsRead": "读取自有密钥",
+		"secretsWrite": "管理自有密钥",
 		"settingsRead": "读取设置",
 		"settingsWrite": "修改设置",
 		"shellOpenExternal": "用系统浏览器打开链接"

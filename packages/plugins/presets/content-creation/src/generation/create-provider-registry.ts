@@ -3,8 +3,8 @@ import type {
 	PluginMediaApi,
 	PluginMediaProviderDescriptor,
 	PluginNetworkApi,
-	PluginSettingsApi,
 } from "@vetta-org/plugin-sdk";
+import type { ContentSettingsReader } from "../settings/content-settings";
 import { GeminiProvider } from "./gemini-provider";
 import { HostMediaProvider } from "./host-media-provider";
 import { OPENAI_IMAGE_MODELS } from "./model-catalog";
@@ -15,7 +15,7 @@ import { ReplicateProvider } from "./replicate-provider";
 
 export function createContentProviderRegistry(
 	network: PluginNetworkApi,
-	settings: PluginSettingsApi,
+	settings: ContentSettingsReader,
 	media: PluginMediaApi,
 	jobs: PluginJobsApi,
 	mediaProviders: readonly PluginMediaProviderDescriptor[],

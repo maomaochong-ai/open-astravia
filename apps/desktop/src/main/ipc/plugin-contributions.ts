@@ -2,9 +2,8 @@ import { ipcMain, webContents } from "electron";
 import { PLUGIN_CONTRIBUTION_CHANNELS } from "../../shared/plugin-ipc.js";
 import { getAppLogger } from "../logger.js";
 import type { PluginActionService } from "../plugins/plugin-action-service.js";
-import { getPluginSettings, pluginAgentContributionService, setPluginSettings } from "../plugins/plugin-catalog.js";
+import { pluginAgentContributionService } from "../plugins/plugin-catalog.js";
 import { refreshAgentPlugins } from "../plugins/plugin-runtime-service.js";
-import { publishPluginSettingsChanged } from "../plugins/plugin-settings-events.js";
 import {
 	asAgentHookRegistration,
 	asAgentToolRegistration,
@@ -33,8 +32,6 @@ const handlerChannels = [
 	PLUGIN_CONTRIBUTION_CHANNELS.CONTINUATION_UNREGISTER,
 	PLUGIN_CONTRIBUTION_CHANNELS.SYSTEM_PROMPT_REGISTER,
 	PLUGIN_CONTRIBUTION_CHANNELS.SYSTEM_PROMPT_UNREGISTER,
-	PLUGIN_CONTRIBUTION_CHANNELS.GET_SETTINGS,
-	PLUGIN_CONTRIBUTION_CHANNELS.SET_SETTINGS,
 ] as const;
 
 export function registerPluginContributionIpc(pluginActionService: PluginActionService): () => void {
@@ -194,18 +191,6 @@ export function registerPluginContributionIpc(pluginActionService: PluginActionS
 		pluginActionService.clear(normalizedPluginId, normalizedActivationId);
 		refreshAgentPlugins({ reason: "contribution:clear", pluginId: normalizedPluginId });
 	});
-	ipcMain.handle(PLUGIN_CONTRIBUTION_CHANNELS.GET_SETTINGS, (_event, id: unknown) =>
-		getPluginSettings(asPluginId(id)),
-	);
-	ipcMain.handle(PLUGIN_CONTRIBUTION_CHANNELS.SET_SETTINGS, (_event, id: unknown, values: unknown) => {
-		const pluginId = asPluginId(id);
-		if (values == null || typeof values !== "object" || Array.isArray(values)) {
-			throw new Error("Invalid plugin settings values");
-		}
-		const effective = setPluginSettings(pluginId, values as Record<string, unknown>);
-		publishPluginSettingsChanged(pluginId, effective);
-	});
-
 	return () => {
 		stopHookReleaseNotifications();
 		stopAgentHandlerReleaseNotifications();

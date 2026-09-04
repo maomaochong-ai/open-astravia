@@ -5,15 +5,10 @@ import type {
 	RuntimeConfigurationJsonObject,
 } from "@vetta/runtime-core/configuration";
 
-export type DesktopRuntimeConfigurationOwner =
-	| { readonly kind: "builtin" }
-	| { readonly kind: "plugin"; readonly pluginId: string };
-
 export interface DesktopRuntimeConfigurationConsumer {
-	readonly kind: "tool" | "runtime" | "plugin";
+	readonly kind: "tool" | "runtime";
 	readonly id: string;
-	readonly support: "native" | "adapter" | "host-policy";
-	readonly settingKeys?: readonly string[];
+	readonly support: "native" | "host-policy";
 }
 
 export interface DesktopRuntimeConfigurationEntry {
@@ -26,11 +21,8 @@ export interface DesktopRuntimeConfigurationEntry {
 	readonly defaultValue: RuntimeConfigurationJsonObject;
 	readonly value: RuntimeConfigurationJsonObject;
 	readonly redactedPaths: readonly string[];
-	/** Sensitive paths with a non-empty value in secure storage; values remain redacted. */
-	readonly configuredSensitivePaths: readonly string[];
 	readonly appliedLayerIds: readonly string[];
 	readonly diagnostics: readonly RuntimeConfigurationDiagnostic[];
-	readonly owner: DesktopRuntimeConfigurationOwner;
 	readonly consumers: readonly DesktopRuntimeConfigurationConsumer[];
 }
 

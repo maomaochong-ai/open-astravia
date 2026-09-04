@@ -2,8 +2,8 @@ import type {
 	PluginNetworkApi,
 	PluginNetworkRequest,
 	PluginNetworkResponse,
-	PluginSettingsApi,
 } from "@vetta-org/plugin-sdk";
+import type { ContentSettingsReader } from "../src/settings/content-settings";
 import type { ContentProviderGenerationContext } from "../src/generation/types";
 
 export function createGenerationContext(
@@ -18,12 +18,8 @@ export function createGenerationContext(
 	};
 }
 
-export function createSettings(values: Record<string, unknown>): PluginSettingsApi {
-	return {
-		get: <T>(key: string) => values[key] as T | undefined,
-		getAll: () => ({ ...values }),
-		onChange: () => ({ dispose() {} }),
-	};
+export function createSettings(values: Record<string, string>): ContentSettingsReader {
+	return { get: (key: string) => values[key] };
 }
 
 export class QueueNetwork implements PluginNetworkApi {

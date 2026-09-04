@@ -1,4 +1,5 @@
-import type { PluginNetworkApi, PluginSettingsApi } from "@vetta-org/plugin-sdk";
+import type { PluginNetworkApi } from "@vetta-org/plugin-sdk";
+import type { ContentSettingsReader } from "../settings/content-settings";
 import type {
 	ContentGenerationRequest,
 	ContentModelDescriptor,
@@ -27,8 +28,8 @@ interface ImageResponse {
 
 const DEFAULT_ASPECT_RATIOS = ["1:1", "16:9", "9:16"] as const;
 
-function readSetting(settings: PluginSettingsApi, key: string): string {
-	const value = settings.get<unknown>(key);
+function readSetting(settings: ContentSettingsReader, key: string): string {
+	const value = settings.get(key);
 	return typeof value === "string" ? value.trim() : "";
 }
 
@@ -50,7 +51,7 @@ export class OpenAiImageProvider implements ContentProviderAdapter {
 
 	constructor(
 		private readonly network: PluginNetworkApi,
-		private readonly settings: PluginSettingsApi,
+		private readonly settings: ContentSettingsReader,
 		private readonly options: OpenAiImageProviderOptions,
 	) {
 		this.id = options.id;

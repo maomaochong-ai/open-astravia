@@ -598,12 +598,6 @@ export interface PluginUiApi {
 	 */
 	previewImage(ref: PluginImageRef, group?: PluginImageRef[]): void;
 	/**
-	 * Open the app settings, scrolled to and highlighting THIS plugin's own
-	 * settings section (e.g. so the user can fill in a required API key/model).
-	 * The host owns the navigation; the plugin only asks to jump there.
-	 */
-	openPluginSettings(): void;
-	/**
 	 * Capture a rectangle in the current Vetta window and open the host save
 	 * dialog. Coordinates use renderer DIP values such as getBoundingClientRect().
 	 * Requires `ui.slot.activity-tab`.

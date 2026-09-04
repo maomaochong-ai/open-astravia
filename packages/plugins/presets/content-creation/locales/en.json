@@ -290,5 +290,16 @@
 	"error.promptOptimization": "Prompt optimization failed. Existing content was not changed.",
 	"error.outputWorkspaceRequired": "Open a workspace before saving generated assets to its output folder",
 	"error.importReference": "Unable to import the reference. Check its media type and the selected model.",
-	"error.importAsset": "Unable to import the asset. Check the file type and try again."
+	"error.importAsset": "Unable to import the asset. Check the file type and try again.",
+	"settings.page.title": "Content Creation Setup",
+	"settings.page.tagline": "Configure the provider keys and models used for image and video generation.",
+	"settings.page.footer": "Keys ({{count}}) are kept in the system credential vault — never written to plaintext files or uploaded.",
+	"settings.group.openai.title": "OpenAI",
+	"settings.group.replicate.title": "Replicate",
+	"settings.group.google.title": "Google",
+	"settings.group.custom.title": "Custom (OpenAI-compatible)",
+	"settings.secret.saved": "Saved",
+	"settings.secret.empty": "Not configured",
+	"settings.secret.save": "Save",
+	"settings.secret.clear": "Clear"
 }

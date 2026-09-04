@@ -174,51 +174,6 @@ const OptionalAgentModesSchema = Type.Optional(
 );
 const StringRecordSchema = Type.Record(Type.String(), Type.String());
 
-const PluginSettingBaseProperties = {
-	key: NonWhitespaceStringSchema,
-	description: Type.Optional(Type.String()),
-	default: Type.Optional(Type.Union([Type.String(), Type.Number(), Type.Boolean()])),
-	enum: Type.Optional(Type.Array(NonWhitespaceStringSchema)),
-	visibleWhen: Type.Optional(
-		Type.Object(
-			{
-				key: NonWhitespaceStringSchema,
-				in: Type.Array(NonWhitespaceStringSchema),
-			},
-			{ additionalProperties: true },
-		),
-	),
-};
-
-const PluginInputSettingSchema = Type.Object(
-	{
-		...PluginSettingBaseProperties,
-		type: Type.Union([
-			Type.Literal("string"),
-			Type.Literal("number"),
-			Type.Literal("boolean"),
-			Type.Literal("enum"),
-			Type.Literal("secret"),
-		]),
-		title: NonWhitespaceStringSchema,
-	},
-	{ additionalProperties: true },
-);
-
-const PluginDescriptionSettingSchema = Type.Object(
-	{
-		...PluginSettingBaseProperties,
-		type: Type.Literal("desc"),
-		title: Type.Optional(Type.String()),
-	},
-	{ additionalProperties: true },
-);
-
-export const PluginSettingDefinitionSchema = Type.Union([
-	PluginInputSettingSchema,
-	PluginDescriptionSettingSchema,
-]);
-
 const PluginMcpCommonProperties = {
 	disabled: Type.Optional(Type.Boolean()),
 	autoApprove: Type.Optional(Type.Array(NonWhitespaceStringSchema)),
@@ -313,14 +268,6 @@ export const PluginManifestSchema = Type.Object(
 		network: Type.Optional(PluginNetworkManifestSchema),
 		browser: Type.Optional(PluginBrowserManifestSchema),
 		commands: Type.Optional(PluginCommandNamesSchema),
-		contributes: Type.Optional(
-			Type.Object(
-				{
-					settings: Type.Optional(Type.Array(PluginSettingDefinitionSchema)),
-				},
-				{ additionalProperties: true },
-			),
-		),
 		description: Type.Optional(Type.String()),
 		author: Type.Optional(Type.String()),
 		icon: Type.Optional(NonWhitespaceStringSchema),
@@ -345,7 +292,6 @@ export const PluginManifestSchema = Type.Object(
 	},
 );
 
-export type PluginSettingSchema = Static<typeof PluginSettingDefinitionSchema>;
 export type PluginMcpServerConfig = Static<typeof PluginMcpServerConfigSchema>;
 export type PluginAgentManifest = Static<typeof PluginAgentManifestSchema>;
 export type PluginCliProviderManifest = Static<typeof PluginCliProviderManifestSchema>;

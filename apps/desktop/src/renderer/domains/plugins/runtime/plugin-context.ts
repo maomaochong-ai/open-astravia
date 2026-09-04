@@ -1,6 +1,6 @@
 import type { InstalledPlugin } from "@preload/api";
 import { defaultAgentModeAtom } from "@shared/store/atoms";
-import type { PluginContext, PluginSettingsApi } from "@vetta-org/plugin-sdk";
+import type { PluginContext, PluginSecretsApi } from "@vetta-org/plugin-sdk";
 import { getDefaultStore } from "jotai";
 import { createPluginAgentApi, createPluginAppActionsApi } from "./plugin-agent-context";
 import { createPluginAiApi } from "./plugin-ai";
@@ -30,7 +30,7 @@ import { createPluginUiApi } from "./plugin-ui-context";
 export interface CreatePluginContextOptions {
 	plugin: InstalledPlugin;
 	contributions: PluginLocalContributions;
-	settingsApi: PluginSettingsApi;
+	secretsApi: PluginSecretsApi;
 	onChanged: () => void;
 	disposers: Array<() => void>;
 	pendingRuntimeRegistrations: Promise<void>[];
@@ -41,7 +41,7 @@ export interface CreatePluginContextOptions {
 export function createPluginContext({
 	plugin,
 	contributions,
-	settingsApi,
+	secretsApi,
 	onChanged,
 	disposers,
 	pendingRuntimeRegistrations,
@@ -109,7 +109,7 @@ export function createPluginContext({
 		network: createNetworkApi(plugin, capabilitySessionId),
 		gateway: plugin.trustLevel === "official" ? createGatewayApi(capabilitySessionId) : undefined,
 		storage: createStorageApi(plugin, capabilitySessionId),
-		settings: settingsApi,
+		secrets: secretsApi,
 		i18n: createI18nApi(plugin),
 		// 模式已不再过滤任何插件能力：插件面板、命令、hook 在所有模式下都常驻。这里给出的是
 		// 「新会话默认模式」，只适合做展示层的软性定制，不要用它隐藏功能入口。

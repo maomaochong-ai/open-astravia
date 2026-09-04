@@ -159,7 +159,6 @@ export class SystemPluginCatalog {
 			allowedBrowserHosts: manifest.browser?.allowedHosts ?? [],
 			declaredCommands,
 			grantedCommandNames: declaredCommands.filter((name) => !disabledCommands.includes(name)),
-			settingsSchema: manifest.contributes?.settings,
 			description: manifest.description,
 			author: manifest.author,
 			iconUrl: resolvePluginIcon(manifest.icon, (path) => this.toResourceUrl(manifest.id, path, manifest.version)),

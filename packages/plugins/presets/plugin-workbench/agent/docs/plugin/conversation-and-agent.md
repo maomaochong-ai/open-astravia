@@ -96,9 +96,6 @@ interface PluginAgentToolRegistration<TInput = unknown> {
   parameters: object;         // JSON Schema（可用 TypeBox 产出）
   scope_use?: string[];       // 允许出现的对话场景（见下）。fail-closed：缺省/空 = 任何场景都不出现
   requires?: string[];        // 需要的会话能力（如 "knowledge"），一般插件无需设置
-  configuration?: {
-    settingKeys?: string[];   // 与本插件 contributes.settings 的可选关联；省略 keys 表示全部
-  };
   timeoutMs?: number;
   context?: { conversation?: "summary" | "messages" }; // 大上下文 opt-in，缺省只传消息数
   handler: (context: PluginAgentHandlerContext<{
@@ -131,13 +128,8 @@ ctx.agent.registerTool({
 - handler 的**返回值**会被宿主格式化成工具结果文本回给模型；该工具结果的 `details` 为 `{ pluginId, toolId, result }`（`result` = 你的返回值）。
 - **返回 `cards` 即可产消息卡片**：若返回值含 `cards: CardDescriptor[]`，宿主会把它**提升**到 `details.cards`（消息卡片的 settled 数据源）并从模型可见文本里**剔除**。配合 `ctx.ui.registerCardRenderer` 即可让插件**用自己的工具**在消息下方渲染卡片——见 [message-cards.md](./message-cards.md#第三方插件如何拿到卡片数据)。
 - 插件激活会等待工具 schema 注册完成；注册 / 注销 / 权限或启停变化会刷新空闲的对话 session。
-- 工具本身没有配置时不要声明 `configuration`，不会产生空 Schema 或额外运行时开销。
-- 工具使用本插件 `contributes.settings` 时可以声明 `configuration`。宿主把现有 Plugin Settings 作为
-  `plugin.<pluginId>.settings` Definition 的 Adapter 汇入统一配置目录；`settingKeys` 只声明该工具实际消费的字段，
-  省略则表示消费该插件的全部设置。未知字段和重复字段在注册边界被拒绝。
-- 这项声明建立的是配置发现和 UI 关联，不会把其它插件或宿主配置注入 handler；handler 仍通过 `ctx.settings` 读取
-  自身设置。无法修改的外部 / MCP / 黑盒工具应由拥有其 transport 或 wrapper 的宿主声明 `host-policy` Adapter，
-  不应伪造工具原生支持。
+- handler 需要读插件自己的配置时，直接闭包引用插件内的配置 store（`ctx.storage` / `ctx.secrets`）；
+  宿主不再向 handler 注入配置快照（ADR-0105）。
 
 ### `scope_use`：按对话场景限定工具出现范围
 
@@ -531,24 +523,32 @@ const ref = await ctx.storage.getBlobRef(blob.id);
 
 `readBinaryFile` 用于需要原始字节的本地文件流程：宿主做路径校验、32 MiB 限额和内容签名 MIME 嗅探，不复用文本预览的编码判断。
 
-## 设置 API
+## 密钥 API
 
-`ctx.settings` 读插件**自身**在 `plugin.json` `contributes.settings` 声明、用户在设置页填写的值（按插件 id 命名空间）。**只读**，写入只能经宿主设置 UI。**不需要权限**。
+`ctx.secrets` 读写**本插件自己的**密钥，值存宿主加密凭据库（不落明文文件）。归属由 capability
+session 决定，拿不到别的插件的密钥。需要 `secrets.read` / `secrets.write` 权限。
 
 ```ts
-interface PluginSettingsApi {
-  get<T = unknown>(key: string): T | undefined;
-  getAll(): Record<string, unknown>;
-  onChange(listener: (values: Record<string, unknown>) => void): Disposable;
+interface PluginSecretsApi {
+  get(key: string): Promise<string | undefined>;
+  has(key: string): Promise<boolean>;
+  keys(): Promise<string[]>;          // 只返回键名，不返回值
+  set(key: string, value: string): Promise<void>;  // 写空串等价于删除
+  delete(key: string): Promise<void>;
+  onChange(listener: (keys: readonly string[]) => void): Disposable;
 }
 ```
 
 ```ts
-const apiKey = ctx.settings.get<string>("apiKey");
-const sub = ctx.settings.onChange((values) => { /* 配置变更，重读 */ });
+await ctx.secrets.set("openaiApiKey", input);
+const apiKey = await ctx.secrets.get("openaiApiKey");
 ```
 
-配置项的 schema（类型、`visibleWhen`、`secret` 等）见 [manifest.md](./manifest.md#contributessettings配置项)。引导用户去填配置用 `ctx.ui.openPluginSettings()`（跳到本插件的设置区）。
+密钥之外的普通配置用 `ctx.storage.readJson("settings")` / `writeJson("settings")`。配置界面由插件
+自己渲染——推荐 `ctx.ui.registerWorkspaceView` 的工作区配置页，见
+[manifest.md](./manifest.md#插件配置放哪里)。
+
+配置页里**不要回显已保存的密钥**：用「已保存 / 未配置」状态加一个只写输入框即可。
 
 ## 插件 i18n
 

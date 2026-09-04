@@ -1,4 +1,4 @@
-import { ipcMain } from "electron";
+import { ipcMain, webContents } from "electron";
 import type {
 	PluginCommandRunOptions,
 	PluginOffscreenCaptureOptions,
@@ -20,20 +20,45 @@ import {
 	destroyAllOffscreenSessions,
 	releasePluginOffscreenSession,
 } from "../plugins/offscreen-capture-service.js";
+import {
+	deletePluginSecret,
+	getPluginSecret,
+	hasPluginSecret,
+	listPluginSecretKeys,
+	setPluginSecret,
+} from "../plugins/plugin-catalog.js";
 import { pluginCliProviderService } from "../plugins/plugin-cli-provider-service.js";
 import { pluginServiceProviderService } from "../plugins/plugin-service-provider-service.js";
-import { asPluginId } from "./plugin-input-parsers.js";
+import { asPluginId, asRequiredString } from "./plugin-input-parsers.js";
+
+const asSecretKey = (value: unknown): string => asRequiredString(value, "plugin secret key");
 
 const handlerChannels = Object.values(PLUGIN_EXECUTION_CHANNELS).filter(
 	(channel) =>
 		channel !== PLUGIN_EXECUTION_CHANNELS.COMMAND_SPAWN_EXIT &&
 		channel !== PLUGIN_EXECUTION_CHANNELS.CLI_PROVIDER_STATUS &&
 		channel !== PLUGIN_EXECUTION_CHANNELS.CLI_PROVIDER_SPAWN_EXIT &&
-		channel !== PLUGIN_EXECUTION_CHANNELS.SERVICE_STATUS,
+		channel !== PLUGIN_EXECUTION_CHANNELS.SERVICE_STATUS &&
+		channel !== PLUGIN_EXECUTION_CHANNELS.SECRETS_CHANGED,
 );
+
+/** 同一插件可能同时开着多个视图；密钥变更要让它们各自的 onChange 都收到。 */
+function broadcastSecretsChanged(pluginId: string, keys: readonly string[]): void {
+	for (const contents of webContents.getAllWebContents()) {
+		if (contents.isDestroyed()) continue;
+		try {
+			contents.send(PLUGIN_EXECUTION_CHANNELS.SECRETS_CHANGED, { pluginId, keys });
+		} catch {
+			// ignore gone frames
+		}
+	}
+}
 
 export function registerPluginExecutionIpc(): () => void {
 	const capabilityAdapter = getDesktopCapabilityHost().adapters.plugin;
+	/** 密钥归属只认 capability session，绝不接受调用方自报的 plugin id。 */
+	const secretsPluginId = (sessionId: unknown, permission: string): string =>
+		capabilityAdapter.pluginIdForSession(asPluginId(sessionId), { permission });
 	pluginCliProviderService.ensureEnabledProviders();
 
 	ipcMain.handle(
@@ -194,6 +219,29 @@ export function registerPluginExecutionIpc(): () => void {
 	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.STORAGE_GET_BLOB_REF, (_event, sessionId: unknown, blobId: unknown) =>
 		capabilityAdapter.getStorageBlobRef(asPluginId(sessionId), asPluginId(blobId)),
 	);
+
+	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.SECRETS_GET, (_event, sessionId: unknown, key: unknown) =>
+		getPluginSecret(secretsPluginId(sessionId, "secrets.read"), asSecretKey(key)),
+	);
+	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.SECRETS_HAS, (_event, sessionId: unknown, key: unknown) =>
+		hasPluginSecret(secretsPluginId(sessionId, "secrets.read"), asSecretKey(key)),
+	);
+	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.SECRETS_KEYS, (_event, sessionId: unknown) =>
+		listPluginSecretKeys(secretsPluginId(sessionId, "secrets.read")),
+	);
+	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.SECRETS_SET, (_event, sessionId: unknown, key: unknown, value: unknown) => {
+		if (typeof value !== "string") throw new Error("Plugin secret value must be a string");
+		const pluginId = secretsPluginId(sessionId, "secrets.write");
+		const name = asSecretKey(key);
+		setPluginSecret(pluginId, name, value);
+		broadcastSecretsChanged(pluginId, [name]);
+	});
+	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.SECRETS_DELETE, (_event, sessionId: unknown, key: unknown) => {
+		const pluginId = secretsPluginId(sessionId, "secrets.write");
+		const name = asSecretKey(key);
+		deletePluginSecret(pluginId, name);
+		broadcastSecretsChanged(pluginId, [name]);
+	});
 
 	return () => {
 		for (const channel of handlerChannels) ipcMain.removeHandler(channel);

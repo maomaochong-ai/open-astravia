@@ -18,7 +18,6 @@ import {
 	type PluginManifestInput,
 	type PluginMcpServerConfig,
 	type PluginNetworkManifest,
-	type PluginSettingSchema,
 } from "./manifest-schema.js";
 import { PLUGIN_PERMISSIONS, type PluginPermission } from "./permissions.js";
 
@@ -40,7 +39,6 @@ export {
 	PluginNetworkManifestSchema,
 	PluginProvidersManifestSchema,
 	PluginPermissionSchema,
-	PluginSettingDefinitionSchema,
 	PluginVersionSchema,
 } from "./manifest-schema.js";
 export type {
@@ -54,7 +52,6 @@ export type {
 	PluginManifestInput,
 	PluginMcpServerConfig,
 	PluginNetworkManifest,
-	PluginSettingSchema,
 } from "./manifest-schema.js";
 export { PLUGIN_PERMISSIONS } from "./permissions.js";
 export type { PluginPermission } from "./permissions.js";
@@ -110,38 +107,6 @@ function normalizeStringArray(values: string[] | undefined): string[] {
 function normalizeOptionalAgentModes(value: string | string[] | undefined): string | string[] | undefined {
 	if (value === undefined) return undefined;
 	return Array.isArray(value) ? normalizeStringArray(value) : trimString(value);
-}
-
-function normalizeSetting(setting: PluginSettingSchema): PluginSettingSchema {
-	const common = {
-		key: trimString(setting.key),
-		description: setting.description,
-		default: setting.default,
-		enum: setting.enum?.map(trimString),
-		visibleWhen: setting.visibleWhen
-			? {
-					key: trimString(setting.visibleWhen.key),
-					in: setting.visibleWhen.in.map(trimString),
-				}
-			: undefined,
-	};
-	if (setting.type === "desc") {
-		return {
-			...common,
-			type: "desc",
-			title: setting.title === undefined ? undefined : trimString(setting.title),
-		};
-	}
-	return {
-		...common,
-		type: setting.type,
-		title: trimString(setting.title),
-	};
-}
-
-function normalizeSettings(settings: PluginSettingSchema[] | undefined): PluginSettingSchema[] | undefined {
-	if (!settings || settings.length === 0) return undefined;
-	return settings.map(normalizeSetting);
 }
 
 function normalizePermissions(permissions: PluginPermission[] | undefined): PluginPermission[] {
@@ -449,12 +414,6 @@ export function parsePluginManifest(raw: unknown): PluginManifest {
 		network,
 		browser,
 		commands: commands.length > 0 ? commands : undefined,
-		contributes: raw.contributes
-			? (() => {
-					const settings = normalizeSettings(raw.contributes.settings);
-					return settings ? { settings } : undefined;
-				})()
-			: undefined,
 		description: raw.description,
 		author: raw.author,
 		icon:

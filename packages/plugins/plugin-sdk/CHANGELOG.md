@@ -4,7 +4,18 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ## [Unreleased]
 
+### Breaking Changes
+
+- **插件配置改由插件自绘（ADR-0105，Plugin API 1.6.0）**：移除 `plugin.json#contributes.settings`、只读的
+  `ctx.settings`、`registerTool({ configuration.settingKeys })`、handler 上下文里的 `plugin.settings` 快照，以及
+  `ctx.ui.openPluginSettings()`。宿主不再提供设置页配置槽，插件用 `registerWorkspaceView` 自绘配置界面。
+  普通配置存 `ctx.storage`（宿主升级时把旧值一次性迁到 JSON key `settings`），密钥改用下面的 `ctx.secrets`。
+  带 `contributes` 的旧清单不会校验失败，但字段不再有运行时语义。
+
 ### Added
+
+- 新增 `ctx.secrets` 与 `secrets.read` / `secrets.write` 权限：插件读写**自己的**密钥，值存宿主加密凭据库而不是
+  明文存储；归属由 capability session 决定，拿不到其它插件的密钥。`keys()` 只返回键名。
 
 - 新增声明式 `plugin.json#providers.services` 与 `ctx.services`：插件通过 `ctx.network` 自行下载并校验固定制品，
   再交给 Desktop 二次校验、安全解包、启动、健康检查并限制在自身回环 origin；新增 `models.manage` 与 `ctx.models`，

@@ -33,8 +33,6 @@ export interface AgentPluginToolContribution {
 	scope_use?: string[];
 	/** 需要的会话能力 slug（如 "knowledge"）。 */
 	requires?: string[];
-	/** 与 `plugin.<pluginId>.settings` 的宿主适配关联；缺省表示没有配置合同。 */
-	configuration?: { settingKeys?: string[]; support: "adapter" };
 	context?: { conversation?: "summary" | "messages" };
 	/**
 	 * 该工具带有宿主自渲染卡片（插件注册了 tool-call slot），其结果是用户当作答案来读的

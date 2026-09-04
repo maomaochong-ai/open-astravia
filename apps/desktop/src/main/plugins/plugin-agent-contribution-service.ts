@@ -13,7 +13,6 @@ import type {
 } from "./coding-agent-hook-registry.js";
 import {
 	PluginAgentContributionRegistry,
-	type PluginConfiguredToolSummary,
 	type RegisteredAgentTool,
 	type RegisteredContinuationProvider,
 	type RegisteredSystemPromptProvider,
@@ -138,10 +137,6 @@ export class PluginAgentContributionService {
 		});
 	}
 
-	readConfiguredToolSummary(): readonly PluginConfiguredToolSummary[] {
-		return this.registry.getConfiguredToolSummary();
-	}
-
 	beginLoad(pluginId: string, activationId: string): void {
 		this.requirePlugin(pluginId);
 		const previous = this.registry.beginLoad(pluginId, activationId);
@@ -168,7 +163,6 @@ export class PluginAgentContributionService {
 		if (!hasGrantedPermission(plugin, "agent.tools.register")) {
 			throw new Error("Plugin permission denied: agent.tools.register");
 		}
-		assertToolConfigurationKeys(plugin, tool);
 		if (!this.registry.registerTool(pluginId, tool)) {
 			this.debug("ignore stale dynamic tool register", {
 				pluginId,
@@ -382,19 +376,6 @@ export class PluginAgentContributionService {
 
 	private debug(message: string, data: Record<string, unknown>): void {
 		this.dependencies.logger.debug(message, data);
-	}
-}
-
-function assertToolConfigurationKeys(plugin: InstalledPlugin, tool: RegisteredAgentTool): void {
-	if (!tool.configuration) return;
-	const declared = new Set(
-		(plugin.settingsSchema ?? []).filter((setting) => setting.type !== "desc").map(({ key }) => key),
-	);
-	if (declared.size === 0) {
-		throw new Error("Plugin tool configuration requires contributes.settings");
-	}
-	for (const key of tool.configuration.settingKeys ?? declared) {
-		if (!declared.has(key)) throw new Error(`Plugin tool configuration references an unknown setting: ${key}`);
 	}
 }
 

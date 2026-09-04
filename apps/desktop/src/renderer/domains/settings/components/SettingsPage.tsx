@@ -28,7 +28,6 @@ const PermissionsSettings = lazy(async () => ({
 }));
 const RemotePairingSettings = lazy(async () => ({ default: (await import("./RemotePairingSettings")).RemotePairingSettings }));
 const PetSettings = lazy(async () => ({ default: (await import("./PetSettings")).PetSettings }));
-const PluginsSettings = lazy(async () => ({ default: (await import("./PluginsSettings")).PluginsSettings }));
 const ShortcutsSettings = lazy(async () => ({
 	default: (await import("./ShortcutsSettings")).ShortcutsSettings,
 }));
@@ -50,7 +49,6 @@ const SETTINGS_CONTENT: Record<Exclude<SettingsTab, "mcp">, LazyExoticComponent<
 	archive: ArchivedProjectsSettings,
 	team: TeamSettings,
 	context: AgentSettings,
-	plugins: PluginsSettings,
 	knowledge: KnowledgeBaseSettings,
 	pet: PetSettings,
 	remote: RemotePairingSettings,

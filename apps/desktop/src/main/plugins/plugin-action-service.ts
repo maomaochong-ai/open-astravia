@@ -12,7 +12,7 @@ import {
 	type JsonValue,
 } from "../app-actions/types.js";
 import { getAppLogger } from "../logger.js";
-import { CORE_ACTION_PLUGIN_ID, getPluginSettings, listPlugins } from "./plugin-catalog.js";
+import { CORE_ACTION_PLUGIN_ID, listPlugins } from "./plugin-catalog.js";
 
 const REGISTER_PERMISSION = "app.actions.register";
 const EXECUTE_PERMISSION = "app.actionHandler.execute";
@@ -567,7 +567,6 @@ export class PluginActionService {
 					actionId: action.globalActionId,
 					localActionId: action.localActionId,
 					handlerId: action.handlerId,
-					settings: getPluginSettings(pluginId),
 					input,
 					phase,
 				});

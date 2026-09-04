@@ -8,7 +8,9 @@
 		"remoteName": "global_slot_demo",
 		"expose": "./plugin"
 	},
-	"styles": ["dist/style.css"],
+	"styles": [
+		"dist/style.css"
+	],
 	"permissions": [
 		"ui.slot.global",
 		"agent.systemPrompt.write",
@@ -19,73 +21,19 @@
 		"agent.toolHandler.execute",
 		"agent.continuation.register",
 		"fs.read",
-		"fs.write"
+		"fs.write",
+		"storage.read",
+		"storage.write"
 	],
 	"agent": {
-		"skillPaths": ["agent/skills/fiction-outline"],
+		"skillPaths": [
+			"agent/skills/fiction-outline"
+		],
 		"toolPolicy": {
-			"deny": ["doc_to_pdf"]
+			"deny": [
+				"doc_to_pdf"
+			]
 		}
-	},
-	"contributes": {
-		"settings": [
-			{
-				"key": "fictionStyle",
-				"type": "string",
-				"title": "Dynamic fiction style",
-				"description": "Free-form text interpolated into the TypeScript system prompt provider.",
-				"default": "Follow the user's requested genre and tone."
-			},
-			{
-				"key": "promptAddEnabled",
-				"type": "boolean",
-				"title": "Add fiction prompt block",
-				"description": "Adds the default fiction-writing guidance block.",
-				"default": true
-			},
-			{
-				"key": "promptReplaceEnabled",
-				"type": "boolean",
-				"title": "Replace fiction prompt block",
-				"description": "Replaces the added block with concise fiction guidance.",
-				"default": false
-			},
-			{
-				"key": "promptUpdateEnabled",
-				"type": "boolean",
-				"title": "Update fiction prompt block",
-				"description": "Updates the block content and priority after add or replace.",
-				"default": false
-			},
-			{
-				"key": "promptDisableEnabled",
-				"type": "boolean",
-				"title": "Disable fiction prompt block",
-				"description": "Keeps the block in the draft but disables rendering.",
-				"default": false
-			},
-			{
-				"key": "promptRemoveEnabled",
-				"type": "boolean",
-				"title": "Remove fiction prompt block",
-				"description": "Removes the block from the prompt draft. This operation runs last.",
-				"default": false
-			},
-			{
-				"key": "disableWriteChapterTool",
-				"type": "boolean",
-				"title": "Disable chapter tool dynamically",
-				"description": "Disables the demo chapter-writing tool in the same handler that changes the system prompt.",
-				"default": false
-			},
-			{
-				"key": "continuationDemoEnabled",
-				"type": "boolean",
-				"title": "Enable continuation demo",
-				"description": "When enabled, each conversation gets one automatic fiction next-step prompt before the agent stops.",
-				"default": false
-			}
-		]
 	},
 	"description": "Demonstrates UI slots plus agent prompt, skill, tool policy, tool registration, and continuation contributions.",
 	"author": "Vetta"

@@ -4,15 +4,11 @@ import { ContentCreationPluginRuntime } from "../src/plugin/runtime";
 
 function createPluginContext() {
 	const mediaSubscriptionDispose = vi.fn();
-	const settingsSubscriptionDispose = vi.fn();
 	const setPromptAttachment = vi.fn();
 	const context = {
 		media: {
 			listProviders: vi.fn(async () => []),
 			onProvidersChanged: vi.fn(() => ({ dispose: mediaSubscriptionDispose })),
-		},
-		settings: {
-			onChange: vi.fn(() => ({ dispose: settingsSubscriptionDispose })),
 		},
 		ui: {
 			notify: vi.fn(),
@@ -24,14 +20,14 @@ function createPluginContext() {
 		network: {},
 		jobs: {},
 		fs: {},
-		storage: {},
+		storage: { readJson: vi.fn(async () => null), writeJson: vi.fn(async () => undefined) },
+		secrets: { get: vi.fn(async () => undefined), set: vi.fn(async () => undefined) },
 		artifacts: {},
 		ai: {},
 	} as unknown as PluginContext;
 	return {
 		context,
 		mediaSubscriptionDispose,
-		settingsSubscriptionDispose,
 		setPromptAttachment,
 	};
 }
@@ -53,9 +49,7 @@ describe("ContentCreationPluginRuntime", () => {
 		expect(second.generation).toBe(secondGeneration);
 		expect(second.runApprovals.getSnapshot()).toEqual(["new-activation-run"]);
 		expect(firstContext.mediaSubscriptionDispose).toHaveBeenCalledOnce();
-		expect(firstContext.settingsSubscriptionDispose).toHaveBeenCalledOnce();
 		expect(secondContext.mediaSubscriptionDispose).not.toHaveBeenCalled();
-		expect(secondContext.settingsSubscriptionDispose).not.toHaveBeenCalled();
 
 		second.publishPromptAttachment(null);
 		expect(secondContext.setPromptAttachment).toHaveBeenCalledWith(null);

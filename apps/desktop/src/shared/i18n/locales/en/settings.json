@@ -304,9 +304,6 @@
     "pluginCount": "{{count}} plugin(s) installed"
   },
   "runtimeConfiguration": {
-    "title": "Tool & Runtime Configuration",
-    "empty": "No tool or runtime currently exposes configurable options.",
-    "consumers": "Consumers",
     "applyLabel": "Applies",
     "secretConfigured": "Saved securely; enter a new value to replace it",
     "secretPlaceholder": "Press Enter or leave the field to save",
@@ -1041,7 +1038,6 @@
   "tabAppshot": "App Snapshot",
   "betaBadge": "BETA",
   "tabEnvironment": "Environment",
-  "tabPlugins": "Tool Configuration",
   "tabKnowledge": "Knowledge Base",
   "tabPet": "Vetta Vivi",
   "tabPermissions": "Permissions",
@@ -1097,6 +1093,7 @@
   "section_agent-personalization": "Personalization",
   "section_agent-images": "Images",
   "section_agent-experimental": "Experimental",
+  "section_agent-runtime": "Runtime",
   "section_knowledge-processing": "Background Processing",
   "section_knowledge-actions": "Manual Actions",
   "section_pet-display": "Display & Window",
@@ -1218,7 +1215,6 @@
       "im": "e.g. Enable Claw and set up Feishu…",
       "webhook": "e.g. Add a channel that notifies me when a task finishes…",
       "appearance": "e.g. Switch to dark mode and use the stoat cursor…",
-      "plugins": "e.g. Help me fill in a plugin's settings…",
       "pet": "e.g. Show the pet and change the bubble style…",
       "environment": "e.g. Check whether Node/Python runtimes look healthy…",
       "shortcuts": "e.g. Review global shortcuts or reset to defaults…",
@@ -1234,7 +1230,6 @@
       "im": "Settings → Claw",
       "webhook": "Settings → Notifications",
       "appearance": "Settings → Appearance",
-      "plugins": "Settings → Plugins",
       "pet": "Settings → Pet",
       "environment": "Settings → Environment",
       "shortcuts": "Settings → Shortcuts",
@@ -1250,7 +1245,6 @@
       "im": "I want to configure Claw (IM bridge). Please check current status and channels, then guide me through setup.",
       "webhook": "I want to configure message push / webhooks. Please check current channels, then guide me through setup.",
       "appearance": "I want to adjust appearance. Please check current theme and related settings, then guide me through setup.",
-      "plugins": "I want to configure plugins. Please check installed plugins and their settings, then guide me through setup.",
       "pet": "I want to configure the desktop pet. Please check current display and window settings, then guide me through setup.",
       "environment": "I want to inspect or adjust the app environment (runtimes/mirrors). Please check current status, then guide me.",
       "shortcuts": "I want to configure shortcuts. Please check current keybindings, then guide me through setup.",
@@ -1302,11 +1296,6 @@
         "dark": "Switch to dark mode",
         "theme": "Change the UI theme",
         "cursor": "Switch the mouse pointer to the stoat style"
-      },
-      "plugins": {
-        "list": "Show which plugins have settings",
-        "configure": "Help me fill in a plugin's settings",
-        "enable": "Enable or disable a plugin capability"
       },
       "pet": {
         "show": "Show the desktop pet",

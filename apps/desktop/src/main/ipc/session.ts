@@ -61,7 +61,7 @@ import { createPetBubbleCommand } from "../pet/pet-bubble-command.js";
 import { mapSessionEventToPetPresentation } from "../pet/session-event-action-policy.js";
 import { sendPetCommandToWindow } from "../pet-window.js";
 import { setDesktopPluginHookInvoker } from "../plugins/coding-agent-hook-invocation.js";
-import { getPluginSettings, listPlugins, pluginAgentContributionService } from "../plugins/plugin-catalog.js";
+import { listPlugins, pluginAgentContributionService } from "../plugins/plugin-catalog.js";
 import { summarizeAgentPluginRuntimeConfig } from "../plugins/plugin-runtime-config-builder.js";
 import { getDesktopCodingAgentPluginRuntimeSource } from "../plugins/plugin-runtime-service.js";
 import { PluginToolRendererHostLifecycle } from "../plugins/plugin-tool-renderer-host-lifecycle.js";
@@ -647,7 +647,6 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 				webContents.send(CHANNELS.PLUGIN_TOOL_REQUEST, {
 					...request,
 					requestId,
-					settings: getPluginSettings(request.pluginId),
 				});
 			} catch (error) {
 				rejectInvocation(error instanceof Error ? error : new Error(String(error)));
@@ -696,7 +695,6 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			webContents.send(CHANNELS.PLUGIN_HOOK_REQUEST, {
 				...request,
 				requestId,
-				settings: getPluginSettings(request.pluginId),
 			});
 		});
 	});
@@ -773,7 +771,6 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			webContents.send(CHANNELS.PLUGIN_CONTINUATION_REQUEST, {
 				...request,
 				requestId,
-				settings: getPluginSettings(request.pluginId),
 			});
 		});
 	});
@@ -870,7 +867,6 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			webContents.send(CHANNELS.PLUGIN_SYSTEM_PROMPT_REQUEST, {
 				...filteredRequest,
 				requestId,
-				settings: getPluginSettings(request.pluginId),
 			});
 		});
 	});

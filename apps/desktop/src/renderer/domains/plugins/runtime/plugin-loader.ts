@@ -3,7 +3,7 @@ import type { PluginDefinition } from "@vetta-org/plugin-sdk";
 import { PluginActivationCleanupController } from "./plugin-activation-cleanup";
 import { clearAgentToolLabelsForPlugin, debugPluginAgent } from "./plugin-agent-context";
 import { createPluginContext } from "./plugin-context";
-import { createPluginSettingsApi } from "./plugin-host-apis";
+import { createPluginSecretsApi } from "./plugin-host-apis";
 import { type LoadedPlugin, PluginLocalContributions } from "./plugin-local-contributions";
 import { loadPluginDefinition } from "./plugin-module-loader";
 import { pluginRendererCapabilityHost } from "./plugin-renderer-capability-host";
@@ -47,17 +47,14 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 		await window.vetta.plugins.beginAgentContributionsLoad(plugin.id, activationId);
 		debugPluginAgent("began dynamic agent contribution activation", { pluginId: plugin.id, activationId });
 		definition = await loadPluginDefinition(plugin);
-		const initialSettings = plugin.settingsSchema?.length
-			? await window.vetta.plugins.getSettings(plugin.id).catch(() => ({}))
-			: {};
-		const settingsApi = createPluginSettingsApi(plugin, initialSettings, disposers);
 		const pendingRuntimeRegistrations: Promise<void>[] = [];
 		capabilitySessionId = await window.vetta.plugins.internalCapabilities.openSession(plugin.id);
 		pluginRendererCapabilityHost.bindSession(capabilitySessionId, plugin);
+		const secretsApi = createPluginSecretsApi(plugin, capabilitySessionId, disposers);
 		const context = createPluginContext({
 			plugin,
 			contributions,
-			settingsApi,
+			secretsApi,
 			onChanged,
 			disposers,
 			pendingRuntimeRegistrations,

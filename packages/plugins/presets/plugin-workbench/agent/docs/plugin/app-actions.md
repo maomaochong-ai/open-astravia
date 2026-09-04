@@ -89,7 +89,7 @@ export default definePlugin({
 - 同一 provider 的 staging 会完整校验后原子替换旧快照；新 activation 失败时继续使用上一版，不先卸载旧版。
 - 可选 `assertReady` 在审批前执行；审批 UI 改写输入后会再次执行。适合检查待编辑、删除或取消的实体是否仍存在。
 - `assertReady` 或 `handler` 可抛 `PluginAppActionError(code, message, details)`，宿主保留稳定错误码和 JSON 详情。`assertReady` 失败不会展示审批。
-- handler 在插件 renderer 运行，可以继续使用闭包中的 `ctx.fs`、`ctx.settings` 等 API；这些 API 各自的权限边界不变。
+- handler 在插件 renderer 运行，可以继续使用闭包中的 `ctx.fs`、`ctx.storage` 等 API；这些 API 各自的权限边界不变。
 
 ## 迁移状态
 

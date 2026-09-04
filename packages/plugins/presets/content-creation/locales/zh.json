@@ -290,5 +290,16 @@
 	"error.promptOptimization": "提示词优化失败，原有内容未发生变化",
 	"error.outputWorkspaceRequired": "请先打开工作区，再将生成素材保存到 output 文件夹",
 	"error.importReference": "无法导入参考素材，请检查素材类型与模型能力",
-	"error.importAsset": "无法导入素材，请检查文件类型后重试"
+	"error.importAsset": "无法导入素材，请检查文件类型后重试",
+	"settings.page.title": "内容创作配置",
+	"settings.page.tagline": "配置图片与视频生成要用的服务商密钥和模型。",
+	"settings.page.footer": "密钥保存在系统加密凭据库中（共 {{count}} 项），不会写入明文文件，也不会上传。",
+	"settings.group.openai.title": "OpenAI",
+	"settings.group.replicate.title": "Replicate",
+	"settings.group.google.title": "Google",
+	"settings.group.custom.title": "自定义服务（OpenAI 兼容）",
+	"settings.secret.saved": "已保存",
+	"settings.secret.empty": "未配置",
+	"settings.secret.save": "保存",
+	"settings.secret.clear": "清除"
 }

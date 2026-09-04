@@ -9,27 +9,27 @@ import {
 import type { DesktopApi } from "../api.js";
 import { onIpcEvent } from "./helper.js";
 
-type SettingsChangedListener = Parameters<DesktopApi["plugins"]["onSettingsChanged"]>[0];
-type SettingsChangedPayload = Parameters<SettingsChangedListener>[0];
+type SecretsChangedListener = Parameters<DesktopApi["plugins"]["onSecretsChanged"]>[0];
+type SecretsChangedPayload = Parameters<SecretsChangedListener>[0];
 
 export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<DesktopApi, "plugins"> {
-	const settingsChangedSubscriptions = new Set<{ readonly listener: SettingsChangedListener }>();
-	const handleSettingsChanged = (_event: IpcRendererEvent, payload: SettingsChangedPayload): void => {
-		for (const subscription of [...settingsChangedSubscriptions]) subscription.listener(payload);
+	const secretsChangedSubscriptions = new Set<{ readonly listener: SecretsChangedListener }>();
+	const handleSecretsChanged = (_event: IpcRendererEvent, payload: SecretsChangedPayload): void => {
+		for (const subscription of [...secretsChangedSubscriptions]) subscription.listener(payload);
 	};
-	const onSettingsChanged = (listener: SettingsChangedListener): (() => void) => {
+	const onSecretsChanged = (listener: SecretsChangedListener): (() => void) => {
 		const subscription = { listener };
-		settingsChangedSubscriptions.add(subscription);
-		if (settingsChangedSubscriptions.size === 1) {
-			ipc.on(PLUGIN_CONTRIBUTION_CHANNELS.SETTINGS_CHANGED, handleSettingsChanged);
+		secretsChangedSubscriptions.add(subscription);
+		if (secretsChangedSubscriptions.size === 1) {
+			ipc.on(PLUGIN_EXECUTION_CHANNELS.SECRETS_CHANGED, handleSecretsChanged);
 		}
 		let subscribed = true;
 		return () => {
 			if (!subscribed) return;
 			subscribed = false;
-			settingsChangedSubscriptions.delete(subscription);
-			if (settingsChangedSubscriptions.size === 0) {
-				ipc.removeListener(PLUGIN_CONTRIBUTION_CHANNELS.SETTINGS_CHANGED, handleSettingsChanged);
+			secretsChangedSubscriptions.delete(subscription);
+			if (secretsChangedSubscriptions.size === 0) {
+				ipc.removeListener(PLUGIN_EXECUTION_CHANNELS.SECRETS_CHANGED, handleSecretsChanged);
 			}
 		};
 	};
@@ -439,8 +439,12 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 			respondMediaProvider: (requestId, result) => ipc.invoke(PLUGIN_MEDIA_CHANNELS.RESPONSE, requestId, result),
 			uploadMediaProviderInput: (requestId, inputId, request) =>
 				ipc.invoke(PLUGIN_MEDIA_CHANNELS.UPLOAD_INPUT, requestId, inputId, request),
-			getSettings: (id) => ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.GET_SETTINGS, id),
-			setSettings: (id, values) => ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.SET_SETTINGS, id, values),
+			secretsGet: (sessionId, key) => ipc.invoke(PLUGIN_EXECUTION_CHANNELS.SECRETS_GET, sessionId, key),
+			secretsHas: (sessionId, key) => ipc.invoke(PLUGIN_EXECUTION_CHANNELS.SECRETS_HAS, sessionId, key),
+			secretsKeys: (sessionId) => ipc.invoke(PLUGIN_EXECUTION_CHANNELS.SECRETS_KEYS, sessionId),
+			secretsSet: (sessionId, key, value) =>
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.SECRETS_SET, sessionId, key, value),
+			secretsDelete: (sessionId, key) => ipc.invoke(PLUGIN_EXECUTION_CHANNELS.SECRETS_DELETE, sessionId, key),
 			networkRequest: (sessionId, request) =>
 				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.NETWORK_REQUEST, sessionId, request),
 			gatewayRequest: (sessionId, request) =>
@@ -465,7 +469,7 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 			storageReadBlob: (sessionId, id) => ipc.invoke(PLUGIN_EXECUTION_CHANNELS.STORAGE_READ_BLOB, sessionId, id),
 			storageGetBlobRef: (sessionId, id) =>
 				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.STORAGE_GET_BLOB_REF, sessionId, id),
-			onSettingsChanged,
+			onSecretsChanged,
 			onPluginsChanged: (listener) => {
 				const handler = (_event: IpcRendererEvent, payload?: Parameters<typeof listener>[0]) => listener(payload);
 				ipc.on(PLUGIN_CONTRIBUTION_CHANNELS.PLUGINS_CHANGED, handler);

@@ -34,13 +34,6 @@ export interface PluginAgentToolRegistration<TInput = unknown> {
 	 * 需要限定使用场景请写进 description 的反向触发段（Do NOT / Only for）。
 	 */
 	agent_mode?: readonly string[];
-	/**
-	 * Optional association with this plugin's `contributes.settings` definition.
-	 * Omit `settingKeys` to associate all declared settings. The host adapts these
-	 * values into the shared Runtime Configuration catalog; tools without this
-	 * field remain completely outside that catalog.
-	 */
-	configuration?: { settingKeys?: readonly string[] };
 	context?: { conversation?: "summary" | "messages" };
 	handler: PluginAgentToolHandler<TInput>;
 }
@@ -76,7 +69,6 @@ export interface PluginSystemPromptProviderContext {
 	plugin: {
 		id: string;
 		providerId: string;
-		settings: Readonly<Record<string, unknown>>;
 	};
 	session: {
 		id: string;
@@ -155,7 +147,6 @@ export interface PluginAgentHandlerContext<TTrigger> {
 	plugin: {
 		id: string;
 		contributionId: string;
-		settings: Readonly<Record<string, unknown>>;
 	};
 	session: PluginSystemPromptProviderContext["session"];
 	model: PluginSystemPromptProviderContext["model"];
@@ -349,7 +340,6 @@ export interface PluginCodingAgentHookHandlerContext<E extends PluginCodingAgent
 	plugin: {
 		id: string;
 		contributionId: string;
-		settings: Readonly<Record<string, unknown>>;
 	};
 	session: { id: string; cwd: string; scenario: ConversationScenario };
 	event: PluginCodingAgentHookEventOf<E>;

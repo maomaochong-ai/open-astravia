@@ -259,7 +259,7 @@ function ContentCreationPanelContent() {
 					onImportAssets={importAssets}
 					onImportReferences={importReferences}
 					onSelectedNodeIdsChange={setSelectedNodeIds}
-					onOpenSettings={runtime.openPluginSettings}
+					onOpenSettings={runtime.openSettings}
 				/>
 			</main>
 		</div>

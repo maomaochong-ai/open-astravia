@@ -56,6 +56,8 @@ export const PLUGIN_PERMISSION_LABEL_KEYS = {
 	"storage.write": "permission.storageWrite",
 	"media.generate": "permission.mediaGenerate",
 	"media.provider.register": "permission.mediaProviderRegister",
+	"secrets.read": "permission.secretsRead",
+	"secrets.write": "permission.secretsWrite",
 	"settings.read": "permission.settingsRead",
 	"settings.write": "permission.settingsWrite",
 	"shell.openExternal": "permission.shellOpenExternal",
@@ -206,6 +208,18 @@ export const PLUGIN_PERMISSION_PRESENTATIONS = {
 		descriptionKey: "permission.description.storageWrite",
 		group: "projectData",
 		risk: "low",
+		visual: "data",
+	},
+	"secrets.read": {
+		descriptionKey: "permission.description.secretsRead",
+		group: "projectData",
+		risk: "medium",
+		visual: "data",
+	},
+	"secrets.write": {
+		descriptionKey: "permission.description.secretsWrite",
+		group: "projectData",
+		risk: "high",
 		visual: "data",
 	},
 	"settings.read": {

@@ -1,7 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Type, type Static } from "@sinclair/typebox";
 import { definePlugin } from "@vetta-org/plugin-sdk";
 import "./style.css";
+import {
+	DEMO_TOGGLE_KEYS,
+	type DemoToggleKey,
+	getDemoSettingsStore,
+	initDemoSettings,
+} from "./demo-settings";
 import { NOVEL_WRITE_CHAPTER_FILE_TOOL_DESCRIPTION } from "./tool-description";
 
 const writeChapterSchema = Type.Object({
@@ -18,8 +24,46 @@ const writeChapterSchema = Type.Object({
 
 type WriteChapterInput = Static<typeof writeChapterSchema>;
 
-function settingEnabled(settings: Readonly<Record<string, unknown>>, key: string): boolean {
-	return settings[key] === true;
+function settingEnabled(key: DemoToggleKey): boolean {
+	return getDemoSettingsStore().current()[key];
+}
+
+/**
+ * 插件自绘的配置区。宿主不再提供设置页配置槽，开关就放在插件自己的面板里（ADR-0105）。
+ */
+function DemoSettingsPanel() {
+	const store = getDemoSettingsStore();
+	const settings = useSyncExternalStore(store.subscribe, () => store.current());
+	useEffect(() => {
+		void store.load();
+	}, [store]);
+	return (
+		<div className="mb-[12px] rounded-[8px] border border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-[9px] py-[8px]">
+			<p className="mb-[6px] text-[12px] font-semibold text-[var(--foreground)]">Plugin settings</p>
+			<label className="mb-[8px] flex flex-col gap-[4px] text-[12px] text-[var(--muted-foreground)]">
+				<span>Fiction style</span>
+				<input
+					className="h-[26px] rounded-[6px] border border-[color-mix(in_srgb,var(--border)_70%,transparent)] bg-transparent px-[7px] text-[12px] text-[var(--foreground)] outline-none"
+					value={settings.fictionStyle}
+					onChange={(event) => void store.update({ fictionStyle: event.target.value })}
+				/>
+			</label>
+			<ul className="m-0 list-none space-y-[4px] p-0">
+				{DEMO_TOGGLE_KEYS.map((key) => (
+					<li key={key}>
+						<label className="flex cursor-pointer items-center gap-[6px] text-[12px] text-[var(--muted-foreground)]">
+							<input
+								type="checkbox"
+								checked={settings[key]}
+								onChange={(event) => void store.update({ [key]: event.target.checked })}
+							/>
+							<span>{key}</span>
+						</label>
+					</li>
+				))}
+			</ul>
+		</div>
+	);
 }
 
 function DemoGlobalSlot() {
@@ -83,6 +127,7 @@ function DemoGlobalSlot() {
 					))}
 				</ul>
 			</div>
+			<DemoSettingsPanel />
 			<div className="flex items-center justify-between gap-[10px]">
 				<span className="rounded-full bg-[color-mix(in_srgb,var(--accent)_75%,transparent)] px-[8px] py-[3px] text-[12px] text-[var(--muted-foreground)]">
 					Clicks: {count}
@@ -101,6 +146,8 @@ function DemoGlobalSlot() {
 
 export default definePlugin({
 	activate(ctx) {
+		// 配置是插件自己的：面板读写，Agent handler 同步读同一份内存值。
+		void initDemoSettings(ctx).load();
 		ctx.ui.registerGlobalSlot({
 			id: "demo-panel",
 			component: DemoGlobalSlot,
@@ -113,7 +160,7 @@ export default definePlugin({
 			parameters: writeChapterSchema,
 			timeoutMs: 30_000,
 			scope_use: ["conversation", "cli"],
-			handler: async ({ trigger, host, actions, plugin }) => {
+			handler: async ({ trigger, host, actions }) => {
 				const input = trigger.input;
 				const body = `# ${input.title}\n\n${input.content.trim()}\n`;
 				await host.fs.writeFile(input.path, body);
@@ -121,7 +168,7 @@ export default definePlugin({
 					priority: 860,
 					content: `The plugin most recently wrote the chapter "${input.title}" to ${input.path}.`,
 				});
-				if (plugin.settings.continuationDemoEnabled === true) {
+				if (settingEnabled("continuationDemoEnabled")) {
 					actions.continuation.request({
 						text: `Verify that the chapter "${input.title}" was written successfully, then summarize the saved artifact.`,
 						idempotencyKey: `written-chapter:${input.path}:${input.title}`,
@@ -138,14 +185,11 @@ export default definePlugin({
 			id: "fiction-system-prompt",
 			timeoutMs: 3000,
 			context: { systemPrompt: "full", conversation: "messages" },
-			handler: ({ plugin, session, model, conversation, runtime, systemPrompt, actions }) => {
+			handler: ({ session, model, conversation, runtime, systemPrompt, actions }) => {
 				const operations = [];
 				const blockId = "plugin.global-slot-demo.fiction";
-				const style =
-					typeof plugin.settings.fictionStyle === "string" && plugin.settings.fictionStyle.trim()
-						? plugin.settings.fictionStyle.trim()
-						: "Follow the user's requested genre and tone.";
-				if (settingEnabled(plugin.settings, "promptAddEnabled")) {
+				const style = getDemoSettingsStore().current().fictionStyle;
+				if (settingEnabled("promptAddEnabled")) {
 					operations.push({
 						type: "addBlock" as const,
 						block: {
@@ -164,7 +208,7 @@ export default definePlugin({
 						},
 					});
 				}
-				if (settingEnabled(plugin.settings, "promptReplaceEnabled")) {
+				if (settingEnabled("promptReplaceEnabled")) {
 					operations.push({
 						type: "replaceBlock" as const,
 						blockId,
@@ -174,7 +218,7 @@ export default definePlugin({
 						},
 					});
 				}
-				if (settingEnabled(plugin.settings, "promptUpdateEnabled")) {
+				if (settingEnabled("promptUpdateEnabled")) {
 					operations.push({
 						type: "updateBlock" as const,
 						blockId,
@@ -184,13 +228,13 @@ export default definePlugin({
 						},
 					});
 				}
-				if (settingEnabled(plugin.settings, "promptDisableEnabled")) {
+				if (settingEnabled("promptDisableEnabled")) {
 					operations.push({ type: "setBlockEnabled" as const, blockId, enabled: false });
 				}
-				if (settingEnabled(plugin.settings, "promptRemoveEnabled")) {
+				if (settingEnabled("promptRemoveEnabled")) {
 					operations.push({ type: "removeBlock" as const, blockId });
 				}
-				if (settingEnabled(plugin.settings, "disableWriteChapterTool")) {
+				if (settingEnabled("disableWriteChapterTool")) {
 					actions.tools.disable("novel_write_chapter_file");
 				}
 				return operations;
@@ -199,8 +243,8 @@ export default definePlugin({
 		ctx.agent.registerContinuationProvider({
 			id: "fiction-next-step",
 			timeoutMs: 3000,
-			handler: ({ session, plugin, actions }) => {
-				if (plugin.settings.continuationDemoEnabled !== true) {
+			handler: ({ session, actions }) => {
+				if (!settingEnabled("continuationDemoEnabled")) {
 					return null;
 				}
 				actions.systemPrompt.replaceBlock("plugin.global-slot-demo.continuation", {

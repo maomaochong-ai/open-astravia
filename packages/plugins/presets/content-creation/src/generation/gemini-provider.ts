@@ -1,4 +1,5 @@
-import type { PluginNetworkApi, PluginSettingsApi } from "@vetta-org/plugin-sdk";
+import type { PluginNetworkApi } from "@vetta-org/plugin-sdk";
+import type { ContentSettingsReader } from "../settings/content-settings";
 import {
 	delay,
 	dimensionsFor,
@@ -45,7 +46,7 @@ export class GeminiProvider implements ContentProviderAdapter {
 
 	constructor(
 		private readonly network: PluginNetworkApi,
-		private readonly settings: PluginSettingsApi,
+		private readonly settings: ContentSettingsReader,
 		private readonly options: GeminiProviderOptions,
 	) {}
 

@@ -5,12 +5,15 @@ import { SettingsAiAssist } from "../ai-assist";
 import { SETTINGS_SECTION } from "../registry";
 import { MotionSelect, SettingHeading, SettingRow, SettingSection } from "@vetta/theme-ui/settings";
 import type { AgentSettingsModel } from "./useAgentSettingsModel";
+import { RuntimeConfigurationSections } from "./RuntimeConfigurationSections";
+import type { RuntimeConfigurationModel } from "./useRuntimeConfigurationModel";
 
 export interface AgentSettingsViewProps {
 	model: AgentSettingsModel;
+	runtimeConfiguration: RuntimeConfigurationModel;
 }
 
-export function AgentSettingsView({ model }: AgentSettingsViewProps): JSX.Element {
+export function AgentSettingsView({ model, runtimeConfiguration }: AgentSettingsViewProps): JSX.Element {
 	const personaOptions = useMemo(
 		() => model.personas.map((persona) => ({ value: persona.id, label: persona.label })),
 		[model.personas],
@@ -107,6 +110,8 @@ export function AgentSettingsView({ model }: AgentSettingsViewProps): JSX.Elemen
 					</SettingRow>
 				</SettingSection>
 			</div>
+
+			<RuntimeConfigurationSections model={runtimeConfiguration} />
 		</div>
 	);
 }

@@ -14,6 +14,8 @@ import { PluginContentProjectHistoryRepository } from "../project/history-reposi
 import { PluginContentProjectRepository } from "../project/repository";
 import { ContentCreationWorkspace } from "../project/workspace";
 import { ContentPromptOptimizationService } from "../prompt-optimization/prompt-optimization-service";
+import { ContentSettingsStore } from "../settings/content-settings";
+import { SETTINGS_VIEW_ID } from "../settings/view-id";
 import { ContentRunApprovalStore } from "./run-approval";
 
 /** Resources owned by one plugin activation. Instances may overlap during hot reload. */
@@ -24,6 +26,7 @@ export class ContentCreationPluginRuntime {
 	readonly localAssets: ContentLocalAssetService;
 	readonly promptOptimization: ContentPromptOptimizationService;
 	readonly runApprovals = new ContentRunApprovalStore();
+	readonly settings: ContentSettingsStore;
 
 	private generationRuntime: ContentGenerationService | null = null;
 	private mediaProviderSubscription: { dispose(): void } | null = null;
@@ -36,6 +39,12 @@ export class ContentCreationPluginRuntime {
 	private readonly assetImports: ContentAssetImportService;
 
 	private constructor(private readonly ctx: PluginContext) {
+		this.settings = new ContentSettingsStore({
+			readJson: (key) => ctx.storage.readJson<unknown>(key),
+			writeJson: (key, value) => ctx.storage.writeJson(key, value),
+			readSecret: (key) => ctx.secrets.get(key),
+			writeSecret: (key, value) => ctx.secrets.set(key, value),
+		});
 		this.workspace = new ContentCreationWorkspace(new PluginContentProjectRepository(ctx.fs, ctx.storage), {
 			historyRepository: new PluginContentProjectHistoryRepository(ctx.storage),
 			onHistoryPersistenceError: (error) => {
@@ -79,8 +88,9 @@ export class ContentCreationPluginRuntime {
 		this.ctx.ui.setActivityPanelWidth("max");
 	}
 
-	openPluginSettings = (): void => {
-		this.ctx.ui.openPluginSettings();
+	/** 面板里的「设置」入口：跳到本插件自己的工作区配置页（ADR-0105）。 */
+	openSettings = (): void => {
+		this.ctx.ui.openWorkspaceView(SETTINGS_VIEW_ID);
 	};
 
 	publishPromptAttachment(attachment: PluginPromptAttachment | null): void {
@@ -114,7 +124,9 @@ export class ContentCreationPluginRuntime {
 		this.mediaProviderSubscription = this.ctx.media.onProvidersChanged(() => {
 			void this.refreshMediaProviders();
 		});
-		this.settingsSubscription = this.ctx.settings.onChange(() => this.emitModelsChanged());
+		// 密钥改动会改变可用模型清单，所以配置页保存后要重新广播一次。
+		this.settingsSubscription = { dispose: this.settings.subscribe(() => this.emitModelsChanged()) };
+		await this.settings.load();
 		await this.refreshMediaProviders();
 	}
 
@@ -128,7 +140,7 @@ export class ContentCreationPluginRuntime {
 
 		const providers = createContentProviderRegistry(
 			this.ctx.network,
-			this.ctx.settings,
+			this.settings,
 			this.ctx.media,
 			this.ctx.jobs,
 			mediaProviders,

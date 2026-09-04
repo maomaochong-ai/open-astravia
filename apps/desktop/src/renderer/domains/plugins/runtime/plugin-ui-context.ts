@@ -39,7 +39,6 @@ import type {
 import { getDefaultStore } from "jotai";
 import QRCode from "qrcode";
 import { type ComponentType, createElement, type ReactNode } from "react";
-import { router } from "../../../router";
 import { explicitTabVisibility, withPluginTabVisibility } from "./attached-tabs";
 import type { PluginAgentApiRegistration } from "./plugin-agent-context";
 import { copyTextToClipboard, formatPluginErrorDetail, resolvePluginDisplayText } from "./plugin-host-apis";
@@ -692,15 +691,6 @@ export function createPluginUiApi({
 			getDefaultStore().set(filePreviewAtom, toItem(ref));
 		}
 	};
-	const openPluginSettings = (): void => {
-		// Host owns navigation; jump to the settings tab + this plugin's section
-		// (existing `?section=plugin-<id>` deep-link scrolls + highlights it).
-		void router.navigate({
-			to: "/settings/$tab",
-			params: { tab: "plugins" },
-			search: { section: `plugin-${plugin.id}` },
-		});
-	};
 	const captureRegion: PluginContext["ui"]["captureRegion"] = (rect, defaultFileName) => {
 		createPluginPermissionApi(plugin).require("ui.slot.activity-tab");
 		if (![rect.x, rect.y, rect.width, rect.height].every(Number.isFinite) || rect.width <= 0 || rect.height <= 0) {
@@ -794,7 +784,6 @@ export function createPluginUiApi({
 		setActivityPanelWidth,
 		setPromptAttachment,
 		previewImage,
-		openPluginSettings,
 		captureRegion,
 		copyImage,
 		openExternal,

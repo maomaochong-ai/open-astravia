@@ -99,7 +99,6 @@ export function asAgentToolRegistration(value: unknown): {
 	timeoutMs?: number;
 	scope_use?: string[];
 	requires?: string[];
-	configuration?: { settingKeys?: string[]; support: "adapter" };
 	context?: { conversation?: "summary" | "messages" };
 	rendersCard?: boolean;
 } {
@@ -127,21 +126,10 @@ export function asAgentToolRegistration(value: unknown): {
 		scope_use: asOptionalStringArray(input.scope_use),
 		requires: asOptionalStringArray(input.requires),
 		// agent_mode 容忍传入但不再解析（ADR-0071）：模式不影响工具的可用性与顺序。
-		configuration: asAgentToolConfiguration(input.configuration),
 		context: asHandlerContext(input.context),
 		// 渲染进程在注册时探测该工具有没有 tool-call slot；有则宿主注入 md_intro 参数。
 		rendersCard: input.rendersCard === true ? true : undefined,
 	};
-}
-
-function asAgentToolConfiguration(value: unknown): { settingKeys?: string[]; support: "adapter" } | undefined {
-	if (value === undefined) return undefined;
-	const input = asRecord(value, "agent tool configuration");
-	const settingKeys = asStrictOptionalStringArray(input.settingKeys, "agent tool configuration settingKeys");
-	if (settingKeys && new Set(settingKeys).size !== settingKeys.length) {
-		throw new Error("Agent tool configuration settingKeys must not contain duplicates");
-	}
-	return { ...(settingKeys ? { settingKeys } : {}), support: "adapter" };
 }
 
 export function asAgentHookRegistration(value: unknown): {
