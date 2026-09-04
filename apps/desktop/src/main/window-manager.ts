@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { app, BrowserWindow, nativeTheme } from "electron";
 import { isSpeechInputBuildEnabled } from "../shared/feature-flags.js";
 import { setAppMonitorWindowVisible } from "./app-monitor/app-monitor-service.js";
+import { type RendererConsoleLevel, shouldPersistRendererConsoleMessage } from "./logger/renderer-console-policy.js";
 import { getAppLogger } from "./logger.js";
 import { openExternalUrl } from "./open-external.js";
 import { configureMainWindowMediaPermissions } from "./speech-input/media-permissions.js";
@@ -126,7 +127,8 @@ export function createWindow(): BrowserWindow {
 		// Chromium defers remaining ResizeObserver callbacks to the next frame while a split pane is
 		// continuously resized. It reports that normal delivery behavior as an internal console error.
 		if (isChromiumResizeObserverDiagnostic(message, line, sourceId)) return;
-		const levelLabel = (["log", "info", "warn", "error"] as const)[level] ?? "log";
+		const levelLabel: RendererConsoleLevel = (["log", "info", "warn", "error"] as const)[level] ?? "log";
+		if (!shouldPersistRendererConsoleMessage(levelLabel, message)) return;
 		rendererLog[levelLabel](`[${sourceId}:${line}] ${message}`);
 	});
 	mainWindow.webContents.on("unresponsive", () => {

@@ -192,7 +192,9 @@ $vettaEvents |
 
 1. 把 Provider 调用时间转换为本地时间。
 2. 对照 `<VETTA_HOME>/desktop/logs/main/<date>.log` 和 Renderer 日志。
-3. 搜索 `[vite-hmr] before-full-reload`；该日志包含 Vite 的 `path` 和 `triggeredBy`，用于定位触发
+3. 若需要把完整 HMR 诊断持久化到 Renderer 日志，先设置 `VETTA_RENDERER_VERBOSE_LOGS=1` 并重启 Desktop；
+   未设置时这些高频开发诊断仍可在 DevTools 中查看，但不会写入日志文件。搜索 `[vite-hmr] before-full-reload`；
+   该日志包含 Vite 的 `path` 和 `triggeredBy`，用于定位触发
    Renderer 整页重载的文件。插件开发服务器的更新则搜索 `dev-watch: refreshed`，并读取
    `pluginId`、`reason`、`path` 和 `triggeredBy`。
 4. 搜索 `publish agent plugin runtime` / `skip unchanged agent plugin runtime`。`runtimeFingerprint`

@@ -57,6 +57,7 @@ export class AppActionRuntime {
 			source: context.source,
 			requestId: context.requestId,
 		};
+		let failureMeta: Record<string, unknown> = baseMeta;
 		log.info("run: start", baseMeta);
 		try {
 			const action = this.catalog.get(actionId);
@@ -66,7 +67,8 @@ export class AppActionRuntime {
 				domain: action.domain,
 				permission: action.permission,
 			};
-			log.info("run: input validated", actionMeta, { input: validatedInput });
+			failureMeta = actionMeta;
+			log.info("run: input validated", actionMeta, summarizeActionInput(validatedInput));
 			// 审批前校验实体是否存在等业务前提，避免对不存在数据弹出授权框。
 			// 失败错误的 message/details 必须面向 Agent（原因 + 下一步 query），见 throwAgentEntityNotFound。
 			if (action.assertReady) {
@@ -97,6 +99,7 @@ export class AppActionRuntime {
 					durationMs: approvalDurationMs,
 				});
 				if (!decision.approved) {
+					log.info("run: rejected", actionMeta, { durationMs: Date.now() - startedAt });
 					return {
 						status: "rejected",
 						actionId,
@@ -106,7 +109,7 @@ export class AppActionRuntime {
 				}
 				if (decision.input !== undefined) {
 					validatedInput = action.validateInput(decision.input);
-					log.info("run: approval input validated", actionMeta, { input: validatedInput });
+					log.info("run: approval input validated", actionMeta, summarizeActionInput(validatedInput));
 					// 用户改写 input 后再次校验（如改成了另一个不存在的 id）。
 					if (action.assertReady) {
 						await action.assertReady(validatedInput, context);
@@ -118,8 +121,22 @@ export class AppActionRuntime {
 			log.info("run: success", actionMeta, { approvalRequired, durationMs: Date.now() - startedAt });
 			return result;
 		} catch (error) {
-			log.error("run: failed", baseMeta, { durationMs: Date.now() - startedAt }, error);
+			log.error("run: failed", failureMeta, {
+				durationMs: Date.now() - startedAt,
+				errorName: error instanceof Error ? error.name : "unknown",
+				...(error instanceof ActionError ? { errorCode: error.code } : {}),
+			});
 			throw error;
 		}
 	}
+}
+
+function summarizeActionInput(input: JsonValue): Record<string, unknown> {
+	if (Array.isArray(input)) return { inputType: "array", inputLength: input.length };
+	if (input === null) return { inputType: "null" };
+	if (typeof input !== "object") return { inputType: typeof input };
+	return {
+		inputType: "object",
+		inputKeyCount: Object.keys(input).length,
+	};
 }

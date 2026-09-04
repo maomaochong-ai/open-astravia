@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createNodeResourceAccess } from "@vetta/runtime-node/host";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CONFIG_DIR_NAME } from "../src/config.js";
 import { ExtensionRunner } from "../src/extensions/index.js";
 import { createCodingAgentModelRuntime } from "../src/models/index.js";
@@ -76,6 +76,37 @@ Skill content here.`,
 
 			const { skills } = loader.getSkills();
 			expect(skills.some((s) => s.name === "test-skill")).toBe(true);
+		});
+
+		it("logs only aggregate skill loading diagnostics", async () => {
+			const skillsDir = join(agentDir, "skills", "private-skill-name");
+			mkdirSync(skillsDir, { recursive: true });
+			writeFileSync(
+				join(skillsDir, "SKILL.md"),
+				"---\nname: private-skill-name\ndescription: A private skill\n---\nSkill content.",
+			);
+			const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
+
+			try {
+				const loader = createCodingAgentSessionResourceRuntime({ cwd, agentDir });
+				await loader.reload();
+				const entry = info.mock.calls.find(([message]) => message === "[skills] loaded");
+
+				expect(entry?.[1]).toEqual(
+					expect.objectContaining({
+						includeAgentSkills: true,
+						total: expect.any(Number),
+						diagnosticCount: expect.any(Number),
+						bySource: expect.any(Object),
+					}),
+				);
+				expect(entry?.[1]).not.toHaveProperty("cwd");
+				expect(entry?.[1]).not.toHaveProperty("names");
+				expect(JSON.stringify(entry?.[1])).not.toContain("private-skill-name");
+				expect(JSON.stringify(entry?.[1])).not.toContain(tempDir);
+			} finally {
+				info.mockRestore();
+			}
 		});
 
 		it("loads initial runtime Skill paths in the first scan and treats reapplying them as a no-op", async () => {

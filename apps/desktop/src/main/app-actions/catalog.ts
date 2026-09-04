@@ -138,7 +138,8 @@ export class AppActionCatalog {
 						},
 			);
 		}
-		log.info("replace: provider committed", {
+		// PluginActionService 的 activation committed 已记录同一条链路的聚合结果。
+		log.debug("replace: provider committed", {
 			providerId: options.providerId,
 			previousProviderId,
 			actionCount: actions.length,

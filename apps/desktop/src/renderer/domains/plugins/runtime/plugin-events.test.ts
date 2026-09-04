@@ -58,6 +58,7 @@ describe("plugin-events 就绪门", () => {
 	it("发送门超时兜底仍然有效（宿主一直不就绪也最多等 timeoutMs）", async () => {
 		vi.useFakeTimers();
 		try {
+			const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 			const events = await loadModule();
 			events.markPluginHostLoading();
 			let resolved = false;
@@ -68,6 +69,7 @@ describe("plugin-events 就绪门", () => {
 			expect(resolved).toBe(false);
 			await vi.advanceTimersByTimeAsync(1);
 			expect(resolved).toBe(true);
+			expect(warn).toHaveBeenCalledWith('[plugin-agent] wait host first ready timed out {"timeoutMs":5000}');
 		} finally {
 			vi.useRealTimers();
 		}

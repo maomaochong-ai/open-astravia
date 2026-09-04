@@ -76,8 +76,12 @@ export function createCodingAgentObservationLogPort(logger: CodingAgentObservati
 					...(record.payload.failure?.errorName ? { errorName: record.payload.failure.errorName } : {}),
 					...(record.payload.failure?.errorCode ? { errorCode: record.payload.failure.errorCode } : {}),
 				};
-				if (record.payload.phase === "failed") logger.warn("coding plugin configuration failed", fields);
-				else logger.info("coding plugin configuration", fields);
+				if (record.payload.phase === "failed") {
+					logger.warn("coding plugin configuration failed", fields);
+				} else if (record.payload.phase === "completed") {
+					// started/completed 成对事件对链路没有额外信息；失败仍由 warn 保留。
+					logger.info("coding plugin configuration", fields);
+				}
 				return;
 			}
 			if (!isCompactionPrefireObservation(record)) return;

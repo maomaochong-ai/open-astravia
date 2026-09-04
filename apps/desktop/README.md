@@ -170,6 +170,11 @@ process and would disagree with the launcher-derived Chromium profile.
 Main-process sourcemaps are disabled by default to keep startup builds fast. Set
 `VETTA_MAIN_SOURCEMAP=true` when source-mapped Electron stack traces are needed.
 
+Persistent Renderer logs keep user-operation signals, warnings, and errors by default, while omitting
+high-frequency plugin registration, activity-tab resolution, theme loading, and routine Vite HMR records.
+DevTools still shows those console messages. Set `VETTA_RENDERER_VERBOSE_LOGS=1` before starting Desktop
+when a diagnostic session needs the complete Renderer console stream in the log files.
+
 Development automatically starts plugin dev servers for every preset selected by the active
 `VETTA_TENANT`, so preset source, manifest, locale, and agent resource changes reload without an
 App restart. Set `VETTA_PLUGIN_DEV` to a comma-separated list to limit development to specific

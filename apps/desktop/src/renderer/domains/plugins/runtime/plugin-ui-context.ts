@@ -150,6 +150,14 @@ function openPluginActivityTab(pluginId: string, tabId: string, options?: Plugin
 			panelOpen: store.get(activityPanelOpenAtom),
 		})}`,
 	);
+	console.info(
+		`[activity-tab] opened ${JSON.stringify({
+			pluginId,
+			tabId,
+			alreadyAttached,
+			widthRequested: options?.width != null,
+		})}`,
+	);
 }
 
 /**

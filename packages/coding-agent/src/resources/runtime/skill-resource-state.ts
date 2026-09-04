@@ -127,11 +127,10 @@ export async function loadSkillResources(options: {
 	const bySource: Record<string, number> = {};
 	for (const skill of result.skills) bySource[skill.source] = (bySource[skill.source] ?? 0) + 1;
 	console.info("[skills] loaded", {
-		cwd: options.cwd,
 		includeAgentSkills: options.includeAgentSkills,
 		total: result.skills.length,
 		bySource,
-		names: result.skills.map((skill) => skill.name),
+		diagnosticCount: result.diagnostics.length,
 	});
 	return result;
 }

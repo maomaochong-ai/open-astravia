@@ -140,4 +140,33 @@ describe("createCodingAgentObservationLogPort", () => {
 		});
 		expect(info).not.toHaveBeenCalled();
 	});
+
+	it("logs only the completed half of a successful Plugin configuration chain", () => {
+		const info = vi.fn();
+		const warn = vi.fn();
+		const port = createCodingAgentObservationLogPort({ info, warn });
+		const context = { sessionId: "session-1" };
+		port.record({
+			token: CODING_AGENT_PLUGIN_CONFIGURATION_OBSERVATION,
+			context,
+			timestamp: 1,
+			payload: { phase: "started", source: "host", boundary: "idle" },
+		});
+		port.record({
+			token: CODING_AGENT_PLUGIN_CONFIGURATION_OBSERVATION,
+			context,
+			timestamp: 2,
+			payload: { phase: "completed", source: "host", boundary: "idle", durationMs: 4 },
+		});
+
+		expect(info).toHaveBeenCalledOnce();
+		expect(info).toHaveBeenCalledWith("coding plugin configuration", {
+			phase: "completed",
+			source: "host",
+			boundary: "idle",
+			sessionId: "session-1",
+			durationMs: 4,
+		});
+		expect(warn).not.toHaveBeenCalled();
+	});
 });

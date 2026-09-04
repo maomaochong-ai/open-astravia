@@ -61,7 +61,11 @@ export async function waitForPluginHostFirstReady(timeoutMs = 5000): Promise<voi
 		]);
 	} finally {
 		if (timeout) clearTimeout(timeout);
-		debugPluginAgent("wait host first ready end", { timedOut });
+		if (timedOut) {
+			console.warn(`[plugin-agent] wait host first ready timed out ${JSON.stringify({ timeoutMs })}`);
+		} else {
+			debugPluginAgent("wait host first ready end", { timedOut: false });
+		}
 	}
 }
 
@@ -81,6 +85,10 @@ export async function waitForPluginHostReady(timeoutMs = 5000): Promise<void> {
 		]);
 	} finally {
 		if (timeout) clearTimeout(timeout);
-		debugPluginAgent("wait host ready end", { timedOut });
+		if (timedOut) {
+			console.warn(`[plugin-agent] wait host ready timed out ${JSON.stringify({ timeoutMs })}`);
+		} else {
+			debugPluginAgent("wait host ready end", { timedOut: false });
+		}
 	}
 }

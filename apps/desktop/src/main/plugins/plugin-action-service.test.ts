@@ -5,14 +5,15 @@ import { AppActionCatalog } from "../app-actions/catalog.js";
 import { PluginActionService } from "./plugin-action-service.js";
 
 const pluginState = vi.hoisted(() => ({ enabled: true }));
+const logger = vi.hoisted(() => ({
+	debug: vi.fn(),
+	error: vi.fn(),
+	info: vi.fn(),
+	warn: vi.fn(),
+}));
 
 vi.mock("../logger.js", () => ({
-	getAppLogger: () => ({
-		debug: () => undefined,
-		error: () => undefined,
-		info: () => undefined,
-		warn: () => undefined,
-	}),
+	getAppLogger: () => logger,
 }));
 
 vi.mock("./plugin-catalog.js", () => ({
@@ -75,6 +76,19 @@ function requirePayload(message: SentMessage | undefined): Record<string, unknow
 describe("PluginActionService provider identity", () => {
 	beforeEach(() => {
 		pluginState.enabled = true;
+		vi.clearAllMocks();
+	});
+
+	it("records one aggregate activation result with count and duration", () => {
+		createRegisteredAction();
+
+		expect(logger.info).toHaveBeenCalledWith("activation committed", {
+			pluginId: "action-provider",
+			activationId: "activation",
+			actionCount: 1,
+			durationMs: expect.any(Number),
+		});
+		expect(logger.info).not.toHaveBeenCalledWith("action registered", expect.anything());
 	});
 
 	it("preserves routing metadata through registration, search and describe without invoking the handler", () => {

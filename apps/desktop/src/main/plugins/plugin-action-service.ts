@@ -33,6 +33,7 @@ interface RegisteredPluginAction {
 
 interface PluginActionActivation {
 	activationId: string;
+	startedAt: number;
 	actions: Map<string, RegisteredPluginAction>;
 }
 
@@ -274,6 +275,7 @@ export class PluginActionService {
 		assertPluginAvailable(pluginId);
 		this.stagingActivations.set(pluginId, {
 			activationId,
+			startedAt: Date.now(),
 			actions: new Map<string, RegisteredPluginAction>(),
 		});
 		log.info("activation began", { pluginId, activationId });
@@ -383,7 +385,8 @@ export class PluginActionService {
 			});
 		}
 		activation.actions.set(registration.id, registered);
-		log.info("action registered", {
+		// 单个 action 的注册属于实现细节；activation committed 会记录聚合计数。
+		log.debug("action registered", {
 			pluginId,
 			localActionId: registration.id,
 			globalActionId,
@@ -415,14 +418,23 @@ export class PluginActionService {
 		this.activeActivations.set(pluginId, staging);
 		this.stagingActivations.delete(pluginId);
 		if (previous) this.disposeActivation(pluginId, previous, "Plugin action activation was replaced");
-		log.info("activation committed", { pluginId, activationId, actionCount: staging.actions.size });
+		log.info("activation committed", {
+			pluginId,
+			activationId,
+			actionCount: staging.actions.size,
+			durationMs: Date.now() - staging.startedAt,
+		});
 	}
 
 	abort(pluginId: string, activationId: string): void {
 		const staging = this.stagingActivations.get(pluginId);
 		if (!staging || staging.activationId !== activationId) return;
 		this.stagingActivations.delete(pluginId);
-		log.info("activation aborted", { pluginId, activationId });
+		log.info("activation aborted", {
+			pluginId,
+			activationId,
+			durationMs: Date.now() - staging.startedAt,
+		});
 	}
 
 	unregister(pluginId: string, localActionId: string, activationId?: string): void {

@@ -8,7 +8,7 @@ import {
 } from "@shared/store/atoms";
 import type { PluginPermission } from "@vetta-org/plugin-sdk";
 import { getDefaultStore } from "jotai";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PluginLocalContributions } from "./plugin-local-contributions";
 import { createPluginUiApi } from "./plugin-ui-context";
 
@@ -36,6 +36,10 @@ function createUi() {
 }
 
 describe("activity-tab command target cwd", () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
 	beforeEach(() => {
 		const store = getDefaultStore();
 		store.set(activeSessionAtom, {
@@ -49,6 +53,7 @@ describe("activity-tab command target cwd", () => {
 	});
 
 	it("writes attach and active-tab state to an explicit background session cwd", () => {
+		const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
 		const ui = createUi();
 
 		ui.setActivityTabVisible("canvas", true, { cwd: TOOL_SESSION_CWD });
@@ -60,6 +65,10 @@ describe("activity-tab command target cwd", () => {
 		expect(store.get(activityPanelTabByProjectAtom).get(TOOL_SESSION_CWD)).toBe("plugin:demo-plugin:canvas");
 		expect(store.get(activityPanelTabByProjectAtom).has(FOREGROUND_CWD)).toBe(false);
 		expect(store.get(activityPanelOpenAtom)).toBe(true);
+		expect(info).toHaveBeenCalledWith(
+			'[activity-tab] opened {"pluginId":"demo-plugin","tabId":"canvas","alreadyAttached":true,"widthRequested":true}',
+		);
+		expect(info.mock.calls.flat().join(" ")).not.toContain(TOOL_SESSION_CWD);
 	});
 
 	it("preserves the current-conversation fallback for existing callers", () => {
