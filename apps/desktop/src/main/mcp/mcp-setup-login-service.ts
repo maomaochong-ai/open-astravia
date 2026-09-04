@@ -1,4 +1,10 @@
-import type { McpContent, McpJsonValue, McpToolCallResult } from "@vetta/runtime-mcp";
+import { VERSION } from "@vetta/coding-agent/config";
+import {
+	MCP_DEFAULT_PROTOCOL_VERSION,
+	type McpContent,
+	type McpJsonValue,
+	type McpToolCallResult,
+} from "@vetta/runtime-mcp";
 import type { McpClientHandle } from "@vetta/runtime-mcp/client";
 import { createMcpClient } from "@vetta/runtime-node/mcp";
 import type { McpServerConfigData } from "../../preload/api-types/mcp.js";
@@ -124,6 +130,11 @@ export class McpSetupLoginService {
 		const client = this.clientFactory(serverName, config as never, { timeout: CALL_TIMEOUT_MS });
 		this.session = { serverName, client };
 		try {
+			// 先握手再调工具：客户端未 initialize 时 callTool 直接抛「MCP client is not initialized」
+			await client.initialize({
+				protocolVersion: MCP_DEFAULT_PROTOCOL_VERSION,
+				clientInfo: { name: "vetta", version: VERSION },
+			});
 			const result = await client.callTool(tool, {});
 			return readSetupLoginQrCode(result);
 		} catch (error) {

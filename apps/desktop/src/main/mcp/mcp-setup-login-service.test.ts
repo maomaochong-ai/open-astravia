@@ -49,14 +49,28 @@ describe("readSetupLoginQrCode", () => {
 
 function fakeClient(callTool: () => Promise<McpToolCallResult>) {
 	const close = vi.fn(async () => undefined);
-	return { handle: { callTool: vi.fn(callTool), close } as never, close };
+	// 真实客户端在 initialize 之前 callTool 会抛「MCP client is not initialized」
+	let initialized = false;
+	const initialize = vi.fn(async () => {
+		initialized = true;
+		return { protocolVersion: "2025-06-18", serverInfo: { name: "demo", version: "1" }, capabilities: {} };
+	});
+	const handle = {
+		initialize,
+		callTool: vi.fn(async () => {
+			if (!initialized) throw new Error("MCP client is not initialized");
+			return callTool();
+		}),
+		close,
+	};
+	return { handle: handle as never, close, initialize };
 }
 
 describe("McpSetupLoginService", () => {
 	const stdio = { command: "/runtime/demo", args: ["-transport=stdio"] } as never;
 
 	it("calls the declared tool on the configured server", async () => {
-		const { handle, close } = fakeClient(async () =>
+		const { handle, close, initialize } = fakeClient(async () =>
 			result({ content: [{ type: "image", data: PNG, mimeType: "image/png" }] }),
 		);
 		const clientFactory = vi.fn(() => handle);
@@ -69,6 +83,7 @@ describe("McpSetupLoginService", () => {
 			image: `data:image/png;base64,${PNG}`,
 		});
 		expect(clientFactory).toHaveBeenCalledWith("demo-mcp", stdio, expect.anything());
+		expect(initialize).toHaveBeenCalledTimes(1);
 		// 会话保持到 cancel：受管服务要在同一连接里等扫码结果
 		expect(close).not.toHaveBeenCalled();
 
