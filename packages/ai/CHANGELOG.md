@@ -42,6 +42,7 @@
 
 ### Fixed
 
+- 修复 Gemini 3 并行工具调用回放时，将缺失 `thoughtSignature` 的后续调用错误转换为普通文本，导致对应 `functionResponse` 与 `functionCall` 失配；现在保留调用结构，对确实缺失签名的历史调用使用 Google replay sentinel。
 - Gemini 请求历史中的工具结果名称现在按对应的 `functionCall`（调用 ID）校正，兼容旧 Team 会话中残留的工具名称不一致，保留原始消息内容与工具调用展示。
 - 修复模型最大输出 token 数被全局硬限制为 32K、缺失元数据又被伪造为固定值的问题；`Model.maxTokens` 现在允许未知，普通 Provider 会省略请求上限并交由实际模型服务决定，Anthropic 因协议强制要求该字段而使用带 warning 的 4096 保守预算。
 - `read` 等工具返回的图片不再因模型目录缺少 `image` 输入能力标记而在 Provider 适配前被静默剥离；工具结果图片现在始终按各 Provider 的多模态协议发送，避免实际支持视觉的自定义或新模型无法看到图片。

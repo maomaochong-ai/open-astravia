@@ -10,6 +10,13 @@ import { transformMessages } from "./transform-messages.js";
 type GoogleApiType = "google-generative-ai" | "google-gemini-cli" | "google-vertex";
 
 /**
+ * Google-documented sentinel for replaying Gemini 3 function calls when the
+ * original thought signature is unavailable (for example after a provider
+ * handoff or message serialization).
+ */
+export const SKIP_THOUGHT_SIGNATURE_VALIDATOR = "skip_thought_signature_validator";
+
+/**
  * Determines whether a streamed Gemini `Part` should be treated as "thinking".
  *
  * Protocol note (Gemini / Vertex AI thought signatures):
@@ -107,6 +114,10 @@ export function convertMessages<T extends GoogleApiType>(model: Model<T>, contex
 			const parts: Part[] = [];
 			// Check if message is from same provider and model - only then keep thinking blocks
 			const isSameProviderAndModel = msg.provider === model.provider && msg.model === model.id;
+			// Gemini 3 normally puts one thought signature on the first standard
+			// function call in a parallel response. Later calls in that same
+			// response legitimately omit it and must remain functionCall parts.
+			let modelResponseHasSignedFunctionCall = false;
 
 			for (const block of msg.content) {
 				if (block.type === "text") {
@@ -136,29 +147,26 @@ export function convertMessages<T extends GoogleApiType>(model: Model<T>, contex
 					}
 				} else if (block.type === "toolCall") {
 					const thoughtSignature = resolveThoughtSignature(isSameProviderAndModel, block.thoughtSignature);
-					// Gemini 3 requires thoughtSignature on all function calls when thinking mode is enabled.
-					// When replaying history from providers without thought signatures (e.g. Claude via Antigravity),
-					// convert unsigned function calls to text to avoid API validation errors.
-					// We include a note telling the model this is historical context to prevent mimicry.
+					// Gemini 3 allows subsequent unsigned calls in a parallel model
+					// response. Do not convert those calls to text: their tool results
+					// still need a matching functionCall in the wire history.
 					const isGemini3 = model.id.toLowerCase().includes("gemini-3");
-					if (isGemini3 && !thoughtSignature) {
-						const argsStr = JSON.stringify(block.arguments ?? {}, null, 2);
-						parts.push({
-							text: `[Historical context: a different model called tool "${block.name}" with arguments: ${argsStr}. Do not mimic this format - use proper function calling.]`,
-						});
-					} else {
-						const part: Part = {
-							functionCall: {
-								name: block.name,
-								args: block.arguments ?? {},
-								...(requiresToolCallId(model.id) ? { id: block.id } : {}),
-							},
-						};
-						if (thoughtSignature) {
-							part.thoughtSignature = thoughtSignature;
-						}
-						parts.push(part);
-					}
+					const isUnsignedParallelCall = thoughtSignature == null && modelResponseHasSignedFunctionCall;
+					const effectiveThoughtSignature =
+						thoughtSignature ??
+						(isGemini3 && !isUnsignedParallelCall ? SKIP_THOUGHT_SIGNATURE_VALIDATOR : undefined);
+
+					if (thoughtSignature != null) modelResponseHasSignedFunctionCall = true;
+
+					const part: Part = {
+						functionCall: {
+							name: block.name,
+							args: block.arguments ?? {},
+							...(requiresToolCallId(model.id) ? { id: block.id } : {}),
+						},
+					};
+					if (effectiveThoughtSignature) part.thoughtSignature = effectiveThoughtSignature;
+					parts.push(part);
 				}
 			}
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { convertMessages } from "../src/providers/google-shared.js";
+import { convertMessages, SKIP_THOUGHT_SIGNATURE_VALIDATOR } from "../src/providers/google-shared.js";
 import type { Context, Model } from "../src/types.js";
 
 describe("google-shared convertMessages", () => {
@@ -71,7 +71,7 @@ describe("google-shared convertMessages", () => {
 		});
 	});
 
-	it("converts unsigned tool calls to text for Gemini 3", () => {
+	it("keeps unsigned historical tool calls as functionCall parts with the replay sentinel", () => {
 		const model: Model<"google-generative-ai"> = {
 			id: "gemini-3-pro-preview",
 			name: "Gemini 3 Pro Preview",
@@ -128,14 +128,88 @@ describe("google-shared convertMessages", () => {
 		}
 
 		expect(toolTurn).toBeTruthy();
-		expect(toolTurn?.parts?.some((p) => p.functionCall !== undefined)).toBe(false);
+		expect(toolTurn?.parts).toContainEqual({
+			functionCall: { name: "bash", args: { command: "ls -la" } },
+			thoughtSignature: SKIP_THOUGHT_SIGNATURE_VALIDATOR,
+		});
+	});
 
-		const text = toolTurn?.parts?.map((p) => p.text ?? "").join("\n");
-		// Should contain historical context note to prevent mimicry
-		expect(text).toContain("Historical context");
-		expect(text).toContain("bash");
-		expect(text).toContain("ls -la");
-		expect(text).toContain("Do not mimic this format");
+	it("preserves unsigned parallel calls after a signed Gemini 3 call", () => {
+		const model: Model<"google-generative-ai"> = {
+			id: "gemini-3-pro-preview",
+			name: "Gemini 3 Pro Preview",
+			api: "google-generative-ai",
+			provider: "google",
+			baseUrl: "https://generativelanguage.googleapis.com",
+			reasoning: true,
+			input: ["text"],
+			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+			contextWindow: 128000,
+			maxTokens: 8192,
+		};
+
+		const contents = convertMessages(model, {
+			messages: [
+				{
+					role: "assistant",
+					content: [
+						{
+							type: "toolCall",
+							id: "call-read",
+							name: "read",
+							arguments: { path: "team.png" },
+							thoughtSignature: "c2lnbmVk",
+						},
+						{
+							type: "toolCall",
+							id: "call-grep",
+							name: "grep",
+							arguments: { pattern: "team" },
+						},
+					],
+					api: "google-generative-ai",
+					provider: "google",
+					model: "gemini-3-pro-preview",
+					usage: {
+						input: 0,
+						output: 0,
+						cacheRead: 0,
+						cacheWrite: 0,
+						totalTokens: 0,
+						cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+					},
+					stopReason: "toolUse",
+					timestamp: 1,
+				},
+				{
+					role: "toolResult",
+					toolCallId: "call-read",
+					toolName: "read",
+					content: [{ type: "text", text: "image contents" }],
+					isError: false,
+					timestamp: 2,
+				},
+				{
+					role: "toolResult",
+					toolCallId: "call-grep",
+					toolName: "grep",
+					content: [{ type: "text", text: "team.ts:1" }],
+					isError: false,
+					timestamp: 3,
+				},
+			],
+		});
+
+		expect(contents[0]?.parts).toEqual([
+			{
+				functionCall: { name: "read", args: { path: "team.png" } },
+				thoughtSignature: "c2lnbmVk",
+			},
+			{
+				functionCall: { name: "grep", args: { pattern: "team" } },
+			},
+		]);
+		expect(contents[1]?.parts?.map((part) => part.functionResponse?.name)).toEqual(["read", "grep"]);
 	});
 
 	it("repairs stale tool result names by matching the function call", () => {
