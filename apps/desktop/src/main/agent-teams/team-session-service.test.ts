@@ -359,8 +359,24 @@ describe("AgentTeamSessionService streaming contract", () => {
 		expect(events.at(-1)).toMatchObject({
 			type: "conversation.agent-message-discard",
 			reason: "completed",
-			sequence: 4,
+			sequence: 6,
 		});
+		expect(events.filter((event) => event.type === "conversation.tool-execution")).toEqual([
+			expect.objectContaining({
+				event: expect.objectContaining({
+					type: "start",
+					toolCallId: "tool-call-1",
+					toolName: "read",
+				}),
+			}),
+			expect.objectContaining({
+				event: expect.objectContaining({
+					type: "end",
+					toolCallId: "tool-call-1",
+					result: { content: [{ type: "text", text: "private result" }] },
+				}),
+			}),
+		]);
 		expect(runtime.prompt).toHaveBeenCalledWith(
 			expect.any(String),
 			expect.objectContaining({

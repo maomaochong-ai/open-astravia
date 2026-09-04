@@ -69,12 +69,14 @@ import {
 	type HistoryEntry,
 	type PromptAttachmentRef,
 	type RuntimeHost,
+	type RuntimeSessionExecutionObservation,
 	readRuntimeFailure,
 } from "@vetta/runtime-core";
 import type {
 	ConversationAgentMessageEvent,
 	ConversationMessageRecord,
 	ConversationMessageStreamEvent,
+	ConversationToolExecutionEvent,
 } from "@vetta/runtime-core/conversation";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import { runtimeObservationFailure } from "@vetta/runtime-core/observation";
@@ -496,6 +498,7 @@ export class AgentTeamSessionService {
 							observation,
 						);
 						if (correlated) this.observations(currentSession)?.publishMemberToolExecution(correlated);
+						this.publishMemberToolExecutionEvent(active, observation);
 					});
 				}
 			} catch (error) {
@@ -541,6 +544,73 @@ export class AgentTeamSessionService {
 					}),
 				);
 			});
+	}
+
+	/**
+	 * Adapt the member runtime's execution stream into the shared Conversation
+	 * message projection. Observation records remain aggregate/diagnostic data;
+	 * these events carry the renderer-only details needed by the ordinary tool
+	 * cards and never enter the persisted or model-visible history.
+	 */
+	private publishMemberToolExecutionEvent(
+		active: ActiveTeamMemberTurn,
+		observation: RuntimeSessionExecutionObservation,
+	): void {
+		const event = observation.event;
+		let projected: ConversationToolExecutionEvent["event"] | undefined;
+		switch (event.type) {
+			case "tool.execution.start":
+				projected = {
+					type: "start",
+					toolCallId: event.toolCallId,
+					toolName: event.toolName,
+					args: event.args,
+					startedAt: event.startedAt,
+				};
+				break;
+			case "tool.execution.update":
+				projected = {
+					type: "update",
+					toolCallId: event.toolCallId,
+					toolName: event.toolName,
+					partialResult: event.partialResult,
+				};
+				break;
+			case "tool.execution.phase":
+				projected = {
+					type: "phase",
+					toolCallId: event.toolCallId,
+					toolName: event.toolName,
+					label: event.label,
+					atMs: event.atMs,
+				};
+				break;
+			case "tool.execution.end":
+				projected = {
+					type: "end",
+					toolCallId: event.toolCallId,
+					toolName: event.toolName,
+					result: event.result,
+					isError: event.isError,
+					startedAt: event.startedAt,
+					durationMs: event.durationMs,
+					phases: [...event.phases],
+				};
+				break;
+			default:
+				return;
+		}
+		active.seq += 1;
+		this.publish({
+			type: "conversation.tool-execution",
+			conversationId: active.teamSessionId,
+			messageId: active.messageId,
+			turnId: active.requestId,
+			author: active.author,
+			sequence: active.seq,
+			timestamp: observation.timestamp,
+			event: projected,
+		});
 	}
 
 	private detachIdleRuntimeSubscriptions(teamSessionId: string): void {

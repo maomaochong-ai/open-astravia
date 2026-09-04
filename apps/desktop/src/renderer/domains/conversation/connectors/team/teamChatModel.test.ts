@@ -280,4 +280,44 @@ describe("team chat stream state", () => {
 			}),
 		]);
 	});
+
+	it("applies live member tool execution events to the shared message block", () => {
+		const start: TeamSessionStreamEvent = {
+			type: "conversation.tool-execution",
+			conversationId: session.id,
+			messageId: "live-result",
+			turnId: "request",
+			author: { kind: "agent", id: member.id },
+			sequence: 1,
+			timestamp: 1,
+			event: { type: "start", toolCallId: "live-call", toolName: "read", args: { path: "README.md" }, startedAt: 1 },
+		};
+		const end: TeamSessionStreamEvent = {
+			...start,
+			sequence: 2,
+			timestamp: 3,
+			event: {
+				type: "end",
+				toolCallId: "live-call",
+				toolName: "read",
+				result: { content: [{ type: "text", text: "done" }] },
+				isError: false,
+				startedAt: 1,
+				durationMs: 2,
+				phases: [],
+			},
+		};
+
+		const state = reduceTeamStreamState(reduceTeamStreamState({}, start), end);
+		expect(state["live-result"]?.message.blocks).toEqual([
+			expect.objectContaining({
+				type: "tool_call",
+				toolCallId: "live-call",
+				toolName: "read",
+				args: { path: "README.md" },
+				status: "success",
+				result: "done",
+			}),
+		]);
+	});
 });

@@ -3,7 +3,10 @@ import { useSetAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 
 /** 输入栏抽屉和活动面板的组合状态。 */
-export function useInputBarPanelModel(activeSession: { cwd: string; runtimeId: string } | null) {
+export function useInputBarPanelModel(
+	activeSession: { cwd: string; runtimeId: string } | null,
+	activityWorkspaceId?: string,
+) {
 	const [drawerActiveTab, setDrawerActiveTab] = useState<string | null>(null);
 	const setActivityPanelOpen = useSetAtom(activityPanelOpenAtom);
 	const setTabByProject = useSetAtom(activityPanelTabByProjectAtom);
@@ -13,16 +16,16 @@ export function useInputBarPanelModel(activeSession: { cwd: string; runtimeId: s
 	}, [activeSession]);
 
 	const openTodoPanel = useCallback(() => {
-		const cwd = activeSession?.cwd;
-		if (!cwd) return;
+		const workspaceId = activityWorkspaceId ?? activeSession?.cwd;
+		if (!workspaceId) return;
 		setDrawerActiveTab(null);
 		setActivityPanelOpen(true);
 		setTabByProject((prev) => {
 			const map = new Map(prev);
-			map.set(cwd, "todo");
+			map.set(workspaceId, "todo");
 			return map;
 		});
-	}, [activeSession?.cwd, setActivityPanelOpen, setTabByProject]);
+	}, [activityWorkspaceId, activeSession?.cwd, setActivityPanelOpen, setTabByProject]);
 
 	return { drawerActiveTab, openTodoPanel, setDrawerActiveTab };
 }

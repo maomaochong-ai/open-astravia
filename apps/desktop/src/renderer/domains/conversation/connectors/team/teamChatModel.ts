@@ -4,6 +4,7 @@ import type { ChatConversationItem } from "@shared/store/atoms";
 import type { ActivityWorkspace } from "@shared/workspace/activity-workspace";
 import type { AgentTeamDocument, TeamDefinition, TeamSessionSnapshot, TeamSessionStreamEvent } from "@vetta/agent-team";
 import type { PromptAttachmentRef } from "@vetta/runtime-core";
+import { reduceConversationToolExecutionEvent } from "../../services/conversation-projection";
 
 export type TeamChatStatus = "loading" | "ready" | "sending" | "streaming" | "cancelling" | "error";
 
@@ -115,6 +116,11 @@ export function reduceTeamStreamState(state: TeamStreamState, event: TeamSession
 		const next = { ...state };
 		delete next[event.messageId];
 		return next;
+	}
+	if (event.type === "conversation.tool-execution") {
+		const current = state[event.messageId];
+		const next = reduceConversationToolExecutionEvent(current, event);
+		return { ...state, [event.messageId]: next };
 	}
 	const current = state[event.messageId];
 	const next = reduceConversationMessageEvent(current, event);

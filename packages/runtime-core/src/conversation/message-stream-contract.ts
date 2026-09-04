@@ -1,4 +1,6 @@
+import type { ToolPhase } from "@vetta/agent-core";
 import type { AssistantMessageEvent } from "@vetta/ai";
+import type { RuntimeToolResult } from "../kernel/contracts.js";
 import type { ConversationAgentAuthorReference } from "./message-contract.js";
 
 /** Product-neutral identity envelope for one Agent message protocol event. */
@@ -29,4 +31,54 @@ export interface ConversationAgentMessageDiscardEvent {
 	readonly error?: string;
 }
 
-export type ConversationMessageStreamEvent = ConversationAgentMessageEvent | ConversationAgentMessageDiscardEvent;
+/**
+ * Execution side effects for a tool call already present in an Agent message.
+ *
+ * These events are renderer-facing only. They update the message projection and
+ * are never added to the model-visible Conversation history.
+ */
+export interface ConversationToolExecutionEvent {
+	readonly type: "conversation.tool-execution";
+	readonly conversationId: string;
+	readonly messageId: string;
+	readonly turnId: string;
+	readonly author: ConversationAgentAuthorReference;
+	readonly sequence: number;
+	readonly timestamp: number;
+	readonly event:
+		| {
+				readonly type: "start";
+				readonly toolCallId: string;
+				readonly toolName: string;
+				readonly args: unknown;
+				readonly startedAt: number;
+		  }
+		| {
+				readonly type: "update";
+				readonly toolCallId: string;
+				readonly toolName: string;
+				readonly partialResult: RuntimeToolResult;
+		  }
+		| {
+				readonly type: "phase";
+				readonly toolCallId: string;
+				readonly toolName: string;
+				readonly label: string;
+				readonly atMs: number;
+		  }
+		| {
+				readonly type: "end";
+				readonly toolCallId: string;
+				readonly toolName: string;
+				readonly result: RuntimeToolResult;
+				readonly isError: boolean;
+				readonly startedAt: number;
+				readonly durationMs: number;
+				readonly phases: readonly ToolPhase[];
+		  };
+}
+
+export type ConversationMessageStreamEvent =
+	| ConversationAgentMessageEvent
+	| ConversationAgentMessageDiscardEvent
+	| ConversationToolExecutionEvent;

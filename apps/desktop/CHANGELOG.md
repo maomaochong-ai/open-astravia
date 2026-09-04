@@ -2,6 +2,8 @@
 
 ### Added
 
+- Agent Team 成员的实时工具执行现在通过共享 Conversation 消息流投影到普通工具卡片；输入区同时复用普通会话的命令/At 面板、触发器和语音入口，Todo 活动页签按团队 workspace 作用域打开。
+
 - Agent Team 现在支持一个团队下创建、深链和切换多个独立会话，并在侧栏显示子会话；团队拥有稳定共享工作空间，输入区可按会话选择模型与推理档位，File/Browser 活动页签按工作空间共享。底层仍使用普通 Conversation，但新增归属目录会从普通列表、Quick Panel 与搜索中排除协调及成员执行会话。见 ADR-0105。
 - Chat 与 Agent Team 现在通过同一个严格 User/Agent 消息 ViewModel、流式 reducer 和工具调用卡片展示普通 Conversation 消息；Team 会在本机用户可见的 transcript 中保留成员工具调用，重新打开后仍可见，同时 Context Policy 继续阻止 thinking、工具输入输出和 subagent transcript 进入其他成员的模型上下文。
 - Agent Team 的结果发布事务新增 `prepared/message-published/completed/needs-recovery` 生命周期 observation；崩溃恢复阶段会标记 `recovered`，仅携带稳定关联 ID，不复制成员私有执行正文。Team 共享操作契约与成员身份也分别进入 Coding Agent 的稳定/易变系统提示词段。

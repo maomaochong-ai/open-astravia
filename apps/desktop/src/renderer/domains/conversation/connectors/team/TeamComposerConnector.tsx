@@ -7,6 +7,8 @@ import { useTranslation } from "react-i18next";
 import { InputBar } from "../../components/InputBar";
 import type { InputBarModel } from "../../components/input-bar/types";
 import { useInputBarContextMenuModel } from "../../components/input-bar/useInputBarContextMenuModel";
+import { useInputBarTriggerModel } from "../../components/input-bar/useInputBarTriggerModel";
+import { useSpeechInput } from "../../components/input-bar/useSpeechInput";
 import type { TeamAttachmentViewModel, TeamChatActions, TeamChatViewModel } from "./teamChatModel";
 
 const VETTA_PATH_MIME = "application/vetta-path";
@@ -28,10 +30,26 @@ export function TeamComposerConnector({
 }): JSX.Element {
 	const { t } = useTranslation("chat");
 	const setFilePreview = useSetAtom(filePreviewAtom);
-	const [focused, setFocused] = useState(false);
 	const [dragKind, setDragKind] = useState<"files" | "internal" | null>(null);
 	const isStreaming = model.status === "sending" || model.status === "streaming" || model.status === "cancelling";
 	const isEmpty = model.draft.trim().length === 0 && model.attachments.length === 0;
+	const trigger = useInputBarTriggerModel({
+		activeSession:
+		model.workspace?.cwd && model.activeSessionId
+				? { cwd: model.workspace.cwd, runtimeId: model.activeSessionId }
+				: null,
+		canSend: model.canSend,
+		firstSuggestion: undefined,
+		focusInputRequest: 0,
+		hasSession: model.editorEnabled,
+		isEmpty,
+		isStreaming,
+		activityWorkspaceId: model.workspace?.id,
+		onAbort: actions.abort,
+		onExpandedChange: undefined,
+		onSend: () => actions.send(),
+	});
+	const speechInput = useSpeechInput(model.editorEnabled);
 	const contextMenu = useInputBarContextMenuModel({
 		activeRuntimeId: model.activeSessionId ?? undefined,
 		hasSession: model.editorEnabled,
@@ -152,11 +170,11 @@ export function TeamComposerConnector({
 		effectiveCwd: model.workspace?.cwd ?? "",
 		placeholderTexts: [model.labels.placeholder],
 		placeholderRotating: false,
-		isFocused: focused,
+		isFocused: trigger.isFocused,
 		drawerItems: [],
 		drawerActiveTab: null,
 		todo: null,
-		speechInput: null,
+		speechInput,
 		hasPromptAttachment: false,
 		pendingMessageEdit: false,
 		pendingEditHint: t("messageList.edit.pendingHint"),
@@ -168,6 +186,20 @@ export function TeamComposerConnector({
 			history: model.history,
 			onValueChange: actions.setDraft,
 			persistenceId: model.activeSessionId,
+		},
+		commands: {
+			slashOpen: trigger.slashOpen,
+			slashVisible: trigger.slashVisible,
+			slashFilter: trigger.slashFilter,
+			atOpen: trigger.atOpen,
+			atFilter: trigger.atFilter,
+			onTriggerChange: trigger.handleTriggerChange,
+			onSlashClose: trigger.handleSlashClose,
+			onSlashSelect: trigger.handleSlashSelect,
+			onConnectorSelect: trigger.handleConnectorSelect,
+			onAtClose: trigger.handleAtClose,
+			onAtSelect: trigger.handleAtSelect,
+			onOpen: trigger.handlePlusClick,
 		},
 		routing,
 		modelSelector: { updateActiveSession: false, scope: modelScope },
@@ -194,13 +226,9 @@ export function TeamComposerConnector({
 			},
 		},
 		actions: {
-			setFocused,
-			setDrawerActiveTab: () => undefined,
-			handleEnter: () => {
-				if (!model.canSend) return false;
-				void actions.send();
-				return true;
-			},
+			setFocused: trigger.setIsFocused,
+			setDrawerActiveTab: trigger.setDrawerActiveTab,
+			handleEnter: trigger.handleEnter,
 			handleContextMenu: contextMenu.onContextMenu,
 			removeImage: actions.removeAttachment,
 			openImagePreview: (index) => setFilePreview({ items: imageAttachments, index }),
@@ -208,10 +236,8 @@ export function TeamComposerConnector({
 			removeAppshot: () => undefined,
 			handleSelectImages: actions.selectImages,
 			handleSelectFiles: actions.selectFiles,
-			handleSend: () => {
-				void actions.send();
-			},
-			handleAbort: actions.abort,
+			handleSend: trigger.handleSend,
+			handleAbort: trigger.handleAbort,
 			cancelPendingEdit: () => undefined,
 		},
 	};

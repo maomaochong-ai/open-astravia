@@ -1,8 +1,12 @@
-import { type ConversationMessageEventState, reduceConversationMessageEvent } from "@shared/conversation";
+import {
+	type ConversationMessageEventState,
+	createConversationAgentMessage,
+	reduceConversationMessageEvent,
+} from "@shared/conversation";
 import type { ChatConversationItem } from "@shared/store/atoms";
 import type { AssistantSessionEvent, HistoryEntry } from "@vetta/runtime-core";
-import type { ConversationAgentMessageEvent } from "@vetta/runtime-core/conversation";
-import { fullHistoryToChat, resetStreamState } from "./chat-service";
+import type { ConversationAgentMessageEvent, ConversationToolExecutionEvent } from "@vetta/runtime-core/conversation";
+import { fullHistoryToChat, handleToolEnd, handleToolPhase, handleToolStart, resetStreamState } from "./chat-service";
 
 interface QueuedAssistantEvent {
 	readonly event: AssistantSessionEvent;
@@ -79,6 +83,87 @@ export class ConversationProjection {
 		this.targetMessageId = undefined;
 		resetStreamState();
 	}
+}
+
+/**
+ * Applies execution-only tool events to the same Agent message projection used
+ * by ordinary Chat. The events are deliberately kept outside Conversation
+ * history so Team can expose tool cards without leaking execution details into
+ * the model context or changing the storage contract.
+ */
+export function reduceConversationToolExecutionEvent(
+	state: ConversationMessageEventState | undefined,
+	event: ConversationToolExecutionEvent,
+): ConversationMessageEventState {
+	if (state && (state.conversationId !== event.conversationId || state.message.id !== event.messageId)) {
+		throw new Error("Conversation tool execution event does not match its reduction state");
+	}
+	if (state && event.sequence <= state.sequence) return state;
+
+	const base =
+		state?.message ??
+		createConversationAgentMessage({
+			id: event.messageId,
+			entryId: event.messageId,
+			turnId: event.turnId,
+			authorId: event.author.id,
+			phase: "streaming",
+			text: "",
+			blocks: [],
+			timestamp: event.timestamp,
+			startedAt: event.timestamp,
+		});
+	let message = base;
+	switch (event.event.type) {
+		case "start":
+			message = requireAgentMessage(
+				handleToolStart(
+					[base],
+					event.event.toolCallId,
+					event.event.toolName,
+					asRecord(event.event.args),
+					event.event.startedAt,
+				)[0],
+			);
+			break;
+		case "phase":
+			message = requireAgentMessage(
+				handleToolPhase([base], event.event.toolCallId, event.event.label, event.event.atMs)[0],
+			);
+			break;
+		case "end": {
+			const started = base.blocks.some(
+				(block) => block.type === "tool_call" && block.toolCallId === event.event.toolCallId,
+			)
+				? [base]
+				: handleToolStart([base], event.event.toolCallId, event.event.toolName, {}, event.event.startedAt);
+			message = requireAgentMessage(
+				handleToolEnd(started, event.event.toolCallId, event.event.result, event.event.isError, {
+					startedAt: event.event.startedAt,
+					durationMs: event.event.durationMs,
+					phases: [...event.event.phases],
+				})[0],
+			);
+			break;
+		}
+		case "update":
+			// Partial results are intentionally not rendered as terminal output.
+			// The final event carries the complete result and timing metadata.
+			break;
+	}
+	return { conversationId: event.conversationId, sequence: event.sequence, message };
+}
+
+function requireAgentMessage(message: ChatConversationItem | undefined) {
+	if (!message || message.kind !== "agent")
+		throw new Error("Tool execution projection did not produce an Agent message");
+	return message;
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: {};
 }
 
 function findTargetAgentMessage(messages: readonly ChatConversationItem[], targetMessageId: string | undefined) {

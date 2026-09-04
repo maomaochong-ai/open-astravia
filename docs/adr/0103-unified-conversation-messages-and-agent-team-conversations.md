@@ -52,10 +52,13 @@ ADR-0099 将 Team Session 与普通会话存储隔离，ADR-0101 要求 Chat 与
    UI 直接复用已有 `Message`、`MessageLayout`、`MessageVisual` 与独立行为叶子；不引入仅转发 children 的
    `ConversationMessage.Header/Body/ActionBar`，也不将未被实际消费的消息模型放进空 Provider 来代替数据迁移。
 10. Team 复用现有 Runtime Observation Hub/Publisher 和 `RuntimeExecutionObservationEvent`，增加类型化 Team
-    生命周期 token、稳定 correlation 与数据分类。生产范围只包含发布合同和接入点，不新增 UI/IPC 订阅、recorder、
-    metrics、日志或远程 Adapter；测试可使用内存 Observer 验证事件完整性与失败隔离。
-11. 安全 Observation 只包含身份、状态、数量、耗时和稳定错误码。可包含工具输入输出与结构化错误的敏感执行事实
-    必须先脱敏、限长并携带分类元数据，且不能因此进入跨成员共享上下文。隐藏推理链仍不发布。
+    生命周期 token、稳定 correlation 与数据分类。成员执行流同时由 Team Session Service 适配为
+    `ConversationToolExecutionEvent`，只发给当前本机 Team Conversation 的 renderer 消息投影，用于复用普通会话的
+    ToolCallBlock；该事件是渲染期、非持久化数据，不进入 Observation Hub 的安全摘要，也不进入任何成员的模型上下文。
+    生产范围不新增独立的 Team UI/IPC 数据源、recorder、metrics、日志或远程 Adapter；测试可使用内存 Observer
+    验证观察事件完整性与失败隔离，并用消息流合同测试验证工具卡片状态归约。
+11. 安全 Observation 只包含身份、状态、数量、耗时和稳定错误码。渲染期的本机工具卡片可以沿用普通会话的已授权
+    工具输入输出展示合同；这些数据不写入 Team 公共消息、不进入跨成员共享上下文。隐藏推理链仍不发布。
 12. subagent 永远不进入 Team roster、不能成为 Team 消息作者、不能直接拥有或完成 Team work item。默认 Team
     policy 禁用 subagent；显式允许时也只能作为成员的私有辅助，由父成员对外发布结果。
 

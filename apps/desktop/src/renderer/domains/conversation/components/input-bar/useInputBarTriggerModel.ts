@@ -32,6 +32,7 @@ export function useInputBarTriggerModel({
 	firstSuggestion,
 	activeSession,
 	focusInputRequest,
+	activityWorkspaceId,
 	onExpandedChange,
 	onSend,
 	onAbort,
@@ -43,6 +44,7 @@ export function useInputBarTriggerModel({
 	firstSuggestion?: string;
 	activeSession: { cwd: string; runtimeId: string } | null;
 	focusInputRequest: number;
+	activityWorkspaceId?: string;
 	onExpandedChange?: (expanded: boolean) => void;
 	onSend: (overrideText?: string, context?: SendInteractionContext) => Promise<void>;
 	onAbort: () => Promise<void>;
@@ -50,7 +52,10 @@ export function useInputBarTriggerModel({
 	const [isFocused, setIsFocused] = useState(false);
 	const [trigger, setTrigger] = useState<TriggerMatch | null>(null);
 	const dismissedTriggerRef = useRef<string | null>(null);
-	const { drawerActiveTab, setDrawerActiveTab, openTodoPanel } = useInputBarPanelModel(activeSession);
+	const { drawerActiveTab, setDrawerActiveTab, openTodoPanel } = useInputBarPanelModel(
+		activeSession,
+		activityWorkspaceId,
+	);
 
 	const slashOpen = trigger?.kind === "slash" && dismissedTriggerRef.current !== `/${trigger.query}`;
 	const atOpen = trigger?.kind === "at" && dismissedTriggerRef.current !== `@${trigger.query}`;

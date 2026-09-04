@@ -75,6 +75,9 @@ describe("TeamComposerConnector", () => {
 		expect(inputModel.editor).toMatchObject({ value: "Ship it", history: ["Previous"] });
 		expect(inputModel.modelSelector.updateActiveSession).toBe(false);
 		expect(inputModel.editor.persistenceId).toBe("session-1");
+		expect(inputModel.commands).toBeDefined();
+		expect(inputModel.commands?.onOpen).toBeTypeOf("function");
+		expect(inputModel.speechInput).toBeDefined();
 		expect(inputModel.routing?.leaderSelected).toBe(true);
 
 		act(() => {

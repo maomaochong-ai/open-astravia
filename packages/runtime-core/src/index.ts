@@ -45,6 +45,7 @@ export {
 	type ConversationDocument,
 	type ConversationMessageRecord,
 	type ConversationMessageStreamEvent,
+	type ConversationToolExecutionEvent,
 	type ConversationUserAuthorReference,
 	type ConversationUserMessageRecord,
 	createEmptyConversationDocument,

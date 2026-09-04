@@ -56,4 +56,5 @@ export type {
 	ConversationAgentMessageDiscardEvent,
 	ConversationAgentMessageEvent,
 	ConversationMessageStreamEvent,
+	ConversationToolExecutionEvent,
 } from "./message-stream-contract.js";
