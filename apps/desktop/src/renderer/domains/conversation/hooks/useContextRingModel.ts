@@ -1,11 +1,11 @@
 import { type ContextUsageData, contextUsageAtom, isCompactingAtom } from "@shared/store/atoms";
 import { CONTEXT_RING_CIRCUMFERENCE } from "@vetta/theme-ui/chat";
 import { useAtomValue } from "jotai";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { buildContextRingDetails, type ContextRingDetailsModel, formatTokens } from "../services/context-ring-details";
 
-type Translate = ReturnType<typeof useTranslation>["t"];
+type Translate = (key: string, options?: Record<string, unknown>) => string;
 
 export interface ContextRingModel {
 	percent: number;
@@ -44,14 +44,25 @@ export function useDefaultContextRingModel(includeDetails = true): ContextRingMo
 
 export function useContextRingModel(binding: ContextRingBinding, includeDetails = true): ContextRingModel | null {
 	const { t } = useTranslation("chat");
+	const translate = useCallback<Translate>(
+		(key, options) =>
+			String((t as unknown as (key: string, options?: Record<string, unknown>) => unknown)(key, options)),
+		[t],
+	);
 	const { usage, isCompacting } = binding;
-	const detailLabels = useMemo(() => (includeDetails ? contextRingDetailLabels(t) : null), [includeDetails, t]);
+	const detailLabels = useMemo(
+		() => (includeDetails ? contextRingDetailLabels(translate) : null),
+		[includeDetails, translate],
+	);
 	const composition = usage?.composition;
 	const details = useMemo(
 		() => (detailLabels ? buildContextRingDetails(composition, detailLabels) : null),
 		[composition, detailLabels],
 	);
-	return useMemo(() => buildContextRingModel({ usage, isCompacting }, t, details), [details, isCompacting, t, usage]);
+	return useMemo(
+		() => buildContextRingModel({ usage, isCompacting }, translate, details),
+		[details, isCompacting, translate, usage],
+	);
 }
 
 export function useContextRingScopeModels(
@@ -59,12 +70,20 @@ export function useContextRingScopeModels(
 	includeDetails = true,
 ): readonly ContextRingScopeModel[] {
 	const { t } = useTranslation("chat");
-	const detailLabels = useMemo(() => (includeDetails ? contextRingDetailLabels(t) : null), [includeDetails, t]);
+	const translate = useCallback<Translate>(
+		(key, options) =>
+			String((t as unknown as (key: string, options?: Record<string, unknown>) => unknown)(key, options)),
+		[t],
+	);
+	const detailLabels = useMemo(
+		() => (includeDetails ? contextRingDetailLabels(translate) : null),
+		[includeDetails, translate],
+	);
 	return useMemo(
 		() =>
 			bindings.flatMap((binding) => {
 				const details = detailLabels ? buildContextRingDetails(binding.usage?.composition, detailLabels) : null;
-				const model = buildContextRingModel(binding, t, details);
+				const model = buildContextRingModel(binding, translate, details);
 				return model
 					? [
 							{
@@ -77,7 +96,7 @@ export function useContextRingScopeModels(
 						]
 					: [];
 			}),
-		[bindings, detailLabels, t],
+		[bindings, detailLabels, translate],
 	);
 }
 

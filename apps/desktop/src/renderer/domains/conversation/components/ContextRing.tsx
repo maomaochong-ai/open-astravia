@@ -127,7 +127,9 @@ export interface ContextRingContentProps extends Omit<ComponentProps<typeof Popo
 }
 
 /** Generic popover surface. Layout and content are fully composed by callers. */
-export function ContextRingContent({ children, className, ...props }: ContextRingContentProps = {}): JSX.Element {
+export function ContextRingContent({ children, className, ...props }: ContextRingContentProps = {}): JSX.Element | null {
+	const context = useContext(ContextRingContext);
+	if (context && !context.open) return null;
 	return (
 		<PopoverContent side="top" align="end" {...props} className={`w-64 p-0${className ? ` ${className}` : ""}`}>
 			{children}
