@@ -1559,13 +1559,7 @@ export class AgentTeamSessionService {
 		const resultEntry = this.getRuntime()
 			.readSessionDocument(coordination.sessionId)
 			.entries.find((entry) => entry.type === "message" && entry.id === resultMessageId);
-		const resultText =
-			resultEntry?.type === "message"
-				? resultEntry.message.content
-						.filter((item) => item.type === "text")
-						.map((item) => item.text)
-						.join("\n")
-				: "";
+		const resultText = resultEntry?.type === "message" ? extractMessageText(resultEntry.message) : "";
 		try {
 			await deliverTeamTaskCompletionNotification(this.getRuntime(), initiator.sessionId, {
 				teamTaskId: workItem.id,
@@ -2721,6 +2715,20 @@ function isPublicAssistantPart(
 	part: AssistantMessage["content"][number],
 ): part is Extract<AssistantMessage["content"][number], { type: "text" | "toolCall" }> {
 	return part.type === "text" || part.type === "toolCall";
+}
+
+function extractMessageText(message: unknown): string {
+	if (!isRecord(message)) return "";
+	const content = message.content;
+	if (typeof content === "string") return content;
+	if (!Array.isArray(content)) return "";
+	return content
+		.flatMap((item) => (isRecord(item) && item.type === "text" && typeof item.text === "string" ? [item.text] : []))
+		.join("\n");
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function compatibilityPublicAssistantMessage(text: string, timestamp: number): AssistantMessage {

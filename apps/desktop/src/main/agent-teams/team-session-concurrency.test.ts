@@ -36,6 +36,7 @@ vi.mock("../logger.js", () => ({
 	getAppLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
 }));
 vi.mock("../runtime.js", () => ({ getSharedRuntime: vi.fn() }));
+vi.mock("../ipc/fs.js", () => ({ readDesktopConfig: vi.fn(async () => ({})) }));
 
 describe("Team member concurrency", () => {
 	it("restores policy-specific deltas without rerunning a changed policy after restart", async () => {
@@ -1018,6 +1019,7 @@ async function createFixture(extensions?: AgentTeamExtensionRegistry) {
 			return { sessionId };
 		}),
 		getSessionPath: (id: string) => (activeSessions.has(id) ? `C:/runtime/${id}.jsonl` : undefined),
+		setExecutionMode: vi.fn(async () => undefined),
 		createObservationScope: (context: RuntimeObservationContext) => observationPublisher.scope(context),
 		disposeSession: vi.fn(async () => undefined),
 		subscribe: () => () => undefined,

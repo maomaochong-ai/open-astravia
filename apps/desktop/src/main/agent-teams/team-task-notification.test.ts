@@ -27,8 +27,9 @@ describe("team task completion notification", () => {
 				resultText: "The research is complete.",
 			},
 		});
-		expect(notification.content[0]).toMatchObject({ type: "text" });
-		expect(notification.content[0]?.type === "text" ? notification.content[0].text : "").toContain(
+		const content = notification.content[0];
+		expect(content).toMatchObject({ type: "text" });
+		expect(typeof content === "object" && content !== null && "text" in content ? content.text : "").toContain(
 			"team-task-completed",
 		);
 	});
