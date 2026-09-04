@@ -137,4 +137,54 @@ describe("google-shared convertMessages", () => {
 		expect(text).toContain("ls -la");
 		expect(text).toContain("Do not mimic this format");
 	});
+
+	it("repairs stale tool result names by matching the function call", () => {
+		const model: Model<"google-generative-ai"> = {
+			id: "gemini-2.5-flash",
+			name: "Gemini 2.5 Flash",
+			api: "google-generative-ai",
+			provider: "google",
+			baseUrl: "https://generativelanguage.googleapis.com",
+			reasoning: true,
+			input: ["text"],
+			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+			contextWindow: 128000,
+			maxTokens: 8192,
+		};
+		const contents = convertMessages(model, {
+			messages: [
+				{ role: "user", content: "inspect the team", timestamp: 1 },
+				{
+					role: "assistant",
+					content: [{ type: "toolCall", id: "call-1", name: "team_list_members", arguments: {} }],
+					api: "google-gemini-cli",
+					provider: "google-antigravity",
+					model: "gemini-2.5-flash",
+					usage: {
+						input: 0,
+						output: 0,
+						cacheRead: 0,
+						cacheWrite: 0,
+						totalTokens: 0,
+						cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+					},
+					stopReason: "toolUse",
+					timestamp: 2,
+				},
+				{
+					role: "toolResult",
+					toolCallId: "call-1",
+					toolName: "todo",
+					content: [{ type: "text", text: "members" }],
+					isError: false,
+					timestamp: 3,
+				},
+			],
+		});
+
+		const response = contents
+			.flatMap((content) => content.parts ?? [])
+			.find((part) => part.functionResponse)?.functionResponse;
+		expect(response).toMatchObject({ name: "team_list_members", response: { output: "members" } });
+	});
 });

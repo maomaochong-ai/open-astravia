@@ -112,4 +112,40 @@ describe("OpenAI to Anthropic session migration for Copilot Claude", () => {
 
 		expect(toolCall.thoughtSignature).toBeUndefined();
 	});
+
+	it("uses the matching tool call name for stale tool results", () => {
+		const model = makeCopilotClaudeModel();
+		const messages: Message[] = [
+			{ role: "user", content: "inspect the team", timestamp: 1 },
+			{
+				role: "assistant",
+				content: [{ type: "toolCall", id: "call-1", name: "team_list_members", arguments: {} }],
+				api: "openai-completions",
+				provider: "github-copilot",
+				model: "gpt-4o",
+				usage: {
+					input: 0,
+					output: 0,
+					cacheRead: 0,
+					cacheWrite: 0,
+					totalTokens: 0,
+					cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+				},
+				stopReason: "toolUse",
+				timestamp: 2,
+			},
+			{
+				role: "toolResult",
+				toolCallId: "call-1",
+				toolName: "todo",
+				content: [{ type: "text", text: "members" }],
+				isError: false,
+				timestamp: 3,
+			},
+		];
+
+		const result = transformMessages(messages, model, anthropicNormalizeToolCallId);
+		const toolResult = result.find((message) => message.role === "toolResult");
+		expect(toolResult).toMatchObject({ toolCallId: "call-1", toolName: "team_list_members" });
+	});
 });

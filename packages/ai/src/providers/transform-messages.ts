@@ -94,6 +94,7 @@ export function transformMessages<TApi extends Api>(
 	// This preserves thinking signatures and satisfies API requirements
 	const result: Message[] = [];
 	let pendingToolCalls: ToolCall[] = [];
+	let pendingToolCallsById = new Map<string, ToolCall>();
 	let existingToolResultIds = new Set<string>();
 
 	for (let i = 0; i < transformed.length; i++) {
@@ -115,6 +116,7 @@ export function transformMessages<TApi extends Api>(
 					}
 				}
 				pendingToolCalls = [];
+				pendingToolCallsById = new Map();
 				existingToolResultIds = new Set();
 			}
 
@@ -132,13 +134,22 @@ export function transformMessages<TApi extends Api>(
 			const toolCalls = assistantMsg.content.filter((b) => b.type === "toolCall") as ToolCall[];
 			if (toolCalls.length > 0) {
 				pendingToolCalls = toolCalls;
+				pendingToolCallsById = new Map(toolCalls.map((toolCall) => [toolCall.id, toolCall]));
 				existingToolResultIds = new Set();
 			}
 
 			result.push(msg);
 		} else if (msg.role === "toolResult") {
+			const matchingToolCall = pendingToolCallsById.get(msg.toolCallId);
+			// Gemini requires functionResponse.name to match the preceding
+			// functionCall.name. Older Team histories can contain a stale or
+			// incorrect toolName; the call ID is the authoritative relationship.
+			const normalizedToolResult =
+				matchingToolCall && matchingToolCall.name !== msg.toolName
+					? { ...msg, toolName: matchingToolCall.name }
+					: msg;
 			existingToolResultIds.add(msg.toolCallId);
-			result.push(msg);
+			result.push(normalizedToolResult);
 		} else if (msg.role === "user") {
 			// User message interrupts tool flow - insert synthetic results for orphaned calls
 			if (pendingToolCalls.length > 0) {
@@ -155,6 +166,7 @@ export function transformMessages<TApi extends Api>(
 					}
 				}
 				pendingToolCalls = [];
+				pendingToolCallsById = new Map();
 				existingToolResultIds = new Set();
 			}
 			result.push(msg);
