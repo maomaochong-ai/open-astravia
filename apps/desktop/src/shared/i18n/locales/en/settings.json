@@ -308,6 +308,8 @@
     "empty": "No tool or runtime currently exposes configurable options.",
     "consumers": "Consumers",
     "applyLabel": "Applies",
+    "secretConfigured": "Saved securely; enter a new value to replace it",
+    "secretPlaceholder": "Press Enter or leave the field to save",
     "apply": {
       "immediate": "Immediately",
       "next-turn": "Next turn",

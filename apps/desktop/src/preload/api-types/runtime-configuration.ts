@@ -26,6 +26,8 @@ export interface DesktopRuntimeConfigurationEntry {
 	readonly defaultValue: RuntimeConfigurationJsonObject;
 	readonly value: RuntimeConfigurationJsonObject;
 	readonly redactedPaths: readonly string[];
+	/** Sensitive paths with a non-empty value in secure storage; values remain redacted. */
+	readonly configuredSensitivePaths: readonly string[];
 	readonly appliedLayerIds: readonly string[];
 	readonly diagnostics: readonly RuntimeConfigurationDiagnostic[];
 	readonly owner: DesktopRuntimeConfigurationOwner;

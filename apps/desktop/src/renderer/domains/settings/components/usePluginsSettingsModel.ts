@@ -19,6 +19,7 @@ interface RuntimeFieldSchema {
 
 export interface PluginSettingFieldModel {
 	border: boolean;
+	configured: boolean;
 	description?: string;
 	path: readonly string[];
 	schema: RuntimeFieldSchema;
@@ -44,6 +45,8 @@ export interface PluginsSettingsModel {
 		consumers: string;
 		empty: string;
 		pleaseSelect: string;
+		secretConfigured: string;
+		secretPlaceholder: string;
 		title: string;
 	};
 	sections: PluginSettingsSectionModel[];
@@ -105,6 +108,8 @@ export function usePluginsSettingsModel(): PluginsSettingsModel {
 			consumers: t("runtimeConfiguration.consumers"),
 			empty: t("runtimeConfiguration.empty"),
 			pleaseSelect: t("pleaseSelect"),
+			secretConfigured: t("runtimeConfiguration.secretConfigured"),
+			secretPlaceholder: t("runtimeConfiguration.secretPlaceholder"),
 			title: t("runtimeConfiguration.title"),
 		},
 		sections,
@@ -135,7 +140,7 @@ function createSectionModel(
 				description: t(`runtimeConfiguration.fields.${field.path.join(".")}.description`, "") || undefined,
 			}));
 	return {
-		apply: t(`runtimeConfiguration.apply.${entry.apply}`),
+		apply: t(`runtimeConfiguration.apply.${plugin ? "immediate" : entry.apply}`),
 		configurationId: entry.configurationId,
 		consumers: entry.consumers.map((consumer) => `${consumer.kind}:${consumer.id} · ${consumer.support}`),
 		description,
@@ -171,6 +176,7 @@ function schemaFields(
 		if (!isFieldType(type)) continue;
 		const enumValues = stringArray(fieldSchema.enum);
 		result.push({
+			configured: false,
 			path,
 			schema: {
 				type,
@@ -202,8 +208,10 @@ function pluginFields(
 			if (typeof current !== "string" || !visibleValues.includes(current)) return [];
 		}
 		const enumValues = stringArray(field.enum);
+		const pointer = `/${escapeJsonPointer(field.key)}`;
 		return [
 			{
+				configured: field.type === "secret" && entry.configuredSensitivePaths.includes(pointer),
 				path: [field.key],
 				schema: { type: field.type, ...(enumValues ? { enum: enumValues } : {}) },
 				title: typeof field.title === "string" ? tr(plugin, field.title) : undefined,
@@ -271,4 +279,8 @@ function stringArray(value: unknown): readonly string[] | undefined {
 
 function isFieldType(value: string): value is RuntimeFieldSchema["type"] {
 	return ["boolean", "number", "integer", "string", "secret", "enum", "desc"].includes(value);
+}
+
+function escapeJsonPointer(value: string): string {
+	return value.replace(/~/g, "~0").replace(/\//g, "~1");
 }

@@ -44,6 +44,7 @@ function createHarness() {
 	let pluginValues: Record<string, unknown> = { mode: "fast", token: "top-secret" };
 	let plugins = [plugin()];
 	const logger = { info: vi.fn(), warn: vi.fn() };
+	const publishPluginSettingsChanged = vi.fn();
 	const dependencies: DesktopRuntimeConfigurationServiceDependencies = {
 		readAgentSettings: () => agentSettings,
 		updateAgentSettings: (mutate) => {
@@ -56,6 +57,7 @@ function createHarness() {
 			pluginValues = values;
 			return values;
 		},
+		publishPluginSettingsChanged,
 		readConfiguredTools: () => [
 			{
 				pluginId: "demo",
@@ -67,6 +69,7 @@ function createHarness() {
 	return {
 		service: new DesktopRuntimeConfigurationService(dependencies),
 		logger,
+		publishPluginSettingsChanged,
 		readAgentSettings: () => agentSettings,
 		readPluginValues: () => pluginValues,
 		removePlugins: () => {
@@ -87,6 +90,7 @@ describe("DesktopRuntimeConfigurationService", () => {
 		const pluginEntry = catalog.entries.find(({ configurationId }) => configurationId === "plugin.demo.settings");
 		expect(pluginEntry?.value).toEqual({ mode: "fast" });
 		expect(pluginEntry?.redactedPaths).toContain("/token");
+		expect(pluginEntry?.configuredSensitivePaths).toEqual(["/token"]);
 		expect(JSON.stringify(catalog)).not.toContain("top-secret");
 		expect(pluginEntry?.consumers).toContainEqual({
 			kind: "tool",
@@ -118,10 +122,29 @@ describe("DesktopRuntimeConfigurationService", () => {
 		const harness = createHarness();
 		await harness.service.set("plugin.demo.settings", { mode: "safe" });
 		expect(harness.readPluginValues()).toEqual({ mode: "safe", token: "top-secret" });
+		expect(harness.publishPluginSettingsChanged).toHaveBeenCalledWith("demo", {
+			mode: "safe",
+			token: "top-secret",
+		});
 
 		harness.removePlugins();
 		const catalog = await harness.service.list();
 		expect(catalog.entries.some(({ configurationId }) => configurationId === "plugin.demo.settings")).toBe(false);
+		await harness.service.close();
+	});
+
+	it("publishes a complete secret after one configuration update without exposing it in the catalog", async () => {
+		const harness = createHarness();
+		const catalog = await harness.service.set("plugin.demo.settings", { token: "complete-password" });
+
+		expect(harness.readPluginValues()).toEqual({ mode: "fast", token: "complete-password" });
+		expect(harness.publishPluginSettingsChanged).toHaveBeenCalledWith("demo", {
+			mode: "fast",
+			token: "complete-password",
+		});
+		const pluginEntry = catalog.entries.find(({ configurationId }) => configurationId === "plugin.demo.settings");
+		expect(pluginEntry?.configuredSensitivePaths).toEqual(["/token"]);
+		expect(JSON.stringify(catalog)).not.toContain("complete-password");
 		await harness.service.close();
 	});
 });

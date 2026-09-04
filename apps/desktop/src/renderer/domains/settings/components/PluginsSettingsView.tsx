@@ -1,5 +1,6 @@
 import { MotionSelect, SettingRow, SettingSection } from "@vetta/theme-ui/settings";
-import { Switch } from "@vetta/ui";
+import { Input, Switch } from "@vetta/ui";
+import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { SettingsAiAssist } from "../ai-assist";
 import type { PluginSettingFieldModel, PluginsSettingsModel } from "./usePluginsSettingsModel";
 
@@ -7,10 +8,14 @@ function SettingControl({
 	field,
 	onChange,
 	pleaseSelect,
+	secretConfigured,
+	secretPlaceholder,
 }: {
 	field: PluginSettingFieldModel;
 	onChange: (value: string | number | boolean) => void;
 	pleaseSelect: string;
+	secretConfigured: string;
+	secretPlaceholder: string;
 }): JSX.Element {
 	const { schema, value } = field;
 	if (schema.type === "boolean") {
@@ -28,22 +33,102 @@ function SettingControl({
 		);
 	}
 	const numeric = schema.type === "number" || schema.type === "integer";
+	if (schema.type === "secret") {
+		return (
+			<SecretSettingControl
+				configured={field.configured}
+				onChange={onChange}
+				configuredPlaceholder={secretConfigured}
+				emptyPlaceholder={secretPlaceholder}
+			/>
+		);
+	}
+	if (!numeric) {
+		return <StringSettingControl value={typeof value === "string" ? value : ""} onChange={onChange} />;
+	}
 	return (
-		<input
-			type={schema.type === "secret" ? "password" : numeric ? "number" : "text"}
-			autoComplete={schema.type === "secret" ? "off" : undefined}
-			min={numeric ? schema.minimum : undefined}
-			max={numeric ? schema.maximum : undefined}
+		<Input
+			type="number"
+			min={schema.minimum}
+			max={schema.maximum}
 			step={schema.type === "integer" ? 1 : undefined}
-			className="h-8 w-[240px] min-w-0 rounded-lg border border-border/60 bg-transparent px-2.5 text-[12px] outline-none focus-visible:border-ring/60"
+			className="h-9 w-[260px] border-border bg-input text-[13px] text-foreground shadow-sm dark:bg-input/60"
 			value={typeof value === "string" || typeof value === "number" ? String(value) : ""}
 			onChange={(event) => {
-				if (numeric) {
-					if (event.target.value !== "") onChange(Number(event.target.value));
-				} else {
-					onChange(event.target.value);
-				}
+				if (event.target.value !== "") onChange(Number(event.target.value));
 			}}
+		/>
+	);
+}
+
+function StringSettingControl({ value, onChange }: { value: string; onChange: (value: string) => void }): JSX.Element {
+	const [draft, setDraft] = useState(value);
+	const input = useRef<HTMLInputElement>(null);
+
+	useEffect(() => {
+		if (document.activeElement !== input.current) setDraft(value);
+	}, [value]);
+
+	return (
+		<Input
+			ref={input}
+			type="text"
+			className="h-9 w-[260px] border-border bg-input text-[13px] text-foreground shadow-sm dark:bg-input/60"
+			value={draft}
+			onChange={(event) => setDraft(event.target.value)}
+			onBlur={() => {
+				if (draft !== value) onChange(draft);
+			}}
+			onKeyDown={(event) => {
+				if (event.key === "Enter") event.currentTarget.blur();
+			}}
+		/>
+	);
+}
+
+function SecretSettingControl({
+	configured,
+	onChange,
+	configuredPlaceholder,
+	emptyPlaceholder,
+}: {
+	configured: boolean;
+	onChange: (value: string) => void;
+	configuredPlaceholder: string;
+	emptyPlaceholder: string;
+}): JSX.Element {
+	const [draft, setDraft] = useState("");
+	const committed = useRef("");
+	const input = useRef<HTMLInputElement>(null);
+
+	useEffect(() => {
+		if (!configured || document.activeElement === input.current) return;
+		committed.current = "";
+		setDraft("");
+	}, [configured]);
+
+	const commit = (): void => {
+		if (draft === committed.current) return;
+		committed.current = draft;
+		onChange(draft);
+	};
+	const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
+		if (event.key !== "Enter") return;
+		commit();
+		event.currentTarget.blur();
+	};
+
+	return (
+		<Input
+			ref={input}
+			type="password"
+			autoComplete="new-password"
+			className="h-9 w-[260px] border-border bg-input text-[13px] text-foreground shadow-sm placeholder:text-muted-foreground dark:bg-input/60"
+			value={draft}
+			placeholder={configured ? configuredPlaceholder : emptyPlaceholder}
+			onChange={(event) => setDraft(event.target.value)}
+			onBlur={commit}
+			onKeyDown={handleKeyDown}
 		/>
 	);
 }
@@ -78,6 +163,8 @@ export function PluginsSettingsView({ model }: { model: PluginsSettingsModel }):
 								<SettingControl
 									field={field}
 									pleaseSelect={model.labels.pleaseSelect}
+									secretConfigured={model.labels.secretConfigured}
+									secretPlaceholder={model.labels.secretPlaceholder}
 									onChange={(value) => model.actions.update(section.configurationId, field.path, value)}
 								/>
 							</SettingRow>

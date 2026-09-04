@@ -4,6 +4,7 @@ import { getAppLogger } from "../logger.js";
 import type { PluginActionService } from "../plugins/plugin-action-service.js";
 import { getPluginSettings, pluginAgentContributionService, setPluginSettings } from "../plugins/plugin-catalog.js";
 import { refreshAgentPlugins } from "../plugins/plugin-runtime-service.js";
+import { publishPluginSettingsChanged } from "../plugins/plugin-settings-events.js";
 import {
 	asAgentHookRegistration,
 	asAgentToolRegistration,
@@ -202,10 +203,7 @@ export function registerPluginContributionIpc(pluginActionService: PluginActionS
 			throw new Error("Invalid plugin settings values");
 		}
 		const effective = setPluginSettings(pluginId, values as Record<string, unknown>);
-		refreshAgentPlugins({ reason: "contribution:settings-change", pluginId });
-		for (const contents of webContents.getAllWebContents()) {
-			contents.send(PLUGIN_CONTRIBUTION_CHANNELS.SETTINGS_CHANGED, { pluginId, values: effective });
-		}
+		publishPluginSettingsChanged(pluginId, effective);
 	});
 
 	return () => {

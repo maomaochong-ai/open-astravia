@@ -41,6 +41,7 @@ export interface DesktopRuntimeConfigurationServiceDependencies {
 	readonly listPlugins: () => InstalledPlugin[];
 	readonly getPluginSettings: (pluginId: string) => Record<string, unknown>;
 	readonly setPluginSettings: (pluginId: string, values: Record<string, unknown>) => Record<string, unknown>;
+	readonly publishPluginSettingsChanged: (pluginId: string, values: Record<string, unknown>) => void;
 	readonly readConfiguredTools: () => readonly ConfiguredToolSummary[];
 	readonly logger: RuntimeConfigurationServiceLogger;
 }
@@ -65,12 +66,18 @@ export class DesktopRuntimeConfigurationService {
 				entries: Object.freeze(
 					catalog.entries.map((entry): DesktopRuntimeConfigurationEntry => {
 						const plugin = pluginForConfiguration(entry.configurationId, plugins);
+						const pluginSettings = plugin ? this.dependencies.getPluginSettings(plugin.id) : undefined;
 						return Object.freeze({
 							...entry,
 							owner: plugin
 								? Object.freeze({ kind: "plugin" as const, pluginId: plugin.id })
 								: Object.freeze({ kind: "builtin" as const }),
 							consumers: Object.freeze(resolveConsumers(entry.configurationId, plugin, configuredTools)),
+							configuredSensitivePaths: Object.freeze(
+								plugin && pluginSettings
+									? configuredPluginSensitivePaths(pluginSettings, plugin.settingsSchema ?? [])
+									: [],
+							),
 						});
 					}),
 				),
@@ -102,7 +109,8 @@ export class DesktopRuntimeConfigurationService {
 		} else {
 			const pluginId = parsePluginConfigurationId(configurationId);
 			if (!pluginId) throw new Error(`Runtime Configuration is not editable: ${configurationId}`);
-			this.dependencies.setPluginSettings(pluginId, decoded);
+			const effective = this.dependencies.setPluginSettings(pluginId, decoded);
+			this.dependencies.publishPluginSettingsChanged(pluginId, effective);
 		}
 		this.dependencies.logger.info("runtime configuration updated", { configurationId });
 		return this.list();
@@ -262,6 +270,17 @@ function readPluginLayerValue(
 		if (isJsonValue(field)) result[setting.key] = field;
 	}
 	return result;
+}
+
+function configuredPluginSensitivePaths(
+	value: Record<string, unknown>,
+	settings: readonly PluginSettingSchema[],
+): string[] {
+	return settings.flatMap((setting) => {
+		if (setting.type !== "secret") return [];
+		const field = value[setting.key];
+		return typeof field === "string" && field.length > 0 ? [`/${escapeJsonPointer(setting.key)}`] : [];
+	});
 }
 
 function resolveConsumers(
