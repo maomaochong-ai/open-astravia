@@ -176,7 +176,6 @@ export function useSettingsPageModel(): SettingsPageModel {
 		onCloseEmbeddedView: () => {
 			void navigate({ to: "/settings/$tab", params: { tab: "extensions" }, search: {} });
 		},
-		expandLabel: t("extensions.expand"),
 		betaBadgeLabel: t("betaBadge"),
 		narrow,
 		onSelectTab: (tab) => {

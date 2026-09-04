@@ -309,8 +309,7 @@
     "empty": "暂无插件页面",
     "emptyHint": "在「扩展」里安装或启用插件后，它提供的页面会出现在这里。",
     "sectionTitle": "插件页面",
-    "count": "共 {{count}} 个",
-    "expand": "展开插件页面"
+    "count": "共 {{count}} 个"
   },
   "runtimeConfiguration": {
     "applyLabel": "生效时间",

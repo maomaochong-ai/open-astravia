@@ -1,4 +1,4 @@
-import { type JSX, useEffect, useState } from "react";
+import type { JSX } from "react";
 import { cn } from "@vetta/ui";
 
 export interface SettingsSidebarChildItem {
@@ -15,7 +15,7 @@ export interface SettingsSidebarTabItem {
 	readonly key: string;
 	readonly label: string;
 	readonly title?: string;
-	/** 可就地展开的下级入口；有值时行尾出现展开按钮。 */
+	/** 可就地展开的下级入口；有值时点该行会在进入页面的同时就地展开。 */
 	readonly children?: readonly SettingsSidebarChildItem[];
 }
 
@@ -28,7 +28,6 @@ export interface SettingsSidebarViewProps {
 	readonly onSelectChild?: (key: string) => void;
 	/** 当前正在显示的下级入口；它所属的标签会自动展开并高亮该项。 */
 	readonly activeChildKey?: string;
-	readonly expandLabel?: string;
 	readonly tabs: readonly SettingsSidebarTabItem[];
 	readonly title: string;
 }
@@ -45,19 +44,14 @@ export function SettingsSidebarView({
 	onSelectTab,
 	onSelectChild,
 	activeChildKey,
-	expandLabel,
 	tabs,
 	title,
 }: SettingsSidebarViewProps): JSX.Element {
+	// 展开态不是独立状态，而是「当前停在这个标签里」的表现：选中即展开，切走即收起。
+	// 深链直接进到某个下级入口时也一样——它所属的标签就是当前标签。
 	const activeParentKey = activeChildKey
 		? (tabs.find((tab) => tab.children?.some((child) => child.key === activeChildKey))?.key ?? null)
 		: null;
-	const [expandedKey, setExpandedKey] = useState<string | null>(activeParentKey);
-	// 从列表页或深链直接进到某个下级入口时把它所在的标签展开，让用户看到自己在哪一层；
-	// 之后用户手动收起就保持收起，直到打开另一个下级入口。
-	useEffect(() => {
-		if (activeParentKey) setExpandedKey(activeParentKey);
-	}, [activeParentKey]);
 
 	return (
 		<div className={cn("flex shrink-0 flex-col", narrow ? "w-14" : "w-[200px]")}>
@@ -68,7 +62,7 @@ export function SettingsSidebarView({
 				{tabs.map((item) => {
 					// 窄侧栏没有文字位置，展开的清单读不出来，此时只保留「点进页面」。
 					const expandable = !narrow && (item.children?.length ?? 0) > 0;
-					const expanded = expandable && expandedKey === item.key;
+					const expanded = expandable && (activeTab === item.key || activeParentKey === item.key);
 					return (
 						<div key={item.key} className="flex flex-col">
 							<div
@@ -82,10 +76,12 @@ export function SettingsSidebarView({
 								<button
 									type="button"
 									title={item.title}
+									aria-expanded={expandable ? expanded : undefined}
+									// 进页面与展开清单合成一个动作：点行即导航，清单跟着选中态展开。
 									onClick={() => onSelectTab(item.key)}
 									className={cn(
 										"flex min-w-0 flex-1 items-center rounded-lg outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring",
-										narrow ? "justify-center px-0 py-2" : "gap-2.5 py-[7px] ps-2.5 pe-1.5",
+										narrow ? "justify-center px-0 py-2" : "gap-2.5 py-[7px] ps-2.5 pe-2.5",
 									)}
 								>
 									<span className={cn(item.icon, "h-4 w-4 shrink-0")} />
@@ -95,24 +91,16 @@ export function SettingsSidebarView({
 											{betaBadgeLabel}
 										</span>
 									)}
-								</button>
-								{expandable && (
-									<button
-										type="button"
-										aria-expanded={expanded}
-										aria-label={expandLabel}
-										title={expandLabel}
-										onClick={() => setExpandedKey(expanded ? null : item.key)}
-										className="me-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
-									>
+									{expandable && (
 										<span
+											aria-hidden
 											className={cn(
-												"icon-[solar--alt-arrow-down-linear] h-3.5 w-3.5 transition-transform duration-200",
+												"icon-[solar--alt-arrow-down-linear] h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-200",
 												expanded && "rotate-180",
 											)}
 										/>
-									</button>
-								)}
+									)}
+								</button>
 							</div>
 							{expanded && (
 								<div className="mt-0.5 flex flex-col gap-0.5 ps-3.5">

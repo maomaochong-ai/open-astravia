@@ -17,76 +17,68 @@ const TABS = [
 	},
 ];
 
-function renderSidebar(overrides: Partial<Parameters<typeof SettingsSidebarView>[0]> = {}) {
+type SidebarOverrides = Partial<Parameters<typeof SettingsSidebarView>[0]>;
+
+function renderSidebar(overrides: SidebarOverrides = {}) {
 	const onSelectTab = vi.fn();
 	const onSelectChild = vi.fn();
-	render(
+	const view = (extra: SidebarOverrides) => (
 		<SettingsSidebarView
 			activeTab="general"
 			betaBadgeLabel="BETA"
 			narrow={false}
 			onSelectTab={onSelectTab}
 			onSelectChild={onSelectChild}
-			expandLabel="展开插件页面"
 			tabs={TABS}
 			title="设置"
 			{...overrides}
-		/>,
+			{...extra}
+		/>
 	);
-	return { onSelectTab, onSelectChild };
+	const rendered = render(view({}));
+	return {
+		onSelectTab,
+		onSelectChild,
+		rerender: (extra: SidebarOverrides) => rendered.rerender(view(extra)),
+	};
 }
 
 describe("SettingsSidebarView", () => {
-	it("keeps the child list collapsed until the expander is clicked", async () => {
-		renderSidebar();
-
-		expect(screen.queryByText("浏览器操作")).toBeNull();
-		await userEvent.click(screen.getByLabelText("展开插件页面"));
-
-		expect(screen.getByText("浏览器操作")).toBeTruthy();
-		expect(screen.getByLabelText("展开插件页面").getAttribute("aria-expanded")).toBe("true");
-	});
-
-	it("selects the tab itself when the row — not the expander — is clicked", async () => {
+	it("选中该标签时清单跟着展开，点行即导航", async () => {
 		const { onSelectTab, onSelectChild } = renderSidebar();
 
+		expect(screen.queryByText("浏览器操作")).toBeNull();
 		await userEvent.click(screen.getByText("更多选项"));
 
 		expect(onSelectTab).toHaveBeenCalledWith("extensions");
 		expect(onSelectChild).not.toHaveBeenCalled();
-		// 点行进页面，不应顺带展开清单。
+	});
+
+	it("展开态跟随选中态：选中即展开，切走即收起", () => {
+		const { rerender } = renderSidebar({ activeTab: "extensions" });
+		expect(screen.getByText("浏览器操作")).toBeTruthy();
+		expect(screen.getByText("更多选项").closest("button")?.getAttribute("aria-expanded")).toBe("true");
+
+		rerender({ activeTab: "general" });
 		expect(screen.queryByText("浏览器操作")).toBeNull();
 	});
 
-	it("expands without navigating, then routes the clicked child through onSelectChild", async () => {
-		const { onSelectTab, onSelectChild } = renderSidebar();
-
-		await userEvent.click(screen.getByLabelText("展开插件页面"));
-		expect(onSelectTab).not.toHaveBeenCalled();
+	it("下级入口走 onSelectChild，不重复切标签", async () => {
+		const { onSelectTab, onSelectChild } = renderSidebar({ activeTab: "extensions" });
 
 		await userEvent.click(screen.getByText("设计"));
+
 		expect(onSelectChild).toHaveBeenCalledWith("workspace:vetta-ui-design/gallery");
 		expect(onSelectTab).not.toHaveBeenCalled();
 	});
 
-	it("collapses again on a second expander click", async () => {
-		renderSidebar();
-		const expander = screen.getByLabelText("展开插件页面");
-
-		await userEvent.click(expander);
-		await userEvent.click(expander);
+	it("窄侧栏不展开清单，文字读不出来", () => {
+		renderSidebar({ activeTab: "extensions", narrow: true });
 
 		expect(screen.queryByText("浏览器操作")).toBeNull();
 	});
 
-	it("drops the expander in the narrow rail, where a child list has no room to read", () => {
-		renderSidebar({ narrow: true });
-
-		expect(screen.queryByLabelText("展开插件页面")).toBeNull();
-		expect(screen.queryByText("浏览器操作")).toBeNull();
-	});
-
-	it("auto-expands and highlights the child that is currently open", () => {
+	it("深链停在某个下级入口时自动展开并高亮它", () => {
 		renderSidebar({ activeChildKey: "workspace:vetta-ui-design/gallery" });
 
 		// 从列表页或深链进来时，用户要能立刻看出自己停在哪一层。
@@ -95,18 +87,12 @@ describe("SettingsSidebarView", () => {
 		expect(screen.getByText("浏览器操作").closest("button")?.getAttribute("aria-current")).toBeNull();
 	});
 
-	it("lets the user collapse an auto-expanded list again", async () => {
-		renderSidebar({ activeChildKey: "workspace:vetta-ui-design/gallery" });
+	it("没有下级入口的标签只是一行普通入口", async () => {
+		const { onSelectTab } = renderSidebar();
 
-		await userEvent.click(screen.getByLabelText("展开插件页面"));
+		await userEvent.click(screen.getByText("通用设置"));
 
-		expect(screen.queryByText("设计")).toBeNull();
-	});
-
-	it("renders a tab without children as a plain row", () => {
-		renderSidebar();
-
-		expect(screen.getByText("通用设置")).toBeTruthy();
-		expect(screen.getAllByLabelText("展开插件页面")).toHaveLength(1);
+		expect(onSelectTab).toHaveBeenCalledWith("general");
+		expect(screen.getByText("通用设置").closest("button")?.getAttribute("aria-expanded")).toBeNull();
 	});
 });

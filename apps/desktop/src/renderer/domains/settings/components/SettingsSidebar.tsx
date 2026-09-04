@@ -15,7 +15,6 @@ export function SettingsSidebar({ model }: SettingsSidebarProps): JSX.Element {
 			tabs={model.tabs}
 			onSelectChild={model.onSelectNavigationChild}
 			activeChildKey={model.activeNavigationChildKey}
-			expandLabel={model.expandLabel}
 			title={model.title}
 		/>
 	);

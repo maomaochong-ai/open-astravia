@@ -28,8 +28,6 @@ export interface SettingsPageModel {
 	embeddedView?: { pluginId: string; viewId: string };
 	/** 展开的下级入口不是设置标签，由宿主自行导航（当前是插件工作区页面）。 */
 	onSelectNavigationChild: (key: string) => void;
-	/** 展开按钮的可访问名。 */
-	expandLabel: string;
 	/** 关闭内嵌视图，回到「更多选项」列表。 */
 	onCloseEmbeddedView: () => void;
 	/** 当前内嵌视图对应的下级入口 key，用于侧栏高亮与自动展开。 */

@@ -309,8 +309,7 @@
     "empty": "No plugin pages yet",
     "emptyHint": "Install or enable a plugin under Extensions and its pages show up here.",
     "sectionTitle": "Plugin pages",
-    "count": "{{count}} total",
-    "expand": "Expand plugin pages"
+    "count": "{{count}} total"
   },
   "runtimeConfiguration": {
     "applyLabel": "Applies",
