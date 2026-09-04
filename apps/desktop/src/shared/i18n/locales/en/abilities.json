@@ -184,7 +184,11 @@
 		"secretsLead": "This connection needs the following credentials before it can be used:",
 		"oauth": "Account authorization",
 		"oauthAuthorized": "Authorized",
-		"oauthNotAuthorized": "Not authorized"
+		"oauthNotAuthorized": "Not authorized",
+		"setupPromptTitle": "One more step: sign in",
+		"setupPromptLead": "{{name}} is installed. It needs a one-time sign-in: ask the agent to call the {{tool}} tool in a chat and follow the prompt.",
+		"setupPromptHint": "The session is stored in this ability's local data directory. The \"Setup required\" badge clears once you are signed in.",
+		"setupPromptDone": "Got it"
 	},
 	"bundle": {
 		"install": {

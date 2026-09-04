@@ -110,6 +110,7 @@ describe("Desktop GitHub marketplace refresh", () => {
 				plugins: [],
 				mcpConfig: { mcpServers: {} },
 				oauthAuthByName: {},
+				mcpSetupStatus: {},
 				busyIds: new Set<string>(),
 			},
 			t,

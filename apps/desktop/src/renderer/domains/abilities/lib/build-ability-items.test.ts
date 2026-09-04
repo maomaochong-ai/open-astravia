@@ -23,6 +23,7 @@ function createState(overrides?: Partial<LocalAbilityState>): LocalAbilityState 
 		plugins: [],
 		mcpConfig: { mcpServers: {} },
 		oauthAuthByName: {},
+		mcpSetupStatus: {},
 		busyIds: new Set<string>(),
 		...overrides,
 	};
@@ -323,6 +324,55 @@ describe("buildMcpAbilities", () => {
 			secrets: [],
 		});
 		expect(item?.setupRequired).toBe(false);
+	});
+
+	it("keeps a declared post-install step pending until the marketplace reports it complete", () => {
+		const ability = {
+			...createBundle([]),
+			type: "mcp" as const,
+			slug: "xiaohongshu-mcp",
+			name: "小红书",
+			config: {
+				mcp: { command: "/runtime/xhs", args: ["-transport=stdio"] },
+				mcp_parameters: [{ key: "XHS_PROXY", label: "Proxy URL", required: false, secret: false }],
+				mcp_setup: { kind: "agent-tool" as const, tool: "get_login_qrcode" },
+			},
+			origin: {
+				kind: "github-marketplace" as const,
+				sourceId: "official",
+				marketplace: "vetta-open-abilities",
+				marketplaceVersion: "2026.09.1",
+				repository: "https://github.com/example/vetta-abilities",
+			},
+			catalogSource: {
+				kind: "github" as const,
+				id: "official",
+				name: "official",
+				repository: "https://github.com/example/vetta-abilities",
+			},
+		} as unknown as MarketAbility;
+		const installed = {
+			mcpConfig: { mcpServers: { "xiaohongshu-mcp": { command: "/runtime/xhs" } } },
+			ledger: {
+				"mcp:xiaohongshu-mcp": {
+					version: "2.5.0",
+					installedAt: "2026-01-01T00:00:00.000Z",
+					catalogId: "github:official:mcp:xiaohongshu-mcp",
+					runtimeName: "xiaohongshu-mcp",
+				},
+			},
+		} as unknown as Partial<LocalAbilityState>;
+
+		const pending = buildMcpAbilities([ability], createState(installed), t)[0];
+		expect(pending?.postInstallSetup).toEqual({ kind: "agent-tool", tool: "get_login_qrcode" });
+		expect(pending?.setupRequired).toBe(true);
+
+		const done = buildMcpAbilities(
+			[ability],
+			createState({ ...installed, mcpSetupStatus: { "official:xiaohongshu-mcp": true } }),
+			t,
+		)[0];
+		expect(done?.setupRequired).toBe(false);
 	});
 
 	it("applies a valueTemplate to an HTTP header secret", () => {

@@ -49,6 +49,21 @@ export async function prepareOpenMarketplaceMcpInDesktop(
 	});
 }
 
+/**
+ * 安装后步骤的完成状态。未声明步骤返回 undefined —— 调用方据此区分
+ * 「不需要额外配置」与「需要但还没做」。
+ */
+export function readOpenMarketplaceMcpSetupStatusInDesktop(
+	snapshotRoot: string,
+	ability: Extract<MarketplaceAbilityManifest, { type: "mcp" }>,
+	sourceId: string,
+): boolean | undefined {
+	const sourceDir = join(snapshotRoot, ability.source.path);
+	const { setup } = readOpenMarketplaceMcpPackage(sourceDir, ability);
+	if (!setup) return undefined;
+	return mcpRuntimeInstaller.isSetupComplete(sourceId, ability.slug, setup.completedWhen.dataFile);
+}
+
 export function removeOpenMarketplaceMcpRuntimeInDesktop(sourceId: string, slug: string): Promise<void> {
 	return mcpRuntimeInstaller.remove(sourceId, slug);
 }

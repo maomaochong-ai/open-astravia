@@ -18,6 +18,7 @@ async function fixture(
 		browserAuth?: boolean;
 		schemaVersion?: 1 | 2;
 		runtime?: Record<string, unknown>;
+		setup?: Record<string, unknown>;
 	},
 ) {
 	const root = await mkdtemp(join(tmpdir(), "vetta-open-mcp-test-"));
@@ -33,6 +34,7 @@ async function fixture(
 			parameters: overrides?.parameters,
 			browserAuth: overrides?.browserAuth,
 			runtime: overrides?.runtime,
+			setup: overrides?.setup,
 		}),
 		"utf-8",
 	);
@@ -60,6 +62,20 @@ async function fixture(
 afterEach(async () => {
 	await Promise.all(temporaryRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
+
+function managedRuntime(platformTag: string): Record<string, unknown> {
+	return {
+		kind: "managed-binary",
+		platforms: {
+			[platformTag]: {
+				url: "https://github.com/example/demo/releases/download/v1/demo.zip",
+				sha256: "a".repeat(64),
+				archive: "zip",
+				executable: process.platform === "win32" ? "demo.exe" : "bin/demo",
+			},
+		},
+	};
+}
 
 describe("validateOpenMarketplaceMcp", () => {
 	it("loads HTTP configuration from the MCP package", async () => {
@@ -210,5 +226,59 @@ describe("validateOpenMarketplaceMcp", () => {
 		expect(() => validateOpenMarketplaceMcp(invalidServer.root, invalidServer.ability)).toThrow(
 			"Invalid MCP server 'demo-mcp'.url",
 		);
+	});
+
+	it("exposes a declared post-install step to the client", async () => {
+		const platformTag = `${process.platform}-${process.arch}`;
+		const { root, ability } = await fixture(
+			{ command: RUNTIME_COMMAND },
+			{
+				schemaVersion: 2,
+				runtime: managedRuntime(platformTag),
+				setup: {
+					kind: "agent-tool",
+					tool: "get_login_qrcode",
+					completedWhen: { dataFile: "cookies.json" },
+				},
+			},
+		);
+
+		expect(validateOpenMarketplaceMcp(root, ability)).toMatchObject({
+			mcp_setup: { kind: "agent-tool", tool: "get_login_qrcode" },
+		});
+	});
+
+	it("rejects a post-install step without a managed runtime", async () => {
+		const { root, ability } = await fixture(
+			{ type: "http", url: "https://mcp.example.com/mcp" },
+			{
+				schemaVersion: 2,
+				setup: {
+					kind: "agent-tool",
+					tool: "get_login_qrcode",
+					completedWhen: { dataFile: "cookies.json" },
+				},
+			},
+		);
+
+		expect(() => validateOpenMarketplaceMcp(root, ability)).toThrow(/managed MCP runtime/i);
+	});
+
+	it("rejects a post-install completion marker that escapes the data directory", async () => {
+		const platformTag = `${process.platform}-${process.arch}`;
+		const { root, ability } = await fixture(
+			{ command: RUNTIME_COMMAND },
+			{
+				schemaVersion: 2,
+				runtime: managedRuntime(platformTag),
+				setup: {
+					kind: "agent-tool",
+					tool: "get_login_qrcode",
+					completedWhen: { dataFile: "../../cookies.json" },
+				},
+			},
+		);
+
+		expect(() => validateOpenMarketplaceMcp(root, ability)).toThrow();
 	});
 });

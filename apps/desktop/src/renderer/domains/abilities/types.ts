@@ -117,6 +117,8 @@ export interface McpAbility extends AbilityBase {
 	usesOAuth: boolean;
 	authorized: boolean;
 	canConfigure: boolean;
+	/** 市场声明的安装后步骤；`setupRequired` 为真且有此项时，提示用户去对话里完成。 */
+	postInstallSetup?: { kind: "agent-tool"; tool: string };
 	canEdit: boolean;
 }
 
@@ -215,4 +217,7 @@ export interface AbilitiesModel {
 	/** 刚装好、待提示配置权限的插件 slug；为空表示不提示。 */
 	permissionPromptSlug: string | null;
 	dismissPermissionPrompt: () => void;
+	/** 待展示安装后步骤引导的 MCP 能力 id；装完或点「去配置」时置上。 */
+	setupPromptId: string | null;
+	dismissSetupPrompt: () => void;
 }

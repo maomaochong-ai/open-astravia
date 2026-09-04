@@ -116,6 +116,7 @@ function setupHarness(entry: MarketAbility) {
 				plugins: [],
 				mcpConfig: rendered.result.current.mcp.config,
 				oauthAuthByName: {},
+				mcpSetupStatus: {},
 				busyIds: new Set(),
 			},
 			t,

@@ -36,6 +36,8 @@ export interface AbilityData {
 	marketplaceCatalog: OpenMarketplaceCatalog;
 	refreshMarketplaceSource: (id: string) => Promise<void>;
 	ledger: AbilityLedger;
+	/** 声明了安装后步骤的市场 MCP → 是否已完成，键为 `<sourceId>:<slug>`。 */
+	mcpSetupStatus: Record<string, boolean>;
 	skillManifest: Record<string, InstalledSkill>;
 	/** 通用 Agent / 内置 skill 与 scene（只读展示）。 */
 	localSkills: SkillInfo[];
@@ -61,6 +63,7 @@ export function useAbilityData(): AbilityData {
 	const [skillManifest, setSkillManifest] = useState<Record<string, InstalledSkill>>({});
 	const [localSkills, setLocalSkills] = useState<SkillInfo[]>([]);
 	const [plugins, setPlugins] = useState<InstalledPlugin[]>([]);
+	const [mcpSetupStatus, setMcpSetupStatus] = useState<Record<string, boolean>>({});
 	const [builtinPresentations, setBuiltinPresentations] = useState<BuiltinAbilityPresentations>({});
 	const [loading, setLoading] = useState(true);
 	const [refreshing, setRefreshing] = useState(false);
@@ -79,6 +82,7 @@ export function useAbilityData(): AbilityData {
 				window.vetta.skills.list(),
 				// 能力市场不按工作模式过滤：另一模式下已装的插件仍要出现在「我的」。
 				window.vetta.plugins.listAll(),
+				window.vetta.abilities.getOpenMcpSetupStatus(),
 			]);
 
 			// 市场浏览无需登录；有 token 时仍带上。lite 构建无 vetta 官方市场，
@@ -90,13 +94,14 @@ export function useAbilityData(): AbilityData {
 			void local
 				.then((value) => {
 					if (generation !== loadGenerationRef.current) return;
-					const [nextLedger, presentations, manifest, skills, installedPlugins] = value;
+					const [nextLedger, presentations, manifest, skills, installedPlugins, setupStatus] = value;
 					setLocalFailed(false);
 					setLedger(nextLedger);
 					setBuiltinPresentations(presentations);
 					setSkillManifest(manifest);
 					setLocalSkills(skills.filter((skill) => isReadonlyLocalSkillSource(skill.source)));
 					setPlugins(installedPlugins);
+					setMcpSetupStatus(setupStatus);
 				})
 				.catch((reason) => {
 					if (generation !== loadGenerationRef.current) return;
@@ -155,6 +160,7 @@ export function useAbilityData(): AbilityData {
 		marketplaceSources: open.catalog.sources,
 		marketplaceCatalog: open.catalog,
 		ledger,
+		mcpSetupStatus,
 		skillManifest,
 		localSkills,
 		plugins,

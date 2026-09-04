@@ -194,4 +194,20 @@ describe("OpenMarketplaceMcpRuntimeInstaller", () => {
 		await expect(readFile(server.command, "utf8")).rejects.toThrow();
 		await expect(readFile(join(abilityDirectory, "data", "cookies.json"), "utf8")).resolves.toBe("session");
 	});
+
+	it("reports post-install setup completion from the ability data directory", async () => {
+		const root = await temporaryRoot();
+		const installer = new OpenMarketplaceMcpRuntimeInstaller({ rootDir: root, platformTag: PLATFORM_TAG });
+		const dataDirectory = installer.dataDirectory("official", "demo-mcp");
+
+		expect(installer.isSetupComplete("official", "demo-mcp", "cookies.json")).toBe(false);
+
+		await mkdir(dataDirectory, { recursive: true });
+		await writeFile(join(dataDirectory, "cookies.json"), "{}", "utf-8");
+
+		expect(installer.isSetupComplete("official", "demo-mcp", "cookies.json")).toBe(true);
+		// 另一个来源的同名能力有独立数据目录，不能互相认领登录态
+		expect(installer.isSetupComplete("other", "demo-mcp", "cookies.json")).toBe(false);
+		expect(() => installer.isSetupComplete("official", "demo-mcp", "../../escape.json")).toThrow();
+	});
 });

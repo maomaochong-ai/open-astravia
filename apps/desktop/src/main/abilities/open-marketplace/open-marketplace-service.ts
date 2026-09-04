@@ -64,6 +64,12 @@ type PrepareMcpAbility = (
 	ability: Extract<MarketplaceManifest["abilities"][number], { type: "mcp" }>,
 	sourceId: string,
 ) => Promise<McpServerConfigData>;
+/** 返回 undefined 表示该能力没有声明安装后步骤。 */
+type ReadMcpSetupStatus = (
+	snapshotRoot: string,
+	ability: Extract<MarketplaceManifest["abilities"][number], { type: "mcp" }>,
+	sourceId: string,
+) => boolean | undefined;
 
 interface OpenMarketplaceState {
 	schemaVersion: typeof STATE_SCHEMA_VERSION;
@@ -91,6 +97,7 @@ export interface OpenMarketplaceServiceOptions {
 	updateCheckIntervalMs?: number;
 	installAbility?: InstallAbility;
 	prepareMcpAbility?: PrepareMcpAbility;
+	readMcpSetupStatus?: ReadMcpSetupStatus;
 	onBackgroundUpdate?: (snapshot: OpenMarketplaceSnapshot) => void;
 	createTemporaryDirectory?: () => Promise<string>;
 }
@@ -249,6 +256,7 @@ export class OpenMarketplaceService {
 	private readonly updateCheckIntervalMs: number;
 	private readonly installAbilityOverride?: InstallAbility;
 	private readonly prepareMcpAbilityOverride?: PrepareMcpAbility;
+	private readonly readMcpSetupStatusOverride?: ReadMcpSetupStatus;
 	private readonly onBackgroundUpdate?: (snapshot: OpenMarketplaceSnapshot) => void;
 	private readonly createTemporaryDirectory: () => Promise<string>;
 	private lastUpdateCheckAt: number | undefined;
@@ -283,6 +291,7 @@ export class OpenMarketplaceService {
 		this.updateCheckIntervalMs = options.updateCheckIntervalMs ?? DEFAULT_UPDATE_CHECK_INTERVAL_MS;
 		this.installAbilityOverride = options.installAbility;
 		this.prepareMcpAbilityOverride = options.prepareMcpAbility;
+		this.readMcpSetupStatusOverride = options.readMcpSetupStatus;
 		this.onBackgroundUpdate = options.onBackgroundUpdate;
 		this.createTemporaryDirectory =
 			options.createTemporaryDirectory ??
@@ -376,6 +385,29 @@ export class OpenMarketplaceService {
 			this.prepareMcpAbilityOverride ??
 			(await import("./open-marketplace-production.js")).prepareOpenMarketplaceMcpInDesktop;
 		return prepareMcp(active.snapshotRoot, ability, this.sourceId);
+	}
+
+	/**
+	 * 本源下声明了安装后步骤的 MCP 能力 → 是否已完成。未声明步骤的能力不出现在结果里。
+	 * 读的是各能力数据目录里的标志文件，不触发任何下载。
+	 */
+	async mcpSetupStatus(): Promise<Record<string, boolean>> {
+		const active = await this.readActiveMarketplace();
+		if (!active) return {};
+		const readStatus =
+			this.readMcpSetupStatusOverride ??
+			(await import("./open-marketplace-production.js")).readOpenMarketplaceMcpSetupStatusInDesktop;
+		const status: Record<string, boolean> = {};
+		for (const ability of active.manifest.abilities) {
+			if (ability.type !== "mcp") continue;
+			try {
+				const completed = readStatus(active.snapshotRoot, ability, this.sourceId);
+				if (completed !== undefined) status[ability.slug] = completed;
+			} catch {
+				// 单个包解析失败不应拖垮整张状态表；该能力按「无安装后步骤」处理。
+			}
+		}
+		return status;
 	}
 
 	private get statePath(): string {

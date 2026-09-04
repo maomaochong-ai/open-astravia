@@ -265,6 +265,20 @@ export class OpenMarketplaceMcpRuntimeInstaller {
 		});
 	}
 
+	/**
+	 * 受管能力的数据目录（Cookie 等登录态所在）。安装后步骤的完成判定读这里，
+	 * 目录不随版本变化，卸载运行时也不会删除。
+	 */
+	dataDirectory(sourceId: string, slug: string): string {
+		return join(this.rootDir, abilityDirectoryName(sourceId, slug), "data");
+	}
+
+	/** 安装后步骤是否已完成：由服务自己写出的标志文件（如 cookies.json）决定。 */
+	isSetupComplete(sourceId: string, slug: string, dataFile: string): boolean {
+		const relativePath = normalizedRelativePath(dataFile, "MCP setup data file");
+		return existsSync(join(this.dataDirectory(sourceId, slug), ...relativePath.split("/")));
+	}
+
 	async remove(sourceId: string, slug: string): Promise<void> {
 		const abilityDirectory = join(this.rootDir, abilityDirectoryName(sourceId, slug));
 		await rm(join(abilityDirectory, "runtime"), { recursive: true, force: true });

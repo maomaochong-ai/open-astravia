@@ -57,6 +57,8 @@ export interface LocalAbilityState {
 	plugins: InstalledPlugin[];
 	mcpConfig: McpConfigData | null;
 	oauthAuthByName: Record<string, boolean>;
+	/** 声明了安装后步骤的市场 MCP → 是否已完成，键为 `<sourceId>:<slug>`。 */
+	mcpSetupStatus: Record<string, boolean>;
 	busyIds: ReadonlySet<string>;
 }
 
@@ -278,6 +280,7 @@ interface OpenMarketMcpConfig {
 	mcp?: Record<string, unknown>;
 	mcp_browser_auth?: boolean;
 	mcp_parameters?: OpenMarketMcpParameter[];
+	mcp_setup?: { kind: "agent-tool"; tool: string };
 }
 
 function createMarketMcpPreset(entry: MarketAbility, serverName: string): BuiltinMcpPreset | undefined {
@@ -300,6 +303,7 @@ function createMarketMcpPreset(entry: MarketAbility, serverName: string): Builti
 			valueTemplate: parameter.valueTemplate,
 		})),
 		browserAuth: config.mcp_browser_auth ?? false,
+		...(config.mcp_setup ? { postInstallSetup: config.mcp_setup } : {}),
 	};
 }
 
@@ -321,6 +325,12 @@ function createMcpAbility(input: McpBuildInput, state: LocalAbilityState, t: TFu
 	const authorized = usesOAuth && Boolean(state.oauthAuthByName[serverName]);
 	const needsSecrets = Boolean(server && preset && missingRequiredSecrets(preset, server).length > 0);
 	const installed = Boolean(server);
+	// 安装后步骤（扫码登录等）：市场声明了才有这一项，完成状态由主进程探测。
+	const postInstallSetup = preset?.postInstallSetup;
+	const setupCompleted =
+		postInstallSetup && catalogSource.kind === "github"
+			? (state.mcpSetupStatus[`${catalogSource.id}:${slug}`] ?? false)
+			: true;
 	const localVersion = ledgerEntry?.version;
 	const icon = server
 		? (resolveMcpIcon(serverName, server) ?? entry?.icon)
@@ -348,7 +358,8 @@ function createMcpAbility(input: McpBuildInput, state: LocalAbilityState, t: TFu
 		enabled: installed && !(server?.disabled ?? false),
 		readonly: false,
 		needsUpdate: installed && Boolean(entry && localVersion) && localVersion !== entry?.version,
-		setupRequired: installed && (needsSecrets || (usesOAuth && !authorized)),
+		setupRequired: installed && (needsSecrets || (usesOAuth && !authorized) || !setupCompleted),
+		...(postInstallSetup ? { postInstallSetup } : {}),
 		busy: state.busyIds.has(id),
 		downloadCount: entry?.download_count ?? 0,
 		isCustom: installed && !preset && !entry,

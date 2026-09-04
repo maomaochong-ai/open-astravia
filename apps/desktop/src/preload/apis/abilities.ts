@@ -26,6 +26,7 @@ export function createAbilitiesApi(ipc: IpcRenderer): Pick<DesktopApi, "abilitie
 				ipc.invoke("vetta:abilities:install-open-ability", type, slug, sourceId),
 			prepareOpenMcpAbility: (slug, sourceId) =>
 				ipc.invoke("vetta:abilities:prepare-open-mcp-ability", slug, sourceId),
+			getOpenMcpSetupStatus: () => ipc.invoke("vetta:abilities:get-open-mcp-setup-status"),
 			removeOpenMcpRuntime: (slug, sourceId) =>
 				ipc.invoke("vetta:abilities:remove-open-mcp-runtime", slug, sourceId),
 		},

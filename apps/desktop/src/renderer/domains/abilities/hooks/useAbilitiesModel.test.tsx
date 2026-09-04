@@ -53,7 +53,7 @@ it("keeps bundle-only members out of discovery and its banner while preserving d
 	let installed: Record<string, InstalledSkill> = {};
 	Object.defineProperty(window, "vetta", { configurable: true, value: {
 		abilities: {
-			getLedger: async () => ({}), listBuiltinPresentations: async () => ({}),
+			getLedger: async () => ({}), listBuiltinPresentations: async () => ({}), getOpenMcpSetupStatus: async () => ({}),
 			listOpenMarketplaces: async () => structuredClone(catalog), refreshOpenMarketplaces: async () => structuredClone(catalog),
 			onOpenMarketplacesUpdated: () => () => undefined,
 		},
@@ -139,7 +139,7 @@ it("follows the application language broadcast for cached GitHub names, descript
 				onLanguageChanged: (listener: typeof languageChanged) => { languageChanged = listener; return () => undefined; },
 			},
 			abilities: {
-				getLedger: async () => ({}), listBuiltinPresentations: async () => ({}), listOpenMarketplaces,
+				getLedger: async () => ({}), listBuiltinPresentations: async () => ({}), getOpenMcpSetupStatus: async () => ({}), listOpenMarketplaces,
 				refreshOpenMarketplaces,
 				onOpenMarketplacesUpdated: () => () => undefined,
 			},

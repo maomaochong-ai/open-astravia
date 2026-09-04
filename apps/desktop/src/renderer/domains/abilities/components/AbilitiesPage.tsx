@@ -4,6 +4,7 @@ import { useSetAtom } from "jotai";
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useAbilitiesModel } from "../hooks/useAbilitiesModel";
 import { AbilitiesPageView } from "./AbilitiesPageView";
+import { McpSetupPrompt } from "./McpSetupPrompt";
 import { PluginPermissionPrompt } from "./PluginPermissionPrompt";
 
 /**
@@ -47,6 +48,7 @@ export function AbilitiesPage(): JSX.Element {
 				</Suspense>
 			)}
 			<PluginPermissionPrompt model={model} />
+			<McpSetupPrompt model={model} />
 		</>
 	);
 }

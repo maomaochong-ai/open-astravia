@@ -52,6 +52,25 @@ const managedBinaryPlatformSchema = z
 	})
 	.strict();
 
+/**
+ * 安装后仍需用户完成一次的步骤。当前只有 agent-tool 一种：由 Agent 在对话里调用
+ * 指定 MCP 工具（如小红书的扫码登录），完成后服务会在自己的数据目录留下标志文件。
+ */
+const mcpSetupSchema = z
+	.object({
+		kind: z.literal("agent-tool"),
+		tool: z.string().min(1),
+		completedWhen: z
+			.object({
+				dataFile: z
+					.string()
+					.min(1)
+					.refine(isSafeRuntimeRelativePath, "completedWhen.dataFile must be a safe relative path"),
+			})
+			.strict(),
+	})
+	.strict();
+
 const managedBinaryRuntimeSchema = z
 	.object({
 		kind: z.literal("managed-binary"),
@@ -75,6 +94,7 @@ const openMarketplaceMcpManifestV1Schema = z
 const openMarketplaceMcpManifestV2Schema = openMarketplaceMcpManifestV1Schema.extend({
 	schemaVersion: z.literal(2),
 	runtime: managedBinaryRuntimeSchema.optional(),
+	setup: mcpSetupSchema.optional(),
 });
 
 const openMarketplaceMcpManifestSchema = z.discriminatedUnion("schemaVersion", [
@@ -83,6 +103,7 @@ const openMarketplaceMcpManifestSchema = z.discriminatedUnion("schemaVersion", [
 ]);
 
 export type OpenMarketplaceMcpRuntime = z.infer<typeof managedBinaryRuntimeSchema>;
+export type OpenMarketplaceMcpSetup = z.infer<typeof mcpSetupSchema>;
 
 type OpenMarketplaceMcpAbility = Extract<MarketplaceAbilityManifest, { type: "mcp" }>;
 
@@ -93,6 +114,10 @@ export interface OpenMarketplaceMcpConfig {
 	mcp_runtime?: {
 		kind: "managed-binary";
 		supported: boolean;
+	};
+	mcp_setup?: {
+		kind: "agent-tool";
+		tool: string;
 	};
 	mcp_parameters: Array<{
 		key: string;
@@ -112,6 +137,7 @@ function loadOpenMarketplaceMcpPackage(
 	manifest: z.infer<typeof openMarketplaceMcpManifestSchema>;
 	server: McpServerConfigData;
 	runtime?: OpenMarketplaceMcpRuntime;
+	setup?: OpenMarketplaceMcpSetup;
 } {
 	const manifestPath = join(sourceDir, MCP_MANIFEST_FILE);
 	let raw: unknown;
@@ -136,18 +162,22 @@ function loadOpenMarketplaceMcpPackage(
 			throw new Error(`Managed MCP runtime command must be exactly ${RUNTIME_EXECUTABLE_TOKEN}`);
 		}
 	}
-	return { manifest, server, ...(runtime ? { runtime } : {}) };
+	const setup = manifest.schemaVersion === 2 ? manifest.setup : undefined;
+	// 完成标志写在受管数据目录里，非受管运行时没有这个目录可探测。
+	if (setup && !runtime) throw new Error("Post-install setup requires a managed MCP runtime");
+	return { manifest, server, ...(runtime ? { runtime } : {}), ...(setup ? { setup } : {}) };
 }
 
 export function validateOpenMarketplaceMcp(
 	sourceDir: string,
 	ability: OpenMarketplaceMcpAbility,
 ): OpenMarketplaceMcpConfig {
-	const { manifest, server, runtime } = loadOpenMarketplaceMcpPackage(sourceDir, ability);
+	const { manifest, server, runtime, setup } = loadOpenMarketplaceMcpPackage(sourceDir, ability);
 	return {
 		mcp: { ...server },
 		mcp_browser_auth: manifest.browserAuth,
 		mcp_parameters: manifest.parameters,
+		...(setup ? { mcp_setup: { kind: setup.kind, tool: setup.tool } } : {}),
 		...(runtime
 			? {
 					mcp_runtime: {
@@ -162,7 +192,7 @@ export function validateOpenMarketplaceMcp(
 export function readOpenMarketplaceMcpPackage(
 	sourceDir: string,
 	ability: OpenMarketplaceMcpAbility,
-): { server: McpServerConfigData; runtime?: OpenMarketplaceMcpRuntime } {
-	const { server, runtime } = loadOpenMarketplaceMcpPackage(sourceDir, ability);
-	return { server, ...(runtime ? { runtime } : {}) };
+): { server: McpServerConfigData; runtime?: OpenMarketplaceMcpRuntime; setup?: OpenMarketplaceMcpSetup } {
+	const { server, runtime, setup } = loadOpenMarketplaceMcpPackage(sourceDir, ability);
+	return { server, ...(runtime ? { runtime } : {}), ...(setup ? { setup } : {}) };
 }

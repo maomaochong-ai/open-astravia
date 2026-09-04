@@ -121,6 +121,7 @@ describe("queryAbilityCatalog", () => {
 				plugins: [],
 				mcpConfig: { mcpServers: {} },
 				oauthAuthByName: {},
+				mcpSetupStatus: {},
 				busyIds: new Set<string>(),
 			},
 			t,

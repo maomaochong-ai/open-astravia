@@ -79,6 +79,7 @@ describe("OpenMarketplaceManager", () => {
 				refresh: vi.fn(async () => snapshot(item.id)),
 				install: vi.fn(async () => undefined),
 				prepareMcp: vi.fn(async () => ({ type: "http" as const, url: "https://mcp.example.com" })),
+				mcpSetupStatus: vi.fn(async () => ({})),
 			}),
 		});
 
@@ -103,7 +104,14 @@ describe("OpenMarketplaceManager", () => {
 			store,
 			cacheRoot: join(root, "cache"),
 			credentialStore: credentials.store,
-			workerFactory: () => ({ list, listCached, refresh: list, install, prepareMcp }),
+			workerFactory: () => ({
+				list,
+				listCached,
+				refresh: list,
+				install,
+				prepareMcp,
+				mcpSetupStatus: vi.fn(async () => ({})),
+			}),
 		});
 
 		await manager.list();
@@ -135,6 +143,7 @@ describe("OpenMarketplaceManager", () => {
 					refresh: vi.fn(async () => snapshot(item.id)),
 					install: vi.fn(async () => undefined),
 					prepareMcp: vi.fn(async () => ({ type: "http" as const, url: "https://mcp.example.com" })),
+					mcpSetupStatus: vi.fn(async () => ({})),
 				};
 			},
 		});
@@ -176,6 +185,7 @@ describe("OpenMarketplaceManager", () => {
 					refresh: vi.fn(async () => snapshot(item.id)),
 					install: vi.fn(async () => undefined),
 					prepareMcp: vi.fn(async () => ({ type: "http" as const, url: "https://mcp.example.com" })),
+					mcpSetupStatus: vi.fn(async () => ({})),
 				};
 			},
 		});
@@ -206,6 +216,7 @@ describe("OpenMarketplaceManager", () => {
 				refresh: vi.fn(async () => snapshot("unused")),
 				install: vi.fn(async () => undefined),
 				prepareMcp: vi.fn(async () => ({ type: "http" as const, url: "https://mcp.example.com" })),
+				mcpSetupStatus: vi.fn(async () => ({})),
 			}),
 		});
 

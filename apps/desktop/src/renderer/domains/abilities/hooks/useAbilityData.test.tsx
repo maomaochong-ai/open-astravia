@@ -81,6 +81,7 @@ let updated: () => void;
 const api = {
 	getLedger: vi.fn(async () => ({})),
 	listBuiltinPresentations: vi.fn(async () => ({})),
+	getOpenMcpSetupStatus: vi.fn(async () => ({})),
 	listOpenMarketplaces: vi.fn(async () => catalog()),
 	refreshOpenMarketplaces: vi.fn(async () => catalog("x-api-mcp")),
 	refreshMarketplaceSource: vi.fn(async (_id: string) => catalog("x-api-mcp").snapshots[0]),

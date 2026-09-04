@@ -159,6 +159,7 @@ export function registerAbilitiesIpc(): () => void {
 		const resolvedSourceId = sourceId === undefined ? undefined : requireString(sourceId, "sourceId");
 		return openMarketplace.prepareMcp(requireString(slug, "slug"), resolvedSourceId);
 	});
+	ipcMain.handle("vetta:abilities:get-open-mcp-setup-status", () => openMarketplace.mcpSetupStatus());
 	ipcMain.handle("vetta:abilities:remove-open-mcp-runtime", (_event, slug: unknown, sourceId: unknown) => {
 		const resolvedSourceId =
 			sourceId === undefined ? DEFAULT_MARKETPLACE_SOURCE_ID : requireString(sourceId, "sourceId");
@@ -196,6 +197,7 @@ export function registerAbilitiesIpc(): () => void {
 		ipcMain.removeHandler("vetta:abilities:refresh-open-marketplace");
 		ipcMain.removeHandler("vetta:abilities:list-open-marketplaces");
 		ipcMain.removeHandler("vetta:abilities:refresh-open-marketplaces");
+		ipcMain.removeHandler("vetta:abilities:get-open-mcp-setup-status");
 		ipcMain.removeHandler("vetta:abilities:list-marketplace-sources");
 		ipcMain.removeHandler("vetta:abilities:add-marketplace-source");
 		ipcMain.removeHandler("vetta:abilities:update-marketplace-source");

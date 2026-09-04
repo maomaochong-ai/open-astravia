@@ -23,6 +23,7 @@ interface MarketplaceWorker {
 	refresh(): Promise<OpenMarketplaceSnapshot>;
 	install(type: "skill" | "scene" | "plugin", slug: string): Promise<void>;
 	prepareMcp(slug: string): Promise<McpServerConfigData>;
+	mcpSetupStatus(): Promise<Record<string, boolean>>;
 }
 
 type MarketplaceWorkerFactory = (
@@ -145,6 +146,25 @@ export class OpenMarketplaceManager {
 		const source = this.requireSource(sourceId);
 		if (!source.enabled) throw new Error(`Marketplace source is disabled: ${sourceId}`);
 		return this.workerFor(source).prepareMcp(slug);
+	}
+
+	/**
+	 * 各源里声明了安装后步骤的 MCP 能力的完成情况，键为 `sourceId:slug`。
+	 * 只读本地标志文件，禁用的源直接跳过。
+	 */
+	async mcpSetupStatus(): Promise<Record<string, boolean>> {
+		const status: Record<string, boolean> = {};
+		for (const source of this.store.list()) {
+			if (!source.enabled) continue;
+			try {
+				for (const [slug, completed] of Object.entries(await this.workerFor(source).mcpSetupStatus())) {
+					status[`${source.id}:${slug}`] = completed;
+				}
+			} catch {
+				// 单个源读不出来时保留其它源的结果
+			}
+		}
+		return status;
 	}
 
 	async removeMcpRuntime(slug: string, sourceId = DEFAULT_MARKETPLACE_SOURCE_ID): Promise<void> {

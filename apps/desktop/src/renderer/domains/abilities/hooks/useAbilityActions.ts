@@ -41,6 +41,10 @@ export interface AbilityActions {
 	/** 刚装好、待提示配置权限的插件 slug；用完由 dismissPermissionPrompt 清空。 */
 	permissionPromptSlug: string | null;
 	dismissPermissionPrompt: () => void;
+	/** 待提示「安装后还要在对话里完成一步」的 MCP 能力 id。 */
+	setupPromptId: string | null;
+	promptMcpSetup: (item: McpAbility) => void;
+	dismissSetupPrompt: () => void;
 }
 
 export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; refresh: () => void }): AbilityActions {
@@ -52,6 +56,7 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 	const [error, setError] = useState<string | null>(null);
 	const [importing, setImporting] = useState(false);
 	const [permissionPromptSlug, setPermissionPromptSlug] = useState<string | null>(null);
+	const [setupPromptId, setSetupPromptId] = useState<string | null>(null);
 
 	const run = useCallback(
 		(
@@ -167,10 +172,13 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 					? await window.vetta.abilities.prepareOpenMcpAbility(item.slug, item.origin.sourceId)
 					: undefined;
 			if (item.preset) {
-				return mcp.onAddBuiltinServer(
+				const result = await mcp.onAddBuiltinServer(
 					preparedServer ? { ...item.preset, config: preparedServer } : item.preset,
 					installOptions,
 				);
+				// 装完就把「还要在对话里扫码/登录一次」摆到用户面前，否则只剩一个待配置角标。
+				if (result === "installed" && item.preset.postInstallSetup) setSetupPromptId(item.id);
+				return result;
 			}
 			if (market) {
 				const server = abilityToMarketMcpServer(market);
@@ -407,6 +415,8 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 	);
 
 	const dismissPermissionPrompt = useCallback(() => setPermissionPromptSlug(null), []);
+	const promptMcpSetup = useCallback((item: McpAbility) => setSetupPromptId(item.id), []);
+	const dismissSetupPrompt = useCallback(() => setSetupPromptId(null), []);
 
 	return {
 		busyIds,
@@ -426,5 +436,8 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 		importing,
 		permissionPromptSlug,
 		dismissPermissionPrompt,
+		setupPromptId,
+		promptMcpSetup,
+		dismissSetupPrompt,
 	};
 }

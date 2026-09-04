@@ -40,6 +40,7 @@ export function useAbilitiesModel(): AbilitiesModel {
 	const localState = useMemo<LocalAbilityState>(
 		() => ({
 			ledger: data.ledger,
+			mcpSetupStatus: data.mcpSetupStatus,
 			skillManifest: data.skillManifest,
 			localSkills: data.localSkills,
 			plugins: data.plugins,
@@ -51,6 +52,7 @@ export function useAbilitiesModel(): AbilitiesModel {
 			actions.busyIds,
 			data.ledger,
 			data.localSkills,
+			data.mcpSetupStatus,
 			data.plugins,
 			data.skillManifest,
 			mcp.config,
@@ -160,6 +162,11 @@ export function useAbilitiesModel(): AbilitiesModel {
 		uninstall: actions.uninstall,
 		toggle: actions.toggle,
 		setup: (item) => {
+			// 安装后步骤（扫码登录等）不在客户端完成，只能把做法讲清楚。
+			if (item.postInstallSetup) {
+				actions.promptMcpSetup(item);
+				return;
+			}
 			if (item.canConfigure && item.preset) {
 				mcp.onConfigureBuiltinSecrets(item.serverName, item.preset);
 				return;
@@ -188,5 +195,7 @@ export function useAbilitiesModel(): AbilitiesModel {
 		startAddManualMcp: () => mcp.onStartAddServer(),
 		permissionPromptSlug: actions.permissionPromptSlug,
 		dismissPermissionPrompt: actions.dismissPermissionPrompt,
+		setupPromptId: actions.setupPromptId,
+		dismissSetupPrompt: actions.dismissSetupPrompt,
 	};
 }

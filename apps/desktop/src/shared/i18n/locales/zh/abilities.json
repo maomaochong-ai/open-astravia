@@ -184,7 +184,11 @@
 		"secretsLead": "该连接需要以下凭证，配置后方可使用：",
 		"oauth": "账户授权",
 		"oauthAuthorized": "已授权",
-		"oauthNotAuthorized": "尚未授权"
+		"oauthNotAuthorized": "尚未授权",
+		"setupPromptTitle": "还差一步：完成登录",
+		"setupPromptLead": "{{name}} 已添加。首次使用需要完成一次登录：在对话里让 Agent 调用 {{tool}} 工具，按提示扫码即可。",
+		"setupPromptHint": "登录状态保存在本机的能力数据目录，完成后这里的「需要配置」提示会自动消失。",
+		"setupPromptDone": "知道了"
 	},
 	"bundle": {
 		"install": {
