@@ -1,6 +1,12 @@
 import { Button } from "@shared/components/ui/button";
 import { useAgentTeamSidebarSelection } from "@shared/agent-teams/useAgentTeamSidebarSelection";
-import { activityPanelOpenAtom, pageHeaderLeftSlotAtom, pageHeaderRightSlotAtom, pageHeaderTitleAtom } from "@shared/store/atoms";
+import {
+	activityPanelOpenAtom,
+	pageHeaderLeftSlotAtom,
+	pageHeaderRightSlotAtom,
+	pageHeaderTitleAtom,
+	pageHeaderTitleBadgeAtom,
+} from "@shared/store/atoms";
 import { AgentAvatarView, ChatHeaderActions } from "@vetta/theme-ui/chat";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useAtom, useSetAtom } from "jotai";
@@ -16,33 +22,38 @@ export function TeamChatPage(): JSX.Element {
 	const { teamId, sessionId, memberId } = useParams({ strict: false });
 	if (!teamId) throw new Error("Team route is missing teamId");
 	const setHeaderTitle = useSetAtom(pageHeaderTitleAtom);
+	const setHeaderTitleBadge = useSetAtom(pageHeaderTitleBadgeAtom);
 	const setHeaderLeft = useSetAtom(pageHeaderLeftSlotAtom);
 	const setHeaderRight = useSetAtom(pageHeaderRightSlotAtom);
 	const { model, actions } = useTeamChatModel(teamId, sessionId, memberId);
 	const [activityOpen, setActivityOpen] = useAtom(activityPanelOpenAtom);
 	const activeSessionTitle = model.sessions.find((session) => session.id === model.activeSessionId)?.label;
+	const backToTeamAction = useMemo(
+		() =>
+			memberId ? (
+				<Button
+					variant="ghost"
+					size="icon-xs"
+					className="mr-1"
+					title={t("chat.backToTeam")}
+					aria-label={t("chat.backToTeam")}
+					data-team-session-back="true"
+					onClick={() => {
+						if (!sessionId) return;
+						void navigate({
+							to: "/agent-teams/$teamId/sessions/$sessionId",
+							params: { teamId, sessionId },
+						});
+					}}
+				>
+					<span className="icon-[solar--arrow-left-linear] h-3.5 w-3.5" aria-hidden="true" />
+				</Button>
+			) : null,
+		[memberId, navigate, sessionId, t, teamId],
+	);
 	const memberHeader = useMemo(
 		() => (
 			<div className="flex min-w-0 items-center gap-0.5" role="group" aria-label={t("chat.memberSessions")}>
-				{memberId ? (
-					<Button
-						variant="ghost"
-						size="icon-xs"
-						className="mr-1"
-						title={t("chat.backToTeam")}
-						aria-label={t("chat.backToTeam")}
-						data-team-session-back="true"
-						onClick={() => {
-							if (!sessionId) return;
-							void navigate({
-								to: "/agent-teams/$teamId/sessions/$sessionId",
-								params: { teamId, sessionId },
-							});
-						}}
-					>
-						<span className="icon-[solar--arrow-left-linear] h-3.5 w-3.5" aria-hidden="true" />
-					</Button>
-				) : null}
 				{model.members.map((member) => {
 					const memberRuntimeId = model.memberRuntimeIds?.[member.id];
 					return (
@@ -116,15 +127,17 @@ export function TeamChatPage(): JSX.Element {
 	);
 
 	useEffect(() => {
-		setHeaderLeft(memberHeader);
+		setHeaderLeft(backToTeamAction);
 		setHeaderTitle(activeSessionTitle ?? model.title);
+		setHeaderTitleBadge(memberHeader);
 		setHeaderRight(headerActions);
 		return () => {
 			setHeaderLeft(null);
 			setHeaderTitle(null);
+			setHeaderTitleBadge(null);
 			setHeaderRight(null);
 		};
-	}, [activeSessionTitle, headerActions, memberHeader, model.title, setHeaderLeft, setHeaderRight, setHeaderTitle]);
+	}, [activeSessionTitle, backToTeamAction, headerActions, memberHeader, model.title, setHeaderLeft, setHeaderRight, setHeaderTitle, setHeaderTitleBadge]);
 
 	return <TeamChatView model={model} actions={actions} />;
 }
