@@ -349,6 +349,36 @@ describe("team chat stream state", () => {
 		expect(items).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "agent", text: "reply" })]));
 	});
 
+	it("does not merge member runtime user context into the public Team timeline", () => {
+		const items = projectTeamConversationTimeline({
+			snapshot: snapshot({
+				messages: [userMessage("coord-user", "request", "你好", 1)],
+				display: {
+					memberConversations: [
+						{
+							memberId: "leader",
+							runtimeSessionId: "leader-runtime",
+							history: [
+								{
+									type: "message",
+									entryId: "member-user",
+									message: { role: "user", content: "你好", timestamp: 1 },
+								},
+							],
+						},
+					],
+				},
+			}),
+			pending: undefined,
+			streams: {},
+			members: [member],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		expect(items.filter((item) => item.kind === "user")).toHaveLength(1);
+		expect(items[0]).toMatchObject({ id: "coord-user", text: "你好" });
+	});
+
 	it("keeps aggregated member messages keyed per runtime scope", () => {
 		const sharedAssistant = agentMessage("fallback", "request", "leader", "reply", 2).message;
 		const reviewer: TeamMemberViewModel = {

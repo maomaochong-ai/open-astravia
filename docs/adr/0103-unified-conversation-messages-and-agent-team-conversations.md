@@ -37,7 +37,8 @@ ADR-0099 将 Team Session 与普通会话存储隔离，ADR-0101 要求 Chat 与
    不解释 Team custom type。
 5. 成员只能直接读取自己的执行 Conversation。系统在 Turn admission 固定一个不可变的共享 generation，将协调
    Conversation 中所有允许共享的用户消息、Agent 公开发言和必要编排状态投影给目标成员。面向本机用户的 Team
-   transcript 可以保留 Agent 公开发言关联的 `toolCall` block，并由 Desktop Main 的 `display` 只读投影补齐
+   transcript 可以保留 Agent 公开发言关联的 `toolCall` block，并由 Desktop Main 的
+   `TeamSessionDisplayService` 只读投影补齐
    原始 `toolResult` 与 timing，以复用普通 Conversation 的工具卡片；Context Policy
    在模型可见投影时仍只提取公开文本与允许的产物引用，不向其他成员提供 thinking、工具输入输出、未发布草稿或
    subagent transcript。Renderer Snapshot 同样不得包含 thinking。
@@ -53,7 +54,7 @@ ADR-0099 将 Team Session 与普通会话存储隔离，ADR-0101 要求 Chat 与
    UI 直接复用已有 `Message`、`MessageLayout`、`MessageVisual` 与独立行为叶子；不引入仅转发 children 的
    `ConversationMessage.Header/Body/ActionBar`，也不将未被实际消费的消息模型放进空 Provider 来代替数据迁移。
 10. Team 复用现有 Runtime Observation Hub/Publisher 和 `RuntimeExecutionObservationEvent`，增加类型化 Team
-    生命周期 token、稳定 correlation 与数据分类。成员执行流同时由 Team Session Service 适配为
+    生命周期 token、稳定 correlation 与数据分类。成员执行流同时由 `TeamSessionEventHub` 适配为
     `DesktopTeamToolExecutionEvent`，只发给当前本机 Team Conversation 的 renderer 消息投影，用于复用普通会话的
     ToolCallBlock；该事件是渲染期、非持久化数据，不进入 Observation Hub 的安全摘要，也不进入任何成员的模型上下文。
     生产范围不新增独立的 Team UI/IPC 数据源、recorder、metrics、日志或远程 Adapter；测试可使用内存 Observer
@@ -62,6 +63,26 @@ ADR-0099 将 Team Session 与普通会话存储隔离，ADR-0101 要求 Chat 与
     工具输入输出展示合同；这些数据不写入 Team 公共消息、不进入跨成员共享上下文。隐藏推理链仍不发布。
 12. subagent 永远不进入 Team roster、不能成为 Team 消息作者、不能直接拥有或完成 Team work item。默认 Team
     policy 禁用 subagent；显式允许时也只能作为成员的私有辅助，由父成员对外发布结果。
+
+### Desktop 实现所有权
+
+`AgentTeamSessionService` 是 Team 会话的应用层入口，只负责会话生命周期、请求准入、成员调度、恢复以及各领域服务的
+装配。下列职责必须保持单一所有者，不得重新并入主服务或在 Renderer 建立平行路径：
+
+| 所有者 | 职责 |
+| --- | --- |
+| `TeamSessionStateRepository` | 唯一拥有已加载 Session、协调路径、按 Session 串行事务和状态持久化 |
+| `TeamSessionDisplayService` | 从协调 Conversation 生成公开 Snapshot，并从成员 Conversation 只读补齐工具展示证据 |
+| `TeamSessionEventHub` | 唯一拥有 Renderer subscriber、成员 Runtime subscription 和 active turn，并关联流式工具事件 |
+| `TeamRuntimeManager` | 创建、恢复和重配置协调/成员 Runtime Session，应用成员工具策略并管理资源绑定 |
+| `TeamSharedContextService` | 将协调历史投影、压缩、分页、交付，并持久化 receipt 与 checkpoint |
+| `TeamPublicationWorkflow` | 以同一幂等状态机处理正常结果发布和崩溃恢复 |
+| `TeamTurnCoordinator` | 拥有请求准入、成员调度、取消、重试/恢复与 Attempt settlement |
+| `TeamMemberAttemptRunner` | 执行单个已调度 Attempt，按固定顺序调用上下文、Runtime、publication 和 settlement |
+
+协调 Conversation 是 Team 公开时间线中用户消息和 Agent 公开结果的唯一事实源。成员 Conversation 是私有执行历史；
+它可以为已发布 Agent 结果提供工具卡片证据，但其中的用户 prompt 不得再次投影为 Team 公开用户消息。Renderer 只能消费
+Main 提供的公开 Snapshot 和实时事件，不能自行把协调历史与成员历史拼接成第二套消息事实源。
 
 ## 迁移
 

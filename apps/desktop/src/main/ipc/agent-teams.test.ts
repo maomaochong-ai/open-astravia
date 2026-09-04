@@ -19,6 +19,9 @@ vi.mock("../agent-teams/team-session-service.js", () => ({ agentTeamSessionServi
 vi.mock("../agent-teams/team-workspace.js", () => ({
 	ensureTeamWorkspace: vi.fn(async (teamId: string) => `C:/teams/${teamId}/workspace`),
 }));
+vi.mock("../logger.js", () => ({
+	getAppLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
+}));
 
 function dependencies(): AgentTeamsIpcDependencies {
 	return {

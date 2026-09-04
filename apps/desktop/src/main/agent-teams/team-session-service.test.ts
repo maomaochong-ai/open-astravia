@@ -688,6 +688,66 @@ describe("AgentTeamSessionService streaming contract", () => {
 		});
 	});
 
+	it("surfaces a failed Runtime prompt instead of silently treating it as an interruption", async () => {
+		const document = createInitialAgentTeamDocument();
+		const team = document.teams[0];
+		if (!team) throw new Error("built-in Agent Team fixture is missing");
+		const entries: Array<Record<string, unknown>> = [];
+		let sequence = 0;
+		const runtime = {
+			createSession: vi.fn(async (config?: SessionConfig) => ({
+				sessionId: config?.sessionId ?? `runtime-${++sequence}`,
+			})),
+			getSessionPath: (sessionId: string) => `C:/runtime/${sessionId}.jsonl`,
+			disposeSession: vi.fn(async () => undefined),
+			subscribe: () => () => undefined,
+			prompt: vi.fn(async () => ({
+				status: "failed" as const,
+				error: {
+					code: "AI_AUTHENTICATION_FAILED",
+					message: "provider authentication failed",
+					retryable: false,
+					origin: "provider" as const,
+				},
+			})),
+			getFullHistory: () => [],
+			appendConversationMessage: vi.fn(async () => ({ entryId: "entry" })),
+			deliverSessionContext: vi.fn(async () => undefined),
+			appendSessionMetadataEntry: vi.fn(async (_sessionId: string, customType: string, data: unknown) => {
+				entries.push({ type: "custom", customType, data });
+			}),
+			readSessionDocument: () => ({ entries, activeLeafId: null }),
+			abort: vi.fn(async () => undefined),
+		} as unknown as RuntimeHost;
+		const service = new AgentTeamSessionService({
+			runtime,
+			repository: { read: vi.fn(), list: vi.fn(async () => []) },
+			readDocument: async () => document,
+		});
+		const created = await service.create(team, document, "C:/workspace");
+		const stream: DesktopTeamSessionStreamEvent[] = [];
+		service.subscribe(created.id, (event) => stream.push(event));
+
+		await expect(
+			service.send(created.id, {
+				requestId: "request-provider-failure",
+				text: "do work",
+				targetMemberIds: [team.leaderMemberId],
+			}),
+		).rejects.toThrow("provider authentication failed");
+		const collaboration = await service.readCollaborationState(created.id);
+		expect(collaboration.workItems[0]?.state).toBe("attention-required");
+		expect(collaboration.attempts[0]).toMatchObject({
+			state: "awaiting-resource",
+			issue: { category: "authentication", code: "AI_AUTHENTICATION_FAILED" },
+		});
+		expect(stream.at(-1)).toMatchObject({
+			type: "conversation.agent-message-discard",
+			reason: "failed",
+			error: "provider authentication failed",
+		});
+	});
+
 	it.each([true, false])(
 		"honors the context policy before delivery and handles network interruption (allowed=%s)",
 		async (allowed) => {

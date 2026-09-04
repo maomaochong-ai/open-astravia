@@ -83,7 +83,16 @@ export function TeamComposerConnector({
 		activityWorkspaceId: model.workspace?.id,
 		onAbort: actions.abort,
 		onExpandedChange: undefined,
-		onSend: () => actions.send(),
+		onSend: () => {
+			console.info("[agent-team] input trigger send", {
+				activeSessionId: model.activeSessionId,
+				canSend: model.canSend,
+				status: model.status,
+				draftLength: model.draft.trim().length,
+				attachmentCount: model.attachments.length,
+			});
+			return actions.send();
+		},
 		onAtItemSelect: handleAtItemSelect,
 	});
 	const speechInput = useSpeechInput(model.editorEnabled);

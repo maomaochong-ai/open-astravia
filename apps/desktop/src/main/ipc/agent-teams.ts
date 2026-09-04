@@ -20,6 +20,9 @@ import type {
 import { agentTeamStore } from "../agent-teams/agent-team-store.js";
 import { agentTeamSessionService } from "../agent-teams/team-session-service.js";
 import { ensureTeamWorkspace } from "../agent-teams/team-workspace.js";
+import { getAppLogger } from "../logger.js";
+
+const log = getAppLogger("agent-teams-ipc");
 
 const CHANNELS = {
 	LIST: "vetta:agent-teams:list",
@@ -191,43 +194,113 @@ export function registerAgentTeamsIpc(
 	});
 	ipcMain.handle(CHANNELS.GET_SESSION, async (_event, value: unknown) => {
 		const reference = teamSessionReference(value);
-		const snapshot = await sessions.readSnapshot(reference.id, reference.coordinationSessionPath);
-		return await withDisplayProjection(snapshot, displayProjection);
+		const startedAt = Date.now();
+		log.info("team get-session started", {
+			teamSessionId: reference.id,
+			hasCoordinationSessionPath: Boolean(reference.coordinationSessionPath),
+		});
+		try {
+			const snapshot = await sessions.readSnapshot(reference.id, reference.coordinationSessionPath);
+			const projected = await withDisplayProjection(snapshot, displayProjection);
+			log.info("team get-session completed", {
+				teamSessionId: reference.id,
+				elapsedMs: Date.now() - startedAt,
+			});
+			return projected;
+		} catch (error) {
+			log.error("team get-session failed", {
+				teamSessionId: reference.id,
+				elapsedMs: Date.now() - startedAt,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			throw error;
+		}
 	});
-	ipcMain.handle(
-		CHANNELS.SEND_MESSAGE,
-		async (_event, id: unknown, input: unknown) =>
-			await withDisplayProjection(
-				sessions.snapshot(await sessions.send(requiredString(id, "sessionId"), parseSendTeamMessageInput(input))),
-				displayProjection,
-			),
-	);
+	ipcMain.handle(CHANNELS.SEND_MESSAGE, async (_event, id: unknown, input: unknown) => {
+		const sessionId = requiredString(id, "sessionId");
+		const startedAt = Date.now();
+		let parsed: ReturnType<typeof parseSendTeamMessageInput>;
+		try {
+			parsed = parseSendTeamMessageInput(input);
+		} catch (error) {
+			log.error("team send-message input rejected", {
+				teamSessionId: sessionId,
+				elapsedMs: Date.now() - startedAt,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			throw error;
+		}
+		log.info("team send-message entered", {
+			teamSessionId: sessionId,
+			requestId: parsed.requestId,
+			textLength: parsed.text.length,
+			targetMemberCount: parsed.targetMemberIds?.length ?? 0,
+			attachmentCount: parsed.attachments?.length ?? 0,
+			modelKey: parsed.modelKey,
+			reasoning: parsed.reasoning,
+		});
+		try {
+			const next = await sessions.send(sessionId, parsed);
+			const projected = await withDisplayProjection(sessions.snapshot(next), displayProjection);
+			log.info("team send-message completed", {
+				teamSessionId: sessionId,
+				requestId: parsed.requestId,
+				elapsedMs: Date.now() - startedAt,
+			});
+			return projected;
+		} catch (error) {
+			log.error("team send-message failed", {
+				teamSessionId: sessionId,
+				requestId: parsed.requestId,
+				elapsedMs: Date.now() - startedAt,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			throw error;
+		}
+	});
 	ipcMain.handle(CHANNELS.ABORT, (_event, id: unknown) => sessions.abort(requiredString(id, "sessionId")));
 	ipcMain.handle(CHANNELS.SUBSCRIBE, async (event, id: unknown) => {
 		const sessionId = requiredString(id, "sessionId");
 		const subscriptionId = `${sessionId}:${randomUUID()}`;
+		log.info("team stream subscription started", { teamSessionId: sessionId, subscriptionId });
 		let sendQueue = Promise.resolve();
 		const subscription = sessions.subscribe(sessionId, (payload) => {
-			sendQueue = sendQueue.then(async () => {
-				if (event.sender.isDestroyed()) return;
-				event.sender.send(
-					"vetta:agent-teams:stream-event",
-					subscriptionId,
-					await enrichTeamEvent(payload, displayProjection),
-				);
-			});
+			sendQueue = sendQueue
+				.then(async () => {
+					if (event.sender.isDestroyed()) return;
+					event.sender.send(
+						"vetta:agent-teams:stream-event",
+						subscriptionId,
+						await enrichTeamEvent(payload, displayProjection),
+					);
+				})
+				.catch((error: unknown) => {
+					log.error("team stream event delivery failed", {
+						teamSessionId: sessionId,
+						subscriptionId,
+						eventType: payload.type,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				});
 		});
 		const cleanup = () => {
 			event.sender.removeListener("destroyed", cleanup);
 			subscription.unsubscribe();
 			subscriptions.delete(subscriptionId);
+			log.info("team stream subscription cleaned up", { teamSessionId: sessionId, subscriptionId });
 		};
 		event.sender.once("destroyed", cleanup);
 		subscriptions.set(subscriptionId, cleanup);
-		return {
+		const response = {
 			subscriptionId,
 			...(subscription.snapshot ? { initial: await enrichTeamEvent(subscription.snapshot, displayProjection) } : {}),
 		};
+		log.info("team stream subscription ready", {
+			teamSessionId: sessionId,
+			subscriptionId,
+			hasInitialSnapshot: Boolean(subscription.snapshot),
+		});
+		return response;
 	});
 	ipcMain.handle(CHANNELS.UNSUBSCRIBE, (_event, subscriptionId: unknown) => {
 		const key = requiredString(subscriptionId, "subscriptionId");

@@ -415,7 +415,27 @@ export function useTeamChatModel(
 
 	const send = useCallback(async () => {
 		const draftText = draft.trim();
-		if (!session || !team || (!draftText && attachments.length === 0) || pendingRef.current) return;
+		const attempt = {
+			teamId,
+			teamSessionId: session?.id,
+			draftLength: draftText.length,
+			attachmentCount: attachments.length,
+			pendingRequestId: pendingRef.current?.requestId,
+		};
+		console.info("[agent-team] send attempted", attempt);
+		if (!session || !team || (!draftText && attachments.length === 0) || pendingRef.current) {
+			console.info("[agent-team] send ignored", {
+				...attempt,
+				reason: !session
+					? "session-unavailable"
+					: !team
+						? "team-unavailable"
+						: !draftText && attachments.length === 0
+							? "empty-input"
+							: "request-pending",
+			});
+			return;
+		}
 		const text = draftText;
 		const requestId = crypto.randomUUID();
 		const sentAttachments = attachments;
@@ -441,6 +461,16 @@ export function useTeamChatModel(
 		setStreams(activeStreams);
 		updateDraft("");
 		updateAttachments(() => []);
+		const startedAt = Date.now();
+		console.info("[agent-team] send-message IPC started", {
+			teamId,
+			teamSessionId: session.id,
+			requestId,
+			targetMemberCount: targetMemberIds.length,
+			attachmentCount: promptAttachments.length,
+			modelKey: effectiveModelKey,
+			reasoning: effectiveReasoning,
+		});
 		try {
 			const next = await window.vetta.agentTeams.sendMessage(session.id, {
 				requestId,
@@ -460,6 +490,12 @@ export function useTeamChatModel(
 			setContextUsages((current) => ({ ...current, ...readSnapshotContextUsages(next) }));
 			setError(undefined);
 			setStatus("ready");
+			console.info("[agent-team] send-message IPC completed", {
+				teamId,
+				teamSessionId: session.id,
+				requestId,
+				elapsedMs: Date.now() - startedAt,
+			});
 			if (draftText) {
 				setHistoryByTeam((current) => {
 					const previous = current[draftScope] ?? [];
@@ -470,6 +506,13 @@ export function useTeamChatModel(
 				});
 			}
 		} catch (cause) {
+			console.error("[agent-team] send-message IPC failed", {
+				teamId,
+				teamSessionId: session.id,
+				requestId,
+				elapsedMs: Date.now() - startedAt,
+				error: cause instanceof Error ? cause.message : String(cause),
+			});
 			if (cancelledRequests.current.delete(requestId)) {
 				setStatus("ready");
 			} else {
@@ -485,6 +528,7 @@ export function useTeamChatModel(
 	}, [
 		attachments,
 		draft,
+		teamId,
 		selectedMemberIds,
 		session,
 		team,

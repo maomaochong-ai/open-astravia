@@ -212,17 +212,23 @@ export function projectTeamConversationTimeline({
 	const visibleMemberConversations = memberId
 		? memberConversations.filter((conversation) => conversation.memberId === memberId)
 		: memberConversations;
-	const projectedItems: ChatConversationItem[] = visibleMemberConversations.flatMap((conversation) =>
+	const projectedMemberItems = visibleMemberConversations.flatMap((conversation) =>
 		projectMemberConversation(conversation.memberId, conversation.history),
 	);
 	// User input is persisted in the coordination conversation before member
 	// turns are scheduled. Keep it as the canonical timeline item even when
-	// member histories are available (they may not contain the prompt yet, and
-	// each member can otherwise duplicate the same user turn).
-	const legacyItems = projectLegacySnapshotMessages(snapshot);
+	// member histories are available. Member Runtime histories contain their own
+	// user input entries as execution context; those entries are not public Team
+	// messages and must not be merged into the aggregate feed.
+	const coordinationItems = projectLegacySnapshotMessages(snapshot);
+	const coordinationUserItems = coordinationItems.filter((item) => item.kind === "user");
+	const projectedItems =
+		coordinationUserItems.length > 0
+			? projectedMemberItems.filter((item) => item.kind !== "user")
+			: projectedMemberItems;
 	const items = dedupeTeamUserItems([
 		...projectedItems,
-		...(memberConversations.length === 0 ? legacyItems : legacyItems.filter((item) => item.kind === "user")),
+		...(memberConversations.length === 0 ? coordinationItems : coordinationUserItems),
 	]);
 	for (const activity of memberId ? [] : snapshot.activities) {
 		const source =

@@ -444,12 +444,35 @@ export class DesktopConversationService {
 					);
 
 		try {
-			await Promise.race([
+			const promptOutcome = await Promise.race([
 				options.session.source === "debug"
 					? this.promptWithAutoTitle(options.session, options.prompt)
 					: this.runtime.prompt(options.session.sessionId, options.prompt),
 				cancellation,
 			]);
+			// RuntimeHost can return a structured failed receipt when the turn was
+			// executed but its durable failure could not be thrown across the control
+			// boundary. Preserve that diagnostic before looking for an assistant
+			// message; otherwise remote callers only see the misleading
+			// "completed without an assistant message" error.
+			if (promptOutcome.status === "failed") {
+				const failure = promptOutcome.error;
+				throw new DesktopConversationError(
+					"TURN_FAILED",
+					failure?.message ?? "Conversation turn failed.",
+					failure
+						? {
+								code: failure.code,
+								retryable: failure.retryable,
+								origin: failure.origin,
+								...(failure.details ? { details: failure.details } : {}),
+							}
+						: undefined,
+				);
+			}
+			if (promptOutcome.status === "cancelled") {
+				throw new DesktopConversationError("TURN_ABORTED", "Conversation turn was aborted.");
+			}
 		} catch (error) {
 			emitConversationListChanged({
 				cwd: options.session.listCwd,

@@ -361,6 +361,50 @@ describe("DesktopConversationService session access", () => {
 		});
 	});
 
+	it("preserves structured failures returned as a prompt receipt", async () => {
+		const runtime = {
+			getState: vi.fn(() => ({ isStreaming: false })),
+			getMessages: vi.fn(() => []),
+			prompt: vi.fn(async () => ({
+				status: "failed" as const,
+				turnId: "turn-1",
+				error: {
+					code: "AI_AUTHENTICATION_FAILED",
+					message: "provider authentication failed",
+					retryable: false,
+					origin: "provider" as const,
+					details: { provider: "openai" },
+				},
+			})),
+			abort: vi.fn(async () => undefined),
+		} as unknown as RuntimeHost;
+		const service = new DesktopConversationService(runtime);
+
+		const error = await service
+			.runTurn({
+				session: {
+					sessionId: "session-1",
+					sessionPath: "C:/sessions/session-1.jsonl",
+					cwd: "C:/workspace",
+					listCwd: "C:/workspace",
+					source: "interactive",
+				},
+				prompt: { text: "hello" },
+				timeoutMs: 1_000,
+			})
+			.catch((reason: unknown) => reason);
+
+		expect(error).toMatchObject({
+			code: "TURN_FAILED",
+			details: {
+				code: "AI_AUTHENTICATION_FAILED",
+				retryable: false,
+				origin: "provider",
+				details: { provider: "openai" },
+			},
+		});
+	});
+
 	it("runs manual context compaction through the RuntimeHost control port", async () => {
 		const compactSessionContext = vi.fn(async () => ({
 			summary: "summary",
