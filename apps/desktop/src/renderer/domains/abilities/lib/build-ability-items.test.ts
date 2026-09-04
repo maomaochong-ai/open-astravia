@@ -375,6 +375,36 @@ describe("buildMcpAbilities", () => {
 		expect(done?.setupRequired).toBe(false);
 	});
 
+	it("配置版本前进时即便能力版本不变也提示更新", () => {
+		const ability = {
+			...createBundle([]),
+			type: "mcp" as const,
+			slug: "demo-mcp",
+			name: "Demo",
+			version: "2.5.0",
+			configVersion: 3,
+			config: { mcp: { command: "/runtime/demo" }, mcp_parameters: [] },
+			catalogSource: { kind: "github" as const, id: "official", name: "official" },
+		} as unknown as MarketAbility;
+		const state = (configVersion: number): LocalAbilityState =>
+			createState({
+				mcpConfig: { mcpServers: { "demo-mcp": { command: "/runtime/demo" } } },
+				ledger: {
+					"mcp:demo-mcp": {
+						version: "2.5.0",
+						installedAt: "2026-01-01T00:00:00.000Z",
+						catalogId: "github:official:mcp:demo-mcp",
+						runtimeName: "demo-mcp",
+						configVersion,
+					},
+				} as unknown as LocalAbilityState["ledger"],
+			});
+
+		// 装的时候是 configVersion 2，市场已经是 3：命令行写法变了，必须重写
+		expect(buildMcpAbilities([ability], state(2), t)[0]?.needsUpdate).toBe(true);
+		expect(buildMcpAbilities([ability], state(3), t)[0]?.needsUpdate).toBe(false);
+	});
+
 	it("applies a valueTemplate to an HTTP header secret", () => {
 		const preset = {
 			id: "x-api-mcp",

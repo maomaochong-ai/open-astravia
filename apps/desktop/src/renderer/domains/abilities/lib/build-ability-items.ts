@@ -325,6 +325,12 @@ function createMcpAbility(input: McpBuildInput, state: LocalAbilityState, t: TFu
 	const authorized = usesOAuth && Boolean(state.oauthAuthByName[serverName]);
 	const needsSecrets = Boolean(server && preset && missingRequiredSecrets(preset, server).length > 0);
 	const installed = Boolean(server);
+	/**
+	 * 能力版本没变、但 mcp.json 的写法变了（configVersion 递增）时也要提示更新：
+	 * 已装条目的命令行是安装那一刻写死的，不重写就一直按旧配置启动。
+	 */
+	const catalogConfigVersion = (entry as (MarketAbility & { configVersion?: number }) | undefined)?.configVersion;
+	const configOutdated = Boolean(catalogConfigVersion && (ledgerEntry?.configVersion ?? 1) < catalogConfigVersion);
 	// 安装后步骤（扫码登录等）：市场声明了才有这一项，完成状态由主进程探测。
 	const postInstallSetup = preset?.postInstallSetup;
 	const setupCompleted =
@@ -357,7 +363,7 @@ function createMcpAbility(input: McpBuildInput, state: LocalAbilityState, t: TFu
 		installed,
 		enabled: installed && !(server?.disabled ?? false),
 		readonly: false,
-		needsUpdate: installed && Boolean(entry && localVersion) && localVersion !== entry?.version,
+		needsUpdate: installed && Boolean(entry && localVersion) && (localVersion !== entry?.version || configOutdated),
 		setupRequired: installed && (needsSecrets || (usesOAuth && !authorized) || !setupCompleted),
 		...(postInstallSetup ? { postInstallSetup } : {}),
 		busy: state.busyIds.has(id),
