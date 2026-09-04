@@ -4,7 +4,6 @@ import {
 	createAgentTeamExtensionRegistry,
 	createInitialAgentTeamDocument,
 	type TeamSessionDocument,
-	type TeamSessionStreamEvent,
 } from "@vetta/agent-team";
 import { createAssistantMessage } from "@vetta/ai";
 import type {
@@ -21,6 +20,7 @@ import {
 	type RuntimeObservationRecord,
 } from "@vetta/runtime-core/observation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { DesktopTeamSessionStreamEvent } from "../../preload/api-types/team-conversation-display.js";
 import type {
 	ConversationOwnershipCatalogPort,
 	ConversationOwnershipRecord,
@@ -34,6 +34,8 @@ vi.mock("../conversations/resolve-session-config.js", () => ({
 vi.mock("../logger.js", () => ({
 	getAppLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
 }));
+vi.mock("../ipc/fs.js", () => ({ readDesktopConfig: vi.fn(async () => ({})) }));
+vi.mock("../sandbox/capability.js", () => ({ assertSandboxAvailableForMode: vi.fn(async () => undefined) }));
 vi.mock("../runtime.js", () => ({ getSharedRuntime: vi.fn() }));
 
 describe("AgentTeamSessionService streaming contract", () => {
@@ -158,6 +160,13 @@ describe("AgentTeamSessionService streaming contract", () => {
 		}));
 		const runtime = {
 			createSession,
+			setExecutionMode: vi.fn(async () => undefined),
+			getState: vi.fn(() => ({
+				contextPercent: 35,
+				contextTokens: 35,
+				contextWindow: 100,
+				executionMode: "full-access",
+			})),
 			getSessionPath: (sessionId: string) => `C:/runtime/${sessionId}.jsonl`,
 			disposeSession: vi.fn(async () => undefined),
 			subscribe: (sessionId: string, listener: (event: SessionEvent) => void) => {
@@ -190,6 +199,23 @@ describe("AgentTeamSessionService streaming contract", () => {
 						modelCallIndex: 0,
 						...event,
 					}) as SessionEvent;
+				listener?.({
+					schemaVersion: 1,
+					channel: "runtime",
+					sessionId,
+					eventId: "usage-1",
+					timestamp: 2,
+					source: "runtime-core",
+					type: "usage.update",
+					input: 20,
+					output: 4,
+					cacheRead: 0,
+					cacheWrite: 0,
+					costTotal: 0,
+					contextPercent: 35,
+					contextTokens: 35,
+					contextWindow: 100,
+				} as SessionEvent);
 				listener?.(assistantEvent({ type: "thinking_delta", contentIndex: 0, delta: "private", partial }, 1));
 				listener?.(assistantEvent({ type: "text_delta", contentIndex: 1, delta: "partial ", partial }, 2));
 				listener?.(assistantEvent({ type: "toolcall_start", contentIndex: 2, partial }, 3));
@@ -315,6 +341,10 @@ describe("AgentTeamSessionService streaming contract", () => {
 			sharedContextCompaction: { maxCharacters: 1, keepRecentCharacters: 0 },
 		});
 		const created = await service.create(team, document, "C:/workspace");
+		const sandboxed = await service.setExecutionMode(created.id, "sandbox");
+		expect(sandboxed.executionMode).toBe("sandbox");
+		expect(runtime.setExecutionMode).toHaveBeenCalledTimes(Object.keys(created.memberRuntime).length + 1);
+		expect(runtime.setExecutionMode).toHaveBeenLastCalledWith(expect.any(String), "sandbox");
 		expect(createSession.mock.calls.every(([config]) => config === undefined || !("sessionDir" in config))).toBe(
 			true,
 		);
@@ -323,7 +353,7 @@ describe("AgentTeamSessionService streaming contract", () => {
 			reasoning: "high",
 		});
 		expect(configured.modelSettings).toEqual({ modelKey: "openai/gpt-test", reasoning: "high" });
-		const events: TeamSessionStreamEvent[] = [];
+		const events: DesktopTeamSessionStreamEvent[] = [];
 		const subscription = service.subscribe(created.id, (event) => events.push(event));
 
 		const completed = await service.send(created.id, {
@@ -341,7 +371,8 @@ describe("AgentTeamSessionService streaming contract", () => {
 		).toEqual(["partial ", "toolcall_start", "answer"]);
 		expect(messageEvents.map((event) => event.sequence)).toEqual([1, 2, 3]);
 		expect(completed.events).toEqual([]);
-		expect(service.snapshot(completed).messages.at(-1)).toMatchObject({
+		const completedSnapshot = service.snapshot(completed);
+		expect(completedSnapshot.messages.at(-1)).toMatchObject({
 			kind: "agent",
 			author: { id: team.leaderMemberId },
 			message: {
@@ -356,12 +387,32 @@ describe("AgentTeamSessionService streaming contract", () => {
 				],
 			},
 		});
+		expect(service.displayProjection(completed).toolExecutions).toMatchObject([
+			{
+				messageId: expect.any(String),
+				toolCallId: "private-call",
+				toolName: "read",
+				args: { path: "C:/workspace/private.txt" },
+				result: {
+					content: [{ type: "text", text: "private result" }],
+					isError: false,
+				},
+				isError: false,
+			},
+		]);
+		expect(events).toContainEqual(
+			expect.objectContaining({
+				type: "desktop.team-context-usage",
+				memberId: team.leaderMemberId,
+				contextUsage: { percent: 35, contextTokens: 35, contextWindow: 100 },
+			}),
+		);
 		expect(events.at(-1)).toMatchObject({
 			type: "conversation.agent-message-discard",
 			reason: "completed",
 			sequence: 6,
 		});
-		expect(events.filter((event) => event.type === "conversation.tool-execution")).toEqual([
+		expect(events.filter((event) => event.type === "desktop.team-tool-execution")).toEqual([
 			expect.objectContaining({
 				event: expect.objectContaining({
 					type: "start",
@@ -573,7 +624,7 @@ describe("AgentTeamSessionService streaming contract", () => {
 			readDocument: async () => document,
 		});
 		const created = await service.create(team, document, "C:/workspace");
-		const stream: TeamSessionStreamEvent[] = [];
+		const stream: DesktopTeamSessionStreamEvent[] = [];
 		service.subscribe(created.id, (event) => stream.push(event));
 
 		const result = await service.send(created.id, {

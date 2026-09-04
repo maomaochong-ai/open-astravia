@@ -19,6 +19,8 @@ import { useInputBarTriggerModel } from "./useInputBarTriggerModel";
 import { useSpeechInput } from "./useSpeechInput";
 import { useSessionDropZoneModel } from "../../hooks/useSessionDropZoneModel";
 import { useInputActionBarModel } from "../useInputActionBarModel";
+import { useDefaultContextRingModel } from "../../hooks/useContextRingModel";
+import { useDefaultExecutionModeSelectorModel } from "../../hooks/useExecutionModeSelectorModel";
 
 /** 普通 Chat 的默认配方；每项能力由独立 source/model 提供，其他 Connector 可自行取舍。 */
 export function DefaultInputBarConnector(props: ConnectedInputBarProps): JSX.Element {
@@ -32,6 +34,8 @@ export function DefaultInputBarConnector(props: ConnectedInputBarProps): JSX.Ele
 	const todoItems = useInputBarTodoSource(runtimeId);
 	const actionBar = useInputActionBarModel();
 	const speechInput = useSpeechInput(session.hasSession);
+	const executionModeModel = useDefaultExecutionModeSelectorModel();
+	const contextUsageModel = useDefaultContextRingModel(true);
 	const canSend =
 		session.hasSession &&
 		!session.isStreaming &&
@@ -154,8 +158,8 @@ export function DefaultInputBarConnector(props: ConnectedInputBarProps): JSX.Ele
 		contextMenu,
 		editor: { namespace: "chat-input" },
 		modelSelector: { updateActiveSession: true },
-		leadingTools: ["execution-mode"],
-		trailingTools: ["context-usage"],
+		leadingTools: [{ kind: "execution-mode", model: executionModeModel }],
+		trailingTools: contextUsageModel ? [{ kind: "context-usage", model: contextUsageModel }] : [],
 		sendBehavior: "queueable",
 		labels,
 		actions: {

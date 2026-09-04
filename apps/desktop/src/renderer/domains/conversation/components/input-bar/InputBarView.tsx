@@ -225,12 +225,9 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 												onSelectFiles={() => void model.actions.handleSelectFiles()}
 												onSelectImages={() => void model.actions.handleSelectImages()}
 											/>
-											{model.leadingTools.map((tool) => {
-												switch (tool) {
-													case "execution-mode":
-														return <InputBarExecutionModeAction key={tool} visible={!slashOpen} />;
-												}
-											})}
+							{model.leadingTools.map((tool) => (
+								<InputBarExecutionModeAction key={tool.kind} visible={!slashOpen} model={tool.model} />
+							))}
 											<InputBarActiveActions
 												items={model.activeActions}
 												removeHint={model.labels.capsule.removeDefault}
@@ -239,12 +236,9 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 										</MessageInput.ToolbarLeading>
 										<MessageInput.ToolbarTrailing>
 											<InputBarModelAction visible={!slashOpen} updateActiveSession={model.modelSelector.updateActiveSession} scope={model.modelSelector.scope} />
-											{model.trailingTools.map((tool) => {
-												switch (tool) {
-													case "context-usage":
-														return <InputBarContextAction key={tool} visible={!slashOpen} />;
-												}
-											})}
+							{model.trailingTools.map((tool) => (
+								<InputBarContextAction key={tool.kind} visible={!slashOpen} model={tool.model} />
+							))}
 											{slashOpen ? null : (
 												<InputBarSpeechAction input={model.speechInput} />
 											)}

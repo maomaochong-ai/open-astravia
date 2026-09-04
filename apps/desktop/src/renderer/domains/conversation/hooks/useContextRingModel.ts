@@ -1,4 +1,4 @@
-import { contextUsageAtom, isCompactingAtom } from "@shared/store/atoms";
+import { type ContextUsageData, contextUsageAtom, isCompactingAtom } from "@shared/store/atoms";
 import { CONTEXT_RING_CIRCUMFERENCE } from "@vetta/theme-ui/chat";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
@@ -14,10 +14,21 @@ export interface ContextRingModel {
 	details: ContextRingDetailsModel | null;
 }
 
-export function useContextRingModel(includeDetails = true): ContextRingModel | null {
-	const { t } = useTranslation("chat");
-	const ctx = useAtomValue(contextUsageAtom);
+export interface ContextRingBinding {
+	readonly usage: ContextUsageData | null;
+	readonly isCompacting: boolean;
+}
+
+export function useDefaultContextRingModel(includeDetails = true): ContextRingModel | null {
+	const usage = useAtomValue(contextUsageAtom);
 	const isCompacting = useAtomValue(isCompactingAtom);
+	return useContextRingModel({ usage, isCompacting }, includeDetails);
+}
+
+export function useContextRingModel(binding: ContextRingBinding, includeDetails = true): ContextRingModel | null {
+	const { t } = useTranslation("chat");
+	const ctx = binding.usage;
+	const isCompacting = binding.isCompacting;
 	const composition = ctx?.composition;
 
 	const detailLabels = useMemo(

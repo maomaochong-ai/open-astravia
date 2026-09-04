@@ -4,6 +4,52 @@ import { describe, expect, it } from "vitest";
 import { ensureDraft, finalizeMessage, fullHistoryToChat, historyToChat, resetStreamState } from "./chat-service";
 
 describe("chat message usage projection", () => {
+	it("keeps ordinary conversation tool calls and their raw results in the UI block", () => {
+		const assistantWithTool = assistant("done", usage({}));
+		assistantWithTool.content = [
+			{ type: "toolCall", id: "call-1", name: "read", arguments: { path: "README.md" } },
+			{ type: "text", text: "done" },
+		];
+		const history = [
+			{ role: "user", content: "read README" },
+			{ role: "assistant", content: assistantWithTool.content, usage: assistantWithTool.usage },
+			{
+				role: "toolResult",
+				toolCallId: "call-1",
+				content: [{ type: "text", text: "raw file contents" }],
+				isError: false,
+			},
+		] satisfies Parameters<typeof historyToChat>[0];
+		const live = historyToChat(history);
+		expect(live[1]).toMatchObject({
+			kind: "agent",
+			blocks: expect.arrayContaining([
+				expect.objectContaining({ type: "tool_call", toolCallId: "call-1", result: "raw file contents" }),
+			]),
+		});
+
+		const persisted = fullHistoryToChat([
+			{ type: "message", entryId: "user", message: { role: "user", content: "read README", timestamp: 1 } },
+			{ type: "message", entryId: "assistant", message: assistantWithTool },
+			{
+				type: "message",
+				entryId: "result",
+				message: {
+					role: "toolResult",
+					toolCallId: "call-1",
+					toolName: "read",
+					content: [{ type: "text", text: "raw file contents" }],
+					isError: false,
+					timestamp: 2,
+				},
+			},
+		]);
+		expect(persisted[1]).toMatchObject({
+			kind: "agent",
+			blocks: expect.arrayContaining([expect.objectContaining({ type: "tool_call", result: "raw file contents" })]),
+		});
+	});
+
 	it("keeps every model-call usage when history assistant messages merge into one turn", () => {
 		const first = usage({ input: 20, cacheRead: 70, cacheWrite: 10, cacheUsageReporting: "read-write" });
 		const second = usage({ input: 50, cacheRead: 50, cacheUsageReporting: "read-only" });

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { TeamSessionReference } from "@vetta/agent-team";
+import type { TeamSessionDocument, TeamSessionReference, TeamSessionSnapshot } from "@vetta/agent-team";
 import {
 	parseCreateAgentProfileInput,
 	parseCreateTeamInput,
@@ -10,7 +10,13 @@ import {
 	parseUpdateTeamInput,
 	parseUpdateTeamSessionModelSettingsInput,
 } from "@vetta/agent-team";
+import type { SessionExecutionMode } from "@vetta/runtime-core";
 import { ipcMain } from "electron";
+import type {
+	DesktopTeamConversationDisplay,
+	DesktopTeamSessionSnapshot,
+	DesktopTeamSessionStreamEvent,
+} from "../../preload/api-types/team-conversation-display.js";
 import { agentTeamStore } from "../agent-teams/agent-team-store.js";
 import { agentTeamSessionService } from "../agent-teams/team-session-service.js";
 import { ensureTeamWorkspace } from "../agent-teams/team-workspace.js";
@@ -29,6 +35,7 @@ const CHANNELS = {
 	CREATE_SESSION: "vetta:agent-teams:create-session",
 	LIST_SESSIONS: "vetta:agent-teams:list-sessions",
 	UPDATE_MODEL_SETTINGS: "vetta:agent-teams:update-model-settings",
+	SET_EXECUTION_MODE: "vetta:agent-teams:set-execution-mode",
 	GET_SESSION: "vetta:agent-teams:get-session",
 	SEND_MESSAGE: "vetta:agent-teams:send-message",
 	SUBSCRIBE: "vetta:agent-teams:subscribe",
@@ -75,14 +82,45 @@ export interface AgentTeamsIpcDependencies {
 	>;
 	readonly sessions: Pick<
 		typeof agentTeamSessionService,
-		"create" | "listSessions" | "updateModelSettings" | "readSnapshot" | "send" | "snapshot" | "subscribe" | "abort"
-	>;
+		| "create"
+		| "listSessions"
+		| "updateModelSettings"
+		| "setExecutionMode"
+		| "readSnapshot"
+		| "send"
+		| "snapshot"
+		| "subscribe"
+		| "abort"
+	> &
+		Partial<Pick<typeof agentTeamSessionService, "displayProjection">>;
+}
+
+function withDisplayProjection(
+	snapshot: TeamSessionSnapshot,
+	displayProjection?: (session: TeamSessionDocument) => DesktopTeamConversationDisplay,
+): DesktopTeamSessionSnapshot {
+	return { ...snapshot, display: displayProjection?.(snapshot.session) ?? { toolExecutions: [] } };
+}
+
+function enrichTeamEvent(
+	event: Parameters<AgentTeamsIpcDependencies["sessions"]["subscribe"]>[1] extends (payload: infer P) => void
+		? P
+		: never,
+	displayProjection?: (session: TeamSessionDocument) => DesktopTeamConversationDisplay,
+): DesktopTeamSessionStreamEvent {
+	if (event.type === "session-snapshot" || event.type === "session-updated") {
+		return { ...event, snapshot: withDisplayProjection(event.snapshot, displayProjection) };
+	}
+	return event as DesktopTeamSessionStreamEvent;
 }
 
 export function registerAgentTeamsIpc(
 	dependencies: AgentTeamsIpcDependencies = { store: agentTeamStore, sessions: agentTeamSessionService },
 ): () => void {
 	const { store, sessions } = dependencies;
+	// `displayProjection` is invoked later by IPC callbacks. Bind it once here so
+	// the service keeps its runtime/repository context when passed as a callback.
+	const displayProjection = sessions.displayProjection?.bind(sessions);
 	const subscriptions = new Map<string, () => void>();
 	ipcMain.handle(CHANNELS.LIST, () => store.read());
 	ipcMain.handle(CHANNELS.BLUEPRINTS, () => store.listBlueprints());
@@ -114,25 +152,42 @@ export function registerAgentTeamsIpc(
 		const team = document.teams.find((candidate) => candidate.id === parsedTeamId);
 		if (!team) throw new Error("Team not found");
 		const cwd = await ensureTeamWorkspace(parsedTeamId);
-		return sessions.snapshot(await sessions.create(team, document, cwd));
+		return withDisplayProjection(sessions.snapshot(await sessions.create(team, document, cwd)), displayProjection);
 	});
 	ipcMain.handle(CHANNELS.LIST_SESSIONS, (_event, teamId: unknown) =>
 		sessions.listSessions(requiredString(teamId, "teamId")),
 	);
 	ipcMain.handle(CHANNELS.UPDATE_MODEL_SETTINGS, async (_event, id: unknown, input: unknown) =>
-		sessions.snapshot(
-			await sessions.updateModelSettings(
-				requiredString(id, "sessionId"),
-				parseUpdateTeamSessionModelSettingsInput(input),
+		withDisplayProjection(
+			sessions.snapshot(
+				await sessions.updateModelSettings(
+					requiredString(id, "sessionId"),
+					parseUpdateTeamSessionModelSettingsInput(input),
+				),
 			),
+			displayProjection,
 		),
 	);
+	ipcMain.handle(CHANNELS.SET_EXECUTION_MODE, async (_event, id: unknown, mode: unknown) => {
+		if (mode !== "sandbox" && mode !== "full-access") throw new Error("Invalid executionMode");
+		return withDisplayProjection(
+			sessions.snapshot(
+				await sessions.setExecutionMode(requiredString(id, "sessionId"), mode as SessionExecutionMode),
+			),
+			displayProjection,
+		);
+	});
 	ipcMain.handle(CHANNELS.GET_SESSION, (_event, value: unknown) => {
 		const reference = teamSessionReference(value);
-		return sessions.readSnapshot(reference.id, reference.coordinationSessionPath);
+		return Promise.resolve(sessions.readSnapshot(reference.id, reference.coordinationSessionPath)).then((snapshot) =>
+			withDisplayProjection(snapshot, displayProjection),
+		);
 	});
 	ipcMain.handle(CHANNELS.SEND_MESSAGE, async (_event, id: unknown, input: unknown) =>
-		sessions.snapshot(await sessions.send(requiredString(id, "sessionId"), parseSendTeamMessageInput(input))),
+		withDisplayProjection(
+			sessions.snapshot(await sessions.send(requiredString(id, "sessionId"), parseSendTeamMessageInput(input))),
+			displayProjection,
+		),
 	);
 	ipcMain.handle(CHANNELS.ABORT, (_event, id: unknown) => sessions.abort(requiredString(id, "sessionId")));
 	ipcMain.handle(CHANNELS.SUBSCRIBE, async (event, id: unknown) => {
@@ -140,7 +195,11 @@ export function registerAgentTeamsIpc(
 		const subscriptionId = `${sessionId}:${randomUUID()}`;
 		const subscription = sessions.subscribe(sessionId, (payload) => {
 			if (!event.sender.isDestroyed()) {
-				event.sender.send("vetta:agent-teams:stream-event", subscriptionId, payload);
+				event.sender.send(
+					"vetta:agent-teams:stream-event",
+					subscriptionId,
+					enrichTeamEvent(payload, displayProjection),
+				);
 			}
 		});
 		const cleanup = () => {
@@ -152,7 +211,7 @@ export function registerAgentTeamsIpc(
 		subscriptions.set(subscriptionId, cleanup);
 		return {
 			subscriptionId,
-			...(subscription.snapshot ? { initial: subscription.snapshot } : {}),
+			...(subscription.snapshot ? { initial: enrichTeamEvent(subscription.snapshot, displayProjection) } : {}),
 		};
 	});
 	ipcMain.handle(CHANNELS.UNSUBSCRIBE, (_event, subscriptionId: unknown) => {

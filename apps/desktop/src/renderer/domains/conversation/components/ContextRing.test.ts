@@ -3,6 +3,7 @@
 import { act, createElement, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ContextRingModel } from "../hooks/useContextRingModel";
 import type { ContextRingDetailsModel } from "../services/context-ring-details";
 import { ContextRing } from "./ContextRing";
 
@@ -63,19 +64,26 @@ describe("ContextRing", () => {
 
 		expect(container.querySelector("button")?.getAttribute("aria-label")).toBe("Context 25% used");
 		expect(container.textContent).not.toContain("contextRing.details.unavailableAfterRestart");
-		expect(contextRingCapture.includeDetails.at(-1)).toBe(false);
+		expect(contextRingCapture.includeDetails).toHaveLength(0);
 
 		await act(async () => contextRingCapture.onOpenChange?.(true));
 
 		expect(container.textContent).toContain("contextRing.details.unavailableAfterRestart");
-		expect(contextRingCapture.includeDetails.at(-1)).toBe(true);
+		expect(contextRingCapture.includeDetails).toHaveLength(0);
 
 		await unmount();
 	});
 
 	it("renders actual context usage with calibrated group tokens and normalized composition", async () => {
 		contextRingCapture.details = details();
-		const { container, unmount } = render();
+		const { container, unmount } = render({
+			percent: 25,
+			offset: 10,
+			color: "currentColor",
+			isCompacting: false,
+			tooltip: "Context 25% used",
+			details: details(),
+		});
 
 		await act(async () => contextRingCapture.onOpenChange?.(true));
 
@@ -96,7 +104,14 @@ describe("ContextRing", () => {
 
 	it("opens the selected group as a second pane and returns to the overview", async () => {
 		contextRingCapture.details = details();
-		const { container, unmount } = render();
+		const { container, unmount } = render({
+			percent: 25,
+			offset: 10,
+			color: "currentColor",
+			isCompacting: false,
+			tooltip: "Context 25% used",
+			details: details(),
+		});
 		await act(async () => contextRingCapture.onOpenChange?.(true));
 
 		await act(async () => click(container, '[aria-label="group:tools"]'));
@@ -114,7 +129,14 @@ describe("ContextRing", () => {
 
 	it("resets to the overview when the popover closes", async () => {
 		contextRingCapture.details = details();
-		const { container, unmount } = render();
+		const { container, unmount } = render({
+			percent: 25,
+			offset: 10,
+			color: "currentColor",
+			isCompacting: false,
+			tooltip: "Context 25% used",
+			details: details(),
+		});
 		await act(async () => contextRingCapture.onOpenChange?.(true));
 		await act(async () => click(container, '[aria-label="group:tools"]'));
 
@@ -128,12 +150,21 @@ describe("ContextRing", () => {
 	});
 });
 
-function render(): { container: HTMLElement; unmount: () => Promise<void> } {
+function render(
+	model: ContextRingModel | null = {
+		percent: 25,
+		offset: 10,
+		color: "currentColor",
+		isCompacting: false,
+		tooltip: "Context 25% used",
+		details: null,
+	},
+): { container: HTMLElement; unmount: () => Promise<void> } {
 	const container = document.createElement("div");
 	document.body.append(container);
 	const root = createRoot(container);
 	act(() => {
-		root.render(createElement(ContextRing));
+		root.render(createElement(ContextRing, { model }));
 	});
 	return {
 		container,

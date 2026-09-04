@@ -4,8 +4,8 @@ import {
 	createInitialAgentTeamDocument,
 	type TeamSessionDocument,
 	type TeamSessionSnapshot,
-	type TeamSessionStreamEvent,
 } from "@vetta/agent-team";
+import type { DesktopTeamSessionStreamEvent, DesktopTeamSessionSnapshot } from "@preload/api-types/team-conversation-display";
 import { createAssistantMessage } from "@vetta/ai";
 import { reasoningByModelAtom, selectedModelAtom } from "@shared/store/atoms";
 import { act, renderHook, waitFor } from "@testing-library/react";
@@ -57,14 +57,14 @@ const baseSession: TeamSessionDocument = {
 	events: [],
 	memberRuntime: {},
 };
-const baseSnapshot: TeamSessionSnapshot = {
+const baseSnapshot: DesktopTeamSessionSnapshot = {
 	session: baseSession,
 	conversationRevision: 0,
 	messages: [],
 	activities: [],
 };
 
-function streamEvent(sequence: number, delta: string): TeamSessionStreamEvent {
+function streamEvent(sequence: number, delta: string): DesktopTeamSessionStreamEvent {
 	const partial = {
 		...createAssistantMessage(
 			{ api: "agent-team-test", provider: "agent-team-test", model: "fixture" },
@@ -85,7 +85,7 @@ function streamEvent(sequence: number, delta: string): TeamSessionStreamEvent {
 }
 
 describe("useTeamChatModel streaming flow", () => {
-	let streamListener: ((event: TeamSessionStreamEvent) => void) | undefined;
+	let streamListener: ((event: DesktopTeamSessionStreamEvent) => void) | undefined;
 
 	beforeEach(() => {
 		streamListener = undefined;
@@ -107,7 +107,7 @@ describe("useTeamChatModel streaming flow", () => {
 			value: {
 				agentTeams: {
 					subscribe: vi.fn(
-						async (_sessionId: string, listener: (event: TeamSessionStreamEvent) => void) => {
+						async (_sessionId: string, listener: (event: DesktopTeamSessionStreamEvent) => void) => {
 						streamListener = listener;
 						return () => undefined;
 						},
@@ -117,6 +117,7 @@ describe("useTeamChatModel streaming flow", () => {
 						...baseSnapshot,
 						session: { ...baseSession, modelSettings: settings },
 					})),
+					setExecutionMode: vi.fn(async () => baseSnapshot),
 					abort: vi.fn(),
 				},
 				dialog: {
@@ -151,7 +152,7 @@ describe("useTeamChatModel streaming flow", () => {
 			revision: 1,
 			updatedAt: 5,
 		};
-		const finalSnapshot: TeamSessionSnapshot = {
+		const finalSnapshot: DesktopTeamSessionSnapshot = {
 			session: finalSession,
 			conversationRevision: 1,
 			messages: [
@@ -254,5 +255,57 @@ describe("useTeamChatModel streaming flow", () => {
 				reasoning: "medium",
 			}),
 		);
+	});
+
+	it("shows context usage for the selected member runtime", async () => {
+		const secondMember = team.members.find((member) => member.id !== leader.id);
+		if (!secondMember) throw new Error("built-in Agent Team second member fixture is missing");
+		const scopedSession: TeamSessionDocument = {
+			...baseSession,
+			memberRuntime: {
+				[leader.id]: {
+					sessionId: "leader-runtime",
+					sessionPath: "C:/sessions/leader.jsonl",
+					agentProfileRevision: 1,
+					deliveredEventIds: [],
+				},
+				[secondMember.id]: {
+					sessionId: "second-runtime",
+					sessionPath: "C:/sessions/second.jsonl",
+					agentProfileRevision: 1,
+					deliveredEventIds: [],
+				},
+			},
+		};
+		vi.mocked(loadTeamChatSession).mockResolvedValue({
+			document,
+			snapshot: { ...baseSnapshot, session: scopedSession },
+			sessions: [],
+		});
+
+		const { result } = renderHook(() => useTeamChatModel(team.id));
+		await waitFor(() => expect(result.current.model.status).toBe("ready"));
+		await waitFor(() => expect(streamListener).toBeTypeOf("function"));
+
+		act(() => {
+			streamListener?.({
+				type: "desktop.team-context-usage",
+				conversationId: scopedSession.id,
+				memberId: leader.id,
+				runtimeSessionId: "leader-runtime",
+				contextUsage: { percent: 15, contextTokens: 15, contextWindow: 100 },
+			});
+			streamListener?.({
+				type: "desktop.team-context-usage",
+				conversationId: scopedSession.id,
+				memberId: secondMember.id,
+				runtimeSessionId: "second-runtime",
+				contextUsage: { percent: 70, contextTokens: 70, contextWindow: 100 },
+			});
+		});
+		expect(result.current.model.contextUsage?.percent).toBe(15);
+
+		act(() => result.current.actions.toggleMember(secondMember.id));
+		expect(result.current.model.contextUsage?.percent).toBe(70);
 	});
 });

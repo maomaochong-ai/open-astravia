@@ -99,6 +99,8 @@ export const confirmDialogAtom = atom<ConfirmDialogState | null>(null);
 
 export interface SandboxPermissionDrawerState {
 	requestId: string;
+	/** Runtime session that owns this request; used to keep Chat and Team drawers scoped. */
+	runtimeId: string;
 	title: string;
 	message: string;
 	/** True when the request is for a sensitive deny-root path; UI must hide the "allow for session" button. */

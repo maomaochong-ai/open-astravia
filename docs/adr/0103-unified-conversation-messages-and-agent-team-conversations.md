@@ -37,7 +37,8 @@ ADR-0099 将 Team Session 与普通会话存储隔离，ADR-0101 要求 Chat 与
    不解释 Team custom type。
 5. 成员只能直接读取自己的执行 Conversation。系统在 Turn admission 固定一个不可变的共享 generation，将协调
    Conversation 中所有允许共享的用户消息、Agent 公开发言和必要编排状态投影给目标成员。面向本机用户的 Team
-   transcript 可以保留 Agent 公开发言关联的 `toolCall` block，以复用普通 Conversation 的工具卡片；Context Policy
+   transcript 可以保留 Agent 公开发言关联的 `toolCall` block，并由 Desktop Main 的 `display` 只读投影补齐
+   原始 `toolResult` 与 timing，以复用普通 Conversation 的工具卡片；Context Policy
    在模型可见投影时仍只提取公开文本与允许的产物引用，不向其他成员提供 thinking、工具输入输出、未发布草稿或
    subagent transcript。Renderer Snapshot 同样不得包含 thinking。
 6. 公共历史只由 Coordinator 压缩一次并生成不可变 checkpoint；成员私有 compaction 只压缩自身执行历史并引用
@@ -53,7 +54,7 @@ ADR-0099 将 Team Session 与普通会话存储隔离，ADR-0101 要求 Chat 与
    `ConversationMessage.Header/Body/ActionBar`，也不将未被实际消费的消息模型放进空 Provider 来代替数据迁移。
 10. Team 复用现有 Runtime Observation Hub/Publisher 和 `RuntimeExecutionObservationEvent`，增加类型化 Team
     生命周期 token、稳定 correlation 与数据分类。成员执行流同时由 Team Session Service 适配为
-    `ConversationToolExecutionEvent`，只发给当前本机 Team Conversation 的 renderer 消息投影，用于复用普通会话的
+    `DesktopTeamToolExecutionEvent`，只发给当前本机 Team Conversation 的 renderer 消息投影，用于复用普通会话的
     ToolCallBlock；该事件是渲染期、非持久化数据，不进入 Observation Hub 的安全摘要，也不进入任何成员的模型上下文。
     生产范围不新增独立的 Team UI/IPC 数据源、recorder、metrics、日志或远程 Adapter；测试可使用内存 Observer
     验证观察事件完整性与失败隔离，并用消息流合同测试验证工具卡片状态归约。
@@ -68,7 +69,8 @@ ADR-0099 将 Team Session 与普通会话存储隔离，ADR-0101 要求 Chat 与
   delegation 导入 Team custom entry，并保留稳定请求、来源 Turn 和作者身份。
 - 旧成员 Session 注册或导入普通 Conversation catalog，私有 transcript 不合并到协调 Conversation。
 - 已发布结果若来自旧版本、协调消息尚未保留 `toolCall`，Snapshot 可通过既有 publication source entry
-  从成员 Conversation 只读恢复工具调用；不回写旧文件，thinking 与 tool result 仍不进入协调消息。
+  从成员 Conversation 只读恢复工具调用及其结果；不回写旧文件，thinking 与 tool result 仍不进入协调消息，结果仅
+  通过 UI-only Snapshot 投影提供给本机消息列表。
 - 临时目标 Conversations 全部通过数量、顺序、作者、关联与 fingerprint 校验后才切换 binding。旧目录在兼容窗口
   只读保留，新生产路径不再写入。
 - Renderer 兼容读取旧事件只存在于迁移边界；新生产代码不得继续构造 Team 专属消息类型。

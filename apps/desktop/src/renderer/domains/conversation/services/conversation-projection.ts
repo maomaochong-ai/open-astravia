@@ -1,3 +1,4 @@
+import type { DesktopTeamToolExecutionEvent } from "@preload/api-types/team-conversation-display";
 import {
 	type ConversationMessageEventState,
 	createConversationAgentMessage,
@@ -93,7 +94,7 @@ export class ConversationProjection {
  */
 export function reduceConversationToolExecutionEvent(
 	state: ConversationMessageEventState | undefined,
-	event: ConversationToolExecutionEvent,
+	event: DesktopTeamToolExecutionEvent | ConversationToolExecutionEvent,
 ): ConversationMessageEventState {
 	if (state && (state.conversationId !== event.conversationId || state.message.id !== event.messageId)) {
 		throw new Error("Conversation tool execution event does not match its reduction state");

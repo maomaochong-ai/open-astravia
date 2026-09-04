@@ -381,6 +381,7 @@ export function useRootLayoutModel(): RootLayoutModel {
 			};
 			setSandboxPermissionDrawer({
 				requestId: request.requestId,
+				runtimeId: request.sessionId,
 				title: request.title,
 				message: request.message,
 				sensitive: request.sensitive,

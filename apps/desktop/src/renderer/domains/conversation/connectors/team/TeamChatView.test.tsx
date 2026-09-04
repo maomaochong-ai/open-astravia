@@ -37,6 +37,7 @@ function actions(): TeamChatActions {
 		openSession: vi.fn(async () => undefined),
 		selectModel: vi.fn(async () => undefined),
 		selectReasoning: vi.fn(async () => undefined),
+		setExecutionMode: vi.fn(async () => undefined),
 	};
 }
 
@@ -57,6 +58,10 @@ function model(): TeamChatViewModel {
 		sessions: [{ id: "team-session", label: "Conversation 1" }],
 		sessionActionsDisabled: false,
 		modelKey: "openai/gpt-5",
+		runtimeSessionIds: [],
+		executionMode: "full-access",
+		contextUsage: null,
+		isCompacting: false,
 		labels: {
 			leaderRoute: "Leader",
 			placeholder: "Ask the team",

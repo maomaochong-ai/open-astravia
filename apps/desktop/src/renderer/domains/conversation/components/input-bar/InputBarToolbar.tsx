@@ -5,6 +5,8 @@ import { SendButton } from "../SendButton";
 import { ActiveActionCapsules, type ActiveActionCapsule } from "./ActiveActionCapsules";
 import { InputBarToolbarButton } from "./InputBarToolbarButton";
 import type { SpeechInputModel } from "./types";
+import type { ContextRingModel } from "../../hooks/useContextRingModel";
+import type { ExecutionModeSelectorViewProps } from "../execution-mode-selector/types";
 import type { ModelSelectorScope } from "../../hooks/useModelSelectorModel";
 
 /** hover / press 缩放走 CSS，与 InputBarToolbarButton 保持一致。 */
@@ -79,10 +81,10 @@ export function InputBarAttachmentActions({
 	);
 }
 
-export function InputBarExecutionModeAction({ visible }: { readonly visible: boolean }): JSX.Element {
+export function InputBarExecutionModeAction({ visible, model }: { readonly visible: boolean; readonly model: ExecutionModeSelectorViewProps }): JSX.Element {
 	return (
 		<div className={visible ? "min-w-0 shrink" : "hidden"}>
-			<ExecutionModeSelector />
+			<ExecutionModeSelector model={model} />
 		</div>
 	);
 }
@@ -109,10 +111,10 @@ export function InputBarModelAction({ visible, updateActiveSession = true, scope
 	);
 }
 
-export function InputBarContextAction({ visible }: { readonly visible: boolean }): JSX.Element {
+export function InputBarContextAction({ visible, model }: { readonly visible: boolean; readonly model: ContextRingModel }): JSX.Element {
 	return (
 		<div className={visible ? "contents" : "hidden"}>
-			<ContextRing className="mr-1 shrink-0" />
+			<ContextRing className="mr-1 shrink-0" model={model} />
 		</div>
 	);
 }

@@ -20,15 +20,41 @@ const MODE_OPTIONS: Array<{
 	{ mode: "full-access", icon: "icon-[solar--shield-cross-linear]" },
 ];
 
-export function useExecutionModeSelectorModel(): ExecutionModeSelectorViewProps {
-	const { t } = useTranslation("chat");
+export interface ExecutionModeSelectorBinding {
+	readonly mode: SessionExecutionMode;
+	readonly isStreaming: boolean;
+	readonly onSelectMode: (mode: SessionExecutionMode) => Promise<void> | void;
+}
+
+export function useDefaultExecutionModeSelectorModel(): ExecutionModeSelectorViewProps {
 	const activeSession = useAtomValue(activeSessionAtom);
 	const isStreaming = useAtomValue(isStreamingAtom);
 	const [mode, setMode] = useAtom(sessionExecutionModeAtom);
+	const onSelectMode = useCallback(
+		async (nextMode: SessionExecutionMode) => {
+			const previousMode = mode;
+			setMode(nextMode);
+			localStorage.setItem("vetta-session-execution-mode", nextMode);
+			if (!activeSession) return;
+			try {
+				await window.vetta.session.setExecutionMode(activeSession.runtimeId, nextMode);
+			} catch (error) {
+				setMode(previousMode);
+				localStorage.setItem("vetta-session-execution-mode", previousMode);
+				console.error("[ExecutionModeSelector] failed to switch execution mode:", error);
+			}
+		},
+		[activeSession, mode, setMode],
+	);
+	return useExecutionModeSelectorModel({ mode, isStreaming, onSelectMode });
+}
+
+export function useExecutionModeSelectorModel(binding: ExecutionModeSelectorBinding): ExecutionModeSelectorViewProps {
+	const { t } = useTranslation("chat");
 	const [open, setOpen] = useState(false);
 	const [isSwitching, setIsSwitching] = useState(false);
 	const [sandboxUnavailableReason, setSandboxUnavailableReason] = useState<string | null>(null);
-	const disabled = isStreaming || isSwitching;
+	const disabled = binding.isStreaming || isSwitching;
 
 	useEffect(() => {
 		void window.vetta.config.get().then((config) => {
@@ -62,33 +88,25 @@ export function useExecutionModeSelectorModel(): ExecutionModeSelectorViewProps 
 				title:
 					option.mode === "sandbox" && sandboxUnavailableReason ? sandboxUnavailableReason : titleFor(option.mode),
 				disabled: option.mode === "sandbox" && !!sandboxUnavailableReason,
-				selected: option.mode === mode,
+				selected: option.mode === binding.mode,
 			})),
-		[sandboxUnavailableReason, labelFor, titleFor, mode],
+		[sandboxUnavailableReason, labelFor, titleFor, binding.mode],
 	);
 
-	const selectedOption = options.find((option) => option.mode === mode) ?? options[0];
+	const selectedOption = options.find((option) => option.mode === binding.mode) ?? options[0];
 
 	const handleSelect = useCallback(
 		async (nextMode: SessionExecutionMode) => {
-			if (disabled || nextMode === mode) return;
+			if (disabled || nextMode === binding.mode) return;
 			if (nextMode === "sandbox" && sandboxUnavailableReason) return;
-			const previousMode = mode;
-			setMode(nextMode);
-			localStorage.setItem("vetta-session-execution-mode", nextMode);
-			if (!activeSession) return;
 			setIsSwitching(true);
 			try {
-				await window.vetta.session.setExecutionMode(activeSession.runtimeId, nextMode);
-			} catch (error) {
-				setMode(previousMode);
-				localStorage.setItem("vetta-session-execution-mode", previousMode);
-				console.error("[ExecutionModeSelector] failed to switch execution mode:", error);
+				await binding.onSelectMode(nextMode);
 			} finally {
 				setIsSwitching(false);
 			}
 		},
-		[activeSession, disabled, mode, sandboxUnavailableReason, setMode],
+		[binding, disabled, sandboxUnavailableReason],
 	);
 
 	return {

@@ -65,15 +65,35 @@ export function useInputBarDraftSource() {
 	};
 }
 
-export function useInputBarInteractionSource(runtimeId?: string) {
+export function useInputBarInteractionSource(runtimeId?: string | readonly string[]) {
 	const pendingQuestions = useAtomValue(pendingQuestionsAtom);
 	const pendingMcpElicitations = useAtomValue(pendingMcpElicitationsAtom);
 	const sandboxPermission = useAtomValue(sandboxPermissionDrawerAtom);
-
+	const runtimeIds =
+		runtimeId === undefined ? undefined : new Set(typeof runtimeId === "string" ? [runtimeId] : runtimeId);
+	const scopedRuntimeIds = runtimeIds ? [...runtimeIds] : [];
+	const primaryRuntimeId = typeof runtimeId === "string" ? runtimeId : scopedRuntimeIds[0];
+	const pendingQuestionRuntimeId = scopedRuntimeIds.find((id) => pendingQuestions[id]);
+	const pendingMcpRuntimeId = scopedRuntimeIds.find((id) => pendingMcpElicitations[id]);
 	return {
-		pendingMcpElicitation: runtimeId ? pendingMcpElicitations[runtimeId] : undefined,
-		pendingQuestion: runtimeId ? pendingQuestions[runtimeId] : undefined,
-		sandboxPermission,
+		pendingMcpElicitation: runtimeIds
+			? pendingMcpRuntimeId
+				? pendingMcpElicitations[pendingMcpRuntimeId]
+				: undefined
+			: primaryRuntimeId
+				? pendingMcpElicitations[primaryRuntimeId]
+				: undefined,
+		pendingQuestion: runtimeIds
+			? pendingQuestionRuntimeId
+				? pendingQuestions[pendingQuestionRuntimeId]
+				: undefined
+			: primaryRuntimeId
+				? pendingQuestions[primaryRuntimeId]
+				: undefined,
+		sandboxPermission:
+			sandboxPermission && (runtimeIds === undefined || runtimeIds.has(sandboxPermission.runtimeId))
+				? sandboxPermission
+				: null,
 	};
 }
 

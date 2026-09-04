@@ -3,7 +3,7 @@ import { Button } from "@shared/components/ui/button";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@shared/components/ui/popover";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useContextRingModel } from "../hooks/useContextRingModel";
+import type { ContextRingModel } from "../hooks/useContextRingModel";
 import {
 	buildContextRingBarSegments,
 	type ContextRingDetailGroup,
@@ -20,11 +20,10 @@ const GROUP_COLORS: Record<ContextRingDetailGroupKind, string> = {
 	runtime: "var(--context-segment-5)",
 };
 
-export function ContextRing({ className }: { className?: string } = {}): JSX.Element | null {
+export function ContextRing({ className, model }: { className?: string; model: ContextRingModel | null }): JSX.Element | null {
 	const { t } = useTranslation("chat");
 	const [activeGroup, setActiveGroup] = useState<ContextRingDetailGroupKind | null>(null);
 	const [open, setOpen] = useState(false);
-	const model = useContextRingModel(open);
 	useEffect(() => {
 		if (!model && open) setOpen(false);
 	}, [model, open]);

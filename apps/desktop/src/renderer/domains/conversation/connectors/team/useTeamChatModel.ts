@@ -1,3 +1,4 @@
+import type { DesktopTeamSessionSnapshot } from "@preload/api-types/team-conversation-display";
 import { agentDisplayName, teamDisplayName } from "@shared/agent-teams/preset-presentation";
 import { notifyTeamSessionsChanged } from "@shared/agent-teams/team-session-events";
 import { deriveAttachments, parseInputSegments, pathTokenText, segmentsToText } from "@shared/lib/input-tokens";
@@ -6,8 +7,8 @@ import { pathBasename } from "@shared/lib/utils";
 import { reasoningByModelAtom, selectedModelAtom } from "@shared/store/atoms";
 import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
 import type { TeamSessionListItem } from "@vetta/agent-team";
-import { type AgentTeamDocument, resolveMentionedMemberIds, type TeamSessionSnapshot } from "@vetta/agent-team";
-import type { PromptAttachmentRef } from "@vetta/runtime-core";
+import { type AgentTeamDocument, resolveMentionedMemberIds } from "@vetta/agent-team";
+import type { PromptAttachmentRef, SessionExecutionMode } from "@vetta/runtime-core";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -36,7 +37,7 @@ export function useTeamChatModel(
 	const selectedModel = useAtomValue(selectedModelAtom);
 	const reasoningByModel = useAtomValue(reasoningByModelAtom);
 	const [document, setDocument] = useState<AgentTeamDocument>();
-	const [snapshot, setSnapshot] = useState<TeamSessionSnapshot>();
+	const [snapshot, setSnapshot] = useState<DesktopTeamSessionSnapshot>();
 	const [sessions, setSessions] = useState<readonly TeamSessionListItem[]>([]);
 	const session = snapshot?.session;
 	const effectiveModelKey = session?.modelSettings?.modelKey ?? selectedModel;
@@ -52,6 +53,10 @@ export function useTeamChatModel(
 	const [streams, setStreams] = useState<TeamStreamState>({});
 	const [status, setStatus] = useState<TeamChatStatus>("loading");
 	const [error, setError] = useState<string>();
+	const [contextUsages, setContextUsages] = useState<
+		Readonly<Record<string, NonNullable<TeamChatViewModel["contextUsage"]>>>
+	>({});
+	const [compactingByRuntime, setCompactingByRuntime] = useState<Readonly<Record<string, boolean>>>({});
 	const cancelledRequests = useRef(new Set<string>());
 	const pendingRef = useRef<TeamPendingRequest | undefined>(undefined);
 	const streamsRef = useRef<TeamStreamState>({});
@@ -105,6 +110,8 @@ export function useTeamChatModel(
 		setStreams({});
 		setPending(undefined);
 		setSelectedMemberIds([]);
+		setContextUsages({});
+		setCompactingByRuntime({});
 		void loadTeamChatSession(teamId, preferredSessionId)
 			.then((loaded) => {
 				if (cancelled) return;
@@ -191,6 +198,13 @@ export function useTeamChatModel(
 					: event.conversationId;
 			if (!mounted || eventSessionId !== session.id) return;
 			if (event.type === "session-snapshot" || event.type === "session-updated") {
+				if (event.snapshot.display?.contextUsage?.runtimeSessionId) {
+					const { memberId: _memberId, runtimeSessionId, ...usage } = event.snapshot.display.contextUsage;
+					setContextUsages((current) => ({
+						...current,
+						[runtimeSessionId]: usage,
+					}));
+				}
 				setSnapshot((current) =>
 					!current ||
 					event.snapshot.session.revision > current.session.revision ||
@@ -198,6 +212,15 @@ export function useTeamChatModel(
 						? event.snapshot
 						: current,
 				);
+			}
+			if (event.type === "desktop.team-context-usage") {
+				setContextUsages((current) => ({ ...current, [event.runtimeSessionId]: event.contextUsage }));
+				if (event.isCompacting !== undefined) {
+					setCompactingByRuntime((current) => ({
+						...current,
+						[event.runtimeSessionId]: event.isCompacting ?? false,
+					}));
+				}
 			}
 			const nextStreams = reduceTeamStreamState(streamsRef.current, event);
 			streamsRef.current = nextStreams;
@@ -235,6 +258,35 @@ export function useTeamChatModel(
 			unsubscribe?.();
 		};
 	}, [session?.id, t]);
+
+	const setExecutionMode = useCallback(
+		async (mode: SessionExecutionMode) => {
+			if (!session) return;
+			try {
+				const next = await window.vetta.agentTeams.setExecutionMode(session.id, mode);
+				setSnapshot(next);
+			} catch (cause) {
+				setError(errorMessage(cause));
+				throw cause;
+			}
+		},
+		[session],
+	);
+	const memberRuntimeIds = useMemo(
+		() =>
+			session
+				? Object.fromEntries(
+						Object.entries(session.memberRuntime).map(([memberId, runtime]) => [memberId, runtime.sessionId]),
+					)
+				: {},
+		[session],
+	);
+	const activeContextRuntimeId = useMemo(() => {
+		const selected = selectedMemberIds[0];
+		return memberRuntimeIds[selected] ?? memberRuntimeIds[session?.leaderMemberId ?? ""];
+	}, [memberRuntimeIds, selectedMemberIds, session?.leaderMemberId]);
+	const contextUsage = (activeContextRuntimeId ? contextUsages[activeContextRuntimeId] : undefined) ?? null;
+	const isCompacting = activeContextRuntimeId ? compactingByRuntime[activeContextRuntimeId] === true : false;
 
 	const members = useMemo(
 		() =>
@@ -427,6 +479,11 @@ export function useTeamChatModel(
 				? createActivityWorkspace(session.workspaceId ?? `agent-team:${teamId}`, session.cwd)
 				: null,
 			activeSessionId: session?.id ?? null,
+			runtimeSessionIds: session ? Object.values(session.memberRuntime).map((runtime) => runtime.sessionId) : [],
+			memberRuntimeIds,
+			executionMode: session?.executionMode ?? snapshot?.display?.executionMode ?? "full-access",
+			contextUsage,
+			isCompacting,
 			modelKey: effectiveModelKey,
 			...(effectiveReasoning ? { reasoning: effectiveReasoning } : {}),
 			sessions: sessions.map((item, index) => ({
@@ -453,6 +510,10 @@ export function useTeamChatModel(
 			effectiveModelKey,
 			effectiveReasoning,
 			labels,
+			contextUsage,
+			isCompacting,
+			memberRuntimeIds,
+			snapshot?.display?.executionMode,
 		],
 	);
 	const actions = useMemo<TeamChatActions>(
@@ -470,6 +531,7 @@ export function useTeamChatModel(
 			openSession,
 			selectModel,
 			selectReasoning,
+			setExecutionMode,
 		}),
 		[
 			setDraft,
@@ -485,6 +547,7 @@ export function useTeamChatModel(
 			openSession,
 			selectModel,
 			selectReasoning,
+			setExecutionMode,
 		],
 	);
 

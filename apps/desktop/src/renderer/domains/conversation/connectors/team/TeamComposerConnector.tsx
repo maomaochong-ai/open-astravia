@@ -9,6 +9,9 @@ import type { InputBarModel } from "../../components/input-bar/types";
 import { useInputBarContextMenuModel } from "../../components/input-bar/useInputBarContextMenuModel";
 import { useInputBarTriggerModel } from "../../components/input-bar/useInputBarTriggerModel";
 import { useSpeechInput } from "../../components/input-bar/useSpeechInput";
+import { useInputBarInteractionSource } from "../../components/input-bar/useInputBarSources";
+import { useContextRingModel } from "../../hooks/useContextRingModel";
+import { useExecutionModeSelectorModel } from "../../hooks/useExecutionModeSelectorModel";
 import type { TeamAttachmentViewModel, TeamChatActions, TeamChatViewModel } from "./teamChatModel";
 
 const VETTA_PATH_MIME = "application/vetta-path";
@@ -50,6 +53,16 @@ export function TeamComposerConnector({
 		onSend: () => actions.send(),
 	});
 	const speechInput = useSpeechInput(model.editorEnabled);
+	const interactions = useInputBarInteractionSource(model.runtimeSessionIds ?? []);
+	const executionModeModel = useExecutionModeSelectorModel({
+		mode: model.executionMode ?? "full-access",
+		isStreaming,
+		onSelectMode: actions.setExecutionMode ?? (() => undefined),
+	});
+	const contextUsageModel = useContextRingModel({
+		usage: model.contextUsage ?? null,
+		isCompacting: model.isCompacting ?? false,
+	}, true);
 	const contextMenu = useInputBarContextMenuModel({
 		activeRuntimeId: model.activeSessionId ?? undefined,
 		hasSession: model.editorEnabled,
@@ -171,7 +184,16 @@ export function TeamComposerConnector({
 		placeholderTexts: [model.labels.placeholder],
 		placeholderRotating: false,
 		isFocused: trigger.isFocused,
-		drawerItems: [],
+		drawerItems: interactions.sandboxPermission
+			? [{
+				kind: "sandbox-permission",
+				id: interactions.sandboxPermission.requestId,
+				label: t("inputBar.drawer.permissionLabel"),
+				desc: t("inputBar.drawer.permissionDesc"),
+				pulsing: true,
+				request: interactions.sandboxPermission,
+			}]
+			: [],
 		drawerActiveTab: null,
 		todo: null,
 		speechInput,
@@ -203,8 +225,8 @@ export function TeamComposerConnector({
 		},
 		routing,
 		modelSelector: { updateActiveSession: false, scope: modelScope },
-		leadingTools: [],
-		trailingTools: [],
+		leadingTools: [{ kind: "execution-mode", model: executionModeModel }],
+		trailingTools: contextUsageModel ? [{ kind: "context-usage", model: contextUsageModel }] : [],
 		sendBehavior: "direct",
 		labels: {
 			capsule: {

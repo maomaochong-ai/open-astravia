@@ -1,4 +1,4 @@
-import type { PromptAttachmentRef } from "@vetta/runtime-core";
+import type { PromptAttachmentRef, SessionExecutionMode } from "@vetta/runtime-core";
 import type {
 	ConversationAuthorReference,
 	ConversationMessageRecord,
@@ -129,6 +129,8 @@ export interface TeamSessionDocument {
 	readonly teamId: string;
 	/** Stable owner workspace shared by every session created under the Team. */
 	readonly workspaceId?: string;
+	/** Execution mode shared by the coordination and member runtimes in this Team session. */
+	readonly executionMode?: SessionExecutionMode;
 	readonly modelSettings?: TeamSessionModelSettings;
 	/** Team definition revision last reconciled into the active runtime roster. */
 	readonly teamRevision?: number;

@@ -1,15 +1,11 @@
-import type {
-	AgentTeamDocument,
-	TeamSessionListItem,
-	TeamSessionReference,
-	TeamSessionSnapshot,
-} from "@vetta/agent-team";
+import type { DesktopTeamSessionSnapshot } from "@preload/api-types/team-conversation-display";
+import type { AgentTeamDocument, TeamSessionListItem, TeamSessionReference } from "@vetta/agent-team";
 
 const SESSION_STORAGE_PREFIX = "vetta.agent-team.session.";
 
 export interface LoadedTeamChatSession {
 	readonly document: AgentTeamDocument;
-	readonly snapshot: TeamSessionSnapshot;
+	readonly snapshot: DesktopTeamSessionSnapshot;
 	readonly sessions: readonly TeamSessionListItem[];
 }
 
@@ -52,7 +48,7 @@ export async function createTeamChatSession(
 	return { document: resolvedDocument, snapshot, sessions: withSnapshot(knownSessions, snapshot) };
 }
 
-function toReference(snapshot: TeamSessionSnapshot): TeamSessionReference {
+function toReference(snapshot: DesktopTeamSessionSnapshot): TeamSessionReference {
 	const coordinationSessionPath = snapshot.session.coordinationRuntime?.sessionPath;
 	if (!coordinationSessionPath) throw new Error("Team coordination Conversation is unavailable");
 	return { id: snapshot.session.id, coordinationSessionPath };
@@ -94,7 +90,7 @@ function parseStoredReference(value: string): TeamSessionReference | string {
 
 function withSnapshot(
 	sessions: readonly TeamSessionListItem[],
-	snapshot: TeamSessionSnapshot,
+	snapshot: DesktopTeamSessionSnapshot,
 ): readonly TeamSessionListItem[] {
 	const reference = toReference(snapshot);
 	const item: TeamSessionListItem = {

@@ -1,7 +1,8 @@
 import { createAssistantMessage } from "@vetta/ai";
 import type { HistoryEntry } from "@vetta/runtime-core";
 import { describe, expect, it } from "vitest";
-import { findTeamAttemptResult, restoreTeamPublicToolCalls } from "./team-member-result.js";
+import { collectPublishedToolExecutions } from "./team-conversation-display.js";
+import { findTeamAttemptResult } from "./team-member-result.js";
 
 const assistant = createAssistantMessage(
 	{ api: "openai-responses", provider: "openai", model: "model" },
@@ -47,8 +48,7 @@ describe("Team attempt result identity", () => {
 		).toEqual({ entryId: "terminal", message: error });
 	});
 
-	it("restores tool calls for a legacy public result without exposing thinking or tool results", () => {
-		const publicMessage = { ...assistant, content: [{ type: "text" as const, text: "Done" }] };
+	it("collects raw tool results for the renderer while keeping the public message filtered", () => {
 		const history: HistoryEntry[] = [
 			{ type: "message", entryId: "prompt", message: { role: "user", content: "Read", timestamp: 1 } },
 			{
@@ -56,10 +56,7 @@ describe("Team attempt result identity", () => {
 				entryId: "tool-call",
 				message: {
 					...assistant,
-					content: [
-						{ type: "thinking", thinking: "private" },
-						{ type: "toolCall", id: "read-call", name: "read", arguments: { path: "brief.md" } },
-					],
+					content: [{ type: "toolCall", id: "read-call", name: "read", arguments: { path: "brief.md" } }],
 				},
 			},
 			{
@@ -69,17 +66,22 @@ describe("Team attempt result identity", () => {
 					role: "toolResult",
 					toolCallId: "read-call",
 					toolName: "read",
-					content: [{ type: "text", text: "private result" }],
+					content: [{ type: "text", text: "file contents" }],
 					isError: false,
 					timestamp: 2,
 				},
 			},
-			{ type: "message", entryId: "final", message: publicMessage },
+			{ type: "message", entryId: "final", message: { ...assistant, content: [{ type: "text", text: "Done" }] } },
 		];
-
-		expect(restoreTeamPublicToolCalls(publicMessage, history, "final").content).toEqual([
-			{ type: "toolCall", id: "read-call", name: "read", arguments: { path: "brief.md" } },
-			{ type: "text", text: "Done" },
+		expect(collectPublishedToolExecutions(history, "final", "public-final")).toMatchObject([
+			{
+				messageId: "public-final",
+				toolCallId: "read-call",
+				toolName: "read",
+				args: { path: "brief.md" },
+				result: { content: [{ type: "text", text: "file contents" }] },
+				isError: false,
+			},
 		]);
 	});
 });

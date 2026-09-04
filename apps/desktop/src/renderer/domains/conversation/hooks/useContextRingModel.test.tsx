@@ -6,7 +6,7 @@ import type { ContextCompositionReport } from "@vetta/runtime-core";
 import { createStore, Provider } from "jotai";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { useContextRingModel } from "./useContextRingModel";
+import { useDefaultContextRingModel } from "./useContextRingModel";
 
 const contextRingModelCapture = vi.hoisted(() => ({
 	buildDetails: vi.fn(() => null),
@@ -39,7 +39,7 @@ describe("useContextRingModel", () => {
 		contextRingModelCapture.buildDetails.mockClear();
 		const wrapper = ({ children }: { children: ReactNode }) => <Provider store={store}>{children}</Provider>;
 
-		const { rerender } = renderHook(({ includeDetails }) => useContextRingModel(includeDetails), {
+		const { rerender } = renderHook(({ includeDetails }) => useDefaultContextRingModel(includeDetails), {
 			initialProps: { includeDetails: false },
 			wrapper,
 		});
@@ -61,7 +61,7 @@ describe("useContextRingModel", () => {
 		store.set(contextUsageAtom, { percent: 10, contextTokens: 40_000, contextWindow: 100_000 });
 		const wrapper = ({ children }: { children: ReactNode }) => <Provider store={store}>{children}</Provider>;
 
-		const { result } = renderHook(() => useContextRingModel(false), { wrapper });
+		const { result } = renderHook(() => useDefaultContextRingModel(false), { wrapper });
 
 		expect(result.current?.percent).toBe(40);
 		expect(result.current?.tooltip).toBe("contextRing.tooltip.usage");

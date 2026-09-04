@@ -12,12 +12,12 @@ import type {
 	TeamDefinition,
 	TeamSessionListItem,
 	TeamSessionReference,
-	TeamSessionSnapshot,
-	TeamSessionStreamEvent,
 	UpdateAgentProfileInput,
 	UpdateTeamInput,
 	UpdateTeamSessionModelSettingsInput,
 } from "@vetta/agent-team";
+import type { SessionExecutionMode } from "@vetta/runtime-core";
+import type { DesktopTeamSessionSnapshot, DesktopTeamSessionStreamEvent } from "./team-conversation-display.js";
 
 export interface DesktopAgentTeamsApi {
 	list(): Promise<AgentTeamDocument>;
@@ -30,11 +30,12 @@ export interface DesktopAgentTeamsApi {
 	createTeam(input: CreateTeamInput): Promise<TeamDefinition>;
 	updateTeam(id: string, input: UpdateTeamInput): Promise<TeamDefinition>;
 	deleteTeam(id: string, input: DeleteTeamInput): Promise<void>;
-	createSession(teamId: string): Promise<TeamSessionSnapshot>;
+	createSession(teamId: string): Promise<DesktopTeamSessionSnapshot>;
 	listSessions(teamId: string): Promise<readonly TeamSessionListItem[]>;
-	updateModelSettings(id: string, input: UpdateTeamSessionModelSettingsInput): Promise<TeamSessionSnapshot>;
-	getSession(reference: TeamSessionReference | string): Promise<TeamSessionSnapshot>;
-	subscribe(id: string, handler: (event: TeamSessionStreamEvent) => void): Promise<() => void>;
+	updateModelSettings(id: string, input: UpdateTeamSessionModelSettingsInput): Promise<DesktopTeamSessionSnapshot>;
+	setExecutionMode(id: string, mode: SessionExecutionMode): Promise<DesktopTeamSessionSnapshot>;
+	getSession(reference: TeamSessionReference | string): Promise<DesktopTeamSessionSnapshot>;
+	subscribe(id: string, handler: (event: DesktopTeamSessionStreamEvent) => void): Promise<() => void>;
 	abort(id: string): Promise<void>;
-	sendMessage(id: string, input: SendTeamMessageInput): Promise<TeamSessionSnapshot>;
+	sendMessage(id: string, input: SendTeamMessageInput): Promise<DesktopTeamSessionSnapshot>;
 }

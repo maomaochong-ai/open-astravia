@@ -1,12 +1,19 @@
 // @vitest-environment jsdom
 
 import { act, render } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { InputBarModel } from "../../components/input-bar/types";
 import type { TeamChatActions, TeamChatViewModel } from "./teamChatModel";
 import { TeamComposerConnector } from "./TeamComposerConnector";
 
 const captured = vi.hoisted(() => ({ model: undefined as InputBarModel | undefined }));
+
+Object.defineProperty(window, "vetta", {
+	configurable: true,
+	value: {
+		config: { get: vi.fn(async () => ({})) },
+	},
+});
 
 vi.mock("../../components/InputBar", () => ({
 	InputBar: ({ model }: { model: InputBarModel }) => {
@@ -18,6 +25,13 @@ vi.mock("../../components/InputBar", () => ({
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({ t: (key: string) => key }),
 }));
+
+beforeEach(() => {
+	Object.defineProperty(window, "vetta", {
+		configurable: true,
+		value: { config: { get: vi.fn(async () => ({})) } },
+	});
+});
 
 function actions(): TeamChatActions {
 	return {
@@ -34,6 +48,7 @@ function actions(): TeamChatActions {
 		openSession: vi.fn(async () => undefined),
 		selectModel: vi.fn(async () => undefined),
 		selectReasoning: vi.fn(async () => undefined),
+		setExecutionMode: vi.fn(async () => undefined),
 	};
 }
 
@@ -61,6 +76,10 @@ function model(): TeamChatViewModel {
 			attachFile: "Add file",
 			attachImage: "Add image",
 		},
+		runtimeSessionIds: ["runtime-1"],
+		executionMode: "full-access",
+		contextUsage: { percent: 20, contextTokens: 20, contextWindow: 100 },
+		isCompacting: false,
 	};
 }
 
@@ -79,6 +98,8 @@ describe("TeamComposerConnector", () => {
 		expect(inputModel.commands?.onOpen).toBeTypeOf("function");
 		expect(inputModel.speechInput).toBeDefined();
 		expect(inputModel.routing?.leaderSelected).toBe(true);
+		expect(inputModel.leadingTools[0]?.kind).toBe("execution-mode");
+		expect(inputModel.trailingTools[0]?.kind).toBe("context-usage");
 
 		act(() => {
 			expect(inputModel.actions.handleEnter()).toBe(true);

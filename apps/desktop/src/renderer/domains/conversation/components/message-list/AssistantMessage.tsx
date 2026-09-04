@@ -49,7 +49,10 @@ export const AssistantMessage = memo(function AssistantMessage({
 	const { t } = useTranslation("chat");
 	const surface = useThemeSurface("chat.assistantMessage");
 	// 展开态外置：Virtuoso 会卸载滚出视窗的高条目，组件内 state 会被清掉。
-	const [expanded, toggleExpanded] = useExpansion(`fold:${message.id}`);
+	// Tool calls are part of the transcript's observable data. Keep process
+	// blocks visible by default; users can still collapse them with the shared
+	// fold control without changing the underlying message projection.
+	const [expanded, toggleExpanded] = useExpansion(`fold:${message.id}`, true);
 	const generatedId = useId();
 	const exportFoldPanelId = exportMode ? `export-assistant-fold-${generatedId}` : undefined;
 	const model = useAssistantMessageModel({

@@ -4,8 +4,10 @@ import type { TodoItem } from "@shared/store/todo-atoms";
 import type { InputBarContextMenuViewProps, SessionDropZoneViewProps } from "@vetta/theme-ui/chat";
 import type { ComponentProps, MouseEvent } from "react";
 import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
+import type { ContextRingModel } from "../../hooks/useContextRingModel";
 import type { ModelSelectorScope } from "../../hooks/useModelSelectorModel";
 import type { SelectedFile } from "../AtPanel";
+import type { ExecutionModeSelectorViewProps } from "../execution-mode-selector/types";
 import type { McpElicitationPanel } from "../McpElicitationPanel";
 import type { QuestionPanel } from "../QuestionPanel";
 import type { ActiveActionCapsule } from "./ActiveActionCapsules";
@@ -123,8 +125,14 @@ export interface InputBarCommandModel {
 	readonly onOpen: () => void;
 }
 
-export type InputBarLeadingTool = "execution-mode";
-export type InputBarTrailingTool = "context-usage";
+export type InputBarLeadingTool = {
+	readonly kind: "execution-mode";
+	readonly model: ExecutionModeSelectorViewProps;
+};
+export type InputBarTrailingTool = {
+	readonly kind: "context-usage";
+	readonly model: ContextRingModel;
+};
 
 export interface InputBarModel {
 	dropZone: Omit<SessionDropZoneViewProps, "children" | "className">;

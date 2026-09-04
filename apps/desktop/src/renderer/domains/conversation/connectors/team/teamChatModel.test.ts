@@ -1,4 +1,8 @@
-import type { TeamSessionDocument, TeamSessionSnapshot, TeamSessionStreamEvent } from "@vetta/agent-team";
+import type {
+	DesktopTeamSessionSnapshot,
+	DesktopTeamSessionStreamEvent,
+} from "@preload/api-types/team-conversation-display";
+import type { TeamSessionDocument } from "@vetta/agent-team";
 import { createAssistantMessage } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
 import {
@@ -33,7 +37,7 @@ const member: TeamMemberViewModel = {
 	status: "idle",
 };
 
-function snapshot(input: Partial<TeamSessionSnapshot> = {}): TeamSessionSnapshot {
+function snapshot(input: Partial<DesktopTeamSessionSnapshot> = {}): DesktopTeamSessionSnapshot {
 	return { session, conversationRevision: 0, messages: [], activities: [], ...input };
 }
 
@@ -96,7 +100,7 @@ function streamEvent(
 	sequence: number,
 	delta: string,
 	authorId = "leader",
-): Extract<TeamSessionStreamEvent, { type: "conversation.agent-message-event" }> {
+): Extract<DesktopTeamSessionStreamEvent, { type: "conversation.agent-message-event" }> {
 	const partial = {
 		...createAssistantMessage(
 			{ api: "agent-team-test", provider: "agent-team-test", model: "fixture" },
@@ -257,6 +261,18 @@ describe("team chat stream state", () => {
 						arguments: { path: "C:/workspace/brief.md" },
 					}),
 				],
+				display: {
+					toolExecutions: [
+						{
+							messageId: "member-event",
+							toolCallId: "read-call",
+							toolName: "read",
+							args: { path: "C:/workspace/brief.md" },
+							result: { content: [{ type: "text", text: "file contents" }] },
+							isError: false,
+						},
+					],
+				},
 			}),
 			pending: undefined,
 			streams: {},
@@ -264,26 +280,29 @@ describe("team chat stream state", () => {
 			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
 		});
 
-		expect(items).toEqual([
+		expect(items).toHaveLength(1);
+		expect(items[0]).toEqual(
 			expect.objectContaining({
 				kind: "agent",
-				blocks: [
-					{
+				blocks: expect.arrayContaining([
+					expect.objectContaining({
 						type: "tool_call",
 						toolCallId: "read-call",
 						toolName: "read",
 						args: { path: "C:/workspace/brief.md" },
 						status: "success",
-					},
+						result: "file contents",
+						isError: false,
+					}),
 					expect.objectContaining({ type: "text", text: "Read complete" }),
-				],
+				]),
 			}),
-		]);
+		);
 	});
 
 	it("applies live member tool execution events to the shared message block", () => {
-		const start: TeamSessionStreamEvent = {
-			type: "conversation.tool-execution",
+		const start: DesktopTeamSessionStreamEvent = {
+			type: "desktop.team-tool-execution",
 			conversationId: session.id,
 			messageId: "live-result",
 			turnId: "request",
@@ -292,7 +311,7 @@ describe("team chat stream state", () => {
 			timestamp: 1,
 			event: { type: "start", toolCallId: "live-call", toolName: "read", args: { path: "README.md" }, startedAt: 1 },
 		};
-		const end: TeamSessionStreamEvent = {
+		const end: DesktopTeamSessionStreamEvent = {
 			...start,
 			sequence: 2,
 			timestamp: 3,

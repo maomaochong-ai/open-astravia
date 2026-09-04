@@ -49,7 +49,6 @@ import {
 	type TeamSessionListItem,
 	type TeamSessionSnapshot,
 	type TeamSessionStateRecord,
-	type TeamSessionStreamEvent,
 	type TeamSharedContextCheckpoint,
 	type TeamSharedHistoryPort,
 	type TeamSharedHistoryQuery,
@@ -71,25 +70,35 @@ import {
 	type RuntimeHost,
 	type RuntimeSessionExecutionObservation,
 	readRuntimeFailure,
+	type SessionEvent,
+	type SessionExecutionMode,
 } from "@vetta/runtime-core";
 import type {
 	ConversationAgentMessageEvent,
 	ConversationMessageRecord,
 	ConversationMessageStreamEvent,
-	ConversationToolExecutionEvent,
 } from "@vetta/runtime-core/conversation";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import { runtimeObservationFailure } from "@vetta/runtime-core/observation";
+import type {
+	DesktopTeamContextUsageEvent,
+	DesktopTeamConversationDisplay,
+	DesktopTeamSessionStreamEvent,
+	DesktopTeamToolExecutionEvent,
+} from "../../preload/api-types/team-conversation-display.js";
 import {
 	type ConversationOwnershipCatalogPort,
 	conversationOwnershipCatalog,
 } from "../conversations/conversation-ownership-catalog.js";
 import { resolveDesktopSessionConfig } from "../conversations/resolve-session-config.js";
+import { readDesktopConfig } from "../ipc/fs.js";
 import { getAppLogger } from "../logger.js";
 import { getSharedRuntime } from "../runtime.js";
+import { assertSandboxAvailableForMode } from "../sandbox/capability.js";
 import { agentTeamExtensionHost } from "./agent-team-extension-host.js";
 import { agentTeamStore } from "./agent-team-store.js";
 import { type TeamCollaborationState, TeamCollaborationStore } from "./team-collaboration-store.js";
+import { projectTeamConversationDisplay } from "./team-conversation-display.js";
 import { agentTeamExternalConditionChanges } from "./team-external-condition-channel.js";
 import {
 	ensureTeamConversationBinding,
@@ -97,7 +106,7 @@ import {
 	type TeamLegacySessionMigrationPort,
 } from "./team-legacy-session-migration.js";
 import { restoreTeamMemberPinnedContext } from "./team-member-context.js";
-import { findTeamAttemptResult, restoreTeamPublicToolCalls } from "./team-member-result.js";
+import { findTeamAttemptResult } from "./team-member-result.js";
 import { reconfigureTeamMemberRuntime } from "./team-member-runtime-reconfiguration.js";
 import { TeamMemberScheduler } from "./team-member-scheduler.js";
 import type { TeamMemberTurnRequest } from "./team-member-turn-request.js";
@@ -128,7 +137,7 @@ export interface AgentTeamSessionServiceOptions {
 
 export interface TeamSessionSubscription {
 	readonly unsubscribe: () => void;
-	readonly snapshot?: Extract<TeamSessionStreamEvent, { type: "session-snapshot" }>;
+	readonly snapshot?: Extract<DesktopTeamSessionStreamEvent, { type: "session-snapshot" }>;
 }
 
 interface ActiveTeamMemberTurn {
@@ -156,7 +165,7 @@ export class AgentTeamSessionService {
 	private readonly memberScheduler = new TeamMemberScheduler();
 	private readonly memberCancellations = new Map<string, Map<string, AbortController>>();
 	private readonly activeSends = new Map<string, Set<AbortController>>();
-	private readonly subscribers = new Map<string, Set<(event: TeamSessionStreamEvent) => void>>();
+	private readonly subscribers = new Map<string, Set<(event: DesktopTeamSessionStreamEvent) => void>>();
 	private readonly runtimeSubscriptions = new Map<
 		string,
 		{ readonly teamSessionId: string; readonly unsubscribe: () => void }
@@ -289,16 +298,15 @@ export class AgentTeamSessionService {
 	snapshot(session: TeamSessionDocument): TeamSessionSnapshot {
 		const coordination = session.coordinationRuntime;
 		if (!coordination) {
-			return { session, conversationRevision: 0, messages: [], activities: legacyActivities(session) };
+			return {
+				session,
+				conversationRevision: 0,
+				messages: [],
+				activities: legacyActivities(session),
+			};
 		}
 		const document = this.getRuntime().readSessionDocument(coordination.sessionId);
 		const collaboration = this.collaborationStore.read(session);
-		const publicationByMessageId = new Map(
-			collaboration.publications.flatMap((publication) =>
-				publication.publicMessageEntryId ? [[publication.publicMessageEntryId, publication] as const] : [],
-			),
-		);
-		const historyBySessionId = new Map<string, readonly HistoryEntry[]>();
 		const messages = document.entries.flatMap((entry) => {
 			if (entry.type !== "message" || (entry.kind !== "user" && entry.kind !== "agent")) return [];
 			const record =
@@ -319,21 +327,7 @@ export class AgentTeamSessionService {
 							timestamp: entry.message.timestamp,
 							author: entry.author,
 							message: (() => {
-								const publicMessage = publicAssistantMessage(entry.message);
-								const publication = publicationByMessageId.get(entry.id);
-								if (!publication || publicMessage.content.some((part) => part.type === "toolCall")) {
-									return publicMessage;
-								}
-								try {
-									let history = historyBySessionId.get(publication.sourceParticipantConversationId);
-									if (!history) {
-										history = this.getRuntime().getFullHistory(publication.sourceParticipantConversationId);
-										historyBySessionId.set(publication.sourceParticipantConversationId, history);
-									}
-									return restoreTeamPublicToolCalls(publicMessage, history, publication.sourceMessageEntryId);
-								} catch {
-									return publicMessage;
-								}
+								return publicAssistantMessage(entry.message);
 							})(),
 						};
 			return [record];
@@ -344,6 +338,51 @@ export class AgentTeamSessionService {
 			messages,
 			activities: teamActivities(session, collaboration.workItems),
 		};
+	}
+
+	/** Desktop-only display projection; never persisted or passed to member context. */
+	displayProjection(session: TeamSessionDocument): DesktopTeamConversationDisplay {
+		const coordination = session.coordinationRuntime;
+		if (!coordination) return { toolExecutions: [], executionMode: session.executionMode ?? "full-access" };
+		const runtime = this.getRuntime();
+		const memberStates =
+			typeof runtime.getState === "function"
+				? Object.entries(session.memberRuntime).map(([memberId, member]) => ({
+						memberId,
+						runtimeSessionId: member.sessionId,
+						state: runtime.getState(member.sessionId),
+					}))
+				: [];
+		const contextState = memberStates.reduce<(typeof memberStates)[number] | undefined>((largest, candidate) => {
+			if (!largest) return candidate;
+			const usage = (item: (typeof memberStates)[number]) =>
+				item.state.contextTokens != null && item.state.contextWindow > 0
+					? item.state.contextTokens / item.state.contextWindow
+					: (item.state.contextPercent ?? 0) / 100;
+			return usage(candidate) > usage(largest) ? candidate : largest;
+		}, undefined);
+		return projectTeamConversationDisplay({
+			session,
+			coordination: this.getRuntime().readSessionDocument(coordination.sessionId),
+			publications: this.collaborationStore.read(session).publications,
+			readHistory: (conversationId) => this.getRuntime().getFullHistory(conversationId),
+			...(contextState
+				? {
+						runtimeState: (() => {
+							const state = contextState.state;
+							return {
+								executionMode: session.executionMode ?? state.executionMode,
+								contextPercent: state.contextPercent,
+								memberId: contextState.memberId,
+								runtimeSessionId: contextState.runtimeSessionId,
+								...(state.contextTokens === undefined ? {} : { contextTokens: state.contextTokens }),
+								contextWindow: state.contextWindow,
+								...(state.contextComposition ? { composition: state.contextComposition } : {}),
+							};
+						})(),
+					}
+				: {}),
+		});
 	}
 
 	async readSnapshot(id: string, coordinationSessionPath?: string): Promise<TeamSessionSnapshot> {
@@ -363,7 +402,7 @@ export class AgentTeamSessionService {
 		if (filtered.length !== current.length) runtime.setSessionActiveToolNames(runtimeSessionId, filtered);
 	}
 
-	subscribe(sessionId: string, handler: (event: TeamSessionStreamEvent) => void): TeamSessionSubscription {
+	subscribe(sessionId: string, handler: (event: DesktopTeamSessionStreamEvent) => void): TeamSessionSubscription {
 		const listeners = this.subscribers.get(sessionId) ?? new Set();
 		listeners.add(handler);
 		this.subscribers.set(sessionId, listeners);
@@ -374,7 +413,7 @@ export class AgentTeamSessionService {
 					teamSessionId: sessionId,
 					snapshot: this.snapshot(session),
 					activeMessageEvents: this.activeMessageEvents(sessionId),
-				} satisfies Extract<TeamSessionStreamEvent, { type: "session-snapshot" }>)
+				} satisfies Extract<DesktopTeamSessionStreamEvent, { type: "session-snapshot" }>)
 			: undefined;
 		if (session) this.attachRuntimeSubscriptions(session);
 		return {
@@ -397,7 +436,7 @@ export class AgentTeamSessionService {
 		});
 	}
 
-	private publish(event: TeamSessionStreamEvent): void {
+	private publish(event: DesktopTeamSessionStreamEvent): void {
 		const teamSessionId =
 			event.type === "session-snapshot" || event.type === "session-updated"
 				? event.teamSessionId
@@ -448,7 +487,19 @@ export class AgentTeamSessionService {
 			const runtime = this.getRuntime();
 			const unsubscribeEvents = runtime.subscribe(runtimeState.sessionId, (event) => {
 				const active = this.activeMemberTurns.get(runtimeState.sessionId);
-				if (!active) return;
+				if (!active) {
+					if (
+						event.type === "usage.update" ||
+						event.type === "compaction.start" ||
+						event.type === "compaction.end"
+					) {
+						this.publishTeamContextUsage(session, runtimeState.sessionId, event);
+					}
+					return;
+				}
+				if (event.type === "usage.update" || event.type === "compaction.start" || event.type === "compaction.end") {
+					this.publishTeamContextUsage(session, runtimeState.sessionId, event);
+				}
 				if (event.channel === "assistant") {
 					active.rawAssistantStream = true;
 					const projected = projectPublicAssistantEvent(event);
@@ -519,6 +570,38 @@ export class AgentTeamSessionService {
 		}
 	}
 
+	private publishTeamContextUsage(session: TeamSessionDocument, runtimeSessionId: string, event: SessionEvent): void {
+		const memberId = Object.entries(session.memberRuntime).find(
+			([, runtime]) => runtime.sessionId === runtimeSessionId,
+		)?.[0];
+		if (!memberId) return;
+		const state = this.getRuntime().getState(runtimeSessionId);
+		const contextUsage = {
+			percent: event.type === "usage.update" ? event.contextPercent : state.contextPercent,
+			...(event.type === "usage.update" && event.contextTokens !== undefined
+				? { contextTokens: event.contextTokens }
+				: state.contextTokens === undefined
+					? {}
+					: { contextTokens: state.contextTokens }),
+			contextWindow: event.type === "usage.update" ? event.contextWindow : state.contextWindow,
+			...(event.type === "usage.update" && event.contextComposition
+				? { composition: event.contextComposition }
+				: {}),
+		};
+		this.publish({
+			type: "desktop.team-context-usage",
+			conversationId: session.id,
+			memberId,
+			runtimeSessionId,
+			contextUsage,
+			...(event.type === "compaction.start"
+				? { isCompacting: true }
+				: event.type === "compaction.end"
+					? { isCompacting: false }
+					: {}),
+		} satisfies DesktopTeamContextUsageEvent);
+	}
+
 	private activeMessageEvents(teamSessionId: string): ConversationMessageStreamEvent[] {
 		return [...this.activeMemberTurns.values()]
 			.filter((turn) => turn.teamSessionId === teamSessionId)
@@ -557,7 +640,7 @@ export class AgentTeamSessionService {
 		observation: RuntimeSessionExecutionObservation,
 	): void {
 		const event = observation.event;
-		let projected: ConversationToolExecutionEvent["event"] | undefined;
+		let projected: DesktopTeamToolExecutionEvent["event"] | undefined;
 		switch (event.type) {
 			case "tool.execution.start":
 				projected = {
@@ -602,7 +685,7 @@ export class AgentTeamSessionService {
 		}
 		active.seq += 1;
 		this.publish({
-			type: "conversation.tool-execution",
+			type: "desktop.team-tool-execution",
 			conversationId: active.teamSessionId,
 			messageId: active.messageId,
 			turnId: active.requestId,
@@ -629,6 +712,7 @@ export class AgentTeamSessionService {
 		team: AgentTeamDocument["teams"][number],
 		document: AgentTeamDocument,
 		cwd: string,
+		executionMode: SessionExecutionMode,
 	): Promise<TeamSessionDocument["memberRuntime"][string]> {
 		const profile = resolveMemberProfile(document, member);
 		const blueprint = findAgentBlueprint(profile.blueprintId);
@@ -642,6 +726,7 @@ export class AgentTeamSessionService {
 		const resolved = await resolveDesktopSessionConfig(
 			{
 				cwd,
+				executionMode,
 				...promptContext,
 				agentConfiguration: {
 					template: null,
@@ -669,10 +754,12 @@ export class AgentTeamSessionService {
 		cwd: string,
 		sessionPath?: string,
 		sessionId?: string,
+		executionMode: SessionExecutionMode = "full-access",
 	): Promise<NonNullable<TeamSessionDocument["coordinationRuntime"]>> {
 		const resolved = await resolveDesktopSessionConfig(
 			{
 				cwd,
+				executionMode,
 				...(sessionPath ? { sessionPath } : {}),
 				...(sessionId ? { sessionId } : {}),
 			},
@@ -708,6 +795,7 @@ export class AgentTeamSessionService {
 			session.cwd,
 			current?.sessionPath,
 			current?.sessionId ?? session.id,
+			session.executionMode ?? "full-access",
 		);
 		const next: TeamSessionDocument = {
 			...session,
@@ -726,13 +814,15 @@ export class AgentTeamSessionService {
 	): Promise<TeamSessionDocument> {
 		const id = crypto.randomUUID();
 		const now = Date.now();
+		const executionMode = (await readDesktopConfig()).defaultExecutionMode ?? "full-access";
 		const memberRuntime: Record<string, TeamSessionDocument["memberRuntime"][string]> = {};
 		let coordinationRuntime: TeamSessionDocument["coordinationRuntime"];
 
 		try {
-			coordinationRuntime = await this.createCoordinationRuntime(cwd, undefined, id);
+			await assertSandboxAvailableForMode(executionMode, async () => executionMode);
+			coordinationRuntime = await this.createCoordinationRuntime(cwd, undefined, id, executionMode);
 			for (const member of team.members) {
-				memberRuntime[member.id] = await this.createMemberRuntime(id, member, team, document, cwd);
+				memberRuntime[member.id] = await this.createMemberRuntime(id, member, team, document, cwd, executionMode);
 			}
 		} catch (error) {
 			await Promise.allSettled(
@@ -756,6 +846,7 @@ export class AgentTeamSessionService {
 			id,
 			teamId: team.id,
 			workspaceId: `agent-team:${team.id}`,
+			executionMode,
 			teamRevision: team.revision,
 			name: team.name,
 			cwd,
@@ -829,6 +920,27 @@ export class AgentTeamSessionService {
 		});
 	}
 
+	async setExecutionMode(id: string, mode: SessionExecutionMode): Promise<TeamSessionDocument> {
+		await assertSandboxAvailableForMode(mode, async () => mode);
+		return this.coordinate(id, async (session) => {
+			if (session.executionMode === mode) return session;
+			const runtimeIds = [
+				...(session.coordinationRuntime ? [session.coordinationRuntime.sessionId] : []),
+				...Object.values(session.memberRuntime).map((runtime) => runtime.sessionId),
+			];
+			await Promise.all(runtimeIds.map((runtimeId) => this.getRuntime().setExecutionMode(runtimeId, mode)));
+			const next: TeamSessionDocument = {
+				...session,
+				executionMode: mode,
+				revision: session.revision + 1,
+				updatedAt: Date.now(),
+			};
+			await this.persist(next);
+			this.publishSessionUpdated(next);
+			return next;
+		});
+	}
+
 	async read(id: string, coordinationSessionPath?: string): Promise<TeamSessionDocument> {
 		return this.coordination.run(id, async () => {
 			const session = await this.readInternal(id, coordinationSessionPath);
@@ -872,6 +984,7 @@ export class AgentTeamSessionService {
 							memberId,
 							sessionPath,
 							runtimeTools,
+							prepared.executionMode ?? "full-access",
 						),
 						agentProfileId: profile.id,
 						agentProfileRevision: profile.revision,
@@ -881,6 +994,12 @@ export class AgentTeamSessionService {
 				logger: log,
 			});
 			const coordinated = await this.migrateLoadedSession(await this.ensureCoordinationRuntime(restored));
+			if (coordinated.coordinationRuntime && coordinated.executionMode) {
+				await this.getRuntime().setExecutionMode(
+					coordinated.coordinationRuntime.sessionId,
+					coordinated.executionMode,
+				);
+			}
 			for (const runtimeState of Object.values(coordinated.memberRuntime)) {
 				this.applyDefaultTeamToolPolicy(runtimeState.sessionId);
 			}
@@ -896,7 +1015,7 @@ export class AgentTeamSessionService {
 	}
 
 	private async readConversationSessionState(id: string, sessionPath: string): Promise<TeamSessionDocument> {
-		const coordination = await this.createCoordinationRuntime(process.cwd(), sessionPath, id);
+		const coordination = await this.createCoordinationRuntime(process.cwd(), sessionPath, id, "full-access");
 		const document = this.getRuntime().readSessionDocument(coordination.sessionId);
 		for (let index = document.entries.length - 1; index >= 0; index -= 1) {
 			const entry = document.entries[index];
@@ -1069,7 +1188,14 @@ export class AgentTeamSessionService {
 		try {
 			for (const member of team.members) {
 				if (nextRuntime[member.id]) continue;
-				const runtimeState = await this.createMemberRuntime(session.id, member, team, document, session.cwd);
+				const runtimeState = await this.createMemberRuntime(
+					session.id,
+					member,
+					team,
+					document,
+					session.cwd,
+					session.executionMode ?? "full-access",
+				);
 				nextRuntime[member.id] = runtimeState;
 				createdRuntimeIds.push(runtimeState.sessionId);
 			}
@@ -2232,6 +2358,7 @@ export class AgentTeamSessionService {
 					memberId,
 					sessionPath,
 					this.createTeamToolRegistrations(session.id),
+					session.executionMode ?? "full-access",
 				),
 			persist: (next) => this.persist(next),
 			logger: log,
@@ -2255,6 +2382,7 @@ export class AgentTeamSessionService {
 		memberId: string,
 		sessionPath: string,
 		runtimeTools: readonly CodingAgentRuntimeToolRegistration[],
+		executionMode: SessionExecutionMode,
 	) {
 		const profile = this.resolveMemberProfile(session, document, memberId);
 		const team = document.teams.find((candidate) => candidate.id === session.teamId);
@@ -2271,6 +2399,7 @@ export class AgentTeamSessionService {
 			await resolveDesktopSessionConfig(
 				{
 					cwd: session.cwd,
+					executionMode,
 					sessionPath,
 					...promptContext,
 					agentConfiguration: {

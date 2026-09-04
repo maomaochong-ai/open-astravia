@@ -1,9 +1,19 @@
+import type {
+	DesktopTeamSessionSnapshot,
+	DesktopTeamSessionStreamEvent,
+	DesktopTeamToolExecution,
+} from "@preload/api-types/team-conversation-display";
 import type { ConversationMessageEventState, ConversationParticipantViewModel } from "@shared/conversation";
-import { projectAssistantMessageBlocks, reduceConversationMessageEvent } from "@shared/conversation";
-import type { ChatConversationItem } from "@shared/store/atoms";
+import {
+	createConversationAgentMessage,
+	projectAssistantMessageBlocks,
+	reduceConversationMessageEvent,
+} from "@shared/conversation";
+import type { ChatConversationItem, ContextUsageData } from "@shared/store/atoms";
 import type { ActivityWorkspace } from "@shared/workspace/activity-workspace";
-import type { AgentTeamDocument, TeamDefinition, TeamSessionSnapshot, TeamSessionStreamEvent } from "@vetta/agent-team";
-import type { PromptAttachmentRef } from "@vetta/runtime-core";
+import type { AgentTeamDocument, TeamDefinition } from "@vetta/agent-team";
+import type { PromptAttachmentRef, SessionExecutionMode } from "@vetta/runtime-core";
+import { handleToolEnd, handleToolPhase, handleToolStart } from "../../services/chat-service";
 import { reduceConversationToolExecutionEvent } from "../../services/conversation-projection";
 
 export type TeamChatStatus = "loading" | "ready" | "sending" | "streaming" | "cancelling" | "error";
@@ -29,6 +39,11 @@ export interface TeamChatViewModel {
 	readonly canSend: boolean;
 	readonly workspace: ActivityWorkspace | null;
 	readonly activeSessionId: string | null;
+	readonly runtimeSessionIds?: readonly string[];
+	readonly memberRuntimeIds?: Readonly<Record<string, string>>;
+	readonly executionMode?: SessionExecutionMode;
+	readonly contextUsage?: ContextUsageData | null;
+	readonly isCompacting?: boolean;
 	readonly sessions: readonly { readonly id: string; readonly label: string }[];
 	readonly sessionActionsDisabled: boolean;
 	readonly modelKey: string | null;
@@ -50,6 +65,7 @@ export interface TeamChatActions {
 	readonly openSession: (sessionId: string) => Promise<void>;
 	readonly selectModel: (modelKey: string, defaultReasoning?: string) => Promise<void>;
 	readonly selectReasoning: (reasoning: string) => Promise<void>;
+	readonly setExecutionMode?: (mode: SessionExecutionMode) => Promise<void>;
 }
 
 export interface TeamAttachmentViewModel {
@@ -102,7 +118,7 @@ export interface TeamTimelineLabels {
 	readonly unknownMember: string;
 }
 
-export function reduceTeamStreamState(state: TeamStreamState, event: TeamSessionStreamEvent): TeamStreamState {
+export function reduceTeamStreamState(state: TeamStreamState, event: DesktopTeamSessionStreamEvent): TeamStreamState {
 	if (event.type === "session-snapshot") {
 		return event.activeMessageEvents.reduce(reduceTeamStreamState, {});
 	}
@@ -117,11 +133,12 @@ export function reduceTeamStreamState(state: TeamStreamState, event: TeamSession
 		delete next[event.messageId];
 		return next;
 	}
-	if (event.type === "conversation.tool-execution") {
+	if (event.type === "desktop.team-tool-execution" || event.type === "conversation.tool-execution") {
 		const current = state[event.messageId];
 		const next = reduceConversationToolExecutionEvent(current, event);
 		return { ...state, [event.messageId]: next };
 	}
+	if (event.type === "desktop.team-context-usage") return state;
 	const current = state[event.messageId];
 	const next = reduceConversationMessageEvent(current, event);
 	return {
@@ -165,7 +182,7 @@ export function projectTeamConversationTimeline({
 	members,
 	labels,
 }: {
-	readonly snapshot: TeamSessionSnapshot | undefined;
+	readonly snapshot: DesktopTeamSessionSnapshot | undefined;
 	readonly pending: TeamPendingRequest | undefined;
 	readonly streams: TeamStreamState;
 	readonly members: readonly TeamMemberViewModel[];
@@ -189,8 +206,13 @@ export function projectTeamConversationTimeline({
 				attachments: [...(record.attachments ?? [])],
 			};
 		}
-		const blocks = projectAssistantMessageBlocks(record.message, record.id, "success").filter(
-			(block) => block.type !== "thinking",
+		const blocks = projectTeamAgentBlocks(
+			record.message,
+			record.id,
+			snapshot.display?.toolExecutions ?? [],
+			record.turnId,
+			record.author.id,
+			record.timestamp,
 		);
 		return {
 			id: record.id,
@@ -269,6 +291,58 @@ export function projectTeamConversationTimeline({
 		});
 	}
 	return items;
+}
+
+/** Merge the raw member call/result stream into the shared Chat block model. */
+function projectTeamAgentBlocks(
+	message: Extract<DesktopTeamSessionSnapshot["messages"][number], { kind: "agent" }>["message"],
+	messageId: string,
+	executions: readonly DesktopTeamToolExecution[],
+	turnId: string,
+	authorId: string,
+	timestamp: number,
+) {
+	const projected = projectAssistantMessageBlocks(message, messageId, "success").filter(
+		(block) => block.type !== "thinking",
+	);
+	let items: ChatConversationItem[] = [
+		createConversationAgentMessage({
+			id: messageId,
+			entryId: messageId,
+			turnId,
+			authorId,
+			timestamp,
+			text: "",
+			blocks: projected,
+		}),
+	];
+	for (const execution of executions.filter((item) => item.messageId === messageId)) {
+		const hasCall = projected.some(
+			(block) => block.type === "tool_call" && block.toolCallId === execution.toolCallId,
+		);
+		if (!hasCall) {
+			items = handleToolStart(items, execution.toolCallId, execution.toolName, execution.args, execution.startedAt);
+		}
+		for (const phase of execution.phases ?? []) {
+			items = handleToolPhase(items, execution.toolCallId, phase.label, phase.atMs);
+		}
+		if (execution.result) {
+			items = handleToolEnd(
+				items,
+				execution.toolCallId,
+				execution.result,
+				execution.isError === true,
+				execution.startedAt !== undefined && execution.durationMs !== undefined
+					? {
+							startedAt: execution.startedAt,
+							durationMs: execution.durationMs,
+							phases: [...(execution.phases ?? [])],
+						}
+					: undefined,
+			);
+		}
+	}
+	return items[0]?.kind === "agent" ? items[0].blocks : projected;
 }
 
 function userMessageText(content: string | readonly { readonly type: string; readonly text?: string }[]): string {

@@ -40,6 +40,7 @@ function dependencies(): AgentTeamsIpcDependencies {
 			readSnapshot: vi.fn(),
 			send: vi.fn(),
 			updateModelSettings: vi.fn(),
+			setExecutionMode: vi.fn(),
 			snapshot: vi.fn((session) => ({ session, conversationRevision: 0, messages: [], activities: [] })),
 			subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
 			abort: vi.fn(),
@@ -138,6 +139,17 @@ describe("Agent Team IPC contract", () => {
 		await expect(updateModelSettings({}, "session", { reasoning: "high" })).rejects.toThrow(
 			"Invalid Team session model settings input",
 		);
+	});
+
+	it("validates and forwards the Team-scoped execution mode", async () => {
+		const deps = dependencies();
+		registerAgentTeamsIpc(deps);
+		const setExecutionMode = ipc.handlers.get("vetta:agent-teams:set-execution-mode");
+		if (!setExecutionMode) throw new Error("set-execution-mode handler was not registered");
+
+		await setExecutionMode({}, "session", "sandbox");
+		expect(deps.sessions.setExecutionMode).toHaveBeenCalledWith("session", "sandbox");
+		await expect(setExecutionMode({}, "session", "invalid")).rejects.toThrow("Invalid executionMode");
 	});
 
 	it("bridges stream subscriptions and abort requests", async () => {
