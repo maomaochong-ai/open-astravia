@@ -61,7 +61,8 @@ describe("mcp-http-bridge", () => {
 			readyTimeoutMs: 20_000,
 		};
 
-		const bridge = spawn("bunx", ["tsx", join(process.cwd(), "src/main/mcp-http-bridge.ts"), JSON.stringify(spec)], {
+		// bun 直接跑 TS，比 bunx tsx 少两层进程：整套用例并行时不必为此抢资源
+		const bridge = spawn("bun", [join(process.cwd(), "src/main/mcp-http-bridge.ts"), JSON.stringify(spec)], {
 			stdio: ["pipe", "pipe", "pipe"],
 		});
 		try {
