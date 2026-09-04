@@ -717,6 +717,67 @@ describe("OpenMarketplaceService", () => {
 		expect(fetchArchive).not.toHaveBeenCalled();
 	});
 
+	it("installs the current version even when the cached catalog is behind", async () => {
+		const rootDir = await temporaryRoot();
+		const initial = new OpenMarketplaceService({
+			appVersion: APP_VERSION,
+			rootDir,
+			fetchArchive: async () => response(archive({ marketplaceVersion: "2026.07.1", description: "Old" })),
+		});
+		await initial.refresh();
+		const updatedArchive = archive({ marketplaceVersion: "2026.07.2", description: "Updated" });
+		const installAbility = vi.fn(
+			async (_snapshotRoot: string, _ability: object, _origin: GitHubMarketplaceOrigin) => undefined,
+		);
+		const service = new OpenMarketplaceService({
+			appVersion: APP_VERSION,
+			rootDir,
+			fetchArchive: async () => response(updatedArchive),
+			fetchManifest: async () => manifestResponse(updatedArchive),
+			installAbility,
+		});
+
+		// The catalog on screen is deliberately stale-while-revalidate, so an install
+		// that trusts it would fetch a version the user never chose — and the freshly
+		// installed ability would immediately report an update.
+		expect(await service.list()).toMatchObject({ marketplaceVersion: "2026.07.1" });
+		await service.install("skill", "demo-skill");
+
+		expect(installAbility).toHaveBeenCalledOnce();
+		expect(installAbility.mock.calls[0]?.[1]).toMatchObject({ description: "Updated" });
+		expect(installAbility.mock.calls[0]?.[2]).toMatchObject({ marketplaceVersion: "2026.07.2" });
+	});
+
+	it("still installs from the cached snapshot when the source cannot be reached", async () => {
+		const rootDir = await temporaryRoot();
+		const initial = new OpenMarketplaceService({
+			appVersion: APP_VERSION,
+			rootDir,
+			fetchArchive: async () => response(archive()),
+		});
+		await initial.refresh();
+		const installAbility = vi.fn(
+			async (_snapshotRoot: string, _ability: object, _origin: GitHubMarketplaceOrigin) => undefined,
+		);
+		const service = new OpenMarketplaceService({
+			appVersion: APP_VERSION,
+			rootDir,
+			fetchArchive: async () => {
+				throw new Error("offline");
+			},
+			fetchManifest: async () => {
+				throw new Error("offline");
+			},
+			installAbility,
+		});
+
+		await service.install("skill", "demo-skill");
+
+		// Installing offline from what is already on disk beats refusing to install.
+		expect(installAbility).toHaveBeenCalledOnce();
+		expect(installAbility.mock.calls[0]?.[2]).toMatchObject({ marketplaceVersion: "2026.07.1" });
+	});
+
 	it("installs only from the active validated snapshot", async () => {
 		const rootDir = await temporaryRoot();
 		const installAbility = vi.fn(

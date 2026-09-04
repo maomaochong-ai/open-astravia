@@ -346,6 +346,7 @@ export class OpenMarketplaceService {
 	}
 
 	async install(type: "skill" | "scene" | "plugin", slug: string): Promise<void> {
+		await this.ensureSnapshotFresh();
 		const active = await this.readActiveMarketplace();
 		if (!active) throw new Error("No validated open marketplace snapshot is available");
 		const ability = active.manifest.abilities.find((entry) => entry.type === type && entry.slug === slug);
@@ -363,6 +364,7 @@ export class OpenMarketplaceService {
 	}
 
 	async prepareMcp(slug: string): Promise<McpServerConfigData> {
+		await this.ensureSnapshotFresh();
 		const active = await this.readActiveMarketplace();
 		if (!active) throw new Error("No validated open marketplace snapshot is available");
 		const ability = active.manifest.abilities.find(
@@ -520,6 +522,32 @@ export class OpenMarketplaceService {
 		} finally {
 			clearTimeout(timer);
 		}
+	}
+
+	/**
+	 * 装之前先跟源头核对一次版本。
+	 *
+	 * `list()` 是缓存优先的：先把旧快照给出去，再排一次后台检查，而那次检查还带
+	 * {@link updateCheckIntervalMs} 节流。于是刚推上去的版本，界面上可能几分钟内都还是旧的——
+	 * 用户点「安装」，装进去的是他没选的那个版本，装完立刻又被标记「有更新」。
+	 * 安装是低频且明确的动作，值得为它多发一个 manifest 请求。
+	 *
+	 * 已有后台检查在跑就搭它的车，不重复请求；源头连不上则沿用本地快照——
+	 * 离线时拿现成的快照装上，好过直接装不了。
+	 */
+	private async ensureSnapshotFresh(): Promise<void> {
+		if (this.backgroundUpdate) {
+			await this.backgroundUpdate;
+			return;
+		}
+		const update = this.refreshInBackgroundIfChanged()
+			.catch(() => undefined)
+			.finally(() => {
+				if (this.backgroundUpdate === update) this.backgroundUpdate = undefined;
+			});
+		this.backgroundUpdate = update;
+		this.lastUpdateCheckAt = this.now().getTime();
+		await update;
 	}
 
 	private scheduleBackgroundUpdate(): void {
