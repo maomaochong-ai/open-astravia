@@ -111,8 +111,13 @@ describe("TeamSettingsPage", () => {
 
 		expect(await screen.findByText("editor:Shared Agent")).toBeTruthy();
 		expect(screen.getAllByTestId("avatar")).toHaveLength(2);
+		expect(screen.getByRole("button", { name: "settings.save" })).toHaveProperty("disabled", true);
+		expect(screen.queryByRole("button", { name: "profile.save" })).toBeNull();
 		expect(screen.queryByText("@shared")).toBeNull();
 		expect(screen.queryByText("settings.referenceHint")).toBeNull();
+		await user.clear(screen.getByLabelText("teams.name"));
+		await user.type(screen.getByLabelText("teams.name"), "Updated Team");
+		expect(screen.getByRole("button", { name: "settings.save" })).toHaveProperty("disabled", false);
 		await user.click(screen.getByRole("button", { name: "Copied Agent" }));
 		expect(await screen.findByText("editor:Copied Agent")).toBeTruthy();
 		await user.click(screen.getByRole("button", { name: "teams.removeMember:Copied Agent" }));

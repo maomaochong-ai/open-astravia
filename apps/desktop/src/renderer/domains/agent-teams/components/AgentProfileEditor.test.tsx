@@ -8,7 +8,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AgentProfileEditor } from "./AgentProfileEditor";
 
 vi.mock("react-i18next", () => ({
-	useTranslation: () => ({ t: (key: string, options?: Record<string, unknown>) => `${key}${options?.count ?? ""}` }),
+	useTranslation: () => ({
+		t: (key: string, options?: Record<string, unknown>) => `${key}${options?.count ?? options?.index ?? ""}`,
+	}),
 }));
 vi.mock("@vetta/ui", () => ({
 	Button: ({ children, ...props }: { children: ReactNode } & Record<string, unknown>) => (
@@ -153,5 +155,28 @@ describe("AgentProfileEditor", () => {
 		await user.type(screen.getByLabelText("profile.searchAbilities"), "notion");
 		expect(screen.queryByText("Research")).toBeNull();
 		expect(screen.getByText("Notion")).toBeTruthy();
+	});
+
+	it("offers every built-in avatar and saves the selected stable asset path", async () => {
+		const user = userEvent.setup();
+		const onSave = vi.fn(async () => ({ updated: agent, impact }));
+		render(
+			<AgentProfileEditor
+				agent={agent}
+				capabilities={[]}
+				onPreview={vi.fn(async () => ({ ...impact, teamIds: [], teamNames: [] }))}
+				onSave={onSave}
+			/>,
+		);
+
+		expect(screen.getAllByRole("button", { name: /profile.avatarOption/ })).toHaveLength(9);
+		await user.click(screen.getByRole("button", { name: "profile.avatarOption9" }));
+		await user.click(screen.getByRole("button", { name: "profile.save" }));
+		await waitFor(() =>
+			expect(onSave).toHaveBeenCalledWith(
+				agent,
+				expect.objectContaining({ avatar: "./agent-team-avatars/avatar-09.webp" }),
+			),
+		);
 	});
 });

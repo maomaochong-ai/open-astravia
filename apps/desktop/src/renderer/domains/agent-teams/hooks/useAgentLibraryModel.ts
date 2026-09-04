@@ -84,6 +84,7 @@ export function useAgentLibraryModel(copy: AgentLibraryCopy) {
 				expectedRevision: agent.revision,
 				name: input.name,
 				description: input.description,
+				avatar: input.avatar,
 				mentionHandle: input.mentionHandle,
 				abilities: input.abilities,
 			});
@@ -143,6 +144,7 @@ export function useAgentLibraryModel(copy: AgentLibraryCopy) {
 export interface AgentProfileEditInput {
 	readonly name: string;
 	readonly description: string;
+	readonly avatar?: string;
 	readonly mentionHandle: string;
 	readonly abilities: AgentAbilitySelection;
 }

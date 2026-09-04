@@ -26,6 +26,7 @@ import { agentDisplayDescription, agentDisplayName, teamDisplayName } from "@sha
 import type { AgentTeamConfigurationResources } from "../services/load-agent-team-resources";
 import { loadAgentTeamConfigurationResources } from "../services/load-agent-team-resources";
 import { AgentProfileEditor } from "./AgentProfileEditor";
+import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";
 
 type TeamMemberDraft =
 	| {
@@ -59,6 +60,10 @@ export function TeamSettingsPage(): JSX.Element {
 	const [saving, setSaving] = useState(false);
 	const [saved, setSaved] = useState(false);
 	const [error, setError] = useState<string>();
+	const [agentDraft, setAgentDraft] = useState<AgentProfileEditInput>();
+	const [agentDirty, setAgentDirty] = useState(false);
+	const [agentSaving, setAgentSaving] = useState(false);
+	const [saveRequest, setSaveRequest] = useState(0);
 
 	const applyResources = useCallback(
 		(next: AgentTeamConfigurationResources): void => {
@@ -106,6 +111,20 @@ export function TeamSettingsPage(): JSX.Element {
 			)
 		: undefined;
 	const blueprint = resources?.blueprints.find((candidate) => candidate.id === selectedProfile?.blueprintId);
+
+	useEffect(() => {
+		setAgentDraft(undefined);
+		setAgentDirty(false);
+		setAgentSaving(false);
+	}, [selectedKey]);
+
+	const handleAgentDraftChange = useCallback(
+		(input: AgentProfileEditInput): void => {
+			setAgentDraft(input);
+			setAgentDirty(selectedProfile ? isAgentDraftDirty(selectedProfile, input) : false);
+		},
+		[selectedProfile],
+	);
 	const usedLibraryAgentIds = useMemo(
 		() =>
 			new Set(
@@ -167,30 +186,47 @@ export function TeamSettingsPage(): JSX.Element {
 		setSaved(false);
 	}
 
-	async function saveTeam(): Promise<void> {
+	async function saveTeamDraft(): Promise<void> {
 		if (!team || !name.trim() || drafts.length === 0) return;
+		const updated = await window.vetta.agentTeams.updateTeam(team.id, {
+			expectedRevision: team.revision,
+			name: name.trim(),
+			description: team.description,
+			members: drafts.map((draft) =>
+				draft.kind === "existing"
+					? { kind: "existing" as const, memberId: draft.memberId, leader: draft.leader }
+					: {
+							kind: "new" as const,
+							agentProfileId: draft.agentProfileId,
+							bindingKind: draft.bindingKind,
+							leader: draft.leader,
+						},
+			),
+		});
+		setResources((current) =>
+			current
+				? {
+						...current,
+						document: {
+							...current.document,
+							teams: current.document.teams.map((candidate) => (candidate.id === updated.id ? updated : candidate)),
+						},
+					}
+				: current,
+		);
+		setDirty(false);
+		notifyAgentTeamConfigurationChanged();
+	}
+
+	async function saveAll(): Promise<void> {
+		if (!team || !name.trim() || drafts.length === 0 || (!dirty && !agentDirty)) return;
 		setSaving(true);
 		setError(undefined);
 		setSaved(false);
 		try {
-			await window.vetta.agentTeams.updateTeam(team.id, {
-				expectedRevision: team.revision,
-				name: name.trim(),
-				description: team.description,
-				members: drafts.map((draft) =>
-					draft.kind === "existing"
-						? { kind: "existing" as const, memberId: draft.memberId, leader: draft.leader }
-						: {
-								kind: "new" as const,
-								agentProfileId: draft.agentProfileId,
-								bindingKind: draft.bindingKind,
-								leader: draft.leader,
-							},
-				),
-			});
-			applyResources(await loadAgentTeamConfigurationResources());
-			notifyAgentTeamConfigurationChanged();
-			setSaved(true);
+			if (dirty) await saveTeamDraft();
+			if (agentDirty && selectedProfile && agentDraft) setSaveRequest((current) => current + 1);
+			if (!agentDirty) setSaved(true);
 		} catch (cause) {
 			setError(errorMessage(cause));
 		} finally {
@@ -203,6 +239,7 @@ export function TeamSettingsPage(): JSX.Element {
 			expectedRevision: agent.revision,
 			name: input.name,
 			description: input.description,
+			avatar: input.avatar,
 			mentionHandle: input.mentionHandle,
 			abilities: input.abilities,
 		});
@@ -250,10 +287,20 @@ export function TeamSettingsPage(): JSX.Element {
 	}
 
 	return (
-		<div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-			<header className="flex shrink-0 items-start justify-between gap-4 border-b border-border/60 px-8 py-6">
+		<div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background">
+			<header className="flex shrink-0 flex-wrap items-center gap-4 border-b border-border/60 bg-card/20 px-6 py-4">
+				<Button
+					variant="ghost"
+					size="icon-sm"
+					className="-ml-2 shrink-0 text-muted-foreground"
+					aria-label={t("settings.backToChat")}
+					onClick={() => void navigate({ to: "/agent-teams/$teamId", params: { teamId } })}
+				>
+					<span className="icon-[solar--alt-arrow-left-linear] h-4 w-4" aria-hidden="true" />
+				</Button>
+				<div className="h-8 w-px shrink-0 bg-border/60" aria-hidden="true" />
 				<div className="min-w-0 flex-1">
-					<div className="text-xs font-medium text-muted-foreground">{t("settings.eyebrow")}</div>
+					<div className="text-[11px] font-medium tracking-wide text-muted-foreground">{t("teams.name")}</div>
 					<Input
 						name="agent-team-name"
 						autoComplete="off"
@@ -264,28 +311,42 @@ export function TeamSettingsPage(): JSX.Element {
 							setSaved(false);
 						}}
 						aria-label={t("teams.name")}
-						className="mt-1 h-10 max-w-lg text-[20px] font-bold"
+						className="mt-0.5 h-9 w-72 max-w-full rounded-md border-transparent bg-muted/30 px-2 text-xl font-semibold shadow-none transition-colors hover:bg-muted/50 focus-visible:border-transparent focus-visible:bg-muted/40 focus-visible:ring-0"
 					/>
-					<p className="mt-2 text-sm text-muted-foreground">{t("settings.subtitle")}</p>
+					<p className="mt-0.5 text-xs text-muted-foreground">{t("settings.subtitle")}</p>
 				</div>
-				<Button variant="ghost" onClick={() => void navigate({ to: "/agent-teams/$teamId", params: { teamId } })}>
-					{t("settings.backToChat")}
-				</Button>
+				<div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+					{error && <span className="max-w-56 text-right text-xs text-destructive">{error}</span>}
+					{saved && <span className="text-xs text-muted-foreground">{t("settings.saved")}</span>}
+					<Button
+						className="min-w-24"
+						variant="primary"
+						disabled={(!dirty && !agentDirty) || saving || agentSaving || !name.trim()}
+						onClick={() => void saveAll()}
+					>
+						<span className="icon-[solar--diskette-linear] h-4 w-4" aria-hidden="true" />
+						{saving || agentSaving ? t("settings.saving") : t("settings.save")}
+					</Button>
+					<Button variant="ghost" className="gap-1.5 text-destructive" onClick={requestDeleteTeam}>
+						<span className="icon-[solar--trash-bin-trash-linear] h-4 w-4" aria-hidden="true" />
+						{t("settings.delete")}
+					</Button>
+				</div>
 			</header>
 
-			<div className="flex min-h-0 flex-1">
-				<aside className="flex w-80 shrink-0 flex-col border-r border-border/60">
-					<div className="flex items-center justify-between gap-2 px-4 py-3">
+			<div className="grid min-h-0 flex-1 grid-cols-[18rem_minmax(0,1fr)]">
+				<aside className="flex min-h-0 flex-col border-r border-border/60 bg-card/10">
+					<div className="flex items-center justify-between gap-2 border-b border-border/50 px-4 py-4">
 						<div>
-							<div className="text-sm font-semibold">{t("settings.members")}</div>
-							<div className="text-[11px] text-muted-foreground">{t("teams.memberCount", { count: drafts.length })}</div>
+							<div className="text-sm font-semibold tracking-tight">{t("settings.members")}</div>
+							<div className="mt-0.5 text-xs text-muted-foreground">{t("teams.memberCount", { count: drafts.length })}</div>
 						</div>
-						<Button variant="outline" size="sm" onClick={() => setAddOpen(true)}>
+						<Button variant="outline" size="sm" className="gap-1.5" onClick={() => setAddOpen(true)}>
 							<span className="icon-[solar--add-circle-linear] h-4 w-4" aria-hidden="true" />
-							{t("settings.addMember")}
+							<span className="sr-only sm:not-sr-only">{t("settings.addMember")}</span>
 						</Button>
 					</div>
-					<div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-3">
+					<div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
 						{drafts.map((draft) => {
 							const profile = resources.document.agents.find(
 								(agent) => agent.id === (draft.kind === "existing" ? draft.profileId : draft.agentProfileId),
@@ -295,8 +356,8 @@ export function TeamSettingsPage(): JSX.Element {
 								<div
 									key={draft.key}
 									className={[
-										"group flex items-center gap-2 rounded-lg px-2 py-2 transition-colors",
-										selectedKey === draft.key ? "bg-primary/10" : "hover:bg-muted/60",
+										"group flex items-center gap-2 rounded-lg px-2 py-2.5 transition-colors",
+										selectedKey === draft.key ? "bg-muted/80 ring-1 ring-border/70" : "hover:bg-muted/40",
 									].join(" ")}
 								>
 									<button
@@ -305,11 +366,18 @@ export function TeamSettingsPage(): JSX.Element {
 										className="flex min-w-0 flex-1 items-center gap-2 rounded-md text-left outline-none focus-visible:ring-1 focus-visible:ring-primary/40"
 										onClick={() => setSelectedKey(draft.key)}
 									>
-										<AgentAvatarView name={displayName} avatar={profile?.avatar} blueprintId={profile?.blueprintId} />
+										<AgentAvatarView
+											name={displayName}
+											avatar={profile ? agentAvatarUrl(profile) : undefined}
+											blueprintId={profile?.blueprintId}
+											size="md"
+										/>
 										<span className="min-w-0 flex-1 truncate text-sm font-medium">{displayName}</span>
 									</button>
 									{draft.leader ? (
-										<span className="shrink-0 text-[10px] font-medium text-primary">{t("settings.leader")}</span>
+											<span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+												{t("settings.leader")}
+											</span>
 									) : (
 										<Button variant="ghost" size="icon-xs" onClick={() => makeLeader(draft.key)}>
 											<span className="icon-[solar--crown-star-linear] h-3.5 w-3.5" aria-hidden="true" />
@@ -324,21 +392,9 @@ export function TeamSettingsPage(): JSX.Element {
 							);
 						})}
 					</div>
-					<div className="border-t border-border/60 p-3">
-						<div className="flex items-center gap-2">
-							<Button variant="primary" disabled={!dirty || saving || !name.trim()} onClick={() => void saveTeam()}>
-								{saving ? t("settings.saving") : t("settings.saveTeam")}
-							</Button>
-							{saved && <span className="text-xs text-muted-foreground">{t("settings.saved")}</span>}
-						</div>
-						{error && <p className="mt-2 text-xs text-destructive">{error}</p>}
-						<Button variant="ghost" className="mt-3 text-destructive" onClick={requestDeleteTeam}>
-							{t("settings.deleteTeam")}
-						</Button>
-					</div>
 				</aside>
 
-				<main className="min-w-0 flex-1 overflow-y-auto p-8">
+				<main className="min-w-0 overflow-y-auto px-6 py-8 lg:px-10">
 					{selected?.kind === "new" ? (
 						<div className="mx-auto max-w-3xl rounded-xl border border-border/60 bg-card/30 p-5">
 							<h2 className="text-sm font-semibold">{selectedProfile ? agentDisplayName(selectedProfile, t) : ""}</h2>
@@ -352,6 +408,11 @@ export function TeamSettingsPage(): JSX.Element {
 							identityReadOnly={isBuiltinAgentPreset(selectedProfile)}
 							blueprint={blueprint}
 							capabilities={resources.capabilities}
+							hideSaveAction
+							saveRequest={saveRequest}
+							onDraftChange={handleAgentDraftChange}
+							onSavingChange={setAgentSaving}
+							onSaveComplete={() => setSaved(true)}
 							onPreview={(agentId) => window.vetta.agentTeams.previewAgentUpdate(agentId)}
 							onSave={saveAgent}
 						/>
@@ -382,7 +443,7 @@ export function TeamSettingsPage(): JSX.Element {
 								<div key={agent.id} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted/60">
 									<AgentAvatarView
 										name={agentDisplayName(agent, t)}
-										avatar={agent.avatar}
+										avatar={agentAvatarUrl(agent)}
 										blueprintId={agent.blueprintId}
 										size="md"
 									/>
@@ -407,4 +468,14 @@ export function TeamSettingsPage(): JSX.Element {
 
 function errorMessage(cause: unknown): string {
 	return cause instanceof Error ? cause.message : String(cause);
+}
+
+function isAgentDraftDirty(agent: AgentProfile, input: AgentProfileEditInput): boolean {
+	return (
+		input.name !== agent.name ||
+		input.description !== agent.description ||
+		input.avatar !== agentAvatarUrl(agent) ||
+		input.mentionHandle !== agent.mentionHandle ||
+		JSON.stringify(input.abilities) !== JSON.stringify(agent.abilities)
+	);
 }

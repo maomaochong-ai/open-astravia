@@ -1,6 +1,6 @@
 import type { AgentAbilitySelection, AgentBlueprint, AgentProfile, AgentProfileUpdateImpact } from "@vetta/agent-team";
 import { Button, Input, Switch } from "@vetta/ui";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { GroupedVirtuoso } from "react-virtuoso";
 import type { AgentProfileEditInput } from "../hooks/useAgentLibraryModel";
@@ -11,6 +11,8 @@ import {
 	toggleAgentAbility,
 } from "../lib/ability-selection";
 import { AbilityIcon } from "../../abilities/components/AbilityIcon";
+import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";
+import { AgentAvatarPicker } from "./AgentAvatarPicker";
 
 interface AgentProfileEditorProps {
 	readonly agent: AgentProfile;
@@ -19,6 +21,12 @@ interface AgentProfileEditorProps {
 	readonly displayName?: string;
 	readonly displayDescription?: string;
 	readonly identityReadOnly?: boolean;
+	/** External save requests are used by the Team settings page to keep one save action for all drafts. */
+	readonly saveRequest?: number;
+	readonly hideSaveAction?: boolean;
+	readonly onDraftChange?: (input: AgentProfileEditInput) => void;
+	readonly onSavingChange?: (saving: boolean) => void;
+	readonly onSaveComplete?: () => void;
 	readonly onPreview: (agentId: string) => Promise<AgentProfileUpdateImpact>;
 	readonly onSave: (
 		agent: AgentProfile,
@@ -33,26 +41,54 @@ export function AgentProfileEditor({
 	displayName,
 	displayDescription,
 	identityReadOnly = false,
+	saveRequest,
+	hideSaveAction = false,
+	onDraftChange,
+	onSavingChange,
+	onSaveComplete,
 	onPreview,
 	onSave,
 }: AgentProfileEditorProps): JSX.Element {
 	const { t } = useTranslation("agent-teams");
 	const [name, setName] = useState(displayName ?? agent.name);
 	const [description, setDescription] = useState(displayDescription ?? agent.description);
+	const [avatar, setAvatar] = useState(agentAvatarUrl(agent));
 	const [abilities, setAbilities] = useState<AgentAbilitySelection>(agent.abilities);
 	const [saving, setSaving] = useState(false);
 	const [saved, setSaved] = useState(false);
 	const [pendingImpact, setPendingImpact] = useState<AgentProfileUpdateImpact>();
 	const [error, setError] = useState<string>();
+	const lastSaveRequest = useRef(saveRequest);
 
 	useEffect(() => {
 		setName(displayName ?? agent.name);
 		setDescription(displayDescription ?? agent.description);
+		setAvatar(agentAvatarUrl(agent));
 		setAbilities(agent.abilities);
 		setPendingImpact(undefined);
 		setSaved(false);
 		setError(undefined);
 	}, [agent, displayDescription, displayName]);
+
+	useEffect(() => {
+		onDraftChange?.({
+			name: identityReadOnly ? agent.name : name,
+			description: identityReadOnly ? agent.description : description,
+			avatar,
+			mentionHandle: agent.mentionHandle,
+			abilities,
+		});
+	}, [abilities, agent.description, agent.mentionHandle, agent.name, avatar, description, identityReadOnly, name, onDraftChange]);
+
+	useEffect(() => {
+		onSavingChange?.(saving);
+	}, [onSavingChange, saving]);
+
+	useEffect(() => {
+		if (saveRequest === undefined || saveRequest === lastSaveRequest.current) return;
+		lastSaveRequest.current = saveRequest;
+		void save();
+	}, [saveRequest]);
 
 	async function save(): Promise<void> {
 		setSaving(true);
@@ -69,9 +105,11 @@ export function AgentProfileEditor({
 			await onSave(agent, {
 				name: identityReadOnly ? agent.name : name,
 				description: identityReadOnly ? agent.description : description,
+				avatar,
 				mentionHandle: agent.mentionHandle,
 				abilities,
 			});
+			onSaveComplete?.();
 			setPendingImpact(undefined);
 			setSaved(true);
 		} catch (cause) {
@@ -82,9 +120,9 @@ export function AgentProfileEditor({
 	}
 
 	return (
-		<div className="mx-auto max-w-3xl">
-			<header className="mb-8">
-				<h2 className="text-2xl font-bold">{displayName ?? agent.name}</h2>
+		<div className="mx-auto max-w-3xl pb-8">
+			<header className="mb-6 border-b border-border/60 pb-5">
+				<h2 className="text-2xl font-semibold tracking-tight">{displayName ?? agent.name}</h2>
 				<p className="mt-1 text-sm text-muted-foreground">
 					{t("profile.fixedPrompt", {
 						role: blueprint ? t(blueprint.nameKey as never) : agent.blueprintId,
@@ -93,21 +131,29 @@ export function AgentProfileEditor({
 			</header>
 
 			<div className="flex flex-col gap-5">
-				<TextField
-					label={t("profile.name")}
-					value={name}
-					readOnly={identityReadOnly}
-					onChange={setName}
-				/>
-				<label className="text-sm">
-					<span className="mb-1 block text-muted-foreground">{t("profile.description")}</span>
-					<textarea
-						value={description}
-						readOnly={identityReadOnly}
-						onChange={(event) => setDescription(event.target.value)}
-						className="min-h-24 w-full resize-y rounded-lg border border-border bg-background px-3 py-2 outline-none transition-shadow focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/30"
-					/>
-				</label>
+				<section className="rounded-xl border border-border/70 bg-card/20 p-5">
+					<div className="flex flex-col gap-5">
+						<AgentAvatarPicker
+							value={avatar}
+							onChange={setAvatar}
+						/>
+						<TextField
+							label={t("profile.name")}
+							value={name}
+							readOnly={identityReadOnly}
+							onChange={setName}
+						/>
+						<label className="text-sm">
+							<span className="mb-1 block text-muted-foreground">{t("profile.description")}</span>
+							<textarea
+								value={description}
+								readOnly={identityReadOnly}
+								onChange={(event) => setDescription(event.target.value)}
+								className="min-h-24 w-full resize-y rounded-lg border border-border bg-background px-3 py-2 outline-none transition-shadow focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/30"
+							/>
+						</label>
+					</div>
+				</section>
 				<AbilityEditor
 					abilities={abilities}
 					capabilities={capabilities}
@@ -126,19 +172,21 @@ export function AgentProfileEditor({
 						</div>
 					</div>
 				)}
-				<div className="flex items-center gap-3">
-					<Button variant="primary" disabled={saving} onClick={() => void save()}>
-						{saving ? t("profile.saving") : t("profile.save")}
-					</Button>
-					<span aria-live="polite" className="text-xs text-muted-foreground">
-						{saved ? t("profile.savedNextTurn") : ""}
-					</span>
-					{error && (
-						<span aria-live="polite" className="text-xs text-destructive">
-							{error}
+				{!hideSaveAction && (
+					<div className="flex items-center gap-3">
+						<Button variant="primary" disabled={saving} onClick={() => void save()}>
+							{saving ? t("profile.saving") : t("profile.save")}
+						</Button>
+						<span aria-live="polite" className="text-xs text-muted-foreground">
+							{saved ? t("profile.savedNextTurn") : ""}
 						</span>
-					)}
-				</div>
+					</div>
+				)}
+				{error && (
+					<span aria-live="polite" className="text-xs text-destructive">
+						{error}
+					</span>
+				)}
 			</div>
 		</div>
 	);

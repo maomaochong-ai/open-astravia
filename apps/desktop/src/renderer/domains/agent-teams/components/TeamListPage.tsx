@@ -20,6 +20,7 @@ import { useTranslation } from "react-i18next";
 import { notifyAgentTeamConfigurationChanged } from "../../project/components/sidebar/projects/panel/AgentTeamSidebarList";
 import { useAgentTeamSidebarSelection } from "@shared/agent-teams/useAgentTeamSidebarSelection";
 import { agentDisplayDescription, agentDisplayName, teamDisplayName } from "@shared/agent-teams/preset-presentation";
+import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";
 
 interface MemberDraft {
 	readonly handle: string;
@@ -215,7 +216,7 @@ function MemberDraftRow({
 				draft ? "border-primary/40 bg-primary/5" : "border-border"
 			}`}
 		>
-			<AgentAvatarView name={displayName} avatar={agent.avatar} blueprintId={agent.blueprintId} />
+								<AgentAvatarView name={displayName} avatar={agentAvatarUrl(agent)} blueprintId={agent.blueprintId} />
 			<Button
 				variant={draft ? "primary" : "ghost"}
 				size="icon-sm"
