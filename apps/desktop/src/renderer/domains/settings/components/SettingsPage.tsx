@@ -14,6 +14,9 @@ const AppshotSettings = lazy(async () => ({ default: (await import("./AppshotSet
 const ArchivedProjectsSettings = lazy(async () => ({
 	default: (await import("./ArchivedProjectsSettings")).ArchivedProjectsSettings,
 }));
+const ExtensionsSettings = lazy(async () => ({
+	default: (await import("./ExtensionsSettings")).ExtensionsSettings,
+}));
 const EnvironmentSettings = lazy(async () => ({
 	default: (await import("./EnvironmentSettings")).EnvironmentSettings,
 }));
@@ -41,6 +44,7 @@ const SETTINGS_CONTENT: Record<Exclude<SettingsTab, "mcp">, LazyExoticComponent<
 	account: AccountSettings,
 	models: ModelsSettings,
 	environment: EnvironmentSettings,
+	extensions: ExtensionsSettings,
 	permissions: PermissionsSettings,
 	im: ImBridgeSettings,
 	webhook: WebhookSettings,

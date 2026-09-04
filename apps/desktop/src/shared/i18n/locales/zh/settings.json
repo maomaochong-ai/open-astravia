@@ -303,6 +303,12 @@
     "disabled": "已禁用",
     "pluginCount": "已安装 {{count}} 个插件"
   },
+  "extensions": {
+    "title": "扩展设置",
+    "description": "已安装插件提供的页面入口，点击直接打开。插件自身的配置在各自页面里。",
+    "empty": "暂无插件页面",
+    "emptyHint": "在「扩展」里安装或启用插件后，它提供的页面会出现在这里。"
+  },
   "runtimeConfiguration": {
     "applyLabel": "生效时间",
     "secretConfigured": "已安全保存；输入新值可替换",
@@ -1038,6 +1044,7 @@
   "tabAppshot": "应用快照",
   "betaBadge": "BETA",
   "tabEnvironment": "应用环境",
+  "tabExtensions": "扩展设置",
   "tabKnowledge": "知识库设置",
   "tabPet": "Vetta Vivi",
   "tabPermissions": "权限管理",

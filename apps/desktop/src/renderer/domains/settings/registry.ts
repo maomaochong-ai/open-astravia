@@ -12,6 +12,7 @@ export type SettingsTabLabelKey =
 	| "tabShortcuts"
 	| "tabAppshot"
 	| "tabEnvironment"
+	| "tabExtensions"
 	| "tabKnowledge"
 	| "tabPet"
 	| "tabPermissions"
@@ -64,6 +65,7 @@ export const SETTINGS_TABS: readonly SettingsTabRegistration[] = [
 		macOnly: true,
 	},
 	{ key: "environment", label: "应用环境", labelKey: "tabEnvironment", icon: "icon-[mdi--package-variant-closed]" },
+	{ key: "extensions", label: "扩展设置", labelKey: "tabExtensions", icon: "icon-[solar--widget-2-linear]" },
 	{
 		key: "knowledge",
 		label: "知识库设置",

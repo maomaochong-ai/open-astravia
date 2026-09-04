@@ -303,6 +303,12 @@
     "disabled": "Disabled",
     "pluginCount": "{{count}} plugin(s) installed"
   },
+  "extensions": {
+    "title": "Extensions",
+    "description": "Pages contributed by installed plugins. Each plugin's own settings live inside its page.",
+    "empty": "No plugin pages yet",
+    "emptyHint": "Install or enable a plugin under Extensions and its pages show up here."
+  },
   "runtimeConfiguration": {
     "applyLabel": "Applies",
     "secretConfigured": "Saved securely; enter a new value to replace it",
@@ -1038,6 +1044,7 @@
   "tabAppshot": "App Snapshot",
   "betaBadge": "BETA",
   "tabEnvironment": "Environment",
+  "tabExtensions": "Extensions",
   "tabKnowledge": "Knowledge Base",
   "tabPet": "Vetta Vivi",
   "tabPermissions": "Permissions",
