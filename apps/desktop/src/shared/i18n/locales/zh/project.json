@@ -19,7 +19,6 @@
 			"unpin": "取消置顶",
 			"pinFull": "置顶区最多 5 个（含新会话）",
 			"reset": "恢复默认顺序",
-			"dragHint": "拖动可排序，也可置顶到左上方",
 			"customize": "自定义导航"
 		},
 		"clawConnected": "Claw 已连接",

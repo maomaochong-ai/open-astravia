@@ -27,7 +27,6 @@ export function DefaultSidebar({ classNames, model, onOpenSession }: DefaultSide
 				unpin: t("sidebar.nav.unpin"),
 				pinFull: t("sidebar.nav.pinFull"),
 				reset: t("sidebar.nav.reset"),
-				dragHint: t("sidebar.nav.dragHint"),
 			}}
 			topBar={
 				<SidebarTopBar

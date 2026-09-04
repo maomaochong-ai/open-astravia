@@ -15,7 +15,6 @@ export interface SidebarNavMorePanelLabels {
 	/** 置顶区已满时 pin 按钮的 title。 */
 	pinFull: string;
 	reset: string;
-	dragHint: string;
 }
 
 export interface SidebarNavMorePanelProps {
@@ -73,7 +72,7 @@ function NavRow({
 			<span
 				aria-hidden
 				className={cn(
-					"icon-[solar--menu-dots-linear] h-3.5 w-3.5 shrink-0 rotate-90 text-muted-foreground/40",
+					"icon-[solar--hamburger-menu-linear] h-3.5 w-3.5 shrink-0 text-muted-foreground/40",
 					dragProps.draggable ? "cursor-grab" : "opacity-0",
 				)}
 			/>
@@ -137,9 +136,20 @@ export function SidebarNavMorePanel({
 
 	return (
 		<div className="flex max-h-[70vh] flex-col gap-1 overflow-y-auto">
-			<p className="px-2 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70">
-				{labels.pinnedTitle}
-			</p>
+			<div className="flex items-center gap-1 px-2 pt-1">
+				<p className="min-w-0 flex-1 truncate text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70">
+					{labels.pinnedTitle}
+				</p>
+				<button
+					type="button"
+					onClick={onReset}
+					title={labels.reset}
+					aria-label={labels.reset}
+					className="-me-1 flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/60 transition-colors hover:bg-accent/50 hover:text-foreground"
+				>
+					<span aria-hidden className="icon-[solar--restart-linear] h-3.5 w-3.5" />
+				</button>
+			</div>
 			<div className="flex flex-col" onDragOver={pinnedRegion.onDragOver} onDrop={pinnedRegion.onDrop}>
 				{pinnedItems.map((item) => (
 					<div key={item.key}>
@@ -183,17 +193,6 @@ export function SidebarNavMorePanel({
 					);
 				})}
 				<DropLine visible={!hasLockedTail && drag.isDropAtEnd("more")} />
-			</div>
-
-			<div className="mt-1 flex items-center gap-2 border-t border-border/60 px-2 pb-1 pt-1.5">
-				<span className="min-w-0 flex-1 truncate text-[10px] text-muted-foreground/60">{labels.dragHint}</span>
-				<button
-					type="button"
-					onClick={onReset}
-					className="shrink-0 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground/70 transition-colors hover:bg-accent/50 hover:text-foreground"
-				>
-					{labels.reset}
-				</button>
 			</div>
 		</div>
 	);

@@ -19,7 +19,6 @@
 			"unpin": "Unpin",
 			"pinFull": "Up to 5 pinned entries (including New session)",
 			"reset": "Reset order",
-			"dragHint": "Drag to reorder, or pin to the top",
 			"customize": "Customize navigation"
 		},
 		"clawConnected": "Claw connected",
