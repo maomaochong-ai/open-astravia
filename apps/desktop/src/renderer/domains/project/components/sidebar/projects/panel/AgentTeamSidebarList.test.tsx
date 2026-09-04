@@ -88,6 +88,11 @@ describe("AgentTeamSidebarList", () => {
 		render(<AgentTeamSidebarList />);
 
 		const createButton = await screen.findByRole("button", { name: "New chat" });
+		// 操作按钮由包含行的上下边界和 auto margin 居中，不再依赖 transform。
+		// 通用 Button 自带按下态 transform，不能再与行居中 transform 叠加。
+		expect(createButton.className).toContain("inset-y-0");
+		expect(createButton.className).toContain("my-auto");
+		expect(createButton.className).not.toContain("top-1/2");
 		fireEvent.click(createButton);
 
 		await waitFor(() => {

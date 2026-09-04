@@ -126,7 +126,7 @@ export function AgentTeamSidebarList(): JSX.Element {
 							<Button
 								variant="ghost"
 								size="icon-xs"
-								className="absolute right-1 top-1/2 -translate-y-1/2 bg-background opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+								className="absolute inset-y-0 right-1 my-auto bg-background opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
 								title={t("chat.newSession")}
 								aria-label={t("chat.newSession")}
 								disabled={Boolean(creatingTeamId)}
