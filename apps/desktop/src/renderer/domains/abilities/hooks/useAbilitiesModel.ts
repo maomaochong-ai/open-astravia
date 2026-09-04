@@ -173,7 +173,15 @@ export function useAbilitiesModel(): AbilitiesModel {
 			}
 			if (item.usesOAuth && !item.authorized) void mcp.onAuthorizeOAuth(item.serverName);
 		},
-		configure: (item) => mcp.onConfigureBuiltinSecrets(item.serverName, item.preset),
+		configure: (item) => {
+			// 声明了安装后步骤的能力，「配置」就是去完成那一步（扫码），
+			// 可选参数留给「编辑配置」，不要再把用户送进一个与登录无关的凭证表单。
+			if (item.postInstallSetup) {
+				actions.promptMcpSetup(item);
+				return;
+			}
+			mcp.onConfigureBuiltinSecrets(item.serverName, item.preset);
+		},
 		edit: (item) => mcp.onToggleEditServer(item.serverName),
 		revokeAuthorization: (item) => {
 			void mcp.onRevokeOAuth(item.serverName);
