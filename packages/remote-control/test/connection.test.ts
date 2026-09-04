@@ -33,6 +33,36 @@ async function connectClient(
 }
 
 describe("RemoteConnection", () => {
+	it("ignores a hello acknowledgement for a stale connection", async () => {
+		const { mobileTransport, desktopTransport } = pair();
+		const mobile = new RemoteConnection(mobileTransport, {
+			role: "mobile",
+			deviceId: "phone-1",
+			deviceName: "Phone",
+			capabilities,
+			connectionId: "mobile-connection",
+		});
+		await desktopTransport.connect({
+			onFrame: (frame) => {
+				if (frame.type === "hello") {
+					void desktopTransport.send({
+						type: "hello_ack",
+						protocolVersion: 1,
+						connectionId: "stale-connection",
+						peerDeviceId: "desktop-1",
+					});
+				}
+			},
+			onClose: () => undefined,
+		});
+
+		await mobile.connect();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(mobile.getSnapshot().state).toBe("connecting");
+		expect(mobile.getSnapshot().peerDeviceId).toBeUndefined();
+	});
+
 	it("correlates request and response and reports RTT", async () => {
 		const { mobileTransport, desktopTransport } = pair();
 		let now = 100;

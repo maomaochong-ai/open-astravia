@@ -198,6 +198,17 @@ export class RemoteConnection {
 	}
 
 	private handleHelloAck(frame: RemoteHelloAck): void {
+		// A relay can have more than one connection attempt in flight while a
+		// client is recovering.  Only accept the acknowledgement for this
+		// connection; a stale acknowledgement must not make the new transport
+		// appear online.
+		if (frame.connectionId !== this.connectionId) {
+			this.logger.warn("remote hello acknowledgement belongs to another connection", {
+				connectionId: this.connectionId,
+				ackConnectionId: frame.connectionId,
+			});
+			return;
+		}
 		this.peerDeviceId = frame.peerDeviceId;
 		this.setState("online");
 		this.logger.info("remote connection online", {

@@ -85,7 +85,7 @@ export class RemotePairRoom extends DurableObject<Env> {
 	}
 
 	async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer): Promise<void> {
-		const attachment = readAttachment(socket);
+		let attachment = readAttachment(socket);
 		if (typeof message !== "string" || message.length > MAX_MESSAGE_CHARS) {
 			this.rejectSocket(socket, attachment, "invalid_message_shape");
 			return;
@@ -96,6 +96,10 @@ export class RemotePairRoom extends DurableObject<Env> {
 			return;
 		}
 		for (const line of lines) {
+			// `hello` and the first request may arrive in one newline-delimited
+			// WebSocket message. Re-read the attachment after each frame so the
+			// synchronous hello transition is visible to the next frame.
+			attachment = readAttachment(socket);
 			let frame: RemoteFrame;
 			try {
 				frame = parseRemoteFrame(line);

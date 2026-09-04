@@ -75,6 +75,30 @@ describe("remote relay Worker", () => {
 		mobile.close(1000, "test complete");
 	});
 
+	it("accepts a hello followed by a request in one WebSocket message", async () => {
+		const roomId = "batched_handshake_abcdefghijkl";
+		const desktop = await requireSocket(await upgrade("desktop", pairingSecret, roomId));
+		const mobile = await requireSocket(await upgrade("mobile", pairingSecret, roomId));
+		const response = nextFrame(mobile);
+		const helloFrame = hello("mobile", "phone-batched", "mobile-batched");
+		const requestFrame: RemoteFrame = {
+			type: "request",
+			requestId: "request-batched",
+			method: "diagnostics.snapshot",
+		};
+		mobile.send(`${encodeRemoteFrame(helloFrame)}${encodeRemoteFrame(requestFrame)}`);
+
+		await expect(response).resolves.toMatchObject({
+			type: "response",
+			requestId: "request-batched",
+			success: false,
+			error: { code: "transport_closed" },
+		});
+
+		desktop.close(1000, "test complete");
+		mobile.close(1000, "test complete");
+	});
+
 	it("closes a client that sends malformed protocol data", async () => {
 		const roomId = "pairing_invalid_frame_abcdefghijkl";
 		const desktop = await requireSocket(await upgrade("desktop", pairingSecret, roomId));
