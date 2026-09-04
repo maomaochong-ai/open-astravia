@@ -12,6 +12,7 @@ import type { PromptAttachmentRef, SessionExecutionMode } from "@vetta/runtime-c
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { resolveSessionContextComposition } from "../../services/context-composition-cache";
 import { createTeamChatSession, loadTeamChatSession } from "./team-chat-session-service";
 import {
 	projectTeamConversationTimeline,
@@ -59,6 +60,8 @@ export function useTeamChatModel(
 		Readonly<Record<string, NonNullable<TeamChatViewModel["contextUsage"]>>>
 	>({});
 	const [compactingByRuntime, setCompactingByRuntime] = useState<Readonly<Record<string, boolean>>>({});
+	const sessionRef = useRef(session);
+	sessionRef.current = session;
 	const loadedSessionRef = useRef<{ readonly teamId: string; readonly sessionId: string } | undefined>(undefined);
 	const cancelledRequests = useRef(new Set<string>());
 	const pendingRef = useRef<TeamPendingRequest | undefined>(undefined);
@@ -219,7 +222,16 @@ export function useTeamChatModel(
 				);
 			}
 			if (event.type === "desktop.team-context-usage") {
-				setContextUsages((current) => ({ ...current, [event.runtimeSessionId]: event.contextUsage }));
+				const currentSession = sessionRef.current;
+				if (!currentSession) return;
+				setContextUsages((current) => ({
+					...current,
+					[event.runtimeSessionId]: resolveTeamContextUsage(
+						currentSession,
+						event.runtimeSessionId,
+						event.contextUsage,
+					),
+				}));
 				if (event.isCompacting !== undefined) {
 					setCompactingByRuntime((current) => ({
 						...current,
@@ -643,6 +655,23 @@ function readSnapshotContextUsages(
 	const display = snapshot.display;
 	const usages = display?.contextUsages ?? (display?.contextUsage ? [display.contextUsage] : []);
 	return Object.fromEntries(
-		usages.flatMap((usage) => (usage.runtimeSessionId ? ([[usage.runtimeSessionId, usage]] as const) : [])),
+		usages.flatMap((usage) => {
+			if (!usage.runtimeSessionId) return [];
+			return [
+				[usage.runtimeSessionId, resolveTeamContextUsage(snapshot.session, usage.runtimeSessionId, usage)],
+			] as const;
+		}),
 	);
+}
+
+function resolveTeamContextUsage(
+	session: DesktopTeamSessionSnapshot["session"],
+	runtimeSessionId: string,
+	usage: NonNullable<TeamChatViewModel["contextUsage"]>,
+): NonNullable<TeamChatViewModel["contextUsage"]> {
+	const runtime = Object.values(session.memberRuntime).find((candidate) => candidate.sessionId === runtimeSessionId);
+	const composition = runtime
+		? resolveSessionContextComposition(runtime.sessionPath, usage.composition)
+		: usage.composition;
+	return composition && !usage.composition ? { ...usage, composition } : usage;
 }

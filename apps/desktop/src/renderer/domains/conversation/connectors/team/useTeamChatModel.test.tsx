@@ -7,6 +7,7 @@ import {
 } from "@vetta/agent-team";
 import type { DesktopTeamSessionStreamEvent, DesktopTeamSessionSnapshot } from "@preload/api-types/team-conversation-display";
 import { createAssistantMessage } from "@vetta/ai";
+import type { ContextCompositionReport } from "@vetta/runtime-core";
 import { reasoningByModelAtom, selectedModelAtom } from "@shared/store/atoms";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { createStore, Provider } from "jotai";
@@ -14,6 +15,7 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useTeamChatModel } from "./useTeamChatModel";
 import { loadTeamChatSession } from "./team-chat-session-service";
+import { writeCachedContextComposition } from "../../services/context-composition-cache";
 
 vi.mock("@shared/hooks/useRendererMarkdownModel", () => ({
 	useRendererMarkdownModel: () => ({
@@ -344,6 +346,42 @@ describe("useTeamChatModel streaming flow", () => {
 		expect(result.current.model.contextUsagesByRuntime?.["second-runtime"]?.percent).toBe(70);
 	});
 
+	it("restores each member's cached composition when reopening a team session", async () => {
+		const scopedSession: TeamSessionDocument = {
+			...baseSession,
+			memberRuntime: {
+				[leader.id]: {
+					sessionId: "leader-runtime",
+					sessionPath: "C:/sessions/leader.jsonl",
+					agentProfileRevision: 1,
+					deliveredEventIds: [],
+				},
+			},
+		};
+		const cachedReport = contextCompositionReport("cached-leader");
+		localStorage.clear();
+		writeCachedContextComposition("C:/sessions/leader.jsonl", cachedReport);
+		vi.mocked(loadTeamChatSession).mockResolvedValue({
+			document,
+			snapshot: {
+				...baseSnapshot,
+				session: scopedSession,
+				display: {
+					memberConversations: [],
+					contextUsages: [
+						{ runtimeSessionId: "leader-runtime", percent: 20, contextWindow: 1_000 },
+					],
+				},
+			},
+			sessions: [],
+		});
+
+		const { result } = renderHook(() => useTeamChatModel(team.id));
+		await waitFor(() => expect(result.current.model.status).toBe("ready"));
+
+		expect(result.current.model.contextUsagesByRuntime?.["leader-runtime"]?.composition?.callId).toBe("cached-leader");
+	});
+
 	it("does not reload the same session when the route is canonicalized", async () => {
 		const { result, rerender } = renderHook(
 			({ preferredSessionId }: { preferredSessionId?: string }) =>
@@ -358,3 +396,16 @@ describe("useTeamChatModel streaming flow", () => {
 		expect(vi.mocked(loadTeamChatSession).mock.calls.length).toBe(loadCalls);
 	});
 });
+
+function contextCompositionReport(callId: string): ContextCompositionReport {
+	return {
+		version: 1,
+		callId,
+		snapshotId: `${callId}-snapshot`,
+		phase: "completed",
+		createdAt: 1,
+		model: { provider: "test", modelId: "fixture", contextWindow: 1_000 },
+		estimate: { tokens: 200, knownTokens: 200, coverage: "complete" },
+		sections: [],
+	};
+}

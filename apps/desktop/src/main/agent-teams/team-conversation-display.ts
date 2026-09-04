@@ -27,7 +27,7 @@ export interface TeamConversationDisplaySource {
 		readonly contextTokens?: number | null;
 		readonly contextWindow: number;
 		readonly composition?: ContextCompositionReport;
-	};
+	}[];
 }
 
 /**
