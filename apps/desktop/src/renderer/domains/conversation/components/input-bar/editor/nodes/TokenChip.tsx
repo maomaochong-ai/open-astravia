@@ -14,6 +14,7 @@ export function TokenChip({
 	iconNode,
 	label,
 	title,
+	tone = "primary",
 }: {
 	/** iconify 字体类；iconNode / iconUrl 都没给时用它。 */
 	icon?: string;
@@ -23,10 +24,16 @@ export function TokenChip({
 	iconNode?: ReactNode;
 	label: string;
 	title?: string;
+	/** Visual semantic used to distinguish skills from other inline references. */
+	tone?: "primary" | "member";
 }): JSX.Element {
 	return (
 		<span
-			className="mx-px inline-block max-w-full select-none whitespace-pre rounded-md border border-primary/25 bg-primary/10 px-1.5 align-baseline text-[12px] font-medium leading-[1.6] text-primary"
+			className={`mx-px inline-block max-w-full select-none whitespace-pre rounded-md border px-1.5 align-baseline text-[12px] font-medium leading-[1.6] ${
+				tone === "member"
+					? "border-sky-400/30 bg-sky-400/10 text-sky-200"
+					: "border-primary/25 bg-primary/10 text-primary"
+			}`}
 			title={title ?? label}
 			data-input-token="true"
 		>

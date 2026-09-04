@@ -6,7 +6,7 @@ import type { ContextCompositionReport } from "@vetta/runtime-core";
 import { createStore, Provider } from "jotai";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { useDefaultContextRingModel } from "./useContextRingModel";
+import { useContextRingScopeModels, useDefaultContextRingModel } from "./useContextRingModel";
 
 const contextRingModelCapture = vi.hoisted(() => ({
 	buildDetails: vi.fn(() => null),
@@ -65,5 +65,51 @@ describe("useContextRingModel", () => {
 
 		expect(result.current?.percent).toBe(40);
 		expect(result.current?.tooltip).toBe("contextRing.tooltip.usage");
+	});
+
+	it("builds an independent context model for every team member", () => {
+		const firstComposition: ContextCompositionReport = {
+			version: 1,
+			callId: "call-leader",
+			snapshotId: "snapshot-leader",
+			phase: "prepared",
+			createdAt: 1,
+			model: { provider: "test", modelId: "leader-model", contextWindow: 100_000 },
+			estimate: { tokens: 20_000, knownTokens: 20_000, coverage: "complete" },
+			sections: [],
+		};
+		const secondComposition: ContextCompositionReport = {
+			...firstComposition,
+			callId: "call-reviewer",
+			snapshotId: "snapshot-reviewer",
+			model: { provider: "test", modelId: "reviewer-model", contextWindow: 200_000 },
+			estimate: { tokens: 100_000, knownTokens: 100_000, coverage: "complete" },
+		};
+		const wrapper = ({ children }: { children: ReactNode }) => <Provider>{children}</Provider>;
+
+		const { result } = renderHook(
+			() =>
+				useContextRingScopeModels([
+					{
+						id: "leader",
+						label: "Leader",
+						usage: { percent: 20, contextWindow: 100_000, composition: firstComposition },
+						isCompacting: false,
+					},
+					{
+						id: "reviewer",
+						label: "Reviewer",
+						usage: { percent: 50, contextWindow: 200_000, composition: secondComposition },
+						isCompacting: true,
+					},
+				]),
+			{ wrapper },
+		);
+
+		expect(result.current).toHaveLength(2);
+		expect(result.current.map((scope) => scope.id)).toEqual(["leader", "reviewer"]);
+		expect(result.current[0]?.model.percent).toBe(20);
+		expect(result.current[1]?.model.percent).toBe(50);
+		expect(result.current[1]?.model.isCompacting).toBe(true);
 	});
 });

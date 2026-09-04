@@ -2,11 +2,11 @@ import type { SkillInfo } from "@preload/api";
 import type { AppshotAttachment } from "@shared/store/atoms";
 import type { TodoItem } from "@shared/store/todo-atoms";
 import type { InputBarContextMenuViewProps, SessionDropZoneViewProps } from "@vetta/theme-ui/chat";
-import type { ComponentProps, MouseEvent } from "react";
+import type { ComponentProps, MouseEvent, ReactNode } from "react";
 import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
 import type { ContextRingModel } from "../../hooks/useContextRingModel";
 import type { ModelSelectorScope } from "../../hooks/useModelSelectorModel";
-import type { SelectedFile } from "../AtPanel";
+import type { AtPanelItem, AtPanelSelection } from "../AtPanel";
 import type { ExecutionModeSelectorViewProps } from "../execution-mode-selector/types";
 import type { McpElicitationPanel } from "../McpElicitationPanel";
 import type { QuestionPanel } from "../QuestionPanel";
@@ -116,12 +116,14 @@ export interface InputBarCommandModel {
 	readonly slashFilter: string;
 	readonly atOpen: boolean;
 	readonly atFilter: string;
+	/** Extra @ candidates supplied by the connector (for example Team members). */
+	readonly atItems?: readonly AtPanelItem[];
 	readonly onTriggerChange: (trigger: TriggerMatch | null) => void;
 	readonly onSlashClose: () => void;
 	readonly onSlashSelect: (skill: SkillInfo, icon?: string) => void;
 	readonly onConnectorSelect: (connector: ConnectorGridItem) => void;
 	readonly onAtClose: () => void;
-	readonly onAtSelect: (file: SelectedFile) => void;
+	readonly onAtSelect: (selection: AtPanelSelection) => void;
 	readonly onOpen: () => void;
 }
 
@@ -132,6 +134,8 @@ export type InputBarLeadingTool = {
 export type InputBarTrailingTool = {
 	readonly kind: "context-usage";
 	readonly model: ContextRingModel;
+	/** Optional composition slot for hosts that need to extend the context ring. */
+	readonly render?: (model: ContextRingModel) => ReactNode;
 };
 
 export interface InputBarModel {
@@ -185,14 +189,16 @@ export interface InputBarModel {
 		readonly persistenceId?: string | null;
 	};
 	routing?: {
-		readonly leaderLabel: string;
-		readonly leaderSelected: boolean;
-		readonly onSelectLeader: () => void;
+		/** Whether to render the inline aggregate status beside the member buttons. */
+		readonly showStatusSummary?: boolean;
 		readonly participants: readonly {
 			readonly id: string;
 			readonly name: string;
 			readonly avatar?: string;
 			readonly blueprintId: string;
+			readonly badgeLabel?: string;
+			/** Visible status text for Team member activity (for example, "Replying"). */
+			readonly statusLabel?: string;
 			readonly selected: boolean;
 			readonly status: "idle" | "working" | "error";
 			readonly onSelect: () => void;

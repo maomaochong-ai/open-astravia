@@ -105,6 +105,7 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 						onSelect={commands.onAtSelect}
 						filter={commands.atFilter}
 						cwd={model.effectiveCwd}
+						items={commands.atItems}
 					/>
 				</PerfSendProfiler> : null}
 				{commands ? <PerfSendProfiler id="ib:ActionButtonBar">
@@ -237,7 +238,7 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 										<MessageInput.ToolbarTrailing>
 											<InputBarModelAction visible={!slashOpen} updateActiveSession={model.modelSelector.updateActiveSession} scope={model.modelSelector.scope} />
 							{model.trailingTools.map((tool) => (
-								<InputBarContextAction key={tool.kind} visible={!slashOpen} model={tool.model} />
+								<InputBarContextAction key={tool.kind} visible={!slashOpen} model={tool.model} render={tool.render} />
 							))}
 											{slashOpen ? null : (
 												<InputBarSpeechAction input={model.speechInput} />

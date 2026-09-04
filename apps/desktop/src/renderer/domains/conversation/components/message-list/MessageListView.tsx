@@ -6,6 +6,7 @@ import {
 import { useMessageFeedActiveItem } from "@shared/components/message-feed/useMessageFeedActiveItem";
 import { useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
+import { conversationItemRenderKey } from "@shared/conversation";
 import { useMessageSelectionContextMenu } from "../../hooks/useMessageSelectionContextMenu";
 import { SuggestionBubbles } from "../SuggestionBubbles";
 import { ForkOriginBanner, resolveForkOriginPlacement } from "./ForkOriginBanner";
@@ -166,7 +167,7 @@ export function MessageListView({
 									virtuosoRef={scroll.virtuosoRef}
 									scrollerRef={scroll.scrollerRef}
 									items={messages}
-									getKey={(message) => message.entryId ?? message.id}
+									getKey={conversationItemRenderKey}
 									atBottomStateChange={scroll.onAtBottomChange}
 									atBottomThreshold={80}
 									itemsRendered={activeItem.onItemsRendered}

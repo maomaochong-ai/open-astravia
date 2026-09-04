@@ -14,6 +14,7 @@ import {
 	$createConnectorTokenNode,
 	$createFileTokenNode,
 	$createImageTokenNode,
+	$createMemberTokenNode,
 	$createSceneTokenNode,
 	$createSkillTokenNode,
 	ImageTokenNode,
@@ -103,6 +104,17 @@ export function insertImageToken(path: string, options?: InsertTokenOptions): vo
 	insert(() => [$createImageTokenNode(path)], options);
 }
 
+/** Insert a styled member reference while preserving its plain @handle wire form. */
+export function insertMemberToken(
+	handle: string,
+	label: string,
+	avatar?: string,
+	meta?: string,
+	options?: InsertTokenOptions,
+): void {
+	insert(() => [$createMemberTokenNode(handle, label, avatar, meta)], options);
+}
+
 /**
  * 在一次 Lexical transaction 中插入一组文本和图片。批量粘贴不能逐项调用
  * insertImageToken / insertPlainText，否则每张图都会各自触发投影 atom、React
@@ -153,6 +165,15 @@ export function removeSelection(): void {
 /** 在光标处插入纯文本（右键粘贴）。选区非空时替换选区。 */
 export function insertPlainText(text: string): void {
 	current?.update(() => {
+		const selection = $getSelection();
+		if ($isRangeSelection(selection)) selection.insertText(text);
+	});
+}
+
+/** Replace the active `/` or `@` trigger with caller supplied plain text. */
+export function insertTextAtTrigger(text: string): void {
+	current?.update(() => {
+		$removeTriggerBeforeCaret();
 		const selection = $getSelection();
 		if ($isRangeSelection(selection)) selection.insertText(text);
 	});

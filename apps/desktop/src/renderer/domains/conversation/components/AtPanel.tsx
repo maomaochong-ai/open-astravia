@@ -10,4 +10,4 @@ export function AtPanel(props: AtPanelProps): JSX.Element {
 	return <ThemedAtPanelView {...model.viewProps} />;
 }
 
-export type { AtPanelProps, AtPanelViewProps, SelectedFile } from "./at-panel/types";
+export type { AtPanelItem, AtPanelProps, AtPanelSelection, AtPanelViewProps, SelectedFile } from "./at-panel/types";

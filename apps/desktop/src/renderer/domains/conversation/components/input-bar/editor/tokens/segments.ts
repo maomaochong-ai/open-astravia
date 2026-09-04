@@ -20,6 +20,7 @@ import {
 	$isConnectorTokenNode,
 	$isFileTokenNode,
 	$isImageTokenNode,
+	$isMemberTokenNode,
 	$isSkillTokenNode,
 } from "../nodes";
 
@@ -48,6 +49,11 @@ function collect(node: LexicalNode, out: InputSegment[]): void {
 	}
 	if ($isImageTokenNode(node)) {
 		out.push({ kind: "image", path: node.getPath() });
+		return;
+	}
+	if ($isMemberTokenNode(node)) {
+		// Member metadata is editor-only; the persisted/send form is the regular @handle text.
+		pushText(out, node.getTextContent());
 		return;
 	}
 	if ($isLineBreakNode(node)) {

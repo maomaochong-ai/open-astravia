@@ -33,4 +33,54 @@ describe("projectTeamConversationDisplay", () => {
 		expect(readHistory).toHaveBeenCalledTimes(2);
 		expect(display.memberConversations[0]?.history[0]).toMatchObject({ type: "message" });
 	});
+
+	it("projects context usage for every member while retaining the legacy primary usage", async () => {
+		const session = {
+			id: "team-session",
+			executionMode: "full-access",
+			memberRuntime: {
+				leader: { sessionId: "runtime-leader", sessionPath: "C:/sessions/leader.jsonl" },
+				reviewer: { sessionId: "runtime-reviewer", sessionPath: "C:/sessions/reviewer.jsonl" },
+			},
+		} as unknown as TeamSessionDocument;
+
+		const display = await projectTeamConversationDisplay({
+			session,
+			readHistory: async () => [],
+			runtimeStates: [
+				{
+					memberId: "leader",
+					runtimeSessionId: "runtime-leader",
+					executionMode: "full-access",
+					contextPercent: 25,
+					contextTokens: 25_000,
+					contextWindow: 100_000,
+				},
+				{
+					memberId: "reviewer",
+					runtimeSessionId: "runtime-reviewer",
+					executionMode: "full-access",
+					contextPercent: 50,
+					contextWindow: 200_000,
+				},
+			],
+		});
+
+		expect(display.contextUsages).toEqual([
+			{
+				memberId: "leader",
+				runtimeSessionId: "runtime-leader",
+				percent: 25,
+				contextTokens: 25_000,
+				contextWindow: 100_000,
+			},
+			{
+				memberId: "reviewer",
+				runtimeSessionId: "runtime-reviewer",
+				percent: 50,
+				contextWindow: 200_000,
+			},
+		]);
+		expect(display.contextUsage).toEqual(display.contextUsages?.[0]);
+	});
 });

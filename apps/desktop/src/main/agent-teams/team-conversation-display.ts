@@ -19,7 +19,7 @@ export interface LegacyTeamToolExecution {
 export interface TeamConversationDisplaySource {
 	readonly session: TeamSessionDocument;
 	readonly readHistory: (runtimeSessionId: string, sessionPath: string) => Promise<readonly HistoryEntry[]>;
-	readonly runtimeState?: {
+	readonly runtimeStates?: readonly {
 		readonly memberId: string;
 		readonly runtimeSessionId: string;
 		readonly executionMode: SessionExecutionMode;
@@ -46,18 +46,30 @@ export async function projectTeamConversationDisplay(
 	);
 	return {
 		memberConversations,
-		executionMode: source.runtimeState?.executionMode ?? source.session.executionMode ?? "full-access",
-		...(source.runtimeState
+		executionMode: source.runtimeStates?.[0]?.executionMode ?? source.session.executionMode ?? "full-access",
+		...(source.runtimeStates && source.runtimeStates.length > 0
+			? {
+					contextUsages: source.runtimeStates.map((runtimeState) => ({
+						memberId: runtimeState.memberId,
+						runtimeSessionId: runtimeState.runtimeSessionId,
+						percent: runtimeState.contextPercent,
+						...(runtimeState.contextTokens === undefined ? {} : { contextTokens: runtimeState.contextTokens }),
+						contextWindow: runtimeState.contextWindow,
+						...(runtimeState.composition ? { composition: runtimeState.composition } : {}),
+					})),
+				}
+			: {}),
+		...(source.runtimeStates?.[0]
 			? {
 					contextUsage: {
-						memberId: source.runtimeState.memberId,
-						runtimeSessionId: source.runtimeState.runtimeSessionId,
-						percent: source.runtimeState.contextPercent,
-						...(source.runtimeState.contextTokens === undefined
+						memberId: source.runtimeStates[0].memberId,
+						runtimeSessionId: source.runtimeStates[0].runtimeSessionId,
+						percent: source.runtimeStates[0].contextPercent,
+						...(source.runtimeStates[0].contextTokens === undefined
 							? {}
-							: { contextTokens: source.runtimeState.contextTokens }),
-						contextWindow: source.runtimeState.contextWindow,
-						...(source.runtimeState.composition ? { composition: source.runtimeState.composition } : {}),
+							: { contextTokens: source.runtimeStates[0].contextTokens }),
+						contextWindow: source.runtimeStates[0].contextWindow,
+						...(source.runtimeStates[0].composition ? { composition: source.runtimeStates[0].composition } : {}),
 					},
 				}
 			: {}),

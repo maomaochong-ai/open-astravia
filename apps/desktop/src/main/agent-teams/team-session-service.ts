@@ -368,26 +368,26 @@ export class AgentTeamSessionService {
 					: (item.state.contextPercent ?? 0) / 100;
 			return usage(candidate) > usage(largest) ? candidate : largest;
 		}, undefined);
+		const orderedMemberStates = contextState
+			? [contextState, ...memberStates.filter((candidate) => candidate !== contextState)]
+			: memberStates;
 		return projectTeamConversationDisplay({
 			session,
 			readHistory: async (runtimeSessionId, sessionPath) =>
 				runtime.getSessionPath(runtimeSessionId) === sessionPath
 					? runtime.getFullHistory(runtimeSessionId)
 					: readTeamConversationHistory(runtimeSessionId, sessionPath),
-			...(contextState
+			...(orderedMemberStates.length > 0
 				? {
-						runtimeState: (() => {
-							const state = contextState.state;
-							return {
-								executionMode: session.executionMode ?? state.executionMode,
-								contextPercent: state.contextPercent,
-								memberId: contextState.memberId,
-								runtimeSessionId: contextState.runtimeSessionId,
-								...(state.contextTokens === undefined ? {} : { contextTokens: state.contextTokens }),
-								contextWindow: state.contextWindow,
-								...(state.contextComposition ? { composition: state.contextComposition } : {}),
-							};
-						})(),
+						runtimeStates: orderedMemberStates.map(({ memberId, runtimeSessionId, state }) => ({
+							executionMode: session.executionMode ?? state.executionMode,
+							contextPercent: state.contextPercent,
+							memberId,
+							runtimeSessionId,
+							...(state.contextTokens === undefined ? {} : { contextTokens: state.contextTokens }),
+							contextWindow: state.contextWindow,
+							...(state.contextComposition ? { composition: state.contextComposition } : {}),
+						})),
 					}
 				: {}),
 		});

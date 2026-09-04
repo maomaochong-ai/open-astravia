@@ -29,6 +29,7 @@ import {
 export function useTeamChatModel(
 	teamId: string,
 	preferredSessionId?: string,
+	memberViewId?: string,
 ): {
 	readonly model: TeamChatViewModel;
 	readonly actions: TeamChatActions;
@@ -49,6 +50,7 @@ export function useTeamChatModel(
 		Readonly<Record<string, readonly TeamAttachmentViewModel[]>>
 	>({});
 	const [selectedMemberIds, setSelectedMemberIds] = useState<readonly string[]>([]);
+	const [failedMemberIds, setFailedMemberIds] = useState<ReadonlySet<string>>(() => new Set());
 	const [pending, setPending] = useState<TeamPendingRequest>();
 	const [streams, setStreams] = useState<TeamStreamState>({});
 	const [status, setStatus] = useState<TeamChatStatus>("loading");
@@ -100,6 +102,7 @@ export function useTeamChatModel(
 			loadedSessionRef.current = { teamId, sessionId: loaded.snapshot.session.id };
 			setDocument(loaded.document);
 			setSnapshot(loaded.snapshot);
+			setContextUsages(readSnapshotContextUsages(loaded.snapshot));
 			setSessions(loaded.sessions);
 			setStatus("ready");
 		},
@@ -117,6 +120,7 @@ export function useTeamChatModel(
 		setStreams({});
 		setPending(undefined);
 		setSelectedMemberIds([]);
+		setFailedMemberIds(new Set());
 		setContextUsages({});
 		setCompactingByRuntime({});
 		void loadTeamChatSession(teamId, preferredSessionId)
@@ -205,13 +209,7 @@ export function useTeamChatModel(
 					: event.conversationId;
 			if (!mounted || eventSessionId !== session.id) return;
 			if (event.type === "session-snapshot" || event.type === "session-updated") {
-				if (event.snapshot.display?.contextUsage?.runtimeSessionId) {
-					const { memberId: _memberId, runtimeSessionId, ...usage } = event.snapshot.display.contextUsage;
-					setContextUsages((current) => ({
-						...current,
-						[runtimeSessionId]: usage,
-					}));
-				}
+				setContextUsages((current) => ({ ...current, ...readSnapshotContextUsages(event.snapshot) }));
 				setSnapshot((current) =>
 					!current ||
 					event.snapshot.session.revision > current.session.revision ||
@@ -228,6 +226,19 @@ export function useTeamChatModel(
 						[event.runtimeSessionId]: event.isCompacting ?? false,
 					}));
 				}
+			}
+			if (event.type === "conversation.agent-message-event") {
+				setFailedMemberIds((current) => {
+					if (!current.has(event.author.id)) return current;
+					const next = new Set(current);
+					next.delete(event.author.id);
+					return next;
+				});
+			} else if (event.type === "conversation.agent-message-discard" && event.reason === "failed") {
+				setFailedMemberIds((current) => {
+					if (current.has(event.author.id)) return current;
+					return new Set([...current, event.author.id]);
+				});
 			}
 			const nextStreams = reduceTeamStreamState(streamsRef.current, event);
 			streamsRef.current = nextStreams;
@@ -292,16 +303,39 @@ export function useTeamChatModel(
 		const selected = selectedMemberIds[0];
 		return memberRuntimeIds[selected] ?? memberRuntimeIds[session?.leaderMemberId ?? ""];
 	}, [memberRuntimeIds, selectedMemberIds, session?.leaderMemberId]);
-	const contextUsage = (activeContextRuntimeId ? contextUsages[activeContextRuntimeId] : undefined) ?? null;
-	const isCompacting = activeContextRuntimeId ? compactingByRuntime[activeContextRuntimeId] === true : false;
+	const contextUsage = useMemo(() => {
+		const leaderRuntimeId = memberRuntimeIds[session?.leaderMemberId ?? ""];
+		const candidates = [activeContextRuntimeId, leaderRuntimeId, ...Object.values(memberRuntimeIds)].filter(
+			(runtimeId, index, all): runtimeId is string => Boolean(runtimeId) && all.indexOf(runtimeId) === index,
+		);
+		for (const runtimeId of candidates) {
+			const usage = contextUsages[runtimeId];
+			if (usage) return usage;
+		}
+		return null;
+	}, [activeContextRuntimeId, contextUsages, memberRuntimeIds, session?.leaderMemberId]);
+	const isCompacting = useMemo(() => {
+		if (activeContextRuntimeId && compactingByRuntime[activeContextRuntimeId] !== undefined) {
+			return compactingByRuntime[activeContextRuntimeId] === true;
+		}
+		const leaderRuntimeId = memberRuntimeIds[session?.leaderMemberId ?? ""];
+		return leaderRuntimeId ? compactingByRuntime[leaderRuntimeId] === true : false;
+	}, [activeContextRuntimeId, compactingByRuntime, memberRuntimeIds, session?.leaderMemberId]);
 
 	const members = useMemo(
 		() =>
-			resolveTeamMembers(document, team, selectedMemberIds, streams, (profileId, fallbackHandle) => {
-				const profile = document?.agents.find((candidate) => candidate.id === profileId);
-				return profile ? agentDisplayName(profile, t) : fallbackHandle;
-			}),
-		[document, selectedMemberIds, streams, t, team],
+			resolveTeamMembers(
+				document,
+				team,
+				selectedMemberIds,
+				streams,
+				(profileId, fallbackHandle) => {
+					const profile = document?.agents.find((candidate) => candidate.id === profileId);
+					return profile ? agentDisplayName(profile, t) : fallbackHandle;
+				},
+				failedMemberIds,
+			),
+		[document, failedMemberIds, selectedMemberIds, streams, t, team],
 	);
 	const feedItems = useMemo(
 		() =>
@@ -314,8 +348,9 @@ export function useTeamChatModel(
 					delegation: (from, to) => t("chat.delegation", { from, to }),
 					unknownMember: t("chat.member"),
 				},
+				memberId: memberViewId,
 			}),
-		[members, pending, snapshot, streams, t],
+		[memberViewId, members, pending, snapshot, streams, t],
 	);
 
 	const selectLeader = useCallback(() => setSelectedMemberIds([]), []);
@@ -386,6 +421,7 @@ export function useTeamChatModel(
 		setPending(nextPending);
 		setStatus("sending");
 		setError(undefined);
+		setFailedMemberIds(new Set());
 		const activeStreams = Object.fromEntries(
 			Object.entries(streamsRef.current).filter(([, turn]) => turn.message.phase === "streaming"),
 		);
@@ -409,6 +445,7 @@ export function useTeamChatModel(
 					? next
 					: current,
 			);
+			setContextUsages((current) => ({ ...current, ...readSnapshotContextUsages(next) }));
 			setError(undefined);
 			setStatus("ready");
 			if (draftText) {
@@ -463,6 +500,13 @@ export function useTeamChatModel(
 	const labels = useMemo(
 		() => ({
 			leaderRoute: t("chat.leaderRoute"),
+			memberRoles: {
+				leader: t("blueprints.leader.name"),
+				researcher: t("blueprints.researcher.name"),
+				builder: t("blueprints.builder.name"),
+				reviewer: t("blueprints.reviewer.name"),
+			},
+			memberRoleFallback: t("chat.member"),
 			placeholder: t("chat.placeholder"),
 			attachFile: t("chat.attachFile"),
 			attachImage: t("chat.attachImage"),
@@ -471,25 +515,29 @@ export function useTeamChatModel(
 	);
 	const model = useMemo<TeamChatViewModel>(
 		() => ({
-			feedKey: session?.id ?? teamId,
+			feedKey: `${session?.id ?? teamId}:${memberViewId ?? "team"}`,
 			title: team ? teamDisplayName(team, t) : t("teams.title"),
 			status,
 			draft,
 			history,
 			attachments,
 			members,
+			...(session?.leaderMemberId ? { leaderMemberId: session.leaderMemberId } : {}),
 			feedItems,
 			...(error ? { error } : {}),
-			editorEnabled: Boolean(session),
-			canSend: Boolean(session && (draft.trim() || attachments.length > 0) && !pending),
+			editorEnabled: Boolean(session) && !memberViewId,
+			canSend: Boolean(session && !memberViewId && (draft.trim() || attachments.length > 0) && !pending),
 			workspace: session
 				? createActivityWorkspace(session.workspaceId ?? `agent-team:${teamId}`, session.cwd)
 				: null,
 			activeSessionId: session?.id ?? null,
 			runtimeSessionIds: session ? Object.values(session.memberRuntime).map((runtime) => runtime.sessionId) : [],
 			memberRuntimeIds,
+			...(memberViewId ? { memberViewId } : {}),
 			executionMode: session?.executionMode ?? snapshot?.display?.executionMode ?? "full-access",
 			contextUsage,
+			contextUsagesByRuntime: contextUsages,
+			compactingByRuntime,
 			isCompacting,
 			modelKey: effectiveModelKey,
 			...(effectiveReasoning ? { reasoning: effectiveReasoning } : {}),
@@ -518,8 +566,11 @@ export function useTeamChatModel(
 			effectiveReasoning,
 			labels,
 			contextUsage,
+			contextUsages,
+			compactingByRuntime,
 			isCompacting,
 			memberRuntimeIds,
+			memberViewId,
 			snapshot?.display?.executionMode,
 		],
 	);
@@ -584,4 +635,14 @@ function toPromptAttachment(attachment: TeamAttachmentViewModel): PromptAttachme
 
 function errorMessage(cause: unknown): string {
 	return cause instanceof Error ? cause.message : String(cause);
+}
+
+function readSnapshotContextUsages(
+	snapshot: DesktopTeamSessionSnapshot,
+): Readonly<Record<string, NonNullable<TeamChatViewModel["contextUsage"]>>> {
+	const display = snapshot.display;
+	const usages = display?.contextUsages ?? (display?.contextUsage ? [display.contextUsage] : []);
+	return Object.fromEntries(
+		usages.flatMap((usage) => (usage.runtimeSessionId ? ([[usage.runtimeSessionId, usage]] as const) : [])),
+	);
 }

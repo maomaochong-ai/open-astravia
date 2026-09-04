@@ -4,7 +4,7 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import { parseInputSegments } from "@shared/lib/input-tokens";
 import { describe, expect, it, vi } from "vitest";
 import { InputEditor } from "./InputEditor";
-import { replaceInputSegments } from "./inputEditorHandle";
+import { insertMemberToken, replaceInputSegments } from "./inputEditorHandle";
 
 describe("InputEditor controlled token mode", () => {
 	it("renders a connector-owned file reference with the existing file token node", async () => {
@@ -51,5 +51,30 @@ describe("InputEditor controlled token mode", () => {
 
 		await waitFor(() => expect(onValueChange).toHaveBeenCalledWith("Review @C:/workspace/brief.md"));
 		expect(screen.getByTitle("C:/workspace/brief.md")).toBeTruthy();
+	});
+
+	it("renders selected members as a distinct inline token while projecting @handle text", async () => {
+		const onValueChange = vi.fn();
+		render(
+			<InputEditor
+				ariaLabel="Prompt"
+				editable
+				namespace="team-member-token"
+				value=""
+				history={[]}
+				onValueChange={onValueChange}
+				onContextMenu={vi.fn()}
+				onEnter={() => false}
+				onFocusChange={vi.fn()}
+			/>,
+		);
+
+		await act(async () => {
+			insertMemberToken("research", "Research", "./avatar.webp", "Leader");
+		});
+
+		await waitFor(() => expect(screen.getByTitle("Research · Leader")).toBeTruthy());
+		expect(screen.getByText("@Research")).toBeTruthy();
+		await waitFor(() => expect(onValueChange).toHaveBeenCalledWith("@research "));
 	});
 });

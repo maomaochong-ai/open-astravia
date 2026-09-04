@@ -43,8 +43,8 @@
   },
   "profile": {
     "fixedPrompt": "角色：{{role}}",
-    "avatar": "头像",
-    "avatarOption": "选择头像 {{index}}",
+	"avatar": "头像",
+	"avatarOption": "选择头像 {{index}}",
     "name": "名称",
     "description": "职责说明",
     "abilities": "能力",
@@ -121,6 +121,9 @@
 	"selectSession": "选择团队对话",
 	"sessionLabel": "对话 {{index}}",
 	"activity": "活动",
+	"backToTeam": "返回团队会话",
+	"memberSessions": "查看团队成员会话",
+	"memberSession": "查看 {{name}} 的独立会话",
     "leaderRoute": "负责人",
     "you": "你",
     "member": "团队成员",
@@ -143,6 +146,6 @@
     "newTeam": "新建团队",
     "empty": "还没有可用团队",
     "loadError": "团队列表加载失败",
-    "memberCount": "{{count}} 人"
+    "createSessionError": "新对话创建失败，请重试"
   }
 }

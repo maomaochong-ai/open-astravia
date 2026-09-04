@@ -2,12 +2,13 @@ import type {
 	DesktopTeamSessionSnapshot,
 	DesktopTeamSessionStreamEvent,
 } from "@preload/api-types/team-conversation-display";
-import type { TeamSessionDocument } from "@vetta/agent-team";
+import type { TeamDefinition, TeamSessionDocument } from "@vetta/agent-team";
 import { createAssistantMessage } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
 import {
 	projectTeamConversationTimeline,
 	reduceTeamStreamState,
+	resolveTeamMembers,
 	stripAttachmentContext,
 	type TeamMemberViewModel,
 	updateScopedTeamDraft,
@@ -35,6 +36,25 @@ const member: TeamMemberViewModel = {
 	blueprintId: "leader",
 	selected: false,
 	status: "idle",
+};
+
+const team: TeamDefinition = {
+	id: "team",
+	revision: 1,
+	name: "Team",
+	description: "",
+	leaderMemberId: "leader",
+	members: [
+		{
+			id: "leader",
+			handle: "vetta",
+			binding: { kind: "reference", agentProfileId: "missing-profile" },
+		},
+	],
+	orchestrationPolicyId: "default",
+	contextPolicyId: "default",
+	createdAt: 1,
+	updatedAt: 1,
 };
 
 function snapshot(input: Partial<DesktopTeamSessionSnapshot> = {}): DesktopTeamSessionSnapshot {
@@ -145,6 +165,14 @@ function streamEvent(
 	};
 }
 
+describe("resolveTeamMembers", () => {
+	it("assigns a stable avatar when a legacy profile is missing", () => {
+		const [resolved] = resolveTeamMembers(undefined, team, [], {}, (_profileId, fallbackHandle) => fallbackHandle);
+
+		expect(resolved?.avatar).toMatch(/agent-team-avatars\/avatar-\d{2}\.webp$/u);
+	});
+});
+
 describe("team chat stream state", () => {
 	it("keeps drafts isolated by team scope", () => {
 		const first = updateScopedTeamDraft({}, "team-a", "draft a");
@@ -180,6 +208,54 @@ describe("team chat stream state", () => {
 				attachments: [{ kind: "file", path: "C:/workspace/notes.txt" }],
 			}),
 		]);
+	});
+
+	it("keeps the Team shell while filtering the feed to one member conversation", () => {
+		const reviewer: TeamMemberViewModel = {
+			...member,
+			id: "reviewer",
+			name: "Review",
+			handle: "review",
+			blueprintId: "reviewer",
+		};
+		const items = projectTeamConversationTimeline({
+			snapshot: snapshot({
+				display: {
+					memberConversations: [
+						{
+							memberId: member.id,
+							runtimeSessionId: "leader-runtime",
+							history: [
+								{
+									type: "message",
+									entryId: "leader-message",
+									message: agentMessage("leader-message", "turn", member.id, "leader", 1).message,
+								},
+							],
+						},
+						{
+							memberId: reviewer.id,
+							runtimeSessionId: "reviewer-runtime",
+							history: [
+								{
+									type: "message",
+									entryId: "reviewer-message",
+									message: agentMessage("reviewer-message", "turn", reviewer.id, "review", 2).message,
+								},
+							],
+						},
+					],
+				},
+			}),
+			pending: undefined,
+			streams: {},
+			members: [member, reviewer],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+			memberId: member.id,
+		});
+
+		expect(items.filter((item) => item.kind === "agent").map((item) => item.text)).toEqual(["leader"]);
+		expect(items.some((item) => item.kind === "event")).toBe(false);
 	});
 
 	it("accumulates ordered deltas by turn and ignores replayed sequence numbers", () => {
@@ -240,6 +316,73 @@ describe("team chat stream state", () => {
 			phase: "streaming",
 			blocks: [{ text: "partial" }],
 		});
+	});
+
+	it("keeps the coordination user message visible when member histories are present", () => {
+		const items = projectTeamConversationTimeline({
+			snapshot: snapshot({
+				messages: [userMessage("coord-user", "request", "show this prompt", 1)],
+				display: {
+					memberConversations: [
+						{
+							memberId: "leader",
+							runtimeSessionId: "leader-runtime",
+							history: [
+								{
+									type: "message",
+									entryId: "assistant-entry",
+									message: agentMessage("assistant-entry", "request", "leader", "reply", 2).message,
+								},
+							],
+						},
+					],
+				},
+			}),
+			pending: { requestId: "request", text: "show this prompt", timestamp: 1 },
+			streams: {},
+			members: [member],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		expect(items.filter((item) => item.kind === "user")).toHaveLength(1);
+		expect(items[0]).toMatchObject({ kind: "user", text: "show this prompt", turnId: "request" });
+		expect(items).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "agent", text: "reply" })]));
+	});
+
+	it("keeps aggregated member messages keyed per runtime scope", () => {
+		const sharedAssistant = agentMessage("fallback", "request", "leader", "reply", 2).message;
+		const reviewer: TeamMemberViewModel = {
+			...member,
+			id: "reviewer",
+			name: "Review",
+			handle: "review",
+			blueprintId: "reviewer",
+		};
+		const items = projectTeamConversationTimeline({
+			snapshot: snapshot({
+				display: {
+					memberConversations: [
+						{
+							memberId: member.id,
+							runtimeSessionId: "leader-runtime",
+							history: [{ type: "message", message: sharedAssistant }],
+						},
+						{
+							memberId: reviewer.id,
+							runtimeSessionId: "reviewer-runtime",
+							history: [{ type: "message", message: sharedAssistant }],
+						},
+					],
+				},
+			}),
+			pending: undefined,
+			streams: {},
+			members: [member, reviewer],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		const keys = items.map((item) => item.renderKey ?? item.entryId ?? item.id);
+		expect(new Set(keys).size).toBe(keys.length);
 	});
 
 	it("projects user, delegation, and member output into the shared timeline order", () => {

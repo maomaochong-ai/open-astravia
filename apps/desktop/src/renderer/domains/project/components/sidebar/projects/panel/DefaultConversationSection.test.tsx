@@ -5,8 +5,12 @@ import type { JSX, ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // 只关心 section 往会话列表交出的 cwd，其余视图与筛选器都替换成最小替身。
+const sectionProps = vi.fn();
 vi.mock("@vetta/theme-ui/project", () => ({
-	DefaultConversationSectionView: ({ list }: { list: ReactNode }): JSX.Element => <div>{list}</div>,
+	DefaultConversationSectionView: (props: { list: ReactNode }): JSX.Element => {
+		sectionProps(props);
+		return <div>{props.list}</div>;
+	},
 }));
 vi.mock("../../filters/SidebarFilterSelect", () => ({
 	DefaultConversationFilterSelect: (): JSX.Element => <div />,
@@ -18,6 +22,9 @@ vi.mock("./DefaultSessionList", () => ({
 		listProps(props);
 		return <div data-testid="session-list" data-cwd={props.cwd} />;
 	},
+}));
+vi.mock("./AgentTeamSidebarList", () => ({
+	AgentTeamSidebarList: (): JSX.Element => <div data-testid="team-list" />,
 }));
 
 vi.mock("react-i18next", () => ({
@@ -43,7 +50,7 @@ const CLAW_SESSION: SessionInfo = {
 	access: { readHistory: true, resume: false, rename: true, delete: true },
 };
 
-function renderSection(sessionsCwd: string, filter: "conversation" | "claw"): void {
+function renderSection(sessionsCwd: string, filter: "conversation" | "claw" | "team"): void {
 	render(
 		<DefaultConversationSection
 			activeSessionPath=""
@@ -79,5 +86,12 @@ describe("DefaultConversationSection", () => {
 	it("sessionsCwd 缺失时回落到 project.cwd", () => {
 		renderSection("", "conversation");
 		expect(listProps).toHaveBeenCalledWith(expect.objectContaining({ cwd: DEFAULT_PROJECT.cwd }));
+	});
+
+	it("Team 过滤下不再把分组标题加号当作新团队入口", () => {
+		renderSection(DEFAULT_PROJECT.cwd, "team");
+		expect(sectionProps).toHaveBeenLastCalledWith(
+			expect.objectContaining({ showNewSession: false, onNewSession: undefined }),
+	);
 	});
 });

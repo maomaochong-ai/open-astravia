@@ -43,8 +43,8 @@
   },
   "profile": {
     "fixedPrompt": "Role: {{role}}",
-    "avatar": "Avatar",
-    "avatarOption": "Select avatar {{index}}",
+	"avatar": "Avatar",
+	"avatarOption": "Select avatar {{index}}",
     "name": "Name",
     "description": "Responsibilities",
     "abilities": "Abilities",
@@ -120,7 +120,10 @@
 	"newSession": "New chat",
 	"selectSession": "Choose team chat",
 	"sessionLabel": "Chat {{index}}",
-	"activity": "Activity",
+    "activity": "Activity",
+	"backToTeam": "Back to team conversation",
+	"memberSessions": "View team member sessions",
+	"memberSession": "View {{name}}'s conversation",
     "leaderRoute": "Lead",
     "you": "You",
     "member": "Team member",
@@ -143,6 +146,6 @@
     "newTeam": "New team",
     "empty": "No teams available",
     "loadError": "Could not load teams",
-    "memberCount": "{{count}} people"
+    "createSessionError": "Failed to create a chat. Try again."
   }
 }

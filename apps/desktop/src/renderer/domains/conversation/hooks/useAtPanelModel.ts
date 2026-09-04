@@ -5,6 +5,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { useTranslation } from "react-i18next";
 import type {
 	AtPanelEntryModel,
+	AtPanelItem,
 	AtPanelLabels,
 	AtPanelProps,
 	AtPanelViewProps,
@@ -16,6 +17,10 @@ interface DisplayItem {
 	name: string;
 	isDirectory: boolean;
 	relPath?: string;
+	avatar?: string;
+	icon?: string;
+	meta?: string;
+	item?: AtPanelItem;
 }
 
 function fuzzyScore(query: string, path: string, name: string): number | null {
@@ -102,6 +107,7 @@ export function useAtPanelModel({
 	onSelect,
 	filter,
 	cwd,
+	items = [],
 	className,
 	classNames,
 }: AtPanelProps): AtPanelModel {
@@ -154,12 +160,31 @@ export function useAtPanelModel({
 	const normalizedFilter = filter.startsWith("@") ? filter.slice(1) : filter;
 	const isSearching = normalizedFilter.length > 0;
 
+	const extraItems = useMemo(
+		(): DisplayItem[] =>
+			items.map((item, index) => ({
+				path: `@item/${item.id}/${index}`,
+				name: item.name,
+				isDirectory: false,
+				avatar: item.avatar,
+				icon: item.icon ?? "",
+				meta: item.meta,
+				item,
+			})),
+		[items],
+	);
+
 	const allItems = useMemo((): DisplayItem[] => {
 		if (!isSearching) {
-			return entries.map((e) => ({ path: e.path, name: e.name, isDirectory: e.isDirectory }));
+			return [...extraItems, ...entries.map((e) => ({ path: e.path, name: e.name, isDirectory: e.isDirectory }))];
 		}
 		const q = normalizedFilter.toLowerCase();
 		const scored: { item: DisplayItem; score: number }[] = [];
+		for (const item of extraItems) {
+			const haystack = [item.name, item.id, ...(item.item?.keywords ?? [])].join("/");
+			const score = fuzzyScore(q, haystack, item.name);
+			if (score !== null) scored.push({ item, score: score + 100 });
+		}
 		for (const f of allFiles) {
 			const score = fuzzyScore(q, f.relPath, f.name);
 			if (score !== null) {
@@ -168,7 +193,7 @@ export function useAtPanelModel({
 		}
 		scored.sort((a, b) => b.score - a.score);
 		return scored.slice(0, MAX_SEARCH_RESULTS).map((s) => s.item);
-	}, [allFiles, entries, isSearching, normalizedFilter]);
+	}, [allFiles, entries, extraItems, isSearching, normalizedFilter]);
 	const isSearchWithNoResults = open && isSearching && (loading || allItems.length === 0);
 
 	const canGoUp = !isSearching && currentDir !== cwd;
@@ -189,6 +214,10 @@ export function useAtPanelModel({
 		(item: DisplayItem) => {
 			if (item.isDirectory) {
 				setCurrentDir(item.path);
+				return;
+			}
+			if (item.item) {
+				onSelect(item.item satisfies AtPanelItem);
 				return;
 			}
 			onSelect({ path: item.path, name: item.name, isDirectory: false } satisfies SelectedFile);
@@ -281,7 +310,7 @@ export function useAtPanelModel({
 			...entry,
 			index,
 			active: index === activeIndex,
-			icon: fileIcon(entry.name, entry.isDirectory),
+			icon: entry.icon ?? fileIcon(entry.name, entry.isDirectory),
 		};
 	});
 
@@ -299,7 +328,7 @@ export function useAtPanelModel({
 		hidden: isSearchWithNoResults,
 		viewProps: {
 			open,
-			loading,
+			loading: loading && allItems.length === 0,
 			normalizedFilter,
 			canGoUp,
 			goUpActive: activeIndex === 0,

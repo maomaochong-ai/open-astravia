@@ -15,6 +15,10 @@ export interface AtPanelEntryModel {
 	name: string;
 	isDirectory: boolean;
 	relPath?: string;
+	/** Optional extension metadata. File entries omit this field. */
+	kind?: string;
+	avatar?: string;
+	meta?: string;
 	index: number;
 	active: boolean;
 	icon: string;
@@ -184,14 +188,23 @@ function AtPanelEntry({
 					transition={{ type: "spring", stiffness: 500, damping: 32 }}
 				/>
 			)}
-			<span
-				className={`${entry.icon} h-4 w-4 shrink-0 ${entry.isDirectory ? "text-muted-foreground" : "text-muted-foreground/50"}`}
-			/>
+			{entry.avatar ? (
+				<img src={entry.avatar} alt="" className="h-5 w-5 shrink-0 rounded-full object-cover" />
+			) : (
+				<span
+					className={`${entry.icon} h-4 w-4 shrink-0 ${entry.isDirectory ? "text-muted-foreground" : "text-muted-foreground/50"}`}
+				/>
+			)}
 			<span
 				className={`shrink-0 truncate text-[12.5px] ${entry.isDirectory ? "font-medium text-foreground" : "text-foreground"}`}
 			>
 				{entry.name}
 			</span>
+			{entry.meta ? (
+				<span className="ml-auto truncate text-right text-[11px] text-muted-foreground/50" title={entry.meta}>
+					{entry.meta}
+				</span>
+			) : null}
 			{entry.relPath && entry.relPath !== entry.name && (
 				<span className="ml-auto truncate text-right font-mono text-[10px] text-muted-foreground/40">
 					{entry.relPath}

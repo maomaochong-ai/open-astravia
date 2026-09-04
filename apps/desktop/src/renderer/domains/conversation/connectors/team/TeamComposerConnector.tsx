@@ -5,14 +5,22 @@ import { useSetAtom } from "jotai";
 import { useCallback, useMemo, useState, type DragEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { InputBar } from "../../components/InputBar";
+import { ContextRing } from "../../components/ContextRing";
+import type { AtPanelItem } from "../../components/AtPanel";
 import type { InputBarModel } from "../../components/input-bar/types";
 import { useInputBarContextMenuModel } from "../../components/input-bar/useInputBarContextMenuModel";
 import { useInputBarTriggerModel } from "../../components/input-bar/useInputBarTriggerModel";
 import { useSpeechInput } from "../../components/input-bar/useSpeechInput";
 import { useInputBarInteractionSource } from "../../components/input-bar/useInputBarSources";
-import { useContextRingModel } from "../../hooks/useContextRingModel";
+import { insertMemberToken } from "../../components/input-bar/editor/inputEditorHandle";
+import {
+	useContextRingModel,
+	useContextRingScopeModels,
+	type ContextRingModel,
+} from "../../hooks/useContextRingModel";
 import { useExecutionModeSelectorModel } from "../../hooks/useExecutionModeSelectorModel";
 import type { TeamAttachmentViewModel, TeamChatActions, TeamChatViewModel } from "./teamChatModel";
+import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";
 
 const VETTA_PATH_MIME = "application/vetta-path";
 
@@ -36,6 +44,31 @@ export function TeamComposerConnector({
 	const [dragKind, setDragKind] = useState<"files" | "internal" | null>(null);
 	const isStreaming = model.status === "sending" || model.status === "streaming" || model.status === "cancelling";
 	const isEmpty = model.draft.trim().length === 0 && model.attachments.length === 0;
+	const atItems = useMemo<readonly AtPanelItem[]>(
+		() => model.members.map((member) => {
+			const handle = member.handle.trim() || member.id;
+			const isLeader = member.id === model.leaderMemberId;
+			const roleLabel = isLeader
+				? model.labels.leaderRoute
+				: model.labels.memberRoles?.[member.blueprintId] ?? (member.name.trim() || model.labels.memberRoleFallback);
+			return {
+				kind: "team-member",
+				id: member.id,
+				name: member.name.trim() || `@${handle}`,
+				insertText: `@${handle} `,
+				avatar: agentAvatarUrl(member),
+				meta: `${roleLabel} · @${handle}`,
+				keywords: [handle, roleLabel],
+			};
+		}),
+		[model.leaderMemberId, model.labels, model.members],
+	);
+	const handleAtItemSelect = useCallback((item: AtPanelItem) => {
+		const handle = item.insertText.trim().replace(/^@+/, "");
+		insertMemberToken(handle, item.name.replace(/^@+/, "") || handle, item.avatar, item.meta, {
+			replaceTrigger: true,
+		});
+	}, []);
 	const trigger = useInputBarTriggerModel({
 		activeSession:
 		model.workspace?.cwd && model.activeSessionId
@@ -51,6 +84,7 @@ export function TeamComposerConnector({
 		onAbort: actions.abort,
 		onExpandedChange: undefined,
 		onSend: () => actions.send(),
+		onAtItemSelect: handleAtItemSelect,
 	});
 	const speechInput = useSpeechInput(model.editorEnabled);
 	const interactions = useInputBarInteractionSource(model.runtimeSessionIds ?? []);
@@ -63,6 +97,41 @@ export function TeamComposerConnector({
 		usage: model.contextUsage ?? null,
 		isCompacting: model.isCompacting ?? false,
 	}, true);
+	const contextScopes = useContextRingScopeModels(
+		model.members.map((member) => {
+			const runtimeSessionId = model.memberRuntimeIds?.[member.id];
+			return {
+				id: member.id,
+				label: member.name,
+				avatar: member.avatar,
+				blueprintId: member.blueprintId,
+				usage: runtimeSessionId ? model.contextUsagesByRuntime?.[runtimeSessionId] ?? null : null,
+				isCompacting: runtimeSessionId ? model.compactingByRuntime?.[runtimeSessionId] === true : false,
+			};
+		}),
+		true,
+	);
+	const contextRingModel = contextUsageModel
+		? contextUsageModel
+		: (contextScopes[0]?.model ?? null);
+	const renderContextRing = useCallback(
+		(model: ContextRingModel) => (
+			<ContextRing.Root model={model}>
+				<ContextRing.Trigger className="mr-1 shrink-0" />
+				<ContextRing.Content>
+					{contextScopes.length > 1 ? (
+						<ContextRing.ScopeList>
+							{contextScopes.map((scope) => (
+								<ContextRing.Scope key={scope.id} {...scope} />
+							))}
+						</ContextRing.ScopeList>
+					) : null}
+					<ContextRing.Details />
+				</ContextRing.Content>
+			</ContextRing.Root>
+		),
+		[contextScopes],
+	);
 	const contextMenu = useInputBarContextMenuModel({
 		activeRuntimeId: model.activeSessionId ?? undefined,
 		hasSession: model.editorEnabled,
@@ -138,22 +207,27 @@ export function TeamComposerConnector({
 	}, [actions, detectDragKind, model.editorEnabled]);
 
 	const routing = useMemo<InputBarModel["routing"]>(() => {
-		const leaderSelected = !model.members.some((member) => member.selected);
+		const defaultRole = model.labels.memberRoleFallback;
 		return {
-			leaderLabel: model.labels.leaderRoute,
-			leaderSelected,
-			onSelectLeader: actions.selectLeader,
-			participants: model.members.map((member) => ({
-				id: member.id,
-				name: member.name,
-				...(member.avatar ? { avatar: member.avatar } : {}),
-				blueprintId: member.blueprintId,
-				selected: member.selected,
-				status: member.status,
-				onSelect: () => actions.toggleMember(member.id),
-			})),
+			showStatusSummary: false,
+			participants: model.members.map((member) => {
+				const isLeader = member.id === model.leaderMemberId;
+				const roleLabel = isLeader
+					? model.labels.leaderRoute
+					: model.labels.memberRoles?.[member.blueprintId] ?? (member.name.trim() || defaultRole);
+				return {
+					id: member.id,
+					name: member.name,
+					avatar: agentAvatarUrl(member),
+					blueprintId: member.blueprintId,
+					badgeLabel: roleLabel,
+					selected: member.selected,
+					status: member.status,
+					onSelect: () => actions.toggleMember(member.id),
+				};
+			}),
 		};
-	}, [actions, model.labels.leaderRoute, model.members]);
+	}, [actions, model.labels, model.members]);
 
 	const inputModel: InputBarModel = {
 		dropZone: {
@@ -215,6 +289,7 @@ export function TeamComposerConnector({
 			slashFilter: trigger.slashFilter,
 			atOpen: trigger.atOpen,
 			atFilter: trigger.atFilter,
+			atItems,
 			onTriggerChange: trigger.handleTriggerChange,
 			onSlashClose: trigger.handleSlashClose,
 			onSlashSelect: trigger.handleSlashSelect,
@@ -226,7 +301,7 @@ export function TeamComposerConnector({
 		routing,
 		modelSelector: { updateActiveSession: false, scope: modelScope },
 		leadingTools: [{ kind: "execution-mode", model: executionModeModel }],
-		trailingTools: contextUsageModel ? [{ kind: "context-usage", model: contextUsageModel }] : [],
+		trailingTools: contextRingModel ? [{ kind: "context-usage", model: contextRingModel, render: renderContextRing }] : [],
 		sendBehavior: "direct",
 		labels: {
 			capsule: {

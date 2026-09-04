@@ -4,7 +4,7 @@ import { isImagePath } from "@shared/lib/input-tokens";
 import { perfSendBegin, perfSendMark } from "@shared/lib/perf-send";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
-import type { SelectedFile } from "../AtPanel";
+import type { AtPanelItem, AtPanelSelection } from "../AtPanel";
 import { PANEL_REVEAL_MS } from "../command-panel/constants";
 import {
 	focusInputEditor,
@@ -36,6 +36,7 @@ export function useInputBarTriggerModel({
 	onExpandedChange,
 	onSend,
 	onAbort,
+	onAtItemSelect,
 }: {
 	hasSession: boolean;
 	isStreaming: boolean;
@@ -48,6 +49,8 @@ export function useInputBarTriggerModel({
 	onExpandedChange?: (expanded: boolean) => void;
 	onSend: (overrideText?: string, context?: SendInteractionContext) => Promise<void>;
 	onAbort: () => Promise<void>;
+	/** Handles connector supplied @ candidates while keeping file handling shared. */
+	onAtItemSelect?: (item: AtPanelItem) => void;
 }) {
 	const [isFocused, setIsFocused] = useState(false);
 	const [trigger, setTrigger] = useState<TriggerMatch | null>(null);
@@ -135,21 +138,31 @@ export function useInputBarTriggerModel({
 		setTrigger(null);
 		focusInputEditor();
 	}, []);
-	const handleAtSelect = useCallback(async (file: SelectedFile) => {
-		if (isImagePath(file.path)) insertImageToken(file.path, { replaceTrigger: true });
-		else insertFileToken(file.path, file.isDirectory, { replaceTrigger: true });
-		setTrigger(null);
-		const sizeBytes = await readFileSize(file.path, file.isDirectory);
-		recordInputFilesAdded("at-panel", [
-			{
-				path: file.path,
-				name: file.name,
-				isDirectory: file.isDirectory,
-				...(sizeBytes === undefined ? {} : { sizeBytes }),
-			},
-		]);
-		focusInputEditor();
-	}, []);
+	const handleAtSelect = useCallback(
+		async (selection: AtPanelSelection) => {
+			if (!("path" in selection)) {
+				onAtItemSelect?.(selection);
+				setTrigger(null);
+				focusInputEditor();
+				return;
+			}
+			const file = selection;
+			if (isImagePath(file.path)) insertImageToken(file.path, { replaceTrigger: true });
+			else insertFileToken(file.path, file.isDirectory, { replaceTrigger: true });
+			setTrigger(null);
+			const sizeBytes = await readFileSize(file.path, file.isDirectory);
+			recordInputFilesAdded("at-panel", [
+				{
+					path: file.path,
+					name: file.name,
+					isDirectory: file.isDirectory,
+					...(sizeBytes === undefined ? {} : { sizeBytes }),
+				},
+			]);
+			focusInputEditor();
+		},
+		[onAtItemSelect],
+	);
 	const handlePlusClick = useCallback(() => {
 		if (!hasSession) return;
 		setTrigger((prev) => (prev?.kind === "slash" ? null : { kind: "slash", query: "", length: 0 }));

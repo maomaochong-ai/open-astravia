@@ -1,9 +1,19 @@
 import { ContextRingView } from "@vetta/theme-ui/chat";
+import { AgentAvatarView } from "@vetta/theme-ui/chat";
 import { Button } from "@shared/components/ui/button";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@shared/components/ui/popover";
-import { useEffect, useMemo, useState } from "react";
+import {
+	createContext,
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useState,
+	type ComponentProps,
+	type ReactNode,
+} from "react";
 import { useTranslation } from "react-i18next";
-import type { ContextRingModel } from "../hooks/useContextRingModel";
+import type { ContextRingModel, ContextRingScopeModel } from "../hooks/useContextRingModel";
 import {
 	buildContextRingBarSegments,
 	type ContextRingDetailGroup,
@@ -20,60 +30,202 @@ const GROUP_COLORS: Record<ContextRingDetailGroupKind, string> = {
 	runtime: "var(--context-segment-5)",
 };
 
-export function ContextRing({ className, model }: { className?: string; model: ContextRingModel | null }): JSX.Element | null {
-	const { t } = useTranslation("chat");
-	const [activeGroup, setActiveGroup] = useState<ContextRingDetailGroupKind | null>(null);
+interface ContextRingState {
+	readonly model: ContextRingModel;
+	readonly scopes: readonly ContextRingScopeModel[];
+	readonly registerScope: (scope: ContextRingScopeModel) => void;
+	readonly unregisterScope: (id: string) => void;
+	readonly activeScope: ContextRingScopeModel | null;
+	readonly setActiveScope: (id: string) => void;
+	readonly open: boolean;
+	readonly setOpen: (open: boolean) => void;
+	readonly activeGroup: ContextRingDetailGroupKind | null;
+	readonly setActiveGroup: (group: ContextRingDetailGroupKind | null) => void;
+}
+
+const ContextRingContext = createContext<ContextRingState | null>(null);
+
+export interface ContextRingRootProps {
+	readonly model: ContextRingModel | null;
+	readonly children: ReactNode;
+}
+
+export function ContextRingRoot({ model, children }: ContextRingRootProps): JSX.Element | null {
 	const [open, setOpen] = useState(false);
+	const [activeGroup, setActiveGroup] = useState<ContextRingDetailGroupKind | null>(null);
+	const [activeScopeId, setActiveScopeId] = useState<string>();
+	const [scopeMap, setScopeMap] = useState<Readonly<Record<string, ContextRingScopeModel>>>({});
+	const registerScope = useCallback((scope: ContextRingScopeModel) => {
+		setScopeMap((current) => (current[scope.id] === scope ? current : { ...current, [scope.id]: scope }));
+	}, []);
+	const unregisterScope = useCallback((id: string) => {
+		setScopeMap((current) => {
+			if (!current[id]) return current;
+			const next = { ...current };
+			delete next[id];
+			return next;
+		});
+	}, []);
+	const scopes = useMemo(() => Object.values(scopeMap), [scopeMap]);
+	const activeScope = scopes.find((scope) => scope.id === activeScopeId) ?? scopes[0] ?? null;
+	const activeModel = activeScope?.model ?? model;
 	useEffect(() => {
 		if (!model && open) setOpen(false);
 	}, [model, open]);
 	useEffect(() => {
 		if (!open) setActiveGroup(null);
 	}, [open]);
-	if (!model) return null;
-	const details = model.details;
-	const selected = details?.groups.find((group) => group.id === activeGroup) ?? null;
+	if (!activeModel) return null;
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
-			<PopoverTrigger asChild>
-				<Button
-					type="button"
-					variant="ghost"
-					size="icon"
-					className={`h-7 w-7 shrink-0 rounded-full p-0${className ? ` ${className}` : ""}`}
-					aria-label={model.tooltip}
-				>
-					<ContextRingView
-						percent={model.percent}
-						offset={model.offset}
-						color={model.color}
-						isCompacting={model.isCompacting}
-						tooltip={model.tooltip}
-					/>
-				</Button>
-			</PopoverTrigger>
-			{open ? (
-				<PopoverContent side="top" align="end" className="w-64 p-0">
-					{details ? (
-						selected ? (
-							<GroupDetailPane group={selected} onBack={() => setActiveGroup(null)} />
-						) : (
-							<OverviewPane details={details} onSelect={setActiveGroup} />
-						)
-					) : (
-						<div className="px-3 py-2.5">
-							<PopoverTitle className="text-[12px]">{t("contextRing.details.title")}</PopoverTitle>
-							<div className="mt-1.5 text-[11px] text-foreground">{model.tooltip}</div>
-							<p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
-								{t("contextRing.details.unavailableAfterRestart")}
-							</p>
-						</div>
-					)}
-				</PopoverContent>
-			) : null}
+			<ContextRingContext.Provider
+				value={{
+					model: activeModel,
+					scopes,
+					registerScope,
+					unregisterScope,
+					activeScope,
+					setActiveScope: setActiveScopeId,
+					open,
+					setOpen,
+					activeGroup,
+					setActiveGroup,
+				}}
+			>
+				{children}
+			</ContextRingContext.Provider>
 		</Popover>
 	);
 }
+
+export function ContextRingTrigger({ className }: { readonly className?: string }): JSX.Element {
+	const context = useContextRingContext("Trigger");
+	return (
+		<PopoverTrigger asChild>
+			<Button
+				type="button"
+				variant="ghost"
+				size="icon"
+				className={`h-7 w-7 shrink-0 rounded-full p-0${className ? ` ${className}` : ""}`}
+				aria-label={context.model.tooltip}
+			>
+				<ContextRingView
+					percent={context.model.percent}
+					offset={context.model.offset}
+					color={context.model.color}
+					isCompacting={context.model.isCompacting}
+					tooltip={context.model.tooltip}
+				/>
+			</Button>
+		</PopoverTrigger>
+	);
+}
+
+export interface ContextRingContentProps extends Omit<ComponentProps<typeof PopoverContent>, "children" | "className"> {
+	readonly children?: ReactNode;
+	readonly className?: string;
+}
+
+/** Generic popover surface. Layout and content are fully composed by callers. */
+export function ContextRingContent({ children, className, ...props }: ContextRingContentProps = {}): JSX.Element {
+	return (
+		<PopoverContent side="top" align="end" {...props} className={`w-64 p-0${className ? ` ${className}` : ""}`}>
+			{children}
+		</PopoverContent>
+	);
+}
+
+/** Default context composition body shared by ordinary and Team conversations. */
+export function ContextRingDetails(): JSX.Element {
+	const context = useContextRingContext("Details");
+	const { t } = useTranslation("chat");
+	const selected = context.model.details?.groups.find((group) => group.id === context.activeGroup) ?? null;
+	return (
+		<>
+			{context.model.details ? (
+				selected ? (
+					<GroupDetailPane group={selected} onBack={() => context.setActiveGroup(null)} />
+				) : (
+					<OverviewPane details={context.model.details} onSelect={context.setActiveGroup} />
+				)
+			) : (
+				<div className="px-3 py-2.5">
+					<PopoverTitle className="text-[12px]">{t("contextRing.details.title")}</PopoverTitle>
+					<div className="mt-1.5 text-[11px] text-foreground">{context.model.tooltip}</div>
+					<p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">{t("contextRing.details.unavailableAfterRestart")}</p>
+				</div>
+			)}
+		</>
+	);
+}
+
+export interface ContextRingScopeListProps {
+	readonly children: ReactNode;
+	readonly className?: string;
+}
+
+export function ContextRingScopeList({ children, className }: ContextRingScopeListProps): JSX.Element {
+	return (
+		<div className={`flex gap-1 overflow-x-auto border-b border-border/60 px-2 py-1.5${className ? ` ${className}` : ""}`}>
+			{children}
+		</div>
+	);
+}
+
+export type ContextRingScopeProps = ContextRingScopeModel;
+
+export function ContextRingScope({ id, label, avatar, blueprintId, model }: ContextRingScopeProps): JSX.Element {
+	const context = useContextRingContext("Scope");
+	const { registerScope, unregisterScope } = context;
+	const scope = useMemo(
+		() => ({ id, label, avatar, blueprintId, model }),
+		[id, label, avatar, blueprintId, model],
+	);
+	useEffect(() => {
+		registerScope(scope);
+		return () => unregisterScope(id);
+	}, [id, registerScope, scope, unregisterScope]);
+	const selected = context.activeScope?.id === id;
+	return (
+		<button
+			type="button"
+			onClick={() => {
+				context.setActiveScope(id);
+				context.setActiveGroup(null);
+			}}
+			className={`flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[10px] ${selected ? "bg-muted text-foreground hover:bg-muted" : "text-muted-foreground hover:bg-muted/60"}`}
+		>
+			<AgentAvatarView name={label} avatar={avatar} blueprintId={blueprintId} size="xs" />
+			<span className="max-w-20 truncate">{label}</span>
+		</button>
+	);
+}
+
+function ContextRingDefault({ className, model }: { className?: string; model: ContextRingModel | null }): JSX.Element | null {
+	return (
+		<ContextRingRoot model={model}>
+			<ContextRingTrigger className={className} />
+			<ContextRingContent>
+				<ContextRingDetails />
+			</ContextRingContent>
+		</ContextRingRoot>
+	);
+}
+
+function useContextRingContext(part: string): ContextRingState {
+	const context = useContext(ContextRingContext);
+	if (!context) throw new Error(`ContextRing.${part} must be used within ContextRing.Root`);
+	return context;
+}
+
+export const ContextRing = Object.assign(ContextRingDefault, {
+	Root: ContextRingRoot,
+	Trigger: ContextRingTrigger,
+	Content: ContextRingContent,
+	Details: ContextRingDetails,
+	ScopeList: ContextRingScopeList,
+	Scope: ContextRingScope,
+});
 
 function OverviewPane({
 	details,

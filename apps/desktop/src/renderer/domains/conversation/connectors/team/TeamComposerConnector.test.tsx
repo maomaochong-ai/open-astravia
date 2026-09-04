@@ -6,7 +6,10 @@ import type { InputBarModel } from "../../components/input-bar/types";
 import type { TeamChatActions, TeamChatViewModel } from "./teamChatModel";
 import { TeamComposerConnector } from "./TeamComposerConnector";
 
-const captured = vi.hoisted(() => ({ model: undefined as InputBarModel | undefined }));
+const captured = vi.hoisted(() => ({
+	model: undefined as InputBarModel | undefined,
+	insertMemberToken: vi.fn(),
+}));
 
 Object.defineProperty(window, "vetta", {
 	configurable: true,
@@ -20,6 +23,13 @@ vi.mock("../../components/InputBar", () => ({
 		captured.model = model;
 		return <div data-testid="input-bar" />;
 	},
+}));
+
+vi.mock("../../components/input-bar/editor/inputEditorHandle", async () => ({
+	...(await vi.importActual<typeof import("../../components/input-bar/editor/inputEditorHandle")>(
+		"../../components/input-bar/editor/inputEditorHandle",
+	)),
+	insertMemberToken: captured.insertMemberToken,
 }));
 
 vi.mock("react-i18next", () => ({
@@ -60,7 +70,12 @@ function model(): TeamChatViewModel {
 		draft: "Ship it",
 		history: ["Previous"],
 		attachments: [{ path: "C:/workspace/brief.md", name: "brief.md", kind: "file" }],
-		members: [{ id: "member-1", kind: "agent", name: "Research", handle: "research", blueprintId: "researcher", selected: false, status: "idle" }],
+		members: [
+			{ id: "member-1", kind: "agent", name: "Research", handle: "research", blueprintId: "researcher", selected: false, status: "working" },
+			{ id: "member-2", kind: "agent", name: "Build", handle: "build", blueprintId: "builder", selected: false, status: "idle" },
+			{ id: "member-3", kind: "agent", name: "", handle: "custom", blueprintId: "custom", selected: false, status: "idle" },
+		],
+		leaderMemberId: "member-1",
 		feedItems: [],
 		editorEnabled: true,
 		canSend: true,
@@ -72,6 +87,8 @@ function model(): TeamChatViewModel {
 		reasoning: "high",
 		labels: {
 			leaderRoute: "Leader",
+			memberRoleFallback: "Member",
+			memberRoles: { researcher: "Researcher", builder: "Builder" },
 			placeholder: "Ask the team",
 			attachFile: "Add file",
 			attachImage: "Add image",
@@ -96,8 +113,31 @@ describe("TeamComposerConnector", () => {
 		expect(inputModel.editor.persistenceId).toBe("session-1");
 		expect(inputModel.commands).toBeDefined();
 		expect(inputModel.commands?.onOpen).toBeTypeOf("function");
+		expect(inputModel.commands?.atItems).toEqual([
+			expect.objectContaining({ kind: "team-member", name: "Research", insertText: "@research " }),
+			expect.objectContaining({ kind: "team-member", name: "Build", insertText: "@build " }),
+		expect.objectContaining({ kind: "team-member", name: "@custom", insertText: "@custom " }),
+		]);
+		inputModel.commands?.onAtSelect(inputModel.commands.atItems?.[0] ?? {
+			kind: "team-member",
+			id: "fallback",
+			name: "Fallback",
+			insertText: "@fallback ",
+		});
+		expect(captured.insertMemberToken).toHaveBeenCalledWith(
+			"research",
+			"Research",
+			expect.any(String),
+			expect.stringContaining("Leader"),
+			expect.objectContaining({ replaceTrigger: true }),
+		);
 		expect(inputModel.speechInput).toBeDefined();
-		expect(inputModel.routing?.leaderSelected).toBe(true);
+		expect(inputModel.routing?.participants[0]?.avatar).toBe("./agent-team-avatars/avatar-02.webp");
+		expect(inputModel.routing?.participants[0]?.badgeLabel).toBe("Leader");
+		expect(inputModel.routing?.participants[1]?.badgeLabel).toBe("Builder");
+		expect(inputModel.routing?.participants[2]?.badgeLabel).toBe("Member");
+		expect(inputModel.routing?.participants[0]?.statusLabel).toBeUndefined();
+		expect(inputModel.routing?.showStatusSummary).toBe(false);
 		expect(inputModel.leadingTools[0]?.kind).toBe("execution-mode");
 		expect(inputModel.trailingTools[0]?.kind).toBe("context-usage");
 

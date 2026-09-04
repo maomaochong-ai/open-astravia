@@ -77,7 +77,7 @@ export function DefaultConversationSection(
 			}
 			onNewSession={
 				showingTeams
-					? () => void navigate({ to: "/agent-teams" })
+					? undefined
 					: model.actions.newSession
 			}
 			onOpenContextMenu={
@@ -85,7 +85,7 @@ export function DefaultConversationSection(
 					? (event) => event.preventDefault()
 					: model.actions.openContextMenu
 			}
-			showNewSession={showingTeams || model.showNewSession}
+			showNewSession={!showingTeams && model.showNewSession}
 		/>
 	);
 }

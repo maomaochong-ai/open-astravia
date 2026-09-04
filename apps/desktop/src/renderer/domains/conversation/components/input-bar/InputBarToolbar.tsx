@@ -2,6 +2,7 @@ import { ContextRing } from "../ContextRing";
 import { ExecutionModeSelector } from "../ExecutionModeSelector";
 import { ModelSelector } from "../ModelSelector";
 import { SendButton } from "../SendButton";
+import type { ReactNode } from "react";
 import { ActiveActionCapsules, type ActiveActionCapsule } from "./ActiveActionCapsules";
 import { InputBarToolbarButton } from "./InputBarToolbarButton";
 import type { SpeechInputModel } from "./types";
@@ -111,10 +112,18 @@ export function InputBarModelAction({ visible, updateActiveSession = true, scope
 	);
 }
 
-export function InputBarContextAction({ visible, model }: { readonly visible: boolean; readonly model: ContextRingModel }): JSX.Element {
+export function InputBarContextAction({
+	visible,
+	model,
+	render,
+}: {
+	readonly visible: boolean;
+	readonly model: ContextRingModel;
+	readonly render?: (model: ContextRingModel) => ReactNode;
+}): JSX.Element {
 	return (
 		<div className={visible ? "contents" : "hidden"}>
-			<ContextRing className="mr-1 shrink-0" model={model} />
+			{render ? render(model) : <ContextRing className="mr-1 shrink-0" model={model} />}
 		</div>
 	);
 }

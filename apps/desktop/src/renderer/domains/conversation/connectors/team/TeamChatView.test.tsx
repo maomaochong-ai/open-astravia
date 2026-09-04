@@ -64,6 +64,7 @@ function model(): TeamChatViewModel {
 		isCompacting: false,
 		labels: {
 			leaderRoute: "Leader",
+			memberRoleFallback: "Member",
 			placeholder: "Ask the team",
 			attachFile: "Add file",
 			attachImage: "Add image",
@@ -83,6 +84,23 @@ describe("TeamChatView shared conversation UI", () => {
 				participants: viewModel.members,
 				messageContext: expect.objectContaining({ inheritActiveSession: false, showRuntimeFooter: false }),
 				children: expect.anything(),
+			}),
+		);
+	});
+
+	it("scopes streaming state and removes the composer in a member view", () => {
+		const viewModel = {
+			...model(),
+			memberViewId: "member-1",
+			status: "streaming" as const,
+			feedItems: [{ ...model().feedItems[0]!, phase: "completed" as const }],
+		};
+		render(<TeamChatView model={viewModel} actions={actions()} />);
+
+		expect(captured.view).toHaveBeenCalledWith(
+			expect.objectContaining({
+				isStreaming: false,
+				children: null,
 			}),
 		);
 	});

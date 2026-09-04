@@ -1,9 +1,11 @@
 import { teamDisplayName } from "@shared/agent-teams/preset-presentation";
-import { TEAM_SESSIONS_CHANGED_EVENT } from "@shared/agent-teams/team-session-events";
+import { notifyTeamSessionsChanged, TEAM_SESSIONS_CHANGED_EVENT } from "@shared/agent-teams/team-session-events";
+import { Button } from "@shared/components/ui/button";
+import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";
 import type { AgentTeamDocument, TeamSessionListItem } from "@vetta/agent-team";
 import { useMatches, useNavigate } from "@tanstack/react-router";
 import { DefaultSessionRowView } from "@vetta/theme-ui/project";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 const CONFIGURATION_CHANGED_EVENT = "vetta:agent-team-configuration-changed";
@@ -16,6 +18,8 @@ export function AgentTeamSidebarList(): JSX.Element {
 	const [document, setDocument] = useState<AgentTeamDocument>();
 	const [sessionsByTeam, setSessionsByTeam] = useState<Readonly<Record<string, readonly TeamSessionListItem[]>>>({});
 	const [error, setError] = useState(false);
+	const [creatingTeamId, setCreatingTeamId] = useState<string>();
+	const [createErrorTeamId, setCreateErrorTeamId] = useState<string>();
 
 	useEffect(() => {
 		let active = true;
@@ -52,6 +56,24 @@ export function AgentTeamSidebarList(): JSX.Element {
 
 	const activeTeamId = useMemo(() => teamIdFromPath(currentPath), [currentPath]);
 	const activeSessionId = useMemo(() => sessionIdFromPath(currentPath), [currentPath]);
+	const agentsById = useMemo(() => new Map(document?.agents.map((agent) => [agent.id, agent]) ?? []), [document?.agents]);
+	const createSession = useCallback(async (teamId: string): Promise<void> => {
+		if (creatingTeamId) return;
+		setCreatingTeamId(teamId);
+		setCreateErrorTeamId(undefined);
+		try {
+			const snapshot = await window.vetta.agentTeams.createSession(teamId);
+			notifyTeamSessionsChanged();
+			await navigate({
+				to: "/agent-teams/$teamId/sessions/$sessionId",
+				params: { teamId, sessionId: snapshot.session.id },
+			});
+		} catch {
+			setCreateErrorTeamId(teamId);
+		} finally {
+			setCreatingTeamId(undefined);
+		}
+	}, [creatingTeamId, navigate]);
 	if (error) {
 		return <p className="px-2.5 py-3 text-[11px] text-destructive">{t("sidebar.loadError")}</p>;
 	}
@@ -73,15 +95,24 @@ export function AgentTeamSidebarList(): JSX.Element {
 				const sessions = sessionsByTeam[team.id] ?? [];
 				return (
 					<div key={team.id}>
-						<DefaultSessionRowView
+						<div className="group relative">
+							<DefaultSessionRowView
 							active={team.id === activeTeamId && !activeSessionId}
 							contextMenuEnabled={false}
 							iconClassName="icon-[solar--users-group-rounded-linear]"
+							leadingAvatarUrls={team.members.map((member) => {
+								const profile = agentsById.get(member.binding.agentProfileId);
+								return agentAvatarUrl({
+									id: profile?.id ?? member.id,
+									blueprintId: profile?.blueprintId ?? "leader",
+									...(profile?.avatar ? { avatar: profile.avatar } : {}),
+								});
+							})}
 							label={teamDisplayName(team, t)}
 							renaming={false}
 							running={false}
 							scheduled={false}
-							timeLabel={t("sidebar.memberCount", { count: team.members.length })}
+							timeLabel=""
 							onOpenContextMenu={() => undefined}
 							onRename={() => undefined}
 							onRenameDone={() => undefined}
@@ -92,6 +123,28 @@ export function AgentTeamSidebarList(): JSX.Element {
 								});
 							}}
 						/>
+							<Button
+								variant="ghost"
+								size="icon-xs"
+								className="absolute right-1 top-1/2 -translate-y-1/2 bg-background opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+								title={t("chat.newSession")}
+								aria-label={t("chat.newSession")}
+								disabled={Boolean(creatingTeamId)}
+								onClick={() => void createSession(team.id)}
+							>
+								<span
+									className={
+										creatingTeamId === team.id
+											? "icon-[solar--refresh-linear] h-3.5 w-3.5 animate-spin"
+											: "icon-[solar--add-circle-linear] h-3.5 w-3.5"
+									}
+									aria-hidden="true"
+								/>
+							</Button>
+						</div>
+						{createErrorTeamId === team.id ? (
+							<p className="px-2.5 py-1 text-[11px] text-destructive">{t("sidebar.createSessionError")}</p>
+						) : null}
 						{sessions.length > 0 ? (
 							<div className="ml-4 border-l border-border/50 pl-1">
 								{sessions.map((session, index) => (
@@ -129,11 +182,11 @@ export function notifyAgentTeamConfigurationChanged(): void {
 }
 
 function teamIdFromPath(path: string): string | undefined {
-	const match = /^\/agent-teams\/([^/]+)(?:\/settings|\/sessions\/[^/]+)?$/.exec(path);
+	const match = /^\/agent-teams\/([^/]+)(?:\/settings|\/sessions\/[^/]+(?:\/members\/[^/]+)?)?$/.exec(path);
 	return match?.[1] ? decodeURIComponent(match[1]) : undefined;
 }
 
 function sessionIdFromPath(path: string): string | undefined {
-	const match = /^\/agent-teams\/[^/]+\/sessions\/([^/]+)$/.exec(path);
+	const match = /^\/agent-teams\/[^/]+\/sessions\/([^/]+)(?:\/members\/[^/]+)?$/.exec(path);
 	return match?.[1] ? decodeURIComponent(match[1]) : undefined;
 }

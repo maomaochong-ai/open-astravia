@@ -139,6 +139,7 @@ describe("useTeamChatModel streaming flow", () => {
 		});
 
 		expect(result.current.model.status).toBe("streaming");
+		expect(result.current.model.members.find((member) => member.id === leader.id)?.status).toBe("working");
 		expect(result.current.model.feedItems).toEqual([
 			expect.objectContaining({
 				kind: "agent",
@@ -192,6 +193,7 @@ describe("useTeamChatModel streaming flow", () => {
 		});
 
 		expect(result.current.model.status).toBe("ready");
+		expect(result.current.model.members.find((member) => member.id === leader.id)?.status).toBe("idle");
 		expect(result.current.model.feedItems).toEqual([
 			expect.objectContaining({
 				kind: "agent",
@@ -199,6 +201,31 @@ describe("useTeamChatModel streaming flow", () => {
 				blocks: [expect.objectContaining({ type: "text", text: "partial answer" })],
 			}),
 		]);
+	});
+
+	it("keeps a failed member visible until that member starts replying again", async () => {
+		const { result } = renderHook(() => useTeamChatModel(team.id));
+		await waitFor(() => expect(result.current.model.status).toBe("ready"));
+		await waitFor(() => expect(streamListener).toBeTypeOf("function"));
+
+		act(() => {
+			streamListener?.(streamEvent(1, "partial"));
+			streamListener?.({
+				type: "conversation.agent-message-discard",
+				conversationId: baseSession.id,
+				messageId: "result",
+				turnId: "request",
+				author: { kind: "agent", id: leader.id },
+				sequence: 2,
+				reason: "failed",
+				error: "provider failed",
+				timestamp: 2,
+			});
+		});
+		expect(result.current.model.members.find((member) => member.id === leader.id)?.status).toBe("error");
+
+		act(() => streamListener?.(streamEvent(3, "retry")));
+		expect(result.current.model.members.find((member) => member.id === leader.id)?.status).toBe("working");
 	});
 
 	it("keeps attachment tokens and structured request data in sync", async () => {
@@ -295,6 +322,16 @@ describe("useTeamChatModel streaming flow", () => {
 				runtimeSessionId: "leader-runtime",
 				contextUsage: { percent: 15, contextTokens: 15, contextWindow: 100 },
 			});
+		});
+		expect(result.current.model.contextUsage?.percent).toBe(15);
+		expect(result.current.model.contextUsagesByRuntime?.["leader-runtime"]?.percent).toBe(15);
+
+		act(() => result.current.actions.toggleMember(secondMember.id));
+		// A selected member can be idle and have no usage event yet. Keep the
+		// shared ContextRing mounted with the latest known team runtime usage.
+		expect(result.current.model.contextUsage?.percent).toBe(15);
+
+		act(() => {
 			streamListener?.({
 				type: "desktop.team-context-usage",
 				conversationId: scopedSession.id,
@@ -303,10 +340,8 @@ describe("useTeamChatModel streaming flow", () => {
 				contextUsage: { percent: 70, contextTokens: 70, contextWindow: 100 },
 			});
 		});
-		expect(result.current.model.contextUsage?.percent).toBe(15);
-
-		act(() => result.current.actions.toggleMember(secondMember.id));
 		expect(result.current.model.contextUsage?.percent).toBe(70);
+		expect(result.current.model.contextUsagesByRuntime?.["second-runtime"]?.percent).toBe(70);
 	});
 
 	it("does not reload the same session when the route is canonicalized", async () => {

@@ -5,6 +5,8 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { buildContextRingDetails, type ContextRingDetailsModel, formatTokens } from "../services/context-ring-details";
 
+type Translate = ReturnType<typeof useTranslation>["t"];
+
 export interface ContextRingModel {
 	percent: number;
 	offset: number;
@@ -19,6 +21,21 @@ export interface ContextRingBinding {
 	readonly isCompacting: boolean;
 }
 
+export interface ContextRingScopeBinding extends ContextRingBinding {
+	readonly id: string;
+	readonly label: string;
+	readonly avatar?: string;
+	readonly blueprintId?: string;
+}
+
+export interface ContextRingScopeModel {
+	readonly id: string;
+	readonly label: string;
+	readonly avatar?: string;
+	readonly blueprintId?: string;
+	readonly model: ContextRingModel;
+}
+
 export function useDefaultContextRingModel(includeDetails = true): ContextRingModel | null {
 	const usage = useAtomValue(contextUsageAtom);
 	const isCompacting = useAtomValue(isCompactingAtom);
@@ -27,44 +44,78 @@ export function useDefaultContextRingModel(includeDetails = true): ContextRingMo
 
 export function useContextRingModel(binding: ContextRingBinding, includeDetails = true): ContextRingModel | null {
 	const { t } = useTranslation("chat");
-	const ctx = binding.usage;
-	const isCompacting = binding.isCompacting;
-	const composition = ctx?.composition;
-
-	const detailLabels = useMemo(
-		() =>
-			includeDetails
-				? ({
-						unknown: t("contextRing.details.unknown"),
-						owner: {
-							core: t("contextRing.details.owner.core"),
-							extension: t("contextRing.details.owner.extension"),
-							runtime: t("contextRing.details.owner.runtime"),
-							user: t("contextRing.details.owner.user"),
-							unknown: t("contextRing.details.owner.unknown"),
-						},
-						kind: {
-							instruction: t("contextRing.details.kind.instruction"),
-							tool_schema: t("contextRing.details.kind.tool_schema"),
-							history: t("contextRing.details.kind.history"),
-							runtime_context: t("contextRing.details.kind.runtime_context"),
-							user_input: t("contextRing.details.kind.user_input"),
-						},
-						group: {
-							instructions: t("contextRing.details.group.instructions"),
-							capabilities: t("contextRing.details.group.capabilities"),
-							tools: t("contextRing.details.group.tools"),
-							conversation: t("contextRing.details.group.conversation"),
-							runtime: t("contextRing.details.group.runtime"),
-						},
-					} as const)
-				: null,
-		[includeDetails, t],
-	);
+	const { usage, isCompacting } = binding;
+	const detailLabels = useMemo(() => (includeDetails ? contextRingDetailLabels(t) : null), [includeDetails, t]);
+	const composition = usage?.composition;
 	const details = useMemo(
 		() => (detailLabels ? buildContextRingDetails(composition, detailLabels) : null),
 		[composition, detailLabels],
 	);
+	return useMemo(() => buildContextRingModel({ usage, isCompacting }, t, details), [details, isCompacting, t, usage]);
+}
+
+export function useContextRingScopeModels(
+	bindings: readonly ContextRingScopeBinding[],
+	includeDetails = true,
+): readonly ContextRingScopeModel[] {
+	const { t } = useTranslation("chat");
+	const detailLabels = useMemo(() => (includeDetails ? contextRingDetailLabels(t) : null), [includeDetails, t]);
+	return useMemo(
+		() =>
+			bindings.flatMap((binding) => {
+				const details = detailLabels ? buildContextRingDetails(binding.usage?.composition, detailLabels) : null;
+				const model = buildContextRingModel(binding, t, details);
+				return model
+					? [
+							{
+								id: binding.id,
+								label: binding.label,
+								avatar: binding.avatar,
+								blueprintId: binding.blueprintId,
+								model,
+							},
+						]
+					: [];
+			}),
+		[bindings, detailLabels, t],
+	);
+}
+
+function contextRingDetailLabels(t: Translate) {
+	return {
+		unknown: t("contextRing.details.unknown"),
+		owner: {
+			core: t("contextRing.details.owner.core"),
+			extension: t("contextRing.details.owner.extension"),
+			runtime: t("contextRing.details.owner.runtime"),
+			user: t("contextRing.details.owner.user"),
+			unknown: t("contextRing.details.owner.unknown"),
+		},
+		kind: {
+			instruction: t("contextRing.details.kind.instruction"),
+			tool_schema: t("contextRing.details.kind.tool_schema"),
+			history: t("contextRing.details.kind.history"),
+			runtime_context: t("contextRing.details.kind.runtime_context"),
+			user_input: t("contextRing.details.kind.user_input"),
+		},
+		group: {
+			instructions: t("contextRing.details.group.instructions"),
+			capabilities: t("contextRing.details.group.capabilities"),
+			tools: t("contextRing.details.group.tools"),
+			conversation: t("contextRing.details.group.conversation"),
+			runtime: t("contextRing.details.group.runtime"),
+		},
+	} as const;
+}
+
+function buildContextRingModel(
+	binding: ContextRingBinding,
+	t: Translate,
+	details: ContextRingDetailsModel | null,
+): ContextRingModel | null {
+	const ctx = binding.usage;
+	const isCompacting = binding.isCompacting;
+	const composition = ctx?.composition;
 
 	if (!ctx || !ctx.contextWindow) return null;
 

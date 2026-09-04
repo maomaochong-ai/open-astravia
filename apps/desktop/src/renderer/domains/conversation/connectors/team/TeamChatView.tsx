@@ -16,7 +16,9 @@ export interface TeamChatViewProps {
 }
 
 export function TeamChatView({ model, actions }: TeamChatViewProps): JSX.Element {
-	const isStreaming = model.status === "sending" || model.status === "streaming" || model.status === "cancelling";
+	const isStreaming = model.memberViewId
+		? model.feedItems.some((item) => item.kind === "agent" && item.phase === "streaming")
+		: model.status === "sending" || model.status === "streaming" || model.status === "cancelling";
 
 	return (
 		<DefaultChatView
@@ -37,7 +39,7 @@ export function TeamChatView({ model, actions }: TeamChatViewProps): JSX.Element
 					: undefined
 			}
 		>
-			<TeamComposerConnector model={model} actions={actions} />
+			{model.memberViewId ? null : <TeamComposerConnector model={model} actions={actions} />}
 		</DefaultChatView>
 	);
 }

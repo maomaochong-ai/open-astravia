@@ -5,6 +5,8 @@ import type { ContentBlock } from "./content-blocks";
 export interface ConversationMessageViewModelBase {
 	id: string;
 	entryId?: string;
+	/** Optional UI-only key for feeds that aggregate multiple storage scopes. */
+	renderKey?: string;
 	parentId?: string | null;
 	turnId: string;
 	authorId: string;
@@ -81,6 +83,8 @@ export type ConversationTimelineItemViewModel<EventViewModel extends { readonly 
 			readonly kind: "event";
 			readonly id: string;
 			readonly entryId?: string;
+			/** Optional UI-only key for feeds that aggregate multiple storage scopes. */
+			readonly renderKey?: string;
 			readonly timestamp?: number;
 			readonly event: EventViewModel;
 	  };

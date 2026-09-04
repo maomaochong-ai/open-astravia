@@ -23,7 +23,7 @@ export const MessageFeedLayoutViewport = createFeedLayoutPart(
 );
 export const MessageFeedLayoutVirtualizer = createFeedLayoutPart(
 	"Virtualizer",
-	"flex-1 pt-2",
+	"min-h-0 flex-1 pt-2",
 	{ overflowX: "hidden" },
 );
 export const MessageFeedLayoutLeftRail = createFeedLayoutPart(

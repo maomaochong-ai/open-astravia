@@ -80,6 +80,7 @@ describe("MessageFeed compound primitives", () => {
 		expect(screen.getByText("Second")).toBeTruthy();
 		expect(screen.getByText("Footer")).toBeTruthy();
 		expect(screen.getByTestId("virtualizer").className).toContain("pt-2");
+		expect(screen.getByTestId("virtualizer").className).toContain("min-h-0");
 		expect(document.querySelector("[data-message-feed-layout-part='list']")).toBeTruthy();
 	});
 

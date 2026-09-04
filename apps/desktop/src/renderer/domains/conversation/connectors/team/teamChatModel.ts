@@ -2,6 +2,7 @@ import type {
 	DesktopTeamSessionSnapshot,
 	DesktopTeamSessionStreamEvent,
 } from "@preload/api-types/team-conversation-display";
+import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";
 import type { ConversationMessageEventState, ConversationParticipantViewModel } from "@shared/conversation";
 import { reduceConversationMessageEvent } from "@shared/conversation";
 import type { ChatConversationItem, ContextUsageData } from "@shared/store/atoms";
@@ -18,6 +19,9 @@ export type TeamChatStatus = "loading" | "ready" | "sending" | "streaming" | "ca
 
 export interface TeamChatLabels {
 	readonly leaderRoute: string;
+	/** Display labels for the role badge rendered below each member avatar. */
+	readonly memberRoles?: Readonly<Record<string, string>>;
+	readonly memberRoleFallback: string;
 	readonly placeholder: string;
 	readonly attachFile: string;
 	readonly attachImage: string;
@@ -31,6 +35,7 @@ export interface TeamChatViewModel {
 	readonly history: readonly string[];
 	readonly attachments: readonly TeamAttachmentViewModel[];
 	readonly members: readonly TeamMemberViewModel[];
+	readonly leaderMemberId?: string;
 	readonly feedItems: readonly ChatConversationItem[];
 	readonly error?: string;
 	readonly editorEnabled: boolean;
@@ -39,8 +44,11 @@ export interface TeamChatViewModel {
 	readonly activeSessionId: string | null;
 	readonly runtimeSessionIds?: readonly string[];
 	readonly memberRuntimeIds?: Readonly<Record<string, string>>;
+	readonly memberViewId?: string;
 	readonly executionMode?: SessionExecutionMode;
 	readonly contextUsage?: ContextUsageData | null;
+	readonly contextUsagesByRuntime?: Readonly<Record<string, ContextUsageData>>;
+	readonly compactingByRuntime?: Readonly<Record<string, boolean>>;
 	readonly isCompacting?: boolean;
 	readonly sessions: readonly { readonly id: string; readonly label: string }[];
 	readonly sessionActionsDisabled: boolean;
@@ -151,6 +159,7 @@ export function resolveTeamMembers(
 	selectedMemberIds: readonly string[],
 	streams: TeamStreamState,
 	resolveName: (profileId: string, fallbackHandle: string) => string,
+	failedMemberIds: ReadonlySet<string> = new Set(),
 ): TeamMemberViewModel[] {
 	if (!team) return [];
 	const workingMembers = new Set(
@@ -165,10 +174,17 @@ export function resolveTeamMembers(
 			kind: "agent",
 			name: resolveName(member.binding.agentProfileId, member.handle),
 			handle: member.handle,
-			...(profile?.avatar ? { avatar: profile.avatar } : {}),
+			// Resolve a deterministic built-in avatar even when an older team document
+			// does not contain the referenced profile. This keeps every Team surface
+			// (sidebar, header and composer) visually consistent without mutating data.
+			avatar: agentAvatarUrl({
+				id: profile?.id ?? member.id,
+				blueprintId: profile?.blueprintId ?? "leader",
+				...(profile?.avatar ? { avatar: profile.avatar } : {}),
+			}),
 			blueprintId: profile?.blueprintId ?? "leader",
 			selected: selectedMemberIds.includes(member.id),
-			status: workingMembers.has(member.id) ? "working" : "idle",
+			status: failedMemberIds.has(member.id) ? "error" : workingMembers.has(member.id) ? "working" : "idle",
 		};
 	});
 }
@@ -179,24 +195,36 @@ export function projectTeamConversationTimeline({
 	streams,
 	members,
 	labels,
+	memberId,
 }: {
 	readonly snapshot: DesktopTeamSessionSnapshot | undefined;
 	readonly pending: TeamPendingRequest | undefined;
 	readonly streams: TeamStreamState;
 	readonly members: readonly TeamMemberViewModel[];
 	readonly labels: TeamTimelineLabels;
+	/** When set, render only this member's native conversation inside the Team shell. */
+	readonly memberId?: string;
 }): ChatConversationItem[] {
 	if (!snapshot) return [];
 	const { session } = snapshot;
 	const memberMap = new Map(members.map((member) => [member.id, member]));
 	const memberConversations = snapshot.display?.memberConversations ?? [];
-	const items: ChatConversationItem[] = memberConversations.flatMap((conversation) =>
+	const visibleMemberConversations = memberId
+		? memberConversations.filter((conversation) => conversation.memberId === memberId)
+		: memberConversations;
+	const projectedItems: ChatConversationItem[] = visibleMemberConversations.flatMap((conversation) =>
 		projectMemberConversation(conversation.memberId, conversation.history),
 	);
-	if (items.length === 0 && memberConversations.length === 0) {
-		items.push(...projectLegacySnapshotMessages(snapshot));
-	}
-	for (const activity of snapshot.activities) {
+	// User input is persisted in the coordination conversation before member
+	// turns are scheduled. Keep it as the canonical timeline item even when
+	// member histories are available (they may not contain the prompt yet, and
+	// each member can otherwise duplicate the same user turn).
+	const legacyItems = projectLegacySnapshotMessages(snapshot);
+	const items = dedupeTeamUserItems([
+		...projectedItems,
+		...(memberConversations.length === 0 ? legacyItems : legacyItems.filter((item) => item.kind === "user")),
+	]);
+	for (const activity of memberId ? [] : snapshot.activities) {
 		const source =
 			memberMap.get(activity.sourceMemberId)?.name ??
 			session.memberHandles[activity.sourceMemberId] ??
@@ -207,6 +235,7 @@ export function projectTeamConversationTimeline({
 			labels.unknownMember;
 		items.push({
 			id: activity.id,
+			renderKey: `team:activity:${activity.id}`,
 			kind: "event",
 			timestamp: activity.timestamp,
 			event: {
@@ -238,25 +267,30 @@ export function projectTeamConversationTimeline({
 	}
 
 	const persistedResults = new Set(
-		memberConversations.length > 0
-			? memberConversations.flatMap((conversation) =>
+		visibleMemberConversations.length > 0
+			? visibleMemberConversations.flatMap((conversation) =>
 					fullHistoryToChat([...conversation.history]).map((item) => item.id),
 				)
-			: snapshot.messages.map((record) => record.id),
+			: memberId
+				? []
+				: snapshot.messages.map((record) => record.id),
 	);
 	for (const turn of Object.values(streams).sort(
 		(left, right) => (left.message.startedAt ?? 0) - (right.message.startedAt ?? 0),
 	)) {
+		if (memberId && turn.message.authorId !== memberId) continue;
 		if (persistedResults.has(turn.message.id)) continue;
 		items.push({
 			...turn.message,
+			renderKey: `team:stream:${turn.message.authorId}:${turn.message.id}`,
 		});
 	}
 	if (pending && Object.keys(streams).length === 0) {
 		items.push({
-			id: `waiting:${pending.requestId}:${session.leaderMemberId}`,
+			id: `waiting:${pending.requestId}:${memberId ?? session.leaderMemberId}`,
+			renderKey: `team:waiting:${pending.requestId}:${memberId ?? session.leaderMemberId}`,
 			turnId: pending.requestId,
-			authorId: session.leaderMemberId,
+			authorId: memberId ?? session.leaderMemberId,
 			kind: "agent",
 			role: "assistant",
 			phase: "pending",
@@ -268,15 +302,28 @@ export function projectTeamConversationTimeline({
 	return items;
 }
 
+function dedupeTeamUserItems(items: readonly ChatConversationItem[]): ChatConversationItem[] {
+	const seenUserIds = new Set<string>();
+	const seenTurnIds = new Set<string>();
+	return items.filter((item) => {
+		if (item.kind !== "user") return true;
+		if (seenUserIds.has(item.id) || (item.turnId !== undefined && seenTurnIds.has(item.turnId))) return false;
+		seenUserIds.add(item.id);
+		if (item.turnId !== undefined) seenTurnIds.add(item.turnId);
+		return true;
+	});
+}
+
 function projectMemberConversation(memberId: string, history: readonly HistoryEntry[]) {
-	return fullHistoryToChat([...history]).map((item) => {
+	return fullHistoryToChat([...history]).map((item, index) => {
+		const renderKey = `team:member:${memberId}:${index}:${item.entryId ?? item.id}`;
 		if (item.kind === "agent") {
-			return { ...item, authorId: memberId };
+			return { ...item, authorId: memberId, renderKey };
 		}
 		if (item.kind === "user") {
-			return { ...item, text: stripAttachmentContext(item.text) };
+			return { ...item, text: stripAttachmentContext(item.text), renderKey };
 		}
-		return item;
+		return { ...item, renderKey };
 	});
 }
 

@@ -14,6 +14,16 @@ export interface DesktopTeamMemberConversation {
 export interface DesktopTeamConversationDisplay {
 	readonly memberConversations: readonly DesktopTeamMemberConversation[];
 	readonly executionMode?: SessionExecutionMode;
+	/** Context usage for every member runtime, keyed by runtime session identity. */
+	readonly contextUsages?: readonly {
+		readonly memberId?: string;
+		readonly runtimeSessionId?: string;
+		readonly percent: number | null;
+		readonly contextTokens?: number | null;
+		readonly contextWindow: number;
+		readonly composition?: ContextCompositionReport;
+	}[];
+	/** @deprecated Use contextUsages. Kept for older Renderer builds. */
 	readonly contextUsage?: {
 		readonly memberId?: string;
 		readonly runtimeSessionId?: string;

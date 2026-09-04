@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { createInitialAgentTeamDocument } from "@vetta/agent-team";
+import { createInitialAgentTeamDocument, type TeamSessionSnapshot } from "@vetta/agent-team";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AgentTeamSidebarList } from "./AgentTeamSidebarList";
@@ -9,30 +9,21 @@ const router = vi.hoisted(() => ({
 	currentPath: "/agent-teams/team/sessions/session-2",
 	navigate: vi.fn(),
 }));
+const teamFixture = createInitialAgentTeamDocument().teams[0];
+if (!teamFixture) throw new Error("missing Team fixture");
 
 vi.mock("@tanstack/react-router", () => ({
 	useMatches: () => [{ pathname: router.currentPath }],
 	useNavigate: () => router.navigate,
 }));
-vi.mock("@vetta/theme-ui/project", () => ({
-	DefaultSessionRowView: ({
-		active,
-		label,
-		onSelect,
-	}: {
-		active: boolean;
-		label: string;
-		onSelect: () => void;
-	}) => (
-		<button type="button" data-active={String(active)} onClick={onSelect}>
-			{label}
-		</button>
-	),
-}));
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({
 		t: (key: string, values?: Record<string, number>) =>
-			key === "chat.sessionLabel" ? `Chat ${values?.index ?? ""}` : key,
+			key === "chat.sessionLabel"
+				? `Chat ${values?.index ?? ""}`
+				: key === "chat.newSession"
+					? "New chat"
+					: key,
 	}),
 }));
 vi.mock("@shared/agent-teams/preset-presentation", () => ({
@@ -69,6 +60,7 @@ describe("AgentTeamSidebarList", () => {
 							updatedAt: 1,
 						},
 					]),
+					createSession: vi.fn(),
 				},
 			},
 		});
@@ -78,7 +70,7 @@ describe("AgentTeamSidebarList", () => {
 		render(<AgentTeamSidebarList />);
 
 		const current = await screen.findByRole("button", { name: "Chat 2" });
-		expect(current.dataset.active).toBe("true");
+		expect(current.dataset.sessionActive).toBe("true");
 		const older = screen.getByRole("button", { name: "Chat 1" });
 		fireEvent.click(older);
 
@@ -88,5 +80,30 @@ describe("AgentTeamSidebarList", () => {
 				params: expect.objectContaining({ sessionId: "session-1" }),
 			}),
 		);
+	});
+
+	it("creates a session from the Team row action and navigates to it", async () => {
+		const created = { session: { id: "new-session" } } as TeamSessionSnapshot;
+		vi.mocked(window.vetta.agentTeams.createSession).mockResolvedValue(created);
+		render(<AgentTeamSidebarList />);
+
+		const createButton = await screen.findByRole("button", { name: "New chat" });
+		fireEvent.click(createButton);
+
+		await waitFor(() => {
+			expect(window.vetta.agentTeams.createSession).toHaveBeenCalledWith(teamFixture.id);
+			expect(router.navigate).toHaveBeenCalledWith({
+				to: "/agent-teams/$teamId/sessions/$sessionId",
+				params: { teamId: teamFixture.id, sessionId: "new-session" },
+			});
+		});
+	});
+
+	it("limits the Team avatar stack and shows an overflow marker", async () => {
+		render(<AgentTeamSidebarList />);
+
+		await screen.findByText("Vetta Team");
+		expect(document.querySelectorAll("img")).toHaveLength(3);
+		expect(screen.getByText("…")).toBeTruthy();
 	});
 });
