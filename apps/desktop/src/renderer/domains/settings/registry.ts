@@ -79,7 +79,7 @@ export const SETTINGS_TABS: readonly SettingsTabRegistration[] = [
 		icon: "icon-[mdi--shield-lock-outline]",
 		macOnly: true,
 	},
-	{ key: "extensions", label: "更多选项", labelKey: "tabExtensions", icon: "icon-[solar--widget-2-linear]" },
+	{ key: "extensions", label: "更多选项", labelKey: "tabExtensions", icon: "icon-[solar--menu-dots-circle-linear]" },
 ] as const;
 
 export const SETTINGS_SECTIONS = [

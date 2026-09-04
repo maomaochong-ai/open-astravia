@@ -105,7 +105,7 @@ const BUILTIN_NAV_ITEMS = [
 		type: "route",
 		settingsTab: "extensions" as const,
 		labelKey: "sidebar.nav.extensions",
-		icon: "icon-[solar--widget-2-linear]",
+		icon: "icon-[solar--menu-dots-circle-linear]",
 	},
 ] as const;
 
