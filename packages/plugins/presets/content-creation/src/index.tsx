@@ -37,6 +37,8 @@ export default definePlugin({
 				description: "%settings.page.tagline%",
 				// 不声明 icon：宿主回落到 plugin.json 里的品牌图标。
 				iconTint: false,
+				// 日常入口是内容创作活动 Tab；这页只放密钥与模型配置。
+				sidebar: false,
 				component: function ContentCreationSettingsView() {
 					return <ContentSettingsView store={runtime.settings} />;
 				},

@@ -38,6 +38,8 @@ export default definePlugin({
 			label: "%settings.title%",
 			icon: "icon-[solar--video-frame-play-horizontal-linear]",
 			description: "%settings.tagline%",
+			// 纯配置页，配好之后很少再来：不占侧边栏。
+			sidebar: false,
 			component: function ComfyUiSettingsView(): JSX.Element {
 				return <SettingsView ports={ports} />;
 			},

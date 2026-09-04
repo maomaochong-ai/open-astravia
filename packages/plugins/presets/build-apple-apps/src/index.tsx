@@ -41,6 +41,8 @@ export default definePlugin({
 			// 侧边栏图标必须是 iconify class 字符串，不能复用上面那个 ReactNode。
 			icon: "icon-[solar--smartphone-2-linear]",
 			description: "%settings.subtitle%",
+			// 日常入口是上方的模拟器活动 Tab；这页是配置，不占侧边栏。
+			sidebar: false,
 			component: SettingsView,
 		});
 
