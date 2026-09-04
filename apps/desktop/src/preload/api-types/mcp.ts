@@ -60,4 +60,17 @@ export interface DesktopMcpApi {
 	hasAuth(serverName: string): Promise<boolean>;
 	/** 批量查询多个 server 的授权状态 */
 	authStatus(serverNames: string[]): Promise<Record<string, boolean>>;
+	/**
+	 * 跑一次能力包声明的安装后步骤：连上该 server 调用它的登录工具，返回可直接显示的二维码。
+	 * 连接会保持到 `cancelSetupLogin`，扫码结果由 server 自己写入其数据目录。
+	 */
+	startSetupLogin(serverName: string, tool: string): Promise<McpSetupLoginQrCode>;
+	/** 关闭上面的连接；弹窗关闭或登录完成后调用。 */
+	cancelSetupLogin(): Promise<void>;
+}
+
+export interface McpSetupLoginQrCode {
+	/** 可直接用作 <img src> 的 data URL。 */
+	image: string;
+	expiresInSeconds: number;
 }

@@ -185,10 +185,17 @@
 		"oauth": "Account authorization",
 		"oauthAuthorized": "Authorized",
 		"oauthNotAuthorized": "Not authorized",
-		"setupPromptTitle": "One more step: sign in",
-		"setupPromptLead": "{{name}} is installed. It needs a one-time sign-in: ask the agent to call the {{tool}} tool in a chat and follow the prompt.",
-		"setupPromptHint": "The session is stored in this ability's local data directory. The \"Setup required\" badge clears once you are signed in.",
-		"setupPromptDone": "Got it"
+		"setupLoginTitle": "Sign in to {{name}}",
+		"setupLoginLead": "Scan the QR code with the {{name}} app. The session stays on this machine.",
+		"setupLoginPreparing": "Starting the server and fetching the QR code…",
+		"setupLoginFirstRun": "The first run may download its runtime dependencies; this can take a while.",
+		"setupLoginWaiting": "Waiting for the scan…",
+		"setupLoginSuccess": "Signed in. The ability is ready to use.",
+		"setupLoginExpired": "The QR code expired.",
+		"setupLoginFailed": "Could not fetch the QR code: {{error}}",
+		"setupLoginRetry": "Fetch again",
+		"setupLoginManual": "You can also ask the agent to call the {{tool}} tool in a chat.",
+		"setupLoginClose": "Close"
 	},
 	"bundle": {
 		"install": {

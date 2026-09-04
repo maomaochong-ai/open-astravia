@@ -66,6 +66,7 @@ import {
 } from "../filesystem/filesystem-service.js";
 import { getDesktopMcpOAuthService } from "../mcp/mcp-oauth-service.js";
 import { getDesktopMcpSettingsService, readMcpConfig, writeMcpConfig } from "../mcp/mcp-settings-service.js";
+import { getDesktopMcpSetupLoginService } from "../mcp/mcp-setup-login-service.js";
 import { fetchProviderModels } from "../models/fetch-models.js";
 import { getDesktopModelSettingsService } from "../models/model-settings-host.js";
 import type { ModelsConfig } from "../models/model-settings-service.js";
@@ -152,6 +153,8 @@ const CHANNELS = {
 	MCP_LOGOUT: "vetta:mcp:logout",
 	MCP_HAS_AUTH: "vetta:mcp:has-auth",
 	MCP_AUTH_STATUS: "vetta:mcp:auth-status",
+	MCP_START_SETUP_LOGIN: "vetta:mcp:start-setup-login",
+	MCP_CANCEL_SETUP_LOGIN: "vetta:mcp:cancel-setup-login",
 } as const;
 
 function assertNonEmptyString(value: unknown, fieldName: string): asserts value is string {
@@ -546,7 +549,16 @@ export function registerFsIpc(): () => void {
 		return result;
 	});
 
+	ipcMain.handle(CHANNELS.MCP_START_SETUP_LOGIN, async (_event, serverName: unknown, tool: unknown) => {
+		assertNonEmptyString(serverName, "serverName");
+		assertNonEmptyString(tool, "tool");
+		return getDesktopMcpSetupLoginService().start(serverName.trim(), tool.trim());
+	});
+
+	ipcMain.handle(CHANNELS.MCP_CANCEL_SETUP_LOGIN, () => getDesktopMcpSetupLoginService().cancel());
+
 	return () => {
+		void getDesktopMcpSetupLoginService().cancel();
 		// Close all directory watchers
 		for (const entry of watchers.values()) entry.watcher.close();
 		watchers.clear();
@@ -585,5 +597,7 @@ export function registerFsIpc(): () => void {
 		ipcMain.removeHandler(CHANNELS.MCP_LOGOUT);
 		ipcMain.removeHandler(CHANNELS.MCP_HAS_AUTH);
 		ipcMain.removeHandler(CHANNELS.MCP_AUTH_STATUS);
+		ipcMain.removeHandler(CHANNELS.MCP_START_SETUP_LOGIN);
+		ipcMain.removeHandler(CHANNELS.MCP_CANCEL_SETUP_LOGIN);
 	};
 }

@@ -185,10 +185,17 @@
 		"oauth": "账户授权",
 		"oauthAuthorized": "已授权",
 		"oauthNotAuthorized": "尚未授权",
-		"setupPromptTitle": "还差一步：完成登录",
-		"setupPromptLead": "{{name}} 已添加。首次使用需要完成一次登录：在对话里让 Agent 调用 {{tool}} 工具，按提示扫码即可。",
-		"setupPromptHint": "登录状态保存在本机的能力数据目录，完成后这里的「需要配置」提示会自动消失。",
-		"setupPromptDone": "知道了"
+		"setupLoginTitle": "扫码登录 {{name}}",
+		"setupLoginLead": "用 {{name}} App 扫描下面的二维码完成登录，登录状态只保存在本机。",
+		"setupLoginPreparing": "正在启动服务并获取二维码…",
+		"setupLoginFirstRun": "首次使用可能需要先下载运行依赖，请耐心等待。",
+		"setupLoginWaiting": "等待扫码…",
+		"setupLoginSuccess": "登录成功，这个能力可以用了。",
+		"setupLoginExpired": "二维码已过期。",
+		"setupLoginFailed": "获取二维码失败：{{error}}",
+		"setupLoginRetry": "重新获取",
+		"setupLoginManual": "也可以在对话里让 Agent 调用 {{tool}} 工具完成登录。",
+		"setupLoginClose": "关闭"
 	},
 	"bundle": {
 		"install": {
