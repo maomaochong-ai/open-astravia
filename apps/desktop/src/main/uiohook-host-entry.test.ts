@@ -69,4 +69,14 @@ describe("main bundle asset-URL guard", () => {
 		}
 		expect(offenders).toEqual([]);
 	});
+
+	// 回归：桥接产物与 dist/main/index.js 同级，路径写成 `../../` 时解析到 apps/desktop 根，
+	// 安装出来的 mcp.json 指向一个不存在的文件，服务只会以 code=1 退出。
+	it("MCP 桥接入口按产物同级路径解析", () => {
+		const source = readFileSync(
+			join(MAIN_DIR, "abilities", "open-marketplace", "open-marketplace-mcp-runtime.ts"),
+			"utf8",
+		);
+		expect(source).toContain('"./mcp-http-bridge.mjs", import.meta.url');
+	});
 });

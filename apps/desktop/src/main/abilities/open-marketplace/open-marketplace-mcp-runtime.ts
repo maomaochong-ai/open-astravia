@@ -17,9 +17,13 @@ const RUNTIME_DIRECTORY_TOKEN = `\${VETTA_MCP_RUNTIME_DIR}`;
 const DATA_DIRECTORY_TOKEN = `\${VETTA_MCP_DATA_DIR}`;
 const CACHE_DIRECTORY_TOKEN = `\${VETTA_MCP_CACHE_DIR}`;
 
-/** 桥接产物与 main 同目录输出（见 vite.main.config.ts 的 lib.entry）。 */
+/**
+ * 桥接产物与 main 打包在同一个输出目录（见 vite.main.config.ts 的 lib.entry）。
+ * 路径必须相对**产物**而不是源码目录：main 全部打进 dist/main/index.js，
+ * import.meta.url 在运行时就是那个文件，所以这里只能是同级的 `./`。
+ */
 function bridgeScriptPath(): string {
-	return fileURLToPath(new URL(/* @vite-ignore */ "../../mcp-http-bridge.mjs", import.meta.url));
+	return fileURLToPath(new URL(/* @vite-ignore */ "./mcp-http-bridge.mjs", import.meta.url));
 }
 
 type FetchArtifact = (url: string, init?: RequestInit) => Promise<Response>;
