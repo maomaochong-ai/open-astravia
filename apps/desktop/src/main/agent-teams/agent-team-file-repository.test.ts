@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createAgentTeamFixture } from "@vetta/agent-team";
 import { afterEach, describe, expect, it } from "vitest";
-import { createAgentTeamFileRepository } from "./agent-team-file-repository.js";
+import { createAgentTeamFileRepository, resolveAgentTeamResourceRoot } from "./agent-team-file-repository.js";
 
 const temporaryDirectories: string[] = [];
 
@@ -23,6 +23,26 @@ async function createRepository(): Promise<{
 }
 
 describe("Agent Team file repository", () => {
+	it("uses packaged resources only when the app is packaged", () => {
+		expect(
+			resolveAgentTeamResourceRoot({
+				isPackaged: true,
+				resourcesPath: "C:/electron/resources",
+				moduleDirectory: "C:/app/dist/main",
+				currentWorkingDirectory: "C:/app",
+			}),
+		).toBe(join("C:/electron/resources", "agent-teams"));
+
+		expect(
+			resolveAgentTeamResourceRoot({
+				isPackaged: false,
+				resourcesPath: "C:/electron/resources",
+				moduleDirectory: "C:/app/dist/main",
+				currentWorkingDirectory: "C:/app",
+			}),
+		).toBe(join("C:/app", "resources", "agent-teams"));
+	});
+
 	it("writes metadata and long descriptions as separate files and reloads them", async () => {
 		const { repository, root } = await createRepository();
 		const document = createAgentTeamFixture();

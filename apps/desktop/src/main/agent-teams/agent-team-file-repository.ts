@@ -1,4 +1,5 @@
 import type { Dirent } from "node:fs";
+import { existsSync } from "node:fs";
 import { cp, mkdir, readdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
@@ -9,10 +10,33 @@ import { atomicWriteFileAsync, atomicWriteJSONAsync } from "@vetta/toolkit/atomi
 const TEAMS_DIR = join(getVettaHomePath(), "agent-teams");
 const INITIALIZED_MARKER = ".initialized";
 const INDEX_FILE = "index.json";
-const INITIAL_TEAM_RESOURCE_ROOT =
-	typeof process.resourcesPath === "string"
-		? join(process.resourcesPath, "agent-teams")
-		: join(import.meta.dirname, "../../../resources/agent-teams");
+
+export interface AgentTeamResourceRootOptions {
+	readonly isPackaged: boolean;
+	readonly resourcesPath?: string;
+	readonly moduleDirectory: string;
+	readonly currentWorkingDirectory: string;
+}
+
+/** Resolve the initial resources for both packaged Electron and bundled development builds. */
+export function resolveAgentTeamResourceRoot(options: AgentTeamResourceRootOptions): string {
+	if (options.isPackaged && options.resourcesPath) return join(options.resourcesPath, "agent-teams");
+
+	const candidates = [
+		join(options.currentWorkingDirectory, "resources", "agent-teams"),
+		// Vite bundles the main process into dist/main, while tests load this source file directly.
+		join(options.moduleDirectory, "../../resources/agent-teams"),
+		join(options.moduleDirectory, "../../../resources/agent-teams"),
+	];
+	return candidates.find((candidate) => existsSync(join(candidate, INDEX_FILE))) ?? candidates[0];
+}
+
+const INITIAL_TEAM_RESOURCE_ROOT = resolveAgentTeamResourceRoot({
+	isPackaged: process.defaultApp !== true && typeof process.resourcesPath === "string",
+	resourcesPath: process.resourcesPath,
+	moduleDirectory: import.meta.dirname,
+	currentWorkingDirectory: process.cwd(),
+});
 
 export interface AgentTeamFileRepository {
 	read(): Promise<AgentTeamDocument>;
