@@ -196,14 +196,14 @@ export const permissionGateProbes: ProbeDefinition[] = [
 	{
 		id: "perm.storage-gate",
 		category: "权限门控",
-						title: "storage.write 未授权时 writeFile 应拒绝",
+		title: "storage.write 未授权时 writeFile 应拒绝",
 		findingSeverity: "high",
 		run: (probe) =>
 			timedResult(
 				{
 					id: "perm.storage-gate",
 					category: "权限门控",
-					title: "storage.write 未授权时 writeJson 应拒绝",
+					title: "storage.write 未授权时 writeFile 应拒绝",
 				},
 				async () => {
 					if (probe.ctx.permissions.has("storage.write")) {

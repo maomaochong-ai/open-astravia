@@ -5,10 +5,9 @@
  * 全部 frame 重新挂 iframe、渲染、截图一遍，二十帧的设计稿就是二十帧一起转圈，
  * 挨个消解。缓存的作用是让上一次的成果先顶上：进画布立刻有画面，刷新在后台跑。
  *
- * 为什么是 IndexedDB 而不是 ctx.storage：位图是纯派生数据，必须能删（frame 删了、
- * 设计稿删了），而 storage API 只有 readJson/writeJson/putBlob 一类的写入口，没有
- * 删除能力，拿它做缓存等于让磁盘只涨不落。也不写进设计包的 .snapshots/——那是
- * 用户项目里的目录，几 MB 的派生位图不该落在那儿。
+ * 为什么是 IndexedDB 而不是 ctx.storage：位图是体积较大、频繁淘汰的浏览器派生缓存，
+ * 不应让每次缓存增删都产生一版插件持久状态 revision。也不写进设计包的
+ * .snapshots/——那是用户项目里的目录，几 MB 的派生位图不该落在那儿。
  */
 
 const DB_NAME = "vetta-ui-design";
