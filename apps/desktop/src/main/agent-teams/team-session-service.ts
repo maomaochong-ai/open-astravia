@@ -781,8 +781,33 @@ export class AgentTeamSessionService {
 		}
 	}
 
-	send(sessionId: string, input: SendTeamMessageInput): Promise<TeamSessionDocument> {
+	async send(sessionId: string, input: SendTeamMessageInput): Promise<TeamSessionDocument> {
+		// A newly created Team exposes its coordination Conversation before member
+		// Runtimes finish warming. Admission must wait for that preparation instead
+		// of enqueueing against an incomplete roster and then losing the request.
+		const session = await this.read(sessionId);
+		await this.waitForMemberRuntimeWarmup(session, input.targetMemberIds ?? []);
 		return this.turnCoordinator.send(sessionId, input);
+	}
+
+	private async waitForMemberRuntimeWarmup(
+		session: TeamSessionDocument,
+		requestedMemberIds: readonly string[],
+	): Promise<void> {
+		const targetMemberIds = requestedMemberIds.length > 0 ? requestedMemberIds : [session.leaderMemberId];
+		if (targetMemberIds.every((memberId) => Boolean(session.memberRuntime[memberId]))) return;
+
+		const warmingKey = `runtime:${session.id}`;
+		const pending = this.warmingSessions.get(warmingKey);
+		if (pending) {
+			await pending;
+			return;
+		}
+
+		const document = await this.readDocument();
+		const team = document.teams.find((candidate) => candidate.id === session.teamId);
+		if (!team) throw new Error(`Agent team not found: ${session.teamId}`);
+		await this.warmup(session.id, team, document);
 	}
 
 	abort(sessionId: string): Promise<void> {

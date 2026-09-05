@@ -182,12 +182,22 @@ describe("AgentTeamSessionService streaming contract", () => {
 		expect(record.memberRuntime).toEqual({});
 		await vi.waitFor(() => expect(createSession).toHaveBeenCalledTimes(team.members.length + 1));
 		expect(JSON.stringify(createSession.mock.calls[1]?.[0])).toContain(team.leaderMemberId);
+		const coordinator = (
+			service as unknown as {
+				readonly turnCoordinator: { send: (sessionId: string, input: unknown) => Promise<TeamSessionDocument> };
+			}
+		).turnCoordinator;
+		const admitted = vi.spyOn(coordinator, "send").mockResolvedValue(record);
+		const send = service.send(record.id, { requestId: "during-warmup", text: "hello", targetMemberIds: [] });
+		await vi.waitFor(() => expect(admitted).not.toHaveBeenCalled());
 		await expect(
 			service.updateModelSettings(record.id, { modelKey: "openai/test", reasoning: "low" }),
 		).resolves.toMatchObject({ modelSettings: { modelKey: "openai/test", reasoning: "low" } });
 
 		releaseLeader?.();
 		await service.warmup(record.id, team, document);
+		await send;
+		expect(admitted).toHaveBeenCalledWith(record.id, expect.objectContaining({ requestId: "during-warmup" }));
 		expect(createSession).toHaveBeenCalledTimes(team.members.length + 1);
 		const warmed = await service.read(record.id);
 		expect(warmed.runtimeStatus).toBe("ready");
