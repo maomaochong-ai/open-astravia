@@ -217,7 +217,24 @@
 		"loginCheckFailed": "Could not verify the sign-in status: {{error}}",
 		"loginCheckRetry": "Check again",
 		"loginAction": "Sign in to Xiaohongshu",
-		"loginRequired": "Sign-in required"
+		"loginRequired": "Sign-in required",
+		"connectionConfig": "Connection settings",
+		"settings": {
+			"title": "{{name}} settings",
+			"description": "Manage sign-in state and runtime connection parameters. Saving does not start sign-in.",
+			"back": "Back to ability details",
+			"runtimeTitle": "Runtime connection",
+			"runtimeDescription": "Parameters are passed only to the local managed service. The service restarts on the next check or use after a change.",
+			"proxyLabel": "Proxy URL",
+			"proxyHint": "Supports HTTP, HTTPS, or SOCKS5 proxies, for example http://127.0.0.1:7890. Leave blank for a direct connection.",
+			"optional": "optional",
+			"save": "Save connection settings",
+			"saving": "Saving…",
+			"clearLogin": "Clear sign-in state",
+			"confirmClearLogin": "Confirm clearing sign-in state",
+			"clearing": "Clearing…",
+			"checkedAt": "Last verified: {{time}}"
+		}
 	},
 	"bundle": {
 		"install": {

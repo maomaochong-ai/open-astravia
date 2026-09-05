@@ -156,6 +156,7 @@ const CHANNELS = {
 	MCP_GET_SETUP_LOGIN_STATUS: "vetta:mcp:get-setup-login-status",
 	MCP_START_SETUP_LOGIN: "vetta:mcp:start-setup-login",
 	MCP_CANCEL_SETUP_LOGIN: "vetta:mcp:cancel-setup-login",
+	MCP_CLEAR_SETUP_LOGIN: "vetta:mcp:clear-setup-login",
 } as const;
 
 function assertNonEmptyString(value: unknown, fieldName: string): asserts value is string {
@@ -560,15 +561,24 @@ export function registerFsIpc(): () => void {
 		return getDesktopMcpSetupLoginService().getStatus(serverName.trim());
 	});
 
-	ipcMain.handle(CHANNELS.MCP_START_SETUP_LOGIN, async (_event, serverName: unknown) => {
+	ipcMain.handle(CHANNELS.MCP_START_SETUP_LOGIN, async (_event, serverName: unknown, requestId: unknown) => {
 		assertNonEmptyString(serverName, "serverName");
-		return getDesktopMcpSetupLoginService().start(serverName.trim());
+		assertNonEmptyString(requestId, "requestId");
+		return getDesktopMcpSetupLoginService().start(serverName.trim(), requestId.trim());
 	});
 
-	ipcMain.handle(CHANNELS.MCP_CANCEL_SETUP_LOGIN, () => getDesktopMcpSetupLoginService().cancel());
+	ipcMain.handle(CHANNELS.MCP_CANCEL_SETUP_LOGIN, (_event, requestId: unknown) => {
+		assertNonEmptyString(requestId, "requestId");
+		return getDesktopMcpSetupLoginService().cancel(requestId.trim());
+	});
+
+	ipcMain.handle(CHANNELS.MCP_CLEAR_SETUP_LOGIN, async (_event, serverName: unknown) => {
+		assertNonEmptyString(serverName, "serverName");
+		return getDesktopMcpSetupLoginService().clear(serverName.trim());
+	});
 
 	return () => {
-		void getDesktopMcpSetupLoginService().cancel();
+		void getDesktopMcpSetupLoginService().cancelAll();
 		// Close all directory watchers
 		for (const entry of watchers.values()) entry.watcher.close();
 		watchers.clear();
@@ -610,6 +620,7 @@ export function registerFsIpc(): () => void {
 		ipcMain.removeHandler(CHANNELS.MCP_GET_SETUP_LOGIN_STATUS);
 		ipcMain.removeHandler(CHANNELS.MCP_START_SETUP_LOGIN);
 		ipcMain.removeHandler(CHANNELS.MCP_CANCEL_SETUP_LOGIN);
+		ipcMain.removeHandler(CHANNELS.MCP_CLEAR_SETUP_LOGIN);
 		disposeModelChanged();
 	};
 }

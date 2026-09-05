@@ -53,6 +53,7 @@ export async function prepareOpenMarketplaceMcpInDesktop(
 		runtime: mcpPackage.runtime,
 		server: mcpPackage.server,
 		setup: mcpPackage.setup,
+		parameters: mcpPackage.parameters,
 		onProgress,
 	});
 }

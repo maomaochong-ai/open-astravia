@@ -75,7 +75,10 @@ export function createDesktopMcpSupervisor(options: DesktopMcpSupervisorOptions)
 			const runtimeId = config.type === "http" ? managedRuntimeId(config) : undefined;
 			const resolvedConfig: McpServerConfig =
 				config.type === "http" && runtimeId
-					? { ...config, resolveUrl: () => ensureOpenMarketplaceManagedMcpRuntime(runtimeId) }
+					? {
+							...config,
+							resolveUrl: () => ensureOpenMarketplaceManagedMcpRuntime(runtimeId, config.managedRuntimeEnv),
+						}
 					: config;
 			return createMcpClient(name, resolvedConfig, clientOptions);
 		},

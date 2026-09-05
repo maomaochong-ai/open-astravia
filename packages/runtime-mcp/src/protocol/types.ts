@@ -57,6 +57,8 @@ export interface McpStdioServerConfig extends McpServerCommonConfig {
 export interface McpHttpServerConfig extends McpServerCommonConfig {
 	type: "http";
 	url: string;
+	/** Host-managed process environment overrides; ignored by ordinary remote HTTP transports. */
+	managedRuntimeEnv?: Record<string, string>;
 	/** Runtime-only URL resolver for host-managed local services; never persisted to mcp.json. */
 	resolveUrl?: () => string | Promise<string>;
 	headers?: Record<string, string>;

@@ -19,11 +19,13 @@ function ability(): McpAbility {
 }
 
 function stubVetta(overrides?: {
-	start?: () => Promise<{ state: "qr_code"; image: string; expiresInSeconds: number }>;
+	start?: (serverName: string, requestId: string) => Promise<{ state: "qr_code"; image: string; expiresInSeconds: number }>;
 	status?: () => Promise<{ state: "authenticated" | "unauthenticated" }>;
 }) {
-	const cancelSetupLogin = vi.fn(async () => undefined);
-	const startSetupLogin = vi.fn(
+	const cancelSetupLogin = vi.fn<(requestId: string) => Promise<void>>(async () => undefined);
+	const startSetupLogin = vi.fn<
+		(serverName: string, requestId: string) => Promise<{ state: "qr_code"; image: string; expiresInSeconds: number }>
+	>(
 		overrides?.start ?? (async () => ({ state: "qr_code" as const, image: QR, expiresInSeconds: 60 })),
 	);
 	const getSetupLoginStatus = vi.fn(
@@ -53,7 +55,7 @@ describe("useMcpSetupLoginModel", () => {
 
 		await waitFor(() => expect(result.current.phase).toBe("scanning"));
 		expect(result.current.image).toBe(QR);
-		expect(stub.startSetupLogin).toHaveBeenCalledWith("demo-mcp");
+		expect(stub.startSetupLogin).toHaveBeenCalledWith("demo-mcp", expect.any(String));
 
 		completed = true;
 		await act(async () => {
@@ -83,18 +85,27 @@ describe("useMcpSetupLoginModel", () => {
 		expect(stub.startSetupLogin).toHaveBeenCalledTimes(2);
 	});
 
-	it("取码失败时给出原因，卸载时收掉连接", async () => {
+	it("取码失败时给出原因", async () => {
 		const stub = stubVetta({
 			start: async () => {
 				throw new Error("spawn failed");
 			},
 		});
-		const { result, unmount } = renderHook(() => useMcpSetupLoginModel({ item: ability(), onCompleted: () => {} }));
+		const { result } = renderHook(() => useMcpSetupLoginModel({ item: ability(), onCompleted: () => {} }));
 
 		await waitFor(() => expect(result.current.phase).toBe("failed"));
 		expect(result.current.error).toMatch(/spawn failed/);
+	});
+
+	it("卸载时只取消当前二维码请求", async () => {
+		const stub = stubVetta({
+			start: async () => new Promise(() => undefined),
+		});
+		const { unmount } = renderHook(() => useMcpSetupLoginModel({ item: ability(), onCompleted: () => {} }));
+		await waitFor(() => expect(stub.startSetupLogin).toHaveBeenCalledOnce());
+		const requestId = stub.startSetupLogin.mock.calls[0]?.[1];
 
 		unmount();
-		expect(stub.cancelSetupLogin).toHaveBeenCalled();
+		expect(stub.cancelSetupLogin).toHaveBeenCalledWith(requestId);
 	});
 });

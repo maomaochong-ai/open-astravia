@@ -90,6 +90,7 @@ export interface McpSettingsModel {
 	onConfigureBuiltinSecrets: (name: string, preset?: BuiltinMcpPreset) => void;
 	onCloseSecretsDialog: () => void;
 	onConfirmSecretsDialog: (values: Record<string, string>) => Promise<void>;
+	onSaveBuiltinParameters: (name: string, preset: BuiltinMcpPreset, values: Record<string, string>) => Promise<void>;
 	/** serverName → 是否已有 OAuth token */
 	oauthAuthByName: Record<string, boolean>;
 	/** 正在进行 OAuth 的 server name */
@@ -429,6 +430,44 @@ export function useMcpSettingsModel(options?: McpSettingsModelOptions): McpSetti
 		[secretsDialogPreset, writeBuiltinPreset],
 	);
 
+	const saveBuiltinParameters = useCallback(
+		async (name: string, preset: BuiltinMcpPreset, values: Record<string, string>) => {
+			const current = configRef.current;
+			const existing = current?.mcpServers[name];
+			if (!current || !existing) return;
+			const next =
+				existing.type === "http" && existing.managedRuntimeId
+					? {
+							...existing,
+							managedRuntimeEnv: Object.fromEntries(
+								Object.entries(values).flatMap(([key, value]) => {
+									const trimmed = value.trim();
+									if (!trimmed) return [];
+									const template = preset.secrets?.find((field) => field.envKey === key)?.valueTemplate;
+									return [[key, template ? template.replace("{value}", trimmed) : trimmed]];
+								}),
+							),
+						}
+					: buildBuiltinMcpServerConfig(
+							preset,
+							{
+								displayName: resolveMcpPresetDisplayName(preset, (key) => t(key)),
+								description: resolveMcpPresetDescription(preset, (key) => t(key)),
+							},
+							values,
+						);
+			await saveConfig({
+				...current,
+				mcpServers: {
+					...current.mcpServers,
+					[name]: next,
+				},
+			});
+			recordSettingsUsage({ tab: "mcp", action: "updated", target: "managed-runtime-parameters", value: name });
+		},
+		[saveConfig, t],
+	);
+
 	const addRemoteServer = useCallback(
 		async (server: MarketMcpServer, options?: McpAbilityInstallOptions) => {
 			const config = configRef.current;
@@ -597,6 +636,7 @@ export function useMcpSettingsModel(options?: McpSettingsModelOptions): McpSetti
 		onConfigureBuiltinSecrets: configureBuiltinSecrets,
 		onCloseSecretsDialog: closeSecretsDialog,
 		onConfirmSecretsDialog: confirmSecretsDialog,
+		onSaveBuiltinParameters: saveBuiltinParameters,
 		oauthAuthByName,
 		oauthBusyName,
 		onAuthorizeOAuth: authorizeOAuth,

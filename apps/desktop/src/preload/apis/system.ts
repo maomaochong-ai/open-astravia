@@ -223,8 +223,9 @@ export function createSystemApi(
 			hasAuth: (serverName) => ipc.invoke("vetta:mcp:has-auth", serverName),
 			authStatus: (serverNames) => ipc.invoke("vetta:mcp:auth-status", serverNames),
 			getSetupLoginStatus: (serverName) => ipc.invoke("vetta:mcp:get-setup-login-status", serverName),
-			startSetupLogin: (serverName) => ipc.invoke("vetta:mcp:start-setup-login", serverName),
-			cancelSetupLogin: () => ipc.invoke("vetta:mcp:cancel-setup-login"),
+			startSetupLogin: (serverName, requestId) => ipc.invoke("vetta:mcp:start-setup-login", serverName, requestId),
+			cancelSetupLogin: (requestId) => ipc.invoke("vetta:mcp:cancel-setup-login", requestId),
+			clearSetupLogin: (serverName) => ipc.invoke("vetta:mcp:clear-setup-login", serverName),
 		},
 		media: {
 			getAudioMetadata: (filePath) => ipc.invoke("vetta:media:audio-metadata", filePath),

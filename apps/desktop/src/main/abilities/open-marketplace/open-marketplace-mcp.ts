@@ -180,6 +180,9 @@ function loadOpenMarketplaceMcpPackage(
 		) {
 			throw new Error(`Managed MCP services must pass ${RUNTIME_PORT_TOKEN} to the process`);
 		}
+		if (manifest.parameters.some((parameter) => !/^[A-Za-z_][A-Za-z0-9_]*$/.test(parameter.key))) {
+			throw new Error("Managed MCP parameter keys must be valid environment variable names");
+		}
 	}
 	const setup = manifest.schemaVersion === 3 ? manifest.setup : undefined;
 	if (setup && !runtime) throw new Error("Post-install setup requires a managed MCP runtime");
@@ -210,7 +213,17 @@ export function validateOpenMarketplaceMcp(
 export function readOpenMarketplaceMcpPackage(
 	sourceDir: string,
 	ability: OpenMarketplaceMcpAbility,
-): { server: McpServerConfigData; runtime?: OpenMarketplaceMcpRuntime; setup?: OpenMarketplaceMcpSetup } {
-	const { server, runtime, setup } = loadOpenMarketplaceMcpPackage(sourceDir, ability);
-	return { server, ...(runtime ? { runtime } : {}), ...(setup ? { setup } : {}) };
+): {
+	server: McpServerConfigData;
+	parameters: readonly { key: string }[];
+	runtime?: OpenMarketplaceMcpRuntime;
+	setup?: OpenMarketplaceMcpSetup;
+} {
+	const { manifest, server, runtime, setup } = loadOpenMarketplaceMcpPackage(sourceDir, ability);
+	return {
+		server,
+		parameters: manifest.parameters,
+		...(runtime ? { runtime } : {}),
+		...(setup ? { setup } : {}),
+	};
 }

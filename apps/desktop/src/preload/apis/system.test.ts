@@ -69,3 +69,18 @@ describe("createSystemApi fs preview contract", () => {
 		expect(invoke).toHaveBeenCalledWith("vetta:clipboard:paste-user-message", "session-1");
 	});
 });
+
+describe("createSystemApi MCP setup login contract", () => {
+	it("forwards the QR request id through start and cancel", async () => {
+		const invoke = vi.fn(async () => undefined);
+		const api = createSystemApi({ invoke } as unknown as IpcRenderer, {} as WebUtils);
+
+		await api.mcp.startSetupLogin("xiaohongshu-mcp", "qr-request-1");
+		await api.mcp.cancelSetupLogin("qr-request-1");
+		await api.mcp.clearSetupLogin("xiaohongshu-mcp");
+
+		expect(invoke).toHaveBeenNthCalledWith(1, "vetta:mcp:start-setup-login", "xiaohongshu-mcp", "qr-request-1");
+		expect(invoke).toHaveBeenNthCalledWith(2, "vetta:mcp:cancel-setup-login", "qr-request-1");
+		expect(invoke).toHaveBeenNthCalledWith(3, "vetta:mcp:clear-setup-login", "xiaohongshu-mcp");
+	});
+});

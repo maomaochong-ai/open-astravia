@@ -167,7 +167,7 @@ export function McpServerRow({
 								<span className="icon-[mdi--key-variant] h-3.5 w-3.5" />
 							</Button>
 						)}
-						{!isBuiltin && (
+						{!isBuiltin && !(server.type === "http" && server.managedRuntimeId) && (
 							<Button
 								variant="ghost"
 								size="icon-sm"

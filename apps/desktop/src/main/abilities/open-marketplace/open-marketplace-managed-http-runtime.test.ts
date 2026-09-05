@@ -22,13 +22,14 @@ async function fixture(): Promise<{ root: string; id: string; command: string }>
 	await writeFile(
 		join(root, id, MANAGED_HTTP_RUNTIME_FILE),
 		JSON.stringify({
-			schemaVersion: 1,
+			schemaVersion: 2,
 			id,
 			command,
 			args: [`-port=:${PORT_TOKEN}`],
 			env: { PORT: PORT_TOKEN },
 			mcpPath: "/mcp",
 			readyTimeoutMs: 1000,
+			configurableEnvKeys: ["XHS_PROXY"],
 		}),
 		"utf8",
 	);
@@ -59,15 +60,19 @@ describe("ManagedHttpRuntimeService", () => {
 			fetchImpl,
 		});
 
-		await expect(Promise.all([service.ensure(id), service.ensure(id)])).resolves.toEqual([
-			"http://127.0.0.1:23456/mcp",
-			"http://127.0.0.1:23456/mcp",
-		]);
+		await expect(
+			Promise.all([
+				service.ensure(id, { XHS_PROXY: "http://127.0.0.1:7890" }),
+				service.ensure(id, { XHS_PROXY: "http://127.0.0.1:7890" }),
+			]),
+		).resolves.toEqual(["http://127.0.0.1:23456/mcp", "http://127.0.0.1:23456/mcp"]);
 		expect(spawnProcess).toHaveBeenCalledOnce();
 		expect(spawnProcess).toHaveBeenCalledWith(
 			command,
 			["-port=:23456"],
-			expect.objectContaining({ env: expect.objectContaining({ PORT: "23456" }) }),
+			expect.objectContaining({
+				env: expect.objectContaining({ PORT: "23456", XHS_PROXY: "http://127.0.0.1:7890" }),
+			}),
 		);
 		expect(fetchImpl).toHaveBeenCalledWith("http://127.0.0.1:23456/mcp", expect.objectContaining({ method: "HEAD" }));
 	});
@@ -78,13 +83,14 @@ describe("ManagedHttpRuntimeService", () => {
 		expect(() =>
 			parseManagedHttpRuntimeSpec(
 				{
-					schemaVersion: 1,
+					schemaVersion: 2,
 					id: "demo",
 					command: join(root, "escape.exe"),
 					args: [],
 					env: {},
 					mcpPath: "/mcp",
 					readyTimeoutMs: 1000,
+					configurableEnvKeys: [],
 				},
 				root,
 				"demo",

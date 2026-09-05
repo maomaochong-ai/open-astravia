@@ -40,6 +40,7 @@ export interface PrepareOpenMarketplaceMcpRuntimeInput {
 	runtime: OpenMarketplaceMcpRuntime;
 	server: McpServerConfigData;
 	setup?: OpenMarketplaceMcpSetup;
+	parameters?: readonly { key: string }[];
 	onProgress?: (progress: OpenMarketplaceMcpRuntimeProgress) => void;
 }
 
@@ -313,7 +314,7 @@ export class OpenMarketplaceMcpRuntimeInstaller {
 			};
 			const processConfig = input.runtime.process;
 			const spec: ManagedHttpRuntimeSpec = {
-				schemaVersion: 1,
+				schemaVersion: 2,
 				id: managedRuntimeId,
 				command: executablePath,
 				args: processConfig.args.map((value) => replaceRuntimeTokens(value, paths)),
@@ -323,6 +324,7 @@ export class OpenMarketplaceMcpRuntimeInstaller {
 				...(processConfig.cwd ? { cwd: replaceRuntimeTokens(processConfig.cwd, paths) } : {}),
 				mcpPath: input.runtime.service.path,
 				readyTimeoutMs: input.runtime.service.readyTimeoutMs ?? 120_000,
+				configurableEnvKeys: input.parameters?.map((parameter) => parameter.key) ?? [],
 				...(input.setup ? { setup: input.setup } : {}),
 			};
 			if (![...spec.args, ...Object.values(spec.env)].some((value) => value.includes(MANAGED_HTTP_PORT_TOKEN))) {

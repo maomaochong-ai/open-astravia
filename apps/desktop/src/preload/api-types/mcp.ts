@@ -24,6 +24,8 @@ export interface McpHttpServerConfigData extends McpServerCommonConfigData {
 	url: string;
 	/** Desktop 安装的本地受管 HTTP runtime。普通远程 MCP 不带此字段。 */
 	managedRuntimeId?: string;
+	/** 仅传给受管 runtime、且必须由市场 manifest 声明允许的环境变量。 */
+	managedRuntimeEnv?: Record<string, string>;
 	headers?: Record<string, string>;
 	/**
 	 * 预注册 OAuth client_id：用于不支持 DCR 的远程 MCP（如 GitHub）。
@@ -64,10 +66,12 @@ export interface DesktopMcpApi {
 	authStatus(serverNames: string[]): Promise<Record<string, boolean>>;
 	/** 使用能力上游声明的状态端点检查真实登录态。 */
 	getSetupLoginStatus(serverName: string): Promise<McpSetupLoginStatus>;
-	/** 请求能力上游生成登录二维码；若上游已登录则直接返回 authenticated。 */
-	startSetupLogin(serverName: string): Promise<McpSetupLoginStartResult>;
-	/** 取消当前尚未完成的状态或二维码请求。 */
-	cancelSetupLogin(): Promise<void>;
+	/** 请求能力上游生成登录二维码；requestId 只标识本次二维码请求。 */
+	startSetupLogin(serverName: string, requestId: string): Promise<McpSetupLoginStartResult>;
+	/** 只取消指定的二维码请求，不影响登录状态探测或其他请求。 */
+	cancelSetupLogin(requestId: string): Promise<void>;
+	/** 调用上游声明的退出端点并重新读取真实登录态。 */
+	clearSetupLogin(serverName: string): Promise<McpSetupLoginStatus>;
 }
 
 export interface McpSetupLoginStatus {
@@ -78,7 +82,8 @@ export interface McpSetupLoginStatus {
 
 export type McpSetupLoginStartResult =
 	| { state: "authenticated"; username?: string; userId?: string }
-	| { state: "qr_code"; image: string; expiresInSeconds: number };
+	| { state: "qr_code"; image: string; expiresInSeconds: number }
+	| { state: "cancelled" };
 
 export interface McpSetupLoginQrCode {
 	/** 可直接用作 <img src> 的 data URL。 */

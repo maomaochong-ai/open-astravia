@@ -83,6 +83,7 @@ describe("OpenMarketplaceMcpRuntimeInstaller", () => {
 				qrcodePath: "/api/v1/login/qrcode",
 				logoutPath: "/api/v1/login/cookies",
 			},
+			parameters: [{ key: "XHS_PROXY" }],
 			onProgress: (event) => progress.push(event.phase),
 		});
 
@@ -98,11 +99,12 @@ describe("OpenMarketplaceMcpRuntimeInstaller", () => {
 			unknown
 		>;
 		expect(spec).toMatchObject({
-			schemaVersion: 1,
+			schemaVersion: 2,
 			id: installed.managedRuntimeId,
 			args: [`-port=:${PORT_TOKEN}`],
 			mcpPath: "/mcp",
 			readyTimeoutMs: 300_000,
+			configurableEnvKeys: ["XHS_PROXY"],
 			setup: { kind: "http-qrcode", statusPath: "/api/v1/login/status" },
 		});
 		expect(spec.command).toMatch(/runtime[/\\]versions[/\\]1\.0\.0[/\\]demo\.exe$/);

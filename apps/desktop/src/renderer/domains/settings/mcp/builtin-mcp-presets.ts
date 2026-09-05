@@ -293,6 +293,7 @@ export function buildBuiltinMcpServerConfig(
 	const base = { ...preset.config, displayName: labels.displayName, description: labels.description };
 	if (Object.keys(env).length === 0) return base;
 	if (base.type === "http") {
+		if (base.managedRuntimeId) return { ...base, managedRuntimeEnv: env };
 		return { ...base, headers: { ...base.headers, ...env } };
 	}
 	return { ...base, env: { ...base.env, ...env } };
@@ -302,7 +303,8 @@ export function buildBuiltinMcpServerConfig(
 export function missingRequiredSecrets(preset: BuiltinMcpPreset, config: McpServerConfigData): BuiltinMcpSecretField[] {
 	const secrets = preset.secrets?.filter((field) => field.required) ?? [];
 	if (secrets.length === 0) return [];
-	const env = config.type === "http" ? config.headers : config.env;
+	const env =
+		config.type === "http" ? (config.managedRuntimeId ? config.managedRuntimeEnv : config.headers) : config.env;
 	return secrets.filter((field) => !env?.[field.envKey]?.trim());
 }
 
@@ -317,7 +319,8 @@ function stripSecretTemplate(stored: string, template?: string): string {
 }
 
 export function existingSecretValues(preset: BuiltinMcpPreset, config: McpServerConfigData): Record<string, string> {
-	const env = config.type === "http" ? config.headers : config.env;
+	const env =
+		config.type === "http" ? (config.managedRuntimeId ? config.managedRuntimeEnv : config.headers) : config.env;
 	const values: Record<string, string> = {};
 	for (const field of preset.secrets ?? []) {
 		const current = env?.[field.envKey];

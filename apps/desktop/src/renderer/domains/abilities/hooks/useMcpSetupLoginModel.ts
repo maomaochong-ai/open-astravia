@@ -36,6 +36,13 @@ export function useMcpSetupLoginModel({
 	const timersRef = useRef<{ expiry?: ReturnType<typeof setTimeout>; poll?: ReturnType<typeof setInterval> }>({});
 	/** 每次取码自增：迟到的响应与旧计时器据此作废。 */
 	const runRef = useRef(0);
+	const activeRequestIdRef = useRef<string | undefined>(undefined);
+
+	const cancelActiveRequest = useCallback((): void => {
+		const requestId = activeRequestIdRef.current;
+		activeRequestIdRef.current = undefined;
+		if (requestId) void window.vetta.mcp.cancelSetupLogin(requestId).catch(() => undefined);
+	}, []);
 
 	const stopTimers = useCallback(() => {
 		if (timersRef.current.expiry) clearTimeout(timersRef.current.expiry);
@@ -48,7 +55,10 @@ export function useMcpSetupLoginModel({
 	const start = useCallback((): void => {
 		if (!serverName) return;
 		stopTimers();
+		cancelActiveRequest();
 		const run = ++runRef.current;
+		const requestId = crypto.randomUUID();
+		activeRequestIdRef.current = requestId;
 		const isStale = (): boolean => run !== runRef.current;
 		setPhase("preparing");
 		setImage(undefined);
@@ -65,7 +75,7 @@ export function useMcpSetupLoginModel({
 					runRef.current += 1;
 					stopTimers();
 					setPhase("completed");
-					void window.vetta.mcp.cancelSetupLogin().catch(() => undefined);
+					cancelActiveRequest();
 					onCompletedRef.current();
 				})
 				.catch((reason: unknown) => {
@@ -81,9 +91,11 @@ export function useMcpSetupLoginModel({
 		};
 
 		void window.vetta.mcp
-			.startSetupLogin(serverName)
+			.startSetupLogin(serverName, requestId)
 			.then((qrCode) => {
 				if (isStale()) return;
+				if (activeRequestIdRef.current === requestId) activeRequestIdRef.current = undefined;
+				if (qrCode.state === "cancelled") return;
 				if (qrCode.state === "authenticated") {
 					setPhase("completed");
 					onCompletedRef.current();
@@ -101,19 +113,21 @@ export function useMcpSetupLoginModel({
 			})
 			.catch((reason: unknown) => {
 				if (isStale()) return;
+				if (activeRequestIdRef.current === requestId) activeRequestIdRef.current = undefined;
 				setError(errorMessage(reason));
 				setPhase("failed");
 			});
-	}, [serverName, stopTimers]);
+	}, [cancelActiveRequest, serverName, stopTimers]);
 
 	useEffect(() => {
-		start();
+		const initialStart = setTimeout(start, 0);
 		return () => {
+			clearTimeout(initialStart);
 			runRef.current += 1;
 			stopTimers();
-			void window.vetta.mcp.cancelSetupLogin().catch(() => undefined);
+			cancelActiveRequest();
 		};
-	}, [start, stopTimers]);
+	}, [cancelActiveRequest, start, stopTimers]);
 
 	return { phase, image, error, retry: start };
 }

@@ -15,6 +15,7 @@ const HTTP_SERVER_KEYS = new Set([
 	...COMMON_SERVER_KEYS,
 	"url",
 	"managedRuntimeId",
+	"managedRuntimeEnv",
 	"headers",
 	"oauthClientId",
 	"oauthDeviceFlow",
@@ -82,6 +83,10 @@ function assertServerConfig(value: unknown, path: string): asserts value is McpS
 		assertOptionalString(value.url, `${path}.url`, true);
 		if (value.url === undefined) throw new Error(`Invalid ${path}.url`);
 		assertOptionalString(value.managedRuntimeId, `${path}.managedRuntimeId`, true);
+		assertOptionalStringRecord(value.managedRuntimeEnv, `${path}.managedRuntimeEnv`);
+		if (value.managedRuntimeEnv !== undefined && value.managedRuntimeId === undefined) {
+			throw new Error(`Invalid ${path}.managedRuntimeEnv`);
+		}
 		assertOptionalStringRecord(value.headers, `${path}.headers`);
 		assertOptionalString(value.oauthClientId, `${path}.oauthClientId`);
 		assertOptionalBoolean(value.oauthDeviceFlow, `${path}.oauthDeviceFlow`);

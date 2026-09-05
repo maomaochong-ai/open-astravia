@@ -378,8 +378,10 @@ function createMcpAbility(input: McpBuildInput, state: LocalAbilityState, t: TFu
 		preset,
 		usesOAuth,
 		authorized,
-		canConfigure: installed && Boolean(preset?.secrets?.length),
-		canEdit: Boolean(server && !isBuiltinMcpServer(serverName, server)),
+		canConfigure: installed && !postInstallSetup && Boolean(preset?.secrets?.length),
+		canEdit: Boolean(
+			server && !(server.type === "http" && server.managedRuntimeId) && !isBuiltinMcpServer(serverName, server),
+		),
 		searchTerms: terms(slug, title, description, entry?.tags),
 	};
 }

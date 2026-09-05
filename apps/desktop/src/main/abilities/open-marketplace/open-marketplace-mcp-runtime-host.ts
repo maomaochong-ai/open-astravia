@@ -18,8 +18,10 @@ const runtimeService = new ManagedHttpRuntimeService({
 });
 const setupStatus = new Map<string, boolean>();
 
-export const ensureOpenMarketplaceManagedMcpRuntime = (runtimeId: string): Promise<string> =>
-	runtimeService.ensure(runtimeId);
+export const ensureOpenMarketplaceManagedMcpRuntime = (
+	runtimeId: string,
+	environment?: Readonly<Record<string, string>>,
+): Promise<string> => runtimeService.ensure(runtimeId, environment);
 export const readOpenMarketplaceManagedMcpRuntimeSpec = (runtimeId: string): Promise<ManagedHttpRuntimeSpec> =>
 	runtimeService.readSpec(runtimeId);
 export const recordOpenMarketplaceMcpSetupStatus = (runtimeId: string, authenticated: boolean): void => {

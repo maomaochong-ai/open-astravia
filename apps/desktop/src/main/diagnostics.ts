@@ -1,6 +1,7 @@
 import { createSocket } from "node:dgram";
 import { createConnection } from "node:net";
 import { app, net } from "electron";
+import { shouldLogFetchFailure } from "./fetch-diagnostics-policy.js";
 import {
 	type AppLogLevel,
 	configureAppLogging,
@@ -146,6 +147,7 @@ export function installChromiumFetchForMain(): void {
 		try {
 			return await chromiumFetch(input as Parameters<typeof net.fetch>[0], init);
 		} catch (err) {
+			if (!shouldLogFetchFailure(err, init?.signal)) throw err;
 			const url = typeof input === "string" ? input : input instanceof URL ? input.href : (input as Request).url;
 			try {
 				const parsed = new URL(url);
@@ -174,6 +176,7 @@ function patchFetch(): void {
 		try {
 			return await orig(input, init);
 		} catch (err) {
+			if (!shouldLogFetchFailure(err, init?.signal)) throw err;
 			const url = typeof input === "string" ? input : input instanceof URL ? input.href : (input as Request).url;
 			try {
 				const parsed = new URL(url);

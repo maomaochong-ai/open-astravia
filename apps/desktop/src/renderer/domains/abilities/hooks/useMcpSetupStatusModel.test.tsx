@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { renderHook, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { McpAbility } from "../types";
 import { useMcpSetupStatusModel } from "./useMcpSetupStatusModel";
@@ -22,9 +23,10 @@ describe("useMcpSetupStatusModel", () => {
 		);
 		(window as unknown as { vetta: unknown }).vetta = { mcp: { getSetupLoginStatus } };
 		const refresh = vi.fn();
-		const { result } = renderHook(() => useMcpSetupStatusModel(item, refresh));
+		const { result } = renderHook(() => useMcpSetupStatusModel(item, refresh), { wrapper: StrictMode });
 
 		expect(result.current?.phase).toBe("checking");
+		await waitFor(() => expect(getSetupLoginStatus).toHaveBeenCalledOnce());
 		resolveStatus?.({ state: "authenticated", username: "小明" });
 		await waitFor(() => expect(result.current).toMatchObject({ phase: "authenticated", username: "小明" }));
 		expect(refresh).toHaveBeenCalledOnce();

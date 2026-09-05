@@ -1,4 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { Button } from "@vetta/ui";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { resolveAbilityDetailContent } from "../../lib/ability-presentation";
@@ -13,6 +14,7 @@ import { BundleInstallDialog } from "./BundleInstallDialog";
 import { BundleMembersSection } from "./BundleMembersSection";
 import { BundleUninstallDialog } from "./BundleUninstallDialog";
 import { McpAbilitySection } from "./McpAbilitySection";
+import { McpAbilitySettingsView } from "./McpAbilitySettingsView";
 import { PluginAbilitySection } from "./PluginAbilitySection";
 import { PluginAbilityDetailSlotHost } from "./PluginAbilityDetailSlotHost";
 import { PluginAbilityHeaderActions } from "./PluginAbilityHeaderActions";
@@ -46,7 +48,7 @@ export function AbilityDetailView({
 	const language = i18n.language;
 	const [bundleDialogOpen, setBundleDialogOpen] = useState(false);
 	const [bundleInstallDialogOpen, setBundleInstallDialogOpen] = useState(false);
-	const [page, setPage] = useState<"detail" | "permissions">("detail");
+	const [page, setPage] = useState<"detail" | "permissions" | "mcp-settings">("detail");
 	const reduceMotion = useReducedMotion();
 
 	const detail = useMemo(
@@ -93,7 +95,7 @@ export function AbilityDetailView({
 		}
 	};
 
-	// 主 CTA 右侧的次要入口：插件是权限配置，mcp 是凭证 / 配置编辑。
+	// 主 CTA 右侧的次要入口：插件进入权限页，受管 MCP 进入能力专属连接设置页。
 	const primaryAside = ((): JSX.Element | undefined => {
 		if (item.type === "plugin") {
 			return (
@@ -102,6 +104,14 @@ export function AbilityDetailView({
 					onReload={() => model.reloadPlugin(item)}
 					onOpenPermissions={() => setPage("permissions")}
 				/>
+			);
+		}
+		if (item.type === "mcp" && item.installed && item.postInstallSetup) {
+			return (
+				<Button variant="secondary" size="lg" disabled={item.busy} onClick={() => setPage("mcp-settings")}>
+					<span className="icon-[solar--settings-linear] h-4 w-4" />
+					{t("mcp.connectionConfig")}
+				</Button>
 			);
 		}
 		return undefined;
@@ -183,7 +193,7 @@ export function AbilityDetailView({
 	);
 
 	const transition: DetailPageTransition = {
-		direction: page === "permissions" ? 1 : -1,
+		direction: page === "detail" ? -1 : 1,
 		reduceMotion: Boolean(reduceMotion),
 	};
 	return (
@@ -201,6 +211,8 @@ export function AbilityDetailView({
 				>
 					{page === "permissions" && item.type === "plugin" ? (
 						<PluginPermissionsView item={item} model={model} onBack={() => setPage("detail")} />
+					) : page === "mcp-settings" && item.type === "mcp" ? (
+						<McpAbilitySettingsView item={item} model={model} onBack={() => setPage("detail")} />
 					) : (
 						detailPage
 					)}

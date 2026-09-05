@@ -100,7 +100,7 @@ function installedPlugin(overrides?: Partial<InstalledPlugin>): InstalledPlugin 
 		description: "%plugin.description%",
 		version: "0.1.7",
 		activeVersion: "0.1.7",
-		pluginApiVersion: "^1.0.0",
+		pluginApiVersion: "^2.0.0",
 		entryUrl: "vetta-plugin://cowart-vetta/mf-manifest.json",
 		moduleFederation: { remoteName: "cowart_vetta", expose: "./plugin" },
 		styleUrls: [],
@@ -333,7 +333,7 @@ describe("buildMcpAbilities", () => {
 			slug: "xiaohongshu-mcp",
 			name: "小红书",
 			config: {
-				mcp: { command: "/runtime/xhs", args: ["-transport=stdio"] },
+				mcp: { type: "http", url: "http://127.0.0.1/mcp", managedRuntimeId: "xiaohongshu-runtime" },
 				mcp_parameters: [{ key: "XHS_PROXY", label: "Proxy URL", required: false, secret: false }],
 				mcp_setup: { kind: "http-qrcode" as const },
 			},
@@ -352,7 +352,15 @@ describe("buildMcpAbilities", () => {
 			},
 		} as unknown as MarketAbility;
 		const installed = {
-			mcpConfig: { mcpServers: { "xiaohongshu-mcp": { command: "/runtime/xhs" } } },
+			mcpConfig: {
+				mcpServers: {
+					"xiaohongshu-mcp": {
+						type: "http",
+						url: "http://127.0.0.1/mcp",
+						managedRuntimeId: "xiaohongshu-runtime",
+					},
+				},
+			},
 			ledger: {
 				"mcp:xiaohongshu-mcp": {
 					version: "2.5.0",
@@ -366,6 +374,17 @@ describe("buildMcpAbilities", () => {
 		const pending = buildMcpAbilities([ability], createState(installed), t)[0];
 		expect(pending?.postInstallSetup).toEqual({ kind: "http-qrcode" });
 		expect(pending?.setupRequired).toBe(true);
+		expect(pending?.canEdit).toBe(false);
+		if (!pending?.preset) throw new Error("Expected managed marketplace preset");
+		expect(
+			buildBuiltinMcpServerConfig(
+				pending.preset,
+				{ displayName: "小红书", description: "" },
+				{
+					XHS_PROXY: "http://127.0.0.1:7890",
+				},
+			),
+		).toMatchObject({ managedRuntimeEnv: { XHS_PROXY: "http://127.0.0.1:7890" } });
 
 		const done = buildMcpAbilities(
 			[ability],

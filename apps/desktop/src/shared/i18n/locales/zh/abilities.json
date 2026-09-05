@@ -217,7 +217,24 @@
 		"loginCheckFailed": "暂时无法确认登录状态：{{error}}",
 		"loginCheckRetry": "重新检查",
 		"loginAction": "登录小红书",
-		"loginRequired": "需登录"
+		"loginRequired": "需登录",
+		"connectionConfig": "连接设置",
+		"settings": {
+			"title": "{{name}} 设置",
+			"description": "管理登录状态和运行时连接参数。保存参数不会自动发起登录。",
+			"back": "返回能力详情",
+			"runtimeTitle": "运行时连接",
+			"runtimeDescription": "参数只传给本机受管服务；变更会在下次检查或使用时重启服务。",
+			"proxyLabel": "代理地址",
+			"proxyHint": "支持 HTTP、HTTPS 或 SOCKS5 代理，例如 http://127.0.0.1:7890。留空表示直连。",
+			"optional": "可选",
+			"save": "保存连接设置",
+			"saving": "正在保存…",
+			"clearLogin": "清除登录状态",
+			"confirmClearLogin": "确认清除登录状态",
+			"clearing": "正在清除…",
+			"checkedAt": "最近验证：{{time}}"
+		}
 	},
 	"bundle": {
 		"install": {

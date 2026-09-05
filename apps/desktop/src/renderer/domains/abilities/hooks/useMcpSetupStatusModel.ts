@@ -7,6 +7,7 @@ export interface McpSetupStatusModel {
 	readonly phase: McpSetupStatusPhase;
 	readonly username?: string;
 	readonly error?: string;
+	readonly checkedAt?: number;
 	readonly retry: () => void;
 }
 
@@ -24,6 +25,7 @@ export function useMcpSetupStatusModel(
 	const [phase, setPhase] = useState<McpSetupStatusPhase>("checking");
 	const [username, setUsername] = useState<string | undefined>();
 	const [error, setError] = useState<string | undefined>();
+	const [checkedAt, setCheckedAt] = useState<number | undefined>();
 	const runRef = useRef(0);
 	const onStatusChangedRef = useRef(onStatusChanged);
 	onStatusChangedRef.current = onStatusChanged;
@@ -39,6 +41,7 @@ export function useMcpSetupStatusModel(
 				if (run !== runRef.current) return;
 				setUsername(status.username);
 				setPhase(status.state);
+				setCheckedAt(Date.now());
 				onStatusChangedRef.current();
 			})
 			.catch((reason: unknown) => {
@@ -49,11 +52,12 @@ export function useMcpSetupStatusModel(
 	}, [enabled, item.serverName]);
 
 	useEffect(() => {
-		if (!refreshKey) check();
+		const initialCheck = refreshKey ? undefined : setTimeout(check, 0);
 		return () => {
+			if (initialCheck !== undefined) clearTimeout(initialCheck);
 			runRef.current += 1;
 		};
 	}, [check, refreshKey]);
 
-	return enabled ? { phase, username, error, retry: check } : undefined;
+	return enabled ? { phase, username, error, checkedAt, retry: check } : undefined;
 }

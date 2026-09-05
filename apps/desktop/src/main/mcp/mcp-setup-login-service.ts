@@ -14,6 +14,7 @@ import { readMcpConfig } from "./mcp-settings-service.js";
 const REQUEST_TIMEOUT_MS = 10 * 60_000;
 const DEFAULT_QR_TIMEOUT_SECONDS = 240;
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+const SETUP_LOGIN_CANCELLED_ERROR = new DOMException("MCP setup login request cancelled", "McpSetupLoginCancelled");
 
 interface SetupTarget {
 	readonly runtimeId: string;
@@ -29,10 +30,15 @@ interface UpstreamEnvelope {
 
 export interface McpSetupLoginServiceOptions {
 	readonly loadServerConfig?: (serverName: string) => Promise<McpServerConfigData | undefined>;
-	readonly ensureRuntime?: (runtimeId: string) => Promise<string>;
+	readonly ensureRuntime?: (runtimeId: string, environment?: Readonly<Record<string, string>>) => Promise<string>;
 	readonly readRuntimeSpec?: typeof readOpenMarketplaceManagedMcpRuntimeSpec;
 	readonly recordStatus?: (runtimeId: string, authenticated: boolean) => void;
 	readonly fetchImpl?: typeof fetch;
+}
+
+interface ActiveQrRequest {
+	readonly controller: AbortController;
+	cancelled: boolean;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -84,12 +90,15 @@ function readQrImage(value: unknown): string {
 /** Uses the upstream service's HTTP auth contract as the only login source of truth. */
 export class McpSetupLoginService {
 	private readonly loadServerConfig: (serverName: string) => Promise<McpServerConfigData | undefined>;
-	private readonly ensureRuntime: (runtimeId: string) => Promise<string>;
+	private readonly ensureRuntime: (
+		runtimeId: string,
+		environment?: Readonly<Record<string, string>>,
+	) => Promise<string>;
 	private readonly readRuntimeSpec: typeof readOpenMarketplaceManagedMcpRuntimeSpec;
 	private readonly recordStatus: (runtimeId: string, authenticated: boolean) => void;
 	private readonly fetchImpl: typeof fetch;
-	private readonly activeRequests = new Set<AbortController>();
-	private generation = 0;
+	private readonly activeQrRequests = new Map<string, ActiveQrRequest>();
+	private readonly activeStatusRequests = new Set<AbortController>();
 
 	constructor(options: McpSetupLoginServiceOptions = {}) {
 		this.loadServerConfig =
@@ -101,38 +110,86 @@ export class McpSetupLoginService {
 	}
 
 	async getStatus(serverName: string): Promise<McpSetupLoginStatus> {
-		const generation = this.generation;
-		const target = await this.resolveTarget(serverName);
-		const envelope = await this.request(target, target.setup.statusPath, "GET", generation);
-		const status = parseStatus(envelope.data);
-		this.recordStatus(target.runtimeId, status.state === "authenticated");
-		return status;
-	}
-
-	async start(serverName: string): Promise<McpSetupLoginStartResult> {
-		const generation = this.generation;
-		const target = await this.resolveTarget(serverName);
-		const envelope = await this.request(target, target.setup.qrcodePath, "GET", generation);
-		const status = parseStatus(envelope.data);
-		this.recordStatus(target.runtimeId, status.state === "authenticated");
-		if (status.state === "authenticated") {
-			return {
-				state: "authenticated",
-				...(status.username ? { username: status.username } : {}),
-				...(status.userId ? { userId: status.userId } : {}),
-			};
+		const controller = new AbortController();
+		this.activeStatusRequests.add(controller);
+		try {
+			const target = await this.resolveTarget(serverName);
+			controller.signal.throwIfAborted();
+			const envelope = await this.request(target, target.setup.statusPath, "GET", controller);
+			const status = parseStatus(envelope.data);
+			this.recordStatus(target.runtimeId, status.state === "authenticated");
+			return status;
+		} finally {
+			this.activeStatusRequests.delete(controller);
 		}
-		return {
-			state: "qr_code",
-			image: readQrImage(envelope.data.img),
-			expiresInSeconds: parseDurationSeconds(envelope.data.timeout),
-		};
 	}
 
-	async cancel(): Promise<void> {
-		this.generation += 1;
-		for (const controller of this.activeRequests) controller.abort();
-		this.activeRequests.clear();
+	async start(serverName: string, requestId: string): Promise<McpSetupLoginStartResult> {
+		const previous = this.activeQrRequests.get(requestId);
+		if (previous) {
+			previous.cancelled = true;
+			previous.controller.abort(SETUP_LOGIN_CANCELLED_ERROR);
+		}
+		const request: ActiveQrRequest = { controller: new AbortController(), cancelled: false };
+		this.activeQrRequests.set(requestId, request);
+		try {
+			const target = await this.resolveTarget(serverName);
+			request.controller.signal.throwIfAborted();
+			const envelope = await this.request(target, target.setup.qrcodePath, "GET", request.controller);
+			const status = parseStatus(envelope.data);
+			this.recordStatus(target.runtimeId, status.state === "authenticated");
+			if (status.state === "authenticated") {
+				return {
+					state: "authenticated",
+					...(status.username ? { username: status.username } : {}),
+					...(status.userId ? { userId: status.userId } : {}),
+				};
+			}
+			return {
+				state: "qr_code",
+				image: readQrImage(envelope.data.img),
+				expiresInSeconds: parseDurationSeconds(envelope.data.timeout),
+			};
+		} catch (error) {
+			if (request.cancelled) return { state: "cancelled" };
+			throw error;
+		} finally {
+			if (this.activeQrRequests.get(requestId) === request) this.activeQrRequests.delete(requestId);
+		}
+	}
+
+	async clear(serverName: string): Promise<McpSetupLoginStatus> {
+		const controller = new AbortController();
+		this.activeStatusRequests.add(controller);
+		try {
+			const target = await this.resolveTarget(serverName);
+			controller.signal.throwIfAborted();
+			await this.request(target, target.setup.logoutPath, "DELETE", controller);
+			const envelope = await this.request(target, target.setup.statusPath, "GET", controller);
+			const status = parseStatus(envelope.data);
+			this.recordStatus(target.runtimeId, status.state === "authenticated");
+			return status;
+		} finally {
+			this.activeStatusRequests.delete(controller);
+		}
+	}
+
+	async cancel(requestId: string): Promise<void> {
+		const request = this.activeQrRequests.get(requestId);
+		if (!request) return;
+		this.activeQrRequests.delete(requestId);
+		request.cancelled = true;
+		request.controller.abort(SETUP_LOGIN_CANCELLED_ERROR);
+	}
+
+	async cancelAll(): Promise<void> {
+		for (const request of this.activeQrRequests.values()) {
+			request.cancelled = true;
+			request.controller.abort(SETUP_LOGIN_CANCELLED_ERROR);
+		}
+		this.activeQrRequests.clear();
+		for (const controller of this.activeStatusRequests) controller.abort();
+		this.activeStatusRequests.clear();
 	}
 
 	private async resolveTarget(serverName: string): Promise<SetupTarget> {
@@ -143,7 +200,7 @@ export class McpSetupLoginService {
 		}
 		const spec = await this.readRuntimeSpec(config.managedRuntimeId);
 		if (!spec.setup) throw new Error("Managed MCP server does not declare QR-code login endpoints");
-		const mcpUrl = await this.ensureRuntime(config.managedRuntimeId);
+		const mcpUrl = await this.ensureRuntime(config.managedRuntimeId, config.managedRuntimeEnv);
 		return { runtimeId: config.managedRuntimeId, baseUrl: new URL(mcpUrl).origin, setup: spec.setup };
 	}
 
@@ -151,11 +208,9 @@ export class McpSetupLoginService {
 		target: SetupTarget,
 		path: string,
 		method: "GET" | "DELETE",
-		generation: number,
+		requestController?: AbortController,
 	): Promise<UpstreamEnvelope> {
-		if (generation !== this.generation) throw new Error("MCP login request cancelled");
-		const controller = new AbortController();
-		this.activeRequests.add(controller);
+		const controller = requestController ?? new AbortController();
 		const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 		try {
 			const response = await this.fetchImpl(new URL(path, target.baseUrl), {
@@ -170,7 +225,6 @@ export class McpSetupLoginService {
 			return parseEnvelope(body);
 		} finally {
 			clearTimeout(timer);
-			this.activeRequests.delete(controller);
 		}
 	}
 }

@@ -35,6 +35,7 @@ export const McpHttpServerConfigSchema = Type.Object(
 		...McpServerCommonConfigProperties,
 		type: Type.Literal("http"),
 		url: Type.String({ minLength: 1 }),
+		managedRuntimeEnv: Type.Optional(Type.Record(Type.String(), Type.String())),
 		headers: Type.Optional(Type.Union([Type.Record(Type.String(), Type.Unknown()), Type.Null()])),
 		oauthClientId: Type.Optional(Type.Unknown()),
 		oauthDeviceFlow: Type.Optional(Type.Unknown()),

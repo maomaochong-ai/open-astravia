@@ -15,7 +15,7 @@ export interface ManagedHttpRuntimeSetup {
 }
 
 export interface ManagedHttpRuntimeSpec {
-	readonly schemaVersion: 1;
+	readonly schemaVersion: 2;
 	readonly id: string;
 	readonly command: string;
 	readonly args: readonly string[];
@@ -23,12 +23,14 @@ export interface ManagedHttpRuntimeSpec {
 	readonly cwd?: string;
 	readonly mcpPath: string;
 	readonly readyTimeoutMs: number;
+	readonly configurableEnvKeys: readonly string[];
 	readonly setup?: ManagedHttpRuntimeSetup;
 }
 
 interface RunningRuntime {
 	readonly child: ChildProcess;
 	readonly url: string;
+	readonly environmentKey: string;
 }
 
 export interface ManagedHttpRuntimeServiceOptions {
@@ -82,7 +84,7 @@ export function parseManagedHttpRuntimeSpec(
 	rootDir: string,
 	expectedId: string,
 ): ManagedHttpRuntimeSpec {
-	if (!isRecord(value) || value.schemaVersion !== 1 || value.id !== expectedId) {
+	if (!isRecord(value) || value.schemaVersion !== 2 || value.id !== expectedId) {
 		throw new Error("Invalid managed HTTP runtime spec");
 	}
 	if (!/^[a-zA-Z0-9._-]+$/.test(expectedId)) throw new Error("Invalid managed HTTP runtime id");
@@ -105,6 +107,13 @@ export function parseManagedHttpRuntimeSpec(
 	) {
 		throw new Error("Invalid managed HTTP runtime readyTimeoutMs");
 	}
+	const configurableEnvKeys = readStringArray(value.configurableEnvKeys, "configurableEnvKeys");
+	if (
+		configurableEnvKeys.some((key) => !/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) ||
+		new Set(configurableEnvKeys).size !== configurableEnvKeys.length
+	) {
+		throw new Error("Invalid managed HTTP runtime configurableEnvKeys");
+	}
 	let setup: ManagedHttpRuntimeSetup | undefined;
 	if (value.setup !== undefined) {
 		if (!isRecord(value.setup) || value.setup.kind !== "http-qrcode") {
@@ -118,7 +127,7 @@ export function parseManagedHttpRuntimeSpec(
 		};
 	}
 	return {
-		schemaVersion: 1,
+		schemaVersion: 2,
 		id: expectedId,
 		command: value.command,
 		args: readStringArray(value.args, "args"),
@@ -126,6 +135,7 @@ export function parseManagedHttpRuntimeSpec(
 		...(value.cwd === undefined ? {} : { cwd: value.cwd as string }),
 		mcpPath: readPath(value.mcpPath, "mcpPath"),
 		readyTimeoutMs,
+		configurableEnvKeys,
 		...(setup ? { setup } : {}),
 	};
 }
@@ -165,7 +175,10 @@ export class ManagedHttpRuntimeService {
 	private readonly wait: (milliseconds: number) => Promise<void>;
 	private readonly onDiagnostic: (message: string) => void;
 	private readonly running = new Map<string, RunningRuntime>();
-	private readonly starting = new Map<string, { promise: Promise<string>; controller: AbortController }>();
+	private readonly starting = new Map<
+		string,
+		{ promise: Promise<string>; controller: AbortController; environmentKey: string }
+	>();
 
 	constructor(private readonly options: ManagedHttpRuntimeServiceOptions) {
 		this.fetchImpl = options.fetchImpl ?? fetch;
@@ -183,14 +196,36 @@ export class ManagedHttpRuntimeService {
 		return parseManagedHttpRuntimeSpec(raw, this.options.rootDir, id);
 	}
 
-	async ensure(id: string): Promise<string> {
+	async ensure(id: string, environment: Readonly<Record<string, string>> = {}): Promise<string> {
+		const spec = await this.readSpec(id);
+		const overrides = this.validateEnvironmentOverrides(spec, environment);
+		const environmentKey = JSON.stringify(
+			Object.entries(overrides).sort(([left], [right]) => left.localeCompare(right)),
+		);
 		const pending = this.starting.get(id);
-		if (pending) return pending.promise;
+		if (pending) {
+			if (pending.environmentKey === environmentKey) return pending.promise;
+			pending.controller.abort();
+			await pending.promise.catch(() => undefined);
+		}
 		const active = this.running.get(id);
-		if (active && active.child.exitCode === null && !active.child.killed) return active.url;
+		if (
+			active &&
+			active.environmentKey === environmentKey &&
+			active.child.exitCode === null &&
+			!active.child.killed
+		) {
+			return active.url;
+		}
+		if (active) {
+			this.running.delete(id);
+			await stopProcessTree(active.child);
+		}
 		const controller = new AbortController();
-		const start = this.start(id, controller.signal).finally(() => this.starting.delete(id));
-		this.starting.set(id, { promise: start, controller });
+		const start = this.start(spec, overrides, environmentKey, controller.signal).finally(() =>
+			this.starting.delete(id),
+		);
+		this.starting.set(id, { promise: start, controller, environmentKey });
 		return start;
 	}
 
@@ -207,8 +242,26 @@ export class ManagedHttpRuntimeService {
 		await Promise.all([...new Set([...this.running.keys(), ...this.starting.keys()])].map((id) => this.stop(id)));
 	}
 
-	private async start(id: string, signal: AbortSignal): Promise<string> {
-		const spec = await this.readSpec(id);
+	private validateEnvironmentOverrides(
+		spec: ManagedHttpRuntimeSpec,
+		environment: Readonly<Record<string, string>>,
+	): Record<string, string> {
+		const allowed = new Set(spec.configurableEnvKeys);
+		const overrides: Record<string, string> = {};
+		for (const [key, value] of Object.entries(environment)) {
+			if (!allowed.has(key)) throw new Error(`Managed HTTP runtime environment key is not configurable: ${key}`);
+			if (value.trim()) overrides[key] = value.trim();
+		}
+		return overrides;
+	}
+
+	private async start(
+		spec: ManagedHttpRuntimeSpec,
+		environment: Readonly<Record<string, string>>,
+		environmentKey: string,
+		signal: AbortSignal,
+	): Promise<string> {
+		const id = spec.id;
 		signal.throwIfAborted();
 		const port = await this.allocatePort();
 		signal.throwIfAborted();
@@ -220,6 +273,7 @@ export class ManagedHttpRuntimeService {
 				...process.env,
 				HOME: process.env.HOME || homedir(),
 				...Object.fromEntries(Object.entries(spec.env).map(([key, value]) => [key, replacePort(value)])),
+				...environment,
 			},
 			stdio: ["ignore", "pipe", "pipe"],
 			windowsHide: true,
@@ -228,7 +282,7 @@ export class ManagedHttpRuntimeService {
 		child.once("error", (error) => {
 			spawnError = error;
 		});
-		this.running.set(id, { child, url });
+		this.running.set(id, { child, url, environmentKey });
 		child.stdout?.on("data", (data: Buffer) => this.onDiagnostic(`[${id}] ${data.toString().trimEnd()}`));
 		child.stderr?.on("data", (data: Buffer) => this.onDiagnostic(`[${id}] ${data.toString().trimEnd()}`));
 		child.once("exit", (code, signal) => {
