@@ -17,6 +17,8 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Added
 
+- Clarify that `PluginStorageApi.readJson/writeJson` receive a relative file path used verbatim (the host does not append `.json`) and that each JSON write is atomically replaced.
+
 - `registerWorkspaceView` 新增 `sidebar?: boolean`（缺省 `true`，既有插件行为不变）：置 `false` 的视图不占侧边栏导航位，
   只在「设置 → 更多选项」里列出，并由宿主在设置壳内打开——两层侧栏保持可见，用户在多个插件页面之间切换是一次点击。
   适合配置页、安装引导、诊断台这类不常驻的 surface。

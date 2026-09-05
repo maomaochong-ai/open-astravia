@@ -24,12 +24,15 @@ export interface PluginPutBlobFromFileInput {
 /**
  * Private persistent storage scoped to the current plugin.
  *
- * JSON keys and file paths are relative to the plugin namespace. Blob bytes are
- * base64 encoded at the bridge boundary and exposed through a host media URL.
+ * JSON paths and file paths are relative to the plugin namespace. The path is
+ * used verbatim: `writeJson("settings", value)` creates a file named `settings`,
+ * while `writeJson("settings.json", value)` creates `settings.json`; the host
+ * does not append a `.json` suffix. Blob bytes are base64 encoded at the bridge
+ * boundary and exposed through a host media URL.
  */
 export interface PluginStorageApi {
-	readJson<T>(key: string): Promise<T | null>;
-	writeJson(key: string, value: unknown): Promise<void>;
+	readJson<T>(path: string): Promise<T | null>;
+	writeJson(path: string, value: unknown): Promise<void>;
 	list(prefix?: string): Promise<string[]>;
 	readFile(path: string): Promise<string | null>;
 	writeFile(path: string, data: string): Promise<void>;

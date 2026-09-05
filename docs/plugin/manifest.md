@@ -164,6 +164,11 @@ Plugin API 1.6.0 移除（ADR-0105）。配置由插件自己渲染、自己持�
 `plugin-settings.json` 里该插件的非密钥字段一次性写进去，插件读回后自行归一化。密钥的凭据库命名空间
 未变，无需迁移。
 
+`readJson` / `writeJson` 的第一个参数实际是插件私有目录下的相对路径，不会自动补 `.json`：
+`writeJson("settings", value)` 写入的文件名就是 `settings`，而 `writeJson("settings.json", value)`
+才会写入 `settings.json`。JSON 文件由宿主使用临时文件加原子替换写入；需要多个数据集保持一致时，
+插件应将它们组合成一个快照文件后再写入。
+
 带 `contributes` 字段的旧清单不会校验失败（顶层允许额外字段），但该字段不再有任何运行时语义。
 
 ## agent（Agent 侧贡献）

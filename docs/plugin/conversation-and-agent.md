@@ -497,7 +497,7 @@ const response = await ctx.network.request<{ data: unknown[] }>({
 `ctx.storage` 是按插件 id 隔离的持久化命名空间，物理目录为 `~/.vetta/plugin-data/<plugin-id>/`。JSON 和普通文件路径均为插件根目录下的相对路径；路径穿越会被宿主拒绝。调用绑定当前插件的 capability session，不能伪造其他插件 id。
 
 ```ts
-await ctx.storage.writeJson("records/item.json", { id: "item" }); // storage.write
+await ctx.storage.writeJson("records/item.json", { id: "item" }); // storage.write; path is used verbatim
 const record = await ctx.storage.readJson("records/item.json");   // storage.read
 const keys = await ctx.storage.list("records");
 
@@ -544,7 +544,8 @@ await ctx.secrets.set("openaiApiKey", input);
 const apiKey = await ctx.secrets.get("openaiApiKey");
 ```
 
-密钥之外的普通配置用 `ctx.storage.readJson("settings")` / `writeJson("settings")`。配置界面由插件
+密钥之外的普通配置用 `ctx.storage.readJson("settings")` / `writeJson("settings")`。注意这里的
+`settings` 是兼容迁移约定的文件路径，宿主不会自动添加 `.json`；配置界面由插件
 自己渲染——推荐 `ctx.ui.registerWorkspaceView` 的工作区配置页，见
 [manifest.md](./manifest.md#插件配置放哪里)。
 

@@ -118,10 +118,10 @@ async function listFiles(root: string, current: string): Promise<string[]> {
 	return files;
 }
 
-export async function readPluginJson<T>(pluginId: string, key: string): Promise<T | null> {
+export async function readPluginJson<T>(pluginId: string, path: string): Promise<T | null> {
 	await ensurePluginStorage(pluginId);
 	try {
-		const raw = await readFile(scopedPath(pluginId, key), "utf8");
+		const raw = await readFile(scopedPath(pluginId, path), "utf8");
 		return JSON.parse(raw) as T;
 	} catch (error) {
 		if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
@@ -129,9 +129,14 @@ export async function readPluginJson<T>(pluginId: string, key: string): Promise<
 	}
 }
 
-export async function writePluginJson(pluginId: string, key: string, value: unknown): Promise<void> {
+/**
+ * JSON serialization does not imply a filename extension: `path` is a relative
+ * path in the plugin namespace. The temporary-file + rename sequence keeps a
+ * single JSON document atomic for readers after a successful write.
+ */
+export async function writePluginJson(pluginId: string, path: string, value: unknown): Promise<void> {
 	await ensurePluginStorage(pluginId);
-	await atomicWrite(scopedPath(pluginId, key), JSON.stringify(value, null, 2));
+	await atomicWrite(scopedPath(pluginId, path), JSON.stringify(value, null, 2));
 }
 
 export async function listPluginFiles(pluginId: string, prefix = "."): Promise<string[]> {
