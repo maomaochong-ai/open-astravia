@@ -18,35 +18,13 @@
     "defaultAgentName": "New agent",
     "defaultAgentDescription": "A team member with configurable abilities"
   },
-  "presets": {
-    "defaultTeam": {
-      "name": "Vetta Team"
-    },
-    "agents": {
-      "leader": {
-        "name": "Vetta",
-        "description": "Coordinates the team and owns the final response."
-      },
-      "researcher": {
-        "name": "Research",
-        "description": "Finds evidence, verifies facts, and shares conclusions with the team."
-      },
-      "builder": {
-        "name": "Build",
-        "description": "Implements solutions, makes changes, and verifies maintainability."
-      },
-      "reviewer": {
-        "name": "Review",
-        "description": "Checks correctness, safety, and potential regressions."
-      }
-    }
-  },
   "profile": {
     "fixedPrompt": "Role: {{role}}",
 	"avatar": "Avatar",
 	"avatarOption": "Select avatar {{index}}",
     "name": "Name",
     "description": "Responsibilities",
+	"systemPrompt": "System prompt",
     "abilities": "Abilities",
     "abilitiesHint": "Selections affect this agent only and do not change global installation state.",
     "abilityCount": "{{selected}} of {{total}} enabled",

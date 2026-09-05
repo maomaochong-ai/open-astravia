@@ -18,35 +18,13 @@
     "defaultAgentName": "新智能体",
     "defaultAgentDescription": "可配置能力的团队成员"
   },
-  "presets": {
-    "defaultTeam": {
-      "name": "Vetta 团队"
-    },
-    "agents": {
-      "leader": {
-        "name": "Vetta",
-        "description": "统筹团队工作，并负责整合最终答复。"
-      },
-      "researcher": {
-        "name": "研究",
-        "description": "查找证据、验证事实，并输出可供团队使用的结论。"
-      },
-      "builder": {
-        "name": "执行",
-        "description": "实现方案、完成修改，并验证结果是否可维护。"
-      },
-      "reviewer": {
-        "name": "审查",
-        "description": "检查正确性、安全性和潜在回归。"
-      }
-    }
-  },
   "profile": {
     "fixedPrompt": "角色：{{role}}",
 	"avatar": "头像",
 	"avatarOption": "选择头像 {{index}}",
     "name": "名称",
     "description": "职责说明",
+	"systemPrompt": "系统提示词",
     "abilities": "能力",
     "abilitiesHint": "能力选择只影响这个智能体，不会改变全局安装状态。",
     "abilityCount": "已启用 {{selected}} / {{total}}",

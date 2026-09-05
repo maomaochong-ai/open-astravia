@@ -86,6 +86,7 @@ export function useAgentLibraryModel(copy: AgentLibraryCopy) {
 				description: input.description,
 				avatar: input.avatar,
 				mentionHandle: input.mentionHandle,
+				systemPrompt: input.systemPrompt,
 				abilities: input.abilities,
 			});
 			setDocument((current) =>
@@ -146,6 +147,7 @@ export interface AgentProfileEditInput {
 	readonly description: string;
 	readonly avatar?: string;
 	readonly mentionHandle: string;
+	readonly systemPrompt?: string;
 	readonly abilities: AgentAbilitySelection;
 }
 

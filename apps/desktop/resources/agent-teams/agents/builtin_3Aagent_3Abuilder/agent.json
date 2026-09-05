@@ -1,0 +1,11 @@
+{
+	"id": "builtin:agent:builder",
+	"revision": 1,
+	"name": "Build",
+	"mentionHandle": "build",
+	"blueprintId": "builder",
+	"abilities": { "selectionMode": "all", "skills": [], "mcpServers": [], "plugins": [] },
+	"scope": { "kind": "library" },
+	"createdAt": 0,
+	"updatedAt": 0
+}

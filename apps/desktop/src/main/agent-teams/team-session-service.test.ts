@@ -2,7 +2,7 @@ import {
 	AGENT_TEAM_MEMBER_TOOL_EXECUTION,
 	AGENT_TEAM_PUBLICATION_LIFECYCLE,
 	createAgentTeamExtensionRegistry,
-	createInitialAgentTeamDocument,
+	createAgentTeamFixture,
 	type TeamSessionDocument,
 } from "@vetta/agent-team";
 import { createAssistantMessage } from "@vetta/ai";
@@ -88,7 +88,7 @@ describe("AgentTeamSessionService streaming contract", () => {
 	});
 
 	it("backfills legacy ownership before listing Team sessions", async () => {
-		const document = createInitialAgentTeamDocument();
+		const document = createAgentTeamFixture();
 		const team = document.teams[0];
 		const member = team?.members[0];
 		if (!team || !member) throw new Error("built-in Agent Team fixture is missing");
@@ -153,7 +153,7 @@ describe("AgentTeamSessionService streaming contract", () => {
 	});
 
 	it("publishes ordered deltas and persists the same non-empty final answer", async () => {
-		const document = createInitialAgentTeamDocument();
+		const document = createAgentTeamFixture();
 		const team = document.teams[0];
 		if (!team) throw new Error("built-in Agent Team fixture is missing");
 		const sessions = new Map<string, TeamSessionDocument>();
@@ -567,7 +567,7 @@ describe("AgentTeamSessionService streaming contract", () => {
 	});
 
 	it("reconciles cached sessions after members are added or removed", async () => {
-		let document = createInitialAgentTeamDocument();
+		let document = createAgentTeamFixture();
 		const originalTeam = document.teams[0];
 		if (!originalTeam) throw new Error("built-in Agent Team fixture is missing");
 		const removedMember = originalTeam.members.at(-1);
@@ -626,7 +626,7 @@ describe("AgentTeamSessionService streaming contract", () => {
 	});
 
 	it("keeps a work item waiting when a member turn has no publishable final message", async () => {
-		const document = createInitialAgentTeamDocument();
+		const document = createAgentTeamFixture();
 		const team = document.teams[0];
 		if (!team) throw new Error("built-in Agent Team fixture is missing");
 		const sessions = new Map<string, TeamSessionDocument>();
@@ -689,7 +689,7 @@ describe("AgentTeamSessionService streaming contract", () => {
 	});
 
 	it("surfaces a failed Runtime prompt instead of silently treating it as an interruption", async () => {
-		const document = createInitialAgentTeamDocument();
+		const document = createAgentTeamFixture();
 		const team = document.teams[0];
 		if (!team) throw new Error("built-in Agent Team fixture is missing");
 		const entries: Array<Record<string, unknown>> = [];
@@ -751,7 +751,7 @@ describe("AgentTeamSessionService streaming contract", () => {
 	it.each([true, false])(
 		"honors the context policy before delivery and handles network interruption (allowed=%s)",
 		async (allowed) => {
-			const document = createInitialAgentTeamDocument();
+			const document = createAgentTeamFixture();
 			const team = document.teams[0];
 			if (!team) throw new Error("built-in Agent Team fixture is missing");
 			const sessions = new Map<string, TeamSessionDocument>();

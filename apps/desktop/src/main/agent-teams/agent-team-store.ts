@@ -11,9 +11,8 @@ import {
 	type DeleteAgentProfileInput,
 	type DeleteTeamInput,
 	findAgentBlueprint,
-	isBuiltinAgentPreset,
-	normalizeAgentTeamDocument,
 	normalizeMentionHandle,
+	parseAgentTeamDocument,
 	previewAgentProfileDelete,
 	previewAgentProfileUpdate,
 	requireTeamPolicies,
@@ -112,6 +111,7 @@ export class AgentTeamStore {
 				...current,
 				name: input.name.trim(),
 				description: input.description.trim(),
+				...(input.systemPrompt !== undefined ? { systemPrompt: input.systemPrompt.trim() } : {}),
 				...(input.avatar ? { avatar: input.avatar } : { avatar: undefined }),
 				mentionHandle: normalizeMentionHandle(input.mentionHandle),
 				abilities: {
@@ -149,7 +149,6 @@ export class AgentTeamStore {
 			if (profile.revision !== input.expectedRevision) {
 				throw new Error("Agent profile changed; reload before deleting");
 			}
-			if (isBuiltinAgentPreset(profile)) throw new Error("Built-in agent presets cannot be deleted");
 			const impact = previewAgentProfileDelete(document, agentProfileId);
 			const expectedTeamIds = input.expectedTeamIds ?? [];
 			const currentTeamIds = impact.teams.map((team) => team.teamId);
@@ -390,7 +389,7 @@ export class AgentTeamStore {
 			.then(async () => {
 				const current = await this.read();
 				const mutation = apply(current);
-				const normalized = normalizeAgentTeamDocument(
+				const normalized = parseAgentTeamDocument(
 					{ ...mutation.document, schemaVersion: AGENT_TEAM_SCHEMA_VERSION },
 					this.extensions,
 				);

@@ -1,0 +1,11 @@
+{
+	"id": "builtin:agent:leader",
+	"revision": 1,
+	"name": "Vetta",
+	"mentionHandle": "vetta",
+	"blueprintId": "leader",
+	"abilities": { "selectionMode": "all", "skills": [], "mcpServers": [], "plugins": [] },
+	"scope": { "kind": "library" },
+	"createdAt": 0,
+	"updatedAt": 0
+}

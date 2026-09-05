@@ -1,5 +1,4 @@
 import { confirmDialogAtom } from "@shared/store/atoms";
-import { isBuiltinAgentPreset } from "@vetta/agent-team";
 import { Button } from "@vetta/ui";
 import { useSetAtom } from "jotai";
 import { useTranslation } from "react-i18next";
@@ -9,7 +8,7 @@ import {
 	agentDisplayDescription,
 	agentDisplayName,
 	teamDisplayName,
-} from "@shared/agent-teams/preset-presentation";
+} from "@shared/agent-teams/agent-team-presentation";
 import { AgentProfileEditor } from "./AgentProfileEditor";
 
 export function AgentLibraryPage(): JSX.Element {
@@ -21,7 +20,7 @@ export function AgentLibraryPage(): JSX.Element {
 	});
 
 	async function requestDelete(): Promise<void> {
-		if (!model.selected || isBuiltinAgentPreset(model.selected)) return;
+		if (!model.selected) return;
 		const selected = model.selected;
 		const impact = await model.actions.previewAgentDelete(selected.id);
 		if (!impact) return;
@@ -68,7 +67,7 @@ export function AgentLibraryPage(): JSX.Element {
 					<p className="mt-1 text-sm text-muted-foreground">{t("library.subtitle")}</p>
 				</div>
 				<div className="flex items-center gap-2">
-					{model.selected && !isBuiltinAgentPreset(model.selected) && (
+					{model.selected && (
 						<Button variant="ghost" onClick={() => void requestDelete()}>
 							<span className="icon-[solar--trash-bin-trash-linear] h-4 w-4" aria-hidden="true" />
 							{t("library.delete")}
@@ -123,7 +122,6 @@ export function AgentLibraryPage(): JSX.Element {
 							agent={model.selected}
 							displayName={agentDisplayName(model.selected, t)}
 							displayDescription={agentDisplayDescription(model.selected, t)}
-							identityReadOnly={isBuiltinAgentPreset(model.selected)}
 							blueprint={model.blueprint}
 							capabilities={model.capabilities}
 							onPreview={model.actions.previewAgent}

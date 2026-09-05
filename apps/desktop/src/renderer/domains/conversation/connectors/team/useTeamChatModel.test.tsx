@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import {
-	createInitialAgentTeamDocument,
+	createAgentTeamFixture,
 	type TeamSessionDocument,
 	type TeamSessionSnapshot,
 } from "@vetta/agent-team";
@@ -46,7 +46,7 @@ vi.mock("@shared/lib/committed-paint", () => ({
 	waitForCommittedPaint: vi.fn(),
 }));
 
-const document = createInitialAgentTeamDocument();
+const document = createAgentTeamFixture();
 const team = document.teams[0];
 if (!team) throw new Error("built-in Agent Team fixture is missing");
 const leader = team.members.find((member) => member.id === team.leaderMemberId);

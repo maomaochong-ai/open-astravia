@@ -1,6 +1,6 @@
 import { confirmDialogAtom, pageHeaderTitleHiddenAtom } from "@shared/store/atoms";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { isBuiltinAgentPreset, listLibraryAgentProfiles, type AgentProfile } from "@vetta/agent-team";
+import { listLibraryAgentProfiles, type AgentProfile } from "@vetta/agent-team";
 import { AgentAvatarView } from "@vetta/theme-ui/chat";
 import {
 	Button,
@@ -22,7 +22,7 @@ import { useTranslation } from "react-i18next";
 import { notifyAgentTeamConfigurationChanged } from "../../project/components/sidebar/projects/panel/AgentTeamSidebarList";
 import type { AgentProfileEditInput } from "../hooks/useAgentLibraryModel";
 import { useAgentTeamSidebarSelection } from "@shared/agent-teams/useAgentTeamSidebarSelection";
-import { agentDisplayDescription, agentDisplayName, teamDisplayName } from "@shared/agent-teams/preset-presentation";
+import { agentDisplayDescription, agentDisplayName, teamDisplayName } from "@shared/agent-teams/agent-team-presentation";
 import type { AgentTeamConfigurationResources } from "../services/load-agent-team-resources";
 import { loadAgentTeamConfigurationResources } from "../services/load-agent-team-resources";
 import { AgentProfileEditor } from "./AgentProfileEditor";
@@ -78,7 +78,7 @@ export function TeamSettingsPage(): JSX.Element {
 				leader: member.id === nextTeam.leaderMemberId,
 			}));
 			setResources(next);
-			setName(teamDisplayName(nextTeam, t));
+			setName(nextTeam.name);
 			setDrafts(nextDrafts);
 			setSelectedKey((current) =>
 				current && nextDrafts.some((draft) => draft.key === current)
@@ -246,6 +246,7 @@ export function TeamSettingsPage(): JSX.Element {
 			description: input.description,
 			avatar: input.avatar,
 			mentionHandle: input.mentionHandle,
+			systemPrompt: input.systemPrompt,
 			abilities: input.abilities,
 		});
 		setResources((current) =>
@@ -507,7 +508,6 @@ export function TeamSettingsPage(): JSX.Element {
 							agent={selectedProfile}
 							displayName={agentDisplayName(selectedProfile, t)}
 							displayDescription={agentDisplayDescription(selectedProfile, t)}
-							identityReadOnly={isBuiltinAgentPreset(selectedProfile)}
 							blueprint={blueprint}
 							capabilities={resources.capabilities}
 							hideSaveAction
@@ -580,6 +580,7 @@ function isAgentDraftDirty(agent: AgentProfile, input: AgentProfileEditInput): b
 	return (
 		input.name !== agent.name ||
 		input.description !== agent.description ||
+		(input.systemPrompt ?? "") !== (agent.systemPrompt ?? "") ||
 		input.avatar !== agentAvatarUrl(agent) ||
 		input.mentionHandle !== agent.mentionHandle ||
 		JSON.stringify(input.abilities) !== JSON.stringify(agent.abilities)

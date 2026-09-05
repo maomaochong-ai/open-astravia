@@ -300,6 +300,11 @@ if (process.platform === "darwin") {
 // Copy icons
 cpSync(join(projectRoot, "build"), join(buildStageDir, "build"), { recursive: true });
 
+// Ship the initial Agent Team as ordinary files. The Desktop repository copies
+// this tree into the user's VETTA_HOME on first launch; it is not a special
+// runtime preset and is never refreshed after installation.
+cpSync(join(projectRoot, "resources", "agent-teams"), join(buildStageDir, "agent-teams"), { recursive: true });
+
 // macOS DMG: 编译「修复已损坏.app」直接落到 staging build/，由下面 dmg.contents 引用。
 // 仅未签名构建需要；签名+公证后 quarantine 不再拦截，且该 helper 自身未签名会拖累公证。
 if (process.platform === "darwin" && !macSigning.enabled) {
@@ -672,6 +677,11 @@ function resolveExtraResources() {
 			from: "build",
 			to: "build",
 			filter: resolveBuildResourceFilters(resolvePlatformFamilies()),
+		},
+		{
+			from: "agent-teams",
+			to: "agent-teams",
+			filter: ["**/*"],
 		},
 	];
 	const sandboxFilters = resolveSandboxResourceFilters();

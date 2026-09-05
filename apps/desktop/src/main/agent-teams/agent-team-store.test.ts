@@ -1,4 +1,4 @@
-import { type AgentTeamDocument, BUILTIN_AGENT_PRESETS, createInitialAgentTeamDocument } from "@vetta/agent-team";
+import { type AgentTeamDocument, BUILTIN_AGENT_PRESETS, createAgentTeamFixture } from "@vetta/agent-team";
 import { describe, expect, it, vi } from "vitest";
 import type { AgentTeamConfigRepository } from "./agent-team-config-repository.js";
 import { AgentTeamStore } from "./agent-team-store.js";
@@ -8,7 +8,7 @@ vi.mock("../logger.js", () => ({
 }));
 
 class MemoryRepository implements AgentTeamConfigRepository {
-	document: AgentTeamDocument = createInitialAgentTeamDocument();
+	document: AgentTeamDocument = createAgentTeamFixture();
 	writes = 0;
 	failNextWrite = false;
 
@@ -77,6 +77,45 @@ describe("AgentTeamStore transaction boundary", () => {
 		});
 
 		expect(created.abilities.selectionMode).toBe("all");
+	});
+
+	it("allows customizing a built-in profile while retaining its stable preset identity", async () => {
+		const repository = new MemoryRepository();
+		const store = new AgentTeamStore({ repository, createId: createIdSequence(), now: () => 10 });
+		const source = BUILTIN_AGENT_PRESETS[0];
+		if (!source) throw new Error("Expected a built-in Agent preset");
+
+		const updated = await store.updateAgent(source.id, {
+			expectedRevision: source.revision,
+			name: "Custom leader",
+			description: "A customized role",
+			mentionHandle: source.mentionHandle,
+			abilities: source.abilities,
+		});
+
+		expect(updated).toMatchObject({
+			id: source.id,
+			name: "Custom leader",
+			description: "A customized role",
+			presetId: source.presetId,
+		});
+	});
+
+	it("allows deleting a built-in profile like any other team file", async () => {
+		const repository = new MemoryRepository();
+		const store = new AgentTeamStore({ repository, createId: createIdSequence(), now: () => 10 });
+		const source = BUILTIN_AGENT_PRESETS[0];
+		if (!source) throw new Error("Expected a built-in Agent preset");
+
+		const impact = await store.previewAgentDelete(source.id);
+		await expect(
+			store.deleteAgent(source.id, {
+				expectedRevision: source.revision,
+				expectedTeamIds: impact.teams.map((team) => team.teamId),
+				expectedTeamRevisions: Object.fromEntries(impact.teams.map((team) => [team.teamId, team.teamRevision])),
+			}),
+		).resolves.toBeUndefined();
+		expect((await store.read()).agents.some((agent) => agent.id === source.id)).toBe(false);
 	});
 
 	it("deletes an unreferenced agent and cascades reviewed team references", async () => {

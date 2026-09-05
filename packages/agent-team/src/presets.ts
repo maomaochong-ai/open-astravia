@@ -84,7 +84,8 @@ export const DEFAULT_AGENT_TEAM: TeamDefinition = Object.freeze({
 	updatedAt: 0,
 });
 
-export function createInitialAgentTeamDocument(): AgentTeamDocument {
+/** Test-only fixture retained outside the Desktop runtime file source. */
+export function createAgentTeamFixture(): AgentTeamDocument {
 	return {
 		schemaVersion: AGENT_TEAM_SCHEMA_VERSION,
 		presetVersion: AGENT_TEAM_PRESET_VERSION,

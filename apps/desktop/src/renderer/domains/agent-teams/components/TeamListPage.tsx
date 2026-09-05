@@ -19,7 +19,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { notifyAgentTeamConfigurationChanged } from "../../project/components/sidebar/projects/panel/AgentTeamSidebarList";
 import { useAgentTeamSidebarSelection } from "@shared/agent-teams/useAgentTeamSidebarSelection";
-import { agentDisplayDescription, agentDisplayName, teamDisplayName } from "@shared/agent-teams/preset-presentation";
+import { agentDisplayDescription, agentDisplayName, teamDisplayName } from "@shared/agent-teams/agent-team-presentation";
 import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";
 
 interface MemberDraft {

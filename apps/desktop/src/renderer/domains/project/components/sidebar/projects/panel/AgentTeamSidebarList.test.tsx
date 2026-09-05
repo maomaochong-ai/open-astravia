@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { createInitialAgentTeamDocument } from "@vetta/agent-team";
+import { createAgentTeamFixture } from "@vetta/agent-team";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AgentTeamSidebarList } from "./AgentTeamSidebarList";
@@ -9,7 +9,7 @@ const router = vi.hoisted(() => ({
 	currentPath: "/agent-teams/team/sessions/session-2",
 	navigate: vi.fn(),
 }));
-const teamFixture = createInitialAgentTeamDocument().teams[0];
+const teamFixture = createAgentTeamFixture().teams[0];
 if (!teamFixture) throw new Error("missing Team fixture");
 
 vi.mock("@tanstack/react-router", () => ({
@@ -26,7 +26,7 @@ vi.mock("react-i18next", () => ({
 					: key,
 	}),
 }));
-vi.mock("@shared/agent-teams/preset-presentation", () => ({
+vi.mock("@shared/agent-teams/agent-team-presentation", () => ({
 	teamDisplayName: (team: { name: string }) => team.name,
 }));
 
@@ -35,7 +35,7 @@ afterEach(cleanup);
 describe("AgentTeamSidebarList", () => {
 	beforeEach(() => {
 		router.navigate.mockReset();
-		const initial = createInitialAgentTeamDocument();
+		const initial = createAgentTeamFixture();
 		const team = initial.teams[0];
 		if (!team) throw new Error("missing Team fixture");
 		router.currentPath = `/agent-teams/${team.id}/sessions/session-2`;

@@ -70,12 +70,13 @@ export class TeamRuntimeManager {
 	): Promise<TeamSessionDocument["memberRuntime"][string]> {
 		const profile = resolveMemberProfile(document, member);
 		const blueprint = findAgentBlueprint(profile.blueprintId);
-		if (!blueprint) throw new Error(`Unknown agent blueprint: ${profile.blueprintId}`);
+		const systemPrompt = profile.systemPrompt ?? blueprint?.systemPrompt;
+		if (!systemPrompt) throw new Error(`Agent profile has no system prompt: ${profile.id}`);
 		const promptContext = this.createMemberPromptContext(
 			teamSessionId,
 			member.id,
 			buildTeamRosterSnapshot(document, team),
-			blueprint.systemPrompt,
+			systemPrompt,
 		);
 		const resolved = await resolveDesktopSessionConfig(
 			{
@@ -239,7 +240,8 @@ export class TeamRuntimeManager {
 		const team = document.teams.find((candidate) => candidate.id === session.teamId);
 		if (!team) throw new Error(`Agent team not found: ${session.teamId}`);
 		const blueprint = findAgentBlueprint(profile.blueprintId);
-		if (!blueprint) throw new Error(`Unknown agent blueprint: ${profile.blueprintId}`);
+		const systemPrompt = profile.systemPrompt ?? blueprint?.systemPrompt;
+		if (!systemPrompt) throw new Error(`Agent profile has no system prompt: ${profile.id}`);
 		return (
 			await resolveDesktopSessionConfig(
 				{
@@ -250,7 +252,7 @@ export class TeamRuntimeManager {
 						session.id,
 						memberId,
 						buildTeamRosterSnapshot(document, team),
-						blueprint.systemPrompt,
+						systemPrompt,
 					),
 					agentConfiguration: {
 						template: null,

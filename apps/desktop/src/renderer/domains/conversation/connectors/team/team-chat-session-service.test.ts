@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 
-import { createInitialAgentTeamDocument, type TeamSessionSnapshot } from "@vetta/agent-team";
+import { createAgentTeamFixture, type TeamSessionSnapshot } from "@vetta/agent-team";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTeamChatSession, loadTeamChatSession } from "./team-chat-session-service";
 
-const document = createInitialAgentTeamDocument();
+const document = createAgentTeamFixture();
 const team = document.teams[0];
 if (!team) throw new Error("built-in Agent Team fixture is missing");
 

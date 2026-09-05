@@ -2,7 +2,7 @@ import {
 	AGENT_TEAM_PUBLICATION_LIFECYCLE,
 	type AgentTeamExtensionRegistry,
 	createAgentTeamExtensionRegistry,
-	createInitialAgentTeamDocument,
+	createAgentTeamFixture,
 	createLegacyTeamMemberDelegationEvent,
 	createLegacyTeamMemberResultEvent,
 	createLegacyTeamUserMessageEvent,
@@ -951,7 +951,7 @@ describe("Team member concurrency", () => {
 });
 
 async function createFixture(extensions?: AgentTeamExtensionRegistry) {
-	const document = createInitialAgentTeamDocument();
+	const document = createAgentTeamFixture();
 	const team = document.teams[0];
 	if (!team || team.members.length < 2) throw new Error("Team fixture requires two members");
 	const members: [string, string] = [team.members[0]!.id, team.members[1]!.id];

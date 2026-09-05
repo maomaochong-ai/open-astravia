@@ -1,4 +1,4 @@
-import { createEmptyAgentTeamDocument, createInitialAgentTeamDocument } from "@vetta/agent-team";
+import { createAgentTeamFixture, createEmptyAgentTeamDocument } from "@vetta/agent-team";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type AgentTeamsIpcDependencies, registerAgentTeamsIpc } from "./agent-teams.js";
 
@@ -163,7 +163,7 @@ describe("Agent Team IPC contract", () => {
 
 	it("creates every Team session in the Team-owned workspace and lists the Team catalog", async () => {
 		const deps = dependencies();
-		const document = createInitialAgentTeamDocument();
+		const document = createAgentTeamFixture();
 		const team = document.teams[0];
 		if (!team) throw new Error("missing Team fixture");
 		deps.store.read = vi.fn(async () => document);

@@ -16,7 +16,6 @@ import type {
 import { AGENT_TEAM_SCHEMA_VERSION } from "./contracts.js";
 import { assertTeamInvariants, normalizeMentionHandle } from "./domain.js";
 import { type AgentTeamExtensionRegistry, DEFAULT_AGENT_TEAM_EXTENSIONS, requireTeamPolicies } from "./extensions.js";
-import { createInitialAgentTeamDocument, seedAgentTeamPresets } from "./presets.js";
 
 const id = Type.String({ minLength: 1, maxLength: 256, pattern: "^\\S(?:[^\\r\\n]*\\S)?$" });
 const text = Type.String({ maxLength: 64_000 });
@@ -50,6 +49,7 @@ const profile = Type.Object(
 		avatar: Type.Optional(Type.String({ maxLength: 2_048 })),
 		mentionHandle: id,
 		blueprintId: id,
+		systemPrompt: Type.Optional(text),
 		presetId: Type.Optional(id),
 		abilities,
 		scope: Type.Union([
@@ -85,6 +85,7 @@ export const UpdateAgentProfileInputSchema = Type.Object(
 		description: text,
 		avatar: Type.Optional(Type.String({ maxLength: 2_048 })),
 		mentionHandle: id,
+		systemPrompt: Type.Optional(text),
 		abilities,
 	},
 	{ additionalProperties: false },
@@ -276,7 +277,9 @@ export function parseAgentTeamDocument(
 	for (const agent of document.agents) {
 		if (ids.has(agent.id)) throw new Error(`Duplicate agent profile id: ${agent.id}`);
 		ids.add(agent.id);
-		if (!findAgentBlueprint(agent.blueprintId)) throw new Error(`Unknown agent blueprint: ${agent.blueprintId}`);
+		if (!findAgentBlueprint(agent.blueprintId) && agent.systemPrompt === undefined) {
+			throw new Error(`Unknown agent blueprint: ${agent.blueprintId}`);
+		}
 		if (agent.scope.kind === "library") {
 			const handle = normalizeMentionHandle(agent.mentionHandle);
 			if (libraryHandles.has(handle)) throw new Error(`Duplicate library agent handle: ${agent.mentionHandle}`);
@@ -296,14 +299,6 @@ export function parseAgentTeamDocument(
 		}
 	}
 	return document;
-}
-export function normalizeAgentTeamDocument(
-	value: unknown,
-	registry: AgentTeamExtensionRegistry = DEFAULT_AGENT_TEAM_EXTENSIONS,
-): AgentTeamDocument {
-	if (value === undefined) return createInitialAgentTeamDocument();
-	const parsed = parseAgentTeamDocument(value, registry);
-	return parseAgentTeamDocument(seedAgentTeamPresets(parsed), registry);
 }
 export function parseTeamSessionDocument(value: unknown): TeamSessionDocument {
 	if (!Value.Check(TeamSessionDocumentSchema, value)) throw new Error("Invalid Agent Team session document");

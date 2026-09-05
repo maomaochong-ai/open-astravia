@@ -349,6 +349,7 @@ textarea,
 [contenteditable="true"],
 .cursor-text {
 	cursor: var(--cursor-text);
+	caret-color: var(--primary);
 }
 
 button:disabled,

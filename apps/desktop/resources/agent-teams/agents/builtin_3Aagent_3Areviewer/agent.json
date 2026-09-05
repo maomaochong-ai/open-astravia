@@ -1,0 +1,11 @@
+{
+	"id": "builtin:agent:reviewer",
+	"revision": 1,
+	"name": "Review",
+	"mentionHandle": "review",
+	"blueprintId": "reviewer",
+	"abilities": { "selectionMode": "all", "skills": [], "mcpServers": [], "plugins": [] },
+	"scope": { "kind": "library" },
+	"createdAt": 0,
+	"updatedAt": 0
+}

@@ -1,4 +1,4 @@
-import { teamDisplayName } from "@shared/agent-teams/preset-presentation";
+import { teamDisplayName } from "@shared/agent-teams/agent-team-presentation";
 import { TEAM_SESSIONS_CHANGED_EVENT } from "@shared/agent-teams/team-session-events";
 import { Button } from "@shared/components/ui/button";
 import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";

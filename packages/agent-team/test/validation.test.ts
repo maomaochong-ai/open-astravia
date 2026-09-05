@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { createAgentTeamFixture } from "../src/presets.js";
 import {
+	parseAgentTeamDocument,
 	parseCreateAgentProfileInput,
 	parseCreateTeamInput,
 	parseDeleteAgentProfileInput,
@@ -34,6 +36,22 @@ describe("Agent Team IPC input validation", () => {
 				],
 			}),
 		).toMatchObject({ name: "Product team" });
+	});
+
+	it("accepts file-defined identities when they provide their own system prompt", () => {
+		const document = createAgentTeamFixture();
+		const first = document.agents[0];
+		if (!first) throw new Error("Expected an initial agent");
+
+		const parsed = parseAgentTeamDocument({
+			...document,
+			agents: [
+				{ ...first, blueprintId: "custom-coordinator", systemPrompt: "Coordinate this team." },
+				...document.agents.slice(1),
+			],
+		});
+
+		expect(parsed.agents[0]).toMatchObject({ blueprintId: "custom-coordinator" });
 	});
 
 	it("rejects unknown properties and invalid revisions", () => {

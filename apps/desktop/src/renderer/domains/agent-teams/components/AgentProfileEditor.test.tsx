@@ -83,6 +83,67 @@ const impact: AgentProfileUpdateImpact = {
 afterEach(cleanup);
 
 describe("AgentProfileEditor", () => {
+	it("keeps profile identity fields editable by default", async () => {
+		const user = userEvent.setup();
+		render(
+			<AgentProfileEditor
+				agent={agent}
+				capabilities={[]}
+				onPreview={vi.fn(async () => ({ ...impact, teamIds: [], teamNames: [] }))}
+				onSave={vi.fn(async () => ({ updated: agent, impact }))}
+			/>,
+		);
+
+		const name = screen.getByDisplayValue(agent.name) as HTMLInputElement;
+		const description = screen.getByDisplayValue(agent.description) as HTMLTextAreaElement;
+		expect(name.readOnly).toBe(false);
+		expect(description.readOnly).toBe(false);
+		await user.clear(name);
+		await user.type(name, "Updated name");
+		expect(name.value).toBe("Updated name");
+	});
+
+	it("keeps built-in identity fields editable", async () => {
+		const user = userEvent.setup();
+		render(
+			<AgentProfileEditor
+				agent={agent}
+				capabilities={[]}
+				onPreview={vi.fn(async () => ({ ...impact, teamIds: [], teamNames: [] }))}
+				onSave={vi.fn(async () => ({ updated: agent, impact }))}
+			/>,
+		);
+
+		const name = screen.getByDisplayValue(agent.name) as HTMLInputElement;
+		const description = screen.getByDisplayValue(agent.description) as HTMLTextAreaElement;
+		expect(name.readOnly).toBe(false);
+		expect(description.readOnly).toBe(false);
+		await user.clear(name);
+		await user.type(name, "Renamed built-in");
+		expect(name.value).toBe("Renamed built-in");
+		expect((screen.getByLabelText("profile.searchAbilities") as HTMLInputElement).readOnly).toBe(false);
+	});
+
+	it("edits and persists the file-backed system prompt", async () => {
+		const user = userEvent.setup();
+		const onSave = vi.fn(async () => ({ updated: agent, impact }));
+		render(
+			<AgentProfileEditor
+				agent={agent}
+				capabilities={[]}
+				onPreview={vi.fn(async () => ({ ...impact, teamIds: [], teamNames: [] }))}
+				onSave={onSave}
+			/>,
+		);
+
+		const prompt = screen.getByLabelText("profile.systemPrompt");
+		await user.type(prompt, "Use file-backed instructions.");
+		await user.click(screen.getByRole("button", { name: "profile.save" }));
+		await waitFor(() => expect(onSave).toHaveBeenCalledWith(agent, expect.objectContaining({
+			systemPrompt: "Use file-backed instructions.",
+		})));
+	});
+
 	it("requires confirmation before saving a profile shared by multiple teams", async () => {
 		const user = userEvent.setup();
 		const onPreview = vi.fn(async () => impact);

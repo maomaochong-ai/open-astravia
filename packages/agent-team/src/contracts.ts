@@ -32,7 +32,9 @@ export interface AgentProfile {
 	readonly avatar?: string;
 	readonly mentionHandle: string;
 	readonly blueprintId: string;
-	/** Stable application-owned preset identity. Preset prompts and identity are not user editable. */
+	/** Optional file-backed override; absent means use the registered blueprint default. */
+	readonly systemPrompt?: string;
+	/** Stable source identity retained for bundled definitions after customization. */
 	readonly presetId?: string;
 	readonly abilities: AgentAbilitySelection;
 	readonly scope: AgentProfileScope;
@@ -193,6 +195,7 @@ export interface UpdateAgentProfileInput {
 	readonly description: string;
 	readonly avatar?: string;
 	readonly mentionHandle: string;
+	readonly systemPrompt?: string;
 	readonly abilities: AgentAbilitySelection;
 }
 export interface DeleteAgentProfileInput {

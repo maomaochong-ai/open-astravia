@@ -11,7 +11,7 @@ import {
 	toggleAgentAbility,
 } from "../lib/ability-selection";
 import { AbilityIcon } from "../../abilities/components/AbilityIcon";
-import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";
+import { agentAvatarUrl } from "../../../shared/agent-teams/agent-avatar";
 import { AgentAvatarPicker } from "./AgentAvatarPicker";
 
 interface AgentProfileEditorProps {
@@ -20,7 +20,6 @@ interface AgentProfileEditorProps {
 	readonly capabilities: readonly AgentCapabilityOption[];
 	readonly displayName?: string;
 	readonly displayDescription?: string;
-	readonly identityReadOnly?: boolean;
 	/** External save requests are used by the Team settings page to keep one save action for all drafts. */
 	readonly saveRequest?: number;
 	readonly hideSaveAction?: boolean;
@@ -40,7 +39,6 @@ export function AgentProfileEditor({
 	capabilities,
 	displayName,
 	displayDescription,
-	identityReadOnly = false,
 	saveRequest,
 	hideSaveAction = false,
 	onDraftChange,
@@ -50,8 +48,9 @@ export function AgentProfileEditor({
 	onSave,
 }: AgentProfileEditorProps): JSX.Element {
 	const { t } = useTranslation("agent-teams");
-	const [name, setName] = useState(displayName ?? agent.name);
-	const [description, setDescription] = useState(displayDescription ?? agent.description);
+	const [name, setName] = useState(agent.name);
+	const [description, setDescription] = useState(agent.description);
+	const [systemPrompt, setSystemPrompt] = useState(agent.systemPrompt ?? "");
 	const [avatar, setAvatar] = useState(agentAvatarUrl(agent));
 	const [abilities, setAbilities] = useState<AgentAbilitySelection>(agent.abilities);
 	const [saving, setSaving] = useState(false);
@@ -61,8 +60,9 @@ export function AgentProfileEditor({
 	const lastSaveRequest = useRef(saveRequest);
 
 	useEffect(() => {
-		setName(displayName ?? agent.name);
-		setDescription(displayDescription ?? agent.description);
+		setName(agent.name);
+		setDescription(agent.description);
+		setSystemPrompt(agent.systemPrompt ?? "");
 		setAvatar(agentAvatarUrl(agent));
 		setAbilities(agent.abilities);
 		setPendingImpact(undefined);
@@ -72,13 +72,14 @@ export function AgentProfileEditor({
 
 	useEffect(() => {
 		onDraftChange?.({
-			name: identityReadOnly ? agent.name : name,
-			description: identityReadOnly ? agent.description : description,
+			name,
+			description,
+			systemPrompt,
 			avatar,
 			mentionHandle: agent.mentionHandle,
 			abilities,
 		});
-	}, [abilities, agent.description, agent.mentionHandle, agent.name, avatar, description, identityReadOnly, name, onDraftChange]);
+	}, [abilities, agent.mentionHandle, avatar, description, name, onDraftChange, systemPrompt]);
 
 	useEffect(() => {
 		onSavingChange?.(saving);
@@ -103,8 +104,9 @@ export function AgentProfileEditor({
 				}
 			}
 			await onSave(agent, {
-				name: identityReadOnly ? agent.name : name,
-				description: identityReadOnly ? agent.description : description,
+				name,
+				description,
+				systemPrompt,
 				avatar,
 				mentionHandle: agent.mentionHandle,
 				abilities,
@@ -162,7 +164,6 @@ export function AgentProfileEditor({
 						<TextField
 							label={t("profile.name")}
 							value={name}
-							readOnly={identityReadOnly}
 							onChange={setName}
 						/>
 						<label className="text-sm">
@@ -171,9 +172,19 @@ export function AgentProfileEditor({
 							</span>
 							<textarea
 								value={description}
-								readOnly={identityReadOnly}
 								onChange={(event) => setDescription(event.target.value)}
 								className="min-h-24 w-full resize-y rounded-xl border border-border/60 bg-background/50 px-3.5 py-2.5 text-sm outline-none transition-all placeholder:text-muted-foreground/50 hover:border-border focus:border-primary/50 focus:bg-background"
+							/>
+						</label>
+						<label className="text-sm">
+							<span className="mb-1.5 block text-xs font-semibold tracking-wider uppercase text-muted-foreground/80">
+								{t("profile.systemPrompt")}
+							</span>
+							<textarea
+								aria-label={t("profile.systemPrompt")}
+								value={systemPrompt}
+								onChange={(event) => setSystemPrompt(event.target.value)}
+								className="min-h-40 w-full resize-y rounded-xl border border-border/60 bg-background/50 px-3.5 py-2.5 text-sm font-mono leading-relaxed outline-none transition-all placeholder:text-muted-foreground/50 hover:border-border focus:border-primary/50 focus:bg-background"
 							/>
 						</label>
 					</div>
@@ -385,12 +396,10 @@ function CapabilityToggle({
 function TextField({
 	label,
 	value,
-	readOnly = false,
 	onChange,
 }: {
 	readonly label: string;
 	readonly value: string;
-	readonly readOnly?: boolean;
 	readonly onChange: (value: string) => void;
 }): JSX.Element {
 	return (
@@ -402,7 +411,6 @@ function TextField({
 				name={label}
 				autoComplete="off"
 				value={value}
-				readOnly={readOnly}
 				onChange={(event) => onChange(event.target.value)}
 				className="h-10 rounded-xl border-border/60 bg-background/50 px-3.5 text-sm transition-all hover:border-border focus:border-primary/50 focus:bg-background"
 			/>

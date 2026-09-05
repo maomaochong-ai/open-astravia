@@ -1,0 +1,32 @@
+{
+	"id": "builtin:team:vetta",
+	"revision": 1,
+	"name": "Vetta Team",
+	"leaderMemberId": "builtin:member:leader",
+	"members": [
+		{
+			"id": "builtin:member:leader",
+			"handle": "vetta",
+			"binding": { "kind": "reference", "agentProfileId": "builtin:agent:leader" }
+		},
+		{
+			"id": "builtin:member:researcher",
+			"handle": "research",
+			"binding": { "kind": "reference", "agentProfileId": "builtin:agent:researcher" }
+		},
+		{
+			"id": "builtin:member:builder",
+			"handle": "build",
+			"binding": { "kind": "reference", "agentProfileId": "builtin:agent:builder" }
+		},
+		{
+			"id": "builtin:member:reviewer",
+			"handle": "review",
+			"binding": { "kind": "reference", "agentProfileId": "builtin:agent:reviewer" }
+		}
+	],
+	"orchestrationPolicyId": "leader-delegates-v1",
+	"contextPolicyId": "public-results-v1",
+	"createdAt": 0,
+	"updatedAt": 0
+}

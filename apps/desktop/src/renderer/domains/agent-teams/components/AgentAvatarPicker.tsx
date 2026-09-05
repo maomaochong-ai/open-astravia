@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { AGENT_AVATAR_OPTIONS } from "@shared/agent-teams/agent-avatar";
+import { AGENT_AVATAR_OPTIONS } from "../../../shared/agent-teams/agent-avatar";
 
 interface AgentAvatarPickerProps {
 	readonly value: string;

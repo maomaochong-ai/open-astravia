@@ -1,5 +1,5 @@
 import type { DesktopTeamSessionSnapshot } from "@preload/api-types/team-conversation-display";
-import { agentDisplayName, teamDisplayName } from "@shared/agent-teams/preset-presentation";
+import { agentDisplayName, teamDisplayName } from "@shared/agent-teams/agent-team-presentation";
 import { notifyTeamSessionsChanged } from "@shared/agent-teams/team-session-events";
 import { waitForCommittedPaint } from "@shared/lib/committed-paint";
 import { deriveAttachments, parseInputSegments, pathTokenText, segmentsToText } from "@shared/lib/input-tokens";
