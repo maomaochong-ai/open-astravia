@@ -44,6 +44,7 @@ interface ServiceRecord {
 	child?: ChildProcess;
 	baseUrl?: string;
 	secrets?: ServiceSecrets;
+	transportReady: boolean;
 	operation?: Promise<PluginServiceStatus>;
 	stopping?: Promise<PluginServiceStatus>;
 	generation: number;
@@ -256,6 +257,7 @@ export class PluginServiceProviderService {
 		if (existing) {
 			existing.service = service;
 			existing.status = this.statusFor(service, "stopped", installed);
+			existing.transportReady = false;
 			return existing.status;
 		}
 		return this.statusFor(service, "stopped", installed);
@@ -273,7 +275,13 @@ export class PluginServiceProviderService {
 		if (record?.child) throw new Error("Stop the service before installing its runtime");
 		if (record?.operation) return record.operation;
 		if (!record) {
-			record = { pluginId, service, status: this.statusFor(service, "stopped"), generation: 0 };
+			record = {
+				pluginId,
+				service,
+				status: this.statusFor(service, "stopped"),
+				transportReady: false,
+				generation: 0,
+			};
 			this.records.set(key, record);
 		} else {
 			record.service = service;
@@ -313,6 +321,11 @@ export class PluginServiceProviderService {
 			await this.stop(pluginId, serviceId);
 			return this.start(pluginId, serviceId);
 		}
+		if (record?.status.phase === "starting" && record.child) {
+			if (JSON.stringify(record.service) === JSON.stringify(service)) return record.status;
+			await this.stop(pluginId, serviceId);
+			return this.start(pluginId, serviceId);
+		}
 		if (record?.operation) {
 			if (["disabled", "stopped", "stopping"].includes(record.status.phase)) {
 				await record.operation;
@@ -321,7 +334,13 @@ export class PluginServiceProviderService {
 			return record.operation;
 		}
 		if (!record) {
-			record = { pluginId, service, status: this.statusFor(service, "stopped"), generation: 0 };
+			record = {
+				pluginId,
+				service,
+				status: this.statusFor(service, "stopped"),
+				transportReady: false,
+				generation: 0,
+			};
 			this.records.set(key, record);
 		} else {
 			record.service = service;
@@ -341,6 +360,7 @@ export class PluginServiceProviderService {
 		if (!record) return this.statusFor(service, "stopped");
 		if (record.stopping) return record.stopping;
 		record.generation += 1;
+		record.transportReady = false;
 		if (!record.child) return this.setStatus(record, "stopped");
 		this.setStatus(record, "stopping");
 		const child = record.child;
@@ -357,6 +377,7 @@ export class PluginServiceProviderService {
 				if (record.child === child) {
 					record.child = undefined;
 					record.baseUrl = undefined;
+					record.transportReady = false;
 				}
 				return record.status.phase === "disabled" ? record.status : this.setStatus(record, "stopped");
 			})
@@ -372,6 +393,19 @@ export class PluginServiceProviderService {
 		return this.start(pluginId, serviceId);
 	}
 
+	async reportReady(pluginId: string, serviceId: string, ready: boolean): Promise<PluginServiceStatus> {
+		const { plugin, service } = this.requireService(pluginId, serviceId);
+		if (!plugin.enabled) throw new Error(`Plugin disabled: ${pluginId}`);
+		if (service.health.readiness?.mode !== "plugin") {
+			throw new Error(`Service does not use plugin readiness: ${pluginId}/${serviceId}`);
+		}
+		const record = this.records.get(serviceKey(pluginId, serviceId));
+		if (!record || !record.child || !record.baseUrl || !record.transportReady) {
+			throw new Error(`Service transport is not ready: ${pluginId}/${serviceId}`);
+		}
+		return this.setStatus(record, ready ? "ready" : "starting");
+	}
+
 	disablePlugin(pluginId: string): void {
 		for (const record of this.records.values()) {
 			if (record.pluginId !== pluginId) continue;
@@ -379,6 +413,7 @@ export class PluginServiceProviderService {
 			if (record.child) this.dependencies.killProcess(record.child, "SIGKILL");
 			record.child = undefined;
 			record.baseUrl = undefined;
+			record.transportReady = false;
 			this.setStatus(record, "disabled");
 		}
 	}
@@ -386,6 +421,7 @@ export class PluginServiceProviderService {
 	stopAll(): void {
 		for (const record of this.records.values()) {
 			record.generation += 1;
+			record.transportReady = false;
 			if (record.child) this.dependencies.killProcess(record.child, "SIGKILL");
 		}
 	}
@@ -472,6 +508,7 @@ export class PluginServiceProviderService {
 			record.child = child;
 			record.baseUrl = `http://127.0.0.1:${port}`;
 			record.secrets = secrets;
+			record.transportReady = false;
 			this.setStatus(record, "starting");
 			child.stdout?.on("data", (chunk: Buffer) => this.captureOutput(record, chunk));
 			child.stderr?.on("data", (chunk: Buffer) => this.captureOutput(record, chunk));
@@ -479,6 +516,7 @@ export class PluginServiceProviderService {
 				if (record.child !== child || record.generation !== generation) return;
 				record.child = undefined;
 				record.baseUrl = undefined;
+				record.transportReady = false;
 				if (record.status.phase === "stopping") return;
 				this.setStatus(record, "failed", `Service exited (${exitCode ?? signal ?? "unknown"})`);
 			});
@@ -487,6 +525,8 @@ export class PluginServiceProviderService {
 			});
 			await this.waitUntilReady(record, generation);
 			if (record.generation !== generation) return record.status;
+			record.transportReady = true;
+			if (record.service.health.readiness?.mode === "plugin") return record.status;
 			return this.setStatus(record, "ready");
 		} catch (error) {
 			if (record.generation !== generation) return record.status;
@@ -499,6 +539,7 @@ export class PluginServiceProviderService {
 			if (record.child) this.dependencies.killProcess(record.child, "SIGKILL");
 			record.child = undefined;
 			record.baseUrl = undefined;
+			record.transportReady = false;
 			return this.setStatus(record, "failed", message);
 		}
 	}
@@ -577,7 +618,11 @@ export class PluginServiceProviderService {
 		const { plugin } = this.requireService(pluginId, serviceId);
 		if (!plugin.enabled) throw new Error(`Plugin disabled: ${pluginId}`);
 		const record = this.records.get(serviceKey(pluginId, serviceId));
-		if (!record || record.status.phase !== "ready" || !record.baseUrl) {
+		const pluginReadinessProbe =
+			record?.service.health.readiness?.mode === "plugin" &&
+			record.transportReady &&
+			record.status.phase === "starting";
+		if (!record || (!pluginReadinessProbe && record.status.phase !== "ready") || !record.baseUrl) {
 			throw new Error(`Service is not ready: ${pluginId}/${serviceId}`);
 		}
 		return record;

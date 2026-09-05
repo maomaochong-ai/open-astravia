@@ -6,6 +6,9 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Breaking Changes
 
+- `ctx.models` 的自有 Provider 管理改为 `replaceOwnedProviders()` 原子快照；移除插件侧逐个 `upsertProvider/removeProvider`。
+- `ctx.services` 新增 `reportReady()`，并支持 `health.readiness.mode = "plugin"`，服务只有在插件完成业务数据初始化后才进入 `ready`。
+
 - **插件配置改由插件自绘（ADR-0105，Plugin API 1.6.0）**：移除 `plugin.json#contributes.settings`、只读的
   `ctx.settings`、`registerTool({ configuration.settingKeys })`、handler 上下文里的 `plugin.settings` 快照，以及
   `ctx.ui.openPluginSettings()`。宿主不再提供设置页配置槽，插件用 `registerWorkspaceView` 自绘配置界面。
@@ -25,11 +28,6 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
   再交给 Desktop 二次校验、安全解包、启动、健康检查并限制在自身回环 origin；新增 `models.manage` 与 `ctx.models`，
   获授权插件只能维护以自身 plugin id 命名的模型 Provider。宿主不包含任何上游服务专用路由或 Provider 语义
   （ADR-0104）。
-
-### Fixed
-
-- `ctx.models.removeProvider()` 改为幂等删除；插件进行启动恢复或重复目录对账时，删除尚未注册的自有 Provider 会
-  直接成功，已存在 Provider 的默认模型与凭据清理行为保持不变。
 
 ## [0.2.0] — 2026-09-01
 

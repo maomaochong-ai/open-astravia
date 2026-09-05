@@ -58,6 +58,8 @@ export interface ModelSettingsServiceOptions {
 	readonly credentials: ModelCredentialStore;
 	/** Post-commit signal; observers must not receive credential values. */
 	readonly onProviderAccessChanged?: (providerIds: readonly string[]) => void;
+	/** Post-commit signal for model catalog consumers. */
+	readonly onConfigChanged?: (providerIds: readonly string[]) => void;
 }
 
 const MODELS_CONFIG_PATH = join(getVettaHomePath(), "agent", "models.json");
@@ -335,6 +337,34 @@ export class ModelSettingsService {
 		});
 	}
 
+	async replaceOwnedProviders(owner: string, providers: Record<string, ModelProviderUpsertData>): Promise<void> {
+		const prefix = `${owner}.`;
+		await this.runMutation(async () => {
+			await this.ensureLegacyCredentialsMigrated();
+			const config = await this.options.readConfig();
+			const nextProviders: Record<string, ProviderConfig> = {};
+			for (const [providerId, provider] of Object.entries(config.providers)) {
+				if (!providerId.startsWith(prefix)) nextProviders[providerId] = provider;
+			}
+			for (const [localProviderId, data] of Object.entries(providers)) {
+				const providerId = `${owner}.${localProviderId}`;
+				if (!providerId.startsWith(prefix)) throw new Error("Owned provider escaped its plugin namespace");
+				nextProviders[providerId] = {
+					...(data.baseUrl === undefined ? {} : { baseUrl: data.baseUrl }),
+					...(data.apiKey === undefined ? {} : { apiKey: data.apiKey }),
+					...(data.api === undefined ? {} : { api: data.api }),
+					...(data.displayName === undefined ? {} : { displayName: data.displayName }),
+					...(data.authHeader === undefined ? {} : { authHeader: data.authHeader }),
+					...(data.headers === undefined ? {} : { headers: { ...data.headers } }),
+					...(data.models === undefined ? {} : { models: data.models.map((model) => ({ ...model })) }),
+				};
+			}
+			const next = { ...config, providers: nextProviders };
+			if (next.defaultModel?.startsWith(prefix)) delete next.defaultModel;
+			await this.persist(next, config, "resolved");
+		});
+	}
+
 	private async persist(config: ModelsConfig, current: ModelsConfig, mode: PersistInputMode): Promise<ModelsConfig> {
 		const persisted = cloneModelsConfig(config);
 		const writes = new Map<string, string>();
@@ -416,6 +446,7 @@ export class ModelSettingsService {
 				!sameProviderAccess(current.providers[providerId], persisted.providers[providerId]),
 		);
 		if (accessChangedProviders.length > 0) this.notifyProviderAccessChanged(accessChangedProviders);
+		this.options.onConfigChanged?.(Object.keys(persisted.providers));
 		return persisted;
 	}
 

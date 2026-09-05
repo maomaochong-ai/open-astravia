@@ -95,10 +95,8 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.IM_AGENT_MODEL_SET, sessionId, modelKey, reasoningLevel),
 				},
 				models: {
-					upsertOwnedProvider: (sessionId, providerId, data) =>
-						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MODEL_OWNED_PROVIDER_UPSERT, sessionId, providerId, data),
-					removeOwnedProvider: (sessionId, providerId) =>
-						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MODEL_OWNED_PROVIDER_REMOVE, sessionId, providerId),
+					replaceOwnedProviders: (sessionId, providers) =>
+						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MODEL_OWNED_PROVIDERS_REPLACE, sessionId, providers),
 					list: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MODEL_LIST, sessionId),
 					getConfig: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MODEL_CONFIG_GET, sessionId),
 					getProvider: (sessionId, provider) =>
@@ -359,6 +357,8 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.SERVICE_CONNECTION, sessionId, serviceId, credentialId),
 			requestService: (sessionId, serviceId, request) =>
 				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.SERVICE_REQUEST, sessionId, serviceId, request),
+			reportServiceReady: (sessionId, serviceId, ready) =>
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.SERVICE_READY_REPORT, sessionId, serviceId, ready),
 			onServiceStatusChanged: (handler) => onIpcEvent(ipc, PLUGIN_EXECUTION_CHANNELS.SERVICE_STATUS, handler),
 			runCommand: (sessionId, file, args, options) =>
 				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.COMMAND_RUN, sessionId, file, args, options),

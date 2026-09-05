@@ -178,6 +178,14 @@ const modelProviderUpsertInputType = Type.Object(
 	{ additionalProperties: false },
 );
 
+const modelOwnedProviderReplaceInputType = Type.Object(
+	{
+		owner: Type.String({ pattern: "^[a-z0-9][a-z0-9._-]{0,63}$" }),
+		providers: Type.Record(Type.String({ pattern: "^[a-z0-9][a-z0-9_-]{0,31}$" }), modelProviderUpsertDataType),
+	},
+	{ additionalProperties: false },
+);
+
 export type ModelSummary = Static<typeof modelSummaryType>;
 export type ModelProviderSummary = Static<typeof modelProviderSummaryType>;
 export type ModelListResult = Static<typeof modelListResultType>;
@@ -194,6 +202,7 @@ export type ModelDefaultInput = Static<typeof modelDefaultInputType>;
 export type ModelDefaultResult = Static<typeof modelDefaultResultType>;
 export type ModelProviderUpsertData = Static<typeof modelProviderUpsertDataType>;
 export type ModelProviderUpsertInput = Static<typeof modelProviderUpsertInputType>;
+export type ModelOwnedProviderReplaceInput = Static<typeof modelOwnedProviderReplaceInputType>;
 
 const modelEmptyInputSchema = defineCapabilityInputSchema(modelEmptyInputType);
 const modelListOutputSchema = defineCapabilityOutputSchema(modelListResultType, { clean: true });
@@ -208,6 +217,9 @@ const modelDefaultInputSchema = defineCapabilityInputSchema(modelDefaultInputTyp
 const modelDefaultOutputSchema = defineCapabilityOutputSchema(modelDefaultResultType, { clean: true });
 const modelProviderUpsertInputSchema = defineCapabilityInputSchema(modelProviderUpsertInputType, { clean: true });
 const modelProviderConfigOutputSchema = defineCapabilityOutputSchema(modelProviderConfigSnapshotType, { clean: true });
+const modelOwnedProviderReplaceInputSchema = defineCapabilityInputSchema(modelOwnedProviderReplaceInputType, {
+	clean: true,
+});
 
 export const DOMAIN_MODEL_CAPABILITIES = {
 	LIST: defineCapability<Record<string, never>, ModelListResult>({
@@ -272,6 +284,14 @@ export const DOMAIN_MODEL_CAPABILITIES = {
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
 		input: modelProviderInputSchema,
+		output: modelNoOutputSchema,
+	}),
+	REPLACE_OWNED_PROVIDERS: defineCapability<ModelOwnedProviderReplaceInput, undefined>({
+		id: "cap.domain.vetta.model.owned-providers.replace",
+		kind: "command",
+		layer: CAPABILITY_LAYERS.DOMAIN,
+		version: 1,
+		input: modelOwnedProviderReplaceInputSchema,
 		output: modelNoOutputSchema,
 	}),
 } as const;

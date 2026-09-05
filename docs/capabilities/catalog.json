@@ -8378,6 +8378,92 @@
       "version": 1
     },
     {
+      "id": "cap.domain.vetta.model.owned-providers.replace",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "owner",
+          "providers"
+        ],
+        "properties": {
+          "owner": {
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+            "type": "string"
+          },
+          "providers": {
+            "type": "object",
+            "patternProperties": {
+              "^[a-z0-9][a-z0-9_-]{0,31}$": {
+                "additionalProperties": false,
+                "type": "object",
+                "properties": {
+                  "baseUrl": {
+                    "type": "string"
+                  },
+                  "apiKey": {
+                    "type": "string"
+                  },
+                  "api": {
+                    "type": "string"
+                  },
+                  "displayName": {
+                    "type": "string"
+                  },
+                  "authHeader": {
+                    "type": "boolean"
+                  },
+                  "headers": {
+                    "type": "object",
+                    "patternProperties": {
+                      "^(.*)$": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "models": {
+                    "type": "array",
+                    "items": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "pattern": "\\S",
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "api": {
+                          "type": "string"
+                        },
+                        "reasoning": {
+                          "type": "boolean"
+                        },
+                        "contextWindow": {
+                          "type": "number"
+                        },
+                        "maxTokens": {
+                          "type": "number"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "kind": "command",
+      "layer": "domain",
+      "outputSchema": false,
+      "version": 1
+    },
+    {
       "id": "cap.domain.vetta.navigation.open-hosted-route",
       "inputSchema": {
         "additionalProperties": false,

@@ -205,20 +205,11 @@ export function registerPluginCapabilitiesIpc(): () => void {
 		adapter.listModels(requireString(sessionId, "sessionId")),
 	);
 	ipcMain.handle(
-		PLUGIN_CAPABILITY_CHANNELS.MODEL_OWNED_PROVIDER_UPSERT,
-		(_event, sessionId: unknown, providerId: unknown, data: unknown) =>
-			adapter.upsertOwnedModelProvider(
+		PLUGIN_CAPABILITY_CHANNELS.MODEL_OWNED_PROVIDERS_REPLACE,
+		(_event, sessionId: unknown, providers: unknown) =>
+			adapter.replaceOwnedModelProviders(
 				requireString(sessionId, "sessionId"),
-				requireString(providerId, "providerId"),
-				data,
-			),
-	);
-	ipcMain.handle(
-		PLUGIN_CAPABILITY_CHANNELS.MODEL_OWNED_PROVIDER_REMOVE,
-		(_event, sessionId: unknown, providerId: unknown) =>
-			adapter.removeOwnedModelProvider(
-				requireString(sessionId, "sessionId"),
-				requireString(providerId, "providerId"),
+				providers as Record<string, unknown>,
 			),
 	);
 	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.MODEL_CONFIG_GET, (_event, sessionId: unknown) =>

@@ -99,7 +99,7 @@ Desktop 不管理下载源或上游版本策略，只负责二次摘要校验、
 
 动态模型使用 `models.manage` 权限和 `ctx.models`；插件传入本地 Provider id，宿主将真实 id 固定为
 `<plugin-id>.<local-id>`（local id 为不含点号的 1–32 位小写 slug），所以插件可按协议拆分多个 Provider，但不能覆盖用户或其它插件的模型配置。
-`ctx.models.removeProvider()` 是幂等操作，适合声明式目录对账：目标尚未注册时直接成功，不会触发配置写入或注册表刷新。
+插件通过 `ctx.models.replaceOwnedProviders()` 一次提交完整快照；宿主在单次配置事务中删除该插件已不再声明的 Provider，并保留用户和其它插件的配置，避免逐个增删造成中间状态和启动竞态。
 模板 `create` 仅首次写入数据目录，`render` 每次启动写入缓存目录；动态端口和版本目录应使用 `render`，认证数据保留在数据目录。
 完整生命周期、供应链和边界决策见
 [ADR-0104](../../docs/adr/0104-plugin-managed-local-services-and-owned-model-providers.md)。

@@ -453,12 +453,7 @@ export interface DesktopPluginCapabilityAiApi {
 }
 
 export interface DesktopPluginCapabilityModelsApi {
-	upsertOwnedProvider(
-		sessionId: string,
-		providerId: string,
-		data: ModelProviderUpsertData,
-	): Promise<ModelProviderConfigSnapshot>;
-	removeOwnedProvider(sessionId: string, providerId: string): Promise<void>;
+	replaceOwnedProviders(sessionId: string, providers: Record<string, ModelProviderUpsertData>): Promise<void>;
 	list(sessionId: string): Promise<ModelListResult>;
 	getConfig(sessionId: string): Promise<ModelConfigSnapshot>;
 	getProvider(sessionId: string, provider: string): Promise<ModelProviderDetail>;
@@ -753,6 +748,7 @@ export interface DesktopPluginsApi {
 		serviceId: string,
 		request: PluginServiceRequest,
 	): Promise<PluginServiceResponse<T>>;
+	reportServiceReady(sessionId: string, serviceId: string, ready: boolean): Promise<PluginServiceStatus>;
 	onServiceStatusChanged(handler: (event: { pluginId: string; status: PluginServiceStatus }) => void): () => void;
 	/** Run an allowed command for a plugin via the main process (execFile, no shell). */
 	runCommand(

@@ -24,6 +24,8 @@ export function createPluginServiceApi(
 			window.vetta.plugins.getServiceConnection(capabilitySessionId, assertDeclared(serviceId), credentialId),
 		request: (serviceId, request) =>
 			window.vetta.plugins.requestService(capabilitySessionId, assertDeclared(serviceId), request),
+		reportReady: (serviceId, ready) =>
+			window.vetta.plugins.reportServiceReady(capabilitySessionId, assertDeclared(serviceId), ready),
 		onStatusChange: (listener): Disposable => {
 			const unsubscribe = window.vetta.plugins.onServiceStatusChanged((event) => {
 				if (event.pluginId === plugin.id) listener(event.status);

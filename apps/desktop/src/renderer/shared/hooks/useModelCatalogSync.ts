@@ -17,11 +17,15 @@ export function useModelCatalogSync(): void {
 			if (document.visibilityState === "visible") revalidate();
 		};
 		revalidate();
+		const disposeModelChanged = window.vetta.models.onChanged?.(() => {
+			void modelCatalog.revalidate({ force: true, sources: ["local"] });
+		});
 		window.addEventListener("focus", revalidate);
 		document.addEventListener("visibilitychange", onVisibilityChange);
 		return () => {
 			window.removeEventListener("focus", revalidate);
 			document.removeEventListener("visibilitychange", onVisibilityChange);
+			disposeModelChanged?.();
 		};
 	}, []);
 }

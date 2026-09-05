@@ -50,6 +50,16 @@ describe("plugin service provider manifest", () => {
 		expect(manifest.providers?.services).toEqual([service()]);
 	});
 
+	it("accepts plugin-owned semantic readiness", () => {
+		const manifest = parsePluginManifest({
+			...baseManifest,
+			pluginApiVersion: "^1.6.0",
+			providers: { services: [{ ...service(), health: { ...service().health, readiness: { mode: "plugin" } } }] },
+		});
+
+		expect(manifest.providers?.services?.[0]?.health.readiness).toEqual({ mode: "plugin" });
+	});
+
 	it("rejects duplicate service ids and artifact destinations", () => {
 		const provider = service();
 		expect(() =>

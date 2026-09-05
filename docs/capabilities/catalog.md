@@ -104,6 +104,7 @@
 | `cap.domain.vetta.model.default.set` | domain | command | 1 |
 | `cap.domain.vetta.model.provider.upsert` | domain | command | 1 |
 | `cap.domain.vetta.model.provider.remove` | domain | command | 1 |
+| `cap.domain.vetta.model.owned-providers.replace` | domain | command | 1 |
 | `cap.domain.vetta.navigation.open-hosted-route` | domain | command | 1 |
 | `cap.domain.vetta.project.list` | domain | query | 1 |
 | `cap.domain.vetta.project.create` | domain | command | 1 |

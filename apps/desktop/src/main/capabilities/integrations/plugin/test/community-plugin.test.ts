@@ -12,8 +12,7 @@ describe("PluginCapabilityAdapter community plugins", () => {
 		});
 		const sessionId = adapter.openSession("community");
 		for (const id of ["other.provider", "../other", "", "X", "a".repeat(33)]) {
-			expect(() => adapter.upsertOwnedModelProvider(sessionId, id, {})).toThrow("lowercase slug");
-			expect(() => adapter.removeOwnedModelProvider(sessionId, id)).toThrow("lowercase slug");
+			expect(() => adapter.replaceOwnedModelProviders(sessionId, { [id]: {} })).toThrow("lowercase slug");
 		}
 		expect(access.invocations).toEqual([]);
 	});
@@ -25,28 +24,27 @@ describe("PluginCapabilityAdapter community plugins", () => {
 		});
 		const sessionId = adapter.openSession("community");
 
-		await adapter.upsertOwnedModelProvider(sessionId, "openai", {
-			baseUrl: "http://127.0.0.1:12345/v1",
-			apiKey: "generated-service-key",
-			models: [{ id: "dynamic-model" }],
+		await adapter.replaceOwnedModelProviders(sessionId, {
+			openai: {
+				baseUrl: "http://127.0.0.1:12345/v1",
+				apiKey: "generated-service-key",
+				models: [{ id: "dynamic-model" }],
+			},
 		});
-		await adapter.removeOwnedModelProvider(sessionId, "openai");
 
 		expect(access.invocations).toEqual([
 			{
-				capabilityId: DOMAIN_MODEL_CAPABILITIES.UPSERT_PROVIDER.id,
+				capabilityId: DOMAIN_MODEL_CAPABILITIES.REPLACE_OWNED_PROVIDERS.id,
 				input: {
-					provider: "community.openai",
-					data: {
-						baseUrl: "http://127.0.0.1:12345/v1",
-						apiKey: "generated-service-key",
-						models: [{ id: "dynamic-model" }],
+					owner: "community",
+					providers: {
+						openai: {
+							baseUrl: "http://127.0.0.1:12345/v1",
+							apiKey: "generated-service-key",
+							models: [{ id: "dynamic-model" }],
+						},
 					},
 				},
-			},
-			{
-				capabilityId: DOMAIN_MODEL_CAPABILITIES.REMOVE_PROVIDER.id,
-				input: { provider: "community.openai" },
 			},
 		]);
 	});
@@ -59,7 +57,7 @@ describe("PluginCapabilityAdapter community plugins", () => {
 		});
 		const sessionId = adapter.openSession("community");
 
-		expect(() => adapter.upsertOwnedModelProvider(sessionId, "openai", {})).toThrowError(
+		expect(() => adapter.replaceOwnedModelProviders(sessionId, { openai: {} })).toThrowError(
 			expect.objectContaining({
 				code: CAPABILITY_ERROR_CODES.ACCESS_DENIED,
 			}),

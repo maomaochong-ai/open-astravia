@@ -6,6 +6,7 @@ import {
 	type ModelProbeResult,
 	type ModelProviderConfigSnapshot,
 	type ModelProviderDetail,
+	type ModelProviderUpsertData,
 } from "@vetta/capability-sdk";
 import type { PluginCapabilitySessionAccess } from "../types.js";
 
@@ -19,28 +20,16 @@ function ownedProviderId(pluginId: string, localProviderId: string): string {
 }
 
 export const pluginModelMethods = {
-	upsertOwnedModelProvider(
+	replaceOwnedModelProviders(
 		this: PluginCapabilitySessionAccess,
 		sessionId: string,
-		providerId: string,
-		data: unknown,
-	): Promise<ModelProviderConfigSnapshot> {
-		const session = this.session(sessionId, { permission: "models.manage" });
-		const input = DOMAIN_MODEL_CAPABILITIES.UPSERT_PROVIDER.parseInput({
-			provider: ownedProviderId(session.pluginId, providerId),
-			data,
-		});
-		return session.access.client.invoke(DOMAIN_MODEL_CAPABILITIES.UPSERT_PROVIDER, input);
-	},
-
-	removeOwnedModelProvider(
-		this: PluginCapabilitySessionAccess,
-		sessionId: string,
-		providerId: string,
+		providers: Record<string, unknown>,
 	): Promise<undefined> {
 		const session = this.session(sessionId, { permission: "models.manage" });
-		return session.access.client.invoke(DOMAIN_MODEL_CAPABILITIES.REMOVE_PROVIDER, {
-			provider: ownedProviderId(session.pluginId, providerId),
+		for (const providerId of Object.keys(providers)) ownedProviderId(session.pluginId, providerId);
+		return session.access.client.invoke(DOMAIN_MODEL_CAPABILITIES.REPLACE_OWNED_PROVIDERS, {
+			owner: session.pluginId,
+			providers: providers as Record<string, ModelProviderUpsertData>,
 		});
 	},
 

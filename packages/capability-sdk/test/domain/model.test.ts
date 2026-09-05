@@ -13,6 +13,7 @@ describe("model domain capabilities", () => {
 			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}model.default.set`,
 			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}model.provider.upsert`,
 			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}model.provider.remove`,
+			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}model.owned-providers.replace`,
 		]);
 	});
 
@@ -67,6 +68,15 @@ describe("model domain capabilities", () => {
 			data: { apiKey: "", models: [{ id: "gpt-5", reasoning: true }] },
 		});
 		expect(() => DOMAIN_MODEL_CAPABILITIES.VALIDATE_KEY.parseInput({ modelKey: "invalid" })).not.toThrow();
+		expect(
+			DOMAIN_MODEL_CAPABILITIES.REPLACE_OWNED_PROVIDERS.parseInput({
+				owner: "cli-proxy-api",
+				providers: { google: { models: [{ id: "gemini-test" }] } },
+			}),
+		).toEqual({
+			owner: "cli-proxy-api",
+			providers: { google: { models: [{ id: "gemini-test" }] } },
+		});
 		expect(() =>
 			DOMAIN_MODEL_CAPABILITIES.UPSERT_PROVIDER.parseInput({
 				provider: "openai",
@@ -97,7 +107,7 @@ describe("model domain capabilities", () => {
 	});
 
 	it("publishes provider configuration and mutation schemas", () => {
-		expect(DOMAIN_MODEL_CAPABILITY_CATALOG).toHaveLength(8);
+		expect(DOMAIN_MODEL_CAPABILITY_CATALOG).toHaveLength(9);
 		expect(DOMAIN_MODEL_CAPABILITY_CATALOG[1]?.outputSchema).toMatchObject({
 			type: "object",
 			required: ["providers"],

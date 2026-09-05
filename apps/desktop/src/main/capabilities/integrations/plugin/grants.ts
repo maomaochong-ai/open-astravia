@@ -162,10 +162,7 @@ export function buildPluginCapabilityGrants(
 				]
 			: []),
 		...(permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.MODELS_MANAGE)
-			? [
-					createCapabilityGrant(DOMAIN_MODEL_CAPABILITIES.UPSERT_PROVIDER),
-					createCapabilityGrant(DOMAIN_MODEL_CAPABILITIES.REMOVE_PROVIDER),
-				]
+			? [createCapabilityGrant(DOMAIN_MODEL_CAPABILITIES.REPLACE_OWNED_PROVIDERS)]
 			: []),
 		...(official ? buildOfficialDomainGrants() : []),
 	];
@@ -194,6 +191,7 @@ function buildOfficialDomainGrants(): CapabilityGrant[] {
 		createCapabilityGrant(DOMAIN_MODEL_CAPABILITIES.SET_DEFAULT),
 		createCapabilityGrant(DOMAIN_MODEL_CAPABILITIES.UPSERT_PROVIDER),
 		createCapabilityGrant(DOMAIN_MODEL_CAPABILITIES.REMOVE_PROVIDER),
+		createCapabilityGrant(DOMAIN_MODEL_CAPABILITIES.REPLACE_OWNED_PROVIDERS),
 		createCapabilityGrant(DOMAIN_MCP_CAPABILITIES.LIST_SERVERS),
 		createCapabilityGrant(DOMAIN_MCP_CAPABILITIES.GET_SERVER),
 		createCapabilityGrant(DOMAIN_MCP_CAPABILITIES.UPSERT_SERVER),

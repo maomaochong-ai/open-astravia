@@ -204,4 +204,17 @@ describe("PluginServiceProviderService", () => {
 		const status = await f.service.getStatus(f.plugin.id, "bridge");
 		expect(status).toMatchObject({ version: "2.0.0", phase: "stopped", installed: false });
 	});
+
+	it("keeps plugin-declared services starting until semantic readiness is reported", async () => {
+		const f = await fixture();
+		f.manifest.health = { ...f.manifest.health, readiness: { mode: "plugin" } };
+
+		const status = await f.service.start(f.plugin.id, "bridge");
+		expect(status.phase).toBe("starting");
+		expect((await f.service.getStatus(f.plugin.id, "bridge")).phase).toBe("starting");
+		expect(f.service.connection(f.plugin.id, "bridge").baseUrl).toBe("http://127.0.0.1:19001");
+		await expect(f.service.reportReady(f.plugin.id, "bridge", true)).resolves.toMatchObject({ phase: "ready" });
+		await expect(f.service.reportReady(f.plugin.id, "bridge", false)).resolves.toMatchObject({ phase: "starting" });
+		f.service.stopAll();
+	});
 });

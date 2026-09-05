@@ -174,6 +174,17 @@ export function registerPluginExecutionIpc(): () => void {
 				request as PluginServiceRequest,
 			),
 	);
+	ipcMain.handle(
+		PLUGIN_EXECUTION_CHANNELS.SERVICE_READY_REPORT,
+		(_event, sessionId: unknown, serviceId: unknown, ready: unknown) => {
+			if (typeof ready !== "boolean") throw new Error("Invalid service readiness value");
+			return pluginServiceProviderService.reportReady(
+				capabilityAdapter.pluginIdForSession(asPluginId(sessionId)),
+				asPluginId(serviceId),
+				ready,
+			);
+		},
+	);
 	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.OFFSCREEN_CAPTURE, (_event, pluginId: unknown, options: unknown) =>
 		capturePluginOffscreen(asPluginId(pluginId), (options ?? undefined) as PluginOffscreenCaptureOptions | undefined),
 	);

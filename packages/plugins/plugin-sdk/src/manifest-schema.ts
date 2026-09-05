@@ -128,6 +128,9 @@ export const PluginServiceProviderManifestSchema = Type.Object(
 				path: Type.String({ minLength: 1, maxLength: 1_024, pattern: "^/[^/]*" }),
 				credentialId: Type.Optional(PluginIdSchema),
 				timeoutMs: Type.Optional(Type.Integer({ minimum: 1_000, maximum: 120_000 })),
+				readiness: Type.Optional(
+					Type.Object({ mode: Type.Literal("plugin") }, { additionalProperties: false }),
+				),
 			},
 			{ additionalProperties: false },
 		),

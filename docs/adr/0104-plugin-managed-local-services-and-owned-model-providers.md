@@ -30,14 +30,18 @@
    制品与稳定数据目录分离；模板 `create` 只在数据目录首次写入，`render` 在每次启动前重新生成缓存目录文件。
    动态端口/运行时路径必须用于 `render` 配置，不得把首次替换值固定在持久配置中；升级不覆盖认证数据。
 5. SDK 新增权限 `models.manage` 与 `ctx.models`。插件只提交本地 Provider id，宿主将真实 id 规范化为
-   `<plugin-id>.<local-id>`（local id 不允许点号，以免不同 plugin id 发生拼接碰撞）；获授权插件只能 upsert/remove 该命名空间，不能覆盖或删除其它插件或用户维护的
-   Provider。同一插件可为不同入站协议建立多个 Provider。
-6. 上游特定的 HTTP path、OAuth 服务商枚举、认证状态机、响应 Schema、账号聚合、模型发现和协议映射全部由
+   `<plugin-id>.<local-id>`（local id 不允许点号，以免不同 plugin id 发生拼接碰撞）；获授权插件只能通过
+   `replaceOwnedProviders()` 原子替换该命名空间，不能覆盖或删除其它插件或用户维护的 Provider。同一插件可为不同入站协议建立多个 Provider。
+   本次合同不保留插件侧逐个 `upsertProvider/removeProvider` 兼容入口；官方域的模型管理接口仍独立存在。
+6. 受管服务的 transport health 与业务语义 readiness 分离。声明 `health.readiness.mode = "plugin"` 的服务在健康检查通过后仍保持
+   `starting`，插件完成账号、路由或模型目录加载后调用 `ctx.services.reportReady(serviceId, true)`，宿主才公开 `ready`。
+   宿主不暴露 `ready-but-catalog-warming` 等中间公共状态；未声明该模式的服务保持原有健康检查即 ready 的语义。
+7. 上游特定的 HTTP path、OAuth 服务商枚举、认证状态机、响应 Schema、账号聚合、模型发现和协议映射全部由
    插件实现并随插件发布。Desktop 和 Plugin SDK 不包含任何上游产品名称、路由表或兼容矩阵。
-7. 每个市场插件版本必须在插件自有 lock 中引用固定 Release URL，并在 manifest 与 lock 中保持相同 SHA-256；
+8. 每个市场插件版本必须在插件自有 lock 中引用固定 Release URL，并在 manifest 与 lock 中保持相同 SHA-256；
    不得在安装时解析 `latest`、执行脚本或下载未声明组件。上游更新通过市场仓库更新插件 lock/manifest 并重新
    发布插件完成，无需修改 Desktop。
-8. `providers.services` 与 `ctx.services`/`ctx.models` 进入 Plugin API `1.5.0`。旧宿主通过
+9. `providers.services` 与 `ctx.services`/`ctx.models` 进入 Plugin API `1.5.0`；语义 readiness 与原子模型快照进入 `1.6.0`。旧宿主通过
    `pluginApiVersion` 和市场 `minAppVersion` 在安装前拒绝不兼容插件，不执行部分安装。
 
 ## 安全边界

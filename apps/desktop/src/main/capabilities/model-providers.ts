@@ -67,5 +67,11 @@ export function registerDesktopModelProviders(registry: CapabilityRegistry): Dis
 				await models.removeProvider(provider);
 			},
 		}),
+		bindCapability(DOMAIN_MODEL_CAPABILITIES.REPLACE_OWNED_PROVIDERS, {
+			execute: async ({ owner, providers }, context) => {
+				assertNotAborted(context.signal);
+				await models.replaceOwnedProviders(owner, providers);
+			},
+		}),
 	]);
 }

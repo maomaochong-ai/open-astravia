@@ -11,6 +11,12 @@ import {
 
 let desktopModelSettingsService: ModelSettingsService | undefined;
 const modelSettingsLog = getAppLogger("model-settings");
+const modelSettingsChangedListeners = new Set<(providerIds: readonly string[]) => void>();
+
+export function onDesktopModelSettingsChanged(listener: (providerIds: readonly string[]) => void): () => void {
+	modelSettingsChangedListeners.add(listener);
+	return () => modelSettingsChangedListeners.delete(listener);
+}
 
 export function getDesktopModelSettingsService(): ModelSettingsService {
 	const credentials = getDesktopModelCredentialStore();
@@ -27,6 +33,9 @@ export function getDesktopModelSettingsService(): ModelSettingsService {
 				for (const provider of providerIds) {
 					agentTeamExternalConditionChanges.publish({ category: "authentication", provider });
 				}
+			},
+			onConfigChanged: (providerIds) => {
+				for (const listener of modelSettingsChangedListeners) listener(providerIds);
 			},
 		});
 		void desktopModelSettingsService.getConfig().catch((error) => {

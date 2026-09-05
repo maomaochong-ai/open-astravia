@@ -122,6 +122,43 @@ describe("ModelSettingsService", () => {
 		expect(onProviderAccessChanged).not.toHaveBeenCalled();
 	});
 
+	it("atomically replaces only one plugin namespace and clears its default", async () => {
+		let config: ModelsConfig = {
+			defaultModel: "cli-proxy-api.google/gemini-test",
+			providers: {
+				"cli-proxy-api.google": { api: "google-generative-ai", models: [{ id: "old" }] },
+				"cli-proxy-api.anthropic": { api: "anthropic-messages", models: [{ id: "stale" }] },
+				openai: { api: "openai-responses", models: [{ id: "gpt-5" }] },
+			},
+		};
+		const writeConfig = vi.fn<(next: ModelsConfig) => Promise<void>>(async (next) => {
+			config = next;
+		});
+		const refreshRegistry = vi.fn<() => Promise<void>>(async () => {});
+		const onConfigChanged = vi.fn();
+		const service = new ModelSettingsService({
+			readConfig: async () => config,
+			writeConfig,
+			refreshRegistry,
+			credentials: createCredentialStore(),
+			onConfigChanged,
+		});
+
+		await service.replaceOwnedProviders("cli-proxy-api", {
+			google: { api: "google-generative-ai", models: [{ id: "new" }] },
+		});
+
+		expect(config).toEqual({
+			providers: {
+				"cli-proxy-api.google": { api: "google-generative-ai", models: [{ id: "new" }] },
+				openai: { api: "openai-responses", models: [{ id: "gpt-5" }] },
+			},
+		});
+		expect(writeConfig).toHaveBeenCalledOnce();
+		expect(refreshRegistry).toHaveBeenCalledOnce();
+		expect(onConfigChanged).toHaveBeenCalledWith(expect.arrayContaining(["cli-proxy-api.google", "openai"]));
+	});
+
 	it("replaces and clears an encrypted key without writing plaintext", async () => {
 		let config = createConfig();
 		const credentials = createCredentialStore({ "openai-credential": "secret" });

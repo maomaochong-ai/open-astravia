@@ -68,7 +68,7 @@ import { getDesktopMcpOAuthService } from "../mcp/mcp-oauth-service.js";
 import { getDesktopMcpSettingsService, readMcpConfig, writeMcpConfig } from "../mcp/mcp-settings-service.js";
 import { getDesktopMcpSetupLoginService } from "../mcp/mcp-setup-login-service.js";
 import { fetchProviderModels } from "../models/fetch-models.js";
-import { getDesktopModelSettingsService } from "../models/model-settings-host.js";
+import { getDesktopModelSettingsService, onDesktopModelSettingsChanged } from "../models/model-settings-host.js";
 import type { ModelsConfig } from "../models/model-settings-service.js";
 import { probeModelProvider } from "../models/probe.js";
 import { getLinuxSandboxCapability, getSandboxCapability, type SandboxCapability } from "../sandbox/capability.js";
@@ -169,6 +169,11 @@ export function registerFsIpc(): () => void {
 	const mcp = getDesktopMcpSettingsService();
 	const mcpOAuth = getDesktopMcpOAuthService();
 	const models = getDesktopModelSettingsService();
+	const disposeModelChanged = onDesktopModelSettingsChanged((providerIds) => {
+		for (const win of BrowserWindow.getAllWindows()) {
+			if (!win.isDestroyed()) win.webContents.send("vetta:models:changed", { providerIds: [...providerIds] });
+		}
+	});
 	const shortcuts = getDesktopShortcutService();
 	let apiKeyClipboardClearTimer: ReturnType<typeof setTimeout> | undefined;
 	let copiedApiKey: string | undefined;
@@ -599,5 +604,6 @@ export function registerFsIpc(): () => void {
 		ipcMain.removeHandler(CHANNELS.MCP_AUTH_STATUS);
 		ipcMain.removeHandler(CHANNELS.MCP_START_SETUP_LOGIN);
 		ipcMain.removeHandler(CHANNELS.MCP_CANCEL_SETUP_LOGIN);
+		disposeModelChanged();
 	};
 }

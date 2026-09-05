@@ -65,5 +65,7 @@ export interface PluginServiceApi {
 	restart(serviceId: string): Promise<PluginServiceStatus>;
 	connection(serviceId: string, credentialId?: string): Promise<PluginServiceConnection>;
 	request<T = unknown>(serviceId: string, request: PluginServiceRequest): Promise<PluginServiceResponse<T>>;
+	/** Report semantic readiness after the service's domain data has finished loading. */
+	reportReady(serviceId: string, ready: boolean): Promise<PluginServiceStatus>;
 	onStatusChange(listener: (status: PluginServiceStatus) => void): Disposable;
 }
