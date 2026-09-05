@@ -1,20 +1,19 @@
 import { pageHeaderTitleHiddenAtom } from "@shared/store/atoms";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useSetAtom } from "jotai";
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect } from "react";
 import { useAbilitiesModel } from "../hooks/useAbilitiesModel";
 import { AbilitiesPageView } from "./AbilitiesPageView";
 import { McpSetupPrompt } from "./McpSetupPrompt";
 import { PluginPermissionPrompt } from "./PluginPermissionPrompt";
+import { loadAbilityDetailSheet } from "./detail/loadAbilityDetailSheet";
 
 /**
  * 详情抽屉懒加载：它的子树静态拖着 markdown 渲染 + shiki 全量高亮器，若同步 import
  * 会把这几百 KB 打进能力页首开 chunk——首次点击「能力」的解析/求值大头正是它。
- * 首次带 ?detail= 打开时才拉取；之后保持挂载以保留关闭动画。
+ * 页面首帧后在空闲期预取；关闭时卸载抽屉以免退出动画遮罩阻塞列表。
  */
-const AbilityDetailSheet = lazy(async () => ({
-	default: (await import("./detail/AbilityDetailSheet")).AbilityDetailSheet,
-}));
+const AbilityDetailSheet = lazy(loadAbilityDetailSheet);
 
 export function AbilitiesPage(): JSX.Element {
 	const model = useAbilitiesModel();
@@ -33,16 +32,31 @@ export function AbilitiesPage(): JSX.Element {
 		void navigate({ to: "/abilities", search: {}, replace: true });
 	}, [navigate]);
 
-	// 首次请求过详情后保持挂载：懒 chunk 已就位，关闭动画与再次打开都不受影响。
-	const [detailEverRequested, setDetailEverRequested] = useState(false);
+	// 页面壳完成首帧后预取详情 chunk。真正打开详情时只需等待尚未完成的网络请求，
+	// 不会把 Markdown/Shiki 的解析放在能力列表的同步渲染路径上。
 	useEffect(() => {
-		if (detail) setDetailEverRequested(true);
-	}, [detail]);
+		let cancelled = false;
+		const preload = (): void => {
+			if (!cancelled) void loadAbilityDetailSheet().catch(() => undefined);
+		};
+		if (typeof window.requestIdleCallback === "function") {
+			const id = window.requestIdleCallback(preload, { timeout: 2000 });
+			return () => {
+				cancelled = true;
+				window.cancelIdleCallback(id);
+			};
+		}
+		const id = window.setTimeout(preload, 1000);
+		return () => {
+			cancelled = true;
+			window.clearTimeout(id);
+		};
+	}, []);
 
 	return (
 		<>
 			<AbilitiesPageView model={model} />
-			{(detail !== undefined || detailEverRequested) && (
+			{detail !== undefined && (
 				<Suspense fallback={null}>
 					<AbilityDetailSheet detailId={detail ?? null} model={model} onClose={closeDetail} />
 				</Suspense>

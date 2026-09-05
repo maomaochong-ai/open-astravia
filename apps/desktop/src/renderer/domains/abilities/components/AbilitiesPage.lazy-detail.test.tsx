@@ -4,8 +4,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * 能力页首开性能合同：详情抽屉子树（markdown + shiki 高亮器）必须懒加载——
- * 没有 ?detail= 参数时不允许求值它的模块；带 detail 进入或页内打开时才拉取，
- * 且一旦请求过就保持挂载（保留关闭动画、二次打开零等待）。
+ * 没有 ?detail= 参数时不在同步渲染阶段求值它的模块；空闲或用户意图出现时才拉取，
+ * 关闭后立即卸载抽屉，避免 Vaul 退出动画期间的遮罩继续拦截能力列表；
+ * 动态模块本身仍留在浏览器缓存中，二次打开无需重新加载。
  */
 
 const detailModuleEvaluated = vi.fn();
@@ -62,17 +63,21 @@ describe("AbilitiesPage 详情抽屉懒加载", () => {
 		expect(detailModuleEvaluated).toHaveBeenCalled();
 	});
 
-	it("detail 清空后抽屉保持挂载（detailId 变 null），支持关闭动画与二次打开", async () => {
+	it("detail 清空后立即卸载抽屉，二次打开复用已加载模块", async () => {
 		searchState = { detail: "market:foo" };
 		const { rerender } = render(<AbilitiesPage />);
 		await waitFor(() => {
 			expect(screen.getByTestId("detail-sheet")).toBeTruthy();
 		});
+		const evaluationsBeforeReopen = detailModuleEvaluated.mock.calls.length;
 
 		searchState = {};
 		rerender(<AbilitiesPage />);
-		await waitFor(() => {
-			expect(screen.getByTestId("detail-sheet").getAttribute("data-detail-id")).toBe("");
-		});
+		expect(screen.queryByTestId("detail-sheet")).toBeNull();
+
+		searchState = { detail: "market:bar" };
+		rerender(<AbilitiesPage />);
+		await waitFor(() => expect(screen.getByTestId("detail-sheet").getAttribute("data-detail-id")).toBe("market:bar"));
+		expect(detailModuleEvaluated.mock.calls.length).toBe(evaluationsBeforeReopen);
 	});
 });

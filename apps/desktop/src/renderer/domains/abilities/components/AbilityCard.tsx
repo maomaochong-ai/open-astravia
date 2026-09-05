@@ -14,6 +14,7 @@ import type { AbilitiesModel, AbilityItem, McpAbility } from "../types";
 import { AbilityIcon } from "./AbilityIcon";
 import { AbilityStatusBadges } from "./AbilityBadges";
 import { AbilityOperationStatus } from "./AbilityOperationStatus";
+import { loadAbilityDetailSheet } from "./detail/loadAbilityDetailSheet";
 
 function McpMenuItems({ item, model }: { item: McpAbility; model: AbilitiesModel }): JSX.Element {
 	const { t } = useTranslation("abilities");
@@ -137,6 +138,8 @@ export function AbilityCard({ item, model }: { item: AbilityItem; model: Abiliti
 	return (
 		<div
 			onClick={openDetail}
+			onPointerEnter={() => void loadAbilityDetailSheet().catch(() => undefined)}
+			onPointerDown={() => void loadAbilityDetailSheet().catch(() => undefined)}
 			className={cn(
 				"group relative flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 transition-colors duration-200 hover:bg-accent/60",
 				!item.enabled && item.installed && "opacity-75",
