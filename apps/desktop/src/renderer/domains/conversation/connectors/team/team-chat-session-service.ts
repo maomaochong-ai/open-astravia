@@ -2,6 +2,7 @@ import type { DesktopTeamSessionSnapshot } from "@preload/api-types/team-convers
 import type { AgentTeamDocument, TeamSessionListItem, TeamSessionReference } from "@vetta/agent-team";
 
 const SESSION_STORAGE_PREFIX = "vetta.agent-team.session.";
+const pendingSessionCreations = new Map<string, Promise<LoadedTeamChatSession>>();
 
 export interface LoadedTeamChatSession {
 	readonly document: AgentTeamDocument;
@@ -9,13 +10,24 @@ export interface LoadedTeamChatSession {
 	readonly sessions: readonly TeamSessionListItem[];
 }
 
-export async function loadTeamChatSession(teamId: string, preferredSessionId?: string): Promise<LoadedTeamChatSession> {
-	const document = await window.vetta.agentTeams.list();
+export interface TeamChatBootstrap {
+	readonly document: AgentTeamDocument;
+	readonly sessions: readonly TeamSessionListItem[];
+}
+
+export async function loadTeamChatBootstrap(teamId: string): Promise<TeamChatBootstrap> {
+	const [document, sessions] = await Promise.all([
+		window.vetta.agentTeams.list(),
+		window.vetta.agentTeams.listSessions(teamId),
+	]);
 	if (!document.teams.some((team) => team.id === teamId)) {
 		throw new Error(`Agent team not found: ${teamId}`);
 	}
+	return { document, sessions };
+}
 
-	const sessions = await window.vetta.agentTeams.listSessions(teamId);
+export async function loadTeamChatSession(teamId: string, preferredSessionId?: string): Promise<LoadedTeamChatSession> {
+	const { document, sessions } = await loadTeamChatBootstrap(teamId);
 	const storageKey = `${SESSION_STORAGE_PREFIX}${teamId}`;
 	const preferred = preferredSessionId ? sessions.find((session) => session.id === preferredSessionId) : undefined;
 	if (preferredSessionId && !preferred) throw new Error(`Agent Team session not found: ${preferredSessionId}`);
@@ -34,6 +46,26 @@ export async function loadTeamChatSession(teamId: string, preferredSessionId?: s
 }
 
 export async function createTeamChatSession(
+	teamId: string,
+	document?: AgentTeamDocument,
+	knownSessions: readonly TeamSessionListItem[] = [],
+): Promise<LoadedTeamChatSession> {
+	const pending = pendingSessionCreations.get(teamId);
+	if (pending) return pending;
+	const creation = createTeamChatSessionInternal(teamId, document, knownSessions);
+	pendingSessionCreations.set(teamId, creation);
+	void creation.then(
+		() => {
+			if (pendingSessionCreations.get(teamId) === creation) pendingSessionCreations.delete(teamId);
+		},
+		() => {
+			if (pendingSessionCreations.get(teamId) === creation) pendingSessionCreations.delete(teamId);
+		},
+	);
+	return creation;
+}
+
+async function createTeamChatSessionInternal(
 	teamId: string,
 	document?: AgentTeamDocument,
 	knownSessions: readonly TeamSessionListItem[] = [],

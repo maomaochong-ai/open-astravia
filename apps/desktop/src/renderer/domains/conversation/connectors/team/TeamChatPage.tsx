@@ -15,7 +15,7 @@ import { useTranslation } from "react-i18next";
 import { useTeamChatModel } from "./useTeamChatModel";
 import { TeamChatView } from "./TeamChatView";
 
-export function TeamChatPage(): JSX.Element {
+export function TeamChatPage({ createNewSession = false }: { readonly createNewSession?: boolean }): JSX.Element {
 	const { t } = useTranslation("agent-teams");
 	useAgentTeamSidebarSelection();
 	const navigate = useNavigate();
@@ -25,7 +25,7 @@ export function TeamChatPage(): JSX.Element {
 	const setHeaderTitleBadge = useSetAtom(pageHeaderTitleBadgeAtom);
 	const setHeaderLeft = useSetAtom(pageHeaderLeftSlotAtom);
 	const setHeaderRight = useSetAtom(pageHeaderRightSlotAtom);
-	const { model, actions } = useTeamChatModel(teamId, sessionId, memberId);
+	const { model, actions } = useTeamChatModel(teamId, sessionId, memberId, createNewSession);
 	const [activityOpen, setActivityOpen] = useAtom(activityPanelOpenAtom);
 	const activeSessionTitle = model.sessions.find((session) => session.id === model.activeSessionId)?.label;
 	const backToTeamAction = useMemo(
@@ -140,4 +140,8 @@ export function TeamChatPage(): JSX.Element {
 	}, [activeSessionTitle, backToTeamAction, headerActions, memberHeader, model.title, setHeaderLeft, setHeaderRight, setHeaderTitle, setHeaderTitleBadge]);
 
 	return <TeamChatView model={model} actions={actions} />;
+}
+
+export function TeamNewSessionPage(): JSX.Element {
+	return <TeamChatPage createNewSession />;
 }

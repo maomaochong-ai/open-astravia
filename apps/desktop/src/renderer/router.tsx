@@ -34,6 +34,9 @@ const TeamListPage = lazy(async () => ({
 const TeamChatPage = lazy(async () => ({
 	default: (await import("./domains/conversation/connectors/team/TeamChatPage")).TeamChatPage,
 }));
+const TeamNewSessionPage = lazy(async () => ({
+	default: (await import("./domains/conversation/connectors/team/TeamChatPage")).TeamNewSessionPage,
+}));
 const TeamSettingsPage = lazy(async () => ({
 	default: (await import("./domains/agent-teams/components/TeamSettingsPage")).TeamSettingsPage,
 }));
@@ -122,6 +125,12 @@ const teamSessionRoute = createRoute({
 	path: "/agent-teams/$teamId/sessions/$sessionId",
 	component: TeamChatPage,
 	pendingComponent: NoPendingComponent,
+});
+
+const teamNewSessionRoute = createRoute({
+	getParentRoute: () => rootRoute,
+	path: "/agent-teams/$teamId/new",
+	component: TeamNewSessionPage,
 });
 
 const teamMemberSessionRoute = createRoute({
@@ -248,6 +257,7 @@ const routeTree = rootRoute.addChildren([
 	agentLibraryRoute,
 	teamListRoute,
 	teamChatRoute,
+	teamNewSessionRoute,
 	teamSessionRoute,
 	teamMemberSessionRoute,
 	teamSettingsRoute,

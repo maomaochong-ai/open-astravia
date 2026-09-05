@@ -2,7 +2,7 @@
 
 import { createInitialAgentTeamDocument, type TeamSessionSnapshot } from "@vetta/agent-team";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { loadTeamChatSession } from "./team-chat-session-service";
+import { createTeamChatSession, loadTeamChatSession } from "./team-chat-session-service";
 
 const document = createInitialAgentTeamDocument();
 const team = document.teams[0];
@@ -92,6 +92,20 @@ describe("loadTeamChatSession", () => {
 		expect(window.localStorage.getItem(`vetta.agent-team.session.${team.id}`)).toBe(
 			JSON.stringify({ id: "new-session", coordinationSessionPath: "C:/runtime/new-session.jsonl" }),
 		);
+	});
+
+	it("deduplicates concurrent creation requests for the same Team", async () => {
+		const created = snapshot("shared-session", "C:/runtime/shared-session.jsonl");
+		vi.mocked(window.vetta.agentTeams.createSession).mockResolvedValue(created);
+
+		const [first, second] = await Promise.all([
+			createTeamChatSession(team.id, document, []),
+			createTeamChatSession(team.id, document, []),
+		]);
+
+		expect(first.snapshot.session.id).toBe("shared-session");
+		expect(second.snapshot.session.id).toBe("shared-session");
+		expect(window.vetta.agentTeams.createSession).toHaveBeenCalledTimes(1);
 	});
 
 	it("opens a selected catalog session without creating another one", async () => {

@@ -14,7 +14,12 @@ import { createStore, Provider } from "jotai";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useTeamChatModel } from "./useTeamChatModel";
-import { loadTeamChatSession } from "./team-chat-session-service";
+import {
+	createTeamChatSession,
+	loadTeamChatBootstrap,
+	loadTeamChatSession,
+} from "./team-chat-session-service";
+import { waitForCommittedPaint } from "@shared/lib/committed-paint";
 import { writeCachedContextComposition } from "../../services/context-composition-cache";
 
 vi.mock("@shared/hooks/useRendererMarkdownModel", () => ({
@@ -34,7 +39,11 @@ vi.mock("react-i18next", () => ({
 }));
 vi.mock("./team-chat-session-service", () => ({
 	loadTeamChatSession: vi.fn(),
+	loadTeamChatBootstrap: vi.fn(),
 	createTeamChatSession: vi.fn(),
+}));
+vi.mock("@shared/lib/committed-paint", () => ({
+	waitForCommittedPaint: vi.fn(),
 }));
 
 const document = createInitialAgentTeamDocument();
@@ -91,6 +100,8 @@ describe("useTeamChatModel streaming flow", () => {
 
 	beforeEach(() => {
 		streamListener = undefined;
+		vi.mocked(waitForCommittedPaint).mockResolvedValue("painted");
+		vi.mocked(loadTeamChatBootstrap).mockResolvedValue({ document, sessions: [] });
 		vi.mocked(loadTeamChatSession).mockResolvedValue({
 			document,
 			snapshot: baseSnapshot,
@@ -103,6 +114,11 @@ describe("useTeamChatModel streaming flow", () => {
 					updatedAt: baseSession.updatedAt,
 				},
 			],
+		});
+		vi.mocked(createTeamChatSession).mockResolvedValue({
+			document,
+			snapshot: baseSnapshot,
+			sessions: [],
 		});
 		Object.defineProperty(window, "vetta", {
 			configurable: true,
@@ -394,6 +410,25 @@ describe("useTeamChatModel streaming flow", () => {
 		rerender({ preferredSessionId: baseSession.id });
 
 		expect(vi.mocked(loadTeamChatSession).mock.calls.length).toBe(loadCalls);
+	});
+
+	it("commits the new Team shell before starting runtime-backed session creation", async () => {
+		let releasePaint: (() => void) | undefined;
+		vi.mocked(waitForCommittedPaint).mockReturnValue(
+			new Promise((resolve) => {
+				releasePaint = () => resolve("painted");
+			}),
+		);
+
+		const { result } = renderHook(() => useTeamChatModel(team.id, undefined, undefined, true));
+
+		await waitFor(() => expect(result.current.model.members).toHaveLength(team.members.length));
+		expect(result.current.model.activeSessionId).toBeNull();
+		expect(createTeamChatSession).not.toHaveBeenCalled();
+
+		await act(async () => releasePaint?.());
+		await waitFor(() => expect(result.current.model.status).toBe("ready"));
+		expect(createTeamChatSession).toHaveBeenCalledWith(team.id, document, []);
 	});
 });
 

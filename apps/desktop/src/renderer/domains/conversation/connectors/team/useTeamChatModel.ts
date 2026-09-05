@@ -1,6 +1,7 @@
 import type { DesktopTeamSessionSnapshot } from "@preload/api-types/team-conversation-display";
 import { agentDisplayName, teamDisplayName } from "@shared/agent-teams/preset-presentation";
 import { notifyTeamSessionsChanged } from "@shared/agent-teams/team-session-events";
+import { waitForCommittedPaint } from "@shared/lib/committed-paint";
 import { deriveAttachments, parseInputSegments, pathTokenText, segmentsToText } from "@shared/lib/input-tokens";
 import { persistBase64Images } from "@shared/lib/persist-input-images";
 import { pathBasename } from "@shared/lib/utils";
@@ -13,7 +14,7 @@ import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { resolveSessionContextComposition } from "../../services/context-composition-cache";
-import { createTeamChatSession, loadTeamChatSession } from "./team-chat-session-service";
+import { createTeamChatSession, loadTeamChatBootstrap, loadTeamChatSession } from "./team-chat-session-service";
 import {
 	projectTeamConversationTimeline,
 	reduceTeamStreamState,
@@ -31,6 +32,7 @@ export function useTeamChatModel(
 	teamId: string,
 	preferredSessionId?: string,
 	memberViewId?: string,
+	createNewSession = false,
 ): {
 	readonly model: TeamChatViewModel;
 	readonly actions: TeamChatActions;
@@ -115,7 +117,12 @@ export function useTeamChatModel(
 	useEffect(() => {
 		let cancelled = false;
 		const loaded = loadedSessionRef.current;
-		if (loaded?.teamId === teamId && (!preferredSessionId || loaded.sessionId === preferredSessionId)) return;
+		if (
+			!createNewSession &&
+			loaded?.teamId === teamId &&
+			(!preferredSessionId || loaded.sessionId === preferredSessionId)
+		)
+			return;
 		setStatus("loading");
 		setError(undefined);
 		setSnapshot(undefined);
@@ -126,20 +133,34 @@ export function useTeamChatModel(
 		setFailedMemberIds(new Set());
 		setContextUsages({});
 		setCompactingByRuntime({});
-		void loadTeamChatSession(teamId, preferredSessionId)
-			.then((loaded) => {
+		void (async () => {
+			try {
+				if (createNewSession) {
+					const bootstrap = await loadTeamChatBootstrap(teamId);
+					if (cancelled) return;
+					setDocument(bootstrap.document);
+					setSessions(bootstrap.sessions);
+					await waitForCommittedPaint();
+					if (cancelled) return;
+					const created = await createTeamChatSession(teamId, bootstrap.document, bootstrap.sessions);
+					if (cancelled) return;
+					applyLoadedSession(created);
+					notifyTeamSessionsChanged();
+					return;
+				}
+				const opened = await loadTeamChatSession(teamId, preferredSessionId);
 				if (cancelled) return;
-				applyLoadedSession(loaded);
-			})
-			.catch((cause: unknown) => {
+				applyLoadedSession(opened);
+			} catch (cause) {
 				if (cancelled) return;
 				setError(errorMessage(cause));
 				setStatus("error");
-			});
+			}
+		})();
 		return () => {
 			cancelled = true;
 		};
-	}, [teamId, preferredSessionId, applyLoadedSession]);
+	}, [teamId, preferredSessionId, createNewSession, applyLoadedSession]);
 
 	const openSession = useCallback(
 		async (sessionId: string) => {

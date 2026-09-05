@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { createInitialAgentTeamDocument, type TeamSessionSnapshot } from "@vetta/agent-team";
+import { createInitialAgentTeamDocument } from "@vetta/agent-team";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AgentTeamSidebarList } from "./AgentTeamSidebarList";
@@ -82,10 +82,8 @@ describe("AgentTeamSidebarList", () => {
 		);
 	});
 
-	it("creates a session from the Team row action and navigates to it", async () => {
-		const created = { session: { id: "new-session" } } as TeamSessionSnapshot;
-		vi.mocked(window.vetta.agentTeams.createSession).mockResolvedValue(created);
-		render(<AgentTeamSidebarList />);
+	it("shows the new session route before runtime-backed creation starts", async () => {
+		const { rerender } = render(<AgentTeamSidebarList />);
 
 		const createButton = await screen.findByRole("button", { name: "New chat" });
 		// 操作按钮由包含行的上下边界和 auto margin 居中，不再依赖 transform。
@@ -95,13 +93,16 @@ describe("AgentTeamSidebarList", () => {
 		expect(createButton.className).not.toContain("top-1/2");
 		fireEvent.click(createButton);
 
-		await waitFor(() => {
-			expect(window.vetta.agentTeams.createSession).toHaveBeenCalledWith(teamFixture.id);
-			expect(router.navigate).toHaveBeenCalledWith({
-				to: "/agent-teams/$teamId/sessions/$sessionId",
-				params: { teamId: teamFixture.id, sessionId: "new-session" },
-			});
+		expect(window.vetta.agentTeams.createSession).not.toHaveBeenCalled();
+		expect(router.navigate).toHaveBeenCalledWith({
+			to: "/agent-teams/$teamId/new",
+			params: { teamId: teamFixture.id },
 		});
+
+		router.currentPath = `/agent-teams/${teamFixture.id}/new`;
+		rerender(<AgentTeamSidebarList />);
+		const newSessionRows = await screen.findAllByRole("button", { name: "New chat" });
+		expect(newSessionRows.some((row) => row.dataset.sessionActive === "true")).toBe(true);
 	});
 
 	it("limits the Team avatar stack and shows an overflow marker", async () => {
