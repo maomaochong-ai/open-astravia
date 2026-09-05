@@ -19,6 +19,7 @@
 
 ### Changed
 
+- Team session contracts now distinguish an eagerly visible coordination record from preparing, ready, or failed member Runtime state, while preserving the active roster independently from the currently prepared Runtime subset.
 - Team Snapshot 直接返回普通 `ConversationMessageRecord[]`，流式更新改用 Runtime Core 的标准 Conversation 消息信封；删除同步阻塞的旧 `team_delegate`，协作统一使用持久、可并行和可恢复的 `team_delegate_task`/`team_wait_tasks`。
 - Member public history is supplied through a turn-bound Coding Agent model-context projection; member Conversations retain references, while published assistant text is deduplicated without removing private execution blocks.
 - Public-context policies receive ordinary coordination messages and retain selection authority; projected records preserve authors and artifact references, deduplicate legacy events, and exclude private execution content.

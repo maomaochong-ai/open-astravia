@@ -256,6 +256,9 @@ export const TeamSessionDocumentSchema = Type.Object(
 		createdAt: timestamp,
 		updatedAt: timestamp,
 		coordinationRuntime: Type.Optional(coordinationRuntime),
+		runtimeStatus: Type.Optional(
+			Type.Union([Type.Literal("preparing"), Type.Literal("ready"), Type.Literal("failed")]),
+		),
 		events: Type.Array(Type.Union([userEvent, resultEvent, delegationEvent]), { maxItems: 100_000 }),
 		memberRuntime: Type.Record(id, memberRuntime),
 	},
@@ -327,9 +330,10 @@ function assertTeamSessionInvariants(session: TeamSessionDocument): void {
 		throw new Error("Team session active roster references an unknown historical member");
 	}
 	const runtimeMemberIds = Object.keys(session.memberRuntime);
+	const allowsPartialRuntime = session.runtimeStatus === "preparing" || session.runtimeStatus === "failed";
 	if (
-		runtimeMemberIds.length !== activeMemberIds.size ||
-		runtimeMemberIds.some((memberId) => !activeMemberIds.has(memberId))
+		runtimeMemberIds.some((memberId) => !activeMemberIds.has(memberId)) ||
+		(!allowsPartialRuntime && runtimeMemberIds.length !== activeMemberIds.size)
 	) {
 		throw new Error("Team session runtime members do not match the active roster");
 	}

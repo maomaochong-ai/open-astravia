@@ -181,6 +181,21 @@ describe("Agent Team IPC input validation", () => {
 				memberHandles: { leader: "agent", "removed-member": "agent" },
 			}),
 		).toMatchObject({ id: "session" });
+		expect(
+			parseTeamSessionDocument({
+				...session,
+				activeMemberIds: ["leader"],
+				runtimeStatus: "preparing",
+				memberRuntime: {},
+			}),
+		).toMatchObject({ id: "session", runtimeStatus: "preparing" });
+		expect(() =>
+			parseTeamSessionDocument({
+				...session,
+				activeMemberIds: ["leader"],
+				memberRuntime: { unknown: session.memberRuntime.leader },
+			}),
+		).toThrow("runtime members do not match");
 		expect(() =>
 			parseTeamSessionDocument({
 				...session,

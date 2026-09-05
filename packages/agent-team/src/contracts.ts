@@ -148,6 +148,8 @@ export interface TeamSessionDocument {
 	readonly updatedAt: number;
 	/** Ordinary Conversation that stores the public Team timeline. Optional only for legacy sessions. */
 	readonly coordinationRuntime?: TeamCoordinationRuntimeState;
+	/** Runtime preparation is eager but may complete after the session record is visible. */
+	readonly runtimeStatus?: "preparing" | "ready" | "failed";
 	/** @deprecated Read-only schema-v1 migration input. New messages exist only in coordinationRuntime. */
 	readonly events: readonly LegacyTeamFeedEvent[];
 	readonly memberRuntime: Readonly<Record<string, TeamMemberRuntimeState>>;
