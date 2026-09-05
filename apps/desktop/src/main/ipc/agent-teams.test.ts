@@ -181,6 +181,23 @@ describe("Agent Team IPC contract", () => {
 		expect(deps.sessions.listSessions).toHaveBeenCalledWith(team.id);
 	});
 
+	it("creates the visible session record through the lightweight path", async () => {
+		const deps = dependencies();
+		const document = createAgentTeamFixture();
+		const team = document.teams[0];
+		if (!team) throw new Error("missing Team fixture");
+		deps.store.read = vi.fn(async () => document);
+		deps.sessions.createRecord = vi.fn(async (_team, _document, cwd) => ({ cwd }) as never);
+		registerAgentTeamsIpc(deps);
+
+		const createSessionRecord = ipc.handlers.get("vetta:agent-teams:create-session-record");
+		if (!createSessionRecord) throw new Error("create-session-record handler was not registered");
+		await createSessionRecord({}, team.id);
+
+		expect(deps.sessions.createRecord).toHaveBeenCalledWith(team, document, `C:/teams/${team.id}/workspace`);
+		expect(deps.sessions.create).not.toHaveBeenCalled();
+	});
+
 	it("validates and forwards Team-session model settings", async () => {
 		const deps = dependencies();
 		registerAgentTeamsIpc(deps);

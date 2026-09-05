@@ -36,6 +36,7 @@ const CHANNELS = {
 	UPDATE_TEAM: "vetta:agent-teams:update-team",
 	DELETE_TEAM: "vetta:agent-teams:delete-team",
 	CREATE_SESSION: "vetta:agent-teams:create-session",
+	CREATE_SESSION_RECORD: "vetta:agent-teams:create-session-record",
 	LIST_SESSIONS: "vetta:agent-teams:list-sessions",
 	UPDATE_MODEL_SETTINGS: "vetta:agent-teams:update-model-settings",
 	SET_EXECUTION_MODE: "vetta:agent-teams:set-execution-mode",
@@ -95,7 +96,7 @@ export interface AgentTeamsIpcDependencies {
 		| "subscribe"
 		| "abort"
 	> &
-		Partial<Pick<typeof agentTeamSessionService, "displayProjection">>;
+		Partial<Pick<typeof agentTeamSessionService, "displayProjection" | "createRecord">>;
 }
 
 type TeamDisplayProjection = (
@@ -164,6 +165,21 @@ export function registerAgentTeamsIpc(
 		const cwd = await ensureTeamWorkspace(parsedTeamId);
 		return await withDisplayProjection(
 			sessions.snapshot(await sessions.create(team, document, cwd)),
+			displayProjection,
+		);
+	});
+	ipcMain.handle(CHANNELS.CREATE_SESSION_RECORD, async (_event, teamId: unknown) => {
+		const document = await store.read();
+		const parsedTeamId = requiredString(teamId, "teamId");
+		const team = document.teams.find((candidate) => candidate.id === parsedTeamId);
+		if (!team) throw new Error("Team not found");
+		const cwd = await ensureTeamWorkspace(parsedTeamId);
+		return await withDisplayProjection(
+			sessions.snapshot(
+				await (sessions.createRecord
+					? sessions.createRecord(team, document, cwd)
+					: sessions.create(team, document, cwd)),
+			),
 			displayProjection,
 		);
 	});

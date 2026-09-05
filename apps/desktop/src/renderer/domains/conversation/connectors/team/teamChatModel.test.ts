@@ -174,6 +174,26 @@ describe("resolveTeamMembers", () => {
 });
 
 describe("team chat stream state", () => {
+	it("shows the submitted message and leader immediately before the session snapshot arrives", () => {
+		const items = projectTeamConversationTimeline({
+			snapshot: undefined,
+			pending: {
+				requestId: "request-before-runtime",
+				text: "Start now",
+				leaderMemberId: "leader-member",
+				timestamp: 10,
+			},
+			streams: {},
+			members: [],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		expect(items).toEqual([
+			expect.objectContaining({ kind: "user", text: "Start now", deliveryPhase: "pending" }),
+			expect.objectContaining({ kind: "agent", authorId: "leader-member", phase: "pending" }),
+		]);
+	});
+
 	it("keeps drafts isolated by team scope", () => {
 		const first = updateScopedTeamDraft({}, "team-a", "draft a");
 		const second = updateScopedTeamDraft(first, "team-b", "draft b");

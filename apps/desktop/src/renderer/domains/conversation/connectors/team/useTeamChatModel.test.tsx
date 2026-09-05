@@ -422,13 +422,45 @@ describe("useTeamChatModel streaming flow", () => {
 
 		const { result } = renderHook(() => useTeamChatModel(team.id, undefined, undefined, true));
 
-		await waitFor(() => expect(result.current.model.members).toHaveLength(team.members.length));
 		expect(result.current.model.activeSessionId).toBeNull();
+		expect(result.current.model.editorEnabled).toBe(true);
 		expect(createTeamChatSession).not.toHaveBeenCalled();
+		expect(loadTeamChatBootstrap).not.toHaveBeenCalled();
 
 		await act(async () => releasePaint?.());
 		await waitFor(() => expect(result.current.model.status).toBe("ready"));
-		expect(createTeamChatSession).toHaveBeenCalledWith(team.id, document, []);
+		expect(createTeamChatSession).toHaveBeenCalledWith(team.id);
+		expect(loadTeamChatBootstrap).toHaveBeenCalledWith(team.id);
+	});
+
+	it("shows a submitted message and leader while the new session record is still preparing", async () => {
+		let resolveCreation: ((value: Awaited<ReturnType<typeof createTeamChatSession>>) => void) | undefined;
+		vi.mocked(createTeamChatSession).mockReturnValue(
+			new Promise((resolve) => {
+				resolveCreation = resolve;
+			}),
+		);
+		const { result } = renderHook(() => useTeamChatModel(team.id, undefined, undefined, true));
+		await waitFor(() => expect(createTeamChatSession).toHaveBeenCalledWith(team.id));
+
+		act(() => result.current.actions.setDraft("Start immediately"));
+		let sendPromise: Promise<void> | undefined;
+		act(() => {
+			sendPromise = result.current.actions.send();
+		});
+		expect(result.current.model.feedItems).toEqual([
+			expect.objectContaining({ kind: "user", text: "Start immediately" }),
+			expect.objectContaining({ kind: "agent", authorId: team.leaderMemberId, phase: "pending" }),
+		]);
+
+		await act(async () => {
+			resolveCreation?.({ document, snapshot: baseSnapshot, sessions: [] });
+			await sendPromise;
+		});
+		expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledWith(
+			baseSession.id,
+			expect.objectContaining({ text: "Start immediately" }),
+		);
 	});
 });
 

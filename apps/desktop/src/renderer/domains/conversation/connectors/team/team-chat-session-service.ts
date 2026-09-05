@@ -5,7 +5,7 @@ const SESSION_STORAGE_PREFIX = "vetta.agent-team.session.";
 const pendingSessionCreations = new Map<string, Promise<LoadedTeamChatSession>>();
 
 export interface LoadedTeamChatSession {
-	readonly document: AgentTeamDocument;
+	readonly document?: AgentTeamDocument;
 	readonly snapshot: DesktopTeamSessionSnapshot;
 	readonly sessions: readonly TeamSessionListItem[];
 }
@@ -70,14 +70,14 @@ async function createTeamChatSessionInternal(
 	document?: AgentTeamDocument,
 	knownSessions: readonly TeamSessionListItem[] = [],
 ): Promise<LoadedTeamChatSession> {
-	const resolvedDocument = document ?? (await window.vetta.agentTeams.list());
-	if (!resolvedDocument.teams.some((team) => team.id === teamId)) {
+	if (document && !document.teams.some((team) => team.id === teamId)) {
 		throw new Error(`Agent team not found: ${teamId}`);
 	}
-	const snapshot = await window.vetta.agentTeams.createSession(teamId);
+	const createSessionRecord = window.vetta.agentTeams.createSessionRecord ?? window.vetta.agentTeams.createSession;
+	const snapshot = await createSessionRecord(teamId);
 	const storageKey = `${SESSION_STORAGE_PREFIX}${teamId}`;
 	window.localStorage.setItem(storageKey, JSON.stringify(toReference(snapshot)));
-	return { document: resolvedDocument, snapshot, sessions: withSnapshot(knownSessions, snapshot) };
+	return { ...(document ? { document } : {}), snapshot, sessions: withSnapshot(knownSessions, snapshot) };
 }
 
 function toReference(snapshot: DesktopTeamSessionSnapshot): TeamSessionReference {

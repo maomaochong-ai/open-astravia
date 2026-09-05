@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { createAgentTeamFixture } from "@vetta/agent-team";
+import { notifyTeamSessionsChanged } from "@shared/agent-teams/team-session-events";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AgentTeamSidebarList } from "./AgentTeamSidebarList";
@@ -111,5 +112,17 @@ describe("AgentTeamSidebarList", () => {
 		await screen.findByText("Vetta Team");
 		expect(document.querySelectorAll("img")).toHaveLength(3);
 		expect(document.querySelector('[data-session-avatar-overflow="1"]')).toBeTruthy();
+	});
+
+	it("refreshes only the changed Team session catalog", async () => {
+		render(<AgentTeamSidebarList />);
+		await screen.findByText("Vetta Team");
+		const list = vi.mocked(window.vetta.agentTeams.list);
+		const listSessions = vi.mocked(window.vetta.agentTeams.listSessions);
+
+		notifyTeamSessionsChanged(teamFixture.id);
+		await waitFor(() => expect(listSessions).toHaveBeenCalledTimes(2));
+		expect(list).toHaveBeenCalledTimes(1);
+		expect(listSessions).toHaveBeenLastCalledWith(teamFixture.id);
 	});
 });

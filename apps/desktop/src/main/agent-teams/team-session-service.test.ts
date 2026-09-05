@@ -152,6 +152,48 @@ describe("AgentTeamSessionService streaming contract", () => {
 		]);
 	});
 
+	it("returns the session record before warming the leader first and the remaining members in parallel", async () => {
+		const document = createAgentTeamFixture();
+		const team = document.teams[0];
+		if (!team) throw new Error("built-in Agent Team fixture is missing");
+		let releaseLeader: (() => void) | undefined;
+		const leaderGate = new Promise<void>((resolve) => {
+			releaseLeader = resolve;
+		});
+		let memberSequence = 0;
+		const createSession = vi.fn(async (config?: SessionConfig) => {
+			if (config?.sessionId) return { sessionId: config.sessionId };
+			memberSequence += 1;
+			if (memberSequence === 1) await leaderGate;
+			return { sessionId: `member-runtime-${memberSequence}` };
+		});
+		const runtime = {
+			createSession,
+			getSessionPath: (sessionId: string) => `C:/runtime/${sessionId}.jsonl`,
+			disposeSession: vi.fn(async () => undefined),
+			subscribe: () => () => undefined,
+			appendSessionMetadataEntry: vi.fn(async () => undefined),
+			readSessionDocument: () => ({ entries: [], activeLeafId: null, revision: 0 }),
+		} as unknown as RuntimeHost;
+		const service = new AgentTeamSessionService({ runtime, readDocument: async () => document });
+
+		const record = await service.createRecord(team, document, "C:/workspace");
+		expect(record.runtimeStatus).toBe("preparing");
+		expect(record.memberRuntime).toEqual({});
+		await vi.waitFor(() => expect(createSession).toHaveBeenCalledTimes(team.members.length + 1));
+		expect(JSON.stringify(createSession.mock.calls[1]?.[0])).toContain(team.leaderMemberId);
+		await expect(
+			service.updateModelSettings(record.id, { modelKey: "openai/test", reasoning: "low" }),
+		).resolves.toMatchObject({ modelSettings: { modelKey: "openai/test", reasoning: "low" } });
+
+		releaseLeader?.();
+		await service.warmup(record.id, team, document);
+		expect(createSession).toHaveBeenCalledTimes(team.members.length + 1);
+		const warmed = await service.read(record.id);
+		expect(warmed.runtimeStatus).toBe("ready");
+		expect(Object.keys(warmed.memberRuntime)).toHaveLength(team.members.length);
+	});
+
 	it("publishes ordered deltas and persists the same non-empty final answer", async () => {
 		const document = createAgentTeamFixture();
 		const team = document.teams[0];

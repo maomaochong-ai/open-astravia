@@ -362,6 +362,7 @@ export class AgentTeamSessionService {
 			createdAt: now,
 			updatedAt: now,
 			coordinationRuntime,
+			runtimeStatus: "ready",
 			events: [],
 			memberRuntime,
 		};
@@ -392,6 +393,170 @@ export class AgentTeamSessionService {
 			memberCount: team.members.length,
 		});
 		return session;
+	}
+
+	/**
+	 * Creates the durable coordination record without blocking the first paint on
+	 * member runtimes. Member runtimes are warmed eagerly by `warmup` afterwards.
+	 */
+	async createRecord(
+		team: AgentTeamDocument["teams"][number],
+		document: AgentTeamDocument,
+		cwd: string,
+	): Promise<TeamSessionDocument> {
+		const id = crypto.randomUUID();
+		const now = Date.now();
+		const executionMode = (await readDesktopConfig()).defaultExecutionMode ?? "full-access";
+		await assertSandboxAvailableForMode(executionMode, async () => executionMode);
+		const coordinationRuntime = await this.runtimeManager.createCoordinationRuntime(
+			cwd,
+			undefined,
+			id,
+			executionMode,
+		);
+		const session: TeamSessionDocument = {
+			schemaVersion: 1,
+			revision: 0,
+			id,
+			teamId: team.id,
+			workspaceId: `agent-team:${team.id}`,
+			executionMode,
+			teamRevision: team.revision,
+			name: team.name,
+			cwd,
+			orchestrationPolicyId: team.orchestrationPolicyId,
+			contextPolicyId: team.contextPolicyId,
+			leaderMemberId: team.leaderMemberId,
+			activeMemberIds: team.members.map((member) => member.id),
+			memberHandles: Object.fromEntries(team.members.map((member) => [member.id, member.handle])),
+			createdAt: now,
+			updatedAt: now,
+			coordinationRuntime,
+			runtimeStatus: "preparing",
+			events: [],
+			memberRuntime: {},
+		};
+		try {
+			await ensureTeamConversationBinding(session, this.legacyMigrationPort());
+			await this.persist(session);
+			this.sessionState.set(session);
+			void this.warmup(id, team, document).catch((error: unknown) => {
+				log.warn("team runtime warmup failed", { teamId: team.id, teamSessionId: id, error: errorMessage(error) });
+			});
+			log.info("team session record created", { teamId: team.id, teamSessionId: id });
+			return session;
+		} catch (error) {
+			await this.getRuntime()
+				.disposeSession(coordinationRuntime.sessionId)
+				.catch(() => undefined);
+			throw error;
+		}
+	}
+
+	/** Eager background preparation: leader first, remaining members in parallel. */
+	async warmup(
+		sessionId: string,
+		team: AgentTeamDocument["teams"][number],
+		document: AgentTeamDocument,
+	): Promise<void> {
+		const existing = this.warmingSessions.get(`runtime:${sessionId}`);
+		if (existing) {
+			await existing;
+			return;
+		}
+		const warming = this.warmupInternal(sessionId, team, document);
+		this.warmingSessions.set(`runtime:${sessionId}`, warming);
+		try {
+			await warming;
+		} catch (error) {
+			await this.sessionState.coordinateLoaded(sessionId, async (session) => {
+				const next: TeamSessionDocument = {
+					...session,
+					revision: session.revision + 1,
+					updatedAt: Date.now(),
+					runtimeStatus: "failed",
+				};
+				await this.persist(next);
+				this.publishSessionUpdated(next);
+			});
+			throw error;
+		} finally {
+			if (this.warmingSessions.get(`runtime:${sessionId}`) === warming)
+				this.warmingSessions.delete(`runtime:${sessionId}`);
+		}
+	}
+
+	private async warmupInternal(
+		sessionId: string,
+		team: AgentTeamDocument["teams"][number],
+		document: AgentTeamDocument,
+	): Promise<void> {
+		const leader = team.members.find((member) => member.id === team.leaderMemberId);
+		if (!leader) throw new Error(`Team leader not found: ${team.leaderMemberId}`);
+		const leaderWarming = this.ensureMemberRuntime(sessionId, leader, team, document);
+		// Give the leader preparation lane the first scheduling opportunity, then
+		// warm the rest eagerly instead of waiting for the leader to become ready.
+		await Promise.resolve();
+		const others = team.members.filter((member) => member.id !== leader.id);
+		const results = await Promise.allSettled([
+			leaderWarming,
+			...others.map((member) => this.ensureMemberRuntime(sessionId, member, team, document)),
+		]);
+		const failed = results.some((result) => result.status === "rejected");
+		await this.sessionState.coordinateLoaded(sessionId, async (session) => {
+			const next: TeamSessionDocument = {
+				...session,
+				revision: session.revision + 1,
+				updatedAt: Date.now(),
+				runtimeStatus: failed ? "failed" : "ready",
+			};
+			await this.persist(next);
+			this.publishSessionUpdated(next);
+		});
+	}
+
+	private async ensureMemberRuntime(
+		sessionId: string,
+		member: AgentTeamDocument["teams"][number]["members"][number],
+		team: AgentTeamDocument["teams"][number],
+		document: AgentTeamDocument,
+	): Promise<void> {
+		const current = this.sessionState.get(sessionId);
+		if (!current) throw new Error(`Team session is not loaded: ${sessionId}`);
+		if (current.memberRuntime[member.id]) return;
+		// Runtime construction may load providers, plugins and histories. Keep it
+		// outside the session transaction so coordination messages remain writable.
+		const runtimeState = await this.runtimeManager.createMemberRuntime(
+			sessionId,
+			member,
+			team,
+			document,
+			current.cwd,
+			current.executionMode ?? "full-access",
+		);
+		let adopted = false;
+		try {
+			await this.sessionState.coordinateLoaded(sessionId, async (session) => {
+				if (session.memberRuntime[member.id]) return;
+				const activeMemberIds = session.activeMemberIds ?? Object.keys(session.memberRuntime);
+				if (!activeMemberIds.includes(member.id)) return;
+				if (session.executionMode && session.executionMode !== current.executionMode) {
+					await this.getRuntime().setExecutionMode(runtimeState.sessionId, session.executionMode);
+				}
+				const next: TeamSessionDocument = {
+					...session,
+					revision: session.revision + 1,
+					updatedAt: Date.now(),
+					memberRuntime: { ...session.memberRuntime, [member.id]: runtimeState },
+				};
+				await ensureTeamConversationBinding(next, this.legacyMigrationPort());
+				await this.persist(next);
+				adopted = true;
+				this.publishSessionUpdated(next);
+			});
+		} finally {
+			if (!adopted) await this.getRuntime().disposeSession(runtimeState.sessionId);
+		}
 	}
 
 	async listSessions(teamId: string): Promise<readonly TeamSessionListItem[]> {

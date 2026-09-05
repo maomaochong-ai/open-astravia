@@ -31,6 +31,7 @@ export interface DesktopAgentTeamsApi {
 	updateTeam(id: string, input: UpdateTeamInput): Promise<TeamDefinition>;
 	deleteTeam(id: string, input: DeleteTeamInput): Promise<void>;
 	createSession(teamId: string): Promise<DesktopTeamSessionSnapshot>;
+	createSessionRecord(teamId: string): Promise<DesktopTeamSessionSnapshot>;
 	listSessions(teamId: string): Promise<readonly TeamSessionListItem[]>;
 	updateModelSettings(id: string, input: UpdateTeamSessionModelSettingsInput): Promise<DesktopTeamSessionSnapshot>;
 	setExecutionMode(id: string, mode: SessionExecutionMode): Promise<DesktopTeamSessionSnapshot>;

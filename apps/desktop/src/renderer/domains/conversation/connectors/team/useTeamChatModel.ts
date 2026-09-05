@@ -11,7 +11,7 @@ import type { TeamSessionListItem } from "@vetta/agent-team";
 import { type AgentTeamDocument, resolveMentionedMemberIds } from "@vetta/agent-team";
 import type { PromptAttachmentRef, SessionExecutionMode } from "@vetta/runtime-core";
 import { useAtomValue } from "jotai";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useTranslation } from "react-i18next";
 import { resolveSessionContextComposition } from "../../services/context-composition-cache";
 import { createTeamChatSession, loadTeamChatBootstrap, loadTeamChatSession } from "./team-chat-session-service";
@@ -57,6 +57,7 @@ export function useTeamChatModel(
 	const [pending, setPending] = useState<TeamPendingRequest>();
 	const [streams, setStreams] = useState<TeamStreamState>({});
 	const [status, setStatus] = useState<TeamChatStatus>("loading");
+	const [, startTeamTransition] = useTransition();
 	const [error, setError] = useState<string>();
 	const [contextUsages, setContextUsages] = useState<
 		Readonly<Record<string, NonNullable<TeamChatViewModel["contextUsage"]>>>
@@ -65,6 +66,7 @@ export function useTeamChatModel(
 	const sessionRef = useRef(session);
 	sessionRef.current = session;
 	const loadedSessionRef = useRef<{ readonly teamId: string; readonly sessionId: string } | undefined>(undefined);
+	const sessionCreationRef = useRef<Promise<Awaited<ReturnType<typeof createTeamChatSession>>> | undefined>(undefined);
 	const cancelledRequests = useRef(new Set<string>());
 	const pendingRef = useRef<TeamPendingRequest | undefined>(undefined);
 	const streamsRef = useRef<TeamStreamState>({});
@@ -105,7 +107,7 @@ export function useTeamChatModel(
 	const applyLoadedSession = useCallback(
 		(loaded: Awaited<ReturnType<typeof loadTeamChatSession>>) => {
 			loadedSessionRef.current = { teamId, sessionId: loaded.snapshot.session.id };
-			setDocument(loaded.document);
+			if (loaded.document) setDocument(loaded.document);
 			setSnapshot(loaded.snapshot);
 			setContextUsages(readSnapshotContextUsages(loaded.snapshot));
 			setSessions(loaded.sessions);
@@ -136,16 +138,28 @@ export function useTeamChatModel(
 		void (async () => {
 			try {
 				if (createNewSession) {
-					const bootstrap = await loadTeamChatBootstrap(teamId);
-					if (cancelled) return;
-					setDocument(bootstrap.document);
-					setSessions(bootstrap.sessions);
 					await waitForCommittedPaint();
 					if (cancelled) return;
-					const created = await createTeamChatSession(teamId, bootstrap.document, bootstrap.sessions);
+					const creation = createTeamChatSession(teamId);
+					sessionCreationRef.current = creation;
+					void loadTeamChatBootstrap(teamId)
+						.then((bootstrap) => {
+							if (cancelled) return;
+							startTeamTransition(() => {
+								setDocument(bootstrap.document);
+								setSessions(bootstrap.sessions);
+							});
+						})
+						.catch((cause: unknown) => {
+							console.warn("[agent-team] deferred Team bootstrap failed", {
+								teamId,
+								error: errorMessage(cause),
+							});
+						});
+					const created = await creation;
 					if (cancelled) return;
 					applyLoadedSession(created);
-					notifyTeamSessionsChanged();
+					notifyTeamSessionsChanged(teamId);
 					return;
 				}
 				const opened = await loadTeamChatSession(teamId, preferredSessionId);
@@ -159,6 +173,7 @@ export function useTeamChatModel(
 		})();
 		return () => {
 			cancelled = true;
+			sessionCreationRef.current = undefined;
 		};
 	}, [teamId, preferredSessionId, createNewSession, applyLoadedSession]);
 
@@ -183,7 +198,7 @@ export function useTeamChatModel(
 		try {
 			const loaded = await createTeamChatSession(teamId, document, sessions);
 			applyLoadedSession(loaded);
-			notifyTeamSessionsChanged();
+			notifyTeamSessionsChanged(teamId);
 			return loaded.snapshot.session.id;
 		} catch (cause) {
 			setError(errorMessage(cause));
@@ -410,16 +425,16 @@ export function useTeamChatModel(
 		[draft, updateAttachments, updateDraft],
 	);
 	const selectFiles = useCallback(async () => {
-		if (!session) return;
-		const paths = await window.vetta.dialog.selectFiles(session.cwd || undefined);
+		if (!session && !createNewSession) return;
+		const paths = await window.vetta.dialog.selectFiles(session?.cwd || undefined);
 		addAttachments(paths.map(toFileAttachment));
-	}, [addAttachments, session]);
+	}, [addAttachments, createNewSession, session]);
 	const selectImages = useCallback(async () => {
-		if (!session) return;
+		if (!session && !createNewSession) return;
 		const selected = await window.vetta.dialog.selectImages();
-		const paths = await persistBase64Images(selected, session.id, "image-dialog");
+		const paths = await persistBase64Images(selected, session?.id ?? null, "image-dialog");
 		addAttachments(paths.map(toImageAttachment));
-	}, [addAttachments, session]);
+	}, [addAttachments, createNewSession, session]);
 	const removeAttachment = useCallback(
 		(path: string) => {
 			updateAttachments((current) => current.filter((attachment) => attachment.path !== path));
@@ -444,13 +459,12 @@ export function useTeamChatModel(
 			pendingRequestId: pendingRef.current?.requestId,
 		};
 		console.info("[agent-team] send attempted", attempt);
-		if (!session || !team || (!draftText && attachments.length === 0) || pendingRef.current) {
+		if ((!session && !createNewSession) || (!draftText && attachments.length === 0) || pendingRef.current) {
 			console.info("[agent-team] send ignored", {
 				...attempt,
-				reason: !session
-					? "session-unavailable"
-					: !team
-						? "team-unavailable"
+				reason:
+					!session && !createNewSession
+						? "session-unavailable"
 						: !draftText && attachments.length === 0
 							? "empty-input"
 							: "request-pending",
@@ -460,7 +474,7 @@ export function useTeamChatModel(
 		const text = draftText;
 		const requestId = crypto.randomUUID();
 		const sentAttachments = attachments;
-		const targetMemberIds = resolveMentionedMemberIds(team, text, selectedMemberIds);
+		const targetMemberIds = team ? resolveMentionedMemberIds(team, text, selectedMemberIds) : [];
 		const promptAttachments = attachments.map(toPromptAttachment);
 		const nextPending = {
 			requestId,
@@ -468,6 +482,7 @@ export function useTeamChatModel(
 			displayText: draftText,
 			attachments: promptAttachments,
 			targetMemberIds,
+			leaderMemberId: session?.leaderMemberId ?? team?.leaderMemberId ?? "leader",
 			timestamp: Date.now(),
 		};
 		pendingRef.current = nextPending;
@@ -485,15 +500,26 @@ export function useTeamChatModel(
 		const startedAt = Date.now();
 		console.info("[agent-team] send-message IPC started", {
 			teamId,
-			teamSessionId: session.id,
+			teamSessionId: session?.id,
 			requestId,
 			targetMemberCount: targetMemberIds.length,
 			attachmentCount: promptAttachments.length,
 			modelKey: effectiveModelKey,
 			reasoning: effectiveReasoning,
 		});
+		let activeSessionId = session?.id;
 		try {
-			const next = await window.vetta.agentTeams.sendMessage(session.id, {
+			const loaded = session
+				? undefined
+				: await (sessionCreationRef.current ?? createTeamChatSession(teamId, document, sessions));
+			const readySession = session ?? loaded?.snapshot.session;
+			if (!readySession) throw new Error("Team session is still preparing");
+			activeSessionId = readySession.id;
+			if (cancelledRequests.current.delete(requestId)) {
+				setStatus("ready");
+				return;
+			}
+			const next = await window.vetta.agentTeams.sendMessage(readySession.id, {
 				requestId,
 				text,
 				targetMemberIds,
@@ -513,7 +539,7 @@ export function useTeamChatModel(
 			setStatus("ready");
 			console.info("[agent-team] send-message IPC completed", {
 				teamId,
-				teamSessionId: session.id,
+				teamSessionId: readySession.id,
 				requestId,
 				elapsedMs: Date.now() - startedAt,
 			});
@@ -529,7 +555,7 @@ export function useTeamChatModel(
 		} catch (cause) {
 			console.error("[agent-team] send-message IPC failed", {
 				teamId,
-				teamSessionId: session.id,
+				teamSessionId: activeSessionId,
 				requestId,
 				elapsedMs: Date.now() - startedAt,
 				error: cause instanceof Error ? cause.message : String(cause),
@@ -558,13 +584,22 @@ export function useTeamChatModel(
 		updateDraft,
 		effectiveModelKey,
 		effectiveReasoning,
+		createNewSession,
+		document,
+		sessions,
 	]);
 
 	const abort = useCallback(async () => {
 		const request = pendingRef.current;
-		if (!session || !request) return;
+		if (!request) return;
 		cancelledRequests.current.add(request.requestId);
 		setStatus("cancelling");
+		if (!session) {
+			pendingRef.current = undefined;
+			setPending(undefined);
+			setStatus("ready");
+			return;
+		}
 		try {
 			await window.vetta.agentTeams.abort(session.id);
 		} catch (cause) {
@@ -602,8 +637,10 @@ export function useTeamChatModel(
 			...(session?.leaderMemberId ? { leaderMemberId: session.leaderMemberId } : {}),
 			feedItems,
 			...(error ? { error } : {}),
-			editorEnabled: Boolean(session) && !memberViewId,
-			canSend: Boolean(session && !memberViewId && (draft.trim() || attachments.length > 0) && !pending),
+			editorEnabled: Boolean(session || createNewSession) && !memberViewId,
+			canSend: Boolean(
+				(session || createNewSession) && !memberViewId && (draft.trim() || attachments.length > 0) && !pending,
+			),
 			workspace: session
 				? createActivityWorkspace(session.workspaceId ?? `agent-team:${teamId}`, session.cwd)
 				: null,
@@ -648,6 +685,7 @@ export function useTeamChatModel(
 			isCompacting,
 			memberRuntimeIds,
 			memberViewId,
+			createNewSession,
 			snapshot?.display?.executionMode,
 		],
 	);

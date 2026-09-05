@@ -43,6 +43,7 @@ describe("loadTeamChatSession", () => {
 				listSessions: vi.fn(async () => []),
 				getSession: vi.fn(),
 				createSession: vi.fn(),
+				createSessionRecord: vi.fn(),
 			},
 		} as unknown as typeof window.vetta;
 	});
@@ -73,7 +74,7 @@ describe("loadTeamChatSession", () => {
 
 	it("stores the ordinary Conversation reference for a newly created session", async () => {
 		const created = snapshot("new-session", "C:/runtime/new-session.jsonl");
-		vi.mocked(window.vetta.agentTeams.createSession).mockResolvedValue(created);
+		vi.mocked(window.vetta.agentTeams.createSessionRecord).mockResolvedValue(created);
 
 		await expect(loadTeamChatSession(team.id)).resolves.toEqual({
 			document,
@@ -88,7 +89,8 @@ describe("loadTeamChatSession", () => {
 				},
 			],
 		});
-		expect(window.vetta.agentTeams.createSession).toHaveBeenCalledWith(team.id);
+		expect(window.vetta.agentTeams.createSessionRecord).toHaveBeenCalledWith(team.id);
+		expect(window.vetta.agentTeams.createSession).not.toHaveBeenCalled();
 		expect(window.localStorage.getItem(`vetta.agent-team.session.${team.id}`)).toBe(
 			JSON.stringify({ id: "new-session", coordinationSessionPath: "C:/runtime/new-session.jsonl" }),
 		);
@@ -96,7 +98,7 @@ describe("loadTeamChatSession", () => {
 
 	it("deduplicates concurrent creation requests for the same Team", async () => {
 		const created = snapshot("shared-session", "C:/runtime/shared-session.jsonl");
-		vi.mocked(window.vetta.agentTeams.createSession).mockResolvedValue(created);
+		vi.mocked(window.vetta.agentTeams.createSessionRecord).mockResolvedValue(created);
 
 		const [first, second] = await Promise.all([
 			createTeamChatSession(team.id, document, []),
@@ -105,7 +107,7 @@ describe("loadTeamChatSession", () => {
 
 		expect(first.snapshot.session.id).toBe("shared-session");
 		expect(second.snapshot.session.id).toBe("shared-session");
-		expect(window.vetta.agentTeams.createSession).toHaveBeenCalledTimes(1);
+		expect(window.vetta.agentTeams.createSessionRecord).toHaveBeenCalledTimes(1);
 	});
 
 	it("opens a selected catalog session without creating another one", async () => {

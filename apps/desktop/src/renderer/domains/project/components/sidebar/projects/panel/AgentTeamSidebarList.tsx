@@ -21,7 +21,7 @@ export function AgentTeamSidebarList(): JSX.Element {
 
 	useEffect(() => {
 		let active = true;
-		const load = (): void => {
+		const loadAll = (): void => {
 			void window.vetta.agentTeams
 				.list()
 				.then(async (next) => ({
@@ -42,13 +42,30 @@ export function AgentTeamSidebarList(): JSX.Element {
 					if (active) setError(true);
 				});
 		};
-		load();
-		window.addEventListener(CONFIGURATION_CHANGED_EVENT, load);
-		window.addEventListener(TEAM_SESSIONS_CHANGED_EVENT, load);
+		const refreshChangedTeam = (event: Event): void => {
+			const teamId = event instanceof CustomEvent ? (event.detail as { teamId?: unknown }).teamId : undefined;
+			if (typeof teamId !== "string" || teamId.length === 0) {
+				loadAll();
+				return;
+			}
+			void window.vetta.agentTeams
+				.listSessions(teamId)
+				.then((sessions) => {
+					if (!active) return;
+					setSessionsByTeam((current) => ({ ...current, [teamId]: sessions }));
+					setError(false);
+				})
+				.catch(() => {
+					if (active) setError(true);
+				});
+		};
+		loadAll();
+		window.addEventListener(CONFIGURATION_CHANGED_EVENT, loadAll);
+		window.addEventListener(TEAM_SESSIONS_CHANGED_EVENT, refreshChangedTeam);
 		return () => {
 			active = false;
-			window.removeEventListener(CONFIGURATION_CHANGED_EVENT, load);
-			window.removeEventListener(TEAM_SESSIONS_CHANGED_EVENT, load);
+			window.removeEventListener(CONFIGURATION_CHANGED_EVENT, loadAll);
+			window.removeEventListener(TEAM_SESSIONS_CHANGED_EVENT, refreshChangedTeam);
 		};
 	}, []);
 

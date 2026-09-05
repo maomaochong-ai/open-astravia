@@ -107,6 +107,7 @@ export interface TeamPendingRequest {
 	readonly displayText?: string;
 	readonly attachments?: readonly PromptAttachmentRef[];
 	readonly targetMemberIds?: readonly string[];
+	readonly leaderMemberId?: string;
 	readonly timestamp?: number;
 }
 
@@ -205,10 +206,10 @@ export function projectTeamConversationTimeline({
 	/** When set, render only this member's native conversation inside the Team shell. */
 	readonly memberId?: string;
 }): ChatConversationItem[] {
-	if (!snapshot) return [];
-	const { session } = snapshot;
+	if (!snapshot && !pending) return [];
+	const session = snapshot?.session;
 	const memberMap = new Map(members.map((member) => [member.id, member]));
-	const memberConversations = snapshot.display?.memberConversations ?? [];
+	const memberConversations = snapshot?.display?.memberConversations ?? [];
 	const visibleMemberConversations = memberId
 		? memberConversations.filter((conversation) => conversation.memberId === memberId)
 		: memberConversations;
@@ -220,7 +221,7 @@ export function projectTeamConversationTimeline({
 	// member histories are available. Member Runtime histories contain their own
 	// user input entries as execution context; those entries are not public Team
 	// messages and must not be merged into the aggregate feed.
-	const coordinationItems = projectLegacySnapshotMessages(snapshot);
+	const coordinationItems = snapshot ? projectLegacySnapshotMessages(snapshot) : [];
 	const coordinationUserItems = coordinationItems.filter((item) => item.kind === "user");
 	const projectedItems =
 		coordinationUserItems.length > 0
@@ -230,14 +231,14 @@ export function projectTeamConversationTimeline({
 		...projectedItems,
 		...(memberConversations.length === 0 ? coordinationItems : coordinationUserItems),
 	]);
-	for (const activity of memberId ? [] : snapshot.activities) {
+	for (const activity of memberId ? [] : (snapshot?.activities ?? [])) {
 		const source =
 			memberMap.get(activity.sourceMemberId)?.name ??
-			session.memberHandles[activity.sourceMemberId] ??
+			session?.memberHandles[activity.sourceMemberId] ??
 			labels.unknownMember;
 		const target =
 			memberMap.get(activity.targetMemberId)?.name ??
-			session.memberHandles[activity.targetMemberId] ??
+			session?.memberHandles[activity.targetMemberId] ??
 			labels.unknownMember;
 		items.push({
 			id: activity.id,
@@ -255,7 +256,7 @@ export function projectTeamConversationTimeline({
 	items.sort((left, right) => itemTimestamp(left) - itemTimestamp(right));
 
 	const userCommitted = pending
-		? snapshot.messages.some((record) => record.kind === "user" && record.turnId === pending.requestId) ||
+		? (snapshot?.messages.some((record) => record.kind === "user" && record.turnId === pending.requestId) ?? false) ||
 			items.some((item) => item.kind === "user" && item.turnId === pending.requestId)
 		: false;
 	if (pending && !userCommitted) {
@@ -267,7 +268,7 @@ export function projectTeamConversationTimeline({
 			role: "user",
 			deliveryPhase: "pending",
 			text: pending.displayText ?? stripAttachmentContext(pending.text),
-			timestamp: pending.timestamp ?? session.updatedAt,
+			timestamp: pending.timestamp ?? session?.updatedAt ?? Date.now(),
 			attachments: [...(pending.attachments ?? [])],
 		});
 	}
@@ -279,7 +280,7 @@ export function projectTeamConversationTimeline({
 				)
 			: memberId
 				? []
-				: snapshot.messages.map((record) => record.id),
+				: (snapshot?.messages ?? []).map((record) => record.id),
 	);
 	for (const turn of Object.values(streams).sort(
 		(left, right) => (left.message.startedAt ?? 0) - (right.message.startedAt ?? 0),
@@ -293,16 +294,16 @@ export function projectTeamConversationTimeline({
 	}
 	if (pending && Object.keys(streams).length === 0) {
 		items.push({
-			id: `waiting:${pending.requestId}:${memberId ?? session.leaderMemberId}`,
-			renderKey: `team:waiting:${pending.requestId}:${memberId ?? session.leaderMemberId}`,
+			id: `waiting:${pending.requestId}:${memberId ?? session?.leaderMemberId ?? pending.leaderMemberId ?? "leader"}`,
+			renderKey: `team:waiting:${pending.requestId}:${memberId ?? session?.leaderMemberId ?? pending.leaderMemberId ?? "leader"}`,
 			turnId: pending.requestId,
-			authorId: memberId ?? session.leaderMemberId,
+			authorId: memberId ?? session?.leaderMemberId ?? pending.leaderMemberId ?? "leader",
 			kind: "agent",
 			role: "assistant",
 			phase: "pending",
 			text: "",
 			blocks: [],
-			timestamp: pending.timestamp ?? session.updatedAt,
+			timestamp: pending.timestamp ?? session?.updatedAt ?? Date.now(),
 		});
 	}
 	return items;
