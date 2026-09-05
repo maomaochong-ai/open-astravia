@@ -280,7 +280,7 @@ interface OpenMarketMcpConfig {
 	mcp?: Record<string, unknown>;
 	mcp_browser_auth?: boolean;
 	mcp_parameters?: OpenMarketMcpParameter[];
-	mcp_setup?: { kind: "agent-tool"; tool: string };
+	mcp_setup?: { kind: "http-qrcode" };
 }
 
 function createMarketMcpPreset(entry: MarketAbility, serverName: string): BuiltinMcpPreset | undefined {

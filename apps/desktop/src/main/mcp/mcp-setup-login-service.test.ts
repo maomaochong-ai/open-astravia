@@ -1,119 +1,94 @@
-import type { McpToolCallResult } from "@vetta/runtime-mcp";
 import { describe, expect, it, vi } from "vitest";
-import { McpSetupLoginService, readSetupLoginQrCode } from "./mcp-setup-login-service";
+import { McpSetupLoginService } from "./mcp-setup-login-service";
 
-const PNG = "iVBORw0KGgo=";
+const config = { type: "http", url: "http://127.0.0.1/mcp", managedRuntimeId: "demo-runtime" } as const;
+const spec = {
+	schemaVersion: 1,
+	id: "demo-runtime",
+	command: "C:/runtime/demo.exe",
+	args: [],
+	env: {},
+	mcpPath: "/mcp",
+	readyTimeoutMs: 1000,
+	setup: {
+		kind: "http-qrcode",
+		statusPath: "/api/v1/login/status",
+		qrcodePath: "/api/v1/login/qrcode",
+		logoutPath: "/api/v1/login/cookies",
+	},
+} as const;
 
-function result(overrides: Partial<McpToolCallResult>): McpToolCallResult {
-	return { content: [], ...overrides };
+function service(fetchImpl: typeof fetch, recordStatus = vi.fn()) {
+	return {
+		recordStatus,
+		instance: new McpSetupLoginService({
+			loadServerConfig: async () => config,
+			readRuntimeSpec: async () => spec,
+			ensureRuntime: async () => "http://127.0.0.1:23456/mcp",
+			recordStatus,
+			fetchImpl,
+		}),
+	};
 }
 
-describe("readSetupLoginQrCode", () => {
-	it("reads an image content block", () => {
-		expect(readSetupLoginQrCode(result({ content: [{ type: "image", data: PNG, mimeType: "image/png" }] }))).toEqual({
-			image: `data:image/png;base64,${PNG}`,
-			expiresInSeconds: 180,
-		});
-	});
-
-	it("reads base64 and timeout from structured content", () => {
-		expect(readSetupLoginQrCode(result({ structuredContent: { img: PNG, timeout: 240 } }))).toEqual({
-			image: `data:image/png;base64,${PNG}`,
-			expiresInSeconds: 240,
-		});
-	});
-
-	it("reads a JSON text payload", () => {
-		expect(
-			readSetupLoginQrCode(
-				result({ content: [{ type: "text", text: JSON.stringify({ qrcode: PNG, timeout_seconds: "60" }) }] }),
-			),
-		).toEqual({ image: `data:image/png;base64,${PNG}`, expiresInSeconds: 60 });
-	});
-
-	it("keeps an already-formed data URL", () => {
-		const url = `data:image/png;base64,${PNG}`;
-		expect(readSetupLoginQrCode(result({ content: [{ type: "text", text: url }] })).image).toBe(url);
-	});
-
-	it("surfaces the tool error text", () => {
-		expect(() =>
-			readSetupLoginQrCode(result({ isError: true, content: [{ type: "text", text: "already logged in" }] })),
-		).toThrow(/already logged in/);
-	});
-
-	it("rejects a result without any image", () => {
-		expect(() => readSetupLoginQrCode(result({ content: [{ type: "text", text: "ok" }] }))).toThrow(/QR code image/);
-	});
-});
-
-function fakeClient(callTool: () => Promise<McpToolCallResult>) {
-	const close = vi.fn(async () => undefined);
-	// 真实客户端在 initialize 之前 callTool 会抛「MCP client is not initialized」
-	let initialized = false;
-	const initialize = vi.fn(async () => {
-		initialized = true;
-		return { protocolVersion: "2025-06-18", serverInfo: { name: "demo", version: "1" }, capabilities: {} };
-	});
-	const handle = {
-		initialize,
-		callTool: vi.fn(async () => {
-			if (!initialized) throw new Error("MCP client is not initialized");
-			return callTool();
-		}),
-		close,
-	};
-	return { handle: handle as never, close, initialize };
+function json(data: Record<string, unknown>): Response {
+	return Response.json({ success: true, data, message: "ok" });
 }
 
 describe("McpSetupLoginService", () => {
-	const stdio = { command: "/runtime/demo", args: ["-transport=stdio"] } as never;
+	it("uses upstream is_logged_in as the only status result", async () => {
+		const fetchImpl = vi.fn(async () => json({ is_logged_in: false }));
+		const { instance, recordStatus } = service(fetchImpl);
 
-	it("calls the declared tool on the configured server", async () => {
-		const { handle, close, initialize } = fakeClient(async () =>
-			result({ content: [{ type: "image", data: PNG, mimeType: "image/png" }] }),
+		await expect(instance.getStatus("demo")).resolves.toEqual({ state: "unauthenticated" });
+		expect(recordStatus).toHaveBeenCalledWith("demo-runtime", false);
+		expect(fetchImpl).toHaveBeenCalledWith(
+			new URL("http://127.0.0.1:23456/api/v1/login/status"),
+			expect.objectContaining({ method: "GET" }),
 		);
-		const clientFactory = vi.fn(() => handle);
-		const service = new McpSetupLoginService({
-			loadServerConfig: async () => stdio,
-			clientFactory: clientFactory as never,
-		});
-
-		await expect(service.start("demo-mcp", "get_login_qrcode")).resolves.toMatchObject({
-			image: `data:image/png;base64,${PNG}`,
-		});
-		expect(clientFactory).toHaveBeenCalledWith("demo-mcp", stdio, expect.anything());
-		expect(initialize).toHaveBeenCalledTimes(1);
-		// 会话保持到 cancel：受管服务要在同一连接里等扫码结果
-		expect(close).not.toHaveBeenCalled();
-
-		await service.cancel();
-		expect(close).toHaveBeenCalledTimes(1);
 	});
 
-	it("closes the session when the tool call fails", async () => {
-		const { handle, close } = fakeClient(async () => {
-			throw new Error("spawn failed");
-		});
-		const service = new McpSetupLoginService({
-			loadServerConfig: async () => stdio,
-			clientFactory: (() => handle) as never,
-		});
+	it("returns upstream account identity for an authenticated session", async () => {
+		const { instance, recordStatus } = service(
+			vi.fn(async () => json({ is_logged_in: true, username: "小明", user_id: "user-1" })),
+		);
 
-		await expect(service.start("demo-mcp", "get_login_qrcode")).rejects.toThrow(/spawn failed/);
-		expect(close).toHaveBeenCalledTimes(1);
+		await expect(instance.getStatus("demo")).resolves.toEqual({
+			state: "authenticated",
+			username: "小明",
+			userId: "user-1",
+		});
+		expect(recordStatus).toHaveBeenCalledWith("demo-runtime", true);
 	});
 
-	it("refuses servers that are not configured or not stdio", async () => {
-		const service = new McpSetupLoginService({
-			loadServerConfig: async (name) =>
-				name === "http-mcp" ? ({ type: "http", url: "https://example.com/mcp" } as never) : undefined,
-			clientFactory: (() => {
-				throw new Error("must not connect");
-			}) as never,
+	it("returns the QR code and parses the upstream Go duration", async () => {
+		const image = "data:image/png;base64,iVBORw0KGgo=";
+		const fetchImpl = vi.fn(async () => json({ is_logged_in: false, img: image, timeout: "4m0s" }));
+		const { instance } = service(fetchImpl);
+
+		await expect(instance.start("demo")).resolves.toEqual({
+			state: "qr_code",
+			image,
+			expiresInSeconds: 240,
+		});
+		expect(fetchImpl).toHaveBeenCalledWith(
+			new URL("http://127.0.0.1:23456/api/v1/login/qrcode"),
+			expect.objectContaining({ method: "GET" }),
+		);
+	});
+
+	it("does not invent a QR flow when the upstream QR endpoint reports already logged in", async () => {
+		const { instance } = service(vi.fn(async () => json({ is_logged_in: true, username: "小明" })));
+
+		await expect(instance.start("demo")).resolves.toEqual({ state: "authenticated", username: "小明" });
+	});
+
+	it("rejects ordinary HTTP MCP servers without a managed login contract", async () => {
+		const instance = new McpSetupLoginService({
+			loadServerConfig: async () => ({ type: "http", url: "https://example.com/mcp" }),
+			fetchImpl: vi.fn(),
 		});
 
-		await expect(service.start("missing", "tool")).rejects.toThrow(/not configured/);
-		await expect(service.start("http-mcp", "tool")).rejects.toThrow(/stdio/);
+		await expect(instance.getStatus("demo")).rejects.toThrow(/managed HTTP/);
 	});
 });

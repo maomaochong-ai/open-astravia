@@ -2,33 +2,28 @@ import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { chmod, lstat, mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, posix, relative, resolve, sep } from "node:path";
-import { fileURLToPath } from "node:url";
 import AdmZip from "adm-zip";
 import type {
 	OpenMarketplaceMcpRuntimeProgress,
 	OpenMarketplaceMcpRuntimeProgressPhase,
 } from "../../../preload/api-types/abilities.js";
-import type { McpServerConfigData, McpStdioServerConfigData } from "../../../preload/api-types/mcp.js";
+import type { McpServerConfigData } from "../../../preload/api-types/mcp.js";
 import { validateMcpConfig } from "../../mcp-config-validation.js";
-import type { OpenMarketplaceMcpRuntime } from "./open-marketplace-mcp.js";
+import {
+	MANAGED_HTTP_PORT_TOKEN,
+	MANAGED_HTTP_RUNTIME_FILE,
+	type ManagedHttpRuntimeSpec,
+} from "./open-marketplace-managed-http-runtime.js";
+import type { OpenMarketplaceMcpRuntime, OpenMarketplaceMcpSetup } from "./open-marketplace-mcp.js";
 
 const MAX_ARTIFACT_BYTES = 256 * 1024 * 1024;
 const MAX_ARCHIVE_ENTRIES = 10_000;
 const MAX_UNCOMPRESSED_BYTES = 512 * 1024 * 1024;
 const DOWNLOAD_TIMEOUT_MS = 120_000;
-const EXECUTABLE_TOKEN = `\${VETTA_MCP_EXECUTABLE}`;
 const RUNTIME_DIRECTORY_TOKEN = `\${VETTA_MCP_RUNTIME_DIR}`;
 const DATA_DIRECTORY_TOKEN = `\${VETTA_MCP_DATA_DIR}`;
 const CACHE_DIRECTORY_TOKEN = `\${VETTA_MCP_CACHE_DIR}`;
-
-/**
- * 桥接产物与 main 打包在同一个输出目录（见 vite.main.config.ts 的 lib.entry）。
- * 路径必须相对**产物**而不是源码目录：main 全部打进 dist/main/index.js，
- * import.meta.url 在运行时就是那个文件，所以这里只能是同级的 `./`。
- */
-function bridgeScriptPath(): string {
-	return fileURLToPath(new URL(/* @vite-ignore */ "./mcp-http-bridge.mjs", import.meta.url));
-}
+const RUNTIME_URL_TOKEN = `\${VETTA_MCP_URL}`;
 
 type FetchArtifact = (url: string, init?: RequestInit) => Promise<Response>;
 
@@ -44,6 +39,7 @@ export interface PrepareOpenMarketplaceMcpRuntimeInput {
 	version: string;
 	runtime: OpenMarketplaceMcpRuntime;
 	server: McpServerConfigData;
+	setup?: OpenMarketplaceMcpSetup;
 	onProgress?: (progress: OpenMarketplaceMcpRuntimeProgress) => void;
 }
 
@@ -82,65 +78,22 @@ function abilityDirectoryName(sourceId: string, slug: string): string {
 
 function replaceRuntimeTokens(value: string, paths: Record<string, string>): string {
 	return value
-		.replaceAll(EXECUTABLE_TOKEN, paths.executable)
 		.replaceAll(RUNTIME_DIRECTORY_TOKEN, paths.runtimeDirectory)
 		.replaceAll(DATA_DIRECTORY_TOKEN, paths.dataDirectory)
 		.replaceAll(CACHE_DIRECTORY_TOKEN, paths.cacheDirectory);
 }
 
-/**
- * 服务型受管运行时：mcp.json 里落的是桥接命令，真正的二进制、参数与端口占位符收进 spec。
- * 桥接跑在 Electron 的 node 模式下，不额外依赖机器上的 node。
- */
-function resolveBridgedServer(
-	server: McpStdioServerConfigData,
-	service: NonNullable<OpenMarketplaceMcpRuntime["service"]>,
-	paths: Record<string, string>,
+function resolveManagedHttpServer(
+	server: McpServerConfigData,
+	managedRuntimeId: string,
+	mcpPath: string,
 ): McpServerConfigData {
-	const spec = {
-		schemaVersion: 1,
-		command: paths.executable,
-		args: (server.args ?? []).map((value) => replaceRuntimeTokens(value, paths)),
-		env: Object.fromEntries(
-			Object.entries(server.env ?? {}).map(([key, value]) => [key, replaceRuntimeTokens(value, paths)]),
-		),
-		...(server.cwd ? { cwd: replaceRuntimeTokens(server.cwd, paths) } : {}),
-		path: service.path,
-		...(service.readyTimeoutMs ? { readyTimeoutMs: service.readyTimeoutMs } : {}),
-	};
-	return validateMcpConfig({
-		mcpServers: {
-			managed: {
-				type: "stdio",
-				command: process.execPath,
-				args: [bridgeScriptPath(), JSON.stringify(spec)],
-				env: { ELECTRON_RUN_AS_NODE: "1" },
-				...(server.startupTimeout ? { startupTimeout: server.startupTimeout } : {}),
-			},
-		},
-	}).mcpServers.managed as McpServerConfigData;
-}
-
-function resolveServer(server: McpServerConfigData, paths: Record<string, string>): McpServerConfigData {
-	if (server.type === "http") throw new Error("Managed MCP runtimes require a stdio server");
-	if (server.command !== EXECUTABLE_TOKEN) {
-		throw new Error(`Managed MCP runtime command must be exactly ${EXECUTABLE_TOKEN}`);
+	if (server.type !== "http" || server.url !== RUNTIME_URL_TOKEN) {
+		throw new Error("Managed MCP runtime must declare a direct HTTP server URL token");
 	}
 	return validateMcpConfig({
 		mcpServers: {
-			managed: {
-				...server,
-				command: paths.executable,
-				...(server.args ? { args: server.args.map((value) => replaceRuntimeTokens(value, paths)) } : {}),
-				...(server.env
-					? {
-							env: Object.fromEntries(
-								Object.entries(server.env).map(([key, value]) => [key, replaceRuntimeTokens(value, paths)]),
-							),
-						}
-					: {}),
-				...(server.cwd ? { cwd: replaceRuntimeTokens(server.cwd, paths) } : {}),
-			},
+			managed: { ...server, url: `http://127.0.0.1${mcpPath}`, managedRuntimeId },
 		},
 	}).mcpServers.managed as McpServerConfigData;
 }
@@ -281,6 +234,10 @@ export class OpenMarketplaceMcpRuntimeInstaller {
 		this.fetchArtifact = options.fetchArtifact ?? fetch;
 	}
 
+	runtimeId(sourceId: string, slug: string): string {
+		return abilityDirectoryName(sourceId, slug);
+	}
+
 	async prepare(input: PrepareOpenMarketplaceMcpRuntimeInput): Promise<McpServerConfigData> {
 		const report = (
 			phase: OpenMarketplaceMcpRuntimeProgressPhase,
@@ -298,6 +255,7 @@ export class OpenMarketplaceMcpRuntimeInstaller {
 			if (!platform) throw new Error(`MCP runtime does not support platform ${this.platformTag}`);
 			const executable = normalizedRelativePath(platform.executable, "MCP runtime executable");
 			const abilityDirectory = join(this.rootDir, abilityDirectoryName(input.sourceId, input.slug));
+			const managedRuntimeId = basename(abilityDirectory);
 			const versionsDirectory = join(abilityDirectory, "runtime", "versions");
 			const targetDirectory = join(versionsDirectory, input.version);
 			const dataDirectory = join(abilityDirectory, "data");
@@ -353,13 +311,25 @@ export class OpenMarketplaceMcpRuntimeInstaller {
 				dataDirectory,
 				cacheDirectory,
 			};
-			const server = input.runtime.service
-				? input.server.type === "http"
-					? (() => {
-							throw new Error("Managed MCP runtimes require a stdio server");
-						})()
-					: resolveBridgedServer(input.server, input.runtime.service, paths)
-				: resolveServer(input.server, paths);
+			const processConfig = input.runtime.process;
+			const spec: ManagedHttpRuntimeSpec = {
+				schemaVersion: 1,
+				id: managedRuntimeId,
+				command: executablePath,
+				args: processConfig.args.map((value) => replaceRuntimeTokens(value, paths)),
+				env: Object.fromEntries(
+					Object.entries(processConfig.env).map(([key, value]) => [key, replaceRuntimeTokens(value, paths)]),
+				),
+				...(processConfig.cwd ? { cwd: replaceRuntimeTokens(processConfig.cwd, paths) } : {}),
+				mcpPath: input.runtime.service.path,
+				readyTimeoutMs: input.runtime.service.readyTimeoutMs ?? 120_000,
+				...(input.setup ? { setup: input.setup } : {}),
+			};
+			if (![...spec.args, ...Object.values(spec.env)].some((value) => value.includes(MANAGED_HTTP_PORT_TOKEN))) {
+				throw new Error(`Managed MCP services must pass ${MANAGED_HTTP_PORT_TOKEN} to the process`);
+			}
+			await writeFile(join(abilityDirectory, MANAGED_HTTP_RUNTIME_FILE), JSON.stringify(spec, null, 2), "utf8");
+			const server = resolveManagedHttpServer(input.server, managedRuntimeId, input.runtime.service.path);
 			report("ready");
 			return server;
 		} catch (error) {
@@ -368,22 +338,9 @@ export class OpenMarketplaceMcpRuntimeInstaller {
 		}
 	}
 
-	/**
-	 * 受管能力的数据目录（Cookie 等登录态所在）。安装后步骤的完成判定读这里，
-	 * 目录不随版本变化，卸载运行时也不会删除。
-	 */
-	dataDirectory(sourceId: string, slug: string): string {
-		return join(this.rootDir, abilityDirectoryName(sourceId, slug), "data");
-	}
-
-	/** 安装后步骤是否已完成：由服务自己写出的标志文件（如 cookies.json）决定。 */
-	isSetupComplete(sourceId: string, slug: string, dataFile: string): boolean {
-		const relativePath = normalizedRelativePath(dataFile, "MCP setup data file");
-		return existsSync(join(this.dataDirectory(sourceId, slug), ...relativePath.split("/")));
-	}
-
 	async remove(sourceId: string, slug: string): Promise<void> {
 		const abilityDirectory = join(this.rootDir, abilityDirectoryName(sourceId, slug));
 		await rm(join(abilityDirectory, "runtime"), { recursive: true, force: true });
+		await rm(join(abilityDirectory, MANAGED_HTTP_RUNTIME_FILE), { force: true });
 	}
 }

@@ -222,7 +222,8 @@ export function createSystemApi(
 			logout: (serverName) => ipc.invoke("vetta:mcp:logout", serverName),
 			hasAuth: (serverName) => ipc.invoke("vetta:mcp:has-auth", serverName),
 			authStatus: (serverNames) => ipc.invoke("vetta:mcp:auth-status", serverNames),
-			startSetupLogin: (serverName, tool) => ipc.invoke("vetta:mcp:start-setup-login", serverName, tool),
+			getSetupLoginStatus: (serverName) => ipc.invoke("vetta:mcp:get-setup-login-status", serverName),
+			startSetupLogin: (serverName) => ipc.invoke("vetta:mcp:start-setup-login", serverName),
 			cancelSetupLogin: () => ipc.invoke("vetta:mcp:cancel-setup-login"),
 		},
 		media: {

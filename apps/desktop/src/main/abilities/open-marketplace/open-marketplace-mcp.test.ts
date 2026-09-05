@@ -7,8 +7,8 @@ import { validateOpenMarketplaceMcp } from "./open-marketplace-mcp";
 
 const temporaryRoots: string[] = [];
 const DEMO_API_KEY_PLACEHOLDER = `\${DEMO_API_KEY}`;
-const RUNTIME_COMMAND = `\${VETTA_MCP_EXECUTABLE}`;
 const PORT_TOKEN = `\${VETTA_MCP_PORT}`;
+const URL_TOKEN = `\${VETTA_MCP_URL}`;
 
 async function fixture(
 	server: Record<string, unknown>,
@@ -17,7 +17,7 @@ async function fixture(
 		version?: string;
 		parameters?: Array<Record<string, unknown>>;
 		browserAuth?: boolean;
-		schemaVersion?: 1 | 2;
+		schemaVersion?: 1 | 3;
 		runtime?: Record<string, unknown>;
 		setup?: Record<string, unknown>;
 		args?: string[];
@@ -68,6 +68,8 @@ afterEach(async () => {
 function managedRuntime(platformTag: string): Record<string, unknown> {
 	return {
 		kind: "managed-binary",
+		process: { args: [`-port=:${PORT_TOKEN}`], env: {} },
+		service: { kind: "http-mcp", path: "/mcp" },
 		platforms: {
 			[platformTag]: {
 				url: "https://github.com/example/demo/releases/download/v1/demo.zip",
@@ -144,43 +146,31 @@ describe("validateOpenMarketplaceMcp", () => {
 		]);
 	});
 
-	it("accepts a schema v2 managed binary and reports current-platform support", async () => {
+	it("accepts a schema v3 direct HTTP managed binary and reports current-platform support", async () => {
 		const platformTag = `${process.platform}-${process.arch}`;
 		const { root, ability } = await fixture(
+			{ type: "http", url: URL_TOKEN },
 			{
-				command: RUNTIME_COMMAND,
-				args: ["--stdio"],
-				env: { XHS_DATA_DIR: String.raw`\${VETTA_MCP_DATA_DIR}` },
-			},
-			{
-				schemaVersion: 2,
-				runtime: {
-					kind: "managed-binary",
-					platforms: {
-						[platformTag]: {
-							url: "https://github.com/example/demo/releases/download/v1/demo.zip",
-							sha256: "a".repeat(64),
-							archive: "zip",
-							executable: process.platform === "win32" ? "demo.exe" : "bin/demo",
-						},
-					},
-				},
+				schemaVersion: 3,
+				runtime: managedRuntime(platformTag),
 			},
 		);
 
 		expect(validateOpenMarketplaceMcp(root, ability)).toMatchObject({
-			mcp: { command: RUNTIME_COMMAND, args: ["--stdio"] },
+			mcp: { type: "http", url: URL_TOKEN },
 			mcp_runtime: { kind: "managed-binary", supported: true },
 		});
 	});
 
 	it("rejects unsafe managed runtime declarations", async () => {
 		const insecureUrl = await fixture(
-			{ command: RUNTIME_COMMAND },
+			{ type: "http", url: URL_TOKEN },
 			{
-				schemaVersion: 2,
+				schemaVersion: 3,
 				runtime: {
 					kind: "managed-binary",
+					process: { args: [`-port=:${PORT_TOKEN}`], env: {} },
+					service: { kind: "http-mcp", path: "/mcp" },
 					platforms: {
 						"win32-x64": {
 							url: "http://example.com/demo.exe",
@@ -196,12 +186,14 @@ describe("validateOpenMarketplaceMcp", () => {
 			"runtime URL must use HTTPS",
 		);
 
-		const wrongCommand = await fixture(
-			{ command: "demo" },
+		const wrongUrl = await fixture(
+			{ type: "http", url: "http://127.0.0.1/mcp" },
 			{
-				schemaVersion: 2,
+				schemaVersion: 3,
 				runtime: {
 					kind: "managed-binary",
+					process: { args: [`-port=:${PORT_TOKEN}`], env: {} },
+					service: { kind: "http-mcp", path: "/mcp" },
 					platforms: {
 						"win32-x64": {
 							url: "https://example.com/demo.exe",
@@ -213,8 +205,8 @@ describe("validateOpenMarketplaceMcp", () => {
 				},
 			},
 		);
-		expect(() => validateOpenMarketplaceMcp(wrongCommand.root, wrongCommand.ability)).toThrow(
-			"Managed MCP runtime command must be exactly",
+		expect(() => validateOpenMarketplaceMcp(wrongUrl.root, wrongUrl.ability)).toThrow(
+			"Managed HTTP MCP runtime URL must be exactly",
 		);
 	});
 
@@ -233,20 +225,21 @@ describe("validateOpenMarketplaceMcp", () => {
 	it("exposes a declared post-install step to the client", async () => {
 		const platformTag = `${process.platform}-${process.arch}`;
 		const { root, ability } = await fixture(
-			{ command: RUNTIME_COMMAND },
+			{ type: "http", url: URL_TOKEN },
 			{
-				schemaVersion: 2,
+				schemaVersion: 3,
 				runtime: managedRuntime(platformTag),
 				setup: {
-					kind: "agent-tool",
-					tool: "get_login_qrcode",
-					completedWhen: { dataFile: "cookies.json" },
+					kind: "http-qrcode",
+					statusPath: "/api/v1/login/status",
+					qrcodePath: "/api/v1/login/qrcode",
+					logoutPath: "/api/v1/login/cookies",
 				},
 			},
 		);
 
 		expect(validateOpenMarketplaceMcp(root, ability)).toMatchObject({
-			mcp_setup: { kind: "agent-tool", tool: "get_login_qrcode" },
+			mcp_setup: { kind: "http-qrcode" },
 		});
 	});
 
@@ -254,11 +247,12 @@ describe("validateOpenMarketplaceMcp", () => {
 		const { root, ability } = await fixture(
 			{ type: "http", url: "https://mcp.example.com/mcp" },
 			{
-				schemaVersion: 2,
+				schemaVersion: 3,
 				setup: {
-					kind: "agent-tool",
-					tool: "get_login_qrcode",
-					completedWhen: { dataFile: "cookies.json" },
+					kind: "http-qrcode",
+					statusPath: "/api/v1/login/status",
+					qrcodePath: "/api/v1/login/qrcode",
+					logoutPath: "/api/v1/login/cookies",
 				},
 			},
 		);
@@ -266,17 +260,18 @@ describe("validateOpenMarketplaceMcp", () => {
 		expect(() => validateOpenMarketplaceMcp(root, ability)).toThrow(/managed MCP runtime/i);
 	});
 
-	it("rejects a post-install completion marker that escapes the data directory", async () => {
+	it("rejects a post-install endpoint that is not an absolute path", async () => {
 		const platformTag = `${process.platform}-${process.arch}`;
 		const { root, ability } = await fixture(
-			{ command: RUNTIME_COMMAND },
+			{ type: "http", url: URL_TOKEN },
 			{
-				schemaVersion: 2,
+				schemaVersion: 3,
 				runtime: managedRuntime(platformTag),
 				setup: {
-					kind: "agent-tool",
-					tool: "get_login_qrcode",
-					completedWhen: { dataFile: "../../cookies.json" },
+					kind: "http-qrcode",
+					statusPath: "../../status",
+					qrcodePath: "/api/v1/login/qrcode",
+					logoutPath: "/api/v1/login/cookies",
 				},
 			},
 		);
@@ -287,10 +282,10 @@ describe("validateOpenMarketplaceMcp", () => {
 	it("accepts a managed local HTTP MCP service", async () => {
 		const platformTag = `${process.platform}-${process.arch}`;
 		const { root, ability } = await fixture(
-			{ command: RUNTIME_COMMAND, args: [`-port=:${PORT_TOKEN}`] },
+			{ type: "http", url: URL_TOKEN },
 			{
-				schemaVersion: 2,
-				runtime: { ...managedRuntime(platformTag), service: { kind: "http-mcp", path: "/mcp" } },
+				schemaVersion: 3,
+				runtime: managedRuntime(platformTag),
 			},
 		);
 
@@ -302,10 +297,10 @@ describe("validateOpenMarketplaceMcp", () => {
 	it("rejects a managed service that never receives the allocated port", async () => {
 		const platformTag = `${process.platform}-${process.arch}`;
 		const { root, ability } = await fixture(
-			{ command: RUNTIME_COMMAND, args: ["--stdio"] },
+			{ type: "http", url: URL_TOKEN },
 			{
-				schemaVersion: 2,
-				runtime: { ...managedRuntime(platformTag), service: { kind: "http-mcp", path: "/mcp" } },
+				schemaVersion: 3,
+				runtime: { ...managedRuntime(platformTag), process: { args: ["--fixed-port"], env: {} } },
 			},
 		);
 

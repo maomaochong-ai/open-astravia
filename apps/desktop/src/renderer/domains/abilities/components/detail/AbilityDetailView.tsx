@@ -1,4 +1,3 @@
-import { Button } from "@vetta/ui";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -103,20 +102,6 @@ export function AbilityDetailView({
 					onReload={() => model.reloadPlugin(item)}
 					onOpenPermissions={() => setPage("permissions")}
 				/>
-			);
-		}
-		// 凭证配置由次要操作里的「配置」承担，这里只留编辑原始配置，避免两个按钮同一职责
-		if (item.type === "mcp" && item.canEdit) {
-			return (
-				<Button
-					variant="secondary"
-					size="lg"
-					disabled={item.busy}
-					onClick={() => model.edit(item)}
-				>
-					<span className="icon-[solar--pen-2-linear] h-4 w-4" />
-					{t("actions.edit")}
-				</Button>
 			);
 		}
 		return undefined;

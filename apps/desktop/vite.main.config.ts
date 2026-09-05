@@ -96,15 +96,12 @@ export default defineConfig(({ mode }) => {
 					// 运行时由 quickpanel-trigger.ts 按同目录路径拼接后交给 new Worker()。
 					"uiohook-worker": resolve(process.cwd(), "src/main/uiohook-worker.ts"),
 					"session-search-worker": resolve(process.cwd(), "src/main/session-search-worker.ts"),
-					// 受管本地 HTTP MCP 服务的桥接：由 MCP stdio 客户端 spawn，
-					// 走 ELECTRON_RUN_AS_NODE，因此固定 .mjs 后缀免受 package type 影响。
-					"mcp-http-bridge": resolve(process.cwd(), "src/main/mcp-http-bridge.ts"),
 					...(speechInputBuildConfig.enabled
 						? { "speech-input-host": resolve(process.cwd(), "src/main/speech-input-host.ts") }
 						: {}),
 				},
 				formats: ["es"],
-				fileName: (_format, entryName) => (entryName === "mcp-http-bridge" ? `${entryName}.mjs` : `${entryName}.js`),
+				fileName: (_format, entryName) => `${entryName}.js`,
 			},
 			outDir: resolve(process.cwd(), "dist/main"),
 			emptyOutDir: true,

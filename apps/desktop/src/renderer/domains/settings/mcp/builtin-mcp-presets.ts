@@ -72,10 +72,9 @@ export interface BuiltinMcpPreset {
 	/** 市场定义显式声明是否需要浏览器授权；缺省保持内置预设原有推断。 */
 	browserAuth?: boolean;
 	/**
-	 * 市场定义声明的安装后步骤：装完还要用户在对话里让 Agent 调一次指定工具
-	 * （如小红书扫码登录）。完成与否由主进程探测能力数据目录得出，不在这里判断。
+	 * 市场定义声明的二维码登录步骤；状态与二维码都由上游 HTTP API 提供。
 	 */
-	postInstallSetup?: { kind: "agent-tool"; tool: string };
+	postInstallSetup?: { kind: "http-qrcode" };
 	/** args 中用于回退识别的包名片段 */
 	packageHint?: string;
 }

@@ -56,7 +56,9 @@ export function AbilityDetailHeader({
 								status === "readonly" && "bg-accent/60 text-muted-foreground/80",
 							)}
 						>
-							{t(`detail.status.${status}`)}
+							{item.type === "mcp" && item.postInstallSetup && status === "setup_required"
+								? t("mcp.loginRequired")
+								: t(`detail.status.${status}`)}
 						</span>
 						<AbilityStatusBadges item={item} />
 					</div>
@@ -150,7 +152,11 @@ export function AbilityDetailHeader({
 							) : (
 								<span className="icon-[solar--play-circle-bold] h-4 w-4" />
 							)}
-							{item.busy ? null : t(`detail.primary.${primary}`)}
+							{item.busy
+								? null
+								: item.type === "mcp" && item.postInstallSetup && primary === "setup"
+									? t("mcp.loginAction")
+									: t(`detail.primary.${primary}`)}
 						</Button>
 					) : null}
 					{secondaries

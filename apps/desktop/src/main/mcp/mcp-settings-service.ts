@@ -10,6 +10,7 @@ import type {
 	McpStdioServerConfigData,
 } from "../../preload/api-types/mcp.js";
 import { recordAbilityInstall, removeAbilityLedgerEntry } from "../abilities/ability-ledger.js";
+import { stopOpenMarketplaceManagedMcpRuntime } from "../abilities/open-marketplace/open-marketplace-mcp-runtime-host.js";
 import { validateMcpConfig } from "../mcp-config-validation.js";
 import { ensureMcpFileMigrations } from "./migrations/index.js";
 
@@ -36,7 +37,28 @@ export async function readMcpConfig(): Promise<McpConfigData> {
 }
 
 export async function writeMcpConfig(config: McpConfigData): Promise<void> {
-	atomicWriteJSON(MCP_CONFIG_PATH, validateMcpConfig(config));
+	const previous = await readMcpConfig();
+	const next = validateMcpConfig(config);
+	atomicWriteJSON(MCP_CONFIG_PATH, next);
+	await stopUnusedManagedMcpRuntimes(previous, next, stopOpenMarketplaceManagedMcpRuntime);
+}
+
+export async function stopUnusedManagedMcpRuntimes(
+	previous: McpConfigData,
+	next: McpConfigData,
+	stop: (runtimeId: string) => Promise<void>,
+): Promise<void> {
+	const activeIds = new Set(
+		Object.values(next.mcpServers).flatMap((server) =>
+			server.type === "http" && server.managedRuntimeId && !server.disabled ? [server.managedRuntimeId] : [],
+		),
+	);
+	const previousIds = new Set(
+		Object.values(previous.mcpServers).flatMap((server) =>
+			server.type === "http" && server.managedRuntimeId ? [server.managedRuntimeId] : [],
+		),
+	);
+	await Promise.all([...previousIds].filter((id) => !activeIds.has(id)).map(stop));
 }
 
 function redactRecordSecrets(

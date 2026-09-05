@@ -1,154 +1,177 @@
-import { VERSION } from "@vetta/coding-agent/config";
+import type {
+	McpServerConfigData,
+	McpSetupLoginStartResult,
+	McpSetupLoginStatus,
+} from "../../preload/api-types/mcp.js";
+import type { ManagedHttpRuntimeSetup } from "../abilities/open-marketplace/open-marketplace-managed-http-runtime.js";
 import {
-	MCP_DEFAULT_PROTOCOL_VERSION,
-	type McpContent,
-	type McpJsonValue,
-	type McpToolCallResult,
-} from "@vetta/runtime-mcp";
-import type { McpClientHandle } from "@vetta/runtime-mcp/client";
-import { createMcpClient } from "@vetta/runtime-node/mcp";
-import type { McpServerConfigData } from "../../preload/api-types/mcp.js";
+	ensureOpenMarketplaceManagedMcpRuntime,
+	readOpenMarketplaceManagedMcpRuntimeSpec,
+	recordOpenMarketplaceMcpSetupStatus,
+} from "../abilities/open-marketplace/open-marketplace-mcp-runtime-host.js";
 import { readMcpConfig } from "./mcp-settings-service.js";
 
-/**
- * 能力包声明的安装后步骤（`mcp.json` 的 `setup`）由宿主代跑：连上刚装好的 MCP 服务，
- * 调一次它的登录工具，把返回的二维码交给界面显示。扫码结果由服务自己落到数据目录，
- * 完成判定仍走 `completedWhen.dataFile`，本模块不解析登录态。
- *
- * 会话在弹窗打开期间保持存活：受管服务通常在同一进程里等扫码结果，客户端一断开就前功尽弃。
- */
-
-const DEFAULT_TIMEOUT_SECONDS = 180;
-/** 首次运行要下载内置浏览器（约 150–190 MB），留足时间再判超时。 */
-const CALL_TIMEOUT_MS = 10 * 60_000;
+const REQUEST_TIMEOUT_MS = 10 * 60_000;
+const DEFAULT_QR_TIMEOUT_SECONDS = 240;
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 
-export interface McpSetupLoginQrCode {
-	/** 可直接用作 <img src> 的 data URL。 */
-	readonly image: string;
-	/** 服务给出的二维码有效期；缺省时用一个保守值。 */
-	readonly expiresInSeconds: number;
+interface SetupTarget {
+	readonly runtimeId: string;
+	readonly baseUrl: string;
+	readonly setup: ManagedHttpRuntimeSetup;
 }
 
-function textOf(content: readonly McpContent[]): string {
-	return content
-		.filter((block): block is Extract<McpContent, { type: "text" }> => block.type === "text")
-		.map((block) => block.text)
-		.join("\n");
-}
-
-function dataUrl(data: string, mimeType: string): string | undefined {
-	const value = data.trim();
-	if (!value) return undefined;
-	if (value.startsWith("data:")) return value;
-	// base64 每 4 字符 3 字节
-	if ((value.length / 4) * 3 > MAX_IMAGE_BYTES) return undefined;
-	return `data:${mimeType || "image/png"};base64,${value}`;
-}
-
-/** JSON 里常见的二维码字段名，按优先级尝试。 */
-const IMAGE_KEYS = ["img", "image", "qrcode", "qr_code", "qrCode", "qrcode_image", "data"];
-const TIMEOUT_KEYS = ["timeout", "timeout_seconds", "timeoutSeconds", "expires_in", "expiresIn"];
-
-function pickString(record: Record<string, unknown>, keys: readonly string[]): string | undefined {
-	for (const key of keys) {
-		const value = record[key];
-		if (typeof value === "string" && value.trim()) return value;
-	}
-	return undefined;
-}
-
-function pickNumber(record: Record<string, unknown>, keys: readonly string[]): number | undefined {
-	for (const key of keys) {
-		const value = record[key];
-		if (typeof value === "number" && Number.isFinite(value) && value > 0) return value;
-		if (typeof value === "string" && /^\d+$/.test(value.trim())) return Number(value.trim());
-	}
-	return undefined;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-	return value != null && typeof value === "object" && !Array.isArray(value)
-		? (value as Record<string, unknown>)
-		: undefined;
-}
-
-/** 服务可能把二维码放在 image 内容块、structuredContent 或一段 JSON 文本里，三种都认。 */
-export function readSetupLoginQrCode(result: McpToolCallResult): McpSetupLoginQrCode {
-	if (result.isError) throw new Error(textOf(result.content) || "MCP setup tool returned an error");
-
-	const image = result.content.find(
-		(block): block is Extract<McpContent, { type: "image" }> => block.type === "image",
-	);
-	const structured = asRecord(result.structuredContent as McpJsonValue | undefined);
-	const text = textOf(result.content).trim();
-	let parsedText: Record<string, unknown> | undefined;
-	if (text.startsWith("{")) {
-		try {
-			parsedText = asRecord(JSON.parse(text) as unknown);
-		} catch {
-			parsedText = undefined;
-		}
-	}
-	const record = structured ?? parsedText;
-
-	const url =
-		(image ? dataUrl(image.data, image.mimeType) : undefined) ??
-		(record ? dataUrl(pickString(record, IMAGE_KEYS) ?? "", "image/png") : undefined) ??
-		(text.startsWith("data:image/") ? text : undefined);
-	if (!url) throw new Error("MCP setup tool did not return a QR code image");
-
-	return {
-		image: url,
-		expiresInSeconds: (record ? pickNumber(record, TIMEOUT_KEYS) : undefined) ?? DEFAULT_TIMEOUT_SECONDS,
-	};
+interface UpstreamEnvelope {
+	readonly success: boolean;
+	readonly data: Record<string, unknown>;
+	readonly message?: string;
 }
 
 export interface McpSetupLoginServiceOptions {
 	readonly loadServerConfig?: (serverName: string) => Promise<McpServerConfigData | undefined>;
-	readonly clientFactory?: typeof createMcpClient;
+	readonly ensureRuntime?: (runtimeId: string) => Promise<string>;
+	readonly readRuntimeSpec?: typeof readOpenMarketplaceManagedMcpRuntimeSpec;
+	readonly recordStatus?: (runtimeId: string, authenticated: boolean) => void;
+	readonly fetchImpl?: typeof fetch;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function parseEnvelope(value: unknown): UpstreamEnvelope {
+	if (!isRecord(value) || typeof value.success !== "boolean" || !isRecord(value.data)) {
+		throw new Error("MCP login endpoint returned an invalid response");
+	}
+	if (!value.success) {
+		throw new Error(typeof value.message === "string" && value.message ? value.message : "MCP login request failed");
+	}
+	return {
+		success: true,
+		data: value.data,
+		...(typeof value.message === "string" ? { message: value.message } : {}),
+	};
+}
+
+function parseStatus(data: Record<string, unknown>): McpSetupLoginStatus {
+	if (typeof data.is_logged_in !== "boolean") throw new Error("MCP login status is missing is_logged_in");
+	return {
+		state: data.is_logged_in ? "authenticated" : "unauthenticated",
+		...(typeof data.username === "string" && data.username ? { username: data.username } : {}),
+		...(typeof data.user_id === "string" && data.user_id ? { userId: data.user_id } : {}),
+	};
+}
+
+function parseDurationSeconds(value: unknown): number {
+	if (typeof value === "number" && Number.isFinite(value) && value > 0) return Math.ceil(value);
+	if (typeof value !== "string") return DEFAULT_QR_TIMEOUT_SECONDS;
+	const trimmed = value.trim();
+	if (/^\d+$/.test(trimmed)) return Number(trimmed);
+	const match = /^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+(?:\.\d+)?)s)?$/.exec(trimmed);
+	if (!match) return DEFAULT_QR_TIMEOUT_SECONDS;
+	const seconds = Number(match[1] ?? 0) * 3600 + Number(match[2] ?? 0) * 60 + Number(match[3] ?? 0);
+	return seconds > 0 ? Math.ceil(seconds) : DEFAULT_QR_TIMEOUT_SECONDS;
+}
+
+function readQrImage(value: unknown): string {
+	if (typeof value !== "string" || !value.startsWith("data:image/")) {
+		throw new Error("MCP login endpoint did not return a QR code image");
+	}
+	if (value.length > MAX_IMAGE_BYTES * 1.5) throw new Error("MCP login QR code image is too large");
+	return value;
+}
+
+/** Uses the upstream service's HTTP auth contract as the only login source of truth. */
 export class McpSetupLoginService {
 	private readonly loadServerConfig: (serverName: string) => Promise<McpServerConfigData | undefined>;
-	private readonly clientFactory: typeof createMcpClient;
-	private session?: { serverName: string; client: McpClientHandle };
+	private readonly ensureRuntime: (runtimeId: string) => Promise<string>;
+	private readonly readRuntimeSpec: typeof readOpenMarketplaceManagedMcpRuntimeSpec;
+	private readonly recordStatus: (runtimeId: string, authenticated: boolean) => void;
+	private readonly fetchImpl: typeof fetch;
+	private readonly activeRequests = new Set<AbortController>();
+	private generation = 0;
 
 	constructor(options: McpSetupLoginServiceOptions = {}) {
 		this.loadServerConfig =
 			options.loadServerConfig ?? (async (serverName) => (await readMcpConfig()).mcpServers[serverName]);
-		this.clientFactory = options.clientFactory ?? createMcpClient;
+		this.ensureRuntime = options.ensureRuntime ?? ensureOpenMarketplaceManagedMcpRuntime;
+		this.readRuntimeSpec = options.readRuntimeSpec ?? readOpenMarketplaceManagedMcpRuntimeSpec;
+		this.recordStatus = options.recordStatus ?? recordOpenMarketplaceMcpSetupStatus;
+		this.fetchImpl = options.fetchImpl ?? fetch;
 	}
 
-	/** 连接并调用登录工具；同一时刻只保留一个会话。 */
-	async start(serverName: string, tool: string): Promise<McpSetupLoginQrCode> {
-		await this.cancel();
+	async getStatus(serverName: string): Promise<McpSetupLoginStatus> {
+		const generation = this.generation;
+		const target = await this.resolveTarget(serverName);
+		const envelope = await this.request(target, target.setup.statusPath, "GET", generation);
+		const status = parseStatus(envelope.data);
+		this.recordStatus(target.runtimeId, status.state === "authenticated");
+		return status;
+	}
+
+	async start(serverName: string): Promise<McpSetupLoginStartResult> {
+		const generation = this.generation;
+		const target = await this.resolveTarget(serverName);
+		const envelope = await this.request(target, target.setup.qrcodePath, "GET", generation);
+		const status = parseStatus(envelope.data);
+		this.recordStatus(target.runtimeId, status.state === "authenticated");
+		if (status.state === "authenticated") {
+			return {
+				state: "authenticated",
+				...(status.username ? { username: status.username } : {}),
+				...(status.userId ? { userId: status.userId } : {}),
+			};
+		}
+		return {
+			state: "qr_code",
+			image: readQrImage(envelope.data.img),
+			expiresInSeconds: parseDurationSeconds(envelope.data.timeout),
+		};
+	}
+
+	async cancel(): Promise<void> {
+		this.generation += 1;
+		for (const controller of this.activeRequests) controller.abort();
+		this.activeRequests.clear();
+	}
+
+	private async resolveTarget(serverName: string): Promise<SetupTarget> {
 		const config = await this.loadServerConfig(serverName);
 		if (!config) throw new Error(`MCP server is not configured: ${serverName}`);
-		if (config.type === "http") throw new Error("Post-install setup is limited to stdio MCP servers");
-
-		const client = this.clientFactory(serverName, config as never, { timeout: CALL_TIMEOUT_MS });
-		this.session = { serverName, client };
-		try {
-			// 先握手再调工具：客户端未 initialize 时 callTool 直接抛「MCP client is not initialized」
-			await client.initialize({
-				protocolVersion: MCP_DEFAULT_PROTOCOL_VERSION,
-				clientInfo: { name: "vetta", version: VERSION },
-			});
-			const result = await client.callTool(tool, {});
-			return readSetupLoginQrCode(result);
-		} catch (error) {
-			await this.cancel();
-			throw error;
+		if (config.type !== "http" || !config.managedRuntimeId) {
+			throw new Error("QR-code login requires a managed HTTP MCP server");
 		}
+		const spec = await this.readRuntimeSpec(config.managedRuntimeId);
+		if (!spec.setup) throw new Error("Managed MCP server does not declare QR-code login endpoints");
+		const mcpUrl = await this.ensureRuntime(config.managedRuntimeId);
+		return { runtimeId: config.managedRuntimeId, baseUrl: new URL(mcpUrl).origin, setup: spec.setup };
 	}
 
-	/** 关闭会话；弹窗关闭、超时或登录成功后都要调用。 */
-	async cancel(): Promise<void> {
-		const session = this.session;
-		this.session = undefined;
-		if (!session) return;
-		await session.client.close().catch(() => undefined);
+	private async request(
+		target: SetupTarget,
+		path: string,
+		method: "GET" | "DELETE",
+		generation: number,
+	): Promise<UpstreamEnvelope> {
+		if (generation !== this.generation) throw new Error("MCP login request cancelled");
+		const controller = new AbortController();
+		this.activeRequests.add(controller);
+		const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+		try {
+			const response = await this.fetchImpl(new URL(path, target.baseUrl), {
+				method,
+				redirect: "error",
+				headers: { Accept: "application/json" },
+				signal: controller.signal,
+			});
+			if (!response.ok) throw new Error(`MCP login request failed: HTTP ${response.status}`);
+			const body: unknown = await response.json();
+			controller.signal.throwIfAborted();
+			return parseEnvelope(body);
+		} finally {
+			clearTimeout(timer);
+			this.activeRequests.delete(controller);
+		}
 	}
 }
 

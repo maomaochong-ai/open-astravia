@@ -153,6 +153,7 @@ const CHANNELS = {
 	MCP_LOGOUT: "vetta:mcp:logout",
 	MCP_HAS_AUTH: "vetta:mcp:has-auth",
 	MCP_AUTH_STATUS: "vetta:mcp:auth-status",
+	MCP_GET_SETUP_LOGIN_STATUS: "vetta:mcp:get-setup-login-status",
 	MCP_START_SETUP_LOGIN: "vetta:mcp:start-setup-login",
 	MCP_CANCEL_SETUP_LOGIN: "vetta:mcp:cancel-setup-login",
 } as const;
@@ -554,10 +555,14 @@ export function registerFsIpc(): () => void {
 		return result;
 	});
 
-	ipcMain.handle(CHANNELS.MCP_START_SETUP_LOGIN, async (_event, serverName: unknown, tool: unknown) => {
+	ipcMain.handle(CHANNELS.MCP_GET_SETUP_LOGIN_STATUS, async (_event, serverName: unknown) => {
 		assertNonEmptyString(serverName, "serverName");
-		assertNonEmptyString(tool, "tool");
-		return getDesktopMcpSetupLoginService().start(serverName.trim(), tool.trim());
+		return getDesktopMcpSetupLoginService().getStatus(serverName.trim());
+	});
+
+	ipcMain.handle(CHANNELS.MCP_START_SETUP_LOGIN, async (_event, serverName: unknown) => {
+		assertNonEmptyString(serverName, "serverName");
+		return getDesktopMcpSetupLoginService().start(serverName.trim());
 	});
 
 	ipcMain.handle(CHANNELS.MCP_CANCEL_SETUP_LOGIN, () => getDesktopMcpSetupLoginService().cancel());
@@ -602,6 +607,7 @@ export function registerFsIpc(): () => void {
 		ipcMain.removeHandler(CHANNELS.MCP_LOGOUT);
 		ipcMain.removeHandler(CHANNELS.MCP_HAS_AUTH);
 		ipcMain.removeHandler(CHANNELS.MCP_AUTH_STATUS);
+		ipcMain.removeHandler(CHANNELS.MCP_GET_SETUP_LOGIN_STATUS);
 		ipcMain.removeHandler(CHANNELS.MCP_START_SETUP_LOGIN);
 		ipcMain.removeHandler(CHANNELS.MCP_CANCEL_SETUP_LOGIN);
 		disposeModelChanged();

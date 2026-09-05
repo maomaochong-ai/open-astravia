@@ -1,12 +1,9 @@
 import { Button } from "@vetta/ui";
 import { useTranslation } from "react-i18next";
+import { useMcpSetupStatusModel } from "../../hooks/useMcpSetupStatusModel";
 import type { AbilitiesModel, McpAbility } from "../../types";
 
-/**
- * mcp 专属区块：凭证（secrets）清单与 OAuth 授权状态。
- * 「配置凭证 / 编辑配置」的入口在头部主 CTA 旁，表单复用设置页的
- * BuiltinMcpSecretsDialog / McpEditDialog。
- */
+/** Lightweight login state for managed MCP abilities; advanced configuration stays in Settings. */
 export function McpAbilitySection({
 	item,
 	model,
@@ -15,49 +12,51 @@ export function McpAbilitySection({
 	model: AbilitiesModel;
 }): JSX.Element | null {
 	const { t } = useTranslation("abilities");
-	const secrets = item.preset?.secrets ?? [];
+	const status = useMcpSetupStatusModel(item, model.refresh, model.setupPromptId);
+	if (!status) return null;
 
-	if (secrets.length === 0 && !item.usesOAuth && !item.canEdit) return null;
+	const preparingQrCode = model.setupPromptId === item.id;
+	const authenticated = status.phase === "authenticated";
+	const label = preparingQrCode
+		? t("mcp.setupLoginPreparing")
+		: authenticated
+			? status.username
+				? t("mcp.loginAuthenticatedAs", { username: status.username })
+				: t("mcp.loginAuthenticated")
+			: status.phase === "checking"
+				? t("mcp.loginChecking")
+				: status.phase === "failed"
+					? t("mcp.loginCheckFailed", { error: status.error ?? "" })
+					: t("mcp.loginUnauthenticated");
 
 	return (
-		<section className="flex flex-col gap-3">
-			<h2 className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">{t("mcp.title")}</h2>
-
-			{secrets.length > 0 ? (
-				<div className="flex flex-col gap-1.5">
-					<p className="text-[12px] text-muted-foreground">{t("mcp.secretsLead")}</p>
-					<ul className="flex flex-col gap-1">
-						{secrets.map((secret) => (
-							<li
-								key={secret.envKey}
-								className="flex items-center gap-2 py-2 text-[12px] text-foreground"
-							>
-								<span className="icon-[solar--key-minimalistic-square-linear] h-3.5 w-3.5 text-muted-foreground" />
-								<code className="font-mono">{secret.envKey}</code>
-							</li>
-						))}
-					</ul>
+		<section className="flex flex-col gap-3" aria-live="polite">
+			<h2 className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">
+				{t("mcp.loginStatusTitle")}
+			</h2>
+			<div className="flex items-center justify-between gap-4 py-1">
+				<div className="flex min-w-0 items-center gap-2.5">
+					<span
+						className={
+							preparingQrCode || status.phase === "checking"
+								? "icon-[solar--refresh-linear] h-4 w-4 shrink-0 animate-spin text-muted-foreground"
+								: authenticated
+									? "icon-[solar--check-circle-linear] h-4 w-4 shrink-0 text-emerald-400"
+									: "icon-[solar--danger-circle-linear] h-4 w-4 shrink-0 text-muted-foreground"
+						}
+					/>
+					<p className="text-[12px] text-muted-foreground">{label}</p>
 				</div>
-			) : null}
-
-			{item.usesOAuth ? (
-				<div className="flex items-center justify-between gap-3 py-2">
-					<div className="min-w-0">
-						<div className="text-[12px] font-medium text-foreground">{t("mcp.oauth")}</div>
-						<div className="text-[11px] text-muted-foreground">
-							{item.authorized ? t("mcp.oauthAuthorized") : t("mcp.oauthNotAuthorized")}
-						</div>
-					</div>
-					<Button
-						variant="outline"
-						size="sm"
-						disabled={item.busy}
-						onClick={() => (item.authorized ? model.revokeAuthorization(item) : model.setup(item))}
-					>
-						{item.authorized ? t("actions.disconnectAccount") : t("actions.connectAccount")}
+				{status.phase === "failed" && !preparingQrCode ? (
+					<Button variant="outline" size="sm" onClick={status.retry}>
+						{t("mcp.loginCheckRetry")}
 					</Button>
-				</div>
-			) : null}
+				) : !authenticated ? (
+					<Button variant="primary" size="sm" disabled={preparingQrCode} onClick={() => model.setup(item)}>
+						{t("mcp.loginAction")}
+					</Button>
+				) : null}
+			</div>
 		</section>
 	);
 }

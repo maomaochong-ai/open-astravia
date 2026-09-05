@@ -14,22 +14,25 @@ function ability(): McpAbility {
 		serverName: "demo-mcp",
 		title: "Demo",
 		catalogSource: { kind: "github", id: "official", name: "official" },
-		postInstallSetup: { kind: "agent-tool", tool: "get_login_qrcode" },
+		postInstallSetup: { kind: "http-qrcode" },
 	} as unknown as McpAbility;
 }
 
 function stubVetta(overrides?: {
-	start?: () => Promise<{ image: string; expiresInSeconds: number }>;
-	status?: () => Promise<Record<string, boolean>>;
+	start?: () => Promise<{ state: "qr_code"; image: string; expiresInSeconds: number }>;
+	status?: () => Promise<{ state: "authenticated" | "unauthenticated" }>;
 }) {
 	const cancelSetupLogin = vi.fn(async () => undefined);
-	const startSetupLogin = vi.fn(overrides?.start ?? (async () => ({ image: QR, expiresInSeconds: 60 })));
-	const getOpenMcpSetupStatus = vi.fn(overrides?.status ?? (async () => ({})));
+	const startSetupLogin = vi.fn(
+		overrides?.start ?? (async () => ({ state: "qr_code" as const, image: QR, expiresInSeconds: 60 })),
+	);
+	const getSetupLoginStatus = vi.fn(
+		overrides?.status ?? (async () => ({ state: "unauthenticated" as const })),
+	);
 	(window as unknown as { vetta: unknown }).vetta = {
-		mcp: { startSetupLogin, cancelSetupLogin },
-		abilities: { getOpenMcpSetupStatus },
+		mcp: { startSetupLogin, getSetupLoginStatus, cancelSetupLogin },
 	};
-	return { startSetupLogin, cancelSetupLogin, getOpenMcpSetupStatus };
+	return { startSetupLogin, cancelSetupLogin, getSetupLoginStatus };
 }
 
 describe("useMcpSetupLoginModel", () => {
@@ -43,14 +46,14 @@ describe("useMcpSetupLoginModel", () => {
 	it("显示二维码，并在完成标志出现后收尾", async () => {
 		let completed = false;
 		const stub = stubVetta({
-			status: async (): Promise<Record<string, boolean>> => (completed ? { "official:demo-mcp": true } : {}),
+			status: async () => ({ state: completed ? ("authenticated" as const) : ("unauthenticated" as const) }),
 		});
 		const onCompleted = vi.fn();
 		const { result } = renderHook(() => useMcpSetupLoginModel({ item: ability(), onCompleted }));
 
 		await waitFor(() => expect(result.current.phase).toBe("scanning"));
 		expect(result.current.image).toBe(QR);
-		expect(stub.startSetupLogin).toHaveBeenCalledWith("demo-mcp", "get_login_qrcode");
+		expect(stub.startSetupLogin).toHaveBeenCalledWith("demo-mcp");
 
 		completed = true;
 		await act(async () => {
@@ -69,11 +72,11 @@ describe("useMcpSetupLoginModel", () => {
 			await vi.advanceTimersByTimeAsync(60_000);
 		});
 		expect(result.current.phase).toBe("expired");
-		const pollsAtExpiry = stub.getOpenMcpSetupStatus.mock.calls.length;
+		const pollsAtExpiry = stub.getSetupLoginStatus.mock.calls.length;
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(10_000);
 		});
-		expect(stub.getOpenMcpSetupStatus.mock.calls.length).toBe(pollsAtExpiry);
+		expect(stub.getSetupLoginStatus.mock.calls.length).toBe(pollsAtExpiry);
 
 		act(() => result.current.retry());
 		await waitFor(() => expect(result.current.phase).toBe("scanning"));

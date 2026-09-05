@@ -1,17 +1,17 @@
 import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import AdmZip from "adm-zip";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { MANAGED_HTTP_RUNTIME_FILE } from "./open-marketplace-managed-http-runtime";
 import type { OpenMarketplaceMcpRuntime } from "./open-marketplace-mcp";
 import { OpenMarketplaceMcpRuntimeInstaller } from "./open-marketplace-mcp-runtime";
 
 const temporaryRoots: string[] = [];
 const PLATFORM_TAG = "win32-x64";
-const RUNTIME_COMMAND = `\${VETTA_MCP_EXECUTABLE}`;
 const PORT_TOKEN = `\${VETTA_MCP_PORT}`;
-const DATA_DIR_TOKEN = `\${VETTA_MCP_DATA_DIR}`;
+const URL_TOKEN = `\${VETTA_MCP_URL}`;
 
 async function temporaryRoot(): Promise<string> {
 	const root = await mkdtemp(join(tmpdir(), "vetta-mcp-runtime-test-"));
@@ -36,6 +36,15 @@ function runtime(
 ): OpenMarketplaceMcpRuntime {
 	return {
 		kind: "managed-binary",
+		process: {
+			args: [`-port=:${PORT_TOKEN}`],
+			env: {
+				DATA: `\${VETTA_MCP_DATA_DIR}`,
+				CACHE: `\${VETTA_MCP_CACHE_DIR}`,
+				RUNTIME: `\${VETTA_MCP_RUNTIME_DIR}`,
+			},
+		},
+		service: { kind: "http-mcp", path: "/mcp", readyTimeoutMs: 300_000 },
 		platforms: {
 			[PLATFORM_TAG]: {
 				url: "https://github.com/example/demo/releases/download/v1/demo.exe",
@@ -48,41 +57,56 @@ function runtime(
 	};
 }
 
+const server = { type: "http", url: URL_TOKEN } as const;
+
 afterEach(async () => {
 	await Promise.all(temporaryRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
 
 describe("OpenMarketplaceMcpRuntimeInstaller", () => {
-	it("installs a verified executable and resolves runtime/data/cache tokens", async () => {
+	it("installs a verified runtime and emits a direct HTTP config plus lifecycle spec", async () => {
 		const rootDir = await temporaryRoot();
 		const artifact = Buffer.from("managed-mcp-runtime");
 		const fetchArtifact = vi.fn(async () => response(artifact));
 		const installer = new OpenMarketplaceMcpRuntimeInstaller({ rootDir, platformTag: PLATFORM_TAG, fetchArtifact });
 		const progress: string[] = [];
 
-		const server = await installer.prepare({
+		const installed = await installer.prepare({
 			sourceId: "official",
 			slug: "demo-mcp",
 			version: "1.0.0",
 			runtime: runtime(artifact),
-			server: {
-				command: RUNTIME_COMMAND,
-				args: [`--data=\${VETTA_MCP_DATA_DIR}`],
-				env: {
-					RUNTIME_DIR: `\${VETTA_MCP_RUNTIME_DIR}`,
-					CACHE_DIR: `\${VETTA_MCP_CACHE_DIR}`,
-				},
+			server,
+			setup: {
+				kind: "http-qrcode",
+				statusPath: "/api/v1/login/status",
+				qrcodePath: "/api/v1/login/qrcode",
+				logoutPath: "/api/v1/login/cookies",
 			},
 			onProgress: (event) => progress.push(event.phase),
 		});
 
-		expect(server.type).toBeUndefined();
-		if (server.type === "http") throw new Error("Expected stdio server");
-		expect(server.command).toMatch(/demo-mcp-[a-f0-9]{12}[/\\]runtime[/\\]versions[/\\]1\.0\.0[/\\]demo\.exe$/);
-		await expect(readFile(server.command, "utf8")).resolves.toBe("managed-mcp-runtime");
-		expect(server.args?.[0]).toContain(join(dirname(dirname(dirname(dirname(server.command)))), "data"));
-		expect(server.env?.RUNTIME_DIR).toBe(dirname(server.command));
-		expect(server.env?.CACHE_DIR).toContain(join("demo-mcp-"));
+		expect(installed).toMatchObject({
+			type: "http",
+			url: "http://127.0.0.1/mcp",
+			managedRuntimeId: expect.stringMatching(/^demo-mcp-[a-f0-9]{12}$/),
+		});
+		if (installed.type !== "http" || !installed.managedRuntimeId) throw new Error("Expected managed HTTP config");
+		const abilityDirectory = join(rootDir, installed.managedRuntimeId);
+		const spec = JSON.parse(await readFile(join(abilityDirectory, MANAGED_HTTP_RUNTIME_FILE), "utf8")) as Record<
+			string,
+			unknown
+		>;
+		expect(spec).toMatchObject({
+			schemaVersion: 1,
+			id: installed.managedRuntimeId,
+			args: [`-port=:${PORT_TOKEN}`],
+			mcpPath: "/mcp",
+			readyTimeoutMs: 300_000,
+			setup: { kind: "http-qrcode", statusPath: "/api/v1/login/status" },
+		});
+		expect(spec.command).toMatch(/runtime[/\\]versions[/\\]1\.0\.0[/\\]demo\.exe$/);
+		expect((spec.env as Record<string, string>).DATA).toMatch(/demo-mcp-[0-9a-f]+[/\\]data$/);
 		expect(fetchArtifact).toHaveBeenCalledOnce();
 		expect(progress).toEqual(["preparing", "downloading", "downloading", "verifying", "installing", "ready"]);
 	});
@@ -99,19 +123,17 @@ describe("OpenMarketplaceMcpRuntimeInstaller", () => {
 			slug: "demo-mcp",
 			version: "1.0.0",
 			runtime: runtime(artifact, { archive: "zip", executable: "release/bin/demo" }),
-			server: { command: RUNTIME_COMMAND },
+			server,
 		} as const;
 
 		const first = await installer.prepare(input);
 		const second = await installer.prepare(input);
 
-		if (first.type === "http" || second.type === "http") throw new Error("Expected stdio server");
-		await expect(readFile(first.command, "utf8")).resolves.toBe("zip-runtime");
-		expect(second.command).toBe(first.command);
+		expect(second).toEqual(first);
 		expect(fetchArtifact).toHaveBeenCalledOnce();
 	});
 
-	it("preserves the installed version when a replacement fails integrity verification", async () => {
+	it("preserves the installed version when replacement integrity verification fails", async () => {
 		const rootDir = await temporaryRoot();
 		const firstArtifact = Buffer.from("known-good-runtime");
 		const installer = new OpenMarketplaceMcpRuntimeInstaller({
@@ -127,9 +149,10 @@ describe("OpenMarketplaceMcpRuntimeInstaller", () => {
 			slug: "demo-mcp",
 			version: "1.0.0",
 			runtime: runtime(firstArtifact),
-			server: { command: RUNTIME_COMMAND },
+			server,
 		});
-		if (first.type === "http") throw new Error("Expected stdio server");
+		if (first.type !== "http" || !first.managedRuntimeId) throw new Error("Expected managed HTTP config");
+		const executable = join(rootDir, first.managedRuntimeId, "runtime", "versions", "1.0.0", "demo.exe");
 
 		await expect(
 			installer.prepare({
@@ -137,10 +160,10 @@ describe("OpenMarketplaceMcpRuntimeInstaller", () => {
 				slug: "demo-mcp",
 				version: "1.0.0",
 				runtime: runtime(Buffer.from("expected-new-runtime")),
-				server: { command: RUNTIME_COMMAND },
+				server,
 			}),
 		).rejects.toThrow("SHA-256 mismatch");
-		await expect(readFile(first.command, "utf8")).resolves.toBe("known-good-runtime");
+		await expect(readFile(executable, "utf8")).resolves.toBe("known-good-runtime");
 	});
 
 	it("rejects unsupported platforms and escaping executable paths before downloading", async () => {
@@ -154,11 +177,8 @@ describe("OpenMarketplaceMcpRuntimeInstaller", () => {
 				sourceId: "official",
 				slug: "demo-mcp",
 				version: "1.0.0",
-				runtime: {
-					...runtime(artifact),
-					platforms: { "linux-arm64": runtime(artifact).platforms[PLATFORM_TAG]! },
-				},
-				server: { command: RUNTIME_COMMAND },
+				runtime: { ...runtime(artifact), platforms: { "linux-arm64": runtime(artifact).platforms[PLATFORM_TAG]! } },
+				server,
 			}),
 		).rejects.toThrow("does not support platform");
 
@@ -168,13 +188,13 @@ describe("OpenMarketplaceMcpRuntimeInstaller", () => {
 				slug: "demo-mcp",
 				version: "1.0.0",
 				runtime: runtime(artifact, { executable: "../escape.exe" }),
-				server: { command: RUNTIME_COMMAND },
+				server,
 			}),
 		).rejects.toThrow("must stay inside the runtime directory");
 		expect(fetchArtifact).not.toHaveBeenCalled();
 	});
 
-	it("removes runtime files while preserving user data", async () => {
+	it("removes runtime and lifecycle files while preserving user data", async () => {
 		const rootDir = await temporaryRoot();
 		const artifact = Buffer.from("runtime");
 		const installer = new OpenMarketplaceMcpRuntimeInstaller({
@@ -182,78 +202,22 @@ describe("OpenMarketplaceMcpRuntimeInstaller", () => {
 			platformTag: PLATFORM_TAG,
 			fetchArtifact: async () => response(artifact),
 		});
-		const server = await installer.prepare({
+		const installed = await installer.prepare({
 			sourceId: "official",
 			slug: "demo-mcp",
 			version: "1.0.0",
 			runtime: runtime(artifact),
-			server: { command: RUNTIME_COMMAND },
+			server,
 		});
-		if (server.type === "http") throw new Error("Expected stdio server");
-		const abilityDirectory = dirname(dirname(dirname(dirname(server.command))));
+		if (installed.type !== "http" || !installed.managedRuntimeId) throw new Error("Expected managed HTTP config");
+		const abilityDirectory = join(rootDir, installed.managedRuntimeId);
 		await mkdir(join(abilityDirectory, "data"), { recursive: true });
 		await writeFile(join(abilityDirectory, "data", "cookies.json"), "session", "utf8");
 
 		await installer.remove("official", "demo-mcp");
 
-		await expect(readFile(server.command, "utf8")).rejects.toThrow();
+		await expect(readFile(join(abilityDirectory, MANAGED_HTTP_RUNTIME_FILE), "utf8")).rejects.toThrow();
+		await expect(readFile(join(abilityDirectory, "runtime", "versions", "1.0.0", "demo.exe"))).rejects.toThrow();
 		await expect(readFile(join(abilityDirectory, "data", "cookies.json"), "utf8")).resolves.toBe("session");
-	});
-
-	it("reports post-install setup completion from the ability data directory", async () => {
-		const root = await temporaryRoot();
-		const installer = new OpenMarketplaceMcpRuntimeInstaller({ rootDir: root, platformTag: PLATFORM_TAG });
-		const dataDirectory = installer.dataDirectory("official", "demo-mcp");
-
-		expect(installer.isSetupComplete("official", "demo-mcp", "cookies.json")).toBe(false);
-
-		await mkdir(dataDirectory, { recursive: true });
-		await writeFile(join(dataDirectory, "cookies.json"), "{}", "utf-8");
-
-		expect(installer.isSetupComplete("official", "demo-mcp", "cookies.json")).toBe(true);
-		// 另一个来源的同名能力有独立数据目录，不能互相认领登录态
-		expect(installer.isSetupComplete("other", "demo-mcp", "cookies.json")).toBe(false);
-		expect(() => installer.isSetupComplete("official", "demo-mcp", "../../escape.json")).toThrow();
-	});
-
-	it("resolves a managed HTTP service into a bridge command", async () => {
-		const buffer = Buffer.from("binary");
-		const root = await temporaryRoot();
-		const installer = new OpenMarketplaceMcpRuntimeInstaller({
-			rootDir: root,
-			platformTag: PLATFORM_TAG,
-			fetchArtifact: async () => response(buffer),
-		});
-
-		const server = await installer.prepare({
-			sourceId: "official",
-			slug: "demo-mcp",
-			version: "1.0.0",
-			runtime: {
-				...runtime(buffer, { archive: "file", executable: "demo.exe" }),
-				service: { kind: "http-mcp", path: "/mcp", readyTimeoutMs: 300_000 },
-			},
-			server: {
-				command: RUNTIME_COMMAND,
-				args: [`-port=:${PORT_TOKEN}`],
-				env: { COOKIES_PATH: `${DATA_DIR_TOKEN}/cookies.json` },
-			} as never,
-		});
-
-		// mcp.json 里落的是桥接：真正的二进制、端口占位符与数据目录都收进 spec
-		expect(server).toMatchObject({ command: process.execPath, env: { ELECTRON_RUN_AS_NODE: "1" } });
-		const args = (server as { args: string[] }).args;
-		expect(args[0]).toMatch(/mcp-http-bridge\.mjs$/);
-		const spec = JSON.parse(args[1] ?? "{}") as Record<string, unknown>;
-		expect(spec).toMatchObject({
-			schemaVersion: 1,
-			args: [`-port=:${PORT_TOKEN}`],
-			path: "/mcp",
-			readyTimeoutMs: 300_000,
-		});
-		expect(spec.command).toMatch(/demo\.exe$/);
-		expect((spec.env as Record<string, string>).COOKIES_PATH).toMatch(
-			/demo-mcp-[0-9a-f]+[\\/]data[\\/]cookies\.json$/,
-		);
 	});
 });

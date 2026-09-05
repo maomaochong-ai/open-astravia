@@ -7,6 +7,7 @@ import { getVettaHomePath, VETTA_HOME_ENV } from "@vetta/action-rpc";
 import { app, type BrowserWindow, dialog, ipcMain, nativeImage, nativeTheme, protocol, session, shell } from "electron";
 import { APP_RUNTIME_NAME } from "../shared/app-identity.js";
 import { isCloudBuildEnabled } from "../shared/feature-flags.js";
+import { stopAllOpenMarketplaceMcpRuntimes } from "./abilities/open-marketplace/open-marketplace-mcp-runtime-host.js";
 import { ActionApprovalBroker } from "./app-actions/approval-broker.js";
 import { createAppActionSystem } from "./app-actions/index.js";
 import { createActionRpcRuntime } from "./app-actions/rpc.js";
@@ -905,6 +906,7 @@ setQuitCleanup(async () => {
 		shutdownScheduler(),
 		shutdownBatchTaskExecutor(),
 		shutdownBrowserAutomationService(),
+		stopAllOpenMarketplaceMcpRuntimes(),
 		knowledgeShutdown,
 		uiohookShutdown,
 	]);

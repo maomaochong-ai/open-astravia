@@ -19,7 +19,12 @@ import {
 	type OpenMarketplaceInstallerDependencies,
 } from "./open-marketplace-installer.js";
 import { readOpenMarketplaceMcpPackage } from "./open-marketplace-mcp.js";
-import { OpenMarketplaceMcpRuntimeInstaller } from "./open-marketplace-mcp-runtime.js";
+import {
+	getRecordedOpenMarketplaceMcpSetupStatus,
+	openMarketplaceMcpRuntimeInstaller,
+	removeOpenMarketplaceManagedMcpRuntime,
+	stopOpenMarketplaceManagedMcpRuntime,
+} from "./open-marketplace-mcp-runtime-host.js";
 import { createOpenMarketplacePluginArchive, validateOpenMarketplacePlugin } from "./open-marketplace-plugin.js";
 
 const dependencies: OpenMarketplaceInstallerDependencies = {
@@ -31,10 +36,6 @@ const dependencies: OpenMarketplaceInstallerDependencies = {
 	recordEvent: recordSkillResourceEvent,
 };
 
-const mcpRuntimeInstaller = new OpenMarketplaceMcpRuntimeInstaller({
-	rootDir: join(getVettaHomePath(), "abilities", "mcp"),
-});
-
 export async function prepareOpenMarketplaceMcpInDesktop(
 	snapshotRoot: string,
 	ability: Extract<MarketplaceAbilityManifest, { type: "mcp" }>,
@@ -44,12 +45,14 @@ export async function prepareOpenMarketplaceMcpInDesktop(
 	const sourceDir = join(snapshotRoot, ability.source.path);
 	const mcpPackage = readOpenMarketplaceMcpPackage(sourceDir, ability);
 	if (!mcpPackage.runtime) return mcpPackage.server;
-	return mcpRuntimeInstaller.prepare({
+	await stopOpenMarketplaceManagedMcpRuntime(openMarketplaceMcpRuntimeInstaller.runtimeId(sourceId, ability.slug));
+	return openMarketplaceMcpRuntimeInstaller.prepare({
 		sourceId,
 		slug: ability.slug,
 		version: ability.version,
 		runtime: mcpPackage.runtime,
 		server: mcpPackage.server,
+		setup: mcpPackage.setup,
 		onProgress,
 	});
 }
@@ -66,11 +69,13 @@ export function readOpenMarketplaceMcpSetupStatusInDesktop(
 	const sourceDir = join(snapshotRoot, ability.source.path);
 	const { setup } = readOpenMarketplaceMcpPackage(sourceDir, ability);
 	if (!setup) return undefined;
-	return mcpRuntimeInstaller.isSetupComplete(sourceId, ability.slug, setup.completedWhen.dataFile);
+	return getRecordedOpenMarketplaceMcpSetupStatus(
+		openMarketplaceMcpRuntimeInstaller.runtimeId(sourceId, ability.slug),
+	);
 }
 
-export function removeOpenMarketplaceMcpRuntimeInDesktop(sourceId: string, slug: string): Promise<void> {
-	return mcpRuntimeInstaller.remove(sourceId, slug);
+export async function removeOpenMarketplaceMcpRuntimeInDesktop(sourceId: string, slug: string): Promise<void> {
+	await removeOpenMarketplaceManagedMcpRuntime(sourceId, slug);
 }
 
 export async function installOpenMarketplaceAbilityInDesktop(

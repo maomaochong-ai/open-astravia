@@ -1,6 +1,7 @@
 import { basename } from "node:path";
 import { pathToFileURL } from "node:url";
 import { CONFIG_DIR_NAME, VERSION } from "@vetta/coding-agent/config";
+import type { McpServerConfig } from "@vetta/runtime-mcp";
 import {
 	EMPTY_MCP_CONFIG_SOURCE,
 	MCP_APP_CLIENT_CAPABILITY,
@@ -8,7 +9,8 @@ import {
 	type McpServerInteractionHandlers,
 	type McpServerSupervisor,
 } from "@vetta/runtime-mcp";
-import { createNodeMcpSupervisor } from "@vetta/runtime-node/mcp";
+import { createMcpClient, createNodeMcpSupervisor } from "@vetta/runtime-node/mcp";
+import { ensureOpenMarketplaceManagedMcpRuntime } from "../abilities/open-marketplace/open-marketplace-mcp-runtime-host.js";
 import { getDesktopMcpElicitationBroker } from "../conversations/mcp-elicitation-broker.js";
 import { getAppLogger } from "../logger.js";
 
@@ -39,6 +41,12 @@ export function createDesktopMcpInteractionHandlers(
 	};
 }
 
+function managedRuntimeId(config: unknown): string | undefined {
+	if (config === null || typeof config !== "object") return undefined;
+	const value = (config as Record<string, unknown>).managedRuntimeId;
+	return typeof value === "string" && value ? value : undefined;
+}
+
 /** Selects the Node MCP implementation at the Desktop Composition Root. */
 export function createDesktopMcpSupervisor(options: DesktopMcpSupervisorOptions): McpServerSupervisor {
 	let log: ReturnType<typeof getAppLogger> | undefined;
@@ -63,6 +71,14 @@ export function createDesktopMcpSupervisor(options: DesktopMcpSupervisorOptions)
 		enabled: true,
 		configSource: options.dynamicOnly ? EMPTY_MCP_CONFIG_SOURCE : undefined,
 		includeBuiltinServers: !options.dynamicOnly,
+		clientFactory: (name, config, clientOptions) => {
+			const runtimeId = config.type === "http" ? managedRuntimeId(config) : undefined;
+			const resolvedConfig: McpServerConfig =
+				config.type === "http" && runtimeId
+					? { ...config, resolveUrl: () => ensureOpenMarketplaceManagedMcpRuntime(runtimeId) }
+					: config;
+			return createMcpClient(name, resolvedConfig, clientOptions);
+		},
 		onDiagnostic: writeDiagnostic,
 		interactionHandlers,
 		clientCapabilities: {

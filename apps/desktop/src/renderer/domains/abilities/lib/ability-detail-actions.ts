@@ -28,7 +28,9 @@ export function resolveAbilitySecondaryActions(item: AbilityItem, status: Abilit
 	if (status === "readonly" || status === "available") return [];
 	const actions: AbilitySecondaryAction[] = [];
 	if (status === "enabled") actions.push("disable");
-	if (item.type === "mcp" && (item.canConfigure || item.usesOAuth)) actions.push("configure");
+	if (item.type === "mcp" && !item.postInstallSetup && (item.canConfigure || item.usesOAuth)) {
+		actions.push("configure");
+	}
 	actions.push("remove");
 	return actions;
 }

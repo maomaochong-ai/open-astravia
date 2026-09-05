@@ -1,12 +1,10 @@
 /**
  * 安装后步骤（`mcp.json` 的 `setup`）的执行状态机：
- * 起会话拿二维码 → 轮询完成标志 → 关闭时收掉连接。
- * 二维码由 MCP 服务产出，登录态也由它自己落盘，这里只负责取、显示和等。
+ * 请求上游二维码 → 轮询上游登录状态 → 关闭时取消未完成请求。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { McpAbility } from "../types";
 
-/** 完成判定读的是能力数据目录里的标志文件，轮询频率取一个人眼可接受又不浪费的值。 */
 const POLL_INTERVAL_MS = 2000;
 
 export type McpSetupLoginPhase = "preparing" | "scanning" | "completed" | "expired" | "failed";
@@ -46,39 +44,57 @@ export function useMcpSetupLoginModel({
 	}, []);
 
 	const serverName = item?.serverName;
-	const tool = item?.postInstallSetup?.tool;
-	const statusKey = item && item.catalogSource.kind === "github" ? `${item.catalogSource.id}:${item.slug}` : undefined;
 
 	const start = useCallback((): void => {
-		if (!serverName || !tool || !statusKey) return;
+		if (!serverName) return;
 		stopTimers();
 		const run = ++runRef.current;
 		const isStale = (): boolean => run !== runRef.current;
 		setPhase("preparing");
 		setImage(undefined);
 		setError(undefined);
+		let polling = false;
 
 		const poll = (): void => {
-			void window.vetta.abilities
-				.getOpenMcpSetupStatus()
+			if (polling || isStale()) return;
+			polling = true;
+			void window.vetta.mcp
+				.getSetupLoginStatus(serverName)
 				.then((status) => {
-					if (isStale() || status[statusKey] !== true) return;
+					if (isStale() || status.state !== "authenticated") return;
+					runRef.current += 1;
 					stopTimers();
 					setPhase("completed");
+					void window.vetta.mcp.cancelSetupLogin().catch(() => undefined);
 					onCompletedRef.current();
 				})
-				.catch(() => undefined);
+				.catch((reason: unknown) => {
+					if (isStale()) return;
+					runRef.current += 1;
+					stopTimers();
+					setError(errorMessage(reason));
+					setPhase("failed");
+				})
+				.finally(() => {
+					polling = false;
+				});
 		};
 
 		void window.vetta.mcp
-			.startSetupLogin(serverName, tool)
+			.startSetupLogin(serverName)
 			.then((qrCode) => {
 				if (isStale()) return;
+				if (qrCode.state === "authenticated") {
+					setPhase("completed");
+					onCompletedRef.current();
+					return;
+				}
 				setImage(qrCode.image);
 				setPhase("scanning");
 				timersRef.current.poll = setInterval(poll, POLL_INTERVAL_MS);
 				timersRef.current.expiry = setTimeout(() => {
 					if (isStale()) return;
+					runRef.current += 1;
 					stopTimers();
 					setPhase((current) => (current === "scanning" ? "expired" : current));
 				}, qrCode.expiresInSeconds * 1000);
@@ -88,7 +104,7 @@ export function useMcpSetupLoginModel({
 				setError(errorMessage(reason));
 				setPhase("failed");
 			});
-	}, [serverName, statusKey, stopTimers, tool]);
+	}, [serverName, stopTimers]);
 
 	useEffect(() => {
 		start();

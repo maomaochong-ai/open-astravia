@@ -4,12 +4,13 @@ import { z } from "zod";
 import type { McpServerConfigData } from "../../../preload/api-types/mcp.js";
 import { validateMcpConfig } from "../../mcp-config-validation.js";
 import type { MarketplaceAbilityManifest } from "./marketplace-schema.js";
+import { isManagedHttpPath } from "./open-marketplace-managed-http-runtime.js";
 
 const MCP_MANIFEST_FILE = "mcp.json";
 const PLATFORM_TAG_PATTERN = /^(win32|darwin|linux)-(x64|arm64)$/;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
-const RUNTIME_EXECUTABLE_TOKEN = `\${VETTA_MCP_EXECUTABLE}`;
 const RUNTIME_PORT_TOKEN = `\${VETTA_MCP_PORT}`;
+const RUNTIME_URL_TOKEN = `\${VETTA_MCP_URL}`;
 
 function isSafeRuntimeRelativePath(value: string): boolean {
 	const slashPath = value.replace(/\\/g, "/");
@@ -53,33 +54,23 @@ const managedBinaryPlatformSchema = z
 	})
 	.strict();
 
-/**
- * 安装后仍需用户完成一次的步骤。当前只有 agent-tool 一种：由 Agent 在对话里调用
- * 指定 MCP 工具（如小红书的扫码登录），完成后服务会在自己的数据目录留下标志文件。
- */
 const mcpSetupSchema = z
 	.object({
-		kind: z.literal("agent-tool"),
-		tool: z.string().min(1),
-		completedWhen: z
-			.object({
-				dataFile: z
-					.string()
-					.min(1)
-					.refine(isSafeRuntimeRelativePath, "completedWhen.dataFile must be a safe relative path"),
-			})
-			.strict(),
+		kind: z.literal("http-qrcode"),
+		statusPath: z.string().refine(isManagedHttpPath),
+		qrcodePath: z.string().refine(isManagedHttpPath),
+		logoutPath: z.string().refine(isManagedHttpPath),
 	})
 	.strict();
 
 /**
  * 二进制本身就是个本地 HTTP MCP 服务（只监听端口、没有 stdio 模式）时用这个声明。
- * 桌面端会拉起它并用桥接把 stdio 转到该端点；端口在启动时分配，用 `${VETTA_MCP_PORT}` 占位。
+ * Desktop 直接连接其 Streamable HTTP 端点；端口在每次启动时分配。
  */
 const managedServiceSchema = z
 	.object({
 		kind: z.literal("http-mcp"),
-		path: z.string().startsWith("/"),
+		path: z.string().refine(isManagedHttpPath),
 		readyTimeoutMs: z.number().int().positive().max(600_000).optional(),
 	})
 	.strict();
@@ -87,7 +78,14 @@ const managedServiceSchema = z
 const managedBinaryRuntimeSchema = z
 	.object({
 		kind: z.literal("managed-binary"),
-		service: managedServiceSchema.optional(),
+		process: z
+			.object({
+				args: z.array(z.string()).default([]),
+				env: z.record(z.string(), z.string()).default({}),
+				cwd: z.string().optional(),
+			})
+			.strict(),
+		service: managedServiceSchema,
 		platforms: z
 			.record(z.string().regex(PLATFORM_TAG_PATTERN), managedBinaryPlatformSchema)
 			.refine((value) => Object.keys(value).length > 0, "runtime must support at least one platform"),
@@ -105,15 +103,15 @@ const openMarketplaceMcpManifestV1Schema = z
 	})
 	.strict();
 
-const openMarketplaceMcpManifestV2Schema = openMarketplaceMcpManifestV1Schema.extend({
-	schemaVersion: z.literal(2),
+const openMarketplaceMcpManifestV3Schema = openMarketplaceMcpManifestV1Schema.extend({
+	schemaVersion: z.literal(3),
 	runtime: managedBinaryRuntimeSchema.optional(),
 	setup: mcpSetupSchema.optional(),
 });
 
 const openMarketplaceMcpManifestSchema = z.discriminatedUnion("schemaVersion", [
 	openMarketplaceMcpManifestV1Schema,
-	openMarketplaceMcpManifestV2Schema,
+	openMarketplaceMcpManifestV3Schema,
 ]);
 
 export type OpenMarketplaceMcpRuntime = z.infer<typeof managedBinaryRuntimeSchema>;
@@ -131,8 +129,7 @@ export interface OpenMarketplaceMcpConfig {
 		supported: boolean;
 	};
 	mcp_setup?: {
-		kind: "agent-tool";
-		tool: string;
+		kind: "http-qrcode";
 	};
 	mcp_parameters: Array<{
 		key: string;
@@ -170,24 +167,21 @@ function loadOpenMarketplaceMcpPackage(
 	}
 	const server = validateMcpConfig({ mcpServers: { [ability.slug]: manifest.server } }).mcpServers[ability.slug];
 	if (!server) throw new Error(`MCP package server is missing: ${ability.slug}`);
-	const runtime = manifest.schemaVersion === 2 ? manifest.runtime : undefined;
+	const runtime = manifest.schemaVersion === 3 ? manifest.runtime : undefined;
 	if (runtime) {
-		if (server.type === "http") throw new Error("Managed MCP runtimes require a stdio server");
-		if (server.command !== RUNTIME_EXECUTABLE_TOKEN) {
-			throw new Error(`Managed MCP runtime command must be exactly ${RUNTIME_EXECUTABLE_TOKEN}`);
+		if (server.type !== "http") throw new Error("Managed HTTP MCP runtimes require an HTTP server");
+		if (server.url !== RUNTIME_URL_TOKEN) {
+			throw new Error(`Managed HTTP MCP runtime URL must be exactly ${RUNTIME_URL_TOKEN}`);
 		}
-		// 端口是桥接分配的，服务必须真的接受它，否则永远等不到就绪
 		if (
-			runtime.service &&
-			![...(server.args ?? []), ...Object.values(server.env ?? {})].some((value) =>
+			![...runtime.process.args, ...Object.values(runtime.process.env)].some((value) =>
 				value.includes(RUNTIME_PORT_TOKEN),
 			)
 		) {
 			throw new Error(`Managed MCP services must pass ${RUNTIME_PORT_TOKEN} to the process`);
 		}
 	}
-	const setup = manifest.schemaVersion === 2 ? manifest.setup : undefined;
-	// 完成标志写在受管数据目录里，非受管运行时没有这个目录可探测。
+	const setup = manifest.schemaVersion === 3 ? manifest.setup : undefined;
 	if (setup && !runtime) throw new Error("Post-install setup requires a managed MCP runtime");
 	return { manifest, server, ...(runtime ? { runtime } : {}), ...(setup ? { setup } : {}) };
 }
@@ -201,7 +195,7 @@ export function validateOpenMarketplaceMcp(
 		mcp: { ...server },
 		mcp_browser_auth: manifest.browserAuth,
 		mcp_parameters: manifest.parameters,
-		...(setup ? { mcp_setup: { kind: setup.kind, tool: setup.tool } } : {}),
+		...(setup ? { mcp_setup: { kind: setup.kind } } : {}),
 		...(runtime
 			? {
 					mcp_runtime: {

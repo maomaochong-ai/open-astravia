@@ -126,8 +126,8 @@ export interface McpAbility extends AbilityBase {
 	usesOAuth: boolean;
 	authorized: boolean;
 	canConfigure: boolean;
-	/** 市场声明的安装后步骤；`setupRequired` 为真且有此项时，提示用户去对话里完成。 */
-	postInstallSetup?: { kind: "agent-tool"; tool: string };
+	/** 市场声明的上游 HTTP 二维码登录流程。 */
+	postInstallSetup?: { kind: "http-qrcode" };
 	canEdit: boolean;
 }
 

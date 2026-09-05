@@ -335,7 +335,7 @@ describe("buildMcpAbilities", () => {
 			config: {
 				mcp: { command: "/runtime/xhs", args: ["-transport=stdio"] },
 				mcp_parameters: [{ key: "XHS_PROXY", label: "Proxy URL", required: false, secret: false }],
-				mcp_setup: { kind: "agent-tool" as const, tool: "get_login_qrcode" },
+				mcp_setup: { kind: "http-qrcode" as const },
 			},
 			origin: {
 				kind: "github-marketplace" as const,
@@ -364,7 +364,7 @@ describe("buildMcpAbilities", () => {
 		} as unknown as Partial<LocalAbilityState>;
 
 		const pending = buildMcpAbilities([ability], createState(installed), t)[0];
-		expect(pending?.postInstallSetup).toEqual({ kind: "agent-tool", tool: "get_login_qrcode" });
+		expect(pending?.postInstallSetup).toEqual({ kind: "http-qrcode" });
 		expect(pending?.setupRequired).toBe(true);
 
 		const done = buildMcpAbilities(

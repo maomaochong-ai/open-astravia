@@ -208,7 +208,16 @@
 		"setupLoginFailed": "Could not fetch the QR code: {{error}}",
 		"setupLoginRetry": "Fetch again",
 		"setupLoginManual": "You can also ask the agent to call the {{tool}} tool in a chat.",
-		"setupLoginClose": "Close"
+		"setupLoginClose": "Close",
+		"loginStatusTitle": "Sign-in status",
+		"loginChecking": "Checking the current Xiaohongshu session…",
+		"loginAuthenticated": "Signed in and ready to use",
+		"loginAuthenticatedAs": "Signed in as {{username}}",
+		"loginUnauthenticated": "Not signed in. Scan a QR code before using this ability.",
+		"loginCheckFailed": "Could not verify the sign-in status: {{error}}",
+		"loginCheckRetry": "Check again",
+		"loginAction": "Sign in to Xiaohongshu",
+		"loginRequired": "Sign-in required"
 	},
 	"bundle": {
 		"install": {
