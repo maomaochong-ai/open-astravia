@@ -58,7 +58,7 @@ jobs:
           key: quality-bun-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock', 'package.json') }}
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        uses: ./.github/actions/install-bun-dependencies
 
       - name: Typecheck
         run: bun run --cwd apps/docs-site check

@@ -1,0 +1,8 @@
+name: Install Bun dependencies
+description: Install the frozen workspace dependencies with bounded retries for transient registry failures.
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: node scripts/quality/install-ci-dependencies.mjs

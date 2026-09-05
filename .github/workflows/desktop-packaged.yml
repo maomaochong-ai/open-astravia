@@ -80,7 +80,7 @@ jobs:
           cache-dependency-path: apps/im-gateway/go.sum
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        uses: ./.github/actions/install-bun-dependencies
 
       - name: Install Linux packaging dependencies
         if: runner.os == 'Linux'
