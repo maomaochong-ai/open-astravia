@@ -3,7 +3,7 @@
 	"name": "%plugin.name%",
 	"icon": "solar:video-frame-play-horizontal-linear",
 	"version": "0.1.0",
-	"pluginApiVersion": "^1.0.0",
+	"pluginApiVersion": "^2.0.0",
 	"entry": "dist/mf-manifest.json",
 	"moduleFederation": {
 		"remoteName": "comfyui_media_provider",

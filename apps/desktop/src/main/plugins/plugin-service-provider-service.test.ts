@@ -43,7 +43,7 @@ async function fixture() {
 		name: "Managed Bridge",
 		version: "1.0.0",
 		activeVersion: "1.0.0",
-		pluginApiVersion: "^1.5.0",
+		pluginApiVersion: "^2.0.0",
 		entryUrl: "vetta-plugin://managed-bridge/index.js",
 		moduleFederation: { remoteName: "managed_bridge", expose: "./plugin" },
 		styleUrls: [],

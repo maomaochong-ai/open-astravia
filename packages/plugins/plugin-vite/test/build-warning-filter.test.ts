@@ -102,7 +102,7 @@ async function createDirectiveFixture(): Promise<string> {
 				id: "warning-filter-fixture",
 				name: "Warning filter fixture",
 				version: "0.1.0",
-				pluginApiVersion: "^1.0.0",
+				pluginApiVersion: "^2.0.0",
 				entry: "dist/mf-manifest.json",
 				moduleFederation: { remoteName: "warning_filter_fixture", expose: "./plugin" },
 				permissions: [],

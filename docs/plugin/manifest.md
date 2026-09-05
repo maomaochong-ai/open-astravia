@@ -31,7 +31,7 @@ Schema 只描述 `plugin.json` 数据本身；Plugin API 版本是否兼容、�
   "id": "my-plugin",
   "name": "我的插件",
   "version": "0.1.0",
-  "pluginApiVersion": "^1.0.0",
+  "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
     "remoteName": "my_plugin",
@@ -61,7 +61,7 @@ Schema 只描述 `plugin.json` 数据本身；Plugin API 版本是否兼容、�
 | `id` | ✅ | string | 全局唯一插件 id。决定安装目录、id 冲突时的去重，建议小写短横线。 |
 | `name` | ✅ | string | 展示名。可用 `%key%`（见 [i18n](#i18n)）。 |
 | `version` | ✅ | string | 语义化版本。**bump 它可强制宿主重新拉取**绕过缓存（见 [styling-and-pitfalls.md](./styling-and-pitfalls.md)）。 |
-| `pluginApiVersion` | ✅ | string | 兼容的 SDK API 版本范围（如 `^1.0.0`）。 |
+| `pluginApiVersion` | ✅ | string | 兼容的 SDK API 版本范围（当前为 `^2.0.0`）。 |
 | `entry` | ✅ | string | Module Federation 清单路径，通常为 `dist/mf-manifest.json`。 |
 | `moduleFederation` | ✅ | `{ remoteName, expose }` | `remoteName` 与 vite 配置 `name` 一致；`expose` 与 vite `expose` 一致（默认 `./plugin`）。 |
 | `styles` | ❌ | string[] | 要注入的 CSS 文件路径（相对插件根）。 |
@@ -151,23 +151,22 @@ Schema 只描述 `plugin.json` 数据本身；Plugin API 版本是否兼容、�
 ## 插件配置放哪里
 
 **宿主不再提供设置页配置槽**：`plugin.json#contributes.settings` 与只读的 `ctx.settings` 已在
-Plugin API 1.6.0 移除（ADR-0105）。配置由插件自己渲染、自己持久化：
+Plugin API 1.6.0 移除（ADR-0105）。Plugin API 2.0 的存储改为文件合同（ADR-0107）。配置由插件自己渲染、自己持久化：
 
 | 需求 | 用什么 |
 | --- | --- |
 | 完整配置界面（推荐） | `ctx.ui.registerWorkspaceView` 注册一个工作区配置页，配置与连通性检查、模型列表、预览放在同一屏 |
 | 只有一两个开关 | 直接放进插件已有的活动 Tab、能力详情槽或全局槽 |
-| 普通配置值 | `ctx.storage.readJson("settings")` / `writeJson("settings")`（插件私有存储，按 plugin id 隔离） |
+| 普通配置值 | `ctx.storage.readFile/writeFile("settings.json", ..., "utf8")`（插件私有存储，按 plugin id 隔离） |
 | API Key 等密钥 | `ctx.secrets`（宿主加密凭据库），需要 `secrets.read` / `secrets.write` 权限 |
 
-`settings` 这个 storage key 是宿主迁移旧 `contributes.settings` 值时的落点：升级时宿主会把
+`settings.json` 是宿主迁移旧 `contributes.settings` 值时的落点：升级时宿主会把
 `plugin-settings.json` 里该插件的非密钥字段一次性写进去，插件读回后自行归一化。密钥的凭据库命名空间
 未变，无需迁移。
 
-`readJson` / `writeJson` 的第一个参数实际是插件私有目录下的相对路径，不会自动补 `.json`：
-`writeJson("settings", value)` 写入的文件名就是 `settings`，而 `writeJson("settings.json", value)`
-才会写入 `settings.json`。JSON 文件由宿主使用临时文件加原子替换写入；需要多个数据集保持一致时，
-插件应将它们组合成一个快照文件后再写入。
+存储 API 不推断格式或扩展名：插件负责 `JSON.stringify/parse`，路径就是实际逻辑文件名。需要把多个
+数据源拆成独立文件又保持一致时，用一次 `ctx.storage.commit()` 发布，并用 `readSnapshot()` 从同一
+revision 读取；不要依次调用多次 `writeFile()` 冒充多文件事务。
 
 带 `contributes` 字段的旧清单不会校验失败（顶层允许额外字段），但该字段不再有任何运行时语义。
 

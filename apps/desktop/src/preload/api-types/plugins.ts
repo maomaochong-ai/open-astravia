@@ -857,11 +857,21 @@ export interface DesktopPluginsApi {
 	secretsDelete(sessionId: string, key: string): Promise<void>;
 	/** Subscribe to secret changes for any plugin. Returns an unsubscribe fn. */
 	onSecretsChanged(listener: (payload: { pluginId: string; keys: string[] }) => void): () => void;
-	storageReadJson<T>(sessionId: string, key: string): Promise<T | null>;
-	storageWriteJson(sessionId: string, key: string, value: unknown): Promise<void>;
 	storageList(sessionId: string, prefix?: string): Promise<string[]>;
-	storageReadFile(sessionId: string, path: string): Promise<string | null>;
-	storageWriteFile(sessionId: string, path: string, data: string): Promise<void>;
+	storageReadFile(sessionId: string, path: string, encoding: "utf8" | "base64"): Promise<string | null>;
+	storageReadSnapshot(
+		sessionId: string,
+		paths: readonly string[],
+		encoding: "utf8" | "base64",
+	): Promise<{ revision: string; files: Record<string, string | null> }>;
+	storageCommit(
+		sessionId: string,
+		changes: readonly (
+			| { type: "write"; path: string; data: string; encoding: "utf8" | "base64" }
+			| { type: "remove"; path: string }
+		)[],
+		expectedRevision?: string,
+	): Promise<{ revision: string; changedPaths: string[] }>;
 	storagePutBlob(sessionId: string, input: PluginPutBlobInput): Promise<PluginStoredBlobRef>;
 	storagePutBlobFromFile(sessionId: string, input: PluginPutBlobFromFileInput): Promise<PluginStoredBlobRef>;
 	storageReadBlob(sessionId: string, id: string): Promise<PluginStoredBlob | null>;

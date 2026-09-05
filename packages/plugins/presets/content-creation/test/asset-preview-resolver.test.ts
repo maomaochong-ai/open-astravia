@@ -149,11 +149,14 @@ function createAsset(index: number): ContentAsset {
 
 function createStorage(getBlobRef: PluginStorageApi["getBlobRef"]): PluginStorageApi {
 	return {
-		readJson: async () => null,
-		writeJson: async () => undefined,
 		list: async () => [],
 		readFile: async () => null,
-		writeFile: async () => undefined,
+		writeFile: async (path) => ({ revision: "test", changedPaths: [path] }),
+		commit: async (changes) => ({ revision: "test", changedPaths: changes.map((change) => change.path) }),
+		readSnapshot: async (paths) => ({
+			revision: "test",
+			files: Object.fromEntries(paths.map((path) => [path, null])),
+		}),
 		putBlob: async (input) => ({ id: input.id ?? "blob", url: "", mimeType: input.mimeType }),
 		putBlobFromFile: async (input) => ({ id: input.id ?? "blob", url: "", mimeType: input.mimeType }),
 		readBlob: async () => null,

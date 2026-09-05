@@ -3,7 +3,7 @@
 	"name": "%plugin.name%",
 	"icon": "icon.png",
 	"version": "0.1.4",
-	"pluginApiVersion": "^1.0.0",
+	"pluginApiVersion": "^2.0.0",
 	"entry": "dist/mf-manifest.json",
 	"moduleFederation": {
 		"remoteName": "office_viewer",

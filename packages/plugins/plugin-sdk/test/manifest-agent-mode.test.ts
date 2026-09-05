@@ -5,7 +5,7 @@ const baseManifest = {
 	id: "agent-mode-test",
 	name: "Agent mode test",
 	version: "1.0.0",
-	pluginApiVersion: "^1.0.0",
+	pluginApiVersion: "^2.0.0",
 	entry: "dist/index.js",
 	moduleFederation: { remoteName: "agent_mode_test", expose: "./plugin" },
 };

@@ -5,7 +5,7 @@ const baseManifest = {
 	id: "feishu",
 	name: "Feishu",
 	version: "1.0.0",
-	pluginApiVersion: "^1.4.0",
+	pluginApiVersion: "^2.0.0",
 	entry: "dist/mf-manifest.json",
 	moduleFederation: { remoteName: "feishu", expose: "./plugin" },
 };

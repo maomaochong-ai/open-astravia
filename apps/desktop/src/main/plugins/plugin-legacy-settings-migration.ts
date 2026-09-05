@@ -1,16 +1,16 @@
 import { existsSync, readFileSync, renameSync } from "node:fs";
 import { join } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
-import { readPluginJson, writePluginJson } from "./plugin-storage-service.js";
+import { readPluginFile, writePluginFile } from "./plugin-storage-service.js";
 
 /**
  * 一次性迁移：`contributes.settings` 撤销后（ADR-0105），旧宿主写在
  * `plugin-settings.json` 里的非密钥配置搬进各插件的私有存储。
  *
- * 落点固定为 JSON key `settings`，插件读回后自行归一化——宿主不解释这些值的结构。
+ * 落点固定为 UTF-8 JSON 文件 `settings.json`，插件读回后自行归一化——宿主不解释这些值的结构。
  * 密钥不在此文件中（更早就已迁入 CredentialVault，命名空间未变），无需处理。
  */
-export const LEGACY_PLUGIN_SETTINGS_STORAGE_KEY = "settings";
+export const LEGACY_PLUGIN_SETTINGS_STORAGE_KEY = "settings.json";
 
 const LEGACY_FILE_NAME = "plugin-settings.json";
 const MIGRATED_FILE_NAME = "plugin-settings.migrated.json";
@@ -45,9 +45,9 @@ export async function migrateLegacyPluginSettings(logger: MigrationLogger): Prom
 	for (const [pluginId, values] of Object.entries(parsed)) {
 		if (!isRecord(values) || Object.keys(values).length === 0) continue;
 		try {
-			const existing = await readPluginJson<unknown>(pluginId, LEGACY_PLUGIN_SETTINGS_STORAGE_KEY);
+			const existing = await readPluginFile(pluginId, LEGACY_PLUGIN_SETTINGS_STORAGE_KEY, "utf8");
 			if (existing !== null) continue;
-			await writePluginJson(pluginId, LEGACY_PLUGIN_SETTINGS_STORAGE_KEY, values);
+			await writePluginFile(pluginId, LEGACY_PLUGIN_SETTINGS_STORAGE_KEY, JSON.stringify(values, null, 2), "utf8");
 			migrated.push(pluginId);
 		} catch (error) {
 			logger.warn("failed to migrate legacy plugin settings", error);

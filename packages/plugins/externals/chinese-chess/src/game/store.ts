@@ -9,8 +9,8 @@ const STATE_KEY = "game/state.json";
 
 /** The two storage calls the store needs; narrow so tests can fake it. */
 export interface GameStoragePort {
-	readJson<T>(key: string): Promise<T | null>;
-	writeJson(key: string, value: unknown): Promise<void>;
+	readFile(key: string, encoding: "utf8" | "base64"): Promise<string | null>;
+	writeFile(key: string, data: string, encoding: "utf8" | "base64"): Promise<unknown>;
 }
 
 export interface NotifyPort {
@@ -114,7 +114,8 @@ export class ChessStore {
 
 	private async load(): Promise<void> {
 		try {
-			const saved = await this.deps.storage.readJson<PersistedGameState>(STATE_KEY);
+			const raw = await this.deps.storage.readFile(STATE_KEY, "utf8");
+			const saved = raw === null ? null : (JSON.parse(raw) as PersistedGameState);
 			if (saved && saved.version === 1) {
 				this.state = saved;
 				this.engine = this.rebuildEngine(saved);
@@ -144,7 +145,7 @@ export class ChessStore {
 	private async persist(): Promise<void> {
 		if (!this.state) return;
 		try {
-			await this.deps.storage.writeJson(STATE_KEY, this.state);
+			await this.deps.storage.writeFile(STATE_KEY, JSON.stringify(this.state, null, 2), "utf8");
 		} catch (error) {
 			this.deps.notify({ message: "保存棋局失败", error });
 		}
@@ -177,7 +178,7 @@ export class ChessStore {
 		this.agentBusy = false;
 		this.emit();
 		try {
-			await this.deps.storage.writeJson(STATE_KEY, null);
+			await this.deps.storage.writeFile(STATE_KEY, "null", "utf8");
 		} catch (error) {
 			this.deps.notify({ message: "清除棋局失败", error });
 		}

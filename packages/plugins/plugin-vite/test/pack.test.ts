@@ -27,7 +27,7 @@ async function createFederationFixture(options: FederationFixtureOptions): Promi
 			id: options.id,
 			name: options.id,
 			version: options.version,
-			pluginApiVersion: "^1.0.0",
+			pluginApiVersion: "^2.0.0",
 			entry: "dist/mf-manifest.json",
 			moduleFederation: { remoteName: options.id.replaceAll("-", "_"), expose: "./plugin" },
 			permissions: options.permissions ?? [],

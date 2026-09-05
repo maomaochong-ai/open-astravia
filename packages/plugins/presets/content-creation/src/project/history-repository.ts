@@ -1,4 +1,4 @@
-import type { PluginStorageApi } from "@vetta-org/plugin-sdk";
+import { readJsonFile, writeJsonFile, type PluginStorageApi } from "@vetta-org/plugin-sdk";
 import { isContentProjectFile } from "./persistence";
 import type {
 	ContentHistoryAction,
@@ -46,7 +46,7 @@ export class PluginContentProjectHistoryRepository implements ContentProjectHist
 	constructor(private readonly storage: PluginStorageApi) {}
 
 	async read(projectId: string): Promise<StoredContentProjectHistory | null> {
-		const value = await this.storage.readJson<unknown>(historyStorageKey(projectId));
+		const value = await readJsonFile<unknown>(this.storage, historyStorageKey(projectId));
 		return parseStoredContentProjectHistory(value, projectId);
 	}
 
@@ -55,7 +55,7 @@ export class PluginContentProjectHistoryRepository implements ContentProjectHist
 		present: ContentProjectFile,
 		history: ContentProjectHistoryState,
 	): Promise<void> {
-		await this.storage.writeJson(historyStorageKey(projectId), {
+		await writeJsonFile(this.storage, historyStorageKey(projectId), {
 			schemaVersion: CONTENT_PROJECT_HISTORY_SCHEMA_VERSION,
 			projectId,
 			present,

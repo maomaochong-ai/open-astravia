@@ -28,21 +28,31 @@ function createFsHarness() {
 }
 
 function createStorage() {
-	const json = new Map<string, unknown>();
+	const files = new Map<string, string>();
 	const storage: PluginStorageApi = {
-		readJson: async <T>(key: string) => (json.get(key) as T | undefined) ?? null,
-		writeJson: async (key, value) => {
-			json.set(key, structuredClone(value));
+		list: async () => [...files.keys()],
+		readFile: async (path) => files.get(path) ?? null,
+		writeFile: async (path, data) => {
+			files.set(path, data);
+			return { revision: "test", changedPaths: [path] };
 		},
-		list: async () => [],
-		readFile: async () => null,
-		writeFile: async () => undefined,
+		commit: async (changes) => {
+			for (const change of changes) {
+				if (change.type === "remove") files.delete(change.path);
+				else files.set(change.path, change.data);
+			}
+			return { revision: "test", changedPaths: changes.map((change) => change.path) };
+		},
+		readSnapshot: async (paths) => ({
+			revision: "test",
+			files: Object.fromEntries(paths.map((path) => [path, files.get(path) ?? null])),
+		}),
 		putBlob: async () => ({ id: "blob", url: "blob:test", mimeType: "application/octet-stream" }),
 		putBlobFromFile: async (input) => ({ id: input.id ?? "blob", url: "blob:test", mimeType: input.mimeType }),
 		readBlob: async () => null,
 		getBlobRef: async () => null,
 	};
-	return { json, storage };
+	return { files, storage };
 }
 
 describe("PluginContentProjectRepository", () => {
@@ -68,7 +78,9 @@ describe("PluginContentProjectRepository", () => {
 		expect(visible).not.toHaveProperty("graph");
 		expect(visible).not.toHaveProperty("cwd");
 		expect(visible).not.toHaveProperty("jobs");
-		expect(storage.json.get(`projects/${project.projectId}/runtime.json`)).toMatchObject({ jobs: [] });
+		expect(JSON.parse(storage.files.get(`projects/${project.projectId}/runtime.json`) ?? "null")).toMatchObject({
+			jobs: [],
+		});
 		expect(await repository.read("C:\\project")).toMatchObject({ document: { projectId: project.projectId } });
 	});
 

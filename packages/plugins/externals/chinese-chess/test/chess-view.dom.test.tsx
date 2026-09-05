@@ -46,11 +46,11 @@ function renderView() {
 }
 
 function memoryStorage(): GameStoragePort {
-	const data = new Map<string, unknown>();
+	const data = new Map<string, string>();
 	return {
-		readJson: async <T,>(key: string): Promise<T | null> => (data.get(key) as T | undefined) ?? null,
-		writeJson: async (key: string, value: unknown): Promise<void> => {
-			data.set(key, JSON.parse(JSON.stringify(value)));
+		readFile: async (key: string): Promise<string | null> => data.get(key) ?? null,
+		writeFile: async (key: string, value: string): Promise<void> => {
+			data.set(key, value);
 		},
 	};
 }

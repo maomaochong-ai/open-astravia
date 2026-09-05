@@ -156,7 +156,7 @@ Preset 和 external 插件直接纳入根 `package.json` 定义的 workspace。�
   "id": "example",
   "name": "Example",
   "version": "0.1.0",
-  "pluginApiVersion": "^1.0.0",
+  "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
     "remoteName": "example",

@@ -92,14 +92,14 @@ export {
 	type StorageBlobReadInput,
 	type StorageBlobRef,
 	type StorageBlobWrite,
+	type StorageCommitEntry,
+	type StorageCommitInput,
 	type StorageFileReadInput,
-	type StorageFileWriteInput,
 	type StorageGetAllInput,
-	type StorageJsonReadInput,
-	type StorageJsonWriteInput,
 	type StorageListInput,
 	type StorageRemoveInput,
 	type StorageSetInput,
+	type StorageSnapshotReadInput,
 } from "./foundation/storage.js";
 
 export const FOUNDATION_CAPABILITY_CATALOG = createCapabilityCatalog([

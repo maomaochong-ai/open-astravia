@@ -22,7 +22,7 @@ async function fixture(id = "demo-plugin"): Promise<{
 			id,
 			name: "Demo Plugin",
 			version: "1.0.0",
-			pluginApiVersion: "1.1.0",
+			pluginApiVersion: "2.0.0",
 			entry: "dist/index.js",
 			permissions: ["storage.read"],
 			commands: ["git"],
@@ -60,7 +60,7 @@ describe("open marketplace plugin package", () => {
 		const { sourceDir, ability } = await fixture();
 
 		expect(validateOpenMarketplacePlugin(sourceDir, ability)).toEqual({
-			api_version: "1.1.0",
+			api_version: "2.0.0",
 			permissions: ["storage.read"],
 			commands: ["git"],
 		});

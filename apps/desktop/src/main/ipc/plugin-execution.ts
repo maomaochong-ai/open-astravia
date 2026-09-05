@@ -197,25 +197,64 @@ export function registerPluginExecutionIpc(): () => void {
 	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.GATEWAY_REQUEST, (_event, sessionId: unknown, request: unknown) =>
 		capabilityAdapter.requestGateway(asPluginId(sessionId), request),
 	);
-	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.STORAGE_READ_JSON, (_event, sessionId: unknown, key: unknown) =>
-		capabilityAdapter.readStorageJson(asPluginId(sessionId), asPluginId(key)),
-	);
-	ipcMain.handle(
-		PLUGIN_EXECUTION_CHANNELS.STORAGE_WRITE_JSON,
-		(_event, sessionId: unknown, key: unknown, value: unknown) =>
-			capabilityAdapter.writeStorageJson(asPluginId(sessionId), asPluginId(key), value),
-	);
 	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.STORAGE_LIST, (_event, sessionId: unknown, prefix: unknown) =>
-		capabilityAdapter.listStorage(asPluginId(sessionId), prefix === undefined ? undefined : asPluginId(prefix)),
-	);
-	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.STORAGE_READ_FILE, (_event, sessionId: unknown, path: unknown) =>
-		capabilityAdapter.readStorageFile(asPluginId(sessionId), asPluginId(path)),
+		capabilityAdapter.listStorage(
+			asPluginId(sessionId),
+			prefix === undefined ? undefined : asRequiredString(prefix, "plugin storage prefix"),
+		),
 	);
 	ipcMain.handle(
-		PLUGIN_EXECUTION_CHANNELS.STORAGE_WRITE_FILE,
-		(_event, sessionId: unknown, path: unknown, data: unknown) => {
-			if (typeof data !== "string") throw new Error("Invalid plugin storage data");
-			return capabilityAdapter.writeStorageFile(asPluginId(sessionId), asPluginId(path), data);
+		PLUGIN_EXECUTION_CHANNELS.STORAGE_READ_FILE,
+		(_event, sessionId: unknown, path: unknown, encoding: unknown) => {
+			if (typeof path !== "string" || (encoding !== "utf8" && encoding !== "base64"))
+				throw new Error("Invalid plugin storage file request");
+			return capabilityAdapter.readStorageFile(asPluginId(sessionId), path, encoding);
+		},
+	);
+	ipcMain.handle(
+		PLUGIN_EXECUTION_CHANNELS.STORAGE_READ_SNAPSHOT,
+		(_event, sessionId: unknown, paths: unknown, encoding: unknown) => {
+			if (!Array.isArray(paths) || paths.some((path) => typeof path !== "string")) {
+				throw new Error("Invalid plugin storage snapshot paths");
+			}
+			if (encoding !== "utf8" && encoding !== "base64") {
+				throw new Error("Invalid plugin storage snapshot encoding");
+			}
+			return capabilityAdapter.readStorageSnapshot(asPluginId(sessionId), paths as string[], encoding);
+		},
+	);
+	ipcMain.handle(
+		PLUGIN_EXECUTION_CHANNELS.STORAGE_COMMIT,
+		(_event, sessionId: unknown, changes: unknown, expectedRevision: unknown) => {
+			if (
+				(expectedRevision !== undefined && typeof expectedRevision !== "string") ||
+				!Array.isArray(changes) ||
+				changes.some((entry) => {
+					if (
+						typeof entry !== "object" ||
+						entry === null ||
+						typeof (entry as { path?: unknown }).path !== "string"
+					)
+						return true;
+					const candidate = entry as { type?: unknown; data?: unknown; encoding?: unknown };
+					if (candidate.type === "remove") return false;
+					return (
+						candidate.type !== "write" ||
+						typeof candidate.data !== "string" ||
+						(candidate.encoding !== "utf8" && candidate.encoding !== "base64")
+					);
+				})
+			) {
+				throw new Error("Invalid plugin storage commit changes");
+			}
+			return capabilityAdapter.commitStorage(
+				asPluginId(sessionId),
+				changes as (
+					| { type: "write"; path: string; data: string; encoding: "utf8" | "base64" }
+					| { type: "remove"; path: string }
+				)[],
+				expectedRevision as string | undefined,
+			);
 		},
 	);
 	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.STORAGE_PUT_BLOB, (_event, sessionId: unknown, input: unknown) =>

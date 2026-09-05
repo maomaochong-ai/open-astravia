@@ -118,13 +118,13 @@ export function buildPluginCapabilityGrants(
 			: []),
 		...(permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.STORAGE_READ)
 			? [
-					createCapabilityGrant(FOUNDATION_STORAGE_CAPABILITIES.READ_JSON, {
-						constraints: storageConstraints,
-					}),
 					createCapabilityGrant(FOUNDATION_STORAGE_CAPABILITIES.LIST, {
 						constraints: storageConstraints,
 					}),
 					createCapabilityGrant(FOUNDATION_STORAGE_CAPABILITIES.READ_FILE, {
+						constraints: storageConstraints,
+					}),
+					createCapabilityGrant(FOUNDATION_STORAGE_CAPABILITIES.READ_SNAPSHOT, {
 						constraints: storageConstraints,
 					}),
 					createCapabilityGrant(FOUNDATION_STORAGE_CAPABILITIES.READ_BLOB, {
@@ -137,10 +137,7 @@ export function buildPluginCapabilityGrants(
 			: []),
 		...(permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.STORAGE_WRITE)
 			? [
-					createCapabilityGrant(FOUNDATION_STORAGE_CAPABILITIES.WRITE_JSON, {
-						constraints: storageConstraints,
-					}),
-					createCapabilityGrant(FOUNDATION_STORAGE_CAPABILITIES.WRITE_FILE, {
+					createCapabilityGrant(FOUNDATION_STORAGE_CAPABILITIES.COMMIT, {
 						constraints: storageConstraints,
 					}),
 					createCapabilityGrant(FOUNDATION_STORAGE_CAPABILITIES.PUT_BLOB, {

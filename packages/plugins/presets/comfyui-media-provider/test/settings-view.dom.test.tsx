@@ -39,7 +39,7 @@ describe("ComfyUI SettingsView", () => {
 
 		fireEvent.blur(input);
 		await waitFor(() =>
-			expect(writeJson).toHaveBeenCalledWith("settings", expect.objectContaining({ baseUrl: "http://other:8188" })),
+			expect(writeJson).toHaveBeenCalledWith("settings.json", expect.objectContaining({ baseUrl: "http://other:8188" })),
 		);
 	});
 

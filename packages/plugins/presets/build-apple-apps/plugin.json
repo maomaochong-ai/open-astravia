@@ -4,7 +4,7 @@
 	"version": "0.1.0",
 	"icon": "solar:smartphone-2-linear",
 	"defaultLocale": "zh",
-	"pluginApiVersion": "^1.0.0",
+	"pluginApiVersion": "^2.0.0",
 	"entry": "dist/mf-manifest.json",
 	"moduleFederation": {
 		"remoteName": "build_apple_apps",

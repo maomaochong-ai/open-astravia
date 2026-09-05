@@ -67,7 +67,7 @@ describe("ContentSettingsView", () => {
 
 		fireEvent.blur(modelInput);
 		await waitFor(() =>
-			expect(writeJson).toHaveBeenCalledWith("settings", expect.objectContaining({ openaiModel: "gpt-image-3" })),
+			expect(writeJson).toHaveBeenCalledWith("settings.json", expect.objectContaining({ openaiModel: "gpt-image-3" })),
 		);
 	});
 });

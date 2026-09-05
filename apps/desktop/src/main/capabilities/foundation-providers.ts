@@ -34,15 +34,15 @@ import { listPlugins } from "../plugins/plugin-catalog.js";
 import { electronManualRedirectFetch } from "../plugins/plugin-network-electron-fetch.js";
 import { requestForPlugin as requestNetwork } from "../plugins/plugin-network-service.js";
 import {
+	commitPluginStorage as commitNamespacedStorage,
 	getPluginBlobRef as getNamespacedBlobRef,
 	listPluginFiles as listNamespacedFiles,
+	PluginStorageConflictError,
 	putPluginBlob as putNamespacedBlob,
 	putPluginBlobFromFile as putNamespacedBlobFromFile,
 	readPluginBlob as readNamespacedBlob,
 	readPluginFile as readNamespacedFile,
-	readPluginJson as readNamespacedJson,
-	writePluginFile as writeNamespacedFile,
-	writePluginJson as writeNamespacedJson,
+	readPluginStorageSnapshot as readNamespacedSnapshot,
 } from "../plugins/plugin-storage-service.js";
 import {
 	clearThemeStorage,
@@ -247,18 +247,6 @@ export function registerDesktopFoundationProviders(
 				return parseCapabilityJsonValue(response);
 			},
 		}),
-		bindCapability(FOUNDATION_STORAGE_CAPABILITIES.READ_JSON, {
-			execute: async ({ namespace, key }, context) => {
-				assertNotAborted(context.signal);
-				return (await readNamespacedJson<CapabilityJsonValue>(namespace, key)) ?? null;
-			},
-		}),
-		bindCapability(FOUNDATION_STORAGE_CAPABILITIES.WRITE_JSON, {
-			execute: async ({ namespace, key, value }, context) => {
-				assertNotAborted(context.signal);
-				await writeNamespacedJson(namespace, key, value);
-			},
-		}),
 		bindCapability(FOUNDATION_STORAGE_CAPABILITIES.LIST, {
 			execute: async ({ namespace, prefix }, context) => {
 				assertNotAborted(context.signal);
@@ -266,15 +254,28 @@ export function registerDesktopFoundationProviders(
 			},
 		}),
 		bindCapability(FOUNDATION_STORAGE_CAPABILITIES.READ_FILE, {
-			execute: async ({ namespace, path }, context) => {
+			execute: async ({ namespace, path, encoding }, context) => {
 				assertNotAborted(context.signal);
-				return readNamespacedFile(namespace, path);
+				return readNamespacedFile(namespace, path, encoding);
 			},
 		}),
-		bindCapability(FOUNDATION_STORAGE_CAPABILITIES.WRITE_FILE, {
-			execute: async ({ namespace, path, data }, context) => {
+		bindCapability(FOUNDATION_STORAGE_CAPABILITIES.READ_SNAPSHOT, {
+			execute: async ({ namespace, paths, encoding }, context) => {
 				assertNotAborted(context.signal);
-				await writeNamespacedFile(namespace, path, data);
+				return readNamespacedSnapshot(namespace, paths, encoding);
+			},
+		}),
+		bindCapability(FOUNDATION_STORAGE_CAPABILITIES.COMMIT, {
+			execute: async ({ namespace, changes, expectedRevision }, context) => {
+				assertNotAborted(context.signal);
+				try {
+					return await commitNamespacedStorage(namespace, changes, expectedRevision);
+				} catch (error) {
+					if (error instanceof PluginStorageConflictError) {
+						throw new CapabilityError(CAPABILITY_ERROR_CODES.CONFLICT, error.message);
+					}
+					throw error;
+				}
 			},
 		}),
 		bindCapability(FOUNDATION_STORAGE_CAPABILITIES.PUT_BLOB, {

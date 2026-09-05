@@ -19,7 +19,7 @@ export const DEFAULT_PROVIDER_SETTINGS: ProviderSettings = {
 };
 
 /** 宿主迁移旧 `contributes.settings` 值时约定的落点。 */
-export const SETTINGS_STORAGE_KEY = "settings";
+export const SETTINGS_STORAGE_KEY = "settings.json";
 
 function readString(value: unknown, fallback: string): string {
 	return typeof value === "string" && value.trim().length > 0 ? value.trim() : fallback;

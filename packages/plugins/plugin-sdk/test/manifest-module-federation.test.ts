@@ -5,7 +5,7 @@ const baseManifest = {
 	id: "federation-test",
 	name: "Federation test",
 	version: "1.0.0",
-	pluginApiVersion: "^1.0.0",
+	pluginApiVersion: "^2.0.0",
 	entry: "dist/mf-manifest.json",
 } as const;
 

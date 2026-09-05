@@ -19,34 +19,33 @@ describe("network and namespaced storage foundation capabilities", () => {
 		expect(FOUNDATION_NETWORK_CAPABILITIES.REQUEST.id).toBe(`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}network.request`);
 		expect(
 			[
-				FOUNDATION_STORAGE_CAPABILITIES.READ_JSON,
-				FOUNDATION_STORAGE_CAPABILITIES.WRITE_JSON,
 				FOUNDATION_STORAGE_CAPABILITIES.LIST,
 				FOUNDATION_STORAGE_CAPABILITIES.READ_FILE,
-				FOUNDATION_STORAGE_CAPABILITIES.WRITE_FILE,
+				FOUNDATION_STORAGE_CAPABILITIES.READ_SNAPSHOT,
+				FOUNDATION_STORAGE_CAPABILITIES.COMMIT,
 				FOUNDATION_STORAGE_CAPABILITIES.PUT_BLOB,
 				FOUNDATION_STORAGE_CAPABILITIES.READ_BLOB,
 				FOUNDATION_STORAGE_CAPABILITIES.GET_BLOB_REF,
 			].map((capability) => capability.id),
 		).toEqual([
-			`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}storage.read-json`,
-			`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}storage.write-json`,
 			`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}storage.list`,
 			`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}storage.read-file`,
-			`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}storage.write-file`,
+			`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}storage.read-snapshot`,
+			`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}storage.commit`,
 			`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}storage.put-blob`,
 			`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}storage.read-blob`,
 			`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}storage.get-blob-ref`,
 		]);
 	});
 
-	it("validates namespaced JSON, file, and blob inputs", () => {
+	it("validates namespaced file, snapshot, commit, and blob inputs", () => {
 		expect(
-			FOUNDATION_STORAGE_CAPABILITIES.READ_JSON.parseInput({
+			FOUNDATION_STORAGE_CAPABILITIES.READ_FILE.parseInput({
 				namespace: "image-gen",
-				key: "records/item.json",
+				path: "records/item.json",
+				encoding: "utf8",
 			}),
-		).toEqual({ namespace: "image-gen", key: "records/item.json" });
+		).toEqual({ namespace: "image-gen", path: "records/item.json", encoding: "utf8" });
 		expect(
 			FOUNDATION_STORAGE_CAPABILITIES.PUT_BLOB.parseInput({
 				namespace: "image-gen",
@@ -60,14 +59,15 @@ describe("network and namespaced storage foundation capabilities", () => {
 			FOUNDATION_STORAGE_CAPABILITIES.READ_FILE.parseInput({
 				namespace: "../escape",
 				path: "image.png",
+				encoding: "base64",
 			}),
 		).toThrowError(expect.objectContaining({ code: CAPABILITY_ERROR_CODES.INVALID_INPUT }));
 		expect(() =>
-			FOUNDATION_STORAGE_CAPABILITIES.WRITE_JSON.parseInput({
+			FOUNDATION_STORAGE_CAPABILITIES.COMMIT.parseInput({
 				namespace: "image-gen",
-				key: "records/item.json",
+				changes: [{ type: "write", path: "records/item.json", data: "", encoding: "utf8" }],
 			}),
-		).toThrowError(expect.objectContaining({ code: CAPABILITY_ERROR_CODES.INVALID_INPUT }));
+		).not.toThrow();
 	});
 
 	it("validates structured blob outputs", () => {
@@ -92,10 +92,10 @@ describe("network and namespaced storage foundation capabilities", () => {
 	it("publishes schemas for every foundation capability", () => {
 		expect(FOUNDATION_BROWSER_CAPABILITY_CATALOG).toHaveLength(10);
 		expect(FOUNDATION_FILESYSTEM_CAPABILITY_CATALOG).toHaveLength(10);
-		expect(FOUNDATION_STORAGE_CAPABILITY_CATALOG).toHaveLength(13);
+		expect(FOUNDATION_STORAGE_CAPABILITY_CATALOG).toHaveLength(12);
 		expect(FOUNDATION_NETWORK_CAPABILITY_CATALOG).toHaveLength(1);
 		expect(FOUNDATION_GATEWAY_CAPABILITY_CATALOG).toHaveLength(1);
-		expect(FOUNDATION_CAPABILITY_CATALOG).toHaveLength(39);
+		expect(FOUNDATION_CAPABILITY_CATALOG).toHaveLength(38);
 		expect(() => JSON.stringify(FOUNDATION_CAPABILITY_CATALOG)).not.toThrow();
 		expect(
 			FOUNDATION_CAPABILITY_CATALOG.every(({ inputSchema, outputSchema }) => {

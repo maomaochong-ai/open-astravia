@@ -22,13 +22,14 @@ interface RegisteredView {
 }
 
 /** Minimal host context: only what activate() actually touches. */
-function fakeContext(storage = new Map<string, unknown>()) {
+function fakeContext(storage = new Map<string, string>()) {
 	const registered: RegisteredView[] = [];
 	const ctx = {
 		storage: {
-			readJson: async (key: string) => storage.get(key) ?? null,
-			writeJson: async (key: string, value: unknown) => {
-				storage.set(key, JSON.parse(JSON.stringify(value)));
+			readFile: async (key: string) => storage.get(key) ?? null,
+			writeFile: async (key: string, value: string) => {
+				storage.set(key, value);
+				return { revision: "test", changedPaths: [key] };
 			},
 		},
 		ai: {

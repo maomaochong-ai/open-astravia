@@ -21,7 +21,7 @@ describe("agent capability options", () => {
 					name: "Writer",
 					version: "1",
 					activeVersion: "1",
-					pluginApiVersion: "1",
+					pluginApiVersion: "2.0.0",
 					entryUrl: "",
 					moduleFederation: { remoteName: "writer", expose: "./index" },
 					styleUrls: [],

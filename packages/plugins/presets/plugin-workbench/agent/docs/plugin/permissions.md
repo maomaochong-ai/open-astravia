@@ -72,8 +72,8 @@ ctx.permissions.require("fs.read");  // 缺则抛 Plugin permission denied: fs.r
 | `browser.profile.persist` | 创建宿主管理的持久 profile | [browser](./browser.md#多账号-profile) |
 | `browser.attach` | 附着用户自行开启调试的 Chrome | [browser](./browser.md) |
 | `browser.runtime.manage` | 安装/修复浏览器运行时 | [browser](./browser.md) |
-| `storage.read` | `ctx.storage.readJson/list/readFile/readBlob/getBlobRef` | [conversation-and-agent](./conversation-and-agent.md#插件私有存储-api) |
-| `storage.write` | `ctx.storage.writeJson/writeFile/putBlob` | 同上 |
+| `storage.read` | `ctx.storage.list/readFile/readSnapshot/readBlob/getBlobRef` | [conversation-and-agent](./conversation-and-agent.md#插件私有存储-api) |
+| `storage.write` | `ctx.storage.writeFile/commit/putBlob/putBlobFromFile` | 同上 |
 | `secrets.read` | `ctx.secrets.get/has/keys` | [conversation-and-agent](./conversation-and-agent.md#密钥-api) |
 | `secrets.write` | `ctx.secrets.set/delete` | 同上 |
 | `media.generate` | `ctx.media.listProviders/createJob/getJob/cancelJob` | [media](./media.md) |

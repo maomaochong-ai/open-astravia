@@ -6,18 +6,20 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Breaking Changes
 
+- **插件私有存储改为文件与 revision 合同（ADR-0107，Plugin API 2.0）**：移除 `readJson/writeJson`；
+  `readFile/writeFile` 显式接收 `utf8 | base64`，新增 `commit/readSnapshot` 支持多文件原子发布、
+  一致读取和 `expectedRevision` 乐观并发控制。SDK 另提供基于文件原语的 `readJsonFile/writeJsonFile` 便利函数。
+
 - `ctx.models` 的自有 Provider 管理改为 `replaceOwnedProviders()` 原子快照；移除插件侧逐个 `upsertProvider/removeProvider`。
 - `ctx.services` 新增 `reportReady()`，并支持 `health.readiness.mode = "plugin"`，服务只有在插件完成业务数据初始化后才进入 `ready`。
 
 - **插件配置改由插件自绘（ADR-0105，Plugin API 1.6.0）**：移除 `plugin.json#contributes.settings`、只读的
   `ctx.settings`、`registerTool({ configuration.settingKeys })`、handler 上下文里的 `plugin.settings` 快照，以及
   `ctx.ui.openPluginSettings()`。宿主不再提供设置页配置槽，插件用 `registerWorkspaceView` 自绘配置界面。
-  普通配置存 `ctx.storage`（宿主升级时把旧值一次性迁到 JSON key `settings`），密钥改用下面的 `ctx.secrets`。
+  普通配置存 `ctx.storage`（宿主升级时把旧值一次性迁到 `settings.json`），密钥改用下面的 `ctx.secrets`。
   带 `contributes` 的旧清单不会校验失败，但字段不再有运行时语义。
 
 ### Added
-
-- Clarify that `PluginStorageApi.readJson/writeJson` receive a relative file path used verbatim (the host does not append `.json`) and that each JSON write is atomically replaced.
 
 - `registerWorkspaceView` 新增 `sidebar?: boolean`（缺省 `true`，既有插件行为不变）：置 `false` 的视图不占侧边栏导航位，
   只在「设置 → 更多选项」里列出，并由宿主在设置壳内打开——两层侧栏保持可见，用户在多个插件页面之间切换是一次点击。

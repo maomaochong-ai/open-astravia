@@ -450,13 +450,13 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.NETWORK_REQUEST, sessionId, request),
 			gatewayRequest: (sessionId, request) =>
 				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.GATEWAY_REQUEST, sessionId, request),
-			storageReadJson: (sessionId, key) => ipc.invoke(PLUGIN_EXECUTION_CHANNELS.STORAGE_READ_JSON, sessionId, key),
-			storageWriteJson: (sessionId, key, value) =>
-				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.STORAGE_WRITE_JSON, sessionId, key, value),
 			storageList: (sessionId, prefix) => ipc.invoke(PLUGIN_EXECUTION_CHANNELS.STORAGE_LIST, sessionId, prefix),
-			storageReadFile: (sessionId, path) => ipc.invoke(PLUGIN_EXECUTION_CHANNELS.STORAGE_READ_FILE, sessionId, path),
-			storageWriteFile: (sessionId, path, data) =>
-				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.STORAGE_WRITE_FILE, sessionId, path, data),
+			storageReadFile: (sessionId, path, encoding) =>
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.STORAGE_READ_FILE, sessionId, path, encoding),
+			storageReadSnapshot: (sessionId, paths, encoding) =>
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.STORAGE_READ_SNAPSHOT, sessionId, paths, encoding),
+			storageCommit: (sessionId, changes, expectedRevision) =>
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.STORAGE_COMMIT, sessionId, changes, expectedRevision),
 			storagePutBlob: (sessionId, input) => ipc.invoke(PLUGIN_EXECUTION_CHANNELS.STORAGE_PUT_BLOB, sessionId, input),
 			storagePutBlobFromFile: (sessionId, input) => {
 				const path = webUtils.getPathForFile(input.file);

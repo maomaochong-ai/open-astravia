@@ -31,7 +31,7 @@ async function createPluginProject(options: { entrySource?: string; additionalFi
 			id: "dev-server-test",
 			name: "Dev server test",
 			version: "0.1.0",
-			pluginApiVersion: "^1.0.0",
+			pluginApiVersion: "^2.0.0",
 			entry: "dist/mf-manifest.json",
 			moduleFederation: { remoteName: "dev_server_test", expose: "./plugin" },
 			styles: ["dist/style.css"],

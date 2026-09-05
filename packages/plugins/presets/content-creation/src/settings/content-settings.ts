@@ -21,7 +21,7 @@ export type ContentPlainKey = keyof typeof CONTENT_PLAIN_DEFAULTS;
 export type ContentSettingKey = ContentSecretKey | ContentPlainKey;
 
 /** 宿主迁移旧 `contributes.settings` 值时约定的落点。 */
-export const SETTINGS_STORAGE_KEY = "settings";
+export const SETTINGS_STORAGE_KEY = "settings.json";
 
 /** Provider 侧只需要同步读一个字符串，故与存储实现解耦。 */
 export interface ContentSettingsReader {

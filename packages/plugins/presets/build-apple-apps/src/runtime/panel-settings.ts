@@ -47,7 +47,7 @@ export interface PanelSettingsPorts {
 	writeJson(key: string, value: unknown): Promise<void>;
 }
 
-const STORAGE_KEY = "panel-settings";
+const STORAGE_KEY = "panel-settings.json";
 
 /** 读写 + 订阅。读失败按默认值处理，不让存储故障挡住面板。 */
 export class PanelSettingsStore {

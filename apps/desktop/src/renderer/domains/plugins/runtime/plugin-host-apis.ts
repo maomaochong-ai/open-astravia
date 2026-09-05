@@ -17,7 +17,6 @@ import type {
 	PluginJobsApi,
 	PluginMediaApi,
 	PluginSecretsApi,
-	PluginStorageApi,
 } from "@vetta-org/plugin-sdk";
 import { resolveCatalogKey, resolvePluginText } from "@vetta-org/plugin-sdk";
 import { getDefaultStore } from "jotai";
@@ -27,6 +26,7 @@ import { trackActivationDisposable } from "./plugin-activation-disposables";
 import { pluginHostBridge, registerPluginMediaProviderHandler } from "./plugin-host-bridge";
 import { createPluginPermissionApi as createPermissionApi } from "./plugin-permissions";
 import { subscribePluginSecretsChanged } from "./plugin-secrets-subscription";
+import { createPluginStorageApi } from "./plugin-storage-api";
 
 export function createConversationApi(plugin: InstalledPlugin, disposers: Array<() => void>): PluginConversationApi {
 	const permissions = createPermissionApi(plugin);
@@ -379,55 +379,17 @@ export function createGatewayApi(capabilitySessionId: string): PluginGatewayApi 
  * capability 的 CapabilityJsonValue 不接受 undefined，而 Electron 的 structured
  * clone 会原样保留值为 undefined 的键——插件写一个带可选字段的普通对象
  * （`{ parent: undefined }`）就会被 capability 层判为非法输入而整体拒绝。
- * writeJson 的契约本就是「写 JSON」，这里按 JSON.stringify 的语义丢弃 undefined，
- * 与插件作者的预期一致。
+ * Gateway 与媒体 capability 的契约只接受 JSON 值，这里按 JSON.stringify 的语义丢弃 undefined。
  */
 function toJsonValue(value: unknown): unknown {
 	if (value === undefined) return null;
 	return JSON.parse(JSON.stringify(value));
 }
 
-export function createStorageApi(plugin: InstalledPlugin, capabilitySessionId: string): PluginStorageApi {
+export function createStorageApi(plugin: InstalledPlugin, capabilitySessionId: string) {
 	const requireRead = (): void => createPermissionApi(plugin).require("storage.read");
 	const requireWrite = (): void => createPermissionApi(plugin).require("storage.write");
-	return {
-		readJson: (key) => {
-			requireRead();
-			return window.vetta.plugins.storageReadJson(capabilitySessionId, key);
-		},
-		writeJson: (key, value) => {
-			requireWrite();
-			return window.vetta.plugins.storageWriteJson(capabilitySessionId, key, toJsonValue(value));
-		},
-		list: (prefix) => {
-			requireRead();
-			return window.vetta.plugins.storageList(capabilitySessionId, prefix);
-		},
-		readFile: (path) => {
-			requireRead();
-			return window.vetta.plugins.storageReadFile(capabilitySessionId, path);
-		},
-		writeFile: (path, data) => {
-			requireWrite();
-			return window.vetta.plugins.storageWriteFile(capabilitySessionId, path, data);
-		},
-		putBlob: (input) => {
-			requireWrite();
-			return window.vetta.plugins.storagePutBlob(capabilitySessionId, input);
-		},
-		putBlobFromFile: (input) => {
-			requireWrite();
-			return window.vetta.plugins.storagePutBlobFromFile(capabilitySessionId, input);
-		},
-		readBlob: (id) => {
-			requireRead();
-			return window.vetta.plugins.storageReadBlob(capabilitySessionId, id);
-		},
-		getBlobRef: (id) => {
-			requireRead();
-			return window.vetta.plugins.storageGetBlobRef(capabilitySessionId, id);
-		},
-	};
+	return createPluginStorageApi(capabilitySessionId, window.vetta.plugins, requireRead, requireWrite);
 }
 
 export function createI18nApi(plugin: InstalledPlugin): PluginI18nApi {

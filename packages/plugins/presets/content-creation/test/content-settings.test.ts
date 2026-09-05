@@ -39,7 +39,7 @@ describe("normalizePlainSettings", () => {
 describe("ContentSettingsStore", () => {
 	it("reads plain values and secrets into one synchronous view", async () => {
 		const { store, json, secrets } = createStore();
-		json.set("settings", { customBaseUrl: "https://api.example.com" });
+		json.set("settings.json", { customBaseUrl: "https://api.example.com" });
 		secrets.set("openaiApiKey", "sk-live");
 
 		await store.load();
@@ -58,7 +58,7 @@ describe("ContentSettingsStore", () => {
 
 		expect(secrets.get("googleApiKey")).toBe("key-1");
 		expect(store.hasSecret("googleApiKey")).toBe(true);
-		expect(JSON.stringify(json.get("settings") ?? {})).not.toContain("key-1");
+		expect(JSON.stringify(json.get("settings.json") ?? {})).not.toContain("key-1");
 	});
 
 	it("clears a secret when an empty value is saved", async () => {
@@ -93,7 +93,7 @@ describe("ContentSettingsStore", () => {
 		await store.load();
 		await store.updatePlain({ customVideoModel: " v1 " });
 
-		expect(json.get("settings")).toMatchObject({ customVideoModel: "v1" });
-		expect(normalizePlainSettings(json.get("settings")).customVideoModel).toBe("v1");
+		expect(json.get("settings.json")).toMatchObject({ customVideoModel: "v1" });
+		expect(normalizePlainSettings(json.get("settings.json")).customVideoModel).toBe("v1");
 	});
 });

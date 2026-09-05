@@ -41,9 +41,10 @@ async function primeSettings(baseUrl = "http://comfy.local:8188"): Promise<void>
 	let stored: unknown = null;
 	setPluginCtx({
 		storage: {
-			readJson: async () => stored,
-			writeJson: async (_key: string, value: unknown) => {
-				stored = value;
+			readFile: async () => (stored === null ? null : JSON.stringify(stored)),
+			writeFile: async (_path: string, value: string) => {
+				stored = JSON.parse(value) as unknown;
+				return { revision: "test", changedPaths: ["settings.json"] };
 			},
 		},
 	} as unknown as PluginContext);

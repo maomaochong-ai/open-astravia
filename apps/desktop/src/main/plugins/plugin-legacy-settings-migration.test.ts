@@ -9,9 +9,9 @@ const existing = new Map<string, unknown>();
 
 vi.mock("@vetta/action-rpc", () => ({ getVettaHomePath: () => home.path }));
 vi.mock("./plugin-storage-service.js", () => ({
-	readPluginJson: async (pluginId: string, key: string) => existing.get(`${pluginId}:${key}`) ?? null,
-	writePluginJson: async (pluginId: string, key: string, value: unknown) => {
-		written.set(`${pluginId}:${key}`, value);
+	readPluginFile: async (pluginId: string, path: string) => existing.get(`${pluginId}:${path}`) ?? null,
+	writePluginFile: async (pluginId: string, path: string, value: string) => {
+		written.set(`${pluginId}:${path}`, JSON.parse(value) as unknown);
 	},
 }));
 
@@ -42,19 +42,19 @@ describe("migrateLegacyPluginSettings", () => {
 
 		await migrateLegacyPluginSettings(logger);
 
-		expect(written.get("demo:settings")).toEqual({ baseUrl: "http://a" });
-		expect(written.get("other:settings")).toEqual({ mode: "safe" });
+		expect(written.get("demo:settings.json")).toEqual({ baseUrl: "http://a" });
+		expect(written.get("other:settings.json")).toEqual({ mode: "safe" });
 		expect(existsSync(legacyPath)).toBe(false);
 		expect(existsSync(join(home.path, "plugin-settings.migrated.json"))).toBe(true);
 	});
 
 	it("never overwrites settings a plugin already wrote itself", async () => {
-		existing.set("demo:settings", { baseUrl: "http://new" });
+		existing.set("demo:settings.json", JSON.stringify({ baseUrl: "http://new" }));
 		writeLegacy(JSON.stringify({ demo: { baseUrl: "http://old" } }));
 
 		await migrateLegacyPluginSettings(logger);
 
-		expect(written.has("demo:settings")).toBe(false);
+		expect(written.has("demo:settings.json")).toBe(false);
 	});
 
 	it("is a no-op when there is nothing to migrate", async () => {

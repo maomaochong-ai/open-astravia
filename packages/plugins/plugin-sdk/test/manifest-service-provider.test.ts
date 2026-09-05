@@ -5,7 +5,7 @@ const baseManifest = {
 	id: "managed-bridge",
 	name: "Managed Bridge",
 	version: "1.0.0",
-	pluginApiVersion: "^1.5.0",
+	pluginApiVersion: "^2.0.0",
 	entry: "dist/mf-manifest.json",
 	moduleFederation: { remoteName: "managed_bridge", expose: "./plugin" },
 };
@@ -53,7 +53,7 @@ describe("plugin service provider manifest", () => {
 	it("accepts plugin-owned semantic readiness", () => {
 		const manifest = parsePluginManifest({
 			...baseManifest,
-			pluginApiVersion: "^1.6.0",
+			pluginApiVersion: "^2.0.0",
 			providers: { services: [{ ...service(), health: { ...service().health, readiness: { mode: "plugin" } } }] },
 		});
 

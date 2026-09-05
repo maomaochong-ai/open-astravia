@@ -8,7 +8,7 @@ function createInstalledPlugin(id = "target"): InstalledPlugin {
 		name: "Target",
 		version: "1.0.0",
 		activeVersion: "1.0.0",
-		pluginApiVersion: "1",
+		pluginApiVersion: "2.0.0",
 		moduleFederation: { remoteName: "official_plugins_test", expose: "./plugin" },
 		entryUrl: "file:///target/index.js",
 		styleUrls: [],

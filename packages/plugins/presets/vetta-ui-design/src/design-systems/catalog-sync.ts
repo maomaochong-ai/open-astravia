@@ -1,4 +1,4 @@
-import type { PluginContext } from "@vetta-org/plugin-sdk";
+import { readJsonFile, type PluginContext } from "@vetta-org/plugin-sdk";
 import { parseRemoteCatalog } from "./remote-catalog";
 import { markCatalogFailed, markCatalogLoading, setDesignSystems } from "./registry";
 
@@ -33,7 +33,7 @@ export const DESIGN_CATALOG_SOURCES: readonly string[] = [
 ];
 
 /** 上一次成功拉取到的清单原文，存插件私有 storage。 */
-const CACHE_KEY = "design-catalog/latest";
+const CACHE_KEY = "design-catalog/latest.json";
 
 /** 清单在资源仓库中的固定位置。 */
 const CATALOG_PATH_IN_REPO = ".vetta/design-templates.json";
@@ -120,7 +120,7 @@ async function applyRemote(ctx: PluginContext, cached: CachedCatalog | null, now
 			// 内容没变：不重新解析，只把「刚查过」记下来，下一个 TTL 周期前不再打扰。
 			if (response.status === 304 && cached) {
 				await ctx.storage
-					.writeJson(CACHE_KEY, { ...cached, fetchedAt: new Date(now).toISOString() })
+					.writeFile(CACHE_KEY, JSON.stringify({ ...cached, fetchedAt: new Date(now).toISOString() }, null, 2), "utf8")
 					.catch(() => {});
 				return true;
 			}
@@ -130,12 +130,12 @@ async function applyRemote(ctx: PluginContext, cached: CachedCatalog | null, now
 			if (!parsed) continue;
 			if (!setDesignSystems(parsed.systems)) continue;
 			await ctx.storage
-				.writeJson(CACHE_KEY, {
+				.writeFile(CACHE_KEY, JSON.stringify({
 					catalog: response.body,
 					fetchedAt: new Date(now).toISOString(),
 					sourceUrl: url,
 					etag: headerValue(response.headers, "etag"),
-				} satisfies CachedCatalog)
+				} satisfies CachedCatalog, null, 2), "utf8")
 				.catch(() => {});
 			return true;
 		} catch {
@@ -168,7 +168,7 @@ export async function refreshDesignCatalog(
 	markCatalogLoading();
 	let cached: CachedCatalog | null = null;
 	try {
-		cached = asCache(await ctx.storage.readJson<CachedCatalog>(CACHE_KEY));
+		cached = asCache(await readJsonFile<CachedCatalog>(ctx.storage, CACHE_KEY));
 	} catch {
 		cached = null;
 	}

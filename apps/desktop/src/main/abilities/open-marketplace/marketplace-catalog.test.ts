@@ -167,7 +167,7 @@ describe("loadMarketplaceCatalog", () => {
 				id: "guide",
 				version: "1.0.0",
 				name: "Guide",
-				pluginApiVersion: "1.1.0",
+				pluginApiVersion: "2.0.0",
 				entry: "index.js",
 				permissions: ["storage.read"],
 			}),
@@ -175,7 +175,7 @@ describe("loadMarketplaceCatalog", () => {
 		writeFileSync(join(directory, "index.js"), "export default {};");
 		expect(loadMarketplaceCatalog(root, parseMarketplaceManifest(raw)).abilities[1].config).toMatchObject({
 			permissions: ["storage.read"],
-			api_version: "1.1.0",
+			api_version: "2.0.0",
 		});
 		rmSync(join(directory, "index.js"));
 		expect(() => loadMarketplaceCatalog(root, parseMarketplaceManifest(raw))).toThrow("missing or outside");

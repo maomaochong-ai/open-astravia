@@ -4,7 +4,7 @@
 	"version": "0.1.2",
 	"icon": "icon.png",
 	"defaultLocale": "zh",
-	"pluginApiVersion": "^1.0.0",
+	"pluginApiVersion": "^2.0.0",
 	"entry": "dist/mf-manifest.json",
 	"moduleFederation": {
 		"remoteName": "content_creation",

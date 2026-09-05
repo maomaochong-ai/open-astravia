@@ -2,7 +2,7 @@
 	"id": "global-slot-demo",
 	"name": "Global Slot Demo",
 	"version": "0.1.0",
-	"pluginApiVersion": "^1.0.0",
+	"pluginApiVersion": "^2.0.0",
 	"entry": "dist/mf-manifest.json",
 	"moduleFederation": {
 		"remoteName": "global_slot_demo",

@@ -1,4 +1,4 @@
-import type { PluginFsApi, PluginStorageApi } from "@vetta-org/plugin-sdk";
+import { readJsonFile, writeJsonFile, type PluginFsApi, type PluginStorageApi } from "@vetta-org/plugin-sdk";
 import { joinContentPath } from "../shared/path";
 import { serializeContentProject, serializeContentProjectRuntime } from "./persistence";
 import type { ContentProjectDocument } from "./types";
@@ -33,7 +33,7 @@ export class PluginContentProjectRepository implements ContentProjectRepository 
 
 	async read(cwd: string | null): Promise<StoredContentProject | null> {
 		if (!cwd) {
-			const document = await this.storage.readJson<unknown>("projects/global.json");
+			const document = await readJsonFile<unknown>(this.storage, "projects/global.json");
 			return await this.withRuntime(document);
 		}
 		const path = projectFile(cwd);
@@ -49,10 +49,10 @@ export class PluginContentProjectRepository implements ContentProjectRepository 
 	}
 
 	async write(cwd: string | null, project: ContentProjectDocument): Promise<void> {
-		await this.storage.writeJson(runtimeStorageKey(project.projectId), serializeContentProjectRuntime(project));
+		await writeJsonFile(this.storage, runtimeStorageKey(project.projectId), serializeContentProjectRuntime(project));
 		const document = serializeContentProject(project);
 		if (!cwd) {
-			await this.storage.writeJson("projects/global.json", document);
+			await writeJsonFile(this.storage, "projects/global.json", document);
 			return;
 		}
 		await this.fs.writeFile(projectFile(cwd), `${JSON.stringify(document, null, 2)}\n`, "utf8");
@@ -64,7 +64,7 @@ export class PluginContentProjectRepository implements ContentProjectRepository 
 		if (typeof projectId !== "string" || projectId.length === 0) return { document, runtime: null };
 		return {
 			document,
-			runtime: await this.storage.readJson<unknown>(runtimeStorageKey(projectId)),
+			runtime: await readJsonFile<unknown>(this.storage, runtimeStorageKey(projectId)),
 		};
 	}
 }

@@ -329,9 +329,16 @@ export type {
 	PluginPutBlobInput,
 	PluginPutBlobFromFileInput,
 	PluginStorageApi,
+	PluginStorageChange,
+	PluginStorageCommitOptions,
+	PluginStorageCommitResult,
+	PluginStorageEncoding,
+	PluginStorageSnapshot,
+	PluginStorageWrite,
 	PluginStoredBlob,
 	PluginStoredBlobRef,
 } from "./storage.js";
+export { readJsonFile, writeJsonFile } from "./storage.js";
 export type { PluginSecretsApi } from "./secrets.js";
 
 // i18n

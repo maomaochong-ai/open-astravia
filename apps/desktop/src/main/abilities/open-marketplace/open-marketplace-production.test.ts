@@ -86,7 +86,7 @@ describe("installOpenMarketplaceAbilityInDesktop", () => {
 			id: "demo-plugin",
 			name: "Demo Plugin",
 			version: "1.0.0",
-			pluginApiVersion: "1.1.0",
+			pluginApiVersion: "2.0.0",
 			entry: "dist/index.js",
 			moduleFederation: { remoteName: "demo_plugin", expose: "./plugin" },
 			permissions: ["ui.slot.ability-detail", "network.fetch"],
@@ -120,7 +120,7 @@ describe("installOpenMarketplaceAbilityInDesktop", () => {
 			marketplaceVersion: "2026.07.3",
 			repository: "https://github.com/example/test-market",
 		};
-		const packageInput = { locales: {}, hostApiVersion: "1.5.0", rootPath: sourceDir };
+		const packageInput = { locales: {}, hostApiVersion: "2.0.0", rootPath: sourceDir };
 		const previous =
 			previousGrants === undefined
 				? undefined

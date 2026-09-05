@@ -35,8 +35,8 @@ Runtime Configuration 控制面投影而来。
    `additionalProperties: true`，旧插件带 `contributes` 不会校验失败，但字段不再有任何运行时语义。
    `ctx.agent.registerTool({ configuration.settingKeys })` 一并移除——它唯一的语义是关联
    `contributes.settings`，失去被关联对象后即为悬空概念。
-3. **普通配置走插件私有存储 `ctx.storage`。** 宿主约定迁移落点为 JSON key `settings`：升级时一次性
-   把 `plugin-settings.json` 中每个插件的非密钥字段写入该插件私有存储的 `settings`，插件读回后自行
+3. **普通配置走插件私有存储 `ctx.storage`。** 宿主约定迁移落点为文件 `settings.json`：升级时一次性
+   把 `plugin-settings.json` 中每个插件的非密钥字段写入该插件私有存储的 `settings.json`，插件读回后自行
    归一化。宿主不解释这些值的结构。
 4. **密钥不降级：新增 `ctx.secrets` 与 `secrets.read` / `secrets.write` 权限。** 插件密钥继续由
    `CredentialVault` 加密保管，命名空间沿用 `plugin-settings`（避免既有密钥失联），owner 恒等于调用方

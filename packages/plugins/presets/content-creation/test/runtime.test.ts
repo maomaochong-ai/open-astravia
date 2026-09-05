@@ -20,7 +20,10 @@ function createPluginContext() {
 		network: {},
 		jobs: {},
 		fs: {},
-		storage: { readJson: vi.fn(async () => null), writeJson: vi.fn(async () => undefined) },
+		storage: {
+			readFile: vi.fn(async () => null),
+			writeFile: vi.fn(async () => ({ revision: "test", changedPaths: ["settings.json"] })),
+		},
 		secrets: { get: vi.fn(async () => undefined), set: vi.fn(async () => undefined) },
 		artifacts: {},
 		ai: {},

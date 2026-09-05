@@ -54,9 +54,10 @@ function fakeCtx(options: FakeOptions) {
 	let call = 0;
 	const ctx = {
 		storage: {
-			readJson: async () => options.cached ?? null,
-			writeJson: async (_key: string, value: unknown) => {
-				writes.push(value);
+			readFile: async () => (options.cached === undefined ? null : JSON.stringify(options.cached)),
+			writeFile: async (_path: string, value: string) => {
+				writes.push(JSON.parse(value) as unknown);
+				return { revision: "test", changedPaths: ["design-catalog/latest.json"] };
 			},
 		},
 		network: {
@@ -254,10 +255,10 @@ describe("refreshDesignCatalog 的回退链", () => {
 	it("storage 读取抛错时静默继续", async () => {
 		const ctx = {
 			storage: {
-				readJson: async () => {
+				readFile: async () => {
 					throw new Error("storage down");
 				},
-				writeJson: async () => {},
+				writeFile: async () => ({ revision: "test", changedPaths: [] }),
 			},
 			network: {
 				request: async () => ({ ok: true, status: 200, body: catalogOf(["fresh"]) }),

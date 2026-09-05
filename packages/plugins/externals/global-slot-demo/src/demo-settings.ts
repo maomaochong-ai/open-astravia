@@ -1,4 +1,4 @@
-import type { PluginContext } from "@vetta-org/plugin-sdk";
+import { readJsonFile, writeJsonFile, type PluginContext } from "@vetta-org/plugin-sdk";
 
 /**
  * 插件自己的开关。存插件私有存储，面板读写，Agent handler 同步读（ADR-0105）——
@@ -28,7 +28,7 @@ export const DEFAULT_DEMO_SETTINGS: DemoSettings = {
 };
 
 /** 宿主迁移旧 `contributes.settings` 值时约定的落点。 */
-const STORAGE_KEY = "settings";
+const STORAGE_KEY = "settings.json";
 
 export type DemoToggleKey = Exclude<keyof DemoSettings, "fictionStyle">;
 
@@ -72,13 +72,13 @@ class DemoSettingsStore {
 	};
 
 	async load(): Promise<void> {
-		const raw = await this.ctx.storage.readJson<unknown>(STORAGE_KEY).catch(() => null);
+		const raw = await readJsonFile<unknown>(this.ctx.storage, STORAGE_KEY).catch(() => null);
 		this.apply(normalizeDemoSettings(raw));
 	}
 
 	async update(patch: Partial<DemoSettings>): Promise<void> {
 		this.apply(normalizeDemoSettings({ ...this.settings, ...patch }));
-		await this.ctx.storage.writeJson(STORAGE_KEY, this.settings);
+		await writeJsonFile(this.ctx.storage, STORAGE_KEY, this.settings);
 	}
 
 	private apply(next: DemoSettings): void {

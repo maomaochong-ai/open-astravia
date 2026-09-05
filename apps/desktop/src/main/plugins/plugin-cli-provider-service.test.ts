@@ -25,7 +25,7 @@ function plugin(
 		name: "Feishu",
 		version: "1.0.0",
 		activeVersion: "1.0.0",
-		pluginApiVersion: "^1.4.0",
+		pluginApiVersion: "^2.0.0",
 		entryUrl: "vetta-plugin://feishu/index.js",
 		moduleFederation: { remoteName: "feishu", expose: "./plugin" },
 		styleUrls: [],

@@ -5,12 +5,12 @@ import type { PersistedGameState } from "../src/game/types";
 
 function memoryStorage(initial?: PersistedGameState): GameStoragePort & { data: Map<string, unknown> } {
 	const data = new Map<string, unknown>();
-	if (initial) data.set("game/state.json", initial);
+	if (initial) data.set("game/state.json", JSON.stringify(initial));
 	return {
 		data,
-		readJson: async <T>(key: string): Promise<T | null> => (data.get(key) as T | undefined) ?? null,
-		writeJson: async (key: string, value: unknown): Promise<void> => {
-			data.set(key, JSON.parse(JSON.stringify(value)));
+		readFile: async (key: string): Promise<string | null> => (data.get(key) as string | undefined) ?? null,
+		writeFile: async (key: string, value: string): Promise<void> => {
+			data.set(key, value);
 		},
 	};
 }
@@ -72,7 +72,7 @@ describe("ChessStore", () => {
 		expect(snap.commentary).toHaveLength(1);
 		expect(ai.calls).toHaveLength(1);
 
-		const persisted = storage.data.get("game/state.json") as PersistedGameState;
+		const persisted = JSON.parse(String(storage.data.get("game/state.json"))) as PersistedGameState;
 		expect(persisted.moves).toHaveLength(2);
 		expect(persisted.chat.length).toBeGreaterThan(0);
 	});
@@ -100,7 +100,7 @@ describe("ChessStore", () => {
 		await first.store.ensureLoaded();
 		await first.store.newGame("RED");
 		await first.store.playerMove({ x: 1, y: 7 }, { x: 4, y: 7 });
-		const saved = first.storage.data.get("game/state.json") as PersistedGameState;
+		const saved = JSON.parse(String(first.storage.data.get("game/state.json"))) as PersistedGameState;
 
 		// Simulate a crash right after the player moved: drop the agent's reply.
 		const interrupted: PersistedGameState = {

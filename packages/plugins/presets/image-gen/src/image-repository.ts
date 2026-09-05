@@ -1,8 +1,5 @@
-import type {
-	PluginImageRef,
-	PluginStorageApi,
-	PluginStoredBlobRef,
-} from "@vetta-org/plugin-sdk";
+import { readJsonFile, writeJsonFile } from "@vetta-org/plugin-sdk";
+import type { PluginImageRef, PluginStorageApi, PluginStoredBlobRef } from "@vetta-org/plugin-sdk";
 
 interface ImageRecord {
 	id: string;
@@ -59,22 +56,22 @@ export function createImageRepository(storage: PluginStorageApi): ImageRepositor
 	let migration: Promise<void> | null = null;
 
 	const migrateLegacyIndex = async (): Promise<void> => {
-		const migrated = await storage.readJson<boolean>("migration/image-service-v1.json");
+		const migrated = await readJsonFile<boolean>(storage, "migration/image-service-v1.json");
 		if (migrated) return;
 		let legacy: LegacyImageIndex | null = null;
 		try {
-			legacy = await storage.readJson<LegacyImageIndex>("index.json");
+			legacy = await readJsonFile<LegacyImageIndex>(storage, "index.json");
 		} catch {
 			// The legacy service tolerated a partially written/corrupt index.
 			// Preserve that behavior so new image generation remains available.
 		}
 		for (const [id, record] of Object.entries(legacy ?? {})) {
-			const existing = await storage.readJson<ImageRecord>(recordKey(id));
+			const existing = await readJsonFile<ImageRecord>(storage, recordKey(id));
 			if (existing) continue;
-			const data = await storage.readFile(`images/${id}.${record.ext}`);
+			const data = await storage.readFile(`images/${id}.${record.ext}`, "base64");
 			if (!data) continue;
 			await storage.putBlob({ id, data, mimeType: record.mimeType });
-			await storage.writeJson(recordKey(id), {
+			await writeJsonFile(storage, recordKey(id), {
 				id,
 				rootId: record.rootId,
 				parent: record.parent,
@@ -83,7 +80,7 @@ export function createImageRepository(storage: PluginStorageApi): ImageRepositor
 				mimeType: record.mimeType,
 			} satisfies ImageRecord);
 		}
-		await storage.writeJson("migration/image-service-v1.json", true);
+		await writeJsonFile(storage, "migration/image-service-v1.json", true);
 	};
 
 	const ensureMigrated = (): Promise<void> => {
@@ -94,7 +91,7 @@ export function createImageRepository(storage: PluginStorageApi): ImageRepositor
 	const readRecords = async (): Promise<ImageRecord[]> => {
 		await ensureMigrated();
 		const keys = (await storage.list("records")).filter((key) => key.endsWith(".json"));
-		const records = await Promise.all(keys.map((key) => storage.readJson<ImageRecord>(key)));
+		const records = await Promise.all(keys.map((key) => readJsonFile<ImageRecord>(storage, key)));
 		return records.filter((record): record is ImageRecord => record !== null);
 	};
 
@@ -109,7 +106,7 @@ export function createImageRepository(storage: PluginStorageApi): ImageRepositor
 				createdAt: new Date().toISOString(),
 				mimeType: blob.mimeType,
 			};
-			await storage.writeJson(recordKey(record.id), record);
+			await writeJsonFile(storage, recordKey(record.id), record);
 			return {
 				id: record.id,
 				url: blob.url,

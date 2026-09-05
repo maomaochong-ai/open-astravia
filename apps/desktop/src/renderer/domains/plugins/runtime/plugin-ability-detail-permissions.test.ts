@@ -16,7 +16,7 @@ function installedPlugin(grantedPermissions: PluginPermission[] = []): Installed
 		name: "CLIProxyAPI",
 		version: "1.0.3",
 		activeVersion: "1.0.3",
-		pluginApiVersion: "^1",
+		pluginApiVersion: "^2.0.0",
 		entryUrl: "vetta-plugin://cli-proxy-api/dist/mf-manifest.json",
 		moduleFederation: { remoteName: "cli_proxy_api", expose: "./plugin" },
 		styleUrls: [],

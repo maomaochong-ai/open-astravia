@@ -8,9 +8,9 @@ import type { Disposable } from "./disposable.js";
  * derived from the calling plugin's capability session: a plugin can only read
  * and write its own secrets, never another plugin's.
  *
- * Use it for credentials only. Ordinary configuration belongs in
- * `ctx.storage.writeJson("settings", …)`, which the plugin renders and validates
- * in its own workspace view (ADR-0105).
+ * Use it for credentials only. Ordinary configuration belongs in a plugin file
+ * such as `settings.json`, serialized by the plugin and validated in its own
+ * workspace view (ADR-0105).
  */
 export interface PluginSecretsApi {
 	/** Resolved secret, or `undefined` when unset or the vault is unavailable. */

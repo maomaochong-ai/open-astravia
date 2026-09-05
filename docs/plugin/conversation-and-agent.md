@@ -13,7 +13,7 @@ interface PluginContext {
   fs: PluginFsApi;
   network: PluginNetworkApi;
   storage: PluginStorageApi;
-  settings: PluginSettingsApi;
+  secrets: PluginSecretsApi;
   i18n: PluginI18nApi;        // 见「插件 i18n」
   getAgentMode(): AgentMode;  // 当前工作模式，见「工作模式」
   onAgentModeChanged(listener: (mode: AgentMode) => void): Disposable;
@@ -265,6 +265,8 @@ ctx.agent.registerTool({
 当前 Turn 也不会重新执行 Provider；这些后续工具要到下一个 Turn 才会出现。
 
 ```ts
+const domainSettings = new DomainSettingsStore(ctx.storage);
+
 ctx.agent.registerSystemPromptProvider({
   id: "domain-guidance",
   timeoutMs: 3000,
@@ -276,7 +278,7 @@ ctx.agent.registerSystemPromptProvider({
       block: {
         id: `plugin.${plugin.id}.domain-guidance`,
         content: [
-          String(plugin.settings.instructions ?? ""),
+          domainSettings.current().instructions,
           `scenario=${session.scenario}`,
           `model=${model.provider}/${model.id}`,
           `messages=${conversation.messageCount}`,
@@ -290,9 +292,10 @@ ctx.agent.registerSystemPromptProvider({
 });
 ```
 
-handler 上下文按稳定职责分组：
+handler 上下文按稳定职责分组。插件配置不随 handler 上下文复制；在 `activate()` 中创建基于
+`ctx.storage` / `ctx.secrets` 的配置 store，再由 handler 闭包读取：
 
-- `plugin`：插件 id、provider id、主进程读取的最新插件设置快照。
+- `plugin`：插件 id、当前 contribution id。
 - `session`：session id、cwd、对话场景。
 - `model`：provider、model id、API、输入能力、context window、最大输出 token。
 - `conversation`：本次调用实际使用的消息快照和消息数（通过 `registration.context.conversation` 控制传 summary 还是 messages）。
@@ -494,11 +497,22 @@ const response = await ctx.network.request<{ data: unknown[] }>({
 
 ## 插件私有存储 API
 
-`ctx.storage` 是按插件 id 隔离的持久化命名空间，物理目录为 `~/.vetta/plugin-data/<plugin-id>/`。JSON 和普通文件路径均为插件根目录下的相对路径；路径穿越会被宿主拒绝。调用绑定当前插件的 capability session，不能伪造其他插件 id。
+`ctx.storage` 是按插件 id 隔离的持久化文件命名空间，物理目录位于 `~/.vetta/plugin-data/<plugin-id>/`。
+公开路径都是相对路径；路径穿越和宿主保留的 `.storage` 路径会被拒绝。调用绑定当前插件的 capability
+session，不能伪造其他插件 id。API 以文件和字节为核心，JSON 只是插件选择的序列化格式。
 
 ```ts
-await ctx.storage.writeJson("records/item.json", { id: "item" }); // storage.write; path is used verbatim
-const record = await ctx.storage.readJson("records/item.json");   // storage.read
+await ctx.storage.writeFile("records/item.json", JSON.stringify({ id: "item" }, null, 2), "utf8");
+const text = await ctx.storage.readFile("records/item.json", "utf8");
+const record = text === null ? null : JSON.parse(text);
+
+const committed = await ctx.storage.commit([
+  { type: "write", path: "city.json", data: JSON.stringify(city), encoding: "utf8" },
+  { type: "write", path: "project.json", data: JSON.stringify(project), encoding: "utf8" },
+  { type: "remove", path: "obsolete.json" },
+]);
+const snapshot = await ctx.storage.readSnapshot(["city.json", "project.json"], "utf8");
+// snapshot.revision === committed.revision；两个文件来自同一个已提交 revision
 const keys = await ctx.storage.list("records");
 
 const blob = await ctx.storage.putBlob({
@@ -510,9 +524,13 @@ const bytes = await ctx.storage.readBlob(blob.id);
 const ref = await ctx.storage.getBlobRef(blob.id);
 ```
 
-- `storage.read` 门控 `readJson`、`list`、`readFile`、`readBlob`、`getBlobRef`。
-- `storage.write` 门控 `writeJson`、`writeFile`、`putBlob`。
-- JSON 与 blob 元数据使用原子替换写入；blob 字节不进入 LLM 上下文。
+- `storage.read` 门控 `list`、`readFile`、`readSnapshot`、`readBlob`、`getBlobRef`。
+- `storage.write` 门控 `writeFile`、`commit`、`putBlob`、`putBlobFromFile`。
+- `readFile/writeFile/readSnapshot` 必须显式传 `"utf8"` 或 `"base64"`；空文件是合法数据，缺失文件才返回 `null`。
+- `commit` 支持 write/remove，并可传 `{ expectedRevision }` 做乐观并发控制；revision 不匹配时抛
+  `CAPABILITY_CONFLICT`。一次提交最多 128 个变化且同一路径不能重复。
+- 多文件提交先写不可变对象与 manifest，最后原子切换 `.storage/HEAD`；切换前中断不会发布半成品。
+- `readSnapshot` 先固定 HEAD，再读取该 revision 的所有文件，因此不会混读新旧批次。
 - blob 按声明的 MIME 类型通过宿主媒体 URL 提供，不限定为图片。
 
 图片生成、供应商协议、编辑谱系等属于插件业务，应由插件基于 `ctx.network`、`ctx.storage` 与 `ctx.agent.registerTool` 组合实现。宿主只保留两类通用 UI 能力：
@@ -544,8 +562,8 @@ await ctx.secrets.set("openaiApiKey", input);
 const apiKey = await ctx.secrets.get("openaiApiKey");
 ```
 
-密钥之外的普通配置用 `ctx.storage.readJson("settings")` / `writeJson("settings")`。注意这里的
-`settings` 是兼容迁移约定的文件路径，宿主不会自动添加 `.json`；配置界面由插件
+密钥之外的普通配置用 `ctx.storage.readFile("settings.json", "utf8")` /
+`writeFile("settings.json", JSON.stringify(value), "utf8")`。宿主不会自动添加扩展名；配置界面由插件
 自己渲染——推荐 `ctx.ui.registerWorkspaceView` 的工作区配置页，见
 [manifest.md](./manifest.md#插件配置放哪里)。
 

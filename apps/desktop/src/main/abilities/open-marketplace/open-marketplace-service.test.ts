@@ -130,7 +130,7 @@ function pluginBundleArchive(pluginId = "demo-plugin"): Buffer {
 		id: pluginId,
 		name: "Demo Plugin",
 		version: "1.0.0",
-		pluginApiVersion: "1.1.0",
+		pluginApiVersion: "2.0.0",
 		entry: "dist/index.js",
 		permissions: ["storage.read"],
 		commands: ["git"],
@@ -500,7 +500,7 @@ describe("OpenMarketplaceService", () => {
 		const mcp = snapshot.abilities.find((ability) => ability.type === "mcp");
 		const bundle = snapshot.abilities.find((ability) => ability.type === "bundle");
 		expect(plugin?.config).toEqual({
-			api_version: "1.1.0",
+			api_version: "2.0.0",
 			permissions: ["storage.read"],
 			commands: ["git"],
 		});

@@ -60,15 +60,15 @@ describe("PluginCapabilityAdapter foundation permissions", () => {
 				constraints: [namespaceConstraint],
 			},
 			{
-				capabilityId: FOUNDATION_STORAGE_CAPABILITIES.READ_JSON.id,
-				constraints: [namespaceConstraint],
-			},
-			{
 				capabilityId: FOUNDATION_STORAGE_CAPABILITIES.LIST.id,
 				constraints: [namespaceConstraint],
 			},
 			{
 				capabilityId: FOUNDATION_STORAGE_CAPABILITIES.READ_FILE.id,
+				constraints: [namespaceConstraint],
+			},
+			{
+				capabilityId: FOUNDATION_STORAGE_CAPABILITIES.READ_SNAPSHOT.id,
 				constraints: [namespaceConstraint],
 			},
 			{
@@ -80,11 +80,7 @@ describe("PluginCapabilityAdapter foundation permissions", () => {
 				constraints: [namespaceConstraint],
 			},
 			{
-				capabilityId: FOUNDATION_STORAGE_CAPABILITIES.WRITE_JSON.id,
-				constraints: [namespaceConstraint],
-			},
-			{
-				capabilityId: FOUNDATION_STORAGE_CAPABILITIES.WRITE_FILE.id,
+				capabilityId: FOUNDATION_STORAGE_CAPABILITIES.COMMIT.id,
 				constraints: [namespaceConstraint],
 			},
 			{
@@ -101,8 +97,12 @@ describe("PluginCapabilityAdapter foundation permissions", () => {
 			"status",
 			200,
 		);
-		await expect(adapter.readStorageJson(sessionId, "records/item.json")).resolves.toEqual({ ok: true });
-		await expect(adapter.writeStorageJson(sessionId, "records/item.json", { ok: true })).resolves.toBeUndefined();
+		await expect(adapter.readStorageFile(sessionId, "records/item.json", "utf8")).resolves.toBe("data");
+		await expect(
+			adapter.commitStorage(sessionId, [
+				{ type: "write", path: "records/item.json", data: '{"ok":true}', encoding: "utf8" },
+			]),
+		).resolves.toMatchObject({ revision: "revision-2" });
 		await expect(
 			adapter.putStorageBlob(sessionId, { id: "blob", data: "ZGF0YQ==", mimeType: "image/png" }),
 		).resolves.toHaveProperty("id", "blob");
@@ -113,12 +113,15 @@ describe("PluginCapabilityAdapter foundation permissions", () => {
 				input: { namespace: "storage-user", request: { url: "https://example.com" } },
 			},
 			{
-				capabilityId: FOUNDATION_STORAGE_CAPABILITIES.READ_JSON.id,
-				input: { namespace: "storage-user", key: "records/item.json" },
+				capabilityId: FOUNDATION_STORAGE_CAPABILITIES.READ_FILE.id,
+				input: { namespace: "storage-user", path: "records/item.json", encoding: "utf8" },
 			},
 			{
-				capabilityId: FOUNDATION_STORAGE_CAPABILITIES.WRITE_JSON.id,
-				input: { namespace: "storage-user", key: "records/item.json", value: { ok: true } },
+				capabilityId: FOUNDATION_STORAGE_CAPABILITIES.COMMIT.id,
+				input: {
+					namespace: "storage-user",
+					changes: [{ type: "write", path: "records/item.json", data: '{"ok":true}', encoding: "utf8" }],
+				},
 			},
 			{
 				capabilityId: FOUNDATION_STORAGE_CAPABILITIES.PUT_BLOB.id,
@@ -130,7 +133,7 @@ describe("PluginCapabilityAdapter foundation permissions", () => {
 		]);
 
 		permissions = [];
-		expect(() => adapter.readStorageJson(sessionId, "records/item.json")).toThrowError(
+		expect(() => adapter.readStorageFile(sessionId, "records/item.json", "utf8")).toThrowError(
 			expect.objectContaining({ code: CAPABILITY_ERROR_CODES.ACCESS_DENIED }),
 		);
 	});

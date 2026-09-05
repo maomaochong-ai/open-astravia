@@ -33,11 +33,10 @@
 | `cap.foundation.vetta.storage.set` | foundation | command | 1 |
 | `cap.foundation.vetta.storage.remove` | foundation | command | 1 |
 | `cap.foundation.vetta.storage.clear` | foundation | command | 1 |
-| `cap.foundation.vetta.storage.read-json` | foundation | query | 1 |
-| `cap.foundation.vetta.storage.write-json` | foundation | command | 1 |
 | `cap.foundation.vetta.storage.list` | foundation | query | 1 |
 | `cap.foundation.vetta.storage.read-file` | foundation | query | 1 |
-| `cap.foundation.vetta.storage.write-file` | foundation | command | 1 |
+| `cap.foundation.vetta.storage.read-snapshot` | foundation | query | 1 |
+| `cap.foundation.vetta.storage.commit` | foundation | command | 1 |
 | `cap.foundation.vetta.storage.put-blob` | foundation | command | 1 |
 | `cap.foundation.vetta.storage.put-blob-from-file` | foundation | command | 1 |
 | `cap.foundation.vetta.storage.read-blob` | foundation | query | 1 |

@@ -6,7 +6,7 @@ const manifest: PluginManifest = {
 	id: "demo",
 	name: "Demo",
 	version: "2.0.0",
-	pluginApiVersion: "^1.0.0",
+	pluginApiVersion: "^2.0.0",
 	entry: "dist/mf-manifest.json",
 	moduleFederation: { remoteName: "demo", expose: "./plugin" },
 	permissions: ["agent.skills.control", "agent.command.run"],
@@ -19,7 +19,7 @@ function previousPlugin(): InstalledPlugin {
 		name: "Demo",
 		version: "1.0.0",
 		activeVersion: "1.0.0",
-		pluginApiVersion: "^1.0.0",
+		pluginApiVersion: "^2.0.0",
 		moduleFederation: { remoteName: "package_test", expose: "./plugin" },
 		entryUrl: "vetta-plugin://demo/versions/1.0.0/dist/mf-manifest.json?v=1.0.0",
 		styleUrls: [],
@@ -47,7 +47,7 @@ describe("createInstalledPluginFromManifest", () => {
 			manifest,
 			options: { source: "remote", grantedPermissions: ["agent.skills.control", "agent.command.run"] },
 			locales: {},
-			hostApiVersion: "1.3.0",
+			hostApiVersion: "2.0.0",
 			rootPath: "C:/plugins/demo/versions/2.0.0",
 		});
 
@@ -64,7 +64,7 @@ describe("createInstalledPluginFromManifest", () => {
 			manifest,
 			previous: previousPlugin(),
 			locales: {},
-			hostApiVersion: "1.3.0",
+			hostApiVersion: "2.0.0",
 			rootPath: "C:/plugins/demo/versions/1.0.0",
 		});
 
@@ -83,7 +83,7 @@ describe("createInstalledPluginFromManifest", () => {
 			previous: previousPlugin(),
 			options: { source: "remote" },
 			locales: {},
-			hostApiVersion: "1.3.0",
+			hostApiVersion: "2.0.0",
 			rootPath: "C:/plugins/demo/versions/1.0.0",
 		});
 

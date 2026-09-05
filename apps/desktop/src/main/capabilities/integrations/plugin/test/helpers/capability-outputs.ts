@@ -95,9 +95,14 @@ function foundationOutput(capabilityId: CapabilityId): unknown {
 	if (capabilityId === FOUNDATION_NETWORK_CAPABILITIES.REQUEST.id) {
 		return { status: 200, headers: {}, body: { ok: true } };
 	}
-	if (capabilityId === FOUNDATION_STORAGE_CAPABILITIES.READ_JSON.id) return { ok: true };
 	if (capabilityId === FOUNDATION_STORAGE_CAPABILITIES.LIST.id) return ["records/item.json"];
-	if (capabilityId === FOUNDATION_STORAGE_CAPABILITIES.READ_FILE.id) return "ZGF0YQ==";
+	if (capabilityId === FOUNDATION_STORAGE_CAPABILITIES.READ_FILE.id) return "data";
+	if (capabilityId === FOUNDATION_STORAGE_CAPABILITIES.READ_SNAPSHOT.id) {
+		return { revision: "revision-1", files: { "records/item.json": "data" } };
+	}
+	if (capabilityId === FOUNDATION_STORAGE_CAPABILITIES.COMMIT.id) {
+		return { revision: "revision-2", changedPaths: ["records/item.json"] };
+	}
 	if (
 		capabilityId === FOUNDATION_STORAGE_CAPABILITIES.PUT_BLOB.id ||
 		capabilityId === FOUNDATION_STORAGE_CAPABILITIES.GET_BLOB_REF.id

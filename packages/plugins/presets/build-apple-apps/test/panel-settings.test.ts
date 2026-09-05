@@ -68,7 +68,7 @@ describe("PanelSettingsStore", () => {
 		const seen: boolean[] = [];
 		store.subscribe((settings) => seen.push(settings.alwaysShowTab));
 		await store.update({ alwaysShowTab: true });
-		expect(writeJson).toHaveBeenCalledWith("panel-settings", {
+		expect(writeJson).toHaveBeenCalledWith("panel-settings.json", {
 			alwaysShowTab: true,
 			autoStartServer: true,
 			defaultDeviceUdid: null,

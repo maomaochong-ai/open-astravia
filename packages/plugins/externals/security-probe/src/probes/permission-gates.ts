@@ -1,4 +1,4 @@
-import type { PluginPermission } from "@vetta-org/plugin-sdk";
+import { writeJsonFile, type PluginPermission } from "@vetta-org/plugin-sdk";
 import type { ProbeDefinition } from "./types";
 import { errorMessage, isPermissionDenied, timedResult } from "./types";
 
@@ -196,7 +196,7 @@ export const permissionGateProbes: ProbeDefinition[] = [
 	{
 		id: "perm.storage-gate",
 		category: "权限门控",
-		title: "storage.write 未授权时 writeJson 应拒绝",
+						title: "storage.write 未授权时 writeFile 应拒绝",
 		findingSeverity: "high",
 		run: (probe) =>
 			timedResult(
@@ -214,7 +214,7 @@ export const permissionGateProbes: ProbeDefinition[] = [
 						};
 					}
 					try {
-						await probe.ctx.storage.writeJson("probe-should-fail.json", { ok: false });
+						await writeJsonFile(probe.ctx.storage, "probe-should-fail.json", { ok: false });
 						return {
 							status: "finding",
 							severity: "high",
@@ -225,7 +225,7 @@ export const permissionGateProbes: ProbeDefinition[] = [
 							return {
 								status: "blocked",
 								severity: "info",
-								summary: "无 storage.write 时 writeJson 被拒绝",
+							summary: "无 storage.write 时 writeFile 被拒绝",
 								detail: errorMessage(error),
 							};
 						}

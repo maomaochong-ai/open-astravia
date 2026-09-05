@@ -16,7 +16,7 @@ interface FakeHost {
 	failCreate: boolean;
 	/** 建会话的并发峰值：串行派单时必须始终是 1。 */
 	peakConcurrentCreates: number;
-	stored: Record<string, unknown>;
+	stored: Record<string, string>;
 }
 
 function createHost(initialBoard?: unknown): FakeHost {
@@ -25,7 +25,7 @@ function createHost(initialBoard?: unknown): FakeHost {
 		prompts: [],
 		failCreate: false,
 		peakConcurrentCreates: 0,
-		stored: initialBoard === undefined ? {} : { board: initialBoard },
+		stored: initialBoard === undefined ? {} : { "board.json": JSON.stringify(initialBoard) },
 		ctx: undefined as unknown as PluginContext,
 	};
 	let inFlight = 0;
@@ -35,9 +35,10 @@ function createHost(initialBoard?: unknown): FakeHost {
 		i18n: { t: (key: string) => key },
 		ui: { notify: vi.fn() },
 		storage: {
-			readJson: async (key: string) => host.stored[key],
-			writeJson: async (key: string, value: unknown) => {
+			readFile: async (key: string) => host.stored[key] ?? null,
+			writeFile: async (key: string, value: string) => {
 				host.stored[key] = value;
+				return { revision: "test", changedPaths: [key] };
 			},
 		},
 		official: {
@@ -133,7 +134,7 @@ describe("自动认领", () => {
 		controller.setAutoClaim(true);
 		await settle();
 		expect(host.created).toEqual(["c1"]);
-		expect(host.stored.board).toMatchObject({ autoClaim: true });
+		expect(JSON.parse(host.stored["board.json"] ?? "null")).toMatchObject({ autoClaim: true });
 	});
 
 	it("解析不出目标项目的卡片被跳过，不会拖住后面的卡片", async () => {

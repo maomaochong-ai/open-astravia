@@ -4,7 +4,7 @@
 	"icon": "icon.png",
 	"version": "0.1.6",
 	"defaultLocale": "zh",
-	"pluginApiVersion": "^1.0.0",
+	"pluginApiVersion": "^2.0.0",
 	"entry": "dist/mf-manifest.json",
 	"moduleFederation": {
 		"remoteName": "plugin_workbench",

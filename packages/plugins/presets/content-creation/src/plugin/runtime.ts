@@ -3,6 +3,7 @@ import type {
 	PluginPromptAttachment,
 	PluginRegisterShortcutScope,
 } from "@vetta-org/plugin-sdk";
+import { readJsonFile, writeJsonFile } from "@vetta-org/plugin-sdk";
 import { ContentCreationAgentService } from "../agent/service";
 import { ContentAssetPreviewResolver } from "../generation/asset-preview-resolver";
 import { ContentAssetImportService } from "../generation/asset-import-service";
@@ -40,8 +41,8 @@ export class ContentCreationPluginRuntime {
 
 	private constructor(private readonly ctx: PluginContext) {
 		this.settings = new ContentSettingsStore({
-			readJson: (key) => ctx.storage.readJson<unknown>(key),
-			writeJson: (key, value) => ctx.storage.writeJson(key, value),
+			readJson: (key) => readJsonFile<unknown>(ctx.storage, key),
+			writeJson: (key, value) => writeJsonFile(ctx.storage, key, value).then(() => undefined),
 			readSecret: (key) => ctx.secrets.get(key),
 			writeSecret: (key, value) => ctx.secrets.set(key, value),
 		});

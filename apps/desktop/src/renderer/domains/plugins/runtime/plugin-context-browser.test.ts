@@ -40,7 +40,7 @@ function createContext(permissions: PluginPermission[] = [], grantedPermissions 
 		name: "Browser Test",
 		version: "1.0.0",
 		activeVersion: "1.0.0",
-		pluginApiVersion: "^1",
+		pluginApiVersion: "^2.0.0",
 		entryUrl: "vetta-plugin://browser-test/dist/mf-manifest.json",
 		moduleFederation: { remoteName: "browser_test", expose: "./plugin" },
 		styleUrls: [],

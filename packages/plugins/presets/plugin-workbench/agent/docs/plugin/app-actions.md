@@ -56,7 +56,7 @@ export default definePlugin({
 
 可信官方插件还可声明 `publicId`，例如 `publicId: "general.query"`。若该 id 已被其它实现占用，后到的注册会被忽略并记日志（先注册为准）。普通插件使用 `publicId` 会被拒绝。门控依据宿主生成的 `trustLevel: "official"`，而不是插件 id 或安装来源；当前随包系统插件会获得该级别，远端和本地插件不会。
 
-官方插件需要读写宿主数据时使用 `ctx.official`。该 API 在 SDK 中可见，但普通插件调用会被宿主拒绝；宿主按领域提供窄 API，并通过 `pluginApiVersion` 做主版本兼容检查。`vetta-actions` 当前要求 `^1.1.0`，旧主版本或高于宿主能力的版本不会激活。
+官方插件需要读写宿主数据时使用 `ctx.official`。该 API 在 SDK 中可见，但普通插件调用会被宿主拒绝；宿主按领域提供窄 API，并通过 `pluginApiVersion` 做主版本兼容检查。`vetta-actions` 当前要求 `^2.0.0`，旧主版本或高于宿主能力的版本不会激活。
 
 ## 模型选择边界
 

@@ -1,4 +1,4 @@
-import type { PluginContext } from "@vetta-org/plugin-sdk";
+import { readJsonFile, writeJsonFile, type PluginContext } from "@vetta-org/plugin-sdk";
 import {
 	addCard,
 	applyRunningSessions,
@@ -26,7 +26,7 @@ import {
 } from "./dispatch";
 import { createEmptyBoard, type KanbanBoard, type KanbanIdeaState, type KanbanLane } from "./types";
 
-const BOARD_STORAGE_KEY = "board";
+const BOARD_STORAGE_KEY = "board.json";
 
 export type BoardListener = (board: KanbanBoard) => void;
 
@@ -185,7 +185,7 @@ export class KanbanBoardController {
 		}
 		await Promise.all([this.refreshModels(), this.refreshSkills()]);
 		try {
-			const stored = await this.ctx.storage.readJson<unknown>(BOARD_STORAGE_KEY);
+			const stored = await readJsonFile<unknown>(this.ctx.storage, BOARD_STORAGE_KEY);
 			this.board = parseBoard(stored, fallbackCwd);
 		} catch (error) {
 			this.ctx.ui.notify({ message: this.ctx.i18n.t("error.loadBoard"), error });
@@ -247,7 +247,7 @@ export class KanbanBoardController {
 		this.board = next;
 		this.emit();
 		this.writeChain = this.writeChain
-			.then(() => this.ctx.storage.writeJson(BOARD_STORAGE_KEY, this.board))
+			.then(() => writeJsonFile(this.ctx.storage, BOARD_STORAGE_KEY, this.board).then(() => undefined))
 			.catch((error: unknown) => {
 				this.ctx.ui.notify({ message: this.ctx.i18n.t("error.saveBoard"), error });
 			});

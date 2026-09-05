@@ -1,21 +1,7 @@
-import {
-	type CapabilityJsonValue,
-	FOUNDATION_STORAGE_CAPABILITIES,
-	parseCapabilityJsonValue,
-	type StorageBlob,
-	type StorageBlobRef,
-} from "@vetta/capability-sdk";
+import { FOUNDATION_STORAGE_CAPABILITIES, type StorageBlob, type StorageBlobRef } from "@vetta/capability-sdk";
 import { PLUGIN_CAPABILITY_PERMISSIONS, type PluginCapabilitySessionAccess } from "../types.js";
 
 export const pluginStorageMethods = {
-	readStorageJson(this: PluginCapabilitySessionAccess, sessionId: string, key: string): Promise<CapabilityJsonValue> {
-		const session = this.session(sessionId, { permission: PLUGIN_CAPABILITY_PERMISSIONS.STORAGE_READ });
-		return session.access.client.invoke(FOUNDATION_STORAGE_CAPABILITIES.READ_JSON, {
-			namespace: session.pluginId,
-			key,
-		});
-	},
-
 	listStorage(this: PluginCapabilitySessionAccess, sessionId: string, prefix?: string): Promise<string[]> {
 		const session = this.session(sessionId, { permission: PLUGIN_CAPABILITY_PERMISSIONS.STORAGE_READ });
 		return session.access.client.invoke(FOUNDATION_STORAGE_CAPABILITIES.LIST, {
@@ -24,11 +10,31 @@ export const pluginStorageMethods = {
 		});
 	},
 
-	readStorageFile(this: PluginCapabilitySessionAccess, sessionId: string, path: string): Promise<string | null> {
+	readStorageFile(
+		this: PluginCapabilitySessionAccess,
+		sessionId: string,
+		path: string,
+		encoding: "utf8" | "base64",
+	): Promise<string | null> {
 		const session = this.session(sessionId, { permission: PLUGIN_CAPABILITY_PERMISSIONS.STORAGE_READ });
 		return session.access.client.invoke(FOUNDATION_STORAGE_CAPABILITIES.READ_FILE, {
 			namespace: session.pluginId,
 			path,
+			encoding,
+		});
+	},
+
+	readStorageSnapshot(
+		this: PluginCapabilitySessionAccess,
+		sessionId: string,
+		paths: readonly string[],
+		encoding: "utf8" | "base64",
+	): Promise<{ revision: string; files: Record<string, string | null> }> {
+		const session = this.session(sessionId, { permission: PLUGIN_CAPABILITY_PERMISSIONS.STORAGE_READ });
+		return session.access.client.invoke(FOUNDATION_STORAGE_CAPABILITIES.READ_SNAPSHOT, {
+			namespace: session.pluginId,
+			paths,
+			encoding,
 		});
 	},
 
@@ -52,31 +58,20 @@ export const pluginStorageMethods = {
 		});
 	},
 
-	writeStorageJson(
+	commitStorage(
 		this: PluginCapabilitySessionAccess,
 		sessionId: string,
-		key: string,
-		value: unknown,
-	): Promise<undefined> {
+		changes: readonly (
+			| { type: "write"; path: string; data: string; encoding: "utf8" | "base64" }
+			| { type: "remove"; path: string }
+		)[],
+		expectedRevision?: string,
+	): Promise<{ revision: string; changedPaths: string[] }> {
 		const session = this.session(sessionId, { permission: PLUGIN_CAPABILITY_PERMISSIONS.STORAGE_WRITE });
-		return session.access.client.invoke(FOUNDATION_STORAGE_CAPABILITIES.WRITE_JSON, {
+		return session.access.client.invoke(FOUNDATION_STORAGE_CAPABILITIES.COMMIT, {
 			namespace: session.pluginId,
-			key,
-			value: parseCapabilityJsonValue(value),
-		});
-	},
-
-	writeStorageFile(
-		this: PluginCapabilitySessionAccess,
-		sessionId: string,
-		path: string,
-		data: string,
-	): Promise<undefined> {
-		const session = this.session(sessionId, { permission: PLUGIN_CAPABILITY_PERMISSIONS.STORAGE_WRITE });
-		return session.access.client.invoke(FOUNDATION_STORAGE_CAPABILITIES.WRITE_FILE, {
-			namespace: session.pluginId,
-			path,
-			data,
+			changes,
+			...(expectedRevision === undefined ? {} : { expectedRevision }),
 		});
 	},
 

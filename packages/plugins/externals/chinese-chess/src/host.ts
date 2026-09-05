@@ -9,8 +9,8 @@ import type { ChessRuntime } from "./runtime-context";
 export function createChessRuntime(ctx: PluginContext): ChessRuntime {
 	const store = new ChessStore({
 		storage: {
-			readJson: (key) => ctx.storage.readJson(key),
-			writeJson: (key, value) => ctx.storage.writeJson(key, value),
+			readFile: (key, encoding) => ctx.storage.readFile(key, encoding),
+			writeFile: (key, data, encoding) => ctx.storage.writeFile(key, data, encoding),
 		},
 		ai: { chat: (request) => ctx.ai.chat(request) },
 		notify: (options) => ctx.ui.notify(options),

@@ -1,3 +1,4 @@
+import { readJsonFile, writeJsonFile } from "@vetta-org/plugin-sdk";
 import type { ProbeDefinition } from "./types";
 import { errorMessage, isPermissionDenied, isStorageEscape, timedResult } from "./types";
 
@@ -23,8 +24,8 @@ export const storageNamespaceProbes: ProbeDefinition[] = [
 						};
 					}
 					const key = `security-probe/${probe.probeToken}.json`;
-					await probe.ctx.storage.writeJson(key, { token: probe.probeToken, at: Date.now() });
-					const read = await probe.ctx.storage.readJson<{ token: string }>(key);
+					await writeJsonFile(probe.ctx.storage, key, { token: probe.probeToken, at: Date.now() });
+					const read = await readJsonFile<{ token: string }>(probe.ctx.storage, key);
 					const listed = await probe.ctx.storage.list("security-probe/");
 					if (read?.token === probe.probeToken && listed.some((item) => item.includes(probe.probeToken))) {
 						return {
@@ -72,7 +73,7 @@ export const storageNamespaceProbes: ProbeDefinition[] = [
 					let leaked = false;
 					for (const path of attempts) {
 						try {
-							await probe.ctx.storage.writeJson(path, { evil: true });
+							await writeJsonFile(probe.ctx.storage, path, { evil: true });
 							outcomes.push(`${path} => WROTE (bad)`);
 							leaked = true;
 						} catch (error) {
@@ -129,7 +130,7 @@ export const storageNamespaceProbes: ProbeDefinition[] = [
 					let leaked = false;
 					for (const path of attempts) {
 						try {
-							await probe.ctx.storage.writeJson(path, { evil: true });
+							await writeJsonFile(probe.ctx.storage, path, { evil: true });
 							outcomes.push(`${path} => WROTE (bad)`);
 							leaked = true;
 						} catch (error) {
@@ -177,7 +178,7 @@ export const storageNamespaceProbes: ProbeDefinition[] = [
 					}
 					const path = `legit.json\0../../escape.json`;
 					try {
-						await probe.ctx.storage.writeJson(path, { evil: true });
+						await writeJsonFile(probe.ctx.storage, path, { evil: true });
 						return {
 							status: "finding",
 							severity: "high",

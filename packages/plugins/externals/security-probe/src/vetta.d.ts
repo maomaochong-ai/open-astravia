@@ -8,8 +8,8 @@ interface VettaPluginsApiSurface {
 	grantPermissions?: (...args: unknown[]) => Promise<unknown>;
 	runCommand?: (...args: unknown[]) => Promise<unknown>;
 	networkRequest?: (...args: unknown[]) => Promise<unknown>;
-	storageReadJson?: (...args: unknown[]) => Promise<unknown>;
-	storageWriteJson?: (...args: unknown[]) => Promise<unknown>;
+	storageReadFile?: (...args: unknown[]) => Promise<unknown>;
+	storageCommit?: (...args: unknown[]) => Promise<unknown>;
 	internalCapabilities?: Record<string, unknown>;
 	[key: string]: unknown;
 }

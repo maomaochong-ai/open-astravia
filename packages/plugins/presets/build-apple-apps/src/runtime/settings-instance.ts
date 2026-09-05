@@ -1,3 +1,4 @@
+import { readJsonFile, writeJsonFile } from "@vetta-org/plugin-sdk";
 import { getPluginCtx } from "../plugin-context.js";
 import { PanelSettingsStore } from "./panel-settings.js";
 
@@ -8,8 +9,8 @@ export function getSettingsStore(): PanelSettingsStore {
 	if (!store) {
 		const { storage } = getPluginCtx();
 		store = new PanelSettingsStore({
-			readJson: (key) => storage.readJson<unknown>(key),
-			writeJson: (key, value) => storage.writeJson(key, value),
+			readJson: (key) => readJsonFile<unknown>(storage, key),
+			writeJson: (key, value) => writeJsonFile(storage, key, value).then(() => undefined),
 		});
 	}
 	return store;
