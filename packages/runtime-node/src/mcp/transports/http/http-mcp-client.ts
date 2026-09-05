@@ -66,6 +66,7 @@ export class HttpMcpClient implements McpClientHandle {
 	private session: McpHttpSdkSession | null = null;
 	private modernClient: ModernStatelessMcpClient | null = null;
 	private authProvider: OAuthClientProvider | undefined;
+	private resolvedUrl: string | undefined;
 	private initialized = false;
 
 	constructor(options: HttpMcpClientOptions) {
@@ -82,14 +83,16 @@ export class HttpMcpClient implements McpClientHandle {
 	}
 
 	async initialize(params: McpInitializeParams): Promise<McpInitializeResult> {
+		this.resolvedUrl = (await this.config.resolveUrl?.()) ?? this.config.url;
+		const resolvedConfig = { ...this.config, url: this.resolvedUrl };
 		this.authProvider = this.authProviderFactory?.({
 			serverName: this.name,
-			serverUrl: this.config.url,
-			config: this.config,
+			serverUrl: this.resolvedUrl,
+			config: resolvedConfig,
 		});
 		if (this.config.protocolMode === "modern" || this.config.protocolMode === "auto") {
 			this.modernClient = new ModernStatelessMcpClient({
-				config: this.config,
+				config: resolvedConfig,
 				name: this.name,
 				clientInfo: params.clientInfo,
 				debug: this.debug,
@@ -108,14 +111,14 @@ export class HttpMcpClient implements McpClientHandle {
 				await this.modernClient.close();
 				this.modernClient = null;
 				if (isMcpSdkUnauthorizedError(error) || isMcpAuthRequiredError(error)) {
-					throw new McpAuthRequiredError(this.name, this.config.url, getErrorMessage(error));
+					throw new McpAuthRequiredError(this.name, this.resolvedUrl, getErrorMessage(error));
 				}
 				if (this.config.protocolMode === "modern") throw error;
 				this.log("modern discovery unavailable; fallback=legacy");
 			}
 		}
 		this.session = this.sdkSessionFactory({
-			url: new URL(this.config.url),
+			url: new URL(this.resolvedUrl),
 			requestInit: this.config.headers ? { headers: this.config.headers } : undefined,
 			fetch: buildHeaderResolvingFetch(this.config.resolveHeaders),
 			authProvider: this.authProvider,
@@ -130,7 +133,7 @@ export class HttpMcpClient implements McpClientHandle {
 		} catch (error) {
 			await this.cleanupConnection();
 			if (isMcpSdkUnauthorizedError(error)) {
-				throw new McpAuthRequiredError(this.name, this.config.url, getErrorMessage(error));
+				throw new McpAuthRequiredError(this.name, this.resolvedUrl, getErrorMessage(error));
 			}
 			throw error;
 		}
@@ -164,7 +167,7 @@ export class HttpMcpClient implements McpClientHandle {
 			this.log(`tool call failed tool=${name} error=${getErrorMessage(error)}`);
 			if (isMcpSdkUnauthorizedError(error)) {
 				this.initialized = false;
-				throw new McpAuthRequiredError(this.name, this.config.url, getErrorMessage(error));
+				throw new McpAuthRequiredError(this.name, this.resolvedUrl ?? this.config.url, getErrorMessage(error));
 			}
 			throw error;
 		}
@@ -226,6 +229,7 @@ export class HttpMcpClient implements McpClientHandle {
 		}
 		await this.cleanupConnection();
 		this.initialized = false;
+		this.resolvedUrl = undefined;
 	}
 
 	getName(): string {

@@ -57,6 +57,8 @@ export interface McpStdioServerConfig extends McpServerCommonConfig {
 export interface McpHttpServerConfig extends McpServerCommonConfig {
 	type: "http";
 	url: string;
+	/** Runtime-only URL resolver for host-managed local services; never persisted to mcp.json. */
+	resolveUrl?: () => string | Promise<string>;
 	headers?: Record<string, string>;
 	/** Runtime-only header source for rotating credentials; never persisted to mcp.json. */
 	resolveHeaders?: () => Record<string, string> | Promise<Record<string, string>>;
