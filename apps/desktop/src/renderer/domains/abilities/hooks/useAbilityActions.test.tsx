@@ -110,6 +110,7 @@ describe("useAbilityActions managed MCP wiring", () => {
 					installOpenAbility: vi.fn(async () => undefined),
 				},
 				plugins: {
+					applySetup: vi.fn(async () => ({ id: "demo-plugin" }) as InstalledPlugin),
 					reload: vi.fn(async () => ({ id: "demo-plugin" }) as InstalledPlugin),
 				},
 			},
@@ -229,6 +230,38 @@ describe("useAbilityActions managed MCP wiring", () => {
 		expect(result.current.pendingPluginSetup?.plugin?.id).toBe("demo-plugin");
 		expect(window.vetta.plugins.reload).not.toHaveBeenCalled();
 		expect(showToast).not.toHaveBeenCalled();
+	});
+
+	it("pauses an update when the new manifest changes permissions", async () => {
+		const item = {
+			...githubPluginAbility(true),
+			permissions: ["storage.read"],
+			grantedPermissions: ["storage.read"],
+			commands: ["old.command"],
+			grantedCommands: ["old.command"],
+		} as PluginAbility;
+		window.vetta.plugins.listAll = vi.fn(async () => [
+			{
+				id: "demo-plugin",
+				permissions: ["storage.read", "network.fetch"],
+				grantedPermissions: ["storage.read"],
+				declaredCommands: ["old.command", "new.command"],
+				grantedCommandNames: ["old.command"],
+				pendingVersion: "2.0.0",
+				enabled: true,
+			} as InstalledPlugin,
+		]);
+		const { result } = renderHook(() => useAbilityActions({ mcp: mcpModel(), refresh: vi.fn() }));
+
+		act(() => result.current.install(item));
+
+		await waitFor(() => expect(result.current.permissionPromptSlug).toBe("demo-plugin"));
+		expect(result.current.pendingPluginSetup?.permissionChanges).toEqual({
+			added: ["network.fetch"],
+			removed: [],
+			retained: ["storage.read"],
+		});
+		expect(window.vetta.plugins.reload).not.toHaveBeenCalled();
 	});
 
 	it("reports an automatic reload failure without claiming the update is active", async () => {

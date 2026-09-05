@@ -37,10 +37,15 @@ export function PluginInstallSetupDialog({
 	const { t } = useTranslation("abilities");
 	const { t: tCommon } = useTranslation("common");
 	const confirm = useSetAtom(confirmDialogAtom);
-	// 草稿默认全开：用户看着这份清单点确认即为知情同意，比默认全关、装完不可用更合用。
-	const [enabled, setEnabled] = useState(true);
-	const [granted, setGranted] = useState<PluginPermission[]>(() => [...item.permissions]);
-	const [grantedCommands, setGrantedCommands] = useState<string[]>(() => [...item.commands]);
+	const isUpdate = item.setupMode === "update";
+	// 首装默认全开；更新只自动勾选新增权限，保留用户已有授权选择。
+	const [enabled, setEnabled] = useState(() => (isUpdate ? item.enabled : true));
+	const [granted, setGranted] = useState<PluginPermission[]>(() =>
+		isUpdate ? Array.from(new Set([...item.grantedPermissions, ...(item.permissionChanges?.added ?? [])])) : [...item.permissions],
+	);
+	const [grantedCommands, setGrantedCommands] = useState<string[]>(() =>
+		isUpdate ? Array.from(new Set([...item.grantedCommands, ...(item.commandChanges?.added ?? [])])) : [...item.commands],
+	);
 	const [submitting, setSubmitting] = useState(false);
 
 	const dirty =
@@ -60,6 +65,8 @@ export function PluginInstallSetupDialog({
 		}
 	};
 	const busy = item.busy || submitting;
+	const permissionAdded = new Set(item.permissionChanges?.added ?? []);
+	const commandAdded = new Set(item.commandChanges?.added ?? []);
 
 	const requestClose = (): void => {
 		if (!dirty) {
@@ -86,7 +93,9 @@ export function PluginInstallSetupDialog({
 			<DialogContent className="max-w-md">
 				<DialogHeader>
 					<DialogTitle>{t("plugin.setupDialog")}</DialogTitle>
-					<DialogDescription>{t("plugin.setupDialogHint")}</DialogDescription>
+					<DialogDescription>
+						{isUpdate ? t("plugin.updateSetupDialogHint") : t("plugin.setupDialogHint")}
+					</DialogDescription>
 				</DialogHeader>
 				<div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] leading-relaxed text-foreground">
 					{t("plugin.trustNotice")}
@@ -108,6 +117,7 @@ export function PluginInstallSetupDialog({
 						>
 							<span className="min-w-0 flex-1 break-words text-[12px] text-foreground">
 								{t(PLUGIN_PERMISSION_LABEL_KEYS[permission])}
+								{permissionAdded.has(permission) ? <span className="ml-2 text-[10px] text-amber-500">{t("plugin.permissionAdded")}</span> : null}
 							</span>
 							<Switch
 								className="shrink-0"
@@ -121,6 +131,12 @@ export function PluginInstallSetupDialog({
 							/>
 						</label>
 					))}
+					{item.permissionChanges?.removed.map((permission) => (
+						<div key={`removed-${permission}`} className="flex items-center justify-between gap-3 border-b border-border/60 px-2.5 py-2 text-[12px] text-muted-foreground">
+							<span>{t(PLUGIN_PERMISSION_LABEL_KEYS[permission])}</span>
+							<span className="text-[10px] text-muted-foreground">{t("plugin.permissionRemoved")}</span>
+						</div>
+					))}
 					{item.commands.map((command) => (
 						<label
 							key={command}
@@ -128,6 +144,7 @@ export function PluginInstallSetupDialog({
 						>
 							<span className="min-w-0 flex-1 break-words text-[12px] text-foreground">
 								{t("plugin.commands")}: <code className="font-mono">{command}</code>
+								{commandAdded.has(command) ? <span className="ml-2 text-[10px] text-amber-500">{t("plugin.permissionAdded")}</span> : null}
 							</span>
 							<Switch
 								className="shrink-0"
@@ -140,6 +157,12 @@ export function PluginInstallSetupDialog({
 								}
 							/>
 						</label>
+					))}
+					{item.commandChanges?.removed.map((command) => (
+						<div key={`removed-command-${command}`} className="flex items-center justify-between gap-3 border-b border-border/60 px-2.5 py-2 text-[12px] text-muted-foreground">
+							<span>{t("plugin.commands")}: <code className="font-mono">{command}</code></span>
+							<span className="text-[10px]">{t("plugin.permissionRemoved")}</span>
+						</div>
 					))}
 				</div>
 				<DialogFooter>

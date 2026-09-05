@@ -140,6 +140,16 @@ export interface PluginAbility extends AbilityBase {
 	commands: string[];
 	grantedCommands: string[];
 	pendingVersion?: string;
+	/** 更新待确认时，新旧 manifest 的权限/命令差异。 */
+	permissionChanges?: PluginChangeSet<PluginPermission>;
+	commandChanges?: PluginChangeSet<string>;
+	setupMode?: "install" | "update";
+}
+
+export interface PluginChangeSet<T extends string> {
+	added: T[];
+	removed: T[];
+	retained: T[];
 }
 
 export interface BundleAbility extends AbilityBase {

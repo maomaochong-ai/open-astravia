@@ -19,10 +19,25 @@ import type {
 	BundleAbility,
 	McpAbility,
 	PluginAbility,
+	PluginChangeSet,
 } from "../types";
 
 function errorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
+}
+
+function changeSet<T extends string>(previous: readonly T[], next: readonly T[]): PluginChangeSet<T> {
+	const before = new Set(previous);
+	const after = new Set(next);
+	return {
+		added: next.filter((value) => !before.has(value)),
+		removed: previous.filter((value) => !after.has(value)),
+		retained: next.filter((value) => before.has(value)),
+	};
+}
+
+function hasChanges<T extends string>(changes: PluginChangeSet<T>): boolean {
+	return changes.added.length > 0 || changes.removed.length > 0;
 }
 
 export interface AbilityActions {
@@ -157,6 +172,29 @@ export function useAbilityActions({
 	const finishPluginInstall = useCallback(
 		async (item: PluginAbility, setOperation?: (next: AbilityOperation) => void): Promise<void> => {
 			if (item.installed) {
+				const installedPlugin = (await window.vetta.plugins.listAll?.())?.find((plugin) => plugin.id === item.slug);
+				if (installedPlugin) {
+					const permissionChanges = changeSet(item.permissions, installedPlugin.permissions);
+					const commandChanges = changeSet(item.commands, installedPlugin.declaredCommands);
+					if (hasChanges(permissionChanges) || hasChanges(commandChanges)) {
+						setPendingPluginSetup({
+							...item,
+							installed: true,
+							enabled: installedPlugin.enabled,
+							busy: false,
+							plugin: installedPlugin,
+							permissions: installedPlugin.permissions,
+							grantedPermissions: installedPlugin.grantedPermissions,
+							commands: installedPlugin.declaredCommands,
+							grantedCommands: installedPlugin.grantedCommandNames,
+							permissionChanges,
+							commandChanges,
+							setupMode: "update",
+						});
+						setPermissionPromptSlug(item.slug);
+						return;
+					}
+				}
 				setOperation?.("applyingUpdate");
 				await window.vetta.plugins.reload(item.slug);
 			}
@@ -181,6 +219,7 @@ export function useAbilityActions({
 					plugin: installedPlugin,
 					grantedPermissions: installedPlugin.grantedPermissions,
 					grantedCommands: installedPlugin.grantedCommandNames,
+					setupMode: "install",
 				});
 			}
 			setPermissionPromptSlug(item.slug);
@@ -416,6 +455,9 @@ export function useAbilityActions({
 			return run(`${item.id}:setup`, "applyingSetup", async (setOperation) => {
 				setOperation("activating");
 				await window.vetta.plugins.applySetup(item.slug, next);
+				if (item.setupMode === "update" && item.pendingVersion) {
+					await window.vetta.plugins.reload(item.slug);
+				}
 				notifyPluginsChanged();
 			});
 		},
