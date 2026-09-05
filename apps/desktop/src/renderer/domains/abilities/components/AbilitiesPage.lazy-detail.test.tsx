@@ -3,19 +3,21 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * 能力页首开性能合同：详情抽屉子树（markdown + shiki 高亮器）必须懒加载——
- * 没有 ?detail= 参数时不在同步渲染阶段求值它的模块；空闲或用户意图出现时才拉取，
- * 关闭后立即卸载抽屉，避免 Vaul 退出动画期间的遮罩继续拦截能力列表；
- * 动态模块本身仍留在浏览器缓存中，二次打开无需重新加载。
+ * 能力页首开性能合同：详情抽屉壳同步可用，正文子树（markdown + shiki 高亮器）
+ * 由抽屉内部按需加载；关闭时保留壳直到退出动画完成，但遮罩可立即穿透。
  */
 
 const detailModuleEvaluated = vi.fn();
+let latestOnExited: (() => void) | undefined;
 vi.mock("./detail/AbilityDetailSheet", () => {
 	detailModuleEvaluated();
 	return {
-		AbilityDetailSheet: ({ detailId }: { detailId: string | null }) => (
-			<div data-testid="detail-sheet" data-detail-id={detailId ?? ""} />
-		),
+		AbilityDetailSheet: ({ detailId, onExited }: { detailId: string | null; onExited?: () => void }) => {
+			latestOnExited = onExited;
+			return (
+				<div data-testid="detail-sheet" data-detail-id={detailId ?? ""} />
+			);
+		},
 	};
 });
 
@@ -40,6 +42,7 @@ const { AbilitiesPage } = await import("./AbilitiesPage.js");
 describe("AbilitiesPage 详情抽屉懒加载", () => {
 	beforeEach(() => {
 		detailModuleEvaluated.mockClear();
+		latestOnExited = undefined;
 		searchState = {};
 	});
 
@@ -60,10 +63,10 @@ describe("AbilitiesPage 详情抽屉懒加载", () => {
 		await waitFor(() => {
 			expect(screen.getByTestId("detail-sheet").getAttribute("data-detail-id")).toBe("market:foo");
 		});
-		expect(detailModuleEvaluated).toHaveBeenCalled();
+		expect(detailModuleEvaluated).not.toHaveBeenCalled();
 	});
 
-	it("detail 清空后立即卸载抽屉，二次打开复用已加载模块", async () => {
+	it("detail 清空后保留抽屉直到退出动画完成，再允许卸载", async () => {
 		searchState = { detail: "market:foo" };
 		const { rerender } = render(<AbilitiesPage />);
 		await waitFor(() => {
@@ -73,6 +76,9 @@ describe("AbilitiesPage 详情抽屉懒加载", () => {
 
 		searchState = {};
 		rerender(<AbilitiesPage />);
+		expect(screen.getByTestId("detail-sheet").getAttribute("data-detail-id")).toBe("");
+		expect(latestOnExited).toBeTypeOf("function");
+		act(() => latestOnExited?.());
 		expect(screen.queryByTestId("detail-sheet")).toBeNull();
 
 		searchState = { detail: "market:bar" };
