@@ -53,6 +53,24 @@ function createHarness(plugin = installedPlugin()) {
 		revokePermissions: vi.fn(() => current),
 		grantCommands: vi.fn(() => current),
 		revokeCommands: vi.fn(() => current),
+		applySetup: vi.fn(
+			(
+				_id: string,
+				input: {
+					enabled: boolean;
+					grantedPermissions: InstalledPlugin["grantedPermissions"];
+					grantedCommands: string[];
+				},
+			) => {
+				current = {
+					...current,
+					enabled: input.enabled,
+					grantedPermissions: input.grantedPermissions,
+					grantedCommandNames: input.grantedCommands,
+				};
+				return current;
+			},
+		),
 		reload: vi.fn(() => current),
 		stopDevWatch: vi.fn(() => events.push("stop-watch")),
 		stopSpawns: vi.fn(() => events.push("stop-spawns")),
@@ -123,6 +141,18 @@ describe("PluginLifecycleService", () => {
 		expect(harness.dependencies.recordEvent).toHaveBeenCalledWith(
 			expect.objectContaining({ operation: "permissions-granted", permissionCount: 1 }),
 		);
+	});
+
+	it("applies first-install setup in one lifecycle transaction", () => {
+		const harness = createHarness(installedPlugin({ enabled: false }));
+		harness.service.applySetup("demo", {
+			enabled: true,
+			grantedPermissions: ["agent.tools.register"],
+			grantedCommands: ["demo.run"],
+		});
+		expect(harness.dependencies.applySetup).toHaveBeenCalledOnce();
+		expect(harness.dependencies.refreshRuntime).toHaveBeenCalledOnce();
+		expect(harness.dependencies.ensureCliProviders).toHaveBeenCalledWith("demo");
 	});
 
 	it("hard-revokes admitted Hook leases only when Hook execution permission is revoked", () => {

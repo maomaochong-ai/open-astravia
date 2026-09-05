@@ -59,6 +59,15 @@ export function registerPluginManagementIpc(pluginActionService: PluginActionSer
 	ipcMain.handle(PLUGIN_MANAGEMENT_CHANNELS.REVOKE_COMMANDS, (_event, id: unknown, names: unknown) =>
 		lifecycle.revokeCommands(asPluginId(id), asCommandNames(names)),
 	);
+	ipcMain.handle(PLUGIN_MANAGEMENT_CHANNELS.APPLY_SETUP, (_event, id: unknown, input: unknown) => {
+		if (!input || typeof input !== "object") throw new Error("Invalid plugin setup");
+		const setup = input as Record<string, unknown>;
+		return lifecycle.applySetup(asPluginId(id), {
+			enabled: setup.enabled === true,
+			grantedPermissions: asPermissions(setup.grantedPermissions),
+			grantedCommands: asCommandNames(setup.grantedCommands),
+		});
+	});
 	ipcMain.handle(PLUGIN_MANAGEMENT_CHANNELS.RELOAD, (_event, id: unknown) => lifecycle.reload(asPluginId(id)));
 
 	ipcMain.handle(PLUGIN_SYSTEM_CHANNELS.LIST, (_event, sessionId: unknown) => {

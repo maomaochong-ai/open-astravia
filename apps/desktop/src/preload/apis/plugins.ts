@@ -326,6 +326,7 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 				ipc.invoke(PLUGIN_MANAGEMENT_CHANNELS.REVOKE_PERMISSIONS, id, permissions),
 			grantCommands: (id, names) => ipc.invoke(PLUGIN_MANAGEMENT_CHANNELS.GRANT_COMMANDS, id, names),
 			revokeCommands: (id, names) => ipc.invoke(PLUGIN_MANAGEMENT_CHANNELS.REVOKE_COMMANDS, id, names),
+			applySetup: (id, input) => ipc.invoke(PLUGIN_MANAGEMENT_CHANNELS.APPLY_SETUP, id, input),
 			getCliProviderStatus: (pluginId, providerId) =>
 				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.CLI_PROVIDER_STATUS_GET, pluginId, providerId),
 			retryCliProvider: (pluginId, providerId) =>

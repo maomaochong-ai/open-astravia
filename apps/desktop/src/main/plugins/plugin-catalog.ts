@@ -365,6 +365,32 @@ export function revokePluginCommands(id: string, names: string[]): InstalledPlug
 	return plugin;
 }
 
+/** 一次写入首装配置，避免权限/命令/启用各自产生重载与变更广播。 */
+export function applyPluginSetup(
+	id: string,
+	input: { enabled: boolean; grantedPermissions: PluginPermission[]; grantedCommands: string[] },
+): InstalledPlugin {
+	validatePluginId(id);
+	if (isSystemPluginId(id)) throw new Error(`System plugin setup is managed automatically: ${id}`);
+	const registry = pluginRegistry.read();
+	const plugin = registry[id];
+	if (!plugin) throw new Error(`Plugin not found: ${id}`);
+	const allowedPermissions = new Set(effectivePluginPermissions(plugin.permissions));
+	plugin.grantedPermissions = Array.from(
+		new Set(input.grantedPermissions.filter((permission) => allowedPermissions.has(permission))),
+	);
+	plugin.grantedCommandNames = grantDeclaredPluginCommands(
+		[],
+		parseCommands(input.grantedCommands),
+		plugin.declaredCommands,
+	);
+	plugin.enabled = input.enabled;
+	plugin.updatedAt = new Date().toISOString();
+	pluginRegistry.write(registry);
+	broadcastPluginsChanged();
+	return plugin;
+}
+
 export function reloadPlugin(id: string): InstalledPlugin {
 	validatePluginId(id);
 	// 系统插件版本随 App，无 pending 更新流（ADR-0024）。

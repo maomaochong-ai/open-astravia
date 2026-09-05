@@ -17,6 +17,10 @@ export interface PluginLifecycleDependencies {
 	revokePermissions(id: string, permissions: PluginPermission[]): InstalledPlugin;
 	grantCommands(id: string, names: string[]): InstalledPlugin;
 	revokeCommands(id: string, names: string[]): InstalledPlugin;
+	applySetup?(
+		id: string,
+		input: { enabled: boolean; grantedPermissions: PluginPermission[]; grantedCommands: string[] },
+	): InstalledPlugin;
 	reload(id: string): InstalledPlugin;
 	stopDevWatch(id: string): void;
 	stopSpawns(id: string): void;
@@ -151,6 +155,25 @@ export class PluginLifecycleService {
 		const plugin = this.dependencies.revokeCommands(id, names);
 		this.recordPluginEvent(plugin, "commands-revoked", {
 			commandCount: countRemoved(previous, plugin.grantedCommandNames),
+		});
+		return plugin;
+	}
+
+	applySetup(
+		id: string,
+		input: { enabled: boolean; grantedPermissions: PluginPermission[]; grantedCommands: string[] },
+	): InstalledPlugin {
+		const previous = this.findPlugin(id);
+		if (!this.dependencies.applySetup) throw new Error("Plugin setup transaction is unavailable");
+		const plugin = this.dependencies.applySetup(id, input);
+		if (previous && !plugin.grantedPermissions.includes("agent.tools.register")) {
+			this.dependencies.hardRevokeAgentHandlers(id, "Plugin Agent permission was revoked", ["tool"]);
+		}
+		if (plugin.enabled) this.dependencies.ensureCliProviders(id);
+		else this.actionService.clear(id);
+		this.dependencies.refreshRuntime();
+		this.recordPluginEvent(plugin, "permissions-granted", {
+			permissionCount: countAdded(previous?.grantedPermissions ?? [], plugin.grantedPermissions),
 		});
 		return plugin;
 	}

@@ -226,6 +226,12 @@ export interface PluginInstallOptions {
 	npm?: PluginNpmDistribution;
 }
 
+export interface PluginSetupInput {
+	enabled: boolean;
+	grantedPermissions: PluginPermission[];
+	grantedCommands: string[];
+}
+
 export interface PluginAgentToolRegistration {
 	id: string;
 	name: string;
@@ -712,6 +718,7 @@ export interface DesktopPluginsApi {
 	grantCommands(id: string, names: string[]): Promise<InstalledPlugin>;
 	/** Disable declared command names for a plugin. */
 	revokeCommands(id: string, names: string[]): Promise<InstalledPlugin>;
+	applySetup(id: string, input: PluginSetupInput): Promise<InstalledPlugin>;
 	getCliProviderStatus(pluginId: string, providerId: string): Promise<PluginCliProviderStatus>;
 	retryCliProvider(pluginId: string, providerId: string): Promise<void>;
 	runCliProvider(

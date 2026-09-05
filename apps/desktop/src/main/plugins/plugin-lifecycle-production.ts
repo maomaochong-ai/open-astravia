@@ -3,6 +3,7 @@ import { stopAllSpawnsForPlugin } from "./command-spawner.js";
 import { destroyOffscreenSessionsForPlugin } from "./offscreen-capture-service.js";
 import type { PluginActionService } from "./plugin-action-service.js";
 import {
+	applyPluginSetup,
 	grantPluginCommands,
 	grantPluginPermissions,
 	installPluginFromArchive,
@@ -33,6 +34,7 @@ const dependencies: PluginLifecycleDependencies = {
 	revokePermissions: revokePluginPermissions,
 	grantCommands: grantPluginCommands,
 	revokeCommands: revokePluginCommands,
+	applySetup: applyPluginSetup,
 	reload: reloadPlugin,
 	stopDevWatch: stopPluginDevWatch,
 	stopSpawns: stopAllSpawnsForPlugin,

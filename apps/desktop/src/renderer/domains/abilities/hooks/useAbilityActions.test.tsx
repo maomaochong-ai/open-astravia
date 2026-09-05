@@ -220,11 +220,13 @@ describe("useAbilityActions managed MCP wiring", () => {
 
 	it("keeps first-time plugin setup separate and does not reload a fresh install", async () => {
 		const item = githubPluginAbility(false);
+		window.vetta.plugins.listAll = vi.fn(async () => [{ id: "demo-plugin", enabled: false } as InstalledPlugin]);
 		const { result } = renderHook(() => useAbilityActions({ mcp: mcpModel(), refresh: vi.fn() }));
 
 		act(() => result.current.install(item));
 
 		await waitFor(() => expect(result.current.permissionPromptSlug).toBe("demo-plugin"));
+		expect(result.current.pendingPluginSetup?.plugin?.id).toBe("demo-plugin");
 		expect(window.vetta.plugins.reload).not.toHaveBeenCalled();
 		expect(showToast).not.toHaveBeenCalled();
 	});

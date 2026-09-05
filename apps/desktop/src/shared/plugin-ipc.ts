@@ -12,6 +12,7 @@ export const PLUGIN_MANAGEMENT_CHANNELS = {
 	REVOKE_PERMISSIONS: "vetta:plugins:revoke-permissions",
 	GRANT_COMMANDS: "vetta:plugins:grant-commands",
 	REVOKE_COMMANDS: "vetta:plugins:revoke-commands",
+	APPLY_SETUP: "vetta:plugins:apply-setup",
 	RELOAD: "vetta:plugins:reload",
 	DEV_WATCH_START: "vetta:plugins:dev-watch-start",
 	DEV_WATCH_STOP: "vetta:plugins:dev-watch-stop",

@@ -39,7 +39,7 @@ export interface AbilityActions {
 	applyPluginSetup: (
 		item: PluginAbility,
 		next: { enabled: boolean; grantedPermissions: PluginPermission[]; grantedCommands: string[] },
-	) => void;
+	) => Promise<void>;
 	setPluginCommand: (item: PluginAbility, command: string, granted: boolean) => void;
 	reloadPlugin: (item: PluginAbility) => void;
 	uninstallMembers: (members: AbilityItem[]) => void;
@@ -48,6 +48,7 @@ export interface AbilityActions {
 	importing: boolean;
 	/** 刚装好、待提示配置权限的插件 slug；用完由 dismissPermissionPrompt 清空。 */
 	permissionPromptSlug: string | null;
+	pendingPluginSetup: PluginAbility | null;
 	dismissPermissionPrompt: () => void;
 	/** 待提示「安装后还要在对话里完成一步」的 MCP 能力 id。 */
 	setupPromptId: string | null;
@@ -55,7 +56,16 @@ export interface AbilityActions {
 	dismissSetupPrompt: () => void;
 }
 
-export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; refresh: () => void }): AbilityActions {
+export function useAbilityActions({
+	mcp,
+	refresh,
+	refreshLocalInstallState,
+}: {
+	mcp: McpSettingsModel;
+	refresh: () => void;
+	refreshLocalInstallState?: () => Promise<void>;
+}): AbilityActions {
+	const refreshLocal = refreshLocalInstallState ?? (async () => refresh());
 	const token = useAtomValue(authTokenAtom);
 	const [operationById, setOperationById] = useState<ReadonlyMap<string, AbilityOperation>>(
 		() => new Map<string, AbilityOperation>(),
@@ -67,6 +77,7 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 	const [error, setError] = useState<string | null>(null);
 	const [importing, setImporting] = useState(false);
 	const [permissionPromptSlug, setPermissionPromptSlug] = useState<string | null>(null);
+	const [pendingPluginSetup, setPendingPluginSetup] = useState<PluginAbility | null>(null);
 	const [setupPromptId, setSetupPromptId] = useState<string | null>(null);
 
 	const run = useCallback(
@@ -76,7 +87,7 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 			operation: (
 				setOperation: (next: AbilityOperation, progress?: AbilityOperationProgress) => void,
 			) => Promise<void>,
-		) => {
+		): Promise<void> => {
 			setOperationById((prev) => new Map(prev).set(id, initialOperation));
 			setOperationProgressById((prev) => {
 				const next = new Map(prev);
@@ -93,9 +104,18 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 					return next;
 				});
 			};
-			void operation(setOperation)
-				.catch((err: unknown) => setError(errorMessage(err)))
-				.finally(() => {
+			const task = operation(setOperation)
+				.catch((err: unknown) => {
+					setError(errorMessage(err));
+					throw err;
+				})
+				.finally(async () => {
+					setOperation("refreshing");
+					try {
+						await refreshLocal();
+					} catch (err: unknown) {
+						setError(errorMessage(err));
+					}
 					setOperationById((prev) => {
 						const next = new Map(prev);
 						next.delete(id);
@@ -106,17 +126,20 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 						next.delete(id);
 						return next;
 					});
-					refresh();
 				});
+			void task.catch(() => undefined);
+			return task;
 		},
-		[refresh],
+		[refreshLocal],
 	);
 
 	const installSkill = useCallback(
-		async (item: AbilityItem): Promise<InstallOutcome> => {
+		async (item: AbilityItem, setOperation?: (next: AbilityOperation) => void): Promise<InstallOutcome> => {
 			if (item.type !== "skill" && item.type !== "scene") return "skipped";
 			if (item.origin?.kind === "github-marketplace") {
+				if (!item.installed) setOperation?.("checkingSource");
 				await window.vetta.abilities.installOpenAbility(item.type, item.slug, item.origin.sourceId);
+				setOperation?.("installing");
 				return "installed";
 			}
 			const buffer = await downloadAbility(item.type, item.slug, token);
@@ -148,6 +171,18 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 				});
 				return;
 			}
+			const installedPlugin = (await window.vetta.plugins.listAll?.())?.find((plugin) => plugin.id === item.slug);
+			if (installedPlugin) {
+				setPendingPluginSetup({
+					...item,
+					installed: true,
+					enabled: installedPlugin.enabled,
+					busy: false,
+					plugin: installedPlugin,
+					grantedPermissions: installedPlugin.grantedPermissions,
+					grantedCommands: installedPlugin.grantedCommandNames,
+				});
+			}
 			setPermissionPromptSlug(item.slug);
 		},
 		[],
@@ -156,7 +191,9 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 	const installPlugin = useCallback(
 		async (item: PluginAbility, setOperation?: (next: AbilityOperation) => void): Promise<InstallOutcome> => {
 			if (item.origin?.kind === "github-marketplace") {
+				if (!item.installed) setOperation?.("checkingSource");
 				await window.vetta.abilities.installOpenAbility("plugin", item.slug, item.origin.sourceId);
+				setOperation?.("installing");
 				await finishPluginInstall(item, setOperation);
 				return "installed";
 			}
@@ -249,7 +286,7 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 			if (item.type === "plugin") return installPlugin(item, setOperation);
 			if (item.type === "mcp") return installMcp(item, setOperation);
 			if (item.type === "bundle") return "skipped";
-			return installSkill(item);
+			return installSkill(item, setOperation);
 		},
 		[installMcp, installPlugin, installSkill],
 	);
@@ -295,7 +332,8 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 				setError(i18n.t("abilities:error.installSourceConflict"));
 				return;
 			}
-			run(item.id, item.installed ? "updating" : "installing", async (setOperation) => {
+			const initialOperation = item.installed ? "updating" : "installing";
+			run(item.id, initialOperation, async (setOperation) => {
 				await installOne(item, setOperation);
 			});
 		},
@@ -375,19 +413,9 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 			item: PluginAbility,
 			next: { enabled: boolean; grantedPermissions: PluginPermission[]; grantedCommands: string[] },
 		) => {
-			run(`${item.id}:setup`, "saving", async () => {
-				const grant = next.grantedPermissions.filter((permission) => !item.grantedPermissions.includes(permission));
-				const revoke = item.grantedPermissions.filter(
-					(permission) => !next.grantedPermissions.includes(permission),
-				);
-				if (grant.length > 0) await window.vetta.plugins.grantPermissions(item.slug, grant);
-				if (revoke.length > 0) await window.vetta.plugins.revokePermissions(item.slug, revoke);
-				const grantCommands = next.grantedCommands.filter((command) => !item.grantedCommands.includes(command));
-				const revokeCommands = item.grantedCommands.filter((command) => !next.grantedCommands.includes(command));
-				if (grantCommands.length > 0) await window.vetta.plugins.grantCommands(item.slug, grantCommands);
-				if (revokeCommands.length > 0) await window.vetta.plugins.revokeCommands(item.slug, revokeCommands);
-				// 授权先于启用：反过来的话插件会以缺权限的状态先 activate 一次并抛错。
-				if (next.enabled !== item.enabled) await window.vetta.plugins.setEnabled(item.slug, next.enabled);
+			return run(`${item.id}:setup`, "applyingSetup", async (setOperation) => {
+				setOperation("activating");
+				await window.vetta.plugins.applySetup(item.slug, next);
 				notifyPluginsChanged();
 			});
 		},
@@ -458,7 +486,10 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 		[refresh],
 	);
 
-	const dismissPermissionPrompt = useCallback(() => setPermissionPromptSlug(null), []);
+	const dismissPermissionPrompt = useCallback(() => {
+		setPermissionPromptSlug(null);
+		setPendingPluginSetup(null);
+	}, []);
 	const promptMcpSetup = useCallback((item: McpAbility) => setSetupPromptId(item.id), []);
 	const dismissSetupPrompt = useCallback(() => setSetupPromptId(null), []);
 
@@ -480,6 +511,7 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 		importPluginArchive,
 		importing,
 		permissionPromptSlug,
+		pendingPluginSetup,
 		dismissPermissionPrompt,
 		setupPromptId,
 		promptMcpSetup,

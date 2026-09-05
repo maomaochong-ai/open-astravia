@@ -38,6 +38,8 @@
 	},
 	"operation": {
 		"processing": "Working…",
+		"checkingSource": "Checking marketplace version…",
+		"refreshing": "Refreshing local state…",
 		"installing": "Adding…",
 		"updating": "Updating…",
 		"applyingUpdate": "Reloading the new version…",
@@ -46,6 +48,8 @@
 		"disabling": "Disabling…",
 		"reloading": "Reloading…",
 		"saving": "Saving…",
+		"applyingSetup": "Applying permissions…",
+		"activating": "Activating capability…",
 		"preparingRuntime": "Preparing runtime…",
 		"downloadingRuntime": "Downloading runtime…",
 		"verifyingRuntime": "Verifying runtime…",

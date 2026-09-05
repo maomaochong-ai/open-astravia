@@ -35,7 +35,11 @@ export function useAbilitiesModel(): AbilitiesModel {
 	// 引导弹窗里完成的安装不走 useAbilityActions，台账要由 mcp 模型回调刷新，
 	// 否则卡片继续显示「添加」，再点一次就会装出第二个同名 server。
 	const mcp = useMcpSettingsModel({ onAbilityLedgerChanged: data.refresh });
-	const actions = useAbilityActions({ mcp, refresh: data.refresh });
+	const actions = useAbilityActions({
+		mcp,
+		refresh: data.refresh,
+		refreshLocalInstallState: data.refreshLocalInstallState,
+	});
 
 	const localState = useMemo<LocalAbilityState>(
 		() => ({
@@ -173,6 +177,7 @@ export function useAbilitiesModel(): AbilitiesModel {
 		mcp,
 		findById,
 		refresh: data.refresh,
+		refreshLocalInstallState: data.refreshLocalInstallState,
 		install: actions.install,
 		installBundleMembers: actions.installBundleMembers,
 		uninstall: actions.uninstall,
@@ -218,6 +223,7 @@ export function useAbilitiesModel(): AbilitiesModel {
 		refreshMarketplaceSource: data.refreshMarketplaceSource,
 		startAddManualMcp: () => mcp.onStartAddServer(),
 		permissionPromptSlug: actions.permissionPromptSlug,
+		pendingPluginSetup: actions.pendingPluginSetup,
 		dismissPermissionPrompt: actions.dismissPermissionPrompt,
 		setupPromptId: actions.setupPromptId,
 		dismissSetupPrompt: actions.dismissSetupPrompt,

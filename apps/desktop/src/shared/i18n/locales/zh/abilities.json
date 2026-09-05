@@ -38,6 +38,8 @@
 	},
 	"operation": {
 		"processing": "正在处理…",
+		"checkingSource": "正在检查市场版本…",
+		"refreshing": "正在刷新本地状态…",
 		"installing": "正在添加…",
 		"updating": "正在更新…",
 		"applyingUpdate": "正在重载新版本…",
@@ -46,6 +48,8 @@
 		"disabling": "正在停用…",
 		"reloading": "正在重载…",
 		"saving": "正在保存…",
+		"applyingSetup": "正在应用权限配置…",
+		"activating": "正在激活能力…",
 		"preparingRuntime": "正在准备运行时…",
 		"downloadingRuntime": "正在下载运行时…",
 		"verifyingRuntime": "正在校验运行时…",

@@ -41,16 +41,25 @@ export function PluginInstallSetupDialog({
 	const [enabled, setEnabled] = useState(true);
 	const [granted, setGranted] = useState<PluginPermission[]>(() => [...item.permissions]);
 	const [grantedCommands, setGrantedCommands] = useState<string[]>(() => [...item.commands]);
+	const [submitting, setSubmitting] = useState(false);
 
 	const dirty =
 		enabled !== item.enabled ||
 		!sameSet(granted, item.grantedPermissions) ||
 		!sameSet(grantedCommands, item.grantedCommands);
 
-	const apply = (): void => {
-		model.applyPluginSetup(item, { enabled, grantedPermissions: granted, grantedCommands });
-		onClose();
+	const apply = async (): Promise<void> => {
+		setSubmitting(true);
+		try {
+			await model.applyPluginSetup(item, { enabled, grantedPermissions: granted, grantedCommands });
+			onClose();
+		} catch {
+			// 操作层已写入错误提示；保留弹窗，用户可以重试或调整权限。
+		} finally {
+			setSubmitting(false);
+		}
 	};
+	const busy = item.busy || submitting;
 
 	const requestClose = (): void => {
 		if (!dirty) {
@@ -90,7 +99,7 @@ export function PluginInstallSetupDialog({
 							<span className="block text-[12px] text-foreground">{t("plugin.setupEnable")}</span>
 							<span className="block text-[11px] text-muted-foreground">{t("plugin.setupEnableHint")}</span>
 						</span>
-						<Switch className="shrink-0" checked={enabled} disabled={item.busy} onCheckedChange={setEnabled} />
+						<Switch className="shrink-0" checked={enabled} disabled={busy} onCheckedChange={setEnabled} />
 					</label>
 					{item.permissions.map((permission) => (
 						<label
@@ -103,7 +112,7 @@ export function PluginInstallSetupDialog({
 							<Switch
 								className="shrink-0"
 								checked={granted.includes(permission)}
-								disabled={item.busy}
+								disabled={busy}
 								onCheckedChange={(checked) =>
 									setGranted((current) =>
 										checked ? [...current, permission] : current.filter((value) => value !== permission),
@@ -123,7 +132,7 @@ export function PluginInstallSetupDialog({
 							<Switch
 								className="shrink-0"
 								checked={grantedCommands.includes(command)}
-								disabled={item.busy}
+								disabled={busy}
 								onCheckedChange={(checked) =>
 									setGrantedCommands((current) =>
 										checked ? [...current, command] : current.filter((value) => value !== command),
@@ -134,11 +143,11 @@ export function PluginInstallSetupDialog({
 					))}
 				</div>
 				<DialogFooter>
-					<Button variant="ghost" onClick={requestClose} disabled={item.busy}>
+					<Button variant="ghost" onClick={requestClose} disabled={busy}>
 						{tCommon("actions.cancel")}
 					</Button>
-					<Button onClick={apply} disabled={item.busy}>
-						{tCommon("actions.confirm")}
+					<Button onClick={() => void apply()} disabled={busy} aria-busy={submitting}>
+						{submitting ? t("operation.applyingSetup") : tCommon("actions.confirm")}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

@@ -42,6 +42,8 @@ export const ABILITY_CATEGORY_VETTA_BUILTIN = "__vetta_builtin__";
 
 /** 用户触发的能力操作阶段；用于让列表与详情说明当前正在发生什么。 */
 export type AbilityOperation =
+	| "checkingSource"
+	| "refreshing"
 	| "installing"
 	| "updating"
 	| "applyingUpdate"
@@ -49,7 +51,9 @@ export type AbilityOperation =
 	| "enabling"
 	| "disabling"
 	| "reloading"
-	| "saving";
+	| "saving"
+	| "applyingSetup"
+	| "activating";
 
 export type AbilityOperationProgress = Omit<OpenMarketplaceMcpRuntimeProgress, "sourceId" | "slug">;
 
@@ -189,6 +193,7 @@ export interface AbilitiesModel {
 	mcp: McpSettingsModel;
 	findById: (id: string) => AbilityItem | null;
 	refresh: () => void;
+	refreshLocalInstallState: () => Promise<void>;
 	install: (item: AbilityItem) => void;
 	/** 安装 bundle 时只处理用户勾选的成员。 */
 	installBundleMembers: (bundle: BundleAbility, members: AbilityItem[]) => void;
@@ -203,7 +208,7 @@ export interface AbilitiesModel {
 	applyPluginSetup: (
 		item: PluginAbility,
 		next: { enabled: boolean; grantedPermissions: PluginPermission[]; grantedCommands: string[] },
-	) => void;
+	) => Promise<void>;
 	setPluginCommand: (item: PluginAbility, command: string, granted: boolean) => void;
 	reloadPlugin: (item: PluginAbility) => void;
 	/** 逐项勾选后卸载 bundle 成员。 */
@@ -221,6 +226,8 @@ export interface AbilitiesModel {
 	startAddManualMcp: () => void;
 	/** 刚装好、待提示配置权限的插件 slug；为空表示不提示。 */
 	permissionPromptSlug: string | null;
+	/** 安装完成后直接传给权限弹窗的本地快照，不依赖整页市场刷新。 */
+	pendingPluginSetup: PluginAbility | null;
 	dismissPermissionPrompt: () => void;
 	/** 待展示安装后步骤引导的 MCP 能力 id；装完或点「去配置」时置上。 */
 	setupPromptId: string | null;

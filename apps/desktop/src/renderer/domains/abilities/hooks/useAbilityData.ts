@@ -47,6 +47,8 @@ export interface AbilityData {
 	refreshing: boolean;
 	error: string | null;
 	refresh: () => void;
+	/** 安装完成后的轻量刷新：只读取本地安装态，不触发市场网络同步。 */
+	refreshLocalInstallState: () => Promise<void>;
 	addMarketplaceSource: (input: AddMarketplaceSourceInput) => Promise<void>;
 	updateMarketplaceSource: (id: string, input: UpdateMarketplaceSourceInput) => Promise<void>;
 	removeMarketplaceSource: (id: string) => Promise<void>;
@@ -70,20 +72,35 @@ export function useAbilityData(): AbilityData {
 	const [localFailed, setLocalFailed] = useState(false);
 	const loadGenerationRef = useRef(0);
 
+	const loadLocalState = useCallback(async () => {
+		return Promise.all([
+			window.vetta.abilities.getLedger(),
+			window.vetta.abilities.listBuiltinPresentations(),
+			window.vetta.skills.getMarketManifest(),
+			window.vetta.skills.list(),
+			// 能力市场不按工作模式过滤：另一模式下已装的插件仍要出现在「我的」。
+			window.vetta.plugins.listAll(),
+			window.vetta.abilities.getOpenMcpSetupStatus(),
+		]);
+	}, []);
+
+	const applyLocalState = useCallback((value: Awaited<ReturnType<typeof loadLocalState>>) => {
+		const [nextLedger, presentations, manifest, skills, installedPlugins, setupStatus] = value;
+		setLocalFailed(false);
+		setLedger(nextLedger);
+		setBuiltinPresentations(presentations);
+		setSkillManifest(manifest);
+		setLocalSkills(skills.filter((skill) => isReadonlyLocalSkillSource(skill.source)));
+		setPlugins(installedPlugins);
+		setMcpSetupStatus(setupStatus);
+	}, []);
+
 	const load = useCallback(
 		(forceOpenMarketplaceRefresh: boolean) => {
 			const generation = ++loadGenerationRef.current;
 			setRefreshing(true);
 
-			const local = Promise.all([
-				window.vetta.abilities.getLedger(),
-				window.vetta.abilities.listBuiltinPresentations(),
-				window.vetta.skills.getMarketManifest(),
-				window.vetta.skills.list(),
-				// 能力市场不按工作模式过滤：另一模式下已装的插件仍要出现在「我的」。
-				window.vetta.plugins.listAll(),
-				window.vetta.abilities.getOpenMcpSetupStatus(),
-			]);
+			const local = loadLocalState();
 
 			// 市场浏览无需登录；有 token 时仍带上。lite 构建无 vetta 官方市场，
 			// 只保留 github 开放市场（openMarketplaces）与本地来源。
@@ -94,14 +111,7 @@ export function useAbilityData(): AbilityData {
 			void local
 				.then((value) => {
 					if (generation !== loadGenerationRef.current) return;
-					const [nextLedger, presentations, manifest, skills, installedPlugins, setupStatus] = value;
-					setLocalFailed(false);
-					setLedger(nextLedger);
-					setBuiltinPresentations(presentations);
-					setSkillManifest(manifest);
-					setLocalSkills(skills.filter((skill) => isReadonlyLocalSkillSource(skill.source)));
-					setPlugins(installedPlugins);
-					setMcpSetupStatus(setupStatus);
+					applyLocalState(value);
 				})
 				.catch((reason) => {
 					if (generation !== loadGenerationRef.current) return;
@@ -130,10 +140,27 @@ export function useAbilityData(): AbilityData {
 				setRefreshing(false);
 			});
 		},
-		[token, loadOpen],
+		[applyLocalState, loadLocalState, loadOpen, token],
 	);
 
 	const refresh = useCallback(() => load(true), [load]);
+	const refreshLocalInstallState = useCallback(async () => {
+		const generation = ++loadGenerationRef.current;
+		setRefreshing(true);
+		try {
+			const local = await loadLocalState();
+			if (generation !== loadGenerationRef.current) return;
+			applyLocalState(local);
+			setLoading(false);
+		} catch (reason) {
+			if (generation !== loadGenerationRef.current) return;
+			setLocalFailed(true);
+			console.warn("Ability local state refresh failed", reason);
+			throw reason;
+		} finally {
+			if (generation === loadGenerationRef.current) setRefreshing(false);
+		}
+	}, [applyLocalState, loadLocalState]);
 	// 内置 skill 的展示文案由主进程按当前语言给出（`skills:builtin.*`），切语言要重新取数。
 	const { i18n: i18nInstance } = useTranslation();
 	const language = i18nInstance.language;
@@ -174,6 +201,7 @@ export function useAbilityData(): AbilityData {
 				),
 			].join(" / ") || null,
 		refresh,
+		refreshLocalInstallState,
 		addMarketplaceSource: open.addSource,
 		updateMarketplaceSource: open.updateSource,
 		removeMarketplaceSource: open.removeSource,
