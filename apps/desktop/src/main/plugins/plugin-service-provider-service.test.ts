@@ -217,4 +217,25 @@ describe("PluginServiceProviderService", () => {
 		await expect(f.service.reportReady(f.plugin.id, "bridge", false)).resolves.toMatchObject({ phase: "starting" });
 		f.service.stopAll();
 	});
+
+	it("waits for transport readiness when a plugin probes during child startup", async () => {
+		const f = await fixture();
+		f.manifest.health = { ...f.manifest.health, readiness: { mode: "plugin" } };
+		let releaseHealth!: () => void;
+		f.fetchClient.mockImplementationOnce(
+			() =>
+				new Promise<Response>((resolveResponse) => {
+					releaseHealth = () => resolveResponse(new Response("{}", { status: 200 }));
+				}),
+		);
+		const starting = f.service.start(f.plugin.id, "bridge");
+		await vi.waitFor(() => expect(f.spawnProcess).toHaveBeenCalledOnce());
+		const request = f.service.request(f.plugin.id, "bridge", { path: "/models" });
+		await Promise.resolve();
+		expect(f.fetchClient).toHaveBeenCalledOnce();
+		releaseHealth();
+		await expect(starting).resolves.toMatchObject({ phase: "starting" });
+		await expect(request).resolves.toMatchObject({ ok: true });
+		f.service.stopAll();
+	});
 });

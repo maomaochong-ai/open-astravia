@@ -30,6 +30,8 @@ const MAX_RESPONSE_BYTES = 16 * 1024 * 1024;
 const DEFAULT_STARTUP_TIMEOUT_MS = 45_000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 const STOP_GRACE_MS = 3_000;
+const TRANSPORT_READY_WAIT_MS = 15_000;
+const TRANSPORT_READY_POLL_MS = 50;
 const TOKEN_PATTERN = /\$\{VETTA_SERVICE_(PORT|RUNTIME_DIR|DATA_DIR|CACHE_DIR|SECRET_([A-Z0-9_]+))\}/g;
 
 interface ServiceSecrets {
@@ -436,8 +438,26 @@ export class PluginServiceProviderService {
 		serviceId: string,
 		input: PluginServiceRequest,
 	): Promise<PluginServiceResponse<T>> {
-		const record = this.requireReadyRecord(pluginId, serviceId);
-		return this.requestRecord<T>(record, input);
+		const record = this.records.get(serviceKey(pluginId, serviceId));
+		if (record?.status.phase === "starting" && record.child && !record.transportReady) {
+			await this.waitForTransport(record);
+		}
+		const readyRecord = this.requireReadyRecord(pluginId, serviceId);
+		return this.requestRecord<T>(readyRecord, input);
+	}
+
+	/**
+	 * `starting` is intentionally visible before the health probe completes so
+	 * the plugin can own semantic readiness.  Requests made in that small
+	 * window must wait for transport readiness instead of failing and relying
+	 * on a status event that may already have been missed by the renderer.
+	 */
+	private async waitForTransport(record: ServiceRecord): Promise<void> {
+		const deadline = Date.now() + TRANSPORT_READY_WAIT_MS;
+		while (Date.now() < deadline) {
+			if (record.transportReady || record.status.phase !== "starting" || !record.child) return;
+			await new Promise((resolveDelay) => setTimeout(resolveDelay, TRANSPORT_READY_POLL_MS));
+		}
 	}
 
 	private async requestRecord<T>(
