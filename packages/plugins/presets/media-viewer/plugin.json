@@ -2,7 +2,7 @@
 	"id": "media-viewer",
 	"name": "%plugin.name%",
 	"icon": "icon.png",
-	"version": "0.1.4",
+	"version": "0.1.5",
 	"defaultLocale": "zh",
 	"pluginApiVersion": "^2.0.0",
 	"entry": "dist/mf-manifest.json",

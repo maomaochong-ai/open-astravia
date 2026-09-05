@@ -1,7 +1,7 @@
 {
 	"id": "cowart-vetta",
 	"name": "%plugin.name%",
-	"version": "0.1.8",
+	"version": "0.1.9",
 	"pluginApiVersion": "^2.0.0",
 	"entry": "dist/mf-manifest.json",
 	"moduleFederation": {

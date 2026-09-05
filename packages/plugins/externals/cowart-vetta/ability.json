@@ -2,7 +2,7 @@
 	"schemaVersion": 1,
 	"type": "plugin",
 	"slug": "cowart-vetta",
-	"version": "0.1.8",
+	"version": "0.1.9",
 	"detail": {
 		"blocks": [
 			{

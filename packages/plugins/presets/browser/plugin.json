@@ -2,7 +2,7 @@
 	"id": "browser",
 	"name": "%plugin.name%",
 	"icon": "icon.png",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"defaultLocale": "zh",
 	"pluginApiVersion": "^2.0.0",
 	"entry": "dist/mf-manifest.json",

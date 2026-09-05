@@ -1,7 +1,7 @@
 {
 	"id": "build-apple-apps",
 	"name": "%plugin.name%",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"icon": "solar:smartphone-2-linear",
 	"defaultLocale": "zh",
 	"pluginApiVersion": "^2.0.0",

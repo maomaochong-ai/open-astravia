@@ -2,7 +2,7 @@
 	"schemaVersion": 1,
 	"type": "plugin",
 	"slug": "svg-viewer",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"detail": {
 		"blocks": [
 			{

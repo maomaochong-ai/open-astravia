@@ -2,7 +2,7 @@
 	"id": "plugin-workbench",
 	"name": "%plugin.name%",
 	"icon": "icon.png",
-	"version": "0.1.6",
+	"version": "0.1.7",
 	"defaultLocale": "zh",
 	"pluginApiVersion": "^2.0.0",
 	"entry": "dist/mf-manifest.json",
