@@ -338,6 +338,75 @@ describe("team chat stream state", () => {
 		});
 	});
 
+	it("keeps the public coordination answer visible while member history is still flushing", () => {
+		const items = projectTeamConversationTimeline({
+			snapshot: snapshot({
+				messages: [
+					userMessage("coord-user", "request", "hello", 1),
+					agentMessage("public-result", "request", "leader", "final answer", 3),
+				],
+				display: {
+					memberConversations: [
+						{
+							memberId: "leader",
+							runtimeSessionId: "leader-runtime",
+							history: [
+								{
+									type: "message",
+									entryId: "member-user",
+									message: { role: "user", content: "hello", timestamp: 1 },
+								},
+							],
+						},
+					],
+				},
+			}),
+			pending: undefined,
+			streams: reduceTeamStreamState({}, streamEvent("public-result", 1, "live")),
+			members: [member],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		expect(items.filter((item) => item.kind === "agent")).toEqual([
+			expect.objectContaining({
+				id: "public-result",
+				text: "final answer",
+				renderKey: "team:stream:leader:public-result",
+			}),
+		]);
+
+		const flushed = projectTeamConversationTimeline({
+			snapshot: snapshot({
+				messages: [
+					userMessage("coord-user", "request", "hello", 1),
+					agentMessage("public-result", "request", "leader", "final answer", 3),
+				],
+				display: {
+					memberConversations: [
+						{
+							memberId: "leader",
+							runtimeSessionId: "leader-runtime",
+							history: [
+								{
+									type: "message",
+									entryId: "runtime-result",
+									message: agentMessage("runtime-result", "runtime-turn", "leader", "final answer", 3).message,
+								},
+							],
+						},
+					],
+				},
+			}),
+			pending: undefined,
+			streams: reduceTeamStreamState({}, streamEvent("public-result", 2, "final answer")),
+			members: [member],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+		expect(flushed.filter((item) => item.kind === "agent")).toEqual([
+			expect.objectContaining({ id: "runtime-result", renderKey: "team:stream:leader:public-result" }),
+		]);
+	});
+
 	it("keeps the coordination user message visible when member histories are present", () => {
 		const items = projectTeamConversationTimeline({
 			snapshot: snapshot({

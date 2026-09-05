@@ -223,13 +223,33 @@ export function projectTeamConversationTimeline({
 	// messages and must not be merged into the aggregate feed.
 	const coordinationItems = snapshot ? projectLegacySnapshotMessages(snapshot) : [];
 	const coordinationUserItems = coordinationItems.filter((item) => item.kind === "user");
+	const coordinationAgentItems = coordinationItems.filter((item) => item.kind === "agent");
+	const stabilizedMemberItems = projectedMemberItems.map((item) => {
+		if (item.kind !== "agent") return item;
+		const publicMatch = coordinationAgentItems.find(
+			(candidate) => candidate.authorId === item.authorId && publicAgentText(candidate) === publicAgentText(item),
+		);
+		return publicMatch ? { ...item, renderKey: publicMatch.renderKey } : item;
+	});
+	const memberAgentItems = stabilizedMemberItems.filter((item) => item.kind === "agent");
 	const projectedItems =
-		coordinationUserItems.length > 0
-			? projectedMemberItems.filter((item) => item.kind !== "user")
-			: projectedMemberItems;
+		// The coordination Conversation is the durable public Team timeline. Member
+		// histories are allowed to lag behind it while the Runtime flushes its last
+		// assistant entry; preferring them here would briefly remove the just-published
+		// answer (and force the virtualizer to replace the streaming row). Keep native
+		// member history for member-scoped views, but use public coordination messages
+		// for the aggregate Team feed as soon as one is available.
+		memberId === undefined && coordinationAgentItems.length > memberAgentItems.length
+			? coordinationAgentItems
+			: coordinationUserItems.length > 0
+				? stabilizedMemberItems.filter((item) => item.kind !== "user")
+				: stabilizedMemberItems;
+	const projectedIds = new Set(projectedItems.map((item) => item.id));
 	const items = dedupeTeamUserItems([
 		...projectedItems,
-		...(memberConversations.length === 0 ? coordinationItems : coordinationUserItems),
+		...coordinationItems.filter(
+			(item) => !projectedIds.has(item.id) && (memberConversations.length === 0 || item.kind === "user"),
+		),
 	]);
 	for (const activity of memberId ? [] : (snapshot?.activities ?? [])) {
 		const source =
@@ -273,20 +293,20 @@ export function projectTeamConversationTimeline({
 		});
 	}
 
-	const persistedResults = new Set(
-		visibleMemberConversations.length > 0
-			? visibleMemberConversations.flatMap((conversation) =>
-					fullHistoryToChat([...conversation.history]).map((item) => item.id),
-				)
-			: memberId
-				? []
-				: (snapshot?.messages ?? []).map((record) => record.id),
-	);
+	const persistedAgentItems = projectedItems.filter((item) => item.kind === "agent");
+	const persistedResults = new Set(persistedAgentItems.map((item) => item.id));
 	for (const turn of Object.values(streams).sort(
 		(left, right) => (left.message.startedAt ?? 0) - (right.message.startedAt ?? 0),
 	)) {
 		if (memberId && turn.message.authorId !== memberId) continue;
-		if (persistedResults.has(turn.message.id)) continue;
+		if (
+			persistedResults.has(turn.message.id) ||
+			persistedAgentItems.some(
+				(item) =>
+					item.authorId === turn.message.authorId && publicAgentText(item) === publicAgentText(turn.message),
+			)
+		)
+			continue;
 		items.push({
 			...turn.message,
 			renderKey: `team:stream:${turn.message.authorId}:${turn.message.id}`,
@@ -355,19 +375,28 @@ function projectLegacySnapshotMessages(snapshot: DesktopTeamSessionSnapshot): Ch
 				attachments: [...(record.attachments ?? [])],
 			};
 		}
-		return projectConversationAgentMessage({
-			message: record.message,
-			messageId: record.id,
-			entryId: record.id,
-			turnId: record.turnId,
-			authorId: record.author.id,
-			timestamp: record.timestamp,
-		});
+		return {
+			...projectConversationAgentMessage({
+				message: record.message,
+				messageId: record.id,
+				entryId: record.id,
+				turnId: record.turnId,
+				authorId: record.author.id,
+				timestamp: record.timestamp,
+			}),
+			// Keep the DOM identity of a public result stable while it transitions
+			// from the live Team stream to the persisted coordination record.
+			renderKey: `team:stream:${record.author.id}:${record.id}`,
+		};
 	});
 }
 
 function itemTimestamp(item: ChatConversationItem): number {
 	return item.timestamp ?? 0;
+}
+
+function publicAgentText(item: ChatConversationItem): string {
+	return item.kind === "agent" ? (item.text ?? "") : "";
 }
 
 export function stripAttachmentContext(text: string): string {
