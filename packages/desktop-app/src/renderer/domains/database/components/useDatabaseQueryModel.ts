@@ -93,6 +93,12 @@ export interface DatabaseQueryModel {
 		readonly run: (connection: DbConnection) => Promise<DatabaseQueryRunOutcome>;
 		/** 执行激活标签的 SQL，且标记本次已通过 UI 危险确认（DDL / 写语句放行依据）。 */
 		readonly runConfirmed: (connection: DbConnection) => Promise<DatabaseQueryRunOutcome>;
+		/** P1：SQL 块「执行」—— 新建 tab 预填 SQL 并立即执行（结果落新 tab）。危险 SQL 返回 "confirm"（复用工作台 danger-confirm UI 后以 confirmedWrite=true 重试）。 */
+		readonly runSqlInNewTab: (
+			connection: DbConnection,
+			sqlText: string,
+			confirmedWrite?: boolean,
+		) => Promise<DatabaseQueryRunOutcome>;
 		/** V6-③ 单击打开表（对齐 dbx）：同连接+同表+同 scope 已开则聚焦复用；forceNewTab=true 强制新开。生成方言 SQL 并执行。 */
 		readonly openTable: (
 			connection: DbConnection,
@@ -322,6 +328,25 @@ export function useDatabaseQueryModel(): DatabaseQueryModel {
 		[activeTab, runSql],
 	);
 
+	/** P1：SQL 块「执行」—— 新建 tab 预填 SQL 并激活，立即执行（结果落新 tab，记历史）。危险 SQL 被拦时返回 "confirm"。 */
+	const runSqlInNewTab = useCallback(
+		async (connection: DbConnection, sqlText: string, confirmedWrite = false): Promise<DatabaseQueryRunOutcome> => {
+			const fresh = tabs.length === 0;
+			const id = claimNextTabId(fresh);
+			const title = t("databaseQueryTab", { count: claimNextTabNumber(fresh) });
+			setTabs((prev) => [
+				...prev,
+				createQueryTab(id, title, {
+					connectionName: connection.name,
+					sql: sqlText,
+				}),
+			]);
+			setActiveTabId(id);
+			return runSql(connection, sqlText, id, true, confirmedWrite);
+		},
+		[tabs.length, claimNextTabId, claimNextTabNumber, runSql, t],
+	);
+
 	const applyResult = useCallback(
 		(
 			connectionName: string,
@@ -516,6 +541,7 @@ export function useDatabaseQueryModel(): DatabaseQueryModel {
 			goToPage,
 			reloadOpenTable,
 			rerun,
+			runSqlInNewTab,
 			rebindConnection,
 			applyResult,
 			clearHistory,

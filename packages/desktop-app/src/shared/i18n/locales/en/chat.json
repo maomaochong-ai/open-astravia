@@ -1,4 +1,8 @@
 {
+	"sqlAction": {
+		"openInNewQuery": "Open in new query",
+		"runQuery": "Run"
+	},
 	"activityPanel": {
 		"tabs": {
 			"file": "Files",

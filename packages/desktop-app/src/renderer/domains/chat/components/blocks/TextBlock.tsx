@@ -71,6 +71,7 @@ export const MarkdownContent = memo(function MarkdownContent({
 			className={className}
 			{...(inlineTokenSupport ? { inlineTokens: inlineTokenSupport } : {})}
 			{...model}
+			renderCodeBlockActions={inlineTokens ? undefined : model.renderCodeBlockActions}
 		/>
 	);
 });

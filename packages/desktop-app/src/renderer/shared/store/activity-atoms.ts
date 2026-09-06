@@ -127,6 +127,21 @@ export interface DatabaseTabTarget {
  */
 export const databaseTabTargetAtom = atom<DatabaseTabTarget | null>(null);
 
+export interface DatabaseSqlAction {
+	/** "open" = 预填新查询 tab 不执行；"run" = 预填并执行（危险 SQL 经工作台 danger-confirm）。 */
+	readonly kind: "open" | "run";
+	readonly sql: string;
+	/** 会话锚点解析出的连接；缺省时由工作台当前选中连接决定。 */
+	readonly connection?: string;
+}
+
+/**
+ * P1：chat SQL 代码块动作 → 数据库工作台（一次性传递，database-tab 消费后清除）。
+ * 与 databaseTabTargetAtom（打开表/回填结果）分离——动作语义是「预填 SQL + 可选执行」，
+ * 避免与 B2.7/B2.9 的目标通道耦合。
+ */
+export const pendingDatabaseSqlActionAtom = atom<DatabaseSqlAction | null>(null);
+
 /** 从 localStorage 读取 cwd → string[] 形态的持久化记录，解析失败返回空 Map。 */
 function readCwdStringListMap(storageKey: string): Map<string, string[]> {
 	try {

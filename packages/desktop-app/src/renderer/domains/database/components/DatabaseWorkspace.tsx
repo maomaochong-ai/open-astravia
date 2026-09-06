@@ -21,7 +21,7 @@ import { i18n } from "@shared/i18n";
 import { TabBar } from "@shared/components/ui/tab-bar";
 import { useNarrowScreen } from "@shared/hooks/useNarrowScreen";
 import { activityPanelWidthAtom, confirmDialogAtom } from "@shared/store/atoms";
-import type { DatabaseTabTarget } from "@shared/store/atoms";
+import type { DatabaseSqlAction, DatabaseTabTarget } from "@shared/store/atoms";
 import { DatabaseConnectionDetailsWorkbench } from "./DatabaseConnectionDetailsWorkbench";
 import { DatabaseConnectionForm } from "./DatabaseConnectionForm";
 import { DatabaseDetail } from "./DatabaseDetail";
@@ -83,6 +83,11 @@ interface DatabaseWorkspaceProps {
 	/** B2.9-W1/V6-①：工作台消费完 syncTarget（或确认无法消费）后通知上层清空 atom，
 	 *  避免「挂载即清空」竞态丢回填，也避免无法消费时 atom 残留导致下次重复跳转。 */
 	onSyncTargetApplied?: () => void;
+	/** P1：chat SQL 块动作（pendingDatabaseSqlActionAtom，一次性）——「在新查询打开/执行」。 */
+	sqlAction?: DatabaseSqlAction | null;
+	/** P1：工作台消费完 sqlAction（或确认无法消费）后通知上层清空 atom，防残留重复触发。 */
+	onSqlActionApplied?: () => void;
+
 }
 
 export function DatabaseWorkspace({
@@ -90,6 +95,9 @@ export function DatabaseWorkspace({
 	initialTable,
 	syncTarget,
 	onSyncTargetApplied,
+	sqlAction,
+	onSqlActionApplied,
+
 }: DatabaseWorkspaceProps): JSX.Element {
 	const { t } = useTranslation("settings");
 	const model = useDatabaseWorkspaceModel();
@@ -464,6 +472,55 @@ export function DatabaseWorkspace({
 		);
 		onSyncTargetApplied?.();
 	}, [syncTarget, model.connections, model.loading, model.actions, query.actions, onSyncTargetApplied]);
+
+
+	// P1：chat SQL 块动作 —— 「在新查询打开」预填不执行；「执行」新建承载 tab 立即执行，
+	// 危险 SQL（DDL/写）被 clamp 拦截返回 "confirm" 时复用工作台 danger-confirm UI，
+	// 确认后仅对该 tab 以 confirmedWrite=true 放行。连接解析：action.connection 优先（会话锚点），
+	// 缺省回退当前执行连接；两者皆无则清空动作（按钮需在真实连接下才能生效）。
+	const lastAppliedSqlActionRef = useRef<DatabaseSqlAction | null>(null);
+	useEffect(() => {
+		if (!sqlAction) return;
+		if (lastAppliedSqlActionRef.current === sqlAction) return;
+		if (model.loading) return;
+		const target =
+			(sqlAction.connection &&
+				model.connections.find((connection) => connection.name === sqlAction.connection)) ||
+			effectiveConnection;
+		if (!target) {
+			onSqlActionApplied?.();
+			return;
+		}
+		lastAppliedSqlActionRef.current = sqlAction;
+		if (sqlAction.kind === "open") {
+			query.actions.addTab(target.name, sqlAction.sql);
+			onSqlActionApplied?.();
+			return;
+		}
+		void query.actions.runSqlInNewTab(target, sqlAction.sql, false).then((outcome) => {
+			if (outcome !== "confirm") return;
+			setConfirm({
+				title: t("databaseRunConfirmTitle"),
+				message: t("databaseRunConfirmMessage", { name: target.name, sql: sqlAction.sql }),
+				confirmLabel: t("databaseRunConfirmLabel"),
+				variant: "danger",
+				onConfirm: () => {
+					recordSettingsUsage({ tab: "database", action: "changed", target: "query-run-confirmed" });
+					void query.actions.runSqlInNewTab(target, sqlAction.sql, true);
+				},
+			});
+		});
+		onSqlActionApplied?.();
+	}, [
+		sqlAction,
+		model.loading,
+		model.connections,
+		effectiveConnection,
+		query.actions,
+		setConfirm,
+		t,
+		onSqlActionApplied,
+	]);
 
 	// V5-③ 查询标签操作：新建 / 切换 / 关闭 / 拖拽排序（V5-④ 目标 tab 路由在模型 actions 内实现）。
 	const handleNewTab = () => {

@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type JSX } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type JSX, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -346,6 +346,11 @@ export interface TextBlockViewProps {
 	onOpenUrl: (url: string) => void;
 	/** 传入即启用行内 token 渲染；仅用户消息需要，助手 markdown 不受影响。 */
 	inlineTokens?: InlineTokenSupport;
+	/**
+	 * 代码块动作插槽：为指定语言的代码块渲染额外操作（如 SQL 的「在新查询打开/执行」）。
+	 * 返回节点渲染在代码块底部动作条。引用经 ref 读取——streaming 期间不会触发整树 remount。
+	 */
+	renderCodeBlockActions?: (lang: string, code: string) => ReactNode;
 }
 
 function basename(path: string): string {
@@ -359,11 +364,13 @@ function CodeBlockShell({
 	code,
 	theme,
 	labels,
+	renderActions,
 }: {
 	lang: string;
 	code: string;
 	theme: "light" | "dark";
 	labels: TextBlockViewLabels;
+	renderActions?: (lang: string, code: string) => ReactNode;
 }): JSX.Element {
 	const [copied, setCopied] = useState(false);
 	const timerRef = useRef<number | null>(null);
@@ -382,6 +389,7 @@ function CodeBlockShell({
 		});
 	}, [code]);
 
+	const actions = renderActions?.(lang, code);
 	return (
 		<CodeBlockCopyButtonView copied={copied} onCopy={onCopy} labels={labels}>
 			<div className="my-2 overflow-hidden rounded-lg border border-border bg-muted">
@@ -391,6 +399,11 @@ function CodeBlockShell({
 					</div>
 				)}
 				<SyntaxHighlightedCode code={code} lang={lang} theme={theme} />
+				{actions && (
+					<div className="flex items-center gap-1.5 border-t border-border bg-muted/60 px-2 py-1.5">
+						{actions}
+					</div>
+				)}
 			</div>
 		</CodeBlockCopyButtonView>
 	);
@@ -413,7 +426,9 @@ export const TextBlockView = memo(function TextBlockView({
 	onOpenFile,
 	onOpenUrl,
 	inlineTokens,
+	renderCodeBlockActions,
 }: TextBlockViewProps): JSX.Element {
+
 	const { displayText, animateChunks } = useStreamingDisplayText(text, isStreamingTail);
 
 	const labelsRef = useRef(labels);
@@ -421,11 +436,13 @@ export const TextBlockView = memo(function TextBlockView({
 	const onOpenFileRef = useRef(onOpenFile);
 	const onOpenUrlRef = useRef(onOpenUrl);
 	const inlineTokensRef = useRef(inlineTokens);
+	const renderCodeBlockActionsRef = useRef(renderCodeBlockActions);
 	labelsRef.current = labels;
 	getFileIconClassRef.current = getFileIconClass;
 	onOpenFileRef.current = onOpenFile;
 	onOpenUrlRef.current = onOpenUrl;
 	inlineTokensRef.current = inlineTokens;
+	renderCodeBlockActionsRef.current = renderCodeBlockActions;
 
 	const components = useMemo<Components>(
 		() => ({
@@ -458,7 +475,13 @@ export const TextBlockView = memo(function TextBlockView({
 					const lang = codeClassName?.replace("language-", "") ?? "";
 					const code = raw.replace(/\n$/, "");
 					return (
-						<CodeBlockShell lang={lang} code={code} theme={theme} labels={labelsRef.current} />
+						<CodeBlockShell
+							lang={lang}
+							code={code}
+							theme={theme}
+							labels={labelsRef.current}
+							renderActions={renderCodeBlockActionsRef.current}
+						/>
 					);
 				}
 				return <code className="rounded bg-muted px-1 py-0.5 text-[12px] text-foreground">{children}</code>;

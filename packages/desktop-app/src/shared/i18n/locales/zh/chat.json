@@ -1,4 +1,8 @@
 {
+	"sqlAction": {
+		"openInNewQuery": "在新查询打开",
+		"runQuery": "执行"
+	},
 	"activityPanel": {
 		"tabs": {
 			"file": "文件",

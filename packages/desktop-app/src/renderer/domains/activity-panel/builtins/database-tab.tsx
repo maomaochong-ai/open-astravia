@@ -1,5 +1,5 @@
 import { recordSettingsUsage } from "../../settings/components/recordSettingsUsage";
-import { databaseTabTargetAtom } from "@shared/store/atoms";
+import { databaseTabTargetAtom, pendingDatabaseSqlActionAtom } from "@shared/store/atoms";
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -18,12 +18,18 @@ function DatabaseActivityTab(): JSX.Element {
 	const [target, setTarget] = useAtom(databaseTabTargetAtom);
 	const [snapshot] = useState(() => target);
 	const handleSyncTargetApplied = useCallback(() => setTarget(null), [setTarget]);
-	return (
+	// P1：chat SQL 块动作 —— 与 target 同通道模式：实时订阅（已挂载时随 atom 变化触发），
+	// 工作台消费后（或确认无法消费）经 onSqlActionApplied 清空，防残留重复执行。
+	const [sqlAction, setSqlAction] = useAtom(pendingDatabaseSqlActionAtom);
+	const handleSqlActionApplied = useCallback(() => setSqlAction(null), [setSqlAction]);
+return (
 		<DatabaseWorkspace
 			initialConnection={snapshot?.connection}
 			initialTable={snapshot?.table}
 			syncTarget={target}
 			onSyncTargetApplied={handleSyncTargetApplied}
+			sqlAction={sqlAction}
+			onSqlActionApplied={handleSqlActionApplied}
 		/>
 	);
 }
