@@ -72,6 +72,14 @@ import { useDatabaseExplorerModel } from "../hooks/useDatabaseExplorerModel";
 import { useDatabaseQueryModel } from "../hooks/useDatabaseQueryModel";
 import { useDatabaseWorkspaceModel } from "../hooks/useDatabaseWorkspaceModel";
 
+// 危险确认分级：与 main/sql-safety 的 DDL_LEADERS 对齐 —— 结构变更类语句侧重「不可回滚」警告,
+// 其余写语句(DML/事务等)复用既有强调「影响当前连接」的文案。分类失败(空/纯注释)视为写。
+const CONFIRM_DDL_LEADERS = new Set(["CREATE", "ALTER", "DROP", "TRUNCATE", "RENAME"]);
+
+function isDdlConfirmSql(sql: string): boolean {
+	const first = sql.trim().toUpperCase().match(/^[a-zA-Z_][a-zA-Z0-9_]*/)?.[0];
+	return first !== undefined && CONFIRM_DDL_LEADERS.has(first);
+}
 const EASE_OUT = [0.22, 1, 0.36, 1] as const;
 
 const TREE_WIDTH_DEFAULT = 280;
@@ -803,8 +811,11 @@ export function DatabaseWorkspace({
 		void query.actions.runSqlInNewTab(target, sqlAction.sql, false).then((outcome) => {
 			if (outcome !== "confirm") return;
 			setConfirm({
-				title: t("databaseRunConfirmTitle"),
-				message: t("databaseRunConfirmMessage", { name: target.name, sql: sqlAction.sql }),
+				title: t(isDdlConfirmSql(sqlAction.sql) ? "databaseRunConfirmDdlTitle" : "databaseRunConfirmTitle"),
+				message: t(isDdlConfirmSql(sqlAction.sql) ? "databaseRunConfirmDdlMessage" : "databaseRunConfirmMessage", {
+					name: target.name,
+					sql: sqlAction.sql,
+				}),
 				confirmLabel: t("databaseRunConfirmLabel"),
 				variant: "danger",
 				onConfirm: () => {
@@ -1237,13 +1248,16 @@ export function DatabaseWorkspace({
 								void query.actions.run(effectiveConnection).then((outcome) => {
 									if (outcome !== "confirm") return;
 									setConfirm({
-										title: t("databaseRunConfirmTitle"),
-									message: t("databaseRunConfirmMessage", { name: effectiveConnection.name, sql: query.sql }),
+										title: t(isDdlConfirmSql(query.sql) ? "databaseRunConfirmDdlTitle" : "databaseRunConfirmTitle"),
+										message: t(isDdlConfirmSql(query.sql) ? "databaseRunConfirmDdlMessage" : "databaseRunConfirmMessage", {
+											name: effectiveConnection.name,
+											sql: query.sql,
+										}),
 										confirmLabel: t("databaseRunConfirmLabel"),
 										variant: "danger",
 										onConfirm: () => {
 											recordSettingsUsage({ tab: "database", action: "changed", target: "query-run-confirmed" });
-										void query.actions.runConfirmed(effectiveConnection);
+											void query.actions.runConfirmed(effectiveConnection);
 										},
 									});
 								});

@@ -582,6 +582,6 @@ Astravia 已具备两块独立的 AI 能力:
 
 - **危险写放行通道**:UI 危险确认后,以带 `DBX_MCP_CONFIRMED_WRITE_SQL` env binding 的**单发子进程**执行该条 SQL(引擎精确匹配放行,普通 UPDATE/DELETE 仍走现有 confirmedWrite);spawn 复用 dbx-mcp-client 按代隔离基建。审计日志记录动作+SQL+env。
 - **表级套件**(树表右键):清空(TRUNCATE)/删除(DROP)/重命名(ALTER RENAME)/导出数据(CSV+JSON,经只读 SELECT 取数后前端生成);确认弹窗须输入表名(防误删)。
-- **连接级**:删除连接已有 removeConnection,接入确认弹窗统一文案;重命名/连接参数编辑随现有表单扩展。
+- **连接级**:删除连接已有 removeConnection,接入确认弹窗统一文案;重命名/连接参数编辑随现有表单扩展。**能力边界**:连接配置存本地 desktop-config(database-service 读写),增删改不受 dbx MCP 限制,本地可完整实现;仅「DBX 原生分组归属(groupPath 写回)」为 dbx-mcp 只读(见上 P1-6),如需与 DBX 壳连接分组双向同步受 dbx MCP 能力限制 —— **标记 blocked,后续研究 dbx 桌面壳自身实现后再定**。
 - **批量(#16)** ✅：树内表行行尾 hover 勾选进入批量态(跨连接勾选自动切单连接,对齐 dbx 对象浏览器);顶部批量动作条提供导出 CSV/JSON(逐表导出、逐次保存对话框,含视图)/批量清空/批量删除(仅表)。清空/删除先汇总确认(SQL 预览)→ 逐表走 confirmed-binding 单发写通道执行(逐条审计)→ 失败继续、汇总 成功 M/失败 N;失败表保留勾选可重试;truncate 刷新该表数据页、drop 关闭已删表数据页并移除树节点;结果横幅置树顶。i18n zh/en + 全量 check 通过。
 - 查询面板 DDL:已是引擎通道,补强危险确认文案与审计即可。
