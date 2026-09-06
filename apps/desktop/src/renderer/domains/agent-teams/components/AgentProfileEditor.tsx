@@ -7,6 +7,7 @@ import type { AgentProfileEditInput } from "../hooks/useAgentLibraryModel";
 import type { AgentCapabilityOption } from "../lib/capability-options";
 import {
 	isAgentAbilitySelected,
+	normalizeAgentAbilitySelection,
 	selectAllAgentAbilities,
 	toggleAgentAbility,
 } from "../lib/ability-selection";
@@ -20,7 +21,7 @@ interface AgentProfileEditorProps {
 	readonly capabilities: readonly AgentCapabilityOption[];
 	readonly displayName?: string;
 	readonly displayDescription?: string;
-	readonly layout?: "stacked" | "columns";
+	readonly layout?: "stacked" | "columns" | "tabs";
 	readonly saveRequest?: number;
 	readonly hideSaveAction?: boolean;
 	readonly onDraftChange?: (input: AgentProfileEditInput) => void;
@@ -53,7 +54,9 @@ export function AgentProfileEditor({
 	const [description, setDescription] = useState(agent.description);
 	const [systemPrompt, setSystemPrompt] = useState(agent.systemPrompt ?? "");
 	const [avatar, setAvatar] = useState(agentAvatarUrl(agent));
-	const [abilities, setAbilities] = useState<AgentAbilitySelection>(agent.abilities);
+	const [abilities, setAbilities] = useState<AgentAbilitySelection>(() =>
+		normalizeAgentAbilitySelection(agent.abilities, capabilities),
+	);
 	const [activeTab, setActiveTab] = useState<"basic" | "prompt" | "abilities">("basic");
 	const [saving, setSaving] = useState(false);
 	const [saved, setSaved] = useState(false);
@@ -66,11 +69,11 @@ export function AgentProfileEditor({
 		setDescription(agent.description);
 		setSystemPrompt(agent.systemPrompt ?? "");
 		setAvatar(agentAvatarUrl(agent));
-		setAbilities(agent.abilities);
+		setAbilities(normalizeAgentAbilitySelection(agent.abilities, capabilities));
 		setPendingImpact(undefined);
 		setSaved(false);
 		setError(undefined);
-	}, [agent, displayDescription, displayName]);
+	}, [agent, capabilities, displayDescription, displayName]);
 
 	useEffect(() => {
 		onDraftChange?.({
@@ -288,6 +291,174 @@ export function AgentProfileEditor({
 			</div>
 		);
 	}
+	if (layout === "tabs") {
+		const selectedAbilitiesCount = capabilities.filter((option) =>
+			isAgentAbilitySelected(abilities, option),
+		).length;
+
+		return (
+			<div className="mx-auto max-w-4xl space-y-6 pb-12">
+				{/* Hero Banner */}
+				<div className="flex items-center gap-5 rounded-2xl border border-border/50 bg-gradient-to-br from-card/70 via-card/40 to-background/40 p-6 backdrop-blur-sm">
+					<div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-border/60 bg-muted/30 p-2">
+						<img src={avatar} alt="" className="h-full w-full object-contain" />
+					</div>
+					<div className="min-w-0 flex-1">
+						<div className="flex flex-wrap items-center gap-2.5">
+							<h2 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+								{displayName ?? agent.name}
+							</h2>
+							{blueprint && (
+								<span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+									<span className="icon-[solar--shield-user-bold] h-3 w-3" aria-hidden="true" />
+									{t(blueprint.nameKey as never)}
+								</span>
+							)}
+						</div>
+						<p className="mt-1.5 text-xs text-muted-foreground/80">
+							{t("profile.fixedPrompt", {
+								role: blueprint ? t(blueprint.nameKey as never) : agent.blueprintId,
+							})}
+						</p>
+					</div>
+				</div>
+
+				{/* Horizontal Tabs Bar */}
+				<div className="flex items-center gap-2 border-b border-border/40 pb-3">
+					<button
+						type="button"
+						onClick={() => setActiveTab("basic")}
+						className={cn(
+							"inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-medium transition-colors outline-none",
+							activeTab === "basic"
+								? "border border-primary/40 bg-primary/10 text-primary font-semibold"
+								: "border border-transparent text-muted-foreground hover:bg-muted/30 hover:text-foreground",
+						)}
+					>
+						<span className="icon-[solar--user-id-linear] h-4 w-4" aria-hidden="true" />
+						<span>{t("profile.basicInfo")}</span>
+					</button>
+
+					<button
+						type="button"
+						onClick={() => setActiveTab("prompt")}
+						className={cn(
+							"inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-medium transition-colors outline-none",
+							activeTab === "prompt"
+								? "border border-primary/40 bg-primary/10 text-primary font-semibold"
+								: "border border-transparent text-muted-foreground hover:bg-muted/30 hover:text-foreground",
+						)}
+					>
+						<span className="icon-[solar--document-text-linear] h-4 w-4" aria-hidden="true" />
+						<span>{t("profile.systemPrompt")}</span>
+					</button>
+
+					<button
+						type="button"
+						onClick={() => setActiveTab("abilities")}
+						className={cn(
+							"inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-medium transition-colors outline-none",
+							activeTab === "abilities"
+								? "border border-primary/40 bg-primary/10 text-primary font-semibold"
+								: "border border-transparent text-muted-foreground hover:bg-muted/30 hover:text-foreground",
+						)}
+					>
+						<span className="icon-[solar--bolt-circle-linear] h-4 w-4" aria-hidden="true" />
+						<span>{t("profile.abilities")}</span>
+						<span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+							{selectedAbilitiesCount}
+						</span>
+					</button>
+				</div>
+
+				{/* Active Tab View */}
+				{activeTab === "basic" && (
+					<section className="rounded-2xl border border-border/50 bg-card/30 p-6 backdrop-blur-sm">
+						<div className="flex flex-col gap-6">
+							<AgentAvatarPicker value={avatar} onChange={setAvatar} />
+							<TextField
+								label={t("profile.name")}
+								value={name}
+								onChange={setName}
+							/>
+							<label className="block text-sm">
+								<span className="mb-1.5 block text-xs font-semibold tracking-wider uppercase text-muted-foreground/80">
+									{t("profile.description")}
+								</span>
+								<textarea
+									value={description}
+									onChange={(event) => setDescription(event.target.value)}
+									className="min-h-24 w-full cursor-text resize-y rounded-xl border border-border/60 bg-background/50 px-3.5 py-2.5 text-sm text-foreground caret-primary outline-none transition-all placeholder:text-muted-foreground/50 hover:border-border focus:border-primary/50 focus:bg-background"
+								/>
+							</label>
+						</div>
+					</section>
+				)}
+
+				{activeTab === "prompt" && (
+					<section className="rounded-2xl border border-border/50 bg-card/30 p-6 backdrop-blur-sm">
+						<label className="block text-sm">
+							<span className="mb-1.5 block text-xs font-semibold tracking-wider uppercase text-muted-foreground/80">
+								{t("profile.systemPrompt")}
+							</span>
+							<textarea
+								aria-label={t("profile.systemPrompt")}
+								value={systemPrompt}
+								onChange={(event) => setSystemPrompt(event.target.value)}
+								placeholder="输入该智能体在执行任务时遵循的核心系统指令..."
+								className="min-h-[380px] w-full cursor-text resize-y rounded-xl border border-border/60 bg-background/50 px-3.5 py-2.5 text-sm font-mono leading-relaxed text-foreground caret-primary outline-none transition-all placeholder:text-muted-foreground/50 hover:border-border focus:border-primary/50 focus:bg-background"
+							/>
+						</label>
+					</section>
+				)}
+
+				{activeTab === "abilities" && (
+					<AbilityEditor
+						abilities={abilities}
+						capabilities={capabilities}
+						onChange={setAbilities}
+					/>
+				)}
+
+				{pendingImpact && pendingImpact.teamIds.length > 1 && (
+					<div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-200">
+						<div className="flex items-start gap-2.5">
+							<span className="icon-[solar--danger-triangle-linear] mt-0.5 h-4 w-4 shrink-0 text-amber-400" aria-hidden="true" />
+							<div className="min-w-0 flex-1">
+								{t("profile.sharedImpact", {
+									count: pendingImpact.teamIds.length,
+									teams: pendingImpact.teamNames.join("、"),
+								})}
+								<div className="mt-3">
+									<Button variant="outline" size="sm" className="border-amber-500/40 text-amber-300 hover:bg-amber-500/20" onClick={() => void save()}>
+										{t("profile.confirmSharedSave")}
+									</Button>
+								</div>
+							</div>
+						</div>
+					</div>
+				)}
+
+				{!hideSaveAction && (
+					<div className="flex items-center gap-3 pt-2">
+						<Button variant="primary" disabled={saving} onClick={() => void save()} className="gap-2">
+							<span className="icon-[solar--diskette-bold] h-4 w-4" aria-hidden="true" />
+							{saving ? t("profile.saving") : t("profile.save")}
+						</Button>
+						<span aria-live="polite" className="text-xs text-muted-foreground">
+							{saved ? t("profile.savedNextTurn") : ""}
+						</span>
+					</div>
+				)}
+
+				{error && (
+					<span aria-live="polite" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+						{error}
+					</span>
+				)}
+			</div>
+		);
+	}
 
 	return (
 		<div className="mx-auto max-w-4xl space-y-6 pb-12">
@@ -417,26 +588,46 @@ function AbilityEditor({
 }): JSX.Element {
 	const { t } = useTranslation("agent-teams");
 	const [query, setQuery] = useState("");
-	const groups: readonly { kind: AgentCapabilityOption["kind"]; label: string }[] = [
-		{ kind: "skill", label: t("profile.skills") },
-		{ kind: "scene", label: t("profile.scenes") },
-		{ kind: "mcp", label: t("profile.mcp") },
-		{ kind: "plugin", label: t("profile.plugins") },
-	];
 	const normalizedQuery = query.normalize("NFKC").trim().toLocaleLowerCase();
-	const grouped = groups
-		.map((group) => ({
-			...group,
-			items: capabilities.filter(
+	const filterItems = (items: readonly AgentCapabilityOption[]) =>
+		items.filter(
 				(option) =>
-					option.kind === group.kind &&
-					(!normalizedQuery ||
-						`${option.title}\n${option.description}\n${option.id}`
+					!normalizedQuery ||
+						`${option.title}\n${option.description}\n${option.id}\n${option.sourceName ?? ""}`
 							.normalize("NFKC")
 							.toLocaleLowerCase()
-							.includes(normalizedQuery)),
-			),
-		}))
+							.includes(normalizedQuery),
+			);
+	const pluginResourceGroups = (kind: "skill" | "scene") => {
+		const byPlugin = new Map<string, { label: string; items: AgentCapabilityOption[] }>();
+		for (const option of capabilities) {
+			if (option.kind !== kind || !option.sourcePluginId) continue;
+			const current = byPlugin.get(option.sourcePluginId) ?? {
+				label: t(kind === "skill" ? "profile.pluginSkills" : "profile.pluginScenes", {
+					plugin: option.sourceName || option.sourcePluginId,
+				}),
+				items: [],
+			};
+			current.items.push(option);
+			byPlugin.set(option.sourcePluginId, current);
+		}
+		return [...byPlugin.values()].sort((left, right) => left.label.localeCompare(right.label));
+	};
+	const grouped = [
+		{
+			label: t("profile.skills"),
+			items: capabilities.filter((option) => option.kind === "skill" && !option.sourcePluginId),
+		},
+		...pluginResourceGroups("skill"),
+		{
+			label: t("profile.scenes"),
+			items: capabilities.filter((option) => option.kind === "scene" && !option.sourcePluginId),
+		},
+		...pluginResourceGroups("scene"),
+		{ label: t("profile.mcp"), items: capabilities.filter((option) => option.kind === "mcp") },
+		{ label: t("profile.plugins"), items: capabilities.filter((option) => option.kind === "plugin") },
+	]
+		.map((group) => ({ ...group, items: filterItems(group.items) }))
 		.filter((group) => group.items.length > 0);
 	const visibleCapabilities = grouped.flatMap((group) => group.items);
 	const selectedCount = capabilities.filter((option) => isAgentAbilitySelected(abilities, option)).length;

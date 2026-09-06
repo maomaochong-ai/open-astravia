@@ -1,6 +1,8 @@
-import { confirmDialogAtom } from "@shared/store/atoms";
+import { confirmDialogAtom, pageHeaderTitleHiddenAtom } from "@shared/store/atoms";
+import { AgentAvatarView } from "@vetta/theme-ui/chat";
 import { Button } from "@vetta/ui";
 import { useSetAtom } from "jotai";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { notifyAgentTeamConfigurationChanged } from "../../project/components/sidebar/projects/panel/AgentTeamSidebarList";
 import { useAgentLibraryModel } from "../hooks/useAgentLibraryModel";
@@ -9,15 +11,21 @@ import {
 	agentDisplayName,
 	teamDisplayName,
 } from "@shared/agent-teams/agent-team-presentation";
+import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";
 import { AgentProfileEditor } from "./AgentProfileEditor";
 
 export function AgentLibraryPage(): JSX.Element {
 	const { t } = useTranslation("agent-teams");
 	const confirm = useSetAtom(confirmDialogAtom);
+	const setHeaderTitleHidden = useSetAtom(pageHeaderTitleHiddenAtom);
 	const model = useAgentLibraryModel({
 		defaultName: t("library.defaultAgentName"),
 		defaultDescription: t("library.defaultAgentDescription"),
 	});
+	useEffect(() => {
+		setHeaderTitleHidden(true);
+		return () => setHeaderTitleHidden(false);
+	}, [setHeaderTitleHidden]);
 
 	async function requestDelete(): Promise<void> {
 		if (!model.selected) return;
@@ -61,54 +69,109 @@ export function AgentLibraryPage(): JSX.Element {
 
 	return (
 		<div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-			<header className="flex shrink-0 items-start justify-between border-b border-border/60 px-8 py-6">
-				<div>
-					<h1 className="text-2xl font-bold">{t("library.title")}</h1>
-					<p className="mt-1 text-sm text-muted-foreground">{t("library.subtitle")}</p>
+			{/* Top Header */}
+			<header className="flex h-14 shrink-0 items-center justify-between border-b border-border/50 bg-card/25 backdrop-blur-md px-5">
+				{/* Left Title Area */}
+				<div className="flex min-w-0 items-center gap-3">
+					<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+						<span className="icon-[solar--user-id-linear] h-4 w-4" aria-hidden="true" />
+					</div>
+					<h1 className="text-base font-bold tracking-tight text-foreground">{t("library.title")}</h1>
+					<span className="hidden items-center rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 text-xs text-muted-foreground sm:inline-flex">
+						{t("teams.memberCount", { count: model.libraryAgents.length })}
+					</span>
+					<span className="hidden text-xs text-muted-foreground/60 lg:inline-block border-l border-border/40 pl-3 ml-1 truncate max-w-sm">
+						{t("library.subtitle")}
+					</span>
 				</div>
+
+				{/* Right Actions */}
 				<div className="flex items-center gap-2">
 					{model.selected && (
-						<Button variant="ghost" onClick={() => void requestDelete()}>
-							<span className="icon-[solar--trash-bin-trash-linear] h-4 w-4" aria-hidden="true" />
-							{t("library.delete")}
+						<Button
+							variant="ghost"
+							size="sm"
+							className="h-8 gap-1.5 rounded-lg px-2.5 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+							onClick={() => void requestDelete()}
+						>
+							<span className="icon-[solar--trash-bin-trash-linear] h-3.5 w-3.5" aria-hidden="true" />
+							<span>{t("library.delete")}</span>
 						</Button>
 					)}
-					<Button variant="primary" onClick={() => void model.actions.createAgent()}>
-						<span className="icon-[solar--add-circle-linear] h-4 w-4" aria-hidden="true" />
-						{t("library.add")}
+					<Button
+						variant="primary"
+						size="sm"
+						className="h-8 gap-1.5 rounded-lg px-3.5 text-xs font-medium"
+						onClick={() => void model.actions.createAgent()}
+					>
+						<span className="icon-[solar--add-circle-linear] h-3.5 w-3.5" aria-hidden="true" />
+						<span>{t("library.add")}</span>
 					</Button>
 				</div>
 			</header>
 
 			<div className="flex min-h-0 flex-1">
-				<aside className="w-64 shrink-0 overflow-y-auto border-r border-border/60 p-3">
-					{model.libraryAgents.length ? (
-						<div className="space-y-1">
-							{model.libraryAgents.map((agent) => {
+				<aside className="flex w-72 shrink-0 flex-col border-r border-border/50 bg-card/15 backdrop-blur-sm p-3">
+					<div className="flex items-center justify-between px-2 py-1.5 text-[11px] font-semibold tracking-wider uppercase text-muted-foreground/70">
+						<span>{t("library.title")}</span>
+						<span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.2 text-[10px] font-semibold text-primary">
+							{model.libraryAgents.length}
+						</span>
+					</div>
+
+					<div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pt-1">
+						{model.libraryAgents.length ? (
+							model.libraryAgents.map((agent) => {
 								const blueprint = model.blueprints.find((candidate) => candidate.id === agent.blueprintId);
 								const displayName = agentDisplayName(agent, t);
+								const isSelected = model.selectedId === agent.id;
 								return (
 									<button
 										key={agent.id}
 										type="button"
 										onClick={() => model.actions.selectAgent(agent.id)}
-										className={`w-full rounded-lg px-3 py-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary/30 ${
-											model.selectedId === agent.id
-												? "bg-primary/10 text-foreground"
-												: "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-										}`}
+										className={[
+											"group relative flex w-full items-center gap-3 rounded-xl p-2.5 text-left outline-none transition-all duration-150",
+											isSelected
+												? "border border-primary/40 bg-card text-foreground"
+												: "border border-border/40 bg-card/25 text-muted-foreground hover:border-border/80 hover:bg-card/60 hover:text-foreground",
+										].join(" ")}
 									>
-										<div className="truncate text-sm font-medium">{displayName}</div>
-										<div className="mt-0.5 truncate text-xs">
-											{blueprint ? t(blueprint.nameKey as never) : agent.blueprintId}
+										{isSelected && (
+											<div className="absolute left-0 top-2.5 bottom-2.5 w-1 rounded-r bg-primary" aria-hidden="true" />
+										)}
+										<AgentAvatarView
+											name={displayName}
+											avatar={agentAvatarUrl(agent)}
+											blueprintId={agent.blueprintId}
+											size="md"
+										/>
+										<div className="min-w-0 flex-1">
+											<div className={`truncate text-sm ${isSelected ? "font-semibold text-foreground" : "font-medium"}`}>
+												{displayName}
+											</div>
+											<div className="mt-0.5 truncate text-xs text-muted-foreground/75">
+												{blueprint ? t(blueprint.nameKey as never) : agent.blueprintId}
+											</div>
 										</div>
 									</button>
 								);
-							})}
-						</div>
-					) : (
-						<p className="px-2 py-3 text-xs text-muted-foreground">{t("library.empty")}</p>
-					)}
+							})
+						) : (
+							<p className="px-2 py-8 text-center text-xs text-muted-foreground">{t("library.empty")}</p>
+						)}
+					</div>
+
+					<div className="pt-2 border-t border-border/30">
+						<button
+							type="button"
+							onClick={() => void model.actions.createAgent()}
+							className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border/50 py-2 text-xs text-muted-foreground/80 transition-colors hover:border-primary/50 hover:bg-primary/5 hover:text-primary outline-none"
+						>
+							<span className="icon-[solar--add-circle-linear] h-3.5 w-3.5" aria-hidden="true" />
+							<span>{t("library.add")}</span>
+						</button>
+					</div>
 				</aside>
 
 				<main className="min-w-0 flex-1 overflow-y-auto p-8">
@@ -124,6 +187,7 @@ export function AgentLibraryPage(): JSX.Element {
 							displayDescription={agentDisplayDescription(model.selected, t)}
 							blueprint={model.blueprint}
 							capabilities={model.capabilities}
+							layout="tabs"
 							onPreview={model.actions.previewAgent}
 							onSave={model.actions.saveAgent}
 						/>

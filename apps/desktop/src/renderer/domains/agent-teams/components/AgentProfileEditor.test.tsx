@@ -9,7 +9,8 @@ import { AgentProfileEditor } from "./AgentProfileEditor";
 
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({
-		t: (key: string, options?: Record<string, unknown>) => `${key}${options?.count ?? options?.index ?? ""}`,
+		t: (key: string, options?: Record<string, unknown>) =>
+			`${key}${options?.name ?? options?.plugin ?? options?.count ?? options?.index ?? ""}`,
 	}),
 }));
 vi.mock("@vetta/ui", () => ({
@@ -216,6 +217,51 @@ describe("AgentProfileEditor", () => {
 		await user.type(screen.getByLabelText("profile.searchAbilities"), "notion");
 		expect(screen.queryByText("Research")).toBeNull();
 		expect(screen.getByText("Notion")).toBeTruthy();
+	});
+
+	it("groups plugin skills by their source and selects them with the owning plugin", async () => {
+		const user = userEvent.setup();
+		const onSave = vi.fn(async () => ({ updated: agent, impact: { ...impact, teamIds: [], teamNames: [] } }));
+		render(
+			<AgentProfileEditor
+				agent={agent}
+				capabilities={[
+					{
+						id: "create-content-campaign",
+						kind: "skill",
+						title: "Create campaign",
+						description: "Plan a campaign",
+						enabledGlobally: true,
+						sourcePluginId: "content-creation",
+						sourceName: "Content Creation",
+					},
+					{
+						id: "content-creation",
+						kind: "plugin",
+						title: "Content Creation",
+						description: "Creation workspace",
+						enabledGlobally: true,
+					},
+				]}
+				onPreview={vi.fn(async () => ({ ...impact, teamIds: [], teamNames: [] }))}
+				onSave={onSave}
+			/>,
+		);
+
+		expect(screen.getByText("profile.pluginSkillsContent Creation")).toBeTruthy();
+		await user.click(screen.getByRole("switch", { name: "profile.toggleAbilityContent Creation" }));
+		await user.click(screen.getByRole("button", { name: "profile.save" }));
+		await waitFor(() =>
+			expect(onSave).toHaveBeenCalledWith(
+				agent,
+				expect.objectContaining({
+					abilities: expect.objectContaining({
+						plugins: ["content-creation"],
+						skills: ["create-content-campaign"],
+					}),
+				}),
+			),
+		);
 	});
 
 	it("offers every built-in avatar and saves the selected stable asset path", async () => {

@@ -1,3 +1,4 @@
+import { i18n } from "@shared/i18n";
 import type { AgentBlueprint, AgentTeamDocument } from "@vetta/agent-team";
 import { type AgentCapabilityOption, buildAgentCapabilityOptions } from "../lib/capability-options";
 
@@ -19,6 +20,12 @@ export async function loadAgentTeamConfigurationResources(): Promise<AgentTeamCo
 	return {
 		document,
 		blueprints,
-		capabilities: buildAgentCapabilityOptions({ skills, skillManifest, mcpConfig, plugins }),
+		capabilities: buildAgentCapabilityOptions({
+			skills,
+			skillManifest,
+			mcpConfig,
+			plugins,
+			locale: i18n.language,
+		}),
 	};
 }

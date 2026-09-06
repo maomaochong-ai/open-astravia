@@ -37,6 +37,8 @@
     "scenes": "场景",
     "mcp": "MCP",
     "plugins": "插件",
+    "pluginSkills": "{{plugin}} · Skill",
+    "pluginScenes": "{{plugin}} · 场景",
     "abilityIdsHint": "这里只改变该智能体的能力开关，不会安装、卸载或修改全局能力。",
     "globalDisabled": "全局能力已关闭",
     "noInstalledAbilities": "暂无已安装的能力",

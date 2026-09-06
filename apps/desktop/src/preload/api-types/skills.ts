@@ -3,6 +3,8 @@ export interface SkillInfo {
 	alias?: string;
 	description: string;
 	source: string;
+	/** 插件贡献的 skill 来源插件 ID；其它来源未定义。 */
+	sourcePluginId?: string;
 	type: "skill" | "scene";
 	/**
 	 * 展示图标（若有）：插件贡献的 skill 填宿主插件的 `iconUrl`（多为 `vetta-plugin://`），

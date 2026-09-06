@@ -37,6 +37,8 @@
     "scenes": "Scenes",
     "mcp": "MCP",
     "plugins": "Plugins",
+    "pluginSkills": "{{plugin}} · Skills",
+    "pluginScenes": "{{plugin}} · Scenes",
     "abilityIdsHint": "These switches affect this agent only; they do not install, uninstall, or change global abilities.",
     "globalDisabled": "Global ability is disabled",
     "noInstalledAbilities": "No installed abilities",

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import type { AgentProfileDeleteImpact } from "@vetta/agent-team";
+import { confirmDialogAtom } from "@shared/store/atoms";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
@@ -15,7 +16,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("jotai", async (importOriginal) => ({
 	...(await importOriginal<typeof import("jotai")>()),
-	useSetAtom: () => mocks.confirm,
+	useSetAtom: (atom: unknown) => (atom === confirmDialogAtom ? mocks.confirm : vi.fn()),
 }));
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({
@@ -27,6 +28,7 @@ vi.mock("@vetta/ui", () => ({
 	Button: ({ children, variant: _variant, ...props }: { children: ReactNode } & Record<string, unknown>) => (
 		<button {...props}>{children}</button>
 	),
+	cn: (...values: readonly unknown[]) => values.filter(Boolean).join(" "),
 }));
 vi.mock("./AgentProfileEditor", () => ({ AgentProfileEditor: () => <div>profile editor</div> }));
 vi.mock("../hooks/useAgentLibraryModel", () => ({

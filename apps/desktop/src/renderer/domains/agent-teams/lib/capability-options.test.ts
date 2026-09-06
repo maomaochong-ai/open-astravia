@@ -48,4 +48,96 @@ describe("agent capability options", () => {
 		expect(options.find((option) => option.id === "research")?.enabledGlobally).toBe(false);
 		expect(options.find((option) => option.id === "notion")?.kind).toBe("mcp");
 	});
+
+	it("resolves plugin manifest placeholders and preserves skill provenance", () => {
+		const options = buildAgentCapabilityOptions({
+			skills: [
+				{
+					name: "create-content-campaign",
+					description: "Campaign skill",
+					source: "plugin",
+					sourcePluginId: "content-creation",
+					type: "skill",
+				},
+			],
+			skillManifest: {
+				"create-content-campaign": {
+					name: "create-content-campaign",
+					version: "1",
+					installedAt: "2026-01-01",
+					source: "market",
+					enabled: false,
+				},
+			},
+			mcpConfig: { mcpServers: {} },
+			plugins: [
+				{
+					id: "content-creation",
+					name: "%plugin.name%",
+					version: "1",
+					activeVersion: "1",
+					pluginApiVersion: "2.0.0",
+					entryUrl: "",
+					moduleFederation: { remoteName: "content_creation", expose: "./plugin" },
+					styleUrls: [],
+					permissions: [],
+					grantedPermissions: [],
+					allowedNetworkHosts: [],
+					allowedBrowserHosts: [],
+					declaredCommands: [],
+					grantedCommandNames: [],
+					locales: { zh: { "plugin.name": "内容创作" } },
+					defaultLocale: "zh",
+					enabled: true,
+					required: false,
+					installedAt: "2026-01-01",
+					updatedAt: "2026-01-01",
+					source: "system",
+					trustLevel: "official",
+					rootPath: "C:/plugins/content-creation",
+				},
+			],
+			locale: "zh",
+		});
+		expect(options.find((option) => option.kind === "plugin")?.title).toBe("内容创作");
+		expect(options.find((option) => option.kind === "skill")?.sourcePluginId).toBe("content-creation");
+		expect(options.find((option) => option.kind === "skill")?.sourceName).toBe("内容创作");
+		expect(options.find((option) => option.kind === "skill")?.enabledGlobally).toBe(true);
+	});
+
+	it("falls back to the plugin id when its name catalog is unavailable", () => {
+		const plugin = {
+			id: "missing-catalog",
+			name: "%plugin.name%",
+			version: "1",
+			activeVersion: "1",
+			pluginApiVersion: "2.0.0",
+			entryUrl: "",
+			moduleFederation: { remoteName: "missing_catalog", expose: "./plugin" },
+			styleUrls: [],
+			permissions: [],
+			grantedPermissions: [],
+			allowedNetworkHosts: [],
+			allowedBrowserHosts: [],
+			declaredCommands: [],
+			grantedCommandNames: [],
+			locales: {},
+			defaultLocale: "zh",
+			enabled: true,
+			required: false,
+			installedAt: "2026-01-01",
+			updatedAt: "2026-01-01",
+			source: "system" as const,
+			trustLevel: "official" as const,
+			rootPath: "C:/plugins/missing-catalog",
+		};
+		const options = buildAgentCapabilityOptions({
+			skills: [],
+			skillManifest: {},
+			mcpConfig: { mcpServers: {} },
+			plugins: [plugin],
+			locale: "zh",
+		});
+		expect(options[0]?.title).toBe("missing-catalog");
+	});
 });

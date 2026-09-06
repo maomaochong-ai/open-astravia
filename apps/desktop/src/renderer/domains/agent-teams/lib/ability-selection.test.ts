@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
 	abilityKeyForKind,
 	isAgentAbilitySelected,
+	normalizeAgentAbilitySelection,
 	selectAllAgentAbilities,
 	toggleAgentAbility,
 } from "./ability-selection";
@@ -56,6 +57,84 @@ describe("agent ability selection", () => {
 		expect(toggleAgentAbility(all, mcp, [mcp, disabled])).toMatchObject({
 			selectionMode: "custom",
 			mcpServers: [],
+		});
+	});
+
+	it("includes plugin-contributed skills when a plugin is enabled", () => {
+		const plugin: AgentCapabilityOption = {
+			id: "content-creation",
+			kind: "plugin",
+			title: "内容创作",
+			description: "",
+			enabledGlobally: true,
+		};
+		const skill: AgentCapabilityOption = {
+			id: "create-content-campaign",
+			kind: "skill",
+			title: "Create campaign",
+			description: "",
+			enabledGlobally: true,
+			sourcePluginId: "content-creation",
+		};
+		const next = toggleAgentAbility({ ...base, skills: [] }, plugin, [plugin, skill]);
+		expect(next.plugins).toEqual(["content-creation"]);
+		expect(next.skills).toEqual(["create-content-campaign"]);
+		expect(toggleAgentAbility(next, plugin, [plugin, skill]).skills).toEqual([]);
+	});
+
+	it("includes the owning plugin when one of its skills is enabled", () => {
+		const skill: AgentCapabilityOption = {
+			id: "direct-image-creation",
+			kind: "skill",
+			title: "Direct image creation",
+			description: "",
+			enabledGlobally: true,
+			sourcePluginId: "content-creation",
+		};
+		const next = toggleAgentAbility({ ...base, skills: [] }, skill, [skill]);
+		expect(next.skills).toEqual(["direct-image-creation"]);
+		expect(next.plugins).toEqual(["content-creation"]);
+		expect(toggleAgentAbility(next, skill, [skill]).plugins).toEqual([]);
+	});
+
+	it("normalizes legacy plugin selections to include their contributed skills", () => {
+		const skill: AgentCapabilityOption = {
+			id: "develop-creative-concept",
+			kind: "skill",
+			title: "Develop concept",
+			description: "",
+			enabledGlobally: true,
+			sourcePluginId: "content-creation",
+		};
+		expect(
+			normalizeAgentAbilitySelection({ ...base, skills: [], plugins: ["content-creation"] }, [skill]),
+		).toMatchObject({
+			skills: ["develop-creative-concept"],
+			plugins: ["content-creation"],
+		});
+	});
+
+	it("preserves an explicit partial selection for a selected plugin", () => {
+		const skills: AgentCapabilityOption[] = ["develop-creative-concept", "direct-image-creation"].map((id) => ({
+			id,
+			kind: "skill",
+			title: id,
+			description: "",
+			enabledGlobally: true,
+			sourcePluginId: "content-creation",
+		}));
+		expect(
+			normalizeAgentAbilitySelection(
+				{
+					...base,
+					skills: ["develop-creative-concept"],
+					plugins: ["content-creation"],
+				},
+				skills,
+			),
+		).toMatchObject({
+			skills: ["develop-creative-concept"],
+			plugins: ["content-creation"],
 		});
 	});
 });
