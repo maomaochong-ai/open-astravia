@@ -548,13 +548,13 @@ Astravia 已具备两块独立的 AI 能力:
 
 | 差异 # | 未完成项 | 原因/性质 |
 | --- | --- | --- |
-| 9 | 固定(pin)置顶 + 拖拽重排 | 未实施,规则级,可后置 |
-| 11 | 可见库/可见 schema / 表名 include+exclude 过滤器 | 数据+UI,需先确认 introspection 面 |
-| 12 | 全局=服务端全量搜索 Switch | 当前仅本地过滤增强(自动拉表+作用域命中+忽略组折叠),无服务端全量搜 |
+| 9 | 固定(pin)置顶 + 拖拽重排 | ✅ `5ad889a`(批次2)：连接分组/scope/表分区按容器独立 pin 置顶 + 同段拖拽重排,本地持久化 |
+| 11 | 可见库/可见 schema / 表名 include+exclude 过滤器 | ✅ `5ad889a`(批次2)：右键「隐藏该库/schema/表」写 exclude + 连接菜单「显示全部对象」还原(glob 过滤,仅影响显示) |
+| 12 | 全局=服务端全量搜索 Switch | 部分:全局/本地搜索开关 + 状态持久化 ✅ `5ad889a`(批次2);服务端全量搜仍无(引擎未提供,维持本地增强:自动拉表+作用域命中+忽略组折叠) |
 | 5 | 连接健康=引擎持续轮询 | ✅ `a939f27`：已测连接每 60s 只读心跳刷新状态点(批次1) |
 | 1 | 树深至索引/约束/触发器/分区子节点 | ✅ `b2b7ec5`+`c699d9d`：introspection SQL 枚举四类子对象,表行下分区渲染(批次1) |
 | 7 | 破坏性/管理动作(删除连接/表、清空、重命名、DDL、导出) | 原建议「先不加/待确认」,仍待用户拍板(见 §七.2/4) |
-| 10 | 工具条状态持久化(排序/过滤/只看活跃/搜索词) | 仅展开/折叠持久化;其余工具条状态为会话内 |
+| 10 | 工具条状态持久化(排序/过滤/只看活跃/搜索词) | ✅ `5ad889a`(批次2)：explorer-toolbar-state 本地持久化(搜索词/仅健康/全局搜索/排序/类型过滤) |
 | 16 | 批量删除/导出 | 多选+批量复制名/批量测试已有;批量删除/导出随破坏性动作一并待定 |
 | — | 虚拟滚动 | **有意不做**(P1-7 轻量 sticky 决策,非缺口) |
 
@@ -572,12 +572,11 @@ Astravia 已具备两块独立的 AI 能力:
 - **#5 树深枚举** ✅：主进程按 `DbCatalogFamily` 生成 introspection SQL 枚举表级子对象 → 索引/约束/触发器/分区四类,经 `dbx_execute_query`(只读 SELECT)取回解析(`tableObjectIntrospectionSql`/`extractTableObjectNames`,SQLite flat 不枚举);IPC + preload + api-types 透传(`DbTableObjectKind`/`listTableObjectNames`);explorer model 增 `objectsOf`/`ensureObjectsForTable`/`reloadObjects`,随表展开懒加载;树内表行下渲染子对象分区(空整块隐藏)。单测 +9。commits: `b2b7ec5`(数据面)、`c699d9d`(UI 层)。
 - **#4 健康轮询** ✅：已测连接每 60s 只读心跳(`SELECT 1`,复用 sql-safety 读通道/executeQuery 通道),写回 `testSnapshots` 刷新状态点 ok/failed;`document.hidden` 暂停、手动测试(testing)去重、in-flight 去重、失败静默降级且持续重试自动恢复。commit: `a939f27`。
 
-### 批次 2 —— 纯前端增强(#1 pin/拖拽 + #2 可见性过滤 + #3 全局搜索 + #7 工具条持久化)
+### 批次 2 —— 纯前端增强(#1 pin/拖拽 + #2 可见性过滤 + #3 全局搜索 + #7 工具条持久化) ✅ 已落地(commit `5ad889a`)
 
-- **#1**:连接/表行 pin 置顶(星标)+ 拖拽重排,顺序持久化 localStorage(与展开态同库);规则级不做虚拟滚动。
-- **#2**:每连接可见性过滤——可见库/可见 schema/表名 include+exclude,本地配置 + 会话内切换,数据面仍走 introspection(不新增引擎面)。
-- **#3**:树顶「全局搜索」Switch——开=跨连接拉表(自动展开+作用域命中+忽略分组折叠);关=当前仅本地过滤。
-- **#7**:工具条状态(排序/过滤/只看活跃/搜索词)持久化 localStorage,与展开态合并版本化。
+- **#1** ✅：连接分组/scope/表分区按容器独立 pin 置顶 + 同段拖拽重排(`explorer-order` 纯函数 + 单测 27);`ExplorerOrderableRow`/`RowPinButton` 行外壳;顺序持久化 localStorage(`astravia.db.explorer.v1.order`)。
+- **#2** ✅：右键「隐藏该库/schema/表」写 exclude + 连接菜单「显示全部对象」一键还原(`explorer-visibility` glob 过滤,仅影响显示);配置持久化(`astravia.db.explorer.v1.visibility`);全部作用域/表被排除时整段收起。单测 +9。
+- **#3/#7** ✅：搜索词/仅健康/全局搜索 Switch/排序/类型过滤持久化(`explorer-toolbar-state` localStorage);全局搜索开关仍为本地增强语义(引擎无服务端全量搜)。单测 +9。
 
 ### 批次 3 —— 破坏性/管理动作(#6 全链路 + #16 批量)
 
