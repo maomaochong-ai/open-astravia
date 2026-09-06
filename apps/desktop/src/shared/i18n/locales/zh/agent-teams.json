@@ -20,6 +20,7 @@
   },
   "profile": {
     "fixedPrompt": "角色：{{role}}",
+    "basicInfo": "基本信息",
 	"avatar": "头像",
 	"avatarOption": "选择头像 {{index}}",
     "name": "名称",
@@ -88,6 +89,9 @@
     "saved": "已保存",
     "saveBeforeEditing": "先保存团队，再配置这位成员的能力。",
     "deleteTeam": "删除团队",
+    "editMember": "配置成员",
+    "editMemberTitle": "成员详情与能力配置",
+    "memberOverview": "点击任意成员卡片配置其角色设定与专属能力。",
     "deleteTeamTitle": "删除这个团队？",
     "deleteTeamMessage": "“{{name}}”及其团队配置将被删除。此操作无法撤销。",
     "profileMissing": "此成员的智能体配置缺失，无法编辑。"

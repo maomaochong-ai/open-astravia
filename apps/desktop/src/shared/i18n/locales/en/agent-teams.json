@@ -20,6 +20,7 @@
   },
   "profile": {
     "fixedPrompt": "Role: {{role}}",
+    "basicInfo": "Basic info",
 	"avatar": "Avatar",
 	"avatarOption": "Select avatar {{index}}",
     "name": "Name",
@@ -88,6 +89,9 @@
     "saved": "Saved",
     "saveBeforeEditing": "Save the team before configuring this member's abilities.",
     "deleteTeam": "Delete team",
+    "editMember": "Configure Member",
+    "editMemberTitle": "Member Details & Capabilities",
+    "memberOverview": "Click any member card to configure their role and capabilities.",
     "deleteTeamTitle": "Delete this team?",
     "deleteTeamMessage": "“{{name}}” and its team configuration will be deleted. This cannot be undone.",
     "profileMissing": "This member's agent configuration is missing and cannot be edited."

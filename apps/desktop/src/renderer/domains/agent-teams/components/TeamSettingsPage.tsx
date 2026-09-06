@@ -26,6 +26,7 @@ import { agentDisplayDescription, agentDisplayName, teamDisplayName } from "@sha
 import type { AgentTeamConfigurationResources } from "../services/load-agent-team-resources";
 import { loadAgentTeamConfigurationResources } from "../services/load-agent-team-resources";
 import { AgentProfileEditor } from "./AgentProfileEditor";
+import { TeamMemberCard } from "./TeamMemberCard";
 import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";
 
 type TeamMemberDraft =
@@ -56,6 +57,7 @@ export function TeamSettingsPage(): JSX.Element {
 	const [drafts, setDrafts] = useState<readonly TeamMemberDraft[]>([]);
 	const [selectedKey, setSelectedKey] = useState<string>();
 	const [addOpen, setAddOpen] = useState(false);
+	const [detailOpen, setDetailOpen] = useState(false);
 	const [addBindingKind, setAddBindingKind] = useState<"reference" | "copy">("reference");
 	const [dirty, setDirty] = useState(false);
 	const [saving, setSaving] = useState(false);
@@ -166,6 +168,7 @@ export function TeamSettingsPage(): JSX.Element {
 		setDirty(true);
 		setSaved(false);
 		setAddOpen(false);
+		setDetailOpen(true);
 	}
 
 	function removeMember(key: string): void {
@@ -384,144 +387,149 @@ export function TeamSettingsPage(): JSX.Element {
 				</div>
 			</header>
 
-			{/* Main Workspace Layout */}
-			<div className="grid min-h-0 flex-1 grid-cols-[20rem_minmax(0,1fr)] lg:grid-cols-[22rem_minmax(0,1fr)] bg-background/50">
-				{/* Left Sidebar: Roster */}
-				<aside className="flex min-h-0 flex-col border-r border-border/50 bg-card/15 backdrop-blur-sm">
-					<div className="flex items-center justify-between gap-2 border-b border-border/50 px-4 py-3.5">
-						<div className="flex items-center gap-2">
-							<span className="text-sm font-semibold tracking-tight text-foreground">{t("settings.members")}</span>
-							<span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-								{drafts.length}
-							</span>
+			{/* Main Workspace: Member Cards Grid */}
+			<div className="flex min-h-0 flex-1 flex-col bg-background/50">
+				<main className="min-h-0 flex-1 overflow-y-auto px-6 py-8 lg:px-10">
+					<div className="mx-auto max-w-6xl space-y-6">
+						{/* Section Header */}
+						<div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/40 pb-5">
+							<div>
+								<div className="flex items-center gap-2.5">
+									<h2 className="text-lg font-bold tracking-tight text-foreground sm:text-xl">
+										{t("settings.members")}
+									</h2>
+									<span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
+										{t("teams.memberCount", { count: drafts.length })}
+									</span>
+								</div>
+								<p className="mt-1 text-xs text-muted-foreground/75">
+									{t("settings.memberOverview")}
+								</p>
+							</div>
+							<Button
+								variant="outline"
+								size="sm"
+								className="h-9 gap-1.5 rounded-xl border-border/60 text-xs font-medium transition-colors hover:border-primary/40 hover:bg-primary/5"
+								onClick={() => setAddOpen(true)}
+							>
+								<span className="icon-[solar--user-plus-linear] h-4 w-4 text-primary" aria-hidden="true" />
+								<span>{t("settings.addMember")}</span>
+							</Button>
 						</div>
-						<Button
-							variant="outline"
-							size="sm"
-							className="h-8 gap-1.5 rounded-lg border-border/60 hover:border-primary/40 hover:bg-primary/5 transition-colors"
-							onClick={() => setAddOpen(true)}
-						>
-							<span className="icon-[solar--user-plus-linear] h-3.5 w-3.5 text-primary" aria-hidden="true" />
-							<span className="sr-only sm:not-sr-only text-xs font-medium">{t("settings.addMember")}</span>
-						</Button>
+
+						{/* Member Cards Responsive Grid */}
+						<div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+							{drafts.map((draft) => {
+								const profile = resources.document.agents.find(
+									(agent) => agent.id === (draft.kind === "existing" ? draft.profileId : draft.agentProfileId),
+								);
+								const displayName = profile ? agentDisplayName(profile, t) : t("settings.profileMissing");
+								const description = profile ? agentDisplayDescription(profile, t) : "";
+								const blueprint = resources.blueprints.find((candidate) => candidate.id === profile?.blueprintId);
+								return (
+									<TeamMemberCard
+										key={draft.key}
+										keyId={draft.key}
+										profile={profile}
+										displayName={displayName}
+										description={description}
+										isLeader={draft.leader}
+										blueprint={blueprint}
+										capabilities={resources.capabilities}
+										onSelect={() => {
+											setSelectedKey(draft.key);
+											setDetailOpen(true);
+										}}
+										onMakeLeader={() => makeLeader(draft.key)}
+										onRemove={() => removeMember(draft.key)}
+									/>
+								);
+							})}
+
+							{/* Quick Add Slot Card */}
+							<button
+								type="button"
+								onClick={() => setAddOpen(true)}
+								className="group flex min-h-[200px] flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border/50 bg-card/10 p-6 text-muted-foreground/70 outline-none transition-all hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
+							>
+								<div className="flex h-11 w-11 items-center justify-center rounded-xl border border-border/60 bg-muted/30 text-muted-foreground transition-colors group-hover:border-primary/40 group-hover:bg-primary/10 group-hover:text-primary">
+									<span className="icon-[solar--user-plus-linear] h-5 w-5" aria-hidden="true" />
+								</div>
+								<div className="text-center">
+									<span className="text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
+										{t("settings.addMember")}
+									</span>
+									<p className="mt-1 max-w-[180px] text-[11px] text-muted-foreground/60">
+										{t("settings.addMemberDescription")}
+									</p>
+								</div>
+							</button>
+						</div>
 					</div>
-					<div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-3">
-						{drafts.map((draft) => {
-							const profile = resources.document.agents.find(
-								(agent) => agent.id === (draft.kind === "existing" ? draft.profileId : draft.agentProfileId),
-							);
-							const displayName = profile ? agentDisplayName(profile, t) : t("settings.profileMissing");
-							const description = profile ? agentDisplayDescription(profile, t) : "";
-							const isSelected = selectedKey === draft.key;
-							return (
-								<div
-									key={draft.key}
-									className={[
-										"group relative flex items-center gap-2.5 rounded-xl p-2.5 transition-all duration-200",
-										isSelected
-											? "border border-primary bg-card"
-											: "border border-border/40 bg-card/25 hover:border-border/80 hover:bg-card/60",
-									].join(" ")}
-								>
-									{isSelected && (
-										<div className="absolute left-0 top-2.5 bottom-2.5 w-1 rounded-r bg-primary" aria-hidden="true" />
-									)}
-									<button
-										type="button"
-										aria-label={displayName}
-										className="flex min-w-0 flex-1 items-center gap-2.5 text-left outline-none"
-										onClick={() => setSelectedKey(draft.key)}
-									>
-										<AgentAvatarView
-											name={displayName}
-											avatar={profile ? agentAvatarUrl(profile) : undefined}
-											blueprintId={profile?.blueprintId}
-											size="md"
-										/>
-										<div className="min-w-0 flex-1">
-											<div className="flex items-center gap-1.5">
-												<span className={`truncate text-sm font-medium ${isSelected ? "text-foreground font-semibold" : "text-foreground/90"}`}>
-													{displayName}
-												</span>
-												{draft.leader && (
-													<span className="inline-flex shrink-0 items-center gap-0.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.2 text-[10px] font-medium text-amber-400">
-														<span className="icon-[solar--crown-bold] h-2.5 w-2.5" aria-hidden="true" />
-														{t("settings.leader")}
-													</span>
-												)}
+				</main>
+
+				{/* Member Detail Dialog (Two-Column Layout) */}
+				<Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+					<DialogContent className="flex h-[86vh] max-h-[780px] max-w-5xl flex-col overflow-hidden rounded-2xl border border-border/60 bg-background p-0">
+						<DialogHeader className="flex shrink-0 flex-row items-center justify-between border-b border-border/50 bg-card/30 px-6 py-4 backdrop-blur-md">
+							<div>
+								<DialogTitle className="text-base font-bold text-foreground">
+									{selectedProfile ? agentDisplayName(selectedProfile, t) : t("settings.editMemberTitle")}
+								</DialogTitle>
+								<DialogDescription className="mt-0.5 text-xs text-muted-foreground">
+									{t("settings.editMember")}
+								</DialogDescription>
+							</div>
+						</DialogHeader>
+
+						<div className="min-h-0 flex-1 overflow-hidden">
+							{selected?.kind === "new" ? (
+								<div className="p-8">
+									<div className="mx-auto max-w-xl rounded-2xl border border-primary/30 bg-primary/5 p-6 backdrop-blur-sm">
+										<div className="flex items-start gap-3.5">
+											<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+												<span className="icon-[solar--info-square-linear] h-5 w-5" aria-hidden="true" />
 											</div>
-											{description && (
-												<p className="mt-0.5 truncate text-xs text-muted-foreground/70">
-													{description}
-												</p>
-											)}
+											<div>
+												<h2 className="text-base font-semibold text-foreground">
+													{selectedProfile ? agentDisplayName(selectedProfile, t) : ""}
+												</h2>
+												<p className="mt-1 text-sm text-muted-foreground/80">{t("settings.saveBeforeEditing")}</p>
+											</div>
 										</div>
-									</button>
-									<div className="flex shrink-0 items-center gap-0.5">
-										{!draft.leader && (
-											<Button
-												variant="ghost"
-												size="icon-xs"
-												className="h-7 w-7 rounded-lg text-muted-foreground/60 hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
-												onClick={() => makeLeader(draft.key)}
-												title={t("settings.makeLeader", { name: displayName })}
-											>
-												<span className="icon-[solar--crown-star-linear] h-3.5 w-3.5" aria-hidden="true" />
-												<span className="sr-only">{t("settings.makeLeader", { name: displayName })}</span>
-											</Button>
-										)}
-										<Button
-											variant="ghost"
-											size="icon-xs"
-											className="h-7 w-7 rounded-lg text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-colors"
-											onClick={() => removeMember(draft.key)}
-											title={t("teams.removeMember", { name: displayName })}
-										>
-											<span className="icon-[solar--trash-bin-trash-linear] h-3.5 w-3.5" aria-hidden="true" />
-											<span className="sr-only">{t("teams.removeMember", { name: displayName })}</span>
-										</Button>
 									</div>
 								</div>
-							);
-						})}
-					</div>
-				</aside>
-
-				{/* Right Main Editor */}
-				<main className="min-w-0 overflow-y-auto px-6 py-6 lg:px-10 lg:py-8">
-					{selected?.kind === "new" ? (
-						<div className="mx-auto max-w-4xl rounded-2xl border border-primary/30 bg-primary/5 p-6 backdrop-blur-sm">
-							<div className="flex items-start gap-3.5">
-								<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-									<span className="icon-[solar--info-square-linear] h-5 w-5" aria-hidden="true" />
-								</div>
-								<div>
-									<h2 className="text-base font-semibold text-foreground">
-										{selectedProfile ? agentDisplayName(selectedProfile, t) : ""}
-									</h2>
-									<p className="mt-1 text-sm text-muted-foreground/80">{t("settings.saveBeforeEditing")}</p>
-								</div>
-							</div>
+							) : selectedProfile ? (
+								<AgentProfileEditor
+									agent={selectedProfile}
+									displayName={agentDisplayName(selectedProfile, t)}
+									displayDescription={agentDisplayDescription(selectedProfile, t)}
+									blueprint={blueprint}
+									capabilities={resources.capabilities}
+									layout="columns"
+									hideSaveAction
+									saveRequest={saveRequest}
+									onDraftChange={handleAgentDraftChange}
+									onSavingChange={setAgentSaving}
+									onSaveComplete={() => setSaved(true)}
+									onPreview={(agentId) => window.vetta.agentTeams.previewAgentUpdate(agentId)}
+									onSave={saveAgent}
+								/>
+							) : (
+								<div className="p-8 text-sm text-destructive">{t("settings.profileMissing")}</div>
+							)}
 						</div>
-					) : selectedProfile ? (
-						<AgentProfileEditor
-							agent={selectedProfile}
-							displayName={agentDisplayName(selectedProfile, t)}
-							displayDescription={agentDisplayDescription(selectedProfile, t)}
-							blueprint={blueprint}
-							capabilities={resources.capabilities}
-							hideSaveAction
-							saveRequest={saveRequest}
-							onDraftChange={handleAgentDraftChange}
-							onSavingChange={setAgentSaving}
-							onSaveComplete={() => setSaved(true)}
-							onPreview={(agentId) => window.vetta.agentTeams.previewAgentUpdate(agentId)}
-							onSave={saveAgent}
-						/>
-					) : (
-						<div className="text-sm text-destructive">{t("settings.profileMissing")}</div>
-					)}
-				</main>
+
+						<div className="flex shrink-0 items-center justify-between border-t border-border/50 bg-card/25 px-6 py-3">
+							<span className="text-xs text-muted-foreground/70">
+								{t("profile.abilitiesHint")}
+							</span>
+							<Button size="sm" variant="outline" className="px-4 text-xs font-medium" onClick={() => setDetailOpen(false)}>
+								完成
+							</Button>
+						</div>
+					</DialogContent>
+				</Dialog>
 			</div>
 
 			{/* Add Member Dialog */}
