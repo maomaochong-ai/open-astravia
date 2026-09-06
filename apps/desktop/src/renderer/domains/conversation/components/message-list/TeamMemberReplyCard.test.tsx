@@ -45,15 +45,18 @@ const event: Extract<ChatTimelineEventViewModel, { kind: "team-member-summary" }
 };
 
 describe("TeamMemberReplyCard", () => {
-	it("renders live thinking in a fixed-height card and opens the member session from the action button", () => {
+	it("adapts to content up to the compact height limit and opens the member session", () => {
 		const onOpen = vi.fn();
 		render(<TeamMemberReplyCard event={event} onOpen={onOpen} />);
 
 		expect(screen.getByRole("button", { name: "打开 研究员 的成员会话" })).toBeTruthy();
 		expect(screen.getByRole("button").className).toContain("h-7");
 		expect(screen.getByRole("button").className).toContain("w-7");
-		expect(screen.getByTestId("team-member-reply-card").className).toContain("h-[300px]");
-		expect(screen.getByTestId("team-member-reply-card").className).toContain("min-h-[300px]");
+		expect(screen.getByTestId("team-member-reply-card").className).toContain("max-h-[240px]");
+		expect(screen.getByTestId("team-member-reply-card").className).not.toContain("h-[300px]");
+		expect(screen.getByTestId("team-member-reply-card").className).not.toContain("min-h-[300px]");
+		expect(screen.getByTestId("live-thinking").parentElement?.className).toContain("overflow-y-auto");
+		expect(screen.getByText("最近：读取项目配置").parentElement?.className).toContain("overflow-y-auto");
 		expect(screen.getByTestId("live-thinking").textContent).toContain("正在检查配置");
 		expect(screen.getByText("最近：读取项目配置")).toBeTruthy();
 

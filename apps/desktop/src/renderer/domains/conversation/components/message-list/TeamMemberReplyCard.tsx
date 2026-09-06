@@ -6,7 +6,7 @@ type TeamMemberSummaryEvent = Extract<ChatTimelineEventViewModel, { kind: "team-
 
 interface TeamMemberReplyCardProps {
 	event: TeamMemberSummaryEvent;
-	onOpen: (memberId: string) => void;
+	onOpen?: (memberId: string) => void;
 }
 
 function stateKey(event: TeamMemberSummaryEvent):
@@ -61,7 +61,7 @@ export function TeamMemberReplyCard({ event, onOpen }: TeamMemberReplyCardProps)
 	return (
 		<div
 			data-testid="team-member-reply-card"
-			className="flex h-[300px] min-h-[300px] w-full min-w-0 items-start gap-2 overflow-hidden rounded-xl border border-border/40 bg-card/30 px-3 py-3 text-left"
+			className="flex max-h-[240px] min-h-0 w-full min-w-0 items-start gap-2 overflow-hidden rounded-xl border border-border/40 bg-card/30 px-3 py-3 text-left"
 		>
 			<AgentAvatarView
 				name={event.memberName}
@@ -75,20 +75,22 @@ export function TeamMemberReplyCard({ event, onOpen }: TeamMemberReplyCardProps)
 					<span className="truncate text-[12px] font-medium text-foreground/80">{event.memberName}</span>
 					<StatusIcon state={event.state} />
 					<span className="truncate text-[11px] text-muted-foreground/60">{status}</span>
-					<button
-						type="button"
-						className="ml-auto inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-						aria-label={openLabel}
-						title={openLabel}
-						onClick={() => onOpen(event.memberId)}
-					>
-						<span className="icon-[solar--arrow-right-up-linear] h-4 w-4" aria-hidden="true" />
-					</button>
+					{onOpen ? (
+						<button
+							type="button"
+							className="ml-auto inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+							aria-label={openLabel}
+							title={openLabel}
+							onClick={() => onOpen(event.memberId)}
+						>
+							<span className="icon-[solar--arrow-right-up-linear] h-4 w-4" aria-hidden="true" />
+						</button>
+					) : null}
 				</span>
-				<span className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden rounded-lg bg-muted/20 px-3 py-2">
+				<span className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto rounded-lg bg-muted/20 px-3 py-2">
 					{event.currentKind === "thinking" && event.current ? (
-						<span className="min-h-0 overflow-hidden">
-						<LiveThinkingView text={event.current} />
+						<span className="min-h-0 overflow-y-auto">
+							<LiveThinkingView text={event.current} />
 						</span>
 					) : (
 						<span
