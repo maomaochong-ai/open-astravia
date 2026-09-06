@@ -21,7 +21,7 @@ export interface NewSessionTargetOption {
 	readonly targetKey: NewSessionTargetKey;
 	readonly title: string;
 	readonly subtitle?: string;
-	readonly avatarUrl?: string;
+	readonly avatarUrls?: readonly string[];
 	readonly selected: boolean;
 	readonly disabled?: boolean;
 }

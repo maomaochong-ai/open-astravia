@@ -1,3 +1,5 @@
+import type { AgentProfile, TeamDefinition } from "@vetta/agent-team";
+
 /** Stable public asset paths safe to persist in Agent profiles across builds. */
 export const AGENT_AVATAR_OPTIONS = Object.freeze(
 	Array.from({ length: 9 }, (_, index) => `./agent-team-avatars/avatar-${String(index + 1).padStart(2, "0")}.webp`),
@@ -20,6 +22,20 @@ export function agentAvatarUrl(profile: {
 	const blueprintIndex = BLUEPRINT_AVATAR_INDEX[profile.blueprintId];
 	const index = blueprintIndex ?? stableIndex(profile.id);
 	return AGENT_AVATAR_OPTIONS[index % AGENT_AVATAR_OPTIONS.length]!;
+}
+
+export function teamMemberAvatarUrls(
+	team: TeamDefinition,
+	agentsById: ReadonlyMap<string, AgentProfile>,
+): readonly string[] {
+	return team.members.map((member) => {
+		const profile = agentsById.get(member.binding.agentProfileId);
+		return agentAvatarUrl({
+			id: profile?.id ?? member.id,
+			blueprintId: profile?.blueprintId ?? "leader",
+			...(profile?.avatar ? { avatar: profile.avatar } : {}),
+		});
+	});
 }
 
 function stableIndex(value: string): number {

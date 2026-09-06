@@ -1,7 +1,7 @@
 import { teamDisplayName } from "@shared/agent-teams/agent-team-presentation";
 import { TEAM_SESSIONS_CHANGED_EVENT } from "@shared/agent-teams/team-session-events";
 import { Button } from "@shared/components/ui/button";
-import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";
+import { teamMemberAvatarUrls } from "@shared/agent-teams/agent-avatar";
 import type { AgentTeamDocument, TeamSessionListItem } from "@vetta/agent-team";
 import { useMatches, useNavigate } from "@tanstack/react-router";
 import { DefaultSessionRowView } from "@vetta/theme-ui/project";
@@ -100,14 +100,7 @@ export function AgentTeamSidebarList(): JSX.Element {
 							active={team.id === activeTeamId && !activeSessionId && !isCreatingThisTeam}
 							contextMenuEnabled={false}
 							iconClassName="icon-[solar--users-group-rounded-linear]"
-							leadingAvatarUrls={team.members.map((member) => {
-								const profile = agentsById.get(member.binding.agentProfileId);
-								return agentAvatarUrl({
-									id: profile?.id ?? member.id,
-									blueprintId: profile?.blueprintId ?? "leader",
-									...(profile?.avatar ? { avatar: profile.avatar } : {}),
-								});
-							})}
+							leadingAvatarUrls={teamMemberAvatarUrls(team, agentsById)}
 							label={teamDisplayName(team, t)}
 							renaming={false}
 							running={false}

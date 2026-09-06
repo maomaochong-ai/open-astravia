@@ -1,13 +1,14 @@
 import type { AgentTeamDocument } from "@vetta/agent-team";
+import { teamMemberAvatarUrls } from "@shared/agent-teams/agent-avatar";
 import {
 	NewSessionPicker,
 	type NewSessionPickerRootProps,
 } from "@vetta/theme-ui/chat";
+import { AvatarStackView } from "@vetta/theme-ui/shared";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
 	filterTargetOptions,
-	parseTeamTargetKey,
 	teamTargetKey,
 	type NewSessionTargetKey,
 	type NewSessionTargetOption,
@@ -41,6 +42,10 @@ export function NewSessionTeamSelector({ selectedKey, onSelect, className }: New
 		}
 	}, []);
 
+	const agentsById = useMemo(
+		() => new Map(document?.agents.map((agent) => [agent.id, agent]) ?? []),
+		[document?.agents],
+	);
 	useEffect(() => {
 		void load();
 	}, [load]);
@@ -49,15 +54,15 @@ export function NewSessionTeamSelector({ selectedKey, onSelect, className }: New
 		() =>
 			(document?.teams ?? []).map((team) => ({
 				targetKey: teamTargetKey(team.id),
-				title: team.name,
-				subtitle: t("newSession.teamSelector.memberCount", { count: team.members.length }),
-				selected: selectedKey === teamTargetKey(team.id),
-			})),
-		[document?.teams, selectedKey, t],
+					title: team.name,
+					subtitle: t("newSession.teamSelector.memberCount", { count: team.members.length }),
+					avatarUrls: teamMemberAvatarUrls(team, agentsById),
+					selected: selectedKey === teamTargetKey(team.id),
+				})),
+		[agentsById, document?.teams, selectedKey, t],
 	);
 	const visibleOptions = useMemo(() => filterTargetOptions(options, query), [options, query]);
-	const selectedTeamId = parseTeamTargetKey(selectedKey);
-	const selectedTeam = document?.teams.find((team) => team.id === selectedTeamId);
+	const selectedOption = options.find((option) => option.targetKey === selectedKey);
 	const searchVisible = options.length > SEARCH_THRESHOLD;
 
 	const handleOpenChange: NonNullable<NewSessionPickerRootProps["onOpenChange"]> = useCallback((next) => {
@@ -80,13 +85,18 @@ export function NewSessionTeamSelector({ selectedKey, onSelect, className }: New
 			onValueChange={handleSelect}
 		>
 			<NewSessionPicker.Trigger className={className} aria-label={t("newSession.teamSelector.triggerTitle")}>
-				<NewSessionPicker.Value
-					placeholder={t("newSession.teamSelector.placeholder")}
-					selectedLabel={selectedTeam?.name}
-					icon={<span className="icon-[solar--users-group-rounded-linear]" />}
-					selectedIcon={<span className="icon-[solar--users-group-two-rounded-linear]" />}
-					triggerTitle={selectedTeam?.name ?? t("newSession.teamSelector.triggerTitle")}
-				/>
+				{selectedOption?.avatarUrls?.length ? (
+					<AvatarStackView avatarUrls={selectedOption.avatarUrls} />
+				) : (
+					<span className="icon-[solar--users-group-rounded-linear] h-3.5 w-3.5 shrink-0" aria-hidden />
+				)}
+				<span
+					className="min-w-0 truncate"
+					title={selectedOption?.title ?? t("newSession.teamSelector.triggerTitle")}
+				>
+					{selectedOption?.title ?? t("newSession.teamSelector.placeholder")}
+				</span>
+				<span className="icon-[solar--alt-arrow-down-linear] h-3 w-3 shrink-0 opacity-70" aria-hidden />
 			</NewSessionPicker.Trigger>
 			<NewSessionPicker.Content>
 				{searchVisible && (
@@ -118,9 +128,13 @@ export function NewSessionTeamSelector({ selectedKey, onSelect, className }: New
 							) : (
 								visibleOptions.map((option) => (
 									<NewSessionPicker.Item key={option.targetKey} value={option.targetKey}>
-										<NewSessionPicker.ItemIcon>
-											<span className="icon-[solar--users-group-rounded-linear]" />
-										</NewSessionPicker.ItemIcon>
+										{option.avatarUrls?.length ? (
+											<AvatarStackView avatarUrls={option.avatarUrls} />
+										) : (
+											<NewSessionPicker.ItemIcon>
+												<span className="icon-[solar--users-group-rounded-linear]" />
+											</NewSessionPicker.ItemIcon>
+										)}
 										<NewSessionPicker.ItemText>
 											<span className="flex min-w-0 flex-col">
 												<span className="truncate">{option.title}</span>
