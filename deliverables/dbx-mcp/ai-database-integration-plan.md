@@ -54,7 +54,7 @@
 
 ### 阶段 P4:database 网关健壮性加固(缺陷修复,预估 1-1.5 天)
 
-> 来源:2026-09-06 只读 bug scan(`bug_scan_main`)对 dbx-mcp-client/database-service/sql-safety/schema-context-injection 的排查结论。修复前置:先与引擎侧确认「待验证」2 项。
+> 来源:2026-09-06 只读 bug scan(`bug_scan_main`)对 dbx-mcp-client/database-service/sql-safety/schema-context-injection 的排查结论;引擎侧 3 项协议事实同日由 probe(`engine_protocol_probe`)确认(见下),P4 修复口径据此落定。
 
 **范围(按优先级)** :
 - **[高] 握手失败后客户端永久毒化**([dbx-mcp-client.ts](/Users/zhugeyue/Desktop/project/bigdate/source-code/astravia/packages/desktop-app/src/main/database/dbx-mcp-client.ts)): `ensureInitialized()` 记忆化 spawnAndHandshake promise,但 error 处理器不重置 `initialized`/`child` → 15s 握手超时/initialize 报错/spawn error 后 DB 功能持续 TIMEOUT 直至重启,无重试。修复:失败路径复位 `initialized=null`(或记录失败并允许下次调用重试),补单测覆盖握手失败→重试成功。
@@ -62,9 +62,12 @@
 - **[中] 多语句写绕过审计**(database-service): `isWrite` 按整串首关键字判定、拦截按切分片段 → `SELECT 1; UPDATE…` 放行后审计不记录。修复:审计判定改按片段逐个判定。
 - **[中] config 读-改-写非原子**(database-service add/remove connection):并发写丢 `connectionEnv` prod 标记 → relaxed 写保护降级。修复:merge 语义或串行化写。
 - **[中] ADR 0056 分层违反**: 编排层直连 `readConfigSync`/`app`(无 host 注入点);[schema-context-injection.ts](/Users/zhugeyue/Desktop/project/bigdate/source-code/astravia/packages/desktop-app/src/main/database/schema-context-injection.ts) 纯 Node 层运行时 import databaseService;[dbx-mcp-path.ts](/Users/zhugeyue/Desktop/project/bigdate/source-code/astravia/packages/desktop-app/src/main/mcp/dbx-mcp-path.ts) 的 `app.isPackaged` 无 typeof 守卫。修复:收口最小 host 注入接口、加守卫,保证可纯 Node 复跑。
-- **[低]**: READ_LEADERS 含 `PRAGMA`/`EXPLAIN`(依赖引擎语义);schema 缓存无单飞去重 + 存未截断原文;`child.stdin.write` 无 error 监听;`testConnection` 草稿清理不检查结果。
+- **[低]**: [sql-safety.ts] READ_LEADERS 含 `PRAGMA`(引擎已确认 PRAGMA 一律 Write、能写连接上真实生效 → 客户端从只读白名单移除 PRAGMA;`EXPLAIN` 无 ANALYZE 系只读可保留);schema 缓存无单飞去重 + 存未截断原文;`child.stdin.write` 无 error 监听;`testConnection` 草稿清理不检查结果。
 
-**待验证(引擎侧,修复前置)** :
+**引擎侧协议事实(probe 2026-09-06 确认,含证据)** :
+- **Q1 错误协议 = isError 文本,非 JSON-RPC error**:全部工具失败返回正常 result + `content[].text="Error [<CODE>]: <msg>"` + `isError:true`(server.rs:876-878);非策略运行错误统一 `DBX_TOOL_ERROR`(agent_tools.rs:363-369 → server.rs:880-899 扫描策略码),策略类才有 SQL_BLOCKED/MCP_READ_ONLY/CONNECTION_READ_ONLY/PRODUCTION_WRITE_BLOCKED/QUERY_ERROR。→ `classifyError` 文本匹配可行且现状成立;口径:语法/连接类错误靠 message 子串分类,将 `DBX_TOOL_ERROR`+关键词映射维护为单一常量并补单测(引擎措辞变更会使其失效),不追求 code 级。
+- **Q2 无取消通道**:dbx-mcp 全量无 cancelled/abort 实现(main.rs:17-18 裸 serve);MCP execute_query 传 `cancel_token: None` + 引擎自 30s 硬超时(agent_tools.rs:585-592)。客户端超时(默认 CALL_TIMEOUT_MS=60s > 30s)仅弃响应 → 常规是引擎先 30s 超时返回含 `timed out` 文本、classifyError 可归 TIMEOUT;短超时(<30s)调用方需知「丢弃响应≠取消」,引擎仍跑满 30s。口径:真取消需引擎侧补 cancelled→token 链路(引擎改造,另行立项);客户端兜底=超时杀子进程重建。
+- **Q3 PRAGMA/EXPLAIN**:引擎 MCP 边界有分类拦截(sql_risk.rs PRAGMA→Write、EXPLAIN ANALYZE 递归识别内部写、EXPLAIN 无 ANALYZE→ReadOnly;server.rs:942-989 四道闸),策略放行后执行层透传。→ 客户端 READ_LEADERS 移除 PRAGMA;EXPLAIN 可保留。
 - dbx-mcp 错误走 isError-text 还是 JSON-RPC error(后者会使 `classifyError` 全落 UNKNOWN)。
 - 客户端超时后引擎端是否继续执行、有无取消通道(决定重试/重复副作用策略)。
 
