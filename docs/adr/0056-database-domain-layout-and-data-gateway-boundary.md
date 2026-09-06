@@ -48,7 +48,7 @@ renderer/domains/database/
 
 - **docs/adr 无旧决策被推翻**：检索全部 55 篇 ADR，无任何一篇规定 database 域文件结构（0027 为文件协议、0053/0054/0055 为 UI 设计引擎/插件/品牌，均非本域）。
 - **正式校准的对象是"渐进实现的默认堆放"**：数据库工作台参照 dbx 上游与 activity-panel 浏览器面板实现时，hook 随组件同放 `components/` 属实现便利，从未成文。本决策将其校准为仓库域惯例，是**对既有实现的第一份成文规划基线**。
-- **deliverables/dbx-mcp/adr-ai-database-integration.md 不冲突**：其术语与约束（AiAnchor/AiAsk/ApplySql/sql-safety/schema 只读/IPC 纪律）均不涉目录；将同步在其「相关链接」补本 ADR 引用，并更新实施完成度记录。
+- **deliverables/dbx-mcp/dbx-ai-integration-merged.md 不冲突**（原三份：adr-ai-database-integration / ai-database-integration-plan / connection-tree-gap-analysis 已于 2026-09-06 合并入此文件）：其术语与约束（AiAnchor/AiAsk/ApplySql/sql-safety/schema 只读/IPC 纪律）均不涉目录；已在其中「相关链接」（第 2 部分 §8）补本 ADR 引用，并更新实施完成度记录。
 
 ## 影响与验收
 
@@ -58,4 +58,4 @@ renderer/domains/database/
   - [ ] 全部迁移经 `git mv`，import 修正后 desktop-app 全量 tsc exit 0、biome 0 问题；
   - [ ] 行为零变化：不改组件逻辑/props/样式/交互，数据库工作台整体设计不变；
   - [ ] `database-api.ts` facade 纪律写入本决策，主进程 Electron 依赖收口方向明确；
-  - [ ] deliverables/dbx-mcp/adr-ai-database-integration.md 与 ai-database-integration-plan.md 已同步引用本 ADR。
+  - [x] deliverables/dbx-mcp/dbx-ai-integration-merged.md（含原 adr 与 plan 内容）已同步引用本 ADR。
