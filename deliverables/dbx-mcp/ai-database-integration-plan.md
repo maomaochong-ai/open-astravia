@@ -52,6 +52,24 @@
 - 是否开放「结果行级上下文(用户选中行 → 让 AI 解释)」:默认不做,标记为后续可选。
 - 视觉对齐 dbx:编辑器区是否需要一个常驻的「AI 抽屉」开关,或保持按钮式唤起——**实施前与用户确认交互偏好**(见「待确认」)。
 
+### 阶段 P4:database 网关健壮性加固(缺陷修复,预估 1-1.5 天)
+
+> 来源:2026-09-06 只读 bug scan(`bug_scan_main`)对 dbx-mcp-client/database-service/sql-safety/schema-context-injection 的排查结论。修复前置:先与引擎侧确认「待验证」2 项。
+
+**范围(按优先级)** :
+- **[高] 握手失败后客户端永久毒化**([dbx-mcp-client.ts](/Users/zhugeyue/Desktop/project/bigdate/source-code/astravia/packages/desktop-app/src/main/database/dbx-mcp-client.ts)): `ensureInitialized()` 记忆化 spawnAndHandshake promise,但 error 处理器不重置 `initialized`/`child` → 15s 握手超时/initialize 报错/spawn error 后 DB 功能持续 TIMEOUT 直至重启,无重试。修复:失败路径复位 `initialized=null`(或记录失败并允许下次调用重试),补单测覆盖握手失败→重试成功。
+- **[高] 跨代 exit 回调竞态**: `dispose()` 置空引用后旧进程 exit 回调无条件清共享 `pending` 并清新一代引用 → 退出瞬间并发查询使新进程成孤儿、在途请求被误拒。修复:exit 回调按代(捕获的 child 引用 === 当前 child)过滤,补竞态单测。
+- **[中] 多语句写绕过审计**(database-service): `isWrite` 按整串首关键字判定、拦截按切分片段 → `SELECT 1; UPDATE…` 放行后审计不记录。修复:审计判定改按片段逐个判定。
+- **[中] config 读-改-写非原子**(database-service add/remove connection):并发写丢 `connectionEnv` prod 标记 → relaxed 写保护降级。修复:merge 语义或串行化写。
+- **[中] ADR 0056 分层违反**: 编排层直连 `readConfigSync`/`app`(无 host 注入点);[schema-context-injection.ts](/Users/zhugeyue/Desktop/project/bigdate/source-code/astravia/packages/desktop-app/src/main/database/schema-context-injection.ts) 纯 Node 层运行时 import databaseService;[dbx-mcp-path.ts](/Users/zhugeyue/Desktop/project/bigdate/source-code/astravia/packages/desktop-app/src/main/mcp/dbx-mcp-path.ts) 的 `app.isPackaged` 无 typeof 守卫。修复:收口最小 host 注入接口、加守卫,保证可纯 Node 复跑。
+- **[低]**: READ_LEADERS 含 `PRAGMA`/`EXPLAIN`(依赖引擎语义);schema 缓存无单飞去重 + 存未截断原文;`child.stdin.write` 无 error 监听;`testConnection` 草稿清理不检查结果。
+
+**待验证(引擎侧,修复前置)** :
+- dbx-mcp 错误走 isError-text 还是 JSON-RPC error(后者会使 `classifyError` 全落 UNKNOWN)。
+- 客户端超时后引擎端是否继续执行、有无取消通道(决定重试/重复副作用策略)。
+
+**验证**: 单测覆盖上述故障注入场景;desktop tsc / biome / vitest 全绿;退出瞬间并发查询无孤儿进程(ui-verification 人工路径可选)。
+
 ## 2. 数据流(目标态)
 
 ```
@@ -101,3 +119,4 @@
 | M1(P0+P1) | 锚点 + 应用 SQL 通道 | 端到端「问 AI → 生成 → 执行」| ✅ 2026-09-06(commit 8329510/7366a50) |
 | M2(P2) | 就近入口三处 | 与 dbx 交互对齐 | ✅ 2026-09-06(commit b6dad39;结果入口沿用既有通道) |
 | M3(P3) | 打磨 + 交互确认项 | 视觉/文案/容量对齐 |
+| M4(P4) | 网关健壮性加固 | bug scan 高/中优先项修复,单测覆盖 | 待排期(先确认引擎侧 2 项) |
