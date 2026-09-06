@@ -29,19 +29,31 @@ describe("parseExplorerToolbarState", () => {
 		expect(parseExplorerToolbarState("[1,2]")).toEqual(DEFAULT_EXPLORER_TOOLBAR_STATE);
 	});
 
-	it("合法快照原样读回", () => {
+	it("合法快照原样读回（含 globalSearch）", () => {
 		const raw = JSON.stringify({
 			searchQuery: "orders",
 			healthyOnly: true,
+			globalSearch: false,
 			sortOrder: "asc",
 			kindFilter: "views",
 		});
 		expect(parseExplorerToolbarState(raw)).toEqual({
 			searchQuery: "orders",
 			healthyOnly: true,
+			globalSearch: false,
 			sortOrder: "asc",
 			kindFilter: "views",
 		});
+	});
+
+	it("旧版快照缺 globalSearch 字段时默认开启（保持既有跨连接搜索体验）", () => {
+		const raw = JSON.stringify({
+			searchQuery: "orders",
+			healthyOnly: true,
+			sortOrder: "asc",
+			kindFilter: "views",
+		});
+		expect(parseExplorerToolbarState(raw).globalSearch).toBe(true);
 	});
 
 	it("字段级校验：损坏字段逐个回落默认值", () => {
@@ -61,6 +73,11 @@ describe("parseExplorerToolbarState", () => {
 			searchQuery: "acc",
 		});
 	});
+
+	it("globalSearch 显式 false 时尊重关闭", () => {
+		const raw = JSON.stringify({ searchQuery: "acc", globalSearch: false });
+		expect(parseExplorerToolbarState(raw).globalSearch).toBe(false);
+	});
 });
 
 describe("loadExplorerToolbarState / saveExplorerToolbarState", () => {
@@ -75,10 +92,11 @@ describe("loadExplorerToolbarState / saveExplorerToolbarState", () => {
 		expect(loadExplorerToolbarState()).toEqual(DEFAULT_EXPLORER_TOOLBAR_STATE);
 	});
 
-	it("save 后可 roundtrip 读回", () => {
+	it("save 后可 roundtrip 读回（含 globalSearch）", () => {
 		const state = {
 			searchQuery: "customer",
 			healthyOnly: true,
+			globalSearch: false,
 			sortOrder: "desc" as const,
 			kindFilter: "tables" as const,
 		};

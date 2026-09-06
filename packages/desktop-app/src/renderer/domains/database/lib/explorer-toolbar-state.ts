@@ -8,6 +8,7 @@ import type { ConnectionSortOrder, TableKindFilter } from "./database-tree";
 export interface ExplorerToolbarState {
 	readonly searchQuery: string;
 	readonly healthyOnly: boolean;
+	readonly globalSearch: boolean;
 	readonly sortOrder: ConnectionSortOrder;
 	readonly kindFilter: TableKindFilter;
 }
@@ -17,6 +18,7 @@ const STORAGE_KEY = "astravia:db:explorer-toolbar";
 export const DEFAULT_EXPLORER_TOOLBAR_STATE: ExplorerToolbarState = {
 	searchQuery: "",
 	healthyOnly: false,
+	globalSearch: true,
 	sortOrder: "default",
 	kindFilter: "all",
 };
@@ -42,6 +44,8 @@ export function parseExplorerToolbarState(raw: string | null): ExplorerToolbarSt
 		return {
 			searchQuery: typeof parsed.searchQuery === "string" ? parsed.searchQuery : "",
 			healthyOnly: parsed.healthyOnly === true,
+			// 历史快照无该字段时默认开启（保持既有"搜索即跨连接"体验）。
+			globalSearch: parsed.globalSearch !== false,
 			sortOrder: isSortOrder(parsed.sortOrder) ? parsed.sortOrder : "default",
 			kindFilter: isKindFilter(parsed.kindFilter) ? parsed.kindFilter : "all",
 		};

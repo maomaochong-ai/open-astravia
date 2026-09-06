@@ -38,11 +38,41 @@ import {
 	DatabaseExplorerContextMenu,
 	type DatabaseContextMenuItem,
 } from "./DatabaseExplorerContextMenu";
+import {
+	ExplorerOrderableRow,
+	ExplorerRowOrderContext,
+	RowPinButton,
+	rowIsPinned,
+	useExplorerRowOrder,
+	type ExplorerRowOrderController,
+} from "./explorer-row-tools";
 import { catalogFamilyOfType } from "../lib/catalog-family";
 import type { DatabaseExplorerModel, ExplorerListNode } from "../hooks/useDatabaseExplorerModel";
 import { TABLE_OBJECT_KINDS } from "../hooks/useDatabaseExplorerModel";
 import type { DatabaseConnectionTestSnapshot, DatabaseConnectionTestStatus } from "../hooks/useDatabaseWorkspaceModel";
 import { loadExplorerToolbarState, saveExplorerToolbarState } from "../lib/explorer-toolbar-state";
+import {
+	EMPTY_ROW_ORDER,
+	applyOrderToItems,
+	connectionRowContainer,
+	flatTableRowContainer,
+	loadExplorerOrder,
+	moveRowAcross,
+	saveExplorerOrder,
+	scopeRowContainer,
+	tableRowContainer,
+	toggleRowPin,
+	type ExplorerOrderMap,
+	type RowOrder,
+} from "../lib/explorer-order";
+import {
+	filterScopesByVisibility,
+	filterTablesByVisibility,
+	loadExplorerVisibility,
+	saveExplorerVisibility,
+	type ConnectionVisibility,
+	type ExplorerVisibilityMap,
+} from "../lib/explorer-visibility";
 
 interface DatabaseExplorerTreeProps {
 	/** 用户自定义分组名（顶部「+」新建，持久化本地）；树按创建序置顶渲染为空分组（对齐 dbx「新建分组」）。 */
@@ -234,6 +264,7 @@ function ScopeRows({
 	searchQuery,
 	searching,
 	kindFilter,
+	visibility,
 }: {
 	connection: DbConnection;
 	family: DbCatalogFamily;
@@ -246,8 +277,10 @@ function ScopeRows({
 	searchQuery: string;
 	searching: boolean;
 	kindFilter: TableKindFilter;
-}): JSX.Element {
+	visibility: ConnectionVisibility | undefined;
+}): JSX.Element | null {
 	const { t } = useTranslation("settings");
+	const { orderMap, togglePin } = useExplorerRowOrder();
 	const node = explorer.scopesOf(connection.name);
 	// 首次渲染（连接展开）时确保作用域枚举已取数；ensureScopes 内部有「已加载/加载中/失败」守卫，幂等。
 	useEffect(() => {
@@ -276,20 +309,28 @@ function ScopeRows({
 	const searchingActive = searching && normalized.length > 0;
 	const connectionMatched = !searchingActive || connectionMatchesQuery(connection, normalized);
 	// 搜索时：连接名命中保留全部 scope；否则仅保留 scope 名命中、或其下已加载表名命中的 scope。
+	const scopeVisibility = filterScopesByVisibility(node.items, visibility?.scopes);
 	const visibleScopes =
 		searchingActive && !connectionMatched
-			? node.items.filter(
+			? scopeVisibility.filter(
 					(scope) =>
 						scope.name.toLowerCase().includes(normalized) ||
 						explorer.tablesOf(connection.name, scope).items.some((table) => tableMatchesQuery(table, normalized)),
 				)
-			: node.items;
+			: scopeVisibility;
+	// 批次2-② 全部作用域被「隐藏该库/模式」排除时整段收起（区别于搜索无命中空态）。
+	if (node.loaded && node.items.length > 0 && scopeVisibility.length === 0) {
+		return null;
+	}
 	if (node.loaded && visibleScopes.length === 0) {
 		return <div className="px-2 py-1.5 text-[11.5px] text-muted-foreground/60">{t("databaseNoTables")}</div>;
 	}
+	const scopeContainer = scopeRowContainer(connection.name);
+	const scopeNames = visibleScopes.map((scope) => scope.name);
+	const orderedScopes = applyOrderToItems(visibleScopes, orderMap[scopeContainer]);
 	return (
 		<>
-			{visibleScopes.map((scope) => {
+			{orderedScopes.map((scope) => {
 				const scopeMatched = connectionMatched || scope.name.toLowerCase().includes(normalized);
 				const tableHit =
 					!scopeMatched &&
@@ -297,12 +338,16 @@ function ScopeRows({
 				const expanded = searchingActive ? scopeMatched || tableHit : explorer.isScopeExpanded(connection.name, scope);
 				return (
 					<div key={scope.name}>
-						<div
-							className="group flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1.5 hover:bg-background/60"
-							onClick={() => explorer.actions.toggleScope(connection.name, scope)}
-							onContextMenu={(event) => onScopeContextMenu(event, connection, scope)}
-							title={schemas ? t("databaseSchemaHint") : t("databaseDatabaseHint")}
-						>
+					<ExplorerOrderableRow
+						container={scopeContainer}
+						name={scope.name}
+						names={scopeNames}
+						disabled={searchingActive}
+						className="group flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1.5 hover:bg-background/60"
+						onClick={() => explorer.actions.toggleScope(connection.name, scope)}
+						onContextMenu={(event) => onScopeContextMenu(event, connection, scope)}
+						title={schemas ? t("databaseSchemaHint") : t("databaseDatabaseHint")}
+					>
 							<span
 								className={cn(
 									"h-3 w-3 shrink-0 transition-transform",
@@ -317,7 +362,14 @@ function ScopeRows({
 								)}
 							/>
 							<span className="min-w-0 flex-1 truncate text-[12px] font-medium text-foreground/90">{scope.name}</span>
-						</div>
+
+							{!searchingActive ? (
+								<RowPinButton
+									pinned={rowIsPinned(orderMap, scopeContainer, scope.name)}
+									onToggle={() => togglePin(scopeContainer, scopeNames, scope.name)}
+								/>
+							) : null}
+					</ExplorerOrderableRow>
 						{expanded ? (
 							<div className="ml-[13px] pl-1.5">
 								<TableRows
@@ -329,6 +381,8 @@ function ScopeRows({
 									onContextMenu={onTableContextMenu}
 									onColumnContextMenu={onColumnContextMenu}
 									searchQuery={searchingActive && !scopeMatched ? searchQuery : ""}
+
+										visibility={visibility}
 										kindFilter={kindFilter}
 										/>
 							</div>
@@ -349,6 +403,7 @@ function TableRows({
 	onColumnContextMenu,
 	searchQuery,
 	kindFilter,
+	visibility,
 	scope,
 }: {
 	connection: DbConnection;
@@ -363,8 +418,10 @@ function TableRows({
 	scope?: DbCatalogScope;
 	/** 工具条类型过滤：全部 / 仅表 / 仅视图。 */
 	kindFilter: TableKindFilter;
-}): JSX.Element {
+	visibility: ConnectionVisibility | undefined;
+}): JSX.Element | null {
 	const { t } = useTranslation("settings");
+	const { orderMap, togglePin } = useExplorerRowOrder();
 	const node = explorer.tablesOf(connection.name, scope);
 	if (node.loading) {
 		return (
@@ -382,18 +439,30 @@ function TableRows({
 		normalized && !connectionMatchesQuery(connection, normalized)
 			? filterTables(node.items, normalized)
 			: node.items;
+
+	const visibilityFiltered = filterTablesByVisibility(visibleItems, visibility?.tables);
+	// 批次2-② 全部表被「隐藏该表」排除时整段收起（区别于搜索无命中空态）。
+	if (node.loaded && visibleItems.length > 0 && visibilityFiltered.length === 0) {
+		return null;
+	}
 	if (node.loaded && visibleItems.length === 0) {
 		return <div className="px-2 py-1.5 text-[11.5px] text-muted-foreground/60">{t("databaseNoTables")}</div>;
 	}
 	// V2 对齐 dbx 对象分区：BASE TABLE → 表分区；VIEW / SYSTEM VIEW / MATERIALIZED VIEW → 视图分区。
 	// V6-② 类型过滤：工具条全部/仅表/仅视图；当前分区无匹配时显示空态而非空白。
-	const sections = filterKindSections(splitTableKindSections(visibleItems), kindFilter);
+	const sections = filterKindSections(splitTableKindSections(visibilityFiltered), kindFilter);
 	if (node.loaded && visibleItems.length > 0 && sections.length === 0) {
 		return <div className="px-2 py-1.5 text-[11.5px] text-muted-foreground/60">{t("databaseNoKindMatches")}</div>;
 	}
+
+	const tableContainerBase = scope ? tableRowContainer(connection.name, scope) : flatTableRowContainer(connection.name);
+	const orderedSections = sections.map((section) => {
+		const items = applyOrderToItems(section.items, orderMap[`${tableContainerBase}::${section.kind}`]);
+		return { ...section, items, names: items.map((table) => table.name) };
+	});
 	return (
 		<>
-			{sections.map((section) => (
+			{orderedSections.map((section) => (
 				<div key={section.kind}>
 					<TableKindSectionHeader kind={section.kind} count={section.items.length} />
 					{section.items.map((table: DbTableInfo) => {
@@ -402,7 +471,11 @@ function TableRows({
 						const view = section.kind === "views";
 						return (
 							<div key={table.name} data-db-table={table.name} data-db-scope={scope?.name ?? ""}>
-								<div
+								<ExplorerOrderableRow
+									container={`${tableContainerBase}::${section.kind}`}
+									name={table.name}
+									names={section.names}
+									disabled={normalized.length > 0}
 									className="group flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1.5 hover:bg-background/60"
 									onClick={(event) => {
 										void onOpenTable(connection, table.name, scope, event.metaKey || event.ctrlKey);
@@ -429,6 +502,13 @@ function TableRows({
 									/>
 									<span className="min-w-0 truncate text-[12px] font-medium text-foreground/90">{table.name}</span>
 									<div className="ml-auto hidden shrink-0 items-center gap-0.5 group-hover:flex">
+
+										{normalized.length === 0 ? (
+											<RowPinButton
+												pinned={rowIsPinned(orderMap, `${tableContainerBase}::${section.kind}`, table.name)}
+												onToggle={() => togglePin(`${tableContainerBase}::${section.kind}`, section.names, table.name)}
+											/>
+										) : null}
 										<button
 											type="button"
 											aria-label={t("databaseAnalyzeTable.label")}
@@ -454,7 +534,7 @@ function TableRows({
 											<span className="h-3.5 w-3.5 icon-[mdi--play-box-outline]" />
 										</button>
 									</div>
-								</div>
+								</ExplorerOrderableRow>
 								{expanded ? (
 									<div className="ml-[22px] pl-1.5">
 										<ColumnRows
@@ -550,10 +630,11 @@ export function DatabaseExplorerTree({
 	const [healthyOnly, setHealthyOnly] = useState(initialToolbar.healthyOnly);
 	const [sortOrder, setSortOrder] = useState<ConnectionSortOrder>(initialToolbar.sortOrder);
 	const [kindFilter, setKindFilter] = useState<TableKindFilter>(initialToolbar.kindFilter);
+	const [globalSearch, setGlobalSearch] = useState(initialToolbar.globalSearch);
 	const [locateNonce, setLocateNonce] = useState(0);
 	useEffect(() => {
-		saveExplorerToolbarState({ searchQuery: searchInput, healthyOnly, sortOrder, kindFilter });
-	}, [healthyOnly, kindFilter, searchInput, sortOrder]);
+		saveExplorerToolbarState({ searchQuery: searchInput, healthyOnly, globalSearch, sortOrder, kindFilter });
+	}, [globalSearch, healthyOnly, kindFilter, searchInput, sortOrder]);
 	const { visible } = useMemo(
 		() =>
 			filterConnections(
@@ -575,7 +656,67 @@ export function DatabaseExplorerTree({
 		[connections, deferredQuery, explorer, healthyOnly, statusOf],
 	);
 	const searching = deferredQuery.trim().length > 0;
-	useAutoExpandOnSearch(explorer, connections, searching);
+	// 仅全局搜索开启时允许跨连接自动取数以扩大命中面；仅本地过滤（关闭）时只在已加载范围内匹配。
+	useAutoExpandOnSearch(explorer, connections, searching && globalSearch);
+
+	// 批次2-① 行置顶与拖拽重排：顺序按容器分桶（连接分组 / scope / 表分区）持久化本地。
+	const [orderMap, setOrderMap] = useState<ExplorerOrderMap>(() => loadExplorerOrder());
+	const updateOrderMap = useCallback((container: string, next: RowOrder) => {
+		setOrderMap((prev) => {
+			const merged = { ...prev, [container]: next };
+			saveExplorerOrder(merged);
+			return merged;
+		});
+	}, []);
+	const rowOrderController = useMemo<ExplorerRowOrderController>(
+		() => ({
+			orderMap,
+			togglePin: (container, names, name) => {
+				updateOrderMap(container, toggleRowPin(orderMap[container] ?? EMPTY_ROW_ORDER, names, name));
+			},
+			moveRow: (container, names, from, to) => {
+				updateOrderMap(container, moveRowAcross(orderMap[container] ?? EMPTY_ROW_ORDER, names, from, to));
+			},
+		}),
+		[orderMap, updateOrderMap],
+	);
+
+	// 批次2-② 可见性过滤：右键「隐藏该库/模式/表」写 exclude（对该连接生效），
+	// 连接菜单「显示全部对象」清除整条配置；即时生效并持久化。
+	const [visibilityMap, setVisibilityMap] = useState<ExplorerVisibilityMap>(() => loadExplorerVisibility());
+	const updateVisibility = useCallback((connectionName: string, next: ConnectionVisibility | undefined) => {
+		setVisibilityMap((prev) => {
+			const merged = { ...prev };
+			if (next) merged[connectionName] = next;
+			else delete merged[connectionName];
+			saveExplorerVisibility(merged);
+			return merged;
+		});
+	}, []);
+	const hideScope = useCallback((connectionName: string, scopeName: string) => {
+		setVisibilityMap((prev) => {
+			const current = prev[connectionName]?.scopes;
+			const next: ConnectionVisibility = {
+				...(prev[connectionName] ?? {}),
+				scopes: { include: current?.include ?? [], exclude: [...(current?.exclude ?? []), scopeName] },
+			};
+			const merged = { ...prev, [connectionName]: next };
+			saveExplorerVisibility(merged);
+			return merged;
+		});
+	}, []);
+	const hideTable = useCallback((connectionName: string, tableName: string) => {
+		setVisibilityMap((prev) => {
+			const current = prev[connectionName]?.tables;
+			const next: ConnectionVisibility = {
+				...(prev[connectionName] ?? {}),
+				tables: { include: current?.include ?? [], exclude: [...(current?.exclude ?? []), tableName] },
+			};
+			const merged = { ...prev, [connectionName]: next };
+			saveExplorerVisibility(merged);
+			return merged;
+		});
+	}, []);
 
 	// V6-③ 定位当前表：点击工具条定位按钮后展开连接/schema/表并滚动到该表行（数据未就绪时轮询重试）。
 	const handleLocateTable = () => {
@@ -723,6 +864,14 @@ export function DatabaseExplorerTree({
 				label: t("databaseCopyName"),
 				onSelect: () => copyName(connection.name),
 			},
+
+			{ key: "sep-show-all", separator: true },
+			{
+				key: "show-all",
+				icon: "icon-[mdi--eye-plus-outline]",
+				label: t("databaseShowAllObjects"),
+				onSelect: () => updateVisibility(connection.name, undefined),
+			},
 		];
 		setMenu({ x: event.clientX, y: event.clientY, items });
 	};
@@ -775,6 +924,14 @@ export function DatabaseExplorerTree({
 				onSelect: () => copyName(table.name),
 			},
 		...qualifiedItems,
+
+			{ key: "sep-hide-table", separator: true },
+			{
+				key: "hide-table",
+				icon: "icon-[mdi--eye-off-outline]",
+				label: t("databaseHideTable"),
+				onSelect: () => hideTable(connection.name, table.name),
+			},
 		];
 		setMenu({ x: event.clientX, y: event.clientY, items });
 	};
@@ -816,6 +973,14 @@ export function DatabaseExplorerTree({
 				icon: "icon-[solar--copy-linear]",
 				label: t("databaseCopyName"),
 				onSelect: () => copyName(scope.name),
+			},
+
+			{ key: "sep-hide-scope", separator: true },
+			{
+				key: "hide-scope",
+				icon: "icon-[mdi--eye-off-outline]",
+				label: t(scope.kind === "schema" ? "databaseHideSchema" : "databaseHideDatabase"),
+				onSelect: () => hideScope(connection.name, scope.name),
 			},
 		];
 		setMenu({ x: event.clientX, y: event.clientY, items });
@@ -955,6 +1120,7 @@ export function DatabaseExplorerTree({
 	};
 
 	return (
+		<ExplorerRowOrderContext.Provider value={rowOrderController}>
 		<div ref={treeRootRef} className="space-y-0.5">
 			{/* V2-① sticky 搜索区：跟随列表滚动，悬浮于树内容之上 */}
 			<div ref={toolbarRef} className="sticky top-0 z-10 -mx-1 bg-muted/95 px-1 pb-1.5 pt-0.5 backdrop-blur-sm">
@@ -982,6 +1148,19 @@ export function DatabaseExplorerTree({
 				</div>
 
 				<div className="mt-1 flex items-center gap-1">
+					<button
+						type="button"
+						aria-pressed={globalSearch}
+						aria-label={t("databaseGlobalSearch")}
+						title={t("databaseGlobalSearch")}
+						className={cn(
+							"flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-background hover:text-foreground",
+							globalSearch && "bg-primary/10 text-primary hover:text-primary",
+						)}
+						onClick={() => setGlobalSearch((prev) => !prev)}
+					>
+						<span className="h-3.5 w-3.5 icon-[mdi--earth-arrow-right]" />
+					</button>
 					<button
 						type="button"
 						aria-pressed={healthyOnly}
@@ -1139,6 +1318,11 @@ export function DatabaseExplorerTree({
 				groups.map(({ group, connections: groupConnections }) => {
 					// 搜索时忽略组折叠：组内连接可能命中过滤结果，折叠组隐藏会“搜到却看不到”。
 					const collapsed = searching ? false : explorer.isGroupCollapsed(group);
+
+					const groupContainer = groupConnections[0] ? connectionRowContainer(groupConnections[0]) : "";
+					const groupNames = groupConnections.map((connection) => connection.name);
+					const orderedGroupConnections =
+						sortOrder === "default" ? applyOrderToItems(groupConnections, orderMap[groupContainer]) : groupConnections;
 					return (
 						<div key={group}>
 							<button
@@ -1156,7 +1340,7 @@ export function DatabaseExplorerTree({
 							</button>
 							{!collapsed ? (
 								<div className="space-y-0.5 pl-[7px]">
-									{groupConnections.map((connection) => {
+									{orderedGroupConnections.map((connection) => {
 										const expanded = searching || explorer.isConnectionExpanded(connection.name);
 										const selected = connection.name === selectedName;
 
@@ -1170,30 +1354,34 @@ export function DatabaseExplorerTree({
 												: undefined;
 										return (
 											<div key={connection.name}>
-											<div
-												data-db-connection={connection.name}
-												data-db-expanded={expanded ? "true" : "false"}
-												data-db-group={group}
-												className={cn(
-													"group flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-2",
-																		multiActive
-																			? checked
-																				? "bg-primary/10 ring-1 ring-inset ring-primary/25"
-																				: "hover:bg-background/60"
-																			: selected
-																				? "bg-background shadow-sm"
-																				: "hover:bg-background/60",
-																)}
-																	onClick={() => {
-																		// 对齐 dbx：点行 = 单选并退出多选；多选仅由行尾勾选框管理。
-																		if (multiActive) {
-																			setMultiNames([]);
-																		}
-																		onSelect(connection.name);
-																	}}
-												onDoubleClick={() => onOpenQuery(connection)}
-												onContextMenu={(event) => openConnectionMenu(event, connection)}
-											>
+										<ExplorerOrderableRow
+											container={groupContainer}
+											name={connection.name}
+											names={groupNames}
+											disabled={sortOrder !== "default"}
+											data-db-connection={connection.name}
+											data-db-expanded={expanded ? "true" : "false"}
+											data-db-group={group}
+											className={cn(
+												"group flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-2",
+												multiActive
+													? checked
+														? "bg-primary/10 ring-1 ring-inset ring-primary/25"
+														: "hover:bg-background/60"
+													: selected
+														? "bg-background shadow-sm"
+														: "hover:bg-background/60",
+											)}
+											onClick={() => {
+												// 对齐 dbx：点行 = 单选并退出多选；多选仅由行尾勾选框管理。
+												if (multiActive) {
+													setMultiNames([]);
+												}
+												onSelect(connection.name);
+											}}
+											onDoubleClick={() => onOpenQuery(connection)}
+											onContextMenu={(event) => openConnectionMenu(event, connection)}
+										>
 
 												<button
 													type="button"
@@ -1234,7 +1422,14 @@ export function DatabaseExplorerTree({
 																>
 																	<span className={cn("h-3 w-3", checked ? "icon-[mdi--check]" : "icon-[mdi--square-outline]")} />
 												</button>
-											</div>
+
+												{sortOrder === "default" ? (
+													<RowPinButton
+														pinned={rowIsPinned(orderMap, groupContainer, connection.name)}
+														onToggle={() => rowOrderController.togglePin(groupContainer, groupNames, connection.name)}
+													/>
+												) : null}
+										</ExplorerOrderableRow>
 											{expanded ? (
 												<div className="ml-[13px] pl-1.5">
 													{catalogFamilyOfType(connection.type) === "flat" ? (
@@ -1247,6 +1442,8 @@ export function DatabaseExplorerTree({
 															onColumnContextMenu={openColumnMenu}
 															searchQuery={deferredQuery}
 															kindFilter={kindFilter}
+
+															visibility={visibilityMap[connection.name]}
 														/>
 													) : (
 														<ScopeRows
@@ -1261,6 +1458,8 @@ export function DatabaseExplorerTree({
 															searchQuery={deferredQuery}
 															searching={searching}
 															kindFilter={kindFilter}
+
+															visibility={visibilityMap[connection.name]}
 														/>
 													)}
 												</div>
@@ -1277,5 +1476,6 @@ export function DatabaseExplorerTree({
 
 			{menu ? <DatabaseExplorerContextMenu x={menu.x} y={menu.y} items={menu.items} onClose={() => setMenu(null)} /> : null}
 		</div>
+		</ExplorerRowOrderContext.Provider>
 	);
 }
