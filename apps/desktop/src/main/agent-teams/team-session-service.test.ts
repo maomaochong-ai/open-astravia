@@ -210,6 +210,52 @@ describe("AgentTeamSessionService streaming contract", () => {
 		expect(Object.keys(warmed.memberRuntime)).toHaveLength(team.members.length);
 	});
 
+	it("admits a leader message without waiting for unrelated member runtimes", async () => {
+		const document = createAgentTeamFixture();
+		const team = document.teams[0];
+		if (!team) throw new Error("built-in Agent Team fixture is missing");
+		let releaseLeader: (() => void) | undefined;
+		let releaseSibling: (() => void) | undefined;
+		const leaderGate = new Promise<void>((resolve) => {
+			releaseLeader = resolve;
+		});
+		const siblingGate = new Promise<void>((resolve) => {
+			releaseSibling = resolve;
+		});
+		let memberSequence = 0;
+		const createSession = vi.fn(async (config?: SessionConfig) => {
+			if (config?.sessionId) return { sessionId: config.sessionId };
+			memberSequence += 1;
+			if (memberSequence === 1) await leaderGate;
+			if (memberSequence === 2) await siblingGate;
+			return { sessionId: `member-runtime-${memberSequence}` };
+		});
+		const runtime = {
+			createSession,
+			getSessionPath: (sessionId: string) => `C:/runtime/${sessionId}.jsonl`,
+			disposeSession: vi.fn(async () => undefined),
+			subscribe: () => () => undefined,
+			appendSessionMetadataEntry: vi.fn(async () => undefined),
+			readSessionDocument: () => ({ entries: [], activeLeafId: null, revision: 0 }),
+		} as unknown as RuntimeHost;
+		const service = new AgentTeamSessionService({ runtime, readDocument: async () => document });
+		const record = await service.createRecord(team, document, "C:/workspace");
+		const coordinator = (
+			service as unknown as {
+				readonly turnCoordinator: { send: (sessionId: string, input: unknown) => Promise<TeamSessionDocument> };
+			}
+		).turnCoordinator;
+		const admitted = vi.spyOn(coordinator, "send").mockResolvedValue(record);
+		const send = service.send(record.id, { requestId: "leader-first", text: "hello", targetMemberIds: [] });
+
+		releaseLeader?.();
+		await vi.waitFor(() =>
+			expect(admitted).toHaveBeenCalledWith(record.id, expect.objectContaining({ requestId: "leader-first" })),
+		);
+		releaseSibling?.();
+		await send;
+	});
+
 	it("publishes ordered deltas and persists the same non-empty final answer", async () => {
 		const document = createAgentTeamFixture();
 		const team = document.teams[0];
