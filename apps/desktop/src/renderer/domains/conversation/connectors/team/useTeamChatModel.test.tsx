@@ -11,14 +11,16 @@ import type { ContextCompositionReport } from "@vetta/runtime-core";
 import { reasoningByModelAtom, selectedModelAtom } from "@shared/store/atoms";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { createStore, Provider } from "jotai";
-import type { ReactNode } from "react";
+import { StrictMode, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useTeamChatModel } from "./useTeamChatModel";
 import {
+	createReservedTeamChatSession,
 	createTeamChatSession,
 	loadTeamChatBootstrap,
 	loadTeamChatSession,
 } from "./team-chat-session-service";
+import { stageTeamSessionHandoff, takeTeamSessionHandoff } from "./team-session-handoff";
 import { waitForCommittedPaint } from "@shared/lib/committed-paint";
 import { writeCachedContextComposition } from "../../services/context-composition-cache";
 
@@ -41,6 +43,7 @@ vi.mock("./team-chat-session-service", () => ({
 	loadTeamChatSession: vi.fn(),
 	loadTeamChatBootstrap: vi.fn(),
 	createTeamChatSession: vi.fn(),
+	createReservedTeamChatSession: vi.fn(),
 }));
 vi.mock("@shared/lib/committed-paint", () => ({
 	waitForCommittedPaint: vi.fn(),
@@ -99,6 +102,7 @@ describe("useTeamChatModel streaming flow", () => {
 	let streamListener: ((event: DesktopTeamSessionStreamEvent) => void) | undefined;
 
 	beforeEach(() => {
+		vi.clearAllMocks();
 		streamListener = undefined;
 		vi.mocked(waitForCommittedPaint).mockResolvedValue("painted");
 		vi.mocked(loadTeamChatBootstrap).mockResolvedValue({ document, sessions: [] });
@@ -116,6 +120,11 @@ describe("useTeamChatModel streaming flow", () => {
 			],
 		});
 		vi.mocked(createTeamChatSession).mockResolvedValue({
+			document,
+			snapshot: baseSnapshot,
+			sessions: [],
+		});
+		vi.mocked(createReservedTeamChatSession).mockResolvedValue({
 			document,
 			snapshot: baseSnapshot,
 			sessions: [],
@@ -410,6 +419,54 @@ describe("useTeamChatModel streaming flow", () => {
 		rerender({ preferredSessionId: baseSession.id });
 
 		expect(vi.mocked(loadTeamChatSession).mock.calls.length).toBe(loadCalls);
+	});
+
+	it("continues a staged first message after the new-session route handoff", async () => {
+		let releasePaint: (() => void) | undefined;
+		vi.mocked(waitForCommittedPaint).mockReturnValue(
+			new Promise((resolve) => {
+				releasePaint = () => resolve("painted");
+			}),
+		);
+		stageTeamSessionHandoff({
+			sessionId: baseSession.id,
+			document,
+			requestId: "handoff-request",
+			text: "send after navigation",
+			requestedMemberIds: [],
+			attachments: [{ kind: "file", path: "C:/workspace/brief.md" }],
+			timestamp: 10,
+			executionMode: "full-access",
+		});
+
+		const { result } = renderHook(() => useTeamChatModel(team.id, baseSession.id), {
+			wrapper: ({ children }: { children: ReactNode }) => <StrictMode>{children}</StrictMode>,
+		});
+		expect(result.current.model.feedItems).toEqual([
+			expect.objectContaining({ kind: "user", text: "send after navigation" }),
+			expect.objectContaining({ kind: "agent", phase: "pending" }),
+		]);
+		expect(result.current.model.editorEnabled).toBe(true);
+		expect(createReservedTeamChatSession).not.toHaveBeenCalled();
+
+		await act(async () => releasePaint?.());
+		await waitFor(() =>
+			expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledWith(
+				baseSession.id,
+				expect.objectContaining({
+					requestId: "handoff-request",
+					text: "send after navigation",
+					attachments: [{ kind: "file", path: "C:/workspace/brief.md" }],
+				}),
+			),
+		);
+		expect(createReservedTeamChatSession).toHaveBeenCalledWith(
+			team.id,
+			baseSession.id,
+			"full-access",
+			document,
+		);
+		expect(takeTeamSessionHandoff(baseSession.id)).toBeUndefined();
 	});
 
 	it("commits the new Team shell before starting runtime-backed session creation", async () => {

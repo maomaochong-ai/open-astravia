@@ -120,6 +120,18 @@
 	"retry": "Retry",
 	"failed": "The team could not complete the request",
     "teamWorking": "Team collaboration",
+	"memberActivity": {
+	  "openSession": "Open {{name}}'s member chat",
+	  "waiting": "Waiting to start",
+	  "thinking": "Thinking",
+	  "processing": "Working",
+	  "processingTool": "Calling a tool",
+	  "waitingReply": "Waiting for a reply",
+	  "completed": "Completed",
+	  "failed": "Failed",
+	  "cancelled": "Cancelled",
+	  "recent": "Recent: {{text}}"
+	},
     "readyTitle": "Your team is ready",
     "readyDescription": "Describe the goal and the team lead will coordinate it, or choose a member above the composer."
   },

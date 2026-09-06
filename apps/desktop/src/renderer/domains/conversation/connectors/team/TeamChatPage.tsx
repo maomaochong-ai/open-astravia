@@ -10,7 +10,7 @@ import {
 import { AgentAvatarView, ChatHeaderActions } from "@vetta/theme-ui/chat";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useAtom, useSetAtom } from "jotai";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useTeamChatModel } from "./useTeamChatModel";
 import { TeamChatView } from "./TeamChatView";
@@ -26,6 +26,16 @@ export function TeamChatPage({ createNewSession = false }: { readonly createNewS
 	const setHeaderLeft = useSetAtom(pageHeaderLeftSlotAtom);
 	const setHeaderRight = useSetAtom(pageHeaderRightSlotAtom);
 	const { model, actions } = useTeamChatModel(teamId, sessionId, memberId, createNewSession);
+	const openMember = useCallback(
+		(targetMemberId: string) => {
+			if (!sessionId) return;
+			void navigate({
+				to: "/agent-teams/$teamId/sessions/$sessionId/members/$memberId",
+				params: { teamId, sessionId, memberId: targetMemberId },
+			});
+		},
+		[navigate, sessionId, teamId],
+	);
 	const [activityOpen, setActivityOpen] = useAtom(activityPanelOpenAtom);
 	const activeSessionTitle = model.sessions.find((session) => session.id === model.activeSessionId)?.label;
 	const backToTeamAction = useMemo(
@@ -139,7 +149,7 @@ export function TeamChatPage({ createNewSession = false }: { readonly createNewS
 		};
 	}, [activeSessionTitle, backToTeamAction, headerActions, memberHeader, model.title, setHeaderLeft, setHeaderRight, setHeaderTitle, setHeaderTitleBadge]);
 
-	return <TeamChatView model={model} actions={actions} />;
+	return <TeamChatView model={model} actions={actions} onOpenMember={openMember} />;
 }
 
 export function TeamNewSessionPage(): JSX.Element {

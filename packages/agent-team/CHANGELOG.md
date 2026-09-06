@@ -19,6 +19,10 @@
 
 ### Changed
 
+- Team session record creation accepts the initial execution mode so member Runtime warmup uses the user-selected mode from the beginning.
+
+- Team session activities optionally expose the member `sourceTurnId` used by display-only Team progress projections; this does not widen shared-context or public Conversation visibility.
+
 - Clarify `team_send_message` question semantics: per-recipient delivery IDs are not task IDs for `team_wait_tasks`, and published replies arrive through automatic initiator continuations or shared history.
 - Team session contracts now distinguish an eagerly visible coordination record from preparing, ready, or failed member Runtime state, while preserving the active roster independently from the currently prepared Runtime subset.
 - Team Snapshot 直接返回普通 `ConversationMessageRecord[]`，流式更新改用 Runtime Core 的标准 Conversation 消息信封；删除同步阻塞的旧 `team_delegate`，协作统一使用持久、可并行和可恢复的 `team_delegate_task`/`team_wait_tasks`。

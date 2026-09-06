@@ -24,6 +24,7 @@ export interface MessageListProps {
 			readonly delete: boolean;
 		};
 	};
+	onTeamMemberOpen?: (memberId: string) => void;
 }
 
 export interface MessageListModel {
@@ -38,6 +39,7 @@ export interface MessageListModel {
 	tailMessageId: string | null;
 	participantsById: ReadonlyMap<string, ConversationParticipantViewModel>;
 	context: NonNullable<MessageListProps["context"]>;
+	onTeamMemberOpen?: MessageListProps["onTeamMemberOpen"];
 }
 
 export interface AssistantMessageModel {

@@ -177,8 +177,14 @@ describe("AgentTeamSessionService streaming contract", () => {
 		} as unknown as RuntimeHost;
 		const service = new AgentTeamSessionService({ runtime, readDocument: async () => document });
 
-		const record = await service.createRecord(team, document, "C:/workspace");
+		const reservedSessionId = "11111111-1111-4111-8111-111111111111";
+		const record = await service.createRecord(team, document, "C:/workspace", {
+			sessionId: reservedSessionId,
+			executionMode: "sandbox",
+		});
+		expect(record.id).toBe(reservedSessionId);
 		expect(record.runtimeStatus).toBe("preparing");
+		expect(record.executionMode).toBe("sandbox");
 		expect(record.memberRuntime).toEqual({});
 		await vi.waitFor(() => expect(createSession).toHaveBeenCalledTimes(team.members.length + 1));
 		expect(JSON.stringify(createSession.mock.calls[1]?.[0])).toContain(team.leaderMemberId);

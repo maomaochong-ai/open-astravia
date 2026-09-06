@@ -75,7 +75,8 @@ function model(): TeamChatViewModel {
 describe("TeamChatView shared conversation UI", () => {
 	it("adapts Team state into the existing DefaultChatView", () => {
 		const viewModel = model();
-		render(<TeamChatView model={viewModel} actions={actions()} />);
+		const onOpenMember = vi.fn();
+		render(<TeamChatView model={viewModel} actions={actions()} onOpenMember={onOpenMember} />);
 
 		expect(screen.getByTestId("default-chat-view")).toBeTruthy();
 		expect(captured.view).toHaveBeenCalledWith(
@@ -83,6 +84,7 @@ describe("TeamChatView shared conversation UI", () => {
 				messages: [expect.objectContaining({ id: "message-1", kind: "agent", authorId: "member-1" })],
 				participants: viewModel.members,
 				messageContext: expect.objectContaining({ inheritActiveSession: false, showRuntimeFooter: false }),
+				onTeamMemberOpen: onOpenMember,
 				children: expect.anything(),
 			}),
 		);
@@ -95,7 +97,7 @@ describe("TeamChatView shared conversation UI", () => {
 			status: "streaming" as const,
 			feedItems: [{ ...model().feedItems[0]!, phase: "completed" as const }],
 		};
-		render(<TeamChatView model={viewModel} actions={actions()} />);
+		render(<TeamChatView model={viewModel} actions={actions()} onOpenMember={vi.fn()} />);
 
 		expect(captured.view).toHaveBeenCalledWith(
 			expect.objectContaining({

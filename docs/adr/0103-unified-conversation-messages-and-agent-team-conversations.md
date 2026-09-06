@@ -112,3 +112,15 @@ Main 提供的公开 Snapshot 和实时事件，不能自行把协调历史与�
 - 服务端计费、配额、跨账号协作和跨设备同步。
 - 向其他 Team 成员公开工具过程、隐藏 thinking 或 subagent transcript。
 - 实现观测 UI、recorder、metrics、日志迁移或远程 telemetry Adapter。
+
+## 修订：Team 本机观察投影（2026-09）
+
+本节修订本 ADR 中“Renderer Snapshot 同样不得包含 thinking”这一历史约束。该约束针对旧的 Team 公共消息投影，不能阻止本机用户观察成员正在进行的工作；本次 Team 聚合摘要卡引入了新的展示层级：
+
+1. **成员执行事实**：成员 Conversation 中的完整消息、工具、thinking 和结果；
+2. **Team 本机观察投影**：只服务当前桌面用户的实时/本地恢复摘要，可以包含经过策略允许、限长的 thinking 预览；
+3. **Team 协调公共事实**：写入协调 Conversation、进入其他成员上下文的公开结果、委派和摘要。
+
+本机观察投影不自动升级为协调公共事实，也不自动进入 `TeamSharedContextService`、其他成员模型上下文、远程 telemetry 或公共 Team 历史。允许 thinking 预览时，Desktop display DTO/stream event 必须携带稳定的 `teamSessionId`、`memberId`、`requestId`、`sourceTurnId`、`messageId`、`sequence` 和终态信息；Renderer 不得从无关联的时间戳或文本内容猜测归属。
+
+第一阶段默认将 thinking 作为 display-only 的实时/本地恢复数据：协调 Conversation 仍只保存公开结果和阶段摘要；导出、复制、搜索、日志和跨成员上下文是否包含 thinking 由后续独立决策确定。旧 Renderer 应忽略新增 display 字段，旧快照缺少 thinking 时由公开 progress、工具阶段或文本摘要降级。该修订替代本 ADR 对本机 Renderer display projection 的绝对禁止，但不改变成员模型上下文隔离和公共持久化边界。

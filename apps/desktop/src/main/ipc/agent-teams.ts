@@ -1,5 +1,10 @@
 import { randomUUID } from "node:crypto";
-import type { TeamSessionDocument, TeamSessionReference, TeamSessionSnapshot } from "@vetta/agent-team";
+import type {
+	CreateTeamSessionRecordOptions,
+	TeamSessionDocument,
+	TeamSessionReference,
+	TeamSessionSnapshot,
+} from "@vetta/agent-team";
 import {
 	parseCreateAgentProfileInput,
 	parseCreateTeamInput,
@@ -168,16 +173,19 @@ export function registerAgentTeamsIpc(
 			displayProjection,
 		);
 	});
-	ipcMain.handle(CHANNELS.CREATE_SESSION_RECORD, async (_event, teamId: unknown) => {
+	ipcMain.handle(CHANNELS.CREATE_SESSION_RECORD, async (_event, teamId: unknown, options: unknown) => {
 		const document = await store.read();
 		const parsedTeamId = requiredString(teamId, "teamId");
 		const team = document.teams.find((candidate) => candidate.id === parsedTeamId);
 		if (!team) throw new Error("Team not found");
 		const cwd = await ensureTeamWorkspace(parsedTeamId);
+		const parsedOptions = parseCreateSessionRecordOptions(options);
 		return await withDisplayProjection(
 			sessions.snapshot(
 				await (sessions.createRecord
-					? sessions.createRecord(team, document, cwd)
+					? parsedOptions
+						? sessions.createRecord(team, document, cwd, parsedOptions)
+						: sessions.createRecord(team, document, cwd)
 					: sessions.create(team, document, cwd)),
 			),
 			displayProjection,
@@ -326,5 +334,31 @@ export function registerAgentTeamsIpc(
 		for (const unsubscribe of subscriptions.values()) unsubscribe();
 		subscriptions.clear();
 		for (const channel of Object.values(CHANNELS)) ipcMain.removeHandler(channel);
+	};
+}
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function parseCreateSessionRecordOptions(value: unknown): CreateTeamSessionRecordOptions | undefined {
+	if (value === undefined) return undefined;
+	if (
+		typeof value !== "object" ||
+		value === null ||
+		Object.keys(value).some((key) => key !== "sessionId" && key !== "executionMode")
+	) {
+		throw new Error("Invalid Team session options");
+	}
+	const candidate = value as { readonly sessionId?: unknown; readonly executionMode?: unknown };
+	const sessionId = candidate.sessionId;
+	if (sessionId !== undefined && (typeof sessionId !== "string" || !UUID_PATTERN.test(sessionId))) {
+		throw new Error("Invalid sessionId");
+	}
+	const executionMode = candidate.executionMode;
+	if (executionMode !== undefined && executionMode !== "sandbox" && executionMode !== "full-access") {
+		throw new Error("Invalid executionMode");
+	}
+	return {
+		...(sessionId ? { sessionId } : {}),
+		...(executionMode ? { executionMode } : {}),
 	};
 }

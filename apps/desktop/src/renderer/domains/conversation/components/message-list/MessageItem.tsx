@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import type { ChatConversationItem } from "./types";
 import type { ConversationParticipantViewModel } from "@shared/conversation";
 import { AssistantMessage } from "./AssistantMessage";
+import { TeamMemberReplyCard } from "./TeamMemberReplyCard";
 import { UserMessage } from "./UserMessage";
 
 export const CompactionBoundary = memo(function CompactionBoundary() {
@@ -43,6 +44,7 @@ interface MessageItemProps {
 	onAbortEdit?: () => void;
 	participant?: ConversationParticipantViewModel;
 	userMessageActions?: { readonly edit: boolean; readonly fork: boolean; readonly delete: boolean };
+	onTeamMemberOpen?: (memberId: string) => void;
 }
 
 export const MessageItem = memo(function MessageItem({
@@ -54,10 +56,14 @@ export const MessageItem = memo(function MessageItem({
 	onAbortEdit,
 	participant,
 	userMessageActions,
+	onTeamMemberOpen,
 	exportMode = false,
 }: MessageItemProps) {
 	if (message.kind === "event") {
 		if (message.event.kind === "compaction") return <CompactionBoundary />;
+		if (message.event.kind === "team-member-summary") {
+			return onTeamMemberOpen ? <TeamMemberReplyCard event={message.event} onOpen={onTeamMemberOpen} /> : null;
+		}
 		return (
 			<Message.Root>
 				<MessageLayout.Event>

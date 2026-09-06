@@ -63,6 +63,7 @@ export function MessageListView({
 		tailMessageId,
 		participantsById,
 		context,
+		onTeamMemberOpen,
 	} = model;
 	const scrollerElement = scroll.scrollerElement;
 	// 有历史消息时不能先用空列表的零缓冲配置再异步扩大；会话恢复期间这会让 Virtuoso
@@ -126,6 +127,7 @@ export function MessageListView({
 						onAbortEdit={onAbort}
 						participant={message.kind === "agent" ? participantsById.get(message.authorId) : undefined}
 						userMessageActions={context.userMessageActions}
+						onTeamMemberOpen={onTeamMemberOpen}
 					/>
 					{showForkOrigin && sourceUser?.kind === "user" ? <ForkOriginBanner sourceMessage={sourceUser} /> : null}
 				</div>
@@ -141,6 +143,7 @@ export function MessageListView({
 			modelSwitchLabels,
 			onAbort,
 			tailMessageId,
+			onTeamMemberOpen,
 		],
 	);
 	const footer = useMemo(

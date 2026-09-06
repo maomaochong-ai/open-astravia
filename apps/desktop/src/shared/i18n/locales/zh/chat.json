@@ -727,6 +727,18 @@
 			"preparing": "正在准备项目",
 			"triggerTitle": "选择本次会话所属的项目",
 			"createFailedTitle": "项目创建失败"
+		},
+		"teamSelector": {
+			"placeholder": "选择团队",
+			"clear": "不使用团队",
+			"searchPlaceholder": "搜索团队",
+			"empty": "没有匹配的团队",
+			"loading": "正在加载团队…",
+			"error": "团队列表加载失败",
+			"invalid": "这个团队已不可用，请选择其他团队",
+			"retry": "重试",
+			"memberCount": "{{count}} 位成员",
+			"triggerTitle": "选择本次会话使用的团队"
 		}
 	},
 	"questionPanel": {

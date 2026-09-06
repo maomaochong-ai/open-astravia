@@ -727,6 +727,18 @@
 			"preparing": "Preparing project",
 			"triggerTitle": "Choose the project for this session",
 			"createFailedTitle": "Failed to create project"
+		},
+		"teamSelector": {
+			"placeholder": "Select team",
+			"clear": "No team",
+			"searchPlaceholder": "Search teams",
+			"empty": "No matching teams",
+			"loading": "Loading teams…",
+			"error": "Failed to load teams",
+			"invalid": "This team is no longer available. Choose another team.",
+			"retry": "Retry",
+			"memberCount": "{{count}} members",
+			"triggerTitle": "Choose the team for this session"
 		}
 	},
 	"questionPanel": {

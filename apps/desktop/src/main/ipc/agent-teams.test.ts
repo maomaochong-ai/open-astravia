@@ -195,6 +195,13 @@ describe("Agent Team IPC contract", () => {
 		await createSessionRecord({}, team.id);
 
 		expect(deps.sessions.createRecord).toHaveBeenCalledWith(team, document, `C:/teams/${team.id}/workspace`);
+		const reservedSessionId = "11111111-1111-4111-8111-111111111111";
+		await createSessionRecord({}, team.id, { sessionId: reservedSessionId, executionMode: "sandbox" });
+		expect(deps.sessions.createRecord).toHaveBeenLastCalledWith(team, document, `C:/teams/${team.id}/workspace`, {
+			sessionId: reservedSessionId,
+			executionMode: "sandbox",
+		});
+		await expect(createSessionRecord({}, team.id, { sessionId: "../unsafe" })).rejects.toThrow("Invalid sessionId");
 		expect(deps.sessions.create).not.toHaveBeenCalled();
 	});
 

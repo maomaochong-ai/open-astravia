@@ -119,8 +119,20 @@
     "sending": "处理中…",
 	"retry": "重试",
 	"failed": "团队处理失败",
-    "teamWorking": "团队正在协作",
-    "readyTitle": "团队已经就绪",
+		"teamWorking": "团队正在协作",
+		"memberActivity": {
+			"openSession": "打开 {{name}} 的成员会话",
+			"waiting": "等待开始",
+			"thinking": "正在思考",
+			"processing": "正在处理",
+			"processingTool": "正在调用工具",
+			"waitingReply": "等待回复",
+			"completed": "已完成",
+			"failed": "处理失败",
+			"cancelled": "已取消",
+			"recent": "最近：{{text}}"
+		},
+		"readyTitle": "团队已经就绪",
     "readyDescription": "直接描述目标即可由负责人协调处理，也可以从输入框上方选择成员。"
   },
   "sidebar": {

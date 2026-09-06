@@ -18,6 +18,7 @@ export function useMessageListModel({
 	sessionId,
 	participants = [],
 	context = DEFAULT_CONTEXT,
+	onTeamMemberOpen,
 }: MessageListProps): MessageListModel {
 	const isCompacting = useAtomValue(isCompactingAtom);
 	const activeSession = useAtomValue(activeSessionAtom);
@@ -50,5 +51,6 @@ export function useMessageListModel({
 		tailMessageId: messages.at(-1)?.id ?? null,
 		participantsById: new Map(participants.map((participant) => [participant.id, participant])),
 		context,
+		onTeamMemberOpen,
 	};
 }

@@ -145,6 +145,7 @@ function streamEvent(
 	sequence: number,
 	delta: string,
 	authorId = "leader",
+	turnId = "request",
 ): Extract<DesktopTeamSessionStreamEvent, { type: "conversation.agent-message-event" }> {
 	const partial = {
 		...createAssistantMessage(
@@ -157,7 +158,7 @@ function streamEvent(
 		type: "conversation.agent-message-event",
 		conversationId: "session",
 		messageId,
-		turnId: "request",
+		turnId,
 		author: { kind: "agent", id: authorId },
 		sequence,
 		timestamp: sequence,
@@ -569,15 +570,126 @@ describe("team chat stream state", () => {
 			}),
 			pending: undefined,
 			streams: {},
-			members: [member],
+			members: [
+				member,
+				{ ...member, id: "reviewer", name: "Reviewer", handle: "reviewer", blueprintId: "reviewer" },
+			],
 			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
 		});
 
 		expect(items.map((item) => [item.kind, item.id])).toEqual([
 			["user", "user-event"],
 			["event", "delegation-event"],
-			["agent", "member-event"],
+			["event", "team-member-summary:request:reviewer"],
 		]);
+		expect(items[2]).toMatchObject({
+			event: {
+				kind: "team-member-summary",
+				memberId: "reviewer",
+				state: "completed",
+				current: "Launch risks found",
+			},
+		});
+	});
+
+	it("merges the leader's pre-tool and final provider steps into one completed bubble", () => {
+		const preTool = agentMessage("leader-tool-step", "leader-turn", "leader", "", 2, {
+			id: "team-send",
+			name: "team_send_message",
+			arguments: { recipients: ["reviewer"] },
+		});
+		const items = projectTeamConversationTimeline({
+			snapshot: snapshot({
+				messages: [
+					{ ...preTool, message: { ...preTool.message, stopReason: "toolUse" } },
+					agentMessage("leader-final-step", "leader-turn", "leader", "Delegation complete", 3),
+				],
+				display: { memberConversations: [] },
+			}),
+			pending: undefined,
+			streams: {},
+			members: [member],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		const leaderItems = items.filter(
+			(item): item is Extract<typeof item, { kind: "agent" }> => item.kind === "agent",
+		);
+		expect(leaderItems).toHaveLength(1);
+		expect(leaderItems[0]).toMatchObject({
+			id: "leader-tool-step",
+			phase: "completed",
+			text: "Delegation complete",
+			blocks: expect.arrayContaining([
+				expect.objectContaining({ toolCallId: "team-send", status: "success" }),
+				expect.objectContaining({ type: "text", text: "Delegation complete" }),
+			]),
+		});
+	});
+
+	it("keeps member summary cards in delegation order when replies complete out of order", () => {
+		const researcher = { ...member, id: "researcher", name: "Research", handle: "research" };
+		const builder = { ...member, id: "builder", name: "Build", handle: "build", blueprintId: "builder" };
+		const reviewer = { ...member, id: "reviewer", name: "Review", handle: "review", blueprintId: "reviewer" };
+		const messages = [
+			agentMessage("research-result", "research-request", "researcher", "Research done", 300),
+			agentMessage("build-result", "build-request", "builder", "Build done", 100),
+			agentMessage("review-result", "review-request", "reviewer", "Review done", 200),
+		];
+		const items = projectTeamConversationTimeline({
+			snapshot: snapshot({
+				messages,
+				activities: [
+					{
+						kind: "delegation",
+						id: "delegate-research",
+						requestId: "research-request",
+						sourceMemberId: "leader",
+						targetMemberId: "researcher",
+						objective: "Research",
+						state: "completed",
+						timestamp: 10,
+					},
+					{
+						kind: "delegation",
+						id: "delegate-build",
+						requestId: "build-request",
+						sourceMemberId: "leader",
+						targetMemberId: "builder",
+						objective: "Build",
+						state: "completed",
+						timestamp: 20,
+					},
+					{
+						kind: "delegation",
+						id: "delegate-review",
+						requestId: "review-request",
+						sourceMemberId: "leader",
+						targetMemberId: "reviewer",
+						objective: "Review",
+						state: "completed",
+						timestamp: 30,
+					},
+				],
+				display: {
+					memberConversations: messages.map((record) => ({
+						memberId: record.author.id,
+						runtimeSessionId: `${record.author.id}-runtime`,
+						history: [{ type: "message" as const, entryId: record.id, message: record.message }],
+					})),
+				},
+			}),
+			pending: undefined,
+			streams: {},
+			members: [member, researcher, builder, reviewer],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		expect(
+			items.flatMap((item) =>
+				item.kind === "event" && item.event.kind === "team-member-summary" ? [item.event.memberId] : [],
+			),
+		).toEqual(["researcher", "builder", "reviewer"]);
 	});
 
 	it("projects persisted member tool calls into the shared message block contract", () => {
@@ -646,6 +758,95 @@ describe("team chat stream state", () => {
 				]),
 			}),
 		);
+	});
+
+	it("projects a streaming member into a stable dynamic summary card", () => {
+		const reviewer: TeamMemberViewModel = {
+			...member,
+			id: "reviewer",
+			name: "Reviewer",
+			handle: "reviewer",
+			blueprintId: "reviewer",
+		};
+		const items = projectTeamConversationTimeline({
+			snapshot: snapshot({
+				activities: [
+					{
+						kind: "delegation",
+						id: "delegation-streaming",
+						requestId: "request-streaming",
+						sourceMemberId: "leader",
+						targetMemberId: "reviewer",
+						objective: "Review the changes",
+						state: "running",
+						timestamp: 1,
+					},
+				],
+			}),
+			pending: undefined,
+			streams: reduceTeamStreamState(
+				{},
+				streamEvent("reviewer-stream", 2, "正在检查变更", "reviewer", "request-streaming"),
+			),
+			members: [member, reviewer],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		const summary = items.find(
+			(item): item is Extract<typeof item, { kind: "event" }> =>
+				item.kind === "event" && item.event.kind === "team-member-summary",
+		);
+		expect(summary).toMatchObject({
+			id: "team-member-summary:request-streaming:reviewer",
+			event: {
+				state: "streaming",
+				current: "正在检查变更",
+				currentKind: "text",
+			},
+		});
+	});
+
+	it("prioritizes an in-flight tool over the member's preceding thinking text", () => {
+		const reviewer: TeamMemberViewModel = {
+			...member,
+			id: "reviewer",
+			name: "Reviewer",
+			handle: "reviewer",
+			blueprintId: "reviewer",
+		};
+		const items = projectTeamConversationTimeline({
+			snapshot: snapshot({
+				messages: [
+					agentMessage("request-tool", "request-tool", "reviewer", "先检查配置", 2, {
+						id: "read-call",
+						name: "read",
+						arguments: { path: "README.md" },
+					}),
+				],
+				activities: [
+					{
+						kind: "delegation",
+						id: "delegation-tool",
+						requestId: "request-tool",
+						sourceMemberId: "leader",
+						targetMemberId: "reviewer",
+						objective: "Read the project brief",
+						state: "running",
+						timestamp: 1,
+					},
+				],
+			}),
+			pending: undefined,
+			streams: {},
+			members: [member, reviewer],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		const summary = items.find(
+			(item): item is Extract<typeof item, { kind: "event" }> =>
+				item.kind === "event" && item.event.kind === "team-member-summary",
+		);
+		expect(summary).toMatchObject({ event: { currentKind: "tool", current: "read" } });
 	});
 
 	it("applies live member tool execution events to the shared message block", () => {

@@ -1,6 +1,7 @@
 import {
 	type AgentTeamDocument,
 	type AgentTeamExtensionRegistry,
+	type CreateTeamSessionRecordOptions,
 	createTeamCancelTaskTool,
 	createTeamContinueTaskTool,
 	createTeamDelegateTaskTool,
@@ -403,10 +404,11 @@ export class AgentTeamSessionService {
 		team: AgentTeamDocument["teams"][number],
 		document: AgentTeamDocument,
 		cwd: string,
+		options: CreateTeamSessionRecordOptions = {},
 	): Promise<TeamSessionDocument> {
-		const id = crypto.randomUUID();
+		const id = options.sessionId ?? crypto.randomUUID();
 		const now = Date.now();
-		const executionMode = (await readDesktopConfig()).defaultExecutionMode ?? "full-access";
+		const executionMode = options.executionMode ?? (await readDesktopConfig()).defaultExecutionMode ?? "full-access";
 		await assertSandboxAvailableForMode(executionMode, async () => executionMode);
 		const coordinationRuntime = await this.runtimeManager.createCoordinationRuntime(
 			cwd,

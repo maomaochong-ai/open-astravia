@@ -254,11 +254,20 @@ export interface SendTeamMessageInput {
 	readonly reasoning?: string;
 }
 
+/** Initial settings captured when a new Team session is reserved for first paint. */
+export interface CreateTeamSessionRecordOptions {
+	/** Renderer-reserved UUID used to route before Runtime initialization completes. */
+	readonly sessionId?: string;
+	readonly executionMode?: SessionExecutionMode;
+}
+
 /** Business activity remains separate from the ordinary message type. */
 export interface TeamSessionActivity {
 	readonly kind: "delegation";
 	readonly id: string;
 	readonly requestId: string;
+	/** Member turn that produced the reply, when the collaboration attempt is known. */
+	readonly sourceTurnId?: string;
 	readonly sourceMemberId: string;
 	readonly targetMemberId: string;
 	readonly objective: string;

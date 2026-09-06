@@ -31,6 +31,7 @@ export interface DefaultChatViewProps {
 		readonly enablePluginTabs?: boolean;
 		readonly enabledBuiltinTabs?: readonly ActivityTabId[];
 	};
+	readonly onTeamMemberOpen?: (memberId: string) => void;
 }
 
 export function DefaultChatView({
@@ -47,6 +48,7 @@ export function DefaultChatView({
 	error,
 	exportState,
 	activity,
+	onTeamMemberOpen,
 }: DefaultChatViewProps): JSX.Element {
 	return (
 		<PerfSendProfiler id="ChatView(total)">
@@ -66,6 +68,7 @@ export function DefaultChatView({
 								participants={participants}
 								context={messageContext}
 								pendingLabel={pendingLabel}
+								onTeamMemberOpen={onTeamMemberOpen}
 							/>
 						</PerfSendProfiler>
 						{error ? (

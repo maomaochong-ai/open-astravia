@@ -3,7 +3,11 @@ import type {
 	DesktopTeamSessionStreamEvent,
 } from "@preload/api-types/team-conversation-display";
 import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";
-import type { ConversationMessageEventState, ConversationParticipantViewModel } from "@shared/conversation";
+import type {
+	ConversationAgentMessageViewModel,
+	ConversationMessageEventState,
+	ConversationParticipantViewModel,
+} from "@shared/conversation";
 import { reduceConversationMessageEvent } from "@shared/conversation";
 import type { ChatConversationItem, ContextUsageData } from "@shared/store/atoms";
 import type { ActivityWorkspace } from "@shared/workspace/activity-workspace";
@@ -120,9 +124,117 @@ export interface TeamTimelineEventViewModel {
 	readonly timestamp: number;
 }
 
+type TeamMemberSummaryState = "pending" | "streaming" | "completed" | "failed" | "waiting" | "cancelled";
+
+interface TeamMemberReplySummaryInput {
+	readonly member: TeamMemberViewModel;
+	readonly requestId: string;
+	readonly timestamp: number;
+	readonly activityState?: TeamMemberSummaryState;
+	readonly message?: ConversationAgentMessageViewModel;
+}
+
 export interface TeamTimelineLabels {
 	readonly delegation: (from: string, to: string) => string;
 	readonly unknownMember: string;
+}
+
+const SUMMARY_TEXT_MAX_CHARACTERS = 72;
+
+function compactTeamActivityText(text: string, maxCharacters = SUMMARY_TEXT_MAX_CHARACTERS): string {
+	const normalized = text.replace(/\s+/g, " ").trim();
+	if (!normalized || maxCharacters <= 0) return "";
+	const characters = Array.from(normalized);
+	return characters.length <= maxCharacters ? normalized : `…${characters.slice(-(maxCharacters - 1)).join("")}`;
+}
+
+function toolActivityText(
+	block: Extract<ConversationAgentMessageViewModel["blocks"][number], { type: "tool_call" }>,
+): string {
+	const phase = compactTeamActivityText(block.currentPhase ?? "");
+	if (phase) return phase;
+	const description =
+		typeof block.args.description === "string" ? compactTeamActivityText(block.args.description) : "";
+	if (description) return description;
+	return compactTeamActivityText(block.toolName);
+}
+
+function publicTextPreview(message: ConversationAgentMessageViewModel): string {
+	const text = message.blocks
+		.filter((block): block is Extract<typeof block, { type: "text" }> => block.type === "text")
+		.map((block) => block.text)
+		.join("\n");
+	return compactTeamActivityText(text);
+}
+
+function buildTeamMemberReplySummary(input: TeamMemberReplySummaryInput): ChatConversationItem {
+	const message = input.message;
+	const blocks = message?.blocks ?? [];
+	const pendingTool = [...blocks]
+		.reverse()
+		.find(
+			(block): block is Extract<typeof block, { type: "tool_call" }> =>
+				block.type === "tool_call" && block.status === "pending",
+		);
+	const latestThinking = [...blocks]
+		.reverse()
+		.find(
+			(block): block is Extract<typeof block, { type: "thinking" }> =>
+				block.type === "thinking" && block.text.trim().length > 0,
+		);
+	const allTools = blocks.filter(
+		(block): block is Extract<typeof block, { type: "tool_call" }> =>
+			block.type === "tool_call" && block.status !== "pending",
+	);
+	const currentTool =
+		pendingTool ??
+		[...blocks]
+			.reverse()
+			.find((block): block is Extract<typeof block, { type: "tool_call" }> => block.type === "tool_call");
+	const currentText = currentTool
+		? toolActivityText(currentTool)
+		: latestThinking
+			? compactTeamActivityText(latestThinking.text)
+			: message
+				? publicTextPreview(message)
+				: "";
+	const recent = allTools
+		.slice(-2)
+		.map((block) => toolActivityText(block))
+		.filter(Boolean);
+	const inferredState: TeamMemberSummaryState =
+		input.activityState ??
+		(message?.phase === "failed"
+			? "failed"
+			: message?.phase === "aborted"
+				? "cancelled"
+				: message?.phase === "completed"
+					? "completed"
+					: message?.phase === "pending"
+						? "pending"
+						: "streaming");
+	const currentKind = currentTool ? "tool" : latestThinking ? "thinking" : currentText ? "text" : "status";
+	const result = inferredState === "completed" && message ? publicTextPreview(message) : undefined;
+	return {
+		id: `team-member-summary:${input.requestId}:${input.member.id}`,
+		renderKey: `team:member-summary:${input.requestId}:${input.member.id}`,
+		kind: "event",
+		timestamp: input.timestamp,
+		event: {
+			kind: "team-member-summary",
+			requestId: input.requestId,
+			memberId: input.member.id,
+			memberName: input.member.name,
+			...(input.member.avatar ? { memberAvatar: input.member.avatar } : {}),
+			memberBlueprintId: input.member.blueprintId,
+			state: inferredState,
+			currentKind,
+			...(currentText ? { current: currentText } : {}),
+			recent,
+			...(result ? { result } : {}),
+			timestamp: input.timestamp,
+		},
+	};
 }
 
 export function reduceTeamStreamState(state: TeamStreamState, event: DesktopTeamSessionStreamEvent): TeamStreamState {
@@ -239,7 +351,12 @@ export function projectTeamConversationTimeline({
 	// messages and must not be merged into the aggregate feed.
 	const coordinationItems = snapshot ? projectLegacySnapshotMessages(snapshot) : [];
 	const coordinationUserItems = coordinationItems.filter((item) => item.kind === "user");
-	const coordinationAgentItems = coordinationItems.filter((item) => item.kind === "agent");
+	const coordinationAgentItems = mergeTeamAgentTurns(
+		coordinationItems.filter((item): item is ConversationAgentMessageViewModel => item.kind === "agent"),
+	);
+	const coordinationDisplayItems = [...coordinationUserItems, ...coordinationAgentItems].sort(
+		(left, right) => itemTimestamp(left) - itemTimestamp(right),
+	);
 	const stabilizedMemberItems = projectedMemberItems.map((item) => {
 		if (item.kind !== "agent") return item;
 		const publicMatch = coordinationAgentItems.find(
@@ -248,6 +365,9 @@ export function projectTeamConversationTimeline({
 		return publicMatch ? { ...item, renderKey: publicMatch.renderKey } : item;
 	});
 	const memberAgentItems = stabilizedMemberItems.filter((item) => item.kind === "agent");
+	const leaderMemberId = session?.leaderMemberId;
+	const leaderMemberItems = memberAgentItems.filter((item) => item.authorId === leaderMemberId);
+	const leaderCoordinationItems = coordinationAgentItems.filter((item) => item.authorId === leaderMemberId);
 	const projectedItems =
 		// The coordination Conversation is the durable public Team timeline. Member
 		// histories are allowed to lag behind it while the Runtime flushes its last
@@ -255,18 +375,24 @@ export function projectTeamConversationTimeline({
 		// answer (and force the virtualizer to replace the streaming row). Keep native
 		// member history for member-scoped views, but use public coordination messages
 		// for the aggregate Team feed as soon as one is available.
-		memberId === undefined && coordinationAgentItems.length > memberAgentItems.length
-			? coordinationAgentItems
+		memberId === undefined
+			? [
+					...coordinationUserItems,
+					...(leaderCoordinationItems.length > leaderMemberItems.length
+						? leaderCoordinationItems
+						: leaderMemberItems),
+				]
 			: coordinationUserItems.length > 0
 				? stabilizedMemberItems.filter((item) => item.kind !== "user")
 				: stabilizedMemberItems;
 	const projectedIds = new Set(projectedItems.map((item) => item.id));
 	const items = dedupeTeamUserItems([
 		...projectedItems,
-		...coordinationItems.filter(
+		...coordinationDisplayItems.filter(
 			(item) => !projectedIds.has(item.id) && (memberConversations.length === 0 || item.kind === "user"),
 		),
 	]);
+	const teamMemberSummaries = new Map<string, ChatConversationItem>();
 	for (const activity of memberId ? [] : (snapshot?.activities ?? [])) {
 		const source =
 			memberMap.get(activity.sourceMemberId)?.name ??
@@ -288,7 +414,99 @@ export function projectTeamConversationTimeline({
 				timestamp: activity.timestamp,
 			},
 		});
+		const targetMember = memberMap.get(activity.targetMemberId);
+		if (targetMember && targetMember.id !== leaderMemberId) {
+			const sourceTurnId = activity.sourceTurnId;
+			const matchesActivity = (item: ConversationAgentMessageViewModel) =>
+				item.authorId === targetMember.id &&
+				(item.turnId === activity.requestId ||
+					(sourceTurnId !== undefined && item.turnId === sourceTurnId) ||
+					item.id === activity.requestId ||
+					item.parentId === activity.requestId);
+			const targetMessage = [...coordinationAgentItems, ...memberAgentItems].find(
+				(item): item is ConversationAgentMessageViewModel => item.kind === "agent" && matchesActivity(item),
+			);
+			const streamMessage = Object.values(streams)
+				.map((turn) => turn.message)
+				.find(matchesActivity);
+			const sourceMessage = streamMessage ?? targetMessage;
+			const summaryKey = `${activity.requestId}:${targetMember.id}`;
+			teamMemberSummaries.set(
+				summaryKey,
+				buildTeamMemberReplySummary({
+					member: targetMember,
+					requestId: activity.requestId,
+					// A summary card occupies the activity's original timeline slot for its
+					// whole lifecycle. Using the eventual reply timestamp here reordered the
+					// fixed-height cards whenever members completed out of order, which made
+					// the message viewport visibly jump even though the DOM keys were stable.
+					timestamp: activity.timestamp,
+					activityState:
+						activity.state === "failed"
+							? "failed"
+							: activity.state === "cancelled"
+								? "cancelled"
+								: activity.state === "completed"
+									? "completed"
+									: activity.state === "waiting"
+										? "waiting"
+										: sourceMessage
+											? "streaming"
+											: "pending",
+					message: sourceMessage,
+				}),
+			);
+		}
 	}
+	if (!memberId) {
+		for (const turn of Object.values(streams)) {
+			if (turn.message.phase !== "streaming" || turn.message.authorId === leaderMemberId) continue;
+			const targetMember = memberMap.get(turn.message.authorId);
+			if (!targetMember) continue;
+			const summaryKey = `${turn.message.turnId}:${targetMember.id}`;
+			const existing = teamMemberSummaries.get(summaryKey);
+			if (existing?.kind === "event" && existing.event.kind === "team-member-summary" && existing.event.current)
+				continue;
+			teamMemberSummaries.set(
+				summaryKey,
+				buildTeamMemberReplySummary({
+					member: targetMember,
+					requestId: turn.message.turnId,
+					timestamp: turn.message.timestamp ?? turn.message.startedAt ?? 0,
+					activityState: "streaming",
+					message: turn.message,
+				}),
+			);
+		}
+	}
+	if (!memberId) {
+		const activityMemberIds = new Set((snapshot?.activities ?? []).map((activity) => activity.targetMemberId));
+		for (const item of memberAgentItems) {
+			if (item.authorId === leaderMemberId || activityMemberIds.has(item.authorId)) continue;
+			const targetMember = memberMap.get(item.authorId);
+			if (!targetMember) continue;
+			const summaryKey = `${item.turnId}:${targetMember.id}`;
+			if (teamMemberSummaries.has(summaryKey)) continue;
+			teamMemberSummaries.set(
+				summaryKey,
+				buildTeamMemberReplySummary({
+					member: targetMember,
+					requestId: item.turnId,
+					timestamp: item.timestamp ?? 0,
+					activityState:
+						item.phase === "failed"
+							? "failed"
+							: item.phase === "aborted"
+								? "cancelled"
+								: item.phase === "completed"
+									? "completed"
+									: "streaming",
+					message: item,
+				}),
+			);
+		}
+	}
+	items.push(...teamMemberSummaries.values());
 	items.sort((left, right) => itemTimestamp(left) - itemTimestamp(right));
 
 	const userCommitted = pending
@@ -316,6 +534,7 @@ export function projectTeamConversationTimeline({
 	)) {
 		if (turn.message.phase !== "streaming") continue;
 		if (memberId && turn.message.authorId !== memberId) continue;
+		if (!memberId && turn.message.authorId !== leaderMemberId) continue;
 		if (
 			persistedResults.has(turn.message.id) ||
 			persistedAgentItems.some(
@@ -419,6 +638,46 @@ function projectLegacySnapshotMessages(snapshot: DesktopTeamSessionSnapshot): Ch
 			renderKey: `team:stream:${record.author.id}:${record.id}`,
 		};
 	});
+}
+
+/**
+ * The public coordination conversation persists one Agent record per provider
+ * step (pre-tool, tool continuation, final text), while the ordinary chat
+ * projection renders those records as one assistant turn. Keep the Team feed
+ * on that same contract so a completed tool call does not split the leader into
+ * multiple bubbles or leave the pre-tool bubble looking active.
+ */
+function mergeTeamAgentTurns(items: readonly ConversationAgentMessageViewModel[]): ConversationAgentMessageViewModel[] {
+	const merged: ConversationAgentMessageViewModel[] = [];
+	const indexByTurn = new Map<string, number>();
+	for (const item of items) {
+		const turnKey = `${item.authorId}\u0000${item.turnId}`;
+		const existingIndex = indexByTurn.get(turnKey);
+		if (existingIndex === undefined) {
+			indexByTurn.set(turnKey, merged.length);
+			merged.push({ ...item, blocks: [...item.blocks], usages: item.usages ? [...item.usages] : undefined });
+			continue;
+		}
+
+		const existing = merged[existingIndex];
+		const phase = item.phase;
+		const blocks = [...existing.blocks, ...item.blocks].map((block) =>
+			phase === "completed" && block.type === "tool_call" && block.status === "pending"
+				? { ...block, status: "success" as const }
+				: block,
+		);
+		merged[existingIndex] = {
+			...existing,
+			phase,
+			blocks,
+			...(item.text ? { text: existing.text ? `${existing.text}\n${item.text}` : item.text } : {}),
+			...(existing.usages || item.usages ? { usages: [...(existing.usages ?? []), ...(item.usages ?? [])] } : {}),
+			...(item.startedAt !== undefined && existing.startedAt === undefined ? { startedAt: item.startedAt } : {}),
+			...(item.endedAt !== undefined ? { endedAt: item.endedAt } : {}),
+			...(item.durationSeconds !== undefined ? { durationSeconds: item.durationSeconds } : {}),
+		};
+	}
+	return merged;
 }
 
 function itemTimestamp(item: ChatConversationItem): number {

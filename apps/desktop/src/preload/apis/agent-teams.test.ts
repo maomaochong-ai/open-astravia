@@ -25,7 +25,10 @@ describe("createAgentTeamsApi", () => {
 		});
 		await api.deleteTeam("team", { expectedRevision: 1 });
 		await api.createSession("team");
-		await api.createSessionRecord("team");
+		await api.createSessionRecord("team", {
+			sessionId: "11111111-1111-4111-8111-111111111111",
+			executionMode: "sandbox",
+		});
 		await api.listSessions("team");
 		await api.updateModelSettings("session", { modelKey: "openai/gpt-5", reasoning: "high" });
 		await api.sendMessage("session", message);
@@ -45,7 +48,10 @@ describe("createAgentTeamsApi", () => {
 			expectedRevision: 1,
 		});
 		expect(invoke).toHaveBeenNthCalledWith(6, "vetta:agent-teams:create-session", "team");
-		expect(invoke).toHaveBeenNthCalledWith(7, "vetta:agent-teams:create-session-record", "team");
+		expect(invoke).toHaveBeenNthCalledWith(7, "vetta:agent-teams:create-session-record", "team", {
+			sessionId: "11111111-1111-4111-8111-111111111111",
+			executionMode: "sandbox",
+		});
 		expect(invoke).toHaveBeenNthCalledWith(8, "vetta:agent-teams:list-sessions", "team");
 		expect(invoke).toHaveBeenNthCalledWith(9, "vetta:agent-teams:update-model-settings", "session", {
 			modelKey: "openai/gpt-5",

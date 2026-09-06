@@ -319,6 +319,30 @@ export { NewSessionBackground } from "./NewSessionBackground";
 export type { NewSessionPageLayoutViewProps } from "./NewSessionPageLayoutView";
 export { NewSessionPageLayoutView } from "./NewSessionPageLayoutView";
 export type {
+	NewSessionPickerRootProps,
+	NewSessionPickerTriggerProps,
+	NewSessionPickerValueProps,
+} from "./NewSessionPicker";
+export {
+	NewSessionPicker,
+	NewSessionPickerClear,
+	NewSessionPickerContent,
+	NewSessionPickerEmpty,
+	NewSessionPickerError,
+	NewSessionPickerFooter,
+	NewSessionPickerGroup,
+	NewSessionPickerItem,
+	NewSessionPickerItemIcon,
+	NewSessionPickerItemIndicator,
+	NewSessionPickerItemText,
+	NewSessionPickerLoading,
+	NewSessionPickerRoot,
+	NewSessionPickerSearch,
+	NewSessionPickerTrigger,
+	NewSessionPickerValue,
+	NewSessionPickerViewport,
+} from "./NewSessionPicker";
+export type {
 	ProgressGroupPrimitiveProps,
 	ProgressGroupRootProps,
 	ProgressGroupRowPrimitiveProps,

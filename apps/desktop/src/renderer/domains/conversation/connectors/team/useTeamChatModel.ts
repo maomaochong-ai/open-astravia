@@ -14,7 +14,20 @@ import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useTranslation } from "react-i18next";
 import { resolveSessionContextComposition } from "../../services/context-composition-cache";
-import { createTeamChatSession, loadTeamChatBootstrap, loadTeamChatSession } from "./team-chat-session-service";
+import {
+	createReservedTeamChatSession,
+	createTeamChatSession,
+	loadTeamChatBootstrap,
+	loadTeamChatSession,
+} from "./team-chat-session-service";
+import {
+	claimTeamSessionHandoff,
+	clearTeamSessionHandoff,
+	peekTeamSessionHandoff,
+	releaseTeamSessionHandoff,
+	type TeamSessionHandoff,
+	type TeamSessionSendHandoff,
+} from "./team-session-handoff";
 import {
 	projectTeamConversationTimeline,
 	reduceTeamStreamState,
@@ -71,7 +84,9 @@ export function useTeamChatModel(
 	const pendingRef = useRef<TeamPendingRequest | undefined>(undefined);
 	const streamsRef = useRef<TeamStreamState>({});
 	pendingRef.current = pending;
-	const draftScope = session?.id ?? teamId;
+	const routeHandoff = preferredSessionId ? peekTeamSessionHandoff(preferredSessionId) : undefined;
+	const displayDocument = routeHandoff?.document ?? document;
+	const draftScope = session?.id ?? preferredSessionId ?? teamId;
 	const draft = draftsByTeam[draftScope] ?? "";
 	const history = historyByTeam[draftScope] ?? [];
 	const attachments = attachmentsByTeam[draftScope] ?? [];
@@ -103,7 +118,10 @@ export function useTeamChatModel(
 		[updateAttachments, updateDraft],
 	);
 
-	const team = useMemo(() => document?.teams.find((candidate) => candidate.id === teamId), [document, teamId]);
+	const team = useMemo(
+		() => displayDocument?.teams.find((candidate) => candidate.id === teamId),
+		[displayDocument, teamId],
+	);
 	const applyLoadedSession = useCallback(
 		(loaded: Awaited<ReturnType<typeof loadTeamChatSession>>) => {
 			loadedSessionRef.current = { teamId, sessionId: loaded.snapshot.session.id };
@@ -119,7 +137,9 @@ export function useTeamChatModel(
 	useEffect(() => {
 		let cancelled = false;
 		const loaded = loadedSessionRef.current;
+		const handoff = preferredSessionId ? peekTeamSessionHandoff(preferredSessionId) : undefined;
 		if (
+			!handoff &&
 			!createNewSession &&
 			loaded?.teamId === teamId &&
 			(!preferredSessionId || loaded.sessionId === preferredSessionId)
@@ -160,6 +180,25 @@ export function useTeamChatModel(
 					if (cancelled) return;
 					applyLoadedSession(created);
 					notifyTeamSessionsChanged(teamId);
+					return;
+				}
+				if (handoff) {
+					if (handoff.document) setDocument(handoff.document);
+					setSessions([]);
+					setStatus("ready");
+					await waitForCommittedPaint();
+					if (cancelled) return;
+					void loadTeamChatBootstrap(teamId)
+						.then((bootstrap) => {
+							if (cancelled) return;
+							startTeamTransition(() => {
+								setDocument(bootstrap.document);
+								setSessions(bootstrap.sessions);
+							});
+						})
+						.catch((cause: unknown) => {
+							if (!cancelled) setError(errorMessage(cause));
+						});
 					return;
 				}
 				const opened = await loadTeamChatSession(teamId, preferredSessionId);
@@ -373,23 +412,28 @@ export function useTeamChatModel(
 	const members = useMemo(
 		() =>
 			resolveTeamMembers(
-				document,
+				displayDocument,
 				team,
 				selectedMemberIds,
 				streams,
 				(profileId, fallbackHandle) => {
-					const profile = document?.agents.find((candidate) => candidate.id === profileId);
+					const profile = displayDocument?.agents.find((candidate) => candidate.id === profileId);
 					return profile ? agentDisplayName(profile, t) : fallbackHandle;
 				},
 				failedMemberIds,
 			),
-		[document, failedMemberIds, selectedMemberIds, streams, t, team],
+		[displayDocument, failedMemberIds, selectedMemberIds, streams, t, team],
 	);
+	const stagedPending = useMemo(
+		() => (routeHandoff ? pendingRequestFromHandoff(routeHandoff, team?.leaderMemberId ?? "leader") : undefined),
+		[routeHandoff, team?.leaderMemberId],
+	);
+	const visiblePending = pending ?? stagedPending;
 	const feedItems = useMemo(
 		() =>
 			projectTeamConversationTimeline({
 				snapshot,
-				pending,
+				pending: visiblePending,
 				streams,
 				members,
 				labels: {
@@ -398,7 +442,7 @@ export function useTeamChatModel(
 				},
 				memberId: memberViewId,
 			}),
-		[memberViewId, members, pending, snapshot, streams, t],
+		[memberViewId, members, snapshot, streams, t, visiblePending],
 	);
 
 	const selectLeader = useCallback(() => setSelectedMemberIds([]), []);
@@ -425,16 +469,16 @@ export function useTeamChatModel(
 		[draft, updateAttachments, updateDraft],
 	);
 	const selectFiles = useCallback(async () => {
-		if (!session && !createNewSession) return;
+		if (!session && !createNewSession && !preferredSessionId) return;
 		const paths = await window.vetta.dialog.selectFiles(session?.cwd || undefined);
 		addAttachments(paths.map(toFileAttachment));
-	}, [addAttachments, createNewSession, session]);
+	}, [addAttachments, createNewSession, preferredSessionId, session]);
 	const selectImages = useCallback(async () => {
-		if (!session && !createNewSession) return;
+		if (!session && !createNewSession && !preferredSessionId) return;
 		const selected = await window.vetta.dialog.selectImages();
 		const paths = await persistBase64Images(selected, session?.id ?? null, "image-dialog");
 		addAttachments(paths.map(toImageAttachment));
-	}, [addAttachments, createNewSession, session]);
+	}, [addAttachments, createNewSession, preferredSessionId, session]);
 	const removeAttachment = useCallback(
 		(path: string) => {
 			updateAttachments((current) => current.filter((attachment) => attachment.path !== path));
@@ -449,145 +493,196 @@ export function useTeamChatModel(
 		[updateAttachments, updateDraft],
 	);
 
-	const send = useCallback(async () => {
-		const draftText = draft.trim();
-		const attempt = {
-			teamId,
-			teamSessionId: session?.id,
-			draftLength: draftText.length,
-			attachmentCount: attachments.length,
-			pendingRequestId: pendingRef.current?.requestId,
-		};
-		console.info("[agent-team] send attempted", attempt);
-		if ((!session && !createNewSession) || (!draftText && attachments.length === 0) || pendingRef.current) {
-			console.info("[agent-team] send ignored", {
-				...attempt,
-				reason:
-					!session && !createNewSession
-						? "session-unavailable"
-						: !draftText && attachments.length === 0
-							? "empty-input"
-							: "request-pending",
-			});
-			return;
-		}
-		const text = draftText;
-		const requestId = crypto.randomUUID();
-		const sentAttachments = attachments;
-		const targetMemberIds = team ? resolveMentionedMemberIds(team, text, selectedMemberIds) : [];
-		const promptAttachments = attachments.map(toPromptAttachment);
-		const nextPending = {
-			requestId,
-			text,
-			displayText: draftText,
-			attachments: promptAttachments,
-			targetMemberIds,
-			leaderMemberId: session?.leaderMemberId ?? team?.leaderMemberId ?? "leader",
-			timestamp: Date.now(),
-		};
-		pendingRef.current = nextPending;
-		setPending(nextPending);
-		setStatus("sending");
-		setError(undefined);
-		setFailedMemberIds(new Set());
-		const activeStreams = Object.fromEntries(
-			Object.entries(streamsRef.current).filter(([, turn]) => turn.message.phase === "streaming"),
-		);
-		streamsRef.current = activeStreams;
-		setStreams(activeStreams);
-		updateDraft("");
-		updateAttachments(() => []);
-		const startedAt = Date.now();
-		console.info("[agent-team] send-message IPC started", {
-			teamId,
-			teamSessionId: session?.id,
-			requestId,
-			targetMemberCount: targetMemberIds.length,
-			attachmentCount: promptAttachments.length,
-			modelKey: effectiveModelKey,
-			reasoning: effectiveReasoning,
-		});
-		let activeSessionId = session?.id;
-		try {
-			const loaded = session
-				? undefined
-				: await (sessionCreationRef.current ?? createTeamChatSession(teamId, document, sessions));
-			const readySession = session ?? loaded?.snapshot.session;
-			if (!readySession) throw new Error("Team session is still preparing");
-			activeSessionId = readySession.id;
-			if (cancelledRequests.current.delete(requestId)) {
-				setStatus("ready");
+	const send = useCallback(
+		async (handoff?: TeamSessionSendHandoff) => {
+			const activeHandoff =
+				handoff ?? (!session && preferredSessionId ? claimTeamSessionHandoff(preferredSessionId) : undefined);
+			const draftText = (activeHandoff?.text ?? draft).trim();
+			const attempt = {
+				teamId,
+				teamSessionId: session?.id,
+				draftLength: draftText.length,
+				attachmentCount: activeHandoff?.attachments.length ?? attachments.length,
+				pendingRequestId: pendingRef.current?.requestId,
+			};
+			console.info("[agent-team] send attempted", attempt);
+			if (
+				(!session && !createNewSession && !activeHandoff) ||
+				(!draftText && (activeHandoff?.attachments.length ?? attachments.length) === 0) ||
+				pendingRef.current
+			) {
+				console.info("[agent-team] send ignored", {
+					...attempt,
+					reason:
+						!session && !createNewSession && !activeHandoff
+							? "session-unavailable"
+							: !draftText && (activeHandoff?.attachments.length ?? attachments.length) === 0
+								? "empty-input"
+								: "request-pending",
+				});
 				return;
 			}
-			const next = await window.vetta.agentTeams.sendMessage(readySession.id, {
+			const text = draftText;
+			const requestId = activeHandoff?.requestId ?? crypto.randomUUID();
+			const sentAttachments = activeHandoff
+				? activeHandoff.attachments.map((attachment) => ({
+						path: attachment.path,
+						name: pathBasename(attachment.path),
+						kind: attachment.kind === "image" ? ("image" as const) : ("file" as const),
+					}))
+				: attachments;
+			const targetMemberIds = activeHandoff
+				? team
+					? resolveMentionedMemberIds(team, text, activeHandoff.requestedMemberIds)
+					: activeHandoff.requestedMemberIds
+				: team
+					? resolveMentionedMemberIds(team, text, selectedMemberIds)
+					: [];
+			const promptAttachments = activeHandoff?.attachments ?? attachments.map(toPromptAttachment);
+			const requestModelKey = activeHandoff?.modelKey ?? effectiveModelKey;
+			const requestReasoning = activeHandoff?.reasoning ?? effectiveReasoning;
+			const nextPending = {
 				requestId,
 				text,
+				displayText: draftText,
+				attachments: promptAttachments,
 				targetMemberIds,
-				...(promptAttachments.length ? { attachments: promptAttachments } : {}),
-				...(effectiveModelKey ? { modelKey: effectiveModelKey } : {}),
-				...(effectiveReasoning ? { reasoning: effectiveReasoning } : {}),
-			});
-			setSnapshot((current) =>
-				!current ||
-				next.session.revision > current.session.revision ||
-				next.conversationRevision >= current.conversationRevision
-					? next
-					: current,
-			);
-			setContextUsages((current) => ({ ...current, ...readSnapshotContextUsages(next) }));
+				leaderMemberId: session?.leaderMemberId ?? team?.leaderMemberId ?? "leader",
+				timestamp: activeHandoff?.timestamp ?? Date.now(),
+			};
+			pendingRef.current = nextPending;
+			setPending(nextPending);
+			setStatus("sending");
 			setError(undefined);
-			setStatus("ready");
-			console.info("[agent-team] send-message IPC completed", {
+			setFailedMemberIds(new Set());
+			const activeStreams = Object.fromEntries(
+				Object.entries(streamsRef.current).filter(([, turn]) => turn.message.phase === "streaming"),
+			);
+			streamsRef.current = activeStreams;
+			setStreams(activeStreams);
+			updateDraft("");
+			updateAttachments(() => []);
+			const startedAt = Date.now();
+			console.info("[agent-team] send-message IPC started", {
 				teamId,
-				teamSessionId: readySession.id,
+				teamSessionId: session?.id,
 				requestId,
-				elapsedMs: Date.now() - startedAt,
+				targetMemberCount: targetMemberIds.length,
+				attachmentCount: promptAttachments.length,
+				modelKey: requestModelKey,
+				reasoning: requestReasoning,
 			});
-			if (draftText) {
-				setHistoryByTeam((current) => {
-					const previous = current[draftScope] ?? [];
-					return {
-						...current,
-						[draftScope]: [...previous.filter((item) => item !== draftText), draftText].slice(-50),
-					};
+			let activeSessionId = session?.id;
+			try {
+				if (activeHandoff) await waitForCommittedPaint();
+				const loaded = session
+					? undefined
+					: activeHandoff
+						? await createReservedTeamChatSession(
+								teamId,
+								activeHandoff.sessionId,
+								activeHandoff.executionMode,
+								displayDocument,
+							)
+						: await (sessionCreationRef.current ?? createTeamChatSession(teamId, document, sessions));
+				const readySession = session ?? loaded?.snapshot.session;
+				if (!readySession) throw new Error("Team session is still preparing");
+				activeSessionId = readySession.id;
+				if (activeHandoff && loaded) {
+					loadedSessionRef.current = { teamId, sessionId: readySession.id };
+					if (loaded.document) setDocument(loaded.document);
+					setSnapshot(loaded.snapshot);
+					setContextUsages(readSnapshotContextUsages(loaded.snapshot));
+					setSessions(loaded.sessions);
+					notifyTeamSessionsChanged(teamId);
+					await waitForCommittedPaint();
+					clearTeamSessionHandoff(activeHandoff.sessionId);
+				}
+				if (cancelledRequests.current.delete(requestId)) {
+					setStatus("ready");
+					return;
+				}
+				const next = await window.vetta.agentTeams.sendMessage(readySession.id, {
+					requestId,
+					text,
+					targetMemberIds,
+					...(promptAttachments.length ? { attachments: promptAttachments } : {}),
+					...(requestModelKey ? { modelKey: requestModelKey } : {}),
+					...(requestReasoning ? { reasoning: requestReasoning } : {}),
 				});
-			}
-		} catch (cause) {
-			console.error("[agent-team] send-message IPC failed", {
-				teamId,
-				teamSessionId: activeSessionId,
-				requestId,
-				elapsedMs: Date.now() - startedAt,
-				error: cause instanceof Error ? cause.message : String(cause),
-			});
-			if (cancelledRequests.current.delete(requestId)) {
+				setSnapshot((current) =>
+					!current ||
+					next.session.revision > current.session.revision ||
+					next.conversationRevision >= current.conversationRevision
+						? next
+						: current,
+				);
+				setContextUsages((current) => ({ ...current, ...readSnapshotContextUsages(next) }));
+				setError(undefined);
 				setStatus("ready");
-			} else {
-				setError(errorMessage(cause));
-				setStatus("error");
+				console.info("[agent-team] send-message IPC completed", {
+					teamId,
+					teamSessionId: readySession.id,
+					requestId,
+					elapsedMs: Date.now() - startedAt,
+				});
+				if (text) {
+					setHistoryByTeam((current) => {
+						const previous = current[draftScope] ?? [];
+						return {
+							...current,
+							[draftScope]: [...previous.filter((item) => item !== text), text].slice(-50),
+						};
+					});
+				}
+			} catch (cause) {
+				if (activeHandoff && !activeSessionId) releaseTeamSessionHandoff(activeHandoff.sessionId);
+				console.error("[agent-team] send-message IPC failed", {
+					teamId,
+					teamSessionId: activeSessionId,
+					requestId,
+					elapsedMs: Date.now() - startedAt,
+					error: cause instanceof Error ? cause.message : String(cause),
+				});
+				if (cancelledRequests.current.delete(requestId)) {
+					setStatus("ready");
+				} else {
+					setError(errorMessage(cause));
+					setStatus("error");
+				}
+				updateDraft((current) => current || draftText);
+				updateAttachments((current) => mergeAttachments(current, sentAttachments));
+			} finally {
+				pendingRef.current = undefined;
+				setPending(undefined);
 			}
-			updateDraft((current) => current || draftText);
-			updateAttachments((current) => mergeAttachments(current, sentAttachments));
-		} finally {
-			pendingRef.current = undefined;
-			setPending(undefined);
-		}
-	}, [
-		attachments,
-		draft,
-		teamId,
-		selectedMemberIds,
-		session,
-		team,
-		draftScope,
-		updateAttachments,
-		updateDraft,
-		effectiveModelKey,
-		effectiveReasoning,
-		createNewSession,
-		document,
-		sessions,
-	]);
+		},
+		[
+			attachments,
+			draft,
+			teamId,
+			selectedMemberIds,
+			session,
+			team,
+			draftScope,
+			updateAttachments,
+			updateDraft,
+			effectiveModelKey,
+			effectiveReasoning,
+			createNewSession,
+			document,
+			displayDocument,
+			preferredSessionId,
+			sessions,
+		],
+	);
+
+	useEffect(() => {
+		if (createNewSession || !preferredSessionId) return;
+		const handoff = claimTeamSessionHandoff(preferredSessionId);
+		if (!handoff) return;
+		void send(handoff);
+	}, [createNewSession, preferredSessionId, send]);
 
 	const abort = useCallback(async () => {
 		const request = pendingRef.current;
@@ -627,9 +722,9 @@ export function useTeamChatModel(
 	);
 	const model = useMemo<TeamChatViewModel>(
 		() => ({
-			feedKey: `${session?.id ?? teamId}:${memberViewId ?? "team"}`,
+			feedKey: `${session?.id ?? preferredSessionId ?? teamId}:${memberViewId ?? "team"}`,
 			title: team ? teamDisplayName(team, t) : t("teams.title"),
-			status,
+			status: routeHandoff && !session ? "sending" : status,
 			draft,
 			history,
 			attachments,
@@ -637,18 +732,22 @@ export function useTeamChatModel(
 			...(session?.leaderMemberId ? { leaderMemberId: session.leaderMemberId } : {}),
 			feedItems,
 			...(error ? { error } : {}),
-			editorEnabled: Boolean(session || createNewSession) && !memberViewId,
+			editorEnabled: Boolean(session || createNewSession || preferredSessionId) && !memberViewId,
 			canSend: Boolean(
-				(session || createNewSession) && !memberViewId && (draft.trim() || attachments.length > 0) && !pending,
+				(session || createNewSession || preferredSessionId) &&
+					!memberViewId &&
+					(draft.trim() || attachments.length > 0) &&
+					!visiblePending,
 			),
 			workspace: session
 				? createActivityWorkspace(session.workspaceId ?? `agent-team:${teamId}`, session.cwd)
 				: null,
-			activeSessionId: session?.id ?? null,
+			activeSessionId: session?.id ?? (routeHandoff || pending ? (preferredSessionId ?? null) : null),
 			runtimeSessionIds: session ? Object.values(session.memberRuntime).map((runtime) => runtime.sessionId) : [],
 			memberRuntimeIds,
 			...(memberViewId ? { memberViewId } : {}),
-			executionMode: session?.executionMode ?? snapshot?.display?.executionMode ?? "full-access",
+			executionMode:
+				session?.executionMode ?? routeHandoff?.executionMode ?? snapshot?.display?.executionMode ?? "full-access",
 			contextUsage,
 			contextUsagesByRuntime: contextUsages,
 			compactingByRuntime,
@@ -659,7 +758,7 @@ export function useTeamChatModel(
 				id: item.id,
 				label: t("chat.sessionLabel", { index: sessions.length - index }),
 			})),
-			sessionActionsDisabled: status === "loading" || Boolean(pending),
+			sessionActionsDisabled: status === "loading" || Boolean(visiblePending),
 			labels,
 		}),
 		[
@@ -675,6 +774,8 @@ export function useTeamChatModel(
 			error,
 			session,
 			pending,
+			preferredSessionId,
+			routeHandoff,
 			sessions,
 			effectiveModelKey,
 			effectiveReasoning,
@@ -687,6 +788,7 @@ export function useTeamChatModel(
 			memberViewId,
 			createNewSession,
 			snapshot?.display?.executionMode,
+			visiblePending,
 		],
 	);
 	const actions = useMemo<TeamChatActions>(
@@ -746,6 +848,18 @@ function toImageAttachment(path: string): TeamAttachmentViewModel {
 
 function toPromptAttachment(attachment: TeamAttachmentViewModel): PromptAttachmentRef {
 	return { kind: attachment.kind, path: attachment.path };
+}
+
+function pendingRequestFromHandoff(handoff: TeamSessionHandoff, leaderMemberId: string): TeamPendingRequest {
+	return {
+		requestId: handoff.requestId,
+		text: handoff.text,
+		displayText: handoff.text,
+		attachments: handoff.attachments,
+		targetMemberIds: handoff.requestedMemberIds,
+		leaderMemberId,
+		timestamp: handoff.timestamp,
+	};
 }
 
 function errorMessage(cause: unknown): string {

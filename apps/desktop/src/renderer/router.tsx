@@ -34,9 +34,6 @@ const TeamListPage = lazy(async () => ({
 const TeamChatPage = lazy(async () => ({
 	default: (await import("./domains/conversation/connectors/team/TeamChatPage")).TeamChatPage,
 }));
-const TeamNewSessionPage = lazy(async () => ({
-	default: (await import("./domains/conversation/connectors/team/TeamChatPage")).TeamNewSessionPage,
-}));
 const TeamSettingsPage = lazy(async () => ({
 	default: (await import("./domains/agent-teams/components/TeamSettingsPage")).TeamSettingsPage,
 }));
@@ -130,7 +127,9 @@ const teamSessionRoute = createRoute({
 const teamNewSessionRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/agent-teams/$teamId/new",
-	component: TeamNewSessionPage,
+	beforeLoad: ({ params }) => {
+		throw redirect({ to: "/new-session", search: { target: `team:${params.teamId}` } });
+	},
 });
 
 const teamMemberSessionRoute = createRoute({
@@ -226,8 +225,20 @@ const projectDetailRoute = createRoute({
 
 const newSessionRoute = createRoute({
 	getParentRoute: () => rootRoute,
-	path: "/new-session/$cwd",
+	path: "/new-session",
+	validateSearch: (search: Record<string, unknown>) => ({
+		...(typeof search.cwd === "string" ? { cwd: search.cwd } : {}),
+		...(typeof search.target === "string" ? { target: search.target } : {}),
+	}),
 	component: NewSessionPage,
+});
+
+const legacyNewSessionRoute = createRoute({
+	getParentRoute: () => rootRoute,
+	path: "/new-session/$cwd",
+	beforeLoad: ({ params }) => {
+		throw redirect({ to: "/new-session", search: { cwd: params.cwd } });
+	},
 });
 
 const sessionViewerRoute = createRoute({
@@ -271,6 +282,7 @@ const routeTree = rootRoute.addChildren([
 	settingsTabRoute,
 	projectDetailRoute,
 	newSessionRoute,
+	legacyNewSessionRoute,
 	sessionViewerRoute,
 	pluginWorkspaceViewRoute,
 	themePageRoute,
