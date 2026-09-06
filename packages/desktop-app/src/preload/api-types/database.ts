@@ -111,6 +111,32 @@ export interface DbConnectionTestResult {
 }
 
 /**
+ * 连接树的 catalog 组织方式（对齐 dbx：连接 → database/schema → 表 → 列）。
+ * - "schemas"   PG 系：连接默认库下的多个 schema（information_schema 枚举）。
+ * - "databases" MySQL 系：同一服务上的多个 database（可跨库浏览）。
+ * - "flat"      SQLite / 其它单库连接：表直接挂在连接下（与改造前一致）。
+ */
+export type DbCatalogFamily = "schemas" | "databases" | "flat";
+
+/** catalog 中间层作用域：PG = schema 名；MySQL 系 = database 名。 */
+export interface DbCatalogScope {
+	readonly kind: "schema" | "database";
+	readonly name: string;
+}
+
+/** 查询 table 列表 / 结构时的作用域参数（引擎 list_tables / describe_table 的 database / schema 参数）。 */
+export interface DbTableScope {
+	readonly database?: string;
+	readonly schema?: string;
+}
+
+/** 执行查询选项。 */
+export interface DbExecuteQueryOptions {
+	/** 本次执行已通过 UI 危险确认（DDL / 写语句放行依据，W4-② 补充）。 */
+	confirmedWrite?: boolean;
+}
+
+/**
  * preload 暴露给 renderer 的数据库能力接口。
  *
  * 这是 renderer 抽象层（domains/database）与 main 之间的契约；
@@ -125,12 +151,18 @@ export interface DesktopDatabaseApi {
 	testConnection(params: DbTestConnectionParams): Promise<DatabaseResult<DbConnectionTestResult>>;
 	/** 删除连接。 */
 	removeConnection(id: string): Promise<DatabaseResult<void>>;
-	/** 列出连接下全部表。 */
-	listTables(connectionName: string): Promise<DatabaseResult<DbTableInfo[]>>;
-	/** 查看表结构。 */
-	describeTable(connectionName: string, table: string): Promise<DatabaseResult<DbColumnInfo[]>>;
+	/** 列出连接下全部表（可选 catalog 作用域：schema / database）。 */
+	listTables(connectionName: string, scope?: DbTableScope): Promise<DatabaseResult<DbTableInfo[]>>;
+	/** 查看表结构（可选 catalog 作用域：schema / database）。 */
+	describeTable(connectionName: string, table: string, scope?: DbTableScope): Promise<DatabaseResult<DbColumnInfo[]>>;
+	/** 枚举连接的 catalog 中间层作用域名（schema / database，由 family 决定）。 */
+	listCatalogScopes(connectionName: string, family: DbCatalogFamily): Promise<DatabaseResult<string[]>>;
 	/** 执行查询（SELECT），返回结构化结果。 */
-	executeQuery(connectionName: string, sql: string): Promise<DatabaseResult<DbQueryResult>>;
+	executeQuery(
+		connectionName: string,
+		sql: string,
+		options?: DbExecuteQueryOptions,
+	): Promise<DatabaseResult<DbQueryResult>>;
 	/** 获取连接 schema 上下文（供 AI 注入使用）。 */
 	getSchemaContext(connectionName: string): Promise<DatabaseResult<string>>;
 }

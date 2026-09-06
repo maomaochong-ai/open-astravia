@@ -1,4 +1,5 @@
 import { ipcMain } from "electron";
+import type { DbCatalogFamily, DbExecuteQueryOptions, DbTableScope } from "../../preload/api-types/database.js";
 import { databaseService } from "../database/database-service.js";
 
 /**
@@ -15,6 +16,7 @@ const CHANNELS = {
 	TEST_CONNECTION: "astravia:database:test-connection",
 	REMOVE_CONNECTION: "astravia:database:remove-connection",
 	LIST_TABLES: "astravia:database:list-tables",
+	LIST_CATALOG_SCOPES: "astravia:database:list-catalog-scopes",
 	DESCRIBE_TABLE: "astravia:database:describe-table",
 	EXECUTE_QUERY: "astravia:database:execute-query",
 	GET_SCHEMA_CONTEXT: "astravia:database:get-schema-context",
@@ -36,12 +38,21 @@ export function registerDatabaseIpc(): () => void {
 		databaseService.testConnection(params as Parameters<typeof databaseService.testConnection>[0]),
 	);
 	register(CHANNELS.REMOVE_CONNECTION, (id: unknown) => databaseService.removeConnection(id as string));
-	register(CHANNELS.LIST_TABLES, (connectionName: unknown) => databaseService.listTables(connectionName as string));
-	register(CHANNELS.DESCRIBE_TABLE, (connectionName: unknown, table: unknown) =>
-		databaseService.describeTable(connectionName as string, table as string),
+	register(CHANNELS.LIST_TABLES, (connectionName: unknown, scope: unknown) =>
+		databaseService.listTables(connectionName as string, scope as DbTableScope | undefined),
 	);
-	register(CHANNELS.EXECUTE_QUERY, (connectionName: unknown, sql: unknown) =>
-		databaseService.executeQuery(connectionName as string, sql as string),
+	register(CHANNELS.LIST_CATALOG_SCOPES, (connectionName: unknown, family: unknown) =>
+		databaseService.listCatalogScopes(connectionName as string, family as DbCatalogFamily),
+	);
+	register(CHANNELS.DESCRIBE_TABLE, (connectionName: unknown, table: unknown, scope: unknown) =>
+		databaseService.describeTable(connectionName as string, table as string, scope as DbTableScope | undefined),
+	);
+	register(CHANNELS.EXECUTE_QUERY, (connectionName: unknown, sql: unknown, options: unknown) =>
+		databaseService.executeQuery(
+			connectionName as string,
+			sql as string,
+			options as DbExecuteQueryOptions | undefined,
+		),
 	);
 	register(CHANNELS.GET_SCHEMA_CONTEXT, (connectionName: unknown) =>
 		databaseService.getSchemaContext(connectionName as string),

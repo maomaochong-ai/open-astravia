@@ -30,13 +30,17 @@ export const DATABASE_STATUS_STYLES: Readonly<
 export function DatabaseStatusDot({
 	status,
 	className,
+	title,
 }: {
 	status: DatabaseConnectionTestStatus;
 	className?: string;
+	/** 悬浮提示（如最近测试时间与详情），缺省无提示。 */
+	title?: string;
 }): JSX.Element {
 	return (
 		<span
 			className={cn("h-1.5 w-1.5 shrink-0 rounded-full", DATABASE_STATUS_STYLES[status].dot, className)}
+			title={title}
 		/>
 	);
 }

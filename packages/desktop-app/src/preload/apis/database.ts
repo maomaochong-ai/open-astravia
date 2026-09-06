@@ -1,6 +1,12 @@
 import type { IpcRenderer } from "electron";
 import type { DesktopApi } from "../api.js";
-import type { DbAddConnectionParams, DbTestConnectionParams } from "../api-types/database.js";
+import type {
+	DbAddConnectionParams,
+	DbCatalogFamily,
+	DbExecuteQueryOptions,
+	DbTableScope,
+	DbTestConnectionParams,
+} from "../api-types/database.js";
 
 /**
  * preload 数据库能力 API 实现。
@@ -16,6 +22,7 @@ const CHANNELS = {
 	TEST_CONNECTION: "astravia:database:test-connection",
 	REMOVE_CONNECTION: "astravia:database:remove-connection",
 	LIST_TABLES: "astravia:database:list-tables",
+	LIST_CATALOG_SCOPES: "astravia:database:list-catalog-scopes",
 	DESCRIBE_TABLE: "astravia:database:describe-table",
 	EXECUTE_QUERY: "astravia:database:execute-query",
 	GET_SCHEMA_CONTEXT: "astravia:database:get-schema-context",
@@ -28,11 +35,14 @@ export function createDatabaseApi(ipcRenderer: IpcRenderer): Pick<DesktopApi, "d
 			addConnection: (params: DbAddConnectionParams) => ipcRenderer.invoke(CHANNELS.ADD_CONNECTION, params),
 			testConnection: (params: DbTestConnectionParams) => ipcRenderer.invoke(CHANNELS.TEST_CONNECTION, params),
 			removeConnection: (id: string) => ipcRenderer.invoke(CHANNELS.REMOVE_CONNECTION, id),
-			listTables: (connectionName: string) => ipcRenderer.invoke(CHANNELS.LIST_TABLES, connectionName),
-			describeTable: (connectionName: string, table: string) =>
-				ipcRenderer.invoke(CHANNELS.DESCRIBE_TABLE, connectionName, table),
-			executeQuery: (connectionName: string, sql: string) =>
-				ipcRenderer.invoke(CHANNELS.EXECUTE_QUERY, connectionName, sql),
+			listTables: (connectionName: string, scope?: DbTableScope) =>
+				ipcRenderer.invoke(CHANNELS.LIST_TABLES, connectionName, scope),
+			listCatalogScopes: (connectionName: string, family: DbCatalogFamily) =>
+				ipcRenderer.invoke(CHANNELS.LIST_CATALOG_SCOPES, connectionName, family),
+			describeTable: (connectionName: string, table: string, scope?: DbTableScope) =>
+				ipcRenderer.invoke(CHANNELS.DESCRIBE_TABLE, connectionName, table, scope),
+			executeQuery: (connectionName: string, sql: string, options?: DbExecuteQueryOptions) =>
+				ipcRenderer.invoke(CHANNELS.EXECUTE_QUERY, connectionName, sql, options),
 			getSchemaContext: (connectionName: string) => ipcRenderer.invoke(CHANNELS.GET_SCHEMA_CONTEXT, connectionName),
 		},
 	};

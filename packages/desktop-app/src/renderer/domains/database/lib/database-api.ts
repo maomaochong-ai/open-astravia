@@ -1,11 +1,15 @@
 import type {
 	DatabaseError,
 	DbAddConnectionParams,
+	DbCatalogFamily,
+	DbCatalogScope,
 	DbColumnInfo,
 	DbConnection,
 	DbConnectionTestResult,
+	DbExecuteQueryOptions,
 	DbQueryResult,
 	DbTableInfo,
+	DbTableScope,
 	DbTestConnectionParams,
 } from "../../../../preload/api-types/database.js";
 
@@ -24,12 +28,15 @@ import type {
 /** 稳定领域类型（UI / AI 集成用）。 */
 export type {
 	DbAddConnectionParams,
+	DbCatalogFamily,
+	DbCatalogScope,
 	DbColumnInfo,
 	DbConnection,
 	DbConnectionTestResult,
 	DatabaseError,
 	DbQueryResult,
 	DbTableInfo,
+	DbTableScope,
 	DbTestConnectionParams,
 };
 
@@ -59,19 +66,32 @@ export async function removeConnection(id: string): Promise<void> {
 	unwrapDatabaseResult(await window.astravia.database.removeConnection(id));
 }
 
-/** 列出连接下全部表。 */
-export async function listTables(connectionName: string): Promise<DbTableInfo[]> {
-	return unwrapDatabaseResult(await window.astravia.database.listTables(connectionName));
+/** 列出连接下全部表（可选 catalog 作用域：schema / database）。 */
+export async function listTables(connectionName: string, scope?: DbTableScope): Promise<DbTableInfo[]> {
+	return unwrapDatabaseResult(await window.astravia.database.listTables(connectionName, scope));
 }
 
-/** 查看表结构。 */
-export async function describeTable(connectionName: string, table: string): Promise<DbColumnInfo[]> {
-	return unwrapDatabaseResult(await window.astravia.database.describeTable(connectionName, table));
+/** 枚举 catalog 中间层作用域名（schema / database；flat 连接返回空数组）。 */
+export async function listCatalogScopes(connectionName: string, family: DbCatalogFamily): Promise<string[]> {
+	return unwrapDatabaseResult(await window.astravia.database.listCatalogScopes(connectionName, family));
 }
 
-/** 执行查询（SELECT），返回结构化结果。 */
-export async function executeQuery(connectionName: string, sql: string): Promise<DbQueryResult> {
-	return unwrapDatabaseResult(await window.astravia.database.executeQuery(connectionName, sql));
+/** 查看表结构（可选 catalog 作用域：schema / database）。 */
+export async function describeTable(
+	connectionName: string,
+	table: string,
+	scope?: DbTableScope,
+): Promise<DbColumnInfo[]> {
+	return unwrapDatabaseResult(await window.astravia.database.describeTable(connectionName, table, scope));
+}
+
+/** 执行查询（SELECT / 写语句）。options.confirmedWrite：写/DDL 语句经 UI 危险确认后重发放行。 */
+export async function executeQuery(
+	connectionName: string,
+	sql: string,
+	options?: DbExecuteQueryOptions,
+): Promise<DbQueryResult> {
+	return unwrapDatabaseResult(await window.astravia.database.executeQuery(connectionName, sql, options));
 }
 
 /** 获取连接 schema 上下文（供 AI 注入使用）。 */

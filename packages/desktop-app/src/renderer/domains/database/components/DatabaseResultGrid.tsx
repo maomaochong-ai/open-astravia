@@ -46,6 +46,8 @@ const AUTO_REFRESH_INTERVALS = [5, 10, 30, 60] as const;
 		loadingPage?: boolean;
 		/** V6-② 服务端翻页：请求指定页（workspace 转调 useDatabaseQueryModel.goToPage）。 */
 		onGoToPage?: (page: number) => void;
+		/** 服务端分页下切换每页行数：workspace 注入时页脚显示行数下拉（对齐 dbx rows-per-page）。 */
+		onPageSizeChange?: (size: number) => void;
 		/** B2.9-W1 反向：结果工具栏「让 AI 解读此查询」入口（携带当前 SQL + 结果摘要跳转对话）。 */
 		onAnalyzeResult?: () => void;
 		/** B3.2-R 数据编辑：打开表浏览或可编辑自由 SQL（简单单表 SELECT）结果均可开启（Workspace 计算后传入）。 */
@@ -86,6 +88,31 @@ function CenterState({ icon, text, spin }: { icon: string; text: string; spin?: 
 	);
 }
 
+/**
+ * 运行中态（#1 对齐 dbx QueryLoadingState）：spinner + 文案 + 自增耗时秒数。
+ * 组件仅在 status === "running" 时挂载，卸载即清理计时器，天然按“每次执行”归零。
+ */
+function RunningState(): JSX.Element {
+	const { t } = useTranslation("settings");
+	const [seconds, setSeconds] = useState(0);
+	useEffect(() => {
+		const startedAt = Date.now();
+		const timer = window.setInterval(() => {
+			setSeconds(Math.floor((Date.now() - startedAt) / 1000));
+		}, 1000);
+		return () => window.clearInterval(timer);
+	}, []);
+	return (
+		<div className="flex h-full flex-col items-center justify-center gap-2.5 px-6 text-center">
+			<Spin />
+			<p className="max-w-[360px] text-[12px] leading-relaxed text-muted-foreground">{t("databaseRunning")}</p>
+			{seconds > 0 ? (
+				<p className="text-[11px] tabular-nums text-muted-foreground/50">{t("databaseRunningElapsed", { seconds })}</p>
+			) : null}
+		</div>
+	);
+}
+
 /** 触发浏览器下载（V4-① 导出）。 */
 function downloadTextFile(filename: string, content: string, mime: string): void {
 	const blob = new Blob([content], { type: mime });
@@ -112,6 +139,7 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 		pageSize = null,
 		loadingPage = false,
 		onGoToPage,
+		onPageSizeChange,
 		onAnalyzeResult,
 		editable = false,
 		canAddRow = false,
@@ -187,6 +215,9 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 	const totalPages = pageCount(totalRows, effectivePageSize);
 	const safePage = clampPage(effectivePage, totalRows, effectivePageSize);
 	const visibleRows = pageSlice(sortedRows, safePage, effectivePageSize);
+	// 行号基准偏移：服务端分页时直接用未钳制的 page（当前页首行的全局偏移），
+	// 否则 clampPage 会把整页行数(≤100)页算成 1 页，行号从 1 重来（对齐 dbx 行号随翻页续增）。
+	const rowStartOffset = (serverPaged ? (page ?? 1) - 1 : safePage - 1) * effectivePageSize;
 
 	const exportCsv = () => {
 		if (!result) return;
@@ -249,7 +280,6 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 								{t("databaseResultTruncated")}
 							</span>
 						) : null}
-						{result.durationMs ? <span className="shrink-0">{result.durationMs}</span> : null}
 						{result.durationMs ? <span className="shrink-0">{result.durationMs}</span> : null}
 						{/* B3.2-R 工具栏：只读/无主键徽章 + 刷新 + 自动刷新 + 添加行；对齐 dbx DataGridToolbar。 */}
 						{readOnlyReason ? (
@@ -405,7 +435,7 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 			{status === "idle" ? (
 				<CenterState icon="icon-[mdi--table-large]" text={t("databaseResultIdle")} />
 			) : status === "running" ? (
-				<CenterState icon="" text={t("databaseRunning")} spin />
+				<RunningState />
 			) : status === "error" ? (
 				<div className="px-4 pb-4">
 					<DatabaseNotice tone="error" title={error ?? t("databaseQueryFailed")}>
@@ -473,7 +503,7 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 									<tr key={rowIndex} className="group">
 										<td className="border-b border-border/25 px-2 py-1 text-right text-[10.5px] text-muted-foreground/60">
 											<span className="inline-flex items-center gap-1">
-												{(safePage - 1) * effectivePageSize + rowIndex + 1}
+												{rowStartOffset + rowIndex + 1}
 												{editMode && onDeleteRow ? (
 													<button
 														type="button"
@@ -612,13 +642,33 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 						</div>
 					) : null}
 					</div>
-					{(totalPages > 1 || canGoNextPage) && (
+					{((serverPaged && totalRows > 0) || totalPages > 1 || canGoNextPage) && (
 						<div className="flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-border/30 px-4 py-1.5">
 							<div className="flex min-w-0 items-center gap-2">
 								{serverPaged ? (
-									<span className="shrink-0 text-[11px] tabular-nums text-muted-foreground/70">
-										{t("databasePageInfo", { page: page ?? 1, pageSize: pageSize ?? 100 })}
-									</span>
+									<>
+										{onPageSizeChange ? (
+											<select
+												value={pageSize ?? 100}
+												onChange={(event) => {
+													onPageSizeChange(Number(event.target.value));
+													recordSettingsUsage({ tab: "database", action: "selected", target: "result-page-size" });
+												}}
+												aria-label={t("databasePageSize")}
+												title={t("databasePageSize")}
+												className="h-6 shrink-0 rounded-md border border-border/60 bg-background px-1 text-[11px] text-muted-foreground outline-none focus-visible:border-primary/50"
+											>
+												{[20, 50, 100].map((size) => (
+													<option key={size} value={size}>
+														{size}
+													</option>
+												))}
+											</select>
+										) : null}
+										<span className="shrink-0 text-[11px] tabular-nums text-muted-foreground/70">
+											{t("databaseRowsRange", { start: rowStartOffset + 1, end: rowStartOffset + totalRows, page: page ?? 1 })}
+										</span>
+									</>
 								) : totalPages > 1 ? (
 									<>
 										<select

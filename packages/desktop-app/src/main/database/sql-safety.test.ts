@@ -160,11 +160,37 @@ describe("maybeBlockWrite", () => {
 	it("prod 已授权放行", () => {
 		expect(maybeBlockWrite({ env: "prod", writeApproved: true, sql: "DELETE FROM t" })).toBeNull();
 	});
-	it("DDL 无论模式一律拦截", () => {
-		const strict = maybeBlockWrite({ env: "dev", writeApproved: true, sql: "CREATE TABLE t (a int)" });
+	it("DDL 未确认/未授权时拦截（dev）", () => {
+		const strict = maybeBlockWrite({ env: "dev", writeApproved: false, sql: "CREATE TABLE t (a int)" });
 		expect(strict?.code).toBe("DDL_BLOCKED");
-		const relaxed = maybeBlockWrite({ env: "dev", safetyMode: "relaxed", writeApproved: true, sql: "DROP TABLE t" });
+		const relaxed = maybeBlockWrite({ env: "dev", safetyMode: "relaxed", writeApproved: false, sql: "DROP TABLE t" });
 		expect(relaxed?.code).toBe("DDL_BLOCKED");
+	});
+	it("DDL 经 UI 确认后放行（dev）", () => {
+		expect(
+			maybeBlockWrite({ env: "dev", writeApproved: false, confirmedWrite: true, sql: "CREATE TABLE t (a int)" }),
+		).toBeNull();
+		expect(
+			maybeBlockWrite({
+				env: "dev",
+				safetyMode: "relaxed",
+				writeApproved: true,
+				sql: "DROP TABLE t",
+			}),
+		).toBeNull();
+	});
+	it("DDL on prod 需连接级授权（W4-②）", () => {
+		const blocked = maybeBlockWrite({ env: "prod", writeApproved: false, sql: "CREATE TABLE t (a int)" });
+		expect(blocked?.code).toBe("PROD_WRITE_BLOCKED");
+		expect(
+			maybeBlockWrite({ env: "prod", writeApproved: false, confirmedWrite: true, sql: "DROP TABLE t" }),
+		).not.toBeNull();
+		expect(maybeBlockWrite({ env: "prod", writeApproved: true, sql: "CREATE TABLE t (a int)" })).toBeNull();
+	});
+	it("strict：DML 经 UI 确认后放行（dev）", () => {
+		expect(
+			maybeBlockWrite({ env: "dev", writeApproved: false, confirmedWrite: true, sql: "DELETE FROM t" }),
+		).toBeNull();
 	});
 	it("多语句：SELECT 后跟写语句整体拦截", () => {
 		const blocked = maybeBlockWrite({ env: "dev", writeApproved: false, sql: "SELECT 1; DELETE FROM t" });

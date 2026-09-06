@@ -34,6 +34,8 @@ export interface DatabaseConnectionTestSnapshot {
 	readonly status: DatabaseConnectionTestStatus;
 	readonly detail: string;
 	readonly tableCount: number;
+	/** 最近一次测试完成的毫秒时间戳（供状态点悬浮提示展示时间）。 */
+	readonly testedAt: number;
 }
 
 /** 感知范围类型（B2.10-W4-①）。 */
@@ -333,19 +335,22 @@ export function useDatabaseWorkspaceModel(): DatabaseWorkspaceModel {
 	const testSaved = useCallback(
 		async (name: string) => {
 			setTestingName(name);
-			setTestSnapshots((prev) => ({ ...prev, [name]: { status: "testing", detail: "", tableCount: 0 } }));
+			setTestSnapshots((prev) => ({
+				...prev,
+				[name]: { status: "testing", detail: "", tableCount: 0, testedAt: Date.now() },
+			}));
 			try {
 				const result = await testConnection({ connectionName: name });
 				setTestSnapshots((prev) => ({
 					...prev,
-					[name]: { status: "ok", detail: result.detail, tableCount: result.tableCount },
+					[name]: { status: "ok", detail: result.detail, tableCount: result.tableCount, testedAt: Date.now() },
 				}));
 				recordSettingsUsage({ tab: "database", action: "tested", target: "connection" });
 			} catch (caught) {
 				const { detail } = formatError(t, caught);
 				setTestSnapshots((prev) => ({
 					...prev,
-					[name]: { status: "failed", detail: detail ?? "", tableCount: 0 },
+					[name]: { status: "failed", detail: detail ?? "", tableCount: 0, testedAt: Date.now() },
 				}));
 			} finally {
 				setTestingName(null);

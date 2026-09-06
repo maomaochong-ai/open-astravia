@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { useCallback, useEffect, useId, useRef, useState, type JSX, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type JSX, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 
 function cn(...parts: Array<string | false | null | undefined>): string {
 	return parts.filter(Boolean).join(" ");
@@ -32,6 +32,8 @@ export interface TabBarProps<T extends string> {
 	 * 由父级渲染到"下拉"菜单里。传了此回调即开启响应式收纳。
 	 */
 	onOverflowChange?: (overflowKeys: T[]) => void;
+	/** 页签右键：父级可弹自定义上下文菜单；未传则禁用右键菜单（事件已 preventDefault，避免浏览器菜单）。 */
+	onContextMenu?: (event: ReactMouseEvent<HTMLDivElement>, key: T) => void;
 }
 
 /** 页签条左右内边距（px-3 = 0.75rem）。 */
@@ -143,6 +145,7 @@ export function TabBar<T extends string>({
 	onRemove,
 	onReorder,
 	onOverflowChange,
+	onContextMenu,
 }: TabBarProps<T>): JSX.Element {
 	const layoutId = useId();
 	// 拖拽中：dragKey 为被拖动的页签，order 为拖拽过程中的临时顺序（提交前不触碰 props）
@@ -244,6 +247,11 @@ export function TabBar<T extends string>({
 							key={key}
 							style={{ zIndex }}
 							draggable={onReorder != null}
+							onContextMenu={(e) => {
+								if (!onContextMenu) return;
+								e.preventDefault();
+								onContextMenu(e, key);
+							}}
 							onDragStart={() => beginDrag(key)}
 							onDragEnter={() => dragOver(key)}
 							onDragOver={(e) => {

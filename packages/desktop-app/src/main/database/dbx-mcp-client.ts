@@ -1,4 +1,8 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
+import { mkdirSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { app } from "electron";
 import { resolveDbxMcpBinaryPath } from "../mcp/dbx-mcp-path.js";
 
 /**
@@ -25,6 +29,26 @@ export interface DbxToolResult {
 }
 
 const HANDSHAKE_TIMEOUT_MS = 15_000;
+
+/**
+ * astravia 私有的 dbx 引擎数据目录。
+ *
+ * dbx-mcp 上游用 DBX_DATA_DIR 覆盖数据目录（paths.rs:6），未设置时 macOS 默认
+ * 落到 ~/Library/Application Support/com.dbx.app —— 与官方 dbx 桌面应用共享同一份
+ * dbx.db，导致 astravia 创建的连接出现在官方应用中。这里固定注入到本应用
+ * userData 下，保证两者连接配置完全独立。
+ */
+function dbxEngineDataDir(): string {
+	// 仅 Electron main 进程可用 app.getPath；vitest / 独立运行环境（app 无 getPath）回退到 ~/.astravia。
+	const base =
+		typeof app === "object" && app !== null && typeof app.getPath === "function"
+			? app.getPath("userData")
+			: join(homedir(), ".astravia");
+	const dir = join(base, "dbx-engine");
+	mkdirSync(dir, { recursive: true });
+	return dir;
+}
+
 const CALL_TIMEOUT_MS = 60_000;
 const SHUTDOWN_GRACE_MS = 2_000;
 
@@ -67,7 +91,10 @@ export class DbxMcpClient {
 
 	private spawnAndHandshake(): Promise<void> {
 		const bin = resolveDbxMcpBinaryPath();
-		const child = spawn(bin, [], { stdio: ["pipe", "pipe", "pipe"] });
+		const child = spawn(bin, [], {
+			stdio: ["pipe", "pipe", "pipe"],
+			env: { ...process.env, DBX_DATA_DIR: dbxEngineDataDir() },
+		});
 		this.child = child;
 
 		child.stdout.setEncoding("utf8");

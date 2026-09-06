@@ -1,6 +1,18 @@
-import type { JSX, ReactNode } from "react";
+import type { JSX, MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Button, cn, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@astravia/ui";
+import {
+	Button,
+	cn,
+	Dialog,
+	DialogContent,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@astravia/ui";
 import { ResizeHandle } from "@astravia/theme-ui";
 import { useAtomValue, useSetAtom } from "jotai";
 import { motion } from "motion/react";
@@ -13,7 +25,13 @@ import type { DatabaseTabTarget } from "@shared/store/atoms";
 import { DatabaseConnectionDetailsWorkbench } from "./DatabaseConnectionDetailsWorkbench";
 import { DatabaseConnectionForm } from "./DatabaseConnectionForm";
 import { DatabaseDetail } from "./DatabaseDetail";
-import { DatabaseExplorerTree } from "./DatabaseExplorerTree";
+import { DatabaseExplorerTree, type DatabaseRevealTarget } from "./DatabaseExplorerTree";
+import {
+	DatabaseExplorerContextMenu,
+	type DatabaseContextMenuItem,
+} from "./DatabaseExplorerContextMenu";
+import { DatabaseQueryHistoryPopover } from "./DatabaseQueryHistoryPopover";
+import type { QueryHistoryEntry } from "../lib/query-history";
 import { DatabaseListHeader } from "./DatabaseListHeader";
 import { DatabaseNotice } from "./DatabaseNotice";
 import { DatabaseQueryPanel } from "./DatabaseQueryPanel";
@@ -24,9 +42,10 @@ import { DatabaseTypeBadge } from "./DatabaseTypeBadge";
 import { DatabaseWorkspaceHeader } from "./DatabaseWorkspaceHeader";
 import { SettingsAiAssist } from "../../settings/ai-assist";
 import { recordSettingsUsage } from "../../settings/components/recordSettingsUsage";
+import { catalogFamilyOfType, scopeToTableScope, tableScopeQualifier } from "../lib/catalog-family";
 import { describeTable, executeQuery, getSchemaContext } from "../lib/database-api";
 import { formatDatabaseError } from "../lib/database-error-labels";
-import { buildDeleteSql, buildInsertSql, buildRowWhere, buildUpdateSql } from "../lib/sql-dialect";
+import { buildDeleteSql, buildInsertSql, buildOpenTableSql, buildRowWhere, buildUpdateSql } from "../lib/sql-dialect";
 import { analyzeEditableQuery, type EditableQueryAnalysis } from "../lib/sql-editability";
 import { resolveDatabaseLayout } from "./database-layout";
 import { useDatabaseAnalyzeResult } from "./useDatabaseAnalyzeResult";
@@ -40,6 +59,8 @@ const EASE_OUT = [0.22, 1, 0.36, 1] as const;
 const TREE_WIDTH_DEFAULT = 280;
 const TREE_WIDTH_MIN = 200;
 const TREE_WIDTH_MAX = 380;
+
+const USER_GROUPS_KEY = "astravia:database:user-groups";
 
 /**
  * 三栏经典数据库工具界面（B2.6-R 后挂载于活动面板「数据库」标签页，数据工作台）：
@@ -86,15 +107,113 @@ export function DatabaseWorkspace({
 		[lastResultSql],
 	);
 	const explorer = useDatabaseExplorerModel();
+	// 顶栏动作（对齐 dbx AppSidebar 工具按钮组，h-5 w-5 / 12px）：全部折叠 / 全部刷新 / 新建分组（顶部「+」）。
+	// dbx 常态无「全部展开」键（展开走树节点），故不提供；导入导出、收起侧栏因能力缺失不加。
+	// V6-④ 用户自定义分组：仅组名持久化本地（dbx-mcp 连接自身分组原样保留，不写回数据面）。
+	const handleCollapseAllConnections = () => {
+		const names = model.connections.map((connection) => connection.name);
+		if (names.length === 0) return;
+		explorer.actions.collapseConnections(names);
+		recordSettingsUsage({ tab: "database", action: "selected", target: "explorer-collapse-all" });
+	};
+	const handleRefreshAllConnections = () => {
+		for (const connection of model.connections) {
+			const family = catalogFamilyOfType(connection.type);
+			if (family === "flat") explorer.actions.reloadTables(connection.name);
+			else explorer.actions.reloadScopes(connection.name, family);
+		}
+		recordSettingsUsage({ tab: "database", action: "selected", target: "explorer-refresh-all" });
+	};
+	const [userGroups, setUserGroups] = useState<string[]>(() => {
+		try {
+			const raw = localStorage.getItem(USER_GROUPS_KEY);
+			return raw ? (JSON.parse(raw) as string[]) : [];
+		} catch {
+			return [];
+		}
+	});
+	const [groupDialogOpen, setGroupDialogOpen] = useState(false);
+	const handleDeleteUserGroup = (group: string) => {
+		const next = userGroups.filter((item) => item !== group);
+		setUserGroups(next);
+		try {
+			localStorage.setItem(USER_GROUPS_KEY, JSON.stringify(next));
+		} catch {
+			// localStorage 不可用时仅内存态有效
+		}
+	};
+	const [groupName, setGroupName] = useState("");
+	const openGroupDialog = () => setGroupDialogOpen(true);
+	const createUserGroup = () => {
+		const name = groupName.trim();
+		if (!name || userGroups.includes(name)) return;
+		const next = [...userGroups, name];
+		setUserGroups(next);
+		try {
+			localStorage.setItem(USER_GROUPS_KEY, JSON.stringify(next));
+		} catch {
+			// localStorage 不可用时仅内存态有效，不阻断建组
+		}
+		setGroupName("");
+		setGroupDialogOpen(false);
+	};
+	const createGroupDialog = (
+		<Dialog open={groupDialogOpen} onOpenChange={setGroupDialogOpen}>
+			<DialogContent className="w-[300px]">
+				<DialogHeader>
+					<DialogTitle>{t("databaseCreateGroup")}</DialogTitle>
+				</DialogHeader>
+				<input
+					value={groupName}
+					autoFocus
+					placeholder={t("databaseGroupNamePlaceholder")}
+					onChange={(event) => setGroupName(event.target.value)}
+					onKeyDown={(event) => {
+						if (event.key === "Enter") createUserGroup();
+					}}
+					className="h-8 w-full rounded-md border border-border bg-background px-2.5 text-sm outline-none transition-colors focus:border-primary/60"
+				/>
+				<DialogFooter>
+					<Button variant="ghost" size="sm" onClick={() => setGroupDialogOpen(false)}>
+						{t("databaseCancel")}
+					</Button>
+					<Button variant="primary" size="sm" onClick={createUserGroup} disabled={!groupName.trim()}>
+						{t("databaseGroupCreateBtn")}
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
 	const selected = model.selected;
+	const activeTabConnectionName = query.activeTabConnectionName;
+	// V7-② 查询执行上下文：优先取激活标签绑定的连接(tab 新建/打开表/AI 回填时锁定,对齐 dbx「tab 自带连接」),未绑定才回退当前选中连接。
+	// 语义:一个标签 = 属于某个连接的独立工作单元;切树选择不再改变已开标签的运行目标,避免多连接下把 SQL 打到错误库。
+	const effectiveConnection = useMemo(
+		() => model.connections.find((connection) => connection.name === activeTabConnectionName) ?? selected,
+		[model.connections, activeTabConnectionName, selected],
+	);
 	const setConfirm = useSetAtom(confirmDialogAtom);
 	// B3.2 数据编辑：当前打开表的主键列（行级定位）；无主键则禁用编辑（安全默认）。
 	const openTableMeta = query.openTableMeta;
 	// B3.2-R 编辑目标：打开表 → openTableMeta；自由 SQL → 可编辑性分析通过的单表来源（方言类型用连接类型）。
 	const editTarget = useMemo(
-		() => openTableMeta ?? (editability.editable && selected ? { type: selected.type, table: editability.info.table } : null),
-		[editability, openTableMeta, selected],
+		() =>
+			openTableMeta ??
+			(editability.editable && effectiveConnection
+				? { type: effectiveConnection.type, table: editability.info.table, scope: null }
+				: null),
+		[editability, openTableMeta, effectiveConnection],
 	);
+
+	// V6-③ 定位当前表：打开表的 tab(openTableMeta)存在时，向树下发定位目标。
+	// 连接名取该 tab 实际执行连接(activeTabConnectionName/resultConnectionName，tab 打开表即绑定该连接)，与树当前选择无关。
+	const revealTarget = useMemo((): DatabaseRevealTarget | null => {
+		if (!openTableMeta) return null;
+		const connection = query.activeTabConnectionName ?? query.resultConnectionName ?? null;
+		if (!connection) return null;
+		const scopeName = tableScopeQualifier(openTableMeta.scope) ?? null;
+		return { connection, table: openTableMeta.table, scope: scopeName };
+	}, [openTableMeta, query.activeTabConnectionName, query.resultConnectionName]);
 	const [pkColumns, setPkColumns] = useState<string[]>([]);
 	// B3.2-R 表结构读取状态：loading（describeTable 在飞）/ ready / failed（读取失败需暴露原因，不静默）。
 	const [pkState, setPkState] = useState<"loading" | "ready" | "failed">("loading");
@@ -102,14 +221,14 @@ export function DatabaseWorkspace({
 
 	// 主键加载：编辑目标（打开表或可编辑自由 SQL 的来源表）结果就绪时读取表结构，供单元格编辑/删除行定位 WHERE。
 	useEffect(() => {
-		if (!selected || !editTarget || query.status !== "success") {
+		if (!effectiveConnection || !editTarget || query.status !== "success") {
 			setPkColumns([]);
 			setPkState("loading");
 			return;
 		}
 		let cancelled = false;
 		setPkState("loading");
-		void describeTable(selected.name, editTarget.table)
+		void describeTable(effectiveConnection.name, editTarget.table, editTarget.scope ?? undefined)
 			.then((columns) => {
 				if (!cancelled) {
 					setPkColumns(columns.filter((column) => column.isPrimaryKey).map((column) => column.name));
@@ -125,34 +244,35 @@ export function DatabaseWorkspace({
 		return () => {
 			cancelled = true;
 		};
-	}, [editTarget, query.status, selected]);
+	}, [editTarget, query.status, effectiveConnection]);
 
 	// B3.2 写操作执行：确认后执行写 SQL（main 侧仍有 prod 写保护兜底）→ 成功刷新（打开表 reloadOpenTable / 自由 SQL rerun 不推历史）；失败在网格底部展示。
 	const runWrite = useCallback(
 		async (sql: string) => {
-			if (!selected) return;
+			if (!effectiveConnection) return;
 			try {
-				await executeQuery(selected.name, sql);
+				// 数据编辑（保存单元格/加行/删行）前已弹确认对话框，此处 confirmedWrite 放行写/DDL。
+				await executeQuery(effectiveConnection.name, sql, { confirmedWrite: true });
 				setWriteError(null);
 				if (query.openTableMeta) {
-					await query.actions.reloadOpenTable(selected);
+					await query.actions.reloadOpenTable(effectiveConnection);
 				} else if (query.resultSql) {
-					await query.actions.rerun(selected, query.resultSql);
+					await query.actions.rerun(effectiveConnection, query.resultSql);
 				}
 			} catch (caught) {
 				const { message, detail } = formatDatabaseError(t, caught);
 				setWriteError(detail || message);
 			}
 		},
-		[query.actions, query.openTableMeta, query.resultSql, selected, t],
+		[query.actions, query.openTableMeta, query.resultSql, effectiveConnection, t],
 	);
 
 	const handleSaveCell = useCallback(
 		({ row, column, value }: { row: Record<string, string>; column: string; value: string }) => {
-			if (!selected || !editTarget) return;
+			if (!editTarget) return;
 			const where = buildRowWhere(row, pkColumns, lastResultColumns);
 			const hasPk = pkColumns.some((pk) => pk in row);
-			const sql = buildUpdateSql(editTarget.type, editTarget.table, [{ column, value }], where);
+			const sql = buildUpdateSql(editTarget.type, editTarget.table, [{ column, value }], where, tableScopeQualifier(editTarget.scope));
 			setConfirm({
 				title: t("databaseEditConfirm"),
 				message:
@@ -165,16 +285,17 @@ export function DatabaseWorkspace({
 				},
 			});
 		},
-		[lastResultColumns, editTarget, pkColumns, runWrite, selected, setConfirm, t],
+		[lastResultColumns, editTarget, pkColumns, runWrite, setConfirm, t],
 	);
 
 	const handleAddRow = useCallback(
 		({ values }: { values: Record<string, string> }) => {
-			if (!selected || !editTarget) return;
+			if (!editTarget) return;
 			const sql = buildInsertSql(
 				editTarget.type,
 				editTarget.table,
 				Object.keys(values).map((column) => ({ column, value: values[column] })),
+				tableScopeQualifier(editTarget.scope),
 			);
 			setConfirm({
 				title: t("databaseEditConfirmAddRow"),
@@ -186,15 +307,15 @@ export function DatabaseWorkspace({
 				},
 			});
 		},
-		[editTarget, runWrite, selected, setConfirm, t],
+		[editTarget, runWrite, setConfirm, t],
 	);
 
 	const handleDeleteRow = useCallback(
 		({ row }: { row: Record<string, string> }) => {
-			if (!selected || !editTarget) return;
+			if (!editTarget) return;
 			const where = buildRowWhere(row, pkColumns, lastResultColumns);
 			const hasPk = pkColumns.some((pk) => pk in row);
-			const sql = buildDeleteSql(editTarget.type, editTarget.table, where);
+			const sql = buildDeleteSql(editTarget.type, editTarget.table, where, tableScopeQualifier(editTarget.scope));
 			setConfirm({
 				title: t("databaseEditConfirmDeleteRow"),
 				message:
@@ -208,26 +329,26 @@ export function DatabaseWorkspace({
 				},
 			});
 		},
-		[lastResultColumns, editTarget, pkColumns, runWrite, selected, setConfirm, t],
+		[lastResultColumns, editTarget, pkColumns, runWrite, setConfirm, t],
 	);
 
 	// B2.6-W 反馈 3：工作台「问数」入口 —— 复用 SettingsAiAssist 弹层形态，提交时把
 	// 当前连接的 schema 摘要注入 agent instruction（模型可见、用户气泡不可见）。
 	const askExtraInstruction = useCallback(async () => {
-		if (!selected) return "";
-		// B2.9-W3 埋点：工作台「问数」入口提交（含当前连接 schema 注入）。
+		if (!effectiveConnection) return "";
+		// B2.9-W3 埋点：工作台「问数」入口提交(含当前执行连接 schema 注入)。
 		recordSettingsUsage({ tab: "database", action: "selected", target: "ask-data" });
 		let schema = "";
 		try {
-			schema = await getSchemaContext(selected.name);
+			schema = await getSchemaContext(effectiveConnection.name);
 		} catch {
 			schema = "";
 		}
 		return i18n.t("settings:databaseAskData.instruction", {
-			connection: selected.name,
+			connection: effectiveConnection.name,
 			schema: schema || i18n.t("settings:databaseAskData.noSchema"),
 		});
-	}, [selected]);
+	}, [effectiveConnection]);
 
 	// B2.6-R 自适应：读取活动面板当前宽度；窄屏 bottomSheet 全宽时视为 wide 三栏直出。
 	const narrowScreen = useNarrowScreen();
@@ -243,6 +364,8 @@ export function DatabaseWorkspace({
 	const [treeWidth, setTreeWidth] = useState(TREE_WIDTH_DEFAULT);
 	// V5-③ 标签条响应式收纳：放不下的查询标签 key（TabBar 经 onOverflowChange 上报，渲染到「更多」下拉）。
 	const [overflowTabIds, setOverflowTabIds] = useState<string[]>([]);
+	// V7-⑧ 查询标签右键菜单：记录触发坐标与目标标签（内容在 JSX 组装）。
+	const [tabMenu, setTabMenu] = useState<{ x: number; y: number; tabId: string } | null>(null);
 
 	const showTree = treeOverride ?? layout.autoTree;
 	const showDetails = detailsOverride ?? layout.autoDetails;
@@ -321,7 +444,34 @@ export function DatabaseWorkspace({
 	// V5-③ 查询标签操作：新建 / 切换 / 关闭 / 拖拽排序（V5-④ 目标 tab 路由在模型 actions 内实现）。
 	const handleNewTab = () => {
 		recordSettingsUsage({ tab: "database", action: "selected", target: "query-tab-new" });
-		query.actions.addTab();
+		// V7-⑨ 对齐 dbx：当激活标签正在浏览某表（openTableMeta）时，新查询预填 SELECT 该表（含作用域限定 + 当前页范围）;
+		// 否则为空白新标签。新建即绑定当前执行连接（激活标签绑定优先，回退树选中）。
+		const meta = query.openTableMeta;
+		const scopeText = meta?.scope ? (meta.scope.schema ?? meta.scope.database ?? undefined) : undefined;
+		const prefilledSql = meta
+			? buildOpenTableSql(meta.type, meta.table, meta.pageSize, (meta.page - 1) * meta.pageSize, scopeText)
+			: null;
+		query.actions.addTab(effectiveConnection?.name ?? undefined, prefilledSql);
+	};
+	const handleHistoryRestore = (entry: QueryHistoryEntry) => {
+		recordSettingsUsage({ tab: "database", action: "selected", target: "query-history-restore" });
+		query.actions.addTab(entry.connection || undefined, entry.sql);
+	};
+	const handleHistoryCopy = (entry: QueryHistoryEntry) => {
+		recordSettingsUsage({ tab: "database", action: "selected", target: "query-history-copy" });
+		void navigator.clipboard?.writeText(entry.sql).catch(() => {});
+	};
+	const handleHistoryDelete = (id: string) => {
+		recordSettingsUsage({ tab: "database", action: "selected", target: "query-history-delete" });
+		query.actions.removeHistoryEntry(id);
+	};
+	const handleHistoryClear = () => {
+		recordSettingsUsage({ tab: "database", action: "selected", target: "query-history-clear" });
+		query.actions.clearHistory();
+	};
+	const handleTabContextMenu = (event: ReactMouseEvent<HTMLDivElement>, tabId: string) => {
+		recordSettingsUsage({ tab: "database", action: "selected", target: "query-tab-context-menu" });
+		setTabMenu({ x: event.clientX, y: event.clientY, tabId });
 	};
 	const handleTabChange = (id: string) => {
 		if (id === query.activeTabId) return;
@@ -360,16 +510,28 @@ export function DatabaseWorkspace({
 		</div>
 	) : (
 		<DatabaseExplorerTree
+			userGroups={userGroups}
+			onDeleteUserGroup={handleDeleteUserGroup}
 			connections={model.connections}
 			selectedName={selected?.name ?? null}
 			explorer={explorer}
 			statusOf={(name) => model.testSnapshots[name]?.status ?? "untested"}
+
+			snapshotOf={(name) => model.testSnapshots[name] ?? null}
 			onSelect={model.actions.select}
-			onOpenTable={(connection, table) => {
+			onOpenQuery={(connection) => {
+				recordSettingsUsage({ tab: "database", action: "selected", target: "query-tab-open-connection" });
+				// 双击连接 → 选中该连接并新建 SQL 查询 tab(与 dbx 一致:连接树双击开新查询,tab 绑定该连接)。
+				model.actions.select(connection.name);
+				query.actions.addTab(connection.name);
+			}}
+			onOpenTable={(connection, table, scope, forceNewTab) => {
 				recordSettingsUsage({ tab: "database", action: "selected", target: "query-tab-open-table" });
-				void query.actions.openTable(connection, table);
+				void query.actions.openTable(connection, table, scope ? scopeToTableScope(scope) : null, forceNewTab);
 			}}
 			onAnalyzeTable={analyzeTable}
+			onTestConnection={(name) => void model.actions.testSaved(name)}
+			revealTarget={revealTarget}
 		/>
 	);
 
@@ -403,6 +565,26 @@ export function DatabaseWorkspace({
 				}
 				actions={
 					<>
+						<DatabaseQueryHistoryPopover
+							entries={query.history}
+							onRestore={handleHistoryRestore}
+							onCopy={handleHistoryCopy}
+							onDelete={handleHistoryDelete}
+							onClear={handleHistoryClear}
+						/>
+						{/* V6-② 对齐 dbx「New Query」：新建查询入口常驻顶栏；无选中连接时禁用。 */}
+						<Button
+							variant="ghost"
+							size="sm"
+							className="h-7 shrink-0 gap-1.5 px-2.5 text-[12px] font-medium"
+							disabled={!effectiveConnection}
+							aria-label={t("databaseNewQuery")}
+							title={t("databaseNewQuery")}
+							onClick={handleNewTab}
+						>
+							<span className="icon-[solar--document-add-linear] h-3.5 w-3.5" />
+							{!compact ? t("databaseNewQuery") : null}
+						</Button>
 						{!compact ? (
 							<SettingsAiAssist
 								tabId="databaseWorkbench"
@@ -411,7 +593,7 @@ export function DatabaseWorkspace({
 								className="px-1.5"
 							/>
 						) : null}
-						{!layout.autoTree ? (
+						{!layout.autoTree || !showTree ? (
 							<Button
 								variant="ghost"
 								size="sm"
@@ -465,36 +647,91 @@ export function DatabaseWorkspace({
 						style={{ width: treeWidth }}
 						className="relative flex shrink-0 flex-col overflow-hidden rounded-xl bg-muted/40"
 					>
-						<DatabaseListHeader label={t("databaseConnections")} count={model.connections.length} />
+						<DatabaseListHeader
+							variant="toolbar"
+							label={t("databaseConnections")}
+							action={
+								<div className="flex items-center gap-px">
+									<button
+										type="button"
+										title={t("databaseCollapseAll")}
+										aria-label={t("databaseCollapseAll")}
+										className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground active:scale-95"
+										onClick={handleCollapseAllConnections}
+									>
+										<span className="h-3 w-3 icon-[solar--double-alt-arrow-up-linear]" />
+									</button>
+									<button
+										type="button"
+										title={t("databaseRefreshAll")}
+										aria-label={t("databaseRefreshAll")}
+										className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground active:scale-95"
+										onClick={handleRefreshAllConnections}
+									>
+										<span className="h-3 w-3 icon-[solar--refresh-linear]" />
+									</button>
+									<button
+										type="button"
+										title={t("databaseCreateGroup")}
+										aria-label={t("databaseCreateGroup")}
+										className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground active:scale-95"
+										onClick={openGroupDialog}
+									>
+										<span className="h-3 w-3 icon-[mdi--folder-plus-outline]" />
+									</button>
+									<button
+										type="button"
+										title={t("databaseCollapseTree")}
+										aria-label={t("databaseCollapseTree")}
+										className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground active:scale-95"
+										onClick={() => setTreeOverride(false)}
+									>
+										<span className="h-3 w-3 icon-[solar--double-alt-arrow-left-linear]" />
+									</button>
+								</div>
+							}
+						/>
 						<div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">{treeBody}</div>
 						<ResizeHandle side="right" onResize={onTreeResize} />
 					</aside>
 				) : null}
 
 				<main className={cn("flex min-w-0 flex-1 flex-col", mainGap)}>
-					{selected ? (
+					{selected && query.empty ? (
+						// #4（对齐 dbx）：已选连接但未打开任何查询/表 —— 动作驱动空态：新建查询，
+						// 或双击连接树中的表/视图浏览数据；不再常驻空白查询面板 + 空结果网格。
+						<motion.div
+							initial={{ opacity: 0, y: 10 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ duration: 0.3, ease: EASE_OUT }}
+							className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center"
+						>
+							<div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+								<span className="icon-[mdi--code-braces] h-8 w-8" />
+							</div>
+							<h2 className="text-[17px] font-bold text-foreground">{t("databaseQueryEmptyTitle")}</h2>
+							<p className="max-w-[380px] text-[12.5px] leading-relaxed text-muted-foreground">
+								{t("databaseQueryEmptyDescription")}
+							</p>
+							<Button variant="primary" size="sm" onClick={handleNewTab}>
+								<span className="icon-[mdi--plus] h-4 w-4" />
+								{t("databaseNewQuery")}
+							</Button>
+						</motion.div>
+					) : selected || query.activeTabConnectionName ? (
 						<>
-							{/* V5-③ 多查询标签条：切换 / 关闭（hover 减号）/ 拖拽排序 / 溢出收纳 + 「+」新建。 */}
+							{/* V5-③ 多查询标签条：切换 / 关闭（hover 减号）/ 拖拽排序 / 溢出收纳。新建入口统一在顶部工具栏与空态（V7-⑩ 去掉标签栏右侧「+」冗余入口，对齐 dbx）。 */}
 							<div className="flex min-w-0 items-end gap-1">
 								<TabBar
 									className="min-w-0 flex-1"
 									items={query.tabs.map((tab) => ({ key: tab.id, label: tab.title, removable: true }))}
-									value={query.activeTabId}
+									value={query.activeTabId ?? ""}
 									onChange={handleTabChange}
 									onRemove={handleTabClose}
 									onReorder={handleTabReorder}
 									onOverflowChange={setOverflowTabIds}
+									onContextMenu={handleTabContextMenu}
 								/>
-								<Button
-									variant="ghost"
-									size="sm"
-									className="mb-0.5 h-6 shrink-0 px-2"
-									aria-label={t("databaseNewQuery")}
-									title={t("databaseNewQuery")}
-									onClick={handleNewTab}
-								>
-									<span className="icon-[mdi--plus] h-3.5 w-3.5" />
-								</Button>
 								{overflowTabIds.length > 0 ? (
 									<DropdownMenu>
 										<DropdownMenuTrigger asChild>
@@ -521,15 +758,98 @@ export function DatabaseWorkspace({
 									</DropdownMenu>
 								) : null}
 							</div>
+							{/* V7-⑧ 查询标签右键菜单：复制名称 / 复制标签 / 关闭 / 关闭其他 / 关闭全部（对齐 dbx 顺序；关闭类危险色；复用树右键菜单浮层）。 */}
+							{tabMenu ? (
+								<DatabaseExplorerContextMenu
+									x={tabMenu.x}
+									y={tabMenu.y}
+									onClose={() => setTabMenu(null)}
+									items={
+										[
+											{
+												key: "copy-name",
+												icon: "icon-[mdi--content-copy]",
+												label: t("databaseCopyName"),
+												onSelect: () => {
+													recordSettingsUsage({ tab: "database", action: "selected", target: "query-tab-copy-name" });
+													const source = query.tabs.find((item) => item.id === tabMenu.tabId);
+													if (source) void navigator.clipboard.writeText(source.title);
+												},
+											},
+
+											{
+												key: "duplicate",
+												icon: "icon-[mdi--content-copy]",
+												label: t("databaseDuplicateTab"),
+												onSelect: () => query.actions.duplicateTab(tabMenu.tabId),
+											},
+											{ key: "sep-close", separator: true },
+											{
+												key: "close",
+												icon: "icon-[mdi--close]",
+												label: t("databaseCloseTab"),
+												destructive: true,
+												onSelect: () => query.actions.closeTab(tabMenu.tabId),
+											},
+											...(query.tabs.length > 1
+												? [
+														{
+															key: "close-others",
+															icon: "icon-[mdi--close-box-outline]",
+															label: t("databaseCloseOtherTabs"),
+															destructive: true,
+															onSelect: () => query.actions.closeOtherTabs(tabMenu.tabId),
+														},
+												  ]
+												: []),
+											{
+												key: "close-all",
+												icon: "icon-[mdi--close-box-multiple-outline]",
+												label: t("databaseCloseAllTabs"),
+												destructive: true,
+												onSelect: () => query.actions.closeAllTabs(),
+											},
+										] satisfies readonly DatabaseContextMenuItem[]
+									}
+								/>
+							) : null}
+							{/* V6-③ 打开表浏览 tab：隐藏 SQL 编辑器（对齐 dbx 数据页：表数据即界面主体），仅显示结果网格；
+							    查询 tab 才渲染编辑器。 */}
+							{query.openTableMeta ? null : (
 							<DatabaseQueryPanel
-								connection={selected}
+								// V7-④ 空闲(未执行/无输出)时编辑器伸展占满主体,对齐 dbx“编辑器为主体、结果面板执行后才展开”。
+								stretch={query.status === "idle"}
+								connection={effectiveConnection}
+								connections={model.connections}
+								boundConnectionName={query.activeTabConnectionName}
+								onRebindConnection={(name) => {
+									const target = model.connections.find((item) => item.name === name);
+									if (target) query.actions.rebindConnection(target);
+								}}
 								sql={query.sql}
 								busy={query.status === "running"}
 								history={query.history}
 								onChange={query.actions.setSql}
-								onRun={() => void query.actions.run(selected)}
+								onRun={() => {
+								if (!effectiveConnection) return;
+								void query.actions.run(effectiveConnection).then((outcome) => {
+									if (outcome !== "confirm") return;
+									setConfirm({
+										title: t("databaseRunConfirmTitle"),
+									message: t("databaseRunConfirmMessage", { name: effectiveConnection.name, sql: query.sql }),
+										confirmLabel: t("databaseRunConfirmLabel"),
+										variant: "danger",
+										onConfirm: () => {
+											recordSettingsUsage({ tab: "database", action: "changed", target: "query-run-confirmed" });
+										void query.actions.runConfirmed(effectiveConnection);
+										},
+									});
+								});
+							}}
 								onClearHistory={query.actions.clearHistory}
 							/>
+							)}
+							{query.openTableMeta || query.status !== "idle" ? (
 							<DatabaseResultGrid
 								status={query.status}
 								result={query.result}
@@ -541,9 +861,16 @@ export function DatabaseWorkspace({
 								pageSize={query.pageSize}
 								loadingPage={query.loadingPage}
 								onGoToPage={(target) => {
+									if (!effectiveConnection) return;
 									recordSettingsUsage({ tab: "database", action: "selected", target: "result-page-goto" });
-									void query.actions.goToPage(selected, target);
+									void query.actions.goToPage(effectiveConnection, target);
 								}}
+									onPageSizeChange={(size) => {
+										if (!effectiveConnection) return;
+										recordSettingsUsage({ tab: "database", action: "selected", target: "result-page-size" });
+										// 切换每页行数后回第 1 页，避免新范围落在页尾（对齐 dbx rows-per-page）。
+										void query.actions.goToPage(effectiveConnection, 1, size);
+									}}
 								// B3.2-R 数据编辑（讨论定案）：添加行（INSERT）始终可用（无需主键定位）；
 								// 单元格编辑/删行需主键（pkColumns.length > 0），无主键时禁用并由 editDisabledReason 说明；
 								// describeTable 失败也需暴露原因（pkState=failed）；按钮常显，自由 SQL 不可编辑查询显示只读徽章。
@@ -569,9 +896,10 @@ export function DatabaseWorkspace({
 									editTarget !== null && query.status === "success" && pkState === "ready" && pkColumns.length > 0 && !pkColumns.some((pk) => lastResultColumns.includes(pk))
 								}
 								onRefresh={() => {
+									if (!effectiveConnection) return;
 									recordSettingsUsage({ tab: "database", action: "selected", target: "result-refresh" });
-									if (query.openTableMeta) void query.actions.reloadOpenTable(selected);
-									else if (query.resultSql) void query.actions.rerun(selected, query.resultSql);
+									if (query.openTableMeta) void query.actions.reloadOpenTable(effectiveConnection);
+									else if (query.resultSql) void query.actions.rerun(effectiveConnection, query.resultSql);
 								}}
 								tableName={query.openTableMeta?.table ?? null}
 								writeError={writeError}
@@ -581,10 +909,10 @@ export function DatabaseWorkspace({
 								onDeleteRow={handleDeleteRow}
 								onAnalyzeResult={
 									// B3.3 失败解读：SQL 存在且（有结果或有错误）时均可让 AI 分析（成功解读 / 解释错误）。
-									lastResultSql && (lastResult || query.error)
+									lastResultSql && (lastResult || query.error) && effectiveConnection
 										? () =>
 												analyzeResult({
-													connection: selected,
+													connection: effectiveConnection,
 													sql: lastResultSql,
 													result: lastResult,
 													error: query.error,
@@ -593,6 +921,7 @@ export function DatabaseWorkspace({
 										: undefined
 								}
 							/>
+							) : null}
 						</>
 					) : (
 						<motion.div
@@ -626,21 +955,50 @@ export function DatabaseWorkspace({
 					<div className="absolute inset-0 bg-black/25" onClick={closeOverlays} />
 					{treeAsOverlay ? (
 						<aside className="absolute bottom-0 left-0 top-0 z-10 flex w-[min(300px,calc(100%-40px))] flex-col overflow-hidden rounded-r-xl bg-muted/95 shadow-2xl">
-							<DatabaseListHeader
-								label={t("databaseConnections")}
-								count={model.connections.length}
-								action={
-									<Button
-										variant="ghost"
-										size="xs"
-										aria-label={t("databaseCollapse")}
+						<DatabaseListHeader
+							variant="toolbar"
+							label={t("databaseConnections")}
+							action={
+								<div className="flex items-center gap-px">
+									<button
+										type="button"
+										title={t("databaseCollapseAll")}
+										aria-label={t("databaseCollapseAll")}
+										className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground active:scale-95"
+										onClick={handleCollapseAllConnections}
+									>
+										<span className="h-3 w-3 icon-[solar--double-alt-arrow-up-linear]" />
+									</button>
+									<button
+										type="button"
+										title={t("databaseRefreshAll")}
+										aria-label={t("databaseRefreshAll")}
+										className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground active:scale-95"
+										onClick={handleRefreshAllConnections}
+									>
+										<span className="h-3 w-3 icon-[solar--refresh-linear]" />
+									</button>
+									<button
+										type="button"
+										title={t("databaseCreateGroup")}
+										aria-label={t("databaseCreateGroup")}
+										className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground active:scale-95"
+										onClick={openGroupDialog}
+									>
+										<span className="h-3 w-3 icon-[mdi--folder-plus-outline]" />
+									</button>
+									<button
+										type="button"
 										title={t("databaseCollapse")}
+										aria-label={t("databaseCollapse")}
+										className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground active:scale-95"
 										onClick={() => setTreeOverride(false)}
 									>
-										<span className="icon-[mdi--close] h-4 w-4" />
-									</Button>
-								}
-							/>
+										<span className="h-3 w-3 icon-[mdi--close]" />
+									</button>
+								</div>
+							}
+						/>
 							<div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">{treeBody}</div>
 						</aside>
 					) : null}
@@ -678,6 +1036,7 @@ export function DatabaseWorkspace({
 				onSave={() => void model.actions.submitAdd()}
 				onTest={() => void model.actions.testDraft()}
 			/>
+			{createGroupDialog}
 		</div>
 	);
 }

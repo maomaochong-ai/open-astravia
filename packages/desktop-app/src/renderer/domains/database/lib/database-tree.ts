@@ -1,4 +1,4 @@
-import type { DbConnection, DbTableInfo } from "../../../../preload/api-types/database";
+import type { DbCatalogScope, DbConnection, DbTableInfo } from "../../../../preload/api-types/database";
 
 /**
  * V2 连接树升级（对齐 dbx-main ConnectionTree 核心子集）的纯函数：
@@ -75,6 +75,7 @@ export function filterConnections(
 	connections: readonly DbConnection[],
 	query: string,
 	tableNamesOf: (connection: DbConnection) => readonly DbTableInfo[],
+	scopeNamesOf?: (connection: DbConnection) => readonly string[],
 ): ConnectionFilterResult {
 	const normalized = query.trim().toLowerCase();
 	if (!normalized) return { visible: connections, forceExpanded: new Set() };
@@ -86,6 +87,15 @@ export function filterConnections(
 			visible.push(connection);
 			continue;
 		}
+		// catalog 分层连接（PG schema / MySQL database）：作用域名命中同样保留该连接（P2 #8/#9 搜索对齐 dbx）。
+		if (scopeNamesOf) {
+			const scopes = scopeNamesOf(connection);
+			if (scopes.some((name) => name.toLowerCase().includes(normalized))) {
+				visible.push(connection);
+				forceExpanded.add(connection.name);
+				continue;
+			}
+		}
 		// 连接名未命中：若已加载的表中有命中，保留该连接并强制展开（让表行可见）。
 		const tables = tableNamesOf(connection);
 		if (tables.some((table) => tableMatchesQuery(table, normalized))) {
@@ -94,4 +104,60 @@ export function filterConnections(
 		}
 	}
 	return { visible, forceExpanded };
+}
+
+export type TableKind = "tables" | "views";
+
+/** 表对象类型归类：VIEW / SYSTEM VIEW / MATERIALIZED VIEW 等含 view 的 kind 归视图，其余归表。 */
+export function tableKindOf(kind: string): TableKind {
+	return /view/i.test(kind) ? "views" : "tables";
+}
+
+/** 表分区结果：kind 分区 + 该分区内的表（对齐 dbx 的 Tables / Views 分区节点）。 */
+export interface TableKindSection {
+	readonly kind: TableKind;
+	readonly items: readonly DbTableInfo[];
+}
+
+/** 将表列表按对象类型分区：空分区剔除，固定 tables → views 顺序。 */
+export function splitTableKindSections(items: readonly DbTableInfo[]): readonly TableKindSection[] {
+	const tables: DbTableInfo[] = [];
+	const views: DbTableInfo[] = [];
+	for (const item of items) {
+		(tableKindOf(item.kind) === "views" ? views : tables).push(item);
+	}
+	return [
+		...(tables.length > 0 ? [{ kind: "tables" as const, items: tables }] : []),
+		...(views.length > 0 ? [{ kind: "views" as const, items: views }] : []),
+	];
+}
+
+/** 工具条类型过滤：all 返回原样；仅表/仅视图时仅保留对应分区（空分区剔除）。 */
+export function filterKindSections(
+	sections: readonly TableKindSection[],
+	filter: TableKindFilter,
+): readonly TableKindSection[] {
+	if (filter === "all") return sections;
+	return sections.filter((section) => section.kind === filter);
+}
+
+export type TableKindFilter = "all" | TableKind;
+
+/** scope 限定表名（PG schema / MySQL database）：带 scope 时拼 `schema.table`，否则返回原名。 */
+export function qualifiedTableName(table: string, scope?: DbCatalogScope | null): string {
+	return scope ? `${scope.name}.${table}` : table;
+}
+
+export type ConnectionSortOrder = "default" | "asc" | "desc";
+
+/** 连接排序：default 保持原顺序；asc / desc 按名称（数字感知、大小写不敏感）。 */
+export function sortConnectionsByName(
+	list: readonly DbConnection[],
+	order: ConnectionSortOrder,
+): readonly DbConnection[] {
+	if (order === "default") return list;
+	const factor = order === "asc" ? 1 : -1;
+	return [...list].sort(
+		(a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }) * factor,
+	);
 }

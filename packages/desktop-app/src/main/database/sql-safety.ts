@@ -152,28 +152,39 @@ export function splitStatements(sql: string): string[] {
 
 /**
  * 写保护拦截判定（B3.1-①）：按安全执行模式拦截写语句。
- * - DDL（含多语句中的 DDL）：无论模式一律拦截（与引擎 SQL_BLOCKED 默认策略一致）；
- * - strict：所有连接（含 dev）的写操作需显式授权，否则返回 WRITE_BLOCKED；
+ * - DDL（含多语句中的 DDL）：需 UI 危险确认（confirmedWrite）后放行；prod 连接必须先有
+ *   连接级授权（writeApproved，W4-②），否则 PROD_WRITE_BLOCKED；
+ * - strict：所有连接（含 dev）的写操作需确认/授权，否则返回 WRITE_BLOCKED；
  * - relaxed：仅 prod 连接未授权时拦截（W4-② 原行为 PROD_WRITE_BLOCKED）；
  * - 多语句：任一条语句为写即整体拦截。
  */
 export function maybeBlockWrite(input: {
 	env: "prod" | "dev";
-	/** 该连接是否已显式授权写操作。 */
+	/** 该连接是否已显式授权写操作（连接级持久授权，W4-②）。 */
 	writeApproved: boolean;
+	/** 本次执行已通过 UI 危险确认（用户对语句内容确认后放行）。 */
+	confirmedWrite?: boolean;
 	/** 安全执行模式（缺省 strict：默认最严）。 */
 	safetyMode?: SafetyMode;
 	sql: string;
 }): DatabaseError | null {
 	const mode = input.safetyMode ?? "strict";
+	const hasApproval = input.writeApproved || input.confirmedWrite === true;
 	const statements = splitStatements(input.sql);
 	if (statements.length === 0) return null;
 	if (statements.some(isDdlStatement)) {
-		return { code: "DDL_BLOCKED", detail: "DDL statements are blocked by default safety policy" };
+		// DDL：prod 必须先有连接级授权；dev 需本次 UI 确认后放行（此前为无条件拦截）。
+		if (input.env === "prod" && !input.writeApproved) {
+			return { code: "PROD_WRITE_BLOCKED", detail: "DDL on production connection requires explicit approval" };
+		}
+		if (!hasApproval) {
+			return { code: "DDL_BLOCKED", detail: "DDL statements require confirmation before execution" };
+		}
+		return null;
 	}
 	if (!statements.some(isWriteStatement)) return null;
-	if (mode === "strict" && !input.writeApproved) {
-		return { code: "WRITE_BLOCKED", detail: "Write statement requires explicit approval in strict safety mode" };
+	if (mode === "strict" && !hasApproval) {
+		return { code: "WRITE_BLOCKED", detail: "Write statement requires confirmation in strict safety mode" };
 	}
 	if (input.env === "prod" && !input.writeApproved) {
 		return {

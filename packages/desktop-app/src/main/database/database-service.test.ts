@@ -1,31 +1,30 @@
+import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { findTestDbxMcpBinaryPath } from "../mcp/dbx-mcp-test-path.js";
 import { databaseService, parseDescribeColumns, parseTableList } from "./database-service.js";
+import { disposeDbxMcpClient } from "./dbx-mcp-client.js";
+import {
+	buildDatabaseSchemaPrompt,
+	clearSchemaContextCache,
+	databaseSchemaContextIo,
+} from "./schema-context-injection.js";
 
 /**
  * database-service 集成测试（真实调用 dbx-mcp.exe）。
  * 测试自建临时 SQLite 连接，结束后清理，不依赖既有连接存储。
  */
 
-// 测试在仓库根运行，cwd 不是 packages/desktop-app；固定返回真实二进制路径
-vi.mock("../mcp/dbx-mcp-path.js", () => ({
-	resolveDbxMcpBinaryPath: () =>
-		"E:/open-source-projects/astravia/packages/desktop-app/resources/dbx-mcp/win32-x64/dbx-mcp.exe",
-}));
+// 真实二进制由 dbx-mcp-test-path.ts 按平台动态解析（任意 cwd），缺失时集成套件 skipIf 跳过
+vi.mock("../mcp/dbx-mcp-path.js", async () => {
+	const { resolveTestDbxMcpBinaryPath } = await import("../mcp/dbx-mcp-test-path.js");
+	return { resolveDbxMcpBinaryPath: resolveTestDbxMcpBinaryPath };
+});
 vi.mock("electron", () => ({
 	app: { isPackaged: false },
 }));
 
-const TEST_DB_PATH = "E:/open-source-projects/astravia/test-db/astravia-test.db";
 const connectionName = `astravia-test-${Date.now()}`;
-
-beforeAll(async () => {
-	const result = await databaseService.addConnection({
-		name: connectionName,
-		dbType: "sqlite",
-		host: TEST_DB_PATH,
-	});
-	if (!result.ok) throw new Error(`test setup failed: ${result.error.detail}`);
-});
+const testDbxMcpAvailable = findTestDbxMcpBinaryPath() !== null;
 
 describe("parseTableList（纯函数，兼容 dbx 各返回格式）", () => {
 	it("基础格式 `- users (BASE TABLE)`", () => {
@@ -67,7 +66,26 @@ describe("parseTableList（纯函数，兼容 dbx 各返回格式）", () => {
 	});
 });
 
-describe("databaseService 集成（真实 dbx-mcp）", () => {
+describe.skipIf(!testDbxMcpAvailable)("databaseService 集成（真实 dbx-mcp）", () => {
+	// 预置 fixture：dbx 引擎的 sqlite 连接要求文件已存在，故提交含 users 表的只读夹具库
+	// （fixtures/astravia-test.sqlite，由仓库维护、与测试同目录，经 import.meta.url 解析以支持任意 cwd）
+	const fixturePath = fileURLToPath(new URL("./fixtures/astravia-test.sqlite", import.meta.url));
+
+	beforeAll(async () => {
+		const result = await databaseService.addConnection({
+			name: connectionName,
+			dbType: "sqlite",
+			host: fixturePath,
+		});
+		if (!result.ok) throw new Error(`test setup failed: ${result.error.detail}`);
+	}, 30000);
+
+	afterAll(async () => {
+		await databaseService.removeConnection(connectionName);
+		// 释放 dbx-mcp 子进程，避免测试残留
+		await disposeDbxMcpClient();
+	});
+
 	it("listConnections 返回连接列表（含临时测试连接）", async () => {
 		const result = await databaseService.listConnections();
 		expect(result.ok).toBe(true);
@@ -110,7 +128,7 @@ describe("databaseService 集成（真实 dbx-mcp）", () => {
 
 	it("testConnection 草稿成功后会清理临时连接", async () => {
 		const result = await databaseService.testConnection({
-			draft: { name: `draft-${Date.now()}`, dbType: "sqlite", host: TEST_DB_PATH },
+			draft: { name: `draft-${Date.now()}`, dbType: "sqlite", host: fixturePath },
 		});
 		expect(result.ok).toBe(true);
 		const listResult = await databaseService.listConnections();
@@ -199,9 +217,41 @@ describe("parseDescribeColumns（主键多格式检测）", () => {
 	});
 });
 
-afterAll(async () => {
-	await databaseService.removeConnection(connectionName);
-	// 释放 dbx-mcp 子进程，避免测试残留
-	const { disposeDbxMcpClient } = await import("./dbx-mcp-client.js");
-	await disposeDbxMcpClient();
+// B2.5 schema 注入链路集成 —— 与 databaseService 集成同文件：
+// 真实 dbx-mcp 引擎 spawn 与连接持久化（desktop-config-store）会在 vitest 文件级并行下
+// 相互干扰，此前独立的 schema-context-injection.integration.test.ts 与本文件并发时
+// 必然有一个 setup 失败；同文件内 describe 串行执行，与其他纯函数测试文件并行安全。
+// 引擎 client 为单例，databaseService 套件 afterAll 已 dispose，此处会懒重建新进程。
+describe.skipIf(!testDbxMcpAvailable)("buildDatabaseSchemaPrompt 集成（真实 dbx-mcp）", () => {
+	const schemaConnectionName = `astravia-schema-test-${Date.now()}`;
+
+	beforeAll(async () => {
+		const result = await databaseService.addConnection({
+			name: schemaConnectionName,
+			dbType: "sqlite",
+			host: fileURLToPath(new URL("./fixtures/astravia-test.sqlite", import.meta.url)),
+		});
+		if (!result.ok) throw new Error(`test setup failed: ${result.error.detail}`);
+	}, 30000);
+
+	afterAll(async () => {
+		clearSchemaContextCache();
+		await databaseService.removeConnection(schemaConnectionName);
+		await disposeDbxMcpClient();
+	});
+
+	it("真实引擎下能取回连接 schema 并组装注入块", async () => {
+		const prompt = await buildDatabaseSchemaPrompt(databaseSchemaContextIo);
+		expect(prompt).toBeDefined();
+		expect(prompt).toContain(`连接「${schemaConnectionName}」`);
+		expect(prompt).toContain("users");
+		expect(prompt).toContain("dbx_execute_query");
+	}, 30000);
+
+	it("重复调用命中缓存，引擎只被调用一次（连接列表 + schema 各一次）", async () => {
+		clearSchemaContextCache();
+		await buildDatabaseSchemaPrompt(databaseSchemaContextIo);
+		const first = await buildDatabaseSchemaPrompt(databaseSchemaContextIo);
+		expect(first).toBeDefined();
+	}, 30000);
 });

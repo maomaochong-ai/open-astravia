@@ -3,15 +3,19 @@ import type {
 	DatabaseError,
 	DatabaseResult,
 	DbAddConnectionParams,
+	DbCatalogFamily,
 	DbColumnInfo,
 	DbConnection,
 	DbConnectionTestResult,
+	DbExecuteQueryOptions,
 	DbQueryResult,
 	DbTableInfo,
+	DbTableScope,
 	DbTestConnectionParams,
 } from "../../preload/api-types/database.js";
 import { readConfigSync, writeDesktopConfig } from "../config/desktop-config-store.js";
 import { getAppLogger } from "../logger.js";
+import { catalogIntrospectionSql, extractCatalogNames, filterCatalogNames } from "./database-catalog.js";
 import { getDbxMcpClient } from "./dbx-mcp-client.js";
 import { isWriteStatement, maybeBlockWrite } from "./sql-safety.js";
 
@@ -161,7 +165,6 @@ export function parseTableList(text: string): DbTableInfo[] {
 	return tables;
 }
 
-/**
 /**
  * 解析 dbx_describe_table 返回的行 → 列结构列表。纯函数，便于单测。
  *
@@ -347,11 +350,15 @@ export const databaseService = {
 		}
 	},
 
-	/** 列出连接下全部表。 */
-	async listTables(connectionName: string): Promise<DatabaseResult<DbTableInfo[]>> {
+	/** 列出连接下全部表（可选 catalog 作用域：schema / database）。 */
+	async listTables(connectionName: string, scope?: DbTableScope): Promise<DatabaseResult<DbTableInfo[]>> {
 		try {
 			const client = getDbxMcpClient();
-			const result = await client.callTool("dbx_list_tables", { connection_name: connectionName });
+			const result = await client.callTool("dbx_list_tables", {
+				connection_name: connectionName,
+				...(scope?.schema ? { schema: scope.schema } : {}),
+				...(scope?.database ? { database: scope.database } : {}),
+			});
 			const text = textOf(result);
 			if (result.isError) return err(classifyError(text));
 
@@ -361,11 +368,20 @@ export const databaseService = {
 		}
 	},
 
-	/** 查看表结构。 */
-	async describeTable(connectionName: string, table: string): Promise<DatabaseResult<DbColumnInfo[]>> {
+	/** 查看表结构（可选 catalog 作用域：schema / database）。 */
+	async describeTable(
+		connectionName: string,
+		table: string,
+		scope?: DbTableScope,
+	): Promise<DatabaseResult<DbColumnInfo[]>> {
 		try {
 			const client = getDbxMcpClient();
-			const result = await client.callTool("dbx_describe_table", { connection_name: connectionName, table });
+			const result = await client.callTool("dbx_describe_table", {
+				connection_name: connectionName,
+				table,
+				...(scope?.schema ? { schema: scope.schema } : {}),
+				...(scope?.database ? { database: scope.database } : {}),
+			});
 			const text = textOf(result);
 			if (result.isError) return err(classifyError(text));
 
@@ -377,8 +393,33 @@ export const databaseService = {
 		}
 	},
 
-	/** 执行查询（SELECT），返回结构化结果。B3.2 起写语句（INSERT/UPDATE/DELETE）同样走此链路，并记录审计日志。 */
-	async executeQuery(connectionName: string, sql: string): Promise<DatabaseResult<DbQueryResult>> {
+	/** 枚举连接的 catalog 中间层作用域名（schema / database）。flat 连接直接返回空数组。 */
+	async listCatalogScopes(connectionName: string, family: DbCatalogFamily): Promise<DatabaseResult<string[]>> {
+		try {
+			const sql = catalogIntrospectionSql(family);
+			if (sql === null) return ok([]);
+
+			const client = getDbxMcpClient();
+			const result = await client.callTool("dbx_execute_query", {
+				connection_name: connectionName,
+				sql,
+			});
+			const text = textOf(result);
+			if (result.isError) return err(classifyError(text));
+
+			const { columns, rows } = parseMarkdownTable(text);
+			return ok(filterCatalogNames(family, extractCatalogNames(columns, rows)));
+		} catch (e) {
+			return err(toDatabaseError(e));
+		}
+	},
+
+	/** 执行查询（SELECT），返回结构化结果。B3.2 起写语句（INSERT/UPDATE/DELETE）同样走此链路，并记录审计日志。options.confirmedWrite 表示 UI 危险确认已通过（DDL/写放行依据）。 */
+	async executeQuery(
+		connectionName: string,
+		sql: string,
+		options?: DbExecuteQueryOptions,
+	): Promise<DatabaseResult<DbQueryResult>> {
 		try {
 			// B3.1-① 写保护拦截（不触达引擎）：strict 模式所有连接写需授权；DDL/多语句保守拦截。
 			const dbConfig = readConfigSync().database;
@@ -387,7 +428,13 @@ export const databaseService = {
 			const safetyMode = dbConfig?.safetyMode ?? "strict";
 			const isWrite = isWriteStatement(sql);
 			if (isWrite) auditWrite("info", `[write-audit] start connection="${connectionName}" env=${env} sql=${sql}`);
-			const blocked = maybeBlockWrite({ env, writeApproved, safetyMode, sql });
+			const blocked = maybeBlockWrite({
+				env,
+				writeApproved,
+				safetyMode,
+				sql,
+				confirmedWrite: options?.confirmedWrite === true,
+			});
 			if (blocked) {
 				if (isWrite)
 					auditWrite(

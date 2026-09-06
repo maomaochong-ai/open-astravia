@@ -31,22 +31,31 @@ export function quoteIdentifier(dbType: string, name: string): string {
 
 /**
  * 生成「打开表」浏览 SQL（只读 SELECT，带行数上限；方言适配 LIMIT / TOP / FETCH FIRST）。
+ * qualifier：PG schema / MySQL database 前缀（catalog 分层连接打开表时限定对象位置，如 "public"."orders"）。
  * V6-② 服务端分页：offset > 0 时改用各方言的 OFFSET 语法（LIMIT…OFFSET / OFFSET…FETCH NEXT）。
  * 注意：dbx-mcp `dbx_execute_query` 最多返回 100 行，因此页大小应 ≤ 100。
  */
-export function buildOpenTableSql(dbType: string, table: string, limit = 100, offset = 0): string {
-	const quoted = quoteIdentifier(dbType, table);
+export function buildOpenTableSql(dbType: string, table: string, limit = 100, offset = 0, qualifier?: string): string {
+	const tableRef = qualifiedRef(dbType, qualifier, table);
 	if (offset > 0) {
 		// SQL Server 2012+ 的 OFFSET/FETCH 要求 ORDER BY；用常量表达式保持与无排序一致。
 		if (TOP_TYPES.has(dbType))
-			return `SELECT * FROM ${quoted} ORDER BY (SELECT NULL) OFFSET ${offset} ROWS FETCH NEXT ${limit} ROWS ONLY`;
+			return `SELECT * FROM ${tableRef} ORDER BY (SELECT NULL) OFFSET ${offset} ROWS FETCH NEXT ${limit} ROWS ONLY`;
 		if (FETCH_FIRST_TYPES.has(dbType))
-			return `SELECT * FROM ${quoted} OFFSET ${offset} ROWS FETCH NEXT ${limit} ROWS ONLY`;
-		return `SELECT * FROM ${quoted} LIMIT ${limit} OFFSET ${offset}`;
+			return `SELECT * FROM ${tableRef} OFFSET ${offset} ROWS FETCH NEXT ${limit} ROWS ONLY`;
+		return `SELECT * FROM ${tableRef} LIMIT ${limit} OFFSET ${offset}`;
 	}
-	if (TOP_TYPES.has(dbType)) return `SELECT TOP ${limit} * FROM ${quoted}`;
-	if (FETCH_FIRST_TYPES.has(dbType)) return `SELECT * FROM ${quoted} FETCH FIRST ${limit} ROWS ONLY`;
-	return `SELECT * FROM ${quoted} LIMIT ${limit}`;
+	if (TOP_TYPES.has(dbType)) return `SELECT TOP ${limit} * FROM ${tableRef}`;
+	if (FETCH_FIRST_TYPES.has(dbType)) return `SELECT * FROM ${tableRef} FETCH FIRST ${limit} ROWS ONLY`;
+	return `SELECT * FROM ${tableRef} LIMIT ${limit}`;
+}
+
+/** catalog 分层连接的对象限定引用：qualifier 存在时输出 `"schema"."table"` 形式；否则与旧实现一致。 */
+function qualifiedRef(dbType: string, qualifier: string | undefined, name: string): string {
+	const quoted = quoteIdentifier(dbType, name);
+	if (!qualifier) return quoted;
+	const schema = quoteIdentifier(dbType, qualifier);
+	return `${schema}.${quoted}`;
 }
 
 /**
@@ -80,16 +89,22 @@ export function buildUpdateSql(
 	table: string,
 	assignments: readonly SqlAssignment[],
 	where: readonly SqlAssignment[],
+	qualifier?: string,
 ): string {
 	const set = assignments.map((a) => `${quoteIdentifier(dbType, a.column)} = ${quoteLiteral(a.value)}`).join(", ");
-	return `UPDATE ${quoteIdentifier(dbType, table)} SET ${set} WHERE ${whereClause(dbType, where)}`;
+	return `UPDATE ${qualifiedRef(dbType, qualifier, table)} SET ${set} WHERE ${whereClause(dbType, where)}`;
 }
 
 /** 生成 INSERT 语句（B3.2 新增行）：列名 + 值按声明顺序对齐。 */
-export function buildInsertSql(dbType: string, table: string, values: readonly SqlAssignment[]): string {
+export function buildInsertSql(
+	dbType: string,
+	table: string,
+	values: readonly SqlAssignment[],
+	qualifier?: string,
+): string {
 	const columns = values.map((v) => quoteIdentifier(dbType, v.column)).join(", ");
 	const literals = values.map((v) => quoteLiteral(v.value)).join(", ");
-	return `INSERT INTO ${quoteIdentifier(dbType, table)} (${columns}) VALUES (${literals})`;
+	return `INSERT INTO ${qualifiedRef(dbType, qualifier, table)} (${columns}) VALUES (${literals})`;
 }
 
 /**
@@ -108,6 +123,11 @@ export function buildRowWhere(
 }
 
 /** 生成 DELETE 语句（B3.2 删除行）：WHERE 按主键等值定位。 */
-export function buildDeleteSql(dbType: string, table: string, where: readonly SqlAssignment[]): string {
-	return `DELETE FROM ${quoteIdentifier(dbType, table)} WHERE ${whereClause(dbType, where)}`;
+export function buildDeleteSql(
+	dbType: string,
+	table: string,
+	where: readonly SqlAssignment[],
+	qualifier?: string,
+): string {
+	return `DELETE FROM ${qualifiedRef(dbType, qualifier, table)} WHERE ${whereClause(dbType, where)}`;
 }

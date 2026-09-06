@@ -1,12 +1,16 @@
-import type { DbQueryResult } from "../../../../preload/api-types/database";
+import type { DbQueryResult, DbTableScope } from "../../../../preload/api-types/database";
 
 /** 查询 tab 的执行状态（V5 多查询标签后随每个 tab 独立）。 */
 export type DatabaseQueryStatus = "idle" | "running" | "success" | "error";
 
 /** V6-②「打开表」浏览元信息：结果来自打开表浏览时记录（type + table + 服务端分页 page/pageSize），自由 SQL / AI 回填不设。 */
 export interface OpenTableMeta {
+	/** V6-③ 打开表时的连接名（同表复用判定：同连接 + 同表 + 同 scope 才聚焦已开 tab）。 */
+	readonly connectionName: string;
 	readonly type: string;
 	readonly table: string;
+	/** catalog 分层连接（PG schema / MySQL database）的结构化作用域：双击 schema/database 下的表时记入（引擎 describe_table / list_tables 定位 + 生成 `"schema"."table"` 限定 SQL）；flat 连接为 null。 */
+	readonly scope: DbTableScope | null;
 	/** 每页行数（dbx-mcp `dbx_execute_query` 上限 100，页大小不应超过 100）。 */
 	readonly pageSize: number;
 	/** 当前页（1-based；翻页时用 `LIMIT pageSize OFFSET (page-1)*pageSize` 重查）。 */
@@ -24,6 +28,8 @@ export interface QueryTabState {
 	readonly status: DatabaseQueryStatus;
 	readonly result: DbQueryResult | null;
 	readonly resultConnectionName: string | null;
+	/** V7:tab 绑定的执行连接(tab 新建/打开表/AI 回填时锁定,对齐 dbx「tab 自带连接」;null = 未绑定,执行回退到当前选中连接)。 */
+	readonly connectionName: string | null;
 	readonly resultSql: string | null;
 	readonly error: string | null;
 	readonly errorDetail: string | null;
@@ -50,6 +56,7 @@ export function createQueryTab(
 		errorDetail: null,
 		openTableMeta: null,
 		loadingPage: false,
+		connectionName: null,
 		...initial,
 	};
 }
