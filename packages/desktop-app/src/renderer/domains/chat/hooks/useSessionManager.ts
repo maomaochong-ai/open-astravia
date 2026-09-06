@@ -1062,7 +1062,18 @@ export function useSessionManager(): SessionManagerResult {
 			const rawText = hasOverride ? override : inputValue.trim();
 			// B2.9 W2：数据库「让 AI 分析此表」预填可编辑后，schema 指令与表目标暂存在
 			// pendingAssistSendAtom，用户真正发送（非 overrideText 直发）时随本轮一起带上。
-			const pendingAssist = !hasOverride ? getDefaultStore().get(pendingAssistSendAtom) : null;
+			const assistStore = getDefaultStore();
+			// P3:pendingAssist 绑定「发起时的目标会话」。仅当本次发送仍在同一会话、且非 override 直发时携带;
+			// 会话已切换 = 过期,直接丢弃(防旧分析说明串到其它会话的普通消息)。
+			const pendingAssistRaw = assistStore.get(pendingAssistSendAtom);
+			const pendingAssist =
+				!hasOverride &&
+				pendingAssistRaw &&
+				(!pendingAssistRaw.sessionId || pendingAssistRaw.sessionId === session.runtimeId)
+					? pendingAssistRaw
+					: null;
+			// 任何一次发送都清空暂存(含 override 直发与过期值),避免残留到下一次普通输入。
+			if (pendingAssistRaw) assistStore.set(pendingAssistSendAtom, null);
 			const effectiveOptions = pendingAssist
 				? {
 						...options,
@@ -1072,12 +1083,16 @@ export function useSessionManager(): SessionManagerResult {
 					}
 				: options;
 			if (pendingAssist) {
-				getDefaultStore().set(pendingAssistSendAtom, null);
-				// B2.9-W3 埋点：预填的可编辑开场白经用户确认后发出（分析表 / 解读查询漏斗完成）。
-				const assistTarget = pendingAssist.kind === "analyze-result" ? "analyze-result-send" : "analyze-table-send";
+				// B2.9-W3 埋点:预填的可编辑开场白经用户确认后发出(分析表/解读查询/编辑器/历史漏斗完成)。
+				const targetByKind: Record<string, string> = {
+					"analyze-table": "analyze-table-send",
+					"analyze-result": "analyze-result-send",
+					"analyze-editor": "analyze-editor-send",
+					"analyze-history": "analyze-history-send",
+				};
+				const assistTarget = targetByKind[pendingAssist.kind ?? "analyze-table"] ?? "analyze-table-send";
 				recordSettingsUsage({ tab: "database", action: "selected", target: assistTarget });
 			}
-			if (pendingAssist) getDefaultStore().set(pendingAssistSendAtom, null);
 			const images = !hasOverride && attachedImages.length > 0 ? attachedImages : undefined;
 			// 把附图落盘到会话图片缓存，改用 @路径 引用而非把 base64 塞进上下文：
 			// 视觉模型经 Read 工具即可看到图，不支持视觉的模型也能用工具对图做 OCR/改图等。

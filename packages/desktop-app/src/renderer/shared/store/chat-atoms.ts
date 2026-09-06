@@ -539,8 +539,11 @@ export const sendMessageFnRef: {
 export interface PendingAssistSend {
 	settingsAssistTabId?: string;
 	databaseTable?: { connection: string; table: string };
-	/** B2.9-W1 反向：发起方标识，消费侧据此区分漏斗埋点（analyze-table / analyze-result）。 */
+	/** B2.9-W1 反向:发起方标识,消费侧据此区分漏斗埋点(analyze-table / analyze-result)。 */
 	kind?: "analyze-table" | "analyze-result" | "analyze-editor" | "analyze-history";
+	/** P3:发起时的目标会话 runtimeId。消费端发送时若 activeSession 已切换(不等于此值)
+	 * 视为过期直接丢弃,防止旧分析说明串到其它会话的普通消息上。缺省(旧值)时视为匹配。 */
+	sessionId?: string;
 	metadata?: Record<string, unknown>;
 }
 

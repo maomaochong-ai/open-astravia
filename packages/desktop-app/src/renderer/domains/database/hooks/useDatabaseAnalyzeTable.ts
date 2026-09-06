@@ -1,5 +1,6 @@
 import { i18n } from "@shared/i18n";
 import {
+	activeSessionAtom,
 	defaultConversationCwdAtom,
 	focusInputRequestAtom,
 	inputValueAtom,
@@ -50,12 +51,14 @@ export function useDatabaseAnalyzeTable(): (connection: DbConnection, table: str
 				const open = openSessionFnRef.current;
 				if (!open) return;
 				await open(cwd, undefined, undefined, { navigate: false });
+				const store = getDefaultStore();
+				// P3:pending 绑定发起时的目标会话,消费端仅在同一会话发送时携带(跨会话丢弃防串上下文)。
+				const sessionId = store.get(activeSessionAtom)?.runtimeId;
 				const agentInstruction = i18n.t("settings:databaseAnalyzeTable.instruction", {
 					table,
 					connection: connection.name,
 					schema: schema || i18n.t("settings:databaseAnalyzeTable.noSchema"),
 				});
-				const store = getDefaultStore();
 				const current = store.get(inputValueAtom).trim();
 				// 输入框已有其它草稿时不覆盖；重复点击同表则幂等（文本相同直接续用）。
 				if (current && current !== prefilledText) return;
@@ -64,6 +67,7 @@ export function useDatabaseAnalyzeTable(): (connection: DbConnection, table: str
 				store.set(pendingAssistSendAtom, {
 					kind: "analyze-table",
 					settingsAssistTabId: "database",
+					sessionId,
 					databaseTable: { connection: connection.name, table },
 					metadata: {
 						settingsAssistInstruction: agentInstruction,

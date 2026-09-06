@@ -1,5 +1,6 @@
 import { i18n } from "@shared/i18n";
 import {
+	activeSessionAtom,
 	defaultConversationCwdAtom,
 	focusInputRequestAtom,
 	inputValueAtom,
@@ -10,6 +11,7 @@ import { getDefaultStore, useAtomValue } from "jotai";
 import { useCallback } from "react";
 import { enqueueSettingsAssistJob } from "../../settings/ai-assist/assistJobQueue";
 import { recordSettingsUsage } from "../../settings/components/recordSettingsUsage";
+import { ANALYZE_CONTEXT_CHAR_LIMIT, ANALYZE_SQL_CHAR_LIMIT, clipToLimit } from "../lib/analyze-context";
 import { getSchemaContext } from "../lib/database-api";
 
 export type DatabaseSqlAssistSource = "editor" | "history";
@@ -72,12 +74,25 @@ export function useDatabaseAnalyzeSql(source: DatabaseSqlAssistSource): (connect
 				const open = openSessionFnRef.current;
 				if (!open) return;
 				await open(cwd, undefined, undefined, { navigate: false });
+				const store = getDefaultStore();
+				// P3:pending 绑定发起时的目标会话,消费端仅在同一会话发送时携带(跨会话丢弃防串上下文)。
+				const sessionId = store.get(activeSessionAtom)?.runtimeId;
+				const clippedSql = clipToLimit(sql, ANALYZE_SQL_CHAR_LIMIT);
+				const clippedSchema = clipToLimit(schema, ANALYZE_CONTEXT_CHAR_LIMIT);
+				// P3-②:token 预算守卫。截断处追加可见提示(instruction 对模型可见),告知基于可见片段分析。
+				const clipNotice = (count: number, limit: number) =>
+					i18n.t("settings:databaseAnalyzeClipNotice", { count, limit });
+				const sqlArg = clippedSql.truncated
+					? `${clippedSql.text}\n-- ${clipNotice(sql.length, ANALYZE_SQL_CHAR_LIMIT)}`
+					: clippedSql.text;
+				const schemaArg = clippedSchema.truncated
+					? `${clippedSchema.text}\n${clipNotice(schema.length, ANALYZE_CONTEXT_CHAR_LIMIT)}`
+					: clippedSchema.text;
 				const agentInstruction = i18n.t(meta.instructionKey, {
 					connection: connectionName,
-					sql,
-					schema,
+					sql: sqlArg,
+					schema: schemaArg,
 				});
-				const store = getDefaultStore();
 				const current = store.get(inputValueAtom).trim();
 				// 输入框已有其它草稿时不覆盖；重复触发同源则幂等（文本相同直接续用）。
 				if (current && current !== prefilledText) return;
@@ -86,6 +101,7 @@ export function useDatabaseAnalyzeSql(source: DatabaseSqlAssistSource): (connect
 				store.set(pendingAssistSendAtom, {
 					kind: meta.kind,
 					settingsAssistTabId: "database",
+					sessionId,
 					metadata: {
 						settingsAssistInstruction: agentInstruction,
 						settingsAssistTabId: "database",

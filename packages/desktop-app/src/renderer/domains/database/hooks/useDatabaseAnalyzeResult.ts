@@ -1,5 +1,6 @@
 import { i18n } from "@shared/i18n";
 import {
+	activeSessionAtom,
 	defaultConversationCwdAtom,
 	focusInputRequestAtom,
 	inputValueAtom,
@@ -11,6 +12,7 @@ import { useCallback } from "react";
 import type { DbQueryResult } from "../../../../preload/api-types/database";
 import { enqueueSettingsAssistJob } from "../../settings/ai-assist/assistJobQueue";
 import { recordSettingsUsage } from "../../settings/components/recordSettingsUsage";
+import { ANALYZE_CONTEXT_CHAR_LIMIT, ANALYZE_SQL_CHAR_LIMIT, clipToLimit } from "../lib/analyze-context";
 import type { DbConnection } from "../lib/database-api";
 import { summarizeQueryResult } from "../lib/result-summary";
 
@@ -60,21 +62,35 @@ export function useDatabaseAnalyzeResult(): (input: AnalyzeResultInput) => void 
 				const open = openSessionFnRef.current;
 				if (!open) return;
 				await open(cwd, undefined, undefined, { navigate: false });
+				const store = getDefaultStore();
+				// P3:pending 绑定发起时的目标会话,消费端仅在同一会话发送时携带(跨会话丢弃防串上下文)。
+				const sessionId = store.get(activeSessionAtom)?.runtimeId;
+				// P3-②:token 预算守卫——SQL 主料与摘要各自截断,截断处追加可见提示。
+				const clipNotice = (count: number, limit: number) =>
+					i18n.t("settings:databaseAnalyzeClipNotice", { count, limit });
+				const clippedSql = clipToLimit(sql, ANALYZE_SQL_CHAR_LIMIT);
+				const sqlArg = clippedSql.truncated
+					? `${clippedSql.text}\n-- ${clipNotice(sql.length, ANALYZE_SQL_CHAR_LIMIT)}`
+					: clippedSql.text;
+				const rawSummary = result ? summarizeQueryResult(result) : "";
+				const clippedSummary = clipToLimit(rawSummary, ANALYZE_CONTEXT_CHAR_LIMIT);
+				const summaryArg = clippedSummary.truncated
+					? `${clippedSummary.text}\n${clipNotice(rawSummary.length, ANALYZE_CONTEXT_CHAR_LIMIT)}`
+					: clippedSummary.text;
 				const agentInstruction = i18n.t(
 					result ? "settings:databaseAnalyzeResult.instruction" : "settings:databaseAnalyzeError.instruction",
 					result
 						? {
 								connection: connection.name,
-								sql,
-								summary: summarizeQueryResult(result),
+								sql: sqlArg,
+								summary: summaryArg,
 							}
 						: {
 								connection: connection.name,
-								sql,
+								sql: sqlArg,
 								error: errorDetail || error || "",
 							},
 				);
-				const store = getDefaultStore();
 				const current = store.get(inputValueAtom).trim();
 				// 输入框已有其它草稿时不覆盖；重复点击同结果则幂等（文本相同直接续用）。
 				if (current && current !== prefilledText) return;
@@ -82,6 +98,7 @@ export function useDatabaseAnalyzeResult(): (input: AnalyzeResultInput) => void 
 				// 解读指令暂存，等用户真正发送时随 prompt 带上（不自动直发）。
 				store.set(pendingAssistSendAtom, {
 					settingsAssistTabId: "database",
+					sessionId,
 					kind: "analyze-result",
 					metadata: {
 						settingsAssistInstruction: agentInstruction,
