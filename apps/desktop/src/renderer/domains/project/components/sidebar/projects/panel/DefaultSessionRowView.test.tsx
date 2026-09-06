@@ -63,7 +63,7 @@ describe("DefaultSessionRowView leading icon", () => {
 			/>,
 		);
 
-		expect(view.container.querySelector('[data-session-avatar-stack="true"]')).toBeNull();
+		expect(view.container.querySelector('[data-avatar-stack="true"]')).toBeNull();
 		expect(view.container.querySelector('[data-session-leading-icon="true"]')?.className).toContain(
 			"icon-[solar--refresh-linear]",
 		);
@@ -73,10 +73,10 @@ describe("DefaultSessionRowView leading icon", () => {
 		const avatarUrls = Array.from({ length: 32 }, (_, index) => `/avatar-${index}.webp`);
 		const view = render(<DefaultSessionRowView {...props({ leadingAvatarUrls: avatarUrls })} />);
 
-		const stack = view.container.querySelector('[data-session-avatar-stack="true"]');
+		const stack = view.container.querySelector('[data-avatar-stack="true"]');
 		expect(stack?.querySelectorAll("img")).toHaveLength(3);
 		expect(stack?.textContent).toBe("+29");
-		expect(stack?.querySelector('[data-session-avatar-overflow="29"]')).not.toBeNull();
+		expect(stack?.querySelector('[data-avatar-overflow="29"]')).not.toBeNull();
 		expect(view.container.querySelector('[data-session-leading-icon="true"]')).toBeNull();
 	});
 
@@ -90,7 +90,7 @@ describe("DefaultSessionRowView leading icon", () => {
 			/>,
 		);
 
-		expect(view.container.querySelector('[data-session-avatar-stack="true"]')).toBeNull();
+		expect(view.container.querySelector('[data-avatar-stack="true"]')).toBeNull();
 		expect(view.container.querySelector('[data-session-leading-icon="true"]')?.className).toContain(
 			"icon-[solar--users-group-rounded-linear]",
 		);
@@ -99,7 +99,7 @@ describe("DefaultSessionRowView leading icon", () => {
 	it.each([1, 3])("renders all avatars without an overflow marker for %i members", (count) => {
 		const avatarUrls = Array.from({ length: count }, (_, index) => `/avatar-${index}.webp`);
 		const view = render(<DefaultSessionRowView {...props({ leadingAvatarUrls: avatarUrls })} />);
-		const stack = view.container.querySelector('[data-session-avatar-stack="true"]');
+		const stack = view.container.querySelector('[data-avatar-stack="true"]');
 
 		expect(stack?.querySelectorAll("img")).toHaveLength(count);
 		expect(stack?.textContent).toBe("");

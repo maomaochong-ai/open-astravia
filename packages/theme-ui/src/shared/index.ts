@@ -1,3 +1,5 @@
+export type { AvatarStackViewProps } from "./AvatarStackView";
+export { AvatarStackView } from "./AvatarStackView";
 export { BotAvatar } from "./BotAvatar";
 export type {
 	CodeBlockCopyButtonLabels,

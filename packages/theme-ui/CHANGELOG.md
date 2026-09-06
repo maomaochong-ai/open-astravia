@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Exported shared `AvatarStackView` for a compact overlapping avatar row with a bounded overflow count, replacing the session-row-only stack implementation.
+
 ### Changed
 
 - MessageFeed.VirtualList 现在支持按条目数设置最小预渲染范围和恢复 Virtuoso 状态快照，动态高度消息在滚动和会话恢复时可避免批量重测导致的布局跳动。

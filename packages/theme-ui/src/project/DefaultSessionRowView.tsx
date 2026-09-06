@@ -1,5 +1,6 @@
 import { cn } from "@vetta/ui";
 import { memo, type JSX } from "react";
+import { AvatarStackView } from "../shared/AvatarStackView";
 import { SessionRenameInputView } from "./SessionRenameInputView";
 import { prepareSidebarSelection } from "./useActiveSessionAutoScroll";
 
@@ -90,7 +91,7 @@ export const DefaultSessionRowView = memo(function DefaultSessionRowView({
 			) : (
 				<>
 					{leadingAvatarUrls && leadingAvatarUrls.length > 0 && !hasStatusIcon ? (
-						<SessionRowAvatarStack avatarUrls={leadingAvatarUrls} />
+						<AvatarStackView avatarUrls={leadingAvatarUrls} />
 					) : (
 						<span
 							data-session-leading-icon="true"
@@ -116,33 +117,3 @@ export const DefaultSessionRowView = memo(function DefaultSessionRowView({
 		</button>
 	);
 });
-
-const MAX_VISIBLE_AVATARS = 3;
-
-function SessionRowAvatarStack({ avatarUrls }: { avatarUrls: readonly string[] }): JSX.Element {
-	const visibleAvatarUrls = avatarUrls.slice(0, MAX_VISIBLE_AVATARS);
-	const hiddenAvatarCount = avatarUrls.length - visibleAvatarUrls.length;
-	return (
-		<span className="flex shrink-0 items-center pl-0.5" aria-hidden="true" data-session-avatar-stack="true">
-			{visibleAvatarUrls.map((avatarUrl, index) => (
-				<img
-					key={`${avatarUrl}:${index}`}
-					src={avatarUrl}
-					alt=""
-					className={cn(
-						"h-4 w-4 shrink-0 rounded-full object-cover ring-1 ring-border",
-						index > 0 && "-ml-1.5",
-					)}
-				/>
-			))}
-			{hiddenAvatarCount > 0 ? (
-				<span
-					className="-ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-muted px-1 text-[9px] tabular-nums text-muted-foreground ring-1 ring-background"
-					data-session-avatar-overflow={hiddenAvatarCount}
-				>
-					+{hiddenAvatarCount}
-				</span>
-			) : null}
-		</span>
-	);
-}

@@ -111,7 +111,7 @@ describe("AgentTeamSidebarList", () => {
 
 		await screen.findByText("Vetta Team");
 		expect(document.querySelectorAll("img")).toHaveLength(3);
-		expect(document.querySelector('[data-session-avatar-overflow="1"]')).toBeTruthy();
+		expect(document.querySelector('[data-avatar-overflow="1"]')).toBeTruthy();
 	});
 
 	it("refreshes only the changed Team session catalog", async () => {
