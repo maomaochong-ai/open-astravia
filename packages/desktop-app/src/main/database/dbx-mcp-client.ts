@@ -59,34 +59,60 @@ export class DbxMcpClient {
 	private readonly pending = new Map<number, PendingRequest>();
 	private initialized: Promise<void> | null = null;
 
+	constructor(private readonly options: { handshakeTimeoutMs?: number; callTimeoutMs?: number } = {}) {}
+
 	/** 确保子进程已启动并完成 initialize 握手。 */
 	ensureInitialized(): Promise<void> {
 		if (!this.initialized) {
-			this.initialized = this.spawnAndHandshake();
+			this.initialized = this.spawnAndHandshake().catch((err) => {
+				// P4-1:握手失败(spawn error / initialize 报错 / 握手超时)后复位记忆化与子进程,
+				// 下次调用重新拉起重试——否则 initialized 恒为已拒绝 promise,DB 功能持续 TIMEOUT 直至重启。
+				this.initialized = null;
+				this.reapCurrentChild();
+				throw err;
+			});
 		}
 		return this.initialized;
+	}
+
+	/** 立即回收当前子进程(不等待退出)。供握手失败复位使用;子进程已按代过滤,不会误触新一轮状态。 */
+	private reapCurrentChild(): void {
+		const child = this.child;
+		this.child = null;
+		if (!child || child.killed) return;
+		child.kill();
+		const force = setTimeout(() => {
+			if (child && !child.killed) child.kill("SIGKILL");
+		}, SHUTDOWN_GRACE_MS);
+		force.unref?.();
 	}
 
 	/** 调用 dbx MCP 工具，返回结构化结果。工具错误（isError）不抛异常，由上层判断。 */
 	async callTool(name: string, args: Record<string, unknown>, timeoutMs?: number): Promise<DbxToolResult> {
 		await this.ensureInitialized();
 		const id = this.nextId++;
-		const result = await this.request(id, "tools/call", { name, arguments: args }, timeoutMs ?? CALL_TIMEOUT_MS);
+		const result = await this.request(
+			id,
+			"tools/call",
+			{ name, arguments: args },
+			timeoutMs ?? this.options.callTimeoutMs ?? CALL_TIMEOUT_MS,
+		);
 		return result as DbxToolResult;
 	}
 
-	/** 关闭子进程（幂等）。 */
+	/** 关闭子进程(幂等)。 */
 	async dispose(): Promise<void> {
 		const child = this.child;
 		this.child = null;
 		this.initialized = null;
+		// 先拒绝在途请求再等待退出:dispose 窗口内新 spawn 的代(如并发 callTool)不受旧代清理影响。
+		for (const p of this.pending.values()) p.reject(new Error("dbx-mcp client disposed"));
+		this.pending.clear();
 		if (!child || child.killed) return;
 		const exited = new Promise<void>((resolve) => child.once("exit", () => resolve()));
 		child.kill();
 		await Promise.race([exited, new Promise<void>((resolve) => setTimeout(resolve, SHUTDOWN_GRACE_MS))]);
 		if (!child.killed) child.kill("SIGKILL");
-		for (const p of this.pending.values()) p.reject(new Error("dbx-mcp client disposed"));
-		this.pending.clear();
 	}
 
 	private spawnAndHandshake(): Promise<void> {
@@ -96,6 +122,9 @@ export class DbxMcpClient {
 			env: { ...process.env, DBX_DATA_DIR: dbxEngineDataDir() },
 		});
 		this.child = child;
+		// P4-2:仅「当前代」进程的退出/错误才清理共享状态——dispose 或握手失败回收旧进程时,
+		// 若新一代已 spawn,旧代回调不得误清新一代引用与其在途请求(否则新进程成孤儿)。
+		const isCurrent = () => this.child === child;
 
 		child.stdout.setEncoding("utf8");
 		child.stdout.on("data", (chunk: string) => this.onData(chunk));
@@ -104,6 +133,7 @@ export class DbxMcpClient {
 			process.stderr.write(`[dbx-mcp] ${chunk.toString()}`);
 		});
 		child.on("exit", (code, signal) => {
+			if (!isCurrent()) return;
 			const err = new Error(`dbx-mcp exited (code=${code}, signal=${signal})`);
 			for (const p of this.pending.values()) p.reject(err);
 			this.pending.clear();
@@ -111,8 +141,12 @@ export class DbxMcpClient {
 			this.initialized = null;
 		});
 		child.on("error", (err) => {
+			if (!isCurrent()) return;
+			// spawn 失败(如 EACCES)不一定伴随 exit;同步复位,使后续调用可重试。
 			for (const p of this.pending.values()) p.reject(err);
 			this.pending.clear();
+			this.child = null;
+			this.initialized = null;
 		});
 
 		return new Promise<void>((resolve, reject) => {
@@ -124,9 +158,14 @@ export class DbxMcpClient {
 					capabilities: {},
 					clientInfo: { name: "astravia-desktop", version: "1.0.0" },
 				},
-				HANDSHAKE_TIMEOUT_MS,
+				this.options.handshakeTimeoutMs ?? HANDSHAKE_TIMEOUT_MS,
 			)
 				.then(() => {
+					if (!isCurrent()) {
+						// 握手期间已被 dispose/回收:不发送 initialized 通知,以免污染新一代。
+						reject(new Error("dbx-mcp client disposed during handshake"));
+						return;
+					}
 					this.sendNotification("notifications/initialized", {});
 					resolve();
 				})

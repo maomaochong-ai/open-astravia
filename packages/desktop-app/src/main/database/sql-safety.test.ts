@@ -34,7 +34,6 @@ describe("isWriteStatement", () => {
 		expect(isWriteStatement("SHOW TABLES")).toBe(false);
 		expect(isWriteStatement("DESCRIBE users")).toBe(false);
 		expect(isWriteStatement("EXPLAIN SELECT * FROM users")).toBe(false);
-		expect(isWriteStatement("PRAGMA table_info(users)")).toBe(false);
 		expect(isWriteStatement("USE mydb")).toBe(false);
 	});
 
@@ -60,6 +59,9 @@ describe("isWriteStatement", () => {
 		expect(isWriteStatement("REPLACE INTO t (a) VALUES (1)")).toBe(true);
 		expect(isWriteStatement("GRANT SELECT ON t TO r")).toBe(true);
 		expect(isWriteStatement("REVOKE SELECT ON t FROM r")).toBe(true);
+		expect(isWriteStatement("PRAGMA journal_mode=WAL")).toBe(true);
+		expect(isWriteStatement("PRAGMA table_info(users)")).toBe(true);
+		expect(isWriteStatement("EXPLAIN ANALYZE UPDATE t SET a=1")).toBe(true);
 	});
 
 	it("带注释的写语句仍判写", () => {

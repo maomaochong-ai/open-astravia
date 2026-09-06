@@ -17,7 +17,7 @@ import { readConfigSync, writeDesktopConfig } from "../config/desktop-config-sto
 import { getAppLogger } from "../logger.js";
 import { catalogIntrospectionSql, extractCatalogNames, filterCatalogNames } from "./database-catalog.js";
 import { getDbxMcpClient } from "./dbx-mcp-client.js";
-import { isWriteStatement, maybeBlockWrite } from "./sql-safety.js";
+import { isWriteStatement, maybeBlockWrite, splitStatements } from "./sql-safety.js";
 
 /**
  * 数据库能力桥接服务（main 进程）。
@@ -41,6 +41,22 @@ function err<T>(error: DatabaseError): DatabaseResult<T> {
 	return { ok: false, error };
 }
 
+/**
+ * P4-4:config 读-改-写串行化。add/remove 连接各自 read→merge→write 若交错,
+ * 后写者会用旧快照覆盖先写者刚写入的 connectionEnv/prodWriteApproved 变更。
+ * 同进程内以 promise 链互斥,保证每个变更都基于最新已落盘快照。
+ */
+let configMutationChain: Promise<unknown> = Promise.resolve();
+function mutateDesktopConfig(
+	mutate: (config: ReturnType<typeof readConfigSync>) => ReturnType<typeof readConfigSync>,
+): Promise<void> {
+	const run = configMutationChain.then(async () => {
+		const config = readConfigSync();
+		await writeDesktopConfig(mutate(config));
+	});
+	configMutationChain = run.catch(() => undefined);
+	return run;
+}
 /**
  * 写审计日志（尽力而为）：logger 未初始化 / 环境不支持时静默跳过，
  * 绝不因日志失败破坏查询主链路（测试环境无 electron-log）。
@@ -280,14 +296,14 @@ export const databaseService = {
 
 			// W4-② 环境标记落 desktop-config（dev 为缺省值，仅 prod 需要显式写入）。
 			if (params.env === "prod") {
-				const config = readConfigSync();
-				await writeDesktopConfig({
+				// P4-4:串行化读写,避免并发 add/remove 用旧快照互相覆盖。
+				await mutateDesktopConfig((config) => ({
 					...config,
 					database: {
 						...config.database,
 						connectionEnv: { ...(config.database?.connectionEnv ?? {}), [params.name]: "prod" },
 					},
-				});
+				}));
 			}
 
 			// 返回的文本可能是 "Connection added" 之类的确认，也可能含 id
@@ -337,13 +353,14 @@ export const databaseService = {
 			const result = await client.callTool("dbx_remove_connection", { connection_name: id });
 			if (result.isError) return err(classifyError(textOf(result)));
 
-			// W4-② 同步清理产品层维护的环境标记与生产写授权，避免悬空条目。
-			const config = readConfigSync();
-			const connectionEnv = { ...(config.database?.connectionEnv ?? {}) };
-			const prodWriteApproved = { ...(config.database?.prodWriteApproved ?? {}) };
-			delete connectionEnv[id];
-			delete prodWriteApproved[id];
-			await writeDesktopConfig({ ...config, database: { ...config.database, connectionEnv, prodWriteApproved } });
+			// W4-② 同步清理产品层维护的环境标记与生产写授权,避免悬空条目(P4-4:串行化读写)。
+			await mutateDesktopConfig((config) => {
+				const connectionEnv = { ...(config.database?.connectionEnv ?? {}) };
+				const prodWriteApproved = { ...(config.database?.prodWriteApproved ?? {}) };
+				delete connectionEnv[id];
+				delete prodWriteApproved[id];
+				return { ...config, database: { ...config.database, connectionEnv, prodWriteApproved } };
+			});
 			return ok(undefined);
 		} catch (e) {
 			return err(toDatabaseError(e));
@@ -426,7 +443,9 @@ export const databaseService = {
 			const env = dbConfig?.connectionEnv?.[connectionName] ?? "dev";
 			const writeApproved = dbConfig?.prodWriteApproved?.[connectionName] === true;
 			const safetyMode = dbConfig?.safetyMode ?? "strict";
-			const isWrite = isWriteStatement(sql);
+			// P4-3:写审计判定与 maybeBlockWrite 同口径——按切分片段逐个判定,
+			// 避免 SELECT 1; UPDATE… 这类「首片段只读」多语句绕过 start/ok 审计。
+			const isWrite = splitStatements(sql).some(isWriteStatement);
 			if (isWrite) auditWrite("info", `[write-audit] start connection="${connectionName}" env=${env} sql=${sql}`);
 			const blocked = maybeBlockWrite({
 				env,

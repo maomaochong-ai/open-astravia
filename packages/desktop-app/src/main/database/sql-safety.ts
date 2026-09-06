@@ -10,7 +10,9 @@ import type { DatabaseError } from "../../preload/api-types/database.js";
  */
 
 /** 明确只读的语句首关键字。 */
-const READ_LEADERS = new Set(["SELECT", "SHOW", "DESCRIBE", "DESC", "EXPLAIN", "PRAGMA", "USE"]);
+// P4-6:PRAGMA 不属只读——sqlite `PRAGMA journal_mode=WAL` 等会真实写库(引擎侧一律按 Write 拦截),
+// 故从只读白名单移除,回归「无法明确判定只读即视为写」的保守语义;EXPLAIN(无 ANALYZE)只读保留。
+const READ_LEADERS = new Set(["SELECT", "SHOW", "DESCRIBE", "DESC", "EXPLAIN", "USE"]);
 
 /** 安全执行模式：strict 下所有连接（含 dev）写操作需显式授权；relaxed 仅 prod 拦截（W4-② 行为）。 */
 export type SafetyMode = "strict" | "relaxed";
@@ -112,7 +114,20 @@ export function isWriteStatement(sql: string): boolean {
 	const cleaned = stripSqlComments(sql).trim();
 	if (!cleaned) return false;
 	const first = firstKeyword(cleaned);
-	if (READ_LEADERS.has(first)) return false;
+	if (READ_LEADERS.has(first)) {
+		// P4-6:EXPLAIN ANALYZE 会真实执行主体(PG/sqlite 均有副作用),递归识别内部写;
+		// 引擎侧同样对 EXPLAIN ANALYZE 递归识别写语句。纯 EXPLAIN 无副作用,保持只读。
+		if (first === "EXPLAIN") {
+			const rest = cleaned.slice(first.length).trim();
+			if (rest.toUpperCase().startsWith("ANALYZE")) {
+				const body = rest.slice(7).trim();
+				const bodyFirst = firstKeyword(body);
+				if (bodyFirst && !READ_LEADERS.has(bodyFirst)) return true;
+				return WRITE_KEYWORD_RE.test(body.toUpperCase());
+			}
+		}
+		return false;
+	}
 	if (first === "WITH") {
 		// CTE 主体可能是写语句（WITH ... UPDATE / DELETE / INSERT），无法简单判定 → 全文扫描。
 		return WRITE_KEYWORD_RE.test(cleaned.toUpperCase());

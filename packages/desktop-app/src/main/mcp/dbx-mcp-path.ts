@@ -39,7 +39,10 @@ function dbxMcpPlatformDir(): string {
 export function resolveDbxMcpBinaryPath(): string {
 	const platformDir = dbxMcpPlatformDir();
 	const binaryName = process.platform === "win32" ? "dbx-mcp.exe" : "dbx-mcp";
-	const expected = app.isPackaged
+	// P4-5:纯 Node 宿主(如单测/独立脚本)无 electron app,加守卫避免直接 TypeError;
+	// 口径与 dbx-mcp-client 内 dbxEngineDataDir 一致——无 app 时按未打包 dev 布局解析。
+	const packaged = typeof app === "object" && app !== null && app.isPackaged === true;
+	const expected = packaged
 		? join(process.resourcesPath, "dbx-mcp", platformDir, binaryName)
 		: join(process.cwd(), "resources", "dbx-mcp", platformDir, binaryName);
 	if (!existsSync(expected)) {
