@@ -130,6 +130,9 @@ export interface DbTableScope {
 	readonly schema?: string;
 }
 
+/** 表级子对象种类（树深至表下：索引 / 约束 / 触发器 / 分区）。 */
+export type DbTableObjectKind = "index" | "constraint" | "trigger" | "partition";
+
 /** 执行查询选项。 */
 export interface DbExecuteQueryOptions {
 	/** 本次执行已通过 UI 危险确认（DDL / 写语句放行依据，W4-② 补充）。 */
@@ -157,6 +160,14 @@ export interface DesktopDatabaseApi {
 	describeTable(connectionName: string, table: string, scope?: DbTableScope): Promise<DatabaseResult<DbColumnInfo[]>>;
 	/** 枚举连接的 catalog 中间层作用域名（schema / database，由 family 决定）。 */
 	listCatalogScopes(connectionName: string, family: DbCatalogFamily): Promise<DatabaseResult<string[]>>;
+	/** 枚举表级子对象名（索引/约束/触发器/分区；flat 与不支持的类型返回空数组）。 */
+	listTableObjectNames(
+		connectionName: string,
+		table: string,
+		kind: DbTableObjectKind,
+		family: DbCatalogFamily,
+		scope?: DbTableScope,
+	): Promise<DatabaseResult<string[]>>;
 	/** 执行查询（SELECT），返回结构化结果。 */
 	executeQuery(
 		connectionName: string,

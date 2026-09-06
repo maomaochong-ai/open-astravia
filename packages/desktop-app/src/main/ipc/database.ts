@@ -1,5 +1,10 @@
 import { ipcMain } from "electron";
-import type { DbCatalogFamily, DbExecuteQueryOptions, DbTableScope } from "../../preload/api-types/database.js";
+import type {
+	DbCatalogFamily,
+	DbExecuteQueryOptions,
+	DbTableObjectKind,
+	DbTableScope,
+} from "../../preload/api-types/database.js";
 import { databaseService } from "../database/database-service.js";
 
 /**
@@ -17,6 +22,7 @@ const CHANNELS = {
 	REMOVE_CONNECTION: "astravia:database:remove-connection",
 	LIST_TABLES: "astravia:database:list-tables",
 	LIST_CATALOG_SCOPES: "astravia:database:list-catalog-scopes",
+	LIST_TABLE_OBJECT_NAMES: "astravia:database:list-table-object-names",
 	DESCRIBE_TABLE: "astravia:database:describe-table",
 	EXECUTE_QUERY: "astravia:database:execute-query",
 	GET_SCHEMA_CONTEXT: "astravia:database:get-schema-context",
@@ -43,6 +49,15 @@ export function registerDatabaseIpc(): () => void {
 	);
 	register(CHANNELS.LIST_CATALOG_SCOPES, (connectionName: unknown, family: unknown) =>
 		databaseService.listCatalogScopes(connectionName as string, family as DbCatalogFamily),
+	);
+	register(CHANNELS.LIST_TABLE_OBJECT_NAMES, (connectionName, table, kind, family, scope) =>
+		databaseService.listTableObjectNames(
+			connectionName as string,
+			table as string,
+			kind as DbTableObjectKind,
+			family as DbCatalogFamily,
+			scope as DbTableScope | undefined,
+		),
 	);
 	register(CHANNELS.DESCRIBE_TABLE, (connectionName: unknown, table: unknown, scope: unknown) =>
 		databaseService.describeTable(connectionName as string, table as string, scope as DbTableScope | undefined),

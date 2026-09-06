@@ -9,6 +9,7 @@ import type {
 	DbExecuteQueryOptions,
 	DbQueryResult,
 	DbTableInfo,
+	DbTableObjectKind,
 	DbTableScope,
 	DbTestConnectionParams,
 } from "../../../../preload/api-types/database.js";
@@ -30,6 +31,7 @@ export type {
 	DbAddConnectionParams,
 	DbCatalogFamily,
 	DbCatalogScope,
+	DbTableObjectKind,
 	DbColumnInfo,
 	DbConnection,
 	DbConnectionTestResult,
@@ -74,6 +76,18 @@ export async function listTables(connectionName: string, scope?: DbTableScope): 
 /** 枚举 catalog 中间层作用域名（schema / database；flat 连接返回空数组）。 */
 export async function listCatalogScopes(connectionName: string, family: DbCatalogFamily): Promise<string[]> {
 	return unwrapDatabaseResult(await window.astravia.database.listCatalogScopes(connectionName, family));
+}
+/** 枚举表级子对象名（索引/约束/触发器/分区；flat 或不支持时返回空数组）。 */
+export async function listTableObjectNames(
+	connectionName: string,
+	table: string,
+	kind: DbTableObjectKind,
+	family: DbCatalogFamily,
+	scope?: DbTableScope,
+): Promise<string[]> {
+	return unwrapDatabaseResult(
+		await window.astravia.database.listTableObjectNames(connectionName, table, kind, family, scope),
+	);
 }
 
 /** 查看表结构（可选 catalog 作用域：schema / database）。 */

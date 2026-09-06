@@ -4,6 +4,7 @@ import type {
 	DbAddConnectionParams,
 	DbCatalogFamily,
 	DbExecuteQueryOptions,
+	DbTableObjectKind,
 	DbTableScope,
 	DbTestConnectionParams,
 } from "../api-types/database.js";
@@ -23,6 +24,7 @@ const CHANNELS = {
 	REMOVE_CONNECTION: "astravia:database:remove-connection",
 	LIST_TABLES: "astravia:database:list-tables",
 	LIST_CATALOG_SCOPES: "astravia:database:list-catalog-scopes",
+	LIST_TABLE_OBJECT_NAMES: "astravia:database:list-table-object-names",
 	DESCRIBE_TABLE: "astravia:database:describe-table",
 	EXECUTE_QUERY: "astravia:database:execute-query",
 	GET_SCHEMA_CONTEXT: "astravia:database:get-schema-context",
@@ -39,6 +41,13 @@ export function createDatabaseApi(ipcRenderer: IpcRenderer): Pick<DesktopApi, "d
 				ipcRenderer.invoke(CHANNELS.LIST_TABLES, connectionName, scope),
 			listCatalogScopes: (connectionName: string, family: DbCatalogFamily) =>
 				ipcRenderer.invoke(CHANNELS.LIST_CATALOG_SCOPES, connectionName, family),
+			listTableObjectNames: (
+				connectionName: string,
+				table: string,
+				kind: DbTableObjectKind,
+				family: DbCatalogFamily,
+				scope?: DbTableScope,
+			) => ipcRenderer.invoke(CHANNELS.LIST_TABLE_OBJECT_NAMES, connectionName, table, kind, family, scope),
 			describeTable: (connectionName: string, table: string, scope?: DbTableScope) =>
 				ipcRenderer.invoke(CHANNELS.DESCRIBE_TABLE, connectionName, table, scope),
 			executeQuery: (connectionName: string, sql: string, options?: DbExecuteQueryOptions) =>

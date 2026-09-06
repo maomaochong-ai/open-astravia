@@ -10,12 +10,19 @@ import type {
 	DbExecuteQueryOptions,
 	DbQueryResult,
 	DbTableInfo,
+	DbTableObjectKind,
 	DbTableScope,
 	DbTestConnectionParams,
 } from "../../preload/api-types/database.js";
 import { readConfigSync, writeDesktopConfig } from "../config/desktop-config-store.js";
 import { getAppLogger } from "../logger.js";
-import { catalogIntrospectionSql, extractCatalogNames, filterCatalogNames } from "./database-catalog.js";
+import {
+	catalogIntrospectionSql,
+	extractCatalogNames,
+	extractTableObjectNames,
+	filterCatalogNames,
+	tableObjectIntrospectionSql,
+} from "./database-catalog.js";
 import { getDbxMcpClient } from "./dbx-mcp-client.js";
 import { isWriteStatement, maybeBlockWrite, splitStatements } from "./sql-safety.js";
 
@@ -68,7 +75,6 @@ function auditWrite(level: "info" | "warn", message: string): void {
 		// 静默：审计是辅助能力，查询执行不受影响。
 	}
 }
-
 /** 把 dbx 工具错误文本归类为稳定 DatabaseError。 */
 function classifyError(raw: string): DatabaseError {
 	if (raw.includes("SQL_BLOCKED")) {
@@ -426,6 +432,33 @@ export const databaseService = {
 
 			const { columns, rows } = parseMarkdownTable(text);
 			return ok(filterCatalogNames(family, extractCatalogNames(columns, rows)));
+		} catch (e) {
+			return err(toDatabaseError(e));
+		}
+	},
+
+	/** 枚举表级子对象名（索引/约束/触发器/分区）。family 不支持或无 scope 时返回空数组。 */
+	async listTableObjectNames(
+		connectionName: string,
+		table: string,
+		kind: DbTableObjectKind,
+		family: DbCatalogFamily,
+		scope?: DbTableScope,
+	): Promise<DatabaseResult<string[]>> {
+		try {
+			const sql = tableObjectIntrospectionSql(family, kind, table, scope);
+			if (sql === null) return ok([]);
+
+			const client = getDbxMcpClient();
+			const result = await client.callTool("dbx_execute_query", {
+				connection_name: connectionName,
+				sql,
+			});
+			const text = textOf(result);
+			if (result.isError) return err(classifyError(text));
+
+			const { columns, rows } = parseMarkdownTable(text);
+			return ok(extractTableObjectNames(columns, rows));
 		} catch (e) {
 			return err(toDatabaseError(e));
 		}
