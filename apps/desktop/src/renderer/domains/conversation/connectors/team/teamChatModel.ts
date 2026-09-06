@@ -136,18 +136,34 @@ export function reduceTeamStreamState(state: TeamStreamState, event: DesktopTeam
 	if (event.type === "conversation.agent-message-discard") {
 		const current = state[event.messageId];
 		if (!current || event.sequence <= current.sequence) return state;
+		// Keep a terminal tombstone for successful turns. Runtime delivery and
+		// publication are separate async lanes, so a late assistant/tool event
+		// must not recreate a stream after the discard event has closed it.
+		if (event.reason === "completed") {
+			return {
+				...state,
+				[event.messageId]: {
+					...current,
+					sequence: event.sequence,
+					message: { ...current.message, phase: "completed", endedAt: event.timestamp },
+				},
+			};
+		}
 		const next = { ...state };
 		delete next[event.messageId];
 		return next;
 	}
 	if (event.type === "desktop.team-tool-execution" || event.type === "conversation.tool-execution") {
 		const current = state[event.messageId];
+		if (current?.message.phase === "completed") return state;
 		const next = reduceConversationToolExecutionEvent(current, event);
+		if (next === current) return state;
 		return { ...state, [event.messageId]: next };
 	}
 	if (event.type === "desktop.team-context-usage") return state;
 	const current = state[event.messageId];
 	const next = reduceConversationMessageEvent(current, event);
+	if (next === current) return state;
 	return {
 		...state,
 		[event.messageId]: next,
@@ -298,6 +314,7 @@ export function projectTeamConversationTimeline({
 	for (const turn of Object.values(streams).sort(
 		(left, right) => (left.message.startedAt ?? 0) - (right.message.startedAt ?? 0),
 	)) {
+		if (turn.message.phase !== "streaming") continue;
 		if (memberId && turn.message.authorId !== memberId) continue;
 		if (
 			persistedResults.has(turn.message.id) ||
@@ -375,15 +392,28 @@ function projectLegacySnapshotMessages(snapshot: DesktopTeamSessionSnapshot): Ch
 				attachments: [...(record.attachments ?? [])],
 			};
 		}
+		const projected = projectConversationAgentMessage({
+			message: record.message,
+			messageId: record.id,
+			entryId: record.id,
+			turnId: record.turnId,
+			authorId: record.author.id,
+			timestamp: record.timestamp,
+		});
 		return {
-			...projectConversationAgentMessage({
-				message: record.message,
-				messageId: record.id,
-				entryId: record.id,
-				turnId: record.turnId,
-				authorId: record.author.id,
-				timestamp: record.timestamp,
-			}),
+			...projected,
+			// Public Team records intentionally omit private tool-result entries.
+			// Once the terminal assistant record is persisted, a pending tool block
+			// is no longer running and must not render as an endless spinner.
+			...(record.message.stopReason === "stop" && "blocks" in projected
+				? {
+						blocks: (projected.blocks as readonly any[]).map((block) =>
+							block.type === "tool_call" && block.status === "pending"
+								? { ...block, status: "success" as const }
+								: block,
+						),
+					}
+				: {}),
 			// Keep the DOM identity of a public result stable while it transitions
 			// from the live Team stream to the persisted coordination record.
 			renderKey: `team:stream:${record.author.id}:${record.id}`,

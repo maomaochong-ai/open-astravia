@@ -322,6 +322,24 @@ describe("team chat stream state", () => {
 		expect(state.turn).toBeUndefined();
 	});
 
+	it("keeps a completed turn closed when a late stream event arrives", () => {
+		const completed = reduceTeamStreamState(reduceTeamStreamState({}, streamEvent("turn", 1, "done")), {
+			type: "conversation.agent-message-discard",
+			conversationId: "session",
+			messageId: "turn",
+			turnId: "request",
+			author: { kind: "agent", id: "leader" },
+			sequence: 2,
+			reason: "completed",
+			timestamp: 3,
+		});
+
+		const late = reduceTeamStreamState(completed, streamEvent("turn", 1, "late"));
+		expect(late).toBe(completed);
+		expect(late.turn?.message.phase).toBe("completed");
+		expect(late.turn?.message.text).toBe("done");
+	});
+
 	it("deduplicates optimistic user messages by request id and keeps partial member output visible", () => {
 		const items = projectTeamConversationTimeline({
 			snapshot: snapshot({ messages: [userMessage("message", "request", "hello", 1)] }),
@@ -405,6 +423,30 @@ describe("team chat stream state", () => {
 		expect(flushed.filter((item) => item.kind === "agent")).toEqual([
 			expect.objectContaining({ id: "runtime-result", renderKey: "team:stream:leader:public-result" }),
 		]);
+	});
+
+	it("marks tool calls complete in persisted public Team records", () => {
+		const items = projectTeamConversationTimeline({
+			snapshot: snapshot({
+				messages: [
+					agentMessage("public-tool-turn", "request", "leader", "", 2, {
+						id: "members-call",
+						name: "team_list_members",
+						arguments: {},
+					}),
+					agentMessage("public-final", "request", "leader", "已完成", 3),
+				],
+			}),
+			pending: undefined,
+			streams: {},
+			members: [member],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		const tool = items
+			.flatMap((item) => (item.kind === "agent" ? item.blocks : []))
+			.find((block) => block.type === "tool_call" && block.toolCallId === "members-call");
+		expect(tool).toMatchObject({ type: "tool_call", status: "success" });
 	});
 
 	it("keeps the coordination user message visible when member histories are present", () => {
