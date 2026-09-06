@@ -480,7 +480,11 @@ export const databaseService = {
 			// P4-3:写审计判定与 maybeBlockWrite 同口径——按切分片段逐个判定,
 			// 避免 SELECT 1; UPDATE… 这类「首片段只读」多语句绕过 start/ok 审计。
 			const isWrite = splitStatements(sql).some(isWriteStatement);
-			if (isWrite) auditWrite("info", `[write-audit] start connection="${connectionName}" env=${env} sql=${sql}`);
+			if (isWrite)
+				auditWrite(
+					"info",
+					`[write-audit] start connection="${connectionName}" env=${env} confirmed=${options?.confirmedWrite === true ? 1 : 0} sql=${sql}`,
+				);
 			const blocked = maybeBlockWrite({
 				env,
 				writeApproved,
@@ -492,7 +496,7 @@ export const databaseService = {
 				if (isWrite)
 					auditWrite(
 						"warn",
-						`[write-audit] blocked connection="${connectionName}" env=${env} code=${blocked.code} sql=${sql}`,
+						`[write-audit] blocked connection="${connectionName}" env=${env} code=${blocked.code} confirmed=${options?.confirmedWrite === true ? 1 : 0} sql=${sql}`,
 					);
 				return err(blocked);
 			}
@@ -531,7 +535,7 @@ export const databaseService = {
 			if (isWrite)
 				auditWrite(
 					"info",
-					`[write-audit] ok connection="${connectionName}" env=${env} rows=${visibleRows.length} sql=${sql}`,
+					`[write-audit] ok connection="${connectionName}" env=${env} confirmed=${options?.confirmedWrite === true ? 1 : 0} binding=${needsSingleShotBinding ? 1 : 0} rows=${visibleRows.length} sql=${sql}`,
 				);
 			return ok({
 				columns,
