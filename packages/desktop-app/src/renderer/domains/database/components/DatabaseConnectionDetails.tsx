@@ -5,7 +5,7 @@ import type { DbConnection } from "../../../../preload/api-types/database";
 import { DatabaseDetail } from "./DatabaseDetail";
 import { DatabaseNotice } from "./DatabaseNotice";
 import { ConnectionIdentity, InfoItem, InfoSection, endpointOf } from "./database-details-shared";
-import type { DatabaseWorkspaceModel } from "./useDatabaseWorkspaceModel";
+import type { DatabaseWorkspaceModel } from "../hooks/useDatabaseWorkspaceModel";
 
 /**
  * 连接详情 · 管理视角（B2.6-U U3 按视角分离，供设置页数据库 tab 与 /database 路由使用）：

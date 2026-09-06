@@ -1,6 +1,6 @@
 import type { JSX } from "react";
 import { cn } from "@astravia/ui";
-import { getDatabaseTypeMeta } from "./database-type-catalog";
+import { getDatabaseTypeMeta } from "../lib/database-type-catalog";
 
 export function DatabaseTypeBadge({
 	type,

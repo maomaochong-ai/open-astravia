@@ -25,7 +25,7 @@
   - ✅ full tsc(desktop-app tsconfig)0 errors(2026-09-06 复核)。
   - ⏳ 界面验证:`verify:ui` 打开表后点问数,观察注入内容(待 UI 环境确认)。
 
-### 阶段 P1:对话注入 API 与「应用 SQL」通道(预估 1 天)
+### 阶段 P1:对话注入 API 与「应用 SQL」通道(✅ 已完成 2026-09-06,commit 7366a50)
 **范围**:
 - chat 域提供轻量注入事件:`ask-with-anchor(anchor)` —— 把锚点置顶为系统说明并切换到 database 会话(若 chat 已支持会话切换)。
 - database 域在对话消息的 SQL 块上提供「在新查询打开」动作:
@@ -35,14 +35,15 @@
 **验证**:
 - 单测:动作 handler 对 DDL/`DROP` 等被 clamp 拒绝;SELECT 正常入 tab。
 - 手动:对话生成 SELECT → 一键打开 → 执行出结果;生成 `DROP TABLE` → 被拦截并提示 danger。
-
-### 阶段 P2:编辑器与历史/结果就近入口(预估 1 天)
+**结果**:theme-ui `TextBlockView` 新增 `renderCodeBlockActions` 插槽;`pendingDatabaseSqlActionAtom` 单向通道;chat 侧 SQL 方言块「打开/执行」;database 侧 open=addTab、run=sql-safety+danger confirm;锚点经 `chat-session-anchor` 回溯最近带连接的用户消息。验证:vitest 锚点 4/4、esbuild、biome、双包 tsc 全绿。
+### 阶段 P2:编辑器与历史/结果就近入口(✅ 已完成 2026-09-06,commit b6dad39)
 **范围**:
 - 编辑器工具栏加「问 AI」按钮:锚点=`{connection, sqlText: 编辑器当前 SQL, source:"editor"}`。
 - DatabaseQueryHistoryPopover 每条历史加「AI 分析」:锚点=`{connection, sqlText: entry.sql, source:"history"}`,附加条目的执行时间/状态(若已存)。
 - 结果页脚(或结果工具栏)加「AI 分析结果」:锚点=`{connection, table?, source:"result"}`——若来自打开表,带表结构;自由 SQL 则带 SQL 文本,不带行数据。
 **验证**:
 - 就近入口点击后,chat 中出现对应系统说明与锚点;文案 en/zh;`recordSettingsUsage` 有记录。
+**结果**:编辑器工具栏「问 AI」+ 历史条目「AI 分析」落地(`useDatabaseAnalyzeSql` 双源:预填可编辑问句 + schema 摘要 display:false 注入)。**决策记录**:① 交互=按钮唤起对话(非常驻抽屉);② 结果「AI 分析」沿用既有解读通道、保留前 20 行样本;③ 历史不扩执行字段。验证:双 JSON 校验、desktop tsc exit 0、quality guards ok。
 
 ### 阶段 P3:体验打磨与容量确认(预估 0.5-1 天)
 **范围**:
@@ -87,9 +88,16 @@
 2. 结果「AI 分析」是否允许把**当前页行样本**(如前 20 行)作为上下文?涉及数据出库(仅本机 LLM 无妨,若走远程 API 需谨慎)——需按用户 AI 配置回答。
 3. 历史「AI 分析」是否需要展示历史执行状态/耗时(需在 QueryHistoryEntry 增加字段)?
 
+**决策记录(2026-09-06,用户拍板)**:
+1. 交互=**按钮唤起对话**(贴现状、改动小;常驻 AI 抽屉留待后续独立评估)。
+2. 结果「AI 分析」=**保留前 20 行样本**(走既有解读通道;数据不出库仅本机 LLM 时成立,走远程 API 需另行评估)。
+3. 历史=**仅现有字段**(`{connection, sql, time}`,不扩执行状态/耗时)。
+
+**文件规划基线**:本方案涉及文件已按 `docs/adr/0056` 迁移为 components/hooks/lib 三层;涉及文件清单见下文 §3。
+
 ## 6. 里程碑
 | 里程碑 | 内容 | 产出 |
 | --- | --- | --- |
-| M1(P0+P1) | 锚点 + 应用 SQL 通道 | 端到端「问 AI → 生成 → 执行」 |
-| M2(P2) | 就近入口三处 | 与 dbx 交互对齐 |
+| M1(P0+P1) | 锚点 + 应用 SQL 通道 | 端到端「问 AI → 生成 → 执行」| ✅ 2026-09-06(commit 8329510/7366a50) |
+| M2(P2) | 就近入口三处 | 与 dbx 交互对齐 | ✅ 2026-09-06(commit b6dad39;结果入口沿用既有通道) |
 | M3(P3) | 打磨 + 交互确认项 | 视觉/文案/容量对齐 |

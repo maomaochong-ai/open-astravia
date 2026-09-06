@@ -3,7 +3,7 @@ import { InputField } from "@astravia/theme-ui/settings";
 import { cn } from "@astravia/ui";
 import { useTranslation } from "react-i18next";
 import { DatabaseTypeBadge } from "./DatabaseTypeBadge";
-import { DATABASE_TYPE_GROUPS, DATABASE_TYPES } from "./database-type-catalog";
+import { DATABASE_TYPE_GROUPS, DATABASE_TYPES } from "../lib/database-type-catalog";
 import { DatabaseSectionLabel } from "./DatabaseSectionLabel";
 
 /**

@@ -23,7 +23,7 @@ import { recordSettingsUsage } from "../../settings/components/recordSettingsUsa
 import { DatabaseDetail } from "./DatabaseDetail";
 import { DatabaseNotice } from "./DatabaseNotice";
 import { DatabaseSectionLabel } from "./DatabaseSectionLabel";
-import type { DatabaseQueryStatus } from "./useDatabaseQueryModel";
+import type { DatabaseQueryStatus } from "../hooks/useDatabaseQueryModel";
 import type { QueryEditabilityReason } from "../lib/sql-editability";
 
 // B3.2-R 自动刷新：默认间隔与可选间隔（秒），对齐 dbx DataGridToolbar autoRefresh 间隔下拉。

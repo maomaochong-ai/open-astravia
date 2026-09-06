@@ -13,7 +13,7 @@ import type {
 import { recordSettingsUsage } from "../../settings/components/recordSettingsUsage";
 import { addConnection, listConnections, listTables, removeConnection, testConnection } from "../lib/database-api";
 import { formatDatabaseError as formatError } from "../lib/database-error-labels";
-import { getDatabaseTypeMeta } from "./database-type-catalog";
+import { getDatabaseTypeMeta } from "../lib/database-type-catalog";
 
 export interface DatabaseConnectionFormState {
 	readonly dbType: string;

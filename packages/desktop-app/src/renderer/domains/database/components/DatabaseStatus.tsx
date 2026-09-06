@@ -1,6 +1,6 @@
 import type { JSX } from "react";
 import { cn } from "@astravia/ui";
-import type { DatabaseConnectionTestStatus } from "./useDatabaseWorkspaceModel";
+import type { DatabaseConnectionTestStatus } from "../hooks/useDatabaseWorkspaceModel";
 
 /**
  * 连接状态视觉的唯一定义：列表圆点、详情胶囊、结果提示共用同一份色板，

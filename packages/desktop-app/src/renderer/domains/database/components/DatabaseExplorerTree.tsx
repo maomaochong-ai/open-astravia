@@ -32,8 +32,8 @@ import {
 	type DatabaseContextMenuItem,
 } from "./DatabaseExplorerContextMenu";
 import { catalogFamilyOfType } from "../lib/catalog-family";
-import type { DatabaseExplorerModel, ExplorerListNode } from "./useDatabaseExplorerModel";
-import type { DatabaseConnectionTestSnapshot, DatabaseConnectionTestStatus } from "./useDatabaseWorkspaceModel";
+import type { DatabaseExplorerModel, ExplorerListNode } from "../hooks/useDatabaseExplorerModel";
+import type { DatabaseConnectionTestSnapshot, DatabaseConnectionTestStatus } from "../hooks/useDatabaseWorkspaceModel";
 
 interface DatabaseExplorerTreeProps {
 	/** 用户自定义分组名（顶部「+」新建，持久化本地）；树按创建序置顶渲染为空分组（对齐 dbx「新建分组」）。 */

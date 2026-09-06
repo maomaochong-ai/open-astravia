@@ -3,7 +3,7 @@ import { cn, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Spin
 import { useTranslation } from "react-i18next";
 import type { DbTableInfo } from "../../../../preload/api-types/database";
 import { DatabaseSurface } from "./DatabaseSurface";
-import type { DatabaseWorkspaceModel, SchemaInjectionScopeKind } from "./useDatabaseWorkspaceModel";
+import type { DatabaseWorkspaceModel, SchemaInjectionScopeKind } from "../hooks/useDatabaseWorkspaceModel";
 
 /**
  * 感知范围面板（B2.10-W4-①）：AI 数据库感知开启时，选择注入到 AI 对话的

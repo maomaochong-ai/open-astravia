@@ -3,13 +3,13 @@ import { useEffect, useRef, useState } from "react";
 import { cn, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch } from "@astravia/ui";
 import { useTranslation } from "react-i18next";
 import type { DbConnection } from "../../../../preload/api-types/database";
-import { getDatabaseTypeMeta } from "./database-type-catalog";
+import { getDatabaseTypeMeta } from "../lib/database-type-catalog";
 import { DatabaseBadge } from "./DatabaseBadge";
 import { DatabaseSectionLabel } from "./DatabaseSectionLabel";
 import { DatabaseStatusPill } from "./DatabaseStatus";
 import { DatabaseSurface } from "./DatabaseSurface";
 import { DatabaseTypeBadge } from "./DatabaseTypeBadge";
-import type { DatabaseConnectionTestStatus, DatabaseWorkspaceModel } from "./useDatabaseWorkspaceModel";
+import type { DatabaseConnectionTestStatus, DatabaseWorkspaceModel } from "../hooks/useDatabaseWorkspaceModel";
 
 export function endpointOf(connection: DbConnection): string {
 	const meta = getDatabaseTypeMeta(connection.type);

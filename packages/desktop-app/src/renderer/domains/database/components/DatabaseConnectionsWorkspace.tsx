@@ -27,7 +27,7 @@ import { DatabaseTypeBadge } from "./DatabaseTypeBadge";
 import { DatabaseWorkspaceHeader } from "./DatabaseWorkspaceHeader";
 import { DatabaseLimitsRow, DbxToolAccessRow, SafetyModeRow, SchemaInjectionRow } from "./database-details-shared";
 import { SchemaInjectionScopePanel } from "./SchemaInjectionScopePanel";
-import { useDatabaseWorkspaceModel } from "./useDatabaseWorkspaceModel";
+import { useDatabaseWorkspaceModel } from "../hooks/useDatabaseWorkspaceModel";
 
 /**
  * 数据库连接配置管理（B2.6-R 职责分离后 /database 页面与设置页数据库 tab 的视图）：

@@ -48,13 +48,13 @@ import { describeTable, executeQuery, getSchemaContext } from "../lib/database-a
 import { formatDatabaseError } from "../lib/database-error-labels";
 import { buildDeleteSql, buildInsertSql, buildOpenTableSql, buildRowWhere, buildUpdateSql } from "../lib/sql-dialect";
 import { analyzeEditableQuery, type EditableQueryAnalysis } from "../lib/sql-editability";
-import { resolveDatabaseLayout } from "./database-layout";
-import { useDatabaseAnalyzeResult } from "./useDatabaseAnalyzeResult";
-import { useDatabaseAnalyzeSql } from "./useDatabaseAnalyzeSql";
-import { useDatabaseAnalyzeTable } from "./useDatabaseAnalyzeTable";
-import { useDatabaseExplorerModel } from "./useDatabaseExplorerModel";
-import { useDatabaseQueryModel } from "./useDatabaseQueryModel";
-import { useDatabaseWorkspaceModel } from "./useDatabaseWorkspaceModel";
+import { resolveDatabaseLayout } from "../lib/database-layout";
+import { useDatabaseAnalyzeResult } from "../hooks/useDatabaseAnalyzeResult";
+import { useDatabaseAnalyzeSql } from "../hooks/useDatabaseAnalyzeSql";
+import { useDatabaseAnalyzeTable } from "../hooks/useDatabaseAnalyzeTable";
+import { useDatabaseExplorerModel } from "../hooks/useDatabaseExplorerModel";
+import { useDatabaseQueryModel } from "../hooks/useDatabaseQueryModel";
+import { useDatabaseWorkspaceModel } from "../hooks/useDatabaseWorkspaceModel";
 
 const EASE_OUT = [0.22, 1, 0.36, 1] as const;
 

@@ -22,8 +22,8 @@ import { DatabaseNotice } from "./DatabaseNotice";
 import { DatabaseDetail } from "./DatabaseDetail";
 import { DatabaseSectionLabel } from "./DatabaseSectionLabel";
 import { DatabaseTypePicker } from "./DatabaseTypePicker";
-import { getDatabaseTypeMeta } from "./database-type-catalog";
-import type { DatabaseConnectionFormState, DatabaseFormFieldKey } from "./useDatabaseWorkspaceModel";
+import { getDatabaseTypeMeta } from "../lib/database-type-catalog";
+import type { DatabaseConnectionFormState, DatabaseFormFieldKey } from "../hooks/useDatabaseWorkspaceModel";
 
 export interface DatabaseConnectionFormProps {
 	readonly busy: boolean;
