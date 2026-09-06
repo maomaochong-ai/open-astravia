@@ -42,6 +42,7 @@ import { catalogFamilyOfType } from "../lib/catalog-family";
 import type { DatabaseExplorerModel, ExplorerListNode } from "../hooks/useDatabaseExplorerModel";
 import { TABLE_OBJECT_KINDS } from "../hooks/useDatabaseExplorerModel";
 import type { DatabaseConnectionTestSnapshot, DatabaseConnectionTestStatus } from "../hooks/useDatabaseWorkspaceModel";
+import { loadExplorerToolbarState, saveExplorerToolbarState } from "../lib/explorer-toolbar-state";
 
 interface DatabaseExplorerTreeProps {
 	/** 用户自定义分组名（顶部「+」新建，持久化本地）；树按创建序置顶渲染为空分组（对齐 dbx「新建分组」）。 */
@@ -537,17 +538,22 @@ export function DatabaseExplorerTree({
 	const { t } = useTranslation("settings");
 
 	// V2-① sticky 搜索区：debounce 300ms，过滤连接名 / 已加载表名。
-	const [searchInput, setSearchInput] = useState("");
-	const [deferredQuery, setDeferredQuery] = useState("");
+	// #7 工具条状态持久化：重启后恢复上次的搜索词 / 只看健康 / 种类过滤 / 排序。
+	const [initialToolbar] = useState(loadExplorerToolbarState);
+	const [searchInput, setSearchInput] = useState(initialToolbar.searchQuery);
+	const [deferredQuery, setDeferredQuery] = useState(initialToolbar.searchQuery);
 	useEffect(() => {
 		const timer = window.setTimeout(() => setDeferredQuery(searchInput), SEARCH_DEBOUNCE_MS);
 		return () => window.clearTimeout(timer);
 	}, [searchInput]);
 
-	const [healthyOnly, setHealthyOnly] = useState(false);
-	const [sortOrder, setSortOrder] = useState<ConnectionSortOrder>("default");
-	const [kindFilter, setKindFilter] = useState<TableKindFilter>("all");
+	const [healthyOnly, setHealthyOnly] = useState(initialToolbar.healthyOnly);
+	const [sortOrder, setSortOrder] = useState<ConnectionSortOrder>(initialToolbar.sortOrder);
+	const [kindFilter, setKindFilter] = useState<TableKindFilter>(initialToolbar.kindFilter);
 	const [locateNonce, setLocateNonce] = useState(0);
+	useEffect(() => {
+		saveExplorerToolbarState({ searchQuery: searchInput, healthyOnly, sortOrder, kindFilter });
+	}, [healthyOnly, kindFilter, searchInput, sortOrder]);
 	const { visible } = useMemo(
 		() =>
 			filterConnections(
