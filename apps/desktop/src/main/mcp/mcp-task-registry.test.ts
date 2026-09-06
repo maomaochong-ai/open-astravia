@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { DesktopMcpTaskRegistry } from "./mcp-task-registry.js";
 
 const temporaryDirectories: string[] = [];
+const fixtureNow = () => Date.parse("2026-08-30T00:01:00.000Z");
 
 afterEach(async () => {
 	for (const directory of temporaryDirectories.splice(0)) {
@@ -16,7 +17,7 @@ afterEach(async () => {
 describe("DesktopMcpTaskRegistry", () => {
 	it("atomically persists minimized Task state and restores it after restart", async () => {
 		const filePath = await temporaryStatePath();
-		const registry = new DesktopMcpTaskRegistry({ filePath });
+		const registry = new DesktopMcpTaskRegistry({ filePath, now: fixtureNow });
 		const changed = vi.fn();
 		registry.onChanged(changed);
 		await registry.upsert(snapshot("working", "2026-08-30T00:00:01.000Z"));
@@ -36,13 +37,13 @@ describe("DesktopMcpTaskRegistry", () => {
 		expect(JSON.stringify(persisted)).not.toContain("inputRequests");
 		expect(JSON.stringify(persisted)).not.toContain("result");
 
-		const restored = new DesktopMcpTaskRegistry({ filePath });
+		const restored = new DesktopMcpTaskRegistry({ filePath, now: fixtureNow });
 		expect(await restored.list()).toEqual([expect.objectContaining({ taskId: "remote-task-1", status: "working" })]);
 	});
 
 	it("clears terminal records per session and tolerates corrupt recovery state", async () => {
 		const filePath = await temporaryStatePath();
-		const registry = new DesktopMcpTaskRegistry({ filePath });
+		const registry = new DesktopMcpTaskRegistry({ filePath, now: fixtureNow });
 		await registry.upsert(snapshot("completed", "2026-08-30T00:00:02.000Z"));
 		await registry.upsert(snapshot("working", "2026-08-30T00:00:04.000Z"));
 		await registry.upsert({
@@ -57,7 +58,7 @@ describe("DesktopMcpTaskRegistry", () => {
 
 		const corruptPath = join(temporaryDirectories[0] ?? tmpdir(), "corrupt.json");
 		await writeFile(corruptPath, "{ invalid", "utf8");
-		await expect(new DesktopMcpTaskRegistry({ filePath: corruptPath }).list()).resolves.toEqual([]);
+		await expect(new DesktopMcpTaskRegistry({ filePath: corruptPath, now: fixtureNow }).list()).resolves.toEqual([]);
 	});
 });
 

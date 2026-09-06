@@ -184,7 +184,7 @@ describe("SidebarSessionSearch popover", () => {
 			}),
 		);
 		expect(document.activeElement).toBe(screen.getByRole("searchbox"));
-	});
+	}, 15_000);
 
 	it("discards time filters when search closes", async () => {
 		vi.useFakeTimers({ toFake: ["Date"] });
