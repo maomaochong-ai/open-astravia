@@ -25,7 +25,16 @@ import type { DatabaseSqlAction, DatabaseTabTarget } from "@shared/store/atoms";
 import { DatabaseConnectionDetailsWorkbench } from "./DatabaseConnectionDetailsWorkbench";
 import { DatabaseConnectionForm } from "./DatabaseConnectionForm";
 import { DatabaseDetail } from "./DatabaseDetail";
-import { DatabaseExplorerTree, type DatabaseRevealTarget } from "./DatabaseExplorerTree";
+import { DatabaseExplorerTree, type DatabaseRevealTarget, type TableCommand } from "./DatabaseExplorerTree";
+import {
+	buildDangerOpSql,
+	buildExportSelectSql,
+	exportFileName,
+	toCsv,
+	toJson,
+	type TableDangerOp,
+	type TableTarget,
+} from "../lib/table-ops";
 import {
 	DatabaseExplorerContextMenu,
 	type DatabaseContextMenuItem,
@@ -265,7 +274,7 @@ export function DatabaseWorkspace({
 			if (!effectiveConnection) return;
 			try {
 				// 数据编辑（保存单元格/加行/删行）前已弹确认对话框，此处 confirmedWrite 放行写/DDL。
-				await executeQuery(effectiveConnection.name, sql, { confirmedWrite: true });
+				await executeQuery(effectiveConnection.name, sql, { confirmedWrite: true, confirmedSql: sql });
 				setWriteError(null);
 				if (query.openTableMeta) {
 					await query.actions.reloadOpenTable(effectiveConnection);
@@ -343,6 +352,125 @@ export function DatabaseWorkspace({
 			});
 		},
 		[lastResultColumns, editTarget, pkColumns, runWrite, setConfirm, t],
+	);
+
+	// === 批次3 #6 表级套件：导出(CSV/JSON)、清空/删除/重命名，危险写全部经 confirmed-binding 确认通道 ===
+	const tableTargetFromCommand = (command: TableCommand): TableTarget => ({
+		dbType: command.connection.type,
+		table: command.table.name,
+		schema: command.scope ? tableScopeQualifier(scopeToTableScope(command.scope)) : undefined,
+	});
+
+	const [renameState, setRenameState] = useState<{ target: TableCommand; value: string } | null>(null);
+	const closeRenameDialog = () => setRenameState(null);
+
+	// 危险写：confirmed-binding 通道放行 → 成功后刷树（结构变化）→ truncate 且打开的是该表时刷新结果格。
+	const runTableDangerOp = useCallback(
+		async (op: TableDangerOp, command: TableCommand, sql: string) => {
+			try {
+				await executeQuery(command.connection.name, sql, { confirmedWrite: true, confirmedSql: sql });
+				setWriteError(null);
+				const family = catalogFamilyOfType(command.connection.type);
+				if (family === "flat") await explorer.actions.reloadTables(command.connection.name);
+				else await explorer.actions.reloadScopes(command.connection.name, family);
+				const meta = query.openTableMeta;
+				if (op === "truncate" && meta && meta.connectionName === command.connection.name && meta.table === command.table.name) {
+					await query.actions.reloadOpenTable(command.connection).catch(() => {});
+				}
+			} catch (caught) {
+				const { message, detail } = formatDatabaseError(t, caught);
+				setWriteError(detail || message);
+			}
+		},
+		[explorer.actions, query.actions, query.openTableMeta, t],
+	);
+
+	// 导出当前表（前 N 行）→ CSV/JSON → 原生保存对话框；取消/失败留痕于 writeError。
+	const handleExportTable = useCallback(
+		async (command: TableCommand, ext: "csv" | "json") => {
+			try {
+				const result = await executeQuery(command.connection.name, buildExportSelectSql(tableTargetFromCommand(command)));
+				const text = ext === "csv" ? toCsv(result) : toJson(result);
+				const saved = await window.astravia.dialog.saveData(exportFileName(command.table.name, ext), text, "utf8", {
+					filters: [{ name: ext.toUpperCase(), extensions: [ext] }],
+				});
+				if (saved) setWriteError(null);
+			} catch (caught) {
+				const { message, detail } = formatDatabaseError(t, caught);
+				setWriteError(detail || message);
+			}
+		},
+		[t, tableTargetFromCommand],
+	);
+
+	// 树右键命令分发：truncate/drop 走确认弹窗（展示将执行的 SQL），rename 弹新表名输入，导出直接落盘。
+	const handleTableCommand = useCallback(
+		(command: TableCommand) => {
+			switch (command.kind) {
+				case "exportCsv":
+					void handleExportTable(command, "csv");
+					break;
+				case "exportJson":
+					void handleExportTable(command, "json");
+					break;
+				case "truncate":
+				case "drop": {
+					const sql = buildDangerOpSql(tableTargetFromCommand(command), command.kind);
+					setConfirm({
+						title: t("databaseTableDangerTitle"),
+						message: t("databaseTableDangerMessage", { sql }),
+						confirmLabel: t(command.kind === "truncate" ? "databaseTruncateTable" : "databaseDropTable"),
+						variant: "danger",
+						onConfirm: () => {
+							recordSettingsUsage({ tab: "database", action: "changed", target: command.kind === "truncate" ? "table-truncate" : "table-drop" });
+							void runTableDangerOp(command.kind, command, sql);
+						},
+					});
+					break;
+				}
+				case "rename":
+					setRenameState({ target: command, value: "" });
+					break;
+			}
+		},
+		[handleExportTable, runTableDangerOp, setConfirm, tableTargetFromCommand, t],
+	);
+
+	const submitRename = () => {
+		if (!renameState) return;
+		const name = renameState.value.trim();
+		if (!name) return;
+		const sql = buildDangerOpSql(tableTargetFromCommand(renameState.target), "rename", name);
+		const command = renameState.target;
+		setRenameState(null);
+		recordSettingsUsage({ tab: "database", action: "changed", target: "table-rename" });
+		void runTableDangerOp("rename", command, sql);
+	};
+
+	const tableDialogs = (
+		<Dialog open={renameState !== null} onOpenChange={(open) => { if (!open) closeRenameDialog(); }}>
+			<DialogContent className="w-[380px]">
+				<DialogHeader>
+					<DialogTitle>{t("databaseRenameTable")}</DialogTitle>
+				</DialogHeader>
+				<input
+					value={renameState?.value ?? ""}
+					autoFocus
+					placeholder={t("databaseTableRenamePlaceholder")}
+					onChange={(event) => setRenameState((state) => (state ? { ...state, value: event.target.value } : state))}
+					onKeyDown={(event) => { if (event.key === "Enter") submitRename(); }}
+					className="h-8 w-full rounded-md border border-border bg-background px-2.5 text-sm outline-none transition-colors focus:border-primary/60"
+				/>
+				<DialogFooter>
+					<Button variant="ghost" size="sm" onClick={closeRenameDialog}>
+						{t("databaseCancel")}
+					</Button>
+					<Button variant="primary" size="sm" onClick={submitRename} disabled={!renameState?.value.trim()}>
+						{t("databaseTableRenameAction")}
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
 	);
 
 	// B2.6-W 反馈 3：工作台「问数」入口 —— 复用 SettingsAiAssist 弹层形态，提交时把
@@ -626,6 +754,7 @@ export function DatabaseWorkspace({
 			}}
 			onAnalyzeTable={analyzeTable}
 			onTestConnection={(name) => void model.actions.testSaved(name)}
+			onTableCommand={handleTableCommand}
 			revealTarget={revealTarget}
 		/>
 	);
@@ -1134,6 +1263,7 @@ export function DatabaseWorkspace({
 				onTest={() => void model.actions.testDraft()}
 			/>
 			{createGroupDialog}
+			{tableDialogs}
 		</div>
 	);
 }

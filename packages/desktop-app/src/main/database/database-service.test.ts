@@ -1,3 +1,6 @@
+import { copyFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { findTestDbxMcpBinaryPath } from "../mcp/dbx-mcp-test-path.js";
@@ -253,5 +256,72 @@ describe.skipIf(!testDbxMcpAvailable)("buildDatabaseSchemaPrompt 集成（真实
 		await buildDatabaseSchemaPrompt(databaseSchemaContextIo);
 		const first = await buildDatabaseSchemaPrompt(databaseSchemaContextIo);
 		expect(first).toBeDefined();
+	}, 30000);
+});
+
+// 批次3（任务 #6）confirmed-binding：UI 危险确认后，语句经带 DBX_MCP_CONFIRMED_WRITE_SQL
+// 绑定 env 的单发子进程执行（进程级「确认 A 只能执行 A」），不再走常驻进程。
+// 用例对 tmp 复制的夹具库执行 CREATE TABLE，验证放行链路与快照不一致拦截。
+describe.skipIf(!testDbxMcpAvailable)("confirmed-binding 单发写通道（真实 dbx-mcp）", () => {
+	const bindingConnectionName = `astravia-binding-${Date.now()}`;
+	const tmpDbPath = join(tmpdir(), `astravia-binding-${Date.now()}.sqlite`);
+
+	beforeAll(async () => {
+		const sourceFixture = fileURLToPath(new URL("./fixtures/astravia-test.sqlite", import.meta.url));
+		copyFileSync(sourceFixture, tmpDbPath);
+		const result = await databaseService.addConnection({
+			name: bindingConnectionName,
+			dbType: "sqlite",
+			host: tmpDbPath,
+		});
+		if (!result.ok) throw new Error(`binding test setup failed: ${result.error.detail}`);
+	}, 30000);
+
+	afterAll(async () => {
+		await databaseService.removeConnection(bindingConnectionName);
+		rmSync(tmpDbPath, { force: true });
+		await disposeDbxMcpClient();
+	});
+
+	it("确认放行后 CREATE TABLE 经单发绑定通道执行成功，并可读回", async () => {
+		const ddl = "CREATE TABLE confirmed_probe (id INTEGER PRIMARY KEY, note TEXT)";
+		const result = await databaseService.executeQuery(bindingConnectionName, ddl, {
+			confirmedWrite: true,
+			confirmedSql: ddl,
+		});
+		if (!result.ok) {
+			// eslint-disable-next-line no-console
+			console.error("binding run detail:", result.error.code, result.error.detail);
+		}
+		expect(result.ok).toBe(true);
+		const list = await databaseService.executeQuery(
+			bindingConnectionName,
+			"SELECT name FROM sqlite_master WHERE type='table' AND name='confirmed_probe'",
+		);
+		expect(list.ok).toBe(true);
+		if (list.ok) {
+			expect(JSON.stringify(list.data.rows)).toContain("confirmed_probe");
+		}
+	}, 30000);
+
+	it("确认快照与执行语句不一致 → CONFIRM_MISMATCH，且未创建表", async () => {
+		const executed = "CREATE TABLE confirmed_sneaky (id INTEGER)";
+		const result = await databaseService.executeQuery(bindingConnectionName, executed, {
+			confirmedWrite: true,
+			// UI 确认的是另一条语句：应用层立即拒绝，单发子进程不被拉起。
+			confirmedSql: "DROP TABLE confirmed_sneaky",
+		});
+		expect(result.ok).toBe(false);
+		if (!result.ok) {
+			expect(result.error.code).toBe("CONFIRM_MISMATCH");
+		}
+		const list = await databaseService.executeQuery(
+			bindingConnectionName,
+			"SELECT name FROM sqlite_master WHERE type='table' AND name='confirmed_sneaky'",
+		);
+		expect(list.ok).toBe(true);
+		if (list.ok) {
+			expect(JSON.stringify(list.data.rows)).not.toContain("confirmed_sneaky");
+		}
 	}, 30000);
 });

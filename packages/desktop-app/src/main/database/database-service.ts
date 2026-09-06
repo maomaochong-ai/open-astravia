@@ -16,6 +16,7 @@ import type {
 } from "../../preload/api-types/database.js";
 import { readConfigSync, writeDesktopConfig } from "../config/desktop-config-store.js";
 import { getAppLogger } from "../logger.js";
+import { runConfirmedWriteSql } from "./confirmed-write-runner.js";
 import {
 	catalogIntrospectionSql,
 	extractCatalogNames,
@@ -498,12 +499,26 @@ export const databaseService = {
 
 			// B3.1-②-B 查询超时：引擎调用超时由 dbx-mcp-client 控制（超时返回 TIMEOUT）。
 			const queryTimeoutMs = dbConfig?.queryTimeoutMs ?? 30_000;
-			const client = getDbxMcpClient();
-			const result = await client.callTool(
-				"dbx_execute_query",
-				{ connection_name: connectionName, sql },
-				queryTimeoutMs,
-			);
+			// 批次3（任务 #6）confirmed-binding：UI 危险确认放行后不再走常驻单例进程，
+			// 而是拉起带 DBX_MCP_CONFIRMED_WRITE_SQL 绑定 env 的单发子进程，只执行用户
+			// 确认的这一条 SQL（引擎归一化精确匹配），随后立即释放。常驻进程无任何提升权限。
+			const needsSingleShotBinding = options?.confirmedWrite === true;
+			if (needsSingleShotBinding) {
+				const snapshot = (options?.confirmedSql ?? "").trim();
+				if (snapshot !== "" && snapshot !== sql.trim()) {
+					return err({
+						code: "CONFIRM_MISMATCH",
+						detail: "The confirmed SQL does not match the statement being executed; please confirm again.",
+					});
+				}
+			}
+			const result = needsSingleShotBinding
+				? await runConfirmedWriteSql({ connectionName, sql, queryTimeoutMs })
+				: await getDbxMcpClient().callTool(
+						"dbx_execute_query",
+						{ connection_name: connectionName, sql },
+						queryTimeoutMs,
+					);
 			const text = textOf(result);
 			if (result.isError) return err(classifyError(text));
 

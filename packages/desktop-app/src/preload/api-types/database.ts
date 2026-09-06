@@ -64,6 +64,7 @@ export type DatabaseErrorCode =
 	| "CONNECTION_EXISTS"
 	| "INVALID_PARAMS"
 	| "DBX_NOT_RUNNING"
+	| "CONFIRM_MISMATCH"
 	| "UNKNOWN";
 
 /**
@@ -137,6 +138,9 @@ export type DbTableObjectKind = "index" | "constraint" | "trigger" | "partition"
 export interface DbExecuteQueryOptions {
 	/** 本次执行已通过 UI 危险确认（DDL / 写语句放行依据，W4-② 补充）。 */
 	confirmedWrite?: boolean;
+	/** 用户确认的危险写 SQL 快照（批次3：单发 confirmed-binding）。UI 确认放行时必带，
+	 *  与本次执行 sql 归一化不一致则拒绝（防「确认 A 执行 B」）。 */
+	confirmedSql?: string;
 }
 
 /**

@@ -52,6 +52,13 @@ function dbxEngineDataDir(): string {
 const CALL_TIMEOUT_MS = 60_000;
 const SHUTDOWN_GRACE_MS = 2_000;
 
+export interface DbxMcpClientOptions {
+	handshakeTimeoutMs?: number;
+	callTimeoutMs?: number;
+	/** 追加注入子进程 env（如 DBX_MCP_CONFIRMED_WRITE_SQL 单发确认写绑定）。 */
+	extraEnv?: Record<string, string>;
+}
+
 export class DbxMcpClient {
 	private child: ChildProcessWithoutNullStreams | null = null;
 	private buffer = "";
@@ -59,7 +66,7 @@ export class DbxMcpClient {
 	private readonly pending = new Map<number, PendingRequest>();
 	private initialized: Promise<void> | null = null;
 
-	constructor(private readonly options: { handshakeTimeoutMs?: number; callTimeoutMs?: number } = {}) {}
+	constructor(private readonly options: DbxMcpClientOptions = {}) {}
 
 	/** 确保子进程已启动并完成 initialize 握手。 */
 	ensureInitialized(): Promise<void> {
@@ -119,7 +126,7 @@ export class DbxMcpClient {
 		const bin = resolveDbxMcpBinaryPath();
 		const child = spawn(bin, [], {
 			stdio: ["pipe", "pipe", "pipe"],
-			env: { ...process.env, DBX_DATA_DIR: dbxEngineDataDir() },
+			env: { ...process.env, DBX_DATA_DIR: dbxEngineDataDir(), ...this.options.extraEnv },
 		});
 		this.child = child;
 		// P4-2:仅「当前代」进程的退出/错误才清理共享状态——dispose 或握手失败回收旧进程时,

@@ -170,7 +170,7 @@ export function useDatabaseQueryModel(): DatabaseQueryModel {
 				const data = await executeQuery(
 					connection.name,
 					sqlText,
-					confirmedWrite ? { confirmedWrite: true } : undefined,
+					confirmedWrite ? { confirmedWrite: true, confirmedSql: sqlText } : undefined,
 				);
 				setTabs((prev) =>
 					patchQueryTab(prev, tabId, {

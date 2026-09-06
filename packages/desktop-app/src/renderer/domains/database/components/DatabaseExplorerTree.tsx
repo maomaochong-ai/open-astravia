@@ -94,11 +94,21 @@ interface DatabaseExplorerTreeProps {
 	onOpenTable: (connection: DbConnection, table: string, scope?: DbCatalogScope, forceNewTab?: boolean) => void;
 	/** 分析表：scope 同上。 */
 	onAnalyzeTable: (connection: DbConnection, table: string, scope?: DbCatalogScope) => void;
+	/** 表级套件：导出 CSV/JSON、清空/重命名/删除表。宿主统一处理（原生保存对话框 + 危险确认 + 确认写通道）。 */
+	readonly onTableCommand?: (command: TableCommand) => void;
 	/** 可选：测试连接动作（供连接行「测试」入口，缺省时隐藏）。 */
 	readonly onTestConnection?: (name: string) => void;
 	/** 可选：定位目标（当前激活表）。传入时工具条「定位当前表」可自动展开并滚动到该行。 */
 	readonly revealTarget?: DatabaseRevealTarget | null;
 }
+
+/** 表级套件命令：由表右键菜单发出，宿主（DatabaseWorkspace）统一处理（导出/危险确认+写通道）。 */
+export type TableCommand =
+	| { kind: "exportCsv"; connection: DbConnection; table: DbTableInfo; scope?: DbCatalogScope }
+	| { kind: "exportJson"; connection: DbConnection; table: DbTableInfo; scope?: DbCatalogScope }
+	| { kind: "truncate"; connection: DbConnection; table: DbTableInfo; scope?: DbCatalogScope }
+	| { kind: "rename"; connection: DbConnection; table: DbTableInfo; scope?: DbCatalogScope }
+	| { kind: "drop"; connection: DbConnection; table: DbTableInfo; scope?: DbCatalogScope };
 
 /** 「定位当前表」目标：connection 连接名 + scope 作用域名（flat 连接为 null）+ table 表名。 */
 export interface DatabaseRevealTarget {
@@ -613,6 +623,7 @@ export function DatabaseExplorerTree({
 	onTestConnection,
 	revealTarget,
 	onAnalyzeTable,
+	onTableCommand,
 
 }: DatabaseExplorerTreeProps): JSX.Element {
 	const { t } = useTranslation("settings");
@@ -931,6 +942,40 @@ export function DatabaseExplorerTree({
 				icon: "icon-[mdi--eye-off-outline]",
 				label: t("databaseHideTable"),
 				onSelect: () => hideTable(connection.name, table.name),
+			},
+			{ key: "sep-table-tools", separator: true },
+			{
+				key: "export-csv",
+				icon: "icon-[mdi--file-delimited-outline]",
+				label: t("databaseExportCsv"),
+				onSelect: () => onTableCommand?.({ kind: "exportCsv", connection, table, scope }),
+			},
+			{
+				key: "export-json",
+				icon: "icon-[mdi--code-json]",
+				label: t("databaseExportJson"),
+				onSelect: () => onTableCommand?.({ kind: "exportJson", connection, table, scope }),
+			},
+			{ key: "sep-table-danger", separator: true },
+			{
+				key: "truncate-table",
+				icon: "icon-[mdi--table-refresh]",
+				label: t("databaseTruncateTable"),
+				destructive: true,
+				onSelect: () => onTableCommand?.({ kind: "truncate", connection, table, scope }),
+			},
+			{
+				key: "rename-table",
+				icon: "icon-[mdi--table-edit]",
+				label: t("databaseRenameTable"),
+				onSelect: () => onTableCommand?.({ kind: "rename", connection, table, scope }),
+			},
+			{
+				key: "drop-table",
+				icon: "icon-[mdi--table-remove]",
+				label: t("databaseDropTable"),
+				destructive: true,
+				onSelect: () => onTableCommand?.({ kind: "drop", connection, table, scope }),
 			},
 		];
 		setMenu({ x: event.clientX, y: event.clientY, items });
