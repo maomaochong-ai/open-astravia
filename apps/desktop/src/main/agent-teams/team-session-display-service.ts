@@ -177,6 +177,7 @@ function teamActivities(
 			kind: "delegation" as const,
 			id: item.id,
 			requestId: item.requestTurnId,
+			...(item.originToolCallId ? { originToolCallId: item.originToolCallId } : {}),
 			...(sourceTurnId ? { sourceTurnId } : {}),
 			sourceMemberId: item.createdByParticipantId,
 			targetMemberId: item.assignedToParticipantId,

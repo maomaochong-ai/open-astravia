@@ -266,6 +266,8 @@ export interface TeamSessionActivity {
 	readonly kind: "delegation";
 	readonly id: string;
 	readonly requestId: string;
+	/** Tool call that created the work item, when the activity came from Team collaboration tooling. */
+	readonly originToolCallId?: string;
 	/** Member turn that produced the reply, when the collaboration attempt is known. */
 	readonly sourceTurnId?: string;
 	readonly sourceMemberId: string;

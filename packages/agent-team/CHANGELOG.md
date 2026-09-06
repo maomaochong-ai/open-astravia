@@ -19,6 +19,8 @@
 
 ### Changed
 
+- Team session activities now preserve the optional originating tool-call ID from collaboration work items, allowing host displays to attach member progress to the exact delegation tool without changing persisted Conversation messages.
+
 - Team session record creation accepts the initial execution mode so member Runtime warmup uses the user-selected mode from the beginning.
 
 - Team session activities optionally expose the member `sourceTurnId` used by display-only Team progress projections; this does not widen shared-context or public Conversation visibility.
