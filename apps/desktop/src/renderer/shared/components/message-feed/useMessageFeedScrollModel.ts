@@ -1,11 +1,60 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { VirtuosoHandle } from "react-virtuoso";
+import type { StateSnapshot, VirtuosoHandle } from "react-virtuoso";
 
 const MIN_SCROLL_LERP_RATIO = 0.045;
 const IDLE_MAX_SCROLL_LERP_RATIO = 0.18;
 const ACTIVE_MAX_SCROLL_LERP_RATIO = 0.28;
 const SCROLL_DISTANCE_FOR_MAX_RATIO = 900;
 const IDLE_MEASURE_EVERY_N_FRAMES = 4;
+const MAX_CACHED_FEED_STATES = 24;
+
+interface CachedFeedState {
+	readonly itemIdentity: string | null;
+	readonly itemCount: number;
+	readonly snapshot: StateSnapshot;
+}
+
+const feedStateCache = new Map<string, CachedFeedState>();
+
+function readCachedFeedState(
+	key: string | null | undefined,
+	itemCount: number,
+	itemIdentity: string | null,
+): StateSnapshot | undefined {
+	if (!key || itemCount === 0) return undefined;
+	const cached = feedStateCache.get(key);
+	return cached?.itemCount === itemCount && cached.itemIdentity === itemIdentity ? cached.snapshot : undefined;
+}
+
+function cacheFeedState(
+	key: string | null | undefined,
+	itemCount: number,
+	itemIdentity: string | null,
+	snapshot: StateSnapshot,
+): void {
+	if (!key || itemCount === 0) return;
+	feedStateCache.delete(key);
+	feedStateCache.set(key, {
+		itemIdentity,
+		itemCount,
+		snapshot: {
+			scrollTop: snapshot.scrollTop,
+			ranges: snapshot.ranges.map((range) => ({ ...range })),
+		},
+	});
+	while (feedStateCache.size > MAX_CACHED_FEED_STATES) {
+		const oldestKey = feedStateCache.keys().next().value;
+		if (oldestKey === undefined) break;
+		feedStateCache.delete(oldestKey);
+	}
+}
+
+function getItemIdentity<T>(items: readonly T[], getItemKey?: (item: T) => string | null): string | null {
+	if (!getItemKey || items.length === 0) return null;
+	const first = getItemKey(items[0]);
+	const last = getItemKey(items[items.length - 1]);
+	return `${items.length}:${first ?? ""}:${last ?? ""}`;
+}
 
 function getScrollLerpRatio(diff: number, active: boolean): number {
 	const maxRatio = active ? ACTIVE_MAX_SCROLL_LERP_RATIO : IDLE_MAX_SCROLL_LERP_RATIO;
@@ -19,6 +68,7 @@ export interface MessageFeedScrollModel {
 	readonly scrollerRef: (element: HTMLElement | Window | null) => void;
 	readonly scrollToItem: (index: number) => void;
 	readonly virtuosoRef: React.RefObject<VirtuosoHandle | null>;
+	readonly restoreStateFrom?: StateSnapshot;
 }
 
 export interface MessageFeedScrollModelInput<T> {
@@ -44,6 +94,8 @@ export function useMessageFeedScrollModel<T>({
 	shouldFollowOnAppend,
 }: MessageFeedScrollModelInput<T>): MessageFeedScrollModel {
 	const virtuosoRef = useRef<VirtuosoHandle>(null);
+	const itemIdentity = getItemIdentity(items, getItemKey);
+	const restoreStateFrom = readCachedFeedState(resetKey, items.length, itemIdentity);
 	const scrollerElementRef = useRef<HTMLElement | null>(null);
 	const [scrollerElement, setScrollerElement] = useState<HTMLElement | null>(null);
 	const layoutResizingRef = useRef(layoutResizing);
@@ -51,11 +103,37 @@ export function useMessageFeedScrollModel<T>({
 	layoutResizingRef.current = layoutResizing;
 	const shouldFollowBottomRef = useRef(true);
 	const lerpAnimationFrameRef = useRef<number | null>(null);
+	const snapAnimationFrameRef = useRef<number | null>(null);
 	const idleFrameCountRef = useRef(0);
 	const lastTouchYRef = useRef<number | null>(null);
 	const activeRef = useRef(active);
 	activeRef.current = active;
 	const skipNextLerpRef = useRef(false);
+	const stateCaptureFrameRef = useRef<number | null>(null);
+	const stateKeyRef = useRef(resetKey);
+	const stateItemCountRef = useRef(items.length);
+	const stateItemIdentityRef = useRef(itemIdentity);
+	stateKeyRef.current = resetKey;
+	stateItemCountRef.current = items.length;
+	stateItemIdentityRef.current = itemIdentity;
+
+	const captureState = useCallback(() => {
+		const key = stateKeyRef.current;
+		const itemCount = stateItemCountRef.current;
+		const identity = stateItemIdentityRef.current;
+		if (!key || itemCount === 0) return;
+		const handle = virtuosoRef.current;
+		if (!handle || typeof handle.getState !== "function") return;
+		handle.getState((snapshot) => cacheFeedState(key, itemCount, identity, snapshot));
+	}, []);
+
+	const scheduleStateCapture = useCallback(() => {
+		if (stateCaptureFrameRef.current !== null) return;
+		stateCaptureFrameRef.current = requestAnimationFrame(() => {
+			stateCaptureFrameRef.current = null;
+			captureState();
+		});
+	}, [captureState]);
 
 	const tickLerp = useCallback(() => {
 		const element = scrollerElementRef.current;
@@ -74,9 +152,6 @@ export function useMessageFeedScrollModel<T>({
 		if (diff > 0.5) {
 			idleFrameCountRef.current = 0;
 			element.scrollTop += diff * getScrollLerpRatio(diff, activeRef.current);
-			lerpAnimationFrameRef.current = requestAnimationFrame(tickLerp);
-		} else if (activeRef.current) {
-			idleFrameCountRef.current++;
 			lerpAnimationFrameRef.current = requestAnimationFrame(tickLerp);
 		} else {
 			idleFrameCountRef.current = 0;
@@ -204,6 +279,7 @@ export function useMessageFeedScrollModel<T>({
 	}, []);
 
 	const snapToBottom = useCallback(() => {
+		snapAnimationFrameRef.current = null;
 		const element = scrollerElementRef.current;
 		if (!element || !shouldFollowBottomRef.current) return;
 		const target = Math.max(0, element.scrollHeight - element.clientHeight);
@@ -224,24 +300,39 @@ export function useMessageFeedScrollModel<T>({
 		element.addEventListener("wheel", onWheel, { passive: true });
 		element.addEventListener("touchstart", onTouchStart, { passive: true });
 		element.addEventListener("touchmove", onTouchMove, { passive: true });
+		element.addEventListener("scroll", scheduleStateCapture, { passive: true });
 		const resizeObserver = new ResizeObserver(() => {
-			if (!layoutResizingRef.current) snapToBottom();
+			if (layoutResizingRef.current || snapAnimationFrameRef.current !== null) return;
+			snapAnimationFrameRef.current = requestAnimationFrame(snapToBottom);
 		});
 		resizeObserver.observe(element);
 		return () => {
 			element.removeEventListener("wheel", onWheel);
 			element.removeEventListener("touchstart", onTouchStart);
 			element.removeEventListener("touchmove", onTouchMove);
+			element.removeEventListener("scroll", scheduleStateCapture);
 			resizeObserver.disconnect();
+			if (stateCaptureFrameRef.current !== null) {
+				cancelAnimationFrame(stateCaptureFrameRef.current);
+				stateCaptureFrameRef.current = null;
+			}
+			captureState();
+			if (snapAnimationFrameRef.current !== null) {
+				cancelAnimationFrame(snapAnimationFrameRef.current);
+				snapAnimationFrameRef.current = null;
+			}
 		};
-	}, [onTouchMove, onTouchStart, onWheel, scrollerElement, snapToBottom]);
+	}, [captureState, onTouchMove, onTouchStart, onWheel, scheduleStateCapture, scrollerElement, snapToBottom]);
 
 	useEffect(
 		() => () => {
 			if (lerpAnimationFrameRef.current !== null) cancelAnimationFrame(lerpAnimationFrameRef.current);
+			if (snapAnimationFrameRef.current !== null) cancelAnimationFrame(snapAnimationFrameRef.current);
+			if (stateCaptureFrameRef.current !== null) cancelAnimationFrame(stateCaptureFrameRef.current);
+			captureState();
 		},
-		[],
+		[captureState],
 	);
 
-	return { onAtBottomChange, scrollerElement, scrollerRef, scrollToItem, virtuosoRef };
+	return { onAtBottomChange, restoreStateFrom, scrollerElement, scrollerRef, scrollToItem, virtuosoRef };
 }

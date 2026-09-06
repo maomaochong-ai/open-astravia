@@ -45,5 +45,6 @@ export function useMessageListScrollModel({
 		scrollerRef: feed.scrollerRef,
 		scrollToMessage: feed.scrollToItem,
 		virtuosoRef: feed.virtuosoRef,
+		restoreStateFrom: feed.restoreStateFrom,
 	};
 }

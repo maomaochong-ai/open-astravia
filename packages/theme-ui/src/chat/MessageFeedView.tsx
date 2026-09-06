@@ -13,6 +13,7 @@ import {
 	type FollowOutput,
 	type ListItem,
 	type ListRange,
+	type StateSnapshot,
 	Virtuoso,
 	type VirtuosoHandle,
 } from "react-virtuoso";
@@ -72,9 +73,11 @@ export interface MessageFeedVirtualListProps<T>
 	readonly atBottomStateChange?: (atBottom: boolean) => void;
 	readonly itemsRendered?: (items: ListItem<T>[]) => void;
 	readonly rangeChanged?: (range: ListRange) => void;
+	readonly restoreStateFrom?: StateSnapshot;
 	readonly followOutput?: FollowOutput;
 	readonly initialTopMostItemIndex?: number;
 	readonly overscan?: number | { main: number; reverse: number };
+	readonly minOverscanItemCount?: number | { readonly top: number; readonly bottom: number };
 	readonly increaseViewportBy?: number | { readonly top: number; readonly bottom: number };
 	readonly defaultItemHeight?: number;
 	readonly atBottomThreshold?: number;
@@ -96,10 +99,12 @@ export function MessageFeedVirtualList<T>({
 	atBottomStateChange,
 	itemsRendered,
 	rangeChanged,
+	restoreStateFrom,
 	followOutput,
 	initialTopMostItemIndex,
 	overscan,
 	increaseViewportBy,
+	minOverscanItemCount,
 	defaultItemHeight,
 	atBottomThreshold,
 	className,
@@ -128,9 +133,11 @@ export function MessageFeedVirtualList<T>({
 					{...(atBottomStateChange ? { atBottomStateChange } : {})}
 					{...(itemsRendered ? { itemsRendered } : {})}
 					{...(rangeChanged ? { rangeChanged } : {})}
+					{...(restoreStateFrom ? { restoreStateFrom } : {})}
 					{...(followOutput !== undefined ? { followOutput } : {})}
 					{...(initialTopMostItemIndex !== undefined ? { initialTopMostItemIndex } : {})}
 					{...(overscan !== undefined ? { overscan } : {})}
+					{...(minOverscanItemCount !== undefined ? { minOverscanItemCount } : {})}
 					{...(increaseViewportBy !== undefined ? { increaseViewportBy } : {})}
 					{...(defaultItemHeight !== undefined ? { defaultItemHeight } : {})}
 					{...(atBottomThreshold !== undefined ? { atBottomThreshold } : {})}

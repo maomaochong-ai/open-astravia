@@ -92,12 +92,13 @@ vi.mock("./MessageTimeline", () => ({
 
 function props(
 	viewportPhase: "initial" | "expanded",
+	isStreaming = false,
 ): ComponentProps<typeof MessageListView> {
 	const scrollToMessage = vi.fn();
 	return {
 		model: {
 			isCompacting: false,
-			isStreaming: false,
+			isStreaming,
 			messages: [createConversationAgentMessage({ id: "message-1", text: "full content", blocks: [] })],
 			modelSwitchLabels: new Map(),
 			scroll: {
@@ -133,14 +134,33 @@ describe("MessageListView viewport phases", () => {
 		const { rerender } = render(<MessageListView {...props("initial")} />);
 
 		expect(screen.getByTestId("full-message").textContent).toBe("message-1");
-		expect(captured.virtuosoProps?.overscan).toBe(0);
-		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 0, bottom: 0 });
+		expect(captured.virtuosoProps?.overscan).toBe(400);
+		expect(captured.virtuosoProps?.minOverscanItemCount).toEqual({ top: 12, bottom: 4 });
+		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 600, bottom: 200 });
 
 		rerender(<MessageListView {...props("expanded")} />);
 
 		expect(screen.getByTestId("full-message").textContent).toBe("message-1");
 		expect(captured.virtuosoProps?.overscan).toBe(400);
-		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 200, bottom: 200 });
+		expect(captured.virtuosoProps?.minOverscanItemCount).toEqual({ top: 12, bottom: 4 });
+		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 600, bottom: 200 });
+	});
+
+	it("空会话仍使用零缓冲首屏，避免没有消息时预渲染无意义内容", () => {
+		const viewProps = props("initial");
+		viewProps.model.messages = [];
+		render(<MessageListView {...viewProps} />);
+
+		expect(captured.virtuosoProps?.overscan).toBe(0);
+		expect(captured.virtuosoProps?.minOverscanItemCount).toEqual({ top: 0, bottom: 0 });
+		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 0, bottom: 0 });
+	});
+
+	it("流式回复期间也为向上滚动保留历史消息缓冲", () => {
+		render(<MessageListView {...props("expanded", true)} />);
+
+		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 400, bottom: 80 });
+		expect(captured.virtuosoProps?.minOverscanItemCount).toEqual({ top: 8, bottom: 2 });
 	});
 
 	it("把时间线的消息索引交给统一滚动模型", async () => {

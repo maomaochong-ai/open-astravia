@@ -20,8 +20,15 @@ export { ExportMessageList };
 const STREAMING_OVERSCAN = 80;
 const IDLE_OVERSCAN = 400;
 const INITIAL_OVERSCAN = 0;
-const STREAMING_INCREASE_VIEWPORT_BY = { top: 0, bottom: 80 };
-const IDLE_INCREASE_VIEWPORT_BY = { top: 200, bottom: 200 };
+// 动态高度消息仅靠像素 overscan 时，短消息/长工具消息会让 Virtuoso 在滚动阈值处反复换批。
+// 保留固定数量的历史行，确保首次恢复会话后向上滚动时已有足够锚点可测量。
+const STREAMING_MIN_OVERSCAN_ITEM_COUNT = { top: 8, bottom: 2 };
+const IDLE_MIN_OVERSCAN_ITEM_COUNT = { top: 12, bottom: 4 };
+const INITIAL_MIN_OVERSCAN_ITEM_COUNT = { top: 0, bottom: 0 };
+// 向上滚动时提前挂载一段消息，避免 Virtuoso 在滚动阈值处一次性替换整批行并重算 padding-top。
+// 流式期间保守一些，空闲时扩大缓冲以优先保证历史消息滚动稳定性。
+const STREAMING_INCREASE_VIEWPORT_BY = { top: 400, bottom: 80 };
+const IDLE_INCREASE_VIEWPORT_BY = { top: 600, bottom: 200 };
 const INITIAL_INCREASE_VIEWPORT_BY = { top: 0, bottom: 0 };
 /**
  * 未测量条目的高度估算。原值 80 远低于真实中位数（带工具调用的回复动辄几百 px），
@@ -58,6 +65,9 @@ export function MessageListView({
 		context,
 	} = model;
 	const scrollerElement = scroll.scrollerElement;
+	// 有历史消息时不能先用空列表的零缓冲配置再异步扩大；会话恢复期间这会让 Virtuoso
+	// 重新挂载整批历史行并修正总高度。只有真正的空会话才使用轻量首屏配置。
+	const useInitialViewport = viewportPhase === "initial" && messages.length === 0;
 	const activeItem = useMessageFeedActiveItem<ChatConversationItem>({
 		scrollerElement,
 		resetKey: sessionId,
@@ -164,22 +174,33 @@ export function MessageListView({
 						<MessageFeedLayout.Viewport>
 							<MessageFeedLayout.Virtualizer asChild>
 								<MessageFeed.VirtualList
-									virtuosoRef={scroll.virtuosoRef}
-									scrollerRef={scroll.scrollerRef}
+									// 会话恢复先经过空数组时，不能让 Virtuoso 复用空列表的测量缓存；
+									// 首批历史消息到达后以完整列表重新建立锚点。
+									key={`${sessionId ?? "message-list"}:${messages.length === 0 ? "empty" : "loaded"}`}
+					virtuosoRef={scroll.virtuosoRef}
+					restoreStateFrom={scroll.restoreStateFrom}
+					scrollerRef={scroll.scrollerRef}
 									items={messages}
 									getKey={conversationItemRenderKey}
 									atBottomStateChange={scroll.onAtBottomChange}
 									atBottomThreshold={80}
 									itemsRendered={activeItem.onItemsRendered}
-									overscan={
-										viewportPhase === "initial"
+					overscan={
+										useInitialViewport
 											? INITIAL_OVERSCAN
 											: isStreaming
 												? STREAMING_OVERSCAN
 												: IDLE_OVERSCAN
-									}
-									increaseViewportBy={
-										viewportPhase === "initial"
+					}
+					minOverscanItemCount={
+						useInitialViewport
+							? INITIAL_MIN_OVERSCAN_ITEM_COUNT
+							: isStreaming
+								? STREAMING_MIN_OVERSCAN_ITEM_COUNT
+								: IDLE_MIN_OVERSCAN_ITEM_COUNT
+					}
+					increaseViewportBy={
+										useInitialViewport
 											? INITIAL_INCREASE_VIEWPORT_BY
 											: isStreaming
 												? STREAMING_INCREASE_VIEWPORT_BY
