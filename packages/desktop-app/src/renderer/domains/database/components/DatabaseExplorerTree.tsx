@@ -10,7 +10,14 @@ import {
 } from "react";
 import { Button, cn, Spin } from "@astravia/ui";
 import { useTranslation } from "react-i18next";
-import type { DbCatalogFamily, DbCatalogScope, DbColumnInfo, DbConnection, DbTableInfo } from "../../../../preload/api-types/database";
+import type {
+	DbCatalogFamily,
+	DbCatalogScope,
+	DbColumnInfo,
+	DbConnection,
+	DbTableInfo,
+	DbTableObjectKind,
+} from "../../../../preload/api-types/database";
 import { recordSettingsUsage } from "../../settings/components/recordSettingsUsage";
 import {
 	connectionMatchesQuery,
@@ -33,6 +40,7 @@ import {
 } from "./DatabaseExplorerContextMenu";
 import { catalogFamilyOfType } from "../lib/catalog-family";
 import type { DatabaseExplorerModel, ExplorerListNode } from "../hooks/useDatabaseExplorerModel";
+import { TABLE_OBJECT_KINDS } from "../hooks/useDatabaseExplorerModel";
 import type { DatabaseConnectionTestSnapshot, DatabaseConnectionTestStatus } from "../hooks/useDatabaseWorkspaceModel";
 
 interface DatabaseExplorerTreeProps {
@@ -126,6 +134,68 @@ function ColumnRows({
 		</>
 	);
 }
+
+const OBJECT_ICON: Record<DbTableObjectKind, string> = {
+	index: "icon-[mdi--vector-square]",
+	constraint: "icon-[mdi--link-variant]",
+	trigger: "icon-[mdi--flash-outline]",
+	partition: "icon-[mdi--table-split]",
+};
+
+/** #5：表级子对象分区（索引/约束/触发器/分区）。flat(单库) 连接 scope 为空 → 不渲染；无子对象整块隐藏。 */
+function TableObjectRows({
+	explorer,
+	connection,
+	table,
+	scope,
+}: {
+	explorer: DatabaseExplorerModel;
+	connection: DbConnection;
+	table: string;
+	scope?: DbCatalogScope;
+}): JSX.Element {
+	const { t } = useTranslation("settings");
+	// flat（无 scope）没有 introspection；无任何子对象数据则整块隐藏。
+	if (!scope || !explorer.hasAnyObjects(connection.name, table, scope)) return <></>;
+	return (
+		<>
+			{TABLE_OBJECT_KINDS.map((kind) => {
+				const node = explorer.objectsOf(connection.name, table, kind, scope);
+				if (!node.loading && !node.error && node.items.length === 0) return null;
+				return (
+					<div key={kind}>
+						<div className="flex items-center gap-1.5 px-2 py-0.5 text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/55">
+							<span className={cn("h-3 w-3", OBJECT_ICON[kind])} />
+							{t(`databaseObject.${kind}`)}
+							{node.loaded ? <span className="text-muted-foreground/40">({node.items.length})</span> : null}
+						</div>
+						{node.loading ? (
+							<div className="flex items-center gap-2 px-2 py-1">
+								<Spin size="sm" />
+							</div>
+						) : node.error ? (
+							<NodeErrorRow
+								message={node.error}
+								onRetry={() => explorer.actions.reloadObjects(connection.name, table, scope)}
+							/>
+						) : (
+							node.items.map((name) => (
+								<div
+									key={name}
+									className="flex cursor-default items-center gap-1.5 rounded px-2 py-0.5 text-[11.5px] text-foreground/70 hover:bg-background/50"
+								>
+									<span className="h-2.5 w-2.5 shrink-0 text-muted-foreground/50 icon-[mdi--dots-horizontal]" />
+									<span className="min-w-0 truncate">{name}</span>
+								</div>
+							))
+						)}
+					</div>
+				);
+			})}
+		</>
+	);
+}
+
 
 /** 表/视图分区小标题（对齐 dbx 的 Tables / Views 分区节点）。 */
 function TableKindSectionHeader({ kind, count }: { kind: "tables" | "views"; count: number }): JSX.Element {
@@ -391,6 +461,7 @@ function TableRows({
 										onRetry={() => explorer.actions.reloadColumns(connection.name, table.name, scope)}
 											onContextMenu={(event, column) => onColumnContextMenu(event, column)}
 										/>
+										<TableObjectRows explorer={explorer} connection={connection} table={table.name} scope={scope} />
 									</div>
 								) : null}
 							</div>

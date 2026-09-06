@@ -1390,7 +1390,13 @@
   "databaseConnectionAssistant": "Connection manager assistant",
   "databaseTables": "Tables",
   "databaseNoTables": "No tables in this connection",
-  "databaseRetry": "Retry",
+	"databaseRetry": "Retry",
+	"databaseObject": {
+		"index": "Indexes",
+		"constraint": "Constraints",
+		"trigger": "Triggers",
+		"partition": "Partitions"
+	},
   "databaseOpenTable": "Open table",
   "databaseAnalyzeTable": {
     "label": "Ask AI to analyze this table",

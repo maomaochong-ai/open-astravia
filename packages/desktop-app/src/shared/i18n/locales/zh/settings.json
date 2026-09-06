@@ -1390,7 +1390,13 @@
   "databaseConnectionAssistant": "连接管理助手",
   "databaseTables": "表",
   "databaseNoTables": "该连接下没有表",
-  "databaseRetry": "重试",
+	"databaseRetry": "重试",
+	"databaseObject": {
+		"index": "索引",
+		"constraint": "约束",
+		"trigger": "触发器",
+		"partition": "分区"
+	},
   "databaseOpenTable": "打开表",
   "databaseAnalyzeTable": {
     "label": "让 AI 分析此表",

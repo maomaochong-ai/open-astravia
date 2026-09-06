@@ -5,8 +5,9 @@ import type {
 	DbCatalogScope,
 	DbColumnInfo,
 	DbTableInfo,
+	DbTableObjectKind,
 } from "../../../../preload/api-types/database";
-import { describeTable, listCatalogScopes, listTables } from "../lib/database-api";
+import { describeTable, listCatalogScopes, listTableObjectNames, listTables } from "../lib/database-api";
 import { formatDatabaseError } from "../lib/database-error-labels";
 
 /** 懒加载列表节点（作用域 / 表 / 列共用）：loaded 标记是否已取数，error 为可展示文案。 */
@@ -70,6 +71,24 @@ function tableKey(connection: string, table: string, scope?: DbCatalogScope): st
 	return `${listKey(connection, scope)}::${table}`;
 }
 
+/** 表级子对象四类（#5：索引/约束/触发器/分区）。family flat 无 introspection → 数据面返回空，UI 不渲染对象块。 */
+export const TABLE_OBJECT_KINDS: readonly DbTableObjectKind[] = [
+	"index",
+	"constraint",
+	"trigger",
+	"partition",
+] as const;
+
+/** scope → catalog family：表级子对象 introspection 需按 family 生成 SQL。 */
+export function objectFamilyOfScope(scope?: DbCatalogScope): DbCatalogFamily {
+	if (!scope) return "flat";
+	return scope.kind === "schema" ? "schemas" : "databases";
+}
+
+function objectKey(connection: string, table: string, kind: DbTableObjectKind, scope?: DbCatalogScope): string {
+	return `${tableKey(connection, table, scope)}::${kind}`;
+}
+
 export interface DatabaseExplorerModel {
 	readonly tablesOf: (connection: string, scope?: DbCatalogScope) => ExplorerListNode<DbTableInfo>;
 	readonly columnsOf: (connection: string, table: string, scope?: DbCatalogScope) => ExplorerListNode<DbColumnInfo>;
@@ -79,6 +98,15 @@ export interface DatabaseExplorerModel {
 	readonly isTableExpanded: (connection: string, table: string, scope?: DbCatalogScope) => boolean;
 	/** catalog 中间层节点展开态。 */
 	readonly isScopeExpanded: (connection: string, scope: DbCatalogScope) => boolean;
+	/** 表级子对象节点（索引/约束/触发器/分区），按表 × kind 存。 */
+	readonly objectsOf: (
+		connection: string,
+		table: string,
+		kind: DbTableObjectKind,
+		scope?: DbCatalogScope,
+	) => ExplorerListNode<string>;
+	/** 是否已有任意子对象数据（loading/error/items 任一非空）。 */
+	readonly hasAnyObjects: (connection: string, table: string, scope?: DbCatalogScope) => boolean;
 	/** V2-③ 分组折叠：分组名 → 是否折叠（折叠时隐藏组内连接）。 */
 	readonly isGroupCollapsed: (group: string) => boolean;
 	readonly actions: {
@@ -101,6 +129,8 @@ export interface DatabaseExplorerModel {
 		readonly reloadTables: (connection: string, scope?: DbCatalogScope) => void;
 		/** 确保表已取数（子节点挂载时触发；未加载/未失败才加载）。 */
 		readonly ensureTables: (connection: string, scope?: DbCatalogScope) => void;
+		/** 强制重新枚举表级子对象（失败重试用）。 */
+		readonly reloadObjects: (connection: string, table: string, scope?: DbCatalogScope) => void;
 		readonly reloadColumns: (connection: string, table: string, scope?: DbCatalogScope) => void;
 		readonly toggleGroup: (group: string) => void;
 		/** P1-6 分组右键：展开/折叠组内全部连接（含懒加载表）。 */
@@ -130,6 +160,7 @@ export function useDatabaseExplorerModel(): DatabaseExplorerModel {
 	);
 	const [tables, setTables] = useState<Readonly<Record<string, ExplorerListNode<DbTableInfo>>>>({});
 	const [columns, setColumns] = useState<Readonly<Record<string, ExplorerListNode<DbColumnInfo>>>>({});
+	const [objects, setObjects] = useState<Readonly<Record<string, ExplorerListNode<string>>>>({});
 	const [scopes, setScopes] = useState<Readonly<Record<string, ExplorerListNode<DbCatalogScope>>>>({});
 	// 展开/折叠状态持久化：重启后恢复（对齐 dbx 会话恢复体验）。
 	useEffect(() => saveSet("expandedConnections", expandedConnections), [expandedConnections]);
@@ -208,6 +239,43 @@ export function useDatabaseExplorerModel(): DatabaseExplorerModel {
 			}
 		},
 		[t],
+	);
+
+	const loadObjects = useCallback(
+		async (connection: string, table: string, kind: DbTableObjectKind, scope?: DbCatalogScope) => {
+			const key = objectKey(connection, table, kind, scope);
+			setObjects((prev) => ({
+				...prev,
+				[key]: { ...(prev[key] ?? EMPTY_NODE), loading: true, error: null },
+			}));
+			try {
+				const family = objectFamilyOfScope(scope);
+				const scopeArg = scope ? { [scope.kind === "schema" ? "schema" : "database"]: scope.name } : undefined;
+				// family "flat"（SQLite 等单库）无 introspection SQL，直接返回空。
+				const items =
+					family === "flat" ? [] : await listTableObjectNames(connection, table, kind, family, scopeArg);
+				setObjects((prev) => ({ ...prev, [key]: { loaded: true, loading: false, error: null, items } }));
+			} catch (caught) {
+				const { message } = formatDatabaseError(t, caught);
+				setObjects((prev) => ({
+					...prev,
+					[key]: { ...(prev[key] ?? EMPTY_NODE), loading: false, error: message },
+				}));
+			}
+		},
+		[t],
+	);
+
+	const ensureObjectsForTable = useCallback(
+		(connection: string, table: string, scope?: DbCatalogScope) => {
+			// flat（无 scope）没有 introspection；scope 为空直接跳过。
+			if (!scope) return;
+			for (const kind of TABLE_OBJECT_KINDS) {
+				const node = objects[objectKey(connection, table, kind, scope)];
+				if (!(node?.loaded || node?.loading)) void loadObjects(connection, table, kind, scope);
+			}
+		},
+		[loadObjects, objects],
 	);
 
 	const toggleConnection = useCallback((connection: string) => {
@@ -306,9 +374,10 @@ export function useDatabaseExplorerModel(): DatabaseExplorerModel {
 			}
 			const node = columns[key];
 			if (!(node?.loaded || node?.loading)) void loadColumns(connection, table, scope);
+			ensureObjectsForTable(connection, table, scope);
 			setExpandedTables((prev) => ({ ...prev, [key]: true }));
 		},
-		[columns, expandedTables, loadColumns],
+		[columns, ensureObjectsForTable, expandedTables, loadColumns],
 	);
 
 	const expandTable = useCallback(
@@ -316,9 +385,10 @@ export function useDatabaseExplorerModel(): DatabaseExplorerModel {
 			const key = tableKey(connection, table, scope);
 			const node = columns[key];
 			if (!(node?.loaded || node?.loading)) void loadColumns(connection, table, scope);
+			ensureObjectsForTable(connection, table, scope);
 			setExpandedTables((prev) => ({ ...prev, [key]: true }));
 		},
-		[columns, loadColumns],
+		[columns, ensureObjectsForTable, loadColumns],
 	);
 
 	const reloadTables = useCallback(
@@ -338,6 +408,13 @@ export function useDatabaseExplorerModel(): DatabaseExplorerModel {
 		(connection: string, table: string, scope?: DbCatalogScope) => void loadColumns(connection, table, scope),
 		[loadColumns],
 	);
+	const reloadObjects = useCallback(
+		(connection: string, table: string, scope?: DbCatalogScope) => {
+			if (!scope) return;
+			for (const kind of TABLE_OBJECT_KINDS) void loadObjects(connection, table, kind, scope);
+		},
+		[loadObjects],
+	);
 
 	// V2-③ 分组折叠：折叠/展开互斥，不与其他展开状态联动。
 	const toggleGroup = useCallback((group: string) => {
@@ -355,6 +432,14 @@ export function useDatabaseExplorerModel(): DatabaseExplorerModel {
 		tablesOf: (connection, scope) => tables[listKey(connection, scope)] ?? EMPTY_NODE,
 		columnsOf: (connection, table, scope) => columns[tableKey(connection, table, scope)] ?? EMPTY_NODE,
 		scopesOf: (connection) => scopes[connection] ?? EMPTY_NODE,
+		objectsOf: (connection, table, kind, scope) => objects[objectKey(connection, table, kind, scope)] ?? EMPTY_NODE,
+		hasAnyObjects: (connection, table, scope) => {
+			if (!scope) return false;
+			return TABLE_OBJECT_KINDS.some((kind) => {
+				const node = objects[objectKey(connection, table, kind, scope)];
+				return node?.loading || node?.error != null || (node?.items.length ?? 0) > 0;
+			});
+		},
 		isConnectionExpanded: (connection) => expandedConnections[connection] === true,
 		isTableExpanded: (connection, table, scope) => expandedTables[tableKey(connection, table, scope)] === true,
 		isGroupCollapsed: (group) => collapsedGroups[group] === true,
@@ -372,6 +457,7 @@ export function useDatabaseExplorerModel(): DatabaseExplorerModel {
 			reloadTables,
 			ensureTables,
 			reloadColumns,
+			reloadObjects,
 			toggleGroup,
 			expandConnections,
 			collapseConnections,
