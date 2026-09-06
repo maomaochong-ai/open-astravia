@@ -1390,6 +1390,8 @@
   "databaseConnectionAssistant": "连接管理助手",
   "databaseTables": "表",
   "databaseNoTables": "该连接下没有表",
+	"databaseHealthOk": "心跳正常",
+	"databaseHealthUnreachable": "连接不可达（心跳检测失败）",
 	"databaseRetry": "重试",
 	"databaseObject": {
 		"index": "索引",

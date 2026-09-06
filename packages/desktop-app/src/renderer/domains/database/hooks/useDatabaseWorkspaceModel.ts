@@ -1,6 +1,6 @@
 import { confirmDialogAtom } from "@shared/store/atoms";
 import { useSetAtom } from "jotai";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { SchemaInjectionScopeData } from "../../../../preload/api-types/config";
 import type {
@@ -11,7 +11,14 @@ import type {
 	DbTableInfo,
 } from "../../../../preload/api-types/database";
 import { recordSettingsUsage } from "../../settings/components/recordSettingsUsage";
-import { addConnection, listConnections, listTables, removeConnection, testConnection } from "../lib/database-api";
+import {
+	addConnection,
+	executeQuery,
+	listConnections,
+	listTables,
+	removeConnection,
+	testConnection,
+} from "../lib/database-api";
 import { formatDatabaseError as formatError } from "../lib/database-error-labels";
 import { getDatabaseTypeMeta } from "../lib/database-type-catalog";
 
@@ -359,6 +366,62 @@ export function useDatabaseWorkspaceModel(): DatabaseWorkspaceModel {
 		[t],
 	);
 
+	// #4 健康轮询：仅对「已测且仍在连接列表」的连接做轻量只读心跳（SELECT 1），
+	// 让连接行状态点随真实连通性刷新。手动测试(testing)/页签隐藏/上次心跳未回时跳过；
+	// 失败静默降级不打断树操作，且持续重试以自动恢复。间隔 60s（可配置入口后续批次接入）。
+	const HEALTH_POLL_INTERVAL_MS = 60_000;
+	const HEALTH_POLL_SQL = "SELECT 1";
+
+	const healthPollInFlight = useRef<ReadonlySet<string>>(new Set());
+	const testSnapshotsRef = useRef(testSnapshots);
+	testSnapshotsRef.current = testSnapshots;
+
+	useEffect(() => {
+		const poll = () => {
+			if (document.hidden) return;
+			const known = new Set(connections.map((c) => c.name));
+			for (const [name, snapshot] of Object.entries(testSnapshotsRef.current)) {
+				if (!known.has(name)) continue; // 连接已删除
+				if (snapshot.status === "testing") continue; // 手动测试进行中，去重
+				if (healthPollInFlight.current.has(name)) continue;
+				healthPollInFlight.current = new Set(healthPollInFlight.current).add(name);
+				executeQuery(name, HEALTH_POLL_SQL)
+					.then(() => {
+						setTestSnapshots((prev) => {
+							const cur = prev[name];
+							if (!cur || cur.status === "testing") return prev;
+							return {
+								...prev,
+								[name]: { ...cur, status: "ok", detail: t("databaseHealthOk"), testedAt: Date.now() },
+							};
+						});
+					})
+					.catch(() => {
+						setTestSnapshots((prev) => {
+							const cur = prev[name];
+							if (!cur || cur.status === "testing") return prev;
+							return {
+								...prev,
+								[name]: {
+									...cur,
+									status: "failed",
+									detail: t("databaseHealthUnreachable"),
+									testedAt: Date.now(),
+								},
+							};
+						});
+					})
+					.finally(() => {
+						const left = new Set(healthPollInFlight.current);
+						left.delete(name);
+						healthPollInFlight.current = left;
+					});
+			}
+		};
+		poll();
+		const timer = window.setInterval(poll, HEALTH_POLL_INTERVAL_MS);
+		return () => window.clearInterval(timer);
+	}, [connections, t]);
 	const remove = useCallback(
 		(name: string) => {
 			setConfirm({

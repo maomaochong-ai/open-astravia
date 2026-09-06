@@ -1390,6 +1390,8 @@
   "databaseConnectionAssistant": "Connection manager assistant",
   "databaseTables": "Tables",
   "databaseNoTables": "No tables in this connection",
+	"databaseHealthOk": "Healthy (heartbeat)",
+	"databaseHealthUnreachable": "Unreachable (heartbeat failed)",
 	"databaseRetry": "Retry",
 	"databaseObject": {
 		"index": "Indexes",
