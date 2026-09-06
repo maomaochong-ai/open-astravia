@@ -96,3 +96,34 @@ Astravia 已具备两块独立的 AI 能力:
 - 本决策配套实施方案:见 `ai-database-integration-plan.md`。
 - dbx 参考:`components/editor/AiAssistant.vue`、`components/editor/QueryHistory.vue`(analysis 动作)、`lib/ai/*`。
 - 现有管线:`schema-context-injection.ts`、`sql-safety.ts`、`database-details-shared` 的 db 工具/上下文开关。
+
+## 9. 实施完成度核对(2026-09-06)
+
+> 依据当日代码盘点:`schema-context-injection.ts`、`DatabaseWorkspace.tsx`、`DatabaseQueryHistoryPopover.tsx`、`DatabaseResultGrid.tsx` 及 chat/问数接线。本节点仅追踪实施进度,不改动上文决策。
+
+### 9.1 决策项落实
+
+| # | 决策项 | 状态 | 证据 / 差距 |
+| --- | --- | --- | --- |
+| 1 | 领域概念 `DatabaseAiAnchor`(连接/库/表/SQL/来源) | ✅ P0 已落地 | 渲染层新增 `ai-anchor.ts`:`DatabaseAiAnchor` 判别联合(table 来源已用 / editor·history·result 来源留待 P1+),`formatAnchorTableSchema(anchor, columns)`(列 name/type + PK/NOT NULL/DEFAULT/comment 风格与主进程 formatTableSchema 一致)+ 4 单测 |
+| 2 | schema 注入升级为「锚点级」 | ◐→✅ P0 完成 | DatabaseWorkspace `askExtraInstruction`(341 行)已接入:打开表 tab 时先 describeTable(锚点连接,表,scope) → 注入 `formatAnchorTableSchema` 表结构文本;失败/无打开表回退连接级 `getSchemaContext`(不退化)。锚点连接取 openTableMeta.connectionName 保证与 describeTable 同库 |
+| 3 | SQL 回填通道(消息内 SQL → 一键打开/执行,过 sql-safety) | ❌ 未开始 | 无「在新查询中打开/执行」动作;AI 产出 SQL 只能手抄 |
+| 4 | 就近入口(编辑器工具栏 / 结果页脚 / 历史条目) | ❌ 未开始 | 仅顶栏问数入口已存在(复用 SettingsAiAssist 弹层);编辑器 Ask AI、历史/结果分析动作均无(DatabaseQueryHistoryPopover 仅 restore/copy/delete/clear) |
+| 5 | 不新建第二套聊天 UI(约束条款) | ✅ 满足 | chat 域仍为唯一对话宿主,问数为弹层 → `assistJobQueue` → `openSession`+`sendMessage` 注入,无重复对话 UI |
+
+### 9.2 验收标准(DoD)对照
+
+| 验收项 | 状态 |
+| --- | --- |
+| 编辑器工具栏「问 AI」入口(带当前 SQL + 连接锚点) | ❌ |
+| 对话产出 SQL 一键「在新查询打开/执行」且 DDL/危险 SQL 被 sql-safety 拦截 | ❌ |
+| 结果页脚与历史条目可发起「AI 分析」 | ❌ |
+| 无第二套聊天 UI;AI 配置走既有体系 | ✅ |
+| (P0)问数提交时注入「打开表」锚点级表结构;无打开表时回退连接级摘要 | ✅ 已实现 + 4 单测 |
+| 新文案 en/zh 同步;操作记录 `recordSettingsUsage` | ◐ 既有问数入口满足;新增项(回填/就近入口)文案与埋点尚未产生 |
+
+### 9.3 小结
+
+- **总体完成度约 45%**(P0 后):决策 1/2 已落地——打开表 tab 的问数已注入表级结构文本而非整连接摘要,回退逻辑不退化;核心剩余为「SQL 回填通道」与「三处就近入口」(决策 3/4,即 P1/P2)。
+- **已就绪可复用的积木**:`ai-anchor.ts`(锚点类型+格式化,4 单测)、`buildDatabaseSchemaPrompt(scope=tables)`、`cachedTableSchema`、`formatTableSchema`、`sql-safety` clamp、`DatabaseQueryHistoryPopover` 槽位、`assistJobQueue` 串行注入。
+- **建议下一步**:P1 消息内 SQL 块加「打开/执行」动作走既有 query 通道(含 sql-safety clamp 与 `recordSettingsUsage`);P2 编辑器工具栏 / 结果页脚 / 历史条目三处就近「问 AI / 分析」入口。详见 `ai-database-integration-plan.md`。

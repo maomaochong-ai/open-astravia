@@ -43,6 +43,7 @@ import { DatabaseWorkspaceHeader } from "./DatabaseWorkspaceHeader";
 import { SettingsAiAssist } from "../../settings/ai-assist";
 import { recordSettingsUsage } from "../../settings/components/recordSettingsUsage";
 import { catalogFamilyOfType, scopeToTableScope, tableScopeQualifier } from "../lib/catalog-family";
+import { formatAnchorTableSchema } from "../lib/ai-anchor";
 import { describeTable, executeQuery, getSchemaContext } from "../lib/database-api";
 import { formatDatabaseError } from "../lib/database-error-labels";
 import { buildDeleteSql, buildInsertSql, buildOpenTableSql, buildRowWhere, buildUpdateSql } from "../lib/sql-dialect";
@@ -334,21 +335,44 @@ export function DatabaseWorkspace({
 
 	// B2.6-W 反馈 3：工作台「问数」入口 —— 复用 SettingsAiAssist 弹层形态，提交时把
 	// 当前连接的 schema 摘要注入 agent instruction（模型可见、用户气泡不可见）。
+	// P0（ADR 决策项 1/2）：工作台「问数」入口提交时，优先注入「打开的表」锚点级表结构
+	// （openTableMeta → describeTable → formatAnchorTableSchema，列结构优先于整连接摘要）；
+	// 无打开表 / 表结构读取失败时回退连接级 schema 摘要（原 B2.6 行为，不退化）。
 	const askExtraInstruction = useCallback(async () => {
-		if (!effectiveConnection) return "";
+		if (!effectiveConnection && !openTableMeta) return "";
 		// B2.9-W3 埋点：工作台「问数」入口提交(含当前执行连接 schema 注入)。
 		recordSettingsUsage({ tab: "database", action: "selected", target: "ask-data" });
+		// 锚点连接优先取打开表 tab 绑定的执行连接（与 describeTable 同库），否则取当前执行连接。
+		const anchorConnection = openTableMeta?.connectionName ?? effectiveConnection?.name;
+		if (!anchorConnection) return "";
 		let schema = "";
-		try {
-			schema = await getSchemaContext(effectiveConnection.name);
-		} catch {
-			schema = "";
+		if (openTableMeta) {
+			try {
+				const columns = await describeTable(
+					anchorConnection,
+					openTableMeta.table,
+					openTableMeta.scope ?? undefined,
+				);
+				schema = formatAnchorTableSchema(
+					{ source: "table", connectionName: anchorConnection, table: openTableMeta.table, scope: openTableMeta.scope },
+					columns,
+				);
+			} catch {
+				schema = "";
+			}
+		}
+		if (!schema) {
+			try {
+				schema = await getSchemaContext(anchorConnection);
+			} catch {
+				schema = "";
+			}
 		}
 		return i18n.t("settings:databaseAskData.instruction", {
-			connection: effectiveConnection.name,
+			connection: anchorConnection,
 			schema: schema || i18n.t("settings:databaseAskData.noSchema"),
 		});
-	}, [effectiveConnection]);
+	}, [effectiveConnection, openTableMeta]);
 
 	// B2.6-R 自适应：读取活动面板当前宽度；窄屏 bottomSheet 全宽时视为 wide 三栏直出。
 	const narrowScreen = useNarrowScreen();

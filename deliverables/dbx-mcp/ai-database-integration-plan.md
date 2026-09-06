@@ -8,21 +8,22 @@
 | 能力 | dbx 现状 | 我方目标(本方案) | 差距 |
 | --- | --- | --- | --- |
 | AI 入口 | 编辑器旁 AiAssistant 侧栏 | 全局 chat + 问数按钮(保留) | 需补就近入口 |
-| 上下文 | 当前连接/表/编辑器 SQL + 结构 | schema summary(整连接) | 细化到锚点表结构 |
+| 上下文 | 当前连接/表/编辑器 SQL + 结构 | 表锚点级(打开表注入表结构,P0 已落地) | P1 补编辑器 SQL / 历史锚点 |
 | 产出 SQL 落点 | 一键回填/新建查询执行 | 无(只能手抄) | 需补「应用」通道 |
 | 结果/历史分析 | QueryHistory 条目 → AI analysis | 无 | 需补分析入口 |
 | SQL 安全 | 同执行管线 | sql-safety clamp | 已具备,沿用 |
 
 ## 1. 阶段划分(小步快跑,每阶段可独立验证)
 
-### 阶段 P0:锚点数据建模与注入细化(预估 0.5 天)
+### 阶段 P0:锚点数据建模与注入细化(✅ 已完成 2026-09-06)
 **范围**:
 - 定义 `DatabaseAiAnchor` 类型(`connectionName` / `catalog` / `schema` / `table?` / `sqlText?` / `source: "editor" | "table" | "history" | "result"`)。
 - schema 注入函数支持「按锚点生成摘要」:优先输出该表列结构;否则该 schema 下表清单;否则连接级 summary(现状)。
 - 注入内容含方言提示 + 连接显示名,不含行数据(默认)。
 **验证**:
-- 单元测试:锚点摘要 vs 连接摘要的字段差异;无表时不退化。
-- 界面验证:`verify:ui` 打开问数,观察注入内容。
+  - ✅ 单元测试已过:`ai-anchor.test.ts` 4 用例(表结构格式化 + scope 限定 + 空列兜底)。
+  - ✅ full tsc(desktop-app tsconfig)0 errors(2026-09-06 复核)。
+  - ⏳ 界面验证:`verify:ui` 打开表后点问数,观察注入内容(待 UI 环境确认)。
 
 ### 阶段 P1:对话注入 API 与「应用 SQL」通道(预估 1 天)
 **范围**:
