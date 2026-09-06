@@ -1,5 +1,7 @@
 import {
+	createContext,
 	useCallback,
+	useContext,
 	useEffect,
 	useLayoutEffect,
 	useMemo,
@@ -96,6 +98,12 @@ interface DatabaseExplorerTreeProps {
 	onAnalyzeTable: (connection: DbConnection, table: string, scope?: DbCatalogScope) => void;
 	/** 表级套件：导出 CSV/JSON、清空/重命名/删除表。宿主统一处理（原生保存对话框 + 危险确认 + 确认写通道）。 */
 	readonly onTableCommand?: (command: TableCommand) => void;
+	/** 表批量套件（批次3 #16，对齐 dbx）：树内多选表后的批量动作（导出 CSV/JSON / 清空 / 删除）由此发出，宿主逐表确认写通道执行并汇总反馈。 */
+	readonly onTableBatchCommand?: (command: TableBatchCommand) => void;
+	/** 表批量重置信号：宿主完成一轮批量动作后自增，树据此清空残留勾选。 */
+	readonly tableBatchResetNonce?: number;
+	/** 批量动作完成后保留的勾选 key（失败的项保留便于重试；与 tableBatchResetNonce 搭配：清空除 keep 外的勾选）。 */
+	readonly tableBatchKeepKeys?: readonly string[];
 	/** 可选：测试连接动作（供连接行「测试」入口，缺省时隐藏）。 */
 	readonly onTestConnection?: (name: string) => void;
 	/** 可选：定位目标（当前激活表）。传入时工具条「定位当前表」可自动展开并滚动到该行。 */
@@ -115,6 +123,42 @@ export interface DatabaseRevealTarget {
 	readonly connection: string;
 	readonly table: string;
 	readonly scope: string | null;
+}
+
+/** 表批量选择集目标（批次3 #16，对齐 dbx 对象浏览器勾选多选）。scope 与 TableCommand 一致；view 仅参与导出。 */
+export interface TableBatchTarget {
+	readonly connection: DbConnection;
+	readonly table: string;
+	readonly scope?: DbCatalogScope;
+	readonly view: boolean;
+}
+
+/** 表批量选择集 key（连接名 + schema/db 分层 scope 下唯一）。 */
+export function tableSelectionKey(connection: DbConnection, table: string, scope?: DbCatalogScope): string {
+	return scope ? `${connection.name}\u0000${scope.name}\u0000${table}` : `${connection.name}\u0000${table}`;
+}
+
+export type TableBatchAction = "exportCsv" | "exportJson" | "truncate" | "drop";
+
+/** 表批量套件命令：树内批量动作条发出，宿主（DatabaseWorkspace）统一执行并汇总反馈。 */
+export type TableBatchCommand =
+	| { action: "exportCsv"; targets: readonly TableBatchTarget[] }
+	| { action: "exportJson"; targets: readonly TableBatchTarget[] }
+	| { action: "truncate"; targets: readonly TableBatchTarget[] }
+	| { action: "drop"; targets: readonly TableBatchTarget[] };
+
+/** 树内表多选上下文：勾选态在树内维护；宿主通过 onTableBatchCommand 消费选择集。 */
+interface TableMultiContextValue {
+	readonly map: ReadonlyMap<string, TableBatchTarget>;
+	readonly active: boolean;
+	readonly toggle: (connection: DbConnection, table: string, scope: DbCatalogScope | undefined, view: boolean) => void;
+	readonly clear: () => void;
+}
+
+const TableMultiContext = createContext<TableMultiContextValue | null>(null);
+
+function useTableMulti(): TableMultiContextValue | null {
+	return useContext(TableMultiContext);
 }
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -432,6 +476,7 @@ function TableRows({
 }): JSX.Element | null {
 	const { t } = useTranslation("settings");
 	const { orderMap, togglePin } = useExplorerRowOrder();
+	const tableMulti = useTableMulti();
 	const node = explorer.tablesOf(connection.name, scope);
 	if (node.loading) {
 		return (
@@ -479,6 +524,8 @@ function TableRows({
 						const expanded = explorer.isTableExpanded(connection.name, table.name, scope);
 						const columns = explorer.columnsOf(connection.name, table.name, scope);
 						const view = section.kind === "views";
+						const multiKey = tableMulti ? tableSelectionKey(connection, table.name, scope) : null;
+						const tableChecked = multiKey !== null && (tableMulti?.map.has(multiKey) ?? false);
 						return (
 							<div key={table.name} data-db-table={table.name} data-db-scope={scope?.name ?? ""}>
 								<ExplorerOrderableRow
@@ -486,13 +533,39 @@ function TableRows({
 									name={table.name}
 									names={section.names}
 									disabled={normalized.length > 0}
-									className="group flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1.5 hover:bg-background/60"
+									className={cn(
+										"group flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1.5 hover:bg-background/60",
+										tableMulti?.active && "bg-primary/[0.05]",
+									)}
 									onClick={(event) => {
 										void onOpenTable(connection, table.name, scope, event.metaKey || event.ctrlKey);
 									}}
 									onContextMenu={(event) => onContextMenu(event, connection, table, scope)}
 									title={t("databaseOpenHint")}
 								>
+										{/* 批次3 #16 表多选勾选：悬停出现空白框；任一勾选后常驻并随态着色。 */}
+										<button
+											type="button"
+											aria-label={tableChecked ? t("databaseDeselectTable") : t("databaseSelectTable")}
+											title={tableChecked ? t("databaseDeselectTable") : t("databaseSelectTable")}
+											className={cn(
+												"hidden h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/70 hover:bg-muted hover:text-foreground group-hover:flex",
+												tableMulti?.active && "flex",
+											)}
+											onClick={(event) => {
+												event.stopPropagation();
+												tableMulti?.toggle(connection, table.name, scope, view);
+											}}
+										>
+											<span
+												className={cn(
+													"h-3.5 w-3.5",
+													tableChecked
+														? "icon-[mdi--checkbox-marked-outline] text-primary"
+														: "icon-[mdi--checkbox-blank-outline] text-muted-foreground/45",
+												)}
+											/>
+										</button>
 									<button
 										type="button"
 										aria-label={expanded ? t("databaseCollapse") : t("databaseExpand")}
@@ -624,6 +697,9 @@ export function DatabaseExplorerTree({
 	revealTarget,
 	onAnalyzeTable,
 	onTableCommand,
+	onTableBatchCommand,
+	tableBatchResetNonce = 0,
+	tableBatchKeepKeys = [],
 
 }: DatabaseExplorerTreeProps): JSX.Element {
 	const { t } = useTranslation("settings");
@@ -1164,8 +1240,72 @@ export function DatabaseExplorerTree({
 		setMultiNames(allChecked ? [] : allConnectionNames);
 	};
 
+	// ---- 批次3 #16 表批量多选（对齐 dbx 对象浏览器）：表行行尾 hover 勾选，勾选即激活批量动作条。
+	//      跨连接勾选会清空其它连接的已选表（命令按连接分组逐表执行）；视图仅参与导出，不参与清空/删除。 ----
+	const [tableMultiMap, setTableMultiMap] = useState<ReadonlyMap<string, TableBatchTarget>>(() => new Map());
+	const tableMultiCount = tableMultiMap.size;
+	const tableMultiActive = tableMultiCount > 0;
+	const tableMultiValues = useMemo(() => [...tableMultiMap.values()], [tableMultiMap]);
+	const tableMultiHasNonView = tableMultiValues.some((item) => !item.view);
+	const tableMultiToggle = useCallback(
+		(connection: DbConnection, table: string, scope: DbCatalogScope | undefined, view: boolean) => {
+			const key = tableSelectionKey(connection, table, scope);
+			setTableMultiMap((prev) => {
+				const next = new Map(prev);
+				if (next.has(key)) {
+					next.delete(key);
+					return next;
+				}
+				const first = next.values().next().value;
+				if (first && first.connection.name !== connection.name) {
+					next.clear();
+				}
+				next.set(key, { connection, table, scope, view });
+				return next;
+			});
+		},
+		[],
+	);
+	const tableMultiClear = useCallback(() => setTableMultiMap(() => new Map()), []);
+	const lastTableBatchReset = useRef(0);
+	useEffect(() => {
+		if (tableBatchResetNonce > 0 && tableBatchResetNonce !== lastTableBatchReset.current) {
+			lastTableBatchReset.current = tableBatchResetNonce;
+			setTableMultiMap((prev) => {
+				if (tableBatchKeepKeys.length === 0) {
+					return new Map();
+				}
+				const keep = new Set(tableBatchKeepKeys);
+				const next = new Map();
+				for (const [key, value] of prev) {
+					if (keep.has(key)) {
+						next.set(key, value);
+					}
+				}
+				return next;
+			});
+		}
+	}, [tableBatchKeepKeys, tableBatchResetNonce]);
+	const tableMultiCtx = useMemo<TableMultiContextValue>(
+		() => ({ map: tableMultiMap, active: tableMultiActive, toggle: tableMultiToggle, clear: tableMultiClear }),
+		[tableMultiActive, tableMultiClear, tableMultiMap, tableMultiToggle],
+	);
+	const fireTableBatch = (action: TableBatchAction) => {
+		if (!onTableBatchCommand || tableMultiCount === 0) {
+			return;
+		}
+		const targets =
+			action === "exportCsv" || action === "exportJson" ? tableMultiValues : tableMultiValues.filter((item) => !item.view);
+		if (targets.length === 0) {
+			return;
+		}
+		recordSettingsUsage({ tab: "database", action: "selected", target: `explorer-batch-${action}` });
+		onTableBatchCommand({ action, targets });
+	};
+
 	return (
 		<ExplorerRowOrderContext.Provider value={rowOrderController}>
+		<TableMultiContext.Provider value={tableMultiCtx}>
 		<div ref={treeRootRef} className="space-y-0.5">
 			{/* V2-① sticky 搜索区：跟随列表滚动，悬浮于树内容之上 */}
 			<div ref={toolbarRef} className="sticky top-0 z-10 -mx-1 bg-muted/95 px-1 pb-1.5 pt-0.5 backdrop-blur-sm">
@@ -1331,6 +1471,64 @@ export function DatabaseExplorerTree({
 							title={t("databaseClearSelection")}
 							className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/70 hover:bg-muted hover:text-foreground"
 							onClick={() => setMultiNames([])}
+						>
+							<span className="h-3 w-3 icon-[mdi--close]" />
+						</button>
+					</div>
+				) : null}
+
+				{/* 批次3 #16 表批量动作条：勾选任意表后出现（对齐 dbx 对象浏览器）。导出含视图；清空/删除仅表。 */}
+				{tableMultiActive ? (
+					<div className="mt-1.5 flex items-center gap-0.5 rounded-md bg-background/80 px-1.5 py-1">
+						<span className="min-w-0 flex-1 truncate text-[11px] font-medium text-muted-foreground">
+							{t("databaseTableMultiSelectedCount", { count: tableMultiCount })}
+						</span>
+						<button
+							type="button"
+							aria-label={t("databaseTableBatchExportCsv")}
+							title={t("databaseTableBatchExportCsv")}
+							className="flex h-5 shrink-0 items-center gap-0.5 rounded px-1 text-[11px] font-medium text-muted-foreground/80 hover:bg-muted hover:text-foreground"
+							onClick={() => fireTableBatch("exportCsv")}
+						>
+							<span className="h-3 w-3 icon-[mdi--file-delimited-outline]" />
+							CSV
+						</button>
+						<button
+							type="button"
+							aria-label={t("databaseTableBatchExportJson")}
+							title={t("databaseTableBatchExportJson")}
+							className="flex h-5 shrink-0 items-center gap-0.5 rounded px-1 text-[11px] font-medium text-muted-foreground/80 hover:bg-muted hover:text-foreground"
+							onClick={() => fireTableBatch("exportJson")}
+						>
+							<span className="h-3 w-3 icon-[mdi--code-json]" />
+							JSON
+						</button>
+						<button
+							type="button"
+							aria-label={t("databaseTableBatchTruncate")}
+							title={t("databaseTableBatchTruncate")}
+							disabled={!tableMultiHasNonView}
+							className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-red-600/80 hover:bg-red-600/10 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-red-600/80"
+							onClick={() => fireTableBatch("truncate")}
+						>
+							<span className="h-3 w-3 icon-[mdi--table-refresh]" />
+						</button>
+						<button
+							type="button"
+							aria-label={t("databaseTableBatchDrop")}
+							title={t("databaseTableBatchDrop")}
+							disabled={!tableMultiHasNonView}
+							className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-red-600/80 hover:bg-red-600/10 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-red-600/80"
+							onClick={() => fireTableBatch("drop")}
+						>
+							<span className="h-3 w-3 icon-[mdi--table-remove]" />
+						</button>
+						<button
+							type="button"
+							aria-label={t("databaseClearSelection")}
+							title={t("databaseClearSelection")}
+							className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/70 hover:bg-muted hover:text-foreground"
+							onClick={() => tableMultiClear()}
 						>
 							<span className="h-3 w-3 icon-[mdi--close]" />
 						</button>
@@ -1521,6 +1719,7 @@ export function DatabaseExplorerTree({
 
 			{menu ? <DatabaseExplorerContextMenu x={menu.x} y={menu.y} items={menu.items} onClose={() => setMenu(null)} /> : null}
 		</div>
+		</TableMultiContext.Provider>
 		</ExplorerRowOrderContext.Provider>
 	);
 }

@@ -25,7 +25,14 @@ import type { DatabaseSqlAction, DatabaseTabTarget } from "@shared/store/atoms";
 import { DatabaseConnectionDetailsWorkbench } from "./DatabaseConnectionDetailsWorkbench";
 import { DatabaseConnectionForm } from "./DatabaseConnectionForm";
 import { DatabaseDetail } from "./DatabaseDetail";
-import { DatabaseExplorerTree, type DatabaseRevealTarget, type TableCommand } from "./DatabaseExplorerTree";
+import {
+	DatabaseExplorerTree,
+	type DatabaseRevealTarget,
+	type TableBatchCommand,
+	type TableBatchTarget,
+	tableSelectionKey,
+	type TableCommand,
+} from "./DatabaseExplorerTree";
 import {
 	buildDangerOpSql,
 	buildExportSelectSql,
@@ -447,6 +454,170 @@ export function DatabaseWorkspace({
 		void runTableDangerOp("rename", command, sql);
 	};
 
+	// === 批次3 #16 批量表套件(对齐 dbx 对象浏览器):树内勾选多表 → 汇总确认 → 逐表 confirmed 执行 → 汇总反馈 ===
+	const [tableBatchResetNonce, setTableBatchResetNonce] = useState(0);
+	const [tableBatchKeepKeys, setTableBatchKeepKeys] = useState<readonly string[]>([]);
+	const [tableBatchBusy, setTableBatchBusy] = useState(false);
+	const [tableBatchResult, setTableBatchResult] = useState<{
+		op: "truncate" | "drop";
+		ok: number;
+		failed: { target: TableBatchTarget; reason: string }[];
+	} | null>(null);
+	const closeBatchResult = () => setTableBatchResult(null);
+
+	const tableTargetFromBatchTarget = (target: TableBatchTarget): TableTarget => ({
+		dbType: target.connection.type,
+		table: target.table,
+		schema: target.scope ? tableScopeQualifier(scopeToTableScope(target.scope)) : undefined,
+	});
+
+	const runBatchDangerOp = useCallback(
+		async (op: "truncate" | "drop", targets: readonly TableBatchTarget[]) => {
+			if (tableBatchBusy || targets.length === 0) {
+				return;
+			}
+			setTableBatchBusy(true);
+			setTableBatchResult(null);
+			recordSettingsUsage({
+				tab: "database",
+				action: "changed",
+				target: op === "truncate" ? "table-batch-truncate" : "table-batch-drop",
+			});
+			const ok: TableBatchTarget[] = [];
+			const failed: { target: TableBatchTarget; reason: string }[] = [];
+			for (const target of targets) {
+				try {
+					const sql = buildDangerOpSql(tableTargetFromBatchTarget(target), op);
+					await executeQuery(target.connection.name, sql, { confirmedWrite: true, confirmedSql: sql });
+					ok.push(target);
+				} catch (caught) {
+					const { message, detail } = formatDatabaseError(t, caught);
+					failed.push({ target, reason: detail || message });
+				}
+			}
+			// 一致性(对齐 dbx):truncate 刷新该表数据页;drop 关闭正在打开的该表页;每个成功连接只刷一次树。
+			const refreshed = new Set<string>();
+			for (const target of ok) {
+				if (!refreshed.has(target.connection.name)) {
+					refreshed.add(target.connection.name);
+					const family = catalogFamilyOfType(target.connection.type);
+					if (family === "flat") {
+						void explorer.actions.reloadTables(target.connection.name);
+					} else {
+						void explorer.actions.reloadScopes(target.connection.name, family);
+					}
+				}
+				const meta = query.openTableMeta;
+				if (!meta || meta.connectionName !== target.connection.name || meta.table !== target.table) {
+					continue;
+				}
+				if (op === "truncate") {
+					await query.actions.reloadOpenTable(target.connection).catch(() => {});
+				} else if (query.activeTabId) {
+					query.actions.closeTab(query.activeTabId);
+				}
+			}
+			setTableBatchResult({ op, ok: ok.length, failed });
+			// 失败项保留勾选便于重试;成功后由树侧非自增清空(仅清除成功项)。
+			setTableBatchKeepKeys(failed.map((item) => tableSelectionKey(item.target.connection, item.target.table, item.target.scope)));
+			setTableBatchResetNonce((nonce) => nonce + 1);
+			setTableBatchBusy(false);
+		},
+		[explorer.actions, query.activeTabId, query.actions, query.openTableMeta, tableBatchBusy, t],
+	);
+
+	const runBatchExport = useCallback(
+		async (targets: readonly TableBatchTarget[], ext: "csv" | "json") => {
+			for (const target of targets) {
+				try {
+					const result = await executeQuery(target.connection.name, buildExportSelectSql(tableTargetFromBatchTarget(target)));
+					const text = ext === "csv" ? toCsv(result) : toJson(result);
+					const saved = await window.astravia.dialog.saveData(exportFileName(target.table, ext), text, "utf8", {
+						filters: [{ name: ext.toUpperCase(), extensions: [ext] }],
+					});
+					if (!saved) {
+						return; // 用户取消:中断后续保存,已完成文件保留
+					}
+				} catch (caught) {
+					const { message, detail } = formatDatabaseError(t, caught);
+					setWriteError(detail || message);
+					return; // 失败即停:避免连续弹错,已完成文件保留
+				}
+			}
+			setWriteError(null);
+		},
+		[t],
+	);
+
+	const handleTableBatchCommand = useCallback(
+		(command: TableBatchCommand) => {
+			if (command.action === "exportCsv" || command.action === "exportJson") {
+				void runBatchExport(command.targets, command.action === "exportCsv" ? "csv" : "json");
+				return;
+			}
+			const op: "truncate" | "drop" = command.action;
+			const preview = command.targets
+				.map((target) => buildDangerOpSql(tableTargetFromBatchTarget(target), op))
+				.slice(0, 3)
+				.join("\n");
+			const remaining = command.targets.length - 3;
+			setConfirm({
+				title: t(op === "truncate" ? "databaseBatchTruncateTitle" : "databaseBatchDropTitle"),
+				message:
+					t("databaseBatchDangerMessage", {
+						count: command.targets.length,
+						action: t(op === "truncate" ? "databaseTruncateTable" : "databaseDropTable"),
+					}) + `\n\n${preview}` + (remaining > 0 ? `\n${t("databaseBatchMoreCount", { count: remaining })}` : ""),
+				confirmLabel: t(op === "truncate" ? "databaseTableBatchTruncate" : "databaseTableBatchDrop"),
+				variant: "danger",
+				onConfirm: () => {
+					void runBatchDangerOp(op, command.targets);
+				},
+			});
+		},
+		[runBatchDangerOp, runBatchExport, setConfirm, t],
+	);
+
+	const tableBatchResultBanner = tableBatchResult ? (
+		<div
+			className={cn(
+				"relative mb-1.5 rounded-md border px-2.5 py-2 text-[12px] leading-relaxed",
+				tableBatchResult.failed.length === 0
+					? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+					: "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400",
+			)}
+		>
+			<button
+				type="button"
+				aria-label={t("databaseClose")}
+				title={t("databaseClose")}
+				className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded opacity-70 hover:bg-background/60"
+				onClick={closeBatchResult}
+			>
+				<span className="h-3.5 w-3.5 icon-[mdi--close]" />
+			</button>
+			<div className="pr-6 font-medium">
+				{tableBatchResult.failed.length === 0
+					? t(
+							tableBatchResult.op === "truncate" ? "databaseBatchResultOkTruncate" : "databaseBatchResultOkDrop",
+							{ count: tableBatchResult.ok },
+						)
+					: tableBatchResult.ok > 0
+						? t("databaseBatchResultPartial", { ok: tableBatchResult.ok, failed: tableBatchResult.failed.length })
+						: t("databaseBatchResultAllFailed", { count: tableBatchResult.failed.length })}
+			</div>
+			{tableBatchResult.failed.length > 0 ? (
+				<ul className="mt-1 max-h-24 space-y-0.5 overflow-y-auto font-mono text-[11px] opacity-90">
+					{tableBatchResult.failed.map((item) => (
+						<li key={tableSelectionKey(item.target.connection, item.target.table, item.target.scope)}>
+							{item.target.table}: {item.reason}
+						</li>
+					))}
+				</ul>
+			) : null}
+		</div>
+	) : null;
+
 	const tableDialogs = (
 		<Dialog open={renameState !== null} onOpenChange={(open) => { if (!open) closeRenameDialog(); }}>
 			<DialogContent className="w-[380px]">
@@ -755,6 +926,9 @@ export function DatabaseWorkspace({
 			onAnalyzeTable={analyzeTable}
 			onTestConnection={(name) => void model.actions.testSaved(name)}
 			onTableCommand={handleTableCommand}
+			onTableBatchCommand={handleTableBatchCommand}
+			tableBatchResetNonce={tableBatchResetNonce}
+			tableBatchKeepKeys={tableBatchKeepKeys}
 			revealTarget={revealTarget}
 		/>
 	);
@@ -916,7 +1090,10 @@ export function DatabaseWorkspace({
 								</div>
 							}
 						/>
-						<div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">{treeBody}</div>
+						<div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
+							{tableBatchResultBanner}
+							{treeBody}
+						</div>
 						<ResizeHandle side="right" onResize={onTreeResize} />
 					</aside>
 				) : null}
