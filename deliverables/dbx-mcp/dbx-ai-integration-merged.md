@@ -578,7 +578,7 @@ Astravia 已具备两块独立的 AI 能力:
 - **#2** ✅：右键「隐藏该库/schema/表」写 exclude + 连接菜单「显示全部对象」一键还原(`explorer-visibility` glob 过滤,仅影响显示);配置持久化(`astravia.db.explorer.v1.visibility`);全部作用域/表被排除时整段收起。单测 +9。
 - **#3/#7** ✅：搜索词/仅健康/全局搜索 Switch/排序/类型过滤持久化(`explorer-toolbar-state` localStorage);全局搜索开关仍为本地增强语义(引擎无服务端全量搜)。单测 +9。
 
-### 批次 3 —— 破坏性/管理动作(#6 全链路 + #16 批量) ✅ #6 已落地(commit `a5c0866`);#16 已落地(commit 待回填)
+### 批次 3 —— 破坏性/管理动作(#6 全链路 + #16 批量) ✅ #6 已落地(commit `a5c0866`);#16 已落地(commit `911f2ae`)
 
 - **危险写放行通道**:UI 危险确认后,以带 `DBX_MCP_CONFIRMED_WRITE_SQL` env binding 的**单发子进程**执行该条 SQL(引擎精确匹配放行,普通 UPDATE/DELETE 仍走现有 confirmedWrite);spawn 复用 dbx-mcp-client 按代隔离基建。审计日志记录动作+SQL+env。
 - **表级套件**(树表右键):清空(TRUNCATE)/删除(DROP)/重命名(ALTER RENAME)/导出数据(CSV+JSON,经只读 SELECT 取数后前端生成);确认弹窗须输入表名(防误删)。
