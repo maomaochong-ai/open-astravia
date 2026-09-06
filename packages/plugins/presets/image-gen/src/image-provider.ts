@@ -128,7 +128,7 @@ async function extractBytes(
 	const url = absolute ? item.url : new URL(item.url, `${config.baseUrl}/`).toString();
 	const response = await network.request<string>({
 		url,
-		headers: absolute ? undefined : { Authorization: `Bearer ${config.apiKey}` },
+		...(absolute ? {} : { headers: { Authorization: `Bearer ${config.apiKey}` } }),
 		responseType: "base64",
 		timeoutMs: 120_000,
 	});
