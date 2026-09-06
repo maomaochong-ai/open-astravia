@@ -8,10 +8,10 @@
 
 ## 0. 版本一致性（先读，避免白打包）
 
-| 版本来源 | 值（2026-08-30 现状） | 说明 |
+| 版本来源 | 值（2026-09-07 现状） | 说明 |
 |---|---|---|
-| 官网 `website/index.html` 下载区 | `v0.55.33` | 硬编码文案 + 三个文件名 |
- | 桌面包 `packages/desktop-app/package.json` `version` | `0.55.33` | electron-builder 产物版本取自这里；**0.55.33 为当前已发布版本**（桶内 `app/v0.55.33/`），上一版 0.55.32（桶内 `app/v0.55.32/`） |
+| 官网 `website/index.html` 下载区 | `v0.55.34` | 硬编码文案 + 三个文件名 |
+ | 桌面包 `packages/desktop-app/package.json` `version` | `0.55.34` | electron-builder 产物版本取自这里；**0.55.34 为当前已发布版本**（桶内 `app/v0.55.34/`），上一版 0.55.33（桶内 `app/v0.55.33/`） |
 
 - **打包产物名 = `astravia-<实际版本>-mac.dmg` 等**，由 electron-builder 从 desktop-app 的 `package.json` 版本生成；版本号不一致时，产物名、官网文件名、R2 目录会互相打架。
 - 下文统一用 `<VER>` 占位版本号；**执行时以实际发布的版本为准**，三处必须一致：
