@@ -2,7 +2,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 
 const desktopRoot = join(import.meta.dirname, "..");
@@ -14,8 +14,12 @@ const runtimeDir = join(tmpdir(), "astravia-ui-verification", workspaceId);
 const statePath = join(runtimeDir, "host.json");
 const artifactDir = join(runtimeDir, "artifacts");
 const cliPath = join(repoRoot, "packages", "cli-app", "src", "cli.ts");
+
 const verificationEnv = {
 	...process.env,
+	// 覆盖外层可能继承的 ASTRAVIA_HOME（如指向正式版 ~/.astravia），
+	// 确保 dev 壳主进程 / CLI agent 读写独立目录，与正式版数据完全隔离。
+	ASTRAVIA_HOME: join(homedir(), configDir),
 	ASTRAVIA_CONFIG_DIR: configDir,
 	ASTRAVIA_THEME_DEV_SERVER: "0",
 	ASTRAVIA_UI_VERIFICATION: "1",
