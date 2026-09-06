@@ -1413,6 +1413,17 @@
     "instruction": "The user asked from the database workbench (connection: {{connection}}).\nAnswer based on the real table structure below; run SQL through the app's database tools when needed — never assume data content.\n\n{{schema}}",
     "noSchema": "(Schema summary unavailable for this connection — inspect the table structure with the database tools first.)"
   },
+  "databaseAskAiEditor": "Ask AI",
+  "databaseAnalyzeEditor": {
+    "intent": "Could you analyze this SQL (connection {{connection}}) — its logic, potential issues, and how it could be improved?",
+    "instruction": "The user launched \"Ask AI\" from the query editor in the database workbench (connection: {{connection}}).\nBelow is the SQL text currently in the editor. Explain what it does, point out potential issues (correctness, performance, security), and suggest improvements; to verify or experiment, run queries through the app's database tools — never fabricate results.\n\nSQL:\n```sql\n{{sql}}\n```\n\nAvailable table-schema context (to verify table/column names; ignore if empty):\n{{schema}}",
+    "label": "Ask AI"
+  },
+  "databaseAnalyzeHistory": {
+    "intent": "Could you analyze this past query (connection {{connection}}) — what it does and whether it has issues or room for improvement?",
+    "instruction": "The user launched \"Analyze with AI\" from the query history in the database workbench (connection: {{connection}}).\nBelow is the SQL text that was executed in the past. Explain what it does, point out potential issues, and suggest improvements; to verify, run queries through the app's database tools — never fabricate results.\n\nSQL:\n```sql\n{{sql}}\n```\n\nAvailable table-schema context (to verify table/column names; ignore if empty):\n{{schema}}",
+    "label": "Analyze with AI"
+  },
   "databaseExpand": "Expand",
   "databaseCollapse": "Collapse",
   "databaseCollapseAll": "Collapse all",

@@ -18,6 +18,8 @@ interface DatabaseQueryPanelProps {
 	/** V3-③ 查询历史（最近 N 条，点击回填 SQL）。 */
 	history: readonly QueryHistoryEntry[];
 	onChange: (value: string) => void;
+	/** P2 编辑器工具栏「问 AI」：携当前 SQL + 绑定连接打开会话预填问题。 */
+	onAskAi: () => void;
 	onRun: () => void;
 	onClearHistory: () => void;
 	/** V7-④ 是否伸展为主栏主体：无输出（未执行/空闲）时为 true,编辑器占满空余,对齐 dbx“编辑器为主体、结果面板执行后才展开”;有输出时 false,面板收缩为内容高、结果网格占剩余。 */
@@ -37,6 +39,7 @@ export function DatabaseQueryPanel({
 	busy,
 	history,
 	onChange,
+	onAskAi,
 	onRun,
 	onClearHistory,
 	stretch = false,
@@ -110,7 +113,18 @@ export function DatabaseQueryPanel({
 									);
 								})}
 							</DropdownMenuContent>
-						</DropdownMenu>
+					</DropdownMenu>
+					<Button
+						variant="ghost"
+						size="xs"
+						aria-label={t("databaseAnalyzeEditor.label")}
+						title={t("databaseAnalyzeEditor.label")}
+						className="px-1.5 text-muted-foreground hover:text-primary"
+						disabled={!connection || sql.trim() === ""}
+						onClick={onAskAi}
+					>
+						<span className="icon-[mdi--creation] h-3.5 w-3.5" />
+					</Button>
 					<Button
 						variant="ghost"
 						size="xs"

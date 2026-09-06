@@ -1413,6 +1413,17 @@
     "instruction": "用户从「数据库工作台」发起问数，当前连接：{{connection}}。\n请基于下面的真实表结构回答；如需执行 SQL，使用应用提供的数据库工具，不要假设数据内容。\n\n{{schema}}",
     "noSchema": "（该连接的 schema 摘要暂不可用，请先用数据库工具查看表结构。）"
   },
+  "databaseAskAiEditor": "问 AI",
+  "databaseAnalyzeEditor": {
+    "intent": "帮我分析一下这段 SQL（连接 {{connection}}），看看它的逻辑、潜在问题与可以怎么优化？",
+    "instruction": "用户从「数据库工作台」查询编辑器发起「问 AI」，当前连接：{{connection}}。\n下面是编辑器中的 SQL 文本，请解读它的作用、指出潜在问题（正确性、性能、安全隐患等）并给出优化建议；如需核实或试验，使用应用提供的数据库工具执行查询，不要编造结果。\n\nSQL：\n```sql\n{{sql}}\n```\n\n可用表结构上下文（供核实表名/字段，为空则忽略）：\n{{schema}}",
+    "label": "问 AI"
+  },
+  "databaseAnalyzeHistory": {
+    "intent": "帮我分析一下这条历史查询（连接 {{connection}}），看看它做了什么、有什么问题或优化空间？",
+    "instruction": "用户从「数据库工作台」查询历史发起「AI 分析」，连接：{{connection}}。\n下面是历史中执行过的 SQL 文本，请解读它的作用、指出潜在问题并给出优化建议；如需核实，使用应用提供的数据库工具执行查询，不要编造结果。\n\nSQL：\n```sql\n{{sql}}\n```\n\n可用表结构上下文（供核实表名/字段，为空则忽略）：\n{{schema}}",
+    "label": "AI 分析"
+  },
   "databaseExpand": "展开",
   "databaseCollapse": "折叠",
   "databaseCollapseAll": "全部折叠",

@@ -540,7 +540,7 @@ export interface PendingAssistSend {
 	settingsAssistTabId?: string;
 	databaseTable?: { connection: string; table: string };
 	/** B2.9-W1 反向：发起方标识，消费侧据此区分漏斗埋点（analyze-table / analyze-result）。 */
-	kind?: "analyze-table" | "analyze-result";
+	kind?: "analyze-table" | "analyze-result" | "analyze-editor" | "analyze-history";
 	metadata?: Record<string, unknown>;
 }
 

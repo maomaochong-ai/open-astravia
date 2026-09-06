@@ -50,6 +50,7 @@ import { buildDeleteSql, buildInsertSql, buildOpenTableSql, buildRowWhere, build
 import { analyzeEditableQuery, type EditableQueryAnalysis } from "../lib/sql-editability";
 import { resolveDatabaseLayout } from "./database-layout";
 import { useDatabaseAnalyzeResult } from "./useDatabaseAnalyzeResult";
+import { useDatabaseAnalyzeSql } from "./useDatabaseAnalyzeSql";
 import { useDatabaseAnalyzeTable } from "./useDatabaseAnalyzeTable";
 import { useDatabaseExplorerModel } from "./useDatabaseExplorerModel";
 import { useDatabaseQueryModel } from "./useDatabaseQueryModel";
@@ -104,6 +105,9 @@ export function DatabaseWorkspace({
 	const analyzeTable = useDatabaseAnalyzeTable();
 	const analyzeResult = useDatabaseAnalyzeResult();
 	const query = useDatabaseQueryModel();
+	// P2 界面→对话：编辑器「问 AI」/历史「AI 分析」两个 SQL 锚点入口（见 useDatabaseAnalyzeSql）。
+	const analyzeEditorSql = useDatabaseAnalyzeSql("editor");
+	const analyzeHistorySql = useDatabaseAnalyzeSql("history");
 	// B2.9-W1 反向：结果网格「让 AI 解读此查询」需要当前 SQL + 结果。提取 const 局部变量，
 	// 闭包内捕获 const 局部变量可保留 TS 收窄（直接读 query.result / 对象属性会丢失收窄）。
 	const lastResult = query.result;
@@ -550,6 +554,16 @@ export function DatabaseWorkspace({
 		recordSettingsUsage({ tab: "database", action: "selected", target: "query-history-clear" });
 		query.actions.clearHistory();
 	};
+	const handleAskAiEditor = () => {
+		if (!effectiveConnection?.name || !query.sql.trim()) return;
+		recordSettingsUsage({ tab: "database", action: "selected", target: "query-ask-ai-editor" });
+		analyzeEditorSql(effectiveConnection.name, query.sql);
+	};
+	const handleHistoryAnalyze = (entry: QueryHistoryEntry) => {
+		if (!entry.connection) return;
+		recordSettingsUsage({ tab: "database", action: "selected", target: "query-history-analyze" });
+		analyzeHistorySql(entry.connection, entry.sql);
+	};
 	const handleTabContextMenu = (event: ReactMouseEvent<HTMLDivElement>, tabId: string) => {
 		recordSettingsUsage({ tab: "database", action: "selected", target: "query-tab-context-menu" });
 		setTabMenu({ x: event.clientX, y: event.clientY, tabId });
@@ -652,6 +666,7 @@ export function DatabaseWorkspace({
 							onCopy={handleHistoryCopy}
 							onDelete={handleHistoryDelete}
 							onClear={handleHistoryClear}
+							onAnalyze={handleHistoryAnalyze}
 						/>
 						{/* V6-② 对齐 dbx「New Query」：新建查询入口常驻顶栏；无选中连接时禁用。 */}
 						<Button
@@ -927,7 +942,8 @@ export function DatabaseWorkspace({
 									});
 								});
 							}}
-								onClearHistory={query.actions.clearHistory}
+							onClearHistory={query.actions.clearHistory}
+							onAskAi={handleAskAiEditor}
 							/>
 							)}
 							{query.openTableMeta || query.status !== "idle" ? (

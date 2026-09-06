@@ -14,6 +14,8 @@ interface DatabaseQueryHistoryPopoverProps {
 	onDelete: (id: string) => void;
 	/** 清空全部。 */
 	onClear: () => void;
+	/** P2 历史条目「AI 分析」：带该条 SQL + 连接打开会话预填问题。 */
+	onAnalyze: (entry: QueryHistoryEntry) => void;
 }
 
 function formatEntryTime(at: number, locale: string): string {
@@ -44,6 +46,7 @@ export function DatabaseQueryHistoryPopover({
 	onCopy,
 	onDelete,
 	onClear,
+	onAnalyze,
 }: DatabaseQueryHistoryPopoverProps): JSX.Element {
 	const { t, i18n } = useTranslation("settings");
 	const locale = i18n.language ?? "en";
@@ -135,16 +138,26 @@ export function DatabaseQueryHistoryPopover({
 										>
 											<span className="icon-[mdi--rotate-3d-variant] h-3.5 w-3.5" />
 										</Button>
-										<Button
-											variant="ghost"
-											size="sm"
-											className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-											aria-label={t("databaseHistoryCopy")}
-											title={t("databaseHistoryCopy")}
-											onClick={() => onCopy(entry)}
-										>
-											<span className="icon-[mdi--content-copy] h-3.5 w-3.5" />
-										</Button>
+									<Button
+										variant="ghost"
+										size="sm"
+										className="h-6 w-6 p-0 text-muted-foreground hover:text-primary"
+										aria-label={t("databaseAnalyzeHistory.label")}
+										title={t("databaseAnalyzeHistory.label")}
+										onClick={() => onAnalyze(entry)}
+									>
+										<span className="icon-[mdi--creation] h-3.5 w-3.5" />
+									</Button>
+									<Button
+										variant="ghost"
+										size="sm"
+										className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+										aria-label={t("databaseHistoryCopy")}
+										title={t("databaseHistoryCopy")}
+										onClick={() => onCopy(entry)}
+									>
+										<span className="icon-[mdi--content-copy] h-3.5 w-3.5" />
+									</Button>
 										<Button
 											variant="ghost"
 											size="sm"
