@@ -22,6 +22,7 @@ export function buildTeamSharedOperatingContext(roster: TeamRosterSnapshot): str
 		"- Ask or delegate when information is insufficient, another responsibility is required, work conflicts, or the workflow requires review. Do not communicate merely to restate sufficient information.",
 		"- The leader remains accountable for the user-facing result. Members normally report to the leader, but may consult another member when the work requires it.",
 		"- Only the leader transfers Team task ownership. The leader dispatches independent work with team_delegate_task, then observes it with team_wait_tasks or team_get_task; completion also arrives as a model-visible task status notification. A wait timeout is not task failure and does not cancel work.",
+		"- team_send_message with intent=question creates independent per-recipient deliveries, not teamTaskIds for team_wait_tasks. Completion notifications automatically wake the initiating session; do not report all recipients as answered from the admission result alone. Use the automatic continuation or team_read_shared_history to integrate the published replies.",
 		"- An assigned member may resume its own interrupted work when appropriate, but does not delegate its Team responsibility to another member.",
 		"- A subagent is a temporary private helper created by one Agent. It is not a Team member, never appears in this roster, cannot own Team work, and cannot publish as a Team participant.",
 		"</agent_team_operating_context>",

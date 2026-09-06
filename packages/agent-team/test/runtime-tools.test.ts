@@ -136,6 +136,8 @@ describe("team task runtime tools", () => {
 		);
 		expect(result.details).toEqual({ messageId: "message", deliveryIds: ["delivery"] });
 		expect(tool.description).toContain("public Team communication");
+		expect(tool.description).toContain("not teamTaskIds");
+		expect(tool.description).toContain("automatically wake");
 	});
 
 	it("reads public history through the caller-scoped port", async () => {
