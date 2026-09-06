@@ -35,6 +35,7 @@ import { electronManualRedirectFetch } from "../plugins/plugin-network-electron-
 import { requestForPlugin as requestNetwork } from "../plugins/plugin-network-service.js";
 import {
 	commitPluginStorage as commitNamespacedStorage,
+	deletePluginBlob as deleteNamespacedBlob,
 	getPluginBlobRef as getNamespacedBlobRef,
 	listPluginFiles as listNamespacedFiles,
 	PluginStorageConflictError,
@@ -300,6 +301,12 @@ export function registerDesktopFoundationProviders(
 			execute: async ({ namespace, id }, context) => {
 				assertNotAborted(context.signal);
 				return getNamespacedBlobRef(namespace, id);
+			},
+		}),
+		bindCapability(FOUNDATION_STORAGE_CAPABILITIES.DELETE_BLOB, {
+			execute: async ({ namespace, id }, context) => {
+				assertNotAborted(context.signal);
+				await deleteNamespacedBlob(namespace, id);
 			},
 		}),
 	]);

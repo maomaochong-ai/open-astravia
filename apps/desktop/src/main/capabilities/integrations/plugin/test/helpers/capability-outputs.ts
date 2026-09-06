@@ -10,6 +10,7 @@ import {
 	DOMAIN_MCP_CAPABILITIES,
 	DOMAIN_MEDIA_CAPABILITIES,
 	DOMAIN_MODEL_CAPABILITIES,
+	DOMAIN_OCR_CAPABILITIES,
 	DOMAIN_PROJECT_CAPABILITIES,
 	DOMAIN_QUICK_PANEL_CAPABILITIES,
 	DOMAIN_SCHEDULER_CAPABILITIES,
@@ -112,10 +113,38 @@ function foundationOutput(capabilityId: CapabilityId): unknown {
 	if (capabilityId === FOUNDATION_STORAGE_CAPABILITIES.READ_BLOB.id) {
 		return { data: "ZGF0YQ==", mimeType: "image/png" };
 	}
+	if (capabilityId === FOUNDATION_STORAGE_CAPABILITIES.DELETE_BLOB.id) return undefined;
 	return undefined;
 }
 
 function domainOutput(capabilityId: CapabilityId): unknown {
+	if (capabilityId === DOMAIN_OCR_CAPABILITIES.LIST_PROVIDERS.id) {
+		return [
+			{
+				id: "desktop-app:ppocrv5",
+				displayName: "PP-OCRv5",
+				ownerId: "desktop-app",
+				protocolVersion: 1,
+				processing: "local",
+				execution: "sync",
+				status: "ready",
+				input: { kinds: ["image"], mimeTypes: ["image/png"], acceptsInlineBytes: false, acceptsUrl: true },
+				output: {
+					granularities: ["text"],
+					supportsConfidence: true,
+					supportsPolygon: false,
+					supportsLanguageDetection: false,
+				},
+			},
+		];
+	}
+	if (capabilityId === DOMAIN_OCR_CAPABILITIES.RECOGNIZE.id) {
+		return {
+			protocolVersion: 1,
+			providerId: "desktop-app:ppocrv5",
+			items: [{ id: "page-1", status: "ok", text: "拾墨" }],
+		};
+	}
 	if (capabilityId === DOMAIN_MEDIA_CAPABILITIES.LIST_PROVIDERS.id) {
 		return [
 			{

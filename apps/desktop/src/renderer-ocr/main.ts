@@ -31,8 +31,7 @@ interface OcrPdfStartPayload {
 interface OcrImageStartPayload {
 	sessionId: string;
 	kind: "image";
-	imageBytes: ArrayBuffer;
-	mime: string;
+	images: Array<{ bytes: ArrayBuffer; mime: string }>;
 	langs: string[];
 }
 
@@ -215,44 +214,45 @@ async function recognizeCanvas(
 }
 
 async function runImagePipeline(payload: OcrImageStartPayload): Promise<void> {
-	const { sessionId, imageBytes, mime } = payload;
+	const { sessionId, images } = payload;
 	const bridge = window.__vettaOcr;
 	try {
-		log(`loading image (${imageBytes.byteLength} bytes, ${mime})`);
-		const blob = new Blob([imageBytes], { type: mime });
-		const bitmap = await createImageBitmap(blob);
-		const canvas = document.createElement("canvas");
-		canvas.width = bitmap.width;
-		canvas.height = bitmap.height;
-		const ctx = canvas.getContext("2d", { willReadFrequently: true });
-		if (!ctx) throw new Error("Failed to obtain 2D context");
-		ctx.fillStyle = "#ffffff";
-		ctx.fillRect(0, 0, canvas.width, canvas.height);
-		ctx.drawImage(bitmap, 0, 0);
-		bitmap.close();
+		const pages: OcrPageResult[] = [];
+		for (let index = 0; index < images.length; index += 1) {
+			const { bytes, mime } = images[index];
+			log(`loading image ${index + 1}/${images.length} (${bytes.byteLength} bytes, ${mime})`);
+			const bitmap = await createImageBitmap(new Blob([bytes], { type: mime }));
+			const canvas = document.createElement("canvas");
+			canvas.width = bitmap.width;
+			canvas.height = bitmap.height;
+			const ctx = canvas.getContext("2d", { willReadFrequently: true });
+			if (!ctx) throw new Error("Failed to obtain 2D context");
+			ctx.fillStyle = "#ffffff";
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+			ctx.drawImage(bitmap, 0, 0);
+			bitmap.close();
 
-		bridge.reportProgress(sessionId, { page: 1, total: 1, phase: "ocr" });
-		const { text, lines, ocrDurationMs, confidence } = await recognizeCanvas(canvas);
-		log(`image: lines=${lines} chars=${text.length} ms=${ocrDurationMs}`);
-
-		bridge.reportProgress(sessionId, { page: 1, total: 1, phase: "done" });
+			bridge.reportProgress(sessionId, { page: index + 1, total: images.length, phase: "ocr" });
+			const { text, lines, ocrDurationMs, confidence } = await recognizeCanvas(canvas);
+			log(`image ${index + 1}: lines=${lines} chars=${text.length} ms=${ocrDurationMs}`);
+			pages.push({
+				page: index + 1,
+				text,
+				width: canvas.width,
+				height: canvas.height,
+				source: "ocr",
+				ocrDurationMs,
+				confidence,
+			});
+			canvas.width = 0;
+			canvas.height = 0;
+		}
+		bridge.reportProgress(sessionId, { page: images.length, total: images.length, phase: "done" });
 		bridge.reportDone(sessionId, {
-			totalPages: 1,
+			totalPages: images.length,
 			engine: ENGINE_NAME,
-			pages: [
-				{
-					page: 1,
-					text,
-					width: canvas.width,
-					height: canvas.height,
-					source: "ocr",
-					ocrDurationMs,
-					confidence,
-				},
-			],
+			pages,
 		});
-		canvas.width = 0;
-		canvas.height = 0;
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);
 		log(`error: ${message}`);

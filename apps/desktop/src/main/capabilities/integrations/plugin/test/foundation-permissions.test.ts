@@ -91,6 +91,10 @@ describe("PluginCapabilityAdapter foundation permissions", () => {
 				capabilityId: FOUNDATION_STORAGE_CAPABILITIES.PUT_BLOB_FROM_FILE.id,
 				constraints: [namespaceConstraint],
 			},
+			{
+				capabilityId: FOUNDATION_STORAGE_CAPABILITIES.DELETE_BLOB.id,
+				constraints: [namespaceConstraint],
+			},
 		]);
 
 		await expect(adapter.requestNetwork(sessionId, { url: "https://example.com" })).resolves.toHaveProperty(

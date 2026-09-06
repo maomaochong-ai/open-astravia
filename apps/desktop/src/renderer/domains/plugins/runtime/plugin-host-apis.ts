@@ -3,6 +3,7 @@ import { activeSessionAtom, languageAtom, openUrlInBrowserAtom } from "@shared/s
 import { showToast } from "@shared/store/toast-atoms";
 import type {
 	Disposable,
+	OcrClient,
 	PluginArtifactsApi,
 	PluginBrowserApi,
 	PluginCaptureApi,
@@ -23,7 +24,11 @@ import { getDefaultStore } from "jotai";
 import { router } from "../../../router";
 import { normalizeBrowserOpenUrl } from "./browser-open-policy";
 import { trackActivationDisposable } from "./plugin-activation-disposables";
-import { pluginHostBridge, registerPluginMediaProviderHandler } from "./plugin-host-bridge";
+import {
+	pluginHostBridge,
+	registerPluginMediaProviderHandler,
+	registerPluginOcrProviderHandler,
+} from "./plugin-host-bridge";
 import { createPluginPermissionApi as createPermissionApi } from "./plugin-permissions";
 import { subscribePluginSecretsChanged } from "./plugin-secrets-subscription";
 import { createPluginStorageApi } from "./plugin-storage-api";
@@ -284,6 +289,69 @@ export function createMediaApi(
 		submit: (request) => {
 			permissions.require("media.generate");
 			return media.submit(capabilitySessionId, toJsonValue(request) as Parameters<typeof media.submit>[1]);
+		},
+	};
+}
+
+export function createOcrApi(
+	plugin: InstalledPlugin,
+	capabilitySessionId: string,
+	disposers: Array<() => void>,
+	activationId: string,
+	pendingRuntimeRegistrations: Promise<void>[],
+): OcrClient {
+	const permissions = createPermissionApi(plugin);
+	const ocr = window.vetta.plugins.internalCapabilities.ocr;
+	return {
+		registerProvider: (registration) => {
+			permissions.require("ai.ocr.provider.register");
+			if (!/^[a-z0-9][a-z0-9._-]{0,63}$/.test(registration.id)) throw new Error("Invalid OCR provider id");
+			if (typeof registration.recognize !== "function")
+				throw new Error("OCR provider recognize handler is required");
+			const handlerId = `${registration.id}:${crypto.randomUUID()}`;
+			const handler = registerPluginOcrProviderHandler({ pluginId: plugin.id, handlerId, registration });
+			const promise = window.vetta.plugins
+				.registerOcrProvider(plugin.id, {
+					id: registration.id,
+					displayName: registration.displayName,
+					protocolVersion: registration.protocolVersion,
+					processing: registration.processing,
+					execution: registration.execution,
+					input: registration.input,
+					output: registration.output,
+					network: registration.network,
+					configuration: registration.configuration,
+					handlerId,
+					activationId,
+				})
+				.catch((error: Error) => {
+					handler.dispose();
+					throw error;
+				});
+			pendingRuntimeRegistrations.push(promise);
+			let disposed = false;
+			const dispose = (): void => {
+				if (disposed) return;
+				disposed = true;
+				handler.dispose();
+				void registration.dispose?.();
+				void window.vetta.plugins.unregisterOcrProvider(plugin.id, registration.id, activationId);
+			};
+			disposers.push(dispose);
+			return { dispose };
+		},
+		listProviders: () => {
+			permissions.require("ai.ocr.recognize");
+			return ocr.listProviders(capabilitySessionId);
+		},
+		onProvidersChanged: (listener) => {
+			permissions.require("ai.ocr.recognize");
+			return trackActivationDisposable({ dispose: window.vetta.plugins.onOcrProvidersChanged(listener) }, disposers);
+		},
+		recognize: (request, options) => {
+			permissions.require("ai.ocr.recognize");
+			if (options?.signal?.aborted) return Promise.reject(abortError(options.signal));
+			return ocr.recognize(capabilitySessionId, toJsonValue(request) as Parameters<typeof ocr.recognize>[1]);
 		},
 	};
 }

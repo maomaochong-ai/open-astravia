@@ -253,6 +253,12 @@ export function registerPluginCapabilitiesIpc(): () => void {
 	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.MEDIA_SUBMIT, (_event, sessionId: unknown, input: unknown) =>
 		adapter.submitMedia(requireString(sessionId, "sessionId"), input),
 	);
+	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.OCR_PROVIDER_LIST, (_event, sessionId: unknown) =>
+		adapter.listOcrProviders(requireString(sessionId, "sessionId")),
+	);
+	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.OCR_RECOGNIZE, (_event, sessionId: unknown, input: unknown) =>
+		adapter.recognizeOcr(requireString(sessionId, "sessionId"), input),
+	);
 	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.JOB_GET, (_event, sessionId: unknown, id: unknown) =>
 		adapter.getJob(requireString(sessionId, "sessionId"), requireString(id, "id")),
 	);

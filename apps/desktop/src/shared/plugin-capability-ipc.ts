@@ -37,6 +37,8 @@ export const PLUGIN_CAPABILITY_CHANNELS = {
 	MODEL_OWNED_PROVIDERS_REPLACE: "vetta:plugins:capabilities:model:owned-providers:replace",
 	MEDIA_PROVIDER_LIST: "vetta:plugins:capabilities:media:provider:list",
 	MEDIA_SUBMIT: "vetta:plugins:capabilities:media:submit",
+	OCR_PROVIDER_LIST: "vetta:plugins:capabilities:ocr:provider:list",
+	OCR_RECOGNIZE: "vetta:plugins:capabilities:ocr:recognize",
 	JOB_GET: "vetta:plugins:capabilities:job:get",
 	JOB_CANCEL: "vetta:plugins:capabilities:job:cancel",
 	ARTIFACT_PERSIST: "vetta:plugins:capabilities:artifact:persist",

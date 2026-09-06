@@ -70,6 +70,8 @@ export interface PluginStorageApi {
 	putBlobFromFile(input: PluginPutBlobFromFileInput): Promise<PluginStoredBlobRef>;
 	readBlob(id: string): Promise<PluginStoredBlob | null>;
 	getBlobRef(id: string): Promise<PluginStoredBlobRef | null>;
+	/** Permanently delete one blob owned by this plugin namespace. */
+	deleteBlob(id: string): Promise<void>;
 }
 
 /** Optional JSON convenience helpers. The storage contract itself remains file/bytes based. */

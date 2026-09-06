@@ -54,6 +54,7 @@ export const PLUGIN_EXECUTION_CHANNELS = {
 	STORAGE_PUT_BLOB_FROM_FILE: "vetta:plugins:storage:put-blob-from-file",
 	STORAGE_READ_BLOB: "vetta:plugins:storage:read-blob",
 	STORAGE_GET_BLOB_REF: "vetta:plugins:storage:get-blob-ref",
+	STORAGE_DELETE_BLOB: "vetta:plugins:storage:delete-blob",
 	SECRETS_GET: "vetta:plugins:secrets:get",
 	SECRETS_HAS: "vetta:plugins:secrets:has",
 	SECRETS_KEYS: "vetta:plugins:secrets:keys",
@@ -101,4 +102,16 @@ export const PLUGIN_MEDIA_CHANNELS = {
 	CHANGED: "vetta:plugins:media-providers-changed",
 	RESPONSE: "vetta:plugins:media-provider-response",
 	UPLOAD_INPUT: "vetta:plugins:media-provider-input-upload",
+} as const;
+
+export const PLUGIN_OCR_CHANNELS = {
+	REGISTER: "vetta:plugins:ocr-provider-register",
+	UNREGISTER: "vetta:plugins:ocr-provider-unregister",
+	REQUEST: "vetta:plugins:ocr-provider-request",
+	RESPONSE: "vetta:plugins:ocr-provider-response",
+	CANCEL: "vetta:plugins:ocr-provider-cancel",
+	PROGRESS: "vetta:plugins:ocr-provider-progress",
+	GET_INPUT_URL: "vetta:plugins:ocr-provider-input-url",
+	UPLOAD_INPUT: "vetta:plugins:ocr-provider-input-upload",
+	CHANGED: "vetta:plugins:ocr-providers-changed",
 } as const;

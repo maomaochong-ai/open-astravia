@@ -269,6 +269,9 @@ export function registerPluginExecutionIpc(): () => void {
 	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.STORAGE_GET_BLOB_REF, (_event, sessionId: unknown, blobId: unknown) =>
 		capabilityAdapter.getStorageBlobRef(asPluginId(sessionId), asPluginId(blobId)),
 	);
+	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.STORAGE_DELETE_BLOB, (_event, sessionId: unknown, blobId: unknown) =>
+		capabilityAdapter.deleteStorageBlob(asPluginId(sessionId), asPluginId(blobId)),
+	);
 
 	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.SECRETS_GET, (_event, sessionId: unknown, key: unknown) =>
 		getPluginSecret(secretsPluginId(sessionId, "secrets.read"), asSecretKey(key)),

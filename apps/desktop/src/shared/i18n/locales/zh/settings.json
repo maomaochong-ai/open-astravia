@@ -313,6 +313,7 @@
   },
   "runtimeConfiguration": {
     "applyLabel": "生效时间",
+	"provider": { "local": "本地", "remote": "远程", "unavailable": "不可用" },
     "secretConfigured": "已安全保存；输入新值可替换",
     "secretPlaceholder": "输入后按回车或移开焦点保存",
     "apply": {
@@ -326,6 +327,12 @@
         "images": {
           "title": "图片处理",
           "description": "配置图片规范化、安全限制、压缩和模型请求预算。"
+        }
+      },
+      "vetta": {
+        "ocr": {
+          "title": "文字识别（OCR）",
+          "description": "配置 Agent、拾墨和其它能力共用的文字识别服务。默认在本地使用 PP-OCRv5。"
         }
       }
     },
@@ -343,7 +350,11 @@
       "requestBudget": {
         "highWatermarkBytes": { "title": "请求高水位", "description": "图片总量超过此值时启动预算压缩。" },
         "lowWatermarkBytes": { "title": "请求低水位", "description": "预算压缩尝试达到的图片总量。" }
-      }
+      },
+      "defaultProviderId": { "title": "默认 Provider", "description": "下一次识别使用的 OCR Provider；远程 Provider 会按远程策略处理。" },
+      "remoteProviderPolicy": { "title": "远程识别策略", "description": "控制远程 Provider 是否可以处理图片。", "options": { "never": "禁止远程", "ask": "首次使用时询问", "allowed": "允许已选择的远程 Provider" } },
+      "cacheResults": { "title": "缓存识别结果", "description": "缓存新产生的 OCR 结果；关闭不会删除已有记录。" },
+      "defaultOutput": { "title": "默认输出粒度", "description": "选择纯文本、行、词或文档树；Provider 不支持时会降级。", "options": { "text": "纯文本", "line": "按行", "word": "按词", "document-tree": "文档树" } }
     }
   },
   "environmentSettings": {

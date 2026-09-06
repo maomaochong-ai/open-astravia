@@ -1,4 +1,4 @@
-import { CODING_IMAGE_CONFIGURATION_ID } from "@vetta/runtime-tools";
+import { CODING_IMAGE_CONFIGURATION_ID, VETTA_OCR_CONFIGURATION_ID } from "@vetta/runtime-tools";
 import { describe, expect, it, vi } from "vitest";
 import {
 	DesktopRuntimeConfigurationService,
@@ -28,12 +28,30 @@ describe("DesktopRuntimeConfigurationService", () => {
 		const harness = createHarness();
 		const catalog = await harness.service.list();
 
-		expect(catalog.entries.map(({ configurationId }) => configurationId)).toEqual([CODING_IMAGE_CONFIGURATION_ID]);
+		expect(catalog.entries.map(({ configurationId }) => configurationId)).toEqual([
+			CODING_IMAGE_CONFIGURATION_ID,
+			VETTA_OCR_CONFIGURATION_ID,
+		]);
 		expect(catalog.entries[0]?.consumers).toContainEqual({
 			kind: "runtime",
 			id: "model-input-images",
 			support: "native",
 		});
+		await harness.service.close();
+	});
+
+	it("persists OCR configuration independently and preserves its local default", async () => {
+		const harness = createHarness();
+		await harness.service.set(VETTA_OCR_CONFIGURATION_ID, { cacheResults: false });
+		expect(harness.readAgentSettings().ocr).toEqual({
+			defaultProviderId: "desktop-app:ppocrv5",
+			remoteProviderPolicy: "ask",
+			cacheResults: false,
+			defaultOutput: "text",
+		});
+		await expect(
+			harness.service.set(VETTA_OCR_CONFIGURATION_ID, { remoteProviderPolicy: "sometimes" }),
+		).rejects.toThrow("remote provider policy");
 		await harness.service.close();
 	});
 

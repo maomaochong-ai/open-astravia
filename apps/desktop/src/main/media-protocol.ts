@@ -5,17 +5,23 @@ import { Readable } from "node:stream";
 import { getVettaHomePath } from "@vetta/action-rpc";
 import { type CustomScheme, protocol } from "electron";
 import { assertPathReadableForPreview } from "./ipc/fs.js";
+import { createEphemeralMediaToken, resolveEphemeralMediaToken } from "./media-token-store.js";
 
 /**
  * 媒体流协议（ADR-0021）：把校验过的本地媒体路径映射为支持 Range 的流式 URL，
  * 供 <audio>（未来含 <video>）直接作 src。与既有 readFile IPC + base64 全量
  * 加载并存——无损音频可达百 MB，全量 IPC 会阻塞且内存翻倍，故走流式。
  *
- * URL 形态：vetta-media://local/stream?path=<encodeURIComponent(绝对路径)>
- * 路径走 query 参数而非 pathname，避免 Chromium 对 standard scheme 的
- * 路径规范化改写编码后的分隔符。
+ * URL 形态：既有媒体使用 `?path=`；需要跨越不可信插件边界的临时输入使用
+ * `?token=`。令牌只在主进程内映射到路径并短时过期，避免把绝对路径暴露给插件。
  */
 export const MEDIA_PROTOCOL_SCHEME = "vetta-media";
+
+/** Creates a short-lived opaque media URL for a host-controlled file. */
+export function createEphemeralMediaUrl(path: string, mimeType: string, ttlMs = 10 * 60_000): string {
+	const token = createEphemeralMediaToken(path, mimeType, ttlMs);
+	return `${MEDIA_PROTOCOL_SCHEME}://local/stream?token=${token}`;
+}
 
 const MEDIA_MIME: Record<string, string> = {
 	mp3: "audio/mpeg",
@@ -91,11 +97,16 @@ export function registerMediaProtocolHandler(): void {
 		let declaredMimeType: string | null = null;
 		try {
 			const url = new URL(request.url);
-			const rawPath = url.searchParams.get("path");
+			const token = url.searchParams.get("token");
+			const ephemeral = token ? resolveEphemeralMediaToken(token) : undefined;
+			if (token && !ephemeral && !url.searchParams.get("path")) {
+				return new Response("Expired media token", { status: 410 });
+			}
+			const rawPath = ephemeral?.path ?? url.searchParams.get("path");
 			if (!rawPath) return new Response("Missing path", { status: 400 });
 			mediaKind = url.searchParams.get("kind");
 			filePath = resolve(rawPath);
-			const requestedMimeType = url.searchParams.get("mime");
+			const requestedMimeType = ephemeral?.mimeType ?? url.searchParams.get("mime");
 			if (requestedMimeType && isPluginDataPath(filePath) && MIME_TYPE_PATTERN.test(requestedMimeType)) {
 				declaredMimeType = requestedMimeType;
 			}

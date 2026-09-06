@@ -11,6 +11,8 @@ export const PLUGIN_CAPABILITY_PERMISSIONS = {
 	STORAGE_READ: "storage.read",
 	STORAGE_WRITE: "storage.write",
 	MEDIA_GENERATE: "media.generate",
+	OCR_RECOGNIZE: "ai.ocr.recognize",
+	OCR_PROVIDER_REGISTER: "ai.ocr.provider.register",
 	MODELS_MANAGE: "models.manage",
 	BROWSER_READ: "browser.read",
 	BROWSER_OPEN: "browser.open",

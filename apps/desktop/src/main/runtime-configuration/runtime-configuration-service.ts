@@ -1,18 +1,19 @@
 import { createHash } from "node:crypto";
+import type { OcrProviderDescriptor } from "@vetta/capability-sdk";
 import {
 	projectRuntimeConfigurationCatalog,
 	RuntimeConfigurationCenter,
 	type RuntimeConfigurationJsonObject,
 	type RuntimeConfigurationJsonValue,
 } from "@vetta/runtime-core/configuration";
-import { CODING_IMAGE_CONFIGURATION } from "@vetta/runtime-tools";
+import { CODING_IMAGE_CONFIGURATION, VETTA_OCR_CONFIGURATION } from "@vetta/runtime-tools";
 import type {
 	DesktopRuntimeConfigurationCatalog,
 	DesktopRuntimeConfigurationConsumer,
 	DesktopRuntimeConfigurationEntry,
 } from "../../preload/api.js";
 
-const BUILTIN_DEFINITION_SOURCE = { id: "runtime-tools", revision: "coding-images-v1" } as const;
+const BUILTIN_DEFINITION_SOURCE = { id: "runtime-tools", revision: "coding-images-and-ocr-v1" } as const;
 const DESKTOP_LAYER_SOURCE_ID = "desktop.runtime-configuration";
 const DESKTOP_LAYER_ID = "desktop.persisted-settings";
 
@@ -25,6 +26,7 @@ export interface DesktopRuntimeConfigurationServiceDependencies {
 	readonly readAgentSettings: () => Record<string, unknown>;
 	readonly updateAgentSettings: (mutate: (settings: Record<string, unknown>) => void) => void;
 	readonly logger: RuntimeConfigurationServiceLogger;
+	readonly listOcrProviders?: () => readonly OcrProviderDescriptor[];
 }
 
 /**
@@ -50,6 +52,10 @@ export class DesktopRuntimeConfigurationService {
 						(entry): DesktopRuntimeConfigurationEntry =>
 							Object.freeze({
 								...entry,
+								descriptor:
+									entry.configurationId === VETTA_OCR_CONFIGURATION.id
+										? enrichOcrDescriptor(entry.descriptor, this.dependencies.listOcrProviders?.() ?? [])
+										: entry.descriptor,
 								consumers: Object.freeze(resolveConsumers(entry.configurationId)),
 							}),
 					),
@@ -65,21 +71,22 @@ export class DesktopRuntimeConfigurationService {
 		patch: RuntimeConfigurationJsonObject,
 	): Promise<DesktopRuntimeConfigurationCatalog> {
 		this.synchronize();
-		if (configurationId !== CODING_IMAGE_CONFIGURATION.id) {
+		if (configurationId !== CODING_IMAGE_CONFIGURATION.id && configurationId !== VETTA_OCR_CONFIGURATION.id) {
 			throw new Error(`Runtime Configuration is not editable: ${configurationId}`);
 		}
 		const definitionLease = this.center.definitions.acquire(configurationId);
 		let decoded: RuntimeConfigurationJsonObject;
 		try {
 			const definition = definitionLease.revision.definition;
-			const current = this.readPersistedValue();
+			const current = this.readPersistedValue(configurationId);
 			decoded = definition.codec.decode(mergeObjects(mergeObjects(definition.defaultValue, current), patch));
 		} finally {
 			await definitionLease.release();
 		}
 
 		this.dependencies.updateAgentSettings((settings) => {
-			settings.images = decoded;
+			if (configurationId === CODING_IMAGE_CONFIGURATION.id) settings.images = decoded;
+			else settings.ocr = decoded;
 		});
 		this.dependencies.logger.info("runtime configuration updated", { configurationId });
 		return this.list();
@@ -95,12 +102,18 @@ export class DesktopRuntimeConfigurationService {
 				source: BUILTIN_DEFINITION_SOURCE,
 				definition: CODING_IMAGE_CONFIGURATION,
 			});
+			this.center.definitions.upsert({
+				source: BUILTIN_DEFINITION_SOURCE,
+				definition: VETTA_OCR_CONFIGURATION,
+			});
 			this.builtinPublished = true;
 		}
 
 		const values: Record<string, RuntimeConfigurationJsonObject> = {};
 		const images = this.dependencies.readAgentSettings().images;
 		if (isRecord(images)) values[CODING_IMAGE_CONFIGURATION.id] = toJsonObject(images);
+		const ocr = this.dependencies.readAgentSettings().ocr;
+		if (isRecord(ocr)) values[VETTA_OCR_CONFIGURATION.id] = toJsonObject(ocr);
 		const revision = hashJson(values);
 		this.center.layers.replaceSource({ id: DESKTOP_LAYER_SOURCE_ID, revision }, [
 			{
@@ -112,13 +125,38 @@ export class DesktopRuntimeConfigurationService {
 		]);
 	}
 
-	private readPersistedValue(): RuntimeConfigurationJsonObject {
-		const images = this.dependencies.readAgentSettings().images;
-		return isRecord(images) ? toJsonObject(images) : {};
+	private readPersistedValue(configurationId: string): RuntimeConfigurationJsonObject {
+		const value =
+			this.dependencies.readAgentSettings()[configurationId === CODING_IMAGE_CONFIGURATION.id ? "images" : "ocr"];
+		return isRecord(value) ? toJsonObject(value) : {};
 	}
 }
 
+function enrichOcrDescriptor(
+	descriptor: DesktopRuntimeConfigurationEntry["descriptor"],
+	providers: readonly OcrProviderDescriptor[],
+): DesktopRuntimeConfigurationEntry["descriptor"] {
+	return {
+		...descriptor,
+		presentation: {
+			...(descriptor.presentation ?? {}),
+			providers: providers.map((provider) => ({
+				id: provider.id,
+				displayName: provider.displayName,
+				processing: provider.processing,
+				status: provider.status,
+			})),
+		},
+	};
+}
+
 function resolveConsumers(configurationId: string): DesktopRuntimeConfigurationConsumer[] {
+	if (configurationId === VETTA_OCR_CONFIGURATION.id) {
+		return [
+			{ kind: "tool", id: "extract_text_from_img", support: "native" },
+			{ kind: "runtime", id: "plugin-ocr", support: "native" },
+		];
+	}
 	if (configurationId !== CODING_IMAGE_CONFIGURATION.id) return [];
 	return [
 		{ kind: "tool", id: "read", support: "native" },

@@ -1,4 +1,5 @@
 import { readAgentSettingsDocument, updateAgentSettingsDocument } from "../agent-settings/settings-document-store.js";
+import { getDesktopOcrProviderRegistry } from "../capabilities/ocr-providers.js";
 import { getAppLogger } from "../logger.js";
 import { DesktopRuntimeConfigurationService } from "./runtime-configuration-service.js";
 
@@ -10,6 +11,13 @@ export function getDesktopRuntimeConfigurationService(): DesktopRuntimeConfigura
 		readAgentSettings: readAgentSettingsDocument,
 		updateAgentSettings: updateAgentSettingsDocument,
 		logger: getAppLogger("runtime-configuration"),
+		listOcrProviders: () => {
+			try {
+				return getDesktopOcrProviderRegistry().listProviders();
+			} catch {
+				return [];
+			}
+		},
 	});
 	return desktopRuntimeConfigurationService;
 }

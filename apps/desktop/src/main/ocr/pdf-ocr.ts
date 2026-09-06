@@ -39,6 +39,14 @@ export interface ImageOcrInput {
 	onLog?: (level: "info" | "warn" | "error", message: string) => void;
 }
 
+export interface ImagesOcrInput {
+	images: readonly { imagePath: string }[];
+	langs: string[];
+	debug: boolean;
+	onProgress?: (event: OcrProgressEvent) => void;
+	onLog?: (level: "info" | "warn" | "error", message: string) => void;
+}
+
 export interface PdfOcrResult {
 	totalPages: number;
 	engine: string;
@@ -218,28 +226,42 @@ export async function runPdfOcr(input: PdfOcrInput): Promise<PdfOcrResult> {
 }
 
 export async function runImageOcr(input: ImageOcrInput): Promise<PdfOcrResult> {
-	const imageBytes = await readFile(input.imagePath);
-	const arrayBuffer = imageBytes.buffer.slice(
-		imageBytes.byteOffset,
-		imageBytes.byteOffset + imageBytes.byteLength,
-	) as ArrayBuffer;
-	const ext = extname(input.imagePath).toLowerCase();
-	const mime = IMAGE_EXT_MIME[ext];
-	if (!mime) {
-		throw new Error(
-			`Unsupported image extension "${ext || "<none>"}". Supported: ${Object.keys(IMAGE_EXT_MIME).join(", ")}`,
-		);
-	}
+	return runImagesOcr({
+		images: [{ imagePath: input.imagePath }],
+		langs: input.langs,
+		debug: input.debug,
+		onProgress: input.onProgress,
+		onLog: input.onLog,
+	});
+}
 
+export async function runImagesOcr(input: ImagesOcrInput): Promise<PdfOcrResult> {
+	if (input.images.length === 0) throw new Error("At least one OCR image is required");
+	const images = await Promise.all(
+		input.images.map(async ({ imagePath }) => {
+			const imageBytes = await readFile(imagePath);
+			const bytes = imageBytes.buffer.slice(
+				imageBytes.byteOffset,
+				imageBytes.byteOffset + imageBytes.byteLength,
+			) as ArrayBuffer;
+			const ext = extname(imagePath).toLowerCase();
+			const mime = IMAGE_EXT_MIME[ext];
+			if (!mime) {
+				throw new Error(
+					`Unsupported image extension "${ext || "<none>"}". Supported: ${Object.keys(IMAGE_EXT_MIME).join(", ")}`,
+				);
+			}
+			return { bytes, mime };
+		}),
+	);
 	return runOcrInWindow(
 		{ debug: input.debug, onProgress: input.onProgress, onLog: input.onLog },
 		(sessionId) => ({
 			sessionId,
 			kind: "image",
-			imageBytes: arrayBuffer,
-			mime,
+			images,
 			langs: input.langs,
 		}),
-		[arrayBuffer],
+		images.map(({ bytes }) => bytes),
 	);
 }

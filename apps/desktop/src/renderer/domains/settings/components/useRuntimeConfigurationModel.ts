@@ -18,6 +18,8 @@ export interface RuntimeConfigurationFieldModel {
 	schema: RuntimeFieldSchema;
 	title: string;
 	value: RuntimeConfigurationJsonValue | undefined;
+	control?: "ocr-provider-select";
+	options?: readonly { value: string; label: string }[];
 }
 
 export interface RuntimeConfigurationSectionModel {
@@ -35,12 +37,15 @@ export interface RuntimeConfigurationModel {
 	labels: {
 		apply: string;
 		pleaseSelect: string;
+		localProvider: string;
+		remoteProvider: string;
+		unavailableProvider: string;
 	};
 	sections: RuntimeConfigurationSectionModel[];
 }
 
 /**
- * 内置运行时配置（目前只有 `coding.images`）的读写模型。
+ * 内置运行时配置（包括 `coding.images` 与 `vetta.ocr`）的读写模型。
  *
  * 插件配置不在此列：插件自己渲染配置界面并持久化（ADR-0105）。
  */
@@ -60,9 +65,11 @@ export function useRuntimeConfigurationModel(): RuntimeConfigurationModel {
 		};
 		void load();
 		const unsubscribe = window.vetta.runtimeConfiguration.onChanged(() => void load());
+		const unsubscribeProviders = window.vetta.plugins.onOcrProvidersChanged(() => void load());
 		return () => {
 			cancelled = true;
 			unsubscribe();
+			unsubscribeProviders();
 		};
 	}, []);
 
@@ -82,8 +89,29 @@ export function useRuntimeConfigurationModel(): RuntimeConfigurationModel {
 	const sections = useMemo(
 		() =>
 			(catalog?.entries ?? []).map((entry): RuntimeConfigurationSectionModel => {
+				const presentation = asRecord(entry.descriptor.presentation);
+				const controls = asRecord(presentation?.controls);
+				const providerOptions = parseProviderOptions(presentation?.providers, entry.value.defaultProviderId, {
+					local: t("runtimeConfiguration.provider.local"),
+					remote: t("runtimeConfiguration.provider.remote"),
+					unavailable: t("runtimeConfiguration.provider.unavailable"),
+				});
 				const fields = schemaFields(entry.descriptor.schema, entry.value).map((field) => ({
 					...field,
+					...(entry.configurationId === "vetta.ocr" && field.schema.type === "enum" && field.schema.enum
+						? {
+								options: field.schema.enum.map((option) => ({
+									value: option,
+									label: translate(
+										`runtimeConfiguration.fields.${field.path.join(".")}.options.${option}`,
+										option,
+									),
+								})),
+							}
+						: {}),
+					...(field.path.length === 1 && controlKind(controls?.[field.path[0]]) === "ocr-provider-select"
+						? { control: "ocr-provider-select" as const, options: providerOptions }
+						: {}),
 					title: translate(`runtimeConfiguration.fields.${field.path.join(".")}.title`, field.path.at(-1) ?? ""),
 					description:
 						translate(`runtimeConfiguration.fields.${field.path.join(".")}.description`, "") || undefined,
@@ -103,7 +131,7 @@ export function useRuntimeConfigurationModel(): RuntimeConfigurationModel {
 					fields: fields.map((field, index) => ({ ...field, border: index < fields.length - 1 })),
 				};
 			}),
-		[catalog, translate],
+		[catalog, t, translate],
 	);
 
 	return {
@@ -111,9 +139,36 @@ export function useRuntimeConfigurationModel(): RuntimeConfigurationModel {
 		labels: {
 			apply: t("runtimeConfiguration.applyLabel"),
 			pleaseSelect: t("pleaseSelect"),
+			localProvider: t("runtimeConfiguration.provider.local"),
+			remoteProvider: t("runtimeConfiguration.provider.remote"),
+			unavailableProvider: t("runtimeConfiguration.provider.unavailable"),
 		},
 		sections,
 	};
+}
+
+function controlKind(value: unknown): string | undefined {
+	return asRecord(value)?.kind as string | undefined;
+}
+
+function parseProviderOptions(
+	value: unknown,
+	selected: RuntimeConfigurationJsonValue | undefined,
+	labels: { local: string; remote: string; unavailable: string },
+): readonly { value: string; label: string }[] {
+	const options = Array.isArray(value)
+		? value.flatMap((item) => {
+				const provider = asRecord(item);
+				if (!provider || typeof provider.id !== "string" || typeof provider.displayName !== "string") return [];
+				const location = provider.processing === "remote" ? labels.remote : labels.local;
+				const status = provider.status === "ready" ? "" : ` · ${labels.unavailable}`;
+				return [{ value: provider.id, label: `${provider.displayName} · ${location}${status}` }];
+			})
+		: [];
+	if (typeof selected === "string" && !options.some((option) => option.value === selected)) {
+		return [{ value: selected, label: `${selected} · ${labels.unavailable}` }, ...options];
+	}
+	return options;
 }
 
 function schemaFields(

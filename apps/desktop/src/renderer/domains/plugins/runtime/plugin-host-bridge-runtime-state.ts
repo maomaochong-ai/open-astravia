@@ -1,5 +1,6 @@
 import type {
 	ConversationEvent,
+	OcrProviderRegistration,
 	PluginAgentToolApi,
 	PluginAgentToolHandler,
 	PluginAppActionHandler,
@@ -43,7 +44,7 @@ export interface PluginSystemPromptHandlerEntry {
 export type PluginConversationListener = (event: ConversationEvent) => void;
 
 export interface PluginHostBridgeRuntimeState {
-	readonly version: 1;
+	readonly version: 2;
 	readonly agentToolHandlers: Map<string, PluginAgentToolHandlerEntry>;
 	readonly agentHookHandlers: Map<string, PluginAgentHookHandlerEntry>;
 	readonly appActionHandlers: Map<string, PluginAppActionHandlerEntry>;
@@ -51,6 +52,8 @@ export interface PluginHostBridgeRuntimeState {
 	readonly continuationHandlers: Map<string, PluginContinuationHandlerEntry>;
 	readonly systemPromptHandlers: Map<string, PluginSystemPromptHandlerEntry>;
 	readonly mediaProviderHandlers: Map<string, PluginMediaProviderRegistration>;
+	readonly ocrProviderHandlers: Map<string, OcrProviderRegistration>;
+	readonly ocrProviderInvocations: Map<string, AbortController>;
 	readonly conversationListeners: Set<PluginConversationListener>;
 	readonly listenerStarted: {
 		translator: boolean;
@@ -61,6 +64,7 @@ export interface PluginHostBridgeRuntimeState {
 		continuationRequest: boolean;
 		systemPromptRequest: boolean;
 		mediaProviderRequest: boolean;
+		ocrProviderRequest: boolean;
 	};
 	currentRuntimeId: string | null;
 	currentConversationUnsubscribe: (() => void) | null;
@@ -76,7 +80,7 @@ export interface PluginHostBridgeRuntimeState {
 	};
 }
 
-const RUNTIME_STATE_KEY = "__vettaPluginHostBridgeRuntimeState_v1";
+const RUNTIME_STATE_KEY = "__vettaPluginHostBridgeRuntimeState_v2";
 
 /**
  * Renderer-global ownership keeps IPC listeners and handler closures single-instance when
@@ -93,7 +97,7 @@ export function getPluginHostBridgeRuntimeState(): PluginHostBridgeRuntimeState 
 
 function createPluginHostBridgeRuntimeState(): PluginHostBridgeRuntimeState {
 	return {
-		version: 1,
+		version: 2,
 		agentToolHandlers: new Map(),
 		agentHookHandlers: new Map(),
 		appActionHandlers: new Map(),
@@ -101,6 +105,8 @@ function createPluginHostBridgeRuntimeState(): PluginHostBridgeRuntimeState {
 		continuationHandlers: new Map(),
 		systemPromptHandlers: new Map(),
 		mediaProviderHandlers: new Map(),
+		ocrProviderHandlers: new Map(),
+		ocrProviderInvocations: new Map(),
 		conversationListeners: new Set(),
 		listenerStarted: {
 			translator: false,
@@ -111,6 +117,7 @@ function createPluginHostBridgeRuntimeState(): PluginHostBridgeRuntimeState {
 			continuationRequest: false,
 			systemPromptRequest: false,
 			mediaProviderRequest: false,
+			ocrProviderRequest: false,
 		},
 		currentRuntimeId: null,
 		currentConversationUnsubscribe: null,
@@ -119,5 +126,5 @@ function createPluginHostBridgeRuntimeState(): PluginHostBridgeRuntimeState {
 }
 
 function isPluginHostBridgeRuntimeState(value: unknown): value is PluginHostBridgeRuntimeState {
-	return typeof value === "object" && value !== null && "version" in value && value.version === 1;
+	return typeof value === "object" && value !== null && "version" in value && value.version === 2;
 }

@@ -106,6 +106,10 @@ Desktop 不管理下载源或上游版本策略，只负责二次摘要校验、
 
 ## 通用浏览器扩展
 
+## OCR Provider
+
+需要图片文字识别的插件使用 `ctx.ocr`。消费者调用 `recognize({ inputs, output })`，一次请求可以包含多张图片；不要在插件内复制宿主 OCR、PDF 解析或聊天实现。插件若提供本地或远程实现，可通过 `ctx.ocr.registerProvider()` 注册 `protocolVersion: 1` 的 Provider，使用宿主发放的输入 URL、受控上传和取消信号完成适配，并声明 `ai.ocr.provider.register` 与 `ai.ocr.recognize` 权限。Provider id 在宿主中自动限定为 `plugin:<pluginId>:<localId>`，网络域名和用户配置仍由插件 manifest/Agent 配置控制。默认实现是宿主内置 `desktop-app:ppocrv5`，详见 [ADR-0108](../../docs/adr/0108-ocr-provider-protocol-and-batch-foundation.md)。
+
 插件可通过 `ctx.browser` 使用宿主管理的浏览器自动化，不需要依赖 Browser 系统插件或执行 CLI。清单必须声明所需的 `browser.*` 权限以及最大 `browser.allowedHosts`；session 可以进一步收窄域名范围，不能扩大清单授权。
 
 宿主按插件 namespace 隔离 session 与持久 profile。插件只使用逻辑 `profile.id`，不会得到目录、Cookie 或 token。公共 v1 支持运行时状态/安装、会话创建/关闭、导航、快照、文本、截图和类型化动作；不提供任意 JavaScript、argv、上传、下载或认证数据导出。attach 与 runtime manage 需要清单声明和用户授权。

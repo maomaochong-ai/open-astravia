@@ -313,6 +313,7 @@
   },
   "runtimeConfiguration": {
     "applyLabel": "Applies",
+	"provider": { "local": "Local", "remote": "Remote", "unavailable": "Unavailable" },
     "secretConfigured": "Saved securely; enter a new value to replace it",
     "secretPlaceholder": "Press Enter or leave the field to save",
     "apply": {
@@ -326,6 +327,12 @@
         "images": {
           "title": "Image processing",
           "description": "Configure image normalization, safety limits, compression, and model request budgets."
+        }
+      },
+      "vetta": {
+        "ocr": {
+          "title": "Text recognition (OCR)",
+          "description": "Configure the text-recognition service shared by Agent, Shimo, and other capabilities. PP-OCRv5 runs locally by default."
         }
       }
     },
@@ -343,7 +350,11 @@
       "requestBudget": {
         "highWatermarkBytes": { "title": "Request high watermark", "description": "Start budget compression when total image data exceeds this value." },
         "lowWatermarkBytes": { "title": "Request low watermark", "description": "Target total image data after budget compression." }
-      }
+      },
+      "defaultProviderId": { "title": "Default provider", "description": "The OCR provider used by the next recognition request; remote providers follow the remote-use policy." },
+      "remoteProviderPolicy": { "title": "Remote recognition policy", "description": "Control whether a remote provider may process images.", "options": { "never": "Block remote", "ask": "Ask on first use", "allowed": "Allow selected remote provider" } },
+      "cacheResults": { "title": "Cache recognition results", "description": "Cache newly created OCR results; disabling this does not delete existing records." },
+      "defaultOutput": { "title": "Default output detail", "description": "Choose text, lines, words, or a document tree; unsupported detail falls back safely.", "options": { "text": "Plain text", "line": "Lines", "word": "Words", "document-tree": "Document tree" } }
     }
   },
   "environmentSettings": {

@@ -17,6 +17,7 @@ import {
 	createI18nApi,
 	createJobsApi,
 	createMediaApi,
+	createOcrApi,
 	createStorageApi,
 } from "./plugin-host-apis";
 import type { PluginLocalContributions } from "./plugin-local-contributions";
@@ -93,6 +94,7 @@ export function createPluginContext({
 		services: createPluginServiceApi(plugin, capabilitySessionId, disposers),
 		models: createPluginModelsApi(permissions, capabilitySessionId),
 		media: createMediaApi(plugin, capabilitySessionId, activationId, disposers, pendingRuntimeRegistrations),
+		ocr: createOcrApi(plugin, capabilitySessionId, disposers, activationId, pendingRuntimeRegistrations),
 		jobs: createJobsApi(plugin, capabilitySessionId),
 		artifacts: createArtifactsApi(plugin, capabilitySessionId),
 		capture: createCaptureApi(plugin, disposers),

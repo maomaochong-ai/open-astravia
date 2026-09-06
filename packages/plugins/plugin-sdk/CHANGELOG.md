@@ -21,6 +21,8 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Added
 
+- 新增 `ctx.ocr` 与 OCR Provider SPI：消费者提交批量图片引用，Provider 通过受控输入 URL/上传接口适配本地或远程识别服务；宿主统一权限、取消、进度、能力协商和结果校验（ADR-0108）。
+
 - `registerWorkspaceView` 新增 `sidebar?: boolean`（缺省 `true`，既有插件行为不变）：置 `false` 的视图不占侧边栏导航位，
   只在「设置 → 更多选项」里列出，并由宿主在设置壳内打开——两层侧栏保持可见，用户在多个插件页面之间切换是一次点击。
   适合配置页、安装引导、诊断台这类不常驻的 surface。

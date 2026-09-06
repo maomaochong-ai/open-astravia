@@ -574,6 +574,7 @@
       "version": "0.2.0",
       "dependencies": {
         "@sinclair/typebox": "^0.34.41",
+        "@vetta/capability-sdk": "workspace:*",
       },
       "devDependencies": {
         "@types/react": "^19.1.1",

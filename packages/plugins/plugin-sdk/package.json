@@ -28,6 +28,7 @@
 		"build": "tsgo -p tsconfig.build.json"
 	},
 	"dependencies": {
+		"@vetta/capability-sdk": "workspace:*",
 		"@sinclair/typebox": "^0.34.41"
 	},
 	"peerDependencies": {

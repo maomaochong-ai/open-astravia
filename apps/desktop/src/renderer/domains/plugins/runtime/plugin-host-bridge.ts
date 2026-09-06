@@ -17,6 +17,9 @@ import type {
 	ConversationState,
 	CreateSessionOptions,
 	Disposable,
+	OcrProgress,
+	OcrProviderRegistration,
+	OcrProviderResult,
 	PluginAgentActions,
 	PluginAgentToolApi,
 	PluginAgentToolHandler,
@@ -54,6 +57,8 @@ const {
 	continuationHandlers,
 	systemPromptHandlers,
 	mediaProviderHandlers,
+	ocrProviderHandlers,
+	ocrProviderInvocations,
 } = runtimeState;
 
 function createAgentActions(): {
@@ -371,6 +376,7 @@ function startAppActionRequestListener(): void {
 			return;
 		}
 		const controller = new AbortController();
+		ocrProviderInvocations.set(request.requestId, controller);
 		appActionInvocations.set(request.requestId, { controller, handlerKey: key });
 		const context = {
 			invocationId: request.requestId,
@@ -552,6 +558,45 @@ function startMediaProviderRequestListener(): void {
 	});
 }
 
+function startOcrProviderRequestListener(): void {
+	if (runtimeState.listenerStarted.ocrProviderRequest) return;
+	runtimeState.listenerStarted.ocrProviderRequest = true;
+	window.vetta.plugins.onOcrProviderRequest((request) => {
+		const registration = ocrProviderHandlers.get(handlerKey(request.pluginId, request.handlerId));
+		if (!registration) {
+			void window.vetta.plugins.respondOcrProvider(request.requestId, {
+				error: `Plugin OCR provider handler not found: ${request.pluginId}/${request.handlerId}`,
+			});
+			return;
+		}
+		const controller = new AbortController();
+		const context = {
+			signal: controller.signal,
+			invocationId: request.requestId,
+			getInputUrl: (inputId: string) => window.vetta.plugins.getOcrProviderInputUrl(request.requestId, inputId),
+			uploadInput: <T = unknown>(
+				inputId: string,
+				input: Parameters<typeof window.vetta.plugins.uploadOcrProviderInput>[2],
+			) => window.vetta.plugins.uploadOcrProviderInput<T>(request.requestId, inputId, input),
+			reportProgress: (event: OcrProgress) =>
+				void window.vetta.plugins.reportOcrProviderProgress(request.requestId, event),
+		};
+		void Promise.resolve(registration.recognize(request.input, context)).then(
+			(value: OcrProviderResult) => {
+				ocrProviderInvocations.delete(request.requestId);
+				return window.vetta.plugins.respondOcrProvider(request.requestId, { value });
+			},
+			(error: unknown) => {
+				ocrProviderInvocations.delete(request.requestId);
+				return window.vetta.plugins.respondOcrProvider(request.requestId, {
+					error: error instanceof Error ? error.message : String(error),
+				});
+			},
+		);
+	});
+	window.vetta.plugins.onOcrProviderCancel(({ requestId }) => ocrProviderInvocations.get(requestId)?.abort());
+}
+
 export function registerPluginAgentToolHandler(options: {
 	pluginId: string;
 	toolId: string;
@@ -662,6 +707,20 @@ export function registerPluginMediaProviderHandler(options: {
 	return {
 		dispose: () => {
 			if (mediaProviderHandlers.get(key) === options.registration) mediaProviderHandlers.delete(key);
+		},
+	};
+}
+
+export function registerPluginOcrProviderHandler(options: {
+	pluginId: string;
+	handlerId: string;
+	registration: OcrProviderRegistration;
+}): Disposable {
+	const key = handlerKey(options.pluginId, options.handlerId);
+	ocrProviderHandlers.set(key, options.registration);
+	return {
+		dispose: () => {
+			if (ocrProviderHandlers.get(key) === options.registration) ocrProviderHandlers.delete(key);
 		},
 	};
 }
@@ -778,5 +837,6 @@ export function installPluginHostBridge(): void {
 	startContinuationRequestListener();
 	startSystemPromptRequestListener();
 	startMediaProviderRequestListener();
+	startOcrProviderRequestListener();
 	__setPluginHostBridge(pluginHostBridge);
 }

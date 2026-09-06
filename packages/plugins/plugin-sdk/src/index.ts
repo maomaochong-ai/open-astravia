@@ -311,6 +311,25 @@ export type {
 	PluginMediaTranscodeRequest,
 	PluginMediaTransferResponse,
 } from "./media.js";
+// OCR Provider protocol
+export type {
+	OcrBlock,
+	OcrClient,
+	OcrErrorCode,
+	OcrItemResult,
+	OcrInput,
+	OcrProgress,
+	OcrProviderContext,
+	OcrProviderDescriptor,
+	OcrProviderInput,
+	OcrProviderRegistration,
+	OcrProviderRequest,
+	OcrProviderResult,
+	OcrRequest,
+	OcrResult,
+	OcrTransferResponse,
+	OcrUploadRequest,
+} from "./ocr.js";
 export { PluginMediaError } from "./media.js";
 export type {
 	PluginPromptAttachment,

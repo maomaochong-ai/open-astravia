@@ -8,6 +8,7 @@ const storageReadSnapshot = vi.fn(async () => ({
 	files: { "city.json": "city", "project.json": "project" },
 }));
 const storageCommit = vi.fn(async () => ({ revision: "revision-2", changedPaths: ["city.json"] }));
+const storageDeleteBlob = vi.fn(async () => undefined);
 
 describe("plugin storage API", () => {
 	const requireRead = vi.fn();
@@ -17,10 +18,18 @@ describe("plugin storage API", () => {
 		storageReadFile,
 		storageReadSnapshot,
 		storageCommit,
+		storageDeleteBlob,
 	} as unknown as PluginStorageBridge;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it("requires write permission when deleting a private blob", async () => {
+		const storage = createPluginStorageApi("session-1", bridge, requireRead, requireWrite);
+		await storage.deleteBlob("source-1");
+		expect(requireWrite).toHaveBeenCalledOnce();
+		expect(storageDeleteBlob).toHaveBeenCalledWith("session-1", "source-1");
 	});
 
 	it("uses an explicit encoding for file reads and maps single writes to commit", async () => {

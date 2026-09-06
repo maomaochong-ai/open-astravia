@@ -12,6 +12,7 @@ import {
 	DOMAIN_MCP_CAPABILITIES,
 	DOMAIN_MEDIA_CAPABILITIES,
 	DOMAIN_MODEL_CAPABILITIES,
+	DOMAIN_OCR_CAPABILITIES,
 	DOMAIN_PROJECT_CAPABILITIES,
 	DOMAIN_QUICK_PANEL_CAPABILITIES,
 	DOMAIN_SCHEDULER_CAPABILITIES,
@@ -146,6 +147,9 @@ export function buildPluginCapabilityGrants(
 					createCapabilityGrant(FOUNDATION_STORAGE_CAPABILITIES.PUT_BLOB_FROM_FILE, {
 						constraints: storageConstraints,
 					}),
+					createCapabilityGrant(FOUNDATION_STORAGE_CAPABILITIES.DELETE_BLOB, {
+						constraints: storageConstraints,
+					}),
 				]
 			: []),
 		...(permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.MEDIA_GENERATE)
@@ -156,6 +160,12 @@ export function buildPluginCapabilityGrants(
 					createCapabilityGrant(FOUNDATION_JOB_CAPABILITIES.CANCEL),
 					createCapabilityGrant(FOUNDATION_ARTIFACT_CAPABILITIES.PERSIST),
 					createCapabilityGrant(FOUNDATION_ARTIFACT_CAPABILITIES.RELEASE),
+				]
+			: []),
+		...(permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.OCR_RECOGNIZE)
+			? [
+					createCapabilityGrant(DOMAIN_OCR_CAPABILITIES.LIST_PROVIDERS),
+					createCapabilityGrant(DOMAIN_OCR_CAPABILITIES.RECOGNIZE),
 				]
 			: []),
 		...(permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.MODELS_MANAGE)

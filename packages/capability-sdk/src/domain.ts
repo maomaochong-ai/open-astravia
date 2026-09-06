@@ -185,6 +185,21 @@ export {
 	type OpenHostedRouteInput,
 } from "./domain/navigation.js";
 export {
+	DOMAIN_OCR_CAPABILITIES,
+	DOMAIN_OCR_CAPABILITY_CATALOG,
+	OCR_ERROR_CODES,
+	OCR_PROTOCOL_VERSION,
+	type OcrBlock,
+	type OcrErrorCode,
+	type OcrInput,
+	type OcrInputSource,
+	type OcrItemResult,
+	type OcrProviderDescriptor,
+	type OcrProviderInput,
+	type OcrRequest,
+	type OcrResult,
+} from "./domain/ocr.js";
+export {
 	DOMAIN_PROJECT_CAPABILITIES,
 	DOMAIN_PROJECT_CAPABILITY_CATALOG,
 	type ProjectCreateInput,

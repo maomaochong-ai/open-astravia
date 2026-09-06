@@ -96,6 +96,14 @@ export const pluginStorageMethods = {
 		});
 		return session.access.client.invoke(FOUNDATION_STORAGE_CAPABILITIES.PUT_BLOB_FROM_FILE, parsedInput);
 	},
+
+	async deleteStorageBlob(this: PluginCapabilitySessionAccess, sessionId: string, id: string): Promise<void> {
+		const session = this.session(sessionId, { permission: PLUGIN_CAPABILITY_PERMISSIONS.STORAGE_WRITE });
+		await session.access.client.invoke(FOUNDATION_STORAGE_CAPABILITIES.DELETE_BLOB, {
+			namespace: session.pluginId,
+			id,
+		});
+	},
 };
 
 export type PluginStorageMethods = typeof pluginStorageMethods;

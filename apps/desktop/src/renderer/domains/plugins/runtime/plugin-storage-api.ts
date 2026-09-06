@@ -27,6 +27,7 @@ export interface PluginStorageBridge {
 	): ReturnType<PluginStorageApi["putBlobFromFile"]>;
 	storageReadBlob(sessionId: string, id: string): ReturnType<PluginStorageApi["readBlob"]>;
 	storageGetBlobRef(sessionId: string, id: string): ReturnType<PluginStorageApi["getBlobRef"]>;
+	storageDeleteBlob(sessionId: string, id: string): ReturnType<PluginStorageApi["deleteBlob"]>;
 }
 
 /** Pure renderer bridge: permission ownership stays with the caller, while argument forwarding is contract-tested here. */
@@ -72,6 +73,10 @@ export function createPluginStorageApi(
 		getBlobRef: (id) => {
 			requireRead();
 			return bridge.storageGetBlobRef(capabilitySessionId, id);
+		},
+		deleteBlob: (id) => {
+			requireWrite();
+			return bridge.storageDeleteBlob(capabilitySessionId, id);
 		},
 	};
 }

@@ -391,3 +391,15 @@ export async function getPluginBlobFile(pluginId: string, id: string): Promise<P
 		throw error;
 	}
 }
+
+export async function deletePluginBlob(pluginId: string, id: string): Promise<void> {
+	if (!SAFE_SEGMENT.test(id) || id === "." || id === "..") throw new Error("Invalid blob id");
+	await withStorageLock(pluginId, async () => {
+		const metadataPath = scopedPath(pluginId, `blob-metadata/${id}.json`);
+		const metadata = await readLegacyJson<BlobMetadata>(pluginId, `blob-metadata/${id}.json`);
+		if (!metadata) return;
+		const blobPath = scopedPath(pluginId, metadata.path ?? `blobs/${id}.${metadata.extension ?? "blob"}`);
+		await rm(blobPath, { force: true });
+		await rm(metadataPath, { force: true });
+	});
+}

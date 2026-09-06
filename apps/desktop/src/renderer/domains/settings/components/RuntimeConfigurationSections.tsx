@@ -13,6 +13,17 @@ function RuntimeConfigurationControl({
 	onChange: (value: string | number | boolean) => void;
 }): JSX.Element {
 	const { schema, value } = field;
+	if (field.control === "ocr-provider-select") {
+		return (
+			<MotionSelect
+				value={typeof value === "string" ? value : ""}
+				onValueChange={onChange}
+				placeholder={pleaseSelect}
+				triggerClassName="min-w-[220px]"
+				options={field.options ?? []}
+			/>
+		);
+	}
 	if (schema.type === "boolean") {
 		return <Switch checked={value === true} onCheckedChange={onChange} />;
 	}
@@ -23,7 +34,7 @@ function RuntimeConfigurationControl({
 				onValueChange={onChange}
 				placeholder={pleaseSelect}
 				triggerClassName="min-w-[160px]"
-				options={(schema.enum ?? []).map((option) => ({ value: option, label: option }))}
+				options={field.options ?? (schema.enum ?? []).map((option) => ({ value: option, label: option }))}
 			/>
 		);
 	}

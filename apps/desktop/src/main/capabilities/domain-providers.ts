@@ -10,6 +10,7 @@ import {
 	DOMAIN_GENERAL_SETTINGS_CAPABILITIES,
 	DOMAIN_IM_CAPABILITIES,
 	DOMAIN_KNOWLEDGE_CAPABILITIES,
+	DOMAIN_OCR_CAPABILITIES,
 	DOMAIN_PROJECT_CAPABILITIES,
 	DOMAIN_QUICK_PANEL_CAPABILITIES,
 	DOMAIN_SCHEDULER_CAPABILITIES,
@@ -30,6 +31,7 @@ import { getDesktopGeneralSettingsService } from "../general-settings/general-se
 import { getImHost } from "../im-host/index.js";
 import type { JobManager } from "../jobs/job-manager.js";
 import { getKnowledgeService } from "../knowledge/knowledge-service.js";
+import { getPluginBlobFile } from "../plugins/plugin-storage-service.js";
 import { broadcastProjectsChanged } from "../projects/project-events.js";
 import { ProjectService } from "../projects/project-service.js";
 import { getDesktopSchedulerService } from "../scheduler/scheduler-service.js";
@@ -41,6 +43,7 @@ import { registerDesktopAiProviders } from "./ai-providers.js";
 import { registerDesktopMcpProviders } from "./mcp-providers.js";
 import { registerDesktopMediaProviders } from "./media-providers.js";
 import { registerDesktopModelProviders } from "./model-providers.js";
+import { getDesktopOcrService, registerDesktopOcrProviders } from "./ocr-providers.js";
 
 const DOMAIN_BATCH_TASK_PROVIDER_OWNER = "vetta.domain.batch-task";
 const DOMAIN_AGENT_SETTINGS_PROVIDER_OWNER = "vetta.domain.agent-settings";
@@ -56,6 +59,7 @@ const DOMAIN_UPDATER_PROVIDER_OWNER = "vetta.domain.updater";
 const DOMAIN_KNOWLEDGE_PROVIDER_OWNER = "vetta.domain.knowledge";
 const DOMAIN_SCHEDULER_PROVIDER_OWNER = "vetta.domain.scheduler";
 const DOMAIN_WEBHOOK_PROVIDER_OWNER = "vetta.domain.webhook";
+const DOMAIN_OCR_PROVIDER_OWNER = "vetta.domain.ocr";
 
 function assertNotAborted(signal: AbortSignal): void {
 	if (signal.aborted) {
@@ -81,6 +85,29 @@ export function registerDesktopDomainProviders(
 	const aiRegistration = registerDesktopAiProviders(registry);
 	const mcpRegistration = registerDesktopMcpProviders(registry);
 	const mediaRegistration = registerDesktopMediaProviders(registry, artifacts, jobs);
+	const ocrProvidersRegistration = registerDesktopOcrProviders();
+	const ocr = getDesktopOcrService();
+	const ocrRegistration = registry.registerOwner(DOMAIN_OCR_PROVIDER_OWNER, [
+		bindCapability(DOMAIN_OCR_CAPABILITIES.LIST_PROVIDERS, { execute: async () => ocr.listProviders() }),
+		bindCapability(DOMAIN_OCR_CAPABILITIES.RECOGNIZE, {
+			execute: async (input, context) => {
+				return ocr.recognize(input, {
+					signal: context.signal,
+					inputResolver: {
+						getInputPath: async (item) => {
+							if (item.source.type === "workspace-file") return item.source.path;
+							if (item.source.namespace !== input.ownerId) {
+								throw new Error("OCR blob namespace mismatch");
+							}
+							const file = await getPluginBlobFile(item.source.namespace, item.source.id);
+							if (!file) throw new Error("OCR blob unavailable");
+							return file.path;
+						},
+					},
+				});
+			},
+		}),
+	]);
 	const modelRegistration = registerDesktopModelProviders(registry);
 	const projects = new ProjectService({
 		allowProjectRoot,
@@ -664,6 +691,8 @@ export function registerDesktopDomainProviders(
 			aiRegistration.dispose();
 			mcpRegistration.dispose();
 			mediaRegistration.dispose();
+			ocrRegistration.dispose();
+			ocrProvidersRegistration.dispose();
 			modelRegistration.dispose();
 			webhookRegistration.dispose();
 			schedulerRegistration.dispose();

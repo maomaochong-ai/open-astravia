@@ -65,6 +65,13 @@ import type {
 	WorkspaceSettingInput,
 } from "@vetta/capability-sdk";
 import type {
+	OcrProviderDescriptor,
+	OcrProviderRequest,
+	OcrProviderResult,
+	OcrRequest,
+	OcrResult,
+	OcrTransferResponse,
+	OcrUploadRequest,
 	PluginAgentManifest,
 	PluginAppActionUsage,
 	PluginArtifactDestination,
@@ -479,6 +486,11 @@ export interface DesktopPluginCapabilityMediaApi {
 	submit(sessionId: string, input: PluginMediaSubmitRequest): Promise<PluginMediaJob>;
 }
 
+export interface DesktopPluginCapabilityOcrApi {
+	listProviders(sessionId: string): Promise<readonly OcrProviderDescriptor[]>;
+	recognize(sessionId: string, input: OcrRequest): Promise<OcrResult>;
+}
+
 export interface DesktopPluginCapabilityJobsApi {
 	get(sessionId: string, id: string): Promise<Job>;
 	cancel(sessionId: string, id: string): Promise<Job>;
@@ -667,6 +679,7 @@ export interface DesktopPluginInternalCapabilitiesApi {
 	jobs: DesktopPluginCapabilityJobsApi;
 	mcp: DesktopPluginCapabilityMcpApi;
 	media: DesktopPluginCapabilityMediaApi;
+	ocr: DesktopPluginCapabilityOcrApi;
 	models: DesktopPluginCapabilityModelsApi;
 	downloads: DesktopPluginCapabilityDownloadsApi;
 	knowledge: DesktopPluginCapabilityKnowledgeApi;
@@ -696,6 +709,39 @@ export interface PluginMediaProviderInvocationRequest {
 	handlerId: string;
 	operation: "submit" | "getJob" | "cancelJob";
 	input: PluginMediaProviderSubmitRequest | { jobId: string };
+}
+
+export interface PluginOcrProviderHostRegistration {
+	id: string;
+	displayName: string;
+	protocolVersion: 1;
+	processing: OcrProviderDescriptor["processing"];
+	execution: OcrProviderDescriptor["execution"];
+	input: OcrProviderDescriptor["input"];
+	output: OcrProviderDescriptor["output"];
+	network?: OcrProviderDescriptor["network"];
+	configuration?: OcrProviderDescriptor["configuration"];
+	handlerId: string;
+	activationId: string;
+}
+
+export interface PluginOcrProviderInvocationRequest {
+	requestId: string;
+	pluginId: string;
+	handlerId: string;
+	input: OcrProviderRequest;
+}
+
+export type PluginOcrProviderInvocationResult = { value: OcrProviderResult } | { error: string };
+
+export interface PluginOcrProviderProgressEvent {
+	requestId: string;
+	event: {
+		phase: "queued" | "uploading" | "processing" | "finalizing";
+		completed: number;
+		total: number;
+		itemId?: string;
+	};
 }
 
 export type PluginMediaProviderInvocationResult = { value: PluginMediaProviderJob } | { error: string };
@@ -838,6 +884,7 @@ export interface DesktopPluginsApi {
 	registerMediaProvider(pluginId: string, registration: PluginMediaProviderHostRegistration): Promise<void>;
 	unregisterMediaProvider(pluginId: string, providerId: string, activationId: string): Promise<void>;
 	onMediaProvidersChanged(handler: () => void): () => void;
+	onOcrProvidersChanged(handler: () => void): () => void;
 	onMediaProviderRequest(handler: (request: PluginMediaProviderInvocationRequest) => void): () => void;
 	respondMediaProvider(requestId: string, result: PluginMediaProviderInvocationResult): Promise<void>;
 	uploadMediaProviderInput<T = unknown>(
@@ -845,6 +892,18 @@ export interface DesktopPluginsApi {
 		inputId: string,
 		request: PluginMediaInputUploadRequest,
 	): Promise<PluginMediaTransferResponse<T>>;
+	registerOcrProvider(pluginId: string, registration: PluginOcrProviderHostRegistration): Promise<void>;
+	unregisterOcrProvider(pluginId: string, providerId: string, activationId: string): Promise<void>;
+	onOcrProviderRequest(handler: (request: PluginOcrProviderInvocationRequest) => void): () => void;
+	onOcrProviderCancel(handler: (request: { requestId: string }) => void): () => void;
+	respondOcrProvider(requestId: string, result: PluginOcrProviderInvocationResult): Promise<void>;
+	reportOcrProviderProgress(requestId: string, event: PluginOcrProviderProgressEvent["event"]): Promise<void>;
+	getOcrProviderInputUrl(requestId: string, inputId: string): Promise<string>;
+	uploadOcrProviderInput<T = unknown>(
+		requestId: string,
+		inputId: string,
+		request: OcrUploadRequest,
+	): Promise<OcrTransferResponse<T>>;
 	/** Fired when plugins are installed/uninstalled/enabled/reloaded (host should re-load remotes). */
 	onPluginsChanged(listener: (event?: PluginsChangedEvent) => void): () => void;
 	networkRequest<T = unknown>(sessionId: string, request: PluginNetworkRequest): Promise<PluginNetworkResponse<T>>;
@@ -876,6 +935,7 @@ export interface DesktopPluginsApi {
 	storagePutBlobFromFile(sessionId: string, input: PluginPutBlobFromFileInput): Promise<PluginStoredBlobRef>;
 	storageReadBlob(sessionId: string, id: string): Promise<PluginStoredBlob | null>;
 	storageGetBlobRef(sessionId: string, id: string): Promise<PluginStoredBlobRef | null>;
+	storageDeleteBlob(sessionId: string, id: string): Promise<void>;
 }
 
 export type PluginNetworkBody =

@@ -11,6 +11,7 @@ import { type PluginKnowledgeMethods, pluginKnowledgeMethods } from "./domain/kn
 import { type PluginMcpMethods, pluginMcpMethods } from "./domain/mcp.js";
 import { type PluginMediaMethods, pluginMediaMethods } from "./domain/media.js";
 import { type PluginModelMethods, pluginModelMethods } from "./domain/model.js";
+import { type PluginOcrMethods, pluginOcrMethods } from "./domain/ocr.js";
 import { type PluginProjectMethods, pluginProjectMethods } from "./domain/project.js";
 import { type PluginSchedulerMethods, pluginSchedulerMethods } from "./domain/scheduler.js";
 import { type PluginSessionMethods, pluginSessionMethods } from "./domain/session.js";
@@ -47,6 +48,7 @@ export interface PluginCapabilityAdapter
 		PluginGeneralSettingsMethods,
 		PluginImMethods,
 		PluginMediaMethods,
+		PluginOcrMethods,
 		PluginModelMethods,
 		PluginMcpMethods,
 		PluginProjectMethods,
@@ -191,6 +193,7 @@ Object.assign(
 	pluginGeneralSettingsMethods,
 	pluginImMethods,
 	pluginMediaMethods,
+	pluginOcrMethods,
 	pluginModelMethods,
 	pluginMcpMethods,
 	pluginProjectMethods,

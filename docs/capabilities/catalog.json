@@ -2597,6 +2597,32 @@
       "version": 1
     },
     {
+      "id": "cap.foundation.vetta.storage.delete-blob",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "namespace",
+          "id"
+        ],
+        "properties": {
+          "namespace": {
+            "pattern": "^(?!.*\\.\\.)[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "\\S",
+            "type": "string"
+          }
+        }
+      },
+      "kind": "command",
+      "layer": "foundation",
+      "outputSchema": {
+        "type": "undefined"
+      },
+      "version": 1
+    },
+    {
       "id": "cap.foundation.vetta.network.request",
       "inputSchema": {
         "type": "object",
@@ -7775,6 +7801,647 @@
         }
       },
       "version": 2
+    },
+    {
+      "id": "cap.domain.vetta.ocr.provider.list",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {}
+      },
+      "kind": "query",
+      "layer": "domain",
+      "outputSchema": {
+        "type": "array",
+        "items": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "id",
+            "displayName",
+            "ownerId",
+            "protocolVersion",
+            "processing",
+            "execution",
+            "status",
+            "input",
+            "output"
+          ],
+          "properties": {
+            "id": {
+              "minLength": 1,
+              "maxLength": 129,
+              "type": "string"
+            },
+            "displayName": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "ownerId": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "protocolVersion": {
+              "const": 1,
+              "type": "number"
+            },
+            "processing": {
+              "anyOf": [
+                {
+                  "const": "local",
+                  "type": "string"
+                },
+                {
+                  "const": "remote",
+                  "type": "string"
+                }
+              ]
+            },
+            "execution": {
+              "anyOf": [
+                {
+                  "const": "sync",
+                  "type": "string"
+                },
+                {
+                  "const": "async",
+                  "type": "string"
+                },
+                {
+                  "const": "both",
+                  "type": "string"
+                }
+              ]
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "const": "ready",
+                  "type": "string"
+                },
+                {
+                  "const": "needs-configuration",
+                  "type": "string"
+                },
+                {
+                  "const": "unavailable",
+                  "type": "string"
+                }
+              ]
+            },
+            "input": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "kinds",
+                "mimeTypes",
+                "acceptsInlineBytes",
+                "acceptsUrl"
+              ],
+              "properties": {
+                "kinds": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "const": "image",
+                        "type": "string"
+                      },
+                      {
+                        "const": "document-reference",
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                "mimeTypes": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "acceptsInlineBytes": {
+                  "type": "boolean"
+                },
+                "acceptsUrl": {
+                  "type": "boolean"
+                },
+                "maxItemsPerRequest": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "maxBytesPerItem": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "maxPixelsPerImage": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            },
+            "output": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "granularities",
+                "supportsConfidence",
+                "supportsPolygon",
+                "supportsLanguageDetection"
+              ],
+              "properties": {
+                "granularities": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "const": "text",
+                        "type": "string"
+                      },
+                      {
+                        "const": "line",
+                        "type": "string"
+                      },
+                      {
+                        "const": "word",
+                        "type": "string"
+                      },
+                      {
+                        "const": "symbol",
+                        "type": "string"
+                      },
+                      {
+                        "const": "document-tree",
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                "supportsConfidence": {
+                  "type": "boolean"
+                },
+                "supportsPolygon": {
+                  "type": "boolean"
+                },
+                "supportsLanguageDetection": {
+                  "type": "boolean"
+                }
+              }
+            },
+            "network": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "allowedHosts"
+              ],
+              "properties": {
+                "allowedHosts": {
+                  "type": "array",
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "configuration": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "state"
+              ],
+              "properties": {
+                "state": {
+                  "anyOf": [
+                    {
+                      "const": "ready",
+                      "type": "string"
+                    },
+                    {
+                      "const": "needs-configuration",
+                      "type": "string"
+                    },
+                    {
+                      "const": "unavailable",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "settingsViewId": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "reasonCode": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "version": 1
+    },
+    {
+      "id": "cap.domain.vetta.ocr.recognize",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "ownerId",
+          "inputs"
+        ],
+        "properties": {
+          "ownerId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "providerId": {
+            "minLength": 1,
+            "maxLength": 129,
+            "type": "string"
+          },
+          "inputs": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "source"
+              ],
+              "properties": {
+                "id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "mimeType": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "source": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "type",
+                        "namespace",
+                        "id"
+                      ],
+                      "properties": {
+                        "type": {
+                          "const": "storage-blob",
+                          "type": "string"
+                        },
+                        "namespace": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "id": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      }
+                    },
+                    {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "type",
+                        "path"
+                      ],
+                      "properties": {
+                        "type": {
+                          "const": "workspace-file",
+                          "type": "string"
+                        },
+                        "path": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "languages": {
+            "type": "array",
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "granularity": {
+            "anyOf": [
+              {
+                "const": "text",
+                "type": "string"
+              },
+              {
+                "const": "line",
+                "type": "string"
+              },
+              {
+                "const": "word",
+                "type": "string"
+              },
+              {
+                "const": "symbol",
+                "type": "string"
+              },
+              {
+                "const": "document-tree",
+                "type": "string"
+              }
+            ]
+          }
+        }
+      },
+      "kind": "command",
+      "layer": "domain",
+      "outputSchema": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "protocolVersion",
+          "providerId",
+          "items"
+        ],
+        "properties": {
+          "protocolVersion": {
+            "const": 1,
+            "type": "number"
+          },
+          "providerId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "model": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "items": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "id",
+                "status"
+              ],
+              "properties": {
+                "id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "status": {
+                  "anyOf": [
+                    {
+                      "const": "ok",
+                      "type": "string"
+                    },
+                    {
+                      "const": "error",
+                      "type": "string"
+                    },
+                    {
+                      "const": "cancelled",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "text": {
+                  "type": "string"
+                },
+                "width": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "height": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "confidence": {
+                  "minimum": 0,
+                  "maximum": 1,
+                  "type": "number"
+                },
+                "document": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "pages"
+                  ],
+                  "properties": {
+                    "pages": {
+                      "type": "array",
+                      "items": {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "pageNumber",
+                          "blocks"
+                        ],
+                        "properties": {
+                          "pageNumber": {
+                            "minimum": 1,
+                            "type": "integer"
+                          },
+                          "width": {
+                            "minimum": 1,
+                            "type": "integer"
+                          },
+                          "height": {
+                            "minimum": 1,
+                            "type": "integer"
+                          },
+                          "blocks": {
+                            "type": "array",
+                            "items": {
+                              "additionalProperties": false,
+                              "type": "object",
+                              "required": [
+                                "level",
+                                "text"
+                              ],
+                              "properties": {
+                                "id": {
+                                  "minLength": 1,
+                                  "type": "string"
+                                },
+                                "level": {
+                                  "anyOf": [
+                                    {
+                                      "const": "page",
+                                      "type": "string"
+                                    },
+                                    {
+                                      "const": "block",
+                                      "type": "string"
+                                    },
+                                    {
+                                      "const": "paragraph",
+                                      "type": "string"
+                                    },
+                                    {
+                                      "const": "line",
+                                      "type": "string"
+                                    },
+                                    {
+                                      "const": "word",
+                                      "type": "string"
+                                    },
+                                    {
+                                      "const": "symbol",
+                                      "type": "string"
+                                    },
+                                    {
+                                      "const": "other",
+                                      "type": "string"
+                                    }
+                                  ]
+                                },
+                                "text": {
+                                  "minLength": 1,
+                                  "type": "string"
+                                },
+                                "confidence": {
+                                  "minimum": 0,
+                                  "maximum": 1,
+                                  "type": "number"
+                                },
+                                "polygon": {
+                                  "type": "array",
+                                  "items": {
+                                    "additionalProperties": false,
+                                    "type": "object",
+                                    "required": [
+                                      "x",
+                                      "y"
+                                    ],
+                                    "properties": {
+                                      "x": {
+                                        "minimum": 0,
+                                        "maximum": 1,
+                                        "type": "number"
+                                      },
+                                      "y": {
+                                        "minimum": 0,
+                                        "maximum": 1,
+                                        "type": "number"
+                                      }
+                                    }
+                                  }
+                                },
+                                "children": {
+                                  "type": "array",
+                                  "items": {
+                                    "minLength": 1,
+                                    "type": "string"
+                                  }
+                                },
+                                "attributes": {
+                                  "type": "object",
+                                  "patternProperties": {
+                                    "^(.*)$": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "number"
+                                        },
+                                        {
+                                          "type": "boolean"
+                                        }
+                                      ]
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "error": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "message",
+                    "retryable"
+                  ],
+                  "properties": {
+                    "code": {
+                      "anyOf": [
+                        {
+                          "const": "invalid-request",
+                          "type": "string"
+                        },
+                        {
+                          "const": "unsupported-input",
+                          "type": "string"
+                        },
+                        {
+                          "const": "input-too-large",
+                          "type": "string"
+                        },
+                        {
+                          "const": "rate-limited",
+                          "type": "string"
+                        },
+                        {
+                          "const": "unauthorized",
+                          "type": "string"
+                        },
+                        {
+                          "const": "provider-unavailable",
+                          "type": "string"
+                        },
+                        {
+                          "const": "provider-timeout",
+                          "type": "string"
+                        },
+                        {
+                          "const": "provider-failed",
+                          "type": "string"
+                        },
+                        {
+                          "const": "cancelled",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "message": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "retryable": {
+                      "type": "boolean"
+                    },
+                    "providerCode": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "version": 1
     },
     {
       "id": "cap.domain.vetta.model.list",

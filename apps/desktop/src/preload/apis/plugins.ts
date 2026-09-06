@@ -5,6 +5,7 @@ import {
 	PLUGIN_EXECUTION_CHANNELS,
 	PLUGIN_MANAGEMENT_CHANNELS,
 	PLUGIN_MEDIA_CHANNELS,
+	PLUGIN_OCR_CHANNELS,
 } from "../../shared/plugin-ipc.js";
 import type { DesktopApi } from "../api.js";
 import { onIpcEvent } from "./helper.js";
@@ -115,6 +116,10 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 				media: {
 					listProviders: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MEDIA_PROVIDER_LIST, sessionId),
 					submit: (sessionId, input) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MEDIA_SUBMIT, sessionId, input),
+				},
+				ocr: {
+					listProviders: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.OCR_PROVIDER_LIST, sessionId),
+					recognize: (sessionId, input) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.OCR_RECOGNIZE, sessionId, input),
 				},
 				jobs: {
 					get: (sessionId, id) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.JOB_GET, sessionId, id),
@@ -436,10 +441,23 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 			unregisterMediaProvider: (pluginId, providerId, activationId) =>
 				ipc.invoke(PLUGIN_MEDIA_CHANNELS.UNREGISTER, pluginId, providerId, activationId),
 			onMediaProvidersChanged: (handler) => onIpcEvent(ipc, PLUGIN_MEDIA_CHANNELS.CHANGED, handler),
+			onOcrProvidersChanged: (handler) => onIpcEvent(ipc, PLUGIN_OCR_CHANNELS.CHANGED, handler),
 			onMediaProviderRequest: (handler) => onIpcEvent(ipc, PLUGIN_MEDIA_CHANNELS.REQUEST, handler),
 			respondMediaProvider: (requestId, result) => ipc.invoke(PLUGIN_MEDIA_CHANNELS.RESPONSE, requestId, result),
 			uploadMediaProviderInput: (requestId, inputId, request) =>
 				ipc.invoke(PLUGIN_MEDIA_CHANNELS.UPLOAD_INPUT, requestId, inputId, request),
+			registerOcrProvider: (pluginId, registration) =>
+				ipc.invoke(PLUGIN_OCR_CHANNELS.REGISTER, pluginId, registration),
+			unregisterOcrProvider: (pluginId, providerId, activationId) =>
+				ipc.invoke(PLUGIN_OCR_CHANNELS.UNREGISTER, pluginId, providerId, activationId),
+			onOcrProviderRequest: (handler) => onIpcEvent(ipc, PLUGIN_OCR_CHANNELS.REQUEST, handler),
+			onOcrProviderCancel: (handler) => onIpcEvent(ipc, PLUGIN_OCR_CHANNELS.CANCEL, handler),
+			respondOcrProvider: (requestId, result) => ipc.invoke(PLUGIN_OCR_CHANNELS.RESPONSE, requestId, result),
+			reportOcrProviderProgress: (requestId, event) => ipc.invoke(PLUGIN_OCR_CHANNELS.PROGRESS, requestId, event),
+			getOcrProviderInputUrl: (requestId, inputId) =>
+				ipc.invoke(PLUGIN_OCR_CHANNELS.GET_INPUT_URL, requestId, inputId),
+			uploadOcrProviderInput: (requestId, inputId, request) =>
+				ipc.invoke(PLUGIN_OCR_CHANNELS.UPLOAD_INPUT, requestId, inputId, request),
 			secretsGet: (sessionId, key) => ipc.invoke(PLUGIN_EXECUTION_CHANNELS.SECRETS_GET, sessionId, key),
 			secretsHas: (sessionId, key) => ipc.invoke(PLUGIN_EXECUTION_CHANNELS.SECRETS_HAS, sessionId, key),
 			secretsKeys: (sessionId) => ipc.invoke(PLUGIN_EXECUTION_CHANNELS.SECRETS_KEYS, sessionId),
@@ -470,6 +488,7 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 			storageReadBlob: (sessionId, id) => ipc.invoke(PLUGIN_EXECUTION_CHANNELS.STORAGE_READ_BLOB, sessionId, id),
 			storageGetBlobRef: (sessionId, id) =>
 				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.STORAGE_GET_BLOB_REF, sessionId, id),
+			storageDeleteBlob: (sessionId, id) => ipc.invoke(PLUGIN_EXECUTION_CHANNELS.STORAGE_DELETE_BLOB, sessionId, id),
 			onSecretsChanged,
 			onPluginsChanged: (listener) => {
 				const handler = (_event: IpcRendererEvent, payload?: Parameters<typeof listener>[0]) => listener(payload);

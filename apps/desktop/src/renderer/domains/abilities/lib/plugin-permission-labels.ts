@@ -56,6 +56,8 @@ export const PLUGIN_PERMISSION_LABEL_KEYS = {
 	"storage.write": "permission.storageWrite",
 	"media.generate": "permission.mediaGenerate",
 	"media.provider.register": "permission.mediaProviderRegister",
+	"ai.ocr.recognize": "permission.ocrRecognize",
+	"ai.ocr.provider.register": "permission.ocrProviderRegister",
 	"secrets.read": "permission.secretsRead",
 	"secrets.write": "permission.secretsWrite",
 	"settings.read": "permission.settingsRead",
@@ -436,6 +438,18 @@ export const PLUGIN_PERMISSION_PRESENTATIONS = {
 		descriptionKey: "permission.description.mediaProviderRegister",
 		group: "intelligence",
 		risk: "medium",
+		visual: "intelligence",
+	},
+	"ai.ocr.recognize": {
+		descriptionKey: "permission.description.ocrRecognize",
+		group: "intelligence",
+		risk: "medium",
+		visual: "intelligence",
+	},
+	"ai.ocr.provider.register": {
+		descriptionKey: "permission.description.ocrProviderRegister",
+		group: "intelligence",
+		risk: "high",
 		visual: "intelligence",
 	},
 } as const satisfies Record<PluginPermission, PluginPermissionPresentation>;

@@ -121,6 +121,7 @@ const storageNullableBlobOutputSchema = defineCapabilityOutputSchema(Type.Union(
 const storageNullableBlobRefOutputSchema = defineCapabilityOutputSchema(Type.Union([Type.Null(), storageBlobRefType]), {
 	clean: true,
 });
+const storageNoOutputSchema = defineCapabilityOutputSchema(Type.Undefined());
 
 export const FOUNDATION_STORAGE_CAPABILITIES = {
 	GET_ALL: defineCapability<StorageGetAllInput, CapabilityJsonMap>({
@@ -227,6 +228,14 @@ export const FOUNDATION_STORAGE_CAPABILITIES = {
 		version: 1,
 		input: storageBlobReadInputSchema,
 		output: storageNullableBlobRefOutputSchema,
+	}),
+	DELETE_BLOB: defineCapability<StorageBlobReadInput, undefined>({
+		id: "cap.foundation.vetta.storage.delete-blob",
+		kind: "command",
+		layer: CAPABILITY_LAYERS.FOUNDATION,
+		version: 1,
+		input: storageBlobReadInputSchema,
+		output: storageNoOutputSchema,
 	}),
 } as const;
 

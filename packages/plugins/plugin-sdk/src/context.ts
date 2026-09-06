@@ -14,6 +14,7 @@ import type { PluginGatewayApi } from "./gateway.js";
 import type { PluginI18nApi } from "./i18n.js";
 import type { PluginJobsApi } from "./jobs.js";
 import type { PluginMediaApi } from "./media.js";
+import type { OcrClient } from "./ocr.js";
 import type { PluginModelsApi } from "./models.js";
 import type { PluginNetworkApi } from "./network.js";
 import type { PluginOfficialApi } from "./official.js";
@@ -61,6 +62,7 @@ export interface PluginContext {
 	/** Explicitly permissioned model provider owned by this plugin's id namespace. */
 	models: PluginModelsApi;
 	media: PluginMediaApi;
+	ocr: OcrClient;
 	jobs: PluginJobsApi;
 	artifacts: PluginArtifactsApi;
 	/** 主进程离屏窗口截图（`capture.offscreen` 权限）。旧宿主上为 `undefined`，使用前判空。 */
