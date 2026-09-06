@@ -52,11 +52,21 @@ export function segmentKey(segment: BlockSegment): string {
 	return `group-${blockKey(segment.blocks[0])}`;
 }
 
-function isCustomToolUiBlock(block: ContentBlock, customToolNames: Set<string>): boolean {
-	return block.type === "tool_call" && customToolNames.has(block.toolName);
+function isPersistentToolUiBlock(
+	block: ContentBlock,
+	customToolNames: ReadonlySet<string>,
+	persistentToolCallIds: ReadonlySet<string>,
+): boolean {
+	return (
+		block.type === "tool_call" && (customToolNames.has(block.toolName) || persistentToolCallIds.has(block.toolCallId))
+	);
 }
 
-export function groupBlocks(blocks: ContentBlock[], customToolNames: Set<string>): BlockSegment[] {
+export function groupBlocks(
+	blocks: ContentBlock[],
+	customToolNames: ReadonlySet<string>,
+	persistentToolCallIds: ReadonlySet<string> = new Set(),
+): BlockSegment[] {
 	const segments: BlockSegment[] = [];
 	let batch: (ToolCallBlock | ThinkingBlock)[] = [];
 	const flushBatch = (): void => {
@@ -70,7 +80,7 @@ export function groupBlocks(blocks: ContentBlock[], customToolNames: Set<string>
 		if (block.type === "tool_call" && block.toolName === PROGRESS_TOOL_NAME) {
 			flushBatch();
 			segments.push({ type: "progress_divider", block });
-		} else if (isCustomToolUiBlock(block, customToolNames)) {
+		} else if (isPersistentToolUiBlock(block, customToolNames, persistentToolCallIds)) {
 			flushBatch();
 			segments.push({ type: "single", block });
 		} else if (block.type === "tool_call" || block.type === "thinking") {
@@ -86,10 +96,14 @@ export function groupBlocks(blocks: ContentBlock[], customToolNames: Set<string>
 	return segments;
 }
 
-export function findLastProcessBlockIndex(blocks: ContentBlock[], customToolNames: Set<string> = new Set()): number {
+export function findLastProcessBlockIndex(
+	blocks: ContentBlock[],
+	customToolNames: ReadonlySet<string> = new Set(),
+	persistentToolCallIds: ReadonlySet<string> = new Set(),
+): number {
 	for (let index = blocks.length - 1; index >= 0; index--) {
 		const block = blocks[index];
-		if (isCustomToolUiBlock(block, customToolNames)) continue;
+		if (isPersistentToolUiBlock(block, customToolNames, persistentToolCallIds)) continue;
 		if (block.type === "tool_call" || block.type === "thinking") return index;
 	}
 	return -1;
@@ -125,26 +139,35 @@ function findPreviousPrimaryAnswerIndex(blocks: ContentBlock[], beforeIndex: num
 	return -1;
 }
 
-export function getAssistantFoldData(blocks: ContentBlock[], customToolNames: Set<string>): AssistantFoldData | null {
-	const lastProcessIndex = findLastProcessBlockIndex(blocks, customToolNames);
+export function getAssistantFoldData(
+	blocks: ContentBlock[],
+	customToolNames: ReadonlySet<string>,
+	persistentToolCallIds: ReadonlySet<string> = new Set(),
+): AssistantFoldData | null {
+	const lastProcessIndex = findLastProcessBlockIndex(blocks, customToolNames, persistentToolCallIds);
 	if (lastProcessIndex === -1) return null;
 
 	// 答案区起点：默认是最后一个过程块之后；一旦出现插件产物，则退到「该产物之前最后一次
 	// 真实工具调用」之后——否则产物上方那段引出它的结论文字会被划进过程区一起折走，产物
 	// 就成了没有上下文的孤块。产物之后的过程块因此落进答案区、不再被折叠（见 docs/adr/0047）。
-	const firstArtifactIndex = blocks.findIndex((block) => isCustomToolUiBlock(block, customToolNames));
+	const firstArtifactIndex = blocks.findIndex((block) =>
+		isPersistentToolUiBlock(block, customToolNames, persistentToolCallIds),
+	);
 	const answerStart =
 		firstArtifactIndex === -1
 			? lastProcessIndex + 1
 			: Math.min(
-					findLastProcessBlockIndex(blocks.slice(0, firstArtifactIndex), customToolNames) + 1,
+					findLastProcessBlockIndex(blocks.slice(0, firstArtifactIndex), customToolNames, persistentToolCallIds) +
+						1,
 					lastProcessIndex + 1,
 				);
 	const answerBlocks = blocks.slice(answerStart);
 	const trailingTextBlocks = answerBlocks.filter(
 		(block): block is TextBlock => block.type === "text" && block.text.trim().length > 0,
 	);
-	const hasArtifact = answerBlocks.some((block) => isCustomToolUiBlock(block, customToolNames));
+	const hasArtifact = answerBlocks.some((block) =>
+		isPersistentToolUiBlock(block, customToolNames, persistentToolCallIds),
+	);
 	// 光有产物、没有收尾文字也算有答案，照样值得折叠出来。
 	if (trailingTextBlocks.length === 0 && !hasArtifact) return null;
 

@@ -73,4 +73,23 @@ describe("AssistantMessage first-response waiting state", () => {
 		expect(useExpansionMock).toHaveBeenCalledWith("fold:assistant-waiting", true);
 		vi.useRealTimers();
 	});
+
+	it("uses the caller-provided phase label while the first activity is pending", () => {
+		render(
+			<AssistantMessage
+				isStreaming
+				isTailMessage
+				pendingLabel="团队正在加载"
+				message={createConversationAgentMessage({
+					id: "assistant-team-loading",
+					phase: "pending",
+					text: "",
+					blocks: [],
+				})}
+			/>,
+		);
+
+		expect(screen.getByText("团队正在加载")).toBeTruthy();
+		expect(screen.queryByText("messageList.assistantMessage.waiting")).toBeNull();
+	});
 });

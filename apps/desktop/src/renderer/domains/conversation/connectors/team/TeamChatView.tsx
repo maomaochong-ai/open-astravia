@@ -28,6 +28,7 @@ export function TeamChatView({ model, actions, onOpenMember }: TeamChatViewProps
 			sessionId={model.feedKey}
 			participants={model.members}
 			messageContext={TEAM_MESSAGE_CONTEXT}
+			pendingLabel={model.pendingLabel}
 			onAbort={() => void actions.abort()}
 			error={model.error}
 			activity={

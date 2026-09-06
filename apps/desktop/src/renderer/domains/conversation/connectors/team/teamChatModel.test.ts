@@ -357,6 +357,71 @@ describe("team chat stream state", () => {
 		});
 	});
 
+	it("keeps visible row identities stable while the first Team turn is normalized", () => {
+		const pending = { requestId: "request", text: "hello", leaderMemberId: "leader", timestamp: 1 };
+		const labels = { delegation: (from: string, to: string) => `${from} -> ${to}`, unknownMember: "Unknown" };
+		const keys = (items: ReturnType<typeof projectTeamConversationTimeline>) =>
+			items.map((item) => item.renderKey ?? item.entryId ?? item.id);
+		const optimistic = projectTeamConversationTimeline({
+			snapshot: undefined,
+			pending,
+			streams: {},
+			members: [member],
+			labels,
+		});
+		const persistedUser = projectTeamConversationTimeline({
+			snapshot: snapshot({ messages: [userMessage("persisted-user", "request", "hello", 1)] }),
+			pending,
+			streams: {},
+			members: [member],
+			labels,
+		});
+		const streaming = projectTeamConversationTimeline({
+			snapshot: snapshot({ messages: [userMessage("persisted-user", "request", "hello", 1)] }),
+			pending,
+			streams: reduceTeamStreamState({}, streamEvent("provider-message", 1, "partial")),
+			members: [member],
+			labels,
+		});
+		const completed = projectTeamConversationTimeline({
+			snapshot: snapshot({
+				messages: [
+					userMessage("persisted-user", "request", "hello", 1),
+					agentMessage("persisted-agent", "request", "leader", "done", 2),
+				],
+			}),
+			pending: undefined,
+			streams: {},
+			members: [member],
+			labels,
+		});
+
+		expect(keys(persistedUser)).toEqual(keys(optimistic));
+		expect(keys(streaming)).toEqual(keys(optimistic));
+		expect(keys(completed)).toEqual(keys(optimistic));
+	});
+
+	it("removes the waiting row as soon as the same pending turn is persisted", () => {
+		const items = projectTeamConversationTimeline({
+			snapshot: snapshot({
+				messages: [
+					userMessage("persisted-user", "request", "hello", 1),
+					agentMessage("persisted-agent", "request", "leader", "done", 2),
+				],
+			}),
+			pending: { requestId: "request", text: "hello", leaderMemberId: "leader", timestamp: 1 },
+			streams: {},
+			members: [member],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		const keys = items.map((item) => item.renderKey ?? item.entryId ?? item.id);
+		expect(new Set(keys).size).toBe(keys.length);
+		expect(items.filter((item) => item.kind === "agent")).toEqual([
+			expect.objectContaining({ id: "persisted-agent", phase: "completed" }),
+		]);
+	});
+
 	it("keeps the public coordination answer visible while member history is still flushing", () => {
 		const items = projectTeamConversationTimeline({
 			snapshot: snapshot({
@@ -390,7 +455,7 @@ describe("team chat stream state", () => {
 			expect.objectContaining({
 				id: "public-result",
 				text: "final answer",
-				renderKey: "team:stream:leader:public-result",
+				renderKey: "team:agent-turn:leader:request",
 			}),
 		]);
 
@@ -422,7 +487,7 @@ describe("team chat stream state", () => {
 			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
 		});
 		expect(flushed.filter((item) => item.kind === "agent")).toEqual([
-			expect.objectContaining({ id: "runtime-result", renderKey: "team:stream:leader:public-result" }),
+			expect.objectContaining({ id: "runtime-result", renderKey: "team:agent-turn:leader:request" }),
 		]);
 	});
 
@@ -547,6 +612,41 @@ describe("team chat stream state", () => {
 		expect(new Set(keys).size).toBe(keys.length);
 	});
 
+	it("does not reuse one public render key for duplicate member history entries", () => {
+		const repeated = agentMessage("public-result", "request", "leader", "same answer", 2).message;
+		const items = projectTeamConversationTimeline({
+			snapshot: snapshot({
+				messages: [agentMessage("public-result", "request", "leader", "same answer", 2)],
+				display: {
+					memberConversations: [
+						{
+							memberId: "leader",
+							runtimeSessionId: "leader-runtime",
+							history: [
+								{ type: "message", entryId: "member-result-1", message: repeated },
+								{
+									type: "message",
+									entryId: "member-context",
+									message: { role: "user", content: "context", timestamp: 2.5 },
+								},
+								{ type: "message", entryId: "member-result-2", message: repeated },
+							],
+						},
+					],
+				},
+			}),
+			pending: undefined,
+			streams: {},
+			members: [member],
+			memberId: "leader",
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		const keys = items.map((item) => item.renderKey ?? item.entryId ?? item.id);
+		expect(new Set(keys).size).toBe(keys.length);
+		expect(items.filter((item) => item.kind === "agent")).toHaveLength(2);
+	});
+
 	it("projects user, delegation, and member output into the shared timeline order", () => {
 		const items = projectTeamConversationTimeline({
 			snapshot: snapshot({
@@ -592,6 +692,120 @@ describe("team chat stream state", () => {
 		});
 	});
 
+	it("renders a directly addressed member reply as an ordinary agent message", () => {
+		const researcher: TeamMemberViewModel = {
+			...member,
+			id: "researcher",
+			name: "Research",
+			handle: "research",
+			blueprintId: "researcher",
+		};
+		const items = projectTeamConversationTimeline({
+			snapshot: snapshot({
+				messages: [
+					userMessage("direct-user", "direct-request", "你好", 1),
+					agentMessage("direct-reply", "direct-request", "researcher", "你好，我是 Research", 2),
+				],
+			}),
+			pending: undefined,
+			streams: {},
+			members: [member, researcher],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		expect(items.filter((item) => item.kind === "agent")).toEqual([
+			expect.objectContaining({ authorId: "researcher", text: "你好，我是 Research", phase: "completed" }),
+		]);
+		expect(items.some((item) => item.kind === "event" && item.event.kind === "team-member-summary")).toBe(false);
+	});
+
+	it("renders a directly addressed member stream and waiting row as ordinary agent messages", () => {
+		const researcher: TeamMemberViewModel = {
+			...member,
+			id: "researcher",
+			name: "Research",
+			handle: "research",
+			blueprintId: "researcher",
+		};
+		const pending = {
+			requestId: "direct-request",
+			text: "你好",
+			targetMemberIds: ["researcher"],
+			leaderMemberId: "leader",
+			timestamp: 1,
+		};
+		const waiting = projectTeamConversationTimeline({
+			snapshot: snapshot(),
+			pending,
+			streams: {},
+			members: [member, researcher],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+		const streaming = projectTeamConversationTimeline({
+			snapshot: snapshot(),
+			pending,
+			streams: reduceTeamStreamState(
+				{},
+				streamEvent("direct-stream", 1, "你好，我正在回复", "researcher", "direct-request"),
+			),
+			members: [member, researcher],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		expect(waiting.filter((item) => item.kind === "agent")).toEqual([
+			expect.objectContaining({ authorId: "researcher", phase: "pending" }),
+		]);
+		expect(streaming.filter((item) => item.kind === "agent")).toEqual([
+			expect.objectContaining({ authorId: "researcher", phase: "streaming", text: "你好，我正在回复" }),
+		]);
+		expect(streaming.some((item) => item.kind === "event" && item.event.kind === "team-member-summary")).toBe(false);
+	});
+
+	it("uses a summary card only when the leader delegates to the member", () => {
+		const researcher: TeamMemberViewModel = {
+			...member,
+			id: "researcher",
+			name: "Research",
+			handle: "research",
+			blueprintId: "researcher",
+		};
+		const reviewer: TeamMemberViewModel = {
+			...member,
+			id: "reviewer",
+			name: "Review",
+			handle: "review",
+			blueprintId: "reviewer",
+		};
+		const memberTriggered = projectTeamConversationTimeline({
+			snapshot: snapshot({
+				messages: [agentMessage("member-triggered-reply", "member-request", "reviewer", "Review done", 3)],
+				activities: [
+					{
+						kind: "delegation",
+						id: "member-triggered",
+						requestId: "member-request",
+						sourceMemberId: "researcher",
+						targetMemberId: "reviewer",
+						objective: "Review",
+						state: "completed",
+						timestamp: 2,
+					},
+				],
+			}),
+			pending: undefined,
+			streams: {},
+			members: [member, researcher, reviewer],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		expect(memberTriggered.filter((item) => item.kind === "agent")).toEqual([
+			expect.objectContaining({ authorId: "reviewer", text: "Review done" }),
+		]);
+		expect(memberTriggered.some((item) => item.kind === "event" && item.event.kind === "team-member-summary")).toBe(
+			false,
+		);
+	});
+
 	it("merges the leader's pre-tool and final provider steps into one completed bubble", () => {
 		const preTool = agentMessage("leader-tool-step", "leader-turn", "leader", "", 2, {
 			id: "team-send",
@@ -625,6 +839,80 @@ describe("team chat stream state", () => {
 				expect.objectContaining({ type: "text", text: "Delegation complete" }),
 			]),
 		});
+	});
+
+	it("attaches leader-delegated member activity to the originating tool call", () => {
+		const leaderTool = agentMessage("leader-tool", "leader-turn", "leader", "", 2, {
+			id: "team-send",
+			name: "team_send_message",
+			arguments: { recipients: ["reviewer"] },
+		});
+		const leaderFinal = agentMessage("leader-final", "leader-turn", "leader", "已通知 Review", 3);
+		const reviewerResult = agentMessage("reviewer-result", "review-turn", "reviewer", "收到", 4);
+		const items = projectTeamConversationTimeline({
+			snapshot: snapshot({
+				messages: [leaderTool, leaderFinal, reviewerResult],
+				activities: [
+					{
+						kind: "delegation",
+						id: "delegation-linked",
+						requestId: "review-turn",
+						originToolCallId: "team-send",
+						sourceMemberId: "leader",
+						targetMemberId: "reviewer",
+						objective: "通知 Review",
+						state: "completed",
+						timestamp: 2,
+					},
+				],
+				display: { memberConversations: [] },
+			}),
+			pending: undefined,
+			streams: {},
+			members: [member, { ...member, id: "reviewer", name: "Review", handle: "review", blueprintId: "reviewer" }],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		const leader = items.find(
+			(item): item is Extract<typeof item, { kind: "agent" }> => item.kind === "agent" && item.authorId === "leader",
+		);
+		expect(leader?.toolCallPresentations).toEqual([
+			expect.objectContaining({
+				toolCallId: "team-send",
+				activities: [expect.objectContaining({ memberId: "reviewer", state: "completed" })],
+			}),
+		]);
+		expect(items.some((item) => item.kind === "event" && item.event.kind === "delegation")).toBe(false);
+		expect(items.some((item) => item.kind === "event" && item.event.kind === "team-member-summary")).toBe(false);
+	});
+
+	it("keeps the legacy activity card until the originating leader tool enters the snapshot", () => {
+		const items = projectTeamConversationTimeline({
+			snapshot: snapshot({
+				messages: [agentMessage("reviewer-result", "review-turn", "reviewer", "收到", 4)],
+				activities: [
+					{
+						kind: "delegation",
+						id: "delegation-pending-leader-tool",
+						requestId: "review-turn",
+						originToolCallId: "team-send",
+						sourceMemberId: "leader",
+						targetMemberId: "reviewer",
+						objective: "通知 Review",
+						state: "completed",
+						timestamp: 2,
+					},
+				],
+				display: { memberConversations: [] },
+			}),
+			pending: undefined,
+			streams: {},
+			members: [member, { ...member, id: "reviewer", name: "Review", handle: "review", blueprintId: "reviewer" }],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		expect(items.some((item) => item.kind === "event" && item.event.kind === "delegation")).toBe(true);
+		expect(items.some((item) => item.kind === "event" && item.event.kind === "team-member-summary")).toBe(true);
 	});
 
 	it("keeps member summary cards in delegation order when replies complete out of order", () => {

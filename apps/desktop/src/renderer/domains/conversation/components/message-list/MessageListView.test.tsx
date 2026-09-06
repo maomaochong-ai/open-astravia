@@ -29,16 +29,17 @@ vi.mock("@vetta/theme-ui/chat", () => ({
 		Root: ({ children }: { children: ReactNode }) => <>{children}</>,
 		VirtualList: (props: Record<string, unknown>) => {
 			captured.virtuosoProps = props;
-			const data = props.items as Array<{ id: string }>;
+			const data = props.items as Array<{ id: string; renderKey?: string }>;
+			const getKey = props.getKey as (message: { id: string; renderKey?: string }) => string;
 			const children = Array.isArray(props.children) ? props.children : [props.children];
 			const itemContent = children.find((child) => typeof child === "function") as (
-				message: { id: string },
+				message: { id: string; renderKey?: string },
 				index: number,
 			) => JSX.Element;
 			return (
 				<div>
 					{data.map((message, index) => (
-						<Fragment key={message.id}>{itemContent(message, index)}</Fragment>
+						<Fragment key={getKey(message)}>{itemContent(message, index)}</Fragment>
 					))}
 					{children.filter((child) => typeof child !== "function") as ReactNode[]}
 				</div>
@@ -76,8 +77,10 @@ vi.mock("./ForkOriginBanner", () => ({
 }));
 vi.mock("./MessageItem", () => ({
 	ExportMessageList: () => null,
-	MessageItem: ({ message }: { message: { id: string } }) => (
-		<div data-testid="full-message">{message.id}</div>
+	MessageItem: ({ message, pendingLabel }: { message: { id: string }; pendingLabel?: string }) => (
+		<div data-testid="full-message" data-pending-label={pendingLabel}>
+			{message.id}
+		</div>
 	),
 	ModelSwitchBoundary: () => null,
 }));
@@ -144,6 +147,50 @@ describe("MessageListView viewport phases", () => {
 		expect(captured.virtuosoProps?.overscan).toBe(400);
 		expect(captured.virtuosoProps?.minOverscanItemCount).toEqual({ top: 12, bottom: 4 });
 		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 600, bottom: 200 });
+	});
+
+	it("消息从乐观状态规范化为持久化状态时保留可见 DOM 行", () => {
+		const initial = props("expanded", true);
+		initial.model.messages = [
+			{
+				...createConversationAgentMessage({ id: "waiting-message", text: "", blocks: [] }),
+				renderKey: "team:agent-turn:leader:request",
+			},
+		];
+		const { rerender } = render(<MessageListView {...initial} />);
+		const visibleRow = screen.getByTestId("full-message");
+
+		const persisted = props("expanded");
+		persisted.model.messages = [
+			{
+				...createConversationAgentMessage({ id: "persisted-message", text: "done", blocks: [] }),
+				renderKey: "team:agent-turn:leader:request",
+			},
+		];
+		rerender(<MessageListView {...persisted} />);
+
+		expect(screen.getByTestId("full-message")).toBe(visibleRow);
+		expect(visibleRow.textContent).toBe("persisted-message");
+	});
+
+	it("只把处理阶段文案传给尚未开始输出的待回复消息", () => {
+		const waiting = props("expanded", true);
+		waiting.pendingLabel = "团队正在加载";
+		waiting.model.messages = [
+			createConversationAgentMessage({ id: "waiting-message", phase: "pending", text: "", blocks: [] }),
+		];
+		const { rerender } = render(<MessageListView {...waiting} />);
+
+		expect(screen.getByTestId("full-message").getAttribute("data-pending-label")).toBe("团队正在加载");
+
+		const streaming = props("expanded", true);
+		streaming.pendingLabel = "等待模型响应";
+		streaming.model.messages = [
+			createConversationAgentMessage({ id: "waiting-message", phase: "streaming", text: "回答", blocks: [] }),
+		];
+		rerender(<MessageListView {...streaming} />);
+
+		expect(screen.getByTestId("full-message").getAttribute("data-pending-label")).toBeNull();
 	});
 
 	it("空会话仍使用零缓冲首屏，避免没有消息时预渲染无意义内容", () => {

@@ -6,6 +6,8 @@ import { TextBlockView } from "../blocks/TextBlock";
 import { ThinkingBlockView } from "../blocks/ThinkingBlock";
 import { ToolCallBlockView } from "../blocks/ToolCallBlock";
 import type { BlockSegment } from "./messageBlockModel";
+import type { ChatToolCallPresentationViewModel } from "@shared/store/atoms";
+import { ToolCallPresentation } from "./ToolCallPresentation";
 
 export {
 	findLastProcessBlockIndex,
@@ -98,6 +100,8 @@ function ProgressDivider({ block }: { block: { args: Record<string, unknown> } }
 
 interface SegmentRendererProps {
 	segment: BlockSegment;
+	presentation?: ChatToolCallPresentationViewModel;
+	onTeamMemberOpen?: (memberId: string) => void;
 	isStreamingTail?: boolean;
 	/** 仍在追加的 thinking block id：就地换成实时滚动卡片。 */
 	liveThinkingId?: string | null;
@@ -127,12 +131,16 @@ function areSegmentRendererPropsEqual(
 		previous.liveThinkingId === next.liveThinkingId &&
 		previous.animateIn === next.animateIn &&
 		previous.exportMode === next.exportMode &&
+		previous.presentation === next.presentation &&
+		previous.onTeamMemberOpen === next.onTeamMemberOpen &&
 		areSegmentsEqual(previous.segment, next.segment)
 	);
 }
 
 export const SegmentRenderer = memo(function SegmentRenderer({
 	segment,
+	presentation,
+	onTeamMemberOpen,
 	isStreamingTail = false,
 	liveThinkingId,
 	animateIn = false,
@@ -166,7 +174,16 @@ export const SegmentRenderer = memo(function SegmentRenderer({
 					);
 				break;
 			case "tool_call":
-				content = <ToolCallBlockView block={segment.block} exportMode={exportMode} />;
+				content = presentation ? (
+					<ToolCallPresentation
+						block={segment.block}
+						presentation={presentation}
+						exportMode={exportMode}
+						onTeamMemberOpen={onTeamMemberOpen}
+					/>
+				) : (
+					<ToolCallBlockView block={segment.block} exportMode={exportMode} />
+				);
 				break;
 			case "error":
 				content = <ErrorBlockView block={segment.block} exportMode={exportMode} />;

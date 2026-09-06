@@ -1,4 +1,5 @@
 import type { ThinkingBlock, ToolCallBlock } from "@shared/store/atoms";
+import type { ChatToolCallPresentationViewModel } from "@shared/store/atoms";
 import { languageAtom, pluginAgentToolLabelsAtom, pluginI18nByIdAtom } from "@shared/store/atoms";
 import { LiveThinkingView, ProgressGroup, SegmentShell } from "@vetta/theme-ui/chat";
 import { useAtomValue } from "jotai";
@@ -13,6 +14,7 @@ import { useExpansion } from "./expansionStore";
 import type { GroupBlock, ProgressGroupSegment, WorkSegment } from "./progressGroupModel";
 import { isProgressGroupDone } from "./progressGroupModel";
 import { compactWorkActivityText, selectWorkGroupActivity } from "./workActivityModel";
+import { ToolCallPresentation } from "./ToolCallPresentation";
 
 function useToolLabelInputs(): void {
 	// toolLabel reads these stores outside React; subscribe here so live titles and rows
@@ -130,6 +132,8 @@ const StageGroup = memo(function StageGroup({
 
 interface WorkSegmentRendererProps {
 	segment: WorkSegment;
+	presentation?: ChatToolCallPresentationViewModel;
+	onTeamMemberOpen?: (memberId: string) => void;
 	isStreamingTail?: boolean;
 	/** This is the last process segment in the currently streaming assistant turn. */
 	isLiveActivity?: boolean;
@@ -150,6 +154,8 @@ function arePropsEqual(previous: WorkSegmentRendererProps, next: WorkSegmentRend
 		previous.liveThinkingId !== next.liveThinkingId ||
 		previous.animateIn !== next.animateIn ||
 		previous.exportMode !== next.exportMode
+		|| previous.presentation !== next.presentation
+		|| previous.onTeamMemberOpen !== next.onTeamMemberOpen
 	) {
 		return false;
 	}
@@ -176,6 +182,8 @@ function arePropsEqual(previous: WorkSegmentRendererProps, next: WorkSegmentRend
  */
 export const WorkSegmentRenderer = memo(function WorkSegmentRenderer({
 	segment,
+	presentation,
+	onTeamMemberOpen,
 	isStreamingTail = false,
 	isLiveActivity = false,
 	liveThinkingId,
@@ -250,7 +258,17 @@ export const WorkSegmentRenderer = memo(function WorkSegmentRenderer({
 					);
 				break;
 			case "tool_call":
-				content = <ToolCallBlockView block={segment.block} exportMode={exportMode} aliased />;
+				content = presentation ? (
+					<ToolCallPresentation
+						block={segment.block}
+						presentation={presentation}
+						exportMode={exportMode}
+						aliased
+						onTeamMemberOpen={onTeamMemberOpen}
+					/>
+				) : (
+					<ToolCallBlockView block={segment.block} exportMode={exportMode} aliased />
+				);
 				break;
 			case "error":
 				content = <ErrorBlockView block={segment.block} exportMode={exportMode} />;

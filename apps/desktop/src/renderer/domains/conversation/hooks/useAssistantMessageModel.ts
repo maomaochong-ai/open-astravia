@@ -1,5 +1,6 @@
 import { useAgentModeNarration } from "@shared/agent-modes/agent-mode-registry";
-import type { ConversationAgentMessageViewModel, TextBlock } from "@shared/conversation";
+import type { TextBlock } from "@shared/conversation";
+import type { ChatAgentMessageViewModel } from "@shared/store/atoms";
 import {
 	activeSessionAtom,
 	pluginToolCallSlotsAtom,
@@ -30,7 +31,7 @@ interface AssistantMessageModelInput {
 	exportMode: boolean;
 	isStreaming: boolean;
 	isTailMessage: boolean;
-	message: ConversationAgentMessageViewModel;
+	message: ChatAgentMessageViewModel;
 }
 
 export function useAssistantMessageModel({
@@ -50,6 +51,10 @@ export function useAssistantMessageModel({
 	);
 	const isRuntimePredicting = useAtomValue(isPredictingAtom);
 	const customToolNames = useMemo(() => new Set(toolCallSlots.map((slot) => slot.toolName)), [toolCallSlots]);
+	const persistentToolCallIds = useMemo(
+		() => new Set(message.toolCallPresentations?.map((presentation) => presentation.toolCallId) ?? []),
+		[message.toolCallPresentations],
+	);
 	const isCurrentlyStreaming =
 		message.phase === "pending" ||
 		message.phase === "streaming" ||
@@ -58,8 +63,8 @@ export function useAssistantMessageModel({
 	// mode id（新增模式对本渲染层零改动）。未指定模式回退 staged（与历史会话按 work 恢复口径一致）。
 	const stagedNarration = useAgentModeNarration(useAtomValue(sessionAgentModeAtom)) === "staged";
 	const foldData = useMemo(
-		() => getAssistantFoldData(message.blocks, customToolNames),
-		[message.blocks, customToolNames],
+		() => getAssistantFoldData(message.blocks, customToolNames, persistentToolCallIds),
+		[message.blocks, customToolNames, persistentToolCallIds],
 	);
 	const visibleBlocks = useMemo(() => {
 		// 收起时渲染整个答案区（含插件产物卡片），而不是只留文本。
@@ -70,20 +75,20 @@ export function useAssistantMessageModel({
 	const segments = useMemo(
 		() =>
 			stagedNarration
-				? groupBlocksForWork(visibleBlocks, customToolNames, isCurrentlyStreaming)
-				: groupBlocks(visibleBlocks, customToolNames),
-		[stagedNarration, visibleBlocks, customToolNames, isCurrentlyStreaming],
+				? groupBlocksForWork(visibleBlocks, customToolNames, isCurrentlyStreaming, persistentToolCallIds)
+				: groupBlocks(visibleBlocks, customToolNames, persistentToolCallIds),
+		[stagedNarration, visibleBlocks, customToolNames, isCurrentlyStreaming, persistentToolCallIds],
 	);
 	// Work 折叠条按「阶段数」计数，而不是 coding 的原始 block 数——用户看到的单位就是阶段。
 	const workFoldCount = useMemo(() => {
 		if (!stagedNarration || !foldData) return 0;
-		const processSegments = groupBlocksForWork(foldData.processBlocks, customToolNames);
+		const processSegments = groupBlocksForWork(foldData.processBlocks, customToolNames, false, persistentToolCallIds);
 		return processSegments.filter((segment) => segment.type === "progress_group" || segment.type === "tool_group")
 			.length;
-	}, [stagedNarration, foldData, customToolNames]);
+	}, [stagedNarration, foldData, customToolNames, persistentToolCallIds]);
 	const exportProcessSegments = useMemo(
-		() => (exportMode && foldData ? groupBlocks(foldData.processBlocks, customToolNames) : []),
-		[customToolNames, exportMode, foldData],
+		() => (exportMode && foldData ? groupBlocks(foldData.processBlocks, customToolNames, persistentToolCallIds) : []),
+		[customToolNames, exportMode, foldData, persistentToolCallIds],
 	);
 	const liveThinkingId = useMemo(
 		() => selectLiveThinkingId(message.blocks, isCurrentlyStreaming),
@@ -110,13 +115,13 @@ export function useAssistantMessageModel({
 				.filter(Boolean)
 				.join("\n\n");
 		}
-		if (findLastProcessBlockIndex(blocks, customToolNames) !== -1) return "";
+		if (findLastProcessBlockIndex(blocks, customToolNames, persistentToolCallIds) !== -1) return "";
 		return blocks
 			.filter((block): block is TextBlock => block.type === "text")
 			.map((block) => block.text.trim())
 			.filter(Boolean)
 			.join("\n\n");
-	}, [message.blocks, message.text, foldData, customToolNames]);
+	}, [message.blocks, message.text, foldData, customToolNames, persistentToolCallIds]);
 
 	return {
 		conclusionText,

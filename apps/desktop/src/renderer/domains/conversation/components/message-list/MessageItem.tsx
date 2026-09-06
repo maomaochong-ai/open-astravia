@@ -42,6 +42,7 @@ interface MessageItemProps {
 	isTailMessage: boolean;
 	message: ChatConversationItem;
 	onAbortEdit?: () => void;
+	pendingLabel?: string;
 	participant?: ConversationParticipantViewModel;
 	userMessageActions?: { readonly edit: boolean; readonly fork: boolean; readonly delete: boolean };
 	onTeamMemberOpen?: (memberId: string) => void;
@@ -54,6 +55,7 @@ export const MessageItem = memo(function MessageItem({
 	isLastUserMessage = false,
 	hasAssistantAfter = false,
 	onAbortEdit,
+	pendingLabel,
 	participant,
 	userMessageActions,
 	onTeamMemberOpen,
@@ -62,7 +64,7 @@ export const MessageItem = memo(function MessageItem({
 	if (message.kind === "event") {
 		if (message.event.kind === "compaction") return <CompactionBoundary />;
 		if (message.event.kind === "team-member-summary") {
-			return onTeamMemberOpen ? <TeamMemberReplyCard event={message.event} onOpen={onTeamMemberOpen} /> : null;
+			return <TeamMemberReplyCard event={message.event} onOpen={onTeamMemberOpen} />;
 		}
 		return (
 			<Message.Root>
@@ -92,6 +94,8 @@ export const MessageItem = memo(function MessageItem({
 			message={message}
 			isTailMessage={isTailMessage}
 			isStreaming={isStreaming}
+			pendingLabel={pendingLabel}
+			onTeamMemberOpen={onTeamMemberOpen}
 			exportMode={exportMode}
 			participant={participant}
 		/>

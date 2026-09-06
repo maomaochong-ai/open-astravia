@@ -61,8 +61,14 @@ function isProgressCall(block: ContentBlock): boolean {
 	return block.type === "tool_call" && block.toolName === PROGRESS_TOOL_NAME;
 }
 
-function isCustomToolUiBlock(block: ContentBlock, customToolNames: Set<string>): boolean {
-	return block.type === "tool_call" && customToolNames.has(block.toolName);
+function isPersistentToolUiBlock(
+	block: ContentBlock,
+	customToolNames: ReadonlySet<string>,
+	persistentToolCallIds: ReadonlySet<string>,
+): boolean {
+	return (
+		block.type === "tool_call" && (customToolNames.has(block.toolName) || persistentToolCallIds.has(block.toolCallId))
+	);
 }
 
 function readStringArg(block: ToolCallBlock, key: "label" | "summary"): string | undefined {
@@ -80,8 +86,9 @@ function readStringArg(block: ToolCallBlock, key: "label" | "summary"): string |
  */
 export function groupBlocksForWork(
 	blocks: ContentBlock[],
-	customToolNames: Set<string>,
+	customToolNames: ReadonlySet<string>,
 	streaming = false,
+	persistentToolCallIds: ReadonlySet<string> = new Set(),
 ): WorkSegment[] {
 	const segments: WorkSegment[] = [];
 	/** 当前阶段（progress 已开组）；null = 尚未开组，走启发式兜底。 */
@@ -153,7 +160,7 @@ export function groupBlocksForWork(
 
 		if (block.type === "tool_result") continue;
 
-		if (isCustomToolUiBlock(block, customToolNames) || block.type === "error") {
+		if (isPersistentToolUiBlock(block, customToolNames, persistentToolCallIds) || block.type === "error") {
 			// 硬性例外：冒泡到组外单独渲染，阶段本身不结束（后续调用回到同一阶段）。
 			flushFallback();
 			flushCurrent();

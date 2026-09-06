@@ -25,6 +25,15 @@ describe("getAssistantFoldData 的答案区分界", () => {
 		expect(fold?.hiddenCount).toBe(2);
 	});
 
+	it("团队工具的成员结果属于答案区，消息级收起时仍保持可见", () => {
+		const delegated = tool("team_send_message");
+		const blocks = [tool("read"), delegated, text("负责人总结")];
+		const fold = getAssistantFoldData(blocks, ARTIFACT, new Set([delegated.toolCallId]));
+
+		expect(fold?.processBlocks).toEqual([blocks[0]]);
+		expect(fold?.answerBlocks).toEqual([delegated, blocks[2]]);
+	});
+
 	it("产物之后还有普通工具调用时，产物不再被折走", () => {
 		const chart = tool("plugin_chart");
 		const blocks = [tool("read"), text("点赞对比"), chart, text("明细榜单"), tool("write")];

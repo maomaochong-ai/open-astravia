@@ -20,7 +20,7 @@ import {
 	loadTeamChatBootstrap,
 	loadTeamChatSession,
 } from "./team-chat-session-service";
-import { stageTeamSessionHandoff, takeTeamSessionHandoff } from "./team-session-handoff";
+import { peekTeamSessionHandoff, stageTeamSessionHandoff, takeTeamSessionHandoff } from "./team-session-handoff";
 import { waitForCommittedPaint } from "@shared/lib/committed-paint";
 import { writeCachedContextComposition } from "../../services/context-composition-cache";
 
@@ -78,7 +78,7 @@ const baseSnapshot: DesktopTeamSessionSnapshot = {
 	activities: [],
 };
 
-function streamEvent(sequence: number, delta: string): DesktopTeamSessionStreamEvent {
+function streamEvent(sequence: number, delta: string, turnId = "request"): DesktopTeamSessionStreamEvent {
 	const partial = {
 		...createAssistantMessage(
 			{ api: "agent-team-test", provider: "agent-team-test", model: "fixture" },
@@ -90,7 +90,7 @@ function streamEvent(sequence: number, delta: string): DesktopTeamSessionStreamE
 		type: "conversation.agent-message-event",
 		conversationId: baseSession.id,
 		messageId: "result",
-		turnId: "request",
+		turnId,
 		author: { kind: "agent", id: team.leaderMemberId },
 		sequence,
 		timestamp: sequence,
@@ -152,6 +152,59 @@ describe("useTeamChatModel streaming flow", () => {
 					selectImages: vi.fn(async () => []),
 				},
 			},
+		});
+	});
+
+	it("distinguishes target runtime loading from waiting for the model response", async () => {
+		let resolveSend: ((value: DesktopTeamSessionSnapshot) => void) | undefined;
+		vi.mocked(window.vetta.agentTeams.sendMessage).mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveSend = resolve;
+			}),
+		);
+		const { result } = renderHook(() => useTeamChatModel(team.id));
+		await waitFor(() => expect(result.current.model.status).toBe("ready"));
+		await waitFor(() => expect(streamListener).toBeTypeOf("function"));
+
+		act(() => result.current.actions.setDraft("hello team"));
+		let sendPromise: Promise<void> | undefined;
+		act(() => {
+			sendPromise = result.current.actions.send();
+		});
+		await waitFor(() => expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledTimes(1));
+		expect(result.current.model.pendingLabel).toBe("chat.teamLoading");
+		const requestId = vi.mocked(window.vetta.agentTeams.sendMessage).mock.calls[0]?.[1].requestId;
+		if (!requestId) throw new Error("send request id is missing");
+
+		act(() => {
+			streamListener?.({
+				type: "session-updated",
+				teamSessionId: baseSession.id,
+				snapshot: {
+					...baseSnapshot,
+					session: {
+						...baseSession,
+						revision: 1,
+						memberRuntime: {
+							[leader.id]: {
+								sessionId: "leader-runtime",
+								sessionPath: "C:/sessions/leader.jsonl",
+								agentProfileRevision: 1,
+								deliveredEventIds: [],
+							},
+						},
+					},
+				},
+			});
+		});
+		await waitFor(() => expect(result.current.model.pendingLabel).toBe("chat.waitingModel"));
+
+		act(() => streamListener?.(streamEvent(1, "partial", requestId)));
+		expect(result.current.model.pendingLabel).toBeUndefined();
+
+		await act(async () => {
+			resolveSend?.(baseSnapshot);
+			await sendPromise;
 		});
 	});
 
@@ -446,8 +499,11 @@ describe("useTeamChatModel streaming flow", () => {
 			expect.objectContaining({ kind: "user", text: "send after navigation" }),
 			expect.objectContaining({ kind: "agent", phase: "pending" }),
 		]);
+		expect(result.current.model.workspace).toEqual({ id: `agent-team:${team.id}`, cwd: null });
 		expect(result.current.model.editorEnabled).toBe(true);
 		expect(createReservedTeamChatSession).not.toHaveBeenCalled();
+		expect(loadTeamChatBootstrap).not.toHaveBeenCalled();
+		expect(window.vetta.agentTeams.sendMessage).not.toHaveBeenCalled();
 
 		await act(async () => releasePaint?.());
 		await waitFor(() =>
@@ -467,6 +523,179 @@ describe("useTeamChatModel streaming flow", () => {
 			document,
 		);
 		expect(takeTeamSessionHandoff(baseSession.id)).toBeUndefined();
+	});
+
+	it("keeps the submitted turn through StrictMode replay and empty setup snapshots until the send settles", async () => {
+		let resolveCreation: ((value: Awaited<ReturnType<typeof createReservedTeamChatSession>>) => void) | undefined;
+		vi.mocked(createReservedTeamChatSession).mockReturnValue(
+			new Promise((resolve) => {
+				resolveCreation = resolve;
+			}),
+		);
+		let resolveSend: ((value: DesktopTeamSessionSnapshot) => void) | undefined;
+		vi.mocked(window.vetta.agentTeams.sendMessage).mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveSend = resolve;
+			}),
+		);
+		const requestId = "strict-handoff-request";
+		const submittedText = "keep this submitted message";
+		stageTeamSessionHandoff({
+			sessionId: baseSession.id,
+			document,
+			requestId,
+			text: submittedText,
+			requestedMemberIds: [],
+			attachments: [],
+			timestamp: 10,
+			executionMode: "full-access",
+		});
+
+		const { result } = renderHook(() => useTeamChatModel(team.id, baseSession.id), {
+			wrapper: ({ children }: { children: ReactNode }) => <StrictMode>{children}</StrictMode>,
+		});
+		await waitFor(() => expect(createReservedTeamChatSession).toHaveBeenCalledTimes(1));
+		const initialFeedKey = result.current.model.feedKey;
+		const initialRenderKeys = result.current.model.feedItems.map((item) => item.renderKey);
+		act(() => result.current.actions.setDraft("a new draft during setup"));
+		expect(result.current.model.editorEnabled).toBe(true);
+
+		await act(async () => resolveCreation?.({ document, snapshot: baseSnapshot, sessions: [] }));
+		await waitFor(() => expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledTimes(1));
+		expect(peekTeamSessionHandoff(baseSession.id)).toBeUndefined();
+		expect(result.current.model.feedKey).toBe(initialFeedKey);
+		expect(result.current.model.feedItems.map((item) => item.renderKey)).toEqual(initialRenderKeys);
+		expect(result.current.model.feedItems).toEqual([
+			expect.objectContaining({ kind: "user", text: submittedText }),
+			expect.objectContaining({ kind: "agent", phase: "pending" }),
+		]);
+		expect(result.current.model.status).toBe("sending");
+		expect(result.current.model.draft).toBe("a new draft during setup");
+
+		// Main is still running the initial member turns. Setup can publish an empty
+		// snapshot after the route handoff has been removed, before a user record lands.
+		await waitFor(() => expect(streamListener).toBeTypeOf("function"));
+		act(() => {
+			streamListener?.({
+				type: "session-updated",
+				teamSessionId: baseSession.id,
+				snapshot: baseSnapshot,
+			});
+			streamListener?.({
+				type: "session-snapshot",
+				teamSessionId: baseSession.id,
+				snapshot: baseSnapshot,
+				activeMessageEvents: [],
+			});
+			result.current.actions.setDraft("the next message");
+		});
+		expect(result.current.model.feedItems.map((item) => item.renderKey)).toEqual(initialRenderKeys);
+		expect(result.current.model.feedItems).toEqual([
+			expect.objectContaining({ kind: "user", text: submittedText }),
+			expect.objectContaining({ kind: "agent", phase: "pending" }),
+		]);
+		expect(result.current.model.editorEnabled).toBe(true);
+		expect(result.current.model.status).toBe("sending");
+		expect(result.current.model.draft).toBe("the next message");
+		expect(result.current.model.canSend).toBe(false);
+		await act(async () => result.current.actions.send());
+		expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledTimes(1);
+		expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledWith(
+			baseSession.id,
+			expect.objectContaining({ requestId, text: submittedText }),
+		);
+
+		const finalSnapshot: DesktopTeamSessionSnapshot = {
+			...baseSnapshot,
+			conversationRevision: 2,
+			messages: [
+				{
+					kind: "user",
+					id: "persisted-user",
+					turnId: requestId,
+					author: { kind: "user", id: "local-user" },
+					message: { role: "user", content: submittedText, timestamp: 10 },
+					timestamp: 10,
+				},
+				{
+					kind: "agent",
+					id: "persisted-reply",
+					turnId: requestId,
+					author: { kind: "agent", id: leader.id },
+					message: {
+						...createAssistantMessage(
+							{ api: "agent-team-test", provider: "agent-team-test", model: "fixture" },
+							{ timestamp: 11 },
+						),
+						content: [{ type: "text", text: "received" }],
+					},
+					timestamp: 11,
+				},
+			],
+		};
+		act(() => {
+			streamListener?.({
+				type: "session-updated",
+				teamSessionId: baseSession.id,
+				snapshot: finalSnapshot,
+			});
+		});
+		// A published member result does not release the request's cancellation scope.
+		// sendMessage settles only after Main has joined all initial member turns.
+		expect(result.current.model.canSend).toBe(false);
+		await act(async () => resolveSend?.(finalSnapshot));
+		expect(result.current.model.status).toBe("ready");
+		expect(result.current.model.canSend).toBe(true);
+		expect(result.current.model.draft).toBe("the next message");
+		expect(result.current.model.feedItems).toEqual([
+			expect.objectContaining({ kind: "user", text: submittedText }),
+			expect.objectContaining({ kind: "agent", phase: "completed" }),
+		]);
+		vi.mocked(window.vetta.agentTeams.sendMessage).mockResolvedValue(finalSnapshot);
+		await act(async () => result.current.actions.send());
+		expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledTimes(2);
+		expect(window.vetta.agentTeams.sendMessage).toHaveBeenLastCalledWith(
+			baseSession.id,
+			expect.objectContaining({ text: "the next message" }),
+		);
+	});
+
+	it.each(["failed", "aborted"] as const)("releases a %s send without overwriting a newer draft", async (outcome) => {
+		let rejectSend: ((reason: Error) => void) | undefined;
+		vi.mocked(window.vetta.agentTeams.sendMessage).mockReturnValueOnce(
+			new Promise((_resolve, reject) => {
+				rejectSend = reject;
+			}),
+		);
+		const { result } = renderHook(() => useTeamChatModel(team.id));
+		await waitFor(() => expect(result.current.model.status).toBe("ready"));
+		act(() => result.current.actions.setDraft("first message"));
+		let sendPromise: Promise<void> | undefined;
+		act(() => {
+			sendPromise = result.current.actions.send();
+		});
+		act(() => result.current.actions.setDraft("edited while sending"));
+		expect(result.current.model.editorEnabled).toBe(true);
+		expect(result.current.model.canSend).toBe(false);
+		if (outcome === "aborted") {
+			await act(async () => result.current.actions.abort());
+			expect(window.vetta.agentTeams.abort).toHaveBeenCalledWith(baseSession.id);
+		}
+		await act(async () => {
+			rejectSend?.(new Error("send stopped"));
+			await sendPromise;
+		});
+		expect(result.current.model.status).toBe(outcome === "aborted" ? "ready" : "error");
+		expect(result.current.model.draft).toBe("edited while sending");
+		expect(result.current.model.editorEnabled).toBe(true);
+		expect(result.current.model.canSend).toBe(true);
+		expect(result.current.model.feedItems.some((item) => item.kind === "agent" && item.phase === "pending")).toBe(false);
+		await act(async () => result.current.actions.send());
+		expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledTimes(2);
+		expect(window.vetta.agentTeams.sendMessage).toHaveBeenLastCalledWith(
+			baseSession.id,
+			expect.objectContaining({ text: "edited while sending" }),
+		);
 	});
 
 	it("commits the new Team shell before starting runtime-backed session creation", async () => {

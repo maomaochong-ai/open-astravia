@@ -9,7 +9,7 @@ import type {
 	ConversationParticipantViewModel,
 } from "@shared/conversation";
 import { reduceConversationMessageEvent } from "@shared/conversation";
-import type { ChatConversationItem, ContextUsageData } from "@shared/store/atoms";
+import type { ChatConversationItem, ChatToolCallPresentationViewModel, ContextUsageData } from "@shared/store/atoms";
 import type { ActivityWorkspace } from "@shared/workspace/activity-workspace";
 import type { AgentTeamDocument, TeamDefinition } from "@vetta/agent-team";
 import type { HistoryEntry, PromptAttachmentRef, SessionExecutionMode } from "@vetta/runtime-core";
@@ -41,6 +41,7 @@ export interface TeamChatViewModel {
 	readonly members: readonly TeamMemberViewModel[];
 	readonly leaderMemberId?: string;
 	readonly feedItems: readonly ChatConversationItem[];
+	readonly pendingLabel?: string;
 	readonly error?: string;
 	readonly editorEnabled: boolean;
 	readonly canSend: boolean;
@@ -357,17 +358,45 @@ export function projectTeamConversationTimeline({
 	const coordinationDisplayItems = [...coordinationUserItems, ...coordinationAgentItems].sort(
 		(left, right) => itemTimestamp(left) - itemTimestamp(right),
 	);
+	const consumedPublicRenderKeys = new Set<string>();
 	const stabilizedMemberItems = projectedMemberItems.map((item) => {
 		if (item.kind !== "agent") return item;
 		const publicMatch = coordinationAgentItems.find(
-			(candidate) => candidate.authorId === item.authorId && publicAgentText(candidate) === publicAgentText(item),
+			(candidate) =>
+				candidate.authorId === item.authorId &&
+				publicAgentText(candidate) === publicAgentText(item) &&
+				!consumedPublicRenderKeys.has(candidate.renderKey ?? candidate.entryId ?? candidate.id),
 		);
-		return publicMatch ? { ...item, renderKey: publicMatch.renderKey } : item;
+		if (!publicMatch) return item;
+		const publicRenderKey = publicMatch.renderKey ?? publicMatch.entryId ?? publicMatch.id;
+		consumedPublicRenderKeys.add(publicRenderKey);
+		return { ...item, renderKey: publicRenderKey };
 	});
 	const memberAgentItems = stabilizedMemberItems.filter((item) => item.kind === "agent");
 	const leaderMemberId = session?.leaderMemberId;
+	const activities = memberId ? [] : (snapshot?.activities ?? []);
+	const leaderDelegations = activities.filter(
+		(activity) => activity.sourceMemberId === leaderMemberId && activity.targetMemberId !== leaderMemberId,
+	);
+	const leaderDelegatedRenderKeys = new Set(
+		coordinationAgentItems
+			.filter((item) => leaderDelegations.some((activity) => matchesActivityReply(activity, item)))
+			.map((item) => item.renderKey ?? item.entryId ?? item.id),
+	);
 	const leaderMemberItems = memberAgentItems.filter((item) => item.authorId === leaderMemberId);
 	const leaderCoordinationItems = coordinationAgentItems.filter((item) => item.authorId === leaderMemberId);
+	const directMemberItems = memberAgentItems.filter(
+		(item) =>
+			item.authorId !== leaderMemberId &&
+			!leaderDelegatedRenderKeys.has(item.renderKey ?? item.entryId ?? item.id) &&
+			!leaderDelegations.some((activity) => matchesActivityReply(activity, item)),
+	);
+	const directCoordinationItems = coordinationAgentItems.filter(
+		(item) =>
+			item.authorId !== leaderMemberId &&
+			!leaderDelegations.some((activity) => matchesActivityReply(activity, item)),
+	);
+	const directResponseItems = mergePreferredAgentEvidence(directCoordinationItems, directMemberItems);
 	const projectedItems =
 		// The coordination Conversation is the durable public Team timeline. Member
 		// histories are allowed to lag behind it while the Runtime flushes its last
@@ -381,19 +410,47 @@ export function projectTeamConversationTimeline({
 					...(leaderCoordinationItems.length > leaderMemberItems.length
 						? leaderCoordinationItems
 						: leaderMemberItems),
+					...directResponseItems,
 				]
 			: coordinationUserItems.length > 0
 				? stabilizedMemberItems.filter((item) => item.kind !== "user")
 				: stabilizedMemberItems;
+	const linkedPresentations = new Map<string, ChatToolCallPresentationViewModel>();
+	// Only suppress the legacy top-level activity card once the originating leader
+	// tool is present in the current snapshot/stream. During the short window where
+	// activities can arrive before the leader message, keep the legacy projection so
+	// the member reply is not temporarily lost.
+	const visibleLeaderToolCallIds = new Set(
+		[...projectedItems, ...Object.values(streams).map((turn) => turn.message)]
+			.filter(
+				(item): item is Extract<ChatConversationItem, { kind: "agent" }> =>
+					item.kind === "agent" && item.authorId === leaderMemberId,
+			)
+			.flatMap((item) =>
+				item.blocks
+					.filter((block): block is Extract<typeof block, { type: "tool_call" }> => block.type === "tool_call")
+					.map((block) => block.toolCallId),
+			),
+	);
+	const decorateLeaderMessage = (item: ChatConversationItem): ChatConversationItem => {
+		if (item.kind !== "agent" || item.authorId !== leaderMemberId || linkedPresentations.size === 0) return item;
+		const presentations = item.blocks
+			.filter((block): block is Extract<typeof block, { type: "tool_call" }> => block.type === "tool_call")
+			.map((block) => linkedPresentations.get(block.toolCallId))
+			.filter((presentation): presentation is ChatToolCallPresentationViewModel => presentation !== undefined);
+		return presentations.length > 0 ? { ...item, toolCallPresentations: presentations } : item;
+	};
 	const projectedIds = new Set(projectedItems.map((item) => item.id));
 	const items = dedupeTeamUserItems([
 		...projectedItems,
 		...coordinationDisplayItems.filter(
-			(item) => !projectedIds.has(item.id) && (memberConversations.length === 0 || item.kind === "user"),
+			(item) =>
+				!projectedIds.has(item.id) &&
+				(item.kind === "user" || (memberId !== undefined && memberConversations.length === 0)),
 		),
 	]);
 	const teamMemberSummaries = new Map<string, ChatConversationItem>();
-	for (const activity of memberId ? [] : (snapshot?.activities ?? [])) {
+	for (const activity of activities) {
 		const source =
 			memberMap.get(activity.sourceMemberId)?.name ??
 			session?.memberHandles[activity.sourceMemberId] ??
@@ -402,109 +459,68 @@ export function projectTeamConversationTimeline({
 			memberMap.get(activity.targetMemberId)?.name ??
 			session?.memberHandles[activity.targetMemberId] ??
 			labels.unknownMember;
-		items.push({
-			id: activity.id,
-			renderKey: `team:activity:${activity.id}`,
-			kind: "event",
-			timestamp: activity.timestamp,
-			event: {
-				kind: "delegation",
-				requestId: activity.requestId,
-				label: labels.delegation(source, target),
-				timestamp: activity.timestamp,
-			},
-		});
 		const targetMember = memberMap.get(activity.targetMemberId);
-		if (targetMember && targetMember.id !== leaderMemberId) {
-			const sourceTurnId = activity.sourceTurnId;
-			const matchesActivity = (item: ConversationAgentMessageViewModel) =>
-				item.authorId === targetMember.id &&
-				(item.turnId === activity.requestId ||
-					(sourceTurnId !== undefined && item.turnId === sourceTurnId) ||
-					item.id === activity.requestId ||
-					item.parentId === activity.requestId);
+		if (activity.sourceMemberId === leaderMemberId && targetMember && targetMember.id !== leaderMemberId) {
+			const linkedToVisibleLeaderTool =
+				activity.originToolCallId !== undefined && visibleLeaderToolCallIds.has(activity.originToolCallId);
 			const targetMessage = [...coordinationAgentItems, ...memberAgentItems].find(
-				(item): item is ConversationAgentMessageViewModel => item.kind === "agent" && matchesActivity(item),
+				(item): item is ConversationAgentMessageViewModel =>
+					item.kind === "agent" && matchesActivityReply(activity, item),
 			);
 			const streamMessage = Object.values(streams)
 				.map((turn) => turn.message)
-				.find(matchesActivity);
+				.find((item) => matchesActivityReply(activity, item));
 			const sourceMessage = streamMessage ?? targetMessage;
-			const summaryKey = `${activity.requestId}:${targetMember.id}`;
-			teamMemberSummaries.set(
-				summaryKey,
-				buildTeamMemberReplySummary({
-					member: targetMember,
+			const summary = buildTeamMemberReplySummary({
+				member: targetMember,
+				requestId: activity.requestId,
+				// A summary card occupies the activity's original timeline slot for its
+				// whole lifecycle. Using the eventual reply timestamp here would reorder
+				// cards whenever members complete out of order and make the viewport jump.
+				timestamp: activity.timestamp,
+				activityState:
+					activity.state === "failed"
+						? "failed"
+						: activity.state === "cancelled"
+							? "cancelled"
+							: activity.state === "completed"
+								? "completed"
+								: activity.state === "waiting"
+									? "waiting"
+									: sourceMessage
+										? "streaming"
+										: "pending",
+				message: sourceMessage,
+			});
+			if (summary.kind === "event" && summary.event.kind === "team-member-summary") {
+				if (linkedToVisibleLeaderTool && activity.originToolCallId) {
+					const existing = linkedPresentations.get(activity.originToolCallId);
+					linkedPresentations.set(activity.originToolCallId, {
+						toolCallId: activity.originToolCallId,
+						activities: [...(existing?.activities ?? []), summary.event],
+					});
+				} else {
+					teamMemberSummaries.set(`${activity.requestId}:${targetMember.id}`, summary);
+				}
+			}
+		}
+		if (!activity.originToolCallId || !visibleLeaderToolCallIds.has(activity.originToolCallId)) {
+			items.push({
+				id: activity.id,
+				renderKey: `team:activity:${activity.id}`,
+				kind: "event",
+				timestamp: activity.timestamp,
+				event: {
+					kind: "delegation",
 					requestId: activity.requestId,
-					// A summary card occupies the activity's original timeline slot for its
-					// whole lifecycle. Using the eventual reply timestamp here reordered the
-					// fixed-height cards whenever members completed out of order, which made
-					// the message viewport visibly jump even though the DOM keys were stable.
+					label: labels.delegation(source, target),
 					timestamp: activity.timestamp,
-					activityState:
-						activity.state === "failed"
-							? "failed"
-							: activity.state === "cancelled"
-								? "cancelled"
-								: activity.state === "completed"
-									? "completed"
-									: activity.state === "waiting"
-										? "waiting"
-										: sourceMessage
-											? "streaming"
-											: "pending",
-					message: sourceMessage,
-				}),
-			);
+				},
+			});
 		}
 	}
-	if (!memberId) {
-		for (const turn of Object.values(streams)) {
-			if (turn.message.phase !== "streaming" || turn.message.authorId === leaderMemberId) continue;
-			const targetMember = memberMap.get(turn.message.authorId);
-			if (!targetMember) continue;
-			const summaryKey = `${turn.message.turnId}:${targetMember.id}`;
-			const existing = teamMemberSummaries.get(summaryKey);
-			if (existing?.kind === "event" && existing.event.kind === "team-member-summary" && existing.event.current)
-				continue;
-			teamMemberSummaries.set(
-				summaryKey,
-				buildTeamMemberReplySummary({
-					member: targetMember,
-					requestId: turn.message.turnId,
-					timestamp: turn.message.timestamp ?? turn.message.startedAt ?? 0,
-					activityState: "streaming",
-					message: turn.message,
-				}),
-			);
-		}
-	}
-	if (!memberId) {
-		const activityMemberIds = new Set((snapshot?.activities ?? []).map((activity) => activity.targetMemberId));
-		for (const item of memberAgentItems) {
-			if (item.authorId === leaderMemberId || activityMemberIds.has(item.authorId)) continue;
-			const targetMember = memberMap.get(item.authorId);
-			if (!targetMember) continue;
-			const summaryKey = `${item.turnId}:${targetMember.id}`;
-			if (teamMemberSummaries.has(summaryKey)) continue;
-			teamMemberSummaries.set(
-				summaryKey,
-				buildTeamMemberReplySummary({
-					member: targetMember,
-					requestId: item.turnId,
-					timestamp: item.timestamp ?? 0,
-					activityState:
-						item.phase === "failed"
-							? "failed"
-							: item.phase === "aborted"
-								? "cancelled"
-								: item.phase === "completed"
-									? "completed"
-									: "streaming",
-					message: item,
-				}),
-			);
-		}
+	for (let index = 0; index < items.length; index++) {
+		items[index] = decorateLeaderMessage(items[index] as ChatConversationItem);
 	}
 	items.push(...teamMemberSummaries.values());
 	items.sort((left, right) => itemTimestamp(left) - itemTimestamp(right));
@@ -516,6 +532,7 @@ export function projectTeamConversationTimeline({
 	if (pending && !userCommitted) {
 		items.push({
 			id: `user:${pending.requestId}`,
+			renderKey: teamUserTurnRenderKey(pending.requestId),
 			turnId: pending.requestId,
 			authorId: "local-user",
 			kind: "user",
@@ -527,14 +544,19 @@ export function projectTeamConversationTimeline({
 		});
 	}
 
-	const persistedAgentItems = projectedItems.filter((item) => item.kind === "agent");
+	const persistedAgentItems = items.filter((item) => item.kind === "agent");
 	const persistedResults = new Set(persistedAgentItems.map((item) => item.id));
 	for (const turn of Object.values(streams).sort(
 		(left, right) => (left.message.startedAt ?? 0) - (right.message.startedAt ?? 0),
 	)) {
 		if (turn.message.phase !== "streaming") continue;
 		if (memberId && turn.message.authorId !== memberId) continue;
-		if (!memberId && turn.message.authorId !== leaderMemberId) continue;
+		if (
+			!memberId &&
+			turn.message.authorId !== leaderMemberId &&
+			leaderDelegations.some((activity) => matchesActivityReply(activity, turn.message))
+		)
+			continue;
 		if (
 			persistedResults.has(turn.message.id) ||
 			persistedAgentItems.some(
@@ -543,17 +565,35 @@ export function projectTeamConversationTimeline({
 			)
 		)
 			continue;
-		items.push({
-			...turn.message,
-			renderKey: `team:stream:${turn.message.authorId}:${turn.message.id}`,
-		});
+		items.push(
+			decorateLeaderMessage({
+				...turn.message,
+				renderKey: teamAgentTurnRenderKey(turn.message.authorId, turn.message.turnId),
+			}),
+		);
 	}
-	if (pending && Object.keys(streams).length === 0) {
+	const waitingAuthorIds = pending
+		? memberId
+			? [memberId]
+			: pending.targetMemberIds?.length
+				? [...new Set(pending.targetMemberIds)]
+				: [session?.leaderMemberId ?? pending.leaderMemberId ?? "leader"]
+		: [];
+	for (const waitingAuthorId of waitingAuthorIds) {
+		if (!pending) break;
+		const waitingRenderKey = teamAgentTurnRenderKey(waitingAuthorId, pending.requestId);
+		const responseAlreadyVisible = items.some(
+			(item) => item.kind === "agent" && (item.renderKey ?? item.entryId ?? item.id) === waitingRenderKey,
+		);
+		const responseIsStreaming = Object.values(streams).some(
+			(turn) => turn.message.authorId === waitingAuthorId && turn.message.phase === "streaming",
+		);
+		if (responseAlreadyVisible || responseIsStreaming) continue;
 		items.push({
-			id: `waiting:${pending.requestId}:${memberId ?? session?.leaderMemberId ?? pending.leaderMemberId ?? "leader"}`,
-			renderKey: `team:waiting:${pending.requestId}:${memberId ?? session?.leaderMemberId ?? pending.leaderMemberId ?? "leader"}`,
+			id: `waiting:${pending.requestId}:${waitingAuthorId}`,
+			renderKey: waitingRenderKey,
 			turnId: pending.requestId,
-			authorId: memberId ?? session?.leaderMemberId ?? pending.leaderMemberId ?? "leader",
+			authorId: waitingAuthorId,
 			kind: "agent",
 			role: "assistant",
 			phase: "pending",
@@ -563,6 +603,31 @@ export function projectTeamConversationTimeline({
 		});
 	}
 	return items;
+}
+
+function matchesActivityReply(
+	activity: DesktopTeamSessionSnapshot["activities"][number],
+	item: ConversationAgentMessageViewModel,
+): boolean {
+	return (
+		item.authorId === activity.targetMemberId &&
+		(item.turnId === activity.requestId ||
+			(activity.sourceTurnId !== undefined && item.turnId === activity.sourceTurnId) ||
+			item.id === activity.requestId ||
+			item.parentId === activity.requestId)
+	);
+}
+
+function mergePreferredAgentEvidence(
+	publicItems: readonly ConversationAgentMessageViewModel[],
+	memberItems: readonly ConversationAgentMessageViewModel[],
+): ConversationAgentMessageViewModel[] {
+	const merged = new Map<string, ConversationAgentMessageViewModel>();
+	for (const item of publicItems) merged.set(item.renderKey ?? item.entryId ?? item.id, item);
+	// Matching member entries carry the public render key and add locally available
+	// tool evidence without changing the visible row identity.
+	for (const item of memberItems) merged.set(item.renderKey ?? item.entryId ?? item.id, item);
+	return [...merged.values()];
 }
 
 function dedupeTeamUserItems(items: readonly ChatConversationItem[]): ChatConversationItem[] {
@@ -597,6 +662,7 @@ function projectLegacySnapshotMessages(snapshot: DesktopTeamSessionSnapshot): Ch
 			return {
 				id: record.id,
 				entryId: record.id,
+				renderKey: teamUserTurnRenderKey(record.turnId),
 				turnId: record.turnId,
 				authorId: record.author.id,
 				kind: "user",
@@ -633,11 +699,20 @@ function projectLegacySnapshotMessages(snapshot: DesktopTeamSessionSnapshot): Ch
 						),
 					}
 				: {}),
-			// Keep the DOM identity of a public result stable while it transitions
-			// from the live Team stream to the persisted coordination record.
-			renderKey: `team:stream:${record.author.id}:${record.id}`,
+			// The same Team turn moves through waiting, streaming and persisted
+			// projections. Keep one DOM identity across every phase so the virtual
+			// list updates the row in place instead of visibly reloading it.
+			renderKey: teamAgentTurnRenderKey(record.author.id, record.turnId),
 		};
 	});
+}
+
+function teamUserTurnRenderKey(turnId: string): string {
+	return `team:user-turn:${turnId}`;
+}
+
+function teamAgentTurnRenderKey(authorId: string, turnId: string): string {
+	return `team:agent-turn:${authorId}:${turnId}`;
 }
 
 /**

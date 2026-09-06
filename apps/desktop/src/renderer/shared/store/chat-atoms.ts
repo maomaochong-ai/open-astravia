@@ -2,6 +2,7 @@ import type { DesktopMcpElicitationRequest } from "@preload/api";
 import type {
 	AppshotAttachment,
 	ChatErrorDetails,
+	ConversationAgentMessageViewModel,
 	ConversationTimelineItemViewModel,
 	ConversationUserMessageViewModel,
 	MentionedFile,
@@ -11,24 +12,40 @@ import type { ContextCompositionReport } from "@vetta/runtime-core";
 import { atom } from "jotai";
 import { runningSessionPathsAtom } from "./running-sessions-atoms";
 
+export type TeamMemberSummaryEventViewModel = {
+	readonly kind: "team-member-summary";
+	readonly requestId: string;
+	readonly memberId: string;
+	readonly memberName: string;
+	readonly memberAvatar?: string;
+	readonly memberBlueprintId?: string;
+	readonly state: "pending" | "streaming" | "completed" | "failed" | "waiting" | "cancelled";
+	readonly currentKind?: "thinking" | "tool" | "text" | "status";
+	readonly current?: string;
+	readonly recent: readonly string[];
+	readonly result?: string;
+	readonly timestamp: number;
+};
+
 export type ChatTimelineEventViewModel =
 	| { readonly kind: "compaction"; readonly summary: string }
 	| { readonly kind: "delegation"; readonly label: string; readonly requestId: string; readonly timestamp: number }
-	| {
-			readonly kind: "team-member-summary";
-			readonly requestId: string;
-			readonly memberId: string;
-			readonly memberName: string;
-			readonly memberAvatar?: string;
-			readonly memberBlueprintId?: string;
-			readonly state: "pending" | "streaming" | "completed" | "failed" | "waiting" | "cancelled";
-			readonly currentKind?: "thinking" | "tool" | "text" | "status";
-			readonly current?: string;
-			readonly recent: readonly string[];
-			readonly result?: string;
-			readonly timestamp: number;
-	  };
-export type ChatConversationItem = ConversationTimelineItemViewModel<ChatTimelineEventViewModel>;
+	| TeamMemberSummaryEventViewModel;
+
+/** Display-only content kept beside a specific tool row and outside process folding. */
+export interface ChatToolCallPresentationViewModel {
+	readonly toolCallId: string;
+	readonly activities: readonly TeamMemberSummaryEventViewModel[];
+}
+
+export type ChatAgentMessageViewModel = ConversationAgentMessageViewModel & {
+	readonly toolCallPresentations?: readonly ChatToolCallPresentationViewModel[];
+};
+
+type BaseChatConversationItem = ConversationTimelineItemViewModel<ChatTimelineEventViewModel>;
+export type ChatConversationItem =
+	| Exclude<BaseChatConversationItem, ConversationAgentMessageViewModel>
+	| ChatAgentMessageViewModel;
 
 export type {
 	AskUserQuestionResolution,

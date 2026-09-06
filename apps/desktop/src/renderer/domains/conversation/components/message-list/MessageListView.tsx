@@ -126,6 +126,7 @@ export function MessageListView({
 						hasAssistantAfter={index < lastNonUserIndex}
 						onAbortEdit={onAbort}
 						participant={message.kind === "agent" ? participantsById.get(message.authorId) : undefined}
+						pendingLabel={message.kind === "agent" && message.phase === "pending" ? pendingLabel : undefined}
 						userMessageActions={context.userMessageActions}
 						onTeamMemberOpen={onTeamMemberOpen}
 					/>
@@ -142,6 +143,7 @@ export function MessageListView({
 			messages,
 			modelSwitchLabels,
 			onAbort,
+			pendingLabel,
 			tailMessageId,
 			onTeamMemberOpen,
 		],

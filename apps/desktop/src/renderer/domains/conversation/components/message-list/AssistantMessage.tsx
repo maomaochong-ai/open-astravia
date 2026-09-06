@@ -1,5 +1,6 @@
 import { BotAvatar } from "@shared/components/BotAvatar";
-import type { ConversationAgentMessageViewModel, ConversationParticipantViewModel } from "@shared/conversation";
+import type { ConversationParticipantViewModel } from "@shared/conversation";
+import type { ChatAgentMessageViewModel, ChatToolCallPresentationViewModel } from "@shared/store/atoms";
 import { useThemeSurface } from "@vetta/theme-sdk/appearance";
 import { ThemeSurface } from "@vetta/theme-ui/appearance";
 import {
@@ -35,7 +36,9 @@ interface AssistantMessageProps {
 	exportMode?: boolean;
 	isStreaming: boolean;
 	isTailMessage: boolean;
-	message: ConversationAgentMessageViewModel;
+	message: ChatAgentMessageViewModel;
+	onTeamMemberOpen?: (memberId: string) => void;
+	pendingLabel?: string;
 	participant?: ConversationParticipantViewModel;
 }
 
@@ -43,6 +46,8 @@ export const AssistantMessage = memo(function AssistantMessage({
 	message,
 	isTailMessage,
 	isStreaming,
+	pendingLabel,
+	onTeamMemberOpen,
 	exportMode = false,
 	participant,
 }: AssistantMessageProps) {
@@ -107,6 +112,14 @@ export const AssistantMessage = memo(function AssistantMessage({
 	}, [t, stagedNarration]);
 
 	const hasBlocks = message.blocks.length > 0;
+	const toolCallPresentations = useMemo(
+		() => new Map(message.toolCallPresentations?.map((presentation) => [presentation.toolCallId, presentation]) ?? []),
+		[message.toolCallPresentations],
+	);
+	const presentationFor = (segment: BlockSegment): ChatToolCallPresentationViewModel | undefined =>
+		segment.type === "single" && segment.block.type === "tool_call"
+			? toolCallPresentations.get(segment.block.toolCallId)
+			: undefined;
 	const isAwaitingFirstActivity = isCurrentlyStreaming && !hasBlocks && (message.text?.length ?? 0) === 0;
 	const fold = isCurrentlyStreaming
 		? {
@@ -161,7 +174,7 @@ export const AssistantMessage = memo(function AssistantMessage({
 						{isCurrentlyStreaming ? (
 							<Message.Status className="flex">
 								<AssistantMessagePrimitive.StreamingStatus
-									label={isAwaitingFirstActivity ? labels.waiting : labels.processing}
+									label={isAwaitingFirstActivity ? (pendingLabel ?? labels.waiting) : labels.processing}
 								/>
 							</Message.Status>
 						) : null}
@@ -202,6 +215,7 @@ export const AssistantMessage = memo(function AssistantMessage({
 									<SegmentRenderer
 										key={`export-${segmentKey(segment)}`}
 										segment={segment}
+										presentation={presentationFor(segment)}
 										exportMode
 									/>
 								))}
@@ -215,6 +229,8 @@ export const AssistantMessage = memo(function AssistantMessage({
 									isStreamingTail={index === streamingTailIndex}
 									isLiveActivity={isCurrentlyStreaming && index === segments.length - 1}
 									liveThinkingId={liveThinkingId}
+									presentation={presentationFor(segment as BlockSegment)}
+									onTeamMemberOpen={onTeamMemberOpen}
 									animateIn={isCurrentlyStreaming && index === segments.length - 1}
 									exportMode={exportMode}
 								/>
@@ -224,6 +240,8 @@ export const AssistantMessage = memo(function AssistantMessage({
 									segment={segment as BlockSegment}
 									isStreamingTail={index === streamingTailIndex}
 									liveThinkingId={liveThinkingId}
+									presentation={presentationFor(segment as BlockSegment)}
+									onTeamMemberOpen={onTeamMemberOpen}
 									animateIn={isCurrentlyStreaming && index === segments.length - 1}
 									exportMode={exportMode}
 								/>

@@ -117,6 +117,8 @@
 	"removeAttachment": "Remove {{name}}",
 	"stop": "Stop generating",
     "sending": "Working…",
+	"teamLoading": "Loading team",
+	"waitingModel": "Waiting for model response",
 	"retry": "Retry",
 	"failed": "The team could not complete the request",
     "teamWorking": "Team collaboration",

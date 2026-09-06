@@ -150,7 +150,13 @@ export function useTeamChatModel(
 		setSnapshot(undefined);
 		streamsRef.current = {};
 		setStreams({});
-		setPending(undefined);
+		// StrictMode replays setup after the handoff send has acquired this state.
+		// Keep that request alive until send settles; clearing it here makes the
+		// feed empty when session creation releases the first-paint handoff.
+		if (!handoff) {
+			pendingRef.current = undefined;
+			setPending(undefined);
+		}
 		setSelectedMemberIds([]);
 		setFailedMemberIds(new Set());
 		setContextUsages({});
@@ -185,7 +191,7 @@ export function useTeamChatModel(
 				if (handoff) {
 					if (handoff.document) setDocument(handoff.document);
 					setSessions([]);
-					setStatus("ready");
+					setStatus("sending");
 					await waitForCommittedPaint();
 					if (cancelled) return;
 					void loadTeamChatBootstrap(teamId)
@@ -336,7 +342,7 @@ export function useTeamChatModel(
 			) {
 				setStatus("streaming");
 			} else if (event.type === "session-snapshot") {
-				setStatus("ready");
+				setStatus(pendingRef.current ? "sending" : "ready");
 			} else if (event.type === "conversation.agent-message-discard") {
 				if (event.reason === "failed") {
 					setError(event.error ?? t("chat.failed"));
@@ -429,6 +435,25 @@ export function useTeamChatModel(
 		[routeHandoff, team?.leaderMemberId],
 	);
 	const visiblePending = pending ?? stagedPending;
+	const fallbackPendingTargetId = session?.leaderMemberId ?? visiblePending?.leaderMemberId ?? team?.leaderMemberId;
+	const pendingTargetMemberIds =
+		visiblePending?.targetMemberIds && visiblePending.targetMemberIds.length > 0
+			? visiblePending.targetMemberIds
+			: fallbackPendingTargetId
+				? [fallbackPendingTargetId]
+				: [];
+	const pendingHasVisibleStream = visiblePending
+		? Object.values(streams).some(
+				(turn) => turn.message.turnId === visiblePending.requestId && turn.message.phase === "streaming",
+			)
+		: false;
+	const pendingTargetsReady =
+		pendingTargetMemberIds.length > 0 &&
+		pendingTargetMemberIds.every((memberId) => Boolean(memberRuntimeIds[memberId]));
+	const pendingLabel =
+		visiblePending && !pendingHasVisibleStream
+			? t(pendingTargetsReady ? "chat.waitingModel" : "chat.teamLoading")
+			: undefined;
 	const feedItems = useMemo(
 		() =>
 			projectTeamConversationTimeline({
@@ -653,8 +678,8 @@ export function useTeamChatModel(
 				updateDraft((current) => current || draftText);
 				updateAttachments((current) => mergeAttachments(current, sentAttachments));
 			} finally {
-				pendingRef.current = undefined;
-				setPending(undefined);
+				if (pendingRef.current?.requestId === requestId) pendingRef.current = undefined;
+				setPending((current) => (current?.requestId === requestId ? undefined : current));
 			}
 		},
 		[
@@ -731,6 +756,7 @@ export function useTeamChatModel(
 			members,
 			...(session?.leaderMemberId ? { leaderMemberId: session.leaderMemberId } : {}),
 			feedItems,
+			...(pendingLabel ? { pendingLabel } : {}),
 			...(error ? { error } : {}),
 			editorEnabled: Boolean(session || createNewSession || preferredSessionId) && !memberViewId,
 			canSend: Boolean(
@@ -739,9 +765,7 @@ export function useTeamChatModel(
 					(draft.trim() || attachments.length > 0) &&
 					!visiblePending,
 			),
-			workspace: session
-				? createActivityWorkspace(session.workspaceId ?? `agent-team:${teamId}`, session.cwd)
-				: null,
+			workspace: createActivityWorkspace(session?.workspaceId ?? `agent-team:${teamId}`, session?.cwd ?? null),
 			activeSessionId: session?.id ?? (routeHandoff || pending ? (preferredSessionId ?? null) : null),
 			runtimeSessionIds: session ? Object.values(session.memberRuntime).map((runtime) => runtime.sessionId) : [],
 			memberRuntimeIds,
@@ -771,6 +795,7 @@ export function useTeamChatModel(
 			attachments,
 			members,
 			feedItems,
+			pendingLabel,
 			error,
 			session,
 			pending,

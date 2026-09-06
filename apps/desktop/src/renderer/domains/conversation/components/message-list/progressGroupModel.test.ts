@@ -112,6 +112,19 @@ describe("groupBlocksForWork", () => {
 		expect(segments.map((segment) => segment.type)).toEqual(["progress_group", "single", "progress_group"]);
 	});
 
+	it("团队工具从 Work 阶段中提升，避免成员结果跟随阶段折叠", () => {
+		const delegated = tool("team_send_message");
+		const segments = groupBlocksForWork(
+			[progress({ label: "协作" }), delegated, tool("read"), text("完成")],
+			new Set(),
+			false,
+			new Set([delegated.toolCallId]),
+		);
+
+		expect(segments.map((segment) => segment.type)).toEqual(["progress_group", "single", "progress_group", "single"]);
+		expect(segments[1]).toMatchObject({ type: "single", block: delegated });
+	});
+
 	it("error 块冒泡到组外", () => {
 		counter += 1;
 		const errorBlock: ContentBlock = { type: "error", id: "e1", text: "boom", kind: "unknown" };
