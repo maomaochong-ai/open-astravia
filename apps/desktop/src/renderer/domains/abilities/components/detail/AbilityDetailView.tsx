@@ -1,10 +1,10 @@
+import { DetailDrawerEnter } from "@vetta/theme-ui/overlays";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Button } from "@vetta/ui";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { resolveAbilityDetailContent } from "../../lib/ability-presentation";
 import type { AbilitiesModel, AbilityItem } from "../../types";
-import { AbilityDetailEnter } from "./AbilityDetailEnter";
 import { AbilityDetailBlocks } from "./AbilityDetailBlocks";
 import { AbilityDetailHeader } from "./AbilityDetailHeader";
 import { AbilityMarkdownBody } from "./AbilityMarkdownBody";
@@ -119,14 +119,14 @@ export function AbilityDetailView({
 
 	const detailPage = (
 		<div className="flex w-full flex-col gap-8">
-			<AbilityDetailEnter index={0}>
+			<DetailDrawerEnter index={0}>
 				<AbilityDetailHeader
 					item={item}
 					onPrimary={handlePrimary}
 					onSecondary={handleSecondary}
 					primaryAside={primaryAside}
 				/>
-			</AbilityDetailEnter>
+			</DetailDrawerEnter>
 
 			{model.detailErrors.length > 0 ? (
 				<div className="rounded-lg bg-muted/60 px-3 py-2 text-[12px] text-muted-foreground/70">
@@ -137,39 +137,39 @@ export function AbilityDetailView({
 			<PluginAbilityDetailSlotHost item={item} onOpenPermissions={() => setPage("permissions")} />
 
 			{detail.blocks.length > 0 ? (
-				<AbilityDetailEnter index={1}>
+				<DetailDrawerEnter index={1}>
 					<AbilityDetailBlocks blocks={detail.blocks} abilityType={item.type} abilityIcon={item.icon} />
-				</AbilityDetailEnter>
+				</DetailDrawerEnter>
 			) : (
 				<>
 					{detail.showcases.length > 0 ? (
-						<AbilityDetailEnter index={1}>
+						<DetailDrawerEnter index={1}>
 							<AbilityShowcaseList showcases={detail.showcases} />
-						</AbilityDetailEnter>
+						</DetailDrawerEnter>
 					) : null}
 
-					<AbilityDetailEnter index={2}>
+					<DetailDrawerEnter index={2}>
 						{detail.content ? (
 							<AbilityMarkdownBody content={detail.content} />
 						) : (
 							<p className="text-[13px] leading-relaxed text-muted-foreground">{t("detail.noContent")}</p>
 						)}
-					</AbilityDetailEnter>
+					</DetailDrawerEnter>
 				</>
 			)}
 
 			{/* 页尾附属信息：与正文之间只用一条分隔线 */}
 			<div className="mt-1 flex flex-col gap-6 border-t border-border/50 pt-6">
-				<AbilityDetailEnter index={3}>
+				<DetailDrawerEnter index={3}>
 					{item.type === "plugin" ? <PluginAbilitySection item={item} model={model} /> : null}
 					{item.type === "mcp" ? <McpAbilitySection item={item} model={model} /> : null}
 					{item.type === "bundle" ? <BundleMembersSection item={item} /> : null}
-				</AbilityDetailEnter>
+				</DetailDrawerEnter>
 
 				{/* 元信息表固定在页尾 */}
-				<AbilityDetailEnter index={4}>
+				<DetailDrawerEnter index={4}>
 					<AbilityMetaList meta={detail.meta} item={item} model={model} />
-				</AbilityDetailEnter>
+				</DetailDrawerEnter>
 			</div>
 
 			{item.type === "bundle" ? (

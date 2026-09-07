@@ -4,6 +4,10 @@ export type {
 	ConfirmDialogViewState,
 } from "./ConfirmDialogView";
 export { ConfirmDialogView } from "./ConfirmDialogView";
+export type { DetailDrawerProps } from "./DetailDrawer";
+export { DetailDrawer } from "./DetailDrawer";
+export { DetailDrawerEnter } from "./DetailDrawerEnter";
+export { shouldCloseDetailDrawer } from "./detail-drawer-guard";
 export type { KnowledgeDropOverlayViewProps } from "./KnowledgeDropOverlayView";
 export { KnowledgeDropOverlayView } from "./KnowledgeDropOverlayView";
 export type {

@@ -8,17 +8,17 @@ const ENTER_DURATION = 0.36;
 const ENTER_STAGGER = 0.05;
 
 /**
- * 详情页块级入场：按 index 递增 delay，尊重 prefers-reduced-motion。
+ * 详情抽屉里的块级入场：按 index 递增 delay，尊重 prefers-reduced-motion。
  * `empty:hidden` 让子区块返回 null 时不占据父级 gap。
  */
-export function AbilityDetailEnter({
+export function DetailDrawerEnter({
 	index = 0,
 	className,
 	children,
 }: {
-	index?: number;
-	className?: string;
-	children: ReactNode;
+	readonly index?: number;
+	readonly className?: string;
+	readonly children: ReactNode;
 }): JSX.Element {
 	const reduceMotion = useReducedMotion();
 
