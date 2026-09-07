@@ -137,7 +137,8 @@ describe("TeamComposerConnector", () => {
 		expect(inputModel.routing?.participants[1]?.badgeLabel).toBe("Builder");
 		expect(inputModel.routing?.participants[2]?.badgeLabel).toBe("Member");
 		expect(inputModel.routing?.participants[0]?.statusLabel).toBeUndefined();
-		expect(inputModel.routing?.showStatusSummary).toBe(false);
+		expect(inputModel.routing?.labels.trigger).toBeTypeOf("string");
+		expect(inputModel.routing?.labels.selected(2)).toBeTypeOf("string");
 		expect(inputModel.leadingTools[0]?.kind).toBe("execution-mode");
 		expect(inputModel.trailingTools[0]?.kind).toBe("context-usage");
 

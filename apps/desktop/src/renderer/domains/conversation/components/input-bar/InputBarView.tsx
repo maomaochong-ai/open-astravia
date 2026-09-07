@@ -20,7 +20,7 @@ import { InputBarDrawer } from "./InputBarDrawer";
 import { InputBarFooter } from "./InputBarFooter";
 import { InputBarSpeechStatus } from "./InputBarSpeechStatus";
 import { InputBarTodoStatus } from "./InputBarTodoStatus";
-import { InputBarRouting } from "./InputBarRouting";
+import { InputBarMention } from "./InputBarMention";
 import {
 	InputBarActiveActions,
 	InputBarAttachmentActions,
@@ -141,7 +141,6 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 						>
 							<ThemedInputBarBackground />
 							<MessageInput.Content className={classNames?.cardContent}>
-								{model.routing ? <InputBarRouting model={model.routing} /> : null}
 								{commands ? <PerfSendProfiler id="ib:CommandPanel">
 									<CommandPanel
 										open={commands.slashOpen}
@@ -216,6 +215,13 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 												title={model.labels.toolbar.skills}
 												onSelect={commands.onOpen}
 											/> : null}
+											{model.routing ? (
+												<InputBarMention
+													model={model.routing}
+													disabled={!model.hasSession}
+													visible={!slashOpen}
+												/>
+											) : null}
 											{commands ? <InputBarToolbarDivider /> : null}
 											{/* 两组控件保持挂载、只切 display，避免展开动画首帧重建复杂 selector。 */}
 											<InputBarAttachmentActions

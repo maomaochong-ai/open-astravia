@@ -188,9 +188,18 @@ export interface InputBarModel {
 		readonly onValueChange?: (value: string) => void;
 		readonly persistenceId?: string | null;
 	};
+	/** Team @ 指定成员：工具栏里的 @ 入口 + 选择面板，未选中时由负责人兜底。 */
 	routing?: {
-		/** Whether to render the inline aggregate status beside the member buttons. */
-		readonly showStatusSummary?: boolean;
+		readonly labels: {
+			/** 未选中任何成员时的 @ 图标提示。 */
+			readonly trigger: string;
+			readonly title: string;
+			readonly hint: string;
+			readonly empty: string;
+			readonly clear: string;
+			/** 已选中时的胶囊提示，如「已指定 2 位成员」。 */
+			readonly selected: (count: number) => string;
+		};
 		readonly participants: readonly {
 			readonly id: string;
 			readonly name: string;

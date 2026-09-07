@@ -218,7 +218,14 @@ export function TeamComposerConnector({
 	const routing = useMemo<InputBarModel["routing"]>(() => {
 		const defaultRole = model.labels.memberRoleFallback;
 		return {
-			showStatusSummary: false,
+			labels: {
+				trigger: t("inputBar.mention.trigger"),
+				title: t("inputBar.mention.title"),
+				hint: t("inputBar.mention.hint"),
+				empty: t("inputBar.mention.empty"),
+				clear: t("inputBar.mention.clear"),
+				selected: (count: number) => t("inputBar.mention.selected", { count }),
+			},
 			participants: model.members.map((member) => {
 				const isLeader = member.id === model.leaderMemberId;
 				const roleLabel = isLeader
@@ -236,7 +243,7 @@ export function TeamComposerConnector({
 				};
 			}),
 		};
-	}, [actions, model.labels, model.members]);
+	}, [actions, model.labels, model.leaderMemberId, model.members, t]);
 
 	const inputModel: InputBarModel = {
 		dropZone: {
