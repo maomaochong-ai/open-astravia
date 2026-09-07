@@ -3,6 +3,7 @@ import type {
 	AgentExperimentalSettingsUpdate,
 	AiChatInput,
 	AiChatResult,
+	AiCompleteEvent,
 	AiCompleteInput,
 	AiCompleteResult,
 	AiModelListResult,
@@ -462,6 +463,15 @@ export interface DesktopPluginCapabilityImApi {
 export interface DesktopPluginCapabilityAiApi {
 	listModels(sessionId: string): Promise<AiModelListResult>;
 	complete(sessionId: string, input: AiCompleteInput): Promise<AiCompleteResult>;
+	stream(sessionId: string, requestId: string, input: AiCompleteInput): Promise<AiCompleteResult>;
+	cancelStream(sessionId: string, requestId: string): Promise<void>;
+	onStreamEvent(
+		listener: (payload: {
+			readonly sessionId: string;
+			readonly requestId: string;
+			readonly event: AiCompleteEvent;
+		}) => void,
+	): () => void;
 	chat(sessionId: string, input: AiChatInput): Promise<AiChatResult>;
 }
 

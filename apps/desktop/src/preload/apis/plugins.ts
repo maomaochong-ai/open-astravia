@@ -12,6 +12,8 @@ import { onIpcEvent } from "./helper.js";
 
 type SecretsChangedListener = Parameters<DesktopApi["plugins"]["onSecretsChanged"]>[0];
 type SecretsChangedPayload = Parameters<SecretsChangedListener>[0];
+type AiStreamListener = Parameters<DesktopApi["plugins"]["internalCapabilities"]["ai"]["onStreamEvent"]>[0];
+type AiStreamPayload = Parameters<AiStreamListener>[0];
 
 export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<DesktopApi, "plugins"> {
 	const secretsChangedSubscriptions = new Set<{ readonly listener: SecretsChangedListener }>();
@@ -31,6 +33,26 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 			secretsChangedSubscriptions.delete(subscription);
 			if (secretsChangedSubscriptions.size === 0) {
 				ipc.removeListener(PLUGIN_EXECUTION_CHANNELS.SECRETS_CHANGED, handleSecretsChanged);
+			}
+		};
+	};
+	const aiStreamSubscriptions = new Set<{ readonly listener: AiStreamListener }>();
+	const handleAiStreamEvent = (_event: IpcRendererEvent, payload: AiStreamPayload): void => {
+		for (const subscription of [...aiStreamSubscriptions]) subscription.listener(payload);
+	};
+	const onAiStreamEvent = (listener: AiStreamListener): (() => void) => {
+		const subscription = { listener };
+		aiStreamSubscriptions.add(subscription);
+		if (aiStreamSubscriptions.size === 1) {
+			ipc.on(PLUGIN_CAPABILITY_CHANNELS.AI_STREAM_EVENT, handleAiStreamEvent);
+		}
+		let subscribed = true;
+		return () => {
+			if (!subscribed) return;
+			subscribed = false;
+			aiStreamSubscriptions.delete(subscription);
+			if (aiStreamSubscriptions.size === 0) {
+				ipc.removeListener(PLUGIN_CAPABILITY_CHANNELS.AI_STREAM_EVENT, handleAiStreamEvent);
 			}
 		};
 	};
@@ -69,6 +91,11 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 				ai: {
 					listModels: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.AI_MODEL_LIST, sessionId),
 					complete: (sessionId, input) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.AI_COMPLETE, sessionId, input),
+					stream: (sessionId, requestId, input) =>
+						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.AI_STREAM, sessionId, requestId, input),
+					cancelStream: (sessionId, requestId) =>
+						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.AI_STREAM_CANCEL, sessionId, requestId),
+					onStreamEvent: onAiStreamEvent,
 					chat: (sessionId, input) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.AI_CHAT, sessionId, input),
 				},
 				agentSettings: {

@@ -7,6 +7,7 @@ import {
 	type Message,
 	type Model,
 	type SimpleStreamOptions,
+	streamSimple,
 	type Tool,
 	type ToolCall,
 	type Usage,
@@ -15,6 +16,7 @@ import { bindCapability, type CapabilityRegistry } from "@vetta/capability-runti
 import {
 	type AiChatInput,
 	type AiChatMessage,
+	type AiCompleteEvent,
 	type AiCompleteInput,
 	CAPABILITY_ERROR_CODES,
 	CapabilityError,
@@ -141,9 +143,17 @@ async function runCompletion(
 	model: Model<Api>,
 	context: Parameters<typeof completeSimple>[1],
 	options: SimpleStreamOptions,
+	emit?: (event: AiCompleteEvent) => void,
 ): Promise<AssistantMessage> {
 	try {
-		return await completeSimple(model, context, options);
+		if (emit === undefined) return await completeSimple(model, context, options);
+		const stream = streamSimple(model, context, options);
+		for await (const event of stream) {
+			if (event.type === "text_delta" && event.delta.length > 0) {
+				emit({ type: "text_delta", delta: event.delta });
+			}
+		}
+		return await stream.result();
 	} catch (error) {
 		if (!isAIError(error)) throw error;
 		const details = getAIErrorDetails(error);
@@ -226,6 +236,7 @@ export function registerDesktopAiProviders(registry: CapabilityRegistry): Dispos
 						messages: [{ role: "user", content: input.prompt, timestamp: Date.now() }],
 					},
 					toSimpleStreamOptions(input, model, apiKey, context.signal),
+					context.emit,
 				);
 				assertNotAborted(context.signal);
 				assertSuccessfulStop(response, ["stop", "length"]);

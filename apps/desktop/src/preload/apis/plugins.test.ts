@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createPluginsApi } from "./plugins";
 
 const SECRETS_CHANGED_CHANNEL = "vetta:plugins:secrets:changed";
+const AI_STREAM_EVENT_CHANNEL = "vetta:plugins:capabilities:ai:stream:event";
 type IpcListener = Parameters<IpcRenderer["on"]>[1];
 const webUtils = { getPathForFile: vi.fn() } as unknown as WebUtils;
 
@@ -88,6 +89,41 @@ describe("createPluginsApi settings events", () => {
 		unsubscribeSecond();
 		expect(harness.listenerCount(SECRETS_CHANGED_CHANNEL)).toBe(0);
 		expect(harness.removeListener).toHaveBeenCalledTimes(1);
+	});
+
+	it("bridges AI stream calls and multiplexes delta events", async () => {
+		const harness = createIpcHarness();
+		const ai = createPluginsApi(harness.ipc, webUtils).plugins.internalCapabilities.ai;
+		const first = vi.fn();
+		const second = vi.fn();
+		const unsubscribeFirst = ai.onStreamEvent(first);
+		const unsubscribeSecond = ai.onStreamEvent(second);
+		const payload = {
+			sessionId: "session",
+			requestId: "request",
+			event: { type: "text_delta" as const, delta: "hello" },
+		};
+
+		await ai.stream("session", "request", { prompt: "question" });
+		await ai.cancelStream("session", "request");
+		harness.emit(AI_STREAM_EVENT_CHANNEL, payload);
+
+		expect(harness.invoke).toHaveBeenNthCalledWith(1, "vetta:plugins:capabilities:ai:stream", "session", "request", {
+			prompt: "question",
+		});
+		expect(harness.invoke).toHaveBeenNthCalledWith(
+			2,
+			"vetta:plugins:capabilities:ai:stream:cancel",
+			"session",
+			"request",
+		);
+		expect(harness.listenerCount(AI_STREAM_EVENT_CHANNEL)).toBe(1);
+		expect(first).toHaveBeenCalledWith(payload);
+		expect(second).toHaveBeenCalledWith(payload);
+
+		unsubscribeFirst();
+		unsubscribeSecond();
+		expect(harness.listenerCount(AI_STREAM_EVENT_CHANNEL)).toBe(0);
 	});
 });
 

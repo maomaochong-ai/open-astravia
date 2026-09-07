@@ -155,6 +155,8 @@ export type {
 	PluginAiChatUserMessage,
 	PluginAiCompleteRequest,
 	PluginAiCompleteResult,
+	PluginAiStreamOptions,
+	PluginAiTextDeltaEvent,
 	PluginAiModel,
 	PluginAiModelListResult,
 	PluginAiToolCall,

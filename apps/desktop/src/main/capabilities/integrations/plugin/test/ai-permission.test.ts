@@ -17,6 +17,18 @@ describe("PluginCapabilityAdapter ai permission", () => {
 			{ capabilityId: DOMAIN_AI_CAPABILITIES.CHAT.id },
 		]);
 		await expect(adapter.completeAi(sessionId, { prompt: "hello" })).resolves.toHaveProperty("stopReason", "stop");
+		const events: unknown[] = [];
+		await expect(
+			adapter.streamAi(
+				sessionId,
+				{ prompt: "hello" },
+				{
+					signal: new AbortController().signal,
+					onEvent: (event) => events.push(event),
+				},
+			),
+		).resolves.toHaveProperty("text", "ok");
+		expect(events).toEqual([{ type: "text_delta", delta: "ok" }]);
 	});
 
 	it("validates chat transcripts at the adapter boundary and forwards cleaned input", async () => {
