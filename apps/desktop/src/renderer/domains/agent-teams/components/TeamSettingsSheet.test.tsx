@@ -140,6 +140,14 @@ describe("TeamSettingsSheet", () => {
 		const user = userEvent.setup();
 
 		await user.click(screen.getByRole("button", { name: "settings.editAssignment:alpha" }));
+		// 编辑区必须长在成员行内。抽屉底层是 modal 的 Radix Content，会 trap focus 并
+		// hideOthers；portal 到 body 的嵌套弹窗按钮点得动，但输入框拿不住焦点。
+		expect(
+			screen
+				.getByRole("button", { name: "settings.editAssignment:alpha" })
+				.closest("li")
+				?.contains(screen.getByLabelText("settings.assignmentResponsibility")),
+		).toBe(true);
 		await user.type(screen.getByLabelText("settings.assignmentResponsibility"), "Owns the release checklist");
 		await user.type(screen.getByLabelText("settings.assignmentInstructions"), "Escalate schema changes.");
 		await user.click(screen.getByRole("button", { name: "settings.assignmentApply" }));

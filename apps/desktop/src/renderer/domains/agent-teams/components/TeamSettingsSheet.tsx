@@ -58,8 +58,8 @@ export function TeamSettingsSheet({
 	const [draft, setDraft] = useState<TeamAssemblyDraft>(() => assemblyDraftFromTeam(team));
 	const [addOpen, setAddOpen] = useState(false);
 	const [addBindingKind, setAddBindingKind] = useState<"reference" | "copy">("reference");
-	/** 正在编辑任务书的成员（Agent 身份）；任务书随团队一起保存，不单独落盘。 */
-	const [assignmentAgent, setAssignmentAgent] = useState<AgentProfile>();
+	/** 正在展开任务书编辑区的成员（Agent 身份）；任务书随团队一起保存，不单独落盘。 */
+	const [assignmentAgentId, setAssignmentAgentId] = useState<string>();
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string>();
 
@@ -208,72 +208,88 @@ export function TeamSettingsSheet({
 									return (
 										<li
 											key={member.id}
-											className="flex items-center gap-3 rounded-xl border border-border/50 bg-card/40 p-2.5 transition-colors hover:border-primary/40 hover:bg-card/60"
+											className="flex flex-col gap-2.5 rounded-xl border border-border/50 bg-card/40 p-2.5 transition-colors hover:border-primary/40 hover:bg-card/60"
 										>
-											<AgentAvatarView
-												name={member.name}
-												avatar={agentAvatarUrl(member)}
-												background={member.avatarBackground}
-												blueprintId={member.blueprintId}
-												seed={member.id}
-												size="xl"
-											/>
-											<button
-												type="button"
-												onClick={() => onOpenMember(member.id)}
-												aria-label={member.name}
-												className="min-w-0 flex-1 text-left outline-none"
-											>
-												<span className="flex items-center gap-1.5">
-													<span className="truncate text-[13px] font-medium text-foreground">{member.name}</span>
-													{isLeader && (
-														<span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-400">
-															<span className="icon-[solar--crown-star-bold] h-3 w-3" aria-hidden="true" />
-															{t("settings.leader")}
-														</span>
-													)}
-												</span>
-												<span className="mt-0.5 block truncate text-[11.5px] text-muted-foreground/80">
-													{assemblyAssignment(draft, member.id)?.responsibility ?? member.description}
-												</span>
-											</button>
-											<Button
-												variant="ghost"
-												size="icon-sm"
-												className={cn(
-													"shrink-0",
-													assemblyAssignment(draft, member.id)
-														? "text-primary"
-														: "text-muted-foreground/60 hover:text-primary",
-												)}
-												title={t("settings.editAssignment", { name: member.name })}
-												aria-label={t("settings.editAssignment", { name: member.name })}
-												onClick={() => setAssignmentAgent(member)}
-											>
-												<span className="icon-[solar--clipboard-text-linear] h-3.5 w-3.5" aria-hidden="true" />
-											</Button>
-											{!isLeader && (
+											<div className="flex items-center gap-3">
+												<AgentAvatarView
+													name={member.name}
+													avatar={agentAvatarUrl(member)}
+													background={member.avatarBackground}
+													blueprintId={member.blueprintId}
+													seed={member.id}
+													size="xl"
+												/>
+												<button
+													type="button"
+													onClick={() => onOpenMember(member.id)}
+													aria-label={member.name}
+													className="min-w-0 flex-1 text-left outline-none"
+												>
+													<span className="flex items-center gap-1.5">
+														<span className="truncate text-[13px] font-medium text-foreground">{member.name}</span>
+														{isLeader && (
+															<span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-400">
+																<span className="icon-[solar--crown-star-bold] h-3 w-3" aria-hidden="true" />
+																{t("settings.leader")}
+															</span>
+														)}
+													</span>
+													<span className="mt-0.5 block truncate text-[11.5px] text-muted-foreground/80">
+														{assemblyAssignment(draft, member.id)?.responsibility ?? member.description}
+													</span>
+												</button>
 												<Button
 													variant="ghost"
 													size="icon-sm"
-													className="shrink-0 text-muted-foreground/60 hover:text-amber-400"
-													title={t("settings.makeLeader", { name: member.name })}
-													aria-label={t("settings.makeLeader", { name: member.name })}
-													onClick={() => setDraft((current) => ({ ...current, leaderId: member.id }))}
+													className={cn(
+														"shrink-0",
+														assemblyAssignment(draft, member.id)
+															? "text-primary"
+															: "text-muted-foreground/60 hover:text-primary",
+													)}
+													title={t("settings.editAssignment", { name: member.name })}
+													aria-label={t("settings.editAssignment", { name: member.name })}
+													onClick={() =>
+														setAssignmentAgentId((current) => (current === member.id ? undefined : member.id))
+													}
 												>
-													<span className="icon-[solar--crown-star-linear] h-3.5 w-3.5" aria-hidden="true" />
+													<span className="icon-[solar--clipboard-text-linear] h-3.5 w-3.5" aria-hidden="true" />
 												</Button>
+												{!isLeader && (
+													<Button
+														variant="ghost"
+														size="icon-sm"
+														className="shrink-0 text-muted-foreground/60 hover:text-amber-400"
+														title={t("settings.makeLeader", { name: member.name })}
+														aria-label={t("settings.makeLeader", { name: member.name })}
+														onClick={() => setDraft((current) => ({ ...current, leaderId: member.id }))}
+													>
+														<span className="icon-[solar--crown-star-linear] h-3.5 w-3.5" aria-hidden="true" />
+													</Button>
+												)}
+												<Button
+													variant="ghost"
+													size="icon-sm"
+													className="shrink-0 text-muted-foreground/60 hover:text-destructive"
+													title={t("teams.removeMember", { name: member.name })}
+													aria-label={t("teams.removeMember", { name: member.name })}
+													onClick={() => toggleMember(member.id)}
+												>
+													<span className="icon-[solar--trash-bin-trash-linear] h-3.5 w-3.5" aria-hidden="true" />
+												</Button>
+											</div>
+
+											{assignmentAgentId === member.id && (
+												<MemberAssignmentEditor
+													agent={member}
+													assignment={assemblyAssignment(draft, member.id)}
+													onClose={() => setAssignmentAgentId(undefined)}
+													onSave={(assignment) => {
+														setDraft((current) => setAssemblyAssignment(current, member.id, assignment));
+														setAssignmentAgentId(undefined);
+													}}
+												/>
 											)}
-											<Button
-												variant="ghost"
-												size="icon-sm"
-												className="shrink-0 text-muted-foreground/60 hover:text-destructive"
-												title={t("teams.removeMember", { name: member.name })}
-												aria-label={t("teams.removeMember", { name: member.name })}
-												onClick={() => toggleMember(member.id)}
-											>
-												<span className="icon-[solar--trash-bin-trash-linear] h-3.5 w-3.5" aria-hidden="true" />
-											</Button>
 										</li>
 									);
 								})}
@@ -282,18 +298,6 @@ export function TeamSettingsSheet({
 					</div>
 				</div>
 			</div>
-
-			{assignmentAgent && (
-				<MemberAssignmentDialog
-					agent={assignmentAgent}
-					assignment={assemblyAssignment(draft, assignmentAgent.id)}
-					onClose={() => setAssignmentAgent(undefined)}
-					onSave={(assignment) => {
-						setDraft((current) => setAssemblyAssignment(current, assignmentAgent.id, assignment));
-						setAssignmentAgent(undefined);
-					}}
-				/>
-			)}
 
 			<Dialog open={addOpen} onOpenChange={setAddOpen}>
 				<DialogContent className="max-w-lg">
@@ -348,8 +352,14 @@ export function TeamSettingsSheet({
 	);
 }
 
-/** 任务书编辑：在 Agent 本体的基调上做团队内增量，留空即回到本体。 */
-function MemberAssignmentDialog({
+/**
+ * 任务书编辑：在 Agent 本体的基调上做团队内增量，留空即回到本体。
+ *
+ * 刻意内联在抽屉里而不是再开一个 Dialog：DetailDrawer 底层是 modal 的 vaul/Radix
+ * Content，会 trap focus 并 hideOthers，portal 到 body 的嵌套弹窗里输入框拿不住焦点
+ * ——按钮点得动、字打不进去。表单长在抽屉内也与智能体档案抽屉的既有写法一致。
+ */
+function MemberAssignmentEditor({
 	agent,
 	assignment,
 	onClose,
@@ -365,18 +375,15 @@ function MemberAssignmentDialog({
 	const [instructions, setInstructions] = useState(assignment?.instructions ?? "");
 
 	return (
-		<Dialog open onOpenChange={(next: boolean) => !next && onClose()}>
-			<DialogContent className="max-w-lg">
-				<DialogHeader>
-					<DialogTitle className="text-[14px] font-semibold">
-						{t("settings.assignmentTitle", { name: agent.name })}
-					</DialogTitle>
-					<DialogDescription className="text-[12px] text-muted-foreground">
-						{t("settings.assignmentDescription")}
-					</DialogDescription>
-				</DialogHeader>
+		<div className="flex flex-col gap-3 rounded-lg border border-border/50 bg-background/40 p-3">
+			<div className="flex flex-col gap-1">
+				<h3 className="text-[12.5px] font-semibold text-foreground">
+					{t("settings.assignmentTitle", { name: agent.name })}
+				</h3>
+				<p className="text-[11px] leading-relaxed text-muted-foreground">{t("settings.assignmentDescription")}</p>
+			</div>
 
-				<label className="flex flex-col gap-1.5">
+			<label className="flex flex-col gap-1.5">
 					<span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">
 						{t("settings.assignmentResponsibility")}
 					</span>
@@ -405,16 +412,15 @@ function MemberAssignmentDialog({
 					<span className="text-[11px] text-muted-foreground/60">{t("settings.assignmentInstructionsHint")}</span>
 				</label>
 
-				<div className="flex justify-end gap-2">
-					<Button variant="outline" size="sm" onClick={onClose}>
-						<span className="text-[12px] font-medium">{t("settings.assignmentCancel")}</span>
-					</Button>
-					<Button variant="primary" size="sm" onClick={() => onSave({ responsibility, instructions })}>
-						<span className="text-[12px] font-medium">{t("settings.assignmentApply")}</span>
-					</Button>
-				</div>
-			</DialogContent>
-		</Dialog>
+			<div className="flex justify-end gap-2">
+				<Button variant="outline" size="sm" onClick={onClose}>
+					<span className="text-[12px] font-medium">{t("settings.assignmentCancel")}</span>
+				</Button>
+				<Button variant="primary" size="sm" onClick={() => onSave({ responsibility, instructions })}>
+					<span className="text-[12px] font-medium">{t("settings.assignmentApply")}</span>
+				</Button>
+			</div>
+		</div>
 	);
 }
 
