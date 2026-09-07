@@ -86,6 +86,16 @@ bun packages/plugins/plugin-cli/src/cli.ts reload plugin-id --json
 6. 用 `console error` 检查本次操作引入的错误，并按需保存 screenshot 或 snapshot。
 7. 验证失败时根据页面证据继续修改，再重复以上步骤。
 
+短操作可以直接使用 `run-code`。较长的检查逻辑不要全部塞进 Windows 命令行；Bun 启动器在超长内联参数下可能先于 Playwright 失败。把 Playwright callback 保存为临时 `.js` 文件并使用 CLI 自带的文件入口：
+
+```powershell
+bun run verify:ui:pw:dev -- run-code --filename=C:\path\to\ui-probe.js
+```
+
+临时脚本应保持短小、作用域明确，并在验证结束后删除；只操作当前验证所需的页面状态。页面导航、HMR 或抽屉重开后，旧 snapshot ref 可能失效，应重新 snapshot 后再定位。
+
+若附着日志停在 `<ws connected>` 后超时，先运行 `verify:ui:status:dev`。状态现在会报告 `devtoolsTargetCount`；存在 DevTools target 时，关闭已经失效的 DevTools 窗口后重试，保留 Vetta Desktop 主窗口。附着失败的错误也会保留 Playwright 输出尾部并给出这一诊断，不再只显示泛化的 `Unable to attach`。
+
 需要通过 Vetta Debug 创建或继续真实 Agent 会话时，统一经仓库入口调用：
 
 ```powershell
