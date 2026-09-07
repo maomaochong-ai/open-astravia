@@ -212,9 +212,21 @@ export const PluginMcpHttpServerConfigSchema = Type.Object(
 	{ additionalProperties: true },
 );
 
+/** HTTP MCP served by one of this plugin's managed local services. */
+export const PluginMcpServiceServerConfigSchema = Type.Object(
+	{
+		...PluginMcpCommonProperties,
+		type: Type.Literal("service"),
+		serviceId: PluginIdSchema,
+		path: Type.String({ pattern: "^/[^/]*" }),
+	},
+	{ additionalProperties: true },
+);
+
 export const PluginMcpServerConfigSchema = Type.Union([
 	PluginMcpStdioServerConfigSchema,
 	PluginMcpHttpServerConfigSchema,
+	PluginMcpServiceServerConfigSchema,
 ]);
 
 const PluginMcpServerMapSchema = Type.Record(

@@ -24,6 +24,9 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 - 新增 `ctx.ai.stream()`：沿用 `ai.complete` 权限与单轮请求/最终结果合同，通过 `onTextDelta` 提供经过校验的
   文本增量，并支持使用 `AbortSignal` 取消主进程中的 Provider 请求。
 
+- 插件 MCP 新增 `type: "service"`，可通过 `serviceId + path` 绑定本插件声明的受管本地服务；
+  `ctx.services` 新增受目录约束的 `readDataFile/writeDataFile`，供插件在服务停止后管理自己服务的数据文件。
+
 - 新增 `ctx.ocr` 与 OCR Provider SPI：消费者提交批量图片引用，Provider 通过受控输入 URL/上传接口适配本地或远程识别服务；宿主统一权限、取消、进度、能力协商和结果校验（ADR-0108）。
 
 - `registerWorkspaceView` 新增 `sidebar?: boolean`（缺省 `true`，既有插件行为不变）：置 `false` 的视图不占侧边栏导航位，

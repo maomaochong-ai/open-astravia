@@ -59,10 +59,19 @@
     "remote": {
       "type": "http",
       "url": "https://example.com/mcp"
+    },
+    "managed": {
+      "type": "service",
+      "serviceId": "gateway",
+      "path": "/mcp"
     }
   }
 }
 ```
+
+`type: "service"` 把 MCP 绑定到同一插件在 `providers.services` 中声明的受管本地服务。宿主只在服务
+进入 `ready` 后物化当前动态回环 URL；服务停止或重启时自动撤下并重新连接。账号、登录路由和服务响应
+语义仍由插件负责，宿主只处理所有插件都可复用的服务生命周期与 MCP 连接。
 
 `.mcp.json` 形状与用户 MCP 相同：
 

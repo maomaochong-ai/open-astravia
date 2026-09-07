@@ -1,7 +1,7 @@
 import { type ChildProcess, execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
@@ -27,6 +27,7 @@ const serviceLog = getAppLogger("plugin");
 const MAX_OUTPUT_BYTES = 64 * 1024;
 const MAX_TEMPLATE_BYTES = 1024 * 1024;
 const MAX_RESPONSE_BYTES = 16 * 1024 * 1024;
+const MAX_DATA_FILE_BYTES = 16 * 1024 * 1024;
 const DEFAULT_STARTUP_TIMEOUT_MS = 45_000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 const STOP_GRACE_MS = 3_000;
@@ -221,8 +222,25 @@ function normalizeRequest(
 	return { ...request, method, responseType: request.responseType ?? "json", timeoutMs };
 }
 
+function resolveDataFilePath(dataDirectory: string, path: string): string {
+	if (typeof path !== "string" || !path.trim() || path.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(path)) {
+		throw new Error("Service data file path must be relative");
+	}
+	const target = resolve(dataDirectory, path);
+	if (!isContained(dataDirectory, target)) throw new Error("Service data file path escapes data directory");
+	return target;
+}
+
+function decodeDataFile(data: string, encoding: "utf8" | "base64"): Buffer {
+	if (typeof data !== "string") throw new Error("Service data file contents must be a string");
+	const bytes = Buffer.from(data, encoding);
+	if (bytes.byteLength > MAX_DATA_FILE_BYTES) throw new Error("Service data file is too large");
+	return bytes;
+}
+
 export class PluginServiceProviderService {
 	private readonly records = new Map<string, ServiceRecord>();
+	private readonly statusListeners = new Set<(event: { pluginId: string; status: PluginServiceStatus }) => void>();
 
 	constructor(
 		private readonly dependencies: PluginServiceProviderDependencies = (() => {
@@ -238,6 +256,11 @@ export class PluginServiceProviderService {
 			};
 		})(),
 	) {}
+
+	onStatusChange(listener: (event: { pluginId: string; status: PluginServiceStatus }) => void): () => void {
+		this.statusListeners.add(listener);
+		return () => this.statusListeners.delete(listener);
+	}
 
 	getPlatform(): PluginServiceHostPlatform {
 		const platform = this.dependencies.installer.getPlatform();
@@ -446,6 +469,49 @@ export class PluginServiceProviderService {
 		return this.requestRecord<T>(readyRecord, input);
 	}
 
+	async readDataFile(
+		pluginId: string,
+		serviceId: string,
+		path: string,
+		encoding: "utf8" | "base64" = "utf8",
+	): Promise<string | null> {
+		const { plugin, service } = this.requireService(pluginId, serviceId);
+		if (!plugin.enabled) throw new Error(`Plugin disabled: ${pluginId}`);
+		const paths = await this.dependencies.installer.resolve(pluginId, service);
+		const target = resolveDataFilePath(paths.dataDirectory, path);
+		try {
+			const bytes = await readFile(target);
+			if (bytes.byteLength > MAX_DATA_FILE_BYTES) throw new Error("Service data file is too large");
+			return bytes.toString(encoding);
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+			throw error;
+		}
+	}
+
+	async writeDataFile(
+		pluginId: string,
+		serviceId: string,
+		path: string,
+		data: string,
+		encoding: "utf8" | "base64" = "utf8",
+	): Promise<void> {
+		const { plugin, service } = this.requireService(pluginId, serviceId);
+		if (!plugin.enabled) throw new Error(`Plugin disabled: ${pluginId}`);
+		const paths = await this.dependencies.installer.resolve(pluginId, service);
+		const target = resolveDataFilePath(paths.dataDirectory, path);
+		await mkdir(dirname(target), { recursive: true });
+		const bytes = decodeDataFile(data, encoding);
+		const temporary = `${target}.tmp-${process.pid}-${Date.now()}`;
+		await writeFile(temporary, bytes, { mode: 0o600 });
+		try {
+			await rm(target, { force: true });
+			await rename(temporary, target);
+		} finally {
+			await rm(temporary, { force: true }).catch(() => undefined);
+		}
+	}
+
 	/**
 	 * `starting` is intentionally visible before the health probe completes so
 	 * the plugin can own semantic readiness.  Requests made in that small
@@ -609,6 +675,7 @@ export class PluginServiceProviderService {
 			pluginId: record.pluginId,
 			status: record.status,
 		});
+		for (const listener of this.statusListeners) listener({ pluginId: record.pluginId, status: record.status });
 		return record.status;
 	}
 

@@ -24,6 +24,16 @@ export function createPluginServiceApi(
 			window.vetta.plugins.getServiceConnection(capabilitySessionId, assertDeclared(serviceId), credentialId),
 		request: (serviceId, request) =>
 			window.vetta.plugins.requestService(capabilitySessionId, assertDeclared(serviceId), request),
+		readDataFile: (serviceId, path, encoding) =>
+			window.vetta.plugins.readServiceDataFile(capabilitySessionId, assertDeclared(serviceId), path, encoding),
+		writeDataFile: (serviceId, path, data, encoding) =>
+			window.vetta.plugins.writeServiceDataFile(
+				capabilitySessionId,
+				assertDeclared(serviceId),
+				path,
+				data,
+				encoding,
+			),
 		reportReady: (serviceId, ready) =>
 			window.vetta.plugins.reportServiceReady(capabilitySessionId, assertDeclared(serviceId), ready),
 		onStatusChange: (listener): Disposable => {

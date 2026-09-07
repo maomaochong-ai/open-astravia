@@ -23,6 +23,18 @@ import { type PluginLifecycleDependencies, PluginLifecycleService } from "./plug
 import { refreshAgentPlugins } from "./plugin-runtime-service.js";
 import { pluginServiceProviderService } from "./plugin-service-provider-service.js";
 
+pluginAgentContributionService.setServiceMcpResolver((plugin, serviceId, path) => {
+	try {
+		return pluginServiceProviderService.connection(plugin.id, serviceId).baseUrl + path;
+	} catch {
+		return undefined;
+	}
+});
+
+pluginServiceProviderService.onStatusChange(() => {
+	refreshAgentPlugins({ reason: "plugin-service-status" });
+});
+
 const dependencies: PluginLifecycleDependencies = {
 	listPlugins,
 	installFromArchive: installPluginFromArchive,

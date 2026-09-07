@@ -390,6 +390,10 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.SERVICE_CONNECTION, sessionId, serviceId, credentialId),
 			requestService: (sessionId, serviceId, request) =>
 				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.SERVICE_REQUEST, sessionId, serviceId, request),
+			readServiceDataFile: (sessionId, serviceId, path, encoding) =>
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.SERVICE_DATA_READ, sessionId, serviceId, path, encoding),
+			writeServiceDataFile: (sessionId, serviceId, path, data, encoding) =>
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.SERVICE_DATA_WRITE, sessionId, serviceId, path, data, encoding),
 			reportServiceReady: (sessionId, serviceId, ready) =>
 				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.SERVICE_READY_REPORT, sessionId, serviceId, ready),
 			onServiceStatusChanged: (handler) => onIpcEvent(ipc, PLUGIN_EXECUTION_CHANNELS.SERVICE_STATUS, handler),

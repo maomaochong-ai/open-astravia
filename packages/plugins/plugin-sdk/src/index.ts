@@ -242,6 +242,7 @@ export type {
 	PluginServiceRequest,
 	PluginServiceResponse,
 	PluginServiceStatus,
+	PluginServiceDataEncoding,
 } from "./service-provider.js";
 export type { PluginModelDefinition, PluginModelProviderConfig, PluginModelsApi } from "./models.js";
 export type {
