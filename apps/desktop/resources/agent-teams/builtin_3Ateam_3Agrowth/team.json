@@ -1,0 +1,56 @@
+{
+	"id": "builtin:team:growth",
+	"revision": 1,
+	"name": "Growth & Content",
+	"leaderMemberId": "builtin:member:growth:master",
+	"members": [
+		{
+			"id": "builtin:member:growth:master",
+			"handle": "master",
+			"binding": {
+				"kind": "reference",
+				"agentProfileId": "builtin:agent:master"
+			},
+			"assignment": {
+				"responsibility": "Sets the campaign angle and assembles the final publishing package."
+			}
+		},
+		{
+			"id": "builtin:member:growth:researcher",
+			"handle": "researcher",
+			"binding": {
+				"kind": "reference",
+				"agentProfileId": "builtin:agent:researcher"
+			},
+			"assignment": {
+				"responsibility": "Finds the trends, audience signals, and references worth riding."
+			}
+		},
+		{
+			"id": "builtin:member:growth:executor",
+			"handle": "executor",
+			"binding": {
+				"kind": "reference",
+				"agentProfileId": "builtin:agent:executor"
+			},
+			"assignment": {
+				"responsibility": "Writes the master draft that every channel variant derives from."
+			}
+		},
+		{
+			"id": "builtin:member:growth:optimizer",
+			"handle": "optimizer",
+			"binding": {
+				"kind": "reference",
+				"agentProfileId": "builtin:agent:optimizer"
+			},
+			"assignment": {
+				"responsibility": "Adapts the master draft into each channel's voice and format."
+			}
+		}
+	],
+	"orchestrationPolicyId": "leader-delegates-v1",
+	"contextPolicyId": "public-results-v1",
+	"createdAt": 0,
+	"updatedAt": 0
+}

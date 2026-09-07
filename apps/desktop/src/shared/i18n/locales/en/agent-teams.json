@@ -100,21 +100,37 @@
     "avatarBackgroundCustom": "Custom solid colour"
   },
   "blueprints": {
-    "leader": {
-      "name": "Lead",
-      "description": "Coordinates the team and integrates final results"
+    "master": {
+      "name": "Master",
+      "description": "Owns the goal: plans, delegates, accepts or reworks, and delivers"
     },
     "researcher": {
       "name": "Researcher",
-      "description": "Gathers evidence and verifies facts"
+      "description": "Collects and verifies facts, documentation, and market signals"
     },
-    "builder": {
-      "name": "Builder",
-      "description": "Implements, changes, and verifies work"
+    "architect": {
+      "name": "Architect",
+      "description": "Designs the architecture, interface contracts, or document outline"
     },
-    "reviewer": {
-      "name": "Reviewer",
-      "description": "Checks correctness, safety, and regressions"
+    "executor": {
+      "name": "Executor",
+      "description": "Produces the core asset: code, deep drafts, or worked analysis"
+    },
+    "auditor": {
+      "name": "Auditor",
+      "description": "Red-teams for correctness, safety, edge cases, and weak claims"
+    },
+    "optimizer": {
+      "name": "Optimizer",
+      "description": "Refines performance, maintainability, and channel-specific voice"
+    },
+    "synthesizer": {
+      "name": "Synthesizer",
+      "description": "Merges multi-source results into one report or delivery bundle"
+    },
+    "translator": {
+      "name": "Translator",
+      "description": "Localizes languages and restates technical detail for business"
     }
   },
   "teams": {

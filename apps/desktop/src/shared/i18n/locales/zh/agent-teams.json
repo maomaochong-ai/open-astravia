@@ -100,21 +100,37 @@
     "avatarBackgroundCustom": "自定义纯色"
   },
   "blueprints": {
-    "leader": {
-      "name": "负责人",
-      "description": "负责协调团队并整合最终结果"
+    "master": {
+      "name": "主控",
+      "description": "统筹全局：拆解目标、分派任务、验收结果并最终交付"
     },
     "researcher": {
-      "name": "研究员",
-      "description": "收集证据并验证事实"
+      "name": "检索员",
+      "description": "搜集事实、文档、竞品动态与外部素材并核实"
     },
-    "builder": {
-      "name": "执行者",
-      "description": "负责实现、修改和验证工作"
+    "architect": {
+      "name": "策划师",
+      "description": "输出技术架构、接口规范或文档与 PRD 大纲"
     },
-    "reviewer": {
-      "name": "审查员",
-      "description": "检查正确性、安全性和回归风险"
+    "executor": {
+      "name": "执行员",
+      "description": "生产核心资产：写代码、产出深度草稿或执行复杂分析"
+    },
+    "auditor": {
+      "name": "审计员",
+      "description": "红军挑刺：安全与边界审查、事实纠偏与逻辑查漏"
+    },
+    "optimizer": {
+      "name": "调优员",
+      "description": "性能重构、跨平台文案风味化与细节精修"
+    },
+    "synthesizer": {
+      "name": "交付员",
+      "description": "统一编排多源成果，生成报告或打包物料"
+    },
+    "translator": {
+      "name": "转化员",
+      "description": "多语言本地化、代码转文字与术语向业务语言转译"
     }
   },
   "teams": {

@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { BUILTIN_AGENT_BLUEPRINTS, createAgentTeamFixture } from "@vetta/agent-team";
+import { BUILTIN_AGENT_BLUEPRINTS, BUILTIN_AGENT_TEAMS, createAgentTeamFixture } from "@vetta/agent-team";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createAgentTeamFileRepository, resolveAgentTeamResourceRoot } from "./agent-team-file-repository.js";
 
@@ -54,7 +54,9 @@ describe("Agent Team file repository", () => {
 		await repository.write(document);
 		const loaded = await repository.read();
 
-		expect(loaded).toMatchObject({ teams: document.teams });
+		// 团队按目录名排序读回，与 fixture 的书写顺序无关。
+		expect(loaded.teams).toEqual(expect.arrayContaining([...document.teams]));
+		expect(loaded.teams).toHaveLength(document.teams.length);
 		expect(loaded.agents.map(({ systemPrompt: _prompt, presetId: _presetId, ...agent }) => agent)).toEqual(
 			expect.arrayContaining(
 				document.agents.map(({ systemPrompt: _prompt, presetId: _presetId, ...agent }) => agent),
@@ -224,7 +226,10 @@ describe("Agent Team file repository", () => {
 		expect(await readdir(membersRoot)).toHaveLength(1);
 
 		// 孤儿文件留着，成员重新入团就会读到上一任的交待。
-		await repository.write(document);
+		await repository.write({
+			...document,
+			teams: [{ ...team, members: [{ ...member, assignment: undefined }, ...team.members.slice(1)] }],
+		});
 
 		expect(await readdir(membersRoot)).toEqual([]);
 		expect((await repository.read()).teams[0]?.members[0]?.assignment).toBeUndefined();
@@ -246,7 +251,7 @@ describe("Agent Team file repository", () => {
 
 		const loaded = await repository.read();
 
-		expect(loaded.teams).toHaveLength(1);
+		expect(loaded.teams).toHaveLength(BUILTIN_AGENT_TEAMS.length);
 		expect(await readFile(join(root, "index.json"), "utf8")).toContain('"revision"');
 		expect(await readdir(join(root, "legacy-team-workspace", "workspace"))).toEqual([]);
 	});

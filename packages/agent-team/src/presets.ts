@@ -1,43 +1,81 @@
-import type { AgentProfile, AgentTeamDocument, TeamDefinition } from "./contracts.js";
+import type { AgentProfile, AgentTeamDocument, TeamDefinition, TeamMember } from "./contracts.js";
 import { AGENT_TEAM_SCHEMA_VERSION } from "./contracts.js";
 
 export const AGENT_TEAM_PRESET_VERSION = 1 as const;
-export const DEFAULT_AGENT_TEAM_ID = "builtin:team:vetta";
+export const DEFAULT_AGENT_TEAM_ID = "builtin:team:dev";
 
+/**
+ * 全局 Agent 池：一个 Master 加七种 Worker，与 `BUILTIN_AGENT_BLUEPRINTS` 一一对应。
+ * 预设团队一律按「1 Master + N Workers」组装，用户自建团队时照抄这个公式即可。
+ */
 const PRESET_DEFINITIONS = [
 	{
-		id: "builtin:agent:leader",
-		presetId: "leader",
-		name: "Vetta",
-		description: "Coordinates the team and owns the final response.",
-		handle: "vetta",
-		blueprintId: "leader",
+		id: "builtin:agent:master",
+		presetId: "master",
+		name: "Master",
+		description: "Owns the goal end to end: plans the workflow, delegates each step, accepts or reworks results.",
+		handle: "master",
+		blueprintId: "master",
 	},
 	{
 		id: "builtin:agent:researcher",
 		presetId: "researcher",
-		name: "Research",
-		description: "Finds evidence and verifies facts.",
-		handle: "research",
+		name: "Researcher",
+		description: "Collects facts, documentation, prior art, and market signals, and verifies them.",
+		handle: "researcher",
 		blueprintId: "researcher",
 	},
 	{
-		id: "builtin:agent:builder",
-		presetId: "builder",
-		name: "Build",
-		description: "Implements and verifies maintainable changes.",
-		handle: "build",
-		blueprintId: "builder",
+		id: "builtin:agent:architect",
+		presetId: "architect",
+		name: "Architect",
+		description: "Designs the technical architecture, interface contracts, or the outline of a document or PRD.",
+		handle: "architect",
+		blueprintId: "architect",
 	},
 	{
-		id: "builtin:agent:reviewer",
-		presetId: "reviewer",
-		name: "Review",
-		description: "Checks correctness, safety, and regressions.",
-		handle: "review",
-		blueprintId: "reviewer",
+		id: "builtin:agent:executor",
+		presetId: "executor",
+		name: "Executor",
+		description: "Produces the core asset: code, a substantive draft, or a worked analysis.",
+		handle: "executor",
+		blueprintId: "executor",
+	},
+	{
+		id: "builtin:agent:auditor",
+		presetId: "auditor",
+		name: "Auditor",
+		description: "Red-teams the work for correctness, safety, edge cases, and unsupported claims.",
+		handle: "auditor",
+		blueprintId: "auditor",
+	},
+	{
+		id: "builtin:agent:optimizer",
+		presetId: "optimizer",
+		name: "Optimizer",
+		description: "Refines finished work: performance, maintainability, and channel-specific voice.",
+		handle: "optimizer",
+		blueprintId: "optimizer",
+	},
+	{
+		id: "builtin:agent:synthesizer",
+		presetId: "synthesizer",
+		name: "Synthesizer",
+		description: "Merges results from several members into one consistent report or deliverable bundle.",
+		handle: "synthesizer",
+		blueprintId: "synthesizer",
+	},
+	{
+		id: "builtin:agent:translator",
+		presetId: "translator",
+		name: "Translator",
+		description: "Localizes across languages and restates technical detail in business language.",
+		handle: "translator",
+		blueprintId: "translator",
 	},
 ] as const;
+
+type PresetAgentKey = (typeof PRESET_DEFINITIONS)[number]["presetId"];
 
 export const BUILTIN_AGENT_PRESETS: readonly AgentProfile[] = Object.freeze(
 	PRESET_DEFINITIONS.map((preset) =>
@@ -62,27 +100,119 @@ export const BUILTIN_AGENT_PRESETS: readonly AgentProfile[] = Object.freeze(
 	),
 );
 
-const DEFAULT_TEAM_MEMBERS = PRESET_DEFINITIONS.map((preset) => ({
-	id: `builtin:member:${preset.presetId}`,
-	handle: preset.handle,
-	binding: {
-		kind: "reference" as const,
-		agentProfileId: preset.id,
-	},
-}));
+interface TeamPresetDefinition {
+	readonly id: string;
+	readonly slug: string;
+	readonly name: string;
+	readonly description: string;
+	/** 第一个必须是 Master：它是团队负责人，也是用户在聊天里唯一的对话入口。 */
+	readonly roster: readonly { readonly agent: PresetAgentKey; readonly responsibility: string }[];
+	/** Master 的团队任务书：把这支团队的固定流水线写死，避免每次重新约定。 */
+	readonly workflow: string;
+}
 
-export const DEFAULT_AGENT_TEAM: TeamDefinition = Object.freeze({
-	id: DEFAULT_AGENT_TEAM_ID,
-	revision: 1,
-	name: "Vetta Team",
-	description: "A ready-to-use team for coordination, research, implementation, and review.",
-	leaderMemberId: "builtin:member:leader",
-	members: Object.freeze(DEFAULT_TEAM_MEMBERS.map((member) => Object.freeze(member))),
-	orchestrationPolicyId: "leader-delegates-v1",
-	contextPolicyId: "public-results-v1",
-	createdAt: 0,
-	updatedAt: 0,
-});
+const TEAM_PRESET_DEFINITIONS: readonly TeamPresetDefinition[] = [
+	{
+		id: DEFAULT_AGENT_TEAM_ID,
+		slug: "dev",
+		name: "Dev Team",
+		description: "Ships a change end to end: design, implementation, and review under one owner.",
+		roster: [
+			{
+				agent: "master",
+				responsibility: "Turns the request into a plan, drives the loop, and delivers the result.",
+			},
+			{ agent: "architect", responsibility: "Designs the approach and the contracts before any code is written." },
+			{ agent: "executor", responsibility: "Implements the design and verifies that it works." },
+			{
+				agent: "auditor",
+				responsibility: "Reviews the implementation for defects, risk, and missing verification.",
+			},
+		],
+		workflow:
+			"Run this team as a build loop. First have the Architect turn the request into a concrete approach: the contracts to honour, the files or components in scope, and the trade-offs taken. Hand that design to the Executor to implement and self-verify. Send the result to the Auditor for review. Accept only when the Auditor reports no blocking finding; otherwise decide whether the fix belongs to the Executor or the design needs to go back to the Architect, and run the loop again. Report the design decision, what shipped, and any residual risk.",
+	},
+	{
+		id: "builtin:team:research",
+		slug: "research",
+		name: "Deep Research",
+		description: "Investigates a question, strips out hallucinations, and returns a sourced report.",
+		roster: [
+			{ agent: "master", responsibility: "Breaks the question into angles and signs off on the final report." },
+			{ agent: "researcher", responsibility: "Gathers evidence for each angle and records where it came from." },
+			{ agent: "auditor", responsibility: "Removes unsupported claims and challenges weak evidence." },
+			{ agent: "synthesizer", responsibility: "Turns the surviving findings into one structured report." },
+		],
+		workflow:
+			"Run this team as a research pipeline. Break the question into independent angles and dispatch them to the Researcher together rather than one at a time. Pass the collected evidence to the Auditor to strip unsupported claims and flag weak sourcing; commission more research for whatever the Auditor knocks out. Once the evidence holds, have the Synthesizer assemble a structured report. Deliver it with your own summary of what is now known, what remains uncertain, and what it implies.",
+	},
+	{
+		id: "builtin:team:growth",
+		slug: "growth",
+		name: "Growth & Content",
+		description: "Takes a campaign from angle research to a master draft and per-channel variants.",
+		roster: [
+			{ agent: "master", responsibility: "Sets the campaign angle and assembles the final publishing package." },
+			{ agent: "researcher", responsibility: "Finds the trends, audience signals, and references worth riding." },
+			{ agent: "executor", responsibility: "Writes the master draft that every channel variant derives from." },
+			{ agent: "optimizer", responsibility: "Adapts the master draft into each channel's voice and format." },
+		],
+		workflow:
+			"Run this team as a content pipeline. Decide the campaign angle first, then have the Researcher surface current trends, audience signals, and references. Brief the Executor to write one master draft that carries the message. Hand it to the Optimizer to produce a variant per target channel, naming each channel explicitly so tone and length match it. Deliver the master draft plus the variants as one publishing package, and say which channel leads.",
+	},
+	{
+		id: "builtin:team:strategy",
+		slug: "strategy",
+		name: "Biz Strategy",
+		description: "Builds a business case, stress-tests it for fatal flaws, and packages the plan.",
+		roster: [
+			{ agent: "master", responsibility: "Frames the business goal and owns the delivered plan." },
+			{ agent: "architect", responsibility: "Builds the PRD structure and the business model behind it." },
+			{ agent: "auditor", responsibility: "Hunts for fatal flaws in the model, the economics, and the risks." },
+			{ agent: "synthesizer", responsibility: "Packages the reviewed material into a presentable plan." },
+		],
+		workflow:
+			"Run this team as a business case loop. Frame the goal, the market, and the constraints, then have the Architect build the PRD structure and the business model that supports it. Send it to the Auditor to hunt for fatal flaws: unit economics that do not close, unvalidated assumptions, regulatory and competitive risk. Feed blocking findings back to the Architect until the case stands. Then have the Synthesizer package the reviewed material into a presentable plan, and deliver it with your own read on the decision it supports.",
+	},
+];
+
+const AGENT_ID_BY_KEY: Readonly<Record<string, string>> = Object.freeze(
+	Object.fromEntries(PRESET_DEFINITIONS.map((preset) => [preset.presetId, preset.id])),
+);
+
+const HANDLE_BY_KEY: Readonly<Record<string, string>> = Object.freeze(
+	Object.fromEntries(PRESET_DEFINITIONS.map((preset) => [preset.presetId, preset.handle])),
+);
+
+function buildTeam(definition: TeamPresetDefinition): TeamDefinition {
+	const members: TeamMember[] = definition.roster.map((entry, index) => ({
+		id: `builtin:member:${definition.slug}:${entry.agent}`,
+		handle: HANDLE_BY_KEY[entry.agent]!,
+		binding: { kind: "reference" as const, agentProfileId: AGENT_ID_BY_KEY[entry.agent]! },
+		assignment: {
+			responsibility: entry.responsibility,
+			...(index === 0 ? { instructions: definition.workflow } : {}),
+		},
+	}));
+	return Object.freeze({
+		id: definition.id,
+		revision: 1,
+		name: definition.name,
+		description: definition.description,
+		leaderMemberId: members[0]!.id,
+		members: Object.freeze(members.map((member) => Object.freeze(member))),
+		orchestrationPolicyId: "leader-delegates-v1",
+		contextPolicyId: "public-results-v1",
+		createdAt: 0,
+		updatedAt: 0,
+	});
+}
+
+export const BUILTIN_AGENT_TEAMS: readonly TeamDefinition[] = Object.freeze(TEAM_PRESET_DEFINITIONS.map(buildTeam));
+
+export const DEFAULT_AGENT_TEAM: TeamDefinition = BUILTIN_AGENT_TEAMS.find(
+	(team) => team.id === DEFAULT_AGENT_TEAM_ID,
+)!;
 
 /** Test-only fixture retained outside the Desktop runtime file source. */
 export function createAgentTeamFixture(): AgentTeamDocument {
@@ -91,7 +221,7 @@ export function createAgentTeamFixture(): AgentTeamDocument {
 		presetVersion: AGENT_TEAM_PRESET_VERSION,
 		revision: 1,
 		agents: BUILTIN_AGENT_PRESETS.map(clonePresetProfile),
-		teams: [cloneDefaultTeam()],
+		teams: BUILTIN_AGENT_TEAMS.map(cloneTeam),
 	};
 }
 
@@ -102,9 +232,8 @@ export function seedAgentTeamPresets(document: AgentTeamDocument): AgentTeamDocu
 		...document.agents,
 		...BUILTIN_AGENT_PRESETS.filter((agent) => !agentIds.has(agent.id)).map(clonePresetProfile),
 	];
-	const teams = document.teams.some((team) => team.id === DEFAULT_AGENT_TEAM_ID)
-		? document.teams
-		: [...document.teams, cloneDefaultTeam()];
+	const teamIds = new Set(document.teams.map((team) => team.id));
+	const teams = [...document.teams, ...BUILTIN_AGENT_TEAMS.filter((team) => !teamIds.has(team.id)).map(cloneTeam)];
 	return {
 		...document,
 		presetVersion: AGENT_TEAM_PRESET_VERSION,
@@ -131,12 +260,13 @@ function clonePresetProfile(profile: AgentProfile): AgentProfile {
 	};
 }
 
-function cloneDefaultTeam(): TeamDefinition {
+function cloneTeam(team: TeamDefinition): TeamDefinition {
 	return {
-		...DEFAULT_AGENT_TEAM,
-		members: DEFAULT_AGENT_TEAM.members.map((member) => ({
+		...team,
+		members: team.members.map((member) => ({
 			...member,
 			binding: { ...member.binding },
+			...(member.assignment ? { assignment: { ...member.assignment } } : {}),
 		})),
 	};
 }

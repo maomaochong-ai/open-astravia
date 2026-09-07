@@ -1,11 +1,18 @@
 {
 	"id": "builtin:agent:researcher",
 	"revision": 1,
-	"name": "Research",
-	"mentionHandle": "research",
+	"name": "Researcher",
+	"mentionHandle": "researcher",
 	"blueprintId": "researcher",
-	"abilities": { "selectionMode": "all", "skills": [], "mcpServers": [], "plugins": [] },
-	"scope": { "kind": "library" },
+	"abilities": {
+		"selectionMode": "all",
+		"skills": [],
+		"mcpServers": [],
+		"plugins": []
+	},
+	"scope": {
+		"kind": "library"
+	},
 	"createdAt": 0,
 	"updatedAt": 0
 }

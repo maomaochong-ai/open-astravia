@@ -109,14 +109,14 @@ describe("AgentTeamSidebarList", () => {
 	it("limits the Team avatar stack and shows an overflow marker", async () => {
 		render(<AgentTeamSidebarList />);
 
-		await screen.findByText("Vetta Team");
+		await screen.findByText(teamFixture.name);
 		expect(document.querySelectorAll("img")).toHaveLength(3);
 		expect(document.querySelector('[data-avatar-overflow="1"]')).toBeTruthy();
 	});
 
 	it("refreshes only the changed Team session catalog", async () => {
 		render(<AgentTeamSidebarList />);
-		await screen.findByText("Vetta Team");
+		await screen.findByText(teamFixture.name);
 		const list = vi.mocked(window.vetta.agentTeams.list);
 		const listSessions = vi.mocked(window.vetta.agentTeams.listSessions);
 

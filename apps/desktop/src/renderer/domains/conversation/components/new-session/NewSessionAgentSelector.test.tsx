@@ -20,7 +20,7 @@ afterEach(cleanup);
 describe("NewSessionAgentSelector", () => {
 	const document = createAgentTeamFixture();
 	const team = document.teams[0];
-	const agent = document.agents.find((candidate) => candidate.name === "Review");
+	const agent = document.agents.find((candidate) => candidate.name === "Auditor");
 	if (!team || !agent) throw new Error("missing Agent Team fixture");
 
 	function mockCatalog(next = document): void {
@@ -54,7 +54,7 @@ describe("NewSessionAgentSelector", () => {
 		expect(within(trigger).getByText("newSession.agentSelector.pick")).toBeDefined();
 		await user.click(trigger);
 
-		const option = await screen.findByRole("option", { name: /Vetta Team/ });
+		const option = await screen.findByRole("option", { name: new RegExp(team.name) });
 		const optionStack = option.querySelector('[data-avatar-stack="true"]');
 		expect(optionStack).not.toBeNull();
 		expect(optionStack?.querySelectorAll("img")).toHaveLength(3);
@@ -64,7 +64,7 @@ describe("NewSessionAgentSelector", () => {
 		expect(onSelect).toHaveBeenCalledWith(teamTargetKey(team.id));
 
 		const selectedTrigger = screen.getByRole("button", { name: "newSession.agentSelector.switchTitle" });
-		expect(within(selectedTrigger).getByText("Vetta Team")).toBeDefined();
+		expect(within(selectedTrigger).getByText(team.name)).toBeDefined();
 		expect(selectedTrigger.querySelectorAll("img")).toHaveLength(3);
 		expect(selectedTrigger.querySelector('[data-avatar-overflow="1"]')).not.toBeNull();
 	});
@@ -103,7 +103,7 @@ describe("NewSessionAgentSelector", () => {
 		render(<Harness onSelect={vi.fn()} />);
 
 		await user.click(screen.getByRole("button", { name: "newSession.agentSelector.pickTitle" }));
-		await screen.findByRole("option", { name: /Vetta Team/ });
+		await screen.findByRole("option", { name: new RegExp(team.name) });
 		await user.type(screen.getByPlaceholderText("newSession.agentSelector.searchPlaceholder"), agent.name);
 
 		expect(screen.queryByRole("listbox", { name: "newSession.agentSelector.groupTeams" })).toBeNull();
@@ -117,7 +117,7 @@ describe("NewSessionAgentSelector", () => {
 		render(<Harness onSelect={vi.fn()} />);
 
 		await user.click(screen.getByRole("button", { name: "newSession.agentSelector.pickTitle" }));
-		await screen.findByRole("option", { name: /Vetta Team/ });
+		await screen.findByRole("option", { name: new RegExp(team.name) });
 
 		// 团队 `copy` 绑定的副本是团队私有的，摆进选择器就是一堆同名条目。
 		expect(screen.getAllByRole("option", { name: new RegExp(agent.name) })).toHaveLength(1);

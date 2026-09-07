@@ -732,11 +732,19 @@ export function useTeamChatModel(
 	const labels = useMemo(
 		() => ({
 			leaderRoute: t("chat.leaderRoute"),
+			// 按 blueprintId 取角色名；下线的 leader / builder / reviewer 仍留在老档案里，映射到接替者。
 			memberRoles: {
-				leader: t("blueprints.leader.name"),
+				master: t("blueprints.master.name"),
 				researcher: t("blueprints.researcher.name"),
-				builder: t("blueprints.builder.name"),
-				reviewer: t("blueprints.reviewer.name"),
+				architect: t("blueprints.architect.name"),
+				executor: t("blueprints.executor.name"),
+				auditor: t("blueprints.auditor.name"),
+				optimizer: t("blueprints.optimizer.name"),
+				synthesizer: t("blueprints.synthesizer.name"),
+				translator: t("blueprints.translator.name"),
+				leader: t("blueprints.master.name"),
+				builder: t("blueprints.executor.name"),
+				reviewer: t("blueprints.auditor.name"),
 			},
 			memberRoleFallback: t("chat.member"),
 			placeholder: t("chat.placeholder"),
