@@ -323,9 +323,10 @@ export function AgentProfileEditor({
 					</div>
 				</div>
 
-				{/* Horizontal Tabs Bar */}
-				<div className="flex items-center gap-2 border-b border-border/40 pb-3">
-					<button
+				<div className="sticky top-0 z-10 space-y-3 bg-background pb-3">
+					{/* Horizontal Tabs Bar */}
+					<div className="flex flex-wrap items-center gap-2 border-b border-border/40 py-3">
+						<button
 						type="button"
 						onClick={() => setActiveTab("basic")}
 						className={cn(
@@ -334,12 +335,12 @@ export function AgentProfileEditor({
 								? "border border-primary/40 bg-primary/10 text-primary font-semibold"
 								: "border border-transparent text-muted-foreground hover:bg-muted/30 hover:text-foreground",
 						)}
-					>
-						<span className="icon-[solar--user-id-linear] h-4 w-4" aria-hidden="true" />
-						<span>{t("profile.basicInfo")}</span>
-					</button>
+						>
+							<span className="icon-[solar--user-id-linear] h-4 w-4" aria-hidden="true" />
+							<span>{t("profile.basicInfo")}</span>
+						</button>
 
-					<button
+						<button
 						type="button"
 						onClick={() => setActiveTab("prompt")}
 						className={cn(
@@ -348,12 +349,12 @@ export function AgentProfileEditor({
 								? "border border-primary/40 bg-primary/10 text-primary font-semibold"
 								: "border border-transparent text-muted-foreground hover:bg-muted/30 hover:text-foreground",
 						)}
-					>
-						<span className="icon-[solar--document-text-linear] h-4 w-4" aria-hidden="true" />
-						<span>{t("profile.systemPrompt")}</span>
-					</button>
+						>
+							<span className="icon-[solar--document-text-linear] h-4 w-4" aria-hidden="true" />
+							<span>{t("profile.systemPrompt")}</span>
+						</button>
 
-					<button
+						<button
 						type="button"
 						onClick={() => setActiveTab("abilities")}
 						className={cn(
@@ -362,13 +363,51 @@ export function AgentProfileEditor({
 								? "border border-primary/40 bg-primary/10 text-primary font-semibold"
 								: "border border-transparent text-muted-foreground hover:bg-muted/30 hover:text-foreground",
 						)}
-					>
-						<span className="icon-[solar--bolt-circle-linear] h-4 w-4" aria-hidden="true" />
-						<span>{t("profile.abilities")}</span>
-						<span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-							{selectedAbilitiesCount}
+						>
+							<span className="icon-[solar--bolt-circle-linear] h-4 w-4" aria-hidden="true" />
+							<span>{t("profile.abilities")}</span>
+							<span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+								{selectedAbilitiesCount}
+							</span>
+						</button>
+
+						{!hideSaveAction && (
+							<div className="ml-auto flex items-center gap-3">
+								<span aria-live="polite" className="text-xs text-muted-foreground">
+									{saved ? t("profile.savedNextTurn") : ""}
+								</span>
+								<Button variant="primary" disabled={saving} onClick={() => void save()} className="gap-2">
+									<span className="icon-[solar--diskette-bold] h-4 w-4" aria-hidden="true" />
+									{saving ? t("profile.saving") : t("profile.save")}
+								</Button>
+							</div>
+						)}
+					</div>
+
+					{pendingImpact && pendingImpact.teamIds.length > 1 && (
+						<div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-200">
+							<div className="flex items-start gap-2.5">
+								<span className="icon-[solar--danger-triangle-linear] mt-0.5 h-4 w-4 shrink-0 text-amber-400" aria-hidden="true" />
+								<div className="min-w-0 flex-1">
+									{t("profile.sharedImpact", {
+										count: pendingImpact.teamIds.length,
+										teams: pendingImpact.teamNames.join("、"),
+									})}
+									<div className="mt-3">
+										<Button variant="outline" size="sm" className="border-amber-500/40 text-amber-300 hover:bg-amber-500/20" onClick={() => void save()}>
+											{t("profile.confirmSharedSave")}
+										</Button>
+									</div>
+								</div>
+							</div>
+						</div>
+					)}
+
+					{error && (
+						<span aria-live="polite" className="block rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+							{error}
 						</span>
-					</button>
+					)}
 				</div>
 
 				{/* Active Tab View */}
@@ -420,42 +459,6 @@ export function AgentProfileEditor({
 					/>
 				)}
 
-				{pendingImpact && pendingImpact.teamIds.length > 1 && (
-					<div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-200">
-						<div className="flex items-start gap-2.5">
-							<span className="icon-[solar--danger-triangle-linear] mt-0.5 h-4 w-4 shrink-0 text-amber-400" aria-hidden="true" />
-							<div className="min-w-0 flex-1">
-								{t("profile.sharedImpact", {
-									count: pendingImpact.teamIds.length,
-									teams: pendingImpact.teamNames.join("、"),
-								})}
-								<div className="mt-3">
-									<Button variant="outline" size="sm" className="border-amber-500/40 text-amber-300 hover:bg-amber-500/20" onClick={() => void save()}>
-										{t("profile.confirmSharedSave")}
-									</Button>
-								</div>
-							</div>
-						</div>
-					</div>
-				)}
-
-				{!hideSaveAction && (
-					<div className="flex items-center gap-3 pt-2">
-						<Button variant="primary" disabled={saving} onClick={() => void save()} className="gap-2">
-							<span className="icon-[solar--diskette-bold] h-4 w-4" aria-hidden="true" />
-							{saving ? t("profile.saving") : t("profile.save")}
-						</Button>
-						<span aria-live="polite" className="text-xs text-muted-foreground">
-							{saved ? t("profile.savedNextTurn") : ""}
-						</span>
-					</div>
-				)}
-
-				{error && (
-					<span aria-live="polite" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-						{error}
-					</span>
-				)}
 			</div>
 		);
 	}

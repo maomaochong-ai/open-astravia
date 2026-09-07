@@ -165,6 +165,26 @@ describe("AgentProfileEditor", () => {
 		await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
 	});
 
+	it("keeps the save action above tab content in a sticky toolbar", async () => {
+		const user = userEvent.setup();
+		render(
+			<AgentProfileEditor
+				agent={agent}
+				capabilities={[]}
+				layout="tabs"
+				onPreview={vi.fn(async () => ({ ...impact, teamIds: [], teamNames: [] }))}
+				onSave={vi.fn(async () => ({ updated: agent, impact }))}
+			/>,
+		);
+
+		await user.click(screen.getByRole("button", { name: /^profile\.abilities/ }));
+		const saveButton = screen.getByRole("button", { name: "profile.save" });
+		const abilitySearch = screen.getByLabelText("profile.searchAbilities");
+		expect(saveButton.compareDocumentPosition(abilitySearch) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		expect(saveButton.parentElement?.parentElement?.parentElement?.className).toContain("sticky");
+		expect(saveButton.parentElement?.parentElement?.parentElement?.className).toContain("top-0");
+	});
+
 	it("renders globally disabled capabilities as unavailable", () => {
 		render(
 			<AgentProfileEditor
