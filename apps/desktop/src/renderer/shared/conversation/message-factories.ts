@@ -1,5 +1,11 @@
 import type { ConversationAgentMessageViewModel, ConversationUserMessageViewModel } from "./types";
 
+/**
+ * 普通会话里唯一的 Agent 参与者标识。Team 会话按成员 id 区分作者，普通会话只有一个
+ * 作者，因此这里是常量；会话绑定了某个 Agent 时，participant 就按这个 id 对号入座。
+ */
+export const DEFAULT_AGENT_PARTICIPANT_ID = "default-agent";
+
 type UserMessageInput = Omit<
 	ConversationUserMessageViewModel,
 	"kind" | "role" | "deliveryPhase" | "turnId" | "authorId"
@@ -27,6 +33,6 @@ export function createConversationAgentMessage(input: AgentMessageInput): Conver
 		role: "assistant",
 		phase: input.phase ?? "completed",
 		turnId: input.turnId ?? input.id,
-		authorId: input.authorId ?? "default-agent",
+		authorId: input.authorId ?? DEFAULT_AGENT_PARTICIPANT_ID,
 	};
 }

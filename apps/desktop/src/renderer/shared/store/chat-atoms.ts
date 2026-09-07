@@ -83,6 +83,11 @@ export interface ActiveSession {
 	parentSessionPath?: string;
 	/** User entry id in the parent session this fork was created from. */
 	parentEntryId?: string;
+	/**
+	 * 本会话绑定的 Agent Profile id，由主进程在创建/恢复时解析后回传。
+	 * 仅用于展示（回合头像与昵称）；能力裁剪始终发生在主进程。
+	 */
+	agentProfileId?: string;
 }
 
 /**

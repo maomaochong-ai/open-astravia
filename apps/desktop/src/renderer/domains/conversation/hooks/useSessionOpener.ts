@@ -371,7 +371,12 @@ export function useSessionOpener(): SessionOpenerController {
 			// 这样 Welcome → Chat 的转场就不会被 getFullHistory / getState / getSessionPath
 			// 的串行 IPC 拖住，体感保持瞬时。
 			// navigate:false：设置页 AI 协助等场景只后台建会话，留在当前路由，由侧栏高亮 + 飞球引导。
-			const earlySessionInfo = { cwd: effectiveCwd, sessionPath: canonicalSessionPath, runtimeId: sessionId };
+			const earlySessionInfo = {
+				cwd: effectiveCwd,
+				sessionPath: canonicalSessionPath,
+				runtimeId: sessionId,
+				...(createResult.agentProfileId ? { agentProfileId: createResult.agentProfileId } : {}),
+			};
 			setActiveSession(earlySessionInfo);
 			activeSessionRef.current = earlySessionInfo;
 			markSessionSwitch("active-session-set");
@@ -560,6 +565,7 @@ export function useSessionOpener(): SessionOpenerController {
 					runtimeId: sessionId,
 					parentSessionPath,
 					parentEntryId,
+					...(createResult.agentProfileId ? { agentProfileId: createResult.agentProfileId } : {}),
 				};
 				setActiveSession(sessionInfo);
 				activeSessionRef.current = sessionInfo;

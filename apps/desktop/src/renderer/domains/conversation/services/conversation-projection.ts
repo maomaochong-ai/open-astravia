@@ -2,6 +2,7 @@ import type { DesktopTeamToolExecutionEvent } from "@preload/api-types/team-conv
 import {
 	type ConversationMessageEventState,
 	createConversationAgentMessage,
+	DEFAULT_AGENT_PARTICIPANT_ID,
 	projectAssistantMessageBlocks,
 	reduceConversationMessageEvent,
 } from "@shared/conversation";
@@ -256,7 +257,7 @@ function toConversationEnvelope(queued: QueuedAssistantEvent, messageId: string)
 		conversationId: event.sessionId,
 		messageId,
 		turnId: event.turnId ?? messageId,
-		author: { kind: "agent", id: "default-agent" },
+		author: { kind: "agent", id: DEFAULT_AGENT_PARTICIPANT_ID },
 		sequence,
 		timestamp: event.timestamp,
 		event,
