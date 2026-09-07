@@ -294,18 +294,21 @@ export function useTeamChatModel(
 					? event.teamSessionId
 					: event.conversationId;
 			if (!mounted || eventSessionId !== session.id) return;
-			// 一次事件里，快照与流式状态必须同进同退：session-updated 用快照的
-			// messages 把已落盘的 turn 从流里裁掉，若快照本身因版本过旧被拒，裁剪就
-			// 会把这条回复从两边同时抹掉（页面重进才恢复）。
-			let staleSnapshot = false;
+			// session-updated 用快照的 messages 把已落盘的 turn 从流里裁掉。这个裁剪
+			// 必须和快照的采纳同进同退：快照因版本过旧被拒时若照裁不误，这条回复就从
+			// 流和快照两边同时消失（页面重进才恢复）。
+			// 只拦裁剪。session-snapshot 是用 activeMessageEvents 重建在跑的回合——
+			// 那是流式首帧，跳过它会让正在进行的回合直到下一个事件才显形。
+			let staleUpdatePrune = false;
 			if (event.type === "session-snapshot" || event.type === "session-updated") {
 				const current = snapshotRef.current;
-				staleSnapshot =
+				const stale =
 					!!current &&
 					event.snapshot.session.revision <= current.session.revision &&
 					event.snapshot.conversationRevision < current.conversationRevision;
+				staleUpdatePrune = stale && event.type === "session-updated";
 				setContextUsages((cur) => ({ ...cur, ...readSnapshotContextUsages(event.snapshot) }));
-				if (!staleSnapshot) {
+				if (!stale) {
 					snapshotRef.current = event.snapshot;
 					setSnapshot(event.snapshot);
 				}
@@ -341,7 +344,7 @@ export function useTeamChatModel(
 					return new Set([...current, event.author.id]);
 				});
 			}
-			const nextStreams = staleSnapshot ? streamsRef.current : reduceTeamStreamState(streamsRef.current, event);
+			const nextStreams = staleUpdatePrune ? streamsRef.current : reduceTeamStreamState(streamsRef.current, event);
 			streamsRef.current = nextStreams;
 			setStreams(nextStreams);
 			if (

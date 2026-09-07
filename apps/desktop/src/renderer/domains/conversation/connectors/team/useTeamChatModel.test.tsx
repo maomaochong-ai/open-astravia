@@ -748,6 +748,35 @@ describe("useTeamChatModel streaming flow", () => {
 		expect(result.current.model.feedItems.some((item) => item.kind === "agent")).toBe(true);
 	});
 
+	it("shows the in-flight turn from a session-snapshot even when its revisions look stale", async () => {
+		vi.mocked(window.vetta.agentTeams.sendMessage).mockResolvedValueOnce({
+			...baseSnapshot,
+			session: { ...baseSession, revision: 5 },
+			conversationRevision: 5,
+		});
+		const { result } = renderHook(() => useTeamChatModel(team.id));
+		await waitFor(() => expect(result.current.model.status).toBe("ready"));
+		await waitFor(() => expect(streamListener).toBeTypeOf("function"));
+		act(() => result.current.actions.setDraft("dispatch the team"));
+		await act(async () => result.current.actions.send());
+
+		// A session-snapshot rebuilds the stream from activeMessageEvents — it is the
+		// first frame of a turn already under way. Its revisions trail the ones the send
+		// response just installed, but skipping it hides the running turn until some
+		// later event happens to be accepted.
+		act(() =>
+			streamListener?.({
+				type: "session-snapshot",
+				teamSessionId: baseSession.id,
+				snapshot: { ...baseSnapshot, session: { ...baseSession, revision: 1 }, conversationRevision: 1 },
+				activeMessageEvents: [streamEvent(1, "already working")] as never,
+			}),
+		);
+
+		await waitFor(() => expect(result.current.model.status).toBe("streaming"));
+		expect(result.current.model.feedItems.some((item) => item.kind === "agent")).toBe(true);
+	});
+
 	it.each(["failed", "aborted"] as const)("releases a %s send without overwriting a newer draft", async (outcome) => {
 		let rejectSend: ((reason: Error) => void) | undefined;
 		vi.mocked(window.vetta.agentTeams.sendMessage).mockReturnValueOnce(
