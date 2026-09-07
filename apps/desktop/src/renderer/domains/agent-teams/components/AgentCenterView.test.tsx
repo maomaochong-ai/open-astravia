@@ -81,14 +81,35 @@ function buildModel(overrides: Partial<AgentCenterModel> = {}): AgentCenterModel
 	} as unknown as AgentCenterModel;
 }
 
-function renderView(model: AgentCenterModel, onOpenAgent = vi.fn()) {
+function team(id: string) {
+	return {
+		id,
+		revision: 1,
+		name: id,
+		description: `${id} description`,
+		leaderMemberId: `${id}:member`,
+		members: [
+			{ id: `${id}:member`, handle: "alpha", binding: { kind: "reference", agentProfileId: "alpha" } },
+		],
+		orchestrationPolicyId: "leader-delegates-v1",
+		contextPolicyId: "public-results-v1",
+		createdAt: 1,
+		updatedAt: 1,
+	};
+}
+
+function renderView(
+	model: AgentCenterModel,
+	onOpenAgent = vi.fn(),
+	handlers: { onDeleteTeam?: () => void; onOpenTeamSettings?: () => void } = {},
+) {
 	return render(
 		<AgentCenterView
 			model={model}
 			onOpenTeamChat={vi.fn()}
-			onOpenTeamSettings={vi.fn()}
+			onOpenTeamSettings={handlers.onOpenTeamSettings ?? vi.fn()}
 			onSubmitAssembly={vi.fn()}
-			onDeleteTeam={vi.fn()}
+			onDeleteTeam={handlers.onDeleteTeam ?? vi.fn()}
 			onOpenAgent={onOpenAgent}
 			onCreateAgent={vi.fn()}
 		/>,
@@ -117,6 +138,44 @@ describe("AgentCenterView", () => {
 		await user.click(screen.getByRole("button", { name: "alpha" }));
 		expect(model.actions.recruitAgent).toHaveBeenCalledWith(expect.objectContaining({ id: "alpha" }));
 		expect(onOpenAgent).not.toHaveBeenCalled();
+	});
+
+	it("keeps team actions on the selected card instead of the page header", async () => {
+		const onDeleteTeam = vi.fn();
+		const onOpenTeamSettings = vi.fn();
+		const teams = [team("squad")];
+		const model = buildModel({ teams, selectedTeam: teams[0] } as Partial<AgentCenterModel>);
+		const user = userEvent.setup();
+		renderView(model, vi.fn(), { onDeleteTeam, onOpenTeamSettings });
+
+		await user.click(screen.getByRole("button", { name: "center.teamSettings" }));
+		expect(onOpenTeamSettings).toHaveBeenCalledWith("squad");
+		await user.click(screen.getByRole("button", { name: "center.deleteTeam" }));
+		expect(onDeleteTeam).toHaveBeenCalledWith("squad");
+		await user.click(screen.getByRole("button", { name: "center.recruit" }));
+		expect(model.actions.startEditTeam).toHaveBeenCalledWith(expect.objectContaining({ id: "squad" }));
+	});
+
+	it("hides the card actions until the team is selected", () => {
+		const teams = [team("squad")];
+		renderView(buildModel({ teams } as Partial<AgentCenterModel>));
+
+		expect(screen.queryByRole("button", { name: "center.deleteTeam" })).toBeNull();
+		expect(screen.getByText("center.teamSelectHint")).toBeDefined();
+	});
+
+	it("drops the selection when the pointer lands outside every team card", async () => {
+		const teams = [team("squad")];
+		const model = buildModel({ teams, selectedTeam: teams[0] } as Partial<AgentCenterModel>);
+		const user = userEvent.setup();
+		renderView(model);
+
+		// 卡片内的点击不能收起选中态，否则刚点开就没了。
+		await user.click(screen.getByRole("button", { name: "center.teamSettings" }));
+		expect(model.actions.selectTeam).not.toHaveBeenCalledWith(undefined);
+
+		await user.click(screen.getByText("center.agentsSection"));
+		expect(model.actions.selectTeam).toHaveBeenCalledWith(undefined);
 	});
 
 	it("marks recruited members and blocks saving until the team has a name", () => {

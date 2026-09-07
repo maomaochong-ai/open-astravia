@@ -122,7 +122,7 @@ export function AgentCenterPage(): JSX.Element {
 						if (saved) notifyAgentTeamConfigurationChanged();
 					});
 				}}
-				onDeleteTeam={() => requestDeleteTeam()}
+				onDeleteTeam={(teamId) => requestDeleteTeam(model.findTeam(teamId))}
 				onOpenAgent={openAgent}
 				onCreateAgent={() => void navigate({ to: "/agents", search: { agent: "new" }, replace: true })}
 			/>
