@@ -701,6 +701,30 @@ textarea:focus {
 	content: none;
 }
 
+/* ─── Markdown 表格（MarkdownTable 壳的配套样式）─── */
+
+/* 数值列必须等宽数字，否则「4,680.50 / 2,450.20」上下对不齐，一眼看不出量级差。 */
+.md-table {
+	font-variant-numeric: tabular-nums;
+}
+
+/* 表头列间的竖分隔：只有一个字高、垂直居中。通高的 border 会把表头切成一排格子，
+   压过标题本身。th 是 sticky，天然可作伪元素的定位上下文。 */
+.md-table thead th + th::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	top: 50%;
+	height: 1em;
+	width: 1px;
+	translate: 0 -50%;
+	background: var(--border);
+}
+
+.md-table-shadow-host {
+	--md-table-shadow: color-mix(in srgb, var(--foreground) 22%, transparent);
+}
+
 /* Smooth transitions globally */
 button,
 a {

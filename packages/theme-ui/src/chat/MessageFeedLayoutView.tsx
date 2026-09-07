@@ -47,7 +47,9 @@ export const MessageFeedLayoutList = forwardRef<HTMLDivElement, ComponentPropsWi
 			<div
 				ref={forwardedRef}
 				className={cn(
-					"mx-auto flex max-w-3xl flex-col overflow-hidden px-5 pb-2",
+					// 不加 overflow-hidden：宽表要能用负 margin 探出阅读栏。
+					// 真正的横向裁剪由外层 Virtualizer（overflowX: hidden）在视口边界完成。
+					"mx-auto flex max-w-3xl flex-col px-5 pb-2",
 					className,
 				)}
 				style={style}

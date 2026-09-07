@@ -10,8 +10,18 @@ export type { CollapsePanelProps } from "./CollapsePanel";
 export { CollapsePanel } from "./CollapsePanel";
 export type { MacKeyboardPreviewProps, MacKeyId } from "./MacKeyboardPreview";
 export { MacKeyboardPreview } from "./MacKeyboardPreview";
+export type { MarkdownTableLabels, MarkdownTableProps } from "./MarkdownTable";
+export {
+	MarkdownTable,
+	MarkdownTableBody,
+	MarkdownTableCell,
+	MarkdownTableHead,
+	MarkdownTableHeaderCell,
+	MarkdownTableRow,
+} from "./MarkdownTable";
 export type { MultiplierTagProps } from "./MultiplierTag";
 export { fmtMultiplier, MultiplierTag } from "./MultiplierTag";
+export { readTableCells, toCsv, toMarkdown } from "./markdown-table-clipboard";
 export { getProviderIcon, PROVIDER_ICONS, ProviderIcon } from "./provider-icon";
 export type { ScrollFadeProps } from "./ScrollFade";
 export { ScrollFade } from "./ScrollFade";

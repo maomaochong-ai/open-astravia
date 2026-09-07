@@ -3,6 +3,14 @@ import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { CodeBlockCopyButtonView } from "../shared/CodeBlockCopyButton";
+import {
+	MarkdownTable,
+	MarkdownTableBody,
+	MarkdownTableCell,
+	MarkdownTableHead,
+	MarkdownTableHeaderCell,
+	MarkdownTableRow,
+} from "../shared/MarkdownTable";
 import { SkillTypeIcon } from "../skills/skill-icon";
 import { SyntaxHighlightedCode } from "../shared/SyntaxHighlightedCode";
 import {
@@ -152,7 +160,9 @@ function rehypeStreamingChunks() {
 					newChildren.push(child);
 					if (child.type === "element") {
 						const tag = child.tagName;
-						visit(child, inCode || tag === "code" || tag === "pre");
+						// 表格也当字面量：把单元格文字拆成 inline-block 的 chunk span 会打乱
+						// 列宽测量，流式期表格会逐帧抖动。
+						visit(child, inCode || tag === "code" || tag === "pre" || tag === "table");
 					}
 				}
 			}
@@ -338,6 +348,9 @@ function cn(...parts: Array<string | false | null | undefined>): string {
 export interface TextBlockViewLabels {
 	copy: string;
 	copied: string;
+	/** 表格工具条：复制成 GFM 表格 / CSV。 */
+	copyTableMarkdown: string;
+	copyTableCsv: string;
 }
 
 export interface TextBlockViewProps {
@@ -421,12 +434,23 @@ export const TextBlockView = memo(function TextBlockView({
 }: TextBlockViewProps): JSX.Element {
 	const { displayText, animateChunks } = useStreamingDisplayText(text, isStreamingTail);
 
+	const tableLabels = useMemo(
+		() => ({
+			copyMarkdown: labels.copyTableMarkdown,
+			copyCsv: labels.copyTableCsv,
+			copied: labels.copied,
+		}),
+		[labels.copyTableMarkdown, labels.copyTableCsv, labels.copied],
+	);
+
 	const labelsRef = useRef(labels);
+	const tableLabelsRef = useRef(tableLabels);
 	const getFileIconClassRef = useRef(getFileIconClass);
 	const onOpenFileRef = useRef(onOpenFile);
 	const onOpenUrlRef = useRef(onOpenUrl);
 	const inlineTokensRef = useRef(inlineTokens);
 	labelsRef.current = labels;
+	tableLabelsRef.current = tableLabels;
 	getFileIconClassRef.current = getFileIconClass;
 	onOpenFileRef.current = onOpenFile;
 	onOpenUrlRef.current = onOpenUrl;
@@ -475,15 +499,16 @@ export const TextBlockView = memo(function TextBlockView({
 				</blockquote>
 			),
 			table: ({ children }) => (
-				<div className="my-2 overflow-x-auto rounded-lg border border-border">
-					<table className="w-full text-[13px]">{children}</table>
-				</div>
+				<MarkdownTable labels={tableLabelsRef.current}>{children}</MarkdownTable>
 			),
-			thead: ({ children }) => <thead className="border-b border-border bg-muted">{children}</thead>,
-			th: ({ children }) => (
-				<th className="px-3 py-1.5 text-left font-semibold text-muted-foreground">{children}</th>
+			thead: ({ children }) => <MarkdownTableHead>{children}</MarkdownTableHead>,
+			tbody: ({ children }) => <MarkdownTableBody>{children}</MarkdownTableBody>,
+			tr: ({ children }) => <MarkdownTableRow>{children}</MarkdownTableRow>,
+			// style 透传：remark-gfm 把 GFM 的列对齐（`|---:|`）写在这里。
+			th: ({ children, style }) => (
+				<MarkdownTableHeaderCell style={style}>{children}</MarkdownTableHeaderCell>
 			),
-			td: ({ children }) => <td className="border-t border-border px-3 py-1.5 text-foreground">{children}</td>,
+			td: ({ children, style }) => <MarkdownTableCell style={style}>{children}</MarkdownTableCell>,
 			hr: () => <hr className="my-3 border-border" />,
 			a: ({ href, children }) => {
 				const kind = classifyMarkdownLink(href);

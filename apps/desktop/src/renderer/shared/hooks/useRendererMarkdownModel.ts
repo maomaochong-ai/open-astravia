@@ -66,7 +66,15 @@ export function useRendererMarkdownModel(
 		[openUrlInWorkspace, workspaceId],
 	);
 	const getFileIconClass = useCallback((fileName: string) => getFileIcon(fileName, false, false), []);
-	const labels = useMemo(() => ({ copy: t("copyButton.label"), copied: t("copyButton.copied") }), [t]);
+	const labels = useMemo(
+		() => ({
+			copy: t("copyButton.label"),
+			copied: t("copyButton.copied"),
+			copyTableMarkdown: t("markdownTable.copyMarkdown"),
+			copyTableCsv: t("markdownTable.copyCsv"),
+		}),
+		[t],
+	);
 
 	return useMemo(
 		() => ({
