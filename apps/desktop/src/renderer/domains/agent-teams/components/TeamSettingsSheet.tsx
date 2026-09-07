@@ -235,26 +235,9 @@ export function TeamSettingsSheet({
 														)}
 													</span>
 													<span className="mt-0.5 block truncate text-[11.5px] text-muted-foreground/80">
-														{assemblyAssignment(draft, member.id)?.responsibility ?? member.description}
+														{member.description}
 													</span>
 												</button>
-												<Button
-													variant="ghost"
-													size="icon-sm"
-													className={cn(
-														"shrink-0",
-														assemblyAssignment(draft, member.id)
-															? "text-primary"
-															: "text-muted-foreground/60 hover:text-primary",
-													)}
-													title={t("settings.editAssignment", { name: member.name })}
-													aria-label={t("settings.editAssignment", { name: member.name })}
-													onClick={() =>
-														setAssignmentAgentId((current) => (current === member.id ? undefined : member.id))
-													}
-												>
-													<span className="icon-[solar--clipboard-text-linear] h-3.5 w-3.5" aria-hidden="true" />
-												</Button>
 												{!isLeader && (
 													<Button
 														variant="ghost"
@@ -279,7 +262,7 @@ export function TeamSettingsSheet({
 												</Button>
 											</div>
 
-											{assignmentAgentId === member.id && (
+											{assignmentAgentId === member.id ? (
 												<MemberAssignmentEditor
 													agent={member}
 													assignment={assemblyAssignment(draft, member.id)}
@@ -288,6 +271,12 @@ export function TeamSettingsSheet({
 														setDraft((current) => setAssemblyAssignment(current, member.id, assignment));
 														setAssignmentAgentId(undefined);
 													}}
+												/>
+											) : (
+												<MemberAssignmentRow
+													agent={member}
+													assignment={assemblyAssignment(draft, member.id)}
+													onOpen={() => setAssignmentAgentId(member.id)}
 												/>
 											)}
 										</li>
@@ -349,6 +338,59 @@ export function TeamSettingsSheet({
 				</DialogContent>
 			</Dialog>
 		</DetailDrawer>
+	);
+}
+
+/**
+ * 折叠态的任务书条目：没设置时是一条摆在明面上的虚线入口，设置了就把团队内那句
+ * 摆在本体描述下面并排看。任务书是入团后最常调的东西，不该缩成一排图标里的一枚。
+ */
+function MemberAssignmentRow({
+	agent,
+	assignment,
+	onOpen,
+}: {
+	readonly agent: AgentProfile;
+	readonly assignment?: TeamMemberAssignment;
+	readonly onOpen: () => void;
+}): JSX.Element {
+	const { t } = useTranslation("agent-teams");
+	if (!assignment) {
+		return (
+			<button
+				type="button"
+				aria-label={t("settings.editAssignment", { name: agent.name })}
+				onClick={onOpen}
+				className="flex w-full items-center gap-1.5 rounded-lg border border-dashed border-border/70 px-2.5 py-1.5 text-left text-[11.5px] text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
+			>
+				<span className="icon-[solar--clipboard-add-linear] h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+				<span className="truncate">{t("settings.assignmentEmpty")}</span>
+			</button>
+		);
+	}
+	return (
+		<button
+			type="button"
+			aria-label={t("settings.editAssignment", { name: agent.name })}
+			onClick={onOpen}
+			className="flex w-full items-start gap-2 rounded-lg border border-primary/30 bg-primary/5 px-2.5 py-2 text-left transition-colors hover:border-primary/50 hover:bg-primary/10"
+		>
+			<span className="icon-[solar--clipboard-text-bold] mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
+			<span className="min-w-0 flex-1">
+				<span className="flex items-center gap-1.5">
+					<span className="text-[11px] font-medium text-primary">{t("settings.assignmentBadge")}</span>
+					{assignment.instructions && (
+						<span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+							{t("settings.assignmentHasInstructions")}
+						</span>
+					)}
+				</span>
+				<span className="mt-0.5 block truncate text-[11.5px] text-foreground/90">
+					{assignment.responsibility ?? agent.description}
+				</span>
+			</span>
+			<span className="icon-[solar--pen-2-linear] mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/70" aria-hidden="true" />
+		</button>
 	);
 }
 
