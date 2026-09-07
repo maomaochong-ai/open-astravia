@@ -154,7 +154,7 @@ export function AgentProfileEditor({
 								blueprintId={agent.blueprintId}
 								seed={agent.id}
 								size="hero"
-								className="h-16 w-16 p-2.5"
+								className="h-16 w-16"
 							/>
 							<div className="min-w-0">
 								<span className="block truncate text-[14px] font-semibold text-foreground">
