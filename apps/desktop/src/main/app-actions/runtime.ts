@@ -9,7 +9,26 @@ import {
 } from "./types.js";
 
 const APPROVAL_UI_INPUT_KEY = "approvalUi";
+const DEV_AUTO_APPROVE_ACTIONS_ENV = "VETTA_DEV_AUTO_APPROVE_ACTIONS";
 const log = getAppLogger("action-runtime");
+
+function isDevelopmentConfigDir(value: string | undefined): boolean {
+	if (!value) return false;
+	const normalized = value.trim().replaceAll("\\", "/").replace(/\/+$/u, "");
+	return normalized === ".vetta-dev" || normalized.endsWith("/.vetta-dev");
+}
+
+/** Explicit development-only approval bypass for local action iteration. */
+export function shouldBypassActionApproval(
+	context: ActionContext,
+	environment: NodeJS.ProcessEnv = process.env,
+): boolean {
+	return (
+		context.source === "local-server" &&
+		environment[DEV_AUTO_APPROVE_ACTIONS_ENV] === "1" &&
+		(environment.VETTA_BUILD_ENV === "development" || isDevelopmentConfigDir(environment.VETTA_CONFIG_DIR))
+	);
+}
 
 function resolveApprovalPresentation(input: JsonValue, approval: ActionApprovalMetadata | undefined): string {
 	if (!approval) {
@@ -76,7 +95,8 @@ export class AppActionRuntime {
 				log.info("run: assertReady ok (pre-approval)", actionMeta);
 			}
 			let approvalRequired = false;
-			if (action.requiresApproval?.(validatedInput, context)) {
+			const requiresApproval = action.requiresApproval?.(validatedInput, context) ?? false;
+			if (requiresApproval && !shouldBypassActionApproval(context)) {
 				approvalRequired = true;
 				const approvalPresentation = resolveApprovalPresentation(validatedInput, action.approval);
 				log.info("run: approval requested", actionMeta, { approvalPresentation });
@@ -116,6 +136,8 @@ export class AppActionRuntime {
 						log.info("run: assertReady ok (post-approval)", actionMeta);
 					}
 				}
+			} else if (requiresApproval) {
+				log.info("run: approval bypassed (development)", actionMeta);
 			}
 			const result = await action.run(validatedInput, context);
 			log.info("run: success", actionMeta, { approvalRequired, durationMs: Date.now() - startedAt });

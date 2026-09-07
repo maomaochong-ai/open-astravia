@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppActionCatalog } from "./catalog.js";
-import { AppActionRuntime } from "./runtime.js";
+import { AppActionRuntime, shouldBypassActionApproval } from "./runtime.js";
 import { type ActionApprovalRequester, type ActionDefinition, ActionError, type JsonValue } from "./types.js";
 
 const logger = vi.hoisted(() => ({
@@ -96,5 +96,61 @@ describe("AppActionRuntime logging", () => {
 			expect.objectContaining({ errorName: "ActionError", errorCode: "TEST_FAILED" }),
 		);
 		expect(JSON.stringify(logger.error.mock.calls)).not.toContain("secret failure detail");
+	});
+});
+
+describe("development approval policy", () => {
+	it("does not invoke the approval broker for a write action in dev", async () => {
+		vi.stubEnv("VETTA_CONFIG_DIR", ".vetta-dev");
+		vi.stubEnv("VETTA_DEV_AUTO_APPROVE_ACTIONS", "1");
+		const approvalRequester = { request: vi.fn(async () => ({ approved: false })) };
+		const run = vi.fn(async () => ({ status: "ok" as const }));
+		try {
+			const result = await runtime(
+				action({
+					requiresApproval: () => true,
+					approval: {
+						defaultPresentation: "generic",
+						presentations: [{ id: "generic", title: "Approve", description: "Approve action" }],
+					},
+					run,
+				}),
+				approvalRequester,
+			).run("test.run", {}, { source: "local-server" });
+			expect(result).toEqual({ status: "ok" });
+			expect(approvalRequester.request).not.toHaveBeenCalled();
+		} finally {
+			vi.unstubAllEnvs();
+		}
+	});
+
+	it("bypasses every local-server action only with the explicit development flag", () => {
+		expect(
+			shouldBypassActionApproval(
+				{ source: "local-server" },
+				{ VETTA_CONFIG_DIR: ".vetta-dev", VETTA_DEV_AUTO_APPROVE_ACTIONS: "1" },
+			),
+		).toBe(true);
+		expect(
+			shouldBypassActionApproval(
+				{ source: "local-server" },
+				{ VETTA_CONFIG_DIR: ".vetta-dev", VETTA_DEV_AUTO_APPROVE_ACTIONS: "0" },
+			),
+		).toBe(false);
+	});
+
+	it("never bypasses approvals for production or internal callers", () => {
+		expect(
+			shouldBypassActionApproval(
+				{ source: "local-server" },
+				{ VETTA_CONFIG_DIR: ".vetta", VETTA_DEV_AUTO_APPROVE_ACTIONS: "1" },
+			),
+		).toBe(false);
+		expect(
+			shouldBypassActionApproval(
+				{ source: "internal" },
+				{ VETTA_CONFIG_DIR: ".vetta-dev", VETTA_DEV_AUTO_APPROVE_ACTIONS: "1" },
+			),
+		).toBe(false);
 	});
 });

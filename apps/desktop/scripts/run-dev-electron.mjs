@@ -74,6 +74,15 @@ export function resolveDevPluginIds(
 	return tenant.pluginIds ? Array.from(tenant.pluginIds).sort().join(",") : "";
 }
 
+export function resolveDevProcessEnvironment(environment = process.env) {
+	return {
+		...environment,
+		// Keep local action/plugin iteration frictionless without weakening packaged builds.
+		// Set to "0" when manually testing the approval flow in development.
+		VETTA_DEV_AUTO_APPROVE_ACTIONS: environment.VETTA_DEV_AUTO_APPROVE_ACTIONS ?? "1",
+	};
+}
+
 async function main() {
 	const rendererPort = resolveRendererPort();
 	const rendererUrl = `http://127.0.0.1:${rendererPort}`;
@@ -94,7 +103,7 @@ async function main() {
 	const electronProcess = spawn(electronPath, electronArgs, {
 		cwd: projectRoot,
 		env: {
-			...process.env,
+			...resolveDevProcessEnvironment(),
 			VETTA_CONFIG_DIR: configDir,
 			VETTA_DESKTOP_DEV_URL: rendererUrl,
 			VETTA_PLUGIN_DEV: pluginIds,
