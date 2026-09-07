@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createAgentTeamFixture } from "@vetta/agent-team";
+import { BUILTIN_AGENT_BLUEPRINTS, createAgentTeamFixture } from "@vetta/agent-team";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createAgentTeamFileRepository, resolveAgentTeamResourceRoot } from "./agent-team-file-repository.js";
 
@@ -79,12 +79,44 @@ describe("Agent Team file repository", () => {
 				"utf8",
 			),
 		).toBe(document.agents[0]?.description);
-		expect(
-			await readFile(
-				join(root, "agents", encodeURIComponent(firstAgent.id).replace(/%/g, "_"), "system-prompt.md"),
-				"utf8",
-			),
-		).toBeTypeOf("string");
+		// 没有显式覆盖就不落 system-prompt.md，人格继续跟随 blueprint。
+		expect(await readdir(join(root, "agents", encodeURIComponent(firstAgent.id).replace(/%/g, "_")))).not.toContain(
+			"system-prompt.md",
+		);
+	});
+
+	it("drops a stored prompt that merely repeats the blueprint default", async () => {
+		const { repository, root } = await createRepository();
+		const document = createAgentTeamFixture();
+		const firstAgent = document.agents[0];
+		if (!firstAgent) throw new Error("Expected an initial agent");
+		const blueprint = BUILTIN_AGENT_BLUEPRINTS.find((candidate) => candidate.id === firstAgent.blueprintId);
+		if (!blueprint) throw new Error("Expected the preset blueprint");
+
+		await repository.write(document);
+		const agentRoot = join(root, "agents", encodeURIComponent(firstAgent.id).replace(/%/g, "_"));
+		// 旧实现把 blueprint 默认提示词物化成了文件，读回来会变成显式覆盖并冻结后续修订。
+		await writeFile(join(agentRoot, "system-prompt.md"), `${blueprint.systemPrompt}\n`, "utf8");
+
+		const loaded = await repository.read();
+		expect(loaded.agents.find((agent) => agent.id === firstAgent.id)?.systemPrompt).toBeUndefined();
+
+		await repository.write(loaded);
+		expect(await readdir(agentRoot)).not.toContain("system-prompt.md");
+	});
+
+	it("treats an emptied prompt file as no override", async () => {
+		const { repository, root } = await createRepository();
+		const document = createAgentTeamFixture();
+		const firstAgent = document.agents[0];
+		if (!firstAgent) throw new Error("Expected an initial agent");
+
+		await repository.write(document);
+		const agentRoot = join(root, "agents", encodeURIComponent(firstAgent.id).replace(/%/g, "_"));
+		await writeFile(join(agentRoot, "system-prompt.md"), "   \n", "utf8");
+
+		const loaded = await repository.read();
+		expect(loaded.agents.find((agent) => agent.id === firstAgent.id)?.systemPrompt).toBeUndefined();
 	});
 
 	it("loads a user-edited system prompt from its content file", async () => {

@@ -112,7 +112,8 @@ export class AgentTeamStore {
 				...current,
 				name: input.name.trim(),
 				description: input.description.trim(),
-				...(input.systemPrompt !== undefined ? { systemPrompt: input.systemPrompt.trim() } : {}),
+				// 留空即清除覆盖，回到 blueprint 默认；写成空串会让下游的 `?? blueprint` 兜底失效。
+				...(input.systemPrompt !== undefined ? { systemPrompt: input.systemPrompt.trim() || undefined } : {}),
 				...(input.avatar ? { avatar: input.avatar } : { avatar: undefined }),
 				...(input.avatarBackground
 					? { avatarBackground: input.avatarBackground }

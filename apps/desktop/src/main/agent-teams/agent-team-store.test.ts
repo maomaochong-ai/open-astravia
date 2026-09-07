@@ -128,6 +128,33 @@ describe("AgentTeamStore transaction boundary", () => {
 		expect(cleared.avatarBackground).toBeUndefined();
 	});
 
+	it("clears the system prompt override when the editor is left empty", async () => {
+		const repository = new MemoryRepository();
+		const store = new AgentTeamStore({ repository, createId: createIdSequence(), now: () => 10 });
+		const created = await store.createAgent(agentInput("Prompted"));
+
+		const overridden = await store.updateAgent(created.id, {
+			expectedRevision: created.revision,
+			name: created.name,
+			description: created.description,
+			systemPrompt: "  Speak plainly.  ",
+			mentionHandle: created.mentionHandle,
+			abilities: created.abilities,
+		});
+		expect(overridden.systemPrompt).toBe("Speak plainly.");
+
+		// 留空即回到 blueprint 默认；存成空串会让下游的 `?? blueprint` 兜底失效。
+		const cleared = await store.updateAgent(overridden.id, {
+			expectedRevision: overridden.revision,
+			name: overridden.name,
+			description: overridden.description,
+			systemPrompt: "   ",
+			mentionHandle: overridden.mentionHandle,
+			abilities: overridden.abilities,
+		});
+		expect(cleared.systemPrompt).toBeUndefined();
+	});
+
 	it("allows deleting a built-in profile like any other team file", async () => {
 		const repository = new MemoryRepository();
 		const store = new AgentTeamStore({ repository, createId: createIdSequence(), now: () => 10 });

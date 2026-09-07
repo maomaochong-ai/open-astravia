@@ -118,10 +118,12 @@ class DirectoryAgentTeamRepository implements AgentTeamFileRepository {
 			const directory = safeName(agent.id);
 			expectedAgentDirectories.add(directory);
 			const agentRoot = join(this.root, "agents", directory);
-			const systemPrompt = agent.systemPrompt ?? findAgentBlueprint(agent.blueprintId)?.systemPrompt;
 			await atomicWriteJSONAsync(join(agentRoot, "agent.json"), serializeAgent(agent));
 			await atomicWriteFileAsync(join(agentRoot, "description.md"), agent.description);
-			if (systemPrompt !== undefined) await atomicWriteFileAsync(join(agentRoot, "system-prompt.md"), systemPrompt);
+			// 只落用户的显式覆盖：把 blueprint 默认提示词写进文件等于把默认值钉死成覆盖，
+			// 之后升级 blueprint 再也到不了存量用户手里。
+			if (agent.systemPrompt !== undefined)
+				await atomicWriteFileAsync(join(agentRoot, "system-prompt.md"), agent.systemPrompt);
 			else await rm(join(agentRoot, "system-prompt.md"), { force: true });
 		}
 		await removeStaleDirectories(
@@ -214,12 +216,26 @@ class DirectoryAgentTeamRepository implements AgentTeamFileRepository {
 async function readAgentDirectory(root: string): Promise<AgentProfile> {
 	const value = await readJson(join(root, "agent.json"));
 	const description = await readFile(join(root, "description.md"), "utf8");
-	const systemPrompt = await readOptionalFile(join(root, "system-prompt.md"));
+	const systemPrompt = resolveStoredSystemPrompt(await readOptionalFile(join(root, "system-prompt.md")), value);
 	return {
 		...value,
 		description,
 		...(systemPrompt !== undefined ? { systemPrompt } : {}),
 	} as AgentProfile;
+}
+
+/**
+ * 判定磁盘上的 `system-prompt.md` 是不是一份**显式覆盖**。
+ *
+ * 空文件视为未覆盖；内容与 blueprint 默认逐字相同同样视为未覆盖——旧实现会把默认提示词
+ * 物化成文件，读回来就成了显式覆盖，导致 blueprint 的后续修订永远到不了存量安装。
+ * 这里顺带自愈这批数据：下一次写回时该文件会被删掉。
+ */
+function resolveStoredSystemPrompt(content: string | undefined, metadata: Record<string, unknown>): string | undefined {
+	if (content === undefined || content.trim().length === 0) return undefined;
+	const blueprintId = metadata.blueprintId;
+	const fallback = typeof blueprintId === "string" ? findAgentBlueprint(blueprintId)?.systemPrompt : undefined;
+	return fallback !== undefined && content.trimEnd() === fallback.trimEnd() ? undefined : content;
 }
 
 function serializeAgent(agent: AgentProfile): Omit<AgentProfile, "description" | "systemPrompt" | "presetId"> {
