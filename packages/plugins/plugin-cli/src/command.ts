@@ -9,22 +9,33 @@ export type PluginAddCommand =
 	| { type: "error"; message: string }
 	| { type: "add"; source: string; json: boolean };
 
-export interface PluginAddCommandDependencies {
+export type PluginReloadCommand =
+	| { type: "help" }
+	| { type: "error"; message: string }
+	| { type: "reload"; pluginId: string; json: boolean };
+
+export type PluginCommand = PluginAddCommand | PluginReloadCommand;
+
+export interface PluginCommandDependencies {
 	resolveNpmArchive(packageSpec: string): Promise<ResolvedNpmPluginArchive>;
 	runAction(actionId: string, input: unknown): Promise<unknown>;
 	writeStdout(value: string): void;
 	writeStderr(value: string): void;
 }
 
-const HELP_TEXT = `Vetta plugin installer
+export type PluginAddCommandDependencies = PluginCommandDependencies;
+
+const HELP_TEXT = `Vetta plugin manager
 
 Usage:
   vetta-plugin-cli add <npm-package|zip-path|http-url> [--json]
+  vetta-plugin-cli reload <plugin-id> [--json]
 
 Examples:
   npx @vetta-org/plugin-cli add @example/vetta-plugin-demo
   npx @vetta-org/plugin-cli add @example/vetta-plugin-demo@1.2.0
   npx @vetta-org/plugin-cli add ./release/demo-1.2.0.zip
+  npx @vetta-org/plugin-cli reload demo
 `;
 
 function formatParseError(error: unknown): string {
@@ -46,12 +57,27 @@ export function parsePluginAddCommand(argv: string[]): PluginAddCommand | undefi
 	return { type: "add", source, json: parsed.values.json === true };
 }
 
+export function parsePluginReloadCommand(argv: string[]): PluginReloadCommand | undefined {
+	if (argv[0] !== "reload") return undefined;
+	if (argv[1] === "-h" || argv[1] === "--help") return { type: "help" };
+	let parsed: ReturnType<typeof parseArgs>;
+	try {
+		parsed = parseArgs({ args: argv.slice(1), allowPositionals: true, strict: true, options: { json: { type: "boolean" } } });
+	} catch (error) {
+		return { type: "error", message: formatParseError(error) };
+	}
+	const [pluginId, unexpected] = parsed.positionals;
+	if (!pluginId) return { type: "error", message: "Missing <plugin-id>" };
+	if (unexpected) return { type: "error", message: `Unexpected argument: ${unexpected}` };
+	return { type: "reload", pluginId, json: parsed.values.json === true };
+}
+
 async function defaultRunAction(actionId: string, input: unknown): Promise<unknown> {
 	const client = createActionRpcClient(await readActionRpcEndpoint());
 	return client.run(actionId, input);
 }
 
-const defaultDependencies: PluginAddCommandDependencies = {
+const defaultDependencies: PluginCommandDependencies = {
 	resolveNpmArchive: resolveNpmPluginArchive,
 	runAction: defaultRunAction,
 	writeStdout: (value) => process.stdout.write(value),
@@ -99,8 +125,24 @@ function resultSummary(result: unknown): string {
 	if (!plugin) return "Plugin installed.\n";
 	const id = typeof plugin.id === "string" ? plugin.id : "plugin";
 	const version = typeof plugin.version === "string" ? `@${plugin.version}` : "";
-	const pending = typeof plugin.pendingVersion === "string" ? ` Update ${plugin.pendingVersion} is pending reload.` : "";
+	const pending = typeof plugin.pendingVersion === "string"
+		? ` Update ${plugin.pendingVersion} is pending reload. Run \`vetta-plugin-cli reload ${id}\` to apply it.`
+		: "";
 	return `Installed ${id}${version}.${pending}\n`;
+}
+
+function reloadResultSummary(result: unknown, requestedPluginId: string): string {
+	if (typeof result !== "object" || result === null || Array.isArray(result)) {
+		return `Reloaded ${requestedPluginId}.\n`;
+	}
+	const response = result as Record<string, unknown>;
+	const plugin =
+		typeof response.plugin === "object" && response.plugin !== null && !Array.isArray(response.plugin)
+			? (response.plugin as Record<string, unknown>)
+			: undefined;
+	const id = typeof plugin?.id === "string" ? plugin.id : requestedPluginId;
+	const version = typeof plugin?.activeVersion === "string" ? `@${plugin.activeVersion}` : "";
+	return `Reloaded ${id}${version}.\n`;
 }
 
 function isConnectionError(error: unknown): boolean {
@@ -119,6 +161,13 @@ export async function runPluginAddCommand(
 	command: PluginAddCommand,
 	dependencies: PluginAddCommandDependencies = defaultDependencies,
 ): Promise<number> {
+	return runPluginCommand(command, dependencies);
+}
+
+export async function runPluginCommand(
+	command: PluginCommand,
+	dependencies: PluginCommandDependencies = defaultDependencies,
+): Promise<number> {
 	if (command.type === "help") {
 		dependencies.writeStdout(HELP_TEXT);
 		return 0;
@@ -131,7 +180,12 @@ export async function runPluginAddCommand(
 	let resolvedNpm: ResolvedNpmPluginArchive | undefined;
 	try {
 		let result: unknown;
-		if (isHttpUrl(command.source)) {
+		if (command.type === "reload") {
+			result = await dependencies.runAction("plugins.manage", {
+				operation: "reload",
+				id: command.pluginId,
+			});
+		} else if (isHttpUrl(command.source)) {
 			result = await dependencies.runAction("plugins.manage", {
 				operation: "install-from-url",
 				url: command.source,
@@ -146,13 +200,19 @@ export async function runPluginAddCommand(
 			resolvedNpm = await dependencies.resolveNpmArchive(command.source);
 			result = await dependencies.runAction("plugins.manage", npmInstallInput(resolvedNpm));
 		}
-		dependencies.writeStdout(command.json ? `${JSON.stringify({ ok: true, result })}\n` : resultSummary(result));
+		dependencies.writeStdout(
+			command.json
+				? `${JSON.stringify({ ok: true, result })}\n`
+				: command.type === "reload"
+					? reloadResultSummary(result, command.pluginId)
+					: resultSummary(result),
+		);
 		return 0;
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		if (command.json) {
 			dependencies.writeStdout(
-				`${JSON.stringify({ ok: false, error: { code: error instanceof ActionRpcError ? error.code : "PLUGIN_ADD_FAILED", message } })}\n`,
+				`${JSON.stringify({ ok: false, error: { code: error instanceof ActionRpcError ? error.code : command.type === "reload" ? "PLUGIN_RELOAD_FAILED" : "PLUGIN_ADD_FAILED", message } })}\n`,
 			);
 		} else {
 			dependencies.writeStderr(`${message}\n`);
@@ -168,10 +228,10 @@ export async function runPluginCli(argv: string[]): Promise<number> {
 	if (argv.length === 0 || argv[0] === "-h" || argv[0] === "--help") {
 		return runPluginAddCommand({ type: "help" });
 	}
-	const command = parsePluginAddCommand(argv);
+	const command = parsePluginAddCommand(argv) ?? parsePluginReloadCommand(argv);
 	if (!command) {
 		process.stderr.write(`Unknown command: ${argv[0]}\n`);
 		return 2;
 	}
-	return runPluginAddCommand(command);
+	return runPluginCommand(command);
 }

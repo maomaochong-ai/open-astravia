@@ -17,6 +17,15 @@ npx @vetta-org/plugin-cli add ./release/demo-1.0.0.zip
 npx @vetta-org/plugin-cli add https://example.com/demo-1.0.0.zip
 ```
 
+When an update is installed as a pending version, apply it through the running Desktop host instead of
+restarting or editing the plugin store directly:
+
+```bash
+npx @vetta-org/plugin-cli reload demo
+```
+
+Reload follows the same Desktop approval flow as the UI and reports the active version after approval.
+
 Use `--json` for machine-readable output. Set `VETTA_CONFIG_DIR` or `VETTA_HOME` when targeting an isolated
 Desktop environment.
 

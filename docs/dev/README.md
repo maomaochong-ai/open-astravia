@@ -64,6 +64,16 @@ bun run verify:ui:debug:dev -- <Debug CLI 参数>
 
 Dev 是 attach-only Profile，没有对应的 `start` 或 `stop`。如果普通开发应用没有运行，命令会在有界超时后失败，不会挂起。
 
+开发中的外置插件应继续复用 Dev Profile。安装新 zip 后，如果结果显示 `pendingVersion`，Desktop 重启不会代替插件生命周期中的显式重载；使用公开 CLI 触发同一条审批和重载链路：
+
+```powershell
+$env:VETTA_CONFIG_DIR = ".vetta-dev"
+bun packages/plugins/plugin-cli/src/cli.ts add C:\path\to\plugin.zip --json
+bun packages/plugins/plugin-cli/src/cli.ts reload plugin-id --json
+```
+
+`reload` 会在 Desktop 中显示确认界面。读取当前页面上的确认按钮并完成审批后，新版本才成为 `activeVersion`。
+
 开始 UI 操作前，状态必须同时满足 `running === true`、`ready === true`、`ui.reachable === true` 和 `ui.targetFound === true`。`verify:ui:pw*` 会在需要时自动附着并选择主窗口。不要直接调用全局 `playwright-cli`，也不要使用 `close`、`close-all` 或 `kill-all`。
 
 ## 验证闭环
