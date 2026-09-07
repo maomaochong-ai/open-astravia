@@ -268,7 +268,7 @@ export class RuntimeSession {
 
 	async abort(reason?: string): Promise<void> {
 		this.assertOpen();
-		await this.session.cancel(reason);
+		await this.session.cancel(reason, { wait: false });
 	}
 
 	subscribe(handler: (event: SessionEvent) => void): () => void {

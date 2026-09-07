@@ -303,10 +303,16 @@ export class AgentSession {
 		return this.startQueuedInput(head);
 	}
 
-	async cancel(reason?: string): Promise<void> {
+	/**
+	 * `wait: false` returns as soon as the turn is signalled. A user-initiated stop must
+	 * not be held hostage by a tool that ignores its AbortSignal — the caller only needs
+	 * the guarantee that cancellation was requested, not that the turn already unwound.
+	 */
+	async cancel(reason?: string, options?: { readonly wait?: boolean }): Promise<void> {
 		if (this.currentState !== "running" && this.currentState !== "cancelling") return;
 		this.currentState = "cancelling";
 		this.activeController?.abort(reason);
+		if (options?.wait === false) return;
 		await this.activeTurn;
 	}
 
