@@ -93,11 +93,7 @@
     "descriptionPlaceholder": "简短描述该智能体的职责定位与日常目标…",
     "systemPromptHint": "设定该智能体的身份背景、思考策略与输出规范",
     "systemPromptPlaceholder": "为该智能体定义人设目标、专业原则、拆解步骤与输出规范，支持 Markdown…",
-    "clearPrompt": "清空",
-    "avatarBackground": "头像底座",
-    "avatarBackgroundAuto": "跟随身份自动配色",
-    "avatarBackgroundOption": "预设底座 {{name}}",
-    "avatarBackgroundCustom": "自定义纯色"
+    "clearPrompt": "清空"
   },
   "blueprints": {
     "master": {

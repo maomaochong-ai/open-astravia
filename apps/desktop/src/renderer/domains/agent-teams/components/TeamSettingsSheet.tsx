@@ -214,9 +214,7 @@ export function TeamSettingsSheet({
 												<AgentAvatarView
 													name={member.name}
 													avatar={agentAvatarUrl(member)}
-													background={member.avatarBackground}
 													blueprintId={member.blueprintId}
-													seed={member.id}
 													size="xl"
 												/>
 												<button
@@ -317,9 +315,7 @@ export function TeamSettingsSheet({
 									<AgentAvatarView
 										name={agent.name}
 										avatar={agentAvatarUrl(agent)}
-										background={agent.avatarBackground}
 										blueprintId={agent.blueprintId}
-										seed={agent.id}
 										size="xl"
 									/>
 									<div className="min-w-0 flex-1">

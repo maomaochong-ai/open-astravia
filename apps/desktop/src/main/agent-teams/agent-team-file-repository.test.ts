@@ -235,6 +235,22 @@ describe("Agent Team file repository", () => {
 		expect((await repository.read()).teams[0]?.members[0]?.assignment).toBeUndefined();
 	});
 
+	it("drops a retired profile field instead of failing the whole configuration", async () => {
+		const { repository, root } = await createRepository();
+		const document = createAgentTeamFixture();
+		await repository.write(document);
+		const agent = document.agents[0];
+		if (!agent) throw new Error("Expected an initial agent");
+		const agentFile = join(root, "agents", encodeURIComponent(agent.id).replace(/%/g, "_"), "agent.json");
+		const stored = JSON.parse(await readFile(agentFile, "utf8")) as Record<string, unknown>;
+		await writeFile(agentFile, JSON.stringify({ ...stored, avatarBackground: "tint:coral" }), "utf8");
+
+		const loaded = await repository.read();
+
+		expect(loaded.agents).toHaveLength(document.agents.length);
+		expect(loaded.agents[0]).not.toHaveProperty("avatarBackground");
+	});
+
 	it("preserves extension-owned directories beside team resources", async () => {
 		const { repository, root } = await createRepository();
 		await mkdir(join(root, "assets"), { recursive: true });

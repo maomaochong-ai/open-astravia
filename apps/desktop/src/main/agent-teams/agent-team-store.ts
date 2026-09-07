@@ -112,7 +112,6 @@ export class AgentTeamStore {
 				name: input.name.trim(),
 				description: input.description?.trim() ?? "",
 				...(input.avatar ? { avatar: input.avatar } : {}),
-				...(input.avatarBackground ? { avatarBackground: input.avatarBackground } : {}),
 				mentionHandle: normalizeMentionHandle(input.mentionHandle),
 				blueprintId: input.blueprintId,
 				abilities: createAgentAbilities(input.abilities, blueprint.defaultAbilities),
@@ -145,9 +144,6 @@ export class AgentTeamStore {
 				// 留空即清除覆盖，回到 blueprint 默认；写成空串会让下游的 `?? blueprint` 兜底失效。
 				...(input.systemPrompt !== undefined ? { systemPrompt: input.systemPrompt.trim() || undefined } : {}),
 				...(input.avatar ? { avatar: input.avatar } : { avatar: undefined }),
-				...(input.avatarBackground
-					? { avatarBackground: input.avatarBackground }
-					: { avatarBackground: undefined }),
 				mentionHandle: normalizeMentionHandle(input.mentionHandle),
 				abilities: {
 					selectionMode: input.abilities.selectionMode ?? "custom",

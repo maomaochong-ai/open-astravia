@@ -73,7 +73,6 @@ export function useAgentCenterModel(copy: AgentLibraryCopy) {
 					name: input.name.trim() || created.name,
 					description: input.description,
 					avatar: input.avatar,
-					avatarBackground: input.avatarBackground,
 					mentionHandle: created.mentionHandle,
 					systemPrompt: input.systemPrompt,
 					abilities: input.abilities,

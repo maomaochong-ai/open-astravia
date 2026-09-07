@@ -150,32 +150,6 @@ describe("AgentTeamStore transaction boundary", () => {
 		});
 	});
 
-	it("persists and clears the avatar background chosen for a profile", async () => {
-		const repository = new MemoryRepository();
-		const store = new AgentTeamStore({ repository, createId: createIdSequence(), now: () => 10 });
-		const created = await store.createAgent({ ...agentInput("Tinted"), avatarBackground: "tint:coral" });
-		expect(created.avatarBackground).toBe("tint:coral");
-
-		const custom = await store.updateAgent(created.id, {
-			expectedRevision: created.revision,
-			name: created.name,
-			description: created.description,
-			avatarBackground: "#3366ff",
-			mentionHandle: created.mentionHandle,
-			abilities: created.abilities,
-		});
-		expect(custom.avatarBackground).toBe("#3366ff");
-
-		// 不传就是回到「跟随身份自动配色」，不能留下上一次的选择。
-		const cleared = await store.updateAgent(custom.id, {
-			expectedRevision: custom.revision,
-			name: custom.name,
-			description: custom.description,
-			mentionHandle: custom.mentionHandle,
-			abilities: custom.abilities,
-		});
-		expect(cleared.avatarBackground).toBeUndefined();
-	});
 	it("clears the system prompt override when the editor is left empty", async () => {
 		const repository = new MemoryRepository();
 		const store = new AgentTeamStore({ repository, createId: createIdSequence(), now: () => 10 });

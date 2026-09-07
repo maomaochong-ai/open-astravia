@@ -228,8 +228,12 @@ class DirectoryAgentTeamRepository implements AgentTeamFileRepository {
 	}
 }
 
+/** 已下线的档案字段。留在磁盘上会让 `additionalProperties: false` 的校验把整份配置判废。 */
+const RETIRED_AGENT_FIELDS = ["avatarBackground"] as const;
+
 async function readAgentDirectory(root: string): Promise<AgentProfile> {
 	const value = await readJson(join(root, "agent.json"));
+	for (const field of RETIRED_AGENT_FIELDS) delete value[field];
 	const description = await readFile(join(root, "description.md"), "utf8");
 	const systemPrompt = resolveStoredSystemPrompt(await readOptionalFile(join(root, "system-prompt.md")), value);
 	return {

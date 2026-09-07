@@ -40,8 +40,6 @@ const abilities = Type.Object(
 	{ additionalProperties: false },
 );
 const optionalAbilities = Type.Partial(abilities, { additionalProperties: false });
-/** 预设底座 id 或六位十六进制纯色，避免把任意 CSS 写进持久化数据。 */
-const avatarBackground = Type.String({ maxLength: 64, pattern: "^(tint:[a-z-]{1,32}|#[0-9a-fA-F]{6})$" });
 const profile = Type.Object(
 	{
 		id,
@@ -49,7 +47,6 @@ const profile = Type.Object(
 		name: Type.String({ minLength: 1, maxLength: 128, pattern: "\\S" }),
 		description: text,
 		avatar: Type.Optional(Type.String({ maxLength: 2_048 })),
-		avatarBackground: Type.Optional(avatarBackground),
 		mentionHandle: id,
 		blueprintId: id,
 		systemPrompt: Type.Optional(text),
@@ -86,7 +83,6 @@ export const CreateAgentProfileInputSchema = Type.Object(
 		name: Type.String({ minLength: 1, maxLength: 128, pattern: "\\S" }),
 		description: Type.Optional(text),
 		avatar: Type.Optional(Type.String({ maxLength: 2_048 })),
-		avatarBackground: Type.Optional(avatarBackground),
 		mentionHandle: id,
 		blueprintId: id,
 		abilities: Type.Optional(optionalAbilities),
@@ -99,7 +95,6 @@ export const UpdateAgentProfileInputSchema = Type.Object(
 		name: Type.String({ minLength: 1, maxLength: 128, pattern: "\\S" }),
 		description: text,
 		avatar: Type.Optional(Type.String({ maxLength: 2_048 })),
-		avatarBackground: Type.Optional(avatarBackground),
 		mentionHandle: id,
 		systemPrompt: Type.Optional(text),
 		abilities,

@@ -15,7 +15,6 @@ import { AbilityIcon } from "../../abilities/components/AbilityIcon";
 import { agentAvatarUrl } from "../../../shared/agent-teams/agent-avatar";
 import { AgentAvatarView } from "@vetta/theme-ui/chat";
 import { AgentAvatarPicker } from "./AgentAvatarPicker";
-import { AgentAvatarBackgroundPicker } from "./AgentAvatarBackgroundPicker";
 
 export type AgentProfileTab = "basic" | "prompt" | "abilities";
 
@@ -63,7 +62,6 @@ export function AgentProfileEditor({
 	const [description, setDescription] = useState(agent.description);
 	const [systemPrompt, setSystemPrompt] = useState(agent.systemPrompt ?? "");
 	const [avatar, setAvatar] = useState(agentAvatarUrl(agent));
-	const [avatarBackground, setAvatarBackground] = useState(agent.avatarBackground);
 	const [abilities, setAbilities] = useState<AgentAbilitySelection>(() =>
 		normalizeAgentAbilitySelection(agent.abilities, capabilities),
 	);
@@ -81,7 +79,6 @@ export function AgentProfileEditor({
 		setDescription(agent.description);
 		setSystemPrompt(agent.systemPrompt ?? "");
 		setAvatar(agentAvatarUrl(agent));
-		setAvatarBackground(agent.avatarBackground);
 		setAbilities(normalizeAgentAbilitySelection(agent.abilities, capabilities));
 		setPendingImpact(undefined);
 		setSaved(false);
@@ -94,11 +91,10 @@ export function AgentProfileEditor({
 			description,
 			systemPrompt,
 			avatar,
-			avatarBackground,
 			mentionHandle: agent.mentionHandle,
 			abilities,
 		});
-	}, [abilities, agent.mentionHandle, avatar, avatarBackground, description, name, onDraftChange, systemPrompt]);
+	}, [abilities, agent.mentionHandle, avatar, description, name, onDraftChange, systemPrompt]);
 
 	useEffect(() => {
 		onSavingChange?.(saving);
@@ -127,7 +123,6 @@ export function AgentProfileEditor({
 				description,
 				systemPrompt,
 				avatar,
-				avatarBackground,
 				mentionHandle: agent.mentionHandle,
 				abilities,
 			});
@@ -150,9 +145,7 @@ export function AgentProfileEditor({
 							<AgentAvatarView
 								name={name || (displayName ?? agent.name)}
 								avatar={avatar}
-								background={avatarBackground}
 								blueprintId={agent.blueprintId}
-								seed={agent.id}
 								size="hero"
 								className="h-16 w-16"
 							/>
@@ -170,8 +163,6 @@ export function AgentProfileEditor({
 						</div>
 
 						<AgentAvatarPicker value={avatar} onChange={setAvatar} />
-
-						<AgentAvatarBackgroundPicker value={avatarBackground} onChange={setAvatarBackground} />
 
 						<TextField label={t("profile.name")} value={name} onChange={setName} />
 

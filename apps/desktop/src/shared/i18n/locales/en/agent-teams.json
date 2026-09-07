@@ -93,11 +93,7 @@
     "descriptionPlaceholder": "Briefly describe what this agent is responsible for…",
     "systemPromptHint": "Define this agent's background, reasoning strategy and output rules",
     "systemPromptPlaceholder": "Define the persona, principles, breakdown steps and output format. Markdown supported…",
-    "clearPrompt": "Clear",
-    "avatarBackground": "Avatar background",
-    "avatarBackgroundAuto": "Auto colour by identity",
-    "avatarBackgroundOption": "Preset background {{name}}",
-    "avatarBackgroundCustom": "Custom solid colour"
+    "clearPrompt": "Clear"
   },
   "blueprints": {
     "master": {

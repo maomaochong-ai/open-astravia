@@ -1,15 +1,10 @@
 import { cn } from "@vetta/ui";
 import type { JSX } from "react";
-import { agentAvatarBackgroundStyle } from "./agent-tint";
 
 export interface AgentAvatarViewProps {
 	readonly name: string;
 	readonly avatar?: string;
 	readonly blueprintId?: string;
-	/** 挑底座配色用的稳定身份，通常是 Agent id；缺省时退回名字。 */
-	readonly seed?: string;
-	/** 档案里存的底座：`tint:<preset>` 或 `#rrggbb`；缺省按 seed 自动分配。 */
-	readonly background?: string;
 	readonly active?: boolean;
 	readonly size?: AgentAvatarSize;
 	readonly className?: string;
@@ -28,15 +23,13 @@ const SIZE_CLASS: Record<AgentAvatarSize, string> = {
 };
 
 /**
- * 全应用唯一的 Agent 头像：内置头像是自带背景的方形立绘，直接裁成圆形满幅铺满；
- * 彩色底座留给没有头像图时的兜底首字母。消息流、输入栏、成员条、编队页共用同一枚组件。
+ * 全应用唯一的 Agent 头像：头像图是自带背景的方形立绘，直接裁成圆形满幅铺满。
+ * 没有头像图时才退回首字母或角色图标。消息流、输入栏、成员条、编队页共用同一枚组件。
  */
 export function AgentAvatarView({
 	name,
 	avatar,
 	blueprintId = "master",
-	seed,
-	background,
 	active = false,
 	size = "md",
 	className,
@@ -45,10 +38,9 @@ export function AgentAvatarView({
 	return (
 		<span
 			aria-hidden="true"
-			style={agentAvatarBackgroundStyle(background, seed || name || blueprintId)}
 			className={cn(
-				// 底座下缘接近白色，兜底首字母固定用深色，避免深色主题下白字消失。
-				"inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-medium text-black/70 ring-1 ring-border",
+				// 头像图满幅铺满，兜底首字母才看得到底色。
+				"inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted font-medium text-muted-foreground ring-1 ring-border",
 				active && "ring-primary/60",
 				SIZE_CLASS[size],
 				className,

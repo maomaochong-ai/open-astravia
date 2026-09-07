@@ -68,7 +68,6 @@ export function TeamMemberReplyCard({ event, onOpen }: TeamMemberReplyCardProps)
 					name={event.memberName}
 					avatar={event.memberAvatar}
 					blueprintId={event.memberBlueprintId ?? "leader"}
-					seed={event.memberId}
 					size="xs"
 					active={event.state === "streaming" || event.state === "pending"}
 				/>
