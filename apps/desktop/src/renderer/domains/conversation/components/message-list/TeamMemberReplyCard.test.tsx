@@ -45,7 +45,7 @@ const event: Extract<ChatTimelineEventViewModel, { kind: "team-member-summary" }
 };
 
 describe("TeamMemberReplyCard", () => {
-	it("adapts to content up to the compact height limit and opens the member session", () => {
+	it("keeps identity and status visible while collapsed, and reveals activity on click", () => {
 		const onOpen = vi.fn();
 		render(<TeamMemberReplyCard event={event} onOpen={onOpen} />);
 
@@ -53,18 +53,26 @@ describe("TeamMemberReplyCard", () => {
 		const memberName = screen.getByText("研究员");
 		expect(avatar.parentElement).toBe(memberName.parentElement);
 		expect(avatar.parentElement?.className).toContain("items-center");
-		expect(screen.getByRole("button", { name: "打开 研究员 的成员会话" })).toBeTruthy();
-		expect(screen.getByRole("button").className).toContain("h-7");
-		expect(screen.getByRole("button").className).toContain("w-7");
-		expect(screen.getByTestId("team-member-reply-card").className).toContain("max-h-[240px]");
-		expect(screen.getByTestId("team-member-reply-card").className).not.toContain("h-[300px]");
-		expect(screen.getByTestId("team-member-reply-card").className).not.toContain("min-h-[300px]");
-		expect(screen.getByTestId("live-thinking").parentElement?.className).toContain("overflow-y-auto");
-		expect(screen.getByText("最近：读取项目配置").parentElement?.className).toContain("overflow-y-auto");
-		expect(screen.getByTestId("live-thinking").textContent).toContain("正在检查配置");
-		expect(screen.getByText("最近：读取项目配置")).toBeTruthy();
+		expect(screen.getByTestId("team-member-reply-card").contains(avatar)).toBe(true);
+		// 默认折叠：只留身份行，活动详情不渲染。
+		const toggle = screen.getByRole("button", { expanded: false });
+		expect(screen.queryByTestId("live-thinking")).toBeNull();
+		expect(screen.queryByText("最近：读取项目配置")).toBeNull();
 
-		fireEvent.click(screen.getByRole("button", { name: "打开 研究员 的成员会话" }));
+		fireEvent.click(toggle);
+		expect(screen.getByRole("button", { expanded: true })).toBe(toggle);
+		expect(screen.getByTestId("live-thinking").textContent).toContain("正在检查配置");
+		expect(screen.getByTestId("live-thinking").parentElement?.className).toContain("overflow-y-auto");
+		expect(screen.getByText("最近：读取项目配置")).toBeTruthy();
+		expect(screen.getByTestId("live-thinking").parentElement?.parentElement?.className).toContain("max-h-[240px]");
+
+		fireEvent.click(toggle);
+		expect(screen.queryByTestId("live-thinking")).toBeNull();
+
+		const openButton = screen.getByRole("button", { name: "打开 研究员 的成员会话" });
+		expect(openButton.className).toContain("h-7");
+		expect(openButton.className).toContain("w-7");
+		fireEvent.click(openButton);
 		expect(onOpen).toHaveBeenCalledWith("member-1");
 	});
 });
