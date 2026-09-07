@@ -1,5 +1,4 @@
 import {
-	type AgentAbilitySelection,
 	type AgentTeamDocument,
 	buildTeamMemberOperatingContext,
 	buildTeamRosterSnapshot,
@@ -17,6 +16,7 @@ import type {
 import type { RuntimeHost, SessionExecutionMode } from "@vetta/runtime-core";
 import { resolveDesktopSessionConfig } from "../conversations/resolve-session-config.js";
 import { getAppLogger } from "../logger.js";
+import { toAgentConfigurationOverrides } from "./agent-ability-overrides.js";
 import type { TeamCollaborationStore } from "./team-collaboration-store.js";
 import { restoreTeamMemberPinnedContext } from "./team-member-context.js";
 import { reconfigureTeamMemberRuntime } from "./team-member-runtime-reconfiguration.js";
@@ -293,17 +293,4 @@ export class TeamRuntimeManager {
 			},
 		};
 	}
-}
-
-export function toAgentConfigurationOverrides(abilities: AgentAbilitySelection): {
-	readonly skills?: string[];
-	readonly mcpServers?: string[];
-	readonly plugins?: string[];
-} {
-	if (abilities.selectionMode === "all") return {};
-	return {
-		skills: [...abilities.skills],
-		mcpServers: [...abilities.mcpServers],
-		plugins: [...abilities.plugins],
-	};
 }
