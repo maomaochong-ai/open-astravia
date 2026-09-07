@@ -12,6 +12,8 @@ import type { MessageListProps } from "../message-list/types";
 
 export interface DefaultChatViewProps {
 	readonly children: ReactNode;
+	/** 消息流上方的常驻条（Team 的成员胶囊条就住在这里）。 */
+	readonly subHeader?: ReactNode;
 	readonly messages: ChatConversationItem[];
 	readonly isStreaming: boolean;
 	readonly sessionId: string | null;
@@ -36,6 +38,7 @@ export interface DefaultChatViewProps {
 
 export function DefaultChatView({
 	children,
+	subHeader,
 	messages,
 	isStreaming,
 	sessionId,
@@ -58,6 +61,7 @@ export function DefaultChatView({
 				) : null}
 				<div className="flex min-h-0 flex-1 gap-2 overflow-visible">
 					<div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+						{subHeader}
 						<PerfSendProfiler id="MessageList">
 							<MessageList
 								messages={messages}

@@ -9,7 +9,6 @@ import { TeamChatPage } from "./TeamChatPage";
 const captured = vi.hoisted(() => ({
 	left: null as ReactNode,
 	right: null as ReactNode,
-	badge: null as ReactNode,
 	title: null as string | null,
 	navigate: vi.fn(),
 	params: { teamId: "team-1", sessionId: "session-1", memberId: undefined as string | undefined },
@@ -23,14 +22,12 @@ vi.mock("@shared/store/atoms", () => ({
 	pageHeaderLeftSlotAtom: "left",
 	pageHeaderRightSlotAtom: "right",
 	pageHeaderTitleAtom: "title",
-	pageHeaderTitleBadgeAtom: "badge",
 }));
 vi.mock("jotai", () => ({
 	useAtom: () => [false, vi.fn()],
 	useSetAtom: (atom: string) => (value: ReactNode) => {
 		if (atom === "left") captured.left = value;
 		if (atom === "right") captured.right = value;
-		if (atom === "badge") captured.badge = value;
 		if (atom === "title") captured.title = typeof value === "string" ? value : null;
 	},
 }));
@@ -99,25 +96,12 @@ afterEach(() => {
 	cleanup();
 	captured.left = null;
 	captured.right = null;
-	captured.badge = null;
 	captured.title = null;
 	captured.navigate.mockReset();
 	captured.params.memberId = undefined;
 });
 
-describe("TeamChatPage member header", () => {
-	it("opens the Team member view for the clicked member", () => {
-		render(<TeamChatPage />);
-		render(<>{captured.badge}</>);
-
-		fireEvent.click(screen.getByRole("button", { name: "chat.memberSession:Research" }));
-
-		expect(captured.navigate).toHaveBeenCalledWith({
-			to: "/agent-teams/$teamId/sessions/$sessionId/members/$memberId",
-			params: { teamId: "team-1", sessionId: "session-1", memberId: "member-1" },
-		});
-	});
-
+describe("TeamChatPage header", () => {
 	it("returns to the Team conversation from a member view", () => {
 		captured.params.memberId = "member-1";
 		render(<TeamChatPage />);

@@ -1,5 +1,6 @@
 import { DefaultChatView } from "../../components/chat-view/DefaultChatView";
 import { TeamComposerConnector } from "./TeamComposerConnector";
+import { TeamMemberRoster } from "./TeamMemberRoster";
 import type { TeamChatActions, TeamChatViewModel } from "./teamChatModel";
 
 const TEAM_WORKSPACE_BUILTIN_TABS = ["file", "browser"] as const;
@@ -41,6 +42,16 @@ export function TeamChatView({ model, actions, onOpenMember }: TeamChatViewProps
 					: undefined
 			}
 			onTeamMemberOpen={onOpenMember}
+			subHeader={
+				<TeamMemberRoster
+					members={model.members}
+					leaderMemberId={model.leaderMemberId}
+					leaderLabel={model.labels.leaderRoute}
+					memberRuntimeIds={model.memberRuntimeIds}
+					activeMemberId={model.memberViewId}
+					onOpenMember={onOpenMember}
+				/>
+			}
 		>
 			{model.memberViewId ? null : <TeamComposerConnector model={model} actions={actions} />}
 		</DefaultChatView>

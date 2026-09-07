@@ -5,9 +5,8 @@ import {
 	pageHeaderLeftSlotAtom,
 	pageHeaderRightSlotAtom,
 	pageHeaderTitleAtom,
-	pageHeaderTitleBadgeAtom,
 } from "@shared/store/atoms";
-import { AgentAvatarView, ChatHeaderActions } from "@vetta/theme-ui/chat";
+import { ChatHeaderActions } from "@vetta/theme-ui/chat";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useAtom, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo } from "react";
@@ -22,7 +21,6 @@ export function TeamChatPage({ createNewSession = false }: { readonly createNewS
 	const { teamId, sessionId, memberId } = useParams({ strict: false });
 	if (!teamId) throw new Error("Team route is missing teamId");
 	const setHeaderTitle = useSetAtom(pageHeaderTitleAtom);
-	const setHeaderTitleBadge = useSetAtom(pageHeaderTitleBadgeAtom);
 	const setHeaderLeft = useSetAtom(pageHeaderLeftSlotAtom);
 	const setHeaderRight = useSetAtom(pageHeaderRightSlotAtom);
 	const { model, actions } = useTeamChatModel(teamId, sessionId, memberId, createNewSession);
@@ -60,44 +58,6 @@ export function TeamChatPage({ createNewSession = false }: { readonly createNewS
 				</Button>
 			) : null,
 		[memberId, navigate, sessionId, t, teamId],
-	);
-	const memberHeader = useMemo(
-		() => (
-			<div className="flex min-w-0 items-center gap-0.5" role="group" aria-label={t("chat.memberSessions")}>
-				{model.members.map((member) => {
-					const memberRuntimeId = model.memberRuntimeIds?.[member.id];
-					return (
-						<Button
-							key={member.id}
-							variant="ghost"
-							size="icon-xs"
-							className="h-7 w-7 rounded-full p-0"
-							disabled={!memberRuntimeId}
-							data-member-session-id={member.id}
-							data-member-session-active={member.id === memberId ? "true" : undefined}
-							aria-label={t("chat.memberSession", { name: member.name })}
-							title={t("chat.memberSession", { name: member.name })}
-							onClick={() => {
-								if (!memberRuntimeId || !sessionId) return;
-								void navigate({
-									to: "/agent-teams/$teamId/sessions/$sessionId/members/$memberId",
-									params: { teamId, sessionId, memberId: member.id },
-								});
-							}}
-						>
-							<AgentAvatarView
-								name={member.name}
-								avatar={member.avatar}
-								blueprintId={member.blueprintId}
-								active={member.id === memberId}
-								size="xs"
-							/>
-						</Button>
-					);
-				})}
-			</div>
-		),
-		[memberId, model.memberRuntimeIds, model.members, navigate, sessionId, t, teamId],
 	);
 
 	useEffect(() => {
@@ -139,15 +99,13 @@ export function TeamChatPage({ createNewSession = false }: { readonly createNewS
 	useEffect(() => {
 		setHeaderLeft(backToTeamAction);
 		setHeaderTitle(activeSessionTitle ?? model.title);
-		setHeaderTitleBadge(memberHeader);
 		setHeaderRight(headerActions);
 		return () => {
 			setHeaderLeft(null);
 			setHeaderTitle(null);
-			setHeaderTitleBadge(null);
 			setHeaderRight(null);
 		};
-	}, [activeSessionTitle, backToTeamAction, headerActions, memberHeader, model.title, setHeaderLeft, setHeaderRight, setHeaderTitle, setHeaderTitleBadge]);
+	}, [activeSessionTitle, backToTeamAction, headerActions, model.title, setHeaderLeft, setHeaderRight, setHeaderTitle]);
 
 	return <TeamChatView model={model} actions={actions} onOpenMember={openMember} />;
 }
