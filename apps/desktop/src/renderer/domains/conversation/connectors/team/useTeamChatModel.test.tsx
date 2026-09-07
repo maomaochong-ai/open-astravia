@@ -660,6 +660,21 @@ describe("useTeamChatModel streaming flow", () => {
 		);
 	});
 
+	it("aborts a team that is still streaming after the send request already resolved", async () => {
+		const { result } = renderHook(() => useTeamChatModel(team.id));
+		await waitFor(() => expect(result.current.model.status).toBe("ready"));
+		await waitFor(() => expect(streamListener).toBeTypeOf("function"));
+		act(() => result.current.actions.setDraft("dispatch the team"));
+		// The leader's own turn finishes and the IPC resolves, but the members it
+		// dispatched keep streaming — this is the state the stop button must still cover.
+		await act(async () => result.current.actions.send());
+		act(() => streamListener?.(streamEvent(1, "member still working")));
+		await waitFor(() => expect(result.current.model.status).toBe("streaming"));
+
+		await act(async () => result.current.actions.abort());
+		expect(window.vetta.agentTeams.abort).toHaveBeenCalledWith(baseSession.id);
+	});
+
 	it.each(["failed", "aborted"] as const)("releases a %s send without overwriting a newer draft", async (outcome) => {
 		let rejectSend: ((reason: Error) => void) | undefined;
 		vi.mocked(window.vetta.agentTeams.sendMessage).mockReturnValueOnce(

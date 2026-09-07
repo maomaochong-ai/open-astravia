@@ -709,25 +709,34 @@ export function useTeamChatModel(
 		void send(handoff);
 	}, [createNewSession, preferredSessionId, send]);
 
+	// 终止是最高优先级动作：无论本地是否还持有在飞的 send 请求（leader 的 IPC 早已
+	// 返回，成员任务仍在跑），都必须发出终止并立刻解锁输入。本地状态不等流事件回灌。
 	const abort = useCallback(async () => {
 		const request = pendingRef.current;
-		if (!request) return;
-		cancelledRequests.current.add(request.requestId);
+		const target = sessionRef.current;
+		if (request) cancelledRequests.current.add(request.requestId);
 		setStatus("cancelling");
-		if (!session) {
-			pendingRef.current = undefined;
-			setPending(undefined);
-			setStatus("ready");
-			return;
-		}
+		pendingRef.current = undefined;
+		setPending(undefined);
+		const abortedStreams = Object.fromEntries(
+			Object.entries(streamsRef.current).map(([messageId, turn]) =>
+				turn.message.phase === "streaming"
+					? [messageId, { ...turn, message: { ...turn.message, phase: "aborted" as const, endedAt: Date.now() } }]
+					: [messageId, turn],
+			),
+		);
+		streamsRef.current = abortedStreams;
+		setStreams(abortedStreams);
+		setStatus("ready");
+		if (!target) return;
 		try {
-			await window.vetta.agentTeams.abort(session.id);
+			await window.vetta.agentTeams.abort(target.id);
 		} catch (cause) {
-			cancelledRequests.current.delete(request.requestId);
+			if (request) cancelledRequests.current.delete(request.requestId);
 			setError(errorMessage(cause));
 			setStatus("error");
 		}
-	}, [session]);
+	}, []);
 
 	const labels = useMemo(
 		() => ({
