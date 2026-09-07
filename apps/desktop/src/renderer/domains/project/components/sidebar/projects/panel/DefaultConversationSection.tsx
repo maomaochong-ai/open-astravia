@@ -72,7 +72,7 @@ export function DefaultConversationSection(
 			}
 			onMoreClick={
 				showingTeams
-					? () => void navigate({ to: "/agent-teams" })
+					? () => void navigate({ to: "/agents" })
 					: model.actions.openMoreMenu
 			}
 			onNewSession={

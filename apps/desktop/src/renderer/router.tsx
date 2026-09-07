@@ -25,17 +25,11 @@ const BatchTasksPage = lazy(async () => ({
 const AbilitiesPage = lazy(async () => ({
 	default: (await import("./domains/abilities/components/AbilitiesPage")).AbilitiesPage,
 }));
-const AgentLibraryPage = lazy(async () => ({
-	default: (await import("./domains/agent-teams/components/AgentLibraryPage")).AgentLibraryPage,
-}));
-const TeamListPage = lazy(async () => ({
-	default: (await import("./domains/agent-teams/components/TeamListPage")).TeamListPage,
+const AgentCenterPage = lazy(async () => ({
+	default: (await import("./domains/agent-teams/components/AgentCenterPage")).AgentCenterPage,
 }));
 const TeamChatPage = lazy(async () => ({
 	default: (await import("./domains/conversation/connectors/team/TeamChatPage")).TeamChatPage,
-}));
-const TeamSettingsPage = lazy(async () => ({
-	default: (await import("./domains/agent-teams/components/TeamSettingsPage")).TeamSettingsPage,
 }));
 const ScenesPage = lazy(async () => ({
 	default: (await import("./domains/skills/components/ScenesPage")).ScenesPage,
@@ -96,18 +90,25 @@ const abilitiesRoute = createRoute({
 	}),
 });
 
-const agentLibraryRoute = createRoute({
+const agentCenterRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/agents",
-	component: AgentLibraryPage,
+	component: AgentCenterPage,
 	pendingComponent: NoPendingComponent,
+	// 智能体档案与团队设置都是抽屉，用 search 驱动，Esc 与返回键即关闭。
+	validateSearch: (search: Record<string, unknown>) => ({
+		...(typeof search.agent === "string" ? { agent: search.agent } : {}),
+		...(typeof search.team === "string" ? { team: search.team } : {}),
+	}),
 });
 
-const teamListRoute = createRoute({
+/** 旧的团队列表页已并入智能体中心，深链保持可用。 */
+const teamListRedirectRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/agent-teams",
-	component: TeamListPage,
-	pendingComponent: NoPendingComponent,
+	beforeLoad: () => {
+		throw redirect({ to: "/agents", replace: true });
+	},
 });
 
 const teamChatRoute = createRoute({
@@ -139,11 +140,13 @@ const teamMemberSessionRoute = createRoute({
 	pendingComponent: NoPendingComponent,
 });
 
-const teamSettingsRoute = createRoute({
+/** 团队设置已改为智能体中心的抽屉，深链保持可用。 */
+const teamSettingsRedirectRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/agent-teams/$teamId/settings",
-	component: TeamSettingsPage,
-	pendingComponent: NoPendingComponent,
+	beforeLoad: ({ params }) => {
+		throw redirect({ to: "/agents", search: { team: params.teamId }, replace: true });
+	},
 });
 
 /** 旧深链：曾经的独立详情页改为能力页抽屉。 */
@@ -265,13 +268,13 @@ const routeTree = rootRoute.addChildren([
 	indexRoute,
 	automationRoute,
 	batchTasksRoute,
-	agentLibraryRoute,
-	teamListRoute,
+	agentCenterRoute,
+	teamListRedirectRoute,
 	teamChatRoute,
 	teamNewSessionRoute,
 	teamSessionRoute,
 	teamMemberSessionRoute,
-	teamSettingsRoute,
+	teamSettingsRedirectRoute,
 	knowledgeRoute,
 	knowledgeListRoute,
 	abilitiesRoute,

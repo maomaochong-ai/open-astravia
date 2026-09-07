@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type { AgentProfile, AgentProfileUpdateImpact } from "@vetta/agent-team";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -281,6 +281,87 @@ describe("AgentProfileEditor", () => {
 					}),
 				}),
 			),
+		);
+	});
+
+	it("edits identity fields in the sheet layout and saves them", async () => {
+		const user = userEvent.setup();
+		const onSave = vi.fn(async () => ({ updated: agent, impact }));
+		function SheetHarness(): JSX.Element {
+			const [saveRequest, setSaveRequest] = useState(0);
+			return (
+				<>
+					<button type="button" onClick={() => setSaveRequest((value) => value + 1)}>
+						sheet-save
+					</button>
+					<AgentProfileEditor
+						agent={agent}
+						capabilities={[]}
+						layout="sheet"
+						activeTab="basic"
+						hideSaveAction
+						saveRequest={saveRequest}
+						onDraftChange={vi.fn()}
+						onPreview={vi.fn(async () => ({ ...impact, teamIds: [], teamNames: [] }))}
+						onSave={onSave}
+					/>
+				</>
+			);
+		}
+		render(<SheetHarness />);
+
+		const name = screen.getByDisplayValue(agent.name) as HTMLInputElement;
+		const description = screen.getByDisplayValue(agent.description) as HTMLTextAreaElement;
+		await user.clear(description);
+		await user.type(description, "Owns the release checklist");
+		await user.clear(name);
+		await user.type(name, "Release captain");
+		expect(description.value).toBe("Owns the release checklist");
+
+		await user.click(screen.getByRole("button", { name: "sheet-save" }));
+		await waitFor(() =>
+			expect(onSave).toHaveBeenCalledWith(
+				agent,
+				expect.objectContaining({ name: "Release captain", description: "Owns the release checklist" }),
+			),
+		);
+	});
+
+	it("picks a preset avatar background and saves it with the profile", async () => {
+		const user = userEvent.setup();
+		const onSave = vi.fn(async () => ({ updated: agent, impact }));
+		function SheetHarness(): JSX.Element {
+			const [saveRequest, setSaveRequest] = useState(0);
+			return (
+				<>
+					<button type="button" onClick={() => setSaveRequest((value) => value + 1)}>
+						sheet-save
+					</button>
+					<AgentProfileEditor
+						agent={agent}
+						capabilities={[]}
+						layout="sheet"
+						activeTab="basic"
+						hideSaveAction
+						saveRequest={saveRequest}
+						onPreview={vi.fn(async () => ({ ...impact, teamIds: [], teamNames: [] }))}
+						onSave={onSave}
+					/>
+				</>
+			);
+		}
+		render(<SheetHarness />);
+
+		await user.click(screen.getByRole("button", { name: "profile.avatarBackgroundOptioncoral" }));
+		await user.click(screen.getByRole("button", { name: "sheet-save" }));
+		await waitFor(() =>
+			expect(onSave).toHaveBeenCalledWith(agent, expect.objectContaining({ avatarBackground: "tint:coral" })),
+		);
+
+		await user.click(screen.getByRole("button", { name: "profile.avatarBackgroundAuto" }));
+		await user.click(screen.getByRole("button", { name: "sheet-save" }));
+		await waitFor(() =>
+			expect(onSave).toHaveBeenLastCalledWith(agent, expect.objectContaining({ avatarBackground: undefined })),
 		);
 	});
 

@@ -13,7 +13,11 @@ import {
 } from "../lib/ability-selection";
 import { AbilityIcon } from "../../abilities/components/AbilityIcon";
 import { agentAvatarUrl } from "../../../shared/agent-teams/agent-avatar";
+import { AgentAvatarView } from "@vetta/theme-ui/chat";
 import { AgentAvatarPicker } from "./AgentAvatarPicker";
+import { AgentAvatarBackgroundPicker } from "./AgentAvatarBackgroundPicker";
+
+export type AgentProfileTab = "basic" | "prompt" | "abilities";
 
 interface AgentProfileEditorProps {
 	readonly agent: AgentProfile;
@@ -21,7 +25,10 @@ interface AgentProfileEditorProps {
 	readonly capabilities: readonly AgentCapabilityOption[];
 	readonly displayName?: string;
 	readonly displayDescription?: string;
-	readonly layout?: "stacked" | "columns" | "tabs";
+	readonly layout?: "stacked" | "columns" | "sheet";
+	/** 受控页签：`sheet` 布局把页签条交给外层浮层渲染。 */
+	readonly activeTab?: AgentProfileTab;
+	readonly onActiveTabChange?: (tab: AgentProfileTab) => void;
 	readonly saveRequest?: number;
 	readonly hideSaveAction?: boolean;
 	readonly onDraftChange?: (input: AgentProfileEditInput) => void;
@@ -40,6 +47,8 @@ export function AgentProfileEditor({
 	capabilities,
 	displayName,
 	displayDescription,
+	activeTab: controlledTab,
+	onActiveTabChange,
 	saveRequest,
 	layout = "stacked",
 	hideSaveAction = false,
@@ -54,10 +63,13 @@ export function AgentProfileEditor({
 	const [description, setDescription] = useState(agent.description);
 	const [systemPrompt, setSystemPrompt] = useState(agent.systemPrompt ?? "");
 	const [avatar, setAvatar] = useState(agentAvatarUrl(agent));
+	const [avatarBackground, setAvatarBackground] = useState(agent.avatarBackground);
 	const [abilities, setAbilities] = useState<AgentAbilitySelection>(() =>
 		normalizeAgentAbilitySelection(agent.abilities, capabilities),
 	);
-	const [activeTab, setActiveTab] = useState<"basic" | "prompt" | "abilities">("basic");
+	const [uncontrolledTab, setUncontrolledTab] = useState<AgentProfileTab>("basic");
+	const activeTab = controlledTab ?? uncontrolledTab;
+	const setActiveTab = onActiveTabChange ?? setUncontrolledTab;
 	const [saving, setSaving] = useState(false);
 	const [saved, setSaved] = useState(false);
 	const [pendingImpact, setPendingImpact] = useState<AgentProfileUpdateImpact>();
@@ -69,6 +81,7 @@ export function AgentProfileEditor({
 		setDescription(agent.description);
 		setSystemPrompt(agent.systemPrompt ?? "");
 		setAvatar(agentAvatarUrl(agent));
+		setAvatarBackground(agent.avatarBackground);
 		setAbilities(normalizeAgentAbilitySelection(agent.abilities, capabilities));
 		setPendingImpact(undefined);
 		setSaved(false);
@@ -81,10 +94,11 @@ export function AgentProfileEditor({
 			description,
 			systemPrompt,
 			avatar,
+			avatarBackground,
 			mentionHandle: agent.mentionHandle,
 			abilities,
 		});
-	}, [abilities, agent.mentionHandle, avatar, description, name, onDraftChange, systemPrompt]);
+	}, [abilities, agent.mentionHandle, avatar, avatarBackground, description, name, onDraftChange, systemPrompt]);
 
 	useEffect(() => {
 		onSavingChange?.(saving);
@@ -113,6 +127,7 @@ export function AgentProfileEditor({
 				description,
 				systemPrompt,
 				avatar,
+				avatarBackground,
 				mentionHandle: agent.mentionHandle,
 				abilities,
 			});
@@ -124,6 +139,103 @@ export function AgentProfileEditor({
 		} finally {
 			setSaving(false);
 		}
+	}
+
+	if (layout === "sheet") {
+		return (
+			<div className="flex h-full min-h-0 flex-col gap-5">
+				{activeTab === "basic" && (
+					<div className="flex flex-col gap-5">
+						<div className="flex items-center gap-4">
+							<AgentAvatarView
+								name={name || (displayName ?? agent.name)}
+								avatar={avatar}
+								background={avatarBackground}
+								blueprintId={agent.blueprintId}
+								seed={agent.id}
+								size="hero"
+								className="h-16 w-16 p-2.5"
+							/>
+							<div className="min-w-0">
+								<span className="block truncate text-[14px] font-semibold text-foreground">
+									{name || (displayName ?? agent.name)}
+								</span>
+								{blueprint && (
+									<span className="mt-1 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+										<span className="icon-[solar--shield-user-linear] h-3 w-3" aria-hidden="true" />
+										{t(blueprint.nameKey as never)}
+									</span>
+								)}
+							</div>
+						</div>
+
+						<AgentAvatarPicker value={avatar} onChange={setAvatar} />
+
+						<AgentAvatarBackgroundPicker value={avatarBackground} onChange={setAvatarBackground} />
+
+						<TextField label={t("profile.name")} value={name} onChange={setName} />
+
+						<label className="block text-sm">
+							<span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+								{t("profile.description")}
+							</span>
+							<textarea
+								value={description}
+								onChange={(event) => setDescription(event.target.value)}
+								rows={3}
+								placeholder={t("profile.descriptionPlaceholder")}
+								className="min-h-20 w-full resize-none rounded-xl border border-border/60 bg-background/50 px-3.5 py-2.5 text-[12px] leading-relaxed text-foreground caret-primary outline-none transition-colors placeholder:text-muted-foreground/50 hover:border-border focus:border-primary/50 focus:bg-background"
+							/>
+						</label>
+					</div>
+				)}
+
+				{activeTab === "prompt" && (
+					<div className="flex min-h-0 flex-1 flex-col gap-3">
+						<div className="flex items-start justify-between gap-3">
+							<div className="min-w-0">
+								<span className="block text-[12px] font-medium text-foreground">{t("profile.systemPrompt")}</span>
+								<span className="mt-0.5 block text-[11px] text-muted-foreground">{t("profile.systemPromptHint")}</span>
+							</div>
+							<Button
+								variant="ghost"
+								size="sm"
+								className="h-7 shrink-0 px-2 text-[11px] text-muted-foreground"
+								onClick={() => setSystemPrompt("")}
+							>
+								{t("profile.clearPrompt")}
+							</Button>
+						</div>
+						<textarea
+							aria-label={t("profile.systemPrompt")}
+							value={systemPrompt}
+							onChange={(event) => setSystemPrompt(event.target.value)}
+							placeholder={t("profile.systemPromptPlaceholder")}
+							className="min-h-70 w-full flex-1 resize-none rounded-xl border border-border/60 bg-background/50 p-3.5 font-mono text-[12px] leading-relaxed text-foreground caret-primary outline-none transition-colors placeholder:text-muted-foreground/50 hover:border-border focus:border-primary/50 focus:bg-background"
+						/>
+					</div>
+				)}
+
+				{activeTab === "abilities" && (
+					<AbilityEditor abilities={abilities} capabilities={capabilities} onChange={setAbilities} />
+				)}
+
+				{pendingImpact && pendingImpact.teamIds.length > 1 && (
+					<div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-[11px] text-amber-400">
+						{t("profile.sharedImpact", {
+							count: pendingImpact.teamIds.length,
+							teams: pendingImpact.teamNames.join("、"),
+						})}
+					</div>
+				)}
+
+				{error && (
+					<span aria-live="polite" className="rounded-lg bg-destructive/10 px-3 py-2 text-[11px] text-destructive">
+						{error}
+					</span>
+				)}
+			</div>
+		);
 	}
 
 	if (layout === "columns") {
@@ -271,7 +383,7 @@ export function AgentProfileEditor({
 									aria-label={t("profile.systemPrompt")}
 									value={systemPrompt}
 									onChange={(event) => setSystemPrompt(event.target.value)}
-									placeholder="输入该智能体在执行任务时遵循的核心系统指令..."
+									placeholder={t("profile.systemPromptPlaceholder")}
 									className="flex-1 min-h-[360px] w-full cursor-text resize-none rounded-xl border border-border/60 bg-background/50 p-4 text-xs font-mono leading-relaxed text-foreground caret-primary outline-none transition-all placeholder:text-muted-foreground/40 hover:border-border focus:border-primary/50 focus:bg-background"
 								/>
 							</div>
@@ -288,177 +400,6 @@ export function AgentProfileEditor({
 						</div>
 					)}
 				</section>
-			</div>
-		);
-	}
-	if (layout === "tabs") {
-		const selectedAbilitiesCount = capabilities.filter((option) =>
-			isAgentAbilitySelected(abilities, option),
-		).length;
-
-		return (
-			<div className="mx-auto max-w-4xl space-y-6 pb-12">
-				{/* Hero Banner */}
-				<div className="flex items-center gap-5 rounded-2xl border border-border/50 bg-gradient-to-br from-card/70 via-card/40 to-background/40 p-6 backdrop-blur-sm">
-					<div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-border/60 bg-muted/30 p-2">
-						<img src={avatar} alt="" className="h-full w-full object-contain" />
-					</div>
-					<div className="min-w-0 flex-1">
-						<div className="flex flex-wrap items-center gap-2.5">
-							<h2 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-								{displayName ?? agent.name}
-							</h2>
-							{blueprint && (
-								<span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-									<span className="icon-[solar--shield-user-bold] h-3 w-3" aria-hidden="true" />
-									{t(blueprint.nameKey as never)}
-								</span>
-							)}
-						</div>
-						<p className="mt-1.5 text-xs text-muted-foreground/80">
-							{t("profile.fixedPrompt", {
-								role: blueprint ? t(blueprint.nameKey as never) : agent.blueprintId,
-							})}
-						</p>
-					</div>
-				</div>
-
-				<div className="sticky top-0 z-10 space-y-3 bg-background pb-3">
-					{/* Horizontal Tabs Bar */}
-					<div className="flex flex-wrap items-center gap-2 border-b border-border/40 py-3">
-						<button
-						type="button"
-						onClick={() => setActiveTab("basic")}
-						className={cn(
-							"inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-medium transition-colors outline-none",
-							activeTab === "basic"
-								? "border border-primary/40 bg-primary/10 text-primary font-semibold"
-								: "border border-transparent text-muted-foreground hover:bg-muted/30 hover:text-foreground",
-						)}
-						>
-							<span className="icon-[solar--user-id-linear] h-4 w-4" aria-hidden="true" />
-							<span>{t("profile.basicInfo")}</span>
-						</button>
-
-						<button
-						type="button"
-						onClick={() => setActiveTab("prompt")}
-						className={cn(
-							"inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-medium transition-colors outline-none",
-							activeTab === "prompt"
-								? "border border-primary/40 bg-primary/10 text-primary font-semibold"
-								: "border border-transparent text-muted-foreground hover:bg-muted/30 hover:text-foreground",
-						)}
-						>
-							<span className="icon-[solar--document-text-linear] h-4 w-4" aria-hidden="true" />
-							<span>{t("profile.systemPrompt")}</span>
-						</button>
-
-						<button
-						type="button"
-						onClick={() => setActiveTab("abilities")}
-						className={cn(
-							"inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-medium transition-colors outline-none",
-							activeTab === "abilities"
-								? "border border-primary/40 bg-primary/10 text-primary font-semibold"
-								: "border border-transparent text-muted-foreground hover:bg-muted/30 hover:text-foreground",
-						)}
-						>
-							<span className="icon-[solar--bolt-circle-linear] h-4 w-4" aria-hidden="true" />
-							<span>{t("profile.abilities")}</span>
-							<span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-								{selectedAbilitiesCount}
-							</span>
-						</button>
-
-						{!hideSaveAction && (
-							<div className="ml-auto flex items-center gap-3">
-								<span aria-live="polite" className="text-xs text-muted-foreground">
-									{saved ? t("profile.savedNextTurn") : ""}
-								</span>
-								<Button variant="primary" disabled={saving} onClick={() => void save()} className="gap-2">
-									<span className="icon-[solar--diskette-bold] h-4 w-4" aria-hidden="true" />
-									{saving ? t("profile.saving") : t("profile.save")}
-								</Button>
-							</div>
-						)}
-					</div>
-
-					{pendingImpact && pendingImpact.teamIds.length > 1 && (
-						<div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-200">
-							<div className="flex items-start gap-2.5">
-								<span className="icon-[solar--danger-triangle-linear] mt-0.5 h-4 w-4 shrink-0 text-amber-400" aria-hidden="true" />
-								<div className="min-w-0 flex-1">
-									{t("profile.sharedImpact", {
-										count: pendingImpact.teamIds.length,
-										teams: pendingImpact.teamNames.join("、"),
-									})}
-									<div className="mt-3">
-										<Button variant="outline" size="sm" className="border-amber-500/40 text-amber-300 hover:bg-amber-500/20" onClick={() => void save()}>
-											{t("profile.confirmSharedSave")}
-										</Button>
-									</div>
-								</div>
-							</div>
-						</div>
-					)}
-
-					{error && (
-						<span aria-live="polite" className="block rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-							{error}
-						</span>
-					)}
-				</div>
-
-				{/* Active Tab View */}
-				{activeTab === "basic" && (
-					<section className="rounded-2xl border border-border/50 bg-card/30 p-6 backdrop-blur-sm">
-						<div className="flex flex-col gap-6">
-							<AgentAvatarPicker value={avatar} onChange={setAvatar} />
-							<TextField
-								label={t("profile.name")}
-								value={name}
-								onChange={setName}
-							/>
-							<label className="block text-sm">
-								<span className="mb-1.5 block text-xs font-semibold tracking-wider uppercase text-muted-foreground/80">
-									{t("profile.description")}
-								</span>
-								<textarea
-									value={description}
-									onChange={(event) => setDescription(event.target.value)}
-									className="min-h-24 w-full cursor-text resize-y rounded-xl border border-border/60 bg-background/50 px-3.5 py-2.5 text-sm text-foreground caret-primary outline-none transition-all placeholder:text-muted-foreground/50 hover:border-border focus:border-primary/50 focus:bg-background"
-								/>
-							</label>
-						</div>
-					</section>
-				)}
-
-				{activeTab === "prompt" && (
-					<section className="rounded-2xl border border-border/50 bg-card/30 p-6 backdrop-blur-sm">
-						<label className="block text-sm">
-							<span className="mb-1.5 block text-xs font-semibold tracking-wider uppercase text-muted-foreground/80">
-								{t("profile.systemPrompt")}
-							</span>
-							<textarea
-								aria-label={t("profile.systemPrompt")}
-								value={systemPrompt}
-								onChange={(event) => setSystemPrompt(event.target.value)}
-								placeholder="输入该智能体在执行任务时遵循的核心系统指令..."
-								className="min-h-[380px] w-full cursor-text resize-y rounded-xl border border-border/60 bg-background/50 px-3.5 py-2.5 text-sm font-mono leading-relaxed text-foreground caret-primary outline-none transition-all placeholder:text-muted-foreground/50 hover:border-border focus:border-primary/50 focus:bg-background"
-							/>
-						</label>
-					</section>
-				)}
-
-				{activeTab === "abilities" && (
-					<AbilityEditor
-						abilities={abilities}
-						capabilities={capabilities}
-						onChange={setAbilities}
-					/>
-				)}
-
 			</div>
 		);
 	}

@@ -1,56 +1,26 @@
 import {
 	type AgentAbilitySelection,
-	type AgentBlueprint,
 	type AgentProfile,
 	type AgentProfileDeleteImpact,
-	type AgentTeamDocument,
 	listLibraryAgentProfiles,
 } from "@vetta/agent-team";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { AgentCapabilityOption } from "../lib/capability-options";
-import { loadAgentTeamConfigurationResources } from "../services/load-agent-team-resources";
+import { useCallback, useMemo } from "react";
+import { type AgentTeamResources, agentTeamErrorMessage } from "./useAgentTeamResources";
 
 export interface AgentLibraryCopy {
 	readonly defaultName: string;
 	readonly defaultDescription: string;
 }
 
-export function useAgentLibraryModel(copy: AgentLibraryCopy) {
-	const [document, setDocument] = useState<AgentTeamDocument>();
-	const [blueprints, setBlueprints] = useState<readonly AgentBlueprint[]>([]);
-	const [capabilities, setCapabilities] = useState<readonly AgentCapabilityOption[]>([]);
-	const [selectedId, setSelectedId] = useState<string>();
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string>();
-
-	useEffect(() => {
-		let cancelled = false;
-		void loadAgentTeamConfigurationResources()
-			.then(({ document: nextDocument, blueprints: nextBlueprints, capabilities: nextCapabilities }) => {
-				if (cancelled) return;
-				setDocument(nextDocument);
-				setBlueprints(nextBlueprints);
-				setCapabilities(nextCapabilities);
-				setSelectedId(nextDocument.agents.find((agent) => agent.scope.kind === "library")?.id);
-			})
-			.catch((cause: unknown) => {
-				if (!cancelled) setError(errorMessage(cause));
-			})
-			.finally(() => {
-				if (!cancelled) setLoading(false);
-			});
-		return () => {
-			cancelled = true;
-		};
-	}, []);
+/** 智能体库的增删改查；团队编队由 `useTeamRosterModel` 负责，两者共用同一份文档状态。 */
+export function useAgentLibraryModel(resources: AgentTeamResources, copy: AgentLibraryCopy) {
+	const { document, setDocument, blueprints, setError } = resources;
 
 	const libraryAgents = useMemo(() => (document ? listLibraryAgentProfiles(document) : []), [document]);
-	const selected = useMemo(() => libraryAgents.find((agent) => agent.id === selectedId), [libraryAgents, selectedId]);
-	const blueprint = selected ? blueprints.find((candidate) => candidate.id === selected.blueprintId) : undefined;
 
-	const createAgent = useCallback(async () => {
+	const createAgent = useCallback(async (): Promise<AgentProfile | undefined> => {
 		const nextBlueprint = blueprints[0];
-		if (!nextBlueprint) return;
+		if (!nextBlueprint) return undefined;
 		try {
 			const created = await window.vetta.agentTeams.createAgent({
 				name: copy.defaultName,
@@ -59,24 +29,29 @@ export function useAgentLibraryModel(copy: AgentLibraryCopy) {
 				blueprintId: nextBlueprint.id,
 			});
 			setDocument((current) => (current ? { ...current, agents: [...current.agents, created] } : current));
-			setSelectedId(created.id);
 			setError(undefined);
+			return created;
 		} catch (cause) {
-			setError(errorMessage(cause));
+			setError(agentTeamErrorMessage(cause));
+			return undefined;
 		}
-	}, [blueprints, copy.defaultDescription, copy.defaultName, libraryAgents.length]);
+	}, [blueprints, copy.defaultDescription, copy.defaultName, libraryAgents.length, setDocument, setError]);
 
 	const previewAgent = useCallback(async (agentId: string) => {
 		return window.vetta.agentTeams.previewAgentUpdate(agentId);
 	}, []);
-	const previewAgentDelete = useCallback(async (agentId: string) => {
-		try {
-			return await window.vetta.agentTeams.previewAgentDelete(agentId);
-		} catch (cause) {
-			setError(errorMessage(cause));
-			return undefined;
-		}
-	}, []);
+
+	const previewAgentDelete = useCallback(
+		async (agentId: string) => {
+			try {
+				return await window.vetta.agentTeams.previewAgentDelete(agentId);
+			} catch (cause) {
+				setError(agentTeamErrorMessage(cause));
+				return undefined;
+			}
+		},
+		[setError],
+	);
 
 	const saveAgent = useCallback(
 		async (agent: AgentProfile, input: AgentProfileEditInput) => {
@@ -85,60 +60,43 @@ export function useAgentLibraryModel(copy: AgentLibraryCopy) {
 				name: input.name,
 				description: input.description,
 				avatar: input.avatar,
+				avatarBackground: input.avatarBackground,
 				mentionHandle: input.mentionHandle,
 				systemPrompt: input.systemPrompt,
 				abilities: input.abilities,
 			});
 			setDocument((current) =>
 				current
-					? {
-							...current,
-							agents: current.agents.map((item) => (item.id === updated.id ? updated : item)),
-						}
+					? { ...current, agents: current.agents.map((item) => (item.id === updated.id ? updated : item)) }
 					: current,
 			);
 			return { updated, impact: await previewAgent(agent.id) };
 		},
-		[previewAgent],
+		[previewAgent, setDocument],
 	);
 
-	const deleteAgent = useCallback(async (agent: AgentProfile, impact: AgentProfileDeleteImpact): Promise<boolean> => {
-		try {
-			await window.vetta.agentTeams.deleteAgent(agent.id, {
-				expectedRevision: agent.revision,
-				expectedTeamIds: impact.teams.map((team) => team.teamId),
-				expectedTeamRevisions: Object.fromEntries(impact.teams.map((team) => [team.teamId, team.teamRevision])),
-			});
-			const next = await window.vetta.agentTeams.list();
-			setDocument(next);
-			setSelectedId(next.agents.find((candidate) => candidate.scope.kind === "library")?.id);
-			setError(undefined);
-			return true;
-		} catch (cause) {
-			setError(errorMessage(cause));
-			return false;
-		}
-	}, []);
+	const deleteAgent = useCallback(
+		async (agent: AgentProfile, impact: AgentProfileDeleteImpact): Promise<boolean> => {
+			try {
+				await window.vetta.agentTeams.deleteAgent(agent.id, {
+					expectedRevision: agent.revision,
+					expectedTeamIds: impact.teams.map((team) => team.teamId),
+					expectedTeamRevisions: Object.fromEntries(impact.teams.map((team) => [team.teamId, team.teamRevision])),
+				});
+				setDocument(await window.vetta.agentTeams.list());
+				setError(undefined);
+				return true;
+			} catch (cause) {
+				setError(agentTeamErrorMessage(cause));
+				return false;
+			}
+		},
+		[setDocument, setError],
+	);
 
 	return {
-		document,
 		libraryAgents,
-		blueprints,
-		capabilities,
-		selected,
-		blueprint,
-		selectedId,
-		loading,
-		error,
-		actions: {
-			createAgent,
-			previewAgent,
-			previewAgentDelete,
-			saveAgent,
-			deleteAgent,
-			selectAgent: setSelectedId,
-			clearError: () => setError(undefined),
-		},
+		actions: { createAgent, previewAgent, previewAgentDelete, saveAgent, deleteAgent },
 	};
 }
 
@@ -146,11 +104,9 @@ export interface AgentProfileEditInput {
 	readonly name: string;
 	readonly description: string;
 	readonly avatar?: string;
+	/** `tint:<preset>` 或 `#rrggbb`；缺省表示按身份自动分配。 */
+	readonly avatarBackground?: string;
 	readonly mentionHandle: string;
 	readonly systemPrompt?: string;
 	readonly abilities: AgentAbilitySelection;
-}
-
-function errorMessage(cause: unknown): string {
-	return cause instanceof Error ? cause.message : String(cause);
 }
