@@ -308,6 +308,59 @@ describe("AgentProfileEditor", () => {
 	});
 
 
+	it("uploads a picture and saves it as the avatar", async () => {
+		const user = userEvent.setup();
+		const onSave = vi.fn(async () => ({ updated: agent, impact }));
+		const uploadAvatar = vi.fn(async () => "vetta-file://local/home/pictures/mine.png");
+		vi.stubGlobal("vetta", { agentTeams: { uploadAvatar } });
+		render(
+			<AgentProfileEditor
+				agent={agent}
+				capabilities={[]}
+				onPreview={vi.fn(async () => ({ ...impact, teamIds: [], teamNames: [] }))}
+				onSave={onSave}
+			/>,
+		);
+
+		await user.click(screen.getByRole("button", { name: "profile.avatarUpload" }));
+		await waitFor(() => expect(uploadAvatar).toHaveBeenCalled());
+		// 上传的图片不在内置目录里，得自己占一格，否则选完就从列表里消失。
+		await waitFor(() =>
+			expect(screen.getAllByRole("button", { name: "profile.avatarUpload" })).toHaveLength(2),
+		);
+
+		await user.click(screen.getByRole("button", { name: "profile.save" }));
+		await waitFor(() =>
+			expect(onSave).toHaveBeenCalledWith(
+				agent,
+				expect.objectContaining({ avatar: "vetta-file://local/home/pictures/mine.png" }),
+			),
+		);
+	});
+
+	it("keeps the profile unchanged when the upload dialog is cancelled", async () => {
+		const user = userEvent.setup();
+		const onSave = vi.fn(async () => ({ updated: agent, impact }));
+		vi.stubGlobal("vetta", { agentTeams: { uploadAvatar: vi.fn(async () => undefined) } });
+		render(
+			<AgentProfileEditor
+				agent={agent}
+				capabilities={[]}
+				onPreview={vi.fn(async () => ({ ...impact, teamIds: [], teamNames: [] }))}
+				onSave={onSave}
+			/>,
+		);
+
+		await user.click(screen.getByRole("button", { name: "profile.avatarUpload" }));
+		await user.click(screen.getByRole("button", { name: "profile.save" }));
+		await waitFor(() =>
+			expect(onSave).toHaveBeenCalledWith(
+				agent,
+				expect.objectContaining({ avatar: "./agent-team-avatars/researcher.webp" }),
+			),
+		);
+	});
+
 	it("offers every built-in avatar and saves the selected stable asset path", async () => {
 		const user = userEvent.setup();
 		const onSave = vi.fn(async () => ({ updated: agent, impact }));

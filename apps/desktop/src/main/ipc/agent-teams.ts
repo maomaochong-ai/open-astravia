@@ -16,12 +16,13 @@ import {
 	parseUpdateTeamSessionModelSettingsInput,
 } from "@vetta/agent-team";
 import type { SessionExecutionMode } from "@vetta/runtime-core";
-import { ipcMain } from "electron";
+import { dialog, ipcMain } from "electron";
 import type {
 	DesktopTeamConversationDisplay,
 	DesktopTeamSessionSnapshot,
 	DesktopTeamSessionStreamEvent,
 } from "../../preload/api-types/team-conversation-display.js";
+import { storeAgentAvatarFile } from "../agent-teams/agent-avatar-store.js";
 import { agentTeamStore } from "../agent-teams/agent-team-store.js";
 import { agentTeamSessionService } from "../agent-teams/team-session-service.js";
 import { ensureTeamWorkspace } from "../agent-teams/team-workspace.js";
@@ -50,6 +51,7 @@ const CHANNELS = {
 	SUBSCRIBE: "vetta:agent-teams:subscribe",
 	UNSUBSCRIBE: "vetta:agent-teams:unsubscribe",
 	ABORT: "vetta:agent-teams:abort",
+	UPLOAD_AVATAR: "vetta:agent-teams:upload-avatar",
 } as const;
 
 function requiredString(value: unknown, field: string): string {
@@ -139,6 +141,17 @@ export function registerAgentTeamsIpc(
 	const displayProjection = sessions.displayProjection?.bind(sessions);
 	const subscriptions = new Map<string, () => void>();
 	ipcMain.handle(CHANNELS.LIST, () => store.read());
+	// 让用户挑一张本地图片当头像：主进程复制进头像目录，只把渲染进程能加载的 URL 交回去。
+	ipcMain.handle(CHANNELS.UPLOAD_AVATAR, async () => {
+		const result = await dialog.showOpenDialog({
+			properties: ["openFile"],
+			filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp", "gif"] }],
+		});
+		const source = result.canceled ? undefined : result.filePaths[0];
+		if (!source) return undefined;
+		const stored = await storeAgentAvatarFile(source);
+		return stored.url;
+	});
 	ipcMain.handle(CHANNELS.BLUEPRINTS, () => store.listBlueprints());
 	ipcMain.handle(CHANNELS.CREATE_AGENT, (_event, input: unknown) =>
 		store.createAgent(parseCreateAgentProfileInput(input)),

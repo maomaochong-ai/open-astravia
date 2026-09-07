@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { createLocalFileUrl } from "@/shared/file-protocol";
 
 export function cn(...inputs: ClassValue[]): string {
 	return twMerge(clsx(inputs));
@@ -75,7 +76,5 @@ export function pathNormalize(path: string): string {
  * Do not use file:// — Electron renderer blocks it ("Not allowed to load local resource").
  */
 export function toVettaFileUrl(path: string): string {
-	const normalized = pathNormalize(path);
-	const prefix = normalized.startsWith("/") ? "" : "/";
-	return `vetta-file://local${prefix}${encodeURI(normalized)}`;
+	return createLocalFileUrl(pathNormalize(path));
 }

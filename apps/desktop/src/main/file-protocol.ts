@@ -3,6 +3,7 @@ import { stat } from "node:fs/promises";
 import { extname } from "node:path";
 import { Readable } from "node:stream";
 import { type CustomScheme, protocol } from "electron";
+import { FILE_PROTOCOL_SCHEME } from "../shared/file-protocol.js";
 import { assertPathReadableForPreview } from "./ipc/fs.js";
 
 /**
@@ -13,7 +14,6 @@ import { assertPathReadableForPreview } from "./ipc/fs.js";
  *
  * URL 形态：vetta-file://local/<绝对路径>
  */
-export const FILE_PROTOCOL_SCHEME = "vetta-file";
 
 const FILE_MIME: Record<string, string> = {
 	html: "text/html; charset=utf-8",
