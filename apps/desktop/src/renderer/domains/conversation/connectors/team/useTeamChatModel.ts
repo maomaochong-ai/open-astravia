@@ -78,6 +78,8 @@ export function useTeamChatModel(
 	const [compactingByRuntime, setCompactingByRuntime] = useState<Readonly<Record<string, boolean>>>({});
 	const sessionRef = useRef(session);
 	sessionRef.current = session;
+	const snapshotRef = useRef(snapshot);
+	snapshotRef.current = snapshot;
 	const loadedSessionRef = useRef<{ readonly teamId: string; readonly sessionId: string } | undefined>(undefined);
 	const sessionCreationRef = useRef<Promise<Awaited<ReturnType<typeof createTeamChatSession>>> | undefined>(undefined);
 	const cancelledRequests = useRef(new Set<string>());
@@ -292,15 +294,21 @@ export function useTeamChatModel(
 					? event.teamSessionId
 					: event.conversationId;
 			if (!mounted || eventSessionId !== session.id) return;
+			// 一次事件里，快照与流式状态必须同进同退：session-updated 用快照的
+			// messages 把已落盘的 turn 从流里裁掉，若快照本身因版本过旧被拒，裁剪就
+			// 会把这条回复从两边同时抹掉（页面重进才恢复）。
+			let staleSnapshot = false;
 			if (event.type === "session-snapshot" || event.type === "session-updated") {
-				setContextUsages((current) => ({ ...current, ...readSnapshotContextUsages(event.snapshot) }));
-				setSnapshot((current) =>
-					!current ||
-					event.snapshot.session.revision > current.session.revision ||
-					event.snapshot.conversationRevision >= current.conversationRevision
-						? event.snapshot
-						: current,
-				);
+				const current = snapshotRef.current;
+				staleSnapshot =
+					!!current &&
+					event.snapshot.session.revision <= current.session.revision &&
+					event.snapshot.conversationRevision < current.conversationRevision;
+				setContextUsages((cur) => ({ ...cur, ...readSnapshotContextUsages(event.snapshot) }));
+				if (!staleSnapshot) {
+					snapshotRef.current = event.snapshot;
+					setSnapshot(event.snapshot);
+				}
 			}
 			if (event.type === "desktop.team-context-usage") {
 				const currentSession = sessionRef.current;
@@ -333,7 +341,7 @@ export function useTeamChatModel(
 					return new Set([...current, event.author.id]);
 				});
 			}
-			const nextStreams = reduceTeamStreamState(streamsRef.current, event);
+			const nextStreams = staleSnapshot ? streamsRef.current : reduceTeamStreamState(streamsRef.current, event);
 			streamsRef.current = nextStreams;
 			setStreams(nextStreams);
 			if (
