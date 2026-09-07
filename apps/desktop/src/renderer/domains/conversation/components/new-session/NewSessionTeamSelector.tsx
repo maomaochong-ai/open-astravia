@@ -1,9 +1,7 @@
-import type { AgentTeamDocument } from "@vetta/agent-team";
+import { BotAvatar } from "@shared/components/BotAvatar";
 import { teamMemberAvatarUrls } from "@shared/agent-teams/agent-avatar";
-import {
-	NewSessionPicker,
-	type NewSessionPickerRootProps,
-} from "@vetta/theme-ui/chat";
+import type { AgentTeamDocument } from "@vetta/agent-team";
+import { NewSessionPicker, type NewSessionPickerRootProps } from "@vetta/theme-ui/chat";
 import { AvatarStackView } from "@vetta/theme-ui/shared";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -22,7 +20,15 @@ export interface NewSessionTeamSelectorProps {
 
 const SEARCH_THRESHOLD = 5;
 
-export function NewSessionTeamSelector({ selectedKey, onSelect, className }: NewSessionTeamSelectorProps): JSX.Element {
+/**
+ * 「召唤团队」入口：未召唤时是 BotAvatar + 文案的 chip，召唤后原地变成成员头像组 + 团队名，
+ * 再次点击可换队。下拉沿用同一行项目/模式选择器的 NewSessionPicker，三枚 chip 行为一致。
+ */
+export function NewSessionTeamSelector({
+	selectedKey,
+	onSelect,
+	className,
+}: NewSessionTeamSelectorProps): JSX.Element {
 	const { t } = useTranslation("chat");
 	const [document, setDocument] = useState<AgentTeamDocument>();
 	const [open, setOpen] = useState(false);
@@ -54,11 +60,11 @@ export function NewSessionTeamSelector({ selectedKey, onSelect, className }: New
 		() =>
 			(document?.teams ?? []).map((team) => ({
 				targetKey: teamTargetKey(team.id),
-					title: team.name,
-					subtitle: t("newSession.teamSelector.memberCount", { count: team.members.length }),
-					avatarUrls: teamMemberAvatarUrls(team, agentsById),
-					selected: selectedKey === teamTargetKey(team.id),
-				})),
+				title: team.name,
+				subtitle: t("newSession.teamSelector.memberCount", { count: team.members.length }),
+				avatarUrls: teamMemberAvatarUrls(team, agentsById),
+				selected: selectedKey === teamTargetKey(team.id),
+			})),
 		[agentsById, document?.teams, selectedKey, t],
 	);
 	const visibleOptions = useMemo(() => filterTargetOptions(options, query), [options, query]);
@@ -77,6 +83,10 @@ export function NewSessionTeamSelector({ selectedKey, onSelect, className }: New
 		[handleOpenChange, onSelect],
 	);
 
+	const triggerLabel = selectedOption
+		? t("newSession.teamSelector.switchTitle")
+		: t("newSession.teamSelector.summonTitle");
+
 	return (
 		<NewSessionPicker.Root
 			open={open}
@@ -84,19 +94,34 @@ export function NewSessionTeamSelector({ selectedKey, onSelect, className }: New
 			value={selectedKey}
 			onValueChange={handleSelect}
 		>
-			<NewSessionPicker.Trigger className={className} aria-label={t("newSession.teamSelector.triggerTitle")}>
-				{selectedOption?.avatarUrls?.length ? (
-					<AvatarStackView avatarUrls={selectedOption.avatarUrls} />
-				) : (
-					<span className="icon-[solar--users-group-rounded-linear] h-3.5 w-3.5 shrink-0" aria-hidden />
-				)}
-				<span
-					className="min-w-0 truncate"
-					title={selectedOption?.title ?? t("newSession.teamSelector.triggerTitle")}
+			{/* BotAvatar 自身是 <button>，套在默认 button 触发器里会被 HTML 解析器提前闭合，
+			    因此这里用 asChild + div 手写键盘行为。 */}
+			<NewSessionPicker.Trigger
+				asChild
+				className={className}
+				aria-label={triggerLabel}
+				title={selectedOption?.title ?? triggerLabel}
+			>
+				<div
+					role="button"
+					tabIndex={0}
+					className="cursor-pointer"
+					onKeyDown={(event) => {
+						if (event.key !== "Enter" && event.key !== " ") return;
+						event.preventDefault();
+						handleOpenChange(true);
+					}}
 				>
-					{selectedOption?.title ?? t("newSession.teamSelector.placeholder")}
-				</span>
-				<span className="icon-[solar--alt-arrow-down-linear] h-3 w-3 shrink-0 opacity-70" aria-hidden />
+					{selectedOption?.avatarUrls?.length ? (
+						<AvatarStackView avatarUrls={selectedOption.avatarUrls} />
+					) : (
+						<BotAvatar size="sm" className="pointer-events-none -ml-1" />
+					)}
+					<span className="min-w-0 truncate">
+						{selectedOption?.title ?? t("newSession.teamSelector.summon")}
+					</span>
+					<span className="icon-[solar--alt-arrow-down-linear] h-3 w-3 shrink-0 opacity-70" aria-hidden />
+				</div>
 			</NewSessionPicker.Trigger>
 			<NewSessionPicker.Content>
 				{searchVisible && (
@@ -138,7 +163,11 @@ export function NewSessionTeamSelector({ selectedKey, onSelect, className }: New
 										<NewSessionPicker.ItemText>
 											<span className="flex min-w-0 flex-col">
 												<span className="truncate">{option.title}</span>
-												{option.subtitle && <span className="truncate text-[11px] font-normal text-muted-foreground/70">{option.subtitle}</span>}
+												{option.subtitle && (
+													<span className="truncate text-[11px] font-normal text-muted-foreground/70">
+														{option.subtitle}
+													</span>
+												)}
 											</span>
 										</NewSessionPicker.ItemText>
 										{option.selected && <NewSessionPicker.ItemIndicator />}

@@ -430,6 +430,14 @@
 			"suggestion": "↵ {{suggestion}}",
 			"thinking": "Vetta is thinking…"
 		},
+		"mention": {
+			"trigger": "Mention members",
+			"title": "Mention team members",
+			"hint": "The team lead takes over when nobody is mentioned.",
+			"empty": "This team has no members to mention",
+			"clear": "Clear all",
+			"selected": "{{count}} members"
+		},
 		"toolbar": {
 			"addImage": "Add image",
 			"attachFile": "Attach file reference",
@@ -729,7 +737,6 @@
 			"createFailedTitle": "Failed to create project"
 		},
 		"teamSelector": {
-			"placeholder": "Select team",
 			"clear": "No team",
 			"searchPlaceholder": "Search teams",
 			"empty": "No matching teams",
@@ -738,7 +745,9 @@
 			"invalid": "This team is no longer available. Choose another team.",
 			"retry": "Retry",
 			"memberCount": "{{count}} members",
-			"triggerTitle": "Choose the team for this session"
+			"summon": "Summon team",
+			"summonTitle": "Summon an agent team for this task",
+			"switchTitle": "Switch the team for this session"
 		}
 	},
 	"questionPanel": {

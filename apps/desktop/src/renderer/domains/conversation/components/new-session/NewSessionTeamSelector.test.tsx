@@ -33,24 +33,26 @@ describe("NewSessionTeamSelector", () => {
 		});
 	});
 
-	it("reuses the bounded member avatar stack in the menu and selected trigger", async () => {
-		const onSelect = vi.fn();
-		function Harness(): JSX.Element {
-			const [selectedKey, setSelectedKey] = useState<NewSessionTargetKey | null>(null);
-			return (
-				<NewSessionTeamSelector
-					selectedKey={selectedKey}
-					onSelect={(targetKey) => {
-						setSelectedKey(targetKey);
-						onSelect(targetKey);
-					}}
-				/>
-			);
-		}
+	function Harness({ onSelect }: { onSelect: (key: NewSessionTargetKey | null) => void }): JSX.Element {
+		const [selectedKey, setSelectedKey] = useState<NewSessionTargetKey | null>(null);
+		return (
+			<NewSessionTeamSelector
+				selectedKey={selectedKey}
+				onSelect={(targetKey) => {
+					setSelectedKey(targetKey);
+					onSelect(targetKey);
+				}}
+			/>
+		);
+	}
 
+	it("summons a team from the dialog and turns the trigger into the team's avatar stack", async () => {
+		const onSelect = vi.fn();
 		const user = userEvent.setup();
-		render(<Harness />);
-		const trigger = screen.getByRole("button", { name: "newSession.teamSelector.triggerTitle" });
+		render(<Harness onSelect={onSelect} />);
+
+		const trigger = screen.getByRole("button", { name: "newSession.teamSelector.summonTitle" });
+		expect(within(trigger).getByText("newSession.teamSelector.summon")).toBeDefined();
 		await user.click(trigger);
 
 		const option = await screen.findByRole("option", { name: /Vetta Team/ });
@@ -61,7 +63,8 @@ describe("NewSessionTeamSelector", () => {
 
 		await user.click(option);
 		expect(onSelect).toHaveBeenCalledWith(teamTargetKey(team.id));
-		const selectedTrigger = screen.getByRole("button", { name: "newSession.teamSelector.triggerTitle" });
+
+		const selectedTrigger = screen.getByRole("button", { name: "newSession.teamSelector.switchTitle" });
 		expect(within(selectedTrigger).getByText("Vetta Team")).toBeDefined();
 		expect(selectedTrigger.querySelectorAll("img")).toHaveLength(3);
 		expect(selectedTrigger.querySelector('[data-avatar-overflow="1"]')).not.toBeNull();
