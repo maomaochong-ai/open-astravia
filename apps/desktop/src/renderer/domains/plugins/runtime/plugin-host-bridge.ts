@@ -376,7 +376,6 @@ function startAppActionRequestListener(): void {
 			return;
 		}
 		const controller = new AbortController();
-		ocrProviderInvocations.set(request.requestId, controller);
 		appActionInvocations.set(request.requestId, { controller, handlerKey: key });
 		const context = {
 			invocationId: request.requestId,
@@ -570,6 +569,7 @@ function startOcrProviderRequestListener(): void {
 			return;
 		}
 		const controller = new AbortController();
+		ocrProviderInvocations.set(request.requestId, controller);
 		const context = {
 			signal: controller.signal,
 			invocationId: request.requestId,

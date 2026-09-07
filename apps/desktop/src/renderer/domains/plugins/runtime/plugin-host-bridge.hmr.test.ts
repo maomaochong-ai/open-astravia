@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const RUNTIME_STATE_KEY = "__vettaPluginHostBridgeRuntimeState_v1";
+const RUNTIME_STATE_KEY = "__vettaPluginHostBridgeRuntimeState_v2";
 
 vi.mock("@shared/store/atoms", async () => {
 	const { atom } = await import("jotai");
@@ -26,7 +26,10 @@ beforeEach(() => {
 describe("plugin host bridge HMR lifecycle", () => {
 	it("reuses handlers and IPC listener guards when the bridge module is evaluated again", async () => {
 		const toolRequestListeners: Array<(request: unknown) => void> = [];
+		const ocrRequestListeners: Array<(request: unknown) => void> = [];
+		const ocrCancelListeners: Array<(request: { requestId: string }) => void> = [];
 		const respondAgentTool = vi.fn(async () => undefined);
+		const respondOcrProvider = vi.fn(async () => undefined);
 		const plugins = {
 			onAgentToolRequest: (listener: (request: unknown) => void) => {
 				toolRequestListeners.push(listener);
@@ -39,7 +42,16 @@ describe("plugin host bridge HMR lifecycle", () => {
 			onContinuationRequest: () => () => undefined,
 			onSystemPromptRequest: () => () => undefined,
 			onMediaProviderRequest: () => () => undefined,
+			onOcrProviderRequest: (listener: (request: unknown) => void) => {
+				ocrRequestListeners.push(listener);
+				return () => undefined;
+			},
+			onOcrProviderCancel: (listener: (request: { requestId: string }) => void) => {
+				ocrCancelListeners.push(listener);
+				return () => undefined;
+			},
 			respondAgentTool,
+			respondOcrProvider,
 		};
 		vi.stubGlobal("window", {
 			vetta: {
@@ -58,12 +70,47 @@ describe("plugin host bridge HMR lifecycle", () => {
 			handler: async () => ({ ok: true }),
 			api: {} as never,
 		});
+		let ocrSignal: AbortSignal | undefined;
+		let finishOcr: (() => void) | undefined;
+		const ocrCompletion = new Promise<void>((resolve) => {
+			finishOcr = resolve;
+		});
+		first.registerPluginOcrProviderHandler({
+			pluginId: "demo",
+			handlerId: "ocr:handler",
+			registration: {
+				id: "ocr",
+				displayName: "OCR",
+				protocolVersion: 1,
+				processing: "local",
+				execution: "sync",
+				input: {
+					kinds: ["image"],
+					mimeTypes: ["image/png"],
+					acceptsInlineBytes: true,
+					acceptsUrl: false,
+				},
+				output: {
+					granularities: ["text"],
+					supportsConfidence: false,
+					supportsPolygon: false,
+					supportsLanguageDetection: false,
+				},
+				recognize: async (_request, context) => {
+					ocrSignal = context.signal;
+					await ocrCompletion;
+					return { protocolVersion: 1, items: [{ id: "input-1", status: "cancelled" }] };
+				},
+			},
+		});
 
 		vi.resetModules();
 		const reloaded = await import("./plugin-host-bridge.js");
 		reloaded.installPluginHostBridge();
 
 		expect(toolRequestListeners).toHaveLength(1);
+		expect(ocrRequestListeners).toHaveLength(1);
+		expect(ocrCancelListeners).toHaveLength(1);
 		toolRequestListeners[0]?.({
 			requestId: "request-1",
 			pluginId: "demo",
@@ -86,6 +133,22 @@ describe("plugin host bridge HMR lifecycle", () => {
 		expect(respondAgentTool).toHaveBeenCalledWith("request-1", {
 			value: { ok: true },
 			effects: [],
+		});
+
+		ocrRequestListeners[0]?.({
+			requestId: "ocr-request-1",
+			pluginId: "demo",
+			handlerId: "ocr:handler",
+			input: { inputs: [{ id: "input-1", mimeType: "image/png" }] },
+		});
+		await vi.waitFor(() => expect(ocrSignal).toBeDefined());
+		ocrCancelListeners[0]?.({ requestId: "ocr-request-1" });
+		expect(ocrSignal?.aborted).toBe(true);
+		finishOcr?.();
+		await vi.waitFor(() => {
+			expect(respondOcrProvider).toHaveBeenCalledWith("ocr-request-1", {
+				value: { protocolVersion: 1, items: [{ id: "input-1", status: "cancelled" }] },
+			});
 		});
 	});
 });
