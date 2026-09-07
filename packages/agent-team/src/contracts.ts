@@ -95,6 +95,8 @@ export interface TeamMemberRuntimeState {
 	/** Profile identity is optional only for sessions written before preset-aware reconfiguration. */
 	readonly agentProfileId?: string;
 	readonly agentProfileRevision: number;
+	/** 已生效的团队任务书指纹；与 Profile 修订一起构成成员运行时的配置身份。 */
+	readonly assignmentFingerprint?: string;
 	readonly deliveredEventIds: readonly string[];
 	/** Latest immutable public checkpoint referenced by this member's private context. */
 	readonly sharedCheckpointId?: string;

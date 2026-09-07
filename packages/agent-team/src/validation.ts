@@ -255,6 +255,7 @@ const memberRuntime = Type.Object(
 		sessionPath: Type.String({ minLength: 1, maxLength: 4_096 }),
 		agentProfileId: Type.Optional(id),
 		agentProfileRevision: Type.Integer({ minimum: 1 }),
+		assignmentFingerprint: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
 		deliveredEventIds: stringList,
 		sharedCheckpointId: Type.Optional(id),
 	},

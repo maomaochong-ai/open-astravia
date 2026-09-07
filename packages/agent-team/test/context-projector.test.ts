@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { markTeamMemberContextDelivered } from "../src/context-projector.js";
+import { markTeamMemberContextDelivered, teamMemberAssignmentFingerprint } from "../src/context-projector.js";
 import {
 	createLegacyTeamMemberDelegationEvent,
 	createLegacyTeamMemberResultEvent,
@@ -80,5 +80,18 @@ describe("Team context cursor and legacy identities", () => {
 		expect(completed.events).toEqual(session.events);
 		expect(completed.memberRuntime.leader?.deliveredEventIds).toEqual([result.id]);
 		expect(completed.revision).toBe(4);
+	});
+});
+
+describe("teamMemberAssignmentFingerprint", () => {
+	it("changes with the assignment and stays undefined without one", () => {
+		expect(teamMemberAssignmentFingerprint(undefined)).toBeUndefined();
+		expect(teamMemberAssignmentFingerprint({})).toBeUndefined();
+		const first = teamMemberAssignmentFingerprint({ responsibility: "Owns review" });
+		expect(first).toBe(teamMemberAssignmentFingerprint({ responsibility: "Owns review" }));
+		expect(first).not.toBe(teamMemberAssignmentFingerprint({ responsibility: "Owns delivery" }));
+		expect(first).not.toBe(
+			teamMemberAssignmentFingerprint({ responsibility: "Owns review", instructions: "Escalate." }),
+		);
 	});
 });

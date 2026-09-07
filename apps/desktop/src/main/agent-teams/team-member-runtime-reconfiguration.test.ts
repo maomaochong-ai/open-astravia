@@ -97,4 +97,35 @@ describe("reconfigureTeamMemberRuntime", () => {
 		).resolves.toBe(session);
 		expect(runtime.createSession).not.toHaveBeenCalled();
 	});
+
+	it("reopens the member when only its team assignment changed", async () => {
+		const paths = new Map([["old-runtime", "C:/sessions/leader.jsonl"]]);
+		const runtime: TeamMemberRuntimeReconfigurationHost = {
+			getSessionPath: (sessionId) => paths.get(sessionId),
+			disposeSession: vi.fn(async (sessionId) => {
+				paths.delete(sessionId);
+			}),
+			createSession: vi.fn(async (config) => {
+				paths.set("new-runtime", String(config.sessionPath));
+				return { sessionId: "new-runtime" };
+			}),
+		};
+
+		// Profile 修订没变，变的是团队任务书；只看 Profile 会让成员一直用旧提示词。
+		const next = await reconfigureTeamMemberRuntime({
+			session: sessionDocument(),
+			memberId: "leader",
+			agentProfileId: "agent",
+			agentProfileRevision: 1,
+			assignmentFingerprint: "team-v1-assignment",
+			runtime,
+			resolveConfig: async (sessionPath) => ({ cwd: "C:/workspace", sessionPath }) satisfies SessionConfig,
+			persist: vi.fn(async () => undefined),
+			now: () => 20,
+			logger,
+		});
+
+		expect(runtime.createSession).toHaveBeenCalledTimes(1);
+		expect(next.memberRuntime.leader).toMatchObject({ assignmentFingerprint: "team-v1-assignment" });
+	});
 });

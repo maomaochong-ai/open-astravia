@@ -21,6 +21,8 @@ export async function reconfigureTeamMemberRuntime(input: {
 	readonly memberId: string;
 	readonly agentProfileId: string;
 	readonly agentProfileRevision: number;
+	/** 团队任务书指纹，与 Profile 修订一起构成配置身份；缺省表示该成员没有任务书。 */
+	readonly assignmentFingerprint?: string;
 	readonly runtime: TeamMemberRuntimeReconfigurationHost;
 	readonly resolveConfig: (sessionPath: string) => Promise<SessionConfig>;
 	readonly persist: (session: TeamSessionDocument) => Promise<void>;
@@ -29,7 +31,11 @@ export async function reconfigureTeamMemberRuntime(input: {
 }): Promise<TeamSessionDocument> {
 	const current = input.session.memberRuntime[input.memberId];
 	if (!current) throw new Error(`Team member runtime not found: ${input.memberId}`);
-	if (current.agentProfileId === input.agentProfileId && current.agentProfileRevision === input.agentProfileRevision) {
+	if (
+		current.agentProfileId === input.agentProfileId &&
+		current.agentProfileRevision === input.agentProfileRevision &&
+		current.assignmentFingerprint === input.assignmentFingerprint
+	) {
 		return input.session;
 	}
 
@@ -61,6 +67,7 @@ export async function reconfigureTeamMemberRuntime(input: {
 					sessionPath,
 					agentProfileId: input.agentProfileId,
 					agentProfileRevision: input.agentProfileRevision,
+					assignmentFingerprint: input.assignmentFingerprint,
 				},
 			},
 		};
