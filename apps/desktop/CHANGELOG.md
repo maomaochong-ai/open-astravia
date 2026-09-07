@@ -10,6 +10,8 @@
 
 ### Fixed
 
+- 插件重载时会清理旧 activation 由 Module Federation 注入的样式链接，避免已停用版本的 CSS 覆盖当前版本。
+
 - GitHub 能力市场同步失败时会在主进程日志中记录来源、同步阶段、错误码、缓存回退状态和原始异常，避免界面只显示 `sync-failed` 而无法排查具体原因。
 
 - 修复插件 OCR Provider 请求未登记取消控制器、导致取消信号无法传递给插件的问题；App Action 请求也不再误占用 OCR 调用状态。
