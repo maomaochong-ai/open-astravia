@@ -138,6 +138,13 @@ Preset 和 external 插件直接纳入根 `package.json` 定义的 workspace。�
 - React、React DOM 及其类型版本应与根 workspace 保持兼容。
 - 第三方运行时依赖放在 `dependencies`，构建工具放在
   `devDependencies`。
+- 插件需要成熟的通用能力时应安装并使用对应依赖，不要手写低质量替代实现：UI 样式优先使用
+  `tailwindcss` + `@tailwindcss/vite`，运行时输入校验按现有技术栈选择 `zod` 或
+  `@sinclair/typebox`，React 交互测试使用 `@testing-library/react`、
+  `@testing-library/user-event` 与 `jsdom`/`happy-dom`。只安装当前插件实际使用的依赖，
+  不得为了预留能力一次性引入整套工具。
+- Tailwind 插件应在 Vite 中接入 `@tailwindcss/vite`，样式入口导入 `tailwindcss`，组件优先使用
+  utility class；只有宿主主题变量映射、第三方内容适配或 utility 难以清晰表达的规则才保留业务 CSS。
 
 ### 锁文件
 
