@@ -1,5 +1,5 @@
 import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";
-import type { AgentProfile, TeamDefinition } from "@vetta/agent-team";
+import type { AgentProfile, TeamDefinition, TeamMemberAssignment } from "@vetta/agent-team";
 import { AgentAvatarView } from "@vetta/theme-ui/chat";
 import { DetailDrawer, DetailDrawerEnter } from "@vetta/theme-ui/overlays";
 import {
@@ -21,9 +21,11 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
 	type TeamAssemblyDraft,
+	assemblyAssignment,
 	assemblyDraftFromTeam,
 	assemblyLeaderId,
 	canSubmitAssembly,
+	setAssemblyAssignment,
 	toggleAssemblyMember,
 } from "../lib/team-assembly";
 
@@ -56,6 +58,8 @@ export function TeamSettingsSheet({
 	const [draft, setDraft] = useState<TeamAssemblyDraft>(() => assemblyDraftFromTeam(team));
 	const [addOpen, setAddOpen] = useState(false);
 	const [addBindingKind, setAddBindingKind] = useState<"reference" | "copy">("reference");
+	/** 正在编辑任务书的成员（Agent 身份）；任务书随团队一起保存，不单独落盘。 */
+	const [assignmentAgent, setAssignmentAgent] = useState<AgentProfile>();
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string>();
 
@@ -230,9 +234,24 @@ export function TeamSettingsSheet({
 													)}
 												</span>
 												<span className="mt-0.5 block truncate text-[11.5px] text-muted-foreground/80">
-													{member.description}
+													{assemblyAssignment(draft, member.id)?.responsibility ?? member.description}
 												</span>
 											</button>
+											<Button
+												variant="ghost"
+												size="icon-sm"
+												className={cn(
+													"shrink-0",
+													assemblyAssignment(draft, member.id)
+														? "text-primary"
+														: "text-muted-foreground/60 hover:text-primary",
+												)}
+												title={t("settings.editAssignment", { name: member.name })}
+												aria-label={t("settings.editAssignment", { name: member.name })}
+												onClick={() => setAssignmentAgent(member)}
+											>
+												<span className="icon-[solar--clipboard-text-linear] h-3.5 w-3.5" aria-hidden="true" />
+											</Button>
 											{!isLeader && (
 												<Button
 													variant="ghost"
@@ -263,6 +282,18 @@ export function TeamSettingsSheet({
 					</div>
 				</div>
 			</div>
+
+			{assignmentAgent && (
+				<MemberAssignmentDialog
+					agent={assignmentAgent}
+					assignment={assemblyAssignment(draft, assignmentAgent.id)}
+					onClose={() => setAssignmentAgent(undefined)}
+					onSave={(assignment) => {
+						setDraft((current) => setAssemblyAssignment(current, assignmentAgent.id, assignment));
+						setAssignmentAgent(undefined);
+					}}
+				/>
+			)}
 
 			<Dialog open={addOpen} onOpenChange={setAddOpen}>
 				<DialogContent className="max-w-lg">
@@ -317,6 +348,76 @@ export function TeamSettingsSheet({
 	);
 }
 
+/** 任务书编辑：在 Agent 本体的基调上做团队内增量，留空即回到本体。 */
+function MemberAssignmentDialog({
+	agent,
+	assignment,
+	onClose,
+	onSave,
+}: {
+	readonly agent: AgentProfile;
+	readonly assignment?: TeamMemberAssignment;
+	readonly onClose: () => void;
+	readonly onSave: (assignment: TeamMemberAssignment) => void;
+}): JSX.Element {
+	const { t } = useTranslation("agent-teams");
+	const [responsibility, setResponsibility] = useState(assignment?.responsibility ?? "");
+	const [instructions, setInstructions] = useState(assignment?.instructions ?? "");
+
+	return (
+		<Dialog open onOpenChange={(next: boolean) => !next && onClose()}>
+			<DialogContent className="max-w-lg">
+				<DialogHeader>
+					<DialogTitle className="text-[14px] font-semibold">
+						{t("settings.assignmentTitle", { name: agent.name })}
+					</DialogTitle>
+					<DialogDescription className="text-[12px] text-muted-foreground">
+						{t("settings.assignmentDescription")}
+					</DialogDescription>
+				</DialogHeader>
+
+				<label className="flex flex-col gap-1.5">
+					<span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">
+						{t("settings.assignmentResponsibility")}
+					</span>
+					<Input
+						value={responsibility}
+						onChange={(event) => setResponsibility(event.target.value)}
+						placeholder={agent.description}
+						aria-label={t("settings.assignmentResponsibility")}
+						className="h-9"
+					/>
+					<span className="text-[11px] text-muted-foreground/60">{t("settings.assignmentResponsibilityHint")}</span>
+				</label>
+
+				<label className="flex flex-col gap-1.5">
+					<span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">
+						{t("settings.assignmentInstructions")}
+					</span>
+					<textarea
+						value={instructions}
+						onChange={(event) => setInstructions(event.target.value)}
+						rows={5}
+						placeholder={t("settings.assignmentInstructionsPlaceholder")}
+						aria-label={t("settings.assignmentInstructions")}
+						className="min-h-28 w-full resize-none rounded-xl border border-border/60 bg-background/50 px-3.5 py-2.5 text-[12px] leading-relaxed text-foreground caret-primary outline-none transition-colors placeholder:text-muted-foreground/50 hover:border-border focus:border-primary/50 focus:bg-background"
+					/>
+					<span className="text-[11px] text-muted-foreground/60">{t("settings.assignmentInstructionsHint")}</span>
+				</label>
+
+				<div className="flex justify-end gap-2">
+					<Button variant="outline" size="sm" onClick={onClose}>
+						<span className="text-[12px] font-medium">{t("settings.assignmentCancel")}</span>
+					</Button>
+					<Button variant="primary" size="sm" onClick={() => onSave({ responsibility, instructions })}>
+						<span className="text-[12px] font-medium">{t("settings.assignmentApply")}</span>
+					</Button>
+				</div>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
 function SectionTitle({ children }: { readonly children: string }): JSX.Element {
 	return (
 		<div className="flex items-center gap-3">
@@ -332,6 +433,18 @@ function sameDraft(left: TeamAssemblyDraft, right: TeamAssemblyDraft): boolean {
 		(left.description ?? "") === (right.description ?? "") &&
 		left.leaderId === right.leaderId &&
 		left.memberIds.length === right.memberIds.length &&
-		left.memberIds.every((id, index) => id === right.memberIds[index])
+		left.memberIds.every((id, index) => id === right.memberIds[index]) &&
+		sameAssignments(left, right)
 	);
+}
+
+function sameAssignments(left: TeamAssemblyDraft, right: TeamAssemblyDraft): boolean {
+	const ids = new Set([...Object.keys(left.assignments ?? {}), ...Object.keys(right.assignments ?? {})]);
+	for (const id of ids) {
+		const first = left.assignments?.[id];
+		const second = right.assignments?.[id];
+		if ((first?.responsibility ?? "") !== (second?.responsibility ?? "")) return false;
+		if ((first?.instructions ?? "") !== (second?.instructions ?? "")) return false;
+	}
+	return true;
 }

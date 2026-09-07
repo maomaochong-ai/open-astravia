@@ -135,6 +135,63 @@ describe("TeamSettingsSheet", () => {
 		);
 	});
 
+	it("writes a per-team assignment for one member and leaves the profile alone", async () => {
+		const { onSave } = renderSheet();
+		const user = userEvent.setup();
+
+		await user.click(screen.getByRole("button", { name: "settings.editAssignment:alpha" }));
+		await user.type(screen.getByLabelText("settings.assignmentResponsibility"), "Owns the release checklist");
+		await user.type(screen.getByLabelText("settings.assignmentInstructions"), "Escalate schema changes.");
+		await user.click(screen.getByRole("button", { name: "settings.assignmentApply" }));
+
+		// 行内摘要立刻改用团队内职责，本体描述不动。
+		expect(screen.getByText("Owns the release checklist")).toBeTruthy();
+		expect(screen.getByText("beta does things")).toBeTruthy();
+
+		await user.click(screen.getByRole("button", { name: /settings.saveChanges/ }));
+		await waitFor(() =>
+			expect(onSave).toHaveBeenCalledWith(
+				expect.objectContaining({
+					assignments: {
+						alpha: { responsibility: "Owns the release checklist", instructions: "Escalate schema changes." },
+					},
+				}),
+			),
+		);
+	});
+
+	it("clears an assignment when both fields are emptied", async () => {
+		const assigned: TeamDefinition = {
+			...team,
+			members: [
+				{ ...team.members[0], assignment: { responsibility: "Owns the release checklist" } },
+				...team.members.slice(1),
+			],
+		};
+		const onSave = vi.fn(async () => assigned);
+		render(
+			<TeamSettingsSheet
+				open
+				team={assigned}
+				agents={agents}
+				agentsById={new Map(agents.map((item) => [item.id, item]))}
+				onClose={vi.fn()}
+				onSave={onSave}
+				onDelete={vi.fn()}
+				onOpenMember={vi.fn()}
+			/>,
+		);
+		const user = userEvent.setup();
+
+		await user.click(screen.getByRole("button", { name: "settings.editAssignment:alpha" }));
+		await user.clear(screen.getByLabelText("settings.assignmentResponsibility"));
+		await user.click(screen.getByRole("button", { name: "settings.assignmentApply" }));
+
+		expect(screen.getByText("alpha does things")).toBeTruthy();
+		await user.click(screen.getByRole("button", { name: /settings.saveChanges/ }));
+		await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ assignments: {} })));
+	});
+
 	it("opens a member profile instead of editing abilities inline", async () => {
 		const { onOpenMember } = renderSheet();
 		const user = userEvent.setup();
