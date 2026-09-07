@@ -49,10 +49,22 @@ export type TeamAgentBinding =
 	| { readonly kind: "reference"; readonly agentProfileId: string }
 	| { readonly kind: "copy"; readonly agentProfileId: string };
 
+/**
+ * 成员在**本团队内**的任务书：叠加在 Agent Profile 之上的增量，不改动本体。
+ * 空白字段一律等同于缺省，即回到本体（见 ADR-0109）。
+ */
+export interface TeamMemberAssignment {
+	/** 覆盖全队可见的职责摘要；缺省沿用 Agent Profile 的 description。 */
+	readonly responsibility?: string;
+	/** 追加在本体人格之后的团队内交待，不替换 blueprint 的协作纪律，也不进入共享名册。 */
+	readonly instructions?: string;
+}
+
 export interface TeamMember {
 	readonly id: string;
 	readonly handle: string;
 	readonly binding: TeamAgentBinding;
+	readonly assignment?: TeamMemberAssignment;
 }
 
 export interface TeamDefinition {
@@ -216,6 +228,7 @@ export interface CreateTeamMemberInput {
 	readonly handle: string;
 	readonly bindingKind: "reference" | "copy";
 	readonly leader: boolean;
+	readonly assignment?: TeamMemberAssignment;
 }
 export interface CreateTeamInput {
 	readonly name: string;
@@ -230,12 +243,14 @@ export type UpdateTeamMemberInput =
 			readonly kind: "existing";
 			readonly memberId: string;
 			readonly leader: boolean;
+			readonly assignment?: TeamMemberAssignment;
 	  }
 	| {
 			readonly kind: "new";
 			readonly agentProfileId: string;
 			readonly bindingKind: "reference" | "copy";
 			readonly leader: boolean;
+			readonly assignment?: TeamMemberAssignment;
 	  };
 
 export interface UpdateTeamInput {

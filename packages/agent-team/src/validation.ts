@@ -69,7 +69,18 @@ const binding = Type.Union([
 	Type.Object({ kind: Type.Literal("reference"), agentProfileId: id }, { additionalProperties: false }),
 	Type.Object({ kind: Type.Literal("copy"), agentProfileId: id }, { additionalProperties: false }),
 ]);
-const member = Type.Object({ id, handle: id, binding }, { additionalProperties: false });
+/** 任务书是增量：空白字段等同缺省，因此这里只接受非空文本。 */
+const assignment = Type.Object(
+	{
+		responsibility: Type.Optional(Type.String({ minLength: 1, maxLength: 2_048, pattern: "\\S" })),
+		instructions: Type.Optional(Type.String({ minLength: 1, maxLength: 32_768, pattern: "\\S" })),
+	},
+	{ additionalProperties: false },
+);
+const member = Type.Object(
+	{ id, handle: id, binding, assignment: Type.Optional(assignment) },
+	{ additionalProperties: false },
+);
 export const CreateAgentProfileInputSchema = Type.Object(
 	{
 		name: Type.String({ minLength: 1, maxLength: 128, pattern: "\\S" }),
@@ -105,12 +116,21 @@ export const DeleteAgentProfileInputSchema = Type.Object(
 	},
 	{ additionalProperties: false },
 );
+/** 输入侧允许空白：留空即取消覆盖，由 Store 折算成缺省而不是存成空串。 */
+const assignmentInput = Type.Object(
+	{
+		responsibility: Type.Optional(Type.String({ maxLength: 2_048 })),
+		instructions: Type.Optional(Type.String({ maxLength: 32_768 })),
+	},
+	{ additionalProperties: false },
+);
 const createTeamMember = Type.Object(
 	{
 		agentProfileId: id,
 		handle: id,
 		bindingKind: Type.Union([Type.Literal("reference"), Type.Literal("copy")]),
 		leader: Type.Boolean(),
+		assignment: Type.Optional(assignmentInput),
 	},
 	{ additionalProperties: false },
 );
@@ -126,7 +146,12 @@ export const CreateTeamInputSchema = Type.Object(
 );
 const updateTeamMember = Type.Union([
 	Type.Object(
-		{ kind: Type.Literal("existing"), memberId: id, leader: Type.Boolean() },
+		{
+			kind: Type.Literal("existing"),
+			memberId: id,
+			leader: Type.Boolean(),
+			assignment: Type.Optional(assignmentInput),
+		},
 		{ additionalProperties: false },
 	),
 	Type.Object(
@@ -135,6 +160,7 @@ const updateTeamMember = Type.Union([
 			agentProfileId: id,
 			bindingKind: Type.Union([Type.Literal("reference"), Type.Literal("copy")]),
 			leader: Type.Boolean(),
+			assignment: Type.Optional(assignmentInput),
 		},
 		{ additionalProperties: false },
 	),

@@ -216,6 +216,18 @@ describe("Agent Team collaboration contracts", () => {
 		});
 	});
 
+	it("publishes the team assignment responsibility in the shared roster", () => {
+		const assigned: TeamDefinition = {
+			...team,
+			members: [{ ...team.members[0], assignment: { responsibility: "Owns the release checklist here." } }],
+		};
+
+		const snapshot = buildTeamRosterSnapshot({ agents: [profile] }, assigned);
+
+		// 队友要据此判断该找谁，所以团队内职责是公开信息，不是私有备注。
+		expect(snapshot.members[0]?.responsibilitySummary).toBe("Owns the release checklist here.");
+	});
+
 	it("requires a result message when a work item completes", () => {
 		expect(() => transitionTeamWorkItem(workItem("running"), { state: "completed", updatedAt: 2 })).toThrow(
 			"requires a result message",

@@ -63,4 +63,34 @@ describe("buildTeamOperatingContext", () => {
 		expect(builder).toContain("You are @builder");
 		expect(buildTeamOperatingContext(roster, "leader", "Lead the work.")).toBe(`${shared}\n\n${leader}`);
 	});
+
+	it("appends the team assignment after the profile role instructions instead of replacing them", () => {
+		const member = buildTeamMemberOperatingContext(
+			roster,
+			"builder",
+			"Build the work.",
+			"Ship behind a feature flag in this team.",
+		);
+
+		expect(member).toContain("Build the work.");
+		expect(member.indexOf("<team_assignment>")).toBeGreaterThan(member.indexOf("Build the work."));
+		expect(member).toContain("Ship behind a feature flag in this team.");
+		expect(member).toContain("Product Team");
+	});
+
+	it("keeps one member's assignment out of the shared roster prefix", () => {
+		const shared = buildTeamSharedOperatingContext(roster);
+		const builder = buildTeamMemberOperatingContext(roster, "builder", "Build.", "Team-only instruction.");
+		const leader = buildTeamMemberOperatingContext(roster, "leader", "Lead.");
+
+		// 任务书的补充指令是成员私有的；只有职责摘要才进入全队共享名册。
+		expect(shared).not.toContain("Team-only instruction.");
+		expect(leader).not.toContain("Team-only instruction.");
+		expect(builder).toContain("Team-only instruction.");
+	});
+
+	it("omits the assignment block when the team adds nothing", () => {
+		expect(buildTeamMemberOperatingContext(roster, "leader", "Lead.")).not.toContain("<team_assignment>");
+		expect(buildTeamMemberOperatingContext(roster, "leader", "Lead.", "")).not.toContain("<team_assignment>");
+	});
 });
