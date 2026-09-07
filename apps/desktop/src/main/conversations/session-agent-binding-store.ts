@@ -40,13 +40,39 @@ export async function readSessionAgentBinding(sessionPath: string): Promise<stri
 }
 
 /**
+ * 按文件串行化写入。一份 store 承载同目录下所有会话的绑定，而写入是
+ * 「读整份 → 改一项 → 整份覆写」：同一目录内两个会话并发落盘会互相覆盖，
+ * 丢掉的那条再也补不回来（本函数对已有记录不重写）。
+ *
+ * 只覆盖本进程内的并发；跨进程同时写同一个 store 仍需文件锁。
+ */
+const bindingWriteTails = new Map<string, Promise<unknown>>();
+
+function serializeByStore<T>(storePath: string, task: () => Promise<T>): Promise<T> {
+	// 队尾永不 reject，失败只回传给各自的调用方，不阻断后续写入。
+	const previous = bindingWriteTails.get(storePath) ?? Promise.resolve();
+	const result = previous.then(task);
+	const tail = result.then(
+		() => undefined,
+		() => undefined,
+	);
+	bindingWriteTails.set(storePath, tail);
+	void tail.then(() => {
+		if (bindingWriteTails.get(storePath) === tail) bindingWriteTails.delete(storePath);
+	});
+	return result;
+}
+
+/**
  * 固化该会话归属的 Agent。已有记录不覆盖：会话属于哪个 Agent 是会话身份，中途不可改。
  * 想换 Agent 只能新建会话——这与 agent-modes 的会话内不可变是同一套心智。
  */
 export async function recordSessionAgentBinding(sessionPath: string, agentProfileId: string): Promise<void> {
 	const storePath = resolveAgentBindingStorePath(sessionPath);
-	const store = await readStore(storePath);
 	const key = sessionKey(sessionPath);
-	if (store[key] !== undefined) return;
-	await atomicWriteJSONAsync(storePath, { ...store, [key]: agentProfileId });
+	await serializeByStore(storePath, async () => {
+		const store = await readStore(storePath);
+		if (store[key] !== undefined) return;
+		await atomicWriteJSONAsync(storePath, { ...store, [key]: agentProfileId });
+	});
 }

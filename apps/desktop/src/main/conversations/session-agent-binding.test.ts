@@ -67,6 +67,20 @@ describe("session agent binding store", () => {
 		expect(await readSessionAgentBinding(join(root, "session-b.jsonl"))).toBeUndefined();
 	});
 
+	it("keeps every binding when sessions in one directory are opened concurrently", async () => {
+		const root = await createTemporaryRoot();
+		const sessions = ["a", "b", "c", "d", "e"];
+
+		// 写入是「读整份 → 改一项 → 整份覆写」，并发时后写的会覆盖先写的。
+		await Promise.all(
+			sessions.map((name) => recordSessionAgentBinding(join(root, `session-${name}.jsonl`), `agent-${name}`)),
+		);
+
+		for (const name of sessions) {
+			expect(await readSessionAgentBinding(join(root, `session-${name}.jsonl`))).toBe(`agent-${name}`);
+		}
+	});
+
 	it("treats a missing store as no binding", async () => {
 		const root = await createTemporaryRoot();
 		expect(await readSessionAgentBinding(join(root, "session-a.jsonl"))).toBeUndefined();
