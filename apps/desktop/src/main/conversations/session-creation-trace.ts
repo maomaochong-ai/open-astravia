@@ -1,6 +1,12 @@
 import { randomUUID } from "node:crypto";
 
-export type DesktopSessionCreationStage = "sandbox-check" | "resolve-config" | "runtime-create" | "record-agent-mode";
+export type DesktopSessionCreationStage =
+	| "sandbox-check"
+	| "resolve-agent-profile"
+	| "resolve-config"
+	| "runtime-create"
+	| "record-agent-mode"
+	| "record-agent-binding";
 
 interface SessionCreationTraceLogger {
 	info(message: string, fields: Record<string, unknown>): void;

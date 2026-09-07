@@ -1,5 +1,6 @@
 import { stat } from "node:fs/promises";
 import { extname, isAbsolute, resolve } from "node:path";
+import type { AgentTeamDocument } from "@vetta/agent-team";
 import { CODING_AGENT_SESSION_TITLE_GENERATE } from "@vetta/coding-agent/session-extensions";
 import {
 	isSessionError,
@@ -14,6 +15,7 @@ import {
 } from "@vetta/runtime-core";
 import { sanitizeRuntimeErrorMessage } from "@vetta/runtime-desktop";
 import { type DesktopSessionHistoryInfo, UNAVAILABLE_RUNTIME_SESSION_ACCESS } from "../../shared/session-access.js";
+import { agentTeamStore } from "../agent-teams/agent-team-store.js";
 import { ensureLegacyAgentTeamOwnershipCatalog } from "../agent-teams/team-ownership-backfill.js";
 import { monitorRuntimeSession } from "../app-monitor/app-monitor-service.js";
 import { allowProjectRoot, readDesktopConfig } from "../ipc/fs.js";
@@ -31,7 +33,9 @@ import {
 	type DesktopSessionKind,
 	resolveDesktopSessionConfig,
 } from "./resolve-session-config.js";
+import { readSessionAgentBinding, recordSessionAgentBinding } from "./session-agent-binding-store.js";
 import { recordSessionAgentMode } from "./session-agent-mode-store.js";
+import { type ResolvedSessionAgentProfile, resolveSessionAgentProfile } from "./session-agent-profile.js";
 import { DesktopSessionCreationTrace } from "./session-creation-trace.js";
 import {
 	isConversationCwd,
@@ -50,7 +54,9 @@ export type DesktopConversationErrorCode =
 	| "SESSION_READ_ONLY"
 	| "TURN_TIMEOUT"
 	| "TURN_ABORTED"
-	| "TURN_FAILED";
+	| "TURN_FAILED"
+	/** 新建会话时指定的 Agent 已不存在（列表过期或并发删除）；恢复既有会话不会报这个，见 createSession。 */
+	| "AGENT_PROFILE_UNAVAILABLE";
 
 export class DesktopConversationError extends Error {
 	constructor(
@@ -69,6 +75,8 @@ export interface DesktopConversationSession {
 	cwd: string;
 	listCwd: string;
 	source: DesktopConversationSource;
+	/** 生效的 Agent 绑定；渲染层据此展示回合头像与昵称。降级或未绑定时缺省。 */
+	agentProfileId?: string;
 }
 
 export interface DesktopConversationTurnResult {
@@ -133,7 +141,40 @@ export class DesktopConversationService {
 		private readonly ownershipCatalog?: Pick<ConversationOwnershipCatalogPort, "filterUserSessions"> &
 			Partial<Pick<ConversationOwnershipCatalogPort, "getOwner">>,
 		private readonly ensureOwnershipReady?: () => Promise<void>,
+		/** Agent 目录读取口，仅为单测可注入而外露；缺省走主进程共享的 agentTeamStore。 */
+		private readonly readAgentTeamDocument: () => Promise<AgentTeamDocument> = () => agentTeamStore.read(),
 	) {}
+
+	/**
+	 * 解析本次会话生效的 Agent 绑定。
+	 * - 新建：取渲染层传入的 agentProfileId；Agent 已被删则报错要求重选。
+	 * - 恢复：取会话目录旁挂的记录；Agent 已被删则**降级为普通对话**而不是报错，
+	 *   否则绑定过已删 Agent 的历史会话将永远打不开，用户连记录都读不到。
+	 */
+	private async resolveBoundAgentProfile(
+		config: DesktopCodingAgentSessionConfig | undefined,
+	): Promise<ResolvedSessionAgentProfile | undefined> {
+		const isResume = Boolean(config?.sessionPath);
+		const agentProfileId =
+			config?.agentProfileId ??
+			(config?.sessionPath ? await readSessionAgentBinding(config.sessionPath) : undefined);
+		if (!agentProfileId) return undefined;
+		const resolved = await resolveSessionAgentProfile({
+			agentProfileId,
+			readDocument: this.readAgentTeamDocument,
+		});
+		if (resolved) return resolved;
+		if (!isResume) {
+			throw new DesktopConversationError("AGENT_PROFILE_UNAVAILABLE", "The selected Agent is no longer available.", {
+				agentProfileId,
+			});
+		}
+		log.warn("bound agent profile is gone; falling back to a plain conversation", {
+			agentProfileId,
+			sessionPath: config?.sessionPath,
+		});
+		return undefined;
+	}
 
 	subscribe(sessionId: string, handler: (event: SessionEvent) => void): () => void {
 		return this.runtime.subscribe(sessionId, handler);
@@ -165,8 +206,21 @@ export class DesktopConversationService {
 					return desktopConfig.defaultExecutionMode;
 				}),
 			);
+			// 绑定的 Agent：新建取渲染层传入的身份，恢复取会话目录旁挂的记录。
+			// 能力白名单在这里由主进程查表折算，渲染层始终只经手身份。
+			const agentProfile = await trace.measure("resolve-agent-profile", () => this.resolveBoundAgentProfile(config));
 			const resolvedConfig = await trace.measure("resolve-config", () =>
-				resolveDesktopSessionConfig(config, kind, source),
+				resolveDesktopSessionConfig(
+					agentProfile
+						? {
+								...config,
+								agentConfiguration: agentProfile.agentConfiguration,
+								systemPromptVolatileAddon: agentProfile.systemPromptVolatileAddon,
+							}
+						: config,
+					kind,
+					source,
+				),
 			);
 			const result = await trace.measure("runtime-create", () => this.runtime.createSession(resolvedConfig.config));
 			const sessionPath = this.runtime.getSessionPath(result.sessionId);
@@ -176,6 +230,12 @@ export class DesktopConversationService {
 			// 工作模式在这里固化：新会话写入当前默认值，历史会话补写回落值。
 			// 已有记录不覆盖，所以之后改默认值不会改写任何已存在会话。
 			await trace.measure("record-agent-mode", () => recordSessionAgentMode(sessionPath, resolvedConfig.agentMode));
+			// Agent 归属同样只固化一次：会话属于哪个 Agent 是会话身份，中途不可改。
+			if (agentProfile) {
+				await trace.measure("record-agent-binding", () =>
+					recordSessionAgentBinding(sessionPath, agentProfile.agentProfileId),
+				);
+			}
 			monitorRuntimeSession(this.runtime, result.sessionId, "interactive");
 			log.info("session created", {
 				sessionId: result.sessionId,
@@ -192,6 +252,7 @@ export class DesktopConversationService {
 				cwd: resolvedConfig.cwd,
 				listCwd: resolveSessionListCwd(config?.cwd ?? resolvedConfig.cwd),
 				source,
+				...(agentProfile ? { agentProfileId: agentProfile.agentProfileId } : {}),
 			};
 			trace.complete({ sessionId: result.sessionId, kind, source });
 			return session;

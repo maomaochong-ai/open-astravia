@@ -47,6 +47,8 @@ function mapConversationError(error: unknown): never {
 	switch (error.code) {
 		case "INVALID_SESSION_PATH":
 		case "SESSION_READ_ONLY":
+		// 指定的 Agent 已不存在，与传错路径同属调用方输入问题。
+		case "AGENT_PROFILE_UNAVAILABLE":
 			throw new DebugError("DEBUG_INVALID_INPUT", error.message, details);
 		case "SESSION_NOT_FOUND":
 			throw new DebugError("DEBUG_CONVERSATION_NOT_FOUND", error.message, details);

@@ -887,7 +887,14 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			// ADR-0007: 把实际 cwd（可能是「对话」per-session 子目录）返回给渲染端，
 			// 否则 activeSession.cwd 仍是用户传入的项目根，ActivityPanel 文件树会
 			// 落到项目根、看到其他 session 的子目录。
-			return { sessionId: result.sessionId, sessionPath: result.sessionPath, cwd: effectiveCwd };
+			return {
+				sessionId: result.sessionId,
+				sessionPath: result.sessionPath,
+				cwd: effectiveCwd,
+				// 回传生效的 Agent 绑定：新建时是渲染层自己传的，恢复时是主进程读回的，
+				// 渲染层据此在消息列表上展示该 Agent 的头像与昵称。
+				...(result.agentProfileId ? { agentProfileId: result.agentProfileId } : {}),
+			};
 		},
 	);
 

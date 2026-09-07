@@ -1,11 +1,13 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { AgentProfile, AgentTeamDocument } from "@vetta/agent-team";
 import { type RuntimeHost, runtimeError } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { onConversationListChanged } from "./conversation-list-events.js";
 import type { ConversationOwnershipCatalogPort } from "./conversation-ownership-catalog.js";
 import { type DesktopConversationError, DesktopConversationService } from "./desktop-conversation-service.js";
+import { readSessionAgentBinding, recordSessionAgentBinding } from "./session-agent-binding-store.js";
 
 vi.mock("../logger.js", () => ({
 	getAppLogger: () => ({
@@ -52,6 +54,10 @@ vi.mock("../sandbox/capability.js", () => ({
 }));
 
 const temporaryRoots: string[] = [];
+
+function createAgentTeamDocument(agents: readonly AgentProfile[]): AgentTeamDocument {
+	return { schemaVersion: 1, revision: 1, agents, teams: [] } as AgentTeamDocument;
+}
 
 function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
 	let resolvePromise: ((value: T) => void) | undefined;
@@ -433,6 +439,78 @@ describe("DesktopConversationService session access", () => {
 		expect(compactSessionContext).toHaveBeenCalledWith("session-1", {
 			customInstructions: "preserve decisions",
 		});
+	});
+});
+
+describe("DesktopConversationService agent binding", () => {
+	function createProfile(): AgentProfile {
+		return {
+			id: "agent-1",
+			revision: 1,
+			name: "Reviewer",
+			description: "reviews code",
+			mentionHandle: "reviewer",
+			blueprintId: "blueprint-1",
+			systemPrompt: "You review code.",
+			abilities: { selectionMode: "custom", skills: ["review"], mcpServers: [], plugins: [] },
+			scope: { kind: "library" },
+			createdAt: 0,
+			updatedAt: 0,
+		};
+	}
+
+	function createRuntime(sessionPath: string): RuntimeHost {
+		return {
+			createSession: vi.fn(async () => ({ sessionId: "session-1" })),
+			getSessionPath: vi.fn(() => sessionPath),
+			subscribe: vi.fn(() => () => undefined),
+		} as unknown as RuntimeHost;
+	}
+
+	it("binds a new session to the selected Agent and reports it back", async () => {
+		const cwd = await createTemporaryRoot();
+		const sessionPath = join(cwd, "session-1.conversation.jsonl");
+		const runtime = createRuntime(sessionPath);
+		const service = new DesktopConversationService(runtime, undefined, undefined, async () =>
+			createAgentTeamDocument([createProfile()]),
+		);
+
+		const session = await service.createSession({ cwd, agentProfileId: "agent-1" }, "other", "interactive");
+
+		expect(session.agentProfileId).toBe("agent-1");
+		expect(await readSessionAgentBinding(sessionPath)).toBe("agent-1");
+	});
+
+	it("rejects a new session whose Agent was deleted while the picker was stale", async () => {
+		const cwd = await createTemporaryRoot();
+		const runtime = createRuntime(join(cwd, "session-1.conversation.jsonl"));
+		const service = new DesktopConversationService(runtime, undefined, undefined, async () =>
+			createAgentTeamDocument([]),
+		);
+
+		const error = await service
+			.createSession({ cwd, agentProfileId: "agent-1" }, "other", "interactive")
+			.catch((reason: unknown) => reason);
+
+		expect(error).toMatchObject<Partial<DesktopConversationError>>({ code: "AGENT_PROFILE_UNAVAILABLE" });
+		expect(runtime.createSession).not.toHaveBeenCalled();
+	});
+
+	it("reopens a session bound to a deleted Agent as a plain conversation instead of failing", async () => {
+		const cwd = await createTemporaryRoot();
+		const sessionPath = join(cwd, "session-1.conversation.jsonl");
+		await writeFile(sessionPath, "{}\n", "utf8");
+		await recordSessionAgentBinding(sessionPath, "agent-1");
+		const runtime = createRuntime(sessionPath);
+		const service = new DesktopConversationService(runtime, undefined, undefined, async () =>
+			createAgentTeamDocument([]),
+		);
+
+		// 绑定过已删 Agent 的历史会话若在这里报错，用户连聊天记录都读不回来。
+		const session = await service.createSession({ cwd, sessionPath }, "other", "interactive");
+
+		expect(session.agentProfileId).toBeUndefined();
+		expect(runtime.createSession).toHaveBeenCalledOnce();
 	});
 });
 

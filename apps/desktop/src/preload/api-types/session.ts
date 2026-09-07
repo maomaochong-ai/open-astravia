@@ -67,6 +67,12 @@ export interface DesktopSessionStateSnapshot extends SessionStateSnapshot {
 export interface DesktopCodingAgentSessionConfig extends SessionConfig {
 	readonly scenario?: ConversationScenario;
 	readonly agentMode?: AgentMode;
+	/**
+	 * 本会话绑定的 Agent Profile 身份。刻意只传身份不传能力：人格与
+	 * 技能 / MCP / 插件白名单一律由主进程查表折算，渲染层无从自述能力。
+	 * 恢复既有会话不必传，主进程从会话目录旁挂的绑定记录读回。
+	 */
+	readonly agentProfileId?: string;
 	readonly appendSystemPrompt?: string;
 	readonly enableBackgroundTasks?: boolean;
 	readonly includeAgentSkills?: boolean;
@@ -115,7 +121,7 @@ export interface DesktopSessionApi {
 		config: DesktopCodingAgentSessionConfig | undefined,
 		kind: DesktopSessionKind,
 		traceContext?: DesktopSessionTraceContext,
-	): Promise<{ sessionId: string; sessionPath: string; cwd?: string }>;
+	): Promise<{ sessionId: string; sessionPath: string; cwd?: string; agentProfileId?: string }>;
 	listProjects(): Promise<ProjectInfo[]>;
 	listSessions(cwd: string): Promise<DesktopSessionHistoryInfo[]>;
 	searchSessions(

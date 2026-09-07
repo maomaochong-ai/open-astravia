@@ -22,6 +22,12 @@ export type DesktopSessionKind = "conversation" | "other";
 export interface DesktopCodingAgentSessionConfig extends SessionConfig {
 	readonly scenario?: ConversationScenario;
 	readonly agentMode?: DesktopAgentMode;
+	/**
+	 * 本会话绑定的 Agent Profile 身份（新建时由渲染层传入）。这里只是身份：
+	 * 人格与能力白名单由 desktop-conversation-service 查表折算成 agentConfiguration
+	 * 与 systemPromptVolatileAddon 后再进来，渲染层无从自述能力。
+	 */
+	readonly agentProfileId?: string;
 	readonly appendSystemPrompt?: string;
 	readonly systemPromptCachePrefixAddon?: string;
 	readonly systemPromptVolatileAddon?: string;
@@ -86,6 +92,7 @@ export async function resolveDesktopSessionConfig(
 	const {
 		scenario: _scenario,
 		agentMode: _agentMode,
+		agentProfileId: _agentProfileId,
 		appendSystemPrompt: _appendSystemPrompt,
 		systemPromptCachePrefixAddon: _systemPromptCachePrefixAddon,
 		systemPromptVolatileAddon: _systemPromptVolatileAddon,
