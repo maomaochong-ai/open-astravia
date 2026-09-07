@@ -154,8 +154,26 @@ export function NewSessionPickerViewport({ children }: { readonly children: Reac
 	return <div className="max-h-[260px] overflow-y-auto">{children}</div>;
 }
 
-export function NewSessionPickerGroup({ children }: { readonly children: ReactNode }): JSX.Element {
-	return <div role="listbox">{children}</div>;
+/**
+ * 一组候选项。传 `label` 时额外渲染分组标题，并把同一文案挂到 listbox 的 aria-label 上：
+ * 同一个下拉里出现多组时，每个 listbox 都必须有自己的名字，否则读屏只会听到若干个无名列表。
+ */
+export function NewSessionPickerGroup({
+	label,
+	children,
+}: {
+	readonly label?: string;
+	readonly children: ReactNode;
+}): JSX.Element {
+	if (!label) return <div role="listbox">{children}</div>;
+	return (
+		<div>
+			<p className="px-2 pb-1 pt-1.5 text-[11px] font-medium text-muted-foreground/70">{label}</p>
+			<div role="listbox" aria-label={label}>
+				{children}
+			</div>
+		</div>
+	);
 }
 
 export function NewSessionPickerItem({
