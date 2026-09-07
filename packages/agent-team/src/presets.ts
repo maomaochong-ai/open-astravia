@@ -1,7 +1,8 @@
 import type { AgentProfile, AgentTeamDocument, TeamDefinition, TeamMember } from "./contracts.js";
 import { AGENT_TEAM_SCHEMA_VERSION } from "./contracts.js";
+import { normalizeMentionHandle } from "./domain.js";
 
-export const AGENT_TEAM_PRESET_VERSION = 1 as const;
+export const AGENT_TEAM_PRESET_VERSION = 2 as const;
 export const DEFAULT_AGENT_TEAM_ID = "builtin:team:dev";
 
 /**
@@ -225,15 +226,54 @@ export function createAgentTeamFixture(): AgentTeamDocument {
 	};
 }
 
+/**
+ * 上一代内置预设：改版后一律退役。键是旧 Agent id，值是接替它的新预设——
+ * 用户自建的团队可能已经把旧 Agent 编进名册，改绑到接替者比把成员踢掉更少破坏。
+ */
+const RETIRED_AGENT_SUCCESSORS: Readonly<Record<string, string>> = Object.freeze({
+	"builtin:agent:leader": "builtin:agent:master",
+	"builtin:agent:builder": "builtin:agent:executor",
+	"builtin:agent:reviewer": "builtin:agent:auditor",
+});
+
+const RETIRED_TEAM_IDS: ReadonlySet<string> = new Set(["builtin:team:vetta"]);
+
+/**
+ * 把存量配置迁到当前这套预设：内置的整批换新，用户自建的原样保留。
+ *
+ * 内置预设是**重置**而不是「缺则补」：留着上一代的档案，用户会同时看到新旧两套角色，
+ * 而旧档案里物化的提示词还会被当成显式覆盖，永远锁死在上一代文案上。
+ * 挂在退役团队下的历史会话不会被删，但界面上不再列出——退役是用户明确要的。
+ */
 export function seedAgentTeamPresets(document: AgentTeamDocument): AgentTeamDocument {
 	if ((document.presetVersion ?? 0) >= AGENT_TEAM_PRESET_VERSION) return document;
-	const agentIds = new Set(document.agents.map((agent) => agent.id));
+	const presetAgentIds = new Set(BUILTIN_AGENT_PRESETS.map((agent) => agent.id));
+	const retiredAgentIds = new Set(Object.keys(RETIRED_AGENT_SUCCESSORS));
+	const keptAgents = document.agents.filter(
+		(agent) => !presetAgentIds.has(agent.id) && !retiredAgentIds.has(agent.id),
+	);
+	// 用户可能已经占用了 master / auditor 之类的 handle，撞车会让整份配置校验不过。
+	const takenHandles = new Set(
+		keptAgents
+			.filter((agent) => agent.scope.kind === "library")
+			.map((agent) => normalizeMentionHandle(agent.mentionHandle)),
+	);
 	const agents = [
-		...document.agents,
-		...BUILTIN_AGENT_PRESETS.filter((agent) => !agentIds.has(agent.id)).map(clonePresetProfile),
+		...keptAgents,
+		...BUILTIN_AGENT_PRESETS.map((preset) => {
+			const profile = clonePresetProfile(preset);
+			return { ...profile, mentionHandle: claimHandle(profile.mentionHandle, takenHandles) };
+		}),
 	];
-	const teamIds = new Set(document.teams.map((team) => team.id));
-	const teams = [...document.teams, ...BUILTIN_AGENT_TEAMS.filter((team) => !teamIds.has(team.id)).map(cloneTeam)];
+
+	const presetTeamIds = new Set(BUILTIN_AGENT_TEAMS.map((team) => team.id));
+	const teams = [
+		...document.teams
+			.filter((team) => !presetTeamIds.has(team.id) && !RETIRED_TEAM_IDS.has(team.id))
+			.map(rebindRetiredMembers),
+		...BUILTIN_AGENT_TEAMS.map(cloneTeam),
+	];
+
 	return {
 		...document,
 		presetVersion: AGENT_TEAM_PRESET_VERSION,
@@ -241,6 +281,24 @@ export function seedAgentTeamPresets(document: AgentTeamDocument): AgentTeamDocu
 		agents,
 		teams,
 	};
+}
+
+function rebindRetiredMembers(team: TeamDefinition): TeamDefinition {
+	if (!team.members.some((member) => RETIRED_AGENT_SUCCESSORS[member.binding.agentProfileId])) return team;
+	return {
+		...team,
+		members: team.members.map((member) => {
+			const successor = RETIRED_AGENT_SUCCESSORS[member.binding.agentProfileId];
+			return successor ? { ...member, binding: { ...member.binding, agentProfileId: successor } } : member;
+		}),
+	};
+}
+
+function claimHandle(preferred: string, taken: Set<string>): string {
+	let candidate = preferred;
+	for (let suffix = 2; taken.has(normalizeMentionHandle(candidate)); suffix += 1) candidate = `${preferred}-${suffix}`;
+	taken.add(normalizeMentionHandle(candidate));
+	return candidate;
 }
 
 export function isBuiltinAgentPreset(profile: AgentProfile): boolean {

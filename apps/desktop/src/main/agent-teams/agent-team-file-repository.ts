@@ -152,16 +152,22 @@ class DirectoryAgentTeamRepository implements AgentTeamFileRepository {
 		await removeStaleTeamDirectories(this.root, expectedTeamDirectories);
 		await atomicWriteJSONAsync(join(this.root, INDEX_FILE), {
 			schemaVersion: document.schemaVersion,
+			// 预设版本必须落盘，否则每次启动都会重跑一次预设迁移。
+			...(document.presetVersion !== undefined ? { presetVersion: document.presetVersion } : {}),
 			revision: document.revision,
 		});
 		await atomicWriteFileAsync(join(this.root, INITIALIZED_MARKER), "1\n");
 	}
 
-	private async readIndex(): Promise<{ schemaVersion: 1; revision: number }> {
+	private async readIndex(): Promise<{ schemaVersion: 1; presetVersion?: number; revision: number }> {
 		try {
 			const value = await readJson(join(this.root, INDEX_FILE));
+			const presetVersion = value.presetVersion;
 			return {
 				schemaVersion: 1,
+				...(typeof presetVersion === "number" && Number.isInteger(presetVersion) && presetVersion >= 1
+					? { presetVersion }
+					: {}),
 				revision: typeof value.revision === "number" && Number.isInteger(value.revision) ? value.revision : 1,
 			};
 		} catch (error) {

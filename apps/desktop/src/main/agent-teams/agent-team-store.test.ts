@@ -41,6 +41,55 @@ function agentInput(name: string) {
 	};
 }
 
+describe("AgentTeamStore preset migration", () => {
+	it("upgrades an existing install to the current presets once and persists it", async () => {
+		const repository = new MemoryRepository();
+		repository.document = {
+			schemaVersion: 1,
+			revision: 6,
+			agents: [
+				{
+					id: "builtin:agent:leader",
+					revision: 1,
+					name: "Vetta",
+					description: "Coordinates the team.",
+					mentionHandle: "vetta",
+					blueprintId: "leader",
+					abilities: { selectionMode: "all", skills: [], mcpServers: [], plugins: [] },
+					scope: { kind: "library" },
+					createdAt: 0,
+					updatedAt: 0,
+				},
+			],
+			teams: [],
+		};
+		const store = new AgentTeamStore({ repository });
+
+		const document = await store.read();
+
+		expect(document.presetVersion).toBe(2);
+		expect(document.agents.map((agent) => agent.id)).toEqual(BUILTIN_AGENT_PRESETS.map((preset) => preset.id));
+		expect(document.teams).toHaveLength(4);
+		expect(repository.writes).toBe(1);
+
+		// 已经是当前版本的配置不该再被重写一次。
+		const reloaded = await new AgentTeamStore({ repository }).read();
+		expect(reloaded.presetVersion).toBe(2);
+		expect(repository.writes).toBe(1);
+	});
+
+	it("keeps serving the upgraded presets when persisting the migration fails", async () => {
+		const repository = new MemoryRepository();
+		repository.document = { schemaVersion: 1, revision: 1, agents: [], teams: [] };
+		repository.failNextWrite = true;
+		const store = new AgentTeamStore({ repository });
+
+		const document = await store.read();
+
+		expect(document.agents).toHaveLength(BUILTIN_AGENT_PRESETS.length);
+	});
+});
+
 describe("AgentTeamStore transaction boundary", () => {
 	it("serializes concurrent mutations without losing either profile", async () => {
 		const repository = new MemoryRepository();
@@ -127,7 +176,6 @@ describe("AgentTeamStore transaction boundary", () => {
 		});
 		expect(cleared.avatarBackground).toBeUndefined();
 	});
-
 	it("clears the system prompt override when the editor is left empty", async () => {
 		const repository = new MemoryRepository();
 		const store = new AgentTeamStore({ repository, createId: createIdSequence(), now: () => 10 });
