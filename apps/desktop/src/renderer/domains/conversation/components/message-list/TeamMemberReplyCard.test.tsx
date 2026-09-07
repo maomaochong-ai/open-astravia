@@ -25,7 +25,7 @@ vi.mock("react-i18next", () => ({
 }));
 
 vi.mock("@vetta/theme-ui/chat", () => ({
-	AgentAvatarView: ({ name }: { name: string }) => <span data-testid="member-avatar">{name}</span>,
+	AgentAvatarView: () => <span data-testid="member-avatar" />,
 	LiveThinkingView: ({ text }: { text: string }) => <div data-testid="live-thinking">{text}</div>,
 }));
 
@@ -49,6 +49,10 @@ describe("TeamMemberReplyCard", () => {
 		const onOpen = vi.fn();
 		render(<TeamMemberReplyCard event={event} onOpen={onOpen} />);
 
+		const avatar = screen.getByTestId("member-avatar");
+		const memberName = screen.getByText("研究员");
+		expect(avatar.parentElement).toBe(memberName.parentElement);
+		expect(avatar.parentElement?.className).toContain("items-center");
 		expect(screen.getByRole("button", { name: "打开 研究员 的成员会话" })).toBeTruthy();
 		expect(screen.getByRole("button").className).toContain("h-7");
 		expect(screen.getByRole("button").className).toContain("w-7");
