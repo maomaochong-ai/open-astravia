@@ -195,6 +195,51 @@ describe("team chat stream state", () => {
 		]);
 	});
 
+	it("shows a leader turn that is still thinking, even though it has no visible text yet", () => {
+		// A turn that has only produced thinking / tool calls has an empty public text.
+		// Deduping streams against persisted replies by text must not treat that empty
+		// string as "same content as" some earlier reply that also carried no prose,
+		// otherwise the running turn never reaches the feed.
+		const thinking = {
+			...createAssistantMessage(
+				{ api: "agent-team-test", provider: "agent-team-test", model: "fixture" },
+				{ timestamp: 1 },
+			),
+			content: [{ type: "thinking" as const, thinking: "weighing the options" }],
+		};
+		const items = projectTeamConversationTimeline({
+			snapshot: snapshot({
+				messages: [
+					userMessage("coord-user", "older", "hi", 1),
+					// An earlier leader reply that carried a tool call but no prose.
+					agentMessage("older-result", "older", "leader", "", 2, {
+						id: "call-1",
+						name: "team_get_task",
+						arguments: {},
+					}),
+				],
+			}),
+			pending: undefined,
+			streams: reduceTeamStreamState(
+				{},
+				{
+					type: "conversation.agent-message-event",
+					conversationId: "session",
+					messageId: "team-v1-live",
+					turnId: "request",
+					author: { kind: "agent", id: "leader" },
+					sequence: 1,
+					timestamp: 5,
+					event: { type: "thinking_delta", contentIndex: 0, delta: "weighing the options", partial: thinking },
+				},
+			),
+			members: [member],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		expect(items.some((item) => item.kind === "agent" && item.id === "team-v1-live")).toBe(true);
+	});
+
 	it("keeps drafts isolated by team scope", () => {
 		const first = updateScopedTeamDraft({}, "team-a", "draft a");
 		const second = updateScopedTeamDraft(first, "team-b", "draft b");
