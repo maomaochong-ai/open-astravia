@@ -17,24 +17,24 @@ export interface AgentAvatarViewProps {
 
 export type AgentAvatarSize = "xs" | "sm" | "md" | "lg" | "xl" | "hero";
 
-/** 尺寸 → [外框, 内边距, 字号]；内边距让透明底的头像图不贴边。 */
+/** 尺寸 → [外框, 字号]；头像图满幅铺满圆形，只有兜底首字母用得上字号。 */
 const SIZE_CLASS: Record<AgentAvatarSize, string> = {
-	xs: "h-4 w-4 p-px text-[9px]",
-	sm: "h-5 w-5 p-0.5 text-[10px]",
-	md: "h-6 w-6 p-0.5 text-[10px]",
-	lg: "h-7 w-7 p-1 text-[11px]",
-	xl: "h-9 w-9 p-1 text-[13px]",
-	hero: "h-14 w-14 p-2 text-[18px]",
+	xs: "h-4 w-4 text-[9px]",
+	sm: "h-5 w-5 text-[10px]",
+	md: "h-6 w-6 text-[10px]",
+	lg: "h-7 w-7 text-[11px]",
+	xl: "h-9 w-9 text-[13px]",
+	hero: "h-14 w-14 text-[18px]",
 };
 
 /**
- * 全应用唯一的 Agent 头像：智能体中心定的那套「彩色底座 + 透明头像图」，
- * 消息流、输入栏、成员条、编队页共用同一枚组件，改样式只用改这里。
+ * 全应用唯一的 Agent 头像：内置头像是自带背景的方形立绘，直接裁成圆形满幅铺满；
+ * 彩色底座留给没有头像图时的兜底首字母。消息流、输入栏、成员条、编队页共用同一枚组件。
  */
 export function AgentAvatarView({
 	name,
 	avatar,
-	blueprintId = "leader",
+	blueprintId = "master",
 	seed,
 	background,
 	active = false,
@@ -55,7 +55,7 @@ export function AgentAvatarView({
 			)}
 		>
 			{avatar ? (
-				<img src={avatar} alt="" className="h-full w-full object-contain" />
+				<img src={avatar} alt="" className="h-full w-full object-cover" />
 			) : (
 				(initial ?? <span className={cn(blueprintIcon(blueprintId), "h-1/2 w-1/2")} />)
 			)}
@@ -63,9 +63,19 @@ export function AgentAvatarView({
 	);
 }
 
+/** 兜底图标：新老 blueprint id 都要认，老档案里仍存着 builder / reviewer。 */
+const BLUEPRINT_ICON: Record<string, string> = {
+	researcher: "icon-[solar--magnifer-linear]",
+	architect: "icon-[solar--ruler-pen-linear]",
+	executor: "icon-[solar--code-square-linear]",
+	builder: "icon-[solar--code-square-linear]",
+	auditor: "icon-[solar--shield-check-linear]",
+	reviewer: "icon-[solar--shield-check-linear]",
+	optimizer: "icon-[solar--tuning-square-linear]",
+	synthesizer: "icon-[solar--documents-linear]",
+	translator: "icon-[solar--global-linear]",
+};
+
 function blueprintIcon(blueprintId: string): string {
-	if (blueprintId === "researcher") return "icon-[solar--magnifer-linear]";
-	if (blueprintId === "builder") return "icon-[solar--code-square-linear]";
-	if (blueprintId === "reviewer") return "icon-[solar--shield-check-linear]";
-	return "icon-[solar--crown-star-linear]";
+	return BLUEPRINT_ICON[blueprintId] ?? "icon-[solar--crown-star-linear]";
 }

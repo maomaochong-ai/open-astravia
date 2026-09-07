@@ -249,8 +249,8 @@ export function AgentProfileEditor({
 				<aside className="flex w-60 shrink-0 flex-col border-r border-border/50 bg-card/15 p-4">
 					{/* Compact Member Summary Card */}
 					<div className="mb-4 flex items-center gap-3 rounded-xl border border-border/40 bg-card/30 p-3">
-						<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/50 bg-muted/20 p-1">
-							<img src={avatar} alt="" className="h-full w-full object-contain" />
+						<div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-border/50 bg-muted/20">
+							<img src={avatar} alt="" className="h-full w-full object-cover" />
 						</div>
 						<div className="min-w-0 flex-1">
 							<span className="block truncate text-sm font-bold text-foreground">
@@ -410,8 +410,8 @@ export function AgentProfileEditor({
 			<div className="relative overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br from-card/70 via-card/40 to-background/40 p-6 backdrop-blur-sm">
 				<div className="flex flex-wrap items-center gap-5">
 					<div className="relative shrink-0">
-						<div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-border/60 bg-muted/30 p-2">
-							<img src={avatar} alt="" className="h-full w-full object-contain" />
+						<div className="h-16 w-16 overflow-hidden rounded-2xl border border-border/60 bg-muted/30">
+							<img src={avatar} alt="" className="h-full w-full object-cover" />
 						</div>
 					</div>
 					<div className="min-w-0 flex-1">

@@ -170,7 +170,7 @@ describe("resolveTeamMembers", () => {
 	it("assigns a stable avatar when a legacy profile is missing", () => {
 		const [resolved] = resolveTeamMembers(undefined, team, [], {}, (_profileId, fallbackHandle) => fallbackHandle);
 
-		expect(resolved?.avatar).toMatch(/agent-team-avatars\/avatar-\d{2}\.webp$/u);
+		expect(resolved?.avatar).toMatch(/agent-team-avatars\/[a-z]+\.webp$/u);
 	});
 });
 

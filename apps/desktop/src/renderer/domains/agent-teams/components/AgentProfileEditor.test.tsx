@@ -363,7 +363,7 @@ describe("AgentProfileEditor", () => {
 		await waitFor(() =>
 			expect(onSave).toHaveBeenCalledWith(
 				agent,
-				expect.objectContaining({ avatar: "./agent-team-avatars/avatar-09.webp" }),
+				expect.objectContaining({ avatar: "./agent-team-avatars/router.webp" }),
 			),
 		);
 	});

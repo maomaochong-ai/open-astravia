@@ -32,16 +32,14 @@ export function AgentAvatarPicker({
 							aria-pressed={isSelected}
 							onClick={() => onChange(avatar)}
 							className={[
-								"group relative flex aspect-square items-center justify-center rounded-xl border p-1.5 outline-none transition-all duration-200",
-								isSelected
-									? "border-primary bg-primary/15"
-									: "border-border/40 bg-card/50 hover:border-border hover:bg-card/90",
+								"group relative flex aspect-square items-center justify-center rounded-full outline-none ring-2 transition-all duration-200",
+								isSelected ? "ring-primary" : "ring-border/40 hover:ring-border",
 							].join(" ")}
 						>
 							<img
 								src={avatar}
 								alt=""
-								className="h-full w-full object-contain transition-transform duration-200 group-hover:scale-105"
+								className="h-full w-full rounded-full object-cover transition-transform duration-200 group-hover:scale-105"
 							/>
 							{isSelected && (
 								<div className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground">
