@@ -424,7 +424,24 @@ export class PluginServiceProviderService {
 		if (service.health.readiness?.mode !== "plugin") {
 			throw new Error(`Service does not use plugin readiness: ${pluginId}/${serviceId}`);
 		}
-		const record = this.records.get(serviceKey(pluginId, serviceId));
+		const key = serviceKey(pluginId, serviceId);
+		let record = this.records.get(key);
+		if (!record) {
+			record = await this.waitForRecord(key);
+		}
+		// During activation, `start()` may have registered its operation before
+		// assigning the child process. Await that lifecycle transition and then
+		// inspect the current record again instead of rejecting a valid report.
+		if (record?.operation) {
+			await record.operation.catch(() => undefined);
+			record = this.records.get(key);
+		}
+		// The plugin can report semantic readiness as soon as its process starts.
+		// The host's loopback health probe may still be establishing the transport;
+		// wait for that probe instead of surfacing a transient startup error.
+		if (record?.status.phase === "starting" && record.child && !record.transportReady) {
+			await this.waitForTransport(record);
+		}
 		if (!record || !record.child || !record.baseUrl || !record.transportReady) {
 			throw new Error(`Service transport is not ready: ${pluginId}/${serviceId}`);
 		}
@@ -524,6 +541,16 @@ export class PluginServiceProviderService {
 			if (record.transportReady || record.status.phase !== "starting" || !record.child) return;
 			await new Promise((resolveDelay) => setTimeout(resolveDelay, TRANSPORT_READY_POLL_MS));
 		}
+	}
+
+	private async waitForRecord(key: string): Promise<ServiceRecord | undefined> {
+		const deadline = Date.now() + TRANSPORT_READY_WAIT_MS;
+		while (Date.now() < deadline) {
+			const record = this.records.get(key);
+			if (record) return record;
+			await new Promise((resolveDelay) => setTimeout(resolveDelay, TRANSPORT_READY_POLL_MS));
+		}
+		return this.records.get(key);
 	}
 
 	private async requestRecord<T>(

@@ -218,6 +218,57 @@ describe("PluginServiceProviderService", () => {
 		f.service.stopAll();
 	});
 
+	it("waits for transport readiness when reportReady races child startup", async () => {
+		const f = await fixture();
+		f.manifest.health = { ...f.manifest.health, readiness: { mode: "plugin" } };
+		let releaseHealth!: () => void;
+		f.fetchClient.mockImplementationOnce(
+			() =>
+				new Promise<Response>((resolveResponse) => {
+					releaseHealth = () => resolveResponse(new Response("{}", { status: 200 }));
+				}),
+		);
+		const starting = f.service.start(f.plugin.id, "bridge");
+		await vi.waitFor(() => expect(f.spawnProcess).toHaveBeenCalledOnce());
+		const reported = f.service.reportReady(f.plugin.id, "bridge", true);
+		let settled = false;
+		reported.finally(() => {
+			settled = true;
+		});
+		await Promise.resolve();
+		expect(settled).toBe(false);
+		releaseHealth();
+		await expect(starting).resolves.toMatchObject({ phase: "starting" });
+		await expect(reported).resolves.toMatchObject({ phase: "ready" });
+		f.service.stopAll();
+	});
+
+	it("accepts reportReady issued before the start operation exposes its child", async () => {
+		const f = await fixture();
+		f.manifest.health = { ...f.manifest.health, readiness: { mode: "plugin" } };
+		const starting = f.service.start(f.plugin.id, "bridge");
+		const reported = f.service.reportReady(f.plugin.id, "bridge", true);
+		const reportedStatus = await reported;
+		expect(reportedStatus.phase).toBe("ready");
+		await starting;
+		expect((await f.service.getStatus(f.plugin.id, "bridge")).phase).toBe("ready");
+		f.service.stopAll();
+	});
+
+	it("waits for the service record when reportReady beats start registration", async () => {
+		const f = await fixture();
+		f.manifest.health = { ...f.manifest.health, readiness: { mode: "plugin" } };
+		const originalStart = f.service.start.bind(f.service);
+		const starting = (async () => {
+			await new Promise((resolveDelay) => setTimeout(resolveDelay, 10));
+			return originalStart(f.plugin.id, "bridge");
+		})();
+		const reported = f.service.reportReady(f.plugin.id, "bridge", true);
+		await expect(reported).resolves.toMatchObject({ phase: "ready" });
+		await starting;
+		f.service.stopAll();
+	});
+
 	it("waits for transport readiness when a plugin probes during child startup", async () => {
 		const f = await fixture();
 		f.manifest.health = { ...f.manifest.health, readiness: { mode: "plugin" } };
