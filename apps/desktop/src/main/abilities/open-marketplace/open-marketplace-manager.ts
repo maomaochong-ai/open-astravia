@@ -11,12 +11,15 @@ import type {
 } from "../../../preload/api-types/abilities.js";
 import type { McpServerConfigData } from "../../../preload/api-types/mcp.js";
 import { getApplicationCacheService } from "../../cache/application-cache-service.js";
+import { getAppLogger } from "../../logger.js";
 import {
 	type GitHubMarketplaceCredentialStore,
 	getGitHubMarketplaceCredentialStore,
 } from "./github-marketplace-credentials.js";
 import { MarketplaceSourceStore } from "./marketplace-source-store.js";
 import { DEFAULT_MARKETPLACE_SOURCE_ID, OpenMarketplaceService } from "./open-marketplace-service.js";
+
+const log = getAppLogger("open-marketplace");
 
 interface MarketplaceWorker {
 	list(): Promise<OpenMarketplaceSnapshot>;
@@ -202,6 +205,16 @@ export class OpenMarketplaceManager {
 			const source = enabled[index];
 			if (!source) continue;
 			if (result.status === "rejected") {
+				log.error(
+					"marketplace source collection failed",
+					{
+						sourceId: source.id,
+						sourceName: source.name,
+						repository: source.repository,
+						operation: forceRefresh ? "refresh" : "list",
+					},
+					result.reason,
+				);
 				failedSourceIds.push(source.id);
 				continue;
 			}

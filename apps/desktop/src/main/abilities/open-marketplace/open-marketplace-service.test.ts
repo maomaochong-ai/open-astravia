@@ -6,6 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { GitHubMarketplaceOrigin, OpenMarketplaceDetail } from "../../../preload/api-types/abilities";
 import { OpenMarketplaceService } from "./open-marketplace-service";
 
+const { marketplaceLog } = vi.hoisted(() => ({
+	marketplaceLog: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
+}));
+
+vi.mock("../../logger", () => ({ getAppLogger: () => marketplaceLog }));
+
 const temporaryRoots: string[] = [];
 const APP_VERSION = "0.5.11";
 const originalRepository = process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY;
@@ -185,6 +191,7 @@ function githubManifestResponse(buffer: Buffer): Response {
 }
 
 beforeEach(() => {
+	marketplaceLog.error.mockClear();
 	process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY = "https://github.com/example/vetta-abilities";
 	process.env.VETTA_OPEN_MARKETPLACE_REF = "main";
 	delete process.env.VETTA_OPEN_MARKETPLACE_ARCHIVE_URL;
@@ -546,6 +553,18 @@ describe("OpenMarketplaceService", () => {
 			marketplaceVersion: null,
 			error: "sync-failed",
 		});
+		expect(marketplaceLog.error).toHaveBeenCalledWith(
+			"marketplace sync failed",
+			expect.objectContaining({
+				sourceId: "vetta-official",
+				repository: "https://github.com/example/vetta-abilities",
+				ref: "main",
+				operation: "refresh",
+				errorCode: "sync-failed",
+				usedCachedSnapshot: false,
+			}),
+			expect.objectContaining({ message: expect.stringContaining("does not match ability slug") }),
+		);
 	});
 
 	it("keeps the last usable snapshot when content changes without a marketplace version bump", async () => {
@@ -564,6 +583,13 @@ describe("OpenMarketplaceService", () => {
 		expect(fallback.error).toBe("sync-failed");
 		expect(fallback.stale).toBe(true);
 		expect(fallback.abilities[0]?.description).toBe("First");
+		expect(marketplaceLog.error).toHaveBeenCalledWith(
+			"marketplace sync failed",
+			expect.objectContaining({ operation: "refresh", usedCachedSnapshot: true }),
+			expect.objectContaining({
+				message: "Marketplace content changed without a marketplaceVersion update",
+			}),
+		);
 	});
 
 	it("activates a catalog when the desktop app meets minAppVersion", async () => {
@@ -605,6 +631,13 @@ describe("OpenMarketplaceService", () => {
 		const snapshot = await service.refresh();
 
 		expect(snapshot).toMatchObject({ abilities: [], marketplaceVersion: null, stale: true, error: "sync-failed" });
+		expect(marketplaceLog.error).toHaveBeenCalledWith(
+			"marketplace sync failed",
+			expect.objectContaining({ operation: "refresh", errorCode: "sync-failed" }),
+			expect.objectContaining({
+				message: "Marketplace 2026.07.1 requires desktop app 0.6.0 or newer",
+			}),
+		);
 	});
 
 	it("does not activate a catalog when SKILL.md version disagrees with the catalog", async () => {
@@ -704,6 +737,17 @@ describe("OpenMarketplaceService", () => {
 		expect(snapshot).toMatchObject({ marketplaceVersion: "2026.07.1", stale: false });
 		expect(snapshot.error).toBeUndefined();
 		await vi.waitFor(() => expect(fetchManifest).toHaveBeenCalledOnce());
+		await vi.waitFor(() =>
+			expect(marketplaceLog.error).toHaveBeenCalledWith(
+				"marketplace sync failed",
+				expect.objectContaining({
+					operation: "background-update",
+					errorCode: "sync-failed",
+					usedCachedSnapshot: true,
+				}),
+				expect.objectContaining({ message: "offline" }),
+			),
+		);
 	});
 
 	it("can read cached data without triggering a download", async () => {
@@ -776,6 +820,11 @@ describe("OpenMarketplaceService", () => {
 		// Installing offline from what is already on disk beats refusing to install.
 		expect(installAbility).toHaveBeenCalledOnce();
 		expect(installAbility.mock.calls[0]?.[2]).toMatchObject({ marketplaceVersion: "2026.07.1" });
+		expect(marketplaceLog.error).toHaveBeenCalledWith(
+			"marketplace sync failed",
+			expect.objectContaining({ operation: "install-update-check", usedCachedSnapshot: true }),
+			expect.objectContaining({ message: "offline" }),
+		);
 	});
 
 	it("installs only from the active validated snapshot", async () => {

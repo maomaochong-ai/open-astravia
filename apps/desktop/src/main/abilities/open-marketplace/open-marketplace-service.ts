@@ -11,6 +11,7 @@ import type {
 } from "../../../preload/api-types/abilities.js";
 import type { McpServerConfigData } from "../../../preload/api-types/mcp.js";
 import { getApplicationCacheService } from "../../cache/application-cache-service.js";
+import { getAppLogger } from "../../logger.js";
 import { loadMarketplaceCatalog } from "./marketplace-catalog.js";
 import { isAppVersionCompatible, isValidAppVersion } from "./marketplace-compatibility.js";
 import { type MarketplaceManifest, parseMarketplaceManifest } from "./marketplace-schema.js";
@@ -24,6 +25,7 @@ const MAX_MANIFEST_BYTES = 2 * 1024 * 1024;
 const MAX_UNCOMPRESSED_BYTES = 100 * 1024 * 1024;
 const MAX_ARCHIVE_ENTRIES = 10_000;
 const DOWNLOAD_TIMEOUT_MS = 15_000;
+const log = getAppLogger("open-marketplace");
 
 type MarketplaceSyncError = NonNullable<OpenMarketplaceSnapshot["error"]>;
 
@@ -340,6 +342,7 @@ export class OpenMarketplaceService {
 		} catch (error) {
 			const cached = this.memorySnapshot ?? (await this.readCachedSnapshot());
 			const errorCode = syncError(error);
+			this.logSyncFailure("refresh", error, errorCode, cached !== null);
 			const failed = cached
 				? { ...cached, stale: true, error: errorCode }
 				: {
@@ -580,7 +583,10 @@ export class OpenMarketplaceService {
 			return;
 		}
 		const update = this.refreshInBackgroundIfChanged()
-			.catch(() => undefined)
+			.catch(async (error: unknown) => {
+				const cached = this.memorySnapshot ?? (await this.readCachedSnapshot());
+				this.logSyncFailure("install-update-check", error, syncError(error), cached !== null);
+			})
 			.finally(() => {
 				if (this.backgroundUpdate === update) this.backgroundUpdate = undefined;
 			});
@@ -599,7 +605,9 @@ export class OpenMarketplaceService {
 		}
 		this.lastUpdateCheckAt = now;
 		const update = this.refreshInBackgroundIfChanged()
-			.catch(() => undefined)
+			.catch((error: unknown) => {
+				this.logSyncFailure("background-update", error, syncError(error), this.memorySnapshot !== undefined);
+			})
 			.finally(() => {
 				if (this.backgroundUpdate === update) this.backgroundUpdate = undefined;
 			});
@@ -616,6 +624,26 @@ export class OpenMarketplaceService {
 		const snapshot = await this.syncOnce();
 		this.memorySnapshot = snapshot;
 		this.onBackgroundUpdate?.(snapshot);
+	}
+
+	private logSyncFailure(
+		operation: "refresh" | "background-update" | "install-update-check",
+		error: unknown,
+		errorCode: MarketplaceSyncError,
+		usedCachedSnapshot: boolean,
+	): void {
+		log.error(
+			"marketplace sync failed",
+			{
+				sourceId: this.sourceId,
+				repository: this.repository,
+				ref: this.sourceRef,
+				operation,
+				errorCode,
+				usedCachedSnapshot,
+			},
+			error,
+		);
 	}
 
 	private async extractArchive(buffer: Buffer, targetDir: string): Promise<void> {

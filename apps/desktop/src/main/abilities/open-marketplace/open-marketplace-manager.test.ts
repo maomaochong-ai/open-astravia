@@ -6,6 +6,12 @@ import type { MarketplaceSource, OpenMarketplaceSnapshot } from "../../../preloa
 import { MarketplaceSourceStore } from "./marketplace-source-store";
 import { OpenMarketplaceManager } from "./open-marketplace-manager";
 
+const { marketplaceLog } = vi.hoisted(() => ({
+	marketplaceLog: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
+}));
+
+vi.mock("../../logger", () => ({ getAppLogger: () => marketplaceLog }));
+
 const temporaryRoots: string[] = [];
 
 async function temporaryRoot(): Promise<string> {
@@ -56,6 +62,7 @@ function memoryCredentialStore() {
 }
 
 afterEach(async () => {
+	marketplaceLog.error.mockClear();
 	await Promise.all(temporaryRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
 
@@ -88,6 +95,16 @@ describe("OpenMarketplaceManager", () => {
 		expect(catalog.snapshots.map((item) => item.source.id)).toEqual(["first"]);
 		expect(catalog.failedSourceIds).toEqual(["broken"]);
 		expect(catalog.sources.map((item) => item.id)).toEqual(["first", "broken"]);
+		expect(marketplaceLog.error).toHaveBeenCalledWith(
+			"marketplace source collection failed",
+			expect.objectContaining({
+				sourceId: "broken",
+				sourceName: "broken",
+				repository: "https://github.com/example/broken",
+				operation: "list",
+			}),
+			expect.objectContaining({ message: "offline" }),
+		);
 	});
 
 	it("uses cached data when auto update is disabled and routes installs by source", async () => {
