@@ -15,6 +15,7 @@ export {
 	type AiChatResult,
 	type AiChatTool,
 	type AiChatToolCall,
+	type AiCompleteEvent,
 	type AiCompleteInput,
 	type AiCompleteResult,
 	type AiModel,

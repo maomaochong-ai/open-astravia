@@ -36,6 +36,25 @@ function service() {
 }
 
 describe("plugin service provider manifest", () => {
+	it("accepts MCP bindings to a declared managed service", () => {
+		const manifest = parsePluginManifest({
+			...baseManifest,
+			permissions: ["agent.mcp.control"],
+			providers: { services: [service()] },
+			agent: { mcpServers: { bridge: { type: "service", serviceId: "proxy", path: "/mcp" } } },
+		});
+		expect(manifest.agent?.mcpServers).toEqual({
+			bridge: expect.objectContaining({ type: "service", serviceId: "proxy", path: "/mcp" }),
+		});
+	});
+	it("rejects a service MCP binding that is not declared by the plugin", () => {
+		expect(() => parsePluginManifest({
+			...baseManifest,
+			permissions: ["agent.mcp.control"],
+			agent: { mcpServers: { bridge: { type: "service", serviceId: "missing", path: "/mcp" } } },
+		})).toThrow("unknown service");
+	});
+
 	it("accepts per-start cache rendering independently from persistent create templates", () => {
 		const provider = service();
 		const manifest = parsePluginManifest({ ...baseManifest, providers: { services: [{ ...provider,

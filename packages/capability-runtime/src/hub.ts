@@ -16,10 +16,10 @@ export class CapabilityHub {
 		return this.foundation.has(capabilityId) || this.domain.has(capabilityId);
 	}
 
-	async invoke<Input, Output>(
-		capability: CapabilityToken<Input, Output>,
+	async invoke<Input, Output, Event = never>(
+		capability: CapabilityToken<Input, Output, Event>,
 		input: Input,
-		context: CapabilityExecutionContext,
+		context: CapabilityExecutionContext<Event>,
 	): Promise<Output> {
 		switch (capability.layer) {
 			case CAPABILITY_LAYERS.FOUNDATION:

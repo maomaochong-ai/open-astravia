@@ -68,6 +68,8 @@ function requireExecutionMode(value: unknown): "sandbox" | "full-access" {
 
 export function registerPluginCapabilitiesIpc(): () => void {
 	const adapter = getDesktopCapabilityHost().adapters.plugin;
+	const aiStreams = new Map<string, { readonly sessionId: string; readonly controller: AbortController }>();
+	const aiStreamKey = (senderId: number, requestId: string): string => `${senderId}:${requestId}`;
 	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.OPEN_SESSION, (event, pluginId: unknown) =>
 		adapter.openSession(requireString(pluginId, "pluginId"), `${event.processId}:${event.frameId}`),
 	);
@@ -150,6 +152,46 @@ export function registerPluginCapabilitiesIpc(): () => void {
 	);
 	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.AI_COMPLETE, (_event, sessionId: unknown, input: unknown) =>
 		adapter.completeAi(requireString(sessionId, "sessionId"), input),
+	);
+	ipcMain.handle(
+		PLUGIN_CAPABILITY_CHANNELS.AI_STREAM,
+		async (event, sessionIdValue: unknown, requestIdValue: unknown, input: unknown) => {
+			const sessionId = requireString(sessionIdValue, "sessionId");
+			const requestId = requireString(requestIdValue, "requestId");
+			if (requestId.length > 128) throw new Error("requestId must not exceed 128 characters");
+			const key = aiStreamKey(event.sender.id, requestId);
+			if (aiStreams.has(key)) throw new Error(`AI stream already exists: ${requestId}`);
+			const controller = new AbortController();
+			aiStreams.set(key, { sessionId, controller });
+			const abort = (): void => controller.abort();
+			event.sender.once("destroyed", abort);
+			try {
+				return await adapter.streamAi(sessionId, input, {
+					signal: controller.signal,
+					onEvent: (streamEvent) => {
+						if (!event.sender.isDestroyed()) {
+							event.sender.send(PLUGIN_CAPABILITY_CHANNELS.AI_STREAM_EVENT, {
+								sessionId,
+								requestId,
+								event: streamEvent,
+							});
+						}
+					},
+				});
+			} finally {
+				event.sender.removeListener("destroyed", abort);
+				aiStreams.delete(key);
+			}
+		},
+	);
+	ipcMain.handle(
+		PLUGIN_CAPABILITY_CHANNELS.AI_STREAM_CANCEL,
+		(event, sessionIdValue: unknown, requestIdValue: unknown) => {
+			const sessionId = requireString(sessionIdValue, "sessionId");
+			const requestId = requireString(requestIdValue, "requestId");
+			const stream = aiStreams.get(aiStreamKey(event.sender.id, requestId));
+			if (stream?.sessionId === sessionId) stream.controller.abort();
+		},
 	);
 	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.AI_CHAT, (_event, sessionId: unknown, input: unknown) =>
 		adapter.chatAi(requireString(sessionId, "sessionId"), input),
@@ -708,6 +750,8 @@ export function registerPluginCapabilitiesIpc(): () => void {
 	);
 
 	return () => {
+		for (const stream of aiStreams.values()) stream.controller.abort();
+		aiStreams.clear();
 		for (const channel of Object.values(PLUGIN_CAPABILITY_CHANNELS)) ipcMain.removeHandler(channel);
 	};
 }

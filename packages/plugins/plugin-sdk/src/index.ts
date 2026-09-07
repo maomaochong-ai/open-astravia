@@ -155,6 +155,8 @@ export type {
 	PluginAiChatUserMessage,
 	PluginAiCompleteRequest,
 	PluginAiCompleteResult,
+	PluginAiStreamOptions,
+	PluginAiTextDeltaEvent,
 	PluginAiModel,
 	PluginAiModelListResult,
 	PluginAiToolCall,
@@ -240,6 +242,7 @@ export type {
 	PluginServiceRequest,
 	PluginServiceResponse,
 	PluginServiceStatus,
+	PluginServiceDataEncoding,
 } from "./service-provider.js";
 export type { PluginModelDefinition, PluginModelProviderConfig, PluginModelsApi } from "./models.js";
 export type {

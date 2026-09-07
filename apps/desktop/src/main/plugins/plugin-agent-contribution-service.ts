@@ -34,13 +34,20 @@ export interface PluginAgentContributionServiceDependencies {
 	handlers: DesktopPluginAgentHandlerRegistry;
 }
 
+type ServiceMcpResolver = (plugin: InstalledPlugin, serviceId: string, path: string) => string | undefined;
+
 export class PluginAgentContributionService {
 	private readonly registry: PluginAgentContributionRegistry;
 	private readonly modeGatedPluginIds = new Set<string>();
 	private readonly activeContributionModeIds = new Set<string>();
+	private serviceMcpResolver: ServiceMcpResolver | undefined;
 
 	constructor(private readonly dependencies: PluginAgentContributionServiceDependencies) {
 		this.registry = new PluginAgentContributionRegistry(dependencies.hooks);
+	}
+
+	setServiceMcpResolver(resolver: ServiceMcpResolver): void {
+		this.serviceMcpResolver = resolver;
 	}
 
 	registerModeGate(pluginId: string): void {
@@ -133,6 +140,7 @@ export class PluginAgentContributionService {
 				plugin.source === "system" || this.dependencies.isDevLinked(plugin.id)
 					? this.dependencies.resolveFilePath(plugin.id, ".")
 					: this.dependencies.resolveFilePath(plugin.id, `versions/${encodeURIComponent(plugin.activeVersion)}`),
+			resolveServiceMcp: this.serviceMcpResolver,
 			logger: this.dependencies.logger,
 		});
 	}

@@ -43,6 +43,10 @@
    发布插件完成，无需修改 Desktop。
 9. `providers.services` 与 `ctx.services`/`ctx.models` 进入 Plugin API `1.5.0`；语义 readiness 与原子模型快照进入 `1.6.0`。旧宿主通过
    `pluginApiVersion` 和市场 `minAppVersion` 在安装前拒绝不兼容插件，不执行部分安装。
+10. 插件可用 `agent.mcpServers[].type = "service"` 将 MCP 端点绑定到同一插件声明的受管服务。清单只保存
+    `serviceId + path`，Desktop 在服务 ready 后解析动态回环地址，并在停止或端口变化时重新发布插件 MCP 快照。
+11. `ctx.services.readDataFile/writeDataFile` 提供插件自有服务数据目录内的受控文件访问。路径必须是目录内相对路径，
+    内容有大小上限；写入方应先停止可能持有该文件的服务。该 API 不暴露真实数据目录，也不能访问其它插件服务。
 
 ## 安全边界
 

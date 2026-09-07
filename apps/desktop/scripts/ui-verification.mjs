@@ -24,6 +24,10 @@ import {
 	seedDebugProfile,
 } from "./ui-verification-profile.ts";
 import { readHttpJson } from "./ui-verification-http.ts";
+import {
+	formatPlaywrightAttachFailure,
+	validatePlaywrightArguments,
+} from "./ui-verification-diagnostics.ts";
 
 const desktopRoot = join(import.meta.dirname, "..");
 const repoRoot = realpathSync(join(desktopRoot, "..", ".."));
@@ -128,6 +132,9 @@ async function inspectCdp(endpoint) {
 		const pages = targets.filter(
 			(target) => target?.type === "page" && typeof target.webSocketDebuggerUrl === "string",
 		);
+		const devtoolsTargetCount = pages.filter(
+			(target) => typeof target.url === "string" && target.url.startsWith("devtools://"),
+		).length;
 		const mainWindow =
 			pages.find((target) => target.title === "Vetta Desktop") ??
 			pages.find((target) => typeof target.url === "string" && target.url.startsWith("http")) ??
@@ -138,6 +145,7 @@ async function inspectCdp(endpoint) {
 				reachable: true,
 				targetFound: mainWindow !== null,
 				targetCount: pages.length,
+				devtoolsTargetCount,
 				endpoint,
 				mainWindow: mainWindow
 					? { id: mainWindow.id, title: mainWindow.title, url: mainWindow.url }
@@ -179,7 +187,20 @@ function readDevUiInfo(layout) {
 async function statusResult(profile) {
 	const layout = resolveLayout(profile, "status");
 	if (profile === "dev") {
-		const uiInfo = readDevUiInfo(layout);
+		let uiInfo = readDevUiInfo(layout);
+		if (uiInfo.ok === true && typeof uiInfo.result?.endpoint === "string") {
+			const inspected = await inspectCdp(uiInfo.result.endpoint);
+			if (inspected.ok === true) {
+				uiInfo = {
+					ok: true,
+					result: {
+						...uiInfo.result,
+						targetCount: inspected.result.targetCount,
+						devtoolsTargetCount: inspected.result.devtoolsTargetCount,
+					},
+				};
+			}
+		}
 		return createStatusResult(layout, null, uiInfo);
 	}
 
@@ -261,9 +282,19 @@ function ensureAttached(layout, uiInfo) {
 		runPlaywright(layout, ["detach"], true, 15_000);
 	}
 
-	const attachResult = runPlaywright(layout, ["attach", `--cdp=${uiInfo.endpoint}`]);
+	const attachResult = runPlaywright(layout, ["attach", `--cdp=${uiInfo.endpoint}`], true);
 	if (attachResult.status !== 0) {
-		throw new Error(`Unable to attach Playwright session ${layout.sessionName}`);
+		throw new Error(
+			formatPlaywrightAttachFailure({
+				sessionName: layout.sessionName,
+				status: attachResult.status,
+				signal: attachResult.signal,
+				timedOut: attachResult.error?.code === "ETIMEDOUT",
+				stdout: attachResult.stdout,
+				stderr: attachResult.stderr,
+				devtoolsTargetCount: uiInfo.devtoolsTargetCount,
+			}),
+		);
 	}
 	return true;
 }
@@ -713,6 +744,8 @@ if (parsed.command === "start") {
 	}
 } else if (parsed.command === "pw") {
 	if (parsed.args.length === 0) throw new Error("Missing Playwright CLI command");
+	const invalidPlaywrightArguments = validatePlaywrightArguments(parsed.args);
+	if (invalidPlaywrightArguments) throw new Error(invalidPlaywrightArguments);
 	const target = await requireUiInfo(parsed.profile);
 	if (target) {
 		if (ensureAttached(target.layout, target.ui)) selectMainWindow(target.layout, target.ui);

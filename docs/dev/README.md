@@ -64,6 +64,16 @@ bun run verify:ui:debug:dev -- <Debug CLI 参数>
 
 Dev 是 attach-only Profile，没有对应的 `start` 或 `stop`。如果普通开发应用没有运行，命令会在有界超时后失败，不会挂起。
 
+开发中的外置插件应继续复用 Dev Profile。安装新 zip 后，如果结果显示 `pendingVersion`，Desktop 重启不会代替插件生命周期中的显式重载；使用公开 CLI 触发同一条审批和重载链路：
+
+```powershell
+$env:VETTA_CONFIG_DIR = ".vetta-dev"
+bun packages/plugins/plugin-cli/src/cli.ts add C:\path\to\plugin.zip --json
+bun packages/plugins/plugin-cli/src/cli.ts reload plugin-id --json
+```
+
+`reload` 会在 Desktop 中显示确认界面。读取当前页面上的确认按钮并完成审批后，新版本才成为 `activeVersion`。
+
 开始 UI 操作前，状态必须同时满足 `running === true`、`ready === true`、`ui.reachable === true` 和 `ui.targetFound === true`。`verify:ui:pw*` 会在需要时自动附着并选择主窗口。不要直接调用全局 `playwright-cli`，也不要使用 `close`、`close-all` 或 `kill-all`。
 
 ## 验证闭环
@@ -75,6 +85,16 @@ Dev 是 attach-only Profile，没有对应的 `start` 或 `stop`。如果普通�
 5. 同时验证目标内容、路由或弹层状态，避免只断言“点击成功”。
 6. 用 `console error` 检查本次操作引入的错误，并按需保存 screenshot 或 snapshot。
 7. 验证失败时根据页面证据继续修改，再重复以上步骤。
+
+短操作可以直接使用 `run-code`。较长的检查逻辑不要全部塞进 Windows 命令行；Bun 启动器在超长内联参数下可能先于 Playwright 失败。把 Playwright callback 保存为临时 `.js` 文件并使用 CLI 自带的文件入口：
+
+```powershell
+bun run verify:ui:pw:dev -- run-code --filename=C:\path\to\ui-probe.js
+```
+
+临时脚本应保持短小、作用域明确，并在验证结束后删除；只操作当前验证所需的页面状态。页面导航、HMR 或抽屉重开后，旧 snapshot ref 可能失效，应重新 snapshot 后再定位。
+
+若附着日志停在 `<ws connected>` 后超时，先运行 `verify:ui:status:dev`。状态现在会报告 `devtoolsTargetCount`；存在 DevTools target 时，关闭已经失效的 DevTools 窗口后重试，保留 Vetta Desktop 主窗口。附着失败的错误也会保留 Playwright 输出尾部并给出这一诊断，不再只显示泛化的 `Unable to attach`。
 
 需要通过 Vetta Debug 创建或继续真实 Agent 会话时，统一经仓库入口调用：
 

@@ -3,6 +3,7 @@ import type {
 	AgentExperimentalSettingsUpdate,
 	AiChatInput,
 	AiChatResult,
+	AiCompleteEvent,
 	AiCompleteInput,
 	AiCompleteResult,
 	AiModelListResult,
@@ -462,6 +463,15 @@ export interface DesktopPluginCapabilityImApi {
 export interface DesktopPluginCapabilityAiApi {
 	listModels(sessionId: string): Promise<AiModelListResult>;
 	complete(sessionId: string, input: AiCompleteInput): Promise<AiCompleteResult>;
+	stream(sessionId: string, requestId: string, input: AiCompleteInput): Promise<AiCompleteResult>;
+	cancelStream(sessionId: string, requestId: string): Promise<void>;
+	onStreamEvent(
+		listener: (payload: {
+			readonly sessionId: string;
+			readonly requestId: string;
+			readonly event: AiCompleteEvent;
+		}) => void,
+	): () => void;
 	chat(sessionId: string, input: AiChatInput): Promise<AiChatResult>;
 }
 
@@ -802,6 +812,19 @@ export interface DesktopPluginsApi {
 		serviceId: string,
 		request: PluginServiceRequest,
 	): Promise<PluginServiceResponse<T>>;
+	readServiceDataFile(
+		sessionId: string,
+		serviceId: string,
+		path: string,
+		encoding?: "utf8" | "base64",
+	): Promise<string | null>;
+	writeServiceDataFile(
+		sessionId: string,
+		serviceId: string,
+		path: string,
+		data: string,
+		encoding?: "utf8" | "base64",
+	): Promise<void>;
 	reportServiceReady(sessionId: string, serviceId: string, ready: boolean): Promise<PluginServiceStatus>;
 	onServiceStatusChanged(handler: (event: { pluginId: string; status: PluginServiceStatus }) => void): () => void;
 	/** Run an allowed command for a plugin via the main process (execFile, no shell). */

@@ -7,18 +7,31 @@ import type {
 
 export interface CapabilityProviderBinding {
 	readonly token: AnyCapabilityToken;
-	execute(input: unknown, context: CapabilityExecutionContext): Promise<unknown>;
+	execute(input: unknown, context: CapabilityExecutionContext<unknown>): Promise<unknown>;
 }
 
-export function bindCapability<Input, Output>(
-	token: CapabilityToken<Input, Output>,
-	handler: CapabilityHandler<Input, Output>,
+export function bindCapability<Input, Output, Event = never>(
+	token: CapabilityToken<Input, Output, Event>,
+	handler: CapabilityHandler<Input, Output, Event>,
 ): CapabilityProviderBinding {
 	return {
 		token,
 		async execute(value, context) {
 			const input = token.parseInput(value);
-			const output = await handler.execute(input, context);
+			const emit = context.emit;
+			const output = await handler.execute(input, {
+				...context,
+				...(emit === undefined
+					? {}
+					: {
+							emit: (event: Event) => {
+								if (token.parseEvent === undefined) {
+									throw new Error(`Capability ${token.id} does not declare an event contract`);
+								}
+								emit(token.parseEvent(event));
+							},
+						}),
+			});
 			return token.parseOutput(output);
 		},
 	};

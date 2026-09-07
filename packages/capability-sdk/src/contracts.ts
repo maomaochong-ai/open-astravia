@@ -46,22 +46,25 @@ export const CAPABILITY_ERROR_CODES = {
 export type CapabilityErrorCode = (typeof CAPABILITY_ERROR_CODES)[keyof typeof CAPABILITY_ERROR_CODES];
 export type CapabilityParser<Value> = CapabilitySchema<Value>["parse"];
 
-export interface CapabilityToken<Input, Output> {
+export interface CapabilityToken<Input, Output, Event = never> {
 	readonly id: CapabilityId;
 	readonly input: CapabilitySchema<Input>;
+	readonly event?: CapabilitySchema<Event>;
 	readonly kind: "query" | "command" | "event";
 	readonly layer: CapabilityLayer;
 	readonly output: CapabilitySchema<Output>;
 	readonly version: number;
 	readonly parseInput: CapabilityParser<Input>;
 	readonly parseOutput: CapabilityParser<Output>;
+	readonly parseEvent?: CapabilityParser<Event>;
 	readonly [capabilityTypes]?: {
 		readonly input: Input;
 		readonly output: Output;
+		readonly event: Event;
 	};
 }
 
-export type AnyCapabilityToken = CapabilityToken<unknown, unknown>;
+export type AnyCapabilityToken = CapabilityToken<unknown, unknown, unknown>;
 
 export interface CapabilityModule {
 	readonly id: string;
@@ -77,8 +80,9 @@ export interface CapabilityModuleDefinition {
 	readonly capabilities: readonly AnyCapabilityToken[];
 }
 
-export interface CapabilityDefinition<Input, Output> {
+export interface CapabilityDefinition<Input, Output, Event = never> {
 	readonly input: CapabilitySchema<Input>;
+	readonly event?: CapabilitySchema<Event>;
 	readonly id: string;
 	readonly kind: CapabilityToken<Input, Output>["kind"];
 	readonly layer: CapabilityLayer;
@@ -86,14 +90,15 @@ export interface CapabilityDefinition<Input, Output> {
 	readonly version: number;
 }
 
-export interface CapabilityExecutionContext {
+export interface CapabilityExecutionContext<Event = never> {
 	readonly signal: AbortSignal;
 	readonly traceId: string;
 	readonly deadline?: number;
+	readonly emit?: (event: Event) => void;
 }
 
-export interface CapabilityHandler<Input, Output> {
-	execute(input: Input, context: CapabilityExecutionContext): Promise<Output> | Output;
+export interface CapabilityHandler<Input, Output, Event = never> {
+	execute(input: Input, context: CapabilityExecutionContext<Event>): Promise<Output> | Output;
 }
 
 export interface Disposable {
@@ -186,9 +191,9 @@ export function defineCapabilityModule(definition: CapabilityModuleDefinition): 
 	});
 }
 
-export function defineCapability<Input, Output>(
-	definition: CapabilityDefinition<Input, Output>,
-): CapabilityToken<Input, Output> {
+export function defineCapability<Input, Output, Event = never>(
+	definition: CapabilityDefinition<Input, Output, Event>,
+): CapabilityToken<Input, Output, Event> {
 	const id = parseCapabilityId(definition.id);
 	const idLayer = capabilityLayerFromId(id);
 	if (definition.layer !== idLayer) {
@@ -206,6 +211,7 @@ export function defineCapability<Input, Output>(
 	return Object.freeze({
 		id,
 		input: definition.input,
+		...(definition.event === undefined ? {} : { event: definition.event, parseEvent: definition.event.parse }),
 		kind: definition.kind,
 		layer: definition.layer,
 		output: definition.output,

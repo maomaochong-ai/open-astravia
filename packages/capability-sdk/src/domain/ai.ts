@@ -59,6 +59,14 @@ const aiCompleteResultType = Type.Object(
 	{ additionalProperties: false },
 );
 
+const aiCompleteEventType = Type.Object(
+	{
+		type: Type.Literal("text_delta"),
+		delta: Type.String({ minLength: 1 }),
+	},
+	{ additionalProperties: false },
+);
+
 const aiChatToolCallType = Type.Object(
 	{
 		id: Type.String({ minLength: 1, maxLength: 256 }),
@@ -137,6 +145,7 @@ export type AiModelListResult = Static<typeof aiModelListResultType>;
 export type AiCompleteInput = Static<typeof aiCompleteInputType>;
 export type AiUsage = Static<typeof aiUsageType>;
 export type AiCompleteResult = Static<typeof aiCompleteResultType>;
+export type AiCompleteEvent = Static<typeof aiCompleteEventType>;
 export type AiChatToolCall = Static<typeof aiChatToolCallType>;
 export type AiChatMessage = Static<typeof aiChatMessageType>;
 export type AiChatTool = Static<typeof aiChatToolType>;
@@ -147,6 +156,7 @@ const aiEmptyInputSchema = defineCapabilityInputSchema(aiEmptyInputType);
 const aiModelListOutputSchema = defineCapabilityOutputSchema(aiModelListResultType, { clean: true });
 const aiCompleteInputSchema = defineCapabilityInputSchema(aiCompleteInputType, { clean: true });
 const aiCompleteOutputSchema = defineCapabilityOutputSchema(aiCompleteResultType, { clean: true });
+const aiCompleteEventSchema = defineCapabilityOutputSchema(aiCompleteEventType, { clean: true });
 const aiChatInputSchema = defineCapabilityInputSchema(aiChatInputType, { clean: true });
 const aiChatOutputSchema = defineCapabilityOutputSchema(aiChatResultType, { clean: true });
 
@@ -159,13 +169,14 @@ export const DOMAIN_AI_CAPABILITIES = {
 		input: aiEmptyInputSchema,
 		output: aiModelListOutputSchema,
 	}),
-	COMPLETE: defineCapability<AiCompleteInput, AiCompleteResult>({
+	COMPLETE: defineCapability<AiCompleteInput, AiCompleteResult, AiCompleteEvent>({
 		id: "cap.domain.vetta.ai.complete",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
 		input: aiCompleteInputSchema,
 		output: aiCompleteOutputSchema,
+		event: aiCompleteEventSchema,
 	}),
 	CHAT: defineCapability<AiChatInput, AiChatResult>({
 		id: "cap.domain.vetta.ai.chat",

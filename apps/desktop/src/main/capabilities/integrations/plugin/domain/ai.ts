@@ -1,5 +1,6 @@
 import {
 	type AiChatResult,
+	type AiCompleteEvent,
 	type AiCompleteResult,
 	type AiModelListResult,
 	DOMAIN_AI_CAPABILITIES,
@@ -18,6 +19,19 @@ export const pluginAiMethods = {
 		return this.client(sessionId, { permission: PLUGIN_CAPABILITY_PERMISSIONS.AI_COMPLETE }).invoke(
 			DOMAIN_AI_CAPABILITIES.COMPLETE,
 			DOMAIN_AI_CAPABILITIES.COMPLETE.parseInput(input),
+		);
+	},
+
+	streamAi(
+		this: PluginCapabilitySessionAccess,
+		sessionId: string,
+		input: unknown,
+		options: { readonly signal: AbortSignal; readonly onEvent: (event: AiCompleteEvent) => void },
+	): Promise<AiCompleteResult> {
+		return this.client(sessionId, { permission: PLUGIN_CAPABILITY_PERMISSIONS.AI_COMPLETE }).invoke(
+			DOMAIN_AI_CAPABILITIES.COMPLETE,
+			DOMAIN_AI_CAPABILITIES.COMPLETE.parseInput(input),
+			options,
 		);
 	},
 

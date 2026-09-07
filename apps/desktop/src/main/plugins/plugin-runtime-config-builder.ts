@@ -23,6 +23,7 @@ export interface PluginRuntimeConfigDependencies {
 	contributions: PluginAgentContributionRegistry;
 	resolveResource(plugin: InstalledPlugin, relativePath: string): string;
 	resolveMcpRoot(plugin: InstalledPlugin): string;
+	resolveServiceMcp?: (plugin: InstalledPlugin, serviceId: string, path: string) => string | undefined;
 	logger: PluginRuntimeConfigLogger;
 }
 
@@ -224,7 +225,7 @@ function buildMcpContributions(
 				pluginId: plugin.id,
 				localName,
 				runtimeName: buildPluginMcpRuntimeName(plugin.id, localName),
-				config: resolveMcpServerConfig(dependencies.resolveMcpRoot(plugin), config),
+				config: resolveMcpServerConfig(dependencies, plugin, config),
 			});
 		} catch (error) {
 			dependencies.logger.warn(`Plugin ${plugin.id}: skip MCP server '${localName}':`, error);
@@ -233,7 +234,26 @@ function buildMcpContributions(
 	return contributions;
 }
 
-function resolveMcpServerConfig(pluginRoot: string, config: PluginMcpServerConfig): AgentPluginMcpServerConfig {
+function resolveMcpServerConfig(
+	dependencies: PluginRuntimeConfigDependencies,
+	plugin: InstalledPlugin,
+	config: PluginMcpServerConfig,
+): AgentPluginMcpServerConfig {
+	if (config.type === "service") {
+		const url = dependencies.resolveServiceMcp?.(plugin, config.serviceId, config.path);
+		if (!url) throw new Error(`Plugin service is not ready: ${config.serviceId}`);
+		return {
+			type: "http",
+			url,
+			disabled: config.disabled,
+			autoApprove: config.autoApprove,
+			startupTimeout: config.startupTimeout,
+			debug: config.debug,
+			displayName: config.displayName,
+			description: config.description,
+		};
+	}
+	const pluginRoot = dependencies.resolveMcpRoot(plugin);
 	if (config.type === "http") return { ...config };
 	return {
 		...config,

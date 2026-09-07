@@ -74,6 +74,7 @@ Desktop domain service / Electron / OS
 - 稳定 Capability ID、layer、publisher 和 version。
 - query/command 类型。
 - 输入和输出 Schema。
+- 可选的流式事件 Schema；事件与最终输出使用同一个调用、取消和授权生命周期。
 - 稳定错误码与错误类型。
 - Catalog 描述和生成事实源。
 - Grant、Constraint、AccessSession 与 Authorized Client 合同。
@@ -172,3 +173,7 @@ Plugin/Theme namespace 或激活状态。
 5. 在宿主组合根注册 Provider；不要把 Provider 放进本包。
 6. 覆盖 Schema、Catalog、Provider、Grant 和受影响 facade 的最低充分测试。
 7. 修改公共合同或长期边界时同步更新根架构文档或 ADR。
+
+长任务需要在最终结果前交付进度或增量时，在 Token 上声明 `event` Schema，并由 Provider 通过
+`CapabilityExecutionContext.emit` 发出事件。Runtime 会先执行事件 Schema 校验，再交给调用方的
+`onEvent`；不要绕开 Access Session 新建一条无授权、无取消的旁路事件通道。

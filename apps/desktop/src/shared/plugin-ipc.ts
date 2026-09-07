@@ -41,6 +41,8 @@ export const PLUGIN_EXECUTION_CHANNELS = {
 	SERVICE_RESTART: "vetta:plugins:service:restart",
 	SERVICE_CONNECTION: "vetta:plugins:service:connection",
 	SERVICE_REQUEST: "vetta:plugins:service:request",
+	SERVICE_DATA_READ: "vetta:plugins:service:data-read",
+	SERVICE_DATA_WRITE: "vetta:plugins:service:data-write",
 	SERVICE_READY_REPORT: "vetta:plugins:service:ready-report",
 	OFFSCREEN_CAPTURE: "vetta:plugins:offscreen-capture",
 	OFFSCREEN_RELEASE: "vetta:plugins:offscreen-release",

@@ -5,7 +5,7 @@
 ## 权限
 
 - `ai.models.list`：调用 `ctx.ai.listModels()`。
-- `ai.complete`：调用 `ctx.ai.complete()`，可能产生模型费用或消耗用户额度。
+- `ai.complete`：调用 `ctx.ai.complete()`、`ctx.ai.stream()` 或 `ctx.ai.chat()`，可能产生模型费用或消耗用户额度。
 
 两项权限独立。只知道固定模型标识的插件可以仅声明 `ai.complete`；需要展示模型选择器时再同时声明 `ai.models.list`。
 
@@ -41,9 +41,37 @@ console.log(result.text, result.usage.totalTokens);
 
 `complete` 是单轮契约（`systemPrompt + prompt`），不接受工具或图片。多轮对话使用下方的 `chat`；插件提供 API Key 仍然不被接受——凭据永远由宿主注入。
 
+## 流式完成
+
+`ctx.ai.stream()` 与 `complete()` 接受相同请求并返回相同的最终结果，但会在生成期间通过
+`onTextDelta` 交付增量文本。`delta` 是本次新增片段，`text` 是截至当前事件的完整文本；UI 通常直接使用
+`text` 更新同一条消息，完成后再使用 Promise 返回值保存最终结果。
+
+```ts
+const controller = new AbortController();
+
+const result = await ctx.ai.stream(
+  {
+    modelKey: selectedModelKey,
+    systemPrompt: "使用 Markdown 回答；公式使用 LaTeX。",
+    prompt: userPrompt,
+    maxTokens: 1600,
+  },
+  {
+    signal: controller.signal,
+    onTextDelta: ({ text }) => updatePreview(text),
+  },
+);
+
+await saveAnswer(result.text);
+```
+
+传入的 `AbortSignal` 取消时，宿主会中止主进程中的 Provider 请求，而不只是停止 UI 更新。事件与最终结果
+仍经过 Capability Schema 校验；模型选择、凭据、额度、错误与 usage 语义均和 `complete()` 相同。
+
 ## 多轮对话 chat
 
-`ctx.ai.chat()` 是**无状态**的多轮文本完成：宿主不保存任何会话状态，插件自己持有完整消息转写（需要跨重启保留时配合 `ctx.storage` 持久化），每次调用都发送全量 `messages`。权限沿用 `ai.complete`。
+`ctx.ai.chat()` 是**无状态**的多轮文本完成：宿主不保存任何会话状态，插件自己持有完整消息转写（需要跨重启保留时配合 `ctx.storage` 持久化），每次调用都发送全量 `messages`。权限沿用 `ai.complete`。当前 `chat()` 只返回完整结果；需要边生成边展示的单轮文本使用 `stream()`。
 
 ```ts
 const messages: PluginAiChatMessage[] = [

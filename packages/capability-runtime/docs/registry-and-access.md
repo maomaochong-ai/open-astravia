@@ -50,6 +50,7 @@ Runtime 注册 Provider，并把自己的领域服务绑定到 Token。Runtime �
 - 将不透明 `AccessSubject`、AccessSession 和精确 Grant 绑定。
 - 在调用前检查 Session、撤销、过期、Capability ID 和 Constraint。
 - 记录 allow/deny 审计，并把已授权调用转发给 Hub。
+- 将 Provider 发出的已校验事件转发给本次调用的 `onEvent`，事件与最终结果共享 Grant、取消和 Session 生命周期。
 - Session 失效时中止其在途调用。
 
 ### Constraint

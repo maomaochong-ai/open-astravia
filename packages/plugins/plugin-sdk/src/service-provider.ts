@@ -54,6 +54,8 @@ export interface PluginServiceResponse<T = unknown> {
 	body: T;
 }
 
+export type PluginServiceDataEncoding = "utf8" | "base64";
+
 export interface PluginServiceApi {
 	/** Host platform used by the plugin to select its own runtime download. */
 	getPlatform(): Promise<PluginServiceHostPlatform>;
@@ -65,6 +67,15 @@ export interface PluginServiceApi {
 	restart(serviceId: string): Promise<PluginServiceStatus>;
 	connection(serviceId: string, credentialId?: string): Promise<PluginServiceConnection>;
 	request<T = unknown>(serviceId: string, request: PluginServiceRequest): Promise<PluginServiceResponse<T>>;
+	/** Read a file from this service's private data directory. Paths are root-relative. */
+	readDataFile(serviceId: string, path: string, encoding?: PluginServiceDataEncoding): Promise<string | null>;
+	/** Atomically replace a file in this service's private data directory. */
+	writeDataFile(
+		serviceId: string,
+		path: string,
+		data: string,
+		encoding?: PluginServiceDataEncoding,
+	): Promise<void>;
 	/** Report semantic readiness after the service's domain data has finished loading. */
 	reportReady(serviceId: string, ready: boolean): Promise<PluginServiceStatus>;
 	onStatusChange(listener: (status: PluginServiceStatus) => void): Disposable;

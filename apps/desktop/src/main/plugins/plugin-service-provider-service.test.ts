@@ -238,4 +238,13 @@ describe("PluginServiceProviderService", () => {
 		await expect(request).resolves.toMatchObject({ ok: true });
 		f.service.stopAll();
 	});
+
+	it("reads and atomically writes plugin-owned service data files", async () => {
+		const f = await fixture();
+		const path = "session/cookies.json";
+		await f.service.writeDataFile(f.plugin.id, "bridge", path, '{"version":2}');
+		expect(await f.service.readDataFile(f.plugin.id, "bridge", path)).toBe('{"version":2}');
+		await expect(f.service.readDataFile(f.plugin.id, "bridge", "../escape")).rejects.toThrow("escapes");
+		await expect(f.service.writeDataFile(f.plugin.id, "bridge", "../escape", "x")).rejects.toThrow("escapes");
+	});
 });

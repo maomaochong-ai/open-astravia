@@ -9,6 +9,7 @@ import {
 	PluginIdSchema,
 	PluginManifestSchema,
 	PluginMcpServerConfigSchema,
+	PluginMcpServiceServerConfigSchema,
 	PluginVersionSchema,
 	type PluginAgentManifest,
 	type PluginBrowserManifest,
@@ -35,6 +36,7 @@ export {
 	PluginMcpHttpServerConfigSchema,
 	PluginMcpServerConfigSchema,
 	PluginMcpStdioServerConfigSchema,
+	PluginMcpServiceServerConfigSchema,
 	PluginModuleFederationManifestSchema,
 	PluginNetworkManifestSchema,
 	PluginProvidersManifestSchema,
@@ -290,6 +292,14 @@ function normalizePluginMcpServerConfig(config: PluginMcpServerConfig): PluginMc
 		description: config.description,
 		agent_mode: normalizeOptionalAgentModes(config.agent_mode),
 	};
+	if (config.type === "service") {
+		return {
+			type: "service",
+			serviceId: trimString(config.serviceId),
+			path: trimString(config.path),
+			...common,
+		};
+	}
 	if (config.type === "http") {
 		return {
 			type: "http",
@@ -395,6 +405,12 @@ export function parsePluginManifest(raw: unknown): PluginManifest {
 	if (permissions.includes("browser.interact") && !permissions.includes("browser.read")) {
 		throw new Error("Plugin browser.interact requires browser.read");
 	}
+	const normalizedServices = raw.providers ? normalizeServiceProviders(raw.providers.services) : undefined;
+	for (const [name, server] of Object.entries(raw.agent?.mcpServers && typeof raw.agent.mcpServers !== "string" ? raw.agent.mcpServers : {})) {
+		if (server.type === "service" && !normalizedServices?.some((service) => service.id === server.serviceId)) {
+			throw new Error(`Plugin MCP server '${name}' references unknown service '${server.serviceId}'`);
+		}
+	}
 	return {
 		id: raw.id,
 		name: trimString(raw.name),
@@ -406,7 +422,7 @@ export function parsePluginManifest(raw: unknown): PluginManifest {
 		providers: raw.providers
 			? {
 					cli: normalizeCliProviders(raw.providers.cli),
-					services: normalizeServiceProviders(raw.providers.services),
+					services: normalizedServices,
 				}
 			: undefined,
 		styles: normalizeStringArray(raw.styles).map((style) => validatePluginRelativePath(style, "styles")),

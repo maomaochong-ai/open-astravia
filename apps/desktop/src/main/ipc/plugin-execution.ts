@@ -204,6 +204,27 @@ export function registerPluginExecutionIpc(): () => void {
 		),
 	);
 	ipcMain.handle(
+		PLUGIN_EXECUTION_CHANNELS.SERVICE_DATA_READ,
+		(_event, sessionId: unknown, serviceId: unknown, path: unknown, encoding: unknown) =>
+			pluginServiceProviderService.readDataFile(
+				capabilityAdapter.pluginIdForSession(asPluginId(sessionId)),
+				asPluginId(serviceId),
+				typeof path === "string" ? path : "",
+				encoding === "base64" ? "base64" : "utf8",
+			),
+	);
+	ipcMain.handle(
+		PLUGIN_EXECUTION_CHANNELS.SERVICE_DATA_WRITE,
+		(_event, sessionId: unknown, serviceId: unknown, path: unknown, data: unknown, encoding: unknown) =>
+			pluginServiceProviderService.writeDataFile(
+				capabilityAdapter.pluginIdForSession(asPluginId(sessionId)),
+				asPluginId(serviceId),
+				typeof path === "string" ? path : "",
+				typeof data === "string" ? data : "",
+				encoding === "base64" ? "base64" : "utf8",
+			),
+	);
+	ipcMain.handle(
 		PLUGIN_EXECUTION_CHANNELS.STORAGE_READ_FILE,
 		(_event, sessionId: unknown, path: unknown, encoding: unknown) => {
 			if (typeof path !== "string" || (encoding !== "utf8" && encoding !== "base64"))
