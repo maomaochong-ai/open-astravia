@@ -20,6 +20,28 @@ describe("Coding Agent background work controller", () => {
 		expect(clearBackground).toHaveBeenCalledOnce();
 		expect(clearSubagents).toHaveBeenCalledTimes(2);
 	});
+
+	it("stops every live subagent and running command on an unconditional stop", () => {
+		const stop = vi.fn(() => true);
+		const interruptAll = vi.fn(() => [{ id: "child-a" }, { id: "child-b" }] as never);
+		const service = backgroundService(() => 0);
+		const controller = new CodingAgentBackgroundWorkController(
+			{
+				...service,
+				list: () => [
+					{ id: "running", status: "running" },
+					// A settled command must not be killed again.
+					{ id: "done", status: "completed" },
+				],
+				stop,
+			} as unknown as BackgroundCommandService,
+			{ ...subagentRuntime(() => 0), interruptAll },
+		);
+
+		expect(controller.stopAllWork()).toBe(3);
+		expect(interruptAll).toHaveBeenCalledOnce();
+		expect(stop.mock.calls).toEqual([["running", "caller"]]);
+	});
 });
 
 function backgroundService(clearFinished: () => number): BackgroundCommandService {
@@ -47,5 +69,6 @@ function subagentRuntime(clearFinished: () => number): CodingAgentSubagentWorkRu
 		clearFinished,
 		list: () => [],
 		interrupt: () => undefined,
+		interruptAll: () => [],
 	};
 }

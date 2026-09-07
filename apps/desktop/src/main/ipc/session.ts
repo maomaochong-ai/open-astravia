@@ -39,6 +39,7 @@ import type { DesktopMcpElicitationResponse, DesktopMcpElicitationValue } from "
 import { PLUGIN_CONTRIBUTION_CHANNELS } from "../../shared/plugin-ipc.js";
 import { SESSION_SEARCH_CHANNELS } from "../../shared/session-search.js";
 import { DEFAULT_AGENT_MODE, isAgentMode, MODE_PROMPTS } from "../agent-modes/index.js";
+import { stopSessionBackgroundWork } from "../agent-runtime/stop-session-work.js";
 import { stopMonitoringRuntimeSession } from "../app-monitor/app-monitor-service.js";
 import { onConversationListChanged } from "../conversations/conversation-list-events.js";
 import { assertOrdinaryConversationPath } from "../conversations/conversation-ownership-guard.js";
@@ -936,7 +937,10 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 
 	ipcMain.handle(CHANNELS.ABORT, async (_event, sessionId: unknown) => {
 		assertNonEmptyString(sessionId, "sessionId");
-		await runtime.abort(sessionId);
+		// Stopping is unconditional: the turn comes down together with the work it
+		// spawned. Subagents and background commands outlive the turn by design, so
+		// cancelling the turn alone would leave workflows running behind the button.
+		await Promise.allSettled([runtime.abort(sessionId), stopSessionBackgroundWork(runtime, sessionId)]);
 	});
 
 	// 输入队列管理（ADR-0060）：薄桥接，能力全部在 RuntimeHost。

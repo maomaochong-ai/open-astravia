@@ -5,6 +5,7 @@ export interface CodingAgentSubagentWorkRuntime {
 	clearFinished(): number;
 	list(): readonly CodingAgentSubagentSnapshot[];
 	interrupt(target: string): CodingAgentSubagentSnapshot | undefined;
+	interruptAll(): readonly CodingAgentSubagentSnapshot[];
 }
 
 export interface CodingAgentBackgroundWorkRuntime {
@@ -15,6 +16,8 @@ export interface CodingAgentBackgroundWorkRuntime {
 	readTasks(): readonly BackgroundCommandSnapshot[];
 	readSubagents(): readonly CodingAgentSubagentSnapshot[];
 	interruptSubagent(target: string): CodingAgentSubagentSnapshot | undefined;
+	/** Unconditional stop: every live subagent and every running background command. */
+	stopAllWork(): number;
 }
 
 /** Runtime BackgroundCommandService 到宿主工作面板合同的无状态投影。 */
@@ -50,5 +53,14 @@ export class CodingAgentBackgroundWorkController implements CodingAgentBackgroun
 
 	interruptSubagent(target: string): CodingAgentSubagentSnapshot | undefined {
 		return this.subagents?.interrupt(target);
+	}
+
+	stopAllWork(): number {
+		const interrupted = this.subagents?.interruptAll().length ?? 0;
+		const killed = this.backgroundService
+			.list()
+			.filter((task) => task.status === "running")
+			.filter((task) => this.backgroundService.stop(task.id, "caller")).length;
+		return interrupted + killed;
 	}
 }

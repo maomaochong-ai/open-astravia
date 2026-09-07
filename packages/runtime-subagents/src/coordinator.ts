@@ -78,6 +78,10 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 		return this.dispatcher.interrupt(target);
 	}
 
+	interruptAll(): readonly SubagentSnapshot[] {
+		return this.dispatcher.interruptAll();
+	}
+
 	async wait(options: SubagentWaitOptions = {}): Promise<SubagentWaitResult> {
 		this.assertNotDisposed();
 		return await this.delivery.wait(options, (targets) => this.dispatcher.resolveTargets(targets));
