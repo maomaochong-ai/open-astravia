@@ -2,8 +2,12 @@ import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createAgentTeamFixture } from "@vetta/agent-team";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createAgentTeamFileRepository, resolveAgentTeamResourceRoot } from "./agent-team-file-repository.js";
+
+vi.mock("../logger.js", () => ({
+	getAppLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }),
+}));
 
 const temporaryDirectories: string[] = [];
 
@@ -109,6 +113,32 @@ describe("Agent Team file repository", () => {
 		expect(loaded.agents).toHaveLength(document.agents.length);
 		expect(loaded.teams).toHaveLength(0);
 		expect(loaded.revision).toBe(document.revision);
+	});
+
+	it("skips an unreadable agent directory instead of reporting an empty library", async () => {
+		const { repository, root } = await createRepository();
+		const document = createAgentTeamFixture();
+		await repository.write(document);
+		// 半个目录：写入中途崩溃、同步工具残留或用户手工新建都会长这样。
+		await mkdir(join(root, "agents", "half-written"), { recursive: true });
+		await writeFile(join(root, "agents", "half-written", "agent.json"), "{}", "utf8");
+
+		const loaded = await repository.read();
+
+		expect(loaded.agents).toHaveLength(document.agents.length);
+	});
+
+	it("keeps an unreadable agent directory when writing back", async () => {
+		const { repository, root } = await createRepository();
+		const document = createAgentTeamFixture();
+		await repository.write(document);
+		await mkdir(join(root, "agents", "half-written"), { recursive: true });
+		await writeFile(join(root, "agents", "half-written", "agent.json"), "{}", "utf8");
+
+		// 读不出来只说明这份数据坏了，不代表用户删掉了这个 Agent：清理必须放过它。
+		await repository.write(await repository.read());
+
+		expect(await readdir(join(root, "agents"))).toContain("half-written");
 	});
 
 	it("preserves extension-owned directories beside team resources", async () => {

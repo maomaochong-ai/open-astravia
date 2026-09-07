@@ -6,6 +6,9 @@ import { getVettaHomePath } from "@vetta/action-rpc";
 import type { AgentProfile, AgentTeamDocument, AgentTeamExtensionRegistry, TeamDefinition } from "@vetta/agent-team";
 import { DEFAULT_AGENT_TEAM_EXTENSIONS, findAgentBlueprint, parseAgentTeamDocument } from "@vetta/agent-team";
 import { atomicWriteFileAsync, atomicWriteJSONAsync } from "@vetta/toolkit/atomic-write";
+import { getAppLogger } from "../logger.js";
+
+const log = getAppLogger("agent-teams");
 
 const TEAMS_DIR = join(getVettaHomePath(), "agent-teams");
 const INITIALIZED_MARKER = ".initialized";
@@ -57,6 +60,12 @@ export function createAgentTeamFileRepository(options: AgentTeamFileRepositoryOp
 }
 
 class DirectoryAgentTeamRepository implements AgentTeamFileRepository {
+	/**
+	 * 上一次读取中读坏的 Agent 目录。写回时必须保留它们：
+	 * 读不出来只说明这一份数据坏了，不代表用户删除了这个 Agent。
+	 */
+	private unreadableAgentDirectories: ReadonlySet<string> = new Set();
+
 	constructor(
 		private readonly root: string,
 		private readonly extensions: AgentTeamExtensionRegistry,
@@ -115,7 +124,11 @@ class DirectoryAgentTeamRepository implements AgentTeamFileRepository {
 			if (systemPrompt !== undefined) await atomicWriteFileAsync(join(agentRoot, "system-prompt.md"), systemPrompt);
 			else await rm(join(agentRoot, "system-prompt.md"), { force: true });
 		}
-		await removeStaleDirectories(join(this.root, "agents"), expectedAgentDirectories);
+		await removeStaleDirectories(
+			join(this.root, "agents"),
+			expectedAgentDirectories,
+			this.unreadableAgentDirectories,
+		);
 
 		const expectedTeamDirectories = new Set<string>();
 		for (const team of document.teams) {
@@ -158,30 +171,55 @@ class DirectoryAgentTeamRepository implements AgentTeamFileRepository {
 		return true;
 	}
 
+	/**
+	 * 逐个目录读取，坏掉的那个跳过并记入 {@link unreadableAgentDirectories}。
+	 *
+	 * 这里刻意不做批量 try/catch：任何一个目录缺 `agent.json` / `description.md` 都会让整批读取
+	 * 抛 ENOENT，若把它当成「一个 Agent 都没有」，随后的 write() 会按空集合清理，
+	 * 把其余完好的 Agent 目录一并删掉——一次读失败会升级成永久数据丢失。
+	 */
 	private async readAgents(): Promise<AgentProfile[]> {
 		const agentsRoot = join(this.root, "agents");
+		let entries: Dirent[];
 		try {
-			const entries = await readdir(agentsRoot, { withFileTypes: true });
-			return await Promise.all(
-				entries
-					.filter((entry) => entry.isDirectory())
-					.sort((left, right) => left.name.localeCompare(right.name))
-					.map(async (entry) => {
-						const value = await readJson(join(agentsRoot, entry.name, "agent.json"));
-						const description = await readFile(join(agentsRoot, entry.name, "description.md"), "utf8");
-						const systemPrompt = await readOptionalFile(join(agentsRoot, entry.name, "system-prompt.md"));
-						return {
-							...value,
-							description,
-							...(systemPrompt !== undefined ? { systemPrompt } : {}),
-						} as AgentProfile;
-					}),
-			);
+			entries = await readdir(agentsRoot, { withFileTypes: true });
 		} catch (error) {
 			if (isMissingFile(error)) return [];
 			throw error;
 		}
+
+		const unreadable = new Set<string>();
+		const agents = await Promise.all(
+			entries
+				.filter((entry) => entry.isDirectory())
+				.sort((left, right) => left.name.localeCompare(right.name))
+				.map(async (entry) => {
+					try {
+						return await readAgentDirectory(join(agentsRoot, entry.name));
+					} catch (error) {
+						unreadable.add(entry.name);
+						log.error("failed to read agent profile directory", {
+							directory: entry.name,
+							error: error instanceof Error ? error.message : String(error),
+						});
+						return undefined;
+					}
+				}),
+		);
+		this.unreadableAgentDirectories = unreadable;
+		return agents.filter((agent): agent is AgentProfile => agent !== undefined);
 	}
+}
+
+async function readAgentDirectory(root: string): Promise<AgentProfile> {
+	const value = await readJson(join(root, "agent.json"));
+	const description = await readFile(join(root, "description.md"), "utf8");
+	const systemPrompt = await readOptionalFile(join(root, "system-prompt.md"));
+	return {
+		...value,
+		description,
+		...(systemPrompt !== undefined ? { systemPrompt } : {}),
+	} as AgentProfile;
 }
 
 function serializeAgent(agent: AgentProfile): Omit<AgentProfile, "description" | "systemPrompt" | "presetId"> {
@@ -215,7 +253,11 @@ async function readOptionalFile(path: string): Promise<string | undefined> {
 	}
 }
 
-async function removeStaleDirectories(root: string, expected: Set<string>, keep = new Set<string>()): Promise<void> {
+async function removeStaleDirectories(
+	root: string,
+	expected: ReadonlySet<string>,
+	keep: ReadonlySet<string> = new Set(),
+): Promise<void> {
 	const entries = await readdir(root, { withFileTypes: true });
 	await Promise.all(
 		entries
