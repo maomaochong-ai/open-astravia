@@ -31,19 +31,19 @@ const PRIMARY_NAV_ITEMS = [
 	{
 		type: "new-session",
 		labelKey: "sidebar.nav.newSession",
-		icon: "icon-[solar--pen-new-square-linear]",
+		icon: "icon-[solar--pen-new-round-linear]",
 	},
 	{
 		type: "route",
 		path: "/automation" as const,
 		labelKey: "sidebar.nav.automation",
-		icon: "icon-[solar--magic-stick-3-linear]",
+		icon: "icon-[solar--repeat-linear]",
 	},
 	{
 		type: "route",
 		path: "/knowledge" as const,
 		labelKey: "sidebar.nav.knowledge",
-		icon: "icon-[solar--library-linear]",
+		icon: "icon-[solar--book-bookmark-linear]",
 		badgeKey: "sidebar.nav.betaBadge",
 	},
 	{
@@ -56,7 +56,7 @@ const PRIMARY_NAV_ITEMS = [
 		type: "route",
 		path: "/abilities" as const,
 		labelKey: "sidebar.nav.skills",
-		icon: "icon-[solar--widget-5-linear]",
+		icon: "icon-[solar--star-shine-linear]",
 	},
 ] as const;
 
@@ -66,25 +66,25 @@ const MORE_NAV_ITEMS = [
 		type: "route",
 		path: "/batch-tasks" as const,
 		labelKey: "sidebar.nav.batchTasks",
-		icon: "icon-[solar--clipboard-check-outline]",
+		icon: "icon-[solar--clipboard-list-linear]",
 	},
 	{
 		type: "route",
 		settingsTab: "models" as const,
 		labelKey: "sidebar.nav.modelSettings",
-		icon: "icon-[solar--cpu-bolt-linear]",
+		icon: "icon-[solar--server-linear]",
 	},
 	{
 		type: "route",
 		settingsTab: "context" as const,
 		labelKey: "sidebar.nav.agentSettings",
-		icon: "icon-[solar--user-speak-rounded-linear]",
+		icon: "icon-[solar--user-id-linear]",
 	},
 	{
 		type: "route",
 		settingsTab: "appearance" as const,
 		labelKey: "sidebar.nav.appearance",
-		icon: "icon-[solar--palette-linear]",
+		icon: "icon-[solar--palette-round-linear]",
 	},
 ] as const;
 

@@ -22,7 +22,7 @@ export function SidebarUpdateIcon({
 	if (phase === "ready") {
 		return (
 			<>
-				<span className="icon-[solar--restart-linear] h-4 w-4 text-primary" />
+				<span className="icon-[solar--restart-square-linear] h-4 w-4 text-primary" />
 				<span className="absolute right-[3px] top-[3px] h-1.5 w-1.5 rounded-full bg-primary" />
 			</>
 		);
@@ -30,12 +30,12 @@ export function SidebarUpdateIcon({
 	if (phase === "available") {
 		return (
 			<>
-				<span className="icon-[solar--download-linear] h-4 w-4 text-primary" />
+				<span className="icon-[solar--download-square-linear] h-4 w-4 text-primary" />
 				<span className="absolute right-[3px] top-[3px] h-1.5 w-1.5 rounded-full bg-primary" />
 			</>
 		);
 	}
-	return <span className="icon-[solar--danger-circle-linear] h-4 w-4 text-destructive" />;
+	return <span className="icon-[solar--danger-square-linear] h-4 w-4 text-destructive" />;
 }
 
 function SidebarUpdateProgress({

@@ -23,7 +23,7 @@ export function SessionStatusIcon({
 		);
 	}
 	if (scheduled) {
-		return <span className="icon-[solar--clock-circle-linear] ml-[20px] h-3.5 w-3.5 shrink-0 text-primary/80" />;
+		return <span className="icon-[solar--clock-square-linear] ml-[20px] h-3.5 w-3.5 shrink-0 text-primary/80" />;
 	}
 	return (
 		<span

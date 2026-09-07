@@ -23,7 +23,7 @@ export function SettingsMenuThemeSection({
 	return (
 		<div className="flex items-center justify-between gap-2 px-2 pb-1.5 pt-1.5">
 			<div className="flex items-center gap-2 text-[12px] font-medium text-foreground">
-				<span className="icon-[solar--palette-linear] h-3.5 w-3.5" />
+				<span className="icon-[solar--palette-round-linear] h-3.5 w-3.5" />
 				<span>{title}</span>
 			</div>
 			<div className="flex items-center gap-0.5 rounded-md bg-accent/60 p-0.5">
