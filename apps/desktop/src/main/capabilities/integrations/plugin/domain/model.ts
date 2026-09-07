@@ -33,6 +33,17 @@ export const pluginModelMethods = {
 		});
 	},
 
+	async listOwnedModelProviders(
+		this: PluginCapabilitySessionAccess,
+		sessionId: string,
+	): Promise<Record<string, ModelProviderConfigSnapshot>> {
+		const session = this.session(sessionId, { permission: "models.manage" });
+		const { providers } = await session.access.client.invoke(DOMAIN_MODEL_CAPABILITIES.LIST_OWNED_PROVIDERS, {
+			owner: session.pluginId,
+		});
+		return providers;
+	},
+
 	listModels(this: PluginCapabilitySessionAccess, sessionId: string): Promise<ModelListResult> {
 		return this.client(sessionId, { official: true }).invoke(DOMAIN_MODEL_CAPABILITIES.LIST, {});
 	},

@@ -159,6 +159,36 @@ describe("ModelSettingsService", () => {
 		expect(onConfigChanged).toHaveBeenCalledWith(expect.arrayContaining(["cli-proxy-api.google", "openai"]));
 	});
 
+	it("reads back one plugin namespace by local id with credentials redacted", async () => {
+		const config: ModelsConfig = {
+			providers: {
+				"cli-proxy-api.google": {
+					api: "google-generative-ai",
+					apiKey: "gateway-secret",
+					headers: { Authorization: "Bearer gateway-secret" },
+					models: [{ id: "gemini-test" }],
+				},
+				"other-plugin.google": { api: "google-generative-ai", models: [{ id: "not-mine" }] },
+				openai: { api: "openai-responses", models: [{ id: "gpt-5" }] },
+			},
+		};
+		const service = new ModelSettingsService({
+			readConfig: async () => config,
+			writeConfig: vi.fn(),
+			refreshRegistry: vi.fn(),
+			credentials: createCredentialStore(),
+		});
+
+		await expect(service.listOwnedProviders("cli-proxy-api")).resolves.toEqual({
+			google: {
+				api: "google-generative-ai",
+				apiKey: "***",
+				headers: { Authorization: "***" },
+				models: [{ id: "gemini-test" }],
+			},
+		});
+	});
+
 	it("replaces and clears an encrypted key without writing plaintext", async () => {
 		let config = createConfig();
 		const credentials = createCredentialStore({ "openai-credential": "secret" });

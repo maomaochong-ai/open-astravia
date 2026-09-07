@@ -365,6 +365,25 @@ export class ModelSettingsService {
 		});
 	}
 
+	/**
+	 * 插件读回自己已发布的 providers，键为去掉 `<owner>.` 前缀的局部 id。
+	 *
+	 * 没有读回能力，插件每次写入都只能从零重建「全部真相」；而它的上游数据源往往
+	 * 是最终一致的，于是「这一次还没读到」会被写成「用户没有这个模型了」。能读回，
+	 * 插件才能做增量对账——让删除必须有正向证据，而不是靠时序运气。
+	 */
+	async listOwnedProviders(owner: string): Promise<Record<string, ModelProviderConfigSnapshot>> {
+		await this.mutationQueue;
+		await this.ensureLegacyCredentialsMigrated();
+		const prefix = `${owner}.`;
+		const config = await this.options.readConfig();
+		return Object.fromEntries(
+			Object.entries(config.providers)
+				.filter(([providerId]) => providerId.startsWith(prefix))
+				.map(([providerId, provider]) => [providerId.slice(prefix.length), redactProvider(provider)]),
+		);
+	}
+
 	private async persist(config: ModelsConfig, current: ModelsConfig, mode: PersistInputMode): Promise<ModelsConfig> {
 		const persisted = cloneModelsConfig(config);
 		const writes = new Map<string, string>();

@@ -212,6 +212,9 @@ export function registerPluginCapabilitiesIpc(): () => void {
 				providers as Record<string, unknown>,
 			),
 	);
+	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.MODEL_OWNED_PROVIDERS_LIST, (_event, sessionId: unknown) =>
+		adapter.listOwnedModelProviders(requireString(sessionId, "sessionId")),
+	);
 	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.MODEL_CONFIG_GET, (_event, sessionId: unknown) =>
 		adapter.getModelConfig(requireString(sessionId, "sessionId")),
 	);

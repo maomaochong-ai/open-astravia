@@ -14,6 +14,7 @@ describe("model domain capabilities", () => {
 			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}model.provider.upsert`,
 			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}model.provider.remove`,
 			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}model.owned-providers.replace`,
+			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}model.owned-providers.list`,
 		]);
 	});
 
@@ -107,7 +108,7 @@ describe("model domain capabilities", () => {
 	});
 
 	it("publishes provider configuration and mutation schemas", () => {
-		expect(DOMAIN_MODEL_CAPABILITY_CATALOG).toHaveLength(9);
+		expect(DOMAIN_MODEL_CAPABILITY_CATALOG).toHaveLength(10);
 		expect(DOMAIN_MODEL_CAPABILITY_CATALOG[1]?.outputSchema).toMatchObject({
 			type: "object",
 			required: ["providers"],
