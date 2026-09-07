@@ -30,6 +30,8 @@ export interface AgentProfile {
 	readonly name: string;
 	readonly description: string;
 	readonly avatar?: string;
+	/** 头像底座：`tint:<preset>` 选预设渐变，`#rrggbb` 用自定义纯色；缺省按身份自动分配。 */
+	readonly avatarBackground?: string;
 	readonly mentionHandle: string;
 	readonly blueprintId: string;
 	/** Optional file-backed override; absent means use the registered blueprint default. */
@@ -187,6 +189,7 @@ export interface CreateAgentProfileInput {
 	readonly name: string;
 	readonly description?: string;
 	readonly avatar?: string;
+	readonly avatarBackground?: string;
 	readonly mentionHandle: string;
 	readonly blueprintId: string;
 	readonly abilities?: Partial<AgentAbilitySelection>;
@@ -196,6 +199,7 @@ export interface UpdateAgentProfileInput {
 	readonly name: string;
 	readonly description: string;
 	readonly avatar?: string;
+	readonly avatarBackground?: string;
 	readonly mentionHandle: string;
 	readonly systemPrompt?: string;
 	readonly abilities: AgentAbilitySelection;

@@ -82,6 +82,7 @@ export class AgentTeamStore {
 				name: input.name.trim(),
 				description: input.description?.trim() ?? "",
 				...(input.avatar ? { avatar: input.avatar } : {}),
+				...(input.avatarBackground ? { avatarBackground: input.avatarBackground } : {}),
 				mentionHandle: normalizeMentionHandle(input.mentionHandle),
 				blueprintId: input.blueprintId,
 				abilities: createAgentAbilities(input.abilities, blueprint.defaultAbilities),
@@ -113,6 +114,9 @@ export class AgentTeamStore {
 				description: input.description.trim(),
 				...(input.systemPrompt !== undefined ? { systemPrompt: input.systemPrompt.trim() } : {}),
 				...(input.avatar ? { avatar: input.avatar } : { avatar: undefined }),
+				...(input.avatarBackground
+					? { avatarBackground: input.avatarBackground }
+					: { avatarBackground: undefined }),
 				mentionHandle: normalizeMentionHandle(input.mentionHandle),
 				abilities: {
 					selectionMode: input.abilities.selectionMode ?? "custom",

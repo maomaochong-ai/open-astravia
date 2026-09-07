@@ -104,6 +104,21 @@
 	);
 }
 
+/* ─── Agent 头像底座渐变（深浅色共用） ───
+   顶部高饱和 -> 底部白色。按 Agent 身份稳定分配一档，
+   让编队头像组里的成员互相区分；见 @vetta/theme-ui/chat 的 agent-tint.ts。 */
+:root {
+	--agent-tint-base: rgb(255, 255, 255);
+	--agent-tint-coral: oklch(0.74 0.19 25);
+	--agent-tint-amber: oklch(0.79 0.17 68);
+	--agent-tint-citrus: oklch(0.85 0.16 102);
+	--agent-tint-mint: oklch(0.79 0.17 152);
+	--agent-tint-teal: oklch(0.78 0.14 195);
+	--agent-tint-sky: oklch(0.75 0.16 236);
+	--agent-tint-violet: oklch(0.72 0.18 292);
+	--agent-tint-magenta: oklch(0.74 0.19 335);
+}
+
 /* ─── Light mode ─── */
 [data-mode="light"] {
 	color-scheme: light;

@@ -197,7 +197,7 @@ export function ContextRingScope({ id, label, avatar, blueprintId, model }: Cont
 			}}
 			className={`flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[10px] ${selected ? "bg-muted text-foreground hover:bg-muted" : "text-muted-foreground hover:bg-muted/60"}`}
 		>
-			<AgentAvatarView name={label} avatar={avatar} blueprintId={blueprintId} size="xs" />
+			<AgentAvatarView name={label} avatar={avatar} blueprintId={blueprintId} seed={id} size="sm" />
 			<span className="max-w-20 truncate">{label}</span>
 		</button>
 	);

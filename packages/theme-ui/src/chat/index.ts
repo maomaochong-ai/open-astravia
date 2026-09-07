@@ -28,7 +28,7 @@ declare module "@vetta/theme-sdk" {
 
 export type { ActionButtonBarItem, ActionButtonBarViewProps } from "./ActionButtonBarView";
 export { ActionButtonBarView } from "./ActionButtonBarView";
-export type { AgentAvatarViewProps } from "./AgentAvatarView";
+export type { AgentAvatarSize, AgentAvatarViewProps } from "./AgentAvatarView";
 export { AgentAvatarView } from "./AgentAvatarView";
 export type { AppshotCardViewLabels, AppshotCardViewProps } from "./AppshotCardView";
 export { AppshotCardView } from "./AppshotCardView";
@@ -54,6 +54,16 @@ export type {
 	AtPanelViewProps,
 } from "./AtPanelView";
 export { AtPanelView } from "./AtPanelView";
+export type { AgentTintPreset } from "./agent-tint";
+export {
+	AGENT_TINT_PREFIX,
+	AGENT_TINT_PRESETS,
+	agentAvatarBackgroundStyle,
+	agentTintPreset,
+	agentTintPresetStyle,
+	agentTintStyle,
+	agentTintValue,
+} from "./agent-tint";
 export type { BackgroundTasksBadgeViewProps } from "./BackgroundTasksBadgeView";
 export { BackgroundTasksBadgeView } from "./BackgroundTasksBadgeView";
 export type {
