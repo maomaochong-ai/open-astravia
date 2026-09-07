@@ -49,6 +49,42 @@ describe("PluginCapabilityAdapter community plugins", () => {
 		]);
 	});
 
+	it("grants the read-back that owned-provider publishing is reconciled against", async () => {
+		const access = new RecordingAccessFactory();
+		const adapter = new PluginCapabilityAdapter(access, {
+			isOfficialPlugin: () => false,
+			resolvePermissions: () => ["models.manage"],
+		});
+		const sessionId = adapter.openSession("community");
+
+		// Without this grant a plugin can only overwrite its namespace blind.
+		expect(access.sessions[0]?.grants.map((grant) => grant.capabilityId)).toEqual([
+			DOMAIN_MODEL_CAPABILITIES.REPLACE_OWNED_PROVIDERS.id,
+			DOMAIN_MODEL_CAPABILITIES.LIST_OWNED_PROVIDERS.id,
+		]);
+
+		await expect(adapter.listOwnedModelProviders(sessionId)).resolves.toEqual({
+			google: { apiKey: "***", models: [{ id: "gemini-test" }] },
+		});
+		expect(access.invocations).toEqual([
+			{ capabilityId: DOMAIN_MODEL_CAPABILITIES.LIST_OWNED_PROVIDERS.id, input: { owner: "community" } },
+		]);
+	});
+
+	it("denies reading owned model providers without models.manage", async () => {
+		const access = new RecordingAccessFactory();
+		const adapter = new PluginCapabilityAdapter(access, {
+			isOfficialPlugin: () => false,
+			resolvePermissions: () => [],
+		});
+		const sessionId = adapter.openSession("community");
+
+		await expect(adapter.listOwnedModelProviders(sessionId)).rejects.toThrowError(
+			expect.objectContaining({ code: CAPABILITY_ERROR_CODES.ACCESS_DENIED }),
+		);
+		expect(access.invocations).toEqual([]);
+	});
+
 	it("denies owned model provider mutation without models.manage", async () => {
 		const access = new RecordingAccessFactory();
 		const adapter = new PluginCapabilityAdapter(access, {

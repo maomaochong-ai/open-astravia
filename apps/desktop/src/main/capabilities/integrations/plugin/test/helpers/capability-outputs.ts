@@ -253,6 +253,9 @@ function domainOutput(capabilityId: CapabilityId): unknown {
 	if (capabilityId === DOMAIN_MODEL_CAPABILITIES.UPSERT_PROVIDER.id) {
 		return { apiKey: "***", models: [{ id: "gpt-5" }] };
 	}
+	if (capabilityId === DOMAIN_MODEL_CAPABILITIES.LIST_OWNED_PROVIDERS.id) {
+		return { providers: { google: { apiKey: "***", models: [{ id: "gemini-test" }] } } };
+	}
 	if (capabilityId === DOMAIN_MCP_CAPABILITIES.LIST_SERVERS.id) {
 		return [{ name: "web", type: "http", disabled: false, url: "https://mcp.example.com" }];
 	}
