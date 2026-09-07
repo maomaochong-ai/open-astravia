@@ -17,6 +17,7 @@ import {
 	previewAgentProfileUpdate,
 	requireTeamPolicies,
 	type TeamDefinition,
+	type TeamMemberAssignment,
 	type UpdateAgentProfileInput,
 	type UpdateTeamInput,
 } from "@vetta/agent-team";
@@ -216,6 +217,7 @@ export class AgentTeamStore {
 			const members = input.members.map((member) => {
 				const source = agents.find((agent) => agent.id === member.agentProfileId);
 				if (!source) throw new Error(`Agent profile not found: ${member.agentProfileId}`);
+				const assignment = normalizeTeamMemberAssignment(member.assignment);
 				if (member.bindingKind === "copy") {
 					const copy = this.createTeamCopy(source, teamId, now);
 					agents.push(copy);
@@ -223,6 +225,7 @@ export class AgentTeamStore {
 						id: this.createId(),
 						handle: normalizeMentionHandle(member.handle),
 						binding: { kind: "copy" as const, agentProfileId: copy.id },
+						...(assignment ? { assignment } : {}),
 						leader: member.leader,
 					};
 				}
@@ -230,6 +233,7 @@ export class AgentTeamStore {
 					id: this.createId(),
 					handle: normalizeMentionHandle(member.handle),
 					binding: { kind: "reference" as const, agentProfileId: source.id },
+					...(assignment ? { assignment } : {}),
 					leader: member.leader,
 				};
 			});
@@ -283,7 +287,12 @@ export class AgentTeamStore {
 					existingIds.add(memberInput.memberId);
 					const member = current.members.find((candidate) => candidate.id === memberInput.memberId);
 					if (!member) throw new Error(`Agent team member not found: ${memberInput.memberId}`);
-					return { ...member, leader: memberInput.leader };
+					// 不带 assignment 的输入保持原样，带了就整体替换；全空即清除覆盖。
+					const assignment =
+						memberInput.assignment === undefined
+							? member.assignment
+							: normalizeTeamMemberAssignment(memberInput.assignment);
+					return { ...member, assignment, leader: memberInput.leader };
 				}
 				if (newSourceIds.has(memberInput.agentProfileId)) {
 					throw new Error(`Duplicate agent profile in team: ${memberInput.agentProfileId}`);
@@ -293,6 +302,7 @@ export class AgentTeamStore {
 				if (!source || source.scope.kind !== "library") {
 					throw new Error(`Library agent profile not found: ${memberInput.agentProfileId}`);
 				}
+				const assignment = normalizeTeamMemberAssignment(memberInput.assignment);
 				if (memberInput.bindingKind === "copy") {
 					const copy = this.createTeamCopy(source, teamId, now);
 					agents.push(copy);
@@ -300,6 +310,7 @@ export class AgentTeamStore {
 						id: this.createId(),
 						handle: source.mentionHandle,
 						binding: { kind: "copy" as const, agentProfileId: copy.id },
+						...(assignment ? { assignment } : {}),
 						leader: memberInput.leader,
 					};
 				}
@@ -307,6 +318,7 @@ export class AgentTeamStore {
 					id: this.createId(),
 					handle: source.mentionHandle,
 					binding: { kind: "reference" as const, agentProfileId: source.id },
+					...(assignment ? { assignment } : {}),
 					leader: memberInput.leader,
 				};
 			});
@@ -423,6 +435,17 @@ export const agentTeamStore = new AgentTeamStore({ extensions: agentTeamExtensio
 
 function errorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * 任务书留空即取消覆盖：空白字段一律折算成缺省，不落成空串。
+ * 空串会让下游 `?? profile.description` 与 `if (instructions)` 的兜底同时失效。
+ */
+function normalizeTeamMemberAssignment(input: TeamMemberAssignment | undefined): TeamMemberAssignment | undefined {
+	const responsibility = input?.responsibility?.trim();
+	const instructions = input?.instructions?.trim();
+	if (!responsibility && !instructions) return undefined;
+	return { ...(responsibility ? { responsibility } : {}), ...(instructions ? { instructions } : {}) };
 }
 
 function cloneExtensions(extensions: Readonly<Record<string, readonly string[]>>): Record<string, string[]> {

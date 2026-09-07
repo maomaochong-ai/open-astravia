@@ -155,6 +155,58 @@ describe("AgentTeamStore transaction boundary", () => {
 		expect(cleared.systemPrompt).toBeUndefined();
 	});
 
+	it("keeps a member assignment across unrelated team edits and clears it on demand", async () => {
+		const repository = new MemoryRepository();
+		const store = new AgentTeamStore({ repository, createId: createIdSequence(), now: () => 10 });
+		const document = await store.read();
+		const team = document.teams[0];
+		if (!team) throw new Error("Expected an initial team");
+		const memberId = team.members[0]?.id;
+		if (!memberId) throw new Error("Expected a team member");
+
+		const assigned = await store.updateTeam(team.id, {
+			expectedRevision: team.revision,
+			name: team.name,
+			description: team.description,
+			members: team.members.map((member) => ({
+				kind: "existing" as const,
+				memberId: member.id,
+				leader: member.id === team.leaderMemberId,
+				...(member.id === memberId
+					? { assignment: { responsibility: "  Owns the release checklist.  ", instructions: "   " } }
+					: {}),
+			})),
+		});
+		// 空白折算成缺省，非空去掉首尾空格。
+		expect(assigned.members[0]?.assignment).toEqual({ responsibility: "Owns the release checklist." });
+
+		const renamed = await store.updateTeam(assigned.id, {
+			expectedRevision: assigned.revision,
+			name: "Renamed team",
+			description: assigned.description,
+			members: assigned.members.map((member) => ({
+				kind: "existing" as const,
+				memberId: member.id,
+				leader: member.id === assigned.leaderMemberId,
+			})),
+		});
+		// 输入不带 assignment 表示「本次没碰任务书」，不能被静默清空。
+		expect(renamed.members[0]?.assignment).toEqual({ responsibility: "Owns the release checklist." });
+
+		const cleared = await store.updateTeam(renamed.id, {
+			expectedRevision: renamed.revision,
+			name: renamed.name,
+			description: renamed.description,
+			members: renamed.members.map((member) => ({
+				kind: "existing" as const,
+				memberId: member.id,
+				leader: member.id === renamed.leaderMemberId,
+				assignment: { responsibility: "", instructions: "" },
+			})),
+		});
+		expect(cleared.members[0]?.assignment).toBeUndefined();
+	});
+
 	it("allows deleting a built-in profile like any other team file", async () => {
 		const repository = new MemoryRepository();
 		const store = new AgentTeamStore({ repository, createId: createIdSequence(), now: () => 10 });

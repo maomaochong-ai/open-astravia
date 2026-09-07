@@ -3,7 +3,13 @@ import { existsSync } from "node:fs";
 import { cp, mkdir, readdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
-import type { AgentProfile, AgentTeamDocument, AgentTeamExtensionRegistry, TeamDefinition } from "@vetta/agent-team";
+import type {
+	AgentProfile,
+	AgentTeamDocument,
+	AgentTeamExtensionRegistry,
+	TeamDefinition,
+	TeamMember,
+} from "@vetta/agent-team";
 import { DEFAULT_AGENT_TEAM_EXTENSIONS, findAgentBlueprint, parseAgentTeamDocument } from "@vetta/agent-team";
 import { atomicWriteFileAsync, atomicWriteJSONAsync } from "@vetta/toolkit/atomic-write";
 import { getAppLogger } from "../logger.js";
@@ -13,6 +19,8 @@ const log = getAppLogger("agent-teams");
 const TEAMS_DIR = join(getVettaHomePath(), "agent-teams");
 const INITIALIZED_MARKER = ".initialized";
 const INDEX_FILE = "index.json";
+/** 团队目录下存放成员任务书长文本的位置，一名成员一个 Markdown 文件。 */
+const MEMBERS_DIR = "members";
 
 export interface AgentTeamResourceRootOptions {
 	readonly isPackaged: boolean;
@@ -139,6 +147,7 @@ class DirectoryAgentTeamRepository implements AgentTeamFileRepository {
 			const teamRoot = join(this.root, directory);
 			await atomicWriteJSONAsync(join(teamRoot, "team.json"), serializeTeam(team));
 			await atomicWriteFileAsync(join(teamRoot, "description.md"), team.description);
+			await writeMemberAssignments(teamRoot, team.members);
 		}
 		await removeStaleTeamDirectories(this.root, expectedTeamDirectories);
 		await atomicWriteJSONAsync(join(this.root, INDEX_FILE), {
@@ -245,13 +254,60 @@ function serializeAgent(agent: AgentProfile): Omit<AgentProfile, "description" |
 
 function serializeTeam(team: TeamDefinition): Omit<TeamDefinition, "description"> {
 	const { description: _description, ...metadata } = team;
-	return metadata;
+	return { ...metadata, members: team.members.map(serializeMember) };
+}
+
+/** 任务书的补充指令是长文本，按 ADR-0106 的合同落到独立 Markdown，不进 team.json。 */
+function serializeMember(member: TeamMember): TeamMember {
+	if (!member.assignment) return member;
+	const { instructions: _instructions, ...assignment } = member.assignment;
+	return { ...member, assignment: Object.keys(assignment).length > 0 ? assignment : undefined };
+}
+
+async function writeMemberAssignments(teamRoot: string, members: readonly TeamMember[]): Promise<void> {
+	const membersRoot = join(teamRoot, MEMBERS_DIR);
+	const expected = new Set<string>();
+	for (const member of members) {
+		const instructions = member.assignment?.instructions;
+		if (!instructions) continue;
+		const file = `${safeName(member.id)}.md`;
+		expected.add(file);
+		await atomicWriteFileAsync(join(membersRoot, file), instructions);
+	}
+	await removeStaleAssignmentFiles(membersRoot, expected);
+}
+
+/** 成员被移出团队或清空任务书后，孤儿文件必须一并消失，否则重新入团会读到上一任的交待。 */
+async function removeStaleAssignmentFiles(membersRoot: string, expected: ReadonlySet<string>): Promise<void> {
+	let entries: Dirent[];
+	try {
+		entries = await readdir(membersRoot, { withFileTypes: true });
+	} catch (error) {
+		if (isMissingFile(error)) return;
+		throw error;
+	}
+	await Promise.all(
+		entries
+			.filter((entry) => entry.isFile() && entry.name.endsWith(".md") && !expected.has(entry.name))
+			.map((entry) => rm(join(membersRoot, entry.name), { force: true })),
+	);
 }
 
 async function parseTeamManifest(value: unknown, root: string): Promise<TeamDefinition> {
 	if (!isRecord(value)) throw new Error(`Invalid Agent Team manifest: ${root}`);
 	const description = await readFile(join(root, "description.md"), "utf8");
-	return { ...value, description } as TeamDefinition;
+	const members = Array.isArray(value.members)
+		? await Promise.all(value.members.map((member: unknown) => readMemberAssignment(member, root)))
+		: value.members;
+	return { ...value, description, members } as TeamDefinition;
+}
+
+async function readMemberAssignment(value: unknown, teamRoot: string): Promise<unknown> {
+	if (!isRecord(value) || typeof value.id !== "string") return value;
+	const instructions = await readOptionalFile(join(teamRoot, MEMBERS_DIR, `${safeName(value.id)}.md`));
+	if (instructions === undefined || instructions.trim().length === 0) return value;
+	const assignment = isRecord(value.assignment) ? value.assignment : {};
+	return { ...value, assignment: { ...assignment, instructions } };
 }
 
 async function readJson(path: string): Promise<Record<string, unknown>> {

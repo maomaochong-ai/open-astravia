@@ -173,6 +173,63 @@ describe("Agent Team file repository", () => {
 		expect(await readdir(join(root, "agents"))).toContain("half-written");
 	});
 
+	it("splits a member assignment between team.json and its own markdown file", async () => {
+		const { repository, root } = await createRepository();
+		const document = createAgentTeamFixture();
+		const team = document.teams[0];
+		if (!team) throw new Error("Expected an initial team");
+		const member = team.members[0];
+		if (!member) throw new Error("Expected a team member");
+		const members = [
+			{
+				...member,
+				assignment: { responsibility: "Owns the release checklist.", instructions: "Escalate schema changes." },
+			},
+			...team.members.slice(1),
+		];
+
+		await repository.write({ ...document, teams: [{ ...team, members }] });
+
+		const teamRoot = join(root, encodeURIComponent(team.id).replace(/%/g, "_"));
+		const manifest = JSON.parse(await readFile(join(teamRoot, "team.json"), "utf8")) as {
+			members: readonly { assignment?: Record<string, unknown> }[];
+		};
+		expect(manifest.members[0]?.assignment).toEqual({ responsibility: "Owns the release checklist." });
+		expect(
+			await readFile(join(teamRoot, "members", `${encodeURIComponent(member.id).replace(/%/g, "_")}.md`), "utf8"),
+		).toBe("Escalate schema changes.");
+
+		const loaded = await repository.read();
+		expect(loaded.teams[0]?.members[0]?.assignment).toEqual({
+			responsibility: "Owns the release checklist.",
+			instructions: "Escalate schema changes.",
+		});
+	});
+
+	it("removes the assignment file once the team clears it", async () => {
+		const { repository, root } = await createRepository();
+		const document = createAgentTeamFixture();
+		const team = document.teams[0];
+		if (!team) throw new Error("Expected an initial team");
+		const member = team.members[0];
+		if (!member) throw new Error("Expected a team member");
+		const membersRoot = join(root, encodeURIComponent(team.id).replace(/%/g, "_"), "members");
+
+		await repository.write({
+			...document,
+			teams: [
+				{ ...team, members: [{ ...member, assignment: { instructions: "Old brief." } }, ...team.members.slice(1)] },
+			],
+		});
+		expect(await readdir(membersRoot)).toHaveLength(1);
+
+		// 孤儿文件留着，成员重新入团就会读到上一任的交待。
+		await repository.write(document);
+
+		expect(await readdir(membersRoot)).toEqual([]);
+		expect((await repository.read()).teams[0]?.members[0]?.assignment).toBeUndefined();
+	});
+
 	it("preserves extension-owned directories beside team resources", async () => {
 		const { repository, root } = await createRepository();
 		await mkdir(join(root, "assets"), { recursive: true });
