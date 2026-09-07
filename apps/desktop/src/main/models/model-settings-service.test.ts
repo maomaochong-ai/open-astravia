@@ -159,6 +159,29 @@ describe("ModelSettingsService", () => {
 		expect(onConfigChanged).toHaveBeenCalledWith(expect.arrayContaining(["cli-proxy-api.google", "openai"]));
 	});
 
+	it("keeps the plugin-owned default model when the replacement still publishes it", async () => {
+		let config: ModelsConfig = {
+			defaultModel: "cli-proxy-api.google/gemini-test",
+			providers: {
+				"cli-proxy-api.google": { api: "google-generative-ai", models: [{ id: "gemini-test" }] },
+			},
+		};
+		const service = new ModelSettingsService({
+			readConfig: async () => config,
+			writeConfig: async (next) => {
+				config = next;
+			},
+			refreshRegistry: async () => {},
+			credentials: createCredentialStore(),
+		});
+
+		await service.replaceOwnedProviders("cli-proxy-api", {
+			google: { api: "google-generative-ai", models: [{ id: "gemini-test" }, { id: "gemini-new" }] },
+		});
+
+		expect(config.defaultModel).toBe("cli-proxy-api.google/gemini-test");
+	});
+
 	it("reads back one plugin namespace by local id with credentials redacted", async () => {
 		const config: ModelsConfig = {
 			providers: {
