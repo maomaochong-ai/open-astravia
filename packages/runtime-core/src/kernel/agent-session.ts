@@ -304,16 +304,33 @@ export class AgentSession {
 	}
 
 	/**
-	 * `wait: false` returns as soon as the turn is signalled. A user-initiated stop must
-	 * not be held hostage by a tool that ignores its AbortSignal — the caller only needs
-	 * the guarantee that cancellation was requested, not that the turn already unwound.
+	 * `waitMs` bounds how long the caller waits for the turn to unwind. Waiting matters:
+	 * the session only returns to `idle` once the turn settles, and a caller that skips
+	 * it leaves the next user input to be refused as busy or parked in the queue that the
+	 * cancellation just froze. But a tool ignoring its AbortSignal must not be able to
+	 * hold a user-initiated stop hostage either, so the wait is bounded, not skipped.
+	 * Omit `waitMs` to wait indefinitely.
 	 */
-	async cancel(reason?: string, options?: { readonly wait?: boolean }): Promise<void> {
+	async cancel(reason?: string, options?: { readonly waitMs?: number }): Promise<void> {
 		if (this.currentState !== "running" && this.currentState !== "cancelling") return;
 		this.currentState = "cancelling";
 		this.activeController?.abort(reason);
-		if (options?.wait === false) return;
-		await this.activeTurn;
+		const turn = this.activeTurn;
+		if (options?.waitMs === undefined) {
+			await turn;
+			return;
+		}
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		try {
+			await Promise.race([
+				turn,
+				new Promise<void>((resolve) => {
+					timer = setTimeout(resolve, options.waitMs);
+				}),
+			]);
+		} finally {
+			if (timer) clearTimeout(timer);
+		}
 	}
 
 	async close(): Promise<void> {
