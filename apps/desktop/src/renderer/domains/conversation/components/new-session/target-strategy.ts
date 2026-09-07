@@ -20,6 +20,9 @@ export function createNewSessionTargetStrategyRegistry(input: {
 	readonly conversationDispatch: NewSessionDispatch;
 	readonly teamDispatch: NewSessionDispatch;
 	readonly teamKey: NewSessionTargetKey | null;
+	/** 单 Agent 走普通会话链路，只是创建时多带一个 Agent 身份。 */
+	readonly agentDispatch: NewSessionDispatch;
+	readonly agentKey: NewSessionTargetKey | null;
 }): NewSessionTargetStrategyRegistry {
 	const conversation: NewSessionTargetStrategy = {
 		key: CONVERSATION_TARGET_KEY,
@@ -27,6 +30,7 @@ export function createNewSessionTargetStrategyRegistry(input: {
 	};
 	const strategies = new Map<string, NewSessionTargetStrategy>([[conversation.key, conversation]]);
 	if (input.teamKey) strategies.set(input.teamKey, { key: input.teamKey, dispatch: input.teamDispatch });
+	if (input.agentKey) strategies.set(input.agentKey, { key: input.agentKey, dispatch: input.agentDispatch });
 	return {
 		resolve: (targetKey) => {
 			const key = targetKey ?? CONVERSATION_TARGET_KEY;

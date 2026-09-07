@@ -414,6 +414,12 @@ export interface OpenSessionOptions {
 	preserveMessagesBeforeCreate?: boolean;
 	/** Lets a staged new-session send restore its input snapshot if creation fails. */
 	onCreateError?: (error: unknown) => void;
+	/**
+	 * 新建会话时绑定的 Agent Profile 身份。刻意只传身份、不传任何能力字段：
+	 * 人格与技能 / MCP / 插件白名单一律由主进程按身份查表折算，渲染层无从自述能力。
+	 * 打开既有会话不必传，主进程从会话目录旁挂的绑定记录读回。
+	 */
+	agentProfileId?: string;
 }
 
 /** Immutable input captured before a new session has a runtimeId. */

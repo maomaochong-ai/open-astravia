@@ -312,7 +312,13 @@ export function useSessionOpener(): SessionOpenerController {
 				perfSendMark("session-create-start", interactionId);
 				markSessionSwitch("session-create-start");
 				createResult = await window.vetta.session.create(
-					{ cwd, sessionPath, executionMode, scenario },
+					{
+						cwd,
+						sessionPath,
+						executionMode,
+						scenario,
+						...(options?.agentProfileId ? { agentProfileId: options.agentProfileId } : {}),
+					},
 					sessionKind,
 					interactionId ? { interactionId } : undefined,
 				);

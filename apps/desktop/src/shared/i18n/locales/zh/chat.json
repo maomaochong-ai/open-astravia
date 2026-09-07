@@ -736,18 +736,21 @@
 			"triggerTitle": "选择本次会话所属的项目",
 			"createFailedTitle": "项目创建失败"
 		},
-		"teamSelector": {
-			"clear": "不使用团队",
-			"searchPlaceholder": "搜索团队",
-			"empty": "没有匹配的团队",
-			"loading": "正在加载团队…",
-			"error": "团队列表加载失败",
+		"agentSelector": {
+			"clear": "不指定智能体",
+			"searchPlaceholder": "搜索团队或智能体",
+			"empty": "没有匹配的团队或智能体",
+			"loading": "正在加载…",
+			"error": "列表加载失败",
 			"invalid": "这个团队已不可用，请选择其他团队",
+			"agentInvalid": "这个智能体已不可用，请重新选择",
 			"retry": "重试",
 			"memberCount": "{{count}} 位成员",
-			"summon": "召唤团队",
-			"summonTitle": "召唤一个 Agent 团队来完成这次任务",
-			"switchTitle": "更换本次会话的团队"
+			"groupTeams": "团队",
+			"groupAgents": "智能体",
+			"pick": "切换智能体",
+			"pickTitle": "指定一个团队或单个智能体来完成这次任务",
+			"switchTitle": "更换本次会话的团队或智能体"
 		}
 	},
 	"questionPanel": {

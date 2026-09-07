@@ -18,7 +18,7 @@ import type { SendInteractionContext } from "../input-bar/types";
 import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
 import { TeamComposerConnector } from "../../connectors/team/TeamComposerConnector";
 import type { TeamChatActions, TeamChatViewModel } from "../../connectors/team/teamChatModel";
-import type { NewSessionTargetKey } from "./target";
+import { isTeamTarget, type NewSessionTargetKey } from "./target";
 
 
 /** 命令区展开时输入栏下移的距离：面板向上生长，下方留白同步收掉。 */
@@ -43,8 +43,8 @@ interface NewSessionPageViewProps {
 	projectOptions: readonly ProjectOption[];
 	projectSelection: ProjectSelection;
 	projectTakenNames: readonly string[];
-	teamTargetKey: NewSessionTargetKey | null;
-	onSelectTeam: (targetKey: NewSessionTargetKey | null) => void;
+	targetKey: NewSessionTargetKey | null;
+	onSelectTarget: (targetKey: NewSessionTargetKey | null) => void;
 	teamComposer: { readonly model: TeamChatViewModel | null; readonly actions: TeamChatActions | null };
 	subtitle: string;
 }
@@ -68,8 +68,8 @@ export function NewSessionPageView({
 	projectOptions,
 	projectSelection,
 	projectTakenNames,
-	teamTargetKey,
-	onSelectTeam,
+	targetKey,
+	onSelectTarget,
 	teamComposer,
 	subtitle,
 }: NewSessionPageViewProps): JSX.Element {
@@ -136,8 +136,8 @@ export function NewSessionPageView({
 							options={projectOptions}
 							selection={projectSelection}
 							takenNames={projectTakenNames}
-							teamTargetKey={teamTargetKey}
-							onSelectTeam={onSelectTeam}
+							targetKey={targetKey}
+							onSelectTarget={onSelectTarget}
 						/>
 					</motion.div>
 				}
@@ -148,7 +148,7 @@ export function NewSessionPageView({
 						transition={shiftTransition}
 					>
 						{/* Drop target is the input card; cwdOverride enables drop before a session exists. */}
-						{teamTargetKey ? (
+						{isTeamTarget(targetKey) ? (
 							teamComposer.model && teamComposer.actions ? (
 								<TeamComposerConnector model={teamComposer.model} actions={teamComposer.actions} />
 							) : (
@@ -157,7 +157,7 @@ export function NewSessionPageView({
 									aria-busy="true"
 									className="mx-auto flex h-[136px] w-full max-w-2xl items-center justify-center rounded-xl border border-border bg-card/80 px-4 text-sm text-muted-foreground shadow-sm"
 								>
-									{teamComposer.model?.error ?? t("newSession.teamSelector.loading")}
+									{teamComposer.model?.error ?? t("newSession.agentSelector.loading")}
 								</div>
 							)
 						) : (

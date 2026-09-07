@@ -87,7 +87,7 @@ export function useNewSessionTeamDraft(
 				setDocument(next);
 				const found = next.teams.find((candidate) => candidate.id === teamId);
 				setTeam(found);
-				if (!found) setError(t("chat:newSession.teamSelector.invalid"));
+				if (!found) setError(t("chat:newSession.agentSelector.invalid"));
 				return next;
 			})
 			.catch((cause: unknown) => {

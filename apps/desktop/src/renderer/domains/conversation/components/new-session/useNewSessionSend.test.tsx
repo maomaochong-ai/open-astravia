@@ -67,6 +67,30 @@ describe("useNewSessionSend", () => {
 		expect(openSession).toHaveBeenCalledOnce();
 		expect(openSession.mock.calls[0]?.[3]).not.toHaveProperty("agentConfiguration");
 	});
+
+	it("passes only the selected Agent's identity, never its capabilities", async () => {
+		const openSession = vi.fn(
+			async (_cwd: string, _path?: string, _mode?: SessionExecutionMode, _options?: OpenSessionOptions) => {},
+		);
+		const { result } = renderHook(() =>
+			useNewSessionSend({
+				cwd: "C:/workspace",
+				executionMode: "sandbox",
+				openSession,
+				sendMessage: async () => undefined,
+				agentProfileId: "agent-1",
+			}),
+		);
+		await act(async () => {
+			await result.current.send();
+		});
+		const options = openSession.mock.calls[0]?.[3];
+		expect(options).toMatchObject({ agentProfileId: "agent-1" });
+		// 白名单裁剪权必须留在主进程：渲染层一旦能自述能力，白名单就从约束退化成建议。
+		expect(options).not.toHaveProperty("agentConfiguration");
+		expect(options).not.toHaveProperty("skills");
+		expect(options).not.toHaveProperty("mcpServers");
+	});
 	beforeEach(() => {
 		vi.clearAllMocks();
 		stagedSend.stage.mockReturnValue({

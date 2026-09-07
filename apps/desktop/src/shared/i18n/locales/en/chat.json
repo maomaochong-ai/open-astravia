@@ -736,18 +736,21 @@
 			"triggerTitle": "Choose the project for this session",
 			"createFailedTitle": "Failed to create project"
 		},
-		"teamSelector": {
-			"clear": "No team",
-			"searchPlaceholder": "Search teams",
-			"empty": "No matching teams",
-			"loading": "Loading teams…",
-			"error": "Failed to load teams",
+		"agentSelector": {
+			"clear": "No agent",
+			"searchPlaceholder": "Search teams and agents",
+			"empty": "No matching teams or agents",
+			"loading": "Loading…",
+			"error": "Failed to load the list",
 			"invalid": "This team is no longer available. Choose another team.",
+			"agentInvalid": "This agent is no longer available. Choose another one.",
 			"retry": "Retry",
 			"memberCount": "{{count}} members",
-			"summon": "Summon team",
-			"summonTitle": "Summon an agent team for this task",
-			"switchTitle": "Switch the team for this session"
+			"groupTeams": "Teams",
+			"groupAgents": "Agents",
+			"pick": "Switch agent",
+			"pickTitle": "Pick a team or a single agent for this task",
+			"switchTitle": "Switch the team or agent for this session"
 		}
 	},
 	"questionPanel": {

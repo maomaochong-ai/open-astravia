@@ -20,13 +20,18 @@ interface NewSessionSendOptions {
 		options?: OpenSessionOptions,
 	) => Promise<void>;
 	readonly sendMessage: (overrideText?: string, options?: SendMessageOptions) => Promise<unknown>;
+	/**
+	 * 选中单个智能体时带上它的身份。只传身份不传能力：主进程按身份查表裁剪
+	 * 技能 / MCP / 插件白名单，渲染层不经手任何能力字段。
+	 */
+	readonly agentProfileId?: string;
 }
 
 export function useNewSessionSend(options: NewSessionSendOptions): {
 	readonly send: (overrideText?: string, context?: SendInteractionContext) => Promise<void>;
 } {
 	const sendingRef = useRef(false);
-	const { cwd, executionMode, prepareCwd, openSession, sendMessage } = options;
+	const { cwd, executionMode, prepareCwd, openSession, sendMessage, agentProfileId } = options;
 
 	const send = useCallback(
 		async (overrideText?: string, context?: SendInteractionContext): Promise<void> => {
@@ -42,6 +47,7 @@ export function useNewSessionSend(options: NewSessionSendOptions): {
 				if (!stagedInput) return;
 				await openSession(targetCwd, undefined, executionMode, {
 					interactionId,
+					...(agentProfileId ? { agentProfileId } : {}),
 					navigateBeforeCreate: true,
 					preserveMessagesBeforeCreate: true,
 					onCreateError: () => restoreStagedNewSessionSend(stagedInput),
@@ -55,7 +61,7 @@ export function useNewSessionSend(options: NewSessionSendOptions): {
 				sendingRef.current = false;
 			}
 		},
-		[cwd, executionMode, prepareCwd, openSession, sendMessage],
+		[agentProfileId, cwd, executionMode, prepareCwd, openSession, sendMessage],
 	);
 
 	return { send };

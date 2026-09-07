@@ -1,7 +1,7 @@
 import { AgentModeIconToggle } from "./AgentModeIconToggle";
 import { NewSessionProjectSelector } from "./project-selector/NewSessionProjectSelector";
 import type { ProjectOption, ProjectSelection } from "./project-selector/project-selection";
-import { NewSessionTeamSelector } from "./NewSessionTeamSelector";
+import { NewSessionAgentSelector } from "./NewSessionAgentSelector";
 import type { NewSessionTargetKey } from "./target";
 
 interface NewSessionOptionsRowProps {
@@ -11,8 +11,8 @@ interface NewSessionOptionsRowProps {
 	readonly creatingProject: boolean;
 	readonly onSelectProject: (cwd: string | null) => void;
 	readonly onSelectPendingProject: (name: string) => void;
-	readonly teamTargetKey?: NewSessionTargetKey | null;
-	readonly onSelectTeam?: (targetKey: NewSessionTargetKey | null) => void;
+	readonly targetKey?: NewSessionTargetKey | null;
+	readonly onSelectTarget?: (targetKey: NewSessionTargetKey | null) => void;
 }
 
 /**
@@ -28,8 +28,8 @@ export function NewSessionOptionsRow({
 	creatingProject,
 	onSelectProject,
 	onSelectPendingProject,
-	teamTargetKey = null,
-	onSelectTeam = () => undefined,
+	targetKey = null,
+	onSelectTarget = () => undefined,
 }: NewSessionOptionsRowProps): JSX.Element {
 	return (
 		// 与 hero 标题、输入框卡片共用 max-w-2xl 且不加横向 padding：两枚 chip 都有可见容器，
@@ -44,7 +44,7 @@ export function NewSessionOptionsRow({
 				onSelectProject={onSelectProject}
 				onSelectPendingProject={onSelectPendingProject}
 			/>
-			<NewSessionTeamSelector selectedKey={teamTargetKey} onSelect={onSelectTeam} />
+			<NewSessionAgentSelector selectedKey={targetKey} onSelect={onSelectTarget} />
 		</div>
 	);
 }

@@ -32,7 +32,15 @@ import { PANEL_SHIFT_MIN_ITEMS } from "./constants";
 import { prepareProjectCwd } from "./project-selector/prepare-project-cwd";
 import type { ProjectOption, ProjectSelection } from "./project-selector/project-selection";
 import { useNewSessionProjectSelection } from "./project-selector/useNewSessionProjectSelection";
-import { CONVERSATION_TARGET_KEY, type NewSessionTargetKey, parseNewSessionTarget, targetDraftScope } from "./target";
+import {
+	CONVERSATION_TARGET_KEY,
+	isTeamTarget,
+	type NewSessionTargetKey,
+	parseAgentTargetKey,
+	parseNewSessionTarget,
+	parseTeamTargetKey,
+	targetDraftScope,
+} from "./target";
 import { createNewSessionTargetStrategyRegistry } from "./target-strategy";
 import { useNewSessionActivityPanel } from "./useNewSessionActivityPanel";
 import { useNewSessionSend } from "./useNewSessionSend";
@@ -61,7 +69,7 @@ interface NewSessionPageModel {
 	onSend: (overrideText?: string, context?: SendInteractionContext) => Promise<void>;
 	onSelectPendingProject: (name: string) => void;
 	onSelectProject: (cwd: string | null) => void;
-	onSelectTeam: (targetKey: NewSessionTargetKey | null) => void;
+	onSelectTarget: (targetKey: NewSessionTargetKey | null) => void;
 	onToggleActivity: () => void;
 	onTogglePin: () => Promise<void>;
 	/** 待创建项目正在落盘：发送按钮与项目选择器都进入准备态。 */
@@ -69,7 +77,8 @@ interface NewSessionPageModel {
 	projectOptions: readonly ProjectOption[];
 	projectSelection: ProjectSelection;
 	projectTakenNames: readonly string[];
-	teamTargetKey: NewSessionTargetKey | null;
+	/** 选中的会话对象：团队（`team:`）、单个智能体（`agent:`）或未选（普通对话）。 */
+	targetKey: NewSessionTargetKey | null;
 	teamComposer: { readonly model: TeamChatViewModel | null; readonly actions: TeamChatActions | null };
 	panelTitle: string;
 	pinTitle: string;
@@ -84,12 +93,15 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 	const defaultConversationCwd = useAtomValue(defaultConversationCwdAtom);
 	const decodedCwd = search.cwd ? decodeURIComponent(search.cwd) : defaultConversationCwd;
 	const initialTargetKey = search.target ? parseNewSessionTarget(search.target) : null;
-	const [teamTargetKey, setTeamTargetKey] = useState<NewSessionTargetKey | null>(
+	const [targetKey, setTargetKey] = useState<NewSessionTargetKey | null>(
 		initialTargetKey === "conversation" ? null : initialTargetKey,
 	);
 	useEffect(() => {
-		setTeamTargetKey(initialTargetKey === "conversation" ? null : initialTargetKey);
+		setTargetKey(initialTargetKey === "conversation" ? null : initialTargetKey);
 	}, [initialTargetKey]);
+	// 单个智能体走的是普通会话链路，只在创建时多带一个身份；只有团队才需要 Team 编排。
+	const selectedTeamKey = isTeamTarget(targetKey) ? targetKey : null;
+	const selectedAgentProfileId = parseAgentTargetKey(targetKey);
 	// 项目选择器只覆盖页面本地上下文，不切路由：草稿按 `new:${routeCwd}` 隔离，
 	// 换项目若走路由就会把用户已经打好的正文换走。
 	const projectSelection = useNewSessionProjectSelection(decodedCwd);
@@ -155,10 +167,11 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		prepareCwd,
 		openSession,
 		sendMessage,
+		...(selectedAgentProfileId ? { agentProfileId: selectedAgentProfileId } : {}),
 	});
-	const teamDraft = useNewSessionTeamDraft(teamTargetKey, (sessionId) => {
-		if (!teamTargetKey) return;
-		const teamId = teamTargetKey.slice("team:".length);
+	const teamDraft = useNewSessionTeamDraft(selectedTeamKey, (sessionId) => {
+		const teamId = parseTeamTargetKey(selectedTeamKey);
+		if (!teamId) return;
 		void navigate({ to: "/agent-teams/$teamId/sessions/$sessionId", params: { teamId, sessionId }, replace: true });
 	});
 	const targetStrategies = useMemo(
@@ -166,13 +179,17 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 			createNewSessionTargetStrategyRegistry({
 				conversationDispatch: newSessionSend.send,
 				teamDispatch: teamDraft.send,
-				teamKey: teamTargetKey,
+				teamKey: selectedTeamKey,
+				// 单 Agent 与普通对话共用同一条 dispatch：两者都是普通会话，
+				// 差别仅在于 useNewSessionSend 是否带上 agentProfileId。
+				agentDispatch: newSessionSend.send,
+				agentKey: selectedAgentProfileId ? targetKey : null,
 			}),
-		[newSessionSend.send, teamDraft.send, teamTargetKey],
+		[newSessionSend.send, selectedAgentProfileId, selectedTeamKey, targetKey, teamDraft.send],
 	);
-	const handleSelectTeam = useCallback(
+	const handleSelectTarget = useCallback(
 		(next: NewSessionTargetKey | null) => {
-			setTeamTargetKey(next);
+			setTargetKey(next);
 			// Keep the selected target in the URL so a reload and the Team sidebar entry preserve intent.
 			void navigate({
 				to: "/new-session",
@@ -195,7 +212,7 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 	// 进入页面：草稿按 `new:${cwd}` 隔离恢复；其它上下文仍重置，避免串会话。
 	useEffect(() => {
 		// 先切换草稿作用域（普通与 Team 各自拥有独立作用域）。
-		switchSessionInputDraftScope(targetDraftScope(teamTargetKey ?? CONVERSATION_TARGET_KEY, decodedCwd));
+		switchSessionInputDraftScope(targetDraftScope(targetKey ?? CONVERSATION_TARGET_KEY, decodedCwd));
 		// 旧 attachedImages 链路兜底清空（正文 token 已由草稿文本恢复）。
 		setAttachedImages([]);
 		// 释放一次性的插件 prompt attachment，避免带进新会话。
@@ -208,7 +225,7 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		//    否则残留 "batch" 会让 fail-closed 过滤把默认 action 全部隐藏。
 		// 2) 激活工具集置 null（未知 → 按 scope 默认显示），否则残留批量会话的工具集
 		//    不含 generate_image，会让 requiresActiveTool 闸门继续隐藏「图像生成」。
-		if (!teamTargetKey) setCurrentScenario("conversation");
+		if (!isTeamTarget(targetKey)) setCurrentScenario("conversation");
 		setActiveToolNames(null);
 		// 清掉上一个会话残留的上下文用量，避免 ContextRing 显示旧会话的百分比。
 		setContextUsage(null);
@@ -219,7 +236,7 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		setLastActiveSession(null);
 	}, [
 		decodedCwd,
-		teamTargetKey,
+		targetKey,
 		setAttachedImages,
 		setPromptAttachment,
 		setCurrentScenario,
@@ -285,15 +302,15 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		onCommandPanelExpandedChange: setCommandPanelExpanded,
 		onSelectPendingProject: projectSelection.selectPendingProject,
 		onSelectProject: projectSelection.selectProject,
-		onSend: targetStrategies.resolve(teamTargetKey).dispatch,
-		onSelectTeam: handleSelectTeam,
+		onSend: targetStrategies.resolve(targetKey).dispatch,
+		onSelectTarget: handleSelectTarget,
 		onToggleActivity: handleToggleActivity,
 		onTogglePin: handleTogglePin,
 		preparingProject,
 		projectOptions: projectSelection.options,
 		projectSelection: projectSelection.selection,
 		projectTakenNames: projectSelection.takenNames,
-		teamTargetKey,
+		targetKey,
 		teamComposer: { model: teamDraft.model, actions: teamDraft.actions },
 		panelTitle: activityOpen ? t("chat:chatView.panelButton.open") : t("chat:chatView.panelButton.closed"),
 		pinTitle: pinned ? t("chat:chatView.pinButton.pinned") : t("chat:chatView.pinButton.unpinned"),
