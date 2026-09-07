@@ -156,10 +156,10 @@ export class CapabilityRegistry {
 		};
 	}
 
-	async invoke<Input, Output>(
-		capability: CapabilityToken<Input, Output>,
+	async invoke<Input, Output, Event = never>(
+		capability: CapabilityToken<Input, Output, Event>,
 		input: Input,
-		context: CapabilityExecutionContext,
+		context: CapabilityExecutionContext<Event>,
 	): Promise<Output> {
 		const entry = this.providers.get(capability.id);
 		if (!entry) {
@@ -179,7 +179,22 @@ export class CapabilityRegistry {
 					`Capability invocation aborted: ${capability.id}`,
 				);
 			}
-			const output = await entry.binding.execute(input, { ...context, signal });
+			const emit = context.emit;
+			const output = await entry.binding.execute(input, {
+				signal,
+				traceId: context.traceId,
+				...(context.deadline === undefined ? {} : { deadline: context.deadline }),
+				...(emit === undefined
+					? {}
+					: {
+							emit: (event: unknown) => {
+								if (capability.parseEvent === undefined) {
+									throw new Error(`Capability ${capability.id} does not declare an event contract`);
+								}
+								emit(capability.parseEvent(event));
+							},
+						}),
+			});
 			if (signal.aborted) {
 				throw new CapabilityError(
 					CAPABILITY_ERROR_CODES.ABORTED,

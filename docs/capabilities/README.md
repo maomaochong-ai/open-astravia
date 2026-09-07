@@ -88,20 +88,22 @@ Electron / Node.js / OS / Desktop Domain Services
 ```ts
 export type CapabilityLayer = "foundation" | "domain";
 
-export interface CapabilityToken<Input, Output> {
+export interface CapabilityToken<Input, Output, Event = never> {
 	readonly id: CapabilityId;
 	readonly layer: CapabilityLayer;
 	readonly version: number;
+	readonly event?: CapabilitySchema<Event>;
 }
 
-export interface CapabilityExecutionContext {
+export interface CapabilityExecutionContext<Event = never> {
 	readonly signal: AbortSignal;
 	readonly traceId: string;
 	readonly deadline?: number;
+	readonly emit?: (event: Event) => void;
 }
 
-export interface CapabilityHandler<Input, Output> {
-	execute(input: Input, context: CapabilityExecutionContext): Promise<Output>;
+export interface CapabilityHandler<Input, Output, Event = never> {
+	execute(input: Input, context: CapabilityExecutionContext<Event>): Promise<Output>;
 }
 ```
 

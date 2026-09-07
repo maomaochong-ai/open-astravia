@@ -28,16 +28,17 @@ export interface CapabilityAccessSessionOptions {
 	readonly expiresAt?: number;
 }
 
-export interface CapabilityInvokeOptions {
+export interface CapabilityInvokeOptions<Event = never> {
 	readonly signal?: AbortSignal;
 	readonly deadline?: number;
+	readonly onEvent?: (event: Event) => void;
 }
 
 export interface AuthorizedCapabilityClient {
-	invoke<Input, Output>(
-		capability: CapabilityToken<Input, Output>,
+	invoke<Input, Output, Event = never>(
+		capability: CapabilityToken<Input, Output, Event>,
 		input: Input,
-		options?: CapabilityInvokeOptions,
+		options?: CapabilityInvokeOptions<Event>,
 	): Promise<Output>;
 }
 
@@ -53,8 +54,8 @@ export interface CapabilityAccessSessionFactory {
 	createSession(options: CapabilityAccessSessionOptions): CapabilityAccessHandle;
 }
 
-export function createCapabilityGrant<Input, Output>(
-	capability: CapabilityToken<Input, Output>,
+export function createCapabilityGrant<Input, Output, Event>(
+	capability: CapabilityToken<Input, Output, Event>,
 	options: Omit<CapabilityGrant, "capabilityId"> = {},
 ): CapabilityGrant {
 	return Object.freeze({

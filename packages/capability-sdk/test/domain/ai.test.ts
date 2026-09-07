@@ -127,4 +127,16 @@ describe("ai domain capabilities", () => {
 			expect.objectContaining({ code: CAPABILITY_ERROR_CODES.INVALID_INPUT }),
 		);
 	});
+
+	it("validates and cleans complete stream events", () => {
+		expect(
+			DOMAIN_AI_CAPABILITIES.COMPLETE.parseEvent?.({ type: "text_delta", delta: "hello", ignored: true }),
+		).toEqual({
+			type: "text_delta",
+			delta: "hello",
+		});
+		expect(() => DOMAIN_AI_CAPABILITIES.COMPLETE.parseEvent?.({ type: "text_delta", delta: "" })).toThrowError(
+			expect.objectContaining({ code: CAPABILITY_ERROR_CODES.INVALID_OUTPUT }),
+		);
+	});
 });

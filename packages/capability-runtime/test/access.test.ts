@@ -2,6 +2,7 @@ import {
 	CAPABILITY_CONSTRAINT_KINDS,
 	CAPABILITY_ERROR_CODES,
 	createCapabilityGrant,
+	DOMAIN_AI_CAPABILITIES,
 	type FilesystemReadFileResult,
 	FOUNDATION_FILESYSTEM_CAPABILITIES,
 	FOUNDATION_STORAGE_CAPABILITIES,
@@ -173,5 +174,36 @@ describe("CapabilityAccessController", () => {
 		await expect(
 			deadlineHandle.client.invoke(readFileCapability, { path: "value" }, { deadline: Date.now() - 1 }),
 		).rejects.toMatchObject({ code: CAPABILITY_ERROR_CODES.ABORTED });
+	});
+
+	it("forwards provider events through the capability event contract", async () => {
+		const hub = new CapabilityHub();
+		hub.domain.registerOwner("ai", [
+			bindCapability(DOMAIN_AI_CAPABILITIES.COMPLETE, {
+				execute: (_input, context) => {
+					context.emit?.({ type: "text_delta", delta: "Hello", ignored: true } as never);
+					return {
+						modelKey: "openai/gpt-5",
+						text: "Hello",
+						stopReason: "stop",
+						usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+					};
+				},
+			}),
+		]);
+		const access = new CapabilityAccessController(hub);
+		const handle = access.createSession({
+			subject: { id: "subject", sessionId: "ai-stream" },
+			grants: [createCapabilityGrant(DOMAIN_AI_CAPABILITIES.COMPLETE)],
+		});
+		const events: unknown[] = [];
+
+		await handle.client.invoke(
+			DOMAIN_AI_CAPABILITIES.COMPLETE,
+			{ prompt: "hello" },
+			{ onEvent: (event) => events.push(event) },
+		);
+
+		expect(events).toEqual([{ type: "text_delta", delta: "Hello" }]);
 	});
 });

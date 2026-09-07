@@ -123,10 +123,10 @@ export class CapabilityAccessController {
 		const sessionController = new AbortController();
 		let revoked = false;
 		const client: AuthorizedCapabilityClient = {
-			invoke: <Input, Output>(
-				capability: CapabilityToken<Input, Output>,
+			invoke: <Input, Output, Event = never>(
+				capability: CapabilityToken<Input, Output, Event>,
 				input: Input,
-				invokeOptions?: CapabilityInvokeOptions,
+				invokeOptions?: CapabilityInvokeOptions<Event>,
 			): Promise<Output> =>
 				this.invoke(session, grants, sessionController.signal, () => revoked, capability, input, invokeOptions),
 		};
@@ -142,14 +142,14 @@ export class CapabilityAccessController {
 		};
 	}
 
-	private async invoke<Input, Output>(
+	private async invoke<Input, Output, Event>(
 		session: CapabilityAccessSessionSnapshot,
 		grants: ReadonlyMap<CapabilityId, CapabilityGrant>,
 		sessionSignal: AbortSignal,
 		isRevoked: () => boolean,
-		capability: CapabilityToken<Input, Output>,
+		capability: CapabilityToken<Input, Output, Event>,
 		input: Input,
-		options: CapabilityInvokeOptions | undefined,
+		options: CapabilityInvokeOptions<Event> | undefined,
 	): Promise<Output> {
 		if (isRevoked()) {
 			this.record(
@@ -202,6 +202,7 @@ export class CapabilityAccessController {
 			signal,
 			traceId: globalThis.crypto.randomUUID(),
 			deadline: options?.deadline,
+			...(options?.onEvent === undefined ? {} : { emit: options.onEvent }),
 		});
 	}
 
