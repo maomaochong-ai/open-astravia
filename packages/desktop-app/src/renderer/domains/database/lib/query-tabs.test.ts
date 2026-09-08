@@ -1,5 +1,13 @@
 import { describe, expect, test } from "vitest";
-import { closeQueryTab, createQueryTab, patchQueryTab, type QueryTabState, reorderQueryTabs } from "./query-tabs";
+import {
+	closeAllQueryTabs,
+	closeOtherQueryTabs,
+	closeQueryTab,
+	createQueryTab,
+	patchQueryTab,
+	type QueryTabState,
+	reorderQueryTabs,
+} from "./query-tabs";
 
 function make(id: string, title = id): QueryTabState {
 	return createQueryTab(id, title);
@@ -21,6 +29,8 @@ describe("createQueryTab", () => {
 		expect(tab.errorDetail).toBeNull();
 		expect(tab.openTableMeta).toBeNull();
 		expect(tab.loadingPage).toBe(false);
+		expect(tab.dirty).toBe(false);
+		expect(tab.pinned).toBe(false);
 	});
 
 	test("applies initial overrides (open table flow)", () => {
@@ -116,6 +126,41 @@ describe("patchQueryTab", () => {
 		const tabs = [make("a")];
 		const snapshot = [...tabs];
 		patchQueryTab(tabs, "a", { sql: "SELECT 2" });
+		expect(tabs).toEqual(snapshot);
+	});
+});
+
+describe("closeOtherQueryTabs", () => {
+	test("keeps the target tab and every pinned tab", () => {
+		const tabs = [make("a"), { ...make("p"), pinned: true }, make("b"), make("c")];
+		const next = closeOtherQueryTabs(tabs, "b");
+		expect(next.map((tab) => tab.id)).toEqual(["p", "b"]);
+	});
+
+	test("does not mutate the input array", () => {
+		const tabs = [{ ...make("a"), pinned: true }, make("b")];
+		const snapshot = [...tabs];
+		closeOtherQueryTabs(tabs, "b");
+		expect(tabs).toEqual(snapshot);
+	});
+});
+
+describe("closeAllQueryTabs", () => {
+	test("keeps only pinned tabs", () => {
+		const tabs = [{ ...make("a"), pinned: true }, make("b"), make("c")];
+		const next = closeAllQueryTabs(tabs);
+		expect(next.map((tab) => tab.id)).toEqual(["a"]);
+	});
+
+	test("may return an empty array when nothing is pinned", () => {
+		const next = closeAllQueryTabs([make("a"), make("b")]);
+		expect(next).toHaveLength(0);
+	});
+
+	test("does not mutate the input array", () => {
+		const tabs = [make("a")];
+		const snapshot = [...tabs];
+		closeAllQueryTabs(tabs);
 		expect(tabs).toEqual(snapshot);
 	});
 });

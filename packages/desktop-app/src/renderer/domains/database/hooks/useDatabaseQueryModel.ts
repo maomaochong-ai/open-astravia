@@ -12,6 +12,8 @@ import {
 	saveQueryHistory,
 } from "../lib/query-history";
 import {
+	closeAllQueryTabs,
+	closeOtherQueryTabs,
 	createQueryTab,
 	type DatabaseQueryStatus,
 	type OpenTableMeta,
@@ -76,6 +78,10 @@ export interface DatabaseQueryModel {
 		/** V7-⑦ 关闭全部标签。 */
 		readonly closeAllTabs: () => void;
 		readonly closeTab: (id: string) => void;
+		/** V5.1：重命名标签（去空格为空则 no-op；UI 层双击/右键菜单触发行内改名）。 */
+		readonly renameTab: (id: string, title: string) => void;
+		/** V5.1：切换标签钉住 —— 固定后常驻标签条、不参与溢出收纳（右键菜单触发）。 */
+		readonly toggleTabPin: (id: string) => void;
 		readonly activateTab: (id: string) => void;
 		/** 拖拽排序：按新顺序重排标签。 */
 		readonly reorderTabs: (ids: string[]) => void;
@@ -179,6 +185,7 @@ export function useDatabaseQueryModel(): DatabaseQueryModel {
 						connectionName: connection.name,
 						resultSql: sqlText,
 						status: "success",
+						dirty: false, // V5.1：执行成功即视为已保存，清脏
 					}),
 				);
 				if (record) recordHistory(connection.name, sqlText);
@@ -264,20 +271,44 @@ export function useDatabaseQueryModel(): DatabaseQueryModel {
 		[tabs, claimNextTabId],
 	);
 
-	const closeOtherTabs = useCallback((id: string) => {
-		setTabs((prev) => prev.filter((tab) => tab.id === id));
-		setActiveTabId(id);
-	}, []);
+	const closeOtherTabs = useCallback(
+		(id: string) => {
+			// V5.1 pinned 常驻：批量关闭不触碰固定标签（对齐 dbx 分区语义——普通标签的“关闭其他”保留固定标签）。
+			const kept = closeOtherQueryTabs(tabs, id);
+			setTabs(kept);
+			if (activeTabId !== id && !kept.some((tab) => tab.id === activeTabId)) {
+				setActiveTabId(id); // 原激活标签被批量关闭 → 落回右键目标
+			}
+		},
+		[tabs, activeTabId],
+	);
 
 	const closeAllTabs = useCallback(() => {
-		setTabs([]);
-		setActiveTabId(null);
+		// V5.1 pinned 常驻：“关闭全部”只作用于非固定标签；全为固定时清空（没有可关的普通标签）。
+		const kept = closeAllQueryTabs(tabs);
+		setTabs(kept);
+		if (activeTabId != null && !kept.some((tab) => tab.id === activeTabId)) {
+			setActiveTabId(kept.length > 0 ? kept[0].id : null);
+		}
+	}, [tabs, activeTabId]);
+
+	const renameTab = useCallback((id: string, title: string) => {
+		const trimmed = title.trim();
+		if (!trimmed) return; // 空名不落地：行内改名 Esc/空提交保持原标题
+		setTabs((prev) => patchQueryTab(prev, id, { title: trimmed }));
+	}, []);
+
+	const toggleTabPin = useCallback((id: string) => {
+		setTabs((prev) => {
+			const tab = prev.find((t) => t.id === id);
+			if (!tab) return prev;
+			return patchQueryTab(prev, id, { pinned: !(tab.pinned ?? false) });
+		});
 	}, []);
 
 	const activateTab = useCallback((id: string) => {
 		setActiveTabId(id);
 	}, []);
-
 	const rebindConnection = useCallback(
 		(connection: DbConnection) => {
 			if (!activeTab) return; // 空态无标签可切换
@@ -306,7 +337,8 @@ export function useDatabaseQueryModel(): DatabaseQueryModel {
 	const setSql = useCallback(
 		(sql: string) => {
 			if (!activeTabId) return;
-			setTabs((prev) => patchQueryTab(prev, activeTabId, { sql }));
+			// V5.1：编辑文本即置脏；成功执行后（runSql success patch）清脏。
+			setTabs((prev) => patchQueryTab(prev, activeTabId, { sql, dirty: true }));
 		},
 		[activeTabId],
 	);
@@ -365,6 +397,7 @@ export function useDatabaseQueryModel(): DatabaseQueryModel {
 				error,
 				errorDetail,
 				openTableMeta: null, // AI 回填结果不提供加载更多
+				dirty: false, // V5.1：AI 回填后视为展示态一致
 			};
 			if (tabs.length === 0) {
 				// 空态下 AI 回填（B2.9-W1/B2.10-W3）：先创建承载标签再回填。
@@ -533,6 +566,8 @@ export function useDatabaseQueryModel(): DatabaseQueryModel {
 			closeOtherTabs,
 			closeAllTabs,
 			activateTab,
+			renameTab,
+			toggleTabPin,
 			reorderTabs,
 			setSql,
 			run,

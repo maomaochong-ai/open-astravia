@@ -14,6 +14,12 @@ export interface TabBarItem<T extends string> {
 	badge?: number;
 	/** 为 true 时 hover 该页签浮现减号按钮，点击触发 onRemove（文件等固定 tab 不可移除） */
 	removable?: boolean;
+	/** 脏标记：内容自上次成功执行后未保存（如查询 sql 改动），标题后显示「*」 */
+	dirty?: boolean;
+	/** 钉住：常驻标签条、不参与溢出收纳（可拖拽排序但不会被收进「⋯」菜单） */
+	pinned?: boolean;
+	/** 连接色点：标签归属连接的辨识色（hex），显示在标题最左；缺省不显示 */
+	connectionColor?: string;
 }
 
 export interface TabBarProps<T extends string> {
@@ -34,12 +40,24 @@ export interface TabBarProps<T extends string> {
 	onOverflowChange?: (overflowKeys: T[]) => void;
 	/** 页签右键：父级可弹自定义上下文菜单；未传则禁用右键菜单（事件已 preventDefault，避免浏览器菜单）。 */
 	onContextMenu?: (event: ReactMouseEvent<HTMLDivElement>, key: T) => void;
+	/** 视觉变体：tabs=浏览器式叠瓦卡片（默认）；panel=面板切换条（等高扁平 + 激活下划线指示）。 */
+	variant?: "tabs" | "panel";
+	/** 双击页签标题：父级可据此进入行内改名（配合 editingKey / onRenameCommit 使用） */
+	onDoubleClick?: (event: ReactMouseEvent<HTMLDivElement>, key: T) => void;
+	/** 正在行内改名的页签 key；与该 key 相等时该页签标题渲染为输入框 */
+	editingKey?: T | null;
+	/** 行内改名提交（Enter / 失焦）；nextLabel 去空格为空时不提交并取消 */
+	onRenameCommit?: (key: T, nextLabel: string) => void;
+	/** 行内改名取消（Esc） */
+	onRenameCancel?: () => void;
 }
 
 /** 页签条左右内边距（px-3 = 0.75rem）。 */
 const ROW_PADDING_X = 12;
 /** 相邻页签的负边距重叠量（-ml-2 = 0.5rem），计算容纳宽度时需扣除。 */
 const TAB_OVERLAP = 8;
+/** 响应式收纳：内容/尺寸变化后延迟多久再做一次全量测量（拖拽换序等高频变化时合并）。 */
+const OVERFLOW_DEBOUNCE_MS = 100;
 
 /** 把 from 处的 key 移动到 to 处，返回新数组。 */
 function moveKey<T>(keys: T[], from: T, to: T): T[] {
@@ -61,18 +79,33 @@ function computeOverflow<T extends string>(
 	activeKey: T,
 	avail: number,
 	widthOf: (key: T) => number,
+	overlap: number,
+	pinnedKeys: ReadonlySet<T>,
 ): T[] {
 	if (items.length === 0) return [];
 	const visible = new Set<T>();
 	let used = 0;
 	const take = (key: T): void => {
-		used += visible.size > 0 ? Math.max(0, widthOf(key) - TAB_OVERLAP) : widthOf(key);
+		used += visible.size > 0 ? Math.max(0, widthOf(key) - overlap) : widthOf(key);
 		visible.add(key);
 	};
+	// 优先级：激活 > 钉住 > 顺序。钉住的标签永不溢出，除非条本身一个都放不下。
 	if (items.some((it) => it.key === activeKey)) take(activeKey);
 	for (const it of items) {
 		if (visible.has(it.key)) continue;
-		const add = visible.size > 0 ? Math.max(0, widthOf(it.key) - TAB_OVERLAP) : widthOf(it.key);
+		if (pinnedKeys.has(it.key)) {
+			const add = visible.size > 0 ? Math.max(0, widthOf(it.key) - overlap) : widthOf(it.key);
+			if (used + add > avail && items.length > 1) break;
+			used += add;
+			visible.add(it.key);
+		} else {
+			break;
+		}
+	}
+	for (const it of items) {
+		if (visible.has(it.key)) continue;
+		if (pinnedKeys.has(it.key)) continue;
+		const add = visible.size > 0 ? Math.max(0, widthOf(it.key) - overlap) : widthOf(it.key);
 		if (used + add <= avail) {
 			used += add;
 			visible.add(it.key);
@@ -93,14 +126,27 @@ function TabInner({
 	label,
 	badge,
 	active,
+	dirty,
+	pinned,
+	connectionColor,
 }: {
 	icon?: ReactNode;
 	label: string;
 	badge?: number;
 	active: boolean;
+	dirty?: boolean;
+	pinned?: boolean;
+	connectionColor?: string;
 }): JSX.Element {
 	return (
 		<span className="relative z-10 flex items-center gap-1.5">
+			{connectionColor != null && (
+				<span
+					className="h-1.5 w-1.5 shrink-0 rounded-full"
+					style={{ backgroundColor: connectionColor }}
+				/>
+			)}
+			{pinned && <span className="icon-[lucide--pin] h-3 w-3 shrink-0 opacity-80" />}
 			{icon != null &&
 				(typeof icon === "string" ? (
 					<span className={cn(icon, "h-3.5 w-3.5 shrink-0", active ? "text-primary" : "opacity-70")} />
@@ -115,12 +161,63 @@ function TabInner({
 					</span>
 				))}
 			{label}
+			{dirty && <span className="text-[11px] leading-none">*</span>}
 			{badge && badge > 0 ? (
 				<span className="inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-semibold leading-none text-white">
 					{badge > 99 ? "99+" : badge}
 				</span>
 			) : null}
 		</span>
+	);
+}
+
+/** 行内改名输入框：自动聚焦全选；Enter / 失焦提交，Esc 取消。点击不冒泡（避免触发切 tab / 拖拽）。 */
+function TabRenameInput({
+	initialLabel,
+	onCommit,
+	onCancel,
+}: {
+	initialLabel: string;
+	onCommit: (label: string) => void;
+	onCancel: () => void;
+}): JSX.Element {
+	const [value, setValue] = useState(initialLabel);
+	const inputRef = useRef<HTMLInputElement>(null);
+
+	useEffect(() => {
+		const el = inputRef.current;
+		if (el) {
+			el.focus();
+			el.select();
+		}
+	}, []);
+
+	const commit = () => {
+		const next = value.trim();
+		if (next) onCommit(next);
+		else onCancel();
+	};
+
+	return (
+		<input
+			ref={inputRef}
+			type="text"
+			value={value}
+			onChange={(e) => setValue(e.target.value)}
+			onPointerDown={(e) => e.stopPropagation()}
+			onClick={(e) => e.stopPropagation()}
+			onKeyDown={(e) => {
+				if (e.key === "Enter") {
+					e.stopPropagation();
+					commit();
+				} else if (e.key === "Escape") {
+					e.stopPropagation();
+					onCancel();
+				}
+			}}
+			onBlur={commit}
+			className="h-3.5 min-w-16 max-w-44 rounded-sm border border-primary/60 bg-background px-0.5 text-[11px] font-medium leading-none outline-none"
+		/>
 	);
 }
 
@@ -145,7 +242,12 @@ export function TabBar<T extends string>({
 	onRemove,
 	onReorder,
 	onOverflowChange,
+	variant = "tabs",
 	onContextMenu,
+	onDoubleClick,
+	editingKey = null,
+	onRenameCommit,
+	onRenameCancel,
 }: TabBarProps<T>): JSX.Element {
 	const layoutId = useId();
 	// 拖拽中：dragKey 为被拖动的页签，order 为拖拽过程中的临时顺序（提交前不触碰 props）
@@ -186,6 +288,8 @@ export function TabBar<T extends string>({
 	const [overflowKeys, setOverflowKeys] = useState<T[]>([]);
 	const responsive = onOverflowChange != null;
 
+	const isPanel = variant === "panel";
+
 	const recompute = useCallback(() => {
 		const row = rowRef.current;
 		const mz = measureRef.current;
@@ -197,13 +301,20 @@ export function TabBar<T extends string>({
 			if (k != null) widths.set(k, c.offsetWidth);
 		}
 		const widthOf = (key: T) => widths.get(key) ?? 0;
-		const next = computeOverflow(renderItems, value, avail, widthOf);
+		const overlap = isPanel ? 0 : TAB_OVERLAP;
+		const pinnedKeys = new Set(renderItems.filter((it) => it.pinned).map((it) => it.key));
+		// 正在改名的页签强制可见（与钉住同等优先级），避免编辑框被收进溢出菜单。
+		if (editingKey != null) pinnedKeys.add(editingKey);
+		const next = computeOverflow(renderItems, value, avail, widthOf, overlap, pinnedKeys);
 		setOverflowKeys((prev) => (sameKeys(prev, next) ? prev : next));
-	}, [renderItems, value]);
+	}, [isPanel, renderItems, value, editingKey]);
 
 	useEffect(() => {
 		if (!responsive) return;
-		recompute();
+		// 拖拽换序过程中跳过测量：dragKey 变化会让 recompute 反复失效重建，
+		// 拖拽结束后本次 effect 会重新调度一次兜底测量，保证最终溢出态正确。
+		if (dragging) return;
+		const timer = window.setTimeout(recompute, OVERFLOW_DEBOUNCE_MS);
 		const row = rowRef.current;
 		if (!row) return;
 		const ro = new ResizeObserver(() => {
@@ -213,9 +324,10 @@ export function TabBar<T extends string>({
 		ro.observe(row);
 		return () => {
 			ro.disconnect();
+			window.clearTimeout(timer);
 			if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
 		};
-	}, [responsive, recompute]);
+	}, [responsive, recompute, dragging]);
 
 	useEffect(() => {
 		onOverflowChange?.(overflowKeys);
@@ -228,7 +340,8 @@ export function TabBar<T extends string>({
 	return (
 		<div className={cn("group/tabbar relative z-10 min-w-0", className)}>
 			<div ref={rowRef} className="flex items-end overflow-visible px-3">
-				{visibleItems.map(({ key, label, icon, badge, removable }, index) => {
+				{visibleItems.map(
+					({ key, label, icon, badge, removable, dirty, pinned, connectionColor }, index) => {
 					const active = value === key;
 					const isDragged = dragKey === key;
 					// 激活页签置顶；非激活页签越靠近激活页签层级越高，向激活页签方向叠压
@@ -246,7 +359,7 @@ export function TabBar<T extends string>({
 						<div
 							key={key}
 							style={{ zIndex }}
-							draggable={onReorder != null}
+							draggable={onReorder != null && editingKey !== key}
 							onContextMenu={(e) => {
 								if (!onContextMenu) return;
 								e.preventDefault();
@@ -260,10 +373,11 @@ export function TabBar<T extends string>({
 							onDragEnd={endDrag}
 							onMouseEnter={() => setHoverKey(key)}
 							onMouseLeave={() => setHoverKey((prev) => (prev === key ? null : prev))}
-							onDrop={(e) => {
-								if (dragging) e.preventDefault();
+							onDoubleClick={(e) => {
+								if (editingKey === key) return;
+								onDoubleClick?.(e, key);
 							}}
-							className={cn("group/tab relative", index > 0 && "-ml-2", isDragged && "opacity-50")}
+							className={cn("group/tab relative", !isPanel && index > 0 && "-ml-2", isDragged && "opacity-50")}
 						>
 							<button
 								type="button"
@@ -273,14 +387,25 @@ export function TabBar<T extends string>({
 								// （浅黑/深白）。inline 优先级最高，杜绝回退。激活态无 border 宽度，不受影响。
 								style={{ borderColor: "color-mix(in oklab, var(--border) 70%, transparent)" }}
 								className={cn(
-									"relative flex w-full select-none items-center gap-1.5 whitespace-nowrap rounded-t-lg text-[11px] font-medium leading-none",
-									onReorder != null && "cursor-grab active:cursor-grabbing",
-									active
-										? "h-[29px] px-4 text-foreground"
-										: "h-[23px] border border-b-0 bg-muted px-4 text-muted-foreground hover:brightness-110 hover:text-foreground/80 dark:bg-secondary",
+									"relative flex w-full select-none items-center gap-1.5 whitespace-nowrap text-[11px] font-medium leading-none",
+									isPanel
+										? cn(
+												"h-6 rounded-md px-3 transition-colors",
+												onReorder != null && "cursor-grab active:cursor-grabbing",
+												active
+													? "bg-primary/10 text-primary"
+													: "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+											)
+										: cn(
+												"rounded-t-lg",
+												onReorder != null && "cursor-grab active:cursor-grabbing",
+												active
+													? "h-[29px] px-4 text-foreground"
+													: "h-[23px] border border-b-0 bg-muted px-4 text-muted-foreground hover:brightness-110 hover:text-foreground/80 dark:bg-secondary",
+											)
 								)}
 							>
-								{active && (
+								{active && !isPanel && (
 									// 激活指示器：用 layoutId 共享布局在页签间平滑滑动。borderColor 仍 inline 钉死
 									// 防 v4 currentColor 回退（闪烁根因是边框色、与此动画无关，已修复）。
 									<motion.span
@@ -291,14 +416,35 @@ export function TabBar<T extends string>({
 											suppressLayoutAnimation
 												? { duration: 0 }
 												: { type: "spring", stiffness: 480, damping: 36, mass: 0.8 }
-										}
+											}
 									/>
 								)}
-								<TabInner icon={icon} label={label} badge={badge} active={active} />
+								{editingKey === key && onRenameCommit != null ? (
+									<span
+										className="relative z-10 flex min-w-16 items-center"
+										onPointerDown={(e) => e.stopPropagation()}
+										onClick={(e) => e.stopPropagation()}
+									>
+										<TabRenameInput
+											initialLabel={label}
+											onCommit={(nextLabel) => onRenameCommit(key, nextLabel)}
+											onCancel={() => onRenameCancel?.()}
+										/>
+									</span>
+								) : (
+									<TabInner
+										icon={icon}
+										label={label}
+										badge={badge}
+										active={active}
+										dirty={dirty}
+										pinned={pinned}
+										connectionColor={connectionColor}
+									/>
+								)}
 							</button>
-							{removable && onRemove != null && hoverKey === key && !dragging && (
+							{removable && onRemove != null && hoverKey === key && !dragging && editingKey !== key && (
 								<span
-									role="button"
 									title="隐藏此面板"
 									aria-label="隐藏此面板"
 									onMouseDown={(e) => e.stopPropagation()}
@@ -308,7 +454,7 @@ export function TabBar<T extends string>({
 									}}
 									className="absolute -right-1 -top-1 z-20 flex h-3.5 w-3.5 cursor-pointer items-center justify-center rounded-full bg-muted-foreground/85 text-background shadow-sm hover:bg-foreground"
 								>
-									<span className="icon-[mdi--minus] h-2.5 w-2.5" />
+									<span className="icon-[lucide--minus] h-2.5 w-2.5" />
 								</span>
 							)}
 						</div>
@@ -323,16 +469,27 @@ export function TabBar<T extends string>({
 					aria-hidden
 					className="pointer-events-none absolute left-0 top-0 flex items-end opacity-0"
 				>
-					{renderItems.map(({ key, label, icon, badge }) => (
+					{renderItems.map(({ key, label, icon, badge, dirty, pinned, connectionColor }) => (
 						<div
 							key={key}
 							data-tabkey={key}
-							className="flex h-[23px] select-none items-center gap-1.5 whitespace-nowrap rounded-t-lg border border-b-0 px-4 text-[11px] font-medium leading-none"
+							className={cn(
+								"flex select-none items-center gap-1.5 whitespace-nowrap text-[11px] font-medium leading-none",
+								isPanel ? "h-6 rounded-md px-3" : "h-[23px] rounded-t-lg border border-b-0 px-4",
+							)}
 						>
-							<TabInner icon={icon} label={label} badge={badge} active={false} />
+							<TabInner
+								icon={icon}
+								label={label}
+								badge={badge}
+								active={false}
+								dirty={dirty}
+								pinned={pinned}
+								connectionColor={connectionColor}
+							/>
 						</div>
 					))}
-				</div>
+					</div>
 			)}
 		</div>
 	);

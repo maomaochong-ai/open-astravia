@@ -36,6 +36,10 @@ export interface QueryTabState {
 	readonly openTableMeta: OpenTableMeta | null;
 	/** V6-② 服务端翻页进行中（保持现有结果显示，分页按钮转 loading）。 */
 	readonly loadingPage: boolean;
+	/** V5.1：脏标记 —— SQL 文本自上次成功执行后被改动（未执行保存）；供标签栏「*」与关闭确认。 */
+	readonly dirty: boolean;
+	/** V5.1：钉住 —— 常驻标签条、不参与溢出收纳（可拖拽排序；右键/工具栏可切换）。 */
+	readonly pinned: boolean;
 }
 
 /** 新建一个空白查询标签；initial 覆盖默认字段（如打开表时预填 sql + openTableMeta）。 */
@@ -56,6 +60,8 @@ export function createQueryTab(
 		errorDetail: null,
 		openTableMeta: null,
 		loadingPage: false,
+		dirty: false,
+		pinned: false,
 		connectionName: null,
 		...initial,
 	};
@@ -101,4 +107,20 @@ export function patchQueryTab(
 	const index = tabs.findIndex((tab) => tab.id === id);
 	if (index === -1) return [...tabs];
 	return [...tabs.slice(0, index), { ...tabs[index], ...patch }, ...tabs.slice(index + 1)];
+}
+
+/**
+ * V5.1 批量关闭-其他：保留目标标签与所有 pinned 标签，其余移除（对齐 dbx 分区语义：固定标签常驻、不参与批量关闭）。
+ * 返回新数组（不修改入参）；目标不存在时退回仅移除除目标外非固定标签。
+ */
+export function closeOtherQueryTabs(tabs: readonly QueryTabState[], keepId: string): QueryTabState[] {
+	return tabs.filter((tab) => tab.id === keepId || tab.pinned);
+}
+
+/**
+ * V5.1 批量关闭-全部：只作用于非固定标签（固定标签常驻保留）。可能返回空数组，由调用方决定激活态。
+ * 返回新数组（不修改入参）。
+ */
+export function closeAllQueryTabs(tabs: readonly QueryTabState[]): QueryTabState[] {
+	return tabs.filter((tab) => tab.pinned);
 }
