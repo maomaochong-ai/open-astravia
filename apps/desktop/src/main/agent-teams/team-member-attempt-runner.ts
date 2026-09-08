@@ -11,8 +11,14 @@ import {
 	type TeamWorkItem,
 	teamMemberResultMessageId,
 } from "@vetta/agent-team";
-import type { AssistantMessage } from "@vetta/ai";
-import { type HistoryEntry, type PromptAttachmentRef, type RuntimeHost, readRuntimeFailure } from "@vetta/runtime-core";
+import { type AssistantMessage, isAIError } from "@vetta/ai";
+import {
+	type HistoryEntry,
+	type PromptAttachmentRef,
+	type RuntimeHost,
+	readRuntimeFailure,
+	runtimeFailureFromError,
+} from "@vetta/runtime-core";
 import { getAppLogger } from "../logger.js";
 import type { TeamCollaborationStore } from "./team-collaboration-store.js";
 import { findTeamAttemptResult } from "./team-member-result.js";
@@ -232,6 +238,7 @@ export class TeamMemberAttemptRunner {
 			seq: 0,
 			text: "",
 			rawAssistantStream: false,
+			toolExecutionEvents: [],
 		};
 		this.options.eventHub.beginTurn(runtimeState.sessionId, activeTurn);
 		signal?.addEventListener("abort", abortTarget, { once: true });
@@ -284,7 +291,10 @@ export class TeamMemberAttemptRunner {
 				failureCode: promptFailure?.code,
 			});
 		} catch (error) {
-			const failure = readRuntimeFailure(error) ?? promptFailure;
+			const failure =
+				readRuntimeFailure(error) ??
+				(isAIError(error) ? runtimeFailureFromError(error) : undefined) ??
+				promptFailure;
 			const terminal = classifyTeamAttemptTerminal({
 				hasPublishableMessage: false,
 				cancelled: signal?.aborted ?? false,

@@ -28,6 +28,8 @@ export interface TeamTaskControlHost {
 	cancelMemberTurn(sessionId: string, workItemId: string): void;
 	/** True once the user stopped this team session; every admission point must refuse. */
 	isStopped(teamSessionId: string): boolean;
+	/** Changes on every stop, so work admitted before a stop stays stale after a later user send. */
+	stopGeneration(teamSessionId: string): number;
 	authorizeTask(
 		session: TeamSessionDocument,
 		sourceMemberId: string,
@@ -109,17 +111,13 @@ export class TeamTaskControlService {
 		for (const [key, pending] of this.pendingExternalChanges) {
 			if (pending.teamSessionId === teamSessionId) this.pendingExternalChanges.delete(key);
 		}
-		for (const item of this.store.read(session).workItems) {
-			if (item.state !== "queued" && item.state !== "waiting" && item.state !== "attention-required") continue;
-			try {
-				await this.store.cancelIdle(session, item.id);
-			} catch (error) {
-				log.warn("Team work item could not be cancelled on stop", {
-					teamSessionId,
-					workItemId: item.id,
-					errorName: error instanceof Error ? error.name : "UnknownError",
-				});
-			}
+		try {
+			await this.store.cancelForTeamStop(session);
+		} catch (error) {
+			log.warn("Team work items could not be cancelled on stop", {
+				teamSessionId,
+				errorName: error instanceof Error ? error.name : "UnknownError",
+			});
 		}
 	}
 
@@ -153,6 +151,7 @@ export class TeamTaskControlService {
 		let resumed = 0;
 		for (const snapshot of this.store.read(session).workItems) {
 			const latestSession = await this.host.readSession(session.id);
+			if (this.host.isStopped(session.id)) return resumed;
 			const item = this.store.read(latestSession).workItems.find((candidate) => candidate.id === snapshot.id);
 			if (!item) continue;
 			if (item.state === "running") {
@@ -166,6 +165,7 @@ export class TeamTaskControlService {
 	}
 
 	async onWorkItemSettled(session: TeamSessionDocument, item: TeamWorkItem): Promise<void> {
+		if (this.host.isStopped(session.id)) return;
 		const key = executionKey(session.id, item.id);
 		const changes = this.pendingExternalChanges.get(key)?.changes ?? [];
 		this.pendingExternalChanges.delete(key);
@@ -199,7 +199,9 @@ export class TeamTaskControlService {
 	private async delegateTask(teamSessionId: string, input: TeamDelegateTaskRequest): Promise<TeamTaskSnapshot> {
 		// A leader turn that is still winding down after a stop must not admit new work.
 		if (this.host.isStopped(teamSessionId)) throw new Error("Team session was stopped");
+		const stopGeneration = this.host.stopGeneration(teamSessionId);
 		const { session, sourceMemberId } = await this.caller(teamSessionId, input);
+		this.assertAdmissionCurrent(teamSessionId, stopGeneration);
 		const target = this.host.resolveTarget(session, input.targetHandle);
 		if (!target) throw new Error(`Unknown team member handle: ${input.targetHandle}`);
 		this.authorize(session, sourceMemberId, target, "delegate");
@@ -212,6 +214,10 @@ export class TeamTaskControlService {
 			createdByParticipantId: sourceMemberId,
 			objective: input.objective,
 		});
+		if (!this.isAdmissionCurrent(teamSessionId, stopGeneration)) {
+			await this.store.cancelWorkItemForTeamStop(session, admitted.workItem.id);
+			throw new Error("Team session was stopped");
+		}
 		await this.host.onAdmitted(session, admitted.workItem, admitted.created);
 		// Admission is durable now. The caller's AbortSignal no longer owns this work.
 		if (admitted.workItem.state === "queued") this.start("initial", session, admitted.workItem);
@@ -258,7 +264,9 @@ export class TeamTaskControlService {
 		input: TeamTaskRequest & { readonly mode: "continue" | "retry" },
 	): Promise<TeamTaskSnapshot> {
 		if (this.host.isStopped(teamSessionId)) throw new Error("Team session was stopped");
+		const stopGeneration = this.host.stopGeneration(teamSessionId);
 		const { session, sourceMemberId } = await this.caller(teamSessionId, input);
+		this.assertAdmissionCurrent(teamSessionId, stopGeneration);
 		const snapshot = this.snapshot(session, input.teamTaskId);
 		const item = snapshot.workItem;
 		this.authorize(session, sourceMemberId, item.assignedToParticipantId, "resume");
@@ -391,8 +399,14 @@ export class TeamTaskControlService {
 		mode: "continue" | "retry",
 		trigger: "manual" | "automatic" | "external-change",
 	): Promise<boolean> {
+		if (this.host.isStopped(session.id)) return false;
+		const stopGeneration = this.host.stopGeneration(session.id);
 		const result = await this.store.requeue(session, item.id, item.revision);
 		if (!result.requeued) return false;
+		if (!this.isAdmissionCurrent(session.id, stopGeneration)) {
+			await this.store.cancelWorkItemForTeamStop(session, result.workItem.id);
+			return false;
+		}
 		try {
 			this.host.onRequeued(session, result.workItem, trigger);
 		} catch (error) {
@@ -404,6 +418,14 @@ export class TeamTaskControlService {
 		}
 		this.start(mode, session, result.workItem);
 		return true;
+	}
+
+	private isAdmissionCurrent(teamSessionId: string, stopGeneration: number): boolean {
+		return !this.host.isStopped(teamSessionId) && this.host.stopGeneration(teamSessionId) === stopGeneration;
+	}
+
+	private assertAdmissionCurrent(teamSessionId: string, stopGeneration: number): void {
+		if (!this.isAdmissionCurrent(teamSessionId, stopGeneration)) throw new Error("Team session was stopped");
 	}
 
 	private matchesExternalWait(

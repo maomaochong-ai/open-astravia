@@ -13,7 +13,7 @@ import {
 	type TeamSessionDocument,
 	type TeamWorkItem,
 } from "@vetta/agent-team";
-import { createAssistantMessage } from "@vetta/ai";
+import { createAssistantMessage, providerModelNotFoundError } from "@vetta/ai";
 import type { CodingAgentPinnedModelContext } from "@vetta/coding-agent/runtime";
 import {
 	type ConversationDocument,
@@ -556,6 +556,93 @@ describe("Team member concurrency", () => {
 		expect(fixture.runtime.prompt).toHaveBeenCalledTimes(1);
 	});
 
+	it("durably cancels an orphaned running member before restart and only resumes on a new user turn", async () => {
+		const fixture = await createFixture();
+		const [member] = fixture.members;
+		const coordinationId = fixture.session.coordinationRuntime!.sessionId;
+		const workItemId = `work:paused:${member}`;
+		const attemptId = `attempt:${workItemId}:1`;
+		await fixture.runtime.appendSessionMetadataEntry(coordinationId, "agent-team.work-item.v1", {
+			id: workItemId,
+			requestTurnId: "paused-before-restart",
+			createdByParticipantId: fixture.session.leaderMemberId,
+			assignedToParticipantId: member,
+			objective: "must not resume after stop",
+			contextEntryIds: [],
+			state: "running",
+			currentAttemptId: attemptId,
+			createdAt: 1,
+			updatedAt: 1,
+			revision: 1,
+		});
+		await fixture.runtime.appendSessionMetadataEntry(coordinationId, "agent-team.member-attempt.v1", {
+			id: attemptId,
+			workItemId,
+			participantConversationId: fixture.session.memberRuntime[member]!.sessionId,
+			sourceTurnId: "paused-source",
+			attempt: 1,
+			mode: "initial",
+			state: "running",
+			lastProgressAt: 1,
+		});
+
+		await fixture.service.abort(fixture.session.id);
+
+		const stopped = await fixture.service.readCollaborationState(fixture.session.id);
+		expect(stopped.workItems[0]?.state).toBe("cancelled");
+		expect(stopped.attempts[0]?.state).toBe("cancelled");
+		fixture.stopRuntime();
+		const restored = fixture.restartService();
+		await restored.read(fixture.session.id, fixture.session.coordinationRuntime!.sessionPath);
+		expect(fixture.runtime.prompt).not.toHaveBeenCalled();
+
+		const next = fixture.turn(member, "Explicitly resume with a new user turn");
+		const send = restored.send(fixture.session.id, {
+			requestId: "explicit-resume",
+			text: "Explicitly resume with a new user turn",
+			targetMemberIds: [member],
+		});
+		await next.started.promise;
+		next.finish.resolve();
+		await send;
+		expect(fixture.runtime.prompt).toHaveBeenCalledTimes(1);
+	});
+
+	it("interrupts member runtimes without waiting for durable stop cleanup", async () => {
+		const fixture = await createFixture();
+		const [member] = fixture.members;
+		const coordinationId = fixture.session.coordinationRuntime!.sessionId;
+		await fixture.runtime.appendSessionMetadataEntry(coordinationId, "agent-team.work-item.v1", {
+			id: `work:queued:${member}`,
+			requestTurnId: "queued-before-stop",
+			createdByParticipantId: fixture.session.leaderMemberId,
+			assignedToParticipantId: member,
+			objective: "queued work",
+			contextEntryIds: [],
+			state: "queued",
+			createdAt: 1,
+			updatedAt: 1,
+			revision: 0,
+		});
+		const append = fixture.runtime.appendSessionMetadataEntry;
+		const cleanupStarted = deferred();
+		const releaseCleanup = deferred();
+		vi.spyOn(fixture.runtime, "appendSessionMetadataEntry").mockImplementation(async (id, type, data) => {
+			if (type === "agent-team.work-item.v1" && isTeamWorkItem(data) && data.state === "cancelled") {
+				cleanupStarted.resolve();
+				await releaseCleanup.promise;
+			}
+			await append(id, type, data);
+		});
+
+		const stopping = fixture.service.abort(fixture.session.id);
+		await cleanupStarted.promise;
+		expect(fixture.runtime.abort).toHaveBeenCalledWith(fixture.session.memberRuntime[member]!.sessionId);
+		expect(fixture.runtime.abort).toHaveBeenCalledWith(coordinationId);
+		releaseCleanup.resolve();
+		await stopping;
+	});
+
 	it("enforces leader ownership and cancels one task without affecting its sibling", async () => {
 		const fixture = await createFixture();
 		const [leader, first] = fixture.members;
@@ -791,6 +878,77 @@ describe("Team member concurrency", () => {
 		const state = await fixture.service.readCollaborationState(fixture.session.id);
 		expect(state.attempts.map((attempt) => attempt.state)).toEqual(["waiting-retry", "completed"]);
 		expect(fixture.runtime.retry).toHaveBeenCalledTimes(1);
+	});
+
+	it("drops a scheduled automatic retry when the user stops and reopens the team", async () => {
+		vi.useFakeTimers();
+		try {
+			const fixture = await createFixture();
+			const [member] = fixture.members;
+			const initial = fixture.turn(member, "scheduled-before-stop");
+			initial.failure = {
+				code: "provider_network_timeout",
+				message: "timeout",
+				retryable: true,
+				origin: "provider",
+				details: { provider: "openai", retryAfterMs: 1_000 },
+			};
+			const send = fixture.service.send(fixture.session.id, {
+				requestId: "scheduled-before-stop",
+				text: "scheduled-before-stop",
+				targetMemberIds: [member],
+			});
+			await initial.started.promise;
+			initial.finish.resolve();
+			await send;
+			expect((await fixture.service.readCollaborationState(fixture.session.id)).workItems[0]?.state).toBe("waiting");
+
+			await fixture.service.abort(fixture.session.id);
+			fixture.stopRuntime();
+			const restored = fixture.restartService();
+			await restored.read(fixture.session.id, fixture.session.coordinationRuntime!.sessionPath);
+			await vi.advanceTimersByTimeAsync(1_000);
+
+			expect(fixture.runtime.retry).not.toHaveBeenCalled();
+			expect((await restored.readCollaborationState(fixture.session.id)).workItems[0]?.state).toBe("cancelled");
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("does not let an external provider change revive stopped work after reopen", async () => {
+		const fixture = await createFixture();
+		const [member] = fixture.members;
+		const initial = fixture.turn(member, "external-wake-before-stop");
+		initial.failure = {
+			code: "provider_unauthorized",
+			message: "unauthorized",
+			retryable: false,
+			origin: "provider",
+			details: { provider: "openai" },
+		};
+		const send = fixture.service.send(fixture.session.id, {
+			requestId: "external-wake-before-stop",
+			text: "external-wake-before-stop",
+			targetMemberIds: [member],
+		});
+		await initial.started.promise;
+		initial.finish.resolve();
+		await send;
+		expect((await fixture.service.readCollaborationState(fixture.session.id)).workItems[0]?.state).toBe(
+			"attention-required",
+		);
+
+		await fixture.service.abort(fixture.session.id);
+		fixture.stopRuntime();
+		const restored = fixture.restartService();
+		await restored.read(fixture.session.id, fixture.session.coordinationRuntime!.sessionPath);
+
+		await expect(
+			restored.notifyExternalConditionChanged({ category: "authentication", provider: "openai" }),
+		).resolves.toBe(0);
+		expect(fixture.runtime.retry).not.toHaveBeenCalled();
+		expect((await restored.readCollaborationState(fixture.session.id)).workItems[0]?.state).toBe("cancelled");
 	});
 
 	it("persists a queued second request without starting a second turn in the same member", async () => {
@@ -1060,6 +1218,77 @@ describe("Team member concurrency", () => {
 		);
 		expect(messages).toHaveLength(4);
 	});
+
+	it("surfaces an unavailable model from a reopened Team instead of completing the send as interrupted", async () => {
+		const fixture = await createFixture();
+		const [member] = fixture.members;
+		const modelKey = "cli-proxy-api.google/gemini-3.8-flash-high";
+		await fixture.service.updateModelSettings(fixture.session.id, { modelKey });
+		fixture.stopRuntime();
+		const restored = fixture.restartService();
+		await restored.read(fixture.session.id, fixture.session.coordinationRuntime!.sessionPath);
+		vi.mocked(fixture.runtime.updateSettings).mockRejectedValueOnce(
+			providerModelNotFoundError("cli-proxy-api.google", "gemini-3.8-flash-high"),
+		);
+
+		await expect(
+			restored.send(fixture.session.id, {
+				requestId: "stale-model-after-reopen",
+				text: "Use the saved model",
+				targetMemberIds: [member],
+			}),
+		).rejects.toMatchObject({
+			code: "AI_MODEL_NOT_FOUND",
+			message: `Model ${modelKey} is not available`,
+			retryable: false,
+		});
+		const collaboration = await restored.readCollaborationState(fixture.session.id);
+		expect(collaboration.workItems[0]).toMatchObject({
+			assignedToParticipantId: member,
+			state: "failed",
+			lastIssue: {
+				category: "provider-unavailable",
+				retryability: "never",
+				code: "AI_MODEL_NOT_FOUND",
+				provider: "cli-proxy-api.google",
+				modelId: "gemini-3.8-flash-high",
+			},
+		});
+		expect(collaboration.attempts[0]).toMatchObject({
+			state: "non-retryable-failure",
+			issue: { code: "AI_MODEL_NOT_FOUND" },
+		});
+		expect(fixture.runtime.prompt).not.toHaveBeenCalled();
+	});
+
+	it("lets healthy members finish when one member rejects an unavailable model and fails the overall send", async () => {
+		const fixture = await createFixture();
+		const [unavailableMember, healthyMember] = fixture.members;
+		const unavailableRuntimeId = fixture.session.memberRuntime[unavailableMember]!.sessionId;
+		vi.mocked(fixture.runtime.updateSettings).mockImplementation(async (sessionId) => {
+			if (sessionId === unavailableRuntimeId) {
+				throw providerModelNotFoundError("removed-provider", "removed-model");
+			}
+		});
+		const healthyTurn = fixture.turn(healthyMember, "mixed-model-availability");
+		const send = fixture.service.send(fixture.session.id, {
+			requestId: "mixed-model-availability",
+			text: "mixed-model-availability",
+			targetMemberIds: [unavailableMember, healthyMember],
+			modelKey: "removed-provider/removed-model",
+		});
+		await healthyTurn.started.promise;
+		healthyTurn.finish.resolve();
+
+		await expect(send).rejects.toMatchObject({ code: "AI_MODEL_NOT_FOUND" });
+		const collaboration = await fixture.service.readCollaborationState(fixture.session.id);
+		expect(
+			Object.fromEntries(collaboration.workItems.map((item) => [item.assignedToParticipantId, item.state])),
+		).toEqual({
+			[unavailableMember]: "failed",
+			[healthyMember]: "completed",
+		});
+	});
 });
 
 async function createFixture(extensions?: AgentTeamExtensionRegistry) {
@@ -1132,6 +1361,7 @@ async function createFixture(extensions?: AgentTeamExtensionRegistry) {
 		}),
 		getSessionPath: (id: string) => (activeSessions.has(id) ? `C:/runtime/${id}.jsonl` : undefined),
 		setExecutionMode: vi.fn(async () => undefined),
+		updateSettings: vi.fn(async () => undefined),
 		createObservationScope: (context: RuntimeObservationContext) => observationPublisher.scope(context),
 		disposeSession: vi.fn(async () => undefined),
 		subscribe: () => () => undefined,

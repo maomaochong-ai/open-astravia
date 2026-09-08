@@ -71,6 +71,71 @@ describe("TeamTurnCoordinator", () => {
 
 		expect(deliverSessionContext).not.toHaveBeenCalled();
 	});
+
+	it("rejects a delegation whose session lookup finishes after the user stopped the team", async () => {
+		let releaseRead!: () => void;
+		const readStarted = deferred();
+		const readSession = vi.fn(async () => {
+			readStarted.resolve();
+			await new Promise<void>((resolve) => {
+				releaseRead = resolve;
+			});
+			return session;
+		});
+		const enqueueAssignment = vi.fn();
+		const collaborationStore = {
+			enqueueAssignment,
+			cancelForTeamStop: vi.fn(async () => undefined),
+		} as unknown as TeamCollaborationStore;
+		const runtime = {
+			abort: vi.fn(async () => undefined),
+			hasSessionExtension: vi.fn(() => false),
+		} as unknown as RuntimeHost;
+		const coordinator = new TeamTurnCoordinator({
+			runtime: () => runtime,
+			extensions: {
+				orchestrationPolicies: new Map([
+					[
+						"leader-delegates-v1",
+						{
+							id: "leader-delegates-v1",
+							resolveTargets: () => [],
+						},
+					],
+				]),
+			} as unknown as AgentTeamExtensionRegistry,
+			collaborationStore,
+			sessionState: {
+				get: () => session,
+			} as unknown as TeamSessionStateRepository,
+			eventHub: {} as TeamSessionEventHub,
+			readSession,
+			readDocument: async () => ({
+				schemaVersion: AGENT_TEAM_SCHEMA_VERSION,
+				revision: 0,
+				agents: [],
+				teams: [],
+			}),
+			observations: () => undefined,
+			publishSessionUpdated: () => undefined,
+		});
+		const delegation = coordinator.taskControls(session.id).delegateTask({
+			sourceRuntimeSessionId: "leader-runtime",
+			sourceTurnId: "leader-turn",
+			toolCallId: "delegate-call",
+			signal: new AbortController().signal,
+			requestId: "late-delegation",
+			targetHandle: "member",
+			objective: "must not be admitted",
+		});
+		await readStarted.promise;
+
+		await coordinator.abort(session.id);
+		releaseRead();
+
+		await expect(delegation).rejects.toThrow("stopped");
+		expect(enqueueAssignment).not.toHaveBeenCalled();
+	});
 });
 
 const session: TeamSessionDocument = {
@@ -93,6 +158,12 @@ const session: TeamSessionDocument = {
 			agentProfileRevision: 1,
 			deliveredEventIds: [],
 		},
+		member: {
+			sessionId: "member-runtime",
+			sessionPath: "C:/member.jsonl",
+			agentProfileRevision: 1,
+			deliveredEventIds: [],
+		},
 	},
 };
 
@@ -106,3 +177,11 @@ const attempt: TeamMemberTurnAttempt = {
 	state: "running",
 	lastProgressAt: 1,
 };
+
+function deferred() {
+	let resolve!: () => void;
+	const promise = new Promise<void>((done) => {
+		resolve = done;
+	});
+	return { promise, resolve };
+}

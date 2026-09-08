@@ -52,6 +52,7 @@ export class TeamTurnCoordinator {
 	private readonly activeSends = new Map<string, Set<AbortController>>();
 	/** Sessions the user stopped. Cleared only by the next user send. */
 	private readonly stopped = new Set<string>();
+	private readonly stopGenerations = new Map<string, number>();
 	private readonly taskControl: TeamTaskControlService;
 	private readonly messageControl: TeamMessageControlService;
 	private memberAttemptRunner: TeamMemberAttemptRunner | undefined;
@@ -63,6 +64,7 @@ export class TeamTurnCoordinator {
 			runMemberTurn: (input) => this.scheduleMemberTurn(input),
 			cancelMemberTurn: (sessionId, workItemId) => this.memberCancellations.get(sessionId)?.get(workItemId)?.abort(),
 			isStopped: (sessionId) => this.stopped.has(sessionId),
+			stopGeneration: (sessionId) => this.stopGenerations.get(sessionId) ?? 0,
 			resolveTarget: (session, handle) => resolveMemberByHandle(this.syntheticTeam(session), handle)?.id,
 			authorizeTask: (session, sourceMemberId, targetMemberId, action) => {
 				const team = this.syntheticTeam(session);
@@ -183,11 +185,14 @@ export class TeamTurnCoordinator {
 	 */
 	async abort(sessionId: string): Promise<void> {
 		this.stopped.add(sessionId);
+		this.stopGenerations.set(sessionId, (this.stopGenerations.get(sessionId) ?? 0) + 1);
 		for (const controller of this.activeSends.get(sessionId) ?? []) controller.abort();
 		for (const controller of this.memberCancellations.get(sessionId)?.values() ?? []) controller.abort();
 		const session = this.options.sessionState.get(sessionId);
-		if (session) await this.taskControl.stopTeam(session);
-		await this.abortRuntimes(session);
+		await Promise.all([
+			session ? this.taskControl.stopTeam(session) : Promise.resolve(),
+			this.abortRuntimes(session),
+		]);
 		log.info("team session stopped", { teamSessionId: sessionId });
 	}
 
@@ -501,7 +506,9 @@ export class TeamTurnCoordinator {
 
 	private async scheduleMemberTurn(input: TeamMemberTurnRequest): Promise<TeamSessionDocument> {
 		if (this.stopped.has(input.teamSessionId)) throw new Error("Team session was stopped");
+		const stopGeneration = this.stopGenerations.get(input.teamSessionId) ?? 0;
 		const session = await this.options.readSession(input.teamSessionId);
+		if (!this.isAdmissionCurrent(input.teamSessionId, stopGeneration)) throw new Error("Team session was stopped");
 		const modelKey = input.modelKey ?? session.modelSettings?.modelKey;
 		const reasoning =
 			input.reasoning ?? (input.modelKey === undefined ? session.modelSettings?.reasoning : undefined);
@@ -519,6 +526,10 @@ export class TeamTurnCoordinator {
 			attachments: resolvedInput.attachments,
 			kind: resolvedInput.workItemKind,
 		});
+		if (!this.isAdmissionCurrent(input.teamSessionId, stopGeneration)) {
+			await this.options.collaborationStore.cancelWorkItemForTeamStop(session, admission.workItem.id);
+			throw new Error("Team session was stopped");
+		}
 		if (admission.created) {
 			this.options.observations(session)?.publishWorkItem({
 				teamId: session.teamId,
@@ -537,6 +548,7 @@ export class TeamTurnCoordinator {
 				waitingMemberId: resolvedInput.waitingMemberId,
 				signal: resolvedInput.signal,
 				run: async () => {
+					if (!this.isAdmissionCurrent(session.id, stopGeneration)) throw new Error("Team session was stopped");
 					const latest = this.options.sessionState.get(session.id) ?? session;
 					const workItem = this.options.collaborationStore
 						.read(latest)
@@ -590,6 +602,10 @@ export class TeamTurnCoordinator {
 
 	private runMemberTurn(input: TeamMemberTurnRequest): Promise<TeamSessionDocument> {
 		return this.getAttemptRunner().run(input);
+	}
+
+	private isAdmissionCurrent(sessionId: string, stopGeneration: number): boolean {
+		return !this.stopped.has(sessionId) && (this.stopGenerations.get(sessionId) ?? 0) === stopGeneration;
 	}
 	async listMembers(teamSessionId: string, sourceRuntimeSessionId: string) {
 		const session = await this.options.readSession(teamSessionId);

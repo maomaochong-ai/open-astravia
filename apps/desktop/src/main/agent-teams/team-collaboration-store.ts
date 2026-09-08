@@ -425,6 +425,30 @@ export class TeamCollaborationStore {
 		});
 	}
 
+	/**
+	 * Places a mutation barrier behind every already-admitted write and makes all
+	 * non-terminal work durable as cancelled. This is stronger than cancelling an
+	 * individual idle task: a process restart must not recover a running attempt
+	 * after the user stopped the whole Team.
+	 */
+	cancelForTeamStop(session: TeamSessionDocument): Promise<void> {
+		return this.mutations.run(session.id, async () => {
+			const state = this.read(session);
+			for (const item of state.workItems) {
+				await this.appendTeamStopCancellation(session, state, item);
+			}
+		});
+	}
+
+	/** Cancels one stale admission without touching work from a later user turn. */
+	cancelWorkItemForTeamStop(session: TeamSessionDocument, workItemId: string): Promise<void> {
+		return this.mutations.run(session.id, async () => {
+			const state = this.read(session);
+			const item = state.workItems.find((candidate) => candidate.id === workItemId);
+			if (item) await this.appendTeamStopCancellation(session, state, item);
+		});
+	}
+
 	cancelIdle(session: TeamSessionDocument, workItemId: string): Promise<void> {
 		return this.mutations.run(session.id, async () => {
 			const item = this.read(session).workItems.find((candidate) => candidate.id === workItemId);
@@ -453,6 +477,28 @@ export class TeamCollaborationStore {
 			await this.append(session, "agent-team.work-item.v1", next);
 			return { workItem: next, requeued: true };
 		});
+	}
+
+	private async appendTeamStopCancellation(
+		session: TeamSessionDocument,
+		state: TeamCollaborationState,
+		item: TeamWorkItem,
+	): Promise<void> {
+		if (item.state === "completed" || item.state === "failed" || item.state === "cancelled") return;
+		const now = Date.now();
+		const attempt = state.attempts.find((candidate) => candidate.id === item.currentAttemptId);
+		if (attempt?.state === "running") {
+			await this.append(session, "agent-team.member-attempt.v1", {
+				...attempt,
+				state: "cancelled",
+				lastProgressAt: now,
+			});
+		}
+		await this.append(
+			session,
+			"agent-team.work-item.v1",
+			transitionTeamWorkItem(item, { state: "cancelled", updatedAt: now }),
+		);
 	}
 }
 

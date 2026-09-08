@@ -108,6 +108,47 @@ describe("TeamCollaborationStore", () => {
 		expect(store.read(session()).attempts).toHaveLength(1);
 	});
 
+	it("makes running and queued work durably terminal at the team stop barrier", async () => {
+		const store = createStore();
+		const running = await store.begin({ ...workInput(), sourceTurnId: "turn", mode: "initial" });
+		await store.enqueue({
+			...workInput(),
+			requestId: "queued-request",
+			objective: "Queued behind the running task",
+		});
+
+		await store.cancelForTeamStop(session());
+
+		const stopped = store.read(session());
+		expect(stopped.workItems.map((item) => item.state)).toEqual(["cancelled", "cancelled"]);
+		expect(stopped.attempts).toMatchObject([{ id: running.attempt.id, state: "cancelled" }]);
+		await expect(
+			store.settle(
+				session(),
+				running.workItem,
+				running.attempt,
+				classifyTeamAttemptTerminal({ hasPublishableMessage: false, cancelled: true }),
+			),
+		).resolves.toMatchObject({ id: running.workItem.id, state: "cancelled" });
+	});
+
+	it("cancels a stale late admission without cancelling work from a later user turn", async () => {
+		const store = createStore();
+		const stale = await store.enqueue(workInput());
+		const current = await store.enqueue({
+			...workInput(),
+			requestId: "current-request",
+			objective: "Current user turn",
+		});
+
+		await store.cancelWorkItemForTeamStop(session(), stale.workItem.id);
+
+		expect(store.read(session()).workItems).toMatchObject([
+			{ id: stale.workItem.id, state: "cancelled" },
+			{ id: current.workItem.id, state: "queued" },
+		]);
+	});
+
 	it("completes a waiting attempt from an already durable public result", async () => {
 		const store = createStore();
 		const running = await store.begin({ ...workInput(), sourceTurnId: "turn", mode: "initial" });
