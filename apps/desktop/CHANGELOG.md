@@ -10,6 +10,8 @@
 
 ### Fixed
 
+- 插件更新或重载期间若 Renderer 与主进程的 IPC 响应因生命周期切换返回 `AbortError`，现在会核对插件的 `activeVersion`；确认新版本已经生效时按成功处理，不再把已完成的更新显示为失败。
+
 - 插件重载时会清理旧 activation 由 Module Federation 注入的样式链接，避免已停用版本的 CSS 覆盖当前版本。
 
 - GitHub 能力市场同步失败时会在主进程日志中记录来源、同步阶段、错误码、缓存回退状态和原始异常，避免界面只显示 `sync-failed` 而无法排查具体原因。
