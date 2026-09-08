@@ -82,7 +82,11 @@ export const PluginServiceProviderManifestSchema = Type.Object(
 		id: PluginIdSchema,
 		runtime: Type.Object(
 			{
+				/** `managed-binary` is the backwards-compatible default. */
+				kind: Type.Optional(Type.Union([Type.Literal("managed-binary"), Type.Literal("host-node")])),
 				version: PluginVersionSchema,
+				/** Entry script relative to the installed runtime (required for host-node). */
+				entry: Type.Optional(Type.String({ minLength: 1, maxLength: 512 })),
 				platforms: Type.Record(
 					Type.String({ pattern: "^(win32|darwin|linux)-(x64|arm64)$" }),
 					PluginServicePlatformSchema,
@@ -313,6 +317,7 @@ export type PluginCliProviderManifest = Static<typeof PluginCliProviderManifestS
 export type PluginServiceArtifact = Static<typeof PluginServiceArtifactSchema>;
 export type PluginServicePlatform = Static<typeof PluginServicePlatformSchema>;
 export type PluginServiceProviderManifest = Static<typeof PluginServiceProviderManifestSchema>;
+export type PluginServiceRuntimeKind = "managed-binary" | "host-node";
 export type PluginProvidersManifest = Static<typeof PluginProvidersManifestSchema>;
 export type PluginNetworkManifest = Static<typeof PluginNetworkManifestSchema>;
 export type PluginBrowserManifest = Static<typeof PluginBrowserManifestSchema>;

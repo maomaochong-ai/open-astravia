@@ -15,6 +15,7 @@ import {
 	type PluginBrowserManifest,
 	type PluginCliProviderManifest,
 	type PluginServiceProviderManifest,
+	type PluginServiceRuntimeKind,
 	type PluginManifest,
 	type PluginManifestInput,
 	type PluginMcpServerConfig,
@@ -50,6 +51,7 @@ export type {
 	PluginServiceArtifact,
 	PluginServicePlatform,
 	PluginServiceProviderManifest,
+	PluginServiceRuntimeKind,
 	PluginManifest,
 	PluginManifestInput,
 	PluginMcpServerConfig,
@@ -227,6 +229,13 @@ function normalizeServiceProviders(
 	return providers.map((provider) => {
 		if (ids.has(provider.id)) throw new Error(`Duplicate service provider id: ${provider.id}`);
 		ids.add(provider.id);
+		const runtimeKind: PluginServiceRuntimeKind = provider.runtime.kind ?? "managed-binary";
+		const entry = provider.runtime.entry
+			? validatePluginRelativePath(provider.runtime.entry, `providers.services.${provider.id}.runtime.entry`)
+			: undefined;
+		if (runtimeKind === "host-node" && !entry) {
+			throw new Error(`Host-node service must declare runtime.entry: ${provider.id}`);
+		}
 		const platforms: PluginServiceProviderManifest["runtime"]["platforms"] = {};
 		for (const [platformTag, platform] of Object.entries(provider.runtime.platforms)) {
 			const destinations = new Set<string>();
@@ -268,9 +277,14 @@ function normalizeServiceProviders(
 			templateDestinations.add(destination);
 			return { source, destination, mode: template.mode };
 		});
+		const normalizedRuntime: PluginServiceProviderManifest["runtime"] = {
+			version: provider.runtime.version,
+			platforms,
+			...(runtimeKind === "host-node" ? { kind: runtimeKind, entry } : provider.runtime.kind ? { kind: runtimeKind } : {}),
+		};
 		return {
 			id: provider.id,
-			runtime: { version: provider.runtime.version, platforms },
+			runtime: normalizedRuntime,
 			credentials,
 			templates,
 			process: {
