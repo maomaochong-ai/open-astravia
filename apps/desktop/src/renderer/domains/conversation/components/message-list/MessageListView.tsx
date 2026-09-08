@@ -62,6 +62,7 @@ export function MessageListView({
 		waitingForResponse,
 		tailMessageId,
 		participantsById,
+		participants,
 		context,
 		onTeamMemberOpen,
 	} = model;
@@ -128,6 +129,7 @@ export function MessageListView({
 						participant={message.kind === "agent" ? participantsById.get(message.authorId) : undefined}
 						pendingLabel={message.kind === "agent" && message.phase === "pending" ? pendingLabel : undefined}
 						userMessageActions={context.userMessageActions}
+						participants={participants}
 						onTeamMemberOpen={onTeamMemberOpen}
 					/>
 					{showForkOrigin && sourceUser?.kind === "user" ? <ForkOriginBanner sourceMessage={sourceUser} /> : null}
@@ -146,6 +148,7 @@ export function MessageListView({
 			pendingLabel,
 			tailMessageId,
 			onTeamMemberOpen,
+			participants,
 		],
 	);
 	const footer = useMemo(

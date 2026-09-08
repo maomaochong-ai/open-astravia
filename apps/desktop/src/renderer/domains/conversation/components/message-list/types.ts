@@ -38,6 +38,7 @@ export interface MessageListModel {
 	waitingForResponse: boolean;
 	tailMessageId: string | null;
 	participantsById: ReadonlyMap<string, ConversationParticipantViewModel>;
+	participants: readonly ConversationParticipantViewModel[];
 	context: NonNullable<MessageListProps["context"]>;
 	onTeamMemberOpen?: MessageListProps["onTeamMemberOpen"];
 }

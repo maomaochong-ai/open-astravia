@@ -4,10 +4,7 @@ import {
 	getBuiltinMcpPresetByName,
 	resolveMcpPresetIconUrl,
 } from "@domains/settings/mcp/builtin-mcp-presets";
-import {
-	type InlineTokenPiece,
-	type InlineTokenSupport,
-} from "@vetta/theme-ui/chat";
+import { type InlineTokenPiece, type InlineTokenSupport } from "@vetta/theme-ui/chat";
 import { memo, useMemo } from "react";
 
 interface MarkdownContentProps {
@@ -25,11 +22,22 @@ interface MarkdownContentProps {
 		getImageLabel: (path: string) => string;
 		getSkill?: (name: string) => { label: string; icon?: string } | undefined;
 		getScene?: (name: string) => { label: string; icon?: string } | undefined;
+		memberMentions?: readonly {
+			participantId: string;
+			handle: string;
+			start: number;
+			end: number;
+		}[];
+		getMember?: (participantId: string) => { label: string; avatar?: string; meta?: string } | undefined;
 	};
 }
 
 /** 语法住在 shared/lib/input-tokens，theme-ui 只认结构，因此解析器由宿主注入。 */
-const parseTokens = (text: string): InlineTokenPiece[] => parseInputSegments(text).segments;
+function parseTokens(text: string): InlineTokenPiece[] {
+	return parseInputSegments(text).segments.flatMap((piece): InlineTokenPiece[] =>
+		piece.kind === "member" ? [{ kind: "text", text: `@${piece.handle}` }] : [piece],
+	);
+}
 
 /** 连接器的展示名与 logo 来自内置预设表；查不到（已删除的条目）就用真实名兜底。 */
 function lookupConnector(name: string): { label: string; iconUrl?: string } | undefined {
@@ -56,10 +64,19 @@ export const MarkdownContent = memo(function MarkdownContent({
 			inlineTokens
 				? {
 						parse: parseTokens,
+						...(inlineTokens.memberMentions?.length
+							? {
+									annotations: inlineTokens.memberMentions.map((mention) => ({
+										kind: "member" as const,
+										...mention,
+									})),
+								}
+							: {}),
 						getImageLabel: inlineTokens.getImageLabel,
 						getConnector: lookupConnector,
 						...(inlineTokens.getSkill ? { getSkill: inlineTokens.getSkill } : {}),
 						...(inlineTokens.getScene ? { getScene: inlineTokens.getScene } : {}),
+						...(inlineTokens.getMember ? { getMember: inlineTokens.getMember } : {}),
 					}
 				: undefined,
 		[inlineTokens],

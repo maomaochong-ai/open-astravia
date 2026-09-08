@@ -16,6 +16,7 @@ import {
 	type TeamTaskControlPort,
 	type TeamWorkItem,
 	teamUserMessageId,
+	validateTeamMessageMentions,
 } from "@vetta/agent-team";
 import type { PromptAttachmentRef, RuntimeHost } from "@vetta/runtime-core";
 import { stopSessionBackgroundWork } from "../agent-runtime/stop-session-work.js";
@@ -234,9 +235,11 @@ export class TeamTurnCoordinator {
 		const admission = await this.options.sessionState.coordinateLoaded(sessionId, async (current) => {
 			signal.throwIfAborted();
 			const team = this.syntheticTeam(current);
+			validateTeamMessageMentions(team, input);
 			const orchestration = this.options.extensions.orchestrationPolicies.get(team.orchestrationPolicyId);
 			if (!orchestration) throw new Error(`Unknown team orchestration policy: ${team.orchestrationPolicyId}`);
 			const targets = orchestration.resolveTargets({ team, requestedMemberIds: input.targetMemberIds });
+			const requestedParticipantIds = [...new Set(input.targetMemberIds ?? [])];
 			this.options.observations(current)?.publishRouting({
 				teamId: current.teamId,
 				coordinationConversationId: current.coordinationRuntime?.sessionId ?? current.id,
@@ -261,7 +264,13 @@ export class TeamTurnCoordinator {
 			) {
 				throw new Error(`Request id already used with different content: ${input.requestId}`);
 			}
-			if (existingRouting && !sameMemberIds(existingRouting.addressedParticipantIds ?? [], targets)) {
+			if (
+				existingRouting &&
+				(!sameMemberIds(existingRouting.addressedParticipantIds ?? [], targets) ||
+					(existingRouting.requestedParticipantIds !== undefined &&
+						!sameMemberIds(existingRouting.requestedParticipantIds, requestedParticipantIds)) ||
+					!sameMemberMentions(existingRouting.memberMentions ?? [], input.memberMentions ?? []))
+			) {
 				throw new Error(`Request id already used with different routing: ${input.requestId}`);
 			}
 			const completed = new Set(
@@ -296,6 +305,8 @@ export class TeamTurnCoordinator {
 				const routing: TeamMessageRoutingRecord = {
 					customType: "agent-team.message-routing.v1",
 					messageEntryId: userMessageId,
+					requestedParticipantIds,
+					...(input.memberMentions ? { memberMentions: [...input.memberMentions] } : {}),
 					addressedParticipantIds: [...targets],
 					requestId: input.requestId,
 				};
@@ -423,10 +434,13 @@ export class TeamTurnCoordinator {
 			...(terminal.issue ? { issueCategory: terminal.issue.category } : {}),
 		});
 		this.options.publishSessionUpdated(session);
-		if (nextWorkItem.state === "completed" && resultMessageId) {
-			await this.notifyTaskInitiator(session, nextWorkItem, resultMessageId);
-		}
 		await this.taskControl.onWorkItemSettled(session, nextWorkItem);
+		if (nextWorkItem.state === "completed" && resultMessageId) {
+			// `triggerTurn` resolves only after the initiator's continuation finishes.
+			// The completed assignee must release its scheduler lane independently;
+			// otherwise that continuation cannot delegate fresh work back to it.
+			void this.notifyTaskInitiator(session, nextWorkItem, resultMessageId);
+		}
 		return nextWorkItem;
 	}
 
@@ -435,6 +449,9 @@ export class TeamTurnCoordinator {
 		workItem: TeamWorkItem,
 		resultMessageId: string,
 	): Promise<void> {
+		// A completion racing the user's stop remains durable, but it must not
+		// resurrect the leader through an automatic continuation after the stop.
+		if (this.stopped.has(session.id)) return;
 		const initiator = session.memberRuntime[workItem.createdByParticipantId];
 		if (!initiator) return;
 		const coordination = session.coordinationRuntime;
@@ -692,6 +709,25 @@ function sameAttachments(left: readonly PromptAttachmentRef[], right: readonly P
 
 function sameMemberIds(left: readonly string[], right: readonly string[]): boolean {
 	return left.length === right.length && left.every((id, index) => id === right[index]);
+}
+
+function sameMemberMentions(
+	left: NonNullable<SendTeamMessageInput["memberMentions"]>,
+	right: NonNullable<SendTeamMessageInput["memberMentions"]>,
+): boolean {
+	return (
+		left.length === right.length &&
+		left.every((mention, index) => {
+			const candidate = right[index];
+			return (
+				candidate !== undefined &&
+				mention.participantId === candidate.participantId &&
+				mention.handle === candidate.handle &&
+				mention.start === candidate.start &&
+				mention.end === candidate.end
+			);
+		})
+	);
 }
 
 function extractMessageText(message: unknown): string {

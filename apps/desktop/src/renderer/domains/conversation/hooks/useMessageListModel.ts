@@ -50,6 +50,7 @@ export function useMessageListModel({
 		waitingForResponse: isStreaming && messages.at(-1)?.kind !== "agent",
 		tailMessageId: messages.at(-1)?.id ?? null,
 		participantsById: new Map(participants.map((participant) => [participant.id, participant])),
+		participants,
 		context,
 		onTeamMemberOpen,
 	};

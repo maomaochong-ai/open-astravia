@@ -113,6 +113,7 @@ function props(
 			waitingForResponse: false,
 			tailMessageId: "message-1",
 			participantsById: new Map(),
+			participants: [],
 			context: {
 				inheritActiveSession: true,
 				showRuntimeFooter: true,

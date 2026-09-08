@@ -44,6 +44,7 @@ interface MessageItemProps {
 	onAbortEdit?: () => void;
 	pendingLabel?: string;
 	participant?: ConversationParticipantViewModel;
+	participants?: readonly ConversationParticipantViewModel[];
 	userMessageActions?: { readonly edit: boolean; readonly fork: boolean; readonly delete: boolean };
 	onTeamMemberOpen?: (memberId: string) => void;
 }
@@ -57,6 +58,7 @@ export const MessageItem = memo(function MessageItem({
 	onAbortEdit,
 	pendingLabel,
 	participant,
+	participants,
 	userMessageActions,
 	onTeamMemberOpen,
 	exportMode = false,
@@ -81,6 +83,7 @@ export const MessageItem = memo(function MessageItem({
 		return (
 			<UserMessage
 				message={message}
+				participants={participants}
 				isLastUserMessage={isLastUserMessage}
 				hasAssistantAfter={hasAssistantAfter}
 				isStreaming={isStreaming}

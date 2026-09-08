@@ -176,10 +176,7 @@ export class TeamMemberAttemptRunner {
 				...(failure ? { issue: classifyTeamExecutionIssue(failure) } : {}),
 			});
 			await this.options.settleAttempt(configuredSession, collaboration.workItem, collaboration.attempt, terminal);
-			const recoverable =
-				terminal.state === "waiting-retry" ||
-				terminal.state === "interrupted" ||
-				terminal.state === "awaiting-resource";
+			const recoverable = terminal.state === "waiting-retry" || terminal.state === "awaiting-resource";
 			if (recoverable && error instanceof TeamSharedContextRuntimeDeliveryError) {
 				return this.options.sessionState.get(configuredSession.id) ?? configuredSession;
 			}

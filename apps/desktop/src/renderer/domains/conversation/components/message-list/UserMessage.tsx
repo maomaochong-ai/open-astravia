@@ -1,4 +1,7 @@
-import type { ConversationUserMessageViewModel } from "@shared/conversation";
+import type {
+	ConversationParticipantViewModel,
+	ConversationUserMessageViewModel,
+} from "@shared/conversation";
 import { toTokenPath } from "@shared/lib/input-tokens";
 import { pathBasename } from "@shared/lib/utils";
 import { filePreviewAtom } from "@shared/store/atoms";
@@ -37,11 +40,13 @@ interface UserMessageProps {
 	isLastUserMessage?: boolean;
 	isStreaming?: boolean;
 	message: ConversationUserMessageViewModel;
+	participants?: readonly ConversationParticipantViewModel[];
 	onAbortEdit?: () => void;
 }
 
 export const UserMessage = memo(function UserMessage({
 	message,
+	participants = [],
 	isLastUserMessage = false,
 	isStreaming = false,
 	onAbortEdit,
@@ -50,6 +55,32 @@ export const UserMessage = memo(function UserMessage({
 	const { t } = useTranslation("chat");
 	const projection = useMemo(() => projectUserMessage(message), [message]);
 	const resolveSkillMeta = useSkillTokenMeta();
+	const membersById = useMemo(
+		() => new Map(participants.map((participant) => [participant.id, participant])),
+		[participants],
+	);
+	const inlineTokens = useMemo(
+		() => ({
+			memberMentions: projection.memberMentions,
+			getImageLabel: (path: string) => {
+				const index = projection.imageIndexByPath.get(toTokenPath(path));
+				return index ? t("inputBar.capsule.imageBadge", { index }) : pathBasename(path);
+			},
+			getSkill: (name: string) => resolveSkillMeta("skill", name),
+			getScene: (name: string) => resolveSkillMeta("scene", name),
+			getMember: (participantId: string) => {
+				const participant = membersById.get(participantId);
+				return participant
+					? {
+							label: participant.name,
+							...(participant.avatar ? { avatar: participant.avatar } : {}),
+							...(participant.handle ? { meta: `@${participant.handle}` } : {}),
+						}
+					: undefined;
+			},
+		}),
+		[membersById, projection.imageIndexByPath, projection.memberMentions, resolveSkillMeta, t],
+	);
 	const setFilePreview = useSetAtom(filePreviewAtom);
 	const [actionsVisible, setActionsVisible] = useState(false);
 	const edit = useUserMessageEditAction({ message, isLastUserMessage, enabled: actions.edit });
@@ -142,16 +173,9 @@ export const UserMessage = memo(function UserMessage({
 							{projection.displayText ? (
 								<MessageVisual.OutgoingBubble className={`cursor-text ${edit.pending ? "ring-1 ring-primary/40" : ""}`} style={{ wordBreak: "break-word" }}>
 									<UserMessagePrimitive.Text contentKey={projection.displayText} entryState="static" expandLabel={labels.expand}>
-										<TextBlockView
-											text={projection.displayText}
-											inlineTokens={{
-												getImageLabel: (path) => {
-													const index = projection.imageIndexByPath.get(toTokenPath(path));
-													return index ? t("inputBar.capsule.imageBadge", { index }) : pathBasename(path);
-												},
-												getSkill: (name) => resolveSkillMeta("skill", name),
-												getScene: (name) => resolveSkillMeta("scene", name),
-											}}
+									<TextBlockView
+										text={projection.displayText}
+										inlineTokens={inlineTokens}
 											className="max-w-full overflow-x-auto [overflow-wrap:anywhere] [&_code]:break-all"
 										/>
 									</UserMessagePrimitive.Text>

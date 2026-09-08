@@ -167,6 +167,7 @@ function buildMigrationPlan(session: TeamSessionDocument): {
 					{
 						customType: "agent-team.message-routing.v1",
 						messageEntryId: event.id,
+						requestedParticipantIds: [...event.targetMemberIds],
 						addressedParticipantIds: [...event.targetMemberIds],
 						requestId: event.requestId,
 					},
@@ -344,6 +345,7 @@ function sameRouting(left: TeamMessageRoutingRecord, right: TeamMessageRoutingRe
 		left.messageEntryId === right.messageEntryId &&
 		left.requestId === right.requestId &&
 		left.intent === right.intent &&
+		sameIds(left.requestedParticipantIds ?? [], right.requestedParticipantIds ?? []) &&
 		sameIds(left.addressedParticipantIds ?? [], right.addressedParticipantIds ?? [])
 	);
 }

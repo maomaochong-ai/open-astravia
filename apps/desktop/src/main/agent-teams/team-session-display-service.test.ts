@@ -1,7 +1,7 @@
 import { createAssistantMessage } from "@vetta/ai";
 import type { ConversationDocument } from "@vetta/runtime-core";
 import { describe, expect, it } from "vitest";
-import { projectTeamPublicMessages } from "./team-session-display-service.js";
+import { projectTeamPublicMessages, projectTeamUserMessageAnnotations } from "./team-session-display-service.js";
 
 describe("projectTeamPublicMessages", () => {
 	it("hides member-routed Agent messages while keeping the user request and public answer", () => {
@@ -55,5 +55,63 @@ describe("projectTeamPublicMessages", () => {
 			"user-request",
 			"public-answer",
 		]);
+	});
+});
+
+describe("projectTeamUserMessageAnnotations", () => {
+	it("projects structured member mentions and ignores routing-only targets", () => {
+		const document = {
+			revision: 3,
+			entries: [
+				{
+					type: "custom",
+					customType: "agent-team.message-routing.v1",
+					data: {
+						customType: "agent-team.message-routing.v1",
+						messageEntryId: "unaddressed",
+						requestedParticipantIds: [],
+						addressedParticipantIds: ["leader"],
+					},
+				},
+				{
+					type: "custom",
+					customType: "agent-team.message-routing.v1",
+					data: {
+						customType: "agent-team.message-routing.v1",
+						messageEntryId: "direct",
+						requestedParticipantIds: ["researcher"],
+						addressedParticipantIds: ["researcher"],
+						memberMentions: [{ participantId: "researcher", handle: "research", start: 0, end: 9 }],
+					},
+				},
+			],
+		} as unknown as ConversationDocument;
+
+		expect(projectTeamUserMessageAnnotations(document)).toEqual([
+			{
+				messageEntryId: "direct",
+				participantIds: ["researcher"],
+				mentions: [{ participantId: "researcher", handle: "research", start: 0, end: 9 }],
+			},
+		]);
+	});
+
+	it("does not infer an audience for routing records written by older versions", () => {
+		const document = {
+			revision: 1,
+			entries: [
+				{
+					type: "custom",
+					customType: "agent-team.message-routing.v1",
+					data: {
+						customType: "agent-team.message-routing.v1",
+						messageEntryId: "legacy",
+						addressedParticipantIds: ["leader"],
+					},
+				},
+			],
+		} as unknown as ConversationDocument;
+
+		expect(projectTeamUserMessageAnnotations(document)).toEqual([]);
 	});
 });

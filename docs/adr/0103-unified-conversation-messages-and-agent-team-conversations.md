@@ -84,6 +84,13 @@ ADR-0099 将 Team Session 与普通会话存储隔离，ADR-0101 要求 Chat 与
 它可以为已发布 Agent 结果提供工具卡片证据，但其中的用户 prompt 不得再次投影为 Team 公开用户消息。Renderer 只能消费
 Main 提供的公开 Snapshot 和实时事件，不能自行把协调历史与成员历史拼接成第二套消息事实源。
 
+用户消息的“明确收件人”和编排策略最终选择的执行成员是两个不同事实。编辑器中的成员 Token 在发送时产出
+`memberMentions`（稳定 `participantId`、handle 与 UTF-16 正文区间）；正文仍保存为普通 Markdown。Main 校验 annotation
+确实指向当前团队成员及对应正文，再将明确收件人保存为 `requestedParticipantIds`，将策略结果保存为
+`addressedParticipantIds`。Team 主视图展示全部本机用户消息；成员视图和已发送 Token 渲染只消费
+`memberMentions`，不扫描或猜测正文中的 `@handle`。没有 annotation 的消息仅在主视图可见，即使正文碰巧包含 `@`；
+策略仍可把未显式寻址的任务交给负责人，但不会因此改变用户消息可见性。
+
 ## 迁移
 
 - 旧 `TeamFeedEvent.user-message/member-result` 确定性导入协调 Conversation 的普通 User/Agent message；

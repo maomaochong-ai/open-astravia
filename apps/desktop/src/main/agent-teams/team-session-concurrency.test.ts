@@ -443,6 +443,58 @@ describe("Team member concurrency", () => {
 		expect(await tasks.getTask({ ...caller, teamTaskId: admitted.teamTaskId })).toEqual(completed.tasks[0]);
 	});
 
+	it("lets the leader delegate fresh work to the same member after an earlier task completed", async () => {
+		const fixture = await createFixture();
+		const [leader, member] = fixture.members;
+		const tasks = fixture.service.taskControls(fixture.session.id);
+		const caller = taskCaller(fixture, leader);
+		const notificationStarted = deferred();
+		const finishNotification = deferred();
+		vi.mocked(fixture.runtime.deliverSessionContext).mockImplementation(async (_sessionId, _records, mode) => {
+			if (mode !== "triggerTurn") return;
+			notificationStarted.resolve();
+			await finishNotification.promise;
+		});
+		const firstTurn = fixture.turn(member, "First assignment");
+		const first = await tasks.delegateTask({
+			...caller,
+			requestId: "first-assignment",
+			targetHandle: fixture.session.memberHandles[member]!,
+			objective: "First assignment",
+		});
+		await firstTurn.started.promise;
+		firstTurn.finish.resolve();
+		await tasks.waitTasks({ ...caller, teamTaskIds: [first.teamTaskId], timeoutMs: 1_000 });
+		await notificationStarted.promise;
+
+		const secondTurn = fixture.turn(member, "Second assignment");
+		const second = await tasks.delegateTask({
+			...caller,
+			requestId: "second-assignment",
+			targetHandle: fixture.session.memberHandles[member]!,
+			objective: "Second assignment",
+		});
+		let startFailure: unknown;
+		try {
+			await vi.waitFor(() => expect(fixture.runtime.prompt).toHaveBeenCalledTimes(2), {
+				timeout: 500,
+				interval: 5,
+			});
+		} catch (error) {
+			startFailure = error;
+		} finally {
+			finishNotification.resolve();
+		}
+		await secondTurn.started.promise;
+		secondTurn.finish.resolve();
+		const completed = await tasks.waitTasks({ ...caller, teamTaskIds: [second.teamTaskId], timeoutMs: 1_000 });
+
+		expect(startFailure).toBeUndefined();
+		expect(completed.tasks[0]?.workItem.state).toBe("completed");
+		expect(second.teamTaskId).not.toBe(first.teamTaskId);
+		expect(fixture.runtime.prompt).toHaveBeenCalledTimes(2);
+	});
+
 	it("cancels only a task wait while the accepted task continues", async () => {
 		const fixture = await createFixture();
 		const [leader, member] = fixture.members;
@@ -577,6 +629,26 @@ describe("Team member concurrency", () => {
 			}),
 		).rejects.toThrow("Context extension unavailable");
 		const state = await fixture.service.readCollaborationState(fixture.session.id);
+		expect(state.workItems[0]?.state).toBe("waiting");
+		expect(state.attempts[0]?.state).toBe("interrupted");
+		expect(fixture.runtime.prompt).not.toHaveBeenCalled();
+	});
+
+	it("surfaces an unclassified context delivery interruption instead of silently completing the send", async () => {
+		const fixture = await createFixture();
+		vi.mocked(fixture.runtime.deliverSessionContext).mockRejectedValueOnce(
+			new Error("Session already has an active turn"),
+		);
+
+		await expect(
+			fixture.service.send(fixture.session.id, {
+				requestId: "busy-context",
+				text: "follow up",
+				targetMemberIds: [fixture.members[0]],
+			}),
+		).rejects.toThrow("Session already has an active turn");
+		const state = await fixture.service.readCollaborationState(fixture.session.id);
+
 		expect(state.workItems[0]?.state).toBe("waiting");
 		expect(state.attempts[0]?.state).toBe("interrupted");
 		expect(fixture.runtime.prompt).not.toHaveBeenCalled();
@@ -1154,7 +1226,11 @@ async function createFixture(extensions?: AgentTeamExtensionRegistry) {
 			read: async (id) => saved.get(id)!,
 		},
 	});
-	const session = await service.create(team, document, "C:/workspace");
+	const session = await service.create(team, document, {
+		kind: "project",
+		id: "project:workspace",
+		cwd: "C:/workspace",
+	});
 	const coordination = conversations.get(session.coordinationRuntime!.sessionId)!;
 	conversations.set(session.coordinationRuntime!.sessionId, {
 		...coordination,

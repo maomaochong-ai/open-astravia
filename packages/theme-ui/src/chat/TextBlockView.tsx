@@ -11,8 +11,9 @@ import {
 	MarkdownTableHeaderCell,
 	MarkdownTableRow,
 } from "../shared/MarkdownTable";
-import { SkillTypeIcon } from "../skills/skill-icon";
 import { SyntaxHighlightedCode } from "../shared/SyntaxHighlightedCode";
+import { SkillTypeIcon } from "../skills/skill-icon";
+import { InlineTokenChip } from "./InlineTokenChip";
 import {
 	chatUrlTransform,
 	classifyMarkdownLink,
@@ -50,11 +51,14 @@ export type InlineTokenPiece =
 	| { kind: "skill"; name: string }
 	| { kind: "scene"; name: string }
 	| { kind: "connector"; name: string }
+	| { kind: "member"; participantId: string; handle: string }
 	| { kind: "file"; path: string; isDirectory?: boolean }
 	| { kind: "image"; path: string };
 
 export interface InlineTokenSupport {
 	parse: (text: string) => InlineTokenPiece[];
+	/** Structured annotations into the original Markdown source; never inferred from display text. */
+	annotations?: readonly InlineTokenAnnotation[];
 	/**
 	 * 图片 token 的胶囊文案（如「图 1」）。缩略图不在文本流里渲染，
 	 * 它们集中在气泡上方并带同样的编号，因此这里只要一个标签。
@@ -69,20 +73,19 @@ export interface InlineTokenSupport {
 	getSkill?: (name: string) => { label: string; icon?: string } | undefined;
 	/** scene 与 skill 共用视觉语言，但使用场景图标和独立元数据命名空间。 */
 	getScene?: (name: string) => { label: string; icon?: string } | undefined;
+	/** Team member metadata resolved by stable participant identity. */
+	getMember?: (participantId: string) => { label: string; avatar?: string; meta?: string } | undefined;
+}
+
+export interface InlineTokenAnnotation {
+	readonly kind: "member";
+	readonly participantId: string;
+	readonly handle: string;
+	readonly start: number;
+	readonly end: number;
 }
 
 const INLINE_TOKEN_TAG = "vetta-inline-token";
-
-/**
- * 与输入框 TokenChip 保持一致：inline-block + 基线对齐。
- * 用 inline-flex 会让基线落在空的图标 span 上，徽标相对正文被抬高。
- */
-const INLINE_TOKEN_CLASS =
-	"mx-px inline-block max-w-full whitespace-pre rounded-md border border-primary/25 bg-primary/10 px-1.5 align-baseline text-[13px] font-medium leading-[1.6] text-primary";
-const INLINE_TOKEN_ICON_CLASS = "mr-1 inline-block h-3 w-3 align-[-0.15em]";
-/** 自带渲染逻辑的图标（skill）需要一个定尺寸容器：图片图标按 h-full/w-full 铺满它。 */
-const INLINE_TOKEN_ICON_BOX_CLASS =
-	"mr-1 inline-flex h-3 w-3 items-center justify-center overflow-hidden align-[-0.15em]";
 
 /** 把文本节点里的 token 换成自定义元素；代码块与链接文本内不处理。 */
 function rehypeInlineTokens(parse: (text: string) => InlineTokenPiece[]) {
@@ -109,7 +112,9 @@ function rehypeInlineTokens(parse: (text: string) => InlineTokenPiece[]) {
 								"data-token-value":
 									piece.kind === "skill" || piece.kind === "scene" || piece.kind === "connector"
 										? piece.name
-										: piece.path,
+										: piece.kind === "member"
+											? piece.participantId
+											: piece.path,
 								"data-token-directory": piece.kind === "file" && piece.isDirectory ? "true" : "false",
 							},
 							children: [],
@@ -124,6 +129,64 @@ function rehypeInlineTokens(parse: (text: string) => InlineTokenPiece[]) {
 				}
 			}
 			node.children = newChildren as typeof node.children;
+		}
+
+		visit(tree, false);
+	};
+}
+
+interface MdastNode {
+	type: string;
+	value?: string;
+	children?: MdastNode[];
+	position?: { start?: { offset?: number }; end?: { offset?: number } };
+	data?: { hName?: string; hProperties?: Record<string, unknown> };
+}
+
+function remarkInlineTokenAnnotations(annotations: readonly InlineTokenAnnotation[]) {
+	return (tree: MdastNode): void => {
+		function visit(node: MdastNode, inLiteral: boolean): void {
+			if (!node.children) return;
+			const nextChildren: MdastNode[] = [];
+			for (const child of node.children) {
+				const literal = inLiteral || child.type === "code" || child.type === "inlineCode" || child.type === "link";
+				const nodeStart = child.position?.start?.offset;
+				const nodeEnd = child.position?.end?.offset;
+				if (child.type !== "text" || literal || nodeStart === undefined || nodeEnd === undefined) {
+					nextChildren.push(child);
+					visit(child, literal);
+					continue;
+				}
+				const value = child.value ?? "";
+				const contained = annotations.filter(
+					(annotation) => annotation.start >= nodeStart && annotation.end <= nodeEnd,
+				);
+				if (contained.length === 0) {
+					nextChildren.push(child);
+					continue;
+				}
+				let cursor = 0;
+				for (const annotation of contained) {
+					const start = annotation.start - nodeStart;
+					const end = annotation.end - nodeStart;
+					if (start < cursor || value.slice(start, end) !== `@${annotation.handle}`) continue;
+					if (start > cursor) nextChildren.push({ type: "text", value: value.slice(cursor, start) });
+					nextChildren.push({
+						type: "inlineToken",
+						data: {
+							hName: INLINE_TOKEN_TAG,
+							hProperties: {
+								"data-token-kind": "member",
+								"data-token-value": annotation.participantId,
+								"data-token-handle": annotation.handle,
+							},
+						},
+					});
+					cursor = end;
+				}
+				if (cursor < value.length) nextChildren.push({ type: "text", value: value.slice(cursor) });
+			}
+			node.children = nextChildren;
 		}
 
 		visit(tree, false);
@@ -565,10 +628,11 @@ export const TextBlockView = memo(function TextBlockView({
 				if (!kind || !value) return null;
 				if (kind === "image") {
 					return (
-						<span className={INLINE_TOKEN_CLASS} title={basename(value)}>
-							<span className={cn("icon-[solar--gallery-linear]", INLINE_TOKEN_ICON_CLASS)} />
-							{inlineTokensRef.current?.getImageLabel(value) ?? basename(value)}
-						</span>
+						<InlineTokenChip
+							icon="icon-[solar--gallery-linear]"
+							label={inlineTokensRef.current?.getImageLabel(value) ?? basename(value)}
+							title={basename(value)}
+						/>
 					);
 				}
 				if (kind === "skill" || kind === "scene") {
@@ -577,49 +641,60 @@ export const TextBlockView = memo(function TextBlockView({
 							? inlineTokensRef.current?.getScene?.(value)
 							: inlineTokensRef.current?.getSkill?.(value);
 					return (
-						<span className={INLINE_TOKEN_CLASS} title={value}>
-							{/* 图标走能力广场那套「图片 / Solar / 默认图」三态，与输入框胶囊同源。 */}
-							<span className={INLINE_TOKEN_ICON_BOX_CLASS}>
-								<SkillTypeIcon type={kind} icon={ability?.icon} className="h-3 w-3" />
-							</span>
-							{ability?.label ?? value}
-						</span>
+						<InlineTokenChip
+							iconNode={<SkillTypeIcon type={kind} icon={ability?.icon} className="h-3 w-3" />}
+							label={ability?.label ?? value}
+							title={value}
+						/>
 					);
 				}
 				if (kind === "connector") {
 					const connector = inlineTokensRef.current?.getConnector?.(value);
 					return (
-						<span className={INLINE_TOKEN_CLASS} title={value}>
-							{connector?.iconUrl ? (
-								<img
-									src={connector.iconUrl}
-									alt=""
-									className={cn(INLINE_TOKEN_ICON_CLASS, "rounded-sm object-contain")}
-								/>
-							) : (
-								<span className={cn("icon-[solar--plug-circle-linear]", INLINE_TOKEN_ICON_CLASS)} />
-							)}
-							{connector?.label ?? value}
-						</span>
+						<InlineTokenChip
+							icon="icon-[solar--plug-circle-linear]"
+							iconUrl={connector?.iconUrl}
+							label={connector?.label ?? value}
+							title={value}
+						/>
+					);
+				}
+			if (kind === "member") {
+					const member = inlineTokensRef.current?.getMember?.(value);
+					const handle = String(properties["data-token-handle"] ?? value);
+					if (!member) return <>{`@${handle}`}</>;
+					return (
+						<InlineTokenChip
+							iconNode={
+								member.avatar ? (
+									<img
+										src={member.avatar}
+										alt=""
+										draggable={false}
+										className="h-3 w-3 rounded-full object-cover"
+									/>
+								) : undefined
+							}
+							label={`@${member.label || handle}`}
+							title={member.meta ? `${member.label || handle} · ${member.meta}` : handle}
+							tone="member"
+						/>
 					);
 				}
 				const isDirectory = properties["data-token-directory"] === "true";
 				const fileName = basename(value);
 				return (
-					<button
-						type="button"
+					<InlineTokenChip
+						asButton
+						icon={
+							isDirectory
+								? "icon-[solar--folder-linear]"
+								: getFileIconClassRef.current(fileName)
+						}
+						label={fileName}
 						title={value}
-						className={cn(INLINE_TOKEN_CLASS, "cursor-pointer hover:bg-primary/20")}
 						onClick={() => onOpenFileRef.current(value)}
-					>
-						<span
-							className={cn(
-								isDirectory ? "icon-[solar--folder-linear]" : getFileIconClassRef.current(fileName),
-								INLINE_TOKEN_ICON_CLASS,
-							)}
-						/>
-						{fileName}
-					</button>
+					/>
 				);
 			},
 		}),
@@ -633,6 +708,13 @@ export const TextBlockView = memo(function TextBlockView({
 		if (inlineTokens) plugins.push(() => rehypeInlineTokens(inlineTokens.parse));
 		return plugins.length > 0 ? plugins : undefined;
 	}, [animateChunks, inlineTokens]);
+	const activeRemarkPlugins = useMemo(
+		() =>
+			inlineTokens?.annotations?.length
+				? [...remarkPlugins, () => remarkInlineTokenAnnotations(inlineTokens.annotations ?? [])]
+				: remarkPlugins,
+		[inlineTokens],
+	);
 
 	const markdownSource = useMemo(
 		() => normalizeLocalFileLinksInMarkdown(displayText),
@@ -642,7 +724,7 @@ export const TextBlockView = memo(function TextBlockView({
 	return (
 		<div className={cn("markdown-body break-words", animateChunks && "markdown-streaming-tail", className)}>
 			<ReactMarkdown
-				remarkPlugins={remarkPlugins}
+				remarkPlugins={activeRemarkPlugins}
 				rehypePlugins={rehypePlugins}
 				components={components}
 				urlTransform={chatUrlTransform}

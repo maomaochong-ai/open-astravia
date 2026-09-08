@@ -37,6 +37,7 @@ vi.mock("../../hooks/useUserMessageActions", () => ({
 }));
 
 import { UserMessage } from "./UserMessage";
+import { TokenChip } from "../input-bar/editor/nodes/TokenChip";
 
 beforeAll(() => {
 	vi.stubGlobal(
@@ -72,4 +73,50 @@ it("Runtime 恢复期间消息操作保持可用并立即接受点击", async ()
 	expect(onEdit).toHaveBeenCalledOnce();
 	expect(onFork).toHaveBeenCalledOnce();
 	expect(onBranchNext).toHaveBeenCalledOnce();
+});
+
+it("已发送的成员 mention 与输入框复用同一枚 Token 视觉组件", () => {
+	const { container } = render(
+		<>
+			<TokenChip label="@Architect" title="composer-token" tone="member" />
+			<UserMessage
+				message={{
+					...createConversationUserMessage({ id: "user-mention", text: "**请** @architect 你好" }),
+					memberMentions: [
+						{ participantId: "architect", handle: "architect", start: 6, end: 16 },
+					],
+				}}
+				participants={[
+					{
+						id: "architect",
+						kind: "agent",
+						name: "Architect",
+						handle: "architect",
+						avatar: "./architect.webp",
+					},
+				]}
+			/>
+		</>,
+	);
+
+	expect(screen.getAllByText("@Architect")).toHaveLength(2);
+	expect(screen.getByTitle("Architect · @architect").querySelector("img")?.getAttribute("src")).toBe(
+		"./architect.webp",
+	);
+	const tokens = container.querySelectorAll<HTMLElement>("[data-inline-token='true']");
+	expect(tokens).toHaveLength(2);
+	expect(tokens[1]?.className).toBe(tokens[0]?.className);
+	expect(screen.getByText("请").tagName).toBe("STRONG");
+});
+
+it("普通 Markdown 中手敲的 @handle 不会被猜测为成员 Token", () => {
+	const { container } = render(
+		<UserMessage
+			message={createConversationUserMessage({ id: "plain-at", text: "**请** @architect 你好" })}
+			participants={[{ id: "architect", kind: "agent", name: "Architect", handle: "architect" }]}
+		/>,
+	);
+
+	expect(container.querySelector("[data-inline-token='true']")).toBeNull();
+	expect(screen.getByText("@architect 你好")).toBeTruthy();
 });

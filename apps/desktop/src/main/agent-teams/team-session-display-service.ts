@@ -33,6 +33,7 @@ export class TeamSessionDisplayService {
 				conversationRevision: 0,
 				messages: [],
 				activities: legacyActivities(session),
+				userMessageAnnotations: [],
 			};
 		}
 		const document = coordinationDocument ?? this.runtime().readSessionDocument(coordination.sessionId);
@@ -45,6 +46,7 @@ export class TeamSessionDisplayService {
 			conversationRevision: document.revision,
 			messages,
 			activities: teamActivities(session, collaboration.workItems, collaboration.attempts, messages),
+			userMessageAnnotations: projectTeamUserMessageAnnotations(document),
 		};
 	}
 
@@ -136,6 +138,35 @@ export function projectTeamPublicMessages(document: ConversationDocument): TeamS
 					};
 		return [record];
 	});
+}
+
+export function projectTeamUserMessageAnnotations(
+	document: ConversationDocument,
+): NonNullable<TeamSessionSnapshot["userMessageAnnotations"]> {
+	return document.entries.flatMap((entry) => {
+		if (entry.type !== "custom" || entry.customType !== "agent-team.message-routing.v1") return [];
+		const routing = readTeamMessageRouting(entry.data);
+		if (!routing || !Array.isArray(routing.memberMentions) || !routing.memberMentions.every(isTeamUserMessageMention))
+			return [];
+		return [
+			{
+				messageEntryId: routing.messageEntryId,
+				participantIds: [...new Set(routing.memberMentions.map((mention) => mention.participantId))],
+				mentions: routing.memberMentions.map((mention) => ({ ...mention })),
+			},
+		];
+	});
+}
+
+function isTeamUserMessageMention(value: unknown): boolean {
+	if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+	const mention = value as Record<string, unknown>;
+	return (
+		typeof mention.participantId === "string" &&
+		typeof mention.handle === "string" &&
+		Number.isInteger(mention.start) &&
+		Number.isInteger(mention.end)
+	);
 }
 
 function readTeamMessageRouting(value: unknown): TeamMessageRoutingRecord | undefined {

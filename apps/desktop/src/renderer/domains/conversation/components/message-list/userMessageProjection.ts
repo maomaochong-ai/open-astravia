@@ -33,6 +33,7 @@ export interface UserMessageProjection {
 	readonly fileBadges: readonly string[];
 	readonly imageIndexByPath: ReadonlyMap<string, number>;
 	readonly imageItems: readonly FilePreviewItem[];
+	readonly memberMentions: NonNullable<ConversationUserMessageViewModel["memberMentions"]>;
 	readonly settingsAssistTabId: string;
 }
 
@@ -51,6 +52,7 @@ export function projectUserMessage(message: ConversationUserMessageViewModel): U
 	}
 
 	const displayText = segmentsToText(bodySegments);
+	const memberMentions = projectMemberMentionOffsets(message.text, displayText, message.memberMentions ?? []);
 	const inlinePaths = new Set(
 		bodySegments.flatMap((segment) =>
 			segment.kind === "file" || segment.kind === "image" ? [toTokenPath(segment.path)] : [],
@@ -96,8 +98,28 @@ export function projectUserMessage(message: ConversationUserMessageViewModel): U
 		fileBadges,
 		imageIndexByPath,
 		imageItems,
+		memberMentions,
 		settingsAssistTabId: message.settingsAssistTabId?.trim() ?? "",
 	};
+}
+
+function projectMemberMentionOffsets(
+	sourceText: string,
+	displayText: string,
+	mentions: NonNullable<ConversationUserMessageViewModel["memberMentions"]>,
+): NonNullable<ConversationUserMessageViewModel["memberMentions"]> {
+	if (sourceText === displayText) return mentions.map((mention) => ({ ...mention }));
+	const projected: NonNullable<ConversationUserMessageViewModel["memberMentions"]> = [];
+	let cursor = 0;
+	for (const mention of mentions) {
+		const token = sourceText.slice(mention.start, mention.end);
+		if (token !== `@${mention.handle}`) continue;
+		const start = displayText.indexOf(token, cursor);
+		if (start === -1) continue;
+		projected.push({ ...mention, start, end: start + token.length });
+		cursor = start + token.length;
+	}
+	return projected;
 }
 
 const SETTINGS_ASSIST_TAB_IDS = [

@@ -26,6 +26,14 @@ export interface ConversationUserMessageViewModel extends ConversationMessageVie
 	settingsAssistTabId?: string;
 	promptRef?: PromptResourceRef;
 	attachments?: PromptAttachmentRef[];
+	memberMentions?: ConversationMemberMentionViewModel[];
+}
+
+export interface ConversationMemberMentionViewModel {
+	readonly participantId: string;
+	readonly handle: string;
+	readonly start: number;
+	readonly end: number;
 }
 
 export interface ConversationAgentMessageViewModel extends ConversationMessageViewModelBase {
@@ -93,6 +101,8 @@ export interface ConversationParticipantViewModel {
 	readonly id: string;
 	readonly kind: "user" | "agent";
 	readonly name: string;
+	/** Optional persisted mention handle used by Team user-message tokens. */
+	readonly handle?: string;
 	readonly avatar?: string;
 	readonly blueprintId?: string;
 }

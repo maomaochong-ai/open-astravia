@@ -124,6 +124,8 @@ export type {
 	GuideBadgeViewItem,
 } from "./GuideBadgeSwiperView";
 export { GuideBadgeSwiperView } from "./GuideBadgeSwiperView";
+export type { InlineTokenChipProps } from "./InlineTokenChip";
+export { InlineTokenChip } from "./InlineTokenChip";
 export type {
 	InputActionBarItemView,
 	InputActionBarViewModel,
