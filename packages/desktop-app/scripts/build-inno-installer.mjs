@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { stringify } from "yaml";
+import { buildWindowsLauncher } from "./windows-version-layout.mjs";
 
 const require = createRequire(import.meta.url);
 const { appBuilderPath } = require("app-builder-bin");
@@ -124,8 +125,27 @@ async function main() {
 		const present = existsSync(candidatePath);
 		console.log(`[build-inno] ${present ? "PASS" : "MISSING"} ${label}: ${candidatePath}`);
 	}
-	for (const missing of requiredSources.filter(([, candidatePath]) => !existsSync(candidatePath))) {
+	const [launcherMissing] = requiredSources.filter(([, candidatePath]) => !existsSync(candidatePath));
+	for (const missing of requiredSources.filter(
+		([label]) => label !== launcherMissing?.[0] && !existsSync(missing[1]),
+	)) {
 		throw new Error(`[build-inno] 编译前校验失败：${missing[0]} 不存在 —— ${missing[1]}`);
+	}
+	// root launcher 特例：electron-builder 会在 afterPack（layout）之后对 root
+	// 主可执行文件再做一次签名/编辑，而 layout 已把 launcher 换到 root —— 该收尾
+	// 步骤可能把 launcher 弄丢（无证书 CI 上实测 root ASTRAIVA.exe 消失）。
+	// electron-builder 此时已退出，这里直接重编译 launcher 自愈（Go 小文件，秒级）。
+	if (launcherMissing) {
+		console.warn(`[build-inno] root launcher 缺失（${launcherMissing[1]}），重编译自愈 …`);
+		buildWindowsLauncher({
+			arch,
+			outputPath: join(sourceDir, "Astravia.exe"),
+			sourceDir: join(projectRoot, "native", "windows-launcher"),
+		});
+		if (!existsSync(join(sourceDir, "Astravia.exe"))) {
+			throw new Error(`[build-inno] 重编译后 root launcher 仍不存在 —— ${join(sourceDir, "Astravia.exe")}`);
+		}
+		console.log("[build-inno] root launcher 重编译完成");
 	}
 	// 打印 versioned 目录与 resources 清单（各一层），供排查布局/打包完整性。
 	for (const dirPath of [versionedDir, join(versionedDir, "resources")]) {
