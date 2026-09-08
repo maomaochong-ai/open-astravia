@@ -102,11 +102,15 @@ async function main() {
 	const compilerWorkDir = await mkdtemp(join(tmpdir(), "vi-"));
 	const shortSourceDir = join(compilerWorkDir, "src");
 	await symlink(sourceDir, shortSourceDir, "junction");
+	// ISCC 收尾报「路径不存在」时无法定位具体文件；编译前显式探测
+	// SetupIconFile（.iss 唯一在编译期读资源的路径），把缺失暴露成明确信号。
+	const setupIconPath = join(sourceDir, "versions", version, "resources", "build", "icon.ico");
+	console.log(`[build-inno] SetupIconFile ${existsSync(setupIconPath) ? "present" : "MISSING"}: ${setupIconPath}`);
 	try {
 		execFileSync(
 			compiler,
 			[
-				"/Qp",
+				// 保留完整 ISCC 输出（不用 /Qp），编译失败时日志能指出正在处理的文件与行号。
 				`/DAppVersion=${version}`,
 				`/DSourceDir=${shortSourceDir}`,
 				`/DOutputDir=${releaseDir}`,
