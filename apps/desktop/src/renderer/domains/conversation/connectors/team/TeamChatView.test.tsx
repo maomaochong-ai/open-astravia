@@ -77,7 +77,15 @@ describe("TeamChatView shared conversation UI", () => {
 	it("adapts Team state into the existing DefaultChatView", () => {
 		const viewModel = model();
 		const onOpenMember = vi.fn();
-		render(<TeamChatView model={viewModel} actions={actions()} onOpenMember={onOpenMember} />);
+		render(
+			<TeamChatView
+				model={viewModel}
+				actions={actions()}
+				onOpenMember={onOpenMember}
+				onBackToTeam={vi.fn()}
+				onOpenSettings={vi.fn()}
+			/>,
+		);
 
 		expect(screen.getByTestId("default-chat-view")).toBeTruthy();
 		expect(captured.view).toHaveBeenCalledWith(
@@ -99,7 +107,15 @@ describe("TeamChatView shared conversation UI", () => {
 			status: "streaming" as const,
 			feedItems: [{ ...model().feedItems[0]!, phase: "completed" as const }],
 		};
-		render(<TeamChatView model={viewModel} actions={actions()} onOpenMember={vi.fn()} />);
+		render(
+			<TeamChatView
+				model={viewModel}
+				actions={actions()}
+				onOpenMember={vi.fn()}
+				onBackToTeam={vi.fn()}
+				onOpenSettings={vi.fn()}
+			/>,
+		);
 
 		expect(captured.view).toHaveBeenCalledWith(
 			expect.objectContaining({

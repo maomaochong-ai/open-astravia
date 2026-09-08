@@ -1,32 +1,27 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { cleanup, render } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TeamChatViewModel } from "./teamChatModel";
 import { TeamChatPage } from "./TeamChatPage";
 
 const captured = vi.hoisted(() => ({
-	left: null as ReactNode,
 	right: null as ReactNode,
+	viewProps: null as { onBackToTeam: () => void; onOpenSettings: () => void } | null,
 	title: null as string | null,
 	navigate: vi.fn(),
 	params: { teamId: "team-1", sessionId: "session-1", memberId: undefined as string | undefined },
 }));
 
-vi.mock("@shared/components/ui/button", () => ({
-	Button: (props: ButtonHTMLAttributes<HTMLButtonElement>) => <button {...props} />,
-}));
 vi.mock("@shared/store/atoms", () => ({
 	activityPanelOpenAtom: "activity",
-	pageHeaderLeftSlotAtom: "left",
 	pageHeaderRightSlotAtom: "right",
 	pageHeaderTitleAtom: "title",
 }));
 vi.mock("jotai", () => ({
 	useAtom: () => [false, vi.fn()],
 	useSetAtom: (atom: string) => (value: ReactNode) => {
-		if (atom === "left") captured.left = value;
 		if (atom === "right") captured.right = value;
 		if (atom === "title") captured.title = typeof value === "string" ? value : null;
 	},
@@ -89,29 +84,42 @@ vi.mock("./useTeamChatModel", () => ({
 	}),
 }));
 vi.mock("./TeamChatView", () => ({
-	TeamChatView: () => <div data-testid="team-chat-view" />,
+	TeamChatView: (props: { onBackToTeam: () => void; onOpenSettings: () => void }) => {
+		captured.viewProps = props;
+		return <div data-testid="team-chat-view" />;
+	},
 }));
 
 afterEach(() => {
 	cleanup();
-	captured.left = null;
 	captured.right = null;
+	captured.viewProps = null;
 	captured.title = null;
 	captured.navigate.mockReset();
 	captured.params.memberId = undefined;
 });
 
-describe("TeamChatPage header", () => {
+describe("TeamChatPage navigation", () => {
 	it("returns to the Team conversation from a member view", () => {
 		captured.params.memberId = "member-1";
 		render(<TeamChatPage />);
-		render(<>{captured.left}</>);
 
-		fireEvent.click(screen.getByRole("button", { name: "chat.backToTeam" }));
+		captured.viewProps?.onBackToTeam();
 
 		expect(captured.navigate).toHaveBeenCalledWith({
 			to: "/agent-teams/$teamId/sessions/$sessionId",
 			params: { teamId: "team-1", sessionId: "session-1" },
+		});
+	});
+
+	it("opens Team settings from the roster action", () => {
+		render(<TeamChatPage />);
+
+		captured.viewProps?.onOpenSettings();
+
+		expect(captured.navigate).toHaveBeenCalledWith({
+			to: "/agent-teams/$teamId/settings",
+			params: { teamId: "team-1" },
 		});
 	});
 });

@@ -77,6 +77,58 @@ describe("TeamMemberRoster", () => {
 		);
 	});
 
+	it("offers a main-chat capsule and a settings action inside the roster", () => {
+		const onBackToTeam = vi.fn();
+		const onOpenSettings = vi.fn();
+		render(
+			<TeamMemberRoster
+				members={members}
+				memberRuntimeIds={{ "member-1": "runtime-1", "member-2": "runtime-2" }}
+				activeMemberId="member-2"
+				onOpenMember={vi.fn()}
+				onBackToTeam={onBackToTeam}
+				onOpenSettings={onOpenSettings}
+			/>,
+		);
+
+		fireEvent.click(screen.getByRole("button", { name: "chat.backToTeam" }));
+		expect(onBackToTeam).toHaveBeenCalled();
+
+		fireEvent.click(screen.getByRole("button", { name: "chat.configure" }));
+		expect(onOpenSettings).toHaveBeenCalled();
+	});
+
+	it("hides the main-chat capsule while the Team conversation is open", () => {
+		render(<TeamMemberRoster members={members} onOpenMember={vi.fn()} onBackToTeam={vi.fn()} />);
+
+		expect(screen.queryByRole("button", { name: "chat.backToTeam" })).toBeNull();
+	});
+
+	it("marks a streaming member so the capsule can animate", () => {
+		const streamingMembers = [
+			{ ...members[0], status: "working" },
+			members[1],
+		] as unknown as TeamChatViewModel["members"];
+		render(
+			<TeamMemberRoster
+				members={streamingMembers}
+				memberRuntimeIds={{ "member-1": "runtime-1", "member-2": "runtime-2" }}
+				onOpenMember={vi.fn()}
+			/>,
+		);
+
+		expect(
+			screen
+				.getByRole("button", { name: "chat.memberSession:Research" })
+				.getAttribute("data-member-session-streaming"),
+		).toBe("true");
+		expect(
+			screen
+				.getByRole("button", { name: "chat.memberSession:Build" })
+				.hasAttribute("data-member-session-streaming"),
+		).toBe(false);
+	});
+
 	it("renders nothing without members", () => {
 		const { container } = render(<TeamMemberRoster members={[]} onOpenMember={vi.fn()} />);
 		expect(container.firstChild).toBeNull();

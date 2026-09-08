@@ -991,3 +991,61 @@ a {
 		animation: none;
 	}
 }
+
+/* ─── Team 成员胶囊：正在输出时的柔和光斑与呼吸状态点 ─── */
+
+@keyframes team-pill-sweep {
+	0% {
+		transform: translateX(-160%);
+	}
+	100% {
+		transform: translateX(320%);
+	}
+}
+
+.team-pill-sweep::after {
+	content: "";
+	position: absolute;
+	top: -60%;
+	bottom: -60%;
+	left: 0;
+	width: 40%;
+	background: linear-gradient(
+		100deg,
+		transparent 0%,
+		color-mix(in srgb, var(--primary) 30%, transparent) 50%,
+		transparent 100%
+	);
+	filter: blur(6px);
+	animation: team-pill-sweep 2.6s ease-in-out infinite;
+	will-change: transform;
+}
+
+@keyframes team-pill-live-halo {
+	0% {
+		transform: scale(1);
+		opacity: 0.55;
+	}
+	70%,
+	100% {
+		transform: scale(2.2);
+		opacity: 0;
+	}
+}
+
+.team-pill-live-dot::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: 9999px;
+	background: currentColor;
+	color: var(--color-emerald-500, #10b981);
+	animation: team-pill-live-halo 1.8s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.team-pill-sweep::after,
+	.team-pill-live-dot::after {
+		animation: none;
+	}
+}

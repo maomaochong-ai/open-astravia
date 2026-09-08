@@ -200,6 +200,7 @@
     "sessionLabel": "对话 {{index}}",
     "activity": "活动",
     "backToTeam": "返回团队会话",
+    "mainSession": "主会话",
     "memberSessions": "查看团队成员会话",
     "memberSession": "查看 {{name}} 的独立会话",
     "leaderRoute": "负责人",

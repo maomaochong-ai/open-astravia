@@ -1,8 +1,6 @@
-import { Button } from "@shared/components/ui/button";
 import { useAgentTeamSidebarSelection } from "@shared/agent-teams/useAgentTeamSidebarSelection";
 import {
 	activityPanelOpenAtom,
-	pageHeaderLeftSlotAtom,
 	pageHeaderRightSlotAtom,
 	pageHeaderTitleAtom,
 } from "@shared/store/atoms";
@@ -21,7 +19,6 @@ export function TeamChatPage({ createNewSession = false }: { readonly createNewS
 	const { teamId, sessionId, memberId } = useParams({ strict: false });
 	if (!teamId) throw new Error("Team route is missing teamId");
 	const setHeaderTitle = useSetAtom(pageHeaderTitleAtom);
-	const setHeaderLeft = useSetAtom(pageHeaderLeftSlotAtom);
 	const setHeaderRight = useSetAtom(pageHeaderRightSlotAtom);
 	const { model, actions } = useTeamChatModel(teamId, sessionId, memberId, createNewSession);
 	const openMember = useCallback(
@@ -36,29 +33,16 @@ export function TeamChatPage({ createNewSession = false }: { readonly createNewS
 	);
 	const [activityOpen, setActivityOpen] = useAtom(activityPanelOpenAtom);
 	const activeSessionTitle = model.sessions.find((session) => session.id === model.activeSessionId)?.label;
-	const backToTeamAction = useMemo(
-		() =>
-			memberId ? (
-				<Button
-					variant="ghost"
-					size="icon-xs"
-					className="mr-1"
-					title={t("chat.backToTeam")}
-					aria-label={t("chat.backToTeam")}
-					data-team-session-back="true"
-					onClick={() => {
-						if (!sessionId) return;
-						void navigate({
-							to: "/agent-teams/$teamId/sessions/$sessionId",
-							params: { teamId, sessionId },
-						});
-					}}
-				>
-					<span className="icon-[solar--arrow-left-linear] h-3.5 w-3.5" aria-hidden="true" />
-				</Button>
-			) : null,
-		[memberId, navigate, sessionId, t, teamId],
-	);
+	const backToTeam = useCallback(() => {
+		if (!sessionId) return;
+		void navigate({
+			to: "/agent-teams/$teamId/sessions/$sessionId",
+			params: { teamId, sessionId },
+		});
+	}, [navigate, sessionId, teamId]);
+	const openTeamSettings = useCallback(() => {
+		void navigate({ to: "/agent-teams/$teamId/settings", params: { teamId } });
+	}, [navigate, teamId]);
 
 	useEffect(() => {
 		if (sessionId || !model.activeSessionId) return;
@@ -71,43 +55,33 @@ export function TeamChatPage({ createNewSession = false }: { readonly createNewS
 
 	const headerActions = useMemo(
 		() => (
-			<>
-				<ChatHeaderActions.Panel
-					title={t("chat.activity")}
-					open={activityOpen}
-					onClick={() => setActivityOpen((open) => !open)}
-				/>
-				<Button
-					variant="ghost"
-					size="icon-xs"
-					title={t("chat.configure")}
-					aria-label={t("chat.configure")}
-					onClick={() => {
-						void navigate({
-							to: "/agent-teams/$teamId/settings",
-							params: { teamId },
-						});
-					}}
-				>
-					<span className="icon-[solar--settings-linear] h-3.5 w-3.5" aria-hidden="true" />
-				</Button>
-			</>
+			<ChatHeaderActions.Panel
+				title={t("chat.activity")}
+				open={activityOpen}
+				onClick={() => setActivityOpen((open) => !open)}
+			/>
 		),
-		[activityOpen, navigate, setActivityOpen, t, teamId],
+		[activityOpen, setActivityOpen, t],
 	);
 
 	useEffect(() => {
-		setHeaderLeft(backToTeamAction);
 		setHeaderTitle(activeSessionTitle ?? model.title);
 		setHeaderRight(headerActions);
 		return () => {
-			setHeaderLeft(null);
 			setHeaderTitle(null);
 			setHeaderRight(null);
 		};
-	}, [activeSessionTitle, backToTeamAction, headerActions, model.title, setHeaderLeft, setHeaderRight, setHeaderTitle]);
+	}, [activeSessionTitle, headerActions, model.title, setHeaderRight, setHeaderTitle]);
 
-	return <TeamChatView model={model} actions={actions} onOpenMember={openMember} />;
+	return (
+		<TeamChatView
+			model={model}
+			actions={actions}
+			onOpenMember={openMember}
+			onBackToTeam={backToTeam}
+			onOpenSettings={openTeamSettings}
+		/>
+	);
 }
 
 export function TeamNewSessionPage(): JSX.Element {

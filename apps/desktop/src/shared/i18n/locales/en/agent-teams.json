@@ -200,6 +200,7 @@
     "sessionLabel": "Chat {{index}}",
     "activity": "Activity",
     "backToTeam": "Back to team conversation",
+    "mainSession": "Main chat",
     "memberSessions": "View team member sessions",
     "memberSession": "View {{name}}'s conversation",
     "leaderRoute": "Lead",

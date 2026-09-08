@@ -15,9 +15,17 @@ export interface TeamChatViewProps {
 	readonly model: TeamChatViewModel;
 	readonly actions: TeamChatActions;
 	readonly onOpenMember: (memberId: string) => void;
+	readonly onBackToTeam: () => void;
+	readonly onOpenSettings: () => void;
 }
 
-export function TeamChatView({ model, actions, onOpenMember }: TeamChatViewProps): JSX.Element {
+export function TeamChatView({
+	model,
+	actions,
+	onOpenMember,
+	onBackToTeam,
+	onOpenSettings,
+}: TeamChatViewProps): JSX.Element {
 	const isStreaming = model.memberViewId
 		? model.feedItems.some((item) => item.kind === "agent" && item.phase === "streaming")
 		: model.status === "sending" || model.status === "streaming" || model.status === "cancelling";
@@ -50,6 +58,8 @@ export function TeamChatView({ model, actions, onOpenMember }: TeamChatViewProps
 					memberRuntimeIds={model.memberRuntimeIds}
 					activeMemberId={model.memberViewId}
 					onOpenMember={onOpenMember}
+					onBackToTeam={onBackToTeam}
+					onOpenSettings={onOpenSettings}
 				/>
 			}
 		>
