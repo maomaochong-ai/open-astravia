@@ -59,6 +59,7 @@ import { DatabaseWorkspaceHeader } from "./DatabaseWorkspaceHeader";
 import { SettingsAiAssist } from "../../settings/ai-assist";
 import { recordSettingsUsage } from "../../settings/components/recordSettingsUsage";
 import { catalogFamilyOfType, scopeToTableScope, tableScopeQualifier } from "../lib/catalog-family";
+import { getDatabaseTypeMeta } from "../lib/database-type-catalog";
 import { formatAnchorTableSchema } from "../lib/ai-anchor";
 import { describeTable, executeQuery, getSchemaContext } from "../lib/database-api";
 import { formatDatabaseError } from "../lib/database-error-labels";
@@ -602,7 +603,7 @@ export function DatabaseWorkspace({
 				className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded opacity-70 hover:bg-background/60"
 				onClick={closeBatchResult}
 			>
-				<span className="h-3.5 w-3.5 icon-[mdi--close]" />
+				<span className="h-3.5 w-3.5 icon-[lucide--x]" />
 			</button>
 			<div className="pr-6 font-medium">
 				{tableBatchResult.failed.length === 0
@@ -709,6 +710,8 @@ export function DatabaseWorkspace({
 	const [overflowTabIds, setOverflowTabIds] = useState<string[]>([]);
 	// V7-⑧ 查询标签右键菜单：记录触发坐标与目标标签（内容在 JSX 组装）。
 	const [tabMenu, setTabMenu] = useState<{ x: number; y: number; tabId: string } | null>(null);
+	// V5.1 双击改名进行中的标签（行内 input，Enter 提交 / Esc 取消）。
+	const [editingTabId, setEditingTabId] = useState<string | null>(null);
 
 	const showTree = treeOverride ?? layout.autoTree;
 	const showDetails = detailsOverride ?? layout.autoDetails;
@@ -874,6 +877,16 @@ export function DatabaseWorkspace({
 		recordSettingsUsage({ tab: "database", action: "selected", target: "query-history-analyze" });
 		analyzeHistorySql(entry.connection, entry.sql);
 	};
+	// V5.1 标签连接色点：类型色取自标签实际执行连接（与 DatabaseTypeBadge 同一 getDatabaseTypeMeta 策略）；未绑定连接则无色点。
+	const tabColorById = useMemo(() => {
+		const map = new Map<string, string>();
+		for (const tab of query.tabs) {
+			if (!tab.connectionName) continue;
+			const connection = model.connections.find((item) => item.name === tab.connectionName);
+			if (connection) map.set(tab.id, getDatabaseTypeMeta(connection.type).color);
+		}
+		return map;
+	}, [query.tabs, model.connections]);
 	const handleTabContextMenu = (event: ReactMouseEvent<HTMLDivElement>, tabId: string) => {
 		recordSettingsUsage({ tab: "database", action: "selected", target: "query-tab-context-menu" });
 		setTabMenu({ x: event.clientX, y: event.clientY, tabId });
@@ -885,12 +898,36 @@ export function DatabaseWorkspace({
 	};
 	const handleTabClose = (id: string) => {
 		recordSettingsUsage({ tab: "database", action: "selected", target: "query-tab-close" });
+		const target = query.tabs.find((item) => item.id === id);
+		if (target?.dirty) {
+			// V5.1 脏标记：关闭含未执行更改的标签先确认（丢弃更改，对齐 dbx 关闭行为）。
+			setEditingTabId(null);
+			setConfirm({
+				title: t("databaseCloseDirtyTitle"),
+				message: t("databaseCloseDirtyMessage", { name: target.title }),
+				confirmLabel: t("databaseCloseDirtyLabel"),
+				variant: "danger",
+				onConfirm: () => query.actions.closeTab(id),
+			});
+			return;
+		}
 		query.actions.closeTab(id);
 	};
 	const handleTabReorder = (ids: string[]) => {
 		recordSettingsUsage({ tab: "database", action: "selected", target: "query-tab-reorder" });
 		query.actions.reorderTabs(ids);
 	};
+	// V5.1 双击改名（行内 input，Enter 提交 / Esc 取消；空标题不提交）。
+	const handleTabRenameStart = (_event: ReactMouseEvent<HTMLDivElement>, id: string) => {
+		recordSettingsUsage({ tab: "database", action: "selected", target: "query-tab-rename" });
+		setEditingTabId(id);
+	};
+	const handleTabRenameCommit = (id: string, title: string) => {
+		const trimmed = title.trim();
+		setEditingTabId(null);
+		if (trimmed) query.actions.renameTab(id, trimmed);
+	};
+	const handleTabRenameCancel = () => setEditingTabId(null);
 
 	const treeBody: ReactNode = model.error ? (
 		<div className="px-1 pt-1">
@@ -906,10 +943,10 @@ export function DatabaseWorkspace({
 		</div>
 	) : model.connections.length === 0 ? (
 		<div className="flex flex-col items-center gap-2 px-4 pt-8 text-center">
-			<span className="icon-[mdi--database-plus-outline] h-7 w-7 text-muted-foreground/50" />
+			<span className="icon-[lucide--database-plus] h-7 w-7 text-muted-foreground/50" />
 			<p className="text-[12px] leading-relaxed text-muted-foreground">{t("databaseEmpty")}</p>
 			<Button variant="outline" size="xs" onClick={model.actions.openAdd}>
-				<span className="icon-[mdi--plus] h-3 w-3" />
+				<span className="icon-[lucide--plus] h-3 w-3" />
 				{t("databaseAddConnection")}
 			</Button>
 		</div>
@@ -992,7 +1029,7 @@ export function DatabaseWorkspace({
 							title={t("databaseNewQuery")}
 							onClick={handleNewTab}
 						>
-							<span className="icon-[solar--document-add-linear] h-3.5 w-3.5" />
+							<span className="icon-[lucide--file-plus] h-3.5 w-3.5" />
 							{!compact ? t("databaseNewQuery") : null}
 						</Button>
 						{!compact ? (
@@ -1013,7 +1050,7 @@ export function DatabaseWorkspace({
 								className={cn("px-2", toggleButtonClass(showTree))}
 								onClick={toggleTree}
 							>
-								<span className="icon-[mdi--file-tree] h-4 w-4" />
+								<span className="icon-[lucide--list-tree] h-4 w-4" />
 							</Button>
 						) : null}
 						<Button
@@ -1025,7 +1062,7 @@ export function DatabaseWorkspace({
 							className={cn("px-2", toggleButtonClass(showDetails))}
 							onClick={toggleDetails}
 						>
-							<span className="icon-[mdi--information-outline] h-4 w-4" />
+							<span className="icon-[lucide--info] h-4 w-4" />
 						</Button>
 						<Button
 							variant="ghost"
@@ -1035,7 +1072,7 @@ export function DatabaseWorkspace({
 							title={t("databaseRefresh")}
 							onClick={() => void model.actions.refresh()}
 						>
-							<span className="icon-[mdi--refresh] h-4 w-4" />
+							<span className="icon-[lucide--refresh-cw] h-4 w-4" />
 						</Button>
 						<Button
 							variant="primary"
@@ -1045,7 +1082,7 @@ export function DatabaseWorkspace({
 							title={t("databaseAddConnection")}
 							onClick={model.actions.openAdd}
 						>
-							<span className="icon-[mdi--plus] h-4 w-4" />
+							<span className="icon-[lucide--plus] h-4 w-4" />
 						</Button>
 					</>
 				}
@@ -1060,46 +1097,46 @@ export function DatabaseWorkspace({
 						<DatabaseListHeader
 							variant="toolbar"
 							label={t("databaseConnections")}
-							action={
-								<div className="flex items-center gap-px">
-									<button
-										type="button"
-										title={t("databaseCollapseAll")}
-										aria-label={t("databaseCollapseAll")}
-										className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground active:scale-95"
-										onClick={handleCollapseAllConnections}
-									>
-										<span className="h-3 w-3 icon-[solar--double-alt-arrow-up-linear]" />
-									</button>
-									<button
-										type="button"
-										title={t("databaseRefreshAll")}
-										aria-label={t("databaseRefreshAll")}
-										className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground active:scale-95"
-										onClick={handleRefreshAllConnections}
-									>
-										<span className="h-3 w-3 icon-[solar--refresh-linear]" />
-									</button>
-									<button
-										type="button"
-										title={t("databaseCreateGroup")}
-										aria-label={t("databaseCreateGroup")}
-										className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground active:scale-95"
-										onClick={openGroupDialog}
-									>
-										<span className="h-3 w-3 icon-[mdi--folder-plus-outline]" />
-									</button>
-									<button
-										type="button"
-										title={t("databaseCollapseTree")}
-										aria-label={t("databaseCollapseTree")}
-										className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground active:scale-95"
-										onClick={() => setTreeOverride(false)}
-									>
-										<span className="h-3 w-3 icon-[solar--double-alt-arrow-left-linear]" />
-									</button>
-								</div>
-							}
+				action={
+					<div className="flex items-center gap-px">
+						<Button
+							variant="ghost"
+							size="icon-xs"
+							title={t("databaseCollapseAll")}
+							aria-label={t("databaseCollapseAll")}
+							onClick={handleCollapseAllConnections}
+						>
+							<span className="icon-[lucide--chevrons-up] h-3 w-3" />
+						</Button>
+						<Button
+							variant="ghost"
+							size="icon-xs"
+							title={t("databaseRefresh")}
+							aria-label={t("databaseRefresh")}
+							onClick={() => void handleRefreshAllConnections()}
+						>
+							<span className="icon-[lucide--refresh-cw] h-3 w-3" />
+						</Button>
+						<Button
+							variant="ghost"
+							size="icon-xs"
+							title={t("databaseCreateGroup")}
+							aria-label={t("databaseCreateGroup")}
+							onClick={openGroupDialog}
+						>
+							<span className="icon-[lucide--folder-plus] h-3 w-3" />
+						</Button>
+						<Button
+							variant="ghost"
+							size="icon-xs"
+							title={t("databaseHidePanel")}
+							aria-label={t("databaseHidePanel")}
+							onClick={() => setTreeOverride(false)}
+						>
+							<span className="icon-[lucide--chevrons-left] h-3 w-3" />
+						</Button>
+					</div>
+				}
 						/>
 						<div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
 							{tableBatchResultBanner}
@@ -1120,14 +1157,14 @@ export function DatabaseWorkspace({
 							className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center"
 						>
 							<div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-								<span className="icon-[mdi--code-braces] h-8 w-8" />
+								<span className="icon-[lucide--braces] h-8 w-8" />
 							</div>
 							<h2 className="text-[17px] font-bold text-foreground">{t("databaseQueryEmptyTitle")}</h2>
 							<p className="max-w-[380px] text-[12.5px] leading-relaxed text-muted-foreground">
 								{t("databaseQueryEmptyDescription")}
 							</p>
 							<Button variant="primary" size="sm" onClick={handleNewTab}>
-								<span className="icon-[mdi--plus] h-4 w-4" />
+								<span className="icon-[lucide--plus] h-4 w-4" />
 								{t("databaseNewQuery")}
 							</Button>
 						</motion.div>
@@ -1137,13 +1174,24 @@ export function DatabaseWorkspace({
 							<div className="flex min-w-0 items-end gap-1">
 								<TabBar
 									className="min-w-0 flex-1"
-									items={query.tabs.map((tab) => ({ key: tab.id, label: tab.title, removable: true }))}
+									items={query.tabs.map((tab) => ({
+										key: tab.id,
+										label: tab.title,
+										removable: !tab.pinned,
+										dirty: tab.dirty,
+										pinned: tab.pinned,
+										connectionColor: tab.connectionName ? tabColorById.get(tab.id) : undefined,
+									}))}
 									value={query.activeTabId ?? ""}
 									onChange={handleTabChange}
 									onRemove={handleTabClose}
 									onReorder={handleTabReorder}
 									onOverflowChange={setOverflowTabIds}
 									onContextMenu={handleTabContextMenu}
+									editingKey={editingTabId}
+									onDoubleClick={handleTabRenameStart}
+									onRenameCommit={handleTabRenameCommit}
+									onRenameCancel={handleTabRenameCancel}
 								/>
 								{overflowTabIds.length > 0 ? (
 									<DropdownMenu>
@@ -1155,23 +1203,26 @@ export function DatabaseWorkspace({
 													aria-label={t("databaseMoreTabs")}
 													title={t("databaseMoreTabs")}
 												>
-													<span className="icon-[mdi--dots-horizontal] h-3.5 w-3.5" />
+												<span className="icon-[lucide--ellipsis] h-3.5 w-3.5" />
 												</Button>
 										</DropdownMenuTrigger>
 										<DropdownMenuContent align="end" className="w-48">
-											{overflowTabIds.map((id) => {
-												const tab = query.tabs.find((item) => item.id === id);
-												return tab ? (
-													<DropdownMenuItem key={id} onClick={() => handleTabChange(id)}>
-														<span className="min-w-0 truncate">{tab.title}</span>
-													</DropdownMenuItem>
-												) : null;
-											})}
+													{overflowTabIds.map((id) => {
+														const tab = query.tabs.find((item) => item.id === id);
+														return tab ? (
+															<DropdownMenuItem key={id} onClick={() => handleTabChange(id)}>
+																<span className="min-w-0 truncate">
+																	{tab.dirty ? <span className="text-primary">* </span> : null}
+																	{tab.title}
+																</span>
+															</DropdownMenuItem>
+														) : null;
+													})}
 										</DropdownMenuContent>
 									</DropdownMenu>
 								) : null}
 							</div>
-							{/* V7-⑧ 查询标签右键菜单：复制名称 / 复制标签 / 关闭 / 关闭其他 / 关闭全部（对齐 dbx 顺序；关闭类危险色；复用树右键菜单浮层）。 */}
+							{/* V5.1 查询标签右键菜单：复制名称 / 复制标签 / 固定/取消固定 / 关闭（脏确认）/ 关闭其他 / 关闭全部（对齐 dbx 顺序；固定标签不参与批量关闭；关闭类危险色）。 */}
 							{tabMenu ? (
 								<DatabaseExplorerContextMenu
 									x={tabMenu.x}
@@ -1181,7 +1232,7 @@ export function DatabaseWorkspace({
 										[
 											{
 												key: "copy-name",
-												icon: "icon-[mdi--content-copy]",
+												icon: "icon-[lucide--copy]",
 												label: t("databaseCopyName"),
 												onSelect: () => {
 													recordSettingsUsage({ tab: "database", action: "selected", target: "query-tab-copy-name" });
@@ -1192,36 +1243,50 @@ export function DatabaseWorkspace({
 
 											{
 												key: "duplicate",
-												icon: "icon-[mdi--content-copy]",
+												icon: "icon-[lucide--copy]",
 												label: t("databaseDuplicateTab"),
 												onSelect: () => query.actions.duplicateTab(tabMenu.tabId),
+											},
+											{
+												key: "pin",
+												icon: "icon-[lucide--pin]",
+												label: t(
+													query.tabs.find((item) => item.id === tabMenu.tabId)?.pinned
+														? "databaseUnpinTab"
+														: "databasePinTab",
+												),
+												onSelect: () => query.actions.toggleTabPin(tabMenu.tabId),
 											},
 											{ key: "sep-close", separator: true },
 											{
 												key: "close",
-												icon: "icon-[mdi--close]",
+												icon: "icon-[lucide--x]",
 												label: t("databaseCloseTab"),
 												destructive: true,
-												onSelect: () => query.actions.closeTab(tabMenu.tabId),
+												onSelect: () => handleTabClose(tabMenu.tabId),
 											},
-											...(query.tabs.length > 1
+											...(query.tabs.some((item) => item.id !== tabMenu.tabId && !item.pinned)
 												? [
 														{
 															key: "close-others",
-															icon: "icon-[mdi--close-box-outline]",
+															icon: "icon-[lucide--square-x]",
 															label: t("databaseCloseOtherTabs"),
 															destructive: true,
 															onSelect: () => query.actions.closeOtherTabs(tabMenu.tabId),
 														},
 												  ]
 												: []),
-											{
-												key: "close-all",
-												icon: "icon-[mdi--close-box-multiple-outline]",
-												label: t("databaseCloseAllTabs"),
-												destructive: true,
-												onSelect: () => query.actions.closeAllTabs(),
-											},
+											...(query.tabs.some((item) => !item.pinned)
+												? [
+														{
+															key: "close-all",
+															icon: "icon-[lucide--circle-x]",
+															label: t("databaseCloseAllTabs"),
+															destructive: true,
+															onSelect: () => query.actions.closeAllTabs(),
+														},
+												  ]
+												: []),
 										] satisfies readonly DatabaseContextMenuItem[]
 									}
 								/>
@@ -1276,6 +1341,8 @@ export function DatabaseWorkspace({
 								canGoNextPage={query.canGoNextPage}
 								page={query.page}
 								pageSize={query.pageSize}
+								defaultClientPageSize={model.toolPrefs.resultPageSize ?? 100}
+								defaultAutoRefresh={model.toolPrefs.resultAutoRefresh ?? false}
 								loadingPage={query.loadingPage}
 								onGoToPage={(target) => {
 									if (!effectiveConnection) return;
@@ -1348,14 +1415,14 @@ export function DatabaseWorkspace({
 							className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center"
 						>
 							<div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-								<span className="icon-[solar--database-linear] h-8 w-8" />
+								<span className="icon-[lucide--database] h-8 w-8" />
 							</div>
 							<h2 className="text-[17px] font-bold text-foreground">{t("databaseEmptyTitle")}</h2>
 							<p className="max-w-[360px] text-[12.5px] leading-relaxed text-muted-foreground">
 								{t("databaseEmptyDescription")}
 							</p>
 							<Button variant="primary" size="sm" onClick={model.actions.openAdd}>
-								<span className="icon-[mdi--plus] h-4 w-4" />
+								<span className="icon-[lucide--plus] h-4 w-4" />
 								{t("databaseAddConnection")}
 							</Button>
 						</motion.div>
@@ -1377,42 +1444,42 @@ export function DatabaseWorkspace({
 							label={t("databaseConnections")}
 							action={
 								<div className="flex items-center gap-px">
-									<button
-										type="button"
+									<Button
+										variant="ghost"
+										size="icon-xs"
 										title={t("databaseCollapseAll")}
 										aria-label={t("databaseCollapseAll")}
-										className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground active:scale-95"
 										onClick={handleCollapseAllConnections}
 									>
-										<span className="h-3 w-3 icon-[solar--double-alt-arrow-up-linear]" />
-									</button>
-									<button
-										type="button"
+										<span className="icon-[lucide--chevrons-up] h-3 w-3" />
+									</Button>
+									<Button
+										variant="ghost"
+										size="icon-xs"
 										title={t("databaseRefreshAll")}
 										aria-label={t("databaseRefreshAll")}
-										className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground active:scale-95"
 										onClick={handleRefreshAllConnections}
 									>
-										<span className="h-3 w-3 icon-[solar--refresh-linear]" />
-									</button>
-									<button
-										type="button"
+										<span className="icon-[lucide--refresh-cw] h-3 w-3" />
+									</Button>
+									<Button
+										variant="ghost"
+										size="icon-xs"
 										title={t("databaseCreateGroup")}
 										aria-label={t("databaseCreateGroup")}
-										className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground active:scale-95"
 										onClick={openGroupDialog}
 									>
-										<span className="h-3 w-3 icon-[mdi--folder-plus-outline]" />
-									</button>
-									<button
-										type="button"
+										<span className="icon-[lucide--folder-plus] h-3 w-3" />
+									</Button>
+									<Button
+										variant="ghost"
+										size="icon-xs"
 										title={t("databaseCollapse")}
 										aria-label={t("databaseCollapse")}
-										className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground active:scale-95"
 										onClick={() => setTreeOverride(false)}
 									>
-										<span className="h-3 w-3 icon-[mdi--close]" />
-									</button>
+										<span className="icon-[lucide--x] h-3 w-3" />
+									</Button>
 								</div>
 							}
 						/>
@@ -1422,7 +1489,7 @@ export function DatabaseWorkspace({
 					{detailsAsOverlay && selected ? (
 						<aside className="absolute bottom-0 right-0 top-0 z-10 w-[min(340px,calc(100%-40px))] overflow-y-auto rounded-l-xl bg-muted/95 px-4 py-4 shadow-2xl">
 							<div className="mb-3 flex items-center justify-between">
-								<DatabaseSectionLabel icon="icon-[mdi--information-outline]">{t("databaseToggleDetails")}</DatabaseSectionLabel>
+								<DatabaseSectionLabel icon="icon-[lucide--info]">{t("databaseToggleDetails")}</DatabaseSectionLabel>
 								<Button
 									variant="ghost"
 									size="xs"
@@ -1430,7 +1497,7 @@ export function DatabaseWorkspace({
 									title={t("databaseCollapse")}
 									onClick={() => setDetailsOverride(false)}
 								>
-									<span className="icon-[mdi--close] h-4 w-4" />
+									<span className="icon-[lucide--x] h-4 w-4" />
 								</Button>
 							</div>
 							{detailsBody}
