@@ -56,12 +56,12 @@ Name: "{app}\versions"; Check: IsNotBackgroundUpdate
 [Files]
 Source: "{#SourceDir}\ASTRAVIA.exe"; DestDir: "{app}"; Flags: ignoreversion; Check: IsNotBackgroundUpdate
 Source: "{#SourceDir}\current.json"; DestDir: "{app}"; Flags: ignoreversion; Check: IsNotBackgroundUpdate
-; app.asar is already an archive. Keeping it uncompressed lets the outer blockmap
-; reuse unchanged chunks instead of invalidating one large LZMA2 stream.
-Source: "{#SourceDir}\versions\{#AppVersion}\*"; DestDir: "{app}\versions\{#AppVersion}"; Excludes: "resources\app.asar"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: IsNotBackgroundUpdate
-Source: "{#SourceDir}\versions\{#AppVersion}\resources\app.asar"; DestDir: "{app}\versions\{#AppVersion}\resources"; Flags: ignoreversion nocompression; Check: IsNotBackgroundUpdate
-Source: "{#SourceDir}\versions\{#AppVersion}\*"; DestDir: "{code:GetUpdateVersionDirectory}"; Excludes: "resources\app.asar"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: IsBackgroundUpdate
-Source: "{#SourceDir}\versions\{#AppVersion}\resources\app.asar"; DestDir: "{code:GetUpdateVersionDirectory}\resources"; Flags: ignoreversion nocompression; Check: IsBackgroundUpdate
+; app.asar 在压缩段结束后由 nocompression 单独拷贝时，ISCC 实测报
+; “The system cannot find the path specified.”（无行号、复现稳定、与源路径
+; junction/真实路径无关）。改用默认压缩纳入递归 glob，全量更新不受影响
+; （blockmap 仍对整个安装包计算）。
+Source: "{#SourceDir}\versions\{#AppVersion}\*"; DestDir: "{app}\versions\{#AppVersion}"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: IsNotBackgroundUpdate
+Source: "{#SourceDir}\versions\{#AppVersion}\*"; DestDir: "{code:GetUpdateVersionDirectory}"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: IsBackgroundUpdate
 
 [Icons]
 Name: "{group}\ASTRAVIA"; Filename: "{app}\ASTRAVIA.exe"; Check: IsNotBackgroundUpdate

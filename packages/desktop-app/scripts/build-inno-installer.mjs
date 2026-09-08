@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
@@ -156,22 +156,56 @@ async function main() {
 		console.log(`[build-inno] listing ${dirPath}:`);
 		console.log(lines.join("\n") || "    (empty)");
 	}
-	try {
-		execFileSync(
-			compiler,
-			[
-				// 保留完整 ISCC 输出（不用 /Qp），编译失败时日志能指出正在处理的文件与行号。
-				`/DAppVersion=${version}`,
-				`/DSourceDir=${iscSourceDir}`,
-				`/DOutputDir=${releaseDir}`,
-				`/DArch=${arch}`,
-				installerScript,
-			],
-			{ stdio: "inherit" },
-		);
-	} finally {
-		if (compilerWorkDir) await rm(compilerWorkDir, { recursive: true, force: true });
+	let lastCompileError;
+	for (let attempt = 1; attempt <= 2; attempt += 1) {
+		try {
+			execFileSync(
+				compiler,
+				[
+					// 保留完整 ISCC 输出（不用 /Qp），编译失败时日志能指出正在处理的文件与行号。
+					`/DAppVersion=${version}`,
+					`/DSourceDir=${iscSourceDir}`,
+					`/DOutputDir=${releaseDir}`,
+					`/DArch=${arch}`,
+					installerScript,
+				],
+				{ stdio: "inherit" },
+			);
+			lastCompileError = null;
+			break;
+		} catch (compileError) {
+			lastCompileError = compileError;
+			console.error(`[build-inno] ISCC attempt ${attempt}/2 failed.`);
+			// 失败快照：抓输出 exe / app.asar / 磁盘空间，帮助区分写输出失败与源缺失。
+			const snapshot = [];
+			const snapshotCandidates = [
+				["output exe", join(releaseDir, fileName)],
+				["app.asar", join(sourceDir, "versions", version, "resources", "app.asar")],
+				["root launcher", join(iscSourceDir, "ASTRAVIA.exe")],
+			];
+			for (const [label, candidatePath] of snapshotCandidates) {
+				try {
+					const info = statSync(candidatePath);
+					snapshot.push(`  ${label}: PRESENT (${info.size}B)`);
+				} catch {
+					snapshot.push(`  ${label}: ABSENT`);
+				}
+			}
+			try {
+				const driveOutput = execFileSync("powershell", ["-NoProfile", "-Command", "Get-PSDrive -PSProvider FileSystem | Select-Object Name,@{n='FreeGB';e={[math]::Round($_.Free/1GB,1)}},@{n='UsedGB';e={[math]::Round($_.Used/1GB,1)}} | Format-Table -AutoSize"], { encoding: "utf8" });
+				snapshot.push(`  disks:\n${driveOutput.trim()}`);
+			} catch {
+				// 磁盘快照失败不影响主流程
+			}
+			console.error(`[build-inno] snapshot after failed attempt ${attempt}:\n${snapshot.join("\n")}`);
+			if (attempt === 1) {
+				console.error("[build-inno] retrying ISCC once …");
+				await new Promise((resolve) => setTimeout(resolve, 2000));
+			}
+		}
 	}
+	if (lastCompileError) throw lastCompileError;
+	if (compilerWorkDir) await rm(compilerWorkDir, { recursive: true, force: true });
 
 	const installerPath = join(releaseDir, fileName);
 	if (!existsSync(installerPath)) throw new Error(`[build-inno] installer not found: ${installerPath}`);
