@@ -109,9 +109,35 @@ async function main() {
 	const shortSourceDir = needsShortPath ? join(compilerWorkDir, "src") : null;
 	if (shortSourceDir) await symlink(sourceDir, shortSourceDir, "junction");
 	const iscSourceDir = shortSourceDir ?? sourceDir;
-	// SetupIconFile（.iss 唯一在编译期读资源的路径），把缺失暴露成明确信号。
-	const setupIconPath = join(sourceDir, "versions", version, "resources", "build", "icon.ico");
-	console.log(`[build-inno] SetupIconFile ${existsSync(setupIconPath) ? "present" : "MISSING"}: ${setupIconPath}`);
+	const versionedDir = join(sourceDir, "versions", version);
+	// 把 installer.iss 引用的每个物理源路径在编译前逐条校验：ISCC 失败时只报
+	// “The system cannot find the path specified.”（无行号/文件名），这里用
+	// 明确信号定位到具体缺失文件。
+	const requiredSources = [
+		["root launcher (L57 ASTRAIVA.exe)", join(iscSourceDir, "ASTRAIVA.exe")],
+		["root current.json (L58)", join(iscSourceDir, "current.json")],
+		["versioned dir (L61 recursion root)", versionedDir],
+		["resources\\app.asar (L62 nocompression)", join(versionedDir, "resources", "app.asar")],
+		["resources\\build\\icon.ico (SetupIconFile)", join(versionedDir, "resources", "build", "icon.ico")],
+	];
+	for (const [label, candidatePath] of requiredSources) {
+		const present = existsSync(candidatePath);
+		console.log(`[build-inno] ${present ? "PASS" : "MISSING"} ${label}: ${candidatePath}`);
+	}
+	for (const missing of requiredSources.filter(([, candidatePath]) => !existsSync(candidatePath))) {
+		throw new Error(`[build-inno] 编译前校验失败：${missing[0]} 不存在 —— ${missing[1]}`);
+	}
+	// 打印 versioned 目录与 resources 清单（各一层），供排查布局/打包完整性。
+	for (const dirPath of [versionedDir, join(versionedDir, "resources")]) {
+		const lines = [];
+		for (const entry of await readdir(dirPath, { withFileTypes: true })) {
+			const entryPath = join(dirPath, entry.name);
+			const size = entry.isFile() ? (await stat(entryPath)).size : -1;
+			lines.push(`    ${entry.isDirectory() ? "[D]" : "[F]"} ${entry.name}${size >= 0 ? ` (${size}B)` : ""}`);
+		}
+		console.log(`[build-inno] listing ${dirPath}:`);
+		console.log(lines.join("\n") || "    (empty)");
+	}
 	try {
 		execFileSync(
 			compiler,
