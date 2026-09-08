@@ -4,6 +4,7 @@
 
 ### Added
 
+- Team sessions can persist an independent, automatically generated conversation title without coupling historical conversations to the mutable Team name.
 - Team session contracts now expose catalog summaries, stable workspace identity, and persisted per-session model/reasoning settings; send requests may carry the resolved turn configuration through the existing member runtime path.
 - 新增结果发布事务 observation 合同，覆盖准备、公开消息落盘、完成与待恢复阶段，并以 `recovered` 区分普通执行和重启补偿；payload 只保存 Team/Conversation/work/attempt/message 等关联身份。
 - External-condition recovery now carries optional provider/model identity, matches only persisted `after-external-change` issues, and keeps legacy identity-less waits conservatively recoverable. Recovery observations identify manual, automatic and external-change triggers without exposing credentials or billing data.

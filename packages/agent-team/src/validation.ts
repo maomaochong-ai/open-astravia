@@ -284,6 +284,7 @@ export const TeamSessionDocumentSchema = Type.Object(
 		executionMode: Type.Optional(Type.Union([Type.Literal("sandbox"), Type.Literal("full-access")])),
 		modelSettings: Type.Optional(UpdateTeamSessionModelSettingsInputSchema),
 		teamRevision: Type.Optional(Type.Integer({ minimum: 1, maximum: Number.MAX_SAFE_INTEGER })),
+		title: Type.Optional(Type.String({ minLength: 1, maxLength: 128, pattern: "\\S" })),
 		name: Type.String({ minLength: 1, maxLength: 128, pattern: "\\S" }),
 		cwd: Type.String({ minLength: 1, maxLength: 4_096 }),
 		orchestrationPolicyId: Type.Optional(id),

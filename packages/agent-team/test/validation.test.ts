@@ -194,6 +194,10 @@ describe("Agent Team IPC input validation", () => {
 			},
 		};
 		expect(parseTeamSessionDocument(session)).toMatchObject({ id: "session" });
+		expect(parseTeamSessionDocument({ ...session, title: "Review deployment plan" })).toMatchObject({
+			title: "Review deployment plan",
+		});
+		expect(() => parseTeamSessionDocument({ ...session, title: " " })).toThrow("Invalid Agent Team session document");
 		expect(
 			parseTeamSessionDocument({
 				...session,

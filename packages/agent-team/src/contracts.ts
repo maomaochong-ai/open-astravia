@@ -149,6 +149,8 @@ export interface TeamSessionDocument {
 	readonly modelSettings?: TeamSessionModelSettings;
 	/** Team definition revision last reconciled into the active runtime roster. */
 	readonly teamRevision?: number;
+	/** Conversation title generated from the first user message; independent of the Team definition name. */
+	readonly title?: string;
 	readonly name: string;
 	readonly cwd: string;
 	readonly orchestrationPolicyId?: string;
