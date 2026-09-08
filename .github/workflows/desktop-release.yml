@@ -81,6 +81,14 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # 桌面打包（prepare-pack）需交叉编译内嵌 im-gateway 二进制（Go），
+      # GitHub 托管 mac runner 未预装 go。
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: packages/im-gateway/go.mod
+
+
       # 分层构建约定：桌面打包（dist:*）依赖工作区库的 dist 产物
       #（如 @astravia/toolkit/dist 的 versioned-config 子路径导出）。
       # CI 全新检出没有这些产物，必须先跑 scripts/build.sh libs 补上。
