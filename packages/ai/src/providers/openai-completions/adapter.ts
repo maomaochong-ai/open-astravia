@@ -297,9 +297,11 @@ function updateUsage(output: AssistantMessage, model: Model<"openai-completions"
 	if (!chunk.usage) return;
 	const reportedCachedTokens = chunk.usage.prompt_tokens_details?.cached_tokens;
 	const cachedTokens = reportedCachedTokens || 0;
-	const reasoningTokens = chunk.usage.completion_tokens_details?.reasoning_tokens || 0;
 	const input = (chunk.usage.prompt_tokens || 0) - cachedTokens;
-	const outputTokens = (chunk.usage.completion_tokens || 0) + reasoningTokens;
+	// `completion_tokens_details` 与 `prompt_tokens_details` 一样是"细分"而非"附加"：
+	// reasoning_tokens 已经计入 completion_tokens（正如 cached_tokens 已计入
+	// prompt_tokens，所以上面是减法）。再加一次会让推理模型的输出量与费用翻倍。
+	const outputTokens = chunk.usage.completion_tokens || 0;
 	output.usage = {
 		input,
 		output: outputTokens,

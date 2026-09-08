@@ -42,6 +42,8 @@
 
 ### Fixed
 
+- OpenAI 兼容协议不再把 `completion_tokens_details.reasoning_tokens` 重复计入输出量：它本就是 `completion_tokens` 的细分项，重复相加会让推理模型的输出 token 与费用翻倍（`prompt_tokens_details.cached_tokens` 一侧的减法一直是对的）。
+
 - 修复 Gemini 3 并行工具调用回放时，将缺失 `thoughtSignature` 的后续调用错误转换为普通文本，导致对应 `functionResponse` 与 `functionCall` 失配；现在保留调用结构，对确实缺失签名的历史调用使用 Google replay sentinel。
 - Gemini 请求历史中的工具结果名称现在按对应的 `functionCall`（调用 ID）校正，兼容旧 Team 会话中残留的工具名称不一致，保留原始消息内容与工具调用展示。
 - 修复模型最大输出 token 数被全局硬限制为 32K、缺失元数据又被伪造为固定值的问题；`Model.maxTokens` 现在允许未知，普通 Provider 会省略请求上限并交由实际模型服务决定，Anthropic 因协议强制要求该字段而使用带 warning 的 4096 保守预算。
