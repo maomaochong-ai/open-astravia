@@ -11,6 +11,7 @@
 <p align="center">
   <a href="https://www.openvetta.com"><img src="https://img.shields.io/badge/官网-openvetta.com-0b7285" alt="官网"></a>
   <a href="https://docs.openvetta.com"><img src="https://img.shields.io/badge/文档-docs.openvetta.com-f06449" alt="文档"></a>
+  <a href="https://discord.gg/qGqkk22Vg9"><img src="https://img.shields.io/badge/Discord-加入社区-5865F2?logo=discord&logoColor=white" alt="加入 Open Vetta Discord"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/许可-Apache--2.0-blue" alt="Apache-2.0 许可"></a>
   <img src="https://img.shields.io/badge/平台-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey" alt="macOS、Windows 与 Linux">
   <a href="https://coderabbit.ai"><img src="https://img.shields.io/coderabbit/prs/github/openvetta/open-vetta?utm_source=oss&utm_medium=github&utm_campaign=openvetta%2Fopen-vetta&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews" alt="CodeRabbit Pull Request Reviews"></a>
@@ -22,6 +23,7 @@
   <a href="https://www.openvetta.com/download">下载</a> ·
   <a href="https://docs.openvetta.com/getting-started/">快速开始</a> ·
   <a href="https://github.com/openvetta/open-vetta/discussions">社区讨论</a> ·
+  <a href="https://discord.gg/qGqkk22Vg9">Discord</a> ·
   <a href="CONTRIBUTING.zh-CN.md">参与贡献</a>
 </p>
 
@@ -153,6 +155,18 @@ Pull Request 发往 **`dev`** 分支。贡献地图、测试要求与评审门�
 - [`docs/adr/`](docs/adr/)：架构决策记录
 
 文档站同时提供 [`llms.txt`](https://docs.openvetta.com/llms.txt)、[`llms-full.txt`](https://docs.openvetta.com/llms-full.txt)，以及每个页面的 Markdown 版本，方便 Agent 获取内容。
+
+## 社区
+
+欢迎加入 Open Vetta 的 Discord 服务器：提问、交流工作流，分享技能、插件与主题，获取版本发布动态，并直接和维护者对话。
+
+<p align="center">
+  <a href="https://discord.gg/qGqkk22Vg9"><img src="https://img.shields.io/badge/Open%20Vetta-Discord-5865F2?logo=discord&logoColor=white&style=for-the-badge" alt="Open Vetta Discord"></a>
+</p>
+
+**https://discord.gg/qGqkk22Vg9**
+
+需要长期留存、便于检索的讨论仍请发到 [GitHub Discussions](https://github.com/openvetta/open-vetta/discussions)；安全漏洞请走 [GitHub Security Advisories](https://github.com/openvetta/open-vetta/security/advisories/new)，请勿在 Discord 中公开报告。
 
 ## 致谢与许可
 

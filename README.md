@@ -11,6 +11,7 @@
 <p align="center">
   <a href="https://www.openvetta.com"><img src="https://img.shields.io/badge/website-openvetta.com-0b7285" alt="Website"></a>
   <a href="https://docs.openvetta.com"><img src="https://img.shields.io/badge/docs-docs.openvetta.com-f06449" alt="Documentation"></a>
+  <a href="https://discord.gg/qGqkk22Vg9"><img src="https://img.shields.io/badge/Discord-join%20the%20community-5865F2?logo=discord&logoColor=white" alt="Join the Open Vetta Discord"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="Apache-2.0 license"></a>
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey" alt="macOS, Windows, and Linux">
   <a href="https://coderabbit.ai"><img src="https://img.shields.io/coderabbit/prs/github/openvetta/open-vetta?utm_source=oss&utm_medium=github&utm_campaign=openvetta%2Fopen-vetta&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews" alt="CodeRabbit Pull Request Reviews"></a>
@@ -22,6 +23,7 @@
   <a href="https://www.openvetta.com/download">Download</a> ·
   <a href="https://docs.openvetta.com/getting-started/">Get started</a> ·
   <a href="https://github.com/openvetta/open-vetta/discussions">Discussions</a> ·
+  <a href="https://discord.gg/qGqkk22Vg9">Discord</a> ·
   <a href="CONTRIBUTING.md">Contributing</a>
 </p>
 
@@ -153,6 +155,18 @@ Questions and early ideas belong in [GitHub Discussions](https://github.com/open
 - [`docs/adr/`](docs/adr/) for architecture decisions
 
 The documentation site also publishes [`llms.txt`](https://docs.openvetta.com/llms.txt), [`llms-full.txt`](https://docs.openvetta.com/llms-full.txt), and a Markdown representation of each page for Agent consumption.
+
+## Community
+
+Join the Open Vetta Discord to ask questions, share workflows, skills, plugins and themes, follow release news, and talk to the maintainers.
+
+<p align="center">
+  <a href="https://discord.gg/qGqkk22Vg9"><img src="https://img.shields.io/badge/Open%20Vetta-Discord-5865F2?logo=discord&logoColor=white&style=for-the-badge" alt="Open Vetta Discord"></a>
+</p>
+
+**https://discord.gg/qGqkk22Vg9**
+
+Longer, searchable threads still belong in [GitHub Discussions](https://github.com/openvetta/open-vetta/discussions), and vulnerabilities go through [GitHub Security Advisories](https://github.com/openvetta/open-vetta/security/advisories/new) — please do not report them on Discord.
 
 ## Credits and license
 
