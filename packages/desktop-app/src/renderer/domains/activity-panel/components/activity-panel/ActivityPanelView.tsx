@@ -22,6 +22,7 @@ export function ActivityPanelView({
 		() =>
 			model.tabItems.length > 0 || model.showTabPicker ? (
 				<TabBar
+					variant="panel"
 					className="min-w-0 flex-1"
 					items={model.tabItems}
 					value={model.activeTab}

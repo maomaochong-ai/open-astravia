@@ -102,11 +102,56 @@ export const setActivityPanelWidthAtom = atom(null, (_get, set, width: number | 
 	set(activityPanelWidthAtom, Math.min(max, Math.max(ACTIVITY_PANEL_MIN_WIDTH, target)));
 });
 
+/** 从 localStorage 读取 cwd → string 形态的持久化记录（单值），解析失败返回空 Map。 */
+function readCwdStringMap(storageKey: string): Map<string, string> {
+	try {
+		const raw = localStorage.getItem(storageKey);
+		if (!raw) return new Map();
+		const parsed: unknown = JSON.parse(raw);
+		if (parsed == null || typeof parsed !== "object") return new Map();
+		const map = new Map<string, string>();
+		for (const [cwd, value] of Object.entries(parsed)) {
+			if (typeof value === "string") map.set(cwd, value);
+		}
+		return map;
+	} catch {
+		return new Map();
+	}
+}
+
+type CwdStringMapUpdate<T extends string> = Map<string, T> | ((prev: Map<string, T>) => Map<string, T>);
+
+function resolveCwdStringMapUpdate<T extends string>(
+	prev: Map<string, T>,
+	update: CwdStringMapUpdate<T>,
+): Map<string, T> {
+	return typeof update === "function" ? update(prev) : update;
+}
+
+/** 构造一个「读取 base / 写入时同步 localStorage」的 cwd → T 持久化 atom（T 为字符串子类型）。 */
+function createPersistedCwdStringAtom<T extends string>(storageKey: string) {
+	const base = atom<Map<string, T>>(readCwdStringMap(storageKey) as Map<string, T>);
+	return atom(
+		(get) => get(base),
+		(get, set, update: CwdStringMapUpdate<T>) => {
+			const next = resolveCwdStringMapUpdate(get(base), update);
+			if (next === get(base)) return;
+			set(base, next);
+			localStorage.setItem(storageKey, JSON.stringify(Object.fromEntries(next)));
+		},
+	);
+}
+
 /**
  * 活动面板 active tab 按项目（cwd）记忆。
  * 切换项目后会回到该项目上次选中的 tab；新项目按 profile.defaultActivityTab 决定。
+ * 持久化到 localStorage：应用重启 / 切换会话后仍记住各项目上次选中的标签页（含数据库 tab），
+ * 不再因会话内存重置而跳回默认 file tab。
  */
-export const activityPanelTabByProjectAtom = atom<Map<string, ActivityTabKey>>(new Map<string, ActivityTabKey>());
+export const ACTIVITY_PANEL_ACTIVE_TAB_STORAGE_KEY = "astravia-activity-active-tab";
+export const activityPanelTabByProjectAtom = createPersistedCwdStringAtom<ActivityTabKey>(
+	ACTIVITY_PANEL_ACTIVE_TAB_STORAGE_KEY,
+);
 
 export interface DatabaseTabTarget {
 	readonly connection: string;

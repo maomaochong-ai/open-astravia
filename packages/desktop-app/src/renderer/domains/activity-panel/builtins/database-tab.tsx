@@ -38,7 +38,9 @@ return (
 export const databaseTabDefinition: ActivityTabDefinition = {
 	id: "database",
 	order: 5,
-	removable: false,
+	// #5 决策：数据库 tab 不常驻。移除 removable:false 限制后，用户可经「-」隐藏该 tab，
+	// 需要时再经标签页菜单「+」恢复——默认仍上栏（无 hidden 记录时按 order 展示）。
+	removable: true,
 	source: "builtin",
 	useMeta: () => {
 		const { t } = useTranslation("chat");
