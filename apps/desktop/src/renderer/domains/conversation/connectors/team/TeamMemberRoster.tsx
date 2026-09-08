@@ -45,7 +45,7 @@ export function TeamMemberRoster({
 			<div
 				role="group"
 				aria-label={t("chat.memberSessions")}
-				className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto no-scrollbar"
+				className="flex min-w-0 items-center gap-1.5 overflow-x-auto no-scrollbar"
 			>
 				{activeMemberId && onBackToTeam ? (
 					<button
