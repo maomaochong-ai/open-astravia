@@ -126,9 +126,7 @@ async function main() {
 		console.log(`[build-inno] ${present ? "PASS" : "MISSING"} ${label}: ${candidatePath}`);
 	}
 	const [launcherMissing] = requiredSources.filter(([, candidatePath]) => !existsSync(candidatePath));
-	for (const missing of requiredSources.filter(
-		([label]) => label !== launcherMissing?.[0] && !existsSync(missing[1]),
-	)) {
+	for (const missing of requiredSources.filter(([label, candidatePath]) => label !== launcherMissing?.[0] && !existsSync(candidatePath))) {
 		throw new Error(`[build-inno] 编译前校验失败：${missing[0]} 不存在 —— ${missing[1]}`);
 	}
 	// root launcher 特例：electron-builder 会在 afterPack（layout）之后对 root
