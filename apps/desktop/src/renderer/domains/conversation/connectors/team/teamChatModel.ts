@@ -251,7 +251,7 @@ function buildTeamMemberReplySummary(input: TeamMemberReplySummaryInput): ChatCo
 
 export function reduceTeamStreamState(state: TeamStreamState, event: DesktopTeamSessionStreamEvent): TeamStreamState {
 	if (event.type === "session-snapshot") {
-		return event.activeMessageEvents.reduce(reduceTeamStreamState, {});
+		return (event.activeStreamEvents ?? event.activeMessageEvents).reduce(reduceTeamStreamState, {});
 	}
 	if (event.type === "session-updated") {
 		const persisted = new Set(event.snapshot.messages.map((record) => record.id));
@@ -301,6 +301,7 @@ export function resolveTeamMembers(
 	streams: TeamStreamState,
 	resolveName: (profileId: string, fallbackHandle: string) => string,
 	failedMemberIds: ReadonlySet<string> = new Set(),
+	durableWorkingMemberIds: readonly string[] = [],
 ): TeamMemberViewModel[] {
 	if (!team) return [];
 	const workingMembers = new Set(
@@ -308,6 +309,7 @@ export function resolveTeamMembers(
 			.filter((turn) => turn.message.phase === "streaming")
 			.map((turn) => turn.message.authorId),
 	);
+	for (const memberId of durableWorkingMemberIds) workingMembers.add(memberId);
 	return team.members.map((member) => {
 		const profile = document?.agents.find((candidate) => candidate.id === member.binding.agentProfileId);
 		return {
@@ -396,46 +398,22 @@ export function projectTeamConversationTimeline({
 		consumedPublicRenderKeys.add(publicRenderKey);
 		return { ...item, renderKey: publicRenderKey };
 	});
-	const memberAgentItems = stabilizedMemberItems.filter((item) => item.kind === "agent");
 	const leaderMemberId = session?.leaderMemberId;
 	const activities = memberId ? [] : (snapshot?.activities ?? []);
 	const leaderDelegations = activities.filter(
 		(activity) => activity.sourceMemberId === leaderMemberId && activity.targetMemberId !== leaderMemberId,
 	);
-	const leaderDelegatedRenderKeys = new Set(
-		coordinationAgentItems
-			.filter((item) => leaderDelegations.some((activity) => matchesActivityReply(activity, item)))
-			.map((item) => item.renderKey ?? item.entryId ?? item.id),
+	const aggregateCoordinationAgentItems = coordinationAgentItems.filter(
+		(item) => !leaderDelegations.some((activity) => matchesActivityReply(activity, item)),
 	);
-	const leaderMemberItems = memberAgentItems.filter((item) => item.authorId === leaderMemberId);
-	const leaderCoordinationItems = coordinationAgentItems.filter((item) => item.authorId === leaderMemberId);
-	const directMemberItems = memberAgentItems.filter(
-		(item) =>
-			item.authorId !== leaderMemberId &&
-			!leaderDelegatedRenderKeys.has(item.renderKey ?? item.entryId ?? item.id) &&
-			!leaderDelegations.some((activity) => matchesActivityReply(activity, item)),
-	);
-	const directCoordinationItems = coordinationAgentItems.filter(
-		(item) =>
-			item.authorId !== leaderMemberId &&
-			!leaderDelegations.some((activity) => matchesActivityReply(activity, item)),
-	);
-	const directResponseItems = mergePreferredAgentEvidence(directCoordinationItems, directMemberItems);
 	const projectedItems =
-		// The coordination Conversation is the durable public Team timeline. Member
-		// histories are allowed to lag behind it while the Runtime flushes its last
-		// assistant entry; preferring them here would briefly remove the just-published
-		// answer (and force the virtualizer to replace the streaming row). Keep native
-		// member history for member-scoped views, but use public coordination messages
-		// for the aggregate Team feed as soon as one is available.
+		// The coordination Conversation is the only durable public Team timeline.
+		// Member Runtime histories contain private prompts, intermediate responses,
+		// and tool continuations whose shape can change after the live turn finishes.
+		// They are available only in an explicit member view and never create rows in
+		// the aggregate feed, so reopening a session cannot change its presentation.
 		memberId === undefined
-			? [
-					...annotatedCoordinationUserItems,
-					...(leaderCoordinationItems.length > leaderMemberItems.length
-						? leaderCoordinationItems
-						: leaderMemberItems),
-					...directResponseItems,
-				]
+			? [...annotatedCoordinationUserItems, ...aggregateCoordinationAgentItems]
 			: [...visibleCoordinationUserItems, ...stabilizedMemberItems.filter((item) => item.kind !== "user")];
 	const linkedPresentations = new Map<string, ChatToolCallPresentationViewModel>();
 	// Only suppress the legacy top-level activity card once the originating leader
@@ -485,7 +463,7 @@ export function projectTeamConversationTimeline({
 		if (activity.sourceMemberId === leaderMemberId && targetMember && targetMember.id !== leaderMemberId) {
 			const linkedToVisibleLeaderTool =
 				activity.originToolCallId !== undefined && visibleLeaderToolCallIds.has(activity.originToolCallId);
-			const targetMessage = [...coordinationAgentItems, ...memberAgentItems].find(
+			const targetMessage = coordinationAgentItems.find(
 				(item): item is ConversationAgentMessageViewModel =>
 					item.kind === "agent" && matchesActivityReply(activity, item),
 			);
@@ -658,18 +636,6 @@ function matchesActivityReply(
 	);
 }
 
-function mergePreferredAgentEvidence(
-	publicItems: readonly ConversationAgentMessageViewModel[],
-	memberItems: readonly ConversationAgentMessageViewModel[],
-): ConversationAgentMessageViewModel[] {
-	const merged = new Map<string, ConversationAgentMessageViewModel>();
-	for (const item of publicItems) merged.set(item.renderKey ?? item.entryId ?? item.id, item);
-	// Matching member entries carry the public render key and add locally available
-	// tool evidence without changing the visible row identity.
-	for (const item of memberItems) merged.set(item.renderKey ?? item.entryId ?? item.id, item);
-	return [...merged.values()];
-}
-
 function dedupeTeamUserItems(items: readonly ChatConversationItem[]): ChatConversationItem[] {
 	const seenUserIds = new Set<string>();
 	const seenTurnIds = new Set<string>();
@@ -697,6 +663,7 @@ function projectMemberConversation(memberId: string, history: readonly HistoryEn
 
 /** Compatibility for legacy Team snapshots that predate member histories. */
 function projectLegacySnapshotMessages(snapshot: DesktopTeamSessionSnapshot): ChatConversationItem[] {
+	const toolExecutions = snapshot.display?.toolExecutions ?? [];
 	return snapshot.messages.map((record) => {
 		if (record.kind === "user") {
 			return {
@@ -724,6 +691,7 @@ function projectLegacySnapshotMessages(snapshot: DesktopTeamSessionSnapshot): Ch
 			turnId: record.turnId,
 			authorId: record.author.id,
 			timestamp: record.timestamp,
+			executions: toolExecutions,
 		});
 		return {
 			...projected,

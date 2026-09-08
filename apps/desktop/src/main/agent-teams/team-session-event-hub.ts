@@ -7,6 +7,7 @@ import { type AssistantMessage, type AssistantMessageEvent, createAssistantMessa
 import type { RuntimeHost, RuntimeSessionExecutionObservation, SessionEvent } from "@vetta/runtime-core";
 import type { ConversationMessageStreamEvent } from "@vetta/runtime-core/conversation";
 import type {
+	DesktopTeamActiveStreamEvent,
 	DesktopTeamContextUsageEvent,
 	DesktopTeamSessionStreamEvent,
 	DesktopTeamToolExecutionEvent,
@@ -28,6 +29,7 @@ export interface ActiveTeamMemberTurn {
 	text: string;
 	rawAssistantStream: boolean;
 	latestPublicPartial?: AssistantMessage;
+	toolExecutionEvents: DesktopTeamToolExecutionEvent[];
 }
 
 interface TeamRuntimeStreamHost {
@@ -142,7 +144,7 @@ export class TeamSessionEventHub {
 					active.text += event.delta;
 					const partial = compatibilityPublicAssistantMessage(active.text, event.timestamp);
 					active.latestPublicPartial = partial;
-					this.publish({
+					const envelope = {
 						type: "conversation.agent-message-event",
 						conversationId: active.teamSessionId,
 						messageId: active.messageId,
@@ -151,7 +153,8 @@ export class TeamSessionEventHub {
 						sequence: active.seq,
 						timestamp: event.timestamp,
 						event: { type: "text_delta", contentIndex: 0, delta: event.delta, partial },
-					});
+					} satisfies ConversationMessageStreamEvent;
+					this.publish(envelope);
 				}
 			});
 			let unsubscribeExecution = () => {};
@@ -207,27 +210,22 @@ export class TeamSessionEventHub {
 	activeMessageEvents(teamSessionId: string): ConversationMessageStreamEvent[] {
 		return [...this.activeMemberTurns.values()]
 			.filter((turn) => turn.teamSessionId === teamSessionId)
+			.flatMap((turn) => activeMessageEventsForTurn(turn));
+	}
+
+	activeStreamEvents(teamSessionId: string): DesktopTeamActiveStreamEvent[] {
+		return [...this.activeMemberTurns.values()]
+			.filter((turn) => turn.teamSessionId === teamSessionId)
 			.flatMap((turn) => {
-				const partial = turn.latestPublicPartial ?? compatibilityPublicAssistantMessage(turn.text, turn.startedAt);
-				const visibleParts = partial.content
-					.filter(isPublicAssistantPart)
-					.filter((part) => part.type !== "text" || part.text.length > 0);
-				const sequenceBase = Math.max(0, turn.seq - visibleParts.length);
-				return visibleParts.map(
-					(part, contentIndex): ConversationMessageStreamEvent => ({
-						type: "conversation.agent-message-event",
-						conversationId: turn.teamSessionId,
-						messageId: turn.messageId,
-						turnId: turn.requestId,
-						author: turn.author,
-						sequence: sequenceBase + contentIndex + 1,
-						timestamp: turn.startedAt,
-						event:
-							part.type === "text"
-								? { type: "text_delta", contentIndex, delta: part.text, partial }
-								: { type: "toolcall_end", contentIndex, toolCall: part, partial },
-					}),
-				);
+				// Collapse assistant deltas to the latest public message, then replay the
+				// tool lifecycle over it. This restores the same view without retaining
+				// every growing partial (which would make long turns quadratic in memory).
+				const events: DesktopTeamActiveStreamEvent[] = [
+					...activeMessageEventsForTurn(turn),
+					...turn.toolExecutionEvents,
+				];
+				const sequenceBase = Math.max(0, turn.seq - events.length);
+				return events.map((event, index) => ({ ...event, sequence: sequenceBase + index + 1 }));
 			});
 	}
 
@@ -237,7 +235,7 @@ export class TeamSessionEventHub {
 		timestamp: number,
 	): void {
 		active.seq += 1;
-		this.publish({
+		const envelope = {
 			type: "conversation.agent-message-event",
 			conversationId: active.teamSessionId,
 			messageId: active.messageId,
@@ -246,7 +244,8 @@ export class TeamSessionEventHub {
 			sequence: active.seq,
 			timestamp,
 			event,
-		});
+		} satisfies ConversationMessageStreamEvent;
+		this.publish(envelope);
 	}
 
 	private publishTeamContextUsage(session: TeamSessionDocument, runtimeSessionId: string, event: SessionEvent): void {
@@ -330,7 +329,7 @@ export class TeamSessionEventHub {
 				return;
 		}
 		active.seq += 1;
-		this.publish({
+		const envelope = {
 			type: "desktop.team-tool-execution",
 			conversationId: active.teamSessionId,
 			messageId: active.messageId,
@@ -339,8 +338,33 @@ export class TeamSessionEventHub {
 			sequence: active.seq,
 			timestamp: observation.timestamp,
 			event: projected,
-		});
+		} satisfies DesktopTeamToolExecutionEvent;
+		active.toolExecutionEvents.push(envelope);
+		this.publish(envelope);
 	}
+}
+
+function activeMessageEventsForTurn(turn: ActiveTeamMemberTurn): ConversationMessageStreamEvent[] {
+	const partial = turn.latestPublicPartial ?? compatibilityPublicAssistantMessage(turn.text, turn.startedAt);
+	const visibleParts = partial.content
+		.filter(isPublicAssistantPart)
+		.filter((part) => part.type !== "text" || part.text.length > 0);
+	const sequenceBase = Math.max(0, turn.seq - visibleParts.length);
+	return visibleParts.map(
+		(part, contentIndex): ConversationMessageStreamEvent => ({
+			type: "conversation.agent-message-event",
+			conversationId: turn.teamSessionId,
+			messageId: turn.messageId,
+			turnId: turn.requestId,
+			author: turn.author,
+			sequence: sequenceBase + contentIndex + 1,
+			timestamp: turn.startedAt,
+			event:
+				part.type === "text"
+					? { type: "text_delta", contentIndex, delta: part.text, partial }
+					: { type: "toolcall_end", contentIndex, toolCall: part, partial },
+		}),
+	);
 }
 
 function projectPublicAssistantEvent(event: AssistantMessageEvent): AssistantMessageEvent | undefined {

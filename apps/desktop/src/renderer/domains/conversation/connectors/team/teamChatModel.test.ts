@@ -298,7 +298,7 @@ describe("team chat stream state", () => {
 		expect(items.filter((item) => item.kind === "agent")).toHaveLength(1);
 		expect(items).toEqual([
 			expect.objectContaining({
-				id: "runtime-tool-step",
+				id: "public-tool-step",
 				renderKey: "team:agent-turn:leader:request",
 			}),
 		]);
@@ -417,6 +417,49 @@ describe("team chat stream state", () => {
 			},
 		);
 		expect(state.turn?.message.text).toBe("restored partial");
+	});
+
+	it("restores an in-flight tool when reconnecting before any visible assistant text", () => {
+		const toolStart: DesktopTeamSessionStreamEvent = {
+			type: "desktop.team-tool-execution",
+			conversationId: session.id,
+			messageId: "tool-only-turn",
+			turnId: "request",
+			author: { kind: "agent", id: "leader" },
+			sequence: 1,
+			timestamp: 2,
+			event: {
+				type: "start",
+				toolCallId: "read-index",
+				toolName: "read",
+				args: { path: "index.html" },
+				startedAt: 2,
+			},
+		};
+		const state = reduceTeamStreamState(
+			{},
+			{
+				type: "session-snapshot",
+				teamSessionId: session.id,
+				snapshot: snapshot(),
+				activeMessageEvents: [],
+				activeStreamEvents: [toolStart],
+			},
+		);
+
+		expect(state["tool-only-turn"]?.message).toMatchObject({
+			authorId: "leader",
+			phase: "streaming",
+			blocks: [
+				{
+					type: "tool_call",
+					toolCallId: "read-index",
+					toolName: "read",
+					args: { path: "index.html" },
+					status: "pending",
+				},
+			],
+		});
 	});
 
 	it("removes an aborted turn so a cancelled request does not remain pending", () => {
@@ -597,7 +640,7 @@ describe("team chat stream state", () => {
 			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
 		});
 		expect(flushed.filter((item) => item.kind === "agent")).toEqual([
-			expect.objectContaining({ id: "runtime-result", renderKey: "team:agent-turn:leader:request" }),
+			expect.objectContaining({ id: "public-result", renderKey: "team:agent-turn:leader:request" }),
 		]);
 	});
 
@@ -628,7 +671,10 @@ describe("team chat stream state", () => {
 	it("keeps the coordination user message visible when member histories are present", () => {
 		const items = projectTeamConversationTimeline({
 			snapshot: snapshot({
-				messages: [userMessage("coord-user", "request", "show this prompt", 1)],
+				messages: [
+					userMessage("coord-user", "request", "show this prompt", 1),
+					agentMessage("public-reply", "request", "leader", "reply", 2),
+				],
 				display: {
 					memberConversations: [
 						{
@@ -645,7 +691,7 @@ describe("team chat stream state", () => {
 					],
 				},
 			}),
-			pending: { requestId: "request", text: "show this prompt", timestamp: 1 },
+			pending: undefined,
 			streams: {},
 			members: [member],
 			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
@@ -782,7 +828,7 @@ describe("team chat stream state", () => {
 		expect(items[0]).toMatchObject({ id: "coord-user", text: "你好" });
 	});
 
-	it("keeps aggregated member messages keyed per runtime scope", () => {
+	it("keeps private member histories out of the aggregate timeline", () => {
 		const sharedAssistant = agentMessage("fallback", "request", "leader", "reply", 2).message;
 		const reviewer: TeamMemberViewModel = {
 			...member,
@@ -793,6 +839,7 @@ describe("team chat stream state", () => {
 		};
 		const items = projectTeamConversationTimeline({
 			snapshot: snapshot({
+				messages: [agentMessage("public-result", "request", "leader", "public reply", 3)],
 				display: {
 					memberConversations: [
 						{
@@ -814,8 +861,9 @@ describe("team chat stream state", () => {
 			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
 		});
 
-		const keys = items.map((item) => item.renderKey ?? item.entryId ?? item.id);
-		expect(new Set(keys).size).toBe(keys.length);
+		expect(items.filter((item) => item.kind === "agent")).toEqual([
+			expect.objectContaining({ id: "public-result", text: "public reply" }),
+		]);
 	});
 
 	it("does not reuse one public render key for duplicate member history entries", () => {
@@ -1224,6 +1272,16 @@ describe("team chat stream state", () => {
 									},
 								},
 							],
+						},
+					],
+					toolExecutions: [
+						{
+							messageId: "member-event",
+							toolCallId: "read-call",
+							toolName: "read",
+							args: { path: "C:/workspace/brief.md" },
+							result: { content: [{ type: "text", text: "file contents" }], isError: false },
+							isError: false,
 						},
 					],
 				},

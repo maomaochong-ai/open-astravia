@@ -10,7 +10,7 @@ import type { DesktopTeamConversationDisplay } from "../../preload/api-types/tea
 import type { TeamCollaborationStore } from "./team-collaboration-store.js";
 import { projectTeamConversationDisplay } from "./team-conversation-display.js";
 import { publicAssistantMessage } from "./team-public-message.js";
-import { readTeamConversationHistory } from "./team-session-file-reader.js";
+import { readTeamConversationDocument, readTeamConversationHistory } from "./team-session-file-reader.js";
 
 /**
  * Owns the read side of a Team session.
@@ -53,6 +53,14 @@ export class TeamSessionDisplayService {
 	/** Desktop-only display projection; never persisted or passed to member context. */
 	async displayProjection(session: TeamSessionDocument): Promise<DesktopTeamConversationDisplay> {
 		const runtime = this.runtime();
+		const coordination = session.coordinationRuntime;
+		const collaboration = coordination
+			? runtime.getSessionPath(coordination.sessionId) === coordination.sessionPath
+				? this.collaborationStore.read(session)
+				: this.collaborationStore.readFromDocument(
+						await readTeamConversationDocument(coordination.sessionId, coordination.sessionPath),
+					)
+			: undefined;
 		const memberStates =
 			typeof runtime.getState === "function"
 				? Object.entries(session.memberRuntime)
@@ -76,6 +84,8 @@ export class TeamSessionDisplayService {
 			: memberStates;
 		return projectTeamConversationDisplay({
 			session,
+			publications: collaboration?.publications,
+			workItems: collaboration?.workItems,
 			readHistory: async (runtimeSessionId, sessionPath) =>
 				runtime.getSessionPath(runtimeSessionId) === sessionPath
 					? runtime.getFullHistory(runtimeSessionId)

@@ -147,10 +147,11 @@ export function useTeamChatModel(
 		(loaded: Awaited<ReturnType<typeof loadTeamChatSession>>) => {
 			loadedSessionRef.current = { teamId, sessionId: loaded.snapshot.session.id };
 			if (loaded.document) setDocument(loaded.document);
+			snapshotRef.current = loaded.snapshot;
 			setSnapshot(loaded.snapshot);
 			setContextUsages(readSnapshotContextUsages(loaded.snapshot));
 			setSessions(loaded.sessions);
-			setStatus("ready");
+			setStatus(snapshotHasRunningWork(loaded.snapshot) ? "streaming" : "ready");
 		},
 		[teamId],
 	);
@@ -321,6 +322,7 @@ export function useTeamChatModel(
 			let staleUpdatePrune = false;
 			if (event.type === "session-snapshot" || event.type === "session-updated") {
 				const current = snapshotRef.current;
+				const titleChanged = event.snapshot.session.title !== current?.session.title;
 				const stale =
 					!!current &&
 					event.snapshot.session.revision <= current.session.revision &&
@@ -330,6 +332,22 @@ export function useTeamChatModel(
 				if (!stale) {
 					snapshotRef.current = event.snapshot;
 					setSnapshot(event.snapshot);
+					if (titleChanged) {
+						setSessions((current) =>
+							current
+								.map((item) =>
+									item.id === event.teamSessionId
+										? {
+												...item,
+												title: event.snapshot.session.title ?? "",
+												updatedAt: event.snapshot.session.updatedAt,
+											}
+										: item,
+								)
+								.sort((left, right) => right.updatedAt - left.updatedAt),
+						);
+						notifyTeamSessionsChanged(teamId);
+					}
 				}
 			}
 			if (event.type === "desktop.team-context-usage") {
@@ -366,12 +384,16 @@ export function useTeamChatModel(
 			const nextStreams = staleUpdatePrune ? streamsRef.current : reduceTeamStreamState(streamsRef.current, event);
 			streamsRef.current = nextStreams;
 			setStreams(nextStreams);
+			const hasRunningTurn = Object.values(nextStreams).some((turn) => turn.message.phase === "streaming");
 			if (
 				event.type === "conversation.agent-message-event" ||
-				(event.type === "session-snapshot" && event.activeMessageEvents.length > 0)
+				event.type === "desktop.team-tool-execution" ||
+				event.type === "conversation.tool-execution" ||
+				hasRunningTurn ||
+				snapshotHasRunningWork(snapshotRef.current)
 			) {
 				setStatus("streaming");
-			} else if (event.type === "session-snapshot") {
+			} else if (event.type === "session-snapshot" || event.type === "session-updated") {
 				setStatus(pendingRef.current ? "sending" : "ready");
 			} else if (event.type === "conversation.agent-message-discard") {
 				if (event.reason === "failed") {
@@ -398,7 +420,7 @@ export function useTeamChatModel(
 			mounted = false;
 			unsubscribe?.();
 		};
-	}, [session?.id, t]);
+	}, [session?.id, t, teamId]);
 
 	const setExecutionMode = useCallback(
 		async (mode: SessionExecutionMode) => {
@@ -457,8 +479,9 @@ export function useTeamChatModel(
 					return profile ? agentDisplayName(profile, t) : fallbackHandle;
 				},
 				failedMemberIds,
+				snapshot?.display?.workingMemberIds ?? [],
 			),
-		[displayDocument, failedMemberIds, selectedMemberIds, streams, t, team],
+		[displayDocument, failedMemberIds, selectedMemberIds, snapshot?.display?.workingMemberIds, streams, t, team],
 	);
 	const stagedPending = useMemo(
 		() => (routeHandoff ? pendingRequestFromHandoff(routeHandoff, team?.leaderMemberId ?? "leader") : undefined),
@@ -669,6 +692,7 @@ export function useTeamChatModel(
 				setContextUsages((current) => ({ ...current, ...readSnapshotContextUsages(next) }));
 				setError(undefined);
 				setStatus("ready");
+				notifyTeamSessionsChanged(teamId);
 				console.info("[agent-team] send-message IPC completed", {
 					teamId,
 					teamSessionId: readySession.id,
@@ -828,7 +852,7 @@ export function useTeamChatModel(
 			...(effectiveReasoning ? { reasoning: effectiveReasoning } : {}),
 			sessions: sessions.map((item, index) => ({
 				id: item.id,
-				label: t("chat.sessionLabel", { index: sessions.length - index }),
+				label: item.title || t("chat.sessionLabel", { index: sessions.length - index }),
 			})),
 			sessionActionsDisabled: status === "loading" || Boolean(visiblePending),
 			labels,
@@ -935,6 +959,10 @@ function pendingRequestFromHandoff(handoff: TeamSessionHandoff, leaderMemberId: 
 
 function errorMessage(cause: unknown): string {
 	return cause instanceof Error ? cause.message : String(cause);
+}
+
+function snapshotHasRunningWork(snapshot: DesktopTeamSessionSnapshot | undefined): boolean {
+	return (snapshot?.display?.workingMemberIds?.length ?? 0) > 0;
 }
 
 function readSnapshotContextUsages(

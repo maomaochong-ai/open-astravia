@@ -25,7 +25,7 @@ import type {
 	ConversationOwnershipCatalogPort,
 	ConversationOwnershipRecord,
 } from "../conversations/conversation-ownership-catalog.js";
-import { readTeamConversationDocument } from "./team-session-file-reader.js";
+import { readTeamConversationDocument, readTeamConversationHistory } from "./team-session-file-reader.js";
 import type { LegacyTeamSessionRepository } from "./team-session-repository.js";
 import { AgentTeamSessionService } from "./team-session-service.js";
 
@@ -87,6 +87,109 @@ describe("AgentTeamSessionService streaming contract", () => {
 		expect(runtime.getState).not.toHaveBeenCalled();
 	});
 
+	it("recovers publication-linked tool evidence while reopening an inactive Team session", async () => {
+		const runtime = {
+			getSessionPath: vi.fn(() => undefined),
+			getState: vi.fn(() => {
+				throw new Error("inactive sessions do not have runtime state");
+			}),
+		} as unknown as RuntimeHost;
+		const service = new AgentTeamSessionService({
+			runtime,
+			repository: { read: vi.fn(), list: vi.fn(async () => []) },
+			readDocument: vi.fn(),
+		});
+		vi.mocked(readTeamConversationDocument).mockResolvedValueOnce({
+			identity: { sessionId: "coordination", createdAt: 1 },
+			journalVersion: 1,
+			revision: 1,
+			entries: [
+				{
+					type: "custom",
+					id: "work-item-entry",
+					parentId: null,
+					timestamp: "1",
+					customType: "agent-team.work-item.v1",
+					data: {
+						id: "work-item",
+						requestTurnId: "request",
+						createdByParticipantId: "local-user",
+						assignedToParticipantId: "reviewer",
+						objective: "Review",
+						contextEntryIds: [],
+						state: "running",
+						createdAt: 1,
+						updatedAt: 1,
+						revision: 1,
+					},
+				},
+				{
+					type: "custom",
+					id: "publication-entry",
+					parentId: null,
+					timestamp: "1",
+					customType: "agent-team.publication-operation.v1",
+					data: {
+						customType: "agent-team.publication-operation.v1",
+						operationId: "publication",
+						workItemId: "work-item",
+						sourceParticipantConversationId: "member-runtime",
+						sourceTurnId: "member-turn",
+						sourceMessageEntryId: "private-final",
+						publicMessageEntryId: "public-result",
+						state: "completed",
+						generation: 1,
+					},
+				},
+			],
+			activeLeafId: "publication-entry",
+		});
+		const assistant = createAssistantMessage(
+			{ api: "openai-responses", provider: "test", model: "fixture" },
+			{ timestamp: 1 },
+		);
+		vi.mocked(readTeamConversationHistory).mockResolvedValueOnce([
+			{
+				type: "message",
+				entryId: "tool-call",
+				message: {
+					...assistant,
+					content: [{ type: "toolCall", id: "read-call", name: "read", arguments: { path: "brief.md" } }],
+				},
+			},
+			{
+				type: "message",
+				entryId: "tool-result",
+				message: {
+					role: "toolResult",
+					toolCallId: "read-call",
+					toolName: "read",
+					content: [{ type: "text", text: "contents" }],
+					isError: false,
+					timestamp: 2,
+				},
+			},
+			{
+				type: "message",
+				entryId: "private-final",
+				message: { ...assistant, content: [{ type: "text", text: "Done" }] },
+			},
+		]);
+
+		const display = await service.displayProjection({
+			coordinationRuntime: { sessionId: "coordination", sessionPath: "C:/sessions/coordination.jsonl" },
+			memberRuntime: {
+				reviewer: { sessionId: "member-runtime", sessionPath: "C:/sessions/member.jsonl" },
+			},
+		} as unknown as TeamSessionDocument);
+
+		expect(display.toolExecutions).toEqual([
+			expect.objectContaining({ messageId: "public-result", toolCallId: "read-call" }),
+		]);
+		expect(display.workingMemberIds).toEqual(["reviewer"]);
+		expect(runtime.getState).not.toHaveBeenCalled();
+	});
+
 	it("backfills legacy ownership before listing Team sessions", async () => {
 		const document = createAgentTeamFixture();
 		const team = document.teams[0];
@@ -138,7 +241,7 @@ describe("AgentTeamSessionService streaming contract", () => {
 			{
 				id: "visible",
 				coordinationSessionPath: "C:/sessions/visible.jsonl",
-				title: team.name,
+				title: "",
 				createdAt: 1,
 				updatedAt: 3,
 				workspaceKind: "team-default",
@@ -566,6 +669,17 @@ describe("AgentTeamSessionService streaming contract", () => {
 				}),
 			]),
 		);
+		expect(display.toolExecutions).toEqual([
+			expect.objectContaining({
+				messageId: expect.any(String),
+				toolCallId: "private-call",
+				toolName: "read",
+				result: expect.objectContaining({
+					content: [{ type: "text", text: "private result" }],
+					isError: false,
+				}),
+			}),
+		]);
 		expect(events).toContainEqual(
 			expect.objectContaining({
 				type: "desktop.team-context-usage",
@@ -773,6 +887,7 @@ describe("AgentTeamSessionService streaming contract", () => {
 			disposeSession: vi.fn(async () => undefined),
 			subscribe: () => () => undefined,
 			prompt: vi.fn(async () => ({})),
+			invokeSessionExtension: vi.fn(async () => "Plan the work"),
 			getMessages: () => [
 				{
 					role: "assistant",
@@ -806,6 +921,9 @@ describe("AgentTeamSessionService streaming contract", () => {
 			text: "do work",
 			targetMemberIds: [team.leaderMemberId],
 		});
+		await vi.waitFor(async () => {
+			expect((await service.read(created.id)).title).toBe("Plan the work");
+		});
 		const collaboration = await service.readCollaborationState(created.id);
 
 		expect(result.events.some((event) => event.type === "member-result")).toBe(false);
@@ -816,6 +934,11 @@ describe("AgentTeamSessionService streaming contract", () => {
 			type: "conversation.agent-message-discard",
 			reason: "waiting",
 		});
+		expect(runtime.invokeSessionExtension).toHaveBeenCalledWith(
+			created.coordinationRuntime?.sessionId,
+			expect.anything(),
+			{ userText: "do work", assistantText: "" },
+		);
 	});
 
 	it("surfaces a failed Runtime prompt instead of silently treating it as an interruption", async () => {

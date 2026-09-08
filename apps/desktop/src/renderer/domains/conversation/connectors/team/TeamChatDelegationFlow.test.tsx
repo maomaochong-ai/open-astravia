@@ -217,6 +217,20 @@ function assistantRows(): HTMLElement[] {
 	);
 }
 
+function visibleConversationSignature(): readonly { readonly entryId: string | null; readonly text: string }[] {
+	return Array.from(screen.getByTestId("message-list").querySelectorAll<HTMLElement>("[data-entry-id]")).map(
+		(row) => ({ entryId: row.getAttribute("data-entry-id"), text: row.textContent ?? "" }),
+	);
+}
+
+function stableConversationSignature(): readonly { readonly entryId: string | null; readonly text: string }[] {
+	return visibleConversationSignature().map((item) => ({
+		...item,
+		// Elapsed time is intentionally live; compare every durable/rendered field around it.
+		text: item.text.replace(/\d+ms\b/gu, "<elapsed>"),
+	}));
+}
+
 describe("Team delegation message-to-UI flow", () => {
 	let streamListener: ((event: DesktopTeamSessionStreamEvent) => void) | undefined;
 
@@ -257,14 +271,14 @@ describe("Team delegation message-to-UI flow", () => {
 		});
 	});
 
-	it("renders one leader turn while delegation moves from dispatch through member completion to final summary", async () => {
+	it("keeps one stable public timeline from delegation through completion and reopening", async () => {
 		let resolveSend: ((snapshot: DesktopTeamSessionSnapshot) => void) | undefined;
 		vi.mocked(window.vetta.agentTeams.sendMessage).mockReturnValueOnce(
 			new Promise((resolve) => {
 				resolveSend = resolve;
 			}),
 		);
-		render(<TeamFlow />);
+		const view = render(<TeamFlow />);
 		await waitFor(() => expect(streamListener).toBeTypeOf("function"));
 
 		fireEvent.change(screen.getByRole("textbox", { name: "团队任务" }), {
@@ -449,5 +463,101 @@ describe("Team delegation message-to-UI flow", () => {
 		expect(screen.getAllByText("委派架构设计")).toHaveLength(1);
 		expect(screen.getAllByTestId("team-member-reply-card")).toHaveLength(1);
 		expect(within(screen.getByTestId("team-member-reply-card")).getByText("已完成")).toBeTruthy();
+
+		const completedSignature = visibleConversationSignature();
+		const reopenedSnapshot: DesktopTeamSessionSnapshot = {
+			...finalSnapshot,
+			display: {
+				memberConversations: [
+					{
+						memberId: architect.id,
+						runtimeSessionId: "architect-runtime",
+						history: [
+							{
+								type: "message",
+								entryId: "architect-runtime-prompt",
+								message: { role: "user", content: "private delegated input", timestamp: 3 },
+							},
+							{
+								type: "message",
+								entryId: "architect-runtime-progress",
+								message: assistantMessage("正在探索实现路径", 3.5),
+							},
+							{
+								type: "message",
+								entryId: "architect-runtime-result",
+								message: architectMessage,
+							},
+						],
+					},
+				],
+			},
+		};
+		vi.mocked(loadTeamChatSession).mockResolvedValue({
+			document,
+			snapshot: reopenedSnapshot,
+			sessions: [],
+		});
+
+		view.unmount();
+		render(<TeamFlow />);
+		await waitFor(() => expect(screen.getByText(finalText)).toBeTruthy());
+
+		expect(visibleConversationSignature()).toEqual(completedSignature);
+		expect(screen.queryByText("正在探索实现路径")).toBeNull();
+		expect(screen.getAllByTestId("team-member-reply-card")).toHaveLength(1);
+	});
+
+	it("keeps an active leader tool turn identical when the session is closed and reopened", async () => {
+		const startedAt = Date.now();
+		const toolStart: DesktopTeamSessionStreamEvent = {
+			type: "desktop.team-tool-execution",
+			conversationId: session.id,
+			messageId: "leader-tool-turn",
+			turnId: "request-tool",
+			author: { kind: "agent", id: leader.id },
+			sequence: 1,
+			timestamp: startedAt,
+			event: {
+				type: "start",
+				toolCallId: "read-index",
+				toolName: "read",
+				args: { path: "index.html" },
+				startedAt,
+			},
+		};
+		const firstView = render(<TeamFlow />);
+		await waitFor(() => expect(streamListener).toBeTypeOf("function"));
+		act(() => streamListener?.(toolStart));
+		await waitFor(() => expect(assistantRows()).toHaveLength(1));
+		const activeSignature = stableConversationSignature();
+		expect(activeSignature[0]?.text).toContain("index.html");
+
+		firstView.unmount();
+		vi.mocked(loadTeamChatSession).mockResolvedValue({
+			document,
+			snapshot: {
+				...emptySnapshot,
+				display: { memberConversations: [], workingMemberIds: [leader.id] },
+			},
+			sessions: [],
+		});
+		vi.mocked(window.vetta.agentTeams.subscribe).mockImplementationOnce(async (_sessionId, listener) => {
+			listener({
+				type: "session-snapshot",
+				teamSessionId: session.id,
+				snapshot: {
+					...emptySnapshot,
+					display: { memberConversations: [], workingMemberIds: [leader.id] },
+				},
+				activeMessageEvents: [],
+				activeStreamEvents: [toolStart],
+			});
+			return () => undefined;
+		});
+
+		render(<TeamFlow />);
+		await waitFor(() => expect(assistantRows()).toHaveLength(1));
+		expect(stableConversationSignature()).toEqual(activeSignature);
 	});
 });

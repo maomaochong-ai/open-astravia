@@ -13,6 +13,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { createStore, Provider } from "jotai";
 import { StrictMode, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { TEAM_SESSIONS_CHANGED_EVENT } from "../../../../shared/agent-teams/team-session-events";
 import { useTeamChatModel } from "./useTeamChatModel";
 import {
 	createReservedTeamChatSession,
@@ -208,6 +209,32 @@ describe("useTeamChatModel streaming flow", () => {
 		});
 	});
 
+	it("refreshes Team conversation lists when the automatic title arrives", async () => {
+		const changed = vi.fn();
+		window.addEventListener(TEAM_SESSIONS_CHANGED_EVENT, changed);
+		try {
+			const { result } = renderHook(() => useTeamChatModel(team.id));
+			await waitFor(() => expect(streamListener).toBeTypeOf("function"));
+
+			act(() => {
+				streamListener?.({
+					type: "session-updated",
+					teamSessionId: baseSession.id,
+					snapshot: {
+						...baseSnapshot,
+						session: { ...baseSession, revision: 1, title: "Review deployment plan" },
+					},
+				});
+			});
+
+			expect(changed).toHaveBeenCalledOnce();
+			expect((changed.mock.calls[0]?.[0] as CustomEvent).detail).toEqual({ teamId: team.id });
+			expect(result.current.model.sessions).toContainEqual({ id: baseSession.id, label: "Review deployment plan" });
+		} finally {
+			window.removeEventListener(TEAM_SESSIONS_CHANGED_EVENT, changed);
+		}
+	});
+
 	it("shows ordered partial text and keeps the persisted final result after the stream closes", async () => {
 		const { result } = renderHook(() => useTeamChatModel(team.id));
 		await waitFor(() => expect(result.current.model.status).toBe("ready"));
@@ -283,6 +310,36 @@ describe("useTeamChatModel streaming flow", () => {
 		]);
 	});
 
+	it("restores the running session and member state from durable work before live replay arrives", async () => {
+		const runningSnapshot: DesktopTeamSessionSnapshot = {
+			...baseSnapshot,
+			display: {
+				memberConversations: [],
+				workingMemberIds: [leader.id],
+			},
+		};
+		vi.mocked(loadTeamChatSession).mockResolvedValueOnce({
+			document,
+			snapshot: runningSnapshot,
+			sessions: [],
+		});
+
+		const { result } = renderHook(() => useTeamChatModel(team.id));
+
+		await waitFor(() => expect(result.current.model.status).toBe("streaming"));
+		expect(result.current.model.members.find((member) => member.id === leader.id)?.status).toBe("working");
+
+		act(() => {
+			streamListener?.({
+				type: "session-updated",
+				teamSessionId: baseSession.id,
+				snapshot: { ...baseSnapshot, session: { ...baseSession, revision: 1 } },
+			});
+		});
+		await waitFor(() => expect(result.current.model.status).toBe("ready"));
+		expect(result.current.model.members.find((member) => member.id === leader.id)?.status).toBe("idle");
+	});
+
 	it("keeps one visible turn when a tool-only stream overlaps its persisted snapshot", async () => {
 		const { result } = renderHook(() => useTeamChatModel(team.id));
 		await waitFor(() => expect(result.current.model.status).toBe("ready"));
@@ -355,7 +412,7 @@ describe("useTeamChatModel streaming flow", () => {
 
 		expect(result.current.model.feedItems.filter((item) => item.kind === "agent")).toEqual([
 			expect.objectContaining({
-				id: "runtime-tool-step",
+				id: "public-tool-step",
 				renderKey: `team:agent-turn:${leader.id}:request`,
 			}),
 		]);
@@ -921,6 +978,7 @@ describe("useTeamChatModel streaming flow", () => {
 			await sendPromise;
 		});
 		expect(result.current.model.status).toBe(outcome === "aborted" ? "ready" : "error");
+		expect(result.current.model.error).toBe(outcome === "aborted" ? undefined : "send stopped");
 		expect(result.current.model.draft).toBe("edited while sending");
 		expect(result.current.model.editorEnabled).toBe(true);
 		expect(result.current.model.canSend).toBe(true);

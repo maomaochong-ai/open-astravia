@@ -1,24 +1,15 @@
-import type { TeamSessionDocument } from "@vetta/agent-team";
+import type { TeamPublicationOperationRecord, TeamSessionDocument, TeamWorkItem } from "@vetta/agent-team";
 import type { ContextCompositionReport, HistoryEntry, SessionExecutionMode } from "@vetta/runtime-core";
-import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
-import type { DesktopTeamConversationDisplay } from "../../preload/api-types/team-conversation-display.js";
-
-/** @deprecated Kept for compatibility with legacy publication diagnostics. */
-export interface LegacyTeamToolExecution {
-	readonly messageId: string;
-	readonly toolCallId: string;
-	readonly toolName: string;
-	readonly args: Record<string, unknown>;
-	readonly result?: RuntimeToolResult;
-	readonly isError?: boolean;
-	readonly startedAt?: number;
-	readonly durationMs?: number;
-	readonly phases?: readonly { readonly label: string; readonly atMs: number }[];
-}
+import type {
+	DesktopTeamConversationDisplay,
+	DesktopTeamToolExecutionProjection,
+} from "../../preload/api-types/team-conversation-display.js";
 
 export interface TeamConversationDisplaySource {
 	readonly session: TeamSessionDocument;
 	readonly readHistory: (runtimeSessionId: string, sessionPath: string) => Promise<readonly HistoryEntry[]>;
+	readonly publications?: readonly TeamPublicationOperationRecord[];
+	readonly workItems?: readonly TeamWorkItem[];
 	readonly runtimeStates?: readonly {
 		readonly memberId: string;
 		readonly runtimeSessionId: string;
@@ -44,8 +35,35 @@ export async function projectTeamConversationDisplay(
 			history: await source.readHistory(runtime.sessionId, runtime.sessionPath),
 		})),
 	);
+	const memberConversationsByRuntimeId = new Map(
+		memberConversations.map((conversation) => [conversation.runtimeSessionId, conversation]),
+	);
+	const toolExecutions = new Map<string, DesktopTeamToolExecutionProjection>();
+	for (const publication of source.publications ?? []) {
+		if (!publication.publicMessageEntryId) continue;
+		const memberConversation = memberConversationsByRuntimeId.get(publication.sourceParticipantConversationId);
+		if (!memberConversation) continue;
+		for (const execution of collectPublishedToolExecutions(
+			memberConversation.history,
+			publication.sourceMessageEntryId,
+			publication.publicMessageEntryId,
+		)) {
+			toolExecutions.set(`${execution.messageId}\u0000${execution.toolCallId}`, execution);
+		}
+	}
 	return {
 		memberConversations,
+		...(() => {
+			const workingMemberIds = [
+				...new Set(
+					(source.workItems ?? [])
+						.filter((item) => item.state === "queued" || item.state === "running")
+						.map((item) => item.assignedToParticipantId),
+				),
+			];
+			return workingMemberIds.length > 0 ? { workingMemberIds } : {};
+		})(),
+		...(toolExecutions.size > 0 ? { toolExecutions: [...toolExecutions.values()] } : {}),
 		executionMode: source.runtimeStates?.[0]?.executionMode ?? source.session.executionMode ?? "full-access",
 		...(source.runtimeStates && source.runtimeStates.length > 0
 			? {
@@ -77,14 +95,15 @@ export async function projectTeamConversationDisplay(
 }
 
 /**
- * Legacy publication helper. It is intentionally outside the display model;
- * current Team rendering consumes each member's complete native history.
+ * Publication helper shared by diagnostics and the Desktop read model. Private
+ * member messages never become public rows; only execution evidence linked by
+ * the durable publication record is copied onto the matching public message.
  */
 export function collectPublishedToolExecutions(
 	history: readonly HistoryEntry[],
 	sourceMessageEntryId: string,
 	messageId: string,
-): LegacyTeamToolExecution[] {
+): DesktopTeamToolExecutionProjection[] {
 	const sourceIndex = history.findIndex((entry) => entry.type === "message" && entry.entryId === sourceMessageEntryId);
 	if (sourceIndex < 0) return [];
 	let startIndex = sourceIndex;
@@ -93,7 +112,7 @@ export function collectPublishedToolExecutions(
 		if (previous?.type === "message" && previous.message.role === "user") break;
 		startIndex -= 1;
 	}
-	const executions = new Map<string, LegacyTeamToolExecution>();
+	const executions = new Map<string, DesktopTeamToolExecutionProjection>();
 	for (const entry of history.slice(startIndex, sourceIndex + 1)) {
 		if (entry.type === "message") {
 			if (entry.message.role === "assistant") {

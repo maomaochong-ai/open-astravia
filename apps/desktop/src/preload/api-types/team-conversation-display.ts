@@ -1,6 +1,9 @@
 import type { TeamSessionSnapshot, TeamSessionStreamEvent } from "@vetta/agent-team";
 import type { ContextCompositionReport, HistoryEntry, SessionExecutionMode } from "@vetta/runtime-core";
-import type { ConversationAgentAuthorReference } from "@vetta/runtime-core/conversation";
+import type {
+	ConversationAgentAuthorReference,
+	ConversationMessageStreamEvent,
+} from "@vetta/runtime-core/conversation";
 import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
 
 /** One ordinary member Conversation, read from its native persisted history. */
@@ -10,9 +13,26 @@ export interface DesktopTeamMemberConversation {
 	readonly history: readonly HistoryEntry[];
 }
 
+/** Persisted execution evidence attached to one public Team message. */
+export interface DesktopTeamToolExecutionProjection {
+	readonly messageId: string;
+	readonly toolCallId: string;
+	readonly toolName: string;
+	readonly args: Record<string, unknown>;
+	readonly result?: RuntimeToolResult;
+	readonly isError?: boolean;
+	readonly startedAt?: number;
+	readonly durationMs?: number;
+	readonly phases?: readonly { readonly label: string; readonly atMs: number }[];
+}
+
 /** UI read model assembled by Desktop Main; never persisted or sent to Agent context. */
 export interface DesktopTeamConversationDisplay {
 	readonly memberConversations: readonly DesktopTeamMemberConversation[];
+	/** Members with durable queued/running work, used to restore status after reopening. */
+	readonly workingMemberIds?: readonly string[];
+	/** Tool evidence recovered from a member publication and keyed to its public message. */
+	readonly toolExecutions?: readonly DesktopTeamToolExecutionProjection[];
 	readonly executionMode?: SessionExecutionMode;
 	/** Context usage for every member runtime, keyed by runtime session identity. */
 	readonly contextUsages?: readonly {
@@ -85,6 +105,9 @@ export interface DesktopTeamToolExecutionEvent {
 		  };
 }
 
+/** Exact replay lane for an active Team turn, including Desktop-only tool observations. */
+export type DesktopTeamActiveStreamEvent = ConversationMessageStreamEvent | DesktopTeamToolExecutionEvent;
+
 /** Team snapshot enriched at the Desktop IPC boundary. */
 export type DesktopTeamSessionSnapshot = TeamSessionSnapshot & {
 	readonly display?: DesktopTeamConversationDisplay;
@@ -93,6 +116,7 @@ export type DesktopTeamSessionSnapshot = TeamSessionSnapshot & {
 export type DesktopTeamSessionStreamEvent =
 	| (Omit<Extract<TeamSessionStreamEvent, { type: "session-snapshot" }>, "snapshot"> & {
 			readonly snapshot: DesktopTeamSessionSnapshot;
+			readonly activeStreamEvents?: readonly DesktopTeamActiveStreamEvent[];
 	  })
 	| (Omit<Extract<TeamSessionStreamEvent, { type: "session-updated" }>, "snapshot"> & {
 			readonly snapshot: DesktopTeamSessionSnapshot;

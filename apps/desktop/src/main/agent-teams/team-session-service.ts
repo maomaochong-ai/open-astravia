@@ -27,6 +27,7 @@ import {
 	type UpdateTeamSessionModelSettingsInput,
 } from "@vetta/agent-team";
 import type { CodingAgentRuntimeToolRegistration } from "@vetta/coding-agent/runtime";
+import { CODING_AGENT_SESSION_TITLE_GENERATE } from "@vetta/coding-agent/session-extensions";
 import type { ConversationDocument, RuntimeHost, SessionExecutionMode } from "@vetta/runtime-core";
 import type {
 	DesktopTeamConversationDisplay,
@@ -90,6 +91,7 @@ export interface TeamSessionSubscription {
 }
 
 export class AgentTeamSessionService {
+	private readonly autoTitleScheduledSessions = new Set<string>();
 	private runtime: RuntimeHost | undefined;
 	/** Known coordination paths let the bootstrap reader start restoration without blocking IPC. */
 	private readonly warmingSessions = new Map<string, Promise<unknown>>();
@@ -282,26 +284,35 @@ export class AgentTeamSessionService {
 							const current = this.sessionState.get(sessionId);
 							if (!current || !this.eventHub.hasSubscribers(sessionId)) return;
 							this.eventHub.attach(current);
-							this.publishSessionUpdated(current);
+							this.publishSessionSnapshot(current);
 						},
 						() => undefined,
 					);
 				}
 			}
 		}
-		const snapshot = session
-			? ({
-					type: "session-snapshot",
-					teamSessionId: sessionId,
-					snapshot: this.snapshot(session),
-					activeMessageEvents: this.eventHub.activeMessageEvents(sessionId),
-				} satisfies Extract<DesktopTeamSessionStreamEvent, { type: "session-snapshot" }>)
-			: undefined;
+		const snapshot = session ? this.sessionSnapshotEvent(session) : undefined;
 		if (session) this.eventHub.attach(session);
 		return {
 			...(snapshot ? { snapshot } : {}),
 			unsubscribe,
 		};
+	}
+
+	private sessionSnapshotEvent(
+		session: TeamSessionDocument,
+	): Extract<DesktopTeamSessionStreamEvent, { type: "session-snapshot" }> {
+		return {
+			type: "session-snapshot",
+			teamSessionId: session.id,
+			snapshot: this.snapshot(session),
+			activeMessageEvents: this.eventHub.activeMessageEvents(session.id),
+			activeStreamEvents: this.eventHub.activeStreamEvents(session.id),
+		};
+	}
+
+	private publishSessionSnapshot(session: TeamSessionDocument): void {
+		this.eventHub.publish(this.sessionSnapshotEvent(session));
 	}
 
 	private publishSessionUpdated(session: TeamSessionDocument): void {
@@ -831,7 +842,49 @@ export class AgentTeamSessionService {
 		// of enqueueing against an incomplete roster and then losing the request.
 		const session = await this.read(sessionId);
 		await this.waitForMemberRuntimeWarmup(session, input.targetMemberIds ?? []);
+		this.scheduleAutoTitle(session, input.text);
 		return this.turnCoordinator.send(sessionId, input);
+	}
+
+	private scheduleAutoTitle(session: TeamSessionDocument, userText: string): void {
+		const runtime = this.getRuntime();
+		const coordination = session.coordinationRuntime;
+		const text = userText.trim();
+		if (
+			!coordination ||
+			!text ||
+			session.title ||
+			this.autoTitleScheduledSessions.has(session.id) ||
+			typeof runtime.invokeSessionExtension !== "function" ||
+			this.snapshot(session).messages.some((message) => message.kind === "user")
+		) {
+			return;
+		}
+
+		this.autoTitleScheduledSessions.add(session.id);
+		void runtime
+			.invokeSessionExtension(coordination.sessionId, CODING_AGENT_SESSION_TITLE_GENERATE, {
+				userText: text,
+				assistantText: "",
+			})
+			.then(async (title) => {
+				if (!title) return;
+				await this.sessionState.coordinateLoaded(session.id, async (current) => {
+					if (current.title) return;
+					const next: TeamSessionDocument = {
+						...current,
+						title,
+						revision: current.revision + 1,
+						updatedAt: Date.now(),
+					};
+					await this.persist(next);
+					this.publishSessionUpdated(next);
+				});
+			})
+			.catch((error: unknown) => {
+				log.warn("Agent Team auto-title failed", { teamSessionId: session.id, error: errorMessage(error) });
+			})
+			.finally(() => this.autoTitleScheduledSessions.delete(session.id));
 	}
 
 	private async waitForMemberRuntimeWarmup(

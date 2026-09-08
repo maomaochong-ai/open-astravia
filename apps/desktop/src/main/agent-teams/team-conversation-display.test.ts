@@ -83,4 +83,101 @@ describe("projectTeamConversationDisplay", () => {
 		]);
 		expect(display.contextUsage).toEqual(display.contextUsages?.[0]);
 	});
+
+	it("projects only queued and running work as durable member activity", async () => {
+		const session = {
+			id: "team-session",
+			memberRuntime: {},
+		} as unknown as TeamSessionDocument;
+		const workItem = (id: string, assignedToParticipantId: string, state: string) => ({
+			id,
+			requestTurnId: "request",
+			createdByParticipantId: "local-user",
+			assignedToParticipantId,
+			objective: id,
+			contextEntryIds: [],
+			state,
+			createdAt: 1,
+			updatedAt: 1,
+			revision: 1,
+		});
+
+		const display = await projectTeamConversationDisplay({
+			session,
+			readHistory: async () => [],
+			workItems: [
+				workItem("queued", "leader", "queued"),
+				workItem("running", "reviewer", "running"),
+				workItem("waiting", "architect", "waiting"),
+				workItem("completed", "executor", "completed"),
+			] as never,
+		});
+
+		expect(display.workingMemberIds).toEqual(["leader", "reviewer"]);
+	});
+
+	it("copies only publication-linked tool evidence onto the public message", async () => {
+		const session = {
+			id: "team-session",
+			memberRuntime: {
+				reviewer: { sessionId: "runtime-reviewer", sessionPath: "C:/sessions/reviewer.jsonl" },
+			},
+		} as unknown as TeamSessionDocument;
+		const assistant = createAssistantMessage(
+			{ api: "openai-responses", provider: "test", model: "fixture" },
+			{ timestamp: 1 },
+		);
+		const display = await projectTeamConversationDisplay({
+			session,
+			readHistory: async () => [
+				{ type: "message", entryId: "prompt", message: { role: "user", content: "Review", timestamp: 1 } },
+				{
+					type: "message",
+					entryId: "tool-call",
+					message: {
+						...assistant,
+						content: [{ type: "toolCall", id: "read-call", name: "read", arguments: { path: "brief.md" } }],
+					},
+				},
+				{
+					type: "message",
+					entryId: "tool-result",
+					message: {
+						role: "toolResult",
+						toolCallId: "read-call",
+						toolName: "read",
+						content: [{ type: "text", text: "contents" }],
+						isError: false,
+						timestamp: 2,
+					},
+				},
+				{
+					type: "message",
+					entryId: "private-final",
+					message: { ...assistant, content: [{ type: "text", text: "Done" }] },
+				},
+			],
+			publications: [
+				{
+					customType: "agent-team.publication-operation.v1",
+					operationId: "publication",
+					workItemId: "work-item",
+					sourceParticipantConversationId: "runtime-reviewer",
+					sourceTurnId: "reviewer-turn",
+					sourceMessageEntryId: "private-final",
+					publicMessageEntryId: "public-result",
+					state: "completed",
+					generation: 1,
+				},
+			],
+		});
+
+		expect(display.toolExecutions).toEqual([
+			expect.objectContaining({
+				messageId: "public-result",
+				toolCallId: "read-call",
+				result: { content: [{ type: "text", text: "contents" }], details: undefined, isError: false },
+			}),
+		]);
+	});
 });
