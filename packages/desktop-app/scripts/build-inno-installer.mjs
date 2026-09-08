@@ -99,10 +99,16 @@ async function main() {
 	await writeInnoVerificationManifest(join(sourceDir, "versions", version), verificationManifestPath, version);
 
 	const compiler = resolveInnoCompiler();
-	const compilerWorkDir = await mkdtemp(join(tmpdir(), "vi-"));
-	const shortSourceDir = join(compilerWorkDir, "src");
-	await symlink(sourceDir, shortSourceDir, "junction");
-	// ISCC 收尾报「路径不存在」时无法定位具体文件；编译前显式探测
+	// 源目录优先直接用真实路径：跨卷 junction（C:\Temp 临时目录 -> D:\ 工作区）
+	// 会让 ISCC 在压缩完成、加载 SetupIconFile 时报“The system cannot find the
+	// path specified.”（[Files] 递归可穿过 junction，图标加载走的 API 不行）。
+	// Inno Setup 6.3+ 已支持长路径，仅在真实路径过长（贴近 MAX_PATH）时退回
+	// junction 缩短路径，保留对超长路径的兼容。
+	const needsShortPath = sourceDir.length > 150;
+	const compilerWorkDir = needsShortPath ? await mkdtemp(join(tmpdir(), "vi-")) : null;
+	const shortSourceDir = needsShortPath ? join(compilerWorkDir, "src") : null;
+	if (shortSourceDir) await symlink(sourceDir, shortSourceDir, "junction");
+	const iscSourceDir = shortSourceDir ?? sourceDir;
 	// SetupIconFile（.iss 唯一在编译期读资源的路径），把缺失暴露成明确信号。
 	const setupIconPath = join(sourceDir, "versions", version, "resources", "build", "icon.ico");
 	console.log(`[build-inno] SetupIconFile ${existsSync(setupIconPath) ? "present" : "MISSING"}: ${setupIconPath}`);
@@ -112,7 +118,7 @@ async function main() {
 			[
 				// 保留完整 ISCC 输出（不用 /Qp），编译失败时日志能指出正在处理的文件与行号。
 				`/DAppVersion=${version}`,
-				`/DSourceDir=${shortSourceDir}`,
+				`/DSourceDir=${iscSourceDir}`,
 				`/DOutputDir=${releaseDir}`,
 				`/DArch=${arch}`,
 				installerScript,
@@ -120,7 +126,7 @@ async function main() {
 			{ stdio: "inherit" },
 		);
 	} finally {
-		await rm(compilerWorkDir, { recursive: true, force: true });
+		if (compilerWorkDir) await rm(compilerWorkDir, { recursive: true, force: true });
 	}
 
 	const installerPath = join(releaseDir, fileName);
