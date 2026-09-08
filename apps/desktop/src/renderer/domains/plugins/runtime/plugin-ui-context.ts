@@ -43,7 +43,7 @@ import { explicitTabVisibility, withPluginTabVisibility } from "./attached-tabs"
 import type { PluginAgentApiRegistration } from "./plugin-agent-context";
 import { copyTextToClipboard, formatPluginErrorDetail, resolvePluginDisplayText } from "./plugin-host-apis";
 import { activateInputActionIds } from "./plugin-input-action-state";
-import type { PluginLocalContributions } from "./plugin-local-contributions";
+import type { PluginLocalContributions, ResolvedPluginWorkspaceViewContribution } from "./plugin-local-contributions";
 import { classifyPluginNavIcon, resolveNavIcon } from "./plugin-nav-icon";
 import {
 	createPluginPermissionApi,
@@ -490,7 +490,7 @@ export function createPluginUiApi({
 		// `iconTint: false` 保留原图色彩（宿主同时给出 mask class，供不认 iconUrl 的主题回落）。
 		const tint = contribution.iconTint !== false;
 		const resolvedIcon = resolveNavIcon(contribution.icon, tint) ?? resolveNavIcon(plugin.iconUrl, tint);
-		const normalized: PluginWorkspaceViewContribution = {
+		const normalized: ResolvedPluginWorkspaceViewContribution = {
 			id: viewId,
 			label,
 			component: contribution.component,

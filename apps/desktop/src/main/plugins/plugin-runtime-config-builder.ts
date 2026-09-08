@@ -221,11 +221,20 @@ function buildMcpContributions(
 	const contributions: McpServerContribution[] = [];
 	for (const [localName, config] of Object.entries(servers)) {
 		try {
+			const resolved = resolveMcpServerConfig(dependencies, plugin, config);
+			if (!resolved) {
+				dependencies.logger.debug("defer mcp contribution: plugin service is not ready", {
+					pluginId: plugin.id,
+					localName,
+					serviceId: config.type === "service" ? config.serviceId : undefined,
+				});
+				continue;
+			}
 			contributions.push({
 				pluginId: plugin.id,
 				localName,
 				runtimeName: buildPluginMcpRuntimeName(plugin.id, localName),
-				config: resolveMcpServerConfig(dependencies, plugin, config),
+				config: resolved,
 			});
 		} catch (error) {
 			dependencies.logger.warn(`Plugin ${plugin.id}: skip MCP server '${localName}':`, error);
@@ -238,10 +247,10 @@ function resolveMcpServerConfig(
 	dependencies: PluginRuntimeConfigDependencies,
 	plugin: InstalledPlugin,
 	config: PluginMcpServerConfig,
-): AgentPluginMcpServerConfig {
+): AgentPluginMcpServerConfig | undefined {
 	if (config.type === "service") {
 		const url = dependencies.resolveServiceMcp?.(plugin, config.serviceId, config.path);
-		if (!url) throw new Error(`Plugin service is not ready: ${config.serviceId}`);
+		if (!url) return undefined;
 		return {
 			type: "http",
 			url,

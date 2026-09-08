@@ -122,4 +122,49 @@ describe("buildPluginRuntimeConfig", () => {
 			}),
 		).toBeUndefined();
 	});
+
+	it("defers a service MCP quietly until its managed service is ready", () => {
+		const contributions = new PluginAgentContributionRegistry(new DesktopPluginHookRegistry());
+		const logger = { debug: vi.fn(), warn: vi.fn() };
+		const resolveServiceMcp = vi.fn<() => string | undefined>().mockReturnValue(undefined);
+		const servicePlugin = plugin({
+			permissions: ["agent.mcp.control"],
+			grantedPermissions: ["agent.mcp.control"],
+			agent: {
+				mcpServers: {
+					xiaohongshu: {
+						type: "service",
+						serviceId: "xhs",
+						path: "/mcp",
+					},
+				},
+			},
+		});
+		const dependencies = {
+			plugins: [servicePlugin],
+			isContributionModeActive: () => true,
+			contributions,
+			resolveResource: (_plugin: InstalledPlugin, path: string) => path,
+			resolveMcpRoot: (value: InstalledPlugin) => value.rootPath,
+			resolveServiceMcp,
+			logger,
+		};
+
+		expect(buildPluginRuntimeConfig(dependencies)).toBeUndefined();
+		expect(logger.warn).not.toHaveBeenCalled();
+		expect(logger.debug).toHaveBeenCalledWith(
+			"defer mcp contribution: plugin service is not ready",
+			expect.objectContaining({ pluginId: "demo", localName: "xiaohongshu", serviceId: "xhs" }),
+		);
+
+		resolveServiceMcp.mockReturnValue("http://127.0.0.1:57341/mcp");
+		expect(buildPluginRuntimeConfig(dependencies)?.mcpServerContributions).toEqual([
+			expect.objectContaining({
+				pluginId: "demo",
+				localName: "xiaohongshu",
+				runtimeName: "plugin-demo-xiaohongshu",
+				config: expect.objectContaining({ url: "http://127.0.0.1:57341/mcp" }),
+			}),
+		]);
+	});
 });

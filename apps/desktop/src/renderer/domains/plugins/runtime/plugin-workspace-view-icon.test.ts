@@ -32,7 +32,7 @@ function registeredIcon(contributions: PluginLocalContributions): string | undef
 }
 
 function registeredIconUrl(contributions: PluginLocalContributions): string | undefined {
-	return (contributions.workspaceViews[0] as { iconUrl?: string } | undefined)?.iconUrl;
+	return contributions.workspaceViews[0]?.iconUrl;
 }
 
 function maskRuleFor(className: string): string | undefined {

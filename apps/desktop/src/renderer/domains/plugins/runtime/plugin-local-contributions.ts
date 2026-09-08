@@ -15,6 +15,11 @@ import type {
 	PluginWorkspaceViewContribution,
 } from "@vetta-org/plugin-sdk";
 
+/** Host-normalized workspace view with a resolved full-color image source. */
+export type ResolvedPluginWorkspaceViewContribution = PluginWorkspaceViewContribution & {
+	iconUrl?: string;
+};
+
 export interface LoadedPlugin {
 	id: string;
 	name: string;
@@ -32,7 +37,7 @@ export interface LoadedPlugin {
 	cardRenderers: PluginCardRendererContribution[];
 	toolCallSlots: PluginToolCallSlotContribution[];
 	turnCards: PluginTurnCardContribution[];
-	workspaceViews: PluginWorkspaceViewContribution[];
+	workspaceViews: ResolvedPluginWorkspaceViewContribution[];
 	dispose(): Promise<void>;
 }
 
@@ -48,7 +53,7 @@ export class PluginLocalContributions {
 	readonly cardRenderers: PluginCardRendererContribution[] = [];
 	readonly toolCallSlots: PluginToolCallSlotContribution[] = [];
 	readonly turnCards: PluginTurnCardContribution[] = [];
-	readonly workspaceViews: PluginWorkspaceViewContribution[] = [];
+	readonly workspaceViews: ResolvedPluginWorkspaceViewContribution[] = [];
 
 	clear(): void {
 		this.slots.length = 0;

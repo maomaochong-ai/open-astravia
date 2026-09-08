@@ -417,6 +417,7 @@ export function reloadPlugin(id: string): InstalledPlugin {
 	plugin.moduleFederation = manifest.moduleFederation;
 	plugin.agent = manifest.agent;
 	plugin.cliProviders = manifest.providers?.cli ?? [];
+	plugin.serviceProviders = manifest.providers?.services ?? [];
 	plugin.allowedNetworkHosts = manifest.network?.allowedHosts ?? [];
 	plugin.allowedBrowserHosts = manifest.browser?.allowedHosts ?? [];
 	plugin.styleUrls = (manifest.styles ?? []).map(

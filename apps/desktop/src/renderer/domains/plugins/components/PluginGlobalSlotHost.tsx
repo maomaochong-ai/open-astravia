@@ -23,7 +23,6 @@ import {
 	type RegisteredInputAction,
 	type RegisteredToolCallSlot,
 	type RegisteredTurnCard,
-	type RegisteredWorkspaceView,
 	syncHardIsolationContributionModes,
 } from "@shared/store/atoms";
 import type { PluginsChangedEvent } from "@preload/api";
@@ -36,6 +35,7 @@ import { installPluginHostShim } from "../runtime/plugin-host-shim";
 import { PluginI18nBoundary } from "../runtime/plugin-i18n";
 import { loadPlugin, type LoadedPlugin } from "../runtime/plugin-loader";
 import { loadPluginSnapshot } from "./plugin-snapshot";
+import { publishWorkspaceViews } from "./plugin-workspace-view-publication";
 import { PluginSlotErrorBoundary } from "./PluginSlotErrorBoundary";
 
 // 串行加载插件快照，避免并发 reload 交叉提交 activation。
@@ -329,20 +329,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 	// Publish workspace views (full-page plugin surfaces). The sidebar turns them
 	// into pinnable nav entries; the /workspace route mounts the component.
 	useEffect(() => {
-		const workspaceViews: RegisteredWorkspaceView[] = plugins.flatMap((plugin) =>
-			plugin.workspaceViews.map((view) => ({
-				pluginId: plugin.id,
-				pluginName: plugin.name,
-				viewId: view.id,
-				label: view.label,
-				icon: view.icon,
-				description: view.description,
-				badge: view.badge,
-				component: view.component,
-				navOrder: view.navOrder ?? 0,
-				sidebar: view.sidebar !== false,
-			})),
-		);
+		const workspaceViews = publishWorkspaceViews(plugins);
 		if (workspaceViews.length > 0 || !hostLoading) setWorkspaceViews(workspaceViews);
 	}, [plugins, revision, hostLoading, setWorkspaceViews]);
 
