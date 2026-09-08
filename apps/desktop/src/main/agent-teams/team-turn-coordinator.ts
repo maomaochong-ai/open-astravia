@@ -18,6 +18,7 @@ import {
 	teamUserMessageId,
 } from "@vetta/agent-team";
 import type { PromptAttachmentRef, RuntimeHost } from "@vetta/runtime-core";
+import { stopSessionBackgroundWork } from "../agent-runtime/stop-session-work.js";
 import { getAppLogger } from "../logger.js";
 import type { TeamCollaborationState, TeamCollaborationStore } from "./team-collaboration-store.js";
 import type { TeamMemberAttemptRunner } from "./team-member-attempt-runner.js";
@@ -48,6 +49,8 @@ export class TeamTurnCoordinator {
 	private readonly memberScheduler = new TeamMemberScheduler();
 	private readonly memberCancellations = new Map<string, Map<string, AbortController>>();
 	private readonly activeSends = new Map<string, Set<AbortController>>();
+	/** Sessions the user stopped. Cleared only by the next user send. */
+	private readonly stopped = new Set<string>();
 	private readonly taskControl: TeamTaskControlService;
 	private readonly messageControl: TeamMessageControlService;
 	private memberAttemptRunner: TeamMemberAttemptRunner | undefined;
@@ -58,6 +61,7 @@ export class TeamTurnCoordinator {
 			readConversation: (id) => options.runtime().readSessionDocument(id),
 			runMemberTurn: (input) => this.scheduleMemberTurn(input),
 			cancelMemberTurn: (sessionId, workItemId) => this.memberCancellations.get(sessionId)?.get(workItemId)?.abort(),
+			isStopped: (sessionId) => this.stopped.has(sessionId),
 			resolveTarget: (session, handle) => resolveMemberByHandle(this.syntheticTeam(session), handle)?.id,
 			authorizeTask: (session, sourceMemberId, targetMemberId, action) => {
 				const team = this.syntheticTeam(session);
@@ -116,6 +120,7 @@ export class TeamTurnCoordinator {
 	}
 
 	async recoverSession(session: TeamSessionDocument): Promise<void> {
+		if (this.stopped.has(session.id)) return;
 		await this.messageControl.recoverSession(session);
 		await this.taskControl.recoverSession(session);
 	}
@@ -134,6 +139,8 @@ export class TeamTurnCoordinator {
 	}
 	async send(sessionId: string, input: SendTeamMessageInput): Promise<TeamSessionDocument> {
 		const startedAt = Date.now();
+		// A new user turn is the only thing that lifts a stop.
+		this.stopped.delete(sessionId);
 		log.info("team message send started", {
 			teamSessionId: sessionId,
 			requestId: input.requestId,
@@ -167,9 +174,42 @@ export class TeamTurnCoordinator {
 		}
 	}
 
+	/**
+	 * Unconditional stop for the whole team session: latch first so nothing new is
+	 * admitted, then cancel every in-flight lane — the user's send, every member turn,
+	 * every accepted task — and finally interrupt the runtimes themselves so a member
+	 * blocked inside a tool call (a pending question, a long command) also comes down.
+	 */
 	async abort(sessionId: string): Promise<void> {
+		this.stopped.add(sessionId);
 		for (const controller of this.activeSends.get(sessionId) ?? []) controller.abort();
-		this.taskControl.abortTeam(sessionId);
+		for (const controller of this.memberCancellations.get(sessionId)?.values() ?? []) controller.abort();
+		const session = this.options.sessionState.get(sessionId);
+		if (session) await this.taskControl.stopTeam(session);
+		await this.abortRuntimes(session);
+		log.info("team session stopped", { teamSessionId: sessionId });
+	}
+
+	/** Best-effort: a runtime that is closed or not loaded must not fail the stop. */
+	private async abortRuntimes(session: TeamSessionDocument | undefined): Promise<void> {
+		if (!session) return;
+		const runtimeIds = new Set<string>();
+		for (const state of Object.values(session.memberRuntime)) runtimeIds.add(state.sessionId);
+		if (session.coordinationRuntime) runtimeIds.add(session.coordinationRuntime.sessionId);
+		await Promise.allSettled(
+			[...runtimeIds].map(async (runtimeSessionId) => {
+				try {
+					await this.options.runtime().abort(runtimeSessionId);
+					await stopSessionBackgroundWork(this.options.runtime(), runtimeSessionId);
+				} catch (error) {
+					log.warn("Team member runtime could not be aborted", {
+						teamSessionId: session.id,
+						runtimeSessionId,
+						errorName: error instanceof Error ? error.name : "UnknownError",
+					});
+				}
+			}),
+		);
 	}
 
 	private trackRequest(sessionId: string): AbortController {
@@ -320,6 +360,7 @@ export class TeamTurnCoordinator {
 		workItemId: string,
 		mode: Extract<TeamMemberTurnAttemptMode, "continue" | "retry" | "recovery">,
 	): Promise<TeamSessionDocument> {
+		if (this.stopped.has(sessionId)) throw new Error("Team session was stopped");
 		const session = await this.options.readSession(sessionId);
 		const state = await this.readCollaborationState(sessionId);
 		const workItem = state.workItems.find((item) => item.id === workItemId);
@@ -442,6 +483,7 @@ export class TeamTurnCoordinator {
 	}
 
 	private async scheduleMemberTurn(input: TeamMemberTurnRequest): Promise<TeamSessionDocument> {
+		if (this.stopped.has(input.teamSessionId)) throw new Error("Team session was stopped");
 		const session = await this.options.readSession(input.teamSessionId);
 		const modelKey = input.modelKey ?? session.modelSettings?.modelKey;
 		const reasoning =

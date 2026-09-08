@@ -54,9 +54,7 @@ export function AgentCard({
 				<AgentAvatarView
 					name={agent.name}
 					avatar={agentAvatarUrl(agent)}
-					background={agent.avatarBackground}
 					blueprintId={agent.blueprintId}
-					seed={agent.id}
 					size="hero"
 				/>
 

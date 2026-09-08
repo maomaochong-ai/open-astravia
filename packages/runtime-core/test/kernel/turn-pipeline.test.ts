@@ -852,6 +852,49 @@ describe("greenfield runtime kernel", () => {
 		expect((await harness.repository.load("session-1")).events.at(-1)?.type).toBe("turn.cancelled");
 	});
 
+	it("accepts the next user turn right after a bounded stop", async () => {
+		let markStarted: (() => void) | undefined;
+		const started = new Promise<void>((resolve) => {
+			markStarted = resolve;
+		});
+		const engine: TurnEnginePort = {
+			async *execute(request) {
+				markStarted?.();
+				try {
+					await waitForAbort(request.signal);
+				} catch {
+					// Unwinding is not instantaneous in a real turn; take a few macrotasks so
+					// the test can tell "waited for the turn" apart from "returned immediately".
+					await new Promise((resolve) => setTimeout(resolve, 30));
+				}
+				yield { type: "completed", stopReason: "aborted" };
+			},
+		};
+		const harness = await createHarness({ turnEngine: engine });
+		const turn = harness.session.send({ message: userMessage("long running") });
+		const settled = turn.catch(() => undefined);
+		await started;
+
+		// A bounded stop still leaves the session idle, so a user who types again
+		// immediately gets a real turn — not a busy error, and not an input parked in
+		// the queue that the cancellation just froze.
+		await harness.session.cancel("stop", { waitMs: 2_000 });
+		expect(harness.session.state).toBe("idle");
+		await settled;
+
+		const next = harness.session.send({ message: userMessage("next turn") });
+		const outcome = await Promise.race([
+			next.then(
+				() => "settled" as const,
+				(error: unknown) => error,
+			),
+			new Promise<"running">((resolve) => setTimeout(() => resolve("running"), 50)),
+		]);
+		expect(outcome).toBe("running");
+		await harness.session.cancel("cleanup");
+		await next.catch(() => undefined);
+	});
+
 	it("enters recovery_required when a terminal turn event cannot be persisted", async () => {
 		let markStarted: (() => void) | undefined;
 		const started = new Promise<void>((resolve) => {

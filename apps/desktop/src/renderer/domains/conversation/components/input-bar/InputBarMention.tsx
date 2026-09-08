@@ -84,7 +84,6 @@ export function InputBarMention({
 											name={participant.name}
 											avatar={participant.avatar}
 											blueprintId={participant.blueprintId}
-											seed={participant.id}
 											size="sm"
 											active
 											className="ring-2 ring-input-bar-bg"
@@ -157,7 +156,6 @@ function MentionRow({ participant }: { readonly participant: MentionParticipant 
 					name={participant.name}
 					avatar={participant.avatar}
 					blueprintId={participant.blueprintId}
-					seed={participant.id}
 					active={participant.selected}
 					size="lg"
 				/>

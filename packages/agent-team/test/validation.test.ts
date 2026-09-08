@@ -38,6 +38,38 @@ describe("Agent Team IPC input validation", () => {
 		).toMatchObject({ name: "Product team" });
 	});
 
+	it("accepts a team assignment on both new and existing members", () => {
+		expect(
+			parseUpdateTeamInput({
+				expectedRevision: 1,
+				name: "Product team",
+				description: "",
+				members: [
+					{ kind: "existing", memberId: "member-1", leader: true, assignment: { responsibility: "Owns review" } },
+					{
+						kind: "new",
+						agentProfileId: "agent-2",
+						bindingKind: "reference",
+						leader: false,
+						assignment: { instructions: "Escalate schema changes." },
+					},
+				],
+			}),
+		).toMatchObject({ members: [{ assignment: { responsibility: "Owns review" } }, {}] });
+	});
+
+	it("rejects a blank assignment inside a persisted document", () => {
+		const document = createAgentTeamFixture();
+		const team = document.teams[0];
+		if (!team) throw new Error("Expected an initial team");
+		const members = [{ ...team.members[0], assignment: { responsibility: "   " } }, ...team.members.slice(1)];
+
+		// 空白等同缺省：只允许 Store 折算掉，不允许持久化成空串。
+		expect(() => parseAgentTeamDocument({ ...document, teams: [{ ...team, members }] })).toThrow(
+			"Invalid Agent Team configuration document",
+		);
+	});
+
 	it("accepts file-defined identities when they provide their own system prompt", () => {
 		const document = createAgentTeamFixture();
 		const first = document.agents[0];

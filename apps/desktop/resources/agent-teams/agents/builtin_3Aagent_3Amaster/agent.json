@@ -1,0 +1,18 @@
+{
+	"id": "builtin:agent:master",
+	"revision": 1,
+	"name": "Master",
+	"mentionHandle": "master",
+	"blueprintId": "master",
+	"abilities": {
+		"selectionMode": "all",
+		"skills": [],
+		"mcpServers": [],
+		"plugins": []
+	},
+	"scope": {
+		"kind": "library"
+	},
+	"createdAt": 0,
+	"updatedAt": 0
+}

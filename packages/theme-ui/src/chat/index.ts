@@ -54,16 +54,6 @@ export type {
 	AtPanelViewProps,
 } from "./AtPanelView";
 export { AtPanelView } from "./AtPanelView";
-export type { AgentTintPreset } from "./agent-tint";
-export {
-	AGENT_TINT_PREFIX,
-	AGENT_TINT_PRESETS,
-	agentAvatarBackgroundStyle,
-	agentTintPreset,
-	agentTintPresetStyle,
-	agentTintStyle,
-	agentTintValue,
-} from "./agent-tint";
 export type { BackgroundTasksBadgeViewProps } from "./BackgroundTasksBadgeView";
 export { BackgroundTasksBadgeView } from "./BackgroundTasksBadgeView";
 export type {

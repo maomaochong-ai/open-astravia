@@ -178,10 +178,25 @@ const modelProviderUpsertInputType = Type.Object(
 	{ additionalProperties: false },
 );
 
+const modelOwnerIdType = Type.String({ pattern: "^[a-z0-9][a-z0-9._-]{0,63}$" });
+
 const modelOwnedProviderReplaceInputType = Type.Object(
 	{
-		owner: Type.String({ pattern: "^[a-z0-9][a-z0-9._-]{0,63}$" }),
+		owner: modelOwnerIdType,
 		providers: Type.Record(Type.String({ pattern: "^[a-z0-9][a-z0-9_-]{0,31}$" }), modelProviderUpsertDataType),
+	},
+	{ additionalProperties: false },
+);
+
+const modelOwnedProviderListInputType = Type.Object({ owner: modelOwnerIdType }, { additionalProperties: false });
+
+/**
+ * 已发布快照按 **局部** provider id 返回（即去掉 `<owner>.` 前缀），
+ * 使其可直接回喂给 REPLACE_OWNED_PROVIDERS。凭据一律脱敏。
+ */
+const modelOwnedProviderListResultType = Type.Object(
+	{
+		providers: Type.Record(Type.String(), modelProviderConfigSnapshotType),
 	},
 	{ additionalProperties: false },
 );
@@ -203,6 +218,8 @@ export type ModelDefaultResult = Static<typeof modelDefaultResultType>;
 export type ModelProviderUpsertData = Static<typeof modelProviderUpsertDataType>;
 export type ModelProviderUpsertInput = Static<typeof modelProviderUpsertInputType>;
 export type ModelOwnedProviderReplaceInput = Static<typeof modelOwnedProviderReplaceInputType>;
+export type ModelOwnedProviderListInput = Static<typeof modelOwnedProviderListInputType>;
+export type ModelOwnedProviderListResult = Static<typeof modelOwnedProviderListResultType>;
 
 const modelEmptyInputSchema = defineCapabilityInputSchema(modelEmptyInputType);
 const modelListOutputSchema = defineCapabilityOutputSchema(modelListResultType, { clean: true });
@@ -218,6 +235,12 @@ const modelDefaultOutputSchema = defineCapabilityOutputSchema(modelDefaultResult
 const modelProviderUpsertInputSchema = defineCapabilityInputSchema(modelProviderUpsertInputType, { clean: true });
 const modelProviderConfigOutputSchema = defineCapabilityOutputSchema(modelProviderConfigSnapshotType, { clean: true });
 const modelOwnedProviderReplaceInputSchema = defineCapabilityInputSchema(modelOwnedProviderReplaceInputType, {
+	clean: true,
+});
+const modelOwnedProviderListInputSchema = defineCapabilityInputSchema(modelOwnedProviderListInputType, {
+	clean: true,
+});
+const modelOwnedProviderListOutputSchema = defineCapabilityOutputSchema(modelOwnedProviderListResultType, {
 	clean: true,
 });
 
@@ -293,6 +316,14 @@ export const DOMAIN_MODEL_CAPABILITIES = {
 		version: 1,
 		input: modelOwnedProviderReplaceInputSchema,
 		output: modelNoOutputSchema,
+	}),
+	LIST_OWNED_PROVIDERS: defineCapability<ModelOwnedProviderListInput, ModelOwnedProviderListResult>({
+		id: "cap.domain.vetta.model.owned-providers.list",
+		kind: "query",
+		layer: CAPABILITY_LAYERS.DOMAIN,
+		version: 1,
+		input: modelOwnedProviderListInputSchema,
+		output: modelOwnedProviderListOutputSchema,
 	}),
 } as const;
 

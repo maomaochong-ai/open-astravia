@@ -1,4 +1,4 @@
-import type { TeamSessionDocument } from "./contracts.js";
+import type { TeamMemberAssignment, TeamSessionDocument } from "./contracts.js";
 
 const FNV_OFFSET = 0xcbf29ce484222325n;
 const FNV_PRIME = 0x100000001b3n;
@@ -14,6 +14,14 @@ function fnv64(value: string, seed: bigint): string {
 export function stableTeamEventId(parts: readonly string[]): string {
 	const canonical = parts.map((part) => `${part.length}:${part}`).join("|");
 	return `team-v1-${fnv64(canonical, FNV_OFFSET)}${fnv64(canonical, FNV_OFFSET ^ MASK_64)}`;
+}
+/**
+ * 任务书的配置指纹。成员运行时按 (Profile 修订, 任务书指纹) 判断是否需要重开，
+ * 因此改团队名这类无关编辑不会牵连成员会话，改任务书则一定生效。
+ */
+export function teamMemberAssignmentFingerprint(assignment: TeamMemberAssignment | undefined): string | undefined {
+	if (!assignment?.responsibility && !assignment?.instructions) return undefined;
+	return stableTeamEventId(["member-assignment", assignment.responsibility ?? "", assignment.instructions ?? ""]);
 }
 export function teamUserMessageId(teamSessionId: string, requestId: string): string {
 	return stableTeamEventId(["user-message", teamSessionId, requestId]);

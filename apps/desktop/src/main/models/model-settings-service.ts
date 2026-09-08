@@ -150,6 +150,16 @@ function redactProvider(provider: ProviderConfig): ModelProviderConfigSnapshot {
 	};
 }
 
+/** 空模型列表表示该 provider 不枚举模型，任何 id 都算存在（与 assertModelKeyExists 一致）。 */
+function modelKeyExists(providers: Record<string, ProviderConfig>, modelKey: string): boolean {
+	const slash = modelKey.indexOf("/");
+	if (slash <= 0) return false;
+	const provider = providers[modelKey.slice(0, slash)];
+	if (!provider) return false;
+	const models = provider.models ?? [];
+	return models.length === 0 || models.some((model) => model.id === modelKey.slice(slash + 1));
+}
+
 function assertModelKeyExists(config: ModelsConfig, modelKey: string, operation: string): void {
 	const slash = modelKey.indexOf("/");
 	if (slash <= 0) {
@@ -360,9 +370,32 @@ export class ModelSettingsService {
 				};
 			}
 			const next = { ...config, providers: nextProviders };
-			if (next.defaultModel?.startsWith(prefix)) delete next.defaultModel;
+			// 只在默认模型确实随本次替换消失时才清除。插件几乎每次刷新都会重发同一批
+			// 模型，无条件清除会让用户选中的默认模型在每次重启后被悄悄重置。
+			if (next.defaultModel?.startsWith(prefix) && !modelKeyExists(nextProviders, next.defaultModel)) {
+				delete next.defaultModel;
+			}
 			await this.persist(next, config, "resolved");
 		});
+	}
+
+	/**
+	 * 插件读回自己已发布的 providers，键为去掉 `<owner>.` 前缀的局部 id。
+	 *
+	 * 没有读回能力，插件每次写入都只能从零重建「全部真相」；而它的上游数据源往往
+	 * 是最终一致的，于是「这一次还没读到」会被写成「用户没有这个模型了」。能读回，
+	 * 插件才能做增量对账——让删除必须有正向证据，而不是靠时序运气。
+	 */
+	async listOwnedProviders(owner: string): Promise<Record<string, ModelProviderConfigSnapshot>> {
+		await this.mutationQueue;
+		await this.ensureLegacyCredentialsMigrated();
+		const prefix = `${owner}.`;
+		const config = await this.options.readConfig();
+		return Object.fromEntries(
+			Object.entries(config.providers)
+				.filter(([providerId]) => providerId.startsWith(prefix))
+				.map(([providerId, provider]) => [providerId.slice(prefix.length), redactProvider(provider)]),
+		);
 	}
 
 	private async persist(config: ModelsConfig, current: ModelsConfig, mode: PersistInputMode): Promise<ModelsConfig> {

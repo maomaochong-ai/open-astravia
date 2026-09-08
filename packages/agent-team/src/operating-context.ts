@@ -29,11 +29,18 @@ export function buildTeamSharedOperatingContext(roster: TeamRosterSnapshot): str
 	].join("\n");
 }
 
-/** Member-specific instructions placed after the shared public checkpoint at Turn admission. */
+/**
+ * Member-specific instructions placed after the shared public checkpoint at Turn admission.
+ *
+ * `assignmentInstructions` 是团队任务书的**追加**段落：本体人格与 blueprint 的协作纪律
+ * 原样保留在 `roleInstructions` 里，团队只在其后补充本团队内的交待（见 ADR-0109）。
+ * 它只出现在该成员自己的上下文，不进入共享名册。
+ */
 export function buildTeamMemberOperatingContext(
 	roster: TeamRosterSnapshot,
 	selfParticipantId: string,
 	roleInstructions: string,
+	assignmentInstructions?: string,
 ): string {
 	const self = roster.members.find((member) => member.participantId === selfParticipantId);
 	if (!self) throw new Error(`Team roster does not contain participant: ${selfParticipantId}`);
@@ -43,6 +50,14 @@ export function buildTeamMemberOperatingContext(
 		`Team role: ${self.isLeader ? "leader" : "member"}.`,
 		`Responsibility: ${self.responsibilitySummary}`,
 		roleInstructions,
+		...(assignmentInstructions
+			? [
+					"<team_assignment>",
+					`Additional instructions for your work in team "${roster.teamName}". They add to, and never replace, the responsibilities and collaboration rules above.`,
+					assignmentInstructions,
+					"</team_assignment>",
+				]
+			: []),
 		"</agent_team_member_identity>",
 	].join("\n");
 }
@@ -52,9 +67,10 @@ export function buildTeamOperatingContext(
 	roster: TeamRosterSnapshot,
 	selfParticipantId: string,
 	roleInstructions: string,
+	assignmentInstructions?: string,
 ): string {
 	return [
 		buildTeamSharedOperatingContext(roster),
-		buildTeamMemberOperatingContext(roster, selfParticipantId, roleInstructions),
+		buildTeamMemberOperatingContext(roster, selfParticipantId, roleInstructions, assignmentInstructions),
 	].join("\n\n");
 }

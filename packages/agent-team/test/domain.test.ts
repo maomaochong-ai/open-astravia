@@ -6,6 +6,7 @@ import {
 	normalizeMentionHandle,
 	previewAgentProfileDelete,
 	previewAgentProfileUpdate,
+	resolveMemberResponsibility,
 	resolveMentionedMemberIds,
 	resolveTeamTargets,
 } from "../src/domain.js";
@@ -117,5 +118,30 @@ describe("Agent Team domain", () => {
 				agents: [profile("library"), profile("copy", { kind: "team", teamId: "team-1" })],
 			}).map((agent) => agent.id),
 		).toEqual(["library"]);
+	});
+});
+
+describe("resolveMemberResponsibility", () => {
+	it("prefers the team assignment over the profile description", () => {
+		const source = { ...profile("agent-1"), description: "Reviews code." };
+		const member = {
+			id: "member-1",
+			handle: "review",
+			binding: { kind: "reference" as const, agentProfileId: "agent-1" },
+			assignment: { responsibility: "Guards the release checklist here." },
+		};
+
+		expect(resolveMemberResponsibility(source, member)).toBe("Guards the release checklist here.");
+	});
+
+	it("falls back to the profile description when the team adds nothing", () => {
+		const source = { ...profile("agent-1"), description: "Reviews code." };
+		const member = {
+			id: "member-1",
+			handle: "review",
+			binding: { kind: "reference" as const, agentProfileId: "agent-1" },
+		};
+
+		expect(resolveMemberResponsibility(source, member)).toBe("Reviews code.");
 	});
 });

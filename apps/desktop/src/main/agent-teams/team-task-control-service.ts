@@ -26,6 +26,8 @@ export interface TeamTaskControlHost {
 	readConversation(id: string): ConversationDocument;
 	runMemberTurn(input: TeamMemberTurnRequest): Promise<TeamSessionDocument>;
 	cancelMemberTurn(sessionId: string, workItemId: string): void;
+	/** True once the user stopped this team session; every admission point must refuse. */
+	isStopped(teamSessionId: string): boolean;
 	authorizeTask(
 		session: TeamSessionDocument,
 		sourceMemberId: string,
@@ -90,7 +92,12 @@ export class TeamTaskControlService {
 		);
 	}
 
-	abortTeam(teamSessionId: string): void {
+	/**
+	 * Unconditional stop. Cancels every execution, drops every scheduled retry and
+	 * pending wake, then settles the durable work items so a restart cannot resume them.
+	 */
+	async stopTeam(session: TeamSessionDocument): Promise<void> {
+		const teamSessionId = session.id;
 		for (const execution of this.executions.values()) {
 			if (execution.teamSessionId === teamSessionId) execution.controller.abort();
 		}
@@ -102,9 +109,22 @@ export class TeamTaskControlService {
 		for (const [key, pending] of this.pendingExternalChanges) {
 			if (pending.teamSessionId === teamSessionId) this.pendingExternalChanges.delete(key);
 		}
+		for (const item of this.store.read(session).workItems) {
+			if (item.state !== "queued" && item.state !== "waiting" && item.state !== "attention-required") continue;
+			try {
+				await this.store.cancelIdle(session, item.id);
+			} catch (error) {
+				log.warn("Team work item could not be cancelled on stop", {
+					teamSessionId,
+					workItemId: item.id,
+					errorName: error instanceof Error ? error.name : "UnknownError",
+				});
+			}
+		}
 	}
 
 	async recoverSession(session: TeamSessionDocument): Promise<void> {
+		if (this.host.isStopped(session.id)) return;
 		for (const item of this.store.read(session).workItems) {
 			if (item.state === "running") await this.store.recoverOrphanedAttempt(session, item.id);
 		}
@@ -129,6 +149,7 @@ export class TeamTaskControlService {
 		session: TeamSessionDocument,
 		change: TeamExternalConditionChange,
 	): Promise<number> {
+		if (this.host.isStopped(session.id)) return 0;
 		let resumed = 0;
 		for (const snapshot of this.store.read(session).workItems) {
 			const latestSession = await this.host.readSession(session.id);
@@ -176,6 +197,8 @@ export class TeamTaskControlService {
 	}
 
 	private async delegateTask(teamSessionId: string, input: TeamDelegateTaskRequest): Promise<TeamTaskSnapshot> {
+		// A leader turn that is still winding down after a stop must not admit new work.
+		if (this.host.isStopped(teamSessionId)) throw new Error("Team session was stopped");
 		const { session, sourceMemberId } = await this.caller(teamSessionId, input);
 		const target = this.host.resolveTarget(session, input.targetHandle);
 		if (!target) throw new Error(`Unknown team member handle: ${input.targetHandle}`);
@@ -234,6 +257,7 @@ export class TeamTaskControlService {
 		teamSessionId: string,
 		input: TeamTaskRequest & { readonly mode: "continue" | "retry" },
 	): Promise<TeamTaskSnapshot> {
+		if (this.host.isStopped(teamSessionId)) throw new Error("Team session was stopped");
 		const { session, sourceMemberId } = await this.caller(teamSessionId, input);
 		const snapshot = this.snapshot(session, input.teamTaskId);
 		const item = snapshot.workItem;
@@ -261,6 +285,7 @@ export class TeamTaskControlService {
 		session: TeamSessionDocument,
 		item: TeamWorkItem,
 	): void {
+		if (this.host.isStopped(session.id)) return;
 		const key = executionKey(session.id, item.id);
 		this.clearScheduledRetry(session.id, item.id);
 		const previous = this.executions.get(key);
@@ -322,6 +347,7 @@ export class TeamTaskControlService {
 		item: TeamWorkItem,
 		currentExecution?: AbortController,
 	): void {
+		if (this.host.isStopped(session.id)) return;
 		if (item.state !== "waiting" || !item.currentAttemptId) return;
 		const attempt = this.store.read(session).attempts.find((candidate) => candidate.id === item.currentAttemptId);
 		if (
@@ -338,6 +364,7 @@ export class TeamTaskControlService {
 		const handle = setTimeout(
 			() => {
 				this.scheduledRetries.delete(key);
+				if (this.host.isStopped(session.id)) return;
 				void this.host
 					.readSession(session.id)
 					.then(async (latestSession) => {

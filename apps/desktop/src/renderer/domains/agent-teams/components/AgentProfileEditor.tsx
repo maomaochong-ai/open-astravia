@@ -15,7 +15,6 @@ import { AbilityIcon } from "../../abilities/components/AbilityIcon";
 import { agentAvatarUrl } from "../../../shared/agent-teams/agent-avatar";
 import { AgentAvatarView } from "@vetta/theme-ui/chat";
 import { AgentAvatarPicker } from "./AgentAvatarPicker";
-import { AgentAvatarBackgroundPicker } from "./AgentAvatarBackgroundPicker";
 
 export type AgentProfileTab = "basic" | "prompt" | "abilities";
 
@@ -63,7 +62,6 @@ export function AgentProfileEditor({
 	const [description, setDescription] = useState(agent.description);
 	const [systemPrompt, setSystemPrompt] = useState(agent.systemPrompt ?? "");
 	const [avatar, setAvatar] = useState(agentAvatarUrl(agent));
-	const [avatarBackground, setAvatarBackground] = useState(agent.avatarBackground);
 	const [abilities, setAbilities] = useState<AgentAbilitySelection>(() =>
 		normalizeAgentAbilitySelection(agent.abilities, capabilities),
 	);
@@ -81,7 +79,6 @@ export function AgentProfileEditor({
 		setDescription(agent.description);
 		setSystemPrompt(agent.systemPrompt ?? "");
 		setAvatar(agentAvatarUrl(agent));
-		setAvatarBackground(agent.avatarBackground);
 		setAbilities(normalizeAgentAbilitySelection(agent.abilities, capabilities));
 		setPendingImpact(undefined);
 		setSaved(false);
@@ -94,11 +91,10 @@ export function AgentProfileEditor({
 			description,
 			systemPrompt,
 			avatar,
-			avatarBackground,
 			mentionHandle: agent.mentionHandle,
 			abilities,
 		});
-	}, [abilities, agent.mentionHandle, avatar, avatarBackground, description, name, onDraftChange, systemPrompt]);
+	}, [abilities, agent.mentionHandle, avatar, description, name, onDraftChange, systemPrompt]);
 
 	useEffect(() => {
 		onSavingChange?.(saving);
@@ -127,7 +123,6 @@ export function AgentProfileEditor({
 				description,
 				systemPrompt,
 				avatar,
-				avatarBackground,
 				mentionHandle: agent.mentionHandle,
 				abilities,
 			});
@@ -150,11 +145,9 @@ export function AgentProfileEditor({
 							<AgentAvatarView
 								name={name || (displayName ?? agent.name)}
 								avatar={avatar}
-								background={avatarBackground}
 								blueprintId={agent.blueprintId}
-								seed={agent.id}
 								size="hero"
-								className="h-16 w-16 p-2.5"
+								className="h-16 w-16"
 							/>
 							<div className="min-w-0">
 								<span className="block truncate text-[14px] font-semibold text-foreground">
@@ -170,8 +163,6 @@ export function AgentProfileEditor({
 						</div>
 
 						<AgentAvatarPicker value={avatar} onChange={setAvatar} />
-
-						<AgentAvatarBackgroundPicker value={avatarBackground} onChange={setAvatarBackground} />
 
 						<TextField label={t("profile.name")} value={name} onChange={setName} />
 
@@ -249,8 +240,8 @@ export function AgentProfileEditor({
 				<aside className="flex w-60 shrink-0 flex-col border-r border-border/50 bg-card/15 p-4">
 					{/* Compact Member Summary Card */}
 					<div className="mb-4 flex items-center gap-3 rounded-xl border border-border/40 bg-card/30 p-3">
-						<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/50 bg-muted/20 p-1">
-							<img src={avatar} alt="" className="h-full w-full object-contain" />
+						<div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-border/50 bg-muted/20">
+							<img src={avatar} alt="" className="h-full w-full object-cover" />
 						</div>
 						<div className="min-w-0 flex-1">
 							<span className="block truncate text-sm font-bold text-foreground">
@@ -410,8 +401,8 @@ export function AgentProfileEditor({
 			<div className="relative overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br from-card/70 via-card/40 to-background/40 p-6 backdrop-blur-sm">
 				<div className="flex flex-wrap items-center gap-5">
 					<div className="relative shrink-0">
-						<div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-border/60 bg-muted/30 p-2">
-							<img src={avatar} alt="" className="h-full w-full object-contain" />
+						<div className="h-16 w-16 overflow-hidden rounded-2xl border border-border/60 bg-muted/30">
+							<img src={avatar} alt="" className="h-full w-full object-cover" />
 						</div>
 					</div>
 					<div className="min-w-0 flex-1">

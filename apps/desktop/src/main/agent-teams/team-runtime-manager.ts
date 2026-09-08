@@ -7,7 +7,9 @@ import {
 	findAgentBlueprint,
 	resolveMemberProfile,
 	stableTeamEventId,
+	type TeamMember,
 	type TeamSessionDocument,
+	teamMemberAssignmentFingerprint,
 } from "@vetta/agent-team";
 import type {
 	CodingAgentPinnedModelContextBinder,
@@ -77,6 +79,7 @@ export class TeamRuntimeManager {
 			member.id,
 			buildTeamRosterSnapshot(document, team),
 			systemPrompt,
+			member.assignment?.instructions,
 		);
 		const resolved = await resolveDesktopSessionConfig(
 			{
@@ -101,6 +104,7 @@ export class TeamRuntimeManager {
 			sessionPath,
 			agentProfileId: profile.id,
 			agentProfileRevision: profile.revision,
+			assignmentFingerprint: teamMemberAssignmentFingerprint(member.assignment),
 			deliveredEventIds: [],
 		};
 	}
@@ -180,6 +184,9 @@ export class TeamRuntimeManager {
 					),
 					agentProfileId: profile.id,
 					agentProfileRevision: profile.revision,
+					assignmentFingerprint: teamMemberAssignmentFingerprint(
+						this.resolveMember(session, document, memberId).assignment,
+					),
 				};
 			},
 			persist: (next) => this.options.sessionState.persist(next),
@@ -202,6 +209,9 @@ export class TeamRuntimeManager {
 			memberId,
 			agentProfileId: profile.id,
 			agentProfileRevision: profile.revision,
+			assignmentFingerprint: teamMemberAssignmentFingerprint(
+				this.resolveMember(session, document, memberId).assignment,
+			),
 			runtime: this.options.runtime(),
 			resolveConfig: (sessionPath) =>
 				this.resolveMemberSessionConfig(
@@ -221,11 +231,15 @@ export class TeamRuntimeManager {
 	}
 
 	private resolveMemberProfile(session: TeamSessionDocument, document: AgentTeamDocument, memberId: string) {
+		return resolveMemberProfile(document, this.resolveMember(session, document, memberId));
+	}
+
+	private resolveMember(session: TeamSessionDocument, document: AgentTeamDocument, memberId: string): TeamMember {
 		const team = document.teams.find((candidate) => candidate.id === session.teamId);
 		if (!team) throw new Error(`Agent team not found: ${session.teamId}`);
 		const member = team.members.find((candidate) => candidate.id === memberId);
 		if (!member) throw new Error(`Agent team member not found: ${memberId}`);
-		return resolveMemberProfile(document, member);
+		return member;
 	}
 
 	private async resolveMemberSessionConfig(
@@ -239,6 +253,7 @@ export class TeamRuntimeManager {
 		const profile = this.resolveMemberProfile(session, document, memberId);
 		const team = document.teams.find((candidate) => candidate.id === session.teamId);
 		if (!team) throw new Error(`Agent team not found: ${session.teamId}`);
+		const member = team.members.find((candidate) => candidate.id === memberId);
 		const blueprint = findAgentBlueprint(profile.blueprintId);
 		const systemPrompt = profile.systemPrompt ?? blueprint?.systemPrompt;
 		if (!systemPrompt) throw new Error(`Agent profile has no system prompt: ${profile.id}`);
@@ -253,6 +268,7 @@ export class TeamRuntimeManager {
 						memberId,
 						buildTeamRosterSnapshot(document, team),
 						systemPrompt,
+						member?.assignment?.instructions,
 					),
 					agentConfiguration: {
 						template: null,
@@ -271,10 +287,16 @@ export class TeamRuntimeManager {
 		memberId: string,
 		roster: ReturnType<typeof buildTeamRosterSnapshot>,
 		roleInstructions: string,
+		assignmentInstructions?: string,
 	): TeamMemberPromptContext {
 		return {
 			systemPromptCachePrefixAddon: buildTeamSharedOperatingContext(roster),
-			systemPromptVolatileAddon: buildTeamMemberOperatingContext(roster, memberId, roleInstructions),
+			systemPromptVolatileAddon: buildTeamMemberOperatingContext(
+				roster,
+				memberId,
+				roleInstructions,
+				assignmentInstructions,
+			),
 			promptCacheKey: stableTeamEventId(["team-prompt-cache", teamSessionId]),
 			bindPinnedModelContext: (context) => {
 				context.signal.throwIfAborted();

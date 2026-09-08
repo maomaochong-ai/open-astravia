@@ -40,8 +40,6 @@ const abilities = Type.Object(
 	{ additionalProperties: false },
 );
 const optionalAbilities = Type.Partial(abilities, { additionalProperties: false });
-/** 预设底座 id 或六位十六进制纯色，避免把任意 CSS 写进持久化数据。 */
-const avatarBackground = Type.String({ maxLength: 64, pattern: "^(tint:[a-z-]{1,32}|#[0-9a-fA-F]{6})$" });
 const profile = Type.Object(
 	{
 		id,
@@ -49,7 +47,6 @@ const profile = Type.Object(
 		name: Type.String({ minLength: 1, maxLength: 128, pattern: "\\S" }),
 		description: text,
 		avatar: Type.Optional(Type.String({ maxLength: 2_048 })),
-		avatarBackground: Type.Optional(avatarBackground),
 		mentionHandle: id,
 		blueprintId: id,
 		systemPrompt: Type.Optional(text),
@@ -69,13 +66,23 @@ const binding = Type.Union([
 	Type.Object({ kind: Type.Literal("reference"), agentProfileId: id }, { additionalProperties: false }),
 	Type.Object({ kind: Type.Literal("copy"), agentProfileId: id }, { additionalProperties: false }),
 ]);
-const member = Type.Object({ id, handle: id, binding }, { additionalProperties: false });
+/** 任务书是增量：空白字段等同缺省，因此这里只接受非空文本。 */
+const assignment = Type.Object(
+	{
+		responsibility: Type.Optional(Type.String({ minLength: 1, maxLength: 2_048, pattern: "\\S" })),
+		instructions: Type.Optional(Type.String({ minLength: 1, maxLength: 32_768, pattern: "\\S" })),
+	},
+	{ additionalProperties: false },
+);
+const member = Type.Object(
+	{ id, handle: id, binding, assignment: Type.Optional(assignment) },
+	{ additionalProperties: false },
+);
 export const CreateAgentProfileInputSchema = Type.Object(
 	{
 		name: Type.String({ minLength: 1, maxLength: 128, pattern: "\\S" }),
 		description: Type.Optional(text),
 		avatar: Type.Optional(Type.String({ maxLength: 2_048 })),
-		avatarBackground: Type.Optional(avatarBackground),
 		mentionHandle: id,
 		blueprintId: id,
 		abilities: Type.Optional(optionalAbilities),
@@ -88,7 +95,6 @@ export const UpdateAgentProfileInputSchema = Type.Object(
 		name: Type.String({ minLength: 1, maxLength: 128, pattern: "\\S" }),
 		description: text,
 		avatar: Type.Optional(Type.String({ maxLength: 2_048 })),
-		avatarBackground: Type.Optional(avatarBackground),
 		mentionHandle: id,
 		systemPrompt: Type.Optional(text),
 		abilities,
@@ -105,12 +111,21 @@ export const DeleteAgentProfileInputSchema = Type.Object(
 	},
 	{ additionalProperties: false },
 );
+/** 输入侧允许空白：留空即取消覆盖，由 Store 折算成缺省而不是存成空串。 */
+const assignmentInput = Type.Object(
+	{
+		responsibility: Type.Optional(Type.String({ maxLength: 2_048 })),
+		instructions: Type.Optional(Type.String({ maxLength: 32_768 })),
+	},
+	{ additionalProperties: false },
+);
 const createTeamMember = Type.Object(
 	{
 		agentProfileId: id,
 		handle: id,
 		bindingKind: Type.Union([Type.Literal("reference"), Type.Literal("copy")]),
 		leader: Type.Boolean(),
+		assignment: Type.Optional(assignmentInput),
 	},
 	{ additionalProperties: false },
 );
@@ -126,7 +141,12 @@ export const CreateTeamInputSchema = Type.Object(
 );
 const updateTeamMember = Type.Union([
 	Type.Object(
-		{ kind: Type.Literal("existing"), memberId: id, leader: Type.Boolean() },
+		{
+			kind: Type.Literal("existing"),
+			memberId: id,
+			leader: Type.Boolean(),
+			assignment: Type.Optional(assignmentInput),
+		},
 		{ additionalProperties: false },
 	),
 	Type.Object(
@@ -135,6 +155,7 @@ const updateTeamMember = Type.Union([
 			agentProfileId: id,
 			bindingKind: Type.Union([Type.Literal("reference"), Type.Literal("copy")]),
 			leader: Type.Boolean(),
+			assignment: Type.Optional(assignmentInput),
 		},
 		{ additionalProperties: false },
 	),
@@ -229,6 +250,7 @@ const memberRuntime = Type.Object(
 		sessionPath: Type.String({ minLength: 1, maxLength: 4_096 }),
 		agentProfileId: Type.Optional(id),
 		agentProfileRevision: Type.Integer({ minimum: 1 }),
+		assignmentFingerprint: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
 		deliveredEventIds: stringList,
 		sharedCheckpointId: Type.Optional(id),
 	},

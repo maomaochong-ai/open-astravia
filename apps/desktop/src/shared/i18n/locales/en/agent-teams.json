@@ -25,7 +25,7 @@
     "subtitle": "Explore and orchestrate specialist partners, then recruit them into self-driving teams.",
     "createTeam": "Create team",
     "recruit": "Recruit members",
-    "cancel": "Cancel",
+    "recruitShort": "Members",
     "saveTeam": "Save team",
     "exitAssembly": "Exit recruiting",
     "assembled": "{{count}} member(s) recruited",
@@ -42,7 +42,6 @@
     "expandTeams": "Show {{count}} more",
     "collapseTeams": "Collapse",
     "expertCount": "{{count}} specialist(s)",
-    "teamSelected": "Selected",
     "teamSelectHint": "Click to select",
     "openTeamChat": "Start a session with this team",
     "teamSettings": "Team settings",
@@ -66,6 +65,9 @@
     "basicInfo": "Basic info",
     "avatar": "Avatar",
     "avatarOption": "Select avatar {{index}}",
+    "avatarUpload": "Upload image",
+    "avatarUploadHint": "PNG, JPG, WebP or GIF, up to 5 MB",
+    "avatarUploadFailed": "Could not upload the image: {{error}}",
     "name": "Name",
     "description": "Responsibilities",
     "systemPrompt": "System prompt",
@@ -93,28 +95,40 @@
     "descriptionPlaceholder": "Briefly describe what this agent is responsible for…",
     "systemPromptHint": "Define this agent's background, reasoning strategy and output rules",
     "systemPromptPlaceholder": "Define the persona, principles, breakdown steps and output format. Markdown supported…",
-    "clearPrompt": "Clear",
-    "avatarBackground": "Avatar background",
-    "avatarBackgroundAuto": "Auto colour by identity",
-    "avatarBackgroundOption": "Preset background {{name}}",
-    "avatarBackgroundCustom": "Custom solid colour"
+    "clearPrompt": "Clear"
   },
   "blueprints": {
-    "leader": {
-      "name": "Lead",
-      "description": "Coordinates the team and integrates final results"
+    "master": {
+      "name": "Master",
+      "description": "Owns the goal: plans, delegates, accepts or reworks, and delivers"
     },
     "researcher": {
       "name": "Researcher",
-      "description": "Gathers evidence and verifies facts"
+      "description": "Collects and verifies facts, documentation, and market signals"
     },
-    "builder": {
-      "name": "Builder",
-      "description": "Implements, changes, and verifies work"
+    "architect": {
+      "name": "Architect",
+      "description": "Designs the architecture, interface contracts, or document outline"
     },
-    "reviewer": {
-      "name": "Reviewer",
-      "description": "Checks correctness, safety, and regressions"
+    "executor": {
+      "name": "Executor",
+      "description": "Produces the core asset: code, deep drafts, or worked analysis"
+    },
+    "auditor": {
+      "name": "Auditor",
+      "description": "Red-teams for correctness, safety, edge cases, and weak claims"
+    },
+    "optimizer": {
+      "name": "Optimizer",
+      "description": "Refines performance, maintainability, and channel-specific voice"
+    },
+    "synthesizer": {
+      "name": "Synthesizer",
+      "description": "Merges multi-source results into one report or delivery bundle"
+    },
+    "translator": {
+      "name": "Translator",
+      "description": "Localizes languages and restates technical detail for business"
     }
   },
   "teams": {
@@ -156,6 +170,19 @@
     "deleteTeam": "Delete team",
     "editMember": "Configure Member",
     "editMemberTitle": "Member Details & Capabilities",
+    "editAssignment": "Edit {{name}}'s assignment in this team",
+    "assignmentEmpty": "Set its responsibility and extra instructions in this team",
+    "assignmentBadge": "Responsibility in this team",
+    "assignmentHasInstructions": "with extra instructions",
+    "assignmentTitle": "{{name}}'s assignment in this team",
+    "assignmentDescription": "Adds to what this agent already is. Leave a field empty to fall back to its library profile; other teams are unaffected.",
+    "assignmentResponsibility": "Responsibility here",
+    "assignmentResponsibilityHint": "One line, visible to the whole team: the leader delegates by it, teammates find the right member by it.",
+    "assignmentInstructions": "Extra instructions here",
+    "assignmentInstructionsPlaceholder": "Requirements, wording and hard limits specific to this team…",
+    "assignmentInstructionsHint": "Appended after its own persona; it never replaces the profile persona or the collaboration rules, and only this member sees it.",
+    "assignmentCancel": "Cancel",
+    "assignmentApply": "Apply",
     "memberOverview": "Click any member card to configure their role and capabilities.",
     "deleteTeamTitle": "Delete this team?",
     "deleteTeamMessage": "“{{name}}” and its team configuration will be deleted. This cannot be undone.",

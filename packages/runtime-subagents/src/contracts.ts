@@ -163,6 +163,7 @@ export interface SubagentCoordinatorPort {
 	sendMessage(target: string, message: string): Promise<SubagentSnapshot>;
 	followUp(target: string, message: string): Promise<SubagentSnapshot>;
 	interrupt(target: string): SubagentSnapshot;
+	interruptAll(): readonly SubagentSnapshot[];
 	wait(options?: SubagentWaitOptions): Promise<SubagentWaitResult>;
 	dispose(): Promise<void>;
 }

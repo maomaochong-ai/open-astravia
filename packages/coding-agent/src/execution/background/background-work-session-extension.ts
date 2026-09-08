@@ -12,6 +12,7 @@ import {
 	CODING_AGENT_SUBAGENT_INTERRUPT,
 	CODING_AGENT_SUBAGENTS_CLEAR_FINISHED,
 	CODING_AGENT_SUBAGENTS_READ,
+	CODING_AGENT_WORK_STOP_ALL,
 } from "./background-work-session-extension-contract.js";
 import type { CodingAgentBackgroundWorkRuntime } from "./work-controller.js";
 
@@ -87,6 +88,11 @@ export function createCodingAgentBackgroundWorkSessionExtension(): SessionExtens
 						kind: "endpoint",
 						token: CODING_AGENT_SUBAGENT_INTERRUPT,
 						handle: ({ target }) => requireRuntime(runtime).interruptSubagent(target),
+					},
+					{
+						kind: "endpoint",
+						token: CODING_AGENT_WORK_STOP_ALL,
+						handle: () => requireRuntime(runtime).stopAllWork(),
 					},
 				],
 				dispose() {

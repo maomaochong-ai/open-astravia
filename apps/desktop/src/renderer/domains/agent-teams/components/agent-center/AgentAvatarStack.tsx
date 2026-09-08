@@ -30,9 +30,7 @@ export function AgentAvatarStack({ agents, leaderId, emptyIcon = false }: AgentA
 					<AgentAvatarView
 						name={agent.name}
 						avatar={agentAvatarUrl(agent)}
-						background={agent.avatarBackground}
 						blueprintId={agent.blueprintId}
-						seed={agent.id}
 						size="lg"
 						className="ring-card"
 					/>

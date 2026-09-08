@@ -78,6 +78,8 @@ export function useTeamChatModel(
 	const [compactingByRuntime, setCompactingByRuntime] = useState<Readonly<Record<string, boolean>>>({});
 	const sessionRef = useRef(session);
 	sessionRef.current = session;
+	const snapshotRef = useRef(snapshot);
+	snapshotRef.current = snapshot;
 	const loadedSessionRef = useRef<{ readonly teamId: string; readonly sessionId: string } | undefined>(undefined);
 	const sessionCreationRef = useRef<Promise<Awaited<ReturnType<typeof createTeamChatSession>>> | undefined>(undefined);
 	const cancelledRequests = useRef(new Set<string>());
@@ -292,15 +294,24 @@ export function useTeamChatModel(
 					? event.teamSessionId
 					: event.conversationId;
 			if (!mounted || eventSessionId !== session.id) return;
+			// session-updated 用快照的 messages 把已落盘的 turn 从流里裁掉。这个裁剪
+			// 必须和快照的采纳同进同退：快照因版本过旧被拒时若照裁不误，这条回复就从
+			// 流和快照两边同时消失（页面重进才恢复）。
+			// 只拦裁剪。session-snapshot 是用 activeMessageEvents 重建在跑的回合——
+			// 那是流式首帧，跳过它会让正在进行的回合直到下一个事件才显形。
+			let staleUpdatePrune = false;
 			if (event.type === "session-snapshot" || event.type === "session-updated") {
-				setContextUsages((current) => ({ ...current, ...readSnapshotContextUsages(event.snapshot) }));
-				setSnapshot((current) =>
-					!current ||
-					event.snapshot.session.revision > current.session.revision ||
-					event.snapshot.conversationRevision >= current.conversationRevision
-						? event.snapshot
-						: current,
-				);
+				const current = snapshotRef.current;
+				const stale =
+					!!current &&
+					event.snapshot.session.revision <= current.session.revision &&
+					event.snapshot.conversationRevision < current.conversationRevision;
+				staleUpdatePrune = stale && event.type === "session-updated";
+				setContextUsages((cur) => ({ ...cur, ...readSnapshotContextUsages(event.snapshot) }));
+				if (!stale) {
+					snapshotRef.current = event.snapshot;
+					setSnapshot(event.snapshot);
+				}
 			}
 			if (event.type === "desktop.team-context-usage") {
 				const currentSession = sessionRef.current;
@@ -333,7 +344,7 @@ export function useTeamChatModel(
 					return new Set([...current, event.author.id]);
 				});
 			}
-			const nextStreams = reduceTeamStreamState(streamsRef.current, event);
+			const nextStreams = staleUpdatePrune ? streamsRef.current : reduceTeamStreamState(streamsRef.current, event);
 			streamsRef.current = nextStreams;
 			setStreams(nextStreams);
 			if (
@@ -709,34 +720,51 @@ export function useTeamChatModel(
 		void send(handoff);
 	}, [createNewSession, preferredSessionId, send]);
 
+	// 终止是最高优先级动作：无论本地是否还持有在飞的 send 请求（leader 的 IPC 早已
+	// 返回，成员任务仍在跑），都必须发出终止并立刻解锁输入。本地状态不等流事件回灌。
 	const abort = useCallback(async () => {
 		const request = pendingRef.current;
-		if (!request) return;
-		cancelledRequests.current.add(request.requestId);
+		const target = sessionRef.current;
+		if (request) cancelledRequests.current.add(request.requestId);
 		setStatus("cancelling");
-		if (!session) {
-			pendingRef.current = undefined;
-			setPending(undefined);
-			setStatus("ready");
-			return;
-		}
+		pendingRef.current = undefined;
+		setPending(undefined);
+		const abortedStreams = Object.fromEntries(
+			Object.entries(streamsRef.current).map(([messageId, turn]) =>
+				turn.message.phase === "streaming"
+					? [messageId, { ...turn, message: { ...turn.message, phase: "aborted" as const, endedAt: Date.now() } }]
+					: [messageId, turn],
+			),
+		);
+		streamsRef.current = abortedStreams;
+		setStreams(abortedStreams);
+		setStatus("ready");
+		if (!target) return;
 		try {
-			await window.vetta.agentTeams.abort(session.id);
+			await window.vetta.agentTeams.abort(target.id);
 		} catch (cause) {
-			cancelledRequests.current.delete(request.requestId);
+			if (request) cancelledRequests.current.delete(request.requestId);
 			setError(errorMessage(cause));
 			setStatus("error");
 		}
-	}, [session]);
+	}, []);
 
 	const labels = useMemo(
 		() => ({
 			leaderRoute: t("chat.leaderRoute"),
+			// 按 blueprintId 取角色名；下线的 leader / builder / reviewer 仍留在老档案里，映射到接替者。
 			memberRoles: {
-				leader: t("blueprints.leader.name"),
+				master: t("blueprints.master.name"),
 				researcher: t("blueprints.researcher.name"),
-				builder: t("blueprints.builder.name"),
-				reviewer: t("blueprints.reviewer.name"),
+				architect: t("blueprints.architect.name"),
+				executor: t("blueprints.executor.name"),
+				auditor: t("blueprints.auditor.name"),
+				optimizer: t("blueprints.optimizer.name"),
+				synthesizer: t("blueprints.synthesizer.name"),
+				translator: t("blueprints.translator.name"),
+				leader: t("blueprints.master.name"),
+				builder: t("blueprints.executor.name"),
+				reviewer: t("blueprints.auditor.name"),
 			},
 			memberRoleFallback: t("chat.member"),
 			placeholder: t("chat.placeholder"),

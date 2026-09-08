@@ -3,6 +3,14 @@ import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { CodeBlockCopyButtonView } from "../shared/CodeBlockCopyButton";
+import {
+	MarkdownTable,
+	MarkdownTableBody,
+	MarkdownTableCell,
+	MarkdownTableHead,
+	MarkdownTableHeaderCell,
+	MarkdownTableRow,
+} from "../shared/MarkdownTable";
 import { SyntaxHighlightedCode } from "../shared/SyntaxHighlightedCode";
 
 export interface MarkdownPreviewViewProps {
@@ -171,18 +179,19 @@ export const MarkdownPreviewView = memo(function MarkdownPreviewView({
 					{children}
 				</blockquote>
 			),
+			// 面板内没有可 breakout 的会话栏，退化成纯滚动 + sticky 表头。
 			table: ({ children }) => (
-				<div className="my-2 overflow-x-auto rounded-lg border border-border">
-					<table className="w-full text-[12px]">{children}</table>
-				</div>
+				<MarkdownTable fontSizeClass="text-[12px]" allowBreakout={false}>
+					{children}
+				</MarkdownTable>
 			),
-			thead: ({ children }) => <thead className="border-b border-border bg-muted">{children}</thead>,
-			th: ({ children }) => (
-				<th className="px-3 py-1.5 text-left font-semibold text-muted-foreground">{children}</th>
+			thead: ({ children }) => <MarkdownTableHead>{children}</MarkdownTableHead>,
+			tbody: ({ children }) => <MarkdownTableBody>{children}</MarkdownTableBody>,
+			tr: ({ children }) => <MarkdownTableRow>{children}</MarkdownTableRow>,
+			th: ({ children, style }) => (
+				<MarkdownTableHeaderCell style={style}>{children}</MarkdownTableHeaderCell>
 			),
-			td: ({ children }) => (
-				<td className="border-t border-border px-3 py-1.5 text-foreground">{children}</td>
-			),
+			td: ({ children, style }) => <MarkdownTableCell style={style}>{children}</MarkdownTableCell>,
 			hr: () => <hr className="my-3 border-border" />,
 			a: ({ href, children }) => (
 				<a

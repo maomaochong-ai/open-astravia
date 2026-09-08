@@ -177,6 +177,10 @@ export class CodingAgentSubagentRuntime
 		return this.todoProjection.project(this.coordinator.interrupt(target));
 	}
 
+	interruptAll(): readonly CodingAgentSubagentSnapshot[] {
+		return this.todoProjection.projectAll(this.coordinator.interruptAll());
+	}
+
 	dispatchWorkflows(requests: readonly CodingAgentWorkflowDispatchRequest[]): readonly CodingAgentSubagentSnapshot[] {
 		const seed = this.todoProjection.seed(requests);
 		try {

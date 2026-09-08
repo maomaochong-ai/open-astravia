@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 
+import { pendingQuestionsAtom } from "@shared/store/atoms";
 import { act, render } from "@testing-library/react";
+import { createStore, Provider } from "jotai";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { InputBarModel } from "../../components/input-bar/types";
 import type { TeamChatActions, TeamChatViewModel } from "./teamChatModel";
@@ -132,7 +135,7 @@ describe("TeamComposerConnector", () => {
 			expect.objectContaining({ replaceTrigger: true }),
 		);
 		expect(inputModel.speechInput).toBeDefined();
-		expect(inputModel.routing?.participants[0]?.avatar).toBe("./agent-team-avatars/avatar-02.webp");
+		expect(inputModel.routing?.participants[0]?.avatar).toBe("./agent-team-avatars/researcher.webp");
 		expect(inputModel.routing?.participants[0]?.badgeLabel).toBe("Leader");
 		expect(inputModel.routing?.participants[1]?.badgeLabel).toBe("Builder");
 		expect(inputModel.routing?.participants[2]?.badgeLabel).toBe("Member");
@@ -153,5 +156,33 @@ describe("TeamComposerConnector", () => {
 		expect(viewActions.toggleMember).toHaveBeenCalledWith("member-1");
 		expect(viewActions.removeAttachment).toHaveBeenCalledWith("C:/workspace/brief.md");
 		expect(viewActions.selectModel).toHaveBeenCalledWith("anthropic/claude", "medium");
+	});
+
+	it("surfaces a pending ask_user_question owned by one of the team member runtimes", () => {
+		const store = createStore();
+		store.set(pendingQuestionsAtom, {
+			"runtime-1": {
+				requestId: "question-request",
+				sessionId: "runtime-1",
+				questions: [
+					{
+						question: "Which approach?",
+						header: "Approach",
+						multiSelect: false,
+						options: [
+							{ label: "A", description: "First" },
+							{ label: "B", description: "Second" },
+						],
+					},
+				],
+			},
+		});
+		const wrapper = ({ children }: { children: ReactNode }) => <Provider store={store}>{children}</Provider>;
+		render(<TeamComposerConnector model={model()} actions={actions()} />, { wrapper });
+
+		expect(captured.model?.pendingQuestion).toMatchObject({
+			requestId: "question-request",
+			sessionId: "runtime-1",
+		});
 	});
 });

@@ -135,6 +135,71 @@ describe("TeamSettingsSheet", () => {
 		);
 	});
 
+	it("writes a per-team assignment for one member and leaves the profile alone", async () => {
+		const { onSave } = renderSheet();
+		const user = userEvent.setup();
+
+		const row = screen.getByRole("button", { name: "settings.editAssignment:alpha" }).closest("li");
+		await user.click(screen.getByRole("button", { name: "settings.editAssignment:alpha" }));
+		// 编辑区必须长在成员行内。抽屉底层是 modal 的 Radix Content，会 trap focus 并
+		// hideOthers；portal 到 body 的嵌套弹窗按钮点得动，但输入框拿不住焦点。
+		expect(row?.contains(screen.getByLabelText("settings.assignmentResponsibility"))).toBe(true);
+		await user.type(screen.getByLabelText("settings.assignmentResponsibility"), "Owns the release checklist");
+		await user.type(screen.getByLabelText("settings.assignmentInstructions"), "Escalate schema changes.");
+		await user.click(screen.getByRole("button", { name: "settings.assignmentApply" }));
+
+		// 团队内那句单独成条摆出来，本体描述照旧留在成员行里。
+		expect(screen.getByText("Owns the release checklist")).toBeTruthy();
+		expect(screen.getByText("settings.assignmentBadge")).toBeTruthy();
+		expect(screen.getByText("settings.assignmentHasInstructions")).toBeTruthy();
+		expect(screen.getByText("alpha does things")).toBeTruthy();
+
+		await user.click(screen.getByRole("button", { name: /settings.saveChanges/ }));
+		await waitFor(() =>
+			expect(onSave).toHaveBeenCalledWith(
+				expect.objectContaining({
+					assignments: {
+						alpha: { responsibility: "Owns the release checklist", instructions: "Escalate schema changes." },
+					},
+				}),
+			),
+		);
+	});
+
+	it("clears an assignment when both fields are emptied", async () => {
+		const assigned: TeamDefinition = {
+			...team,
+			members: [
+				{ ...team.members[0], assignment: { responsibility: "Owns the release checklist" } },
+				...team.members.slice(1),
+			],
+		};
+		const onSave = vi.fn(async () => assigned);
+		render(
+			<TeamSettingsSheet
+				open
+				team={assigned}
+				agents={agents}
+				agentsById={new Map(agents.map((item) => [item.id, item]))}
+				onClose={vi.fn()}
+				onSave={onSave}
+				onDelete={vi.fn()}
+				onOpenMember={vi.fn()}
+			/>,
+		);
+		const user = userEvent.setup();
+
+		await user.click(screen.getByRole("button", { name: "settings.editAssignment:alpha" }));
+		await user.clear(screen.getByLabelText("settings.assignmentResponsibility"));
+		await user.click(screen.getByRole("button", { name: "settings.assignmentApply" }));
+
+		// 清空后回到虚线入口（两位成员都没有任务书），不再显示团队内职责条。
+		expect(screen.getAllByText("settings.assignmentEmpty")).toHaveLength(2);
+		expect(screen.queryByText("settings.assignmentBadge")).toBeNull();
+		await user.click(screen.getByRole("button", { name: /settings.saveChanges/ }));
+		await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ assignments: {} })));
+	});
+
 	it("opens a member profile instead of editing abilities inline", async () => {
 		const { onOpenMember } = renderSheet();
 		const user = userEvent.setup();

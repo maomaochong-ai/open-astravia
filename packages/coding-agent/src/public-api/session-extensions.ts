@@ -30,6 +30,7 @@ export {
 	CODING_AGENT_SUBAGENT_INTERRUPT,
 	CODING_AGENT_SUBAGENTS_CLEAR_FINISHED,
 	CODING_AGENT_SUBAGENTS_READ,
+	CODING_AGENT_WORK_STOP_ALL,
 	readCodingAgentBackgroundTasksObservation,
 } from "../execution/background/background-work-session-extension-contract.js";
 export {

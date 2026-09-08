@@ -63,9 +63,7 @@ export function TeamAssemblyBar({
 								<AgentAvatarView
 									name={member.name}
 									avatar={agentAvatarUrl(member)}
-									background={member.avatarBackground}
 									blueprintId={member.blueprintId}
-									seed={member.id}
 									size="sm"
 								/>
 								<span className="max-w-24 truncate">{member.name}</span>

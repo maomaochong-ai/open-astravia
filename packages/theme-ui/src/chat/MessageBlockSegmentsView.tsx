@@ -146,7 +146,7 @@ export function ErrorBlockView({
 	const open = expanded || exportMode;
 
 	return (
-		<div className="w-full rounded-lg border border-border/60 bg-muted/40 px-3 py-2.5">
+		<div className="w-full rounded-xl border border-border/40 bg-secondary px-3 py-2.5 dark:bg-input-bar-bg">
 			<div className="flex items-start gap-2.5">
 				<span className={`${iconClass} mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/70`} />
 				<div className="min-w-0 flex-1">

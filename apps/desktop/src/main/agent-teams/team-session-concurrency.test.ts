@@ -472,6 +472,38 @@ describe("Team member concurrency", () => {
 		expect(completed.tasks[0]?.workItem.state).toBe("completed");
 	});
 
+	it("refuses new delegations and durable recovery once the session was stopped", async () => {
+		const fixture = await createFixture();
+		const [leader, member] = fixture.members;
+		const turn = fixture.turn(member, "Long task");
+		const tasks = fixture.service.taskControls(fixture.session.id);
+		const caller = taskCaller(fixture, leader);
+		const admitted = await tasks.delegateTask({
+			...caller,
+			requestId: "long",
+			targetHandle: fixture.session.memberHandles[member]!,
+			objective: "Long task",
+		});
+		await turn.started.promise;
+
+		await fixture.service.abort(fixture.session.id);
+
+		// A leader turn still winding down after the stop must not admit more work.
+		await expect(
+			tasks.delegateTask({
+				...caller,
+				requestId: "after-stop",
+				targetHandle: fixture.session.memberHandles[member]!,
+				objective: "Sneaks in after the stop",
+			}),
+		).rejects.toThrow("stopped");
+		const state = await fixture.service.readCollaborationState(fixture.session.id);
+		expect(state.workItems.find((item) => item.id === admitted.teamTaskId)?.state).not.toBe("queued");
+		// The work item is durably cancelled, so even a restart cannot resurrect it.
+		await fixture.restartService().read(fixture.session.id, fixture.session.coordinationRuntime!.sessionPath);
+		expect(fixture.runtime.prompt).toHaveBeenCalledTimes(1);
+	});
+
 	it("enforces leader ownership and cancels one task without affecting its sibling", async () => {
 		const fixture = await createFixture();
 		const [leader, first] = fixture.members;
@@ -761,7 +793,15 @@ describe("Team member concurrency", () => {
 		await fixture.service.abort(fixture.session.id);
 		expect((await settled).every((result) => result.status === "rejected")).toBe(true);
 		expect(fixture.runtime.prompt).toHaveBeenCalledTimes(2);
-		expect(fixture.runtime.abort).toHaveBeenCalledTimes(2);
+		// Stopping is unconditional: every member runtime and the coordination runtime are
+		// interrupted, so a member parked inside a tool call also comes down.
+		const aborted = new Set(vi.mocked(fixture.runtime.abort).mock.calls.map(([id]) => id));
+		expect(aborted).toEqual(
+			new Set([
+				...Object.values(fixture.session.memberRuntime).map((state) => state.sessionId),
+				fixture.session.coordinationRuntime!.sessionId,
+			]),
+		);
 		const state = await fixture.service.readCollaborationState(fixture.session.id);
 		expect(state.workItems.map((item) => item.state)).toEqual(["cancelled", "cancelled", "cancelled"]);
 		expect(state.attempts).toHaveLength(2);

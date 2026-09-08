@@ -23,6 +23,7 @@ export interface TeamRuntimeResolvedConfig {
 	readonly config: SessionConfig;
 	readonly agentProfileId: string;
 	readonly agentProfileRevision: number;
+	readonly assignmentFingerprint?: string;
 }
 
 export async function restoreTeamMemberRuntimes<TRuntimeTool>(input: {
@@ -73,11 +74,13 @@ export async function restoreTeamMemberRuntimes<TRuntimeTool>(input: {
 						sessionPath,
 						agentProfileId: resolved.agentProfileId,
 						agentProfileRevision: resolved.agentProfileRevision,
+						assignmentFingerprint: resolved.assignmentFingerprint,
 					},
 					changed:
 						created.sessionId !== runtimeState.sessionId ||
 						runtimeState.agentProfileId !== resolved.agentProfileId ||
-						runtimeState.agentProfileRevision !== resolved.agentProfileRevision,
+						runtimeState.agentProfileRevision !== resolved.agentProfileRevision ||
+						runtimeState.assignmentFingerprint !== resolved.assignmentFingerprint,
 				};
 			}),
 		);

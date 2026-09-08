@@ -60,7 +60,6 @@ export function useAgentLibraryModel(resources: AgentTeamResources, copy: AgentL
 				name: input.name,
 				description: input.description,
 				avatar: input.avatar,
-				avatarBackground: input.avatarBackground,
 				mentionHandle: input.mentionHandle,
 				systemPrompt: input.systemPrompt,
 				abilities: input.abilities,
@@ -105,7 +104,6 @@ export interface AgentProfileEditInput {
 	readonly description: string;
 	readonly avatar?: string;
 	/** `tint:<preset>` 或 `#rrggbb`；缺省表示按身份自动分配。 */
-	readonly avatarBackground?: string;
 	readonly mentionHandle: string;
 	readonly systemPrompt?: string;
 	readonly abilities: AgentAbilitySelection;

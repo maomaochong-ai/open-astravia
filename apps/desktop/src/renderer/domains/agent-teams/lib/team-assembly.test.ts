@@ -6,6 +6,7 @@ import {
 	buildUpdateTeamInput,
 	canSubmitAssembly,
 	emptyAssemblyDraft,
+	setAssemblyAssignment,
 	toggleAssemblyMember,
 } from "./team-assembly";
 
@@ -66,7 +67,36 @@ describe("team assembly draft", () => {
 			description: "desc",
 			memberIds: ["a", "b"],
 			leaderId: "b",
+			assignments: {},
 		});
+	});
+
+	it("reads team assignments back into the draft by Agent identity", () => {
+		const assigned: TeamDefinition = {
+			...team,
+			members: [{ ...team.members[0], assignment: { responsibility: "Owns review" } }, ...team.members.slice(1)],
+		};
+
+		expect(assemblyDraftFromTeam(assigned).assignments).toEqual({ a: { responsibility: "Owns review" } });
+	});
+
+	it("drops an assignment from the draft once both fields are blank", () => {
+		const draft = setAssemblyAssignment(
+			{ name: "Team", memberIds: ["a"], assignments: { a: { responsibility: "Owns review" } } },
+			"a",
+			{ responsibility: "  ", instructions: "" },
+		);
+
+		expect(draft.assignments).toEqual({});
+	});
+
+	it("trims an assignment before it reaches the draft", () => {
+		const draft = setAssemblyAssignment({ name: "Team", memberIds: ["a"] }, "a", {
+			responsibility: "  Owns review  ",
+			instructions: "   ",
+		});
+
+		expect(draft.assignments).toEqual({ a: { responsibility: "Owns review" } });
 	});
 });
 
@@ -100,10 +130,32 @@ describe("team assembly submission", () => {
 		);
 		expect(input.expectedRevision).toBe(4);
 		expect(input.description).toBe("desc");
+		// 改团队时每位成员都带上任务书，空对象即「清空」；省略会被主进程读成「本次没碰」。
 		expect(input.members).toEqual([
-			{ kind: "existing", memberId: "member-b", leader: false },
-			{ kind: "new", agentProfileId: "c", bindingKind: "reference", leader: true },
+			{ kind: "existing", memberId: "member-b", leader: false, assignment: {} },
+			{ kind: "new", agentProfileId: "c", bindingKind: "reference", leader: true, assignment: {} },
 		]);
+	});
+
+	it("carries a drafted assignment into the update input", () => {
+		const input = buildUpdateTeamInput(
+			{
+				teamId: "team",
+				name: "Existing",
+				memberIds: ["a", "b"],
+				leaderId: "b",
+				assignments: { a: { responsibility: "Owns review" } },
+			},
+			team,
+			agentsById,
+		);
+
+		expect(input.members[0]).toEqual({
+			kind: "existing",
+			memberId: "member-a",
+			leader: false,
+			assignment: { responsibility: "Owns review" },
+		});
 	});
 
 	it("falls back to the first member when the recorded leader was released", () => {

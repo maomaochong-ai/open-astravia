@@ -477,6 +477,7 @@ export interface DesktopPluginCapabilityAiApi {
 
 export interface DesktopPluginCapabilityModelsApi {
 	replaceOwnedProviders(sessionId: string, providers: Record<string, ModelProviderUpsertData>): Promise<void>;
+	listOwnedProviders(sessionId: string): Promise<Record<string, ModelProviderConfigSnapshot>>;
 	list(sessionId: string): Promise<ModelListResult>;
 	getConfig(sessionId: string): Promise<ModelConfigSnapshot>;
 	getProvider(sessionId: string, provider: string): Promise<ModelProviderDetail>;

@@ -125,6 +125,8 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 				models: {
 					replaceOwnedProviders: (sessionId, providers) =>
 						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MODEL_OWNED_PROVIDERS_REPLACE, sessionId, providers),
+					listOwnedProviders: (sessionId) =>
+						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MODEL_OWNED_PROVIDERS_LIST, sessionId),
 					list: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MODEL_LIST, sessionId),
 					getConfig: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MODEL_CONFIG_GET, sessionId),
 					getProvider: (sessionId, provider) =>

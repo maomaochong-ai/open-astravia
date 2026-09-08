@@ -38,6 +38,16 @@ export function resolveMemberProfile(document: Pick<AgentTeamDocument, "agents">
 	if (!profile) throw new Error(`Agent profile not found: ${member.binding.agentProfileId}`);
 	return profile;
 }
+/**
+ * 成员在本团队内对外公示的职责：任务书优先，缺省沿用 Agent Profile 的描述。
+ *
+ * 这一句会进入全队共享的名册（见 {@link buildTeamRosterSnapshot}），
+ * 是刻意公开的信息——leader 要据此分派，队友要据此判断该找谁。
+ */
+export function resolveMemberResponsibility(profile: Pick<AgentProfile, "description">, member: TeamMember): string {
+	return member.assignment?.responsibility ?? profile.description;
+}
+
 export function previewAgentProfileUpdate(
 	document: Pick<AgentTeamDocument, "teams">,
 	agentProfileId: string,

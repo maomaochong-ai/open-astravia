@@ -38,6 +38,8 @@ export interface DesktopAgentTeamsApi {
 	setExecutionMode(id: string, mode: SessionExecutionMode): Promise<DesktopTeamSessionSnapshot>;
 	getSession(reference: TeamSessionReference | string): Promise<DesktopTeamSessionSnapshot>;
 	subscribe(id: string, handler: (event: DesktopTeamSessionStreamEvent) => void): Promise<() => void>;
+	/** 弹出图片选择框，返回可直接作为 `<img src>` 的头像 URL；用户取消时返回 undefined。 */
+	uploadAvatar(): Promise<string | undefined>;
 	abort(id: string): Promise<void>;
 	sendMessage(id: string, input: SendTeamMessageInput): Promise<DesktopTeamSessionSnapshot>;
 }

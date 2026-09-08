@@ -1,7 +1,7 @@
 import type { PromptAttachmentRef, RuntimeFailure } from "@vetta/runtime-core";
 import type { ConversationMessageRecord } from "@vetta/runtime-core/conversation";
 import type { AgentProfile, AgentTeamDocument, TeamDefinition, TeamSessionDocument } from "./contracts.js";
-import { resolveMemberProfile } from "./domain.js";
+import { resolveMemberProfile, resolveMemberResponsibility } from "./domain.js";
 
 export type TeamCapabilityKind = "skill" | "scene" | "mcp" | "plugin" | "tool" | (string & {});
 
@@ -71,7 +71,7 @@ export function buildTeamRosterSnapshot(
 				displayName: profile.name,
 				isLeader: member.id === team.leaderMemberId,
 				role: profile.blueprintId,
-				responsibilitySummary: profile.description,
+				responsibilitySummary: resolveMemberResponsibility(profile, member),
 				capabilities: facts.capabilitiesByParticipantId?.[member.id] ?? [],
 				availability: facts.availabilityByParticipantId?.[member.id] ?? "idle",
 				profileRevision: profile.revision,

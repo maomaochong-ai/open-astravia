@@ -16,7 +16,9 @@ import {
 	previewAgentProfileDelete,
 	previewAgentProfileUpdate,
 	requireTeamPolicies,
+	seedAgentTeamPresets,
 	type TeamDefinition,
+	type TeamMemberAssignment,
 	type UpdateAgentProfileInput,
 	type UpdateTeamInput,
 } from "@vetta/agent-team";
@@ -53,6 +55,7 @@ export class AgentTeamStore {
 		if (this.document) return this.document;
 		this.loadPromise ??= this.repository
 			.read()
+			.then((document) => this.migratePresets(document))
 			.then((document) => {
 				this.document = document;
 				return document;
@@ -71,6 +74,33 @@ export class AgentTeamStore {
 		return BUILTIN_AGENT_BLUEPRINTS;
 	}
 
+	/**
+	 * 把存量安装升级到当前这套内置预设。初始资源只在首次安装时铺盘，
+	 * 之后改预设不会自己传播到已经初始化过的用户目录，只能在读取时补迁移。
+	 *
+	 * 落盘失败不阻断启动：内存里用迁移后的结果继续跑，下次启动再试一次，
+	 * 总好过让整个 Agent Team 因为一次写失败而打不开。
+	 */
+	private async migratePresets(document: AgentTeamDocument): Promise<AgentTeamDocument> {
+		const seeded = seedAgentTeamPresets(document);
+		if (seeded === document) return document;
+		const normalized = parseAgentTeamDocument(
+			{ ...seeded, schemaVersion: AGENT_TEAM_SCHEMA_VERSION },
+			this.extensions,
+		);
+		try {
+			await this.repository.write(normalized);
+			log.info("agent team presets migrated", {
+				presetVersion: normalized.presetVersion,
+				agents: normalized.agents.length,
+				teams: normalized.teams.length,
+			});
+		} catch (error) {
+			log.error("failed to persist migrated agent team presets", { error: errorMessage(error) });
+		}
+		return normalized;
+	}
+
 	async createAgent(input: CreateAgentProfileInput): Promise<AgentProfile> {
 		const profile = await this.mutate("create-agent", (document) => {
 			const now = this.now();
@@ -82,7 +112,6 @@ export class AgentTeamStore {
 				name: input.name.trim(),
 				description: input.description?.trim() ?? "",
 				...(input.avatar ? { avatar: input.avatar } : {}),
-				...(input.avatarBackground ? { avatarBackground: input.avatarBackground } : {}),
 				mentionHandle: normalizeMentionHandle(input.mentionHandle),
 				blueprintId: input.blueprintId,
 				abilities: createAgentAbilities(input.abilities, blueprint.defaultAbilities),
@@ -112,11 +141,9 @@ export class AgentTeamStore {
 				...current,
 				name: input.name.trim(),
 				description: input.description.trim(),
-				...(input.systemPrompt !== undefined ? { systemPrompt: input.systemPrompt.trim() } : {}),
+				// 留空即清除覆盖，回到 blueprint 默认；写成空串会让下游的 `?? blueprint` 兜底失效。
+				...(input.systemPrompt !== undefined ? { systemPrompt: input.systemPrompt.trim() || undefined } : {}),
 				...(input.avatar ? { avatar: input.avatar } : { avatar: undefined }),
-				...(input.avatarBackground
-					? { avatarBackground: input.avatarBackground }
-					: { avatarBackground: undefined }),
 				mentionHandle: normalizeMentionHandle(input.mentionHandle),
 				abilities: {
 					selectionMode: input.abilities.selectionMode ?? "custom",
@@ -215,6 +242,7 @@ export class AgentTeamStore {
 			const members = input.members.map((member) => {
 				const source = agents.find((agent) => agent.id === member.agentProfileId);
 				if (!source) throw new Error(`Agent profile not found: ${member.agentProfileId}`);
+				const assignment = normalizeTeamMemberAssignment(member.assignment);
 				if (member.bindingKind === "copy") {
 					const copy = this.createTeamCopy(source, teamId, now);
 					agents.push(copy);
@@ -222,6 +250,7 @@ export class AgentTeamStore {
 						id: this.createId(),
 						handle: normalizeMentionHandle(member.handle),
 						binding: { kind: "copy" as const, agentProfileId: copy.id },
+						...(assignment ? { assignment } : {}),
 						leader: member.leader,
 					};
 				}
@@ -229,6 +258,7 @@ export class AgentTeamStore {
 					id: this.createId(),
 					handle: normalizeMentionHandle(member.handle),
 					binding: { kind: "reference" as const, agentProfileId: source.id },
+					...(assignment ? { assignment } : {}),
 					leader: member.leader,
 				};
 			});
@@ -282,7 +312,12 @@ export class AgentTeamStore {
 					existingIds.add(memberInput.memberId);
 					const member = current.members.find((candidate) => candidate.id === memberInput.memberId);
 					if (!member) throw new Error(`Agent team member not found: ${memberInput.memberId}`);
-					return { ...member, leader: memberInput.leader };
+					// 不带 assignment 的输入保持原样，带了就整体替换；全空即清除覆盖。
+					const assignment =
+						memberInput.assignment === undefined
+							? member.assignment
+							: normalizeTeamMemberAssignment(memberInput.assignment);
+					return { ...member, assignment, leader: memberInput.leader };
 				}
 				if (newSourceIds.has(memberInput.agentProfileId)) {
 					throw new Error(`Duplicate agent profile in team: ${memberInput.agentProfileId}`);
@@ -292,6 +327,7 @@ export class AgentTeamStore {
 				if (!source || source.scope.kind !== "library") {
 					throw new Error(`Library agent profile not found: ${memberInput.agentProfileId}`);
 				}
+				const assignment = normalizeTeamMemberAssignment(memberInput.assignment);
 				if (memberInput.bindingKind === "copy") {
 					const copy = this.createTeamCopy(source, teamId, now);
 					agents.push(copy);
@@ -299,6 +335,7 @@ export class AgentTeamStore {
 						id: this.createId(),
 						handle: source.mentionHandle,
 						binding: { kind: "copy" as const, agentProfileId: copy.id },
+						...(assignment ? { assignment } : {}),
 						leader: memberInput.leader,
 					};
 				}
@@ -306,6 +343,7 @@ export class AgentTeamStore {
 					id: this.createId(),
 					handle: source.mentionHandle,
 					binding: { kind: "reference" as const, agentProfileId: source.id },
+					...(assignment ? { assignment } : {}),
 					leader: memberInput.leader,
 				};
 			});
@@ -422,6 +460,17 @@ export const agentTeamStore = new AgentTeamStore({ extensions: agentTeamExtensio
 
 function errorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * 任务书留空即取消覆盖：空白字段一律折算成缺省，不落成空串。
+ * 空串会让下游 `?? profile.description` 与 `if (instructions)` 的兜底同时失效。
+ */
+function normalizeTeamMemberAssignment(input: TeamMemberAssignment | undefined): TeamMemberAssignment | undefined {
+	const responsibility = input?.responsibility?.trim();
+	const instructions = input?.instructions?.trim();
+	if (!responsibility && !instructions) return undefined;
+	return { ...(responsibility ? { responsibility } : {}), ...(instructions ? { instructions } : {}) };
 }
 
 function cloneExtensions(extensions: Readonly<Record<string, readonly string[]>>): Record<string, string[]> {

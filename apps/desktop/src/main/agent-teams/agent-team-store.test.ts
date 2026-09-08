@@ -41,6 +41,55 @@ function agentInput(name: string) {
 	};
 }
 
+describe("AgentTeamStore preset migration", () => {
+	it("upgrades an existing install to the current presets once and persists it", async () => {
+		const repository = new MemoryRepository();
+		repository.document = {
+			schemaVersion: 1,
+			revision: 6,
+			agents: [
+				{
+					id: "builtin:agent:leader",
+					revision: 1,
+					name: "Vetta",
+					description: "Coordinates the team.",
+					mentionHandle: "vetta",
+					blueprintId: "leader",
+					abilities: { selectionMode: "all", skills: [], mcpServers: [], plugins: [] },
+					scope: { kind: "library" },
+					createdAt: 0,
+					updatedAt: 0,
+				},
+			],
+			teams: [],
+		};
+		const store = new AgentTeamStore({ repository });
+
+		const document = await store.read();
+
+		expect(document.presetVersion).toBe(2);
+		expect(document.agents.map((agent) => agent.id)).toEqual(BUILTIN_AGENT_PRESETS.map((preset) => preset.id));
+		expect(document.teams).toHaveLength(4);
+		expect(repository.writes).toBe(1);
+
+		// 已经是当前版本的配置不该再被重写一次。
+		const reloaded = await new AgentTeamStore({ repository }).read();
+		expect(reloaded.presetVersion).toBe(2);
+		expect(repository.writes).toBe(1);
+	});
+
+	it("keeps serving the upgraded presets when persisting the migration fails", async () => {
+		const repository = new MemoryRepository();
+		repository.document = { schemaVersion: 1, revision: 1, agents: [], teams: [] };
+		repository.failNextWrite = true;
+		const store = new AgentTeamStore({ repository });
+
+		const document = await store.read();
+
+		expect(document.agents).toHaveLength(BUILTIN_AGENT_PRESETS.length);
+	});
+});
+
 describe("AgentTeamStore transaction boundary", () => {
 	it("serializes concurrent mutations without losing either profile", async () => {
 		const repository = new MemoryRepository();
@@ -101,31 +150,83 @@ describe("AgentTeamStore transaction boundary", () => {
 		});
 	});
 
-	it("persists and clears the avatar background chosen for a profile", async () => {
+	it("clears the system prompt override when the editor is left empty", async () => {
 		const repository = new MemoryRepository();
 		const store = new AgentTeamStore({ repository, createId: createIdSequence(), now: () => 10 });
-		const created = await store.createAgent({ ...agentInput("Tinted"), avatarBackground: "tint:coral" });
-		expect(created.avatarBackground).toBe("tint:coral");
+		const created = await store.createAgent(agentInput("Prompted"));
 
-		const custom = await store.updateAgent(created.id, {
+		const overridden = await store.updateAgent(created.id, {
 			expectedRevision: created.revision,
 			name: created.name,
 			description: created.description,
-			avatarBackground: "#3366ff",
+			systemPrompt: "  Speak plainly.  ",
 			mentionHandle: created.mentionHandle,
 			abilities: created.abilities,
 		});
-		expect(custom.avatarBackground).toBe("#3366ff");
+		expect(overridden.systemPrompt).toBe("Speak plainly.");
 
-		// 不传就是回到「跟随身份自动配色」，不能留下上一次的选择。
-		const cleared = await store.updateAgent(custom.id, {
-			expectedRevision: custom.revision,
-			name: custom.name,
-			description: custom.description,
-			mentionHandle: custom.mentionHandle,
-			abilities: custom.abilities,
+		// 留空即回到 blueprint 默认；存成空串会让下游的 `?? blueprint` 兜底失效。
+		const cleared = await store.updateAgent(overridden.id, {
+			expectedRevision: overridden.revision,
+			name: overridden.name,
+			description: overridden.description,
+			systemPrompt: "   ",
+			mentionHandle: overridden.mentionHandle,
+			abilities: overridden.abilities,
 		});
-		expect(cleared.avatarBackground).toBeUndefined();
+		expect(cleared.systemPrompt).toBeUndefined();
+	});
+
+	it("keeps a member assignment across unrelated team edits and clears it on demand", async () => {
+		const repository = new MemoryRepository();
+		const store = new AgentTeamStore({ repository, createId: createIdSequence(), now: () => 10 });
+		const document = await store.read();
+		const team = document.teams[0];
+		if (!team) throw new Error("Expected an initial team");
+		const memberId = team.members[0]?.id;
+		if (!memberId) throw new Error("Expected a team member");
+
+		const assigned = await store.updateTeam(team.id, {
+			expectedRevision: team.revision,
+			name: team.name,
+			description: team.description,
+			members: team.members.map((member) => ({
+				kind: "existing" as const,
+				memberId: member.id,
+				leader: member.id === team.leaderMemberId,
+				...(member.id === memberId
+					? { assignment: { responsibility: "  Owns the release checklist.  ", instructions: "   " } }
+					: {}),
+			})),
+		});
+		// 空白折算成缺省，非空去掉首尾空格。
+		expect(assigned.members[0]?.assignment).toEqual({ responsibility: "Owns the release checklist." });
+
+		const renamed = await store.updateTeam(assigned.id, {
+			expectedRevision: assigned.revision,
+			name: "Renamed team",
+			description: assigned.description,
+			members: assigned.members.map((member) => ({
+				kind: "existing" as const,
+				memberId: member.id,
+				leader: member.id === assigned.leaderMemberId,
+			})),
+		});
+		// 输入不带 assignment 表示「本次没碰任务书」，不能被静默清空。
+		expect(renamed.members[0]?.assignment).toEqual({ responsibility: "Owns the release checklist." });
+
+		const cleared = await store.updateTeam(renamed.id, {
+			expectedRevision: renamed.revision,
+			name: renamed.name,
+			description: renamed.description,
+			members: renamed.members.map((member) => ({
+				kind: "existing" as const,
+				memberId: member.id,
+				leader: member.id === renamed.leaderMemberId,
+				assignment: { responsibility: "", instructions: "" },
+			})),
+		});
+		expect(cleared.members[0]?.assignment).toBeUndefined();
 	});
 
 	it("allows deleting a built-in profile like any other team file", async () => {

@@ -66,7 +66,7 @@
       "dependencies": {
         "@dagrejs/dagre": "^3.0.0",
         "@fontsource-variable/geist": "^5.2.8",
-        "@iconify-json/solar": "^1.2.5",
+        "@iconify-json/solar": "^1.2.10",
         "@lexical/react": "^0.48.0",
         "@lexical/utils": "^0.48.0",
         "@module-federation/enhanced": "^2.5.1",
@@ -1555,7 +1555,7 @@
 
     "@iconify-json/mdi": ["@iconify-json/mdi@1.2.3", "https://registry.npmmirror.com/@iconify-json/mdi/-/mdi-1.2.3.tgz", { "dependencies": { "@iconify/types": "*" } }, "sha512-O3cLwbDOK7NNDf2ihaQOH5F9JglnulNDFV7WprU2dSoZu3h3cWH//h74uQAB87brHmvFVxIOkuBX2sZSzYhScg=="],
 
-    "@iconify-json/solar": ["@iconify-json/solar@1.2.5", "https://registry.npmmirror.com/@iconify-json/solar/-/solar-1.2.5.tgz", { "dependencies": { "@iconify/types": "*" } }, "sha512-WMAiNwchU8zhfrySww6KQBRIBbsQ6SvgIu2yA+CHGyMima/0KQwT5MXogrZPJGoQF+1Ye3Qj6K+1CiyNn3YkoA=="],
+    "@iconify-json/solar": ["@iconify-json/solar@1.2.10", "", { "dependencies": { "@iconify/types": "*" } }, "sha512-ChpZ3kNw8nDhHfUoLq5JJ3AdIzytFm57dFkjAS0fjXnL5a7WwibTINjMKfvqQDhuXBrgqejNLyGp8CCpG8UyCg=="],
 
     "@iconify-json/vscode-icons": ["@iconify-json/vscode-icons@1.2.59", "https://registry.npmmirror.com/@iconify-json/vscode-icons/-/vscode-icons-1.2.59.tgz", { "dependencies": { "@iconify/types": "*" } }, "sha512-6RN+ixRubu3UKrUEqV24iuwvh2DgY541h2QWdxBeK3kJvXuDpaFNxw2dUSUqp80IU7f+QAU5sh718tXgyynnbQ=="],
 
@@ -5759,9 +5759,13 @@
 
     "@vetta/plugin-global-slot-demo/react-dom": ["react-dom@19.1.1", "https://registry.npmmirror.com/react-dom/-/react-dom-19.1.1.tgz", { "dependencies": { "scheduler": "^0.26.0" }, "peerDependencies": { "react": "^19.1.1" } }, "sha512-Dlq/5LAZgF0Gaz6yiqZCf6VCcZs1ghAJyrsu84Q/GT0gV+mCxbfmKNoGRKBYMJ8IEdGPqu49YWXD02GCknEDkw=="],
 
+    "@vetta/plugin-image-gen/@iconify-json/solar": ["@iconify-json/solar@1.2.5", "https://registry.npmmirror.com/@iconify-json/solar/-/solar-1.2.5.tgz", { "dependencies": { "@iconify/types": "*" } }, "sha512-WMAiNwchU8zhfrySww6KQBRIBbsQ6SvgIu2yA+CHGyMima/0KQwT5MXogrZPJGoQF+1Ye3Qj6K+1CiyNn3YkoA=="],
+
     "@vetta/plugin-image-gen/react": ["react@19.1.1", "https://registry.npmmirror.com/react/-/react-19.1.1.tgz", {}, "sha512-w8nqGImo45dmMIfljjMwOGtbmC/mk4CMYhWIicdSflH91J9TyCyczcPFXJzrZ/ZXcgGRFeP6BU0BEJTw6tZdfQ=="],
 
     "@vetta/plugin-image-gen/react-dom": ["react-dom@19.1.1", "https://registry.npmmirror.com/react-dom/-/react-dom-19.1.1.tgz", { "dependencies": { "scheduler": "^0.26.0" }, "peerDependencies": { "react": "^19.1.1" } }, "sha512-Dlq/5LAZgF0Gaz6yiqZCf6VCcZs1ghAJyrsu84Q/GT0gV+mCxbfmKNoGRKBYMJ8IEdGPqu49YWXD02GCknEDkw=="],
+
+    "@vetta/plugin-kanban/@iconify-json/solar": ["@iconify-json/solar@1.2.5", "https://registry.npmmirror.com/@iconify-json/solar/-/solar-1.2.5.tgz", { "dependencies": { "@iconify/types": "*" } }, "sha512-WMAiNwchU8zhfrySww6KQBRIBbsQ6SvgIu2yA+CHGyMima/0KQwT5MXogrZPJGoQF+1Ye3Qj6K+1CiyNn3YkoA=="],
 
     "@vetta/plugin-kanban/react": ["react@19.1.1", "https://registry.npmmirror.com/react/-/react-19.1.1.tgz", {}, "sha512-w8nqGImo45dmMIfljjMwOGtbmC/mk4CMYhWIicdSflH91J9TyCyczcPFXJzrZ/ZXcgGRFeP6BU0BEJTw6tZdfQ=="],
 
@@ -5806,6 +5810,8 @@
     "@vetta/plugin-vetta-ui-design/react": ["react@19.1.1", "https://registry.npmmirror.com/react/-/react-19.1.1.tgz", {}, "sha512-w8nqGImo45dmMIfljjMwOGtbmC/mk4CMYhWIicdSflH91J9TyCyczcPFXJzrZ/ZXcgGRFeP6BU0BEJTw6tZdfQ=="],
 
     "@vetta/plugin-vetta-ui-design/react-dom": ["react-dom@19.1.1", "https://registry.npmmirror.com/react-dom/-/react-dom-19.1.1.tgz", { "dependencies": { "scheduler": "^0.26.0" }, "peerDependencies": { "react": "^19.1.1" } }, "sha512-Dlq/5LAZgF0Gaz6yiqZCf6VCcZs1ghAJyrsu84Q/GT0gV+mCxbfmKNoGRKBYMJ8IEdGPqu49YWXD02GCknEDkw=="],
+
+    "@vetta/theme-xianxia/@iconify-json/solar": ["@iconify-json/solar@1.2.5", "https://registry.npmmirror.com/@iconify-json/solar/-/solar-1.2.5.tgz", { "dependencies": { "@iconify/types": "*" } }, "sha512-WMAiNwchU8zhfrySww6KQBRIBbsQ6SvgIu2yA+CHGyMima/0KQwT5MXogrZPJGoQF+1Ye3Qj6K+1CiyNn3YkoA=="],
 
     "@vetta/theme-xianxia/react": ["react@19.1.1", "https://registry.npmmirror.com/react/-/react-19.1.1.tgz", {}, "sha512-w8nqGImo45dmMIfljjMwOGtbmC/mk4CMYhWIicdSflH91J9TyCyczcPFXJzrZ/ZXcgGRFeP6BU0BEJTw6tZdfQ=="],
 

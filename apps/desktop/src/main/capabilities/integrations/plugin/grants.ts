@@ -169,7 +169,11 @@ export function buildPluginCapabilityGrants(
 				]
 			: []),
 		...(permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.MODELS_MANAGE)
-			? [createCapabilityGrant(DOMAIN_MODEL_CAPABILITIES.REPLACE_OWNED_PROVIDERS)]
+			? [
+					createCapabilityGrant(DOMAIN_MODEL_CAPABILITIES.REPLACE_OWNED_PROVIDERS),
+					// 读回是替换的前置：不给读回，插件只能覆盖而无法对账。
+					createCapabilityGrant(DOMAIN_MODEL_CAPABILITIES.LIST_OWNED_PROVIDERS),
+				]
 			: []),
 		...(official ? buildOfficialDomainGrants() : []),
 	];
@@ -199,6 +203,7 @@ function buildOfficialDomainGrants(): CapabilityGrant[] {
 		createCapabilityGrant(DOMAIN_MODEL_CAPABILITIES.UPSERT_PROVIDER),
 		createCapabilityGrant(DOMAIN_MODEL_CAPABILITIES.REMOVE_PROVIDER),
 		createCapabilityGrant(DOMAIN_MODEL_CAPABILITIES.REPLACE_OWNED_PROVIDERS),
+		createCapabilityGrant(DOMAIN_MODEL_CAPABILITIES.LIST_OWNED_PROVIDERS),
 		createCapabilityGrant(DOMAIN_MCP_CAPABILITIES.LIST_SERVERS),
 		createCapabilityGrant(DOMAIN_MCP_CAPABILITIES.GET_SERVER),
 		createCapabilityGrant(DOMAIN_MCP_CAPABILITIES.UPSERT_SERVER),

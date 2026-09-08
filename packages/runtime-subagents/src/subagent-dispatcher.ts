@@ -159,6 +159,14 @@ export class SubagentDispatcher<TProfile> {
 		return run.interrupt();
 	}
 
+	/** Unconditional stop of every live child, for a user-initiated session interrupt. */
+	interruptAll(): readonly SubagentSnapshot[] {
+		this.assertNotDisposed();
+		return this.list()
+			.filter((snapshot) => !isTerminalStatus(snapshot.status))
+			.map((snapshot) => this.interrupt(snapshot.id));
+	}
+
 	resolveTargets(targets: readonly string[] | undefined): readonly SubagentSnapshot[] {
 		if (!targets || targets.length === 0) return this.list();
 		return targets.map((target) => this.requireRun(target).readSnapshot());

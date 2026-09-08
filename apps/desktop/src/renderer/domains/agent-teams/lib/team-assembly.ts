@@ -3,6 +3,7 @@ import type {
 	CreateTeamInput,
 	CreateTeamMemberInput,
 	TeamDefinition,
+	TeamMemberAssignment,
 	UpdateTeamInput,
 	UpdateTeamMemberInput,
 } from "@vetta/agent-team";
@@ -21,6 +22,8 @@ export interface TeamAssemblyDraft {
 	readonly leaderId?: string;
 	/** 新成员的绑定方式，缺省为跟随智能体库的 `reference`。 */
 	readonly bindingKinds?: Readonly<Record<string, "reference" | "copy">>;
+	/** 成员在本团队内的任务书，按 Agent 身份存放；空白字段由主进程折算成缺省。 */
+	readonly assignments?: Readonly<Record<string, TeamMemberAssignment>>;
 }
 
 export function emptyAssemblyDraft(): TeamAssemblyDraft {
@@ -30,13 +33,40 @@ export function emptyAssemblyDraft(): TeamAssemblyDraft {
 export function assemblyDraftFromTeam(team: TeamDefinition): TeamAssemblyDraft {
 	const memberIds = team.members.map((member) => member.binding.agentProfileId);
 	const leader = team.members.find((member) => member.id === team.leaderMemberId);
+	const assignments = Object.fromEntries(
+		team.members.flatMap((member) => (member.assignment ? [[member.binding.agentProfileId, member.assignment]] : [])),
+	);
 	return {
 		teamId: team.id,
 		name: team.name,
 		description: team.description,
 		memberIds,
 		leaderId: leader?.binding.agentProfileId ?? memberIds[0],
+		assignments,
 	};
+}
+
+/** 写入或清空某位成员的任务书；两个字段都空时整条移除，草稿里不留空壳。 */
+export function setAssemblyAssignment(
+	draft: TeamAssemblyDraft,
+	agentId: string,
+	assignment: TeamMemberAssignment,
+): TeamAssemblyDraft {
+	const responsibility = assignment.responsibility?.trim();
+	const instructions = assignment.instructions?.trim();
+	const { [agentId]: _removed, ...rest } = draft.assignments ?? {};
+	if (!responsibility && !instructions) return { ...draft, assignments: rest };
+	return {
+		...draft,
+		assignments: {
+			...rest,
+			[agentId]: { ...(responsibility ? { responsibility } : {}), ...(instructions ? { instructions } : {}) },
+		},
+	};
+}
+
+export function assemblyAssignment(draft: TeamAssemblyDraft, agentId: string): TeamMemberAssignment | undefined {
+	return draft.assignments?.[agentId];
 }
 
 /** 点击卡片即拉入或移出；移出队长时把队长顺延给剩下的第一位。 */
@@ -79,6 +109,7 @@ export function buildCreateTeamInput(
 			handle: uniqueHandle(agent.mentionHandle, usedHandles),
 			bindingKind: bindingKindFor(draft, agent.id),
 			leader: agent.id === leaderId,
+			...(draft.assignments?.[agent.id] ? { assignment: draft.assignments[agent.id] } : {}),
 		});
 	}
 	return { name: draft.name.trim(), description: draft.description?.trim() ?? "", members };
@@ -97,12 +128,18 @@ export function buildUpdateTeamInput(
 		const existing = existingByAgentId.get(agentId);
 		members.push(
 			existing
-				? { kind: "existing", memberId: existing.id, leader: agentId === leaderId }
+				? {
+						kind: "existing",
+						memberId: existing.id,
+						leader: agentId === leaderId,
+						...assignmentInput(draft, agentId),
+					}
 				: {
 						kind: "new",
 						agentProfileId: agentId,
 						bindingKind: bindingKindFor(draft, agentId),
 						leader: agentId === leaderId,
+						...assignmentInput(draft, agentId),
 					},
 		);
 	}
@@ -112,6 +149,14 @@ export function buildUpdateTeamInput(
 		description: draft.description?.trim() ?? team.description,
 		members,
 	};
+}
+
+/**
+ * 改团队时任务书始终随编队一起提交：草稿里没有就发空对象表示「清空」。
+ * 省略字段在协议里表示「本次没碰任务书」，会让删除任务书永远保存不上。
+ */
+function assignmentInput(draft: TeamAssemblyDraft, agentId: string): { readonly assignment: TeamMemberAssignment } {
+	return { assignment: draft.assignments?.[agentId] ?? {} };
 }
 
 function bindingKindFor(draft: TeamAssemblyDraft, agentId: string): "reference" | "copy" {

@@ -25,7 +25,7 @@
     "subtitle": "探索、调度与编组各个专属领域的专家伙伴，自由拉拢成员搭建自驱协同编队。",
     "createTeam": "创建团队",
     "recruit": "拉拢新成员",
-    "cancel": "取消",
+    "recruitShort": "成员",
     "saveTeam": "保存团队",
     "exitAssembly": "退出组队",
     "assembled": "已拉拢 {{count}} 位成员",
@@ -42,7 +42,6 @@
     "expandTeams": "展开更多 ({{count}})",
     "collapseTeams": "收起团队",
     "expertCount": "{{count}} 位专家",
-    "teamSelected": "已选定编队",
     "teamSelectHint": "点击选定",
     "openTeamChat": "发起该团队会话",
     "teamSettings": "团队设置",
@@ -66,6 +65,9 @@
     "basicInfo": "基本信息",
     "avatar": "头像",
     "avatarOption": "选择头像 {{index}}",
+    "avatarUpload": "上传图片",
+    "avatarUploadHint": "支持 PNG / JPG / WebP / GIF，最大 5 MB",
+    "avatarUploadFailed": "图片上传失败：{{error}}",
     "name": "名称",
     "description": "职责说明",
     "systemPrompt": "系统提示词",
@@ -93,28 +95,40 @@
     "descriptionPlaceholder": "简短描述该智能体的职责定位与日常目标…",
     "systemPromptHint": "设定该智能体的身份背景、思考策略与输出规范",
     "systemPromptPlaceholder": "为该智能体定义人设目标、专业原则、拆解步骤与输出规范，支持 Markdown…",
-    "clearPrompt": "清空",
-    "avatarBackground": "头像底座",
-    "avatarBackgroundAuto": "跟随身份自动配色",
-    "avatarBackgroundOption": "预设底座 {{name}}",
-    "avatarBackgroundCustom": "自定义纯色"
+    "clearPrompt": "清空"
   },
   "blueprints": {
-    "leader": {
-      "name": "负责人",
-      "description": "负责协调团队并整合最终结果"
+    "master": {
+      "name": "主控",
+      "description": "统筹全局：拆解目标、分派任务、验收结果并最终交付"
     },
     "researcher": {
-      "name": "研究员",
-      "description": "收集证据并验证事实"
+      "name": "检索员",
+      "description": "搜集事实、文档、竞品动态与外部素材并核实"
     },
-    "builder": {
-      "name": "执行者",
-      "description": "负责实现、修改和验证工作"
+    "architect": {
+      "name": "策划师",
+      "description": "输出技术架构、接口规范或文档与 PRD 大纲"
     },
-    "reviewer": {
-      "name": "审查员",
-      "description": "检查正确性、安全性和回归风险"
+    "executor": {
+      "name": "执行员",
+      "description": "生产核心资产：写代码、产出深度草稿或执行复杂分析"
+    },
+    "auditor": {
+      "name": "审计员",
+      "description": "红军挑刺：安全与边界审查、事实纠偏与逻辑查漏"
+    },
+    "optimizer": {
+      "name": "调优员",
+      "description": "性能重构、跨平台文案风味化与细节精修"
+    },
+    "synthesizer": {
+      "name": "交付员",
+      "description": "统一编排多源成果，生成报告或打包物料"
+    },
+    "translator": {
+      "name": "转化员",
+      "description": "多语言本地化、代码转文字与术语向业务语言转译"
     }
   },
   "teams": {
@@ -156,6 +170,19 @@
     "deleteTeam": "删除团队",
     "editMember": "配置成员",
     "editMemberTitle": "成员详情与能力配置",
+    "editAssignment": "编辑 {{name}} 在本团队的任务书",
+    "assignmentEmpty": "设置它在本团队的职责与补充指令",
+    "assignmentBadge": "本团队内职责",
+    "assignmentHasInstructions": "含补充指令",
+    "assignmentTitle": "{{name}} 在本团队的任务书",
+    "assignmentDescription": "在这个智能体本身的基调上做增量。留空即回到它在智能体库里的设定，不影响它在其他团队的表现。",
+    "assignmentResponsibility": "团队内职责",
+    "assignmentResponsibilityHint": "一句话，全队可见：队长据此分派，队友据此判断该找谁。",
+    "assignmentInstructions": "团队内补充指令",
+    "assignmentInstructionsPlaceholder": "补充这个团队特有的要求、口径与红线…",
+    "assignmentInstructionsHint": "追加在它原有人设之后，不会替换本体人设与协作规则；只有它本人看得到。",
+    "assignmentCancel": "取消",
+    "assignmentApply": "应用",
     "memberOverview": "点击任意成员卡片配置其角色设定与专属能力。",
     "deleteTeamTitle": "删除这个团队？",
     "deleteTeamMessage": "“{{name}}”及其团队配置将被删除。此操作无法撤销。",

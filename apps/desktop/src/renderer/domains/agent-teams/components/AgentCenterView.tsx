@@ -1,6 +1,6 @@
 import type { AgentProfile } from "@vetta/agent-team";
 import { Button } from "@vetta/ui";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { AgentCenterModel } from "../hooks/useAgentCenterModel";
 import { AgentCard } from "./AgentCard";
@@ -15,7 +15,7 @@ export interface AgentCenterViewProps {
 	readonly onOpenTeamChat: (teamId: string) => void;
 	readonly onOpenTeamSettings: (teamId: string) => void;
 	readonly onSubmitAssembly: () => void;
-	readonly onDeleteTeam: () => void;
+	readonly onDeleteTeam: (teamId: string) => void;
 	/** 打开某个智能体的档案抽屉。 */
 	readonly onOpenAgent: (agentId: string) => void;
 	readonly onCreateAgent: () => void;
@@ -40,20 +40,29 @@ export function AgentCenterView({
 	const visibleTeams = model.teamsExpanded ? model.teams : model.teams.slice(0, COLLAPSED_TEAM_COUNT);
 	const hiddenTeamCount = model.teams.length - COLLAPSED_TEAM_COUNT;
 
+	// 选中态就长在卡片上，点到卡片以外的任何地方都该收起来；点另一张卡片由它自己的 onSelect 接管。
+	const selectedTeamId = model.selectedTeam?.id;
+	const clearSelection = actions.selectTeam;
+	useEffect(() => {
+		if (!selectedTeamId) return;
+		function onPointerDown(event: PointerEvent): void {
+			const target = event.target;
+			if (target instanceof Element && target.closest("[data-team-card]")) return;
+			clearSelection(undefined);
+		}
+		document.addEventListener("pointerdown", onPointerDown);
+		return () => document.removeEventListener("pointerdown", onPointerDown);
+	}, [clearSelection, selectedTeamId]);
+
 	return (
 		<div className="@container relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
 			<AgentCenterHero
 					assembling={Boolean(model.assembly)}
 					assembledCount={model.assembly?.memberIds.length ?? 0}
 					assemblySubmittable={model.assemblySubmittable}
-					teamSelected={Boolean(model.selectedTeam)}
 					onCreateTeam={actions.startCreateTeam}
-					onRecruit={() => model.selectedTeam && actions.startEditTeam(model.selectedTeam)}
 					onSubmitAssembly={onSubmitAssembly}
 					onCancelAssembly={actions.cancelAssembly}
-					onClearSelection={() => actions.selectTeam(undefined)}
-					onOpenTeamSettings={() => model.selectedTeam && onOpenTeamSettings(model.selectedTeam.id)}
-				onDeleteTeam={onDeleteTeam}
 			/>
 
 			<div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-8 @md:px-8 [scrollbar-gutter:stable]">
@@ -125,6 +134,9 @@ export function AgentCenterView({
 											selected={model.selectedTeam?.id === team.id}
 											onSelect={() => actions.selectTeam(model.selectedTeam?.id === team.id ? undefined : team.id)}
 											onOpenChat={() => onOpenTeamChat(team.id)}
+											onRecruit={() => actions.startEditTeam(team)}
+											onOpenSettings={() => onOpenTeamSettings(team.id)}
+											onDelete={() => onDeleteTeam(team.id)}
 										/>
 									);
 								})}

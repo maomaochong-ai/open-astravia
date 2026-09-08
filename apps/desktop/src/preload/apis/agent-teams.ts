@@ -31,6 +31,7 @@ export function createAgentTeamsApi(ipc: IpcRenderer): Pick<DesktopApi, "agentTe
 					id,
 				]),
 			abort: (id) => ipc.invoke("vetta:agent-teams:abort", id),
+			uploadAvatar: () => ipc.invoke("vetta:agent-teams:upload-avatar"),
 			sendMessage: (id, input) => ipc.invoke("vetta:agent-teams:send-message", id, input),
 		},
 	};

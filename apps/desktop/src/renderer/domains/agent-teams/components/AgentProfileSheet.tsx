@@ -87,9 +87,7 @@ export function AgentProfileSheet({
 									<AgentAvatarView
 										name={displayName}
 										avatar={draft?.avatar ?? agentAvatarUrl(target)}
-										background={draft ? draft.avatarBackground : target.avatarBackground}
 										blueprintId={target.blueprintId}
-										seed={target.id || target.blueprintId}
 										size="hero"
 									/>
 									<div className="min-w-0 flex-1">

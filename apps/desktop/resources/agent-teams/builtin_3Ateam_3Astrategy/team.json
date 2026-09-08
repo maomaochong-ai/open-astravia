@@ -1,0 +1,56 @@
+{
+	"id": "builtin:team:strategy",
+	"revision": 1,
+	"name": "Biz Strategy",
+	"leaderMemberId": "builtin:member:strategy:master",
+	"members": [
+		{
+			"id": "builtin:member:strategy:master",
+			"handle": "master",
+			"binding": {
+				"kind": "reference",
+				"agentProfileId": "builtin:agent:master"
+			},
+			"assignment": {
+				"responsibility": "Frames the business goal and owns the delivered plan."
+			}
+		},
+		{
+			"id": "builtin:member:strategy:architect",
+			"handle": "architect",
+			"binding": {
+				"kind": "reference",
+				"agentProfileId": "builtin:agent:architect"
+			},
+			"assignment": {
+				"responsibility": "Builds the PRD structure and the business model behind it."
+			}
+		},
+		{
+			"id": "builtin:member:strategy:auditor",
+			"handle": "auditor",
+			"binding": {
+				"kind": "reference",
+				"agentProfileId": "builtin:agent:auditor"
+			},
+			"assignment": {
+				"responsibility": "Hunts for fatal flaws in the model, the economics, and the risks."
+			}
+		},
+		{
+			"id": "builtin:member:strategy:synthesizer",
+			"handle": "synthesizer",
+			"binding": {
+				"kind": "reference",
+				"agentProfileId": "builtin:agent:synthesizer"
+			},
+			"assignment": {
+				"responsibility": "Packages the reviewed material into a presentable plan."
+			}
+		}
+	],
+	"orchestrationPolicyId": "leader-delegates-v1",
+	"contextPolicyId": "public-results-v1",
+	"createdAt": 0,
+	"updatedAt": 0
+}

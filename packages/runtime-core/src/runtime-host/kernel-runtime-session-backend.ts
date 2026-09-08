@@ -123,6 +123,13 @@ export type RuntimeSessionCoreAssembly = Pick<
 	readonly toolController?: RuntimeSessionToolController;
 };
 
+/**
+ * How long a stop waits for the turn to unwind before returning anyway. Long enough for
+ * a tool that honours its AbortSignal to settle, short enough that one that ignores it
+ * cannot hold the stop open.
+ */
+const ABORT_UNWIND_TIMEOUT_MS = 2_000;
+
 export class RuntimeSession {
 	private readonly session: AgentSession;
 	private readonly promptAdapter: RuntimePromptAdapter;
@@ -268,7 +275,7 @@ export class RuntimeSession {
 
 	async abort(reason?: string): Promise<void> {
 		this.assertOpen();
-		await this.session.cancel(reason);
+		await this.session.cancel(reason, { waitMs: ABORT_UNWIND_TIMEOUT_MS });
 	}
 
 	subscribe(handler: (event: SessionEvent) => void): () => void {

@@ -557,12 +557,18 @@ export function projectTeamConversationTimeline({
 			leaderDelegations.some((activity) => matchesActivityReply(activity, turn.message))
 		)
 			continue;
+		// Dedupe against an already published reply, by identity or by content. Content
+		// only counts as evidence when there is content: a turn that has so far produced
+		// only thinking or tool calls has an empty public text, and matching that against
+		// every earlier reply that also carried no prose would hide the running turn
+		// until its next persisted snapshot.
+		const streamText = publicAgentText(turn.message);
 		if (
 			persistedResults.has(turn.message.id) ||
-			persistedAgentItems.some(
-				(item) =>
-					item.authorId === turn.message.authorId && publicAgentText(item) === publicAgentText(turn.message),
-			)
+			(streamText.length > 0 &&
+				persistedAgentItems.some(
+					(item) => item.authorId === turn.message.authorId && publicAgentText(item) === streamText,
+				))
 		)
 			continue;
 		items.push(

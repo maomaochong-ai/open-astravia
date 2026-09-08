@@ -307,41 +307,57 @@ describe("AgentProfileEditor", () => {
 		);
 	});
 
-	it("picks a preset avatar background and saves it with the profile", async () => {
+
+	it("uploads a picture and saves it as the avatar", async () => {
 		const user = userEvent.setup();
 		const onSave = vi.fn(async () => ({ updated: agent, impact }));
-		function SheetHarness(): JSX.Element {
-			const [saveRequest, setSaveRequest] = useState(0);
-			return (
-				<>
-					<button type="button" onClick={() => setSaveRequest((value) => value + 1)}>
-						sheet-save
-					</button>
-					<AgentProfileEditor
-						agent={agent}
-						capabilities={[]}
-						layout="sheet"
-						activeTab="basic"
-						hideSaveAction
-						saveRequest={saveRequest}
-						onPreview={vi.fn(async () => ({ ...impact, teamIds: [], teamNames: [] }))}
-						onSave={onSave}
-					/>
-				</>
-			);
-		}
-		render(<SheetHarness />);
-
-		await user.click(screen.getByRole("button", { name: "profile.avatarBackgroundOptioncoral" }));
-		await user.click(screen.getByRole("button", { name: "sheet-save" }));
-		await waitFor(() =>
-			expect(onSave).toHaveBeenCalledWith(agent, expect.objectContaining({ avatarBackground: "tint:coral" })),
+		const uploadAvatar = vi.fn(async () => "vetta-file://local/home/pictures/mine.png");
+		vi.stubGlobal("vetta", { agentTeams: { uploadAvatar } });
+		render(
+			<AgentProfileEditor
+				agent={agent}
+				capabilities={[]}
+				onPreview={vi.fn(async () => ({ ...impact, teamIds: [], teamNames: [] }))}
+				onSave={onSave}
+			/>,
 		);
 
-		await user.click(screen.getByRole("button", { name: "profile.avatarBackgroundAuto" }));
-		await user.click(screen.getByRole("button", { name: "sheet-save" }));
+		await user.click(screen.getByRole("button", { name: "profile.avatarUpload" }));
+		await waitFor(() => expect(uploadAvatar).toHaveBeenCalled());
+		// 上传的图片不在内置目录里，得自己占一格，否则选完就从列表里消失。
 		await waitFor(() =>
-			expect(onSave).toHaveBeenLastCalledWith(agent, expect.objectContaining({ avatarBackground: undefined })),
+			expect(screen.getAllByRole("button", { name: "profile.avatarUpload" })).toHaveLength(2),
+		);
+
+		await user.click(screen.getByRole("button", { name: "profile.save" }));
+		await waitFor(() =>
+			expect(onSave).toHaveBeenCalledWith(
+				agent,
+				expect.objectContaining({ avatar: "vetta-file://local/home/pictures/mine.png" }),
+			),
+		);
+	});
+
+	it("keeps the profile unchanged when the upload dialog is cancelled", async () => {
+		const user = userEvent.setup();
+		const onSave = vi.fn(async () => ({ updated: agent, impact }));
+		vi.stubGlobal("vetta", { agentTeams: { uploadAvatar: vi.fn(async () => undefined) } });
+		render(
+			<AgentProfileEditor
+				agent={agent}
+				capabilities={[]}
+				onPreview={vi.fn(async () => ({ ...impact, teamIds: [], teamNames: [] }))}
+				onSave={onSave}
+			/>,
+		);
+
+		await user.click(screen.getByRole("button", { name: "profile.avatarUpload" }));
+		await user.click(screen.getByRole("button", { name: "profile.save" }));
+		await waitFor(() =>
+			expect(onSave).toHaveBeenCalledWith(
+				agent,
+				expect.objectContaining({ avatar: "./agent-team-avatars/researcher.webp" }),
+			),
 		);
 	});
 
@@ -363,7 +379,7 @@ describe("AgentProfileEditor", () => {
 		await waitFor(() =>
 			expect(onSave).toHaveBeenCalledWith(
 				agent,
-				expect.objectContaining({ avatar: "./agent-team-avatars/avatar-09.webp" }),
+				expect.objectContaining({ avatar: "./agent-team-avatars/router.webp" }),
 			),
 		);
 	});

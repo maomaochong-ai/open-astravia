@@ -61,7 +61,6 @@ export function TeamMemberRoster({
 							name={member.name}
 							avatar={member.avatar}
 							blueprintId={member.blueprintId}
-							seed={member.id}
 							active={active}
 							size="md"
 						/>
