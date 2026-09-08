@@ -5,6 +5,39 @@ import { $applySegments, $readSegments } from "../tokens/segments";
 
 const CONTROLLED_SYNC_TAG = "input-editor-controlled-sync";
 
+function inputSegmentsEqual(left: readonly InputSegment[], right: readonly InputSegment[]): boolean {
+	if (left.length !== right.length) return false;
+	return left.every((segment, index) => {
+		const candidate = right[index];
+		if (!candidate || segment.kind !== candidate.kind) return false;
+		switch (segment.kind) {
+			case "text":
+				return candidate.kind === "text" && segment.text === candidate.text;
+			case "member":
+				return (
+					candidate.kind === "member" &&
+					segment.memberId === candidate.memberId &&
+					segment.handle === candidate.handle &&
+					segment.label === candidate.label &&
+					segment.avatar === candidate.avatar &&
+					segment.meta === candidate.meta
+				);
+			case "skill":
+			case "scene":
+			case "connector":
+				return candidate.kind === segment.kind && segment.name === candidate.name;
+			case "file":
+				return (
+					candidate.kind === "file" &&
+					segment.path === candidate.path &&
+					segment.isDirectory === candidate.isDirectory
+				);
+			case "image":
+				return candidate.kind === "image" && segment.path === candidate.path;
+		}
+	});
+}
+
 /** Token-aware controlled projection used by non-default conversation connectors. */
 export function ControlledValueBridgePlugin({
 	value,
@@ -35,9 +68,10 @@ export function ControlledValueBridgePlugin({
 
 	useEffect(() => {
 		projectedValueRef.current = value;
-		const current = editor.getEditorState().read(() => segmentsToText($readSegments()));
-		if (current === value) return;
-		editor.update(() => $applySegments(segments ?? parseInputSegments(value).segments), { tag: CONTROLLED_SYNC_TAG });
+		const projectedSegments = segments ?? parseInputSegments(value).segments;
+		const currentSegments = editor.getEditorState().read(() => $readSegments());
+		if (segmentsToText(currentSegments) === value && inputSegmentsEqual(currentSegments, projectedSegments)) return;
+		editor.update(() => $applySegments(projectedSegments), { tag: CONTROLLED_SYNC_TAG });
 	}, [editor, segments, value]);
 
 	return null;

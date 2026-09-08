@@ -86,4 +86,42 @@ describe("InputEditor controlled token mode", () => {
 			),
 		);
 	});
+
+	it("updates token semantics when the controlled text itself stays unchanged", async () => {
+		const onValueChange = vi.fn();
+		const commonProps = {
+			ariaLabel: "Prompt",
+			editable: true,
+			namespace: "team-member-scope-switch",
+			value: "@research",
+			history: [],
+			onValueChange,
+			onContextMenu: vi.fn(),
+			onEnter: () => false,
+			onFocusChange: vi.fn(),
+			onTriggerChange: vi.fn(),
+		} as const;
+		const { rerender } = render(<InputEditor {...commonProps} />);
+
+		expect(screen.queryByTitle("Research · Leader")).toBeNull();
+		rerender(
+			<InputEditor
+				{...commonProps}
+				segments={[
+					{
+						kind: "member",
+						memberId: "member-research",
+						handle: "research",
+						label: "Research",
+						meta: "Leader",
+					},
+				]}
+			/>,
+		);
+
+		await waitFor(() => expect(screen.getByTitle("Research · Leader")).toBeTruthy());
+		rerender(<InputEditor {...commonProps} segments={[{ kind: "text", text: "@research" }]} />);
+		await waitFor(() => expect(screen.queryByTitle("Research · Leader")).toBeNull());
+		expect(onValueChange).not.toHaveBeenCalled();
+	});
 });

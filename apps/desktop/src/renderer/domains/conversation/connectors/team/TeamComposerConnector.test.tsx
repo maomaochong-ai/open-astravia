@@ -65,7 +65,7 @@ function actions(): TeamChatActions {
 	};
 }
 
-function model(): TeamChatViewModel {
+function model(overrides: Partial<TeamChatViewModel> = {}): TeamChatViewModel {
 	return {
 		feedKey: "session-1",
 		title: "Team",
@@ -100,6 +100,7 @@ function model(): TeamChatViewModel {
 		executionMode: "full-access",
 		contextUsage: { percent: 20, contextTokens: 20, contextWindow: 100 },
 		isCompacting: false,
+		...overrides,
 	};
 }
 
@@ -191,5 +192,24 @@ describe("TeamComposerConnector", () => {
 			requestId: "question-request",
 			sessionId: "runtime-1",
 		});
+	});
+
+	it("projects a scoped member mention back into an editor token", () => {
+		render(
+			<TeamComposerConnector
+				model={model({
+					draft: "@research review this",
+					draftMemberMentions: [
+						{ participantId: "member-1", handle: "research", start: 0, end: 9 },
+					],
+				})}
+				actions={actions()}
+			/>,
+		);
+
+		expect(captured.model?.editor.segments).toEqual([
+			expect.objectContaining({ kind: "member", memberId: "member-1", handle: "research" }),
+			{ kind: "text", text: " review this" },
+		]);
 	});
 });

@@ -55,7 +55,3 @@ export function filterTargetOptions(
 		`${option.title} ${option.subtitle ?? ""}`.toLocaleLowerCase().includes(normalized),
 	);
 }
-
-export function targetDraftScope(target: NewSessionTargetKey, contextCwd: string): string {
-	return target === CONVERSATION_TARGET_KEY ? `new:${contextCwd}` : `new-target:${target}`;
-}

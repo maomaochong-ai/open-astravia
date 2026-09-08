@@ -7,7 +7,6 @@ import {
 	parseAgentTargetKey,
 	parseNewSessionTarget,
 	parseTeamTargetKey,
-	targetDraftScope,
 	teamTargetKey,
 } from "./target";
 
@@ -37,11 +36,5 @@ describe("new-session targets", () => {
 		] as const;
 		expect(filterTargetOptions(options, "3 MEMBERS")).toHaveLength(1);
 		expect(filterTargetOptions(options, "build")[0]?.title).toBe("Build");
-	});
-
-	it("keeps ordinary and team drafts in different scopes", () => {
-		expect(targetDraftScope(CONVERSATION_TARGET_KEY, "C:/workspace")).toBe("new:C:/workspace");
-		expect(targetDraftScope(teamTargetKey("team-1"), "C:/workspace")).toBe("new-target:team:team-1");
-		expect(targetDraftScope(agentTargetKey("agent-1"), "C:/workspace")).toBe("new-target:agent:agent-1");
 	});
 });

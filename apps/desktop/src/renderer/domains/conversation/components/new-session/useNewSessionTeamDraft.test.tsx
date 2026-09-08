@@ -2,7 +2,9 @@
 
 import { createAgentTeamFixture } from "@vetta/agent-team";
 import type { DesktopTeamSessionSnapshot } from "@preload/api-types/team-conversation-display";
+import { inputValueAtom } from "@shared/store/atoms";
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { getDefaultStore } from "jotai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { takeTeamSessionHandoff } from "../../connectors/team/team-session-handoff";
 import { teamTargetKey } from "./target";
@@ -37,11 +39,106 @@ describe("useNewSessionTeamDraft", () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		getDefaultStore().set(inputValueAtom, "");
 		vi.spyOn(crypto, "randomUUID").mockReturnValue(reservedSessionId);
 		Object.defineProperty(window, "vetta", {
 			configurable: true,
 			value: { agentTeams: { list, createSessionRecord, setExecutionMode, sendMessage } },
 		});
+	});
+
+	it("keeps one shared draft when the user changes the new-session target", async () => {
+		const sharedDraft = "keep this task @C:/workspace/brief.md";
+		getDefaultStore().set(inputValueAtom, sharedDraft);
+		const teamKey = teamTargetKey(team.id);
+		const initialProps: { targetKey: ReturnType<typeof teamTargetKey> | null } = { targetKey: teamKey };
+		const { result, rerender } = renderHook(
+			({ targetKey }: { targetKey: ReturnType<typeof teamTargetKey> | null }) =>
+				useNewSessionTeamDraft({ ...options(), targetKey }),
+			{ initialProps },
+		);
+
+		await waitFor(() => expect(result.current.model?.members.length).toBeGreaterThan(0));
+		expect(result.current.model?.draft).toBe(sharedDraft);
+		expect(result.current.model?.attachments).toEqual([
+			expect.objectContaining({ path: "C:/workspace/brief.md", kind: "file" }),
+		]);
+
+		rerender({ targetKey: null });
+		expect(getDefaultStore().get(inputValueAtom)).toBe(sharedDraft);
+
+		rerender({ targetKey: teamKey });
+		expect(result.current.model?.draft).toBe(sharedDraft);
+	});
+
+	it("restores member mentions only for their original team while keeping the visible text shared", async () => {
+		const member = team.members[0];
+		if (!member) throw new Error("Agent Team fixture has no member");
+		const teamKey = teamTargetKey(team.id);
+		const initialProps: { targetKey: ReturnType<typeof teamTargetKey> | null } = { targetKey: teamKey };
+		const { result, rerender } = renderHook(
+			({ targetKey }: { targetKey: ReturnType<typeof teamTargetKey> | null }) =>
+				useNewSessionTeamDraft({ ...options(), targetKey }),
+			{ initialProps },
+		);
+
+		await waitFor(() => expect(result.current.model?.members.length).toBeGreaterThan(0));
+		act(() =>
+			result.current.actions?.setDraft(`@${member.handle} review this`, [
+				{
+					kind: "member",
+					memberId: member.id,
+					handle: member.handle,
+					label: member.handle,
+				},
+				{ kind: "text", text: " review this" },
+			]),
+		);
+
+		expect(getDefaultStore().get(inputValueAtom)).toBe(`@${member.handle} review this`);
+		expect(result.current.model?.draftMemberMentions).toHaveLength(1);
+		expect(result.current.model?.members.find((candidate) => candidate.id === member.id)?.selected).toBe(true);
+
+		rerender({ targetKey: null });
+		expect(getDefaultStore().get(inputValueAtom)).toBe(`@${member.handle} review this`);
+
+		rerender({ targetKey: teamTargetKey("another-team") });
+		expect(result.current.model?.draft).toBe(`@${member.handle} review this`);
+		expect(result.current.model?.draftMemberMentions).toEqual([]);
+
+		rerender({ targetKey: teamKey });
+		await waitFor(() => expect(result.current.model?.draftMemberMentions).toHaveLength(1));
+		expect(result.current.model?.members.find((candidate) => candidate.id === member.id)?.selected).toBe(true);
+	});
+
+	it("does not resurrect stale member routing after the shared draft is cleared", async () => {
+		const member = team.members[0];
+		if (!member) throw new Error("Agent Team fixture has no member");
+		const text = `@${member.handle} review this`;
+		const teamKey = teamTargetKey(team.id);
+		const initialProps: { targetKey: ReturnType<typeof teamTargetKey> | null } = { targetKey: teamKey };
+		const { result, rerender } = renderHook(
+			({ targetKey }: { targetKey: ReturnType<typeof teamTargetKey> | null }) =>
+				useNewSessionTeamDraft({ ...options(), targetKey }),
+			{ initialProps },
+		);
+
+		await waitFor(() => expect(result.current.model?.members.length).toBeGreaterThan(0));
+		act(() =>
+			result.current.actions?.setDraft(text, [
+				{ kind: "member", memberId: member.id, handle: member.handle, label: member.handle },
+				{ kind: "text", text: " review this" },
+			]),
+		);
+		rerender({ targetKey: null });
+		act(() => {
+			getDefaultStore().set(inputValueAtom, "");
+			getDefaultStore().set(inputValueAtom, text);
+		});
+
+		rerender({ targetKey: teamKey });
+		expect(result.current.model?.draft).toBe(text);
+		expect(result.current.model?.draftMemberMentions).toEqual([]);
 	});
 
 	it("keeps the draft interactive before session creation and sends through the team chain", async () => {
@@ -63,6 +160,7 @@ describe("useNewSessionTeamDraft", () => {
 			memberMentions: [],
 			document,
 		});
+		expect(getDefaultStore().get(inputValueAtom)).toBe("");
 		expect(onSent).toHaveBeenCalledWith(reservedSessionId);
 	});
 
@@ -172,5 +270,38 @@ describe("useNewSessionTeamDraft", () => {
 
 		expect(result.current.model?.draft).toBe("new draft after handoff");
 		expect(takeTeamSessionHandoff(reservedSessionId)).toMatchObject({ text: "already sent" });
+	});
+
+	it("preserves edits made while a selected project is being prepared", async () => {
+		let finishPreparing: ((cwd: string) => void) | undefined;
+		prepareCwd.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					finishPreparing = resolve;
+				}),
+		);
+		const onSent = vi.fn();
+		const { result } = renderHook(() =>
+			useNewSessionTeamDraft({
+				...options(onSent),
+				projectSelection: { kind: "project", cwd: "C:/projects/selected", name: "Selected" },
+			}),
+		);
+
+		await waitFor(() => expect(result.current.actions).not.toBeNull());
+		act(() => result.current.actions?.setDraft("already sent"));
+		let sending: Promise<void> | undefined;
+		act(() => {
+			sending = result.current.actions?.send();
+		});
+		act(() => result.current.actions?.setDraft("next task"));
+		await act(async () => {
+			finishPreparing?.("C:/projects/selected");
+			await sending;
+		});
+
+		expect(getDefaultStore().get(inputValueAtom)).toBe("next task");
+		expect(takeTeamSessionHandoff(reservedSessionId)).toMatchObject({ text: "already sent" });
+		expect(onSent).toHaveBeenCalledWith(reservedSessionId);
 	});
 });

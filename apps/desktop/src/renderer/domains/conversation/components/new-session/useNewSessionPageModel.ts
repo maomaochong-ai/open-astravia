@@ -12,6 +12,7 @@ import {
 	defaultConversationCwdAtom,
 	emptySessionInputActionState,
 	lastActiveSessionAtom,
+	newSessionInputDraftKey,
 	pageHeaderTitleAtom,
 	pageHeaderTitleBadgeAtom,
 	pageHeaderTitleHiddenAtom,
@@ -33,13 +34,11 @@ import { prepareProjectCwd } from "./project-selector/prepare-project-cwd";
 import type { ProjectOption, ProjectSelection } from "./project-selector/project-selection";
 import { useNewSessionProjectSelection } from "./project-selector/useNewSessionProjectSelection";
 import {
-	CONVERSATION_TARGET_KEY,
 	isTeamTarget,
 	type NewSessionTargetKey,
 	parseAgentTargetKey,
 	parseNewSessionTarget,
 	parseTeamTargetKey,
-	targetDraftScope,
 } from "./target";
 import { createNewSessionTargetStrategyRegistry } from "./target-strategy";
 import { useNewSessionActivityPanel } from "./useNewSessionActivityPanel";
@@ -220,8 +219,9 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 
 	// 进入页面：草稿按 `new:${cwd}` 隔离恢复；其它上下文仍重置，避免串会话。
 	useEffect(() => {
-		// 先切换草稿作用域（普通与 Team 各自拥有独立作用域）。
-		switchSessionInputDraftScope(targetDraftScope(targetKey ?? CONVERSATION_TARGET_KEY, decodedCwd));
+		// 会话对象只是发送路由，不改变当前新会话的草稿身份。这样切换普通
+		// 对话、单 Agent 与 Team 时，用户正在编辑的正文和附件保持可见。
+		switchSessionInputDraftScope(newSessionInputDraftKey(decodedCwd));
 		// 旧 attachedImages 链路兜底清空（正文 token 已由草稿文本恢复）。
 		setAttachedImages([]);
 		// 释放一次性的插件 prompt attachment，避免带进新会话。

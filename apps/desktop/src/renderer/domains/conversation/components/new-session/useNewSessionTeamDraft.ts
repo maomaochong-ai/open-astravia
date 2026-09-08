@@ -5,17 +5,21 @@ import {
 	parseInputSegments,
 	pathTokenText,
 	projectMemberMentionsToTrimmedText,
-	type SerializedMemberMention,
 	segmentsToText,
 	serializeInputSegments,
 } from "@shared/lib/input-tokens";
 import { persistBase64Images } from "@shared/lib/persist-input-images";
 import { pathBasename } from "@shared/lib/utils";
-import { reasoningByModelAtom, selectedModelAtom } from "@shared/store/atoms";
+import {
+	clearCurrentSessionInputDraft,
+	inputValueAtom,
+	reasoningByModelAtom,
+	selectedModelAtom,
+} from "@shared/store/atoms";
 import type { AgentTeamDocument, SendTeamMessageInput, TeamDefinition } from "@vetta/agent-team";
 import type { PromptAttachmentRef, SessionExecutionMode } from "@vetta/runtime-core";
-import { useAtomValue } from "jotai";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAtomValue, useStore } from "jotai";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { stageTeamSessionHandoff } from "../../connectors/team/team-session-handoff";
 import {
@@ -26,6 +30,11 @@ import {
 } from "../../connectors/team/teamChatModel";
 import type { ProjectSelection } from "./project-selector/project-selection";
 import { type NewSessionTargetKey, parseTeamTargetKey, teamTargetKey } from "./target";
+import {
+	rebaseTeamDraftMemberMentions,
+	rebaseTeamDraftMentionRecord,
+	type TeamDraftMemberMentions,
+} from "./team-draft-member-mentions";
 
 interface NewSessionTeamDraftResult {
 	readonly model: TeamChatViewModel | null;
@@ -55,17 +64,11 @@ export function useNewSessionTeamDraft({
 	const { t } = useTranslation(["agent-teams", "chat"]);
 	const selectedModel = useAtomValue(selectedModelAtom);
 	const reasoningByModel = useAtomValue(reasoningByModelAtom);
+	const store = useStore();
 	const teamId = parseTeamTargetKey(targetKey);
 	const [document, setDocument] = useState<AgentTeamDocument>();
-	const [team, setTeam] = useState<TeamDefinition>();
-	const [draftsByTeam, setDraftsByTeam] = useState<Readonly<Record<string, string>>>({});
-	const [attachmentsByTeam, setAttachmentsByTeam] = useState<
-		Readonly<Record<string, readonly TeamAttachmentViewModel[]>>
-	>({});
-	const [selectedMemberIds, setSelectedMemberIds] = useState<readonly string[]>([]);
-	const [memberMentionsByTeam, setMemberMentionsByTeam] = useState<
-		Readonly<Record<string, readonly SerializedMemberMention[]>>
-	>({});
+	const memberMentionsByTeamRef = useRef<Readonly<Record<string, TeamDraftMemberMentions>>>({});
+	const [, refreshMemberMentions] = useReducer((revision: number) => revision + 1, 0);
 	const [executionMode, setExecutionMode] = useState<SessionExecutionMode>("full-access");
 	const [modelKey, setModelKey] = useState<string | null>(selectedModel);
 	const [reasoning, setReasoning] = useState<string | undefined>(
@@ -75,28 +78,59 @@ export function useNewSessionTeamDraft({
 	const [error, setError] = useState<string | null>(null);
 	const sendingRef = useRef(false);
 	const loadRef = useRef<Promise<AgentTeamDocument> | null>(null);
-	const activeTeamIdRef = useRef(teamId);
-	activeTeamIdRef.current = teamId;
-	const draft = teamId ? (draftsByTeam[teamId] ?? "") : "";
-	const attachments = teamId ? (attachmentsByTeam[teamId] ?? []) : [];
-	const memberMentions = teamId ? (memberMentionsByTeam[teamId] ?? []) : [];
+	const subscribeToDraft = useCallback(
+		(onStoreChange: () => void) => (teamId ? store.sub(inputValueAtom, onStoreChange) : () => undefined),
+		[store, teamId],
+	);
+	const readDraft = useCallback(() => store.get(inputValueAtom), [store]);
+	const draft = useSyncExternalStore(subscribeToDraft, readDraft, readDraft);
+	const team = useMemo<TeamDefinition | undefined>(
+		() => (teamId ? document?.teams.find((candidate) => candidate.id === teamId) : undefined),
+		[document, teamId],
+	);
+	const memberMentionRecord = teamId ? memberMentionsByTeamRef.current[teamId] : undefined;
+	const memberMentions = useMemo(
+		() =>
+			memberMentionRecord
+				? rebaseTeamDraftMemberMentions(memberMentionRecord.sourceText, draft, memberMentionRecord.mentions)
+				: [],
+		[draft, memberMentionRecord],
+	);
+	const selectedMemberIds = useMemo(
+		() => [...new Set(memberMentions.map((mention) => mention.participantId))],
+		[memberMentions],
+	);
+	const attachments = useMemo(
+		() =>
+			deriveAttachments(parseInputSegments(draft).segments).map((attachment) =>
+				toAttachment(attachment.path, attachment.kind === "image" ? "image" : "file"),
+			),
+		[draft],
+	);
+
+	useEffect(() => {
+		let previousText = store.get(inputValueAtom);
+		return store.sub(inputValueAtom, () => {
+			const nextText = store.get(inputValueAtom);
+			if (nextText === previousText) return;
+			previousText = nextText;
+			memberMentionsByTeamRef.current = Object.fromEntries(
+				Object.entries(memberMentionsByTeamRef.current).map(([id, record]) => [
+					id,
+					rebaseTeamDraftMentionRecord(record, nextText),
+				]),
+			);
+		});
+	}, [store]);
+
 	const updateDraft = useCallback(
 		(update: string | ((current: string) => string)) => {
 			if (!teamId) return;
-			setDraftsByTeam((current) => {
-				const previous = current[teamId] ?? "";
-				const next = typeof update === "function" ? update(previous) : update;
-				return next === previous ? current : { ...current, [teamId]: next };
-			});
+			const previous = store.get(inputValueAtom);
+			const next = typeof update === "function" ? update(previous) : update;
+			store.set(inputValueAtom, next);
 		},
-		[teamId],
-	);
-	const updateAttachments = useCallback(
-		(update: (current: readonly TeamAttachmentViewModel[]) => readonly TeamAttachmentViewModel[]) => {
-			if (!teamId) return;
-			setAttachmentsByTeam((current) => ({ ...current, [teamId]: update(current[teamId] ?? []) }));
-		},
-		[teamId],
+		[store, teamId],
 	);
 	const loadCatalog = useCallback((): Promise<AgentTeamDocument> => {
 		if (document) return Promise.resolve(document);
@@ -106,40 +140,32 @@ export function useNewSessionTeamDraft({
 		const request = window.vetta.agentTeams
 			.list()
 			.then((next) => {
-				if (activeTeamIdRef.current !== teamId) return next;
 				setDocument(next);
-				const found = next.teams.find((candidate) => candidate.id === teamId);
-				setTeam(found);
-				if (!found) setError(t("chat:newSession.agentSelector.invalid"));
 				return next;
 			})
 			.catch((cause: unknown) => {
-				if (activeTeamIdRef.current === teamId) setError(cause instanceof Error ? cause.message : String(cause));
+				setError(cause instanceof Error ? cause.message : String(cause));
 				throw cause;
 			})
 			.finally(() => {
 				loadRef.current = null;
-				if (activeTeamIdRef.current === teamId) setLoading(false);
+				setLoading(false);
 			});
 		loadRef.current = request;
 		return request;
-	}, [document, t, teamId]);
+	}, [document]);
 
 	useEffect(() => {
-		loadRef.current = null;
 		if (!teamId) {
-			setDocument(undefined);
-			setTeam(undefined);
 			setError(null);
-			setLoading(false);
+			return;
+		}
+		if (document) {
+			setError(team ? null : t("chat:newSession.agentSelector.invalid"));
 			return;
 		}
 		void loadCatalog().catch(() => undefined);
-	}, [loadCatalog, teamId]);
-
-	useEffect(() => {
-		if (teamId) setSelectedMemberIds([]);
-	}, [teamId]);
+	}, [document, loadCatalog, t, team, teamId]);
 
 	useEffect(() => {
 		setModelKey(selectedModel);
@@ -156,36 +182,37 @@ export function useNewSessionTeamDraft({
 	);
 	const setDraftAndAttachments = useCallback(
 		(next: string, segments?: readonly InputSegment[]) => {
-			updateDraft(next);
-			const activeSegments = segments ?? parseInputSegments(next).segments;
-			const serialized = segments ? serializeInputSegments(segments) : { text: next, memberMentions: [] };
-			if (teamId) setMemberMentionsByTeam((current) => ({ ...current, [teamId]: serialized.memberMentions }));
-			setSelectedMemberIds([...new Set(serialized.memberMentions.map((mention) => mention.participantId))]);
-			updateAttachments(() =>
-				deriveAttachments(activeSegments).map((attachment) =>
-					toAttachment(attachment.path, attachment.kind === "image" ? "image" : "file"),
-				),
-			);
+			if (!teamId) return;
+			const previousRecord = memberMentionsByTeamRef.current[teamId] ?? { sourceText: draft, mentions: [] };
+			const serialized = segments ? serializeInputSegments(segments) : null;
+			const nextRecord: TeamDraftMemberMentions =
+				serialized?.text === next
+					? { sourceText: next, mentions: serialized.memberMentions }
+					: rebaseTeamDraftMentionRecord(previousRecord, next);
+			memberMentionsByTeamRef.current = {
+				...memberMentionsByTeamRef.current,
+				[teamId]: nextRecord,
+			};
+			store.set(inputValueAtom, next);
+			refreshMemberMentions();
 		},
-		[teamId, updateAttachments, updateDraft],
+		[draft, store, teamId],
 	);
 	const addAttachments = useCallback(
 		(additions: readonly TeamAttachmentViewModel[]) => {
 			const existing = new Set(attachments.map((attachment) => attachment.path));
 			const fresh = additions.filter((attachment) => !existing.has(attachment.path));
 			if (fresh.length === 0) return;
-			updateAttachments((current) => [...current, ...fresh]);
 			updateDraft((current) =>
 				[...current.trimEnd(), ...fresh.map((attachment) => pathTokenText(attachment.path))]
 					.filter(Boolean)
 					.join(" "),
 			);
 		},
-		[attachments, updateAttachments, updateDraft],
+		[attachments, updateDraft],
 	);
 	const removeAttachment = useCallback(
 		(path: string) => {
-			updateAttachments((current) => current.filter((attachment) => attachment.path !== path));
 			updateDraft((current) =>
 				segmentsToText(
 					parseInputSegments(current).segments.filter(
@@ -194,7 +221,7 @@ export function useNewSessionTeamDraft({
 				),
 			);
 		},
-		[updateAttachments, updateDraft],
+		[updateDraft],
 	);
 
 	const send = useCallback(async () => {
@@ -239,6 +266,13 @@ export function useNewSessionTeamDraft({
 				executionMode,
 				...(projectCwd ? { workspace: { kind: "project", path: projectCwd } as const } : {}),
 			});
+			// Project preparation may take long enough for the user to continue
+			// typing. Clear only the exact snapshot that was handed off.
+			if (store.get(inputValueAtom) === sentDraft) {
+				memberMentionsByTeamRef.current = {};
+				clearCurrentSessionInputDraft();
+				refreshMemberMentions();
+			}
 			onSent(sessionId);
 		} catch (cause) {
 			setError(cause instanceof Error ? cause.message : String(cause));
@@ -256,6 +290,7 @@ export function useNewSessionTeamDraft({
 		projectSelection,
 		reasoning,
 		memberMentions,
+		store,
 		teamId,
 	]);
 
