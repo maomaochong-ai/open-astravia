@@ -152,7 +152,11 @@ function main() {
 		platformArgMap[platform],
 		...electronBuilderTargets,
 		...archs.map((arch) => archArgMap[arch]),
-		...(cliOptions.publish ? [`--publish=${cliOptions.publish}`] : []),
+		...(cliOptions.publish ? [`--publish=${cliOptions.publish}`] : [`--publish=never`]),
+		// 未显式指定发布模式时强制 never：electron-builder CLI 默认 onTagOrDraft，
+		// tag 构建会在产物生成后自行尝试发布到 GitHub（无 GH_TOKEN 即报错）；
+		// 本仓库发布统一走 release 工作流（inno 自定义产物护栏即为此），
+		// 需要内建发布时请显式传 --publish=onTagOrDraft 等。
 	];
 
 	console.log(
