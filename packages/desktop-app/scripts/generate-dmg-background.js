@@ -105,8 +105,29 @@ writeFileSync(svgPath, svg);
 
 const bg2xPath = join(buildDir, "background@2x.png");
 const bgPath = join(buildDir, "background.png");
+function resolveRsvgConvert() {
+	const candidates = ["/opt/homebrew/bin/rsvg-convert", "/usr/local/bin/rsvg-convert"];
+	for (const c of candidates) {
+		try {
+			execFileSync(c, ["--version"], { stdio: "ignore" });
+			return c;
+		} catch {
+			// 试下一个候选路径
+		}
+	}
+	try {
+		execFileSync("rsvg-convert", ["--version"], { stdio: "ignore" });
+		return "rsvg-convert";
+	} catch {
+		return null;
+	}
+}
+const rsvgConvert = resolveRsvgConvert();
+if (!rsvgConvert) {
+	throw new Error("generate-dmg-background: 找不到 rsvg-convert（brew install librsvg 或 apt install librsvg2-bin）");
+}
 console.log("[generate-dmg-background] rsvg-convert -> @2x");
-execFileSync("/opt/homebrew/bin/rsvg-convert", ["-w", "1320", "-h", "880", svgPath, "-o", bg2xPath], { stdio: "ignore" });
+execFileSync(rsvgConvert, ["-w", "1320", "-h", "880", svgPath, "-o", bg2xPath], { stdio: "ignore" });
 
 console.log("[generate-dmg-background] sips -z 440x660 -> @1x");
 execFileSync("/usr/bin/sips", ["-z", "440", "660", bg2xPath, "--out", bgPath], { stdio: "ignore" });

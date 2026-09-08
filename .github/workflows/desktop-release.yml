@@ -168,6 +168,13 @@ jobs:
         shell: bash
         run: rm -rf packages/desktop-app/release
 
+
+      # DMG 背景生成依赖 rsvg-convert（librsvg），GitHub 托管 mac runner 未预装。
+      - name: Install librsvg for DMG background
+        if: startsWith(matrix.platform, 'macos')
+        shell: bash
+        run: brew install librsvg
+
       - name: Build updater artifacts
         working-directory: packages/desktop-app
         env:
