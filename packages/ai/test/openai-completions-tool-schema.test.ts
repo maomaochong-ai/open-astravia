@@ -92,6 +92,53 @@ describe("convertTools tool parameter sanitization", () => {
 		warn.mockRestore();
 	});
 
+	it("剔除 Gemini OpenAPI 子集不认识的纯约束关键字", () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const parameters = convert(
+			{
+				type: "object",
+				properties: {
+					requestId: { type: "string", minLength: 1 },
+					recipients: {
+						type: "array",
+						items: { type: "string" },
+						minItems: 1,
+						maxItems: 8,
+						uniqueItems: true,
+					},
+					score: { type: "number", exclusiveMinimum: 0, multipleOf: 0.5 },
+				},
+				additionalProperties: false,
+			},
+			"team_send_message",
+		);
+
+		const properties = parameters.properties as Record<string, Record<string, unknown>>;
+		expect(properties.recipients).toEqual({
+			type: "array",
+			items: { type: "string" },
+			minItems: 1,
+			maxItems: 8,
+		});
+		expect(properties.score).toEqual({ type: "number" });
+		expect(properties.requestId).toEqual({ type: "string", minLength: 1 });
+		expect(parameters.additionalProperties).toBe(false);
+		expect(warn).toHaveBeenCalledOnce();
+		warn.mockRestore();
+	});
+
+	it("不把同名的入参属性当成关键字剔除", () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const original = {
+			type: "object",
+			properties: { uniqueItems: { type: "boolean", description: "是否去重" } },
+		};
+
+		expect(convert(original, "property_named_like_keyword")).toBe(original);
+		expect(warn).not.toHaveBeenCalled();
+		warn.mockRestore();
+	});
+
 	it("没有约束分支时原样透传，不告警", () => {
 		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 		const original = {
