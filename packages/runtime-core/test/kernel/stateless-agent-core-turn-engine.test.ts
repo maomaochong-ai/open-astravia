@@ -15,6 +15,7 @@ import {
 	type RuntimeToolDefinition,
 	type SessionContextRecord,
 	SessionInputQueue,
+	type SessionInputQueueSnapshot,
 	type TurnEngineEvent,
 	type TurnEnginePort,
 } from "../../src/kernel/index.js";
@@ -282,6 +283,54 @@ describe("StatelessAgentCoreTurnEngine", () => {
 		controller.abort("cancelled by test");
 
 		await expect(execution).rejects.toMatchObject({ name: "AbortError" });
+	});
+
+	it("never mirrors continuation-policy messages through the user input queue", async () => {
+		// 续跑消息一旦进 inputQueue，queue.changed 镜像（ADR-0060）就会在 UI 上补出
+		// 一个用户气泡，而规范历史按 origin 过滤掉它 —— 两侧永远对不上账。
+		const snapshots: SessionInputQueueSnapshot[] = [];
+		const queue = new SessionInputQueue({ onChange: (entry) => snapshots.push(entry) });
+		queue.followUp({ message: user("user follow-up") });
+		let collected = false;
+		const continuationPolicy = {
+			async collect() {
+				if (collected) return [];
+				collected = true;
+				return [{ message: user("CONTINUE_INTERNAL"), source: "model-length" }];
+			},
+		};
+		const responses = [
+			assistant([{ type: "text", text: "first" }]),
+			assistant([{ type: "text", text: "second" }]),
+			assistant([{ type: "text", text: "third" }]),
+		];
+		const contexts: Message[][] = [];
+		let responseIndex = 0;
+		const engine = new StatelessAgentCoreTurnEngine({
+			model: model(),
+			streamFn: (_model, context) => {
+				contexts.push([...context.messages]);
+				const response = responses[responseIndex];
+				if (!response) throw new Error(`Missing response at index ${responseIndex}`);
+				responseIndex += 1;
+				return recordedStream(response);
+			},
+		});
+
+		const events = await run(engine, { ...snapshot(), continuationPolicy }, queue);
+
+		const mirrored = snapshots.flatMap((entry) => entry.entries.map((queued) => queued.input.message?.content));
+		expect(mirrored).toContain("user follow-up");
+		expect(mirrored).not.toContain("CONTINUE_INTERNAL");
+		// 仍然进入模型上下文，并带 continuation 溯源。
+		expect(contexts.at(-1)?.some(({ content }) => content === "CONTINUE_INTERNAL")).toBe(true);
+		const continuation = events.find(
+			(event) => event.type === "message" && event.message.content === "CONTINUE_INTERNAL",
+		);
+		expect(continuation && "origin" in continuation ? continuation.origin : undefined).toEqual({
+			kind: "continuation",
+			source: "model-length",
+		});
 	});
 });
 
