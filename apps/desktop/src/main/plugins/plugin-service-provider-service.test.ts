@@ -2,7 +2,7 @@ import { ChildProcess } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { PluginServiceProviderManifest } from "@vetta-org/plugin-sdk";
+import type { PluginServiceProviderManifest, PluginServiceRuntimeKind } from "@vetta-org/plugin-sdk";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { InstalledPlugin } from "../../preload/api-types/plugins.js";
 import { PluginServiceProviderService } from "./plugin-service-provider-service.js";
@@ -70,7 +70,7 @@ async function fixture() {
 		dataDirectory,
 		cacheDirectory,
 		executable: join(root, "bridge.exe"),
-		runtimeKind: "managed-binary" as const,
+		runtimeKind: "managed-binary" as PluginServiceRuntimeKind,
 	});
 	const resolveRuntime = vi.fn(async () => paths());
 	const installRuntime = vi.fn(async () => paths());

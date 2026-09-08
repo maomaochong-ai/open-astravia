@@ -18,6 +18,7 @@ export type {
 	PluginServiceArtifact,
 	PluginServicePlatform,
 	PluginServiceProviderManifest,
+	PluginServiceRuntimeKind,
 	PluginManifest,
 	PluginManifestInput,
 	PluginManifestResourceReference,
