@@ -110,6 +110,10 @@ export function telemetryModelParameters(config: AgentLoopConfig): Record<string
 	const parameters: Record<string, string | number> = {};
 	if (config.reasoning) parameters.reasoning = config.reasoning;
 	if (config.transport) parameters.transport = config.transport;
+	// 有效输出上限：`stopReason: "length"` 究竟是我们发出去的上限太小，还是网关
+	// 自己掐断的，只有把这个数和 usage.output 摆在一起才判得出来。
+	const maxTokens = config.maxTokens ?? config.model.maxTokens;
+	if (maxTokens !== undefined) parameters.maxTokens = maxTokens;
 	return parameters;
 }
 

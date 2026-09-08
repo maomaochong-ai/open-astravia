@@ -29,7 +29,8 @@ describe("length truncation replay", () => {
 		const last = CAPTURE.messages.at(-1);
 		expect(last?.role).toBe("assistant");
 		expect(last && "stopReason" in last ? last.stopReason : undefined).toBe("length");
-		expect(last?.content.map((part) => (typeof part === "string" ? "text" : part.type))).toEqual(["thinking"]);
+		const content = last?.content;
+		expect(Array.isArray(content) ? content.map((part) => part.type) : content).toEqual(["thinking"]);
 	});
 
 	it("never injects a fake user turn for that capture", async () => {

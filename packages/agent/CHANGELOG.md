@@ -33,6 +33,8 @@
 
 ### Added
 
+- LLM 生成 Span 记录本次调用的有效输出上限 `maxTokens`，`stopReason: "length"` 可与 `usage.output` 对照判断是请求上限过小还是网关自行截断。
+
 - Runtime/Agent 工具结果支持传播不抛异常的协议级 `isError`，保持非 MCP 工具旧行为不变。
 
 - **可选模型调用上下文检查点**：`AgentLoopConfig.contextCheckpoints` 默认关闭；启用后，Agent Loop 在模型调用前、assistant 自然结果和 assistant error 后发出请求—应答事件并等待宿主完成，支持持久压缩后替换内部上下文、一次错误恢复及恢复前 steering 注入，不改变普通 Agent 调用路径。

@@ -30,6 +30,8 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Added
 
+- LLM 生成 Span 记录本次调用的有效输出上限 `maxTokens`，`stopReason: "length"` 可与 `usage.output` 对照判断是请求上限过小还是网关自行截断。
+
 - 新增产品无关的 `ConversationAgentMessageEvent`/`ConversationMessageStreamEvent` 信封，以普通 Conversation、消息、Turn、Agent 作者和序列身份承载标准 `AssistantMessageEvent`，供不同产品复用同一流式投影。
 - 新增无副作用的 `ContextSummaryStrategy` 与 Session 摘要控制面：调用方提交已授权的上下文记录，Runtime 负责 Snapshot/模型绑定、取消和释放，但不读取或改写 Conversation。
 - 新增可组合的 `ManualContextCompactionStrategy`，通过能力编译和 Snapshot acquisition 绑定；可与自动压缩、模型投影共用同一 owner，绑定和释放仍只执行一次。

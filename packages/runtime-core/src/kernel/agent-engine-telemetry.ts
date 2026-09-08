@@ -101,7 +101,7 @@ export class AgentEngineTelemetry {
 								tools: context.tools?.map(({ name }) => name) ?? [],
 							},
 					model: this.options.model.id,
-					modelParameters: modelParameters(streamOptions),
+					modelParameters: modelParameters(streamOptions, this.options.model),
 					metadata: {
 						turnId: this.options.turnId,
 						modelCallId,
@@ -267,10 +267,14 @@ function traceAttributes(tracing: TracingOptions, sessionId: string) {
 	};
 }
 
-function modelParameters(options: SimpleStreamOptions | undefined): Record<string, string | number> {
+function modelParameters(options: SimpleStreamOptions | undefined, model: Model<Api>): Record<string, string | number> {
 	const parameters: Record<string, string | number> = {};
 	if (options?.reasoning) parameters.reasoning = options.reasoning;
 	if (options?.transport) parameters.transport = options.transport;
+	// 有效输出上限：`stopReason: "length"` 究竟是我们发出去的上限太小，还是网关
+	// 自己掐断的，只有把这个数和 usage.output 摆在一起才判得出来。
+	const maxTokens = options?.maxTokens ?? model.maxTokens;
+	if (maxTokens !== undefined) parameters.maxTokens = maxTokens;
 	return parameters;
 }
 
