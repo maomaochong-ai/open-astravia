@@ -12,7 +12,6 @@ export type SidebarConversationInfo =
 			readonly modifiedAt: number;
 			readonly teamId: string;
 			readonly teamSessionId: string;
-			readonly teamName: string;
 			readonly memberAvatarUrls: readonly string[];
 			readonly sessionTitle: string;
 	  };
@@ -24,9 +23,15 @@ export type SidebarConversationPlacement =
 export interface SidebarConversationIdentity {
 	readonly key: string;
 	readonly label: string;
-	readonly leadingAvatarUrls?: readonly string[];
+	readonly iconClassName?: string;
+	readonly trailingAvatarUrls?: readonly string[];
 	readonly mutable: boolean;
 	readonly titleExtra?: string;
+}
+
+export interface SidebarConversationIdentityLabels {
+	readonly conversationLabel?: string;
+	readonly untitledTeamLabel: string;
 }
 
 export function projectSidebarConversations(
@@ -50,7 +55,6 @@ export function projectSidebarConversations(
 				modifiedAt: session.updatedAt,
 				teamId: session.teamId,
 				teamSessionId: session.teamSessionId,
-				teamName: session.teamName,
 				memberAvatarUrls: session.memberAvatarUrls,
 				sessionTitle: session.sessionTitle,
 			}),
@@ -65,21 +69,21 @@ export function sidebarConversationKey(session: SidebarConversationInfo): string
 /** Keeps source-specific identity rules out of the list components. */
 export function sidebarConversationIdentity(
 	session: SidebarConversationInfo,
-	conversationLabel?: string,
+	labels: SidebarConversationIdentityLabels,
 ): SidebarConversationIdentity {
 	if (session.kind === "conversation") {
 		return {
 			key: sidebarConversationKey(session),
-			label: conversationLabel ?? session.firstMessage,
+			label: labels.conversationLabel ?? session.firstMessage,
 			mutable: true,
 		};
 	}
 	return {
 		key: sidebarConversationKey(session),
-		label: session.teamName,
-		leadingAvatarUrls: session.memberAvatarUrls,
+		label: session.sessionTitle || labels.untitledTeamLabel,
+		iconClassName: "icon-[solar--users-group-rounded-linear]",
+		trailingAvatarUrls: session.memberAvatarUrls,
 		mutable: false,
-		...(session.sessionTitle !== session.teamName ? { titleExtra: session.sessionTitle } : {}),
 	};
 }
 
@@ -88,9 +92,10 @@ export function isSidebarConversationActive(
 	activeSessionPath: string,
 	activeTeamSessionId: string,
 ): boolean {
-	return session.kind === "agent-team"
-		? activeTeamSessionId === session.teamSessionId
-		: activeSessionPath === session.path;
+	if (activeTeamSessionId) {
+		return session.kind === "agent-team" && activeTeamSessionId === session.teamSessionId;
+	}
+	return session.kind === "conversation" && activeSessionPath === session.path;
 }
 
 function samePlacement(

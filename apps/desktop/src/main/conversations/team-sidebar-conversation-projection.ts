@@ -36,7 +36,6 @@ export async function listTeamSidebarConversations(
 					teamId: team.id,
 					teamSessionId: session.id,
 					coordinationSessionPath: session.coordinationSessionPath,
-					teamName: team.name,
 					memberAvatarUrls: avatarUrls,
 					sessionTitle: session.title,
 					createdAt: session.createdAt,

@@ -4,7 +4,10 @@ import type {
 	ConversationOwnershipCatalogPort,
 	ConversationOwnershipRecord,
 } from "../conversations/conversation-ownership-catalog.js";
-import { ensureLegacyAgentTeamOwnershipCatalog } from "./team-ownership-backfill.js";
+import {
+	agentTeamConversationOwnershipRecords,
+	ensureLegacyAgentTeamOwnershipCatalog,
+} from "./team-ownership-backfill.js";
 
 function legacySession(): TeamSessionDocument {
 	return {
@@ -42,6 +45,15 @@ function catalog(register: ConversationOwnershipCatalogPort["register"]): Conver
 }
 
 describe("ensureLegacyAgentTeamOwnershipCatalog", () => {
+	it("projects generated session titles without falling back to the Team name", () => {
+		const legacy = legacySession();
+		expect(agentTeamConversationOwnershipRecords(legacy)[0]).toMatchObject({
+			title: "",
+		});
+		expect(agentTeamConversationOwnershipRecords({ ...legacy, title: "Review deployment plan" })[0]).toMatchObject({
+			title: "Review deployment plan",
+		});
+	});
 	it("coalesces startup discovery and registers coordination plus member ownership", async () => {
 		const registered: ConversationOwnershipRecord[] = [];
 		const register = vi.fn(async (records: readonly ConversationOwnershipRecord[]) => {

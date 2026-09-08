@@ -8,7 +8,6 @@ export interface DesktopTeamSidebarConversation {
 	readonly teamId: string;
 	readonly teamSessionId: string;
 	readonly coordinationSessionPath: string;
-	readonly teamName: string;
 	readonly memberAvatarUrls: readonly string[];
 	readonly sessionTitle: string;
 	readonly createdAt: number;

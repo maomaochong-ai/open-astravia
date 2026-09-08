@@ -12,7 +12,7 @@ export function agentTeamConversationOwnershipRecords(
 	session: TeamSessionDocument,
 ): readonly ConversationOwnershipRecord[] {
 	const common = {
-		title: session.name,
+		title: session.title ?? "",
 		createdAt: session.createdAt,
 		updatedAt: session.updatedAt,
 		workspaceKind:

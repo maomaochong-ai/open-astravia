@@ -10,7 +10,6 @@ import {
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { relativeTime } from "../components/sidebar/projects/relativeTime";
 import {
 	isSidebarConversationActive,
 	type SidebarConversationInfo,
@@ -26,13 +25,13 @@ export interface DefaultSessionListItemView {
 	key: string;
 	path: string;
 	label: string;
-	timeLabel: string;
 	active: boolean;
 	renaming: boolean;
 	running: boolean;
 	scheduled: boolean;
 	pinned: boolean;
-	leadingAvatarUrls?: readonly string[];
+	iconClassName?: string;
+	trailingAvatarUrls?: readonly string[];
 	titleExtra?: string;
 	session: SidebarConversationInfo;
 }
@@ -109,14 +108,14 @@ export function useDefaultSessionListModel({
 
 	const isClaw = filter === "claw";
 
-	// t 在 changeLanguage 后可能保持同一引用；读 i18n.language 强制语言切换时重算 timeLabel。
+	// t 在 changeLanguage 后可能保持同一引用；读 i18n.language 强制语言切换时重算未命名团队会话文案。
 	const allViews: DefaultSessionListItemView[] = useMemo(() => {
 		void i18n.language;
 		const next = ordering.all.map((session) => {
-			const identity = sidebarConversationIdentity(
-				session,
-				session.kind === "conversation" ? sessionDisplayLabel(session) : undefined,
-			);
+			const identity = sidebarConversationIdentity(session, {
+				conversationLabel: session.kind === "conversation" ? sessionDisplayLabel(session) : undefined,
+				untitledTeamLabel: t("sidebar.session.untitledTeam"),
+			});
 			const isActive = isSidebarConversationActive(session, activeSessionPath, activeTeamSessionId);
 			const isRenaming = identity.mutable && renamingSessionPath === session.path;
 			const isRunning = identity.mutable && runningSessionPaths.has(session.path);
@@ -128,13 +127,13 @@ export function useDefaultSessionListModel({
 				key: identity.key,
 				path: session.path,
 				label: identity.label,
-				timeLabel: relativeTime(session.modifiedAt, t),
 				active: isActive,
 				pinned: identity.mutable && pinnedSessionPaths.has(session.path),
 				renaming: isRenaming,
 				running: isRunning,
 				scheduled: isSchedule,
-				leadingAvatarUrls: identity.leadingAvatarUrls,
+				iconClassName: identity.iconClassName,
+				trailingAvatarUrls: identity.trailingAvatarUrls,
 				titleExtra: identity.titleExtra,
 				session,
 			};

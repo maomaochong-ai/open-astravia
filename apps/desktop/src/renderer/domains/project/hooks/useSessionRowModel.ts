@@ -2,7 +2,6 @@ import type { SessionInfo } from "@shared/store/atoms";
 import { sessionDisplayLabel } from "@shared/store/atoms";
 import type { SessionRowViewProps } from "@vetta/theme-ui/project";
 import { useTranslation } from "react-i18next";
-import { relativeTime } from "../components/sidebar/projects/relativeTime";
 
 interface Args {
 	active: boolean;
@@ -40,7 +39,6 @@ export function useSessionRowModel({
 		renaming,
 		running,
 		scheduled,
-		timeLabel: relativeTime(session.modifiedAt, t),
 		onOpenContextMenu: (event) => onOpenContextMenu(event, session),
 		onRename: (name) => onRename(cwd, session.path, name),
 		onRenameDone,

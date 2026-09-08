@@ -108,7 +108,8 @@
 			"empty": "No teams yet; click to create one"
 		},
 		"session": {
-			"forkedTooltip": "Forked from another session"
+			"forkedTooltip": "Forked from another session",
+			"untitledTeam": "New team conversation"
 		},
 		"dialogs": {
 			"deleteBatchTitle": "Delete batch project",

@@ -11,8 +11,8 @@ export interface DefaultSessionRowViewProps {
 	label: string;
 	/** Optional source-specific icon, used by non-session conversation sources such as Agent Teams. */
 	iconClassName?: string;
-	/** Optional avatar data for grouped conversation sources. Rendering stays owned by this row. */
-	leadingAvatarUrls?: readonly string[];
+	/** Optional grouped-participant context rendered at the trailing edge. */
+	trailingAvatarUrls?: readonly string[];
 	/** On-disk session path; used for fly-to-sidebar targeting. */
 	sessionPath?: string;
 	/** Tooltip / secondary label (e.g. forked-from preview). */
@@ -27,7 +27,6 @@ export interface DefaultSessionRowViewProps {
 	renaming: boolean;
 	running: boolean;
 	scheduled: boolean;
-	timeLabel: string;
 }
 
 /** memo：理由同 SessionRowView——切换会话只改两行，其余行 props 未变。 */
@@ -36,7 +35,7 @@ export const DefaultSessionRowView = memo(function DefaultSessionRowView({
 	contextMenuEnabled,
 	label,
 	iconClassName,
-	leadingAvatarUrls,
+	trailingAvatarUrls,
 	sessionPath,
 	titleExtra,
 	forked,
@@ -48,7 +47,6 @@ export const DefaultSessionRowView = memo(function DefaultSessionRowView({
 	renaming,
 	running,
 	scheduled,
-	timeLabel,
 }: DefaultSessionRowViewProps): JSX.Element {
 	const title = renaming ? undefined : titleExtra ? `${label}\n${titleExtra}` : label;
 	const leadingIconClassName = running
@@ -60,7 +58,6 @@ export const DefaultSessionRowView = memo(function DefaultSessionRowView({
 				: pinned
 					? "icon-[solar--pin-linear] text-primary/80"
 					: iconClassName ?? "icon-[solar--chat-round-line-linear]";
-	const hasStatusIcon = running || scheduled || forked || pinned;
 	return (
 		<button
 			type="button"
@@ -90,19 +87,15 @@ export const DefaultSessionRowView = memo(function DefaultSessionRowView({
 				/>
 			) : (
 				<>
-					{leadingAvatarUrls && leadingAvatarUrls.length > 0 && !hasStatusIcon ? (
-						<AvatarStackView avatarUrls={leadingAvatarUrls} />
-					) : (
-						<span
-							data-session-leading-icon="true"
-							aria-hidden="true"
-							className={cn(
-								leadingIconClassName,
-								"h-3.5 w-3.5 shrink-0",
-								active ? "text-foreground/70" : "text-muted-foreground/50",
-							)}
-						/>
-					)}
+					<span
+						data-session-leading-icon="true"
+						aria-hidden="true"
+						className={cn(
+							leadingIconClassName,
+							"h-3.5 w-3.5 shrink-0",
+							active ? "text-foreground/70" : "text-muted-foreground/50",
+						)}
+					/>
 					<span
 						className={cn(
 							"min-w-0 flex-1 truncate text-[13px]",
@@ -111,7 +104,9 @@ export const DefaultSessionRowView = memo(function DefaultSessionRowView({
 					>
 						{label}
 					</span>
-					<span className="shrink-0 text-[11px] text-muted-foreground">{timeLabel}</span>
+					{trailingAvatarUrls && trailingAvatarUrls.length > 0 ? (
+						<AvatarStackView avatarUrls={trailingAvatarUrls} />
+					) : null}
 				</>
 			)}
 		</button>

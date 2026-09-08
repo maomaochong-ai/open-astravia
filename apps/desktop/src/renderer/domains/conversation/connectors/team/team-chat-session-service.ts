@@ -163,7 +163,7 @@ function withSnapshot(
 	const reference = toReference(snapshot);
 	const item: TeamSessionListItem = {
 		...reference,
-		title: snapshot.session.name,
+		title: snapshot.session.title ?? "",
 		createdAt: snapshot.session.createdAt,
 		updatedAt: snapshot.session.updatedAt,
 	};

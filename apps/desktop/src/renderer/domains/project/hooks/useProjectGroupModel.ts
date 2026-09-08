@@ -13,7 +13,6 @@ import { DEFAULT_VISIBLE_SESSIONS } from "@vetta/theme-ui/project";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { relativeTime } from "../components/sidebar/projects/relativeTime";
 import {
 	isSidebarConversationActive,
 	type SidebarConversationInfo,
@@ -27,13 +26,13 @@ export interface ProjectGroupSessionView {
 	key: string;
 	path: string;
 	label: string;
-	timeLabel: string;
 	active: boolean;
 	renaming: boolean;
 	running: boolean;
 	scheduled: boolean;
 	pinned: boolean;
-	leadingAvatarUrls?: readonly string[];
+	iconClassName?: string;
+	trailingAvatarUrls?: readonly string[];
 	titleExtra?: string;
 	session: SidebarConversationInfo;
 }
@@ -120,14 +119,14 @@ export function useProjectGroupModel({
 	const projectType = project.type;
 	const projectBadge = getProjectBadge(project, projectType, t);
 
-	// t 在 changeLanguage 后可能保持同一引用；读 i18n.language 强制语言切换时重算 timeLabel。
+	// t 在 changeLanguage 后可能保持同一引用；读 i18n.language 强制语言切换时重算未命名团队会话文案。
 	const sessionViews: ProjectGroupSessionView[] = useMemo(() => {
 		void i18n.language;
 		const next = ordering.visible.map((session) => {
-			const identity = sidebarConversationIdentity(
-				session,
-				session.kind === "conversation" ? sessionDisplayLabel(session) : undefined,
-			);
+			const identity = sidebarConversationIdentity(session, {
+				conversationLabel: session.kind === "conversation" ? sessionDisplayLabel(session) : undefined,
+				untitledTeamLabel: t("sidebar.session.untitledTeam"),
+			});
 			const isSessionActive = isSidebarConversationActive(session, activeSessionPath, activeTeamSessionId);
 			const isRunning = identity.mutable && runningSessionPaths.has(session.path);
 			const isSchedule =
@@ -138,13 +137,13 @@ export function useProjectGroupModel({
 				key: identity.key,
 				path: session.path,
 				label: identity.label,
-				timeLabel: relativeTime(session.modifiedAt, t),
 				active: isSessionActive,
 				pinned: identity.mutable && pinnedSessionPaths.has(session.path),
 				renaming: identity.mutable && renamingSessionPath === session.path,
 				running: isRunning,
 				scheduled: isSchedule,
-				leadingAvatarUrls: identity.leadingAvatarUrls,
+				iconClassName: identity.iconClassName,
+				trailingAvatarUrls: identity.trailingAvatarUrls,
 				titleExtra: identity.titleExtra,
 				session,
 			};

@@ -60,7 +60,7 @@ describe("loadTeamChatSession", () => {
 				{
 					id: "legacy-session",
 					coordinationSessionPath: "C:/runtime/legacy-session.jsonl",
-					title: team.name,
+					title: "",
 					createdAt: 1,
 					updatedAt: 1,
 				},
@@ -83,7 +83,7 @@ describe("loadTeamChatSession", () => {
 				{
 					id: "new-session",
 					coordinationSessionPath: "C:/runtime/new-session.jsonl",
-					title: team.name,
+					title: "",
 					createdAt: 1,
 					updatedAt: 1,
 				},

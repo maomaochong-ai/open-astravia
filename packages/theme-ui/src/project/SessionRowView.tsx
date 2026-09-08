@@ -8,8 +8,10 @@ import { prepareSidebarSelection } from "./useActiveSessionAutoScroll";
 export interface SessionRowViewProps {
 	active: boolean;
 	label: string;
-	/** Optional avatar data for grouped conversation sources. */
-	leadingAvatarUrls?: readonly string[];
+	/** Optional source-specific icon, used by non-session conversation sources such as Agent Teams. */
+	iconClassName?: string;
+	/** Optional grouped-participant context rendered at the trailing edge. */
+	trailingAvatarUrls?: readonly string[];
 	/** On-disk session path; used for fly-to-sidebar targeting. */
 	sessionPath?: string;
 	/** Tooltip / secondary label (e.g. forked-from preview). */
@@ -24,7 +26,6 @@ export interface SessionRowViewProps {
 	renaming: boolean;
 	running: boolean;
 	scheduled: boolean;
-	timeLabel: string;
 }
 
 /**
@@ -34,7 +35,8 @@ export interface SessionRowViewProps {
 export const SessionRowView = memo(function SessionRowView({
 	active,
 	label,
-	leadingAvatarUrls,
+	iconClassName,
+	trailingAvatarUrls,
 	sessionPath,
 	titleExtra,
 	forked,
@@ -46,7 +48,6 @@ export const SessionRowView = memo(function SessionRowView({
 	renaming,
 	running,
 	scheduled,
-	timeLabel,
 }: SessionRowViewProps): JSX.Element {
 	const title = renaming ? undefined : titleExtra ? `${label}\n${titleExtra}` : label;
 	return (
@@ -61,7 +62,7 @@ export const SessionRowView = memo(function SessionRowView({
 			}}
 			onContextMenu={onOpenContextMenu}
 			className={cn(
-				"relative flex w-full items-center gap-2 rounded-lg px-2.5 py-[6px] text-left transition-colors duration-100",
+				"relative flex w-full items-center gap-2 rounded-lg py-[6px] pr-2.5 pl-[30px] text-left transition-colors duration-100",
 				active ? "bg-accent text-foreground" : "hover:bg-accent/50",
 			)}
 			title={title}
@@ -75,24 +76,29 @@ export const SessionRowView = memo(function SessionRowView({
 				/>
 			) : (
 				<>
-					{leadingAvatarUrls && leadingAvatarUrls.length > 0 ? (
-						<AvatarStackView avatarUrls={leadingAvatarUrls} />
-					) : (
-						<>
-							{pinned ? (
-								<span className="icon-[solar--pin-linear] h-3.5 w-3.5 shrink-0 text-primary/80" />
-							) : null}
-							{forked && !running && !scheduled ? (
-								<span
-									className={cn(
-										"icon-[mdi--source-fork] h-3.5 w-3.5 shrink-0",
-										active ? "text-primary/80" : "text-muted-foreground/60",
-									)}
-								/>
-							) : (
-								<SessionStatusIcon active={active} running={running} scheduled={scheduled} />
+					{pinned ? (
+						<span className="icon-[solar--pin-linear] h-3.5 w-3.5 shrink-0 text-primary/80" />
+					) : null}
+					{forked && !running && !scheduled ? (
+						<span
+							data-session-leading-icon="true"
+							className={cn(
+								"icon-[mdi--source-fork] h-3.5 w-3.5 shrink-0",
+								active ? "text-primary/80" : "text-muted-foreground/60",
 							)}
-						</>
+						/>
+					) : iconClassName && !running && !scheduled ? (
+						<span
+							data-session-leading-icon="true"
+							aria-hidden="true"
+							className={cn(
+								iconClassName,
+								"h-3.5 w-3.5 shrink-0",
+								active ? "text-foreground/70" : "text-muted-foreground/50",
+							)}
+						/>
+					) : (
+						<SessionStatusIcon active={active} running={running} scheduled={scheduled} />
 					)}
 					<span
 						className={cn(
@@ -103,9 +109,11 @@ export const SessionRowView = memo(function SessionRowView({
 					>
 						{label}
 					</span>
+					{trailingAvatarUrls && trailingAvatarUrls.length > 0 ? (
+						<AvatarStackView avatarUrls={trailingAvatarUrls} />
+					) : null}
 				</>
 			)}
-			<span className="shrink-0 text-[11px] text-muted-foreground">{timeLabel}</span>
 		</button>
 	);
 });

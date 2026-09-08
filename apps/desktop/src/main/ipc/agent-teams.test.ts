@@ -1,4 +1,5 @@
 import { createAgentTeamFixture, createEmptyAgentTeamDocument } from "@vetta/agent-team";
+import { providerModelNotFoundError } from "@vetta/ai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveTeamSessionWorkspace } from "../agent-teams/team-workspace.js";
 import { type AgentTeamsIpcDependencies, registerAgentTeamsIpc } from "./agent-teams.js";
@@ -102,6 +103,23 @@ describe("Agent Team IPC contract", () => {
 
 		teardown();
 		expect(ipc.removed).toHaveLength(ipc.handlers.size);
+	});
+
+	it("propagates an unavailable Team model instead of reporting the send as completed", async () => {
+		const deps = dependencies();
+		const failure = providerModelNotFoundError("cli-proxy-api.google", "gemini-3.8-flash-high");
+		vi.mocked(deps.sessions.send).mockRejectedValueOnce(failure);
+		registerAgentTeamsIpc(deps);
+		const sendMessage = ipc.handlers.get("vetta:agent-teams:send-message");
+		if (!sendMessage) throw new Error("send-message handler was not registered");
+
+		await expect(
+			sendMessage({}, "session", {
+				requestId: "stale-model",
+				text: "Continue the Team conversation",
+				targetMemberIds: [],
+			}),
+		).rejects.toBe(failure);
 	});
 
 	it("passes an ordinary Conversation bookmark when reopening a Team session", async () => {
@@ -211,7 +229,6 @@ describe("Agent Team IPC contract", () => {
 				teamId: "team-1",
 				teamSessionId: "team-session-1",
 				coordinationSessionPath: "C:/sessions/team.jsonl",
-				teamName: "Dev Team",
 				memberAvatarUrls: ["./agent-team-avatars/master.webp"],
 				sessionTitle: "Build",
 				createdAt: 1,

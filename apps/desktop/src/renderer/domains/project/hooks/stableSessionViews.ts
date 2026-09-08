@@ -10,7 +10,8 @@ interface SessionRowViewLike {
 	key: string;
 	path: string;
 	label: string;
-	timeLabel: string;
+	iconClassName?: string;
+	trailingAvatarUrls?: readonly string[];
 	active: boolean;
 	renaming: boolean;
 	running: boolean;
@@ -26,7 +27,8 @@ export function reuseUnchangedSessionViews<T extends SessionRowViewLike>(cache: 
 			cached &&
 			cached.key === view.key &&
 			cached.label === view.label &&
-			cached.timeLabel === view.timeLabel &&
+			cached.iconClassName === view.iconClassName &&
+			cached.trailingAvatarUrls === view.trailingAvatarUrls &&
 			cached.active === view.active &&
 			cached.renaming === view.renaming &&
 			cached.running === view.running &&

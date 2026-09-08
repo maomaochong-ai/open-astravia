@@ -132,7 +132,6 @@ describe("useProjectsPanelModel.selectSession", () => {
 			modifiedAt: 1,
 			teamId: "team-1",
 			teamSessionId: "team-session-1",
-			teamName: "Dev Team",
 			memberAvatarUrls: ["/master.webp", "/executor.webp"],
 			sessionTitle: "Ship it",
 		});

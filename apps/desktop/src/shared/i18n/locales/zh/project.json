@@ -108,7 +108,8 @@
 			"empty": "还没有团队，点击创建"
 		},
 		"session": {
-			"forkedTooltip": "由其他会话分叉而来"
+			"forkedTooltip": "由其他会话分叉而来",
+			"untitledTeam": "新团队会话"
 		},
 		"dialogs": {
 			"deleteBatchTitle": "删除批量项目",

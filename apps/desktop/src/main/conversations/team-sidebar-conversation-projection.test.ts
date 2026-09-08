@@ -7,7 +7,7 @@ vi.mock("../agent-teams/team-session-service.js", () => ({ agentTeamSessionServi
 vi.mock("../config/desktop-config-store.js", () => ({ readDesktopConfig: vi.fn() }));
 
 describe("listTeamSidebarConversations", () => {
-	it("projects Team sessions by semantic placement and keeps the Team identity", async () => {
+	it("projects Team sessions by semantic placement without exposing the Team name", async () => {
 		const document = createAgentTeamFixture();
 		const team = document.teams[0];
 		if (!team) throw new Error("missing Team fixture");
@@ -51,8 +51,8 @@ describe("listTeamSidebarConversations", () => {
 		expect(result).toEqual([
 			expect.objectContaining({
 				teamId: team.id,
-				teamName: team.name,
 				teamSessionId: "project-session",
+				sessionTitle: "Project work",
 				placement: { kind: "project", projectPath: "C:/Projects/Vetta" },
 				memberAvatarUrls: expect.any(Array),
 			}),
@@ -65,6 +65,7 @@ describe("listTeamSidebarConversations", () => {
 				placement: { kind: "default" },
 			}),
 		]);
+		expect(result.some((item) => "teamName" in item)).toBe(false);
 	});
 
 	it("falls back to the default conversation list when a selected project is no longer registered", async () => {

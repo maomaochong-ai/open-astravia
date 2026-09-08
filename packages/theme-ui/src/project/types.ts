@@ -2,7 +2,6 @@
 export interface ProjectSessionRowItem {
 	path: string;
 	label: string;
-	timeLabel: string;
 	active: boolean;
 	renaming: boolean;
 	running: boolean;

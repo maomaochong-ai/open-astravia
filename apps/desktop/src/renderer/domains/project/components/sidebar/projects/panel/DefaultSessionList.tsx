@@ -39,13 +39,13 @@ const DefaultSessionRow = memo(function DefaultSessionRow({
 		<DefaultSessionRowView
 			active={item.active}
 			contextMenuEnabled={contextMenuEnabled}
+			iconClassName={item.iconClassName}
 			label={item.label}
-			leadingAvatarUrls={item.leadingAvatarUrls}
 			pinned={item.pinned}
 			renaming={item.renaming}
 			running={item.running}
 			scheduled={item.scheduled}
-			timeLabel={item.timeLabel}
+			trailingAvatarUrls={item.trailingAvatarUrls}
 			titleExtra={item.titleExtra}
 			onOpenContextMenu={handleContextMenu}
 			onRename={handleRename}

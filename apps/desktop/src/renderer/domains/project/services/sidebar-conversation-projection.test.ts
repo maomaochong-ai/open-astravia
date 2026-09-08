@@ -17,7 +17,6 @@ function team(overrides: Partial<DesktopTeamSidebarConversation> = {}): DesktopT
 		teamId: "team",
 		teamSessionId: "team-session",
 		coordinationSessionPath: "C:/sessions/team.jsonl",
-		teamName: "Dev Team",
 		memberAvatarUrls: ["a.webp", "b.webp"],
 		sessionTitle: "Team task",
 		createdAt: 1,
@@ -32,22 +31,30 @@ describe("projectSidebarConversations", () => {
 		const result = projectSidebarConversations([ordinary], [team()], { kind: "default" });
 
 		expect(result.map((item) => item.kind)).toEqual(["agent-team", "conversation"]);
-		expect(result[0]).toMatchObject({
-			teamName: "Dev Team",
-			memberAvatarUrls: ["a.webp", "b.webp"],
-		});
+		expect(result[0]).toMatchObject({ memberAvatarUrls: ["a.webp", "b.webp"] });
 	});
 
-	it("presents a Team with stacked member avatars and its Team name", () => {
-		const identity = sidebarConversationIdentity(projectSidebarConversations([], [team()], { kind: "default" })[0]!);
+	it("presents the generated task title with a Team icon and trailing member avatars", () => {
+		const identity = sidebarConversationIdentity(projectSidebarConversations([], [team()], { kind: "default" })[0]!, {
+			untitledTeamLabel: "New team conversation",
+		});
 
 		expect(identity).toEqual({
 			key: "agent-team:team-session",
-			label: "Dev Team",
-			leadingAvatarUrls: ["a.webp", "b.webp"],
+			label: "Team task",
+			iconClassName: "icon-[solar--users-group-rounded-linear]",
+			trailingAvatarUrls: ["a.webp", "b.webp"],
 			mutable: false,
-			titleExtra: "Team task",
 		});
+	});
+
+	it("uses a localized neutral label before a Team conversation receives its automatic title", () => {
+		const identity = sidebarConversationIdentity(
+			projectSidebarConversations([], [team({ sessionTitle: "" })], { kind: "default" })[0]!,
+			{ untitledTeamLabel: "New team conversation" },
+		);
+
+		expect(identity.label).toBe("New team conversation");
 	});
 
 	it("places project Team conversations only in their canonical project bucket", () => {
