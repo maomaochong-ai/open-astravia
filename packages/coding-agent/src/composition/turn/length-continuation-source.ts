@@ -43,11 +43,14 @@ export class CodingAgentLengthContinuationSource implements CodingAgentContinuat
 			return [];
 		}
 		if (!hasVisibleOutput(latestAssistant)) {
-			// 预算在思考阶段就烧完了，正文一个 token 都没产出。此时"从中断处继续"
-			// 无处可继续，只会让模型重新开始思考再被截断，因此直接给出可操作的失败。
+			// 正文一个 token 都没产出就被判 length：无处可续接，重来一遍只会再被截断。
+			// 报出上游自报的输出量——它常常远小于模型上限，因为这类网关既不上报隐藏的
+			// 推理 token，也会在参数流式输出中途被截断时整块丢掉未完成的工具调用。
 			throw new Error(
-				"Model exhausted its output budget while still reasoning and produced no visible output. " +
-					"Automatic continuation cannot recover this: lower the thinking level or raise the model's max output tokens.",
+				`Provider reported a length stop before any visible output (reported output: ${latestAssistant.usage.output} tokens). ` +
+					"Automatic continuation cannot recover this. If the reported count is far below the model's output limit, " +
+					"the provider is not reporting hidden reasoning tokens or truncated the stream itself. " +
+					"Try a lower thinking level, a model with a larger output limit, or splitting large file writes into several smaller ones.",
 			);
 		}
 		if (this.attempts >= this.maxAttempts) {

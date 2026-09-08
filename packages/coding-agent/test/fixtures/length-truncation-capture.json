@@ -1,5 +1,5 @@
 {
-	"note": "vetta-go/ominiroute-antigravity gemini-3.8-flash-high 真实截断回放；thinking 已截短、usage 已剔除",
+	"note": "vetta-go/ominiroute-antigravity gemini-3.8-flash-high 真实截断回放；thinking 已截短、usage 只保留计数",
 	"messages": [
 		{
 			"role": "user",
@@ -13,6 +13,20 @@
 		{
 			"role": "assistant",
 			"stopReason": "toolUse",
+			"usage": {
+				"input": 23233,
+				"output": 1922,
+				"cacheRead": 0,
+				"cacheWrite": 0,
+				"totalTokens": 25155,
+				"cost": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"total": 0
+				}
+			},
 			"content": [
 				{
 					"type": "thinking",
@@ -27,6 +41,20 @@
 		{
 			"role": "assistant",
 			"stopReason": "toolUse",
+			"usage": {
+				"input": 8018,
+				"output": 63,
+				"cacheRead": 16202,
+				"cacheWrite": 0,
+				"totalTokens": 24283,
+				"cost": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"total": 0
+				}
+			},
 			"content": [
 				{
 					"type": "toolCall",
@@ -37,6 +65,20 @@
 		{
 			"role": "assistant",
 			"stopReason": "toolUse",
+			"usage": {
+				"input": 4059,
+				"output": 4336,
+				"cacheRead": 20244,
+				"cacheWrite": 0,
+				"totalTokens": 28639,
+				"cost": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"total": 0
+				}
+			},
 			"content": [
 				{
 					"type": "thinking",
@@ -51,6 +93,20 @@
 		{
 			"role": "assistant",
 			"stopReason": "length",
+			"usage": {
+				"input": 6247,
+				"output": 3748,
+				"cacheRead": 20257,
+				"cacheWrite": 0,
+				"totalTokens": 30252,
+				"cost": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"total": 0
+				}
+			},
 			"content": [
 				{
 					"type": "thinking",

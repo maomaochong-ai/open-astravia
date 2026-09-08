@@ -116,7 +116,7 @@ describe("CodingAgentLengthContinuationSource", () => {
 		};
 
 		await expect(source.collect(continuationContext("turn-1", [truncated]))).rejects.toThrow(
-			"Model exhausted its output budget while still reasoning",
+			"Provider reported a length stop before any visible output (reported output: 1 tokens)",
 		);
 	});
 

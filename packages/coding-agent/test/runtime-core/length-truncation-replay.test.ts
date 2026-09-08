@@ -37,7 +37,7 @@ describe("length truncation replay", () => {
 		const source = new CodingAgentLengthContinuationSource();
 
 		await expect(source.collect(continuationContext(CAPTURE.messages))).rejects.toThrow(
-			"Model exhausted its output budget while still reasoning",
+			"Provider reported a length stop before any visible output (reported output: 3748 tokens)",
 		);
 	});
 });
