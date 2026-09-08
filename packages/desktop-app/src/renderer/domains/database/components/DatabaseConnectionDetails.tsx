@@ -37,7 +37,7 @@ export function DatabaseConnectionDetails({
 							disabled={testing}
 							onClick={() => void model.actions.testSaved(selected.name)}
 						>
-							{testing ? <Spin size="sm" /> : <span className="icon-[mdi--connection] h-3 w-3" />}
+							{testing ? <Spin size="sm" /> : <span className="icon-[lucide--plug-zap] h-3 w-3" />}
 							{testing ? t("databaseTesting") : t("databaseTest")}
 						</Button>
 						<Button
@@ -46,7 +46,7 @@ export function DatabaseConnectionDetails({
 							className="text-muted-foreground hover:text-destructive"
 							onClick={() => model.actions.remove(selected.name)}
 						>
-							<span className="icon-[mdi--delete-outline] h-3.5 w-3.5" />
+							<span className="icon-[lucide--trash-2] h-3.5 w-3.5" />
 							{t("databaseRemoveConnection")}
 						</Button>
 					</>
@@ -54,30 +54,34 @@ export function DatabaseConnectionDetails({
 			/>
 
 			<div className="mt-5 space-y-4">
-				<InfoSection icon="icon-[mdi--server-outline]" title={t("databaseSectionConnectionInfo")}>
+				<InfoSection icon="icon-[lucide--server]" title={t("databaseSectionConnectionInfo")}>
 					<InfoItem
-						icon="icon-[mdi--server-outline]"
+						icon="icon-[lucide--server]"
 						label={t("databaseHost")}
 						value={endpointOf(selected)}
 						empty={!selected.host}
 					/>
 					<InfoItem
-						icon="icon-[mdi--database-outline]"
+						icon="icon-[lucide--database]"
 						label={t("databaseDatabase")}
 						value={selected.database || t("databaseNotSet")}
 						empty={!selected.database}
 					/>
 					<InfoItem
-						icon="icon-[mdi--layers-triple-outline]"
+						icon="icon-[lucide--layers]"
 						label={t("databaseEnvironment")}
 						value={t(selected.env === "prod" ? "databaseEnvProd" : "databaseEnvDev")}
 					/>
 				</InfoSection>
 
-				<InfoSection icon="icon-[mdi--cog-outline]" title={t("databaseSectionManagement")}>
-					<InfoItem icon="icon-[mdi--shape-outline]" label={t("databaseConnectionId")} value={selected.id} />
+				<InfoSection icon="icon-[lucide--settings]" title={t("databaseSectionManagement")}>
 					<InfoItem
-						icon="icon-[mdi--folder-outline]"
+						icon="icon-[lucide--fingerprint-pattern]"
+						label={t("databaseConnectionId")}
+						value={selected.id}
+					/>
+					<InfoItem
+						icon="icon-[lucide--folder]"
 						label={t("databaseGroup")}
 						value={selected.groupPath || t("databaseNotSet")}
 						empty={!selected.groupPath}
@@ -86,7 +90,7 @@ export function DatabaseConnectionDetails({
 						<div className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2">
 							<div className="min-w-0">
 								<p className="flex items-center gap-1.5 text-[12px] font-medium text-foreground">
-									<span className="icon-[mdi--shield-alert-outline] h-3.5 w-3.5 text-muted-foreground" />
+									<span className="icon-[lucide--shield-alert] h-3.5 w-3.5 text-muted-foreground" />
 									{t("databaseProdWriteApproved")}
 								</p>
 								<p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
@@ -104,7 +108,7 @@ export function DatabaseConnectionDetails({
 					<div className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2">
 						<div className="min-w-0">
 							<p className="flex items-center gap-1.5 text-[12px] font-medium text-foreground">
-								<span className="icon-[mdi--robot-outline] h-3.5 w-3.5 text-muted-foreground" />
+								<span className="icon-[lucide--bot] h-3.5 w-3.5 text-muted-foreground" />
 								{t("databaseConnectionAiAccess")}
 							</p>
 							<p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">

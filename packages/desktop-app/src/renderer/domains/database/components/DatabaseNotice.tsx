@@ -7,17 +7,17 @@ const TONE_STYLES: Readonly<Record<DatabaseNoticeTone, { box: string; title: str
 	success: {
 		box: "bg-emerald-500/8",
 		title: "text-emerald-600 dark:text-emerald-400",
-		icon: "icon-[mdi--check-circle-outline]",
+		icon: "icon-[lucide--circle-check]",
 	},
 	error: {
 		box: "bg-destructive/8",
 		title: "text-destructive",
-		icon: "icon-[mdi--alert-circle-outline]",
+		icon: "icon-[lucide--circle-alert]",
 	},
 	info: {
 		box: "bg-muted/50",
 		title: "text-foreground",
-		icon: "icon-[mdi--information-outline]",
+		icon: "icon-[lucide--info]",
 	},
 };
 

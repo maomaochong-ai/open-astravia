@@ -24,7 +24,7 @@ export function SchemaInjectionScopePanel({ model }: { model: DatabaseWorkspaceM
 		<DatabaseSurface className="px-4 py-3.5">
 			<div className="flex items-start justify-between gap-4">
 				<div className="flex min-w-0 items-start gap-2.5">
-					<span className="icon-[solar--filter-linear] mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+					<span className="icon-[lucide--filter] mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
 					<div className="min-w-0">
 						<p className="text-[12.5px] font-semibold text-foreground">{t("databaseSchemaInjectionScope")}</p>
 						<p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
@@ -108,7 +108,7 @@ function ScopeChip({
 			<span
 				className={cn(
 					"h-3 w-3 shrink-0",
-					active ? "icon-[solar--check-circle-linear] text-primary" : "icon-[solar--circle-linear] text-muted-foreground/50",
+					active ? "icon-[lucide--circle-check] text-primary" : "icon-[lucide--circle] text-muted-foreground/50",
 				)}
 			/>
 			<span className="max-w-48 truncate">{label}</span>
@@ -149,7 +149,7 @@ function ConnectionTableGroup({
 						{loading ? (
 							<Spin size="sm" className="h-3.5 w-3.5 text-primary" />
 						) : (
-							<span className="icon-[solar--alt-arrow-down-linear] h-3 w-3" />
+							<span className="icon-[lucide--chevron-down] h-3 w-3" />
 						)}
 						{t("databaseSchemaInjectionScopeLoadTables")}
 					</button>

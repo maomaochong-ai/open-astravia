@@ -53,7 +53,9 @@ export function DatabaseQueryHistoryPopover({
 	const [filterText, setFilterText] = useState("");
 	const keyword = filterText.trim().toLowerCase();
 	const visibleEntries = keyword
-		? entries.filter((entry) => entry.sql.toLowerCase().includes(keyword) || entry.connection.toLowerCase().includes(keyword))
+		? entries.filter(
+				(entry) => entry.sql.toLowerCase().includes(keyword) || entry.connection.toLowerCase().includes(keyword),
+			)
 		: entries;
 
 	return (
@@ -66,7 +68,7 @@ export function DatabaseQueryHistoryPopover({
 					aria-label={t("databaseHistory")}
 					title={t("databaseHistory")}
 				>
-					<span className="icon-[mdi--history] h-4 w-4" />
+					<span className="icon-[lucide--clock-arrow-up] h-4 w-4" />
 				</Button>
 			</PopoverTrigger>
 			<PopoverContent align="end" sideOffset={6} className="w-[380px] p-0">
@@ -79,7 +81,7 @@ export function DatabaseQueryHistoryPopover({
 							className="h-6 px-1.5 text-[11px] text-muted-foreground hover:text-foreground"
 							onClick={onClear}
 						>
-							<span className="icon-[mdi--trash-can-outline] h-3.5 w-3.5" />
+							<span className="icon-[lucide--trash-2] h-3.5 w-3.5" />
 							{t("databaseHistoryClearAll")}
 						</Button>
 					) : null}
@@ -98,7 +100,7 @@ export function DatabaseQueryHistoryPopover({
 				) : null}
 				{visibleEntries.length === 0 ? (
 					<div className="flex flex-col items-center gap-1 px-3 py-8 text-center">
-						<span className="icon-[mdi--history] h-6 w-6 text-muted-foreground/40" />
+						<span className="icon-[lucide--clock-arrow-up] h-6 w-6 text-muted-foreground/40" />
 						<span className="text-[12px] text-muted-foreground/70">
 							{entries.length === 0 ? t("databaseHistoryEmpty") : t("databaseHistoryEmptyFiltered")}
 						</span>
@@ -106,10 +108,7 @@ export function DatabaseQueryHistoryPopover({
 				) : (
 					<ul className="max-h-[420px] overflow-y-auto p-1">
 						{visibleEntries.map((entry) => (
-							<li
-								key={entry.id}
-								className="group flex flex-col gap-1 rounded-md px-2 py-1.5 hover:bg-muted/50"
-							>
+							<li key={entry.id} className="group flex flex-col gap-1 rounded-md px-2 py-1.5 hover:bg-muted/50">
 								<button
 									type="button"
 									className="w-full cursor-pointer text-left"
@@ -136,28 +135,28 @@ export function DatabaseQueryHistoryPopover({
 											title={t("databaseHistoryRestore")}
 											onClick={() => onRestore(entry)}
 										>
-											<span className="icon-[mdi--rotate-3d-variant] h-3.5 w-3.5" />
+											<span className="icon-[lucide--rotate-ccw-clock] h-3.5 w-3.5" />
 										</Button>
-									<Button
-										variant="ghost"
-										size="sm"
-										className="h-6 w-6 p-0 text-muted-foreground hover:text-primary"
-										aria-label={t("databaseAnalyzeHistory.label")}
-										title={t("databaseAnalyzeHistory.label")}
-										onClick={() => onAnalyze(entry)}
-									>
-										<span className="icon-[mdi--creation] h-3.5 w-3.5" />
-									</Button>
-									<Button
-										variant="ghost"
-										size="sm"
-										className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-										aria-label={t("databaseHistoryCopy")}
-										title={t("databaseHistoryCopy")}
-										onClick={() => onCopy(entry)}
-									>
-										<span className="icon-[mdi--content-copy] h-3.5 w-3.5" />
-									</Button>
+										<Button
+											variant="ghost"
+											size="sm"
+											className="h-6 w-6 p-0 text-muted-foreground hover:text-primary"
+											aria-label={t("databaseAnalyzeHistory.label")}
+											title={t("databaseAnalyzeHistory.label")}
+											onClick={() => onAnalyze(entry)}
+										>
+											<span className="icon-[lucide--wand-sparkles] h-3.5 w-3.5" />
+										</Button>
+										<Button
+											variant="ghost"
+											size="sm"
+											className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+											aria-label={t("databaseHistoryCopy")}
+											title={t("databaseHistoryCopy")}
+											onClick={() => onCopy(entry)}
+										>
+											<span className="icon-[lucide--copy] h-3.5 w-3.5" />
+										</Button>
 										<Button
 											variant="ghost"
 											size="sm"
@@ -166,7 +165,7 @@ export function DatabaseQueryHistoryPopover({
 											title={t("databaseHistoryDelete")}
 											onClick={() => onDelete(entry.id)}
 										>
-											<span className="icon-[mdi--trash-can-outline] h-3.5 w-3.5" />
+											<span className="icon-[lucide--trash-2] h-3.5 w-3.5" />
 										</Button>
 									</span>
 								</div>

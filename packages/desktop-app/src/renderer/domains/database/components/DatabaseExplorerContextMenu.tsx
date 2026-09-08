@@ -101,7 +101,7 @@ export function DatabaseExplorerContextMenu({
 							{/* 对齐主界面设置菜单（SettingsMenuActionButton）：图标 14px 内联、与文字 gap-2；文字为 flex 子项自然左对齐，不另包占位。 */}
 							<span className={cn("h-3.5 w-3.5 shrink-0", item.icon, item.destructive && "text-destructive")} />
 							<span className="whitespace-nowrap">{item.label}</span>
-							{item.checked ? <span className="ml-auto h-3.5 w-3.5 shrink-0 text-primary icon-[mdi--check]" /> : null}
+							{item.checked ? <span className="ml-auto h-3.5 w-3.5 shrink-0 text-primary icon-[lucide--check]" /> : null}
 						</button>
 					),
 				)}

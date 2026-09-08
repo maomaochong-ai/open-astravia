@@ -68,7 +68,7 @@ export function DatabaseTypePicker({
 												{type.label}
 											</span>
 											{selected ? (
-												<span className="icon-[mdi--check] h-3.5 w-3.5 shrink-0 text-primary" />
+												<span className="icon-[lucide--check] h-3.5 w-3.5 shrink-0 text-primary" />
 											) : null}
 										</button>
 									);

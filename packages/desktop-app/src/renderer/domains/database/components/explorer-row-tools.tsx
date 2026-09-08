@@ -9,7 +9,7 @@ import {
 	type ReactNode,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { cn } from "@astravia/ui";
+import { Button, cn } from "@astravia/ui";
 import type {
 	ExplorerOrderMap,
 	RowOrder,
@@ -140,22 +140,24 @@ export function RowPinButton({
 	const { t } = useTranslation("settings");
 	const label = pinned ? t("databaseUnpin") : t("databasePin");
 	return (
-		<button
+		<Button
 			type="button"
+			variant="ghost"
+			size="icon-xs"
 			aria-label={label}
 			title={label}
 			className={cn(
 				className,
-				"flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/55 transition-opacity hover:bg-muted hover:text-foreground",
-				pinned ? "opacity-100 text-primary" : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
+				"shrink-0",
+				pinned ? "text-primary" : "text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
 			)}
 			onClick={(event) => {
 				event.stopPropagation();
 				onToggle();
 			}}
 		>
-			<span className={cn("h-3.5 w-3.5", pinned ? "icon-[mdi--pin]" : "icon-[mdi--pin-outline]")} />
-		</button>
+			<span className={cn("h-3 w-3", pinned ? "icon-[lucide--pin]" : "icon-[lucide--pin-off]")} />
+		</Button>
 	);
 }
 

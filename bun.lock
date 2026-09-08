@@ -193,7 +193,7 @@
     },
     "packages/desktop-app": {
       "name": "@astravia/desktop-app",
-      "version": "0.5.32",
+      "version": "0.55.34",
       "dependencies": {
         "@astravia-org/plugin-sdk": "workspace:*",
         "@astravia/action-rpc": "workspace:*",
@@ -207,6 +207,7 @@
         "@astravia/ui": "workspace:*",
         "@dagrejs/dagre": "^3.0.0",
         "@fontsource-variable/geist": "^5.2.8",
+        "@iconify-json/lucide": "^1.2.129",
         "@iconify-json/solar": "^1.2.5",
         "@lexical/react": "^0.48.0",
         "@lexical/utils": "^0.48.0",
@@ -381,7 +382,7 @@
     },
     "packages/plugins/externals/web-element-picker": {
       "name": "@astravia/plugin-web-element-picker",
-      "version": "0.1.0",
+      "version": "0.2.4",
       "dependencies": {
         "tslib": "^2.8.1",
       },
@@ -1217,6 +1218,8 @@
     "@hono/node-server": ["@hono/node-server@1.19.14", "https://registry.npmmirror.com/@hono/node-server/-/node-server-1.19.14.tgz", { "peerDependencies": { "hono": "^4" } }, "sha512-GwtvgtXxnWsucXvbQXkRgqksiH2Qed37H9xHZocE5sA3N8O8O8/8FA3uclQXxXVzc9XBZuEOMK7+r02FmSpHtw=="],
 
     "@iconify-json/flat-color-icons": ["@iconify-json/flat-color-icons@1.2.3", "https://registry.npmmirror.com/@iconify-json/flat-color-icons/-/flat-color-icons-1.2.3.tgz", { "dependencies": { "@iconify/types": "*" } }, "sha512-KcmJ7CY0TKFv5GuBjiS4/v++jEcNXna1jfY+yq014tnw/MN/jMI2oYpoMHGuIpYtUqDu7eove+WySnOYO8nS3w=="],
+
+    "@iconify-json/lucide": ["@iconify-json/lucide@1.2.129", "https://registry.npmmirror.com/@iconify-json/lucide/-/lucide-1.2.129.tgz", { "dependencies": { "@iconify/types": "*" } }, "sha512-pa0ufllJOXTDIH2BxE/BtWQEf/x46/lINDWcmncICV1/52veZ7KSBzQaVh9xDpmjDs8QN4j2Ex/LWlSSveL3yw=="],
 
     "@iconify-json/mdi": ["@iconify-json/mdi@1.2.3", "https://registry.npmmirror.com/@iconify-json/mdi/-/mdi-1.2.3.tgz", { "dependencies": { "@iconify/types": "*" } }, "sha512-O3cLwbDOK7NNDf2ihaQOH5F9JglnulNDFV7WprU2dSoZu3h3cWH//h74uQAB87brHmvFVxIOkuBX2sZSzYhScg=="],
 

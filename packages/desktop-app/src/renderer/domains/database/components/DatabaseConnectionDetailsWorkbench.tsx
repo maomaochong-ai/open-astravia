@@ -38,28 +38,28 @@ export function DatabaseConnectionDetailsWorkbench({
 						title={t("databaseTest")}
 						onClick={() => void model.actions.testSaved(selected.name)}
 					>
-						{testing ? <Spin size="sm" /> : <span className="icon-[mdi--connection] h-3 w-3" />}
+						{testing ? <Spin size="sm" /> : <span className="icon-[lucide--plug-zap] h-3 w-3" />}
 						{testing ? t("databaseTesting") : t("databaseTest")}
 					</Button>
 				}
 			/>
 
 			<div className="mt-5 space-y-4">
-				<InfoSection icon="icon-[mdi--server-outline]" title={t("databaseSectionConnectionInfo")}>
+				<InfoSection icon="icon-[lucide--server]" title={t("databaseSectionConnectionInfo")}>
 					<InfoItem
-						icon="icon-[mdi--server-outline]"
+						icon="icon-[lucide--server]"
 						label={t("databaseHost")}
 						value={endpointOf(selected)}
 						empty={!selected.host}
 					/>
 					<InfoItem
-						icon="icon-[mdi--database-outline]"
+						icon="icon-[lucide--database]"
 						label={t("databaseDatabase")}
 						value={selected.database || t("databaseNotSet")}
 						empty={!selected.database}
 					/>
 					<InfoItem
-						icon="icon-[mdi--layers-triple-outline]"
+						icon="icon-[lucide--layers]"
 						label={t("databaseEnvironment")}
 						value={t(selected.env === "prod" ? "databaseEnvProd" : "databaseEnvDev")}
 					/>
@@ -76,7 +76,7 @@ export function DatabaseConnectionDetailsWorkbench({
 					</DatabaseNotice>
 				) : null}
 
-				<DatabaseNotice tone="info" icon="icon-[mdi--shield-lock-outline]" title={t("databaseEngineNote")} />
+				<DatabaseNotice tone="info" icon="icon-[lucide--shield-check]" title={t("databaseEngineNote")} />
 			</div>
 		</div>
 	);

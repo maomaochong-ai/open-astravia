@@ -101,7 +101,7 @@ export function DatabaseConnectionForm({
 									placeholder={meta.hostPlaceholder}
 								/>
 								<Button type="button" variant="outline" size="sm" onClick={onPickFile}>
-									<span className="icon-[mdi--folder-open-outline] h-3.5 w-3.5" />
+										<span className="icon-[lucide--folder-open] h-3.5 w-3.5" />
 									{t("databaseBrowse")}
 								</Button>
 							</div>
@@ -139,7 +139,7 @@ export function DatabaseConnectionForm({
 					{!meta.fileBased && (
 						<div className="col-span-2 flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2">
 							<label className="flex cursor-pointer items-center gap-2 text-[12px] font-medium text-foreground">
-								<span className="icon-[mdi--shield-lock-outline] h-3.5 w-3.5 text-muted-foreground" />
+												<span className="icon-[lucide--shield-lock] h-3.5 w-3.5 text-muted-foreground" />
 								{t("databaseSsl")}
 							</label>
 							<Switch checked={form.ssl} onCheckedChange={(value) => onChange("ssl", value)} />
@@ -149,7 +149,7 @@ export function DatabaseConnectionForm({
 					{/* W4-② 环境标记：生产连接默认禁止写操作，需在连接详情中显式授权。 */}
 					<div className="col-span-2 flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2">
 						<label className="flex cursor-pointer items-center gap-2 text-[12px] font-medium text-foreground">
-							<span className="icon-[mdi--layers-triple-outline] h-3.5 w-3.5 text-muted-foreground" />
+												<span className="icon-[lucide--layers] h-3.5 w-3.5 text-muted-foreground" />
 							{t("databaseEnvironment")}
 						</label>
 						<Select value={form.env} onValueChange={(value) => onChange("env", value === "prod" ? "prod" : "dev")}>
@@ -164,7 +164,7 @@ export function DatabaseConnectionForm({
 					</div>
 					{form.env === "prod" ? (
 						<div className="col-span-2">
-							<DatabaseNotice tone="info" icon="icon-[mdi--shield-alert-outline]" title={t("databaseEnvProdNotice")} />
+											<DatabaseNotice tone="info" icon="icon-[lucide--shield-alert]" title={t("databaseEnvProdNotice")} />
 						</div>
 					) : null}
 
@@ -204,11 +204,11 @@ export function DatabaseConnectionForm({
 						{t("databaseCancel")}
 					</Button>
 					<Button variant="outline" size="sm" onClick={onTest} disabled={busy || testing}>
-						{testing ? <Spin size="sm" /> : <span className="icon-[mdi--connection] h-3.5 w-3.5" />}
+						{testing ? <Spin size="sm" /> : <span className="icon-[lucide--plug-zap] h-3.5 w-3.5" />}
 						{testing ? t("databaseTesting") : t("databaseTest")}
 					</Button>
 					<Button variant="primary" size="sm" onClick={onSave} disabled={busy || testing}>
-						{busy ? <Spin size="sm" /> : <span className="icon-[mdi--content-save-outline] h-3.5 w-3.5" />}
+						{busy ? <Spin size="sm" /> : <span className="icon-[lucide--save] h-3.5 w-3.5" />}
 						{t("databaseSave")}
 					</Button>
 				</DialogFooter>

@@ -77,7 +77,7 @@ export function DatabaseQueryPanel({
 	return (
 		<DatabaseSurface className={`relative flex flex-col px-4 pb-3.5 pt-3 ${stretch ? "min-h-0 flex-1" : "shrink-0"}`}>
 			<div className="flex shrink-0 items-center justify-between gap-3">
-				<DatabaseSectionLabel icon="icon-[mdi--code-braces]">{t("databaseQueryTitle")}</DatabaseSectionLabel>
+				<DatabaseSectionLabel icon="icon-[lucide--braces]">{t("databaseQueryTitle")}</DatabaseSectionLabel>
 				<div className="flex min-w-0 items-center gap-1.5">
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
@@ -89,15 +89,15 @@ export function DatabaseQueryPanel({
 								title={t("databaseSwitchConnection")}
 								disabled={connections.length === 0}
 							>
-								<span className="icon-[mdi--database-outline] h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+								<span className="icon-[lucide--database] h-3.5 w-3.5 shrink-0 text-muted-foreground" />
 								<span className="min-w-0 flex-1 truncate">{connection?.name ?? t("databaseNoConnectionSelected")}</span>
-								<span className="icon-[mdi--chevron-down] h-3 w-3 shrink-0 text-muted-foreground/70" />
+								<span className="icon-[lucide--chevron-down] h-3 w-3 shrink-0 text-muted-foreground/70" />
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end" className="w-60">
 							{boundConnectionName === null ? (
 								<DropdownMenuItem disabled>
-									<span className="icon-[mdi--cursor-default-outline] h-3.5 w-3.5" />
+									<span className="icon-[lucide--mouse-pointer-2] h-3.5 w-3.5" />
 									{t("databaseConnectionFollowSidebar")}
 								</DropdownMenuItem>
 								) : null}
@@ -106,7 +106,7 @@ export function DatabaseQueryPanel({
 									return (
 										<DropdownMenuItem key={item.id} onClick={() => onRebindConnection(item.name)}>
 											<span
-												className={`icon-[mdi--check] h-3.5 w-3.5 shrink-0 ${active ? "text-primary" : "text-transparent"}`}
+													className={`icon-[lucide--check] h-3.5 w-3.5 shrink-0 ${active ? "text-primary" : "text-transparent"}`}
 											/>
 											<span className="min-w-0 flex-1 truncate">{item.name}</span>
 										</DropdownMenuItem>
@@ -123,7 +123,7 @@ export function DatabaseQueryPanel({
 						disabled={!connection || sql.trim() === ""}
 						onClick={onAskAi}
 					>
-						<span className="icon-[mdi--creation] h-3.5 w-3.5" />
+						<span className="icon-[lucide--sparkles] h-3.5 w-3.5" />
 					</Button>
 					<Button
 						variant="ghost"
@@ -133,7 +133,7 @@ export function DatabaseQueryPanel({
 						className="px-1.5"
 						onClick={() => setHistoryOpen((open) => !open)}
 					>
-						<span className="icon-[mdi--history] h-3.5 w-3.5" />
+						<span className="icon-[lucide--clock-arrow-up] h-3.5 w-3.5" />
 					</Button>
 				</div>
 			</div>
@@ -156,7 +156,7 @@ export function DatabaseQueryPanel({
 			<div className="mt-2 flex shrink-0 items-center justify-between gap-3">
 				<p className="min-w-0 truncate text-[11.5px] text-muted-foreground/70">{t("databaseQueryHint")}</p>
 				<Button variant="primary" size="sm" disabled={busy || sql.trim() === "" || !connection} onClick={run}>
-					{busy ? <span className="icon-[mdi--progress-clock] h-3.5 w-3.5" /> : <span className="icon-[mdi--play] h-3.5 w-3.5" />}
+					{busy ? <span className="icon-[lucide--loader] h-3.5 w-3.5" /> : <span className="icon-[lucide--play] h-3.5 w-3.5" />}
 					{busy ? t("databaseRunning") : t("databaseRun")}
 				</Button>
 			</div>
@@ -172,7 +172,7 @@ export function DatabaseQueryPanel({
 							<span className="text-[11.5px] font-semibold text-foreground">{t("databaseQueryHistory")}</span>
 							{history.length > 0 ? (
 								<Button variant="ghost" size="xs" className="px-1.5 text-muted-foreground" onClick={clearHistory}>
-									<span className="icon-[mdi--delete-outline] h-3 w-3" />
+									<span className="icon-[lucide--trash-2] h-3 w-3" />
 									{t("databaseQueryHistoryClear")}
 								</Button>
 							) : null}
@@ -190,7 +190,7 @@ export function DatabaseQueryPanel({
 										onClick={() => replay(entry)}
 									>
 										<span className="flex items-center gap-1.5 text-[11px] text-muted-foreground/70">
-											<span className="icon-[mdi--database-outline] h-3 w-3 shrink-0" />
+											<span className="icon-[lucide--database] h-3 w-3 shrink-0" />
 											<span className="min-w-0 truncate">{entry.connection}</span>
 											<span className="ml-auto shrink-0 tabular-nums">{format(new Date(entry.at), "MM-dd HH:mm")}</span>
 										</span>
