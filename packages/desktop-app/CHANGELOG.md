@@ -4,6 +4,20 @@ All notable changes to `@astravia/desktop-app` are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **数据库工具偏好设置（独立设置面板）**：结果网格每页行数（50/100/200/500，缺省 100）与结果自动刷新（缺省关）可配置并持久化到主进程配置存储；结果网格挂载即按偏好初始化（自动刷新开启时以默认间隔开始轮询）。
+- **introspection 数据面补全（主题 E）**：表内对象分区新增外键对象类型（`foreign-key`），随表展开懒加载、空分区自动隐藏；数据库对象按种类分组展示；introspection 请求接入并发限流器，避免展开大表/大库时突发请求拖垮主进程。
+- **查询标签 V5.1（主题 D）**：标签行内双击改名、含未执行更改的标签关闭前二次确认、标签按连接类型着色（与 `DatabaseTypeBadge` 同源）；标签支持固定（pin），关闭其它/关闭全部遵循固定语义；纯逻辑层 `query-tabs` 新增 pin 感知的改名/关闭单测。
+- **活动面板状态跨会话记忆（主题 C）**：面板 open/pin/全屏状态按工作区（cwd）持久化，重开工作区自动恢复；database 活动标签支持常驻固定。
+
+### Changed
+
+- **图标体系统一 lucide 集（主题 B，ADR 0057）**：数据库域连接详情/表单/上下文菜单/查询面板/查询历史/类型选择/通知/结果网格/树行工具等控件由 mdi/solar 迁移至 lucide 图标集，新增 `@iconify-json/lucide` 依赖，配套 [docs/desktop/database-icon-map.md](docs/desktop/database-icon-map.md) 图标映射文档；顶栏/树行按钮统一为 ToolbarButton/IconButton 体系，添加连接入口与 pin 交互重构。
+- **TabBar 面板化（theme-ui，主题 A）**：活动面板标签栏以面板变体呈现，支持溢出节流与脏/固定态视觉；DatabaseWorkspace 顶栏随工具偏好/标签 V5.1 装配。
+- **侧边栏图标差异化**：侧边栏图标在 solar 体系内差异化换形，减少与上游视觉雷同。
+
+
 ## [0.55.34] - 2026-09-07
 
 ### Added
