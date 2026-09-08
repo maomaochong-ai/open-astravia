@@ -1,9 +1,9 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, statSync } from "node:fs";
-import { mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, parse } from "node:path";
 import { pathToFileURL } from "node:url";
 import { stringify } from "yaml";
 import { buildWindowsLauncher } from "./windows-version-layout.mjs";
@@ -100,16 +100,37 @@ async function main() {
 	await writeInnoVerificationManifest(join(sourceDir, "versions", version), verificationManifestPath, version);
 
 	const compiler = resolveInnoCompiler();
-	// 源目录优先直接用真实路径：跨卷 junction（C:\Temp 临时目录 -> D:\ 工作区）
-	// 会让 ISCC 在压缩完成、加载 SetupIconFile 时报“The system cannot find the
-	// path specified.”（[Files] 递归可穿过 junction，图标加载走的 API 不行）。
-	// Inno Setup 6.3+ 已支持长路径，仅在真实路径过长（贴近 MAX_PATH）时退回
-	// junction 缩短路径，保留对超长路径的兼容。
-	const needsShortPath = sourceDir.length > 150;
-	const compilerWorkDir = needsShortPath ? await mkdtemp(join(tmpdir(), "vi-")) : null;
-	const shortSourceDir = needsShortPath ? join(compilerWorkDir, "src") : null;
-	if (shortSourceDir) await symlink(sourceDir, shortSourceDir, "junction");
-	const iscSourceDir = shortSourceDir ?? sourceDir;
+	// MAX_PATH(260) 防护 ---------------------------------------------------
+	// 版本化布局（versions\<v>\resources\...）叠加 vite 模块联邦超长 chunk
+	// 文件名（实测后缀最坏 ~209 字符）后，ISCC 的 {#SourceDir} 前缀必须很短：
+	//   CI 真实源路径前缀 ~65（D:\a\astravia\...）→ 完整路径 274 > 260，压缩到
+	//   该文件时报 "The system cannot find the path specified."（无行号，I/O 错）；
+	//   electron-builder 原生 %TEMP% junction 前缀 ~51 → ~260 仍贴边失败。
+	// 这里把源目录 junction 到盘根级短目录（如 C:\avdXXXX\src，前缀 ~14），
+	// 完整路径 ~223 留足余量。junction 可被 ISCC 正常递归（此前怀疑 junction
+	// 导致图标加载失败系 MAX_PATH 误判，非 junction 机制问题）。
+	let iscSourceDir = sourceDir;
+	let shortLinkDir = null;
+	{
+		const roots = [...new Set([parse(sourceDir).root, parse(tmpdir()).root].filter(Boolean))];
+		for (const root of roots) {
+			const candidateDir = join(root, `avd${Math.random().toString(36).slice(2, 6)}`);
+			try {
+				await mkdir(candidateDir);
+				const link = join(candidateDir, "src");
+				await symlink(sourceDir, link, "junction");
+				iscSourceDir = link;
+				shortLinkDir = candidateDir;
+				console.log(`[build-inno] MAX_PATH guard: ${sourceDir} junctioned -> ${link}`);
+				break;
+			} catch {
+				// 该盘根不可写或 junction 创建失败，尝试下一个候选根
+			}
+		}
+		if (!shortLinkDir) {
+			console.warn(`[build-inno] 无法创建短路径 junction，ISCC 将使用原源目录（超长路径可能触发 MAX_PATH）: ${sourceDir}`);
+		}
+	}
 	const versionedDir = join(sourceDir, "versions", version);
 	// 把 installer.iss 引用的每个物理源路径在编译前逐条校验：ISCC 失败时只报
 	// “The system cannot find the path specified.”（无行号/文件名），这里用
@@ -118,7 +139,7 @@ async function main() {
 		["root launcher (L57 ASTRAIVA.exe)", join(iscSourceDir, "ASTRAIVA.exe")],
 		["root current.json (L58)", join(iscSourceDir, "current.json")],
 		["versioned dir (L61 recursion root)", versionedDir],
-		["resources\\app.asar (L62 nocompression)", join(versionedDir, "resources", "app.asar")],
+		["resources\\app.asar", join(versionedDir, "resources", "app.asar")],
 		["resources\\build\\icon.ico (SetupIconFile)", join(versionedDir, "resources", "build", "icon.ico")],
 	];
 	for (const [label, candidatePath] of requiredSources) {
@@ -205,7 +226,7 @@ async function main() {
 		}
 	}
 	if (lastCompileError) throw lastCompileError;
-	if (compilerWorkDir) await rm(compilerWorkDir, { recursive: true, force: true });
+	if (shortLinkDir) await rm(shortLinkDir, { recursive: true, force: true });
 
 	const installerPath = join(releaseDir, fileName);
 	if (!existsSync(installerPath)) throw new Error(`[build-inno] installer not found: ${installerPath}`);
