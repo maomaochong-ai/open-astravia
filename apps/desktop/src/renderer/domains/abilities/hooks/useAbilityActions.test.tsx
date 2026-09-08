@@ -66,6 +66,10 @@ function githubPluginAbility(installed: boolean): PluginAbility {
 		title: "Demo plugin",
 		version: "2.0.0",
 		installed,
+		permissions: [],
+		grantedPermissions: [],
+		commands: [],
+		grantedCommands: [],
 		origin: {
 			kind: "github-marketplace",
 			sourceId: "official",
@@ -249,7 +253,7 @@ describe("useAbilityActions managed MCP wiring", () => {
 				grantedCommandNames: ["old.command"],
 				pendingVersion: "2.0.0",
 				enabled: true,
-			} as InstalledPlugin,
+			} as unknown as InstalledPlugin,
 		]);
 		const { result } = renderHook(() => useAbilityActions({ mcp: mcpModel(), refresh: vi.fn() }));
 
@@ -278,5 +282,35 @@ describe("useAbilityActions managed MCP wiring", () => {
 		expect(result.current.operationById.has(item.id)).toBe(false);
 		expect(refresh).toHaveBeenCalledOnce();
 		expect(showToast).not.toHaveBeenCalled();
+	});
+
+	it("accepts a renderer bridge abort when the new plugin version is already active", async () => {
+		const item = githubPluginAbility(true);
+		window.vetta.plugins.reload = vi.fn(async () => {
+			throw new Error("Error invoking remote method 'vetta:plugins:reload': AbortError: This operation was aborted");
+		});
+		window.vetta.plugins.listAll = vi.fn(async () => [
+			{
+				id: "demo-plugin",
+				version: "2.0.0",
+				activeVersion: "2.0.0",
+				pendingVersion: undefined,
+				permissions: [],
+				grantedPermissions: [],
+				declaredCommands: [],
+				grantedCommandNames: [],
+			} as unknown as InstalledPlugin,
+		]);
+		const refresh = vi.fn();
+		const { result } = renderHook(() => useAbilityActions({ mcp: mcpModel(), refresh }));
+
+		act(() => result.current.install(item));
+
+		await waitFor(() => expect(result.current.operationById.has(item.id)).toBe(false));
+		expect(result.current.error).toBeNull();
+		expect(showToast).toHaveBeenCalledWith({
+			variant: "success",
+			message: "abilities:message.updatedAndReloaded",
+		});
 	});
 });

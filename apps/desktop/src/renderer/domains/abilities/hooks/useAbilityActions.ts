@@ -26,6 +26,20 @@ function errorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
 }
 
+/**
+ * Reloading a plugin can tear down the renderer-side bridge while the IPC
+ * response is still in flight.  In that narrow lifecycle window Electron
+ * reports AbortError even though the main process has already applied the
+ * new plugin version.  Callers must verify the installed record before
+ * deciding whether this is a real failure.
+ */
+export function isPluginLifecycleAbortError(error: unknown): boolean {
+	if (typeof error === "object" && error !== null && "name" in error) {
+		if ((error as { name?: unknown }).name === "AbortError") return true;
+	}
+	return errorMessage(error).toLowerCase().includes("operation was aborted");
+}
+
 function changeSet<T extends string>(previous: readonly T[], next: readonly T[]): PluginChangeSet<T> {
 	const before = new Set(previous);
 	const after = new Set(next);
@@ -94,6 +108,22 @@ export function useAbilityActions({
 	const [permissionPromptSlug, setPermissionPromptSlug] = useState<string | null>(null);
 	const [pendingPluginSetup, setPendingPluginSetup] = useState<PluginAbility | null>(null);
 	const [setupPromptId, setSetupPromptId] = useState<string | null>(null);
+
+	const reloadPluginAndConfirm = useCallback(async (item: PluginAbility): Promise<void> => {
+		try {
+			await window.vetta.plugins.reload(item.slug);
+			return;
+		} catch (error: unknown) {
+			if (!isPluginLifecycleAbortError(error)) throw error;
+			const installed = await window.vetta.plugins.listAll?.();
+			const current = installed?.find((plugin) => plugin.id === item.slug);
+			const expectedVersion = item.pendingVersion ?? item.localVersion ?? item.version;
+			if (!current || (current.pendingVersion && current.pendingVersion !== expectedVersion)) throw error;
+			// `version` is the downloaded manifest version and may be newer while
+			// still pending.  Only an activeVersion match proves reload completed.
+			if (expectedVersion && (current.activeVersion !== expectedVersion || current.pendingVersion)) throw error;
+		}
+	}, []);
 
 	const run = useCallback(
 		(
@@ -196,7 +226,7 @@ export function useAbilityActions({
 					}
 				}
 				setOperation?.("applyingUpdate");
-				await window.vetta.plugins.reload(item.slug);
+				await reloadPluginAndConfirm(item);
 			}
 			notifyPluginsChanged();
 			if (item.installed) {
@@ -224,7 +254,7 @@ export function useAbilityActions({
 			}
 			setPermissionPromptSlug(item.slug);
 		},
-		[],
+		[reloadPluginAndConfirm],
 	);
 
 	const installPlugin = useCallback(
@@ -456,12 +486,12 @@ export function useAbilityActions({
 				setOperation("activating");
 				await window.vetta.plugins.applySetup(item.slug, next);
 				if (item.setupMode === "update" && item.pendingVersion) {
-					await window.vetta.plugins.reload(item.slug);
+					await reloadPluginAndConfirm(item);
 				}
 				notifyPluginsChanged();
 			});
 		},
-		[run],
+		[reloadPluginAndConfirm, run],
 	);
 
 	const setPluginCommand = useCallback(
@@ -478,7 +508,7 @@ export function useAbilityActions({
 	const reloadPlugin = useCallback(
 		(item: PluginAbility) => {
 			run(item.id, "reloading", async () => {
-				await window.vetta.plugins.reload(item.slug);
+				await reloadPluginAndConfirm(item);
 				notifyPluginsChanged();
 				showToast({
 					variant: "success",
@@ -489,7 +519,7 @@ export function useAbilityActions({
 				});
 			});
 		},
-		[run],
+		[reloadPluginAndConfirm, run],
 	);
 
 	const importSkillArchive = useCallback(
