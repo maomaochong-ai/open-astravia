@@ -175,6 +175,9 @@ export class AgentSession {
 		if (this.currentState === "closed" || this.currentState === "closing") {
 			return Promise.reject(sessionClosedError());
 		}
+		if (this.currentState === "cancelling") {
+			return Promise.reject(continuationCancelledError());
+		}
 		if (this.currentState === "recovery_required") return Promise.reject(turnPersistenceError());
 		this.continuationRequested = true;
 		this.continuationContext.push(...context);
@@ -314,6 +317,10 @@ export class AgentSession {
 	async cancel(reason?: string, options?: { readonly waitMs?: number }): Promise<void> {
 		if (this.currentState !== "running" && this.currentState !== "cancelling") return;
 		this.currentState = "cancelling";
+		// A continuation queued behind the cancelled turn belongs to that turn's
+		// background outcome. Letting it start after an explicit stop creates an
+		// invisible new turn and can make the next user prompt collide with it.
+		this.rejectContinuationWaiters(continuationCancelledError());
 		this.activeController?.abort(reason);
 		const turn = this.activeTurn;
 		if (options?.waitMs === undefined) {
@@ -473,6 +480,10 @@ export class AgentSession {
 		this.continuationContext.length = 0;
 		for (const waiter of this.continuationWaiters.splice(0)) waiter.reject(error);
 	}
+}
+
+function continuationCancelledError(): KernelError {
+	return new KernelError(KERNEL_ERROR_CODES.TURN_INTERRUPTED, "Pending continuation was cancelled");
 }
 
 class MutableTurnSessionIdentity implements TurnSessionIdentity {

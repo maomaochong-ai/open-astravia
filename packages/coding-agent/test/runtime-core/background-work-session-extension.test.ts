@@ -11,6 +11,7 @@ import {
 	CODING_AGENT_SUBAGENT_INTERRUPT,
 	CODING_AGENT_SUBAGENTS_CLEAR_FINISHED,
 	CODING_AGENT_SUBAGENTS_READ,
+	CODING_AGENT_WORK_STOP_ALL,
 } from "../../src/execution/background/background-work-session-extension-contract.js";
 import type { CodingAgentBackgroundWorkRuntime } from "../../src/execution/background/work-controller.js";
 
@@ -53,6 +54,7 @@ describe("Coding Agent background work Session Extension", () => {
 			readTasks: () => [task],
 			readSubagents: () => [subagent],
 			interruptSubagent: (target) => (target === subagent.id ? subagent : undefined),
+			stopAllWork: () => 4,
 		};
 
 		composition = await SessionExtensionComposition.create({
@@ -68,6 +70,7 @@ describe("Coding Agent background work Session Extension", () => {
 		await expect(composition.invoke(CODING_AGENT_SUBAGENT_INTERRUPT, { target: subagent.id })).resolves.toEqual(
 			subagent,
 		);
+		await expect(composition.invoke(CODING_AGENT_WORK_STOP_ALL, undefined)).resolves.toBe(4);
 	});
 
 	it("fails explicitly before the product runtime is attached", async () => {

@@ -234,6 +234,7 @@ function createCoordinatorFixture() {
 		})),
 	);
 	const interrupt = vi.fn((target: string) => ({ ...snapshot(target, "explorer", "interrupted") }));
+	const interruptAll = vi.fn((): readonly SubagentSnapshot[] => []);
 	const sendMessage = vi.fn(async (target: string) => snapshot(target, "explorer", "running"));
 	const followUp = vi.fn(async (target: string) => snapshot(target, "explorer", "running"));
 	const wait = vi.fn(async (): Promise<SubagentWaitResult> => fixture.waitResult);
@@ -244,6 +245,7 @@ function createCoordinatorFixture() {
 		readonly spawnMany: typeof spawnMany;
 		readonly dispatchWorkflows: typeof dispatchWorkflows;
 		readonly interrupt: typeof interrupt;
+		readonly interruptAll: typeof interruptAll;
 		readonly sendMessage: typeof sendMessage;
 		readonly followUp: typeof followUp;
 		readonly wait: typeof wait;
@@ -255,6 +257,7 @@ function createCoordinatorFixture() {
 		spawnMany,
 		dispatchWorkflows,
 		interrupt,
+		interruptAll,
 		sendMessage,
 		followUp,
 		wait,
@@ -268,6 +271,7 @@ function createCoordinatorFixture() {
 			sendMessage,
 			followUp,
 			interrupt,
+			interruptAll,
 			wait,
 			dispose: async () => {},
 		},

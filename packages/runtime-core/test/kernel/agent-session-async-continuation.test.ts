@@ -44,6 +44,28 @@ describe("AgentSession asynchronous continuation", () => {
 		expect(fixture.continueTurn.mock.calls[0]?.[3]).toEqual([contextRecord("first"), contextRecord("second")]);
 	});
 
+	it("discards a pending continuation when the active turn is cancelled", async () => {
+		const fixture = createFixture({ blockRun: true });
+		const session = await createAgentSession({ id: "session-cancelled", pipeline: fixture.pipeline });
+		const activeTurn = session.send({ message: userMessage("working") });
+		await vi.waitFor(() => expect(fixture.runTurn).toHaveBeenCalledOnce());
+
+		const continuation = session.requestContinuation([contextRecord("completed task")]);
+		const rejected = expect(continuation).rejects.toMatchObject({ code: "turn_interrupted" });
+		const stopping = session.cancel("user stopped");
+		const lateContinuation = session.requestContinuation([contextRecord("late completion")]);
+		const lateRejected = expect(lateContinuation).rejects.toMatchObject({ code: "turn_interrupted" });
+		fixture.completeRun(abortedTurn("turn-run"));
+
+		await activeTurn;
+		await stopping;
+		await Promise.all([rejected, lateRejected]);
+		expect(fixture.continueTurn).not.toHaveBeenCalled();
+
+		await session.send({ message: userMessage("follow up") });
+		expect(fixture.runTurn).toHaveBeenCalledTimes(2);
+	});
+
 	it("rejects notifications after the session is closed", async () => {
 		const fixture = createFixture();
 		const session = await createAgentSession({ id: "session-closed", pipeline: fixture.pipeline });
@@ -123,6 +145,16 @@ function completedTurn(turnId: string): TurnResult {
 		sessionId: "session",
 		turnId,
 		stopReason: "stop",
+		messages: [],
+	};
+}
+
+function abortedTurn(turnId: string): TurnResult {
+	return {
+		status: "cancelled",
+		sessionId: "session",
+		turnId,
+		reason: "user stopped",
 		messages: [],
 	};
 }
