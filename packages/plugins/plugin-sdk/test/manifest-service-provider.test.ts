@@ -79,6 +79,28 @@ describe("plugin service provider manifest", () => {
 		expect(manifest.providers?.services?.[0]?.health.readiness).toEqual({ mode: "plugin" });
 	});
 
+	it("accepts host-node services and normalizes their entry", () => {
+		const provider = service();
+		const manifest = parsePluginManifest({
+			...baseManifest,
+			providers: {
+				services: [{
+					...provider,
+					runtime: { ...provider.runtime, kind: "host-node", entry: "service/main.mjs" },
+				}],
+			},
+		});
+		expect(manifest.providers?.services?.[0]?.runtime).toMatchObject({ kind: "host-node", entry: "service/main.mjs" });
+	});
+
+	it("rejects host-node services without an entry", () => {
+		const provider = service();
+		expect(() => parsePluginManifest({
+			...baseManifest,
+			providers: { services: [{ ...provider, runtime: { ...provider.runtime, kind: "host-node" } }] },
+		})).toThrow("runtime.entry");
+	});
+
 	it("rejects duplicate service ids and artifact destinations", () => {
 		const provider = service();
 		expect(() =>

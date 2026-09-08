@@ -17,6 +17,7 @@ import type {
 import { webContents } from "electron";
 import { PLUGIN_EXECUTION_CHANNELS } from "../../shared/plugin-ipc.js";
 import { getAppLogger } from "../logger.js";
+import { getRuntimeManager } from "../runtimes/manager.js";
 import { createPluginCommandEnvironment } from "./command-environment.js";
 import { spawnCrossPlatformCommand } from "./command-launcher.js";
 import { listPlugins } from "./plugin-catalog.js";
@@ -58,6 +59,7 @@ interface PluginServiceProviderDependencies {
 	installer: Pick<PluginServiceRuntimeInstaller, "getPlatform" | "install" | "resolve">;
 	fetchClient: (url: string, init?: RequestInit) => Promise<Response>;
 	spawnProcess: typeof spawnCrossPlatformCommand;
+	resolveHostNodeExecutable: () => string;
 	killProcess: typeof killTree;
 	allocatePort: typeof allocateLoopbackPort;
 	broadcast(channel: string, payload: unknown): void;
@@ -250,6 +252,7 @@ export class PluginServiceProviderService {
 				installer: new PluginServiceRuntimeInstaller(rootDirectory),
 				fetchClient: fetch,
 				spawnProcess: spawnCrossPlatformCommand,
+				resolveHostNodeExecutable: () => getRuntimeManager().getExecutable("node"),
 				killProcess: killTree,
 				allocatePort: allocateLoopbackPort,
 				broadcast,
@@ -611,7 +614,11 @@ export class PluginServiceProviderService {
 			const env = Object.fromEntries(
 				Object.entries(record.service.process.env ?? {}).map(([key, value]) => [key, replaceTokens(value, values)]),
 			);
-			const child = this.dependencies.spawnProcess(paths.executable, args, {
+			const launchExecutable =
+				paths.runtimeKind === "host-node" ? this.dependencies.resolveHostNodeExecutable() : paths.executable;
+			const launchArgs = paths.runtimeKind === "host-node" ? [paths.entry ?? "", ...args] : args;
+			if (paths.runtimeKind === "host-node" && !paths.entry) throw new Error("Host-node service entry is missing");
+			const child = this.dependencies.spawnProcess(launchExecutable, launchArgs, {
 				cwd: paths.runtimeDirectory,
 				env: createPluginCommandEnvironment(env),
 				windowsHide: true,

@@ -2,7 +2,11 @@ import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { chmod, lstat, mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, posix, relative, resolve, sep } from "node:path";
-import type { PluginServiceArtifactPayload, PluginServiceProviderManifest } from "@vetta-org/plugin-sdk";
+import type {
+	PluginServiceArtifactPayload,
+	PluginServiceProviderManifest,
+	PluginServiceRuntimeKind,
+} from "@vetta-org/plugin-sdk";
 import AdmZip from "adm-zip";
 import { x as extractTar, t as listTar } from "tar";
 
@@ -16,13 +20,17 @@ export interface PluginServiceRuntimePaths {
 	dataDirectory: string;
 	cacheDirectory: string;
 	executable: string;
+	runtimeKind: PluginServiceRuntimeKind;
+	entry?: string;
 }
 
 interface InstalledServiceRuntimeMarker {
 	schemaVersion: 1;
 	kind: "plugin-service";
+	runtimeKind: PluginServiceRuntimeKind;
 	version: string;
 	executable: string;
+	entry?: string;
 	artifacts: Array<{ destination: string; sha256: string }>;
 }
 
@@ -64,8 +72,12 @@ function markerFor(service: PluginServiceProviderManifest, platformTag: string):
 	return {
 		schemaVersion: 1,
 		kind: "plugin-service",
+		runtimeKind: service.runtime.kind ?? "managed-binary",
 		version: service.runtime.version,
 		executable: safeRelativePath(platform.executable, "Service executable"),
+		...(service.runtime.kind === "host-node" && service.runtime.entry
+			? { entry: safeRelativePath(service.runtime.entry, "Service runtime entry") }
+			: {}),
 		artifacts: platform.artifacts.map((artifact) => ({
 			destination: safeRelativePath(artifact.destination, "Service artifact destination"),
 			sha256: artifact.sha256,
@@ -205,6 +217,8 @@ export class PluginServiceRuntimeInstaller {
 			dataDirectory,
 			cacheDirectory,
 			executable: join(runtimeDirectory, ...expected.executable.split("/")),
+			runtimeKind: expected.runtimeKind,
+			entry: expected.entry ? join(runtimeDirectory, ...expected.entry.split("/")) : undefined,
 		};
 	}
 
@@ -263,6 +277,11 @@ export class PluginServiceRuntimeInstaller {
 				const executablePath = join(preparedDirectory, ...expected.executable.split("/"));
 				if (!(await lstat(executablePath).catch(() => undefined))?.isFile())
 					throw new Error(`Service runtime executable is missing: ${expected.executable}`);
+				if (expected.entry) {
+					const entryPath = join(preparedDirectory, ...expected.entry.split("/"));
+					if (!(await lstat(entryPath).catch(() => undefined))?.isFile())
+						throw new Error(`Service runtime entry is missing: ${expected.entry}`);
+				}
 				if (process.platform !== "win32") await chmod(executablePath, 0o755);
 				await writeFile(join(preparedDirectory, ".runtime.json"), JSON.stringify(expected), { mode: 0o600 });
 				await replaceDirectory(preparedDirectory, runtimeDirectory);
@@ -276,6 +295,8 @@ export class PluginServiceRuntimeInstaller {
 			dataDirectory,
 			cacheDirectory,
 			executable: join(runtimeDirectory, ...expected.executable.split("/")),
+			runtimeKind: expected.runtimeKind,
+			entry: expected.entry ? join(runtimeDirectory, ...expected.entry.split("/")) : undefined,
 		};
 	}
 }

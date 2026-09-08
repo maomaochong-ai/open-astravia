@@ -216,6 +216,12 @@ export class RuntimeManager {
 		return existsSync(executablePathFor(type));
 	}
 
+	/** 返回已就绪的托管运行时可执行文件，供插件服务等宿主子进程使用。 */
+	getExecutable(type: RuntimeType): string {
+		if (!this.isReady(type)) throw new Error(`Managed ${type} runtime is not ready`);
+		return executablePathFor(type);
+	}
+
 	private npmConfigPath(): string {
 		return join(runtimesDir(), ".npmrc");
 	}

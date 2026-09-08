@@ -70,6 +70,7 @@ async function fixture() {
 		dataDirectory,
 		cacheDirectory,
 		executable: join(root, "bridge.exe"),
+		runtimeKind: "managed-binary" as const,
 	});
 	const resolveRuntime = vi.fn(async () => paths());
 	const installRuntime = vi.fn(async () => paths());
@@ -89,6 +90,7 @@ async function fixture() {
 		installer: { getPlatform: () => ({ tag: "win32-x64" }), install: installRuntime, resolve: resolveRuntime },
 		fetchClient,
 		spawnProcess,
+		resolveHostNodeExecutable: () => "C:/vetta/node.exe",
 		killProcess,
 		allocatePort: async () => ++port,
 		broadcast: vi.fn(),
@@ -193,6 +195,27 @@ describe("PluginServiceProviderService", () => {
 		const payloads = [{ destination: "core", data: "YmluYXJ5" }];
 		expect((await f.service.install(f.plugin.id, "bridge", payloads)).installed).toBe(true);
 		expect(f.installRuntime).toHaveBeenCalledWith(f.plugin.id, f.manifest, payloads);
+	});
+
+	it("launches host-node services with the host Node executable and entry script", async () => {
+		const f = await fixture();
+		f.manifest.runtime = {
+			...f.manifest.runtime,
+			kind: "host-node",
+			entry: "service/main.mjs",
+		};
+		f.resolveRuntime.mockImplementation(async () => ({
+			...f.paths(),
+			runtimeKind: "host-node",
+			entry: join(f.paths().runtimeDirectory, "service", "main.mjs"),
+		}));
+		await f.service.start(f.plugin.id, "bridge");
+		expect(f.spawnProcess).toHaveBeenCalledWith(
+			"C:/vetta/node.exe",
+			expect.arrayContaining([join(f.paths().runtimeDirectory, "service", "main.mjs")]),
+			expect.any(Object),
+		);
+		f.service.stopAll();
 	});
 
 	it("requires the plugin to provision a newly declared runtime version after reload", async () => {
