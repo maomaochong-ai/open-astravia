@@ -69,11 +69,6 @@ jobs:
             command: dist:mac:x64
             verify: verify:updates:mac
             macArch: x64
-          - platform: linux
-            runner: ubuntu-latest
-            command: dist:linux
-            verify: verify:updates:linux
-            macArch: ""
 
     steps:
       - uses: actions/checkout@v4
