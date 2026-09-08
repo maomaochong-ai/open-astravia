@@ -57,15 +57,15 @@ jobs:
           # arm64 与 x64 必须分两次构建：内置的 node/python 运行时按
           # ASTRAVIA_VENDOR_PLATFORM 单架构落盘，一次构建出不了两套。两次都会写同名的
           # latest-mac.yml，因此各自重命名后上传，由发布任务合并回单一元数据。
-          # 私有仓库的 GitHub 托管 macOS runner 按 10 倍扣分钟数，两次签名+公证的
-          # 构建足以吃光免费额度，因此 mac 走自持 runner（标签 astravia-mac）。
+          # 当前无 Apple 签名/公证凭据，mac 出未签名包，直接跑 GitHub 托管 runner；
+          # 若日后在 Secret 配齐 MACOS_CERTIFICATE_* 与 APPLE_*，签名步骤自动切换为签名+公证。
           - platform: macos-arm64
-            runner: astravia-mac
+            runner: macos-latest
             command: dist:mac:arm64
             verify: verify:updates:mac
             macArch: arm64
           - platform: macos-x64
-            runner: astravia-mac
+            runner: macos-latest
             command: dist:mac:x64
             verify: verify:updates:mac
             macArch: x64
@@ -127,12 +127,10 @@ jobs:
             fi
           done
           if [[ "${PROVIDED}" -eq 0 ]]; then
-            # 打了 tag 却没配签名凭据会把未签名包发到 stable，这里硬失败挡住。
-            if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-              echo "A tagged macOS release requires signing and notarization credentials." >&2
-              exit 1
-            fi
-            echo "No macOS signing credentials configured; workflow_dispatch will build an unsigned test package."
+            # 无签名凭据：按用户决策出未签名 mac 包（当前无 Apple 证书，无法签名/公证）。
+            # 若后续配齐 Secret，本步骤会自动启用签名+公证，未签名通道随即停用。
+            echo "No macOS signing credentials configured; building an unsigned macOS package."
+            echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "${GITHUB_ENV}"
             exit 0
           fi
           if [[ "${#MISSING[@]}" -ne 0 ]]; then
