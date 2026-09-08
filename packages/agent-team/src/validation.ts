@@ -29,6 +29,15 @@ const promptAttachment = Type.Object(
 	},
 	{ additionalProperties: false },
 );
+const teamUserMessageMention = Type.Object(
+	{
+		participantId: id,
+		handle: id,
+		start: Type.Integer({ minimum: 0, maximum: 64_000 }),
+		end: Type.Integer({ minimum: 1, maximum: 64_000 }),
+	},
+	{ additionalProperties: false },
+);
 const abilities = Type.Object(
 	{
 		selectionMode: Type.Optional(Type.Union([Type.Literal("all"), Type.Literal("custom")])),
@@ -50,7 +59,6 @@ const profile = Type.Object(
 		mentionHandle: id,
 		blueprintId: id,
 		systemPrompt: Type.Optional(text),
-		presetId: Type.Optional(id),
 		abilities,
 		scope: Type.Union([
 			Type.Object({ kind: Type.Literal("library") }, { additionalProperties: false }),
@@ -177,6 +185,7 @@ export const SendTeamMessageInputSchema = Type.Object(
 	{
 		requestId: id,
 		text,
+		memberMentions: Type.Optional(Type.Array(teamUserMessageMention, { maxItems: 32 })),
 		targetMemberIds: Type.Array(id, { maxItems: 32, uniqueItems: true }),
 		attachments: Type.Optional(Type.Array(promptAttachment, { maxItems: 128 })),
 		modelKey: Type.Optional(id),
@@ -209,7 +218,6 @@ const team = Type.Object(
 export const AgentTeamDocumentSchema = Type.Object(
 	{
 		schemaVersion: Type.Literal(AGENT_TEAM_SCHEMA_VERSION),
-		presetVersion: Type.Optional(Type.Integer({ minimum: 1, maximum: Number.MAX_SAFE_INTEGER })),
 		revision,
 		agents: Type.Array(profile, { maxItems: 1_024 }),
 		teams: Type.Array(team, { maxItems: 1_024 }),
@@ -269,7 +277,10 @@ export const TeamSessionDocumentSchema = Type.Object(
 		revision,
 		id,
 		teamId: id,
-		workspaceId: Type.Optional(id),
+		workspaceId: Type.Optional(Type.String({ minLength: 1, maxLength: 4_096 })),
+		workspaceKind: Type.Optional(
+			Type.Union([Type.Literal("team-default"), Type.Literal("session"), Type.Literal("project")]),
+		),
 		executionMode: Type.Optional(Type.Union([Type.Literal("sandbox"), Type.Literal("full-access")])),
 		modelSettings: Type.Optional(UpdateTeamSessionModelSettingsInputSchema),
 		teamRevision: Type.Optional(Type.Integer({ minimum: 1, maximum: Number.MAX_SAFE_INTEGER })),

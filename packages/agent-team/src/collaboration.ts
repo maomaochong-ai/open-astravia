@@ -1,6 +1,12 @@
 import type { PromptAttachmentRef, RuntimeFailure } from "@vetta/runtime-core";
 import type { ConversationMessageRecord } from "@vetta/runtime-core/conversation";
-import type { AgentProfile, AgentTeamDocument, TeamDefinition, TeamSessionDocument } from "./contracts.js";
+import type {
+	AgentProfile,
+	AgentTeamDocument,
+	TeamDefinition,
+	TeamSessionDocument,
+	TeamUserMessageMention,
+} from "./contracts.js";
 import { resolveMemberProfile, resolveMemberResponsibility } from "./domain.js";
 
 export type TeamCapabilityKind = "skill" | "scene" | "mcp" | "plugin" | "tool" | (string & {});
@@ -251,6 +257,10 @@ export interface TeamLegacyEventsMigrationRecord {
 export interface TeamMessageRoutingRecord {
 	readonly customType: "agent-team.message-routing.v1";
 	readonly messageEntryId: string;
+	/** Participants explicitly addressed by the local user before orchestration resolves defaults. */
+	readonly requestedParticipantIds?: readonly string[];
+	/** Verified structured member tokens for rendering and member-view visibility. */
+	readonly memberMentions?: readonly TeamUserMessageMention[];
 	readonly addressedParticipantIds?: readonly string[];
 	readonly requestId?: string;
 	readonly intent?: "inform" | "question";

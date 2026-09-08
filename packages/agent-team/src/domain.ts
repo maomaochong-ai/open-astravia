@@ -3,6 +3,7 @@ import type {
 	AgentProfileDeleteImpact,
 	AgentProfileUpdateImpact,
 	AgentTeamDocument,
+	SendTeamMessageInput,
 	TeamDefinition,
 	TeamMember,
 } from "./contracts.js";
@@ -20,18 +21,34 @@ export function resolveMemberByHandle(team: TeamDefinition, handle: string): Tea
 	const normalized = normalizeMentionHandle(handle);
 	return team.members.find((member) => normalizeMentionHandle(member.handle) === normalized);
 }
-export function resolveMentionedMemberIds(
-	team: TeamDefinition,
-	text: string,
-	explicitMemberIds: readonly string[] = [],
-): readonly string[] {
-	const memberByHandle = new Map(team.members.map((member) => [normalizeMentionHandle(member.handle), member.id]));
-	const ids = new Set(explicitMemberIds);
-	for (const match of text.matchAll(/(?:^|\s)@([^\s@]+)/gu)) {
-		const memberId = memberByHandle.get(normalizeMentionHandle(match[1] ?? ""));
-		if (memberId) ids.add(memberId);
+
+/** Validates that routing metadata describes real editor tokens in the persisted Markdown text. */
+export function validateTeamMessageMentions(team: TeamDefinition, input: SendTeamMessageInput): void {
+	if (input.memberMentions === undefined) return;
+	let previousEnd = 0;
+	for (const mention of input.memberMentions) {
+		const member = team.members.find((candidate) => candidate.id === mention.participantId);
+		if (!member) throw new Error(`Unknown mentioned team member: ${mention.participantId}`);
+		if (
+			!Number.isInteger(mention.start) ||
+			!Number.isInteger(mention.end) ||
+			mention.start < previousEnd ||
+			mention.end <= mention.start ||
+			mention.end > input.text.length ||
+			input.text.slice(mention.start, mention.end) !== `@${mention.handle}` ||
+			normalizeMentionHandle(mention.handle) !== normalizeMentionHandle(member.handle)
+		) {
+			throw new Error(`Invalid member mention annotation: ${mention.participantId}`);
+		}
+		previousEnd = mention.end;
 	}
-	return [...ids];
+	const mentionedIds = [...new Set(input.memberMentions.map((mention) => mention.participantId))];
+	if (
+		mentionedIds.length !== input.targetMemberIds.length ||
+		mentionedIds.some((memberId, index) => input.targetMemberIds[index] !== memberId)
+	) {
+		throw new Error("Member mention annotations do not match message targets");
+	}
 }
 export function resolveMemberProfile(document: Pick<AgentTeamDocument, "agents">, member: TeamMember): AgentProfile {
 	const profile = document.agents.find((candidate) => candidate.id === member.binding.agentProfileId);

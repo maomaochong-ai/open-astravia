@@ -15,9 +15,17 @@
 - Ordinary coordination/member Conversation bindings, persistent work-item/attempt/publication contracts, roster discovery and Team-safe observation tokens.
 - Agent Team domain contracts, deterministic public-context projection, and structured delegation tool.
 - Extensible orchestration/context policy registry and capability extension selections, with built-in Scene capability routing.
-- Versioned built-in Agent/team presets, all-capability selection semantics, deletable-profile input validation, and persisted member profile identity for deterministic runtime reconfiguration.
+- Initial Agent/team resources, all-capability selection semantics, deletable-profile input validation, and persisted member profile identity for deterministic runtime reconfiguration.
 
 ### Changed
+
+- Initial Agent Profiles and teams now use ordinary UUID identities and the same contracts as user-created data; preset identity/version fields and startup reseeding were removed.
+
+- Team session workspace snapshots and catalog summaries now expose semantic `team-default`, `session`, or `project` workspace kinds. New hosts can allocate isolated session workspaces while continuing to read legacy Team-owned defaults without inferring storage paths.
+
+- Team message routing now persists validated structured member-mention annotations separately from orchestration-resolved delivery targets. Member-scoped visibility no longer infers user intent from `@handle` text.
+
+- Team session record creation can now carry an optional project workspace selection; the resolved workspace identity and cwd remain immutable session snapshots, while omitted selections allocate a workspace owned by the new session.
 
 - Team session activities now preserve the optional originating tool-call ID from collaboration work items, allowing host displays to attach member progress to the exact delegation tool without changing persisted Conversation messages.
 

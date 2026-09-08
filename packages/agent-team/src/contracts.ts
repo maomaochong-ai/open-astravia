@@ -35,8 +35,6 @@ export interface AgentProfile {
 	readonly blueprintId: string;
 	/** Optional file-backed override; absent means use the registered blueprint default. */
 	readonly systemPrompt?: string;
-	/** Stable source identity retained for bundled definitions after customization. */
-	readonly presetId?: string;
 	readonly abilities: AgentAbilitySelection;
 	readonly scope: AgentProfileScope;
 	readonly copiedFrom?: string;
@@ -81,8 +79,6 @@ export interface TeamDefinition {
 
 export interface AgentTeamDocument {
 	readonly schemaVersion: typeof AGENT_TEAM_SCHEMA_VERSION;
-	/** One-time seed/migration marker. It prevents deleted user data from being re-created on every read. */
-	readonly presetVersion?: number;
 	readonly revision: number;
 	readonly agents: readonly AgentProfile[];
 	readonly teams: readonly TeamDefinition[];
@@ -91,7 +87,7 @@ export interface AgentTeamDocument {
 export interface TeamMemberRuntimeState {
 	readonly sessionId: string;
 	readonly sessionPath: string;
-	/** Profile identity is optional only for sessions written before preset-aware reconfiguration. */
+	/** Profile identity is optional only for sessions written before profile-aware reconfiguration. */
 	readonly agentProfileId?: string;
 	readonly agentProfileRevision: number;
 	/** 已生效的团队任务书指纹；与 Profile 修订一起构成成员运行时的配置身份。 */
@@ -144,8 +140,10 @@ export interface TeamSessionDocument {
 	readonly revision: number;
 	readonly id: string;
 	readonly teamId: string;
-	/** Stable owner workspace shared by every session created under the Team. */
+	/** Stable activity workspace selected when this Team session was created. */
 	readonly workspaceId?: string;
+	/** Semantic workspace ownership; UI projections must not infer this from cwd or workspaceId. */
+	readonly workspaceKind?: TeamSessionWorkspaceKind;
 	/** Execution mode shared by the coordination and member runtimes in this Team session. */
 	readonly executionMode?: SessionExecutionMode;
 	readonly modelSettings?: TeamSessionModelSettings;
@@ -174,6 +172,15 @@ export interface TeamSessionModelSettings {
 	readonly modelKey: string;
 	readonly reasoning?: string;
 }
+
+/** `team-default` is retained for sessions created before per-session workspaces. */
+export type TeamSessionWorkspaceKind = "team-default" | "session" | "project";
+
+/** Optional project workspace override captured when a Team session is created. */
+export type TeamSessionWorkspaceSelection = {
+	readonly kind: "project";
+	readonly path: string;
+};
 
 export interface UpdateTeamSessionModelSettingsInput extends TeamSessionModelSettings {}
 
@@ -265,6 +272,8 @@ export interface DeleteTeamInput {
 export interface SendTeamMessageInput {
 	readonly requestId: string;
 	readonly text: string;
+	/** Structured member tokens emitted by the composer; plain `@text` never creates these. */
+	readonly memberMentions?: readonly TeamUserMessageMention[];
 	readonly targetMemberIds: readonly string[];
 	readonly attachments?: readonly PromptAttachmentRef[];
 	/** Per-turn model selection applied consistently to every initially addressed member. */
@@ -272,11 +281,21 @@ export interface SendTeamMessageInput {
 	readonly reasoning?: string;
 }
 
+export interface TeamUserMessageMention {
+	readonly participantId: string;
+	readonly handle: string;
+	/** UTF-16 offsets into `SendTeamMessageInput.text`. */
+	readonly start: number;
+	readonly end: number;
+}
+
 /** Initial settings captured when a new Team session is reserved for first paint. */
 export interface CreateTeamSessionRecordOptions {
 	/** Renderer-reserved UUID used to route before Runtime initialization completes. */
 	readonly sessionId?: string;
 	readonly executionMode?: SessionExecutionMode;
+	/** Omitted to allocate a new workspace owned by this Team session. */
+	readonly workspace?: TeamSessionWorkspaceSelection;
 }
 
 /** Business activity remains separate from the ordinary message type. */
@@ -301,6 +320,12 @@ export interface TeamSessionSnapshot {
 	readonly conversationRevision: number;
 	readonly messages: readonly ConversationMessageRecord[];
 	readonly activities: readonly TeamSessionActivity[];
+	/** Explicit user-addressing projection. Empty recipients mean the message belongs to the aggregate view only. */
+	readonly userMessageAnnotations?: readonly {
+		readonly messageEntryId: string;
+		readonly participantIds: readonly string[];
+		readonly mentions: readonly TeamUserMessageMention[];
+	}[];
 }
 
 /** Stable renderer bookmark for reopening an ordinary coordination Conversation. */
@@ -314,6 +339,10 @@ export interface TeamSessionListItem extends TeamSessionReference {
 	readonly title: string;
 	readonly createdAt: number;
 	readonly updatedAt: number;
+	/** Optional only for catalog records created before workspace ownership was explicit. */
+	readonly workspaceKind?: TeamSessionWorkspaceKind;
+	readonly workspaceId?: string;
+	readonly cwd?: string;
 }
 
 /** Safe renderer-facing updates plus product-neutral ordinary message events. */

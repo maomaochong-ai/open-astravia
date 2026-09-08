@@ -7,8 +7,8 @@ import {
 	previewAgentProfileDelete,
 	previewAgentProfileUpdate,
 	resolveMemberResponsibility,
-	resolveMentionedMemberIds,
 	resolveTeamTargets,
+	validateTeamMessageMentions,
 } from "../src/domain.js";
 
 const profile = (id: string, scope: AgentProfile["scope"] = { kind: "library" }): AgentProfile => ({
@@ -44,6 +44,33 @@ describe("Agent Team domain", () => {
 	it("normalizes Unicode handles and routes an empty target to the leader", () => {
 		expect(normalizeMentionHandle(" @Ｒｅｓｅａｒｃｈｅｒ ")).toBe("researcher");
 		expect(resolveTeamTargets(team, [])).toEqual(["member-1"]);
+	});
+
+	it("validates structured member mentions without inferring plain @ text", () => {
+		expect(() =>
+			validateTeamMessageMentions(team, {
+				requestId: "request",
+				text: "**请** @Researcher 核查",
+				targetMemberIds: ["member-2"],
+				memberMentions: [{ participantId: "member-2", handle: "Researcher", start: 6, end: 17 }],
+			}),
+		).not.toThrow();
+		expect(() =>
+			validateTeamMessageMentions(team, {
+				requestId: "request",
+				text: "@Researcher 核查",
+				targetMemberIds: ["member-1"],
+				memberMentions: [{ participantId: "member-1", handle: "Researcher", start: 0, end: 11 }],
+			}),
+		).toThrow("Invalid member mention annotation");
+		expect(() =>
+			validateTeamMessageMentions(team, {
+				requestId: "request",
+				text: "plain @Researcher text",
+				targetMemberIds: [],
+				memberMentions: [],
+			}),
+		).not.toThrow();
 	});
 
 	it("rejects duplicate handles and invalid binding scopes", () => {
@@ -102,14 +129,6 @@ describe("Agent Team domain", () => {
 			}),
 			expect.objectContaining({ teamId: "solo-team", deletesTeam: true }),
 		]);
-	});
-
-	it("routes known @handles while ignoring unrelated mentions", () => {
-		expect(resolveMentionedMemberIds(team, "请 @Ｒｅｓｅａｒｃｈｅｒ 核查，抄送 @unknown", ["member-1"])).toEqual([
-			"member-1",
-			"member-2",
-		]);
-		expect(resolveMentionedMemberIds(team, "没有团队成员提及")).toEqual([]);
 	});
 
 	it("keeps team-owned copies out of the reusable agent library", () => {

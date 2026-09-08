@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createAgentTeamFixture } from "../src/presets.js";
+import { createAgentTeamFixture } from "../src/initial-resources.js";
 import {
 	parseAgentTeamDocument,
 	parseCreateAgentProfileInput,
@@ -194,6 +194,19 @@ describe("Agent Team IPC input validation", () => {
 			},
 		};
 		expect(parseTeamSessionDocument(session)).toMatchObject({ id: "session" });
+		expect(
+			parseTeamSessionDocument({
+				...session,
+				workspaceId: `C:/${"nested/".repeat(50)}project`,
+			}),
+		).toMatchObject({ cwd: "C:/workspace" });
+		expect(
+			parseTeamSessionDocument({
+				...session,
+				workspaceKind: "session",
+				workspaceId: "agent-team:team:session:workspace-a",
+			}),
+		).toMatchObject({ workspaceKind: "session" });
 		expect(
 			parseTeamSessionDocument({
 				...session,
