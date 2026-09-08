@@ -98,6 +98,8 @@ export interface DesktopConfigData {
 		schemaInjectionScope?: SchemaInjectionScopeData;
 		/** AI 访问开关（访问）：控制 dbx MCP 工具是否注册进对话工具集。缺省关。 */
 		dbxToolEnabled?: boolean;
+		/** 数据库工具行为偏好（单机工具偏好分区）：结果分页/自动刷新等默认值。 */
+		toolPrefs?: DatabaseToolPrefsData;
 		/** 连接环境标记（W4-②）：连接名 → "prod" | "dev"，缺省 dev。 */
 		connectionEnv?: Record<string, "prod" | "dev">;
 		/** 生产写授权（W4-②）：连接名 → 已显式授权允许生产写操作。 */
@@ -111,6 +113,14 @@ export interface DesktopConfigData {
 		/** 连接级「允许 AI 访问」白名单（B3.1-①-C）：连接名 → 允许（缺省按 connectionEnv：prod 关 / dev 开）。 */
 		connectionAiAccess?: Record<string, boolean>;
 	};
+}
+
+/** 数据库工具行为偏好（与 desktop-config 的 DatabaseToolPrefsConfig 同构）。 */
+export interface DatabaseToolPrefsData {
+	/** 结果每页默认行数（打开表浏览/自由 SQL 结果网格初值）。缺省 100。 */
+	resultPageSize?: number;
+	/** 结果自动刷新默认开关。缺省关。 */
+	resultAutoRefresh?: boolean;
 }
 
 /**

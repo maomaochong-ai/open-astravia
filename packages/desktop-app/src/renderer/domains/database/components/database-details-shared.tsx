@@ -103,7 +103,7 @@ export function InfoItem({
 							<span
 								className={cn(
 									"h-3 w-3",
-									copied ? "icon-[mdi--check] text-emerald-500" : "icon-[mdi--content-copy]",
+									copied ? "icon-[lucide--check] text-emerald-500" : "icon-[lucide--copy]",
 								)}
 							/>
 						</button>
@@ -149,7 +149,7 @@ export function SchemaInjectionRow({ model }: { model: DatabaseWorkspaceModel })
 	return (
 		<DatabaseSurface className="flex items-start justify-between gap-4 px-4 py-3.5">
 			<div className="flex min-w-0 items-start gap-2.5">
-				<span className="icon-[mdi--brain] mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+				<span className="icon-[lucide--brain] mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
 				<div className="min-w-0">
 					<p className="text-[12.5px] font-semibold text-foreground">{t("databaseSchemaInjection")}</p>
 					<p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
@@ -176,7 +176,7 @@ export function DbxToolAccessRow({ model }: { model: DatabaseWorkspaceModel }): 
 	return (
 		<DatabaseSurface className="flex items-start justify-between gap-4 px-4 py-3.5">
 			<div className="flex min-w-0 items-start gap-2.5">
-				<span className="icon-[mdi--shield-lock-outline] mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+				<span className="icon-[lucide--shield-lock] mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
 				<div className="min-w-0">
 					<p className="text-[12.5px] font-semibold text-foreground">{t("databaseDbxToolAccess")}</p>
 					<p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
@@ -203,7 +203,7 @@ export function SafetyModeRow({ model }: { model: DatabaseWorkspaceModel }): JSX
 	return (
 		<DatabaseSurface className="flex items-start justify-between gap-4 px-4 py-3.5">
 			<div className="flex min-w-0 items-start gap-2.5">
-				<span className="icon-[mdi--shield-check-outline] mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+				<span className="icon-[lucide--shield-check] mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
 				<div className="min-w-0">
 					<p className="text-[12.5px] font-semibold text-foreground">{t("databaseSafetyMode")}</p>
 					<p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
@@ -235,7 +235,7 @@ export function DatabaseLimitsRow({ model }: { model: DatabaseWorkspaceModel }):
 		<DatabaseSurface className="flex flex-col gap-3 px-4 py-3.5">
 			<div className="flex items-start justify-between gap-4">
 				<div className="flex min-w-0 items-start gap-2.5">
-					<span className="icon-[mdi--format-list-numbered] mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+					<span className="icon-[lucide--list-ordered] mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
 					<div className="min-w-0">
 						<p className="text-[12.5px] font-semibold text-foreground">{t("databaseRowLimit")}</p>
 						<p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">{t("databaseRowLimitDescription")}</p>
@@ -260,7 +260,7 @@ export function DatabaseLimitsRow({ model }: { model: DatabaseWorkspaceModel }):
 			</div>
 			<div className="flex items-start justify-between gap-4 border-t border-border/40 pt-3">
 				<div className="flex min-w-0 items-start gap-2.5">
-					<span className="icon-[mdi--timer-outline] mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+					<span className="icon-[lucide--timer] mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
 					<div className="min-w-0">
 						<p className="text-[12.5px] font-semibold text-foreground">{t("databaseQueryTimeout")}</p>
 						<p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">{t("databaseQueryTimeoutDescription")}</p>
@@ -283,6 +283,66 @@ export function DatabaseLimitsRow({ model }: { model: DatabaseWorkspaceModel }):
 					</SelectContent>
 				</Select>
 			</div>
+		</DatabaseSurface>
+	);
+}
+
+
+/** 工具偏好：结果默认每页行数（database.toolPrefs.resultPageSize，缺省 100）。
+ * 新打开的表浏览与自由 SQL 结果网格以此作为初值；工作台会话内仍可临时调整。
+ */
+export function ToolPrefsPageSizeRow({ model }: { model: DatabaseWorkspaceModel }): JSX.Element {
+	const { t } = useTranslation("settings");
+	return (
+		<DatabaseSurface className="flex items-start justify-between gap-4 px-4 py-3.5">
+			<div className="flex min-w-0 items-start gap-2.5">
+				<span className="icon-[lucide--list-ordered] mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+				<div className="min-w-0">
+					<p className="text-[12.5px] font-semibold text-foreground">{t("databasePageSize")}</p>
+					<p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">{t("databaseToolingPageSizeDescription")}</p>
+				</div>
+			</div>
+			<Select
+				value={String(model.toolPrefs.resultPageSize ?? 100)}
+				onValueChange={(value) => void model.actions.setToolPref({ resultPageSize: Number(value) })}
+				disabled={model.toolPrefsBusy}
+			>
+				<SelectTrigger size="sm" className="w-fit shrink-0">
+					<SelectValue />
+				</SelectTrigger>
+				<SelectContent>
+					{[50, 100, 200, 500].map((n) => (
+						<SelectItem key={n} value={String(n)}>
+							{n}
+						</SelectItem>
+					))}
+				</SelectContent>
+			</Select>
+		</DatabaseSurface>
+	);
+}
+
+/** 工具偏好：结果默认自动刷新（database.toolPrefs.resultAutoRefresh，缺省关）。
+ * 开启后新打开的结果网格按固定间隔自动刷新；工作台会话内仍可临时开关。
+ */
+export function ToolPrefsAutoRefreshRow({ model }: { model: DatabaseWorkspaceModel }): JSX.Element {
+	const { t } = useTranslation("settings");
+	return (
+		<DatabaseSurface className="flex items-start justify-between gap-4 px-4 py-3.5">
+			<div className="flex min-w-0 items-start gap-2.5">
+				<span className="icon-[lucide--refresh-cw] mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+				<div className="min-w-0">
+					<p className="text-[12.5px] font-semibold text-foreground">{t("databaseAutoRefresh")}</p>
+					<p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">{t("databaseToolingAutoRefreshDescription")}</p>
+				</div>
+			</div>
+			<Switch
+				checked={model.toolPrefs.resultAutoRefresh === true}
+				disabled={model.toolPrefsBusy}
+				onCheckedChange={() =>
+					void model.actions.setToolPref({ resultAutoRefresh: model.toolPrefs.resultAutoRefresh !== true })
+				}
+			/>
 		</DatabaseSurface>
 	);
 }

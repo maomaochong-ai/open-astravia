@@ -2,7 +2,7 @@ import { confirmDialogAtom } from "@shared/store/atoms";
 import { useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { SchemaInjectionScopeData } from "../../../../preload/api-types/config";
+import type { DatabaseToolPrefsData, SchemaInjectionScopeData } from "../../../../preload/api-types/config";
 import type {
 	ConnectionEnv,
 	DbAddConnectionParams,
@@ -51,6 +51,9 @@ export type SchemaInjectionScopeKind = SchemaInjectionScopeData["scope"];
 /** 感知范围缺省值：all（全部连接全表）。 */
 const DEFAULT_SCHEMA_INJECTION_SCOPE: SchemaInjectionScopeData = { scope: "all", connections: [], tables: [] };
 
+/** 数据库工具偏好缺省值（与主进程 normalizeToolPrefs 一致；工作台控件初值同源）。 */
+const DEFAULT_TOOL_PREFS: DatabaseToolPrefsData = { resultPageSize: 100, resultAutoRefresh: false };
+
 export type DatabaseFormFieldKey =
 	| "dbType"
 	| "name"
@@ -95,6 +98,9 @@ export interface DatabaseWorkspaceModel {
 	/** B3.1-②-B 查询执行超时（毫秒）。 */
 	readonly queryTimeoutMs: number;
 	readonly queryTimeoutBusy: boolean;
+	/** 数据库工具行为偏好（工具偏好分区，工作台控件默认值来源）。 */
+	readonly toolPrefs: DatabaseToolPrefsData;
+	readonly toolPrefsBusy: boolean;
 	/** B3.1-①-C 连接级「允许 AI 访问」白名单（显式配置）。 */
 	readonly connectionAiAccess: Readonly<Record<string, boolean>>;
 	/** B3.1-①-C 生效值：显式白名单 ?? 按 env 缺省（prod 关 / dev 开）。 */
@@ -130,6 +136,8 @@ export interface DatabaseWorkspaceModel {
 		readonly changeQueryTimeout: (value: string) => Promise<void>;
 		/** B3.1-①-C 切换连接级「允许 AI 访问」。 */
 		readonly toggleConnectionAiAccess: (name: string) => void;
+		/** 工具偏好：合并写入子集（如 { resultPageSize: 200 }）并持久化。 */
+		readonly setToolPref: (patch: Partial<DatabaseToolPrefsData>) => Promise<void>;
 	};
 }
 
@@ -204,6 +212,9 @@ export function useDatabaseWorkspaceModel(): DatabaseWorkspaceModel {
 	// B3.1-①-C 连接级「允许 AI 访问」白名单。
 	const [connectionAiAccess, setConnectionAiAccess] = useState<Record<string, boolean>>({});
 	const [connectionAiAccessBusy, setConnectionAiAccessBusy] = useState(false);
+	// 数据库工具行为偏好（database.toolPrefs，缺省 100 行 / 不自动刷新）。
+	const [toolPrefs, setToolPrefs] = useState<DatabaseToolPrefsData>(DEFAULT_TOOL_PREFS);
+	const [toolPrefsBusy, setToolPrefsBusy] = useState(false);
 
 	const refresh = useCallback(async () => {
 		try {
@@ -235,6 +246,7 @@ export function useDatabaseWorkspaceModel(): DatabaseWorkspaceModel {
 			setRowLimit(config.database?.rowLimit ?? 100);
 			setQueryTimeoutMs(config.database?.queryTimeoutMs ?? 30_000);
 			setConnectionAiAccess(config.database?.connectionAiAccess ?? {});
+			setToolPrefs(config.database?.toolPrefs ?? DEFAULT_TOOL_PREFS);
 		});
 	}, []);
 
@@ -636,6 +648,29 @@ export function useDatabaseWorkspaceModel(): DatabaseWorkspaceModel {
 		}
 	}, []);
 
+	// 工具偏好：与既有开关一致整体读后合并写（缺省 toolPrefs 已含全字段，无丢失风险）。
+	const setToolPref = useCallback(
+		async (patch: Partial<DatabaseToolPrefsData>) => {
+			setToolPrefsBusy(true);
+			try {
+				const next = { ...toolPrefs, ...patch };
+				await window.astravia.config.set({ database: { toolPrefs: next } });
+				setToolPrefs(next);
+				recordSettingsUsage({
+					tab: "database",
+					action: "changed",
+					target: "tool-prefs",
+					value: Object.entries(patch)
+						.map(([k, v]) => `${k}=${String(v)}`)
+						.join(","),
+				});
+			} finally {
+				setToolPrefsBusy(false);
+			}
+		},
+		[toolPrefs],
+	);
+
 	// B3.1-①-C 切换连接级「允许 AI 访问」（基于生效值取反后显式写入白名单）。
 	const toggleConnectionAiAccess = useCallback(
 		(name: string) => {
@@ -686,6 +721,8 @@ export function useDatabaseWorkspaceModel(): DatabaseWorkspaceModel {
 		queryTimeoutMs,
 		queryTimeoutBusy,
 		connectionAiAccess,
+		toolPrefs,
+		toolPrefsBusy,
 		aiAccessEffective,
 		connectionAiAccessBusy,
 		addOpen,
@@ -724,6 +761,7 @@ export function useDatabaseWorkspaceModel(): DatabaseWorkspaceModel {
 			changeRowLimit,
 			changeQueryTimeout,
 			toggleConnectionAiAccess,
+			setToolPref,
 		},
 	};
 }

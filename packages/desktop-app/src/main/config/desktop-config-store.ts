@@ -44,9 +44,18 @@ export interface SchemaInjectionScopeConfig {
  * dbxToolEnabled：AI 访问开关——控制 dbx MCP 工具是否注册进对话工具集（访问）。缺省关；
  * 关闭时 AI 无法调用 dbx 工具执行 SQL，与感知开关相互独立（B2.10-W2 权限分离）。
  */
+/** 数据库工具行为偏好（单机工具偏好分区；缺省值与工作台控件初值同源）。 */
+export interface DatabaseToolPrefsConfig {
+	/** 结果每页默认行数（打开表浏览服务端分页与自由 SQL 客户端分页初值）。缺省 100。 */
+	resultPageSize?: number;
+	/** 结果自动刷新默认开关：开时结果网格挂载即以固定间隔自动刷新。缺省关。 */
+	resultAutoRefresh?: boolean;
+}
+
 export interface DatabaseConfig {
 	schemaInjection?: boolean;
 	schemaInjectionScope?: SchemaInjectionScopeConfig;
+	toolPrefs?: DatabaseToolPrefsConfig;
 	dbxToolEnabled?: boolean;
 	/** 连接环境标记（W4-②）：连接名 → "prod" | "dev"（缺省 dev）。 */
 	connectionEnv?: Record<string, "prod" | "dev">;
@@ -127,6 +136,7 @@ const DEFAULT_CONFIG: DesktopConfig = {
 	database: {
 		schemaInjection: false,
 		dbxToolEnabled: false,
+		toolPrefs: { resultPageSize: 100, resultAutoRefresh: false },
 		connectionEnv: {},
 		prodWriteApproved: {},
 		safetyMode: "strict",
@@ -266,6 +276,20 @@ export function normalizeProdWriteApproved(value: unknown): Record<string, boole
 
 const ROW_LIMIT_VALUES = [50, 100, 200, 500];
 
+/** 工具偏好可选每页行数（与行数上限下拉一致）。 */
+const TOOL_PAGE_SIZE_VALUES = [50, 100, 200, 500];
+
+/** 归一化数据库工具偏好：非法值回落默认（每页 100 / 自动刷新关）。 */
+export function normalizeToolPrefs(value: unknown): DatabaseToolPrefsConfig {
+	if (typeof value !== "object" || value === null) return { resultPageSize: 100, resultAutoRefresh: false };
+	const input = value as Record<string, unknown>;
+	const pageSize = typeof input.resultPageSize === "number" ? input.resultPageSize : 100;
+	return {
+		resultPageSize: TOOL_PAGE_SIZE_VALUES.includes(pageSize) ? pageSize : 100,
+		resultAutoRefresh: input.resultAutoRefresh === true,
+	};
+}
+
 /** 归一化连接级「允许 AI 访问」白名单：只保留合法连接名与 true 值。 */
 export function normalizeConnectionAiAccess(value: unknown): Record<string, boolean> {
 	if (typeof value !== "object" || value === null) return {};
@@ -281,6 +305,7 @@ export function normalizeDatabase(value: unknown): DatabaseConfig {
 		return {
 			schemaInjection: false,
 			dbxToolEnabled: false,
+			toolPrefs: { resultPageSize: 100, resultAutoRefresh: false },
 			connectionEnv: {},
 			prodWriteApproved: {},
 			safetyMode: "strict",
@@ -297,6 +322,7 @@ export function normalizeDatabase(value: unknown): DatabaseConfig {
 		schemaInjection: input.schemaInjection === true,
 		schemaInjectionScope: normalizeSchemaInjectionScope(input.schemaInjectionScope),
 		dbxToolEnabled: input.dbxToolEnabled === true,
+		toolPrefs: normalizeToolPrefs(input.toolPrefs),
 		connectionEnv: normalizeConnectionEnv(input.connectionEnv),
 		prodWriteApproved: normalizeProdWriteApproved(input.prodWriteApproved),
 		safetyMode: input.safetyMode === "relaxed" ? "relaxed" : "strict",

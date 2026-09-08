@@ -48,6 +48,10 @@ const AUTO_REFRESH_INTERVALS = [5, 10, 30, 60] as const;
 		onGoToPage?: (page: number) => void;
 		/** 服务端分页下切换每页行数：workspace 注入时页脚显示行数下拉（对齐 dbx rows-per-page）。 */
 		onPageSizeChange?: (size: number) => void;
+		/** 客户端分页（自由 SQL / AI 回填）默认每页行数：来自 database.toolPrefs.resultPageSize（缺省 100）。 */
+		defaultClientPageSize?: number;
+		/** 默认自动刷新：来自 database.toolPrefs.resultAutoRefresh（缺省关）。开启后按固定间隔自动刷新结果。 */
+		defaultAutoRefresh?: boolean;
 		/** B2.9-W1 反向：结果工具栏「让 AI 解读此查询」入口（携带当前 SQL + 结果摘要跳转对话）。 */
 		onAnalyzeResult?: () => void;
 		/** B3.2-R 数据编辑：打开表浏览或可编辑自由 SQL（简单单表 SELECT）结果均可开启（Workspace 计算后传入）。 */
@@ -137,6 +141,8 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 		canGoNextPage = false,
 		page = null,
 		pageSize = null,
+		defaultClientPageSize = 100,
+		defaultAutoRefresh = false,
 		loadingPage = false,
 		onGoToPage,
 		onPageSizeChange,
@@ -156,8 +162,8 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 }: DatabaseResultGridProps): JSX.Element {
 	const { t } = useTranslation("settings");
 
-	// B3.2-R 自动刷新：间隔秒数（null = 关闭）；onRefresh 经 ref 稳定，定时器只随间隔重建。
-	const [autoRefreshSeconds, setAutoRefreshSeconds] = useState<number | null>(null);
+	// 单机工具偏好：resultAutoRefresh=true 时挂载即以默认间隔自动刷新（对齐 dbx 打开表自动刷新）。
+	const [autoRefreshSeconds, setAutoRefreshSeconds] = useState<number | null>(defaultAutoRefresh ? AUTO_REFRESH_DEFAULT_SECONDS : null);
 	const onRefreshRef = useRef(onRefresh);
 	useEffect(() => {
 		onRefreshRef.current = onRefresh;
@@ -187,7 +193,7 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 	// 客户端分页（自由 SQL / AI 回填结果用）：作用于已加载结果集，新查询开始时回到第 1 页。
 	// V6-② 打开表浏览改用服务端分页（page/pageSize props 由 workspace 注入），此处仅兜底自由 SQL。
 	const [clientPage, setClientPage] = useState(1);
-	const [clientPageSize, setClientPageSize] = useState(100);
+	const [clientPageSize, setClientPageSize] = useState(defaultClientPageSize);
 
 	const columnKinds = useMemo<readonly ResultColumnKind[]>(() => {
 		if (!result) return [];
@@ -267,7 +273,7 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 	return (
 		<div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl bg-muted/35">
 			<div className="flex shrink-0 items-center justify-between gap-3 px-4 pb-2 pt-3">
-				<DatabaseSectionLabel icon="icon-[mdi--table-large]">{t("databaseResult")}</DatabaseSectionLabel>
+				<DatabaseSectionLabel icon="icon-[lucide--table-2]">{t("databaseResult")}</DatabaseSectionLabel>
 				{status === "success" && result ? (
 					<div className="flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground">
 						<span className="truncate">{connectionName}</span>
@@ -307,7 +313,7 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 								title={t("databaseRefresh")}
 								onClick={onRefresh}
 							>
-								<span className="icon-[mdi--refresh] h-3.5 w-3.5" />
+								<span className="icon-[lucide--refresh-cw] h-3.5 w-3.5" />
 							</Button>
 						) : null}
 						{onRefresh ? (
@@ -324,7 +330,7 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 											autoRefreshSeconds !== null ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
 										)}
 									>
-										<span className="icon-[mdi--timer-outline] h-3.5 w-3.5" />
+										<span className="icon-[lucide--timer] h-3.5 w-3.5" />
 										{autoRefreshSeconds !== null ? `${autoRefreshSeconds}s` : t("databaseAutoRefreshShort")}
 									</Button>
 								</DropdownMenuTrigger>
@@ -335,7 +341,7 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 									</DropdownMenuItem>
 									{AUTO_REFRESH_INTERVALS.map((seconds) => (
 										<DropdownMenuItem key={seconds} onClick={() => setAutoRefreshSeconds(seconds)}>
-											<span className={cn("h-4 w-4", autoRefreshSeconds === seconds ? "icon-[mdi--check]" : "")} />
+											<span className={cn("h-4 w-4", autoRefreshSeconds === seconds ? "icon-[lucide--check]" : "")} />
 											{t("databaseAutoRefreshEvery", { seconds })}
 										</DropdownMenuItem>
 									))}
@@ -352,7 +358,7 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 								disabled={addingRow}
 								onClick={beginAddRow}
 							>
-								<span className="icon-[mdi--plus] h-3.5 w-3.5" />
+								<span className="icon-[lucide--plus] h-3.5 w-3.5" />
 								{t("databaseEditAddRow")}
 							</Button>
 						) : null}
@@ -366,17 +372,17 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 									aria-label={t("databaseExport")}
 									title={t("databaseExport")}
 								>
-									<span className="icon-[mdi--export] h-3.5 w-3.5" />
+									<span className="icon-[lucide--file-down] h-3.5 w-3.5" />
 									{t("databaseExport")}
 								</Button>
 							</DropdownMenuTrigger>
 							<DropdownMenuContent align="end" className="w-40">
 								<DropdownMenuItem onClick={exportCsv}>
-									<span className="icon-[mdi--file-delimited-outline] h-4 w-4" />
+									<span className="icon-[lucide--file-text] h-4 w-4" />
 									{t("databaseExportCsv")}
 								</DropdownMenuItem>
 								<DropdownMenuItem onClick={exportJson}>
-									<span className="icon-[mdi--code-json] h-4 w-4" />
+									<span className="icon-[lucide--braces] h-4 w-4" />
 									{t("databaseExportJson")}
 								</DropdownMenuItem>
 							</DropdownMenuContent>
@@ -389,7 +395,7 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 							title={t("databaseCopyResult")}
 							onClick={copyResult}
 						>
-							<span className="icon-[mdi--content-copy] h-3.5 w-3.5" />
+							<span className="icon-[lucide--copy] h-3.5 w-3.5" />
 							{t("databaseCopyResult")}
 						</Button>
 						{onAnalyzeResult ? (
@@ -401,7 +407,7 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 								title={t("databaseAnalyzeResult.label")}
 								onClick={onAnalyzeResult}
 							>
-								<span className="icon-[mdi--chat-question-outline] h-3.5 w-3.5" />
+								<span className="icon-[lucide--message-circle-question-mark] h-3.5 w-3.5" />
 								{t("databaseAnalyzeResult.label")}
 							</Button>
 							) : null}
@@ -425,7 +431,7 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 									recordSettingsUsage({ tab: "database", action: editMode ? "disabled" : "enabled", target: "data-edit-mode" });
 								}}
 							>
-								<span className="icon-[mdi--pencil-outline] h-3.5 w-3.5" />
+								<span className="icon-[lucide--pencil] h-3.5 w-3.5" />
 								{t("databaseEditMode")}
 							</Button>
 						</div>
@@ -433,7 +439,7 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 			</div>
 
 			{status === "idle" ? (
-				<CenterState icon="icon-[mdi--table-large]" text={t("databaseResultIdle")} />
+				<CenterState icon="icon-[lucide--table-2]" text={t("databaseResultIdle")} />
 			) : status === "running" ? (
 				<RunningState />
 			) : status === "error" ? (
@@ -451,7 +457,7 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 								title={t("databaseAnalyzeError.label")}
 								onClick={onAnalyzeResult}
 							>
-								<span className="icon-[mdi--chat-question-outline] h-3.5 w-3.5" />
+								<span className="icon-[lucide--message-circle-question-mark] h-3.5 w-3.5" />
 								{t("databaseAnalyzeError.label")}
 							</Button>
 						</div>
@@ -488,7 +494,7 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 														<span
 															className={cn(
 																"h-3 w-3 shrink-0 text-muted-foreground",
-																sort?.direction === "asc" ? "icon-[mdi--arrow-up]" : "icon-[mdi--arrow-down]",
+																sort?.direction === "asc" ? "icon-[lucide--arrow-up]" : "icon-[lucide--arrow-down]",
 															)}
 														/>
 													) : null}
@@ -512,7 +518,7 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 														onClick={() => onDeleteRow({ row })}
 														className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded text-muted-foreground/50 opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
 													>
-														<span className="icon-[mdi--trash-can-outline] h-3.5 w-3.5" />
+													<span className="icon-[lucide--trash-2] h-3.5 w-3.5" />
 													</button>
 												) : null}
 											</span>
@@ -590,7 +596,7 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 										/>
 									))}
 									<Button size="sm" className="h-6 shrink-0 gap-1 px-2 text-[11px]" onClick={confirmAddRow}>
-										<span className="icon-[mdi--check] h-3.5 w-3.5" />
+										<span className="icon-[lucide--check] h-3.5 w-3.5" />
 										{t("databaseEditSave")}
 									</Button>
 									<Button
@@ -599,7 +605,7 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 										className="h-6 shrink-0 gap-1 px-2 text-[11px] text-muted-foreground"
 										onClick={() => setAddingRow(false)}
 									>
-										<span className="icon-[mdi--close] h-3.5 w-3.5" />
+										<span className="icon-[lucide--x] h-3.5 w-3.5" />
 										{t("databaseEditCancel")}
 									</Button>
 								</div>
@@ -616,7 +622,7 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 										className="h-6 shrink-0 gap-1 px-2 text-[11px] text-muted-foreground"
 										onClick={beginAddRow}
 									>
-										<span className="icon-[mdi--plus] h-3.5 w-3.5" />
+										<span className="icon-[lucide--plus] h-3.5 w-3.5" />
 										{t("databaseEditAddRow")}
 									</Button>
 								</div>
@@ -635,7 +641,7 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 										onClick={onDismissWriteError}
 										className="shrink-0 rounded p-0.5 text-muted-foreground/60 hover:text-foreground"
 									>
-										<span className="icon-[mdi--close] h-3.5 w-3.5" />
+										<span className="icon-[lucide--x] h-3.5 w-3.5" />
 									</button>
 								</div>
 							</DatabaseNotice>
@@ -709,7 +715,7 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 												recordSettingsUsage({ tab: "database", action: "selected", target: "result-page-prev" });
 											}}
 										>
-											<span className="icon-[mdi--chevron-left] h-3.5 w-3.5" />
+											<span className="icon-[lucide--chevron-left] h-3.5 w-3.5" />
 										</Button>
 										{loadingPage ? <Spin size="sm" /> : null}
 										<Button
@@ -724,7 +730,7 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 												recordSettingsUsage({ tab: "database", action: "selected", target: "result-page-next" });
 											}}
 										>
-											<span className="icon-[mdi--chevron-right] h-3.5 w-3.5" />
+											<span className="icon-[lucide--chevron-right] h-3.5 w-3.5" />
 										</Button>
 									</>
 								) : totalPages > 1 ? (
@@ -741,7 +747,7 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 												recordSettingsUsage({ tab: "database", action: "selected", target: "result-page-prev" });
 											}}
 										>
-											<span className="icon-[mdi--chevron-left] h-3.5 w-3.5" />
+											<span className="icon-[lucide--chevron-left] h-3.5 w-3.5" />
 										</Button>
 										<Button
 											variant="ghost"
@@ -755,7 +761,7 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 												recordSettingsUsage({ tab: "database", action: "selected", target: "result-page-next" });
 											}}
 										>
-											<span className="icon-[mdi--chevron-right] h-3.5 w-3.5" />
+											<span className="icon-[lucide--chevron-right] h-3.5 w-3.5" />
 										</Button>
 									</>
 								) : null}
@@ -764,7 +770,7 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 					)}
 				</>
 			) : (
-				<CenterState icon="icon-[mdi--table-off]" text={t("databaseResultIdle")} />
+				<CenterState icon="icon-[lucide--table-2]" text={t("databaseResultIdle")} />
 			)}
 
 			{/* V4-④ 长单元格详情对话框：截断单元格点击查看全文 + 复制。 */}
@@ -781,7 +787,7 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 					</div>
 					<DialogFooter>
 						<Button variant="primary" size="sm" onClick={copyDetail}>
-							<span className="icon-[mdi--content-copy] h-3.5 w-3.5" />
+							<span className="icon-[lucide--copy] h-3.5 w-3.5" />
 							{t("databaseCopyValue")}
 						</Button>
 					</DialogFooter>
