@@ -4,6 +4,8 @@ All notable changes to `@astravia/desktop-app` are documented in this file.
 
 ## [Unreleased]
 
+## [0.55.35] - 2026-09-08
+
 ### Added
 
 - **数据库工具偏好设置（独立设置面板）**：结果网格每页行数（50/100/200/500，缺省 100）与结果自动刷新（缺省关）可配置并持久化到主进程配置存储；结果网格挂载即按偏好初始化（自动刷新开启时以默认间隔开始轮询）。
