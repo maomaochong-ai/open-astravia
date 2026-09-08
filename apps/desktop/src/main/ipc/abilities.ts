@@ -8,8 +8,8 @@ import type {
 } from "../../preload/api-types/abilities.js";
 import { readAbilityLedger, recordAbilityInstall } from "../abilities/ability-ledger.js";
 import { listBuiltinAbilityPresentations } from "../abilities/builtin-ability-presentations.js";
+import { DEFAULT_MARKETPLACE_SOURCE_ID } from "../abilities/open-marketplace/official-marketplace-source.js";
 import { getOpenMarketplaceManager } from "../abilities/open-marketplace/open-marketplace-manager.js";
-import { DEFAULT_MARKETPLACE_SOURCE_ID } from "../abilities/open-marketplace/open-marketplace-service.js";
 import { readMcpConfig } from "../mcp/mcp-settings-service.js";
 
 function requireString(value: unknown, field: string): string {

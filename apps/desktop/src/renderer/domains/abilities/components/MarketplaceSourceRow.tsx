@@ -27,7 +27,7 @@ function failedStatusKey(snapshot?: OpenMarketplaceSourceSnapshot): FailedStatus
 	}
 }
 
-/** 单条来源：内置来源保留坐标，但允许配置或清除访问凭据。 */
+/** 单条来源：内置来源不可停用或删除，但允许配置或清除访问凭据。 */
 export function MarketplaceSourceRow({
 	source,
 	snapshot,
@@ -106,13 +106,22 @@ export function MarketplaceSourceRow({
 					>
 						<span className="icon-[solar--refresh-linear] h-3.5 w-3.5" />
 					</Button>
-					<Switch
-						size="sm"
-						checked={source.enabled}
-						disabled={busy}
-						aria-label={t("abilities:sources.actions.toggle")}
-						onCheckedChange={onToggle}
-					/>
+					{source.builtin ? (
+						<span
+							className="icon-[solar--lock-keyhole-minimalistic-linear] h-3.5 w-3.5 text-muted-foreground/60"
+							role="img"
+							aria-label={t("abilities:sources.lockedHint")}
+							title={t("abilities:sources.lockedHint")}
+						/>
+					) : (
+						<Switch
+							size="sm"
+							checked={source.enabled}
+							disabled={busy}
+							aria-label={t("abilities:sources.actions.toggle")}
+							onCheckedChange={onToggle}
+						/>
+					)}
 					{source.credentialConfigured && (
 						<Button
 							size="sm"

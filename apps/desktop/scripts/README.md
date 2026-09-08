@@ -194,7 +194,7 @@ bun run dist:opensource
 bun run dist:opensource -- --target dir
 ```
 
-该入口读取 `.env.opensource`，固定关闭 cloud、使用 GitHub provider，并为客户端更新仓库提供默认值；fork 可在文件或 shell 中覆盖更新 owner、repo。能力 Marketplace 仓库仅取显式的 `VETTA_OPEN_MARKETPLACE_REPOSITORY` 配置，留空不内置来源。
+该入口读取 `.env.opensource`，固定关闭 cloud、使用 GitHub provider，并为客户端更新仓库提供默认值；fork 可在文件或 shell 中覆盖更新 owner、repo。能力 Marketplace 未配置 `VETTA_OPEN_MARKETPLACE_REPOSITORY` 时内置 Vetta 官方源；fork 可用该变量替换成自己的仓库。
 
 正式发布 workflow 会先运行根 `check`、质量脚本测试和 Desktop packaging 测试，全部通过后才启动四个 Windows / macOS 双架构 / Linux 构建任务。每个平台构建后都会启动真实 packaged 应用并运行启动与 updater E2E，再校验 updater metadata、hash、blockmap 和可安装内容；真正发布到 R2 或 GitHub 后，再由 `verify-update-feed.mjs` 通过公开 URL 检查三平台 metadata 与其引用的安装包是否可读。
 

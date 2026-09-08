@@ -15,8 +15,8 @@ import { getAppLogger } from "../../logger.js";
 import { loadMarketplaceCatalog } from "./marketplace-catalog.js";
 import { isAppVersionCompatible, isValidAppVersion } from "./marketplace-compatibility.js";
 import { type MarketplaceManifest, parseMarketplaceManifest } from "./marketplace-schema.js";
+import { DEFAULT_MARKETPLACE_SOURCE_ID } from "./official-marketplace-source.js";
 
-export const DEFAULT_MARKETPLACE_SOURCE_ID = "vetta-official";
 const STATE_SCHEMA_VERSION = 1;
 const DEFAULT_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_UPDATE_CHECK_INTERVAL_MS = 5 * 60 * 1000;

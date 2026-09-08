@@ -54,12 +54,22 @@ describe("MarketplaceSourcesDialog", () => {
 		);
 	}
 
-	it("内置来源不显示删除", () => {
-		renderDialog([source({ id: "vetta-official", name: "official", builtin: true })]);
+	it("官方内置来源不可停用也不可删除，自定义来源仍可管理", async () => {
+		const user = userEvent.setup();
+		renderDialog([
+			source({ id: "vetta-official", name: "Vetta Official", builtin: true }),
+			source({ name: "my-abilities" }),
+		]);
 
 		expect(screen.getByText("abilities:sources.builtinBadge")).toBeTruthy();
-		expect(screen.getByRole("switch", { name: "abilities:sources.actions.toggle" })).toBeTruthy();
-		expect(screen.queryByTitle("abilities:sources.actions.remove")).toBeNull();
+		expect(screen.getByRole("img", { name: "abilities:sources.lockedHint" })).toBeTruthy();
+		expect(screen.getAllByTitle("abilities:sources.actions.remove")).toHaveLength(1);
+
+		const toggles = screen.getAllByRole("switch", { name: "abilities:sources.actions.toggle" });
+		expect(toggles).toHaveLength(1);
+		await user.click(toggles[0] as HTMLElement);
+		await waitFor(() => expect(onUpdate).toHaveBeenCalledWith("custom-1", { enabled: false }));
+		expect(onUpdate).toHaveBeenCalledTimes(1);
 	});
 
 	it("切换启停开关会调用 onUpdate(id, { enabled })", async () => {

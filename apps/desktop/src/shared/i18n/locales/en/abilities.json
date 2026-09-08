@@ -482,10 +482,11 @@
 		"trigger": "Sources",
 		"dialog": {
 			"title": "Marketplace sources",
-			"description": "Manage GitHub marketplace sources. Enabled sources are aggregated in the marketplace; built-in sources cannot be removed."
+			"description": "Manage GitHub marketplace sources. Enabled sources are aggregated in the marketplace; the built-in official source cannot be disabled or removed."
 		},
 		"empty": "No sources configured yet",
 		"builtinBadge": "Built-in",
+		"lockedHint": "The built-in official source is always enabled and cannot be removed",
 		"credentialConfigured": "GitHub access credential configured",
 		"status": {
 			"disabled": "Disabled",

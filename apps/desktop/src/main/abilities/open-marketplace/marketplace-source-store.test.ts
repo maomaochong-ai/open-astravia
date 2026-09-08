@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MarketplaceSource } from "../../../preload/api-types/abilities";
 import { MarketplaceSourceStore } from "./marketplace-source-store";
+import { OFFICIAL_MARKETPLACE_REPOSITORY } from "./official-marketplace-source";
 
 const temporaryRoots: string[] = [];
 const originalRepository = process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY;
@@ -96,32 +97,48 @@ describe("MarketplaceSourceStore", () => {
 
 		const enabled = new MarketplaceSourceStore({ filePath });
 		expect(enabled.list()).toHaveLength(1);
-		enabled.update("vetta-official", { enabled: false, autoUpdate: false });
+		enabled.update("vetta-official", { autoUpdate: false });
 		process.env.VETTA_CLOUD_ENABLED = "false";
 		expect(new MarketplaceSourceStore({ filePath }).list()).toMatchObject([
-			{ id: "vetta-official", enabled: false, autoUpdate: false },
+			{ id: "vetta-official", enabled: true, autoUpdate: false },
 		]);
 	});
 
-	it.each(["true", "false"])("does not register an unconfigured repository with cloud=%s", async (cloud) => {
-		vi.stubEnv("VETTA_CLOUD_ENABLED", cloud);
-		for (const repository of [undefined, "", "   "]) {
-			vi.stubEnv("VETTA_OPEN_MARKETPLACE_REPOSITORY", repository);
-			expect(new MarketplaceSourceStore({ filePath: await temporaryFile() }).list()).toEqual([]);
-		}
-	});
+	it.each(["true", "false"])(
+		"registers the Vetta official source without configuration with cloud=%s",
+		async (cloud) => {
+			vi.stubEnv("VETTA_CLOUD_ENABLED", cloud);
+			for (const repository of [undefined, "", "   "]) {
+				vi.stubEnv("VETTA_OPEN_MARKETPLACE_REPOSITORY", repository);
+				expect(new MarketplaceSourceStore({ filePath: await temporaryFile() }).list()).toMatchObject([
+					{
+						id: "vetta-official",
+						name: "Vetta Official",
+						repository: OFFICIAL_MARKETPLACE_REPOSITORY,
+						builtin: true,
+						enabled: true,
+					},
+				]);
+			}
+		},
+	);
 
-	it("preserves persisted sources when the distribution no longer configures a default", async () => {
+	it("keeps persisted sources when a later distribution registers the official default", async () => {
 		vi.stubEnv("VETTA_OPEN_MARKETPLACE_REPOSITORY", undefined);
 		vi.stubEnv("VETTA_CLOUD_ENABLED", "true");
 		const filePath = await temporaryFile();
 		const previous = new MarketplaceSourceStore({ filePath, defaultSources: [builtinSource()] });
-		previous.update("official", { enabled: false, autoUpdate: false });
+		previous.update("official", { autoUpdate: false });
 		const custom = previous.add({ repository: "example/community", ref: "stable" });
 		const sources = new MarketplaceSourceStore({ filePath }).list();
-		expect(sources).toHaveLength(2);
-		expect(sources[0]).toMatchObject({ id: "official", enabled: false, autoUpdate: false });
-		expect(sources[1]).toEqual(custom);
+		expect(sources).toHaveLength(3);
+		expect(sources[0]).toMatchObject({ id: "official", enabled: true, autoUpdate: false });
+		expect(sources.find((source) => source.id === "vetta-official")).toMatchObject({
+			repository: OFFICIAL_MARKETPLACE_REPOSITORY,
+			builtin: true,
+			enabled: true,
+		});
+		expect(sources.find((source) => source.id === custom.id)).toEqual(custom);
 	});
 
 	it("creates the built-in source entirely from environment configuration", async () => {
@@ -152,7 +169,7 @@ describe("MarketplaceSourceStore", () => {
 		});
 	});
 
-	it("preserves a manually added default repository without duplicating or resurrecting it", async () => {
+	it("keeps a manually added default repository, then restores the built-in once the alias is removed", async () => {
 		const filePath = await temporaryFile();
 		const legacy = new MarketplaceSourceStore({ filePath, defaultSources: [] });
 		const custom = legacy.add({ repository: "EXAMPLE/official", name: "My source", ref: "stable" });
@@ -160,7 +177,18 @@ describe("MarketplaceSourceStore", () => {
 		const upgraded = new MarketplaceSourceStore({ filePath, defaultSources: [builtinSource()] });
 		expect(upgraded.list()).toEqual([disabled]);
 		upgraded.remove(custom.id);
-		expect(new MarketplaceSourceStore({ filePath, defaultSources: [builtinSource()] }).list()).toEqual([]);
+		expect(new MarketplaceSourceStore({ filePath, defaultSources: [builtinSource()] }).list()).toEqual([
+			builtinSource(),
+		]);
+	});
+
+	it("restores a built-in source missing from an existing catalog", async () => {
+		const filePath = await temporaryFile();
+		await writeFile(filePath, JSON.stringify({ version: 1, sources: [] }));
+
+		const store = new MarketplaceSourceStore({ filePath, defaultSources: [builtinSource()] });
+		expect(store.list()).toEqual([builtinSource()]);
+		expect(JSON.parse(await readFile(filePath, "utf-8"))).toMatchObject({ sources: [{ id: "official" }] });
 	});
 
 	it("does not retarget a built-in to a repository already registered by the user", async () => {
@@ -206,7 +234,7 @@ describe("MarketplaceSourceStore", () => {
 		const filePath = await temporaryFile();
 		const first = new MarketplaceSourceStore({ filePath, defaultSources: [builtinSource()] });
 		first.list();
-		first.update("official", { enabled: false, autoUpdate: false });
+		first.update("official", { autoUpdate: false });
 		const updatedDefault: MarketplaceSource = {
 			...builtinSource(),
 			name: "Official v2",
@@ -222,7 +250,7 @@ describe("MarketplaceSourceStore", () => {
 			repository: updatedDefault.repository,
 			archiveUrl: updatedDefault.archiveUrl,
 			ref: "stable",
-			enabled: false,
+			enabled: true,
 			autoUpdate: false,
 		});
 	});
@@ -237,6 +265,24 @@ describe("MarketplaceSourceStore", () => {
 		expect(() => store.add({ repository: "https://github.com/example/community" })).toThrow("already exists");
 		expect(() => store.add({ repository: "example/another", ref: "../main" })).toThrow("ref is invalid");
 		expect(() => store.update("official", { ref: "next" })).toThrow("configuration cannot be changed");
+		expect(() => store.update("official", { enabled: false })).toThrow("cannot be disabled");
 		expect(() => store.remove("official")).toThrow("cannot be removed");
+		expect(store.list().find((source) => source.id === "official")).toMatchObject({ enabled: true });
+	});
+
+	it("re-enables a built-in source disabled in a hand-edited file", async () => {
+		const filePath = await temporaryFile();
+		await writeFile(
+			filePath,
+			JSON.stringify({
+				version: 1,
+				sources: [{ ...builtinSource(), enabled: false }],
+			}),
+		);
+
+		const store = new MarketplaceSourceStore({ filePath, defaultSources: [builtinSource()] });
+		expect(store.list()).toMatchObject([{ id: "official", enabled: true }]);
+		store.update("official", { autoUpdate: false });
+		expect(JSON.parse(await readFile(filePath, "utf-8"))).toMatchObject({ sources: [{ enabled: true }] });
 	});
 });

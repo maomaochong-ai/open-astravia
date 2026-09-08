@@ -482,10 +482,11 @@
 		"trigger": "来源",
 		"dialog": {
 			"title": "能力来源",
-			"description": "管理 GitHub 能力市场来源。启用的来源会在能力市场中聚合展示，内置来源不可删除。"
+			"description": "管理 GitHub 能力市场来源。启用的来源会在能力市场中聚合展示，内置官方来源不可停用或删除。"
 		},
 		"empty": "还没有配置任何来源",
 		"builtinBadge": "内置",
+		"lockedHint": "内置官方来源始终启用，不可停用或删除",
 		"credentialConfigured": "已配置 GitHub 访问凭据",
 		"status": {
 			"disabled": "已停用",

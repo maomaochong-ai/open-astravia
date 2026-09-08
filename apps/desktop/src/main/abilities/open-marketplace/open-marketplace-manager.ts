@@ -17,7 +17,8 @@ import {
 	getGitHubMarketplaceCredentialStore,
 } from "./github-marketplace-credentials.js";
 import { MarketplaceSourceStore } from "./marketplace-source-store.js";
-import { DEFAULT_MARKETPLACE_SOURCE_ID, OpenMarketplaceService } from "./open-marketplace-service.js";
+import { DEFAULT_MARKETPLACE_SOURCE_ID } from "./official-marketplace-source.js";
+import { OpenMarketplaceService } from "./open-marketplace-service.js";
 
 const log = getAppLogger("open-marketplace");
 

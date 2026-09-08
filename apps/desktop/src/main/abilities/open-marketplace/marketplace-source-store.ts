@@ -8,7 +8,11 @@ import type {
 	UpdateMarketplaceSourceInput,
 } from "../../../preload/api-types/abilities.js";
 import { reconcileMarketplaceSources } from "./marketplace-source-policy.js";
-import { DEFAULT_MARKETPLACE_SOURCE_ID } from "./open-marketplace-service.js";
+import {
+	DEFAULT_MARKETPLACE_SOURCE_ID,
+	OFFICIAL_MARKETPLACE_NAME,
+	OFFICIAL_MARKETPLACE_REPOSITORY,
+} from "./official-marketplace-source.js";
 
 const SOURCE_FILE_VERSION = 1;
 const SOURCE_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,95}$/;
@@ -17,7 +21,6 @@ const REF_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$/;
 interface MarketplaceSourceFile {
 	version: typeof SOURCE_FILE_VERSION;
 	sources: MarketplaceSource[];
-	registeredDefaultRepositories: string[];
 }
 
 export interface MarketplaceSourceStoreOptions {
@@ -110,7 +113,8 @@ function parseSource(value: unknown): MarketplaceSource | null {
 			repository,
 			archiveUrl: source.builtin ? source.archiveUrl : marketplaceArchiveUrl(repository, ref),
 			ref,
-			enabled: source.enabled,
+			// 内置来源由发行方拥有：即使配置文件被改写也不接受停用状态。
+			enabled: source.builtin ? true : source.enabled,
 			builtin: source.builtin,
 			autoUpdate: source.autoUpdate,
 			priority: source.priority,
@@ -124,14 +128,14 @@ function parseSource(value: unknown): MarketplaceSource | null {
 
 function createDefaultSources(now: Date): MarketplaceSource[] {
 	const configuredRepository = process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY?.trim();
-	if (!configuredRepository) return [];
-	const normalizedRepository = normalizeGitHubRepository(configuredRepository);
+	// 发行方可用 fork 仓库替换官方源；未配置时始终注册 Vetta 官方源。
+	const normalizedRepository = normalizeGitHubRepository(configuredRepository || OFFICIAL_MARKETPLACE_REPOSITORY);
 	const ref = validateRef(process.env.VETTA_OPEN_MARKETPLACE_REF);
 	const timestamp = now.toISOString();
 	return [
 		{
 			id: DEFAULT_MARKETPLACE_SOURCE_ID,
-			name: repositoryName(normalizedRepository),
+			name: configuredRepository ? repositoryName(normalizedRepository) : OFFICIAL_MARKETPLACE_NAME,
 			type: "github",
 			repository: normalizedRepository,
 			archiveUrl:
@@ -163,10 +167,9 @@ export class MarketplaceSourceStore {
 		const result = reconcileMarketplaceSources(
 			file?.sources ?? this.defaultSources.map((source) => ({ ...source })),
 			this.defaultSources,
-			file?.registeredDefaultRepositories ?? [],
 			this.now,
 		);
-		if (!file || result.changed) this.writeFile(result.sources, result.registeredDefaultRepositories);
+		if (!file || result.changed) this.writeFile(result.sources);
 		return result.sources;
 	}
 
@@ -208,6 +211,9 @@ export class MarketplaceSourceStore {
 		if (current.builtin && (input.name !== undefined || input.ref !== undefined)) {
 			throw new Error("Built-in marketplace source configuration cannot be changed");
 		}
+		if (current.builtin && input.enabled === false) {
+			throw new Error("Built-in marketplace sources cannot be disabled");
+		}
 		const ref = input.ref === undefined ? current.ref : validateRef(input.ref);
 		const next: MarketplaceSource = {
 			...current,
@@ -239,20 +245,14 @@ export class MarketplaceSourceStore {
 			const file = raw as Record<string, unknown>;
 			if (file.version !== SOURCE_FILE_VERSION || !Array.isArray(file.sources)) return null;
 			const sources = file.sources.map(parseSource).filter((source): source is MarketplaceSource => source !== null);
-			const registeredDefaultRepositories = Array.isArray(file.registeredDefaultRepositories)
-				? file.registeredDefaultRepositories.filter((value): value is string => typeof value === "string")
-				: [];
-			return { version: SOURCE_FILE_VERSION, sources, registeredDefaultRepositories };
+			return { version: SOURCE_FILE_VERSION, sources };
 		} catch {
 			return null;
 		}
 	}
 
-	private writeFile(
-		sources: MarketplaceSource[],
-		registeredDefaultRepositories = this.readFile()?.registeredDefaultRepositories ?? [],
-	): void {
+	private writeFile(sources: MarketplaceSource[]): void {
 		mkdirSync(dirname(this.filePath), { recursive: true });
-		atomicWriteJSON(this.filePath, { version: SOURCE_FILE_VERSION, sources, registeredDefaultRepositories });
+		atomicWriteJSON(this.filePath, { version: SOURCE_FILE_VERSION, sources });
 	}
 }
