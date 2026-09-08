@@ -16,6 +16,14 @@
 
 export type InputSegment =
 	| { kind: "text"; text: string }
+	| {
+			kind: "member";
+			memberId: string;
+			handle: string;
+			label: string;
+			avatar?: string;
+			meta?: string;
+	  }
 	| { kind: "skill"; name: string }
 	| { kind: "scene"; name: string }
 	| { kind: "connector"; name: string }

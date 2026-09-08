@@ -184,7 +184,8 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 												ariaLabel={model.placeholderTexts[0]}
 												editable={model.hasSession}
 												namespace={model.editor.namespace}
-												value={model.editor.value}
+											value={model.editor.value}
+											segments={model.editor.segments}
 												history={model.editor.history}
 												onValueChange={model.editor.onValueChange}
 												persistenceId={model.editor.persistenceId}

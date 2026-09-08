@@ -141,6 +141,9 @@ describe("AgentTeamSessionService streaming contract", () => {
 				title: team.name,
 				createdAt: 1,
 				updatedAt: 3,
+				workspaceKind: "team-default",
+				workspaceId: `agent-team:${team.id}`,
+				cwd: "C:/legacy-workspace",
 			},
 		]);
 		await service.listSessions(team.id);
@@ -178,13 +181,20 @@ describe("AgentTeamSessionService streaming contract", () => {
 		const service = new AgentTeamSessionService({ runtime, readDocument: async () => document });
 
 		const reservedSessionId = "11111111-1111-4111-8111-111111111111";
-		const record = await service.createRecord(team, document, "C:/workspace", {
-			sessionId: reservedSessionId,
-			executionMode: "sandbox",
-		});
+		const record = await service.createRecord(
+			team,
+			document,
+			{ id: "project:workspace", cwd: "C:/workspace", kind: "project" },
+			{
+				sessionId: reservedSessionId,
+				executionMode: "sandbox",
+			},
+		);
 		expect(record.id).toBe(reservedSessionId);
 		expect(record.runtimeStatus).toBe("preparing");
 		expect(record.executionMode).toBe("sandbox");
+		expect(record.workspaceId).toBe("project:workspace");
+		expect(record.cwd).toBe("C:/workspace");
 		expect(record.memberRuntime).toEqual({});
 		await vi.waitFor(() => expect(createSession).toHaveBeenCalledTimes(team.members.length + 1));
 		expect(JSON.stringify(createSession.mock.calls[1]?.[0])).toContain(team.leaderMemberId);
@@ -239,7 +249,11 @@ describe("AgentTeamSessionService streaming contract", () => {
 			readSessionDocument: () => ({ entries: [], activeLeafId: null, revision: 0 }),
 		} as unknown as RuntimeHost;
 		const service = new AgentTeamSessionService({ runtime, readDocument: async () => document });
-		const record = await service.createRecord(team, document, "C:/workspace");
+		const record = await service.createRecord(team, document, {
+			kind: "project",
+			id: "project:workspace",
+			cwd: "C:/workspace",
+		});
 		const coordinator = (
 			service as unknown as {
 				readonly turnCoordinator: { send: (sessionId: string, input: unknown) => Promise<TeamSessionDocument> };
@@ -490,7 +504,11 @@ describe("AgentTeamSessionService streaming contract", () => {
 			readDocument: async () => document,
 			sharedContextCompaction: { maxCharacters: 1, keepRecentCharacters: 0 },
 		});
-		const created = await service.create(team, document, "C:/workspace");
+		const created = await service.create(team, document, {
+			kind: "project",
+			id: "project:workspace",
+			cwd: "C:/workspace",
+		});
 		const sandboxed = await service.setExecutionMode(created.id, "sandbox");
 		expect(sandboxed.executionMode).toBe("sandbox");
 		expect(runtime.setExecutionMode).toHaveBeenCalledTimes(Object.keys(created.memberRuntime).length + 1);
@@ -702,7 +720,11 @@ describe("AgentTeamSessionService streaming contract", () => {
 			repository,
 			readDocument: async () => document,
 		});
-		const created = await service.create(originalTeam, document, "C:/workspace");
+		const created = await service.create(originalTeam, document, {
+			id: "project:workspace",
+			cwd: "C:/workspace",
+			kind: "project",
+		});
 		const addedMember = {
 			...sourceMember,
 			id: "member-added",
@@ -771,7 +793,11 @@ describe("AgentTeamSessionService streaming contract", () => {
 			repository,
 			readDocument: async () => document,
 		});
-		const created = await service.create(team, document, "C:/workspace");
+		const created = await service.create(team, document, {
+			kind: "project",
+			id: "project:workspace",
+			cwd: "C:/workspace",
+		});
 		const stream: DesktopTeamSessionStreamEvent[] = [];
 		service.subscribe(created.id, (event) => stream.push(event));
 
@@ -828,7 +854,11 @@ describe("AgentTeamSessionService streaming contract", () => {
 			repository: { read: vi.fn(), list: vi.fn(async () => []) },
 			readDocument: async () => document,
 		});
-		const created = await service.create(team, document, "C:/workspace");
+		const created = await service.create(team, document, {
+			kind: "project",
+			id: "project:workspace",
+			cwd: "C:/workspace",
+		});
 		const stream: DesktopTeamSessionStreamEvent[] = [];
 		service.subscribe(created.id, (event) => stream.push(event));
 
@@ -917,7 +947,11 @@ describe("AgentTeamSessionService streaming contract", () => {
 							},
 						]),
 			});
-			const created = await service.create(team, document, "C:/workspace");
+			const created = await service.create(team, document, {
+				kind: "project",
+				id: "project:workspace",
+				cwd: "C:/workspace",
+			});
 			await expect(
 				service.send(created.id, {
 					requestId: "request-context-failure",

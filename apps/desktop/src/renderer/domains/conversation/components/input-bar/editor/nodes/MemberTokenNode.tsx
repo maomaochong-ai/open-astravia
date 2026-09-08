@@ -2,12 +2,13 @@ import { DecoratorNode, type LexicalNode, type NodeKey, type SerializedLexicalNo
 import { TokenChip } from "./TokenChip";
 
 export type SerializedMemberTokenNode = Spread<
-	{ handle: string; label: string; avatar?: string; meta?: string },
+	{ memberId: string; handle: string; label: string; avatar?: string; meta?: string },
 	SerializedLexicalNode
 >;
 
 /** A selected Team member mention. The serialized text remains the regular @handle form. */
 export class MemberTokenNode extends DecoratorNode<JSX.Element> {
+	__memberId: string;
 	__handle: string;
 	__label: string;
 	__avatar?: string;
@@ -18,11 +19,12 @@ export class MemberTokenNode extends DecoratorNode<JSX.Element> {
 	}
 
 	static clone(node: MemberTokenNode): MemberTokenNode {
-		return new MemberTokenNode(node.__handle, node.__label, node.__avatar, node.__meta, node.__key);
+		return new MemberTokenNode(node.__memberId, node.__handle, node.__label, node.__avatar, node.__meta, node.__key);
 	}
 
-	constructor(handle: string, label: string, avatar?: string, meta?: string, key?: NodeKey) {
+	constructor(memberId: string, handle: string, label: string, avatar?: string, meta?: string, key?: NodeKey) {
 		super(key);
+		this.__memberId = memberId;
 		this.__handle = handle;
 		this.__label = label;
 		this.__avatar = avatar;
@@ -55,13 +57,36 @@ export class MemberTokenNode extends DecoratorNode<JSX.Element> {
 		return this.__handle;
 	}
 
+	getMemberId(): string {
+		return this.__memberId;
+	}
+
+	getLabel(): string {
+		return this.__label;
+	}
+
+	getAvatar(): string | undefined {
+		return this.__avatar;
+	}
+
+	getMeta(): string | undefined {
+		return this.__meta;
+	}
+
 	static importJSON(serialized: SerializedMemberTokenNode): MemberTokenNode {
-		return new MemberTokenNode(serialized.handle, serialized.label, serialized.avatar, serialized.meta);
+		return new MemberTokenNode(
+			serialized.memberId,
+			serialized.handle,
+			serialized.label,
+			serialized.avatar,
+			serialized.meta,
+		);
 	}
 
 	exportJSON(): SerializedMemberTokenNode {
 		return {
 			...super.exportJSON(),
+			memberId: this.__memberId,
 			handle: this.__handle,
 			label: this.__label,
 			...(this.__avatar ? { avatar: this.__avatar } : {}),
@@ -85,8 +110,14 @@ export class MemberTokenNode extends DecoratorNode<JSX.Element> {
 	}
 }
 
-export function $createMemberTokenNode(handle: string, label: string, avatar?: string, meta?: string): MemberTokenNode {
-	return new MemberTokenNode(handle, label, avatar, meta);
+export function $createMemberTokenNode(
+	memberId: string,
+	handle: string,
+	label: string,
+	avatar?: string,
+	meta?: string,
+): MemberTokenNode {
+	return new MemberTokenNode(memberId, handle, label, avatar, meta);
 }
 
 export function $isMemberTokenNode(node: LexicalNode | null | undefined): node is MemberTokenNode {

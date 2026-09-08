@@ -25,7 +25,8 @@ import type {
 import { storeAgentAvatarFile } from "../agent-teams/agent-avatar-store.js";
 import { agentTeamStore } from "../agent-teams/agent-team-store.js";
 import { agentTeamSessionService } from "../agent-teams/team-session-service.js";
-import { ensureTeamWorkspace } from "../agent-teams/team-workspace.js";
+import { resolveTeamSessionWorkspace } from "../agent-teams/team-workspace.js";
+import { listTeamSidebarConversations } from "../conversations/team-sidebar-conversation-projection.js";
 import { getAppLogger } from "../logger.js";
 
 const log = getAppLogger("agent-teams-ipc");
@@ -44,6 +45,7 @@ const CHANNELS = {
 	CREATE_SESSION: "vetta:agent-teams:create-session",
 	CREATE_SESSION_RECORD: "vetta:agent-teams:create-session-record",
 	LIST_SESSIONS: "vetta:agent-teams:list-sessions",
+	LIST_SIDEBAR_CONVERSATIONS: "vetta:agent-teams:list-sidebar-conversations",
 	UPDATE_MODEL_SETTINGS: "vetta:agent-teams:update-model-settings",
 	SET_EXECUTION_MODE: "vetta:agent-teams:set-execution-mode",
 	GET_SESSION: "vetta:agent-teams:get-session",
@@ -78,6 +80,7 @@ function teamSessionReference(value: unknown): { readonly id: string; readonly c
 }
 
 export interface AgentTeamsIpcDependencies {
+	readonly listSidebarConversations?: typeof listTeamSidebarConversations;
 	readonly store: Pick<
 		typeof agentTeamStore,
 		| "read"
@@ -180,9 +183,10 @@ export function registerAgentTeamsIpc(
 		const parsedTeamId = requiredString(teamId, "teamId");
 		const team = document.teams.find((candidate) => candidate.id === parsedTeamId);
 		if (!team) throw new Error("Team not found");
-		const cwd = await ensureTeamWorkspace(parsedTeamId);
+		const sessionId = randomUUID();
+		const workspace = await resolveTeamSessionWorkspace(parsedTeamId, sessionId);
 		return await withDisplayProjection(
-			sessions.snapshot(await sessions.create(team, document, cwd)),
+			sessions.snapshot(await sessions.create(team, document, workspace, { sessionId })),
 			displayProjection,
 		);
 	});
@@ -191,21 +195,27 @@ export function registerAgentTeamsIpc(
 		const parsedTeamId = requiredString(teamId, "teamId");
 		const team = document.teams.find((candidate) => candidate.id === parsedTeamId);
 		if (!team) throw new Error("Team not found");
-		const cwd = await ensureTeamWorkspace(parsedTeamId);
 		const parsedOptions = parseCreateSessionRecordOptions(options);
+		const sessionId = parsedOptions?.sessionId ?? randomUUID();
+		const workspace = await resolveTeamSessionWorkspace(parsedTeamId, sessionId, parsedOptions?.workspace);
+		const sessionOptions = {
+			sessionId,
+			...(parsedOptions?.executionMode ? { executionMode: parsedOptions.executionMode } : {}),
+		};
 		return await withDisplayProjection(
 			sessions.snapshot(
 				await (sessions.createRecord
-					? parsedOptions
-						? sessions.createRecord(team, document, cwd, parsedOptions)
-						: sessions.createRecord(team, document, cwd)
-					: sessions.create(team, document, cwd)),
+					? sessions.createRecord(team, document, workspace, sessionOptions)
+					: sessions.create(team, document, workspace, sessionOptions)),
 			),
 			displayProjection,
 		);
 	});
 	ipcMain.handle(CHANNELS.LIST_SESSIONS, (_event, teamId: unknown) =>
 		sessions.listSessions(requiredString(teamId, "teamId")),
+	);
+	ipcMain.handle(CHANNELS.LIST_SIDEBAR_CONVERSATIONS, () =>
+		(dependencies.listSidebarConversations ?? listTeamSidebarConversations)(),
 	);
 	ipcMain.handle(
 		CHANNELS.UPDATE_MODEL_SETTINGS,
@@ -357,11 +367,15 @@ function parseCreateSessionRecordOptions(value: unknown): CreateTeamSessionRecor
 	if (
 		typeof value !== "object" ||
 		value === null ||
-		Object.keys(value).some((key) => key !== "sessionId" && key !== "executionMode")
+		Object.keys(value).some((key) => key !== "sessionId" && key !== "executionMode" && key !== "workspace")
 	) {
 		throw new Error("Invalid Team session options");
 	}
-	const candidate = value as { readonly sessionId?: unknown; readonly executionMode?: unknown };
+	const candidate = value as {
+		readonly sessionId?: unknown;
+		readonly executionMode?: unknown;
+		readonly workspace?: unknown;
+	};
 	const sessionId = candidate.sessionId;
 	if (sessionId !== undefined && (typeof sessionId !== "string" || !UUID_PATTERN.test(sessionId))) {
 		throw new Error("Invalid sessionId");
@@ -370,8 +384,27 @@ function parseCreateSessionRecordOptions(value: unknown): CreateTeamSessionRecor
 	if (executionMode !== undefined && executionMode !== "sandbox" && executionMode !== "full-access") {
 		throw new Error("Invalid executionMode");
 	}
+	const workspace = candidate.workspace;
+	let parsedWorkspace: CreateTeamSessionRecordOptions["workspace"];
+	if (workspace !== undefined) {
+		if (typeof workspace !== "object" || workspace === null) {
+			throw new Error("Invalid Team session workspace");
+		}
+		const record = workspace as Record<string, unknown>;
+		if (
+			Object.keys(record).some((key) => key !== "kind" && key !== "path") ||
+			record.kind !== "project" ||
+			typeof record.path !== "string" ||
+			record.path.trim().length === 0 ||
+			record.path.length > 4_096
+		) {
+			throw new Error("Invalid Team session workspace");
+		}
+		parsedWorkspace = { kind: "project", path: record.path };
+	}
 	return {
 		...(sessionId ? { sessionId } : {}),
 		...(executionMode ? { executionMode } : {}),
+		...(parsedWorkspace ? { workspace: parsedWorkspace } : {}),
 	};
 }

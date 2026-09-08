@@ -28,6 +28,7 @@ export function ProjectsPanel(props: ProjectsPanelProps): JSX.Element {
 		showDefaultRegion && model.defaultProject ? (
 			<DefaultConversationSection
 				activeSessionPath={model.activeSessionPath}
+				activeTeamSessionId={model.activeTeamSessionId}
 				defaultConversationFilter={model.defaultConversationFilter}
 				listClassName={props.defaultSessionListClassName}
 				project={model.defaultProject}

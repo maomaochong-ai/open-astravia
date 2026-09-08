@@ -28,8 +28,10 @@ describe("createAgentTeamsApi", () => {
 		await api.createSessionRecord("team", {
 			sessionId: "11111111-1111-4111-8111-111111111111",
 			executionMode: "sandbox",
+			workspace: { kind: "project", path: "C:/projects/selected" },
 		});
 		await api.listSessions("team");
+		await api.listSidebarConversations();
 		await api.updateModelSettings("session", { modelKey: "openai/gpt-5", reasoning: "high" });
 		await api.sendMessage("session", message);
 
@@ -51,12 +53,14 @@ describe("createAgentTeamsApi", () => {
 		expect(invoke).toHaveBeenNthCalledWith(7, "vetta:agent-teams:create-session-record", "team", {
 			sessionId: "11111111-1111-4111-8111-111111111111",
 			executionMode: "sandbox",
+			workspace: { kind: "project", path: "C:/projects/selected" },
 		});
 		expect(invoke).toHaveBeenNthCalledWith(8, "vetta:agent-teams:list-sessions", "team");
-		expect(invoke).toHaveBeenNthCalledWith(9, "vetta:agent-teams:update-model-settings", "session", {
+		expect(invoke).toHaveBeenNthCalledWith(9, "vetta:agent-teams:list-sidebar-conversations");
+		expect(invoke).toHaveBeenNthCalledWith(10, "vetta:agent-teams:update-model-settings", "session", {
 			modelKey: "openai/gpt-5",
 			reasoning: "high",
 		});
-		expect(invoke).toHaveBeenNthCalledWith(10, "vetta:agent-teams:send-message", "session", message);
+		expect(invoke).toHaveBeenNthCalledWith(11, "vetta:agent-teams:send-message", "session", message);
 	});
 });

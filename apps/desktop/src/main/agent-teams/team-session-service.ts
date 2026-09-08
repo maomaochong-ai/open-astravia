@@ -1,7 +1,6 @@
 import {
 	type AgentTeamDocument,
 	type AgentTeamExtensionRegistry,
-	type CreateTeamSessionRecordOptions,
 	createTeamCancelTaskTool,
 	createTeamContinueTaskTool,
 	createTeamDelegateTaskTool,
@@ -61,8 +60,14 @@ import { type LegacyTeamSessionRepository, legacyTeamSessionRepository } from ".
 import { TeamSessionStateRepository } from "./team-session-state-repository.js";
 import { TeamSharedContextService } from "./team-shared-context-service.js";
 import { TeamTurnCoordinator } from "./team-turn-coordinator.js";
+import type { TeamSessionWorkspace } from "./team-workspace.js";
 
 const log = getAppLogger("agent-team-sessions");
+
+interface TeamSessionCreationOptions {
+	readonly sessionId?: string;
+	readonly executionMode?: SessionExecutionMode;
+}
 
 export interface AgentTeamSessionServiceOptions {
 	readonly runtime?: RuntimeHost;
@@ -310,11 +315,13 @@ export class AgentTeamSessionService {
 	async create(
 		team: AgentTeamDocument["teams"][number],
 		document: AgentTeamDocument,
-		cwd: string,
+		workspace: TeamSessionWorkspace,
+		options: TeamSessionCreationOptions = {},
 	): Promise<TeamSessionDocument> {
-		const id = crypto.randomUUID();
+		const { cwd } = workspace;
+		const id = options.sessionId ?? crypto.randomUUID();
 		const now = Date.now();
-		const executionMode = (await readDesktopConfig()).defaultExecutionMode ?? "full-access";
+		const executionMode = options.executionMode ?? (await readDesktopConfig()).defaultExecutionMode ?? "full-access";
 		const memberRuntime: Record<string, TeamSessionDocument["memberRuntime"][string]> = {};
 		let coordinationRuntime: TeamSessionDocument["coordinationRuntime"];
 
@@ -352,7 +359,8 @@ export class AgentTeamSessionService {
 			revision: 0,
 			id,
 			teamId: team.id,
-			workspaceId: `agent-team:${team.id}`,
+			workspaceId: workspace.id,
+			workspaceKind: workspace.kind,
 			executionMode,
 			teamRevision: team.revision,
 			name: team.name,
@@ -405,9 +413,10 @@ export class AgentTeamSessionService {
 	async createRecord(
 		team: AgentTeamDocument["teams"][number],
 		document: AgentTeamDocument,
-		cwd: string,
-		options: CreateTeamSessionRecordOptions = {},
+		workspace: TeamSessionWorkspace,
+		options: TeamSessionCreationOptions = {},
 	): Promise<TeamSessionDocument> {
+		const { cwd } = workspace;
 		const id = options.sessionId ?? crypto.randomUUID();
 		const now = Date.now();
 		const executionMode = options.executionMode ?? (await readDesktopConfig()).defaultExecutionMode ?? "full-access";
@@ -423,7 +432,8 @@ export class AgentTeamSessionService {
 			revision: 0,
 			id,
 			teamId: team.id,
-			workspaceId: `agent-team:${team.id}`,
+			workspaceId: workspace.id,
+			workspaceKind: workspace.kind,
 			executionMode,
 			teamRevision: team.revision,
 			name: team.name,
@@ -597,6 +607,9 @@ export class AgentTeamSessionService {
 				title: record.title,
 				createdAt: record.createdAt,
 				updatedAt: record.updatedAt,
+				...(record.workspaceKind ? { workspaceKind: record.workspaceKind } : {}),
+				...(record.workspaceId ? { workspaceId: record.workspaceId } : {}),
+				...(record.cwd ? { cwd: record.cwd } : {}),
 			}))
 			.sort((left, right) => right.updatedAt - left.updatedAt);
 	}
@@ -666,6 +679,11 @@ export class AgentTeamSessionService {
 			const prepared: TeamSessionDocument = {
 				...persisted,
 				workspaceId: persisted.workspaceId ?? `agent-team:${persisted.teamId}`,
+				workspaceKind:
+					persisted.workspaceKind ??
+					(persisted.workspaceId && persisted.workspaceId !== `agent-team:${persisted.teamId}`
+						? "project"
+						: "team-default"),
 				memberRuntime: Object.fromEntries(
 					Object.entries(persisted.memberRuntime).filter(([memberId]) => desiredMemberIds.has(memberId)),
 				),

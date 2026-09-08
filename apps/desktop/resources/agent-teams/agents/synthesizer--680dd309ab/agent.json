@@ -1,0 +1,18 @@
+{
+	"id": "6d8baef0-b15d-43a1-8f25-826eae651779",
+	"revision": 1,
+	"name": "Synthesizer",
+	"mentionHandle": "synthesizer",
+	"blueprintId": "synthesizer",
+	"abilities": {
+		"selectionMode": "all",
+		"skills": [],
+		"mcpServers": [],
+		"plugins": []
+	},
+	"scope": {
+		"kind": "library"
+	},
+	"createdAt": 0,
+	"updatedAt": 0
+}

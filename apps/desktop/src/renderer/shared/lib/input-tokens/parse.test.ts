@@ -1,10 +1,30 @@
 import { describe, expect, it } from "vitest";
 import { parseInputSegments } from "./parse";
 import { MultipleSceneReferencesError, prepareInputPrompt } from "./prepare";
-import { deriveAttachments, deriveSceneNames, deriveSkillNames, pathTokenText, segmentsToText } from "./serialize";
+import {
+	deriveAttachments,
+	deriveSceneNames,
+	deriveSkillNames,
+	pathTokenText,
+	segmentsToText,
+	serializeInputSegments,
+} from "./serialize";
 import type { InputSegment } from "./types";
 
 describe("parseInputSegments", () => {
+	it("成员 Token 保持 Markdown 正文并产出稳定身份与精确区间", () => {
+		const serialized = serializeInputSegments([
+			{ kind: "text", text: "**请** " },
+			{ kind: "member", memberId: "member-2", handle: "research", label: "Research" },
+			{ kind: "text", text: " 核查" },
+		]);
+		expect(serialized).toEqual({
+			text: "**请** @research 核查",
+			memberMentions: [{ participantId: "member-2", handle: "research", start: 6, end: 15 }],
+		});
+		expect(parseInputSegments(serialized.text).segments).toEqual([{ kind: "text", text: "**请** @research 核查" }]);
+	});
+
 	it("穿插在文本流里的 skill 与文件 token 各自成段", () => {
 		const { segments, legacyRef } = parseInputSegments("@skill:review 你好，帮我检查 @/Users/a/b.ts 有没有问题");
 		expect(legacyRef).toBeNull();

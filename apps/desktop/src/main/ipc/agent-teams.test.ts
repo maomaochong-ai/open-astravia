@@ -1,5 +1,6 @@
 import { createAgentTeamFixture, createEmptyAgentTeamDocument } from "@vetta/agent-team";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { resolveTeamSessionWorkspace } from "../agent-teams/team-workspace.js";
 import { type AgentTeamsIpcDependencies, registerAgentTeamsIpc } from "./agent-teams.js";
 
 const ipc = vi.hoisted(() => ({
@@ -17,7 +18,16 @@ vi.mock("electron", () => ({
 vi.mock("../agent-teams/agent-team-store.js", () => ({ agentTeamStore: {} }));
 vi.mock("../agent-teams/team-session-service.js", () => ({ agentTeamSessionService: {} }));
 vi.mock("../agent-teams/team-workspace.js", () => ({
-	ensureTeamWorkspace: vi.fn(async (teamId: string) => `C:/teams/${teamId}/workspace`),
+	resolveTeamSessionWorkspace: vi.fn(
+		async (teamId: string, sessionId: string, workspace?: { readonly kind: "project"; readonly path: string }) => {
+			if (workspace) return { kind: "project", id: "C:/Projects/Canonical", cwd: "C:/Projects/Canonical" };
+			return {
+				kind: "session",
+				id: `agent-team:${teamId}:session:${sessionId}`,
+				cwd: `C:/session-workspaces/${teamId}/${sessionId}`,
+			};
+		},
+	),
 }));
 vi.mock("../logger.js", () => ({
 	getAppLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
@@ -55,6 +65,7 @@ describe("Agent Team IPC contract", () => {
 	beforeEach(() => {
 		ipc.handlers.clear();
 		ipc.removed.length = 0;
+		vi.mocked(resolveTeamSessionWorkspace).mockClear();
 	});
 
 	it("validates renderer input before invoking the domain service", async () => {
@@ -161,7 +172,7 @@ describe("Agent Team IPC contract", () => {
 		expect(displayProjection).toHaveBeenCalledOnce();
 	});
 
-	it("creates every Team session in the Team-owned workspace and lists the Team catalog", async () => {
+	it("creates each Team session in its own workspace and lists the Team catalog", async () => {
 		const deps = dependencies();
 		const document = createAgentTeamFixture();
 		const team = document.teams[0];
@@ -177,8 +188,44 @@ describe("Agent Team IPC contract", () => {
 		await createSession({}, team.id);
 		await listSessions({}, team.id);
 
-		expect(deps.sessions.create).toHaveBeenCalledWith(team, document, `C:/teams/${team.id}/workspace`);
+		const createdSessionId = vi.mocked(resolveTeamSessionWorkspace).mock.calls[0]?.[1];
+		if (!createdSessionId) throw new Error("missing allocated Team session id");
+		expect(deps.sessions.create).toHaveBeenCalledWith(
+			team,
+			document,
+			{
+				kind: "session",
+				id: `agent-team:${team.id}:session:${createdSessionId}`,
+				cwd: `C:/session-workspaces/${team.id}/${createdSessionId}`,
+			},
+			{ sessionId: createdSessionId },
+		);
 		expect(deps.sessions.listSessions).toHaveBeenCalledWith(team.id);
+	});
+
+	it("publishes the product-level sidebar projection through one IPC call", async () => {
+		const deps = dependencies();
+		const projected = [
+			{
+				kind: "agent-team" as const,
+				teamId: "team-1",
+				teamSessionId: "team-session-1",
+				coordinationSessionPath: "C:/sessions/team.jsonl",
+				teamName: "Dev Team",
+				memberAvatarUrls: ["./agent-team-avatars/master.webp"],
+				sessionTitle: "Build",
+				createdAt: 1,
+				updatedAt: 2,
+				placement: { kind: "default" as const },
+			},
+		];
+		const listSidebarConversations = vi.fn(async () => projected);
+		registerAgentTeamsIpc({ ...deps, listSidebarConversations });
+		const listSidebar = ipc.handlers.get("vetta:agent-teams:list-sidebar-conversations");
+		if (!listSidebar) throw new Error("list-sidebar-conversations handler was not registered");
+
+		await expect(listSidebar({})).resolves.toEqual(projected);
+		expect(listSidebarConversations).toHaveBeenCalledOnce();
 	});
 
 	it("creates the visible session record through the lightweight path", async () => {
@@ -194,14 +241,47 @@ describe("Agent Team IPC contract", () => {
 		if (!createSessionRecord) throw new Error("create-session-record handler was not registered");
 		await createSessionRecord({}, team.id);
 
-		expect(deps.sessions.createRecord).toHaveBeenCalledWith(team, document, `C:/teams/${team.id}/workspace`);
+		const firstSessionId = vi.mocked(resolveTeamSessionWorkspace).mock.calls[0]?.[1];
+		if (!firstSessionId) throw new Error("missing allocated Team session id");
+		expect(deps.sessions.createRecord).toHaveBeenCalledWith(
+			team,
+			document,
+			{
+				kind: "session",
+				id: `agent-team:${team.id}:session:${firstSessionId}`,
+				cwd: `C:/session-workspaces/${team.id}/${firstSessionId}`,
+			},
+			{ sessionId: firstSessionId },
+		);
 		const reservedSessionId = "11111111-1111-4111-8111-111111111111";
 		await createSessionRecord({}, team.id, { sessionId: reservedSessionId, executionMode: "sandbox" });
-		expect(deps.sessions.createRecord).toHaveBeenLastCalledWith(team, document, `C:/teams/${team.id}/workspace`, {
+		expect(deps.sessions.createRecord).toHaveBeenLastCalledWith(
+			team,
+			document,
+			{
+				kind: "session",
+				id: `agent-team:${team.id}:session:${reservedSessionId}`,
+				cwd: `C:/session-workspaces/${team.id}/${reservedSessionId}`,
+			},
+			{
+				sessionId: reservedSessionId,
+				executionMode: "sandbox",
+			},
+		);
+		await createSessionRecord({}, team.id, {
 			sessionId: reservedSessionId,
-			executionMode: "sandbox",
+			workspace: { kind: "project", path: "c:/projects/selected/" },
 		});
+		expect(deps.sessions.createRecord).toHaveBeenLastCalledWith(
+			team,
+			document,
+			{ kind: "project", id: "C:/Projects/Canonical", cwd: "C:/Projects/Canonical" },
+			{ sessionId: reservedSessionId },
+		);
 		await expect(createSessionRecord({}, team.id, { sessionId: "../unsafe" })).rejects.toThrow("Invalid sessionId");
+		await expect(
+			createSessionRecord({}, team.id, { workspace: { kind: "project", path: "C:/project", extra: true } }),
+		).rejects.toThrow("Invalid Team session workspace");
 		expect(deps.sessions.create).not.toHaveBeenCalled();
 	});
 

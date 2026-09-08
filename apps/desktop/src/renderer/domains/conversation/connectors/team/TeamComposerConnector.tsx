@@ -1,4 +1,4 @@
-import { isImagePath } from "@shared/lib/input-tokens";
+import { type InputSegment, isImagePath, parseInputSegments } from "@shared/lib/input-tokens";
 import { pathBasename, toVettaFileUrl } from "@shared/lib/utils";
 import { filePreviewAtom } from "@shared/store/file-preview-atoms";
 import { useSetAtom } from "jotai";
@@ -12,7 +12,7 @@ import { useInputBarContextMenuModel } from "../../components/input-bar/useInput
 import { useInputBarTriggerModel } from "../../components/input-bar/useInputBarTriggerModel";
 import { useSpeechInput } from "../../components/input-bar/useSpeechInput";
 import { useInputBarInteractionSource } from "../../components/input-bar/useInputBarSources";
-import { insertMemberToken } from "../../components/input-bar/editor/inputEditorHandle";
+import { insertMemberToken, removeMemberToken } from "../../components/input-bar/editor/inputEditorHandle";
 import {
 	useContextRingModel,
 	useContextRingScopeModels,
@@ -32,6 +32,36 @@ function attachmentFromPath(path: string): TeamAttachmentViewModel {
 	};
 }
 
+function projectTeamDraftSegments(model: TeamChatViewModel): readonly InputSegment[] {
+	const mentions = [...(model.draftMemberMentions ?? [])].sort((left, right) => left.start - right.start);
+	if (mentions.length === 0) return parseInputSegments(model.draft).segments;
+	const members = new Map(model.members.map((member) => [member.id, member]));
+	const segments: InputSegment[] = [];
+	let cursor = 0;
+	for (const mention of mentions) {
+		const member = members.get(mention.participantId);
+		if (
+			!member ||
+			mention.start < cursor ||
+			mention.end > model.draft.length ||
+			model.draft.slice(mention.start, mention.end) !== `@${mention.handle}`
+		)
+			continue;
+		segments.push(...parseInputSegments(model.draft.slice(cursor, mention.start)).segments);
+		segments.push({
+			kind: "member",
+			memberId: member.id,
+			handle: mention.handle,
+			label: member.name,
+			avatar: agentAvatarUrl(member),
+			meta: `@${mention.handle}`,
+		});
+		cursor = mention.end;
+	}
+	segments.push(...parseInputSegments(model.draft.slice(cursor)).segments);
+	return segments;
+}
+
 export function TeamComposerConnector({
 	model,
 	actions,
@@ -44,6 +74,7 @@ export function TeamComposerConnector({
 	const [dragKind, setDragKind] = useState<"files" | "internal" | null>(null);
 	const isStreaming = model.status === "sending" || model.status === "streaming" || model.status === "cancelling";
 	const isEmpty = model.draft.trim().length === 0 && model.attachments.length === 0;
+	const editorSegments = useMemo(() => projectTeamDraftSegments(model), [model]);
 	const atItems = useMemo<readonly AtPanelItem[]>(
 		() => model.members.map((member) => {
 			const handle = member.handle.trim() || member.id;
@@ -65,7 +96,7 @@ export function TeamComposerConnector({
 	);
 	const handleAtItemSelect = useCallback((item: AtPanelItem) => {
 		const handle = item.insertText.trim().replace(/^@+/, "");
-		insertMemberToken(handle, item.name.replace(/^@+/, "") || handle, item.avatar, item.meta, {
+		insertMemberToken(item.id, handle, item.name.replace(/^@+/, "") || handle, item.avatar, item.meta, {
 			replaceTrigger: true,
 		});
 	}, []);
@@ -239,7 +270,14 @@ export function TeamComposerConnector({
 					badgeLabel: roleLabel,
 					selected: member.selected,
 					status: member.status,
-					onSelect: () => actions.toggleMember(member.id),
+					onSelect: () => {
+						if (member.selected) {
+							removeMemberToken(member.id);
+							return;
+						}
+						const handle = member.handle.trim() || member.id;
+						insertMemberToken(member.id, handle, member.name, agentAvatarUrl(member), `@${handle}`);
+					},
 				};
 			}),
 		};
@@ -292,9 +330,10 @@ export function TeamComposerConnector({
 		pendingEditHint: t("messageList.edit.pendingHint"),
 		cancelPendingEditLabel: t("messageList.interrupt.cancel"),
 		contextMenu: contextMenu.contextMenu,
-		editor: {
+			editor: {
 			namespace: `team-chat:${model.activeSessionId ?? "new"}`,
 			value: model.draft,
+			segments: editorSegments,
 			history: model.history,
 			onValueChange: actions.setDraft,
 			persistenceId: model.activeSessionId,

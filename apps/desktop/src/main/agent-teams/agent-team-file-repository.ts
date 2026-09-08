@@ -13,6 +13,17 @@ import type {
 import { DEFAULT_AGENT_TEAM_EXTENSIONS, findAgentBlueprint, parseAgentTeamDocument } from "@vetta/agent-team";
 import { atomicWriteFileAsync, atomicWriteJSONAsync } from "@vetta/toolkit/atomic-write";
 import { getAppLogger } from "../logger.js";
+import {
+	AGENT_TEAM_STORAGE_LAYOUT_VERSION,
+	type AgentTeamStorageIndex,
+	agentDefinitionPath,
+	agentTeamAgentsRoot,
+	agentTeamDefinitionsRoot,
+	createAgentTeamStorageKey,
+	memberAssignmentFileName,
+	migrateAgentTeamStorage,
+	teamDefinitionPath,
+} from "./agent-team-storage-layout.js";
 
 const log = getAppLogger("agent-teams");
 
@@ -72,7 +83,8 @@ class DirectoryAgentTeamRepository implements AgentTeamFileRepository {
 	 * 上一次读取中读坏的 Agent 目录。写回时必须保留它们：
 	 * 读不出来只说明这一份数据坏了，不代表用户删除了这个 Agent。
 	 */
-	private unreadableAgentDirectories: ReadonlySet<string> = new Set();
+	private unreadableAgentIds: ReadonlySet<string> = new Set();
+	private storageIndex: AgentTeamStorageIndex | undefined;
 
 	constructor(
 		private readonly root: string,
@@ -82,50 +94,47 @@ class DirectoryAgentTeamRepository implements AgentTeamFileRepository {
 	async read(): Promise<AgentTeamDocument> {
 		await mkdir(this.root, { recursive: true });
 		const entries = await readdir(this.root, { withFileTypes: true });
-		const teamDirectories = await this.findTeamDirectories(entries);
-		if (teamDirectories.length === 0) {
-			if (entries.some((entry) => entry.name === INITIALIZED_MARKER)) {
-				const metadata = await this.readIndex();
-				return parseAgentTeamDocument({ ...metadata, agents: await this.readAgents(), teams: [] }, this.extensions);
+		if (
+			!entries.some((entry) => entry.name === INITIALIZED_MARKER) &&
+			!entries.some((entry) => entry.name === INDEX_FILE)
+		) {
+			if (!(await this.installInitialFiles())) {
+				throw new Error(`Initial Agent Team files are missing: ${INITIAL_TEAM_RESOURCE_ROOT}`);
 			}
-			if (await this.installInitialFiles()) return this.read();
-			throw new Error(`Initial Agent Team files are missing: ${INITIAL_TEAM_RESOURCE_ROOT}`);
 		}
 
-		const agents = await this.readAgents();
+		const { index } = await migrateAgentTeamStorage(this.root);
+		this.storageIndex = index;
+		const agents = await this.readAgents(index);
 		const teams: TeamDefinition[] = [];
-		for (const directory of teamDirectories.sort((left, right) => left.name.localeCompare(right.name))) {
-			const manifest = await readJson(join(this.root, directory.name, "team.json"));
-			const team = await parseTeamManifest(manifest, join(this.root, directory.name));
+		for (const [teamId, directory] of Object.entries(index.teams).sort((left, right) =>
+			left[1].localeCompare(right[1]),
+		)) {
+			const root = teamDefinitionPath(this.root, directory);
+			const manifest = await readJson(join(root, "team.json"));
+			if (manifest.id !== teamId) throw new Error(`Agent Team directory index mismatch: ${teamId}`);
+			const team = await parseTeamManifest(manifest, root);
 			teams.push(team);
 		}
-		const metadata = await this.readIndex();
-		return parseAgentTeamDocument({ ...metadata, agents, teams }, this.extensions);
-	}
-
-	private async findTeamDirectories(entries: readonly Dirent[]): Promise<Dirent[]> {
-		const directories = entries.filter((entry) => entry.isDirectory() && entry.name !== "agents");
-		const results = await Promise.all(
-			directories.map(async (entry) => {
-				try {
-					await readFile(join(this.root, entry.name, "team.json"));
-					return entry;
-				} catch (error) {
-					if (isMissingFile(error)) return undefined;
-					throw error;
-				}
-			}),
+		return parseAgentTeamDocument(
+			{
+				schemaVersion: index.schemaVersion,
+				revision: index.revision,
+				agents,
+				teams,
+			},
+			this.extensions,
 		);
-		return results.filter((entry): entry is Dirent => entry !== undefined);
 	}
 
 	async write(document: AgentTeamDocument): Promise<void> {
-		await mkdir(join(this.root, "agents"), { recursive: true });
-		const expectedAgentDirectories = new Set<string>();
+		await mkdir(this.root, { recursive: true });
+		const currentIndex = this.storageIndex ?? (await migrateAgentTeamStorage(this.root)).index;
+		const agentDirectories: Record<string, string> = {};
 		for (const agent of document.agents) {
-			const directory = safeName(agent.id);
-			expectedAgentDirectories.add(directory);
-			const agentRoot = join(this.root, "agents", directory);
+			const directory = currentIndex.agents[agent.id] ?? createAgentTeamStorageKey(agent.name, agent.id);
+			agentDirectories[agent.id] = directory;
+			const agentRoot = agentDefinitionPath(this.root, directory);
 			await atomicWriteJSONAsync(join(agentRoot, "agent.json"), serializeAgent(agent));
 			await atomicWriteFileAsync(join(agentRoot, "description.md"), agent.description);
 			// 只落用户的显式覆盖：把 blueprint 默认提示词写进文件等于把默认值钉死成覆盖，
@@ -134,46 +143,32 @@ class DirectoryAgentTeamRepository implements AgentTeamFileRepository {
 				await atomicWriteFileAsync(join(agentRoot, "system-prompt.md"), agent.systemPrompt);
 			else await rm(join(agentRoot, "system-prompt.md"), { force: true });
 		}
-		await removeStaleDirectories(
-			join(this.root, "agents"),
-			expectedAgentDirectories,
-			this.unreadableAgentDirectories,
-		);
+		for (const agentId of this.unreadableAgentIds) {
+			const directory = currentIndex.agents[agentId];
+			if (directory) agentDirectories[agentId] = directory;
+		}
+		await removeDeletedMappedDirectories(agentTeamAgentsRoot(this.root), currentIndex.agents, agentDirectories);
 
-		const expectedTeamDirectories = new Set<string>();
+		const teamDirectories: Record<string, string> = {};
 		for (const team of document.teams) {
-			const directory = safeName(team.id);
-			expectedTeamDirectories.add(directory);
-			const teamRoot = join(this.root, directory);
+			const directory = currentIndex.teams[team.id] ?? createAgentTeamStorageKey(team.name, team.id);
+			teamDirectories[team.id] = directory;
+			const teamRoot = teamDefinitionPath(this.root, directory);
 			await atomicWriteJSONAsync(join(teamRoot, "team.json"), serializeTeam(team));
 			await atomicWriteFileAsync(join(teamRoot, "description.md"), team.description);
 			await writeMemberAssignments(teamRoot, team.members);
 		}
-		await removeStaleTeamDirectories(this.root, expectedTeamDirectories);
-		await atomicWriteJSONAsync(join(this.root, INDEX_FILE), {
+		await removeDeletedMappedDirectories(agentTeamDefinitionsRoot(this.root), currentIndex.teams, teamDirectories);
+		const nextIndex: AgentTeamStorageIndex = {
 			schemaVersion: document.schemaVersion,
-			// 预设版本必须落盘，否则每次启动都会重跑一次预设迁移。
-			...(document.presetVersion !== undefined ? { presetVersion: document.presetVersion } : {}),
 			revision: document.revision,
-		});
+			layoutVersion: AGENT_TEAM_STORAGE_LAYOUT_VERSION,
+			teams: teamDirectories,
+			agents: agentDirectories,
+		};
+		await atomicWriteJSONAsync(join(this.root, INDEX_FILE), nextIndex);
 		await atomicWriteFileAsync(join(this.root, INITIALIZED_MARKER), "1\n");
-	}
-
-	private async readIndex(): Promise<{ schemaVersion: 1; presetVersion?: number; revision: number }> {
-		try {
-			const value = await readJson(join(this.root, INDEX_FILE));
-			const presetVersion = value.presetVersion;
-			return {
-				schemaVersion: 1,
-				...(typeof presetVersion === "number" && Number.isInteger(presetVersion) && presetVersion >= 1
-					? { presetVersion }
-					: {}),
-				revision: typeof value.revision === "number" && Number.isInteger(value.revision) ? value.revision : 1,
-			};
-		} catch (error) {
-			if (isMissingFile(error)) return { schemaVersion: 1, revision: 1 };
-			throw error;
-		}
+		this.storageIndex = nextIndex;
 	}
 
 	private async installInitialFiles(): Promise<boolean> {
@@ -195,35 +190,27 @@ class DirectoryAgentTeamRepository implements AgentTeamFileRepository {
 	 * 抛 ENOENT，若把它当成「一个 Agent 都没有」，随后的 write() 会按空集合清理，
 	 * 把其余完好的 Agent 目录一并删掉——一次读失败会升级成永久数据丢失。
 	 */
-	private async readAgents(): Promise<AgentProfile[]> {
-		const agentsRoot = join(this.root, "agents");
-		let entries: Dirent[];
-		try {
-			entries = await readdir(agentsRoot, { withFileTypes: true });
-		} catch (error) {
-			if (isMissingFile(error)) return [];
-			throw error;
-		}
-
+	private async readAgents(index: AgentTeamStorageIndex): Promise<AgentProfile[]> {
 		const unreadable = new Set<string>();
 		const agents = await Promise.all(
-			entries
-				.filter((entry) => entry.isDirectory())
-				.sort((left, right) => left.name.localeCompare(right.name))
-				.map(async (entry) => {
+			Object.entries(index.agents)
+				.sort((left, right) => left[1].localeCompare(right[1]))
+				.map(async ([agentId, directory]) => {
 					try {
-						return await readAgentDirectory(join(agentsRoot, entry.name));
+						const agent = await readAgentDirectory(agentDefinitionPath(this.root, directory));
+						if (agent.id !== agentId) throw new Error(`Agent directory index mismatch: ${agentId}`);
+						return agent;
 					} catch (error) {
-						unreadable.add(entry.name);
+						unreadable.add(agentId);
 						log.error("failed to read agent profile directory", {
-							directory: entry.name,
+							directory,
 							error: error instanceof Error ? error.message : String(error),
 						});
 						return undefined;
 					}
 				}),
 		);
-		this.unreadableAgentDirectories = unreadable;
+		this.unreadableAgentIds = unreadable;
 		return agents.filter((agent): agent is AgentProfile => agent !== undefined);
 	}
 }
@@ -257,8 +244,8 @@ function resolveStoredSystemPrompt(content: string | undefined, metadata: Record
 	return fallback !== undefined && content.trimEnd() === fallback.trimEnd() ? undefined : content;
 }
 
-function serializeAgent(agent: AgentProfile): Omit<AgentProfile, "description" | "systemPrompt" | "presetId"> {
-	const { description: _description, systemPrompt: _systemPrompt, presetId: _presetId, ...metadata } = agent;
+function serializeAgent(agent: AgentProfile): Omit<AgentProfile, "description" | "systemPrompt"> {
+	const { description: _description, systemPrompt: _systemPrompt, ...metadata } = agent;
 	return metadata;
 }
 
@@ -280,7 +267,7 @@ async function writeMemberAssignments(teamRoot: string, members: readonly TeamMe
 	for (const member of members) {
 		const instructions = member.assignment?.instructions;
 		if (!instructions) continue;
-		const file = `${safeName(member.id)}.md`;
+		const file = memberAssignmentFileName(member.id, member.handle);
 		expected.add(file);
 		await atomicWriteFileAsync(join(membersRoot, file), instructions);
 	}
@@ -314,7 +301,10 @@ async function parseTeamManifest(value: unknown, root: string): Promise<TeamDefi
 
 async function readMemberAssignment(value: unknown, teamRoot: string): Promise<unknown> {
 	if (!isRecord(value) || typeof value.id !== "string") return value;
-	const instructions = await readOptionalFile(join(teamRoot, MEMBERS_DIR, `${safeName(value.id)}.md`));
+	if (typeof value.handle !== "string") return value;
+	const instructions = await readOptionalFile(
+		join(teamRoot, MEMBERS_DIR, memberAssignmentFileName(value.id, value.handle)),
+	);
 	if (instructions === undefined || instructions.trim().length === 0) return value;
 	const assignment = isRecord(value.assignment) ? value.assignment : {};
 	return { ...value, assignment: { ...assignment, instructions } };
@@ -335,37 +325,16 @@ async function readOptionalFile(path: string): Promise<string | undefined> {
 	}
 }
 
-async function removeStaleDirectories(
+async function removeDeletedMappedDirectories(
 	root: string,
-	expected: ReadonlySet<string>,
-	keep: ReadonlySet<string> = new Set(),
+	current: Readonly<Record<string, string>>,
+	next: Readonly<Record<string, string>>,
 ): Promise<void> {
-	const entries = await readdir(root, { withFileTypes: true });
 	await Promise.all(
-		entries
-			.filter((entry) => entry.isDirectory() && !expected.has(entry.name) && !keep.has(entry.name))
-			.map((entry) => rm(join(root, entry.name), { recursive: true, force: true })),
+		Object.entries(current)
+			.filter(([id]) => next[id] === undefined)
+			.map(([, directory]) => rm(join(root, directory), { recursive: true, force: true })),
 	);
-}
-
-async function removeStaleTeamDirectories(root: string, expected: Set<string>): Promise<void> {
-	const entries = await readdir(root, { withFileTypes: true });
-	await Promise.all(
-		entries
-			.filter((entry) => entry.isDirectory() && entry.name !== "agents" && !expected.has(entry.name))
-			.map(async (entry) => {
-				try {
-					await readFile(join(root, entry.name, "team.json"));
-					await rm(join(root, entry.name), { recursive: true, force: true });
-				} catch (error) {
-					if (!isMissingFile(error)) throw error;
-				}
-			}),
-	);
-}
-
-function safeName(value: string): string {
-	return encodeURIComponent(value).replace(/%/g, "_");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

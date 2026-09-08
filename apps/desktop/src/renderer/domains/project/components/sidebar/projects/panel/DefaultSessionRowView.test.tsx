@@ -1,7 +1,11 @@
 // @vitest-environment jsdom
 
 import { cleanup, render } from "@testing-library/react";
-import { DefaultSessionRowView, type DefaultSessionRowViewProps } from "@vetta/theme-ui/project";
+import {
+	DefaultSessionRowView,
+	type DefaultSessionRowViewProps,
+	SessionRowView,
+} from "@vetta/theme-ui/project";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 afterEach(cleanup);
@@ -103,5 +107,28 @@ describe("DefaultSessionRowView leading icon", () => {
 
 		expect(stack?.querySelectorAll("img")).toHaveLength(count);
 		expect(stack?.textContent).toBe("");
+	});
+});
+
+describe("SessionRowView Team identity", () => {
+	it("renders stacked member avatars next to the Team name in a project", () => {
+		const view = render(
+			<SessionRowView
+				active={false}
+				label="Dev Team"
+				leadingAvatarUrls={["/master.webp", "/architect.webp", "/executor.webp"]}
+				onOpenContextMenu={vi.fn()}
+				onRename={vi.fn()}
+				onRenameDone={vi.fn()}
+				onSelect={vi.fn()}
+				renaming={false}
+				running={false}
+				scheduled={false}
+				timeLabel="now"
+			/>,
+		);
+
+		expect(view.getByText("Dev Team")).toBeTruthy();
+		expect(view.container.querySelector('[data-avatar-stack="true"]')?.querySelectorAll("img")).toHaveLength(3);
 	});
 });

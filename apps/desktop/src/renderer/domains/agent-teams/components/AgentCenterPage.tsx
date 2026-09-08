@@ -4,7 +4,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useSetAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { notifyAgentTeamConfigurationChanged } from "../../project/components/sidebar/projects/panel/AgentTeamSidebarList";
+import { notifyAgentTeamConfigurationChanged } from "@shared/agent-teams/team-session-events";
 import { useAgentCenterModel } from "../hooks/useAgentCenterModel";
 import { AgentCenterView } from "./AgentCenterView";
 import { AgentProfileSheet } from "./AgentProfileSheet";

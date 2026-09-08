@@ -1,13 +1,16 @@
 import type { PinnedSessionPaths, SessionInfo } from "@shared/store/atoms";
 
-export interface SidebarSessionOrdering {
-	all: SessionInfo[];
+export interface SidebarSessionOrdering<T extends SessionInfo = SessionInfo> {
+	all: T[];
 	hasMore: boolean;
 	hiddenCount: number;
-	visible: SessionInfo[];
+	visible: T[];
 }
 
-export function orderSidebarSessions(sessions: readonly SessionInfo[], pinnedPaths: PinnedSessionPaths): SessionInfo[] {
+export function orderSidebarSessions<T extends SessionInfo>(
+	sessions: readonly T[],
+	pinnedPaths: PinnedSessionPaths,
+): T[] {
 	return [...sessions].sort((left, right) => {
 		const leftPinnedAt = pinnedPaths.get(left.path);
 		const rightPinnedAt = pinnedPaths.get(right.path);
@@ -20,12 +23,12 @@ export function orderSidebarSessions(sessions: readonly SessionInfo[], pinnedPat
 	});
 }
 
-export function buildSidebarSessionOrdering(
-	sessions: readonly SessionInfo[],
+export function buildSidebarSessionOrdering<T extends SessionInfo>(
+	sessions: readonly T[],
 	pinnedPaths: PinnedSessionPaths,
 	defaultVisibleCount: number,
 	showAll: boolean,
-): SidebarSessionOrdering {
+): SidebarSessionOrdering<T> {
 	const all = orderSidebarSessions(sessions, pinnedPaths);
 	const pinnedCount = all.findIndex((session) => !pinnedPaths.has(session.path));
 	const minimumVisible = pinnedCount === -1 ? all.length : pinnedCount;

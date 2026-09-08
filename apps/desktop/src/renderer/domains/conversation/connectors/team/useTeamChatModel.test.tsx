@@ -283,6 +283,84 @@ describe("useTeamChatModel streaming flow", () => {
 		]);
 	});
 
+	it("keeps one visible turn when a tool-only stream overlaps its persisted snapshot", async () => {
+		const { result } = renderHook(() => useTeamChatModel(team.id));
+		await waitFor(() => expect(result.current.model.status).toBe("ready"));
+		await waitFor(() => expect(streamListener).toBeTypeOf("function"));
+
+		const toolMessage = {
+			...createAssistantMessage(
+				{ api: "agent-team-test", provider: "agent-team-test", model: "fixture" },
+				{ timestamp: 2 },
+			),
+			content: [
+				{
+					type: "toolCall" as const,
+					id: "delegate-call",
+					name: "team_delegate_task",
+					arguments: { memberId: "executor" },
+				},
+			],
+		};
+		act(() => {
+			streamListener?.({
+				type: "conversation.agent-message-event",
+				conversationId: baseSession.id,
+				messageId: "public-tool-step",
+				turnId: "request",
+				author: { kind: "agent", id: leader.id },
+				sequence: 1,
+				timestamp: 2,
+				event: { type: "text_delta", contentIndex: 1, delta: "", partial: toolMessage },
+			});
+		});
+		expect(result.current.model.feedItems.filter((item) => item.kind === "agent")).toHaveLength(1);
+
+		act(() => {
+			streamListener?.({
+				type: "session-updated",
+				teamSessionId: baseSession.id,
+				snapshot: {
+					...baseSnapshot,
+					session: { ...baseSession, revision: 1 },
+					conversationRevision: 1,
+					messages: [
+						{
+							kind: "agent",
+							id: "public-tool-step",
+							turnId: "request",
+							author: { kind: "agent", id: leader.id },
+							message: { ...toolMessage, stopReason: "toolUse" },
+							timestamp: 2,
+						},
+					],
+					display: {
+						memberConversations: [
+							{
+								memberId: leader.id,
+								runtimeSessionId: "leader-runtime",
+								history: [
+									{
+										type: "message",
+										entryId: "runtime-tool-step",
+										message: toolMessage,
+									},
+								],
+							},
+						],
+					},
+				},
+			});
+		});
+
+		expect(result.current.model.feedItems.filter((item) => item.kind === "agent")).toEqual([
+			expect.objectContaining({
+				id: "runtime-tool-step",
+				renderKey: `team:agent-turn:${leader.id}:request`,
+			}),
+		]);
+	});
+
 	it("keeps a failed member visible until that member starts replying again", async () => {
 		const { result } = renderHook(() => useTeamChatModel(team.id));
 		await waitFor(() => expect(result.current.model.status).toBe("ready"));
@@ -321,6 +399,37 @@ describe("useTeamChatModel streaming flow", () => {
 			expect.objectContaining({
 				text: "@C:/workspace/brief.md",
 				attachments: [{ kind: "file", path: "C:/workspace/brief.md" }],
+			}),
+		);
+	});
+
+	it("routes and persists only structured member tokens, not plain @handle text", async () => {
+		const { result } = renderHook(() => useTeamChatModel(team.id));
+		await waitFor(() => expect(result.current.model.status).toBe("ready"));
+
+		act(() => result.current.actions.setDraft(`plain @${leader.handle}`));
+		await act(async () => result.current.actions.send());
+		expect(window.vetta.agentTeams.sendMessage).toHaveBeenLastCalledWith(
+			baseSession.id,
+			expect.objectContaining({ targetMemberIds: [], memberMentions: [] }),
+		);
+
+		const text = `**ask** @${leader.handle}`;
+		act(() =>
+			result.current.actions.setDraft(text, [
+				{ kind: "text", text: "**ask** " },
+				{ kind: "member", memberId: leader.id, handle: leader.handle, label: leader.handle },
+			]),
+		);
+		await act(async () => result.current.actions.send());
+		expect(window.vetta.agentTeams.sendMessage).toHaveBeenLastCalledWith(
+			baseSession.id,
+			expect.objectContaining({
+				text,
+				targetMemberIds: [leader.id],
+				memberMentions: [
+					{ participantId: leader.id, handle: leader.handle, start: 8, end: 8 + leader.handle.length + 1 },
+				],
 			}),
 		);
 	});
@@ -406,7 +515,16 @@ describe("useTeamChatModel streaming flow", () => {
 		expect(result.current.model.contextUsage?.percent).toBe(15);
 		expect(result.current.model.contextUsagesByRuntime?.["leader-runtime"]?.percent).toBe(15);
 
-		act(() => result.current.actions.toggleMember(secondMember.id));
+		act(() =>
+			result.current.actions.setDraft(`@${secondMember.handle} `, [
+				{
+					kind: "member",
+					memberId: secondMember.id,
+					handle: secondMember.handle,
+					label: secondMember.handle,
+				},
+			]),
+		);
 		// A selected member can be idle and have no usage event yet. Keep the
 		// shared ContextRing mounted with the latest known team runtime usage.
 		expect(result.current.model.contextUsage?.percent).toBe(15);
@@ -486,7 +604,7 @@ describe("useTeamChatModel streaming flow", () => {
 			document,
 			requestId: "handoff-request",
 			text: "send after navigation",
-			requestedMemberIds: [],
+			memberMentions: [],
 			attachments: [{ kind: "file", path: "C:/workspace/brief.md" }],
 			timestamp: 10,
 			executionMode: "full-access",
@@ -516,12 +634,12 @@ describe("useTeamChatModel streaming flow", () => {
 				}),
 			),
 		);
-		expect(createReservedTeamChatSession).toHaveBeenCalledWith(
-			team.id,
-			baseSession.id,
-			"full-access",
+		expect(createReservedTeamChatSession).toHaveBeenCalledWith({
+			teamId: team.id,
+			sessionId: baseSession.id,
+			executionMode: "full-access",
 			document,
-		);
+		});
 		expect(takeTeamSessionHandoff(baseSession.id)).toBeUndefined();
 	});
 
@@ -545,7 +663,7 @@ describe("useTeamChatModel streaming flow", () => {
 			document,
 			requestId,
 			text: submittedText,
-			requestedMemberIds: [],
+			memberMentions: [],
 			attachments: [],
 			timestamp: 10,
 			executionMode: "full-access",

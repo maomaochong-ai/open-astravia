@@ -1,0 +1,18 @@
+{
+	"id": "be72a2d2-5463-4d20-9ac2-3fd78e9fbb2e",
+	"revision": 1,
+	"name": "Master",
+	"mentionHandle": "master",
+	"blueprintId": "master",
+	"abilities": {
+		"selectionMode": "all",
+		"skills": [],
+		"mcpServers": [],
+		"plugins": []
+	},
+	"scope": {
+		"kind": "library"
+	},
+	"createdAt": 0,
+	"updatedAt": 0
+}

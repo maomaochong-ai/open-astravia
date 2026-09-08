@@ -45,7 +45,7 @@ vi.mock("@tanstack/react-router", () => ({
 	useNavigate: () => mocks.navigate,
 	useSearch: () => mocks.search(),
 }));
-vi.mock("../../project/components/sidebar/projects/panel/AgentTeamSidebarList", () => ({
+vi.mock("@shared/agent-teams/team-session-events", () => ({
 	notifyAgentTeamConfigurationChanged: vi.fn(),
 }));
 vi.mock("./AgentCenterView", () => ({

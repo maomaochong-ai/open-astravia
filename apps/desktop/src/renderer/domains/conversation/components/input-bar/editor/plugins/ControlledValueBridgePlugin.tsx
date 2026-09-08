@@ -1,5 +1,5 @@
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { parseInputSegments, segmentsToText } from "@shared/lib/input-tokens";
+import { parseInputSegments, serializeInputSegments, segmentsToText, type InputSegment } from "@shared/lib/input-tokens";
 import { useEffect, useRef } from "react";
 import { $applySegments, $readSegments } from "../tokens/segments";
 
@@ -8,10 +8,12 @@ const CONTROLLED_SYNC_TAG = "input-editor-controlled-sync";
 /** Token-aware controlled projection used by non-default conversation connectors. */
 export function ControlledValueBridgePlugin({
 	value,
+	segments,
 	onValueChange,
 }: {
 	readonly value: string;
-	readonly onValueChange: (value: string) => void;
+	readonly segments?: readonly InputSegment[];
+	readonly onValueChange: (value: string, segments?: readonly InputSegment[]) => void;
 }): null {
 	const [editor] = useLexicalComposerContext();
 	const projectedValueRef = useRef(value);
@@ -22,10 +24,11 @@ export function ControlledValueBridgePlugin({
 		() =>
 			editor.registerUpdateListener(({ editorState, tags }) => {
 				if (tags.has(CONTROLLED_SYNC_TAG)) return;
-				const next = editorState.read(() => segmentsToText($readSegments()));
+				const segments = editorState.read(() => $readSegments());
+				const next = serializeInputSegments(segments).text;
 				if (next === projectedValueRef.current) return;
 				projectedValueRef.current = next;
-				onValueChangeRef.current(next);
+				onValueChangeRef.current(next, segments);
 			}),
 		[editor],
 	);
@@ -34,8 +37,8 @@ export function ControlledValueBridgePlugin({
 		projectedValueRef.current = value;
 		const current = editor.getEditorState().read(() => segmentsToText($readSegments()));
 		if (current === value) return;
-		editor.update(() => $applySegments(parseInputSegments(value).segments), { tag: CONTROLLED_SYNC_TAG });
-	}, [editor, value]);
+		editor.update(() => $applySegments(segments ?? parseInputSegments(value).segments), { tag: CONTROLLED_SYNC_TAG });
+	}, [editor, segments, value]);
 
 	return null;
 }

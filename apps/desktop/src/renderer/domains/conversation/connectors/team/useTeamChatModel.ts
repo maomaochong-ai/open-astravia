@@ -2,13 +2,21 @@ import type { DesktopTeamSessionSnapshot } from "@preload/api-types/team-convers
 import { agentDisplayName, teamDisplayName } from "@shared/agent-teams/agent-team-presentation";
 import { notifyTeamSessionsChanged } from "@shared/agent-teams/team-session-events";
 import { waitForCommittedPaint } from "@shared/lib/committed-paint";
-import { deriveAttachments, parseInputSegments, pathTokenText, segmentsToText } from "@shared/lib/input-tokens";
+import {
+	deriveAttachments,
+	type InputSegment,
+	parseInputSegments,
+	pathTokenText,
+	projectMemberMentionsToTrimmedText,
+	type SerializedMemberMention,
+	segmentsToText,
+	serializeInputSegments,
+} from "@shared/lib/input-tokens";
 import { persistBase64Images } from "@shared/lib/persist-input-images";
 import { pathBasename } from "@shared/lib/utils";
 import { reasoningByModelAtom, selectedModelAtom } from "@shared/store/atoms";
 import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
-import type { TeamSessionListItem } from "@vetta/agent-team";
-import { type AgentTeamDocument, resolveMentionedMemberIds } from "@vetta/agent-team";
+import type { AgentTeamDocument, TeamSessionListItem } from "@vetta/agent-team";
 import type { PromptAttachmentRef, SessionExecutionMode } from "@vetta/runtime-core";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -66,6 +74,9 @@ export function useTeamChatModel(
 		Readonly<Record<string, readonly TeamAttachmentViewModel[]>>
 	>({});
 	const [selectedMemberIds, setSelectedMemberIds] = useState<readonly string[]>([]);
+	const [memberMentionsByTeam, setMemberMentionsByTeam] = useState<
+		Readonly<Record<string, readonly SerializedMemberMention[]>>
+	>({});
 	const [failedMemberIds, setFailedMemberIds] = useState<ReadonlySet<string>>(() => new Set());
 	const [pending, setPending] = useState<TeamPendingRequest>();
 	const [streams, setStreams] = useState<TeamStreamState>({});
@@ -90,8 +101,11 @@ export function useTeamChatModel(
 	const displayDocument = routeHandoff?.document ?? document;
 	const draftScope = session?.id ?? preferredSessionId ?? teamId;
 	const draft = draftsByTeam[draftScope] ?? "";
+	const draftRef = useRef(draft);
+	draftRef.current = draft;
 	const history = historyByTeam[draftScope] ?? [];
 	const attachments = attachmentsByTeam[draftScope] ?? [];
+	const memberMentions = memberMentionsByTeam[draftScope] ?? [];
 	const updateDraft = useCallback(
 		(update: string | ((current: string) => string)) => {
 			setDraftsByTeam((current) => updateScopedTeamDraft(current, draftScope, update));
@@ -108,16 +122,21 @@ export function useTeamChatModel(
 		[draftScope],
 	);
 	const setDraft = useCallback(
-		(next: string) => {
+		(next: string, segments?: readonly InputSegment[]) => {
+			draftRef.current = next;
 			updateDraft(next);
-			const derived = deriveAttachments(parseInputSegments(next).segments).map((attachment) => ({
+			const activeSegments = segments ?? parseInputSegments(next).segments;
+			const serialized = segments ? serializeInputSegments(segments) : { text: next, memberMentions: [] };
+			setMemberMentionsByTeam((current) => ({ ...current, [draftScope]: serialized.memberMentions }));
+			setSelectedMemberIds([...new Set(serialized.memberMentions.map((mention) => mention.participantId))]);
+			const derived = deriveAttachments(activeSegments).map((attachment) => ({
 				path: attachment.path,
 				name: pathBasename(attachment.path),
 				kind: attachment.kind === "image" ? ("image" as const) : ("file" as const),
 			}));
 			updateAttachments(() => derived);
 		},
-		[updateAttachments, updateDraft],
+		[draftScope, updateAttachments, updateDraft],
 	);
 
 	const team = useMemo(
@@ -481,17 +500,6 @@ export function useTeamChatModel(
 		[memberViewId, members, snapshot, streams, t, visiblePending],
 	);
 
-	const selectLeader = useCallback(() => setSelectedMemberIds([]), []);
-	const toggleMember = useCallback(
-		(memberId: string) => {
-			const member = members.find((candidate) => candidate.id === memberId);
-			if (!member) return;
-			setSelectedMemberIds((current) =>
-				current.includes(memberId) ? current.filter((id) => id !== memberId) : [...current, memberId],
-			);
-		},
-		[members],
-	);
 	const addAttachments = useCallback(
 		(additions: readonly TeamAttachmentViewModel[]) => {
 			const existingPaths = new Set(deriveAttachments(parseInputSegments(draft).segments).map((item) => item.path));
@@ -567,13 +575,12 @@ export function useTeamChatModel(
 						kind: attachment.kind === "image" ? ("image" as const) : ("file" as const),
 					}))
 				: attachments;
-			const targetMemberIds = activeHandoff
-				? team
-					? resolveMentionedMemberIds(team, text, activeHandoff.requestedMemberIds)
-					: activeHandoff.requestedMemberIds
-				: team
-					? resolveMentionedMemberIds(team, text, selectedMemberIds)
-					: [];
+			const sentMemberMentions = projectMemberMentionsToTrimmedText(
+				activeHandoff?.text ?? draft,
+				text,
+				activeHandoff?.memberMentions ?? memberMentions,
+			);
+			const targetMemberIds = [...new Set(sentMemberMentions.map((mention) => mention.participantId))];
 			const promptAttachments = activeHandoff?.attachments ?? attachments.map(toPromptAttachment);
 			const requestModelKey = activeHandoff?.modelKey ?? effectiveModelKey;
 			const requestReasoning = activeHandoff?.reasoning ?? effectiveReasoning;
@@ -583,6 +590,7 @@ export function useTeamChatModel(
 				displayText: draftText,
 				attachments: promptAttachments,
 				targetMemberIds,
+				memberMentions: sentMemberMentions,
 				leaderMemberId: session?.leaderMemberId ?? team?.leaderMemberId ?? "leader",
 				timestamp: activeHandoff?.timestamp ?? Date.now(),
 			};
@@ -597,6 +605,9 @@ export function useTeamChatModel(
 			streamsRef.current = activeStreams;
 			setStreams(activeStreams);
 			updateDraft("");
+			draftRef.current = "";
+			setMemberMentionsByTeam((current) => ({ ...current, [draftScope]: [] }));
+			setSelectedMemberIds([]);
 			updateAttachments(() => []);
 			const startedAt = Date.now();
 			console.info("[agent-team] send-message IPC started", {
@@ -614,12 +625,13 @@ export function useTeamChatModel(
 				const loaded = session
 					? undefined
 					: activeHandoff
-						? await createReservedTeamChatSession(
+						? await createReservedTeamChatSession({
 								teamId,
-								activeHandoff.sessionId,
-								activeHandoff.executionMode,
-								displayDocument,
-							)
+								sessionId: activeHandoff.sessionId,
+								executionMode: activeHandoff.executionMode,
+								document: displayDocument,
+								...(activeHandoff.workspace ? { workspace: activeHandoff.workspace } : {}),
+							})
 						: await (sessionCreationRef.current ?? createTeamChatSession(teamId, document, sessions));
 				const readySession = session ?? loaded?.snapshot.session;
 				if (!readySession) throw new Error("Team session is still preparing");
@@ -641,6 +653,7 @@ export function useTeamChatModel(
 				const next = await window.vetta.agentTeams.sendMessage(readySession.id, {
 					requestId,
 					text,
+					memberMentions: sentMemberMentions,
 					targetMemberIds,
 					...(promptAttachments.length ? { attachments: promptAttachments } : {}),
 					...(requestModelKey ? { modelKey: requestModelKey } : {}),
@@ -686,7 +699,13 @@ export function useTeamChatModel(
 					setError(errorMessage(cause));
 					setStatus("error");
 				}
+				const restoreSubmittedDraft = draftRef.current.length === 0;
 				updateDraft((current) => current || draftText);
+				if (restoreSubmittedDraft) {
+					draftRef.current = draftText;
+					setMemberMentionsByTeam((current) => ({ ...current, [draftScope]: sentMemberMentions }));
+					setSelectedMemberIds([...new Set(sentMemberMentions.map((mention) => mention.participantId))]);
+				}
 				updateAttachments((current) => mergeAttachments(current, sentAttachments));
 			} finally {
 				if (pendingRef.current?.requestId === requestId) pendingRef.current = undefined;
@@ -697,7 +716,7 @@ export function useTeamChatModel(
 			attachments,
 			draft,
 			teamId,
-			selectedMemberIds,
+			memberMentions,
 			session,
 			team,
 			draftScope,
@@ -779,6 +798,7 @@ export function useTeamChatModel(
 			title: team ? teamDisplayName(team, t) : t("teams.title"),
 			status: routeHandoff && !session ? "sending" : status,
 			draft,
+			draftMemberMentions: memberMentions,
 			history,
 			attachments,
 			members,
@@ -819,6 +839,7 @@ export function useTeamChatModel(
 			t,
 			status,
 			draft,
+			memberMentions,
 			history,
 			attachments,
 			members,
@@ -847,8 +868,6 @@ export function useTeamChatModel(
 	const actions = useMemo<TeamChatActions>(
 		() => ({
 			setDraft,
-			selectLeader,
-			toggleMember,
 			selectFiles,
 			selectImages,
 			removeAttachment,
@@ -863,8 +882,6 @@ export function useTeamChatModel(
 		}),
 		[
 			setDraft,
-			selectLeader,
-			toggleMember,
 			selectFiles,
 			selectImages,
 			removeAttachment,
@@ -909,7 +926,8 @@ function pendingRequestFromHandoff(handoff: TeamSessionHandoff, leaderMemberId: 
 		text: handoff.text,
 		displayText: handoff.text,
 		attachments: handoff.attachments,
-		targetMemberIds: handoff.requestedMemberIds,
+		targetMemberIds: [...new Set(handoff.memberMentions.map((mention) => mention.participantId))],
+		memberMentions: handoff.memberMentions,
 		leaderMemberId,
 		timestamp: handoff.timestamp,
 	};

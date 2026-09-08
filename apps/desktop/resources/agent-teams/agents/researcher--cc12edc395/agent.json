@@ -1,0 +1,18 @@
+{
+	"id": "2fef0dcb-7798-4060-8694-f34b74696d0a",
+	"revision": 1,
+	"name": "Researcher",
+	"mentionHandle": "researcher",
+	"blueprintId": "researcher",
+	"abilities": {
+		"selectionMode": "all",
+		"skills": [],
+		"mcpServers": [],
+		"plugins": []
+	},
+	"scope": {
+		"kind": "library"
+	},
+	"createdAt": 0,
+	"updatedAt": 0
+}

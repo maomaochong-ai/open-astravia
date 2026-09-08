@@ -12,6 +12,7 @@ import { TeamComposerConnector } from "./TeamComposerConnector";
 const captured = vi.hoisted(() => ({
 	model: undefined as InputBarModel | undefined,
 	insertMemberToken: vi.fn(),
+	removeMemberToken: vi.fn(),
 }));
 
 Object.defineProperty(window, "vetta", {
@@ -33,6 +34,7 @@ vi.mock("../../components/input-bar/editor/inputEditorHandle", async () => ({
 		"../../components/input-bar/editor/inputEditorHandle",
 	)),
 	insertMemberToken: captured.insertMemberToken,
+	removeMemberToken: captured.removeMemberToken,
 }));
 
 vi.mock("react-i18next", () => ({
@@ -49,8 +51,6 @@ beforeEach(() => {
 function actions(): TeamChatActions {
 	return {
 		setDraft: vi.fn(),
-		selectLeader: vi.fn(),
-		toggleMember: vi.fn(),
 		selectFiles: vi.fn(async () => undefined),
 		selectImages: vi.fn(async () => undefined),
 		removeAttachment: vi.fn(),
@@ -128,6 +128,7 @@ describe("TeamComposerConnector", () => {
 			insertText: "@fallback ",
 		});
 		expect(captured.insertMemberToken).toHaveBeenCalledWith(
+			"member-1",
 			"research",
 			"Research",
 			expect.any(String),
@@ -153,7 +154,13 @@ describe("TeamComposerConnector", () => {
 		});
 
 		expect(viewActions.send).toHaveBeenCalledOnce();
-		expect(viewActions.toggleMember).toHaveBeenCalledWith("member-1");
+		expect(captured.insertMemberToken).toHaveBeenLastCalledWith(
+			"member-1",
+			"research",
+			"Research",
+			expect.any(String),
+			"@research",
+		);
 		expect(viewActions.removeAttachment).toHaveBeenCalledWith("C:/workspace/brief.md");
 		expect(viewActions.selectModel).toHaveBeenCalledWith("anthropic/claude", "medium");
 	});

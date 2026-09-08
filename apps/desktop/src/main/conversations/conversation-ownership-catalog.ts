@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
+import type { TeamSessionWorkspaceKind } from "@vetta/agent-team";
 import { atomicWriteJSONAsync } from "@vetta/toolkit/atomic-write";
 
 const CATALOG_PATH = resolve(getVettaHomePath(), "conversation-ownership.v1.json");
@@ -18,6 +19,9 @@ export interface ConversationOwnershipRecord {
 	readonly title: string;
 	readonly createdAt: number;
 	readonly updatedAt: number;
+	readonly workspaceKind?: TeamSessionWorkspaceKind;
+	readonly workspaceId?: string;
+	readonly cwd?: string;
 }
 
 interface ConversationOwnershipDocument {
@@ -108,6 +112,12 @@ function parseDocument(value: unknown): ConversationOwnershipDocument {
 				typeof record.title !== "string" ||
 				typeof record.createdAt !== "number" ||
 				typeof record.updatedAt !== "number" ||
+				(record.workspaceKind !== undefined &&
+					record.workspaceKind !== "team-default" &&
+					record.workspaceKind !== "session" &&
+					record.workspaceKind !== "project") ||
+				(record.workspaceId !== undefined && typeof record.workspaceId !== "string") ||
+				(record.cwd !== undefined && typeof record.cwd !== "string") ||
 				!isRecord(record.owner) ||
 				record.owner.kind !== "agent-team" ||
 				typeof record.owner.teamId !== "string" ||

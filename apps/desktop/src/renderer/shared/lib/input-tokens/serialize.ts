@@ -43,6 +43,8 @@ function segmentToText(segment: InputSegment): string {
 	switch (segment.kind) {
 		case "text":
 			return segment.text;
+		case "member":
+			return `@${segment.handle}`;
 		case "skill":
 			return skillTokenText(segment.name);
 		case "scene":
@@ -55,14 +57,28 @@ function segmentToText(segment: InputSegment): string {
 	}
 }
 
+export interface SerializedMemberMention {
+	readonly participantId: string;
+	readonly handle: string;
+	/** UTF-16 offsets into the serialized Markdown text. */
+	readonly start: number;
+	readonly end: number;
+}
+
+export interface SerializedInputSegments {
+	readonly text: string;
+	readonly memberMentions: readonly SerializedMemberMention[];
+}
+
 /**
  * segments → 发给模型的文本。
  * token 必须有明确的词边界才能被 parseInputSegments 还原，因此 token 与
  * 相邻 token / 正文之间按需补一个空格（`@scene:review正文` 会被误认成一个名字）。
  */
-export function segmentsToText(segments: readonly InputSegment[]): string {
+export function serializeInputSegments(segments: readonly InputSegment[]): SerializedInputSegments {
 	let out = "";
 	let previousKind: InputSegment["kind"] | null = null;
+	const memberMentions: SerializedMemberMention[] = [];
 	for (const segment of segments) {
 		const piece = segmentToText(segment);
 		if (piece === "") continue;
@@ -70,10 +86,38 @@ export function segmentsToText(segments: readonly InputSegment[]): string {
 		const needsSeparator =
 			out !== "" && !/\s$/.test(out) && (segment.kind !== "text" || (followsToken && !/^\s/.test(piece)));
 		if (needsSeparator) out += " ";
+		const start = out.length;
 		out += piece;
+		if (segment.kind === "member") {
+			memberMentions.push({
+				participantId: segment.memberId,
+				handle: segment.handle,
+				start,
+				end: out.length,
+			});
+		}
 		previousKind = segment.kind;
 	}
-	return out;
+	return { text: out, memberMentions };
+}
+
+export function segmentsToText(segments: readonly InputSegment[]): string {
+	return serializeInputSegments(segments).text;
+}
+
+export function projectMemberMentionsToTrimmedText(
+	source: string,
+	trimmed: string,
+	mentions: readonly SerializedMemberMention[],
+): readonly SerializedMemberMention[] {
+	const leading = source.length - source.trimStart().length;
+	return mentions.flatMap((mention) => {
+		const start = mention.start - leading;
+		const end = mention.end - leading;
+		return start >= 0 && end <= trimmed.length && trimmed.slice(start, end) === `@${mention.handle}`
+			? [{ ...mention, start, end }]
+			: [];
+	});
 }
 
 export interface DerivedAttachment {

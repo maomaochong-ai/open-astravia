@@ -1,5 +1,5 @@
 import { pathBasename } from "@shared/lib/utils";
-import type { Project, ProjectType, SessionInfo } from "@shared/store/atoms";
+import type { Project, ProjectType } from "@shared/store/atoms";
 import {
 	pinnedSessionPathsAtom,
 	projectContextMenuAtom,
@@ -14,6 +14,12 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { relativeTime } from "../components/sidebar/projects/relativeTime";
+import {
+	isSidebarConversationActive,
+	type SidebarConversationInfo,
+	sidebarConversationIdentity,
+	sidebarConversationKey,
+} from "../services/sidebar-conversation-projection";
 import { buildSidebarSessionOrdering } from "../services/sidebar-session-order";
 import { reuseUnchangedSessionViews } from "./stableSessionViews";
 
@@ -27,11 +33,14 @@ export interface ProjectGroupSessionView {
 	running: boolean;
 	scheduled: boolean;
 	pinned: boolean;
-	session: SessionInfo;
+	leadingAvatarUrls?: readonly string[];
+	titleExtra?: string;
+	session: SidebarConversationInfo;
 }
 
 interface UseProjectGroupModelArgs {
 	activeSessionPath: string;
+	activeTeamSessionId: string;
 	isActive?: boolean;
 	isExpanded: boolean;
 	onCollapse: (cwd: string) => void;
@@ -39,13 +48,14 @@ interface UseProjectGroupModelArgs {
 	onNavigateProject: (cwd: string) => void;
 	onNewSession: (cwd: string) => void;
 	onRenameSession: (cwd: string, sessionPath: string, name: string) => void;
-	onSelectSession: (cwd: string, sessionPath: string) => void;
+	onSelectSession: (cwd: string, session: SidebarConversationInfo) => void;
 	project: Project;
-	sessions: SessionInfo[];
+	sessions: SidebarConversationInfo[];
 }
 
 export function useProjectGroupModel({
 	activeSessionPath,
+	activeTeamSessionId,
 	isActive = false,
 	isExpanded,
 	onCollapse,
@@ -86,18 +96,25 @@ export function useProjectGroupModel({
 		if (!isExpanded) setShowAllSessions(false);
 	}, [isExpanded]);
 
+	const activeConversationKey = activeTeamSessionId
+		? `agent-team:${activeTeamSessionId}`
+		: activeSessionPath
+			? `conversation:${activeSessionPath}`
+			: "";
 	useEffect(() => {
-		if (!activeSessionPath) {
+		if (!activeConversationKey) {
 			revealedActiveSessionRef.current = null;
 			return;
 		}
-		if (revealedActiveSessionRef.current === activeSessionPath) return;
-		const activeIndex = ordering.all.findIndex((session) => session.path === activeSessionPath);
+		if (revealedActiveSessionRef.current === activeConversationKey) return;
+		const activeIndex = ordering.all.findIndex(
+			(session) => sidebarConversationKey(session) === activeConversationKey,
+		);
 		if (activeIndex < 0) return;
-		revealedActiveSessionRef.current = activeSessionPath;
+		revealedActiveSessionRef.current = activeConversationKey;
 		const collapsed = buildSidebarSessionOrdering(sessions, pinnedSessionPaths, DEFAULT_VISIBLE_SESSIONS, false);
 		if (activeIndex >= collapsed.visible.length) setShowAllSessions(true);
-	}, [activeSessionPath, ordering.all, pinnedSessionPaths, sessions]);
+	}, [activeConversationKey, ordering.all, pinnedSessionPaths, sessions]);
 
 	const displayName = project.name ?? pathBasename(project.cwd);
 	const projectType = project.type;
@@ -107,21 +124,28 @@ export function useProjectGroupModel({
 	const sessionViews: ProjectGroupSessionView[] = useMemo(() => {
 		void i18n.language;
 		const next = ordering.visible.map((session) => {
-			const isSessionActive = activeSessionPath === session.path;
-			const isRunning = runningSessionPaths.has(session.path);
+			const identity = sidebarConversationIdentity(
+				session,
+				session.kind === "conversation" ? sessionDisplayLabel(session) : undefined,
+			);
+			const isSessionActive = isSidebarConversationActive(session, activeSessionPath, activeTeamSessionId);
+			const isRunning = identity.mutable && runningSessionPaths.has(session.path);
 			const isSchedule =
-				scheduledSessionPaths.has(session.path) ||
-				scheduledBasenames.has(session.path.slice(session.path.lastIndexOf("/") + 1));
+				identity.mutable &&
+				(scheduledSessionPaths.has(session.path) ||
+					scheduledBasenames.has(session.path.slice(session.path.lastIndexOf("/") + 1)));
 			return {
-				key: session.path,
+				key: identity.key,
 				path: session.path,
-				label: sessionDisplayLabel(session),
+				label: identity.label,
 				timeLabel: relativeTime(session.modifiedAt, t),
 				active: isSessionActive,
-				pinned: pinnedSessionPaths.has(session.path),
-				renaming: renamingSessionPath === session.path,
+				pinned: identity.mutable && pinnedSessionPaths.has(session.path),
+				renaming: identity.mutable && renamingSessionPath === session.path,
 				running: isRunning,
 				scheduled: isSchedule,
+				leadingAvatarUrls: identity.leadingAvatarUrls,
+				titleExtra: identity.titleExtra,
 				session,
 			};
 		});
@@ -129,6 +153,7 @@ export function useProjectGroupModel({
 		return reuseUnchangedSessionViews(viewCacheRef.current, next);
 	}, [
 		activeSessionPath,
+		activeTeamSessionId,
 		i18n.language,
 		renamingSessionPath,
 		runningSessionPaths,
@@ -153,19 +178,22 @@ export function useProjectGroupModel({
 		[project, setProjectContextMenu],
 	);
 	const openSessionContextMenu = useCallback(
-		(event: React.MouseEvent, session: SessionInfo) => {
+		(event: React.MouseEvent, session: SidebarConversationInfo) => {
 			event.preventDefault();
+			if (session.kind === "agent-team") return;
 			setContextMenu({ x: event.clientX, y: event.clientY, session, allowMutations: true });
 		},
 		[setContextMenu],
 	);
 	const renameDone = useCallback(() => setRenamingSessionPath(null), [setRenamingSessionPath]);
 	const renameSessionByPath = useCallback(
-		(sessionPath: string, name: string) => onRenameSession(projectCwd, sessionPath, name),
+		(session: SidebarConversationInfo, name: string) => {
+			if (session.kind === "conversation") onRenameSession(projectCwd, session.path, name);
+		},
 		[onRenameSession, projectCwd],
 	);
 	const selectSessionByPath = useCallback(
-		(sessionPath: string) => onSelectSession(projectCwd, sessionPath),
+		(session: SidebarConversationInfo) => onSelectSession(projectCwd, session),
 		[onSelectSession, projectCwd],
 	);
 	const toggleShowAll = useCallback(() => setShowAllSessions((value) => !value), []);

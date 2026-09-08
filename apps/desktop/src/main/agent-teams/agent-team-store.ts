@@ -16,7 +16,6 @@ import {
 	previewAgentProfileDelete,
 	previewAgentProfileUpdate,
 	requireTeamPolicies,
-	seedAgentTeamPresets,
 	type TeamDefinition,
 	type TeamMemberAssignment,
 	type UpdateAgentProfileInput,
@@ -55,7 +54,6 @@ export class AgentTeamStore {
 		if (this.document) return this.document;
 		this.loadPromise ??= this.repository
 			.read()
-			.then((document) => this.migratePresets(document))
 			.then((document) => {
 				this.document = document;
 				return document;
@@ -72,33 +70,6 @@ export class AgentTeamStore {
 
 	async listBlueprints() {
 		return BUILTIN_AGENT_BLUEPRINTS;
-	}
-
-	/**
-	 * 把存量安装升级到当前这套内置预设。初始资源只在首次安装时铺盘，
-	 * 之后改预设不会自己传播到已经初始化过的用户目录，只能在读取时补迁移。
-	 *
-	 * 落盘失败不阻断启动：内存里用迁移后的结果继续跑，下次启动再试一次，
-	 * 总好过让整个 Agent Team 因为一次写失败而打不开。
-	 */
-	private async migratePresets(document: AgentTeamDocument): Promise<AgentTeamDocument> {
-		const seeded = seedAgentTeamPresets(document);
-		if (seeded === document) return document;
-		const normalized = parseAgentTeamDocument(
-			{ ...seeded, schemaVersion: AGENT_TEAM_SCHEMA_VERSION },
-			this.extensions,
-		);
-		try {
-			await this.repository.write(normalized);
-			log.info("agent team presets migrated", {
-				presetVersion: normalized.presetVersion,
-				agents: normalized.agents.length,
-				teams: normalized.teams.length,
-			});
-		} catch (error) {
-			log.error("failed to persist migrated agent team presets", { error: errorMessage(error) });
-		}
-		return normalized;
 	}
 
 	async createAgent(input: CreateAgentProfileInput): Promise<AgentProfile> {
@@ -404,9 +375,8 @@ export class AgentTeamStore {
 	}
 
 	private createTeamCopy(source: AgentProfile, teamId: string, now: number): AgentProfile {
-		const { presetId: _presetId, ...sourceWithoutPresetIdentity } = source;
 		return {
-			...sourceWithoutPresetIdentity,
+			...source,
 			id: this.createId(),
 			revision: 1,
 			scope: { kind: "team", teamId },

@@ -1,4 +1,4 @@
-import { type AgentTeamDocument, BUILTIN_AGENT_PRESETS, createAgentTeamFixture } from "@vetta/agent-team";
+import { type AgentTeamDocument, createAgentTeamFixture, INITIAL_AGENT_PROFILES } from "@vetta/agent-team";
 import { describe, expect, it, vi } from "vitest";
 import type { AgentTeamConfigRepository } from "./agent-team-config-repository.js";
 import { AgentTeamStore } from "./agent-team-store.js";
@@ -41,55 +41,6 @@ function agentInput(name: string) {
 	};
 }
 
-describe("AgentTeamStore preset migration", () => {
-	it("upgrades an existing install to the current presets once and persists it", async () => {
-		const repository = new MemoryRepository();
-		repository.document = {
-			schemaVersion: 1,
-			revision: 6,
-			agents: [
-				{
-					id: "builtin:agent:leader",
-					revision: 1,
-					name: "Vetta",
-					description: "Coordinates the team.",
-					mentionHandle: "vetta",
-					blueprintId: "leader",
-					abilities: { selectionMode: "all", skills: [], mcpServers: [], plugins: [] },
-					scope: { kind: "library" },
-					createdAt: 0,
-					updatedAt: 0,
-				},
-			],
-			teams: [],
-		};
-		const store = new AgentTeamStore({ repository });
-
-		const document = await store.read();
-
-		expect(document.presetVersion).toBe(2);
-		expect(document.agents.map((agent) => agent.id)).toEqual(BUILTIN_AGENT_PRESETS.map((preset) => preset.id));
-		expect(document.teams).toHaveLength(4);
-		expect(repository.writes).toBe(1);
-
-		// 已经是当前版本的配置不该再被重写一次。
-		const reloaded = await new AgentTeamStore({ repository }).read();
-		expect(reloaded.presetVersion).toBe(2);
-		expect(repository.writes).toBe(1);
-	});
-
-	it("keeps serving the upgraded presets when persisting the migration fails", async () => {
-		const repository = new MemoryRepository();
-		repository.document = { schemaVersion: 1, revision: 1, agents: [], teams: [] };
-		repository.failNextWrite = true;
-		const store = new AgentTeamStore({ repository });
-
-		const document = await store.read();
-
-		expect(document.agents).toHaveLength(BUILTIN_AGENT_PRESETS.length);
-	});
-});
-
 describe("AgentTeamStore transaction boundary", () => {
 	it("serializes concurrent mutations without losing either profile", async () => {
 		const repository = new MemoryRepository();
@@ -128,11 +79,11 @@ describe("AgentTeamStore transaction boundary", () => {
 		expect(created.abilities.selectionMode).toBe("all");
 	});
 
-	it("allows customizing a built-in profile while retaining its stable preset identity", async () => {
+	it("allows customizing an initially supplied profile like any other profile", async () => {
 		const repository = new MemoryRepository();
 		const store = new AgentTeamStore({ repository, createId: createIdSequence(), now: () => 10 });
-		const source = BUILTIN_AGENT_PRESETS[0];
-		if (!source) throw new Error("Expected a built-in Agent preset");
+		const source = INITIAL_AGENT_PROFILES[0];
+		if (!source) throw new Error("Expected an initial Agent profile");
 
 		const updated = await store.updateAgent(source.id, {
 			expectedRevision: source.revision,
@@ -146,7 +97,6 @@ describe("AgentTeamStore transaction boundary", () => {
 			id: source.id,
 			name: "Custom leader",
 			description: "A customized role",
-			presetId: source.presetId,
 		});
 	});
 
@@ -229,11 +179,11 @@ describe("AgentTeamStore transaction boundary", () => {
 		expect(cleared.members[0]?.assignment).toBeUndefined();
 	});
 
-	it("allows deleting a built-in profile like any other team file", async () => {
+	it("allows deleting an initially supplied profile like any other profile", async () => {
 		const repository = new MemoryRepository();
 		const store = new AgentTeamStore({ repository, createId: createIdSequence(), now: () => 10 });
-		const source = BUILTIN_AGENT_PRESETS[0];
-		if (!source) throw new Error("Expected a built-in Agent preset");
+		const source = INITIAL_AGENT_PROFILES[0];
+		if (!source) throw new Error("Expected an initial Agent profile");
 
 		const impact = await store.previewAgentDelete(source.id);
 		await expect(
@@ -252,7 +202,7 @@ describe("AgentTeamStore transaction boundary", () => {
 		const removable = await store.createAgent(agentInput("Removable"));
 
 		await store.deleteAgent(removable.id, { expectedRevision: removable.revision });
-		expect((await store.read()).agents).toHaveLength(BUILTIN_AGENT_PRESETS.length);
+		expect((await store.read()).agents).toHaveLength(INITIAL_AGENT_PROFILES.length);
 
 		const referenced = await store.createAgent(agentInput("Referenced"));
 		const referencedTeam = await store.createTeam({
@@ -334,11 +284,11 @@ describe("AgentTeamStore transaction boundary", () => {
 		expect(updated.leaderMemberId).toBe(updated.members[0]?.id);
 	});
 
-	it("turns a copied built-in preset into an independently editable profile", async () => {
+	it("turns a copied initial profile into an independently editable profile", async () => {
 		const repository = new MemoryRepository();
 		const store = new AgentTeamStore({ repository, createId: createIdSequence(), now: () => 10 });
-		const source = BUILTIN_AGENT_PRESETS[0];
-		if (!source) throw new Error("Expected a built-in Agent preset");
+		const source = INITIAL_AGENT_PROFILES[0];
+		if (!source) throw new Error("Expected an initial Agent profile");
 
 		const team = await store.createTeam({
 			name: "Copy team",
@@ -357,6 +307,5 @@ describe("AgentTeamStore transaction boundary", () => {
 		const copied = (await store.read()).agents.find((agent) => agent.id === copiedId);
 
 		expect(copied).toMatchObject({ scope: { kind: "team", teamId: team.id } });
-		expect(copied?.presetId).toBeUndefined();
 	});
 });

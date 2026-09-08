@@ -110,7 +110,7 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		projectSelection.selection?.name ?? contextCwd.split(/[\\/]/).filter(Boolean).pop() ?? contextCwd;
 	const contextLabel =
 		projectSelection.selection === null
-			? t("chat:newSession.defaultContext")
+			? t(selectedTeamKey ? "chat:newSession.teamNewWorkspaceContext" : "chat:newSession.defaultContext")
 			: t("chat:newSession.projectContext", { name: contextName });
 
 	// Hero 首帧即挂载（仅用 opacity 入场），避免 idle 延迟插入导致输入栏被顶动。
@@ -169,10 +169,19 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		sendMessage,
 		...(selectedAgentProfileId ? { agentProfileId: selectedAgentProfileId } : {}),
 	});
-	const teamDraft = useNewSessionTeamDraft(selectedTeamKey, (sessionId) => {
-		const teamId = parseTeamTargetKey(selectedTeamKey);
-		if (!teamId) return;
-		void navigate({ to: "/agent-teams/$teamId/sessions/$sessionId", params: { teamId, sessionId }, replace: true });
+	const teamDraft = useNewSessionTeamDraft({
+		targetKey: selectedTeamKey,
+		projectSelection: currentSelection,
+		prepareCwd,
+		onSent: (sessionId) => {
+			const teamId = parseTeamTargetKey(selectedTeamKey);
+			if (!teamId) return;
+			void navigate({
+				to: "/agent-teams/$teamId/sessions/$sessionId",
+				params: { teamId, sessionId },
+				replace: true,
+			});
+		},
 	});
 	const targetStrategies = useMemo(
 		() =>

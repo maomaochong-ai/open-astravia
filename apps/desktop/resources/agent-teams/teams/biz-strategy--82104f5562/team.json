@@ -1,0 +1,56 @@
+{
+	"id": "6efa6897-3e38-499c-92b4-ceeb5725b069",
+	"revision": 1,
+	"name": "Biz Strategy",
+	"leaderMemberId": "9f6f1b32-300f-4f2a-a55a-f0062bfe73e1",
+	"members": [
+		{
+			"id": "9f6f1b32-300f-4f2a-a55a-f0062bfe73e1",
+			"handle": "master",
+			"binding": {
+				"kind": "reference",
+				"agentProfileId": "be72a2d2-5463-4d20-9ac2-3fd78e9fbb2e"
+			},
+			"assignment": {
+				"responsibility": "Frames the business goal and owns the delivered plan."
+			}
+		},
+		{
+			"id": "0ee37840-141e-404e-88a4-39e41f56b265",
+			"handle": "architect",
+			"binding": {
+				"kind": "reference",
+				"agentProfileId": "934d1f05-1093-4d56-94a1-00642d7eaab6"
+			},
+			"assignment": {
+				"responsibility": "Builds the PRD structure and the business model behind it."
+			}
+		},
+		{
+			"id": "556cb9e4-52d4-4372-8ff9-cce2525af1e8",
+			"handle": "auditor",
+			"binding": {
+				"kind": "reference",
+				"agentProfileId": "2680428f-7e1e-46e4-9d54-7a841ac3cbd5"
+			},
+			"assignment": {
+				"responsibility": "Hunts for fatal flaws in the model, the economics, and the risks."
+			}
+		},
+		{
+			"id": "e7b8321b-f70b-4d67-a832-6a5d95ff8320",
+			"handle": "synthesizer",
+			"binding": {
+				"kind": "reference",
+				"agentProfileId": "6d8baef0-b15d-43a1-8f25-826eae651779"
+			},
+			"assignment": {
+				"responsibility": "Packages the reviewed material into a presentable plan."
+			}
+		}
+	],
+	"orchestrationPolicyId": "leader-delegates-v1",
+	"contextPolicyId": "public-results-v1",
+	"createdAt": 0,
+	"updatedAt": 0
+}

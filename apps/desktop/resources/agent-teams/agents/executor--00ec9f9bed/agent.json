@@ -1,0 +1,18 @@
+{
+	"id": "d9e51357-04b8-481d-af80-a08e1a362322",
+	"revision": 1,
+	"name": "Executor",
+	"mentionHandle": "executor",
+	"blueprintId": "executor",
+	"abilities": {
+		"selectionMode": "all",
+		"skills": [],
+		"mcpServers": [],
+		"plugins": []
+	},
+	"scope": {
+		"kind": "library"
+	},
+	"createdAt": 0,
+	"updatedAt": 0
+}

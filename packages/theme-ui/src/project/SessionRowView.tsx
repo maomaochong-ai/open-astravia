@@ -1,12 +1,15 @@
 import { cn } from "@vetta/ui";
 import { memo, type JSX } from "react";
 import { SessionStatusIcon } from "../sidebar/SessionStatusIcon";
+import { AvatarStackView } from "../shared/AvatarStackView";
 import { SessionRenameInputView } from "./SessionRenameInputView";
 import { prepareSidebarSelection } from "./useActiveSessionAutoScroll";
 
 export interface SessionRowViewProps {
 	active: boolean;
 	label: string;
+	/** Optional avatar data for grouped conversation sources. */
+	leadingAvatarUrls?: readonly string[];
 	/** On-disk session path; used for fly-to-sidebar targeting. */
 	sessionPath?: string;
 	/** Tooltip / secondary label (e.g. forked-from preview). */
@@ -31,6 +34,7 @@ export interface SessionRowViewProps {
 export const SessionRowView = memo(function SessionRowView({
 	active,
 	label,
+	leadingAvatarUrls,
 	sessionPath,
 	titleExtra,
 	forked,
@@ -71,18 +75,24 @@ export const SessionRowView = memo(function SessionRowView({
 				/>
 			) : (
 				<>
-					{pinned ? (
-						<span className="icon-[solar--pin-linear] h-3.5 w-3.5 shrink-0 text-primary/80" />
-					) : null}
-					{forked && !running && !scheduled ? (
-						<span
-							className={cn(
-								"icon-[mdi--source-fork] h-3.5 w-3.5 shrink-0",
-								active ? "text-primary/80" : "text-muted-foreground/60",
-							)}
-						/>
+					{leadingAvatarUrls && leadingAvatarUrls.length > 0 ? (
+						<AvatarStackView avatarUrls={leadingAvatarUrls} />
 					) : (
-						<SessionStatusIcon active={active} running={running} scheduled={scheduled} />
+						<>
+							{pinned ? (
+								<span className="icon-[solar--pin-linear] h-3.5 w-3.5 shrink-0 text-primary/80" />
+							) : null}
+							{forked && !running && !scheduled ? (
+								<span
+									className={cn(
+										"icon-[mdi--source-fork] h-3.5 w-3.5 shrink-0",
+										active ? "text-primary/80" : "text-muted-foreground/60",
+									)}
+								/>
+							) : (
+								<SessionStatusIcon active={active} running={running} scheduled={scheduled} />
+							)}
+						</>
 					)}
 					<span
 						className={cn(

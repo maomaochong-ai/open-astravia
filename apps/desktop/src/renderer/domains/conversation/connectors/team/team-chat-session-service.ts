@@ -1,5 +1,10 @@
 import type { DesktopTeamSessionSnapshot } from "@preload/api-types/team-conversation-display";
-import type { AgentTeamDocument, TeamSessionListItem, TeamSessionReference } from "@vetta/agent-team";
+import type {
+	AgentTeamDocument,
+	TeamSessionListItem,
+	TeamSessionReference,
+	TeamSessionWorkspaceSelection,
+} from "@vetta/agent-team";
 import type { SessionExecutionMode } from "@vetta/runtime-core";
 
 const SESSION_STORAGE_PREFIX = "vetta.agent-team.session.";
@@ -14,6 +19,14 @@ export interface LoadedTeamChatSession {
 export interface TeamChatBootstrap {
 	readonly document: AgentTeamDocument;
 	readonly sessions: readonly TeamSessionListItem[];
+}
+
+export interface CreateReservedTeamChatSessionOptions {
+	readonly teamId: string;
+	readonly sessionId: string;
+	readonly executionMode: SessionExecutionMode;
+	readonly document?: AgentTeamDocument;
+	readonly workspace?: TeamSessionWorkspaceSelection;
 }
 
 export async function loadTeamChatBootstrap(teamId: string): Promise<TeamChatBootstrap> {
@@ -66,13 +79,18 @@ export async function createTeamChatSession(
 	return creation;
 }
 
-export async function createReservedTeamChatSession(
-	teamId: string,
-	sessionId: string,
-	executionMode: SessionExecutionMode,
-	document?: AgentTeamDocument,
-): Promise<LoadedTeamChatSession> {
-	const snapshot = await window.vetta.agentTeams.createSessionRecord(teamId, { sessionId, executionMode });
+export async function createReservedTeamChatSession({
+	teamId,
+	sessionId,
+	executionMode,
+	document,
+	workspace,
+}: CreateReservedTeamChatSessionOptions): Promise<LoadedTeamChatSession> {
+	const snapshot = await window.vetta.agentTeams.createSessionRecord(teamId, {
+		sessionId,
+		executionMode,
+		...(workspace ? { workspace } : {}),
+	});
 	if (snapshot.session.id !== sessionId) throw new Error("Reserved Team session identity changed");
 	const storageKey = `${SESSION_STORAGE_PREFIX}${teamId}`;
 	window.localStorage.setItem(storageKey, JSON.stringify(toReference(snapshot)));

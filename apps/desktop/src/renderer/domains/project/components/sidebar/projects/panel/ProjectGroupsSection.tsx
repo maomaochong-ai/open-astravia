@@ -22,6 +22,7 @@ export function ProjectGroupsSection({
 					sessionsLoading={model.projectSessionsLoading(project.cwd)}
 					isActive={model.actions.isProjectActive(project.cwd)}
 					activeSessionPath={model.activeSessionPath}
+					activeTeamSessionId={model.activeTeamSessionId}
 					onExpand={model.actions.expandProject}
 					onCollapse={model.actions.collapseProject}
 					onNavigateProject={model.actions.navigateProject}
@@ -41,6 +42,7 @@ export function ProjectGroupsSection({
 						sessionsLoading={false}
 						isActive={model.actions.isProjectActive(project.cwd)}
 						activeSessionPath={model.activeSessionPath}
+						activeTeamSessionId=""
 						onExpand={model.actions.expandBatchProject}
 						onCollapse={model.actions.collapseBatchProject}
 						onNavigateProject={model.actions.navigateProject}

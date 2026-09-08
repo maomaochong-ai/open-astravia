@@ -2,7 +2,7 @@
 
 import { createAgentTeamFixture, type TeamSessionSnapshot } from "@vetta/agent-team";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createTeamChatSession, loadTeamChatSession } from "./team-chat-session-service";
+import { createReservedTeamChatSession, createTeamChatSession, loadTeamChatSession } from "./team-chat-session-service";
 
 const document = createAgentTeamFixture();
 const team = document.teams[0];
@@ -108,6 +108,28 @@ describe("loadTeamChatSession", () => {
 		expect(first.snapshot.session.id).toBe("shared-session");
 		expect(second.snapshot.session.id).toBe("shared-session");
 		expect(window.vetta.agentTeams.createSessionRecord).toHaveBeenCalledTimes(1);
+	});
+
+	it("forwards a selected project only for a reserved new-session handoff", async () => {
+		const created = snapshot("reserved-session", "C:/runtime/reserved-session.jsonl");
+		vi.mocked(window.vetta.agentTeams.createSessionRecord).mockResolvedValue(created);
+
+		await createReservedTeamChatSession({
+			teamId: team.id,
+			sessionId: "reserved-session",
+			executionMode: "sandbox",
+			document,
+			workspace: {
+				kind: "project",
+				path: "C:/projects/selected",
+			},
+		});
+
+		expect(window.vetta.agentTeams.createSessionRecord).toHaveBeenCalledWith(team.id, {
+			sessionId: "reserved-session",
+			executionMode: "sandbox",
+			workspace: { kind: "project", path: "C:/projects/selected" },
+		});
 	});
 
 	it("opens a selected catalog session without creating another one", async () => {

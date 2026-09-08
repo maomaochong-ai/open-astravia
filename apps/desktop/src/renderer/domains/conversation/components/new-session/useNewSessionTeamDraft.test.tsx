@@ -27,6 +27,13 @@ describe("useNewSessionTeamDraft", () => {
 	const createSessionRecord = vi.fn(async () => snapshot);
 	const setExecutionMode = vi.fn(async () => snapshot);
 	const sendMessage = vi.fn(async () => snapshot);
+	const prepareCwd = vi.fn<() => Promise<string | null>>(async () => "C:/projects/selected");
+	const options = (onSent = vi.fn()) => ({
+		targetKey: teamTargetKey(team.id),
+		projectSelection: null,
+		prepareCwd,
+		onSent,
+	});
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -39,7 +46,7 @@ describe("useNewSessionTeamDraft", () => {
 
 	it("keeps the draft interactive before session creation and sends through the team chain", async () => {
 		const onSent = vi.fn();
-		const { result } = renderHook(() => useNewSessionTeamDraft(teamTargetKey(team.id), onSent));
+		const { result } = renderHook(() => useNewSessionTeamDraft(options(onSent)));
 
 		await waitFor(() => expect(result.current.actions).not.toBeNull());
 		act(() => result.current.actions?.setDraft("hello team"));
@@ -50,12 +57,80 @@ describe("useNewSessionTeamDraft", () => {
 		expect(createSessionRecord).not.toHaveBeenCalled();
 		expect(setExecutionMode).not.toHaveBeenCalled();
 		expect(sendMessage).not.toHaveBeenCalled();
+		expect(prepareCwd).not.toHaveBeenCalled();
 		expect(takeTeamSessionHandoff(reservedSessionId)).toMatchObject({
 			text: "hello team",
-			requestedMemberIds: [],
+			memberMentions: [],
 			document,
 		});
 		expect(onSent).toHaveBeenCalledWith(reservedSessionId);
+	});
+
+	it("captures the selected project as this Team session's workspace", async () => {
+		const onSent = vi.fn();
+		const { result } = renderHook(() =>
+			useNewSessionTeamDraft({
+				...options(onSent),
+				projectSelection: { kind: "project", cwd: "C:/projects/selected", name: "Selected" },
+			}),
+		);
+
+		await waitFor(() => expect(result.current.actions).not.toBeNull());
+		act(() => result.current.actions?.setDraft("work in project"));
+		await act(async () => result.current.actions?.send());
+
+		expect(prepareCwd).toHaveBeenCalledOnce();
+		expect(takeTeamSessionHandoff(reservedSessionId)).toMatchObject({
+			workspace: { kind: "project", path: "C:/projects/selected" },
+		});
+		expect(onSent).toHaveBeenCalledWith(reservedSessionId);
+	});
+
+	it("keeps the draft on the new-session page when project preparation fails", async () => {
+		prepareCwd.mockResolvedValueOnce(null);
+		const onSent = vi.fn();
+		const { result } = renderHook(() =>
+			useNewSessionTeamDraft({
+				...options(onSent),
+				projectSelection: { kind: "pending-create", name: "New project" },
+			}),
+		);
+
+		await waitFor(() => expect(result.current.actions).not.toBeNull());
+		act(() => result.current.actions?.setDraft("keep me"));
+		await act(async () => result.current.actions?.send());
+
+		expect(onSent).not.toHaveBeenCalled();
+		expect(result.current.model?.draft).toBe("keep me");
+	});
+
+	it("deduplicates repeated sends while the selected project is being prepared", async () => {
+		let finishPreparing: ((cwd: string) => void) | undefined;
+		prepareCwd.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					finishPreparing = resolve;
+				}),
+		);
+		const onSent = vi.fn();
+		const { result } = renderHook(() =>
+			useNewSessionTeamDraft({
+				...options(onSent),
+				projectSelection: { kind: "project", cwd: "C:/projects/selected", name: "Selected" },
+			}),
+		);
+
+		await waitFor(() => expect(result.current.actions).not.toBeNull());
+		act(() => result.current.actions?.setDraft("only once"));
+		await act(async () => {
+			const first = result.current.actions?.send();
+			const second = result.current.actions?.send();
+			expect(prepareCwd).toHaveBeenCalledOnce();
+			finishPreparing?.("C:/projects/selected");
+			await Promise.all([first, second]);
+		});
+
+		expect(onSent).toHaveBeenCalledOnce();
 	});
 
 	it("mounts the composer before the team catalog finishes loading", async () => {
@@ -66,7 +141,7 @@ describe("useNewSessionTeamDraft", () => {
 					resolveCatalog = resolve;
 				}),
 		);
-		const { result } = renderHook(() => useNewSessionTeamDraft(teamTargetKey(team.id), vi.fn()));
+		const { result } = renderHook(() => useNewSessionTeamDraft(options()));
 
 		expect(result.current.model).not.toBeNull();
 		expect(result.current.actions).not.toBeNull();
@@ -82,7 +157,7 @@ describe("useNewSessionTeamDraft", () => {
 
 	it("navigates at session handoff and keeps edits separate from the sent snapshot", async () => {
 		const onSent = vi.fn();
-		const { result } = renderHook(() => useNewSessionTeamDraft(teamTargetKey(team.id), onSent));
+		const { result } = renderHook(() => useNewSessionTeamDraft(options(onSent)));
 		await waitFor(() => expect(result.current.actions).not.toBeNull());
 		act(() => result.current.actions?.setDraft("already sent"));
 

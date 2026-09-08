@@ -1,10 +1,5 @@
-import type {
-	DefaultConversationFilter,
-	Project,
-	SessionExecutionMode,
-	SessionInfo,
-	SidebarFilter,
-} from "@shared/store/atoms";
+import type { DefaultConversationFilter, Project, SessionExecutionMode, SidebarFilter } from "@shared/store/atoms";
+import type { SidebarConversationInfo } from "../../../../services/sidebar-conversation-projection";
 
 export interface ProjectsPanelProps {
 	defaultSessionListClassName?: string;
@@ -14,15 +9,16 @@ export interface ProjectsPanelProps {
 
 export interface BatchProjectEntry {
 	project: Project;
-	sessions: SessionInfo[];
+	sessions: SidebarConversationInfo[];
 }
 
 export interface ProjectsPanelModel {
 	activeSessionPath: string;
+	activeTeamSessionId: string;
 	batchProjects: BatchProjectEntry[];
 	defaultConversationFilter: DefaultConversationFilter;
 	defaultProject: Project | undefined;
-	defaultSessions: SessionInfo[];
+	defaultSessions: SidebarConversationInfo[];
 	/** 默认区会话真正所属的 cwd：claw 过滤下是 im-gateway 的 cwd，而非 defaultProject.cwd。 */
 	defaultSessionsCwd: string;
 	expandedBatchProjects: Set<string>;
@@ -30,7 +26,7 @@ export interface ProjectsPanelModel {
 	filteredProjects: Project[];
 	imCwd: string;
 	noOtherProjects: boolean;
-	projectSessions: (cwd: string) => SessionInfo[];
+	projectSessions: (cwd: string) => SidebarConversationInfo[];
 	projectSessionsLoading: (cwd: string) => boolean;
 	projectsLoading: boolean;
 	defaultSessionsLoading: boolean;
@@ -45,7 +41,7 @@ export interface ProjectsPanelModel {
 		deleteProject(cwd: string): void;
 		deleteSession(session: { cwd: string; path: string }): void;
 		defaultNewSession(cwd: string): void;
-		defaultSelectSession(cwd: string, path: string): void;
+		defaultSelectSession(cwd: string, session: SidebarConversationInfo): void;
 		expandBatchProject(cwd: string): void;
 		expandProject(cwd: string): void;
 		isProjectActive(cwd: string): boolean;
@@ -53,7 +49,7 @@ export interface ProjectsPanelModel {
 		openClawSettings(): void;
 		removeProject(cwd: string): void;
 		renameSession(cwd: string, sessionPath: string, name: string): void;
-		selectBatchSession(cwd: string, path: string): void;
-		selectSession(cwd: string, path: string): void;
+		selectBatchSession(cwd: string, session: SidebarConversationInfo): void;
+		selectSession(cwd: string, session: SidebarConversationInfo): void;
 	};
 }

@@ -1,4 +1,4 @@
-import type { DefaultConversationFilter, SessionInfo } from "@shared/store/atoms";
+import type { DefaultConversationFilter } from "@shared/store/atoms";
 import {
 	pinnedSessionPathsAtom,
 	renamingSessionPathAtom,
@@ -11,6 +11,12 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { relativeTime } from "../components/sidebar/projects/relativeTime";
+import {
+	isSidebarConversationActive,
+	type SidebarConversationInfo,
+	sidebarConversationIdentity,
+	sidebarConversationKey,
+} from "../services/sidebar-conversation-projection";
 import { buildSidebarSessionOrdering } from "../services/sidebar-session-order";
 import { reuseUnchangedSessionViews } from "./stableSessionViews";
 
@@ -26,21 +32,25 @@ export interface DefaultSessionListItemView {
 	running: boolean;
 	scheduled: boolean;
 	pinned: boolean;
-	session: SessionInfo;
+	leadingAvatarUrls?: readonly string[];
+	titleExtra?: string;
+	session: SidebarConversationInfo;
 }
 
 interface UseDefaultSessionListModelArgs {
 	activeSessionPath: string;
+	activeTeamSessionId: string;
 	cwd: string;
 	filter: DefaultConversationFilter;
 	onNewSession?: () => void;
 	onRenameSession: (cwd: string, sessionPath: string, name: string) => void;
-	onSelectSession: (cwd: string, sessionPath: string) => void;
-	sessions: SessionInfo[];
+	onSelectSession: (cwd: string, session: SidebarConversationInfo) => void;
+	sessions: SidebarConversationInfo[];
 }
 
 export function useDefaultSessionListModel({
 	activeSessionPath,
+	activeTeamSessionId,
 	cwd,
 	filter,
 	onNewSession,
@@ -72,15 +82,22 @@ export function useDefaultSessionListModel({
 		setShowAll(false);
 	}
 
+	const activeConversationKey = activeTeamSessionId
+		? `agent-team:${activeTeamSessionId}`
+		: activeSessionPath
+			? `conversation:${activeSessionPath}`
+			: "";
 	useEffect(() => {
-		if (!activeSessionPath) {
+		if (!activeConversationKey) {
 			revealedActiveSessionRef.current = null;
 			return;
 		}
-		if (revealedActiveSessionRef.current === activeSessionPath) return;
-		const activeIndex = ordering.all.findIndex((session) => session.path === activeSessionPath);
+		if (revealedActiveSessionRef.current === activeConversationKey) return;
+		const activeIndex = ordering.all.findIndex(
+			(session) => sidebarConversationKey(session) === activeConversationKey,
+		);
 		if (activeIndex < 0) return;
-		revealedActiveSessionRef.current = activeSessionPath;
+		revealedActiveSessionRef.current = activeConversationKey;
 		const collapsed = buildSidebarSessionOrdering(
 			sessions,
 			pinnedSessionPaths,
@@ -88,7 +105,7 @@ export function useDefaultSessionListModel({
 			false,
 		);
 		if (activeIndex >= collapsed.visible.length) setShowAll(true);
-	}, [activeSessionPath, ordering.all, pinnedSessionPaths, sessions]);
+	}, [activeConversationKey, ordering.all, pinnedSessionPaths, sessions]);
 
 	const isClaw = filter === "claw";
 
@@ -96,22 +113,29 @@ export function useDefaultSessionListModel({
 	const allViews: DefaultSessionListItemView[] = useMemo(() => {
 		void i18n.language;
 		const next = ordering.all.map((session) => {
-			const isActive = activeSessionPath === session.path;
-			const isRenaming = renamingSessionPath === session.path;
-			const isRunning = runningSessionPaths.has(session.path);
+			const identity = sidebarConversationIdentity(
+				session,
+				session.kind === "conversation" ? sessionDisplayLabel(session) : undefined,
+			);
+			const isActive = isSidebarConversationActive(session, activeSessionPath, activeTeamSessionId);
+			const isRenaming = identity.mutable && renamingSessionPath === session.path;
+			const isRunning = identity.mutable && runningSessionPaths.has(session.path);
 			const isSchedule =
-				scheduledSessionPaths.has(session.path) ||
-				scheduledBasenames.has(session.path.slice(session.path.lastIndexOf("/") + 1));
+				identity.mutable &&
+				(scheduledSessionPaths.has(session.path) ||
+					scheduledBasenames.has(session.path.slice(session.path.lastIndexOf("/") + 1)));
 			return {
-				key: session.path,
+				key: identity.key,
 				path: session.path,
-				label: sessionDisplayLabel(session),
+				label: identity.label,
 				timeLabel: relativeTime(session.modifiedAt, t),
 				active: isActive,
-				pinned: pinnedSessionPaths.has(session.path),
+				pinned: identity.mutable && pinnedSessionPaths.has(session.path),
 				renaming: isRenaming,
 				running: isRunning,
 				scheduled: isSchedule,
+				leadingAvatarUrls: identity.leadingAvatarUrls,
+				titleExtra: identity.titleExtra,
 				session,
 			};
 		});
@@ -119,6 +143,7 @@ export function useDefaultSessionListModel({
 		return reuseUnchangedSessionViews(viewCacheRef.current, next);
 	}, [
 		activeSessionPath,
+		activeTeamSessionId,
 		i18n.language,
 		renamingSessionPath,
 		runningSessionPaths,
@@ -134,17 +159,23 @@ export function useDefaultSessionListModel({
 
 	// per-row 回调必须引用稳定，否则行组件的 memo 永远命中不了。
 	const openContextMenu = useCallback(
-		(event: React.MouseEvent, session: SessionInfo) => {
+		(event: React.MouseEvent, session: SidebarConversationInfo) => {
+			if (session.kind === "agent-team") return;
 			setContextMenu({ x: event.clientX, y: event.clientY, session, allowMutations: !isClaw });
 		},
 		[isClaw, setContextMenu],
 	);
 	const rename = useCallback(
-		(sessionPath: string, name: string) => onRenameSession(cwd, sessionPath, name),
+		(session: SidebarConversationInfo, name: string) => {
+			if (session.kind === "conversation") onRenameSession(cwd, session.path, name);
+		},
 		[cwd, onRenameSession],
 	);
 	const renameDone = useCallback(() => setRenamingSessionPath(null), [setRenamingSessionPath]);
-	const select = useCallback((sessionPath: string) => onSelectSession(cwd, sessionPath), [cwd, onSelectSession]);
+	const select = useCallback(
+		(session: SidebarConversationInfo) => onSelectSession(cwd, session),
+		[cwd, onSelectSession],
+	);
 	const toggleShowAll = useCallback(() => setShowAll((value) => !value), []);
 
 	const emptyLabels = isClaw

@@ -1,0 +1,18 @@
+{
+	"id": "f162c69d-fc73-443d-af31-b53a1563f43c",
+	"revision": 1,
+	"name": "Translator",
+	"mentionHandle": "translator",
+	"blueprintId": "translator",
+	"abilities": {
+		"selectionMode": "all",
+		"skills": [],
+		"mcpServers": [],
+		"plugins": []
+	},
+	"scope": {
+		"kind": "library"
+	},
+	"createdAt": 0,
+	"updatedAt": 0
+}

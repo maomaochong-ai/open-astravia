@@ -1,10 +1,11 @@
-import type { Project, SessionInfo } from "@shared/store/atoms";
+import type { Project } from "@shared/store/atoms";
 import { ProjectGroupView, SessionRowView } from "@vetta/theme-ui/project";
 import { memo, useCallback } from "react";
 import {
 	type ProjectGroupSessionView,
 	useProjectGroupModel,
 } from "../../../hooks/useProjectGroupModel";
+import type { SidebarConversationInfo } from "../../../services/sidebar-conversation-projection";
 
 /** 每行一个 memo 组件，per-row 回调在这里固定引用（理由同 DefaultSessionRow）。 */
 const ProjectSessionRow = memo(function ProjectSessionRow({
@@ -15,28 +16,30 @@ const ProjectSessionRow = memo(function ProjectSessionRow({
 	onSelect,
 }: {
 	item: ProjectGroupSessionView;
-	onOpenContextMenu: (event: React.MouseEvent, session: SessionInfo) => void;
-	onRename: (sessionPath: string, name: string) => void;
+	onOpenContextMenu: (event: React.MouseEvent, session: SidebarConversationInfo) => void;
+	onRename: (session: SidebarConversationInfo, name: string) => void;
 	onRenameDone: () => void;
-	onSelect: (sessionPath: string) => void;
+	onSelect: (session: SidebarConversationInfo) => void;
 }): JSX.Element {
-	const { path, session } = item;
+	const { session } = item;
 	const handleContextMenu = useCallback(
 		(event: React.MouseEvent) => onOpenContextMenu(event, session),
 		[onOpenContextMenu, session],
 	);
-	const handleRename = useCallback((name: string) => onRename(path, name), [onRename, path]);
-	const handleSelect = useCallback(() => onSelect(path), [onSelect, path]);
+	const handleRename = useCallback((name: string) => onRename(session, name), [onRename, session]);
+	const handleSelect = useCallback(() => onSelect(session), [onSelect, session]);
 
 	return (
 		<SessionRowView
 			active={item.active}
 			label={item.label}
+			leadingAvatarUrls={item.leadingAvatarUrls}
 			pinned={item.pinned}
 			renaming={item.renaming}
 			running={item.running}
 			scheduled={item.scheduled}
 			timeLabel={item.timeLabel}
+			titleExtra={item.titleExtra}
 			onOpenContextMenu={handleContextMenu}
 			onRename={handleRename}
 			onRenameDone={onRenameDone}
@@ -48,16 +51,17 @@ const ProjectSessionRow = memo(function ProjectSessionRow({
 interface ProjectGroupProps {
 	project: Project;
 	scrollParent: HTMLElement | null;
-	sessions: SessionInfo[];
+	sessions: SidebarConversationInfo[];
 	sessionsLoading: boolean;
 	isExpanded: boolean;
 	isActive?: boolean;
 	activeSessionPath: string;
+	activeTeamSessionId: string;
 	onExpand: (cwd: string) => void;
 	onCollapse: (cwd: string) => void;
 	onNavigateProject: (cwd: string) => void;
 	onNewSession: (cwd: string) => void;
-	onSelectSession: (cwd: string, sessionPath: string) => void;
+	onSelectSession: (cwd: string, session: SidebarConversationInfo) => void;
 	onRenameSession: (cwd: string, sessionPath: string, name: string) => void;
 }
 

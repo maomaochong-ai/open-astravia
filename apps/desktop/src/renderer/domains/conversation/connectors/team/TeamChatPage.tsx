@@ -1,4 +1,3 @@
-import { useAgentTeamSidebarSelection } from "@shared/agent-teams/useAgentTeamSidebarSelection";
 import {
 	activityPanelOpenAtom,
 	pageHeaderRightSlotAtom,
@@ -14,7 +13,6 @@ import { TeamChatView } from "./TeamChatView";
 
 export function TeamChatPage({ createNewSession = false }: { readonly createNewSession?: boolean }): JSX.Element {
 	const { t } = useTranslation("agent-teams");
-	useAgentTeamSidebarSelection();
 	const navigate = useNavigate();
 	const { teamId, sessionId, memberId } = useParams({ strict: false });
 	if (!teamId) throw new Error("Team route is missing teamId");

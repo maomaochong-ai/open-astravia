@@ -1,4 +1,5 @@
 import { ConversationEditorView } from "@shared/components/conversation-editor/ConversationEditorView";
+import type { InputSegment } from "@shared/lib/input-tokens";
 import { memo, type MouseEvent } from "react";
 import { INPUT_EDITOR_NODES } from "./nodes";
 import { ControlledHistoryNavPlugin } from "./plugins/ControlledHistoryNavPlugin";
@@ -15,8 +16,9 @@ export interface InputEditorProps {
 	editable: boolean;
 	namespace?: string;
 	value?: string;
+	segments?: readonly InputSegment[];
 	history?: readonly string[];
-	onValueChange?: (value: string) => void;
+	onValueChange?: (value: string, segments?: readonly InputSegment[]) => void;
 	persistenceId?: string | null;
 	onContextMenu: (event: MouseEvent<HTMLDivElement>) => void;
 	onEnter: () => boolean;
@@ -37,6 +39,7 @@ export const InputEditor = memo(function InputEditor({
 	editable,
 	namespace = "chat-input",
 	value,
+	segments,
 	history,
 	onValueChange,
 	persistenceId,
@@ -60,7 +63,7 @@ export const InputEditor = memo(function InputEditor({
 					<EditorHandlePlugin />
 					{controlled ? (
 						<>
-						<ControlledValueBridgePlugin value={value} onValueChange={onValueChange} />
+						<ControlledValueBridgePlugin value={value} segments={segments} onValueChange={onValueChange} />
 						<ControlledHistoryNavPlugin history={history ?? []} value={value} onValueChange={onValueChange} />
 						{onTriggerChange ? <TriggerPlugin onTriggerChange={onTriggerChange} /> : null}
 						<PasteImagePlugin local runtimeId={persistenceId} />

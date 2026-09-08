@@ -20,6 +20,11 @@ import { useTranslation } from "react-i18next";
 import { resolveProjectGoneCleanup } from "../../../../hooks/project-gone-cleanup";
 import { resolveSessionOpenTarget } from "../../../../hooks/session-open-target";
 import { useProjects } from "../../../../hooks/useProjects";
+import { useTeamSidebarConversations } from "../../../../hooks/useTeamSidebarConversations";
+import {
+	projectSidebarConversations,
+	type SidebarConversationInfo,
+} from "../../../../services/sidebar-conversation-projection";
 import type { BatchProjectEntry, ProjectsPanelModel, ProjectsPanelProps } from "./types";
 
 const EMPTY_SESSIONS: SessionInfo[] = [];
@@ -53,6 +58,7 @@ export function useProjectsPanelModel({
 		loadSessions,
 		removePinnedSessions,
 	} = useProjects();
+	const teamSidebar = useTeamSidebarConversations(projects.map((project) => project.cwd));
 	const activeSessionPathValue = useAtomValue(activeSessionPathAtom);
 	const pendingSessionPath = useAtomValue(pendingSessionPathAtom);
 	const activeSessionCwd = useAtomValue(activeSessionCwdAtom);
@@ -63,11 +69,17 @@ export function useProjectsPanelModel({
 	const navigate = useNavigate();
 	const matches = useMatches();
 	const currentPath = matches[matches.length - 1]?.pathname ?? "/";
-	const routeParams = matches[matches.length - 1]?.params as { path?: string; cwd?: string } | undefined;
+	const routeParams = matches[matches.length - 1]?.params as
+		| { path?: string; cwd?: string; sessionId?: string }
+		| undefined;
 	const viewerSessionPath = routeParams?.path ? decodeURIComponent(routeParams.path) : "";
 	/** `/project/$cwd` 与 `/new-session/$cwd` 的参数值本身是编码过的（见导航处的 encodeURIComponent）。 */
 	const routeCwd = routeParams?.cwd ? decodeURIComponent(routeParams.cwd) : "";
 	const activeSessionPath = viewerSessionPath || pendingSessionPath || activeSessionPathValue;
+	const activeTeamSessionId =
+		currentPath.startsWith("/agent-teams/") && routeParams?.sessionId
+			? decodeURIComponent(routeParams.sessionId)
+			: "";
 	const batchProjects = useAtomValue(batchProjectsAtom);
 	const [expandedBatchProjects, setExpandedBatchProjects] = useAtom(expandedBatchProjectsAtom);
 	const { deleteTask: deleteBatchTask, deleteProject: deleteBatchProject } = useBatchTasks();
@@ -115,6 +127,7 @@ export function useProjectsPanelModel({
 						type: "batch",
 					},
 					sessions: tasksWithSession.map((task) => ({
+						kind: "conversation" as const,
 						id: task.id,
 						path: task.sessionPath!,
 						cwd: task.cwd,
@@ -182,21 +195,33 @@ export function useProjectsPanelModel({
 		[onOpenSession, navigate],
 	);
 
-	const selectSession = openSessionByTarget;
+	const selectSidebarSession = useCallback(
+		(cwd: string, session: SidebarConversationInfo) => {
+			if (session.kind === "agent-team") {
+				void navigate({
+					to: "/agent-teams/$teamId/sessions/$sessionId",
+					params: { teamId: session.teamId, sessionId: session.teamSessionId },
+				});
+				return;
+			}
+			openSessionByTarget(cwd, session.path);
+		},
+		[navigate, openSessionByTarget],
+	);
 
 	const selectBatchSession = useCallback(
-		(_cwd: string, path: string) => {
+		(_cwd: string, session: SidebarConversationInfo) => {
 			const task = visibleBatchProjects
 				.flatMap((project) => project.tasks)
-				.find((item) => item.sessionPath === path);
-			if (task) void onOpenSession(task.cwd, path, task.executionMode);
+				.find((item) => item.sessionPath === session.path);
+			if (task) void onOpenSession(task.cwd, session.path, task.executionMode);
 		},
 		[visibleBatchProjects, onOpenSession],
 	);
 
 	// 默认区（含 claw）与项目区共用同一套判定；cwd 由 defaultSessionsCwd 逐层传下，
 	// 保证查 access 用的是会话真正所属的 cwd。
-	const defaultSelectSession = openSessionByTarget;
+	const defaultSelectSession = selectSidebarSession;
 
 	const deletePanelSession = useCallback(
 		(session: { cwd: string; path: string }) => {
@@ -445,27 +470,64 @@ export function useProjectsPanelModel({
 		}
 	}, [defaultConversationFilter, imCwd, loadSessions]);
 
-	const defaultSessions = defaultSessionsCwd
+	const ordinaryDefaultSessions = defaultSessionsCwd
 		? (sessionsMap.get(defaultSessionsCwd) ?? EMPTY_SESSIONS)
 		: EMPTY_SESSIONS;
+	const defaultSessions = useMemo(
+		() =>
+			projectSidebarConversations(
+				ordinaryDefaultSessions,
+				defaultConversationFilter === "conversation" ? teamSidebar.conversations : [],
+				{ kind: "default" },
+			),
+		[defaultConversationFilter, ordinaryDefaultSessions, teamSidebar.conversations],
+	);
+	const projectSidebarSessions = useMemo(() => {
+		const result = new Map<string, SidebarConversationInfo[]>();
+		for (const project of filteredProjects) {
+			result.set(
+				project.cwd,
+				projectSidebarConversations(sessionsMap.get(project.cwd) ?? EMPTY_SESSIONS, teamSidebar.conversations, {
+					kind: "project",
+					projectPath: project.cwd,
+				}),
+			);
+		}
+		return result;
+	}, [filteredProjects, sessionsMap, teamSidebar.conversations]);
+	useEffect(() => {
+		if (!activeTeamSessionId) return;
+		for (const [cwd, sessions] of projectSidebarSessions) {
+			if (
+				!expandedProjects.has(cwd) &&
+				sessions.some((session) => session.kind === "agent-team" && session.teamSessionId === activeTeamSessionId)
+			) {
+				expandProject(cwd);
+				return;
+			}
+		}
+	}, [activeTeamSessionId, expandProject, expandedProjects, projectSidebarSessions]);
 
 	return {
 		activeSessionPath,
+		activeTeamSessionId,
 		batchProjects: batchAsProjects,
 		defaultConversationFilter,
 		defaultProject,
 		defaultSessions,
 		defaultSessionsCwd: defaultSessionsCwd ?? "",
-		defaultSessionsLoading: Boolean(
-			defaultSessionsCwd && sessionLoadingCwds.has(defaultSessionsCwd) && !sessionsMap.has(defaultSessionsCwd),
-		),
+		defaultSessionsLoading:
+			Boolean(
+				defaultSessionsCwd && sessionLoadingCwds.has(defaultSessionsCwd) && !sessionsMap.has(defaultSessionsCwd),
+			) ||
+			(defaultConversationFilter === "conversation" && teamSidebar.loading),
 		expandedBatchProjects,
 		expandedProjects,
 		filteredProjects,
 		imCwd,
 		noOtherProjects,
-		projectSessions: (cwd) => sessionsMap.get(cwd) ?? EMPTY_SESSIONS,
-		projectSessionsLoading: (cwd) => sessionLoadingCwds.has(cwd) && !sessionsMap.has(cwd),
+		projectSessions: (cwd) => projectSidebarSessions.get(cwd) ?? [],
+		projectSessionsLoading: (cwd) => (sessionLoadingCwds.has(cwd) && !sessionsMap.has(cwd)) || teamSidebar.loading,
 		projectsLoading: !projectsInitialized,
 		showBatchGroup,
 		actions: {
@@ -491,7 +553,7 @@ export function useProjectsPanelModel({
 			removeProject: removePanelProject,
 			renameSession: renamePanelSession,
 			selectBatchSession,
-			selectSession,
+			selectSession: selectSidebarSession,
 		},
 	};
 }

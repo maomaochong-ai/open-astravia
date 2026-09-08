@@ -18,6 +18,7 @@ import {
 	$createSceneTokenNode,
 	$createSkillTokenNode,
 	ImageTokenNode,
+	MemberTokenNode,
 	SkillTokenNode,
 } from "./nodes";
 import { $applySegments, $insertTokenNodes } from "./tokens/segments";
@@ -106,13 +107,22 @@ export function insertImageToken(path: string, options?: InsertTokenOptions): vo
 
 /** Insert a styled member reference while preserving its plain @handle wire form. */
 export function insertMemberToken(
+	memberId: string,
 	handle: string,
 	label: string,
 	avatar?: string,
 	meta?: string,
 	options?: InsertTokenOptions,
 ): void {
-	insert(() => [$createMemberTokenNode(handle, label, avatar, meta)], options);
+	insert(() => [$createMemberTokenNode(memberId, handle, label, avatar, meta)], options);
+}
+
+export function removeMemberToken(memberId: string): void {
+	current?.update(() => {
+		for (const node of $nodesOfType(MemberTokenNode)) {
+			if (node.getMemberId() === memberId) node.remove();
+		}
+	});
 }
 
 /**

@@ -31,6 +31,9 @@ describe("ConversationOwnershipCatalog", () => {
 				title: "Team",
 				createdAt: 1,
 				updatedAt: 2,
+				workspaceKind: "session",
+				workspaceId: "agent-team:team-1:session:workspace-a",
+				cwd: join(root, "session-workspaces", "workspace-a"),
 			},
 			{
 				sessionPath: memberPath,
@@ -53,7 +56,10 @@ describe("ConversationOwnershipCatalog", () => {
 				{ id: "ordinary", path: ordinaryPath },
 			]),
 		).resolves.toEqual([{ id: "ordinary", path: ordinaryPath }]);
-		await expect(catalog.listByTeam("team-1")).resolves.toHaveLength(2);
+		await expect(catalog.listByTeam("team-1")).resolves.toEqual([
+			expect.objectContaining({ workspaceKind: "session", workspaceId: "agent-team:team-1:session:workspace-a" }),
+			expect.objectContaining({ owner: expect.objectContaining({ role: "member" }) }),
+		]);
 		await expect(catalog.getOwner(coordinationPath)).resolves.toEqual(
 			expect.objectContaining({ teamId: "team-1", teamSessionId: "team-session-1" }),
 		);

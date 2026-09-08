@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import type { Project, SessionInfo } from "@shared/store/atoms";
+import type { SidebarConversationInfo } from "../../../../services/sidebar-conversation-projection";
 import { render } from "@testing-library/react";
 import type { JSX, ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -23,10 +24,6 @@ vi.mock("./DefaultSessionList", () => ({
 		return <div data-testid="session-list" data-cwd={props.cwd} />;
 	},
 }));
-vi.mock("./AgentTeamSidebarList", () => ({
-	AgentTeamSidebarList: (): JSX.Element => <div data-testid="team-list" />,
-}));
-
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({ t: (key: string) => key, i18n: { language: "zh" } }),
 }));
@@ -50,17 +47,18 @@ const CLAW_SESSION: SessionInfo = {
 	access: { readHistory: true, resume: false, rename: true, delete: true },
 };
 
-function renderSection(sessionsCwd: string, filter: "conversation" | "claw" | "team"): void {
+function renderSection(sessionsCwd: string, filter: "conversation" | "claw"): void {
 	render(
 		<DefaultConversationSection
 			activeSessionPath=""
+			activeTeamSessionId=""
 			defaultConversationFilter={filter}
 			onNewSession={() => {}}
 			onRenameSession={() => {}}
 			onSelectSession={() => {}}
 			project={DEFAULT_PROJECT}
 			scrollParent={null}
-			sessions={[CLAW_SESSION]}
+			sessions={[{ ...CLAW_SESSION, kind: "conversation" } satisfies SidebarConversationInfo]}
 			sessionsCwd={sessionsCwd}
 			sessionsLoading={false}
 		/>,
@@ -86,12 +84,5 @@ describe("DefaultConversationSection", () => {
 	it("sessionsCwd 缺失时回落到 project.cwd", () => {
 		renderSection("", "conversation");
 		expect(listProps).toHaveBeenCalledWith(expect.objectContaining({ cwd: DEFAULT_PROJECT.cwd }));
-	});
-
-	it("Team 过滤下不再把分组标题加号当作新团队入口", () => {
-		renderSection(DEFAULT_PROJECT.cwd, "team");
-		expect(sectionProps).toHaveBeenLastCalledWith(
-			expect.objectContaining({ showNewSession: false, onNewSession: undefined }),
-	);
 	});
 });

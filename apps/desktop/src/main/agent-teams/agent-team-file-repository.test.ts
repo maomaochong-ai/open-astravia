@@ -1,9 +1,14 @@
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { BUILTIN_AGENT_BLUEPRINTS, BUILTIN_AGENT_TEAMS, createAgentTeamFixture } from "@vetta/agent-team";
+import { BUILTIN_AGENT_BLUEPRINTS, createAgentTeamFixture, INITIAL_AGENT_TEAMS } from "@vetta/agent-team";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createAgentTeamFileRepository, resolveAgentTeamResourceRoot } from "./agent-team-file-repository.js";
+import {
+	createAgentTeamStorageKey,
+	memberAssignmentFileName,
+	readAgentTeamStorageIndex,
+} from "./agent-team-storage-layout.js";
 
 vi.mock("../logger.js", () => ({
 	getAppLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }),
@@ -24,6 +29,14 @@ async function createRepository(): Promise<{
 	const root = await mkdtemp(join(tmpdir(), "vetta-agent-teams-"));
 	temporaryDirectories.push(root);
 	return { repository: createAgentTeamFileRepository({ root }), root };
+}
+
+function storedAgentRoot(root: string, agent: { readonly id: string; readonly name: string }): string {
+	return join(root, "agents", createAgentTeamStorageKey(agent.name, agent.id));
+}
+
+function storedTeamRoot(root: string, team: { readonly id: string; readonly name: string }): string {
+	return join(root, "teams", createAgentTeamStorageKey(team.name, team.id));
 }
 
 describe("Agent Team file repository", () => {
@@ -57,34 +70,27 @@ describe("Agent Team file repository", () => {
 		// 团队按目录名排序读回，与 fixture 的书写顺序无关。
 		expect(loaded.teams).toEqual(expect.arrayContaining([...document.teams]));
 		expect(loaded.teams).toHaveLength(document.teams.length);
-		expect(loaded.agents.map(({ systemPrompt: _prompt, presetId: _presetId, ...agent }) => agent)).toEqual(
-			expect.arrayContaining(
-				document.agents.map(({ systemPrompt: _prompt, presetId: _presetId, ...agent }) => agent),
-			),
+		expect(loaded.agents.map(({ systemPrompt: _prompt, ...agent }) => agent)).toEqual(
+			expect.arrayContaining(document.agents.map(({ systemPrompt: _prompt, ...agent }) => agent)),
 		);
 		expect(loaded.agents).toHaveLength(document.agents.length);
 		expect(loaded.revision).toBe(document.revision);
 		const firstAgent = document.agents[0];
 		if (!firstAgent) throw new Error("Expected an initial agent");
 		const metadata = JSON.parse(
-			await readFile(
-				join(root, "agents", encodeURIComponent(firstAgent.id).replace(/%/g, "_"), "agent.json"),
-				"utf8",
-			),
+			await readFile(join(storedAgentRoot(root, firstAgent), "agent.json"), "utf8"),
 		) as Record<string, unknown>;
 		expect(metadata).not.toHaveProperty("description");
 		expect(metadata).not.toHaveProperty("systemPrompt");
 		expect(metadata).not.toHaveProperty("presetId");
-		expect(
-			await readFile(
-				join(root, "agents", encodeURIComponent(firstAgent.id).replace(/%/g, "_"), "description.md"),
-				"utf8",
-			),
-		).toBe(document.agents[0]?.description);
-		// 没有显式覆盖就不落 system-prompt.md，人格继续跟随 blueprint。
-		expect(await readdir(join(root, "agents", encodeURIComponent(firstAgent.id).replace(/%/g, "_")))).not.toContain(
-			"system-prompt.md",
+		expect(await readFile(join(storedAgentRoot(root, firstAgent), "description.md"), "utf8")).toBe(
+			document.agents[0]?.description,
 		);
+		// 没有显式覆盖就不落 system-prompt.md，人格继续跟随 blueprint。
+		expect(await readdir(storedAgentRoot(root, firstAgent))).not.toContain("system-prompt.md");
+		const index = await readAgentTeamStorageIndex(root);
+		expect(index.layoutVersion).toBe(2);
+		expect(index.agents[firstAgent.id]).toBe(createAgentTeamStorageKey(firstAgent.name, firstAgent.id));
 	});
 
 	it("drops a stored prompt that merely repeats the blueprint default", async () => {
@@ -93,10 +99,10 @@ describe("Agent Team file repository", () => {
 		const firstAgent = document.agents[0];
 		if (!firstAgent) throw new Error("Expected an initial agent");
 		const blueprint = BUILTIN_AGENT_BLUEPRINTS.find((candidate) => candidate.id === firstAgent.blueprintId);
-		if (!blueprint) throw new Error("Expected the preset blueprint");
+		if (!blueprint) throw new Error("Expected the initial profile blueprint");
 
 		await repository.write(document);
-		const agentRoot = join(root, "agents", encodeURIComponent(firstAgent.id).replace(/%/g, "_"));
+		const agentRoot = storedAgentRoot(root, firstAgent);
 		// 旧实现把 blueprint 默认提示词物化成了文件，读回来会变成显式覆盖并冻结后续修订。
 		await writeFile(join(agentRoot, "system-prompt.md"), `${blueprint.systemPrompt}\n`, "utf8");
 
@@ -114,7 +120,7 @@ describe("Agent Team file repository", () => {
 		if (!firstAgent) throw new Error("Expected an initial agent");
 
 		await repository.write(document);
-		const agentRoot = join(root, "agents", encodeURIComponent(firstAgent.id).replace(/%/g, "_"));
+		const agentRoot = storedAgentRoot(root, firstAgent);
 		await writeFile(join(agentRoot, "system-prompt.md"), "   \n", "utf8");
 
 		const loaded = await repository.read();
@@ -128,7 +134,7 @@ describe("Agent Team file repository", () => {
 		if (!firstAgent) throw new Error("Expected an initial agent");
 
 		await repository.write(document);
-		const promptPath = join(root, "agents", encodeURIComponent(firstAgent.id).replace(/%/g, "_"), "system-prompt.md");
+		const promptPath = join(storedAgentRoot(root, firstAgent), "system-prompt.md");
 		await writeFile(promptPath, "Custom long system prompt\n", "utf8");
 
 		const loaded = await repository.read();
@@ -192,13 +198,13 @@ describe("Agent Team file repository", () => {
 
 		await repository.write({ ...document, teams: [{ ...team, members }] });
 
-		const teamRoot = join(root, encodeURIComponent(team.id).replace(/%/g, "_"));
+		const teamRoot = storedTeamRoot(root, team);
 		const manifest = JSON.parse(await readFile(join(teamRoot, "team.json"), "utf8")) as {
 			members: readonly { assignment?: Record<string, unknown> }[];
 		};
 		expect(manifest.members[0]?.assignment).toEqual({ responsibility: "Owns the release checklist." });
 		expect(
-			await readFile(join(teamRoot, "members", `${encodeURIComponent(member.id).replace(/%/g, "_")}.md`), "utf8"),
+			await readFile(join(teamRoot, "members", memberAssignmentFileName(member.id, member.handle)), "utf8"),
 		).toBe("Escalate schema changes.");
 
 		const loaded = await repository.read();
@@ -215,7 +221,7 @@ describe("Agent Team file repository", () => {
 		if (!team) throw new Error("Expected an initial team");
 		const member = team.members[0];
 		if (!member) throw new Error("Expected a team member");
-		const membersRoot = join(root, encodeURIComponent(team.id).replace(/%/g, "_"), "members");
+		const membersRoot = join(storedTeamRoot(root, team), "members");
 
 		await repository.write({
 			...document,
@@ -241,7 +247,7 @@ describe("Agent Team file repository", () => {
 		await repository.write(document);
 		const agent = document.agents[0];
 		if (!agent) throw new Error("Expected an initial agent");
-		const agentFile = join(root, "agents", encodeURIComponent(agent.id).replace(/%/g, "_"), "agent.json");
+		const agentFile = join(storedAgentRoot(root, agent), "agent.json");
 		const stored = JSON.parse(await readFile(agentFile, "utf8")) as Record<string, unknown>;
 		await writeFile(agentFile, JSON.stringify({ ...stored, avatarBackground: "tint:coral" }), "utf8");
 
@@ -267,7 +273,9 @@ describe("Agent Team file repository", () => {
 
 		const loaded = await repository.read();
 
-		expect(loaded.teams).toHaveLength(BUILTIN_AGENT_TEAMS.length);
+		expect(loaded.teams).toHaveLength(INITIAL_AGENT_TEAMS.length);
+		expect(loaded.teams.every((team) => !team.id.includes(":"))).toBe(true);
+		expect(loaded.agents.every((agent) => !agent.id.includes(":"))).toBe(true);
 		expect(await readFile(join(root, "index.json"), "utf8")).toContain('"revision"');
 		expect(await readdir(join(root, "legacy-team-workspace", "workspace"))).toEqual([]);
 	});

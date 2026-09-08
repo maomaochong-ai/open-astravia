@@ -1,4 +1,5 @@
 import type { SkillInfo } from "@preload/api";
+import type { InputSegment } from "@shared/lib/input-tokens";
 import type { AppshotAttachment } from "@shared/store/atoms";
 import type { TodoItem } from "@shared/store/todo-atoms";
 import type { InputBarContextMenuViewProps, SessionDropZoneViewProps } from "@vetta/theme-ui/chat";
@@ -184,8 +185,9 @@ export interface InputBarModel {
 	editor: {
 		readonly namespace: string;
 		readonly value?: string;
+		readonly segments?: readonly InputSegment[];
 		readonly history?: readonly string[];
-		readonly onValueChange?: (value: string) => void;
+		readonly onValueChange?: (value: string, segments?: readonly InputSegment[]) => void;
 		readonly persistenceId?: string | null;
 	};
 	/** Team @ 指定成员：工具栏里的 @ 入口 + 选择面板，未选中时由负责人兜底。 */

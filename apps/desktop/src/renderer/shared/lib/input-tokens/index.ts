@@ -8,8 +8,12 @@ export {
 	deriveSceneNames,
 	deriveSkillNames,
 	pathTokenText,
+	projectMemberMentionsToTrimmedText,
+	type SerializedInputSegments,
+	type SerializedMemberMention,
 	sceneTokenText,
 	segmentsToText,
+	serializeInputSegments,
 	skillTokenText,
 	toTokenPath,
 } from "./serialize";

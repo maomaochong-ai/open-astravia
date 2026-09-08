@@ -49,7 +49,9 @@ describe("InputEditor controlled token mode", () => {
 			replaceInputSegments(parseInputSegments("Review @C:/workspace/brief.md").segments);
 		});
 
-		await waitFor(() => expect(onValueChange).toHaveBeenCalledWith("Review @C:/workspace/brief.md"));
+		await waitFor(() =>
+			expect(onValueChange).toHaveBeenCalledWith("Review @C:/workspace/brief.md", expect.any(Array)),
+		);
 		expect(screen.getByTitle("C:/workspace/brief.md")).toBeTruthy();
 	});
 
@@ -70,11 +72,18 @@ describe("InputEditor controlled token mode", () => {
 		);
 
 		await act(async () => {
-			insertMemberToken("research", "Research", "./avatar.webp", "Leader");
+			insertMemberToken("member-research", "research", "Research", "./avatar.webp", "Leader");
 		});
 
 		await waitFor(() => expect(screen.getByTitle("Research · Leader")).toBeTruthy());
 		expect(screen.getByText("@Research")).toBeTruthy();
-		await waitFor(() => expect(onValueChange).toHaveBeenCalledWith("@research "));
+		await waitFor(() =>
+			expect(onValueChange).toHaveBeenCalledWith(
+				"@research ",
+				expect.arrayContaining([
+					expect.objectContaining({ kind: "member", memberId: "member-research", handle: "research" }),
+				]),
+			),
+		);
 	});
 });

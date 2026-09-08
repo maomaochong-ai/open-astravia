@@ -240,6 +240,70 @@ describe("team chat stream state", () => {
 		expect(items.some((item) => item.kind === "agent" && item.id === "team-v1-live")).toBe(true);
 	});
 
+	it("does not duplicate a leader turn when live and persisted projections have different ids and text progress", () => {
+		const persisted = agentMessage("public-tool-step", "request", "leader", "planning and architecture complete", 2, {
+			id: "delegate-call",
+			name: "team_delegate_task",
+			arguments: { memberId: "executor" },
+		});
+		const liveToolMessage = agentMessage("live-tool-step", "request", "leader", "planning", 3, {
+			id: "delegate-call",
+			name: "team_delegate_task",
+			arguments: { memberId: "executor" },
+		}).message;
+		const streams = reduceTeamStreamState(
+			{},
+			{
+				type: "conversation.agent-message-event",
+				conversationId: "session",
+				messageId: "live-tool-step",
+				turnId: "request",
+				author: { kind: "agent", id: "leader" },
+				sequence: 1,
+				timestamp: 3,
+				event: { type: "text_delta", contentIndex: 1, delta: "", partial: liveToolMessage },
+			},
+		);
+
+		const items = projectTeamConversationTimeline({
+			snapshot: snapshot({
+				messages: [{ ...persisted, message: { ...persisted.message, stopReason: "toolUse" } }],
+				display: {
+					memberConversations: [
+						{
+							memberId: "leader",
+							runtimeSessionId: "leader-runtime",
+							history: [
+								{
+									type: "message",
+									entryId: "leader-runtime-prompt",
+									message: { role: "user", content: "private execution input", timestamp: 0 },
+								},
+								{
+									type: "message",
+									entryId: "runtime-tool-step",
+									message: persisted.message,
+								},
+							],
+						},
+					],
+				},
+			}),
+			pending: undefined,
+			streams,
+			members: [member],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		expect(items.filter((item) => item.kind === "agent")).toHaveLength(1);
+		expect(items).toEqual([
+			expect.objectContaining({
+				id: "runtime-tool-step",
+				renderKey: "team:agent-turn:leader:request",
+			}),
+		]);
+	});
+
 	it("keeps drafts isolated by team scope", () => {
 		const first = updateScopedTeamDraft({}, "team-a", "draft a");
 		const second = updateScopedTeamDraft(first, "team-b", "draft b");
@@ -321,6 +385,7 @@ describe("team chat stream state", () => {
 		});
 
 		expect(items.filter((item) => item.kind === "agent").map((item) => item.text)).toEqual(["leader"]);
+		expect(items.some((item) => item.kind === "user")).toBe(false);
 		expect(items.some((item) => item.kind === "event")).toBe(false);
 	});
 
@@ -589,6 +654,102 @@ describe("team chat stream state", () => {
 		expect(items.filter((item) => item.kind === "user")).toHaveLength(1);
 		expect(items[0]).toMatchObject({ kind: "user", text: "show this prompt", turnId: "request" });
 		expect(items).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "agent", text: "reply" })]));
+	});
+
+	it("shows every user message in the aggregate view but only explicit recipients in member views", () => {
+		const researcher: TeamMemberViewModel = {
+			...member,
+			id: "researcher",
+			name: "Research",
+			handle: "research",
+			blueprintId: "researcher",
+		};
+		const sharedSnapshot = snapshot({
+			messages: [
+				userMessage("unaddressed", "request-1", "team only", 1),
+				userMessage("leader-direct", "request-2", "@vetta direct", 2),
+				userMessage("research-direct", "request-3", "@research direct", 3),
+			],
+			userMessageAnnotations: [
+				{
+					messageEntryId: "leader-direct",
+					participantIds: ["leader"],
+					mentions: [{ participantId: "leader", handle: "vetta", start: 0, end: 6 }],
+				},
+				{
+					messageEntryId: "research-direct",
+					participantIds: ["researcher"],
+					mentions: [{ participantId: "researcher", handle: "research", start: 0, end: 9 }],
+				},
+			],
+		});
+		const project = (memberId?: string) =>
+			projectTeamConversationTimeline({
+				snapshot: sharedSnapshot,
+				pending: undefined,
+				streams: {},
+				members: [member, researcher],
+				labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+				...(memberId ? { memberId } : {}),
+			});
+		const userIds = (items: ReturnType<typeof projectTeamConversationTimeline>) =>
+			items.filter((item) => item.kind === "user").map((item) => item.id);
+
+		expect(userIds(project())).toEqual(["unaddressed", "leader-direct", "research-direct"]);
+		expect(userIds(project("leader"))).toEqual(["leader-direct"]);
+		expect(userIds(project("researcher"))).toEqual(["research-direct"]);
+		expect(project()[2]).toMatchObject({
+			kind: "user",
+			memberMentions: [{ participantId: "researcher", handle: "research", start: 0, end: 9 }],
+		});
+	});
+
+	it("keeps old coordination user messages aggregate-only when explicit audience metadata is unavailable", () => {
+		const legacySnapshot = snapshot({ messages: [userMessage("legacy", "request", "old message", 1)] });
+		const memberItems = projectTeamConversationTimeline({
+			snapshot: legacySnapshot,
+			pending: undefined,
+			streams: {},
+			members: [member],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+			memberId: "leader",
+		});
+
+		expect(memberItems.some((item) => item.kind === "user")).toBe(false);
+	});
+
+	it("applies explicit user-message visibility while a Team request is still optimistic", () => {
+		const researcher: TeamMemberViewModel = {
+			...member,
+			id: "researcher",
+			name: "Research",
+			handle: "research",
+			blueprintId: "researcher",
+		};
+		const projectPending = (
+			pending: Parameters<typeof projectTeamConversationTimeline>[0]["pending"],
+			memberId?: string,
+		) =>
+			projectTeamConversationTimeline({
+				snapshot: undefined,
+				pending,
+				streams: {},
+				members: [member, researcher],
+				labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+				...(memberId ? { memberId } : {}),
+			});
+		const unaddressed = { requestId: "team-only", text: "team only", leaderMemberId: "leader" };
+		const direct = {
+			requestId: "direct",
+			text: "@research hello",
+			targetMemberIds: ["researcher"],
+			leaderMemberId: "leader",
+		};
+
+		expect(projectPending(unaddressed).some((item) => item.kind === "user")).toBe(true);
+		expect(projectPending(unaddressed, "leader").some((item) => item.kind === "user")).toBe(false);
+		expect(projectPending(direct, "leader").some((item) => item.kind === "user")).toBe(false);
+		expect(projectPending(direct, "researcher").some((item) => item.kind === "user")).toBe(true);
 	});
 
 	it("does not merge member runtime user context into the public Team timeline", () => {
@@ -1153,7 +1314,7 @@ describe("team chat stream state", () => {
 					agentMessage("request-tool", "request-tool", "reviewer", "先检查配置", 2, {
 						id: "read-call",
 						name: "read",
-						arguments: { path: "README.md" },
+						arguments: { description: "核对项目说明", path: "README.md" },
 					}),
 				],
 				activities: [
@@ -1179,7 +1340,7 @@ describe("team chat stream state", () => {
 			(item): item is Extract<typeof item, { kind: "event" }> =>
 				item.kind === "event" && item.event.kind === "team-member-summary",
 		);
-		expect(summary).toMatchObject({ event: { currentKind: "tool", current: "read" } });
+		expect(summary).toMatchObject({ event: { currentKind: "tool", current: "核对项目说明" } });
 	});
 
 	it("applies live member tool execution events to the shared message block", () => {

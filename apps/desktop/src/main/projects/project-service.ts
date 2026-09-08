@@ -1,4 +1,5 @@
 import type { DesktopConfig, ProjectEntry } from "../config/desktop-config-store.js";
+import { sameProjectPath } from "./project-path.js";
 
 export interface ProjectServiceDependencies {
 	readonly allowProjectRoot: (path: string) => void;
@@ -38,13 +39,8 @@ function pathBasename(path: string): string {
 	return parts[parts.length - 1] || path;
 }
 
-function samePath(first: string, second: string): boolean {
-	const normalize = (value: string): string => value.replace(/[\\/]+$/, "").toLowerCase();
-	return normalize(first) === normalize(second);
-}
-
 function findProject(entries: readonly ProjectEntry[], path: string): ProjectEntry | undefined {
-	return entries.find((entry) => samePath(entry.path, path));
+	return entries.find((entry) => sameProjectPath(entry.path, path));
 }
 
 function assertProjectName(name: string): string {
@@ -101,7 +97,7 @@ export class ProjectService {
 		const config = await this.dependencies.readConfig();
 		const projects = config.projects.map((entry) => ({ ...entry }));
 		const archivedProjects = config.archivedProjects
-			.filter((entry) => !samePath(entry.path, path))
+			.filter((entry) => !sameProjectPath(entry.path, path))
 			.map((entry) => ({ ...entry }));
 		const entry = { path, name: name?.trim() || pathBasename(path) };
 		if (!findProject(projects, path)) projects.push(entry);
@@ -125,7 +121,7 @@ export class ProjectService {
 		const config = await this.dependencies.readConfig();
 		const entry = findProject(config.projects, path);
 		if (!entry) throw new Error(`Active project not found: ${path}`);
-		const projects = config.projects.filter((item) => !samePath(item.path, path)).map((item) => ({ ...item }));
+		const projects = config.projects.filter((item) => !sameProjectPath(item.path, path)).map((item) => ({ ...item }));
 		const archivedProjects = config.archivedProjects.map((item) => ({ ...item }));
 		if (!findProject(archivedProjects, path)) archivedProjects.push({ ...entry });
 		await this.commit({ ...config, projects, archivedProjects });
@@ -136,7 +132,7 @@ export class ProjectService {
 		const entry = findProject(config.archivedProjects, path);
 		if (!entry) throw new Error(`Archived project not found: ${path}`);
 		const archivedProjects = config.archivedProjects
-			.filter((item) => !samePath(item.path, path))
+			.filter((item) => !sameProjectPath(item.path, path))
 			.map((item) => ({ ...item }));
 		const projects = config.projects.map((item) => ({ ...item }));
 		if (!findProject(projects, path)) projects.push({ ...entry });
@@ -146,9 +142,9 @@ export class ProjectService {
 
 	async remove(path: string): Promise<void> {
 		const config = await this.dependencies.readConfig();
-		const projects = config.projects.filter((item) => !samePath(item.path, path)).map((item) => ({ ...item }));
+		const projects = config.projects.filter((item) => !sameProjectPath(item.path, path)).map((item) => ({ ...item }));
 		const archivedProjects = config.archivedProjects
-			.filter((item) => !samePath(item.path, path))
+			.filter((item) => !sameProjectPath(item.path, path))
 			.map((item) => ({ ...item }));
 		if (projects.length === config.projects.length && archivedProjects.length === config.archivedProjects.length) {
 			throw new Error(`Project not found: ${path}`);

@@ -28,6 +28,9 @@ const useProjectsMock = vi.fn();
 vi.mock("../../../../hooks/useProjects", () => ({
 	useProjects: () => useProjectsMock(),
 }));
+vi.mock("../../../../hooks/useTeamSidebarConversations", () => ({
+	useTeamSidebarConversations: () => ({ conversations: [], loading: false }),
+}));
 
 const { useProjectsPanelModel } = await import("./useProjectsPanelModel.js");
 
@@ -103,14 +106,41 @@ describe("useProjectsPanelModel.selectSession", () => {
 		useProjectsMock.mockReturnValue(projectsState(new Map([[cwd, [makeSession("s1", cwd), readOnly]]])));
 		rerender();
 
-		select(cwd, "s2");
+		select(cwd, { ...readOnly, kind: "conversation" });
 		expect(onOpenSession).not.toHaveBeenCalled();
 		expect(navigateSpy).toHaveBeenCalledWith({
 			to: "/viewer/$path",
 			params: { path: encodeURIComponent("s2") },
 		});
 
-		select(cwd, "s1");
+		select(cwd, { ...makeSession("s1", cwd), kind: "conversation" });
 		expect(onOpenSession).toHaveBeenCalledWith(cwd, "s1");
+	});
+
+	it("Team 会话直接进入 Team 路由，不走普通会话恢复", () => {
+		const cwd = "/repo/a";
+		useProjectsMock.mockReturnValue(projectsState(new Map()));
+		const onOpenSession = vi.fn().mockResolvedValue(undefined);
+		const { result } = renderHook(() => useProjectsPanelModel({ filter: "all", onOpenSession }));
+
+		result.current.actions.selectSession(cwd, {
+			kind: "agent-team",
+			id: "team-session-1",
+			path: "/team/session.jsonl",
+			cwd,
+			firstMessage: "Ship it",
+			modifiedAt: 1,
+			teamId: "team-1",
+			teamSessionId: "team-session-1",
+			teamName: "Dev Team",
+			memberAvatarUrls: ["/master.webp", "/executor.webp"],
+			sessionTitle: "Ship it",
+		});
+
+		expect(onOpenSession).not.toHaveBeenCalled();
+		expect(navigateSpy).toHaveBeenCalledWith({
+			to: "/agent-teams/$teamId/sessions/$sessionId",
+			params: { teamId: "team-1", sessionId: "team-session-1" },
+		});
 	});
 });

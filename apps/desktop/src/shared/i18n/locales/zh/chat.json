@@ -720,6 +720,7 @@
 		"greetingTitle": "你好，{{nickname}}",
 		"subtitle": "我可以帮助你处理工作，有什么我可以帮你的吗？",
 		"defaultContext": "普通会话",
+		"teamNewWorkspaceContext": "新工作空间",
 		"projectContext": "项目 · {{name}}",
 		"mascot": {
 			"menuTrigger": "吉祥物设置",

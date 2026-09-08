@@ -1,16 +1,17 @@
-import type { AgentTeamDocument } from "@vetta/agent-team";
+import type { AgentTeamDocument, TeamSessionWorkspaceSelection, TeamUserMessageMention } from "@vetta/agent-team";
 import type { PromptAttachmentRef, SessionExecutionMode } from "@vetta/runtime-core";
 
 export interface TeamSessionSendHandoff {
 	readonly sessionId: string;
 	readonly requestId: string;
 	readonly text: string;
-	readonly requestedMemberIds: readonly string[];
+	readonly memberMentions: readonly TeamUserMessageMention[];
 	readonly attachments: readonly PromptAttachmentRef[];
 	readonly timestamp: number;
 	readonly modelKey?: string;
 	readonly reasoning?: string;
 	readonly executionMode: SessionExecutionMode;
+	readonly workspace?: TeamSessionWorkspaceSelection;
 }
 
 export interface TeamSessionHandoff extends TeamSessionSendHandoff {

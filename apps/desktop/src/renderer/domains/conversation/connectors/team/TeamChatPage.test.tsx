@@ -30,9 +30,6 @@ vi.mock("@tanstack/react-router", () => ({
 	useNavigate: () => captured.navigate,
 	useParams: () => captured.params,
 }));
-vi.mock("@shared/agent-teams/useAgentTeamSidebarSelection", () => ({
-	useAgentTeamSidebarSelection: () => undefined,
-}));
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({
 		t: (key: string, values?: { name?: string }) => (values?.name ? `${key}:${values.name}` : key),

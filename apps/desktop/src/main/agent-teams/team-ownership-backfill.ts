@@ -15,6 +15,13 @@ export function agentTeamConversationOwnershipRecords(
 		title: session.name,
 		createdAt: session.createdAt,
 		updatedAt: session.updatedAt,
+		workspaceKind:
+			session.workspaceKind ??
+			(session.workspaceId && session.workspaceId !== `agent-team:${session.teamId}`
+				? ("project" as const)
+				: ("team-default" as const)),
+		workspaceId: session.workspaceId ?? `agent-team:${session.teamId}`,
+		cwd: session.cwd,
 	};
 	return [
 		...(session.coordinationRuntime

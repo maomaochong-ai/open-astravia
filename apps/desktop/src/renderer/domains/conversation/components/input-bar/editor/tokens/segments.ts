@@ -15,6 +15,7 @@ import {
 	$createConnectorTokenNode,
 	$createFileTokenNode,
 	$createImageTokenNode,
+	$createMemberTokenNode,
 	$createSceneTokenNode,
 	$createSkillTokenNode,
 	$isConnectorTokenNode,
@@ -52,8 +53,14 @@ function collect(node: LexicalNode, out: InputSegment[]): void {
 		return;
 	}
 	if ($isMemberTokenNode(node)) {
-		// Member metadata is editor-only; the persisted/send form is the regular @handle text.
-		pushText(out, node.getTextContent());
+		out.push({
+			kind: "member",
+			memberId: node.getMemberId(),
+			handle: node.getHandle(),
+			label: node.getLabel(),
+			...(node.getAvatar() ? { avatar: node.getAvatar() } : {}),
+			...(node.getMeta() ? { meta: node.getMeta() } : {}),
+		});
 		return;
 	}
 	if ($isLineBreakNode(node)) {
@@ -83,6 +90,8 @@ export function $readSegments(): InputSegment[] {
 
 function segmentNodes(segment: InputSegment): LexicalNode[] {
 	switch (segment.kind) {
+		case "member":
+			return [$createMemberTokenNode(segment.memberId, segment.handle, segment.label, segment.avatar, segment.meta)];
 		case "scene":
 			return [$createSceneTokenNode(segment.name)];
 		case "skill":

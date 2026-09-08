@@ -25,8 +25,6 @@ afterEach(() => {
 function actions(): TeamChatActions {
 	return {
 		setDraft: vi.fn(),
-		selectLeader: vi.fn(),
-		toggleMember: vi.fn(),
 		selectFiles: vi.fn(async () => undefined),
 		selectImages: vi.fn(async () => undefined),
 		removeAttachment: vi.fn(),

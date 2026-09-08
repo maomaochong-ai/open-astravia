@@ -9,6 +9,7 @@ import type {
 	ConversationParticipantViewModel,
 } from "@shared/conversation";
 import { reduceConversationMessageEvent } from "@shared/conversation";
+import type { InputSegment } from "@shared/lib/input-tokens";
 import type { ChatConversationItem, ChatToolCallPresentationViewModel, ContextUsageData } from "@shared/store/atoms";
 import type { ActivityWorkspace } from "@shared/workspace/activity-workspace";
 import type { AgentTeamDocument, TeamDefinition } from "@vetta/agent-team";
@@ -36,6 +37,12 @@ export interface TeamChatViewModel {
 	readonly title: string;
 	readonly status: TeamChatStatus;
 	readonly draft: string;
+	readonly draftMemberMentions?: readonly {
+		readonly participantId: string;
+		readonly handle: string;
+		readonly start: number;
+		readonly end: number;
+	}[];
 	readonly history: readonly string[];
 	readonly attachments: readonly TeamAttachmentViewModel[];
 	readonly members: readonly TeamMemberViewModel[];
@@ -63,9 +70,7 @@ export interface TeamChatViewModel {
 }
 
 export interface TeamChatActions {
-	readonly setDraft: (draft: string) => void;
-	readonly selectLeader: () => void;
-	readonly toggleMember: (memberId: string) => void;
+	readonly setDraft: (draft: string, segments?: readonly InputSegment[]) => void;
 	readonly selectFiles: () => Promise<void>;
 	readonly selectImages: () => Promise<void>;
 	readonly removeAttachment: (path: string) => void;
@@ -112,6 +117,12 @@ export interface TeamPendingRequest {
 	readonly displayText?: string;
 	readonly attachments?: readonly PromptAttachmentRef[];
 	readonly targetMemberIds?: readonly string[];
+	readonly memberMentions?: readonly {
+		readonly participantId: string;
+		readonly handle: string;
+		readonly start: number;
+		readonly end: number;
+	}[];
 	readonly leaderMemberId?: string;
 	readonly timestamp?: number;
 }
@@ -348,14 +359,27 @@ export function projectTeamConversationTimeline({
 	// User input is persisted in the coordination conversation before member
 	// turns are scheduled. Keep it as the canonical timeline item even when
 	// member histories are available. Member Runtime histories contain their own
-	// user input entries as execution context; those entries are not public Team
-	// messages and must not be merged into the aggregate feed.
+	// user input entries as execution context; those entries are not user-authored
+	// Team messages and never enter either aggregate or member-scoped display.
 	const coordinationItems = snapshot ? projectLegacySnapshotMessages(snapshot) : [];
 	const coordinationUserItems = coordinationItems.filter((item) => item.kind === "user");
+	const userAnnotationsByMessageId = new Map(
+		(snapshot?.userMessageAnnotations ?? []).map((annotation) => [annotation.messageEntryId, annotation]),
+	);
+	const annotatedCoordinationUserItems = coordinationUserItems.map((item) => {
+		const annotation = userAnnotationsByMessageId.get(item.entryId ?? item.id);
+		return annotation ? { ...item, memberMentions: [...annotation.mentions] } : item;
+	});
+	const visibleCoordinationUserItems =
+		memberId === undefined
+			? annotatedCoordinationUserItems
+			: annotatedCoordinationUserItems.filter((item) =>
+					userAnnotationsByMessageId.get(item.entryId ?? item.id)?.participantIds.includes(memberId),
+				);
 	const coordinationAgentItems = mergeTeamAgentTurns(
 		coordinationItems.filter((item): item is ConversationAgentMessageViewModel => item.kind === "agent"),
 	);
-	const coordinationDisplayItems = [...coordinationUserItems, ...coordinationAgentItems].sort(
+	const coordinationDisplayItems = [...visibleCoordinationUserItems, ...coordinationAgentItems].sort(
 		(left, right) => itemTimestamp(left) - itemTimestamp(right),
 	);
 	const consumedPublicRenderKeys = new Set<string>();
@@ -406,15 +430,13 @@ export function projectTeamConversationTimeline({
 		// for the aggregate Team feed as soon as one is available.
 		memberId === undefined
 			? [
-					...coordinationUserItems,
+					...annotatedCoordinationUserItems,
 					...(leaderCoordinationItems.length > leaderMemberItems.length
 						? leaderCoordinationItems
 						: leaderMemberItems),
 					...directResponseItems,
 				]
-			: coordinationUserItems.length > 0
-				? stabilizedMemberItems.filter((item) => item.kind !== "user")
-				: stabilizedMemberItems;
+			: [...visibleCoordinationUserItems, ...stabilizedMemberItems.filter((item) => item.kind !== "user")];
 	const linkedPresentations = new Map<string, ChatToolCallPresentationViewModel>();
 	// Only suppress the legacy top-level activity card once the originating leader
 	// tool is present in the current snapshot/stream. During the short window where
@@ -529,7 +551,9 @@ export function projectTeamConversationTimeline({
 		? (snapshot?.messages.some((record) => record.kind === "user" && record.turnId === pending.requestId) ?? false) ||
 			items.some((item) => item.kind === "user" && item.turnId === pending.requestId)
 		: false;
-	if (pending && !userCommitted) {
+	const pendingUserVisible =
+		pending !== undefined && (memberId === undefined || (pending.targetMemberIds?.includes(memberId) ?? false));
+	if (pending && pendingUserVisible && !userCommitted) {
 		items.push({
 			id: `user:${pending.requestId}`,
 			renderKey: teamUserTurnRenderKey(pending.requestId),
@@ -539,6 +563,7 @@ export function projectTeamConversationTimeline({
 			role: "user",
 			deliveryPhase: "pending",
 			text: pending.displayText ?? stripAttachmentContext(pending.text),
+			...(pending.memberMentions ? { memberMentions: [...pending.memberMentions] } : {}),
 			timestamp: pending.timestamp ?? session?.updatedAt ?? Date.now(),
 			attachments: [...(pending.attachments ?? [])],
 		});
@@ -546,6 +571,7 @@ export function projectTeamConversationTimeline({
 
 	const persistedAgentItems = items.filter((item) => item.kind === "agent");
 	const persistedResults = new Set(persistedAgentItems.map((item) => item.id));
+	const persistedRenderKeys = new Set(persistedAgentItems.map((item) => item.renderKey ?? item.entryId ?? item.id));
 	for (const turn of Object.values(streams).sort(
 		(left, right) => (left.message.startedAt ?? 0) - (right.message.startedAt ?? 0),
 	)) {
@@ -557,14 +583,16 @@ export function projectTeamConversationTimeline({
 			leaderDelegations.some((activity) => matchesActivityReply(activity, turn.message))
 		)
 			continue;
-		// Dedupe against an already published reply, by identity or by content. Content
-		// only counts as evidence when there is content: a turn that has so far produced
-		// only thinking or tool calls has an empty public text, and matching that against
-		// every earlier reply that also carried no prose would hide the running turn
-		// until its next persisted snapshot.
+		// Runtime history, coordination history, and the live event can assign different
+		// message ids to the same member turn. The stable render key is therefore the
+		// primary identity while their snapshots overlap; exact text remains a fallback
+		// for legacy records without that identity. Empty text is not content evidence,
+		// because unrelated tool-only turns all have the same public text.
 		const streamText = publicAgentText(turn.message);
+		const streamRenderKey = teamAgentTurnRenderKey(turn.message.authorId, turn.message.turnId);
 		if (
 			persistedResults.has(turn.message.id) ||
+			persistedRenderKeys.has(streamRenderKey) ||
 			(streamText.length > 0 &&
 				persistedAgentItems.some(
 					(item) => item.authorId === turn.message.authorId && publicAgentText(item) === streamText,
@@ -574,13 +602,19 @@ export function projectTeamConversationTimeline({
 		items.push(
 			decorateLeaderMessage({
 				...turn.message,
-				renderKey: teamAgentTurnRenderKey(turn.message.authorId, turn.message.turnId),
+				renderKey: streamRenderKey,
 			}),
 		);
 	}
 	const waitingAuthorIds = pending
 		? memberId
-			? [memberId]
+			? (
+					pending.targetMemberIds?.length
+						? pending.targetMemberIds.includes(memberId)
+						: memberId === (session?.leaderMemberId ?? pending.leaderMemberId)
+				)
+				? [memberId]
+				: []
 			: pending.targetMemberIds?.length
 				? [...new Set(pending.targetMemberIds)]
 				: [session?.leaderMemberId ?? pending.leaderMemberId ?? "leader"]

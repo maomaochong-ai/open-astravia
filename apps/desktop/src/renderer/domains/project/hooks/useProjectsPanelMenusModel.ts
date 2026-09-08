@@ -14,10 +14,7 @@ export function useProjectsPanelMenusModel(model: ProjectsPanelModel) {
 	const clearClawDisabled =
 		projectMenu?.project.isDefault === true &&
 		model.projectSessions(model.imCwd).some((session) => runningSessionPaths.has(session.path));
-	const defaultScope =
-		projectMenu?.project.isDefault === true && model.defaultConversationFilter !== "team"
-			? model.defaultConversationFilter
-			: undefined;
+	const defaultScope = projectMenu?.project.isDefault === true ? model.defaultConversationFilter : undefined;
 
 	return {
 		contextMenu,
