@@ -86,7 +86,7 @@ jobs:
       # CI 全新检出没有这些产物，必须先跑 scripts/build.sh libs 补上。
       - name: Build workspace libraries
         shell: bash
-        run: bun run build
+        run: ./scripts/build.sh libs
 
       - name: Configure macOS signing and notarization
         if: matrix.macArch != ''
