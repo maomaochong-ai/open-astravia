@@ -106,6 +106,31 @@ describe("CodingAgentLengthContinuationSource", () => {
 		);
 	});
 
+	it("refuses to fake a user turn when the truncated response has no visible output", async () => {
+		// 真实故障形态（vetta-go/ominiroute-antigravity）：预算全烧在 thinking 上，
+		// 正文零产出就被网关判 MAX_TOKENS。此时注入"从中断处继续"只会再烧三轮。
+		const source = new CodingAgentLengthContinuationSource();
+		const truncated = {
+			...assistantMessage("", "length"),
+			content: [{ type: "thinking" as const, thinking: "..." }],
+		};
+
+		await expect(source.collect(continuationContext("turn-1", [truncated]))).rejects.toThrow(
+			"Model exhausted its output budget while still reasoning",
+		);
+	});
+
+	it("resets the attempt budget once the model stops truncating", async () => {
+		// 计数此前只按 turnId 归零，长 Turn 里零散的三次网关抖动就会把整轮判死。
+		const source = new CodingAgentLengthContinuationSource({ maxAttempts: 2 });
+		const truncated = continuationContext("turn-1", [assistantMessage("partial", "length")]);
+
+		await source.collect(truncated);
+		await source.collect(truncated);
+		expect(await source.collect(continuationContext("turn-1", [assistantMessage("recovered")]))).toEqual([]);
+		await expect(source.collect(truncated)).resolves.toHaveLength(1);
+	});
+
 	it("does not continue a normal stop or an aborted turn", async () => {
 		const source = new CodingAgentLengthContinuationSource();
 		expect(await source.collect(continuationContext("turn-1", [assistantMessage("done")]))).toEqual([]);

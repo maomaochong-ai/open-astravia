@@ -37,7 +37,19 @@ export class CodingAgentLengthContinuationSource implements CodingAgentContinuat
 		const latestAssistant = [...context.messages]
 			.reverse()
 			.find((message): message is AssistantMessage => message.role === "assistant");
-		if (latestAssistant?.stopReason !== "length") return [];
+		if (latestAssistant?.stopReason !== "length") {
+			// 模型已经能正常收尾：偶发截断不应在同一个 Turn 内累积到判死。
+			this.attempts = 0;
+			return [];
+		}
+		if (!hasVisibleOutput(latestAssistant)) {
+			// 预算在思考阶段就烧完了，正文一个 token 都没产出。此时"从中断处继续"
+			// 无处可继续，只会让模型重新开始思考再被截断，因此直接给出可操作的失败。
+			throw new Error(
+				"Model exhausted its output budget while still reasoning and produced no visible output. " +
+					"Automatic continuation cannot recover this: lower the thinking level or raise the model's max output tokens.",
+			);
+		}
 		if (this.attempts >= this.maxAttempts) {
 			throw new Error(`Model response remained truncated after ${this.maxAttempts} automatic continuation attempts`);
 		}
@@ -56,4 +68,11 @@ export class CodingAgentLengthContinuationSource implements CodingAgentContinuat
 			},
 		];
 	}
+}
+
+/** thinking 不是可续接的正文：只有正文或工具调用才说明模型确实产出了半截结果。 */
+function hasVisibleOutput(message: AssistantMessage): boolean {
+	return message.content.some(
+		(part) => part.type === "toolCall" || (part.type === "text" && part.text.trim().length > 0),
+	);
 }

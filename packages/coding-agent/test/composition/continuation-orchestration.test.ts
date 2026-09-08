@@ -136,7 +136,7 @@ describe("Coding Agent continuation orchestration", () => {
 				const count = countBySession.get(id) ?? 0;
 				countBySession.set(id, count + 1);
 				return new RecordedAssistantStream(
-					assistantMessage(count === 0 ? "" : "done", count === 0 ? "length" : "stop"),
+					assistantMessage(count === 0 ? "partial" : "done", count === 0 ? "length" : "stop"),
 				);
 			},
 		});
@@ -314,7 +314,8 @@ describe("Coding Agent continuation orchestration", () => {
 		const conversationDir = await mkdtemp(join(tmpdir(), "length-continuation-"));
 		temporaryDirectories.push(conversationDir);
 		const modelCalls: Array<readonly Message[]> = [];
-		const responses = [assistantMessage("", "length"), assistantMessage("completed response")];
+		// 截断的响应必须留有半截正文：无可见产出的截断走的是"直接判失败"分支。
+		const responses = [assistantMessage("partial response", "length"), assistantMessage("completed response")];
 		let responseIndex = 0;
 		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,

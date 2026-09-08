@@ -1,0 +1,62 @@
+{
+	"note": "vetta-go/ominiroute-antigravity gemini-3.8-flash-high 真实截断回放；thinking 已截短、usage 已剔除",
+	"messages": [
+		{
+			"role": "user",
+			"content": [
+				{
+					"type": "text",
+					"text": "创建一个 HTML SVG 动画"
+				}
+			]
+		},
+		{
+			"role": "assistant",
+			"stopReason": "toolUse",
+			"content": [
+				{
+					"type": "thinking",
+					"thinking": "**Defining Pelican Bike Animation Requirements**\n\nThe request requires an HTML file featuring a 2D SVG animation depicti"
+				},
+				{
+					"type": "toolCall",
+					"name": "progress"
+				}
+			]
+		},
+		{
+			"role": "assistant",
+			"stopReason": "toolUse",
+			"content": [
+				{
+					"type": "toolCall",
+					"name": "dir_tree"
+				}
+			]
+		},
+		{
+			"role": "assistant",
+			"stopReason": "toolUse",
+			"content": [
+				{
+					"type": "thinking",
+					"thinking": "**Planning HTML & SVG Structure**\n\nThe project requires an HTML and SVG structure for animation. Considering entry point"
+				},
+				{
+					"type": "toolCall",
+					"name": "progress"
+				}
+			]
+		},
+		{
+			"role": "assistant",
+			"stopReason": "length",
+			"content": [
+				{
+					"type": "thinking",
+					"thinking": "**Defining SVG Coordinate System**\n\nThe SVG canvas requires a defined `ViewBox` to establish its coordinate system.  A `"
+				}
+			]
+		}
+	]
+}
