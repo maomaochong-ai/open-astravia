@@ -131,8 +131,8 @@ export interface DbTableScope {
 	readonly schema?: string;
 }
 
-/** 表级子对象种类（树深至表下：索引 / 约束 / 触发器 / 分区）。 */
-export type DbTableObjectKind = "index" | "constraint" | "trigger" | "partition";
+/** 表级子对象种类（树深至表下：索引 / 约束 / 外键 / 触发器 / 分区）。 */
+export type DbTableObjectKind = "index" | "constraint" | "foreign-key" | "trigger" | "partition";
 
 /** 执行查询选项。 */
 export interface DbExecuteQueryOptions {

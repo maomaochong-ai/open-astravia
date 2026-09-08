@@ -169,7 +169,7 @@ function NodeErrorRow({ message, onRetry }: { message: string; onRetry: () => vo
 		<div className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5">
 			<span className="min-w-0 truncate text-[11.5px] text-destructive">{message}</span>
 			<Button variant="ghost" size="xs" onClick={onRetry}>
-				<span className="icon-[mdi--refresh] h-3 w-3" />
+				<span className="icon-[lucide--refresh-cw] h-3 w-3" />
 				{t("databaseRetry")}
 			</Button>
 		</div>
@@ -206,7 +206,7 @@ function ColumnRows({
 					<span
 						className={cn(
 							"h-3 w-3 shrink-0",
-							column.isPrimaryKey ? "icon-[mdi--key-outline] text-amber-500/80" : "icon-[mdi--code-braces] text-muted-foreground/50",
+							column.isPrimaryKey ? "icon-[lucide--columns-3] text-orange-500/80" : "icon-[lucide--columns-3] text-muted-foreground/50",
 						)}
 					/>
 					<span className="min-w-0 truncate text-[11.5px] text-foreground/80">{column.name}</span>
@@ -221,13 +221,14 @@ function ColumnRows({
 }
 
 const OBJECT_ICON: Record<DbTableObjectKind, string> = {
-	index: "icon-[mdi--vector-square]",
-	constraint: "icon-[mdi--link-variant]",
-	trigger: "icon-[mdi--flash-outline]",
-	partition: "icon-[mdi--table-split]",
+	index: "icon-[lucide--key-round] text-amber-600",
+	constraint: "icon-[lucide--link-2] text-sky-600",
+	"foreign-key": "icon-[lucide--arrow-left-right] text-rose-600",
+	trigger: "icon-[lucide--zap] text-orange-500",
+	partition: "icon-[lucide--layers] text-slate-500",
 };
 
-/** #5：表级子对象分区（索引/约束/触发器/分区）。flat(单库) 连接 scope 为空 → 不渲染；无子对象整块隐藏。 */
+/** #5：表级子对象分区（索引/约束/外键/触发器/分区）。flat(单库) 连接 scope 为空 → 不渲染；无子对象整块隐藏。 */
 function TableObjectRows({
 	explorer,
 	connection,
@@ -269,7 +270,7 @@ function TableObjectRows({
 									key={name}
 									className="flex cursor-default items-center gap-1.5 rounded px-2 py-0.5 text-[11.5px] text-foreground/70 hover:bg-background/50"
 								>
-									<span className="h-2.5 w-2.5 shrink-0 text-muted-foreground/50 icon-[mdi--dots-horizontal]" />
+									<span className="h-2.5 w-2.5 shrink-0 text-muted-foreground/50 icon-[lucide--ellipsis]" />
 									<span className="min-w-0 truncate">{name}</span>
 								</div>
 							))
@@ -291,7 +292,7 @@ function TableKindSectionHeader({ kind, count }: { kind: "tables" | "views"; cou
 			<span
 				className={cn(
 					"h-3 w-3 shrink-0",
-					view ? "icon-[mdi--eye-outline] text-sky-500/70" : "icon-[mdi--table] text-muted-foreground/50",
+					view ? "icon-[lucide--eye] text-violet-500/80" : "icon-[lucide--table-2] text-green-600/80",
 				)}
 			/>
 			<span className="min-w-0 truncate text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground/50">
@@ -406,13 +407,13 @@ function ScopeRows({
 								className={cn(
 									"h-3 w-3 shrink-0 transition-transform",
 									expanded && "rotate-90",
-									"icon-[mdi--chevron-right]",
+									"icon-[lucide--chevron-right]",
 								)}
 							/>
 							<span
 								className={cn(
 									"h-3.5 w-3.5 shrink-0",
-									schemas ? "icon-[mdi--shape-outline] text-violet-500/80" : "icon-[mdi--database] text-amber-500/80",
+									schemas ? "icon-[lucide--folder-open] text-sky-500/80" : "icon-[lucide--database] text-amber-500/80",
 								)}
 							/>
 							<span className="min-w-0 flex-1 truncate text-[12px] font-medium text-foreground/90">{scope.name}</span>
@@ -561,8 +562,8 @@ function TableRows({
 												className={cn(
 													"h-3.5 w-3.5",
 													tableChecked
-														? "icon-[mdi--checkbox-marked-outline] text-primary"
-														: "icon-[mdi--checkbox-blank-outline] text-muted-foreground/45",
+														? "icon-[lucide--square-check-big] text-primary"
+														: "icon-[lucide--square] text-muted-foreground/45",
 												)}
 											/>
 										</button>
@@ -575,12 +576,12 @@ function TableRows({
 										explorer.actions.toggleTable(connection.name, table.name, scope);
 										}}
 									>
-										<span className={cn("h-3 w-3 transition-transform", expanded && "rotate-90", "icon-[mdi--chevron-right]")} />
+										<span className={cn("h-3 w-3 transition-transform", expanded && "rotate-90", "icon-[lucide--chevron-right]")} />
 									</button>
 									<span
 										className={cn(
 											"h-3.5 w-3.5 shrink-0",
-											view ? "icon-[mdi--eye-outline] text-sky-500/80" : "icon-[mdi--table] text-muted-foreground/70",
+											view ? "icon-[lucide--eye] text-violet-500/80" : "icon-[lucide--table-2] text-green-600/80",
 										)}
 									/>
 									<span className="min-w-0 truncate text-[12px] font-medium text-foreground/90">{table.name}</span>
@@ -602,7 +603,7 @@ function TableRows({
 												onAnalyzeTable(connection, table.name, scope);
 											}}
 										>
-											<span className="h-3.5 w-3.5 icon-[solar--magic-stick-linear]" />
+											<span className="h-3.5 w-3.5 icon-[lucide--wand-sparkles]" />
 										</button>
 										<button
 											type="button"
@@ -614,7 +615,7 @@ function TableRows({
 												void onOpenTable(connection, table.name, scope);
 											}}
 										>
-											<span className="h-3.5 w-3.5 icon-[mdi--play-box-outline]" />
+											<span className="h-3.5 w-3.5 icon-[lucide--play]" />
 										</button>
 									</div>
 								</ExplorerOrderableRow>
@@ -921,13 +922,13 @@ export function DatabaseExplorerTree({
 		const items: DatabaseContextMenuItem[] = [
 			{
 				key: "toggle",
-				icon: expanded ? "icon-[solar--alt-arrow-down-linear]" : "icon-[solar--alt-arrow-right-linear]",
+				icon: expanded ? "icon-[lucide--chevron-down]" : "icon-[lucide--chevron-right]",
 				label: expanded ? t("databaseCollapse") : t("databaseExpand"),
 				onSelect: () => explorer.actions.toggleConnection(connection.name),
 			},
 			{
 				key: "refresh",
-				icon: "icon-[solar--refresh-linear]",
+				icon: "icon-[lucide--refresh-cw]",
 				label: t("databaseRefresh"),
 				onSelect: () => {
 					refreshConnection(connection);
@@ -938,7 +939,7 @@ export function DatabaseExplorerTree({
 				? [
 						{
 							key: "test",
-							icon: "icon-[solar--plug-circle-linear]",
+							icon: "icon-[lucide--plug-zap]",
 							label: t("databaseTestConnection"),
 							onSelect: () => void onTestConnection(connection.name),
 						},
@@ -947,7 +948,7 @@ export function DatabaseExplorerTree({
 			{ key: "separator-1", separator: true },
 			{
 				key: "copy",
-				icon: "icon-[solar--copy-linear]",
+				icon: "icon-[lucide--copy]",
 				label: t("databaseCopyName"),
 				onSelect: () => copyName(connection.name),
 			},
@@ -955,7 +956,7 @@ export function DatabaseExplorerTree({
 			{ key: "sep-show-all", separator: true },
 			{
 				key: "show-all",
-				icon: "icon-[mdi--eye-plus-outline]",
+				icon: "icon-[lucide--eye]",
 				label: t("databaseShowAllObjects"),
 				onSelect: () => updateVisibility(connection.name, undefined),
 			},
@@ -973,7 +974,7 @@ export function DatabaseExplorerTree({
 					{ key: "separator-2", separator: true },
 					{
 						key: "copy-qualified",
-						icon: "icon-[solar--copy-linear]",
+						icon: "icon-[lucide--copy]",
 						label: t("databaseCopyQualifiedName"),
 						onSelect: () => copyName(qualifiedTableName(table.name, scope)),
 					},
@@ -982,31 +983,31 @@ export function DatabaseExplorerTree({
 		const items: DatabaseContextMenuItem[] = [
 			{
 				key: "open",
-				icon: "icon-[solar--play-linear]",
+				icon: "icon-[lucide--play]",
 				label: t("databaseOpenTable"),
 				onSelect: () => void onOpenTable(connection, table.name, scope),
 			},
 			{
 				key: "analyze",
-				icon: "icon-[solar--magic-stick-linear]",
+				icon: "icon-[lucide--wand-sparkles]",
 				label: t("databaseAnalyzeTable.label"),
 				onSelect: () => onAnalyzeTable(connection, table.name, scope),
 			},
 			{
 				key: "toggle",
-				icon: expanded ? "icon-[solar--alt-arrow-down-linear]" : "icon-[solar--alt-arrow-right-linear]",
+				icon: expanded ? "icon-[lucide--chevron-down]" : "icon-[lucide--chevron-right]",
 				label: expanded ? t("databaseCollapse") : t("databaseExpand"),
 				onSelect: () => explorer.actions.toggleTable(connection.name, table.name, scope),
 			},
 			{
 				key: "refresh",
-				icon: "icon-[solar--refresh-linear]",
+				icon: "icon-[lucide--refresh-cw]",
 				label: t("databaseRefresh"),
 				onSelect: () => explorer.actions.reloadColumns(connection.name, table.name, scope),
 			},
 			{
 				key: "copy",
-				icon: "icon-[solar--copy-linear]",
+				icon: "icon-[lucide--copy]",
 				label: t("databaseCopyName"),
 				onSelect: () => copyName(table.name),
 			},
@@ -1015,40 +1016,40 @@ export function DatabaseExplorerTree({
 			{ key: "sep-hide-table", separator: true },
 			{
 				key: "hide-table",
-				icon: "icon-[mdi--eye-off-outline]",
+				icon: "icon-[lucide--eye-off]",
 				label: t("databaseHideTable"),
 				onSelect: () => hideTable(connection.name, table.name),
 			},
 			{ key: "sep-table-tools", separator: true },
 			{
 				key: "export-csv",
-				icon: "icon-[mdi--file-delimited-outline]",
+				icon: "icon-[lucide--file-text]",
 				label: t("databaseExportCsv"),
 				onSelect: () => onTableCommand?.({ kind: "exportCsv", connection, table, scope }),
 			},
 			{
 				key: "export-json",
-				icon: "icon-[mdi--code-json]",
+				icon: "icon-[lucide--file-json-2]",
 				label: t("databaseExportJson"),
 				onSelect: () => onTableCommand?.({ kind: "exportJson", connection, table, scope }),
 			},
 			{ key: "sep-table-danger", separator: true },
 			{
 				key: "truncate-table",
-				icon: "icon-[mdi--table-refresh]",
+				icon: "icon-[lucide--rotate-ccw]",
 				label: t("databaseTruncateTable"),
 				destructive: true,
 				onSelect: () => onTableCommand?.({ kind: "truncate", connection, table, scope }),
 			},
 			{
 				key: "rename-table",
-				icon: "icon-[mdi--table-edit]",
+				icon: "icon-[lucide--square-pen]",
 				label: t("databaseRenameTable"),
 				onSelect: () => onTableCommand?.({ kind: "rename", connection, table, scope }),
 			},
 			{
 				key: "drop-table",
-				icon: "icon-[mdi--table-remove]",
+				icon: "icon-[lucide--trash-2]",
 				label: t("databaseDropTable"),
 				destructive: true,
 				onSelect: () => onTableCommand?.({ kind: "drop", connection, table, scope }),
@@ -1063,7 +1064,7 @@ export function DatabaseExplorerTree({
 		const items: DatabaseContextMenuItem[] = [
 			{
 				key: "copy",
-				icon: "icon-[solar--copy-linear]",
+				icon: "icon-[lucide--copy]",
 				label: t("databaseCopyColumnName"),
 				onSelect: () => copyName(column.name),
 			},
@@ -1078,20 +1079,20 @@ export function DatabaseExplorerTree({
 		const items: DatabaseContextMenuItem[] = [
 			{
 				key: "toggle",
-				icon: expanded ? "icon-[solar--alt-arrow-down-linear]" : "icon-[solar--alt-arrow-right-linear]",
+				icon: expanded ? "icon-[lucide--chevron-down]" : "icon-[lucide--chevron-right]",
 				label: expanded ? t("databaseCollapse") : t("databaseExpand"),
 				onSelect: () => explorer.actions.toggleScope(connection.name, scope),
 			},
 			{
 				key: "refresh",
-				icon: "icon-[solar--refresh-linear]",
+				icon: "icon-[lucide--refresh-cw]",
 				label: t("databaseRefresh"),
 				onSelect: () => explorer.actions.reloadTables(connection.name, scope),
 			},
 			{ key: "separator-1", separator: true },
 			{
 				key: "copy",
-				icon: "icon-[solar--copy-linear]",
+				icon: "icon-[lucide--copy]",
 				label: t("databaseCopyName"),
 				onSelect: () => copyName(scope.name),
 			},
@@ -1099,7 +1100,7 @@ export function DatabaseExplorerTree({
 			{ key: "sep-hide-scope", separator: true },
 			{
 				key: "hide-scope",
-				icon: "icon-[mdi--eye-off-outline]",
+				icon: "icon-[lucide--eye-off]",
 				label: t(scope.kind === "schema" ? "databaseHideSchema" : "databaseHideDatabase"),
 				onSelect: () => hideScope(connection.name, scope.name),
 			},
@@ -1114,20 +1115,20 @@ export function DatabaseExplorerTree({
 		const items: DatabaseContextMenuItem[] = [
 			{
 				key: "expand-all",
-				icon: "icon-[solar--double-alt-arrow-down-linear]",
+				icon: "icon-[lucide--chevrons-down]",
 				label: t("databaseExpandAll"),
 				onSelect: () => explorer.actions.expandConnections(groupConnections.map((connection) => connection.name)),
 			},
 			{
 				key: "collapse-all",
-				icon: "icon-[solar--double-alt-arrow-up-linear]",
+				icon: "icon-[lucide--chevrons-up]",
 				label: t("databaseCollapseAll"),
 				onSelect: () => explorer.actions.collapseConnections(groupConnections.map((connection) => connection.name)),
 			},
 			{ key: "separator-1", separator: true },
 			{
 				key: "copy-group",
-				icon: "icon-[solar--copy-linear]",
+				icon: "icon-[lucide--copy]",
 				label: t("databaseCopyName"),
 				onSelect: () => copyName(group),
 			},
@@ -1136,7 +1137,7 @@ export function DatabaseExplorerTree({
 						{ key: "sep-user-group", separator: true } as const,
 						{
 							key: "delete-group",
-							icon: "icon-[mdi--folder-remove-outline]",
+							icon: "icon-[lucide--folder-x]",
 							label: t("databaseDeleteGroup"),
 							destructive: true,
 							onSelect: () => onDeleteUserGroup?.(group),
@@ -1310,7 +1311,7 @@ export function DatabaseExplorerTree({
 			{/* V2-① sticky 搜索区：跟随列表滚动，悬浮于树内容之上 */}
 			<div ref={toolbarRef} className="sticky top-0 z-10 -mx-1 bg-muted/95 px-1 pb-1.5 pt-0.5 backdrop-blur-sm">
 				<div className="relative">
-					<span className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60 icon-[mdi--magnify]" />
+					<span className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60 icon-[lucide--search]" />
 					<input
 						type="text"
 						value={searchInput}
@@ -1327,7 +1328,7 @@ export function DatabaseExplorerTree({
 							className="absolute right-1 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-muted-foreground/60 hover:bg-muted hover:text-foreground"
 							onClick={() => setSearchInput("")}
 						>
-							<span className="h-3 w-3 icon-[mdi--close]" />
+							<span className="h-3 w-3 icon-[lucide--x]" />
 						</button>
 					) : null}
 				</div>
@@ -1344,7 +1345,7 @@ export function DatabaseExplorerTree({
 						)}
 						onClick={() => setGlobalSearch((prev) => !prev)}
 					>
-						<span className="h-3.5 w-3.5 icon-[mdi--earth-arrow-right]" />
+						<span className="h-3.5 w-3.5 icon-[lucide--globe]" />
 					</button>
 					<button
 						type="button"
@@ -1357,7 +1358,7 @@ export function DatabaseExplorerTree({
 						)}
 						onClick={() => setHealthyOnly((prev) => !prev)}
 					>
-						<span className="h-3.5 w-3.5 icon-[mdi--heart-pulse]" />
+						<span className="h-3.5 w-3.5 icon-[lucide--heart-pulse]" />
 					</button>
 					<button
 						type="button"
@@ -1371,9 +1372,9 @@ export function DatabaseExplorerTree({
 							event.stopPropagation();
 							const rect = event.currentTarget.getBoundingClientRect();
 							const options = [
-								{ filter: "all" as const, icon: "icon-[mdi--apps]", label: t("databaseKindAll") },
-								{ filter: "tables" as const, icon: "icon-[mdi--table]", label: t("databaseKindTablesOnly") },
-								{ filter: "views" as const, icon: "icon-[mdi--eye-outline]", label: t("databaseKindViewsOnly") },
+								{ filter: "all" as const, icon: "icon-[lucide--layout-grid]", label: t("databaseKindAll") },
+								{ filter: "tables" as const, icon: "icon-[lucide--table-2]", label: t("databaseKindTablesOnly") },
+								{ filter: "views" as const, icon: "icon-[lucide--eye]", label: t("databaseKindViewsOnly") },
 							];
 							const items: DatabaseContextMenuItem[] = options.map((option) => ({
 								key: option.filter,
@@ -1385,7 +1386,7 @@ export function DatabaseExplorerTree({
 							setMenu({ x: rect.left, y: rect.bottom + 4, items });
 						}}
 					>
-						<span className="h-3.5 w-3.5 icon-[mdi--table-filter]" />
+						<span className="h-3.5 w-3.5 icon-[lucide--list-filter]" />
 					</button>
 					<button
 						type="button"
@@ -1399,9 +1400,9 @@ export function DatabaseExplorerTree({
 							event.stopPropagation();
 							const rect = event.currentTarget.getBoundingClientRect();
 							const options = [
-								{ order: "default" as const, icon: "icon-[mdi--sort-variant]", label: t("databaseSortDefault") },
-								{ order: "asc" as const, icon: "icon-[mdi--sort-alphabetical-ascending]", label: t("databaseSortAsc") },
-								{ order: "desc" as const, icon: "icon-[mdi--sort-alphabetical-descending]", label: t("databaseSortDesc") },
+								{ order: "default" as const, icon: "icon-[lucide--arrow-up-down]", label: t("databaseSortDefault") },
+								{ order: "asc" as const, icon: "icon-[lucide--arrow-up-a-z]", label: t("databaseSortAsc") },
+								{ order: "desc" as const, icon: "icon-[lucide--arrow-down-z-a]", label: t("databaseSortDesc") },
 							];
 							const items: DatabaseContextMenuItem[] = options.map((option) => ({
 								key: option.order,
@@ -1413,7 +1414,7 @@ export function DatabaseExplorerTree({
 							setMenu({ x: rect.left, y: rect.bottom + 4, items });
 						}}
 					>
-						<span className="h-3.5 w-3.5 icon-[mdi--sort-variant]" />
+						<span className="h-3.5 w-3.5 icon-[lucide--arrow-up-down]" />
 					</button>
 					<button
 						type="button"
@@ -1426,7 +1427,7 @@ export function DatabaseExplorerTree({
 						)}
 						onClick={() => handleLocateTable()}
 					>
-						<span className="h-3.5 w-3.5 icon-[mdi--crosshairs-gps]" />
+						<span className="h-3.5 w-3.5 icon-[lucide--crosshair]" />
 					</button>
 
 				</div>
@@ -1443,7 +1444,7 @@ export function DatabaseExplorerTree({
 							className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/70 hover:bg-muted hover:text-foreground"
 							onClick={toggleAllConnections}
 						>
-							<span className={cn("h-3 w-3", allChecked ? "icon-[mdi--check]" : "icon-[mdi--minus]")} />
+							<span className={cn("h-3 w-3", allChecked ? "icon-[lucide--check]" : "icon-[lucide--minus]")} />
 						</button>
 						<button
 							type="button"
@@ -1452,7 +1453,7 @@ export function DatabaseExplorerTree({
 							className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/70 hover:bg-muted hover:text-foreground"
 							onClick={copySelectedNames}
 						>
-							<span className="h-3 w-3 icon-[mdi--content-copy]" />
+							<span className="h-3 w-3 icon-[lucide--copy]" />
 						</button>
 						{onTestConnection ? (
 							<button
@@ -1462,7 +1463,7 @@ export function DatabaseExplorerTree({
 								className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/70 hover:bg-muted hover:text-foreground"
 								onClick={testSelectedConnections}
 							>
-								<span className="h-3 w-3 icon-[solar--plug-circle-linear]" />
+								<span className="h-3 w-3 icon-[lucide--plug-zap]" />
 							</button>
 						) : null}
 						<button
@@ -1472,7 +1473,7 @@ export function DatabaseExplorerTree({
 							className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/70 hover:bg-muted hover:text-foreground"
 							onClick={() => setMultiNames([])}
 						>
-							<span className="h-3 w-3 icon-[mdi--close]" />
+							<span className="h-3 w-3 icon-[lucide--x]" />
 						</button>
 					</div>
 				) : null}
@@ -1490,7 +1491,7 @@ export function DatabaseExplorerTree({
 							className="flex h-5 shrink-0 items-center gap-0.5 rounded px-1 text-[11px] font-medium text-muted-foreground/80 hover:bg-muted hover:text-foreground"
 							onClick={() => fireTableBatch("exportCsv")}
 						>
-							<span className="h-3 w-3 icon-[mdi--file-delimited-outline]" />
+							<span className="h-3 w-3 icon-[lucide--file-text]" />
 							CSV
 						</button>
 						<button
@@ -1500,7 +1501,7 @@ export function DatabaseExplorerTree({
 							className="flex h-5 shrink-0 items-center gap-0.5 rounded px-1 text-[11px] font-medium text-muted-foreground/80 hover:bg-muted hover:text-foreground"
 							onClick={() => fireTableBatch("exportJson")}
 						>
-							<span className="h-3 w-3 icon-[mdi--code-json]" />
+							<span className="h-3 w-3 icon-[lucide--file-json-2]" />
 							JSON
 						</button>
 						<button
@@ -1511,7 +1512,7 @@ export function DatabaseExplorerTree({
 							className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-red-600/80 hover:bg-red-600/10 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-red-600/80"
 							onClick={() => fireTableBatch("truncate")}
 						>
-							<span className="h-3 w-3 icon-[mdi--table-refresh]" />
+							<span className="h-3 w-3 icon-[lucide--rotate-ccw]" />
 						</button>
 						<button
 							type="button"
@@ -1521,7 +1522,7 @@ export function DatabaseExplorerTree({
 							className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-red-600/80 hover:bg-red-600/10 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-red-600/80"
 							onClick={() => fireTableBatch("drop")}
 						>
-							<span className="h-3 w-3 icon-[mdi--table-remove]" />
+							<span className="h-3 w-3 icon-[lucide--trash-2]" />
 						</button>
 						<button
 							type="button"
@@ -1530,7 +1531,7 @@ export function DatabaseExplorerTree({
 							className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/70 hover:bg-muted hover:text-foreground"
 							onClick={() => tableMultiClear()}
 						>
-							<span className="h-3 w-3 icon-[mdi--close]" />
+							<span className="h-3 w-3 icon-[lucide--x]" />
 						</button>
 					</div>
 				) : null}
@@ -1540,7 +1541,7 @@ export function DatabaseExplorerTree({
 			{stickyParts ? (
 				<div className="sticky z-[9] -mx-1 px-1" style={{ top: toolbarHeight, height: 0 }}>
 					<div className="pointer-events-none flex items-center gap-1.5 overflow-hidden rounded-md bg-muted/95 px-2 py-1 backdrop-blur-sm">
-						<span className="h-3 w-3 shrink-0 text-muted-foreground/70 icon-[mdi--database-outline]" />
+						<span className="h-3 w-3 shrink-0 text-muted-foreground/70 icon-[lucide--database]" />
 						<span className="min-w-0 flex-1 truncate text-[11.5px] font-semibold text-foreground">
 							{stickyParts[1] ?? ""}
 						</span>
@@ -1575,7 +1576,7 @@ export function DatabaseExplorerTree({
 								onContextMenu={(event) => openGroupMenu(event, group, groupConnections)}
 								aria-expanded={!collapsed}
 							>
-								<span className={cn("h-3 w-3 shrink-0 transition-transform text-muted-foreground/60", !collapsed && "rotate-90", "icon-[mdi--chevron-right]")} />
+								<span className={cn("h-3 w-3 shrink-0 transition-transform text-muted-foreground/60", !collapsed && "rotate-90", "icon-[lucide--chevron-right]")} />
 								<span className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70">
 									{group}
 								</span>
@@ -1635,7 +1636,7 @@ export function DatabaseExplorerTree({
 														explorer.actions.toggleConnection(connection.name);
 													}}
 												>
-													<span className={cn("h-3.5 w-3.5 transition-transform", expanded && "rotate-90", "icon-[mdi--chevron-right]")} />
+													<span className={cn("h-3.5 w-3.5 transition-transform", expanded && "rotate-90", "icon-[lucide--chevron-right]")} />
 												</button>
 												<DatabaseTypeBadge type={connection.type} size="sm" />
 												<span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-foreground">{connection.name}</span>
@@ -1663,7 +1664,7 @@ export function DatabaseExplorerTree({
 																		toggleMultiName(connection.name);
 																	}}
 																>
-																	<span className={cn("h-3 w-3", checked ? "icon-[mdi--check]" : "icon-[mdi--square-outline]")} />
+																	<span className={cn("h-3 w-3", checked ? "icon-[lucide--square-check-big]" : "icon-[lucide--square]")} />
 												</button>
 
 												{sortOrder === "default" ? (

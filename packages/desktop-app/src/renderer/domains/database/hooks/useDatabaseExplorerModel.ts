@@ -9,6 +9,7 @@ import type {
 } from "../../../../preload/api-types/database";
 import { describeTable, listCatalogScopes, listTableObjectNames, listTables } from "../lib/database-api";
 import { formatDatabaseError } from "../lib/database-error-labels";
+import { runIntrospection } from "../lib/introspection-limiter";
 
 /** 懒加载列表节点（作用域 / 表 / 列共用）：loaded 标记是否已取数，error 为可展示文案。 */
 export interface ExplorerListNode<T> {
@@ -71,10 +72,11 @@ function tableKey(connection: string, table: string, scope?: DbCatalogScope): st
 	return `${listKey(connection, scope)}::${table}`;
 }
 
-/** 表级子对象四类（#5：索引/约束/触发器/分区）。family flat 无 introspection → 数据面返回空，UI 不渲染对象块。 */
+/** 表级子对象五类（#5/#9：索引/约束/外键/触发器/分区）。family flat 无 introspection → 数据面返回空，UI 渲染占位而非空白。 */
 export const TABLE_OBJECT_KINDS: readonly DbTableObjectKind[] = [
 	"index",
 	"constraint",
+	"foreign-key",
 	"trigger",
 	"partition",
 ] as const;
@@ -176,9 +178,11 @@ export function useDatabaseExplorerModel(): DatabaseExplorerModel {
 				[key]: { ...(prev[key] ?? EMPTY_NODE), loading: true, error: null },
 			}));
 			try {
-				const items = await listTables(
-					connection,
-					scope ? { [scope.kind === "schema" ? "schema" : "database"]: scope.name } : undefined,
+				const items = await runIntrospection(() =>
+					listTables(
+						connection,
+						scope ? { [scope.kind === "schema" ? "schema" : "database"]: scope.name } : undefined,
+					),
 				);
 				setTables((prev) => ({ ...prev, [key]: { loaded: true, loading: false, error: null, items } }));
 			} catch (caught) {
@@ -199,7 +203,7 @@ export function useDatabaseExplorerModel(): DatabaseExplorerModel {
 				[connection]: { ...(prev[connection] ?? EMPTY_NODE), loading: true, error: null },
 			}));
 			try {
-				const names = await listCatalogScopes(connection, family);
+				const names = await runIntrospection(() => listCatalogScopes(connection, family));
 				const items: DbCatalogScope[] =
 					family === "schemas"
 						? names.map((name) => ({ kind: "schema", name }))
@@ -224,10 +228,12 @@ export function useDatabaseExplorerModel(): DatabaseExplorerModel {
 			const key = tableKey(connection, table, scope);
 			setColumns((prev) => ({ ...prev, [key]: { ...(prev[key] ?? EMPTY_NODE), loading: true, error: null } }));
 			try {
-				const items = await describeTable(
-					connection,
-					table,
-					scope ? { [scope.kind === "schema" ? "schema" : "database"]: scope.name } : undefined,
+				const items = await runIntrospection(() =>
+					describeTable(
+						connection,
+						table,
+						scope ? { [scope.kind === "schema" ? "schema" : "database"]: scope.name } : undefined,
+					),
 				);
 				setColumns((prev) => ({ ...prev, [key]: { loaded: true, loading: false, error: null, items } }));
 			} catch (caught) {
@@ -253,7 +259,9 @@ export function useDatabaseExplorerModel(): DatabaseExplorerModel {
 				const scopeArg = scope ? { [scope.kind === "schema" ? "schema" : "database"]: scope.name } : undefined;
 				// family "flat"（SQLite 等单库）无 introspection SQL，直接返回空。
 				const items =
-					family === "flat" ? [] : await listTableObjectNames(connection, table, kind, family, scopeArg);
+					family === "flat"
+						? []
+						: await runIntrospection(() => listTableObjectNames(connection, table, kind, family, scopeArg));
 				setObjects((prev) => ({ ...prev, [key]: { loaded: true, loading: false, error: null, items } }));
 			} catch (caught) {
 				const { message } = formatDatabaseError(t, caught);

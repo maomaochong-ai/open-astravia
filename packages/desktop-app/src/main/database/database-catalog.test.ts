@@ -85,6 +85,14 @@ describe("tableObjectIntrospectionSql", () => {
 		expect(sql).toContain("parent.relname = 'orders'");
 	});
 
+	it("schemas：外键拆分——constraint 排除 FK，foreign-key 只取 FK", () => {
+		const plain = tableObjectIntrospectionSql("schemas", "constraint", "orders", { schema: "public" });
+		expect(plain).toContain("constraint_type <> 'FOREIGN KEY'");
+		const fk = tableObjectIntrospectionSql("schemas", "foreign-key", "orders", { schema: "public" });
+		expect(fk).toContain("constraint_type = 'FOREIGN KEY'");
+		expect(fk).toContain("table_name = 'orders'");
+	});
+
 	it("schemas：缺 schema 作用域返回 null", () => {
 		expect(tableObjectIntrospectionSql("schemas", "index", "orders")).toBeNull();
 		expect(tableObjectIntrospectionSql("schemas", "index", "orders", null)).toBeNull();
@@ -100,6 +108,14 @@ describe("tableObjectIntrospectionSql", () => {
 		expect(tableObjectIntrospectionSql("databases", "constraint", "t", { database: "app" })).toContain(
 			"information_schema.table_constraints",
 		);
+	});
+
+	it("databases：外键拆分——constraint 排除 FK，foreign-key 取 DISTINCT FK", () => {
+		const plain = tableObjectIntrospectionSql("databases", "constraint", "t", { database: "app" });
+		expect(plain).toContain("constraint_type <> 'FOREIGN KEY'");
+		const fk = tableObjectIntrospectionSql("databases", "foreign-key", "t", { database: "app" });
+		expect(fk).toContain("DISTINCT constraint_name");
+		expect(fk).toContain("constraint_type = 'FOREIGN KEY'");
 	});
 
 	it("databases：缺 database 作用域返回 null", () => {
