@@ -46,6 +46,19 @@ function getToolCallDescription(args: Record<string, unknown>): string {
 	return typeof description === "string" ? description.trim() : "";
 }
 
+function composeToolLabel(
+	displayName: string,
+	detail: string,
+	description: string,
+	aliased: boolean,
+): { name: string; detail: string } {
+	if (aliased && description) return { name: description, detail };
+	return {
+		name: displayName,
+		detail: description ? [description, detail].filter(Boolean).join(" · ") : detail,
+	};
+}
+
 /**
  * Resolve a plugin-registered tool UI label (supports `%catalogKey%`).
  * Returns null when no plugin registered a label for this tool name.
@@ -64,7 +77,6 @@ function resolvePluginToolLabel(name: string): string | null {
  * 系统工具名对普通用户不可读（`invoke_skill`、`edit`…），映射到语义别名。
  * 优先用插件 `registerTool({ label })`（含 `%key%` 插件 i18n）；否则回退宿主
  * `chat:toolLabel.alias.*`；都没有则原样返回技术名。
- * 只替换工具名本身；agent 写的 description / 参数 detail 照旧拼在后面。
  */
 export function toolAlias(name: string): string {
 	const fromPlugin = resolvePluginToolLabel(name);
@@ -109,25 +121,22 @@ export function toolIcon(name: string): string {
 
 /**
  * Format the tool header label.
- * @param aliased Work 模式传 true：用 i18n 语义别名替换系统工具名（`invoke_skill`→执行技能）。
- *   coding 模式保持原始工具名。
+ * @param aliased Work 模式传 true：优先以模型提供的 `description` 作为主文案，
+ *   缺少描述时用语义别名兜底；Coding 模式保持工具名为主、描述为详情。
  */
 export function toolLabel(block: ToolCallBlock, aliased = false): { name: string; detail: string } {
 	const mcp = parseMcpTool(block.toolName);
 	const args = block.args;
+	const description = getToolCallDescription(args);
 
 	if (mcp) {
 		const path = args.path || args.uri || args.url || args.file_path;
-		return {
-			name: mcp.tool,
-			detail: path ? shortenPath(String(path)) : "",
-		};
+		return composeToolLabel(mcp.tool, path ? shortenPath(String(path)) : "", description, aliased);
 	}
 
 	const name = block.toolName;
 	let displayName = aliased ? toolAlias(name) : name;
 	let detail = "";
-	const description = getToolCallDescription(args);
 
 	if (name === "read" || name === "write" || name === "edit") {
 		const path = args.file_path ?? args.path;
@@ -198,7 +207,7 @@ export function toolLabel(block: ToolCallBlock, aliased = false): { name: string
 		}
 	}
 
-	return { name: displayName, detail: description ? [description, detail].filter(Boolean).join(" · ") : detail };
+	return composeToolLabel(displayName, detail, description, aliased);
 }
 
 export function truncateFirstLine(cmd: string, maxLen = 40): string {
