@@ -319,9 +319,17 @@ describe("StatelessAgentCoreTurnEngine", () => {
 
 		const events = await run(engine, { ...snapshot(), continuationPolicy }, queue);
 
-		const mirrored = snapshots.flatMap((entry) => entry.entries.map((queued) => queued.input.message?.content));
-		expect(mirrored).toContain("user follow-up");
-		expect(mirrored).not.toContain("CONTINUE_INTERNAL");
+		// 用户可见投影只保留非 internal 条目；续跑消息必须被标记为 internal。
+		const visible = snapshots.flatMap((entry) =>
+			entry.entries.filter((queued) => !queued.internal).map((queued) => queued.input.message?.content),
+		);
+		expect(visible).toContain("user follow-up");
+		expect(visible).not.toContain("CONTINUE_INTERNAL");
+		const continuationEntries = snapshots.flatMap((entry) =>
+			entry.entries.filter((queued) => queued.input.message?.content === "CONTINUE_INTERNAL"),
+		);
+		expect(continuationEntries.length).toBeGreaterThan(0);
+		expect(continuationEntries.every((queued) => queued.internal === true)).toBe(true);
 		// 仍然进入模型上下文，并带 continuation 溯源。
 		expect(contexts.at(-1)?.some(({ content }) => content === "CONTINUE_INTERNAL")).toBe(true);
 		const continuation = events.find(

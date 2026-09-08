@@ -26,6 +26,11 @@ export interface SessionInputQueueEntry {
 	readonly id: string;
 	readonly behavior: SessionStreamingBehavior;
 	readonly input: QueuedSessionInput;
+	/**
+	 * 内部控制信号（如续跑策略消息），借队列排序与节流但不属于用户输入。
+	 * 面向用户的队列投影必须过滤掉它，否则会被当成"用户排过的队"呈现。
+	 */
+	readonly internal?: boolean;
 }
 
 /** 可序列化快照：条目 + 暂停位。持久化与镜像共用（ADR-0060）。 */
@@ -37,6 +42,7 @@ export interface SessionInputQueueSnapshot {
 interface QueueSlot {
 	readonly id: string;
 	readonly input: QueuedSessionInput;
+	readonly internal?: boolean;
 }
 
 export class SessionInputQueue implements TurnInputQueue {
@@ -226,9 +232,13 @@ export class SessionInputQueue implements TurnInputQueue {
 		return slot.input;
 	}
 
-	enqueueFollowUps(messages: readonly SessionInput["message"][]): void {
+	enqueueFollowUps(messages: readonly SessionInput["message"][], options?: { readonly internal?: boolean }): void {
 		for (const message of messages) {
-			this.followUpQueue.push({ id: createRuntimeId(), input: { message } });
+			this.followUpQueue.push({
+				id: createRuntimeId(),
+				input: { message },
+				...(options?.internal ? { internal: true } : {}),
+			});
 		}
 		if (messages.length > 0) this.notifyChange();
 	}
@@ -267,7 +277,7 @@ export class SessionInputQueue implements TurnInputQueue {
 }
 
 function toEntry(behavior: SessionStreamingBehavior, slot: QueueSlot): SessionInputQueueEntry {
-	return { id: slot.id, behavior, input: slot.input };
+	return { id: slot.id, behavior, input: slot.input, ...(slot.internal ? { internal: true } : {}) };
 }
 
 function removeById(queue: QueueSlot[], id: string): boolean {

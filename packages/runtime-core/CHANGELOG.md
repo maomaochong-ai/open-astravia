@@ -16,7 +16,7 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 - Runtime Agent Session Backend 关闭会拒绝新创建，并等待已准入的 Session 激活、装配与回滚收敛后释放 Instance Pool，
   避免异步创建越过关闭边界；并发和失败后的关闭仍可重试。
 - 内部 continuation 消息继续保留在模型上下文与会话树中，但不再被面向用户的历史投影误标为真人输入。
-- 内部 continuation 消息不再经用户输入队列中转，`queue.changed` 镜像不会再把它当成"已消费的用户输入"补出用户气泡；用户已排队的 follow-up 仍先于策略消息交付。
+- 内部 continuation 消息在输入队列中标记为 `internal`：仍借队列做排序与 one-at-a-time 节流，但 `queue.changed` 镜像与 `getQueueState` 的用户可见投影都会剔除它，宿主不会再把它当成"已消费的用户输入"补出用户气泡；完整队列快照（持久化 sidecar 用）保持不变。
 
 ### Changed
 

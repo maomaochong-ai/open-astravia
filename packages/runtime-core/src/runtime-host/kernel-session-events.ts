@@ -61,13 +61,18 @@ export function mapKernelEventToSessionEvents(event: KernelEvent): SessionEvent[
 				...baseSessionEvent(event.sessionId, "runtime-core", event.timestamp),
 				type: "queue.changed",
 				paused: event.snapshot.paused,
-				entries: event.snapshot.entries.map((entry) => ({
-					id: entry.id,
-					behavior: entry.behavior,
-					displayText: entry.input.message
-						? messageText(entry.input.message)
-						: (entry.input.request?.displayText ?? ""),
-				})),
+				// 内部控制信号（续跑策略消息等）借队列排序，但不属于用户输入：
+				// 面向 UI 的 entries 必须剔除，否则宿主镜像会把它当成"用户排过的队"，
+				// 在条目被 turn 消费时补出一个真人气泡。snapshot 仍保留完整队列状态。
+				entries: event.snapshot.entries
+					.filter((entry) => !entry.internal)
+					.map((entry) => ({
+						id: entry.id,
+						behavior: entry.behavior,
+						displayText: entry.input.message
+							? messageText(entry.input.message)
+							: (entry.input.request?.displayText ?? ""),
+					})),
 				snapshot: event.snapshot,
 			},
 		];

@@ -295,6 +295,30 @@ describe("Greenfield KernelEvent to SessionEvent adapter", () => {
 		expect(mapKernelEventToSessionEvents(userEvent)).toEqual([]);
 		expect(mapKernelEventToSessionEvents(stageEvent)).toEqual([]);
 	});
+
+	it("keeps internal queue entries out of the user-facing queue projection", () => {
+		// 续跑策略消息借队列排序，但宿主镜像若把它当成用户排队条目，条目被 turn
+		// 消费时渲染端就会补出一个真人气泡，而规范历史又按 origin 过滤掉它。
+		const [event] = mapKernelEventToSessionEvents({
+			type: "queue.changed",
+			sessionId: "session-1",
+			timestamp: 5,
+			snapshot: {
+				paused: false,
+				entries: [
+					{ id: "queued-1", behavior: "followUp", input: { message: user("真实排队消息") } },
+					{ id: "queued-2", behavior: "followUp", input: { message: user("CONTINUE_INTERNAL") }, internal: true },
+				],
+			},
+		} as KernelEvent);
+
+		expect(event?.type).toBe("queue.changed");
+		const queueEvent = event as Extract<SessionEvent, { type: "queue.changed" }>;
+		expect(queueEvent.entries.map(({ id }) => id)).toEqual(["queued-1"]);
+		expect(queueEvent.entries.map(({ displayText }) => displayText)).not.toContain("CONTINUE_INTERNAL");
+		// 完整快照（宿主持久化 sidecar 用）仍保留内部条目。
+		expect((queueEvent.snapshot as { entries: unknown[] }).entries).toHaveLength(2);
+	});
 });
 
 function messageEvent(message: AssistantMessage): KernelEvent {
@@ -305,4 +329,8 @@ function messageEvent(message: AssistantMessage): KernelEvent {
 		message,
 		timestamp: 123,
 	};
+}
+
+function user(text: string) {
+	return { role: "user" as const, content: [{ type: "text" as const, text }], timestamp: 1 };
 }

@@ -337,14 +337,12 @@ export class StatelessAgentCoreTurnEngine implements TurnEnginePort {
 								return entry.message;
 							});
 							if (!inputQueue) return policyMessages;
-							// 续跑策略消息是内部控制信号，不是用户排队输入：绝不经 inputQueue。
-							// 入队会让 queue.changed 镜像（ADR-0060）把它当成"已被消费的用户输入"
-							// 补出一个用户气泡，而规范历史又按 origin 过滤掉它，两侧永远对不上账。
-							// 顺序仍与旧实现一致：先交付用户已排队的 follow-up，再追加策略消息。
-							const queuedMessages = inputQueue.takeFollowUpInputs
-								? await this.consumeQueuedInputs(inputQueue.takeFollowUpInputs(), request, identities)
+							// 仍借队列做排序与节流（用户 follow-up 优先、one-at-a-time），但标记为
+							// internal：这是内部控制信号，不该出现在面向用户的队列投影里。
+							inputQueue.enqueueFollowUps(policyMessages, { internal: true });
+							return inputQueue.takeFollowUpInputs
+								? this.consumeQueuedInputs(inputQueue.takeFollowUpInputs(), request, identities)
 								: [...inputQueue.takeFollowUps()];
-							return [...queuedMessages, ...policyMessages];
 						}
 					: undefined,
 		};

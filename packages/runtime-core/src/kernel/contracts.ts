@@ -82,7 +82,7 @@ export interface TurnInputQueue {
 	takeFollowUps(): readonly UserMessage[];
 	takeSteeringInputs?(): readonly QueuedSessionInput[];
 	takeFollowUpInputs?(): readonly QueuedSessionInput[];
-	enqueueFollowUps(messages: readonly UserMessage[]): void;
+	enqueueFollowUps(messages: readonly UserMessage[], options?: { readonly internal?: boolean }): void;
 }
 
 export type InstructionCacheability = "stable" | "volatile";
@@ -890,6 +890,8 @@ export interface QueueChangedKernelEvent {
 			readonly id: string;
 			readonly behavior: SessionStreamingBehavior;
 			readonly input: QueuedSessionInput;
+			/** 内部控制信号：借队列排序，但不属于用户输入，面向用户的投影须剔除。 */
+			readonly internal?: boolean;
 		}[];
 	};
 }

@@ -462,11 +462,14 @@ export class RuntimeSession {
 				const snapshot = this.session.listQueue();
 				return {
 					paused: snapshot.paused,
-					entries: snapshot.entries.map((entry) => ({
-						id: entry.id,
-						behavior: entry.behavior,
-						displayText: readQueuedInputText(entry.input),
-					})),
+					// 与 queue.changed 镜像同一口径：内部控制信号不进用户可见队列。
+					entries: snapshot.entries
+						.filter((entry) => !entry.internal)
+						.map((entry) => ({
+							id: entry.id,
+							behavior: entry.behavior,
+							displayText: readQueuedInputText(entry.input),
+						})),
 				};
 			},
 			readQueueSnapshot: () => this.session.listQueue(),
