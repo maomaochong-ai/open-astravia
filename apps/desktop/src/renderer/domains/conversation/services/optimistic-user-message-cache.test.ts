@@ -74,6 +74,30 @@ describe("optimistic user message reconciliation", () => {
 		expect(reconcileOptimisticUserMessages("runtime-a", history)).toEqual([...history, optimistic]);
 	});
 
+	it("永远对不上账的气泡在有限次对账后停止残留", () => {
+		// 队列镜像曾为内部 continuation 消息补气泡，而规范历史按 origin 过滤掉它，
+		// 于是每次 agent_end 重拉都把这条气泡重新追加到列表末尾，永久残留且错位。
+		const optimistic = user("optimistic-1", "Continue the response from where you stopped.");
+		rememberOptimisticUserMessage("runtime-a", optimistic, [], { matchTextOnly: true });
+
+		const history = [user("persisted-1", "真实用户消息")];
+		expect(reconcileOptimisticUserMessages("runtime-a", history)).toEqual([...history, optimistic]);
+		reconcileOptimisticUserMessages("runtime-a", history);
+		reconcileOptimisticUserMessages("runtime-a", history);
+		expect(reconcileOptimisticUserMessages("runtime-a", history)).toEqual(history);
+		expect(reconcileOptimisticUserMessages("runtime-a", history)).toEqual(history);
+	});
+
+	it("落盘较慢的气泡不会被误清：历史未到达该序号就一直保留", () => {
+		const optimistic = user("optimistic-2", "second");
+		rememberOptimisticUserMessage("runtime-a", optimistic, [user("persisted-1", "first")]);
+
+		const history = [user("persisted-1", "first")];
+		for (let index = 0; index < 10; index += 1) {
+			expect(reconcileOptimisticUserMessages("runtime-a", history)).toEqual([...history, optimistic]);
+		}
+	});
+
 	it("不同 runtime 的待确认气泡互不串会话", () => {
 		const optimistic = user("optimistic-a", "session a");
 		rememberOptimisticUserMessage("runtime-a", optimistic, []);

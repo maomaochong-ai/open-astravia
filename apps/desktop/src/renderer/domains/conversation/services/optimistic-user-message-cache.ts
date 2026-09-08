@@ -9,7 +9,17 @@ interface PendingOptimisticUserMessage {
 	 * promptRef 元数据；这类气泡只按文本 + 序号吸收（ADR-0060）。
 	 */
 	matchTextOnly?: boolean;
+	/** 已经历多少次"规范历史已到达该序号却仍未确认"的对账。 */
+	unresolvedReconciles?: number;
 }
+
+/**
+ * 对不上账的乐观气泡最多再撑过这么多次对账。
+ * 正常气泡在消息落盘后的第一次全量历史回流就会被确认；撑不过这个上限的，
+ * 说明它根本不会出现在规范历史里（例如队列镜像补出的内部消息），继续留着
+ * 只会每次对账都被重新追加到列表末尾，形成永久残留且位置错乱。
+ */
+const MAX_UNRESOLVED_RECONCILES = 3;
 
 const pendingByRuntimeId = new Map<string, PendingOptimisticUserMessage[]>();
 
@@ -51,11 +61,22 @@ export function reconcileOptimisticUserMessages(
 	const canonicalUsers = history.filter(
 		(message): message is ConversationUserMessageViewModel => message.kind === "user",
 	);
-	const unresolved = pending.filter(({ message, precedingUserCount, matchTextOnly }) => {
-		const canonical = canonicalUsers[precedingUserCount];
-		if (!canonical) return true;
-		return matchTextOnly ? !sameText(canonical.text, message.text) : !sameUserMessage(canonical, message);
-	});
+	const unresolved: PendingOptimisticUserMessage[] = [];
+	for (const entry of pending) {
+		const canonical = canonicalUsers[entry.precedingUserCount];
+		// 规范历史还没写到这个序号：本轮消息仍在落盘途中，无条件保留。
+		if (!canonical) {
+			unresolved.push(entry);
+			continue;
+		}
+		const confirmed = entry.matchTextOnly
+			? sameText(canonical.text, entry.message.text)
+			: sameUserMessage(canonical, entry.message);
+		if (confirmed) continue;
+		const attempts = (entry.unresolvedReconciles ?? 0) + 1;
+		if (attempts > MAX_UNRESOLVED_RECONCILES) continue;
+		unresolved.push({ ...entry, unresolvedReconciles: attempts });
+	}
 
 	if (unresolved.length === 0) {
 		pendingByRuntimeId.delete(runtimeId);
