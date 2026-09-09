@@ -155,3 +155,35 @@ Failures are classified by cause, which decides what can happen next:
 | Invalid request | Not retried |
 
 So when a member reports a failure, check which class it falls into first: retrying a task that ran out of credit will never make progress.
+
+## How it works: results are shared, execution is not
+
+A team session actually holds N+1 conversations: one **public coordination conversation**, plus a **private conversation** per member. The main timeline is the public one; opening a member shows you its private one.
+
+<DataFlow>
+  <div>Member private conversation<span>reasoning, tool calls, retries</span></div>
+  <b>→</b>
+  <div>Public coordination conversation<span>your messages + published conclusions</span></div>
+  <b>→</b>
+  <div>Other members' context<span>public records, projected by policy</span></div>
+</DataFlow>
+
+The default context policy projects public content only, which means:
+
+- Members **cannot** read each other's thinking, tool transcripts, or private conversation files. What crosses the line is the conclusion a member published.
+- Every member carries its own delivery cursor, so the same public record is never handed to it twice, and its own freshly published message is not projected back to it.
+- As public history grows it is compacted into a shared checkpoint that the whole team references. When the summary is not enough, a member reads the summarized originals through `team_read_shared_history`, page by page. Whatever comes back is treated as **quoted conversation data**, never as instructions to follow.
+
+That boundary is deliberate: each member reasons from a clean context instead of being flooded with four full execution logs. The cost is the obvious one — **what was never published does not reach teammates**. So when a finding should shape later steps, make it a published conclusion rather than leaving it inside one member's intermediate work.
+
+### What the whole team can see
+
+| Content | Visible to |
+| --- | --- |
+| Messages you send the team | Everyone |
+| Conclusions a member publishes | Everyone |
+| A member's **responsibility in this team** (one line of its assignment) | The shared roster, which is how the owner decides who gets what |
+| A member's **additional team instructions** | That member only |
+| A member's reasoning, tool calls, private history | That member only — though you can open its session and read it |
+
+Event ids are also derived from stable fields such as the session, request, and member, so resubmitting the same request produces neither a duplicate public message nor duplicate execution. That is why a reconnect does not double the timeline.
