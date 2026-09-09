@@ -601,6 +601,35 @@ describe("team chat stream state", () => {
 		});
 	});
 
+	it("keeps a steer message in chronological order while an earlier delegation is still settling", () => {
+		const items = projectTeamConversationTimeline({
+			snapshot: snapshot({
+				messages: [userMessage("first-user", "first", "first", 1)],
+				activities: [
+					{
+						kind: "delegation",
+						id: "first-activity",
+						requestId: "first",
+						sourceMemberId: "leader",
+						targetMemberId: "architect",
+						objective: "first",
+						state: "cancelled",
+						timestamp: 2,
+					},
+				],
+			}),
+			pending: { requestId: "second", text: "second", timestamp: 3 },
+			streams: {},
+			members: [member],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		expect(items.map((item) => item.timestamp)).toEqual(
+			[...items.map((item) => item.timestamp)].sort((a, b) => (a ?? 0) - (b ?? 0)),
+		);
+		expect(items.filter((item) => item.kind === "user").map((item) => item.text)).toEqual(["first", "second"]);
+	});
+
 	it("keeps visible row identities stable while the first Team turn is normalized", () => {
 		const pending = { requestId: "request", text: "hello", leaderMemberId: "leader", timestamp: 1 };
 		const labels = { delegation: (from: string, to: string) => `${from} -> ${to}`, unknownMember: "Unknown" };

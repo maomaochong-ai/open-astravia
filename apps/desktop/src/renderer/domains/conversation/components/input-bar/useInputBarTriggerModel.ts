@@ -55,6 +55,10 @@ export function useInputBarTriggerModel({
 	onAtItemSelect?: (item: AtPanelItem) => void;
 }) {
 	const steerShortcut = useEffectiveShortcut("steer-message");
+	// Lexical dispatches KEY_ENTER through its command pipeline. A browser/IME
+	// replay can deliver the same KeyboardEvent more than once; consume an event
+	// identity only once so Ctrl+Enter cannot create duplicate Team requests.
+	const handledEnterEvents = useRef(new WeakSet<KeyboardEvent>());
 	const [isFocused, setIsFocused] = useState(false);
 	const [trigger, setTrigger] = useState<TriggerMatch | null>(null);
 	const dismissedTriggerRef = useRef<string | null>(null);
@@ -100,6 +104,11 @@ export function useInputBarTriggerModel({
 	}, [onAbort]);
 	const handleEnter = useCallback(
 		(event?: KeyboardEvent): boolean => {
+			if (event?.repeat) return true;
+			if (event) {
+				if (handledEnterEvents.current.has(event)) return true;
+				handledEnterEvents.current.add(event);
+			}
 			const streamingBehavior = event && matchesShortcut(event, steerShortcut) ? "steer" : "followUp";
 			if (canSend) {
 				const interactionId = perfSendBegin("enter");

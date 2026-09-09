@@ -309,17 +309,46 @@ export class TeamMemberAttemptRunner {
 				readRuntimeFailure(error) ??
 				(isAIError(error) ? runtimeFailureFromError(error) : undefined) ??
 				promptFailure;
+			const cancelled = signal?.aborted ?? false;
+			let cancelledResultMessageId: string | undefined;
+			if (cancelled) {
+				// Runtime Core persists an aborted assistant message (including tool
+				// calls) in the member conversation. Publish that durable partial before
+				// discarding the live stream, otherwise stopping makes the Team timeline
+				// irreversibly lose what the leader/member had already produced.
+				const cancelledHistory = this.options.runtime().getFullHistory(runtimeState.sessionId);
+				const cancelledResult = findTeamAttemptResult(cancelledHistory, previousEntryIds);
+				const cancelledAssistant = cancelledResult?.message;
+				const publicCancelled = cancelledAssistant
+					? publicAttemptAssistantMessage(cancelledHistory, previousEntryIds, cancelledAssistant)
+					: undefined;
+				if (cancelledResult && publicCancelled && hasPublicAssistantContent(publicCancelled)) {
+					cancelledResultMessageId = await this.options.publicationWorkflow.publishCancelledAttempt({
+						session: configuredSession,
+						item: collaboration.workItem,
+						attempt: collaboration.attempt,
+						sourceTurnId,
+						sourceMessageEntryId: cancelledResult.entryId,
+						assistant: publicCancelled,
+					});
+				}
+			}
 			const terminal = classifyTeamAttemptTerminal({
 				hasPublishableMessage: false,
-				cancelled: signal?.aborted ?? false,
+				cancelled,
 				...(failure ? { issue: classifyTeamExecutionIssue(failure) } : {}),
 			});
-			await this.options.settleAttempt(configuredSession, collaboration.workItem, collaboration.attempt, terminal);
+			await this.options.settleAttempt(
+				configuredSession,
+				collaboration.workItem,
+				collaboration.attempt,
+				terminal,
+				cancelledResultMessageId,
+			);
 			const recoverable =
 				terminal.state === "waiting-retry" ||
 				terminal.state === "interrupted" ||
 				terminal.state === "awaiting-resource";
-			const cancelled = signal?.aborted ?? false;
 			this.options.eventHub.discard(
 				activeTurn,
 				cancelled ? "aborted" : recoverable ? "waiting" : "failed",
@@ -460,4 +489,8 @@ function publicAttemptAssistantMessage(
 
 function errorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
+}
+
+function hasPublicAssistantContent(message: AssistantMessage): boolean {
+	return message.content.some((part) => part.type === "text" || part.type === "toolCall");
 }

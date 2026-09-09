@@ -608,6 +608,56 @@ describe("Team member concurrency", () => {
 		expect(fixture.runtime.prompt).toHaveBeenCalledTimes(1);
 	});
 
+	it("keeps a leader/member partial assistant message and tool call after Team stop", async () => {
+		const fixture = await createFixture();
+		const [member] = fixture.members;
+		const turn = fixture.turn(member, "partial before stop");
+		turn.partial = {
+			...createAssistantMessage({ api: "openai-responses", provider: "openai", model: "test" }),
+			stopReason: "aborted",
+			content: [
+				{ type: "text", text: "I started the analysis" },
+				{ type: "toolCall", id: "tool-1", name: "team_delegate_task", arguments: { objective: "review" } },
+			],
+		};
+		const send = fixture.service.send(fixture.session.id, {
+			requestId: "partial-stop",
+			text: "partial before stop",
+			targetMemberIds: [member],
+		});
+		await turn.started.promise;
+		await fixture.service.abort(fixture.session.id);
+		await send;
+
+		const coordinationId = fixture.session.coordinationRuntime!.sessionId;
+		const publicMessages = fixture.conversations
+			.get(coordinationId)!
+			.entries.filter((entry) => entry.type === "message" && entry.kind === "agent");
+		expect(publicMessages).toHaveLength(1);
+		expect(publicMessages[0]).toMatchObject({
+			message: expect.objectContaining({
+				stopReason: "aborted",
+				content: expect.arrayContaining([
+					expect.objectContaining({ type: "text", text: "I started the analysis" }),
+					expect.objectContaining({ type: "toolCall", id: "tool-1" }),
+				]),
+			}),
+		});
+		expect((await fixture.service.readCollaborationState(fixture.session.id)).workItems[0]?.state).toBe("cancelled");
+
+		fixture.stopRuntime();
+		const restored = fixture.restartService();
+		await restored.read(fixture.session.id, fixture.session.coordinationRuntime!.sessionPath);
+		const snapshot = await restored.readSnapshot(fixture.session.id);
+		expect(snapshot.messages.filter((message) => message.kind === "agent")).toHaveLength(1);
+		expect(snapshot.messages.find((message) => message.kind === "agent")?.message.content).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ type: "text", text: "I started the analysis" }),
+				expect.objectContaining({ type: "toolCall", id: "tool-1" }),
+			]),
+		);
+	});
+
 	it("interrupts member runtimes without waiting for durable stop cleanup", async () => {
 		const fixture = await createFixture();
 		const [member] = fixture.members;
@@ -1085,6 +1135,34 @@ describe("Team member concurrency", () => {
 		expect(await reopened.readSnapshot(fixture.session.id)).toEqual(snapshot);
 	});
 
+	it("keeps a user message when stop races with Team admission", async () => {
+		const fixture = await createFixture();
+		const [member] = fixture.members;
+		const originalAppend = fixture.runtime.appendConversationMessage;
+		const appendStarted = deferred();
+		const releaseAppend = deferred();
+		vi.spyOn(fixture.runtime, "appendConversationMessage").mockImplementation(async (id, record) => {
+			if (record.kind === "user" && record.turnId === "racing-stop") {
+				appendStarted.resolve();
+				await releaseAppend.promise;
+			}
+			return originalAppend(id, record);
+		});
+
+		const send = fixture.service.send(fixture.session.id, {
+			requestId: "racing-stop",
+			text: "keep this submitted message",
+			targetMemberIds: [member],
+		});
+		await appendStarted.promise;
+		await fixture.service.abort(fixture.session.id);
+		releaseAppend.resolve();
+		await expect(send).resolves.toBeDefined();
+		const snapshot = await fixture.service.readSnapshot(fixture.session.id);
+		expect(snapshot.messages).toContainEqual(expect.objectContaining({ kind: "user", turnId: "racing-stop" }));
+		expect((await fixture.service.readCollaborationState(fixture.session.id)).workItems).toHaveLength(0);
+	});
+
 	it("runs different members together and retains both publications and delivery receipts", async () => {
 		const fixture = await createFixture();
 		const [first, second] = fixture.members;
@@ -1466,7 +1544,13 @@ async function createFixture(extensions?: AgentTeamExtensionRegistry) {
 			await turn.finish.promise;
 			running.delete(id);
 			activeTurns.delete(id);
-			if (active.aborted) throw new Error("Member execution aborted");
+			if (active.aborted) {
+				if (turn.partial) {
+					const entryId = `partial-answer-${++sequence}`;
+					history.set(id, [...(history.get(id) ?? []), { type: "message", entryId, message: turn.partial }]);
+				}
+				throw new Error("Member execution aborted");
+			}
 			if (turn.failure) throw turn.failure;
 			const entryId = `answer-${++sequence}`;
 			const message = {
@@ -1593,6 +1677,7 @@ interface TestMemberTurn {
 	readonly started: ReturnType<typeof deferred>;
 	readonly finish: ReturnType<typeof deferred>;
 	failure?: unknown;
+	partial?: ReturnType<typeof createAssistantMessage>;
 }
 
 function deferred() {

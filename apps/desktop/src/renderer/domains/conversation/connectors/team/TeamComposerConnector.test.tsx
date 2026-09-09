@@ -178,6 +178,20 @@ describe("TeamComposerConnector", () => {
 		expect(viewActions.send).toHaveBeenCalledWith("steer");
 	});
 
+	it("does not submit the same Ctrl+Enter KeyboardEvent twice", () => {
+		const viewActions = actions();
+		render(<TeamComposerConnector model={model()} actions={viewActions} />);
+		const inputModel = captured.model;
+		if (!inputModel) throw new Error("InputBar model was not captured");
+		const event = new KeyboardEvent("keydown", { key: "Enter", ctrlKey: true });
+		act(() => {
+			inputModel.actions.handleEnter(event);
+			inputModel.actions.handleEnter(event);
+		});
+		expect(viewActions.send).toHaveBeenCalledOnce();
+		expect(viewActions.send).toHaveBeenCalledWith("steer");
+	});
+
 	it("surfaces a pending ask_user_question owned by one of the team member runtimes", () => {
 		const store = createStore();
 		store.set(pendingQuestionsAtom, {

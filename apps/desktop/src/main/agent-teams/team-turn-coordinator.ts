@@ -246,7 +246,6 @@ export class TeamTurnCoordinator {
 		signal: AbortSignal,
 	): Promise<TeamSessionDocument> {
 		const admission = await this.options.sessionState.coordinateLoaded(sessionId, async (current) => {
-			signal.throwIfAborted();
 			const team = this.syntheticTeam(current);
 			validateTeamMessageMentions(team, input);
 			const orchestration = this.options.extensions.orchestrationPolicies.get(team.orchestrationPolicyId);
@@ -327,7 +326,13 @@ export class TeamTurnCoordinator {
 			}
 			this.options.publishSessionUpdated(current);
 
-			return { session: current, remaining: targets.filter((memberId) => !completed.has(memberId)) };
+			// The user message is the durable fact of submission. If stop races with
+			// admission, keep that message (and its routing record) but do not start a
+			// member turn after the stop barrier has been raised.
+			return {
+				session: current,
+				remaining: signal.aborted ? [] : targets.filter((memberId) => !completed.has(memberId)),
+			};
 		});
 		log.info("team message admitted", {
 			teamSessionId: sessionId,

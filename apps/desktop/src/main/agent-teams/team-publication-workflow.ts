@@ -34,6 +34,78 @@ interface ResumePublicationInput {
 export class TeamPublicationWorkflow {
 	constructor(private readonly options: TeamPublicationWorkflowOptions) {}
 
+	/**
+	 * Publishes the visible portion of an attempt that was cancelled by the user.
+	 * The work item is deliberately not completed here; the caller settles it as
+	 * cancelled after the message and its publication receipt are durable.
+	 */
+	async publishCancelledAttempt(input: {
+		readonly session: TeamSessionDocument;
+		readonly item: TeamWorkItem;
+		readonly attempt: TeamMemberTurnAttempt;
+		readonly sourceTurnId: string;
+		readonly sourceMessageEntryId: string;
+		readonly assistant: AssistantMessage;
+	}): Promise<string> {
+		const runtimeState = input.session.memberRuntime[input.item.assignedToParticipantId];
+		if (!runtimeState) throw new Error(`Team member runtime not found: ${input.item.assignedToParticipantId}`);
+		const publicMessageId = teamMemberResultMessageId(
+			input.session.id,
+			input.item.requestTurnId,
+			input.item.assignedToParticipantId,
+			input.sourceTurnId,
+		);
+		const publication: TeamPublicationOperationRecord = {
+			customType: "agent-team.publication-operation.v1",
+			operationId: `publish:${input.item.id}:${input.attempt.id}`,
+			workItemId: input.item.id,
+			sourceParticipantConversationId: runtimeState.sessionId,
+			sourceTurnId: input.sourceTurnId,
+			sourceMessageEntryId: input.sourceMessageEntryId,
+			publicMessageEntryId: publicMessageId,
+			state: "prepared",
+			generation: input.attempt.attempt,
+		};
+		const existingPublication = this.options.collaborationStore
+			.read(input.session)
+			.publications.find((candidate) => candidate.operationId === publication.operationId);
+		if (!existingPublication) {
+			await this.options.collaborationStore.append(input.session, publication.customType, publication);
+			this.publishObservation(input.session, publication, input.item, input.attempt, false);
+		}
+		const coordination = input.session.coordinationRuntime;
+		if (!coordination) throw new Error("Team coordination conversation is unavailable");
+		const existingMessage = this.options
+			.runtime()
+			.readSessionDocument(coordination.sessionId)
+			.entries.find((entry) => entry.id === publicMessageId);
+		if (existingMessage?.type !== "message" || existingMessage.kind !== "agent") {
+			await this.options.runtime().appendConversationMessage(coordination.sessionId, {
+				kind: "agent",
+				id: publicMessageId,
+				turnId: input.item.requestTurnId,
+				timestamp: input.assistant.timestamp ?? Date.now(),
+				author: {
+					kind: "agent",
+					id: input.item.assignedToParticipantId,
+					agentId: runtimeState.agentProfileId,
+				},
+				message: publicAssistantMessage(input.assistant),
+			});
+		}
+		const currentPublication = existingPublication ?? publication;
+		if (currentPublication.state !== "message-published" && currentPublication.state !== "completed") {
+			const messagePublished = {
+				...currentPublication,
+				publicMessageEntryId: publicMessageId,
+				state: "message-published",
+			} satisfies TeamPublicationOperationRecord;
+			await this.options.collaborationStore.append(input.session, messagePublished.customType, messagePublished);
+			this.publishObservation(input.session, messagePublished, input.item, input.attempt, false);
+		}
+		return publicMessageId;
+	}
+
 	async publishAttempt(input: {
 		readonly session: TeamSessionDocument;
 		readonly item: TeamWorkItem;
@@ -113,8 +185,20 @@ export class TeamPublicationWorkflow {
 					: sourceEntry?.type === "message"
 						? sourceEntry.message
 						: undefined;
-			if (assistant?.role !== "assistant" || assistantText(assistant).trim().length === 0) {
+			if (assistant?.role !== "assistant" || !hasPublicAssistantContent(assistant)) {
 				await this.markNeedsRecovery(session, publication, item, attempt, publicMessageId);
+				continue;
+			}
+			if (item.state === "cancelled" || attempt.state === "cancelled") {
+				await this.publishCancelledAttempt({
+					session,
+					item,
+					attempt,
+					sourceTurnId: publication.sourceTurnId,
+					sourceMessageEntryId: publication.sourceMessageEntryId,
+					assistant,
+				});
+				await this.restoreDeliveredContext(session, item, state);
 				continue;
 			}
 			await this.resume({
@@ -236,9 +320,6 @@ export class TeamPublicationWorkflow {
 	}
 }
 
-function assistantText(message: AssistantMessage): string {
-	return message.content
-		.filter((block) => block.type === "text")
-		.map((block) => block.text)
-		.join("\n");
+function hasPublicAssistantContent(message: AssistantMessage): boolean {
+	return publicAssistantMessage(message).content.some((part) => part.type === "text" || part.type === "toolCall");
 }

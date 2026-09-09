@@ -541,7 +541,6 @@ export function projectTeamConversationTimeline({
 		items[index] = decorateLeaderMessage(items[index] as ChatConversationItem);
 	}
 	items.push(...teamMemberSummaries.values());
-	items.sort((left, right) => itemTimestamp(left) - itemTimestamp(right));
 
 	const userCommitted = pending
 		? (snapshot?.messages.some((record) => record.kind === "user" && record.turnId === pending.requestId) ?? false) ||
@@ -639,6 +638,16 @@ export function projectTeamConversationTimeline({
 			timestamp: pending.timestamp ?? session?.updatedAt ?? Date.now(),
 		});
 	}
+	// Pending and live rows are appended after the durable projection above. Sort
+	// once more so a Ctrl+Enter request keeps its chronological place instead of
+	// being rendered below an older delegation/result card until the next snapshot.
+	items.sort((left, right) => {
+		const timestampDelta = itemTimestamp(left) - itemTimestamp(right);
+		if (timestampDelta !== 0) return timestampDelta;
+		if (left.kind === "user" && right.kind !== "user") return -1;
+		if (left.kind !== "user" && right.kind === "user") return 1;
+		return 0;
+	});
 	return items;
 }
 
