@@ -37,7 +37,6 @@ export function DefaultSidebar({ classNames, model, onOpenSession }: DefaultSide
 						collapseButton: classNames?.topBarCollapseButton,
 					}}
 					floating={model.floating}
-					onOpenSession={onOpenSession}
 					onCollapse={model.actions.collapse}
 				/>
 			}

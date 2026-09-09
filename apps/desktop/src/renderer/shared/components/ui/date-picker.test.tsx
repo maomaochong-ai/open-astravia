@@ -6,9 +6,33 @@ import { Calendar as SharedCalendar, CalendarDayButton as SharedDayButton, DateP
 import { useState } from "react";
 import { enUS, zhCN } from "react-day-picker/locale";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import en from "@/shared/i18n/locales/en/project.json";
-import zh from "@/shared/i18n/locales/zh/project.json";
 import { Calendar, CalendarDayButton } from "./calendar";
+
+/**
+ * 测试自带文案：DatePicker 是 @vetta/ui 的通用原语（也经 plugin-protocol 暴露给插件），
+ * 它的测试不该依赖某个业务功能的 i18n 条目——那些条目会随功能下线一起消失。
+ */
+const EN_CALENDAR_LABELS = {
+	placeholder: "Pick a date",
+	clear: "Clear date",
+	today: "Today",
+	selected: "Selected",
+	month: "Month",
+	year: "Year",
+	previousMonth: "Previous month",
+	nextMonth: "Next month",
+};
+
+const ZH_CALENDAR_LABELS = {
+	placeholder: "选择日期",
+	clear: "清空日期",
+	today: "今天",
+	selected: "已选择",
+	month: "月份",
+	year: "年份",
+	previousMonth: "上个月",
+	nextMonth: "下个月",
+};
 
 beforeEach(() => {
 	vi.useFakeTimers({ toFake: ["Date"] });
@@ -31,7 +55,7 @@ function mountPicker(overrides: Partial<DatePickerProps> = {}) {
 			>
 				<DatePicker
 					label="Date"
-					labels={en.sidebar.search.calendar}
+					labels={EN_CALENDAR_LABELS}
 					locale={enUS}
 					{...overrides}
 					value={value}
@@ -163,7 +187,7 @@ describe("shared DatePicker", () => {
 	it("localizes calendar navigation, dates, weekdays and selection labels in Chinese", async () => {
 		const { user, trigger, onChange } = mountPicker({
 			label: "开始日期",
-			labels: zh.sidebar.search.calendar,
+			labels: ZH_CALENDAR_LABELS,
 			locale: zhCN,
 		});
 		await user.click(trigger);
