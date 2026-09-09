@@ -1,0 +1,42 @@
+---
+title: Use agent teams
+description: Run a task with a standing team of specialists under one owner, and understand the delegation and sharing model behind it.
+---
+
+<Takeaways>
+  <li>A team is a set of standing members, not a throwaway helper</li>
+  <li>You talk to the owner; it decides who does what</li>
+  <li>Members share results, never each other's execution history</li>
+</Takeaways>
+
+An ordinary session has one Agent: it plans, builds, and checks its own work. Once a task needs a design step, an implementation step, and someone to attack the result, that single Agent is both author and reviewer — and it rarely finds its own blind spots.
+
+An **agent team** splits the work across several members. Each member is an independent Agent with its own responsibility, its own capability switches, and its own private conversation. One of them is the **owner** (the leader): your single point of contact, responsible for breaking the goal down, delegating each step to the member that fits it, accepting or reworking what comes back, and standing behind the final delivery.
+
+## A team member is not a subagent
+
+Vetta has two kinds of "multi-agent", and the boundary between them is explicit:
+
+| | Team member | Subagent |
+| --- | --- | --- |
+| Lifetime | Standing. Persists across turns and sessions with its own history | Temporary. Created by one Agent for one job, then discarded |
+| Visibility | Listed in the team roster; you can open its own session | A private helper of its creator; never in the roster |
+| Ownership | Can own a team task and speak publicly as a member | Cannot own team work or publish as a member |
+| Tooling | Team collaboration tools: delegate, wait, publish | Scheduled entirely by its creator |
+
+So a team member cannot reach for subagent tooling to drive another member: those tools are removed from a team member's runtime, which keeps ownership of team work from being handed off behind the scenes.
+
+## When a team is worth it
+
+<Fork>
+  <ForkYes title="Assemble a team">
+    <li>The work has real phases: design, then build, then review.</li>
+    <li>You need an independent pass at finding defects, not self-assessment.</li>
+    <li>Several angles on the same material have to be merged into one deliverable.</li>
+  </ForkYes>
+  <ForkNo title="An ordinary session is cheaper">
+    <li>The goal is single and finishes in a turn or two.</li>
+    <li>You want to watch and steer the details yourself.</li>
+    <li>Nothing in the task can run in parallel or needs a handoff.</li>
+  </ForkNo>
+</Fork>
