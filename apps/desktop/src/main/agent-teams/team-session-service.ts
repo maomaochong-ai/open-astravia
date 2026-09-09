@@ -90,8 +90,15 @@ export interface TeamSessionSubscription {
 	readonly snapshot?: Extract<DesktopTeamSessionStreamEvent, { type: "session-snapshot" }>;
 }
 
+export type TeamRunningChangedListener = (
+	coordinationSessionPath: string,
+	running: boolean,
+	teamSessionId: string,
+) => void;
+
 export class AgentTeamSessionService {
 	private readonly autoTitleScheduledSessions = new Set<string>();
+	private readonly runningChangedListeners = new Set<TeamRunningChangedListener>();
 	private runtime: RuntimeHost | undefined;
 	/** Known coordination paths let the bootstrap reader start restoration without blocking IPC. */
 	private readonly warmingSessions = new Map<string, Promise<unknown>>();
@@ -136,6 +143,7 @@ export class AgentTeamSessionService {
 			runtime: () => this.getRuntime(),
 			getSession: (sessionId) => this.sessionState.get(sessionId),
 			observe: (session) => this.observations(session),
+			onRunningChanged: (sessionId, running) => this.publishRunningChanged(sessionId, running),
 		});
 		this.turnCoordinator = new TeamTurnCoordinator({
 			runtime: () => this.getRuntime(),
@@ -241,6 +249,31 @@ export class AgentTeamSessionService {
 
 	displayProjection(session: TeamSessionDocument): Promise<DesktopTeamConversationDisplay> {
 		return this.displayService.displayProjection(session);
+	}
+
+	getRunningCoordinationSessionPaths(): string[] {
+		return this.eventHub.runningSessionIds().flatMap((sessionId) => {
+			const path = this.coordinationSessionPath(sessionId);
+			return path ? [path] : [];
+		});
+	}
+
+	onRunningChanged(listener: TeamRunningChangedListener): () => void {
+		this.runningChangedListeners.add(listener);
+		return () => this.runningChangedListeners.delete(listener);
+	}
+
+	private coordinationSessionPath(sessionId: string): string | undefined {
+		return (
+			this.sessionState.get(sessionId)?.coordinationRuntime?.sessionPath ??
+			this.sessionState.coordinationPath(sessionId)
+		);
+	}
+
+	private publishRunningChanged(sessionId: string, running: boolean): void {
+		const path = this.coordinationSessionPath(sessionId);
+		if (!path) return;
+		for (const listener of this.runningChangedListeners) listener(path, running, sessionId);
 	}
 
 	async readSnapshot(id: string, coordinationSessionPath?: string): Promise<TeamSessionSnapshot> {

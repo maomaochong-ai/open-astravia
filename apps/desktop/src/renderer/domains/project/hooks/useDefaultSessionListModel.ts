@@ -118,7 +118,7 @@ export function useDefaultSessionListModel({
 			});
 			const isActive = isSidebarConversationActive(session, activeSessionPath, activeTeamSessionId);
 			const isRenaming = identity.mutable && renamingSessionPath === session.path;
-			const isRunning = identity.mutable && runningSessionPaths.has(session.path);
+			const isRunning = runningSessionPaths.has(session.path);
 			const isSchedule =
 				identity.mutable &&
 				(scheduledSessionPaths.has(session.path) ||

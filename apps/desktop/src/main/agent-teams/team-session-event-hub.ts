@@ -36,6 +36,7 @@ interface TeamRuntimeStreamHost {
 	readonly runtime: () => RuntimeHost;
 	readonly getSession: (teamSessionId: string) => TeamSessionDocument | undefined;
 	readonly observe: (session: TeamSessionDocument) => TeamObservationPublisher | undefined;
+	readonly onRunningChanged?: (teamSessionId: string, running: boolean) => void;
 }
 
 /** Owns Team subscribers, active member turns, and member Runtime stream subscriptions. */
@@ -75,17 +76,34 @@ export class TeamSessionEventHub {
 	}
 
 	beginTurn(runtimeSessionId: string, active: ActiveTeamMemberTurn): void {
+		const previous = this.activeMemberTurns.get(runtimeSessionId);
+		const wasRunning = this.isSessionRunning(active.teamSessionId);
 		this.activeMemberTurns.set(runtimeSessionId, active);
+		if (
+			previous &&
+			previous.teamSessionId !== active.teamSessionId &&
+			!this.isSessionRunning(previous.teamSessionId)
+		) {
+			this.host.onRunningChanged?.(previous.teamSessionId, false);
+		}
+		if (!wasRunning) this.host.onRunningChanged?.(active.teamSessionId, true);
 	}
 
 	endTurn(runtimeSessionId: string): void {
 		const active = this.activeMemberTurns.get(runtimeSessionId);
 		this.activeMemberTurns.delete(runtimeSessionId);
+		if (active && !this.isSessionRunning(active.teamSessionId)) {
+			this.host.onRunningChanged?.(active.teamSessionId, false);
+		}
 		if (active) this.detachIdle(active.teamSessionId);
 	}
 
 	isTurnActive(runtimeSessionId: string): boolean {
 		return this.activeMemberTurns.has(runtimeSessionId);
+	}
+
+	runningSessionIds(): string[] {
+		return [...new Set([...this.activeMemberTurns.values()].map((turn) => turn.teamSessionId))];
 	}
 
 	discard(active: ActiveTeamMemberTurn, reason: "completed" | "waiting" | "failed" | "aborted", error?: string): void {
@@ -198,13 +216,16 @@ export class TeamSessionEventHub {
 	}
 
 	detachIdle(teamSessionId: string): void {
-		const hasActiveTurn = [...this.activeMemberTurns.values()].some((turn) => turn.teamSessionId === teamSessionId);
-		if (hasActiveTurn || this.hasSubscribers(teamSessionId)) return;
+		if (this.isSessionRunning(teamSessionId) || this.hasSubscribers(teamSessionId)) return;
 		for (const [runtimeSessionId, subscription] of this.runtimeSubscriptions) {
 			if (subscription.teamSessionId !== teamSessionId) continue;
 			subscription.unsubscribe();
 			this.runtimeSubscriptions.delete(runtimeSessionId);
 		}
+	}
+
+	private isSessionRunning(teamSessionId: string): boolean {
+		return [...this.activeMemberTurns.values()].some((turn) => turn.teamSessionId === teamSessionId);
 	}
 
 	activeMessageEvents(teamSessionId: string): ConversationMessageStreamEvent[] {

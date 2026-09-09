@@ -128,7 +128,7 @@ export function useProjectGroupModel({
 				untitledTeamLabel: t("sidebar.session.untitledTeam"),
 			});
 			const isSessionActive = isSidebarConversationActive(session, activeSessionPath, activeTeamSessionId);
-			const isRunning = identity.mutable && runningSessionPaths.has(session.path);
+			const isRunning = runningSessionPaths.has(session.path);
 			const isSchedule =
 				identity.mutable &&
 				(scheduledSessionPaths.has(session.path) ||

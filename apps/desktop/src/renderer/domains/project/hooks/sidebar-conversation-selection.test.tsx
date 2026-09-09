@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import { Provider } from "jotai";
+import { runningSessionPathsAtom } from "@shared/store/atoms";
+import { createStore, Provider } from "jotai";
 import type { PropsWithChildren } from "react";
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
@@ -36,6 +37,12 @@ const teamSession: SidebarConversationInfo = {
 const sessions = [ordinarySession, teamSession];
 const noop = (): void => {};
 const wrapper = ({ children }: PropsWithChildren): JSX.Element => <Provider>{children}</Provider>;
+
+function runningWrapper(path: string): ({ children }: PropsWithChildren) => JSX.Element {
+	const store = createStore();
+	store.set(runningSessionPathsAtom, new Set([path]));
+	return ({ children }: PropsWithChildren): JSX.Element => <Provider store={store}>{children}</Provider>;
+}
 
 describe("sidebar conversation selection", () => {
 	it("selects only the Team conversation in the default conversation list when an ordinary path is stale", () => {
@@ -80,5 +87,41 @@ describe("sidebar conversation selection", () => {
 		expect(result.current.sessionViews.filter((session) => session.active).map((session) => session.key)).toEqual([
 			"agent-team:team-session",
 		]);
+	});
+
+	it("marks Team conversations as running in both sidebar placements", () => {
+		const defaultList = renderHook(
+			() =>
+				useDefaultSessionListModel({
+					activeSessionPath: "",
+					activeTeamSessionId: "",
+					cwd: ordinarySession.cwd,
+					filter: "conversation",
+					onRenameSession: noop,
+					onSelectSession: noop,
+					sessions: [teamSession],
+				}),
+			{ wrapper: runningWrapper(teamSession.path) },
+		);
+		const projectList = renderHook(
+			() =>
+				useProjectGroupModel({
+					activeSessionPath: "",
+					activeTeamSessionId: "",
+					isExpanded: true,
+					onCollapse: noop,
+					onExpand: noop,
+					onNavigateProject: noop,
+					onNewSession: noop,
+					onRenameSession: noop,
+					onSelectSession: noop,
+					project: { cwd: ordinarySession.cwd, name: "OpenVetta", sessionCount: 1, type: "normal" },
+					sessions: [teamSession],
+				}),
+			{ wrapper: runningWrapper(teamSession.path) },
+		);
+
+		expect(defaultList.result.current.sessions[0]?.running).toBe(true);
+		expect(projectList.result.current.sessionViews[0]?.running).toBe(true);
 	});
 });

@@ -6,6 +6,44 @@ import type { DesktopTeamSessionStreamEvent } from "../../preload/api-types/team
 import { TeamSessionEventHub } from "./team-session-event-hub.js";
 
 describe("TeamSessionEventHub active replay", () => {
+	it("publishes one running transition for the first member turn and one idle transition after the last", () => {
+		const runningChanges: Array<{ teamSessionId: string; running: boolean }> = [];
+		const hub = new TeamSessionEventHub({
+			runtime: () => ({}) as RuntimeHost,
+			getSession: () => undefined,
+			observe: () => undefined,
+			onRunningChanged: (teamSessionId, running) => runningChanges.push({ teamSessionId, running }),
+		});
+		const activeTurn = (memberId: string, messageId: string) => ({
+			teamSessionId: "team-session",
+			memberId,
+			requestId: "request",
+			turnId: `${memberId}-turn`,
+			messageId,
+			author: { kind: "agent" as const, id: memberId },
+			workItemId: `${memberId}-work-item`,
+			attemptId: `${memberId}-attempt`,
+			startedAt: 1,
+			seq: 0,
+			text: "",
+			rawAssistantStream: false,
+			toolExecutionEvents: [],
+		});
+
+		hub.beginTurn("leader-runtime", activeTurn("leader", "leader-result"));
+		hub.beginTurn("executor-runtime", activeTurn("executor", "executor-result"));
+		expect(hub.runningSessionIds()).toEqual(["team-session"]);
+		hub.endTurn("leader-runtime");
+		expect(runningChanges).toEqual([{ teamSessionId: "team-session", running: true }]);
+		hub.endTurn("executor-runtime");
+
+		expect(hub.runningSessionIds()).toEqual([]);
+		expect(runningChanges).toEqual([
+			{ teamSessionId: "team-session", running: true },
+			{ teamSessionId: "team-session", running: false },
+		]);
+	});
+
 	it("reconstructs the active message and every tool lifecycle event after resubscription", () => {
 		let sessionListener: ((event: SessionEvent) => void) | undefined;
 		let executionListener: ((event: RuntimeSessionExecutionObservation) => void) | undefined;

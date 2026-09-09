@@ -40,6 +40,7 @@ import { PLUGIN_CONTRIBUTION_CHANNELS } from "../../shared/plugin-ipc.js";
 import { SESSION_SEARCH_CHANNELS } from "../../shared/session-search.js";
 import { DEFAULT_AGENT_MODE, isAgentMode, MODE_PROMPTS } from "../agent-modes/index.js";
 import { stopSessionBackgroundWork } from "../agent-runtime/stop-session-work.js";
+import { agentTeamSessionService } from "../agent-teams/team-session-service.js";
 import { stopMonitoringRuntimeSession } from "../app-monitor/app-monitor-service.js";
 import { onConversationListChanged } from "../conversations/conversation-list-events.js";
 import { assertOrdinaryConversationPath } from "../conversations/conversation-ownership-guard.js";
@@ -1203,7 +1204,12 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		return runtime.getSessionPath(sessionId);
 	});
 
-	ipcMain.handle(CHANNELS.LIST_RUNNING, () => runtime.getRunningSessionPaths());
+	ipcMain.handle(CHANNELS.LIST_RUNNING, () => [
+		...new Set([
+			...runtime.getRunningSessionPaths(),
+			...agentTeamSessionService.getRunningCoordinationSessionPaths(),
+		]),
+	]);
 
 	/**
 	 * 当前有会话在跑的项目 cwd（去重）。
@@ -1302,19 +1308,30 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		);
 	});
 
-	const unsubscribeRunning = runtime.onRunningChanged((sessionPath, running, sessionId, reason) => {
+	const broadcastRunningChanged = (payload: {
+		sessionPath: string;
+		running: boolean;
+		sessionId?: string;
+		reason?: "agent_end" | "aborted" | "error";
+	}) => {
 		// 主窗口（订阅方）原样投递，保持既有行为。
 		if (!webContents.isDestroyed()) {
-			webContents.send(CHANNELS.RUNNING_CHANGED, { sessionPath, running, sessionId, reason });
+			webContents.send(CHANNELS.RUNNING_CHANGED, payload);
 		}
 		// 并行广播给其它窗口（如独立的快捷面板窗口），让它们也能跟随运行态。
 		for (const win of BrowserWindow.getAllWindows()) {
 			if (win.isDestroyed()) continue;
 			const wc = win.webContents;
 			if (wc === webContents || wc.isDestroyed()) continue;
-			wc.send(CHANNELS.RUNNING_CHANGED, { sessionPath, running, sessionId, reason });
+			wc.send(CHANNELS.RUNNING_CHANGED, payload);
 		}
+	};
+	const unsubscribeRunning = runtime.onRunningChanged((sessionPath, running, sessionId, reason) => {
+		broadcastRunningChanged({ sessionPath, running, sessionId, reason });
 	});
+	const unsubscribeTeamRunning = agentTeamSessionService.onRunningChanged((sessionPath, running, sessionId) =>
+		broadcastRunningChanged({ sessionPath, running, sessionId }),
+	);
 
 	ipcMain.handle(CHANNELS.QUESTION_LIST_PENDING, () => questionBroker.listPendingQuestions());
 	ipcMain.handle(CHANNELS.MCP_ELICITATION_LIST_PENDING, () => mcpElicitationBroker.listPending());
@@ -1673,6 +1690,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		}
 		viewerSubs.clear();
 		unsubscribeRunning();
+		unsubscribeTeamRunning();
 		for (const unsubscribe of notificationSubs.values()) {
 			unsubscribe();
 		}

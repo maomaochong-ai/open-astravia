@@ -159,4 +159,28 @@ describe("SessionRowView Team identity", () => {
 		);
 		expect(view.container.querySelector('[data-avatar-stack="true"]')?.querySelectorAll("img")).toHaveLength(3);
 	});
+
+	it("replaces the Agent Team icon with the running spinner without moving member avatars", () => {
+		const view = render(
+			<SessionRowView
+				active={false}
+				iconClassName="icon-[solar--users-group-rounded-linear]"
+				label="Review deployment plan"
+				trailingAvatarUrls={["/master.webp", "/executor.webp"]}
+				onOpenContextMenu={vi.fn()}
+				onRename={vi.fn()}
+				onRenameDone={vi.fn()}
+				onSelect={vi.fn()}
+				renaming={false}
+				running={true}
+				scheduled={false}
+			/>,
+		);
+
+		expect(view.container.querySelector('[data-session-leading-icon="true"]')?.className).toContain(
+			"icon-[solar--refresh-linear]",
+		);
+		expect(view.container.querySelector('[data-session-leading-icon="true"]')?.className).toContain("animate-spin");
+		expect(view.container.querySelector('[data-avatar-stack="true"]')?.querySelectorAll("img")).toHaveLength(2);
+	});
 });
