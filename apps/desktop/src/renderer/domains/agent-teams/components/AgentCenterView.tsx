@@ -1,6 +1,6 @@
-import type { AgentProfile } from "@vetta/agent-team";
+import type { AgentProfile, TeamDefinition } from "@vetta/agent-team";
 import { Button } from "@vetta/ui";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { AgentCenterModel } from "../hooks/useAgentCenterModel";
 import { AgentCard } from "./AgentCard";
@@ -40,19 +40,44 @@ export function AgentCenterView({
 	const visibleTeams = model.teamsExpanded ? model.teams : model.teams.slice(0, COLLAPSED_TEAM_COUNT);
 	const hiddenTeamCount = model.teams.length - COLLAPSED_TEAM_COUNT;
 
-	// 选中态就长在卡片上，点到卡片以外的任何地方都该收起来；点另一张卡片由它自己的 onSelect 接管。
+	// 选中态与组队态都长在页面上，点到「操作区」以外的任何地方都该收起来；点另一张卡片由它自己的 onSelect 接管。
 	const selectedTeamId = model.selectedTeam?.id;
+	const assembling = Boolean(model.assembly);
 	const clearSelection = actions.selectTeam;
+	const { cancelAssembly } = actions;
 	useEffect(() => {
-		if (!selectedTeamId) return;
+		if (!selectedTeamId && !assembling) return;
 		function onPointerDown(event: PointerEvent): void {
 			const target = event.target;
-			if (target instanceof Element && target.closest("[data-team-card]")) return;
+			if (target instanceof Element) {
+				if (target.closest("[data-team-card]")) return;
+				// 组队时头部按钮、阵容栏与智能体列表都是操作区，点这些不算「点空白」。
+				if (assembling && target.closest("[data-assembly-region]")) return;
+			}
+			if (assembling) cancelAssembly();
 			clearSelection(undefined);
 		}
 		document.addEventListener("pointerdown", onPointerDown);
 		return () => document.removeEventListener("pointerdown", onPointerDown);
-	}, [clearSelection, selectedTeamId]);
+	}, [assembling, cancelAssembly, clearSelection, selectedTeamId]);
+
+	// 组队进行中点另一支团队：直接换成那支团队的组队；点回自己则退出。
+	const selectTeamCard = useCallback(
+		(team: TeamDefinition) => {
+			const active = selectedTeamId === team.id;
+			if (!assembling) {
+				clearSelection(active ? undefined : team.id);
+				return;
+			}
+			if (active) {
+				cancelAssembly();
+				clearSelection(undefined);
+				return;
+			}
+			actions.startEditTeam(team);
+		},
+		[actions, assembling, cancelAssembly, clearSelection, selectedTeamId],
+	);
 
 	return (
 		<div className="@container relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
@@ -132,7 +157,7 @@ export function AgentCenterView({
 											members={members}
 											leaderId={leader?.binding.agentProfileId}
 											selected={model.selectedTeam?.id === team.id}
-											onSelect={() => actions.selectTeam(model.selectedTeam?.id === team.id ? undefined : team.id)}
+											onSelect={() => selectTeamCard(team)}
 											onOpenChat={() => onOpenTeamChat(team.id)}
 											onRecruit={() => actions.startEditTeam(team)}
 											onOpenSettings={() => onOpenTeamSettings(team.id)}
@@ -170,7 +195,7 @@ export function AgentCenterView({
 								{t("library.empty")}
 							</p>
 						) : (
-							<div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
+							<div data-assembly-region="agents" className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
 								{model.agents.map((agent) => (
 									<AgentCard
 										key={agent.id}

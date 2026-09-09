@@ -178,6 +178,45 @@ describe("AgentCenterView", () => {
 		expect(model.actions.selectTeam).toHaveBeenCalledWith(undefined);
 	});
 
+	it("leaves recruiting mode when the pointer lands outside the assembly regions", async () => {
+		const teams = [team("squad")];
+		const model = buildModel({
+			teams,
+			selectedTeam: teams[0],
+			assembly: { name: "squad", memberIds: ["alpha"], leaderId: "alpha" },
+			assemblyLeaderId: "alpha",
+			assemblySubmittable: true,
+		} as Partial<AgentCenterModel>);
+		const user = userEvent.setup();
+		renderView(model);
+
+		// 阵容栏与智能体卡片是组队操作区，点这些不能把人踢出组队模式。
+		await user.click(screen.getByText("center.assemblyTitle"));
+		await user.click(screen.getByRole("button", { name: "alpha" }));
+		expect(model.actions.cancelAssembly).not.toHaveBeenCalled();
+
+		await user.click(screen.getByText("center.agentsSection"));
+		expect(model.actions.cancelAssembly).toHaveBeenCalled();
+		expect(model.actions.selectTeam).toHaveBeenCalledWith(undefined);
+	});
+
+	it("switches recruiting to another team when its card is clicked", async () => {
+		const teams = [team("squad"), team("crew")];
+		const model = buildModel({
+			teams,
+			selectedTeam: teams[0],
+			assembly: { name: "squad", memberIds: ["alpha"], leaderId: "alpha" },
+			assemblyLeaderId: "alpha",
+			assemblySubmittable: true,
+		} as Partial<AgentCenterModel>);
+		const user = userEvent.setup();
+		renderView(model);
+
+		await user.click(screen.getByText("crew description"));
+		expect(model.actions.startEditTeam).toHaveBeenCalledWith(expect.objectContaining({ id: "crew" }));
+		expect(model.actions.cancelAssembly).not.toHaveBeenCalled();
+	});
+
 	it("marks recruited members and blocks saving until the team has a name", () => {
 		const model = buildModel({
 			assembly: { name: "", memberIds: ["alpha"], leaderId: "alpha" },

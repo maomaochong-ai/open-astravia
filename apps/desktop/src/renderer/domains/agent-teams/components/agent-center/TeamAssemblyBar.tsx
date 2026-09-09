@@ -26,7 +26,11 @@ export function TeamAssemblyBar({
 }: TeamAssemblyBarProps): JSX.Element {
 	const { t } = useTranslation("agent-teams");
 	return (
-		<div className="mb-8 flex flex-col gap-3.5 rounded-xl border border-primary/30 bg-card/60 p-4">
+		<div
+			// 页面级的「点空白处退出组队」靠这个标记放行阵容栏内的点击，别删。
+			data-assembly-region="bar"
+			className="mb-8 flex flex-col gap-3.5 rounded-xl border border-primary/30 bg-card/60 p-4"
+		>
 			<div className="flex flex-col gap-3.5 sm:flex-row sm:items-center">
 				<AgentAvatarStack agents={members} leaderId={leaderId} emptyIcon />
 				<div className="min-w-0 flex-1">
