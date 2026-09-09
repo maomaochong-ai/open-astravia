@@ -75,3 +75,39 @@ Plus four preset teams, each a fixed pipeline of one Master and three specialist
 None of those pipelines is hardcoded. Each lives in the **team assignment** written on that team's Master (see "Configure a team" below), so changing the workflow means editing a paragraph of text, not waiting for a release.
 
 The preset content is materialized into ordinary team files on first launch. From then on it behaves exactly like anything you create: rename it, rewrite responsibilities, add or remove members, or delete the team outright — a deleted team is never re-injected.
+
+## Run a task with a team
+
+<Steps>
+  <Step>
+    ### Pick the team
+
+    On the **new session** page, use the selector above the composer to **pick a team or a single agent**; you can also select a team card on the Agents page and start a session from it. Choosing a single agent is still an ordinary session with a different persona — only a team enters team collaboration.
+  </Step>
+  <Step>
+    ### Settle the workspace
+
+    With no project selected, the session gets a **new workspace** of its own. Select a project and it works in that project directory instead. The workspace is fixed when the session is created, the coordination runtime and every member share that one directory, and later changes to your project list never redirect it.
+  </Step>
+  <Step>
+    ### Describe the task and send
+
+    State the goal; with no member addressed, **the owner takes it**. To name a specific member, use `@` at the bottom left of the composer. Model, reasoning level, and execution mode belong to this team session, and each member captures the effective settings as its task is queued.
+  </Step>
+</Steps>
+
+<MediaFrame>
+  <img src="/images/product/team-chat.webp" alt="A Vetta team session with the Master, Architect, Executor, and Auditor roster on top and the delegation steps below" width="1920" height="1179" />
+  <figcaption>The main timeline carries public progress only: the owner's plan, each <code>team_delegate_task</code> handoff, and the conclusion every member published.</figcaption>
+</MediaFrame>
+
+## Reading and steering the timeline
+
+| Element | What it means |
+| --- | --- |
+| Roster bar | This session's members, the owner marked with a crown. Click one to open **its own session** and read that member's full execution history |
+| Member card and state | Waiting, thinking, calling a tool, completed, or failed — the current state of that member's task |
+| A `team_delegate_task` step | The owner handed a bounded objective to a member; the task is queued at that moment |
+| Gear icon | Team settings: members, owner, assignments, and capabilities |
+
+You can send another message mid-flight to add a requirement, and `@` it at someone specific. Drafts, attachments, input history, and model settings are isolated per team session, so one team can run several independent sessions at once; each appears in the sidebar conversation list with its members' stacked avatars.
