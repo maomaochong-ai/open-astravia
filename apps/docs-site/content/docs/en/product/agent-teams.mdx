@@ -40,3 +40,38 @@ So a team member cannot reach for subagent tooling to drive another member: thos
     <li>Nothing in the task can run in parallel or needs a handoff.</li>
   </ForkNo>
 </Fork>
+
+## What you get by default
+
+The entry point is **Agents** in the sidebar. Teams sit at the top, the agent library below — a team is assembled from agents, and one agent can serve in several teams at once.
+
+<MediaFrame>
+  <img src="/images/product/agents-center.webp" alt="The Vetta Agents page with four preset team cards above and eight built-in agents below" width="1920" height="1223" />
+  <figcaption>A team card shows its member avatars and headcount; selecting it offers to start a session or open team settings. An agent card opens that agent's profile.</figcaption>
+</MediaFrame>
+
+A fresh install ships eight agents, one per role blueprint:
+
+| Agent | Role | What it owns |
+| --- | --- | --- |
+| Master | Owner | Breaks down the goal, delegates, accepts or reworks results, delivers |
+| Researcher | Research | Collects facts, documentation, prior art, and market signals, and verifies them |
+| Architect | Design | Produces the architecture, the interface contracts, or a document or PRD outline |
+| Executor | Production | Produces the core asset: code, a substantive draft, or a worked analysis |
+| Auditor | Audit | Red-teams the work for correctness, safety, edge cases, and unsupported claims |
+| Optimizer | Refinement | Improves finished work: performance, maintainability, channel-specific voice |
+| Synthesizer | Packaging | Merges several members' results into one consistent report or bundle |
+| Translator | Conversion | Localizes across languages and restates technical detail in business language |
+
+Plus four preset teams, each a fixed pipeline of one Master and three specialists:
+
+| Team | Roster | Pipeline |
+| --- | --- | --- |
+| Dev Team | Master · Architect · Executor · Auditor | Design and contracts first, then implementation with self-verification, then review; blocking findings go back to the executor or the design |
+| Deep Research | Master · Researcher · Auditor · Synthesizer | Split the question into angles gathered in parallel, strip unsupported claims, then assemble a structured report |
+| Growth & Content | Master · Researcher · Executor · Optimizer | Set the angle and evidence, write one master draft, then derive per-channel variants |
+| Biz Strategy | Master · Architect · Auditor · Synthesizer | Build the PRD and business model, hunt for fatal flaws, then package a presentable plan |
+
+None of those pipelines is hardcoded. Each lives in the **team assignment** written on that team's Master (see "Configure a team" below), so changing the workflow means editing a paragraph of text, not waiting for a release.
+
+The preset content is materialized into ordinary team files on first launch. From then on it behaves exactly like anything you create: rename it, rewrite responsibilities, add or remove members, or delete the team outright — a deleted team is never re-injected.
