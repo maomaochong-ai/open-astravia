@@ -274,3 +274,27 @@ Teams and agents live under `VETTA_HOME/agent-teams/` (`~/.vetta` by default in 
 Structured metadata — capability selections, member index, policy references — stays in the `*.json` files, while long text such as responsibilities, system prompts, and member assignments lives in separate Markdown files you can diff, version, and copy between teams. A directory name combines a readable name with an immutable id digest, so renaming a team never moves its directory.
 
 Writes use a revision check plus atomic replacement: when the same configuration is edited in two places, the later save fails instead of silently overwriting.
+
+## Getting good results
+
+- **Put the acceptance bar in your first message.** The owner accepts against the goal you gave it; "build this and send it over" and "build this, have the Auditor review it, and deliver only with no blocking findings" produce very different pipelines.
+- **Publish the conclusions that matter.** Teammates only see published content; a judgement buried in one member's intermediate work does not travel.
+- **Change behaviour through the assignment first.** It affects this team only, and leaves the same agent untouched everywhere else.
+- **More members is not better.** Each one adds model cost and a handoff; the preset teams are four people for a reason.
+- **Skip the team for simple work.** If one or two turns would finish it, an ordinary session or a single agent is faster and cheaper.
+
+## Troubleshooting
+
+- **A task sits in "waiting"**: waiting is not failure. Check whether it is blocked on an external condition such as expired credentials or exhausted credit — fix that and the affected tasks are woken for retry. Otherwise it is simply queued or still running.
+- **A member keeps drifting off target**: edit its assignment in **this team** (responsibility plus additional instructions) rather than its agent profile, which would affect every team referencing it.
+- **A configuration change seems to do nothing**: profile and assignment edits apply from the **next turn**; a turn already in flight is unaffected.
+- **You need to add a requirement mid-flight**: just send another message in the team session, and `@` someone to address them specifically.
+- **Deleting an agent**: the affected teams are listed before you confirm. It is then removed from them; if it was the owner, ownership passes to the next remaining member, and a team left with no members at all is deleted too.
+- **A team session is missing from the conversation list**: team sessions appear in the sidebar under their team identity and are deliberately kept out of the ordinary list and search results.
+
+<Continue>
+  <ContinueLink href="/product/abilities/" title="Manage abilities" description="Prepare the skills, MCP servers, and plugins members can use." />
+  <ContinueLink href="/product/models/" title="Configure models" description="Where a team session's model and reasoning level come from." />
+  <ContinueLink href="/core/context-tools-and-permissions/" title="Context, tools, and permissions" description="How execution modes and authorization work in a session." />
+  <ContinueLink href="/troubleshooting/" title="Troubleshooting" description="Model calls, file access, and runtime problems." />
+</Continue>
