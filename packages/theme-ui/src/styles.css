@@ -3,6 +3,8 @@
 @import "./chat/send-button.css";
 /* VS Code–style syntax token defaults for CodeMirror file editor. */
 @import "./file-preview/syntax-tokens.css";
+/* Command Menu 的一次性装饰动效（组件侧也会 side-effect import）。 */
+@import "./overlays/command-menu.css";
 
 @keyframes pulse {
 	0%,

@@ -39,6 +39,7 @@ declare module "@vetta/theme-sdk" {
 		readonly "root.approval.navigationOpen.panel"?: ThemeSurfaceConfig;
 		readonly "root.approval.schedulerAction.panel"?: ThemeSurfaceConfig;
 		readonly "root.approval.schedulerEdit.panel"?: ThemeSurfaceConfig;
+		readonly "root.commandMenu.panel"?: ThemeSurfaceConfig;
 		readonly "root.confirmDialog.panel"?: ThemeSurfaceConfig;
 		readonly "root.filePreviewDialog"?: ThemeSurfaceConfig;
 		readonly "root.filePreviewDialog.panel"?: ThemeSurfaceConfig;

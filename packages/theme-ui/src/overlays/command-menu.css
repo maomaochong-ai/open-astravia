@@ -1,0 +1,69 @@
+/*
+ * Command Menu 的装饰性动效。
+ *
+ * 刻意只用一次性（非 infinite）动画：面板打开时扫一遍高光就停下。常驻的
+ * infinite 关键帧会让低端机在面板开着的整段时间里持续合成，代价与观感不成正比。
+ * 位移/缩放/淡入这类入场动效交给 motion（见 CommandMenuView），这里只放
+ * motion 表达不了的渐变高光。
+ */
+
+.command-menu-sheen {
+	position: relative;
+	overflow: hidden;
+}
+
+.command-menu-sheen::after {
+	content: "";
+	position: absolute;
+	inset-inline: 0;
+	top: 0;
+	height: 1px;
+	pointer-events: none;
+	background: linear-gradient(
+		90deg,
+		transparent 0%,
+		color-mix(in srgb, var(--primary) 55%, transparent) 50%,
+		transparent 100%
+	);
+	transform: translateX(-100%);
+	animation: command-menu-sheen-sweep 620ms cubic-bezier(0.25, 0.1, 0.25, 1) 1 both;
+	will-change: transform;
+}
+
+@keyframes command-menu-sheen-sweep {
+	from {
+		transform: translateX(-100%);
+	}
+	to {
+		transform: translateX(100%);
+	}
+}
+
+/* 输入框聚焦时下沿的一次性点亮，收束后保持静止。 */
+.command-menu-input-underline {
+	transform-origin: center;
+	animation: command-menu-underline-in 240ms cubic-bezier(0.25, 0.1, 0.25, 1) 1 both;
+	will-change: transform, opacity;
+}
+
+@keyframes command-menu-underline-in {
+	from {
+		opacity: 0;
+		transform: scaleX(0.6);
+	}
+	to {
+		opacity: 1;
+		transform: scaleX(1);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.command-menu-sheen::after,
+	.command-menu-input-underline {
+		animation: none;
+	}
+
+	.command-menu-sheen::after {
+		opacity: 0;
+	}
+}
