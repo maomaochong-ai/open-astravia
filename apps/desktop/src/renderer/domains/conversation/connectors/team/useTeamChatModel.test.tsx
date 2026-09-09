@@ -418,6 +418,89 @@ describe("useTeamChatModel streaming flow", () => {
 		]);
 	});
 
+	it("keeps the member page stable while a native tool turn is persisted and after reopening", async () => {
+		const { result, unmount } = renderHook(() => useTeamChatModel(team.id, baseSession.id, leader.id));
+		await waitFor(() => expect(result.current.model.status).toBe("ready"));
+		await waitFor(() => expect(streamListener).toBeTypeOf("function"));
+
+		const toolMessage = {
+			...createAssistantMessage(
+				{ api: "agent-team-test", provider: "agent-team-test", model: "fixture" },
+				{ timestamp: 2 },
+			),
+			content: [
+				{
+					type: "toolCall" as const,
+					id: "delegate-call",
+					name: "team_delegate_task",
+					arguments: { memberId: "executor" },
+				},
+			],
+		};
+		const persistedSnapshot: DesktopTeamSessionSnapshot = {
+			...baseSnapshot,
+			session: { ...baseSession, revision: 1 },
+			conversationRevision: 1,
+			display: {
+				memberConversations: [
+					{
+						memberId: leader.id,
+						runtimeSessionId: "leader-runtime",
+						history: [
+							{
+								type: "message",
+								entryId: "runtime-prompt",
+								message: { role: "user", content: "delegate the task", timestamp: 1 },
+							},
+							{ type: "message", entryId: "runtime-tool-step", message: toolMessage },
+						],
+					},
+				],
+			},
+		};
+
+		act(() => {
+			streamListener?.({
+				type: "desktop.team-tool-execution",
+				conversationId: baseSession.id,
+				messageId: "live-member-turn",
+				turnId: "team-request",
+				author: { kind: "agent", id: leader.id },
+				sequence: 1,
+				timestamp: 2,
+				event: {
+					type: "start",
+					toolCallId: "delegate-call",
+					toolName: "team_delegate_task",
+					args: { memberId: "executor" },
+					startedAt: 2,
+				},
+			});
+			streamListener?.({
+				type: "session-updated",
+				teamSessionId: baseSession.id,
+				snapshot: persistedSnapshot,
+			});
+		});
+
+		const runningItems = result.current.model.feedItems.filter((item) => item.kind === "agent");
+		expect(runningItems).toHaveLength(1);
+		expect(runningItems[0]).toMatchObject({ phase: "streaming" });
+		const runningKey = runningItems[0]?.renderKey;
+
+		unmount();
+		vi.mocked(loadTeamChatSession).mockResolvedValueOnce({
+			document,
+			snapshot: persistedSnapshot,
+			sessions: [],
+		});
+		const reopened = renderHook(() => useTeamChatModel(team.id, baseSession.id, leader.id));
+		await waitFor(() => expect(reopened.result.current.model.status).toBe("ready"));
+		const reopenedItems = reopened.result.current.model.feedItems.filter((item) => item.kind === "agent");
+		expect(reopenedItems).toHaveLength(1);
+		expect(reopenedItems[0]?.renderKey).toBe(runningKey);
+	});
+
 	it("keeps a failed member visible until that member starts replying again", async () => {
 		const { result } = renderHook(() => useTeamChatModel(team.id));
 		await waitFor(() => expect(result.current.model.status).toBe("ready"));

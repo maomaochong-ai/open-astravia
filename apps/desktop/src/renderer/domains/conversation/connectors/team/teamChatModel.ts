@@ -358,6 +358,9 @@ export function projectTeamConversationTimeline({
 	const projectedMemberItems = visibleMemberConversations.flatMap((conversation) =>
 		projectMemberConversation(conversation.memberId, conversation.history),
 	);
+	const latestProjectedMemberItem = projectedMemberItems.at(-1);
+	const liveMemberTurns = Object.values(streams).filter((turn) => turn.message.phase === "streaming");
+	const consumedLiveMessageIds = new Set<string>();
 	// User input is persisted in the coordination conversation before member
 	// turns are scheduled. Keep it as the canonical timeline item even when
 	// member histories are available. Member Runtime histories contain their own
@@ -389,14 +392,29 @@ export function projectTeamConversationTimeline({
 		if (item.kind !== "agent") return item;
 		const publicMatch = coordinationAgentItems.find(
 			(candidate) =>
-				candidate.authorId === item.authorId &&
-				publicAgentText(candidate) === publicAgentText(item) &&
+				sameMemberTurnEvidence(item, candidate) &&
 				!consumedPublicRenderKeys.has(candidate.renderKey ?? candidate.entryId ?? candidate.id),
 		);
-		if (!publicMatch) return item;
-		const publicRenderKey = publicMatch.renderKey ?? publicMatch.entryId ?? publicMatch.id;
-		consumedPublicRenderKeys.add(publicRenderKey);
-		return { ...item, renderKey: publicRenderKey };
+		if (publicMatch) {
+			const publicRenderKey = publicMatch.renderKey ?? publicMatch.entryId ?? publicMatch.id;
+			consumedPublicRenderKeys.add(publicRenderKey);
+			return { ...item, renderKey: publicRenderKey };
+		}
+		if (memberId !== undefined && item === latestProjectedMemberItem) {
+			const liveMatch = liveMemberTurns.find(
+				(turn) => !consumedLiveMessageIds.has(turn.message.id) && sameMemberTurnEvidence(item, turn.message),
+			);
+			if (liveMatch) {
+				consumedLiveMessageIds.add(liveMatch.message.id);
+				return {
+					...liveMatch.message,
+					id: item.id,
+					entryId: item.entryId,
+					renderKey: item.renderKey,
+				};
+			}
+		}
+		return item;
 	});
 	const leaderMemberId = session?.leaderMemberId;
 	const activities = memberId ? [] : (snapshot?.activities ?? []);
@@ -554,6 +572,7 @@ export function projectTeamConversationTimeline({
 		(left, right) => (left.message.startedAt ?? 0) - (right.message.startedAt ?? 0),
 	)) {
 		if (turn.message.phase !== "streaming") continue;
+		if (consumedLiveMessageIds.has(turn.message.id)) continue;
 		if (memberId && turn.message.authorId !== memberId) continue;
 		if (
 			!memberId &&
@@ -769,6 +788,21 @@ function itemTimestamp(item: ChatConversationItem): number {
 
 function publicAgentText(item: ChatConversationItem): string {
 	return item.kind === "agent" ? (item.text ?? "") : "";
+}
+
+function sameMemberTurnEvidence(
+	persisted: ConversationAgentMessageViewModel,
+	live: ConversationAgentMessageViewModel,
+): boolean {
+	if (persisted.authorId !== live.authorId) return false;
+	const persistedToolCallIds = new Set(
+		persisted.blocks.flatMap((block) => (block.type === "tool_call" ? [block.toolCallId] : [])),
+	);
+	if (live.blocks.some((block) => block.type === "tool_call" && persistedToolCallIds.has(block.toolCallId)))
+		return true;
+	const persistedText = publicAgentText(persisted);
+	const liveText = publicAgentText(live);
+	return persistedText.length > 0 && persistedText === liveText;
 }
 
 export function stripAttachmentContext(text: string): string {

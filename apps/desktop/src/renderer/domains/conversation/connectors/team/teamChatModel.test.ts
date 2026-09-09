@@ -304,6 +304,97 @@ describe("team chat stream state", () => {
 		]);
 	});
 
+	it("keeps one member-page turn while native tool history overlaps the live stream and after reopen", () => {
+		const toolMessage = agentMessage("runtime-tool-step", "runtime-turn", "leader", "", 2, {
+			id: "delegate-call",
+			name: "team_delegate_task",
+			arguments: { memberId: "executor" },
+		}).message;
+		const memberSnapshot = snapshot({
+			display: {
+				memberConversations: [
+					{
+						memberId: "leader",
+						runtimeSessionId: "leader-runtime",
+						history: [
+							{
+								type: "message",
+								entryId: "runtime-prompt",
+								message: { role: "user", content: "delegate the task", timestamp: 1 },
+							},
+							{ type: "message", entryId: "runtime-tool-step", message: toolMessage },
+						],
+					},
+				],
+			},
+		});
+		const streams = reduceTeamStreamState(
+			{},
+			{
+				type: "desktop.team-tool-execution",
+				conversationId: "session",
+				messageId: "live-member-turn",
+				turnId: "team-request",
+				author: { kind: "agent", id: "leader" },
+				sequence: 1,
+				timestamp: 2,
+				event: {
+					type: "start",
+					toolCallId: "delegate-call",
+					toolName: "team_delegate_task",
+					args: { memberId: "executor" },
+					startedAt: 2,
+				},
+			},
+		);
+		const project = (activeStreams: typeof streams) =>
+			projectTeamConversationTimeline({
+				snapshot: memberSnapshot,
+				pending: undefined,
+				streams: activeStreams,
+				members: [member],
+				memberId: "leader",
+				labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+			});
+
+		const running = project(streams).filter((item) => item.kind === "agent");
+		const reopened = project({}).filter((item) => item.kind === "agent");
+
+		expect(running).toHaveLength(1);
+		expect(running[0]).toMatchObject({ phase: "streaming" });
+		expect(running[0]?.kind === "agent" ? running[0].blocks : []).toEqual(
+			expect.arrayContaining([expect.objectContaining({ type: "tool_call", toolCallId: "delegate-call" })]),
+		);
+		expect(reopened).toHaveLength(1);
+		expect(reopened[0]?.kind === "agent" ? reopened[0].blocks : []).toEqual(
+			expect.arrayContaining([expect.objectContaining({ type: "tool_call", toolCallId: "delegate-call" })]),
+		);
+		expect(running[0]?.renderKey).toBe(reopened[0]?.renderKey);
+
+		const followingTurn = project(
+			reduceTeamStreamState(
+				{},
+				{
+					type: "desktop.team-tool-execution",
+					conversationId: "session",
+					messageId: "next-live-member-turn",
+					turnId: "next-team-request",
+					author: { kind: "agent", id: "leader" },
+					sequence: 1,
+					timestamp: 3,
+					event: {
+						type: "start",
+						toolCallId: "read-call",
+						toolName: "read",
+						args: { path: "README.md" },
+						startedAt: 3,
+					},
+				},
+			),
+		).filter((item) => item.kind === "agent");
+		expect(followingTurn).toHaveLength(2);
+	});
+
 	it("keeps drafts isolated by team scope", () => {
 		const first = updateScopedTeamDraft({}, "team-a", "draft a");
 		const second = updateScopedTeamDraft(first, "team-b", "draft b");
