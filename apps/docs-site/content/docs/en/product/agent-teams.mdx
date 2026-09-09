@@ -187,3 +187,44 @@ That boundary is deliberate: each member reasons from a clean context instead of
 | A member's reasoning, tool calls, private history | That member only — though you can open its session and read it |
 
 Event ids are also derived from stable fields such as the session, request, and member, so resubmitting the same request produces neither a duplicate public message nor duplicate execution. That is why a reconnect does not double the timeline.
+
+## Configure a team: assignments, capabilities, owner
+
+There are two layers to adjust: **the agent itself** (open its profile on the Agents page) and **how it behaves inside one team** (edit it in team settings).
+
+<MediaFrame>
+  <img src="/images/product/agent-profile.webp" alt="The Vetta agent profile drawer with basics, system prompt, and abilities tabs" width="1920" height="1215" />
+  <figcaption>A profile has three parts: basics (avatar, name, responsibilities), system prompt, and abilities. Ability switches affect this agent only — they never install or uninstall anything globally.</figcaption>
+</MediaFrame>
+
+### The agent profile
+
+| Field | What it does |
+| --- | --- |
+| Responsibilities | One line that enters the shared roster and drives how the owner delegates |
+| System prompt | Overrides the role blueprint's own prompt; leave it empty to keep the blueprint default |
+| Abilities | The skills, scenes, MCP servers, and plugins this agent may use. It inherits **every** globally available capability until you touch a switch, which materializes a custom set |
+
+When an agent is referenced by several teams, saving first lists the affected teams for confirmation; after that, those teams use the new configuration **from their next turn**.
+
+### Team settings: members and assignments
+
+The gear icon opens team settings, where you add or remove members, change the owner, and write a **team assignment** for each member:
+
+| Assignment field | What it does | Who sees it |
+| --- | --- | --- |
+| Responsibility in this team | Overrides the profile's responsibilities, for this team only | The shared roster |
+| Additional team instructions | Team-specific direction appended to its persona | That member only |
+
+An assignment is an **increment**: an empty field falls back to the agent profile, and nothing here affects the same agent in another team. It is appended after the persona and the role's collaboration rules rather than replacing them — so there is no need to restate rules like "report back to the owner".
+
+The preset teams' fixed pipelines are built exactly this way: the workflow lives in the Master's additional instructions. Changing the pipeline means editing that paragraph.
+
+Adding a member also asks how it binds:
+
+- **Follows the agent library** (reference): edits to the profile flow into this team. This is the default.
+- **This team only** (copy): a private copy of the profile, independent from the library version afterwards.
+
+### When a change takes effect
+
+A member runtime is rebuilt based on the profile revision plus a fingerprint of its assignment: edit either one and it applies **from the next turn**, with history preserved. Editing unrelated fields such as the team name or description never disturbs a member session in flight.
