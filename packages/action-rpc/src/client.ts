@@ -3,6 +3,26 @@ import type { ActionRpcEndpoint, ActionRpcResponse, LocalRpcRequest } from "./ty
 
 type ActionRpcSuccessResponse = Extract<ActionRpcResponse, { ok: true }>;
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function parseResponse(value: unknown): ActionRpcResponse {
+	if (!isRecord(value) || typeof value.id !== "string" || typeof value.ok !== "boolean") {
+		throw new ActionRpcError("ACTION_RPC_ERROR", "Action RPC returned an invalid response");
+	}
+	if (value.ok) {
+		if (!("result" in value)) {
+			throw new ActionRpcError("ACTION_RPC_ERROR", "Action RPC success response is missing result");
+		}
+		return value as ActionRpcResponse;
+	}
+	if (!isRecord(value.error) || typeof value.error.code !== "string" || typeof value.error.message !== "string") {
+		throw new ActionRpcError("ACTION_RPC_ERROR", "Action RPC error response is invalid");
+	}
+	return value as ActionRpcResponse;
+}
+
 async function send(endpoint: ActionRpcEndpoint, request: LocalRpcRequest): Promise<ActionRpcSuccessResponse> {
 	const response = await fetch(new URL("/rpc", endpoint.url), {
 		method: "POST",
@@ -12,7 +32,17 @@ async function send(endpoint: ActionRpcEndpoint, request: LocalRpcRequest): Prom
 		},
 		body: JSON.stringify(request),
 	});
-	const payload = (await response.json()) as ActionRpcResponse;
+
+	let rawPayload: unknown;
+	try {
+		rawPayload = await response.json();
+	} catch {
+		throw new ActionRpcError(
+			"ACTION_RPC_ERROR",
+			`Action RPC returned an invalid response (${response.status} ${response.statusText})`.trim(),
+		);
+	}
+	const payload = parseResponse(rawPayload);
 	if (!payload.ok) {
 		throw new ActionRpcError(payload.error.code, payload.error.message, payload.error.details);
 	}
