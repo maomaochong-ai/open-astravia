@@ -43,6 +43,7 @@ export const SHORTCUT_ACTIONS = [
 		labelKey: "shortcutOpenCommandMenuLabel",
 		descriptionKey: "shortcutOpenCommandMenuDesc",
 		defaultShortcut: "mod+k",
+		scope: "app",
 	},
 	{
 		id: "save-file",
