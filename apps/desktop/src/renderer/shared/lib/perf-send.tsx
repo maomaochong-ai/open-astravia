@@ -152,15 +152,6 @@ function report(target: Session): void {
 			.map(([id, entry]) => `${id} x${entry.count} = ${entry.actual.toFixed(1)}ms`)
 			.join("  |  "),
 	);
-	console.table(
-		target.commits.map((commit) => ({
-			id: commit.id,
-			phase: commit.phase,
-			actual: Number(commit.actual.toFixed(1)),
-			base: Number(commit.base.toFixed(1)),
-			at: Number((commit.at - target.t0).toFixed(1)),
-		})),
-	);
 	console.log(
 		"longTasks:",
 		target.longTasks.map((task) => `${task.duration.toFixed(0)}ms@${task.start.toFixed(0)}`).join("  "),
