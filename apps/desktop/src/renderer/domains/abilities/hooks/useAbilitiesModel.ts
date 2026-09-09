@@ -24,10 +24,15 @@ import { useAbilityData } from "./useAbilityData";
 
 const ABILITY_PAGE_SIZE = 60;
 
-export function useAbilitiesModel(): AbilitiesModel {
+export interface UseAbilitiesModelOptions {
+	/** 深链带进来的搜索词初值；只播种一次，之后由页面状态接管。 */
+	readonly initialSearchQuery?: string;
+}
+
+export function useAbilitiesModel(options: UseAbilitiesModelOptions = {}): AbilitiesModel {
 	const { t, i18n } = useTranslation("settings");
 	const [scope, setScope] = useState<AbilityScope>("discover");
-	const [searchQuery, setSearchQuery] = useState("");
+	const [searchQuery, setSearchQuery] = useState(options.initialSearchQuery ?? "");
 	const [visiblePages, setVisiblePages] = useState(1);
 
 	const data = useAbilityData();

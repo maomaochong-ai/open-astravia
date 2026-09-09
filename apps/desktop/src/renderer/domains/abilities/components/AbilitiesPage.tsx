@@ -14,11 +14,12 @@ import { AbilityDetailSheet } from "./detail/AbilityDetailSheet";
  */
 
 export function AbilitiesPage(): JSX.Element {
-	const model = useAbilitiesModel();
+	// 详情抽屉由来源感知的 catalog id 驱动：同 slug 可并存，返回键即关闭。
+	// `q` 只在首次挂载时作为搜索词初值交给 model，之后不再回读 URL。
+	const { detail, q } = useSearch({ strict: false }) as { detail?: string; q?: string };
+	const model = useAbilitiesModel({ initialSearchQuery: q });
 	const setHeaderTitleHidden = useSetAtom(pageHeaderTitleHiddenAtom);
 	const navigate = useNavigate();
-	// 详情抽屉由来源感知的 catalog id 驱动：同 slug 可并存，返回键即关闭。
-	const { detail } = useSearch({ strict: false }) as { detail?: string };
 
 	// 页面内已有大号标题，隐藏顶栏左上角路由标题。
 	useEffect(() => {

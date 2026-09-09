@@ -184,3 +184,53 @@ it("follows the application language broadcast for cached GitHub names, descript
 	act(() => result.current.setSearchQuery(""));
 	expect(result.current.groups.map((group) => group.category)).toEqual(categoryIds);
 });
+
+it("seeds the search keyword from an external deep link and lets the page take over afterwards", async () => {
+	const repository = "https://github.com/example/deeplink";
+	const source: MarketplaceSource = {
+		id: "deeplink", name: "Deeplink", type: "github", repository,
+		archiveUrl: `${repository}/archive/main.zip`, ref: "main",
+		enabled: true, builtin: false, autoUpdate: false, priority: 100,
+		createdAt: "2026-08-30T00:00:00.000Z", updatedAt: "2026-08-30T00:00:00.000Z",
+	};
+	const base = {
+		type: "mcp" as const, description: "", version: "1.0.0", configVersion: 1, author: "", license: "",
+		category: "Social", icon: "", tags: [], config: { mcp: { type: "http" as const, url: "https://example.com/mcp" } },
+		origin: { kind: "github-marketplace" as const, sourceId: source.id, marketplace: "deeplink", marketplaceVersion: "1", repository },
+		detail: {},
+	};
+	const snapshot: OpenMarketplaceSourceSnapshot = {
+		source, sourceId: source.id, marketplaceVersion: "1", repository, syncedAt: source.updatedAt, stale: false,
+		abilities: [
+			{ ...base, slug: "notion-mcp", name: "Notion" },
+			{ ...base, slug: "figma-mcp", name: "Figma" },
+		],
+	};
+	const catalog: OpenMarketplaceCatalog = { sources: [source], snapshots: [snapshot], abilities: snapshot.abilities, failedSourceIds: [] };
+	Object.defineProperty(window, "vetta", { configurable: true, value: {
+		abilities: {
+			getLedger: async () => ({}), listBuiltinPresentations: async () => ({}), getOpenMcpSetupStatus: async () => ({}),
+			listOpenMarketplaces: async () => structuredClone(catalog), refreshOpenMarketplaces: async () => structuredClone(catalog),
+			onOpenMarketplacesUpdated: () => () => undefined,
+		},
+		skills: { getMarketManifest: async () => ({}), list: async () => [] },
+		plugins: { listAll: async () => [] },
+		mcp: { get: async () => ({ mcpServers: {} }) },
+	} });
+	initI18n();
+	await i18n.changeLanguage("en");
+
+	const { result } = renderHook(() => useAbilitiesModel({ initialSearchQuery: "Notion" }));
+	await waitFor(() => expect(result.current.refreshing).toBe(false));
+	expect(result.current.searchQuery).toBe("Notion");
+	await waitFor(() => expect(result.current.items.map((item) => item.title)).toEqual(["Notion"]));
+
+	// 播种之后由页面状态接管：清空搜索框应恢复整表，而不是被 URL 值粘住。
+	act(() => result.current.setSearchQuery(""));
+	await waitFor(() => expect(result.current.items.map((item) => item.title).sort()).toEqual(["Figma", "Notion"]));
+
+	// 未带 q 的深链不应残留上一次的搜索词。
+	const plain = renderHook(() => useAbilitiesModel());
+	await waitFor(() => expect(plain.result.current.refreshing).toBe(false));
+	expect(plain.result.current.searchQuery).toBe("");
+});
