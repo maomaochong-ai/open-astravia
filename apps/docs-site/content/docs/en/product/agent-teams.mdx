@@ -228,3 +228,49 @@ Adding a member also asks how it binds:
 ### When a change takes effect
 
 A member runtime is rebuilt based on the profile revision plus a fingerprint of its assignment: edit either one and it applies **from the next turn**, with history preserved. Editing unrelated fields such as the team name or description never disturbs a member session in flight.
+
+## Sessions, workspaces, and files
+
+### One team, many sessions
+
+A team is configuration; a session is one piece of work. The same team can run several sessions at once, each with its own workspace, drafts, attachments, model settings, and history.
+
+The workspace is fixed when the session is created:
+
+| Choice at creation | Working directory |
+| --- | --- |
+| No project selected | A new directory owned by this session, under `VETTA_HOME/agent-teams/session-workspaces/` |
+| A project selected | That project's directory |
+
+The coordination runtime and every member share that one directory, so files a member writes are visible to the others — **files are their real shared workbench**, while messages carry only conclusions.
+
+Team sessions use the same underlying storage format as ordinary conversations, but their ownership is recorded explicitly: they never leak into the ordinary conversation list or search results, and appear in the sidebar as team sessions. For a team, the activity panel exposes only the tabs with unambiguous semantics — **files** and **browser**.
+
+### A team is a set of files
+
+Teams and agents live under `VETTA_HOME/agent-teams/` (`~/.vetta` by default in production):
+
+<Files>
+  <Folder name="agent-teams" defaultOpen>
+    <File name="index.json" />
+    <Folder name="agents" defaultOpen>
+      <Folder name="architect--a1b2c3d4e5" defaultOpen>
+        <File name="agent.json" />
+        <File name="description.md" />
+        <File name="system-prompt.md" />
+      </Folder>
+    </Folder>
+    <Folder name="teams" defaultOpen>
+      <Folder name="dev-team--5013fe9a32" defaultOpen>
+        <File name="team.json" />
+        <File name="description.md" />
+        <Folder name="members" />
+      </Folder>
+    </Folder>
+    <Folder name="session-workspaces" />
+  </Folder>
+</Files>
+
+Structured metadata — capability selections, member index, policy references — stays in the `*.json` files, while long text such as responsibilities, system prompts, and member assignments lives in separate Markdown files you can diff, version, and copy between teams. A directory name combines a readable name with an immutable id digest, so renaming a team never moves its directory.
+
+Writes use a revision check plus atomic replacement: when the same configuration is edited in two places, the later save fails instead of silently overwriting.

@@ -228,3 +228,49 @@ Vetta 里有两种「多 Agent」，容易混淆，但边界很清楚：
 ### 改动什么时候生效
 
 成员运行时按「档案修订 + 任务书指纹」判断是否需要重建：动了档案或任务书，**下一回合**生效，历史记录保留；只改团队名称、描述这类无关字段，不会牵连正在进行的成员会话。
+
+## 会话、工作空间与文件
+
+### 一支团队，多个会话
+
+团队是配置，会话是一次具体的工作。同一支团队可以同时开多个会话，各自有独立的工作空间、草稿、附件、模型设置与历史，互不干扰。
+
+工作空间在创建会话时就固定下来：
+
+| 创建时的选择 | 工作目录 |
+| --- | --- |
+| 不指定项目 | 这次会话独占的新目录（`VETTA_HOME/agent-teams/session-workspaces/` 下） |
+| 指定项目 | 该项目目录 |
+
+协调运行时和所有成员共用这一个目录，因此成员写出的文件互相看得见——**文件是它们真正的共享工作台**，而消息只传结论。
+
+团队会话的底层存储与普通对话是同一套格式，但会被明确标记归属：它们不会混进普通对话列表和搜索结果，只以团队会话的身份出现在侧栏。活动面板对团队只开放语义明确的**文件**与**浏览器**页签。
+
+### 团队配置就是一组文件
+
+所有团队与智能体都落在 `VETTA_HOME/agent-teams/`（生产环境默认 `~/.vetta`）：
+
+<Files>
+  <Folder name="agent-teams" defaultOpen>
+    <File name="index.json" />
+    <Folder name="agents" defaultOpen>
+      <Folder name="architect--a1b2c3d4e5" defaultOpen>
+        <File name="agent.json" />
+        <File name="description.md" />
+        <File name="system-prompt.md" />
+      </Folder>
+    </Folder>
+    <Folder name="teams" defaultOpen>
+      <Folder name="dev-team--5013fe9a32" defaultOpen>
+        <File name="team.json" />
+        <File name="description.md" />
+        <Folder name="members" />
+      </Folder>
+    </Folder>
+    <Folder name="session-workspaces" />
+  </Folder>
+</Files>
+
+结构化元数据（能力选择、成员索引、策略引用）在 `*.json` 里，长文本（职责说明、系统提示词、成员任务书）是独立的 Markdown 文件——可以 diff、可以进版本管理、可以在团队之间复制。目录名由可读名称加不可变 ID 摘要组成，改名不会改目录。
+
+写入使用修订号乐观锁与原子替换：同一份配置被两处同时修改时，后一次保存会失败而不是悄悄覆盖。
