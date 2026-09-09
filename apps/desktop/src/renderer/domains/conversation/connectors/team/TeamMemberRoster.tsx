@@ -41,7 +41,7 @@ export function TeamMemberRoster({
 	return (
 		// 左内边距与页头保持一致，胶囊条正对标题起始位置。设置按钮留在滚动区之外，
 		// 成员较多时不会被横向滚动带走。
-		<div className="flex min-w-0 shrink-0 items-center gap-1.5 px-3 pb-2">
+		<div className="flex min-w-0 shrink-0 items-center gap-1.5 px-3 pb-3">
 			<div
 				role="group"
 				aria-label={t("chat.memberSessions")}
