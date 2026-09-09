@@ -42,6 +42,7 @@ import {
 	finalizeMessage,
 	finishAssistantTurn,
 	getActiveAssistantTurnStartedAt,
+	getChatStreamOwner,
 	handleToolEnd,
 	handleToolPhase,
 	handleToolStart,
@@ -140,7 +141,11 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 		pendingThinkingDeltaRef.current = "";
 		pendingDeltaSessionRef.current = null;
 
-		if (owningSession && activeSessionRef.current?.runtimeId !== owningSession) return;
+		if (
+			owningSession &&
+			(getChatStreamOwner() !== owningSession || activeSessionRef.current?.runtimeId !== owningSession)
+		)
+			return;
 		if (hasAssistantEvents || textDelta || thinkingDelta) {
 			setChatMessages((previous) => {
 				if (hasAssistantEvents) return conversationProjectionRef.current.flush(previous);
@@ -167,6 +172,10 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 			// the new session's atom. activeSessionRef is updated synchronously
 			// above and reflects the latest user-facing session.
 			if (activeSessionRef.current?.runtimeId !== sessionId) return;
+			// 归属闸门：activeSessionRef 是实例级的（useSessionManager 同时挂载多份），
+			// 只能证明「本实例最后打开的是它」。真正代表用户当前会话的是模块级 owner，
+			// 它在 openSession 一进入就被置空——切走后旧会话的事件到此为止。
+			if (getChatStreamOwner() !== sessionId) return;
 			// ── kernel 队列镜像（ADR-0060）──
 			// 条目「消失且非本端主动移除」= 已被 turn 消费：此刻补用户气泡，
 			// 时序与模型可见顺序严格一致；agent_end 重拉由乐观对账按文本吸收。

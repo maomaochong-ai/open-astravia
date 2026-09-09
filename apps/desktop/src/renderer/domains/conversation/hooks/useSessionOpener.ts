@@ -53,6 +53,7 @@ import {
 	getOpenSessionToken,
 	resetStreamState,
 	restoreAssistantTurn,
+	setChatStreamOwner,
 	setCurrentUnsubscribe,
 	turnStatsCache,
 } from "../services/chat-service";
@@ -137,6 +138,10 @@ export function useSessionOpener(): SessionOpenerController {
 			// 取自己的调用令牌；每个异步边界都执行 newest-wins 校验。
 			// subscribe() 若已完成还会立即释放旧操作刚建好的 IPC 订阅，避免泄漏。
 			const myOpenToken = bumpOpenSessionToken();
+			// 消息流所有权即刻释放：下面的 navigate / session.create 都是 await，
+			// 期间上一个会话仍在流式输出，而视图（乐观用户气泡 + 路由）已经切到新会话。
+			// 不在这里断开归属，旧会话的 tool.phase / delta 会写进新会话的消息流。
+			setChatStreamOwner(null);
 			const shouldNavigate = options?.navigate !== false;
 			const navigateBeforeCreate =
 				sessionPath === undefined && shouldNavigate && options?.navigateBeforeCreate === true;
@@ -164,6 +169,7 @@ export function useSessionOpener(): SessionOpenerController {
 				setChatMessages((previous) => appendError(previous, message));
 				setActiveSession(null);
 				activeSessionRef.current = null;
+				setChatStreamOwner(null);
 				if (isExistingSessionOpen) perfSessionSwitchComplete("failed", interactionId);
 			};
 			if (navigateBeforeCreate) {
@@ -338,6 +344,7 @@ export function useSessionOpener(): SessionOpenerController {
 				});
 				setActiveSession(null);
 				activeSessionRef.current = null;
+				setChatStreamOwner(null);
 				clearOwnPendingTransition();
 				if (navigateBeforeCreate) {
 					try {
@@ -379,6 +386,7 @@ export function useSessionOpener(): SessionOpenerController {
 			};
 			setActiveSession(earlySessionInfo);
 			activeSessionRef.current = earlySessionInfo;
+			setChatStreamOwner(sessionId);
 			markSessionSwitch("active-session-set");
 			if (shouldNavigate && !navigateBeforeCreate && !stageExistingSessionOpen) {
 				void navigate({ to: "/" });

@@ -734,6 +734,19 @@ export function setCurrentUnsubscribe(fn: (() => void) | null): void {
 	currentUnsubscribe = fn;
 }
 
+// 谁「拥有」全局唯一的聊天消息流（chatMessagesAtom）。
+// 必须是模块级：useSessionManager 同时挂载多份（RootLayout / ChatPage / NewSessionPage），
+// 每份实例的 activeSessionRef 只记得「它自己最后打开的会话」，代表不了用户当前看到的会话。
+// openSession 一进入就置空，直到新会话真正接管；这段窗口里上一个会话仍在飞的事件
+// （订阅拆除前的路由切换、已排期的 delta flush）就不会写进新会话的消息流。
+let chatStreamOwner: string | null = null;
+export function getChatStreamOwner(): string | null {
+	return chatStreamOwner;
+}
+export function setChatStreamOwner(runtimeId: string | null): void {
+	chatStreamOwner = runtimeId;
+}
+
 // 调用令牌：openSession 是一段串行 await，期间用户可能再次切换 session，
 // 第二个 openSession 会在第一个尚未把 unsub 写入 currentUnsubscribe 时就完成
 // 自己的 teardown（teardown 时 currentUnsubscribe 还是 null，什么都拆不掉），

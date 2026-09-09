@@ -6,11 +6,15 @@ import type { ContextCompositionReport, SessionEvent } from "@vetta/runtime-core
 import { createStore, Provider } from "jotai";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
+import { setChatStreamOwner } from "../services/chat-service";
 import { useSessionEventController } from "./useSessionEventController";
 
 describe("useSessionEventController compaction events", () => {
 	it("replaces stale usage and composition when compaction succeeds", () => {
 		const store = createStore();
+		// 事件闸门以模块级「消息流归属」为准（见 chat-service.setChatStreamOwner）：
+		// 直接驱动 controller 的单测必须先声明当前会话拥有消息流。
+		setChatStreamOwner("session-1");
 		store.set(isCompactingAtom, true);
 		store.set(contextUsageAtom, {
 			percent: 91,
