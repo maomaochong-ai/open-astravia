@@ -112,6 +112,10 @@ export class TeamMemberAttemptRunner {
 					}),
 				);
 			}
+			// A user stop is a normal terminal outcome. The cancellation has already
+			// been persisted above (when an attempt was admitted); do not turn it into
+			// an IPC rejection that makes the renderer restore the submitted draft.
+			if (input.signal?.aborted) return this.options.sessionState.get(configuredSession.id) ?? configuredSession;
 			throw error;
 		}
 	}
@@ -213,7 +217,7 @@ export class TeamMemberAttemptRunner {
 				collaboration.attempt,
 				classifyTeamAttemptTerminal({ hasPublishableMessage: false, cancelled: true }),
 			);
-			throw new Error("Team member turn was cancelled");
+			return this.options.sessionState.get(configuredSession.id) ?? configuredSession;
 		}
 		const previousEntryIds = new Set(
 			this.options
@@ -315,11 +319,24 @@ export class TeamMemberAttemptRunner {
 				terminal.state === "waiting-retry" ||
 				terminal.state === "interrupted" ||
 				terminal.state === "awaiting-resource";
+			const cancelled = signal?.aborted ?? false;
 			this.options.eventHub.discard(
 				activeTurn,
-				signal?.aborted ? "aborted" : recoverable ? "waiting" : "failed",
-				signal?.aborted || recoverable ? undefined : errorMessage(error),
+				cancelled ? "aborted" : recoverable ? "waiting" : "failed",
+				cancelled || recoverable ? undefined : errorMessage(error),
 			);
+			if (cancelled) {
+				log.info("team member runtime call cancelled", {
+					teamSessionId: configuredSession.id,
+					memberId,
+					requestId,
+					runtimeSessionId: runtimeState.sessionId,
+					operation: runtimeOperation,
+					terminalState: terminal.state,
+					elapsedMs: Date.now() - runtimeCallStartedAt,
+				});
+				return this.options.sessionState.get(configuredSession.id) ?? configuredSession;
+			}
 			log.error("team member runtime call failed", {
 				teamSessionId: configuredSession.id,
 				memberId,

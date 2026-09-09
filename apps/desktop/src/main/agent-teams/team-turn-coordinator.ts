@@ -165,6 +165,14 @@ export class TeamTurnCoordinator {
 			});
 			return result;
 		} catch (error) {
+			if (controller?.signal.aborted) {
+				log.info("team message send cancelled", {
+					teamSessionId: sessionId,
+					requestId: input.requestId,
+					elapsedMs: Date.now() - startedAt,
+				});
+				return this.options.sessionState.get(sessionId) ?? (await this.options.readSession(sessionId));
+			}
 			log.error("team message failed", {
 				teamSessionId: sessionId,
 				requestId: input.requestId,
@@ -357,6 +365,10 @@ export class TeamTurnCoordinator {
 			rejectedCount: results.filter((result) => result.status === "rejected").length,
 		});
 		const rejected = results.find((result) => result.status === "rejected");
+		// Stopping a Team session aborts every member lane. The user message and any
+		// already-published member results are durable, so return the current snapshot
+		// instead of surfacing an expected cancellation as a send failure.
+		if (signal.aborted) return this.options.sessionState.get(sessionId) ?? admission.session;
 		if (rejected?.status === "rejected") throw rejected.reason;
 		return this.options.sessionState.get(sessionId) ?? admission.session;
 	}

@@ -1059,7 +1059,7 @@ describe("Team member concurrency", () => {
 		const settled = Promise.allSettled([active, next]);
 		await queued;
 		await fixture.service.abort(fixture.session.id);
-		expect((await settled).every((result) => result.status === "rejected")).toBe(true);
+		expect((await settled).every((result) => result.status === "fulfilled")).toBe(true);
 		expect(fixture.runtime.prompt).toHaveBeenCalledTimes(2);
 		// Stopping is unconditional: every member runtime and the coordination runtime are
 		// interrupted, so a member parked inside a tool call also comes down.
@@ -1073,6 +1073,16 @@ describe("Team member concurrency", () => {
 		const state = await fixture.service.readCollaborationState(fixture.session.id);
 		expect(state.workItems.map((item) => item.state)).toEqual(["cancelled", "cancelled", "cancelled"]);
 		expect(state.attempts).toHaveLength(2);
+		// Cancelling the active request must not erase the already-admitted user
+		// messages; reopening the coordination conversation sees the same durable
+		// timeline and cancelled work items.
+		const snapshot = await fixture.service.readSnapshot(fixture.session.id);
+		expect(snapshot.messages.filter((message) => message.kind === "user").map((message) => message.turnId)).toEqual(
+			expect.arrayContaining(["active", "queued"]),
+		);
+		const reopened = fixture.restartService();
+		await reopened.read(fixture.session.id, fixture.session.coordinationRuntime!.sessionPath);
+		expect(await reopened.readSnapshot(fixture.session.id)).toEqual(snapshot);
 	});
 
 	it("runs different members together and retains both publications and delivery receipts", async () => {

@@ -325,12 +325,15 @@ export class TeamTaskControlService {
 					});
 				} catch (error) {
 					await this.store.releaseQueued(session, item.id, controller.signal.aborted ? "cancelled" : "waiting");
-					log.warn("Team task execution stopped", {
+					const cancelled = controller.signal.aborted;
+					const details = {
 						teamSessionId: session.id,
 						workItemId: item.id,
-						cancelled: controller.signal.aborted,
+						cancelled,
 						errorName: error instanceof Error ? error.name : "UnknownError",
-					});
+					};
+					if (cancelled) log.info("Team task execution cancelled", details);
+					else log.warn("Team task execution stopped", details);
 				}
 				const latestSession = await this.host.readSession(session.id);
 				const latest = this.store.read(latestSession).workItems.find((candidate) => candidate.id === item.id);
