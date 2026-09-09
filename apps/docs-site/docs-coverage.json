@@ -63,6 +63,12 @@
 			"pages": ["/product/design/"]
 		},
 		{
+			"id": "agent-teams",
+			"source": "packages/agent-team and apps/desktop/src/main/agent-teams",
+			"status": "complete",
+			"pages": ["/product/agent-teams/"]
+		},
+		{
 			"id": "batch-tasks",
 			"source": "apps/desktop/src/renderer/domains/batch-tasks",
 			"status": "complete",
