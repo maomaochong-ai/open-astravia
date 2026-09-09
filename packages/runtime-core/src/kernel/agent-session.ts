@@ -2,6 +2,7 @@ import type {
 	AgentSessionState,
 	QueuedSessionInput,
 	QueuedSessionInputResult,
+	QueueSessionInputIfRunningResult,
 	RuntimeInputRequestPreparer,
 	SessionContextRecord,
 	SessionInput,
@@ -142,6 +143,24 @@ export class AgentSession {
 			return { status: "queued", behavior: options.streamingBehavior, pendingCount, id };
 		}
 		return this.startRequest(request, preparer ?? this.inputRequestPreparer);
+	}
+
+	/**
+	 * 原子地把输入加入正在运行的 Turn；空闲时不启动新 Turn。
+	 * 宿主据此可在返回 idle 后走自己的正常 admission，避免先读状态再 prompt 的竞态。
+	 */
+	async queueRequestIfRunning(
+		request: SessionInputRequest,
+		behavior: SessionStreamingBehavior,
+		preparer?: RuntimeInputRequestPreparer,
+	): Promise<QueueSessionInputIfRunningResult> {
+		await this.contextWrite;
+		if (preparer) this.inputRequestPreparer = preparer;
+		if (this.currentState === "closed" || this.currentState === "closing") throw sessionClosedError();
+		if (this.currentState === "recovery_required") throw turnPersistenceError();
+		if (this.currentState === "idle") return { status: "idle" };
+		const { id, pendingCount } = this.inputQueue.enqueueRequestWithId(behavior, request);
+		return { status: "queued", behavior, pendingCount, id };
 	}
 
 	async continue(): Promise<TurnResult> {

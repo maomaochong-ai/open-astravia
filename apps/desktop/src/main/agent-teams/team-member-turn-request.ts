@@ -12,6 +12,7 @@ export interface TeamMemberTurnRequest {
 	readonly attachments?: readonly PromptAttachmentRef[];
 	readonly modelKey?: string;
 	readonly reasoning?: string;
+	readonly streamingBehavior?: "steer" | "followUp";
 	readonly mode?: TeamMemberTurnAttemptMode;
 	readonly waitingMemberId?: string;
 	readonly expectedWorkItemRevision?: number;

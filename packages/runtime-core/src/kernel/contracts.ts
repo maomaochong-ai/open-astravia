@@ -77,6 +77,9 @@ export interface QueuedSessionInputResult {
 	readonly id?: string;
 }
 
+/** 只在已有 Turn 运行时排队；用于需要避免“检查后启动”竞态的宿主编排。 */
+export type QueueSessionInputIfRunningResult = QueuedSessionInputResult | { readonly status: "idle" };
+
 export interface TurnInputQueue {
 	takeSteering(): readonly UserMessage[];
 	takeFollowUps(): readonly UserMessage[];

@@ -21,7 +21,7 @@ export interface InputEditorProps {
 	onValueChange?: (value: string, segments?: readonly InputSegment[]) => void;
 	persistenceId?: string | null;
 	onContextMenu: (event: MouseEvent<HTMLDivElement>) => void;
-	onEnter: () => boolean;
+	onEnter: (event?: KeyboardEvent) => boolean;
 	onFocusChange: (focused: boolean) => void;
 	onTriggerChange?: (trigger: TriggerMatch | null) => void;
 }

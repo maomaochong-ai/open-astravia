@@ -30,6 +30,8 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Added
 
+- Session 输入队列支持带稳定条目标识的 `steer`/`followUp` 请求，以及只在运行态原子入队的 `queuePromptIfRunning` 入口；宿主可以区分立即优先处理与等待完整 Turn 两种发送意图，并在重启后恢复队列。
+
 - LLM 生成 Span 记录本次调用的有效输出上限 `maxTokens`，`stopReason: "length"` 可与 `usage.output` 对照判断是请求上限过小还是网关自行截断。
 
 - 新增产品无关的 `ConversationAgentMessageEvent`/`ConversationMessageStreamEvent` 信封，以普通 Conversation、消息、Turn、Agent 作者和序列身份承载标准 `AssistantMessageEvent`，供不同产品复用同一流式投影。

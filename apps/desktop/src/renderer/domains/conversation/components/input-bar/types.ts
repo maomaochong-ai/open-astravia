@@ -42,7 +42,9 @@ export interface ControlledInputBarProps {
 export type InputBarProps = ControlledInputBarProps;
 
 export interface SendInteractionContext {
-	interactionId: string;
+	interactionId?: string;
+	/** 用户发送意图；未指定时沿用普通 followUp。 */
+	streamingBehavior?: "steer" | "followUp";
 }
 
 export interface InputBarLabels {
@@ -228,7 +230,7 @@ export interface InputBarModel {
 		setFocused: (focused: boolean) => void;
 		setDrawerActiveTab: (tabId: string | null) => void;
 		/** 回车键；返回 true 表示已当作发送处理，编辑器不再插换行。 */
-		handleEnter: () => boolean;
+		handleEnter: (event?: KeyboardEvent) => boolean;
 		handleContextMenu: (e: MouseEvent<HTMLDivElement>) => void;
 		/** 从文本流里删掉该图片的 token（缩略图行的 × 按钮）。 */
 		removeImage: (path: string) => void;

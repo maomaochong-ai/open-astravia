@@ -470,6 +470,8 @@ export interface SendMessageOptions {
 	source?: "plugin";
 	/** New-session input already rendered optimistically before runtime creation. */
 	stagedInput?: StagedSendInput;
+	/** 用户发送意图：Ctrl+Enter 走 steer，Enter 走 followUp。 */
+	streamingBehavior?: "steer" | "followUp";
 }
 
 /** sendMessage 的回执（ADR-0060）：streaming 中入 kernel 队列时返回 queued + 条目 id。 */

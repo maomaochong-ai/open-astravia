@@ -1470,6 +1470,8 @@
   "kbSelectModelFirst": "Please select a model first",
   "shortcutNewSessionLabel": "New Session",
   "shortcutNewSessionDesc": "Create a new chat session in the current project",
+  "shortcutSteerMessageLabel": "Prioritize Message",
+  "shortcutSteerMessageDesc": "Handle the editor message after the current model call or tool execution finishes",
   "shortcutOpenProjectLabel": "Open Project",
   "shortcutOpenProjectDesc": "Select and open a project folder",
   "shortcutOpenSettingsLabel": "Open Settings",

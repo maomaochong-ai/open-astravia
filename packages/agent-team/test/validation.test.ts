@@ -124,6 +124,17 @@ describe("Agent Team IPC input validation", () => {
 		).toThrow("Invalid send team message input");
 	});
 
+	it.each(["steer", "followUp"] as const)("accepts %s streaming behavior on team sends", (streamingBehavior) => {
+		expect(
+			parseSendTeamMessageInput({
+				requestId: `request-${streamingBehavior}`,
+				text: "Continue",
+				targetMemberIds: [],
+				streamingBehavior,
+			}),
+		).toMatchObject({ streamingBehavior });
+	});
+
 	it("validates Team-session model settings as a closed contract", () => {
 		expect(parseUpdateTeamSessionModelSettingsInput({ modelKey: "openai/gpt-5", reasoning: "high" })).toEqual({
 			modelKey: "openai/gpt-5",

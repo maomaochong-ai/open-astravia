@@ -14,6 +14,7 @@ export type {
 	PromptRequest,
 	PromptResourceRef,
 	QueueChangedEvent,
+	RuntimeQueuePromptIfRunningOutcome,
 	RuntimeSandboxGrantInfo,
 	RuntimeSessionAgentSelection,
 	RuntimeTurnPromptOutcome,

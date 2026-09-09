@@ -36,7 +36,7 @@ export function useGlobalShortcuts(handler: ShortcutHandler): {
 	}, []);
 
 	const resolvedBindings = useMemo((): ShortcutBinding[] => {
-		return SHORTCUT_ACTIONS.map((action) => {
+		return SHORTCUT_ACTIONS.filter((action) => action.scope === "app").map((action) => {
 			const key = getEffectiveShortcut(action.id, customShortcuts);
 			const hasChord = key.includes("mod") || key.includes("ctrl") || key.includes("alt");
 			return {
@@ -81,4 +81,25 @@ export function useGlobalShortcuts(handler: ShortcutHandler): {
 	}, []);
 
 	return { customShortcuts, setCustomShortcut, resetShortcut, resetAll };
+}
+
+/** 输入组件读取可配置快捷键；默认值同步可用，配置加载后热更新。 */
+export function useEffectiveShortcut(actionId: Parameters<typeof getEffectiveShortcut>[0]): string {
+	const [customShortcuts, setCustomShortcuts] = useState<ShortcutBindings>({});
+
+	useEffect(() => {
+		let mounted = true;
+		void loadShortcutBindings().then((bindings) => {
+			if (mounted) setCustomShortcuts(bindings);
+		});
+		const unsubscribe = window.vetta.config.onShortcutsChanged?.((event) => {
+			setCustomShortcuts(event.bindings ?? {});
+		});
+		return () => {
+			mounted = false;
+			unsubscribe?.();
+		};
+	}, []);
+
+	return getEffectiveShortcut(actionId, customShortcuts);
 }

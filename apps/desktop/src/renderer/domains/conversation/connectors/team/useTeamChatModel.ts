@@ -94,6 +94,10 @@ export function useTeamChatModel(
 	const loadedSessionRef = useRef<{ readonly teamId: string; readonly sessionId: string } | undefined>(undefined);
 	const sessionCreationRef = useRef<Promise<Awaited<ReturnType<typeof createTeamChatSession>>> | undefined>(undefined);
 	const cancelledRequests = useRef(new Set<string>());
+	// A steer request is allowed while another request is still settling. Keep
+	// every request identity so an earlier completion cannot clear the newer
+	// request's pending state or flip the composer back to ready prematurely.
+	const inFlightRequestIds = useRef(new Set<string>());
 	const pendingRef = useRef<TeamPendingRequest | undefined>(undefined);
 	const streamsRef = useRef<TeamStreamState>({});
 	pendingRef.current = pending;
@@ -176,6 +180,7 @@ export function useTeamChatModel(
 		// Keep that request alive until send settles; clearing it here makes the
 		// feed empty when session creation releases the first-paint handoff.
 		if (!handoff) {
+			inFlightRequestIds.current.clear();
 			pendingRef.current = undefined;
 			setPending(undefined);
 		}
@@ -561,7 +566,12 @@ export function useTeamChatModel(
 	);
 
 	const send = useCallback(
-		async (handoff?: TeamSessionSendHandoff) => {
+		async (
+			handoffOrBehavior?: TeamSessionSendHandoff | "steer" | "followUp",
+			explicitBehavior?: "steer" | "followUp",
+		) => {
+			const handoff = typeof handoffOrBehavior === "string" ? undefined : handoffOrBehavior;
+			const streamingBehavior = typeof handoffOrBehavior === "string" ? handoffOrBehavior : explicitBehavior;
 			const activeHandoff =
 				handoff ?? (!session && preferredSessionId ? claimTeamSessionHandoff(preferredSessionId) : undefined);
 			const draftText = (activeHandoff?.text ?? draft).trim();
@@ -576,7 +586,7 @@ export function useTeamChatModel(
 			if (
 				(!session && !createNewSession && !activeHandoff) ||
 				(!draftText && (activeHandoff?.attachments.length ?? attachments.length) === 0) ||
-				pendingRef.current
+				(inFlightRequestIds.current.size > 0 && streamingBehavior !== "steer")
 			) {
 				console.info("[agent-team] send ignored", {
 					...attempt,
@@ -618,6 +628,7 @@ export function useTeamChatModel(
 				timestamp: activeHandoff?.timestamp ?? Date.now(),
 			};
 			pendingRef.current = nextPending;
+			inFlightRequestIds.current.add(requestId);
 			setPending(nextPending);
 			setStatus("sending");
 			setError(undefined);
@@ -681,6 +692,7 @@ export function useTeamChatModel(
 					...(promptAttachments.length ? { attachments: promptAttachments } : {}),
 					...(requestModelKey ? { modelKey: requestModelKey } : {}),
 					...(requestReasoning ? { reasoning: requestReasoning } : {}),
+					...(streamingBehavior ? { streamingBehavior } : {}),
 				});
 				setSnapshot((current) =>
 					!current ||
@@ -691,7 +703,7 @@ export function useTeamChatModel(
 				);
 				setContextUsages((current) => ({ ...current, ...readSnapshotContextUsages(next) }));
 				setError(undefined);
-				setStatus("ready");
+				if (inFlightRequestIds.current.size <= 1) setStatus("ready");
 				notifyTeamSessionsChanged(teamId);
 				console.info("[agent-team] send-message IPC completed", {
 					teamId,
@@ -718,10 +730,10 @@ export function useTeamChatModel(
 					error: cause instanceof Error ? cause.message : String(cause),
 				});
 				if (cancelledRequests.current.delete(requestId)) {
-					setStatus("ready");
+					if (inFlightRequestIds.current.size <= 1) setStatus("ready");
 				} else {
 					setError(errorMessage(cause));
-					setStatus("error");
+					if (inFlightRequestIds.current.size <= 1) setStatus("error");
 				}
 				const restoreSubmittedDraft = draftRef.current.length === 0;
 				updateDraft((current) => current || draftText);
@@ -732,8 +744,10 @@ export function useTeamChatModel(
 				}
 				updateAttachments((current) => mergeAttachments(current, sentAttachments));
 			} finally {
+				inFlightRequestIds.current.delete(requestId);
 				if (pendingRef.current?.requestId === requestId) pendingRef.current = undefined;
 				setPending((current) => (current?.requestId === requestId ? undefined : current));
+				if (inFlightRequestIds.current.size > 0) setStatus("sending");
 			}
 		},
 		[
@@ -768,8 +782,10 @@ export function useTeamChatModel(
 	const abort = useCallback(async () => {
 		const request = pendingRef.current;
 		const target = sessionRef.current;
-		if (request) cancelledRequests.current.add(request.requestId);
+		for (const requestId of inFlightRequestIds.current) cancelledRequests.current.add(requestId);
+		if (request && inFlightRequestIds.current.size === 0) cancelledRequests.current.add(request.requestId);
 		setStatus("cancelling");
+		inFlightRequestIds.current.clear();
 		pendingRef.current = undefined;
 		setPending(undefined);
 		const abortedStreams = Object.fromEntries(

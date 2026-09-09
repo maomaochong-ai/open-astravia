@@ -279,6 +279,16 @@ export interface RuntimeTurnPromptOutcome {
 	readonly queueItemId?: string;
 }
 
+/** 原子 queue-if-running 的宿主回执；idle 表示调用方应走正常的新 Turn admission。 */
+export type RuntimeQueuePromptIfRunningOutcome =
+	| { readonly status: "idle" }
+	| {
+			readonly status: "queued";
+			readonly behavior: "steer" | "followUp";
+			readonly pendingCount: number;
+			readonly id?: string;
+	  };
+
 /** 输入队列变化广播：renderer 镜像队列抽屉、插件卡片据此渲染排队状态（ADR-0060）。 */
 export interface QueueChangedEvent extends SessionEventBase {
 	type: "queue.changed";
@@ -487,6 +497,7 @@ export interface SessionFacade {
 	setExecutionMode(sessionId: string, mode: SessionExecutionMode): Promise<void>;
 	setGlobalExecutionMode(mode: SessionExecutionMode): Promise<void>;
 	prompt(sessionId: string, request: PromptRequest): Promise<RuntimeTurnPromptOutcome>;
+	queuePromptIfRunning(sessionId: string, request: PromptRequest): Promise<RuntimeQueuePromptIfRunningOutcome>;
 	continue(sessionId: string): Promise<void>;
 	abort(sessionId: string): Promise<void>;
 	invokeSessionExtension<Input, Output>(

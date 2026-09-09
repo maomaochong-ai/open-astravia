@@ -160,7 +160,16 @@ export class TeamMemberAttemptRunner {
 		input: TeamMemberTurnRequest,
 		collaboration: { readonly workItem: TeamWorkItem; readonly attempt: TeamMemberTurnAttempt },
 	): Promise<TeamSessionDocument> {
-		const { memberId, promptText, requestId, sourceTurnId, signal, attachments, mode = "initial" } = input;
+		const {
+			memberId,
+			promptText,
+			requestId,
+			sourceTurnId,
+			signal,
+			attachments,
+			mode = "initial",
+			streamingBehavior,
+		} = input;
 		let configuredSession = session;
 		let preparedContext: Awaited<ReturnType<TeamSharedContextService["prepareMemberContext"]>>;
 		try {
@@ -273,6 +282,7 @@ export class TeamMemberAttemptRunner {
 					...(attachments?.length ? { attachments: [...attachments] } : {}),
 					...(input.modelKey ? { modelKey: input.modelKey } : {}),
 					...(input.reasoning ? { reasoning: input.reasoning } : {}),
+					...(streamingBehavior ? { streamingBehavior } : {}),
 				});
 			}
 			if (signal?.aborted) throw new Error("Team member turn was cancelled");

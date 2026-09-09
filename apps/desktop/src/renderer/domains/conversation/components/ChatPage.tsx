@@ -10,7 +10,15 @@ export function ChatPage(): JSX.Element | null {
 	// 视图层不关心 sendMessage 的回执（queued/sent），收窄为 void 保持 props 稳定。
 	const handleSend = useCallback(
 		async (overrideText?: string, context?: SendInteractionContext) => {
-			await sendMessage(overrideText, context ? { interactionId: context.interactionId } : undefined);
+			await sendMessage(
+				overrideText,
+				context
+					? {
+							interactionId: context.interactionId,
+							streamingBehavior: context.streamingBehavior,
+						  }
+					: undefined,
+			);
 		},
 		[sendMessage],
 	);

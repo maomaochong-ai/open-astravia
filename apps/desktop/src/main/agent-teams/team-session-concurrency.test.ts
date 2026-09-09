@@ -981,6 +981,44 @@ describe("Team member concurrency", () => {
 		).toEqual(["completed", "completed"]);
 	});
 
+	it("keeps steer requests independently attributable when the member already owns a Team turn", async () => {
+		const fixture = await createFixture();
+		const [member] = fixture.members;
+		const firstTurn = fixture.turn(member, "first");
+		const nextTurn = fixture.turn(member, "steer-next");
+		const firstSend = fixture.service.send(fixture.session.id, {
+			requestId: "steer-first",
+			text: "first",
+			targetMemberIds: [member],
+		});
+		await firstTurn.started.promise;
+		const nextSend = fixture.service.send(fixture.session.id, {
+			requestId: "steer-next",
+			text: "steer-next",
+			targetMemberIds: [member],
+			streamingBehavior: "steer",
+		});
+		await fixture.workState(`work:steer-next:${member}`, "queued");
+		expect(fixture.runtime.queuePromptIfRunning).not.toHaveBeenCalled();
+		firstTurn.finish.resolve();
+		await firstSend;
+		await nextTurn.started.promise;
+		nextTurn.finish.resolve();
+		await nextSend;
+		const state = await fixture.service.readCollaborationState(fixture.session.id);
+		expect(state.workItems).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ requestTurnId: "steer-first", state: "completed" }),
+				expect.objectContaining({ requestTurnId: "steer-next", state: "completed" }),
+			]),
+		);
+		expect(
+			(await fixture.service.readSnapshot(fixture.session.id)).messages.filter(
+				(message) => message.turnId === "steer-first" || message.turnId === "steer-next",
+			),
+		).toHaveLength(4);
+	});
+
 	it("joins duplicate requests without executing the member twice", async () => {
 		const fixture = await createFixture();
 		const [member] = fixture.members;
@@ -1399,6 +1437,7 @@ async function createFixture(extensions?: AgentTeamExtensionRegistry) {
 		),
 		getFullHistory: (id: string) => history.get(id) ?? [],
 		retry: vi.fn(async (id: string) => runtime.prompt(id, { text: "retry" })),
+		queuePromptIfRunning: vi.fn(async () => ({ status: "idle" as const })),
 		prompt: vi.fn(async (id: string, input: { text: string }) => {
 			const turn = turns.get(`${id}:${input.text}`);
 			if (!turn) throw new Error(`Unexpected member prompt: ${id}:${input.text}`);

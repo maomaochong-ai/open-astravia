@@ -3,6 +3,7 @@ import type { Api, Message, Model } from "@vetta/ai";
 import type {
 	HistoryEntry,
 	PromptRequest,
+	RuntimeQueuePromptIfRunningOutcome,
 	RuntimeTurnPromptOutcome,
 	SessionEvent,
 	SessionExecutionMode,
@@ -125,6 +126,14 @@ export class RuntimeHostSessionOperations {
 		} finally {
 			this.options.synchronizeSessionIdentity(sessionKey, handle);
 		}
+	}
+
+	async queuePromptIfRunning(sessionId: string, request: PromptRequest): Promise<RuntimeQueuePromptIfRunningOutcome> {
+		const handle = this.requireSession(sessionId);
+		await this.applyPendingExecutionMode(handle.lifecycle.sessionId, handle);
+		return handle.turnControl.queuePromptIfRunning
+			? await handle.turnControl.queuePromptIfRunning(request)
+			: { status: "idle" };
 	}
 
 	async continue(sessionId: string): Promise<void> {

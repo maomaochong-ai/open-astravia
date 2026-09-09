@@ -114,7 +114,7 @@ export function TeamComposerConnector({
 		activityWorkspaceId: model.workspace?.id,
 		onAbort: actions.abort,
 		onExpandedChange: undefined,
-		onSend: () => {
+		onSend: (_overrideText, context) => {
 			console.info("[agent-team] input trigger send", {
 				activeSessionId: model.activeSessionId,
 				canSend: model.canSend,
@@ -122,7 +122,7 @@ export function TeamComposerConnector({
 				draftLength: model.draft.trim().length,
 				attachmentCount: model.attachments.length,
 			});
-			return actions.send();
+			return actions.send(context?.streamingBehavior);
 		},
 		onAtItemSelect: handleAtItemSelect,
 	});

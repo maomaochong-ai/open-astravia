@@ -109,6 +109,22 @@ describe("AgentSession 队列生命周期（ADR-0060）", () => {
 		await active;
 	});
 
+	it("queueRequestIfRunning 原子区分忙碌入队与空闲状态", async () => {
+		const fixture = createFixture({ blockRun: true });
+		const session = await createAgentSession({ id: "s", pipeline: fixture.pipeline });
+		const active = session.send({ message: userMessage("first") });
+		await vi.waitFor(() => expect(fixture.runTurn).toHaveBeenCalledOnce());
+
+		const queued = await session.queueRequestIfRunning({ payload: { text: "steer" }, displayText: "steer" }, "steer");
+		expect(queued).toMatchObject({ status: "queued", behavior: "steer", pendingCount: 1 });
+
+		fixture.completeRun();
+		await active;
+		const idle = await session.queueRequestIfRunning({ payload: { text: "idle" }, displayText: "idle" }, "steer");
+		expect(idle).toEqual({ status: "idle" });
+		expect(session.listQueue().entries).toHaveLength(1);
+	});
+
 	it("turn 以 cancelled 收尾且队列非空时进入 paused（pause-on-terminal）", async () => {
 		const fixture = createFixture({ blockRun: true });
 		const session = await createAgentSession({ id: "s", pipeline: fixture.pipeline });

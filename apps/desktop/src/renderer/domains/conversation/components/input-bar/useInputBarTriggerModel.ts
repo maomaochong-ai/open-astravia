@@ -1,7 +1,9 @@
 import type { SkillInfo } from "@preload/api";
+import { useEffectiveShortcut } from "@shared/hooks/useShortcuts";
 import { recordInputFilesAdded } from "@shared/lib/app-monitor-events";
 import { isImagePath } from "@shared/lib/input-tokens";
 import { perfSendBegin, perfSendMark } from "@shared/lib/perf-send";
+import { matchesShortcut } from "@shared/lib/platform";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
 import type { AtPanelItem, AtPanelSelection } from "../AtPanel";
@@ -52,6 +54,7 @@ export function useInputBarTriggerModel({
 	/** Handles connector supplied @ candidates while keeping file handling shared. */
 	onAtItemSelect?: (item: AtPanelItem) => void;
 }) {
+	const steerShortcut = useEffectiveShortcut("steer-message");
 	const [isFocused, setIsFocused] = useState(false);
 	const [trigger, setTrigger] = useState<TriggerMatch | null>(null);
 	const dismissedTriggerRef = useRef<string | null>(null);
@@ -84,7 +87,7 @@ export function useInputBarTriggerModel({
 
 	const handleSend = useCallback(() => {
 		const interactionId = perfSendBegin("send-button");
-		void onSend(undefined, { interactionId });
+		void onSend(undefined, { interactionId, streamingBehavior: "followUp" });
 		perfSendMark("handler-return", interactionId);
 	}, [onSend]);
 	const handleAbort = useCallback(async () => {
@@ -95,25 +98,29 @@ export function useInputBarTriggerModel({
 			throw error;
 		}
 	}, [onAbort]);
-	const handleEnter = useCallback((): boolean => {
-		if (canSend) {
-			const interactionId = perfSendBegin("enter");
-			void onSend(undefined, { interactionId });
-			perfSendMark("handler-return", interactionId);
-			return true;
-		}
-		if (isStreaming && hasSession && !isEmpty) {
-			void onSend();
-			return true;
-		}
-		if (hasSession && !isStreaming && isEmpty && firstSuggestion) {
-			const interactionId = perfSendBegin("suggestion-enter");
-			void onSend(firstSuggestion, { interactionId });
-			perfSendMark("handler-return", interactionId);
-			return true;
-		}
-		return false;
-	}, [canSend, firstSuggestion, hasSession, isEmpty, isStreaming, onSend]);
+	const handleEnter = useCallback(
+		(event?: KeyboardEvent): boolean => {
+			const streamingBehavior = event && matchesShortcut(event, steerShortcut) ? "steer" : "followUp";
+			if (canSend) {
+				const interactionId = perfSendBegin("enter");
+				void onSend(undefined, { interactionId, streamingBehavior });
+				perfSendMark("handler-return", interactionId);
+				return true;
+			}
+			if (isStreaming && hasSession && !isEmpty) {
+				void onSend(undefined, { streamingBehavior });
+				return true;
+			}
+			if (hasSession && !isStreaming && isEmpty && firstSuggestion) {
+				const interactionId = perfSendBegin("suggestion-enter");
+				void onSend(firstSuggestion, { interactionId });
+				perfSendMark("handler-return", interactionId);
+				return true;
+			}
+			return false;
+		},
+		[canSend, firstSuggestion, hasSession, isEmpty, isStreaming, onSend, steerShortcut],
+	);
 
 	const handleTriggerChange = useCallback((next: TriggerMatch | null) => {
 		setTrigger(next);

@@ -327,6 +327,9 @@ export class TeamTurnCoordinator {
 			remainingMemberCount: admission.remaining.length,
 			remainingMemberIds: admission.remaining,
 		});
+		// Team requests always enter the durable member scheduler, including `steer`.
+		// The runtime queue is intentionally not used here: a Team attempt needs its own
+		// work item/attempt/publication identity so reopening cannot merge two replies.
 		// Join every member before releasing this request's cancellation scope. A failing
 		// sibling does not abort independent work or overwrite an already published result.
 		const results = await Promise.allSettled(
@@ -342,6 +345,7 @@ export class TeamTurnCoordinator {
 					attachments: input.attachments,
 					modelKey: input.modelKey,
 					reasoning: input.reasoning,
+					streamingBehavior: input.streamingBehavior,
 				}),
 			),
 		);

@@ -1,5 +1,5 @@
 import type { Message } from "@vetta/ai";
-import type { HistoryEntry, PromptRequest, SessionEvent } from "../contracts.js";
+import type { HistoryEntry, PromptRequest, RuntimeQueuePromptIfRunningOutcome, SessionEvent } from "../contracts.js";
 import {
 	type ConversationDocument,
 	type ConversationDocumentCommand,
@@ -259,6 +259,20 @@ export class RuntimeSession {
 			}
 			throw error;
 		}
+	}
+
+	async queuePromptIfRunning(request: PromptRequest): Promise<RuntimeQueuePromptIfRunningOutcome> {
+		this.assertOpen();
+		if (this.historyMutation || this.contextController?.readState().isCompacting) throw sessionBusyError();
+		const inputRequest = this.promptAdapter.createRequest(request);
+		const result = await this.session.queueRequestIfRunning(
+			inputRequest,
+			request.streamingBehavior ?? "followUp",
+			this.promptAdapter,
+		);
+		return result.status === "idle"
+			? result
+			: { status: "queued", behavior: result.behavior, pendingCount: result.pendingCount, id: result.id };
 	}
 
 	async continue(): Promise<TurnResult> {
@@ -576,6 +590,7 @@ export class RuntimeSession {
 							...(result.status === "completed" ? { turnId: result.turnId } : {}),
 						};
 					},
+					queuePromptIfRunning: async (request) => this.queuePromptIfRunning(request),
 					continue: async () => {
 						await this.continue();
 					},

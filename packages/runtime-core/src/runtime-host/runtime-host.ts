@@ -5,6 +5,7 @@ import type {
 	HistoryEntry,
 	ProjectInfo,
 	PromptRequest,
+	RuntimeQueuePromptIfRunningOutcome,
 	RuntimeSandboxGrantInfo,
 	RuntimeTurnPromptOutcome,
 	SessionConfig,
@@ -293,6 +294,10 @@ export class RuntimeHost implements SessionFacade {
 
 	async prompt(sessionId: string, request: PromptRequest): Promise<RuntimeTurnPromptOutcome> {
 		return this.sessionOperations.prompt(sessionId, request);
+	}
+
+	async queuePromptIfRunning(sessionId: string, request: PromptRequest): Promise<RuntimeQueuePromptIfRunningOutcome> {
+		return this.sessionOperations.queuePromptIfRunning(sessionId, request);
 	}
 
 	async continue(sessionId: string): Promise<void> {

@@ -155,6 +155,7 @@ describe("TeamComposerConnector", () => {
 		});
 
 		expect(viewActions.send).toHaveBeenCalledOnce();
+		expect(viewActions.send).toHaveBeenCalledWith("followUp");
 		expect(captured.insertMemberToken).toHaveBeenLastCalledWith(
 			"member-1",
 			"research",
@@ -164,6 +165,17 @@ describe("TeamComposerConnector", () => {
 		);
 		expect(viewActions.removeAttachment).toHaveBeenCalledWith("C:/workspace/brief.md");
 		expect(viewActions.selectModel).toHaveBeenCalledWith("anthropic/claude", "medium");
+	});
+
+	it("maps Ctrl+Enter to steer while keeping Enter as followUp", () => {
+		const viewActions = actions();
+		render(<TeamComposerConnector model={model()} actions={viewActions} />);
+		const inputModel = captured.model;
+		if (!inputModel) throw new Error("InputBar model was not captured");
+		act(() => {
+			inputModel.actions.handleEnter(new KeyboardEvent("keydown", { key: "Enter", ctrlKey: true }));
+		});
+		expect(viewActions.send).toHaveBeenCalledWith("steer");
 	});
 
 	it("surfaces a pending ask_user_question owned by one of the team member runtimes", () => {

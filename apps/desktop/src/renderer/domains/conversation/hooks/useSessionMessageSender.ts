@@ -528,7 +528,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			// 恒置 followUp（ADR-0060）：streaming 中入 kernel 队列、立即收 queued 回执；
 			// 空闲时 kernel 忽略该字段直接开 turn。即便 isStreamingAtom 与主进程真实状态
 			// 失步，最坏结果也是入队而非 SESSION_BUSY 丢消息。
-			promptReq.streamingBehavior = "followUp";
+			promptReq.streamingBehavior = options?.streamingBehavior ?? "followUp";
 			let sendResult: SendMessageResult | undefined;
 			try {
 				perfSendMark("await-plugin-host", interactionId);

@@ -100,6 +100,7 @@ export type {
 	PreparedContext,
 	QueuedSessionInput,
 	QueuedSessionInputResult,
+	QueueSessionInputIfRunningResult,
 	RuntimeCapabilityDefinition,
 	RuntimeExecutionObservationEnvelope,
 	RuntimeInputRequestPreparationContext,

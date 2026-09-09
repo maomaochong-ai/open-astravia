@@ -41,7 +41,7 @@ export type ConversationEditorViewProps = ControlledEditorProps & {
 	readonly nodes?: InitialConfigType["nodes"];
 	readonly plugins?: ReactNode;
 	readonly onContextMenu?: (event: MouseEvent<HTMLDivElement>) => void;
-	readonly onEnter: () => boolean;
+	readonly onEnter: (event?: KeyboardEvent) => boolean;
 	readonly onFocusChange: (focused: boolean) => void;
 };
 
@@ -224,7 +224,7 @@ function ControlledTextPlugin({
 	return null;
 }
 
-function SubmitPlugin({ onEnter }: { readonly onEnter: () => boolean }): null {
+function SubmitPlugin({ onEnter }: { readonly onEnter: (event?: KeyboardEvent) => boolean }): null {
 	const [editor] = useLexicalComposerContext();
 	const onEnterRef = useRef(onEnter);
 	onEnterRef.current = onEnter;
@@ -235,7 +235,7 @@ function SubmitPlugin({ onEnter }: { readonly onEnter: () => boolean }): null {
 				KEY_ENTER_COMMAND,
 				(event) => {
 					if (event === null || event.shiftKey || event.isComposing) return false;
-					if (!onEnterRef.current()) return false;
+					if (!onEnterRef.current(event ?? undefined)) return false;
 					event.preventDefault();
 					return true;
 				},

@@ -9,6 +9,8 @@ export interface ShortcutActionDef {
 	labelKey: string;
 	descriptionKey: string;
 	defaultShortcut: string;
+	/** app 动作进入全局 scope；editor 动作只由输入组件消费。 */
+	scope: "app" | "editor";
 }
 
 export const FILE_EDITOR_SAVE_EVENT = "vetta:file-editor-save";
@@ -20,24 +22,35 @@ export const SHORTCUT_ACTIONS = [
 		labelKey: "shortcutNewSessionLabel",
 		descriptionKey: "shortcutNewSessionDesc",
 		defaultShortcut: "mod+n",
+		scope: "app",
 	},
 	{
 		id: "open-project",
 		labelKey: "shortcutOpenProjectLabel",
 		descriptionKey: "shortcutOpenProjectDesc",
 		defaultShortcut: "mod+o",
+		scope: "app",
 	},
 	{
 		id: "open-settings",
 		labelKey: "shortcutOpenSettingsLabel",
 		descriptionKey: "shortcutOpenSettingsDesc",
 		defaultShortcut: "mod+,",
+		scope: "app",
 	},
 	{
 		id: "save-file",
 		labelKey: "shortcutSaveFileLabel",
 		descriptionKey: "shortcutSaveFileDesc",
 		defaultShortcut: "mod+s",
+		scope: "app",
+	},
+	{
+		id: "steer-message",
+		labelKey: "shortcutSteerMessageLabel",
+		descriptionKey: "shortcutSteerMessageDesc",
+		defaultShortcut: "mod+enter",
+		scope: "editor",
 	},
 ] as const satisfies readonly ShortcutActionDef[];
 
@@ -141,6 +154,7 @@ export function findShortcutBindingConflict(
 	const normalized = normalizeShortcutCombo(candidate);
 	for (const action of SHORTCUT_ACTIONS) {
 		if (action.id === actionId) continue;
+		if (action.scope !== getShortcutActionDef(actionId).scope) continue;
 		if (getEffectiveShortcut(action.id, bindings) === normalized) {
 			return action.id;
 		}

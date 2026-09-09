@@ -281,6 +281,8 @@ export interface SendTeamMessageInput {
 	/** Per-turn model selection applied consistently to every initially addressed member. */
 	readonly modelKey?: string;
 	readonly reasoning?: string;
+	/** Enter 等待完整 Turn；Ctrl+Enter 在当前模型/工具安全边界优先注入。 */
+	readonly streamingBehavior?: "steer" | "followUp";
 }
 
 export interface TeamUserMessageMention {

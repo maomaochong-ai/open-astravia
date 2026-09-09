@@ -190,6 +190,7 @@ export const SendTeamMessageInputSchema = Type.Object(
 		attachments: Type.Optional(Type.Array(promptAttachment, { maxItems: 128 })),
 		modelKey: Type.Optional(id),
 		reasoning: Type.Optional(id),
+		streamingBehavior: Type.Optional(Type.Union([Type.Literal("steer"), Type.Literal("followUp")])),
 	},
 	{ additionalProperties: false },
 );

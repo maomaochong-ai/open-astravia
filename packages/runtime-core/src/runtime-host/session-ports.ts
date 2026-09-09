@@ -4,6 +4,7 @@ import type { ContextCompositionReport } from "../context-composition/contracts.
 import type {
 	HistoryEntry,
 	PromptRequest,
+	RuntimeQueuePromptIfRunningOutcome,
 	RuntimeTurnPromptOutcome,
 	SessionEvent,
 	SessionExecutionMode,
@@ -42,6 +43,7 @@ export interface RuntimeTurnPrompt {
 /** 只负责启动、继续和中止 Turn。 */
 export interface RuntimeSessionTurnControl {
 	prompt(request: RuntimeTurnPrompt): Promise<RuntimeTurnPromptOutcome | undefined>;
+	queuePromptIfRunning?(request: RuntimeTurnPrompt): Promise<RuntimeQueuePromptIfRunningOutcome>;
 	continue(): Promise<void>;
 	retry(): Promise<void>;
 	abort(): Promise<void>;

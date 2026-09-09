@@ -75,7 +75,7 @@ export interface TeamChatActions {
 	readonly selectImages: () => Promise<void>;
 	readonly removeAttachment: (path: string) => void;
 	readonly addAttachments: (attachments: readonly TeamAttachmentViewModel[]) => void;
-	readonly send: () => Promise<void>;
+	readonly send: (streamingBehavior?: "steer" | "followUp") => Promise<void>;
 	readonly abort: () => Promise<void>;
 	readonly createSession: () => Promise<string | undefined>;
 	readonly openSession: (sessionId: string) => Promise<void>;
