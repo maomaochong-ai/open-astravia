@@ -111,3 +111,47 @@ The preset content is materialized into ordinary team files on first launch. Fro
 | Gear icon | Team settings: members, owner, assignments, and capabilities |
 
 You can send another message mid-flight to add a requirement, and `@` it at someone specific. Drafts, attachments, input history, and model settings are isolated per team session, so one team can run several independent sessions at once; each appears in the sidebar conversation list with its members' stacked avatars.
+
+## How it works: delegate, wait, accept
+
+Team collaboration is not one prompt fanned out to several models. It is a set of **durable tasks** moving between members. The owner holds a small set of team tools, and every step you see in the timeline is one of these calls:
+
+| Tool | What it does | Who may call it |
+| --- | --- | --- |
+| `team_delegate_task` | Hands a bounded objective to a member and returns a task id **immediately**, without waiting for completion | Owner only |
+| `team_wait_tasks` | Waits for up to eight tasks to change state, with a timeout | Parties to the task |
+| `team_get_task` | Reads a task's current state, waiting reason, and published result | Parties to the task |
+| `team_continue_task` / `team_retry_task` | Resumes or retries an interrupted task in the member's existing conversation, keeping the same task id | Owner or the assigned member |
+| `team_cancel_task` | Cancels a task assigned to someone else | Owner only |
+| `team_send_message` | Publishes to named members: `inform` just tells them, `question` asks for a reply | Every member |
+| `team_list_members` | Reads the roster: responsibilities, availability, effective capabilities | Every member |
+| `team_read_shared_history` | Reads the policy-allowed public history verbatim | Every member |
+
+Three hard constraints sit behind those tools, and they explain most of what you see on screen.
+
+### Dispatch is asynchronous, so work runs in parallel
+
+`team_delegate_task` returns as soon as the task is **admitted**, so the owner can send out independent tasks first and wait for them together. Each member owns its own execution lane: different members genuinely run in parallel, while one member's tasks run in order.
+
+That is also why waiting is bounded. A `team_wait_tasks` timeout only means "nothing changed in that window" — it is **not a failure and never cancels the work**. Completion arrives as a notification that wakes the initiator, so the owner does not have to burn turns polling.
+
+Circular waits are rejected outright: if A is waiting on B, B cannot turn around and wait on A, since both would stall forever.
+
+### Ownership is never handed off quietly
+
+The default orchestration policy is leader-delegates: only the owner delegates and cancels; a member can only push forward the task it holds. The role prompts carry the same discipline — when information is missing, ask or report back to the owner rather than passing the assignment to someone else. Together with subagent tooling being removed from member runtimes, every task has one unambiguous holder.
+
+### Failures are classified, not blindly retried
+
+Task state is durable (queued, running, waiting, attention required, completed, failed, cancelled), and a task can only reach **completed once it has a published result message** — so "completed" always corresponds to something visible in the timeline.
+
+Failures are classified by cause, which decides what can happen next:
+
+| Cause | Handling |
+| --- | --- |
+| Network glitch, rate limit | Retried automatically |
+| Invalid credentials, insufficient credit | Waits for the external condition; once you fix it in settings, the affected tasks are woken for retry |
+| Context overflow | Needs a human decision |
+| Invalid request | Not retried |
+
+So when a member reports a failure, check which class it falls into first: retrying a task that ran out of credit will never make progress.
