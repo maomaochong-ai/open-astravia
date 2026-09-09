@@ -1028,5 +1028,37 @@
 				}
 			}
 		}
+	},
+	"commandMenu": {
+		"placeholder": "搜索项目、会话、能力、设置…",
+		"empty": "没有匹配结果",
+		"emptyHint": "换个关键词试试",
+		"loading": "正在搜索会话",
+		"title": "命令面板",
+		"hintNavigate": "↑↓ 选择",
+		"hintSelect": "↵ 打开",
+		"hintClose": "esc 关闭",
+		"overflow": "还有 {{count}} 条",
+		"sessionUnavailable": "当前无法打开这个会话",
+		"searchMarketplace": "在能力市场中搜索",
+		"trigger": "搜索",
+		"groups": {
+			"projects": "项目",
+			"sessions": "会话",
+			"abilities": "能力",
+			"settings": "设置",
+			"workspaceViews": "插件视图"
+		},
+		"badges": {
+			"skill": "技能",
+			"scene": "场景",
+			"plugin": "插件"
+		},
+		"sessionTypes": {
+			"conversation": "对话",
+			"claw": "Claw",
+			"project": "项目",
+			"batch": "批量"
+		}
 	}
 }

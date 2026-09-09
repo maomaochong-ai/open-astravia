@@ -1476,6 +1476,8 @@
   "shortcutOpenProjectDesc": "选择并打开一个项目文件夹",
   "shortcutOpenSettingsLabel": "打开设置",
   "shortcutOpenSettingsDesc": "打开设置页面",
+  "shortcutOpenCommandMenuLabel": "打开命令面板",
+  "shortcutOpenCommandMenuDesc": "居中弹出，搜索项目、会话、能力、设置与插件视图",
   "shortcutSaveFileLabel": "保存文件",
   "shortcutSaveFileDesc": "保存右侧文件编辑器中的当前文件",
   "kbHiwTitle": "知识库是怎么工作的",

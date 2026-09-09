@@ -128,7 +128,7 @@ describe("buildWorkspaceViewEntries", () => {
 		const views = [
 			{ pluginId: "git", pluginName: "Git", viewId: "diff", label: "%diff.title%" },
 		] as unknown as RegisteredWorkspaceView[];
-		const [entry] = buildWorkspaceViewEntries(views, (value) => (value === "%diff.title%" ? "Diff" : value));
+		const [entry] = buildWorkspaceViewEntries(views, (view) => (view.label === "%diff.title%" ? "Diff" : view.label));
 
 		expect(entry.title).toBe("Diff");
 		expect(entry.subtitle).toBe("Git");

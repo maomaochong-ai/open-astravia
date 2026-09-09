@@ -1028,5 +1028,37 @@
 				}
 			}
 		}
+	},
+	"commandMenu": {
+		"placeholder": "Search projects, sessions, abilities, settings…",
+		"empty": "No matches",
+		"emptyHint": "Try a different keyword",
+		"loading": "Searching sessions",
+		"title": "Command menu",
+		"hintNavigate": "↑↓ Navigate",
+		"hintSelect": "↵ Open",
+		"hintClose": "esc Close",
+		"overflow": "{{count}} more",
+		"sessionUnavailable": "This session cannot be opened right now",
+		"searchMarketplace": "Search the ability marketplace",
+		"trigger": "Search",
+		"groups": {
+			"projects": "Projects",
+			"sessions": "Sessions",
+			"abilities": "Abilities",
+			"settings": "Settings",
+			"workspaceViews": "Plugin views"
+		},
+		"badges": {
+			"skill": "Skill",
+			"scene": "Scene",
+			"plugin": "Plugin"
+		},
+		"sessionTypes": {
+			"conversation": "Chat",
+			"claw": "Claw",
+			"project": "Project",
+			"batch": "Batch"
+		}
 	}
 }

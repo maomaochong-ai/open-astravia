@@ -6,9 +6,10 @@ import { resolveDesktopSessionOpenTarget } from "@/shared/session-access";
 import type { DesktopSessionSearchResult } from "@/shared/session-search";
 import {
 	filterVisibleSettingsTabs,
+	type RegisteredSettingsSection,
 	SETTINGS_SECTIONS,
 	SETTINGS_TABS,
-	type SettingsSectionRegistration,
+	type SettingsTabLabelKey,
 	type SettingsTabVisibilityContext,
 } from "../../settings/registry";
 import type { CommandMenuEntry } from "../types";
@@ -17,6 +18,12 @@ import type { CommandMenuEntry } from "../types";
  * 五个数据源到 Command Menu 条目的适配层，全部是纯函数：入参是已经取好的数据，
  * 出参是条目数组，文案由调用方注入。取数与导航副作用都不在这里。
  */
+
+/**
+ * 设置目录用到的 i18n key 联合。保持字面量而非 string：i18next 的键是有类型的，
+ * 放宽成 string 会让 `t()` 失去校验，改错一个 key 只能在运行时看到原样回显。
+ */
+export type CommandMenuSettingsLabelKey = SettingsTabLabelKey | NonNullable<RegisteredSettingsSection["titleKey"]>;
 
 /** 会被重定向到能力页的设置 section（ADR-0049），从目录里剔除，避免"点了跳到别处"。 */
 const REDIRECTED_SETTINGS_TAB = "mcp";
@@ -72,24 +79,24 @@ export function buildSessionEntries(
  */
 export function buildSettingsEntries(
 	visibility: SettingsTabVisibilityContext,
-	translate: (key: string) => string,
+	translate: (key: CommandMenuSettingsLabelKey) => string,
 ): CommandMenuEntry[] {
 	const visibleTabs = filterVisibleSettingsTabs(SETTINGS_TABS, visibility);
 	const tabByKey = new Map(visibleTabs.map((tab) => [tab.key, tab]));
 
 	const entries: CommandMenuEntry[] = [];
-	// 按接口而非 `as const` 字面量遍历：SETTINGS_SECTIONS 目前每条都带 titleKey，
-	// 但 titleKey 在契约上是可选的，依赖字面量收窄会让回退分支被推成 never。
-	const sections: readonly SettingsSectionRegistration[] = SETTINGS_SECTIONS;
-	for (const [index, section] of sections.entries()) {
+	for (const [index, section] of SETTINGS_SECTIONS.entries()) {
 		if (section.tab === REDIRECTED_SETTINGS_TAB) continue;
 		// 平台 / 账号维度不可见的标签，其 section 也不该被搜到：点进去只会落到兜底标签。
 		const tab = tabByKey.get(section.tab);
 		if (!tab) continue;
+		const titleKey: CommandMenuSettingsLabelKey | undefined = section.titleKey;
 		entries.push({
 			id: `settings:${section.id}`,
 			groupKey: "settings",
-			title: section.titleKey ? translate(section.titleKey) : section.title,
+			// 先取到局部再判空：直接对 `section.titleKey` 分支会让 TS 把回退分支里的
+			// section 收窄成 never（当前每条都带 titleKey，但契约上它是可选的）。
+			title: titleKey ? translate(titleKey) : section.title,
 			subtitle: translate(tab.labelKey),
 			icon: tab.icon,
 			order: index,
@@ -101,13 +108,13 @@ export function buildSettingsEntries(
 
 export function buildWorkspaceViewEntries(
 	views: readonly RegisteredWorkspaceView[],
-	resolveText: (value: string) => string,
+	/** label 可能是 `%catalogKey%`，解析需要归属插件的目录，故整条 view 传进来。 */
+	resolveLabel: (view: RegisteredWorkspaceView) => string,
 ): CommandMenuEntry[] {
 	return views.map((view, index) => ({
 		id: `workspace:${view.pluginId}/${view.viewId}`,
 		groupKey: "workspaceViews",
-		// label / description 可能是 `%catalogKey%`，交给宿主的插件文案解析器还原。
-		title: resolveText(view.label),
+		title: resolveLabel(view),
 		subtitle: view.pluginName,
 		icon: view.icon || "icon-[solar--widget-linear]",
 		order: index,

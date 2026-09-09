@@ -1476,6 +1476,8 @@
   "shortcutOpenProjectDesc": "Select and open a project folder",
   "shortcutOpenSettingsLabel": "Open Settings",
   "shortcutOpenSettingsDesc": "Open the settings page",
+  "shortcutOpenCommandMenuLabel": "Open command menu",
+  "shortcutOpenCommandMenuDesc": "Centered palette for projects, sessions, abilities, settings and plugin views",
   "shortcutSaveFileLabel": "Save File",
   "shortcutSaveFileDesc": "Save the current file in the right-side editor",
   "kbHiwTitle": "How the Knowledge Base Works",

@@ -25,6 +25,7 @@ import { i18n } from "../shared/i18n";
 import {
 	activeSessionAtom,
 	appshotAttachmentAtom,
+	commandMenuOpenAtom,
 	defaultConversationCwdAtom,
 	fileEditorHasUnsavedChangesAtom,
 	focusInputRequestAtom,
@@ -51,6 +52,7 @@ export function useRootLayoutModel(): RootLayoutModel {
 	const projects = useAtomValue(projectsAtom);
 	const navigate = useNavigate();
 	const setSandboxPermissionDrawer = useSetAtom(sandboxPermissionDrawerAtom);
+	const setCommandMenuOpen = useSetAtom(commandMenuOpenAtom);
 	const defaultConversationCwd = useAtomValue(defaultConversationCwdAtom);
 	const activeSession = useAtomValue(activeSessionAtom);
 	const pendingSessionCreation = useAtomValue(pendingSessionCreationAtom);
@@ -467,13 +469,18 @@ export function useRootLayoutModel(): RootLayoutModel {
 						void navigate({ to: "/settings/$tab", params: { tab: "account" } });
 						break;
 					}
+					case "open-command-menu": {
+						// 面板内自己绑了一条 mod+k 关闭；能走到这里说明面板是关着的。
+						setCommandMenuOpen(true);
+						break;
+					}
 					case "save-file": {
 						window.dispatchEvent(new Event(FILE_EDITOR_SAVE_EVENT));
 						break;
 					}
 				}
 			},
-			[openProject, navigate],
+			[openProject, navigate, setCommandMenuOpen],
 		),
 	);
 

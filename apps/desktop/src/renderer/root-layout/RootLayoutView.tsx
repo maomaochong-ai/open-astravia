@@ -6,6 +6,7 @@ import { RouteContentLoadingView } from "@vetta/theme-ui/app";
 import { AppFrame, MainContentFrame, SidebarDock, SidebarOverlay } from "@vetta/theme-ui/layout";
 import { useThemeComponent, useThemeSurface } from "@vetta/theme-sdk";
 import { useCallback, useEffect } from "react";
+import { CommandMenu } from "../domains/command-menu/components/CommandMenu";
 import { useActiveWorkspaceViewHeader } from "../domains/plugins/components/WorkspaceViewHeaderSlot";
 import { Sidebar } from "../domains/project/components/sidebar/Sidebar";
 import { PageHeader } from "../shared/app-shell/page-header";
@@ -109,6 +110,8 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 						</PerfSendProfiler>
 					</MainContentFrame>
 				)}
+				{/* 复用 Sidebar 那条 onOpenSession：会话打开的落点逻辑只应有一处宿主实现。 */}
+				<CommandMenu onOpenSession={onOpenSession} />
 				<PerfSendProfiler id="RootGlobalOverlays">
 					<RootGlobalOverlays />
 				</PerfSendProfiler>
