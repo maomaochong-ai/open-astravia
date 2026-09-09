@@ -57,6 +57,12 @@
 			"pages": ["/product/knowledge-base/"]
 		},
 		{
+			"id": "design-canvas",
+			"source": "packages/plugins/presets/vetta-ui-design",
+			"status": "complete",
+			"pages": ["/product/design/"]
+		},
+		{
 			"id": "batch-tasks",
 			"source": "apps/desktop/src/renderer/domains/batch-tasks",
 			"status": "complete",

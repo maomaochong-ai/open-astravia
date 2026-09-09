@@ -1,0 +1,156 @@
+---
+title: Design with Vetta
+description: Generate real React screens on a design canvas, edit by selection, preview, roll back versions, and export a shareable package.
+---
+
+<Takeaways>
+  <li>A frame is a runnable React page, not a picture</li>
+  <li>State the product type and screen list before the first pass</li>
+  <li>Revise by selecting on the canvas, not by re-describing the page</li>
+</Takeaways>
+
+Design work is provided by **Vetta UI Design**, a system plugin shipped with the desktop app. A design document is a small front-end project: every frame is a React file under `frames/`, which is also a route. Saving hot-reloads the canvas, so what you see is the real render and you can click through the whole flow in preview.
+
+That makes it a good fit for product screens, landing pages, slides, and posters. It is not the tool for editing the real front-end code in your own repository — that is ordinary session work.
+
+## Entry point: the design gallery
+
+Open **More → Design** in the sidebar, or pin the entry so it stays visible. The gallery collects every `.vetd` design that sits directly in a project root: one card per project, with the last state of that canvas as its cover.
+
+<MediaFrame>
+  <img src="/images/product/design-gallery.webp" alt="The Vetta design gallery showing existing design cards and available style templates" width="1920" height="1243" />
+  <figcaption>Cards are ordered by last change; a green dot marks a project with a running session. Opening a card returns you to the session that produced the design and expands the canvas on it.</figcaption>
+</MediaFrame>
+
+The gallery scans only the top level of each project root, so a design moved into a subdirectory does not appear here (the canvas can still open it). Archived projects are excluded as well.
+
+## Start a design
+
+<Steps>
+  <Step>
+    ### Choose a starting point
+
+    - **New design**: give it a name. Vetta creates a project of the same name in your workspace directory and opens a new session with the design ability already attached.
+    - **Browse styles**: pick a ready-made style first, and the new design inherits its palette and rules.
+    - **Import**: drop a `.vetdz` package onto the gallery, or click **Import** and pick the file.
+  </Step>
+  <Step>
+    ### Describe what you want
+
+    Your first message decides the structure. Be explicit about three things: the **product type** (mobile app, desktop dashboard, landing page, slide, poster), the **screen list or rough screen count**, and the **style and audience**.
+
+    ```text
+    Design a mobile community app, 6 screens: home feed, explore circles,
+    circle detail, group chat, profile, post detail. Bright and playful,
+    with a neon green primary color.
+    ```
+
+    The product type sets the default frame size; getting it wrong most often ends with a dashboard drawn at 390 pixels wide.
+  </Step>
+  <Step>
+    ### Wait for the first pass
+
+    A multi-screen product usually lands as a skeleton first — structure and sizes only — and gets filled in batches, so empty frames appear before the detail does. The first run installs the design engine dependencies, which takes one to three minutes and happens only once.
+  </Step>
+</Steps>
+
+| Product type | Default frame size |
+| --- | --- |
+| Mobile screen | 390 × 844 |
+| Desktop app / dashboard | 1440 × 900 |
+| Landing page | 1440 × 2400 |
+| Slide | 1920 × 1080 |
+| Poster / social | 1080 × 1440 |
+
+One document can mix product types; every frame declares its own size.
+
+## Revise on the canvas
+
+Do not restate the whole page. **Select the thing you want changed**: pick a frame, or click into a frame and select a specific element, and the edit stays scoped to it.
+
+<MediaFrame>
+  <img src="/images/product/design-canvas.webp" alt="The Vetta design canvas with the conversation resolving canvas notes on the left and six mobile frames side by side on the right" width="1920" height="1229" />
+  <figcaption>The conversation is on the left, every frame of the design document on the right. Each frame header reports its state: creating, editing, updated, or build failed.</figcaption>
+</MediaFrame>
+
+A selection offers two entry points:
+
+| Entry point | When to use it |
+| --- | --- |
+| **Ask Vetta** | Change it now. The request goes straight into the current conversation |
+| **Leave a note** | Vetta is busy and you do not want to interrupt. The note is pinned on the canvas and handled one by one when the turn ends |
+
+Notes can also be pinned anywhere on the canvas with the note tool in the bottom toolbar (shortcut `C`). The notes drawer groups them into pending and resolved, and can hand the whole batch over at once; each one flips to resolved in place, with a reply attached.
+
+The toolbar also carries select, hand, **new frame** (drag out an empty frame and let Vetta fill it), zoom, **tidy up** with a column count, and **refresh** to reload the latest code for every frame.
+
+## Design systems
+
+**Design systems** in the control bar — and the style library in the gallery — offer complete palettes and rules. Applying one to a design that already has frames means Vetta restyles all of them, which takes a while. The state before the change is backed up automatically, so **restore** is always available.
+
+If the design already contains a `DESIGN.md`, a system has been applied before, and applying a new one overwrites it (also restorable).
+
+## Preview and run
+
+**Run** in the top right opens preview mode: click through real navigation, switch the viewport (follow the frame, phone, tablet, desktop), or open it in the system browser. The address is served by the local design engine and stops working once the canvas is closed.
+
+## Version history
+
+Vetta saves a version after every change it completes, titled with what you asked for. **Version history** in the control bar lets you:
+
+- **Peek** at a version to see how it looked; edits made while peeking are not saved.
+- **Restore** the design to that moment. The current state is saved as a version first, so a wrong pick is one restore away from being undone.
+
+So "undo that change" or "go back to before the nav bar moved" belongs in version history, not in asking Vetta to rebuild the old version from memory.
+
+## Export and share
+
+| Action | Output |
+| --- | --- |
+| **Export & share** on the canvas, or **Export share file** from a gallery card | A `.vetdz` package the recipient can drop into their gallery to view or import |
+| **Export mockup** from the control bar or a frame's context menu | Selected frames composed into PNG, a long image, or PDF, with scale, radius, border, background, shadow, and Vetta branding options |
+| **Copy as image** on a frame | A single frame bitmap on the clipboard |
+
+Exporting a package runs a build, so it takes a few seconds.
+
+## What a design document contains
+
+A design is a directory, and it can live in git:
+
+<Files>
+  <Folder name="social-app.vetd" defaultOpen>
+    <File name="design.json" />
+    <Folder name="frames" defaultOpen>
+      <File name="index.tsx" />
+      <File name="login.tsx" />
+      <File name="_layout.tsx" />
+    </Folder>
+    <Folder name="components" />
+    <Folder name="assets" />
+    <File name="theme.css" />
+    <File name="package.json" />
+    <File name="DESIGN.md" />
+  </Folder>
+</Files>
+
+- A file name under `frames/` is both the route and the frame id: `login.tsx` is `/login`. Files starting with an underscore, such as `_layout.tsx`, are shared shells rather than frames.
+- `theme.css` holds color and radius tokens. The canvas **color system** panel lists them and can attach one to a request.
+- `design.json` is generated from the sources on every save; hand edits are overwritten.
+- A design has its own `package.json`. When something like a charting or Markdown library is needed, Vetta installs it into that design.
+
+Right-click a `.vetd` directory in the file tree to open it on the design canvas.
+
+## Troubleshooting
+
+- **The design engine fails to start**: if it reports that the managed Node runtime is unavailable, install Node under **Settings → Environments** and retry. A failed dependency install is usually a network problem.
+- **The style library will not load**: it is fetched from an online resource repository and is unavailable offline. Create a blank design instead.
+- **A frame reports a build failure**: the source has an error. Hand that frame to Vetta and let it fix the reported line.
+- **A design is missing from the gallery**: confirm the `.vetd` directory sits at the project root and the project is not archived, then click **Refresh**.
+- **A card has no cover**: a design that has never been opened on this machine — freshly cloned or imported — has no cover yet. Open its canvas once.
+
+<Continue>
+  <ContinueLink href="/product/abilities/" title="Manage abilities" description="Check the status and permissions of system plugins." />
+  <ContinueLink href="/core/context-tools-and-permissions/" title="Context and permissions" description="Understand how material and authorization work in a session." />
+  <ContinueLink href="/product/application-environment/" title="Application environment" description="Install and manage runtimes such as Node." />
+  <ContinueLink href="/troubleshooting/" title="Troubleshooting" description="Plugin loading, model calls, and file access." />
+</Continue>
