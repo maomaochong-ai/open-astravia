@@ -1086,6 +1086,8 @@
   "ornamentOrbitHint": "A live shader orb, its filigree drifting slowly across the surface.",
   "ornamentTorchTitle": "Torch",
   "ornamentTorchHint": "A pixel torch with a gently flickering flame; click it to snuff it out or light it again.",
+  "ornamentMarioTitle": "Mario",
+  "ornamentMarioHint": "A row of pixel blocks — bump the question block to pop a mushroom out of it.",
   "section_appearance-sidebar": "Sidebar Style",
   "sidebarStyleClassicTitle": "Classic",
   "sidebarStyleClassicHint": "Sidebar sits flush against the window edge, with a single divider on its right.",

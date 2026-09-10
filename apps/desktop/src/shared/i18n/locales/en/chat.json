@@ -732,6 +732,10 @@
 			"light": "Light the torch",
 			"extinguish": "Snuff out the torch"
 		},
+		"mario": {
+			"hit": "Bump out the mushroom",
+			"reset": "Put the mushroom back"
+		},
 		"projectSelector": {
 			"placeholder": "Select project",
 			"clear": "No project",

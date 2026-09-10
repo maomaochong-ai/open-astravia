@@ -2,10 +2,14 @@
 /**
  * 装饰件位按「设置 - 外观 - 装饰件」的选择决定挂谁：
  * 选「无」时这块位置一个节点都不该留，选 Vivi（含未选过、存了脏值）时挂上 Vivi，
- * 选星轨/火把时挂上对应的那枚。
+ * 选星轨/火把/马里奥时挂上对应的那枚。
  */
 import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("./presets/MarioOrnament", () => ({
+	MarioOrnament: () => <div data-testid="mario" />,
+}));
 
 vi.mock("./presets/OrbitOrnament", () => ({
 	OrbitOrnament: () => <div data-testid="orbit" />,
@@ -62,6 +66,13 @@ describe("HeroOrnamentSlot", () => {
 		await renderSlot("torch");
 
 		expect(screen.getByTestId("torch")).toBeTruthy();
+		expect(screen.queryByTestId("vivi")).toBeNull();
+	});
+
+	it("选马里奥时挂上马里奥", async () => {
+		await renderSlot("mario");
+
+		expect(screen.getByTestId("mario")).toBeTruthy();
 		expect(screen.queryByTestId("vivi")).toBeNull();
 	});
 

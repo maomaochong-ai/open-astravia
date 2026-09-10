@@ -732,6 +732,10 @@
 			"light": "点亮火把",
 			"extinguish": "熄灭火把"
 		},
+		"mario": {
+			"hit": "顶出蘑菇",
+			"reset": "把蘑菇收回砖块"
+		},
 		"projectSelector": {
 			"placeholder": "选择项目",
 			"clear": "不指定项目",
