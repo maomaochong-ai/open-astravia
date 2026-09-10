@@ -10,6 +10,32 @@ export interface ConversationMessageEventState {
 	readonly message: ConversationAgentMessageViewModel;
 }
 
+/** Convert only still-running tool calls to a terminal state. */
+export function settlePendingToolCalls(
+	message: ConversationAgentMessageViewModel,
+	status: "success" | "error" | "cancelled",
+): ConversationAgentMessageViewModel {
+	return {
+		...message,
+		blocks: message.blocks.map((block) =>
+			block.type === "tool_call" && block.status === "pending"
+				? { ...block, status, currentPhase: undefined }
+				: block,
+		),
+	};
+}
+
+export function abortConversationAgentMessage(
+	message: ConversationAgentMessageViewModel,
+	endedAt: number,
+): ConversationAgentMessageViewModel {
+	return {
+		...settlePendingToolCalls(message, "cancelled"),
+		phase: "aborted",
+		endedAt,
+	};
+}
+
 /** Applies an identity-scoped protocol event without assuming a Chat or Team owner. */
 export function reduceConversationMessageEvent(
 	state: ConversationMessageEventState | undefined,
@@ -127,7 +153,7 @@ function mergeTerminalMessage(
 ): ConversationAgentMessageViewModel {
 	let next = message;
 	if (next.blocks.length === 0) {
-		const blocks = projectAssistantMessageBlocks(terminal, phase === "aborted" ? "cancelled" : "pending");
+		const blocks = projectAssistantMessageBlocks(terminal, messageId, phase === "aborted" ? "cancelled" : "pending");
 		next = {
 			...next,
 			text: blocks.flatMap((block) => (block.type === "text" ? [block.text] : [])).join(""),
@@ -145,14 +171,7 @@ function mergeTerminalMessage(
 		}
 	}
 	if (phase === "aborted") {
-		next = {
-			...next,
-			blocks: next.blocks.map((block) =>
-				block.type === "tool_call" && block.status === "pending"
-					? { ...block, status: "cancelled" as const, currentPhase: undefined }
-					: block,
-			),
-		};
+		next = settlePendingToolCalls(next, "cancelled");
 	}
 	const endedAt = terminal.timestamp;
 	return {

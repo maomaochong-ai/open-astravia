@@ -8,7 +8,11 @@ import type {
 	ConversationMessageEventState,
 	ConversationParticipantViewModel,
 } from "@shared/conversation";
-import { reduceConversationMessageEvent } from "@shared/conversation";
+import {
+	abortConversationAgentMessage,
+	reduceConversationMessageEvent,
+	settlePendingToolCalls,
+} from "@shared/conversation";
 import type { InputSegment } from "@shared/lib/input-tokens";
 import type { ChatConversationItem, ChatToolCallPresentationViewModel, ContextUsageData } from "@shared/store/atoms";
 import type { ActivityWorkspace } from "@shared/workspace/activity-workspace";
@@ -279,16 +283,7 @@ export function reduceTeamStreamState(state: TeamStreamState, event: DesktopTeam
 				[event.messageId]: {
 					...current,
 					sequence: event.sequence,
-					message: {
-						...current.message,
-						phase: "aborted",
-						endedAt: event.timestamp,
-						blocks: current.message.blocks.map((block) =>
-							block.type === "tool_call" && block.status === "pending"
-								? { ...block, status: "cancelled" as const, currentPhase: undefined }
-								: block,
-						),
-					},
+					message: abortConversationAgentMessage(current.message, event.timestamp),
 				},
 			};
 		}
@@ -521,13 +516,15 @@ export function projectTeamConversationTimeline({
 						? "failed"
 						: activity.state === "cancelled"
 							? "cancelled"
-							: activity.state === "completed"
-								? "completed"
-								: activity.state === "waiting"
-									? "waiting"
-									: sourceMessage
-										? "streaming"
-										: "pending",
+							: sourceMessage?.phase === "aborted"
+								? "cancelled"
+								: activity.state === "completed"
+									? "completed"
+									: activity.state === "waiting"
+										? "waiting"
+										: sourceMessage
+											? "streaming"
+											: "pending",
 				message: sourceMessage,
 			});
 			if (summary.kind === "event" && summary.event.kind === "team-member-summary") {
@@ -586,7 +583,6 @@ export function projectTeamConversationTimeline({
 
 	const persistedAgentItems = items.filter((item) => item.kind === "agent");
 	const persistedResults = new Set(persistedAgentItems.map((item) => item.id));
-	const persistedRenderKeys = new Set(persistedAgentItems.map((item) => item.renderKey ?? item.entryId ?? item.id));
 	for (const turn of Object.values(streams).sort(
 		(left, right) => (left.message.startedAt ?? 0) - (right.message.startedAt ?? 0),
 	)) {
@@ -606,9 +602,22 @@ export function projectTeamConversationTimeline({
 		// because unrelated tool-only turns all have the same public text.
 		const streamText = publicAgentText(turn.message);
 		const streamRenderKey = teamAgentTurnRenderKey(turn.message.authorId, turn.message.turnId);
+		const persistedIndex = items.findIndex(
+			(item) =>
+				item.kind === "agent" &&
+				(item.id === turn.message.id || (item.renderKey ?? item.entryId ?? item.id) === streamRenderKey),
+		);
+		if (persistedIndex >= 0) {
+			const persisted = items[persistedIndex];
+			if (persisted?.kind === "agent" && turn.message.phase === "aborted") {
+				items[persistedIndex] = decorateLeaderMessage(
+					mergeTeamAgentMessage(persisted, turn.message, streamRenderKey),
+				);
+			}
+			continue;
+		}
 		if (
 			persistedResults.has(turn.message.id) ||
-			persistedRenderKeys.has(streamRenderKey) ||
 			(streamText.length > 0 &&
 				persistedAgentItems.some(
 					(item) => item.authorId === turn.message.authorId && publicAgentText(item) === streamText,
@@ -661,13 +670,7 @@ export function projectTeamConversationTimeline({
 	// Pending and live rows are appended after the durable projection above. Sort
 	// once more so a Ctrl+Enter request keeps its chronological place instead of
 	// being rendered below an older delegation/result card until the next snapshot.
-	items.sort((left, right) => {
-		const timestampDelta = itemTimestamp(left) - itemTimestamp(right);
-		if (timestampDelta !== 0) return timestampDelta;
-		if (left.kind === "user" && right.kind !== "user") return -1;
-		if (left.kind !== "user" && right.kind === "user") return 1;
-		return 0;
-	});
+	sortTeamTimelineItems(items);
 	return items;
 }
 
@@ -801,16 +804,17 @@ function mergeTeamAgentTurns(items: readonly ConversationAgentMessageViewModel[]
 
 		const existing = merged[existingIndex];
 		const phase = item.phase;
-		const blocks = [...existing.blocks, ...item.blocks].map((block) => {
-			if (block.type !== "tool_call" || block.status !== "pending") return block;
-			if (phase === "aborted") return { ...block, status: "cancelled" as const, currentPhase: undefined };
-			if (phase === "completed") return { ...block, status: "success" as const, currentPhase: undefined };
-			return block;
-		});
+		const blocks = mergeAgentBlocks(existing.blocks, item.blocks);
+		const withTerminalTools =
+			phase === "aborted"
+				? settlePendingToolCalls({ ...item, blocks }, "cancelled").blocks
+				: phase === "completed"
+					? settlePendingToolCalls({ ...item, blocks }, "success").blocks
+					: blocks;
 		merged[existingIndex] = {
 			...existing,
 			phase,
-			blocks,
+			blocks: withTerminalTools,
 			...(item.text ? { text: existing.text ? `${existing.text}\n${item.text}` : item.text } : {}),
 			...(existing.usages || item.usages ? { usages: [...(existing.usages ?? []), ...(item.usages ?? [])] } : {}),
 			...(item.startedAt !== undefined && existing.startedAt === undefined ? { startedAt: item.startedAt } : {}),
@@ -819,6 +823,97 @@ function mergeTeamAgentTurns(items: readonly ConversationAgentMessageViewModel[]
 		};
 	}
 	return merged;
+}
+
+function mergeAgentBlocks(
+	existing: readonly ConversationAgentMessageViewModel["blocks"][number][],
+	incoming: readonly ConversationAgentMessageViewModel["blocks"][number][],
+): ConversationAgentMessageViewModel["blocks"] {
+	const merged = [...existing];
+	const blockIndexes = new Map(merged.map((block, index) => [conversationBlockIdentity(block), index] as const));
+	for (const block of incoming) {
+		const existingIndex = blockIndexes.get(conversationBlockIdentity(block));
+		if (existingIndex === undefined) {
+			blockIndexes.set(conversationBlockIdentity(block), merged.length);
+			merged.push(block);
+			continue;
+		}
+		const current = merged[existingIndex];
+		if (block.type !== "tool_call" || current?.type !== "tool_call") {
+			merged[existingIndex] = block;
+			continue;
+		}
+		const status = current.status === "pending" ? block.status : current.status;
+		merged[existingIndex] = {
+			...current,
+			...block,
+			toolName: block.toolName || current.toolName,
+			args: Object.keys(block.args).length > 0 ? block.args : current.args,
+			status,
+			...(status === "pending" ? {} : { currentPhase: undefined }),
+		};
+	}
+	return merged;
+}
+
+function conversationBlockIdentity(block: ConversationAgentMessageViewModel["blocks"][number]): string {
+	switch (block.type) {
+		case "tool_call":
+			return `tool-call:${block.toolCallId}`;
+		case "tool_result":
+			return `tool-result:${block.toolCallId}`;
+		case "text":
+		case "thinking":
+		case "error":
+			return `${block.type}:${block.id}`;
+	}
+}
+
+function mergeTeamAgentMessage(
+	persisted: ConversationAgentMessageViewModel,
+	live: ConversationAgentMessageViewModel,
+	renderKey: string,
+): ConversationAgentMessageViewModel {
+	const blocks = mergeAgentBlocks(persisted.blocks, live.blocks);
+	const merged = {
+		...persisted,
+		phase: live.phase,
+		blocks,
+		text: mergePublicAgentText(persisted.text, live.text),
+		renderKey,
+		...(live.startedAt !== undefined ? { startedAt: live.startedAt } : {}),
+		...(live.endedAt !== undefined ? { endedAt: live.endedAt } : {}),
+		...(live.durationSeconds !== undefined ? { durationSeconds: live.durationSeconds } : {}),
+	};
+	return live.phase === "aborted" ? settlePendingToolCalls(merged, "cancelled") : merged;
+}
+
+function mergePublicAgentText(persisted: string | undefined, live: string | undefined): string | undefined {
+	if (!persisted) return live;
+	if (!live || persisted === live || persisted.startsWith(live)) return persisted;
+	if (live.startsWith(persisted)) return live;
+	return `${persisted}\n${live}`;
+}
+
+function sortTeamTimelineItems(items: ChatConversationItem[]): void {
+	const userTimestampByTurn = new Map(
+		items.flatMap((item) => (item.kind === "user" ? [[item.turnId, itemTimestamp(item)] as const] : [])),
+	);
+	items.sort((left, right) => {
+		// A turn is a causal unit. Runtime/provider timestamps can precede the local
+		// optimistic timestamp by a few milliseconds, but its reply still follows
+		// the user input that started that same turn. Clamp only that early reply to
+		// the input timestamp, preserving the order of unrelated concurrent turns.
+		const sortTimestamp = (item: ChatConversationItem) => {
+			const userTimestamp = item.kind === "user" ? undefined : userTimestampByTurn.get(item.turnId);
+			return userTimestamp === undefined ? itemTimestamp(item) : Math.max(itemTimestamp(item), userTimestamp);
+		};
+		const timestampDelta = sortTimestamp(left) - sortTimestamp(right);
+		if (timestampDelta !== 0) return timestampDelta;
+		if (left.kind === "user" && right.kind !== "user") return -1;
+		if (left.kind !== "user" && right.kind === "user") return 1;
+		return 0;
+	});
 }
 
 function itemTimestamp(item: ChatConversationItem): number {

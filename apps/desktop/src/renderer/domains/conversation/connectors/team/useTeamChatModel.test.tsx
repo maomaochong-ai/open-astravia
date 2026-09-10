@@ -936,6 +936,67 @@ describe("useTeamChatModel streaming flow", () => {
 		]);
 	});
 
+	it("immediately marks an in-flight tool cancelled when the user stops the Team", async () => {
+		const { result } = renderHook(() => useTeamChatModel(team.id));
+		await waitFor(() => expect(result.current.model.status).toBe("ready"));
+		await waitFor(() => expect(streamListener).toBeTypeOf("function"));
+		const persistedTool = {
+			...createAssistantMessage(
+				{ api: "agent-team-test", provider: "agent-team-test", model: "fixture" },
+				{ timestamp: 1 },
+			),
+			content: [{ type: "toolCall" as const, id: "wait-call", name: "team_wait_tasks", arguments: {} }],
+			stopReason: "toolUse" as const,
+		};
+		act(() => {
+			streamListener?.({
+				type: "session-updated",
+				teamSessionId: baseSession.id,
+				snapshot: {
+					...baseSnapshot,
+					session: { ...baseSession, revision: 1 },
+					conversationRevision: 1,
+					messages: [
+						{
+							kind: "agent",
+							id: "persisted-tool-step",
+							turnId: "request",
+							author: { kind: "agent", id: leader.id },
+							message: persistedTool,
+							timestamp: 1,
+						},
+					],
+					display: { memberConversations: [], workingMemberIds: [leader.id] },
+				},
+			});
+			streamListener?.({
+				type: "desktop.team-tool-execution",
+				conversationId: baseSession.id,
+				messageId: "live-tool-step",
+				turnId: "request",
+				author: { kind: "agent", id: leader.id },
+				sequence: 1,
+				timestamp: 1,
+				event: {
+					type: "start",
+					toolCallId: "wait-call",
+					toolName: "team_wait_tasks",
+					args: {},
+					startedAt: 1,
+				},
+			});
+		});
+		await waitFor(() => expect(result.current.model.status).toBe("streaming"));
+
+		await act(async () => result.current.actions.abort());
+
+		const tool = result.current.model.feedItems
+			.flatMap((item) => (item.kind === "agent" ? item.blocks : []))
+			.find((block) => block.type === "tool_call" && block.toolCallId === "wait-call");
+		expect(tool).toMatchObject({ status: "cancelled", currentPhase: undefined });
+		expect(result.current.model.status).toBe("ready");
+	});
+
 	it("keeps showing a member turn that restarts after a stop", async () => {
 		const { result } = renderHook(() => useTeamChatModel(team.id));
 		await waitFor(() => expect(result.current.model.status).toBe("ready"));

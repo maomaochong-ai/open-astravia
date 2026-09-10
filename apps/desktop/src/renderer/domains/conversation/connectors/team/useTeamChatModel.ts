@@ -1,6 +1,7 @@
 import type { DesktopTeamSessionSnapshot } from "@preload/api-types/team-conversation-display";
 import { agentDisplayName, teamDisplayName } from "@shared/agent-teams/agent-team-presentation";
 import { notifyTeamSessionsChanged } from "@shared/agent-teams/team-session-events";
+import { abortConversationAgentMessage } from "@shared/conversation";
 import { waitForCommittedPaint } from "@shared/lib/committed-paint";
 import {
 	deriveAttachments,
@@ -791,7 +792,7 @@ export function useTeamChatModel(
 		const abortedStreams = Object.fromEntries(
 			Object.entries(streamsRef.current).map(([messageId, turn]) =>
 				turn.message.phase === "streaming"
-					? [messageId, { ...turn, message: { ...turn.message, phase: "aborted" as const, endedAt: Date.now() } }]
+					? [messageId, { ...turn, message: abortConversationAgentMessage(turn.message, Date.now()) }]
 					: [messageId, turn],
 			),
 		);

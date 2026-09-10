@@ -195,6 +195,28 @@ describe("team chat stream state", () => {
 		]);
 	});
 
+	it("keeps the submitted user message before a same-turn stream with an earlier runtime timestamp", () => {
+		const items = projectTeamConversationTimeline({
+			snapshot: undefined,
+			pending: {
+				requestId: "clock-skewed-request",
+				text: "Build a gomoku game",
+				leaderMemberId: "leader",
+				timestamp: 100,
+			},
+			streams: reduceTeamStreamState(
+				{},
+				streamEvent("clock-skewed-stream", 99, "working", "leader", "clock-skewed-request"),
+			),
+			members: [member],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		expect(items.map((item) => item.kind)).toEqual(["user", "agent"]);
+		expect(items[0]).toMatchObject({ turnId: "clock-skewed-request", text: "Build a gomoku game" });
+		expect(items[1]).toMatchObject({ turnId: "clock-skewed-request", text: "working" });
+	});
+
 	it("shows a leader turn that is still thinking, even though it has no visible text yet", () => {
 		// A turn that has only produced thinking / tool calls has an empty public text.
 		// Deduping streams against persisted replies by text must not treat that empty
@@ -869,6 +891,54 @@ describe("team chat stream state", () => {
 		expect(tool).toMatchObject({ type: "tool_call", status: "cancelled" });
 	});
 
+	it("overlays an aborted live tool onto the same persisted Team turn", () => {
+		const persisted = agentMessage("persisted-tool-step", "request", "leader", "", 2, {
+			id: "wait-call",
+			name: "team_wait_tasks",
+			arguments: {},
+		});
+		persisted.message.stopReason = "toolUse";
+		const toolStart: DesktopTeamSessionStreamEvent = {
+			type: "desktop.team-tool-execution",
+			conversationId: session.id,
+			messageId: "live-tool-step",
+			turnId: "request",
+			author: { kind: "agent", id: "leader" },
+			sequence: 1,
+			timestamp: 2,
+			event: {
+				type: "start",
+				toolCallId: "wait-call",
+				toolName: "team_wait_tasks",
+				args: {},
+				startedAt: 2,
+			},
+		};
+		const streams = reduceTeamStreamState(reduceTeamStreamState({}, toolStart), {
+			type: "conversation.agent-message-discard",
+			conversationId: session.id,
+			messageId: "live-tool-step",
+			turnId: "request",
+			author: { kind: "agent", id: "leader" },
+			sequence: 2,
+			reason: "aborted",
+			timestamp: 3,
+		});
+		const items = projectTeamConversationTimeline({
+			snapshot: snapshot({ messages: [persisted], display: { memberConversations: [] } }),
+			pending: undefined,
+			streams,
+			members: [member],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		expect(items.filter((item) => item.kind === "agent")).toHaveLength(1);
+		const tool = items
+			.flatMap((item) => (item.kind === "agent" ? item.blocks : []))
+			.find((block) => block.type === "tool_call" && block.toolCallId === "wait-call");
+		expect(tool).toMatchObject({ status: "cancelled", currentPhase: undefined });
+	});
+
 	it("keeps the coordination user message visible when member histories are present", () => {
 		const items = projectTeamConversationTimeline({
 			snapshot: snapshot({
@@ -1294,6 +1364,49 @@ describe("team chat stream state", () => {
 				expect.objectContaining({ type: "text", text: "Delegation complete" }),
 			]),
 		});
+	});
+
+	it("deduplicates repeated tool evidence without downgrading its terminal status", () => {
+		const completedTool = agentMessage("leader-tool-complete", "leader-turn", "leader", "", 2, {
+			id: "delegate-call",
+			name: "team_delegate_task",
+			arguments: { memberId: "architect" },
+		});
+		const repeatedTool = agentMessage("leader-tool-repeated", "leader-turn", "leader", "", 3, {
+			id: "delegate-call",
+			name: "team_delegate_task",
+			arguments: { memberId: "architect" },
+		});
+		const items = projectTeamConversationTimeline({
+			snapshot: snapshot({
+				messages: [completedTool, repeatedTool],
+				display: {
+					memberConversations: [],
+					toolExecutions: [
+						{
+							messageId: "leader-tool-complete",
+							toolCallId: "delegate-call",
+							toolName: "team_delegate_task",
+							args: { memberId: "architect" },
+							result: { content: [{ type: "text", text: "delegated" }], isError: false },
+							isError: false,
+						},
+					],
+				},
+			}),
+			pending: undefined,
+			streams: {},
+			members: [member],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		const tools = items.flatMap((item) =>
+			item.kind === "agent"
+				? item.blocks.filter((block) => block.type === "tool_call" && block.toolCallId === "delegate-call")
+				: [],
+		);
+		expect(tools).toHaveLength(1);
+		expect(tools[0]).toMatchObject({ status: "success", result: "delegated" });
 	});
 
 	it("attaches leader-delegated member activity to the originating tool call", () => {
