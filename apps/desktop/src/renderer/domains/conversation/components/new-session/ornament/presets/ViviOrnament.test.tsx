@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
- * 吉祥物按插槽（hero 宽度）决定是否渲染：页面被压窄时（窗口小、活动面板/侧边栏展开）
- * 素材右锚会压到选项行与标题上，这时整块吉祥物连同显隐按钮都不该出现。
+ * Vivi 装饰件按插槽（hero 宽度）决定是否渲染：页面被压窄时（窗口小、活动面板/侧边栏展开）
+ * 素材右锚会压到选项行与标题上，这时整块 Vivi连同显隐按钮都不该出现。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -10,8 +10,8 @@ vi.mock("react-i18next", () => ({
 }));
 
 import { act, render, screen } from "@testing-library/react";
-import { MASCOT_MIN_SLOT_WIDTH } from "./constants";
-import { NewSessionMascot } from "./NewSessionMascot";
+import { ORNAMENT_MIN_SLOT_WIDTH } from "../../constants";
+import { ViviOrnament } from "./ViviOrnament";
 
 type ResizeCallback = (entries: { contentRect: { width: number } }[]) => void;
 
@@ -36,7 +36,7 @@ function resizeSlot(width: number): void {
 
 beforeEach(() => {
 	resizeCallbacks = [];
-	slotWidth = MASCOT_MIN_SLOT_WIDTH;
+	slotWidth = ORNAMENT_MIN_SLOT_WIDTH;
 	vi.stubGlobal("ResizeObserver", ResizeObserverStub);
 	vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
 		() => ({ width: slotWidth, height: 80 }) as DOMRect,
@@ -48,28 +48,28 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
-describe("NewSessionMascot", () => {
-	it("插槽够宽时渲染吉祥物与显隐按钮", () => {
-		slotWidth = MASCOT_MIN_SLOT_WIDTH;
-		render(<NewSessionMascot autoplay={false} mounted />);
+describe("ViviOrnament", () => {
+	it("插槽够宽时渲染 Vivi 与显隐按钮", () => {
+		slotWidth = ORNAMENT_MIN_SLOT_WIDTH;
+		render(<ViviOrnament autoplay={false} mounted />);
 
 		expect(screen.getByRole("button", { name: "newSession.mascot.hideMascot" })).toBeTruthy();
 	});
 
-	it("插槽过窄时整块吉祥物不渲染", () => {
-		slotWidth = MASCOT_MIN_SLOT_WIDTH - 1;
-		render(<NewSessionMascot autoplay={false} mounted />);
+	it("插槽过窄时整块 Vivi不渲染", () => {
+		slotWidth = ORNAMENT_MIN_SLOT_WIDTH - 1;
+		render(<ViviOrnament autoplay={false} mounted />);
 
 		expect(screen.queryByRole("button", { name: "newSession.mascot.hideMascot" })).toBeNull();
 	});
 
 	it("插槽被压窄后收起、变宽后恢复", () => {
-		render(<NewSessionMascot autoplay={false} mounted />);
+		render(<ViviOrnament autoplay={false} mounted />);
 
-		resizeSlot(MASCOT_MIN_SLOT_WIDTH - 40);
+		resizeSlot(ORNAMENT_MIN_SLOT_WIDTH - 40);
 		expect(screen.queryByRole("button", { name: "newSession.mascot.hideMascot" })).toBeNull();
 
-		resizeSlot(MASCOT_MIN_SLOT_WIDTH + 40);
+		resizeSlot(ORNAMENT_MIN_SLOT_WIDTH + 40);
 		expect(screen.getByRole("button", { name: "newSession.mascot.hideMascot" })).toBeTruthy();
 	});
 });

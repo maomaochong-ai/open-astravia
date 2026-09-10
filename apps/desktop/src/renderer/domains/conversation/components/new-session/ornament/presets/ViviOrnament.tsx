@@ -4,38 +4,38 @@ import { motion, useMotionValue, useReducedMotion } from "motion/react";
 import type { SyntheticEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useMascotSlot } from "./useMascotSlot";
+import { useOrnamentSlot } from "../useOrnamentSlot";
 
 const FERRET_VIDEO_SOURCES = {
 	blink: "./new-session/ferret-blink.webm",
 	crawl: "./new-session/ferret-crawl.webm",
 	wave: "./new-session/ferret-wave.webm",
 } as const;
-const MASCOT_ACTIONS = ["blink", "wave", "crawl"] as const;
+const VIVI_ACTIONS = ["blink", "wave", "crawl"] as const;
 const CRAWL_DURATION_SECONDS = 10.066;
 const CRAWL_START_PAUSE_SECONDS = 3;
 const CENTER_POSITION = "calc(50% - 4.5rem)";
 const RIGHT_POSITION = "calc(100% - 9rem)";
-const MASCOT_VISIBLE_STORAGE_KEY = "vetta-new-session-mascot-visible";
+const VIVI_VISIBLE_STORAGE_KEY = "vetta-new-session-mascot-visible";
 const HOUR_IN_MILLISECONDS = 60 * 60 * 1_000;
 const MINIMUM_ACTION_INTERVAL = HOUR_IN_MILLISECONDS;
 const MAXIMUM_ACTION_INTERVAL = HOUR_IN_MILLISECONDS * 3;
 
-type MascotAction = (typeof MASCOT_ACTIONS)[number];
+type ViviAction = (typeof VIVI_ACTIONS)[number];
 
-interface NewSessionMascotProps {
+interface ViviOrnamentProps {
 	autoplay: boolean;
 	mounted: boolean;
 }
 
-export function NewSessionMascot({ autoplay, mounted }: NewSessionMascotProps): JSX.Element {
+export function ViviOrnament({ autoplay, mounted }: ViviOrnamentProps): JSX.Element {
 	const { t } = useTranslation("chat");
 	const reduceMotion = useReducedMotion();
-	const [action, setAction] = useState<MascotAction>(() => pickRandomAction());
-	const [mascotVisible, setMascotVisible] = useState(readMascotVisible);
+	const [action, setAction] = useState<ViviAction>(() => pickRandomAction());
+	const [viviVisible, setViviVisible] = useState(readViviVisible);
 	const [playing, setPlaying] = useState(false);
-	// 页面被压窄（窗口小、活动面板/侧边栏展开）时插槽放不下素材，整块吉祥物连同显隐按钮一起不渲染。
-	const slot = useMascotSlot();
+	// 页面被压窄（窗口小、活动面板/侧边栏展开）时插槽放不下素材，整块 Vivi连同显隐按钮一起不渲染。
+	const slot = useOrnamentSlot();
 
 	const handleComplete = useCallback(() => {
 		setAction((current) => pickRandomAction(current));
@@ -46,25 +46,25 @@ export function NewSessionMascot({ autoplay, mounted }: NewSessionMascotProps): 
 	}, []);
 
 	useEffect(() => {
-		if (!slot.visible || !mascotVisible || !autoplay || reduceMotion || playing) return;
+		if (!slot.visible || !viviVisible || !autoplay || reduceMotion || playing) return;
 
 		const timer = window.setTimeout(() => {
 			setPlaying(true);
 		}, randomActionInterval());
 
 		return () => window.clearTimeout(timer);
-	}, [autoplay, mascotVisible, playing, reduceMotion, slot.visible]);
+	}, [autoplay, viviVisible, playing, reduceMotion, slot.visible]);
 
 	const handleVisibilityToggle = useCallback(() => {
-		setMascotVisible((current) => {
+		setViviVisible((current) => {
 			const next = !current;
-			window.localStorage.setItem(MASCOT_VISIBLE_STORAGE_KEY, String(next));
+			window.localStorage.setItem(VIVI_VISIBLE_STORAGE_KEY, String(next));
 			return next;
 		});
 		setPlaying(false);
 	}, []);
 
-	const canPlay = slot.visible && mascotVisible && autoplay && !reduceMotion;
+	const canPlay = slot.visible && viviVisible && autoplay && !reduceMotion;
 	const actionPlaying = canPlay && playing;
 
 	return (
@@ -78,16 +78,16 @@ export function NewSessionMascot({ autoplay, mounted }: NewSessionMascotProps): 
 			className="pointer-events-none absolute inset-x-0 -bottom-[75px] z-30 h-20 select-none"
 			ref={slot.ref}
 		>
-			{/* 插槽放不下素材时整块吉祥物（含显隐按钮）不渲染，容器仍在，变宽后自动恢复。 */}
+			{/* 插槽放不下素材时整块 Vivi（含显隐按钮）不渲染，容器仍在，变宽后自动恢复。 */}
 			{slot.visible ? (
 				<>
 					<Button
 						aria-label={t(
-							mascotVisible ? "newSession.mascot.hideMascot" : "newSession.mascot.showMascot",
+							viviVisible ? "newSession.mascot.hideMascot" : "newSession.mascot.showMascot",
 						)}
 						className={cn(
 							"no-drag pointer-events-auto absolute right-2 z-20 rounded-md border border-border/40 bg-background/80 text-muted-foreground backdrop-blur-sm transition-[top] duration-200",
-							mascotVisible ? "-top-5" : "top-11",
+							viviVisible ? "-top-5" : "top-11",
 						)}
 						onClick={handleVisibilityToggle}
 						size="icon-xs"
@@ -97,12 +97,12 @@ export function NewSessionMascot({ autoplay, mounted }: NewSessionMascotProps): 
 							aria-hidden
 							className={cn(
 								"icon-[solar--alt-arrow-down-linear] h-3 w-3 transition-transform duration-200",
-								mascotVisible && "rotate-180",
+								viviVisible && "rotate-180",
 							)}
 						/>
 					</Button>
 
-					{!mascotVisible ? null : actionPlaying ? (
+					{!viviVisible ? null : actionPlaying ? (
 						action === "crawl" ? (
 							<CrawlPass onComplete={handleComplete} />
 						) : (
@@ -233,10 +233,10 @@ function CrawlPass({ onComplete }: CrawlPassProps): JSX.Element {
 	);
 }
 
-function pickRandomAction(current?: MascotAction): MascotAction {
+function pickRandomAction(current?: ViviAction): ViviAction {
 	const candidates = current
-		? MASCOT_ACTIONS.filter((candidate) => candidate !== current)
-		: MASCOT_ACTIONS;
+		? VIVI_ACTIONS.filter((candidate) => candidate !== current)
+		: VIVI_ACTIONS;
 	return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
@@ -244,8 +244,8 @@ function randomActionInterval(): number {
 	return MINIMUM_ACTION_INTERVAL + Math.random() * (MAXIMUM_ACTION_INTERVAL - MINIMUM_ACTION_INTERVAL);
 }
 
-function readMascotVisible(): boolean {
-	return window.localStorage.getItem(MASCOT_VISIBLE_STORAGE_KEY) !== "false";
+function readViviVisible(): boolean {
+	return window.localStorage.getItem(VIVI_VISIBLE_STORAGE_KEY) !== "false";
 }
 
 function positionForRightness(rightness: number): string {

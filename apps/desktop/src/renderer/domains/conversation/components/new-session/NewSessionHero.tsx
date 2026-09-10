@@ -13,7 +13,7 @@ import { type CSSProperties, useRef } from "react";
 import { GuideBadgeSwiper } from "../GuideBadgeSwiper";
 import { easeOut } from "./constants";
 import "./NewSessionHero.css";
-import { NewSessionMascot } from "./NewSessionMascot";
+import { ViviOrnament } from "./ornament/presets/ViviOrnament";
 
 interface NewSessionHeroHostProps {
 	avatarAutoplay: boolean;
@@ -100,7 +100,7 @@ export function DefaultNewSessionHero({
 				{/* 欢迎语上方：引导 badge 轮播。工作模式切换已移到输入框上方的选项行。 */}
 				<GuideBadgeSwiper mounted={mounted} />
 
-				{/* 标题块：身份头像组压在标题上方 + 问候语/身份名 + 副标题（吉祥物改为绝对定位，见下） */}
+				{/* 标题块：身份头像组压在标题上方 + 问候语/身份名 + 副标题（装饰件改为绝对定位，见下） */}
 				<div className="flex w-full min-w-0 flex-col">
 					<div
 						aria-hidden
@@ -148,8 +148,8 @@ export function DefaultNewSessionHero({
 				</div>
 			</motion.div>
 
-			{/* 吉祥物脱离文档流下移，视觉上趴在输入栏顶边上 */}
-			<NewSessionMascot autoplay={avatarAutoplay} mounted={mounted} />
+			{/* 装饰件脱离文档流下移，视觉上趴在输入栏顶边上 */}
+			<ViviOrnament autoplay={avatarAutoplay} mounted={mounted} />
 		</div>
 	);
 }

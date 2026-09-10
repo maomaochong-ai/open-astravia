@@ -10,8 +10,8 @@ export const SHORT_VIEWPORT = 720;
 export const PANEL_SHIFT_MIN_ITEMS = 6;
 
 /**
- * 吉祥物所在插槽（= hero 宽度）低于此值时不渲染吉祥物。
+ * 装饰件所在插槽（= hero 宽度）低于此值时不渲染装饰件。
  * 素材宽 144px 且右锚，插槽再窄下去就会压到选项行的两枚 chip 与标题上；
  * 480 ≈ 选项行两枚 chip 的常见宽度 + 素材宽 + 余量。
  */
-export const MASCOT_MIN_SLOT_WIDTH = 480;
+export const ORNAMENT_MIN_SLOT_WIDTH = 480;
