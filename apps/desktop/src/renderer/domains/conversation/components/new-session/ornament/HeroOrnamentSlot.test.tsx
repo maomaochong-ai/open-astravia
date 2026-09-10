@@ -55,63 +55,64 @@ afterEach(() => {
 });
 
 describe("HeroOrnamentSlot", () => {
-	it("未选过时挂上默认的 Vivi", async () => {
+	it("未选过时挂上默认的燃烧", async () => {
 		await renderSlot(null);
 
-		expect(screen.getByTestId("vivi")).toBeTruthy();
+		expect(screen.getByTestId("blaze")).toBeTruthy();
 	});
 
 	it("选「无」时不渲染任何装饰件", async () => {
 		await renderSlot("none");
 
+		expect(screen.queryByTestId("blaze")).toBeNull();
 		expect(screen.queryByTestId("vivi")).toBeNull();
+	});
+
+	it("选 Vivi 时挂上 Vivi", async () => {
+		await renderSlot("vivi");
+
+		expect(screen.getByTestId("vivi")).toBeTruthy();
+		expect(screen.queryByTestId("blaze")).toBeNull();
 	});
 
 	it("选星轨时挂上星轨", async () => {
 		await renderSlot("orbit");
 
 		expect(screen.getByTestId("orbit")).toBeTruthy();
-		expect(screen.queryByTestId("vivi")).toBeNull();
+		expect(screen.queryByTestId("blaze")).toBeNull();
 	});
 
 	it("选火把时挂上火把", async () => {
 		await renderSlot("torch");
 
 		expect(screen.getByTestId("torch")).toBeTruthy();
-		expect(screen.queryByTestId("vivi")).toBeNull();
+		expect(screen.queryByTestId("blaze")).toBeNull();
 	});
 
 	it("选马里奥时挂上马里奥", async () => {
 		await renderSlot("mario");
 
 		expect(screen.getByTestId("mario")).toBeTruthy();
-		expect(screen.queryByTestId("vivi")).toBeNull();
-	});
-
-	it("选燃烧时挂上燃烧", async () => {
-		await renderSlot("blaze");
-
-		expect(screen.getByTestId("blaze")).toBeTruthy();
-		expect(screen.queryByTestId("vivi")).toBeNull();
+		expect(screen.queryByTestId("blaze")).toBeNull();
 	});
 
 	it("选玩手时挂上玩手", async () => {
 		await renderSlot("hand");
 
 		expect(screen.getByTestId("hand")).toBeTruthy();
-		expect(screen.queryByTestId("vivi")).toBeNull();
+		expect(screen.queryByTestId("blaze")).toBeNull();
 	});
 
 	it("选能源井时挂上能源井", async () => {
 		await renderSlot("well");
 
 		expect(screen.getByTestId("well")).toBeTruthy();
-		expect(screen.queryByTestId("vivi")).toBeNull();
+		expect(screen.queryByTestId("blaze")).toBeNull();
 	});
 
-	it("存了未知装饰件时回落到默认的 Vivi", async () => {
+	it("存了未知装饰件时回落到默认的燃烧", async () => {
 		await renderSlot("not-an-ornament");
 
-		expect(screen.getByTestId("vivi")).toBeTruthy();
+		expect(screen.getByTestId("blaze")).toBeTruthy();
 	});
 });
