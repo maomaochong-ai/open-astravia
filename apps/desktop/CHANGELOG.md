@@ -20,6 +20,8 @@
 
 ### Fixed
 
+- 修复远程 Action RPC 连接失败时泄漏原始 `TypeError`、以及客户端接受错误请求 ID 响应的问题；传输失败现在统一报告为 `ACTION_RPC_UNREACHABLE`，并拒绝不匹配当前请求的响应。
+
 - 修复远程 Action RPC 在上游返回非 JSON 或不完整错误响应时被客户端误报为 `TypeError` 的问题；现在会保留结构化 Action 错误，并将格式异常统一报告为 `ACTION_RPC_ERROR`。
 
 - 修复 Team 在 Ctrl+Enter/停止竞态下的时间线错位：提交中的消息会按时间重新归位，同一键盘事件不会重复提交；停止与消息准入同时发生时仍会保留用户消息，重开后与主会话一致。
