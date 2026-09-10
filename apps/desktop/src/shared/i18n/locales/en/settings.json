@@ -1102,6 +1102,8 @@
   "textureGridHint": "A faint square grid fading out toward the edges, with a soft accent glow at the center.",
   "textureAuroraTitle": "Aurora",
   "textureAuroraHint": "A halftone glow at the center of the page: light drifts behind the dots, shifting hue as it goes, and fades out at the edges.",
+  "textureRippleTitle": "Ripple",
+  "textureRippleHint": "Same layout as the grid, with the pattern swapped for fine concentric rings.",
   "newSessionDecorTitle": "New session page decoration",
   "newSessionDecorHint": "Both settings below only change the new session page: the ornament sits above the composer, the texture is the backdrop behind the whole page.",
   "section_appearance-sidebar": "Sidebar Style",

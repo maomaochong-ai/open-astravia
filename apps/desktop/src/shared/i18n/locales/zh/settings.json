@@ -1102,6 +1102,8 @@
   "textureGridHint": "一层淡淡的方格纹，越靠边越淡，页面中间浮着一团主色光晕。",
   "textureAuroraTitle": "流光",
   "textureAuroraHint": "页面正中一团半调网点的光晕，光斑在点阵后缓慢流过并不断换色，向四周淡开。",
+  "textureRippleTitle": "涟漪",
+  "textureRippleHint": "与网格同一套排版，纹路换成一层细细的同心圆环。",
   "newSessionDecorTitle": "新会话页装饰",
   "newSessionDecorHint": "以下两项只改新会话页的样子：装饰件挂在输入框上方，纹理是整页背后的底衬。",
   "section_appearance-sidebar": "侧边栏样式",

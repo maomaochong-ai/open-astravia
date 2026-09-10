@@ -1,4 +1,5 @@
 import { AuroraTexture } from "@shared/components/aurora/AuroraTexture";
+import { RippleTexture } from "@shared/components/ripple/RippleTexture";
 import { NewSessionBackground } from "@vetta/theme-ui/chat";
 import type { ComponentType } from "react";
 
@@ -11,7 +12,7 @@ import type { ComponentType } from "react";
  * 两边共用一份表才不会出现「预览与页面对不上」。
  */
 
-export type NewSessionTextureId = "aurora" | "grid" | "none";
+export type NewSessionTextureId = "aurora" | "grid" | "none" | "ripple";
 
 export const NEW_SESSION_TEXTURE_STORAGE_KEY = "vetta-new-session-texture";
 
@@ -34,6 +35,7 @@ export const NEW_SESSION_TEXTURE_CATALOG = [
 	{ id: "none", labelKey: "textureNoneTitle", hintKey: "textureNoneHint" },
 	{ id: "grid", labelKey: "textureGridTitle", hintKey: "textureGridHint" },
 	{ id: "aurora", labelKey: "textureAuroraTitle", hintKey: "textureAuroraHint" },
+	{ id: "ripple", labelKey: "textureRippleTitle", hintKey: "textureRippleHint" },
 ] as const satisfies readonly NewSessionTextureCatalogEntry[];
 
 export function isNewSessionTextureId(value: string | null | undefined): value is NewSessionTextureId {
@@ -62,4 +64,5 @@ export const NEW_SESSION_TEXTURE_COMPONENTS: Record<NewSessionTextureId, Compone
 	aurora: AuroraTexture,
 	grid: NewSessionBackground,
 	none: null,
+	ripple: RippleTexture,
 };
