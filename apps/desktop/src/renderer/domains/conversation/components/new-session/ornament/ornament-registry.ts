@@ -1,6 +1,7 @@
 import type { OrnamentId } from "@shared/theme/ornament";
 import type { ComponentType } from "react";
 import { BlazeOrnament } from "./presets/BlazeOrnament";
+import { HandOrnament } from "./presets/HandOrnament";
 import { MarioOrnament } from "./presets/MarioOrnament";
 import { OrbitOrnament } from "./presets/OrbitOrnament";
 import { TorchOrnament } from "./presets/TorchOrnament";
@@ -21,6 +22,7 @@ export interface OrnamentProps {
  */
 export const ORNAMENT_COMPONENTS: Record<OrnamentId, ComponentType<OrnamentProps> | null> = {
 	blaze: BlazeOrnament,
+	hand: HandOrnament,
 	mario: MarioOrnament,
 	none: null,
 	orbit: OrbitOrnament,

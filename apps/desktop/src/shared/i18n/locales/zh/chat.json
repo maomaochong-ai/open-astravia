@@ -736,6 +736,10 @@
 			"hit": "顶出蘑菇",
 			"reset": "把蘑菇收回砖块"
 		},
+		"hand": {
+			"rest": "让手歇一会儿",
+			"tap": "让手接着敲"
+		},
 		"projectSelector": {
 			"placeholder": "选择项目",
 			"clear": "不指定项目",

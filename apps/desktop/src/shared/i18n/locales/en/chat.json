@@ -736,6 +736,10 @@
 			"hit": "Bump out the mushroom",
 			"reset": "Put the mushroom back"
 		},
+		"hand": {
+			"rest": "Let the hand rest",
+			"tap": "Get the hand tapping again"
+		},
 		"projectSelector": {
 			"placeholder": "Select project",
 			"clear": "No project",

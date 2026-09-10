@@ -1,0 +1,226 @@
+/* ─── 玩手 ───
+   一只在桌面上敲手指的手：四根手指依次落下，掌背与拇指是两块圆角矩形，
+   底下压一层模糊的接触阴影。全是 CSS 盒子，没有贴图也没有画布。
+
+   原素材按 80px 掌宽标定，这里把每处尺寸都折算成 `--ns-hand-unit` 的比例，
+   换大小只改 unit——阴影用的是 blur() 与百分比圆角，跟着 scale 缩会糊掉一圈。
+
+   类名一律带 ns-hand 前缀：这是全局样式表，原素材那种 emoji 裸类名会串到别处。 */
+
+.ns-hand {
+	/* unit 由外层挂载点用内联样式给；这里只留一个兜底，不能写成自身的 --ns-hand-unit，
+	   否则会盖掉从父元素继承下来的那个值。 */
+	--u: var(--ns-hand-unit, 80px);
+	/* 折算系数：原素材每 80px 掌宽对应一个 unit，下面 calc(N * var(--s)) 里的 N 都是原始像素值。 */
+	--s: calc(var(--u) / 80);
+	--skin: #e4c560;
+	--tap-speed: 0.6s;
+	--tap-stagger: 0.1s;
+	position: relative;
+	width: var(--u);
+	height: calc(60 * var(--s));
+	/* 手指与阴影整个探到掌背左边去了，留出一掌宽的空位，外层量到的宽度才是画出来的宽度。 */
+	margin-left: var(--u);
+}
+
+/* 接触阴影：手落在桌面上才有，握成拳收起来时淡下去。 */
+.ns-hand::before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 70%;
+	right: 20%;
+	width: 180%;
+	height: 75%;
+	background-color: #000;
+	border-radius: calc(40 * var(--s)) calc(10 * var(--s));
+	filter: blur(calc(10 * var(--s)));
+	opacity: 0.3;
+	transition: opacity 0.3s ease;
+}
+
+.ns-hand-palm {
+	display: block;
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background-color: var(--skin);
+	border-radius: calc(10 * var(--s)) calc(40 * var(--s));
+}
+
+.ns-hand-thumb {
+	position: absolute;
+	right: 1%;
+	bottom: -18%;
+	width: 120%;
+	height: calc(38 * var(--s));
+	background-color: var(--skin);
+	border-bottom: calc(2 * var(--s)) solid rgba(0, 0, 0, 0.1);
+	border-left: calc(2 * var(--s)) solid rgba(0, 0, 0, 0.1);
+	border-radius: calc(30 * var(--s)) calc(20 * var(--s)) calc(20 * var(--s)) calc(10 * var(--s));
+	transform-origin: calc(100% - 20 * var(--s)) calc(20 * var(--s));
+	transform: rotate(-20deg);
+	transition: transform 0.3s ease;
+}
+
+/* 拇指根部那道高光，让两块同色的矩形分得开。 */
+.ns-hand-thumb::after {
+	content: "";
+	position: absolute;
+	bottom: -8%;
+	left: calc(5 * var(--s));
+	width: 20%;
+	height: 60%;
+	background-color: rgba(255, 255, 255, 0.3);
+	border-right: calc(2 * var(--s)) solid rgba(0, 0, 0, 0.05);
+	border-radius: 60% 10% 10% 30%;
+}
+
+.ns-hand-finger {
+	position: absolute;
+	right: 64%;
+	bottom: 32%;
+	width: 80%;
+	height: calc(35 * var(--s));
+	background-color: var(--skin);
+	transform-origin: 100% calc(20 * var(--s));
+	transition: transform 0.3s ease;
+	animation-duration: calc(var(--tap-speed) * 2);
+	animation-timing-function: ease-in-out;
+	animation-iteration-count: infinite;
+}
+
+/* 指节：从指根斜着折出去的一小段，手指抬起时看得出关节。 */
+.ns-hand-finger::before {
+	content: "";
+	position: absolute;
+	right: 65%;
+	bottom: 8%;
+	width: 140%;
+	height: calc(30 * var(--s));
+	background-color: var(--skin);
+	border-radius: calc(20 * var(--s));
+	transform-origin: calc(100% - 20 * var(--s)) calc(20 * var(--s));
+	transform: rotate(-60deg);
+}
+
+/* 四根手指靠亮度分层次，越靠近视线越亮；静止时的姿势与动画第 0 帧一致，
+   不写死这一份，停下来的手会四根一样长。 */
+.ns-hand-finger:nth-child(1) {
+	filter: brightness(70%);
+	transform: rotate(10deg) scale(0.4);
+	animation-name: ns-hand-tap-1;
+	animation-delay: 0s;
+}
+
+.ns-hand-finger:nth-child(2) {
+	filter: brightness(80%);
+	transform: rotate(10deg) scale(0.6);
+	animation-name: ns-hand-tap-2;
+	animation-delay: var(--tap-stagger);
+}
+
+.ns-hand-finger:nth-child(3) {
+	filter: brightness(90%);
+	transform: rotate(10deg) scale(0.8);
+	animation-name: ns-hand-tap-3;
+	animation-delay: calc(var(--tap-stagger) * 2);
+}
+
+.ns-hand-finger:nth-child(4) {
+	filter: brightness(100%);
+	transform: rotate(10deg) scale(1);
+	animation-name: ns-hand-tap-4;
+	animation-delay: calc(var(--tap-stagger) * 3);
+}
+
+/* ── 收起来：四根手指折进掌心成一只拳头 ──
+   借的是敲击动画落到底那一帧的角度，所以从敲到收是一段连得上的动作。 */
+
+.ns-hand[data-tapping="false"] .ns-hand-finger {
+	animation: none;
+}
+
+.ns-hand[data-tapping="false"] .ns-hand-finger:nth-child(1) {
+	transform: rotate(50deg) scale(0.4);
+}
+
+.ns-hand[data-tapping="false"] .ns-hand-finger:nth-child(2) {
+	transform: rotate(50deg) scale(0.6);
+}
+
+.ns-hand[data-tapping="false"] .ns-hand-finger:nth-child(3) {
+	transform: rotate(50deg) scale(0.8);
+}
+
+.ns-hand[data-tapping="false"] .ns-hand-finger:nth-child(4) {
+	transform: rotate(50deg) scale(1);
+}
+
+.ns-hand[data-tapping="false"] .ns-hand-thumb {
+	transform: rotate(-6deg);
+}
+
+.ns-hand[data-tapping="false"]::before {
+	opacity: 0.18;
+}
+
+/* 只有「在敲」且允许动效时才真的跑动画；其余情况停在上面那两组静止姿势上。 */
+.ns-hand[data-animate="false"] .ns-hand-finger {
+	animation: none;
+}
+
+@keyframes ns-hand-tap-1 {
+	0%,
+	50%,
+	100% {
+		transform: rotate(10deg) scale(0.4);
+	}
+	40% {
+		transform: rotate(50deg) scale(0.4);
+	}
+}
+
+@keyframes ns-hand-tap-2 {
+	0%,
+	50%,
+	100% {
+		transform: rotate(10deg) scale(0.6);
+	}
+	40% {
+		transform: rotate(50deg) scale(0.6);
+	}
+}
+
+@keyframes ns-hand-tap-3 {
+	0%,
+	50%,
+	100% {
+		transform: rotate(10deg) scale(0.8);
+	}
+	40% {
+		transform: rotate(50deg) scale(0.8);
+	}
+}
+
+@keyframes ns-hand-tap-4 {
+	0%,
+	50%,
+	100% {
+		transform: rotate(10deg) scale(1);
+	}
+	40% {
+		transform: rotate(50deg) scale(1);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ns-hand .ns-hand-finger,
+	.ns-hand .ns-hand-thumb,
+	.ns-hand::before {
+		animation: none;
+		transition: none;
+	}
+}

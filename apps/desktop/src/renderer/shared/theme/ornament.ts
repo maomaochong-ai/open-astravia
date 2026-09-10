@@ -7,7 +7,7 @@
  * 会话页只要 id。
  */
 
-export type OrnamentId = "blaze" | "mario" | "none" | "orbit" | "torch" | "vivi";
+export type OrnamentId = "blaze" | "hand" | "mario" | "none" | "orbit" | "torch" | "vivi";
 
 export const ORNAMENT_STORAGE_KEY = "vetta-hero-ornament";
 
@@ -43,6 +43,8 @@ export const ORNAMENT_CATALOG = [
 	{ id: "mario", labelKey: "ornamentMarioTitle", hintKey: "ornamentMarioHint", preview: undefined },
 	// 燃烧同理：火苗是 mask + 滤镜实时糊出来的，预览卡直接烧一小团。
 	{ id: "blaze", labelKey: "ornamentBlazeTitle", hintKey: "ornamentBlazeHint", preview: undefined },
+	// 玩手同理：整只手是 CSS 盒子摆出来的，预览卡直接摆一只小的。
+	{ id: "hand", labelKey: "ornamentHandTitle", hintKey: "ornamentHandHint", preview: undefined },
 ] as const satisfies readonly OrnamentCatalogEntry[];
 
 export function isOrnamentId(value: string | null | undefined): value is OrnamentId {
