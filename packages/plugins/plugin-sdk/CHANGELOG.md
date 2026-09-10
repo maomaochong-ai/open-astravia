@@ -21,6 +21,8 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Added
 
+- 插件清单新增 `agent.skillPresentation`：插件可按产品入口控制 Skill 可见性，并为公开 Skill 声明本地化展示名与说明；展示策略不改变运行时加载、权限或稳定 Skill 名（ADR-0110）。
+
 - 工具调用槽位的 `status` 新增 `cancelled`，用于区分用户中止与工具执行失败。
 
 - 新增 `ctx.ai.stream()`：沿用 `ai.complete` 权限与单轮请求/最终结果合同，通过 `onTextDelta` 提供经过校验的

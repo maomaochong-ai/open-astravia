@@ -103,6 +103,36 @@ describe("agent capability options", () => {
 		expect(options.find((option) => option.kind === "skill")?.sourcePluginId).toBe("content-creation");
 		expect(options.find((option) => option.kind === "skill")?.sourceName).toBe("内容创作");
 		expect(options.find((option) => option.kind === "skill")?.enabledGlobally).toBe(true);
+		expect(options.find((option) => option.kind === "skill")?.visibleInAgentConfiguration).toBe(false);
+	});
+
+	it("uses a visible skill's product name without changing its stable id", () => {
+		const [option] = buildAgentCapabilityOptions({
+			skills: [
+				{
+					name: "vetta-ui-design",
+					alias: "Internal alias",
+					description: "Internal description",
+					source: "plugin",
+					type: "skill",
+					presentation: {
+						defaultVisibility: "visible",
+						displayName: "Vetta 设计",
+						displayDescription: "设计产品界面",
+					},
+				},
+			],
+			skillManifest: {},
+			mcpConfig: { mcpServers: {} },
+			plugins: [],
+		});
+
+		expect(option).toMatchObject({
+			id: "vetta-ui-design",
+			title: "Vetta 设计",
+			description: "设计产品界面",
+			visibleInAgentConfiguration: true,
+		});
 	});
 
 	it("falls back to the plugin id when its name catalog is unavailable", () => {

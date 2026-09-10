@@ -98,6 +98,7 @@ export function buildPluginRuntimeConfig(
 				skillPathContributions.push({
 					pluginId: plugin.id,
 					paths: agent.skillPaths.map((path) => dependencies.resolveResource(plugin, path)),
+					...(agent.skillPresentation ? { presentation: agent.skillPresentation } : {}),
 				});
 			}
 			if (agent.toolPolicy && hasGrantedPermission(plugin, "agent.tools.control")) {

@@ -1,4 +1,6 @@
 import { cn } from "@vetta/ui";
+import { resolvePluginText } from "@vetta-org/plugin-sdk";
+import { isSkillVisibleOnSurface, resolveSkillProviderPresentation } from "@vetta/capability-sdk";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AbilityContributedMcp, AbilityContributedSkill, AbilityType } from "@shared/lib/api";
@@ -12,15 +14,43 @@ const COLLAPSED_LIMIT = 5;
  * 「本插件提供」：插件内聚的 MCP server 与 skill（ADR-0040 的 agent.mcpServers / agent.skillPaths）。
  *
  * 这些成员随插件生死、对用户不可单独安装卸载（与 bundle 的松散组合相对，见 ADR-0049），
- * 所以必须在**装之前**就列清楚，否则用户无从判断这个插件到底带来了什么。
+ * 展示策略可以把内部编排 Skill 从详情页隐藏；公开的 Skill 才在安装前列出，
+ * 让用户看到插件真正对外提供的能力，而不是实现细节。
  *
  * 数据来自服务端上传时对 zip 的解析（market.config.contributions）；
  * 未上架、仅本地安装的插件若用内联 server map 声明，则从 manifest 兜底取名。
  */
 export function PluginContributionsSection({ item }: { item: PluginAbility }): JSX.Element | null {
-	const { t } = useTranslation("abilities");
+	const { t, i18n } = useTranslation("abilities");
 	const mcpServers = resolveMcpServers(item);
-	const skills = item.market?.config.contributions?.skills ?? [];
+	const rawSkills = item.market?.config.contributions?.skills ?? [];
+	const installedPresentation = item.plugin?.agent?.skillPresentation;
+	const resolveContributionText = (raw: string | undefined, fallback: string | undefined): string | undefined => {
+		if (!raw) return fallback;
+		if (!item.plugin) return /^%[^%]+%$/.test(raw) ? fallback : raw;
+		const resolved = resolvePluginText(
+			raw,
+			item.plugin.locales,
+			i18n.resolvedLanguage ?? i18n.language,
+			item.plugin.defaultLocale,
+		);
+		return /^%[^%]+%$/.test(raw) && resolved === raw.slice(1, -1) ? fallback : resolved;
+	};
+	const skills = rawSkills.flatMap((skill) => {
+		const presentation = installedPresentation
+			? resolveSkillProviderPresentation(installedPresentation, skill.name)
+			: skill.presentation;
+		const effective = presentation ? { source: "plugin", presentation } : { source: "plugin" };
+		if (!isSkillVisibleOnSurface(effective, "pluginDetail")) return [];
+		return [
+			{
+				...skill,
+				presentation,
+				alias: resolveContributionText(presentation?.displayName, skill.alias),
+				description: resolveContributionText(presentation?.displayDescription, skill.description),
+			},
+		];
+	});
 
 	if (mcpServers.length === 0 && skills.length === 0) return null;
 

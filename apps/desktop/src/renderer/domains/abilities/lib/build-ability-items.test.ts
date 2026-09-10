@@ -177,7 +177,13 @@ describe("buildSkillAbilities", () => {
 				localSkills: [
 					{ name: "pdf", description: "", source: "builtin", type: "skill" },
 					{ name: "my-skill", description: "", source: "user", type: "skill" },
-					{ name: "from-plugin", description: "", source: "plugin", type: "skill" },
+					{
+						name: "from-plugin",
+						description: "",
+						source: "plugin",
+						type: "skill",
+						presentation: { defaultVisibility: "visible" },
+					},
 				],
 			}),
 		);
@@ -201,7 +207,14 @@ describe("buildSkillAbilities", () => {
 						type: "skill",
 						provenance: { kind: "provided", providerType: "sdk", providerId: "dynamic" },
 					},
-					{ name: "plugin-legacy", description: "", source: "plugin", sourcePluginId: "design", type: "skill" },
+					{
+						name: "plugin-legacy",
+						description: "",
+						source: "plugin",
+						sourcePluginId: "design",
+						type: "skill",
+						presentation: { defaultVisibility: "visible" },
+					},
 					{ name: "builtin", description: "", source: "builtin", type: "skill" },
 					{ name: "user", description: "", source: "user", type: "skill" },
 				],
@@ -214,6 +227,35 @@ describe("buildSkillAbilities", () => {
 			["builtin", { kind: "builtin", providerId: "vetta" }],
 			["user", { kind: "native", scope: "user" }],
 		]);
+	});
+
+	it("hides internal plugin skills from the ability catalog and applies public display text", () => {
+		const items = buildSkillAbilities(
+			[],
+			createState({
+				localSkills: [
+					{ name: "internal", description: "Internal", source: "plugin", type: "skill" },
+					{
+						name: "vetta-ui-design",
+						description: "Internal description",
+						source: "plugin",
+						type: "skill",
+						presentation: {
+							defaultVisibility: "visible",
+							displayName: "Vetta 设计",
+							displayDescription: "设计产品界面",
+						},
+					},
+				],
+			}),
+		);
+
+		expect(items).toHaveLength(1);
+		expect(items[0]).toMatchObject({
+			slug: "vetta-ui-design",
+			title: "Vetta 设计",
+			description: "设计产品界面",
+		});
 	});
 
 	it("gives app-shipped skills their bundled icon, and only them", () => {
@@ -244,6 +286,7 @@ describe("buildSkillAbilities", () => {
 						source: "plugin",
 						type: "skill",
 						icon: pluginIcon,
+						presentation: { defaultVisibility: "visible" },
 					},
 				],
 			}),

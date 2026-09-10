@@ -21,6 +21,14 @@ describe("buildSkillTokenMetaMap", () => {
 		expect(map.get("skill:publish-ability")).toEqual({ label: "publish-ability" });
 	});
 
+	it("展示名只改变 token 文案，不改变稳定键", () => {
+		const map = buildSkillTokenMetaMap(
+			[{ ...publishAbility, presentation: { displayName: "Vetta 设计" } }],
+			new Map(),
+		);
+		expect(map.get("skill:publish-ability")?.label).toBe("Vetta 设计");
+	});
+
 	it("内置 skill 的图标走 renderer 静态资源", () => {
 		const map = buildSkillTokenMetaMap([{ ...publishAbility, source: "builtin" }], new Map());
 		expect(map.get("skill:publish-ability")?.icon).toBe("./skills/publish-ability.png");

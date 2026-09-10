@@ -11301,6 +11301,96 @@
                   }
                 }
               ]
+            },
+            "presentation": {
+              "additionalProperties": false,
+              "type": "object",
+              "properties": {
+                "defaultVisibility": {
+                  "anyOf": [
+                    {
+                      "const": "visible",
+                      "type": "string"
+                    },
+                    {
+                      "const": "hidden",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "surfaces": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "properties": {
+                    "abilityCatalog": {
+                      "anyOf": [
+                        {
+                          "const": "visible",
+                          "type": "string"
+                        },
+                        {
+                          "const": "hidden",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "agentConfiguration": {
+                      "anyOf": [
+                        {
+                          "const": "visible",
+                          "type": "string"
+                        },
+                        {
+                          "const": "hidden",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "commandPalette": {
+                      "anyOf": [
+                        {
+                          "const": "visible",
+                          "type": "string"
+                        },
+                        {
+                          "const": "hidden",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "skillPicker": {
+                      "anyOf": [
+                        {
+                          "const": "visible",
+                          "type": "string"
+                        },
+                        {
+                          "const": "hidden",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "pluginDetail": {
+                      "anyOf": [
+                        {
+                          "const": "visible",
+                          "type": "string"
+                        },
+                        {
+                          "const": "hidden",
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "displayName": {
+                  "type": "string"
+                },
+                "displayDescription": {
+                  "type": "string"
+                }
+              }
             }
           }
         }

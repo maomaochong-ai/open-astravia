@@ -36,7 +36,13 @@ export function useCommandPanelModel({
 	const { t } = useTranslation("chat");
 	const normalizedFilter = filter.startsWith("/") ? filter.slice(1) : filter;
 	// 预取：命令区第一次展开时不必再等扫盘，避免与高度动画抢主线程。
-	const { items } = useSkillList({ open, cwd, filter: normalizedFilter, prefetch: true });
+	const { items } = useSkillList({
+		open,
+		cwd,
+		filter: normalizedFilter,
+		surface: "commandPalette",
+		prefetch: true,
+	});
 	const { items: connectors, columns } = useConnectorGrid(open, true);
 	const iconMap = useSkillIconMap(open, true);
 	const resolveIcon = useCallback((skill: SkillInfo) => skillIconOf(iconMap, skill), [iconMap]);

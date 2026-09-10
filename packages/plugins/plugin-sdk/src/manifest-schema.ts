@@ -1,4 +1,5 @@
 import { Type, type Static } from "@sinclair/typebox";
+import { SkillSurfaceVisibilitySchema, SkillVisibilitySchema } from "@vetta/capability-sdk";
 import { PLUGIN_PERMISSIONS } from "./permissions.js";
 
 const NON_WHITESPACE_PATTERN = "\\S";
@@ -239,6 +240,24 @@ const PluginMcpServerMapSchema = Type.Record(
 	{ additionalProperties: false },
 );
 
+export const PluginSkillPresentationRuleSchema = Type.Object(
+	{
+		defaultVisibility: Type.Optional(SkillVisibilitySchema),
+		surfaces: Type.Optional(SkillSurfaceVisibilitySchema),
+		displayName: Type.Optional(NonWhitespaceStringSchema),
+		displayDescription: Type.Optional(NonWhitespaceStringSchema),
+	},
+	{ additionalProperties: false },
+);
+export const PluginSkillPresentationSchema = Type.Object(
+	{
+		defaultVisibility: Type.Optional(SkillVisibilitySchema),
+		surfaces: Type.Optional(SkillSurfaceVisibilitySchema),
+		skills: Type.Optional(Type.Record(NonWhitespaceStringSchema, PluginSkillPresentationRuleSchema)),
+	},
+	{ additionalProperties: false },
+);
+
 export const PluginAgentManifestSchema = Type.Object(
 	{
 		systemPrompt: Type.Optional(
@@ -250,6 +269,7 @@ export const PluginAgentManifestSchema = Type.Object(
 			),
 		),
 		skillPaths: Type.Optional(Type.Array(NonWhitespaceStringSchema)),
+		skillPresentation: Type.Optional(PluginSkillPresentationSchema),
 		mcpServers: Type.Optional(Type.Union([NonWhitespaceStringSchema, PluginMcpServerMapSchema])),
 		toolPolicy: Type.Optional(
 			Type.Object(
@@ -313,6 +333,8 @@ export const PluginManifestSchema = Type.Object(
 
 export type PluginMcpServerConfig = Static<typeof PluginMcpServerConfigSchema>;
 export type PluginAgentManifest = Static<typeof PluginAgentManifestSchema>;
+export type PluginSkillPresentation = Static<typeof PluginSkillPresentationSchema>;
+export type PluginSkillPresentationRule = Static<typeof PluginSkillPresentationRuleSchema>;
 export type PluginCliProviderManifest = Static<typeof PluginCliProviderManifestSchema>;
 export type PluginServiceArtifact = Static<typeof PluginServiceArtifactSchema>;
 export type PluginServicePlatform = Static<typeof PluginServicePlatformSchema>;

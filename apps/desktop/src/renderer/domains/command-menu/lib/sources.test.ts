@@ -156,6 +156,31 @@ describe("buildInstalledAbilityEntries", () => {
 		);
 		expect(entries.map((entry) => entry.order)).toEqual([0, 1, 2]);
 	});
+
+	it("omits internal plugin skills and uses public presentation text", () => {
+		const skills: SkillInfo[] = [
+			{ name: "internal", description: "Hidden", source: "plugin", type: "skill" },
+			{
+				name: "vetta-ui-design",
+				description: "Internal",
+				source: "plugin",
+				type: "skill",
+				presentation: {
+					defaultVisibility: "visible",
+					displayName: "Vetta 设计",
+					displayDescription: "设计产品界面",
+				},
+			},
+		];
+
+		const entries = buildInstalledAbilityEntries({ skills, plugins: [] }, labels);
+		expect(entries).toHaveLength(1);
+		expect(entries[0]).toMatchObject({
+			id: "ability:skill:vetta-ui-design",
+			title: "Vetta 设计",
+			subtitle: "设计产品界面",
+		});
+	});
 });
 
 describe("buildMarketplaceEscapeEntry", () => {

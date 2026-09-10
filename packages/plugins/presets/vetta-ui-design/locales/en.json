@@ -1,5 +1,5 @@
 {
-	"plugin.name": "Vetta UI Design",
+	"plugin.name": "Vetta Design",
 	"plugin.description": "Design UI mockups with Vetta on an infinite canvas: frames are real React code, select any element to have Vetta edit it, saves hot-reload instantly.",
 	"tab.label": "Design",
 	"fileExplorer.openCanvas": "Open in design canvas",

@@ -21,6 +21,10 @@ export type {
 	JsonSchema,
 	McpServerContribution,
 	SkillPathContribution,
+	SkillPresentationRule,
+	SkillPresentationSurface,
+	SkillProviderPresentation,
+	SkillVisibility,
 	ToolPolicyContribution,
 } from "../model-context/plugin-runtime-contract.js";
 export type {

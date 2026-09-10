@@ -8,6 +8,7 @@
  */
 import type { SkillInfo } from "@preload/api";
 import { builtinSkillIconUrl } from "@shared/lib/builtin-skill-icons";
+import { getSkillDisplayName } from "@vetta/capability-sdk";
 
 /** 键为 `${type}:${slug}`：本地清单里 skill 与 scene 同命名空间，同名不同类型不能互相认领。 */
 export type SkillIconMap = ReadonlyMap<string, string>;
@@ -36,7 +37,7 @@ export function buildSkillTokenMetaMap(
 		const key = `${skill.type}:${skill.name}`;
 		if (map.has(key)) continue;
 		const icon = skillIconOf(iconMap, skill);
-		map.set(key, { label: skill.alias || skill.name, ...(icon ? { icon } : {}) });
+		map.set(key, { label: getSkillDisplayName(skill), ...(icon ? { icon } : {}) });
 	}
 	return map;
 }

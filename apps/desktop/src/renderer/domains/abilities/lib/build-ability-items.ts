@@ -15,6 +15,7 @@ import type {
 } from "@preload/api";
 import type { AbilityMember, MarketAbility } from "@shared/lib/api";
 import { builtinSkillIconUrl } from "@shared/lib/builtin-skill-icons";
+import { getSkillDisplayDescription, getSkillDisplayName, isSkillVisibleOnSurface } from "@vetta/capability-sdk";
 import type { TFunction } from "i18next";
 import {
 	type BuiltinMcpPreset,
@@ -219,6 +220,7 @@ export function buildSkillAbilities(market: MarketAbility[], state: LocalAbility
 	// `~/.agents/skills` 里用户自己放的、插件贡献的都是本地来源，不能算 Vetta 内置。
 	for (const skill of localSkills) {
 		if (claimedNames.has(`${skill.type}:${skill.name}`)) continue;
+		if (!isSkillVisibleOnSurface(skill, "abilityCatalog")) continue;
 		const isBuiltin = skill.source === "builtin";
 		const source = isBuiltin ? BUILTIN_SOURCE : LOCAL_SOURCE;
 		const id = abilityId(skill.type, skill.name, source);
@@ -229,8 +231,8 @@ export function buildSkillAbilities(market: MarketAbility[], state: LocalAbility
 			id,
 			slug: skill.name,
 			catalogSource: source,
-			title: skill.alias || skill.name,
-			description: skill.description,
+			title: getSkillDisplayName(skill),
+			description: getSkillDisplayDescription(skill),
 			// 内置走 renderer 静态资源；插件贡献 skill 带宿主插件 iconUrl；其余落默认图。
 			icon: isBuiltin ? builtinSkillIconUrl(skill.name) : skill.icon,
 			category: "",
@@ -256,7 +258,7 @@ export function buildSkillAbilities(market: MarketAbility[], state: LocalAbility
 					: skill.source === "builtin"
 						? { kind: "builtin", providerId: "vetta" }
 						: { kind: "native", scope: skill.source }),
-			searchTerms: terms(skill.name, skill.alias, skill.description),
+			searchTerms: terms(skill.name, getSkillDisplayName(skill), getSkillDisplayDescription(skill)),
 		});
 	}
 

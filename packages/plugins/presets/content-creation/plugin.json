@@ -42,7 +42,10 @@
 		},
 		"skillPaths": [
 			"agent/skills"
-		]
+		],
+		"skillPresentation": {
+			"defaultVisibility": "hidden"
+		}
 	},
 	"network": {
 		"allowedHosts": [

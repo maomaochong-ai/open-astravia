@@ -3,7 +3,10 @@ import { CAPABILITY_ERROR_CODES, CAPABILITY_PREFIXES } from "../../src/contracts
 import {
 	DOMAIN_SKILL_CAPABILITIES,
 	DOMAIN_SKILL_CAPABILITY_CATALOG,
+	getSkillDisplayDescription,
+	getSkillDisplayName,
 	INSTALLED_SKILL_SOURCES,
+	isSkillVisibleOnSurface,
 	SKILL_TYPES,
 } from "../../src/domain.js";
 
@@ -108,6 +111,41 @@ describe("skill domain capabilities", () => {
 				},
 			]),
 		).toThrowError(expect.objectContaining({ code: CAPABILITY_ERROR_CODES.INVALID_OUTPUT }));
+	});
+
+	it("resolves provider presentation independently for each product surface", () => {
+		const [skill] = DOMAIN_SKILL_CAPABILITIES.LIST.parseOutput([
+			{
+				name: "vetta-ui-design",
+				alias: "Internal alias",
+				description: "Internal description",
+				source: "plugin",
+				type: "skill",
+				provenance: { kind: "provided", providerType: "plugin", providerId: "vetta-ui-design" },
+				presentation: {
+					defaultVisibility: "hidden",
+					surfaces: { agentConfiguration: "visible", skillPicker: "hidden" },
+					displayName: "Vetta 设计",
+					displayDescription: "设计产品界面",
+				},
+			},
+		]);
+
+		expect(skill).toBeDefined();
+		if (!skill) return;
+		expect(isSkillVisibleOnSurface(skill, "agentConfiguration")).toBe(true);
+		expect(isSkillVisibleOnSurface(skill, "skillPicker")).toBe(false);
+		expect(isSkillVisibleOnSurface(skill, "commandPalette")).toBe(false);
+		expect(isSkillVisibleOnSurface(skill, "pluginDetail")).toBe(false);
+		expect(getSkillDisplayName(skill)).toBe("Vetta 设计");
+		expect(getSkillDisplayDescription(skill)).toBe("设计产品界面");
+	});
+
+	it("keeps native and legacy skills visible while plugin skills fail closed", () => {
+		const native = { name: "native", description: "", source: "user", type: "skill" } as const;
+		const legacyPlugin = { name: "plugin", description: "", source: "plugin", type: "skill" } as const;
+		expect(isSkillVisibleOnSurface(native, "abilityCatalog")).toBe(true);
+		expect(isSkillVisibleOnSurface(legacyPlugin, "abilityCatalog")).toBe(false);
 	});
 
 	it("publishes skill enums and installed records in its catalog", () => {

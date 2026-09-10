@@ -1,3 +1,7 @@
+import type { SkillPresentation, SkillPresentationSurface, SkillVisibility } from "@vetta/capability-sdk";
+
+export type { SkillPresentation, SkillPresentationSurface, SkillVisibility };
+
 export type SkillProvenance =
 	| { kind: "native"; scope: string }
 	| { kind: "provided"; providerType: "plugin" | "sdk" | "runtime"; providerId: string }
@@ -10,6 +14,8 @@ export interface SkillInfo {
 	source: string;
 	/** 结构化来源；缺失时按旧 source 兼容推断。 */
 	provenance?: SkillProvenance;
+	/** 提供方声明的产品展示策略；不影响运行时加载与调用。 */
+	presentation?: SkillPresentation;
 	/** 插件贡献的 skill 来源插件 ID；其它来源未定义。 */
 	sourcePluginId?: string;
 	type: "skill" | "scene";

@@ -219,6 +219,7 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		open: commandPanelExpanded,
 		cwd: contextCwd,
 		filter: "",
+		surface: "commandPalette",
 		prefetch: true,
 	});
 

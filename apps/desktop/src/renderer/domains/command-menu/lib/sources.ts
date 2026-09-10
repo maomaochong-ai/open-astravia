@@ -2,6 +2,7 @@ import type { InstalledPlugin, SkillInfo } from "@preload/api";
 import { pathBasename } from "@shared/lib/utils";
 import type { Project, RegisteredWorkspaceView } from "@shared/store/atoms";
 import { sessionDisplayLabel } from "@shared/store/atoms";
+import { getSkillDisplayDescription, getSkillDisplayName, isSkillVisibleOnSurface } from "@vetta/capability-sdk";
 import { resolveDesktopSessionOpenTarget } from "@/shared/session-access";
 import type { DesktopSessionSearchResult } from "@/shared/session-search";
 import {
@@ -141,12 +142,13 @@ export function buildInstalledAbilityEntries(
 	const entries: CommandMenuEntry[] = [];
 	let order = 0;
 	for (const skill of installed.skills) {
-		const title = skill.alias?.trim() || skill.name;
+		if (!isSkillVisibleOnSurface(skill, "commandPalette")) continue;
+		const title = getSkillDisplayName(skill);
 		entries.push({
 			id: `ability:skill:${skill.name}`,
 			groupKey: "abilities",
 			title,
-			subtitle: skill.description || undefined,
+			subtitle: getSkillDisplayDescription(skill) || undefined,
 			icon: skill.type === "scene" ? "icon-[solar--clapperboard-play-linear]" : "icon-[solar--magic-stick-3-linear]",
 			badge: skill.type === "scene" ? labels.abilityScene : labels.abilitySkill,
 			order: order++,

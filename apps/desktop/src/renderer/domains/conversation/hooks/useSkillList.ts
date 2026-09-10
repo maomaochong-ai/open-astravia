@@ -1,4 +1,10 @@
 import type { AppMonitorPromptRefUsageMap, SkillInfo } from "@preload/api";
+import {
+	getSkillDisplayDescription,
+	getSkillDisplayName,
+	isSkillVisibleOnSurface,
+	type SkillPresentationSurface,
+} from "@vetta/capability-sdk";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { filterSkills, sortSkillsForPanel } from "../lib/skill-ranking";
@@ -12,6 +18,16 @@ export interface SkillListModel {
 interface SkillListData {
 	skills: SkillInfo[];
 	usage: AppMonitorPromptRefUsageMap;
+}
+
+export function prepareSkillsForSurface(skills: readonly SkillInfo[], surface: SkillPresentationSurface): SkillInfo[] {
+	return skills
+		.filter((skill) => isSkillVisibleOnSurface(skill, surface))
+		.map((skill) => ({
+			...skill,
+			alias: getSkillDisplayName(skill),
+			description: getSkillDisplayDescription(skill),
+		}));
 }
 
 /**
@@ -72,11 +88,13 @@ export function useSkillList({
 	open,
 	cwd,
 	filter,
+	surface,
 	prefetch = false,
 }: {
 	open: boolean;
 	cwd?: string;
 	filter: string;
+	surface: SkillPresentationSurface;
 	prefetch?: boolean;
 }): SkillListModel {
 	const { i18n } = useTranslation();
@@ -131,7 +149,8 @@ export function useSkillList({
 		};
 	}, [cwd, language, open]);
 
-	const ranked = useMemo(() => sortSkillsForPanel(skills, usage), [skills, usage]);
+	const presentedSkills = useMemo(() => prepareSkillsForSurface(skills, surface), [skills, surface]);
+	const ranked = useMemo(() => sortSkillsForPanel(presentedSkills, usage), [presentedSkills, usage]);
 	const items = useMemo(() => filterSkills(ranked, filter), [filter, ranked]);
 
 	return { items, loading };

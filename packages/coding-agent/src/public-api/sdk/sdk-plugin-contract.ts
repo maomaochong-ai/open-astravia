@@ -9,6 +9,29 @@ import type {
 export interface SkillPathContribution {
 	pluginId: string;
 	paths: string[];
+	presentation?: SkillProviderPresentation;
+}
+
+export type SkillPresentationSurface =
+	| "abilityCatalog"
+	| "agentConfiguration"
+	| "commandPalette"
+	| "skillPicker"
+	| "pluginDetail";
+
+export type SkillVisibility = "visible" | "hidden";
+
+export interface SkillPresentationRule {
+	defaultVisibility?: SkillVisibility;
+	surfaces?: Partial<Record<SkillPresentationSurface, SkillVisibility>>;
+	displayName?: string;
+	displayDescription?: string;
+}
+
+export interface SkillProviderPresentation {
+	defaultVisibility?: SkillVisibility;
+	surfaces?: Partial<Record<SkillPresentationSurface, SkillVisibility>>;
+	skills?: Record<string, SkillPresentationRule>;
 }
 
 export interface ToolPolicyContribution {

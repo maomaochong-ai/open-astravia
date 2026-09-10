@@ -1,12 +1,17 @@
+import { resolveSkillProviderPresentation, type SkillProviderPresentation } from "@vetta/capability-sdk";
+import type { SkillPresentation } from "../../preload/api-types/skills.js";
+
 export interface SkillPathContribution {
 	readonly pluginId: string;
 	readonly paths: readonly string[];
+	readonly presentation?: SkillProviderPresentation;
 }
 
 export interface PluginSkillSource {
 	readonly pluginId: string;
 	readonly root: string;
 	readonly icon?: string;
+	readonly presentation?: SkillProviderPresentation;
 }
 
 export function buildPluginSkillSources(
@@ -19,9 +24,31 @@ export function buildPluginSkillSources(
 				root: normalizeSkillPath(path),
 				pluginId: contribution.pluginId,
 				...(iconByPluginId.get(contribution.pluginId) ? { icon: iconByPluginId.get(contribution.pluginId) } : {}),
+				...(contribution.presentation ? { presentation: contribution.presentation } : {}),
 			})),
 		)
 		.sort((left, right) => right.root.length - left.root.length);
+}
+
+export function resolvePluginSkillPresentation(
+	source: PluginSkillSource,
+	skillName: string,
+	resolveText: (raw: string) => string | undefined,
+): SkillPresentation | undefined {
+	const provider = source.presentation;
+	if (!provider) return undefined;
+	const presentation = resolveSkillProviderPresentation(provider, skillName);
+	if (!presentation) return undefined;
+	const displayName = presentation.displayName ? resolveText(presentation.displayName) : undefined;
+	const displayDescription = presentation.displayDescription
+		? resolveText(presentation.displayDescription)
+		: undefined;
+	return {
+		defaultVisibility: presentation.defaultVisibility,
+		surfaces: presentation.surfaces,
+		...(displayName ? { displayName } : {}),
+		...(displayDescription ? { displayDescription } : {}),
+	};
 }
 
 export function findPluginSkillSource(

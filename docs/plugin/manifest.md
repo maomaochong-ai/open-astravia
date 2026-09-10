@@ -178,9 +178,38 @@ revision 读取；不要依次调用多次 `writeFile()` 冒充多文件事务�
 | --- | --- |
 | `agent.systemPrompt.promptPaths` | 追加进系统提示词的提示片段文件路径。需 `agent.systemPrompt.write`（或 fullControl）。 |
 | `agent.skillPaths` | 加入 agent 资源图的 skill 文件 / 目录。需 `agent.skills.control`。skill frontmatter 的 `agent_mode` 已废弃（ADR-0071），容忍存在但被忽略。 |
+| `agent.skillPresentation` | 控制插件 Skill 在产品入口的可见性与展示文案。只影响界面呈现，不影响加载、调用或权限。 |
 | `agent.mcpServers` | **插件内聚 MCP**（三源聚合之插件源）：相对路径 `.mcp.json` 或内联 map。需 `agent.mcp.control`。内联 map 里的 `agent_mode` 已废弃（ADR-0071），容忍存在但被忽略。 |
 | `agent.toolPolicy.allow` / `.deny` | 声明式工具可见性策略（注册后的工具 id）。需 `agent.tools.control`。 |
 
 > 在 JS 里**动态**注册 agent 工具走 `ctx.agent.registerTool`（见 [conversation-and-agent.md](./conversation-and-agent.md#注册-agent-工具)），与此处的**声明式**清单字段是两条不同路径。
 >
 > **插件 MCP** 与用户全局 / 项目 MCP **聚合**进同一会话，不写用户 mcp.json；启停与授权见 [mcp.md](./mcp.md)（ADR-0040）。
+
+### Skill 展示策略
+
+插件 Skill 默认作为内部实现隐藏。它仍会随 `agent.skillPaths` 加载并可被 Agent 调用，只是不作为独立选项出现在能力中心、智能体能力配置、命令菜单或 Skill 选择器。需要公开的 Skill 由插件显式声明：
+
+```json
+{
+  "agent": {
+    "skillPaths": ["agent/skills"],
+    "skillPresentation": {
+      "defaultVisibility": "hidden",
+      "skills": {
+        "vetta-ui-design": {
+          "defaultVisibility": "visible",
+          "displayName": "%plugin.name%"
+        }
+      }
+    }
+  }
+}
+```
+
+- `defaultVisibility`：插件全部 Skill 的默认值，`visible` 或 `hidden`。
+- `surfaces`：按入口覆盖默认值，当前支持 `abilityCatalog`、`agentConfiguration`、`commandPalette`、`skillPicker`、`pluginDetail`。
+- `skills.<skill-name>`：按 `SKILL.md` 中的稳定 Skill 名覆盖插件默认值；可声明 `defaultVisibility`、`surfaces`、`displayName`、`displayDescription`。
+- `displayName` / `displayDescription`：仅改变用户看到的文案，不改变 Skill 名、调用路由或已保存引用；支持插件 `%catalogKey%` 本地化占位符。
+
+普通用户、项目、市场与 Vetta 内置 Skill 没有声明时继续默认可见。已安装的旧插件没有 `skillPresentation` 时按插件默认隐藏，避免把实现细节意外暴露为产品能力。

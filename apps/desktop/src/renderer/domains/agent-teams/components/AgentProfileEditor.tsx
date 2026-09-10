@@ -230,8 +230,9 @@ export function AgentProfileEditor({
 	}
 
 	if (layout === "columns") {
-		const selectedAbilitiesCount = capabilities.filter((option) =>
-			isAgentAbilitySelected(abilities, option),
+		const selectedAbilitiesCount = capabilities.filter(
+			(option) =>
+				option.visibleInAgentConfiguration !== false && isAgentAbilitySelected(abilities, option),
 		).length;
 
 		return (
@@ -523,6 +524,9 @@ function AbilityEditor({
 }): JSX.Element {
 	const { t } = useTranslation("agent-teams");
 	const [query, setQuery] = useState("");
+	const configurableCapabilities = capabilities.filter(
+		(option) => option.visibleInAgentConfiguration !== false,
+	);
 	const normalizedQuery = query.normalize("NFKC").trim().toLocaleLowerCase();
 	const filterItems = (items: readonly AgentCapabilityOption[]) =>
 		items.filter(
@@ -535,7 +539,7 @@ function AbilityEditor({
 			);
 	const pluginResourceGroups = (kind: "skill" | "scene") => {
 		const byPlugin = new Map<string, { label: string; items: AgentCapabilityOption[] }>();
-		for (const option of capabilities) {
+		for (const option of configurableCapabilities) {
 			if (option.kind !== kind || !option.sourcePluginId) continue;
 			const current = byPlugin.get(option.sourcePluginId) ?? {
 				label: t(kind === "skill" ? "profile.pluginSkills" : "profile.pluginScenes", {
@@ -551,21 +555,23 @@ function AbilityEditor({
 	const grouped = [
 		{
 			label: t("profile.skills"),
-			items: capabilities.filter((option) => option.kind === "skill" && !option.sourcePluginId),
+			items: configurableCapabilities.filter((option) => option.kind === "skill" && !option.sourcePluginId),
 		},
 		...pluginResourceGroups("skill"),
 		{
 			label: t("profile.scenes"),
-			items: capabilities.filter((option) => option.kind === "scene" && !option.sourcePluginId),
+			items: configurableCapabilities.filter((option) => option.kind === "scene" && !option.sourcePluginId),
 		},
 		...pluginResourceGroups("scene"),
-		{ label: t("profile.mcp"), items: capabilities.filter((option) => option.kind === "mcp") },
-		{ label: t("profile.plugins"), items: capabilities.filter((option) => option.kind === "plugin") },
+		{ label: t("profile.mcp"), items: configurableCapabilities.filter((option) => option.kind === "mcp") },
+		{ label: t("profile.plugins"), items: configurableCapabilities.filter((option) => option.kind === "plugin") },
 	]
 		.map((group) => ({ ...group, items: filterItems(group.items) }))
 		.filter((group) => group.items.length > 0);
 	const visibleCapabilities = grouped.flatMap((group) => group.items);
-	const selectedCount = capabilities.filter((option) => isAgentAbilitySelected(abilities, option)).length;
+	const selectedCount = configurableCapabilities.filter((option) =>
+		isAgentAbilitySelected(abilities, option),
+	).length;
 	return (
 		<section className="overflow-hidden rounded-2xl border border-border/50 bg-card/30 backdrop-blur-sm">
 			<div className="flex flex-wrap items-start justify-between gap-4 border-b border-border/50 bg-card/20 px-6 py-4">
@@ -575,7 +581,7 @@ function AbilityEditor({
 						<h3 className="text-sm font-semibold tracking-tight text-foreground">{t("profile.abilities")}</h3>
 						<span className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
 							<span className="h-1.5 w-1.5 rounded-full bg-primary" />
-							{t("profile.abilityCount", { selected: selectedCount, total: capabilities.length })}
+							{t("profile.abilityCount", { selected: selectedCount, total: configurableCapabilities.length })}
 						</span>
 					</div>
 					<p className="mt-1 text-xs text-muted-foreground/70">
@@ -586,7 +592,7 @@ function AbilityEditor({
 					variant="outline"
 					size="sm"
 					className="h-8 gap-1.5 rounded-lg border-border/60 hover:border-primary/40 hover:bg-primary/5 transition-colors"
-					onClick={() => onChange(selectAllAgentAbilities(capabilities))}
+					onClick={() => onChange(selectAllAgentAbilities(configurableCapabilities))}
 				>
 					<span className="icon-[solar--checklist-minimalistic-linear] h-3.5 w-3.5 text-primary" aria-hidden="true" />
 					<span className="text-xs font-medium">{t("profile.selectAll")}</span>

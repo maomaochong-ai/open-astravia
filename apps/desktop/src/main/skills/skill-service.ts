@@ -2,8 +2,9 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync
 import { rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
+import { resolvePluginText } from "@vetta-org/plugin-sdk";
 import type { AppMonitorResourceOperation } from "../../preload/api-types/app-monitor.js";
-import type { SkillProvenance } from "../../preload/api-types/skills.js";
+import type { SkillPresentation, SkillProvenance } from "../../preload/api-types/skills.js";
 import { removeAbilityLedgerEntry } from "../abilities/ability-ledger.js";
 import { createDesktopSkillResourceRuntime } from "../agent-runtime/resource-runtime.js";
 import { recordAppMonitorEvent } from "../app-monitor/app-monitor-service.js";
@@ -14,10 +15,11 @@ import {
 	readBuiltinSkillsManifest,
 } from "../builtin-skills.js";
 import { readDesktopConfig } from "../config/desktop-config-store.js";
+import { getAppLanguage } from "../i18n/index.js";
 import { getAppLogger } from "../logger.js";
 import { listPlugins, pluginAgentContributionService } from "../plugins/plugin-catalog.js";
 import { shouldListSkill } from "./skill-list-policy.js";
-import { buildPluginSkillSources, findPluginSkillSource } from "./skill-provenance.js";
+import { buildPluginSkillSources, findPluginSkillSource, resolvePluginSkillPresentation } from "./skill-provenance.js";
 
 const skillsLog = getAppLogger("skills");
 const skillsBaseDir = join(getVettaHomePath(), "skills");
@@ -60,6 +62,8 @@ export interface ListedSkill {
 	provenance?: SkillProvenance;
 	/** 插件贡献的 skill 来源插件 ID；其它来源未定义。 */
 	sourcePluginId?: string;
+	/** 产品界面的展示策略；不影响运行时加载与调用。 */
+	presentation?: SkillPresentation;
 	type: InstalledSkillType;
 	/** 插件贡献 skill 时带宿主插件 iconUrl，供命令区 / 能力页展示。 */
 	icon?: string;
@@ -135,8 +139,11 @@ export class SkillService {
 		const manifest = readSkillsManifest();
 		const builtinManifest = readBuiltinSkillsManifest();
 		// 插件 skill 不在市场目录里：展示图标跟宿主插件走（icon.png → vetta-plugin://…）。
-		const pluginIconById = new Map(listPlugins().map((plugin) => [plugin.id, plugin.iconUrl]));
+		const plugins = listPlugins();
+		const pluginById = new Map(plugins.map((plugin) => [plugin.id, plugin]));
+		const pluginIconById = new Map(plugins.map((plugin) => [plugin.id, plugin.iconUrl]));
 		const pluginSources = buildPluginSkillSources(skillPathContributions, pluginIconById);
+		const language = getAppLanguage();
 		const listed = skills
 			.filter((skill) => {
 				if (isBuiltinSkillFile(skill.filePath)) return builtinManifest[skill.name]?.enabled ?? false;
@@ -147,6 +154,20 @@ export class SkillService {
 				const builtinEntry = isBuiltin ? builtinManifest[skill.name] : undefined;
 				const entry = isBuiltin ? undefined : manifest[skill.name];
 				const pluginSource = isBuiltin ? undefined : findPluginSkillSource(skill.filePath, pluginSources);
+				const sourcePlugin = pluginSource ? pluginById.get(pluginSource.pluginId) : undefined;
+				const presentation =
+					pluginSource && sourcePlugin
+						? resolvePluginSkillPresentation(pluginSource, skill.name, (raw) => {
+								const resolved = resolvePluginText(
+									raw,
+									sourcePlugin.locales,
+									language,
+									sourcePlugin.defaultLocale,
+								);
+								const placeholder = raw.match(/^%([^%]+)%$/);
+								return placeholder && resolved === placeholder[1] ? undefined : resolved;
+							})
+						: undefined;
 				const icon = pluginSource?.icon;
 				return {
 					name: skill.name,
@@ -163,6 +184,7 @@ export class SkillService {
 						: pluginSource
 							? { kind: "provided", providerType: "plugin", providerId: pluginSource.pluginId }
 							: (skill.provenance ?? { kind: "native", scope: skill.source }),
+					...(presentation ? { presentation } : {}),
 					...(pluginSource ? { sourcePluginId: pluginSource.pluginId } : {}),
 					type: skill.type,
 					...(icon ? { icon } : {}),

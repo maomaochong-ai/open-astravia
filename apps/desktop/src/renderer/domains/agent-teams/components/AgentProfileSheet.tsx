@@ -62,7 +62,10 @@ export function AgentProfileSheet({
 	const draftAgent = useMemo(() => (agent ? undefined : buildDraftAgent(blueprints)), [agent, blueprints]);
 	const target = agent ?? draftAgent;
 	const abilityCount = draft
-		? capabilities.filter((option) => isAgentAbilitySelected(draft.abilities, option)).length
+		? capabilities.filter(
+				(option) =>
+					option.visibleInAgentConfiguration !== false && isAgentAbilitySelected(draft.abilities, option),
+			).length
 		: 0;
 
 	if (!target) return null;

@@ -1,5 +1,6 @@
 import type { InstalledPlugin, InstalledSkill, McpConfigData, SkillInfo } from "@preload/api";
 import { builtinSkillIconUrl } from "@shared/lib/builtin-skill-icons";
+import { getSkillDisplayDescription, getSkillDisplayName, isSkillVisibleOnSurface } from "@vetta/capability-sdk";
 import { resolvePluginText } from "@vetta-org/plugin-sdk";
 import { resolveMcpIcon } from "../../settings/mcp/builtin-mcp-presets";
 
@@ -12,6 +13,8 @@ export interface AgentCapabilityOption {
 	readonly description: string;
 	readonly icon?: string;
 	readonly enabledGlobally: boolean;
+	/** 是否作为可配置项展示；隐藏不影响插件联动和运行时可用性。 */
+	readonly visibleInAgentConfiguration?: boolean;
 	/** 插件贡献 skill 的来源插件 ID；用于来源展示及插件能力联动。 */
 	readonly sourcePluginId?: string;
 	readonly sourceName?: string;
@@ -36,10 +39,11 @@ export function buildAgentCapabilityOptions(input: {
 		options.push({
 			id: skill.name,
 			kind: skill.type,
-			title: skill.alias || skill.name,
-			description: skill.description,
+			title: getSkillDisplayName(skill),
+			description: getSkillDisplayDescription(skill),
 			icon: skill.icon ?? (skill.source === "builtin" ? builtinSkillIconUrl(skill.name) : undefined),
 			enabledGlobally: skill.sourcePluginId ? (sourcePlugin?.enabled ?? false) : (manifest?.enabled ?? true),
+			visibleInAgentConfiguration: isSkillVisibleOnSurface(skill, "agentConfiguration"),
 			source: skill.source,
 			...(skill.sourcePluginId ? { sourcePluginId: skill.sourcePluginId } : {}),
 			...(sourcePlugin

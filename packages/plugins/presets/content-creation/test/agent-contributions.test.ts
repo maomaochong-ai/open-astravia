@@ -5,6 +5,7 @@ interface ContentCreationManifest {
 	permissions?: string[];
 	agent?: {
 		skillPaths?: string[];
+		skillPresentation?: { defaultVisibility?: "visible" | "hidden" };
 		systemPrompt?: {
 			promptPaths?: string[];
 		};
@@ -22,6 +23,7 @@ describe("content creation agent contributions", () => {
 		);
 
 		expect(manifest.agent?.skillPaths).toEqual(["agent/skills"]);
+		expect(manifest.agent?.skillPresentation).toEqual({ defaultVisibility: "hidden" });
 		expect(manifest.agent?.systemPrompt?.promptPaths).toEqual([
 			"agent/prompts/content-workflow-routing.md",
 		]);

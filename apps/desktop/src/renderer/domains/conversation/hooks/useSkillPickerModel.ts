@@ -32,7 +32,7 @@ export function useSkillPickerModel({
 }: SkillPickerModelInput): SkillPickerModel {
 	const { t } = useTranslation("chat");
 	const normalizedFilter = filter.startsWith("/") ? filter.slice(1) : filter;
-	const { items } = useSkillList({ open, cwd, filter: normalizedFilter });
+	const { items } = useSkillList({ open, cwd, filter: normalizedFilter, surface: "skillPicker" });
 	const [activeIndex, setActiveIndex] = useState(0);
 	const panelRef = useRef<HTMLDivElement>(null);
 	// 仅键盘导航需要把高亮滚进视口；鼠标 hover 只改高亮，不抢滚动位置。

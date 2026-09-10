@@ -123,6 +123,45 @@ describe("buildPluginRuntimeConfig", () => {
 		).toBeUndefined();
 	});
 
+	it("passes skill presentation to discovery without changing the runtime path", () => {
+		const contributions = new PluginAgentContributionRegistry(new DesktopPluginHookRegistry());
+		const config = buildPluginRuntimeConfig({
+			plugins: [
+				plugin({
+					permissions: ["agent.skills.control"],
+					grantedPermissions: ["agent.skills.control"],
+					agent: {
+						skillPaths: ["agent/skills"],
+						skillPresentation: {
+							defaultVisibility: "hidden",
+							skills: {
+								design: { defaultVisibility: "visible", displayName: "%skill.design.name%" },
+							},
+						},
+					},
+				}),
+			],
+			isContributionModeActive: () => true,
+			contributions,
+			resolveResource: (_plugin, path) => `C:/plugins/demo/${path}`,
+			resolveMcpRoot: (value) => value.rootPath,
+			logger: { debug: vi.fn(), warn: vi.fn() },
+		});
+
+		expect(config?.skillPathContributions).toEqual([
+			{
+				pluginId: "demo",
+				paths: ["C:/plugins/demo/agent/skills"],
+				presentation: {
+					defaultVisibility: "hidden",
+					skills: {
+						design: { defaultVisibility: "visible", displayName: "%skill.design.name%" },
+					},
+				},
+			},
+		]);
+	});
+
 	it("defers a service MCP quietly until its managed service is ready", () => {
 		const contributions = new PluginAgentContributionRegistry(new DesktopPluginHookRegistry());
 		const logger = { debug: vi.fn(), warn: vi.fn() };

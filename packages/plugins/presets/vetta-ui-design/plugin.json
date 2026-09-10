@@ -55,7 +55,16 @@
 	"agent": {
 		"skillPaths": [
 			"agent/skills/vetta-ui-design"
-		]
+		],
+		"skillPresentation": {
+			"defaultVisibility": "hidden",
+			"skills": {
+				"vetta-ui-design": {
+					"defaultVisibility": "visible",
+					"displayName": "%plugin.name%"
+				}
+			}
+		}
 	},
 	"description": "%plugin.description%",
 	"author": "Vetta"

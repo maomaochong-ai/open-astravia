@@ -2,6 +2,8 @@
 
 ### Added
 
+- Plugin Runtime 的 Skill 路径贡献可携带独立展示策略，宿主能够保留运行时 Skill 的同时控制各产品入口的呈现（ADR-0110）。
+
 - Runtime Session 可分别提供宿主拥有的稳定 system cache-prefix addon 与易变 trusted addon；最终 Frame 在首个易变块前建立明确断点，使共享 Team 契约与成员身份无需混成同一提示词字符串。
 - Context Runtime 新增对调用方已裁剪记录的瞬时摘要策略，复用当前 Turn admission 的模型、凭证与压缩生成器，但不运行 Conversation 选择、扩展 Hook 或提交逻辑。
 - 新增调用期 `bindPinnedModelContext`：在 Runtime acquisition 捕获不可变前缀，模型投影与压缩共用按 entry ID 的正文省略规则；已公开回复的私有 thinking/tool blocks 仍保留，持久 Conversation 不改写。Session 可独立指定 `promptCacheKey`。

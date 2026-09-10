@@ -219,7 +219,7 @@ describe("AgentProfileEditor", () => {
 		expect(screen.getByText("Notion")).toBeTruthy();
 	});
 
-	it("groups plugin skills by their source and selects them with the owning plugin", async () => {
+	it("hides an internal plugin skill but keeps it linked when the owning plugin is selected", async () => {
 		const user = userEvent.setup();
 		const onSave = vi.fn(async () => ({ updated: agent, impact: { ...impact, teamIds: [], teamNames: [] } }));
 		render(
@@ -232,6 +232,7 @@ describe("AgentProfileEditor", () => {
 						title: "Create campaign",
 						description: "Plan a campaign",
 						enabledGlobally: true,
+						visibleInAgentConfiguration: false,
 						sourcePluginId: "content-creation",
 						sourceName: "Content Creation",
 					},
@@ -248,7 +249,8 @@ describe("AgentProfileEditor", () => {
 			/>,
 		);
 
-		expect(screen.getByText("profile.pluginSkillsContent Creation")).toBeTruthy();
+		expect(screen.queryByText("Create campaign")).toBeNull();
+		expect(screen.queryByText("profile.pluginSkillsContent Creation")).toBeNull();
 		await user.click(screen.getByRole("switch", { name: "profile.toggleAbilityContent Creation" }));
 		await user.click(screen.getByRole("button", { name: "profile.save" }));
 		await waitFor(() =>

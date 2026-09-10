@@ -1,5 +1,5 @@
 {
-	"plugin.name": "Vetta UI Design",
+	"plugin.name": "Vetta 设计",
 	"plugin.description": "在无限画布上用 Vetta 做 UI 设计稿：frame 即真实 React 代码，选中元素即可让 Vetta 定向修改，保存即热更新。",
 	"tab.label": "设计",
 	"fileExplorer.openCanvas": "在设计画布中打开",

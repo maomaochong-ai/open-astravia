@@ -20,6 +20,38 @@ export const INSTALLED_SKILL_SOURCES = {
 const skillEmptyInputType = Type.Object({}, { additionalProperties: false });
 
 const skillTypeType = Type.Union([Type.Literal(SKILL_TYPES.SKILL), Type.Literal(SKILL_TYPES.SCENE)]);
+export const SKILL_PRESENTATION_SURFACES = {
+	ABILITY_CATALOG: "abilityCatalog",
+	AGENT_CONFIGURATION: "agentConfiguration",
+	COMMAND_PALETTE: "commandPalette",
+	SKILL_PICKER: "skillPicker",
+	PLUGIN_DETAIL: "pluginDetail",
+} as const;
+const skillPresentationSurfaceType = Type.Union(
+	Object.values(SKILL_PRESENTATION_SURFACES).map((surface) => Type.Literal(surface)),
+);
+export const SkillVisibilitySchema = Type.Union([Type.Literal("visible"), Type.Literal("hidden")]);
+export const SkillSurfaceVisibilitySchema = Type.Partial(
+	Type.Object(
+		{
+			abilityCatalog: SkillVisibilitySchema,
+			agentConfiguration: SkillVisibilitySchema,
+			commandPalette: SkillVisibilitySchema,
+			skillPicker: SkillVisibilitySchema,
+			pluginDetail: SkillVisibilitySchema,
+		},
+		{ additionalProperties: false },
+	),
+);
+export const SkillPresentationSchema = Type.Object(
+	{
+		defaultVisibility: Type.Optional(SkillVisibilitySchema),
+		surfaces: Type.Optional(SkillSurfaceVisibilitySchema),
+		displayName: Type.Optional(Type.String()),
+		displayDescription: Type.Optional(Type.String()),
+	},
+	{ additionalProperties: false },
+);
 const skillProvenanceType = Type.Union([
 	Type.Object({ kind: Type.Literal("native"), scope: Type.String() }, { additionalProperties: false }),
 	Type.Object(
@@ -46,6 +78,7 @@ const skillInfoType = Type.Object(
 		source: Type.String(),
 		type: skillTypeType,
 		provenance: Type.Optional(skillProvenanceType),
+		presentation: Type.Optional(SkillPresentationSchema),
 	},
 	{ additionalProperties: false },
 );
@@ -98,6 +131,14 @@ const skillUninstallInputType = Type.Object(
 
 export type SkillType = Static<typeof skillTypeType>;
 export type SkillProvenance = Static<typeof skillProvenanceType>;
+export type SkillPresentationSurface = Static<typeof skillPresentationSurfaceType>;
+export type SkillVisibility = Static<typeof SkillVisibilitySchema>;
+export type SkillPresentation = Readonly<Static<typeof SkillPresentationSchema>>;
+export interface SkillProviderPresentation {
+	readonly defaultVisibility?: SkillVisibility;
+	readonly surfaces?: SkillPresentation["surfaces"];
+	readonly skills?: Readonly<Record<string, SkillPresentation>>;
+}
 export type InstalledSkillSource = Static<typeof installedSkillSourceType>;
 export type SkillInfo = Readonly<Static<typeof skillInfoType>>;
 export type InstalledSkill = Readonly<Static<typeof installedSkillType>>;
@@ -105,6 +146,43 @@ export type SkillListInput = Readonly<Static<typeof skillListInputType>>;
 export type SkillSetEnabledInput = Readonly<Static<typeof skillSetEnabledInputType>>;
 export type SkillSetEnabledResult = Readonly<Static<typeof skillSetEnabledResultType>>;
 export type SkillUninstallInput = Readonly<Static<typeof skillUninstallInputType>>;
+
+export function isSkillVisibleOnSurface(
+	skill: Pick<SkillInfo, "presentation" | "provenance" | "source">,
+	surface: SkillPresentationSurface,
+): boolean {
+	const pluginProvided =
+		skill.source === "plugin" ||
+		(skill.provenance?.kind === "provided" && skill.provenance.providerType === "plugin");
+	const visibility =
+		skill.presentation?.surfaces?.[surface] ??
+		skill.presentation?.defaultVisibility ??
+		(pluginProvided ? "hidden" : "visible");
+	return visibility === "visible";
+}
+
+export function getSkillDisplayName(skill: Pick<SkillInfo, "name" | "alias" | "presentation">): string {
+	return skill.presentation?.displayName?.trim() || skill.alias?.trim() || skill.name;
+}
+
+export function getSkillDisplayDescription(skill: Pick<SkillInfo, "description" | "presentation">): string {
+	return skill.presentation?.displayDescription?.trim() || skill.description;
+}
+
+/** Merge a provider-wide policy with one Skill override before resolving a UI surface. */
+export function resolveSkillProviderPresentation(
+	provider: SkillProviderPresentation | undefined,
+	skillName: string,
+): SkillPresentation | undefined {
+	if (!provider) return undefined;
+	const skill = provider.skills?.[skillName];
+	return {
+		defaultVisibility: skill?.defaultVisibility ?? provider.defaultVisibility,
+		surfaces: { ...provider.surfaces, ...skill?.surfaces },
+		...(skill?.displayName ? { displayName: skill.displayName } : {}),
+		...(skill?.displayDescription ? { displayDescription: skill.displayDescription } : {}),
+	};
+}
 
 const skillListInputSchema = defineCapabilityInputSchema(skillListInputType, { clean: true });
 const skillListOutputSchema = defineCapabilityOutputSchema(Type.Array(skillInfoType), { clean: true });

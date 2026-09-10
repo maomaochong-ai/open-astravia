@@ -10,6 +10,8 @@ import {
 	PluginManifestSchema,
 	PluginMcpServerConfigSchema,
 	PluginMcpServiceServerConfigSchema,
+	PluginSkillPresentationRuleSchema,
+	PluginSkillPresentationSchema,
 	PluginVersionSchema,
 	type PluginAgentManifest,
 	type PluginBrowserManifest,
@@ -19,6 +21,8 @@ import {
 	type PluginManifest,
 	type PluginManifestInput,
 	type PluginMcpServerConfig,
+	type PluginSkillPresentation,
+	type PluginSkillPresentationRule,
 	type PluginNetworkManifest,
 } from "./manifest-schema.js";
 import { PLUGIN_PERMISSIONS, type PluginPermission } from "./permissions.js";
@@ -38,6 +42,8 @@ export {
 	PluginMcpServerConfigSchema,
 	PluginMcpStdioServerConfigSchema,
 	PluginMcpServiceServerConfigSchema,
+	PluginSkillPresentationRuleSchema,
+	PluginSkillPresentationSchema,
 	PluginModuleFederationManifestSchema,
 	PluginNetworkManifestSchema,
 	PluginProvidersManifestSchema,
@@ -55,6 +61,8 @@ export type {
 	PluginManifest,
 	PluginManifestInput,
 	PluginMcpServerConfig,
+	PluginSkillPresentation,
+	PluginSkillPresentationRule,
 	PluginNetworkManifest,
 } from "./manifest-schema.js";
 export { PLUGIN_PERMISSIONS } from "./permissions.js";
@@ -195,8 +203,30 @@ function normalizeAgentManifest(agent: PluginAgentManifest | undefined): PluginA
 		skillPaths: normalizeStringArray(agent.skillPaths).map((path) =>
 			validatePluginRelativePath(path, "agent.skillPaths"),
 		),
+		skillPresentation: normalizeSkillPresentation(agent.skillPresentation),
 		mcpServers: normalizeMcpServers(agent.mcpServers),
 		toolPolicy: normalizeToolPolicy(agent.toolPolicy),
+	};
+}
+
+function normalizeSkillPresentation(
+	presentation: PluginSkillPresentation | undefined,
+): PluginSkillPresentation | undefined {
+	if (!presentation) return undefined;
+	const normalizeRule = (rule: PluginSkillPresentationRule): PluginSkillPresentationRule => ({
+		defaultVisibility: rule.defaultVisibility,
+		surfaces: rule.surfaces ? { ...rule.surfaces } : undefined,
+		displayName: rule.displayName?.trim(),
+		displayDescription: rule.displayDescription?.trim(),
+	});
+	return {
+		defaultVisibility: presentation.defaultVisibility,
+		surfaces: presentation.surfaces ? { ...presentation.surfaces } : undefined,
+		skills: presentation.skills
+			? Object.fromEntries(
+					Object.entries(presentation.skills).map(([name, rule]) => [name.trim(), normalizeRule(rule)]),
+				)
+			: undefined,
 	};
 }
 

@@ -24,6 +24,8 @@ export type {
 	PluginManifestResourceReference,
 	PluginMcpServerConfig,
 	PluginNetworkManifest,
+	PluginSkillPresentation,
+	PluginSkillPresentationRule,
 } from "./manifest.js";
 
 // File explorer

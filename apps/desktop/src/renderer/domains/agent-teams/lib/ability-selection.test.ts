@@ -74,6 +74,7 @@ describe("agent ability selection", () => {
 			title: "Create campaign",
 			description: "",
 			enabledGlobally: true,
+			visibleInAgentConfiguration: false,
 			sourcePluginId: "content-creation",
 		};
 		const next = toggleAgentAbility({ ...base, skills: [] }, plugin, [plugin, skill]);

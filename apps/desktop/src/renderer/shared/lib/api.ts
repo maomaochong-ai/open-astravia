@@ -1,5 +1,6 @@
 import type { McpServerConfigData, RefreshOutcome } from "@preload/api";
 import { i18n } from "@shared/i18n";
+import type { SkillPresentation } from "@vetta/capability-sdk";
 
 let cachedBaseUrl: string | undefined;
 const hostFetch = globalThis.fetch.bind(globalThis);
@@ -326,7 +327,7 @@ export interface AbilityConfig {
 	members?: AbilityMember[];
 }
 
-/** 插件内聚的 agent 贡献（对用户不可见地随插件生死，故需在装之前列清楚）。 */
+/** 插件内聚的 agent 贡献；Skill 是否在插件详情中展示由其 presentation 策略决定。 */
 export interface AbilityPluginContributions {
 	mcp_servers?: AbilityContributedMcp[];
 	skills?: AbilityContributedSkill[];
@@ -342,6 +343,8 @@ export interface AbilityContributedSkill {
 	name: string;
 	alias?: string;
 	description?: string;
+	/** 服务端解析插件 manifest 后可下发的逐 Skill 展示策略。 */
+	presentation?: SkillPresentation;
 }
 
 export type AbilityShowcaseTemplate =

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPluginSkillSources, findPluginSkillSource } from "./skill-provenance";
+import { buildPluginSkillSources, findPluginSkillSource, resolvePluginSkillPresentation } from "./skill-provenance";
 
 describe("plugin skill provenance", () => {
 	it("retains the plugin id and icon for a contributed skill path", () => {
@@ -26,5 +26,38 @@ describe("plugin skill provenance", () => {
 
 		expect(findPluginSkillSource("/plugins/content/skills/image/SKILL.md", sources)?.pluginId).toBe("nested");
 		expect(findPluginSkillSource("/plugins/content-other/SKILL.md", sources)).toBeUndefined();
+	});
+
+	it("merges provider defaults with a localized per-skill override", () => {
+		const [source] = buildPluginSkillSources(
+			[
+				{
+					pluginId: "design",
+					paths: ["/plugins/design/skills"],
+					presentation: {
+						defaultVisibility: "hidden",
+						surfaces: { abilityCatalog: "visible" },
+						skills: {
+							"vetta-ui-design": {
+								defaultVisibility: "visible",
+								surfaces: { commandPalette: "hidden" },
+								displayName: "%skill.name%",
+							},
+						},
+					},
+				},
+			],
+			new Map(),
+		);
+		expect(source).toBeDefined();
+		if (!source) return;
+
+		expect(
+			resolvePluginSkillPresentation(source, "vetta-ui-design", (raw) => raw.replace("%skill.name%", "Vetta 设计")),
+		).toEqual({
+			defaultVisibility: "visible",
+			surfaces: { abilityCatalog: "visible", commandPalette: "hidden" },
+			displayName: "Vetta 设计",
+		});
 	});
 });
