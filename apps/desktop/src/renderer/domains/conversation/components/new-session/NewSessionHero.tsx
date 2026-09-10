@@ -13,7 +13,7 @@ import { type CSSProperties, useRef } from "react";
 import { GuideBadgeSwiper } from "../GuideBadgeSwiper";
 import { easeOut } from "./constants";
 import "./NewSessionHero.css";
-import { ViviOrnament } from "./ornament/presets/ViviOrnament";
+import { HeroOrnamentSlot } from "./ornament/HeroOrnamentSlot";
 
 interface NewSessionHeroHostProps {
 	avatarAutoplay: boolean;
@@ -148,8 +148,8 @@ export function DefaultNewSessionHero({
 				</div>
 			</motion.div>
 
-			{/* 装饰件脱离文档流下移，视觉上趴在输入栏顶边上 */}
-			<ViviOrnament autoplay={avatarAutoplay} mounted={mounted} />
+			{/* 装饰件脱离文档流下移，视觉上趴在输入栏顶边上；挂谁由「设置 - 外观 - 装饰件」决定 */}
+			<HeroOrnamentSlot autoplay={avatarAutoplay} mounted={mounted} />
 		</div>
 	);
 }

@@ -1,5 +1,6 @@
 import { cn } from "@shared/lib/utils";
 import type { CursorStyle } from "@shared/theme/cursor";
+import type { OrnamentId } from "@shared/theme/ornament";
 import type { ThemeDef } from "@shared/theme/tokens";
 import type { MouseEvent } from "react";
 import { SettingsAiAssist } from "../ai-assist";
@@ -10,6 +11,7 @@ import { MotionSelect, SettingHeading } from "@vetta/theme-ui/settings";
 import type { SidebarStyle } from "@shared/theme/sidebar-style";
 import type {
 	AppearanceCursorOption,
+	AppearanceOrnamentOption,
 	AppearanceLanguageOption,
 	AppearanceModeOption,
 	AppearanceSettingsModel,
@@ -326,6 +328,65 @@ function CursorStyleCard({
 	);
 }
 
+/**
+ * 装饰件预览：一张迷你新会话页——上方两行文字骨架、贴底一枚输入框，
+ * 装饰件趴在输入框右上角的顶边上。刻意与真实版式同构，让用户一眼看出这块设置改的是哪儿。
+ */
+function OrnamentPreview({ preview }: { preview?: string }): JSX.Element {
+	return (
+		<div className="relative h-[112px] w-full overflow-hidden border-b border-border/50 bg-gradient-to-b from-muted/60 via-muted/25 to-transparent">
+			<div className="absolute inset-x-6 top-6 space-y-2">
+				<div className="h-1.5 w-24 rounded-full bg-foreground/25" />
+				<div className="h-1 w-16 rounded-full bg-muted-foreground/30" />
+			</div>
+			{/* 输入框只画上半截、下缘出血：与真实页面一样，输入框是贴着视口底的 */}
+			<div className="absolute inset-x-6 bottom-0 h-9 rounded-t-lg border border-b-0 border-border/70 bg-card">
+				<div className="mt-3 ml-2.5 h-1 w-14 rounded-full bg-muted-foreground/30" />
+			</div>
+			{preview ? (
+				<img
+					alt=""
+					className="pointer-events-none absolute right-8 bottom-9 h-auto w-16 select-none object-contain"
+					draggable={false}
+					src={preview}
+				/>
+			) : (
+				// 「无」：用虚线圈标出这块空着的插槽，而不是留一片看不出所以然的空白
+				<span className="absolute right-8 bottom-10 h-8 w-8 rounded-full border border-dashed border-border" />
+			)}
+		</div>
+	);
+}
+
+function OrnamentCard({
+	active,
+	hint,
+	id,
+	label,
+	onSelect,
+	preview,
+}: AppearanceOrnamentOption & {
+	onSelect: (id: OrnamentId) => void;
+}): JSX.Element {
+	return (
+		<button
+			type="button"
+			onClick={() => onSelect(id)}
+			className={cn(
+				"group relative overflow-hidden rounded-xl border bg-card text-left transition-all",
+				active ? SELECTION_ACTIVE : SELECTION_IDLE,
+			)}
+		>
+			<OrnamentPreview preview={preview} />
+			<div className="px-3.5 pb-3 pt-2.5">
+				<div className="text-[13px] font-medium text-card-foreground">{label}</div>
+				<div className="mt-1 line-clamp-2 text-[11px] leading-snug text-muted-foreground">{hint}</div>
+			</div>
+			{active && <SelectionCheckBadge />}
+		</button>
+	);
+}
+
 export function AppearanceSettingsView({ model }: { model: AppearanceSettingsModel }): JSX.Element {
 	return (
 		<div className="mx-auto w-full max-w-[680px] px-8 pt-2 pb-4">
@@ -392,6 +453,17 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 							{...option}
 							onSelect={model.actions.setCursorStyle}
 						/>
+					))}
+				</div>
+			</div>
+
+			{/* 装饰件：新会话页输入框上方那块挂饰位 */}
+			<div className="mb-6">
+				<SettingHeading title={model.labels.sections.ornament} section={SETTINGS_SECTION["appearance-ornament"]} className="mb-1" />
+				<p className="mb-3 text-[12px] text-muted-foreground">{model.labels.ornamentHint}</p>
+				<div className="grid grid-cols-2 gap-3">
+					{model.ornamentOptions.map((option) => (
+						<OrnamentCard key={option.id} {...option} onSelect={model.actions.setOrnament} />
 					))}
 				</div>
 			</div>

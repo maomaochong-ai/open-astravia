@@ -92,6 +92,7 @@ export const SETTINGS_SECTIONS = [
 	{ tab: "appearance", id: "appearance-ui-theme", title: "界面主题", titleKey: "section_appearance-ui-theme" },
 	{ tab: "appearance", id: "appearance-cursor", title: "鼠标指针", titleKey: "section_appearance-cursor" },
 	{ tab: "appearance", id: "appearance-theme", title: "主题", titleKey: "section_appearance-theme" },
+	{ tab: "appearance", id: "appearance-ornament", title: "装饰件", titleKey: "section_appearance-ornament" },
 	{ tab: "appearance", id: "appearance-sidebar", title: "侧边栏样式", titleKey: "section_appearance-sidebar" },
 	{ tab: "appearance", id: "appearance-language", title: "语言", titleKey: "section_appearance-language" },
 	{ tab: "account", id: "account-profile", title: "个人信息", titleKey: "section_account-profile" },

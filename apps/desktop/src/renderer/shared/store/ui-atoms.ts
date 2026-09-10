@@ -10,6 +10,7 @@ import {
 	type LanguagePreference,
 } from "@/shared/i18n/config";
 import { type CursorStyle, getStoredCursorStyle } from "../theme/cursor";
+import { getStoredOrnamentId, type OrnamentId } from "../theme/ornament";
 import { getStoredSidebarStyle, type SidebarStyle } from "../theme/sidebar-style";
 
 // ─── i18n ───
@@ -78,6 +79,9 @@ export type { CursorStyle };
 export const cursorStyleAtom = atom<CursorStyle>(getStoredCursorStyle());
 export type { SidebarStyle };
 export const sidebarStyleAtom = atom<SidebarStyle>(getStoredSidebarStyle());
+export type { OrnamentId };
+/** 新会话页装饰件位当前挂着谁。 */
+export const heroOrnamentAtom = atom<OrnamentId>(getStoredOrnamentId());
 
 // ─── Confirm dialog ───
 

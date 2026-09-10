@@ -1,10 +1,12 @@
 import { useCursorStyle } from "@shared/hooks/useCustomCursor";
+import { useHeroOrnament } from "@shared/hooks/useHeroOrnament";
 import { useLanguage } from "@shared/hooks/useLanguage";
 import { useNarrowScreen } from "@shared/hooks/useNarrowScreen";
 import { useSidebarStyle } from "@shared/hooks/useSidebarStyle";
 import { useTheme } from "@shared/hooks/useTheme";
 import type { ThemeMode } from "@shared/store/atoms";
 import { type CursorStyle, STOAT_CURSOR_PREVIEW_URL } from "@shared/theme/cursor";
+import { ORNAMENT_CATALOG, type OrnamentId } from "@shared/theme/ornament";
 import { useThemeRuntime } from "@shared/theme/runtime";
 import type { SidebarStyle } from "@shared/theme/sidebar-style";
 import { THEMES } from "@shared/theme/themes";
@@ -56,6 +58,15 @@ export interface AppearanceCursorOption {
 	icon?: string;
 }
 
+export interface AppearanceOrnamentOption {
+	active: boolean;
+	hint: string;
+	id: OrnamentId;
+	label: string;
+	/** 静态预览图；「无」没有预览，卡片改画空插槽。 */
+	preview?: string;
+}
+
 export interface AppearanceSidebarStyleOption {
 	active: boolean;
 	hint: string;
@@ -70,6 +81,7 @@ export interface AppearanceSettingsModel {
 		changeThemeName: (id: string, point: AppearancePoint) => void;
 		selectUiTheme: (id: string) => void;
 		setCursorStyle: (style: CursorStyle) => void;
+		setOrnament: (id: OrnamentId) => void;
 		setSidebarStyle: (style: SidebarStyle) => void;
 	};
 	activeUiThemeId: string;
@@ -77,10 +89,12 @@ export interface AppearanceSettingsModel {
 	cursorStyle: CursorStyle;
 	labels: {
 		languageHint: string;
+		ornamentHint: string;
 		sections: {
 			cursor: string;
 			language: string;
 			mode: string;
+			ornament: string;
 			sidebar: string;
 			theme: string;
 			uiTheme: string;
@@ -93,6 +107,8 @@ export interface AppearanceSettingsModel {
 	mode: ThemeMode;
 	modeOptions: AppearanceModeOption[];
 	narrow: boolean;
+	ornamentId: OrnamentId;
+	ornamentOptions: AppearanceOrnamentOption[];
 	/** 是否展示「界面主题」区段（`VETTA_SHOW_UI_THEME=true`） */
 	showUiTheme: boolean;
 	sidebarStyle: SidebarStyle;
@@ -193,6 +209,7 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 	const { languagePreference, setLanguage } = useLanguage();
 	const { style: cursorStyle, setStyle: setCursorStyle } = useCursorStyle();
 	const { style: sidebarStyle, setStyle: setSidebarStyle } = useSidebarStyle();
+	const { ornamentId, setOrnament } = useHeroOrnament();
 	const { t } = useTranslation("settings");
 	const narrow = useNarrowScreen();
 
@@ -252,6 +269,18 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 		[cursorStyle, t],
 	);
 
+	const ornamentOptions = useMemo<AppearanceOrnamentOption[]>(
+		() =>
+			ORNAMENT_CATALOG.map((entry) => ({
+				id: entry.id,
+				active: ornamentId === entry.id,
+				label: t(entry.labelKey),
+				hint: t(entry.hintKey),
+				preview: entry.preview,
+			})),
+		[ornamentId, t],
+	);
+
 	const sidebarStyleOptions = useMemo<AppearanceSidebarStyleOption[]>(
 		() =>
 			SIDEBAR_STYLE_OPTIONS.map((option) => ({
@@ -278,10 +307,12 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 	const labels = useMemo(
 		() => ({
 			languageHint: t("languageHint"),
+			ornamentHint: t("ornamentHint"),
 			sections: {
 				cursor: t(SETTINGS_SECTION["appearance-cursor"].titleKey),
 				language: t(SETTINGS_SECTION["appearance-language"].titleKey),
 				mode: t(SETTINGS_SECTION["appearance-mode"].titleKey),
+				ornament: t(SETTINGS_SECTION["appearance-ornament"].titleKey),
 				sidebar: t(SETTINGS_SECTION["appearance-sidebar"].titleKey),
 				theme: t(SETTINGS_SECTION["appearance-theme"].titleKey),
 				uiTheme: t(SETTINGS_SECTION["appearance-ui-theme"].titleKey),
@@ -318,6 +349,10 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 					value: style,
 				});
 			},
+			setOrnament: (id) => {
+				setOrnament(id);
+				recordSettingsUsage({ tab: "appearance", action: "changed", target: "ornament", value: id });
+			},
 			setSidebarStyle: (style) => {
 				setSidebarStyle(style);
 				recordSettingsUsage({
@@ -337,6 +372,8 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 		mode,
 		modeOptions,
 		narrow,
+		ornamentId,
+		ornamentOptions,
 		showUiTheme: isAppearanceUiThemeEnabled(),
 		sidebarStyle,
 		sidebarStyleOptions,
