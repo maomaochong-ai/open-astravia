@@ -16,6 +16,8 @@
 //   DBX_MCP_VERSION=v0.4.61
 //   DBX_MCP_SHA256=...
 //   DBX_MCP_RELEASE=https://github.com/maomaochong-ai/dbx/releases/download/dbx-mcp-astravia-v0.4.61
+//   ASTRAVIA_VENDOR_PLATFORM=darwin-x64   指定目标平台(默认取宿主;跨平台打包与 prepare-pack.js 一致)
+//   ASTRAVIA_SKIP_DBX_MCP=1               跳过下载(离线构建退路,产物不含数据库引擎)
 
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
@@ -39,6 +41,7 @@ const RELEASE =
  * - sha256：默认 pin（可用 DBX_MCP_SHA256 覆盖）；三平台均来自 fork CI 产出的
  *   .sha256 文件（B2.4 起 macOS 亦切 fork 直链）
  * - forkAsset：fork Release 资产名（`dbx-mcp-<ver>-astravia-<platform>`），三平台齐备
+ */
 const PLATFORMS = {
 	"win32-x64": {
 		dir: "win32-x64",
@@ -66,11 +69,13 @@ const PLATFORMS = {
 	},
 };
 
-const HOST_PLATFORM = `${process.platform}-${process.arch}`;
-const platform = PLATFORMS[HOST_PLATFORM];
+// 目标平台:默认取构建宿主;跨平台打包请用 ASTRAVIA_VENDOR_PLATFORM 指定
+// (与 prepare-pack.js 的 vendor/dbx-mcp 解析一致,如 dist:mac:x64 传 darwin-x64)。
+const TARGET_PLATFORM = process.env.ASTRAVIA_VENDOR_PLATFORM ?? `${process.platform}-${process.arch}`;
+const platform = PLATFORMS[TARGET_PLATFORM];
 if (!platform) {
 	console.error(
-		`[dbx-mcp] unsupported platform ${HOST_PLATFORM}; supported: ${Object.keys(PLATFORMS).join(", ")} (linux 待 fork CI 接入)`,
+		`[dbx-mcp] unsupported platform ${TARGET_PLATFORM}; supported: ${Object.keys(PLATFORMS).join(", ")} (linux 待 fork CI 接入)`,
 	);
 	process.exit(1);
 }
@@ -120,6 +125,12 @@ async function extractNpmTarball(tarball, dest) {
 }
 
 async function main() {
+	// 0. ASTRAVIA_SKIP_DBX_MCP=1:跳过下载(离线构建退路;与 prepare-pack.js 的
+	//    ASTRAVIA_SKIP_DBX_MCP 配套,产物将不含数据库引擎)。
+	if (process.env.ASTRAVIA_SKIP_DBX_MCP === "1") {
+		console.warn("[dbx-mcp] ASTRAVIA_SKIP_DBX_MCP=1 —— 跳过下载,打包产物将不含数据库引擎(dbx-mcp)");
+		return;
+	}
 	// 1. Skip if the target already exists with a matching digest.
 	if (await fileExists(targetBin)) {
 		const existing = await sha256File(targetBin);
@@ -131,7 +142,7 @@ async function main() {
 	}
 
 	// 2. Download the binary for the current platform.
-	const tmp = join(tmpdir(), `${platform.binaryName}-${VERSION}-${HOST_PLATFORM}`);
+	const tmp = join(tmpdir(), `${platform.binaryName}-${VERSION}-${TARGET_PLATFORM}`);
 	await rm(tmp, { force: true });
 	if (platform.forkAsset) {
 		// fork Release 直链（自有构建，B2.3 起）。

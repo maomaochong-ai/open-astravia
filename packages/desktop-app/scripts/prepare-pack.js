@@ -566,6 +566,17 @@ if (existsSync(dbxMcpPlatformSourceDir)) {
 		"[prepare-pack] dbx-mcp engine staged:",
 		join(stagedDbxMcpDir, dbxMcpPlatform),
 	);
+} else if (process.env.ASTRAVIA_SKIP_DBX_MCP === "1") {
+	// 显式跳过:离线构建等场景,产物不含数据库引擎。
+	console.warn(`[prepare-pack] ASTRAVIA_SKIP_DBX_MCP=1 —— 未内置 dbx-mcp(${dbxMcpPlatform}),数据库引擎不可用`);
+} else {
+	// 缺源即失败,不再静默产出缺数据库引擎的坏包。
+	throw new Error(
+		`[prepare-pack] dbx-mcp binary missing for ${dbxMcpPlatform}: ${dbxMcpPlatformSourceDir}\n` +
+			`Run \`bun run prepare:dbx-mcp\` in packages/desktop-app first (cross-platform builds: ` +
+			`ASTRAVIA_VENDOR_PLATFORM=${dbxMcpPlatform} bun run prepare:dbx-mcp), ` +
+			`or set ASTRAVIA_SKIP_DBX_MCP=1 to omit the database engine.`,
+	);
 }
 
 // =============================================================================

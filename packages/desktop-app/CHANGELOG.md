@@ -4,6 +4,10 @@ All notable changes to `@astravia/desktop-app` are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **dbx-mcp 数据库引擎随包缺失（打包链路）**：`prebuild:pack` 未自动下载 dbx-mcp 且 `prepare-pack.js` 在其缺失时静默跳过，导致产出不含数据库引擎的安装包（运行时报 `dbx-mcp binary not found at .../dbx-mcp`）。现于 `prebuild:pack` 链中接入 `prepare:dbx-mcp`，`prepare-pack.js` 缺源时直接报错（可用 `ASTRAVIA_SKIP_DBX_MCP=1` 显式跳过）；`fetch-dbx-mcp.mjs` 修复顶部未闭合块注释导致脚本整体不可用的问题，新增 `ASTRAVIA_VENDOR_PLATFORM` 支持跨平台下载（与 `prepare-pack.js` 平台解析一致），并同步刷新 darwin-arm64 本地缓存：pin 已于 8-30 切换为 fork 自建产物（`7ef5d8cd…`），但注释 bug 使脚本无法运行、本地仍留 8-22 官方过渡源旧文件，现缓存已刷新为 pin 对应产物。
+
 ## [0.55.35] - 2026-09-08
 
 ### Added
