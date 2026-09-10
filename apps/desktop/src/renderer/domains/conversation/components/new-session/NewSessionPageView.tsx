@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@shared/lib/utils";
 import { useThemeComponent } from "@vetta/theme-sdk";
+import type { NewSessionHeroIdentity } from "@vetta/theme-ui";
 import { NewSessionPageLayoutView } from "@vetta/theme-ui/chat";
 import {
 	PANEL_REVEAL_DURATION,
@@ -32,6 +33,8 @@ interface NewSessionPageViewProps {
 	commandPanelShift: boolean;
 	cwd: string;
 	greetingTitle: string;
+	/** 选中的智能体/团队身份；null 时 hero 展示问候语。 */
+	heroIdentity: NewSessionHeroIdentity | null;
 	isShort: boolean;
 	mounted: boolean;
 	onAbort: () => Promise<void>;
@@ -57,6 +60,7 @@ export function NewSessionPageView({
 	commandPanelShift,
 	cwd,
 	greetingTitle,
+	heroIdentity,
 	isShort,
 	mounted,
 	onAbort,
@@ -125,6 +129,7 @@ export function NewSessionPageView({
 						<NewSessionHero
 							avatarAutoplay={avatarAutoplay}
 							greetingTitle={greetingTitle}
+							identity={heroIdentity}
 							mounted={mounted}
 							subtitle={subtitle}
 						/>

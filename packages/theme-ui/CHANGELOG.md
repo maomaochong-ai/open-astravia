@@ -4,6 +4,7 @@
 
 ### Added
 
+- `NewSessionHero` props carry an optional `identity` (title, subtitle, and one avatar per team member) so a theme can render the picked agent or team in place of the greeting.
 - Exported shared `AvatarStackView` for a compact overlapping avatar row with a bounded overflow count, replacing the session-row-only stack implementation.
 
 ### Changed

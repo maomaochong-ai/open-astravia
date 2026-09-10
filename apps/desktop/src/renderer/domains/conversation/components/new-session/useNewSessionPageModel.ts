@@ -22,6 +22,7 @@ import {
 	switchSessionInputDraftScope,
 } from "@shared/store/atoms";
 import { useNavigate, useSearch } from "@tanstack/react-router";
+import type { NewSessionHeroIdentity } from "@vetta/theme-ui";
 import { useAtomValue, useSetAtom } from "jotai";
 import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -43,6 +44,7 @@ import {
 import { createNewSessionTargetStrategyRegistry } from "./target-strategy";
 import { useNewSessionActivityPanel } from "./useNewSessionActivityPanel";
 import { useNewSessionSend } from "./useNewSessionSend";
+import { useNewSessionTargetIdentity } from "./useNewSessionTargetIdentity";
 import { useNewSessionTeamDraft } from "./useNewSessionTeamDraft";
 import { useShortViewport } from "./useShortViewport";
 
@@ -61,6 +63,8 @@ interface NewSessionPageModel {
 	/** 活动面板根目录；「对话」与待创建项目下为 null，文件面板走空态而不是暴露 conversation 根。 */
 	activityPanelCwd: string | null;
 	greetingTitle: string;
+	/** 选中的智能体/团队身份；null 时 hero 展示问候语。 */
+	heroIdentity: NewSessionHeroIdentity | null;
 	isShort: boolean;
 	mounted: boolean;
 	onAbort: () => Promise<void>;
@@ -207,6 +211,7 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		},
 		[navigate, search.cwd],
 	);
+	const heroIdentity = useNewSessionTargetIdentity(targetKey);
 	const isShort = useShortViewport();
 	// 不带过滤词：要的是面板刚展开时那份完整列表的条目数，不能随用户打字过滤而抖。
 	// 数据与命令区共用模块级缓存（InputBar 里的 CommandPanel 挂载即预取），命中即立即可用。
@@ -305,6 +310,7 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		cwd: contextCwd,
 		activityPanelCwd: projectSelection.activityPanelCwd,
 		greetingTitle,
+		heroIdentity,
 		isShort,
 		mounted,
 		onAbort: abortMessage,

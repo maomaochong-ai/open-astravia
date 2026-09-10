@@ -1,0 +1,72 @@
+/* ─── 新会话 hero 的身份切换 ───
+   切换智能体/团队时，标题上方的头像槽纵向展开、标题与描述整块重播一次入场。
+   这里刻意用纯 CSS 而不是 motion：这段动画常和命令区揭幕、输入栏位移同屏跑，
+   再挂一棵 JS 驱动的动画树会在低端机上抢主线程，表现为切换时掉帧。 */
+
+@keyframes ns-hero-identity-in {
+	from {
+		opacity: 0;
+		transform: translate3d(0, 8px, 0);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+@keyframes ns-hero-avatar-in {
+	from {
+		opacity: 0;
+		transform: translate3d(0, 10px, 0) scale(0.72);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+/* 标题与描述各自延迟一点，切换时读起来是「头像先落位、文字跟上」。 */
+.ns-hero-identity-title,
+.ns-hero-identity-subtitle {
+	animation: ns-hero-identity-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+	will-change: opacity, transform;
+}
+
+.ns-hero-identity-subtitle {
+	animation-delay: 70ms;
+}
+
+/* 头像槽：高度由 host 按有无头像算好写进 --ns-hero-avatar-height，收起时归零。
+   overflow 让收起过程中的头像被裁掉而不是压到 badge 轮播上。 */
+.ns-hero-avatar-slot {
+	display: flex;
+	/* 槽高 = 头像直径 + 与标题之间的留白，头像顶在上边，留白自然落在标题一侧。 */
+	align-items: flex-start;
+	overflow: hidden;
+	height: 0;
+	opacity: 0;
+	transition:
+		height 420ms cubic-bezier(0.22, 1, 0.36, 1),
+		opacity 220ms ease-out;
+}
+
+.ns-hero-avatar-slot[data-visible="true"] {
+	height: var(--ns-hero-avatar-height, 0px);
+	opacity: 1;
+}
+
+.ns-hero-avatar-slot > * {
+	animation: ns-hero-avatar-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ns-hero-identity-title,
+	.ns-hero-identity-subtitle,
+	.ns-hero-avatar-slot > * {
+		animation: none;
+	}
+
+	.ns-hero-avatar-slot {
+		transition: none;
+	}
+}

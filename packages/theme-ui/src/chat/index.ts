@@ -306,6 +306,8 @@ export { ModelSelectorView } from "./ModelSelectorView";
 export type {
 	NewSessionGuidingWordsGroup,
 	NewSessionGuidingWordsProps,
+	NewSessionHeroAvatar,
+	NewSessionHeroIdentity,
 	NewSessionHeroProps,
 	NewSessionSceneActionState,
 	NewSessionSceneCarouselLabels,

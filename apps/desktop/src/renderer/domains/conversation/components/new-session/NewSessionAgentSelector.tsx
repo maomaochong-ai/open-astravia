@@ -5,6 +5,7 @@ import { NewSessionPicker, type NewSessionPickerRootProps } from "@vetta/theme-u
 import { AvatarStackView } from "@vetta/theme-ui/shared";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { loadAgentTeamDocument } from "./agent-team-directory";
 import {
 	agentTargetKey,
 	filterTargetOptions,
@@ -42,7 +43,7 @@ export function NewSessionAgentSelector({
 		setLoading(true);
 		setError(null);
 		try {
-			setDocument(await window.vetta.agentTeams.list());
+			setDocument(await loadAgentTeamDocument());
 		} catch (cause) {
 			setError(cause instanceof Error ? cause.message : String(cause));
 		} finally {

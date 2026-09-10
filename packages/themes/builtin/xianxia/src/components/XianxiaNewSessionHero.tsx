@@ -8,10 +8,12 @@ const easeOut = [0.16, 1, 0.3, 1] as const;
 
 /**
  * 修仙主题新会话欢迎区：保留标题 / 副标题 / 场景轮播，不渲染默认 BotAvatar（避免 idle 弹跳手势）。
+ * 选中智能体/团队时标题换成其名称与描述；头像组是默认 hero 的表现，本主题不引入。
  */
 export function XianxiaNewSessionHero({
 	className,
 	greetingTitle,
+	identity = null,
 	mounted,
 	onSceneClick,
 	reserveSceneSlot = false,
@@ -43,7 +45,7 @@ export function XianxiaNewSessionHero({
 						transition={{ duration: 0.5, delay: 0.1, ease: easeOut }}
 						className="bg-gradient-to-br from-foreground via-foreground to-foreground/70 bg-clip-text text-[24px] font-semibold tracking-[-0.02em] text-transparent"
 					>
-						{greetingTitle}
+						{identity?.title ?? greetingTitle}
 					</motion.h1>
 					<motion.p
 						initial={{ opacity: 0 }}
@@ -51,7 +53,7 @@ export function XianxiaNewSessionHero({
 						transition={{ duration: 0.5, delay: 0.2 }}
 						className="mt-1 text-[12px] text-muted-foreground/70"
 					>
-						{subtitle}
+						{identity ? identity.subtitle || subtitle : subtitle}
 					</motion.p>
 				</div>
 
