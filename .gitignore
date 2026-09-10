@@ -76,6 +76,7 @@ prompt/
 spec/
 requirement/
 .agents/
+.astravia/
 skills-lock.json
 
 terminals
