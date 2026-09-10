@@ -21,13 +21,16 @@ import { toSidebarNavBadge } from "./sidebar-nav-badge";
 import {
 	canPinMore as canPinMoreKeys,
 	EXTENSIONS_NAV_KEY,
+	migrateSidebarNavLayout,
 	moveNavKeyToRegion,
 	NEW_SESSION_NAV_KEY,
 	parseSidebarNavLayout,
 	pinNavKey,
+	readSidebarNavLayoutVersion,
 	reorderNavKeys,
 	resolveSidebarNavLayout,
 	SIDEBAR_NAV_LAYOUT_STORAGE_KEY,
+	SIDEBAR_NAV_LAYOUT_VERSION,
 	type SidebarNavLayout,
 	toStoredSidebarNavLayout,
 	unpinNavKey,
@@ -118,7 +121,14 @@ const DEFAULT_PINNED_NAV_KEYS = ["/abilities", "/agents", workspaceViewNavKey("v
 function loadStoredNavLayout(): SidebarNavLayout {
 	try {
 		const raw = localStorage.getItem(SIDEBAR_NAV_LAYOUT_STORAGE_KEY);
-		return parseSidebarNavLayout(raw ? (JSON.parse(raw) as unknown) : null);
+		const parsed = raw ? (JSON.parse(raw) as unknown) : null;
+		const layout = parseSidebarNavLayout(parsed);
+		const version = readSidebarNavLayoutVersion(parsed);
+		if (version >= SIDEBAR_NAV_LAYOUT_VERSION) return layout;
+		// 老用户的布局里已「记过」新默认置顶项，默认值不会再生效，只能靠迁移补一次。
+		const migrated = migrateSidebarNavLayout(layout, version);
+		if (raw) persistNavLayout(migrated);
+		return migrated;
 	} catch {
 		return parseSidebarNavLayout(null);
 	}
@@ -126,7 +136,10 @@ function loadStoredNavLayout(): SidebarNavLayout {
 
 function persistNavLayout(layout: SidebarNavLayout): void {
 	try {
-		localStorage.setItem(SIDEBAR_NAV_LAYOUT_STORAGE_KEY, JSON.stringify(layout));
+		localStorage.setItem(
+			SIDEBAR_NAV_LAYOUT_STORAGE_KEY,
+			JSON.stringify({ ...layout, version: SIDEBAR_NAV_LAYOUT_VERSION }),
+		);
 	} catch {
 		// 隐私模式 / 配额不足：内存态仍可用，只是重启不保留。
 	}

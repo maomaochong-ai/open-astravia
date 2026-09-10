@@ -28,6 +28,17 @@ export const MAX_PINNED_NAV_ITEMS = 5;
 
 export const SIDEBAR_NAV_LAYOUT_STORAGE_KEY = "vetta-sidebar-nav-layout";
 
+/**
+ * 布局存储版本。默认置顶集合只对「从没记过这个 key」的入口生效，所以给老用户
+ * 新增默认置顶项必须靠一次性迁移：版本号每加一，就把该版本对应的 key 补进置顶区。
+ */
+export const SIDEBAR_NAV_LAYOUT_VERSION = 1;
+
+/** 版本 → 该版本要一次性补进置顶区的 key（已被用户置顶或置顶区已满时跳过）。 */
+const NAV_LAYOUT_MIGRATIONS: readonly { readonly version: number; readonly pin: readonly string[] }[] = [
+	{ version: 1, pin: ["/agents"] },
+];
+
 export interface SidebarNavLayout {
 	/** 置顶区 key 顺序（不含「新会话」——它由渲染层强制置顶）。 */
 	readonly pinned: readonly string[];
@@ -192,6 +203,33 @@ export function toStoredSidebarNavLayout(resolved: ResolvedSidebarNavLayout): Si
 		pinned: withoutKey(resolved.pinned, NEW_SESSION_NAV_KEY),
 		more: withoutKey(resolved.more, EXTENSIONS_NAV_KEY),
 	};
+}
+
+/** 读出持久化内容的版本号；缺失或非法一律按 0（迁移引入前的老数据）处理。 */
+export function readSidebarNavLayoutVersion(raw: unknown): number {
+	if (raw == null || typeof raw !== "object") return 0;
+	const version = (raw as Record<string, unknown>).version;
+	return typeof version === "number" && Number.isFinite(version) ? version : 0;
+}
+
+/**
+ * 把 `fromVersion` 之后新增的默认置顶项补进置顶区（老用户升级时一次性生效）。
+ * 只动收纳区里的目标 key，且置顶区满了就跳过——绝不把用户已有的置顶项挤下去。
+ */
+export function migrateSidebarNavLayout(layout: SidebarNavLayout, fromVersion: number): SidebarNavLayout {
+	// 「新会话」不落盘却占一格，所以可用位是 MAX - 1。
+	const capacity = Math.max(0, MAX_PINNED_NAV_ITEMS - 1);
+	const pinned = [...layout.pinned];
+	let more = [...layout.more];
+	for (const migration of NAV_LAYOUT_MIGRATIONS) {
+		if (migration.version <= fromVersion) continue;
+		for (const key of migration.pin) {
+			if (pinned.includes(key) || pinned.length >= capacity) continue;
+			pinned.push(key);
+			more = withoutKey(more, key);
+		}
+	}
+	return { pinned, more };
 }
 
 /** 宽松解析持久化内容；任何形状不对的部分退化为空，绝不抛错。 */

@@ -4,12 +4,15 @@ import {
 	EMPTY_SIDEBAR_NAV_LAYOUT,
 	EXTENSIONS_NAV_KEY,
 	MAX_PINNED_NAV_ITEMS,
+	migrateSidebarNavLayout,
 	moveNavKeyToRegion,
 	NEW_SESSION_NAV_KEY,
 	parseSidebarNavLayout,
 	pinNavKey,
+	readSidebarNavLayoutVersion,
 	reorderNavKeys,
 	resolveSidebarNavLayout,
+	SIDEBAR_NAV_LAYOUT_VERSION,
 	toStoredSidebarNavLayout,
 	unpinNavKey,
 } from "./sidebar-nav-layout";
@@ -245,5 +248,31 @@ describe("「更多选项」锁定末位", () => {
 			pinned: [],
 			more: ["/a"],
 		});
+	});
+});
+
+describe("版本迁移", () => {
+	it("缺失或非法版本号按 0 处理", () => {
+		expect(readSidebarNavLayoutVersion(null)).toBe(0);
+		expect(readSidebarNavLayoutVersion({ pinned: [], more: [] })).toBe(0);
+		expect(readSidebarNavLayoutVersion({ version: "1" })).toBe(0);
+		expect(readSidebarNavLayoutVersion({ version: 2 })).toBe(2);
+	});
+
+	it("v1：老用户收纳区里的「智能体」补进置顶区", () => {
+		const migrated = migrateSidebarNavLayout({ pinned: ["/abilities"], more: ["/agents", "/batch-tasks"] }, 0);
+		expect(migrated.pinned).toEqual(["/abilities", "/agents"]);
+		expect(migrated.more).toEqual(["/batch-tasks"]);
+	});
+
+	it("已是最新版本的布局不再被改动", () => {
+		const layout = { pinned: ["/abilities"], more: ["/agents"] };
+		expect(migrateSidebarNavLayout(layout, SIDEBAR_NAV_LAYOUT_VERSION)).toEqual(layout);
+	});
+
+	it("置顶区已满时跳过，不挤掉用户已有的置顶项", () => {
+		const full = { pinned: ["/abilities", "/knowledge", "/automation", "/batch-tasks"], more: ["/agents"] };
+		expect(migrateSidebarNavLayout(full, 0)).toEqual(full);
+		expect(full.pinned.length).toBe(MAX_PINNED_NAV_ITEMS - 1);
 	});
 });
