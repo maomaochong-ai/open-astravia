@@ -331,41 +331,38 @@ function CursorStyleCard({
 }
 
 /**
- * 装饰件预览：一张迷你新会话页——上方两行文字骨架、贴底一枚输入框，
- * 装饰件趴在输入框右上角的顶边上。刻意与真实版式同构，让用户一眼看出这块设置改的是哪儿。
+ * 装饰件预览：一枚 1:1 的方格，装饰件居中摆着，别的什么都不画。
+ *
+ * 早先这里画的是迷你新会话页（文字骨架 + 输入框），想表达「它会出现在哪儿」，
+ * 但四张卡并排时骨架线比装饰件本身还抢眼，反而看不清挑的是什么。位置信息交给
+ * 上方那句说明，方格只管把东西呈清楚。
  */
 function OrnamentPreview({ id, preview }: { id: OrnamentId; preview?: string }): JSX.Element {
 	return (
-		<div className="relative h-[112px] w-full overflow-hidden border-b border-border/50 bg-gradient-to-b from-muted/60 via-muted/25 to-transparent">
-			<div className="absolute inset-x-6 top-6 space-y-2">
-				<div className="h-1.5 w-24 rounded-full bg-foreground/25" />
-				<div className="h-1 w-16 rounded-full bg-muted-foreground/30" />
-			</div>
-			{/* 输入框只画上半截、下缘出血：与真实页面一样，输入框是贴着视口底的 */}
-			<div className="absolute inset-x-6 bottom-0 h-9 rounded-t-lg border border-b-0 border-border/70 bg-card">
-				<div className="mt-3 ml-2.5 h-1 w-14 rounded-full bg-muted-foreground/30" />
-			</div>
+		<div className="flex h-full w-full items-center justify-center">
 			{preview ? (
 				<img
 					alt=""
-					className="pointer-events-none absolute right-8 bottom-9 h-auto w-16 select-none object-contain"
+					className="pointer-events-none h-auto w-24 select-none object-contain"
 					draggable={false}
 					src={preview}
 				/>
 			) : id === "orbit" ? (
-				// 星轨是实时着色器，没有静帧可放：预览卡直接跑一枚小球，所见即所得。
-				<OrbitOrb size={40} className="pointer-events-none absolute right-8 bottom-7" />
+				// 星轨是实时着色器，没有静帧可放：方格里直接跑一枚球，所见即所得。
+				<OrbitOrb size={76} className="pointer-events-none" />
 			) : id === "torch" ? (
-				// 火把整枚是 CSS 画的，同样直接画一根小的；bottom 补掉 3D 投影底边的空隙，让它杵在框沿上。
-				<PixelTorch unit={11} lit animate className="pointer-events-none absolute right-8 bottom-[32px]" />
+				// 火把同理，整枚是 CSS 画的。3D 投影的重心比元素盒高 6px（按 unit 折算），
+				// 不补这一下，居中的火把看着会偏上。
+				<PixelTorch unit={18} lit animate className="pointer-events-none translate-y-[6px]" />
 			) : (
-				// 「无」：用虚线圈标出这块空着的插槽，而不是留一片看不出所以然的空白
-				<span className="absolute right-8 bottom-10 h-8 w-8 rounded-full border border-dashed border-border" />
+				// 「无」：用虚线圈标出这块空着的位置，而不是留一片看不出所以然的空白
+				<span className="h-10 w-10 rounded-full border border-dashed border-border" />
 			)}
 		</div>
 	);
 }
 
+/** 与本页「色彩主题」那组同构：方格预览在上、名字在下，选中只改 1px border 色。 */
 function OrnamentCard({
 	active,
 	hint,
@@ -380,17 +377,27 @@ function OrnamentCard({
 		<button
 			type="button"
 			onClick={() => onSelect(id)}
-			className={cn(
-				"group relative overflow-hidden rounded-xl border bg-card text-left transition-all",
-				active ? SELECTION_ACTIVE : SELECTION_IDLE,
-			)}
+			// 描述文字在方格里塞不下又不该丢，挂成 title 让需要的人悬停能看到。
+			title={hint}
+			className="group flex flex-col items-stretch gap-2 text-left"
 		>
-			<OrnamentPreview id={id} preview={preview} />
-			<div className="px-3.5 pb-3 pt-2.5">
-				<div className="text-[13px] font-medium text-card-foreground">{label}</div>
-				<div className="mt-1 line-clamp-2 text-[11px] leading-snug text-muted-foreground">{hint}</div>
+			<div
+				className={cn(
+					"relative aspect-square w-full overflow-hidden rounded-lg border bg-card transition-all",
+					active ? SELECTION_ACTIVE : SELECTION_IDLE,
+				)}
+			>
+				<OrnamentPreview id={id} preview={preview} />
+				{active && <SelectionCheckBadge />}
 			</div>
-			{active && <SelectionCheckBadge />}
+			<span
+				className={cn(
+					"text-[12px] transition-colors",
+					active ? "font-medium text-foreground" : "text-muted-foreground",
+				)}
+			>
+				{label}
+			</span>
 		</button>
 	);
 }
@@ -469,7 +476,7 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 			<div className="mb-6">
 				<SettingHeading title={model.labels.sections.ornament} section={SETTINGS_SECTION["appearance-ornament"]} className="mb-1" />
 				<p className="mb-3 text-[12px] text-muted-foreground">{model.labels.ornamentHint}</p>
-				<div className="grid grid-cols-2 gap-3">
+				<div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-4">
 					{model.ornamentOptions.map((option) => (
 						<OrnamentCard key={option.id} {...option} onSelect={model.actions.setOrnament} />
 					))}
