@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useRef, useState, type JSX } from "react";
-import { Button, Dialog, DialogContent } from "@vetta/ui";
+import {
+	Button,
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	Input,
+} from "@vetta/ui";
 
 export interface NewProjectDialogViewLabels {
 	readonly title: string;
@@ -79,42 +88,52 @@ export function NewProjectDialogView({
 				}}
 				onInteractOutside={(e) => e.preventDefault()}
 			>
-				<p className="mb-1 text-[13px] font-semibold text-foreground">{labels.title}</p>
-				<p className="mb-3 text-[12px] text-muted-foreground/50">{labels.description}</p>
-				<input
-					ref={inputRef}
-					type="text"
-					value={name}
-					onChange={(e) => {
-						setName(e.target.value);
-						setError("");
-					}}
-					onKeyDown={(e) => {
-						if (e.key !== "Enter") return;
-						if (composingRef.current || e.nativeEvent.isComposing || Date.now() - composedAtRef.current < 80) {
-							return;
-						}
-						handleSubmit();
-					}}
-					onCompositionStart={() => {
-						composingRef.current = true;
-					}}
-					onCompositionEnd={() => {
-						composingRef.current = false;
-						composedAtRef.current = Date.now();
-					}}
-					placeholder={labels.placeholder}
-					className="mb-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-[13px] text-foreground outline-none placeholder:text-muted-foreground/50 focus:border-input"
-				/>
-				{error && <p className="mb-1 text-[11px] text-destructive">{error}</p>}
-				<div className="mt-3 flex justify-end gap-2">
-					<Button variant="ghost" size="sm" onClick={onCancel}>
+				<DialogHeader className="gap-1.5">
+					<DialogTitle>{labels.title}</DialogTitle>
+					<DialogDescription>{labels.description}</DialogDescription>
+				</DialogHeader>
+				<div className="flex flex-col gap-1.5">
+					<Input
+						ref={inputRef}
+						type="text"
+						value={name}
+						// 有错时借 Input 自带的 aria-invalid 样式染边框，不用再写一套红框。
+						aria-invalid={error ? true : undefined}
+						onChange={(e) => {
+							setName(e.target.value);
+							setError("");
+						}}
+						onKeyDown={(e) => {
+							if (e.key !== "Enter") return;
+							if (composingRef.current || e.nativeEvent.isComposing || Date.now() - composedAtRef.current < 80) {
+								return;
+							}
+							handleSubmit();
+						}}
+						onCompositionStart={() => {
+							composingRef.current = true;
+						}}
+						onCompositionEnd={() => {
+							composingRef.current = false;
+							composedAtRef.current = Date.now();
+						}}
+						placeholder={labels.placeholder}
+						className="h-9"
+					/>
+					{error && (
+						<p role="alert" className="text-[12px] leading-snug text-destructive">
+							{error}
+						</p>
+					)}
+				</div>
+				<DialogFooter>
+					<Button variant="outline" onClick={onCancel}>
 						{labels.cancel}
 					</Button>
-					<Button variant="primary" size="sm" onClick={handleSubmit}>
+					<Button variant="primary" onClick={handleSubmit}>
 						{labels.create}
 					</Button>
-				</div>
+				</DialogFooter>
 			</DialogContent>
 		</Dialog>
 	);
