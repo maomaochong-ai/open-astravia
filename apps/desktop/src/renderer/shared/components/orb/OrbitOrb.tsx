@@ -17,31 +17,34 @@ export interface OrbitOrbProps {
 }
 
 /**
- * 浅色模式的配色反转：蓝球白纹。
+ * 浅色模式的配色反转：白球蓝纹。
  *
  * 着色器默认是「近黑球体 + 冷钢折痕」，深色底上成立，白底上却只剩一团灰蒙蒙的脏斑。
- * 这里把两者对调——球体本身给饱和的蓝（`body` 配上 10 倍的 `floorLevel`，默认那点
- * 底色亮度撑不起一整枚球），折痕改用纯白，于是白纹浮在蓝面上。
+ * 这里把两者对调——但着色器是加色的，折痕只会比球体更亮，想要「白球上浮着蓝纹」就得先
+ * 把场反相（`invert`）：平面吃 `tint` 的白，折痕留下 `body` 那层蓝底，蓝纹才是暗的那一半。
  *
- * 另外三处是白底逼出来的：
+ * 另外几处是白底逼出来的：
  * - `fringe` 压到近乎不错相位、`saturation` 收回 1：三通道各错开相位会在折痕两侧分出
  *   一暖一冷两条彩边，蓝白配色下那几道暖边直接糊成褐斑。
- * - `exposure` 调高、`edgeGain` 调低：只让最陡的棱发亮，否则白纹铺满整枚球，边缘直接
- *   化进白底、球没了轮廓。
- * - `sheen` 换成更深的蓝、`rim` 拉到 1.8：菲涅尔边原本是加亮的，白底上等于把轮廓擦掉；
- *   改成往边缘加深蓝，轮廓才收得住。
+ * - `tint` 不是纯白、`floorLevel` 只有 0.6：两层是相加的，球面白得撑满就把蓝纹一起顶到
+ *   过曝，白纹时代那种「白到底」的取值在这边只会压成一颗没有花纹的白珠。
+ * - `light` 抬到 0.6：兰伯特是这套配色里唯一还在给球体做明暗的项，淡蓝纹本身对比很弱，
+ *   球得靠打光才鼓得起来。
+ * - `sheen` 用蓝、`rim` 拉到 1.3：菲涅尔边原本是加亮的，白球在白底上等于没有轮廓；
+ *   改成往边缘加蓝，轮廓才收得住。
  */
 const LIGHT_TUNING = {
+	invert: 1,
 	fringe: 0.02,
 	saturation: 1,
-	floorLevel: 1.6,
-	exposure: 2,
-	edgeGain: 6,
-	rim: 1.8,
-	light: 0.3,
+	floorLevel: 0.6,
+	exposure: 0.8,
+	edgeGain: 12.5,
+	rim: 1.3,
+	light: 0.6,
 } as const;
 
-const LIGHT_COLORS = { tint: "#ffffff", body: "#1f4bb0", sheen: "#123a99" } as const;
+const LIGHT_COLORS = { tint: "#c3d0e2", body: "#86a9ee", sheen: "#3f6ecb" } as const;
 
 /**
  * 三态同调：`fringe`、`exposure` 这些在 thinking/speaking 的预设里另有取值，只调 idle
@@ -65,7 +68,7 @@ const LIGHT_STATE_COLORS = {
  *
  * 只固定尺寸、暂停语义与两套外观的配色。颜色是 GL uniform 而不是 CSS 变量，硬塞主题
  * token 只会多一条读不到的取色路径，所以深色沿用着色器自带的冷钢/靛蓝，浅色经
- * `statePresets` / `stateColors` 整体换成蓝球白纹（见 `LIGHT_TUNING`）。
+ * `statePresets` / `stateColors` 整体换成白球蓝纹（见 `LIGHT_TUNING`）。
  * 装饰件不承载信息，对辅助技术整体隐藏（`ariaLabel` 缺省即不暴露）。
  */
 export function OrbitOrb({ size, state = "idle", paused = false, className }: OrbitOrbProps): JSX.Element {

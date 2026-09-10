@@ -151,6 +151,11 @@ vec3 creaseRender(vec2 fragCoord) {
 
   e = pow(clamp(e, 0.0, 1.0), vec3(uP_contrast));
 
+  // Flip which half of the field the tint pays for: at 1 the flats take the
+  // tint and the creases are left showing nothing but the body underneath,
+  // which is the only way to draw dark filigree with an additive stack.
+  e = mix(e, vec3(1.0) - e, uP_invert);
+
   vec3 col = uC_tint * e;
 
   // a dark body under the filigree, so the flat regions read as the ball
@@ -229,6 +234,7 @@ export const shdr25Orb: OrbVariant = {
     { key: "fringe", label: "Chromatic fringe", min: 0, max: 1.5, step: 0.005, default: 0.09 },
     { key: "exposure", label: "Exposure", min: 0.05, max: 40, step: 0.05, default: 0.8 },
     { key: "contrast", label: "Contrast", min: 0.15, max: 8, step: 0.05, default: 1.15 },
+    { key: "invert", label: "Invert creases", min: 0, max: 1, step: 0.05, default: 0 },
     { key: "saturation", label: "Saturation", min: 0, max: 4, step: 0.02, default: 1.5 },
     { key: "floorLevel", label: "Body fill", min: 0, max: 2, step: 0.01, default: 0.16 },
     { key: "light", label: "Key light", min: 0, max: 3, step: 0.015, default: 0.35 },
