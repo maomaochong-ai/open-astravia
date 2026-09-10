@@ -26,8 +26,11 @@ export type CommandMenuAction =
 	| { readonly kind: "openProject"; readonly cwd: string }
 	| { readonly kind: "openSession"; readonly result: DesktopSessionSearchResult }
 	| { readonly kind: "openSettingsSection"; readonly tab: SettingsTab; readonly section: string }
-	/** 能力条目与市场逃生行共用：跳能力页并预填搜索词。 */
-	| { readonly kind: "openAbilities"; readonly query?: string }
+	/**
+	 * 能力条目与市场逃生行共用：跳能力页并预填搜索词。
+	 * scope 区分落地分区——面板内列出的都是**已装**能力，落到「发现」会搜不到自己。
+	 */
+	| { readonly kind: "openAbilities"; readonly query?: string; readonly scope?: "discover" | "mine" }
 	| { readonly kind: "openWorkspaceView"; readonly pluginId: string; readonly viewId: string };
 
 export interface CommandMenuEntry {

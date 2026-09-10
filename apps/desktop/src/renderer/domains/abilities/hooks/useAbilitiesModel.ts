@@ -27,11 +27,13 @@ const ABILITY_PAGE_SIZE = 60;
 export interface UseAbilitiesModelOptions {
 	/** 深链带进来的搜索词初值；只播种一次，之后由页面状态接管。 */
 	readonly initialSearchQuery?: string;
+	/** 深链指定的落地分区；缺省仍是「发现」。 */
+	readonly initialScope?: AbilityScope;
 }
 
 export function useAbilitiesModel(options: UseAbilitiesModelOptions = {}): AbilitiesModel {
 	const { t, i18n } = useTranslation("settings");
-	const [scope, setScope] = useState<AbilityScope>("discover");
+	const [scope, setScope] = useState<AbilityScope>(options.initialScope ?? "discover");
 	const [searchQuery, setSearchQuery] = useState(options.initialSearchQuery ?? "");
 	const [visiblePages, setVisiblePages] = useState(1);
 

@@ -149,7 +149,11 @@ describe("buildInstalledAbilityEntries", () => {
 
 		expect(entries.map((entry) => entry.title)).toEqual(["Commit helper", "story", "Git"]);
 		expect(entries.map((entry) => entry.badge)).toEqual(["Skill", "Scene", "Plugin"]);
-		expect(entries[0].action).toEqual({ kind: "openAbilities", query: "Commit helper" });
+		// 面板里列出的都是已装能力，落到「发现」分区会搜不到自己。
+		expect(entries[0].action).toEqual({ kind: "openAbilities", query: "Commit helper", scope: "mine" });
+		expect(entries.every((entry) => entry.action.kind === "openAbilities" && entry.action.scope === "mine")).toBe(
+			true,
+		);
 		expect(entries.map((entry) => entry.order)).toEqual([0, 1, 2]);
 	});
 });
@@ -158,10 +162,15 @@ describe("buildMarketplaceEscapeEntry", () => {
 	it("pins itself to the bottom and forwards the trimmed query", () => {
 		const entry = buildMarketplaceEscapeEntry("  notion  ", labels);
 		expect(entry.pinnedToBottom).toBe(true);
-		expect(entry.action).toEqual({ kind: "openAbilities", query: "notion" });
+		// 逃生行的语义是去市场找没装的，故落到「发现」。
+		expect(entry.action).toEqual({ kind: "openAbilities", query: "notion", scope: "discover" });
 	});
 
 	it("omits the query entirely when nothing was typed", () => {
-		expect(buildMarketplaceEscapeEntry("   ", labels).action).toEqual({ kind: "openAbilities", query: undefined });
+		expect(buildMarketplaceEscapeEntry("   ", labels).action).toEqual({
+			kind: "openAbilities",
+			query: undefined,
+			scope: "discover",
+		});
 	});
 });

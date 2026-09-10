@@ -150,7 +150,7 @@ export function buildInstalledAbilityEntries(
 			icon: skill.type === "scene" ? "icon-[solar--clapperboard-play-linear]" : "icon-[solar--magic-stick-3-linear]",
 			badge: skill.type === "scene" ? labels.abilityScene : labels.abilitySkill,
 			order: order++,
-			action: { kind: "openAbilities", query: title },
+			action: { kind: "openAbilities", query: title, scope: "mine" },
 		});
 	}
 	for (const plugin of installed.plugins) {
@@ -162,7 +162,7 @@ export function buildInstalledAbilityEntries(
 			icon: "icon-[solar--plug-circle-linear]",
 			badge: labels.abilityPlugin,
 			order: order++,
-			action: { kind: "openAbilities", query: plugin.name },
+			action: { kind: "openAbilities", query: plugin.name, scope: "mine" },
 		});
 	}
 	return entries;
@@ -180,6 +180,7 @@ export function buildMarketplaceEscapeEntry(query: string, labels: CommandMenuSo
 		icon: "icon-[solar--shop-2-linear]",
 		order: Number.MAX_SAFE_INTEGER,
 		pinnedToBottom: true,
-		action: { kind: "openAbilities", query: query.trim() || undefined },
+		// 这一行的语义就是去市场找没装的东西，故落到「发现」。
+		action: { kind: "openAbilities", query: query.trim() || undefined, scope: "discover" },
 	};
 }

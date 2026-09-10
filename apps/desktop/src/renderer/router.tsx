@@ -82,8 +82,9 @@ const batchTasksRoute = createRoute({
 
 /**
  * 能力详情是页内右侧抽屉，由来源感知的 `?detail=<catalog-id>` 驱动（返回键即关闭）。
- * `?q=` 是外部深链带进来的搜索词初值（Command Menu 的「在能力市场中搜索」用它）；
- * 只作为初值播种，之后由页面自身状态接管，不做双向同步。
+ * `?q=` 是外部深链带进来的搜索词初值，`?scope=` 是落地时选中的分区（Command Menu
+ * 用它把「已装能力」送进「我的」而不是「发现」）。两者只作为初值播种，之后由页面
+ * 自身状态接管，不做双向同步。
  */
 const abilitiesRoute = createRoute({
 	getParentRoute: () => rootRoute,
@@ -92,6 +93,7 @@ const abilitiesRoute = createRoute({
 	validateSearch: (search: Record<string, unknown>) => ({
 		...(typeof search.detail === "string" ? { detail: search.detail } : {}),
 		...(typeof search.q === "string" && search.q ? { q: search.q } : {}),
+		...(search.scope === "mine" || search.scope === "discover" ? { scope: search.scope } : {}),
 	}),
 });
 

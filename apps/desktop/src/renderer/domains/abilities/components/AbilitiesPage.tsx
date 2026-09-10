@@ -2,6 +2,7 @@ import { pageHeaderTitleHiddenAtom } from "@shared/store/atoms";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useSetAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
+import type { AbilityScope } from "../types";
 import { useAbilitiesModel } from "../hooks/useAbilitiesModel";
 import { AbilitiesPageView } from "./AbilitiesPageView";
 import { McpSetupPrompt } from "./McpSetupPrompt";
@@ -15,9 +16,13 @@ import { AbilityDetailSheet } from "./detail/AbilityDetailSheet";
 
 export function AbilitiesPage(): JSX.Element {
 	// 详情抽屉由来源感知的 catalog id 驱动：同 slug 可并存，返回键即关闭。
-	// `q` 只在首次挂载时作为搜索词初值交给 model，之后不再回读 URL。
-	const { detail, q } = useSearch({ strict: false }) as { detail?: string; q?: string };
-	const model = useAbilitiesModel({ initialSearchQuery: q });
+	// `q` / `scope` 只在首次挂载时作为初值交给 model，之后不再回读 URL。
+	const { detail, q, scope } = useSearch({ strict: false }) as {
+		detail?: string;
+		q?: string;
+		scope?: AbilityScope;
+	};
+	const model = useAbilitiesModel({ initialSearchQuery: q, initialScope: scope });
 	const setHeaderTitleHidden = useSetAtom(pageHeaderTitleHiddenAtom);
 	const navigate = useNavigate();
 

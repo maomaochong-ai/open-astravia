@@ -255,7 +255,13 @@ export function useCommandMenuModel({ onOpenSession }: UseCommandMenuModelArgs):
 					});
 					return true;
 				case "openAbilities":
-					void navigate({ to: "/abilities", search: action.query ? { q: action.query } : {} });
+					void navigate({
+						to: "/abilities",
+						search: {
+							...(action.query ? { q: action.query } : {}),
+							...(action.scope ? { scope: action.scope } : {}),
+						},
+					});
 					return true;
 				case "openWorkspaceView":
 					void navigate({

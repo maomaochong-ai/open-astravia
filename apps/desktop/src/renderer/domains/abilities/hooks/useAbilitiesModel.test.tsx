@@ -233,4 +233,11 @@ it("seeds the search keyword from an external deep link and lets the page take o
 	const plain = renderHook(() => useAbilitiesModel());
 	await waitFor(() => expect(plain.result.current.refreshing).toBe(false));
 	expect(plain.result.current.searchQuery).toBe("");
+	// 缺省仍落在「发现」。
+	expect(plain.result.current.scope).toBe("discover");
+
+	// Command Menu 里列出的都是已装能力，深链要能直接落到「我的」分区。
+	const mine = renderHook(() => useAbilitiesModel({ initialSearchQuery: "Notion", initialScope: "mine" }));
+	await waitFor(() => expect(mine.result.current.refreshing).toBe(false));
+	expect(mine.result.current.scope).toBe("mine");
 });
