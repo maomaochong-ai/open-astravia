@@ -32,6 +32,16 @@ export function NewProjectDialogView({
 	const [name, setName] = useState("");
 	const [error, setError] = useState("");
 	const inputRef = useRef<HTMLInputElement>(null);
+	/**
+	 * 输入法组合中。中文/日文输入时 Enter 是「上屏第一个候选词」，不该走到创建——
+	 * 否则用户名字还没打完，项目就按半成品建出去了。
+	 *
+	 * 两道判断都要：`isComposing` 是标准信号，但 compositionend 与随后那次 keydown
+	 * 的先后顺序各引擎不一致（确认候选词的那一下就落在这个缝里），所以再用
+	 * compositionend 之后的一小段时间兜底。
+	 */
+	const composingRef = useRef(false);
+	const composedAtRef = useRef(0);
 
 	useEffect(() => {
 		inputRef.current?.focus();
@@ -80,7 +90,18 @@ export function NewProjectDialogView({
 						setError("");
 					}}
 					onKeyDown={(e) => {
-						if (e.key === "Enter") handleSubmit();
+						if (e.key !== "Enter") return;
+						if (composingRef.current || e.nativeEvent.isComposing || Date.now() - composedAtRef.current < 80) {
+							return;
+						}
+						handleSubmit();
+					}}
+					onCompositionStart={() => {
+						composingRef.current = true;
+					}}
+					onCompositionEnd={() => {
+						composingRef.current = false;
+						composedAtRef.current = Date.now();
 					}}
 					placeholder={labels.placeholder}
 					className="mb-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-[13px] text-foreground outline-none placeholder:text-muted-foreground/50 focus:border-input"
