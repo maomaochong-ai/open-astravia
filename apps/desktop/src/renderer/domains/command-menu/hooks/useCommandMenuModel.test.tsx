@@ -14,6 +14,7 @@ const sessionSearchState = vi.hoisted(() => ({
 	sources: [],
 }));
 const scopeBindings = vi.hoisted(() => ({ current: [] as { key: string; run: () => void }[] }));
+const projectSessions = vi.hoisted(() => ({ current: [] as unknown[] }));
 
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => navigate }));
 vi.mock("../../project/hooks/useSessionSearch", () => ({
@@ -70,11 +71,13 @@ beforeEach(() => {
 	scopeBindings.current = [];
 	sessionSearchState.results = [];
 	sessionSearchState.loading = false;
+	projectSessions.current = [];
 	Object.defineProperty(window, "vetta", {
 		configurable: true,
 		value: {
 			skills: { list: async () => [] },
 			plugins: { listAll: async () => [] },
+			session: { listSessions: async () => projectSessions.current },
 			// 面板打开后会去读生效的开关键；默认绑定即 mod+k。
 			config: { get: async () => ({}), onShortcutsChanged: () => () => undefined },
 		},
@@ -134,17 +137,52 @@ it("wraps around at both ends of the flattened row order", () => {
 	expect(result.current.selectedId).not.toBe(last);
 });
 
-it("opens the selected row and closes the panel", async () => {
-	const { result } = render();
+it("opens a project on its latest session rather than the project overview", async () => {
+	const onOpenSession = vi.fn(async () => undefined);
+	projectSessions.current = [
+		{
+			id: "old",
+			path: "/w/alpha/old.jsonl",
+			cwd: "/w/alpha",
+			firstMessage: "",
+			modifiedAt: 1,
+			access: { readHistory: true, resume: true, rename: true, delete: true },
+		},
+		{
+			id: "latest",
+			path: "/w/alpha/latest.jsonl",
+			cwd: "/w/alpha",
+			firstMessage: "",
+			modifiedAt: 9,
+			access: { readHistory: true, resume: true, rename: true, delete: true },
+		},
+	];
+	const { result } = renderHook(() => useCommandMenuModel({ onOpenSession }));
 	act(() => result.current.onQueryChange("alpha"));
 	await waitFor(() => expect(result.current.selectedId).toBe("project:/w/alpha"));
 
 	press("enter");
-	expect(navigate).toHaveBeenCalledWith({
-		to: "/project/$cwd",
-		params: { cwd: encodeURIComponent("/w/alpha") },
-	});
+	// 面板立即关闭，不等异步的 listSessions 回来。
 	expect(store.get(commandMenuOpenAtom)).toBe(false);
+	await waitFor(() => expect(onOpenSession).toHaveBeenCalledWith("/w/alpha", "/w/alpha/latest.jsonl"));
+	expect(navigate).not.toHaveBeenCalled();
+});
+
+it("falls back to the project page when it has no openable session", async () => {
+	const onOpenSession = vi.fn(async () => undefined);
+	projectSessions.current = [];
+	const { result } = renderHook(() => useCommandMenuModel({ onOpenSession }));
+	act(() => result.current.onQueryChange("alpha"));
+	await waitFor(() => expect(result.current.selectedId).toBe("project:/w/alpha"));
+
+	press("enter");
+	await waitFor(() =>
+		expect(navigate).toHaveBeenCalledWith({
+			to: "/project/$cwd",
+			params: { cwd: encodeURIComponent("/w/alpha") },
+		}),
+	);
+	expect(onOpenSession).not.toHaveBeenCalled();
 });
 
 it("closes on escape and on a second mod+k without navigating", () => {

@@ -20,6 +20,7 @@ import { resolveDesktopSessionOpenTarget } from "@/shared/session-access";
 import { usePluginTextResolver } from "../../plugins/runtime/plugin-i18n";
 import { useSessionSearch } from "../../project/hooks/useSessionSearch";
 import { buildCommandMenuGroups, type CommandMenuGroupLabels } from "../lib/build-groups";
+import { pickLatestOpenableSession } from "../lib/latest-session";
 import { tokenizeCommandMenuQuery } from "../lib/match";
 import {
 	buildInstalledAbilityEntries,
@@ -244,9 +245,28 @@ export function useCommandMenuModel({ onOpenSession }: UseCommandMenuModelArgs):
 	const runAction = useCallback(
 		(action: CommandMenuAction) => {
 			switch (action.kind) {
-				case "openProject":
-					void navigate({ to: "/project/$cwd", params: { cwd: encodeURIComponent(action.cwd) } });
+				case "openProject": {
+					// 用户选中项目是想继续干活，不是想看项目概览：落到最新一条会话上。
+					// listSessions 是本地调用，且只在真的选中某个项目时才发一次。
+					void (async () => {
+						const sessions = await window.vetta.session.listSessions(action.cwd).catch(() => []);
+						const latest = pickLatestOpenableSession(sessions);
+						if (latest?.target === "interactive") {
+							await onOpenSession(action.cwd, latest.session.path);
+							return;
+						}
+						if (latest?.target === "viewer") {
+							await navigate({
+								to: "/viewer/$path",
+								params: { path: encodeURIComponent(latest.session.path) },
+							});
+							return;
+						}
+						// 一条会话都没有（或都打不开）时回到项目页——与侧栏点项目的落点一致。
+						await navigate({ to: "/project/$cwd", params: { cwd: encodeURIComponent(action.cwd) } });
+					})();
 					return true;
+				}
 				case "openSettingsSection":
 					void navigate({
 						to: "/settings/$tab",
