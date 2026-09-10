@@ -29,21 +29,25 @@ function cells(keys: readonly number[]): JSX.Element[] {
  */
 export function PixelTorch({ unit, lit, animate = false, className }: PixelTorchProps): JSX.Element {
 	return (
+		// 外层挂载点刻意不带任何自带样式，`className` 想怎么摆就怎么摆。
+		// 别把 className 合到 .ns-torch 上：组件样式表没有分层，而 Tailwind 工具类在
+		// utilities 层里——无层级的规则反而优先级更高，`.ns-torch{position:relative}`
+		// 会把传进来的 absolute 压掉，定位类看着生效实则全跑偏。
 		<span
 			aria-hidden
-			className={cn("ns-torch", className)}
-			data-animate={animate ? "true" : "false"}
-			data-lit={lit ? "true" : "false"}
+			className={cn("inline-flex", className)}
 			style={{ "--ns-torch-unit": `${unit}px` } as CSSProperties}
 		>
-			<span className="ns-torch-head">
-				<span className="ns-torch-face ns-torch-face-top">{cells(FACE_CELLS)}</span>
-				<span className="ns-torch-face ns-torch-face-left">{cells(FACE_CELLS)}</span>
-				<span className="ns-torch-face ns-torch-face-right">{cells(FACE_CELLS)}</span>
-			</span>
-			<span className="ns-torch-stick">
-				<span className="ns-torch-side ns-torch-side-left">{cells(SIDE_CELLS)}</span>
-				<span className="ns-torch-side ns-torch-side-right">{cells(SIDE_CELLS)}</span>
+			<span className="ns-torch" data-animate={animate ? "true" : "false"} data-lit={lit ? "true" : "false"}>
+				<span className="ns-torch-head">
+					<span className="ns-torch-face ns-torch-face-top">{cells(FACE_CELLS)}</span>
+					<span className="ns-torch-face ns-torch-face-left">{cells(FACE_CELLS)}</span>
+					<span className="ns-torch-face ns-torch-face-right">{cells(FACE_CELLS)}</span>
+				</span>
+				<span className="ns-torch-stick">
+					<span className="ns-torch-side ns-torch-side-left">{cells(SIDE_CELLS)}</span>
+					<span className="ns-torch-side ns-torch-side-right">{cells(SIDE_CELLS)}</span>
+				</span>
 			</span>
 		</span>
 	);

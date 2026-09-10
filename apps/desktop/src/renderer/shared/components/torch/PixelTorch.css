@@ -8,20 +8,22 @@
    类名一律带 ns-torch 前缀：这是全局样式表，`.face` / `.side` 这种裸名字会串到别处。 */
 
 .ns-torch {
-	--ns-torch-unit: 30px;
+	/* unit 由外层挂载点用内联样式给；这里只留一个兜底，不能写成自身的 --ns-torch-unit，
+	   否则会盖掉从父元素继承下来的那个值。 */
+	--u: var(--ns-torch-unit, 30px);
 	/* 折算系数：原素材每 30px 对应一个 unit，下面所有 calc(N * var(--s)) 里的 N 都是原始像素值。 */
-	--s: calc(var(--ns-torch-unit) / 30);
+	--s: calc(var(--u) / 30);
 	position: relative;
 	display: flex;
 	justify-content: center;
-	width: var(--ns-torch-unit);
+	width: var(--u);
 	height: calc(150 * var(--s));
 }
 
 .ns-torch-head,
 .ns-torch-stick {
 	position: absolute;
-	width: var(--ns-torch-unit);
+	width: var(--u);
 	transform-style: preserve-3d;
 	transform: rotateX(-30deg) rotateY(45deg);
 	backface-visibility: hidden;
@@ -36,8 +38,8 @@
 .ns-torch-face {
 	position: absolute;
 	transform-style: preserve-3d;
-	width: var(--ns-torch-unit);
-	height: var(--ns-torch-unit);
+	width: var(--u);
+	height: var(--u);
 	display: grid;
 	grid-template-columns: 50% 50%;
 	grid-template-rows: 50% 50%;
@@ -95,7 +97,7 @@
 
 .ns-torch-side {
 	position: absolute;
-	width: var(--ns-torch-unit);
+	width: var(--u);
 	height: calc(120 * var(--s));
 	display: grid;
 	grid-template-columns: 50% 50%;
