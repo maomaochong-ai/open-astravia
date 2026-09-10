@@ -332,7 +332,7 @@ function extractAskUserQuestion(detailsRecord: Record<string, unknown>): AskUser
  * Used for history loading only — tool_call blocks get status "success"
  * because history messages are already complete.
  */
-export function messageToBlocks(content: unknown): ContentBlock[] {
+export function messageToBlocks(content: unknown, toolStatus: ToolCallBlock["status"] = "success"): ContentBlock[] {
 	if (typeof content === "string") {
 		return content ? [{ type: "text", id: nextId("blk"), text: content }] : [];
 	}
@@ -353,7 +353,7 @@ export function messageToBlocks(content: unknown): ContentBlock[] {
 				toolCallId: String(part.id ?? ""),
 				toolName: String(part.name),
 				args: (part.arguments as Record<string, unknown>) ?? {},
-				status: "success",
+				status: toolStatus,
 			});
 		}
 	}
@@ -470,7 +470,7 @@ export function historyToChat(
 			const target = currentAssistant();
 			if (target.timestamp === undefined) target.timestamp = m.timestamp;
 			if (m.usage) target.usages = [...(target.usages ?? []), m.usage];
-			const blocks = messageToBlocks(m.content);
+			const blocks = messageToBlocks(m.content, m.stopReason === "aborted" ? "cancelled" : "success");
 			for (const b of blocks) {
 				if (b.type === "tool_call") toolCallIndex.set(b.toolCallId, b);
 			}
@@ -681,7 +681,7 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatConversationItem
 				target.entryId = entryId;
 				target.id = entryId;
 			}
-			const blocks = messageToBlocks(m.content);
+			const blocks = messageToBlocks(m.content, m.stopReason === "aborted" ? "cancelled" : "success");
 			for (const b of blocks) {
 				if (b.type === "tool_call") toolCallIndex.set(b.toolCallId, b);
 			}

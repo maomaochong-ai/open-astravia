@@ -255,7 +255,7 @@ export const ProgressGroupRowTrigger = forwardRef<
 export function ProgressGroupRowStatus({
 	status,
 }: {
-	readonly status: "pending" | "success" | "error";
+	readonly status: "pending" | "success" | "error" | "cancelled";
 }): JSX.Element {
 	return (
 		<span
@@ -264,7 +264,9 @@ export function ProgressGroupRowStatus({
 					? "icon-[solar--refresh-linear] h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground/50"
 					: status === "error"
 						? "icon-[solar--danger-circle-linear] h-3.5 w-3.5 shrink-0 text-destructive/70"
-						: "icon-[solar--check-read-linear] h-3.5 w-3.5 shrink-0 text-emerald-400"
+						: status === "cancelled"
+							? "icon-[solar--close-circle-linear] h-3.5 w-3.5 shrink-0 text-muted-foreground/60"
+							: "icon-[solar--check-read-linear] h-3.5 w-3.5 shrink-0 text-emerald-400"
 			}
 		/>
 	);

@@ -89,7 +89,7 @@ export interface ToolCallBlock {
 	toolCallId: string;
 	toolName: string;
 	args: Record<string, unknown>;
-	status: "pending" | "success" | "error";
+	status: "pending" | "success" | "error" | "cancelled";
 	result?: string;
 	imagePreview?: ToolImagePreview;
 	imagePreviews?: ToolImagePreview[];

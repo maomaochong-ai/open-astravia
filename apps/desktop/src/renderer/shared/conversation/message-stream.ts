@@ -127,7 +127,7 @@ function mergeTerminalMessage(
 ): ConversationAgentMessageViewModel {
 	let next = message;
 	if (next.blocks.length === 0) {
-		const blocks = projectAssistantMessageBlocks(terminal, messageId);
+		const blocks = projectAssistantMessageBlocks(terminal, phase === "aborted" ? "cancelled" : "pending");
 		next = {
 			...next,
 			text: blocks.flatMap((block) => (block.type === "text" ? [block.text] : [])).join(""),
@@ -143,6 +143,16 @@ function mergeTerminalMessage(
 				messageId,
 			);
 		}
+	}
+	if (phase === "aborted") {
+		next = {
+			...next,
+			blocks: next.blocks.map((block) =>
+				block.type === "tool_call" && block.status === "pending"
+					? { ...block, status: "cancelled" as const, currentPhase: undefined }
+					: block,
+			),
+		};
 	}
 	const endedAt = terminal.timestamp;
 	return {

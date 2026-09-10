@@ -4,6 +4,8 @@
 
 ### Added
 
+- Bash 工具终端状态支持 `cancelled`，取消后不再显示运行中的光标或等待提示。
+
 - Exported shared `AvatarStackView` for a compact overlapping avatar row with a bounded overflow count, replacing the session-row-only stack implementation.
 
 ### Changed

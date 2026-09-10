@@ -571,6 +571,40 @@ describe("team chat stream state", () => {
 		expect(late.turn?.message.text).toBe("partial");
 	});
 
+	it("marks an in-flight tool as cancelled when the Team turn is aborted", () => {
+		const toolStart: DesktopTeamSessionStreamEvent = {
+			type: "desktop.team-tool-execution",
+			conversationId: session.id,
+			messageId: "aborted-tool-turn",
+			turnId: "request",
+			author: { kind: "agent", id: "leader" },
+			sequence: 1,
+			timestamp: 1,
+			event: {
+				type: "start",
+				toolCallId: "aborted-tool",
+				toolName: "team_delegate_task",
+				args: { memberId: "executor" },
+				startedAt: 1,
+			},
+		};
+		const state = reduceTeamStreamState(reduceTeamStreamState({}, toolStart), {
+			type: "conversation.agent-message-discard",
+			conversationId: session.id,
+			messageId: "aborted-tool-turn",
+			turnId: "request",
+			author: { kind: "agent", id: "leader" },
+			sequence: 2,
+			reason: "aborted",
+			timestamp: 2,
+		});
+
+		expect(state["aborted-tool-turn"]?.message).toMatchObject({
+			phase: "aborted",
+			blocks: [{ type: "tool_call", toolCallId: "aborted-tool", status: "cancelled" }],
+		});
+	});
+
 	it("keeps partial leader output visible after the Team turn is aborted", () => {
 		const streams = reduceTeamStreamState(reduceTeamStreamState({}, streamEvent("turn", 1, "partial")), {
 			type: "conversation.agent-message-discard",
@@ -812,6 +846,27 @@ describe("team chat stream state", () => {
 			.flatMap((item) => (item.kind === "agent" ? item.blocks : []))
 			.find((block) => block.type === "tool_call" && block.toolCallId === "members-call");
 		expect(tool).toMatchObject({ type: "tool_call", status: "success" });
+	});
+
+	it("marks an unfinished tool as cancelled in persisted aborted Team records", () => {
+		const aborted = agentMessage("aborted-tool-turn", "request", "leader", "", 2, {
+			id: "aborted-members-call",
+			name: "team_delegate_task",
+			arguments: { memberId: "executor" },
+		});
+		aborted.message.stopReason = "aborted";
+		const items = projectTeamConversationTimeline({
+			snapshot: snapshot({ messages: [aborted] }),
+			pending: undefined,
+			streams: {},
+			members: [member],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		const tool = items
+			.flatMap((item) => (item.kind === "agent" ? item.blocks : []))
+			.find((block) => block.type === "tool_call" && block.toolCallId === "aborted-members-call");
+		expect(tool).toMatchObject({ type: "tool_call", status: "cancelled" });
 	});
 
 	it("keeps the coordination user message visible when member histories are present", () => {

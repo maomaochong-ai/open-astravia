@@ -402,7 +402,7 @@ export interface PluginToolCallSlotToolCall {
 	toolCallId: string;
 	toolName: string;
 	args: Record<string, unknown>;
-	status: "pending" | "success" | "error";
+	status: "pending" | "success" | "error" | "cancelled";
 	result?: string;
 	isError?: boolean;
 }

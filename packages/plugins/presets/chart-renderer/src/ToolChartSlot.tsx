@@ -25,8 +25,15 @@ export function ToolChartSlot({ toolCall }: PluginToolCallSlotProps) {
 				}
 			: undefined;
 	const pending = toolCall.status === "pending";
+	const cancelled = toolCall.status === "cancelled";
 	const failed = toolCall.status === "error" || toolCall.isError;
 
+	if (cancelled)
+		return (
+			<div className="my-1 rounded-xl border border-[var(--border)] px-3 py-2 text-xs text-[var(--muted-foreground)]">
+				{t("state.cancelled")}
+			</div>
+		);
 	if (failed)
 		return (
 			<div className="my-1 rounded-xl border border-[var(--destructive,#ef4444)]/30 px-3 py-2 text-xs text-[var(--destructive,#ef4444)]">

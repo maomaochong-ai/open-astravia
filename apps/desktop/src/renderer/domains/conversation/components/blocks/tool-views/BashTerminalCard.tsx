@@ -7,7 +7,7 @@ import { bashHeaderLabel } from "./shared/parse-tool";
 import { CopyIconButton } from "./shared/CopyIconButton";
 
 /** Local shapes — avoid @shared/store so inventory is not dataHeavy. */
-type ToolStatus = "pending" | "success" | "error";
+type ToolStatus = "pending" | "success" | "error" | "cancelled";
 interface PhaseInfo {
 	label: string;
 	atMs: number;

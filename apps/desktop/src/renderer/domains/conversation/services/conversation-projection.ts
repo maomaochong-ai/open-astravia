@@ -125,7 +125,7 @@ export function projectConversationAgentMessage(input: {
 			authorId: authorId,
 			timestamp: timestamp ?? message.timestamp,
 			text: message.content.flatMap((part) => (part.type === "text" ? [part.text] : [])).join(""),
-			blocks: projectAssistantMessageBlocks(message, messageId),
+			blocks: projectAssistantMessageBlocks(message, message.stopReason === "aborted" ? "cancelled" : "pending"),
 		}),
 	];
 	for (const execution of executions.filter((item) => item.messageId === messageId)) {

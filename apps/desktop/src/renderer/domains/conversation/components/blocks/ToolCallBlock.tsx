@@ -64,7 +64,7 @@ function PluginToolCallContent({
 							toolCallId: block.toolCallId,
 							toolName: block.toolName,
 							args: block.args,
-							status: block.status,
+						status: block.status,
 							result: block.result,
 							isError: block.isError,
 						}}
