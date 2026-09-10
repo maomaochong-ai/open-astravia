@@ -81,6 +81,15 @@
 		"importProject": "导入项目",
 		"more": "更多"
 	},
+	"actionFailed": {
+		"openTitle": "打开项目失败",
+		"openMessage": "无法打开所选项目，请确认目录存在且可访问。",
+		"newTitle": "新建项目失败",
+		"newMessage": "无法创建项目，请更换名称或检查工作区目录权限。",
+		"importTitle": "导入项目失败",
+		"importMessage": "项目压缩包无法导入，请确认文件完整且版本兼容。",
+		"confirm": "好的"
+	},
 	"contextMenu": {
 		"openInFinder": "在访达中打开",
 		"openInExplorer": "从此电脑打开",

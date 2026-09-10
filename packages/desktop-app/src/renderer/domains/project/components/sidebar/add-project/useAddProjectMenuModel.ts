@@ -1,5 +1,6 @@
-import { useBatchTasks } from "@domains/batch-tasks/hooks/useBatchTasks";
-import { confirmDialogAtom } from "@shared/store/atoms";
+import { useRefreshBatchProjects } from "@shared/hooks/useRefreshBatchProjects";
+import type { SidebarFilter } from "@shared/store/atoms";
+import { batchProjectDialogOpenAtom, confirmDialogAtom } from "@shared/store/atoms";
 import { useNavigate } from "@tanstack/react-router";
 import { useSetAtom } from "jotai";
 import { useEffect, useRef, useState } from "react";
@@ -7,7 +8,9 @@ import { useTranslation } from "react-i18next";
 import { useProjects } from "../../../hooks/useProjects";
 import type { AddProjectMenuItemModel } from "./types";
 
-export function useAddProjectMenuModel(): {
+type FailureTitleKeys = "actionFailed.openTitle" | "actionFailed.newTitle" | "actionFailed.importTitle";
+type FailureMessageKeys = "actionFailed.openMessage" | "actionFailed.newMessage" | "actionFailed.importMessage";
+export function useAddProjectMenuModel({ filter }: { filter?: SidebarFilter }): {
 	items: AddProjectMenuItemModel[];
 	menuRef: React.RefObject<HTMLDivElement | null>;
 	open: boolean;
@@ -18,16 +21,66 @@ export function useAddProjectMenuModel(): {
 } {
 	const { t } = useTranslation("project");
 	const { createProject, openProject, refreshProjects } = useProjects();
-	const { refreshProjects: refreshBatchProjects } = useBatchTasks();
+	const refreshBatchProjects = useRefreshBatchProjects();
+	const setBatchProjectDialog = useSetAtom(batchProjectDialogOpenAtom);
 	const setConfirm = useSetAtom(confirmDialogAtom);
 	const navigate = useNavigate();
 	const [open, setOpen] = useState(false);
 	const [showNewProject, setShowNewProject] = useState(false);
 	const menuRef = useRef<HTMLDivElement>(null);
+	const isBatchScope = filter === "batch";
+
+	const showFailure = (titleKey: FailureTitleKeys, messageKey: FailureMessageKeys): void => {
+		setConfirm({
+			title: t(titleKey),
+			message: t(messageKey),
+			confirmLabel: t("actionFailed.confirm"),
+			variant: "danger",
+			onConfirm: () => {},
+		});
+	};
+
+	const handleOpenProject = async (): Promise<void> => {
+		setOpen(false);
+		try {
+			await openProject();
+		} catch {
+			showFailure("actionFailed.openTitle", "actionFailed.openMessage");
+		}
+	};
+
+	const handleCreateProject = async (name: string): Promise<void> => {
+		setShowNewProject(false);
+		try {
+			await createProject(name);
+		} catch {
+			showFailure("actionFailed.newTitle", "actionFailed.newMessage");
+		}
+	};
+
+	/**
+	 * Batch projects carry prompts and folders, so they are created in the batch
+	 * dialog on the batch page rather than by the plain new-project dialog.
+	 */
+	const handleNewProject = (): void => {
+		setOpen(false);
+		if (!isBatchScope) {
+			setShowNewProject(true);
+			return;
+		}
+		setBatchProjectDialog(null);
+		void navigate({ to: "/batch-tasks" });
+	};
 
 	const handleImport = async (): Promise<void> => {
 		setOpen(false);
-		const result = await window.astravia.project.import();
+		let result: Awaited<ReturnType<typeof window.astravia.project.import>>;
+		try {
+			result = await window.astravia.project.import();
+		} catch {
+			showFailure("actionFailed.importTitle", "actionFailed.importMessage");
+			return;
+		}
 		if (!result) return;
 		if ("error" in result) {
 			setConfirm({
@@ -91,18 +144,14 @@ export function useAddProjectMenuModel(): {
 				action: "newProject",
 				icon: "icon-[solar--add-folder-linear]",
 				labelKey: "actions.newProject",
-				onSelect: () => {
-					setOpen(false);
-					setShowNewProject(true);
-				},
+				onSelect: handleNewProject,
 			},
 			{
 				action: "openProject",
 				icon: "icon-[solar--folder-open-linear]",
 				labelKey: "actions.openProject",
 				onSelect: () => {
-					setOpen(false);
-					void openProject();
+					void handleOpenProject();
 				},
 			},
 			{
@@ -119,8 +168,7 @@ export function useAddProjectMenuModel(): {
 		showNewProject,
 		closeNewProjectDialog: () => setShowNewProject(false),
 		confirmNewProject: (name: string) => {
-			setShowNewProject(false);
-			void createProject(name);
+			void handleCreateProject(name);
 		},
 		toggleOpen: () => setOpen((value) => !value),
 	};

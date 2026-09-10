@@ -26,7 +26,7 @@ export function SidebarProjectsSection(props: SidebarProjectsSectionProps): JSX.
 			className={props.className}
 			classNames={props.classNames}
 			filterSelect={<SidebarFilterSelect />}
-			addProjectMenu={<AddProjectMenu />}
+			addProjectMenu={<AddProjectMenu filter={props.filter} />}
 			panel={
 				<ProjectsPanel
 					defaultSessionListClassName={props.classNames?.list}

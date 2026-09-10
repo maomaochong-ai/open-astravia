@@ -5,8 +5,8 @@ import { AddProjectMenuTrigger } from "./AddProjectMenuTrigger";
 import { useAddProjectMenuModel } from "./useAddProjectMenuModel";
 import type { AddProjectMenuProps } from "./types";
 
-export function AddProjectMenu({ className, variant = "icon" }: AddProjectMenuProps): JSX.Element {
-	const model = useAddProjectMenuModel();
+export function AddProjectMenu({ className, variant = "icon", filter }: AddProjectMenuProps): JSX.Element {
+	const model = useAddProjectMenuModel({ filter });
 
 	return (
 		<>

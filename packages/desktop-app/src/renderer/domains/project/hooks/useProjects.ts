@@ -1,3 +1,4 @@
+import { useRefreshBatchProjects } from "@shared/hooks/useRefreshBatchProjects";
 import {
 	DEFAULT_CONVERSATION_PROJECT_NAME,
 	defaultConversationCwdAtom,
@@ -47,6 +48,7 @@ export function useProjects() {
 	const workspacePath = useAtomValue(workspacePathAtom);
 	const defaultConversationCwd = useAtomValue(defaultConversationCwdAtom);
 	const defaultImConversationCwd = useAtomValue(defaultImConversationCwdAtom);
+	const refreshBatchProjects = useRefreshBatchProjects();
 
 	const loadSessions = useCallback(
 		(cwd: string): Promise<void> => {
@@ -233,10 +235,11 @@ export function useProjects() {
 		}
 
 		await refreshProjects();
+		await refreshBatchProjects();
 		setExpandedProjects((prev) => new Set([...prev, cwd]));
 		await loadSessions(cwd);
 		return cwd;
-	}, [refreshProjects, setExpandedProjects, loadSessions]);
+	}, [refreshProjects, refreshBatchProjects, setExpandedProjects, loadSessions]);
 
 	const expandProject = useCallback(
 		(cwd: string) => {

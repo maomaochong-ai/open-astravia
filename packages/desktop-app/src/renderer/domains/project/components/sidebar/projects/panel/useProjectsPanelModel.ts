@@ -80,14 +80,9 @@ export function useProjectsPanelModel({
 		[setExpandedBatchProjects],
 	);
 
-	const visibleBatchProjects = useMemo(
-		() => batchProjects.filter((project) => project.tasks.some((task) => task.sessionPath)),
-		[batchProjects],
-	);
-
 	const batchAsProjects = useMemo<BatchProjectEntry[]>(
 		() =>
-			visibleBatchProjects.map((batchProject) => {
+			batchProjects.map((batchProject) => {
 				const tasksWithSession = batchProject.tasks.filter((task) => task.sessionPath);
 				return {
 					project: {
@@ -106,7 +101,7 @@ export function useProjectsPanelModel({
 					})),
 				};
 			}),
-		[visibleBatchProjects],
+		[batchProjects],
 	);
 
 	const showBatchGroup = filter === "all" || filter === "batch";
@@ -149,12 +144,10 @@ export function useProjectsPanelModel({
 
 	const selectBatchSession = useCallback(
 		(_cwd: string, path: string) => {
-			const task = visibleBatchProjects
-				.flatMap((project) => project.tasks)
-				.find((item) => item.sessionPath === path);
+			const task = batchProjects.flatMap((project) => project.tasks).find((item) => item.sessionPath === path);
 			if (task) void onOpenSession(task.cwd, path, task.executionMode);
 		},
-		[visibleBatchProjects, onOpenSession],
+		[batchProjects, onOpenSession],
 	);
 
 	const defaultSelectSession = useCallback(

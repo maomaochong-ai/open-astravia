@@ -81,6 +81,15 @@
 		"importProject": "Import Project",
 		"more": "More"
 	},
+	"actionFailed": {
+		"openTitle": "Failed to open project",
+		"openMessage": "The selected folder could not be opened. Check that it exists and is accessible.",
+		"newTitle": "Failed to create project",
+		"newMessage": "The project could not be created. Try another name or check the workspace directory permissions.",
+		"importTitle": "Failed to import project",
+		"importMessage": "The project archive could not be imported. Make sure the file is intact and the version is supported.",
+		"confirm": "OK"
+	},
 	"contextMenu": {
 		"openInFinder": "Reveal in Finder",
 		"openInExplorer": "Show in Explorer",

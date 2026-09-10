@@ -1,6 +1,9 @@
+import type { SidebarFilter } from "@shared/store/atoms";
+
 export interface AddProjectMenuProps {
 	className?: string;
 	variant?: "icon" | "navItem";
+	filter?: SidebarFilter;
 }
 
 export type AddProjectMenuAction = "newProject" | "openProject" | "importProject";

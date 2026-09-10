@@ -1,4 +1,5 @@
 import { useProjects } from "@domains/project/hooks/useProjects";
+import { useRefreshBatchProjects } from "@shared/hooks/useRefreshBatchProjects";
 import { pathBasename } from "@shared/lib/utils";
 import {
 	batchProjectsAtom,
@@ -21,10 +22,7 @@ export function useBatchTasks() {
 	// list whenever a batch CRUD lands.
 	const { refreshProjects: refreshConfigProjects } = useProjects();
 
-	const refreshProjects = useCallback(async () => {
-		const loadedProjects = await window.astravia.batchTasks.getProjects();
-		setProjects(loadedProjects);
-	}, [setProjects]);
+	const refreshProjects = useRefreshBatchProjects();
 
 	const createProject = useCallback(
 		async (data: {
