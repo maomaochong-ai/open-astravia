@@ -1,3 +1,4 @@
+import { AuroraTexture } from "@shared/components/aurora/AuroraTexture";
 import { NewSessionBackground } from "@vetta/theme-ui/chat";
 import type { ComponentType } from "react";
 
@@ -10,7 +11,7 @@ import type { ComponentType } from "react";
  * 两边共用一份表才不会出现「预览与页面对不上」。
  */
 
-export type NewSessionTextureId = "grid" | "none";
+export type NewSessionTextureId = "aurora" | "grid" | "none";
 
 export const NEW_SESSION_TEXTURE_STORAGE_KEY = "vetta-new-session-texture";
 
@@ -32,6 +33,7 @@ export interface NewSessionTextureCatalogEntry {
 export const NEW_SESSION_TEXTURE_CATALOG = [
 	{ id: "none", labelKey: "textureNoneTitle", hintKey: "textureNoneHint" },
 	{ id: "grid", labelKey: "textureGridTitle", hintKey: "textureGridHint" },
+	{ id: "aurora", labelKey: "textureAuroraTitle", hintKey: "textureAuroraHint" },
 ] as const satisfies readonly NewSessionTextureCatalogEntry[];
 
 export function isNewSessionTextureId(value: string | null | undefined): value is NewSessionTextureId {
@@ -57,6 +59,7 @@ export function setStoredNewSessionTextureId(id: NewSessionTextureId): void {
  * 纹理组件按绝对定位铺满所在容器。
  */
 export const NEW_SESSION_TEXTURE_COMPONENTS: Record<NewSessionTextureId, ComponentType | null> = {
+	aurora: AuroraTexture,
 	grid: NewSessionBackground,
 	none: null,
 };

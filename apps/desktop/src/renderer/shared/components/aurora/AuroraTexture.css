@@ -1,0 +1,160 @@
+/* ─── 流光 ───
+   页面正中那团流动的光：一层被重度模糊、提亮的色斑在底下缓慢漂移，上面压一张点阵——
+   点是页面底色，点与点之间的空隙才漏出光，于是这团光看着像半调网点里流过来的。
+   色相由 backdrop-filter 二次旋转，光走过时会换色。
+
+   只在中间露出一团圆的：遮罩给的是固定半径的圆而不是按比例的椭圆，窗口拉大也仍是
+   一团光晕，不会摊成一整屏网点。四周淡到全透，因此不需要页面为它让出边距或掀掉页头。
+
+   尺寸一律写成 var(名, 默认值)，不在这里声明这几个变量：自身声明会盖过继承，
+   外面那枚小方格（设置页预览卡）就再也调不动了。按原尺寸画进方格只会糊成一片。
+
+   类名一律带 ns-aurora 前缀：这是全局样式表，`.container` 这种裸名字会串到别处。 */
+
+.ns-aurora {
+	/* 深色：页面底色本身就暗，光只要略提亮就够——原配方的 brightness(5) 会烧成一片白，
+	   2.6 仍然扎眼，收到 1.5 并把整层压到四成，让它退回「底纹」而不是发光体。 */
+	--ns-aurora-gain: 1.5;
+	--ns-aurora-saturate: 1;
+	--ns-aurora-opacity: 0.4;
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+	opacity: var(--ns-aurora-opacity);
+	pointer-events: none;
+	/* 圆心与网格那档的光晕同高（50% 45%），两档纹理的重心落在同一处；
+	   半径留成变量，设置页那枚预览方格要按格子大小收一收。 */
+	mask-image: radial-gradient(
+		circle var(--ns-aurora-radius, 360px) at 50% 45%,
+		#000 0%,
+		rgb(0 0 0 / 65%) 45%,
+		transparent 100%
+	);
+	-webkit-mask-image: radial-gradient(
+		circle var(--ns-aurora-radius, 360px) at 50% 45%,
+		#000 0%,
+		rgb(0 0 0 / 65%) 45%,
+		transparent 100%
+	);
+}
+
+/* 浅色（深浅由 :root 的 data-mode 决定，data-theme 是配色方案不是明暗）：
+   点阵是近白的页面底色，提亮后的光同样近白，两者一叠就什么都看不见，所以这一套
+   反过来走——几乎不提亮、靠饱和把色顶出来。但饱和推到 1.8 又会压成一块脏重的色斑，
+   收到 1.3、整层压到六成：白底上看得见颜色，又不至于盖过页面内容。 */
+:root[data-mode="light"] .ns-aurora {
+	--ns-aurora-gain: 1.25;
+	--ns-aurora-saturate: 1.3;
+	--ns-aurora-opacity: 0.6;
+}
+
+/* 点阵层：点画的是页面底色，因此深浅两套外观下都自动成立。 */
+.ns-aurora-field {
+	position: absolute;
+	inset: 0;
+	background-image: radial-gradient(
+		circle at 50% 50%,
+		transparent 0,
+		transparent var(--ns-aurora-dot, 2px),
+		var(--background) var(--ns-aurora-dot, 2px)
+	);
+	/* 点阵格距：点越大漏光越少，8px/2px 是原始配方。 */
+	background-size: var(--ns-aurora-cell, 8px) var(--ns-aurora-cell, 8px);
+}
+
+/* 光斑层：八团椭圆各自以不同的步幅横穿画面，糊开并提亮后只剩流动的光。
+   inset 往外扩一圈，色斑从边缘外飘进来，圆的边缘不会出现凭空亮起的团。
+
+   尺度决定动效看不看得出来：色斑若比可见的那枚圆还大、再糊上 7em，圆里就只剩一团
+   均匀的光，怎么漂移都是静的。所以按 --ns-aurora-field-scale 把原始尺寸整体缩小，
+   让几团光同时穿过圆内，模糊也相应收紧——荡漾靠的是圆里有若干团各走各的光。
+   漂移时长保持 150s 不变：位移量没动而色斑缩到了 0.45，同样的时长下光穿过一团的
+   节奏正好快一倍，这才是「看得出在荡」与「快得发闪」之间的那一档。
+
+   两种颜色交替：主题主色 + 一道固定的蓝。蓝色是这枚装饰件自带的配色而非语义色，
+   与 BlazeFlame 的暖黄/暗红同例——这团光的辨识度就在这一主一蓝的交织上，
+   全取主色会退化成单色渐变。色相由动画整圈旋转，这两色决定的是同一时刻并存的
+   两个色调；亮度与饱和交给上面那两个变量按深浅色分别定档。 */
+.ns-aurora-field::before {
+	--ns-aurora-color-a: var(--primary);
+	--ns-aurora-color-b: #09f;
+	content: "";
+	position: absolute;
+	inset: calc(var(--ns-aurora-blur, 3em) * -1);
+	z-index: -1;
+	filter: blur(var(--ns-aurora-blur, 3em)) brightness(var(--ns-aurora-gain))
+		saturate(var(--ns-aurora-saturate));
+	animation:
+		ns-aurora-drift var(--ns-aurora-drift-duration, 150s) linear infinite,
+		ns-aurora-hue var(--ns-aurora-hue-duration, 10s) linear infinite;
+	background-image: radial-gradient(ellipse 66px 50px at 50% 50%, var(--ns-aurora-color-a) 0%, transparent 100%),
+		radial-gradient(ellipse 77px 60px at 50% 50%, var(--ns-aurora-color-b) 0%, transparent 100%),
+		radial-gradient(ellipse 78px 100px at 50% 50%, var(--ns-aurora-color-a) 0%, transparent 100%),
+		radial-gradient(ellipse 73px 96px at 50% 50%, var(--ns-aurora-color-b) 0%, transparent 100%),
+		radial-gradient(ellipse 76px 77px at 50% 50%, var(--ns-aurora-color-a) 0%, transparent 100%),
+		radial-gradient(ellipse 66px 51px at 50% 50%, var(--ns-aurora-color-b) 0%, transparent 100%),
+		radial-gradient(ellipse 90px 57px at 50% 50%, var(--ns-aurora-color-a) 0%, transparent 100%),
+		radial-gradient(ellipse 89px 93px at 50% 50%, var(--ns-aurora-color-b) 0%, transparent 100%);
+	background-size:
+		calc(726px * var(--ns-aurora-field-scale, 0.45)) calc(576px * var(--ns-aurora-field-scale, 0.45)),
+		calc(1242px * var(--ns-aurora-field-scale, 0.45)) calc(454px * var(--ns-aurora-field-scale, 0.45)),
+		calc(876px * var(--ns-aurora-field-scale, 0.45)) calc(1160px * var(--ns-aurora-field-scale, 0.45)),
+		calc(691px * var(--ns-aurora-field-scale, 0.45)) calc(873px * var(--ns-aurora-field-scale, 0.45)),
+		calc(914px * var(--ns-aurora-field-scale, 0.45)) calc(550px * var(--ns-aurora-field-scale, 0.45)),
+		calc(1159px * var(--ns-aurora-field-scale, 0.45)) calc(340px * var(--ns-aurora-field-scale, 0.45)),
+		calc(1017px * var(--ns-aurora-field-scale, 0.45)) calc(831px * var(--ns-aurora-field-scale, 0.45)),
+		calc(313px * var(--ns-aurora-field-scale, 0.45)) calc(977px * var(--ns-aurora-field-scale, 0.45));
+}
+
+/* 斜切的一半再转一次色相：同一团光走过带子时颜色会变，而不是整条一起换。 */
+.ns-aurora-field::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	backdrop-filter: hue-rotate(90deg);
+	mask-image: linear-gradient(45deg, transparent, #000);
+	-webkit-mask-image: linear-gradient(45deg, transparent, #000);
+}
+
+@keyframes ns-aurora-hue {
+	from {
+		filter: blur(var(--ns-aurora-blur, 3em)) brightness(var(--ns-aurora-gain))
+			saturate(var(--ns-aurora-saturate)) hue-rotate(0deg);
+	}
+	to {
+		filter: blur(var(--ns-aurora-blur, 3em)) brightness(var(--ns-aurora-gain))
+			saturate(var(--ns-aurora-saturate)) hue-rotate(1turn);
+	}
+}
+
+@keyframes ns-aurora-drift {
+	from {
+		background-position:
+			271px 478px,
+			62px 291px,
+			67px 861px,
+			553px 413px,
+			36px 392px,
+			1077px 226px,
+			400px 799px,
+			7px 264px;
+	}
+	to {
+		background-position:
+			-14975px -2978px,
+			31112px 11187px,
+			-20081px 8981px,
+			11609px -3952px,
+			-12760px 12492px,
+			-9354px 2946px,
+			9553px 21574px,
+			946px 9057px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ns-aurora .ns-aurora-field::before {
+		animation: none;
+	}
+}

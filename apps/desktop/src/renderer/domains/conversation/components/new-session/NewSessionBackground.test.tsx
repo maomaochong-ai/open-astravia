@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 /**
  * 新会话页底衬按「设置 - 外观 - 纹理」的选择决定画哪一档：
- * 选「网格」（含未选过、存了脏值）时画网格那档，选「无」时整块背景什么都不画。
+ * 选「网格」（含未选过、存了脏值）时画网格那档，选「流光」时画顶部那条光带，
+ * 选「无」时整块背景什么都不画。
  */
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -9,6 +10,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@vetta/theme-ui/chat", () => ({
 	NewSessionBackground: () => <div data-testid="grid" />,
+}));
+
+vi.mock("@shared/components/aurora/AuroraTexture", () => ({
+	AuroraTexture: () => <div data-testid="aurora" />,
 }));
 
 const STORAGE_KEY = "vetta-new-session-texture";
@@ -48,6 +53,13 @@ describe("NewSessionBackground", () => {
 		await renderBackground("grid");
 
 		expect(screen.getByTestId("grid")).toBeTruthy();
+	});
+
+	it("选「流光」时画流光那条光带", async () => {
+		await renderBackground("aurora");
+
+		expect(screen.getByTestId("aurora")).toBeTruthy();
+		expect(screen.queryByTestId("grid")).toBeNull();
 	});
 
 	it("存了未知纹理时回落到默认的网格", async () => {
