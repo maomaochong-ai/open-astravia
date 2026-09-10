@@ -30,9 +30,12 @@ function applyThemeToggleState(theme: Theme) {
 	THEME_TOGGLE.classList.toggle("is-dark", theme === "dark");
 	THEME_TOGGLE.setAttribute("aria-pressed", String(theme === "dark"));
 	THEME_TOGGLE.setAttribute("aria-label", theme === "dark" ? "切换到浅色模式" : "切换到深色模式");
+	document
+		.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
+		?.setAttribute("content", theme === "dark" ? "#08080a" : "#fbfbfd");
 }
 
-/* 深浅主题：点击切换并记忆，未手动选择时跟随系统 */
+/* 深浅主题：点击切换并记忆；默认浅色（Apple 纸感风），仅存过 dark 才回暗色 */
 function initThemeToggle() {
 	if (!THEME_TOGGLE) return;
 	applyThemeToggleState(getCurrentTheme());
@@ -169,6 +172,62 @@ function initFaq() {
 	});
 }
 
+/* 下载：按访问系统自动选中对应平台，支持手动切换 */
+type DlOs = "macos" | "windows" | "linux";
+
+const DL_OS_LABEL: Record<DlOs, string> = {
+	macos: "macOS",
+	windows: "Windows",
+	linux: "Linux",
+};
+
+function detectOs(): DlOs | null {
+	const ua = navigator.userAgent;
+	if (/Mac|iPhone|iPad/.test(ua)) return "macos";
+	if (/Windows/.test(ua)) return "windows";
+	if (/Linux|X11|CrOS/.test(ua)) return "linux";
+	return null;
+}
+
+function initDownload() {
+	const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>(".dl-tab"));
+	const panes = Array.from(document.querySelectorAll<HTMLElement>(".dl-pane"));
+	if (tabs.length === 0) return;
+	const detect = document.getElementById("dlDetect");
+	const detectText = document.getElementById("dlDetectText");
+
+	function show(os: DlOs, auto: boolean) {
+		for (const tab of tabs) {
+			const active = tab.dataset.os === os;
+			tab.classList.toggle("is-active", active);
+			tab.setAttribute("aria-selected", String(active));
+			tab.tabIndex = active ? 0 : -1;
+		}
+		for (const pane of panes) {
+			pane.hidden = pane.id !== `dlPane${os.charAt(0).toUpperCase()}${os.slice(1)}`;
+		}
+		if (detectText) {
+			detectText.textContent = auto ? `已自动识别你的系统：${DL_OS_LABEL[os]}` : `已选择 ${DL_OS_LABEL[os]} 版`;
+		}
+	}
+
+	for (const tab of tabs) {
+		tab.addEventListener("click", () => {
+			const os = tab.dataset.os;
+			if (os === "macos" || os === "windows" || os === "linux") {
+				detect?.removeAttribute("hidden");
+				show(os, false);
+			}
+		});
+	}
+
+	const os = detectOs();
+	if (os) {
+		detect?.removeAttribute("hidden");
+		show(os, true);
+	}
+}
+
 initNavScroll();
 initNavToggle();
 initReveal();
@@ -177,5 +236,6 @@ initYear();
 initThemeToggle();
 
 initFaq();
+initDownload();
 
 initStory();

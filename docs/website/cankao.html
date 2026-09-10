@@ -1,0 +1,1709 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%232563EB" transform="rotate(90 12 12)" d="M12 1.8 13.35 9.66 20.83 6.9 14.7 12l6.13 5.1-7.48-2.76L12 22.2l-1.35-7.86-7.48 2.76L9.3 12 3.17 6.9l7.48 2.76L12 1.8Z"/></svg>'>
+<title>OpenWorker — AI that gets your everyday tasks done</title>
+<!-- Privacy-friendly analytics by Plausible (cookieless; site-specific script) -->
+<script async src="https://plausible.io/js/pa-W_36DCAzUwdYv0A4quqzH.js"></script>
+<script>
+  window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+  plausible.init()
+</script>
+<meta name="description" content="OpenWorker is an AI agent that runs on your own computer, works in your everyday tools, and turns what you ask into finished deliverables — checking in before anything important. Free, open source, bring your own model." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,400..800;1,400..800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script>
+if (new URLSearchParams(location.search).get('recording') === '1') {
+  document.documentElement.classList.add('recording-mode');
+  const robots = document.createElement('meta');
+  robots.name = 'robots';
+  robots.content = 'noindex,nofollow,noarchive';
+  document.head.appendChild(robots);
+}
+</script>
+<style>html.ow-artifact body>*{display:none!important}</style>
+<script>
+/* Shared-artifact viewer bootstrap. The site's SPA fallback serves this page for
+   every path, so /@handle/slug and /gate/<id> land here too: detect those routes,
+   hide the homepage, and hand the document to the viewer module. Any other path
+   leaves the homepage untouched. */
+(function(){
+  var p = location.pathname;
+  if (/^\/@[a-z0-9-]+\/[a-z0-9-]+\/?$/.test(p) || /^\/gate\/[a-z0-9]+\/?$/.test(p)) {
+    document.documentElement.classList.add('ow-artifact');
+    var robots = document.createElement('meta');
+    robots.name = 'robots';
+    robots.content = 'noindex';
+    document.head.appendChild(robots);
+    var s = document.createElement('script');
+    s.defer = true;
+    s.src = '/assets/viewer/viewer.js';
+    document.head.appendChild(s);
+  }
+})();
+</script>
+<style>
+/* ================================================================
+   OpenWorker — consumer variant ("quiet blue")
+   Apple-consumer aesthetic: near-white canvas, hairline borders,
+   gradient-blue accent words, iMessage-style chat, one type family.
+   ================================================================ */
+:root{
+  --bg:#FBFBFD;
+  --paper:#F5F5F7;
+  --card:#FFFFFF;
+  --ink:#1D1D1F;
+  --ink-2:#51515A;
+  --ink-3:#86868B;
+  --line:#E8E8ED;
+  --line-strong:#D9D9E0;
+  --blue:#0071E3;
+  --blue-deep:#0058C2;
+  --blue-tint:#EAF2FF;
+  --grad:linear-gradient(100deg,#2E5BFF 0%,#0A84FF 48%,#4FC3F7 100%);
+  --dark:#0B0B10;
+  --sans:"Hanken Grotesk",-apple-system,system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --rad:18px;
+  --rad-lg:24px;
+  --shadow-card:0 1px 2px rgba(20,30,60,.04),0 14px 36px -20px rgba(20,30,60,.16);
+  --shadow-pop:0 2px 6px rgba(20,30,60,.05),0 28px 64px -28px rgba(20,30,60,.25);
+  --wrap:1120px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:16px;line-height:1.6;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  overflow-x:hidden;
+}
+/* whisper-quiet blue washes */
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(640px 460px at 90% -8%,rgba(10,132,255,.06),transparent 65%),
+    radial-gradient(720px 520px at -10% 30%,rgba(79,195,247,.05),transparent 65%),
+    radial-gradient(560px 440px at 106% 82%,rgba(46,91,255,.045),transparent 65%);
+}
+main,header,section,footer{position:relative;z-index:1}
+::selection{background:rgba(10,132,255,.22)}
+a{color:inherit;text-decoration:none}
+img,svg{display:block}
+.wrap{max-width:var(--wrap);margin:0 auto;padding:0 28px}
+
+/* ---------- section furniture ---------- */
+.kicker{
+  display:block;font-size:15px;font-weight:650;letter-spacing:.01em;
+  color:var(--blue);
+}
+h1,h2,h3{font-weight:750;letter-spacing:-.028em;line-height:1.07}
+h2{font-size:clamp(30px,3.8vw,44px);margin-top:14px}
+h1 em,h2 em{
+  font-style:normal;
+  background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.lede{margin-top:16px;font-size:17px;color:var(--ink-2);max-width:600px}
+.section{padding:104px 0}
+.section.tight{padding:84px 0}
+
+/* ---------- reveal ---------- */
+.reveal{opacity:0;transform:translateY(22px);transition:opacity .7s cubic-bezier(.22,.6,.2,1),transform .7s cubic-bezier(.22,.6,.2,1)}
+.reveal.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){
+  .reveal{opacity:1;transform:none;transition:none}
+  html{scroll-behavior:auto}
+}
+
+/* ================= NAV ================= */
+header.nav{
+  position:sticky;top:0;z-index:50;
+  background:color-mix(in srgb,var(--bg) 82%,transparent);
+  backdrop-filter:blur(16px) saturate(1.6);-webkit-backdrop-filter:blur(16px) saturate(1.6);
+  border-bottom:1px solid rgba(232,232,237,.8);
+}
+.nav-inner{max-width:var(--wrap);margin:0 auto;padding:0 28px;height:64px;display:flex;align-items:center;gap:36px}
+.brand{display:flex;align-items:center;gap:10px;font-size:17.5px;font-weight:750;letter-spacing:-.02em}
+.brand .mark{width:28px;height:28px;flex:none}
+.nav-links{display:flex;gap:28px;font-size:14px;font-weight:550;color:var(--ink-2)}
+.nav-links a{transition:color .2s}
+.nav-links a:hover{color:var(--ink)}
+.nav-cta{margin-left:auto;display:flex;align-items:center;gap:18px}
+.src-link{display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:550;color:var(--ink-2);transition:color .2s}
+.src-link:hover{color:var(--ink)}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  font-family:var(--sans);font-weight:650;font-size:15px;letter-spacing:-.01em;
+  padding:12px 24px;border-radius:100px;border:none;cursor:pointer;
+  transition:background .2s,transform .18s ease,box-shadow .2s;
+  white-space:nowrap;
+}
+.btn-primary{
+  background:var(--blue);color:#fff;
+  box-shadow:0 10px 24px -10px rgba(0,113,227,.55);
+}
+.btn-primary:hover{background:var(--blue-deep);transform:translateY(-1px)}
+.btn-primary:active{transform:scale(.98)}
+.btn-primary .arr{transition:transform .2s}
+.btn-primary:hover .arr{transform:translateX(3px)}
+.btn-ghost{background:var(--card);color:var(--blue);border:1px solid var(--line-strong)}
+.btn-ghost:hover{border-color:var(--ink-3)}
+.btn-coming{position:relative;cursor:default;color:var(--ink);background:var(--bg);overflow:visible}
+.btn-coming:hover{border-color:var(--line-strong)}
+.coming-badge{
+  position:absolute;right:-9px;top:-10px;padding:3px 7px;border:1px solid rgba(10,132,255,.18);
+  border-radius:100px;background:var(--blue-tint);color:var(--blue);
+  font-size:10px;font-weight:750;letter-spacing:.01em;
+}
+.btn-white{background:#fff;color:var(--blue);box-shadow:0 10px 24px -12px rgba(0,0,0,.35)}
+.btn-white:hover{transform:translateY(-1px)}
+.nav .btn{padding:9px 18px;font-size:13.5px}
+@media (max-width:880px){.nav-links{display:none}.src-link span{display:none}}
+
+/* ================= HERO ================= */
+.hero{overflow:clip}
+.hero-grid{
+  display:grid;grid-template-columns:.78fr 1.22fr;gap:52px;align-items:center;
+  padding-top:64px;padding-bottom:84px;
+}
+h1{font-size:clamp(32px,3.9vw,44px);font-weight:780}
+.hero-copy .lede{font-size:16.5px;max-width:440px}
+.hero-ctas{margin-top:30px;display:flex;flex-wrap:wrap;gap:13px;align-items:center}
+.hero-props{margin-top:30px;display:flex;flex-direction:column;gap:11px}
+.prop{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:550;color:var(--ink-2)}
+.prop .p-ic{
+  width:20px;height:20px;flex:none;border-radius:50%;display:grid;place-items:center;
+  background:var(--blue-tint);color:var(--blue);
+}
+.hero-copy>*{opacity:0;transform:translateY(18px);animation:rise .8s cubic-bezier(.22,.6,.2,1) forwards}
+.hero-copy>*:nth-child(1){animation-delay:.05s}
+.hero-copy>*:nth-child(2){animation-delay:.14s}
+.hero-copy>*:nth-child(3){animation-delay:.23s}
+.hero-copy>*:nth-child(4){animation-delay:.32s}
+.hero-vignette{opacity:0;transform:translateY(26px);animation:rise .9s cubic-bezier(.22,.6,.2,1) .28s forwards}
+@keyframes rise{to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.hero-copy>*,.hero-vignette{animation:none;opacity:1;transform:none}}
+
+/* ---- app window / carousel ----
+   Mirrors the real OpenWorker GUI: cool paper canvas, neutral user bubble,
+   inline assistant response, composer card, and Progress / Artifacts / Access rail. */
+.hero-vignette{position:relative}
+.hero-vignette::before{
+  content:"";position:absolute;inset:-8% -6% -4%;pointer-events:none;z-index:-1;
+  background:radial-gradient(closest-side,rgba(37,99,235,.1),transparent 72%);
+}
+.appwin{
+  --ow-paper:#F5F6F7;--ow-panel:#FFF;--ow-ink:#17191C;--ow-muted:#5B616B;
+  --ow-faint:#9AA1AA;--ow-line:#E8EAED;--ow-line-strong:#D8DCE1;
+  --ow-accent:#2563EB;--ow-accent-soft:#E9F0FD;--ow-solid:#E9EBF0;
+  color:var(--ow-ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif;
+  background:var(--ow-paper);border-radius:18px;box-shadow:var(--shadow-pop);overflow:hidden;
+  border:1px solid var(--ow-line-strong);
+}
+.carousel{display:grid;overflow:hidden}
+.carousel .slide{
+  grid-area:1/1;background:var(--ow-paper);min-width:0;
+  opacity:0;visibility:hidden;pointer-events:none;
+}
+.carousel .slide.is-active{
+  opacity:1;visibility:visible;pointer-events:auto;
+}
+.demo-topbar{
+  position:relative;height:46px;display:flex;align-items:center;padding:0 14px;
+  background:rgba(245,246,247,.9);border-bottom:1px solid rgba(232,234,237,.65);
+}
+.demo-traffic{display:flex;align-items:center;gap:6px}
+.demo-traffic i{display:block;width:8px;height:8px;border-radius:50%;background:#FF5F57}
+.demo-traffic i:nth-child(2){background:#FEBC2E}.demo-traffic i:nth-child(3){background:#28C840}
+.demo-title{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:58%;
+  text-align:center;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.demo-title b{display:block;font-size:12px;font-weight:650}
+.demo-title span{display:block;margin-top:2px;font-size:9.5px;color:var(--ow-faint)}
+.demo-workspace{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 168px;min-height:354px;overflow:hidden}
+.demo-chat{min-width:0;padding:22px 22px 16px;display:flex;flex-direction:column;border-right:1px solid var(--ow-line)}
+.demo-transcript{flex:1;display:flex;flex-direction:column;gap:18px;min-height:0}
+.demo-user{align-self:flex-end;max-width:78%;padding:9px 12px;border-radius:14px 14px 4px 14px;background:var(--ow-solid);font-size:12px;line-height:1.45}
+.demo-connector-message{
+  align-self:stretch;border:1px solid var(--ow-line-strong);border-radius:11px;background:var(--ow-panel);overflow:hidden;
+}
+.demo-connector-head{
+  min-height:32px;padding:6px 9px;display:flex;align-items:center;gap:6px;background:rgba(97,31,105,.11);
+  border-bottom:1px solid var(--ow-line);white-space:nowrap;
+}
+.demo-connector-head img{width:17px;height:17px;object-fit:contain}
+.demo-connector-head b{font-size:9.5px;color:#611f69;overflow:hidden;text-overflow:ellipsis}
+.demo-connector-head span{font-size:9px;color:var(--ow-muted)}
+.demo-connector-head small{font-size:8px;color:var(--ow-faint)}
+.demo-connector-head time{margin-left:auto;font-size:8px;color:var(--ow-faint)}
+.demo-connector-body{padding:9px 11px;font-size:11.25px;line-height:1.45;color:var(--ow-ink)}
+.demo-assistant{font-size:12.25px;line-height:1.55;color:var(--ow-ink)}
+.demo-who{margin-bottom:4px;font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--ow-faint)}
+.demo-assistant strong{font-weight:650}
+.demo-stepgroup{display:flex;align-items:center;gap:6px;color:var(--ow-faint);font-size:10.5px}
+.demo-stepgroup .demo-chevron{font-size:12px}
+.demo-result h4{margin:0 0 5px;font-size:13px;line-height:1.25;font-weight:700;letter-spacing:-.01em}
+.demo-result p{font-size:11.25px;line-height:1.5;color:var(--ow-muted)}
+.demo-result ul{margin:6px 0 0;padding-left:16px;font-size:10.75px;line-height:1.45;color:var(--ow-muted)}
+.demo-result li::marker{color:var(--ow-faint)}
+.demo-inline-result{
+  display:none;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--ow-line);
+  border-radius:9px;background:var(--ow-panel);font-size:10.5px;color:var(--ow-muted);
+}
+.demo-artifact-chip{
+  width:max-content;max-width:100%;display:grid;grid-template-columns:25px minmax(0,1fr) auto;align-items:center;gap:8px;
+  padding:6px 9px;border:1px solid var(--ow-line);border-radius:9px;background:var(--ow-panel);color:var(--ow-ink);
+}
+.demo-artifact-chip .chip-ico{width:25px;height:25px;border-radius:7px;display:grid;place-items:center;background:var(--ow-accent-soft);color:var(--ow-accent);font-size:12px}
+.demo-artifact-chip b{display:block;font-size:9.5px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.demo-artifact-chip small{display:block;margin-top:1px;font-size:8px;color:var(--ow-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.demo-artifact-chip .chip-open{font-size:8.5px;font-weight:650;color:var(--ow-accent);white-space:nowrap}
+.demo-approval{
+  margin-top:16px;padding:10px 11px;border:1px solid var(--ow-line-strong);border-radius:11px;
+  background:var(--ow-panel);box-shadow:0 4px 14px rgba(0,0,0,.05);
+}
+.demo-approval-head{display:flex;align-items:center;gap:7px;font-size:10.5px;color:var(--ow-ink)}
+.demo-approval-ico{
+  width:20px;height:20px;border-radius:6px;display:grid;place-items:center;flex:none;
+  background:var(--ow-accent-soft);color:var(--ow-accent);font-size:11px;font-weight:700;
+}
+.demo-approval-head b{font-weight:600}.demo-approval-scope{margin-left:auto;font-size:9px;color:var(--ow-faint)}
+.demo-approval-actions{display:flex;align-items:center;gap:7px;margin-top:8px}
+.demo-approve{
+  padding:4px 9px;border:1px solid var(--ow-accent);border-radius:7px;color:var(--ow-accent);
+  font-size:9.5px;font-weight:650;
+}
+.demo-deny{padding:4px 6px;color:var(--ow-faint);font-size:9.5px}
+.demo-rail{padding:9px 13px;background:rgba(255,255,255,.78);font-size:10px;line-height:1.35}
+.demo-rail-section{padding:9px 0 11px;border-bottom:1px solid var(--ow-line)}
+.demo-rail-section:last-child{border-bottom:0}
+.demo-rail-head{display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:10.5px;font-weight:650}
+.demo-chevron{color:var(--ow-faint);font-size:9px}.demo-rail-refresh{margin-left:auto;color:var(--ow-faint)}
+.demo-progress{display:flex;flex-direction:column;gap:7px}
+.demo-progress-row{display:grid;grid-template-columns:11px 1fr;gap:6px;color:var(--ow-muted)}
+.demo-progress-row::before{content:"";width:9px;height:9px;margin-top:2px;border:1.3px solid var(--ow-line-strong);border-radius:3px}
+.demo-progress-row.done{color:var(--ow-faint);text-decoration:line-through}
+.demo-progress-row.done::before{content:"✓";display:grid;place-items:center;color:#fff;background:var(--ow-accent);border-color:var(--ow-accent);font-size:7px;text-decoration:none}
+.demo-progress-row.active{color:var(--ow-ink)}
+.demo-progress-row.active::before{border-radius:50%;border-color:var(--ow-accent);box-shadow:inset 0 0 0 2px var(--ow-panel);background:var(--ow-accent)}
+.demo-artifact{display:grid;grid-template-columns:18px 1fr;gap:7px;align-items:center}
+.demo-file-ico{width:18px;height:18px;display:grid;place-items:center;color:var(--ow-muted);font-size:12px}
+.demo-artifact b{display:block;font-size:9.5px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.demo-artifact span{display:block;font-size:8.5px;color:var(--ow-faint)}
+.demo-access{display:flex;align-items:center;gap:6px;color:var(--ow-muted)}
+.demo-access b{font-weight:500;color:var(--ow-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.demo-artifact-viewer{
+  position:absolute;z-index:5;inset:0 0 0 auto;width:62%;display:flex;flex-direction:column;
+  background:var(--ow-panel);border-left:1px solid var(--ow-line-strong);box-shadow:-12px 0 28px rgba(25,35,55,.1);
+}
+.demo-av-head{min-height:48px;padding:8px 10px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--ow-line);background:rgba(255,255,255,.94)}
+.demo-av-back{width:24px;height:24px;display:grid;place-items:center;border-radius:7px;color:var(--ow-muted);font-size:14px}
+.demo-av-heading{min-width:0;flex:1}
+.demo-av-title{font-size:10.5px;font-weight:650;color:var(--ow-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.demo-av-title span{color:var(--ow-faint);font-weight:500;margin-right:4px}
+.demo-av-path{margin-top:1px;font-size:8px;color:var(--ow-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.demo-av-actions{font-size:12px;letter-spacing:.08em;color:var(--ow-faint)}
+.demo-av-body{flex:1;min-height:0;overflow:hidden;padding:15px 17px;background:var(--ow-panel)}
+.demo-html-preview{
+  height:100%;padding:12px 13px;border:1px solid var(--ow-line);border-radius:10px;background:#fff;
+  box-shadow:0 5px 18px rgba(20,30,60,.07);
+}
+.demo-report-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.demo-html-kicker{font-size:8px;font-weight:750;letter-spacing:.07em;text-transform:uppercase;color:var(--ow-accent)}
+.demo-report-status{
+  padding:3px 6px;border-radius:999px;background:#eaf8ef;color:#237a4b;
+  font-size:7px;font-weight:750;letter-spacing:.05em;text-transform:uppercase;
+}
+.demo-html-preview h3{margin:5px 0 1px;font-size:14px;line-height:1.2;letter-spacing:-.015em}
+.demo-report-sub{font-size:8.5px;line-height:1.35;color:var(--ow-muted)}
+.demo-metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.demo-metric{padding:7px 8px;border:1px solid var(--ow-line);border-radius:7px;background:#fbfcff}
+.demo-metric b{display:block;font-size:13px;line-height:1.05;letter-spacing:-.025em;color:var(--ow-ink)}
+.demo-metric span{display:block;margin-top:3px;font-size:7.5px;line-height:1.2;color:var(--ow-muted)}
+.demo-chart-card{margin-top:8px;padding:7px 9px 6px;border:1px solid var(--ow-line);border-radius:8px}
+.demo-chart-head{display:flex;align-items:center;justify-content:space-between;font-size:8px;color:var(--ow-muted)}
+.demo-chart-head b{font-size:8.5px;color:var(--ow-ink)}
+.demo-chart-delta{font-weight:700;color:#237a4b}
+.demo-mini-chart{
+  position:relative;height:62px;margin-top:6px;padding:0 3px 13px;display:flex;align-items:flex-end;justify-content:space-around;gap:0;
+  background:repeating-linear-gradient(to bottom,transparent 0,transparent 15px,var(--ow-line) 16px);
+}
+.demo-bar{position:relative;z-index:1;flex:0 0 clamp(24px,12%,42px);border-radius:4px 4px 2px 2px;background:linear-gradient(180deg,#64b5ff,#2563eb)}
+.demo-bar::after{content:attr(data-q);position:absolute;top:calc(100% + 3px);left:50%;transform:translateX(-50%);font-size:7px;color:var(--ow-faint)}
+.demo-html-note{
+  margin-top:8px;padding:7px 8px;border-radius:7px;background:var(--ow-accent-soft);
+  font-size:8.5px;line-height:1.35;color:var(--ow-muted);
+}
+.demo-html-note b{color:var(--ow-accent)}
+.demo-md-preview{
+  padding:12px 13px;border:1px solid var(--ow-line);border-radius:10px;background:#fff;
+  box-shadow:0 5px 18px rgba(20,30,60,.07);
+}
+.demo-incident-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.demo-md-preview h3{margin:0;font-size:14px;line-height:1.2;letter-spacing:-.015em}
+.demo-incident-status{
+  flex:none;padding:3px 6px;border-radius:999px;background:#fff2df;color:#a55305;
+  font-size:7px;font-weight:750;letter-spacing:.04em;text-transform:uppercase;
+}
+.demo-incident-sub{margin-top:3px;font-size:8px;line-height:1.35;color:var(--ow-muted)}
+.demo-incident-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:9px}
+.demo-incident-metric{padding:6px 7px;border-radius:7px;background:#f6f8fb}
+.demo-incident-metric b{display:block;font-size:10.5px;line-height:1.1;color:var(--ow-ink)}
+.demo-incident-metric span{display:block;margin-top:2px;font-size:7px;color:var(--ow-muted)}
+.demo-md-preview h4{margin:10px 0 5px;font-size:9px;color:var(--ow-ink)}
+.demo-timeline{position:relative;margin-left:3px;padding-left:13px;border-left:1px solid var(--ow-line-strong)}
+.demo-timeline-row{position:relative;display:grid;grid-template-columns:29px 1fr;gap:5px;padding:0 0 6px;font-size:8.25px;line-height:1.25;color:var(--ow-muted)}
+.demo-timeline-row:last-child{padding-bottom:0}
+.demo-timeline-row::before{
+  content:"";position:absolute;left:-17px;top:3px;width:6px;height:6px;border-radius:50%;
+  background:var(--ow-accent);box-shadow:0 0 0 2px #fff;
+}
+.demo-timeline-row time{font-weight:700;color:var(--ow-ink)}
+.demo-timeline-row b{font-weight:650;color:var(--ow-ink)}
+.demo-md-callout{
+  display:grid;grid-template-columns:20px 1fr;gap:7px;align-items:center;margin-top:9px;padding:7px 8px;
+  border-radius:7px;background:#fff7e8;font-size:8.5px;line-height:1.3;color:#8a4b08;
+}
+.demo-callout-ico{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;background:#ffe8bf;font-size:10px}
+.demo-md-callout b{display:block;font-size:8.75px}
+.demo-diff{margin-top:9px;border:1px solid var(--ow-line);border-radius:8px;overflow:hidden;font-family:var(--mono);font-size:7.75px;line-height:1.65}
+.demo-diff-file{padding:4px 8px;background:#f6f8fb;border-bottom:1px solid var(--ow-line);font-weight:500;color:var(--ow-muted)}
+.demo-diff-line{padding:1px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ow-muted)}
+.demo-diff-line.del{background:#fff1f0;color:#a8071a}
+.demo-diff-line.add{background:#f0fdf4;color:#1f7a45}
+.has-viewer .demo-approval{
+  position:absolute;z-index:7;left:13px;bottom:13px;width:calc(38% - 22px);margin:0;padding:8px 9px;
+}
+.has-viewer .demo-approval-head{align-items:flex-start;font-size:9px;line-height:1.3}
+.has-viewer .demo-approval-head{flex-wrap:wrap}
+.has-viewer .demo-approval-scope{display:block;width:100%;margin-left:27px;font-size:7.5px;color:var(--ow-faint)}
+.has-viewer .demo-approval-actions{margin-top:6px}
+/* The real composer is a compact two-row card rather than a pill-shaped chat bar. */
+.composer{padding:11px 14px 13px;background:var(--ow-paper)}
+.composer-card{border:1px solid var(--ow-line);border-radius:13px;background:var(--ow-panel);box-shadow:0 1px 3px rgba(0,0,0,.05);overflow:hidden}
+.comp-input{display:flex;align-items:center;min-height:34px;padding:9px 11px 4px;font-size:11.5px;color:var(--ow-faint)}
+.comp-controls{display:flex;align-items:center;gap:7px;padding:3px 8px 8px;color:var(--ow-muted)}
+.comp-plus{width:21px;height:21px;display:grid;place-items:center;font-size:15px;line-height:1;color:var(--ow-muted)}
+.comp-mode{display:inline-flex;align-items:center;font-size:9.5px}
+.comp-chevron{width:5px;height:5px;margin:-2px 0 0 5px;border-right:1px solid currentColor;border-bottom:1px solid currentColor;transform:rotate(45deg)}
+.comp-model{margin-left:auto;padding:4px 9px;border:1px solid var(--ow-line);border-radius:6px;background:var(--ow-paper);font-size:9.5px;font-weight:550;color:var(--ow-muted)}
+.comp-send{width:23px;height:23px;flex:none;border-radius:50%;display:grid;place-items:center;background:var(--ow-accent);color:#fff}
+.aw-nav{margin-top:16px;display:grid;grid-template-columns:34px minmax(0,1fr) 34px;gap:12px;align-items:center}
+.aw-arrow{
+  width:34px;height:34px;padding:0;display:grid;place-items:center;border:1px solid var(--line);border-radius:50%;background:var(--card);
+  color:var(--ink-2);font:600 18px/1 var(--sans);cursor:pointer;transition:border-color .2s,color .2s,transform .2s;
+}
+.aw-arrow:hover{border-color:var(--blue);color:var(--blue);transform:translateY(-1px)}
+.aw-caption{text-align:center;line-height:1.25}
+.aw-caption strong{font-size:12.5px;color:var(--ink)}
+.aw-caption span{margin-left:6px;font-size:11.5px;color:var(--ink-3)}
+.aw-dots{margin-top:7px;display:flex;justify-content:center;gap:9px}
+.aw-dots button{width:8px;height:8px;border-radius:50%;border:none;padding:0;cursor:pointer;background:var(--line-strong);transition:background .25s,transform .25s}
+.aw-dots button:hover{background:var(--ink-3)}
+.aw-dots button.on{background:var(--blue);transform:scale(1.25)}
+
+/* Each frame tells its story deliberately, then holds the completed state for three seconds. */
+.slide.is-active .demo-user,.slide.is-active .demo-connector-message{animation:demo-stage-in .55s cubic-bezier(.22,.6,.2,1) .2s both}
+.slide.is-active .demo-stepgroup{animation:demo-stage-in .55s cubic-bezier(.22,.6,.2,1) 1.1s both}
+.slide.is-active .demo-assistant{animation:demo-stage-in .58s cubic-bezier(.22,.6,.2,1) 2s both}
+.slide.is-active .demo-inline-result,.slide.is-active .demo-artifact-chip{animation:demo-stage-in .55s cubic-bezier(.22,.6,.2,1) 2.8s both}
+.slide.is-active .demo-rail{animation:demo-stage-in .55s cubic-bezier(.22,.6,.2,1) 2.35s both}
+.slide.is-active .demo-approval{animation:demo-stage-in .58s cubic-bezier(.22,.6,.2,1) 3.35s both}
+.slide.is-active .demo-artifact-viewer{animation:demo-viewer-in .65s cubic-bezier(.22,.6,.2,1) 3.7s both}
+.slide.is-active.has-viewer .demo-approval{animation-delay:4.8s}
+@keyframes demo-stage-in{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+@keyframes demo-viewer-in{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+@media (max-width:980px){.hero-grid{grid-template-columns:1fr;gap:44px;padding-top:48px}}
+@media (max-width:620px){
+  .demo-workspace{grid-template-columns:1fr;min-height:350px}.demo-rail{display:none}.demo-chat{border-right:0;padding:18px}
+  .demo-inline-result{display:flex}.demo-title{width:65%}
+  .demo-artifact-viewer{width:100%}.has-viewer .demo-approval{left:14px;right:14px;width:auto}
+}
+@media (prefers-reduced-motion:reduce){
+  .slide.is-active .demo-user,.slide.is-active .demo-connector-message,.slide.is-active .demo-stepgroup,
+  .slide.is-active .demo-assistant,.slide.is-active .demo-inline-result,.slide.is-active .demo-artifact-chip,
+  .slide.is-active .demo-approval,.slide.is-active .demo-rail,.slide.is-active .demo-artifact-viewer{animation:none}
+}
+
+.announce{display:flex;align-items:center;justify-content:center;gap:10px;padding:9px 16px;background:#EFF4FF;border-bottom:1px solid #DBE5FF;color:#1D4ED8;font-size:14px;font-weight:600;text-decoration:none;text-align:center}
+.announce:hover{background:#E4EDFF}
+.announce .announce-pill{background:#2563EB;color:#fff;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px}
+.announce .arr{transition:transform .15s ease}
+.announce:hover .arr{transform:translateX(3px)}
+.appwin-caption{text-align:center;font-size:15px;font-weight:650;color:#2563EB;margin:0 0 12px;min-height:22px;transition:opacity .35s ease}
+.appwin-caption.swap{opacity:0}
+
+/* ================= ECOSYSTEM ================= */
+.ecosystem{
+  padding:64px 0;background:#fff;
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+}
+.eco-head{text-align:center;max-width:680px;margin:0 auto}
+.eco-head h2{font-size:clamp(28px,3.2vw,38px)}
+.eco-head .lede{margin-left:auto;margin-right:auto;text-align:center;font-size:15.5px}
+.eco-groups{margin-top:38px;display:flex;flex-direction:column;gap:26px}
+.eco-group{display:grid;grid-template-columns:150px 1fr;gap:24px;align-items:start}
+.eco-group+.eco-group{padding-top:26px;border-top:1px solid var(--line)}
+.eco-label{font-size:13px;font-weight:700;color:var(--ink-2);padding-top:10px}
+.eco-label span{display:block;margin-top:3px;font-size:12px;font-weight:500;color:var(--ink-3)}
+.logo-cloud{display:flex;flex-wrap:wrap;gap:10px}
+.tool-cloud{display:grid;gap:10px}
+.tool-row{display:flex;flex-wrap:nowrap;gap:10px}
+.logo-chip{
+  min-height:42px;display:inline-flex;align-items:center;gap:9px;
+  padding:8px 13px;border:1px solid var(--line);border-radius:12px;
+  background:var(--bg);color:var(--ink-2);font-size:12.5px;font-weight:650;
+}
+.logo-chip img{width:21px;height:21px;object-fit:contain;flex:none}
+.logo-more{
+  min-height:42px;display:inline-flex;align-items:center;gap:10px;
+  padding:8px 14px 8px 12px;border:1px dashed rgba(10,132,255,.38);border-radius:12px;
+  background:linear-gradient(135deg,rgba(10,132,255,.08),rgba(90,75,255,.035));
+  color:var(--blue);font-size:12.5px;font-weight:700;
+}
+.more-stack{display:flex;align-items:center;padding-left:5px}
+.more-stack span{
+  width:20px;height:20px;margin-left:-5px;border:2px solid #fff;border-radius:7px;
+  box-shadow:0 2px 6px rgba(20,30,60,.14);
+}
+.more-stack span:nth-child(1){background:#36C5F0}
+.more-stack span:nth-child(2){background:#FF7A59}
+.more-stack span:nth-child(3){background:#7B68EE;position:relative}
+.more-stack span:nth-child(3)::after{
+  content:"···";position:absolute;inset:0;display:grid;place-items:center;
+  color:#fff;font-size:9px;font-weight:800;letter-spacing:-1px;line-height:1;
+}
+@media (max-width:1000px){.tool-row{flex-wrap:wrap}}
+@media (max-width:720px){
+  .eco-group{grid-template-columns:1fr;gap:12px}
+  .eco-label{padding-top:0}
+  .tool-cloud{display:flex;flex-wrap:wrap}
+  .tool-row{display:contents}
+  .logo-chip,.logo-more{flex:1 1 132px}
+}
+
+/* ================= ROSTER ================= */
+.roster-grid{margin-top:52px;display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+@media (max-width:980px){.roster-grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:640px){.roster-grid{grid-template-columns:1fr}}
+.dossier{
+  background:var(--card);border-radius:var(--rad);padding:28px 26px 22px;
+  border:1px solid var(--line);box-shadow:var(--shadow-card);
+  transition:transform .28s cubic-bezier(.22,.6,.2,1),box-shadow .28s;
+  display:flex;flex-direction:column;
+}
+.dossier:hover{transform:translateY(-5px);box-shadow:var(--shadow-pop)}
+.dossier .d-icon{
+  width:48px;height:48px;border-radius:14px;margin-bottom:16px;
+  background:var(--blue-tint);color:var(--blue);
+  display:grid;place-items:center;
+}
+.dossier h3{font-size:19px;font-weight:700;letter-spacing:-.02em}
+.dossier .d-tag{margin-top:7px;font-size:14px;color:var(--ink-2);line-height:1.55;flex:1}
+.dossier .d-meta{
+  margin-top:20px;padding-top:15px;border-top:1px solid var(--line);
+  font-size:12.5px;color:var(--ink-3);line-height:1.9;font-weight:500;
+}
+.dossier .d-meta b{color:var(--ink-2);font-weight:650}
+.dossier .d-meta b.no{color:#B45309}
+.sec-grid{margin-top:52px;display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+@media (max-width:980px){.sec-grid{grid-template-columns:1fr}}
+.bridge{margin-top:72px;font-size:19px;font-weight:700;letter-spacing:-.02em;color:var(--ink)}
+.breadth-grid{margin-top:20px;display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+@media (max-width:980px){.breadth-grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:560px){.breadth-grid{grid-template-columns:1fr}}
+.mini-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 18px 16px;box-shadow:var(--shadow-card)}
+.mini-card .m-icon{width:34px;height:34px;border-radius:10px;background:var(--blue-tint);color:var(--blue);display:grid;place-items:center;margin-bottom:11px}
+.mini-card h3{font-size:15px;font-weight:700;letter-spacing:-.015em}
+.mini-card p{margin-top:5px;font-size:12.5px;line-height:1.5;color:var(--ink-3)}
+.mini-card.build{border:1px dashed rgba(10,132,255,.45);background:linear-gradient(135deg,rgba(10,132,255,.05),rgba(90,75,255,.02))}
+.mini-card.build h3{color:var(--blue)}
+.automation-proof{
+  margin-top:24px;background:var(--card);border:1px solid var(--line);
+  border-radius:var(--rad);box-shadow:var(--shadow-card);padding:22px 24px;
+  display:grid;grid-template-columns:1.25fr repeat(3,1fr);gap:0;
+}
+.auto-intro{padding-right:24px}
+.auto-intro .kicker{font-size:12.5px}
+.auto-intro h3{font-size:18px;margin-top:6px}
+.auto-intro p{font-size:12.5px;color:var(--ink-3);margin-top:7px;line-height:1.45}
+.auto-event{padding:3px 22px;border-left:1px solid var(--line)}
+.auto-event .auto-source{font-size:11px;font-weight:700;color:var(--blue);letter-spacing:.06em;text-transform:uppercase}
+.auto-event strong{display:block;font-size:14px;margin-top:6px;line-height:1.35}
+.auto-event p{font-size:12.5px;color:var(--ink-3);margin-top:4px;line-height:1.45}
+@media (max-width:900px){
+  .automation-proof{grid-template-columns:1fr 1fr;gap:20px}
+  .auto-intro{grid-column:1/-1;padding-right:0}
+  .auto-event{border-left:0;border-top:1px solid var(--line);padding:18px 0 0}
+}
+@media (max-width:560px){.automation-proof{grid-template-columns:1fr}}
+
+/* ================= HOW IT WORKS ================= */
+.band{background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.how-head{display:grid;grid-template-columns:1fr minmax(320px,480px);gap:64px;align-items:end}
+.how-head .lede{margin:0}
+.flow-board{
+  margin-top:48px;padding:30px;border:1px solid var(--line);border-radius:var(--rad-lg);
+  background:linear-gradient(135deg,#FBFCFF 0%,#F3F7FF 55%,#EFF5FF 100%);
+  box-shadow:var(--shadow-card);overflow:hidden;
+}
+.flow-route{
+  display:grid;grid-template-columns:minmax(180px,1fr) 48px minmax(190px,1.05fr) 48px minmax(210px,1.15fr);
+  gap:12px;align-items:center;
+}
+.flow-node{min-width:0;text-align:center}
+.flow-node-label{
+  display:block;margin-bottom:10px;font-size:10.5px;font-weight:750;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-3);
+}
+.flow-you{
+  width:52px;height:52px;margin:0 auto 10px;border-radius:50%;display:grid;place-items:center;
+  background:#fff;border:1px solid var(--line);box-shadow:0 7px 18px rgba(20,30,60,.09);
+  color:var(--ink-2);font-size:11px;font-weight:800;letter-spacing:.07em;
+}
+.flow-ask{
+  padding:11px 14px;border-radius:15px;background:#fff;border:1px solid var(--line);
+  box-shadow:0 5px 16px rgba(20,30,60,.06);font-size:13px;font-weight:600;
+}
+.flow-arrow{color:var(--blue);font-size:24px;font-weight:650;text-align:center}
+.flow-worker{
+  min-height:292px;padding:34px 18px 28px;border:1px solid rgba(10,132,255,.3);border-radius:20px;
+  background:#fff;box-shadow:0 12px 28px -18px rgba(10,132,255,.65);
+  display:flex;flex-direction:column;align-items:stretch;justify-content:center;
+}
+.flow-mark{width:48px;height:48px;margin:0 auto 8px;display:block;fill:var(--blue)}
+.flow-worker strong{display:block;font-size:17px;letter-spacing:-.02em}
+.flow-worker>span{display:block;margin-top:4px;font-size:13.5px;font-weight:500;color:var(--ink-2)}
+.any-model{
+  margin-top:22px;padding:14px 10px;border-radius:11px;background:var(--blue-tint);
+  border:1px solid rgba(10,132,255,.16);
+}
+.any-model b{display:block;color:var(--blue);font-size:14.5px}
+.any-model small{display:block;margin-top:3px;color:var(--ink-2);font-size:12.5px;font-weight:600;line-height:1.35}
+.flow-tools{
+  padding:18px 16px;border-radius:18px;background:rgba(255,255,255,.76);
+  border:1px solid rgba(216,220,225,.82);
+}
+.flow-tool-grid{display:grid;grid-template-columns:repeat(4,38px);gap:10px;justify-content:center}
+.flow-tool{
+  width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:#fff;
+  border:1px solid var(--line);box-shadow:0 4px 11px rgba(20,30,60,.07);
+}
+.flow-tool img{width:20px;height:20px;object-fit:contain}
+.flow-tool.more{border-style:dashed;color:var(--ink-3);font-size:14px;font-weight:750;letter-spacing:.04em;box-shadow:none}
+.flow-return{
+  margin-top:20px;display:grid;
+  grid-template-columns:minmax(180px,1fr) 48px minmax(190px,1.05fr) 48px minmax(210px,1.15fr);
+  gap:12px;align-items:center;
+}
+.flow-return-ready{grid-column:1;text-align:center;display:flex;flex-direction:column;gap:2px}
+.flow-return-ready b{font-size:13px;color:var(--ink)}
+.flow-return-ready span{font-size:12.5px;font-weight:500;color:var(--ink-2)}
+.flow-return-arrow{grid-column:2;color:var(--blue);font-size:25px;font-weight:700;text-align:center}
+.flow-artifact-stack{grid-column:3;position:relative;padding-top:5px;text-align:left}
+.flow-artifact-stack::before{
+  content:"";position:absolute;left:50%;bottom:100%;height:21px;border-left:2px solid var(--blue);
+}
+.flow-artifact-stack .ready{display:block;margin-bottom:5px;color:var(--blue);font-size:11.5px;font-weight:700;text-align:center}
+.outcome-delivery{text-align:center;font-size:11.5px;color:var(--ink-2)}
+.outcome-delivery b{font-weight:700;color:var(--ink)}
+.outcome-formats-line{margin-top:8px;text-align:center;font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap}
+.steps{margin-top:22px;display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.step{
+  background:var(--bg);border-radius:var(--rad);padding:22px 22px 20px;
+  border:1px solid var(--line);
+}
+.step .num{
+  width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
+  font-size:14px;font-weight:750;color:#fff;background:var(--grad);
+}
+.step h3{font-size:17px;margin-top:14px;font-weight:700}
+.step p{margin-top:9px;font-size:14.5px;color:var(--ink-2)}
+.step .s-foot{
+  margin-top:14px;display:inline-flex;font-size:12px;font-weight:600;
+  color:var(--ink-3);background:var(--card);border:1px solid var(--line);
+  padding:5px 12px;border-radius:100px;
+}
+@media (max-width:900px){
+  .how-head{grid-template-columns:1fr;gap:18px}
+  .flow-route{grid-template-columns:1fr;gap:10px}
+  .flow-arrow{transform:rotate(90deg)}
+  .flow-board{padding:24px}
+  .flow-worker{min-height:270px}
+  .flow-return{grid-template-columns:1fr;gap:8px;margin-top:18px}
+  .flow-return-ready,.flow-return-arrow,.flow-artifact-stack{grid-column:1}
+  .flow-return-ready{grid-row:1}.flow-return-arrow{grid-row:2;transform:rotate(-90deg)}.flow-artifact-stack{grid-row:3;max-width:220px;width:100%;margin:0 auto}
+  .flow-artifact-stack::before{display:none}
+  .steps{grid-template-columns:1fr}
+}
+@media (max-width:520px){
+  .flow-board{padding:18px}
+}
+
+/* ================= FAQ ================= */
+.faq-wrap{max-width:760px;margin:48px auto 0;display:flex;flex-direction:column;gap:12px}
+.faq{
+  background:var(--card);border-radius:16px;border:1px solid var(--line);
+  box-shadow:var(--shadow-card);overflow:hidden;
+}
+.faq summary{
+  list-style:none;cursor:pointer;padding:20px 24px;
+  display:flex;align-items:center;justify-content:space-between;gap:20px;
+  font-size:16.5px;font-weight:650;letter-spacing:-.015em;
+  transition:color .2s;
+}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary:hover{color:var(--blue)}
+.faq .ind{
+  flex:none;width:26px;height:26px;border-radius:50%;
+  display:grid;place-items:center;color:var(--blue);background:var(--blue-tint);
+  font-size:15px;font-weight:650;
+  transition:transform .3s cubic-bezier(.4,0,.2,1),background .2s,color .2s;
+}
+.faq[open] .ind{transform:rotate(45deg);background:var(--blue);color:#fff}
+.faq .faq-a{padding:0 52px 22px 24px;font-size:14.5px;color:var(--ink-2)}
+
+/* ================= FINAL CTA ================= */
+.final{padding:124px 0 112px;text-align:center;position:relative;overflow:clip}
+.final::before{
+  content:"";position:absolute;left:50%;top:58%;transform:translate(-50%,-50%);
+  width:900px;height:900px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(closest-side,rgba(10,132,255,.09),transparent 70%);
+}
+.final .wrap{position:relative}
+.final h2{font-size:clamp(34px,4.4vw,52px)}
+.final .lede{margin:18px auto 0;text-align:center}
+.final .hero-ctas{justify-content:center}
+
+/* ================= FOOTER ================= */
+footer{border-top:1px solid var(--line);background:#fff}
+.foot-inner{
+  max-width:var(--wrap);margin:0 auto;padding:34px 28px;
+  display:flex;flex-wrap:wrap;align-items:center;gap:18px 36px;
+  font-size:13px;font-weight:500;color:var(--ink-3);
+}
+.foot-inner .brand{font-size:15px}
+.foot-inner .brand .mark{width:22px;height:22px}
+.foot-links{display:flex;flex-wrap:wrap;gap:24px;margin-left:auto}
+.foot-links a{transition:color .2s}
+.foot-links a:hover{color:var(--ink)}
+
+/* Local capture view: an exact 4:3 stage with a one-second brand slate,
+   followed by only the product carousel. */
+.recording-intro{display:none}
+html.recording-mode{background:#E9EDF5}
+html.recording-mode body{
+  min-height:100vh;display:grid;place-items:center;overflow:hidden;background:#E9EDF5;
+}
+html.recording-mode body::before,
+html.recording-mode header.nav,
+html.recording-mode .hero-copy,
+html.recording-mode section:not(.hero),
+html.recording-mode footer{display:none}
+html.recording-mode .hero{
+  width:min(100vw,calc(100vh * 4 / 3));min-height:0;aspect-ratio:4/3;
+  position:relative;display:grid;place-items:center;padding:5%;overflow:hidden;background:var(--bg);
+  box-shadow:0 30px 90px rgba(35,45,70,.14);
+}
+html.recording-mode .recording-intro{
+  position:absolute;z-index:20;inset:0;display:grid;place-items:center;background:var(--bg);
+  opacity:1;visibility:visible;transition:opacity .3s ease,visibility 0s linear .3s;
+}
+.recording-intro-lockup{display:flex;align-items:center;gap:18px}
+.recording-intro-icon{
+  width:74px;height:74px;display:grid;place-items:center;flex:none;border-radius:20px;
+  background:#2B64E8;box-shadow:0 18px 38px -18px rgba(43,100,232,.65);
+}
+.recording-intro-icon svg{width:50px;height:50px;fill:#fff}
+.recording-intro-lockup strong{
+  font-family:"Avenir Next",Avenir,-apple-system,BlinkMacSystemFont,sans-serif;
+  font-size:42px;font-weight:600;line-height:1;letter-spacing:-.035em;color:var(--ink);
+}
+html.recording-mode .hero-grid{
+  display:block;width:min(760px,78%);margin:0;padding:0;transform:scale(1.12);
+  opacity:0;transition:opacity .3s ease;
+}
+html.recording-mode .hero-vignette{opacity:1;transform:none;animation:none}
+html.recording-mode .hero-vignette::before{display:none}
+html.recording-mode .aw-nav{display:none}
+html.recording-mode.recording-playing .recording-intro{opacity:0;visibility:hidden}
+html.recording-mode.recording-playing .hero-grid{opacity:1}
+html.recording-mode:not(.recording-playing) .slide.is-active .demo-user,
+html.recording-mode:not(.recording-playing) .slide.is-active .demo-connector-message,
+html.recording-mode:not(.recording-playing) .slide.is-active .demo-stepgroup,
+html.recording-mode:not(.recording-playing) .slide.is-active .demo-assistant,
+html.recording-mode:not(.recording-playing) .slide.is-active .demo-inline-result,
+html.recording-mode:not(.recording-playing) .slide.is-active .demo-artifact-chip,
+html.recording-mode:not(.recording-playing) .slide.is-active .demo-approval,
+html.recording-mode:not(.recording-playing) .slide.is-active .demo-rail,
+html.recording-mode:not(.recording-playing) .slide.is-active .demo-artifact-viewer{
+  animation-play-state:paused;
+}
+@media (max-width:760px),(max-height:620px){
+  html.recording-mode .hero-grid{width:82%;transform:scale(1)}
+  .recording-intro-icon{width:62px;height:62px;border-radius:17px}
+  .recording-intro-icon svg{width:42px;height:42px}
+  .recording-intro-lockup strong{font-size:34px}
+}
+</style>
+</head>
+<body>
+
+<!-- ================= NAV ================= -->
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="#">
+      <svg class="mark" viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="#2563EB" transform="rotate(90 12 12)" d="M12 1.8 13.35 9.66 20.83 6.9 14.7 12l6.13 5.1-7.48-2.76L12 22.2l-1.35-7.86-7.48 2.76L9.3 12 3.17 6.9l7.48 2.76L12 1.8Z"/>
+      </svg>
+      OpenWorker
+    </a>
+    <nav class="nav-links">
+      <a href="#roster">Security</a>
+      <a href="#roster">Coworkers</a>
+      <a href="#how">How it works</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="src-link" href="https://github.com/andrewyng/openworker">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.5 7.5 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span>Source</span>
+      </a>
+      <a class="btn btn-primary" href="https://download.openworker.com/mac">Download <span class="arr">→</span></a>
+    </div>
+  </div>
+</header>
+
+<!-- ================= ANNOUNCE ================= -->
+<a class="announce" href="#roster">
+  <span class="announce-pill">New</span>
+  Introducing Security coworkers to empower Developers and Defenders
+  <span class="arr">→</span>
+</a>
+
+<!-- ================= HERO ================= -->
+<section class="hero">
+  <div class="recording-intro" aria-hidden="true">
+    <div class="recording-intro-lockup">
+      <span class="recording-intro-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path transform="rotate(90 12 12)" d="M12 1.8 13.35 9.66 20.83 6.9 14.7 12l6.13 5.1-7.48-2.76L12 22.2l-1.35-7.86-7.48 2.76L9.3 12 3.17 6.9l7.48 2.76L12 1.8Z"/>
+        </svg>
+      </span>
+      <strong>OpenWorker</strong>
+    </div>
+  </div>
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <h1>AI that gets your everyday tasks <em>done.</em></h1>
+      <p class="lede">Ask for an outcome, not just an answer. OpenWorker works in the tools you use every day — your files, repos, Slack, calendar, and more — and carries tasks through from start to finish: your code reviewed for vulnerabilities with fixes ready to go, your cloud configuration checked, a polished document delivered, a Slack thread answered. It checks in before important actions, so you stay in charge.</p>
+      <div class="hero-ctas" id="download">
+        <a class="btn btn-primary" href="https://download.openworker.com/mac">Download for Mac <span class="arr">→</span></a>
+        <span class="btn btn-ghost btn-coming" aria-disabled="true"><span>Download for Windows</span><span class="coming-badge">Coming soon</span></span>
+      </div>
+      <div class="hero-props">
+        <span class="prop">
+          <span class="p-ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>
+          100% open source
+        </span>
+        <span class="prop">
+          <span class="p-ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>
+          Bring your own model and API keys
+        </span>
+        <span class="prop">
+          <span class="p-ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>
+          Local-first and privacy-preserving
+        </span>
+      </div>
+    </div>
+
+    <div class="hero-vignette">
+      <div class="appwin-caption" id="slideOutcome" aria-live="polite">Scan your code and supply chain for real risk</div>
+      <div class="appwin">
+        <div class="carousel" id="heroCarousel">
+
+          <div class="slide is-active has-viewer" data-label="Security review" data-outcome="Scan your code and supply chain for real risk" data-duration="8400" data-ph="Ask the coworker…  (drop or paste files)">
+            <div class="demo-topbar">
+              <span class="demo-traffic" aria-hidden="true"><i></i><i></i><i></i></span>
+              <div class="demo-title"><b>Supply-chain posture review</b><span>Security Coworker · any model</span></div>
+            </div>
+            <div class="demo-workspace">
+              <div class="demo-chat">
+                <div class="demo-transcript">
+                  <div class="demo-user">Review this repo’s supply-chain posture and fix what you find.</div>
+                  <div class="demo-stepgroup"><span class="demo-chevron">›</span><span>11 steps</span></div>
+                  <div class="demo-assistant demo-result">
+                    <div class="demo-who">Assistant</div>
+                    <h4>4 of 25 findings are real — fix branch ready</h4>
+                    <p>Triaged every scanner finding by reachability. The headline: <strong>15 GitHub Actions pinned to mutable tags</strong> in the workflows that hold your signing credentials.</p>
+                    <ul><li>All 15 refs pinned to verified commit SHAs</li><li>Secret scan clean — 8 hits were test fixtures</li></ul>
+                  </div>
+                  <div class="demo-artifact-chip">
+                    <span class="chip-ico">▤</span>
+                    <span><b>Pin actions to commit SHAs</b><small>security-pin-actions.diff</small></span>
+                    <span class="chip-open">Open ›</span>
+                  </div>
+                </div>
+                <div class="demo-approval">
+                  <div class="demo-approval-head"><span class="demo-approval-ico">↗</span><b>Open PR security/pin-actions?</b><span class="demo-approval-scope">Leaves this Mac → GitHub</span></div>
+                  <div class="demo-approval-actions"><span class="demo-approve">Approve</span><span class="demo-deny">Not now</span></div>
+                </div>
+              </div>
+              <aside class="demo-rail">
+                <div class="demo-rail-section">
+                  <div class="demo-rail-head"><span class="demo-chevron">⌄</span>Progress</div>
+                  <div class="demo-progress">
+                    <div class="demo-progress-row done">Run semgrep + secret scan</div>
+                    <div class="demo-progress-row done">Triage by reachability</div>
+                    <div class="demo-progress-row active">Await your approval</div>
+                  </div>
+                </div>
+                <div class="demo-rail-section">
+                  <div class="demo-rail-head"><span class="demo-chevron">⌄</span>Artifacts <span class="demo-rail-refresh">↻</span></div>
+                  <div class="demo-artifact"><span class="demo-file-ico">▧</span><span><b>supply-chain-review.md</b><span>Ready now</span></span></div>
+                </div>
+                <div class="demo-rail-section">
+                  <div class="demo-rail-head"><span class="demo-chevron">›</span>Access</div>
+                  <div class="demo-access"><span>◌</span><b>GitHub · 1 folder</b></div>
+                </div>
+              </aside>
+              <div class="demo-artifact-viewer" aria-hidden="true">
+                <div class="demo-av-head">
+                  <span class="demo-av-back">←</span>
+                  <div class="demo-av-heading"><div class="demo-av-title"><span>Artifacts /</span>security-pin-actions.diff</div><div class="demo-av-path">branch security/pin-actions · 15 refs pinned</div></div>
+                  <span class="demo-av-actions">···</span>
+                </div>
+                <div class="demo-av-body">
+                  <div class="demo-md-preview">
+                    <div class="demo-incident-head">
+                      <div><h3>Pin actions to commit SHAs</h3><div class="demo-incident-sub">Release + CI workflows · every SHA independently re-verified</div></div>
+                      <span class="demo-incident-status">PR ready</span>
+                    </div>
+                    <div class="demo-incident-metrics">
+                      <div class="demo-incident-metric"><b>15</b><span>refs pinned</span></div>
+                      <div class="demo-incident-metric"><b>0</b><span>SHA mismatches</span></div>
+                      <div class="demo-incident-metric"><b>4</b><span>workflows touched</span></div>
+                    </div>
+                    <div class="demo-diff" aria-hidden="true">
+                      <div class="demo-diff-file">.github/workflows/release.yml</div>
+                      <div class="demo-diff-line del">-  uses: actions/checkout@v4</div>
+                      <div class="demo-diff-line add">+  uses: actions/checkout@34e1148…  # v4</div>
+                      <div class="demo-diff-line del">-  uses: softprops/action-gh-release@v2</div>
+                      <div class="demo-diff-line add">+  uses: softprops/action-gh-release@da05d55…  # v2</div>
+                    </div>
+                    <div class="demo-md-callout"><span class="demo-callout-ico">⚠</span><span><b>Why it matters</b>These workflows hold signing credentials — a mutable tag lets a hijacked action run there.</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="slide has-viewer" data-label="Cloud posture" data-outcome="Audit your cloud configuration before attackers do" data-duration="8400" data-ph="Ask the coworker…  (drop or paste files)">
+            <div class="demo-topbar">
+              <span class="demo-traffic" aria-hidden="true"><i></i><i></i><i></i></span>
+              <div class="demo-title"><b>Cloud posture check</b><span>Cloud Posture Coworker · any model</span></div>
+            </div>
+            <div class="demo-workspace">
+              <div class="demo-chat">
+                <div class="demo-transcript">
+                  <div class="demo-user">Anything risky in our AWS footprint? Fix it in Terraform.</div>
+                  <div class="demo-stepgroup"><span class="demo-chevron">›</span><span>8 steps</span></div>
+                  <div class="demo-assistant demo-result">
+                    <div class="demo-who">Assistant</div>
+                    <h4>3 findings — Terraform fix drafted</h4>
+                    <p>The assets bucket allows public read and two IAM policies carry wildcard actions. Cloud access stayed <strong>read-only</strong> — the fix lands in Terraform, not the console.</p>
+                    <ul><li>storage.tf — block public access on the assets bucket</li><li>iam.tf — scope both wildcard policies</li></ul>
+                  </div>
+                  <div class="demo-artifact-chip">
+                    <span class="chip-ico">▤</span>
+                    <span><b>Cloud posture report</b><small>cloud-posture-report.md</small></span>
+                    <span class="chip-open">Open ›</span>
+                  </div>
+                </div>
+                <div class="demo-approval">
+                  <div class="demo-approval-head"><span class="demo-approval-ico">↗</span><b>Open PR with the Terraform fix?</b><span class="demo-approval-scope">Leaves this Mac → GitHub</span></div>
+                  <div class="demo-approval-actions"><span class="demo-approve">Approve</span><span class="demo-deny">Not now</span></div>
+                </div>
+              </div>
+              <aside class="demo-rail">
+                <div class="demo-rail-section">
+                  <div class="demo-rail-head"><span class="demo-chevron">⌄</span>Progress</div>
+                  <div class="demo-progress">
+                    <div class="demo-progress-row done">Scan Terraform for risky config</div>
+                    <div class="demo-progress-row done">Verify against live AWS — read-only</div>
+                    <div class="demo-progress-row active">Await your approval</div>
+                  </div>
+                </div>
+                <div class="demo-rail-section">
+                  <div class="demo-rail-head"><span class="demo-chevron">⌄</span>Artifacts <span class="demo-rail-refresh">↻</span></div>
+                  <div class="demo-artifact"><span class="demo-file-ico">▧</span><span><b>cloud-posture-report.md</b><span>Ready now</span></span></div>
+                </div>
+                <div class="demo-rail-section">
+                  <div class="demo-rail-head"><span class="demo-chevron">›</span>Access</div>
+                  <div class="demo-access"><span>◌</span><b>GitHub, AWS (read-only)</b></div>
+                </div>
+              </aside>
+              <div class="demo-artifact-viewer" aria-hidden="true">
+                <div class="demo-av-head">
+                  <span class="demo-av-back">←</span>
+                  <div class="demo-av-heading"><div class="demo-av-title"><span>Artifacts /</span>cloud-posture-report.md</div><div class="demo-av-path">reports/cloud-posture-report.md</div></div>
+                  <span class="demo-av-actions">···</span>
+                </div>
+                <div class="demo-av-body">
+                  <div class="demo-md-preview">
+                    <div class="demo-incident-head">
+                      <div><h3>Cloud posture report</h3><div class="demo-incident-sub">3 findings · an evidence command behind every claim</div></div>
+                      <span class="demo-incident-status">Fix drafted</span>
+                    </div>
+                    <div class="demo-incident-metrics">
+                      <div class="demo-incident-metric"><b>3</b><span>findings</span></div>
+                      <div class="demo-incident-metric"><b>0</b><span>writes to cloud</span></div>
+                      <div class="demo-incident-metric"><b>2</b><span>.tf files changed</span></div>
+                    </div>
+                    <h4>Findings</h4>
+                    <div class="demo-timeline">
+                      <div class="demo-timeline-row"><time>S3</time><span><b>Public-read on assets bucket</b> · blocked in storage.tf</span></div>
+                      <div class="demo-timeline-row"><time>IAM</time><span><b>Two policies allow Action: "*"</b> · scoped in iam.tf</span></div>
+                      <div class="demo-timeline-row"><time>EC2</time><span><b>Port 22 open to 0.0.0.0/0</b> · flagged for review</span></div>
+                    </div>
+                    <div class="demo-md-callout"><span class="demo-callout-ico">✋</span><span><b>This coworker never runs terraform apply</b>Review the diff, run plan, and merge when you’re ready.</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="slide has-viewer" data-label="Ops &amp; on-call" data-outcome="Triage a Security or Ops incident and draft the timeline" data-duration="8400" data-ph="Ask the coworker…  (drop or paste files)">
+            <div class="demo-topbar">
+              <span class="demo-traffic" aria-hidden="true"><i></i><i></i><i></i></span>
+              <div class="demo-title"><b>Checkout incident triage</b><span>Coworker · any model</span></div>
+            </div>
+            <div class="demo-workspace">
+              <div class="demo-chat">
+                <div class="demo-transcript">
+                  <article class="demo-connector-message">
+                    <header class="demo-connector-head"><img src="assets/tools/slack.svg" alt="" /><b>#checkout-alerts</b><span>· Jordan Lee</span><small>via Slack</small><time>2:14 PM</time></header>
+                    <div class="demo-connector-body">@openworker checkout API is 500ing</div>
+                  </article>
+                  <div class="demo-stepgroup"><span class="demo-chevron">›</span><span>9 steps</span></div>
+                  <div class="demo-assistant demo-result">
+                    <div class="demo-who">Assistant</div>
+                    <h4>Likely regression in the 2:02 am deploy</h4>
+                    <p>The error spike begins immediately after the payment migration change and matches the runbook’s rollback condition.</p>
+                    <ul><li>Customer impact: checkout requests</li><li>Rollback path is ready</li></ul>
+                  </div>
+                  <div class="demo-artifact-chip">
+                    <span class="chip-ico">▤</span>
+                    <span><b>Checkout incident timeline</b><small>checkout-incident-timeline.md</small></span>
+                    <span class="chip-open">Open ›</span>
+                  </div>
+                </div>
+                <div class="demo-approval">
+                  <div class="demo-approval-head"><span class="demo-approval-ico">↗</span><b>Send this report to #checkout-alerts?</b><span class="demo-approval-scope">Leaves this Mac → Slack</span></div>
+                  <div class="demo-approval-actions"><span class="demo-approve">Approve</span><span class="demo-deny">Not now</span></div>
+                </div>
+              </div>
+              <aside class="demo-rail">
+                <div class="demo-rail-section">
+                  <div class="demo-rail-head"><span class="demo-chevron">⌄</span>Progress</div>
+                  <div class="demo-progress">
+                    <div class="demo-progress-row done">Inspect recent deploys</div>
+                    <div class="demo-progress-row done">Check the runbook</div>
+                    <div class="demo-progress-row active">Await your approval</div>
+                  </div>
+                </div>
+                <div class="demo-rail-section">
+                  <div class="demo-rail-head"><span class="demo-chevron">⌄</span>Artifacts <span class="demo-rail-refresh">↻</span></div>
+                  <div class="demo-artifact"><span class="demo-file-ico">▧</span><span><b>checkout-incident-timeline.md</b><span>Ready now</span></span></div>
+                </div>
+                <div class="demo-rail-section">
+                  <div class="demo-rail-head"><span class="demo-chevron">›</span>Access</div>
+                  <div class="demo-access"><span>◌</span><b>Slack, GitHub · 1 folder</b></div>
+                </div>
+              </aside>
+              <div class="demo-artifact-viewer" aria-hidden="true">
+                <div class="demo-av-head">
+                  <span class="demo-av-back">←</span>
+                  <div class="demo-av-heading"><div class="demo-av-title"><span>Artifacts /</span>checkout-incident-timeline.md</div><div class="demo-av-path">reports/checkout-incident-timeline.md</div></div>
+                  <span class="demo-av-actions">···</span>
+                </div>
+                <div class="demo-av-body">
+                  <div class="demo-md-preview">
+                    <div class="demo-incident-head">
+                      <div><h3>Checkout incident timeline</h3><div class="demo-incident-sub">Payment migration · Updated 2:12 am</div></div>
+                      <span class="demo-incident-status">Mitigation ready</span>
+                    </div>
+                    <div class="demo-incident-metrics">
+                      <div class="demo-incident-metric"><b>18.4%</b><span>peak error rate</span></div>
+                      <div class="demo-incident-metric"><b>10 min</b><span>customer impact</span></div>
+                      <div class="demo-incident-metric"><b>Checkout</b><span>affected service</span></div>
+                    </div>
+                    <h4>Incident timeline</h4>
+                    <div class="demo-timeline">
+                      <div class="demo-timeline-row"><time>2:02</time><span><b>Deploy completed</b> · payment migration v3.8</span></div>
+                      <div class="demo-timeline-row"><time>2:04</time><span><b>Alert fired</b> · checkout 500s crossed 18%</span></div>
+                      <div class="demo-timeline-row"><time>2:07</time><span><b>Cause isolated</b> · connection pool regression</span></div>
+                      <div class="demo-timeline-row"><time>2:12</time><span><b>Rollback verified</b> · runbook checks passed</span></div>
+                    </div>
+                    <div class="demo-md-callout"><span class="demo-callout-ico">↩</span><span><b>Recommended next action</b>Roll back v3.8, then monitor errors for 10 minutes.</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="slide has-viewer" data-label="Sales" data-outcome="Walk into every call already prepped" data-duration="8400" data-ph="Ask the coworker…  (drop or paste files)">
+            <div class="demo-topbar">
+              <span class="demo-traffic" aria-hidden="true"><i></i><i></i><i></i></span>
+              <div class="demo-title"><b>Northwind renewal prep</b><span>Coworker · any model</span></div>
+            </div>
+            <div class="demo-workspace">
+              <div class="demo-chat">
+                <div class="demo-transcript">
+                  <div class="demo-user">Prep me for the Northwind renewal call.</div>
+                  <div class="demo-stepgroup"><span class="demo-chevron">›</span><span>7 steps</span></div>
+                  <div class="demo-assistant demo-result">
+                    <div class="demo-who">Assistant</div>
+                    <h4>Northwind renewal brief</h4>
+                    <p><strong>Usage doubled in Q2.</strong> Both support issues are resolved; expansion is the strongest renewal angle.</p>
+                    <ul><li>Lead with adoption and time saved</li><li>Ask about the analytics rollout</li></ul>
+                  </div>
+                  <div class="demo-artifact-chip">
+                    <span class="chip-ico">▤</span>
+                    <span><b>Northwind renewal brief</b><small>northwind-renewal-brief.html</small></span>
+                    <span class="chip-open">Open ›</span>
+                  </div>
+                </div>
+                <div class="demo-approval">
+                  <div class="demo-approval-head"><span class="demo-approval-ico">↗</span><b>Email the follow-up to their CTO?</b><span class="demo-approval-scope">Leaves this Mac → Email</span></div>
+                  <div class="demo-approval-actions"><span class="demo-approve">Approve</span><span class="demo-deny">Not now</span></div>
+                </div>
+              </div>
+              <aside class="demo-rail">
+                <div class="demo-rail-section">
+                  <div class="demo-rail-head"><span class="demo-chevron">⌄</span>Progress</div>
+                  <div class="demo-progress">
+                    <div class="demo-progress-row done">Review HubSpot history</div>
+                    <div class="demo-progress-row done">Read customer threads</div>
+                    <div class="demo-progress-row active">Await your approval</div>
+                  </div>
+                </div>
+                <div class="demo-rail-section">
+                  <div class="demo-rail-head"><span class="demo-chevron">⌄</span>Artifacts <span class="demo-rail-refresh">↻</span></div>
+                  <div class="demo-artifact"><span class="demo-file-ico">▧</span><span><b>northwind-renewal-brief.html</b><span>Ready now</span></span></div>
+                </div>
+                <div class="demo-rail-section">
+                  <div class="demo-rail-head"><span class="demo-chevron">›</span>Access</div>
+                  <div class="demo-access"><span>◌</span><b>HubSpot, Email · 1 folder</b></div>
+                </div>
+              </aside>
+              <div class="demo-artifact-viewer" aria-hidden="true">
+                <div class="demo-av-head">
+                  <span class="demo-av-back">←</span>
+                  <div class="demo-av-heading"><div class="demo-av-title"><span>Artifacts /</span>northwind-renewal-brief.html</div><div class="demo-av-path">reports/northwind-renewal-brief.html</div></div>
+                  <span class="demo-av-actions">···</span>
+                </div>
+                <div class="demo-av-body">
+                  <div class="demo-html-preview">
+                    <div class="demo-report-head">
+                      <div class="demo-html-kicker">Northwind · Renewal brief</div>
+                      <span class="demo-report-status">Ready</span>
+                    </div>
+                    <h3>Renewal momentum is strong</h3>
+                    <div class="demo-report-sub">Account health · Q4 executive snapshot</div>
+                    <div class="demo-metric-grid">
+                      <div class="demo-metric"><b>2.0×</b><span>usage since Q1</span></div>
+                      <div class="demo-metric"><b>98%</b><span>active seats</span></div>
+                      <div class="demo-metric"><b>2 / 2</b><span>issues resolved</span></div>
+                    </div>
+                    <div class="demo-chart-card">
+                      <div class="demo-chart-head"><b>Weekly active users</b><span class="demo-chart-delta">↗ 104%</span></div>
+                      <div class="demo-mini-chart" aria-label="Weekly active users increased from Q1 to Q4">
+                        <span class="demo-bar" data-q="Q1" style="height:31%"></span>
+                        <span class="demo-bar" data-q="Q2" style="height:47%"></span>
+                        <span class="demo-bar" data-q="Q3" style="height:68%"></span>
+                        <span class="demo-bar" data-q="Q4" style="height:94%"></span>
+                      </div>
+                    </div>
+                    <div class="demo-html-note"><b>Best renewal angle:</b> lead with analytics adoption and time saved.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="slide" data-label="Product planning" data-outcome="Turn scattered notes into a shippable plan" data-duration="7000" data-ph="Ask the coworker…  (drop or paste files)">
+            <div class="demo-topbar">
+              <span class="demo-traffic" aria-hidden="true"><i></i><i></i><i></i></span>
+              <div class="demo-title"><b>Next sprint priorities</b><span>Coworker · any model</span></div>
+            </div>
+            <div class="demo-workspace">
+              <div class="demo-chat">
+                <div class="demo-transcript">
+                  <div class="demo-user">What should we prioritize next sprint? Use this week’s feedback.</div>
+                  <div class="demo-stepgroup"><span class="demo-chevron">›</span><span>6 steps</span></div>
+                  <div class="demo-assistant demo-result">
+                    <div class="demo-who">Assistant</div>
+                    <h4>Prioritize onboarding friction</h4>
+                    <p>It appears in 21 of 47 feedback notes—more than twice the next theme—and blocks activation before users reach the core workflow.</p>
+                    <ul><li>Simplify initial setup</li><li>Add an in-product checklist</li></ul>
+                  </div>
+                  <div class="demo-inline-result">▧ <span>sprint-priorities.md · ready</span></div>
+                </div>
+                <div class="demo-approval">
+                  <div class="demo-approval-head"><span class="demo-approval-ico">↗</span><b>Share the brief with #product?</b><span class="demo-approval-scope">External action</span></div>
+                  <div class="demo-approval-actions"><span class="demo-approve">Approve</span><span class="demo-deny">Not now</span></div>
+                </div>
+              </div>
+              <aside class="demo-rail">
+                <div class="demo-rail-section">
+                  <div class="demo-rail-head"><span class="demo-chevron">⌄</span>Progress</div>
+                  <div class="demo-progress">
+                    <div class="demo-progress-row done">Collect feedback</div>
+                    <div class="demo-progress-row done">Group recurring themes</div>
+                    <div class="demo-progress-row active">Await your approval</div>
+                  </div>
+                </div>
+                <div class="demo-rail-section">
+                  <div class="demo-rail-head"><span class="demo-chevron">⌄</span>Artifacts <span class="demo-rail-refresh">↻</span></div>
+                  <div class="demo-artifact"><span class="demo-file-ico">▧</span><span><b>sprint-priorities.md</b><span>Ready now</span></span></div>
+                </div>
+                <div class="demo-rail-section">
+                  <div class="demo-rail-head"><span class="demo-chevron">›</span>Access</div>
+                  <div class="demo-access"><span>◌</span><b>Notion, Email, Slack</b></div>
+                </div>
+              </aside>
+            </div>
+          </div>
+
+          <div class="slide" data-label="Calendar &amp; scheduling" data-outcome="Manage your calendar &amp; meetings" data-duration="7000" data-ph="Ask the coworker…  (drop or paste files)">
+            <div class="demo-topbar">
+              <span class="demo-traffic" aria-hidden="true"><i></i><i></i><i></i></span>
+              <div class="demo-title"><b>Untangle Tuesday</b><span>Coworker · any model</span></div>
+            </div>
+            <div class="demo-workspace">
+              <div class="demo-chat">
+                <div class="demo-transcript">
+                  <div class="demo-user">My Tuesday is a mess—fix it.</div>
+                  <div class="demo-stepgroup"><span class="demo-chevron">›</span><span>5 steps</span></div>
+                  <div class="demo-assistant demo-result">
+                    <div class="demo-who">Assistant</div>
+                    <h4>Tuesday is untangled</h4>
+                    <p>The investor call can stay at 1:30 pm. Everyone needed for the design review is free at 3:00 pm, and the room is open.</p>
+                    <ul><li>Design review → 3:00 pm</li><li>Reschedule notes drafted</li></ul>
+                  </div>
+                  <div class="demo-inline-result">▧ <span>reschedule-notes.md · ready</span></div>
+                </div>
+                <div class="demo-approval">
+                  <div class="demo-approval-head"><span class="demo-approval-ico">↗</span><b>Send the note to all five attendees?</b><span class="demo-approval-scope">External action</span></div>
+                  <div class="demo-approval-actions"><span class="demo-approve">Approve</span><span class="demo-deny">Not now</span></div>
+                </div>
+              </div>
+              <aside class="demo-rail">
+                <div class="demo-rail-section">
+                  <div class="demo-rail-head"><span class="demo-chevron">⌄</span>Progress</div>
+                  <div class="demo-progress">
+                    <div class="demo-progress-row done">Find the conflict</div>
+                    <div class="demo-progress-row done">Check availability</div>
+                    <div class="demo-progress-row active">Await your approval</div>
+                  </div>
+                </div>
+                <div class="demo-rail-section">
+                  <div class="demo-rail-head"><span class="demo-chevron">⌄</span>Artifacts <span class="demo-rail-refresh">↻</span></div>
+                  <div class="demo-artifact"><span class="demo-file-ico">▧</span><span><b>reschedule-notes.md</b><span>Ready now</span></span></div>
+                </div>
+                <div class="demo-rail-section">
+                  <div class="demo-rail-head"><span class="demo-chevron">›</span>Access</div>
+                  <div class="demo-access"><span>◌</span><b>Calendar, Email</b></div>
+                </div>
+              </aside>
+            </div>
+          </div>
+
+        </div>
+        <div class="composer" aria-hidden="true">
+          <div class="composer-card">
+            <div class="comp-input"><span id="compPh">Ask the coworker…  (drop or paste files)</span></div>
+            <div class="comp-controls">
+              <span class="comp-plus">+</span>
+              <span class="comp-mode">Ask for approval<span class="comp-chevron"></span></span>
+              <span class="comp-model">Model</span>
+              <span class="comp-send">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="aw-nav" aria-label="Workflow examples">
+        <button class="aw-arrow aw-prev" type="button" aria-label="Previous workflow">←</button>
+        <div class="aw-caption" aria-live="polite">
+          <div><strong id="workflowLabel">Security review</strong><span id="workflowCount">1 of 6</span></div>
+          <div class="aw-dots" role="tablist" aria-label="Choose a workflow example">
+            <button class="on" type="button" role="tab" aria-selected="true" aria-label="Security review workflow"></button>
+            <button type="button" role="tab" aria-selected="false" aria-label="Cloud posture workflow"></button>
+            <button type="button" role="tab" aria-selected="false" aria-label="Sales workflow"></button>
+            <button type="button" role="tab" aria-selected="false" aria-label="Ops and on-call workflow"></button>
+            <button type="button" role="tab" aria-selected="false" aria-label="Product planning workflow"></button>
+            <button type="button" role="tab" aria-selected="false" aria-label="Calendar and scheduling workflow"></button>
+          </div>
+        </div>
+        <button class="aw-arrow aw-next" type="button" aria-label="Next workflow">→</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ECOSYSTEM ================= -->
+<section class="section" id="roster">
+  <div class="wrap">
+    <div class="reveal">
+      <span class="kicker">Featured — Security coworkers</span>
+      <h2>Specialists for real work. <em>Security ships first.</em></h2>
+      <p class="lede">Every coworker arrives with the tools, working style, and check-ins for one job already set up. Security ships first — and that's a commitment: attackers already use AI, and defenders deserve the same leverage. An open source harness your team can audit, models you choose and can run fully locally, and every action approval-gated and logged.</p>
+    </div>
+    <div class="sec-grid">
+      <div class="dossier reveal">
+        <div class="d-icon">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+        </div>
+        <h3>Security Reviewer</h3>
+        <p class="d-tag">Drives semgrep and secret scans, triages findings by reachability — not just severity — and ships fix PRs that match your codebase's idiom.</p>
+        <div class="d-meta"><b>Works with</b> — GitHub · your repos · your scanners<br/><b>Checks in</b> — before opening a PR<br/><b class="no">Never</b> — prints a secret value, or replaces your scanners</div>
+      </div>
+      <div class="dossier reveal">
+        <div class="d-icon">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+        </div>
+        <h3>Cloud Posture</h3>
+        <p class="d-tag">Scans your Terraform, verifies it against the live cloud, and lands every fix as an infrastructure PR — with an evidence command per claim.</p>
+        <div class="d-meta"><b>Works with</b> — Terraform · AWS (read-only) · GitHub<br/><b>Checks in</b> — before opening a PR<br/><b class="no">Never</b> — writes to your cloud, or runs terraform apply</div>
+      </div>
+      <div class="dossier reveal">
+        <div class="d-icon">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+        </div>
+        <h3>Dependency Audit</h3>
+        <p class="d-tag">Finds vulnerable dependencies, prioritizes what's actually reachable, and proposes the smallest upgrade that closes the hole.</p>
+        <div class="d-meta"><b>Works with</b> — GitHub · lockfiles · your test suite<br/><b>Checks in</b> — before touching a lockfile<br/><b class="no">Never</b> — bumps past the smallest safe version, or merges on red tests</div>
+      </div>
+    </div>
+    <h3 class="bridge reveal">…and a coworker for the rest of your work.</h3>
+    <div class="breadth-grid">
+      <div class="mini-card reveal">
+        <div class="m-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+        </div>
+        <h3>Sales</h3>
+        <p>Researches accounts, preps every call, drafts follow-ups that sound like you.</p>
+      </div>
+      <div class="mini-card reveal">
+        <div class="m-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        </div>
+        <h3>Executive Assistant</h3>
+        <p>Owns the calendar, triages the inbox, and keeps your day on rails.</p>
+      </div>
+      <div class="mini-card reveal">
+        <div class="m-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+        </div>
+        <h3>Marketing</h3>
+        <p>Spend, attribution, and the Monday report — without five dashboards.</p>
+      </div>
+      <div class="mini-card reveal">
+        <div class="m-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+        </div>
+        <h3>Ops On-call</h3>
+        <p>Triages alerts, digs through runbooks, drafts the incident notes nobody wants to write.</p>
+      </div>
+      <div class="mini-card build reveal">
+        <div class="m-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        </div>
+        <h3>Build your own</h3>
+        <p>Describe any job in plain language — OpenWorker assembles a coworker for it. Share it with anyone as a simple bundle.</p>
+      </div>
+    </div>
+    <div class="automation-proof reveal" id="automations">
+      <div class="auto-intro">
+        <span class="kicker">Works in the background</span>
+        <h3>Starts when work happens.</h3>
+        <p>Set a trigger once. OpenWorker starts the task and checks in before important actions.</p>
+      </div>
+      <div class="auto-event">
+        <span class="auto-source">Slack mention</span>
+        <strong>Triage the alert</strong>
+        <p>Check the runbook and draft an in-thread response.</p>
+      </div>
+      <div class="auto-event">
+        <span class="auto-source">Incoming email</span>
+        <strong>Prepare the reply</strong>
+        <p>Gather the answers and hold the draft for review.</p>
+      </div>
+      <div class="auto-event">
+        <span class="auto-source">Your schedule</span>
+        <strong>Deliver the report</strong>
+        <p>Pull the numbers and finish it before standup.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="ecosystem" id="ecosystem">
+  <div class="wrap">
+    <div class="eco-head reveal">
+      <span class="kicker">Works with what you choose</span>
+      <h2>Your models. <em>Your tools.</em></h2>
+      <p class="lede">Use closed-weight models, open-weight models, or run locally. Connect the everyday tools where your work already happens.</p>
+    </div>
+    <div class="eco-groups reveal">
+      <div class="eco-group">
+        <div class="eco-label">Model providers<span>Cloud or fully local</span></div>
+        <div class="logo-cloud" aria-label="Supported model providers">
+          <span class="logo-chip"><img src="assets/providers/openai.svg" alt="" />OpenAI</span>
+          <span class="logo-chip"><img src="assets/providers/anthropic.svg" alt="" />Anthropic</span>
+          <span class="logo-chip"><img src="assets/providers/gemini.svg" alt="" />Gemini</span>
+          <span class="logo-chip"><img src="assets/providers/zai.svg" alt="" />Z.AI · GLM</span>
+          <span class="logo-chip"><img src="assets/providers/deepseek.svg" alt="" />DeepSeek</span>
+          <span class="logo-chip"><img src="assets/providers/kimi.svg" alt="" />Kimi</span>
+          <span class="logo-chip"><img src="assets/providers/minimax.svg" alt="" />MiniMax</span>
+          <span class="logo-chip"><img src="assets/providers/qwen.svg" alt="" />Qwen</span>
+          <span class="logo-chip"><img src="assets/providers/xai.svg" alt="" />xAI</span>
+          <span class="logo-chip"><img src="assets/providers/mistral.svg" alt="" />Mistral</span>
+          <span class="logo-chip"><img src="assets/providers/together.svg" alt="" />Together AI</span>
+          <span class="logo-chip"><img src="assets/providers/fireworks.svg" alt="" />Fireworks</span>
+          <span class="logo-chip"><img src="assets/providers/ollama.svg" alt="" />Ollama</span>
+        </div>
+      </div>
+      <div class="eco-group">
+        <div class="eco-label">Everyday tools<span>Use one-click or manual connections</span></div>
+        <div class="logo-cloud tool-cloud" aria-label="Supported everyday tools">
+          <div class="tool-row">
+            <span class="logo-chip"><img src="assets/tools/slack.svg" alt="" />Slack</span>
+            <span class="logo-chip"><img src="assets/tools/outlook.svg" alt="" />Outlook</span>
+            <span class="logo-chip"><img src="assets/tools/gmail.svg" alt="" />Gmail</span>
+            <span class="logo-chip"><img src="assets/tools/google_calendar.svg" alt="" />Google Calendar</span>
+            <span class="logo-chip"><img src="assets/tools/notion.svg" alt="" />Notion</span>
+            <span class="logo-chip"><img src="assets/tools/hubspot.svg" alt="" />HubSpot</span>
+            <span class="logo-chip"><img src="assets/tools/github.svg" alt="" />GitHub</span>
+            <span class="logo-chip"><img src="assets/tools/attio.svg" alt="" />Attio</span>
+          </div>
+          <div class="tool-row">
+            <span class="logo-chip"><img src="assets/tools/google_drive.svg" alt="" />Google Drive</span>
+            <span class="logo-chip"><img src="assets/tools/jira.svg" alt="" />Jira</span>
+            <span class="logo-chip"><img src="assets/tools/linear.svg" alt="" />Linear</span>
+            <span class="logo-chip"><img src="assets/tools/asana.svg" alt="" />Asana</span>
+            <span class="logo-chip"><img src="assets/tools/dropbox.svg" alt="" />Dropbox</span>
+            <span class="logo-chip"><img src="assets/tools/box.svg" alt="" />Box</span>
+            <span class="logo-more" aria-label="More tools are available">
+              <span class="more-stack" aria-hidden="true"><span></span><span></span><span></span></span>
+              More
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= HOW IT WORKS ================= -->
+<section class="section band" id="how">
+  <div class="wrap">
+    <div class="how-head reveal">
+      <div>
+        <span class="kicker">How it works</span>
+        <h2>Ask for the outcome. <em>OpenWorker handles the steps.</em></h2>
+      </div>
+      <p class="lede">OpenWorker brings the model you choose to the tools where your work already lives, carries the task through, and returns the result in chat, in Slack, or as a finished file.</p>
+    </div>
+    <div class="flow-board reveal" role="img" aria-label="You ask OpenWorker for an outcome. OpenWorker can use any model, works across your connected tools, and returns a finished deliverable.">
+      <div class="flow-route">
+        <div class="flow-node">
+          <span class="flow-node-label">You ask</span>
+          <div class="flow-you">YOU</div>
+          <div class="flow-ask">“What’s the progress on Monday’s launch?”</div>
+        </div>
+        <div class="flow-arrow" aria-hidden="true">→</div>
+        <div class="flow-node flow-worker">
+          <svg class="flow-mark" viewBox="0 0 24 24" aria-hidden="true">
+            <path transform="rotate(90 12 12)" d="M12 1.8 13.35 9.66 20.83 6.9 14.7 12l6.13 5.1-7.48-2.76L12 22.2l-1.35-7.86-7.48 2.76L9.3 12 3.17 6.9l7.48 2.76L12 1.8Z"/>
+          </svg>
+          <strong>OpenWorker</strong>
+          <span>works on your computer</span>
+          <div class="any-model">
+            <b>Any model</b>
+            <small>cloud · open-weight · fully local</small>
+          </div>
+        </div>
+        <div class="flow-arrow" aria-hidden="true">→</div>
+        <div class="flow-node flow-tools">
+          <span class="flow-node-label">Your tools</span>
+          <div class="flow-tool-grid" aria-hidden="true">
+            <span class="flow-tool"><img src="assets/tools/slack.svg" alt="" /></span>
+            <span class="flow-tool"><img src="assets/tools/outlook.svg" alt="" /></span>
+            <span class="flow-tool"><img src="assets/tools/google_calendar.svg" alt="" /></span>
+            <span class="flow-tool"><img src="assets/tools/notion.svg" alt="" /></span>
+            <span class="flow-tool"><img src="assets/tools/github.svg" alt="" /></span>
+            <span class="flow-tool"><img src="assets/tools/hubspot.svg" alt="" /></span>
+            <span class="flow-tool"><img src="assets/tools/google_drive.svg" alt="" /></span>
+            <span class="flow-tool more">···</span>
+          </div>
+        </div>
+      </div>
+      <div class="flow-return" aria-label="OpenWorker replies with a finished outcome in chat or Slack, with Markdown, PDF, and image formats available.">
+        <div class="flow-return-ready">
+          <b>Back to you</b>
+          <span>In the form you need</span>
+        </div>
+        <div class="flow-return-arrow" aria-hidden="true">←</div>
+        <div class="flow-artifact-stack">
+          <span class="ready">Finished outcome</span>
+          <div class="outcome-delivery">Reply in <b>chat</b> or <b>Slack</b></div>
+          <div class="outcome-formats-line" aria-hidden="true">Markdown · PDF · Images</div>
+        </div>
+      </div>
+    </div>
+    <div class="steps">
+      <div class="step reveal">
+        <div class="num">1</div>
+        <h3>Choose any model</h3>
+        <p>Use a cloud model, an open-weight provider, or Ollama running fully locally. Switch whenever the task calls for something different.</p>
+        <span class="s-foot">Cloud · open-weight · local</span>
+      </div>
+      <div class="step reveal">
+        <div class="num">2</div>
+        <h3>Connect your tools</h3>
+        <p>Choose the tools OpenWorker needs — Slack, email, calendar, files, CRM, and more — with one-click or manual connections.</p>
+        <span class="s-foot">One-click or manual connection</span>
+      </div>
+      <div class="step reveal">
+        <div class="num">3</div>
+        <h3>Delegate the outcome</h3>
+        <p>Ask for the brief, report, update, or action you need. OpenWorker does the work and checks in before important actions.</p>
+        <span class="s-foot">You approve what matters</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ROSTER ================= -->
+
+<!-- ================= FAQ ================= -->
+<section class="section" id="faq">
+  <div class="wrap">
+    <div class="reveal" style="text-align:center">
+      <span class="kicker">FAQ</span>
+      <h2>Questions, <em>answered.</em></h2>
+    </div>
+    <div class="faq-wrap reveal">
+      <details class="faq">
+        <summary>Is it really free? <span class="ind">+</span></summary>
+        <p class="faq-a">Yes — the app is open source. Bring your own API key for OpenAI, Anthropic, Google, or another supported provider, or run a local model with Ollama. You pay your model provider directly and nothing to us.</p>
+      </details>
+      <details class="faq">
+        <summary>Where do my passwords and tokens live? <span class="ind">+</span></summary>
+        <p class="faq-a">On your device, in the app's local secret store. The optional cloud account only brokers the OAuth handshake — tokens are handed straight to your machine and never stored in the cloud.</p>
+      </details>
+      <details class="faq">
+        <summary>Will it do things without asking me? <span class="ind">+</span></summary>
+        <p class="faq-a">Only what you've allowed. Anything consequential — sending an email, posting to Slack, running a command — lands as a check-in you approve, in the app or from Slack. You choose how independently it’s allowed to act.</p>
+      </details>
+      <details class="faq">
+        <summary>Will the security coworkers change my infrastructure? <span class="ind">+</span></summary>
+        <p class="faq-a">No. Cloud access is read-only, and nothing is ever applied directly — every fix lands as a pull request you review and merge. The security coworkers drive the scanners you already trust rather than replacing them, and secret values never appear in a transcript.</p>
+      </details>
+      <details class="faq">
+        <summary>Do I need an account? <span class="ind">+</span></summary>
+        <p class="faq-a">No. Everything works while signed out, using API keys and tokens you provide. A free OpenWorker account adds one-click connections to tools such as Slack, where vendor restrictions require OpenWorker to manage the sign-in flow.</p>
+      </details>
+      <details class="faq">
+        <summary>Which models can I use? <span class="ind">+</span></summary>
+        <p class="faq-a">OpenAI, Anthropic, and Google models through your own API keys; open-weight models such as Kimi, GLM, and DeepSeek through supported providers; or local models through Ollama. You can switch models per task, even mid-conversation.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FINAL CTA ================= -->
+<section class="final">
+  <div class="wrap reveal">
+    <span class="kicker">Ready when you are</span>
+    <h2>Your first deliverable is a<br/><em>download away.</em></h2>
+    <p class="lede">Free, open source, and on your machine in under a minute.</p>
+    <div class="hero-ctas" style="margin-top:34px">
+      <a class="btn btn-primary" href="https://download.openworker.com/mac">Download for Mac — free <span class="arr">→</span></a>
+      <a class="btn btn-ghost" href="https://github.com/andrewyng/openworker">View on GitHub</a>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FOOTER ================= -->
+<footer>
+  <div class="foot-inner">
+    <a class="brand" href="#">
+      <svg class="mark" viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="#2563EB" transform="rotate(90 12 12)" d="M12 1.8 13.35 9.66 20.83 6.9 14.7 12l6.13 5.1-7.48-2.76L12 22.2l-1.35-7.86-7.48 2.76L9.3 12 3.17 6.9l7.48 2.76L12 1.8Z"/>
+      </svg>
+      OpenWorker
+    </a>
+    <span>© 2026 OpenWorker</span>
+    <div class="foot-links">
+      <a href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
+      <a href="https://github.com/andrewyng/openworker">GitHub</a>
+      <a href="#roster">Coworkers</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Homepage-only behavior below; inert on artifact viewer routes (the viewer
+// module owns the document there). No reindent on purpose — minimal diff.
+if (!document.documentElement.classList.contains('ow-artifact')) {
+
+// Hero workflow gallery — each complete frame exits before the next enters.
+(() => {
+  const car = document.getElementById('heroCarousel');
+  if (!car) return;
+  const slides = [...car.querySelectorAll('.slide')];
+  const dots = [...document.querySelectorAll('.aw-dots button')];
+  const win = car.closest('.appwin');
+  const label = document.getElementById('workflowLabel');
+  const count = document.getElementById('workflowCount');
+  const prev = document.querySelector('.aw-prev');
+  const next = document.querySelector('.aw-next');
+  const ph = document.getElementById('compPh');
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const recordingMode = document.documentElement.classList.contains('recording-mode');
+  let cur = 0, timer = null, animating = false, paused = false;
+  let introPending = false, introDelay = 1300;
+
+  const stop = () => { clearTimeout(timer); timer = null; };
+  const start = () => {
+    stop();
+    if (recordingMode && introPending) {
+      if (!paused) timer = setTimeout(finishRecordingIntro, introDelay);
+      return;
+    }
+    const duration = Number(slides[cur].dataset.duration || 7000);
+    if (!paused) {
+      timer = setTimeout(() => {
+        if (recordingMode && cur === slides.length - 1) {
+          queueRecordingIntro();
+        } else {
+          show((cur + 1) % slides.length, 1);
+        }
+      }, duration);
+    }
+  };
+  const updateMeta = () => {
+    dots.forEach((dot, i) => {
+      const active = i === cur;
+      dot.classList.toggle('on', active);
+      dot.setAttribute('aria-selected', String(active));
+    });
+    if (label) label.textContent = slides[cur].dataset.label || 'Workflow';
+    const cap = document.getElementById('slideOutcome');
+    if (cap) {
+      cap.classList.add('swap');
+      setTimeout(() => { cap.textContent = slides[cur].dataset.outcome || ''; cap.classList.remove('swap'); }, 180);
+    }
+    if (count) count.textContent = `${cur + 1} of ${slides.length}`;
+    if (ph) ph.textContent = slides[cur].dataset.ph || 'Ask the coworker…  (drop or paste files)';
+  };
+  const show = async (i, direction = 1) => {
+    if (animating || i === cur) return;
+    stop();
+    animating = true;
+    const old = cur;
+    let exit = null;
+    if (!reducedMotion && win.animate) {
+      exit = win.animate(
+        [{opacity:1,transform:'translateX(0)'},{opacity:0,transform:`translateX(${-44 * direction}px)`}],
+        {duration:240,easing:'cubic-bezier(.4,0,1,1)',fill:'forwards'}
+      );
+      await exit.finished.catch(() => {});
+    }
+    slides[old].classList.remove('is-active');
+    cur = i;
+    slides[cur].classList.add('is-active'); dots[cur].classList.add('on');
+    void slides[cur].offsetWidth;
+    updateMeta();
+    exit?.cancel();
+    if (!reducedMotion && win.animate) {
+      const enter = win.animate(
+        [{opacity:0,transform:`translateX(${44 * direction}px)`},{opacity:1,transform:'translateX(0)'}],
+        {duration:340,easing:'cubic-bezier(.22,.6,.2,1)'}
+      );
+      await enter.finished.catch(() => {});
+    }
+    animating = false;
+    start();
+  };
+  const finishRecordingIntro = () => {
+    introPending = false;
+    slides[cur].classList.remove('is-active');
+    cur = 0;
+    slides[cur].classList.add('is-active');
+    void slides[cur].offsetWidth;
+    updateMeta();
+    document.documentElement.classList.add('recording-playing');
+    start();
+  };
+  const queueRecordingIntro = (delay = 1300) => {
+    introPending = true;
+    introDelay = delay;
+    document.documentElement.classList.remove('recording-playing');
+    start();
+  };
+
+  dots.forEach((dot, i) => dot.addEventListener('click', () => show(i, i > cur ? 1 : -1)));
+  prev?.addEventListener('click', () => show((cur - 1 + slides.length) % slides.length, -1));
+  next?.addEventListener('click', () => show((cur + 1) % slides.length, 1));
+  const pause = () => { paused = true; stop(); };
+  const resume = () => { paused = false; start(); };
+  const gallery = document.querySelector('.hero-vignette');
+  if (!recordingMode) {
+    gallery?.addEventListener('mouseenter', pause);
+    gallery?.addEventListener('mouseleave', resume);
+    gallery?.addEventListener('focusin', pause);
+    gallery?.addEventListener('focusout', e => {
+      if (!gallery.contains(e.relatedTarget)) resume();
+    });
+  }
+  document.addEventListener('visibilitychange', () => document.hidden ? pause() : resume());
+  updateMeta();
+  if (recordingMode) {
+    queueRecordingIntro(1000);
+  } else {
+    start();
+  }
+})();
+
+// scroll reveals — staggered within each viewport batch
+const io = new IntersectionObserver((entries)=>{
+  let i = 0;
+  for (const e of entries) {
+    if (!e.isIntersecting) continue;
+    const el = e.target;
+    el.style.transitionDelay = (i++ * 70) + 'ms';
+    el.classList.add('in');
+    io.unobserve(el);
+  }
+},{threshold:.12,rootMargin:'0px 0px -40px 0px'});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+} // end homepage-only guard
+</script>
+
+</body>
+</html>

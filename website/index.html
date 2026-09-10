@@ -1,26 +1,26 @@
 <!doctype html>
-<html lang="zh-CN" data-theme="dark">
+<html lang="zh-CN" data-theme="light">
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<title>星轨 Astravia — 本地优先的开源 AI 桌面助手</title>
 	<meta
 		name="description"
-		content="星轨 Astravia 是本地优先的开源 AI 桌面助手：编码、文档、数据、自动化，一个应用全包。无云端、无账号、无遥测，数据与密钥始终留在你的本机。macOS / Windows / Linux 免费下载。"
+		content="星轨 Astravia 是本地优先的开源 AI 桌面助手：编码、文档、数据、自动化，一个应用全包。无云端、无账号、无遥测，数据与密钥始终留在本机。macOS / Windows 免费下载。"
 	/>
 	<meta property="og:title" content="星轨 Astravia — 本地优先的开源 AI 桌面助手" />
 	<meta property="og:description" content="无云端、无账号、无遥测。编码、文档、数据、自动化，一个应用全包。" />
 	<meta property="og:type" content="website" />
 	<meta property="og:locale" content="zh_CN" />
 	<meta name="twitter:card" content="summary" />
-	<meta name="theme-color" content="#08080a" />
+	<meta name="theme-color" content="#fbfbfd" />
 	<link rel="icon" href="/favicon.png" type="image/png" />
 	<link rel="apple-touch-icon" href="/favicon.png" />
 	<script>
 		(() => {
-			// 暗色为默认主题；仅当用户手动切换过浅色时才覆盖。
+			// 浅色为默认主题（Apple 纸感风）；仅当用户手动切换过暗色时才覆盖。
 			const stored = localStorage.getItem("astravia-theme");
-			document.documentElement.dataset.theme = stored === "light" ? "light" : "dark";
+			document.documentElement.dataset.theme = stored === "dark" ? "dark" : "light";
 		})();
 	</script>
 	<script type="module" src="/src/main.ts"></script>
@@ -43,7 +43,7 @@
 				<a href="#opensource" data-nav="opensource">开源</a>
 			</nav>
 			<div class="nav__actions">
-				<button class="theme-toggle" id="themeToggle" type="button" aria-label="切换到浅色模式" aria-pressed="false">
+				<button class="theme-toggle" id="themeToggle" type="button" aria-label="切换到深色模式" aria-pressed="false">
 					<svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" /></svg>
 					<svg class="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" /></svg>
 				</button>
@@ -53,7 +53,7 @@
 					</svg>
 					<span>GitHub</span>
 				</a>
-				<a class="btn btn--primary nav__download" href="https://dl.astravia.dev/app/v0.55.34/Astravia-0.55.34-arm64.dmg" target="_blank" rel="noopener">下载</a>
+				<a class="btn btn--primary nav__download" href="https://dl.astravia.dev/app/v0.55.35/Astravia-0.55.35-arm64.dmg" target="_blank" rel="noopener">下载</a>
 				<button class="nav__toggle" id="navToggle" type="button" aria-expanded="false" aria-controls="navLinks" aria-label="打开菜单">
 					<span></span><span></span><span></span>
 				</button>
@@ -73,9 +73,9 @@
 					<h1 class="hero__title">
 						你的 AI 助手，<br /><em class="hl">住在你的电脑里。</em>
 					</h1>
-					<p class="hero__sub">星轨 Astravia 是本地优先的开源 AI 桌面助手——编码、文档、数据、自动化，一个应用全包。无云端、无账号、无遥测，数据与密钥始终留在你的本机。</p>
+					<p class="hero__sub">本地优先的开源 AI 桌面助手——编码、文档、数据、自动化，一个应用全包。数据与密钥始终留在本机。</p>
 					<div class="hero__cta">
-					<a class="btn btn--primary btn--lg" href="https://dl.astravia.dev/app/v0.55.34/Astravia-0.55.34-arm64.dmg" target="_blank" rel="noopener">
+					<a class="btn btn--primary btn--lg" href="https://dl.astravia.dev/app/v0.55.35/Astravia-0.55.35-arm64.dmg" target="_blank" rel="noopener">
 							下载星轨
 							<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg>
 						</a>
@@ -122,7 +122,7 @@
 				<header class="section__head reveal">
 					<p class="section__kicker">STORY · 产品故事</p>
 					<h2 class="section__title">看见工作如何在星轨中向前推进。</h2>
-					<p class="section__lead">从一句需求到交付成果——每一步都在你眼前展开：计划、执行、审阅、沉淀，全部留在本机。</p>
+					<p class="section__lead">从一句需求到交付成果——计划、执行、审阅、沉淀，全部留在本机。</p>
 				</header>
 
 				<div class="story__grid">
@@ -141,7 +141,7 @@
 							<article class="story__copy-item is-active" data-story-copy="0">
 								<p class="story__step-num">01 · 提出需求</p>
 								<h3 class="story__step-title">交给星轨材料，告诉它最终目标</h3>
-								<p class="story__step-desc">选择“网站发布”工作流，附上已确认的材料文件，再用一句话说明希望交付的结果。</p>
+								<p class="story__step-desc">选择“网站发布”工作流，附上材料文件，一句话说明目标结果。</p>
 								<p class="story__step-tag"><span class="story__step-tick">✓</span>输入已准备 · 3 个源文件</p>
 							</article>
 							<article class="story__copy-item" data-story-copy="1">
@@ -153,19 +153,19 @@
 							<article class="story__copy-item" data-story-copy="2">
 								<p class="story__step-num">03 · 执行任务</p>
 								<h3 class="story__step-title">工具与数据在同一处流转</h3>
-								<p class="story__step-desc">调用 SQL 工作台、批量任务、文件读写与知识库——执行过程留痕可见，随时可以介入调整。</p>
+								<p class="story__step-desc">SQL 工作台、批量任务、文件与知识库在同一处流转，执行留痕，随时可介入。</p>
 								<p class="story__step-tag"><span class="story__step-tick">✓</span>工具调用 · 全部成功</p>
 							</article>
 							<article class="story__copy-item" data-story-copy="3">
 								<p class="story__step-num">04 · 审阅交付</p>
 								<h3 class="story__step-title">审阅真正的结果，而不是聊天记录</h3>
-								<p class="story__step-desc">交付的页面、报表与文件在应用内直接预览；不满足就继续迭代，满意了才收下。</p>
+								<p class="story__step-desc">交付的页面、报表与文件在应用内直接预览——不满意就继续迭代，满意才收下。</p>
 								<p class="story__step-tag"><span class="story__step-tick">✓</span>交付完成 · 已生成预览</p>
 							</article>
 							<article class="story__copy-item" data-story-copy="4">
 								<p class="story__step-num">05 · 沉淀复用</p>
 								<h3 class="story__step-title">刚交付的文件，收进知识库</h3>
-								<p class="story__step-desc">把工作成果收纳到本机知识库，下次同类任务直接引用——一切默认都在 ~/.astravia。</p>
+								<p class="story__step-desc">工作成果收进本机知识库，下次同类任务直接引用——默认都在 <code>~/.astravia</code>。</p>
 								<p class="story__step-tag"><span class="story__step-tick">✓</span>已收纳 · 数据留在本机</p>
 							</article>
 						</div>
@@ -202,7 +202,7 @@
 										<div class="story__composer" aria-hidden="true">
 											<span class="story__composer-chip story__composer-chip--mode">Work</span>
 											<span class="story__composer-chip">Claude</span>
-											<span class="story__composer-input">目标：中文官网，暗色优先，移动端可用。</span>
+															<span class="story__composer-input">目标：中文官网，浅色纸感，移动端可用。</span>
 										</div>
 									</div>
 									<div class="story__screen-item" data-story-screen="1">
@@ -291,7 +291,7 @@
 				<header class="section__head reveal">
 					<p class="section__kicker">PRODUCTS · 能力</p>
 					<h2 class="section__title">一个应用，八项能力。</h2>
-					<p class="section__lead">对话、数据库、批量任务与扩展生态在同一个窗口里协作——不需要额外客户端，不依赖任何外部服务。</p>
+					<p class="section__lead">对话、数据库、批量任务与扩展生态在同一窗口协作——无需额外客户端，不依赖外部服务。</p>
 				</header>
 
 				<div class="cards">
@@ -301,7 +301,7 @@
 						</span>
 						<span class="card__num">01</span>
 						<h3 class="card__title">对话与工作区</h3>
-						<p class="card__desc">消息流、工具调用与生成结果同屏可见；文件在应用内直接预览（PDF、Word、PPT、表格、图片、音视频、SVG），扫描版 PDF 支持离线 OCR。</p>
+						<p class="card__desc">消息流、工具调用与结果同屏可见；PDF、Word、PPT、表格、图片、音视频、SVG 等文件应用内直接预览，扫描版 PDF 支持离线 OCR。</p>
 						<ul class="card__tags"><li>会话</li><li>文件预览</li><li>离线 OCR</li></ul>
 					</article>
 					<article class="card reveal">
@@ -310,7 +310,7 @@
 						</span>
 						<span class="card__num">02</span>
 						<h3 class="card__title">数据库工作台</h3>
-						<p class="card__desc">内置连接管理与 SQL 工作台：表浏览、多标签查询、历史记录、CSV/JSON 导出。AI 可直接在对话中查数，写操作分级授权，生产连接默认只读。</p>
+						<p class="card__desc">内置连接管理与 SQL 工作台：表浏览、多标签查询、历史记录、CSV/JSON 导出。AI 对话中直接查数，写操作分级授权，生产连接默认只读。</p>
 						<ul class="card__tags"><li>SQL</li><li>40+ 数据库</li><li>AI 查数</li></ul>
 					</article>
 					<article class="card reveal">
@@ -319,7 +319,7 @@
 						</span>
 						<span class="card__num">03</span>
 						<h3 class="card__title">批量任务</h3>
-						<p class="card__desc">一条指令对多个目录批量执行；任务按「项目 + 任务」组织，可运行、可重试，进度实时可见。</p>
+						<p class="card__desc">一条指令批量执行多个目录；任务按「项目 + 任务」组织，可运行、可重试，进度实时可见。</p>
 						<ul class="card__tags"><li>批处理</li><li>可重试</li></ul>
 					</article>
 					<article class="card reveal">
@@ -346,7 +346,7 @@
 						</span>
 						<span class="card__num">06</span>
 						<h3 class="card__title">扩展生态</h3>
-						<p class="card__desc">从任意 GitHub 仓库安装 Skill、MCP Server、插件与能力包；本地文档加工成可检索知识库，全程不出本机。</p>
+						<p class="card__desc">从任意 GitHub 仓库安装 Skill、MCP Server 与能力包；本地文档加工成可检索知识库，全程不出本机。</p>
 						<ul class="card__tags"><li>Skill</li><li>MCP</li><li>插件</li><li>知识库</li></ul>
 					</article>
 					<article class="card reveal">
@@ -355,7 +355,7 @@
 						</span>
 						<span class="card__num">07</span>
 						<h3 class="card__title">UI 设计工作区</h3>
-						<p class="card__desc">无限画布上的设计稿就是真实可运行的界面；整份设计共享一套色彩系统，画框可导出渲染图或只读分享包。</p>
+						<p class="card__desc">画布上的设计稿就是真实可运行的界面；整套设计共享色彩系统，可导出渲染图或只读分享包。</p>
 						<ul class="card__tags"><li>设计画布</li><li>导出</li></ul>
 					</article>
 					<article class="card reveal">
@@ -364,7 +364,7 @@
 						</span>
 						<span class="card__num">08</span>
 						<h3 class="card__title">桌面集成</h3>
-						<p class="card__desc">全局快捷键唤起快捷面板；macOS Appshot 一键把前台窗口（截图、标题、屏上文字）交给 Agent；托盘常驻、自动更新、中英双语界面。</p>
+						<p class="card__desc">全局快捷键唤起快捷面板；macOS Appshot 一键把前台窗口交给 Agent；托盘常驻、自动更新、中英双语界面。</p>
 						<ul class="card__tags"><li>快捷键</li><li>Appshot</li><li>自动更新</li></ul>
 					</article>
 				</div>
@@ -424,7 +424,7 @@
 						<p class="section__kicker">MODELS · 模型</p>
 						<h2 class="section__title">用你自己的模型。<br />用你自己的 Key。</h2>
 					</header>
-					<p class="models__lead">内置多家服务商预设——预设只含接口地址与 API 类型，<strong>不含任何 Key</strong>。填入 Key 后立即拉取该账号可用模型，之后每 12 小时后台同步；价格与能力元数据由 models.dev 补齐，随包带快照兜底。</p>
+					<p class="models__lead">内置多家服务商预设——只含接口地址与 API 类型，<strong>不含任何 Key</strong>。填入 Key 立即拉取可用模型，之后每 12 小时后台同步；模型能力与价格由 models.dev 补齐，随包带快照兜底。</p>
 					<ul class="models__points">
 						<li>请求直发服务商——应用不代理、不转发、不计费</li>
 						<li>密钥只存本机钥匙串</li>
@@ -448,7 +448,7 @@
 						<p class="section__kicker">ECOSYSTEM · 生态</p>
 						<h2 class="section__title">一切皆插件。</h2>
 					</header>
-					<p class="ecosystem__lead">设计画布、内容创作、Git 图表、文件预览——这些工作区本身就是插件写出来的，同一套扩展点向第三方完全开放。每项能力必须在 <code>plugin.json</code> 显式声明权限，由宿主单独授权、运行时再校验；预装与第三方插件走同一套 API。</p>
+					<p class="ecosystem__lead">设计画布、内容创作、Git 图表、文件预览——这些工作区本身就是插件写出来的，同一套扩展点向第三方开放。权限在 <code>plugin.json</code> 显式声明，宿主单独授权、运行时校验；预装与第三方插件走同一套 API。</p>
 					<ul class="chips chips--alt">
 						<li>Skills</li><li>MCP Server</li><li>插件</li><li>主题</li><li>知识库</li>
 					</ul>
@@ -526,42 +526,62 @@
 				<header class="section__head reveal">
 					<p class="section__kicker">DOWNLOAD · 下载</p>
 					<h2 class="section__title">下载星轨。</h2>
-					<p class="section__lead">当前版本 <code>v0.55.34</code> · 免费 · 开源 · 免注册。macOS 安装包由 Cloudflare 全球分发，Windows / Linux 即将推出。</p>
+					<p class="section__lead">当前版本 <code>v0.55.35</code> · 免费 · 开源 · 免注册。macOS / Windows 已可下载，Linux 即将推出。</p>
 				</header>
 
-				<div class="dl-grid">
-					<article class="dl-card reveal">
-						<div class="dl-card__icon" aria-hidden="true">
-							<svg width="24" height="24" viewBox="0 0 26 26" fill="none"><path d="M21.7 18.1c-.6 1.4-1.3 2.6-2.4 3.8-.9 1-1.9 2-3.2 2-1.4 0-1.8-.8-3.4-.8-1.6 0-2.2.8-3.5.8-1.3.1-2.3-1-3.2-2-1.7-1.9-3-4.3-3.4-6.9-.4-2.8.3-5.5 1.7-7.2 1-1.3 2.5-2.1 4-2.2 1.4 0 2.7.9 3.5.9.8 0 2-1.1 3.7-1 1.1 0 2.2.5 3 1.3-2.6 1.5-2 4.9.2 6.2ZM15.6 3.1c0 .4 0 .8-.1 1.2-.4 1.7-1.8 3-3.4 3.3 0-.5 0-1 .1-1.5.3-1.6 1.7-2.9 3.4-3Z" fill="currentColor" /></svg>
+
+				<div class="dl reveal">
+					<p class="dl__detect" id="dlDetect" hidden>
+						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+						<span id="dlDetectText">已自动识别你的系统</span>
+					</p>
+					<div class="dl-panel">
+						<div class="dl-tabs" role="tablist" aria-label="选择操作系统">
+							<button class="dl-tab is-active" id="dlTabMacos" type="button" role="tab" aria-selected="true" aria-controls="dlPaneMacos" data-os="macos">
+								<svg width="15" height="15" viewBox="0 0 26 26" fill="none" aria-hidden="true"><path d="M21.7 18.1c-.6 1.4-1.3 2.6-2.4 3.8-.9 1-1.9 2-3.2 2-1.4 0-1.8-.8-3.4-.8-1.6 0-2.2.8-3.5.8-1.3.1-2.3-1-3.2-2-1.7-1.9-3-4.3-3.4-6.9-.4-2.8.3-5.5 1.7-7.2 1-1.3 2.5-2.1 4-2.2 1.4 0 2.7.9 3.5.9.8 0 2-1.1 3.7-1 1.1 0 2.2.5 3 1.3-2.6 1.5-2 4.9.2 6.2ZM15.6 3.1c0 .4 0 .8-.1 1.2-.4 1.7-1.8 3-3.4 3.3 0-.5 0-1 .1-1.5.3-1.6 1.7-2.9 3.4-3Z" fill="currentColor" /></svg>
+								macOS
+							</button>
+							<button class="dl-tab" id="dlTabWindows" type="button" role="tab" aria-selected="false" aria-controls="dlPaneWindows" data-os="windows" tabindex="-1">
+								<svg width="15" height="15" viewBox="0 0 26 26" fill="none" aria-hidden="true"><path d="M3.5 4.6 12 3.2v9H3.5V4.6Zm9.9-.7 9.1-1.6v10.3h-9.1V3.9Zm-9.9 11.2H12V22L3.5 20.7v-5.6Zm9.9 0h9.1v8.7l-9.1-1.6v-7.1Z" fill="currentColor" /></svg>
+								Windows
+							</button>
+							<button class="dl-tab" id="dlTabLinux" type="button" role="tab" aria-selected="false" aria-controls="dlPaneLinux" data-os="linux" tabindex="-1">
+								<svg width="15" height="15" viewBox="0 0 26 26" fill="none" aria-hidden="true"><path d="M13 2.5c-1.4 0-2.6.7-3.2 1.8-.6-.2-1.2-.1-1.7.2-.5.3-.8.9-1 1.6-.9.4-1.4 1.2-1.5 2.1-.3.1-.6.3-.9.6-.4.4-.6.9-.6 1.5 0 1.7.8 2.8 1.9 3.4-.6 1.6-.4 3.6.7 5.4 1 1.7 2.7 3 4.7 3.5l.2 2.4h3l.2-2.4c2-.5 3.7-1.8 4.7-3.5 1.1-1.8 1.3-3.8.7-5.4 1.1-.6 1.9-1.7 1.9-3.4 0-.6-.2-1.1-.6-1.5-.3-.3-.6-.5-.9-.6-.1-.9-.6-1.7-1.5-2.1-.2-.7-.5-1.3-1-1.6-.5-.3-1.1-.4-1.7-.2-.6-1.1-1.8-1.8-3.2-1.8Z" fill="currentColor" /></svg>
+								Linux
+							</button>
 						</div>
-						<h3 class="dl-card__name">macOS</h3>
-						<p class="dl-card__note">macOS 12+ · Apple Silicon</p>
-						<p class="dl-card__file">Astravia-0.55.34-arm64.dmg</p>
-						<a class="btn btn--primary dl-card__btn" href="https://dl.astravia.dev/app/v0.55.34/Astravia-0.55.34-arm64.dmg" target="_blank" rel="noopener">下载 macOS 版</a>
-					</article>
-					<article class="dl-card reveal">
-						<div class="dl-card__icon" aria-hidden="true">
-							<svg width="24" height="24" viewBox="0 0 26 26" fill="none"><path d="M3.5 4.6 12 3.2v9H3.5V4.6Zm9.9-.7 9.1-1.6v10.3h-9.1V3.9Zm-9.9 11.2H12V22L3.5 20.7v-5.6Zm9.9 0h9.1v8.7l-9.1-1.6v-7.1Z" fill="currentColor" /></svg>
+						<div class="dl-panes">
+							<div class="dl-pane is-active" id="dlPaneMacos" role="tabpanel" aria-labelledby="dlTabMacos">
+								<p class="dl-pane__platform">macOS</p>
+								<p class="dl-pane__note">macOS 12+ · Apple Silicon</p>
+								<p class="dl-pane__file">Astravia-0.55.35-arm64.dmg</p>
+								<a class="btn btn--primary btn--lg dl-pane__cta" href="https://dl.astravia.dev/app/v0.55.35/Astravia-0.55.35-arm64.dmg" target="_blank" rel="noopener">
+									下载 macOS 版
+									<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v12m0 0 5-5m-5 5-5-5" /><path d="M4 20h16" /></svg>
+								</a>
+							</div>
+							<div class="dl-pane" id="dlPaneWindows" role="tabpanel" aria-labelledby="dlTabWindows" hidden>
+								<p class="dl-pane__platform">Windows</p>
+								<p class="dl-pane__note">Windows 10+ · x64</p>
+								<p class="dl-pane__file">ASTRAVIA-0.55.35-win-x64.exe</p>
+								<a class="btn btn--primary btn--lg dl-pane__cta" href="https://dl.astravia.dev/app/v0.55.35/ASTRAVIA-0.55.35-win-x64.exe" target="_blank" rel="noopener">
+									下载 Windows 版
+									<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v12m0 0 5-5m-5 5-5-5" /><path d="M4 20h16" /></svg>
+								</a>
+							</div>
+							<div class="dl-pane" id="dlPaneLinux" role="tabpanel" aria-labelledby="dlTabLinux" hidden>
+								<p class="dl-pane__platform">Linux</p>
+								<p class="dl-pane__note">主流发行版 · AppImage</p>
+								<p class="dl-pane__file">即将推出</p>
+								<span class="btn btn--primary btn--lg dl-pane__cta" aria-disabled="true">即将推出</span>
+							</div>
 						</div>
-						<h3 class="dl-card__name">Windows</h3>
-						<p class="dl-card__note">Windows 10+ · x64</p>
-						<p class="dl-card__file">即将推出</p>
-						<span class="btn btn--primary dl-card__btn" aria-disabled="true">即将推出</span>
-					</article>
-					<article class="dl-card reveal">
-						<div class="dl-card__icon" aria-hidden="true">
-							<svg width="24" height="24" viewBox="0 0 26 26" fill="none"><path d="M13 2.5c-1.4 0-2.6.7-3.2 1.8-.6-.2-1.2-.1-1.7.2-.5.3-.8.9-1 1.6-.9.4-1.4 1.2-1.5 2.1-.3.1-.6.3-.9.6-.4.4-.6.9-.6 1.5 0 1.7.8 2.8 1.9 3.4-.6 1.6-.4 3.6.7 5.4 1 1.7 2.7 3 4.7 3.5l.2 2.4h3l.2-2.4c2-.5 3.7-1.8 4.7-3.5 1.1-1.8 1.3-3.8.7-5.4 1.1-.6 1.9-1.7 1.9-3.4 0-.6-.2-1.1-.6-1.5-.3-.3-.6-.5-.9-.6-.1-.9-.6-1.7-1.5-2.1-.2-.7-.5-1.3-1-1.6-.5-.3-1.1-.4-1.7-.2-.6-1.1-1.8-1.8-3.2-1.8Zm0 2c.9 0 1.6.5 1.9 1.3l.3.8.9-.1c.5 0 .9.2 1.1.5.2.3.3.7.3 1.2l-.1.6.6.2c.5.2.8.5.9 1 0 .6-.2 1.1-.8 1.4l-.6.3.3.6c.3.8.4 2.5-.6 3.9-.8 1.2-2 2.1-3.5 2.5l-.8.2v1.1h-1.5l-.3-1.1h-2l-.3 1.1H9.9v-1.1l-.8-.2c-1.5-.4-2.7-1.3-3.5-2.5-1-1.4-.9-3.1-.6-3.9l.3-.6-.6-.3c-.6-.3-.8-.8-.8-1.4.1-.5.4-.8.9-1l.6-.2-.1-.6c0-.5.1-.9.3-1.2.2-.3.6-.5 1.1-.5l.9.1.3-.8C8.4 5 9.1 4.5 10 4.5h1.5c.9-1 1.8-1.6 3-1.8Z" fill="currentColor" /></svg>
-						</div>
-						<h3 class="dl-card__name">Linux</h3>
-						<p class="dl-card__note">主流发行版 · AppImage</p>
-						<p class="dl-card__file">即将推出</p>
-						<span class="btn btn--primary dl-card__btn" aria-disabled="true">即将推出</span>
-					</article>
+					</div>
 				</div>
 
 				<div class="dl-notes reveal">
 					<ul>
-						<li>安装包由官方下载站（Cloudflare R2）全球分发，自动更新由应用内配置决定。</li>
+						<li>安装包与自动更新均来自官方源，更新策略由应用内配置决定。</li>
 						<li>macOS 首次打开如提示「无法验证开发者」，请在访达中右键应用 →「打开」。</li>
 						<li>Windows 提示 SmartScreen 时，点击「更多信息」→「仍要运行」。</li>
 					</ul>
@@ -577,7 +597,7 @@
 						<p class="section__kicker">OPEN SOURCE · 开源</p>
 						<h2 class="section__title">开源，Apache-2.0。</h2>
 					</header>
-					<p class="oss__lead">星轨是独立自研的桌面 Agent 应用，完整开源。你可以自托管、定制或参与开发——也可以从源码构建属于自己的一版。</p>
+					<p class="oss__lead">星轨是独立自研的桌面 Agent 应用，完整开源。自托管、定制或参与开发，也可以从源码构建属于自己的版本。</p>
 					<a class="btn btn--ghost btn--lg" href="https://github.com/maomaochong-ai/astravia" target="_blank" rel="noopener">
 						github.com/maomaochong-ai/astravia
 						<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m0 0-6-6m6 6-6 6" /></svg>
@@ -625,7 +645,7 @@
 					<details class="faq__item">
 						<summary>如何更新到新版本？</summary>
 						<div class="faq__body">
-							<p>自动更新由应用内配置决定（基于 electron-updater）；也可以随时到官网下载最新安装包覆盖安装。</p>
+							<p>自动更新由应用内配置决定，也可以随时到官网下载最新安装包覆盖安装。</p>
 						</div>
 					</details>
 					<details class="faq__item">
