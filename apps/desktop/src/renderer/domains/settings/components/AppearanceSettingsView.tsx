@@ -12,7 +12,7 @@ import {
 } from "@shared/theme/new-session-texture";
 import type { OrnamentId } from "@shared/theme/ornament";
 import type { ThemeDef } from "@shared/theme/tokens";
-import type { MouseEvent, ReactNode } from "react";
+import type { CSSProperties, MouseEvent, ReactNode } from "react";
 import { SettingsAiAssist } from "../ai-assist";
 import appearanceMascot from "../assets/appearance-mascot.webp";
 import themeLock from "../assets/theme-lock.webp";
@@ -442,10 +442,20 @@ function DecorCard({
  * 复用新会话页那一档的实现而不是另画一张示意图：网格的疏密、淡出与那团光晕
  * 都由实现决定，另画一份迟早会和页面对不上。
  */
+/**
+ * 流光按整页尺寸算，模糊半径 7em 塞进这枚方格只剩一团糊。
+ * 预览里把模糊按比例缩小、格距同步收紧，点阵才不至于只剩两三行。
+ */
+const AURORA_PREVIEW_VARS = {
+	"--ns-aurora-blur": "2.2em",
+	"--ns-aurora-cell": "5px",
+	"--ns-aurora-dot": "1.4px",
+} as CSSProperties;
+
 function TexturePreview({ id }: { id: NewSessionTextureId }): JSX.Element {
 	const Texture = NEW_SESSION_TEXTURE_COMPONENTS[id];
 	return (
-		<div className="relative h-full w-full">
+		<div className="relative h-full w-full" style={id === "aurora" ? AURORA_PREVIEW_VARS : undefined}>
 			{Texture ? (
 				<Texture />
 			) : (
@@ -565,21 +575,19 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 				</div>
 			)}
 
-			{/* 新会话页装饰：装饰件与纹理都只改这一页，收进同一块区域里，用户不必逐项猜它们作用在哪。 */}
-			<section className="mb-6 rounded-xl border border-border/50 bg-muted/20 p-4">
-				<div className="mb-4 flex items-start gap-2">
-					<span className="icon-[solar--gallery-round-linear] mt-0.5 h-4 w-4 shrink-0 text-primary" />
-					<div className="min-w-0">
-						<h2 className="text-[15px] font-semibold text-foreground">{model.labels.newSessionDecorTitle}</h2>
-						<p className="mt-0.5 text-[12px] text-muted-foreground">{model.labels.newSessionDecorHint}</p>
-					</div>
+			{/* 新会话页装饰：装饰件与纹理都只改这一页，连排在一起用户不必逐项猜它们作用在哪。
+			    不套卡片、不加边框——这一页其余分区都是平铺的，单独给它加一层壳反而把它拔高成了别的东西。 */}
+			<div className="mb-6">
+				<div className="mb-4">
+					<h2 className="text-[15px] font-semibold text-foreground">{model.labels.newSessionDecorTitle}</h2>
+					<p className="mt-1 text-[12px] text-muted-foreground">{model.labels.newSessionDecorHint}</p>
 				</div>
 
 				{/* 装饰件：输入框上方那块挂饰位 */}
 				<div className="mb-5">
 					<SettingHeading title={model.labels.sections.ornament} section={SETTINGS_SECTION["appearance-ornament"]} className="mb-1 text-[13px]" />
 					<p className="mb-3 text-[12px] text-muted-foreground">{model.labels.ornamentHint}</p>
-					<div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-4">
+					<div className="grid grid-cols-4 gap-3">
 						{model.ornamentOptions.map((option) => (
 							<OrnamentCard key={option.id} {...option} onSelect={model.actions.setOrnament} />
 						))}
@@ -590,13 +598,13 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 				<div>
 					<SettingHeading title={model.labels.sections.texture} section={SETTINGS_SECTION["appearance-texture"]} className="mb-1 text-[13px]" />
 					<p className="mb-3 text-[12px] text-muted-foreground">{model.labels.textureHint}</p>
-					<div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-4">
+					<div className="grid grid-cols-4 gap-3">
 						{model.textureOptions.map((option) => (
 							<TextureCard key={option.id} {...option} onSelect={model.actions.setTexture} />
 						))}
 					</div>
 				</div>
-			</section>
+			</div>
 
 			<div className="mb-6">
 				<SettingHeading title={model.labels.sections.sidebar} section={SETTINGS_SECTION["appearance-sidebar"]} className="mb-3" />
