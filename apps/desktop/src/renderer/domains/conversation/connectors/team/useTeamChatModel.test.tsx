@@ -931,6 +931,9 @@ describe("useTeamChatModel streaming flow", () => {
 
 		await act(async () => result.current.actions.abort());
 		expect(window.vetta.agentTeams.abort).toHaveBeenCalledWith(baseSession.id);
+		expect(result.current.model.feedItems).toEqual([
+			expect.objectContaining({ kind: "agent", phase: "aborted", text: "member still working" }),
+		]);
 	});
 
 	it("keeps showing a member turn that restarts after a stop", async () => {

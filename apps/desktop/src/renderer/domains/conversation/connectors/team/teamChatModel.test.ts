@@ -553,7 +553,7 @@ describe("team chat stream state", () => {
 		});
 	});
 
-	it("removes an aborted turn so a cancelled request does not remain pending", () => {
+	it("keeps an aborted turn as a terminal tombstone so late events cannot recreate it", () => {
 		const state = reduceTeamStreamState(reduceTeamStreamState({}, streamEvent("turn", 1, "partial")), {
 			type: "conversation.agent-message-discard",
 			conversationId: "session",
@@ -564,7 +564,33 @@ describe("team chat stream state", () => {
 			reason: "aborted",
 			timestamp: 2,
 		});
-		expect(state.turn).toBeUndefined();
+		expect(state.turn?.message).toMatchObject({ phase: "aborted", text: "partial", endedAt: 2 });
+
+		const late = reduceTeamStreamState(state, streamEvent("turn", 3, "late"));
+		expect(late).toBe(state);
+		expect(late.turn?.message.text).toBe("partial");
+	});
+
+	it("keeps partial leader output visible after the Team turn is aborted", () => {
+		const streams = reduceTeamStreamState(reduceTeamStreamState({}, streamEvent("turn", 1, "partial")), {
+			type: "conversation.agent-message-discard",
+			conversationId: "session",
+			messageId: "turn",
+			turnId: "request",
+			author: { kind: "agent", id: "leader" },
+			sequence: 2,
+			reason: "aborted",
+			timestamp: 2,
+		});
+		const items = projectTeamConversationTimeline({
+			snapshot: snapshot(),
+			pending: undefined,
+			streams,
+			members: [member],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		expect(items).toEqual([expect.objectContaining({ kind: "agent", phase: "aborted", text: "partial" })]);
 	});
 
 	it("keeps a completed turn closed when a late stream event arrives", () => {

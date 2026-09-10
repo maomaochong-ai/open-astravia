@@ -273,19 +273,28 @@ export function reduceTeamStreamState(state: TeamStreamState, event: DesktopTeam
 				},
 			};
 		}
+		if (event.reason === "aborted") {
+			return {
+				...state,
+				[event.messageId]: {
+					...current,
+					sequence: event.sequence,
+					message: { ...current.message, phase: "aborted", endedAt: event.timestamp },
+				},
+			};
+		}
 		const next = { ...state };
 		delete next[event.messageId];
 		return next;
 	}
+	if (event.type === "desktop.team-context-usage") return state;
+	const current = state[event.messageId];
+	if (current?.message.phase === "completed" || current?.message.phase === "aborted") return state;
 	if (event.type === "desktop.team-tool-execution" || event.type === "conversation.tool-execution") {
-		const current = state[event.messageId];
-		if (current?.message.phase === "completed") return state;
 		const next = reduceConversationToolExecutionEvent(current, event);
 		if (next === current) return state;
 		return { ...state, [event.messageId]: next };
 	}
-	if (event.type === "desktop.team-context-usage") return state;
-	const current = state[event.messageId];
 	const next = reduceConversationMessageEvent(current, event);
 	if (next === current) return state;
 	return {
@@ -359,7 +368,9 @@ export function projectTeamConversationTimeline({
 		projectMemberConversation(conversation.memberId, conversation.history),
 	);
 	const latestProjectedMemberItem = projectedMemberItems.at(-1);
-	const liveMemberTurns = Object.values(streams).filter((turn) => turn.message.phase === "streaming");
+	const liveMemberTurns = Object.values(streams).filter(
+		(turn) => turn.message.phase === "streaming" || turn.message.phase === "aborted",
+	);
 	const consumedLiveMessageIds = new Set<string>();
 	// User input is persisted in the coordination conversation before member
 	// turns are scheduled. Keep it as the canonical timeline item even when
@@ -570,7 +581,7 @@ export function projectTeamConversationTimeline({
 	for (const turn of Object.values(streams).sort(
 		(left, right) => (left.message.startedAt ?? 0) - (right.message.startedAt ?? 0),
 	)) {
-		if (turn.message.phase !== "streaming") continue;
+		if (turn.message.phase !== "streaming" && turn.message.phase !== "aborted") continue;
 		if (consumedLiveMessageIds.has(turn.message.id)) continue;
 		if (memberId && turn.message.authorId !== memberId) continue;
 		if (
