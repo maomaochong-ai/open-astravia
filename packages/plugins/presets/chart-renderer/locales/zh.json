@@ -9,6 +9,7 @@
 	"chart.defaultTitle": "图表",
 	"action.downloadPng": "下载 PNG",
 	"state.preparing": "正在准备图表...",
+	"state.cancelled": "图表生成已取消",
 	"error.invalidArgs": "图表参数无效，Agent 可以根据 chart-renderer skill 修正后重试。",
 	"error.unavailable": "图表数据不可用",
 	"error.renderFailed": "图表渲染失败，请让 Agent 按 chart-renderer skill 重试。"

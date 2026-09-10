@@ -269,6 +269,7 @@ export {
 	SKILL_TYPES,
 	type SkillInfo,
 	type SkillListInput,
+	type SkillProvenance,
 	type SkillSetEnabledInput,
 	type SkillSetEnabledResult,
 	type SkillType,

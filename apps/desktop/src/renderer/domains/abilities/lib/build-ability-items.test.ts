@@ -189,6 +189,33 @@ describe("buildSkillAbilities", () => {
 		]);
 	});
 
+	it("maps structured and legacy local skill provenance without changing builtin compatibility", () => {
+		const items = buildSkillAbilities(
+			[],
+			createState({
+				localSkills: [
+					{
+						name: "explicit-sdk",
+						description: "",
+						source: "sdk:dynamic",
+						type: "skill",
+						provenance: { kind: "provided", providerType: "sdk", providerId: "dynamic" },
+					},
+					{ name: "plugin-legacy", description: "", source: "plugin", sourcePluginId: "design", type: "skill" },
+					{ name: "builtin", description: "", source: "builtin", type: "skill" },
+					{ name: "user", description: "", source: "user", type: "skill" },
+				],
+			}),
+		);
+
+		expect(items.map((item) => [item.slug, item.skillProvenance])).toEqual([
+			["explicit-sdk", { kind: "provided", providerType: "sdk", providerId: "dynamic" }],
+			["plugin-legacy", { kind: "provided", providerType: "plugin", providerId: "design" }],
+			["builtin", { kind: "builtin", providerId: "vetta" }],
+			["user", { kind: "native", scope: "user" }],
+		]);
+	});
+
 	it("gives app-shipped skills their bundled icon, and only them", () => {
 		const items = buildSkillAbilities(
 			[],

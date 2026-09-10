@@ -99,6 +99,7 @@ export class TeamMemberAttemptRunner {
 			const current = this.options.collaborationStore
 				.read(configuredSession)
 				.workItems.find((item) => item.id === collaboration.workItem.id);
+			const cancelled = input.signal?.aborted === true || current?.state === "cancelled";
 			if (current?.state === "running" && current.currentAttemptId === collaboration.attempt.id) {
 				const failure = readRuntimeFailure(error);
 				await this.options.settleAttempt(
@@ -107,7 +108,7 @@ export class TeamMemberAttemptRunner {
 					collaboration.attempt,
 					classifyTeamAttemptTerminal({
 						hasPublishableMessage: false,
-						cancelled: input.signal?.aborted ?? false,
+						cancelled,
 						...(failure ? { issue: classifyTeamExecutionIssue(failure) } : {}),
 					}),
 				);
@@ -115,7 +116,7 @@ export class TeamMemberAttemptRunner {
 			// A user stop is a normal terminal outcome. The cancellation has already
 			// been persisted above (when an attempt was admitted); do not turn it into
 			// an IPC rejection that makes the renderer restore the submitted draft.
-			if (input.signal?.aborted) return this.options.sessionState.get(configuredSession.id) ?? configuredSession;
+			if (cancelled) return this.options.sessionState.get(configuredSession.id) ?? configuredSession;
 			throw error;
 		}
 	}
@@ -189,9 +190,10 @@ export class TeamMemberAttemptRunner {
 		} catch (error) {
 			const failureSource = error instanceof TeamSharedContextRuntimeDeliveryError ? error.runtimeCause : error;
 			const failure = readRuntimeFailure(failureSource);
+			const cancelled = this.isCancelled(configuredSession, collaboration.workItem.id, signal);
 			const terminal = classifyTeamAttemptTerminal({
 				hasPublishableMessage: false,
-				cancelled: signal?.aborted ?? false,
+				cancelled,
 				...(failure ? { issue: classifyTeamExecutionIssue(failure) } : {}),
 			});
 			await this.options.settleAttempt(configuredSession, collaboration.workItem, collaboration.attempt, terminal);
@@ -309,7 +311,7 @@ export class TeamMemberAttemptRunner {
 				readRuntimeFailure(error) ??
 				(isAIError(error) ? runtimeFailureFromError(error) : undefined) ??
 				promptFailure;
-			const cancelled = signal?.aborted ?? false;
+			const cancelled = this.isCancelled(configuredSession, collaboration.workItem.id, signal);
 			let cancelledResultMessageId: string | undefined;
 			if (cancelled) {
 				// Runtime Core persists an aborted assistant message (including tool
@@ -385,6 +387,16 @@ export class TeamMemberAttemptRunner {
 			signal?.removeEventListener("abort", abortTarget);
 		}
 		if (promptFailureMessage) {
+			if (this.isCancelled(configuredSession, collaboration.workItem.id, signal)) {
+				await this.options.settleAttempt(
+					configuredSession,
+					collaboration.workItem,
+					collaboration.attempt,
+					classifyTeamAttemptTerminal({ hasPublishableMessage: false, cancelled: true }),
+				);
+				this.options.eventHub.discard(activeTurn, "aborted");
+				return this.options.sessionState.get(configuredSession.id) ?? configuredSession;
+			}
 			const terminal = classifyTeamAttemptTerminal({
 				hasPublishableMessage: false,
 				cancelled: false,
@@ -466,6 +478,13 @@ export class TeamMemberAttemptRunner {
 			sharedContextCount: preparedContext.count,
 		});
 		return next;
+	}
+
+	private isCancelled(session: TeamSessionDocument, workItemId: string, signal?: AbortSignal): boolean {
+		if (signal?.aborted === true) return true;
+		return this.options.collaborationStore
+			.read(session)
+			.workItems.some((item) => item.id === workItemId && item.state === "cancelled");
 	}
 }
 

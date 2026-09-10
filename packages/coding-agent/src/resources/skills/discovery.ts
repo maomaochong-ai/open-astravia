@@ -8,6 +8,7 @@ import type {
 	LoadSkillsResult,
 	Skill,
 	SkillFrontmatter,
+	SkillProvenance,
 	SkillType,
 } from "./contracts.js";
 
@@ -16,6 +17,14 @@ const MAX_DESCRIPTION_LENGTH = 1024;
 const IGNORE_FILE_NAMES = [".gitignore", ".ignore", ".fdignore"];
 const PROJECT_CONFIG_DIRECTORY = ".vetta";
 type IgnoreMatcher = ReturnType<typeof ignore>;
+
+function provenanceForSource(source: string): SkillProvenance {
+	if (source === "builtin") return { kind: "builtin", providerId: "vetta" };
+	if (source.startsWith("sdk:")) return { kind: "provided", providerType: "sdk", providerId: source.slice(4) };
+	if (source.startsWith("plugin:")) return { kind: "provided", providerType: "plugin", providerId: source.slice(7) };
+	if (source.startsWith("runtime:")) return { kind: "provided", providerType: "runtime", providerId: source.slice(8) };
+	return { kind: "native", scope: source };
+}
 
 function toPosixPath(path: string, separator: string): string {
 	return path.split(separator).join("/");
@@ -126,6 +135,7 @@ async function loadSkillFromFile(
 				filePath,
 				baseDir,
 				source,
+				provenance: provenanceForSource(source),
 				type,
 				disableModelInvocation: frontmatter["disable-model-invocation"] === true,
 				content,

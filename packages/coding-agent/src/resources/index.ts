@@ -64,5 +64,6 @@ export {
 	loadSkillsFromDir,
 	type Skill,
 	type SkillFrontmatter,
+	type SkillProvenance,
 	type SkillType,
 } from "./skills/index.js";

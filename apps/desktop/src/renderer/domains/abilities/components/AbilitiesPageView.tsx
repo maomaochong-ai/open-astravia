@@ -161,13 +161,13 @@ export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Ele
 									<section key={group.category} className="flex flex-col gap-2">
 										<div className="flex items-baseline gap-2">
 											<h2 className="text-[13px] font-semibold text-foreground/90">
-												{group.category === ABILITY_CATEGORY_UNCATEGORIZED
-													? t("group.uncategorized")
-													: group.category === ABILITY_CATEGORY_CONNECTORS
-														? t("group.connectors")
-														: group.category === ABILITY_CATEGORY_VETTA_BUILTIN
-															? t("group.vettaBuiltin")
-															: resolveCategoryLabel(group.category, group.categoryI18n, i18n.language)}
+														{group.category === ABILITY_CATEGORY_UNCATEGORIZED
+															? t("group.uncategorized")
+															: group.category === ABILITY_CATEGORY_CONNECTORS
+																? t("group.connectors")
+																: group.category === ABILITY_CATEGORY_VETTA_BUILTIN
+																	? t("group.vettaBuiltin")
+																	: resolveCategoryLabel(group.category, group.categoryI18n, i18n.language)}
 											</h2>
 											<span className="text-[11px] tabular-nums text-muted-foreground/50">
 												{group.items.length}

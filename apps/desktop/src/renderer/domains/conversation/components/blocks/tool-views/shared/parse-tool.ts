@@ -8,6 +8,7 @@ import { shortenPath } from "./format";
 export function toolCallIconColorClass(status: ToolCallBlock["status"], isError?: boolean): string {
 	if (status === "error" || isError === true) return "text-destructive/70";
 	if (status === "success") return "text-emerald-400";
+	if (status === "cancelled") return "text-muted-foreground/60";
 	return "text-muted-foreground/50";
 }
 
@@ -219,5 +220,6 @@ export function bashHeaderLabel(status: ToolCallBlock["status"], cmd: string): s
 	const short = truncateFirstLine(cmd);
 	if (status === "pending") return i18n.t("chat:bashHeader.statusPending", { short });
 	if (status === "error") return i18n.t("chat:bashHeader.statusError", { short });
+	if (status === "cancelled") return i18n.t("chat:bashHeader.statusCancelled", { short });
 	return i18n.t("chat:bashHeader.statusSuccess", { short });
 }

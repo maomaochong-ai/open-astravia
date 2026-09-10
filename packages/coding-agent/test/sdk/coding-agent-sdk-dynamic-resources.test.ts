@@ -52,7 +52,12 @@ describe("Coding Agent SDK dynamic resources", () => {
 
 		const initial = adapter.transformSkills({ skills: [], diagnostics: [] }).skills;
 		expect(initial.map(projectCodingAgentSkillInfo)).toEqual([
-			expect.objectContaining({ name: "dynamic-browser", source: "sdk:dynamic", type: "skill" }),
+			expect.objectContaining({
+				name: "dynamic-browser",
+				source: "sdk:dynamic",
+				type: "skill",
+				provenance: { kind: "provided", providerType: "sdk", providerId: "dynamic" },
+			}),
 		]);
 		expect(initial[0]?.content).toBe("Dynamic instructions");
 
@@ -69,6 +74,40 @@ describe("Coding Agent SDK dynamic resources", () => {
 		expect(adapter.transformSkills({ skills: [], diagnostics: [] }).skills.map(({ name }) => name)).toEqual([
 			"dynamic-search",
 		]);
+		await adapter.dispose();
+	});
+
+	it("preserves explicit contribution provenance and fills it for legacy contributions", async () => {
+		const adapter = await CodingAgentSdkResourceSourceAdapter.create({
+			cwd: "C:\\workspace",
+			resources: {
+				skills: [
+					{
+						name: "explicit-runtime",
+						description: "Explicit",
+						content: "Explicit",
+						provenance: { kind: "provided", providerType: "runtime", providerId: "runner" },
+					},
+					{ name: "legacy-sdk", description: "Legacy", content: "Legacy" },
+				],
+			},
+		});
+
+		const projected = adapter
+			.transformSkills({ skills: [], diagnostics: [] })
+			.skills.map(projectCodingAgentSkillInfo);
+		expect(projected).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					name: "explicit-runtime",
+					provenance: { kind: "provided", providerType: "runtime", providerId: "runner" },
+				}),
+				expect.objectContaining({
+					name: "legacy-sdk",
+					provenance: { kind: "provided", providerType: "sdk", providerId: "sdk" },
+				}),
+			]),
+		);
 		await adapter.dispose();
 	});
 

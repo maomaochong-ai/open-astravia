@@ -10,6 +10,8 @@ import type { RuntimeHostSessionRecord } from "./types.js";
 
 export interface RuntimeHostSessionLifecycleOptions {
 	readonly directory: RuntimeHostSessionDirectory;
+	/** 与 Session Directory 使用同一规范化规则，确保 Windows 路径大小写/分隔符变体共享创建锁。 */
+	readonly normalizeSessionPath?: (sessionPath: string) => string;
 	readonly events: RuntimeHostSessionEventRelay;
 	readonly queueSidecar: RuntimeHostQueueSidecar;
 	readonly backend: RuntimeHostAgentBackendRegistry;
@@ -34,17 +36,53 @@ export interface RuntimeHostSessionLifecycleOptions {
  */
 export class RuntimeHostSessionLifecycle {
 	private readonly disposeAttempts = new Map<string, Promise<void>>();
+	private readonly pendingSessionCreations = new Map<string, Promise<{ sessionId: string }>>();
 	private pendingCreationCount = 0;
 	private readonly pendingCreationWaiters = new Set<() => void>();
 
 	constructor(private readonly options: RuntimeHostSessionLifecycleOptions) {}
 
 	async createSession(config: SessionConfig = {}): Promise<{ sessionId: string }> {
+		const sessionPath = config.sessionPath?.trim() || undefined;
+		if (sessionPath) {
+			const creationKey = this.sessionCreationKey(sessionPath);
+			const pending = this.pendingSessionCreations.get(creationKey);
+			if (pending) {
+				const result = await pending;
+				await this.applyPendingExecutionMode(sessionPath, config.executionMode);
+				return result;
+			}
+
+			const creation = this.createSessionWithAdmission(config);
+			this.pendingSessionCreations.set(creationKey, creation);
+			try {
+				return await creation;
+			} finally {
+				if (this.pendingSessionCreations.get(creationKey) === creation) {
+					this.pendingSessionCreations.delete(creationKey);
+				}
+			}
+		}
+		return this.createSessionWithAdmission(config);
+	}
+
+	private createSessionWithAdmission(config: SessionConfig): Promise<{ sessionId: string }> {
 		const releaseAdmission = this.beginCreation();
-		try {
-			return await this.createSessionInternal(config);
-		} finally {
-			releaseAdmission();
+		return this.createSessionInternal(config).finally(releaseAdmission);
+	}
+
+	private sessionCreationKey(sessionPath: string): string {
+		return this.options.normalizeSessionPath?.(sessionPath) ?? sessionPath;
+	}
+
+	private async applyPendingExecutionMode(
+		sessionPath: string,
+		executionMode: SessionExecutionMode | undefined,
+	): Promise<void> {
+		if (executionMode === undefined) return;
+		const existing = this.findBySessionPath(sessionPath);
+		if (existing && existing.handle.executionMode !== executionMode) {
+			await this.options.operations.setExecutionMode(existing.sessionId, executionMode);
 		}
 	}
 

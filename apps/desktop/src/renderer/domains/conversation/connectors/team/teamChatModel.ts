@@ -273,19 +273,37 @@ export function reduceTeamStreamState(state: TeamStreamState, event: DesktopTeam
 				},
 			};
 		}
+		if (event.reason === "aborted") {
+			return {
+				...state,
+				[event.messageId]: {
+					...current,
+					sequence: event.sequence,
+					message: {
+						...current.message,
+						phase: "aborted",
+						endedAt: event.timestamp,
+						blocks: current.message.blocks.map((block) =>
+							block.type === "tool_call" && block.status === "pending"
+								? { ...block, status: "cancelled" as const, currentPhase: undefined }
+								: block,
+						),
+					},
+				},
+			};
+		}
 		const next = { ...state };
 		delete next[event.messageId];
 		return next;
 	}
+	if (event.type === "desktop.team-context-usage") return state;
+	const current = state[event.messageId];
+	if (current?.message.phase === "completed" || current?.message.phase === "aborted") return state;
 	if (event.type === "desktop.team-tool-execution" || event.type === "conversation.tool-execution") {
-		const current = state[event.messageId];
-		if (current?.message.phase === "completed") return state;
 		const next = reduceConversationToolExecutionEvent(current, event);
 		if (next === current) return state;
 		return { ...state, [event.messageId]: next };
 	}
-	if (event.type === "desktop.team-context-usage") return state;
-	const current = state[event.messageId];
 	const next = reduceConversationMessageEvent(current, event);
 	if (next === current) return state;
 	return {
@@ -359,7 +377,9 @@ export function projectTeamConversationTimeline({
 		projectMemberConversation(conversation.memberId, conversation.history),
 	);
 	const latestProjectedMemberItem = projectedMemberItems.at(-1);
-	const liveMemberTurns = Object.values(streams).filter((turn) => turn.message.phase === "streaming");
+	const liveMemberTurns = Object.values(streams).filter(
+		(turn) => turn.message.phase === "streaming" || turn.message.phase === "aborted",
+	);
 	const consumedLiveMessageIds = new Set<string>();
 	// User input is persisted in the coordination conversation before member
 	// turns are scheduled. Keep it as the canonical timeline item even when
@@ -570,7 +590,7 @@ export function projectTeamConversationTimeline({
 	for (const turn of Object.values(streams).sort(
 		(left, right) => (left.message.startedAt ?? 0) - (right.message.startedAt ?? 0),
 	)) {
-		if (turn.message.phase !== "streaming") continue;
+		if (turn.message.phase !== "streaming" && turn.message.phase !== "aborted") continue;
 		if (consumedLiveMessageIds.has(turn.message.id)) continue;
 		if (memberId && turn.message.authorId !== memberId) continue;
 		if (
@@ -721,26 +741,35 @@ function projectLegacySnapshotMessages(snapshot: DesktopTeamSessionSnapshot): Ch
 			timestamp: record.timestamp,
 			executions: toolExecutions,
 		});
+		const normalized =
+			projected.kind === "agent" && (record.message.stopReason === "stop" || record.message.stopReason === "aborted")
+				? patchLegacyPendingTools(projected, record.message.stopReason === "aborted")
+				: projected;
 		return {
-			...projected,
+			...normalized,
 			// Public Team records intentionally omit private tool-result entries.
 			// Once the terminal assistant record is persisted, a pending tool block
 			// is no longer running and must not render as an endless spinner.
-			...(record.message.stopReason === "stop" && "blocks" in projected
-				? {
-						blocks: (projected.blocks as readonly any[]).map((block) =>
-							block.type === "tool_call" && block.status === "pending"
-								? { ...block, status: "success" as const }
-								: block,
-						),
-					}
-				: {}),
 			// The same Team turn moves through waiting, streaming and persisted
 			// projections. Keep one DOM identity across every phase so the virtual
 			// list updates the row in place instead of visibly reloading it.
 			renderKey: teamAgentTurnRenderKey(record.author.id, record.turnId),
 		};
 	});
+}
+
+function patchLegacyPendingTools(
+	projected: Extract<ChatConversationItem, { kind: "agent" }>,
+	cancelled: boolean,
+): Extract<ChatConversationItem, { kind: "agent" }> {
+	return {
+		...projected,
+		blocks: projected.blocks.map((block) =>
+			block.type === "tool_call" && block.status === "pending"
+				? { ...block, status: cancelled ? ("cancelled" as const) : ("success" as const), currentPhase: undefined }
+				: block,
+		),
+	};
 }
 
 function teamUserTurnRenderKey(turnId: string): string {
@@ -772,11 +801,12 @@ function mergeTeamAgentTurns(items: readonly ConversationAgentMessageViewModel[]
 
 		const existing = merged[existingIndex];
 		const phase = item.phase;
-		const blocks = [...existing.blocks, ...item.blocks].map((block) =>
-			phase === "completed" && block.type === "tool_call" && block.status === "pending"
-				? { ...block, status: "success" as const }
-				: block,
-		);
+		const blocks = [...existing.blocks, ...item.blocks].map((block) => {
+			if (block.type !== "tool_call" || block.status !== "pending") return block;
+			if (phase === "aborted") return { ...block, status: "cancelled" as const, currentPhase: undefined };
+			if (phase === "completed") return { ...block, status: "success" as const, currentPhase: undefined };
+			return block;
+		});
 		merged[existingIndex] = {
 			...existing,
 			phase,

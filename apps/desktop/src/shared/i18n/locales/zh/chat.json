@@ -240,6 +240,7 @@
 		"runningTasksTooltip": "{{count}} 个后台任务运行中"
 	},
 	"bashHeader": {
+		"statusCancelled": "已取消：{{short}}",
 		"statusError": "命令失败：{{short}}",
 		"statusPending": "正在执行：{{short}}",
 		"statusSuccess": "执行命令：{{short}}"

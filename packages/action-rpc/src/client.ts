@@ -7,9 +7,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function parseResponse(value: unknown): ActionRpcResponse {
+function parseResponse(value: unknown, requestId: string): ActionRpcResponse {
 	if (!isRecord(value) || typeof value.id !== "string" || typeof value.ok !== "boolean") {
 		throw new ActionRpcError("ACTION_RPC_ERROR", "Action RPC returned an invalid response");
+	}
+	if (value.id !== requestId) {
+		throw new ActionRpcError("ACTION_RPC_ERROR", "Action RPC returned a response for a different request");
 	}
 	if (value.ok) {
 		if (!("result" in value)) {
@@ -24,14 +27,22 @@ function parseResponse(value: unknown): ActionRpcResponse {
 }
 
 async function send(endpoint: ActionRpcEndpoint, request: LocalRpcRequest): Promise<ActionRpcSuccessResponse> {
-	const response = await fetch(new URL("/rpc", endpoint.url), {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			Authorization: `Bearer ${endpoint.token}`,
-		},
-		body: JSON.stringify(request),
-	});
+	let response: Response;
+	try {
+		response = await fetch(new URL("/rpc", endpoint.url), {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${endpoint.token}`,
+			},
+			body: JSON.stringify(request),
+		});
+	} catch (error) {
+		throw new ActionRpcError(
+			"ACTION_RPC_UNREACHABLE",
+			error instanceof Error ? `Action RPC request failed: ${error.message}` : "Action RPC request failed",
+		);
+	}
 
 	let rawPayload: unknown;
 	try {
@@ -42,7 +53,7 @@ async function send(endpoint: ActionRpcEndpoint, request: LocalRpcRequest): Prom
 			`Action RPC returned an invalid response (${response.status} ${response.statusText})`.trim(),
 		);
 	}
-	const payload = parseResponse(rawPayload);
+	const payload = parseResponse(rawPayload, request.id);
 	if (!payload.ok) {
 		throw new ActionRpcError(payload.error.code, payload.error.message, payload.error.details);
 	}

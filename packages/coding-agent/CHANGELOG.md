@@ -18,6 +18,8 @@
 
 ### Fixed
 
+- Session execution owner 尚未完成索引或正在回滚时，全局工具 Provider 不再贡献 `shell`、`bash`、`read`、`write`、`edit` 等 Session 工具，避免与 Session-local 工具产生重复定义。
+
 - 模型输出在思考阶段就耗尽预算、正文零产出时不再注入"从中断处继续"的续接消息：这种截断无处可续，只会再烧三轮后判死，现在直接给出失败原因，并带上上游自报的输出 token 数——这个数常常远小于模型上限，因为这类网关既不上报隐藏推理 token，也会丢掉截断中途未完成的工具调用。续接次数在模型恢复正常收尾后归零，长 Turn 里零散的网关抖动不会再累积到判死。
 
 - 手动压缩使用本次 Runtime admission 捕获的共享上下文、设置及扩展，后续 preview/Turn 绑定不再覆盖它；移除 Session 上隐式的“最近一次 pinned context”状态。

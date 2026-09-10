@@ -228,6 +228,7 @@ export function projectCodingAgentSkillInfo(skill: Skill): CodingAgentSkillInfo 
 		description: skill.description,
 		source: skill.source,
 		type: skill.type,
+		...(skill.provenance ? { provenance: skill.provenance } : {}),
 		disableModelInvocation: skill.disableModelInvocation,
 	};
 }
@@ -244,6 +245,11 @@ function toSkill(contribution: CodingAgentSkillContribution, source: string, cwd
 		baseDir: contribution.baseDir ? resolve(cwd, contribution.baseDir) : dirname(filePath),
 		source,
 		type: contribution.type ?? "skill",
+		provenance: contribution.provenance ?? {
+			kind: "provided",
+			providerType: "sdk",
+			providerId: source.slice(4) || source,
+		},
 		disableModelInvocation: contribution.disableModelInvocation ?? false,
 		content: contribution.content,
 		sceneTasks: [],

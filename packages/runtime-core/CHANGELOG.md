@@ -6,6 +6,8 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Fixed
 
+- 同一持久化 Session 路径并发恢复时现在复用同一个进行中的创建操作，避免重复装配 Session、共享资源注册冲突和部分初始化残留。
+
 - 显式取消活动 Turn 时会同时拒绝已排队及取消过程中到达的异步 continuation；停止后不再自动启动隐藏续跑，下一条用户消息可以正常进入新的 Turn。
 - 手动压缩从本次 Snapshot 取得已绑定策略，并用同一策略执行摘要和提交回调；动态策略未注册时明确拒绝，释放异常也不会遗留忙碌状态。
 - 同一对象承担多个 Runtime 端口时，每次 Snapshot acquisition 只绑定、释放一次；并发 acquisition 仍隔离，同步清理异常不再阻止其余资源释放。

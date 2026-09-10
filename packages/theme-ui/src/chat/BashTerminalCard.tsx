@@ -9,7 +9,7 @@ import {
 	useRef,
 } from "react";
 
-export type BashTerminalStatus = "pending" | "success" | "error";
+export type BashTerminalStatus = "pending" | "success" | "error" | "cancelled";
 
 export interface BashTerminalLabels {
 	readonly metaDescription: string;

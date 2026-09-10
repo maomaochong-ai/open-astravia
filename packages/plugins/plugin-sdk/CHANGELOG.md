@@ -21,6 +21,8 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Added
 
+- 工具调用槽位的 `status` 新增 `cancelled`，用于区分用户中止与工具执行失败。
+
 - 新增 `ctx.ai.stream()`：沿用 `ai.complete` 权限与单轮请求/最终结果合同，通过 `onTextDelta` 提供经过校验的
   文本增量，并支持使用 `AbortSignal` 取消主进程中的 Provider 请求。
 

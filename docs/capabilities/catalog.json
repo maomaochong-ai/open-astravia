@@ -11229,6 +11229,78 @@
                   "type": "string"
                 }
               ]
+            },
+            "provenance": {
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "scope"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "const": "native",
+                      "type": "string"
+                    },
+                    "scope": {
+                      "type": "string"
+                    }
+                  }
+                },
+                {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "providerType",
+                    "providerId"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "const": "provided",
+                      "type": "string"
+                    },
+                    "providerType": {
+                      "anyOf": [
+                        {
+                          "const": "plugin",
+                          "type": "string"
+                        },
+                        {
+                          "const": "sdk",
+                          "type": "string"
+                        },
+                        {
+                          "const": "runtime",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "providerId": {
+                      "type": "string"
+                    }
+                  }
+                },
+                {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "providerId"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "const": "builtin",
+                      "type": "string"
+                    },
+                    "providerId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              ]
             }
           }
         }

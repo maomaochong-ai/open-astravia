@@ -9,6 +9,36 @@ import {
 } from "../../src/index.js";
 
 describe("CatalogRoutedRuntimeHostSessionBackend", () => {
+	it("coalesces concurrent creation requests for the same persisted Session path", async () => {
+		const entered = deferred();
+		const proceed = deferred();
+		const createAssembly = vi.fn(async (request: RuntimeSessionCreateRequest) => {
+			entered.resolve();
+			await proceed.promise;
+			const created = assembly("session-shared");
+			return {
+				...created,
+				lifecycle: { ...created.lifecycle, sessionPath: request.sessionPath },
+			};
+		});
+		const sessionBackend: RuntimeHostSessionBackend = { createAssembly };
+		const runtime = new RuntimeHost({ sessionBackend });
+		const config = { sessionPath: "C:/sessions/shared.conversation.jsonl" };
+
+		const first = runtime.createSession(config);
+		await entered.promise;
+		const second = runtime.createSession(config);
+
+		expect(createAssembly).toHaveBeenCalledOnce();
+		proceed.resolve();
+		expect(await Promise.all([first, second])).toEqual([
+			{ sessionId: "session-shared" },
+			{ sessionId: "session-shared" },
+		]);
+
+		await runtime.close();
+	});
+
 	it("exposes a session-scoped view without creating a second lifecycle owner", async () => {
 		const dispose = vi.fn(async () => {});
 		const retry = vi.fn(async () => {});
@@ -135,6 +165,14 @@ function request(sessionPath?: string): RuntimeSessionCreateRequest {
 		executionMode: "full-access",
 		getSessionId: () => undefined,
 	};
+}
+
+function deferred() {
+	let resolve!: () => void;
+	const promise = new Promise<void>((complete) => {
+		resolve = complete;
+	});
+	return { promise, resolve };
 }
 
 function assembly(sessionId: string): RuntimeHostSessionAssembly {

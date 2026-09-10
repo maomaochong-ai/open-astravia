@@ -172,6 +172,7 @@ export function buildSkillAbilities(market: MarketAbility[], state: LocalAbility
 			origin: getOpenCatalogOrigin(entry),
 			market: entry,
 			searchTerms: terms(entry.slug, entry.name, entry.description, entry.tags),
+			skillProvenance: { kind: "native", scope: "market" },
 		});
 	}
 
@@ -210,6 +211,7 @@ export function buildSkillAbilities(market: MarketAbility[], state: LocalAbility
 			fromMarket: false,
 			origin: ledgerEntry?.origin?.kind === "github-marketplace" ? ledgerEntry.origin : undefined,
 			searchTerms: terms(name, local.alias),
+			skillProvenance: { kind: "native", scope: local.source },
 		});
 	}
 
@@ -247,6 +249,13 @@ export function buildSkillAbilities(market: MarketAbility[], state: LocalAbility
 			isBuiltin,
 			fromMarket: false,
 			skillSource: skill.source,
+			skillProvenance:
+				skill.provenance ??
+				(skill.source === "plugin" && skill.sourcePluginId
+					? { kind: "provided", providerType: "plugin", providerId: skill.sourcePluginId }
+					: skill.source === "builtin"
+						? { kind: "builtin", providerId: "vetta" }
+						: { kind: "native", scope: skill.source }),
 			searchTerms: terms(skill.name, skill.alias, skill.description),
 		});
 	}

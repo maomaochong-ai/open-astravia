@@ -13,6 +13,12 @@ export interface SkillFrontmatter {
 
 export type SkillType = "skill" | "scene";
 
+/** Skill 的结构化来源事实；与目录/安装来源正交。 */
+export type SkillProvenance =
+	| { readonly kind: "native"; readonly scope: string }
+	| { readonly kind: "provided"; readonly providerType: "plugin" | "sdk" | "runtime"; readonly providerId: string }
+	| { readonly kind: "builtin"; readonly providerId: string };
+
 /** Fully materialized resource generation. Consumers never read the backing file. */
 export interface Skill {
 	readonly name: string;
@@ -21,6 +27,7 @@ export interface Skill {
 	readonly filePath: string;
 	readonly baseDir: string;
 	readonly source: string;
+	readonly provenance?: SkillProvenance;
 	readonly type: SkillType;
 	readonly disableModelInvocation: boolean;
 	readonly content: string;

@@ -229,7 +229,7 @@ export async function runActionCliCommand(command: ActionCliCommand): Promise<nu
 	} catch (error) {
 		if (error instanceof ActionRpcError) {
 			writeJson({ ok: false, error: { code: error.code, message: error.message } });
-			return 4;
+			return error.code === "ACTION_RPC_UNREACHABLE" ? 3 : 4;
 		}
 		const message = error instanceof Error ? error.message : String(error);
 		const code = isConnectionError(error) ? "ACTION_SERVER_UNREACHABLE" : "ACTION_SERVER_NOT_FOUND";

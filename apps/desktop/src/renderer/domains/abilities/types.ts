@@ -10,6 +10,7 @@ import type {
 	OpenMarketplaceCatalog,
 	OpenMarketplaceMcpRuntimeProgress,
 	PluginPermission,
+	SkillProvenance,
 	UpdateMarketplaceSourceInput,
 } from "@preload/api";
 import type { AbilityDetail, AbilityMember, AbilityType, MarketAbility } from "@shared/lib/api";
@@ -17,7 +18,6 @@ import type { McpSettingsModel } from "../settings/components/useMcpSettingsMode
 import type { BuiltinMcpPreset } from "../settings/mcp/builtin-mcp-presets";
 
 export type AbilityScope = "discover" | "mine";
-
 export type AbilityCatalogSource =
 	| { kind: "builtin"; id: "builtin" }
 	| { kind: "local"; id: "local" }
@@ -114,6 +114,7 @@ export interface SkillAbility extends AbilityBase {
 	type: "skill" | "scene";
 	/** listSkills 的来源标识（`agents-user` / `builtin` 等）。 */
 	skillSource?: string;
+	skillProvenance?: SkillProvenance;
 }
 
 export interface McpAbility extends AbilityBase {

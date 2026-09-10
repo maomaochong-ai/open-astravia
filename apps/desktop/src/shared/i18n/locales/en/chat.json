@@ -240,6 +240,7 @@
 		"runningTasksTooltip": "{{count}} background tasks running"
 	},
 	"bashHeader": {
+		"statusCancelled": "Cancelled: {{short}}",
 		"statusError": "Command failed: {{short}}",
 		"statusPending": "Running: {{short}}",
 		"statusSuccess": "Ran command: {{short}}"

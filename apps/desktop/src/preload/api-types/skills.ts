@@ -1,8 +1,15 @@
+export type SkillProvenance =
+	| { kind: "native"; scope: string }
+	| { kind: "provided"; providerType: "plugin" | "sdk" | "runtime"; providerId: string }
+	| { kind: "builtin"; providerId: string };
+
 export interface SkillInfo {
 	name: string;
 	alias?: string;
 	description: string;
 	source: string;
+	/** 结构化来源；缺失时按旧 source 兼容推断。 */
+	provenance?: SkillProvenance;
 	/** 插件贡献的 skill 来源插件 ID；其它来源未定义。 */
 	sourcePluginId?: string;
 	type: "skill" | "scene";

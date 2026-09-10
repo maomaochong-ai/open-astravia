@@ -5,6 +5,7 @@
 ### Added
 
 - `NewSessionHero` props carry an optional `identity` (title, subtitle, and one avatar per team member) so a theme can render the picked agent or team in place of the greeting.
+- Bash 工具终端状态支持 `cancelled`，取消后不再显示运行中的光标或等待提示。
 - Exported shared `AvatarStackView` for a compact overlapping avatar row with a bounded overflow count, replacing the session-row-only stack implementation.
 - Exported `NewSessionAmbientGlow` on its own so a host can swap the texture layer of `NewSessionBackground` while keeping the same glow. `NewSessionBackground` is unchanged.
 - Exported `NEW_SESSION_TEXTURE_MASK`, the fade every new session page texture shares. Its vertical radius is tightened so the pattern is gone before the top and bottom edges instead of being sliced off by them.
