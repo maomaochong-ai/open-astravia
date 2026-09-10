@@ -1,0 +1,190 @@
+/* ─── 燃烧 ───
+   一团烧在暖色光晕里的火苗：几片三角形各自绕不同的轴心转，先 blur 糊成一片，
+   再由 mask 上的 contrast 把糊边压回硬边——两步凑出「熔在一起又不断变形」的火焰轮廓，
+   没有贴图也没有画布。
+
+   尺寸走 transform: scale()，与像素火把那枚刻意相反：mask 里的多边形坐标是
+   userSpaceOnUse 的固定像素，跟着 CSS 尺寸走会与被遮的方块错位，所以这里把
+   100×100 的原始坐标系整个缩放，外层只按 --ns-blaze-size 占位。糊边本来就是这枚
+   装饰件的观感，缩放带来的软化不构成问题。
+
+   类名一律带 ns-blaze 前缀：这是全局样式表，`.box` 这种裸名字会串到别处。 */
+
+.ns-blaze-root {
+	/* 整棵树都是 span（外层要能塞进任何行内上下文），逐个转成块级：
+	   行内盒不吃 width/height，火苗那块方块会塌成 0×0，只剩一圈光晕。 */
+	display: block;
+	position: relative;
+	width: calc(var(--ns-blaze-size, 100) * 1px);
+	height: calc(var(--ns-blaze-size, 100) * 1px);
+	/* 光晕要溢出这块占位方格，别在这里裁掉。 */
+	overflow: visible;
+}
+
+.ns-blaze {
+	/* --ns-blaze-size 刻意是无单位的：scale() 只收数字，calc(64px / 100) 算出来是
+	   0.64px 这样的长度，整条 transform 会被判无效——火团照 100px 画、还从左上角
+	   顶出去，看着就是「没居中、压到别的东西上」。 */
+	--k: calc(var(--ns-blaze-size, 100) / 100);
+	--color-one: #ffbf48;
+	--color-two: #be4a1d;
+	--color-three: #ffbf4780;
+	--color-four: #bf4a1d80;
+	--color-five: #ffbf4740;
+	--time-animation: 2s;
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100px;
+	height: 100px;
+	border-radius: 50%;
+	transform-origin: top left;
+	transform: scale(var(--k));
+	box-shadow:
+		0 0 25px 0 var(--color-three),
+		0 20px 50px 0 var(--color-four);
+	animation: ns-blaze-colorize calc(var(--time-animation) * 3) ease-in-out infinite;
+}
+
+/* 火苗身后那圈炉膛：上下各一道亮边，中间是从暖黄压到暗红的渐变。 */
+.ns-blaze::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: 50%;
+	border-top: solid 1px var(--color-one);
+	border-bottom: solid 1px var(--color-two);
+	background: linear-gradient(180deg, var(--color-five), var(--color-four));
+	box-shadow:
+		inset 0 10px 10px 0 var(--color-three),
+		inset 0 -10px 10px 0 var(--color-four);
+}
+
+/* 火苗本体：一块渐变方块，形状全由 mask 决定。 */
+.ns-blaze-body {
+	display: block;
+	position: relative;
+	width: 100px;
+	height: 100px;
+	background: linear-gradient(180deg, var(--color-one) 30%, var(--color-two) 70%);
+}
+
+.ns-blaze-mask {
+	position: absolute;
+}
+
+/* contrast 把 blur 出来的灰边重新压成硬边：值越低轮廓越松，roundness 就是在动这个。 */
+.ns-blaze-clip {
+	filter: contrast(15);
+	animation: ns-blaze-roundness calc(var(--time-animation) / 2) linear infinite;
+}
+
+.ns-blaze-clip polygon {
+	filter: blur(7px);
+}
+
+/* nth-child(1) 是那块黑底板：转过去让遮住的范围偏一侧，火苗才不是正圆里的一团。
+   其后每片火舌绕各自的轴心转，正反交替、错开相位，看起来才不是整团在转。 */
+.ns-blaze-clip polygon:nth-child(1) {
+	transform-origin: 75% 25%;
+	transform: rotate(90deg);
+}
+
+.ns-blaze-clip polygon:nth-child(2) {
+	transform-origin: 50% 50%;
+	animation: ns-blaze-rotation var(--time-animation) linear infinite reverse;
+}
+
+.ns-blaze-clip polygon:nth-child(3) {
+	transform-origin: 50% 60%;
+	animation: ns-blaze-rotation var(--time-animation) linear infinite;
+	animation-delay: calc(var(--time-animation) / -3);
+}
+
+.ns-blaze-clip polygon:nth-child(4) {
+	transform-origin: 40% 40%;
+	animation: ns-blaze-rotation var(--time-animation) linear infinite reverse;
+}
+
+.ns-blaze-clip polygon:nth-child(5) {
+	transform-origin: 40% 40%;
+	animation: ns-blaze-rotation var(--time-animation) linear infinite reverse;
+	animation-delay: calc(var(--time-animation) / -2);
+}
+
+.ns-blaze-clip polygon:nth-child(6) {
+	transform-origin: 60% 40%;
+	animation: ns-blaze-rotation var(--time-animation) linear infinite;
+}
+
+.ns-blaze-clip polygon:nth-child(7) {
+	transform-origin: 60% 40%;
+	animation: ns-blaze-rotation var(--time-animation) linear infinite;
+	animation-delay: calc(var(--time-animation) / -1.5);
+}
+
+@keyframes ns-blaze-rotation {
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+@keyframes ns-blaze-roundness {
+	0% {
+		filter: contrast(15);
+	}
+	20% {
+		filter: contrast(3);
+	}
+	40% {
+		filter: contrast(3);
+	}
+	60% {
+		filter: contrast(15);
+	}
+	100% {
+		filter: contrast(15);
+	}
+}
+
+@keyframes ns-blaze-colorize {
+	0% {
+		filter: hue-rotate(0deg);
+	}
+	20% {
+		filter: hue-rotate(-30deg);
+	}
+	40% {
+		filter: hue-rotate(-60deg);
+	}
+	60% {
+		filter: hue-rotate(-90deg);
+	}
+	80% {
+		filter: hue-rotate(-45deg);
+	}
+	100% {
+		filter: hue-rotate(0deg);
+	}
+}
+
+/* ── 停下来的样子 ──
+   停的是转动与调色，不是 contrast：mask 上那道 filter 停在动画之外的静态值即可，
+   写成 animation: none 才不会把火苗定在 contrast(3) 那种全糊的中间态上。 */
+
+.ns-blaze[data-animate="false"],
+.ns-blaze[data-animate="false"] .ns-blaze-clip,
+.ns-blaze[data-animate="false"] .ns-blaze-clip polygon {
+	animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ns-blaze,
+	.ns-blaze .ns-blaze-clip,
+	.ns-blaze .ns-blaze-clip polygon {
+		animation: none;
+	}
+}

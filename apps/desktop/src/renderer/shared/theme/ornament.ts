@@ -7,7 +7,7 @@
  * 会话页只要 id。
  */
 
-export type OrnamentId = "mario" | "none" | "orbit" | "torch" | "vivi";
+export type OrnamentId = "blaze" | "mario" | "none" | "orbit" | "torch" | "vivi";
 
 export const ORNAMENT_STORAGE_KEY = "vetta-hero-ornament";
 
@@ -41,6 +41,8 @@ export const ORNAMENT_CATALOG = [
 	{ id: "torch", labelKey: "ornamentTorchTitle", hintKey: "ornamentTorchHint", preview: undefined },
 	// 马里奥同理：砖块是按点阵画的 SVG，预览卡直接画一排小的。
 	{ id: "mario", labelKey: "ornamentMarioTitle", hintKey: "ornamentMarioHint", preview: undefined },
+	// 燃烧同理：火苗是 mask + 滤镜实时糊出来的，预览卡直接烧一小团。
+	{ id: "blaze", labelKey: "ornamentBlazeTitle", hintKey: "ornamentBlazeHint", preview: undefined },
 ] as const satisfies readonly OrnamentCatalogEntry[];
 
 export function isOrnamentId(value: string | null | undefined): value is OrnamentId {

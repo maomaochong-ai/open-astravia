@@ -1,3 +1,4 @@
+import { BlazeFlame } from "@shared/components/blaze/BlazeFlame";
 import { PixelMarioBlocks } from "@shared/components/mario/PixelMarioBlocks";
 import { OrbitOrb } from "@shared/components/orb/OrbitOrb";
 import { PixelTorch } from "@shared/components/torch/PixelTorch";
@@ -359,6 +360,10 @@ function OrnamentPreview({ id, preview }: { id: OrnamentId; preview?: string }):
 				// 马里奥的砖块同样是画出来的；预览里直接把蘑菇顶出来，一眼看得出这块能顶。
 				// 顶出来的蘑菇整个探到砖块上方，方格里按砖块居中会偏上，往下补半个蘑菇的高度。
 				<PixelMarioBlocks unit={2.25} popped className="pointer-events-none translate-y-[19px]" />
+			) : id === "blaze" ? (
+				// 燃烧同样是实时糊出来的。光晕会溢出火团本身，方格里按 76 摆就顶到边了，
+				// 收到 64 给四周留出漫开的余地。
+				<BlazeFlame animate size={64} className="pointer-events-none" />
 			) : (
 				// 「无」：用虚线圈标出这块空着的位置，而不是留一片看不出所以然的空白
 				<span className="h-10 w-10 rounded-full border border-dashed border-border" />

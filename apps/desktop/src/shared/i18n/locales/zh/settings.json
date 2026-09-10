@@ -1088,6 +1088,8 @@
   "ornamentTorchHint": "一根像素火把，火光会轻轻跳动；点一下可以熄灭或重新点着。",
   "ornamentMarioTitle": "马里奥",
   "ornamentMarioHint": "一排像素砖块，顶一下中间的问号砖块会蹦出蘑菇。",
+  "ornamentBlazeTitle": "燃烧",
+  "ornamentBlazeHint": "一团烧在暖色光晕里的火，火苗不停翻卷、颜色随之流转。",
   "section_appearance-sidebar": "侧边栏样式",
   "sidebarStyleClassicTitle": "经典",
   "sidebarStyleClassicHint": "侧边栏贴紧窗口左侧，无圆角与四周边框，仅右侧一条分隔线。",
