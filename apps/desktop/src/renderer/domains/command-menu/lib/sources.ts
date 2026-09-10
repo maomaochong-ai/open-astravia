@@ -108,14 +108,18 @@ export function buildSettingsEntries(
 
 export function buildWorkspaceViewEntries(
 	views: readonly RegisteredWorkspaceView[],
-	/** label 可能是 `%catalogKey%`，解析需要归属插件的目录，故整条 view 传进来。 */
-	resolveLabel: (view: RegisteredWorkspaceView) => string,
+	/**
+	 * label 与 pluginName **都**可能是 `%catalogKey%`，且解析要用归属插件的目录，
+	 * 故整条 view 传进来由宿主解析。pluginName 尤其容易被漏：它在侧栏只出现在
+	 * tooltip 里，占位符没被解析也看不出来。
+	 */
+	resolveText: (view: RegisteredWorkspaceView, raw: string) => string,
 ): CommandMenuEntry[] {
 	return views.map((view, index) => ({
 		id: `workspace:${view.pluginId}/${view.viewId}`,
 		groupKey: "workspaceViews",
-		title: resolveLabel(view),
-		subtitle: view.pluginName,
+		title: resolveText(view, view.label),
+		subtitle: resolveText(view, view.pluginName),
 		icon: view.icon || "icon-[solar--widget-linear]",
 		order: index,
 		action: { kind: "openWorkspaceView", pluginId: view.pluginId, viewId: view.viewId },

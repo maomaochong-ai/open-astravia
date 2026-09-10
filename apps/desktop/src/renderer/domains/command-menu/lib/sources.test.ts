@@ -124,13 +124,15 @@ describe("buildSettingsEntries", () => {
 });
 
 describe("buildWorkspaceViewEntries", () => {
-	it("resolves catalog placeholders in the label and points at the plugin view", () => {
+	it("resolves catalog placeholders in both the label and the plugin name", () => {
+		const catalog: Record<string, string> = { "%diff.title%": "Diff", "%plugin.name%": "Git" };
 		const views = [
-			{ pluginId: "git", pluginName: "Git", viewId: "diff", label: "%diff.title%" },
+			{ pluginId: "git", pluginName: "%plugin.name%", viewId: "diff", label: "%diff.title%" },
 		] as unknown as RegisteredWorkspaceView[];
-		const [entry] = buildWorkspaceViewEntries(views, (view) => (view.label === "%diff.title%" ? "Diff" : view.label));
+		const [entry] = buildWorkspaceViewEntries(views, (_view, raw) => catalog[raw] ?? raw);
 
 		expect(entry.title).toBe("Diff");
+		// pluginName 同样可能是占位符；漏解析时副标题会直接显示 %plugin.name%。
 		expect(entry.subtitle).toBe("Git");
 		expect(entry.action).toEqual({ kind: "openWorkspaceView", pluginId: "git", viewId: "diff" });
 	});

@@ -184,7 +184,7 @@ export function useCommandMenuModel({ onOpenSession }: UseCommandMenuModelArgs):
 			...buildSettingsEntries({ isPersonal, hasAuthUser: Boolean(authUser), isMac, isWindows }, (key) =>
 				tSettings(key),
 			),
-			...buildWorkspaceViewEntries(workspaceViews, (view) => resolvePluginText(view.pluginId, view.label)),
+			...buildWorkspaceViewEntries(workspaceViews, (view, raw) => resolvePluginText(view.pluginId, raw)),
 		],
 		[projects, workspaceViews, isPersonal, authUser, tSettings, resolvePluginText],
 	);
