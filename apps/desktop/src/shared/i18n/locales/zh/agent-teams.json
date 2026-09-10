@@ -42,6 +42,7 @@
     "expandTeams": "展开更多 ({{count}})",
     "collapseTeams": "收起团队",
     "expertCount": "{{count}} 位专家",
+    "bannerTeams": "{{count}} 支编队",
     "teamSelectHint": "点击选定",
     "openTeamChat": "发起该团队会话",
     "teamSettings": "团队设置",

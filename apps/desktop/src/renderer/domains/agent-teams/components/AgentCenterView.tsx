@@ -81,16 +81,18 @@ export function AgentCenterView({
 
 	return (
 		<div className="@container relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-			<AgentCenterHero
-					assembling={Boolean(model.assembly)}
-					assembledCount={model.assembly?.memberIds.length ?? 0}
-					assemblySubmittable={model.assemblySubmittable}
-					onCreateTeam={actions.startCreateTeam}
-					onSubmitAssembly={onSubmitAssembly}
-					onCancelAssembly={actions.cancelAssembly}
-			/>
-
 			<div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-8 @md:px-8 [scrollbar-gutter:stable]">
+					<AgentCenterHero
+						assembling={Boolean(model.assembly)}
+						assembledCount={model.assembly?.memberIds.length ?? 0}
+						assemblySubmittable={model.assemblySubmittable}
+						agents={model.agents}
+						teamCount={model.teams.length}
+						onCreateTeam={actions.startCreateTeam}
+						onSubmitAssembly={onSubmitAssembly}
+						onCancelAssembly={actions.cancelAssembly}
+					/>
+
 					{model.error && (
 						<div aria-live="polite" className="mb-4 rounded-lg bg-destructive/10 px-3 py-2 text-[12px] text-destructive">
 							{model.error}
