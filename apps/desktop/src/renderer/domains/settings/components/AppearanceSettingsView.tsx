@@ -374,8 +374,12 @@ function OrnamentPreview({ id, preview }: { id: OrnamentId; preview?: string }):
 				// 能源井同样是实时动着的。素材竖长（94:136），宽给到 64 折出来约 93 高，方格四周还留得下余量。
 				<EnergyWell animate size={64} className="pointer-events-none" />
 			) : (
-				// 「无」：用虚线圈标出这块空着的位置，而不是留一片看不出所以然的空白
-				<span className="h-10 w-10 rounded-full border border-dashed border-border" />
+				// 「无」：用虚线圈标出这块空着的位置，而不是留一片看不出所以然的空白。
+				// border 那档灰在浅色下几乎糊进卡片底色里，改用 muted-foreground 并加粗到 2px，
+				// 圈里再补一枚斜杠，深浅两套主题下都一眼看得出这项是「空着」。
+				<span className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-dashed border-muted-foreground/50">
+					<span className="icon-[mdi--close] h-5 w-5 text-muted-foreground/60" />
+				</span>
 			)}
 		</div>
 	);
@@ -477,31 +481,6 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 				</div>
 			)}
 
-			{/* 鼠标指针：两列卡片，置于主题色上方 */}
-			<div className="mb-6">
-				<SettingHeading title={model.labels.sections.cursor} section={SETTINGS_SECTION["appearance-cursor"]} className="mb-3" />
-				<div className="grid grid-cols-2 gap-3">
-					{model.cursorOptions.map((option) => (
-						<CursorStyleCard
-							key={option.id}
-							{...option}
-							onSelect={model.actions.setCursorStyle}
-						/>
-					))}
-				</div>
-			</div>
-
-			{/* 装饰件：新会话页输入框上方那块挂饰位 */}
-			<div className="mb-6">
-				<SettingHeading title={model.labels.sections.ornament} section={SETTINGS_SECTION["appearance-ornament"]} className="mb-1" />
-				<p className="mb-3 text-[12px] text-muted-foreground">{model.labels.ornamentHint}</p>
-				<div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-4">
-					{model.ornamentOptions.map((option) => (
-						<OrnamentCard key={option.id} {...option} onSelect={model.actions.setOrnament} />
-					))}
-				</div>
-			</div>
-
 			{model.activeUiThemeId === "default" && (
 				<div className="mb-6">
 					<SettingHeading title={model.labels.sections.theme} section={SETTINGS_SECTION["appearance-theme"]} className="mb-3" />
@@ -518,11 +497,36 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 				</div>
 			)}
 
+			{/* 装饰件：新会话页输入框上方那块挂饰位 */}
+			<div className="mb-6">
+				<SettingHeading title={model.labels.sections.ornament} section={SETTINGS_SECTION["appearance-ornament"]} className="mb-1" />
+				<p className="mb-3 text-[12px] text-muted-foreground">{model.labels.ornamentHint}</p>
+				<div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-4">
+					{model.ornamentOptions.map((option) => (
+						<OrnamentCard key={option.id} {...option} onSelect={model.actions.setOrnament} />
+					))}
+				</div>
+			</div>
+
 			<div className="mb-6">
 				<SettingHeading title={model.labels.sections.sidebar} section={SETTINGS_SECTION["appearance-sidebar"]} className="mb-3" />
 				<div className="grid grid-cols-2 gap-3">
 					{model.sidebarStyleOptions.map((option) => (
 						<SidebarStyleCard key={option.id} {...option} onSelect={model.actions.setSidebarStyle} />
+					))}
+				</div>
+			</div>
+
+			{/* 鼠标指针：两列卡片，排在本页最末 */}
+			<div className="mb-6">
+				<SettingHeading title={model.labels.sections.cursor} section={SETTINGS_SECTION["appearance-cursor"]} className="mb-3" />
+				<div className="grid grid-cols-2 gap-3">
+					{model.cursorOptions.map((option) => (
+						<CursorStyleCard
+							key={option.id}
+							{...option}
+							onSelect={model.actions.setCursorStyle}
+						/>
 					))}
 				</div>
 			</div>
