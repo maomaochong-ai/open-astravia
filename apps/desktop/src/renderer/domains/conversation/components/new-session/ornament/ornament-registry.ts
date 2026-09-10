@@ -1,6 +1,7 @@
 import type { OrnamentId } from "@shared/theme/ornament";
 import type { ComponentType } from "react";
 import { BlazeOrnament } from "./presets/BlazeOrnament";
+import { EnergyWellOrnament } from "./presets/EnergyWellOrnament";
 import { HandOrnament } from "./presets/HandOrnament";
 import { MarioOrnament } from "./presets/MarioOrnament";
 import { OrbitOrnament } from "./presets/OrbitOrnament";
@@ -28,4 +29,5 @@ export const ORNAMENT_COMPONENTS: Record<OrnamentId, ComponentType<OrnamentProps
 	orbit: OrbitOrnament,
 	torch: TorchOrnament,
 	vivi: ViviOrnament,
+	well: EnergyWellOrnament,
 };

@@ -7,12 +7,12 @@
  * 会话页只要 id。
  */
 
-export type OrnamentId = "blaze" | "hand" | "mario" | "none" | "orbit" | "torch" | "vivi";
+export type OrnamentId = "blaze" | "hand" | "mario" | "none" | "orbit" | "torch" | "vivi" | "well";
 
 export const ORNAMENT_STORAGE_KEY = "vetta-hero-ornament";
 
-/** 默认挂上 Vivi：这是产品的 IP 形象，空着会让 hero 右下角显得没做完。 */
-export const DEFAULT_ORNAMENT_ID: OrnamentId = "vivi";
+/** 默认挂上「燃烧」：首次打开时它最能说明这块位置是活的，空着会让 hero 显得没做完。 */
+export const DEFAULT_ORNAMENT_ID: OrnamentId = "blaze";
 
 export interface OrnamentCatalogEntry {
 	/** i18n 描述文案（settings 命名空间）。 */
@@ -35,16 +35,18 @@ export const ORNAMENT_CATALOG = [
 	// preview 显式给 undefined：`as const` 下缺字段会让联合类型里读不到 preview。
 	{ id: "none", labelKey: "ornamentNoneTitle", hintKey: "ornamentNoneHint", preview: undefined },
 	{ id: "vivi", labelKey: "ornamentViviTitle", hintKey: "ornamentViviHint", preview: VIVI_PREVIEW_URL },
-	// 星轨没有静帧可用：它是实时着色器，预览卡直接跑一枚小球，见 OrnamentPreview。
-	{ id: "orbit", labelKey: "ornamentOrbitTitle", hintKey: "ornamentOrbitHint", preview: undefined },
+	// 燃烧同理：火苗是 mask + 滤镜实时糊出来的，预览卡直接烧一小团。
+	{ id: "blaze", labelKey: "ornamentBlazeTitle", hintKey: "ornamentBlazeHint", preview: undefined },
 	// 火把同理：整枚是 CSS 画出来的，预览卡直接画一根小的。
 	{ id: "torch", labelKey: "ornamentTorchTitle", hintKey: "ornamentTorchHint", preview: undefined },
 	// 马里奥同理：砖块是按点阵画的 SVG，预览卡直接画一排小的。
 	{ id: "mario", labelKey: "ornamentMarioTitle", hintKey: "ornamentMarioHint", preview: undefined },
-	// 燃烧同理：火苗是 mask + 滤镜实时糊出来的，预览卡直接烧一小团。
-	{ id: "blaze", labelKey: "ornamentBlazeTitle", hintKey: "ornamentBlazeHint", preview: undefined },
+	// 星轨没有静帧可用：它是实时着色器，预览卡直接跑一枚小球，见 OrnamentPreview。
+	{ id: "orbit", labelKey: "ornamentOrbitTitle", hintKey: "ornamentOrbitHint", preview: undefined },
 	// 玩手同理：整只手是 CSS 盒子摆出来的，预览卡直接摆一只小的。
 	{ id: "hand", labelKey: "ornamentHandTitle", hintKey: "ornamentHandHint", preview: undefined },
+	// 能源井同理：整座井是一张实时动着的 SVG，预览卡直接摆一座小的。
+	{ id: "well", labelKey: "ornamentWellTitle", hintKey: "ornamentWellHint", preview: undefined },
 ] as const satisfies readonly OrnamentCatalogEntry[];
 
 export function isOrnamentId(value: string | null | undefined): value is OrnamentId {

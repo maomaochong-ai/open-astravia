@@ -1092,6 +1092,8 @@
   "ornamentBlazeHint": "一团烧在暖色光晕里的火，火苗不停翻卷、颜色随之流转。",
   "ornamentHandTitle": "玩手",
   "ornamentHandHint": "一只搭在输入框边上的手，四根手指轮流敲着；点一下它会收成拳头歇着。",
+  "ornamentWellTitle": "能源井",
+  "ornamentWellHint": "一座悬在半空的能量井，井口蓄着一汪水，粒子顺着光锥往上飘。",
   "section_appearance-sidebar": "侧边栏样式",
   "sidebarStyleClassicTitle": "经典",
   "sidebarStyleClassicHint": "侧边栏贴紧窗口左侧，无圆角与四周边框，仅右侧一条分隔线。",

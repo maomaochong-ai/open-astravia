@@ -1,0 +1,152 @@
+/* ─── 能源井 ───
+   一座悬在半空的能量井：底下两道托盘线上下浮动，井口的方形节点里蓄着一汪水，
+   水面之上是两片外扩的光锥，粒子从井口往上飘散。
+
+   整枚是一张 SVG，尺寸交给 width/height 走 viewBox 等比缩放——这里没有
+   userSpaceOnUse 的遮罩要跟像素对齐（燃烧那枚有，所以它只能 scale），
+   所以不必像 BlazeFlame 那样把坐标系整个缩放。
+
+   配色沿用素材自带的紫蓝，不换成主题 token：这枚的辨识度全在这组冷色上，
+   且深浅两套外观下都成立。
+
+   类名一律带 ns-well 前缀：这是全局样式表，`.particle` 这种裸名字会串到别处。 */
+
+.ns-well {
+	display: block;
+	/* 粒子会飘出 viewBox，别在这里裁掉。 */
+	overflow: visible;
+}
+
+/* ── 整体浮动 ──
+   井体、托盘线、光锥、粒子各自上下浮动，托盘线错开相位，
+   看起来才不是一整块在平移。 */
+.ns-well-line-a,
+.ns-well-line-b,
+.ns-well-node,
+.ns-well-panel,
+.ns-well-reflect,
+.ns-well-particles {
+	animation: ns-well-bounce 3s ease-in-out infinite alternate;
+}
+
+.ns-well-line-b {
+	animation-delay: 0.2s;
+}
+
+.ns-well-node,
+.ns-well-panel,
+.ns-well-reflect,
+.ns-well-particles {
+	animation-delay: 0.4s;
+}
+
+/* 粒子组整体明暗起伏，单颗各自往上飘：两层叠在一起才像是「一直有东西在冒」。 */
+.ns-well-particles {
+	animation:
+		ns-well-bounce 3s ease-in-out infinite alternate,
+		ns-well-fade 5s infinite alternate;
+	animation-delay: 0.4s, 0s;
+}
+
+.ns-well-particle {
+	animation: ns-well-float linear infinite;
+}
+
+/* 时长与延迟逐颗错开：整齐划一地飘会立刻露出「这是一组循环」的破绽。 */
+.ns-well-p1 {
+	animation-duration: 2.2s;
+}
+.ns-well-p2 {
+	animation-duration: 2.5s;
+	animation-delay: 0.3s;
+}
+.ns-well-p3 {
+	animation-duration: 2s;
+	animation-delay: 0.6s;
+}
+.ns-well-p4 {
+	animation-duration: 2.8s;
+	animation-delay: 0.2s;
+}
+.ns-well-p5 {
+	animation-duration: 2.3s;
+	animation-delay: 0.4s;
+}
+.ns-well-p6 {
+	animation-duration: 3s;
+	animation-delay: 0.1s;
+}
+.ns-well-p7 {
+	animation-duration: 2.1s;
+	animation-delay: 0.5s;
+}
+.ns-well-p8 {
+	animation-duration: 2.6s;
+	animation-delay: 0.2s;
+}
+.ns-well-p9 {
+	animation-duration: 2.4s;
+	animation-delay: 0.3s;
+}
+
+@keyframes ns-well-bounce {
+	0%,
+	100% {
+		transform: translateY(0);
+	}
+	50% {
+		transform: translateY(-3px);
+	}
+}
+
+@keyframes ns-well-fade {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.5;
+	}
+}
+
+@keyframes ns-well-float {
+	0% {
+		transform: translateY(0);
+		opacity: 0;
+	}
+	10% {
+		opacity: 1;
+	}
+	100% {
+		transform: translateY(-40px);
+		opacity: 0;
+	}
+}
+
+/* ── 停下来的样子 ──
+   粒子的静息帧是 opacity: 0（飘升动画的起点），停下来会整组消失，
+   所以停的时候把它们补回不透明，井口之上才不是空的。 */
+
+.ns-well[data-animate="false"] .ns-well-line-a,
+.ns-well[data-animate="false"] .ns-well-line-b,
+.ns-well[data-animate="false"] .ns-well-node,
+.ns-well[data-animate="false"] .ns-well-panel,
+.ns-well[data-animate="false"] .ns-well-reflect,
+.ns-well[data-animate="false"] .ns-well-particles,
+.ns-well[data-animate="false"] .ns-well-particle {
+	animation: none;
+	opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ns-well .ns-well-line-a,
+	.ns-well .ns-well-line-b,
+	.ns-well .ns-well-node,
+	.ns-well .ns-well-panel,
+	.ns-well .ns-well-reflect,
+	.ns-well .ns-well-particles,
+	.ns-well .ns-well-particle {
+		animation: none;
+		opacity: 1;
+	}
+}

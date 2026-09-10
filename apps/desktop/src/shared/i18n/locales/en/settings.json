@@ -1092,6 +1092,8 @@
   "ornamentBlazeHint": "A ball of fire in a warm halo, flames churning as the glow shifts hue.",
   "ornamentHandTitle": "Tapping hand",
   "ornamentHandHint": "A hand resting on the composer, fingers drumming one after another; click it to curl them into a fist.",
+  "ornamentWellTitle": "Energy well",
+  "ornamentWellHint": "A well suspended in mid-air, water pooled at its mouth and particles drifting up the light cone.",
   "section_appearance-sidebar": "Sidebar Style",
   "sidebarStyleClassicTitle": "Classic",
   "sidebarStyleClassicHint": "Sidebar sits flush against the window edge, with a single divider on its right.",

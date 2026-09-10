@@ -3,6 +3,7 @@ import { PixelHand } from "@shared/components/hand/PixelHand";
 import { PixelMarioBlocks } from "@shared/components/mario/PixelMarioBlocks";
 import { OrbitOrb } from "@shared/components/orb/OrbitOrb";
 import { PixelTorch } from "@shared/components/torch/PixelTorch";
+import { EnergyWell } from "@shared/components/well/EnergyWell";
 import { cn } from "@shared/lib/utils";
 import type { CursorStyle } from "@shared/theme/cursor";
 import type { OrnamentId } from "@shared/theme/ornament";
@@ -369,6 +370,9 @@ function OrnamentPreview({ id, preview }: { id: OrnamentId; preview?: string }):
 				// 玩手同样是画出来的；预览里让它敲着，一眼看得出这只手是活的。
 				// 拇指与接触阴影都探到元素盒底下去了，按盒子居中会偏下，往上提回半个拇指的高度。
 				<PixelHand unit={40} tapping animate className="pointer-events-none -translate-y-[6px]" />
+			) : id === "well" ? (
+				// 能源井同样是实时动着的。素材竖长（94:136），宽给到 64 折出来约 93 高，方格四周还留得下余量。
+				<EnergyWell animate size={64} className="pointer-events-none" />
 			) : (
 				// 「无」：用虚线圈标出这块空着的位置，而不是留一片看不出所以然的空白
 				<span className="h-10 w-10 rounded-full border border-dashed border-border" />
