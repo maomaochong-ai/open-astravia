@@ -1,5 +1,6 @@
 import type { OrnamentId } from "@shared/theme/ornament";
 import type { ComponentType } from "react";
+import { OrbitOrnament } from "./presets/OrbitOrnament";
 import { ViviOrnament } from "./presets/ViviOrnament";
 
 export interface OrnamentProps {
@@ -17,5 +18,6 @@ export interface OrnamentProps {
  */
 export const ORNAMENT_COMPONENTS: Record<OrnamentId, ComponentType<OrnamentProps> | null> = {
 	none: null,
+	orbit: OrbitOrnament,
 	vivi: ViviOrnament,
 };

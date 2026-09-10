@@ -7,7 +7,7 @@
  * 会话页只要 id。
  */
 
-export type OrnamentId = "none" | "vivi";
+export type OrnamentId = "none" | "orbit" | "vivi";
 
 export const ORNAMENT_STORAGE_KEY = "vetta-hero-ornament";
 
@@ -35,6 +35,8 @@ export const ORNAMENT_CATALOG = [
 	// preview 显式给 undefined：`as const` 下缺字段会让联合类型里读不到 preview。
 	{ id: "none", labelKey: "ornamentNoneTitle", hintKey: "ornamentNoneHint", preview: undefined },
 	{ id: "vivi", labelKey: "ornamentViviTitle", hintKey: "ornamentViviHint", preview: VIVI_PREVIEW_URL },
+	// 星轨没有静帧可用：它是实时着色器，预览卡直接跑一枚小球，见 OrnamentPreview。
+	{ id: "orbit", labelKey: "ornamentOrbitTitle", hintKey: "ornamentOrbitHint", preview: undefined },
 ] as const satisfies readonly OrnamentCatalogEntry[];
 
 export function isOrnamentId(value: string | null | undefined): value is OrnamentId {

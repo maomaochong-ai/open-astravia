@@ -1,3 +1,4 @@
+import { OrbitOrb } from "@shared/components/orb/OrbitOrb";
 import { cn } from "@shared/lib/utils";
 import type { CursorStyle } from "@shared/theme/cursor";
 import type { OrnamentId } from "@shared/theme/ornament";
@@ -332,7 +333,7 @@ function CursorStyleCard({
  * 装饰件预览：一张迷你新会话页——上方两行文字骨架、贴底一枚输入框，
  * 装饰件趴在输入框右上角的顶边上。刻意与真实版式同构，让用户一眼看出这块设置改的是哪儿。
  */
-function OrnamentPreview({ preview }: { preview?: string }): JSX.Element {
+function OrnamentPreview({ id, preview }: { id: OrnamentId; preview?: string }): JSX.Element {
 	return (
 		<div className="relative h-[112px] w-full overflow-hidden border-b border-border/50 bg-gradient-to-b from-muted/60 via-muted/25 to-transparent">
 			<div className="absolute inset-x-6 top-6 space-y-2">
@@ -350,6 +351,9 @@ function OrnamentPreview({ preview }: { preview?: string }): JSX.Element {
 					draggable={false}
 					src={preview}
 				/>
+			) : id === "orbit" ? (
+				// 星轨是实时着色器，没有静帧可放：预览卡直接跑一枚小球，所见即所得。
+				<OrbitOrb size={40} className="pointer-events-none absolute right-8 bottom-7" />
 			) : (
 				// 「无」：用虚线圈标出这块空着的插槽，而不是留一片看不出所以然的空白
 				<span className="absolute right-8 bottom-10 h-8 w-8 rounded-full border border-dashed border-border" />
@@ -377,7 +381,7 @@ function OrnamentCard({
 				active ? SELECTION_ACTIVE : SELECTION_IDLE,
 			)}
 		>
-			<OrnamentPreview preview={preview} />
+			<OrnamentPreview id={id} preview={preview} />
 			<div className="px-3.5 pb-3 pt-2.5">
 				<div className="text-[13px] font-medium text-card-foreground">{label}</div>
 				<div className="mt-1 line-clamp-2 text-[11px] leading-snug text-muted-foreground">{hint}</div>

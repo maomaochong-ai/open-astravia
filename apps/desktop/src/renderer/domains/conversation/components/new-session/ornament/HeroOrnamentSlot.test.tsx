@@ -1,10 +1,15 @@
 // @vitest-environment jsdom
 /**
  * 装饰件位按「设置 - 外观 - 装饰件」的选择决定挂谁：
- * 选「无」时这块位置一个节点都不该留，选 Vivi（含未选过、存了脏值）时挂上 Vivi。
+ * 选「无」时这块位置一个节点都不该留，选 Vivi（含未选过、存了脏值）时挂上 Vivi，
+ * 选星轨时挂上星轨。
  */
 import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("./presets/OrbitOrnament", () => ({
+	OrbitOrnament: () => <div data-testid="orbit" />,
+}));
 
 vi.mock("./presets/ViviOrnament", () => ({
 	ViviOrnament: () => <div data-testid="vivi" />,
@@ -39,6 +44,13 @@ describe("HeroOrnamentSlot", () => {
 	it("选「无」时不渲染任何装饰件", async () => {
 		await renderSlot("none");
 
+		expect(screen.queryByTestId("vivi")).toBeNull();
+	});
+
+	it("选星轨时挂上星轨", async () => {
+		await renderSlot("orbit");
+
+		expect(screen.getByTestId("orbit")).toBeTruthy();
 		expect(screen.queryByTestId("vivi")).toBeNull();
 	});
 

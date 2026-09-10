@@ -1082,6 +1082,8 @@
   "ornamentNoneHint": "Leave the spot empty for a cleaner page.",
   "ornamentViviTitle": "Vivi",
   "ornamentViviHint": "Vetta's stoat Vivi — blinks, waves and crawls across the composer now and then.",
+  "ornamentOrbitTitle": "Orbit",
+  "ornamentOrbitHint": "A live shader orb, its filigree drifting slowly across the surface.",
   "section_appearance-sidebar": "Sidebar Style",
   "sidebarStyleClassicTitle": "Classic",
   "sidebarStyleClassicHint": "Sidebar sits flush against the window edge, with a single divider on its right.",

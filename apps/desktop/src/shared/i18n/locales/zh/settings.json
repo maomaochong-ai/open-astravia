@@ -1082,6 +1082,8 @@
   "ornamentNoneHint": "空着这块位置，页面更清爽。",
   "ornamentViviTitle": "Vivi",
   "ornamentViviHint": "Vetta 的白鼬 Vivi，会不时眨眼、挥手、从输入框上爬过。",
+  "ornamentOrbitTitle": "星轨",
+  "ornamentOrbitHint": "一枚实时演算的着色器球，表面的丝缕会缓慢流转。",
   "section_appearance-sidebar": "侧边栏样式",
   "sidebarStyleClassicTitle": "经典",
   "sidebarStyleClassicHint": "侧边栏贴紧窗口左侧，无圆角与四周边框，仅右侧一条分隔线。",
