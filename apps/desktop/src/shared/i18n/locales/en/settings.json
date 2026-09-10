@@ -1077,7 +1077,7 @@
   "cursorStoatTitle": "Stoat",
   "cursorStoatHint": "Use the built-in white stoat cursor style.",
   "section_appearance-ornament": "Ornament",
-  "ornamentHint": "The decoration perched above the composer on the new session page.",
+  "ornamentHint": "The ornament slot above the composer on the new session page",
   "ornamentNoneTitle": "None",
   "ornamentNoneHint": "Leave the spot empty for a cleaner page.",
   "ornamentViviTitle": "Vivi",
