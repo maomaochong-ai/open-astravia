@@ -1084,6 +1084,8 @@
   "ornamentViviHint": "Vetta 的白鼬 Vivi，会不时眨眼、挥手、从输入框上爬过。",
   "ornamentOrbitTitle": "星轨",
   "ornamentOrbitHint": "一枚实时演算的着色器球，表面的丝缕会缓慢流转。",
+  "ornamentTorchTitle": "火把",
+  "ornamentTorchHint": "一根像素火把，火光会轻轻跳动；点一下可以熄灭或重新点着。",
   "section_appearance-sidebar": "侧边栏样式",
   "sidebarStyleClassicTitle": "经典",
   "sidebarStyleClassicHint": "侧边栏贴紧窗口左侧，无圆角与四周边框，仅右侧一条分隔线。",

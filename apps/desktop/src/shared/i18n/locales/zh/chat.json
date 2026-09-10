@@ -728,6 +728,10 @@
 			"showMascot": "显示吉祥物",
 			"playOnce": "播放一次当前吉祥物动画"
 		},
+		"torch": {
+			"light": "点亮火把",
+			"extinguish": "熄灭火把"
+		},
 		"projectSelector": {
 			"placeholder": "选择项目",
 			"clear": "不指定项目",

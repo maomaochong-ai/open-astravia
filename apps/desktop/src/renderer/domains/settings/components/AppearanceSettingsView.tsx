@@ -1,4 +1,5 @@
 import { OrbitOrb } from "@shared/components/orb/OrbitOrb";
+import { PixelTorch } from "@shared/components/torch/PixelTorch";
 import { cn } from "@shared/lib/utils";
 import type { CursorStyle } from "@shared/theme/cursor";
 import type { OrnamentId } from "@shared/theme/ornament";
@@ -354,6 +355,9 @@ function OrnamentPreview({ id, preview }: { id: OrnamentId; preview?: string }):
 			) : id === "orbit" ? (
 				// 星轨是实时着色器，没有静帧可放：预览卡直接跑一枚小球，所见即所得。
 				<OrbitOrb size={40} className="pointer-events-none absolute right-8 bottom-7" />
+			) : id === "torch" ? (
+				// 火把整枚是 CSS 画的，同样直接画一根小的；bottom 补掉 3D 投影底边的空隙，让它杵在框沿上。
+				<PixelTorch unit={11} lit animate className="pointer-events-none absolute right-8 bottom-[32px]" />
 			) : (
 				// 「无」：用虚线圈标出这块空着的插槽，而不是留一片看不出所以然的空白
 				<span className="absolute right-8 bottom-10 h-8 w-8 rounded-full border border-dashed border-border" />

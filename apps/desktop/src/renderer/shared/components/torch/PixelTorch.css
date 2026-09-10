@@ -1,0 +1,289 @@
+/* ─── 像素火把 ───
+   一枚 CSS 3D 的像素火把：三个可见面（顶/左/右）拼成火焰立方体，两片侧面拼成木柄，
+   靠 rotateX(-30deg) rotateY(45deg) 摆成等轴测。没有贴图，颜色全是格子底色。
+
+   原素材按 30px 立方体标定，这里把每处尺寸都折算成 `--ns-torch-unit` 的比例，
+   换大小只改 unit，不要用 transform: scale——3D 子树被缩放后边缘会糊。
+
+   类名一律带 ns-torch 前缀：这是全局样式表，`.face` / `.side` 这种裸名字会串到别处。 */
+
+.ns-torch {
+	--ns-torch-unit: 30px;
+	/* 折算系数：原素材每 30px 对应一个 unit，下面所有 calc(N * var(--s)) 里的 N 都是原始像素值。 */
+	--s: calc(var(--ns-torch-unit) / 30);
+	position: relative;
+	display: flex;
+	justify-content: center;
+	width: var(--ns-torch-unit);
+	height: calc(150 * var(--s));
+}
+
+.ns-torch-head,
+.ns-torch-stick {
+	position: absolute;
+	width: var(--ns-torch-unit);
+	transform-style: preserve-3d;
+	transform: rotateX(-30deg) rotateY(45deg);
+	backface-visibility: hidden;
+}
+
+/* 柄留在流内撑出高度，火焰立方体绝对定位压在顶上。 */
+.ns-torch-stick {
+	position: relative;
+	height: calc(120 * var(--s));
+}
+
+.ns-torch-face {
+	position: absolute;
+	transform-style: preserve-3d;
+	width: var(--ns-torch-unit);
+	height: var(--ns-torch-unit);
+	display: grid;
+	grid-template-columns: 50% 50%;
+	grid-template-rows: 50% 50%;
+	gap: 0;
+	background-color: #1a140d;
+	transition: filter 0.3s ease;
+	backface-visibility: hidden;
+}
+
+.ns-torch-face-top {
+	transform: rotateX(90deg) translateZ(calc(15 * var(--s)));
+}
+
+.ns-torch-face-left {
+	transform: rotateY(-90deg) translateZ(calc(15 * var(--s)));
+}
+
+.ns-torch-face-right {
+	transform: rotateY(0deg) translateZ(calc(15 * var(--s)));
+}
+
+.ns-torch-face > span,
+.ns-torch-side > span {
+	width: 100%;
+	height: 100%;
+}
+
+/* ── 熄灭态：火焰立方体是一块焦炭 ── */
+
+.ns-torch-face-top > span:nth-child(1),
+.ns-torch-face-left > span:nth-child(3),
+.ns-torch-face-right > span:nth-child(3) {
+	background-color: #2c2c25;
+}
+
+.ns-torch-face-top > span:nth-child(2),
+.ns-torch-face-left > span:nth-child(1),
+.ns-torch-face-right > span:nth-child(1) {
+	background-color: #221f11;
+}
+
+.ns-torch-face-top > span:nth-child(3),
+.ns-torch-face-left > span:nth-child(4),
+.ns-torch-face-right > span:nth-child(4) {
+	background-color: #21211c;
+}
+
+.ns-torch-face-top > span:nth-child(4),
+.ns-torch-face-left > span:nth-child(2),
+.ns-torch-face-right > span:nth-child(2) {
+	background-color: #1a140d;
+}
+
+/* ── 木柄 ── */
+
+.ns-torch-side {
+	position: absolute;
+	width: var(--ns-torch-unit);
+	height: calc(120 * var(--s));
+	display: grid;
+	grid-template-columns: 50% 50%;
+	grid-template-rows: repeat(8, 12.5%);
+	gap: 0;
+	translate: 0 calc(12 * var(--s));
+	backface-visibility: hidden;
+}
+
+.ns-torch-side-left {
+	transform: rotateY(-90deg) translateZ(calc(15 * var(--s))) translateY(calc(8 * var(--s)));
+}
+
+.ns-torch-side-right {
+	transform: rotateY(0deg) translateZ(calc(15 * var(--s))) translateY(calc(8 * var(--s)));
+}
+
+.ns-torch-side > span:nth-child(1) {
+	background-color: #443622;
+}
+
+.ns-torch-side > span:nth-child(2) {
+	background-color: #2e2517;
+}
+
+.ns-torch-side > span:nth-child(3),
+.ns-torch-side > span:nth-child(5) {
+	background-color: #4b3b23;
+}
+
+.ns-torch-side > span:nth-child(4),
+.ns-torch-side > span:nth-child(10) {
+	background-color: #251e12;
+}
+
+.ns-torch-side > span:nth-child(6) {
+	background-color: #292115;
+}
+
+.ns-torch-side > span:nth-child(7) {
+	background-color: #4b3c26;
+}
+
+.ns-torch-side > span:nth-child(8) {
+	background-color: #292115;
+}
+
+.ns-torch-side > span:nth-child(9) {
+	background-color: #4b3a21;
+}
+
+.ns-torch-side > span:nth-child(11),
+.ns-torch-side > span:nth-child(15) {
+	background-color: #3d311d;
+}
+
+.ns-torch-side > span:nth-child(12) {
+	background-color: #2c2315;
+}
+
+.ns-torch-side > span:nth-child(13) {
+	background-color: #493a22;
+}
+
+.ns-torch-side > span:nth-child(14) {
+	background-color: #2b2114;
+}
+
+.ns-torch-side > span:nth-child(16) {
+	background-color: #271e10;
+}
+
+/* ── 点亮态：火焰换成暖色格子，木柄整体被烤亮一档 ── */
+
+.ns-torch[data-lit="true"] .ns-torch-face {
+	filter: drop-shadow(0 0 calc(2 * var(--s)) rgb(255, 255, 255))
+		drop-shadow(0 0 calc(10 * var(--s)) rgba(255, 237, 156, 0.7))
+		drop-shadow(0 0 calc(25 * var(--s)) rgba(255, 227, 101, 0.4));
+}
+
+.ns-torch[data-lit="true"] .ns-torch-face-top > span:nth-child(1),
+.ns-torch[data-lit="true"] .ns-torch-face-left > span:nth-child(3),
+.ns-torch[data-lit="true"] .ns-torch-face-right > span:nth-child(3) {
+	background-color: #ffff97;
+}
+
+.ns-torch[data-lit="true"] .ns-torch-face-top > span:nth-child(2),
+.ns-torch[data-lit="true"] .ns-torch-face-left > span:nth-child(1),
+.ns-torch[data-lit="true"] .ns-torch-face-right > span:nth-child(1) {
+	background-color: #ffd800;
+}
+
+.ns-torch[data-lit="true"] .ns-torch-face-top > span:nth-child(3),
+.ns-torch[data-lit="true"] .ns-torch-face-left > span:nth-child(4),
+.ns-torch[data-lit="true"] .ns-torch-face-right > span:nth-child(4) {
+	background-color: #ffffff;
+}
+
+.ns-torch[data-lit="true"] .ns-torch-face-top > span:nth-child(4),
+.ns-torch[data-lit="true"] .ns-torch-face-left > span:nth-child(2),
+.ns-torch[data-lit="true"] .ns-torch-face-right > span:nth-child(2) {
+	background-color: #ff8f00;
+}
+
+.ns-torch[data-lit="true"] .ns-torch-side > span:nth-child(1) {
+	background-color: #7c623e;
+}
+
+.ns-torch[data-lit="true"] .ns-torch-side > span:nth-child(2) {
+	background-color: #4c3d26;
+}
+
+.ns-torch[data-lit="true"] .ns-torch-side > span:nth-child(3),
+.ns-torch[data-lit="true"] .ns-torch-side > span:nth-child(5) {
+	background-color: #937344;
+}
+
+.ns-torch[data-lit="true"] .ns-torch-side > span:nth-child(4),
+.ns-torch[data-lit="true"] .ns-torch-side > span:nth-child(10) {
+	background-color: #3c2f1c;
+}
+
+.ns-torch[data-lit="true"] .ns-torch-side > span:nth-child(6) {
+	background-color: #423522;
+}
+
+.ns-torch[data-lit="true"] .ns-torch-side > span:nth-child(7) {
+	background-color: #9f7f50;
+}
+
+.ns-torch[data-lit="true"] .ns-torch-side > span:nth-child(8) {
+	background-color: #403320;
+}
+
+.ns-torch[data-lit="true"] .ns-torch-side > span:nth-child(9) {
+	background-color: #977748;
+}
+
+.ns-torch[data-lit="true"] .ns-torch-side > span:nth-child(11),
+.ns-torch[data-lit="true"] .ns-torch-side > span:nth-child(15) {
+	background-color: #675231;
+}
+
+.ns-torch[data-lit="true"] .ns-torch-side > span:nth-child(12) {
+	background-color: #3d301d;
+}
+
+.ns-torch[data-lit="true"] .ns-torch-side > span:nth-child(13) {
+	background-color: #987849;
+}
+
+.ns-torch[data-lit="true"] .ns-torch-side > span:nth-child(14) {
+	background-color: #3b2e1b;
+}
+
+.ns-torch[data-lit="true"] .ns-torch-side > span:nth-child(16) {
+	background-color: #372a17;
+}
+
+/* ── 火光跳动 ──
+   只动 filter 里的光晕，不动格子底色：底色一跳就成了闪烁的色块，像坏掉而不像火。 */
+
+@keyframes ns-torch-flicker {
+	0%,
+	100% {
+		filter: drop-shadow(0 0 calc(2 * var(--s)) rgb(255, 255, 255))
+			drop-shadow(0 0 calc(10 * var(--s)) rgba(255, 237, 156, 0.7))
+			drop-shadow(0 0 calc(25 * var(--s)) rgba(255, 227, 101, 0.4));
+	}
+	38% {
+		filter: drop-shadow(0 0 calc(2 * var(--s)) rgb(255, 255, 255))
+			drop-shadow(0 0 calc(7 * var(--s)) rgba(255, 237, 156, 0.55))
+			drop-shadow(0 0 calc(18 * var(--s)) rgba(255, 227, 101, 0.28));
+	}
+	64% {
+		filter: drop-shadow(0 0 calc(3 * var(--s)) rgb(255, 255, 255))
+			drop-shadow(0 0 calc(13 * var(--s)) rgba(255, 237, 156, 0.8))
+			drop-shadow(0 0 calc(31 * var(--s)) rgba(255, 227, 101, 0.5));
+	}
+}
+
+.ns-torch[data-lit="true"][data-animate="true"] .ns-torch-face {
+	animation: ns-torch-flicker 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ns-torch .ns-torch-face {
+		animation: none;
+		transition: none;
+	}
+}

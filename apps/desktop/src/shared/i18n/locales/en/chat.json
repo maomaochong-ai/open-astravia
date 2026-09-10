@@ -728,6 +728,10 @@
 			"showMascot": "Show mascot",
 			"playOnce": "Play the current mascot animation once"
 		},
+		"torch": {
+			"light": "Light the torch",
+			"extinguish": "Snuff out the torch"
+		},
 		"projectSelector": {
 			"placeholder": "Select project",
 			"clear": "No project",
