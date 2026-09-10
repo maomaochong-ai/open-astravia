@@ -148,6 +148,28 @@ describe("CommandMenuView", () => {
 		expect(screen.getByRole("option").textContent).toBe("openvetta");
 	});
 
+	it("lets a long subtitle give way instead of squeezing the title", () => {
+		const groups = [
+			group({
+				items: [
+					item({
+						id: "a1",
+						title: "vetta-testing",
+						subtitle: "为 OpenVetta 的功能变更、Bug 修复、重构、公共合同和 UI 交互设计、编写或审查测试",
+					}),
+				],
+			}),
+		];
+		const { container } = render(<CommandMenuView {...props({ groups })} />);
+
+		const [title, subtitle] = Array.from(container.querySelectorAll("[role='option'] > span > span"));
+		// 标题不收缩、只受上限约束；副标题吃掉剩余宽度并自己截断。
+		expect(title.className).toContain("shrink-0");
+		expect(title.className).toContain("max-w-[60%]");
+		expect(subtitle.className).toContain("flex-1");
+		expect(subtitle.className).toContain("min-w-0");
+	});
+
 	it("activates a row on click and reports hover for selection follow", async () => {
 		const onActivateItem = vi.fn();
 		const onHoverItem = vi.fn();

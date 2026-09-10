@@ -96,11 +96,15 @@ export function CommandMenuRow({
 				className={cn(item.icon, "size-4 shrink-0", active ? "text-foreground" : "text-muted-foreground")}
 			/>
 			<span className="flex min-w-0 flex-1 items-baseline gap-2">
-				<span className="truncate text-[13px] text-foreground">
+				{/*
+				 * 标题不参与收缩（shrink-0），只受 max-w 约束：标题和副标题都可收缩时，
+				 * flex 会按内容等比压缩，一条长描述能把名字挤成两三个字。让副标题先让位。
+				 */}
+				<span className="max-w-[60%] shrink-0 truncate text-[13px] text-foreground">
 					<Highlighted text={item.title} ranges={item.titleHighlights} />
 				</span>
 				{item.subtitle && (
-					<span className="truncate text-[11px] text-muted-foreground">
+					<span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
 						<Highlighted text={item.subtitle} ranges={item.subtitleHighlights ?? []} />
 					</span>
 				)}
