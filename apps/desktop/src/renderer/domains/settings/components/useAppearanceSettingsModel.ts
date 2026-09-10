@@ -2,10 +2,12 @@ import { useCursorStyle } from "@shared/hooks/useCustomCursor";
 import { useHeroOrnament } from "@shared/hooks/useHeroOrnament";
 import { useLanguage } from "@shared/hooks/useLanguage";
 import { useNarrowScreen } from "@shared/hooks/useNarrowScreen";
+import { useNewSessionTexture } from "@shared/hooks/useNewSessionTexture";
 import { useSidebarStyle } from "@shared/hooks/useSidebarStyle";
 import { useTheme } from "@shared/hooks/useTheme";
 import type { ThemeMode } from "@shared/store/atoms";
 import { type CursorStyle, STOAT_CURSOR_PREVIEW_URL } from "@shared/theme/cursor";
+import { NEW_SESSION_TEXTURE_CATALOG, type NewSessionTextureId } from "@shared/theme/new-session-texture";
 import { ORNAMENT_CATALOG, type OrnamentId } from "@shared/theme/ornament";
 import { useThemeRuntime } from "@shared/theme/runtime";
 import type { SidebarStyle } from "@shared/theme/sidebar-style";
@@ -67,6 +69,13 @@ export interface AppearanceOrnamentOption {
 	preview?: string;
 }
 
+export interface AppearanceTextureOption {
+	active: boolean;
+	hint: string;
+	id: NewSessionTextureId;
+	label: string;
+}
+
 export interface AppearanceSidebarStyleOption {
 	active: boolean;
 	hint: string;
@@ -83,12 +92,16 @@ export interface AppearanceSettingsModel {
 		setCursorStyle: (style: CursorStyle) => void;
 		setOrnament: (id: OrnamentId) => void;
 		setSidebarStyle: (style: SidebarStyle) => void;
+		setTexture: (id: NewSessionTextureId) => void;
 	};
 	activeUiThemeId: string;
 	cursorOptions: AppearanceCursorOption[];
 	cursorStyle: CursorStyle;
 	labels: {
 		languageHint: string;
+		/** 「新会话页装饰」这块合并区域的说明，点明装饰件与纹理只影响新会话页。 */
+		newSessionDecorHint: string;
+		newSessionDecorTitle: string;
 		ornamentHint: string;
 		sections: {
 			cursor: string;
@@ -96,9 +109,11 @@ export interface AppearanceSettingsModel {
 			mode: string;
 			ornament: string;
 			sidebar: string;
+			texture: string;
 			theme: string;
 			uiTheme: string;
 		};
+		textureHint: string;
 		title: string;
 	};
 	/** 用户语言偏好（含 system），用于选择器高亮。 */
@@ -113,6 +128,8 @@ export interface AppearanceSettingsModel {
 	showUiTheme: boolean;
 	sidebarStyle: SidebarStyle;
 	sidebarStyleOptions: AppearanceSidebarStyleOption[];
+	textureId: NewSessionTextureId;
+	textureOptions: AppearanceTextureOption[];
 	themeName: string;
 	themes: ThemeDef[];
 	uiThemes: AppearanceUiThemeOption[];
@@ -210,6 +227,7 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 	const { style: cursorStyle, setStyle: setCursorStyle } = useCursorStyle();
 	const { style: sidebarStyle, setStyle: setSidebarStyle } = useSidebarStyle();
 	const { ornamentId, setOrnament } = useHeroOrnament();
+	const { textureId, setTexture } = useNewSessionTexture();
 	const { t } = useTranslation("settings");
 	const narrow = useNarrowScreen();
 
@@ -281,6 +299,17 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 		[ornamentId, t],
 	);
 
+	const textureOptions = useMemo<AppearanceTextureOption[]>(
+		() =>
+			NEW_SESSION_TEXTURE_CATALOG.map((entry) => ({
+				id: entry.id,
+				active: textureId === entry.id,
+				label: t(entry.labelKey),
+				hint: t(entry.hintKey),
+			})),
+		[t, textureId],
+	);
+
 	const sidebarStyleOptions = useMemo<AppearanceSidebarStyleOption[]>(
 		() =>
 			SIDEBAR_STYLE_OPTIONS.map((option) => ({
@@ -307,6 +336,8 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 	const labels = useMemo(
 		() => ({
 			languageHint: t("languageHint"),
+			newSessionDecorHint: t("newSessionDecorHint"),
+			newSessionDecorTitle: t("newSessionDecorTitle"),
 			ornamentHint: t("ornamentHint"),
 			sections: {
 				cursor: t(SETTINGS_SECTION["appearance-cursor"].titleKey),
@@ -314,9 +345,11 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 				mode: t(SETTINGS_SECTION["appearance-mode"].titleKey),
 				ornament: t(SETTINGS_SECTION["appearance-ornament"].titleKey),
 				sidebar: t(SETTINGS_SECTION["appearance-sidebar"].titleKey),
+				texture: t(SETTINGS_SECTION["appearance-texture"].titleKey),
 				theme: t(SETTINGS_SECTION["appearance-theme"].titleKey),
 				uiTheme: t(SETTINGS_SECTION["appearance-ui-theme"].titleKey),
 			},
+			textureHint: t("textureHint"),
 			title: t("appearanceTitle"),
 		}),
 		[t],
@@ -353,6 +386,10 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 				setOrnament(id);
 				recordSettingsUsage({ tab: "appearance", action: "changed", target: "ornament", value: id });
 			},
+			setTexture: (id) => {
+				setTexture(id);
+				recordSettingsUsage({ tab: "appearance", action: "changed", target: "new-session-texture", value: id });
+			},
 			setSidebarStyle: (style) => {
 				setSidebarStyle(style);
 				recordSettingsUsage({
@@ -377,6 +414,8 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 		showUiTheme: isAppearanceUiThemeEnabled(),
 		sidebarStyle,
 		sidebarStyleOptions,
+		textureId,
+		textureOptions,
 		themeName,
 		themes,
 		uiThemes,

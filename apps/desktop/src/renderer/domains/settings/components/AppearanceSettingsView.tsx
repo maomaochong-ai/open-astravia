@@ -6,9 +6,13 @@ import { PixelTorch } from "@shared/components/torch/PixelTorch";
 import { EnergyWell } from "@shared/components/well/EnergyWell";
 import { cn } from "@shared/lib/utils";
 import type { CursorStyle } from "@shared/theme/cursor";
+import {
+	NEW_SESSION_TEXTURE_COMPONENTS,
+	type NewSessionTextureId,
+} from "@shared/theme/new-session-texture";
 import type { OrnamentId } from "@shared/theme/ornament";
 import type { ThemeDef } from "@shared/theme/tokens";
-import type { MouseEvent } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { SettingsAiAssist } from "../ai-assist";
 import appearanceMascot from "../assets/appearance-mascot.webp";
 import themeLock from "../assets/theme-lock.webp";
@@ -22,6 +26,7 @@ import type {
 	AppearanceModeOption,
 	AppearanceSettingsModel,
 	AppearanceSidebarStyleOption,
+	AppearanceTextureOption,
 	AppearanceUiThemeOption,
 } from "./useAppearanceSettingsModel";
 
@@ -385,21 +390,27 @@ function OrnamentPreview({ id, preview }: { id: OrnamentId; preview?: string }):
 	);
 }
 
-/** 与本页「色彩主题」那组同构：方格预览在上、名字在下，选中只改 1px border 色。 */
-function OrnamentCard({
+/**
+ * 方格选择卡：与本页「色彩主题」那组同构——方格预览在上、名字在下，选中只改 1px border 色。
+ * 装饰件与纹理共用同一副壳，两组并排时才看得出是同一类选择。
+ */
+function DecorCard({
 	active,
+	children,
 	hint,
-	id,
 	label,
 	onSelect,
-	preview,
-}: AppearanceOrnamentOption & {
-	onSelect: (id: OrnamentId) => void;
+}: {
+	active: boolean;
+	children: ReactNode;
+	hint: string;
+	label: string;
+	onSelect: () => void;
 }): JSX.Element {
 	return (
 		<button
 			type="button"
-			onClick={() => onSelect(id)}
+			onClick={onSelect}
 			// 描述文字在方格里塞不下又不该丢，挂成 title 让需要的人悬停能看到。
 			title={hint}
 			className="group flex flex-col items-stretch gap-2 text-left"
@@ -410,7 +421,7 @@ function OrnamentCard({
 					active ? SELECTION_ACTIVE : SELECTION_IDLE,
 				)}
 			>
-				<OrnamentPreview id={id} preview={preview} />
+				{children}
 				{active && <SelectionCheckBadge />}
 			</div>
 			<span
@@ -422,6 +433,63 @@ function OrnamentCard({
 				{label}
 			</span>
 		</button>
+	);
+}
+
+/**
+ * 纹理预览：方格里直接画一小块真的底衬，所见即所得。
+ *
+ * 复用新会话页那一档的实现而不是另画一张示意图：网格的疏密、淡出与那团光晕
+ * 都由实现决定，另画一份迟早会和页面对不上。
+ */
+function TexturePreview({ id }: { id: NewSessionTextureId }): JSX.Element {
+	const Texture = NEW_SESSION_TEXTURE_COMPONENTS[id];
+	return (
+		<div className="relative h-full w-full">
+			{Texture ? (
+				<Texture />
+			) : (
+				// 「无」与装饰件那档同款：虚线圈 + 斜杠，一眼看得出这项什么都不画。
+				<span className="flex h-full w-full items-center justify-center">
+					<span className="flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-muted-foreground/50">
+						<span className="icon-[mdi--close] h-5 w-5 text-muted-foreground/60" />
+					</span>
+				</span>
+			)}
+		</div>
+	);
+}
+
+function OrnamentCard({
+	active,
+	hint,
+	id,
+	label,
+	onSelect,
+	preview,
+}: AppearanceOrnamentOption & {
+	onSelect: (id: OrnamentId) => void;
+}): JSX.Element {
+	return (
+		<DecorCard active={active} hint={hint} label={label} onSelect={() => onSelect(id)}>
+			<OrnamentPreview id={id} preview={preview} />
+		</DecorCard>
+	);
+}
+
+function TextureCard({
+	active,
+	hint,
+	id,
+	label,
+	onSelect,
+}: AppearanceTextureOption & {
+	onSelect: (id: NewSessionTextureId) => void;
+}): JSX.Element {
+	return (
+		<DecorCard active={active} hint={hint} label={label} onSelect={() => onSelect(id)}>
+			<TexturePreview id={id} />
+		</DecorCard>
 	);
 }
 
@@ -497,16 +565,38 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 				</div>
 			)}
 
-			{/* 装饰件：新会话页输入框上方那块挂饰位 */}
-			<div className="mb-6">
-				<SettingHeading title={model.labels.sections.ornament} section={SETTINGS_SECTION["appearance-ornament"]} className="mb-1" />
-				<p className="mb-3 text-[12px] text-muted-foreground">{model.labels.ornamentHint}</p>
-				<div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-4">
-					{model.ornamentOptions.map((option) => (
-						<OrnamentCard key={option.id} {...option} onSelect={model.actions.setOrnament} />
-					))}
+			{/* 新会话页装饰：装饰件与纹理都只改这一页，收进同一块区域里，用户不必逐项猜它们作用在哪。 */}
+			<section className="mb-6 rounded-xl border border-border/50 bg-muted/20 p-4">
+				<div className="mb-4 flex items-start gap-2">
+					<span className="icon-[solar--gallery-round-linear] mt-0.5 h-4 w-4 shrink-0 text-primary" />
+					<div className="min-w-0">
+						<h2 className="text-[15px] font-semibold text-foreground">{model.labels.newSessionDecorTitle}</h2>
+						<p className="mt-0.5 text-[12px] text-muted-foreground">{model.labels.newSessionDecorHint}</p>
+					</div>
 				</div>
-			</div>
+
+				{/* 装饰件：输入框上方那块挂饰位 */}
+				<div className="mb-5">
+					<SettingHeading title={model.labels.sections.ornament} section={SETTINGS_SECTION["appearance-ornament"]} className="mb-1 text-[13px]" />
+					<p className="mb-3 text-[12px] text-muted-foreground">{model.labels.ornamentHint}</p>
+					<div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-4">
+						{model.ornamentOptions.map((option) => (
+							<OrnamentCard key={option.id} {...option} onSelect={model.actions.setOrnament} />
+						))}
+					</div>
+				</div>
+
+				{/* 纹理：整页背后的底衬 */}
+				<div>
+					<SettingHeading title={model.labels.sections.texture} section={SETTINGS_SECTION["appearance-texture"]} className="mb-1 text-[13px]" />
+					<p className="mb-3 text-[12px] text-muted-foreground">{model.labels.textureHint}</p>
+					<div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-4">
+						{model.textureOptions.map((option) => (
+							<TextureCard key={option.id} {...option} onSelect={model.actions.setTexture} />
+						))}
+					</div>
+				</div>
+			</section>
 
 			<div className="mb-6">
 				<SettingHeading title={model.labels.sections.sidebar} section={SETTINGS_SECTION["appearance-sidebar"]} className="mb-3" />

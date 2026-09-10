@@ -10,6 +10,7 @@ import {
 	type LanguagePreference,
 } from "@/shared/i18n/config";
 import { type CursorStyle, getStoredCursorStyle } from "../theme/cursor";
+import { getStoredNewSessionTextureId, type NewSessionTextureId } from "../theme/new-session-texture";
 import { getStoredOrnamentId, type OrnamentId } from "../theme/ornament";
 import { getStoredSidebarStyle, type SidebarStyle } from "../theme/sidebar-style";
 
@@ -82,6 +83,9 @@ export const sidebarStyleAtom = atom<SidebarStyle>(getStoredSidebarStyle());
 export type { OrnamentId };
 /** 新会话页装饰件位当前挂着谁。 */
 export const heroOrnamentAtom = atom<OrnamentId>(getStoredOrnamentId());
+export type { NewSessionTextureId };
+/** 新会话页背后当前铺着哪层纹理。 */
+export const newSessionTextureAtom = atom<NewSessionTextureId>(getStoredNewSessionTextureId());
 
 // ─── Confirm dialog ───
 
