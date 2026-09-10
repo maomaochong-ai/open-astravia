@@ -15,3 +15,10 @@ export const PANEL_SHIFT_MIN_ITEMS = 6;
  * 480 ≈ 选项行两枚 chip 的常见宽度 + 素材宽 + 余量。
  */
 export const ORNAMENT_MIN_SLOT_WIDTH = 480;
+
+/**
+ * 选项行所在插槽（= hero 宽度）低于此值时，项目选择器改挂到输入框下方。
+ * 三枚 chip 挤在一行会先把「切换智能体」截成省略号，再和右锚的装饰件叠在一起；
+ * 560 ≈ 三枚 chip 的常见宽度 + 装饰件避让余量。
+ */
+export const OPTIONS_ROW_STACK_WIDTH = 560;

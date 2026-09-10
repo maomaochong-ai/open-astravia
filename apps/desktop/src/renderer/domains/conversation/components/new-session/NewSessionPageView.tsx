@@ -13,7 +13,10 @@ import {
 import { NewSessionBackground } from "./NewSessionBackground";
 import { NewSessionHero } from "./NewSessionHero";
 import { NewSessionOptionsRow } from "./NewSessionOptionsRow";
+import { NewSessionProjectSelector } from "./project-selector/NewSessionProjectSelector";
 import type { ProjectOption, ProjectSelection } from "./project-selector/project-selection";
+import { shouldStackProjectSelector } from "./options-row-layout";
+import { useSlotWidth } from "./useSlotWidth";
 import { DefaultInputBarConnector } from "../input-bar/DefaultInputBarConnector";
 import type { SendInteractionContext } from "../input-bar/types";
 import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
@@ -87,6 +90,11 @@ export function NewSessionPageView({
 	// hero 淡出、输入栏位移、命令区揭幕三条动画同时跑，共用同一条曲线：各跑各的弹簧时
 	// 长度不一致，掉帧时能明显看出它们互相在「追」。
 	const shiftTransition = reduceMotion ? { duration: 0 } : PANEL_REVEAL_TRANSITION;
+	// 选项行放不下三枚 chip 时，把项目选择器挪到输入框下方。测的是 hero 插槽而非窗口宽度：
+	// 侧边栏/活动面板展开同样会压窄这一列。未测量（width === null）先按宽版渲染，
+	// 与装饰件相反——这一枚是功能入口，宁可多测一帧位置也不能有一帧点不到。
+	const optionsSlot = useSlotWidth();
+	const stackProjectSelector = shouldStackProjectSelector(optionsSlot.width);
 	// hero 仍比位移收得更快：吉祥物层级高于输入栏，淡得慢会在面板前面停留一下。
 	const heroTransition = reduceMotion
 		? { duration: 0 }
@@ -112,6 +120,7 @@ export function NewSessionPageView({
 					// 命令区向上生长会盖到 hero 上，模式切换与吉祥物会浮在面板前面挡住内容，
 					// 因此展开期间把 hero 整块淡出并禁用命中。
 					<motion.div
+						ref={optionsSlot.ref}
 						animate={{ opacity: commandPanelExpanded ? 0 : 1 }}
 						transition={heroTransition}
 						// hero 是渐变标题 + 吉祥物的大块区域，不提层的话这段 opacity 动画每帧都要
@@ -143,6 +152,7 @@ export function NewSessionPageView({
 							takenNames={projectTakenNames}
 							targetKey={targetKey}
 							onSelectTarget={onSelectTarget}
+							showProjectSelector={!stackProjectSelector}
 						/>
 					</motion.div>
 				}
@@ -173,6 +183,22 @@ export function NewSessionPageView({
 								onExpandedChange={onCommandPanelExpandedChange}
 								sendPending={preparingProject ? { label: preparingLabel } : undefined}
 							/>
+						)}
+						{/* 窄插槽下的项目选择器：跟着输入栏一起位移，横向留白与输入框卡片对齐
+						    （`px-2 sm:px-4` + 内层 `max-w-2xl`），保证它的左缘压在卡片左缘上。 */}
+						{stackProjectSelector && (
+							<div className="px-2 sm:px-4">
+								<div className="mx-auto mt-2 flex w-full max-w-2xl items-center">
+									<NewSessionProjectSelector
+										selection={projectSelection}
+										options={projectOptions}
+										takenNames={projectTakenNames}
+										creating={preparingProject}
+										onSelectProject={onSelectProject}
+										onSelectPendingProject={onSelectPendingProject}
+									/>
+								</div>
+							</div>
 						)}
 					</motion.div>
 				}
