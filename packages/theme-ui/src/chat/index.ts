@@ -319,7 +319,11 @@ export type {
 	NewSessionSkillItem,
 	NewSessionSkillSelection,
 } from "./NewSession";
-export { NewSessionBackground } from "./NewSessionBackground";
+export {
+	NEW_SESSION_TEXTURE_MASK,
+	NewSessionAmbientGlow,
+	NewSessionBackground,
+} from "./NewSessionBackground";
 export type { NewSessionPageLayoutViewProps } from "./NewSessionPageLayoutView";
 export { NewSessionPageLayoutView } from "./NewSessionPageLayoutView";
 export type {
