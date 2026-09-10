@@ -161,6 +161,7 @@ export class RuntimeHost implements SessionFacade {
 		});
 		this.sessionLifecycle = new RuntimeHostSessionLifecycle({
 			directory: this.sessionDirectory,
+			normalizeSessionPath: (path) => this.normalizePath(path),
 			events: this.sessionEvents,
 			queueSidecar: this.queueSidecar,
 			backend: this.agentBackends,
