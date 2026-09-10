@@ -77,14 +77,17 @@ function model(
 }
 
 describe("AppearanceSettingsView 的新会话页装饰区域", () => {
-	it("装饰件与纹理收在同一块区域里，标题点明它们只改新会话页", () => {
+	it("装饰件与纹理紧跟在「新会话页装饰」这条标题之下，不与其它分区混排", () => {
 		const view = render(<AppearanceSettingsView model={model()} />);
 
-		const region = view.getByText("新会话页装饰").closest("section");
+		// 断言的是分组关系本身（谁归在这条标题之下），不锁具体的盒子：
+		// 这块区域是套卡片还是平铺属于视觉选择，改版不该把测试一起打红。
+		const headings = Array.from(view.container.querySelectorAll("h2")).map((h) => h.textContent?.trim());
+		const groupIndex = headings.indexOf("新会话页装饰");
 
-		expect(region).not.toBeNull();
-		expect(region?.textContent).toContain("装饰件");
-		expect(region?.textContent).toContain("纹理");
+		expect(groupIndex).toBeGreaterThanOrEqual(0);
+		expect(headings.slice(groupIndex + 1, groupIndex + 3)).toEqual(["装饰件", "纹理"]);
+		expect(view.getByText("newSessionDecorHint")).toBeTruthy();
 	});
 
 	it("点「无」把纹理选择交回模型", async () => {
