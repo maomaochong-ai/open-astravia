@@ -224,6 +224,15 @@ function normalizeRequest(
 	return { ...request, method, responseType: request.responseType ?? "json", timeoutMs };
 }
 
+class PluginServiceRequestTimeoutError extends Error {
+	readonly code = "PLUGIN_SERVICE_REQUEST_TIMEOUT";
+
+	constructor(pluginId: string, serviceId: string, method: string, path: string, timeoutMs: number) {
+		super(`Plugin service request timed out: ${pluginId}/${serviceId} ${method} ${path} after ${timeoutMs}ms`);
+		this.name = "PluginServiceRequestTimeoutError";
+	}
+}
+
 function resolveDataFilePath(dataDirectory: string, path: string): string {
 	if (typeof path !== "string" || !path.trim() || path.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(path)) {
 		throw new Error("Service data file path must be relative");
@@ -559,6 +568,7 @@ export class PluginServiceProviderService {
 	private async requestRecord<T>(
 		record: ServiceRecord,
 		input: PluginServiceRequest,
+		options: { logFailure?: boolean } = {},
 	): Promise<PluginServiceResponse<T>> {
 		const request = normalizeRequest(input);
 		const url = new URL(request.path, record.baseUrl);
@@ -566,7 +576,12 @@ export class PluginServiceProviderService {
 			throw new Error("Service request must stay on its loopback origin");
 		const credential = credentialFor(record, request.credentialId);
 		const controller = new AbortController();
-		const timer = setTimeout(() => controller.abort(), request.timeoutMs);
+		const startedAt = Date.now();
+		let timedOut = false;
+		const timer = setTimeout(() => {
+			timedOut = true;
+			controller.abort();
+		}, request.timeoutMs);
 		try {
 			const headers = new Headers(request.headers);
 			if (credential) headers.set("Authorization", `Bearer ${credential}`);
@@ -591,6 +606,42 @@ export class PluginServiceProviderService {
 				headers: Object.fromEntries(response.headers.entries()),
 				body: responseBody as T,
 			};
+		} catch (error) {
+			const durationMs = Date.now() - startedAt;
+			const path = url.pathname;
+			if (timedOut) {
+				const timeoutError = new PluginServiceRequestTimeoutError(
+					record.pluginId,
+					record.service.id,
+					request.method,
+					path,
+					request.timeoutMs,
+				);
+				if (options.logFailure !== false) {
+					serviceLog.warn("Plugin service request timed out", {
+						pluginId: record.pluginId,
+						serviceId: record.service.id,
+						method: request.method,
+						path,
+						timeoutMs: request.timeoutMs,
+						durationMs,
+						phase: record.status.phase,
+					});
+				}
+				throw timeoutError;
+			}
+			if (options.logFailure !== false) {
+				serviceLog.warn("Plugin service request failed", {
+					pluginId: record.pluginId,
+					serviceId: record.service.id,
+					method: request.method,
+					path,
+					durationMs,
+					phase: record.status.phase,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+			throw error;
 		} finally {
 			clearTimeout(timer);
 		}
@@ -670,12 +721,16 @@ export class PluginServiceProviderService {
 		while (Date.now() < deadline && record.generation === generation) {
 			if (!record.child || record.status.phase === "failed") throw new Error("Service exited before becoming ready");
 			try {
-				const response = await this.requestRecord(record, {
-					path: record.service.health.path,
-					credentialId: record.service.health.credentialId,
-					responseType: "text",
-					timeoutMs: 5_000,
-				});
+				const response = await this.requestRecord(
+					record,
+					{
+						path: record.service.health.path,
+						credentialId: record.service.health.credentialId,
+						responseType: "text",
+						timeoutMs: 5_000,
+					},
+					{ logFailure: false },
+				);
 				lastStatus = response.status;
 				if (response.ok) return;
 			} catch {

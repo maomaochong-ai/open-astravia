@@ -9,10 +9,13 @@ import { PluginServiceProviderService } from "./plugin-service-provider-service.
 
 vi.mock("./plugin-catalog.js", () => ({ listPlugins: () => [] }));
 vi.mock("electron", () => ({ webContents: { getAllWebContents: () => [] } }));
-vi.mock("../logger.js", () => ({ getAppLogger: () => ({ warn: vi.fn() }) }));
+const { logWarn } = vi.hoisted(() => ({ logWarn: vi.fn() }));
+vi.mock("../logger.js", () => ({ getAppLogger: () => ({ warn: logWarn }) }));
 
 const directories: string[] = [];
 afterEach(async () => {
+	vi.useRealTimers();
+	logWarn.mockClear();
 	await Promise.all(directories.splice(0).map((path) => rm(path, { recursive: true, force: true })));
 });
 
@@ -178,6 +181,46 @@ describe("PluginServiceProviderService", () => {
 		);
 		f.plugin.enabled = false;
 		expect(() => f.service.connection(f.plugin.id, "bridge")).toThrow("Plugin disabled");
+		f.service.stopAll();
+	});
+
+	it("reports the plugin and service when a request times out without logging credentials", async () => {
+		const f = await fixture();
+		await f.service.start(f.plugin.id, "bridge");
+		f.fetchClient.mockImplementationOnce(
+			(_url, init) =>
+				new Promise<Response>((_resolve, reject) => {
+					init?.signal?.addEventListener(
+						"abort",
+						() => reject(new DOMException("This operation was aborted", "AbortError")),
+						{ once: true },
+					);
+				}),
+		);
+
+		vi.useFakeTimers();
+		const request = f.service.request(f.plugin.id, "bridge", {
+			path: "/slow?token=must-not-be-logged",
+			timeoutMs: 1_000,
+		});
+		const rejected = expect(request).rejects.toMatchObject({
+			name: "PluginServiceRequestTimeoutError",
+			code: "PLUGIN_SERVICE_REQUEST_TIMEOUT",
+			message: "Plugin service request timed out: managed-bridge/bridge GET /slow after 1000ms",
+		});
+		await vi.advanceTimersByTimeAsync(1_000);
+
+		await rejected;
+		expect(logWarn).toHaveBeenCalledWith("Plugin service request timed out", {
+			pluginId: "managed-bridge",
+			serviceId: "bridge",
+			method: "GET",
+			path: "/slow",
+			timeoutMs: 1_000,
+			durationMs: expect.any(Number),
+			phase: "ready",
+		});
+		expect(JSON.stringify(logWarn.mock.calls)).not.toContain("must-not-be-logged");
 		f.service.stopAll();
 	});
 
