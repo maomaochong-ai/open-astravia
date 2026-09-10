@@ -75,7 +75,11 @@ Skill content here.`,
 			await loader.reload();
 
 			const { skills } = loader.getSkills();
-			expect(skills.some((s) => s.name === "test-skill")).toBe(true);
+			expect(skills.find((s) => s.name === "test-skill")).toMatchObject({
+				name: "test-skill",
+				source: "user",
+				provenance: { kind: "native", scope: "user" },
+			});
 		});
 
 		it("logs only aggregate skill loading diagnostics", async () => {

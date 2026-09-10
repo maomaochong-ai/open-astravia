@@ -3,6 +3,7 @@ import { rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
 import type { AppMonitorResourceOperation } from "../../preload/api-types/app-monitor.js";
+import type { SkillProvenance } from "../../preload/api-types/skills.js";
 import { removeAbilityLedgerEntry } from "../abilities/ability-ledger.js";
 import { createDesktopSkillResourceRuntime } from "../agent-runtime/resource-runtime.js";
 import { recordAppMonitorEvent } from "../app-monitor/app-monitor-service.js";
@@ -43,6 +44,7 @@ export interface InstalledCustomSkill {
 	source: "custom";
 	enabled: boolean;
 	type: InstalledSkillType;
+	provenance?: SkillProvenance;
 	alias?: string;
 	description: string;
 }
@@ -54,6 +56,8 @@ export interface ListedSkill {
 	alias?: string;
 	description: string;
 	source: string;
+	/** 结构化来源；缺失时按旧 source 兼容推断。 */
+	provenance?: SkillProvenance;
 	/** 插件贡献的 skill 来源插件 ID；其它来源未定义。 */
 	sourcePluginId?: string;
 	type: InstalledSkillType;
@@ -154,6 +158,11 @@ export class SkillService {
 						? (builtinSkillText(skill.name, "description", builtinEntry?.description) ?? skill.description)
 						: (entry?.source === "market" ? entry.marketDescription : entry?.description) || skill.description,
 					source: isBuiltin ? "builtin" : pluginSource ? "plugin" : skill.source,
+					provenance: isBuiltin
+						? { kind: "builtin", providerId: "vetta" }
+						: pluginSource
+							? { kind: "provided", providerType: "plugin", providerId: pluginSource.pluginId }
+							: (skill.provenance ?? { kind: "native", scope: skill.source }),
 					...(pluginSource ? { sourcePluginId: pluginSource.pluginId } : {}),
 					type: skill.type,
 					...(icon ? { icon } : {}),

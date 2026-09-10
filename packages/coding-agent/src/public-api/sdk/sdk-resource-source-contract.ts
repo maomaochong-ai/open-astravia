@@ -12,6 +12,11 @@ export interface CodingAgentSkillContribution {
 	/** @deprecated 工作模式不再影响 Skill 的可见性与顺序（ADR-0071）。字段容忍传入但被忽略。 */
 	readonly agentModes?: readonly string[];
 	readonly disableModelInvocation?: boolean;
+	/** 可选的结构化来源；SDK source 未提供时由宿主填充。 */
+	readonly provenance?:
+		| { readonly kind: "native"; readonly scope: string }
+		| { readonly kind: "provided"; readonly providerType: "plugin" | "sdk" | "runtime"; readonly providerId: string }
+		| { readonly kind: "builtin"; readonly providerId: string };
 }
 
 /** Skill 的声明式匹配条件；同一 selector 内不同字段取交集，字段值内部取并集。 */

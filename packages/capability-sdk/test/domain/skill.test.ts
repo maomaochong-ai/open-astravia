@@ -68,6 +68,48 @@ describe("skill domain capabilities", () => {
 		);
 	});
 
+	it("accepts structured provenance while keeping legacy skill payloads compatible", () => {
+		const parse = DOMAIN_SKILL_CAPABILITIES.LIST.parseOutput([
+			{
+				name: "native",
+				description: "Native",
+				source: "user",
+				type: "skill",
+				provenance: { kind: "native", scope: "user" },
+			},
+			{
+				name: "plugin",
+				description: "Plugin",
+				source: "plugin",
+				type: "skill",
+				provenance: { kind: "provided", providerType: "plugin", providerId: "design" },
+			},
+			{
+				name: "legacy",
+				description: "Legacy",
+				source: "agents-user",
+				type: "skill",
+			},
+		]);
+		expect(parse[0]?.provenance).toEqual({ kind: "native", scope: "user" });
+		expect(parse[1]?.provenance).toEqual({ kind: "provided", providerType: "plugin", providerId: "design" });
+		expect(parse[2]).not.toHaveProperty("provenance");
+	});
+
+	it("rejects malformed structured provenance", () => {
+		expect(() =>
+			DOMAIN_SKILL_CAPABILITIES.LIST.parseOutput([
+				{
+					name: "invalid",
+					description: "Invalid",
+					source: "plugin",
+					type: "skill",
+					provenance: { kind: "provided", providerType: "unknown", providerId: "x" },
+				},
+			]),
+		).toThrowError(expect.objectContaining({ code: CAPABILITY_ERROR_CODES.INVALID_OUTPUT }));
+	});
+
 	it("publishes skill enums and installed records in its catalog", () => {
 		expect(DOMAIN_SKILL_CAPABILITY_CATALOG).toHaveLength(4);
 		expect(DOMAIN_SKILL_CAPABILITY_CATALOG[0]?.inputSchema).toMatchObject({
@@ -91,6 +133,9 @@ describe("skill domain capabilities", () => {
 					},
 				},
 			},
+		});
+		expect(DOMAIN_SKILL_CAPABILITY_CATALOG[0]?.outputSchema).toMatchObject({
+			items: { properties: { provenance: { anyOf: expect.any(Array) } } },
 		});
 		expect(DOMAIN_SKILL_CAPABILITY_CATALOG[1]?.outputSchema).toMatchObject({ type: "object" });
 		expect(JSON.stringify(DOMAIN_SKILL_CAPABILITY_CATALOG[1]?.outputSchema)).toContain(

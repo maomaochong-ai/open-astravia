@@ -20,6 +20,18 @@ export const INSTALLED_SKILL_SOURCES = {
 const skillEmptyInputType = Type.Object({}, { additionalProperties: false });
 
 const skillTypeType = Type.Union([Type.Literal(SKILL_TYPES.SKILL), Type.Literal(SKILL_TYPES.SCENE)]);
+const skillProvenanceType = Type.Union([
+	Type.Object({ kind: Type.Literal("native"), scope: Type.String() }, { additionalProperties: false }),
+	Type.Object(
+		{
+			kind: Type.Literal("provided"),
+			providerType: Type.Union([Type.Literal("plugin"), Type.Literal("sdk"), Type.Literal("runtime")]),
+			providerId: Type.String(),
+		},
+		{ additionalProperties: false },
+	),
+	Type.Object({ kind: Type.Literal("builtin"), providerId: Type.String() }, { additionalProperties: false }),
+]);
 const installedSkillSourceType = Type.Union([
 	Type.Literal(INSTALLED_SKILL_SOURCES.MARKET),
 	Type.Literal(INSTALLED_SKILL_SOURCES.CUSTOM),
@@ -33,6 +45,7 @@ const skillInfoType = Type.Object(
 		description: Type.String(),
 		source: Type.String(),
 		type: skillTypeType,
+		provenance: Type.Optional(skillProvenanceType),
 	},
 	{ additionalProperties: false },
 );
@@ -84,6 +97,7 @@ const skillUninstallInputType = Type.Object(
 );
 
 export type SkillType = Static<typeof skillTypeType>;
+export type SkillProvenance = Static<typeof skillProvenanceType>;
 export type InstalledSkillSource = Static<typeof installedSkillSourceType>;
 export type SkillInfo = Readonly<Static<typeof skillInfoType>>;
 export type InstalledSkill = Readonly<Static<typeof installedSkillType>>;
