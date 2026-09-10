@@ -1,0 +1,96 @@
+---
+title: Use App Snapshot
+description: On macOS, hold the same modifier key on both sides to attach the foreground window's screenshot and text so the Agent can read your screen.
+---
+
+<Takeaways>
+  <li>App Snapshot is macOS only and off by default</li>
+  <li>Capture runs in a separate Vetta Computer Use helper that needs its own permissions</li>
+  <li>A capture becomes an attachment; nothing is sent until you send it</li>
+</Takeaways>
+
+App Snapshot solves the "I cannot describe what is on my screen" problem. Hold the same modifier key on both sides of the keyboard for about 0.25 seconds and Vetta captures the **current foreground window**: a screenshot plus whatever text is readable. The result is attached to the composer, and the main window comes forward on a new session. This is not full-screen recording and not continuous monitoring: it captures once, at the moment you make the gesture.
+
+Open **Settings → App Snapshot** (shown on macOS only).
+
+<MediaFrame>
+  <img src="/images/product/app-snapshot.webp" alt="The App Snapshot settings page in Vetta, with the trigger selector and keyboard diagram above and the accessibility and screen recording permission states below" width="1920" height="1275" />
+  <figcaption>The trigger decides which key pair to hold; the permissions area shows whether the helper is authorized.</figcaption>
+</MediaFrame>
+
+## Enable and authorize
+
+<Steps>
+  <Step>
+    ### Pick a trigger
+
+    Under **Trigger shortcut → Trigger**, choose a key pair: both ⇧, both ⌘, or both ⌥. Choosing "Off" disables the feature. Changes apply immediately, with no restart.
+  </Step>
+  <Step>
+    ### Authorize the helper
+
+    App Snapshot reads the foreground window through the separate **Vetta Computer Use** helper. The helper is its own permission subject, so authorizing the main Vetta app is not enough. If permissions are incomplete when you enable the feature, Vetta opens the setup window automatically; you can also click **Open permission setup** at any time and drag the icon into the system permission list.
+  </Step>
+  <Step>
+    ### Confirm the permission state
+
+    Back on the settings page, check that the **Permissions** area shows both Accessibility and Screen Recording as granted. The area refreshes when the window regains focus.
+  </Step>
+  <Step>
+    ### Try one capture
+
+    Switch to any other application window and hold the key pair you chose. The system screenshot sound, the main window coming forward, and a snapshot card in the composer mean the path works.
+  </Step>
+</Steps>
+
+<Callout title="Gesture detection also needs Input Monitoring" type="info">
+  The global gesture shares one keyboard listener with the quick panel. If holding the keys does nothing at all, confirm Vetta is authorized under System Settings › Privacy & Security › Input Monitoring.
+</Callout>
+
+## Required permissions
+
+| Permission | Subject | Effect when missing |
+| --- | --- | --- |
+| Accessibility | Vetta Computer Use | No window title, document path, or in-window text |
+| Screen Recording | Vetta Computer Use | No screenshot; only text and metadata remain |
+| Input Monitoring | Vetta | The gesture never fires and nothing responds |
+
+When both helper permissions are missing, Vetta brings the main window forward and points you to permission settings instead of producing an attachment. When only one is missing, it still captures the other half.
+
+## What one capture contains
+
+| Content | Source | Notes |
+| --- | --- | --- |
+| Window screenshot | Screen Recording | Foreground window only, PNG |
+| Window text | Accessibility | Stored as Markdown with app, window, and captured_at metadata |
+| Source file path | Accessibility | Path of the document the window is editing, when readable |
+| App name and window title | Accessibility | Used as the attachment card title |
+
+The text layer only uses what Accessibility exposes. When no text is readable, Vetta does not run OCR during capture; it sends the screenshot alone and lets the model read it visually. Screenshots, icons, and text files are written to `~/.vetta/image-cache/appshot/` and follow the same cleanup policy as the image cache, so unused cache directories are removed automatically.
+
+## After a capture
+
+- The attachment stays in the composer as a snapshot card. Click to preview the full image, or remove it.
+- Nothing is sent automatically. Adding the question you actually want answered works far better than sending a bare image.
+- Once sent, the screenshot and text travel together as attachments and the snapshot card stays in the message bubble.
+- An unsent snapshot is kept with the composer draft, so it survives navigating away and back.
+
+## When the gesture does not fire
+
+1. Confirm the foreground window is not Vetta itself: capturing Vetta is deliberately ignored, with a notice.
+2. Confirm both keys are held **at the same time** for about 0.25 seconds. Pressing them in sequence or tapping them does not trigger.
+3. Confirm the trigger is not set to "Off" and that no other global shortcut has claimed the same pair.
+4. On a capture failure notice, check the **Permissions** area first, then run the setup window again. Reinstalling the app restores a helper that the system quarantined or that went missing.
+5. Repeated gestures run one capture at a time: a new gesture is ignored while the previous capture is still running. Wait a moment and retry.
+
+## Privacy boundaries
+
+- Capture is a one-shot action driven by your gesture; nothing records the screen in the background.
+- The scope is the foreground window, not other windows or the rest of the desktop.
+- Snapshots stay in the local `~/.vetta` directory. Their content only reaches the selected model when you send the message.
+- With passwords, keys, or customer data on screen, switch windows before the gesture, or remove the attachment before sending.
+
+<Continue>
+  <ContinueLink href="/product/settings/" title="Settings reference" description="Find model, permission, shortcut, and environment configuration by entry point." />
+  <ContinueLink href="/reference/security-and-data/" title="Security and data boundaries" description="Understand the boundary between screenshots, attachments, and models." />
+</Continue>

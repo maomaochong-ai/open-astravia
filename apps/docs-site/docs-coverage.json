@@ -101,6 +101,12 @@
 			"pages": ["/product/webhook/"]
 		},
 		{
+			"id": "app-snapshot",
+			"source": "apps/desktop/src/main/appshot and native/appshot",
+			"status": "complete",
+			"pages": ["/product/app-snapshot/"]
+		},
+		{
 			"id": "desktop-pet",
 			"source": "apps/desktop/src/renderer/domains/pet",
 			"status": "complete",

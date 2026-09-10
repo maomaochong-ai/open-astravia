@@ -1,4 +1,4 @@
 {
 	"title": "User guide",
-	"pages": ["overview", "models", "abilities", "mcp", "knowledge-base", "design", "agent-teams", "batch-tasks", "automation", "claw", "im", "remote-control", "webhook", "application-environment", "desktop-pet", "settings"]
+	"pages": ["overview", "models", "abilities", "mcp", "knowledge-base", "design", "agent-teams", "batch-tasks", "automation", "claw", "im", "remote-control", "webhook", "application-environment", "app-snapshot", "desktop-pet", "settings"]
 }
