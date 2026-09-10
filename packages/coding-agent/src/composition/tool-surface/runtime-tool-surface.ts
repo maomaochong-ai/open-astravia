@@ -3,7 +3,10 @@ import type { RuntimeConfigurationSnapshotSource } from "@vetta/runtime-core/con
 import type { ModelCallContributionContext } from "@vetta/runtime-core/kernel";
 import type { McpRuntimeToolSource, McpRuntimeToolView } from "@vetta/runtime-mcp";
 import type { CodingToolResultPolicy } from "@vetta/runtime-tools";
-import type { CodingAgentSessionExecutionRuntime } from "../../execution/session/runtime.js";
+import {
+	type CodingAgentSessionExecutionRuntime,
+	isCodingAgentSessionExecutionToolName,
+} from "../../execution/session/runtime.js";
 import {
 	type CodingAgentKnowledgeRuntime,
 	createCodingAgentKnowledgeFilterByTagsToolRegistration,
@@ -97,6 +100,10 @@ export async function createCodingAgentRuntimeToolSurface(
 		},
 		filterRegistration: (registration, context) => {
 			const executionRuntime = options.indexes.executionRuntimes.get(context.sessionId);
+			// The session execution Feature is the sole source for these tools. Never
+			// let the composition provider re-introduce a second definition when an
+			// owner binding is missing or stale during initialization/rollback.
+			if (isCodingAgentSessionExecutionToolName(registration.tool.name)) return false;
 			if (executionRuntime?.ownsTool(registration.tool.name)) return false;
 			if (
 				registration.availabilityPolicy === "knowledge-runtime" &&

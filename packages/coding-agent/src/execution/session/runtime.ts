@@ -259,6 +259,11 @@ export class CodingAgentSessionExecutionRuntime {
 const SESSION_EXECUTION_TOOL_NAMES = ["bash", "shell", "read", "write", "edit", "task_output", "task_stop"] as const;
 const BACKGROUND_TASK_TOOL_NAMES = new Set<string>(["task_output", "task_stop"]);
 
+/** Session execution owns these base tool names whenever its runtime is active. */
+export function isCodingAgentSessionExecutionToolName(toolName: string): boolean {
+	return (SESSION_EXECUTION_TOOL_NAMES as readonly string[]).includes(toolName);
+}
+
 function inheritModelOrder(
 	registration: CodingAgentRuntimeToolRegistration,
 	source: CodingToolCatalogEntry | undefined,

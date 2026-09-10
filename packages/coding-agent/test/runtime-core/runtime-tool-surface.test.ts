@@ -6,6 +6,32 @@ import { createCodingAgentRuntimeToolSurface } from "../../src/composition/tool-
 import { createCodingAgentNodeToolEnvironment } from "../../src/host/tool-environment/node/node-tool-environment.js";
 
 describe("Coding Agent Runtime Tool Surface", () => {
+	it("fails closed for session-owned base tools while the execution owner is not indexed", async () => {
+		const resources = new CodingAgentCompositionResourceRegistry();
+		const surface = await createCodingAgentRuntimeToolSurface({
+			cwd: process.cwd(),
+			scenario: "cli",
+			inheritedMcpView: runtimeView(),
+			indexes: resources.indexes,
+			createToolEnvironment: createCodingAgentNodeToolEnvironment,
+		});
+		const compiled = await surface.tools.compile();
+		try {
+			const provider = compiled.snapshot.modelCallProviders?.[0];
+			if (!provider) throw new Error("Expected coding tools model-call provider");
+			const contribution = await provider.contribute(modelCallContext());
+			const names = contribution.tools?.map(({ name }) => name) ?? [];
+			expect(names).not.toContain(process.platform === "win32" ? "shell" : "bash");
+			expect(names).not.toContain("read");
+			expect(names).not.toContain("write");
+			expect(names).not.toContain("edit");
+		} finally {
+			await compiled.dispose();
+			surface.mcpCoordinator.dispose();
+			surface.tools.dispose();
+		}
+	});
+
 	it("synchronizes dynamic MCP tools with the shared Registry and disposes them", async () => {
 		const alpha = tool("mcp_alpha");
 		const beta = tool("mcp_beta");
