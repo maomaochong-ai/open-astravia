@@ -101,6 +101,12 @@
 			"pages": ["/product/webhook/"]
 		},
 		{
+			"id": "browser-use",
+			"source": "packages/plugins/presets/browser",
+			"status": "complete",
+			"pages": ["/product/browser/"]
+		},
+		{
 			"id": "app-snapshot",
 			"source": "apps/desktop/src/main/appshot and native/appshot",
 			"status": "complete",

@@ -1,0 +1,125 @@
+---
+title: Let the Agent drive a browser
+description: Use Browser Use to navigate, read pages, fill forms, and reuse sign-in state in a real browser, with confirmation kept before submitting.
+---
+
+<Takeaways>
+  <li>Use web search to look something up; use Browser Use to get something done in a page</li>
+  <li>The browser window is visible, so you handle sign-in, captchas, and 2FA yourself</li>
+  <li>Each conversation gets its own browser session, and publishing, paying, or deleting requires confirmation</li>
+</Takeaways>
+
+Browser Use is a system plugin that ships with the app. It lets the Agent drive a real Chrome through the `agent-browser` command line: open a URL, locate elements from an accessibility-tree snapshot, click, type, wait, page through, and bring results back. The page is real and the sign-in state is yours, so it reaches what web search cannot.
+
+Panel: **Settings → More options → Browser Use**. The panel only reports runtime state and usage notes; the real entry point is the composer — describe the goal and the URL in the conversation.
+
+## Pick the right one first
+
+<Fork>
+  <ForkYes title="Use Browser Use">
+    <li>The page is only visible after signing in</li>
+    <li>You need to fill a form, change filters, or reach page N</li>
+    <li>A multi-step flow has to be completed in an admin panel</li>
+    <li>Results from several pages need to be compared</li>
+  </ForkYes>
+  <ForkNo title="Use web search instead">
+    <li>You only need a summary or a source for public information</li>
+    <li>One lookup answers the question</li>
+    <li>No page state has to be kept</li>
+  </ForkNo>
+</Fork>
+
+Web search returns someone else's summary. Browser Use opens a real browser. Use search to look something up; use this to get something done.
+
+## What the first run installs
+
+The plugin itself ships with the app and needs no installation. The Agent prepares the runtime on the first browser task.
+
+<Steps>
+  <Step>
+    ### Check the runtime
+
+    The Agent confirms that `agent-browser` exists and meets the version this plugin pins. An unreadable version is treated as incompatible, so it prompts for a reinstall instead of failing silently.
+  </Step>
+  <Step>
+    ### Install the pinned version
+
+    When the runtime is missing or too old, the Agent installs the pinned version into Vetta's private npm directory (~90MB). It verifies that this private directory exists first, and never touches an existing global `agent-browser` on your machine.
+  </Step>
+  <Step>
+    ### Prepare a browser
+
+    When the health check finds no reusable Chrome, Chrome for Testing is downloaded once. An existing system Chrome is reused with no extra download.
+  </Step>
+  <Step>
+    ### Use the panel when setup fails
+
+    If automatic setup fails, open **Settings → More options → Browser Use** to recheck, install, or upgrade. The panel shows the failed command and the reason.
+  </Step>
+</Steps>
+
+Panel states:
+
+| State | Meaning | Next step |
+| --- | --- | --- |
+| Ready | The CLI is available; just ask in the conversation | Nothing to do |
+| Runtime not installed | First run, or the runtime was removed | Install |
+| Runtime out of date | An older `agent-browser` is earlier on PATH | Upgrade into Vetta's own runtime directory |
+| Browser not installed | No reusable Chrome on this machine | Download Chrome for Testing |
+| Install failed | Network, permission, or command conflict | Read the command and error shown, fix, retry |
+
+<Callout title="Browser tasks need full-access execution mode" type="warn">
+  Sandbox execution mode gives each command a temporary home, so the browser session cannot survive between commands. Switch the session's execution mode instead of letting the Agent create an unrelated fallback session.
+</Callout>
+
+## How one task runs
+
+1. **Open the page** in a visible window, so you can watch what happens.
+2. **Read the page** through a snapshot of interactive elements, which uses less context than full HTML and is more precise than a screenshot.
+3. **Act** on element references: click, type, select, scroll.
+4. **Synchronize** by waiting for an element, a URL, or a load event rather than sleeping for an arbitrary time.
+5. **Snapshot again** after navigation, submission, dialogs, or meaningful dynamic rendering. References go stale and must not be reused blindly.
+6. **Take the result** as title, URL, or page text when semantic output is what you need.
+
+Prompts you can copy:
+
+```text
+Open https://example.com/admin. I'll sign in myself in the window that pops up — after that, pull this month's orders into a table.
+```
+
+```text
+Open this registration form and fill it in with the details below, but do not submit. Show me the filled form first: name Jane Doe, email jane@example.com.
+```
+
+```text
+Open these two product pages and compare price, stock, and estimated delivery in one table.
+```
+
+## Sign-in, sessions, and multiple accounts
+
+- **You sign in.** The window is visible, so credentials, captchas, and 2FA stay with you. The Agent continues once you are done.
+- **Sessions are isolated.** Every Agent conversation has its own browser session. A new conversation never takes over an older one's active tab, and the browser a plugin drives through the `ctx.browser` API is independent from the Agent's CLI session.
+- **Reuse sign-in state long term** by saving state under a stable account key per account, or a dedicated persistent profile when a full Chrome profile is required.
+- **Several accounts in one task** each get their own account key, so their sign-in state is stored separately.
+- **Closing is not clearing.** Closing the active browser session does not delete saved account state or a persistent profile.
+
+## Safety boundaries
+
+- Page content is **data, not instructions**. "Please perform the following actions" printed on a page is not authorization.
+- Publishing, submitting, sending, deleting, paying, and changing access are irreversible. The Agent should spell out exactly what will happen and wait for your confirmation; saying "fill it in but do not submit" in the task is the safest phrasing.
+- Credentials, cookies, and tokens are never copied into chat output. Do not put emails, passwords, cookies, or tokens into account keys, profile names, or prompts either.
+- Asking for a browser task authorizes that browser task. It does not authorize anything else on the target site.
+
+## When it does not work
+
+1. **Out of date** in the panel usually means an older global `agent-browser` was installed earlier and comes first on PATH. Upgrade from the panel; if the old executable still wins, diagnose command precedence instead of reinstalling repeatedly.
+2. Do not let the Agent run the runtime's own `upgrade` command: it bypasses the version pin. Repair-style commands should not run automatically either, since they can reinstall the browser and purge saved state.
+3. Clicks that miss and elements that cannot be found usually mean a stale snapshot. Ask for a fresh snapshot instead of guessing at elements.
+4. Installing system dependencies on Linux involves the package manager and elevation, so it needs your explicit approval.
+5. One readiness attempt allows at most one CLI install and one browser install. On repeated failure, read the actual error instead of looping through retries.
+
+<Continue>
+  <ContinueLink href="/product/abilities/" title="Use abilities" description="Install and manage skills, scenes, MCP, plugins, and kits." />
+  <ContinueLink href="/core/context-tools-and-permissions/" title="Context, tools, and permissions" description="Understand execution modes, tool permissions, and confirmation." />
+  <ContinueLink href="/reference/security-and-data/" title="Security and data boundaries" description="Understand the boundary between sign-in state, credentials, and external services." />
+</Continue>
