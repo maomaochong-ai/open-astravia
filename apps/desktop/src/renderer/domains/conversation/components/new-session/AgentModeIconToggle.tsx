@@ -51,9 +51,9 @@ export function AgentModeIconToggle({ className }: { className?: string }): JSX.
 			role="group"
 			aria-label={t("agentMode.title")}
 			className={cn(
-				// 经典 segmented control：半透明凹槽轨道 + 浮起的选中段。与同一行的项目选择器
-				// 共用同一层 accent 底色，两枚控件读作一组静默 chip，亮度层级让位给下方输入框。
-				"relative inline-flex h-7 shrink-0 items-center rounded-lg bg-accent/50 p-0.5",
+				// 经典 segmented control：实色凹槽轨道 + 浮起的选中段。与同一行的项目选择器、
+				// 智能体选择共用 card 底色，三枚控件读作一组静默 chip，亮度层级让位给下方输入框。
+				"relative inline-flex h-7 shrink-0 items-center rounded-lg bg-card p-0.5",
 				className,
 			)}
 		>

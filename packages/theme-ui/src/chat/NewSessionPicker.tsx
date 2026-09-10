@@ -69,7 +69,7 @@ export const NewSessionPickerTrigger = forwardRef<HTMLButtonElement, NewSessionP
 					ref={ref}
 					{...(asChild ? props : { ...props, type: type ?? "button" })}
 					className={cn(
-						"no-drag flex h-7 max-w-[16rem] min-w-0 items-center gap-1.5 rounded-lg bg-accent/50 px-2.5 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground disabled:pointer-events-none disabled:opacity-60",
+						"no-drag flex h-7 max-w-[16rem] min-w-0 items-center gap-1.5 rounded-lg bg-card px-2.5 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground disabled:pointer-events-none disabled:opacity-60",
 						className,
 					)}
 				>

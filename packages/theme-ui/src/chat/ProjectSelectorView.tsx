@@ -124,8 +124,9 @@ export function ProjectSelectorView({
 						title={labels.triggerTitle}
 						aria-label={labels.triggerTitle}
 						className={cn(
-							// 与左侧模式切换共用同一层 accent 底色：一行里两枚同族的静默 chip。
-							"no-drag flex h-7 max-w-[16rem] min-w-0 items-center gap-1.5 rounded-lg bg-accent/50 px-2.5 text-[12px] font-medium transition-colors disabled:pointer-events-none disabled:opacity-60",
+							// 与同一行的模式切换、智能体选择共用 card 底色：半透明底会透出背景纹理，
+							// 三枚 chip 看起来像浮在页面上而不是一组控件。
+							"no-drag flex h-7 max-w-[16rem] min-w-0 items-center gap-1.5 rounded-lg bg-card px-2.5 text-[12px] font-medium transition-colors disabled:pointer-events-none disabled:opacity-60",
 							open ? "bg-accent text-foreground" : "text-foreground hover:bg-accent",
 							!selectedName && !creating && "text-muted-foreground/80 hover:text-foreground",
 							classNames?.trigger,
