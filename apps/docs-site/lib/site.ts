@@ -12,6 +12,7 @@ export const site = {
 	marketingUrl: "https://www.openvetta.com",
 	downloadUrl: "https://www.openvetta.com/download",
 	githubUrl: "https://github.com/openvetta/open-vetta",
+	discordUrl: "https://discord.gg/qGqkk22Vg9",
 	logoPath: "/images/vetta-app-icon.webp",
 	ogImagePath: "/opengraph-image/",
 	applicationCategory: "DeveloperApplication",
