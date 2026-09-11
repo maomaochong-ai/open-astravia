@@ -8,9 +8,9 @@
 import type {
 	AbilityLedger,
 	AddMarketplaceSourceInput,
-	BuiltinAbilityPresentations,
 	InstalledPlugin,
 	InstalledSkill,
+	LocalAbilityPresentations,
 	MarketplaceSource,
 	OpenMarketplaceCatalog,
 	SkillInfo,
@@ -42,7 +42,7 @@ export interface AbilityData {
 	/** 通用 Agent / 内置 skill 与 scene（只读展示）。 */
 	localSkills: SkillInfo[];
 	plugins: InstalledPlugin[];
-	builtinPresentations: BuiltinAbilityPresentations;
+	localPresentations: LocalAbilityPresentations;
 	loading: boolean;
 	refreshing: boolean;
 	error: string | null;
@@ -66,7 +66,7 @@ export function useAbilityData(): AbilityData {
 	const [localSkills, setLocalSkills] = useState<SkillInfo[]>([]);
 	const [plugins, setPlugins] = useState<InstalledPlugin[]>([]);
 	const [mcpSetupStatus, setMcpSetupStatus] = useState<Record<string, boolean>>({});
-	const [builtinPresentations, setBuiltinPresentations] = useState<BuiltinAbilityPresentations>({});
+	const [localPresentations, setLocalPresentations] = useState<LocalAbilityPresentations>({});
 	const [loading, setLoading] = useState(true);
 	const [refreshing, setRefreshing] = useState(false);
 	const [localFailed, setLocalFailed] = useState(false);
@@ -75,7 +75,7 @@ export function useAbilityData(): AbilityData {
 	const loadLocalState = useCallback(async () => {
 		return Promise.all([
 			window.vetta.abilities.getLedger(),
-			window.vetta.abilities.listBuiltinPresentations(),
+			window.vetta.abilities.listLocalPresentations(),
 			window.vetta.skills.getMarketManifest(),
 			window.vetta.skills.list(),
 			// 能力市场不按工作模式过滤：另一模式下已装的插件仍要出现在「我的」。
@@ -88,7 +88,7 @@ export function useAbilityData(): AbilityData {
 		const [nextLedger, presentations, manifest, skills, installedPlugins, setupStatus] = value;
 		setLocalFailed(false);
 		setLedger(nextLedger);
-		setBuiltinPresentations(presentations);
+		setLocalPresentations(presentations);
 		setSkillManifest(manifest);
 		setLocalSkills(skills.filter((skill) => isReadonlyLocalSkillSource(skill.source)));
 		setPlugins(installedPlugins);
@@ -191,7 +191,7 @@ export function useAbilityData(): AbilityData {
 		skillManifest,
 		localSkills,
 		plugins,
-		builtinPresentations,
+		localPresentations,
 		loading,
 		refreshing: refreshing || open.refreshing,
 		error:

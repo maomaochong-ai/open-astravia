@@ -20,8 +20,8 @@ export interface SkillInfo {
 	sourcePluginId?: string;
 	type: "skill" | "scene";
 	/**
-	 * 展示图标（若有）：插件贡献的 skill 填宿主插件的 `iconUrl`（多为 `vetta-plugin://`），
-	 * 市场 / 内置图标仍由命令区的目录解析与静态映射补齐，本字段不覆盖它们。
+	 * 已解析的本地展示图标（若有）：Skill 自身声明优先，其次继承 Provider；
+	 * 市场与内置映射仅在本字段缺失时补齐。
 	 */
 	icon?: string;
 }

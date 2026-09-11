@@ -274,6 +274,25 @@ describe("buildSkillAbilities", () => {
 		expect(items.map((item) => item.icon)).toEqual(["./skills/create-skill.png", undefined, undefined]);
 	});
 
+	it("prefers a Skill package declaration over the builtin compatibility icon", () => {
+		const [item] = buildSkillAbilities(
+			[],
+			createState({
+				localSkills: [
+					{
+						name: "create-skill",
+						description: "",
+						source: "builtin",
+						type: "skill",
+						icon: "vetta-file://local/system-skills/create-skill/assets/icon.svg",
+					},
+				],
+			}),
+		);
+
+		expect(item?.icon).toBe("vetta-file://local/system-skills/create-skill/assets/icon.svg");
+	});
+
 	it("uses host plugin icon for plugin-contributed skills", () => {
 		const pluginIcon = "vetta-plugin://vetta-ui-design/versions/0.1.0/icon.png?v=0.1.0";
 		const items = buildSkillAbilities(

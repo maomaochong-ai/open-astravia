@@ -99,6 +99,26 @@ describe("skill domain capabilities", () => {
 		expect(parse[2]).not.toHaveProperty("provenance");
 	});
 
+	it("preserves presentation identity fields while stripping unrelated output data", () => {
+		const [skill] = DOMAIN_SKILL_CAPABILITIES.LIST.parseOutput([
+			{
+				name: "provided",
+				description: "Provided skill",
+				source: "plugin",
+				type: "skill",
+				sourcePluginId: "feishu",
+				icon: "vetta-plugin://feishu/versions/1.2.3/assets/icon.png",
+				ignored: true,
+			},
+		]);
+
+		expect(skill).toMatchObject({
+			sourcePluginId: "feishu",
+			icon: "vetta-plugin://feishu/versions/1.2.3/assets/icon.png",
+		});
+		expect(skill).not.toHaveProperty("ignored");
+	});
+
 	it("rejects malformed structured provenance", () => {
 		expect(() =>
 			DOMAIN_SKILL_CAPABILITIES.LIST.parseOutput([
