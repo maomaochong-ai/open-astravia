@@ -211,26 +211,32 @@ export function NewSessionPageView({
 								</div>
 							</div>
 						)}
-						{/* 插件上下文区：排在项目选择器之后——窄屏下选择器会掉到输入框下方，
-						    上下文区若在它前面，就把「选项目」这一步挤到内容底下去了。
-						    命令区展开时整块让位：那是打断式交互。 */}
-						<div className="px-2 sm:px-4">
-							{/* `wide` 的贡献（画廊、素材墙）铺满可用宽度：压回输入框那 672px，
-							    每一项都会小到看不清。其余仍与输入框卡片对齐。 */}
-							<div
-								className={cn(
-									"mx-auto w-full",
-									contextBlock.contexts[0]?.contribution.width === "wide" ? "max-w-6xl" : "max-w-2xl",
-								)}
-							>
-								<NewSessionContextBlock
-									contexts={contextBlock.contexts}
-									renderContext={contextBlock.renderContext}
-									hidden={commandPanelExpanded}
-								/>
-							</div>
-						</div>
 					</motion.div>
+				}
+				landing={
+					/* 没有贡献上屏时连槽位都不给：空着也占一份下边距，输入栏会跟着挪一下。 */
+					contextBlock.contexts.length === 0 ? undefined : (
+					/* 插件上下文区走布局的落地槽：它跟着内容长高，留在输入栏那一格里会把
+					   输入框整体往上顶。窄屏下的项目选择器仍在输入栏那格，所以它天然排在
+					   「选项目」之后，不会把这一步挤到内容底下。
+					   命令区展开时整块让位：那是打断式交互。 */
+					<div className="px-2 sm:px-4">
+						{/* `wide` 的贡献（画廊、素材墙）占页面宽度的八成：压回输入框那 672px，
+						    每一项都会小到看不清。其余仍与输入框卡片对齐。 */}
+						<div
+							className={cn(
+								"mx-auto w-full",
+								contextBlock.contexts[0]?.contribution.width === "wide" ? "max-w-none w-4/5" : "max-w-2xl",
+							)}
+						>
+							<NewSessionContextBlock
+								contexts={contextBlock.contexts}
+								renderContext={contextBlock.renderContext}
+								hidden={commandPanelExpanded}
+							/>
+						</div>
+					</div>
+					)
 				}
 			/>
 			{/* 会话尚未创建：选中项目时活动面板按项目根取上下文；「对话」与待创建项目没有
