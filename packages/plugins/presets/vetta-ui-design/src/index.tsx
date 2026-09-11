@@ -86,6 +86,10 @@ function pendingScreenshotCard(toolCall: PluginPendingToolCall): CardDescriptor 
 	return screenshotCardDescriptor(session.vetdPath, session.dirPath, frameId);
 }
 
+const DesignResourcesBlock = lazy(() =>
+	import("./new-session/DesignResourcesBlock").then((module) => ({ default: module.DesignResourcesBlock })),
+);
+
 export default definePlugin({
 	activate(ctx) {
 		setPluginCtx(ctx);
@@ -149,6 +153,13 @@ export default definePlugin({
 		});
 		// 导出渲染图的 dialog 走全局插槽：设计画布在活动面板里太窄，
 		// 判断圆角/边框需要整窗口的预览面积。
+		// 新会话页的设计资源区：选中设计师/设计团队，或提到本插件的 skill 时由宿主唤起。
+		ctx.ui.registerNewSessionContext({
+			id: "design-resources",
+			label: "%newSession.designResources%",
+			activateWhen: { agents: ["designer"], skills: ["vetta-ui-design"] },
+			render: (context) => <DesignResourcesBlock context={context} />,
+		});
 		ctx.ui.registerGlobalSlot({ id: "export-mockup-dialog", component: ExportMockupDialog });
 		ctx.ui.registerCardRenderer({
 			type: SCREENSHOT_CARD_TYPE,

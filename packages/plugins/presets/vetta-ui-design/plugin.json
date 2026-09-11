@@ -20,6 +20,8 @@
 		"ui.slot.file-preview",
 		"ui.slot.message",
 		"ui.slot.input-action",
+		"conversation.draft.read",
+		"ui.slot.new-session-context",
 		"ui.file-explorer.decorations",
 		"ui.file-explorer.context-menu",
 		"ui.shortcuts.register",
