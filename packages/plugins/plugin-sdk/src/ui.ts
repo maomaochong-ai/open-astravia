@@ -467,6 +467,81 @@ export interface PluginNotifyOptions {
 	durationMs?: number;
 }
 
+/**
+ * 新会话上下文区的激活条件。**只能写本插件自己的东西**——填别人的 id 一律不生效。
+ *
+ * 这条限制是故意的：否则插件 A 可以声明「只要用户选了 B 的智能体我就上屏」，把别人的
+ * 使用场景劫持过来。
+ *
+ * 各字段取并集：任意一条命中即激活。全部留空表示「本插件的任意智能体或团队被选中时」。
+ */
+export interface PluginNewSessionContextActivation {
+	/** 本插件在 manifest 里声明的智能体 id（不带 `plugin:` 前缀）。 */
+	agents?: readonly string[];
+	/** 本插件在 manifest 里声明的团队 id。省略则任意「含本插件成员的团队」都算命中。 */
+	teams?: readonly string[];
+	/** 本插件提供的 skill 名；用户在输入框里提到时命中。 */
+	skills?: readonly string[];
+	/** 本插件提供的 MCP server 名。 */
+	mcpServers?: readonly string[];
+}
+
+/** 用户在新会话页当前选中的对话目标。 */
+export interface PluginNewSessionTarget {
+	readonly kind: "agent" | "team";
+	/** Agent 档案 id 或团队 id。 */
+	readonly id: string;
+	/** 目标若由本插件贡献，这里给出 manifest 里的那个 id。 */
+	readonly contributedId?: string;
+}
+
+/**
+ * 渲染上下文。这是一个**会继续生长的对象**：后续新增字段不会破坏既有插件，所以按需
+ * 解构、不要假定它只有这些键。
+ */
+export interface PluginNewSessionContext {
+	readonly target: PluginNewSessionTarget | null;
+	/** 输入框里提到的、属于本插件的能力。 */
+	readonly mentionedAbilities: {
+		readonly skills: readonly string[];
+		readonly mcpServers: readonly string[];
+	};
+	/**
+	 * 输入框中尚未发送的文本。需要 `conversation.draft.read` 权限，未授予时恒为空串。
+	 *
+	 * 只在本贡献处于激活状态时提供——插件拿不到「用户随便打点什么」的全程流水。
+	 */
+	readonly draft: string;
+	/** 当前工作区目录；未选择项目时为 null。 */
+	readonly cwd: string | null;
+	/** 回写输入栏。刻意不提供「直接发送」：越过发送前这道关不属于本区职责。 */
+	readonly composer: {
+		/** 把资源挂成附件，随下一次发送带走。 */
+		attach(attachment: PluginPromptAttachment): void;
+		/** 在草稿末尾追加文本（不是替换，免得抹掉用户已经打的内容）。 */
+		insertText(text: string): void;
+	};
+}
+
+/**
+ * 新会话页输入框下方的一块内容（`ui.slot.new-session-context`）。
+ *
+ * 与 input-action 的分工：那是发送前的开关，这是发送前的**上下文**——把用户接下来多半
+ * 要用到的素材摆出来。激活与否由宿主按 {@link PluginNewSessionContextActivation} 裁决，
+ * 插件只负责在被激活后渲染，因此拿不到用户逐键输入的全程内容。
+ *
+ * 同时有多个贡献上屏时，宿主会在该区域顶部出 tabbar；只有一个时直接渲染内容。
+ */
+export interface PluginNewSessionContextContribution {
+	id: string;
+	/** tabbar 上的标题；只有一个贡献上屏时不展示。 */
+	label: string;
+	/** tab 图标；省略时用插件自己的图标。 */
+	icon?: ReactNode;
+	activateWhen: PluginNewSessionContextActivation;
+	render(context: PluginNewSessionContext): ReactNode;
+}
+
 export interface PluginUiApi {
 	registerGlobalSlot(contribution: PluginGlobalSlotContribution): Disposable;
 	registerAbilityDetailSlot(contribution: PluginAbilityDetailSlotContribution): Disposable;
@@ -481,6 +556,13 @@ export interface PluginUiApi {
 	 * to the top region or reorder it, and that layout is remembered.
 	 */
 	registerWorkspaceView(contribution: PluginWorkspaceViewContribution): Disposable;
+	/**
+	 * Register a **new-session context block** — content shown beneath the input
+	 * on the new-session page, surfaced only when the user's current selection or
+	 * draft matches {@link PluginNewSessionContextActivation}. Needs the
+	 * `ui.slot.new-session-context` permission (missing permission = **warn+noop**).
+	 */
+	registerNewSessionContext(contribution: PluginNewSessionContextContribution): Disposable;
 	/**
 	 * Navigate to one of this plugin's own workspace views. `viewId` is the
 	 * contribution id passed to {@link PluginUiApi.registerWorkspaceView}. No-op
