@@ -202,6 +202,7 @@ export function AgentCenterView({
 										key={agent.id}
 										agent={agent}
 										blueprint={model.blueprints.find((candidate) => candidate.id === agent.blueprintId)}
+										plugins={model.plugins}
 										selected={Boolean(model.assembly?.memberIds.includes(agent.id))}
 										marker={
 											model.assembly

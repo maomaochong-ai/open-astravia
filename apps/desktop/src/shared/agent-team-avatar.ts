@@ -42,26 +42,35 @@ const LEGACY_AVATAR_ALIASES: Readonly<Record<string, string>> = Object.freeze(
 	),
 );
 
-export function agentAvatarUrl(profile: {
-	readonly id: string;
-	readonly blueprintId: string;
-	readonly avatar?: string;
-}): string {
+export function agentAvatarUrl(
+	profile: {
+		readonly id: string;
+		readonly blueprintId: string;
+		readonly avatar?: string;
+	},
+	/** 插件贡献的 blueprint 自带头像；宿主的内置图里没有它。 */
+	blueprint?: { readonly avatarUrl?: string },
+): string {
 	if (profile.avatar) return LEGACY_AVATAR_ALIASES[profile.avatar] ?? profile.avatar;
+	if (blueprint?.avatarUrl) return blueprint.avatarUrl;
 	return BLUEPRINT_AVATAR[profile.blueprintId] ?? AGENT_AVATAR_OPTIONS[stableIndex(profile.id)]!;
 }
 
 export function teamMemberAvatarUrls(
 	team: TeamDefinition,
 	agentsById: ReadonlyMap<string, AgentProfile>,
+	blueprintsById?: ReadonlyMap<string, { readonly avatarUrl?: string }>,
 ): readonly string[] {
 	return team.members.map((member) => {
 		const profile = agentsById.get(member.binding.agentProfileId);
-		return agentAvatarUrl({
-			id: profile?.id ?? member.id,
-			blueprintId: profile?.blueprintId ?? "master",
-			...(profile?.avatar ? { avatar: profile.avatar } : {}),
-		});
+		return agentAvatarUrl(
+			{
+				id: profile?.id ?? member.id,
+				blueprintId: profile?.blueprintId ?? "master",
+				...(profile?.avatar ? { avatar: profile.avatar } : {}),
+			},
+			profile ? blueprintsById?.get(profile.blueprintId) : undefined,
+		);
 	});
 }
 

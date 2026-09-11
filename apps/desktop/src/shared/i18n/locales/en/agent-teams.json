@@ -18,7 +18,8 @@
     "empty": "No agents yet. Click + to add one.",
     "selectHint": "Select an agent on the left",
     "defaultAgentName": "New agent",
-    "defaultAgentDescription": "A team member with configurable abilities"
+    "defaultAgentDescription": "A team member with configurable abilities",
+    "pluginDisabled": "Requires the {{plugin}} plugin"
   },
   "center": {
     "title": "Agents",

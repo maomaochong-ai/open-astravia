@@ -1,5 +1,6 @@
 import type { AgentBlueprint, AgentTeamDocument } from "@vetta/agent-team";
 import { type Dispatch, type SetStateAction, useCallback, useEffect, useState } from "react";
+import type { BlueprintDisplayPlugin } from "../lib/blueprint-display";
 import type { AgentCapabilityOption } from "../lib/capability-options";
 import { loadAgentTeamConfigurationResources } from "../services/load-agent-team-resources";
 
@@ -12,6 +13,7 @@ export interface AgentTeamResources {
 	readonly setDocument: Dispatch<SetStateAction<AgentTeamDocument | undefined>>;
 	readonly blueprints: readonly AgentBlueprint[];
 	readonly capabilities: readonly AgentCapabilityOption[];
+	readonly plugins: readonly BlueprintDisplayPlugin[];
 	readonly loading: boolean;
 	readonly error?: string;
 	readonly setError: (error: string | undefined) => void;
@@ -21,6 +23,7 @@ export interface AgentTeamResources {
 export function useAgentTeamResources(): AgentTeamResources {
 	const [document, setDocument] = useState<AgentTeamDocument>();
 	const [blueprints, setBlueprints] = useState<readonly AgentBlueprint[]>([]);
+	const [plugins, setPlugins] = useState<readonly BlueprintDisplayPlugin[]>([]);
 	const [capabilities, setCapabilities] = useState<readonly AgentCapabilityOption[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string>();
@@ -32,6 +35,7 @@ export function useAgentTeamResources(): AgentTeamResources {
 				if (cancelled) return;
 				setDocument(resources.document);
 				setBlueprints(resources.blueprints);
+				setPlugins(resources.plugins);
 				setCapabilities(resources.capabilities);
 			})
 			.catch((cause: unknown) => {
@@ -54,7 +58,7 @@ export function useAgentTeamResources(): AgentTeamResources {
 		}
 	}, []);
 
-	return { document, setDocument, blueprints, capabilities, loading, error, setError, reload };
+	return { document, setDocument, blueprints, plugins, capabilities, loading, error, setError, reload };
 }
 
 export function agentTeamErrorMessage(cause: unknown): string {

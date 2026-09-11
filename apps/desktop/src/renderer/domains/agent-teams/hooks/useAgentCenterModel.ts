@@ -96,6 +96,7 @@ export function useAgentCenterModel(copy: AgentLibraryCopy) {
 		error: resources.error,
 		document: resources.document,
 		blueprints: resources.blueprints,
+		plugins: resources.plugins,
 		capabilities: resources.capabilities as readonly AgentCapabilityOption[],
 		agents: library.libraryAgents,
 		agentsById: roster.agentsById,

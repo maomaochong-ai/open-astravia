@@ -1,5 +1,10 @@
 import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";
 import type { AgentBlueprint, AgentProfile } from "@vetta/agent-team";
+import {
+	agentBlueprintLabel,
+	agentUnavailableReason,
+	type BlueprintDisplayPlugin,
+} from "../lib/blueprint-display";
 import { Button } from "@vetta/ui";
 import { useTranslation } from "react-i18next";
 import { AgentAvatarView } from "@vetta/theme-ui/chat";
@@ -7,6 +12,8 @@ import { AgentAvatarView } from "@vetta/theme-ui/chat";
 export interface AgentCardProps {
 	readonly agent: AgentProfile;
 	readonly blueprint?: AgentBlueprint;
+	/** 用于解析插件贡献的角色名，以及说清楚「档案为什么不可用」。 */
+	readonly plugins?: readonly BlueprintDisplayPlugin[];
 	/** 已拉拢进阵容或已选中的强调态。 */
 	readonly selected?: boolean;
 	/** 组队模式下右上角的拉入/移出标记；常态不显示。 */
@@ -24,6 +31,7 @@ export interface AgentCardProps {
 export function AgentCard({
 	agent,
 	blueprint,
+	plugins,
 	selected = false,
 	marker,
 	leader = false,
@@ -34,11 +42,15 @@ export function AgentCard({
 }: AgentCardProps): JSX.Element {
 	const { t } = useTranslation("agent-teams");
 	const hasControls = Boolean(onMakeLeader || onRemove);
+	const unavailable = agentUnavailableReason(agent, blueprint, plugins);
+	const roleLabel = agentBlueprintLabel(blueprint, (key) => t(key as never), plugins);
 
 	return (
 		<div
 			className={[
 				"group relative rounded-xl border transition-colors duration-200",
+				// 插件被禁用时档案灰着留在原地：既不隐藏也不从团队里摘掉，重新启用就恢复。
+				unavailable ? "opacity-60" : "",
 				selected
 					? "border-primary/40 bg-primary/10 ring-1 ring-inset ring-primary/30"
 					: "border-border/50 bg-card/40 hover:border-primary/40 hover:bg-card/60",
@@ -53,7 +65,7 @@ export function AgentCard({
 			>
 				<AgentAvatarView
 					name={agent.name}
-					avatar={agentAvatarUrl(agent)}
+					avatar={agentAvatarUrl(agent, blueprint)}
 					blueprintId={agent.blueprintId}
 					size="hero"
 				/>
@@ -61,13 +73,17 @@ export function AgentCard({
 				<span className="flex min-w-0 flex-1 flex-col">
 					<span className="flex items-baseline gap-1.5">
 						<span className="truncate text-[14px] font-semibold tracking-tight text-foreground">{agent.name}</span>
-						<span className="shrink-0 text-[12px] text-muted-foreground">
-							{blueprint ? t(blueprint.nameKey as never) : agent.blueprintId}
-						</span>
+						<span className="shrink-0 text-[12px] text-muted-foreground">{roleLabel ?? agent.blueprintId}</span>
 					</span>
 					<span className="mt-1.5 line-clamp-2 min-h-9 text-[12px] leading-relaxed text-muted-foreground/80">
 						{agent.description || t("settings.profileMissing")}
 					</span>
+					{unavailable && (
+						<span className="mt-1.5 inline-flex w-fit items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+							<span className="icon-[solar--plug-circle-linear] h-3 w-3" aria-hidden="true" />
+							{t("library.pluginDisabled", { plugin: unavailable.pluginName })}
+						</span>
+					)}
 					{pending && (
 						<span className="mt-1.5 inline-flex w-fit items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] text-amber-400">
 							<span className="icon-[solar--info-circle-linear] h-3 w-3" aria-hidden="true" />

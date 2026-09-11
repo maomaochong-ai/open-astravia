@@ -18,7 +18,8 @@
     "empty": "还没有智能体，点击右上角添加一个。",
     "selectHint": "从左侧选择一个智能体",
     "defaultAgentName": "新智能体",
-    "defaultAgentDescription": "可配置能力的团队成员"
+    "defaultAgentDescription": "可配置能力的团队成员",
+    "pluginDisabled": "需要启用「{{plugin}}」插件"
   },
   "center": {
     "title": "智能体",
