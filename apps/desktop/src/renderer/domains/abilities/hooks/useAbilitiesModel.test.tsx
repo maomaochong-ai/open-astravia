@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import type {
 	LanguageState,
+	InstalledPlugin,
 	InstalledSkill,
 	MarketplaceSource,
 	OpenMarketplaceCatalog,
@@ -28,6 +29,59 @@ vi.mock("@shared/store/atoms", async () => {
 	return { authTokenAtom: atom(null), languageAtom: atom("en"), pluginI18nByIdAtom: atom({}) };
 });
 
+it("keeps an installed plugin package icon visible while the marketplace is offline", async () => {
+	const packageIcon = "vetta-plugin://feishu/versions/1.0.0/assets/icon.png?v=1.0.0";
+	const plugin: InstalledPlugin = {
+		id: "feishu",
+		name: "Feishu",
+		version: "1.0.0",
+		activeVersion: "1.0.0",
+		pluginApiVersion: "^2.0.0",
+		entryUrl: "vetta-plugin://feishu/versions/1.0.0/mf-manifest.json",
+		moduleFederation: { remoteName: "feishu", expose: "./plugin" },
+		styleUrls: [],
+		permissions: [],
+		grantedPermissions: [],
+		allowedNetworkHosts: [],
+		allowedBrowserHosts: [],
+		declaredCommands: [],
+		grantedCommandNames: [],
+		defaultLocale: "zh-CN",
+		locales: {},
+		enabled: true,
+		required: false,
+		installedAt: "2026-01-01T00:00:00.000Z",
+		updatedAt: "2026-01-01T00:00:00.000Z",
+		source: "archive",
+		trustLevel: "official",
+		rootPath: "C:/plugins/feishu/versions/1.0.0",
+	};
+	Object.defineProperty(window, "vetta", {
+		configurable: true,
+		value: {
+			abilities: {
+				getLedger: async () => ({}),
+				listLocalPresentations: async () => ({ "plugin:feishu": { icon: packageIcon } }),
+				getOpenMcpSetupStatus: async () => ({}),
+				listOpenMarketplaces: async () => ({ sources: [], snapshots: [], abilities: [], failedSourceIds: [] }),
+				refreshOpenMarketplaces: async () => {
+					throw new Error("offline");
+				},
+				onOpenMarketplacesUpdated: () => () => undefined,
+			},
+			skills: { getMarketManifest: async () => ({}), list: async () => [] },
+			plugins: { listAll: async () => [plugin] },
+			mcp: { get: async () => ({ mcpServers: {} }) },
+		},
+	});
+	initI18n();
+
+	const { result } = renderHook(() => useAbilitiesModel({ initialScope: "mine" }));
+	await waitFor(() => expect(result.current.loading).toBe(false));
+
+	expect(result.current.items).toMatchObject([{ slug: "feishu", installed: true, icon: packageIcon }]);
+});
+
 it("keeps bundle-only members out of discovery and its banner while preserving details, selection, localization and installed management", async () => {
 	const repository = "https://github.com/example/market";
 	const source: MarketplaceSource = {
@@ -53,7 +107,7 @@ it("keeps bundle-only members out of discovery and its banner while preserving d
 	let installed: Record<string, InstalledSkill> = {};
 	Object.defineProperty(window, "vetta", { configurable: true, value: {
 		abilities: {
-			getLedger: async () => ({}), listBuiltinPresentations: async () => ({}), getOpenMcpSetupStatus: async () => ({}),
+			getLedger: async () => ({}), listLocalPresentations: async () => ({}), getOpenMcpSetupStatus: async () => ({}),
 			listOpenMarketplaces: async () => structuredClone(catalog), refreshOpenMarketplaces: async () => structuredClone(catalog),
 			onOpenMarketplacesUpdated: () => () => undefined,
 		},
@@ -139,7 +193,7 @@ it("follows the application language broadcast for cached GitHub names, descript
 				onLanguageChanged: (listener: typeof languageChanged) => { languageChanged = listener; return () => undefined; },
 			},
 			abilities: {
-				getLedger: async () => ({}), listBuiltinPresentations: async () => ({}), getOpenMcpSetupStatus: async () => ({}), listOpenMarketplaces,
+				getLedger: async () => ({}), listLocalPresentations: async () => ({}), getOpenMcpSetupStatus: async () => ({}), listOpenMarketplaces,
 				refreshOpenMarketplaces,
 				onOpenMarketplacesUpdated: () => () => undefined,
 			},
@@ -209,7 +263,7 @@ it("seeds the search keyword from an external deep link and lets the page take o
 	const catalog: OpenMarketplaceCatalog = { sources: [source], snapshots: [snapshot], abilities: snapshot.abilities, failedSourceIds: [] };
 	Object.defineProperty(window, "vetta", { configurable: true, value: {
 		abilities: {
-			getLedger: async () => ({}), listBuiltinPresentations: async () => ({}), getOpenMcpSetupStatus: async () => ({}),
+			getLedger: async () => ({}), listLocalPresentations: async () => ({}), getOpenMcpSetupStatus: async () => ({}),
 			listOpenMarketplaces: async () => structuredClone(catalog), refreshOpenMarketplaces: async () => structuredClone(catalog),
 			onOpenMarketplacesUpdated: () => () => undefined,
 		},

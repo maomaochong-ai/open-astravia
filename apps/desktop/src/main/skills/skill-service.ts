@@ -5,7 +5,13 @@ import { getVettaHomePath } from "@vetta/action-rpc";
 import { resolvePluginText } from "@vetta-org/plugin-sdk";
 import type { AppMonitorResourceOperation } from "../../preload/api-types/app-monitor.js";
 import type { SkillPresentation, SkillProvenance } from "../../preload/api-types/skills.js";
+import { resolveProvidedSkillPresentationIcon } from "../../shared/ability-presentation.js";
 import { removeAbilityLedgerEntry } from "../abilities/ability-ledger.js";
+import {
+	installedPluginAssetUrl,
+	resolveInstalledPluginPresentationIcon,
+} from "../abilities/presentation/installed-plugin-presentation.js";
+import { loadSkillPackagePresentationIcon } from "../abilities/presentation/skill-package-presentation.js";
 import { createDesktopSkillResourceRuntime } from "../agent-runtime/resource-runtime.js";
 import { recordAppMonitorEvent } from "../app-monitor/app-monitor-service.js";
 import {
@@ -138,10 +144,19 @@ export class SkillService {
 		const { skills } = loader.getSkills();
 		const manifest = readSkillsManifest();
 		const builtinManifest = readBuiltinSkillsManifest();
-		// 插件 skill 不在市场目录里：展示图标跟宿主插件走（icon.png → vetta-plugin://…）。
+		// Provider 呈现由本地包解析：ability.json 优先，plugin.json 作为品牌回退。
 		const plugins = listPlugins();
 		const pluginById = new Map(plugins.map((plugin) => [plugin.id, plugin]));
-		const pluginIconById = new Map(plugins.map((plugin) => [plugin.id, plugin.iconUrl]));
+		const pluginIconById = new Map(
+			plugins.map((plugin) => {
+				try {
+					return [plugin.id, resolveInstalledPluginPresentationIcon(plugin)] as const;
+				} catch (error) {
+					skillsLog.warn(`plugin ${plugin.id} presentation ignored`, error);
+					return [plugin.id, plugin.iconUrl] as const;
+				}
+			}),
+		);
 		const pluginSources = buildPluginSkillSources(skillPathContributions, pluginIconById);
 		const language = getAppLanguage();
 		const listed = skills
@@ -168,7 +183,22 @@ export class SkillService {
 								return placeholder && resolved === placeholder[1] ? undefined : resolved;
 							})
 						: undefined;
-				const icon = pluginSource?.icon;
+				let declaredIcon: string | undefined;
+				try {
+					declaredIcon = loadSkillPackagePresentationIcon({
+						filePath: skill.filePath,
+						baseDir: skill.baseDir,
+						...(sourcePlugin
+							? { assetUrlResolver: (absolutePath) => installedPluginAssetUrl(sourcePlugin, absolutePath) }
+							: {}),
+					});
+				} catch (error) {
+					skillsLog.warn(`skill ${skill.name} presentation ignored`, error);
+				}
+				const icon = resolveProvidedSkillPresentationIcon({
+					skillIcon: declaredIcon,
+					providerIcon: pluginSource?.icon,
+				});
 				return {
 					name: skill.name,
 					// 内置 Skill 的展示文案跟随宿主语言（catalog 缺译才回落清单里的中文）。

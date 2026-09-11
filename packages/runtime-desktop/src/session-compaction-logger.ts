@@ -9,12 +9,12 @@ export interface RuntimeSessionCompactionLogger {
 }
 
 interface ActiveCompaction {
-	readonly reason: "threshold" | "overflow";
+	readonly reason: "threshold" | "overflow" | "manual";
 	readonly startedAt: number;
 }
 
 /**
- * 将自动上下文压缩生命周期写成不含对话正文和摘要内容的结构化日志。
+ * 将上下文压缩生命周期写成不含对话正文和摘要内容的结构化日志。
  * 返回的观察器是纯旁路：日志实现抛错时由 RuntimeHost 隔离，不改变压缩结果。
  */
 export function createRuntimeSessionCompactionLogger(

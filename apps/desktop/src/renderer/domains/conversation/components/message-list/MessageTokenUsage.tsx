@@ -6,7 +6,10 @@ import { useTranslation } from "react-i18next";
 
 interface MessageTokenUsageProps {
 	usages: readonly Usage[];
+	sessionUsages?: readonly Usage[];
 }
+
+type TokenUsageScope = "session" | "message";
 
 interface TokenUsageDetails {
 	input: number;
@@ -23,9 +26,11 @@ interface TokenUsageDetails {
 	latestPromptCache: NonNullable<Usage["promptCache"]> | null;
 }
 
-export function MessageTokenUsage({ usages }: MessageTokenUsageProps): JSX.Element | null {
+export function MessageTokenUsage({ usages, sessionUsages = usages }: MessageTokenUsageProps): JSX.Element | null {
 	const { t, i18n } = useTranslation("chat");
-	const details = useMemo(() => calculateTokenUsageDetails(usages), [usages]);
+	const [scope, setScope] = useState<TokenUsageScope>("session");
+	const selectedUsages = scope === "session" ? sessionUsages : usages;
+	const details = useMemo(() => calculateTokenUsageDetails(selectedUsages), [selectedUsages]);
 	const language = i18n.resolvedLanguage ?? i18n.language;
 	const numberFormatter = useMemo(() => new Intl.NumberFormat(language), [language]);
 	const percentFormatter = useMemo(
@@ -53,6 +58,10 @@ export function MessageTokenUsage({ usages }: MessageTokenUsageProps): JSX.Eleme
 	}, [open]);
 
 	if (!details) return null;
+	const title =
+		scope === "session"
+			? t("messageList.tokenUsage.sessionTitle")
+			: t("messageList.tokenUsage.messageTitle");
 	const latestPromptCache = details.latestPromptCache;
 	const prefixStatus = latestPromptCache?.prefixStatus
 		? {
@@ -174,8 +183,30 @@ export function MessageTokenUsage({ usages }: MessageTokenUsageProps): JSX.Eleme
 				sideOffset={6}
 				className="w-64 max-w-64 gap-0 border-border/60 shadow-md"
 			>
+				<div
+					role="tablist"
+					aria-label={t("messageList.tokenUsage.scopeLabel")}
+					className="mb-2 flex rounded-md bg-muted/50 p-0.5"
+				>
+					{(["session", "message"] as const).map((value) => (
+						<button
+							key={value}
+							type="button"
+							role="tab"
+							aria-selected={scope === value}
+							className={`flex-1 rounded-sm px-1.5 py-1 text-[10px] transition-colors ${
+								scope === value
+									? "bg-background text-foreground"
+									: "text-muted-foreground hover:text-foreground"
+							}`}
+							onClick={() => setScope(value)}
+						>
+							{t(`messageList.tokenUsage.${value}`)}
+						</button>
+					))}
+				</div>
 				<div className="flex items-baseline justify-between gap-2">
-					<span className="text-[11px] font-semibold">{t("messageList.tokenUsage.title")}</span>
+					<span className="text-[11px] font-semibold">{title}</span>
 					<span className="text-[10px] text-muted-foreground">
 						{t("messageList.tokenUsage.modelCalls", { count: details.modelCalls })}
 					</span>

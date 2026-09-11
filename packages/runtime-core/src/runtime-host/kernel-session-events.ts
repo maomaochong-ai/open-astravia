@@ -39,14 +39,14 @@ export function mapKernelEventToSessionEvents(event: KernelEvent): SessionEvent[
 	if (event.type === "context.compacted") {
 		const record = event.record;
 		const reason = "reason" in record ? record.reason : undefined;
-		if (reason === "manual") return [];
+		if (reason !== "manual" && reason !== "threshold" && reason !== "overflow") return [];
 		return [
 			mapRuntimeSessionObservationEvent(
 				event.sessionId,
 				{
 					type: "compaction.end",
 					success: true,
-					...(reason === "threshold" || reason === "overflow" ? { reason } : {}),
+					reason,
 					...("tokensBefore" in record ? { tokensBefore: record.tokensBefore } : {}),
 					source: "agent",
 				},
@@ -69,6 +69,7 @@ export function mapKernelEventToSessionEvents(event: KernelEvent): SessionEvent[
 					.map((entry) => ({
 						id: entry.id,
 						behavior: entry.behavior,
+						kind: entry.input.operation?.type === "context.compact" ? "context_compaction" : "message",
 						displayText: entry.input.message
 							? messageText(entry.input.message)
 							: (entry.input.request?.displayText ?? ""),

@@ -11391,6 +11391,12 @@
                   "type": "string"
                 }
               }
+            },
+            "sourcePluginId": {
+              "type": "string"
+            },
+            "icon": {
+              "type": "string"
             }
           }
         }

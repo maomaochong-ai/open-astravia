@@ -126,6 +126,24 @@ describe("Greenfield KernelEvent to SessionEvent adapter", () => {
 		expect(compacted.map(payload)).toMatchObject([
 			{ type: "compaction.end", success: true, reason: "threshold", tokensBefore: 91_000 },
 		]);
+
+		const manualCompacted = mapKernelEventToSessionEvents({
+			...({
+				type: "context.compacted" as const,
+				sessionId: "session-1",
+				record: {
+					summary: "manual summary",
+					summaryMessage: { role: "user" as const, content: "manual summary", timestamp: 12 },
+					firstKeptEntryId: "message-2",
+					tokensBefore: 91_000,
+					reason: "manual" as const,
+				},
+				timestamp: 12,
+			} satisfies KernelEvent),
+		});
+		expect(manualCompacted.map(payload)).toMatchObject([
+			{ type: "compaction.end", success: true, reason: "manual", tokensBefore: 91_000 },
+		]);
 	});
 
 	it("maps transient execution failures independently from durable turn failure", () => {
@@ -307,6 +325,11 @@ describe("Greenfield KernelEvent to SessionEvent adapter", () => {
 				paused: false,
 				entries: [
 					{ id: "queued-1", behavior: "followUp", input: { message: user("真实排队消息") } },
+					{
+						id: "compact-1",
+						behavior: "followUp",
+						input: { operation: { type: "context.compact" } },
+					},
 					{ id: "queued-2", behavior: "followUp", input: { message: user("CONTINUE_INTERNAL") }, internal: true },
 				],
 			},
@@ -314,10 +337,11 @@ describe("Greenfield KernelEvent to SessionEvent adapter", () => {
 
 		expect(event?.type).toBe("queue.changed");
 		const queueEvent = event as Extract<SessionEvent, { type: "queue.changed" }>;
-		expect(queueEvent.entries.map(({ id }) => id)).toEqual(["queued-1"]);
+		expect(queueEvent.entries.map(({ id }) => id)).toEqual(["queued-1", "compact-1"]);
+		expect(queueEvent.entries.map(({ kind }) => kind)).toEqual(["message", "context_compaction"]);
 		expect(queueEvent.entries.map(({ displayText }) => displayText)).not.toContain("CONTINUE_INTERNAL");
 		// 完整快照（宿主持久化 sidecar 用）仍保留内部条目。
-		expect((queueEvent.snapshot as { entries: unknown[] }).entries).toHaveLength(2);
+		expect((queueEvent.snapshot as { entries: unknown[] }).entries).toHaveLength(3);
 	});
 });
 

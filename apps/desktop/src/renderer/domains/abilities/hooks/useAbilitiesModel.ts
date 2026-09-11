@@ -15,9 +15,9 @@ import {
 	buildSkillAbilities,
 	type LocalAbilityState,
 } from "../lib/build-ability-items";
-import { withBuiltinAbilityDetail } from "../lib/builtin-ability-details";
 import { decorateAbilityConflicts } from "../lib/decorate-ability-conflicts";
 import { groupAbilities } from "../lib/group-abilities";
+import { withLocalAbilityPresentation } from "../lib/local-ability-presentation";
 import type { AbilitiesModel, AbilityBannerIcon, AbilityGroup, AbilityItem, AbilityScope } from "../types";
 import { useAbilityActions } from "./useAbilityActions";
 import { useAbilityData } from "./useAbilityData";
@@ -84,7 +84,7 @@ export function useAbilitiesModel(options: UseAbilitiesModelOptions = {}): Abili
 			...buildMcpAbilities(market, localState, t),
 			...buildPluginAbilities(market, localState, trPlugin),
 		]
-			.map((item) => withBuiltinAbilityDetail(item, data.builtinPresentations))
+			.map((item) => withLocalAbilityPresentation(item, data.localPresentations))
 			.map((item) => ({
 				...item,
 				operation: actions.operationById.get(item.id),
@@ -97,15 +97,7 @@ export function useAbilitiesModel(options: UseAbilitiesModelOptions = {}): Abili
 				operationProgress: actions.operationProgressById.get(item.id),
 			}),
 		);
-	}, [
-		market,
-		localState,
-		t,
-		trPlugin,
-		data.builtinPresentations,
-		actions.operationById,
-		actions.operationProgressById,
-	]);
+	}, [market, localState, t, trPlugin, data.localPresentations, actions.operationById, actions.operationProgressById]);
 
 	const changeScope = useCallback((nextScope: AbilityScope) => {
 		setScope(nextScope);

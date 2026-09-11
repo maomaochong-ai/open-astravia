@@ -61,6 +61,10 @@ export function reconcileOptimisticUserMessages(
 	const canonicalUsers = history.filter(
 		(message): message is ConversationUserMessageViewModel => message.kind === "user",
 	);
+	const confirmedSnapshots = new Map<
+		ConversationUserMessageViewModel,
+		ConversationUserMessageViewModel["inputSegments"]
+	>();
 	const unresolved: PendingOptimisticUserMessage[] = [];
 	for (const entry of pending) {
 		const canonical = canonicalUsers[entry.precedingUserCount];
@@ -72,7 +76,12 @@ export function reconcileOptimisticUserMessages(
 		const confirmed = entry.matchTextOnly
 			? sameText(canonical.text, entry.message.text)
 			: sameUserMessage(canonical, entry.message);
-		if (confirmed) continue;
+		if (confirmed) {
+			if (!entry.matchTextOnly && entry.message.inputSegments) {
+				confirmedSnapshots.set(canonical, entry.message.inputSegments);
+			}
+			continue;
+		}
 		const attempts = (entry.unresolvedReconciles ?? 0) + 1;
 		if (attempts > MAX_UNRESOLVED_RECONCILES) continue;
 		unresolved.push({ ...entry, unresolvedReconciles: attempts });
@@ -80,12 +89,27 @@ export function reconcileOptimisticUserMessages(
 
 	if (unresolved.length === 0) {
 		pendingByRuntimeId.delete(runtimeId);
-		return [...history];
+		return applyConfirmedInputSnapshots(history, confirmedSnapshots);
 	}
 	pendingByRuntimeId.set(runtimeId, unresolved);
 
 	const historyIds = new Set(history.map((message) => message.id));
-	return [...history, ...unresolved.map(({ message }) => message).filter((message) => !historyIds.has(message.id))];
+	return [
+		...applyConfirmedInputSnapshots(history, confirmedSnapshots),
+		...unresolved.map(({ message }) => message).filter((message) => !historyIds.has(message.id)),
+	];
+}
+
+function applyConfirmedInputSnapshots(
+	history: readonly ChatConversationItem[],
+	snapshots: ReadonlyMap<ConversationUserMessageViewModel, ConversationUserMessageViewModel["inputSegments"]>,
+): ChatConversationItem[] {
+	if (snapshots.size === 0) return [...history];
+	return history.map((message) => {
+		if (message.kind !== "user") return message;
+		const inputSegments = snapshots.get(message);
+		return inputSegments ? { ...message, inputSegments } : message;
+	});
 }
 
 export function clearOptimisticUserMessages(runtimeId?: string): void {

@@ -4,6 +4,9 @@ import type { JSX } from "react";
 export interface QueueCardItem {
 	id: string;
 	displayText: string;
+	kind?: "message" | "context_compaction";
+	/** 压缩屏障之前的普通消息才允许跳过等待立即发送。 */
+	canSendNow?: boolean;
 }
 
 export interface QueueCardViewLabels {
@@ -117,14 +120,23 @@ function QueueItemRow({
 			>
 				<span className="icon-[solar--hamburger-menu-linear] text-sm" />
 			</button>
-			<button
-				type="button"
-				onClick={() => onSendNow(item.id)}
-				title={sendNowTitle}
-				className="min-w-0 flex-1 truncate text-left text-[12px] leading-snug text-foreground"
-			>
-				{item.displayText}
-			</button>
+			{item.kind === "context_compaction" || item.canSendNow === false ? (
+				<div className="flex min-w-0 flex-1 items-center gap-2 text-left text-[12px] leading-snug text-foreground">
+					{item.kind === "context_compaction" ? (
+						<span className="h-3.5 w-3.5 shrink-0 rounded-full border border-primary" aria-hidden="true" />
+					) : null}
+					<span className="truncate">{item.displayText}</span>
+				</div>
+			) : (
+				<button
+					type="button"
+					onClick={() => onSendNow(item.id)}
+					title={sendNowTitle}
+					className="min-w-0 flex-1 truncate text-left text-[12px] leading-snug text-foreground"
+				>
+					{item.displayText}
+				</button>
+			)}
 			<button
 				type="button"
 				onClick={() => onRemove(item.id)}

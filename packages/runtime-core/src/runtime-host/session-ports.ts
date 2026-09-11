@@ -170,6 +170,7 @@ export interface RuntimeSessionQueueView {
 export interface RuntimeSessionQueueEntryView {
 	readonly id: string;
 	readonly behavior: "steer" | "followUp";
+	readonly kind?: "message" | "context_compaction";
 	readonly displayText: string;
 }
 
@@ -191,6 +192,11 @@ export interface RuntimeSessionQueueController extends RuntimeSessionQueueView {
 	restoreQueue(snapshot: unknown): void;
 	removeQueued(id: string): boolean;
 	reorderQueuedFollowUps(ids: readonly string[]): void;
+	enqueueContextCompaction(request?: RuntimeContextCompactionRequest): {
+		readonly status: "queued";
+		readonly id?: string;
+		readonly pendingCount: number;
+	};
 	/** running 时打断当前 turn 并立刻以该条目开新 turn，空闲时直接开 turn；不阻塞等待 turn 结束。 */
 	sendQueuedNow(id: string): Promise<"promoted" | "started" | "missing">;
 	/** 解除 pause-on-terminal 并继续消费；不阻塞等待 turn 结束。 */

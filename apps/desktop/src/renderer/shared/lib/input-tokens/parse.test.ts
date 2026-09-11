@@ -21,6 +21,15 @@ describe("parseInputSegments", () => {
 		expect(serialized).toEqual({
 			text: "**请** @research 核查",
 			memberMentions: [{ participantId: "member-2", handle: "research", start: 6, end: 15 }],
+			tokens: [
+				{
+					kind: "member",
+					participantId: "member-2",
+					handle: "research",
+					start: 6,
+					end: 15,
+				},
+			],
 		});
 		expect(parseInputSegments(serialized.text).segments).toEqual([{ kind: "text", text: "**请** @research 核查" }]);
 	});
@@ -174,6 +183,53 @@ describe("segmentsToText", () => {
 });
 
 describe("prepareInputPrompt", () => {
+	it("发送时优先保留编辑器快照，不把普通 png 文件重新猜成图片", () => {
+		const segments: InputSegment[] = [
+			{ kind: "text", text: "  检查 " },
+			{ kind: "file", path: "C:/workspace/screenshot.png" },
+			{ kind: "text", text: "然后调整间距  " },
+		];
+		const text = segmentsToText(segments);
+
+		expect(prepareInputPrompt(text.trim(), segments)).toEqual({
+			text: text.trim(),
+			segments: [
+				{ kind: "text", text: "检查 " },
+				{ kind: "file", path: "C:/workspace/screenshot.png" },
+				{ kind: "text", text: "然后调整间距" },
+			],
+		});
+	});
+
+	it("结构化快照保留目录、成员与能力展示元数据", () => {
+		const segments: InputSegment[] = [
+			{ kind: "scene", name: "review", alias: "审查", icon: "scene.svg" },
+			{ kind: "skill", name: "legal", alias: "法务", icon: "skill.svg" },
+			{ kind: "connector", name: "notion", label: "Notion", iconUrl: "notion.svg" },
+			{ kind: "file", path: "C:/workspace/assets", isDirectory: true },
+			{
+				kind: "member",
+				memberId: "member-1",
+				handle: "architect",
+				label: "Architect",
+				avatar: "architect.webp",
+			},
+			{ kind: "text", text: "\n开始" },
+		];
+		const prepared = prepareInputPrompt(segmentsToText(segments), segments);
+
+		expect(prepared.segments).toEqual(segments);
+		expect(prepared.sceneName).toBe("review");
+		expect(prepared.text).toBe("@skill:legal @mcp:notion @C:/workspace/assets @architect\n开始");
+	});
+
+	it("文本与快照不匹配时安全回退文本解析", () => {
+		const staleSegments: InputSegment[] = [{ kind: "file", path: "C:/workspace/screenshot.png" }];
+		const prepared = prepareInputPrompt("@C:/workspace/other.png", staleSegments);
+
+		expect(prepared.segments).toEqual([{ kind: "image", path: "C:/workspace/other.png" }]);
+	});
+
 	it("发送时移除 scene 展示 token，并返回结构化场景引用", () => {
 		expect(prepareInputPrompt("@scene:review 检查 @skill:legal 这份材料")).toMatchObject({
 			text: "检查 @skill:legal 这份材料",

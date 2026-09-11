@@ -5,6 +5,7 @@ import {
 } from "@vetta/theme-ui/chat";
 import { useMessageFeedActiveItem } from "@shared/components/message-feed/useMessageFeedActiveItem";
 import { useCallback, useMemo } from "react";
+import type { Usage } from "@vetta/ai/protocol";
 import { createPortal } from "react-dom";
 import { conversationItemRenderKey } from "@shared/conversation";
 import { useMessageSelectionContextMenu } from "../../hooks/useMessageSelectionContextMenu";
@@ -100,6 +101,10 @@ export function MessageListView({
 		}
 		return { lastUserMessageId: userId, lastNonUserIndex: nonUserIndex };
 	}, [messages]);
+	const sessionUsages = useMemo<readonly Usage[]>(
+		() => messages.flatMap((message) => (message.kind === "agent" ? (message.usages ?? []) : [])),
+		[messages],
+	);
 	const itemContent = useCallback(
 		(index: number, message: ChatConversationItem) => {
 			const showForkOrigin = forkOriginPlacement?.anchorIndex === index;
@@ -130,6 +135,7 @@ export function MessageListView({
 						pendingLabel={message.kind === "agent" && message.phase === "pending" ? pendingLabel : undefined}
 						userMessageActions={context.userMessageActions}
 						participants={participants}
+						sessionUsages={sessionUsages}
 						onTeamMemberOpen={onTeamMemberOpen}
 					/>
 					{showForkOrigin && sourceUser?.kind === "user" ? <ForkOriginBanner sourceMessage={sourceUser} /> : null}
@@ -149,6 +155,7 @@ export function MessageListView({
 			tailMessageId,
 			onTeamMemberOpen,
 			participants,
+			sessionUsages,
 		],
 	);
 	const footer = useMemo(

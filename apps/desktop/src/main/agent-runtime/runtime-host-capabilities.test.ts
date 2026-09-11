@@ -208,7 +208,7 @@ describe("Desktop RuntimeHost capabilities", () => {
 		expect(runtime.getState(created.sessionId).activeToolNames).not.toContain("ask_user_question");
 	});
 
-	it("exposes the assembled context controller for development-time manual compaction", async () => {
+	it("queues manual compaction through the production Desktop runtime and publishes its lifecycle", async () => {
 		const cwd = await temporaryDirectory("desktop-runtime-compaction-workspace-");
 		const sessionDir = await temporaryDirectory("desktop-runtime-compaction-sessions-");
 		const generateCompaction: NonNullable<CodingAgentRuntimeCompositionOptions["generateCompaction"]> = vi.fn(
@@ -243,22 +243,27 @@ describe("Desktop RuntimeHost capabilities", () => {
 
 		const created = await runtime.createSession({ cwd, sessionDir, executionMode: "full-access" });
 		await runtime.prompt(created.sessionId, { text: "old request ".repeat(80) });
+		const events: string[] = [];
+		const unsubscribe = runtime.subscribe(created.sessionId, (event) => {
+			if (event.type === "compaction.start" || event.type === "compaction.end") {
+				events.push(`${event.type}:${event.reason}`);
+			}
+		});
 
 		expect(runtime.readSessionContextCompactionState(created.sessionId)).toEqual({
 			isCompacting: false,
 			autoCompactionEnabled: false,
 		});
-		const result = await runtime.compactSessionContext(created.sessionId, {
+		const queued = runtime.queueSessionContextCompaction(created.sessionId, {
 			customInstructions: "preserve decisions",
 		});
 
-		expect(result).toMatchObject({
-			summary: "manual summary",
-			details: { customInstructions: "preserve decisions" },
-		});
-		expect(generateCompaction).toHaveBeenCalledOnce();
+		expect(queued).toMatchObject({ status: "queued", pendingCount: 1 });
+		await vi.waitFor(() => expect(generateCompaction).toHaveBeenCalledOnce());
+		await vi.waitFor(() => expect(events).toEqual(["compaction.start:manual", "compaction.end:manual"]));
 		expect(runtime.getFullHistory(created.sessionId).map(({ type }) => type)).toContain("compaction");
 		expect(runtime.readSessionContextCompactionState(created.sessionId).isCompacting).toBe(false);
+		unsubscribe();
 	});
 
 	function registerDisposal(runtime: RuntimeHost, pool: DesktopRuntimeBackendPool): void {

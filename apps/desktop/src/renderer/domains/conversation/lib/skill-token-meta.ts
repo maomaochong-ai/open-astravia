@@ -9,16 +9,17 @@
 import type { SkillInfo } from "@preload/api";
 import { builtinSkillIconUrl } from "@shared/lib/builtin-skill-icons";
 import { getSkillDisplayName } from "@vetta/capability-sdk";
+import { resolveProvidedSkillPresentationIcon } from "@/shared/ability-presentation";
 
 /** 键为 `${type}:${slug}`：本地清单里 skill 与 scene 同命名空间，同名不同类型不能互相认领。 */
 export type SkillIconMap = ReadonlyMap<string, string>;
 
 export function skillIconOf(map: SkillIconMap, skill: SkillInfo): string | undefined {
-	return (
-		map.get(`${skill.type}:${skill.name}`) ??
-		skill.icon ??
-		(skill.source === "builtin" ? builtinSkillIconUrl(skill.name) : undefined)
-	);
+	return resolveProvidedSkillPresentationIcon({
+		skillIcon: skill.icon,
+		catalogIcon: map.get(`${skill.type}:${skill.name}`),
+		builtinIcon: skill.source === "builtin" ? builtinSkillIconUrl(skill.name) : undefined,
+	});
 }
 
 export interface SkillTokenMeta {

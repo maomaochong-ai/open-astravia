@@ -233,8 +233,8 @@ export function buildSkillAbilities(market: MarketAbility[], state: LocalAbility
 			catalogSource: source,
 			title: getSkillDisplayName(skill),
 			description: getSkillDisplayDescription(skill),
-			// 内置走 renderer 静态资源；插件贡献 skill 带宿主插件 iconUrl；其余落默认图。
-			icon: isBuiltin ? builtinSkillIconUrl(skill.name) : skill.icon,
+			// 包内显式声明优先；未声明的内置 Skill 才走 renderer 静态兼容映射。
+			icon: skill.icon ?? (isBuiltin ? builtinSkillIconUrl(skill.name) : undefined),
 			category: "",
 			tags: [],
 			author: "",

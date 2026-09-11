@@ -408,6 +408,7 @@
 			"permissionDesc": "等待确认",
 			"permissionLabel": "权限请求",
 			"queueDelete": "删除",
+			"contextCompaction": "压缩上下文",
 			"queueDesc": "{{count}} 条待发",
 			"queueEmpty": "暂无排队消息",
 			"queueLabel": "队列",
@@ -545,8 +546,12 @@
 			"emptyUser": "（没有文字）"
 		},
 		"tokenUsage": {
-			"trigger": "查看本轮 Token 用量",
-			"title": "本轮 Token",
+			"trigger": "查看 Token 用量",
+			"sessionTitle": "会话 Token",
+			"messageTitle": "当前消息 Token",
+			"scopeLabel": "Token 统计范围",
+			"session": "会话总计",
+			"message": "当前消息",
 			"modelCalls": "{{count}} 次模型调用",
 			"total": "总计",
 			"prompt": "Prompt Token",
@@ -824,6 +829,15 @@
 		"skillButtonTitle": "技能/场景"
 	},
 	"slashPanel": {
+		"compaction": {
+			"label": "压缩上下文",
+			"description": "压缩此聊天的上下文（已使用 {{percent}}%）",
+			"descriptionUnknown": "压缩此聊天的上下文",
+			"queued": "已加入队列，将在当前回复完成后压缩",
+			"compacting": "正在压缩上下文",
+			"errorTitle": "无法压缩上下文",
+			"errorMessage": "加入压缩队列失败，请重试"
+		},
 		"emptyNoMatch": "未找到匹配项",
 		"emptyNoMatchHint": "换个关键词试试，或直接输入你的需求。",
 		"emptyNoSkills": "暂无可用的技能或场景",

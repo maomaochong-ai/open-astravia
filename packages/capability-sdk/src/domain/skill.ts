@@ -79,6 +79,8 @@ const skillInfoType = Type.Object(
 		type: skillTypeType,
 		provenance: Type.Optional(skillProvenanceType),
 		presentation: Type.Optional(SkillPresentationSchema),
+		sourcePluginId: Type.Optional(Type.String()),
+		icon: Type.Optional(Type.String()),
 	},
 	{ additionalProperties: false },
 );

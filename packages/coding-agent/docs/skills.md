@@ -33,6 +33,15 @@ description: 一句话说明何时使用
 - 可选：`disable-model-invocation`。`agent_mode` 已废弃（ADR-0071）：容忍存在但无任何运行时语义，不排序、不过滤，请不要在新 Skill 里写它。
 - 安全：Skill 可指示执行任意操作，安装前审查内容。
 
+Desktop 产品界面允许 Skill 在 namespaced metadata 中显式声明图标；这是 Vetta 的呈现扩展，不改变 Agent Skills 的加载、身份或调用语义。值可以是 `solar:*` 图标名、HTTPS URL，或相对于 Skill 目录的 `.avif`、`.gif`、`.ico`、`.jpeg`、`.jpg`、`.png`、`.svg`、`.webp` 文件：
+
+```yaml
+metadata:
+  vetta:
+    presentation:
+      icon: assets/icon.svg
+```
+
 ## 调用
 
 ```text

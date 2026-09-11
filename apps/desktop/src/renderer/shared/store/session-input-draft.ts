@@ -12,13 +12,14 @@
  * 仅内存：跨进程/刷新不恢复。附件路径与 token 在长会话间足够用，不必进 localStorage。
  */
 
-import { deriveAttachments, parseInputSegments } from "@shared/lib/input-tokens";
+import { deriveAttachments, type InputSegment, parseInputSegments } from "@shared/lib/input-tokens";
 import { pathBasename } from "@shared/lib/utils";
 import { atom, getDefaultStore } from "jotai";
 import {
 	type AppshotAttachment,
 	appshotAttachmentAtom,
 	attachedImagesAtom,
+	inputSegmentsAtom,
 	inputValueAtom,
 	type MentionedFile,
 	mentionedFilesAtom,
@@ -38,6 +39,8 @@ export {
 
 export interface SessionInputDraft {
 	text: string;
+	/** Structured editor snapshot; absent on legacy/programmatic text-only drafts. */
+	segments?: InputSegment[];
 	appshot: AppshotAttachment | null;
 }
 
@@ -68,25 +71,28 @@ export const sessionInputHistoryMapAtom = atom(
 );
 
 export function emptySessionInputDraft(): SessionInputDraft {
-	return { text: "", appshot: null };
+	return { text: "", segments: [], appshot: null };
 }
 
 export function captureSessionInputDraft(): SessionInputDraft {
 	const store = getDefaultStore();
 	return {
 		text: store.get(inputValueAtom),
+		segments: store.get(inputSegmentsAtom),
 		appshot: store.get(appshotAttachmentAtom),
 	};
 }
 
 export function applySessionInputDraft(draft: SessionInputDraft): void {
 	const store = getDefaultStore();
+	store.set(inputSegmentsAtom, draft.segments ?? parseInputSegments(draft.text).segments);
 	store.set(inputValueAtom, draft.text);
 	store.set(appshotAttachmentAtom, draft.appshot);
 	// 附图已并入文本 token；旧 atom 仅兜底清空，避免串会话。
 	store.set(attachedImagesAtom, []);
 	// 无编辑器时也要从文本还原 @ 文件，避免发送链路读到上一会话残留。
-	const files: MentionedFile[] = deriveAttachments(parseInputSegments(draft.text).segments).map((attachment) => ({
+	const sourceSegments = draft.segments ?? parseInputSegments(draft.text).segments;
+	const files: MentionedFile[] = deriveAttachments(sourceSegments).map((attachment) => ({
 		path: attachment.path,
 		name: pathBasename(attachment.path),
 		isDirectory: attachment.kind === "directory",
@@ -107,7 +113,12 @@ export function persistSessionInputDraft(key: string, draft: SessionInputDraft):
 		return;
 	}
 	const existing = prev[key];
-	if (existing && existing.text === draft.text && existing.appshot === draft.appshot) {
+	if (
+		existing &&
+		existing.text === draft.text &&
+		existing.segments === draft.segments &&
+		existing.appshot === draft.appshot
+	) {
 		return;
 	}
 	store.set(sessionInputDraftMapAtom, { ...prev, [key]: draft });
@@ -214,7 +225,11 @@ export function claimNewSessionInputDraft(sessionPath: string, newSessionKey: st
 export function prefillNewSessionInputDraft(cwd: string, text: string): void {
 	const store = getDefaultStore();
 	const key = newSessionInputDraftKeyImpl(cwd);
-	const draft: SessionInputDraft = { ...loadSessionInputDraft(key), text };
+	const draft: SessionInputDraft = {
+		...loadSessionInputDraft(key),
+		text,
+		segments: parseInputSegments(text).segments,
+	};
 	persistSessionInputDraft(key, draft);
 	if (store.get(activeInputDraftKeyAtom) === key) applySessionInputDraft(draft);
 }

@@ -408,6 +408,7 @@
 			"permissionDesc": "Awaiting confirmation",
 			"permissionLabel": "Permission request",
 			"queueDelete": "Remove",
+			"contextCompaction": "Compact context",
 			"queueDesc": "{{count}} queued",
 			"queueEmpty": "No queued messages",
 			"queueLabel": "Queued",
@@ -545,8 +546,12 @@
 			"emptyUser": "(No text)"
 		},
 		"tokenUsage": {
-			"trigger": "View token usage for this turn",
-			"title": "Turn tokens",
+			"trigger": "View token usage",
+			"sessionTitle": "Session tokens",
+			"messageTitle": "Current message tokens",
+			"scopeLabel": "Token usage scope",
+			"session": "Session total",
+			"message": "Current message",
 			"modelCalls": "{{count}} model calls",
 			"total": "Total",
 			"prompt": "Prompt tokens",
@@ -824,6 +829,15 @@
 		"skillButtonTitle": "Skills / Scenes"
 	},
 	"slashPanel": {
+		"compaction": {
+			"label": "Compact context",
+			"description": "Compact this chat's context ({{percent}}% used)",
+			"descriptionUnknown": "Compact this chat's context",
+			"queued": "Queued and will run after the current response",
+			"compacting": "Compacting context",
+			"errorTitle": "Couldn't compact context",
+			"errorMessage": "Couldn't queue context compaction. Try again."
+		},
 		"emptyNoMatch": "No matches found",
 		"emptyNoMatchHint": "Try another keyword, or just type your request.",
 		"emptyNoSkills": "No skills or scenes available",

@@ -97,7 +97,7 @@ type DetailSource = z.infer<typeof detailSourceSchema>;
 type PresentationDetailBlock = z.infer<typeof presentationDetailBlockSchema>;
 type InlineDetailLocale = z.infer<typeof inlineDetailLocaleSchema>;
 type InlineDetail = z.infer<typeof inlineDetailSchema>;
-type PresentationAssetUrlResolver = (absolutePath: string, relativePath: string) => string;
+export type PresentationAssetUrlResolver = (absolutePath: string, relativePath: string) => string;
 
 export interface AbilityPresentationIdentity {
 	type: MarketplaceAbilityManifest["type"];
@@ -135,17 +135,17 @@ function readTextFile(sourceDir: string, value: string, maxBytes: number): strin
 	return readFileSync(target, "utf-8");
 }
 
-function createLocalAssetUrl(absolutePath: string, marketplaceVersion: string): string {
+export function createLocalPresentationAssetUrl(absolutePath: string, assetRevision: string): string {
 	const normalized = absolutePath.replace(/\\/g, "/");
 	const pathname = normalized
 		.split("/")
 		.map((segment) => encodeURIComponent(segment))
 		.join("/");
 	const prefix = pathname.startsWith("/") ? "" : "/";
-	return `vetta-file://local${prefix}${pathname}?v=${encodeURIComponent(marketplaceVersion)}`;
+	return `vetta-file://local${prefix}${pathname}?v=${encodeURIComponent(assetRevision)}`;
 }
 
-function resolveImageReference(
+export function resolvePresentationImageReference(
 	sourceDir: string,
 	value: string,
 	resolveAssetUrl: PresentationAssetUrlResolver,
@@ -175,7 +175,7 @@ function resolveBlockAssets(
 		if (block.type === "hero" && block.image) {
 			return {
 				...block,
-				image: resolveImageReference(sourceDir, block.image, resolveAssetUrl, false),
+				image: resolvePresentationImageReference(sourceDir, block.image, resolveAssetUrl, false),
 			};
 		}
 		if (block.type === "feature-grid") {
@@ -183,7 +183,9 @@ function resolveBlockAssets(
 				...block,
 				items: block.items.map((item) => ({
 					...item,
-					icon: item.icon ? resolveImageReference(sourceDir, item.icon, resolveAssetUrl, true) : undefined,
+					icon: item.icon
+						? resolvePresentationImageReference(sourceDir, item.icon, resolveAssetUrl, true)
+						: undefined,
 				})),
 			};
 		}
@@ -192,14 +194,19 @@ function resolveBlockAssets(
 				...block,
 				showcase: {
 					...block.showcase,
-					brand_icon_url: resolveImageReference(sourceDir, block.showcase.brand_icon_url, resolveAssetUrl, false),
+					brand_icon_url: resolvePresentationImageReference(
+						sourceDir,
+						block.showcase.brand_icon_url,
+						resolveAssetUrl,
+						false,
+					),
 				},
 			};
 		}
 		if (block.type === "image") {
 			return {
 				...block,
-				src: resolveImageReference(sourceDir, block.src, resolveAssetUrl, false),
+				src: resolvePresentationImageReference(sourceDir, block.src, resolveAssetUrl, false),
 			};
 		}
 		if (block.type === "gallery") {
@@ -207,7 +214,7 @@ function resolveBlockAssets(
 				...block,
 				items: block.items.map((item) => ({
 					...item,
-					src: resolveImageReference(sourceDir, item.src, resolveAssetUrl, false),
+					src: resolvePresentationImageReference(sourceDir, item.src, resolveAssetUrl, false),
 				})),
 			};
 		}
@@ -237,7 +244,7 @@ function resolveShowcaseAssets(
 	return showcases?.map((showcase) => ({
 		...showcase,
 		brand_icon_url: showcase.brand_icon_url
-			? resolveImageReference(sourceDir, showcase.brand_icon_url, resolveAssetUrl, false)
+			? resolvePresentationImageReference(sourceDir, showcase.brand_icon_url, resolveAssetUrl, false)
 			: undefined,
 	}));
 }
@@ -346,7 +353,7 @@ export function loadAbilityPackagePresentation(
 		);
 	}
 	const resolveAssetUrl =
-		assetUrlResolver ?? ((absolutePath: string) => createLocalAssetUrl(absolutePath, assetVersion));
+		assetUrlResolver ?? ((absolutePath: string) => createLocalPresentationAssetUrl(absolutePath, assetVersion));
 
 	let detail: OpenMarketplaceDetail = {};
 	if (descriptor.detail) {
@@ -374,7 +381,9 @@ export function loadAbilityPackagePresentation(
 	}
 
 	return {
-		icon: descriptor.icon ? resolveImageReference(sourceDir, descriptor.icon, resolveAssetUrl, true) : undefined,
+		icon: descriptor.icon
+			? resolvePresentationImageReference(sourceDir, descriptor.icon, resolveAssetUrl, true)
+			: undefined,
 		detail,
 	};
 }

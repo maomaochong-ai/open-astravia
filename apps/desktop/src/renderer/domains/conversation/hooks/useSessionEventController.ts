@@ -1,4 +1,5 @@
 import { createConversationUserMessage } from "@shared/conversation";
+import { i18n } from "@shared/i18n";
 import {
 	activeSessionStreamingAtom,
 	activeToolNamesAtom,
@@ -25,6 +26,7 @@ import {
 	setQueueForSessionAtom,
 	setQueuePausedAtom,
 } from "@shared/store/message-queue-atoms";
+import { showToast } from "@shared/store/toast-atoms";
 import {
 	isCodingAgentMcpReloadStarted,
 	readCodingAgentBackgroundTasksObservation,
@@ -186,6 +188,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 					id: entry.id,
 					displayText: entry.displayText,
 					behavior: entry.behavior,
+					kind: entry.kind ?? "message",
 				}));
 				queueStore.set(setQueueForSessionAtom, { runtimeId: sessionId, items: nextQueue });
 				queueStore.set(setQueuePausedAtom, { runtimeId: sessionId, paused: event.paused });
@@ -198,6 +201,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 					conversationProjectionRef.current.reset();
 				}
 				for (const consumed of consumedEntries) {
+					if (consumed.kind !== "message") continue;
 					const consumedMsg = createConversationUserMessage({
 						id: nextId("user"),
 						deliveryPhase: "pending",
@@ -483,6 +487,31 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 							contextWindow: event.contextWindow,
 						});
 					}
+					if (
+						event.reason === "manual" &&
+						getQueueForSession(getDefaultStore().get(messageQueueBySessionAtom), sessionId).length === 0
+					) {
+						void window.vetta.session
+							.getFullHistory(sessionId)
+							.then((history) => {
+								if (activeSessionRef.current?.runtimeId !== sessionId) return;
+								setChatMessages(
+									reconcileOptimisticUserMessages(
+										sessionId,
+										conversationProjectionRef.current.projectHistory(history),
+									),
+								);
+							})
+							.catch((error) =>
+								console.warn("[useSessionManager] history refresh after compaction failed", error),
+							);
+					}
+				} else if (event.reason === "manual") {
+					showToast({
+						variant: "error",
+						title: i18n.t("chat:slashPanel.compaction.errorTitle"),
+						message: event.errorMessage ?? i18n.t("chat:slashPanel.compaction.errorMessage"),
+					});
 				}
 				return;
 			}

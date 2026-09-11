@@ -145,6 +145,8 @@ export interface DesktopSessionApi {
 	abort(sessionId: string): Promise<void>;
 	/** kernel 输入队列快照（ADR-0060）。 */
 	getQueueState(sessionId: string): Promise<RuntimeSessionQueueStateView>;
+	/** 在当前回复自然结束后压缩上下文；空闲时立即从队列执行。 */
+	queueContextCompaction(sessionId: string): Promise<{ status: "queued"; id?: string; pendingCount: number }>;
 	removeQueuedMessage(sessionId: string, itemId: string): Promise<boolean>;
 	reorderQueuedMessages(sessionId: string, itemIds: string[]): Promise<void>;
 	/** streaming 中打断当前回合并立刻以该条目开新回合；空闲时直接开新回合。不等待回合结束。 */

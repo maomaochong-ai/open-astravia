@@ -43,7 +43,7 @@ describe("buildSkillTokenMetaMap", () => {
 		expect(map.get("skill:vetta-ui-design")).toEqual({ label: "vetta-ui-design", icon });
 	});
 
-	it("市场目录优先于 skill.icon", () => {
+	it("本地 Skill 或 Provider 图标优先于市场目录，避免离线恢复后换图", () => {
 		const map = buildSkillTokenMetaMap(
 			[
 				{
@@ -56,7 +56,7 @@ describe("buildSkillTokenMetaMap", () => {
 			],
 			new Map([["skill:vetta-ui-design", "solar:layers-bold"]]),
 		);
-		expect(map.get("skill:vetta-ui-design")?.icon).toBe("solar:layers-bold");
+		expect(map.get("skill:vetta-ui-design")?.icon).toBe("vetta-plugin://vetta-ui-design/icon.png");
 	});
 
 	it("scene 与同名 skill 分别解析，且场景继续使用自己的图标", () => {

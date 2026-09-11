@@ -24,8 +24,10 @@ describe("network and namespaced storage foundation capabilities", () => {
 				FOUNDATION_STORAGE_CAPABILITIES.READ_SNAPSHOT,
 				FOUNDATION_STORAGE_CAPABILITIES.COMMIT,
 				FOUNDATION_STORAGE_CAPABILITIES.PUT_BLOB,
+				FOUNDATION_STORAGE_CAPABILITIES.PUT_BLOB_FROM_FILE,
 				FOUNDATION_STORAGE_CAPABILITIES.READ_BLOB,
 				FOUNDATION_STORAGE_CAPABILITIES.GET_BLOB_REF,
+				FOUNDATION_STORAGE_CAPABILITIES.DELETE_BLOB,
 			].map((capability) => capability.id),
 		).toEqual([
 			`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}storage.list`,
@@ -33,8 +35,10 @@ describe("network and namespaced storage foundation capabilities", () => {
 			`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}storage.read-snapshot`,
 			`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}storage.commit`,
 			`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}storage.put-blob`,
+			`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}storage.put-blob-from-file`,
 			`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}storage.read-blob`,
 			`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}storage.get-blob-ref`,
+			`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}storage.delete-blob`,
 		]);
 	});
 
@@ -92,10 +96,10 @@ describe("network and namespaced storage foundation capabilities", () => {
 	it("publishes schemas for every foundation capability", () => {
 		expect(FOUNDATION_BROWSER_CAPABILITY_CATALOG).toHaveLength(10);
 		expect(FOUNDATION_FILESYSTEM_CAPABILITY_CATALOG).toHaveLength(10);
-		expect(FOUNDATION_STORAGE_CAPABILITY_CATALOG).toHaveLength(12);
+		expect(FOUNDATION_STORAGE_CAPABILITY_CATALOG).toHaveLength(13);
 		expect(FOUNDATION_NETWORK_CAPABILITY_CATALOG).toHaveLength(1);
 		expect(FOUNDATION_GATEWAY_CAPABILITY_CATALOG).toHaveLength(1);
-		expect(FOUNDATION_CAPABILITY_CATALOG).toHaveLength(38);
+		expect(FOUNDATION_CAPABILITY_CATALOG).toHaveLength(39);
 		expect(() => JSON.stringify(FOUNDATION_CAPABILITY_CATALOG)).not.toThrow();
 		expect(
 			FOUNDATION_CAPABILITY_CATALOG.every(({ inputSchema, outputSchema }) => {

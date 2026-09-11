@@ -70,6 +70,7 @@ function SkillListItem({
 export function SkillList({
 	items,
 	activeIndex,
+	indexOffset = 0,
 	labels,
 	filtering,
 	limit,
@@ -87,7 +88,7 @@ export function SkillList({
 				<SkillListItem
 					key={`${skill.type}-${skill.source}-${skill.name}`}
 					skill={skill}
-					index={index}
+					index={index + indexOffset}
 					active={index === activeIndex}
 					icon={resolveIcon?.(skill)}
 					sourceLabel={labels.sourceLabel?.(skill.source, skill.type)}

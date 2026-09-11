@@ -1,4 +1,5 @@
 import type { SkillInfo } from "@preload/api";
+import type { ContextRingViewProps } from "@vetta/theme-ui/chat";
 import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
 
 export interface SkillListLabels {
@@ -15,6 +16,7 @@ export interface SkillListLabels {
 export interface SkillListProps {
 	items: readonly SkillInfo[];
 	activeIndex: number;
+	indexOffset?: number;
 	labels: SkillListLabels;
 	filtering: boolean;
 	/**
@@ -42,6 +44,15 @@ export interface CommandPanelActionItem {
 	onToggle: () => void;
 }
 
+export interface CommandPanelOperationItem {
+	id: string;
+	label: string;
+	description: string;
+	contextRing: Omit<ContextRingViewProps, "className"> | null;
+	disabled: boolean;
+	onSelect: () => void;
+}
+
 export interface CommandPanelProps {
 	/** 展开 / 收缩：命令区是 InputBar 的一种形态，不是浮层。 */
 	open: boolean;
@@ -49,6 +60,7 @@ export interface CommandPanelProps {
 	filter: string;
 	items: readonly SkillInfo[];
 	activeIndex: number;
+	operation?: CommandPanelOperationItem;
 	connectors: readonly ConnectorGridItem[];
 	connectorColumns: number;
 	actions: readonly CommandPanelActionItem[];

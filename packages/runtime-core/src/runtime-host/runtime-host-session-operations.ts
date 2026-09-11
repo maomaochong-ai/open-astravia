@@ -156,6 +156,13 @@ export class RuntimeHostSessionOperations {
 		return this.requireSession(sessionId).queueController?.readQueueState() ?? { paused: false, entries: [] };
 	}
 
+	queueSessionContextCompaction(
+		sessionId: string,
+		request?: RuntimeContextCompactionRequest,
+	): { readonly status: "queued"; readonly id?: string; readonly pendingCount: number } {
+		return this.requireQueueController(sessionId).enqueueContextCompaction(request);
+	}
+
 	removeQueuedMessage(sessionId: string, itemId: string): boolean {
 		return this.requireSession(sessionId).queueController?.removeQueued(itemId) ?? false;
 	}
