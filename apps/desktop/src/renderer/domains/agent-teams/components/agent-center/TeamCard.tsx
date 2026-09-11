@@ -33,17 +33,27 @@ export function TeamCard({
 		.join(" · ");
 
 	return (
+		// 整张卡片都是选中热区：footer 的提示语与留白也要能点中，别只把热区留给上半部分。
 		<div
 			// 页面级的「点空白处取消选中」靠这个标记判断点击是否落在卡片内，别删。
 			data-team-card={team.id}
+			role="button"
+			tabIndex={0}
+			aria-pressed={selected}
+			onClick={onSelect}
+			onKeyDown={(event) => {
+				if (event.key !== "Enter" && event.key !== " ") return;
+				event.preventDefault();
+				onSelect();
+			}}
 			className={[
-				"group relative flex flex-col justify-between rounded-xl border p-4 transition-colors duration-200",
+				"group relative flex cursor-pointer flex-col justify-between rounded-xl border p-4 text-left outline-none transition-colors duration-200",
 				selected
 					? "border-primary/40 bg-card/70 ring-1 ring-inset ring-primary/30"
 					: "border-border/50 bg-card/40 hover:border-primary/40 hover:bg-card/60",
 			].join(" ")}
 		>
-			<button type="button" onClick={onSelect} className="flex flex-col text-left outline-none">
+			<div className="flex flex-col">
 				<span className="flex items-center justify-between gap-2">
 					<AgentAvatarStack agents={members} leaderId={leaderId} />
 					<span className="shrink-0 text-[11px] text-muted-foreground/70">
@@ -54,7 +64,7 @@ export function TeamCard({
 				<span className="mt-1 line-clamp-1 text-[12px] text-muted-foreground/80">
 					{team.description || summary}
 				</span>
-			</button>
+			</div>
 
 			{/* 选中后操作就地长在卡片上：动作与它作用的团队挨在一起，比丢到页面右上角好找。 */}
 			<div className="mt-4 flex items-center justify-between gap-1 pt-2">
@@ -67,7 +77,7 @@ export function TeamCard({
 							className="h-6 gap-1 rounded-full px-2"
 							title={t("center.recruit")}
 							aria-label={t("center.recruit")}
-							onClick={onRecruit}
+							onClick={stopAnd(onRecruit)}
 						>
 							<span className="icon-[solar--user-plus-linear] h-3.5 w-3.5" aria-hidden="true" />
 							<span className="text-[11px] font-medium">{t("center.recruitShort")}</span>
@@ -75,13 +85,13 @@ export function TeamCard({
 						<CardAction
 							icon="icon-[solar--settings-linear]"
 							label={t("center.teamSettings")}
-							onClick={onOpenSettings}
+							onClick={stopAnd(onOpenSettings)}
 						/>
 						<CardAction
 							icon="icon-[solar--trash-bin-trash-linear]"
 							label={t("center.deleteTeam")}
 							danger
-							onClick={onDelete}
+							onClick={stopAnd(onDelete)}
 						/>
 					</div>
 				) : (
@@ -92,7 +102,7 @@ export function TeamCard({
 					size="icon-xs"
 					className="h-6 w-6 shrink-0 rounded-full text-muted-foreground hover:bg-primary/10 hover:text-primary"
 					title={t("center.openTeamChat")}
-					onClick={onOpenChat}
+					onClick={stopAnd(onOpenChat)}
 				>
 					<span className="icon-[solar--arrow-right-up-linear] h-3.5 w-3.5" aria-hidden="true" />
 					<span className="sr-only">{t("center.openTeamChat")}</span>
@@ -102,11 +112,19 @@ export function TeamCard({
 	);
 }
 
+/** 卡片内的动作按钮不该顺带切换选中态。 */
+function stopAnd(action: () => void): (event: { stopPropagation: () => void }) => void {
+	return (event) => {
+		event.stopPropagation();
+		action();
+	};
+}
+
 interface CardActionProps {
 	readonly icon: string;
 	readonly label: string;
 	readonly danger?: boolean;
-	readonly onClick: () => void;
+	readonly onClick: (event: { stopPropagation: () => void }) => void;
 }
 
 function CardAction({ icon, label, danger = false, onClick }: CardActionProps): JSX.Element {

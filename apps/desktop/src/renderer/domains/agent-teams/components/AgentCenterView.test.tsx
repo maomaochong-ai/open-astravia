@@ -101,12 +101,16 @@ function team(id: string) {
 function renderView(
 	model: AgentCenterModel,
 	onOpenAgent = vi.fn(),
-	handlers: { onDeleteTeam?: () => void; onOpenTeamSettings?: () => void } = {},
+	handlers: {
+		onDeleteTeam?: () => void;
+		onOpenTeamSettings?: () => void;
+		onOpenTeamChat?: (teamId: string) => void;
+	} = {},
 ) {
 	return render(
 		<AgentCenterView
 			model={model}
-			onOpenTeamChat={vi.fn()}
+			onOpenTeamChat={handlers.onOpenTeamChat ?? vi.fn()}
 			onOpenTeamSettings={handlers.onOpenTeamSettings ?? vi.fn()}
 			onSubmitAssembly={vi.fn()}
 			onDeleteTeam={handlers.onDeleteTeam ?? vi.fn()}
@@ -162,6 +166,29 @@ describe("AgentCenterView", () => {
 
 		expect(screen.queryByRole("button", { name: "center.deleteTeam" })).toBeNull();
 		expect(screen.getByText("center.teamSelectHint")).toBeDefined();
+	});
+
+	it("selects the team when the click lands on the card footer", async () => {
+		const teams = [team("squad")];
+		const model = buildModel({ teams } as Partial<AgentCenterModel>);
+		const user = userEvent.setup();
+		renderView(model);
+
+		// footer 的提示语与留白也在选中热区里，卡片上半部分不该是唯一能点的地方。
+		await user.click(screen.getByText("center.teamSelectHint"));
+		expect(model.actions.selectTeam).toHaveBeenCalledWith("squad");
+	});
+
+	it("keeps the chat shortcut from toggling the card selection", async () => {
+		const onOpenTeamChat = vi.fn();
+		const teams = [team("squad")];
+		const model = buildModel({ teams } as Partial<AgentCenterModel>);
+		const user = userEvent.setup();
+		renderView(model, vi.fn(), { onOpenTeamChat });
+
+		await user.click(screen.getByRole("button", { name: "center.openTeamChat" }));
+		expect(onOpenTeamChat).toHaveBeenCalledWith("squad");
+		expect(model.actions.selectTeam).not.toHaveBeenCalled();
 	});
 
 	it("drops the selection when the pointer lands outside every team card", async () => {
