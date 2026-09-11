@@ -1,4 +1,5 @@
 import { useProjectActions } from "@domains/project/hooks/useProjects";
+import { applyActiveTagFilterToNewConversation } from "@domains/project/services/new-conversation-tagging";
 import { i18n } from "@shared/i18n";
 import { waitForCommittedPaint } from "@shared/lib/committed-paint";
 import { perfSendMark } from "@shared/lib/perf-send";
@@ -403,6 +404,13 @@ export function useSessionOpener(): SessionOpenerController {
 			if (myOpenToken !== getOpenSessionToken()) {
 				finishCancelledOpen();
 				return;
+			}
+			// 标签只落在「对话」项目的会话上（右键菜单也只对这一档开放打标）。
+			// 不 await：标注是旁路的用户资产写入，失败不该拖慢或中断会话打开。
+			if (!isExistingSessionOpen && isDefaultConversation) {
+				void applyActiveTagFilterToNewConversation(resolvedSessionPath).catch((error) => {
+					console.error("[useSessionOpener] inherit tag filter failed:", error);
+				});
 			}
 			const cachedKey = resolvedSessionPath;
 			let subscribed = false;

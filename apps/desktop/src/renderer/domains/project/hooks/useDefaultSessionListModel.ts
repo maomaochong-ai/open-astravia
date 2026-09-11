@@ -208,6 +208,7 @@ export function useDefaultSessionListModel({
 		? {
 				emptyTitle: t("sidebar.defaultConversation.emptyTagTitle"),
 				emptyDescription: t("sidebar.defaultConversation.emptyTagDescription"),
+				emptyAction: t("sidebar.defaultConversation.emptyAction"),
 			}
 		: isClaw
 			? {
@@ -233,7 +234,8 @@ export function useDefaultSessionListModel({
 		totalCount: ordering.all.length,
 		visibleSessions: visibleViews,
 		actions: {
-			emptyAction: !isClaw && !tagFilterId && onNewSession ? onNewSession : undefined,
+			// 标签档下也给「开始新对话」：新建的会话会继承当前标签，不会开完就看不见。
+			emptyAction: !isClaw && onNewSession ? onNewSession : undefined,
 			openContextMenu,
 			rename,
 			renameDone,

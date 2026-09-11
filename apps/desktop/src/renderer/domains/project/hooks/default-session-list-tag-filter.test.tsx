@@ -43,6 +43,7 @@ function renderModel(filter: Parameters<typeof useDefaultSessionListModel>[0]["f
 				activeTeamSessionId: "",
 				cwd: CWD,
 				filter,
+				onNewSession: () => {},
 				onRenameSession: () => {},
 				onSelectSession: () => {},
 				sessions: [TAGGED, PLAIN],
@@ -66,7 +67,7 @@ describe("useDefaultSessionListModel tag filtering", () => {
 		const { result } = renderModel(tagConversationFilter("t-unknown"));
 		expect(result.current.sessions).toEqual([]);
 		expect(result.current.labels.emptyTitle).toBe("sidebar.defaultConversation.emptyTagTitle");
-		// 标签档下不提供「开始新对话」——新建的会话不会属于这个标签。
-		expect(result.current.actions.emptyAction).toBeUndefined();
+		// 标签档下照样提供「开始新对话」——新建的会话会继承当前标签。
+		expect(result.current.actions.emptyAction).toBeDefined();
 	});
 });
