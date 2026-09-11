@@ -65,9 +65,12 @@ function projectTeamDraftSegments(model: TeamChatViewModel): readonly InputSegme
 export function TeamComposerConnector({
 	model,
 	actions,
+	onExpandedChange,
 }: {
 	readonly model: TeamChatViewModel;
 	readonly actions: TeamChatActions;
+	/** 命令区展开回调：新会话页据此淡出 hero，否则 hero（含装饰件）会压住向上生长的面板。 */
+	readonly onExpandedChange?: (expanded: boolean) => void;
 }): JSX.Element {
 	const { t } = useTranslation("chat");
 	const setFilePreview = useSetAtom(filePreviewAtom);
@@ -113,7 +116,7 @@ export function TeamComposerConnector({
 		isStreaming,
 		activityWorkspaceId: model.workspace?.id,
 		onAbort: actions.abort,
-		onExpandedChange: undefined,
+		...(onExpandedChange ? { onExpandedChange } : {}),
 		onSend: (_overrideText, context) => {
 			console.info("[agent-team] input trigger send", {
 				activeSessionId: model.activeSessionId,

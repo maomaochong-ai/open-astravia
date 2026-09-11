@@ -165,7 +165,11 @@ export function NewSessionPageView({
 						{/* Drop target is the input card; cwdOverride enables drop before a session exists. */}
 						{isTeamTarget(targetKey) ? (
 							teamComposer.model && teamComposer.actions ? (
-								<TeamComposerConnector model={teamComposer.model} actions={teamComposer.actions} />
+								<TeamComposerConnector
+									model={teamComposer.model}
+									actions={teamComposer.actions}
+									onExpandedChange={onCommandPanelExpandedChange}
+								/>
 							) : (
 								<div
 									role="status"

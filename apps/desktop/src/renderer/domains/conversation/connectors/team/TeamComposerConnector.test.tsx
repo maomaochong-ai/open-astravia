@@ -220,6 +220,19 @@ describe("TeamComposerConnector", () => {
 		});
 	});
 
+	it("reports command panel expansion so the page can fade the hero away", () => {
+		const onExpandedChange = vi.fn();
+		render(
+			<TeamComposerConnector model={model()} actions={actions()} onExpandedChange={onExpandedChange} />,
+		);
+
+		act(() => captured.model?.commands?.onTriggerChange({ kind: "slash", query: "", length: 1 }));
+		expect(onExpandedChange).toHaveBeenLastCalledWith(true);
+
+		act(() => captured.model?.commands?.onTriggerChange(null));
+		expect(onExpandedChange).toHaveBeenLastCalledWith(false);
+	});
+
 	it("projects a scoped member mention back into an editor token", () => {
 		render(
 			<TeamComposerConnector
