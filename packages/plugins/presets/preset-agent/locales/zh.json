@@ -6,5 +6,13 @@
 	"agent.developer.name": "开发员",
 	"agent.developer.description": "产出核心交付物：代码、成稿或一份做实的分析。",
 	"agent.researcher.name": "检索员",
-	"agent.researcher.description": "收集事实、文档、既有方案与市场信号，并逐条核实。"
+	"agent.researcher.description": "收集事实、文档、既有方案与市场信号，并逐条核实。",
+	"agent.auditor.name": "审计员",
+	"agent.auditor.description": "红队挑刺：正确性、安全、边界、回归与无依据的结论。",
+	"agent.business.name": "业务员",
+	"agent.business.description": "把目标落成需求、范围与商业模式，并说清假设与风险。",
+	"team.dev.name": "开发团队",
+	"team.dev.description": "从取证到实现再到审查，一支队把一次改动送到可交付。",
+	"team.planning.name": "策划团队",
+	"team.planning.description": "先调研再成案，挑完致命缺陷才出方案。"
 }

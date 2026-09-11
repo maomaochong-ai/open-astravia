@@ -278,6 +278,14 @@ export const PluginAgentProfileManifestSchema = Type.Object(
 		 * 两种模式下本插件的能力都强制激活，用户关不掉。
 		 */
 		abilities: Type.Optional(Type.Union([Type.Literal("all"), Type.Literal("own")])),
+		/**
+		 * 本智能体接管的历史 blueprint id。
+		 *
+		 * 用于「人设从别处迁进插件」：宿主解析不到这些 id 时折算到本智能体，回填时也据此
+		 * 认领用户已有的同角色档案，而不是再铺一份新的。宿主因此不必知道是哪个插件接管了
+		 * 哪个老角色。
+		 */
+		legacyIds: Type.Optional(Type.Array(NonWhitespaceStringSchema, { maxItems: 16 })),
 	},
 	{ additionalProperties: false },
 );
@@ -307,6 +315,8 @@ export const PluginAgentTeamManifestSchema = Type.Object(
 		/** 队长的团队任务书：把这支团队的固定流水线写死。与 `workflowPath` 二选一。 */
 		workflow: Type.Optional(Type.String({ maxLength: 64_000 })),
 		workflowPath: Type.Optional(NonWhitespaceStringSchema),
+		/** 本团队接管的历史团队 id，语义同 `agents[].legacyIds`。 */
+		legacyIds: Type.Optional(Type.Array(NonWhitespaceStringSchema, { maxItems: 16 })),
 	},
 	{ additionalProperties: false },
 );

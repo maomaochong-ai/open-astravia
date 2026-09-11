@@ -6,5 +6,13 @@
 	"agent.developer.name": "Developer",
 	"agent.developer.description": "Produces the core asset: code, a substantive draft, or a worked analysis.",
 	"agent.researcher.name": "Researcher",
-	"agent.researcher.description": "Collects facts, documentation, prior art, and market signals, and verifies them."
+	"agent.researcher.description": "Collects facts, documentation, prior art, and market signals, and verifies them.",
+	"agent.auditor.name": "Auditor",
+	"agent.auditor.description": "Red-teams the work for correctness, safety, edge cases, and unsupported claims.",
+	"agent.business.name": "Business",
+	"agent.business.description": "Turns a goal into requirements, scope, and a business model, with the assumptions named.",
+	"team.dev.name": "Dev Team",
+	"team.dev.description": "Evidence, implementation, and review under one owner.",
+	"team.planning.name": "Planning Team",
+	"team.planning.description": "Researches first, then builds a case that survives an audit."
 }
