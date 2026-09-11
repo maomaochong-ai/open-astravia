@@ -105,9 +105,12 @@ export function DesignStyleLibrary({ context }: { context: PluginNewSessionConte
 
 	return (
 		<div className="w-full">
-			<span className="vetd-style-pill inline-flex rounded-full px-2.5 py-[5px] text-[11px] font-medium leading-none text-foreground/90">
-				{t("newSession.styles.hint")}
-			</span>
+			<div className="flex items-center gap-2">
+				<span className="vetd-style-title-mark h-4 w-[3px] shrink-0 rounded-full" aria-hidden="true" />
+				<h2 className="vetd-style-title text-[15px] font-semibold leading-none tracking-tight">
+					{t("newSession.styles.title")}
+				</h2>
+			</div>
 
 			<div
 				ref={grid}

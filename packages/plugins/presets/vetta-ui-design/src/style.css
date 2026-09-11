@@ -807,10 +807,22 @@
 	box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 80%, transparent);
 }
 
-.vetd-style-pill {
+/* 标题左侧的短竖条：一行孤立的标题在整块留白里压不住场，给它一个起笔的重音。 */
+.vetd-style-title-mark {
 	background-image: linear-gradient(
-		90deg,
-		color-mix(in srgb, var(--primary) 26%, transparent),
-		color-mix(in srgb, var(--primary) 12%, transparent)
+		180deg,
+		var(--primary),
+		color-mix(in srgb, var(--primary) 30%, transparent)
 	);
+}
+/* 标题本身走一道极轻的渐隐，读起来仍是一行字，但不至于和卡片里的小字同一个分量。 */
+.vetd-style-title {
+	background-image: linear-gradient(
+		92deg,
+		var(--foreground),
+		color-mix(in srgb, var(--foreground) 62%, transparent)
+	);
+	background-clip: text;
+	-webkit-background-clip: text;
+	color: transparent;
 }
