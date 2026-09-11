@@ -1,7 +1,8 @@
 import { type InputSegment, isImagePath, parseInputSegments } from "@shared/lib/input-tokens";
 import { pathBasename, toVettaFileUrl } from "@shared/lib/utils";
 import { filePreviewAtom } from "@shared/store/file-preview-atoms";
-import { useSetAtom } from "jotai";
+import { promptAttachmentAtom } from "@shared/store/atoms";
+import { useAtom, useSetAtom } from "jotai";
 import { useCallback, useMemo, useState, type DragEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { InputBar } from "../../components/InputBar";
@@ -74,6 +75,9 @@ export function TeamComposerConnector({
 }): JSX.Element {
 	const { t } = useTranslation("chat");
 	const setFilePreview = useSetAtom(filePreviewAtom);
+	// 插件挂在输入框上的引用：团队会话与单智能体共用同一个 atom，展示与摘除都得接上，
+	// 否则用户在落地区点了一下，输入框这边毫无反应。
+	const [promptAttachment, setPromptAttachment] = useAtom(promptAttachmentAtom);
 	const [dragKind, setDragKind] = useState<"files" | "internal" | null>(null);
 	const isStreaming = model.status === "sending" || model.status === "streaming" || model.status === "cancelling";
 	const isEmpty = model.draft.trim().length === 0 && model.attachments.length === 0;
@@ -118,6 +122,9 @@ export function TeamComposerConnector({
 		onAbort: actions.abort,
 		...(onExpandedChange ? { onExpandedChange } : {}),
 		onSend: (_overrideText, context) => {
+			// 发出去就摘掉，与单智能体一致：附件描述的是「这一条带着什么」，留在下沿会
+			// 让用户以为下一条还带着它。`sticky` 由插件自己决定何时清。
+			if (promptAttachment && promptAttachment.lifecycle !== "sticky") setPromptAttachment(null);
 			console.info("[agent-team] input trigger send", {
 				activeSessionId: model.activeSessionId,
 				canSend: model.canSend,
@@ -328,7 +335,12 @@ export function TeamComposerConnector({
 		drawerActiveTab: null,
 		todo: null,
 		speechInput,
-		hasPromptAttachment: false,
+		hasPromptAttachment: Boolean(promptAttachment),
+		promptAttachmentIcon: promptAttachment?.icon,
+		promptAttachmentIconUrl: promptAttachment?.ownerPluginIconUrl,
+		promptAttachmentLabel: promptAttachment?.label,
+		promptAttachmentLabels:
+			promptAttachment?.labels ?? (promptAttachment ? [promptAttachment.label] : undefined),
 		pendingMessageEdit: false,
 		pendingEditHint: t("messageList.edit.pendingHint"),
 		cancelPendingEditLabel: t("messageList.interrupt.cancel"),
@@ -387,7 +399,7 @@ export function TeamComposerConnector({
 			handleContextMenu: contextMenu.onContextMenu,
 			removeImage: actions.removeAttachment,
 			openImagePreview: (index) => setFilePreview({ items: imageAttachments, index }),
-			removePromptAttachment: () => undefined,
+			removePromptAttachment: () => setPromptAttachment(null),
 			removeAppshot: () => undefined,
 			handleSelectImages: actions.selectImages,
 			handleSelectFiles: actions.selectFiles,
