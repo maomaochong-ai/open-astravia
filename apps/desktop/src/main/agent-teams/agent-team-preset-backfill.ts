@@ -33,6 +33,8 @@ export async function backfillAgentTeamPresets(
 	root: string,
 	resourceRoot: string,
 	index: AgentTeamStorageIndex,
+	/** 覆盖待发批次，仅测试用——当前批次可能为空，机制本身仍要能被验证。 */
+	pendingOverride?: (generation: number) => ReturnType<typeof builtinPresetsIntroducedAfter>,
 ): Promise<AgentTeamStorageIndex> {
 	const installed = index.presetGeneration ?? BASELINE_PRESET_GENERATION;
 	if (installed >= BUILTIN_PRESET_GENERATION) return index;
@@ -43,7 +45,7 @@ export async function backfillAgentTeamPresets(
 		return index;
 	}
 
-	const pending = builtinPresetsIntroducedAfter(installed);
+	const pending = (pendingOverride ?? builtinPresetsIntroducedAfter)(installed);
 	const agents = { ...index.agents };
 	const teams = { ...index.teams };
 	let installedCount = 0;

@@ -86,7 +86,28 @@ export type { SetPluginDevLinkOptions } from "./plugin-dev-link-service.js";
  * Tell every renderer to re-list and re-load plugins (MF remotes + activity tabs).
  * Without this, install/enable via Action or workbench leaves the UI on the pre-install set.
  */
+/**
+ * 主进程内部的插件变更订阅。
+ *
+ * broadcastPluginsChanged 原本只往渲染进程发 IPC，但主进程自己也有需要跟着重算的东西
+ * （如插件贡献的 Agent blueprint）。让它们订阅而不是在这里反向 import，插件目录才不会
+ * 被拽着依赖上层业务。
+ */
+const pluginsChangedListeners = new Set<() => void>();
+
+export function onPluginsChanged(listener: () => void): () => void {
+	pluginsChangedListeners.add(listener);
+	return () => pluginsChangedListeners.delete(listener);
+}
+
 export function broadcastPluginsChanged(event?: PluginsChangedEvent): void {
+	for (const listener of pluginsChangedListeners) {
+		try {
+			listener();
+		} catch {
+			// 一个订阅者出错不该拦住其余订阅者和渲染进程的广播。
+		}
+	}
 	for (const contents of webContents.getAllWebContents()) {
 		if (contents.isDestroyed()) continue;
 		try {

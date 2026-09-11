@@ -4,7 +4,6 @@ import {
 	buildTeamRosterSnapshot,
 	buildTeamSharedOperatingContext,
 	filterTeamMemberActiveToolNames,
-	findAgentBlueprint,
 	resolveMemberProfile,
 	stableTeamEventId,
 	type TeamMember,
@@ -19,6 +18,7 @@ import type { RuntimeHost, SessionExecutionMode } from "@vetta/runtime-core";
 import { resolveDesktopSessionConfig } from "../conversations/resolve-session-config.js";
 import { getAppLogger } from "../logger.js";
 import { toAgentConfigurationOverrides } from "./agent-ability-overrides.js";
+import { pinnedAbilityContext, resolveAgentBlueprint } from "./agent-blueprint-registry.js";
 import type { TeamCollaborationStore } from "./team-collaboration-store.js";
 import { restoreTeamMemberPinnedContext } from "./team-member-context.js";
 import { reconfigureTeamMemberRuntime } from "./team-member-runtime-reconfiguration.js";
@@ -71,7 +71,7 @@ export class TeamRuntimeManager {
 		executionMode: SessionExecutionMode,
 	): Promise<TeamSessionDocument["memberRuntime"][string]> {
 		const profile = resolveMemberProfile(document, member);
-		const blueprint = findAgentBlueprint(profile.blueprintId);
+		const blueprint = resolveAgentBlueprint(profile.blueprintId);
 		const systemPrompt = profile.systemPrompt ?? blueprint?.systemPrompt;
 		if (!systemPrompt) throw new Error(`Agent profile has no system prompt: ${profile.id}`);
 		const promptContext = this.createMemberPromptContext(
@@ -88,7 +88,7 @@ export class TeamRuntimeManager {
 				...promptContext,
 				agentConfiguration: {
 					template: null,
-					overrides: toAgentConfigurationOverrides(profile.abilities),
+					overrides: toAgentConfigurationOverrides(profile.abilities, pinnedAbilityContext(blueprint)),
 				},
 				sessionRuntimeTools: this.options.createTeamToolRegistrations(teamSessionId),
 			},
@@ -254,7 +254,7 @@ export class TeamRuntimeManager {
 		const team = document.teams.find((candidate) => candidate.id === session.teamId);
 		if (!team) throw new Error(`Agent team not found: ${session.teamId}`);
 		const member = team.members.find((candidate) => candidate.id === memberId);
-		const blueprint = findAgentBlueprint(profile.blueprintId);
+		const blueprint = resolveAgentBlueprint(profile.blueprintId);
 		const systemPrompt = profile.systemPrompt ?? blueprint?.systemPrompt;
 		if (!systemPrompt) throw new Error(`Agent profile has no system prompt: ${profile.id}`);
 		return (
@@ -272,7 +272,7 @@ export class TeamRuntimeManager {
 					),
 					agentConfiguration: {
 						template: null,
-						overrides: toAgentConfigurationOverrides(profile.abilities),
+						overrides: toAgentConfigurationOverrides(profile.abilities, pinnedAbilityContext(blueprint)),
 					},
 					sessionRuntimeTools: runtimeTools,
 				},

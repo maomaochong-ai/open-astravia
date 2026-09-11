@@ -10,9 +10,10 @@ import type {
 	TeamDefinition,
 	TeamMember,
 } from "@vetta/agent-team";
-import { DEFAULT_AGENT_TEAM_EXTENSIONS, findAgentBlueprint, parseAgentTeamDocument } from "@vetta/agent-team";
+import { DEFAULT_AGENT_TEAM_EXTENSIONS, parseAgentTeamDocument } from "@vetta/agent-team";
 import { atomicWriteFileAsync, atomicWriteJSONAsync } from "@vetta/toolkit/atomic-write";
 import { getAppLogger } from "../logger.js";
+import { agentBlueprintRegistry, resolveAgentBlueprint } from "./agent-blueprint-registry.js";
 import { backfillAgentTeamPresets } from "./agent-team-preset-backfill.js";
 import {
 	AGENT_TEAM_STORAGE_LAYOUT_VERSION,
@@ -25,6 +26,7 @@ import {
 	migrateAgentTeamStorage,
 	teamDefinitionPath,
 } from "./agent-team-storage-layout.js";
+import { backfillPluginAgentPresets } from "./plugin-agent-preset-backfill.js";
 
 const log = getAppLogger("agent-teams");
 
@@ -119,7 +121,7 @@ class DirectoryAgentTeamRepository implements AgentTeamFileRepository {
 			const team = await parseTeamManifest(manifest, root);
 			teams.push(team);
 		}
-		return parseAgentTeamDocument(
+		const document = parseAgentTeamDocument(
 			{
 				schemaVersion: index.schemaVersion,
 				revision: index.revision,
@@ -128,6 +130,39 @@ class DirectoryAgentTeamRepository implements AgentTeamFileRepository {
 			},
 			this.extensions,
 		);
+		return await this.installPluginPresets(document, index);
+	}
+
+	/**
+	 * 把当前已启用插件贡献的智能体/团队补进配置。
+	 *
+	 * 放在解析之后而不是索引层：插件预设是现造的，不像内置预设那样有一棵随包目录可 copy。
+	 * 走完整的 parse + write 才能保证它们和用户自建的资源满足同一套不变量。
+	 */
+	private async installPluginPresets(
+		document: AgentTeamDocument,
+		index: AgentTeamStorageIndex,
+	): Promise<AgentTeamDocument> {
+		const result = backfillPluginAgentPresets({
+			document,
+			installedPresetIds: index.installedPluginPresets ?? [],
+			agents: agentBlueprintRegistry.listPluginAgents(),
+			teams: agentBlueprintRegistry.listPluginTeams(),
+		});
+		if (!result) return document;
+		// 先更新索引再写盘：write() 会把它原样带进新的 index.json。
+		this.storageIndex = { ...index, installedPluginPresets: result.installedPresetIds };
+		if (result.document === document) {
+			await atomicWriteJSONAsync(join(this.root, INDEX_FILE), this.storageIndex);
+			return document;
+		}
+		const parsed = parseAgentTeamDocument(result.document, this.extensions);
+		await this.write(parsed);
+		log.info("plugin agent presets installed", {
+			agents: result.installedAgentIds.length,
+			teams: result.installedTeamIds.length,
+		});
+		return parsed;
 	}
 
 	async write(document: AgentTeamDocument): Promise<void> {
@@ -168,6 +203,9 @@ class DirectoryAgentTeamRepository implements AgentTeamFileRepository {
 			layoutVersion: AGENT_TEAM_STORAGE_LAYOUT_VERSION,
 			// 批次号必须原样带过去：写丢了下次启动就会把用户删掉的预设当成「还没发过」补回来。
 			...(currentIndex.presetGeneration !== undefined ? { presetGeneration: currentIndex.presetGeneration } : {}),
+			...(currentIndex.installedPluginPresets !== undefined
+				? { installedPluginPresets: currentIndex.installedPluginPresets }
+				: {}),
 			teams: teamDirectories,
 			agents: agentDirectories,
 		};
@@ -245,7 +283,7 @@ async function readAgentDirectory(root: string): Promise<AgentProfile> {
 function resolveStoredSystemPrompt(content: string | undefined, metadata: Record<string, unknown>): string | undefined {
 	if (content === undefined || content.trim().length === 0) return undefined;
 	const blueprintId = metadata.blueprintId;
-	const fallback = typeof blueprintId === "string" ? findAgentBlueprint(blueprintId)?.systemPrompt : undefined;
+	const fallback = typeof blueprintId === "string" ? resolveAgentBlueprint(blueprintId)?.systemPrompt : undefined;
 	return fallback !== undefined && content.trimEnd() === fallback.trimEnd() ? undefined : content;
 }
 

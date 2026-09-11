@@ -100,6 +100,11 @@ export interface AgentTeamStorageIndex {
 	 * 它同时是「用户删掉的预设不再复活」的依据：批次一旦记下，那批里的东西删了就不会再补。
 	 */
 	readonly presetGeneration?: number;
+	/**
+	 * 已经铺过的插件预设 key。与 {@link AgentTeamStorageIndex.presetGeneration} 同理：
+	 * 记下才能区分「还没铺过」和「铺过但被用户删了」，后者不该在下次启动复活。
+	 */
+	readonly installedPluginPresets?: readonly string[];
 	readonly teams: Readonly<Record<string, string>>;
 	readonly agents: Readonly<Record<string, string>>;
 }
@@ -212,9 +217,14 @@ export async function readAgentTeamStorageIndex(root: string): Promise<AgentTeam
 		revision: value.revision,
 		layoutVersion: AGENT_TEAM_STORAGE_LAYOUT_VERSION,
 		...(isNonNegativeInteger(value.presetGeneration) ? { presetGeneration: value.presetGeneration } : {}),
+		...(isStringArray(value.installedPluginPresets) ? { installedPluginPresets: value.installedPluginPresets } : {}),
 		teams,
 		agents,
 	};
+}
+
+function isStringArray(value: unknown): value is readonly string[] {
+	return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
 export async function migrateAgentTeamStorage(root: string): Promise<AgentTeamStorageMigrationResult> {

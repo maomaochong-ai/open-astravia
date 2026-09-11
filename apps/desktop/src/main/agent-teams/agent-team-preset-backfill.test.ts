@@ -1,7 +1,7 @@
 import { cp, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { BUILTIN_PRESET_GENERATION, builtinPresetsIntroducedAfter } from "@vetta/agent-team";
+import { BUILTIN_PRESET_GENERATION, INITIAL_AGENT_PROFILES, INITIAL_AGENT_TEAMS } from "@vetta/agent-team";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { backfillAgentTeamPresets } from "./agent-team-preset-backfill.js";
 import {
@@ -32,9 +32,20 @@ async function createLegacyInstallation(): Promise<string> {
 	return root;
 }
 
+/**
+ * 当前批次可能是空的（上一批的内容被搬进了插件），但回填机制本身必须一直可验证。
+ * 这里拿几个真实存在的预设冒充「待发批次」，随包目录里有它们，copy 路径能真的跑通。
+ */
+const PENDING_FIXTURE = {
+	agents: INITIAL_AGENT_PROFILES.filter((agent) => agent.mentionHandle === "translator"),
+	teams: INITIAL_AGENT_TEAMS.filter((team) => team.name === "Biz Strategy"),
+};
+
+const pendingFixture = () => PENDING_FIXTURE;
+
 /** 抹掉「上一批之后新增」的那些预设，模拟回填机制上线前就已经存在的目录。 */
 async function stripPendingPresets(root: string, index: AgentTeamStorageIndex): Promise<AgentTeamStorageIndex> {
-	const pending = builtinPresetsIntroducedAfter(BUILTIN_PRESET_GENERATION - 1);
+	const pending = PENDING_FIXTURE;
 	const agents = { ...index.agents };
 	const teams = { ...index.teams };
 	for (const agent of pending.agents) {
@@ -53,10 +64,10 @@ describe("Agent Team preset backfill", () => {
 	it("installs presets an existing installation never received and records the batch", async () => {
 		const root = await createLegacyInstallation();
 		const stale = await stripPendingPresets(root, await readAgentTeamStorageIndex(root));
-		const pending = builtinPresetsIntroducedAfter(BUILTIN_PRESET_GENERATION - 1);
+		const pending = PENDING_FIXTURE;
 		expect(pending.agents.length + pending.teams.length).toBeGreaterThan(0);
 
-		const next = await backfillAgentTeamPresets(root, RESOURCE_ROOT, stale);
+		const next = await backfillAgentTeamPresets(root, RESOURCE_ROOT, stale, pendingFixture);
 
 		for (const agent of pending.agents) expect(next.agents[agent.id]).toBeDefined();
 		for (const team of pending.teams) expect(next.teams[team.id]).toBeDefined();
@@ -82,10 +93,10 @@ describe("Agent Team preset backfill", () => {
 		// 批次号已经记到当前批：缺的那些是用户自己删的，不是没发过。
 		const deleted: AgentTeamStorageIndex = { ...stripped, presetGeneration: BUILTIN_PRESET_GENERATION };
 
-		const next = await backfillAgentTeamPresets(root, RESOURCE_ROOT, deleted);
+		const next = await backfillAgentTeamPresets(root, RESOURCE_ROOT, deleted, pendingFixture);
 
 		expect(next).toEqual(deleted);
-		for (const agent of builtinPresetsIntroducedAfter(BUILTIN_PRESET_GENERATION - 1).agents) {
+		for (const agent of PENDING_FIXTURE.agents) {
 			expect(next.agents[agent.id]).toBeUndefined();
 		}
 	});
@@ -93,7 +104,7 @@ describe("Agent Team preset backfill", () => {
 	it("skips a pending team whose member profiles are missing instead of writing a broken reference", async () => {
 		const root = await createLegacyInstallation();
 		const stale = await stripPendingPresets(root, await readAgentTeamStorageIndex(root));
-		const pendingTeam = builtinPresetsIntroducedAfter(BUILTIN_PRESET_GENERATION - 1).teams[0];
+		const pendingTeam = PENDING_FIXTURE.teams[0];
 		if (!pendingTeam) throw new Error("expected a pending team fixture");
 		// 用户删掉了这支团队引用的某个成员：补上团队会让整份配置在读取时校验失败。
 		const referenced = pendingTeam.members[1]?.binding.agentProfileId;
@@ -101,7 +112,7 @@ describe("Agent Team preset backfill", () => {
 		const agents = { ...stale.agents };
 		delete agents[referenced];
 
-		const next = await backfillAgentTeamPresets(root, RESOURCE_ROOT, { ...stale, agents });
+		const next = await backfillAgentTeamPresets(root, RESOURCE_ROOT, { ...stale, agents }, pendingFixture);
 
 		expect(next.teams[pendingTeam.id]).toBeUndefined();
 		expect(next.presetGeneration).toBe(BUILTIN_PRESET_GENERATION);

@@ -1,6 +1,7 @@
-import { type AgentTeamDocument, findAgentBlueprint } from "@vetta/agent-team";
+import type { AgentTeamDocument } from "@vetta/agent-team";
 import type { AgentConfigurationSelection } from "@vetta/coding-agent/profile";
 import { toAgentConfigurationOverrides } from "../agent-teams/agent-ability-overrides.js";
+import { pinnedAbilityContext, resolveAgentBlueprint } from "../agent-teams/agent-blueprint-registry.js";
 
 /** 会话绑定的 Agent 折算出的会话输入；能力裁剪始终在主进程完成，渲染层只传身份。 */
 export interface ResolvedSessionAgentProfile {
@@ -25,11 +26,15 @@ export async function resolveSessionAgentProfile(input: {
 	const document = await input.readDocument();
 	const profile = document.agents.find((candidate) => candidate.id === input.agentProfileId);
 	if (!profile) return undefined;
-	const systemPrompt = profile.systemPrompt ?? findAgentBlueprint(profile.blueprintId)?.systemPrompt;
+	const blueprint = resolveAgentBlueprint(profile.blueprintId);
+	const systemPrompt = profile.systemPrompt ?? blueprint?.systemPrompt;
 	if (!systemPrompt) return undefined;
 	return {
 		agentProfileId: profile.id,
-		agentConfiguration: { template: null, overrides: toAgentConfigurationOverrides(profile.abilities) },
+		agentConfiguration: {
+			template: null,
+			overrides: toAgentConfigurationOverrides(profile.abilities, pinnedAbilityContext(blueprint)),
+		},
 		systemPromptVolatileAddon: systemPrompt,
 	};
 }

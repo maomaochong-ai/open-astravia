@@ -24,6 +24,7 @@ import type {
 } from "../../preload/api-types/team-conversation-display.js";
 import { storeAgentAvatarFile } from "../agent-teams/agent-avatar-store.js";
 import { agentTeamStore } from "../agent-teams/agent-team-store.js";
+import { initPluginAgentPresetSync } from "../agent-teams/plugin-agent-preset-sync.js";
 import { agentTeamSessionService } from "../agent-teams/team-session-service.js";
 import { resolveTeamSessionWorkspace } from "../agent-teams/team-workspace.js";
 import { listTeamSidebarConversations } from "../conversations/team-sidebar-conversation-projection.js";
@@ -149,6 +150,8 @@ export function registerAgentTeamsIpc(
 	dependencies: AgentTeamsIpcDependencies = { store: agentTeamStore, sessions: agentTeamSessionService },
 ): () => void {
 	const { store, sessions } = dependencies;
+	// 必须先于任何一次读配置：回填要按当前可用的插件 blueprint 决定铺哪些档案。
+	initPluginAgentPresetSync();
 	// `displayProjection` is invoked later by IPC callbacks. Bind it once here so
 	// the service keeps its runtime/repository context when passed as a callback.
 	const displayProjection = sessions.displayProjection?.bind(sessions);

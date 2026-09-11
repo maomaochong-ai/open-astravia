@@ -4,13 +4,11 @@ import {
 	type AgentTeamDocument,
 	type AgentTeamExtensionRegistry,
 	assertTeamInvariants,
-	BUILTIN_AGENT_BLUEPRINTS,
 	type CreateAgentProfileInput,
 	type CreateTeamInput,
 	DEFAULT_AGENT_TEAM_EXTENSIONS,
 	type DeleteAgentProfileInput,
 	type DeleteTeamInput,
-	findAgentBlueprint,
 	normalizeMentionHandle,
 	parseAgentTeamDocument,
 	previewAgentProfileDelete,
@@ -22,6 +20,7 @@ import {
 	type UpdateTeamInput,
 } from "@vetta/agent-team";
 import { getAppLogger } from "../logger.js";
+import { agentBlueprintRegistry, resolveAgentBlueprint } from "./agent-blueprint-registry.js";
 import { type AgentTeamConfigRepository, createAgentTeamConfigRepository } from "./agent-team-config-repository.js";
 import { agentTeamExtensionHost } from "./agent-team-extension-host.js";
 
@@ -69,13 +68,13 @@ export class AgentTeamStore {
 	}
 
 	async listBlueprints() {
-		return BUILTIN_AGENT_BLUEPRINTS;
+		return agentBlueprintRegistry.list();
 	}
 
 	async createAgent(input: CreateAgentProfileInput): Promise<AgentProfile> {
 		const profile = await this.mutate("create-agent", (document) => {
 			const now = this.now();
-			const blueprint = findAgentBlueprint(input.blueprintId);
+			const blueprint = resolveAgentBlueprint(input.blueprintId);
 			if (!blueprint) throw new Error(`Unknown agent blueprint: ${input.blueprintId}`);
 			const created: AgentProfile = {
 				id: this.createId(),
