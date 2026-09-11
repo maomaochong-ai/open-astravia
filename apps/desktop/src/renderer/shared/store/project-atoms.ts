@@ -189,7 +189,51 @@ export const sidebarWidthAtom = atom<number>(readSidebarWidth());
 export const sidebarFilterAtom = atom<SidebarFilter>("all");
 
 export type DefaultConversationFilter = "conversation" | "claw";
-export const defaultConversationFilterAtom = atom<DefaultConversationFilter>("conversation");
+
+const DEFAULT_CONVERSATION_FILTER_STORAGE_KEY = "vetta-default-conversation-filter";
+const DEFAULT_CONVERSATION_FILTER_SCHEMA_VERSION = 1;
+
+interface StoredDefaultConversationFilter {
+	schemaVersion: typeof DEFAULT_CONVERSATION_FILTER_SCHEMA_VERSION;
+	filter: DefaultConversationFilter;
+}
+
+export function parseDefaultConversationFilter(value: unknown): DefaultConversationFilter {
+	if (typeof value !== "object" || value === null || Array.isArray(value)) return "conversation";
+	const input = value as { schemaVersion?: unknown; filter?: unknown };
+	if (input.schemaVersion !== DEFAULT_CONVERSATION_FILTER_SCHEMA_VERSION) return "conversation";
+	return input.filter === "claw" ? "claw" : "conversation";
+}
+
+function loadDefaultConversationFilter(): DefaultConversationFilter {
+	try {
+		const raw = localStorage.getItem(DEFAULT_CONVERSATION_FILTER_STORAGE_KEY);
+		return raw ? parseDefaultConversationFilter(JSON.parse(raw) as unknown) : "conversation";
+	} catch {
+		return "conversation";
+	}
+}
+
+function persistDefaultConversationFilter(filter: DefaultConversationFilter): void {
+	const stored: StoredDefaultConversationFilter = {
+		schemaVersion: DEFAULT_CONVERSATION_FILTER_SCHEMA_VERSION,
+		filter,
+	};
+	try {
+		localStorage.setItem(DEFAULT_CONVERSATION_FILTER_STORAGE_KEY, JSON.stringify(stored));
+	} catch {
+		// 隐私模式或配额不足时保留当前内存态；筛选档位只是本机 UI 偏好。
+	}
+}
+
+const defaultConversationFilterStateAtom = atom<DefaultConversationFilter>(loadDefaultConversationFilter());
+export const defaultConversationFilterAtom = atom(
+	(get) => get(defaultConversationFilterStateAtom),
+	(_get, set, next: DefaultConversationFilter) => {
+		persistDefaultConversationFilter(next);
+		set(defaultConversationFilterStateAtom, next);
+	},
+);
 // Always start expanded on app launch — collapse state is per-session only.
 export const sidebarCollapsedAtom = atom<boolean>(false);
 
