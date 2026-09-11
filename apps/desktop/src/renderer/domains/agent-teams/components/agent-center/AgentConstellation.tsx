@@ -8,24 +8,23 @@ const AVATAR = 36;
 const STEP = 30;
 /** 弧顶相对基线抬起的高度。 */
 const LIFT = 9;
-const MAX_AVATARS = 5;
+/** 弧线是装饰，排太多会挤爆页头；多出来的直接不画，也不补计数片。 */
+const MAX_AVATARS = 10;
 
 export interface AgentConstellationProps {
 	readonly agents: readonly AgentProfile[];
 }
 
 /**
- * Banner 右侧的装饰件：把真实智能体头像挂在一条虚线弧上，逐枚入场后各自缓慢起伏。
- * 纯装饰，不接受点击，窄容器下由外层隐藏。
+ * 页头的装饰件：把真实智能体头像挂在一条虚线弧上，逐枚入场后各自缓慢起伏。
+ * 纯装饰，不接受点击。
  */
 export function AgentConstellation({ agents }: AgentConstellationProps): JSX.Element | null {
 	const reduceMotion = useReducedMotion();
 	const shown = agents.slice(0, MAX_AVATARS);
 	if (shown.length === 0) return null;
 
-	const overflow = agents.length - shown.length;
-	// 溢出计数片也占一个弧位，和头像一起排。
-	const slots = shown.length + (overflow > 0 ? 1 : 0);
+	const slots = shown.length;
 	const width = AVATAR + (slots - 1) * STEP;
 	const height = AVATAR + LIFT;
 	const center = (index: number): { x: number; y: number } => ({
@@ -92,15 +91,6 @@ export function AgentConstellation({ agents }: AgentConstellationProps): JSX.Ele
 					</motion.span>
 				);
 			})}
-
-			{overflow > 0 && (
-				<span
-					className="absolute flex h-9 w-9 items-center justify-center rounded-full bg-accent/70 text-[11px] font-medium text-muted-foreground ring-2 ring-background/80"
-					style={{ left: last.x - AVATAR / 2, top: last.y - AVATAR / 2 }}
-				>
-					+{overflow}
-				</span>
-			)}
 		</div>
 	);
 }

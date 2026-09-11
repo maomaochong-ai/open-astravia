@@ -49,10 +49,10 @@ describe("AgentConstellation", () => {
 		expect(container.querySelector("svg")).not.toBeNull();
 	});
 
-	it("超过 5 位时只挂 5 枚头像，末尾补一枚计数片", () => {
-		const { container, getByText } = render(<AgentConstellation agents={agents(9)} />);
-		expect(container.querySelectorAll("img")).toHaveLength(5);
-		expect(container.querySelectorAll("[style*='left']")).toHaveLength(6);
-		expect(getByText("+4")).toBeTruthy();
+	it("超过 10 位时只挂 10 枚头像，不再补计数片", () => {
+		const { container, queryByText } = render(<AgentConstellation agents={agents(14)} />);
+		expect(container.querySelectorAll("img")).toHaveLength(10);
+		expect(container.querySelectorAll("[style*='left']")).toHaveLength(10);
+		expect(queryByText("+4")).toBeNull();
 	});
 });
