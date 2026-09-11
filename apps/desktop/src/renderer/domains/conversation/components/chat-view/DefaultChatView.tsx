@@ -5,6 +5,7 @@ import type { ConversationParticipantViewModel } from "@shared/conversation";
 import type { ChatConversationItem } from "@shared/store/atoms";
 import type { ActivityWorkspace } from "@shared/workspace/activity-workspace";
 import type { ActivityTabId } from "@domains/activity-panel/registry/types";
+import type { ConversationScenario } from "@vetta-org/plugin-sdk";
 import type { ReactNode } from "react";
 import { ChatExportHost } from "../ChatExportHost";
 import { MessageList } from "../MessageList";
@@ -32,6 +33,8 @@ export interface DefaultChatViewProps {
 		readonly workspace: ActivityWorkspace;
 		readonly enablePluginTabs?: boolean;
 		readonly enabledBuiltinTabs?: readonly ActivityTabId[];
+		/** Hosts that do not drive the global scenario atom (Team) pass their own scenario. */
+		readonly pluginScenario?: ConversationScenario;
 	};
 	readonly onTeamMemberOpen?: (memberId: string) => void;
 }
@@ -94,6 +97,7 @@ export function DefaultChatView({
 							workspace={activity.workspace}
 							enablePluginTabs={activity.enablePluginTabs}
 							enabledBuiltinTabs={activity.enabledBuiltinTabs}
+							pluginScenario={activity.pluginScenario}
 						/>
 					) : (
 						<ConversationActivityPanel />

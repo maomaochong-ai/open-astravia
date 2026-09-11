@@ -19,6 +19,7 @@ import { reasoningByModelAtom, selectedModelAtom } from "@shared/store/atoms";
 import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
 import type { AgentTeamDocument, TeamSessionListItem } from "@vetta/agent-team";
 import type { PromptAttachmentRef, SessionExecutionMode } from "@vetta/runtime-core";
+import type { ConversationScenario } from "@vetta-org/plugin-sdk";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useTranslation } from "react-i18next";
@@ -833,6 +834,24 @@ export function useTeamChatModel(
 		}),
 		[t],
 	);
+	// 活动面板按会话本身取数：看团队全景时聚合协调与全部成员 Runtime，进入某个成员
+	// 视图时收窄到该成员，避免 Todo / 后台任务把别人的执行状态算进来。
+	const activityRuntimeIds = useMemo(() => {
+		if (!session) return [];
+		if (memberViewId) {
+			const runtimeId = memberRuntimeIds[memberViewId];
+			return runtimeId ? [runtimeId] : [];
+		}
+		const coordination = session.coordinationRuntime?.sessionId;
+		return [
+			...(coordination ? [coordination] : []),
+			...Object.values(session.memberRuntime).map((runtime) => runtime.sessionId),
+		];
+	}, [session, memberViewId, memberRuntimeIds]);
+	// 固定到项目的 Team 会话与普通项目会话同场景；自有工作空间的按「对话」处理，
+	// 与 useSessionOpener 下发给普通会话的口径一致（插件 scope_use 是 fail-closed 的）。
+	const pluginScenario: ConversationScenario = session?.workspaceKind === "project" ? "project" : "conversation";
+
 	const model = useMemo<TeamChatViewModel>(
 		() => ({
 			feedKey: `${session?.id ?? preferredSessionId ?? teamId}:${memberViewId ?? "team"}`,
@@ -854,7 +873,12 @@ export function useTeamChatModel(
 					(draft.trim() || attachments.length > 0) &&
 					!visiblePending,
 			),
-			workspace: createActivityWorkspace(session?.workspaceId ?? `agent-team:${teamId}`, session?.cwd ?? null),
+			workspace: createActivityWorkspace(
+				session?.workspaceId ?? `agent-team:${teamId}`,
+				session?.cwd ?? null,
+				activityRuntimeIds,
+			),
+			pluginScenario,
 			activeSessionId: session?.id ?? (routeHandoff || pending ? (preferredSessionId ?? null) : null),
 			runtimeSessionIds: session ? Object.values(session.memberRuntime).map((runtime) => runtime.sessionId) : [],
 			memberRuntimeIds,
@@ -904,6 +928,8 @@ export function useTeamChatModel(
 			createNewSession,
 			snapshot?.display?.executionMode,
 			visiblePending,
+			activityRuntimeIds,
+			pluginScenario,
 		],
 	);
 	const actions = useMemo<TeamChatActions>(

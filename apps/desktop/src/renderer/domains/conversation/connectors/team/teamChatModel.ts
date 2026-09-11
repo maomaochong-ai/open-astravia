@@ -18,6 +18,7 @@ import type { ChatConversationItem, ChatToolCallPresentationViewModel, ContextUs
 import type { ActivityWorkspace } from "@shared/workspace/activity-workspace";
 import type { AgentTeamDocument, TeamDefinition } from "@vetta/agent-team";
 import type { HistoryEntry, PromptAttachmentRef, SessionExecutionMode } from "@vetta/runtime-core";
+import type { ConversationScenario } from "@vetta-org/plugin-sdk";
 import { fullHistoryToChat } from "../../services/chat-service";
 import {
 	projectConversationAgentMessage,
@@ -57,6 +58,11 @@ export interface TeamChatViewModel {
 	readonly editorEnabled: boolean;
 	readonly canSend: boolean;
 	readonly workspace: ActivityWorkspace | null;
+	/**
+	 * Conversation scenario the activity panel plugin tabs are filtered by. Team sessions never
+	 * touch the global scenario atom, so the scenario travels with the view model.
+	 */
+	readonly pluginScenario: ConversationScenario;
 	readonly activeSessionId: string | null;
 	readonly runtimeSessionIds?: readonly string[];
 	readonly memberRuntimeIds?: Readonly<Record<string, string>>;

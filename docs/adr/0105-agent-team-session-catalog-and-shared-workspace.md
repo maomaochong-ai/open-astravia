@@ -37,8 +37,9 @@ ActivityPanel 还同时把 cwd 当作路径、状态身份，并由部分页签�
    各自由 Adapter 提供工作空间。面板的页签选择、顺序、隐藏、浮动和 Browser 状态按 `workspace.id` 隔离。
 6. ActivityPanel 外壳由 `Root`、`Desktop`、`Surface`、`Header`、`Body`、`ResizeHandle` 与 `Sheet` 组合式
    Primitive 构成；Root 只拥有开合与拖动行为，业务页签和数据源由宿主显式组合。
-7. Team 仅启用已有明确工作空间语义的 File 与 Browser 页签。仍以单一 Runtime 为数据源的 Todo、后台任务、
-   Workflow 与 Debug 不接入 Team，直到它们提供带成员身份的 Team 聚合数据源。
+7. ~~Team 仅启用已有明确工作空间语义的 File 与 Browser 页签。仍以单一 Runtime 为数据源的 Todo、后台任务、
+   Workflow 与 Debug 不接入 Team，直到它们提供带成员身份的 Team 聚合数据源。~~
+   **已由 ADR-0111 取代**：工作空间改为显式携带聚合的 Runtime 列表，Team 与普通对话使用同一套内置与插件页签。
 8. 模型与推理档位属于 Team session。选择器使用受控作用域写入 Team session；成员任务在排队时捕获有效设置，
    并在 prompt、continue、retry 或 recovery 进入 Runtime 前统一应用。普通对话的全局默认和活动会话配置不被修改。
 
@@ -55,6 +56,6 @@ ActivityPanel 还同时把 cwd 当作路径、状态身份，并由部分页签�
 ## 不在本决策范围
 
 - 修改 Runtime Conversation 持久化协议或将 Team 私有执行内容合并到公开历史。
-- 为 Team 聚合 Todo、后台任务、Workflow、Debug 或插件能力。
+- ~~为 Team 聚合 Todo、后台任务、Workflow、Debug 或插件能力。~~（见 ADR-0111）
 - 为单条 Team session 内的多成员文件写入提供事务或串行化。
 - 在 Team session 创建后切换或迁移其工作空间。

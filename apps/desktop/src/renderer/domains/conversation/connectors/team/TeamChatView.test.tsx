@@ -53,6 +53,7 @@ function model(): TeamChatViewModel {
 		editorEnabled: true,
 		canSend: false,
 		workspace: null,
+		pluginScenario: "conversation",
 		activeSessionId: "team-session",
 		sessions: [{ id: "team-session", label: "Conversation 1" }],
 		sessionActionsDisabled: false,
@@ -94,6 +95,34 @@ describe("TeamChatView shared conversation UI", () => {
 				pendingLabel: "Loading team",
 				onTeamMemberOpen: onOpenMember,
 				children: expect.anything(),
+			}),
+		);
+	});
+
+	// A Team session drives the ordinary activity panel: plugin tabs stay enabled and the
+	// scenario travels with the view model, because Team never sets the global scenario atom.
+	it("hands the activity panel the team workspace and its own plugin scenario", () => {
+		const viewModel = {
+			...model(),
+			workspace: { id: "agent-team:ws", cwd: "/tmp/team", runtimeIds: ["member-runtime"] },
+			pluginScenario: "project" as const,
+		};
+		render(
+			<TeamChatView
+				model={viewModel}
+				actions={actions()}
+				onOpenMember={vi.fn()}
+				onBackToTeam={vi.fn()}
+				onOpenSettings={vi.fn()}
+			/>,
+		);
+
+		expect(captured.view).toHaveBeenCalledWith(
+			expect.objectContaining({
+				activity: {
+					workspace: viewModel.workspace,
+					pluginScenario: "project",
+				},
 			}),
 		);
 	});

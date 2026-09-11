@@ -67,6 +67,7 @@ vi.mock("./useTeamChatModel", () => ({
 			editorEnabled: true,
 			canSend: false,
 			workspace: null,
+			pluginScenario: "conversation",
 			sessionActionsDisabled: false,
 			modelKey: null,
 			labels: {

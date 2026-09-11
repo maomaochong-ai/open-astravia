@@ -83,6 +83,7 @@ function model(overrides: Partial<TeamChatViewModel> = {}): TeamChatViewModel {
 		editorEnabled: true,
 		canSend: true,
 		workspace: { id: "team:1", cwd: "C:/workspace", runtimeIds: [] },
+		pluginScenario: "conversation",
 		activeSessionId: "session-1",
 		sessions: [{ id: "session-1", label: "Conversation 1" }],
 		sessionActionsDisabled: false,

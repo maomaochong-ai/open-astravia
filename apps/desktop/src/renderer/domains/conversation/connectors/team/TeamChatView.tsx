@@ -3,7 +3,6 @@ import { TeamComposerConnector } from "./TeamComposerConnector";
 import { TeamMemberRoster } from "./TeamMemberRoster";
 import type { TeamChatActions, TeamChatViewModel } from "./teamChatModel";
 
-const TEAM_WORKSPACE_BUILTIN_TABS = ["file", "browser"] as const;
 const TEAM_MESSAGE_CONTEXT = {
 	inheritActiveSession: false,
 	showRuntimeFooter: false,
@@ -42,11 +41,7 @@ export function TeamChatView({
 			error={model.error}
 			activity={
 				model.workspace
-					? {
-							workspace: model.workspace,
-							enablePluginTabs: false,
-							enabledBuiltinTabs: TEAM_WORKSPACE_BUILTIN_TABS,
-						}
+					? { workspace: model.workspace, pluginScenario: model.pluginScenario }
 					: undefined
 			}
 			onTeamMemberOpen={onOpenMember}
