@@ -4,7 +4,11 @@ import {
 	getBuiltinMcpPresetByName,
 	resolveMcpPresetIconUrl,
 } from "@domains/settings/mcp/builtin-mcp-presets";
-import { type InlineTokenPiece, type InlineTokenSupport } from "@vetta/theme-ui/chat";
+import {
+	type InlineTokenAnnotation,
+	type InlineTokenPiece,
+	type InlineTokenSupport,
+} from "@vetta/theme-ui/chat";
 import { memo, useMemo } from "react";
 
 interface MarkdownContentProps {
@@ -22,12 +26,7 @@ interface MarkdownContentProps {
 		getImageLabel: (path: string) => string;
 		getSkill?: (name: string) => { label: string; icon?: string } | undefined;
 		getScene?: (name: string) => { label: string; icon?: string } | undefined;
-		memberMentions?: readonly {
-			participantId: string;
-			handle: string;
-			start: number;
-			end: number;
-		}[];
+		annotations: readonly InlineTokenAnnotation[];
 		getMember?: (participantId: string) => { label: string; avatar?: string; meta?: string } | undefined;
 	};
 }
@@ -64,14 +63,7 @@ export const MarkdownContent = memo(function MarkdownContent({
 			inlineTokens
 				? {
 						parse: parseTokens,
-						...(inlineTokens.memberMentions?.length
-							? {
-									annotations: inlineTokens.memberMentions.map((mention) => ({
-										kind: "member" as const,
-										...mention,
-									})),
-								}
-							: {}),
+						annotations: inlineTokens.annotations,
 						getImageLabel: inlineTokens.getImageLabel,
 						getConnector: lookupConnector,
 						...(inlineTokens.getSkill ? { getSkill: inlineTokens.getSkill } : {}),

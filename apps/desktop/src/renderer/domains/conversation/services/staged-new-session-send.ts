@@ -1,5 +1,10 @@
 import { createConversationUserMessage } from "@shared/conversation";
-import { MultipleSceneReferencesError, prepareInputPrompt } from "@shared/lib/input-tokens";
+import {
+	deriveAttachments,
+	MultipleSceneReferencesError,
+	prepareInputPrompt,
+	toTokenPath,
+} from "@shared/lib/input-tokens";
 import { perfSendMark } from "@shared/lib/perf-send";
 import {
 	activeInputDraftKeyAtom,
@@ -7,6 +12,7 @@ import {
 	attachedImagesAtom,
 	chatMessagesAtom,
 	clearCurrentSessionInputDraft,
+	inputSegmentsAtom,
 	inputValueAtom,
 	mentionedFilesAtom,
 	persistCurrentSessionInputDraft,
@@ -38,6 +44,7 @@ function stageSessionSend(
 ): StagedSendInput | null {
 	const store = getDefaultStore();
 	const inputValue = store.get(inputValueAtom);
+	const inputSegments = store.get(inputSegmentsAtom).slice();
 	const attachedImages = store.get(attachedImagesAtom).slice();
 	const mentionedFiles = store.get(mentionedFilesAtom).slice();
 	const appshot = store.get(appshotAttachmentAtom);
@@ -51,7 +58,7 @@ function stageSessionSend(
 	const rawText = hasOverride ? override : inputValue.trim();
 	let preparedInput: ReturnType<typeof prepareInputPrompt>;
 	try {
-		preparedInput = prepareInputPrompt(rawText);
+		preparedInput = prepareInputPrompt(rawText, hasOverride ? undefined : inputSegments);
 	} catch (error) {
 		// Invalid scene combinations stay on the composer with their draft intact.
 		if (error instanceof MultipleSceneReferencesError) return null;
@@ -62,20 +69,30 @@ function stageSessionSend(
 		!hasOverride && preparedInput.sceneName ? { kind: "scene" as const, name: preparedInput.sceneName } : undefined;
 	const attachmentsByPath = new Map<string, PromptAttachmentRef>();
 	if (!hasOverride) {
+		for (const attachment of deriveAttachments(preparedInput.segments)) {
+			attachmentsByPath.set(toTokenPath(attachment.path), attachment);
+		}
 		for (const file of mentionedFiles) {
-			attachmentsByPath.set(file.path, {
+			const key = toTokenPath(file.path);
+			if (attachmentsByPath.has(key)) continue;
+			attachmentsByPath.set(key, {
 				kind: file.isDirectory ? "directory" : isUserImageFile(file.path) ? "image" : "file",
 				path: file.path,
 			});
 		}
-		if (appshot?.imagePath) attachmentsByPath.set(appshot.imagePath, { kind: "image", path: appshot.imagePath });
-		if (appshot?.textPath) attachmentsByPath.set(appshot.textPath, { kind: "file", path: appshot.textPath });
+		if (appshot?.imagePath) {
+			attachmentsByPath.set(toTokenPath(appshot.imagePath), { kind: "image", path: appshot.imagePath });
+		}
+		if (appshot?.textPath) {
+			attachmentsByPath.set(toTokenPath(appshot.textPath), { kind: "file", path: appshot.textPath });
+		}
 	}
 
 	const optimisticMessage = createConversationUserMessage({
 		id: nextId("user"),
 		deliveryPhase: "pending",
 		text: hasOverride ? rawText : preparedInput.text,
+		...(hasOverride ? {} : { inputSegments: preparedInput.segments }),
 		timestamp: Date.now(),
 		model: modelKeyToParts(selectedModel),
 		promptRef,
@@ -104,6 +121,7 @@ function stageSessionSend(
 	return {
 		draftKey: store.get(activeInputDraftKeyAtom),
 		rawText,
+		inputSegments: [...preparedInput.segments],
 		hasOverride,
 		attachedImages,
 		mentionedFiles,
@@ -144,6 +162,7 @@ export function restoreStagedNewSessionSend(staged: StagedSendInput): void {
 	const store = getDefaultStore();
 	store.set(chatMessagesAtom, []);
 	if (staged.hasOverride) return;
+	store.set(inputSegmentsAtom, staged.inputSegments.slice());
 	store.set(inputValueAtom, staged.rawText);
 	store.set(attachedImagesAtom, staged.attachedImages.slice());
 	store.set(mentionedFilesAtom, staged.mentionedFiles.slice());
@@ -166,7 +185,11 @@ export function restoreStagedPendingSessionSend(
 	if (staged.hasOverride || !staged.draftKey) return;
 	const activeDraftKey = store.get(activeInputDraftKeyAtom);
 	if (activeDraftKey !== staged.draftKey) {
-		persistSessionInputDraft(staged.draftKey, { text: staged.rawText, appshot: staged.appshot });
+		persistSessionInputDraft(staged.draftKey, {
+			text: staged.rawText,
+			segments: staged.inputSegments.slice(),
+			appshot: staged.appshot,
+		});
 		return;
 	}
 	const composerUntouched =
@@ -175,6 +198,7 @@ export function restoreStagedPendingSessionSend(
 		store.get(mentionedFilesAtom).length === 0 &&
 		store.get(appshotAttachmentAtom) === null;
 	if (!composerUntouched && options?.overwriteComposer !== true) return;
+	store.set(inputSegmentsAtom, staged.inputSegments.slice());
 	store.set(inputValueAtom, staged.rawText);
 	store.set(attachedImagesAtom, staged.attachedImages.slice());
 	store.set(mentionedFilesAtom, staged.mentionedFiles.slice());

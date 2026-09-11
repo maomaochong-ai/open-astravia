@@ -10,6 +10,7 @@ export {
 	pathTokenText,
 	projectMemberMentionsToTrimmedText,
 	type SerializedInputSegments,
+	type SerializedInputToken,
 	type SerializedMemberMention,
 	sceneTokenText,
 	segmentsToText,

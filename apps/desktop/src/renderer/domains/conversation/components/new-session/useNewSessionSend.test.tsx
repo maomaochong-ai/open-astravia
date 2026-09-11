@@ -16,6 +16,7 @@ const stagedSend = vi.hoisted(() => ({
 	stage: vi.fn<(overrideText?: string, interactionId?: string) => StagedSendInput | null>(() => ({
 		draftKey: "new:C:/workspace",
 		rawText: "hello",
+		inputSegments: [{ kind: "text", text: "hello" }],
 		hasOverride: false,
 		attachedImages: [],
 		mentionedFiles: [],
@@ -96,6 +97,7 @@ describe("useNewSessionSend", () => {
 		stagedSend.stage.mockReturnValue({
 			draftKey: "new:C:/workspace",
 			rawText: "hello",
+			inputSegments: [{ kind: "text", text: "hello" }],
 			hasOverride: false,
 			attachedImages: [],
 			mentionedFiles: [],

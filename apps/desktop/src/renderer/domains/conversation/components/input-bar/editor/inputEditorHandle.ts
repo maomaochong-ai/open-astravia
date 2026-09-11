@@ -155,6 +155,11 @@ export function focusInputEditor(): void {
 	current?.focus();
 }
 
+/** 执行面板内建命令后移除 `/query`，不向输入流插入任何模型可见内容。 */
+export function removeInputTrigger(): void {
+	current?.update(() => $removeTriggerBeforeCaret());
+}
+
 /** 当前选区文本；无选区返回空串。右键菜单的复制/剪切依赖它。 */
 export function readSelectionText(): string {
 	if (!current) return "";

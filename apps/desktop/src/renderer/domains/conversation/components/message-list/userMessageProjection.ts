@@ -1,7 +1,14 @@
 import type { ConversationUserMessageViewModel } from "@shared/conversation";
-import { type InputSegment, parseInputSegments, segmentsToText, toTokenPath } from "@shared/lib/input-tokens";
+import {
+	type InputSegment,
+	parseInputSegments,
+	type SerializedInputToken,
+	serializeInputSegments,
+	toTokenPath,
+} from "@shared/lib/input-tokens";
 import { pathBasename, toVettaFileUrl } from "@shared/lib/utils";
 import type { FilePreviewItem } from "@shared/store/atoms";
+import type { InlineTokenAnnotation } from "@vetta/theme-ui/chat";
 import { isSystemAttachmentPath, isUserImageFile, parseUserPrefixes } from "../../services/chat-service";
 import type { AppshotCardData } from "../AppshotCard";
 
@@ -13,11 +20,6 @@ function matchesPromptRef(segment: InputSegment, ref: { readonly kind: string; r
 
 function isAppshotPath(path: string): boolean {
 	return /[/\\]image-cache[/\\]appshot[/\\]/.test(path);
-}
-
-function splitAppshotFiles(files: string[]): { appshotImage: string | null; rest: string[] } {
-	const appshotImage = files.find((path) => isAppshotPath(path) && /\.png$/i.test(path)) ?? null;
-	return { appshotImage, rest: files.filter((path) => !isAppshotPath(path)) };
 }
 
 export function userMessagePreviewSource(item: FilePreviewItem): string {
@@ -33,13 +35,19 @@ export interface UserMessageProjection {
 	readonly fileBadges: readonly string[];
 	readonly imageIndexByPath: ReadonlyMap<string, number>;
 	readonly imageItems: readonly FilePreviewItem[];
+	readonly inlineTokenAnnotations: readonly InlineTokenAnnotation[];
 	readonly memberMentions: NonNullable<ConversationUserMessageViewModel["memberMentions"]>;
 	readonly settingsAssistTabId: string;
 }
 
 export function projectUserMessage(message: ConversationUserMessageViewModel): UserMessageProjection {
 	const parsedUser = parseUserPrefixes(message.text);
-	const { segments, legacyRef } = parseInputSegments(message.text);
+	const { segments: parsedSegments, legacyRef } = parseInputSegments(message.text);
+	// Newly sent messages carry the exact editor snapshot. Historical messages do
+	// not, so they retain the text parser as a backwards-compatible fallback.
+	const segments = message.inputSegments
+		? [...message.inputSegments]
+		: restoreAttachmentKinds(parsedSegments, message.attachments ?? []);
 	const promptRef = message.promptRef ?? legacyRef ?? undefined;
 	const bodySegments = segments.filter(
 		(segment) => (segment.kind !== "image" && segment.kind !== "file") || !isAppshotPath(segment.path),
@@ -51,23 +59,34 @@ export function projectUserMessage(message: ConversationUserMessageViewModel): U
 		bodySegments.unshift({ kind: promptRef.kind, name: promptRef.name });
 	}
 
-	const displayText = segmentsToText(bodySegments);
+	const serialized = serializeInputSegments(bodySegments);
+	const displayText = serialized.text;
 	const memberMentions = projectMemberMentionOffsets(message.text, displayText, message.memberMentions ?? []);
+	const inlineTokenAnnotations = projectInlineTokenAnnotations(serialized.tokens, displayText, memberMentions);
 	const inlinePaths = new Set(
 		bodySegments.flatMap((segment) =>
 			segment.kind === "file" || segment.kind === "image" ? [toTokenPath(segment.path)] : [],
 		),
 	);
-	const attachmentPaths = message.attachments?.map((attachment) => attachment.path) ?? parsedUser.files;
-	const { appshotImage, rest: displayFiles } = splitAppshotFiles(attachmentPaths);
+	const attachmentRefs =
+		message.attachments ??
+		parsedUser.files.map((path) => ({ kind: isUserImageFile(path) ? ("image" as const) : ("file" as const), path }));
+	const appshotImage =
+		attachmentRefs.find((attachment) => isAppshotPath(attachment.path) && /\.png$/i.test(attachment.path))?.path ??
+		null;
+	const displayAttachments = attachmentRefs.filter((attachment) => !isAppshotPath(attachment.path));
 	const inlineImagePaths = bodySegments.flatMap((segment) => (segment.kind === "image" ? [segment.path] : []));
 	const inlineImageKeys = new Set(inlineImagePaths.map(toTokenPath));
 	const imageFiles = [
 		...inlineImagePaths,
-		...displayFiles.filter((file) => isUserImageFile(file) && !inlineImageKeys.has(toTokenPath(file))),
+		...displayAttachments.flatMap((attachment) =>
+			attachment.kind === "image" && !inlineImageKeys.has(toTokenPath(attachment.path)) ? [attachment.path] : [],
+		),
 	];
 	const imageIndexByPath = new Map(imageFiles.map((path, index) => [toTokenPath(path), index + 1]));
-	const fileBadges = displayFiles.filter((file) => !isUserImageFile(file) && !inlinePaths.has(toTokenPath(file)));
+	const fileBadges = displayAttachments.flatMap((attachment) =>
+		attachment.kind !== "image" && !inlinePaths.has(toTokenPath(attachment.path)) ? [attachment.path] : [],
+	);
 	const appshot = message.appshot ?? (appshotImage ? { imagePath: appshotImage } : null);
 	const fromPaths = imageFiles.map((path) => ({
 		name: pathBasename(path),
@@ -98,9 +117,71 @@ export function projectUserMessage(message: ConversationUserMessageViewModel): U
 		fileBadges,
 		imageIndexByPath,
 		imageItems,
+		inlineTokenAnnotations,
 		memberMentions,
 		settingsAssistTabId: message.settingsAssistTabId?.trim() ?? "",
 	};
+}
+
+function restoreAttachmentKinds(
+	segments: readonly InputSegment[],
+	attachments: NonNullable<ConversationUserMessageViewModel["attachments"]>,
+): InputSegment[] {
+	const attachmentKinds = new Map(attachments.map((attachment) => [toTokenPath(attachment.path), attachment.kind]));
+	return segments.map((segment): InputSegment => {
+		if (segment.kind !== "file" && segment.kind !== "image") return segment;
+		const kind = attachmentKinds.get(toTokenPath(segment.path));
+		if (kind === "image") return { kind: "image", path: segment.path };
+		if (kind === "directory") return { kind: "file", path: segment.path, isDirectory: true };
+		if (kind === "file") return { kind: "file", path: segment.path };
+		return segment;
+	});
+}
+
+function projectInlineTokenAnnotations(
+	tokens: readonly SerializedInputToken[],
+	displayText: string,
+	memberMentions: NonNullable<ConversationUserMessageViewModel["memberMentions"]>,
+): InlineTokenAnnotation[] {
+	const annotations = tokens.map((token): InlineTokenAnnotation => {
+		const range = { text: displayText.slice(token.start, token.end), start: token.start, end: token.end };
+		if ("participantId" in token) {
+			return {
+				kind: "member",
+				participantId: token.participantId,
+				handle: token.handle,
+				...range,
+			};
+		}
+		if ("name" in token) {
+			return { kind: token.kind, name: token.name, ...range };
+		}
+		return {
+			kind: token.kind,
+			path: token.path,
+			...(token.kind === "file" && token.isDirectory ? { isDirectory: true } : {}),
+			...range,
+		};
+	});
+	const occupiedMemberRanges = new Set(
+		annotations
+			.filter((annotation) => annotation.kind === "member")
+			.map((annotation) => `${annotation.start}:${annotation.end}`),
+	);
+	for (const mention of memberMentions) {
+		if (occupiedMemberRanges.has(`${mention.start}:${mention.end}`)) continue;
+		const text = displayText.slice(mention.start, mention.end);
+		if (text !== `@${mention.handle}`) continue;
+		annotations.push({
+			kind: "member",
+			participantId: mention.participantId,
+			handle: mention.handle,
+			text,
+			start: mention.start,
+			end: mention.end,
+		});
+	}
+	return annotations.sort((left, right) => left.start - right.start || left.end - right.end);
 }
 
 function projectMemberMentionOffsets(

@@ -61,7 +61,7 @@ export const UserMessage = memo(function UserMessage({
 	);
 	const inlineTokens = useMemo(
 		() => ({
-			memberMentions: projection.memberMentions,
+			annotations: projection.inlineTokenAnnotations,
 			getImageLabel: (path: string) => {
 				const index = projection.imageIndexByPath.get(toTokenPath(path));
 				return index ? t("inputBar.capsule.imageBadge", { index }) : pathBasename(path);
@@ -79,7 +79,7 @@ export const UserMessage = memo(function UserMessage({
 					: undefined;
 			},
 		}),
-		[membersById, projection.imageIndexByPath, projection.memberMentions, resolveSkillMeta, t],
+		[membersById, projection.imageIndexByPath, projection.inlineTokenAnnotations, resolveSkillMeta, t],
 	);
 	const setFilePreview = useSetAtom(filePreviewAtom);
 	const [actionsVisible, setActionsVisible] = useState(false);

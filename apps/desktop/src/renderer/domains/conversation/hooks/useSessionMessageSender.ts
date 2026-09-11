@@ -8,7 +8,13 @@ import {
 	recordInputActionsUsed,
 	recordInputContextUsed,
 } from "@shared/lib/app-monitor-events";
-import { deriveSkillNames, MultipleSceneReferencesError, prepareInputPrompt } from "@shared/lib/input-tokens";
+import {
+	deriveAttachments,
+	deriveSkillNames,
+	MultipleSceneReferencesError,
+	prepareInputPrompt,
+	toTokenPath,
+} from "@shared/lib/input-tokens";
 import { perfSendComplete, perfSendMark } from "@shared/lib/perf-send";
 import {
 	activeInputActionIdsAtom,
@@ -21,6 +27,7 @@ import {
 	chatMessagesAtom,
 	conversationBucketCwd,
 	defaultConversationCwdAtom,
+	inputSegmentsAtom,
 	inputValueAtom,
 	isStreamingAtom,
 	knowledgeRetrievalActiveAtom,
@@ -136,6 +143,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			}
 			// 不订阅输入 atom；调用时读取还能覆盖“先写草稿、同一流程立即发送”的场景。
 			const inputValue = stagedInput?.rawText ?? store.get(inputValueAtom);
+			const inputSegments = stagedInput?.inputSegments ?? store.get(inputSegmentsAtom);
 			const attachedImages = stagedInput?.attachedImages ?? attachedImagesRef.current;
 			const mentionedFiles = stagedInput?.mentionedFiles ?? mentionedFilesRef.current;
 			const appshot = stagedInput ? stagedInput.appshot : appshotRef.current;
@@ -169,7 +177,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			const rawText = stagedInput?.rawText ?? (hasOverride ? override : inputValue.trim());
 			let preparedInput: ReturnType<typeof prepareInputPrompt>;
 			try {
-				preparedInput = prepareInputPrompt(rawText);
+				preparedInput = prepareInputPrompt(rawText, hasOverride ? undefined : inputSegments);
 			} catch (error) {
 				if (!(error instanceof MultipleSceneReferencesError)) throw error;
 				const message = i18n.t("chat:inputBar.error.multipleScenes");
@@ -198,20 +206,25 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 					: undefined;
 			const attachmentsByPath = new Map<string, PromptAttachmentRef>();
 			if (!hasOverride) {
+				for (const attachment of deriveAttachments(preparedInput.segments)) {
+					attachmentsByPath.set(toTokenPath(attachment.path), attachment);
+				}
 				for (const file of mentionedFiles) {
-					attachmentsByPath.set(file.path, {
+					const key = toTokenPath(file.path);
+					if (attachmentsByPath.has(key)) continue;
+					attachmentsByPath.set(key, {
 						kind: file.isDirectory ? "directory" : isUserImageFile(file.path) ? "image" : "file",
 						path: file.path,
 					});
 				}
 				if (appshot?.imagePath) {
-					attachmentsByPath.set(appshot.imagePath, { kind: "image", path: appshot.imagePath });
+					attachmentsByPath.set(toTokenPath(appshot.imagePath), { kind: "image", path: appshot.imagePath });
 				}
 				if (appshot?.textPath) {
-					attachmentsByPath.set(appshot.textPath, { kind: "file", path: appshot.textPath });
+					attachmentsByPath.set(toTokenPath(appshot.textPath), { kind: "file", path: appshot.textPath });
 				}
 				for (const path of imagePaths) {
-					attachmentsByPath.set(path, { kind: "image", path });
+					attachmentsByPath.set(toTokenPath(path), { kind: "image", path });
 				}
 			}
 			const attachments = [...attachmentsByPath.values()];
@@ -345,6 +358,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 					id: nextId("user"),
 					deliveryPhase: "pending",
 					text,
+					...(hasOverride ? {} : { inputSegments: preparedInput.segments }),
 					timestamp: Date.now(),
 					model: modelKeyToParts(selectedModel),
 					promptRef,

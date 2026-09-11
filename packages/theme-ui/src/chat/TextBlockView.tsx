@@ -77,13 +77,26 @@ export interface InlineTokenSupport {
 	getMember?: (participantId: string) => { label: string; avatar?: string; meta?: string } | undefined;
 }
 
-export interface InlineTokenAnnotation {
-	readonly kind: "member";
-	readonly participantId: string;
-	readonly handle: string;
+interface InlineTokenAnnotationRange {
+	/** Exact serialized token text, used to reject stale or mismatched offsets. */
+	readonly text: string;
+	/** UTF-16 offsets into the original Markdown source. */
 	readonly start: number;
 	readonly end: number;
 }
+
+export type InlineTokenAnnotation =
+	| ({ readonly kind: "skill" | "scene" | "connector"; readonly name: string } & InlineTokenAnnotationRange)
+	| ({
+			readonly kind: "file" | "image";
+			readonly path: string;
+			readonly isDirectory?: boolean;
+	  } & InlineTokenAnnotationRange)
+	| ({
+			readonly kind: "member";
+			readonly participantId: string;
+			readonly handle: string;
+	  } & InlineTokenAnnotationRange);
 
 const INLINE_TOKEN_TAG = "vetta-inline-token";
 
@@ -144,6 +157,7 @@ interface MdastNode {
 }
 
 function remarkInlineTokenAnnotations(annotations: readonly InlineTokenAnnotation[]) {
+	const ordered = [...annotations].sort((left, right) => left.start - right.start || left.end - right.end);
 	return (tree: MdastNode): void => {
 		function visit(node: MdastNode, inLiteral: boolean): void {
 			if (!node.children) return;
@@ -158,7 +172,7 @@ function remarkInlineTokenAnnotations(annotations: readonly InlineTokenAnnotatio
 					continue;
 				}
 				const value = child.value ?? "";
-				const contained = annotations.filter(
+				const contained = ordered.filter(
 					(annotation) => annotation.start >= nodeStart && annotation.end <= nodeEnd,
 				);
 				if (contained.length === 0) {
@@ -169,16 +183,28 @@ function remarkInlineTokenAnnotations(annotations: readonly InlineTokenAnnotatio
 				for (const annotation of contained) {
 					const start = annotation.start - nodeStart;
 					const end = annotation.end - nodeStart;
-					if (start < cursor || value.slice(start, end) !== `@${annotation.handle}`) continue;
+					if (start < cursor || end <= start || value.slice(start, end) !== annotation.text) continue;
+					if (annotation.kind === "member" && annotation.text !== `@${annotation.handle}`) continue;
 					if (start > cursor) nextChildren.push({ type: "text", value: value.slice(cursor, start) });
+					const tokenValue =
+						"name" in annotation
+							? annotation.name
+							: "participantId" in annotation
+								? annotation.participantId
+								: annotation.path;
 					nextChildren.push({
 						type: "inlineToken",
 						data: {
 							hName: INLINE_TOKEN_TAG,
 							hProperties: {
-								"data-token-kind": "member",
-								"data-token-value": annotation.participantId,
-								"data-token-handle": annotation.handle,
+								"data-token-kind": annotation.kind,
+								"data-token-value": tokenValue,
+								...(annotation.kind === "member"
+									? { "data-token-handle": annotation.handle }
+									: {}),
+								...(annotation.kind === "file"
+									? { "data-token-directory": annotation.isDirectory ? "true" : "false" }
+									: {}),
 							},
 						},
 					});
@@ -191,6 +217,20 @@ function remarkInlineTokenAnnotations(annotations: readonly InlineTokenAnnotatio
 
 		visit(tree, false);
 	};
+}
+
+function projectAnnotationsToNormalizedMarkdown(
+	source: string,
+	normalizedSource: string,
+	annotations: readonly InlineTokenAnnotation[],
+): InlineTokenAnnotation[] {
+	if (source === normalizedSource) return [...annotations];
+	return annotations.flatMap((annotation): InlineTokenAnnotation[] => {
+		if (source.slice(annotation.start, annotation.end) !== annotation.text) return [];
+		const start = normalizeLocalFileLinksInMarkdown(source.slice(0, annotation.start)).length;
+		const end = normalizeLocalFileLinksInMarkdown(source.slice(0, annotation.end)).length;
+		return normalizedSource.slice(start, end) === annotation.text ? [{ ...annotation, start, end }] : [];
+	});
 }
 
 const STREAMING_CHUNK_SIZE = 10;
@@ -644,7 +684,7 @@ export const TextBlockView = memo(function TextBlockView({
 						/>
 					);
 				}
-			if (kind === "member") {
+				if (kind === "member") {
 					const member = inlineTokensRef.current?.getMember?.(value);
 					const handle = String(properties["data-token-handle"] ?? value);
 					if (!member) return <>{`@${handle}`}</>;
@@ -687,23 +727,32 @@ export const TextBlockView = memo(function TextBlockView({
 		[theme],
 	);
 
+	const hasStructuredAnnotations = inlineTokens?.annotations !== undefined;
 	const rehypePlugins = useMemo(() => {
 		const plugins = [];
 		if (animateChunks) plugins.push(rehypeStreamingChunks);
-		if (inlineTokens) plugins.push(() => rehypeInlineTokens(inlineTokens.parse));
+		// Exact editor/history annotations are complete. Falling back to text parsing
+		// here would reinterpret plain text that only happens to look like a token.
+		if (inlineTokens && !hasStructuredAnnotations) plugins.push(() => rehypeInlineTokens(inlineTokens.parse));
 		return plugins.length > 0 ? plugins : undefined;
-	}, [animateChunks, inlineTokens]);
-	const activeRemarkPlugins = useMemo(
-		() =>
-			inlineTokens?.annotations?.length
-				? [...remarkPlugins, () => remarkInlineTokenAnnotations(inlineTokens.annotations ?? [])]
-				: remarkPlugins,
-		[inlineTokens],
-	);
-
+	}, [animateChunks, hasStructuredAnnotations, inlineTokens]);
 	const markdownSource = useMemo(
 		() => normalizeLocalFileLinksInMarkdown(displayText),
 		[displayText],
+	);
+	const normalizedAnnotations = useMemo(
+		() =>
+			inlineTokens?.annotations
+				? projectAnnotationsToNormalizedMarkdown(displayText, markdownSource, inlineTokens.annotations)
+				: undefined,
+		[displayText, inlineTokens?.annotations, markdownSource],
+	);
+	const activeRemarkPlugins = useMemo(
+		() =>
+			normalizedAnnotations?.length
+				? [...remarkPlugins, () => remarkInlineTokenAnnotations(normalizedAnnotations)]
+				: remarkPlugins,
+		[normalizedAnnotations],
 	);
 
 	return (

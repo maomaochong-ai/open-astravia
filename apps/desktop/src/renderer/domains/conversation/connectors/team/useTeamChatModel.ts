@@ -132,7 +132,9 @@ export function useTeamChatModel(
 			draftRef.current = next;
 			updateDraft(next);
 			const activeSegments = segments ?? parseInputSegments(next).segments;
-			const serialized = segments ? serializeInputSegments(segments) : { text: next, memberMentions: [] };
+			const serialized = segments
+				? serializeInputSegments(segments)
+				: { text: next, memberMentions: [], tokens: [] };
 			setMemberMentionsByTeam((current) => ({ ...current, [draftScope]: serialized.memberMentions }));
 			setSelectedMemberIds([...new Set(serialized.memberMentions.map((mention) => mention.participantId))]);
 			const derived = deriveAttachments(activeSegments).map((attachment) => ({

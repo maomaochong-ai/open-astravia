@@ -7,7 +7,7 @@ import {
 } from "@shared/lib/input-tokens";
 import { perfSendMark } from "@shared/lib/perf-send";
 import { pathBasename } from "@shared/lib/utils";
-import { type MentionedFile, inputValueAtom, mentionedFilesAtom } from "@shared/store/atoms";
+import { type MentionedFile, inputSegmentsAtom, inputValueAtom, mentionedFilesAtom } from "@shared/store/atoms";
 import { useStore } from "jotai";
 import { useEffect, useRef } from "react";
 import { stableImagePaths } from "../tokens/imagePaths";
@@ -15,6 +15,11 @@ import { inputImagePathsAtom } from "../tokens/projectionAtoms";
 import { $applySegments, $readSegments } from "../tokens/segments";
 
 type Store = ReturnType<typeof useStore>;
+
+function readProjectedSegments(store: Store, text: string): readonly InputSegment[] {
+	const segments = store.get(inputSegmentsAtom);
+	return segmentsToText(segments) === text ? segments : parseInputSegments(text).segments;
+}
 
 function samePaths(a: readonly MentionedFile[], b: readonly MentionedFile[]): boolean {
 	return a.length === b.length && a.every((file, index) => file.path === b[index]?.path);
@@ -63,6 +68,7 @@ export function ValueBridgePlugin(): null {
 		return editor.registerUpdateListener(({ editorState }) => {
 			const segments = editorState.read(() => $readSegments());
 			const text = segmentsToText(segments);
+			store.set(inputSegmentsAtom, segments);
 			if (text !== projectedRef.current) {
 				projectedRef.current = text;
 				store.set(inputValueAtom, text);
@@ -77,11 +83,12 @@ export function ValueBridgePlugin(): null {
 		const initial = store.get(inputValueAtom);
 		projectedRef.current = initial;
 		if (initial === "") {
+			store.set(inputSegmentsAtom, []);
 			syncAttachments(store, []);
 			return;
 		}
 		editor.update(() => {
-			$applySegments(parseInputSegments(initial).segments);
+			$applySegments(readProjectedSegments(store, initial));
 		});
 	}, [editor, store]);
 
@@ -92,7 +99,7 @@ export function ValueBridgePlugin(): null {
 			projectedRef.current = next;
 			perfSendMark("editor-apply-start");
 			editor.update(() => {
-				$applySegments(parseInputSegments(next).segments);
+				$applySegments(readProjectedSegments(store, next));
 			});
 			perfSendMark("editor-apply-end");
 		});

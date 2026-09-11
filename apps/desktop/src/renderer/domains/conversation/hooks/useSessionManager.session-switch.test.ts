@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { createConversationUserMessage } from "@shared/conversation";
+import { type InputSegment, segmentsToText } from "@shared/lib/input-tokens";
 import type { ChatConversationItem, OpenSessionOptions, SessionExecutionMode } from "@shared/store/atoms";
 import { getDefaultStore } from "jotai";
 import { act, createElement } from "react";
@@ -148,16 +149,26 @@ afterEach(async () => {
 });
 
 it("切回仍在执行的会话时保留尚未进入历史快照的乐观用户消息", { timeout: 30_000 }, async () => {
-	const { activeSessionAtom, chatMessagesAtom, inputValueAtom } = await import("@shared/store/atoms");
+	const { activeSessionAtom, chatMessagesAtom, inputSegmentsAtom, inputValueAtom, mentionedFilesAtom } = await import(
+		"@shared/store/atoms"
+	);
 	const { useSessionManager } = await import("./useSessionManager");
 	const store = getDefaultStore();
+	const inputSegments: InputSegment[] = [
+		{ kind: "text", text: "keep " },
+		{ kind: "file", path: "C:/workspace/screenshot.png" },
+		{ kind: "text", text: " as a file" },
+	];
+	const inputText = segmentsToText(inputSegments);
 	store.set(activeSessionAtom, {
 		cwd,
 		runtimeId: "runtime-first",
 		sessionPath: firstSessionPath,
 	});
 	store.set(chatMessagesAtom, []);
-	store.set(inputValueAtom, "keep this user message");
+	store.set(inputValueAtom, inputText);
+	store.set(inputSegmentsAtom, inputSegments);
+	store.set(mentionedFilesAtom, [{ path: "C:/workspace/screenshot.png", name: "screenshot.png", isDirectory: false }]);
 
 	const getFullHistory = vi.fn(async () => []);
 	const sessionApi = {
@@ -213,7 +224,19 @@ it("切回仍在执行的会话时保留尚未进入历史快照的乐观用户�
 		await Promise.resolve();
 	});
 	expect(mocks.prompt).toHaveBeenCalledTimes(1);
-	expect(visibleTexts(store.get(chatMessagesAtom))).toContain("keep this user message");
+	expect(mocks.prompt).toHaveBeenCalledWith(
+		"runtime-first",
+		expect.objectContaining({
+			text: inputText,
+			attachments: [{ kind: "file", path: "C:/workspace/screenshot.png" }],
+		}),
+		undefined,
+	);
+	expect(visibleTexts(store.get(chatMessagesAtom))).toContain(inputText);
+	expect(store.get(chatMessagesAtom).find((message) => message.kind === "user")).toMatchObject({
+		inputSegments,
+		attachments: [{ kind: "file", path: "C:/workspace/screenshot.png" }],
+	});
 
 	await act(async () => {
 		await manager?.openSession(cwd, secondSessionPath);
@@ -221,7 +244,7 @@ it("切回仍在执行的会话时保留尚未进入历史快照的乐观用户�
 	});
 
 	// canonical 历史仍为空，但按 runtimeId 保存的待确认气泡必须跨过会话水合继续显示。
-	expect(visibleTexts(store.get(chatMessagesAtom))).toContain("keep this user message");
+	expect(visibleTexts(store.get(chatMessagesAtom))).toContain(inputText);
 	expect(store.get(activeSessionAtom)?.sessionPath).toBe(firstCanonicalPath);
 	expect(mocks.perfSessionSwitchBegin).toHaveBeenCalledTimes(2);
 	expect(sessionApi.create).toHaveBeenNthCalledWith(

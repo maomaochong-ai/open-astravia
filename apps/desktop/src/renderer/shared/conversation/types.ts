@@ -1,3 +1,4 @@
+import type { InputSegment } from "@shared/lib/input-tokens";
 import type { Usage } from "@vetta/ai";
 import type { PromptAttachmentRef, PromptResourceRef } from "@vetta/runtime-core";
 import type { ContentBlock } from "./content-blocks";
@@ -18,6 +19,8 @@ export interface ConversationUserMessageViewModel extends ConversationMessageVie
 	role: "user";
 	deliveryPhase: "pending" | "completed" | "failed";
 	text: string;
+	/** Renderer snapshot of the input editor; absent on legacy/restored messages. */
+	inputSegments?: readonly InputSegment[];
 	branch?: ConversationMessageBranchViewModel;
 	images?: ConversationMessageImageViewModel[];
 	model?: { provider: string; id: string };

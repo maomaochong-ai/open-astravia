@@ -31,6 +31,28 @@ describe("optimistic user message reconciliation", () => {
 		expect(reconcileOptimisticUserMessages("runtime-a", [previous, canonical])).toEqual([previous, canonical]);
 	});
 
+	it("规范历史确认发送后仍沿用编辑器结构化快照", () => {
+		const inputSegments = [
+			{ kind: "text" as const, text: "保留 " },
+			{ kind: "file" as const, path: "C:/workspace/screenshot.png" },
+		];
+		const optimistic = createConversationUserMessage({
+			id: "optimistic-1",
+			text: "保留 @C:/workspace/screenshot.png",
+			inputSegments,
+			attachments: [{ kind: "file", path: "C:/workspace/screenshot.png" }],
+		});
+		rememberOptimisticUserMessage("runtime-a", optimistic, []);
+
+		const canonical = createConversationUserMessage({
+			id: "persisted-1",
+			text: optimistic.text,
+			attachments: optimistic.attachments,
+		});
+
+		expect(reconcileOptimisticUserMessages("runtime-a", [canonical])).toEqual([{ ...canonical, inputSegments }]);
+	});
+
 	it("相同文本只出现在更早序号时不能误确认新消息", () => {
 		const previous = user("persisted-1", "repeat");
 		const optimistic = user("optimistic-2", "repeat");

@@ -8,6 +8,7 @@ import type {
 	MentionedFile,
 	PendingQuestion,
 } from "@shared/conversation";
+import type { InputSegment } from "@shared/lib/input-tokens";
 import type { ContextCompositionReport } from "@vetta/runtime-core";
 import { atom } from "jotai";
 import { runningSessionPathsAtom } from "./running-sessions-atoms";
@@ -186,6 +187,8 @@ export const chatMessagesAtom = atom<ChatConversationItem[]>([]);
 export const pendingMessageEditAtom = atom<PendingMessageEdit | null>(null);
 
 export const inputValueAtom = atom<string>("");
+/** 编辑器的结构化真相快照；inputValueAtom 只是发送/兼容协议的文本投影。 */
+export const inputSegmentsAtom = atom<InputSegment[]>([]);
 export const attachedImagesAtom = atom<AttachedImage[]>([]);
 export const activeSessionAtom = atom<ActiveSession | null>(null);
 export const pendingSessionCreationAtom = atom<PendingSessionCreation | null>(null);
@@ -432,6 +435,8 @@ export interface StagedSendInput {
 	/** Draft scope that owned the input when the user submitted it. */
 	draftKey: string | null;
 	rawText: string;
+	/** Structured editor snapshot captured before the new session gets a runtime id. */
+	inputSegments: InputSegment[];
 	hasOverride: boolean;
 	attachedImages: AttachedImage[];
 	mentionedFiles: MentionedFile[];

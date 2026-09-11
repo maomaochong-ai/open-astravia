@@ -68,6 +68,27 @@ export interface SerializedMemberMention {
 export interface SerializedInputSegments {
 	readonly text: string;
 	readonly memberMentions: readonly SerializedMemberMention[];
+	/** Exact offsets and kinds for rendering without parsing the serialized text again. */
+	readonly tokens: readonly SerializedInputToken[];
+}
+
+export type SerializedInputToken =
+	| ({ readonly kind: "skill" | "scene" | "connector"; readonly name: string } & SerializedInputTokenRange)
+	| ({
+			readonly kind: "file" | "image";
+			readonly path: string;
+			readonly isDirectory?: boolean;
+	  } & SerializedInputTokenRange)
+	| ({
+			readonly kind: "member";
+			readonly participantId: string;
+			readonly handle: string;
+	  } & SerializedInputTokenRange);
+
+interface SerializedInputTokenRange {
+	/** UTF-16 offsets into the serialized Markdown text. */
+	readonly start: number;
+	readonly end: number;
 }
 
 /**
@@ -79,6 +100,7 @@ export function serializeInputSegments(segments: readonly InputSegment[]): Seria
 	let out = "";
 	let previousKind: InputSegment["kind"] | null = null;
 	const memberMentions: SerializedMemberMention[] = [];
+	const tokens: SerializedInputToken[] = [];
 	for (const segment of segments) {
 		const piece = segmentToText(segment);
 		if (piece === "") continue;
@@ -95,10 +117,27 @@ export function serializeInputSegments(segments: readonly InputSegment[]): Seria
 				start,
 				end: out.length,
 			});
+			tokens.push({
+				kind: "member",
+				participantId: segment.memberId,
+				handle: segment.handle,
+				start,
+				end: out.length,
+			});
+		} else if (segment.kind === "skill" || segment.kind === "scene" || segment.kind === "connector") {
+			tokens.push({ kind: segment.kind, name: segment.name, start, end: out.length });
+		} else if (segment.kind === "file" || segment.kind === "image") {
+			tokens.push({
+				kind: segment.kind,
+				path: segment.path,
+				...(segment.kind === "file" && segment.isDirectory ? { isDirectory: true } : {}),
+				start,
+				end: out.length,
+			});
 		}
 		previousKind = segment.kind;
 	}
-	return { text: out, memberMentions };
+	return { text: out, memberMentions, tokens };
 }
 
 export function segmentsToText(segments: readonly InputSegment[]): string {

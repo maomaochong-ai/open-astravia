@@ -430,6 +430,7 @@ export { SkillPromptAreaView } from "./SkillPromptAreaView";
 export type { SuggestionBubblesViewProps } from "./SuggestionBubblesView";
 export { SuggestionBubblesView } from "./SuggestionBubblesView";
 export type {
+	InlineTokenAnnotation,
 	InlineTokenPiece,
 	InlineTokenSupport,
 	TextBlockViewLabels,
