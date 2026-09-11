@@ -10,7 +10,7 @@ export type { CollapsePanelProps } from "./CollapsePanel";
 export { CollapsePanel } from "./CollapsePanel";
 export type { MacKeyboardPreviewProps, MacKeyId } from "./MacKeyboardPreview";
 export { MacKeyboardPreview } from "./MacKeyboardPreview";
-export type { MarkdownTableLabels, MarkdownTableProps } from "./MarkdownTable";
+export type { MarkdownTableProps } from "./MarkdownTable";
 export {
 	MarkdownTable,
 	MarkdownTableBody,

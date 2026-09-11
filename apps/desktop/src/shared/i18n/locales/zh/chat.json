@@ -211,10 +211,6 @@
 		"cancelledMessage": "用户已取消，未作答",
 		"defaultQuestionLabel": "问题 {{number}}"
 	},
-	"markdownTable": {
-		"copyCsv": "复制为 CSV",
-		"copyMarkdown": "复制为 Markdown 表格"
-	},
 	"mcpElicitation": {
 		"title": "MCP 请求信息",
 		"source": "来自 {{server}}",

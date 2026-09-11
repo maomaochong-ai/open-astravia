@@ -8,7 +8,6 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { readTableCells, toCsv, toMarkdown } from "./markdown-table-clipboard";
 
 /**
  * Markdown 表格的统一渲染壳。chat 气泡与 activity 预览共用同一份实现。
@@ -19,18 +18,10 @@ import { readTableCells, toCsv, toMarkdown } from "./markdown-table-clipboard";
  * 自然宽度排布，容器宽度始终等于正文栏（与文字左右对齐），超出部分横向滚动。
  */
 
-export interface MarkdownTableLabels {
-	copyMarkdown: string;
-	copyCsv: string;
-	copied: string;
-}
-
 export interface MarkdownTableProps {
 	children: ReactNode;
 	/** 正文字号跟随宿主：chat 用 13px，activity 预览用 12px。 */
 	fontSizeClass?: string;
-	/** 不传则不渲染工具条（例如导出快照里没有可交互的复制按钮）。 */
-	labels?: MarkdownTableLabels;
 }
 
 interface OverflowState {
@@ -104,74 +95,6 @@ function useOverflowState(scrollRef: React.RefObject<HTMLDivElement | null>): Ov
 	return overflow;
 }
 
-const TOOLBAR_BUTTON_CLASS =
-	"inline-flex h-6 items-center gap-1 rounded-full bg-background/70 px-2 text-[11px] font-medium text-muted-foreground/70 backdrop-blur-sm transition-colors hover:bg-muted hover:text-foreground";
-
-function TableToolbar({
-	labels,
-	getTable,
-}: {
-	labels: MarkdownTableLabels;
-	getTable: () => HTMLTableElement | null;
-}): JSX.Element {
-	const [copied, setCopied] = useState<"markdown" | "csv" | null>(null);
-	const timerRef = useRef<number | null>(null);
-
-	useEffect(() => {
-		return () => {
-			if (timerRef.current !== null) window.clearTimeout(timerRef.current);
-		};
-	}, []);
-
-	const copy = useCallback(
-		(kind: "markdown" | "csv") => {
-			const table = getTable();
-			if (!table) return;
-			const rows = readTableCells(table);
-			const text = kind === "markdown" ? toMarkdown(rows) : toCsv(rows);
-			void navigator.clipboard.writeText(text).then(() => {
-				setCopied(kind);
-				if (timerRef.current !== null) window.clearTimeout(timerRef.current);
-				timerRef.current = window.setTimeout(() => setCopied(null), 1500);
-			});
-		},
-		[getTable],
-	);
-
-	return (
-		<div className="pointer-events-none absolute right-2 top-2 z-10 flex gap-1 opacity-0 transition-opacity group-hover/table:pointer-events-auto group-hover/table:opacity-100">
-			<button
-				type="button"
-				className={TOOLBAR_BUTTON_CLASS}
-				title={labels.copyMarkdown}
-				onClick={() => copy("markdown")}
-			>
-				<span
-					className={cn(
-						copied === "markdown" ? "icon-[mdi--check]" : "icon-[mdi--language-markdown-outline]",
-						"h-3.5 w-3.5",
-					)}
-				/>
-				{copied === "markdown" ? labels.copied : "MD"}
-			</button>
-			<button
-				type="button"
-				className={TOOLBAR_BUTTON_CLASS}
-				title={labels.copyCsv}
-				onClick={() => copy("csv")}
-			>
-				<span
-					className={cn(
-						copied === "csv" ? "icon-[mdi--check]" : "icon-[mdi--table-arrow-right]",
-						"h-3.5 w-3.5",
-					)}
-				/>
-				{copied === "csv" ? labels.copied : "CSV"}
-			</button>
-		</div>
-	);
-}
-
 /**
  * 横向可滚动的阴影提示。用 inset box-shadow 而不是 mask 渐隐：
  * 表格有斑马纹与边框，mask 会把边框一起淡掉，看着像渲染缺陷。
@@ -186,19 +109,13 @@ function overflowShadow(overflow: OverflowState): string | undefined {
 export const MarkdownTable = memo(function MarkdownTable({
 	children,
 	fontSizeClass = "text-[13px]",
-	labels,
 }: MarkdownTableProps): JSX.Element {
 	const scrollRef = useRef<HTMLDivElement | null>(null);
 	const overflow = useOverflowState(scrollRef);
-	const getTable = useCallback(
-		() => scrollRef.current?.querySelector("table") ?? null,
-		[],
-	);
 
 	return (
 		<div className="my-3">
-			<div className="group/table md-table-shadow-host relative" data-md-table-frame="">
-				{labels ? <TableToolbar labels={labels} getTable={getTable} /> : null}
+			<div className="md-table-shadow-host relative" data-md-table-frame="">
 				<div
 					ref={scrollRef}
 					className="max-h-[70vh] overflow-auto overscroll-x-contain rounded-xl border border-border/60 bg-muted p-[3px]"

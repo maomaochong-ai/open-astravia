@@ -70,8 +70,6 @@ export function useRendererMarkdownModel(
 		() => ({
 			copy: t("copyButton.label"),
 			copied: t("copyButton.copied"),
-			copyTableMarkdown: t("markdownTable.copyMarkdown"),
-			copyTableCsv: t("markdownTable.copyCsv"),
 		}),
 		[t],
 	);

@@ -211,10 +211,6 @@
 		"cancelledMessage": "Cancelled by user, not answered",
 		"defaultQuestionLabel": "Question {{number}}"
 	},
-	"markdownTable": {
-		"copyCsv": "Copy as CSV",
-		"copyMarkdown": "Copy as Markdown table"
-	},
 	"mcpElicitation": {
 		"title": "MCP information request",
 		"source": "From {{server}}",

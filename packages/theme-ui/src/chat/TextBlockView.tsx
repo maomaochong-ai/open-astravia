@@ -412,8 +412,6 @@ export interface TextBlockViewLabels {
 	copy: string;
 	copied: string;
 	/** 表格工具条：复制成 GFM 表格 / CSV。 */
-	copyTableMarkdown: string;
-	copyTableCsv: string;
 }
 
 export interface TextBlockViewProps {
@@ -497,23 +495,12 @@ export const TextBlockView = memo(function TextBlockView({
 }: TextBlockViewProps): JSX.Element {
 	const { displayText, animateChunks } = useStreamingDisplayText(text, isStreamingTail);
 
-	const tableLabels = useMemo(
-		() => ({
-			copyMarkdown: labels.copyTableMarkdown,
-			copyCsv: labels.copyTableCsv,
-			copied: labels.copied,
-		}),
-		[labels.copyTableMarkdown, labels.copyTableCsv, labels.copied],
-	);
-
 	const labelsRef = useRef(labels);
-	const tableLabelsRef = useRef(tableLabels);
 	const getFileIconClassRef = useRef(getFileIconClass);
 	const onOpenFileRef = useRef(onOpenFile);
 	const onOpenUrlRef = useRef(onOpenUrl);
 	const inlineTokensRef = useRef(inlineTokens);
 	labelsRef.current = labels;
-	tableLabelsRef.current = tableLabels;
 	getFileIconClassRef.current = getFileIconClass;
 	onOpenFileRef.current = onOpenFile;
 	onOpenUrlRef.current = onOpenUrl;
@@ -561,9 +548,7 @@ export const TextBlockView = memo(function TextBlockView({
 					{children}
 				</blockquote>
 			),
-			table: ({ children }) => (
-				<MarkdownTable labels={tableLabelsRef.current}>{children}</MarkdownTable>
-			),
+			table: ({ children }) => <MarkdownTable>{children}</MarkdownTable>,
 			thead: ({ children }) => <MarkdownTableHead>{children}</MarkdownTableHead>,
 			tbody: ({ children }) => <MarkdownTableBody>{children}</MarkdownTableBody>,
 			tr: ({ children }) => <MarkdownTableRow>{children}</MarkdownTableRow>,
