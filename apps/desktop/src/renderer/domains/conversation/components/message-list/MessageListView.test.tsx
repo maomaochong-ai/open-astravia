@@ -1,13 +1,17 @@
 // @vitest-environment jsdom
 
 import { cleanup, render, screen } from "@testing-library/react";
+import type { Usage } from "@vetta/ai";
 import { createConversationAgentMessage } from "@shared/conversation";
 import userEvent from "@testing-library/user-event";
 import { type ComponentProps, Fragment, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MessageListView } from "./MessageListView";
 
-const captured = vi.hoisted(() => ({ virtuosoProps: undefined as Record<string, unknown> | undefined }));
+const captured = vi.hoisted(() => ({
+	virtuosoProps: undefined as Record<string, unknown> | undefined,
+	messageItemProps: [] as Array<Record<string, unknown>>,
+}));
 
 vi.mock("react-virtuoso", () => ({
 	Virtuoso: (props: Record<string, unknown>) => {
@@ -77,11 +81,14 @@ vi.mock("./ForkOriginBanner", () => ({
 }));
 vi.mock("./MessageItem", () => ({
 	ExportMessageList: () => null,
-	MessageItem: ({ message, pendingLabel }: { message: { id: string }; pendingLabel?: string }) => (
-		<div data-testid="full-message" data-pending-label={pendingLabel}>
-			{message.id}
-		</div>
-	),
+	MessageItem: (props: { message: { id: string }; pendingLabel?: string }) => {
+		captured.messageItemProps.push(props as Record<string, unknown>);
+		return (
+			<div data-testid="full-message" data-pending-label={props.pendingLabel}>
+				{props.message.id}
+			</div>
+		);
+	},
 	ModelSwitchBoundary: () => null,
 }));
 vi.mock("./MessageListFooter", () => ({ MessageListFooter: () => null }));
@@ -132,6 +139,7 @@ describe("MessageListView viewport phases", () => {
 	beforeEach(() => {
 		cleanup();
 		captured.virtuosoProps = undefined;
+		captured.messageItemProps = [];
 	});
 
 	it("首屏与扩大预渲染阶段都使用同一套完整消息组件", () => {
@@ -234,4 +242,31 @@ describe("MessageListView viewport phases", () => {
 		const host = screen.getByRole("button", { name: "message timeline" }).closest(".absolute");
 		expect(host?.className).toContain("@max-[52rem]:hidden");
 	});
+
+	it("把所有历史助手消息的 usage 汇总后传给 Token 面板", () => {
+		const firstUsage = usage({ input: 20, output: 10 });
+		const secondUsage = usage({ input: 100, output: 70 });
+		const viewProps = props("expanded");
+		viewProps.model.messages = [
+			createConversationAgentMessage({ id: "message-1", text: "first", blocks: [], usages: [firstUsage] }),
+			createConversationAgentMessage({ id: "message-2", text: "second", blocks: [], usages: [secondUsage] }),
+		];
+
+		render(<MessageListView {...viewProps} />);
+
+		expect(captured.messageItemProps).toHaveLength(2);
+		expect(captured.messageItemProps[0].sessionUsages).toEqual([firstUsage, secondUsage]);
+		expect(captured.messageItemProps[1].sessionUsages).toEqual([firstUsage, secondUsage]);
+	});
 });
+
+function usage(overrides: Pick<Usage, "input" | "output">): Usage {
+	return {
+		input: overrides.input,
+		output: overrides.output,
+		cacheRead: 0,
+		cacheWrite: 0,
+		totalTokens: overrides.input + overrides.output,
+		cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+	};
+}

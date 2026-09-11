@@ -2,6 +2,7 @@ import { BotAvatar } from "@shared/components/BotAvatar";
 import type { ConversationParticipantViewModel } from "@shared/conversation";
 import type { ChatAgentMessageViewModel, ChatToolCallPresentationViewModel } from "@shared/store/atoms";
 import { useThemeSurface } from "@vetta/theme-sdk/appearance";
+import type { Usage } from "@vetta/ai/protocol";
 import { ThemeSurface } from "@vetta/theme-ui/appearance";
 import {
 	AssistantMessage as AssistantMessagePrimitive,
@@ -40,6 +41,7 @@ interface AssistantMessageProps {
 	onTeamMemberOpen?: (memberId: string) => void;
 	pendingLabel?: string;
 	participant?: ConversationParticipantViewModel;
+	sessionUsages?: readonly Usage[];
 }
 
 export const AssistantMessage = memo(function AssistantMessage({
@@ -50,6 +52,7 @@ export const AssistantMessage = memo(function AssistantMessage({
 	onTeamMemberOpen,
 	exportMode = false,
 	participant,
+	sessionUsages,
 }: AssistantMessageProps) {
 	const { t } = useTranslation("chat");
 	const surface = useThemeSurface("chat.assistantMessage");
@@ -274,7 +277,9 @@ export const AssistantMessage = memo(function AssistantMessage({
 						{(message.endedAt ?? message.timestamp) && (
 							<RelativeTimeLabel endedAt={(message.endedAt ?? message.timestamp) as number} />
 						)}
-						{showTokenUsage && <MessageTokenUsage usages={message.usages ?? []} />}
+						{showTokenUsage && (
+							<MessageTokenUsage usages={message.usages ?? []} sessionUsages={sessionUsages} />
+						)}
 					</div>
 								) : null}
 								{isPredicting ? (

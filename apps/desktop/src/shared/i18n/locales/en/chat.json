@@ -546,8 +546,12 @@
 			"emptyUser": "(No text)"
 		},
 		"tokenUsage": {
-			"trigger": "View token usage for this turn",
-			"title": "Turn tokens",
+			"trigger": "View token usage",
+			"sessionTitle": "Session tokens",
+			"messageTitle": "Current message tokens",
+			"scopeLabel": "Token usage scope",
+			"session": "Session total",
+			"message": "Current message",
 			"modelCalls": "{{count}} model calls",
 			"total": "Total",
 			"prompt": "Prompt tokens",

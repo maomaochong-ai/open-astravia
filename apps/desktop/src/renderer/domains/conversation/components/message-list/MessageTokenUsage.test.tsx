@@ -13,8 +13,12 @@ class TestResizeObserver implements ResizeObserver {
 vi.stubGlobal("ResizeObserver", TestResizeObserver);
 
 const labels: Record<string, string> = {
-	"messageList.tokenUsage.trigger": "查看本轮 Token 用量",
-	"messageList.tokenUsage.title": "本轮 Token",
+	"messageList.tokenUsage.trigger": "查看 Token 用量",
+	"messageList.tokenUsage.sessionTitle": "会话 Token",
+	"messageList.tokenUsage.messageTitle": "当前消息 Token",
+	"messageList.tokenUsage.scopeLabel": "Token 统计范围",
+	"messageList.tokenUsage.session": "会话总计",
+	"messageList.tokenUsage.message": "当前消息",
 	"messageList.tokenUsage.total": "总计",
 	"messageList.tokenUsage.prompt": "Prompt Token",
 	"messageList.tokenUsage.uncachedInput": "输入",
@@ -89,13 +93,14 @@ describe("MessageTokenUsage", () => {
 			/>,
 		);
 
-		const trigger = screen.getByRole("button", { name: "查看本轮 Token 用量" });
+		const trigger = screen.getByRole("button", { name: "查看 Token 用量" });
 		await user.hover(trigger);
 		expect(screen.queryByRole("dialog")).toBeNull();
 
 		await user.click(trigger);
 		const panel = await screen.findByRole("dialog");
-		expect(within(panel).getByText("本轮 Token")).toBeTruthy();
+		expect(within(panel).getByText("会话 Token")).toBeTruthy();
+		expect(within(panel).getByRole("tab", { name: "会话总计" }).getAttribute("aria-selected")).toBe("true");
 		expect(within(panel).getByText("2 次模型调用")).toBeTruthy();
 		expect(within(panel).getByText("230")).toBeTruthy();
 		expect(within(panel).getByText("60%")).toBeTruthy();
@@ -118,6 +123,25 @@ describe("MessageTokenUsage", () => {
 		expect(within(panel).getByText("todo_write（新增）、read（内容变化）")).toBeTruthy();
 	});
 
+	it("defaults to the session total and switches to the current message usage", async () => {
+		const user = userEvent.setup();
+		const currentMessageUsages = [usage({ input: 20, output: 10 })];
+		const sessionUsages = [...currentMessageUsages, usage({ input: 100, output: 70 })];
+		render(<MessageTokenUsage usages={currentMessageUsages} sessionUsages={sessionUsages} />);
+
+		await user.click(screen.getByRole("button", { name: "查看 Token 用量" }));
+		const panel = await screen.findByRole("dialog");
+		expect(within(panel).getByText("会话 Token")).toBeTruthy();
+		expect(within(panel).getByText("200")).toBeTruthy();
+		expect(within(panel).getByText("2 次模型调用")).toBeTruthy();
+
+		await user.click(within(panel).getByRole("tab", { name: "当前消息" }));
+		expect(within(panel).getByText("当前消息 Token")).toBeTruthy();
+		expect(within(panel).getByText("30")).toBeTruthy();
+		expect(within(panel).getByText("1 次模型调用")).toBeTruthy();
+		expect(within(panel).getByRole("tab", { name: "当前消息" }).getAttribute("aria-selected")).toBe("true");
+	});
+
 	it("explains that write metrics are unavailable for read-only providers", async () => {
 		const user = userEvent.setup();
 		render(
@@ -126,7 +150,7 @@ describe("MessageTokenUsage", () => {
 			/>,
 		);
 
-		await user.click(screen.getByRole("button", { name: "查看本轮 Token 用量" }));
+		await user.click(screen.getByRole("button", { name: "查看 Token 用量" }));
 		const panel = await screen.findByRole("dialog");
 		await user.click(within(panel).getByRole("button", { name: "更多参数" }));
 		expect(within(panel).getByText("未上报（只读）")).toBeTruthy();
@@ -140,7 +164,7 @@ describe("MessageTokenUsage", () => {
 			/>,
 		);
 
-		await user.click(screen.getByRole("button", { name: "查看本轮 Token 用量" }));
+		await user.click(screen.getByRole("button", { name: "查看 Token 用量" }));
 		const panel = await screen.findByRole("dialog");
 		// 总计与「输出」都落在 2.4M。
 		expect(within(panel).getAllByText("2.4M")).toHaveLength(2);
@@ -153,7 +177,7 @@ describe("MessageTokenUsage", () => {
 		const user = userEvent.setup();
 		render(<MessageTokenUsage usages={[usage({ input: 40, output: 10 })]} />);
 
-		await user.click(screen.getByRole("button", { name: "查看本轮 Token 用量" }));
+		await user.click(screen.getByRole("button", { name: "查看 Token 用量" }));
 		const panel = await screen.findByRole("dialog");
 		// 缓存读取与缓存写入均为 0。
 		expect(within(panel).getAllByText("--")).toHaveLength(2);
@@ -163,7 +187,7 @@ describe("MessageTokenUsage", () => {
 		const user = userEvent.setup();
 		render(<MessageTokenUsage usages={[usage({ input: 40, output: 10 })]} />);
 
-		await user.click(screen.getByRole("button", { name: "查看本轮 Token 用量" }));
+		await user.click(screen.getByRole("button", { name: "查看 Token 用量" }));
 		await screen.findByRole("dialog");
 
 		fireEvent.scroll(document.body);

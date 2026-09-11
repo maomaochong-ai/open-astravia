@@ -546,8 +546,12 @@
 			"emptyUser": "（没有文字）"
 		},
 		"tokenUsage": {
-			"trigger": "查看本轮 Token 用量",
-			"title": "本轮 Token",
+			"trigger": "查看 Token 用量",
+			"sessionTitle": "会话 Token",
+			"messageTitle": "当前消息 Token",
+			"scopeLabel": "Token 统计范围",
+			"session": "会话总计",
+			"message": "当前消息",
 			"modelCalls": "{{count}} 次模型调用",
 			"total": "总计",
 			"prompt": "Prompt Token",
