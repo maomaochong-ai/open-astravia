@@ -1,5 +1,5 @@
 import type { AgentBlueprint } from "@vetta/agent-team";
-import { BUILTIN_AGENT_BLUEPRINTS, findAgentBlueprint } from "@vetta/agent-team";
+import { BUILTIN_AGENT_BLUEPRINTS, findAgentBlueprint, MIGRATED_PLUGIN_BLUEPRINT_IDS } from "@vetta/agent-team";
 import type { PluginAgentPreset, PluginTeamPreset } from "./plugin-agent-presets.js";
 
 /**
@@ -36,8 +36,16 @@ class AgentBlueprintRegistry {
 		return this.enabledPlugins;
 	}
 
+	/**
+	 * 解析顺序：内置 → 插件 → 迁移映射。
+	 *
+	 * 最后一档是给存量档案的：master / executor / researcher 已经搬进「预设智能体」插件，
+	 * 老档案里写的还是内置 id，折算过去就不必动用户数据。插件被禁用时这一档同样解析不到，
+	 * 语义与其它插件智能体一致。
+	 */
 	resolve(id: string): AgentBlueprint | undefined {
-		return findAgentBlueprint(id) ?? this.byId.get(id);
+		const migrated = MIGRATED_PLUGIN_BLUEPRINT_IDS[id];
+		return findAgentBlueprint(id) ?? this.byId.get(id) ?? (migrated ? this.byId.get(migrated) : undefined);
 	}
 
 	list(): readonly AgentBlueprint[] {
@@ -55,13 +63,12 @@ class AgentBlueprintRegistry {
 
 export const agentBlueprintRegistry = new AgentBlueprintRegistry();
 
-/** Blueprint 钉死的插件能力，按当前全局启用集合展开；没有钉死项时返回 undefined。 */
+/** Blueprint 钉死的插件能力；没有钉死项时返回 undefined。 */
 export function pinnedAbilityContext(
 	blueprint: { readonly pinnedPlugins?: readonly string[] } | undefined,
-): { readonly plugins: readonly string[]; readonly enabledPlugins: readonly string[] } | undefined {
+): { readonly plugins: readonly string[] } | undefined {
 	const plugins = blueprint?.pinnedPlugins ?? [];
-	if (plugins.length === 0) return undefined;
-	return { plugins, enabledPlugins: agentBlueprintRegistry.listEnabledPlugins() };
+	return plugins.length > 0 ? { plugins } : undefined;
 }
 
 /** 内置 + 当前已启用插件贡献的 blueprint。找不到即视为对应插件不可用。 */
