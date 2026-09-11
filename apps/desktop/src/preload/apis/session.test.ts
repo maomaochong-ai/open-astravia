@@ -36,6 +36,16 @@ describe("createSessionApi trace propagation", () => {
 		expect(invoke).toHaveBeenNthCalledWith(3, "vetta:session:mcp-tasks-clear-finished", "session-1");
 	});
 
+	it("exposes queued context compaction without using the interrupting prompt path", async () => {
+		const invoke = vi.fn(async () => ({ status: "queued", id: "compact-1", pendingCount: 1 }));
+		const ipc = { invoke } as unknown as IpcRenderer;
+		const session = createSessionApi(ipc).session;
+
+		await session.queueContextCompaction("session-1");
+
+		expect(invoke).toHaveBeenCalledWith("vetta:session:queue-context-compaction", "session-1");
+	});
+
 	it("exposes the MCP Apps surface proxy channels", async () => {
 		const invoke = vi.fn(async () => undefined);
 		const ipc = { invoke } as unknown as IpcRenderer;

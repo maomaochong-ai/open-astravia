@@ -22,6 +22,7 @@ import {
 	type SessionContextRecord,
 	type SessionInputQueueMode,
 	type SessionInputQueueSnapshot,
+	type SessionQueueOperation,
 	SystemClock,
 	TurnPipeline,
 } from "../kernel/index.js";
@@ -135,6 +136,7 @@ export class ComposedRuntimeFactory<TCreateOptions> implements KernelRuntimeFact
 		const runtimeContext = new BufferedRuntimeSessionContext();
 		let abortCurrentRun = (): void => {};
 		let requestContinuation: ((records: readonly SessionContextRecord[]) => Promise<void>) | undefined;
+		let executeQueueOperation: ((operation: SessionQueueOperation, signal: AbortSignal) => Promise<void>) | undefined;
 		const pendingContinuationContext: SessionContextRecord[] = [];
 		let observationSessionId: string | undefined;
 		const pendingObservations: RuntimeSessionObservationEvent[] = [];
@@ -231,6 +233,12 @@ export class ComposedRuntimeFactory<TCreateOptions> implements KernelRuntimeFact
 							console.warn("[runtime-core] failed to publish queue.changed", error);
 						});
 				},
+				onQueueOperation: async (queuedOperation: SessionQueueOperation, signal: AbortSignal) => {
+					if (!executeQueueOperation) {
+						throw new Error(`Queued operation is unavailable: ${queuedOperation.type}`);
+					}
+					await executeQueueOperation(queuedOperation, signal);
+				},
 			};
 			const session =
 				operation === "create"
@@ -260,6 +268,40 @@ export class ComposedRuntimeFactory<TCreateOptions> implements KernelRuntimeFact
 						committer: contextCompactionCommitter,
 					})
 				: undefined;
+			executeQueueOperation = async (queuedOperation, signal) => {
+				if (queuedOperation.type !== "context.compact" || !contextController) {
+					throw new Error(`Queued operation is unavailable: ${queuedOperation.type}`);
+				}
+				await reportObservation({ type: "compaction.start", reason: "manual", source: "runtime-core" });
+				try {
+					const result = await contextController.compactQueued(
+						queuedOperation.customInstructions === undefined
+							? {}
+							: { customInstructions: queuedOperation.customInstructions },
+						signal,
+					);
+					const state = resources.stateSource.read();
+					await reportObservation({
+						type: "compaction.end",
+						success: true,
+						reason: "manual",
+						tokensBefore: result.tokensBefore,
+						contextPercent: state.contextPercent,
+						contextTokens: state.contextTokens,
+						contextWindow: state.contextWindow,
+						source: "runtime-core",
+					});
+				} catch (error) {
+					await reportObservation({
+						type: "compaction.end",
+						success: false,
+						reason: "manual",
+						errorMessage: error instanceof Error ? error.message : String(error),
+						source: "runtime-core",
+					});
+					throw error;
+				}
+			};
 			const sessionPeripherals = resources.createSessionPeripherals?.(session);
 			const dispose = resources.dispose;
 			const assembly: KernelRuntimeAssembly = {

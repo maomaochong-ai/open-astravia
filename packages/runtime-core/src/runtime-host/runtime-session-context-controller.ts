@@ -42,12 +42,31 @@ export class KernelRuntimeSessionContextController implements RuntimeSessionCont
 	}
 
 	async compact(request: RuntimeContextCompactionRequest = {}): Promise<RuntimeContextCompactionResult> {
+		return this.runCompaction(request, undefined, true);
+	}
+
+	/** 队列已保证 Session 位于自然 Turn 边界；沿用同一压缩事务但不取消刚完成的 Turn。 */
+	async compactQueued(
+		request: RuntimeContextCompactionRequest = {},
+		signal?: AbortSignal,
+	): Promise<RuntimeContextCompactionResult> {
+		return this.runCompaction(request, signal, false);
+	}
+
+	private async runCompaction(
+		request: RuntimeContextCompactionRequest,
+		externalSignal: AbortSignal | undefined,
+		cancelSession: boolean,
+	): Promise<RuntimeContextCompactionResult> {
 		if (this.activeController) throw sessionBusyError();
 		const controller = new AbortController();
+		const abortFromExternal = (): void => controller.abort(externalSignal?.reason);
+		externalSignal?.addEventListener("abort", abortFromExternal, { once: true });
+		if (externalSignal?.aborted) abortFromExternal();
 		this.activeController = controller;
 		let lease: Awaited<ReturnType<RuntimeSnapshotProvider["acquire"]>> | undefined;
 		try {
-			await this.options.session.cancel("Manual context compaction");
+			if (cancelSession) await this.options.session.cancel("Manual context compaction");
 			controller.signal.throwIfAborted();
 			lease = await this.options.snapshotProvider.acquire({
 				sessionId: this.options.session.id,
@@ -90,6 +109,7 @@ export class KernelRuntimeSessionContextController implements RuntimeSessionCont
 			try {
 				await lease?.release();
 			} finally {
+				externalSignal?.removeEventListener("abort", abortFromExternal);
 				if (this.activeController === controller) this.activeController = undefined;
 			}
 		}

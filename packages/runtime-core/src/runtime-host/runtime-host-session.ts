@@ -197,6 +197,17 @@ export class RuntimeHostSession implements RuntimeActiveSession {
 		);
 	}
 
+	queueContextCompaction(customInstructions?: string): {
+		readonly status: "queued";
+		readonly id?: string;
+		readonly pendingCount: number;
+	} {
+		return this.host.queueSessionContextCompaction(
+			this.sessionId,
+			customInstructions === undefined ? undefined : { customInstructions },
+		);
+	}
+
 	summarizeContext(request: RuntimeContextSummaryRequest): Promise<RuntimeContextSummaryResult> {
 		return this.host.summarizeSessionContext(this.sessionId, request);
 	}

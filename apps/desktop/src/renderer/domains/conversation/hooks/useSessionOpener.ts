@@ -604,6 +604,7 @@ export function useSessionOpener(): SessionOpenerController {
 							id: entry.id,
 							displayText: entry.displayText,
 							behavior: entry.behavior,
+							kind: entry.kind ?? "message",
 						})),
 					});
 					queueStore.set(setQueuePausedAtom, { runtimeId: sessionId, paused: state.paused });

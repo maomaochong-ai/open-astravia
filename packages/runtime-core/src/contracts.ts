@@ -215,7 +215,7 @@ export interface ActiveToolsUpdateEvent extends SessionEventBase {
 
 export interface CompactionStartEvent extends SessionEventBase {
 	type: "compaction.start";
-	reason: "threshold" | "overflow";
+	reason: "threshold" | "overflow" | "manual";
 	contextTokens?: number;
 	contextWindow?: number;
 	thresholdTokens?: number;
@@ -224,7 +224,7 @@ export interface CompactionStartEvent extends SessionEventBase {
 export interface CompactionEndEvent extends SessionEventBase {
 	type: "compaction.end";
 	success: boolean;
-	reason?: "threshold" | "overflow";
+	reason?: "threshold" | "overflow" | "manual";
 	tokensBefore?: number;
 	/** Compaction commit 后的活动模型上下文占用。 */
 	contextPercent?: number | null;
@@ -296,6 +296,7 @@ export interface QueueChangedEvent extends SessionEventBase {
 	entries: Array<{
 		id: string;
 		behavior: "steer" | "followUp";
+		kind?: "message" | "context_compaction";
 		displayText: string;
 	}>;
 	/** 完整可序列化快照，宿主持久化 sidecar 用；renderer 无需消费。 */

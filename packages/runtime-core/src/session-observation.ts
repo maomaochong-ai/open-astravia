@@ -110,7 +110,7 @@ export type RuntimeSessionObservationEvent = RuntimeSessionObservationBase &
 		| { readonly type: "active_tools_update"; readonly activeToolNames: readonly string[] }
 		| {
 				readonly type: "compaction.start";
-				readonly reason: "threshold" | "overflow";
+				readonly reason: "threshold" | "overflow" | "manual";
 				readonly contextTokens?: number;
 				readonly contextWindow?: number;
 				readonly thresholdTokens?: number;
@@ -118,7 +118,7 @@ export type RuntimeSessionObservationEvent = RuntimeSessionObservationBase &
 		| {
 				readonly type: "compaction.end";
 				readonly success: boolean;
-				readonly reason?: "threshold" | "overflow";
+				readonly reason?: "threshold" | "overflow" | "manual";
 				readonly tokensBefore?: number;
 				readonly contextPercent?: number | null;
 				readonly contextTokens?: number | null;

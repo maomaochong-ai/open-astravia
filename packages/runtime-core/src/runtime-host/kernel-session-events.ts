@@ -69,6 +69,7 @@ export function mapKernelEventToSessionEvents(event: KernelEvent): SessionEvent[
 					.map((entry) => ({
 						id: entry.id,
 						behavior: entry.behavior,
+						kind: entry.input.operation?.type === "context.compact" ? "context_compaction" : "message",
 						displayText: entry.input.message
 							? messageText(entry.input.message)
 							: (entry.input.request?.displayText ?? ""),

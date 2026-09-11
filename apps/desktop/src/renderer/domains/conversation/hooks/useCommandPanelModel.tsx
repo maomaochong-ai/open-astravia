@@ -1,13 +1,23 @@
 import type { SkillInfo } from "@preload/api";
 import { useShortcutScope, type ShortcutBinding } from "@shared/shortcuts";
+import { activeSessionAtom } from "@shared/store/atoms";
+import { getQueueForSession, messageQueueBySessionAtom } from "@shared/store/message-queue-atoms";
+import { showToast } from "@shared/store/toast-atoms";
+import { useAtomValue } from "jotai";
 import { type RefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { CommandPanelLabels, CommandPanelProps } from "../components/command-panel/types";
+import type {
+	CommandPanelLabels,
+	CommandPanelOperationItem,
+	CommandPanelProps,
+} from "../components/command-panel/types";
 import type { ConnectorGridItem } from "./useConnectorGrid";
 import { useConnectorGrid } from "./useConnectorGrid";
 import { useInputActionBarModel } from "../components/useInputActionBarModel";
 import { skillIconOf, useSkillIconMap } from "./useSkillIconMap";
 import { useSkillList } from "./useSkillList";
+import { useDefaultContextRingModel } from "./useContextRingModel";
+import { focusInputEditor, removeInputTrigger } from "../components/input-bar/editor/inputEditorHandle";
 
 export interface CommandPanelModelInput {
 	open: boolean;
@@ -35,6 +45,18 @@ export function useCommandPanelModel({
 }: CommandPanelModelInput): CommandPanelModel {
 	const { t } = useTranslation("chat");
 	const normalizedFilter = filter.startsWith("/") ? filter.slice(1) : filter;
+	const activeSession = useAtomValue(activeSessionAtom);
+	const queueMap = useAtomValue(messageQueueBySessionAtom);
+	const contextRing = useDefaultContextRingModel(false);
+	const [queueingCompaction, setQueueingCompaction] = useState(false);
+	const queuedCompaction = activeSession
+		? getQueueForSession(queueMap, activeSession.runtimeId).some((item) => item.kind === "context_compaction")
+		: false;
+	const operationMatches =
+		normalizedFilter.length === 0 ||
+		["compact", "compaction", "context", "压缩", "上下文"].some((term) =>
+			term.includes(normalizedFilter.toLocaleLowerCase()),
+		);
 	// 预取：命令区第一次展开时不必再等扫盘，避免与高度动画抢主线程。
 	const { items } = useSkillList({
 		open,
@@ -69,28 +91,77 @@ export function useCommandPanelModel({
 		panelRef.current?.querySelector(`[data-index="${activeIndex}"]`)?.scrollIntoView({ block: "nearest" });
 	}, [activeIndex, open]);
 
+	const selectCompaction = useCallback(() => {
+		if (!activeSession || queueingCompaction || queuedCompaction || contextRing?.isCompacting) return;
+		setQueueingCompaction(true);
+		removeInputTrigger();
+		onClose();
+		focusInputEditor();
+		void window.vetta.session.queueContextCompaction(activeSession.runtimeId).catch((error) => {
+			console.warn("[useCommandPanelModel] queue context compaction failed", error);
+			showToast({
+				variant: "error",
+				title: t("slashPanel.compaction.errorTitle"),
+				message: error instanceof Error ? error.message : t("slashPanel.compaction.errorMessage"),
+			});
+		}).finally(() => setQueueingCompaction(false));
+	}, [activeSession, contextRing?.isCompacting, onClose, queuedCompaction, queueingCompaction, t]);
+
+	const operation = useMemo<CommandPanelOperationItem | undefined>(() => {
+		if (!activeSession || !operationMatches) return undefined;
+		const percent = contextRing ? Math.round(Math.min(100, Math.max(0, contextRing.percent))) : null;
+		const description = contextRing?.isCompacting
+			? t("slashPanel.compaction.compacting")
+			: queuedCompaction || queueingCompaction
+				? t("slashPanel.compaction.queued")
+				: percent === null
+					? t("slashPanel.compaction.descriptionUnknown")
+					: t("slashPanel.compaction.description", { percent });
+		return {
+			id: "__builtin_context_compaction__",
+			label: t("slashPanel.compaction.label"),
+			description,
+			contextRing: contextRing
+				? {
+						percent: contextRing.percent,
+						offset: contextRing.offset,
+						color: contextRing.color,
+						isCompacting: contextRing.isCompacting,
+						tooltip: contextRing.tooltip,
+					}
+				: null,
+			disabled: queuedCompaction || queueingCompaction || Boolean(contextRing?.isCompacting),
+			onSelect: selectCompaction,
+		};
+	}, [activeSession, contextRing, operationMatches, queuedCompaction, queueingCompaction, selectCompaction, t]);
+
 	const keyBindings = useMemo((): ShortcutBinding[] => {
+		const itemCount = items.length + (operation ? 1 : 0);
 		return [
 			{
 				key: "arrowdown",
 				run: () => {
-					if (items.length === 0) return;
+					if (itemCount === 0) return;
 					shouldScrollActiveIntoViewRef.current = true;
-					setActiveIndex((index) => (index + 1) % items.length);
+					setActiveIndex((index) => (index + 1) % itemCount);
 				},
 			},
 			{
 				key: "arrowup",
 				run: () => {
-					if (items.length === 0) return;
+					if (itemCount === 0) return;
 					shouldScrollActiveIntoViewRef.current = true;
-					setActiveIndex((index) => (index - 1 + items.length) % items.length);
+					setActiveIndex((index) => (index - 1 + itemCount) % itemCount);
 				},
 			},
 			{
 				key: "enter",
 				run: () => {
-					const target = items[activeIndex];
+					if (operation && activeIndex === 0) {
+						operation.onSelect();
+						return;
+					}
+					const target = items[activeIndex - (operation ? 1 : 0)];
 					if (target) selectSkill(target);
 				},
 			},
@@ -99,7 +170,7 @@ export function useCommandPanelModel({
 				run: () => onClose(),
 			},
 		];
-	}, [activeIndex, items, onClose, selectSkill]);
+	}, [activeIndex, items, onClose, operation, selectSkill]);
 
 	useShortcutScope({
 		id: "overlay:command-panel",
@@ -178,6 +249,7 @@ export function useCommandPanelModel({
 			filter: normalizedFilter,
 			items,
 			activeIndex,
+			operation,
 			connectors,
 			connectorColumns: columns,
 			actions,

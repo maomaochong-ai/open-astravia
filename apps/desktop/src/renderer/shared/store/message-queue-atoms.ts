@@ -9,6 +9,7 @@ export interface QueuedMessage {
 	id: string;
 	displayText: string;
 	behavior: "steer" | "followUp";
+	kind: "message" | "context_compaction";
 }
 
 /** Map<runtimeId, QueuedMessage[]>，按 session 的 runtimeId 隔离的队列镜像。 */

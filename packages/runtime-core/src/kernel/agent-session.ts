@@ -8,6 +8,7 @@ import type {
 	SessionInput,
 	SessionInputQueueMode,
 	SessionInputRequest,
+	SessionQueueOperation,
 	SessionSendOptions,
 	SessionSendResult,
 	SessionStreamingBehavior,
@@ -33,15 +34,21 @@ export interface CreateAgentSessionOptions {
 	readonly followUpMode?: SessionInputQueueMode;
 	/** 输入队列任何可观察变化后的同步回调；宿主用于镜像广播与持久化（ADR-0060）。 */
 	readonly onQueueChange?: (snapshot: SessionInputQueueSnapshot) => void;
+	/** 执行排到 follow-up 队首的宿主操作；操作不进入 Turn/模型消息。 */
+	readonly onQueueOperation?: (operation: SessionQueueOperation, signal: AbortSignal) => Promise<void>;
+	readonly onQueueOperationError?: (operation: SessionQueueOperation, error: unknown) => Promise<void> | void;
 }
 
 export class AgentSession {
 	private readonly identity: MutableTurnSessionIdentity;
 	private readonly pipeline: TurnPipeline;
 	private readonly inputQueue: SessionInputQueue;
+	private readonly onQueueOperation: CreateAgentSessionOptions["onQueueOperation"];
+	private readonly onQueueOperationError: CreateAgentSessionOptions["onQueueOperationError"];
 	private currentState: AgentSessionState = "idle";
 	private activeController: AbortController | undefined;
 	private activeTurn: Promise<SessionSendResult> | undefined;
+	private activeQueueOperation: { readonly id: string; readonly operation: SessionQueueOperation } | undefined;
 	private continuationRequested = false;
 	private continuationDrain: Promise<void> | undefined;
 	private inputRequestPreparer: RuntimeInputRequestPreparer | undefined;
@@ -61,6 +68,8 @@ export class AgentSession {
 			followUpMode: options.followUpMode,
 			onChange: options.onQueueChange,
 		});
+		this.onQueueOperation = options.onQueueOperation;
+		this.onQueueOperationError = options.onQueueOperationError;
 	}
 
 	static async create(options: CreateAgentSessionOptions): Promise<AgentSession> {
@@ -139,8 +148,9 @@ export class AgentSession {
 		if (this.currentState === "recovery_required") throw turnPersistenceError();
 		if (this.currentState !== "idle") {
 			if (!options.streamingBehavior) throw sessionBusyError();
-			const { id, pendingCount } = this.inputQueue.enqueueRequestWithId(options.streamingBehavior, request);
-			return { status: "queued", behavior: options.streamingBehavior, pendingCount, id };
+			const behavior = this.queueBehaviorAfterOperations(options.streamingBehavior);
+			const { id, pendingCount } = this.inputQueue.enqueueRequestWithId(behavior, request);
+			return { status: "queued", behavior, pendingCount, id };
 		}
 		return this.startRequest(request, preparer ?? this.inputRequestPreparer);
 	}
@@ -159,8 +169,9 @@ export class AgentSession {
 		if (this.currentState === "closed" || this.currentState === "closing") throw sessionClosedError();
 		if (this.currentState === "recovery_required") throw turnPersistenceError();
 		if (this.currentState === "idle") return { status: "idle" };
-		const { id, pendingCount } = this.inputQueue.enqueueRequestWithId(behavior, request);
-		return { status: "queued", behavior, pendingCount, id };
+		const queuedBehavior = this.queueBehaviorAfterOperations(behavior);
+		const { id, pendingCount } = this.inputQueue.enqueueRequestWithId(queuedBehavior, request);
+		return { status: "queued", behavior: queuedBehavior, pendingCount, id };
 	}
 
 	async continue(): Promise<TurnResult> {
@@ -223,11 +234,30 @@ export class AgentSession {
 			throw sessionClosedError();
 		}
 		if (this.currentState === "recovery_required") throw turnPersistenceError();
+		const queuedBehavior = this.queueBehaviorAfterOperations(behavior);
 		return {
 			status: "queued",
-			behavior,
-			pendingCount: this.inputQueue.enqueueContext(behavior, context),
+			behavior: queuedBehavior,
+			pendingCount: this.inputQueue.enqueueContext(queuedBehavior, context),
 		};
+	}
+
+	queueOperation(operation: SessionQueueOperation): QueuedSessionInputResult {
+		if (this.currentState === "closed" || this.currentState === "closing") {
+			throw sessionClosedError();
+		}
+		if (this.currentState === "recovery_required") throw turnPersistenceError();
+		if (this.activeQueueOperation?.operation.type === operation.type) {
+			return {
+				status: "queued",
+				behavior: "followUp",
+				pendingCount: this.inputQueue.pendingCount + 1,
+				id: this.activeQueueOperation.id,
+			};
+		}
+		const { id, pendingCount } = this.inputQueue.enqueueOperationWithId(operation);
+		this.startQueuedOperationIfHead();
+		return { status: "queued", behavior: "followUp", pendingCount, id };
 	}
 
 	queueNextTurnContext(context: readonly SessionContextRecord[]): void {
@@ -274,6 +304,7 @@ export class AgentSession {
 
 	restoreQueue(snapshot: SessionInputQueueSnapshot): void {
 		this.inputQueue.restore(snapshot);
+		this.startQueuedOperationIfHead();
 	}
 
 	/**
@@ -291,6 +322,7 @@ export class AgentSession {
 			throw sessionClosedError();
 		}
 		if (this.currentState === "recovery_required") throw turnPersistenceError();
+		if (this.activeQueueOperation) return { status: "missing" };
 		// 先取出条目再打断：确保这条消息绝不因中途失败而丢失在「已出队未发送」状态——
 		// takeById 失败即早退，成功后它只存在于本调用栈，随 startTurn 进入持久化。
 		const input = this.inputQueue.takeById(id);
@@ -320,6 +352,7 @@ export class AgentSession {
 		// contextWrite 让出事件循环期间可能有别的 send 抢先起了 turn；重查状态，
 		// 已在跑就把消费交给该 turn 的自然停止点。
 		if (this.currentState !== "idle") return undefined;
+		if (this.startQueuedOperationIfHead()) return undefined;
 		const head = this.inputQueue.takeFollowUpHead();
 		if (!head) return undefined;
 		return this.startQueuedInput(head);
@@ -384,8 +417,13 @@ export class AgentSession {
 			throw sessionClosedError();
 		}
 		if (this.currentState === "recovery_required") throw turnPersistenceError();
-		const { id, pendingCount } = this.inputQueue.enqueueWithId(behavior, input);
-		return { status: "queued", behavior, pendingCount, id };
+		const queuedBehavior = this.queueBehaviorAfterOperations(behavior);
+		const { id, pendingCount } = this.inputQueue.enqueueWithId(queuedBehavior, input);
+		return { status: "queued", behavior: queuedBehavior, pendingCount, id };
+	}
+
+	private queueBehaviorAfterOperations(behavior: SessionStreamingBehavior): SessionStreamingBehavior {
+		return this.activeQueueOperation || this.inputQueue.hasOperation() ? "followUp" : behavior;
 	}
 
 	private async startTurn(
@@ -454,6 +492,66 @@ export class AgentSession {
 		throw new Error("Queued input does not contain a message or request");
 	}
 
+	private startQueuedOperation(entry: {
+		readonly id: string;
+		readonly operation: SessionQueueOperation;
+	}): Promise<SessionSendResult> {
+		this.currentState = "running";
+		this.activeQueueOperation = entry;
+		const controller = new AbortController();
+		this.activeController = controller;
+		const work = (async (): Promise<SessionSendResult> => {
+			try {
+				if (!this.onQueueOperation) {
+					throw new Error(`Queued operation is unavailable: ${entry.operation.type}`);
+				}
+				await this.onQueueOperation(entry.operation, controller.signal);
+			} catch (error) {
+				try {
+					await this.onQueueOperationError?.(entry.operation, error);
+				} catch (reportError) {
+					console.warn("[runtime-core] failed to report queued operation error", reportError);
+				}
+			} finally {
+				if (this.activeQueueOperation?.id === entry.id) this.activeQueueOperation = undefined;
+				this.finishActiveTurn(true);
+				this.scheduleQueueAfterOperation();
+			}
+			return { status: "handled", sessionId: this.id };
+		})();
+		this.activeTurn = work;
+		return work;
+	}
+
+	private startQueuedOperationIfHead(): boolean {
+		if (this.currentState !== "idle" || this.inputQueue.paused || !this.inputQueue.peekFollowUpOperation()) {
+			return false;
+		}
+		const entry = this.inputQueue.takeFollowUpOperationHead();
+		if (!entry) return false;
+		void this.startQueuedOperation(entry);
+		return true;
+	}
+
+	private scheduleQueueAfterOperation(): void {
+		queueMicrotask(() => {
+			if (this.currentState !== "idle" || this.inputQueue.paused) return;
+			const entry = this.inputQueue.takeFollowUpOperationHead();
+			if (entry) {
+				void this.startQueuedOperation(entry);
+				return;
+			}
+			const input = this.inputQueue.takeFollowUpHead();
+			if (!input) {
+				this.scheduleRequestedContinuations();
+				return;
+			}
+			void this.startQueuedInput(input).catch((error) => {
+				console.warn("[runtime-core] queued input after operation crashed", error);
+			});
+		});
+	}
+
 	private async drainRequestedContinuations(): Promise<void> {
 		while (this.continuationRequested && this.currentState === "idle") {
 			this.continuationRequested = false;
@@ -468,7 +566,7 @@ export class AgentSession {
 		}
 	}
 
-	private finishActiveTurn(): void {
+	private finishActiveTurn(deferContinuations = false): void {
 		this.activeController = undefined;
 		this.activeTurn = undefined;
 		this.currentState =
@@ -477,7 +575,8 @@ export class AgentSession {
 				: this.currentState === "recovery_required"
 					? "recovery_required"
 					: "idle";
-		this.scheduleRequestedContinuations();
+		const operationStarted = this.startQueuedOperationIfHead();
+		if (!deferContinuations && !operationStarted) this.scheduleRequestedContinuations();
 	}
 
 	private scheduleRequestedContinuations(): void {

@@ -123,6 +123,7 @@ export type {
 	SessionInput,
 	SessionInputQueueMode,
 	SessionInputRequest,
+	SessionQueueOperation,
 	SessionSendOptions,
 	SessionSendResult,
 	SessionStreamingBehavior,

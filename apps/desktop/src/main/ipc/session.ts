@@ -150,6 +150,7 @@ const CHANNELS = {
 	CONTINUE: "vetta:session:continue",
 	ABORT: "vetta:session:abort",
 	QUEUE_STATE: "vetta:session:queue-state",
+	QUEUE_CONTEXT_COMPACTION: "vetta:session:queue-context-compaction",
 	QUEUE_REMOVE: "vetta:session:queue-remove",
 	QUEUE_REORDER: "vetta:session:queue-reorder",
 	QUEUE_SEND_NOW: "vetta:session:queue-send-now",
@@ -948,6 +949,10 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	ipcMain.handle(CHANNELS.QUEUE_STATE, async (_event, sessionId: unknown) => {
 		assertNonEmptyString(sessionId, "sessionId");
 		return runtime.getQueueState(sessionId);
+	});
+	ipcMain.handle(CHANNELS.QUEUE_CONTEXT_COMPACTION, async (_event, sessionId: unknown) => {
+		assertNonEmptyString(sessionId, "sessionId");
+		return runtime.queueSessionContextCompaction(sessionId);
 	});
 	ipcMain.handle(CHANNELS.QUEUE_REMOVE, async (_event, sessionId: unknown, itemId: unknown) => {
 		assertNonEmptyString(sessionId, "sessionId");

@@ -55,10 +55,17 @@ export interface SessionInputRequest {
 	};
 }
 
+export interface SessionQueueOperation {
+	readonly type: "context.compact";
+	readonly customInstructions?: string;
+}
+
 export interface QueuedSessionInput {
 	readonly message?: UserMessage;
 	readonly context?: readonly SessionContextRecord[];
 	readonly request?: SessionInputRequest;
+	/** 宿主操作只借输入队列排序；绝不能投影为模型消息。 */
+	readonly operation?: SessionQueueOperation;
 }
 
 export type SessionInputQueueMode = "all" | "one-at-a-time";

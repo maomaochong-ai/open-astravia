@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { diffConsumedQueueEntries, markQueueEntrySelfRemoved, resetQueueMirrorStateForTest } from "./queue-mirror";
 
 function entry(id: string, text = id): QueuedMessage {
-	return { id, displayText: text, behavior: "followUp" };
+	return { id, displayText: text, behavior: "followUp", kind: "message" };
 }
 
 describe("diffConsumedQueueEntries（ADR-0060 队列镜像差分）", () => {
@@ -30,7 +30,7 @@ describe("diffConsumedQueueEntries（ADR-0060 队列镜像差分）", () => {
 
 	it("promote（behavior 变化但 id 保留）不算消费", () => {
 		const prev = [entry("a")];
-		const next: QueuedMessage[] = [{ id: "a", displayText: "a", behavior: "steer" }];
+		const next: QueuedMessage[] = [{ id: "a", displayText: "a", behavior: "steer", kind: "message" }];
 		expect(diffConsumedQueueEntries(prev, next)).toEqual([]);
 	});
 

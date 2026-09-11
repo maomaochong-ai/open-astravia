@@ -1,4 +1,5 @@
 import { markQueueEntrySelfRemoved } from "@domains/conversation/services/queue-mirror";
+import { isCompactingAtom } from "@shared/store/atoms";
 import {
 	getQueueForSession,
 	isQueuePausedForSession,
@@ -28,11 +29,17 @@ export function useQueueCardModel(runtimeId: string): QueueCardModel {
 	const queueMap = useAtomValue(messageQueueBySessionAtom);
 	const setQueue = useSetAtom(setQueueForSessionAtom);
 	const fullItems = getQueueForSession(queueMap, runtimeId);
+	const isCompacting = useAtomValue(isCompactingAtom);
 
-	const items = useMemo<QueueCardItem[]>(
-		() => fullItems.map((item) => ({ id: item.id, displayText: item.displayText })),
-		[fullItems],
-	);
+	const items = useMemo<QueueCardItem[]>(() => {
+		const compactionIndex = fullItems.findIndex((item) => item.kind === "context_compaction");
+		return fullItems.map((item, index) => ({
+			id: item.id,
+			kind: item.kind,
+			displayText: item.kind === "context_compaction" ? t("inputBar.drawer.contextCompaction") : item.displayText,
+			canSendNow: item.kind === "message" && !isCompacting && (compactionIndex < 0 || index < compactionIndex),
+		}));
+	}, [fullItems, isCompacting, t]);
 
 	const onReorder = useCallback(
 		(orderedIds: readonly string[]) => {

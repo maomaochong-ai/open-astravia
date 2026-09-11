@@ -229,7 +229,13 @@ export class RuntimeSession {
 
 	async prompt(request: PromptRequest): Promise<RuntimePromptResult> {
 		this.assertOpen();
-		if (this.historyMutation || this.contextController?.readState().isCompacting) throw sessionBusyError();
+		const compacting = this.contextController?.readState().isCompacting ?? false;
+		if (
+			this.historyMutation ||
+			(compacting && (this.session.state !== "running" || request.streamingBehavior === undefined))
+		) {
+			throw sessionBusyError();
+		}
 		if ((this.session.state === "running" || this.session.state === "cancelling") && !request.streamingBehavior) {
 			throw sessionBusyError();
 		}
@@ -263,7 +269,8 @@ export class RuntimeSession {
 
 	async queuePromptIfRunning(request: PromptRequest): Promise<RuntimeQueuePromptIfRunningOutcome> {
 		this.assertOpen();
-		if (this.historyMutation || this.contextController?.readState().isCompacting) throw sessionBusyError();
+		const compacting = this.contextController?.readState().isCompacting ?? false;
+		if (this.historyMutation || (compacting && this.session.state !== "running")) throw sessionBusyError();
 		const inputRequest = this.promptAdapter.createRequest(request);
 		const result = await this.session.queueRequestIfRunning(
 			inputRequest,
@@ -482,6 +489,7 @@ export class RuntimeSession {
 						.map((entry) => ({
 							id: entry.id,
 							behavior: entry.behavior,
+							kind: entry.input.operation?.type === "context.compact" ? "context_compaction" : "message",
 							displayText: readQueuedInputText(entry.input),
 						})),
 				};
@@ -493,6 +501,11 @@ export class RuntimeSession {
 			},
 			removeQueued: (id) => this.session.removeQueued(id),
 			reorderQueuedFollowUps: (ids) => this.session.reorderQueuedFollowUps(ids),
+			enqueueContextCompaction: (request = {}) =>
+				this.session.queueOperation({
+					type: "context.compact",
+					...(request.customInstructions === undefined ? {} : { customInstructions: request.customInstructions }),
+				}),
 			sendQueuedNow: async (id) => {
 				const result = await this.session.sendQueuedNow(id);
 				if (result.status === "started") {
@@ -923,11 +936,38 @@ function parseQueueSnapshot(snapshot: unknown): SessionInputQueueSnapshot | unde
 	const entries: SessionInputQueueEntry[] = [];
 	for (const entry of candidate.entries) {
 		if (typeof entry !== "object" || entry === null) return undefined;
-		const { id, behavior, input } = entry as { id?: unknown; behavior?: unknown; input?: unknown };
+		const { id, behavior, input, internal } = entry as {
+			id?: unknown;
+			behavior?: unknown;
+			input?: unknown;
+			internal?: unknown;
+		};
 		if (typeof id !== "string" || id.length === 0) return undefined;
 		if (behavior !== "steer" && behavior !== "followUp") return undefined;
 		if (typeof input !== "object" || input === null) return undefined;
-		entries.push({ id, behavior, input: input as SessionInputQueueEntry["input"] });
+		if (internal !== undefined && typeof internal !== "boolean") return undefined;
+		const queuedInput = input as Record<string, unknown>;
+		if (queuedInput.operation !== undefined) {
+			if (behavior !== "followUp" || !isRecord(queuedInput.operation)) return undefined;
+			const operation = queuedInput.operation;
+			if (operation.type !== "context.compact") return undefined;
+			if (operation.customInstructions !== undefined && typeof operation.customInstructions !== "string") {
+				return undefined;
+			}
+			if (
+				queuedInput.message !== undefined ||
+				queuedInput.request !== undefined ||
+				queuedInput.context !== undefined
+			) {
+				return undefined;
+			}
+		}
+		entries.push({
+			id,
+			behavior,
+			input: input as SessionInputQueueEntry["input"],
+			...(internal ? { internal: true } : {}),
+		});
 	}
 	return { paused: candidate.paused, entries };
 }
@@ -943,7 +983,9 @@ function readQueuedMessageText(message: SessionInput["message"]): string {
 }
 
 function readQueuedInputText(input: QueuedSessionInput): string {
-	return input.message ? readQueuedMessageText(input.message) : (input.request?.displayText ?? "");
+	return input.message
+		? readQueuedMessageText(input.message)
+		: (input.request?.displayText ?? (input.operation?.type === "context.compact" ? "context.compact" : ""));
 }
 
 function createContextDeliveryController(session: AgentSession): RuntimeSessionContextDeliveryController {

@@ -1,4 +1,5 @@
 import { ThemeSurface } from "@vetta/theme-ui/appearance";
+import { ContextRingView } from "@vetta/theme-ui/chat";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
 import { ConnectorGrid } from "./ConnectorGrid";
@@ -33,6 +34,7 @@ export function CommandPanelView({
 	filter,
 	items,
 	activeIndex,
+	operation,
 	connectors,
 	connectorColumns,
 	actions,
@@ -83,6 +85,41 @@ export function CommandPanelView({
 					<ThemeSurface slot="chat.slashPanel" />
 					<div className="relative z-10 flex flex-col" style={{ maxHeight: MAX_HEIGHT }}>
 						<FadingScrollArea className="pt-2" suspended={!revealed}>
+							{operation ? (
+								<button
+									type="button"
+									data-index="0"
+									disabled={operation.disabled}
+									onMouseEnter={() => onHoverItem(0)}
+									onClick={operation.onSelect}
+									className="relative flex h-8 w-full items-center gap-2 px-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+									style={{
+										background:
+											activeIndex === 0 ? "color-mix(in srgb, var(--primary) 9%, transparent)" : "transparent",
+									}}
+								>
+									{activeIndex === 0 && (
+										<motion.span
+											layoutId="command-panel-active-marker"
+											className="absolute inset-y-1 left-0 w-0.5 rounded-full bg-primary"
+											transition={{ type: "spring", stiffness: 500, damping: 32 }}
+										/>
+									)}
+									<span className="flex h-5 w-5 shrink-0 items-center justify-center">
+										{operation.contextRing ? (
+											<ContextRingView {...operation.contextRing} className="pointer-events-none" />
+										) : (
+											<span className="h-4 w-4 rounded-full border border-border" aria-hidden="true" />
+										)}
+									</span>
+									<span className="shrink-0 truncate text-[12.5px] font-medium text-foreground">
+										{operation.label}
+									</span>
+									<span className="min-w-0 flex-1 truncate text-right text-[11px] text-muted-foreground/50">
+										{operation.description}
+									</span>
+								</button>
+							) : null}
 							{/* 过滤态隐藏宫格：此时用户在找 skill，键盘导航也只走列表 */}
 							{!filtering && (
 								<ConnectorGrid
@@ -92,16 +129,17 @@ export function CommandPanelView({
 									onSelect={onSelectConnector}
 								/>
 							)}
-							<SkillList
+							{items.length > 0 || !operation ? <SkillList
 								items={items}
-								activeIndex={activeIndex}
+								activeIndex={operation ? activeIndex - 1 : activeIndex}
+								indexOffset={operation ? 1 : 0}
 								labels={labels}
 								filtering={filtering}
 								limit={revealed ? undefined : PANEL_REVEAL_ROWS}
 								resolveIcon={resolveIcon}
-								onHover={onHoverItem}
+								onHover={(index) => onHoverItem(index + (operation ? 1 : 0))}
 								onSelect={onSelectItem}
-							/>
+							/> : null}
 						</FadingScrollArea>
 
 						{actions.length > 0 && (

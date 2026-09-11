@@ -319,6 +319,13 @@ export class RuntimeHost implements SessionFacade {
 		return this.sessionOperations.getQueueState(sessionId);
 	}
 
+	queueSessionContextCompaction(
+		sessionId: string,
+		request?: RuntimeContextCompactionRequest,
+	): { readonly status: "queued"; readonly id?: string; readonly pendingCount: number } {
+		return this.sessionOperations.queueSessionContextCompaction(sessionId, request);
+	}
+
 	removeQueuedMessage(sessionId: string, itemId: string): boolean {
 		return this.sessionOperations.removeQueuedMessage(sessionId, itemId);
 	}

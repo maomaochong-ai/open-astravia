@@ -307,6 +307,11 @@ describe("Greenfield KernelEvent to SessionEvent adapter", () => {
 				paused: false,
 				entries: [
 					{ id: "queued-1", behavior: "followUp", input: { message: user("真实排队消息") } },
+					{
+						id: "compact-1",
+						behavior: "followUp",
+						input: { operation: { type: "context.compact" } },
+					},
 					{ id: "queued-2", behavior: "followUp", input: { message: user("CONTINUE_INTERNAL") }, internal: true },
 				],
 			},
@@ -314,10 +319,11 @@ describe("Greenfield KernelEvent to SessionEvent adapter", () => {
 
 		expect(event?.type).toBe("queue.changed");
 		const queueEvent = event as Extract<SessionEvent, { type: "queue.changed" }>;
-		expect(queueEvent.entries.map(({ id }) => id)).toEqual(["queued-1"]);
+		expect(queueEvent.entries.map(({ id }) => id)).toEqual(["queued-1", "compact-1"]);
+		expect(queueEvent.entries.map(({ kind }) => kind)).toEqual(["message", "context_compaction"]);
 		expect(queueEvent.entries.map(({ displayText }) => displayText)).not.toContain("CONTINUE_INTERNAL");
 		// 完整快照（宿主持久化 sidecar 用）仍保留内部条目。
-		expect((queueEvent.snapshot as { entries: unknown[] }).entries).toHaveLength(2);
+		expect((queueEvent.snapshot as { entries: unknown[] }).entries).toHaveLength(3);
 	});
 });
 

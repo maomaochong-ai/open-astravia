@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { PromptRequest, RuntimeTurnPromptOutcome, SessionEvent } from "../contracts.js";
 import type { RuntimeHost } from "./runtime-host.js";
 import { RuntimeHostSession } from "./runtime-host-session.js";
@@ -36,5 +36,27 @@ describe("RuntimeHostSession convenience API", () => {
 		expect(requests).toEqual([{ text: "hello" }]);
 		expect(received).toEqual([event]);
 		expect(handlers.size).toBe(0);
+	});
+
+	it("queues context compaction through the canonical session id", () => {
+		const queueSessionContextCompaction = vi.fn(() => ({
+			status: "queued" as const,
+			id: "compact-1",
+			pendingCount: 1,
+		}));
+		const host = {
+			readCanonicalSessionId: () => "session-canonical",
+			queueSessionContextCompaction,
+		} as unknown as RuntimeHost;
+		const session = new RuntimeHostSession(host, "session-alias");
+
+		expect(session.queueContextCompaction("keep decisions")).toEqual({
+			status: "queued",
+			id: "compact-1",
+			pendingCount: 1,
+		});
+		expect(queueSessionContextCompaction).toHaveBeenCalledWith("session-canonical", {
+			customInstructions: "keep decisions",
+		});
 	});
 });
