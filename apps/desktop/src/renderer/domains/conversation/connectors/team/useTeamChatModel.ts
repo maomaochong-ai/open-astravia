@@ -818,6 +818,7 @@ export function useTeamChatModel(
 				master: t("blueprints.master.name"),
 				researcher: t("blueprints.researcher.name"),
 				architect: t("blueprints.architect.name"),
+				designer: t("blueprints.designer.name"),
 				executor: t("blueprints.executor.name"),
 				auditor: t("blueprints.auditor.name"),
 				optimizer: t("blueprints.optimizer.name"),

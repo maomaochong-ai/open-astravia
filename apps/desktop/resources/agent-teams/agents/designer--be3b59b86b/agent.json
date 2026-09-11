@@ -1,0 +1,18 @@
+{
+	"id": "f29a77b9-e382-4b69-bb23-752f7c0a18fc",
+	"revision": 1,
+	"name": "Designer",
+	"mentionHandle": "designer",
+	"blueprintId": "designer",
+	"abilities": {
+		"selectionMode": "all",
+		"skills": [],
+		"mcpServers": [],
+		"plugins": []
+	},
+	"scope": {
+		"kind": "library"
+	},
+	"createdAt": 0,
+	"updatedAt": 0
+}

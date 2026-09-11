@@ -110,6 +110,10 @@
       "name": "策划师",
       "description": "输出技术架构、接口规范或文档与 PRD 大纲"
     },
+    "designer": {
+      "name": "设计师",
+      "description": "在 Vetta 设计画布上产出界面：App 页面、落地页、幻灯片与海报"
+    },
     "executor": {
       "name": "执行员",
       "description": "生产核心资产：写代码、产出深度草稿或执行复杂分析"

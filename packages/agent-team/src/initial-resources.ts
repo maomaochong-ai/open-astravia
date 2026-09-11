@@ -4,7 +4,7 @@ import { AGENT_TEAM_SCHEMA_VERSION } from "./contracts.js";
 export const INITIAL_AGENT_TEAM_ID = "2f631500-0d58-4458-a595-9e403affa08e";
 
 /**
- * 首次安装资源中的 Agent 池：一个 Master 加七种 Worker，与可用 Blueprint 一一对应。
+ * 首次安装资源中的 Agent 池：一个 Master 加八种 Worker，与可用 Blueprint 一一对应。
  * 初始团队按「1 Master + N Workers」组装；安装后与用户创建的资源完全相同。
  */
 const INITIAL_PROFILE_DEFINITIONS = [
@@ -31,6 +31,14 @@ const INITIAL_PROFILE_DEFINITIONS = [
 		description: "Designs the technical architecture, interface contracts, or the outline of a document or PRD.",
 		handle: "architect",
 		blueprintId: "architect",
+	},
+	{
+		id: "f29a77b9-e382-4b69-bb23-752f7c0a18fc",
+		key: "designer",
+		name: "Designer",
+		description: "Designs the UI on the Vetta canvas: app screens, landing pages, slides, and posters.",
+		handle: "designer",
+		blueprintId: "designer",
 	},
 	{
 		id: "d9e51357-04b8-481d-af80-a08e1a362322",
@@ -141,6 +149,35 @@ const INITIAL_TEAM_DEFINITIONS: readonly InitialTeamDefinition[] = [
 		],
 		workflow:
 			"Run this team as a build loop. First have the Architect turn the request into a concrete approach: the contracts to honour, the files or components in scope, and the trade-offs taken. Hand that design to the Executor to implement and self-verify. Send the result to the Auditor for review. Accept only when the Auditor reports no blocking finding; otherwise decide whether the fix belongs to the Executor or the design needs to go back to the Architect, and run the loop again. Report the design decision, what shipped, and any residual risk.",
+	},
+	{
+		id: "d1e099ee-8b1d-4fc4-9ae2-5563318ae6be",
+		name: "Design Team",
+		description: "Turns a product idea into reviewed screens on the Vetta design canvas.",
+		roster: [
+			{
+				id: "0a77ecba-ef26-44cc-9062-93254d8b4aae",
+				agent: "master",
+				responsibility: "Frames the design brief, drives the loop, and delivers the design document.",
+			},
+			{
+				id: "519404b7-9b28-4014-9a9a-07a521147fea",
+				agent: "architect",
+				responsibility: "Defines the screen inventory, flows, and states before anything is drawn.",
+			},
+			{
+				id: "2b620e37-bb6c-469f-a8d4-cea9956f920a",
+				agent: "designer",
+				responsibility: "Builds the frames on the Vetta canvas and keeps the visual system consistent.",
+			},
+			{
+				id: "a8265c81-0a99-4fbd-9ffd-71f2d555c8b8",
+				agent: "auditor",
+				responsibility: "Reviews the screens for usability, missing states, and inconsistent visuals.",
+			},
+		],
+		workflow:
+			"Run this team as a design loop. Settle the product type and the audience first, then have the Architect lay out the screen inventory, the flows between screens, and the states each one must cover. Hand that to the Designer to build on the Vetta design canvas as a .vetd document, one frame per screen, sharing a single theme and shared components. Send the result to the Auditor to review usability, missing or empty states, and visual inconsistency. Accept only when the Auditor reports no blocking finding; otherwise decide whether the fix belongs to the Designer or the flow needs to go back to the Architect, and run the loop again. Deliver the design document with the decisions behind it and whatever is still open.",
 	},
 	{
 		id: "9c975a15-1a00-4b1d-b646-0c1d76c43e3c",

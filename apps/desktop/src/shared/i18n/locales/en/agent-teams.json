@@ -110,6 +110,10 @@
       "name": "Architect",
       "description": "Designs the architecture, interface contracts, or document outline"
     },
+    "designer": {
+      "name": "Designer",
+      "description": "Designs the UI on the Vetta canvas: screens, landing pages, slides, posters"
+    },
     "executor": {
       "name": "Executor",
       "description": "Produces the core asset: code, deep drafts, or worked analysis"
