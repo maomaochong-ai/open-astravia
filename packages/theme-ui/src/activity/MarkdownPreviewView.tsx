@@ -179,11 +179,8 @@ export const MarkdownPreviewView = memo(function MarkdownPreviewView({
 					{children}
 				</blockquote>
 			),
-			// 面板内没有可 breakout 的会话栏，退化成纯滚动 + sticky 表头。
 			table: ({ children }) => (
-				<MarkdownTable fontSizeClass="text-[12px]" allowBreakout={false}>
-					{children}
-				</MarkdownTable>
+				<MarkdownTable fontSizeClass="text-[12px]">{children}</MarkdownTable>
 			),
 			thead: ({ children }) => <MarkdownTableHead>{children}</MarkdownTableHead>,
 			tbody: ({ children }) => <MarkdownTableBody>{children}</MarkdownTableBody>,

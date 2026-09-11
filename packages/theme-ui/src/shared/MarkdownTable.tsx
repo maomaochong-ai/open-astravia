@@ -16,16 +16,8 @@ import { readTableCells, toCsv, toMarkdown } from "./markdown-table-clipboard";
  * 布局要点（与旧实现的根本差异）：旧版是 `overflow-x-auto` 外壳套 `w-full` 的
  * table —— `w-full` 把表宽钉死在容器上，横向滚动永远不触发，浏览器只能靠压缩
  * 列宽塞下所有列，宽表因此被挤成竖排。这里改成 `w-max min-w-full`：表按内容
- * 自然宽度排布，容器负责裁剪与滚动。
+ * 自然宽度排布，容器宽度始终等于正文栏（与文字左右对齐），超出部分横向滚动。
  */
-
-/** 会话流的布局根，breakout 以它的宽度为上界。 */
-const BREAKOUT_ROOT_SELECTOR = "[data-message-feed-root]";
-/** 宽视口下左侧导航 rail 浮在 top-1/2 left-3，给它留出安全边距。 */
-const WIDE_GUTTER = 56;
-const NARROW_GUTTER = 16;
-/** 与 MessageFeedLayout 的 `@max-[52rem]:hidden` rail 断点一致。 */
-const WIDE_BOUNDS = 832;
 
 export interface MarkdownTableLabels {
 	copyMarkdown: string;
@@ -39,11 +31,6 @@ export interface MarkdownTableProps {
 	fontSizeClass?: string;
 	/** 不传则不渲染工具条（例如导出快照里没有可交互的复制按钮）。 */
 	labels?: MarkdownTableLabels;
-	/**
-	 * 允许表格突破正文阅读栏、撑到会话视口宽度。只有能找到
-	 * `[data-message-feed-root]` 祖先时才会生效，面板内的预览天然退化成纯滚动。
-	 */
-	allowBreakout?: boolean;
 }
 
 interface OverflowState {
@@ -78,59 +65,29 @@ function useFrameScheduler(run: () => void): () => void {
 	}, []);
 }
 
-/**
- * 计算表格向两侧「探出」正文栏的像素数，以及当前是否还有内容可横向滚动。
- *
- * 单侧 overhang 而非直接改容器宽度：负 margin 不影响正文段落的排版基线，
- * 表格居中撑开，窄视口下自动退回 0。
- */
-function useTableViewport(
-	hostRef: React.RefObject<HTMLDivElement | null>,
-	scrollRef: React.RefObject<HTMLDivElement | null>,
-	allowBreakout: boolean,
-): { overhang: number; overflow: OverflowState } {
-	const [overhang, setOverhang] = useState(0);
+/** 观察横向滚动位置，用于两侧的可滚动阴影提示。 */
+function useOverflowState(scrollRef: React.RefObject<HTMLDivElement | null>): OverflowState {
 	const [overflow, setOverflow] = useState<OverflowState>(NO_OVERFLOW);
 
 	const measure = useCallback(() => {
-		const host = hostRef.current;
 		const scroll = scrollRef.current;
-		if (!host || !scroll) return;
-
-		const bounds = allowBreakout
-			? (host.closest(BREAKOUT_ROOT_SELECTOR) as HTMLElement | null)
-			: null;
-		if (bounds) {
-			const hostWidth = host.clientWidth;
-			const boundsWidth = bounds.clientWidth;
-			const gutter = boundsWidth >= WIDE_BOUNDS ? WIDE_GUTTER : NARROW_GUTTER;
-			// 表格宽度只在 [正文栏宽, 视口宽 - 两侧安全边距] 之间取值。
-			const maxWidth = Math.max(hostWidth, boundsWidth - gutter * 2);
-			const desired = Math.min(scroll.scrollWidth, maxWidth);
-			const next = Math.max(0, Math.round((desired - hostWidth) / 2));
-			setOverhang((previous) => (Math.abs(previous - next) <= 1 ? previous : next));
-		} else {
-			setOverhang(0);
-		}
-
+		if (!scroll) return;
 		const maxScroll = scroll.scrollWidth - scroll.clientWidth;
 		const left = scroll.scrollLeft > 1;
 		const right = maxScroll - scroll.scrollLeft > 1;
 		setOverflow((previous) =>
 			previous.left === left && previous.right === right ? previous : { left, right },
 		);
-	}, [allowBreakout, hostRef, scrollRef]);
+	}, [scrollRef]);
 
 	const schedule = useFrameScheduler(measure);
 
 	useEffect(() => {
-		const host = hostRef.current;
 		const scroll = scrollRef.current;
-		if (!host || !scroll) return;
+		if (!scroll) return;
 
 		schedule();
 		const resizeObserver = new ResizeObserver(schedule);
-		resizeObserver.observe(host);
 		resizeObserver.observe(scroll);
 		// 流式追加行会换掉 table 子树，尺寸变化不经过 ResizeObserver，靠 DOM 变更兜底。
 		const mutationObserver = new MutationObserver(schedule);
@@ -142,9 +99,9 @@ function useTableViewport(
 			mutationObserver.disconnect();
 			scroll.removeEventListener("scroll", schedule);
 		};
-	}, [hostRef, scrollRef, schedule]);
+	}, [scrollRef, schedule]);
 
-	return { overhang, overflow };
+	return overflow;
 }
 
 const TOOLBAR_BUTTON_CLASS =
@@ -230,26 +187,17 @@ export const MarkdownTable = memo(function MarkdownTable({
 	children,
 	fontSizeClass = "text-[13px]",
 	labels,
-	allowBreakout = true,
 }: MarkdownTableProps): JSX.Element {
-	const hostRef = useRef<HTMLDivElement | null>(null);
 	const scrollRef = useRef<HTMLDivElement | null>(null);
-	const { overhang, overflow } = useTableViewport(hostRef, scrollRef, allowBreakout);
+	const overflow = useOverflowState(scrollRef);
 	const getTable = useCallback(
 		() => scrollRef.current?.querySelector("table") ?? null,
 		[],
 	);
 
-	const frameStyle: CSSProperties =
-		overhang > 0 ? { marginLeft: -overhang, marginRight: -overhang } : {};
-
 	return (
-		<div ref={hostRef} className="my-3">
-			<div
-				className="group/table md-table-shadow-host relative"
-				style={frameStyle}
-				data-md-table-frame=""
-			>
+		<div className="my-3">
+			<div className="group/table md-table-shadow-host relative" data-md-table-frame="">
 				{labels ? <TableToolbar labels={labels} getTable={getTable} /> : null}
 				<div
 					ref={scrollRef}
