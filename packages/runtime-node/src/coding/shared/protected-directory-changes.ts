@@ -1,5 +1,6 @@
 import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { findProtectedEntry, type ProtectedRoot, resolveProtectedRoot } from "./protected-entry-path.js";
 
 export type DirectorySnapshot = ReadonlyMap<string, number>;
 
@@ -9,11 +10,25 @@ export function snapshotDirectories(directories: readonly string[]): DirectorySn
 	return snapshot;
 }
 
-export function detectDirectoryChanges(before: DirectorySnapshot, after: DirectorySnapshot): readonly string[] {
+/**
+ * Reports files a command created or modified inside protected directories. Entries that did not exist
+ * before the command ran are newly authored skills or scenes rather than artifacts dumped into an
+ * existing one, so they are not reported.
+ */
+export function detectDirectoryChanges(
+	before: DirectorySnapshot,
+	after: DirectorySnapshot,
+	directories: readonly string[] = [],
+): readonly string[] {
+	const roots = directories.map(resolveProtectedRoot);
+	const existingEntries = collectEntries(before, roots);
 	const changed: string[] = [];
 	for (const [path, modifiedAt] of after) {
 		const previous = before.get(path);
-		if (previous === undefined || modifiedAt > previous) changed.push(path);
+		if (previous !== undefined && modifiedAt <= previous) continue;
+		const entry = findProtectedEntry(path, roots);
+		if (entry && !existingEntries.has(entry)) continue;
+		changed.push(path);
 	}
 	return changed;
 }
@@ -27,6 +42,15 @@ export function appendProtectedDirectoryWarning(text: string, paths: readonly st
 		"These directories are READ-ONLY. Move the output files to the working directory immediately " +
 		"and delete the copies from the protected directory."
 	);
+}
+
+function collectEntries(snapshot: DirectorySnapshot, roots: readonly ProtectedRoot[]): ReadonlySet<string> {
+	const entries = new Set<string>();
+	for (const path of snapshot.keys()) {
+		const entry = findProtectedEntry(path, roots);
+		if (entry) entries.add(entry);
+	}
+	return entries;
 }
 
 function snapshotDirectory(directory: string, snapshot: Map<string, number>): void {

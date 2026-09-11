@@ -92,6 +92,7 @@ export function createBackgroundCommandToolExecutor(options: BackgroundCommandEx
 				const protectedChanges = detectDirectoryChanges(
 					protectedSnapshot,
 					snapshotDirectories(protectedDirectories),
+					protectedDirectories,
 				);
 
 				if (stillRunning) {

@@ -1,4 +1,5 @@
-import { resolve, sep } from "node:path";
+import { existsSync } from "node:fs";
+import { isPathInsideRoot, resolveProtectedEntry, resolveProtectedRoot } from "../shared/protected-entry-path.js";
 
 export interface NodePathBoundaryClassifierOptions {
 	readonly readOnlyDirectories: readonly string[];
@@ -14,25 +15,23 @@ export interface NodePathBoundaryClassifier {
 export function createNodePathBoundaryClassifier(
 	options: NodePathBoundaryClassifierOptions,
 ): NodePathBoundaryClassifier {
-	const readOnlyDirectories = options.readOnlyDirectories.map(resolveDirectoryBoundary);
-	const managedDirectory = resolveDirectoryBoundary(options.managedDirectory);
+	const readOnlyDirectories = options.readOnlyDirectories.map(resolveProtectedRoot);
+	const managedDirectory = resolveProtectedRoot(options.managedDirectory);
+	// Entries this session authored from scratch. Creating a new `<root>/<skill-name>` subtree is the
+	// sanctioned way to add a skill or scene, so it stays writable for the follow-up files (references,
+	// scripts, assets) and for revisions of the SKILL.md that was just written.
+	const authoredEntries = new Set<string>();
 	return {
-		isReadOnlyPath: (absolutePath) => readOnlyDirectories.some((directory) => isPathInside(absolutePath, directory)),
-		isManagedPath: (absolutePath) => isPathInside(absolutePath, managedDirectory),
+		isReadOnlyPath: (absolutePath) => {
+			const root = readOnlyDirectories.find((candidate) => isPathInsideRoot(absolutePath, candidate));
+			if (!root) return false;
+			const entry = resolveProtectedEntry(absolutePath, root);
+			if (!entry) return true;
+			if (authoredEntries.has(entry)) return false;
+			if (existsSync(entry)) return true;
+			authoredEntries.add(entry);
+			return false;
+		},
+		isManagedPath: (absolutePath) => isPathInsideRoot(absolutePath, managedDirectory),
 	};
-}
-
-interface ResolvedDirectoryBoundary {
-	readonly path: string;
-	readonly prefix: string;
-}
-
-function resolveDirectoryBoundary(directory: string): ResolvedDirectoryBoundary {
-	const path = resolve(directory);
-	return { path, prefix: path.endsWith(sep) ? path : `${path}${sep}` };
-}
-
-function isPathInside(absolutePath: string, directory: ResolvedDirectoryBoundary): boolean {
-	const path = resolve(absolutePath);
-	return path === directory.path || path.startsWith(directory.prefix);
 }

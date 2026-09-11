@@ -134,6 +134,7 @@ function executeForegroundCommand(options: ExecuteForegroundCommandOptions): Pro
 				const protectedChanges = detectDirectoryChanges(
 					options.protectedSnapshot,
 					snapshotDirectories(options.protectedDirectories),
+					options.protectedDirectories,
 				);
 				const fullOutput = decodeTextBuffer(Buffer.concat(chunks));
 				const truncation = truncateTail(fullOutput);
