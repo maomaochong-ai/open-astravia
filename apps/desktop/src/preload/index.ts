@@ -8,6 +8,7 @@ import { createAppLifecycleApi } from "./apis/app-lifecycle.js";
 import { createAppMonitorApi } from "./apis/app-monitor.js";
 import { createAppshotApi } from "./apis/appshot.js";
 import { createBatchTasksApi } from "./apis/batch-tasks.js";
+import { createConversationTagsApi } from "./apis/conversation-tags.js";
 import { createDownloadsApi } from "./apis/downloads.js";
 import { createI18nApi } from "./apis/i18n.js";
 import { createImApi } from "./apis/im.js";
@@ -50,6 +51,7 @@ const rawApi: Omit<DesktopApi, "hostAccess"> = {
 	...createPluginsApi(ipcRenderer, webUtils),
 	...createThemesApi(ipcRenderer),
 	...createPetApi(ipcRenderer),
+	...createConversationTagsApi(ipcRenderer),
 	...createQuickPanelApi(ipcRenderer),
 	...createRuntimeConfigurationApi(ipcRenderer),
 	remotePairing: createRemotePairingApi(ipcRenderer),

@@ -7,6 +7,7 @@ import type { DesktopAppshotApi } from "./api-types/appshot.js";
 import type { DesktopAuthApi } from "./api-types/auth.js";
 import type { DesktopBatchTasksApi } from "./api-types/batch-tasks.js";
 import type { DesktopConfigApi } from "./api-types/config.js";
+import type { DesktopConversationTagsApi } from "./api-types/conversation-tags.js";
 import type { DesktopDebugApi } from "./api-types/debug.js";
 import type { DesktopDiagnosticsApi } from "./api-types/diagnostics.js";
 import type { DesktopDialogApi } from "./api-types/dialog.js";
@@ -128,6 +129,7 @@ export interface DesktopApi {
 	notification: DesktopNotificationApi;
 	plugins: DesktopPluginsApi;
 	pet: DesktopPetApi;
+	conversationTags: DesktopConversationTagsApi;
 	quickPanel: DesktopQuickPanelApi;
 	runtimeConfiguration: DesktopRuntimeConfigurationApi;
 	appshot: DesktopAppshotApi;

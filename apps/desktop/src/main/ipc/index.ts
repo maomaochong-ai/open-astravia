@@ -8,6 +8,7 @@ import { registerAgentTeamsIpc } from "./agent-teams.js";
 import { registerAppMonitorIpc } from "./app-monitor.js";
 import { registerAppshotIpc } from "./appshot.js";
 import { registerClipboardIpc } from "./clipboard.js";
+import { registerConversationTagsIpc } from "./conversation-tags.js";
 import { registerDebugIpc } from "./debug.js";
 import { registerDiagnosticsIpc } from "./diagnostics.js";
 import { registerDialogIpc } from "./dialog.js";
@@ -66,6 +67,7 @@ interface IpcTeardown {
 	teardownPluginOcrProviders: () => void;
 	teardownNotifications: () => void;
 	teardownPet: () => void;
+	teardownConversationTags: () => void;
 	teardownQuickPanel: () => void;
 	teardownAppshot: () => void;
 	teardownDiagnostics: () => void;
@@ -111,6 +113,7 @@ export function registerAllIpc(
 		teardownPluginOcrProviders: registerPluginOcrProvidersIpc(),
 		teardownNotifications: registerNotificationIpc(webContents),
 		teardownPet: registerPetIpc(),
+		teardownConversationTags: registerConversationTagsIpc(webContents),
 		teardownQuickPanel: registerQuickPanelIpc(),
 		teardownAppshot: registerAppshotIpc(),
 		teardownDiagnostics: registerDiagnosticsIpc(),
@@ -149,6 +152,7 @@ export function teardownAllIpc(teardown: IpcTeardown): void {
 	teardown.teardownPluginOcrProviders();
 	teardown.teardownNotifications();
 	teardown.teardownPet();
+	teardown.teardownConversationTags();
 	teardown.teardownQuickPanel();
 	teardown.teardownAppshot();
 	teardown.teardownDiagnostics();
