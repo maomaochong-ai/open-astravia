@@ -13,16 +13,24 @@ export function DesignSystemTileContent({
 	system,
 	badge,
 	demoActive = false,
+	demo = true,
 }: {
 	system: DesignSystem;
 	/** 名称右侧的状态徽标（「已选择」/「当前」），没有就不占位。 */
 	badge?: ReactNode;
 	/** 悬停态：有 demo 时让预览自动滚动。 */
 	demoActive?: boolean;
+	/**
+	 * 是否挂载 HTML demo（一个 iframe，一份完整文档）。
+	 *
+	 * 一屏只有十来张卡时无所谓；风格库那面墙是几十张连排，全挂 iframe 光解析文档就能把
+	 * 滚动拖垮。那边默认只铺色板，悬停到哪张才把那一张换成真 demo。
+	 */
+	demo?: boolean;
 }) {
 	const { t, locale } = useTranslation();
 	// 有 HTML demo 就用真实渲染当预览，没有才退回 token 色块。
-	const hasDemo = designSystemDemoHtml(system) !== null;
+	const hasDemo = demo && designSystemDemoHtml(system) !== null;
 	return (
 		<>
 			{/* 预览区弹性吃掉剩余高度：外层卡片是 1:1 正方形，文字两行定高在底部。 */}

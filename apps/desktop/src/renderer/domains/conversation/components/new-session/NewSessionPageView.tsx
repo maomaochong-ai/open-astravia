@@ -222,11 +222,14 @@ export function NewSessionPageView({
 					   命令区展开时整块让位：那是打断式交互。 */
 					<div className="px-2 sm:px-4">
 						{/* `wide` 的贡献（画廊、素材墙）占页面宽度的八成：压回输入框那 672px，
-						    每一项都会小到看不清。其余仍与输入框卡片对齐。 */}
+						    每一项都会小到看不清。八成只在宽屏成立——窄窗口上两侧各让出一成
+						    等于把本来就不够的宽度再砍一刀，所以窄屏铺满。 */}
 						<div
 							className={cn(
 								"mx-auto w-full",
-								contextBlock.contexts[0]?.contribution.width === "wide" ? "max-w-none w-4/5" : "max-w-2xl",
+								contextBlock.contexts[0]?.contribution.width === "wide"
+									? "w-full max-w-none md:w-11/12 xl:w-4/5"
+									: "max-w-2xl",
 							)}
 						>
 							<NewSessionContextBlock
