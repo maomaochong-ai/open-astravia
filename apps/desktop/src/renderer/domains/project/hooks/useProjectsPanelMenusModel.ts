@@ -1,11 +1,21 @@
-import { projectContextMenuAtom, runningSessionPathsAtom, sessionContextMenuAtom } from "@shared/store/atoms";
-import { useAtom, useAtomValue } from "jotai";
+import type { SessionContextMenuSession } from "@shared/store/atoms";
+import {
+	confirmDialogAtom,
+	projectContextMenuAtom,
+	runningSessionPathsAtom,
+	sessionContextMenuAtom,
+	sessionDisplayLabel,
+} from "@shared/store/atoms";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useTranslation } from "react-i18next";
 import type { ProjectsPanelModel } from "../components/sidebar/projects/panel/types";
 
 export function useProjectsPanelMenusModel(model: ProjectsPanelModel) {
 	const [contextMenu, setContextMenu] = useAtom(sessionContextMenuAtom);
 	const [projectMenu, setProjectMenu] = useAtom(projectContextMenuAtom);
 	const runningSessionPaths = useAtomValue(runningSessionPathsAtom);
+	const setConfirm = useSetAtom(confirmDialogAtom);
+	const { t } = useTranslation("project");
 
 	const clearConversationDisabled =
 		projectMenu?.project.isDefault === true &&
@@ -25,9 +35,16 @@ export function useProjectsPanelMenusModel(model: ProjectsPanelModel) {
 		actions: {
 			closeSessionMenu: () => setContextMenu(null),
 			closeProjectMenu: () => setProjectMenu(null),
-			deleteSession: (session: { cwd: string; path: string }) => {
+			deleteSession: (session: SessionContextMenuSession) => {
 				setContextMenu(null);
-				model.actions.deleteSession(session);
+				const name = isAgentTeamSession(session) ? session.sessionTitle : sessionDisplayLabel(session);
+				setConfirm({
+					title: t("sidebar.dialogs.deleteSessionTitle"),
+					message: t("sidebar.dialogs.deleteSessionMessage", { name }),
+					confirmLabel: t("sidebar.dialogs.deleteConfirm"),
+					variant: "danger",
+					onConfirm: () => model.actions.deleteSession(session),
+				});
 			},
 			archiveProject: (cwd: string) => {
 				setProjectMenu(null);
@@ -55,4 +72,10 @@ export function useProjectsPanelMenusModel(model: ProjectsPanelModel) {
 			},
 		},
 	};
+}
+
+function isAgentTeamSession(
+	session: SessionContextMenuSession,
+): session is Extract<SessionContextMenuSession, { readonly kind: "agent-team" }> {
+	return "kind" in session && session.kind === "agent-team";
 }

@@ -8,6 +8,8 @@ export interface DesktopTeamSidebarConversation {
 	readonly teamId: string;
 	readonly teamSessionId: string;
 	readonly coordinationSessionPath: string;
+	/** Workspace shown by sidebar actions such as "Open in folder". */
+	readonly cwd: string;
 	readonly memberAvatarUrls: readonly string[];
 	readonly sessionTitle: string;
 	readonly createdAt: number;

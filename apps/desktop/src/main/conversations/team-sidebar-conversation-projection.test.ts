@@ -52,12 +52,14 @@ describe("listTeamSidebarConversations", () => {
 			expect.objectContaining({
 				teamId: team.id,
 				teamSessionId: "project-session",
+				cwd: "c:/projects/vetta/",
 				sessionTitle: "Project work",
 				placement: { kind: "project", projectPath: "C:/Projects/Vetta" },
 				memberAvatarUrls: expect.any(Array),
 			}),
 			expect.objectContaining({
 				teamSessionId: "session-workspace",
+				cwd: "C:/session-workspaces/workspace-a",
 				placement: { kind: "default" },
 			}),
 			expect.objectContaining({
@@ -88,6 +90,9 @@ describe("listTeamSidebarConversations", () => {
 			],
 		});
 
-		expect(result?.placement).toEqual({ kind: "default" });
+		expect(result).toMatchObject({
+			cwd: "C:/Projects/Removed",
+			placement: { kind: "default" },
+		});
 	});
 });

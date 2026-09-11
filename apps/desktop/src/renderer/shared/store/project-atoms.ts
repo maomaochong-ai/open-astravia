@@ -70,6 +70,17 @@ export interface SessionInfo {
 	parentEntryId?: string;
 }
 
+/** Team session fields retained by the shared context-menu state. */
+export interface AgentTeamSessionInfo extends SessionInfo {
+	kind: "agent-team";
+	teamId: string;
+	teamSessionId: string;
+	sessionTitle: string;
+	memberAvatarUrls: readonly string[];
+}
+
+export type SessionContextMenuSession = SessionInfo | AgentTeamSessionInfo;
+
 /** coding-agent 对「无消息」session 给出的占位 firstMessage，UI 层不直接展示。 */
 export const NO_MESSAGES_SENTINEL = "(no messages)";
 /** 既无用户命名、也无首条消息时的展示名。 */
@@ -199,8 +210,8 @@ export const workspacePathAtom = atom<string>(localStorage.getItem("vetta-worksp
 export const sessionContextMenuAtom = atom<{
 	x: number;
 	y: number;
-	session: SessionInfo;
-	/** Claw 等只读来源仍允许置顶和打开目录，但不暴露重命名/删除。 */
+	session: SessionContextMenuSession;
+	/** Read-only sources still allow pin/folder actions, but hide rename/delete. */
 	allowMutations: boolean;
 } | null>(null);
 export const renamingSessionPathAtom = atom<string | null>(null);

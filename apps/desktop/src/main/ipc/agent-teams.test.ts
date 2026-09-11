@@ -51,6 +51,8 @@ function dependencies(): AgentTeamsIpcDependencies {
 		sessions: {
 			create: vi.fn(),
 			listSessions: vi.fn(async () => []),
+			renameSession: vi.fn(),
+			deleteSession: vi.fn(),
 			readSnapshot: vi.fn(),
 			send: vi.fn(),
 			updateModelSettings: vi.fn(),
@@ -229,6 +231,7 @@ describe("Agent Team IPC contract", () => {
 				teamId: "team-1",
 				teamSessionId: "team-session-1",
 				coordinationSessionPath: "C:/sessions/team.jsonl",
+				cwd: "C:/sessions",
 				memberAvatarUrls: ["./agent-team-avatars/master.webp"],
 				sessionTitle: "Build",
 				createdAt: 1,
@@ -243,6 +246,21 @@ describe("Agent Team IPC contract", () => {
 
 		await expect(listSidebar({})).resolves.toEqual(projected);
 		expect(listSidebarConversations).toHaveBeenCalledOnce();
+	});
+
+	it("routes Team session rename and delete through validated references", async () => {
+		const deps = dependencies();
+		registerAgentTeamsIpc(deps);
+		const reference = { id: "session-1", coordinationSessionPath: "C:/sessions/session-1.jsonl" };
+		const renameSession = ipc.handlers.get("vetta:agent-teams:rename-session");
+		const deleteSession = ipc.handlers.get("vetta:agent-teams:delete-session");
+		if (!renameSession || !deleteSession) throw new Error("Team session mutation handlers were not registered");
+
+		await renameSession({}, reference, "Renamed");
+		await deleteSession({}, reference);
+		expect(deps.sessions.renameSession).toHaveBeenCalledWith(reference, "Renamed");
+		expect(deps.sessions.deleteSession).toHaveBeenCalledWith(reference);
+		await expect(renameSession({}, reference, " ")).rejects.toThrow("name must be a non-empty string");
 	});
 
 	it("creates the visible session record through the lightweight path", async () => {

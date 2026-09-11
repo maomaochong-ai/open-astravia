@@ -1,3 +1,4 @@
+import { dirname } from "node:path";
 import type { AgentTeamDocument, TeamSessionListItem } from "@vetta/agent-team";
 import { teamMemberAvatarUrls } from "../../shared/agent-team-avatar.js";
 import type { DesktopTeamSidebarConversation } from "../../shared/sidebar-conversation.js";
@@ -36,6 +37,7 @@ export async function listTeamSidebarConversations(
 					teamId: team.id,
 					teamSessionId: session.id,
 					coordinationSessionPath: session.coordinationSessionPath,
+					cwd: session.cwd ?? dirname(session.coordinationSessionPath),
 					memberAvatarUrls: avatarUrls,
 					sessionTitle: session.title,
 					createdAt: session.createdAt,

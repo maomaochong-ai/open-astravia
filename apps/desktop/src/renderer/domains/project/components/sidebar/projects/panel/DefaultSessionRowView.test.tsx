@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, fireEvent, render } from "@testing-library/react";
 import {
 	DefaultSessionRowView,
 	type DefaultSessionRowViewProps,
@@ -27,6 +27,27 @@ function props(overrides: Partial<DefaultSessionRowViewProps> = {}): DefaultSess
 }
 
 describe("DefaultSessionRowView leading icon", () => {
+	it("forwards the context-menu gesture for an enabled Team conversation row", () => {
+		const onOpenContextMenu = vi.fn();
+		const view = render(
+			<DefaultSessionRowView
+				{...props({
+					contextMenuEnabled: true,
+					iconClassName: "icon-[solar--users-group-rounded-linear]",
+					label: "Team task",
+					onOpenContextMenu,
+				})}
+			/>,
+		);
+
+		fireEvent.contextMenu(view.getByRole("button", { name: "Team task" }), {
+			clientX: 24,
+			clientY: 36,
+		});
+
+		expect(onOpenContextMenu).toHaveBeenCalledOnce();
+	});
+
 	it("renders exactly one icon when a source icon is provided", () => {
 		const view = render(
 			<DefaultSessionRowView {...props({ iconClassName: "icon-[solar--users-group-rounded-linear]" })} />,
@@ -112,6 +133,31 @@ describe("DefaultSessionRowView leading icon", () => {
 });
 
 describe("SessionRowView Team identity", () => {
+	it("forwards the context-menu gesture from a Team conversation inside a project", () => {
+		const onOpenContextMenu = vi.fn();
+		const view = render(
+			<SessionRowView
+				active={false}
+				iconClassName="icon-[solar--users-group-rounded-linear]"
+				label="Team task"
+				onOpenContextMenu={onOpenContextMenu}
+				onRename={vi.fn()}
+				onRenameDone={vi.fn()}
+				onSelect={vi.fn()}
+				renaming={false}
+				running={false}
+				scheduled={false}
+			/>,
+		);
+
+		fireEvent.contextMenu(view.getByRole("button", { name: "Team task" }), {
+			clientX: 48,
+			clientY: 72,
+		});
+
+		expect(onOpenContextMenu).toHaveBeenCalledOnce();
+	});
+
 	it("keeps the ordinary status icon inside the row-owned project indentation", () => {
 		const view = render(
 			<SessionRowView

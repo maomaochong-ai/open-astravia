@@ -1,4 +1,4 @@
-import type { SessionInfo } from "@shared/store/atoms";
+import type { SessionContextMenuSession } from "@shared/store/atoms";
 import { pinnedSessionPathsAtom, renamingSessionPathAtom, setSessionPinnedAtom } from "@shared/store/atoms";
 import type { SessionContextMenuViewProps } from "@vetta/theme-ui/project";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -8,10 +8,10 @@ import { useTranslation } from "react-i18next";
 const isMac = navigator.platform.toUpperCase().includes("MAC");
 
 export function useSessionContextMenuModel(
-	session: SessionInfo,
+	session: SessionContextMenuSession,
 	allowMutations: boolean,
 	onClose: () => void,
-	onDelete: (session: SessionInfo) => void,
+	onDelete: (session: SessionContextMenuSession) => void,
 ): Omit<SessionContextMenuViewProps, "x" | "y"> {
 	const { t } = useTranslation("project");
 	const setRenamingSessionPath = useSetAtom(renamingSessionPathAtom);

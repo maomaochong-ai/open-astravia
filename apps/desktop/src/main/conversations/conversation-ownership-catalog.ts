@@ -31,6 +31,7 @@ interface ConversationOwnershipDocument {
 
 export interface ConversationOwnershipCatalogPort {
 	register(records: readonly ConversationOwnershipRecord[]): Promise<void>;
+	removeByTeamSession?(teamId: string, teamSessionId: string): Promise<void>;
 	listByTeam(teamId: string): Promise<readonly ConversationOwnershipRecord[]>;
 	getOwner(sessionPath: string): Promise<ConversationOwner | undefined>;
 	filterUserSessions<T extends { readonly path: string }>(sessions: readonly T[]): Promise<T[]>;
@@ -60,6 +61,24 @@ export class ConversationOwnershipCatalog implements ConversationOwnershipCatalo
 				await atomicWriteJSONAsync(this.path, {
 					schemaVersion: 1,
 					records: [...byPath.values()],
+				} satisfies ConversationOwnershipDocument);
+			});
+		this.mutationTail = operation;
+		return operation;
+	}
+
+	removeByTeamSession(teamId: string, teamSessionId: string): Promise<void> {
+		const operation = this.mutationTail
+			.catch(() => undefined)
+			.then(async () => {
+				const current = await this.read();
+				const records = current.records.filter(
+					(record) => record.owner.teamId !== teamId || record.owner.teamSessionId !== teamSessionId,
+				);
+				if (records.length === current.records.length) return;
+				await atomicWriteJSONAsync(this.path, {
+					schemaVersion: 1,
+					records,
 				} satisfies ConversationOwnershipDocument);
 			});
 		this.mutationTail = operation;

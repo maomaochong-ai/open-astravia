@@ -89,4 +89,29 @@ describe("ConversationOwnershipCatalog", () => {
 			expect.objectContaining({ title: "After", updatedAt: 3 }),
 		]);
 	});
+
+	it("removes every ownership record for a deleted Team session", async () => {
+		const root = await mkdtemp(join(tmpdir(), "vetta-conversation-owner-"));
+		roots.push(root);
+		const catalog = new ConversationOwnershipCatalog(join(root, "owners.json"));
+		await catalog.register([
+			{
+				sessionPath: join(root, "coordination.jsonl"),
+				owner: { kind: "agent-team", teamId: "team-1", teamSessionId: "session-1", role: "coordination" },
+				title: "Team",
+				createdAt: 1,
+				updatedAt: 1,
+			},
+			{
+				sessionPath: join(root, "member.jsonl"),
+				owner: { kind: "agent-team", teamId: "team-1", teamSessionId: "session-1", role: "member" },
+				title: "Team",
+				createdAt: 1,
+				updatedAt: 1,
+			},
+		]);
+
+		await catalog.removeByTeamSession("team-1", "session-1");
+		await expect(catalog.listByTeam("team-1")).resolves.toEqual([]);
+	});
 });

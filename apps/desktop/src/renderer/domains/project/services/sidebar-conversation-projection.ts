@@ -50,7 +50,7 @@ export function projectSidebarConversations(
 				kind: "agent-team",
 				id: session.teamSessionId,
 				path: session.coordinationSessionPath,
-				cwd: session.placement.kind === "project" ? session.placement.projectPath : "",
+				cwd: session.cwd,
 				firstMessage: session.sessionTitle,
 				modifiedAt: session.updatedAt,
 				teamId: session.teamId,
@@ -83,7 +83,7 @@ export function sidebarConversationIdentity(
 		label: session.sessionTitle || labels.untitledTeamLabel,
 		iconClassName: "icon-[solar--users-group-rounded-linear]",
 		trailingAvatarUrls: session.memberAvatarUrls,
-		mutable: false,
+		mutable: true,
 	};
 }
 

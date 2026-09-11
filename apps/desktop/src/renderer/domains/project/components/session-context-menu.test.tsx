@@ -29,4 +29,24 @@ describe("SessionContextMenuView", () => {
 		expect(onTogglePin).toHaveBeenCalledOnce();
 		expect(onOpenInFolder).toHaveBeenCalledOnce();
 	});
+
+	it("exposes rename and delete actions when Team session mutations are enabled", () => {
+		render(
+			<SessionContextMenuView
+				canDelete
+				canRename
+				labels={{ pin: "Pin", rename: "Rename", openInFolder: "Open folder", delete: "Delete" }}
+				onClose={vi.fn()}
+				onDelete={vi.fn()}
+				onOpenInFolder={vi.fn()}
+				onRename={vi.fn()}
+				onTogglePin={vi.fn()}
+				x={10}
+				y={10}
+			/>,
+		);
+
+		expect(screen.getByRole("button", { name: "Rename" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Delete" })).toBeTruthy();
+	});
 });

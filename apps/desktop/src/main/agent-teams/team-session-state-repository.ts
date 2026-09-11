@@ -25,6 +25,11 @@ export class TeamSessionStateRepository {
 		this.sessions.set(session.id, session);
 	}
 
+	remove(sessionId: string): void {
+		this.sessions.delete(sessionId);
+		this.coordinationPaths.delete(sessionId);
+	}
+
 	values(): readonly TeamSessionDocument[] {
 		return [...this.sessions.values()];
 	}
