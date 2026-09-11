@@ -789,7 +789,7 @@ describe("KernelRuntimeSessionBackend", () => {
 		expect(events[1]).toMatchObject({ type: "session.lifecycle", phase: "agent_end" });
 	});
 
-	it("commits manual compaction outside a turn and exposes context control without extra host events", async () => {
+	it("commits manual compaction outside a turn and publishes its refreshed usage", async () => {
 		let autoCompactionEnabled = true;
 		const onManualCompactionCommitted =
 			vi.fn<NonNullable<ManualContextCompactionRuntime["onManualCompactionCommitted"]>>();
@@ -834,7 +834,8 @@ describe("KernelRuntimeSessionBackend", () => {
 			tokensBefore: 120,
 			details: { source: "test" },
 		});
-		expect(events).toHaveLength(eventCountBeforeCompaction);
+		expect(events).toHaveLength(eventCountBeforeCompaction + 1);
+		expect(events.at(-1)).toMatchObject({ type: "compaction.end", success: true, reason: "manual" });
 		expect(session.readHistory().at(-1)).toMatchObject({
 			type: "compaction",
 			summary: "manual summary",

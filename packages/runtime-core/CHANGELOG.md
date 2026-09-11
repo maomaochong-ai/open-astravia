@@ -6,6 +6,8 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Fixed
 
+- 手动与自动上下文压缩提交后会立即刷新 Context Usage，并通过一次 `compaction.end` 事件通知宿主；队列压缩不再重复发送成功事件。
+
 - 同一持久化 Session 路径并发恢复时现在复用同一个进行中的创建操作，避免重复装配 Session、共享资源注册冲突和部分初始化残留。
 
 - 显式取消活动 Turn 时会同时拒绝已排队及取消过程中到达的异步 continuation；停止后不再自动启动隐藏续跑，下一条用户消息可以正常进入新的 Turn。

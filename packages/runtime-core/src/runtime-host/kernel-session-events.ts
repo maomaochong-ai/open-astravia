@@ -39,14 +39,14 @@ export function mapKernelEventToSessionEvents(event: KernelEvent): SessionEvent[
 	if (event.type === "context.compacted") {
 		const record = event.record;
 		const reason = "reason" in record ? record.reason : undefined;
-		if (reason === "manual") return [];
+		if (reason !== "manual" && reason !== "threshold" && reason !== "overflow") return [];
 		return [
 			mapRuntimeSessionObservationEvent(
 				event.sessionId,
 				{
 					type: "compaction.end",
 					success: true,
-					...(reason === "threshold" || reason === "overflow" ? { reason } : {}),
+					reason,
 					...("tokensBefore" in record ? { tokensBefore: record.tokensBefore } : {}),
 					source: "agent",
 				},

@@ -126,6 +126,24 @@ describe("Greenfield KernelEvent to SessionEvent adapter", () => {
 		expect(compacted.map(payload)).toMatchObject([
 			{ type: "compaction.end", success: true, reason: "threshold", tokensBefore: 91_000 },
 		]);
+
+		const manualCompacted = mapKernelEventToSessionEvents({
+			...({
+				type: "context.compacted" as const,
+				sessionId: "session-1",
+				record: {
+					summary: "manual summary",
+					summaryMessage: { role: "user" as const, content: "manual summary", timestamp: 12 },
+					firstKeptEntryId: "message-2",
+					tokensBefore: 91_000,
+					reason: "manual" as const,
+				},
+				timestamp: 12,
+			} satisfies KernelEvent),
+		});
+		expect(manualCompacted.map(payload)).toMatchObject([
+			{ type: "compaction.end", success: true, reason: "manual", tokensBefore: 91_000 },
+		]);
 	});
 
 	it("maps transient execution failures independently from durable turn failure", () => {
