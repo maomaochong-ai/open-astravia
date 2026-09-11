@@ -150,6 +150,7 @@ export function DefaultInputBarConnector(props: ConnectedInputBarProps): JSX.Ele
 		speechInput: speechInput,
 		hasPromptAttachment: Boolean(draft.promptAttachment),
 		promptAttachmentIcon: draft.promptAttachment?.icon,
+		promptAttachmentIconUrl: draft.promptAttachment?.ownerPluginIconUrl,
 		promptAttachmentLabel: draft.promptAttachment?.label,
 		promptAttachmentLabels: draft.promptAttachment?.labels ?? (draft.promptAttachment ? [draft.promptAttachment.label] : undefined),
 		pendingMessageEdit: Boolean(draft.pendingMessageEdit),

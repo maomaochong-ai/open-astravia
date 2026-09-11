@@ -182,6 +182,8 @@ export interface RegisteredNewSessionContext {
 	contextId: string;
 	label: string;
 	icon?: PluginNewSessionContextContribution["icon"];
+	/** 拥有者插件的原色图标；上下文区挂到输入框的附件用它做徽标图标。 */
+	pluginIconUrl?: string;
 	activateWhen: PluginNewSessionContextContribution["activateWhen"];
 	width: NonNullable<PluginNewSessionContextContribution["width"]>;
 	render: PluginNewSessionContextContribution["render"];
@@ -438,6 +440,8 @@ export const pluginTurnCardsAtom = atom<RegisteredTurnCard[]>([]);
  */
 export interface RegisteredPromptAttachment extends PluginPromptAttachment {
 	ownerPluginId: string;
+	/** 拥有者插件的原色图标，输入框下沿的徽标据此标出来源。 */
+	ownerPluginIconUrl?: string;
 }
 
 export const promptAttachmentAtom = atom<RegisteredPromptAttachment | null>(null);

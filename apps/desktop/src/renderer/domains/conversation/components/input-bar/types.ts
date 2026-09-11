@@ -175,6 +175,8 @@ export interface InputBarModel {
 	speechInput: SpeechInputModel | null;
 	hasPromptAttachment: boolean;
 	promptAttachmentIcon?: string;
+	/** 拥有者插件的原色图标地址；徽标优先用它，认来源比认形状快。 */
+	promptAttachmentIconUrl?: string;
 	promptAttachmentLabel?: string;
 	/** 逐条渲染的条目名；插件没给 `labels` 时就是 `[promptAttachmentLabel]`。 */
 	promptAttachmentLabels?: string[];

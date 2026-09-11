@@ -79,7 +79,13 @@ export function useNewSessionContextBlock(input: UseNewSessionContextBlockInput)
 				cwd: input.cwd,
 				composer: {
 					attach: (attachment) =>
-						setPromptAttachment({ ...attachment, ownerPluginId: active.contribution.pluginId }),
+						setPromptAttachment({
+							...attachment,
+							ownerPluginId: active.contribution.pluginId,
+							...(active.contribution.pluginIconUrl
+								? { ownerPluginIconUrl: active.contribution.pluginIconUrl }
+								: {}),
+						}),
 					insertText: (text, options) => {
 						if (options?.position === "start") prependPlainText(text);
 						else insertPlainText(text);

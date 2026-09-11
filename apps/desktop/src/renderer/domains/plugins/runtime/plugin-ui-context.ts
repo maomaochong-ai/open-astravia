@@ -386,6 +386,7 @@ export function createPluginUiApi({
 			width: contribution.width === "wide" ? "wide" : "input",
 			render: contribution.render,
 			canReadDraft: hasPluginPermission(plugin, "conversation.draft.read"),
+			...(plugin.iconUrl ? { pluginIconUrl: plugin.iconUrl } : {}),
 		};
 		newSessionContexts.push(normalized);
 		onChanged();
@@ -731,6 +732,9 @@ export function createPluginUiApi({
 			...attachment,
 			...(labels.length > 0 ? { labels } : { labels: undefined }),
 			ownerPluginId: plugin.id,
+			// 输入框上的徽标要认得出是谁挂的：插件自报的 iconify class 可有可无，
+			// 原色品牌图标是每个插件都有的那一个。
+			...(plugin.iconUrl ? { ownerPluginIconUrl: plugin.iconUrl } : {}),
 		});
 		// An attachment activates this plugin's input action so its hidden prompt
 		// instructions are contributed to the next turn.

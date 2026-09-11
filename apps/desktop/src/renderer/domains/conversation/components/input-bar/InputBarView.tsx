@@ -273,6 +273,7 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 							<PromptAttachmentLabels
 								labels={model.promptAttachmentLabels}
 								icon={model.promptAttachmentIcon}
+								iconUrl={model.promptAttachmentIconUrl}
 								removeLabel={model.labels.capsule.removeDefault}
 								onRemove={model.actions.removePromptAttachment}
 							/>

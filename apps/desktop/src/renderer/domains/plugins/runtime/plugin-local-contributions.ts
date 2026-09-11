@@ -24,6 +24,8 @@ import type {
 export type ResolvedPluginNewSessionContextContribution = PluginNewSessionContextContribution & {
 	canReadDraft: boolean;
 	width: NonNullable<PluginNewSessionContextContribution["width"]>;
+	/** 拥有者插件的原色图标，与 `canReadDraft` 同理：只有注册这一刻看得到插件记录。 */
+	pluginIconUrl?: string;
 };
 
 /** Host-normalized workspace view with a resolved full-color image source. */
