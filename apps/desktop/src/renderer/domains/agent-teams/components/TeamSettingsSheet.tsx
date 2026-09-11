@@ -19,6 +19,7 @@ import {
 } from "@vetta/ui";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { AgentAvatarStack } from "./agent-center/AgentAvatarStack";
 import {
 	type TeamAssemblyDraft,
 	assemblyAssignment,
@@ -112,11 +113,10 @@ export function TeamSettingsSheet({
 					<div className="flex w-full flex-col gap-8">
 						<DetailDrawerEnter index={0}>
 							<div className="flex flex-col gap-4">
-								<div className="flex items-start gap-4">
-									<span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-										<span className="icon-[solar--users-group-rounded-linear] h-7 w-7" aria-hidden="true" />
-									</span>
-									<div className="min-w-0 flex-1">
+								{/* 团队的「脸」是成员本身，用头像组顶在标题上方，比一枚通用图标更认得出是哪支队。 */}
+								<div className="flex min-w-0 flex-col gap-2.5">
+									<AgentAvatarStack agents={members} leaderId={leaderId} emptyIcon />
+									<div className="min-w-0">
 										<h1 className="truncate text-[20px] font-semibold leading-snug tracking-tight text-foreground">
 											{draft.name || team.name}
 										</h1>
