@@ -8,6 +8,8 @@ export type {
 export { CodeBlockCopyButtonView } from "./CodeBlockCopyButton";
 export type { CollapsePanelProps } from "./CollapsePanel";
 export { CollapsePanel } from "./CollapsePanel";
+export type { ContextMenuNode, ContextMenuViewProps } from "./ContextMenuView";
+export { ContextMenuView } from "./ContextMenuView";
 export type { MacKeyboardPreviewProps, MacKeyId } from "./MacKeyboardPreview";
 export { MacKeyboardPreview } from "./MacKeyboardPreview";
 export type { MarkdownTableProps } from "./MarkdownTable";
