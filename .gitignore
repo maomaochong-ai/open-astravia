@@ -96,6 +96,7 @@ skills-lock.json
 !.agents/skills/
 !.agents/skills/**
 !.claude/skills/
+!.claude/skills
 !.claude/skills/**
 !skills-lock.json
 
