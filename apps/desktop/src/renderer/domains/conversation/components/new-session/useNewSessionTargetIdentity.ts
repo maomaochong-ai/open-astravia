@@ -1,3 +1,4 @@
+import { useAgentAvatarResolver } from "@shared/agent-teams/agent-avatar";
 import type { NewSessionHeroIdentity } from "@vetta/theme-ui";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -14,12 +15,16 @@ import type { NewSessionTargetKey } from "./target";
 export function useNewSessionTargetIdentity(targetKey: NewSessionTargetKey | null): NewSessionHeroIdentity | null {
 	const { t } = useTranslation("chat");
 	const document = useAgentTeamDirectoryDocument();
+	const resolveAvatar = useAgentAvatarResolver();
 
 	return useMemo(
 		() =>
-			resolveNewSessionTargetIdentity(document, targetKey, {
-				memberCount: (count) => t("newSession.agentSelector.memberCount", { count }),
-			}),
-		[document, t, targetKey],
+			resolveNewSessionTargetIdentity(
+				document,
+				targetKey,
+				{ memberCount: (count) => t("newSession.agentSelector.memberCount", { count }) },
+				resolveAvatar,
+			),
+		[document, resolveAvatar, t, targetKey],
 	);
 }

@@ -27,7 +27,7 @@ import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import { createRuntimeObservationPublisher, type RuntimeObservationRecord } from "@vetta/runtime-core/observation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DesktopCodingAgentSessionConfig } from "../conversations/resolve-session-config.js";
-import { registerPresetAgentBlueprints } from "./preset-agent-blueprints.testing.js";
+import { registerPresetPluginBlueprints } from "./preset-plugin-blueprints.testing.js";
 import { AgentTeamSessionService } from "./team-session-service.js";
 
 vi.mock("../conversations/resolve-session-config.js", () => ({
@@ -41,7 +41,7 @@ vi.mock("../ipc/fs.js", () => ({ readDesktopConfig: vi.fn(async () => ({})) }));
 
 describe("Team member concurrency", () => {
 	// 装机团队的队长是插件智能体，注册表空着就取不到人设。
-	beforeEach(registerPresetAgentBlueprints);
+	beforeEach(() => registerPresetPluginBlueprints());
 
 	it("restores policy-specific deltas without rerunning a changed policy after restart", async () => {
 		let text = "admitted";

@@ -66,7 +66,6 @@ export function AgentCard({
 				<AgentAvatarView
 					name={agent.name}
 					avatar={agentAvatarUrl(agent, blueprint)}
-					blueprintId={agent.blueprintId}
 					size="hero"
 				/>
 

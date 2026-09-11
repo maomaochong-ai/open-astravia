@@ -95,16 +95,10 @@ export interface AgentTeamStorageIndex {
 	readonly revision: number;
 	readonly layoutVersion: typeof AGENT_TEAM_STORAGE_LAYOUT_VERSION;
 	/**
-	 * 已经收到的内置预设批次。缺失表示这份目录建于回填机制上线之前，按基线批次处理。
-	 *
-	 * 它同时是「用户删掉的预设不再复活」的依据：批次一旦记下，那批里的东西删了就不会再补。
+	 * 宿主留下的装机档案是否已经清理过。一次性开关：清过就再也不看那批 id，用户之后自建的
+	 * 同名资源不会被误伤。
 	 */
-	readonly presetGeneration?: number;
-	/**
-	 * 已经铺过的插件预设 key。与 {@link AgentTeamStorageIndex.presetGeneration} 同理：
-	 * 记下才能区分「还没铺过」和「铺过但被用户删了」，后者不该在下次启动复活。
-	 */
-	readonly installedPluginPresets?: readonly string[];
+	readonly hostPresetsRetired?: boolean;
 	readonly teams: Readonly<Record<string, string>>;
 	readonly agents: Readonly<Record<string, string>>;
 }
@@ -216,15 +210,10 @@ export async function readAgentTeamStorageIndex(root: string): Promise<AgentTeam
 		schemaVersion: 1,
 		revision: value.revision,
 		layoutVersion: AGENT_TEAM_STORAGE_LAYOUT_VERSION,
-		...(isNonNegativeInteger(value.presetGeneration) ? { presetGeneration: value.presetGeneration } : {}),
-		...(isStringArray(value.installedPluginPresets) ? { installedPluginPresets: value.installedPluginPresets } : {}),
+		...(value.hostPresetsRetired === true ? { hostPresetsRetired: true } : {}),
 		teams,
 		agents,
 	};
-}
-
-function isStringArray(value: unknown): value is readonly string[] {
-	return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
 export async function migrateAgentTeamStorage(root: string): Promise<AgentTeamStorageMigrationResult> {

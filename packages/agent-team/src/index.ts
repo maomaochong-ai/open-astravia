@@ -4,7 +4,7 @@ export * from "./context-projector.js";
 export * from "./contracts.js";
 export * from "./domain.js";
 export * from "./extensions.js";
-export * from "./initial-resources.js";
+export * from "./fixtures.js";
 export * from "./legacy-events.js";
 export * from "./observability.js";
 export * from "./operating-context.js";

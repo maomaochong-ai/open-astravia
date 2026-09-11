@@ -25,7 +25,7 @@ import type {
 	ConversationOwnershipCatalogPort,
 	ConversationOwnershipRecord,
 } from "../conversations/conversation-ownership-catalog.js";
-import { registerPresetAgentBlueprints } from "./preset-agent-blueprints.testing.js";
+import { registerPresetPluginBlueprints } from "./preset-plugin-blueprints.testing.js";
 import { readTeamConversationDocument, readTeamConversationHistory } from "./team-session-file-reader.js";
 import type { LegacyTeamSessionRepository } from "./team-session-repository.js";
 import { AgentTeamSessionService } from "./team-session-service.js";
@@ -50,7 +50,7 @@ vi.mock("./team-session-file-reader.js", async (importOriginal) => {
 
 describe("AgentTeamSessionService streaming contract", () => {
 	// 装机团队的队长是插件智能体，注册表空着就取不到人设。
-	beforeEach(registerPresetAgentBlueprints);
+	beforeEach(() => registerPresetPluginBlueprints());
 
 	beforeEach(() => vi.clearAllMocks());
 

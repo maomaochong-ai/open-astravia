@@ -1,5 +1,4 @@
 import type { AgentProfile, TeamDefinition } from "@vetta/agent-team";
-import { PRESET_AGENT_PLUGIN_ID, pluginBlueprintId } from "@vetta/agent-team";
 
 const AVATAR_DIRECTORY = "./agent-team-avatars";
 
@@ -10,25 +9,7 @@ export const AGENT_AVATAR_OPTIONS = Object.freeze(
 	),
 );
 
-const BLUEPRINT_AVATAR: Readonly<Record<string, string>> = Object.freeze({
-	// master / developer / researcher 的人设搬去了「预设智能体」插件，头像仍用宿主这套图：
-	// 插件不自带头像，缺了这三条映射就会回落到按 id 取的随机图。
-	[pluginBlueprintId(PRESET_AGENT_PLUGIN_ID, "master")]: `${AVATAR_DIRECTORY}/master.webp`,
-	[pluginBlueprintId(PRESET_AGENT_PLUGIN_ID, "developer")]: `${AVATAR_DIRECTORY}/executor.webp`,
-	[pluginBlueprintId(PRESET_AGENT_PLUGIN_ID, "researcher")]: `${AVATAR_DIRECTORY}/researcher.webp`,
-	master: `${AVATAR_DIRECTORY}/master.webp`,
-	researcher: `${AVATAR_DIRECTORY}/researcher.webp`,
-	architect: `${AVATAR_DIRECTORY}/architect.webp`,
-	executor: `${AVATAR_DIRECTORY}/executor.webp`,
-	auditor: `${AVATAR_DIRECTORY}/auditor.webp`,
-	optimizer: `${AVATAR_DIRECTORY}/optimizer.webp`,
-	synthesizer: `${AVATAR_DIRECTORY}/synthesizer.webp`,
-	translator: `${AVATAR_DIRECTORY}/translator.webp`,
-	leader: `${AVATAR_DIRECTORY}/master.webp`,
-	builder: `${AVATAR_DIRECTORY}/executor.webp`,
-	reviewer: `${AVATAR_DIRECTORY}/auditor.webp`,
-});
-
+/** 老档案里存的是 avatar-NN 路径，按下标还原成现在的文件名。 */
 const LEGACY_AVATAR_ALIASES: Readonly<Record<string, string>> = Object.freeze(
 	Object.fromEntries(
 		AGENT_AVATAR_OPTIONS.map((avatar, index) => [
@@ -38,18 +19,23 @@ const LEGACY_AVATAR_ALIASES: Readonly<Record<string, string>> = Object.freeze(
 	),
 );
 
+/**
+ * 档案头像：用户选过的优先，其次是提供方给 blueprint 配的图。
+ *
+ * 都没有时按档案 id 稳定取一张兜底——宿主不认识任何具体角色，也就没有「这个角色该用哪张图」
+ * 这回事。
+ */
 export function agentAvatarUrl(
 	profile: {
 		readonly id: string;
-		readonly blueprintId: string;
 		readonly avatar?: string;
 	},
-	/** 插件贡献的 blueprint 自带头像；宿主的内置图里没有它。 */
+	/** 提供方随 blueprint 带来的头像。 */
 	blueprint?: { readonly avatarUrl?: string },
 ): string {
 	if (profile.avatar) return LEGACY_AVATAR_ALIASES[profile.avatar] ?? profile.avatar;
 	if (blueprint?.avatarUrl) return blueprint.avatarUrl;
-	return BLUEPRINT_AVATAR[profile.blueprintId] ?? AGENT_AVATAR_OPTIONS[stableIndex(profile.id)]!;
+	return AGENT_AVATAR_OPTIONS[stableIndex(profile.id)]!;
 }
 
 export function teamMemberAvatarUrls(
@@ -62,7 +48,6 @@ export function teamMemberAvatarUrls(
 		return agentAvatarUrl(
 			{
 				id: profile?.id ?? member.id,
-				blueprintId: profile?.blueprintId ?? "master",
 				...(profile?.avatar ? { avatar: profile.avatar } : {}),
 			},
 			profile ? blueprintsById?.get(profile.blueprintId) : undefined,

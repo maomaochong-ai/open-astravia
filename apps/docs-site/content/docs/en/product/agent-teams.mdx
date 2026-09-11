@@ -50,29 +50,24 @@ The entry point is **Agents** in the sidebar. Teams sit at the top, the agent li
   <figcaption>A team card shows its member avatars and headcount; selecting it offers to start a session or open team settings. An agent card opens that agent's profile.</figcaption>
 </MediaFrame>
 
-A fresh install ships eight agents, one per role blueprint:
+On first launch the built-in **Preset Agents** extension lays down five general-purpose personas:
 
 | Agent | Role | What it owns |
 | --- | --- | --- |
 | Master | Owner | Breaks down the goal, delegates, accepts or reworks results, delivers |
-| Researcher | Research | Collects facts, documentation, prior art, and market signals, and verifies them |
-| Architect | Design | Produces the architecture, the interface contracts, or a document or PRD outline |
 | Developer | Production | Produces the core asset: code, a substantive draft, or a worked analysis |
+| Researcher | Research | Collects facts, documentation, prior art, and market signals, and verifies them |
 | Auditor | Audit | Red-teams the work for correctness, safety, edge cases, and unsupported claims |
-| Optimizer | Refinement | Improves finished work: performance, maintainability, channel-specific voice |
-| Synthesizer | Packaging | Merges several members' results into one consistent report or bundle |
-| Translator | Conversion | Localizes across languages and restates technical detail in business language |
+| Business | Business | Turns a goal into requirements, scope, and a business model, with its assumptions named |
 
-Master, Developer, and Researcher come from **Preset Agents**, a built-in plugin; the other five are host blueprints. The plugin ships enabled and cannot be turned off, so those three personas are always available.
-
-Plus four preset teams, each a fixed pipeline of one Master and three specialists:
+Plus two preset teams, both led by the Master:
 
 | Team | Roster | Pipeline |
 | --- | --- | --- |
-| Dev Team | Master · Architect · Developer · Auditor | Design and contracts first, then implementation with self-verification, then review; blocking findings go back to the developer or the design |
-| Deep Research | Master · Researcher · Auditor · Synthesizer | Split the question into angles gathered in parallel, strip unsupported claims, then assemble a structured report |
-| Growth & Content | Master · Researcher · Developer · Optimizer | Set the angle and evidence, write one master draft, then derive per-channel variants |
-| Biz Strategy | Master · Architect · Auditor · Synthesizer | Build the PRD and business model, hunt for fatal flaws, then package a presentable plan |
+| Dev Team | Master · Developer · Researcher · Auditor | Establish the evidence, implement and self-verify, then review; blocking findings go back to the implementation or the plan |
+| Planning Team | Master · Researcher · Auditor · Business | Research first, turn it into requirements and a business model, and ship only once the audit finds no fatal flaw |
+
+These personas and teams are maintained by the extension, not by the host, which ships no presets of its own: the Agents page labels where each came from, they cannot be deleted, and disabling the extension puts them away together. Anything you create yourself is untouched.
 
 None of those pipelines is hardcoded. Each lives in the **team assignment** written on that team's Master (see "Configure a team" below), so changing the workflow means editing a paragraph of text, not waiting for a release.
 
@@ -99,7 +94,7 @@ The preset content is materialized into ordinary team files on first launch. Fro
 </Steps>
 
 <MediaFrame>
-  <img src="/images/product/team-chat.webp" alt="A Vetta team session with the Master, Architect, Developer, and Auditor roster on top and the delegation steps below" width="1920" height="1179" />
+  <img src="/images/product/team-chat.webp" alt="A Vetta team session with the Master, Researcher, Developer, and Auditor roster on top and the delegation steps below" width="1920" height="1179" />
   <figcaption>The main timeline carries public progress only: the owner's plan, each <code>team_delegate_task</code> handoff, and the conclusion every member published.</figcaption>
 </MediaFrame>
 

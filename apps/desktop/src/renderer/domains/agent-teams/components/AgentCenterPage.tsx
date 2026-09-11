@@ -133,6 +133,7 @@ export function AgentCenterPage(): JSX.Element {
 					mode={agentParam === "new" ? "create" : "edit"}
 					agent={sheetAgent}
 					blueprints={model.blueprints}
+					plugins={model.plugins}
 					capabilities={model.capabilities}
 					onClose={closeSheets}
 					onExited={() => {
@@ -142,7 +143,8 @@ export function AgentCenterPage(): JSX.Element {
 					onPreview={model.actions.previewAgent}
 					onSave={model.actions.saveAgent}
 					onCreate={model.actions.createAgentFromDraft}
-					onDelete={() => void requestDeleteAgent()}
+					// 提供方维护的档案不给删除入口：它由提供方装卸，删了下次启动也会回来。
+					{...(sheetAgent?.source ? {} : { onDelete: () => void requestDeleteAgent() })}
 				/>
 			)}
 
@@ -152,6 +154,7 @@ export function AgentCenterPage(): JSX.Element {
 					team={sheetTeam}
 					agents={model.agents}
 					agentsById={model.agentsById}
+					plugins={model.plugins}
 					onClose={closeSheets}
 					onExited={() => {
 						if (teamParam === undefined) setTeamMounted(false);
@@ -161,7 +164,7 @@ export function AgentCenterPage(): JSX.Element {
 						if (saved) notifyAgentTeamConfigurationChanged();
 						return saved;
 					}}
-					onDelete={() => requestDeleteTeam(sheetTeam)}
+					{...(sheetTeam.source ? {} : { onDelete: () => requestDeleteTeam(sheetTeam) })}
 					onOpenMember={openAgent}
 				/>
 			)}

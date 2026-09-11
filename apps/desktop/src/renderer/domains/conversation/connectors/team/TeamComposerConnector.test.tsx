@@ -92,7 +92,6 @@ function model(overrides: Partial<TeamChatViewModel> = {}): TeamChatViewModel {
 		labels: {
 			leaderRoute: "Leader",
 			memberRoleFallback: "Member",
-			memberRoles: { researcher: "Researcher", builder: "Builder" },
 			placeholder: "Ask the team",
 			attachFile: "Add file",
 			attachImage: "Add image",
@@ -138,9 +137,10 @@ describe("TeamComposerConnector", () => {
 			expect.objectContaining({ replaceTrigger: true }),
 		);
 		expect(inputModel.speechInput).toBeDefined();
-		expect(inputModel.routing?.participants[0]?.avatar).toBe("./agent-team-avatars/researcher.webp");
+		// 头像不再按角色 id 写死：没有提供方的图时，兜底只按档案 id 稳定取一张。
+		expect(inputModel.routing?.participants[0]?.avatar).toMatch(/^\.\/agent-team-avatars\/.+\.webp$/);
 		expect(inputModel.routing?.participants[0]?.badgeLabel).toBe("Leader");
-		expect(inputModel.routing?.participants[1]?.badgeLabel).toBe("Builder");
+		expect(inputModel.routing?.participants[1]?.badgeLabel).toBe("Build");
 		expect(inputModel.routing?.participants[2]?.badgeLabel).toBe("Member");
 		expect(inputModel.routing?.participants[0]?.statusLabel).toBeUndefined();
 		expect(inputModel.routing?.labels.trigger).toBeTypeOf("string");

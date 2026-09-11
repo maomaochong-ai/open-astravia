@@ -154,7 +154,6 @@ export const AssistantMessage = memo(function AssistantMessage({
 								<AgentAvatarView
 									name={participant.name}
 									avatar={participant.avatar}
-									blueprintId={participant.blueprintId}
 									active={isCurrentlyStreaming}
 									size="lg"
 								/>

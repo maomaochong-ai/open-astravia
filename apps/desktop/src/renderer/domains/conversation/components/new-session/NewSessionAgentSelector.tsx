@@ -1,4 +1,4 @@
-import { agentAvatarUrl, teamMemberAvatarUrls } from "@shared/agent-teams/agent-avatar";
+import { teamMemberAvatarUrls, useAgentAvatarResolver } from "@shared/agent-teams/agent-avatar";
 import { BotAvatar } from "@shared/components/BotAvatar";
 import { type AgentTeamDocument, listLibraryAgentProfiles } from "@vetta/agent-team";
 import { NewSessionPicker, type NewSessionPickerRootProps } from "@vetta/theme-ui/chat";
@@ -58,6 +58,11 @@ export function NewSessionAgentSelector({
 	useEffect(() => {
 		void load();
 	}, [load]);
+	const resolveAvatar = useAgentAvatarResolver();
+	const blueprintAvatars = useMemo(
+		() => new Map(document?.agents.map((agent) => [agent.blueprintId, { avatarUrl: resolveAvatar(agent) }]) ?? []),
+		[document?.agents, resolveAvatar],
+	);
 
 	const teamOptions = useMemo<readonly NewSessionTargetOption[]>(
 		() =>
@@ -65,10 +70,10 @@ export function NewSessionAgentSelector({
 				targetKey: teamTargetKey(team.id),
 				title: team.name,
 				subtitle: t("newSession.agentSelector.memberCount", { count: team.members.length }),
-				avatarUrls: teamMemberAvatarUrls(team, agentsById),
+				avatarUrls: teamMemberAvatarUrls(team, agentsById, blueprintAvatars),
 				selected: selectedKey === teamTargetKey(team.id),
 			})),
-		[agentsById, document?.teams, selectedKey, t],
+		[agentsById, blueprintAvatars, document?.teams, selectedKey, t],
 	);
 	// 只列智能体库里的 Agent：团队 `copy` 绑定产生的 team scope 副本是团队私有的，
 	// 摆进来会变成一堆同名影子条目。
@@ -78,10 +83,10 @@ export function NewSessionAgentSelector({
 				targetKey: agentTargetKey(agent.id),
 				title: agent.name,
 				...(agent.description ? { subtitle: agent.description } : {}),
-				avatarUrls: [agentAvatarUrl(agent)],
+				avatarUrls: [resolveAvatar(agent)],
 				selected: selectedKey === agentTargetKey(agent.id),
 			})),
-		[document, selectedKey],
+		[document, resolveAvatar, selectedKey],
 	);
 	const visibleTeams = useMemo(() => filterTargetOptions(teamOptions, query), [teamOptions, query]);
 	const visibleAgents = useMemo(() => filterTargetOptions(agentOptions, query), [agentOptions, query]);

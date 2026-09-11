@@ -8,6 +8,13 @@ export interface NewSessionTargetIdentityLabels {
 	readonly memberCount: (count: number) => string;
 }
 
+/** 解析档案头像；缺省只认用户自己挑的图，提供方那张要靠调用方传解析器进来。 */
+export type NewSessionAvatarResolver = (subject: {
+	readonly id: string;
+	readonly blueprintId: string;
+	readonly avatar?: string;
+}) => string;
+
 /**
  * 把选中的会话对象解析成 hero 身份。
  *
@@ -18,6 +25,7 @@ export function resolveNewSessionTargetIdentity(
 	document: AgentTeamDocument | undefined,
 	targetKey: string | null,
 	labels: NewSessionTargetIdentityLabels,
+	resolveAvatar: NewSessionAvatarResolver = agentAvatarUrl,
 ): NewSessionHeroIdentity | null {
 	if (!document || !targetKey) return null;
 
@@ -27,7 +35,9 @@ export function resolveNewSessionTargetIdentity(
 		if (!team) return null;
 		const agentsById = new Map(document.agents.map((agent) => [agent.id, agent]));
 		return {
-			avatars: team.members.map((member) => heroAvatar(agentsById.get(member.binding.agentProfileId), member.id)),
+			avatars: team.members.map((member) =>
+				heroAvatar(agentsById.get(member.binding.agentProfileId), member.id, resolveAvatar),
+			),
 			key: targetKey,
 			subtitle: team.description.trim() || labels.memberCount(team.members.length),
 			title: team.name,
@@ -39,7 +49,7 @@ export function resolveNewSessionTargetIdentity(
 		const agent = document.agents.find((candidate) => candidate.id === agentId);
 		if (!agent) return null;
 		return {
-			avatars: [heroAvatar(agent, agent.id)],
+			avatars: [heroAvatar(agent, agent.id, resolveAvatar)],
 			key: targetKey,
 			subtitle: agent.description.trim(),
 			title: agent.name,
@@ -50,15 +60,18 @@ export function resolveNewSessionTargetIdentity(
 }
 
 /** 成员绑定指向的档案可能缺失（团队私有副本被清理）：退回 member id 的兜底头像。 */
-function heroAvatar(profile: AgentProfile | undefined, fallbackId: string): NewSessionHeroAvatar {
-	const blueprintId = profile?.blueprintId ?? "master";
+function heroAvatar(
+	profile: AgentProfile | undefined,
+	fallbackId: string,
+	resolveAvatar: NewSessionAvatarResolver,
+): NewSessionHeroAvatar {
 	return {
-		avatar: agentAvatarUrl({
+		avatar: resolveAvatar({
 			id: profile?.id ?? fallbackId,
-			blueprintId,
+			blueprintId: profile?.blueprintId ?? "",
 			...(profile?.avatar ? { avatar: profile.avatar } : {}),
 		}),
-		blueprintId,
+		...(profile?.blueprintId ? { blueprintId: profile.blueprintId } : {}),
 		name: profile?.name ?? fallbackId,
 	};
 }

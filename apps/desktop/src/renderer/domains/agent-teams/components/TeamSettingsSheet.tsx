@@ -1,4 +1,4 @@
-import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";
+import { useAgentAvatarResolver } from "@shared/agent-teams/agent-avatar";
 import type { AgentProfile, TeamDefinition, TeamMemberAssignment } from "@vetta/agent-team";
 import { AgentAvatarView } from "@vetta/theme-ui/chat";
 import { DetailDrawer, DetailDrawerEnter } from "@vetta/theme-ui/overlays";
@@ -20,6 +20,7 @@ import {
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AgentAvatarStack } from "./agent-center/AgentAvatarStack";
+import { type BlueprintDisplayPlugin, resourceProviderName } from "../lib/blueprint-display";
 import {
 	type TeamAssemblyDraft,
 	assemblyAssignment,
@@ -35,10 +36,13 @@ export interface TeamSettingsSheetProps {
 	readonly team: TeamDefinition;
 	readonly agents: readonly AgentProfile[];
 	readonly agentsById: ReadonlyMap<string, AgentProfile>;
+	/** 解析提供方显示名用；缺省视为没有任何扩展在位。 */
+	readonly plugins?: readonly BlueprintDisplayPlugin[];
 	readonly onClose: () => void;
 	readonly onExited?: () => void;
 	readonly onSave: (draft: TeamAssemblyDraft) => Promise<TeamDefinition | undefined>;
-	readonly onDelete: () => void;
+	/** 省略时不出现删除入口：提供方维护的团队不允许删除。 */
+	readonly onDelete?: () => void;
 	/** 打开某位成员的档案抽屉，让能力配置回到同一套编辑入口。 */
 	readonly onOpenMember: (agentId: string) => void;
 }
@@ -49,6 +53,7 @@ export function TeamSettingsSheet({
 	team,
 	agents,
 	agentsById,
+	plugins = [],
 	onClose,
 	onExited,
 	onSave,
@@ -56,6 +61,7 @@ export function TeamSettingsSheet({
 	onOpenMember,
 }: TeamSettingsSheetProps): JSX.Element {
 	const { t } = useTranslation("agent-teams");
+	const resolveAvatar = useAgentAvatarResolver();
 	const [draft, setDraft] = useState<TeamAssemblyDraft>(() => assemblyDraftFromTeam(team));
 	const [addOpen, setAddOpen] = useState(false);
 	const [addBindingKind, setAddBindingKind] = useState<"reference" | "copy">("reference");
@@ -91,6 +97,8 @@ export function TeamSettingsSheet({
 		setAddOpen(false);
 	}
 
+	const providerName = resourceProviderName(team.source, plugins);
+
 	async function save(): Promise<void> {
 		if (!canSubmitAssembly(draft)) return;
 		setSaving(true);
@@ -120,9 +128,20 @@ export function TeamSettingsSheet({
 										<h1 className="truncate text-[20px] font-semibold leading-snug tracking-tight text-foreground">
 											{draft.name || team.name}
 										</h1>
-										<p className="mt-1.5 text-[11px] text-muted-foreground/70">
-											{t("teams.memberCount", { count: members.length })}
-										</p>
+										<div className="mt-1.5 flex flex-wrap items-center gap-2">
+											<p className="text-[11px] text-muted-foreground/70">
+												{t("teams.memberCount", { count: members.length })}
+											</p>
+											{providerName && (
+												<span
+													className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground"
+													title={t("center.providedByHint")}
+												>
+													<span className="icon-[solar--box-minimalistic-linear] h-3 w-3" aria-hidden="true" />
+													{t("center.providedBy", { name: providerName })}
+												</span>
+											)}
+										</div>
 									</div>
 								</div>
 
@@ -143,16 +162,18 @@ export function TeamSettingsSheet({
 										/>
 										{saving ? t("settings.saving") : t("settings.saveChanges")}
 									</Button>
-									<Button
-										variant="outline"
-										size="lg"
-										className="text-muted-foreground hover:text-destructive"
-										title={t("settings.deleteTeam")}
-										aria-label={t("settings.deleteTeam")}
-										onClick={onDelete}
-									>
-										<span className="icon-[solar--trash-bin-trash-linear] h-4 w-4" aria-hidden="true" />
-									</Button>
+									{onDelete && (
+										<Button
+											variant="outline"
+											size="lg"
+											className="text-muted-foreground hover:text-destructive"
+											title={t("settings.deleteTeam")}
+											aria-label={t("settings.deleteTeam")}
+											onClick={onDelete}
+										>
+											<span className="icon-[solar--trash-bin-trash-linear] h-4 w-4" aria-hidden="true" />
+										</Button>
+									)}
 								</div>
 
 								{error && (
@@ -213,8 +234,7 @@ export function TeamSettingsSheet({
 											<div className="flex items-center gap-3">
 												<AgentAvatarView
 													name={member.name}
-													avatar={agentAvatarUrl(member)}
-													blueprintId={member.blueprintId}
+													avatar={resolveAvatar(member)}
 													size="xl"
 												/>
 												<button
@@ -314,8 +334,7 @@ export function TeamSettingsSheet({
 								>
 									<AgentAvatarView
 										name={agent.name}
-										avatar={agentAvatarUrl(agent)}
-										blueprintId={agent.blueprintId}
+										avatar={resolveAvatar(agent)}
 										size="xl"
 									/>
 									<div className="min-w-0 flex-1">

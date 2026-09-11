@@ -83,7 +83,6 @@ export function InputBarMention({
 										<AgentAvatarView
 											name={participant.name}
 											avatar={participant.avatar}
-											blueprintId={participant.blueprintId}
 											size="sm"
 											active
 											className="ring-2 ring-input-bar-bg"
@@ -155,7 +154,6 @@ function MentionRow({ participant }: { readonly participant: MentionParticipant 
 				<AgentAvatarView
 					name={participant.name}
 					avatar={participant.avatar}
-					blueprintId={participant.blueprintId}
 					active={participant.selected}
 					size="lg"
 				/>

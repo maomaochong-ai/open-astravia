@@ -101,7 +101,6 @@ export function TeamMemberReplyCard({ event, onOpen }: TeamMemberReplyCardProps)
 					<AgentAvatarView
 						name={event.memberName}
 						avatar={event.memberAvatar}
-						blueprintId={event.memberBlueprintId ?? "leader"}
 						size="lg"
 						active={active}
 					/>

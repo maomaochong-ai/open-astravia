@@ -93,7 +93,6 @@ export function TeamMemberRoster({
 								<AgentAvatarView
 									name={member.name}
 									avatar={member.avatar}
-									blueprintId={member.blueprintId}
 									active={active}
 									size="md"
 								/>

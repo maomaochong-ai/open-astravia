@@ -1,17 +1,18 @@
 import type { AgentBlueprint } from "@vetta/agent-team";
-import { BUILTIN_AGENT_BLUEPRINTS, findAgentBlueprint, MIGRATED_PLUGIN_BLUEPRINT_IDS } from "@vetta/agent-team";
 import type { PluginAgentPreset, PluginTeamPreset } from "./plugin-agent-presets.js";
 
 /**
- * 宿主的 blueprint 解析入口：内置的写死在 @vetta/agent-team 里，插件贡献的随插件装卸。
+ * 宿主的 blueprint 解析入口。
  *
- * 领域包刻意不知道插件的存在（它同时跑在渲染进程里，也不该依赖插件目录），所以合并只
- * 发生在主进程这一层。解析不到 = 该插件当前不可用，调用方一律降级，不要抛错。
+ * 宿主自己不带任何人设：blueprint 全部来自扩展，随扩展装卸。领域包刻意不知道扩展的存在
+ * （它同时跑在渲染进程里，也不该依赖插件目录），所以装配只发生在主进程这一层。解析不到 =
+ * 提供方当前不可用，调用方一律降级，不要抛错。
  */
 class AgentBlueprintRegistry {
 	private pluginAgents: readonly PluginAgentPreset[] = [];
 	private pluginTeams: readonly PluginTeamPreset[] = [];
 	private byId: ReadonlyMap<string, AgentBlueprint> = new Map();
+	private byLegacyId: ReadonlyMap<string, AgentBlueprint> = new Map();
 	private enabledPlugins: readonly string[] = [];
 
 	/** 插件集合变化时整体替换：增量维护容易漏掉禁用/卸载，代价却只是重建一张小表。 */
@@ -24,6 +25,9 @@ class AgentBlueprintRegistry {
 		this.pluginTeams = teams;
 		this.enabledPlugins = enabledPlugins;
 		this.byId = new Map(agents.map((preset) => [preset.blueprint.id, preset.blueprint]));
+		this.byLegacyId = new Map(
+			agents.flatMap((preset) => preset.legacyBlueprintIds.map((legacy) => [legacy, preset.blueprint] as const)),
+		);
 	}
 
 	/**
@@ -37,19 +41,17 @@ class AgentBlueprintRegistry {
 	}
 
 	/**
-	 * 解析顺序：内置 → 插件 → 迁移映射。
+	 * 先按 blueprint id 查，再按提供方声明的历史 id 折算。
 	 *
-	 * 最后一档是给存量档案的：master / executor / researcher 已经搬进「预设智能体」插件，
-	 * 老档案里写的还是内置 id，折算过去就不必动用户数据。插件被禁用时这一档同样解析不到，
-	 * 语义与其它插件智能体一致。
+	 * 后一档是给存量档案的：人设换了提供方之后，老档案里写的还是老 id。映射由提供方在自己的
+	 * manifest 里声明，宿主因此不必知道谁接管了哪个角色。
 	 */
 	resolve(id: string): AgentBlueprint | undefined {
-		const migrated = MIGRATED_PLUGIN_BLUEPRINT_IDS[id];
-		return findAgentBlueprint(id) ?? this.byId.get(id) ?? (migrated ? this.byId.get(migrated) : undefined);
+		return this.byId.get(id) ?? this.byLegacyId.get(id);
 	}
 
 	list(): readonly AgentBlueprint[] {
-		return [...BUILTIN_AGENT_BLUEPRINTS, ...this.pluginAgents.map((preset) => preset.blueprint)];
+		return this.pluginAgents.map((preset) => preset.blueprint);
 	}
 
 	listPluginAgents(): readonly PluginAgentPreset[] {
@@ -71,7 +73,7 @@ export function pinnedAbilityContext(
 	return plugins.length > 0 ? { plugins } : undefined;
 }
 
-/** 内置 + 当前已启用插件贡献的 blueprint。找不到即视为对应插件不可用。 */
+/** 当前可用的 blueprint。找不到即视为提供方不可用。 */
 export function resolveAgentBlueprint(id: string): AgentBlueprint | undefined {
 	return agentBlueprintRegistry.resolve(id);
 }

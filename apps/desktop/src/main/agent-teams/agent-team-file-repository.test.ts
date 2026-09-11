@@ -1,22 +1,27 @@
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { BUILTIN_PRESET_GENERATION, createAgentTeamFixture, INITIAL_AGENT_TEAMS } from "@vetta/agent-team";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { resolveAgentBlueprint } from "./agent-blueprint-registry.js";
-import { createAgentTeamFileRepository, resolveAgentTeamResourceRoot } from "./agent-team-file-repository.js";
+import { createAgentTeamFixture } from "@vetta/agent-team";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { agentBlueprintRegistry, resolveAgentBlueprint } from "./agent-blueprint-registry.js";
+import { createAgentTeamFileRepository } from "./agent-team-file-repository.js";
 import {
 	createAgentTeamStorageKey,
 	memberAssignmentFileName,
 	readAgentTeamStorageIndex,
 } from "./agent-team-storage-layout.js";
-import { registerPresetAgentBlueprints } from "./preset-agent-blueprints.testing.js";
+import { registerPresetPluginBlueprints } from "./preset-plugin-blueprints.testing.js";
 
 vi.mock("../logger.js", () => ({
 	getAppLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }),
 }));
 
 const temporaryDirectories: string[] = [];
+
+// 注册表是进程级单例：默认清空，需要提供方的用例自己注册，免得互相渗透。
+beforeEach(() => {
+	agentBlueprintRegistry.replacePluginPresets([], [], []);
+});
 
 afterEach(async () => {
 	for (const directory of temporaryDirectories.splice(0)) {
@@ -42,26 +47,6 @@ function storedTeamRoot(root: string, team: { readonly id: string; readonly name
 }
 
 describe("Agent Team file repository", () => {
-	it("uses packaged resources only when the app is packaged", () => {
-		expect(
-			resolveAgentTeamResourceRoot({
-				isPackaged: true,
-				resourcesPath: "C:/electron/resources",
-				moduleDirectory: "C:/app/dist/main",
-				currentWorkingDirectory: "C:/app",
-			}),
-		).toBe(join("C:/electron/resources", "agent-teams"));
-
-		expect(
-			resolveAgentTeamResourceRoot({
-				isPackaged: false,
-				resourcesPath: "C:/electron/resources",
-				moduleDirectory: "C:/app/dist/main",
-				currentWorkingDirectory: "C:/app",
-			}),
-		).toBe(join("C:/app", "resources", "agent-teams"));
-	});
-
 	it("writes metadata and long descriptions as separate files and reloads them", async () => {
 		const { repository, root } = await createRepository();
 		const document = createAgentTeamFixture();
@@ -100,10 +85,10 @@ describe("Agent Team file repository", () => {
 		const document = createAgentTeamFixture();
 		const firstAgent = document.agents[0];
 		if (!firstAgent) throw new Error("Expected an initial agent");
-		// 首个装机档案是 Master，人设来自「预设智能体」插件，只查内置表是找不到的。
-		registerPresetAgentBlueprints();
+		// 人设由提供方给：注册预设插件后，夹具里的历史 id 才解析得到 blueprint。
+		registerPresetPluginBlueprints();
 		const blueprint = resolveAgentBlueprint(firstAgent.blueprintId);
-		if (!blueprint) throw new Error("Expected the initial profile blueprint");
+		if (!blueprint) throw new Error("Expected the profile blueprint");
 
 		await repository.write(document);
 		const agentRoot = storedAgentRoot(root, firstAgent);
@@ -150,8 +135,6 @@ describe("Agent Team file repository", () => {
 	it("keeps library agents when the last team is deleted", async () => {
 		const { repository } = await createRepository();
 		const document = createAgentTeamFixture();
-		// 先走一次首铺，让目录看起来像真实装机：没有批次号的目录会被当成存量安装补预设。
-		await repository.read();
 
 		await repository.write({ ...document, teams: [] });
 
@@ -190,8 +173,6 @@ describe("Agent Team file repository", () => {
 	it("splits a member assignment between team.json and its own markdown file", async () => {
 		const { repository, root } = await createRepository();
 		const document = createAgentTeamFixture();
-		// 先走一次首铺，让目录看起来像真实装机：没有批次号的目录会被当成存量安装补预设。
-		await repository.read();
 		const team = document.teams[0];
 		if (!team) throw new Error("Expected an initial team");
 		const member = team.members[0];
@@ -225,8 +206,6 @@ describe("Agent Team file repository", () => {
 	it("removes the assignment file once the team clears it", async () => {
 		const { repository, root } = await createRepository();
 		const document = createAgentTeamFixture();
-		// 先走一次首铺，让目录看起来像真实装机：没有批次号的目录会被当成存量安装补预设。
-		await repository.read();
 		const team = document.teams[0];
 		if (!team) throw new Error("Expected an initial team");
 		const member = team.members[0];
@@ -277,27 +256,28 @@ describe("Agent Team file repository", () => {
 		expect(await readFile(join(root, "assets", "README.md"), "utf8")).toBe("owned by an extension");
 	});
 
-	it("keeps the recorded preset batch across writes", async () => {
+	it("ignores legacy team workspace directories while reading definitions", async () => {
 		const { repository, root } = await createRepository();
-		const loaded = await repository.read();
-		expect((await readAgentTeamStorageIndex(root)).presetGeneration).toBe(BUILTIN_PRESET_GENERATION);
-
-		// 写回时丢掉批次号，下次启动就会把用户删掉的预设当成「还没发过」重新补上。
-		await repository.write({ ...loaded, revision: loaded.revision + 1 });
-
-		expect((await readAgentTeamStorageIndex(root)).presetGeneration).toBe(BUILTIN_PRESET_GENERATION);
-	});
-
-	it("ignores legacy team workspace directories while initializing definitions", async () => {
-		const { repository, root } = await createRepository();
+		const document = createAgentTeamFixture();
+		await repository.write(document);
 		await mkdir(join(root, "legacy-team-workspace", "workspace"), { recursive: true });
 
 		const loaded = await repository.read();
 
-		expect(loaded.teams).toHaveLength(INITIAL_AGENT_TEAMS.length);
+		expect(loaded.teams).toHaveLength(document.teams.length);
 		expect(loaded.teams.every((team) => !team.id.includes(":"))).toBe(true);
 		expect(loaded.agents.every((agent) => !agent.id.includes(":"))).toBe(true);
 		expect(await readFile(join(root, "index.json"), "utf8")).toContain('"revision"');
 		expect(await readdir(join(root, "legacy-team-workspace", "workspace"))).toEqual([]);
+	});
+
+	it("starts empty and lets providers lay down what the user sees first", async () => {
+		// 宿主不带装机资源：第一次打开是空的，智能体与团队都等提供方铺。
+		const { repository } = await createRepository();
+
+		const loaded = await repository.read();
+
+		expect(loaded.agents).toEqual([]);
+		expect(loaded.teams).toEqual([]);
 	});
 });

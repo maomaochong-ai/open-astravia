@@ -355,12 +355,9 @@ describe("AgentProfileEditor", () => {
 
 		await user.click(screen.getByRole("button", { name: "profile.avatarUpload" }));
 		await user.click(screen.getByRole("button", { name: "profile.save" }));
-		await waitFor(() =>
-			expect(onSave).toHaveBeenCalledWith(
-				agent,
-				expect.objectContaining({ avatar: "./agent-team-avatars/researcher.webp" }),
-			),
-		);
+		// 取消上传等于用户没挑图：档案里就不该出现 avatar 覆盖，头像继续跟着人设走。
+		await waitFor(() => expect(onSave).toHaveBeenCalled());
+		expect(onSave).not.toHaveBeenCalledWith(agent, expect.objectContaining({ avatar: expect.anything() }));
 	});
 
 	it("offers every built-in avatar and saves the selected stable asset path", async () => {

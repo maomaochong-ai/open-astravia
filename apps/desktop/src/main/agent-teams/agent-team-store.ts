@@ -26,6 +26,14 @@ import { agentTeamExtensionHost } from "./agent-team-extension-host.js";
 
 const log = getAppLogger("agent-teams");
 
+/**
+ * 提供方维护的智能体/团队被要求删除时的错误。
+ *
+ * 用一个稳定的标识而不是人读文案：渲染进程要据此给出可读提示，而这条路径正常情况下走不到
+ * ——UI 根本不该给出删除入口。
+ */
+export const PROVIDED_RESOURCE_DELETE_ERROR = "AGENT_RESOURCE_PROVIDED_BY_EXTENSION";
+
 export interface AgentTeamStoreOptions {
 	readonly extensions?: AgentTeamExtensionRegistry;
 	readonly repository?: AgentTeamConfigRepository;
@@ -147,6 +155,9 @@ export class AgentTeamStore {
 		const deleted = await this.mutate("delete-agent", (document) => {
 			const profile = document.agents.find((agent) => agent.id === agentProfileId);
 			if (!profile) throw new Error(`Agent profile not found: ${agentProfileId}`);
+			// 提供方维护的档案不接受删除：它在下次启动会被原样补回来，删除只会制造「删了又回来」
+			// 的错觉，还会顺带拆掉引用它的团队。UI 也不给入口，这里是最后一道闸。
+			if (profile.source) throw new Error(PROVIDED_RESOURCE_DELETE_ERROR);
 			if (profile.revision !== input.expectedRevision) {
 				throw new Error("Agent profile changed; reload before deleting");
 			}
@@ -355,6 +366,8 @@ export class AgentTeamStore {
 		const deleted = await this.mutate("delete-team", (document) => {
 			const team = document.teams.find((candidate) => candidate.id === teamId);
 			if (!team) throw new Error(`Agent team not found: ${teamId}`);
+			// 与档案同一条规矩：提供方维护的团队不接受删除。
+			if (team.source) throw new Error(PROVIDED_RESOURCE_DELETE_ERROR);
 			if (team.revision !== input.expectedRevision) {
 				throw new Error("Agent team changed; reload before deleting");
 			}

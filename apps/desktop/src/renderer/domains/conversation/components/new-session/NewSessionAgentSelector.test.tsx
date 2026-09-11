@@ -20,7 +20,7 @@ afterEach(cleanup);
 describe("NewSessionAgentSelector", () => {
 	const document = createAgentTeamFixture();
 	const team = document.teams[0];
-	const agent = document.agents.find((candidate) => candidate.name === "Auditor");
+	const agent = document.agents.find((candidate) => candidate.name === "Researcher");
 	if (!team || !agent) throw new Error("missing Agent Team fixture");
 
 	function mockCatalog(next = document): void {

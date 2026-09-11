@@ -38,6 +38,8 @@ export interface AgentProfile {
 	readonly abilities: AgentAbilitySelection;
 	readonly scope: AgentProfileScope;
 	readonly copiedFrom?: string;
+	/** 提供方；缺省即用户自建。扩展提供的档案由提供方维护，宿主不允许删除。 */
+	readonly source?: AgentResourceSource;
 	readonly createdAt: number;
 	readonly updatedAt: number;
 }
@@ -73,6 +75,8 @@ export interface TeamDefinition {
 	readonly members: readonly TeamMember[];
 	readonly orchestrationPolicyId: string;
 	readonly contextPolicyId: string;
+	/** 提供方；语义同 {@link AgentProfile.source}。 */
+	readonly source?: AgentResourceSource;
 	readonly createdAt: number;
 	readonly updatedAt: number;
 }
@@ -384,9 +388,13 @@ export interface TeamSharedContextRecord {
  * 区分来源是为了让 UI 讲清楚「这个智能体为什么不能用了」——插件禁用后它的 blueprint
  * 会消失，引用它的档案要降级展示而不是被当成脏数据。
  */
-export type AgentBlueprintSource =
-	| { readonly kind: "builtin" }
-	| { readonly kind: "plugin"; readonly pluginId: string };
+/**
+ * 智能体资源的提供方。
+ *
+ * `plugin` 表示这份资源由插件贡献：人设、头像、团队流水线都由插件维护，宿主只负责铺档案
+ * 与展示来源，不得删除，也不该知道具体是哪个插件。
+ */
+export type AgentResourceSource = { readonly kind: "plugin"; readonly pluginId: string };
 
 export interface AgentBlueprint {
 	readonly id: string;
@@ -399,7 +407,7 @@ export interface AgentBlueprint {
 	readonly systemPrompt: string;
 	readonly defaultAbilities: AgentAbilitySelection;
 	/** 缺省视为内置。 */
-	readonly source?: AgentBlueprintSource;
+	readonly source?: AgentResourceSource;
 	/** 头像 URL；插件 blueprint 由宿主解析成插件资源地址。 */
 	readonly avatarUrl?: string;
 	/**

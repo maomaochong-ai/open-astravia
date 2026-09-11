@@ -1,8 +1,8 @@
 import { type AgentTeamDocument, createAgentTeamFixture, INITIAL_AGENT_PROFILES } from "@vetta/agent-team";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentTeamConfigRepository } from "./agent-team-config-repository.js";
-import { AgentTeamStore } from "./agent-team-store.js";
-import { registerPresetAgentBlueprints } from "./preset-agent-blueprints.testing.js";
+import { AgentTeamStore, PROVIDED_RESOURCE_DELETE_ERROR } from "./agent-team-store.js";
+import { registerPresetPluginBlueprints } from "./preset-plugin-blueprints.testing.js";
 
 vi.mock("../logger.js", () => ({
 	getAppLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }),
@@ -44,7 +44,7 @@ function agentInput(name: string) {
 
 describe("AgentTeamStore transaction boundary", () => {
 	// master / developer / researcher 的人设住在「预设智能体」插件里，装机档案要靠它解析。
-	beforeEach(registerPresetAgentBlueprints);
+	beforeEach(() => registerPresetPluginBlueprints());
 
 	it("serializes concurrent mutations without losing either profile", async () => {
 		const repository = new MemoryRepository();
@@ -198,6 +198,44 @@ describe("AgentTeamStore transaction boundary", () => {
 			}),
 		).resolves.toBeUndefined();
 		expect((await store.read()).agents.some((agent) => agent.id === source.id)).toBe(false);
+	});
+
+	it("refuses to delete an agent or a team that a provider owns", async () => {
+		const repository = new MemoryRepository();
+		const document = repository.document;
+		const agent = document.agents[0]!;
+		const team = document.teams[0]!;
+		// 回填会给提供方铺下的资源盖戳；盖过戳的删不得，它下次启动本来也会被补回来。
+		repository.document = {
+			...document,
+			agents: document.agents.map((candidate) =>
+				candidate.id === agent.id
+					? { ...candidate, source: { kind: "plugin" as const, pluginId: "preset-agent" } }
+					: candidate,
+			),
+			teams: document.teams.map((candidate) =>
+				candidate.id === team.id
+					? { ...candidate, source: { kind: "plugin" as const, pluginId: "preset-agent" } }
+					: candidate,
+			),
+		};
+		const store = new AgentTeamStore({ repository, createId: createIdSequence(), now: () => 10 });
+
+		const impact = await store.previewAgentDelete(agent.id);
+		await expect(
+			store.deleteAgent(agent.id, {
+				expectedRevision: agent.revision,
+				expectedTeamIds: impact.teams.map((entry) => entry.teamId),
+				expectedTeamRevisions: Object.fromEntries(impact.teams.map((entry) => [entry.teamId, entry.teamRevision])),
+			}),
+		).rejects.toThrow(PROVIDED_RESOURCE_DELETE_ERROR);
+		await expect(store.deleteTeam(team.id, { expectedRevision: team.revision })).rejects.toThrow(
+			PROVIDED_RESOURCE_DELETE_ERROR,
+		);
+
+		const reloaded = await store.read();
+		expect(reloaded.agents.some((candidate) => candidate.id === agent.id)).toBe(true);
+		expect(reloaded.teams.some((candidate) => candidate.id === team.id)).toBe(true);
 	});
 
 	it("deletes an unreferenced agent and cascades reviewed team references", async () => {

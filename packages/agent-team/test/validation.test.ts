@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createAgentTeamFixture } from "../src/initial-resources.js";
+import { createAgentTeamFixture } from "../src/fixtures.js";
 import {
 	parseAgentTeamDocument,
 	parseCreateAgentProfileInput,

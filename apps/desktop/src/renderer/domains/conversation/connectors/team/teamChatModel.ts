@@ -30,7 +30,6 @@ export type TeamChatStatus = "loading" | "ready" | "sending" | "streaming" | "ca
 export interface TeamChatLabels {
 	readonly leaderRoute: string;
 	/** Display labels for the role badge rendered below each member avatar. */
-	readonly memberRoles?: Readonly<Record<string, string>>;
 	readonly memberRoleFallback: string;
 	readonly placeholder: string;
 	readonly attachFile: string;
@@ -335,6 +334,8 @@ export function resolveTeamMembers(
 	resolveName: (profileId: string, fallbackHandle: string) => string,
 	failedMemberIds: ReadonlySet<string> = new Set(),
 	durableWorkingMemberIds: readonly string[] = [],
+	/** 解析提供方给的头像；缺省只认用户自己挑的图。 */
+	resolveAvatar: (subject: { id: string; blueprintId: string; avatar?: string }) => string = agentAvatarUrl,
 ): TeamMemberViewModel[] {
 	if (!team) return [];
 	const workingMembers = new Set(
@@ -353,12 +354,12 @@ export function resolveTeamMembers(
 			// Resolve a deterministic built-in avatar even when an older team document
 			// does not contain the referenced profile. This keeps every Team surface
 			// (sidebar, header and composer) visually consistent without mutating data.
-			avatar: agentAvatarUrl({
+			avatar: resolveAvatar({
 				id: profile?.id ?? member.id,
-				blueprintId: profile?.blueprintId ?? "leader",
+				blueprintId: profile?.blueprintId ?? "",
 				...(profile?.avatar ? { avatar: profile.avatar } : {}),
 			}),
-			blueprintId: profile?.blueprintId ?? "leader",
+			blueprintId: profile?.blueprintId ?? "",
 			selected: selectedMemberIds.includes(member.id),
 			status: failedMemberIds.has(member.id) ? "error" : workingMembers.has(member.id) ? "working" : "idle",
 		};

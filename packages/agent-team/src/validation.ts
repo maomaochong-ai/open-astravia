@@ -48,6 +48,7 @@ const abilities = Type.Object(
 	{ additionalProperties: false },
 );
 const optionalAbilities = Type.Partial(abilities, { additionalProperties: false });
+const resourceSource = Type.Object({ kind: Type.Literal("plugin"), pluginId: id }, { additionalProperties: false });
 const profile = Type.Object(
 	{
 		id,
@@ -64,6 +65,7 @@ const profile = Type.Object(
 			Type.Object({ kind: Type.Literal("team"), teamId: id }, { additionalProperties: false }),
 		]),
 		copiedFrom: Type.Optional(id),
+		source: Type.Optional(resourceSource),
 		createdAt: timestamp,
 		updatedAt: timestamp,
 	},
@@ -210,6 +212,7 @@ const team = Type.Object(
 		members: Type.Array(member, { minItems: 1, maxItems: 32 }),
 		orchestrationPolicyId: id,
 		contextPolicyId: id,
+		source: Type.Optional(resourceSource),
 		createdAt: timestamp,
 		updatedAt: timestamp,
 	},

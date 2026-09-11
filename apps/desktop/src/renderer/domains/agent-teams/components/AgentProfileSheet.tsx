@@ -1,4 +1,4 @@
-import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";
+import { useAgentAvatarResolver } from "@shared/agent-teams/agent-avatar";
 import type { AgentBlueprint, AgentProfile, AgentProfileUpdateImpact } from "@vetta/agent-team";
 import { AgentAvatarView } from "@vetta/theme-ui/chat";
 import { DetailDrawer, DetailDrawerEnter } from "@vetta/theme-ui/overlays";
@@ -6,6 +6,7 @@ import { Button, cn } from "@vetta/ui";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AgentProfileEditInput } from "../hooks/useAgentLibraryModel";
+import { agentBlueprintLabel, type BlueprintDisplayPlugin, resourceProviderName } from "../lib/blueprint-display";
 import { isAgentAbilitySelected } from "../lib/ability-selection";
 import type { AgentCapabilityOption } from "../lib/capability-options";
 import { AgentProfileEditor, type AgentProfileTab } from "./AgentProfileEditor";
@@ -16,6 +17,8 @@ export interface AgentProfileSheetProps {
 	/** 编辑既有智能体时给出档案；创建时为空，浮层内部起草一份未落盘的草稿。 */
 	readonly agent?: AgentProfile;
 	readonly blueprints: readonly AgentBlueprint[];
+	/** 解析提供方与角色名用；缺省视为没有任何扩展在位。 */
+	readonly plugins?: readonly BlueprintDisplayPlugin[];
 	readonly capabilities: readonly AgentCapabilityOption[];
 	readonly onClose: () => void;
 	readonly onExited?: () => void;
@@ -44,6 +47,7 @@ export function AgentProfileSheet({
 	mode,
 	agent,
 	blueprints,
+	plugins = [],
 	capabilities,
 	onClose,
 	onExited,
@@ -54,6 +58,7 @@ export function AgentProfileSheet({
 	onDelete,
 }: AgentProfileSheetProps): JSX.Element | null {
 	const { t } = useTranslation("agent-teams");
+	const resolveAvatar = useAgentAvatarResolver();
 	const [activeTab, setActiveTab] = useState<AgentProfileTab>("basic");
 	const [saveRequest, setSaveRequest] = useState(0);
 	const [saving, setSaving] = useState(false);
@@ -71,6 +76,8 @@ export function AgentProfileSheet({
 	if (!target) return null;
 
 	const blueprint = blueprints.find((candidate) => candidate.id === target.blueprintId);
+	const roleLabel = agentBlueprintLabel(blueprint, (key) => t(key as never), plugins);
+	const providerName = resourceProviderName(target.source, plugins);
 	const displayName = draft?.name?.trim() || target.name || t("center.sheetCreateTitle");
 
 	return (
@@ -89,8 +96,7 @@ export function AgentProfileSheet({
 								<div className="flex items-start gap-4">
 									<AgentAvatarView
 										name={displayName}
-										avatar={draft?.avatar ?? agentAvatarUrl(target)}
-										blueprintId={target.blueprintId}
+										avatar={draft?.avatar ?? resolveAvatar(target)}
 										size="hero"
 									/>
 									<div className="min-w-0 flex-1">
@@ -98,9 +104,18 @@ export function AgentProfileSheet({
 											<h1 className="truncate text-[20px] font-semibold leading-snug tracking-tight text-foreground">
 												{displayName}
 											</h1>
-											{blueprint && (
+											{roleLabel && (
 												<span className="inline-flex shrink-0 items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary">
-													{t(blueprint.nameKey as never)}
+													{roleLabel}
+												</span>
+											)}
+											{providerName && (
+												<span
+													className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground"
+													title={t("center.providedByHint")}
+												>
+													<span className="icon-[solar--box-minimalistic-linear] h-3 w-3" aria-hidden="true" />
+													{t("center.providedBy", { name: providerName })}
 												</span>
 											)}
 										</div>

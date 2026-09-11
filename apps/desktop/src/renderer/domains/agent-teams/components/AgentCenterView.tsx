@@ -162,7 +162,7 @@ export function AgentCenterView({
 											onOpenChat={() => onOpenTeamChat(team.id)}
 											onRecruit={() => actions.startEditTeam(team)}
 											onOpenSettings={() => onOpenTeamSettings(team.id)}
-											onDelete={() => onDeleteTeam(team.id)}
+											{...(team.source ? {} : { onDelete: () => onDeleteTeam(team.id) })}
 										/>
 									);
 								})}

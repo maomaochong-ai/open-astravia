@@ -12,7 +12,8 @@ export interface TeamCardProps {
 	readonly onOpenChat: () => void;
 	readonly onRecruit: () => void;
 	readonly onOpenSettings: () => void;
-	readonly onDelete: () => void;
+	/** 省略时不出现删除入口：提供方维护的团队不允许删除。 */
+	readonly onDelete?: () => void;
 }
 
 export function TeamCard({
@@ -87,12 +88,14 @@ export function TeamCard({
 							label={t("center.teamSettings")}
 							onClick={stopAnd(onOpenSettings)}
 						/>
-						<CardAction
-							icon="icon-[solar--trash-bin-trash-linear]"
-							label={t("center.deleteTeam")}
-							danger
-							onClick={stopAnd(onDelete)}
-						/>
+						{onDelete && (
+							<CardAction
+								icon="icon-[solar--trash-bin-trash-linear]"
+								label={t("center.deleteTeam")}
+								danger
+								onClick={stopAnd(onDelete)}
+							/>
+						)}
 					</div>
 				) : (
 					<span className="truncate text-[11px] text-muted-foreground/60">{t("center.teamSelectHint")}</span>

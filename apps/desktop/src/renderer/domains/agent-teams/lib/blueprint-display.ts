@@ -1,4 +1,4 @@
-import type { AgentBlueprint, AgentProfile } from "@vetta/agent-team";
+import type { AgentBlueprint, AgentProfile, AgentResourceSource } from "@vetta/agent-team";
 import { parsePluginBlueprintId } from "@vetta/agent-team";
 import { resolvePluginText } from "@vetta-org/plugin-sdk";
 
@@ -81,4 +81,18 @@ function resolvePluginTextFor(plugin: BlueprintDisplayPlugin, raw: string): stri
 function stripPlaceholder(raw: string): string {
 	const match = /^%([^%]+)%$/.exec(raw);
 	return match ? match[1]! : raw;
+}
+
+/**
+ * 资源提供方的显示名：智能体与团队的详情里要说清「这份东西是谁给的」。
+ *
+ * 提供方已卸载时只剩 id——那也是实话，比装作没有来源强。
+ */
+export function resourceProviderName(
+	source: AgentResourceSource | undefined,
+	plugins: readonly BlueprintDisplayPlugin[] = [],
+): string | undefined {
+	if (!source) return undefined;
+	const plugin = plugins.find((candidate) => candidate.id === source.pluginId);
+	return plugin ? resolvePluginTextFor(plugin, plugin.name) : source.pluginId;
 }

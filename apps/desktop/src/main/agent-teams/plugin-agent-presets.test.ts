@@ -124,10 +124,7 @@ describe("plugin agent presets", () => {
 					{
 						id: "design-team",
 						name: "设计团队",
-						members: [
-							{ agent: "builtin:master", responsibility: "Owns the brief." },
-							{ agent: "designer", responsibility: "Builds the frames." },
-						],
+						members: [{ agent: "designer", responsibility: "Builds the frames." }],
 						workflow: "Run this team as a design loop.",
 					},
 					{
@@ -148,9 +145,9 @@ describe("plugin agent presets", () => {
 		});
 
 		expect(teams).toHaveLength(1);
-		expect(teams[0]?.members[0]?.builtinKey).toBe("master");
-		expect(teams[0]?.members[1]?.blueprintId).toBe(pluginBlueprintId("vetta-ui-design", "designer"));
-		// 跨插件引用会让一个插件能否用取决于另一个插件装没装，直接拒掉。
+		expect(teams[0]?.members[0]?.blueprintId).toBe(pluginBlueprintId("vetta-ui-design", "designer"));
+		// 跨插件引用会让一个插件能否用取决于另一个插件装没装，直接拒掉；引用宿主角色同理，
+		// 宿主压根没有内置人设。
 		expect(log.warn).toHaveBeenCalled();
 	});
 
@@ -194,15 +191,8 @@ describe("plugin agent presets", () => {
 			expect(agents[0]?.blueprint.systemPrompt).toContain("Vetta UI Design skill");
 			expect(agents[0]?.blueprint.avatarUrl?.startsWith("data:image/webp;base64,")).toBe(true);
 
-			expect(teams).toHaveLength(1);
-			expect(teams[0]?.name).toBe("设计团队");
-			expect(teams[0]?.members.map((member) => member.builtinKey ?? member.blueprintId)).toEqual([
-				"master",
-				"architect",
-				pluginBlueprintId("vetta-ui-design", "designer"),
-				"auditor",
-			]);
-			expect(teams[0]?.workflow).toContain("design loop");
+			// 宿主不再有内置角色可引用，这个插件也就不再发团队。
+			expect(teams).toEqual([]);
 		});
 	});
 });

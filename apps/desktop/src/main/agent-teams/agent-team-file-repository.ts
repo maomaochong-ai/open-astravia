@@ -1,6 +1,5 @@
 import type { Dirent } from "node:fs";
-import { existsSync } from "node:fs";
-import { cp, mkdir, readdir, readFile, rm } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
 import type {
@@ -14,7 +13,6 @@ import { DEFAULT_AGENT_TEAM_EXTENSIONS, parseAgentTeamDocument } from "@vetta/ag
 import { atomicWriteFileAsync, atomicWriteJSONAsync } from "@vetta/toolkit/atomic-write";
 import { getAppLogger } from "../logger.js";
 import { agentBlueprintRegistry, resolveAgentBlueprint } from "./agent-blueprint-registry.js";
-import { backfillAgentTeamPresets } from "./agent-team-preset-backfill.js";
 import {
 	AGENT_TEAM_STORAGE_LAYOUT_VERSION,
 	type AgentTeamStorageIndex,
@@ -27,6 +25,7 @@ import {
 	teamDefinitionPath,
 } from "./agent-team-storage-layout.js";
 import { backfillPluginAgentPresets } from "./plugin-agent-preset-backfill.js";
+import { dropRetiredHostPresets } from "./retired-host-presets.js";
 
 const log = getAppLogger("agent-teams");
 
@@ -35,33 +34,6 @@ const INITIALIZED_MARKER = ".initialized";
 const INDEX_FILE = "index.json";
 /** 团队目录下存放成员任务书长文本的位置，一名成员一个 Markdown 文件。 */
 const MEMBERS_DIR = "members";
-
-export interface AgentTeamResourceRootOptions {
-	readonly isPackaged: boolean;
-	readonly resourcesPath?: string;
-	readonly moduleDirectory: string;
-	readonly currentWorkingDirectory: string;
-}
-
-/** Resolve the initial resources for both packaged Electron and bundled development builds. */
-export function resolveAgentTeamResourceRoot(options: AgentTeamResourceRootOptions): string {
-	if (options.isPackaged && options.resourcesPath) return join(options.resourcesPath, "agent-teams");
-
-	const candidates = [
-		join(options.currentWorkingDirectory, "resources", "agent-teams"),
-		// Vite bundles the main process into dist/main, while tests load this source file directly.
-		join(options.moduleDirectory, "../../resources/agent-teams"),
-		join(options.moduleDirectory, "../../../resources/agent-teams"),
-	];
-	return candidates.find((candidate) => existsSync(join(candidate, INDEX_FILE))) ?? candidates[0];
-}
-
-const INITIAL_TEAM_RESOURCE_ROOT = resolveAgentTeamResourceRoot({
-	isPackaged: process.defaultApp !== true && typeof process.resourcesPath === "string",
-	resourcesPath: process.resourcesPath,
-	moduleDirectory: import.meta.dirname,
-	currentWorkingDirectory: process.cwd(),
-});
 
 export interface AgentTeamFileRepository {
 	read(): Promise<AgentTeamDocument>;
@@ -96,19 +68,7 @@ class DirectoryAgentTeamRepository implements AgentTeamFileRepository {
 
 	async read(): Promise<AgentTeamDocument> {
 		await mkdir(this.root, { recursive: true });
-		const entries = await readdir(this.root, { withFileTypes: true });
-		if (
-			!entries.some((entry) => entry.name === INITIALIZED_MARKER) &&
-			!entries.some((entry) => entry.name === INDEX_FILE)
-		) {
-			if (!(await this.installInitialFiles())) {
-				throw new Error(`Initial Agent Team files are missing: ${INITIAL_TEAM_RESOURCE_ROOT}`);
-			}
-		}
-
-		const { index: migrated } = await migrateAgentTeamStorage(this.root);
-		// 首铺只发生一次，之后新增的内置预设靠这一步补进存量目录。
-		const index = await backfillAgentTeamPresets(this.root, INITIAL_TEAM_RESOURCE_ROOT, migrated);
+		const { index } = await migrateAgentTeamStorage(this.root);
 		this.storageIndex = index;
 		const agents = await this.readAgents(index);
 		const teams: TeamDefinition[] = [];
@@ -130,37 +90,40 @@ class DirectoryAgentTeamRepository implements AgentTeamFileRepository {
 			},
 			this.extensions,
 		);
-		return await this.installPluginPresets(document, index);
+		return await this.installPresets(document, index);
 	}
 
 	/**
-	 * 把当前已启用插件贡献的智能体/团队补进配置。
+	 * 把当前可用的扩展预设补进配置，并清掉宿主留下的装机残骸。
 	 *
-	 * 放在解析之后而不是索引层：插件预设是现造的，不像内置预设那样有一棵随包目录可 copy。
-	 * 走完整的 parse + write 才能保证它们和用户自建的资源满足同一套不变量。
+	 * 宿主不带装机资源：用户第一次打开时看到的智能体与团队全部来自这一步。放在解析之后而不是
+	 * 索引层，是因为预设是现造的，走完整的 parse + write 才能保证它们和用户自建的资源满足同一
+	 * 套不变量。
+	 *
+	 * 清理排在回填之后：被扩展接管的角色那时才盖上提供方的戳，据此才放得过它们。
 	 */
-	private async installPluginPresets(
-		document: AgentTeamDocument,
-		index: AgentTeamStorageIndex,
-	): Promise<AgentTeamDocument> {
-		const result = backfillPluginAgentPresets({
+	private async installPresets(document: AgentTeamDocument, index: AgentTeamStorageIndex): Promise<AgentTeamDocument> {
+		const backfilled = backfillPluginAgentPresets({
 			document,
-			installedPresetIds: index.installedPluginPresets ?? [],
 			agents: agentBlueprintRegistry.listPluginAgents(),
 			teams: agentBlueprintRegistry.listPluginTeams(),
 		});
-		if (!result) return document;
-		// 先更新索引再写盘：write() 会把它原样带进新的 index.json。
-		this.storageIndex = { ...index, installedPluginPresets: result.installedPresetIds };
-		if (result.document === document) {
+		const retired = index.hostPresetsRetired ? undefined : dropRetiredHostPresets(backfilled?.document ?? document);
+		if (!backfilled && !retired && index.hostPresetsRetired) return document;
+
+		this.storageIndex = { ...index, hostPresetsRetired: true };
+		const next = retired ?? backfilled?.document;
+		if (!next) {
+			// 只需要记下「清理过了」这一笔，文档本身没变。
 			await atomicWriteJSONAsync(join(this.root, INDEX_FILE), this.storageIndex);
 			return document;
 		}
-		const parsed = parseAgentTeamDocument(result.document, this.extensions);
+		const parsed = parseAgentTeamDocument(next, this.extensions);
 		await this.write(parsed);
-		log.info("plugin agent presets installed", {
-			agents: result.installedAgentIds.length,
-			teams: result.installedTeamIds.length,
+		log.info("agent presets installed", {
+			agents: backfilled?.installedAgentIds.length ?? 0,
+			teams: backfilled?.installedTeamIds.length ?? 0,
+			retiredHostPresets: retired !== undefined,
 		});
 		return parsed;
 	}
@@ -201,29 +164,14 @@ class DirectoryAgentTeamRepository implements AgentTeamFileRepository {
 			schemaVersion: document.schemaVersion,
 			revision: document.revision,
 			layoutVersion: AGENT_TEAM_STORAGE_LAYOUT_VERSION,
-			// 批次号必须原样带过去：写丢了下次启动就会把用户删掉的预设当成「还没发过」补回来。
-			...(currentIndex.presetGeneration !== undefined ? { presetGeneration: currentIndex.presetGeneration } : {}),
-			...(currentIndex.installedPluginPresets !== undefined
-				? { installedPluginPresets: currentIndex.installedPluginPresets }
-				: {}),
+			// 一次性开关必须原样带过去：写丢了下次启动会把用户之后自建的同 id 资源当成残骸再清一遍。
+			...(currentIndex.hostPresetsRetired ? { hostPresetsRetired: true } : {}),
 			teams: teamDirectories,
 			agents: agentDirectories,
 		};
 		await atomicWriteJSONAsync(join(this.root, INDEX_FILE), nextIndex);
 		await atomicWriteFileAsync(join(this.root, INITIALIZED_MARKER), "1\n");
 		this.storageIndex = nextIndex;
-	}
-
-	private async installInitialFiles(): Promise<boolean> {
-		try {
-			await readFile(join(INITIAL_TEAM_RESOURCE_ROOT, INDEX_FILE), "utf8");
-		} catch (error) {
-			if (isMissingFile(error)) return false;
-			throw error;
-		}
-		await cp(INITIAL_TEAM_RESOURCE_ROOT, this.root, { recursive: true, errorOnExist: false, force: false });
-		await atomicWriteFileAsync(join(this.root, INITIALIZED_MARKER), "1\n");
-		return true;
 	}
 
 	/**

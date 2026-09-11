@@ -59,7 +59,9 @@
     "tabAbilities": "Abilities ({{count}})",
     "confirmCreate": "Create",
     "saveChanges": "Save changes",
-    "saving": "Saving…"
+    "saving": "Saving…",
+    "providedBy": "From {{name}}",
+    "providedByHint": "Provided and maintained by an extension; it cannot be deleted"
   },
   "profile": {
     "fixedPrompt": "Role: {{role}}",
@@ -97,44 +99,6 @@
     "systemPromptHint": "Define this agent's background, reasoning strategy and output rules",
     "systemPromptPlaceholder": "Define the persona, principles, breakdown steps and output format. Markdown supported…",
     "clearPrompt": "Clear"
-  },
-  "blueprints": {
-    "master": {
-      "name": "Master",
-      "description": "Owns the goal: plans, delegates, accepts or reworks, and delivers"
-    },
-    "researcher": {
-      "name": "Researcher",
-      "description": "Collects and verifies facts, documentation, and market signals"
-    },
-    "architect": {
-      "name": "Architect",
-      "description": "Designs the architecture, interface contracts, or document outline"
-    },
-    "executor": {
-      "name": "Executor",
-      "description": "Produces the core asset: code, deep drafts, or worked analysis"
-    },
-    "developer": {
-      "name": "Developer",
-      "description": "Produces the core asset: code, deep drafts, or worked analysis"
-    },
-    "auditor": {
-      "name": "Auditor",
-      "description": "Red-teams for correctness, safety, edge cases, and weak claims"
-    },
-    "optimizer": {
-      "name": "Optimizer",
-      "description": "Refines performance, maintainability, and channel-specific voice"
-    },
-    "synthesizer": {
-      "name": "Synthesizer",
-      "description": "Merges multi-source results into one report or delivery bundle"
-    },
-    "translator": {
-      "name": "Translator",
-      "description": "Localizes languages and restates technical detail for business"
-    }
   },
   "teams": {
     "title": "Agent Teams",

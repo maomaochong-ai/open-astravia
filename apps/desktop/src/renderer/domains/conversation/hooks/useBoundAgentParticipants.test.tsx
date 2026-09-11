@@ -10,7 +10,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useBoundAgentParticipants } from "./useBoundAgentParticipants";
 
 const document = createAgentTeamFixture();
-const agent = document.agents.find((candidate) => candidate.name === "Auditor");
+const agent = document.agents.find((candidate) => candidate.name === "Researcher");
 if (!agent) throw new Error("missing Agent fixture");
 
 beforeEach(() => {

@@ -1,5 +1,5 @@
 import type { AgentProfile } from "@vetta/agent-team";
-import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";
+import { useAgentAvatarResolver } from "@shared/agent-teams/agent-avatar";
 import { AgentAvatarView } from "@vetta/theme-ui/chat";
 
 export interface AgentAvatarStackProps {
@@ -10,6 +10,7 @@ export interface AgentAvatarStackProps {
 
 /** 编队头像组：同一支团队的成员在这里以叠加头像的形式出现。 */
 export function AgentAvatarStack({ agents, leaderId, emptyIcon = false }: AgentAvatarStackProps): JSX.Element {
+	const resolveAvatar = useAgentAvatarResolver();
 	if (agents.length === 0 && emptyIcon) {
 		return (
 			<span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-muted-foreground ring-1 ring-card">
@@ -29,8 +30,7 @@ export function AgentAvatarStack({ agents, leaderId, emptyIcon = false }: AgentA
 				>
 					<AgentAvatarView
 						name={agent.name}
-						avatar={agentAvatarUrl(agent)}
-						blueprintId={agent.blueprintId}
+						avatar={resolveAvatar(agent)}
 						size="lg"
 						className="ring-card"
 					/>

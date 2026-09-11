@@ -2,6 +2,7 @@ import { dirname } from "node:path";
 import type { AgentTeamDocument, TeamSessionListItem } from "@vetta/agent-team";
 import { teamMemberAvatarUrls } from "../../shared/agent-team-avatar.js";
 import type { DesktopTeamSidebarConversation } from "../../shared/sidebar-conversation.js";
+import { agentBlueprintRegistry } from "../agent-teams/agent-blueprint-registry.js";
 import { agentTeamStore } from "../agent-teams/agent-team-store.js";
 import { agentTeamSessionService } from "../agent-teams/team-session-service.js";
 import { readDesktopConfig } from "../config/desktop-config-store.js";
@@ -28,10 +29,12 @@ export async function listTeamSidebarConversations(
 ): Promise<readonly DesktopTeamSidebarConversation[]> {
 	const [document, projectPaths] = await Promise.all([dependencies.readDocument(), dependencies.listProjectPaths()]);
 	const agentsById = new Map(document.agents.map((agent) => [agent.id, agent]));
+	const blueprintsById = new Map(agentBlueprintRegistry.list().map((blueprint) => [blueprint.id, blueprint]));
 	const projected = (
 		await Promise.all(
 			document.teams.map(async (team) => {
-				const avatarUrls = teamMemberAvatarUrls(team, agentsById);
+				// 头像随人设走，人设由提供方维护：blueprint 解析得到才画得出提供方那张图。
+				const avatarUrls = teamMemberAvatarUrls(team, agentsById, blueprintsById);
 				return (await dependencies.listSessions(team.id)).map((session) => ({
 					kind: "agent-team" as const,
 					teamId: team.id,

@@ -12,7 +12,7 @@ import {
 	toggleAgentAbility,
 } from "../lib/ability-selection";
 import { AbilityIcon } from "../../abilities/components/AbilityIcon";
-import { agentAvatarUrl } from "../../../shared/agent-teams/agent-avatar";
+import { useAgentAvatarResolver } from "../../../shared/agent-teams/agent-avatar";
 import { AgentAvatarView } from "@vetta/theme-ui/chat";
 import { AgentAvatarPicker } from "./AgentAvatarPicker";
 
@@ -61,7 +61,11 @@ export function AgentProfileEditor({
 	const [name, setName] = useState(agent.name);
 	const [description, setDescription] = useState(agent.description);
 	const [systemPrompt, setSystemPrompt] = useState(agent.systemPrompt ?? "");
-	const [avatar, setAvatar] = useState(agentAvatarUrl(agent));
+	// 只存用户自己挑的那张：提供方给的头像是现场解析出来的，落进档案会在提供方换图后永远停在旧图，
+	// 而且它多半是一条内联 data URL，长度也超出档案里 avatar 字段的约定。
+	const resolveAvatar = useAgentAvatarResolver();
+	const [avatarOverride, setAvatarOverride] = useState(agent.avatar);
+	const avatar = avatarOverride ?? resolveAvatar(agent);
 	const [abilities, setAbilities] = useState<AgentAbilitySelection>(() =>
 		normalizeAgentAbilitySelection(agent.abilities, capabilities),
 	);
@@ -78,7 +82,7 @@ export function AgentProfileEditor({
 		setName(agent.name);
 		setDescription(agent.description);
 		setSystemPrompt(agent.systemPrompt ?? "");
-		setAvatar(agentAvatarUrl(agent));
+		setAvatarOverride(agent.avatar);
 		setAbilities(normalizeAgentAbilitySelection(agent.abilities, capabilities));
 		setPendingImpact(undefined);
 		setSaved(false);
@@ -90,11 +94,11 @@ export function AgentProfileEditor({
 			name,
 			description,
 			systemPrompt,
-			avatar,
+			...(avatarOverride ? { avatar: avatarOverride } : {}),
 			mentionHandle: agent.mentionHandle,
 			abilities,
 		});
-	}, [abilities, agent.mentionHandle, avatar, description, name, onDraftChange, systemPrompt]);
+	}, [abilities, agent.mentionHandle, avatarOverride, description, name, onDraftChange, systemPrompt]);
 
 	useEffect(() => {
 		onSavingChange?.(saving);
@@ -122,7 +126,7 @@ export function AgentProfileEditor({
 				name,
 				description,
 				systemPrompt,
-				avatar,
+				...(avatarOverride ? { avatar: avatarOverride } : {}),
 				mentionHandle: agent.mentionHandle,
 				abilities,
 			});
@@ -145,7 +149,6 @@ export function AgentProfileEditor({
 							<AgentAvatarView
 								name={name || (displayName ?? agent.name)}
 								avatar={avatar}
-								blueprintId={agent.blueprintId}
 								size="hero"
 								className="h-16 w-16"
 							/>
@@ -162,7 +165,7 @@ export function AgentProfileEditor({
 							</div>
 						</div>
 
-						<AgentAvatarPicker value={avatar} onChange={setAvatar} />
+						<AgentAvatarPicker value={avatar} onChange={setAvatarOverride} />
 
 						<TextField label={t("profile.name")} value={name} onChange={setName} />
 
@@ -339,7 +342,7 @@ export function AgentProfileEditor({
 							</div>
 
 							<div className="flex flex-col gap-5 rounded-2xl border border-border/50 bg-card/25 p-5">
-								<AgentAvatarPicker value={avatar} onChange={setAvatar} />
+								<AgentAvatarPicker value={avatar} onChange={setAvatarOverride} />
 								<TextField
 									label={t("profile.name")}
 									value={name}
@@ -435,7 +438,7 @@ export function AgentProfileEditor({
 						<h3 className="text-sm font-semibold tracking-tight text-foreground">{t("profile.name")} & {t("profile.avatar")}</h3>
 					</div>
 					<div className="flex flex-col gap-6">
-						<AgentAvatarPicker value={avatar} onChange={setAvatar} />
+						<AgentAvatarPicker value={avatar} onChange={setAvatarOverride} />
 						<TextField
 							label={t("profile.name")}
 							value={name}

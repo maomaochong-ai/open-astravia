@@ -1,5 +1,5 @@
 import type { AgentProfile } from "@vetta/agent-team";
-import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";
+import { useAgentAvatarResolver } from "@shared/agent-teams/agent-avatar";
 import { Button, Input } from "@vetta/ui";
 import { useTranslation } from "react-i18next";
 import { AgentAvatarView } from "@vetta/theme-ui/chat";
@@ -25,6 +25,7 @@ export function TeamAssemblyBar({
 	onRemoveMember,
 }: TeamAssemblyBarProps): JSX.Element {
 	const { t } = useTranslation("agent-teams");
+	const resolveAvatar = useAgentAvatarResolver();
 	return (
 		<div
 			// 页面级的「点空白处退出组队」靠这个标记放行阵容栏内的点击，别删。
@@ -66,8 +67,7 @@ export function TeamAssemblyBar({
 							>
 								<AgentAvatarView
 									name={member.name}
-									avatar={agentAvatarUrl(member)}
-									blueprintId={member.blueprintId}
+									avatar={resolveAvatar(member)}
 									size="sm"
 								/>
 								<span className="max-w-24 truncate">{member.name}</span>

@@ -59,7 +59,9 @@
     "tabAbilities": "能力 ({{count}})",
     "confirmCreate": "确认创建",
     "saveChanges": "保存修改",
-    "saving": "保存中…"
+    "saving": "保存中…",
+    "providedBy": "来自 {{name}}",
+    "providedByHint": "这份资源由扩展提供并维护，不能删除"
   },
   "profile": {
     "fixedPrompt": "角色：{{role}}",
@@ -97,44 +99,6 @@
     "systemPromptHint": "设定该智能体的身份背景、思考策略与输出规范",
     "systemPromptPlaceholder": "为该智能体定义人设目标、专业原则、拆解步骤与输出规范，支持 Markdown…",
     "clearPrompt": "清空"
-  },
-  "blueprints": {
-    "master": {
-      "name": "主控",
-      "description": "统筹全局：拆解目标、分派任务、验收结果并最终交付"
-    },
-    "researcher": {
-      "name": "检索员",
-      "description": "搜集事实、文档、竞品动态与外部素材并核实"
-    },
-    "architect": {
-      "name": "策划师",
-      "description": "输出技术架构、接口规范或文档与 PRD 大纲"
-    },
-    "executor": {
-      "name": "执行员",
-      "description": "生产核心资产：写代码、产出深度草稿或执行复杂分析"
-    },
-    "developer": {
-      "name": "开发员",
-      "description": "生产核心资产：写代码、产出深度草稿或执行复杂分析"
-    },
-    "auditor": {
-      "name": "审计员",
-      "description": "红军挑刺：安全与边界审查、事实纠偏与逻辑查漏"
-    },
-    "optimizer": {
-      "name": "调优员",
-      "description": "性能重构、跨平台文案风味化与细节精修"
-    },
-    "synthesizer": {
-      "name": "交付员",
-      "description": "统一编排多源成果，生成报告或打包物料"
-    },
-    "translator": {
-      "name": "转化员",
-      "description": "多语言本地化、代码转文字与术语向业务语言转译"
-    }
   },
   "teams": {
     "title": "智能体团队",

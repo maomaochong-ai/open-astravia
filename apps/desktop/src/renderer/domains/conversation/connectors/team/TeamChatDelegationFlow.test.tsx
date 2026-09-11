@@ -152,7 +152,7 @@ const document = createAgentTeamFixture();
 const team = document.teams[0];
 if (!team) throw new Error("built-in Agent Team fixture is missing");
 const leader = team.members.find((member) => member.id === team.leaderMemberId);
-const architect = team.members.find((member) => member.handle === "architect");
+const architect = team.members.find((member) => member.handle === "developer");
 if (!leader || !architect) throw new Error("Dev Team fixture is incomplete");
 
 const session: TeamSessionDocument = {
@@ -378,7 +378,7 @@ describe("Team delegation message-to-UI flow", () => {
 		await waitFor(() => expect(screen.getAllByTestId("team-member-reply-card")).toHaveLength(1));
 		expect(assistantRows()).toHaveLength(1);
 		expect(screen.getAllByText("委派架构设计")).toHaveLength(1);
-		expect(within(screen.getByTestId("team-member-reply-card")).getByText("Architect")).toBeTruthy();
+		expect(within(screen.getByTestId("team-member-reply-card")).getByText("Developer")).toBeTruthy();
 		expect(within(screen.getByTestId("team-member-reply-card")).getByText("等待开始")).toBeTruthy();
 
 		const architectMessage = assistantMessage("架构方案已完成", 4);

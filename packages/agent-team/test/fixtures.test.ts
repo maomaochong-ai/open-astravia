@@ -3,17 +3,13 @@ import {
 	assertTeamInvariants,
 	createAgentTeamFixture,
 	createEmptyAgentTeamDocument,
-	findAgentBlueprint,
 	INITIAL_AGENT_PROFILES,
 	INITIAL_AGENT_TEAM_ID,
 	INITIAL_AGENT_TEAMS,
-	PRESET_AGENT_PLUGIN_ID,
-	parsePluginBlueprintId,
-	pluginBlueprintId,
 } from "../src/index.js";
 
-describe("Agent Team initial resources", () => {
-	it("creates ready-to-use ordinary teams whose agents inherit all abilities", () => {
+describe("Agent Team fixtures", () => {
+	it("builds a document that satisfies the same invariants as user data", () => {
 		const document = createAgentTeamFixture();
 
 		expect(document.teams.map((team) => team.id)).toContain(INITIAL_AGENT_TEAM_ID);
@@ -24,22 +20,15 @@ describe("Agent Team initial resources", () => {
 		for (const team of document.teams) assertTeamInvariants(team, document.agents);
 	});
 
-	it("backs every initial agent with a builtin blueprint or the preset agent plugin", () => {
-		for (const agent of INITIAL_AGENT_PROFILES) {
-			const plugin = parsePluginBlueprintId(agent.blueprintId);
-			if (plugin) {
-				// master / developer / researcher 的人设住在「预设智能体」插件里，内置表查不到是对的。
-				expect(plugin.pluginId).toBe(PRESET_AGENT_PLUGIN_ID);
-				expect(findAgentBlueprint(agent.blueprintId)).toBeUndefined();
-				continue;
-			}
-			expect(findAgentBlueprint(agent.blueprintId)).toBeDefined();
-		}
+	it("carries no provider stamp, so it stands for user-owned resources", () => {
+		// 提供方的戳只由回填盖上；夹具代表用户自己的数据，删改都该被允许。
+		const document = createAgentTeamFixture();
+		expect(document.agents.every((agent) => agent.source === undefined)).toBe(true);
+		expect(document.teams.every((team) => team.source === undefined)).toBe(true);
 	});
 
 	it("assembles every team as one Master leading at least two workers", () => {
-		const masterBlueprintId = pluginBlueprintId(PRESET_AGENT_PLUGIN_ID, "master");
-		const masterId = INITIAL_AGENT_PROFILES.find((agent) => agent.blueprintId === masterBlueprintId)?.id;
+		const masterId = INITIAL_AGENT_PROFILES.find((agent) => agent.blueprintId === "master")?.id;
 		expect(masterId).toBeDefined();
 		for (const team of INITIAL_AGENT_TEAMS) {
 			const leader = team.members.find((member) => member.id === team.leaderMemberId);

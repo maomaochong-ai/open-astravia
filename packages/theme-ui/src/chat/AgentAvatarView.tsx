@@ -4,7 +4,6 @@ import type { JSX } from "react";
 export interface AgentAvatarViewProps {
 	readonly name: string;
 	readonly avatar?: string;
-	readonly blueprintId?: string;
 	readonly active?: boolean;
 	readonly size?: AgentAvatarSize;
 	readonly className?: string;
@@ -24,12 +23,11 @@ const SIZE_CLASS: Record<AgentAvatarSize, string> = {
 
 /**
  * 全应用唯一的 Agent 头像：头像图是自带背景的方形立绘，直接裁成圆形满幅铺满。
- * 没有头像图时才退回首字母或角色图标。消息流、输入栏、成员条、编队页共用同一枚组件。
+ * 没有头像图时才退回首字母或兜底图标。消息流、输入栏、成员条、编队页共用同一枚组件。
  */
 export function AgentAvatarView({
 	name,
 	avatar,
-	blueprintId = "master",
 	active = false,
 	size = "md",
 	className,
@@ -49,32 +47,13 @@ export function AgentAvatarView({
 			{avatar ? (
 				<img src={avatar} alt="" className="h-full w-full object-cover" />
 			) : (
-				(initial ?? <span className={cn(blueprintIcon(blueprintId), "h-1/2 w-1/2")} />)
+				(initial ?? <span className={cn(blueprintIcon(), "h-1/2 w-1/2")} />)
 			)}
 		</span>
 	);
 }
 
-/**
- * 兜底图标：新老 blueprint id 都要认，老档案里仍存着 builder / reviewer。
- *
- * `plugin:preset-agent:*` 是搬进「预设智能体」插件后的 id；这里刻意写字面量，theme-ui 不
- * 依赖 @vetta/agent-team。master 落在兜底的皇冠图标上，不必单列。
- */
-const BLUEPRINT_ICON: Record<string, string> = {
-	"plugin:preset-agent:developer": "icon-[solar--code-square-linear]",
-	"plugin:preset-agent:researcher": "icon-[solar--magnifer-linear]",
-	researcher: "icon-[solar--magnifer-linear]",
-	architect: "icon-[solar--ruler-pen-linear]",
-	executor: "icon-[solar--code-square-linear]",
-	builder: "icon-[solar--code-square-linear]",
-	auditor: "icon-[solar--shield-check-linear]",
-	reviewer: "icon-[solar--shield-check-linear]",
-	optimizer: "icon-[solar--tuning-square-linear]",
-	synthesizer: "icon-[solar--documents-linear]",
-	translator: "icon-[solar--global-linear]",
-};
-
-function blueprintIcon(blueprintId: string): string {
-	return BLUEPRINT_ICON[blueprintId] ?? "icon-[solar--crown-star-linear]";
+/** 没有头像也没有首字母时的兜底图标。宿主不认识具体角色，所以只有一个。 */
+function blueprintIcon(): string {
+	return "icon-[solar--crown-star-linear]";
 }

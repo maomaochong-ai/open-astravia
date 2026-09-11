@@ -1,4 +1,4 @@
-import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";
+import { useAgentAvatarResolver } from "@shared/agent-teams/agent-avatar";
 import type { AgentProfile } from "@vetta/agent-team";
 import { AgentAvatarView } from "@vetta/theme-ui/chat";
 import { motion, useReducedMotion } from "motion/react";
@@ -20,6 +20,7 @@ export interface AgentConstellationProps {
  * 纯装饰，不接受点击。
  */
 export function AgentConstellation({ agents }: AgentConstellationProps): JSX.Element | null {
+	const resolveAvatar = useAgentAvatarResolver();
 	const reduceMotion = useReducedMotion();
 	const shown = agents.slice(0, MAX_AVATARS);
 	if (shown.length === 0) return null;
@@ -83,8 +84,7 @@ export function AgentConstellation({ agents }: AgentConstellationProps): JSX.Ele
 					>
 						<AgentAvatarView
 							name={agent.name}
-							avatar={agentAvatarUrl(agent)}
-							blueprintId={agent.blueprintId}
+							avatar={resolveAvatar(agent)}
 							size="xl"
 							className="ring-2 ring-background/80 shadow-sm shadow-black/10"
 						/>

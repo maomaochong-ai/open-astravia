@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { extname, resolve } from "node:path";
 import type { AgentBlueprint } from "@vetta/agent-team";
-import { BUILTIN_AGENT_PROFILE_IDS, EMPTY_AGENT_ABILITIES, pluginBlueprintId } from "@vetta/agent-team";
+import { EMPTY_AGENT_ABILITIES, pluginBlueprintId } from "@vetta/agent-team";
 import type { InstalledPlugin } from "../../preload/api-types/plugins.js";
 
 /**
@@ -17,9 +17,6 @@ function resolvePluginText(raw: string, locales: Record<string, Record<string, s
 	return locales[locale]?.[key] ?? key;
 }
 
-/** 引用宿主内置角色的成员写法，例如 `builtin:master`。 */
-const BUILTIN_MEMBER_PREFIX = "builtin:";
-
 const AVATAR_MEDIA_TYPES: Readonly<Record<string, string>> = Object.freeze({
 	".webp": "image/webp",
 	".png": "image/png",
@@ -33,10 +30,8 @@ const AVATAR_MEDIA_TYPES: Readonly<Record<string, string>> = Object.freeze({
 const MAX_AVATAR_BYTES = 512 * 1024;
 
 export interface PluginTeamPresetMember {
-	/** 本插件智能体的全局 blueprint id；引用内置角色时为 undefined。 */
-	readonly blueprintId?: string;
-	/** 内置角色 key（master / architect / …）；引用插件自己的智能体时为 undefined。 */
-	readonly builtinKey?: string;
+	/** 本插件智能体的全局 blueprint id。 */
+	readonly blueprintId: string;
 	readonly responsibility: string;
 }
 
@@ -49,6 +44,8 @@ export interface PluginTeamPreset {
 	readonly members: readonly PluginTeamPresetMember[];
 	/** 队长的团队任务书。 */
 	readonly workflow: string;
+	/** 本团队接管的历史团队 id，用于认领用户已有的同一支团队。 */
+	readonly legacyTeamIds: readonly string[];
 }
 
 export interface PluginAgentPreset {
@@ -60,6 +57,8 @@ export interface PluginAgentPreset {
 	readonly profileName: string;
 	readonly profileDescription: string;
 	readonly mentionHandle: string;
+	/** 本智能体接管的历史 blueprint id，用于折算老档案与认领同角色档案。 */
+	readonly legacyBlueprintIds: readonly string[];
 }
 
 export interface PluginAgentPresetBundle {
@@ -168,6 +167,7 @@ function buildAgentPreset(
 		profileName: resolvePluginText(rawName, plugin.locales ?? {}, defaultLocale),
 		profileDescription: rawDescription ? resolvePluginText(rawDescription, plugin.locales ?? {}, defaultLocale) : "",
 		mentionHandle: declared.mentionHandle ?? declared.id,
+		legacyBlueprintIds: declared.legacyIds ?? [],
 	};
 }
 
@@ -180,11 +180,6 @@ function buildTeamPreset(
 	const workflow = declared.workflowPath ? readTextResource(plugin, declared.workflowPath, input) : declared.workflow;
 	const defaultLocale = plugin.defaultLocale ?? "zh";
 	const members = declared.members.map((member: { agent: string; responsibility: string }): PluginTeamPresetMember => {
-		if (member.agent.startsWith(BUILTIN_MEMBER_PREFIX)) {
-			const key = member.agent.slice(BUILTIN_MEMBER_PREFIX.length);
-			if (!BUILTIN_AGENT_PROFILE_IDS[key]) throw new Error(`unknown builtin team member: ${member.agent}`);
-			return { builtinKey: key, responsibility: member.responsibility };
-		}
 		if (!ownAgentIds.has(member.agent)) {
 			// 刻意不支持跨插件引用：那会让一个插件能否用取决于另一个插件装没装。
 			throw new Error(`team member is not one of this plugin's agents: ${member.agent}`);
@@ -201,6 +196,7 @@ function buildTeamPreset(
 			: "",
 		members,
 		workflow: workflow?.trimEnd() ?? "",
+		legacyTeamIds: declared.legacyIds ?? [],
 	};
 }
 

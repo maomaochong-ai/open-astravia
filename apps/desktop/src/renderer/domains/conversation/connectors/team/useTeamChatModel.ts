@@ -1,4 +1,5 @@
 import type { DesktopTeamSessionSnapshot } from "@preload/api-types/team-conversation-display";
+import { useAgentAvatarResolver } from "@shared/agent-teams/agent-avatar";
 import { agentDisplayName, teamDisplayName } from "@shared/agent-teams/agent-team-presentation";
 import { notifyTeamSessionsChanged } from "@shared/agent-teams/team-session-events";
 import { abortConversationAgentMessage } from "@shared/conversation";
@@ -18,7 +19,6 @@ import { pathBasename } from "@shared/lib/utils";
 import { reasoningByModelAtom, selectedModelAtom } from "@shared/store/atoms";
 import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
 import type { AgentTeamDocument, TeamSessionListItem } from "@vetta/agent-team";
-import { PRESET_AGENT_PLUGIN_ID, pluginBlueprintId } from "@vetta/agent-team";
 import type { PromptAttachmentRef, SessionExecutionMode } from "@vetta/runtime-core";
 import type { ConversationScenario } from "@vetta-org/plugin-sdk";
 import { useAtomValue } from "jotai";
@@ -62,6 +62,7 @@ export function useTeamChatModel(
 	readonly actions: TeamChatActions;
 } {
 	const { t } = useTranslation(["agent-teams", "chat"]);
+	const resolveAvatar = useAgentAvatarResolver();
 	const selectedModel = useAtomValue(selectedModelAtom);
 	const reasoningByModel = useAtomValue(reasoningByModelAtom);
 	const [document, setDocument] = useState<AgentTeamDocument>();
@@ -488,8 +489,18 @@ export function useTeamChatModel(
 				},
 				failedMemberIds,
 				snapshot?.display?.workingMemberIds ?? [],
+				resolveAvatar,
 			),
-		[displayDocument, failedMemberIds, selectedMemberIds, snapshot?.display?.workingMemberIds, streams, t, team],
+		[
+			displayDocument,
+			failedMemberIds,
+			resolveAvatar,
+			selectedMemberIds,
+			snapshot?.display?.workingMemberIds,
+			streams,
+			t,
+			team,
+		],
 	);
 	const stagedPending = useMemo(
 		() => (routeHandoff ? pendingRequestFromHandoff(routeHandoff, team?.leaderMemberId ?? "leader") : undefined),
@@ -822,24 +833,6 @@ export function useTeamChatModel(
 	const labels = useMemo(
 		() => ({
 			leaderRoute: t("chat.leaderRoute"),
-			// 按 blueprintId 取角色名；下线的 leader / builder / reviewer 仍留在老档案里，映射到接替者。
-			// master / developer / researcher 已迁到「预设智能体」插件，插件 id 与迁移前的老 id 都要认。
-			memberRoles: {
-				[pluginBlueprintId(PRESET_AGENT_PLUGIN_ID, "master")]: t("blueprints.master.name"),
-				[pluginBlueprintId(PRESET_AGENT_PLUGIN_ID, "developer")]: t("blueprints.developer.name"),
-				[pluginBlueprintId(PRESET_AGENT_PLUGIN_ID, "researcher")]: t("blueprints.researcher.name"),
-				master: t("blueprints.master.name"),
-				researcher: t("blueprints.researcher.name"),
-				architect: t("blueprints.architect.name"),
-				executor: t("blueprints.executor.name"),
-				auditor: t("blueprints.auditor.name"),
-				optimizer: t("blueprints.optimizer.name"),
-				synthesizer: t("blueprints.synthesizer.name"),
-				translator: t("blueprints.translator.name"),
-				leader: t("blueprints.master.name"),
-				builder: t("blueprints.executor.name"),
-				reviewer: t("blueprints.auditor.name"),
-			},
 			memberRoleFallback: t("chat.member"),
 			placeholder: t("chat.placeholder"),
 			attachFile: t("chat.attachFile"),

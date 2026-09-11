@@ -1,4 +1,4 @@
-import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";
+import { useAgentAvatarResolver } from "@shared/agent-teams/agent-avatar";
 import { type ConversationParticipantViewModel, DEFAULT_AGENT_PARTICIPANT_ID } from "@shared/conversation";
 import { activeSessionAtom } from "@shared/store/atoms";
 import { useAtomValue } from "jotai";
@@ -15,6 +15,7 @@ export function useBoundAgentParticipants(): readonly ConversationParticipantVie
 	const activeSession = useAtomValue(activeSessionAtom);
 	const agentProfileId = activeSession?.agentProfileId;
 	const [participants, setParticipants] = useState<readonly ConversationParticipantViewModel[]>();
+	const resolveAvatar = useAgentAvatarResolver();
 
 	useEffect(() => {
 		if (!agentProfileId) {
@@ -37,7 +38,7 @@ export function useBoundAgentParticipants(): readonly ConversationParticipantVie
 						id: DEFAULT_AGENT_PARTICIPANT_ID,
 						kind: "agent",
 						name: profile.name,
-						avatar: agentAvatarUrl(profile),
+						avatar: resolveAvatar(profile),
 						blueprintId: profile.blueprintId,
 					},
 				]);
@@ -48,7 +49,7 @@ export function useBoundAgentParticipants(): readonly ConversationParticipantVie
 		return () => {
 			cancelled = true;
 		};
-	}, [agentProfileId]);
+	}, [agentProfileId, resolveAvatar]);
 
 	return participants;
 }
