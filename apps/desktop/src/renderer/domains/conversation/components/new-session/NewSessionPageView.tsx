@@ -195,17 +195,6 @@ export function NewSessionPageView({
 								sendPending={preparingProject ? { label: preparingLabel } : undefined}
 							/>
 						)}
-						{/* 插件上下文区：输入框下方，命令区展开时让位——那是打断式交互，
-						    此刻把资源列表摆在下面没有意义。 */}
-						<div className="px-2 sm:px-4">
-							<div className="mx-auto w-full max-w-2xl">
-								<NewSessionContextBlock
-									contexts={contextBlock.contexts}
-									renderContext={contextBlock.renderContext}
-									hidden={commandPanelExpanded}
-								/>
-							</div>
-						</div>
 						{/* 窄插槽下的项目选择器：跟着输入栏一起位移，横向留白与输入框卡片对齐
 						    （`px-2 sm:px-4` + 内层 `max-w-2xl`），保证它的左缘压在卡片左缘上。 */}
 						{stackProjectSelector && (
@@ -222,6 +211,25 @@ export function NewSessionPageView({
 								</div>
 							</div>
 						)}
+						{/* 插件上下文区：排在项目选择器之后——窄屏下选择器会掉到输入框下方，
+						    上下文区若在它前面，就把「选项目」这一步挤到内容底下去了。
+						    命令区展开时整块让位：那是打断式交互。 */}
+						<div className="px-2 sm:px-4">
+							{/* `wide` 的贡献（画廊、素材墙）铺满可用宽度：压回输入框那 672px，
+							    每一项都会小到看不清。其余仍与输入框卡片对齐。 */}
+							<div
+								className={cn(
+									"mx-auto w-full",
+									contextBlock.contexts[0]?.contribution.width === "wide" ? "max-w-6xl" : "max-w-2xl",
+								)}
+							>
+								<NewSessionContextBlock
+									contexts={contextBlock.contexts}
+									renderContext={contextBlock.renderContext}
+									hidden={commandPanelExpanded}
+								/>
+							</div>
+						</div>
 					</motion.div>
 				}
 			/>

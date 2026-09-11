@@ -782,28 +782,51 @@
 	cursor: text;
 }
 
-/* ── 新会话页能力橱窗 ────────────────────────────────────────────────────────
-   渐变写在这里而不是行内：插件 CSS 在 @scope 内，dark: 变体匹配不到宿主的 [data-mode]，
-   明暗只能靠继承下来的宿主变量。整块区域不画描边，层次全靠色调与留白，故这里只有填充。 */
-.vetd-showcase-poster {
-	background: linear-gradient(
-		155deg,
-		color-mix(in srgb, var(--primary) 95%, transparent) 0%,
-		color-mix(in srgb, var(--primary) 58%, transparent) 55%,
-		color-mix(in srgb, var(--primary) 82%, transparent) 100%
-	);
+/* ── 新会话页风格库 ──────────────────────────────────────────────────────────
+   两行横向吸附滚动：风格库条目只增不减，铺开换行会把输入框顶出首屏，两行把高度钉死。
+   卡片不画描边，靠一层不透明填充浮在带点阵纹理的页面背景上——半透明会让纹理透上来，
+   而卡片里装的是真实的风格预览，透了就全糊了。 */
+.vetd-style-scroller {
+	scroll-snap-type: x mandatory;
+	scrollbar-width: none;
 }
-.vetd-showcase-media {
-	background: linear-gradient(
-		150deg,
-		color-mix(in srgb, var(--primary) 75%, transparent),
-		color-mix(in srgb, var(--primary) 25%, transparent)
-	);
+.vetd-style-scroller::-webkit-scrollbar {
+	display: none;
 }
-.vetd-showcase-tile {
-	background: linear-gradient(
-		145deg,
-		color-mix(in srgb, var(--primary) 90%, transparent),
-		color-mix(in srgb, var(--primary) 45%, transparent)
+
+.vetd-style-card {
+	background-color: color-mix(in srgb, var(--foreground) 7%, var(--card));
+	transition:
+		transform 160ms ease,
+		box-shadow 160ms ease,
+		background-color 160ms ease;
+}
+.vetd-style-card:hover {
+	transform: translateY(-2px);
+	background-color: color-mix(in srgb, var(--foreground) 11%, var(--card));
+	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+}
+.vetd-style-card:focus-visible {
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 70%, transparent);
+}
+/* 选中的那张要一眼认得出：用户回头看输入框上的附件时，得能对上是哪一张。 */
+.vetd-style-card-picked {
+	background-color: color-mix(in srgb, var(--primary) 18%, var(--card));
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 80%, transparent);
+}
+
+.vetd-style-pager {
+	background-color: color-mix(in srgb, var(--foreground) 8%, transparent);
+	transition: background-color 140ms ease;
+}
+.vetd-style-pager:hover:not(:disabled) {
+	background-color: color-mix(in srgb, var(--foreground) 16%, transparent);
+}
+
+.vetd-style-pill {
+	background-image: linear-gradient(
+		90deg,
+		color-mix(in srgb, var(--primary) 26%, transparent),
+		color-mix(in srgb, var(--primary) 12%, transparent)
 	);
 }

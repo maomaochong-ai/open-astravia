@@ -15,6 +15,7 @@ function active(contextId: string, label: string): ActiveNewSessionContext {
 			contextId,
 			label,
 			activateWhen: { agents: ["designer"] },
+			width: "input",
 			render: () => null,
 			order: 0,
 			canReadDraft: false,

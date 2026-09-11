@@ -5,7 +5,7 @@ import type { PluginNewSessionContext } from "@vetta-org/plugin-sdk";
 import { useAtomValue, useSetAtom } from "jotai";
 import type { ReactNode } from "react";
 import { useCallback, useMemo } from "react";
-import { insertPlainText } from "../input-bar/editor/inputEditorHandle";
+import { focusInputEditor, insertPlainText, prependPlainText } from "../input-bar/editor/inputEditorHandle";
 import { useAgentTeamDirectoryDocument } from "./agent-team-directory";
 import { type ActiveNewSessionContext, resolveNewSessionContexts } from "./new-session-context-activation";
 import { parseAgentTargetKey, parseTeamTargetKey } from "./target";
@@ -80,7 +80,12 @@ export function useNewSessionContextBlock(input: UseNewSessionContextBlockInput)
 				composer: {
 					attach: (attachment) =>
 						setPromptAttachment({ ...attachment, ownerPluginId: active.contribution.pluginId }),
-					insertText: (text) => insertPlainText(text),
+					insertText: (text, options) => {
+						if (options?.position === "start") prependPlainText(text);
+						else insertPlainText(text);
+						// 插完把焦点交还输入框：用户接着要补细节，不该再点一次。
+						focusInputEditor();
+					},
 				},
 			};
 			return active.contribution.render(context);

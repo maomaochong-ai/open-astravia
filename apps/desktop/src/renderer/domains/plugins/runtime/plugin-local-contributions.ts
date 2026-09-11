@@ -23,6 +23,7 @@ import type {
  */
 export type ResolvedPluginNewSessionContextContribution = PluginNewSessionContextContribution & {
 	canReadDraft: boolean;
+	width: NonNullable<PluginNewSessionContextContribution["width"]>;
 };
 
 /** Host-normalized workspace view with a resolved full-color image source. */

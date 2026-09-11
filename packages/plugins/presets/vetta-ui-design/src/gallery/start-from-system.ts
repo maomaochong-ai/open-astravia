@@ -85,6 +85,25 @@ const BINARY_TIMEOUT_MS = 20_000;
  * 文本随清单已经到手，直接写；二进制现下载。**单份资源失败不影响其它** —— 少一张截图
  * 也比整个流程失败强，规范和主题（文本）总是能落下来。返回实际写成功的资源。
  */
+/**
+ * 把一套体系的资料落进**已有**项目的 `design-resources/<id>/`。
+ *
+ * 与 {@link startDesignFromSystem} 共用同一套落盘逻辑，区别只在于不建项目、不跳转：
+ * 新会话页的风格库是「在当前项目里用这套风格」，项目已经选好了。
+ */
+export async function installSystemResources(system: DesignSystem, cwd: string): Promise<StartedFromSystem> {
+	const ctx = getPluginCtx();
+	const resourcesDir = `${DESIGN_RESOURCES_DIR}/${system.id}`;
+	const written = await writeResources(system, `${cwd}/${resourcesDir}`);
+	// 清单跟着资料走：一份都没落下来就不写，免得 skill 引着 agent 去读一个空包。
+	if (written.length > 0) {
+		await ctx.fs
+			.writeFile(`${cwd}/${resourcesDir}/${RESOURCE_INDEX_FILE}`, buildResourceIndex(system.name, written))
+			.catch(() => {});
+	}
+	return { cwd, resourcesDir, written: written.map((resource) => resource.path) };
+}
+
 async function writeResources(system: DesignSystem, targetRoot: string): Promise<DesignResource[]> {
 	const ctx = getPluginCtx();
 	const written: DesignResource[] = [];

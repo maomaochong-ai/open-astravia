@@ -518,8 +518,13 @@ export interface PluginNewSessionContext {
 	readonly composer: {
 		/** 把资源挂成附件，随下一次发送带走。 */
 		attach(attachment: PluginPromptAttachment): void;
-		/** 在草稿末尾追加文本（不是替换，免得抹掉用户已经打的内容）。 */
-		insertText(text: string): void;
+		/**
+		 * 往草稿里插一段文本。始终是插入而非替换，免得抹掉用户已经打的内容。
+		 *
+		 * `position` 缺省为 `"end"`（光标处）。`"start"` 插到最前面，适合「先定题、细节
+		 * 由用户补」这类写法——用户点完多半光标并不在开头，位置只能由调用方定死。
+		 */
+		insertText(text: string, options?: { position?: "start" | "end" }): void;
 	};
 }
 
@@ -539,6 +544,12 @@ export interface PluginNewSessionContextContribution {
 	/** tab 图标；省略时用插件自己的图标。 */
 	icon?: ReactNode;
 	activateWhen: PluginNewSessionContextActivation;
+	/**
+	 * 横向占位。`"input"`（默认）与输入框同宽，适合补充说明一类的窄内容；`"wide"` 铺满
+	 * 页面可用宽度，留给画廊、素材墙这类「内容本身就是主角」的东西——把它们压在输入框
+	 * 宽度里，每一项都会小到看不清。
+	 */
+	width?: "input" | "wide";
 	render(context: PluginNewSessionContext): ReactNode;
 }
 

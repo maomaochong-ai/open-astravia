@@ -15,6 +15,7 @@ import { stopAllDesignServers } from "./engine/engine-manager";
 import { SHARE_EXTENSION, SHARE_PREVIEW_EXTENSIONS } from "./export/share-format";
 import { claimCanvasReveal } from "./gallery/open-project";
 import { registerTurnHistory } from "./history/turn-history";
+import { watchPickedSystem } from "./new-session/picked-system";
 import { setPluginCtx } from "./plugin-context";
 import { CANVAS_TAB_ID, GALLERY_VIEW_ID } from "./tab-ids";
 import { registerDesignTools } from "./tools";
@@ -86,8 +87,8 @@ function pendingScreenshotCard(toolCall: PluginPendingToolCall): CardDescriptor 
 	return screenshotCardDescriptor(session.vetdPath, session.dirPath, frameId);
 }
 
-const DesignShowcase = lazy(() =>
-	import("./new-session/DesignShowcase").then((module) => ({ default: module.DesignShowcase })),
+const DesignStyleLibrary = lazy(() =>
+	import("./new-session/DesignStyleLibrary").then((module) => ({ default: module.DesignStyleLibrary })),
 );
 
 export default definePlugin({
@@ -153,13 +154,16 @@ export default definePlugin({
 		});
 		// 导出渲染图的 dialog 走全局插槽：设计画布在活动面板里太窄，
 		// 判断圆角/边框需要整窗口的预览面积。
-		// 新会话页的能力橱窗：选中设计师/设计团队，或提到本插件的 skill 时由宿主唤起。
-		// 纯展示，不带交互——它出现在用户正要打字的那一刻，不该跟输入框抢注意力。
+		// 新会话页的风格库：选中设计师/设计团队，或提到本插件的 skill 时由宿主唤起。
+		// 选风格是这条链路上最容易被省略、却最影响产出的一步，摆在开工前最后一屏。
+		watchPickedSystem(ctx);
 		ctx.ui.registerNewSessionContext({
-			id: "design-showcase",
+			id: "design-styles",
 			label: "%tab.label%",
 			activateWhen: { agents: ["designer"], skills: ["vetta-ui-design"] },
-			render: () => <DesignShowcase />,
+			// 画廊类内容压在输入框宽度里，每一项都会小到看不出风格。
+			width: "wide",
+			render: (context) => <DesignStyleLibrary context={context} />,
 		});
 		ctx.ui.registerGlobalSlot({ id: "export-mockup-dialog", component: ExportMockupDialog });
 		ctx.ui.registerCardRenderer({

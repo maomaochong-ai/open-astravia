@@ -19,6 +19,9 @@ export interface NewSessionContextBlockProps {
  * 宿主这一层不画卡片：这块区域紧贴输入框，再套一个描边盒子就成了「框里还有框」。留白
  * 和内容自身的层次足够把它和输入框分开，边框只会把注意力从内容上引开。
  *
+ * 宽度由贡献自己声明：画廊类内容压在输入框宽度里，每一项都会小到看不清，所以 `wide`
+ * 直接铺满页面可用宽度。
+ *
  * 多个贡献同时上屏时顶部出一排轻量 tab；只有一个时连 tab 都不出——为单一来源画一排
  * 标签是纯粹的噪音。
  */
@@ -44,7 +47,11 @@ export function NewSessionContextBlock({
 	if (!selected) return null;
 
 	return (
-		<section data-new-session-context="true" className={cn("mt-5 w-full", className)}>
+		<section
+			data-new-session-context="true"
+			data-width={selected.contribution.width}
+			className={cn("mt-5 w-full", className)}
+		>
 			{contexts.length > 1 && (
 				<div role="tablist" className="mb-2.5 flex items-center gap-1">
 					{contexts.map((entry) => {

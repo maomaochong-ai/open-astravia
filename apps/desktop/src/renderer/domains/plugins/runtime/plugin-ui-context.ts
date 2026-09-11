@@ -383,6 +383,7 @@ export function createPluginUiApi({
 			label: contribution.label,
 			icon: contribution.icon,
 			activateWhen,
+			width: contribution.width === "wide" ? "wide" : "input",
 			render: contribution.render,
 			canReadDraft: hasPluginPermission(plugin, "conversation.draft.read"),
 		};

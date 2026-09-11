@@ -286,6 +286,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 				label: contribution.label,
 				icon: contribution.icon,
 				activateWhen: contribution.activateWhen,
+				width: contribution.width,
 				render: contribution.render,
 				order,
 				canReadDraft: contribution.canReadDraft,

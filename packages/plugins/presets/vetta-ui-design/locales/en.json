@@ -323,12 +323,8 @@
 	"agent.designer.description": "Designs the UI on the Vetta canvas: screens, landing pages, slides, posters",
 	"agent.designTeam.name": "Design Team",
 	"agent.designTeam.description": "Turns a product idea into reviewed screens on the Vetta design canvas",
-	"newSession.showcase.subtitle": "Describe what you want; Vetta draws it on the design canvas",
-	"newSession.showcase.mobile": "App screens",
-	"newSession.showcase.dashboard": "Dashboards",
-	"newSession.showcase.landing": "Landing pages",
-	"newSession.showcase.slide": "Slides",
-	"newSession.showcase.poster": "Posters",
-	"newSession.showcase.footnote": "Every frame is real React — select any element to have it edited.",
-	"newSession.showcase.square": "Social posts"
+	"newSession.styles.hint": "Pick a style; it comes with your project on send",
+	"newSession.styles.pick": "Use the {{name}} style",
+	"newSession.styles.prev": "Previous",
+	"newSession.styles.next": "Next"
 }

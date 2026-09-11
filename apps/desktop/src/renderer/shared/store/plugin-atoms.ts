@@ -183,6 +183,7 @@ export interface RegisteredNewSessionContext {
 	label: string;
 	icon?: PluginNewSessionContextContribution["icon"];
 	activateWhen: PluginNewSessionContextContribution["activateWhen"];
+	width: NonNullable<PluginNewSessionContextContribution["width"]>;
 	render: PluginNewSessionContextContribution["render"];
 	/** 注册顺序，用于同插件多个 tab 的稳定排序。 */
 	order: number;

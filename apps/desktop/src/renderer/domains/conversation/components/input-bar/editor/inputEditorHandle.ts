@@ -2,6 +2,7 @@ import type { InputSegment } from "@shared/lib/input-tokens";
 import {
 	$createRangeSelection,
 	$getNodeByKey,
+	$getRoot,
 	$getSelection,
 	$isRangeSelection,
 	$isTextNode,
@@ -183,6 +184,30 @@ export function insertPlainText(text: string): void {
 	current?.update(() => {
 		const selection = $getSelection();
 		if ($isRangeSelection(selection)) selection.insertText(text);
+	});
+}
+
+/**
+ * 在草稿最前面插入纯文本，并把光标留在插入内容之后。
+ *
+ * 不走 insertPlainText：那个插在光标处，而用户多半刚点完别处、光标不在开头，甚至根本
+ * 没聚焦过输入框。这里的语义是「给已有内容加个前缀」，位置必须由调用方定死。
+ */
+export function prependPlainText(text: string): void {
+	current?.update(() => {
+		const root = $getRoot();
+		const paragraph = root.getFirstChild();
+		const selection = $createRangeSelection();
+		if (paragraph === null) {
+			root.selectStart();
+			const created = $getSelection();
+			if ($isRangeSelection(created)) created.insertText(text);
+			return;
+		}
+		selection.anchor.set(paragraph.getKey(), 0, "element");
+		selection.focus.set(paragraph.getKey(), 0, "element");
+		$setSelection(selection);
+		selection.insertText(text);
 	});
 }
 

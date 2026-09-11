@@ -2,7 +2,7 @@
 
 import { $createParagraphNode, $createTextNode, $getRoot, createEditor } from "lexical";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { insertInputParts, setInputEditor } from "./inputEditorHandle";
+import { insertInputParts, prependPlainText, setInputEditor } from "./inputEditorHandle";
 import { ImageTokenNode } from "./nodes";
 import { $removeTriggerBeforeCaret } from "./tokens/trigger";
 
@@ -46,6 +46,63 @@ describe("insertInputParts", () => {
 		expect(editor.getEditorState().read(() => $getRoot().getTextContent())).toBe(
 			"before @C:/one.png middle @C:/two.png ",
 		);
+	});
+});
+
+describe("prependPlainText", () => {
+	afterEach(() => setInputEditor(null));
+
+	function editorWith(text?: string) {
+		const editor = createEditor({
+			namespace: "input-editor-prepend-test",
+			nodes: [ImageTokenNode],
+			onError: (error) => {
+				throw error;
+			},
+		});
+		editor.update(
+			() => {
+				const paragraph = $createParagraphNode();
+				if (text !== undefined) paragraph.append($createTextNode(text));
+				$getRoot().append(paragraph);
+				// 光标停在末尾：用户刚打完字的真实状态。
+				paragraph.selectEnd();
+			},
+			{ discrete: true },
+		);
+		setInputEditor(editor);
+		return editor;
+	}
+
+	it("puts the text in front of what the user already typed", async () => {
+		const editor = editorWith("深色主题");
+		const committed = new Promise<void>((resolve) => {
+			const unregister = editor.registerUpdateListener(() => {
+				unregister();
+				resolve();
+			});
+		});
+
+		prependPlainText("帮我设计一个 App 界面：");
+		await committed;
+
+		// 光标当时在末尾，插入位置仍必须是开头——这正是它不能复用 insertPlainText 的原因。
+		expect(editor.getEditorState().read(() => $getRoot().getTextContent())).toBe("帮我设计一个 App 界面：深色主题");
+	});
+
+	it("works on an empty draft", async () => {
+		const editor = editorWith();
+		const committed = new Promise<void>((resolve) => {
+			const unregister = editor.registerUpdateListener(() => {
+				unregister();
+				resolve();
+			});
+		});
+
+		prependPlainText("帮我设计一张海报：");
+		await committed;
+
+		expect(editor.getEditorState().read(() => $getRoot().getTextContent())).toBe("帮我设计一张海报：");
 	});
 });
 

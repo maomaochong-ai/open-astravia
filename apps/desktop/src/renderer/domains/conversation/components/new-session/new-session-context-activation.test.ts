@@ -11,6 +11,7 @@ function contribution(overrides: Partial<RegisteredNewSessionContext> = {}): Reg
 		contextId: "vetta-ui-design:design-resources",
 		label: "设计资源",
 		activateWhen: { agents: ["designer"] },
+		width: "input",
 		render: () => null,
 		order: 0,
 		canReadDraft: true,
