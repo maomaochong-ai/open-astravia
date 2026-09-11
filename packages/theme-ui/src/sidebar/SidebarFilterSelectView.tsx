@@ -1,10 +1,14 @@
-import { useState, type JSX } from "react";
+import { Fragment, useState, type JSX } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@vetta/ui";
 import { cn } from "@vetta/ui";
 
 export interface SidebarFilterSelectOption {
 	readonly value: string;
 	readonly label: string;
+	/** 有值时在标签前画一个该色的 Dot——标签档靠颜色辨认。 */
+	readonly dotColor?: string;
+	/** 在该项之前插一条分割线，用于隔开来源档与标签档。 */
+	readonly separatorBefore?: boolean;
 }
 
 export interface SidebarFilterSelectViewProps {
@@ -45,28 +49,37 @@ export function SidebarFilterSelectView({
 				side="bottom"
 				align="start"
 				sideOffset={4}
-				className="w-[140px] gap-0 overflow-hidden rounded-lg border border-border p-1"
+				className="max-h-[60vh] w-[160px] gap-0 overflow-y-auto rounded-lg border border-border p-1"
 			>
 				{options.map((option) => (
-					<button
-						key={option.value}
-						type="button"
-						onClick={() => {
-							onChange(option.value);
-							setOpen(false);
-						}}
-						className={cn(
-							"flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-[12px] font-medium transition-colors",
-							value === option.value
-								? "bg-primary text-primary-foreground"
-								: "text-foreground hover:bg-accent",
-						)}
-					>
-						<span>{option.label}</span>
-						{value === option.value && (
-							<span className="icon-[solar--check-circle-linear] ml-auto h-3.5 w-3.5" />
-						)}
-					</button>
+					<Fragment key={option.value}>
+						{option.separatorBefore ? <div className="-mx-1 my-1 h-px bg-border" /> : null}
+						<button
+							type="button"
+							onClick={() => {
+								onChange(option.value);
+								setOpen(false);
+							}}
+							className={cn(
+								"flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-[12px] font-medium transition-colors",
+								value === option.value
+									? "bg-primary text-primary-foreground"
+									: "text-foreground hover:bg-accent",
+							)}
+						>
+							{option.dotColor ? (
+								<span
+									aria-hidden="true"
+									className="h-2.5 w-2.5 shrink-0 rounded-full"
+									style={{ backgroundColor: option.dotColor }}
+								/>
+							) : null}
+							<span className="truncate">{option.label}</span>
+							{value === option.value && (
+								<span className="icon-[solar--check-circle-linear] ml-auto h-3.5 w-3.5 shrink-0" />
+							)}
+						</button>
+					</Fragment>
 				))}
 			</PopoverContent>
 		</Popover>

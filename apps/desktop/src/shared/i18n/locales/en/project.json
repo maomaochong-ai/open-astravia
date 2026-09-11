@@ -40,6 +40,8 @@
 			"emptyDescription": "Start a new chat and it will show up here",
 			"emptyAction": "Start a chat",
 			"emptyClawTitle": "No Claw records yet",
+			"emptyTagTitle": "No conversations with this tag",
+			"emptyTagDescription": "Tag a conversation from its context menu",
 			"emptyClawDescription": "Chat with Claw via WeChat, Feishu, and other channels to see records here"
 		},
 		"teams": {

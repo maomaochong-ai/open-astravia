@@ -1,5 +1,7 @@
 import type { DefaultConversationFilter } from "@shared/store/atoms";
 import {
+	conversationFilterTagId,
+	conversationTagsAtom,
 	pinnedSessionPathsAtom,
 	renamingSessionPathAtom,
 	runningSessionPathsAtom,
@@ -10,6 +12,7 @@ import {
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { conversationTagIds } from "../../../../shared/conversation-tags";
 import {
 	isSidebarConversationActive,
 	type SidebarConversationInfo,
@@ -70,9 +73,19 @@ export function useDefaultSessionListModel({
 		return basenames;
 	}, [scheduledSessionPaths]);
 	const [showAll, setShowAll] = useState(false);
+	const tags = useAtomValue(conversationTagsAtom);
+	const tagFilterId = conversationFilterTagId(filter);
+	// 标签档只收窄可见集合，不改变来源与排序；「对话」档仍包含已打标的会话。
+	const taggedSessions = useMemo(
+		() =>
+			tagFilterId === null
+				? sessions
+				: sessions.filter((session) => conversationTagIds(tags, session.path).includes(tagFilterId)),
+		[sessions, tagFilterId, tags],
+	);
 	const ordering = useMemo(
-		() => buildSidebarSessionOrdering(sessions, pinnedSessionPaths, DEFAULT_VISIBLE_DEFAULT_SESSIONS, showAll),
-		[pinnedSessionPaths, sessions, showAll],
+		() => buildSidebarSessionOrdering(taggedSessions, pinnedSessionPaths, DEFAULT_VISIBLE_DEFAULT_SESSIONS, showAll),
+		[pinnedSessionPaths, taggedSessions, showAll],
 	);
 	const revealedActiveSessionRef = useRef<string | null>(null);
 	const [prevFilter, setPrevFilter] = useState(filter);
@@ -98,13 +111,13 @@ export function useDefaultSessionListModel({
 		if (activeIndex < 0) return;
 		revealedActiveSessionRef.current = activeConversationKey;
 		const collapsed = buildSidebarSessionOrdering(
-			sessions,
+			taggedSessions,
 			pinnedSessionPaths,
 			DEFAULT_VISIBLE_DEFAULT_SESSIONS,
 			false,
 		);
 		if (activeIndex >= collapsed.visible.length) setShowAll(true);
-	}, [activeConversationKey, ordering.all, pinnedSessionPaths, sessions]);
+	}, [activeConversationKey, ordering.all, pinnedSessionPaths, taggedSessions]);
 
 	const isClaw = filter === "claw";
 
@@ -177,16 +190,21 @@ export function useDefaultSessionListModel({
 	);
 	const toggleShowAll = useCallback(() => setShowAll((value) => !value), []);
 
-	const emptyLabels = isClaw
+	const emptyLabels = tagFilterId
 		? {
-				emptyTitle: t("sidebar.defaultConversation.emptyClawTitle"),
-				emptyDescription: t("sidebar.defaultConversation.emptyClawDescription"),
+				emptyTitle: t("sidebar.defaultConversation.emptyTagTitle"),
+				emptyDescription: t("sidebar.defaultConversation.emptyTagDescription"),
 			}
-		: {
-				emptyTitle: t("sidebar.defaultConversation.emptyTitle"),
-				emptyDescription: t("sidebar.defaultConversation.emptyDescription"),
-				emptyAction: t("sidebar.defaultConversation.emptyAction"),
-			};
+		: isClaw
+			? {
+					emptyTitle: t("sidebar.defaultConversation.emptyClawTitle"),
+					emptyDescription: t("sidebar.defaultConversation.emptyClawDescription"),
+				}
+			: {
+					emptyTitle: t("sidebar.defaultConversation.emptyTitle"),
+					emptyDescription: t("sidebar.defaultConversation.emptyDescription"),
+					emptyAction: t("sidebar.defaultConversation.emptyAction"),
+				};
 
 	return {
 		contextMenuEnabled: true,
@@ -201,7 +219,7 @@ export function useDefaultSessionListModel({
 		totalCount: ordering.all.length,
 		visibleSessions: visibleViews,
 		actions: {
-			emptyAction: !isClaw && onNewSession ? onNewSession : undefined,
+			emptyAction: !isClaw && !tagFilterId && onNewSession ? onNewSession : undefined,
 			openContextMenu,
 			rename,
 			renameDone,

@@ -40,6 +40,8 @@
 			"emptyDescription": "开始一段新对话后，历史会显示在这里",
 			"emptyAction": "开始新对话",
 			"emptyClawTitle": "还没有 Claw 记录",
+			"emptyTagTitle": "该标签下暂无会话",
+			"emptyTagDescription": "可以从会话右键菜单为它打上这个标签",
 			"emptyClawDescription": "通过微信、飞书等渠道与 Claw 对话后，记录会出现在这里"
 		},
 		"teams": {

@@ -188,7 +188,30 @@ const readSidebarWidth = (): number => {
 export const sidebarWidthAtom = atom<number>(readSidebarWidth());
 export const sidebarFilterAtom = atom<SidebarFilter>("all");
 
-export type DefaultConversationFilter = "conversation" | "claw";
+/** 会话来源维度：普通对话 / Claw。 */
+export type DefaultConversationSource = "conversation" | "claw";
+/**
+ * 标签档与来源档是同一个下拉里的平级选项，因此编码进同一个字符串。
+ * 标签只能打在普通对话上，所以选中标签时来源维度固定回落为 "conversation"。
+ */
+export type DefaultConversationTagFilter = `tag:${string}`;
+export type DefaultConversationFilter = DefaultConversationSource | DefaultConversationTagFilter;
+
+export function tagConversationFilter(tagId: string): DefaultConversationTagFilter {
+	return `tag:${tagId}`;
+}
+
+export function isTagConversationFilter(filter: DefaultConversationFilter): filter is DefaultConversationTagFilter {
+	return filter.startsWith("tag:");
+}
+
+export function conversationFilterTagId(filter: DefaultConversationFilter): string | null {
+	return isTagConversationFilter(filter) ? filter.slice("tag:".length) : null;
+}
+
+export function conversationFilterSource(filter: DefaultConversationFilter): DefaultConversationSource {
+	return filter === "claw" ? "claw" : "conversation";
+}
 
 const DEFAULT_CONVERSATION_FILTER_STORAGE_KEY = "vetta-default-conversation-filter";
 const DEFAULT_CONVERSATION_FILTER_SCHEMA_VERSION = 1;
@@ -202,7 +225,12 @@ export function parseDefaultConversationFilter(value: unknown): DefaultConversat
 	if (typeof value !== "object" || value === null || Array.isArray(value)) return "conversation";
 	const input = value as { schemaVersion?: unknown; filter?: unknown };
 	if (input.schemaVersion !== DEFAULT_CONVERSATION_FILTER_SCHEMA_VERSION) return "conversation";
-	return input.filter === "claw" ? "claw" : "conversation";
+	if (input.filter === "claw") return "claw";
+	// 标签可能已被删除，这里只认形状；存在性由标签快照到位后再校验并回落。
+	if (typeof input.filter === "string" && input.filter.startsWith("tag:") && input.filter.length > "tag:".length) {
+		return input.filter as DefaultConversationTagFilter;
+	}
+	return "conversation";
 }
 
 function loadDefaultConversationFilter(): DefaultConversationFilter {

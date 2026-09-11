@@ -1,4 +1,9 @@
-import { projectContextMenuAtom, runningSessionPathsAtom, sessionContextMenuAtom } from "@shared/store/atoms";
+import {
+	conversationFilterSource,
+	projectContextMenuAtom,
+	runningSessionPathsAtom,
+	sessionContextMenuAtom,
+} from "@shared/store/atoms";
 import { useAtom, useAtomValue } from "jotai";
 import type { ProjectsPanelModel } from "../components/sidebar/projects/panel/types";
 
@@ -14,7 +19,9 @@ export function useProjectsPanelMenusModel(model: ProjectsPanelModel) {
 	const clearClawDisabled =
 		projectMenu?.project.isDefault === true &&
 		model.projectSessions(model.imCwd).some((session) => runningSessionPaths.has(session.path));
-	const defaultScope = projectMenu?.project.isDefault === true ? model.defaultConversationFilter : undefined;
+	// 项目右键菜单只区分「清空会话 / 清空 Claw」，标签档按其所属来源（对话）处理。
+	const defaultScope =
+		projectMenu?.project.isDefault === true ? conversationFilterSource(model.defaultConversationFilter) : undefined;
 
 	return {
 		contextMenu,

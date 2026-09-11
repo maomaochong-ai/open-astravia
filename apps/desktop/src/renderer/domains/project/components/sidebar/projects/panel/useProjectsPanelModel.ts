@@ -5,6 +5,7 @@ import {
 	activeSessionAtom,
 	batchProjectsAtom,
 	confirmDialogAtom,
+	conversationFilterSource,
 	defaultConversationCwdAtom,
 	defaultConversationFilterAtom,
 	defaultImConversationCwdAtom,
@@ -84,6 +85,9 @@ export function useProjectsPanelModel({
 	const [expandedBatchProjects, setExpandedBatchProjects] = useAtom(expandedBatchProjectsAtom);
 	const { deleteTask: deleteBatchTask, deleteProject: deleteBatchProject } = useBatchTasks();
 	const defaultConversationFilter = useAtomValue(defaultConversationFilterAtom);
+	const setDefaultConversationFilter = useSetAtom(defaultConversationFilterAtom);
+	// 标签档只是「对话」的一个子集视图，会话来源仍取普通对话目录。
+	const defaultConversationSource = conversationFilterSource(defaultConversationFilter);
 	const defaultConversationCwd = useAtomValue(defaultConversationCwdAtom);
 
 	const expandBatchProject = useCallback(
@@ -144,12 +148,7 @@ export function useProjectsPanelModel({
 	const defaultProject = useMemo(() => projects.find((project) => project.isDefault), [projects]);
 	// 默认区的会话来源 cwd：claw 过滤读 im-gateway 自己的 cwd（ADR-0005），
 	// 与 defaultProject.cwd 是两个物理目录，选中 / 重命名都必须用这个值。
-	const defaultSessionsCwd =
-		defaultConversationFilter === "claw"
-			? imCwd
-			: defaultConversationFilter === "conversation"
-				? defaultProject?.cwd
-				: undefined;
+	const defaultSessionsCwd = defaultConversationSource === "claw" ? imCwd : defaultProject?.cwd;
 	const filteredProjects = useMemo(() => {
 		const visible = projects.filter((project) => project.type !== "batch" && !project.isDefault);
 		if (filter === "all") return visible;
@@ -172,6 +171,18 @@ export function useProjectsPanelModel({
 			void navigate({ to: "/new-session/$cwd", params: { cwd: encodeURIComponent(cwd) } });
 		},
 		[navigate],
+	);
+
+	/**
+	 * 标签档下新建的会话不属于任何标签，留在原档位用户会看不到自己刚建的会话，
+	 * 以为没建成；因此先切回「对话」再新建。
+	 */
+	const defaultNewSession = useCallback(
+		(cwd: string) => {
+			setDefaultConversationFilter("conversation");
+			newSession(cwd);
+		},
+		[newSession, setDefaultConversationFilter],
 	);
 
 	// sessionsMap 每次 listSessions 回填都会换 Map 引用。openSessionByTarget 作为
@@ -465,10 +476,10 @@ export function useProjectsPanelModel({
 	const noOtherProjects = filteredProjects.length === 0 && (!showBatchGroup || batchAsProjects.length === 0);
 
 	useEffect(() => {
-		if (defaultConversationFilter === "claw" && imCwd) {
+		if (defaultConversationSource === "claw" && imCwd) {
 			void loadSessions(imCwd);
 		}
-	}, [defaultConversationFilter, imCwd, loadSessions]);
+	}, [defaultConversationSource, imCwd, loadSessions]);
 
 	const ordinaryDefaultSessions = defaultSessionsCwd
 		? (sessionsMap.get(defaultSessionsCwd) ?? EMPTY_SESSIONS)
@@ -477,10 +488,10 @@ export function useProjectsPanelModel({
 		() =>
 			projectSidebarConversations(
 				ordinaryDefaultSessions,
-				defaultConversationFilter === "conversation" ? teamSidebar.conversations : [],
+				defaultConversationSource === "conversation" ? teamSidebar.conversations : [],
 				{ kind: "default" },
 			),
-		[defaultConversationFilter, ordinaryDefaultSessions, teamSidebar.conversations],
+		[defaultConversationSource, ordinaryDefaultSessions, teamSidebar.conversations],
 	);
 	const projectSidebarSessions = useMemo(() => {
 		const result = new Map<string, SidebarConversationInfo[]>();
@@ -520,7 +531,7 @@ export function useProjectsPanelModel({
 			Boolean(
 				defaultSessionsCwd && sessionLoadingCwds.has(defaultSessionsCwd) && !sessionsMap.has(defaultSessionsCwd),
 			) ||
-			(defaultConversationFilter === "conversation" && teamSidebar.loading),
+			(defaultConversationSource === "conversation" && teamSidebar.loading),
 		expandedBatchProjects,
 		expandedProjects,
 		filteredProjects,
@@ -541,7 +552,7 @@ export function useProjectsPanelModel({
 			collapseProject,
 			deleteProject: deletePanelProject,
 			deleteSession: deletePanelSession,
-			defaultNewSession: newSession,
+			defaultNewSession,
 			defaultSelectSession,
 			expandBatchProject,
 			expandProject,
