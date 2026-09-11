@@ -215,6 +215,20 @@ function normalizeAgentManifest(agent: PluginAgentManifest | undefined): PluginA
 		skillPresentation: normalizeSkillPresentation(agent.skillPresentation),
 		mcpServers: normalizeMcpServers(agent.mcpServers),
 		toolPolicy: normalizeToolPolicy(agent.toolPolicy),
+		agents: agent.agents?.map((profile) => ({
+			...profile,
+			// 路径都要过越界校验：manifest 里写 `../` 不该能读到插件目录之外。
+			avatar: profile.avatar ? validatePluginRelativePath(profile.avatar, "agent.agents.avatar") : undefined,
+			systemPromptPath: profile.systemPromptPath
+				? validatePluginRelativePath(profile.systemPromptPath, "agent.agents.systemPromptPath")
+				: undefined,
+		})),
+		teams: agent.teams?.map((team) => ({
+			...team,
+			workflowPath: team.workflowPath
+				? validatePluginRelativePath(team.workflowPath, "agent.teams.workflowPath")
+				: undefined,
+		})),
 	};
 }
 
@@ -515,6 +529,19 @@ export function listPluginManifestResources(
 	}
 	for (const skillPath of manifest.agent?.skillPaths ?? []) {
 		resources.push({ field: "agent.skillPaths", path: skillPath, kind: "file-or-directory" });
+	}
+	for (const agent of manifest.agent?.agents ?? []) {
+		// 人设与头像是插件包里的真实文件：不登记就不会被打进包，装到用户机器上时这个
+		// 智能体会因为「提示词读不出来」被整个跳过。
+		if (agent.avatar) resources.push({ field: "agent.agents.avatar", path: agent.avatar, kind: "file" });
+		if (agent.systemPromptPath) {
+			resources.push({ field: "agent.agents.systemPromptPath", path: agent.systemPromptPath, kind: "file" });
+		}
+	}
+	for (const team of manifest.agent?.teams ?? []) {
+		if (team.workflowPath) {
+			resources.push({ field: "agent.teams.workflowPath", path: team.workflowPath, kind: "file" });
+		}
 	}
 	if (typeof manifest.agent?.mcpServers === "string") {
 		resources.push({ field: "agent.mcpServers", path: manifest.agent.mcpServers, kind: "file" });
