@@ -13,7 +13,7 @@ import {
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { conversationTagIds } from "../../../../shared/conversation-tags";
+import { type ConversationTagsSnapshot, conversationTagIds } from "../../../../shared/conversation-tags";
 import {
 	isSidebarConversationActive,
 	type SidebarConversationInfo,
@@ -24,6 +24,23 @@ import { buildSidebarSessionOrdering } from "../services/sidebar-session-order";
 import { reuseUnchangedSessionViews } from "./stableSessionViews";
 
 const DEFAULT_VISIBLE_DEFAULT_SESSIONS = 5;
+
+/**
+ * 未按标签筛选时，行首图标换成标签色点——这是「哪些会话打过标」的唯一线索。
+ * 标签档下所有行都属于同一个标签，再画一遍色点只是噪音，故返回 undefined。
+ */
+function sessionTagColors(
+	tags: ConversationTagsSnapshot,
+	colorByTagId: ReadonlyMap<string, string>,
+	sessionPath: string,
+): readonly string[] | undefined {
+	const colors: string[] = [];
+	for (const id of conversationTagIds(tags, sessionPath)) {
+		const color = colorByTagId.get(id);
+		if (color) colors.push(color);
+	}
+	return colors.length > 0 ? colors : undefined;
+}
 
 export interface DefaultSessionListItemView {
 	key: string;
@@ -37,6 +54,7 @@ export interface DefaultSessionListItemView {
 	iconClassName?: string;
 	trailingAvatarUrls?: readonly string[];
 	titleExtra?: string;
+	tagColors?: readonly string[];
 	session: SidebarConversationInfo;
 }
 
@@ -84,6 +102,7 @@ export function useDefaultSessionListModel({
 				: sessions.filter((session) => conversationTagIds(tags, session.path).includes(tagFilterId)),
 		[sessions, tagFilterId, tags],
 	);
+	const tagColorById = useMemo(() => new Map(tags.tags.map((tag) => [tag.id, tag.color])), [tags.tags]);
 	const ordering = useMemo(
 		() => buildSidebarSessionOrdering(taggedSessions, pinnedSessionPaths, DEFAULT_VISIBLE_DEFAULT_SESSIONS, showAll),
 		[pinnedSessionPaths, taggedSessions, showAll],
@@ -149,6 +168,7 @@ export function useDefaultSessionListModel({
 				iconClassName: identity.iconClassName,
 				trailingAvatarUrls: identity.trailingAvatarUrls,
 				titleExtra: identity.titleExtra,
+				tagColors: tagFilterId === null ? sessionTagColors(tags, tagColorById, session.path) : undefined,
 				session,
 			};
 		});
@@ -164,6 +184,9 @@ export function useDefaultSessionListModel({
 		scheduledBasenames,
 		scheduledSessionPaths,
 		ordering.all,
+		tagColorById,
+		tagFilterId,
+		tags,
 		t,
 	]);
 

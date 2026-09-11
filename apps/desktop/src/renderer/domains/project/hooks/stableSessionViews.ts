@@ -12,12 +12,20 @@ interface SessionRowViewLike {
 	label: string;
 	iconClassName?: string;
 	trailingAvatarUrls?: readonly string[];
+	tagColors?: readonly string[];
 	active: boolean;
 	renaming: boolean;
 	running: boolean;
 	scheduled: boolean;
 	pinned: boolean;
 	session: unknown;
+}
+
+/** 标签色点每轮都是新数组，按值比，否则打过标的行永远复用不到旧引用。 */
+function sameTagColors(a: readonly string[] | undefined, b: readonly string[] | undefined): boolean {
+	if (a === b) return true;
+	if (!a || !b || a.length !== b.length) return false;
+	return a.every((color, index) => color === b[index]);
 }
 
 export function reuseUnchangedSessionViews<T extends SessionRowViewLike>(cache: Map<string, T>, next: T[]): T[] {
@@ -29,6 +37,7 @@ export function reuseUnchangedSessionViews<T extends SessionRowViewLike>(cache: 
 			cached.label === view.label &&
 			cached.iconClassName === view.iconClassName &&
 			cached.trailingAvatarUrls === view.trailingAvatarUrls &&
+			sameTagColors(cached.tagColors, view.tagColors) &&
 			cached.active === view.active &&
 			cached.renaming === view.renaming &&
 			cached.running === view.running &&

@@ -58,6 +58,16 @@ describe("useDefaultSessionListModel tag filtering", () => {
 		expect(result.current.sessions.map((view) => view.path)).toEqual([TAGGED.path, PLAIN.path]);
 	});
 
+	it("marks tagged conversations with their tag colors in the unfiltered tier", () => {
+		const { result } = renderModel("conversation");
+		expect(result.current.sessions.map((view) => view.tagColors)).toEqual([["#ff5f57"], undefined]);
+	});
+
+	it("drops the color dots inside a tag tier where every row shares the tag", () => {
+		const { result } = renderModel(tagConversationFilter("t1"));
+		expect(result.current.sessions[0]?.tagColors).toBeUndefined();
+	});
+
 	it("narrows the list to the selected tag", () => {
 		const { result } = renderModel(tagConversationFilter("t1"));
 		expect(result.current.sessions.map((view) => view.path)).toEqual([TAGGED.path]);

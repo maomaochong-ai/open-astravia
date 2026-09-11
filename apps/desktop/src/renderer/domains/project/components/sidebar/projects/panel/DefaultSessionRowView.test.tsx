@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import {
 	DefaultSessionRowView,
 	type DefaultSessionRowViewProps,
@@ -129,6 +129,67 @@ describe("DefaultSessionRowView leading icon", () => {
 
 		expect(stack?.querySelectorAll("img")).toHaveLength(count);
 		expect(stack?.textContent).toBe("");
+	});
+});
+
+describe("DefaultSessionRowView tag dots", () => {
+	function dots(container: HTMLElement): HTMLElement | null {
+		return container.querySelector("[data-session-tag-dots]");
+	}
+
+	it("replaces the leading icon with one color dot for a single tag", () => {
+		const view = render(<DefaultSessionRowView {...props({ tagColors: ["#ff5f57"] })} />);
+
+		expect(view.container.querySelector('[data-session-leading-icon="true"]')).toBeNull();
+		expect(dots(view.container)?.getAttribute("data-session-tag-dots")).toBe("1");
+		expect(dots(view.container)?.querySelectorAll("span")).toHaveLength(1);
+	});
+
+	it.each([2, 3])("stacks %i tags inside the icon-sized slot", (count) => {
+		const colors = ["#ff5f57", "#0a84ff", "#32d74b"].slice(0, count);
+		const view = render(<DefaultSessionRowView {...props({ tagColors: colors })} />);
+
+		const group = dots(view.container);
+		expect(group?.querySelectorAll("span")).toHaveLength(count);
+		// 文字左对齐的前提：色点组与图标同宽，色点只在盒内铺开。
+		expect(group?.className).toContain("w-3.5");
+	});
+
+	it("lays four tags out as a static 2×2 grid", () => {
+		const colors = ["#ff5f57", "#ff9f0a", "#ffd60a", "#32d74b"];
+		const view = render(<DefaultSessionRowView {...props({ tagColors: colors })} />);
+
+		const group = dots(view.container);
+		expect(group?.querySelectorAll("span")).toHaveLength(4);
+		expect(group?.querySelector("[data-tag-dot-cycling]")).toBeNull();
+	});
+
+	it("keeps the 2×2 grid beyond four tags and cycles the fourth dot through the rest", () => {
+		vi.useFakeTimers();
+		try {
+			const colors = ["#ff5f57", "#ff9f0a", "#ffd60a", "#32d74b", "#0a84ff"];
+			const view = render(<DefaultSessionRowView {...props({ tagColors: colors })} />);
+			const cycling = (): HTMLElement | null => view.container.querySelector("[data-tag-dot-cycling]");
+
+			expect(dots(view.container)?.querySelectorAll("span")).toHaveLength(4);
+			const first = cycling()?.style.backgroundColor;
+			act(() => {
+				vi.advanceTimersByTime(1600);
+			});
+
+			expect(cycling()?.style.backgroundColor).not.toBe(first);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("yields the slot back to the running indicator while the conversation streams", () => {
+		const view = render(<DefaultSessionRowView {...props({ running: true, tagColors: ["#ff5f57"] })} />);
+
+		expect(dots(view.container)).toBeNull();
+		expect(view.container.querySelector('[data-session-leading-icon="true"]')?.className).toContain(
+			"icon-[solar--refresh-linear]",
+		);
 	});
 });
 

@@ -1,6 +1,7 @@
 import { cn } from "@vetta/ui";
 import { memo, type JSX } from "react";
 import { AvatarStackView } from "../shared/AvatarStackView";
+import { ConversationTagDotsView } from "./ConversationTagDotsView";
 import { SessionRenameInputView } from "./SessionRenameInputView";
 import { prepareSidebarSelection } from "./useActiveSessionAutoScroll";
 
@@ -19,6 +20,8 @@ export interface DefaultSessionRowViewProps {
 	titleExtra?: string;
 	/** Session was forked from another session. */
 	forked?: boolean;
+	/** Tag colors carried by this conversation; replaces the leading icon when present. */
+	tagColors?: readonly string[];
 	onOpenContextMenu: (event: React.MouseEvent) => void;
 	onRename: (name: string) => void;
 	onRenameDone: () => void;
@@ -47,8 +50,12 @@ export const DefaultSessionRowView = memo(function DefaultSessionRowView({
 	renaming,
 	running,
 	scheduled,
+	tagColors,
 }: DefaultSessionRowViewProps): JSX.Element {
 	const title = renaming ? undefined : titleExtra ? `${label}\n${titleExtra}` : label;
+	// 标签色点让位于「正在运行 / 已排期」这类瞬时状态——那两个是需要立刻读到的信号，
+	// 标签则是长期归属，挤掉钉住/分叉图标即可。
+	const showTagDots = !running && !scheduled && tagColors !== undefined && tagColors.length > 0;
 	const leadingIconClassName = running
 		? "project-running-icon icon-[solar--refresh-linear] animate-spin"
 		: scheduled
@@ -87,15 +94,19 @@ export const DefaultSessionRowView = memo(function DefaultSessionRowView({
 				/>
 			) : (
 				<>
-					<span
-						data-session-leading-icon="true"
-						aria-hidden="true"
-						className={cn(
-							leadingIconClassName,
-							"h-3.5 w-3.5 shrink-0",
-							active ? "text-foreground/70" : "text-muted-foreground/50",
-						)}
-					/>
+					{showTagDots ? (
+						<ConversationTagDotsView colors={tagColors} />
+					) : (
+						<span
+							data-session-leading-icon="true"
+							aria-hidden="true"
+							className={cn(
+								leadingIconClassName,
+								"h-3.5 w-3.5 shrink-0",
+								active ? "text-foreground/70" : "text-muted-foreground/50",
+							)}
+						/>
+					)}
 					<span
 						className={cn(
 							"min-w-0 flex-1 truncate text-[13px]",

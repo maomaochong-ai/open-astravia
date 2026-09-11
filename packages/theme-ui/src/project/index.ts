@@ -5,6 +5,8 @@ export type {
 	BatchQueueTaskStatus,
 } from "./BatchQueueStatusView";
 export { BatchQueueStatusView } from "./BatchQueueStatusView";
+export type { ConversationTagDotsViewProps } from "./ConversationTagDotsView";
+export { ConversationTagDotsView } from "./ConversationTagDotsView";
 export type {
 	ConversationTagEditorDialogViewLabels,
 	ConversationTagEditorDialogViewProps,
