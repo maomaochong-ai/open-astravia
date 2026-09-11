@@ -4,18 +4,9 @@ const AVATAR_DIRECTORY = "./agent-team-avatars";
 
 /** 新增角色一律追加在末尾：LEGACY_AVATAR_ALIASES 按下标还原老档案里的 avatar-NN 路径。 */
 export const AGENT_AVATAR_OPTIONS = Object.freeze(
-	[
-		"master",
-		"researcher",
-		"architect",
-		"executor",
-		"auditor",
-		"optimizer",
-		"synthesizer",
-		"translator",
-		"router",
-		"designer",
-	].map((role) => `${AVATAR_DIRECTORY}/${role}.webp`),
+	["master", "researcher", "architect", "executor", "auditor", "optimizer", "synthesizer", "translator", "router"].map(
+		(role) => `${AVATAR_DIRECTORY}/${role}.webp`,
+	),
 );
 
 const BLUEPRINT_AVATAR: Readonly<Record<string, string>> = Object.freeze({
@@ -27,7 +18,6 @@ const BLUEPRINT_AVATAR: Readonly<Record<string, string>> = Object.freeze({
 	optimizer: `${AVATAR_DIRECTORY}/optimizer.webp`,
 	synthesizer: `${AVATAR_DIRECTORY}/synthesizer.webp`,
 	translator: `${AVATAR_DIRECTORY}/translator.webp`,
-	designer: `${AVATAR_DIRECTORY}/designer.webp`,
 	leader: `${AVATAR_DIRECTORY}/master.webp`,
 	builder: `${AVATAR_DIRECTORY}/executor.webp`,
 	reviewer: `${AVATAR_DIRECTORY}/auditor.webp`,

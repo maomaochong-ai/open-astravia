@@ -64,7 +64,44 @@
 					"displayName": "%plugin.name%"
 				}
 			}
-		}
+		},
+		"agents": [
+			{
+				"id": "designer",
+				"name": "%agent.designer.name%",
+				"description": "%agent.designer.description%",
+				"mentionHandle": "designer",
+				"avatar": "agent/agents/designer.webp",
+				"systemPromptPath": "agent/agents/designer.md",
+				"abilities": "all"
+			}
+		],
+		"teams": [
+			{
+				"id": "design-team",
+				"name": "%agent.designTeam.name%",
+				"description": "%agent.designTeam.description%",
+				"members": [
+					{
+						"agent": "builtin:master",
+						"responsibility": "Frames the design brief, drives the loop, and delivers the design document."
+					},
+					{
+						"agent": "builtin:architect",
+						"responsibility": "Defines the screen inventory, flows, and states before anything is drawn."
+					},
+					{
+						"agent": "designer",
+						"responsibility": "Builds the frames on the Vetta canvas and keeps the visual system consistent."
+					},
+					{
+						"agent": "builtin:auditor",
+						"responsibility": "Reviews the screens for usability, missing states, and inconsistent visuals."
+					}
+				],
+				"workflowPath": "agent/agents/design-team.md"
+			}
+		]
 	},
 	"description": "%plugin.description%",
 	"author": "Vetta"

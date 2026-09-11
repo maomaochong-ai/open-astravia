@@ -318,5 +318,9 @@
 	"history.peek.exiting": "Exiting…",
 	"history.peek.failed": "Could not open that version",
 	"history.peek.alreadyCurrent": "That is already the current version",
-	"history.loading": "Loading…"
+	"history.loading": "Loading…",
+	"agent.designer.name": "Designer",
+	"agent.designer.description": "Designs the UI on the Vetta canvas: screens, landing pages, slides, posters",
+	"agent.designTeam.name": "Design Team",
+	"agent.designTeam.description": "Turns a product idea into reviewed screens on the Vetta design canvas"
 }

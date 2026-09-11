@@ -318,5 +318,9 @@
 	"history.peek.exiting": "退出中…",
 	"history.peek.failed": "查看历史版本失败",
 	"history.peek.alreadyCurrent": "这已经是当前版本了",
-	"history.loading": "读取中…"
+	"history.loading": "读取中…",
+	"agent.designer.name": "设计师",
+	"agent.designer.description": "在 Vetta 设计画布上产出界面：App 页面、落地页、幻灯片与海报",
+	"agent.designTeam.name": "设计团队",
+	"agent.designTeam.description": "把一个产品构想变成画布上可评审的成套界面"
 }
