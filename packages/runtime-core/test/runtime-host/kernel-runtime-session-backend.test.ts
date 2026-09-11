@@ -13,6 +13,7 @@ import {
 	createEmptyConversationDocument,
 	extractConversationEntryText,
 	selectConversationDocumentMessages,
+	selectConversationDocumentModelMessages,
 } from "../../src/conversation/index.js";
 import type {
 	ConversationMetadata,
@@ -29,6 +30,7 @@ import {
 	type KernelEvent,
 	type ManualContextCompactionRuntime,
 	type ManualContextCompactionStrategy,
+	RuntimeContextUsageTracker,
 	type RuntimeInputRequestPreparationContext,
 	type RuntimeSnapshot,
 	type RuntimeSnapshotAcquireContext,
@@ -182,6 +184,43 @@ class CompletingTurnEngine implements TurnEnginePort {
 	}
 }
 
+class RecordingMessagesTurnEngine implements TurnEnginePort {
+	readonly requests: Message[][] = [];
+	private responseIndex = 0;
+
+	async *execute(request: Parameters<TurnEnginePort["execute"]>[0]): AsyncIterable<TurnEngineEvent> {
+		this.requests.push([...request.messages]);
+		this.responseIndex += 1;
+		yield { type: "message", message: assistantMessage(`response-${this.responseIndex}`) };
+		yield { type: "completed", stopReason: "stop" };
+	}
+}
+
+class CheckpointingTurnEngine implements TurnEnginePort {
+	readonly requests: Message[][] = [];
+	readonly checkpoints: Message[][] = [];
+	private executeCount = 0;
+
+	async *execute(request: Parameters<TurnEnginePort["execute"]>[0]): AsyncIterable<TurnEngineEvent> {
+		this.executeCount += 1;
+		this.requests.push([...request.messages]);
+		if (this.executeCount === 4) {
+			const result = await request.checkpoint?.(
+				{
+					reason: "model_call",
+					messages: request.messages,
+					modelCallIndex: 0,
+					recoveryAttempt: 0,
+				},
+				request.signal,
+			);
+			if (result) this.checkpoints.push([...result.messages]);
+		}
+		yield { type: "message", message: assistantMessage(`response-${this.executeCount}`) };
+		yield { type: "completed", stopReason: "stop" };
+	}
+}
+
 class ErrorThenSuccessTurnEngine implements TurnEnginePort {
 	readonly requests: Message[][] = [];
 
@@ -281,6 +320,8 @@ function createBackend(
 	assemblyOverrides: Partial<KernelRuntimeAssembly> = {},
 	registerManualCompactionStrategy = true,
 	registerContextSummaryStrategy = true,
+	projectConversationDocument = false,
+	contextStrategy: RuntimeSnapshot["contextStrategy"] | undefined = undefined,
 ) {
 	let runtimeEventSink: EventSink | undefined;
 	return {
@@ -293,7 +334,7 @@ function createBackend(
 					const details = runtimeAssemblyDetails(options.id);
 					const snapshotProvider = new StaticRuntimeSnapshotProvider(
 						{
-							...snapshot(),
+							...snapshot(projectConversationDocument, contextStrategy),
 							...(registerManualCompactionStrategy ? { manualCompactionStrategy: contextRuntime } : {}),
 							...(registerContextSummaryStrategy && isCombinedContextRuntime(contextRuntime)
 								? { contextSummaryStrategy: contextRuntime }
@@ -314,6 +355,7 @@ function createBackend(
 						turnEngine,
 						eventSink,
 						clock,
+						conversationDocumentReader: repository,
 						idGenerator: {
 							next: () => {
 								turnIndex += 1;
@@ -805,6 +847,174 @@ describe("KernelRuntimeSessionBackend", () => {
 		expect(contextController.readState().autoCompactionEnabled).toBe(false);
 	});
 
+	it("refreshes context usage after manual compaction and uses the compacted projection on the next turn", async () => {
+		const usage = new RuntimeContextUsageTracker({
+			estimateDocumentTokens: (document) => selectConversationDocumentModelMessages(document).length * 100,
+		});
+		const contextRuntime: ManualContextCompactionRuntime = {
+			async compactManual(input) {
+				const messageEntries = input.document.entries.filter((entry) => entry.type === "message");
+				const firstKeptEntry = messageEntries.at(-2);
+				if (!firstKeptEntry) throw new Error("Expected a recent user message to keep");
+				return {
+					summary: "manual summary",
+					summaryMessage: userMessage("manual summary"),
+					firstKeptEntryId: firstKeptEntry.id,
+					tokensBefore: 600,
+					reason: "manual",
+				};
+			},
+			readAutoCompactionEnabled: () => true,
+			setAutoCompactionEnabled() {},
+		};
+		const engine = new RecordingMessagesTurnEngine();
+		const { backend } = createBackend(
+			engine,
+			new RecordingPromptAdapter(),
+			undefined,
+			contextRuntime,
+			{
+				documentParticipants: [usage],
+				stateSource: {
+					read: () => {
+						const current = usage.readUsage(1_000);
+						return {
+							contextTokens: current.tokens,
+							contextPercent: current.percent,
+							contextWindow: current.contextWindow,
+							activeToolNames: [],
+						};
+					},
+				},
+			},
+			true,
+			true,
+			true,
+		);
+		const session = await backend.create({ id: "session-1" });
+
+		await session.prompt({ text: "old request 1" });
+		await session.prompt({ text: "old request 2" });
+		await session.prompt({ text: "kept request" });
+		usage.recordEstimatedTokens(600);
+		const before = session.createCoreAssembly().contextUsageView.readContextUsage();
+		expect(before).toMatchObject({ tokens: 600, percent: 60 });
+
+		const controller = session.createCoreAssembly().contextController;
+		if (!controller) throw new Error("Context controller was not assembled");
+		await controller.compact();
+
+		const after = session.createCoreAssembly().contextUsageView.readContextUsage();
+		expect(after).toMatchObject({ tokens: 300, percent: 30 });
+
+		await session.prompt({ text: "after compaction" });
+		expect(engine.requests.at(-1)?.map(readMessageText)).toEqual([
+			"manual summary",
+			"kept request",
+			"response-3",
+			"after compaction",
+		]);
+		expect(engine.requests.at(-1)?.map(readMessageText)).not.toContain("old request 1");
+	});
+
+	it("refreshes context usage after automatic checkpoint compaction and reuses it on the next turn", async () => {
+		const usage = new RuntimeContextUsageTracker({
+			estimateDocumentTokens: (document) => selectConversationDocumentModelMessages(document).length * 100,
+		});
+		const compactedDocuments: ConversationDocument[] = [];
+		const compactedUsageTokens: number[] = [];
+		const usageParticipant = {
+			initialize: usage.initialize.bind(usage),
+			onDocumentChanged(document: ConversationDocument) {
+				usage.onDocumentChanged(document);
+				if (document.entries.some((entry) => entry.type === "compaction")) {
+					compactedDocuments.push(document);
+					compactedUsageTokens.push(usage.readUsage(1_000).tokens);
+				}
+			},
+			onSessionEvent: (event: StoredSessionEvent) => usage.observe(event),
+		};
+		const contextStrategy: RuntimeSnapshot["contextStrategy"] = {
+			async prepare(input) {
+				if (input.reason !== "model_call")
+					return { messages: input.messages, estimatedTokens: input.messages.length };
+				const keptEntry = input.document?.entries.find(
+					(entry) => entry.type === "message" && readMessageText(entry.message) === "kept request",
+				);
+				if (!keptEntry) throw new Error("Expected the kept request in the active document");
+				const summaryMessage = userMessage("automatic summary");
+				return {
+					messages: [summaryMessage, ...input.messages.slice(-2)],
+					estimatedTokens: 300,
+					compaction: {
+						summary: "automatic summary",
+						summaryMessage,
+						firstKeptEntryId: keptEntry.id,
+						tokensBefore: 600,
+						reason: "threshold",
+					},
+				};
+			},
+		};
+		const contextRuntime: ManualContextCompactionRuntime = {
+			async compactManual() {
+				throw new Error("manual compaction is not used");
+			},
+			readAutoCompactionEnabled: () => true,
+			setAutoCompactionEnabled() {},
+		};
+		const engine = new CheckpointingTurnEngine();
+		const { backend } = createBackend(
+			engine,
+			new RecordingPromptAdapter(),
+			undefined,
+			contextRuntime,
+			{
+				documentParticipants: [usageParticipant],
+				stateSource: {
+					read: () => {
+						const current = usage.readUsage(1_000);
+						return {
+							contextTokens: current.tokens,
+							contextPercent: current.percent,
+							contextWindow: current.contextWindow,
+							activeToolNames: [],
+						};
+					},
+				},
+			},
+			true,
+			true,
+			true,
+			contextStrategy,
+		);
+		const session = await backend.create({ id: "session-1" });
+
+		await session.prompt({ text: "old request 1" });
+		await session.prompt({ text: "old request 2" });
+		await session.prompt({ text: "kept request" });
+		await session.prompt({ text: "trigger automatic compaction" });
+
+		expect(compactedDocuments.length).toBeGreaterThanOrEqual(1);
+		expect(compactedUsageTokens[0]).toBe(400);
+		expect(engine.checkpoints.at(0)?.map(readMessageText)).toEqual([
+			"automatic summary",
+			"response-3",
+			"trigger automatic compaction",
+		]);
+
+		await session.prompt({ text: "after automatic compaction" });
+		expect(engine.requests.at(-1)?.map(readMessageText)).toEqual([
+			"automatic summary",
+			"kept request",
+			"response-3",
+			"trigger automatic compaction",
+			"response-4",
+			"after automatic compaction",
+		]);
+		expect(engine.requests.at(-1)?.map(readMessageText)).not.toContain("old request 1");
+	});
+
 	it("summarizes caller-projected records through the admitted snapshot without mutating conversation history", async () => {
 		const release = vi.fn();
 		const summarizeContext = vi.fn<ContextSummaryStrategy["summarizeContext"]>(async (input) => {
@@ -1124,17 +1334,32 @@ describe("KernelRuntimeSessionBackend", () => {
 	});
 });
 
-function snapshot(): RuntimeSnapshot {
+function snapshot(
+	projectConversationDocument = false,
+	contextStrategy: RuntimeSnapshot["contextStrategy"] | undefined = undefined,
+): RuntimeSnapshot {
 	return {
 		id: "snapshot-1",
 		instructions: [],
 		tools: new Map(),
 		contextProviders: [],
-		contextStrategy: {
+		contextStrategy: contextStrategy ?? {
 			async prepare(input) {
 				return { messages: input.messages, estimatedTokens: input.messages.length };
 			},
 		},
+		...(projectConversationDocument
+			? {
+					conversationContextProjector: {
+						project(document: ConversationDocument) {
+							return selectConversationDocumentModelMessages(document).map((message) => ({
+								kind: "message" as const,
+								message,
+							}));
+						},
+					},
+				}
+			: {}),
 		toolPolicy: {
 			async authorize() {
 				return true;
@@ -1201,6 +1426,23 @@ const ALTERNATE_MODEL: Model<Api> = {
 
 function userMessage(text: string): UserMessage {
 	return { role: "user", content: text, timestamp: 1 };
+}
+
+function readMessageText(message: unknown): string {
+	if (typeof message !== "object" || message === null) return "";
+	const content = (message as { readonly content?: unknown }).content;
+	if (typeof content === "string") return content;
+	if (!Array.isArray(content)) return "";
+	return content
+		.filter(
+			(part): part is { readonly type: "text"; readonly text: string } =>
+				typeof part === "object" &&
+				part !== null &&
+				(part as { readonly type?: unknown }).type === "text" &&
+				typeof (part as { readonly text?: unknown }).text === "string",
+		)
+		.map((part) => part.text)
+		.join("");
 }
 
 function assistantMessage(text: string): AssistantMessage {

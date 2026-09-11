@@ -8,6 +8,7 @@ import {
 	type ConversationMessageRecord,
 	conversationDocumentEntry,
 	extractConversationEntryText,
+	isConversationDocumentEntryEvent,
 } from "../conversation/index.js";
 import { createRuntimeId } from "../id-generator.js";
 import type { AgentSession } from "../kernel/agent-session.js";
@@ -788,6 +789,14 @@ class RuntimeSessionEventSink implements EventSink {
 				await this.documentMutationCoordinator.synchronizeProjection();
 			} else {
 				this.projection?.apply(event);
+			}
+			if (isConversationDocumentEntryEvent(event)) {
+				const document = this.projection?.readDocument();
+				if (document) {
+					for (const participant of this.documentParticipants) {
+						await participant.onDocumentChanged(document);
+					}
+				}
 			}
 			for (const participant of this.documentParticipants) {
 				await participant.onSessionEvent?.(event);
