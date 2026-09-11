@@ -848,9 +848,11 @@ export function useTeamChatModel(
 			...Object.values(session.memberRuntime).map((runtime) => runtime.sessionId),
 		];
 	}, [session, memberViewId, memberRuntimeIds]);
-	// 固定到项目的 Team 会话与普通项目会话同场景；自有工作空间的按「对话」处理，
-	// 与 useSessionOpener 下发给普通会话的口径一致（插件 scope_use 是 fail-closed 的）。
-	const pluginScenario: ConversationScenario = session?.workspaceKind === "project" ? "project" : "conversation";
+	// 与 Runtime 对齐，而不是按工作空间派生：Team 的协调与成员 Runtime 都由
+	// resolveDesktopSessionConfig 以 kind "other" 建会话，场景恒为 "project"。UI 若按
+	// 自有工作空间标成 "conversation"，scope_use:["project"] 的插件就会出现「工具在
+	// Team 里可用、页签却永不上栏」的错位（scope_use 是 fail-closed 的）。
+	const pluginScenario: ConversationScenario = "project";
 
 	const model = useMemo<TeamChatViewModel>(
 		() => ({
@@ -929,7 +931,6 @@ export function useTeamChatModel(
 			snapshot?.display?.executionMode,
 			visiblePending,
 			activityRuntimeIds,
-			pluginScenario,
 		],
 	);
 	const actions = useMemo<TeamChatActions>(

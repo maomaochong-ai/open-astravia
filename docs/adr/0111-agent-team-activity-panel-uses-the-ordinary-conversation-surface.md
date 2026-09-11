@@ -24,9 +24,13 @@ Runtime，无法选出一个冒充整体。
 2. Todo、后台任务与 Workflow 页签改为按工作空间的 `runtimeIds` 汇总，并为每一行保留归属 Runtime；停止、中断与
    清理动作按行路由回真正执行它的 Runtime，不再假设面板只有一个 Runtime。据此取消 ADR-0105 决策 7 的页签白名单，
    Team 与普通对话使用同一套内置页签。
-3. 对话场景随视图模型下发，不再一律取全局 `currentScenarioAtom`。Team 自行派生：固定到项目的会话取 `project`，
-   使用自有工作空间的取 `conversation`，与 `useSessionOpener` 给普通会话下发的口径一致。插件页签在 Team 中按
-   同一套 `scope_use` 规则参与，不新增场景 slug。
+3. 对话场景随视图模型下发，不再一律取全局 `currentScenarioAtom`。Team 下发 `project`，与 Runtime 对齐——协调与
+   成员会话都由 `resolveDesktopSessionConfig` 以 kind `"other"` 创建，场景恒为 `project`。UI 与 Runtime 必须用同一个
+   场景判定，否则会出现「工具在 Team 里可用、对应页签却永不上栏」的错位。插件页签在 Team 中按同一套 `scope_use`
+   规则参与，不新增场景 slug。
+4. 插件的 `openActivityTab` / `setActivityTabVisible` 改为按工作空间寻址：宿主挂载面板时登记工作空间，插件传入的
+   会话 cwd 在写入前翻成该工作空间键；未登记时退回 cwd，普通对话两者同值，既有持久化记录原样可用。不传 cwd 时
+   优先落到当前挂载的工作空间，而不是全局活动会话——Team 从不写活动会话。
 
 ## 备选方案
 
@@ -42,6 +46,7 @@ Runtime，无法选出一个冒充整体。
   需要按成员阅读时进入成员视图，面板会收窄到该成员的 Runtime。
 - ADR-0105 决策 7 与其「不在本决策范围」中关于 Team 页签与插件能力的部分由本 ADR 取代；该 ADR 关于会话目录、
   工作空间固化与面板 Primitive 组合的其余决策不变。
-- 插件的 `openActivityTab` / `setActivityTabVisible` 仍以会话 cwd 为 attach key（ADR-0026），而面板的上栏记录已按
-  `workspace.id` 隔离（ADR-0105 决策 5）。两者在普通对话中同值，在 Team 中不同值：插件页签默认上栏可见，但插件
-  主动调用这两个 API 在 Team 中不会命中面板记录，留待后续统一到工作空间键。
+- ADR-0026 的「attach 记录以会话 cwd 为 key」在普通对话中仍然成立（工作空间 id 即 cwd），但键的真身已是工作空间 id。
+- 工作空间登记表只覆盖挂载中的面板。没有任何面板挂载时（用户在别的页面，Team 成员在后台跑工具），插件写入退回 cwd，
+  Team 会落到一个面板不读的键上；重新进入该 Team 页面时，插件自身按 cwd 重新判定可见性的逻辑会补上。彻底解决需要
+  把「会话 cwd → 工作空间」做成不依赖挂载的持久映射。

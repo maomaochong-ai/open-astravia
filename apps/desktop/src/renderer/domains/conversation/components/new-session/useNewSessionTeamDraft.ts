@@ -346,8 +346,8 @@ export function useNewSessionTeamDraft({
 			editorEnabled: true,
 			canSend: Boolean(draft.trim() || attachments.length),
 			workspace: null,
-			// 会话尚未创建，工作空间为空，面板不渲染；场景取 Team 会话的默认「对话」口径。
-			pluginScenario: "conversation",
+			// 会话尚未创建，工作空间为空，面板不渲染；场景与 Team Runtime 一致。
+			pluginScenario: "project",
 			activeSessionId: null,
 			executionMode,
 			contextUsage: null,
