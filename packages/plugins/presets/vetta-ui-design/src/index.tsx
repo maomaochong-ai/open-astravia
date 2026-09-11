@@ -157,7 +157,7 @@ export default definePlugin({
 		// 纯展示，不带交互——它出现在用户正要打字的那一刻，不该跟输入框抢注意力。
 		ctx.ui.registerNewSessionContext({
 			id: "design-showcase",
-			label: "%newSession.showcase.title%",
+			label: "%tab.label%",
 			activateWhen: { agents: ["designer"], skills: ["vetta-ui-design"] },
 			render: () => <DesignShowcase />,
 		});

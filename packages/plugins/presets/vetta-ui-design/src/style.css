@@ -783,21 +783,8 @@
 }
 
 /* ── 新会话页能力橱窗 ────────────────────────────────────────────────────────
-   装饰性底纹与渐变写在这里而不是行内：插件 CSS 在 @scope 内，dark: 变体匹配不到宿主的
-   [data-mode]，明暗只能靠继承下来的宿主变量；集中放一处也便于跟画布底纹保持同一套观感。 */
-.vetd-showcase-grid {
-	background-image: radial-gradient(color-mix(in srgb, var(--foreground) 9%, transparent) 1px, transparent 1px);
-	background-size: 9px 9px;
-	background-position: -1px -1px;
-}
-.vetd-showcase-wash {
-	background: linear-gradient(
-		135deg,
-		color-mix(in srgb, var(--primary) 8%, transparent),
-		transparent 60%,
-		color-mix(in srgb, var(--primary) 5%, transparent)
-	);
-}
+   渐变写在这里而不是行内：插件 CSS 在 @scope 内，dark: 变体匹配不到宿主的 [data-mode]，
+   明暗只能靠继承下来的宿主变量。整块区域不画描边，层次全靠色调与留白，故这里只有填充。 */
 .vetd-showcase-poster {
 	background: linear-gradient(
 		155deg,
