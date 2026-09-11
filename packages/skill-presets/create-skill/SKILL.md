@@ -20,6 +20,12 @@ Infer the target from the request. If it is ambiguous, ask the user to choose be
 
 Do not place a global product Skill only in `~/.vetta/agent/skills`; that directory is Agent-compatible but does not provide the Vetta product registration metadata required by the Skills UI.
 
+## Understand the directory protection
+
+Skill and scene roots — `~/.vetta/skills`, `~/.vetta/agent/skills`, `~/.vetta/scene`, `<project-root>/.vetta/skills`, and the `.agents/skills` equivalents — are read-only so that generated artifacts never land in them. Creating a new `<root>/<skill-name>/` directory is exempt: once this session authors that directory, every file inside it stays writable for the rest of the session.
+
+An already-installed Skill stays read-only. `write` and `edit` reject its files, and a shell command that touches them returns a warning to move the output out. To change one, edit the source it was installed from — the plugin, the repository preset, or the project directory — or ask the user to uninstall it first. Never work around the rejection with shell redirection.
+
 ## Create the Skill
 
 1. Convert the requested name to lowercase kebab-case. It must be 1-64 characters containing only lowercase letters, digits, and hyphens. The directory name must match the frontmatter `name`.
@@ -27,7 +33,7 @@ Do not place a global product Skill only in `~/.vetta/agent/skills`; that direct
 3. Create `<skill-directory>/SKILL.md` with YAML frontmatter containing `name` and `description`.
 4. Write the body as imperative workflow instructions. State when to inspect context, when to ask a question, what files to create or edit, and how to verify completion.
 5. Add `scripts/`, `references/`, or `assets/` only when genuinely required. Keep detailed reference material outside `SKILL.md` and link to it with relative paths.
-6. Do not overwrite an existing Skill or unrelated configuration without reading it first. Ask before replacing intentional behavior.
+6. Do not overwrite an existing Skill or unrelated configuration without reading it first. Ask before replacing intentional behavior. Inside a protected root, an existing Skill directory cannot be overwritten at all — see the directory protection above.
 
 Use this minimal structure:
 
