@@ -4,6 +4,19 @@ import { AGENT_TEAM_SCHEMA_VERSION } from "./contracts.js";
 export const INITIAL_AGENT_TEAM_ID = "2f631500-0d58-4458-a595-9e403affa08e";
 
 /**
+ * 内置预设的批次号。每批新增的 Agent / 团队都标上当前号，存量安装靠它判断自己还差哪几批。
+ *
+ * 只增不改：已经发出去的预设永远留在它当初的批次里，改号会让所有装机目录重新回填一遍。
+ */
+export const BUILTIN_PRESET_GENERATION = 2;
+
+/**
+ * 没有记录过批次号的装机目录一律按第 1 批处理——回填机制上线前铺下去的就是那一批。
+ * 用户当时删掉的预设不会因为这次上线被复活，只有之后新增的批次才补。
+ */
+export const BASELINE_PRESET_GENERATION = 1;
+
+/**
  * 首次安装资源中的 Agent 池：一个 Master 加八种 Worker，与可用 Blueprint 一一对应。
  * 初始团队按「1 Master + N Workers」组装；安装后与用户创建的资源完全相同。
  */
@@ -15,6 +28,7 @@ const INITIAL_PROFILE_DEFINITIONS = [
 		description: "Owns the goal end to end: plans the workflow, delegates each step, accepts or reworks results.",
 		handle: "master",
 		blueprintId: "master",
+		introducedIn: 1,
 	},
 	{
 		id: "2fef0dcb-7798-4060-8694-f34b74696d0a",
@@ -23,6 +37,7 @@ const INITIAL_PROFILE_DEFINITIONS = [
 		description: "Collects facts, documentation, prior art, and market signals, and verifies them.",
 		handle: "researcher",
 		blueprintId: "researcher",
+		introducedIn: 1,
 	},
 	{
 		id: "934d1f05-1093-4d56-94a1-00642d7eaab6",
@@ -31,6 +46,7 @@ const INITIAL_PROFILE_DEFINITIONS = [
 		description: "Designs the technical architecture, interface contracts, or the outline of a document or PRD.",
 		handle: "architect",
 		blueprintId: "architect",
+		introducedIn: 1,
 	},
 	{
 		id: "f29a77b9-e382-4b69-bb23-752f7c0a18fc",
@@ -39,6 +55,7 @@ const INITIAL_PROFILE_DEFINITIONS = [
 		description: "Designs the UI on the Vetta canvas: app screens, landing pages, slides, and posters.",
 		handle: "designer",
 		blueprintId: "designer",
+		introducedIn: BUILTIN_PRESET_GENERATION,
 	},
 	{
 		id: "d9e51357-04b8-481d-af80-a08e1a362322",
@@ -47,6 +64,7 @@ const INITIAL_PROFILE_DEFINITIONS = [
 		description: "Produces the core asset: code, a substantive draft, or a worked analysis.",
 		handle: "executor",
 		blueprintId: "executor",
+		introducedIn: 1,
 	},
 	{
 		id: "2680428f-7e1e-46e4-9d54-7a841ac3cbd5",
@@ -55,6 +73,7 @@ const INITIAL_PROFILE_DEFINITIONS = [
 		description: "Red-teams the work for correctness, safety, edge cases, and unsupported claims.",
 		handle: "auditor",
 		blueprintId: "auditor",
+		introducedIn: 1,
 	},
 	{
 		id: "c0a9ab1e-059f-40dd-91d7-92a6f1e8d52c",
@@ -63,6 +82,7 @@ const INITIAL_PROFILE_DEFINITIONS = [
 		description: "Refines finished work: performance, maintainability, and channel-specific voice.",
 		handle: "optimizer",
 		blueprintId: "optimizer",
+		introducedIn: 1,
 	},
 	{
 		id: "6d8baef0-b15d-43a1-8f25-826eae651779",
@@ -71,6 +91,7 @@ const INITIAL_PROFILE_DEFINITIONS = [
 		description: "Merges results from several members into one consistent report or deliverable bundle.",
 		handle: "synthesizer",
 		blueprintId: "synthesizer",
+		introducedIn: 1,
 	},
 	{
 		id: "f162c69d-fc73-443d-af31-b53a1563f43c",
@@ -79,6 +100,7 @@ const INITIAL_PROFILE_DEFINITIONS = [
 		description: "Localizes across languages and restates technical detail in business language.",
 		handle: "translator",
 		blueprintId: "translator",
+		introducedIn: 1,
 	},
 ] as const;
 
@@ -118,6 +140,8 @@ interface InitialTeamDefinition {
 	}[];
 	/** Master 的团队任务书：把这支团队的固定流水线写死，避免每次重新约定。 */
 	readonly workflow: string;
+	/** 首次随哪一批预设发布，见 {@link BUILTIN_PRESET_GENERATION}。 */
+	readonly introducedIn: number;
 }
 
 const INITIAL_TEAM_DEFINITIONS: readonly InitialTeamDefinition[] = [
@@ -149,6 +173,7 @@ const INITIAL_TEAM_DEFINITIONS: readonly InitialTeamDefinition[] = [
 		],
 		workflow:
 			"Run this team as a build loop. First have the Architect turn the request into a concrete approach: the contracts to honour, the files or components in scope, and the trade-offs taken. Hand that design to the Executor to implement and self-verify. Send the result to the Auditor for review. Accept only when the Auditor reports no blocking finding; otherwise decide whether the fix belongs to the Executor or the design needs to go back to the Architect, and run the loop again. Report the design decision, what shipped, and any residual risk.",
+		introducedIn: 1,
 	},
 	{
 		id: "d1e099ee-8b1d-4fc4-9ae2-5563318ae6be",
@@ -178,6 +203,7 @@ const INITIAL_TEAM_DEFINITIONS: readonly InitialTeamDefinition[] = [
 		],
 		workflow:
 			"Run this team as a design loop. Settle the product type and the audience first, then have the Architect lay out the screen inventory, the flows between screens, and the states each one must cover. Hand that to the Designer to build on the Vetta design canvas as a .vetd document, one frame per screen, sharing a single theme and shared components. Send the result to the Auditor to review usability, missing or empty states, and visual inconsistency. Accept only when the Auditor reports no blocking finding; otherwise decide whether the fix belongs to the Designer or the flow needs to go back to the Architect, and run the loop again. Deliver the design document with the decisions behind it and whatever is still open.",
+		introducedIn: BUILTIN_PRESET_GENERATION,
 	},
 	{
 		id: "9c975a15-1a00-4b1d-b646-0c1d76c43e3c",
@@ -207,6 +233,7 @@ const INITIAL_TEAM_DEFINITIONS: readonly InitialTeamDefinition[] = [
 		],
 		workflow:
 			"Run this team as a research pipeline. Break the question into independent angles and dispatch them to the Researcher together rather than one at a time. Pass the collected evidence to the Auditor to strip unsupported claims and flag weak sourcing; commission more research for whatever the Auditor knocks out. Once the evidence holds, have the Synthesizer assemble a structured report. Deliver it with your own summary of what is now known, what remains uncertain, and what it implies.",
+		introducedIn: 1,
 	},
 	{
 		id: "742016f1-0f8b-4d9f-a86b-6863ed6cb58a",
@@ -236,6 +263,7 @@ const INITIAL_TEAM_DEFINITIONS: readonly InitialTeamDefinition[] = [
 		],
 		workflow:
 			"Run this team as a content pipeline. Decide the campaign angle first, then have the Researcher surface current trends, audience signals, and references. Brief the Executor to write one master draft that carries the message. Hand it to the Optimizer to produce a variant per target channel, naming each channel explicitly so tone and length match it. Deliver the master draft plus the variants as one publishing package, and say which channel leads.",
+		introducedIn: 1,
 	},
 	{
 		id: "6efa6897-3e38-499c-92b4-ceeb5725b069",
@@ -265,6 +293,7 @@ const INITIAL_TEAM_DEFINITIONS: readonly InitialTeamDefinition[] = [
 		],
 		workflow:
 			"Run this team as a business case loop. Frame the goal, the market, and the constraints, then have the Architect build the PRD structure and the business model that supports it. Send it to the Auditor to hunt for fatal flaws: unit economics that do not close, unvalidated assumptions, regulatory and competitive risk. Feed blocking findings back to the Architect until the case stands. Then have the Synthesizer package the reviewed material into a presentable plan, and deliver it with your own read on the decision it supports.",
+		introducedIn: 1,
 	},
 ];
 
@@ -305,6 +334,31 @@ export const INITIAL_AGENT_TEAMS: readonly TeamDefinition[] = Object.freeze(INIT
 export const INITIAL_AGENT_TEAM: TeamDefinition = INITIAL_AGENT_TEAMS.find(
 	(team) => team.id === INITIAL_AGENT_TEAM_ID,
 )!;
+
+const AGENT_GENERATION_BY_ID: Readonly<Record<string, number>> = Object.freeze(
+	Object.fromEntries(INITIAL_PROFILE_DEFINITIONS.map((profile) => [profile.id, profile.introducedIn])),
+);
+
+const TEAM_GENERATION_BY_ID: Readonly<Record<string, number>> = Object.freeze(
+	Object.fromEntries(INITIAL_TEAM_DEFINITIONS.map((team) => [team.id, team.introducedIn])),
+);
+
+export interface BuiltinPresetBatch {
+	readonly agents: readonly AgentProfile[];
+	readonly teams: readonly TeamDefinition[];
+}
+
+/**
+ * 批次号大于 `generation` 的内置预设，也就是这份装机目录还没收到的那些。
+ *
+ * 判定只看批次，不看目录里缺什么：用户自己删掉的预设批次号早就记下了，不会被当成「缺失」补回来。
+ */
+export function builtinPresetsIntroducedAfter(generation: number): BuiltinPresetBatch {
+	return {
+		agents: INITIAL_AGENT_PROFILES.filter((agent) => (AGENT_GENERATION_BY_ID[agent.id] ?? 1) > generation),
+		teams: INITIAL_AGENT_TEAMS.filter((team) => (TEAM_GENERATION_BY_ID[team.id] ?? 1) > generation),
+	};
+}
 
 /** Test-only fixture retained outside the Desktop runtime file source. */
 export function createAgentTeamFixture(): AgentTeamDocument {
