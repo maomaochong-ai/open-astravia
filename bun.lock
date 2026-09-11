@@ -1085,6 +1085,7 @@
         "@codemirror/state": "^6.7.1",
         "@codemirror/view": "^6.43.7",
         "@lezer/highlight": "1.2.3",
+        "@lobehub/icons-static-svg": "1.95.0",
         "@vetta/theme-sdk": "workspace:*",
         "@vetta/ui": "workspace:*",
         "codemirror": "^6.0.2",
@@ -1758,6 +1759,8 @@
     "@lezer/xml": ["@lezer/xml@1.0.6", "https://registry.npmmirror.com/@lezer/xml/-/xml-1.0.6.tgz", { "dependencies": { "@lezer/common": "^1.2.0", "@lezer/highlight": "^1.0.0", "@lezer/lr": "^1.0.0" } }, "sha512-CdDwirL0OEaStFue/66ZmFSeppuL6Dwjlk8qk153mSQwiSH/Dlri4GNymrNWnUmPl2Um7QfV1FO9KFUyX3Twww=="],
 
     "@lezer/yaml": ["@lezer/yaml@1.0.4", "https://registry.npmmirror.com/@lezer/yaml/-/yaml-1.0.4.tgz", { "dependencies": { "@lezer/common": "^1.2.0", "@lezer/highlight": "^1.0.0", "@lezer/lr": "^1.4.0" } }, "sha512-2lrrHqxalACEbxIbsjhqGpSW8kWpUKuY6RHgnSAFZa6qK62wvnPxA8hGOwOoDbwHcOFs5M4o27mjGu+P7TvBmw=="],
+
+    "@lobehub/icons-static-svg": ["@lobehub/icons-static-svg@1.95.0", "https://registry.npmmirror.com/@lobehub/icons-static-svg/-/icons-static-svg-1.95.0.tgz", {}, "sha512-VSObF66DUVQe0EK3xbIoFcw+Fcia1+bLVFkMsQbmz0zCceMxPmoLImS5VM5SM7zL+/NarZ11/ySNfkekcomIkQ=="],
 
     "@malept/cross-spawn-promise": ["@malept/cross-spawn-promise@2.0.0", "https://registry.npmmirror.com/@malept/cross-spawn-promise/-/cross-spawn-promise-2.0.0.tgz", { "dependencies": { "cross-spawn": "^7.0.1" } }, "sha512-1DpKU0Z5ThltBwjNySMC14g0CkbyhCaz9FkhxqNsZI6uAPJXFS8cMXlBKo26FJ8ZuW6S9GCMcR9IO5k2X5/9Fg=="],
 

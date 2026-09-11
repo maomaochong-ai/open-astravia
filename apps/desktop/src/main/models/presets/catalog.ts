@@ -5,7 +5,7 @@ export interface PresetProviderDef {
 	/** 预设标识,同时用作 models.json 里的 provider key 与 templateId。 */
 	readonly id: string;
 	readonly displayName: string;
-	/** 图标 symbol,见 provider-icon/icons.generated.ts。 */
+	/** 图标 symbol,见 @vetta/theme-ui 的 provider-icon 注册表。 */
 	readonly icon: string;
 	readonly api: string;
 	readonly baseUrl: string;
