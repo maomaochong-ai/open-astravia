@@ -324,7 +324,5 @@
 	"agent.designTeam.name": "Design Team",
 	"agent.designTeam.description": "Turns a product idea into reviewed screens on the Vetta design canvas",
 	"newSession.styles.hint": "Pick a style; it comes with your project on send",
-	"newSession.styles.pick": "Use the {{name}} style",
-	"newSession.styles.prev": "Previous",
-	"newSession.styles.next": "Next"
+	"newSession.styles.pick": "Use the {{name}} style"
 }

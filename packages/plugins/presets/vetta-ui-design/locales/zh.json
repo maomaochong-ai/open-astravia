@@ -324,7 +324,5 @@
 	"agent.designTeam.name": "设计团队",
 	"agent.designTeam.description": "把一个产品构想变成画布上可评审的成套界面",
 	"newSession.styles.hint": "挑一套风格，发送后自动带进这个项目",
-	"newSession.styles.pick": "用「{{name}}」风格",
-	"newSession.styles.prev": "上一页",
-	"newSession.styles.next": "下一页"
+	"newSession.styles.pick": "用「{{name}}」风格"
 }
