@@ -410,7 +410,9 @@
 			"secretsWrite": "写入或删除该插件自己保存的密钥（如 API Key）。",
 			"settingsRead": "读取宿主向插件开放的应用设置。",
 			"settingsWrite": "修改宿主向插件开放的应用设置，可能改变应用行为。",
-			"shellOpenExternal": "使用系统默认浏览器或应用打开插件指定的外部链接。"
+			"shellOpenExternal": "使用系统默认浏览器或应用打开插件指定的外部链接。",
+			"uiSlotNewSessionContext": "允许插件在新会话页输入框下方展示一块内容，仅当用户选中该插件的智能体、团队，或在输入框里提到它的能力时出现。",
+			"conversationDraftRead": "允许插件读取你在输入框里尚未发送的内容。仅在该插件的上下文区处于展示状态时提供。"
 		},
 		"uiSlotGlobal": "全局 UI Slot",
 		"uiSlotAbilityDetail": "显示详情配置面板",
@@ -469,7 +471,9 @@
 		"secretsWrite": "管理自有密钥",
 		"settingsRead": "读取设置",
 		"settingsWrite": "修改设置",
-		"shellOpenExternal": "用系统浏览器打开链接"
+		"shellOpenExternal": "用系统浏览器打开链接",
+		"uiSlotNewSessionContext": "新会话上下文区",
+		"conversationDraftRead": "读取输入框草稿"
 	},
 	"meta": {
 		"title": "其他",

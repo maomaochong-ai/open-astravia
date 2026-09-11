@@ -1,4 +1,5 @@
 import type { AgentTeamDocument } from "@vetta/agent-team";
+import { useEffect, useState } from "react";
 
 /**
  * 新会话页的 Agent Team 名录（模块级缓存）。
@@ -42,4 +43,19 @@ export function resetAgentTeamDirectoryForTest(): void {
 	cached = undefined;
 	inflight = undefined;
 	listeners.clear();
+}
+
+/**
+ * 订阅名录缓存的智能体/团队文档。
+ *
+ * 加载失败静默：同屏的选择器已经有重试入口，不要为同一次失败在多处提示。
+ */
+export function useAgentTeamDirectoryDocument(): AgentTeamDocument | undefined {
+	const [document, setDocument] = useState(cachedAgentTeamDocument);
+	useEffect(() => {
+		const unsubscribe = subscribeAgentTeamDocument(() => setDocument(cachedAgentTeamDocument()));
+		loadAgentTeamDocument().then(setDocument, () => {});
+		return unsubscribe;
+	}, []);
+	return document;
 }

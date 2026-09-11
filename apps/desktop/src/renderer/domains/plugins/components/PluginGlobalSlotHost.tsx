@@ -10,6 +10,8 @@ import {
 	type PluginI18nEntry,
 	pluginI18nByIdAtom,
 	pluginInputActionsAtom,
+	pluginNewSessionContextsAtom,
+	type RegisteredNewSessionContext,
 	pluginToolCallSlotsAtom,
 	pluginTurnCardsAtom,
 	pluginWorkspaceViewsAtom,
@@ -54,6 +56,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 	const setFileExplorerDecorationProviders = useSetAtom(pluginFileExplorerDecorationProvidersAtom);
 	const setActivityTabs = useSetAtom(pluginActivityTabsAtom);
 	const setInputActions = useSetAtom(pluginInputActionsAtom);
+	const setNewSessionContexts = useSetAtom(pluginNewSessionContextsAtom);
 	const setCardRenderers = useSetAtom(pluginCardRenderersAtom);
 	const setToolCallSlots = useSetAtom(pluginToolCallSlotsAtom);
 	const setTurnCards = useSetAtom(pluginTurnCardsAtom);
@@ -272,6 +275,24 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 			}
 		}
 	}, [plugins, revision, hostLoading, setInputActions]);
+
+	// Publish new-session context blocks. 激活裁决在宿主那边做，这里只发布注册表。
+	useEffect(() => {
+		const contexts: RegisteredNewSessionContext[] = plugins.flatMap((plugin) =>
+			plugin.newSessionContexts.map((contribution, order) => ({
+				pluginId: plugin.id,
+				pluginName: plugin.name,
+				contextId: contribution.id,
+				label: contribution.label,
+				icon: contribution.icon,
+				activateWhen: contribution.activateWhen,
+				render: contribution.render,
+				order,
+				canReadDraft: contribution.canReadDraft,
+			})),
+		);
+		if (contexts.length > 0 || !hostLoading) setNewSessionContexts(contexts);
+	}, [plugins, revision, hostLoading, setNewSessionContexts]);
 
 	// Publish card renderers (keyed by type). The per-message card host resolves
 	// each card descriptor's `type` to one of these.

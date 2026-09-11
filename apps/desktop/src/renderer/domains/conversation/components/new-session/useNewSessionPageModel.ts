@@ -43,6 +43,7 @@ import {
 } from "./target";
 import { createNewSessionTargetStrategyRegistry } from "./target-strategy";
 import { useNewSessionActivityPanel } from "./useNewSessionActivityPanel";
+import { type NewSessionContextBlockModel, useNewSessionContextBlock } from "./useNewSessionContextBlock";
 import { useNewSessionSend } from "./useNewSessionSend";
 import { useNewSessionTargetIdentity } from "./useNewSessionTargetIdentity";
 import { useNewSessionTeamDraft } from "./useNewSessionTeamDraft";
@@ -82,6 +83,8 @@ interface NewSessionPageModel {
 	projectTakenNames: readonly string[];
 	/** 选中的会话对象：团队（`team:`）、单个智能体（`agent:`）或未选（普通对话）。 */
 	targetKey: NewSessionTargetKey | null;
+	/** 插件上下文区：由选中的目标或输入框里提到的能力唤起。 */
+	contextBlock: NewSessionContextBlockModel;
 	teamComposer: { readonly model: TeamChatViewModel | null; readonly actions: TeamChatActions | null };
 	panelTitle: string;
 	pinTitle: string;
@@ -212,6 +215,7 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		[navigate, search.cwd],
 	);
 	const heroIdentity = useNewSessionTargetIdentity(targetKey);
+	const contextBlock = useNewSessionContextBlock({ targetKey, cwd: contextCwd });
 	const isShort = useShortViewport();
 	// 不带过滤词：要的是面板刚展开时那份完整列表的条目数，不能随用户打字过滤而抖。
 	// 数据与命令区共用模块级缓存（InputBar 里的 CommandPanel 挂载即预取），命中即立即可用。
@@ -304,6 +308,7 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		: i18n.t("chat:newSession.greetingDefault");
 
 	return {
+		contextBlock,
 		activityOpen,
 		avatarAutoplay,
 		commandPanelExpanded,

@@ -410,7 +410,9 @@
 			"secretsWrite": "Writes or deletes secrets this plugin stored itself, such as API keys.",
 			"settingsRead": "Reads app settings the host exposes to plugins.",
 			"settingsWrite": "Changes app settings the host exposes to plugins and may alter app behavior.",
-			"shellOpenExternal": "Opens a plugin-selected external link in the system browser or default app."
+			"shellOpenExternal": "Opens a plugin-selected external link in the system browser or default app.",
+			"uiSlotNewSessionContext": "Lets the plugin show a block beneath the new-session input, only when you pick one of its agents or teams, or mention one of its abilities.",
+			"conversationDraftRead": "Lets the plugin read what you have typed but not yet sent. Provided only while that plugin's context block is on screen."
 		},
 		"uiSlotGlobal": "Global UI slot",
 		"uiSlotAbilityDetail": "Show detail configuration panel",
@@ -469,7 +471,9 @@
 		"secretsWrite": "Manage own secrets",
 		"settingsRead": "Read settings",
 		"settingsWrite": "Modify settings",
-		"shellOpenExternal": "Open links in the system browser"
+		"shellOpenExternal": "Open links in the system browser",
+		"uiSlotNewSessionContext": "New Session Context Slot",
+		"conversationDraftRead": "Read input draft"
 	},
 	"meta": {
 		"title": "Other",

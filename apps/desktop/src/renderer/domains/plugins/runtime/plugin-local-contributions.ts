@@ -10,10 +10,20 @@ import type {
 	PluginGlobalSlotContribution,
 	PluginInputActionContribution,
 	PluginLocales,
+	PluginNewSessionContextContribution,
 	PluginToolCallSlotContribution,
 	PluginTurnCardContribution,
 	PluginWorkspaceViewContribution,
 } from "@vetta-org/plugin-sdk";
+
+/**
+ * 宿主侧补全的上下文区贡献：`canReadDraft` 在注册时按插件权限定下来。
+ *
+ * 权限只有注册这一刻能看到插件记录，发布环节拿不到，所以在这里钉死而不是每帧再查。
+ */
+export type ResolvedPluginNewSessionContextContribution = PluginNewSessionContextContribution & {
+	canReadDraft: boolean;
+};
 
 /** Host-normalized workspace view with a resolved full-color image source. */
 export type ResolvedPluginWorkspaceViewContribution = PluginWorkspaceViewContribution & {
@@ -34,6 +44,7 @@ export interface LoadedPlugin {
 	fileExplorerDecorationProviders: PluginFileExplorerDecorationProvider[];
 	activityTabs: PluginActivityTabContribution[];
 	inputActions: PluginInputActionContribution[];
+	newSessionContexts: ResolvedPluginNewSessionContextContribution[];
 	cardRenderers: PluginCardRendererContribution[];
 	toolCallSlots: PluginToolCallSlotContribution[];
 	turnCards: PluginTurnCardContribution[];
@@ -50,6 +61,7 @@ export class PluginLocalContributions {
 	readonly fileExplorerDecorationProviders: PluginFileExplorerDecorationProvider[] = [];
 	readonly activityTabs: PluginActivityTabContribution[] = [];
 	readonly inputActions: PluginInputActionContribution[] = [];
+	readonly newSessionContexts: ResolvedPluginNewSessionContextContribution[] = [];
 	readonly cardRenderers: PluginCardRendererContribution[] = [];
 	readonly toolCallSlots: PluginToolCallSlotContribution[] = [];
 	readonly turnCards: PluginTurnCardContribution[] = [];
@@ -64,6 +76,7 @@ export class PluginLocalContributions {
 		this.fileExplorerDecorationProviders.length = 0;
 		this.activityTabs.length = 0;
 		this.inputActions.length = 0;
+		this.newSessionContexts.length = 0;
 		this.cardRenderers.length = 0;
 		this.toolCallSlots.length = 0;
 		this.turnCards.length = 0;
@@ -85,6 +98,7 @@ export class PluginLocalContributions {
 			fileExplorerDecorationProviders: this.fileExplorerDecorationProviders,
 			activityTabs: this.activityTabs,
 			inputActions: this.inputActions,
+			newSessionContexts: this.newSessionContexts,
 			cardRenderers: this.cardRenderers,
 			toolCallSlots: this.toolCallSlots,
 			turnCards: this.turnCards,

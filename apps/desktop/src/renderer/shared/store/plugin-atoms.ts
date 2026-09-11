@@ -10,6 +10,7 @@ import type {
 	PluginInputActionContribution,
 	PluginLocales,
 	PluginNavBadge,
+	PluginNewSessionContextContribution,
 	PluginPromptAttachment,
 	PluginToolCallSlotContribution,
 	PluginTurnCardContribution,
@@ -172,6 +173,25 @@ export interface RegisteredInputAction {
 
 /** Input-action toggles shown beneath the AI input bar, published by PluginGlobalSlotHost. */
 export const pluginInputActionsAtom = atom<RegisteredInputAction[]>([]);
+
+/** 新会话上下文区的一个贡献。激活与否由宿主裁决，见 new-session-context-activation。 */
+export interface RegisteredNewSessionContext {
+	pluginId: string;
+	pluginName: string;
+	/** Namespaced id (`${pluginId}:${contributionId}`). */
+	contextId: string;
+	label: string;
+	icon?: PluginNewSessionContextContribution["icon"];
+	activateWhen: PluginNewSessionContextContribution["activateWhen"];
+	render: PluginNewSessionContextContribution["render"];
+	/** 注册顺序，用于同插件多个 tab 的稳定排序。 */
+	order: number;
+	/** 是否获授 `conversation.draft.read`；未授予时 render 拿到的 draft 恒为空串。 */
+	canReadDraft: boolean;
+}
+
+/** 新会话页输入框下方的插件上下文区贡献，由 PluginGlobalSlotHost 发布。 */
+export const pluginNewSessionContextsAtom = atom<RegisteredNewSessionContext[]>([]);
 
 /**
  * 当前「正在查看」会话的 input-action 工作集（插件 toggle ids）。

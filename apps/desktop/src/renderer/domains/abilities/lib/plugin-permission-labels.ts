@@ -14,7 +14,9 @@ export const PLUGIN_PERMISSION_LABEL_KEYS = {
 	"ui.slot.tool-call": "permission.uiSlotToolCall",
 	"ui.slot.turn-card": "permission.uiSlotTurnCard",
 	"ui.slot.workspace-view": "permission.uiSlotWorkspaceView",
+	"ui.slot.new-session-context": "permission.uiSlotNewSessionContext",
 	"ui.shortcuts.register": "permission.uiShortcutsRegister",
+	"conversation.draft.read": "permission.conversationDraftRead",
 	"ui.file-explorer.decorations": "permission.uiFileExplorerDecorations",
 	"ui.file-explorer.context-menu": "permission.uiFileExplorerContextMenu",
 	"ui.file-explorer.toolbar": "permission.uiFileExplorerToolbar",
@@ -163,6 +165,20 @@ export const PLUGIN_PERMISSION_PRESENTATIONS = {
 		risk: "medium",
 		visual: "interface",
 		uiPreview: "workspaceView",
+	},
+	"ui.slot.new-session-context": {
+		descriptionKey: "permission.description.uiSlotNewSessionContext",
+		group: "interface",
+		risk: "low",
+		visual: "interface",
+		uiPreview: "workspaceView",
+	},
+	"conversation.draft.read": {
+		descriptionKey: "permission.description.conversationDraftRead",
+		group: "projectData",
+		// 能读到用户发送前逐字输入的内容，比任何界面插槽都敏感。
+		risk: "high",
+		visual: "data",
 	},
 	"ui.shortcuts.register": {
 		descriptionKey: "permission.description.uiShortcutsRegister",

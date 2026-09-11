@@ -29,6 +29,7 @@ import type {
 	PluginImageRef,
 	PluginInputActionContribution,
 	PluginNavBadge,
+	PluginNewSessionContextContribution,
 	PluginNotifyOptions,
 	PluginOpenActivityTabOptions,
 	PluginPromptAttachment,
@@ -45,7 +46,11 @@ import { explicitTabVisibility, withPluginTabVisibility } from "./attached-tabs"
 import type { PluginAgentApiRegistration } from "./plugin-agent-context";
 import { copyTextToClipboard, formatPluginErrorDetail, resolvePluginDisplayText } from "./plugin-host-apis";
 import { activateInputActionIds } from "./plugin-input-action-state";
-import type { PluginLocalContributions, ResolvedPluginWorkspaceViewContribution } from "./plugin-local-contributions";
+import type {
+	PluginLocalContributions,
+	ResolvedPluginNewSessionContextContribution,
+	ResolvedPluginWorkspaceViewContribution,
+} from "./plugin-local-contributions";
 import { classifyPluginNavIcon, resolveNavIcon } from "./plugin-nav-icon";
 import {
 	createPluginPermissionApi,
@@ -209,6 +214,7 @@ export function createPluginUiApi({
 		filePreviews,
 		activityTabs,
 		inputActions,
+		newSessionContexts,
 		cardRenderers,
 		toolCallSlots,
 		turnCards,
@@ -348,6 +354,49 @@ export function createPluginUiApi({
 			},
 		};
 	};
+	const registerNewSessionContext = (contribution: PluginNewSessionContextContribution): Disposable => {
+		if (!hasPluginPermission(plugin, "ui.slot.new-session-context")) {
+			warnSkippedPluginContribution(plugin, "ui.slot.new-session-context", "new session context");
+			return noopDisposable;
+		}
+		if (typeof contribution.id !== "string" || contribution.id.trim().length === 0) {
+			throw new Error("New session context id is required");
+		}
+		if (typeof contribution.label !== "string" || contribution.label.trim().length === 0) {
+			throw new Error("New session context label is required");
+		}
+		if (typeof contribution.render !== "function") {
+			throw new Error("New session context render is invalid");
+		}
+		const activateWhen = contribution.activateWhen ?? {};
+		if (
+			!activateWhen.agents?.length &&
+			!activateWhen.teams?.length &&
+			!activateWhen.skills?.length &&
+			!activateWhen.mcpServers?.length
+		) {
+			// 全空等于「任何新会话都上屏」，那不是上下文区该有的行为。
+			throw new Error("New session context must declare at least one activation condition");
+		}
+		const normalized: ResolvedPluginNewSessionContextContribution = {
+			id: `${plugin.id}:${contribution.id}`,
+			label: contribution.label,
+			icon: contribution.icon,
+			activateWhen,
+			render: contribution.render,
+			canReadDraft: hasPluginPermission(plugin, "conversation.draft.read"),
+		};
+		newSessionContexts.push(normalized);
+		onChanged();
+		return {
+			dispose: () => {
+				const index = newSessionContexts.findIndex((entry) => entry.id === normalized.id);
+				if (index >= 0) newSessionContexts.splice(index, 1);
+				onChanged();
+			},
+		};
+	};
+
 	const registerInputAction = (contribution: PluginInputActionContribution): Disposable => {
 		createPluginPermissionApi(plugin).require("ui.slot.input-action");
 		if (typeof contribution.id !== "string" || contribution.id.trim().length === 0) {
@@ -791,6 +840,7 @@ export function createPluginUiApi({
 		registerFilePreview,
 		registerActivityTab,
 		registerInputAction,
+		registerNewSessionContext,
 		registerCardRenderer,
 		registerToolCallSlot,
 		registerTurnCard,

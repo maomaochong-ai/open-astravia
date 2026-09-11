@@ -1,7 +1,7 @@
 import type { NewSessionHeroIdentity } from "@vetta/theme-ui";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { cachedAgentTeamDocument, loadAgentTeamDocument, subscribeAgentTeamDocument } from "./agent-team-directory";
+import { useAgentTeamDirectoryDocument } from "./agent-team-directory";
 import { resolveNewSessionTargetIdentity } from "./new-session-target-identity";
 import type { NewSessionTargetKey } from "./target";
 
@@ -13,13 +13,7 @@ import type { NewSessionTargetKey } from "./target";
  */
 export function useNewSessionTargetIdentity(targetKey: NewSessionTargetKey | null): NewSessionHeroIdentity | null {
 	const { t } = useTranslation("chat");
-	const [document, setDocument] = useState(cachedAgentTeamDocument);
-
-	useEffect(() => {
-		const unsubscribe = subscribeAgentTeamDocument(() => setDocument(cachedAgentTeamDocument()));
-		loadAgentTeamDocument().then(setDocument, () => {});
-		return unsubscribe;
-	}, []);
+	const document = useAgentTeamDirectoryDocument();
 
 	return useMemo(
 		() =>

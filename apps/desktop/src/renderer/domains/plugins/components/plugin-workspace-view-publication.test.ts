@@ -17,6 +17,7 @@ function loadedPlugin(): LoadedPlugin {
 		fileExplorerDecorationProviders: [],
 		activityTabs: [],
 		inputActions: [],
+		newSessionContexts: [],
 		cardRenderers: [],
 		toolCallSlots: [],
 		turnCards: [],
