@@ -67,6 +67,8 @@ export interface PluginHostBridgeRuntimeState {
 		ocrProviderRequest: boolean;
 	};
 	currentRuntimeId: string | null;
+	/** 当前会话来源的指纹：团队会话没有 runtimeId，只靠它才认得出「换了一个会话」。 */
+	currentConversationKey: string;
 	currentConversationUnsubscribe: (() => void) | null;
 	readonly sendMessageRef: {
 		current:
@@ -120,6 +122,7 @@ function createPluginHostBridgeRuntimeState(): PluginHostBridgeRuntimeState {
 			ocrProviderRequest: false,
 		},
 		currentRuntimeId: null,
+		currentConversationKey: "",
 		currentConversationUnsubscribe: null,
 		sendMessageRef: { current: null },
 	};

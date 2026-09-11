@@ -445,3 +445,19 @@ export interface RegisteredPromptAttachment extends PluginPromptAttachment {
 }
 
 export const promptAttachmentAtom = atom<RegisteredPromptAttachment | null>(null);
+
+/**
+ * 插件眼里的「当前会话」覆盖值，团队会话专用。
+ *
+ * 单智能体会话有唯一 runtime，插件的会话事件桥直接订阅 {@link activeSessionAtom} 就够了；
+ * 团队会话是一组成员 runtime，从来不会写进那个 atom，于是插件既拿不到工作目录也收不到
+ * 任何轮次事件——落地区挂上去的东西发送后无处可落。这里让团队侧把工作目录显式publish
+ * 出来，作用域只有事件桥一个消费方，不碰 `activeSessionAtom` 那一大票读者。
+ */
+export interface PluginConversationOverride {
+	/** 团队会话 id；仅用于识别「换了一个会话」。 */
+	id: string | null;
+	cwd: string | null;
+}
+
+export const pluginConversationOverrideAtom = atom<PluginConversationOverride | null>(null);

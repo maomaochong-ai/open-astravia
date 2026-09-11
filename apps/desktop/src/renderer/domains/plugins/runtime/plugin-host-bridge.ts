@@ -5,6 +5,7 @@ import {
 	isStreamingAtom,
 	languageAtom,
 	openSessionFnRef,
+	pluginConversationOverrideAtom,
 	promptAttachmentAtom,
 	selectedModelAtom,
 	sessionExecutionModeAtom,
@@ -109,6 +110,17 @@ function emit(event: ConversationEvent): void {
 }
 
 function snapshot(): ConversationState {
+	// 团队会话的覆盖值优先：它挂着的时候，插件看到的「当前会话」就是那个团队工作区。
+	const override = store.get(pluginConversationOverrideAtom);
+	if (override) {
+		return {
+			id: override.id,
+			cwd: override.cwd,
+			sessionPath: null,
+			model: store.get(selectedModelAtom),
+			isStreaming: store.get(isStreamingAtom),
+		};
+	}
 	const active = store.get(activeSessionAtom);
 	return {
 		id: active?.runtimeId ?? null,
@@ -117,6 +129,17 @@ function snapshot(): ConversationState {
 		model: store.get(selectedModelAtom),
 		isStreaming: store.get(isStreamingAtom),
 	};
+}
+
+/**
+ * 广播一次 turn-start。
+ *
+ * 单智能体会话的轮次事件从 `session.subscribe` 翻译而来；团队会话没有插件能订阅的单一
+ * runtime（成员各有各的），所以由团队侧在用户按下发送的那一刻直接广播。插件那边只关心
+ * 「这一轮开始了」，来源是订阅还是宿主直报并不影响语义。
+ */
+export function publishPluginTurnStart(): void {
+	emit({ type: "turn-start" });
 }
 
 function messageText(message: Message): string {
@@ -234,9 +257,14 @@ function startTranslator(): void {
 	runtimeState.listenerStarted.translator = true;
 
 	const sync = (): void => {
+		const override = store.get(pluginConversationOverrideAtom);
 		const active = store.get(activeSessionAtom);
-		const runtimeId = active?.runtimeId ?? null;
-		if (runtimeId === runtimeState.currentRuntimeId) return;
+		// 团队会话不开 session 订阅：它没有单一 runtime，事件由团队侧直报。
+		const runtimeId = override ? null : (active?.runtimeId ?? null);
+		// 团队会话的 runtimeId 恒为 null，只比 runtimeId 会把「换了个团队工作区」当成没变。
+		const key = override ? `team:${override.id ?? ""}:${override.cwd ?? ""}` : `session:${runtimeId ?? ""}`;
+		if (key === runtimeState.currentConversationKey) return;
+		runtimeState.currentConversationKey = key;
 		runtimeState.currentRuntimeId = runtimeId;
 		runtimeState.currentConversationUnsubscribe?.();
 		runtimeState.currentConversationUnsubscribe = null;
@@ -253,6 +281,7 @@ function startTranslator(): void {
 	};
 
 	store.sub(activeSessionAtom, sync);
+	store.sub(pluginConversationOverrideAtom, sync);
 	sync();
 }
 

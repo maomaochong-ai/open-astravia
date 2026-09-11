@@ -11,6 +11,7 @@ vi.mock("@shared/store/atoms", async () => {
 		isStreamingAtom: atom(false),
 		languageAtom: atom("zh"),
 		openSessionFnRef: { current: null },
+		pluginConversationOverrideAtom: atom(null),
 		promptAttachmentAtom: atom(null),
 		selectedModelAtom: atom(null),
 		sessionExecutionModeAtom: atom("workspace-write"),

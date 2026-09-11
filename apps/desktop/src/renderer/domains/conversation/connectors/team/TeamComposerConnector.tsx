@@ -1,10 +1,11 @@
 import { type InputSegment, isImagePath, parseInputSegments } from "@shared/lib/input-tokens";
 import { pathBasename, toVettaFileUrl } from "@shared/lib/utils";
 import { filePreviewAtom } from "@shared/store/file-preview-atoms";
-import { promptAttachmentAtom } from "@shared/store/atoms";
+import { pluginConversationOverrideAtom, promptAttachmentAtom } from "@shared/store/atoms";
 import { useAtom, useSetAtom } from "jotai";
-import { useCallback, useMemo, useState, type DragEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { useTranslation } from "react-i18next";
+import { publishPluginTurnStart } from "@domains/plugins/runtime/plugin-host-bridge";
 import { InputBar } from "../../components/InputBar";
 import { ContextRing } from "../../components/ContextRing";
 import type { AtPanelItem } from "../../components/AtPanel";
@@ -78,6 +79,22 @@ export function TeamComposerConnector({
 	// 插件挂在输入框上的引用：团队会话与单智能体共用同一个 atom，展示与摘除都得接上，
 	// 否则用户在落地区点了一下，输入框这边毫无反应。
 	const [promptAttachment, setPromptAttachment] = useAtom(promptAttachmentAtom);
+	const setPluginConversation = useSetAtom(pluginConversationOverrideAtom);
+	const teamCwd = model.workspace?.cwd ?? null;
+	const teamSessionId = model.activeSessionId ?? null;
+	// 团队会话从来不会写进 activeSessionAtom，插件那边因此既不知道工作目录、也收不到轮次
+	// 事件。这里把团队工作区显式报给事件桥，落地区挂上来的东西发送后才有地方可落。
+	const publishedRef = useRef<string | null>(null);
+	useEffect(() => {
+		const token = `${teamSessionId ?? ""}:${teamCwd ?? ""}`;
+		publishedRef.current = token;
+		setPluginConversation({ id: teamSessionId, cwd: teamCwd });
+		return () => {
+			// 新会话页与团队会话页可能短暂同时挂载：只有还是自己那一份时才收回，
+			// 否则会把后挂载的那个工作区一起清掉。
+			if (publishedRef.current === token) setPluginConversation(null);
+		};
+	}, [setPluginConversation, teamCwd, teamSessionId]);
 	const [dragKind, setDragKind] = useState<"files" | "internal" | null>(null);
 	const isStreaming = model.status === "sending" || model.status === "streaming" || model.status === "cancelling";
 	const isEmpty = model.draft.trim().length === 0 && model.attachments.length === 0;
@@ -88,7 +105,7 @@ export function TeamComposerConnector({
 			const isLeader = member.id === model.leaderMemberId;
 			const roleLabel = isLeader
 				? model.labels.leaderRoute
-				: model.labels.memberRoles?.[member.blueprintId] ?? (member.name.trim() || model.labels.memberRoleFallback);
+				: member.name.trim() || model.labels.memberRoleFallback;
 			return {
 				kind: "team-member",
 				id: member.id,
@@ -122,6 +139,8 @@ export function TeamComposerConnector({
 		onAbort: actions.abort,
 		...(onExpandedChange ? { onExpandedChange } : {}),
 		onSend: (_overrideText, context) => {
+			// 团队会话没有插件可订阅的单一 runtime，轮次开始由这里直报。
+			publishPluginTurnStart();
 			// 发出去就摘掉，与单智能体一致：附件描述的是「这一条带着什么」，留在下沿会
 			// 让用户以为下一条还带着它。`sticky` 由插件自己决定何时清。
 			if (promptAttachment && promptAttachment.lifecycle !== "sticky") setPromptAttachment(null);
@@ -271,7 +290,7 @@ export function TeamComposerConnector({
 				const isLeader = member.id === model.leaderMemberId;
 				const roleLabel = isLeader
 					? model.labels.leaderRoute
-					: model.labels.memberRoles?.[member.blueprintId] ?? (member.name.trim() || defaultRole);
+					: member.name.trim() || defaultRole;
 				return {
 					id: member.id,
 					name: member.name,
