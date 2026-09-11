@@ -24,9 +24,9 @@ export type InputSegment =
 			avatar?: string;
 			meta?: string;
 	  }
-	| { kind: "skill"; name: string }
-	| { kind: "scene"; name: string }
-	| { kind: "connector"; name: string }
+	| { kind: "skill"; name: string; alias?: string; icon?: string }
+	| { kind: "scene"; name: string; alias?: string; icon?: string }
+	| { kind: "connector"; name: string; label?: string; iconUrl?: string }
 	| { kind: "file"; path: string; isDirectory?: boolean }
 	| { kind: "image"; path: string };
 

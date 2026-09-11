@@ -61,6 +61,14 @@ export class ConnectorTokenNode extends DecoratorNode<JSX.Element> {
 		return this.__name;
 	}
 
+	getLabel(): string {
+		return this.__label;
+	}
+
+	getIconUrl(): string | undefined {
+		return this.__iconUrl;
+	}
+
 	static importJSON(serialized: SerializedConnectorTokenNode): ConnectorTokenNode {
 		return $createConnectorTokenNode(serialized.name, serialized.label, serialized.iconUrl);
 	}

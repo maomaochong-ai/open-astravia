@@ -4,7 +4,14 @@ import type { MouseEvent } from "react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { insertClipboardMessage } from "./editor/clipboard-message";
-import { focusInputEditor, insertPlainText, readSelectionText, removeSelection } from "./editor/inputEditorHandle";
+import { writeInputSegmentsToClipboard } from "./editor/clipboard-segments";
+import {
+	focusInputEditor,
+	insertPlainText,
+	readSelectionSegments,
+	readSelectionText,
+	removeSelection,
+} from "./editor/inputEditorHandle";
 
 const CONTEXT_MENU_WIDTH = 160;
 const CONTEXT_MENU_HEIGHT = 112;
@@ -62,15 +69,15 @@ export function useInputBarContextMenuModel({
 	);
 	const onCopy = useCallback(() => {
 		close();
-		const selected = readSelectionText();
-		if (selected)
-			void navigator.clipboard.writeText(selected).catch((error) => console.warn("[InputBar] copy failed", error));
+		const segments = readSelectionSegments();
+		if (segments.length > 0)
+			void writeInputSegmentsToClipboard(segments).catch((error) => console.warn("[InputBar] copy failed", error));
 	}, [close]);
 	const onCut = useCallback(() => {
 		close();
-		const selected = readSelectionText();
-		if (!selected) return;
-		void navigator.clipboard.writeText(selected).catch((error) => console.warn("[InputBar] cut failed", error));
+		const segments = readSelectionSegments();
+		if (segments.length === 0) return;
+		void writeInputSegmentsToClipboard(segments).catch((error) => console.warn("[InputBar] cut failed", error));
 		removeSelection();
 		focusInputEditor();
 	}, [close]);

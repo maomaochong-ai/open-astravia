@@ -74,6 +74,14 @@ export class SkillTokenNode extends DecoratorNode<JSX.Element> {
 		return this.__abilityType;
 	}
 
+	getAlias(): string | undefined {
+		return this.__alias;
+	}
+
+	getIcon(): string | undefined {
+		return this.__icon;
+	}
+
 	static importJSON(serialized: SerializedSkillTokenNode): SkillTokenNode {
 		return new SkillTokenNode(
 			serialized.name,

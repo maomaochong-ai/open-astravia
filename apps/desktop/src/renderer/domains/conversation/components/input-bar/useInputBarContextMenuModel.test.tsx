@@ -22,6 +22,7 @@ vi.mock("./editor/inputEditorHandle", () => ({
 	insertSceneToken: vi.fn(),
 	insertSkillToken: vi.fn(),
 	readSelectionText: vi.fn(() => ""),
+	readSelectionSegments: vi.fn(() => []),
 	removeImageToken: vi.fn(),
 	removeSelection: vi.fn(),
 }));

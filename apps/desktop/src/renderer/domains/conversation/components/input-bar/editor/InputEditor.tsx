@@ -7,6 +7,7 @@ import { ControlledValueBridgePlugin } from "./plugins/ControlledValueBridgePlug
 import { EditorHandlePlugin } from "./plugins/EditorHandlePlugin";
 import { HistoryNavPlugin } from "./plugins/HistoryNavPlugin";
 import { PasteImagePlugin } from "./plugins/PasteImagePlugin";
+import { StructuredClipboardPlugin } from "./plugins/StructuredClipboardPlugin";
 import { TriggerPlugin } from "./plugins/TriggerPlugin";
 import { ValueBridgePlugin } from "./plugins/ValueBridgePlugin";
 import type { TriggerMatch } from "./tokens/trigger";
@@ -30,7 +31,7 @@ export interface InputEditorProps {
  * 多模态输入区：文本与 skill / 文件 / 图片 token 同处一条文本流。
  *
  * 用 PlainTextPlugin 而非 RichText——需要的只有「单段文本 + 软换行 + 行内原子节点」，
- * 富文本格式化命令一概不要，粘贴也由它按纯文本处理（多行转 LineBreak，不生成新段落）。
+ * 富文本格式化命令一概不要；同一应用内的 token 粘贴走结构化剪贴板，外部内容才按纯文本回退。
  * contenteditable 随内容自然增高，因此旧 textarea 那套 scrollHeight 手动测量
  * 与「先归零再读高」的防抖 hack 一并去掉了。
  */
@@ -66,6 +67,7 @@ export const InputEditor = memo(function InputEditor({
 						<ControlledValueBridgePlugin value={value} segments={segments} onValueChange={onValueChange} />
 						<ControlledHistoryNavPlugin history={history ?? []} value={value} onValueChange={onValueChange} />
 						{onTriggerChange ? <TriggerPlugin onTriggerChange={onTriggerChange} /> : null}
+						<StructuredClipboardPlugin />
 						<PasteImagePlugin local runtimeId={persistenceId} />
 						</>
 					) : (
@@ -73,6 +75,7 @@ export const InputEditor = memo(function InputEditor({
 						<ValueBridgePlugin />
 						<HistoryNavPlugin />
 						{onTriggerChange ? <TriggerPlugin onTriggerChange={onTriggerChange} /> : null}
+						<StructuredClipboardPlugin />
 						<PasteImagePlugin />
 						</>
 					)}

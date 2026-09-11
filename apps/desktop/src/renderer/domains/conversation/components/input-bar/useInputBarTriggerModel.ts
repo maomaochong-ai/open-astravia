@@ -183,6 +183,9 @@ export function useInputBarTriggerModel({
 		if (!hasSession) return;
 		setTrigger((prev) => (prev?.kind === "slash" ? null : { kind: "slash", query: "", length: 0 }));
 		dismissedTriggerRef.current = null;
+		// The trigger button receives the click, so the editor would otherwise stay blurred
+		// and the next `/` or search text would never reach Lexical.
+		focusInputEditor();
 	}, [hasSession]);
 
 	return {

@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 
-import { $createParagraphNode, $getRoot, createEditor } from "lexical";
+import { $createParagraphNode, $createTextNode, $getRoot, createEditor } from "lexical";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { insertInputParts, setInputEditor } from "./inputEditorHandle";
 import { ImageTokenNode } from "./nodes";
+import { $removeTriggerBeforeCaret } from "./tokens/trigger";
 
 describe("insertInputParts", () => {
 	afterEach(() => setInputEditor(null));
@@ -46,4 +47,40 @@ describe("insertInputParts", () => {
 			"before @C:/one.png middle @C:/two.png ",
 		);
 	});
+});
+
+describe("trigger replacement", () => {
+	it.each(["已有描述/skill", "已有描述@research"])(
+		"removes only the trailing trigger after existing text: %s",
+		async (text) => {
+			const editor = createEditor({
+				namespace: "trigger-replacement-test",
+				onError: (error) => {
+					throw error;
+				},
+			});
+			editor.update(
+				() => {
+					const paragraph = $createParagraphNode();
+					paragraph.append($createTextNode(text));
+					$getRoot().append(paragraph);
+					paragraph.selectEnd();
+				},
+				{ discrete: true },
+			);
+			setInputEditor(editor);
+
+			const committed = new Promise<void>((resolve) => {
+				const unregister = editor.registerUpdateListener(() => {
+					unregister();
+					resolve();
+				});
+			});
+			editor.update(() => $removeTriggerBeforeCaret());
+			await committed;
+
+			expect(editor.getEditorState().read(() => $getRoot().getTextContent())).toBe("已有描述");
+			setInputEditor(null);
+		},
+	);
 });

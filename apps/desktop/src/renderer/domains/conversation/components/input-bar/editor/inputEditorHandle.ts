@@ -21,7 +21,7 @@ import {
 	MemberTokenNode,
 	SkillTokenNode,
 } from "./nodes";
-import { $applySegments, $insertTokenNodes } from "./tokens/segments";
+import { $applySegments, $insertTokenNodes, $readSelectedSegments } from "./tokens/segments";
 import { $removeTriggerBeforeCaret } from "./tokens/trigger";
 
 /**
@@ -163,6 +163,12 @@ export function readSelectionText(): string {
 		if (!$isRangeSelection(selection) || selection.isCollapsed()) return "";
 		return selection.getTextContent();
 	});
+}
+
+/** Current selection in its lossless text/token representation for clipboard operations. */
+export function readSelectionSegments(): InputSegment[] {
+	if (!current) return [];
+	return current.getEditorState().read(() => $readSelectedSegments());
 }
 
 export function removeSelection(): void {

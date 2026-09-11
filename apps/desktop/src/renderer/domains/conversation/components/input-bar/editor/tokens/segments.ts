@@ -37,11 +37,21 @@ function pushText(out: InputSegment[], text: string): void {
 
 function collect(node: LexicalNode, out: InputSegment[]): void {
 	if ($isSkillTokenNode(node)) {
-		out.push({ kind: node.getAbilityType(), name: node.getName() });
+		out.push({
+			kind: node.getAbilityType(),
+			name: node.getName(),
+			...(node.getAlias() ? { alias: node.getAlias() } : {}),
+			...(node.getIcon() ? { icon: node.getIcon() } : {}),
+		});
 		return;
 	}
 	if ($isConnectorTokenNode(node)) {
-		out.push({ kind: "connector", name: node.getName() });
+		out.push({
+			kind: "connector",
+			name: node.getName(),
+			label: node.getLabel(),
+			...(node.getIconUrl() ? { iconUrl: node.getIconUrl() } : {}),
+		});
 		return;
 	}
 	if ($isFileTokenNode(node)) {
@@ -88,17 +98,50 @@ export function $readSegments(): InputSegment[] {
 	return out;
 }
 
+/**
+ * Read the current range without flattening atomic tokens to their wire text.
+ * Text nodes at either edge are sliced to the exact selected offsets; token
+ * nodes keep the identity and presentation metadata needed for a lossless paste.
+ */
+export function $readSelectedSegments(): InputSegment[] {
+	const selection = $getSelection();
+	if (!$isRangeSelection(selection) || selection.isCollapsed()) return [];
+	const [anchor, focus] = selection.getStartEndPoints();
+	const [start, end] = selection.isBackward() ? [focus, anchor] : [anchor, focus];
+	const out: InputSegment[] = [];
+	for (const node of selection.getNodes()) {
+		if ($isTextNode(node)) {
+			const text = node.getTextContent();
+			const from = start.type === "text" && start.key === node.getKey() ? start.offset : 0;
+			const to = end.type === "text" && end.key === node.getKey() ? end.offset : text.length;
+			pushText(out, text.slice(from, to));
+			continue;
+		}
+		if (
+			$isSkillTokenNode(node) ||
+			$isConnectorTokenNode(node) ||
+			$isFileTokenNode(node) ||
+			$isImageTokenNode(node) ||
+			$isMemberTokenNode(node) ||
+			$isLineBreakNode(node)
+		) {
+			collect(node, out);
+		}
+	}
+	return out;
+}
+
 function segmentNodes(segment: InputSegment): LexicalNode[] {
 	switch (segment.kind) {
 		case "member":
 			return [$createMemberTokenNode(segment.memberId, segment.handle, segment.label, segment.avatar, segment.meta)];
 		case "scene":
-			return [$createSceneTokenNode(segment.name)];
+			return [$createSceneTokenNode(segment.name, segment.alias, segment.icon)];
 		case "skill":
-			return [$createSkillTokenNode(segment.name)];
+			return [$createSkillTokenNode(segment.name, segment.alias, segment.icon)];
 		case "connector":
-			// 从文本还原时拿不到展示名与 logo，用真实名兜底；由面板插入的那份带 logo。
-			return [$createConnectorTokenNode(segment.name, segment.name)];
+			// 从旧文本还原时拿不到展示名与 logo，用真实名兜底；结构化来源保留完整展示信息。
+			return [$createConnectorTokenNode(segment.name, segment.label ?? segment.name, segment.iconUrl)];
 		case "file":
 			return [$createFileTokenNode(segment.path, segment.isDirectory ?? false)];
 		case "image":
@@ -123,6 +166,22 @@ export function $applySegments(segments: readonly InputSegment[]): void {
 	for (const segment of segments) paragraph.append(...segmentNodes(segment));
 	root.append(paragraph);
 	paragraph.selectEnd();
+}
+
+/** Insert a structured segment range at the current selection without reparsing wire text. */
+export function $insertSegments(segments: readonly InputSegment[]): void {
+	const nodes = segments.flatMap(segmentNodes);
+	if (nodes.length === 0) return;
+	const selection = $getSelection();
+	if ($isRangeSelection(selection)) {
+		selection.insertNodes(nodes);
+		return;
+	}
+	const paragraph = $getRoot().getLastChild();
+	if ($isElementNode(paragraph)) {
+		paragraph.append(...nodes);
+		paragraph.selectEnd();
+	}
 }
 
 /**

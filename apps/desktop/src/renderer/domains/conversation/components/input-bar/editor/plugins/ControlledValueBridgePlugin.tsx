@@ -24,8 +24,19 @@ function inputSegmentsEqual(left: readonly InputSegment[], right: readonly Input
 				);
 			case "skill":
 			case "scene":
+				return (
+					candidate.kind === segment.kind &&
+					segment.name === candidate.name &&
+					segment.alias === candidate.alias &&
+					segment.icon === candidate.icon
+				);
 			case "connector":
-				return candidate.kind === segment.kind && segment.name === candidate.name;
+				return (
+					candidate.kind === "connector" &&
+					segment.name === candidate.name &&
+					segment.label === candidate.label &&
+					segment.iconUrl === candidate.iconUrl
+				);
 			case "file":
 				return (
 					candidate.kind === "file" &&
