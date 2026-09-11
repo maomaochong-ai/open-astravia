@@ -259,7 +259,11 @@ export function reduceTeamStreamState(state: TeamStreamState, event: DesktopTeam
 	}
 	if (event.type === "session-updated") {
 		const persisted = new Set(event.snapshot.messages.map((record) => record.id));
-		return Object.fromEntries(Object.entries(state).filter(([messageId]) => !persisted.has(messageId)));
+		return Object.fromEntries(
+			Object.entries(state).filter(
+				([messageId, turn]) => !persisted.has(messageId) || hasTerminalToolOverlay(turn.message),
+			),
+		);
 	}
 	if (event.type === "conversation.agent-message-discard") {
 		const current = state[event.messageId];
@@ -305,6 +309,16 @@ export function reduceTeamStreamState(state: TeamStreamState, event: DesktopTeam
 		...state,
 		[event.messageId]: next,
 	};
+}
+
+/**
+ * A Team tool execution is display-only and can finish after the assistant
+ * message that contains its tool call has already been persisted. Dropping this
+ * overlay on that snapshot would project the persisted `toolUse` record as a
+ * fresh pending tool on the next user turn, even though no execution restarted.
+ */
+function hasTerminalToolOverlay(message: ConversationAgentMessageViewModel): boolean {
+	return message.blocks.some((block) => block.type === "tool_call" && block.status !== "pending");
 }
 
 export function resolveTeamMembers(

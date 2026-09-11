@@ -1064,6 +1064,27 @@ describe("useTeamChatModel streaming flow", () => {
 			});
 		});
 		await act(async () => result.current.actions.abort());
+		act(() =>
+			streamListener?.({
+				type: "session-updated",
+				teamSessionId: baseSession.id,
+				snapshot: {
+					...baseSnapshot,
+					session: { ...baseSession, revision: 1 },
+					conversationRevision: 1,
+					messages: [
+						{
+							kind: "agent",
+							id: "live-tool-step",
+							turnId: "delegation-request",
+							author: { kind: "agent", id: leader.id },
+							message: toolMessage,
+							timestamp: 1,
+						},
+					],
+				},
+			}),
+		);
 		const getStatus = () =>
 			result.current.model.feedItems
 				.flatMap((item) => (item.kind === "agent" ? item.blocks : []))
@@ -1085,6 +1106,102 @@ describe("useTeamChatModel streaming flow", () => {
 		await waitFor(() => expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledTimes(1));
 		expect(getStatus()).toBe("success");
 		resolveContinue?.(baseSnapshot);
+		await act(async () => {
+			await continuation;
+		});
+	});
+
+	it("does not restore a cancelled tool to pending when its durable snapshot arrives after stop", async () => {
+		const { result } = renderHook(() => useTeamChatModel(team.id));
+		await waitFor(() => expect(result.current.model.status).toBe("ready"));
+		await waitFor(() => expect(streamListener).toBeTypeOf("function"));
+		const toolMessage = {
+			...createAssistantMessage(
+				{ api: "agent-team-test", provider: "agent-team-test", model: "fixture" },
+				{ timestamp: 1 },
+			),
+			content: [{ type: "toolCall" as const, id: "wait-call-after-stop", name: "team_wait_tasks", arguments: {} }],
+			stopReason: "toolUse" as const,
+		};
+		const toolStart: DesktopTeamSessionStreamEvent = {
+			type: "desktop.team-tool-execution",
+			conversationId: baseSession.id,
+			messageId: "live-tool-step-after-stop",
+			turnId: "waiting-request",
+			author: { kind: "agent", id: leader.id },
+			sequence: 1,
+			timestamp: 1,
+			event: {
+				type: "start",
+				toolCallId: "wait-call-after-stop",
+				toolName: "team_wait_tasks",
+				args: {},
+				startedAt: 1,
+			},
+		};
+		act(() => {
+			streamListener?.(toolStart);
+		});
+		await waitFor(() => expect(result.current.model.status).toBe("streaming"));
+
+		await act(async () => result.current.actions.abort());
+		act(() =>
+			streamListener?.({
+				...toolStart,
+				sequence: 2,
+				timestamp: 2,
+				event: {
+					type: "end",
+					toolCallId: "wait-call-after-stop",
+					toolName: "team_wait_tasks",
+					result: { content: [{ type: "text", text: "tasks completed" }] },
+					isError: false,
+					startedAt: 1,
+					durationMs: 1,
+					phases: [],
+				},
+			}),
+		);
+		const persistedAfterStop = {
+			...baseSnapshot,
+			session: { ...baseSession, revision: 1 },
+			conversationRevision: 1,
+			messages: [
+				{
+					kind: "agent" as const,
+					id: "live-tool-step-after-stop",
+					turnId: "waiting-request",
+					author: { kind: "agent" as const, id: leader.id },
+					message: toolMessage,
+					timestamp: 1,
+				},
+			],
+		};
+		act(() => streamListener?.({ type: "session-updated", teamSessionId: baseSession.id, snapshot: persistedAfterStop }));
+
+		const getStatus = () =>
+			result.current.model.feedItems
+				.flatMap((item) => (item.kind === "agent" ? item.blocks : []))
+				.flatMap((block) => (block.type === "tool_call" ? [block] : []))
+				.find((block) => block.toolCallId === "wait-call-after-stop")?.status;
+		expect(getStatus()).toBe("cancelled");
+
+		let resolveContinue: ((value: DesktopTeamSessionSnapshot) => void) | undefined;
+		vi.mocked(window.vetta.agentTeams.sendMessage).mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveContinue = resolve;
+			}),
+		);
+		act(() => result.current.actions.setDraft("continue"));
+		let continuation: Promise<void> | undefined;
+		act(() => {
+			continuation = result.current.actions.send();
+		});
+		await waitFor(() => expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledTimes(1));
+		// The wait was cancelled with the leader. Its durable historical tool-call
+		// record is still `toolUse`, so the terminal live overlay must win after continue.
+		expect(getStatus()).toBe("cancelled");
+		resolveContinue?.(persistedAfterStop);
 		await act(async () => {
 			await continuation;
 		});
