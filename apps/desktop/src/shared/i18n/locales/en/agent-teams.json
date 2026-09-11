@@ -42,7 +42,6 @@
     "expandTeams": "Show {{count}} more",
     "collapseTeams": "Collapse",
     "expertCount": "{{count}} specialist(s)",
-    "bannerTeams": "{{count}} team(s)",
     "teamSelectHint": "Click to select",
     "openTeamChat": "Start a session with this team",
     "teamSettings": "Team settings",

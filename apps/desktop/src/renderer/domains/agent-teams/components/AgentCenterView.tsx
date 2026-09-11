@@ -87,7 +87,6 @@ export function AgentCenterView({
 						assembledCount={model.assembly?.memberIds.length ?? 0}
 						assemblySubmittable={model.assemblySubmittable}
 						agents={model.agents}
-						teamCount={model.teams.length}
 						onCreateTeam={actions.startCreateTeam}
 						onSubmitAssembly={onSubmitAssembly}
 						onCancelAssembly={actions.cancelAssembly}
