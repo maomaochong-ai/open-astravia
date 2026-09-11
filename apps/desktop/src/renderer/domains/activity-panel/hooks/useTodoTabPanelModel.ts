@@ -1,9 +1,11 @@
-import { activeSessionAtom, getTodoItemsForSession, todoItemsBySessionAtom } from "@shared/store/atoms";
+import { getTodoItemsForSession, todoItemsBySessionAtom } from "@shared/store/atoms";
 import type { TodoItem } from "@shared/store/todo-atoms";
 import type { TodoTabPanelViewLabels } from "@vetta/theme-ui/activity";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { useActivityRuntimeIds } from "../registry/context";
+import { collectRuntimeItems } from "../services/runtime-scope";
 
 export interface TodoTabPanelModel {
 	items: TodoItem[];
@@ -14,10 +16,10 @@ export interface TodoTabPanelModel {
 export function useTodoTabPanelModel(): TodoTabPanelModel {
 	const { t } = useTranslation("chat");
 	const todoMap = useAtomValue(todoItemsBySessionAtom);
-	const activeSession = useAtomValue(activeSessionAtom);
+	const runtimeIds = useActivityRuntimeIds();
 	const items = useMemo(
-		() => getTodoItemsForSession(todoMap, activeSession?.runtimeId ?? null),
-		[todoMap, activeSession?.runtimeId],
+		() => collectRuntimeItems(runtimeIds, (runtimeId) => getTodoItemsForSession(todoMap, runtimeId)),
+		[todoMap, runtimeIds],
 	);
 
 	const labels = useMemo(

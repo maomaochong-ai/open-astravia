@@ -8,7 +8,7 @@ export interface ActivityPanelContextValue {
 }
 
 const ActivityPanelContext = createContext<ActivityPanelContextValue>({
-	workspace: { id: "unbound", cwd: null },
+	workspace: { id: "unbound", cwd: null, runtimeIds: [] },
 	knowledgeHistory: false,
 });
 
@@ -24,4 +24,9 @@ export function useActivityPanelCwd(): string | null {
 
 export function useActivityWorkspace(): ActivityWorkspace {
 	return useContext(ActivityPanelContext).workspace;
+}
+
+/** Runtime sessions the current workspace aggregates per-runtime activity for. */
+export function useActivityRuntimeIds(): readonly string[] {
+	return useContext(ActivityPanelContext).workspace.runtimeIds;
 }

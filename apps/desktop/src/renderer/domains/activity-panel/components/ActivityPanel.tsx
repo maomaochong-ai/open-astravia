@@ -1,4 +1,5 @@
 import { activeSessionAtom, currentScenarioAtom } from "@shared/store/atoms";
+import { useActiveSessionRuntimeIds } from "@shared/workspace/active-session-runtime";
 import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
 import { useThemeComponent } from "@vetta/theme-sdk";
 import { useAtomValue } from "jotai";
@@ -77,9 +78,15 @@ export function ActivityPanel(props: ActivityPanelProps): JSX.Element {
 export function ConversationActivityPanel(): JSX.Element {
 	const activeSession = useAtomValue(activeSessionAtom);
 	const pluginScenario = useAtomValue(currentScenarioAtom) ?? undefined;
+	const runtimeIds = useActiveSessionRuntimeIds();
 	const workspace = useMemo(
-		() => createActivityWorkspace(activeSession?.cwd ?? "conversation:unbound", activeSession?.cwd ?? null),
-		[activeSession?.cwd],
+		() =>
+			createActivityWorkspace(
+				activeSession?.cwd ?? "conversation:unbound",
+				activeSession?.cwd ?? null,
+				runtimeIds,
+			),
+		[activeSession?.cwd, runtimeIds],
 	);
 	return <ActivityPanel workspace={workspace} pluginScenario={pluginScenario} />;
 }

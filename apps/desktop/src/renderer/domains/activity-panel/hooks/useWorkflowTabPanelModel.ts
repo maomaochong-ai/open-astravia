@@ -1,7 +1,6 @@
 import { subagentErrorPresentation, subagentObjective, subagentUsageLabel } from "@shared/lib/subagent-presentation";
 import { workflowProgressLabel, workflowStatusMeta } from "@shared/lib/workflow-status";
 import {
-	activeSessionAtom,
 	type ChatConversationItem,
 	getSubagentsForSession,
 	isSubagentActive,
@@ -16,6 +15,8 @@ import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { fullHistoryToChat } from "../../conversation/services/chat-service";
+import { useActivityRuntimeIds } from "../registry/context";
+import { collectRuntimeScoped } from "../services/runtime-scope";
 
 export interface WorkflowTabPanelModel {
 	items: WorkflowSwitcherItem[];
@@ -30,16 +31,22 @@ export interface WorkflowTabPanelModel {
 
 export function useWorkflowTabPanelModel(): WorkflowTabPanelModel {
 	const { t } = useTranslation("chat");
-	const activeSession = useAtomValue(activeSessionAtom);
+	const runtimeIds = useActivityRuntimeIds();
 	const subagentsMap = useAtomValue(subagentsBySessionAtom);
 	const [selectedId, setSelectedId] = useAtom(selectedWorkflowIdAtom);
 	const [messages, setMessages] = useState<ChatConversationItem[]>([]);
-	const runtimeId = activeSession?.runtimeId ?? null;
 
-	const workflows = useMemo(
-		() => getSubagentsForSession(subagentsMap, runtimeId).filter(isWorkflowTask),
-		[subagentsMap, runtimeId],
+	// Workspaces that aggregate several runtimes (Team) need each workflow's owning
+	// runtime to route the interrupt back to the member that spawned it.
+	const scoped = useMemo(
+		() =>
+			collectRuntimeScoped(runtimeIds, (runtimeId) =>
+				getSubagentsForSession(subagentsMap, runtimeId).filter(isWorkflowTask),
+			),
+		[subagentsMap, runtimeIds],
 	);
+	const workflows = useMemo(() => scoped.map((row) => row.item), [scoped]);
+	const runtimeIdByWorkflowId = useMemo(() => new Map(scoped.map((row) => [row.item.id, row.runtimeId])), [scoped]);
 
 	const selected = useMemo(() => {
 		if (selectedId) {
@@ -104,10 +111,11 @@ export function useWorkflowTabPanelModel(): WorkflowTabPanelModel {
 	const onSelect = useCallback((id: string) => setSelectedId(id), [setSelectedId]);
 	const onStop = useCallback(
 		(id: string) => {
+			const runtimeId = runtimeIdByWorkflowId.get(id);
 			if (!runtimeId) return;
 			void window.vetta.session.interruptSubagent?.(runtimeId, id);
 		},
-		[runtimeId],
+		[runtimeIdByWorkflowId],
 	);
 
 	return {

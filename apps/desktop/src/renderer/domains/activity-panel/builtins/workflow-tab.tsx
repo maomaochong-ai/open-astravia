@@ -1,5 +1,4 @@
 import {
-	activeSessionAtom,
 	getSubagentsForSession,
 	isSubagentActive,
 	isWorkflowTask,
@@ -9,7 +8,9 @@ import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { WorkflowTabPanel } from "../components/WorkflowTabPanel";
+import { useActivityRuntimeIds } from "../registry/context";
 import type { ActivityTabDefinition } from "../registry/types";
+import { collectRuntimeItems } from "../services/runtime-scope";
 
 function WorkflowActivityTab(): JSX.Element {
 	return <WorkflowTabPanel />;
@@ -22,12 +23,15 @@ export const workflowTabDefinition: ActivityTabDefinition = {
 	source: "builtin",
 	useMeta: () => {
 		const { t } = useTranslation("chat");
-		const activeSession = useAtomValue(activeSessionAtom);
+		const runtimeIds = useActivityRuntimeIds();
 		const subagentsMap = useAtomValue(subagentsBySessionAtom);
-		const workflows = useMemo(() => {
-			const all = getSubagentsForSession(subagentsMap, activeSession?.runtimeId ?? null);
-			return all.filter(isWorkflowTask);
-		}, [subagentsMap, activeSession?.runtimeId]);
+		const workflows = useMemo(
+			() =>
+				collectRuntimeItems(runtimeIds, (runtimeId) =>
+					getSubagentsForSession(subagentsMap, runtimeId).filter(isWorkflowTask),
+				),
+			[subagentsMap, runtimeIds],
+		);
 		if (workflows.length === 0) return null;
 		const runningWorkflows = workflows.filter((a) => isSubagentActive(a.status)).length;
 		return {

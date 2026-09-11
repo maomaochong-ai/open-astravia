@@ -2,6 +2,7 @@ import { ActivityPanel } from "@domains/activity-panel/components/ActivityPanel"
 import { Button } from "@shared/components/ui/button";
 import { cn } from "@shared/lib/utils";
 import { pageHeaderRightSlotAtom } from "@shared/store/atoms";
+import { useActiveSessionRuntimeIds } from "@shared/workspace/active-session-runtime";
 import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
 import { useThemeSurface } from "@vetta/theme-sdk/appearance";
 import { SessionViewerPageView } from "@vetta/theme-ui/chat";
@@ -18,6 +19,7 @@ import { MessageList } from "./MessageList";
  */
 export function SessionViewerPage(): JSX.Element {
 	const { t } = useTranslation("chat");
+	const activeRuntimeIds = useActiveSessionRuntimeIds();
 	const surface = useThemeSurface("chat.sessionViewerPage");
 	const model = useSessionViewerPageModel();
 	const setHeaderRight = useSetAtom(pageHeaderRightSlotAtom);
@@ -100,13 +102,13 @@ export function SessionViewerPage(): JSX.Element {
 			activityPanel={
 				model.isKnowledge ? (
 					<ActivityPanel
-						workspace={createActivityWorkspace(model.kbCwd || "knowledge:unbound", model.kbCwd || null)}
+						workspace={createActivityWorkspace(model.kbCwd || "knowledge:unbound", model.kbCwd || null, activeRuntimeIds)}
 						enablePluginTabs={false}
 						knowledgeHistory
 					/>
 				) : (
 					<ActivityPanel
-						workspace={createActivityWorkspace(model.imCwd || "viewer:unbound", model.imCwd || null)}
+						workspace={createActivityWorkspace(model.imCwd || "viewer:unbound", model.imCwd || null, activeRuntimeIds)}
 						enablePluginTabs={false}
 					/>
 				)

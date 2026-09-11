@@ -19,6 +19,7 @@ import { shouldStackProjectSelector } from "./options-row-layout";
 import { useSlotWidth } from "./useSlotWidth";
 import { DefaultInputBarConnector } from "../input-bar/DefaultInputBarConnector";
 import type { SendInteractionContext } from "../input-bar/types";
+import { useActiveSessionRuntimeIds } from "@shared/workspace/active-session-runtime";
 import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
 import { TeamComposerConnector } from "../../connectors/team/TeamComposerConnector";
 import type { TeamChatActions, TeamChatViewModel } from "../../connectors/team/teamChatModel";
@@ -80,6 +81,7 @@ export function NewSessionPageView({
 	teamComposer,
 	subtitle,
 }: NewSessionPageViewProps): JSX.Element {
+	const activeRuntimeIds = useActiveSessionRuntimeIds();
 	const ThemedNewSessionBackground = useThemeComponent(
 		"chat.newSessionBackground",
 		EmptyNewSessionBackground,
@@ -213,6 +215,7 @@ export function NewSessionPageView({
 				workspace={createActivityWorkspace(
 					activityPanelCwd ?? "new-session:unbound",
 					activityPanelCwd,
+					activeRuntimeIds,
 				)}
 			/>
 		</div>

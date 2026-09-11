@@ -1,13 +1,11 @@
-import {
-	activeSessionAtom,
-	getTodoItemsForSession,
-	todoItemsBySessionAtom,
-} from "@shared/store/atoms";
+import { getTodoItemsForSession, todoItemsBySessionAtom } from "@shared/store/atoms";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { TodoTabPanel } from "../components/TodoTabPanel";
+import { useActivityRuntimeIds } from "../registry/context";
 import type { ActivityTabDefinition } from "../registry/types";
+import { collectRuntimeItems } from "../services/runtime-scope";
 
 function TodoActivityTab(): JSX.Element {
 	return <TodoTabPanel />;
@@ -20,11 +18,11 @@ export const todoTabDefinition: ActivityTabDefinition = {
 	source: "builtin",
 	useMeta: () => {
 		const { t } = useTranslation("chat");
-		const activeSession = useAtomValue(activeSessionAtom);
+		const runtimeIds = useActivityRuntimeIds();
 		const todoMap = useAtomValue(todoItemsBySessionAtom);
 		const todoItems = useMemo(
-			() => getTodoItemsForSession(todoMap, activeSession?.runtimeId ?? null),
-			[todoMap, activeSession?.runtimeId],
+			() => collectRuntimeItems(runtimeIds, (runtimeId) => getTodoItemsForSession(todoMap, runtimeId)),
+			[todoMap, runtimeIds],
 		);
 		if (todoItems.length === 0) return null;
 		const done = todoItems.filter((item) => item.status === "done").length;

@@ -1,7 +1,6 @@
 import type { DesktopMcpTask } from "@preload/api";
 import { subagentErrorPresentation, subagentObjective, subagentUsageLabel } from "@shared/lib/subagent-presentation";
 import {
-	activeSessionAtom,
 	type BackgroundTask,
 	backgroundTasksBySessionAtom,
 	getBackgroundTasksForSession,
@@ -18,6 +17,8 @@ import type { TFunction } from "i18next";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useActivityRuntimeIds } from "../registry/context";
+import { collectRuntimeScoped } from "../services/runtime-scope";
 
 function bashStatusMeta(
 	status: BackgroundTask["status"],
@@ -216,16 +217,35 @@ export function useBackgroundTasksTabPanelModel(): BackgroundTasksTabPanelModel 
 	const tasksMap = useAtomValue(backgroundTasksBySessionAtom);
 	const subagentsMap = useAtomValue(subagentsBySessionAtom);
 	const mcpTasksMap = useAtomValue(mcpTasksBySessionAtom);
-	const activeSession = useAtomValue(activeSessionAtom);
-	const sessionId = activeSession?.runtimeId ?? null;
+	const runtimeIds = useActivityRuntimeIds();
 
-	const bashTasks = useMemo(() => getBackgroundTasksForSession(tasksMap, sessionId), [tasksMap, sessionId]);
-	// Workflows have their own tab; this panel keeps bash + non-workflow subagents.
-	const subagents = useMemo(
-		() => getSubagentsForSession(subagentsMap, sessionId).filter((a) => !isWorkflowTask(a)),
-		[subagentsMap, sessionId],
+	// A workspace can aggregate several runtimes (Team), so each row keeps its owning
+	// runtime — stop / clear must reach the member runtime that actually runs the task.
+	const scopedBashTasks = useMemo(
+		() => collectRuntimeScoped(runtimeIds, (runtimeId) => getBackgroundTasksForSession(tasksMap, runtimeId)),
+		[tasksMap, runtimeIds],
 	);
-	const mcpTasks = useMemo(() => getMcpTasksForSession(mcpTasksMap, sessionId), [mcpTasksMap, sessionId]);
+	// Workflows have their own tab; this panel keeps bash + non-workflow subagents.
+	const scopedSubagents = useMemo(
+		() =>
+			collectRuntimeScoped(runtimeIds, (runtimeId) =>
+				getSubagentsForSession(subagentsMap, runtimeId).filter((a) => !isWorkflowTask(a)),
+			),
+		[subagentsMap, runtimeIds],
+	);
+	const scopedMcpTasks = useMemo(
+		() => collectRuntimeScoped(runtimeIds, (runtimeId) => getMcpTasksForSession(mcpTasksMap, runtimeId)),
+		[mcpTasksMap, runtimeIds],
+	);
+	const bashTasks = useMemo(() => scopedBashTasks.map((row) => row.item), [scopedBashTasks]);
+	const subagents = useMemo(() => scopedSubagents.map((row) => row.item), [scopedSubagents]);
+	const mcpTasks = useMemo(() => scopedMcpTasks.map((row) => row.item), [scopedMcpTasks]);
+	const runtimeIdByItemId = useMemo(() => {
+		const map = new Map<string, string>();
+		for (const row of scopedBashTasks) map.set(`bash:${row.item.id}`, row.runtimeId);
+		for (const row of scopedSubagents) map.set(`subagent:${row.item.id}`, row.runtimeId);
+		return map;
+	}, [scopedBashTasks, scopedSubagents]);
 
 	const hasRunning =
 		bashTasks.some((task) => task.status === "running") ||
@@ -247,25 +267,29 @@ export function useBackgroundTasksTabPanelModel(): BackgroundTasksTabPanelModel 
 	const allFinishedCount = finishedCount + finishedMcpCount;
 
 	const handleClearFinished = useCallback(() => {
-		if (!sessionId) return;
 		// Host clears both bash finished tasks and terminal subagents, then emits
 		// Background-task + Subagent extension observations (or empty snapshots).
-		void window.vetta.session.clearFinishedBackgroundTasks(sessionId);
-		void window.vetta.session.clearFinishedMcpTasks(sessionId);
-	}, [sessionId]);
+		for (const runtimeId of runtimeIds) {
+			void window.vetta.session.clearFinishedBackgroundTasks(runtimeId);
+			void window.vetta.session.clearFinishedMcpTasks(runtimeId);
+		}
+	}, [runtimeIds]);
 
 	const handleStop = useCallback(
 		(id: string, kind: "bash" | "subagent" | "mcp") => {
-			if (!sessionId) return;
-			if (kind === "bash") {
-				void window.vetta.session.killBackgroundTask(sessionId, id);
-			} else if (kind === "subagent") {
-				void window.vetta.session.interruptSubagent?.(sessionId, id);
-			} else {
+			if (kind === "mcp") {
 				void window.vetta.session.cancelMcpTask(id);
+				return;
+			}
+			const runtimeId = runtimeIdByItemId.get(`${kind}:${id}`);
+			if (!runtimeId) return;
+			if (kind === "bash") {
+				void window.vetta.session.killBackgroundTask(runtimeId, id);
+			} else {
+				void window.vetta.session.interruptSubagent?.(runtimeId, id);
 			}
 		},
-		[sessionId],
+		[runtimeIdByItemId],
 	);
 
 	const items = useMemo(() => {

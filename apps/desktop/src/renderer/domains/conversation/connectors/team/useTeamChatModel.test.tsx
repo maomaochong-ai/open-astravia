@@ -757,7 +757,7 @@ describe("useTeamChatModel streaming flow", () => {
 			expect.objectContaining({ kind: "user", text: "send after navigation" }),
 			expect.objectContaining({ kind: "agent", phase: "pending" }),
 		]);
-		expect(result.current.model.workspace).toEqual({ id: `agent-team:${team.id}`, cwd: null });
+		expect(result.current.model.workspace).toEqual({ id: `agent-team:${team.id}`, cwd: null, runtimeIds: [] });
 		expect(result.current.model.editorEnabled).toBe(true);
 		expect(createReservedTeamChatSession).not.toHaveBeenCalled();
 		expect(loadTeamChatBootstrap).not.toHaveBeenCalled();

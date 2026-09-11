@@ -3,12 +3,14 @@ import { ProjectDetailPageView } from "@vetta/theme-ui/project";
 import { motion } from "motion/react";
 import { BatchQueueStatus } from "./BatchQueueStatus";
 import { useProjectDetailPageModel } from "../hooks/useProjectDetailPageModel";
+import { useActiveSessionRuntimeIds } from "@shared/workspace/active-session-runtime";
 import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
 
 const easeOut = [0.22, 1, 0.36, 1] as const;
 
 export function ProjectDetailPage(): JSX.Element {
 	const model = useProjectDetailPageModel();
+	const activeRuntimeIds = useActiveSessionRuntimeIds();
 
 	const batchSection =
 		model.isBatch && model.batchProject ? (
@@ -27,7 +29,7 @@ export function ProjectDetailPage(): JSX.Element {
 			activityOpen={model.activityOpen}
 			activityPanel={
 				<CurrentScenarioActivityPanel
-					workspace={createActivityWorkspace(model.decodedCwd, model.decodedCwd)}
+					workspace={createActivityWorkspace(model.decodedCwd, model.decodedCwd, activeRuntimeIds)}
 				/>
 			}
 			batchSection={batchSection}

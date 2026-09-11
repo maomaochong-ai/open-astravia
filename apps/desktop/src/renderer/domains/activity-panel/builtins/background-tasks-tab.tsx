@@ -1,5 +1,4 @@
 import {
-	activeSessionAtom,
 	backgroundTasksBySessionAtom,
 	getBackgroundTasksForSession,
 	getMcpTasksForSession,
@@ -13,7 +12,9 @@ import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { BackgroundTasksTabPanel } from "../components/BackgroundTasksTabPanel";
+import { useActivityRuntimeIds } from "../registry/context";
 import type { ActivityTabDefinition } from "../registry/types";
+import { collectRuntimeItems } from "../services/runtime-scope";
 
 function BackgroundTasksActivityTab(): JSX.Element {
 	return <BackgroundTasksTabPanel />;
@@ -26,21 +27,27 @@ export const backgroundTasksTabDefinition: ActivityTabDefinition = {
 	source: "builtin",
 	useMeta: () => {
 		const { t } = useTranslation("chat");
-		const activeSession = useAtomValue(activeSessionAtom);
+		const runtimeIds = useActivityRuntimeIds();
 		const backgroundTasksMap = useAtomValue(backgroundTasksBySessionAtom);
 		const subagentsMap = useAtomValue(subagentsBySessionAtom);
 		const mcpTasksMap = useAtomValue(mcpTasksBySessionAtom);
 		const backgroundTasks = useMemo(
-			() => getBackgroundTasksForSession(backgroundTasksMap, activeSession?.runtimeId ?? null),
-			[backgroundTasksMap, activeSession?.runtimeId],
+			() =>
+				collectRuntimeItems(runtimeIds, (runtimeId) =>
+					getBackgroundTasksForSession(backgroundTasksMap, runtimeId),
+				),
+			[backgroundTasksMap, runtimeIds],
 		);
-		const subagents = useMemo(() => {
-			const all = getSubagentsForSession(subagentsMap, activeSession?.runtimeId ?? null);
-			return all.filter((a) => !isWorkflowTask(a));
-		}, [subagentsMap, activeSession?.runtimeId]);
+		const subagents = useMemo(
+			() =>
+				collectRuntimeItems(runtimeIds, (runtimeId) =>
+					getSubagentsForSession(subagentsMap, runtimeId).filter((a) => !isWorkflowTask(a)),
+				),
+			[subagentsMap, runtimeIds],
+		);
 		const mcpTasks = useMemo(
-			() => getMcpTasksForSession(mcpTasksMap, activeSession?.runtimeId ?? null),
-			[mcpTasksMap, activeSession?.runtimeId],
+			() => collectRuntimeItems(runtimeIds, (runtimeId) => getMcpTasksForSession(mcpTasksMap, runtimeId)),
+			[mcpTasksMap, runtimeIds],
 		);
 		if (backgroundTasks.length === 0 && subagents.length === 0 && mcpTasks.length === 0) return null;
 		const runningBash = backgroundTasks.filter((task) => task.status === "running").length;
