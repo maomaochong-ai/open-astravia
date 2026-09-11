@@ -1,3 +1,4 @@
+import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { parseTeamSessionDocument, type TeamSessionDocument } from "@vetta/agent-team";
 import { createVersionedJsonConfigStore } from "@vetta/toolkit/config-store";
@@ -10,6 +11,7 @@ const log = getAppLogger("agent-team-session-storage");
 
 export interface LegacyTeamSessionRepository {
 	read(id: string): Promise<TeamSessionDocument>;
+	delete?(id: string): Promise<void>;
 	/** Enumerates migration inputs so ownership can be backfilled before a legacy session is reopened. */
 	list?(): Promise<readonly TeamSessionDocument[]>;
 }
@@ -36,7 +38,11 @@ export function createLegacyTeamSessionRepository(
 		});
 	}
 
-	return { read: (id) => store(id).read(), list };
+	return {
+		read: (id) => store(id).read(),
+		delete: (id) => rm(join(rootDirectory, `${id}.json`), { force: true }),
+		list,
+	};
 }
 
 export const legacyTeamSessionRepository = createLegacyTeamSessionRepository();

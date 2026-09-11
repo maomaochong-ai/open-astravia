@@ -127,7 +127,7 @@ describe("useProjectsPanelModel.selectSession", () => {
 			kind: "agent-team",
 			id: "team-session-1",
 			path: "/team/session.jsonl",
-			cwd,
+			cwd: "/team/workspace",
 			firstMessage: "Ship it",
 			modifiedAt: 1,
 			teamId: "team-1",

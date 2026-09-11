@@ -635,8 +635,16 @@ export function useTeamChatModel(
 			setStatus("sending");
 			setError(undefined);
 			setFailedMemberIds(new Set());
+			// A stopped turn may have only a pre-tool record in public history. Its
+			// tool end is display-only stream evidence, so keep that terminal overlay
+			// across the next send; otherwise the historical block falls back to the
+			// persisted toolUse record and falsely appears to be running again.
 			const activeStreams = Object.fromEntries(
-				Object.entries(streamsRef.current).filter(([, turn]) => turn.message.phase === "streaming"),
+				Object.entries(streamsRef.current).filter(
+					([, turn]) =>
+						turn.message.phase === "streaming" ||
+						turn.message.blocks.some((block) => block.type === "tool_call" && block.status !== "pending"),
+				),
 			);
 			streamsRef.current = activeStreams;
 			setStreams(activeStreams);

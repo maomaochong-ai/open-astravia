@@ -997,6 +997,99 @@ describe("useTeamChatModel streaming flow", () => {
 		expect(result.current.model.status).toBe("ready");
 	});
 
+	it("keeps a terminal tool status when continuing after stopping the Team", async () => {
+		const { result } = renderHook(() => useTeamChatModel(team.id));
+		await waitFor(() => expect(result.current.model.status).toBe("ready"));
+		await waitFor(() => expect(streamListener).toBeTypeOf("function"));
+		const toolMessage = {
+			...createAssistantMessage(
+				{ api: "agent-team-test", provider: "agent-team-test", model: "fixture" },
+				{ timestamp: 1 },
+			),
+			content: [{ type: "toolCall" as const, id: "delegate-call", name: "team_delegate_task", arguments: {} }],
+			stopReason: "toolUse" as const,
+		};
+		const baseToolEvent: DesktopTeamSessionStreamEvent = {
+			type: "desktop.team-tool-execution",
+			conversationId: baseSession.id,
+			messageId: "live-tool-step",
+			turnId: "delegation-request",
+			author: { kind: "agent", id: leader.id },
+			sequence: 1,
+			timestamp: 1,
+			event: {
+				type: "start",
+				toolCallId: "delegate-call",
+				toolName: "team_delegate_task",
+				args: {},
+				startedAt: 1,
+			},
+		};
+		act(() => {
+			streamListener?.({
+				type: "session-updated",
+				teamSessionId: baseSession.id,
+				snapshot: {
+					...baseSnapshot,
+					session: { ...baseSession, revision: 1 },
+					conversationRevision: 1,
+					messages: [
+						{
+							kind: "agent",
+							id: "persisted-tool-step",
+							turnId: "delegation-request",
+							author: { kind: "agent", id: leader.id },
+							message: toolMessage,
+							timestamp: 1,
+						},
+					],
+					display: { memberConversations: [], workingMemberIds: [leader.id] },
+				},
+			});
+			streamListener?.(baseToolEvent);
+			streamListener?.({
+				...baseToolEvent,
+				sequence: 2,
+				timestamp: 2,
+				event: {
+					type: "end",
+					toolCallId: "delegate-call",
+					toolName: "team_delegate_task",
+					result: { content: [{ type: "text", text: "delegated" }] },
+					isError: false,
+					startedAt: 1,
+					durationMs: 1,
+					phases: [],
+				},
+			});
+		});
+		await act(async () => result.current.actions.abort());
+		const getStatus = () =>
+			result.current.model.feedItems
+				.flatMap((item) => (item.kind === "agent" ? item.blocks : []))
+				.flatMap((block) => (block.type === "tool_call" ? [block] : []))
+				.find((block) => block.toolCallId === "delegate-call")?.status;
+		expect(getStatus()).toBe("success");
+
+		let resolveContinue: ((value: DesktopTeamSessionSnapshot) => void) | undefined;
+		vi.mocked(window.vetta.agentTeams.sendMessage).mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveContinue = resolve;
+			}),
+		);
+		act(() => result.current.actions.setDraft("continue"));
+		let continuation: Promise<void> | undefined;
+		act(() => {
+			continuation = result.current.actions.send();
+		});
+		await waitFor(() => expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledTimes(1));
+		expect(getStatus()).toBe("success");
+		resolveContinue?.(baseSnapshot);
+		await act(async () => {
+			await continuation;
+		});
+	});
+
 	it("keeps showing a member turn that restarts after a stop", async () => {
 		const { result } = renderHook(() => useTeamChatModel(team.id));
 		await waitFor(() => expect(result.current.model.status).toBe("ready"));

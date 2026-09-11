@@ -1,16 +1,22 @@
+import type { SessionContextMenuSession } from "@shared/store/atoms";
 import {
+	confirmDialogAtom,
 	conversationFilterSource,
 	projectContextMenuAtom,
 	runningSessionPathsAtom,
 	sessionContextMenuAtom,
+	sessionDisplayLabel,
 } from "@shared/store/atoms";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useTranslation } from "react-i18next";
 import type { ProjectsPanelModel } from "../components/sidebar/projects/panel/types";
 
 export function useProjectsPanelMenusModel(model: ProjectsPanelModel) {
 	const [contextMenu, setContextMenu] = useAtom(sessionContextMenuAtom);
 	const [projectMenu, setProjectMenu] = useAtom(projectContextMenuAtom);
 	const runningSessionPaths = useAtomValue(runningSessionPathsAtom);
+	const setConfirm = useSetAtom(confirmDialogAtom);
+	const { t } = useTranslation("project");
 
 	const clearConversationDisabled =
 		projectMenu?.project.isDefault === true &&
@@ -32,11 +38,20 @@ export function useProjectsPanelMenusModel(model: ProjectsPanelModel) {
 		actions: {
 			closeSessionMenu: () => setContextMenu(null),
 			closeProjectMenu: () => setProjectMenu(null),
-			deleteSession: (session: { cwd: string; path: string }) => {
+			deleteSession: (session: SessionContextMenuSession) => {
 				setContextMenu(null);
-				// 会话没了，它留下的标注就是孤儿；与置顶的清理时机保持一致。
-				void window.vetta.conversationTags.forgetConversations([session.path]);
-				model.actions.deleteSession(session);
+				const name = isAgentTeamSession(session) ? session.sessionTitle : sessionDisplayLabel(session);
+				setConfirm({
+					title: t("sidebar.dialogs.deleteSessionTitle"),
+					message: t("sidebar.dialogs.deleteSessionMessage", { name }),
+					confirmLabel: t("sidebar.dialogs.deleteConfirm"),
+					variant: "danger",
+					onConfirm: () => {
+						// 会话没了，它留下的标注就是孤儿；与置顶的清理时机保持一致。
+						void window.vetta.conversationTags.forgetConversations([session.path]);
+						model.actions.deleteSession(session);
+					},
+				});
 			},
 			archiveProject: (cwd: string) => {
 				setProjectMenu(null);
@@ -64,4 +79,10 @@ export function useProjectsPanelMenusModel(model: ProjectsPanelModel) {
 			},
 		},
 	};
+}
+
+function isAgentTeamSession(
+	session: SessionContextMenuSession,
+): session is Extract<SessionContextMenuSession, { readonly kind: "agent-team" }> {
+	return "kind" in session && session.kind === "agent-team";
 }

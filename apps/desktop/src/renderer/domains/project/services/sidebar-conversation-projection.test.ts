@@ -17,6 +17,7 @@ function team(overrides: Partial<DesktopTeamSidebarConversation> = {}): DesktopT
 		teamId: "team",
 		teamSessionId: "team-session",
 		coordinationSessionPath: "C:/sessions/team.jsonl",
+		cwd: "C:/team-workspaces/team-session",
 		memberAvatarUrls: ["a.webp", "b.webp"],
 		sessionTitle: "Team task",
 		createdAt: 1,
@@ -31,7 +32,10 @@ describe("projectSidebarConversations", () => {
 		const result = projectSidebarConversations([ordinary], [team()], { kind: "default" });
 
 		expect(result.map((item) => item.kind)).toEqual(["agent-team", "conversation"]);
-		expect(result[0]).toMatchObject({ memberAvatarUrls: ["a.webp", "b.webp"] });
+		expect(result[0]).toMatchObject({
+			cwd: "C:/team-workspaces/team-session",
+			memberAvatarUrls: ["a.webp", "b.webp"],
+		});
 	});
 
 	it("presents the generated task title with a Team icon and trailing member avatars", () => {
@@ -44,7 +48,7 @@ describe("projectSidebarConversations", () => {
 			label: "Team task",
 			iconClassName: "icon-[solar--users-group-rounded-linear]",
 			trailingAvatarUrls: ["a.webp", "b.webp"],
-			mutable: false,
+			mutable: true,
 		});
 	});
 

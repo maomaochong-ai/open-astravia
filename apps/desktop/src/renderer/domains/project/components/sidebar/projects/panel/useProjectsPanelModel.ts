@@ -1,4 +1,5 @@
 import { useBatchTasks } from "@domains/batch-tasks/hooks/useBatchTasks";
+import { notifyTeamSessionsChanged } from "@shared/agent-teams/team-session-events";
 import { pathBasename } from "@shared/lib/utils";
 import type { SessionInfo } from "@shared/store/atoms";
 import {
@@ -235,7 +236,17 @@ export function useProjectsPanelModel({
 	const defaultSelectSession = selectSidebarSession;
 
 	const deletePanelSession = useCallback(
-		(session: { cwd: string; path: string }) => {
+		(session: SidebarConversationInfo) => {
+			if (session.kind === "agent-team") {
+				const wasActive = activeTeamSessionId === session.teamSessionId;
+				void window.vetta.agentTeams
+					.deleteSession({ id: session.teamSessionId, coordinationSessionPath: session.path })
+					.then(() => {
+						notifyTeamSessionsChanged(session.teamId);
+						if (wasActive) void navigate({ to: "/" });
+					});
+				return;
+			}
 			const wasActive = activeSessionPathValue === session.path;
 			const goToProjectDetail = (projectCwd: string): void => {
 				if (!wasActive) return;
@@ -258,7 +269,16 @@ export function useProjectsPanelModel({
 			void deleteSession(session.cwd, session.path);
 			goToProjectDetail(session.cwd);
 		},
-		[activeSessionPathValue, batchProjects, deleteBatchTask, deleteSession, setActiveSession, currentPath, navigate],
+		[
+			activeSessionPathValue,
+			activeTeamSessionId,
+			batchProjects,
+			deleteBatchTask,
+			deleteSession,
+			setActiveSession,
+			currentPath,
+			navigate,
+		],
 	);
 
 	const renamePanelSession = useCallback(

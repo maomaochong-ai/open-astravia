@@ -1,3 +1,4 @@
+import { notifyTeamSessionsChanged } from "@shared/agent-teams/team-session-events";
 import { pathBasename } from "@shared/lib/utils";
 import type { Project, ProjectType } from "@shared/store/atoms";
 import {
@@ -138,7 +139,7 @@ export function useProjectGroupModel({
 				path: session.path,
 				label: identity.label,
 				active: isSessionActive,
-				pinned: identity.mutable && pinnedSessionPaths.has(session.path),
+				pinned: pinnedSessionPaths.has(session.path),
 				renaming: identity.mutable && renamingSessionPath === session.path,
 				running: isRunning,
 				scheduled: isSchedule,
@@ -179,15 +180,28 @@ export function useProjectGroupModel({
 	const openSessionContextMenu = useCallback(
 		(event: React.MouseEvent, session: SidebarConversationInfo) => {
 			event.preventDefault();
-			if (session.kind === "agent-team") return;
-			setContextMenu({ x: event.clientX, y: event.clientY, session, allowMutations: true, canTag: false });
+			setContextMenu({
+				x: event.clientX,
+				y: event.clientY,
+				session,
+				allowMutations: true,
+				canTag: false,
+			});
 		},
 		[setContextMenu],
 	);
 	const renameDone = useCallback(() => setRenamingSessionPath(null), [setRenamingSessionPath]);
 	const renameSessionByPath = useCallback(
 		(session: SidebarConversationInfo, name: string) => {
-			if (session.kind === "conversation") onRenameSession(projectCwd, session.path, name);
+			if (session.kind === "conversation") {
+				onRenameSession(projectCwd, session.path, name);
+				return;
+			}
+			void window.vetta.agentTeams
+				.renameSession({ id: session.teamSessionId, coordinationSessionPath: session.path }, name)
+				.then(() => {
+					notifyTeamSessionsChanged(session.teamId);
+				});
 		},
 		[onRenameSession, projectCwd],
 	);

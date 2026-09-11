@@ -20,6 +20,7 @@ import {
 	type TeamObservationPublisher,
 	type TeamSessionDocument,
 	type TeamSessionListItem,
+	type TeamSessionReference,
 	type TeamSessionSnapshot,
 	type TeamSessionStateRecord,
 	type TeamSharedHistoryPort,
@@ -956,6 +957,51 @@ export class AgentTeamSessionService {
 		return this.turnCoordinator.abort(sessionId);
 	}
 
+	async renameSession(
+		reference: TeamSessionReference | { readonly id: string; readonly coordinationSessionPath?: string } | string,
+		name: string,
+	): Promise<TeamSessionDocument> {
+		const sessionReference = teamSessionReferenceParts(reference);
+		const nextTitle = name.trim();
+		if (!nextTitle) throw new Error("Team session title must not be empty");
+		return this.coordinate(
+			sessionReference.id,
+			async (session) => {
+				const next: TeamSessionDocument = {
+					...session,
+					title: nextTitle,
+					revision: session.revision + 1,
+					updatedAt: Date.now(),
+				};
+				await this.persist(next);
+				this.publishSessionUpdated(next);
+				return next;
+			},
+			sessionReference.coordinationSessionPath,
+		);
+	}
+
+	async deleteSession(
+		reference: TeamSessionReference | { readonly id: string; readonly coordinationSessionPath?: string } | string,
+	): Promise<void> {
+		const sessionReference = teamSessionReferenceParts(reference);
+		const session = await this.read(sessionReference.id, sessionReference.coordinationSessionPath);
+		await this.abort(session.id);
+		const runtimeIds = [
+			...(session.coordinationRuntime ? [session.coordinationRuntime.sessionId] : []),
+			...Object.values(session.memberRuntime).map((runtime) => runtime.sessionId),
+		];
+		const sessionPaths = [
+			...(session.coordinationRuntime ? [session.coordinationRuntime.sessionPath] : []),
+			...Object.values(session.memberRuntime).map((runtime) => runtime.sessionPath),
+		];
+		for (const sessionPath of sessionPaths) await this.getRuntime().deleteSession(sessionPath);
+		for (const runtimeId of runtimeIds) this.eventHub.detach(runtimeId);
+		await this.repository.delete?.(session.id);
+		await this.ownershipCatalog?.removeByTeamSession?.(session.teamId, session.id);
+		this.sessionState.remove(session.id);
+	}
+
 	readCollaborationState(sessionId: string): Promise<TeamCollaborationState> {
 		return this.turnCoordinator.readCollaborationState(sessionId);
 	}
@@ -1017,8 +1063,16 @@ export class AgentTeamSessionService {
 	}
 
 	/** Re-read inside the lane; callers must not return a document derived from a stale snapshot. */
-	private coordinate<T>(sessionId: string, operation: (session: TeamSessionDocument) => Promise<T>): Promise<T> {
-		return this.sessionState.coordinate(sessionId, () => this.readInternal(sessionId), operation);
+	private coordinate<T>(
+		sessionId: string,
+		operation: (session: TeamSessionDocument) => Promise<T>,
+		coordinationSessionPath?: string,
+	): Promise<T> {
+		return this.sessionState.coordinate(
+			sessionId,
+			() => this.readInternal(sessionId, coordinationSessionPath ?? this.sessionState.coordinationPath(sessionId)),
+			operation,
+		);
 	}
 }
 
@@ -1038,6 +1092,19 @@ function sameMemberIds(left: readonly string[], right: readonly string[]): boole
 	const sortedLeft = [...left].sort();
 	const sortedRight = [...right].sort();
 	return sortedLeft.every((memberId, index) => memberId === sortedRight[index]);
+}
+
+function teamSessionReferenceParts(
+	reference: TeamSessionReference | { readonly id: string; readonly coordinationSessionPath?: string } | string,
+): {
+	readonly id: string;
+	readonly coordinationSessionPath?: string;
+} {
+	if (typeof reference === "string") return { id: reference };
+	return {
+		id: reference.id,
+		...(reference.coordinationSessionPath ? { coordinationSessionPath: reference.coordinationSessionPath } : {}),
+	};
 }
 
 function isTeamSessionStateRecord(value: unknown): value is TeamSessionStateRecord {

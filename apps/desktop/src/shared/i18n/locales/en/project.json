@@ -54,6 +54,8 @@
 			"untitledTeam": "New team conversation"
 		},
 		"dialogs": {
+			"deleteSessionTitle": "Delete session",
+			"deleteSessionMessage": "Permanently delete the session \"{{name}}\"? This cannot be undone.",
 			"deleteBatchTitle": "Delete batch project",
 			"deleteBatchMessage": "Delete batch project \"{{name}}\"? This cannot be undone.",
 			"deleteConfirm": "Delete",

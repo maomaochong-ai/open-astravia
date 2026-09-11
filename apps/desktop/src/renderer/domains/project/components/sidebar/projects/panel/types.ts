@@ -1,4 +1,10 @@
-import type { DefaultConversationFilter, Project, SessionExecutionMode, SidebarFilter } from "@shared/store/atoms";
+import type {
+	DefaultConversationFilter,
+	Project,
+	SessionContextMenuSession,
+	SessionExecutionMode,
+	SidebarFilter,
+} from "@shared/store/atoms";
 import type { SidebarConversationInfo } from "../../../../services/sidebar-conversation-projection";
 
 export interface ProjectsPanelProps {
@@ -39,7 +45,7 @@ export interface ProjectsPanelModel {
 		collapseBatchProject(cwd: string): void;
 		collapseProject(cwd: string): void;
 		deleteProject(cwd: string): void;
-		deleteSession(session: { cwd: string; path: string }): void;
+		deleteSession(session: SessionContextMenuSession): void;
 		defaultNewSession(cwd: string): void;
 		defaultSelectSession(cwd: string, session: SidebarConversationInfo): void;
 		expandBatchProject(cwd: string): void;

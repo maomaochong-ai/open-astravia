@@ -36,6 +36,8 @@ export interface DesktopAgentTeamsApi {
 	createSessionRecord(teamId: string, options?: CreateTeamSessionRecordOptions): Promise<DesktopTeamSessionSnapshot>;
 	listSessions(teamId: string): Promise<readonly TeamSessionListItem[]>;
 	listSidebarConversations(): Promise<readonly DesktopTeamSidebarConversation[]>;
+	renameSession(reference: TeamSessionReference | string, name: string): Promise<DesktopTeamSessionSnapshot>;
+	deleteSession(reference: TeamSessionReference | string): Promise<void>;
 	updateModelSettings(id: string, input: UpdateTeamSessionModelSettingsInput): Promise<DesktopTeamSessionSnapshot>;
 	setExecutionMode(id: string, mode: SessionExecutionMode): Promise<DesktopTeamSessionSnapshot>;
 	getSession(reference: TeamSessionReference | string): Promise<DesktopTeamSessionSnapshot>;

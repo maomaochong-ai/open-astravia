@@ -54,6 +54,8 @@
 			"untitledTeam": "新团队会话"
 		},
 		"dialogs": {
+			"deleteSessionTitle": "确认删除会话",
+			"deleteSessionMessage": "确定要永久删除会话「{{name}}」吗？此操作不可恢复。",
 			"deleteBatchTitle": "删除批量项目",
 			"deleteBatchMessage": "确定要删除批量项目「{{name}}」吗？此操作不可撤回。",
 			"deleteConfirm": "删除",

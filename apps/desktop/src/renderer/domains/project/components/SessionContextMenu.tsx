@@ -1,4 +1,4 @@
-import type { SessionInfo } from "@shared/store/atoms";
+import type { SessionContextMenuSession } from "@shared/store/atoms";
 import { SessionContextMenuView } from "@vetta/theme-ui/project";
 import { createPortal } from "react-dom";
 import { useSessionContextMenuModel } from "../hooks/useSessionContextMenuModel";
@@ -6,11 +6,11 @@ import { useSessionContextMenuModel } from "../hooks/useSessionContextMenuModel"
 interface SessionContextMenuProps {
 	x: number;
 	y: number;
-	session: SessionInfo;
+	session: SessionContextMenuSession;
 	allowMutations: boolean;
 	canTag: boolean;
 	onClose: () => void;
-	onDelete: (session: SessionInfo) => void;
+	onDelete: (session: SessionContextMenuSession) => void;
 }
 
 export function SessionContextMenu({

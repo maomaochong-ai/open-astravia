@@ -46,6 +46,8 @@ const CHANNELS = {
 	CREATE_SESSION_RECORD: "vetta:agent-teams:create-session-record",
 	LIST_SESSIONS: "vetta:agent-teams:list-sessions",
 	LIST_SIDEBAR_CONVERSATIONS: "vetta:agent-teams:list-sidebar-conversations",
+	RENAME_SESSION: "vetta:agent-teams:rename-session",
+	DELETE_SESSION: "vetta:agent-teams:delete-session",
 	UPDATE_MODEL_SETTINGS: "vetta:agent-teams:update-model-settings",
 	SET_EXECUTION_MODE: "vetta:agent-teams:set-execution-mode",
 	GET_SESSION: "vetta:agent-teams:get-session",
@@ -100,6 +102,8 @@ export interface AgentTeamsIpcDependencies {
 		| "listSessions"
 		| "updateModelSettings"
 		| "setExecutionMode"
+		| "renameSession"
+		| "deleteSession"
 		| "readSnapshot"
 		| "send"
 		| "snapshot"
@@ -112,6 +116,12 @@ export interface AgentTeamsIpcDependencies {
 type TeamDisplayProjection = (
 	session: TeamSessionDocument,
 ) => DesktopTeamConversationDisplay | Promise<DesktopTeamConversationDisplay>;
+
+function teamSessionMutationReference(value: unknown): TeamSessionReference {
+	const reference = teamSessionReference(value);
+	if (!reference.coordinationSessionPath) throw new Error("coordinationSessionPath must be a non-empty string");
+	return { id: reference.id, coordinationSessionPath: reference.coordinationSessionPath };
+}
 
 async function withDisplayProjection(
 	snapshot: TeamSessionSnapshot,
@@ -217,6 +227,16 @@ export function registerAgentTeamsIpc(
 	ipcMain.handle(CHANNELS.LIST_SIDEBAR_CONVERSATIONS, () =>
 		(dependencies.listSidebarConversations ?? listTeamSidebarConversations)(),
 	);
+	ipcMain.handle(CHANNELS.RENAME_SESSION, async (_event, reference: unknown, name: unknown) => {
+		if (typeof name !== "string" || name.trim().length === 0) throw new Error("name must be a non-empty string");
+		return await withDisplayProjection(
+			sessions.snapshot(await sessions.renameSession(teamSessionMutationReference(reference), name)),
+			displayProjection,
+		);
+	});
+	ipcMain.handle(CHANNELS.DELETE_SESSION, async (_event, reference: unknown) => {
+		return await sessions.deleteSession(teamSessionMutationReference(reference));
+	});
 	ipcMain.handle(
 		CHANNELS.UPDATE_MODEL_SETTINGS,
 		async (_event, id: unknown, input: unknown) =>

@@ -95,6 +95,7 @@ describe("SessionContextMenuView", () => {
 		expect(onAssign).toHaveBeenCalledOnce();
 	});
 
+	// Team 会话现在也能重命名/删除（origin/dev af9c542e），断言等价于原来的 Team 用例。
 	it("renders mutating actions when the session allows them", () => {
 		const onRename = vi.fn();
 		const onDelete = vi.fn();

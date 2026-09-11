@@ -1,3 +1,4 @@
+import { notifyTeamSessionsChanged } from "@shared/agent-teams/team-session-events";
 import type { DefaultConversationFilter } from "@shared/store/atoms";
 import {
 	conversationFilterTagId,
@@ -141,7 +142,7 @@ export function useDefaultSessionListModel({
 				path: session.path,
 				label: identity.label,
 				active: isActive,
-				pinned: identity.mutable && pinnedSessionPaths.has(session.path),
+				pinned: pinnedSessionPaths.has(session.path),
 				renaming: isRenaming,
 				running: isRunning,
 				scheduled: isSchedule,
@@ -172,14 +173,27 @@ export function useDefaultSessionListModel({
 	// per-row 回调必须引用稳定，否则行组件的 memo 永远命中不了。
 	const openContextMenu = useCallback(
 		(event: React.MouseEvent, session: SidebarConversationInfo) => {
-			if (session.kind === "agent-team") return;
-			setContextMenu({ x: event.clientX, y: event.clientY, session, allowMutations: !isClaw, canTag: !isClaw });
+			setContextMenu({
+				x: event.clientX,
+				y: event.clientY,
+				session,
+				allowMutations: !isClaw,
+				canTag: !isClaw,
+			});
 		},
 		[isClaw, setContextMenu],
 	);
 	const rename = useCallback(
 		(session: SidebarConversationInfo, name: string) => {
-			if (session.kind === "conversation") onRenameSession(cwd, session.path, name);
+			if (session.kind === "conversation") {
+				onRenameSession(cwd, session.path, name);
+				return;
+			}
+			void window.vetta.agentTeams
+				.renameSession({ id: session.teamSessionId, coordinationSessionPath: session.path }, name)
+				.then(() => {
+					notifyTeamSessionsChanged(session.teamId);
+				});
 		},
 		[cwd, onRenameSession],
 	);
