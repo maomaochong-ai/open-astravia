@@ -375,7 +375,7 @@ describe("AgentProfileEditor", () => {
 			/>,
 		);
 
-		expect(screen.getAllByRole("button", { name: /profile.avatarOption/ })).toHaveLength(9);
+		expect(screen.getAllByRole("button", { name: /profile.avatarOption/ })).toHaveLength(10);
 		await user.click(screen.getByRole("button", { name: "profile.avatarOption9" }));
 		await user.click(screen.getByRole("button", { name: "profile.save" }));
 		await waitFor(() =>

@@ -4,10 +4,11 @@ import { AGENT_AVATAR_OPTIONS, agentAvatarUrl, teamMemberAvatarUrls } from "./ag
 
 describe("Agent avatar options", () => {
 	it("exposes all bundled WebP choices and deterministic defaults", () => {
-		expect(AGENT_AVATAR_OPTIONS).toHaveLength(9);
+		expect(AGENT_AVATAR_OPTIONS).toHaveLength(10);
 		expect(AGENT_AVATAR_OPTIONS.every((avatar) => avatar.endsWith(".webp"))).toBe(true);
 		expect(agentAvatarUrl({ id: "a", blueprintId: "master" })).toBe("./agent-team-avatars/master.webp");
 		expect(agentAvatarUrl({ id: "b", blueprintId: "researcher" })).toBe("./agent-team-avatars/researcher.webp");
+		expect(agentAvatarUrl({ id: "c", blueprintId: "designer" })).toBe("./agent-team-avatars/designer.webp");
 		expect(agentAvatarUrl({ id: "custom", blueprintId: "custom" })).toBe(
 			agentAvatarUrl({ id: "custom", blueprintId: "custom" }),
 		);
