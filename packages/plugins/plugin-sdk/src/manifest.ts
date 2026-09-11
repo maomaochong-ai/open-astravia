@@ -14,6 +14,9 @@ import {
 	PluginSkillPresentationSchema,
 	PluginVersionSchema,
 	type PluginAgentManifest,
+	type PluginAgentProfileManifest,
+	type PluginAgentTeamManifest,
+	type PluginAgentTeamMemberManifest,
 	type PluginBrowserManifest,
 	type PluginCliProviderManifest,
 	type PluginServiceProviderManifest,
@@ -29,6 +32,9 @@ import { PLUGIN_PERMISSIONS, type PluginPermission } from "./permissions.js";
 
 export {
 	PluginAgentManifestSchema,
+	PluginAgentProfileManifestSchema,
+	PluginAgentTeamManifestSchema,
+	PluginAgentTeamMemberManifestSchema,
 	PluginBrowserManifestSchema,
 	PluginCommandNameSchema,
 	PluginCommandNamesSchema,
@@ -52,6 +58,9 @@ export {
 } from "./manifest-schema.js";
 export type {
 	PluginAgentManifest,
+	PluginAgentProfileManifest,
+	PluginAgentTeamManifest,
+	PluginAgentTeamMemberManifest,
 	PluginBrowserManifest,
 	PluginCliProviderManifest,
 	PluginServiceArtifact,

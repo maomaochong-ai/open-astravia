@@ -258,6 +258,58 @@ export const PluginSkillPresentationSchema = Type.Object(
 	{ additionalProperties: false },
 );
 
+/** 插件贡献的智能体（blueprint）。人设、头像、职责都由插件提供，宿主只负责铺档案。 */
+export const PluginAgentProfileManifestSchema = Type.Object(
+	{
+		/** 插件内唯一；全局 id 由宿主拼成 `plugin:<pluginId>:<id>`。 */
+		id: Type.String({ pattern: "^[a-z0-9][a-z0-9-]{0,63}$" }),
+		/** 支持 `%key%` 占位，按插件 locales 解析。 */
+		name: NonWhitespaceStringSchema,
+		description: Type.Optional(Type.String({ maxLength: 2_000 })),
+		/** @ 提及用的短名；缺省用 `id`。 */
+		mentionHandle: Type.Optional(Type.String({ pattern: "^[a-z0-9][a-z0-9-]{0,63}$" })),
+		/** 插件包内的相对路径，指向头像图片。 */
+		avatar: Type.Optional(NonWhitespaceStringSchema),
+		/** 插件包内的相对路径，指向系统提示词 Markdown。与 `systemPrompt` 二选一。 */
+		systemPromptPath: Type.Optional(NonWhitespaceStringSchema),
+		systemPrompt: Type.Optional(Type.String({ maxLength: 64_000 })),
+		/**
+		 * `all`（默认）继承宿主全部已启用能力；`own` 只用本插件的能力。
+		 * 两种模式下本插件的能力都强制激活，用户关不掉。
+		 */
+		abilities: Type.Optional(Type.Union([Type.Literal("all"), Type.Literal("own")])),
+	},
+	{ additionalProperties: false },
+);
+
+/**
+ * 插件贡献的团队成员。
+ *
+ * `agent` 写本插件的智能体 id；引用宿主内置角色写 `builtin:<key>`（如 `builtin:master`）。
+ * 刻意不支持引用别的插件——那会让一个插件的可用性取决于另一个插件是否安装。
+ */
+export const PluginAgentTeamMemberManifestSchema = Type.Object(
+	{
+		agent: NonWhitespaceStringSchema,
+		responsibility: Type.String({ maxLength: 2_000 }),
+	},
+	{ additionalProperties: false },
+);
+
+/** 插件贡献的团队。第一个成员即队长，也是用户在会话里唯一的对话入口。 */
+export const PluginAgentTeamManifestSchema = Type.Object(
+	{
+		id: Type.String({ pattern: "^[a-z0-9][a-z0-9-]{0,63}$" }),
+		name: NonWhitespaceStringSchema,
+		description: Type.Optional(Type.String({ maxLength: 2_000 })),
+		members: Type.Array(PluginAgentTeamMemberManifestSchema, { minItems: 1, maxItems: 32 }),
+		/** 队长的团队任务书：把这支团队的固定流水线写死。与 `workflowPath` 二选一。 */
+		workflow: Type.Optional(Type.String({ maxLength: 64_000 })),
+		workflowPath: Type.Optional(NonWhitespaceStringSchema),
+	},
+	{ additionalProperties: false },
+);
+
 export const PluginAgentManifestSchema = Type.Object(
 	{
 		systemPrompt: Type.Optional(
@@ -270,6 +322,8 @@ export const PluginAgentManifestSchema = Type.Object(
 		),
 		skillPaths: Type.Optional(Type.Array(NonWhitespaceStringSchema)),
 		skillPresentation: Type.Optional(PluginSkillPresentationSchema),
+		agents: Type.Optional(Type.Array(PluginAgentProfileManifestSchema, { maxItems: 32 })),
+		teams: Type.Optional(Type.Array(PluginAgentTeamManifestSchema, { maxItems: 32 })),
 		mcpServers: Type.Optional(Type.Union([NonWhitespaceStringSchema, PluginMcpServerMapSchema])),
 		toolPolicy: Type.Optional(
 			Type.Object(
@@ -333,6 +387,9 @@ export const PluginManifestSchema = Type.Object(
 
 export type PluginMcpServerConfig = Static<typeof PluginMcpServerConfigSchema>;
 export type PluginAgentManifest = Static<typeof PluginAgentManifestSchema>;
+export type PluginAgentProfileManifest = Static<typeof PluginAgentProfileManifestSchema>;
+export type PluginAgentTeamManifest = Static<typeof PluginAgentTeamManifestSchema>;
+export type PluginAgentTeamMemberManifest = Static<typeof PluginAgentTeamMemberManifestSchema>;
 export type PluginSkillPresentation = Static<typeof PluginSkillPresentationSchema>;
 export type PluginSkillPresentationRule = Static<typeof PluginSkillPresentationRuleSchema>;
 export type PluginCliProviderManifest = Static<typeof PluginCliProviderManifestSchema>;
