@@ -187,6 +187,23 @@ export const setActivityPanelTabDraggingAtom = atom(null, (get, set, dragging: b
 });
 
 /**
+ * 当前已挂载的活动工作空间（宿主挂载面板时登记，卸载时摘除）。
+ *
+ * 面板状态一律按 `workspace.id` 隔离，而插件 API 只知道会话 cwd；普通对话里两者同值，
+ * Team 的工作空间 id 与 cwd 不同。插件写入前用本表把 cwd 翻成真正的工作空间键，
+ * 表里没有时退回 cwd（既有普通对话记录因此原样可用）。
+ */
+export const mountedActivityWorkspacesAtom = atom<readonly { readonly id: string; readonly cwd: string | null }[]>([]);
+
+/** cwd → 已挂载工作空间键；没有对应面板时返回 cwd 本身。 */
+export function resolveActivityWorkspaceKey(
+	mounted: readonly { readonly id: string; readonly cwd: string | null }[],
+	cwd: string,
+): string {
+	return mounted.find((workspace) => workspace.cwd === cwd)?.id ?? cwd;
+}
+
+/**
  * 活动面板 active tab 按项目（cwd）记忆。
  * 切换项目后会回到该项目上次选中的 tab；新项目按 profile.defaultActivityTab 决定。
  */

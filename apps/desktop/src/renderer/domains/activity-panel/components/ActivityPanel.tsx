@@ -1,9 +1,9 @@
-import { activeSessionAtom, currentScenarioAtom } from "@shared/store/atoms";
+import { activeSessionAtom, currentScenarioAtom, mountedActivityWorkspacesAtom } from "@shared/store/atoms";
 import { useActiveSessionRuntimeIds } from "@shared/workspace/active-session-runtime";
 import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
 import { useThemeComponent } from "@vetta/theme-sdk";
-import { useAtomValue } from "jotai";
-import { useMemo } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
+import { useEffect, useMemo } from "react";
 import { useActivityPanelModel } from "../hooks/useActivityPanelModel";
 import { ActivityTabMetaHost } from "../registry/ActivityTabMetaHost";
 import { ActivityPanelContextProvider } from "../registry/context";
@@ -11,6 +11,7 @@ import type { ActivityTabDefinition, ActivityTabId, ActivityTabMeta } from "../r
 import { useActivityTabDefinitions } from "../registry/useActivityTabDefinitions";
 import { ActivityPanelFrame } from "./activity-panel/ActivityPanelFrame";
 import { ActivityPanelView } from "./activity-panel/ActivityPanelView";
+import type { ActivityWorkspace } from "@shared/workspace/activity-workspace";
 import type { ActivityPanelProps } from "./activity-panel/types";
 
 function ActivityPanelWithMeta({
@@ -51,10 +52,8 @@ export function ActivityPanel(props: ActivityPanelProps): JSX.Element {
 		pluginScenario,
 	});
 
-	const contextValue = useMemo(
-		() => ({ workspace, knowledgeHistory }),
-		[workspace, knowledgeHistory],
-	);
+	const contextValue = useMemo(() => ({ workspace, knowledgeHistory }), [workspace, knowledgeHistory]);
+	useMountedActivityWorkspace(workspace);
 
 	return (
 		<ActivityPanelContextProvider value={contextValue}>
@@ -72,6 +71,20 @@ export function ActivityPanel(props: ActivityPanelProps): JSX.Element {
 			</ActivityTabMetaHost>
 		</ActivityPanelContextProvider>
 	);
+}
+
+/**
+ * 登记挂载中的工作空间，供插件 API 把会话 cwd 翻成面板真正使用的工作空间键
+ * （普通对话两者同值，Team 不同，见 ADR-0111）。
+ */
+function useMountedActivityWorkspace(workspace: ActivityWorkspace): void {
+	const setMounted = useSetAtom(mountedActivityWorkspacesAtom);
+	const { id, cwd } = workspace;
+	useEffect(() => {
+		const entry = { id, cwd };
+		setMounted((previous) => [entry, ...previous.filter((item) => item.id !== id)]);
+		return () => setMounted((previous) => previous.filter((item) => item.id !== id));
+	}, [id, cwd, setMounted]);
 }
 
 /** Conversation-page adapter. The generic panel itself never reads conversation state. */

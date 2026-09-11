@@ -7,10 +7,12 @@ import {
 	activityPanelTabByProjectAtom,
 	attachedPluginTabsAtom,
 	filePreviewAtom,
+	mountedActivityWorkspacesAtom,
 	persistCurrentInputActionState,
 	pluginInputActionsAtom,
 	pluginWorkspaceViewHeadersAtom,
 	promptAttachmentAtom,
+	resolveActivityWorkspaceKey,
 	setActivityPanelWidthAtom,
 	workspaceViewHeaderKey,
 } from "@shared/store/atoms";
@@ -68,8 +70,42 @@ export interface CreatePluginUiApiOptions {
 	capabilitySessionId: string;
 }
 
-function resolveActivityTabCwd(requestedCwd?: string): string | null {
-	return requestedCwd ?? getDefaultStore().get(activeSessionAtom)?.cwd ?? null;
+/**
+ * 面板状态的持久化键是工作空间 id，不是 cwd（ADR-0105 决策 5 / ADR-0111）。插件按会话
+ * cwd 寻址，因此写入前翻成挂载中的工作空间键；普通对话两者同值，记录格式不变。
+ *
+ * 未显式给 cwd 时先看当前挂载的工作空间——Team 不写全局活动会话，只靠 activeSession
+ * 回退会把记录写到上一个普通会话上。
+ */
+function resolveActivityTabScopeKey(requestedCwd?: string): string | null {
+	const store = getDefaultStore();
+	const mounted = store.get(mountedActivityWorkspacesAtom);
+	if (requestedCwd !== undefined) return resolveActivityWorkspaceKey(mounted, requestedCwd);
+	const foreground = mounted[0];
+	if (foreground) return foreground.id;
+	return store.get(activeSessionAtom)?.cwd ?? null;
+}
+
+/** 写入一次显式上/下栏记录；scopeKey 必须已由 resolveActivityTabScopeKey 解析过。 */
+function writePluginTabVisibility(scopeKey: string, pluginId: string, tabId: string, visible: boolean): void {
+	const store = getDefaultStore();
+	const key = `${pluginId}:${tabId}`;
+	const previous = store.get(attachedPluginTabsAtom);
+	const recordsBefore = previous.get(scopeKey) ?? [];
+	const next = withPluginTabVisibility(previous, scopeKey, key, visible);
+	if (next) store.set(attachedPluginTabsAtom, next);
+	console.debug(
+		`[activity-tab-debug] set-visible ${JSON.stringify({
+			pluginId,
+			tabId,
+			key,
+			visible,
+			scopeKey,
+			changed: next !== null,
+			recordsBefore,
+			recordsAfter: next?.get(scopeKey) ?? recordsBefore,
+		})}`,
+	);
 }
 
 function setPluginActivityTabVisible(
@@ -78,56 +114,38 @@ function setPluginActivityTabVisible(
 	visible: boolean,
 	requestedCwd?: string,
 ): boolean {
-	const store = getDefaultStore();
-	const cwd = resolveActivityTabCwd(requestedCwd);
-	const key = `${pluginId}:${tabId}`;
-	if (!cwd) {
+	const scopeKey = resolveActivityTabScopeKey(requestedCwd);
+	if (!scopeKey) {
 		console.debug(
-			`[activity-tab-debug] set-visible skipped ${JSON.stringify({ pluginId, tabId, key, visible, cwd })}`,
+			`[activity-tab-debug] set-visible skipped ${JSON.stringify({ pluginId, tabId, visible, scopeKey: null })}`,
 		);
 		return false;
 	}
-	const previous = store.get(attachedPluginTabsAtom);
-	const recordsBefore = previous.get(cwd) ?? [];
-	const next = withPluginTabVisibility(previous, cwd, key, visible);
-	if (next) store.set(attachedPluginTabsAtom, next);
-	console.debug(
-		`[activity-tab-debug] set-visible ${JSON.stringify({
-			pluginId,
-			tabId,
-			key,
-			visible,
-			cwd,
-			requestedCwd: requestedCwd ?? null,
-			changed: next !== null,
-			recordsBefore,
-			recordsAfter: next?.get(cwd) ?? recordsBefore,
-		})}`,
-	);
+	writePluginTabVisibility(scopeKey, pluginId, tabId, visible);
 	return true;
 }
 
 /**
  * Attach + activate a plugin's own activity tab and open the panel, driven
  * directly off the jotai store so it works regardless of whether the activity
- * panel component is currently mounted/expanded. Keyed by the active
- * conversation cwd (same key the attach records use, see ADR-0026). Commands
- * originating outside the foreground route pass that cwd explicitly.
+ * panel component is currently mounted/expanded. Keyed by the workspace that owns
+ * the addressed conversation (see resolveActivityTabScopeKey). Commands originating
+ * outside the foreground route pass their session cwd explicitly.
  */
 function openPluginActivityTab(pluginId: string, tabId: string, options?: PluginOpenActivityTabOptions): void {
 	const store = getDefaultStore();
-	const cwd = resolveActivityTabCwd(options?.cwd);
-	if (!cwd) {
-		console.warn("[plugin] openActivityTab: no active conversation cwd");
+	const scopeKey = resolveActivityTabScopeKey(options?.cwd);
+	if (!scopeKey) {
+		console.warn("[plugin] openActivityTab: no activity workspace to open into");
 		return;
 	}
 	const key = `${pluginId}:${tabId}`;
-	const recordsBefore = store.get(attachedPluginTabsAtom).get(cwd) ?? [];
+	const recordsBefore = store.get(attachedPluginTabsAtom).get(scopeKey) ?? [];
 	const alreadyAttached = explicitTabVisibility(recordsBefore, key) === true;
-	setPluginActivityTabVisible(pluginId, tabId, true, cwd);
+	writePluginTabVisibility(scopeKey, pluginId, tabId, true);
 	const active = new Map(store.get(activityPanelTabByProjectAtom));
-	const activeBefore = active.get(cwd) ?? null;
-	active.set(cwd, `plugin:${key}` as ActivityTabKey);
+	const activeBefore = active.get(scopeKey) ?? null;
+	active.set(scopeKey, `plugin:${key}` as ActivityTabKey);
 	store.set(activityPanelTabByProjectAtom, active);
 	store.set(activityPanelOpenAtom, true);
 	// width 只在首次 attach 时生效：插件 activate 里的 openActivityTab 会随
@@ -138,14 +156,14 @@ function openPluginActivityTab(pluginId: string, tabId: string, options?: Plugin
 			pluginId,
 			tabId,
 			key,
-			cwd,
+			scopeKey,
 			width: options?.width ?? null,
 			requestedCwd: options?.cwd ?? null,
 			alreadyAttached,
 			recordsBefore,
-			recordsAfter: store.get(attachedPluginTabsAtom).get(cwd) ?? [],
+			recordsAfter: store.get(attachedPluginTabsAtom).get(scopeKey) ?? [],
 			activeBefore,
-			activeAfter: active.get(cwd) ?? null,
+			activeAfter: active.get(scopeKey) ?? null,
 			panelOpen: store.get(activityPanelOpenAtom),
 		})}`,
 	);
