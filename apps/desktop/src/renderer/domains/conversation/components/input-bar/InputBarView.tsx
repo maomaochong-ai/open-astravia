@@ -111,12 +111,6 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 				{commands ? <PerfSendProfiler id="ib:ActionButtonBar">
 					<ActionButtonBar />
 				</PerfSendProfiler> : null}
-				<PromptAttachmentLabels
-					labels={model.promptAttachmentLabels ?? []}
-					icon={model.promptAttachmentIcon}
-					removeLabel={model.labels.capsule.removeDefault}
-					onRemove={model.actions.removePromptAttachment}
-				/>
 				<InputBarDrawer
 					items={model.drawerItems}
 					activeTabId={model.drawerActiveTab}
@@ -273,6 +267,17 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 				 * InputBarFooter 用 CSS 过渡承担。待办只是第一个住户，后续元素加进 items 即可。
 				 */}
 				<InputBarFooter.Root>
+					<InputBarFooter.Item>
+						{/* 插件引用排在下沿最上面：它离卡片最近，跟「这一条要发什么」关系最紧。 */}
+						{model.promptAttachmentLabels?.length ? (
+							<PromptAttachmentLabels
+								labels={model.promptAttachmentLabels}
+								icon={model.promptAttachmentIcon}
+								removeLabel={model.labels.capsule.removeDefault}
+								onRemove={model.actions.removePromptAttachment}
+							/>
+						) : null}
+					</InputBarFooter.Item>
 					<InputBarFooter.Item>
 						{model.todo ? <InputBarTodoStatus todo={model.todo} /> : null}
 					</InputBarFooter.Item>
