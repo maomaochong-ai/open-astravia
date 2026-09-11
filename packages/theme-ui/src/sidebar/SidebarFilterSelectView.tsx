@@ -34,15 +34,23 @@ export function SidebarFilterSelectView({
 					type="button"
 					className={cn(
 						// 与侧栏「更多」触发器对齐：icon h-4 + gap-2。
-						"no-drag flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-0.5 text-[12px] font-medium transition-colors",
+						"no-drag flex min-w-0 cursor-pointer items-center gap-2 rounded-md px-1.5 py-0.5 text-[12px] font-medium transition-colors",
 						open
 							? "bg-accent text-foreground"
 							: "text-muted-foreground/80 hover:bg-accent hover:text-foreground",
 					)}
 				>
 					{showGridIcon && <span className="icon-[solar--widget-4-linear] h-4 w-4 shrink-0" />}
-					<span>{current?.label ?? ""}</span>
-					<span className="icon-[solar--alt-arrow-down-linear] h-3 w-3" />
+					{/* 选中标签档时把颜色带到收起态，否则收起后只剩一个名字，认不出是哪个标签。 */}
+					{current?.dotColor ? (
+						<span
+							aria-hidden="true"
+							className="h-2.5 w-2.5 shrink-0 rounded-full"
+							style={{ backgroundColor: current.dotColor }}
+						/>
+					) : null}
+					<span className="truncate">{current?.label ?? ""}</span>
+					<span className="icon-[solar--alt-arrow-down-linear] h-3 w-3 shrink-0" />
 				</button>
 			</PopoverTrigger>
 			<PopoverContent
