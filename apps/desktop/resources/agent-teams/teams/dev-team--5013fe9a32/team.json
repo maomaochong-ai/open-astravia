@@ -28,7 +28,7 @@
 		},
 		{
 			"id": "09221fe5-ce98-4555-a294-6d78e29b87b4",
-			"handle": "executor",
+			"handle": "developer",
 			"binding": {
 				"kind": "reference",
 				"agentProfileId": "d9e51357-04b8-481d-af80-a08e1a362322"

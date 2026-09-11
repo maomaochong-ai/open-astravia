@@ -2,6 +2,7 @@ import { existsSync, readFileSync, rmSync } from "node:fs";
 import { readFile, rm } from "node:fs/promises";
 import { isAbsolute, join, resolve } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
+import { PRESET_AGENT_PLUGIN_ID } from "@vetta/agent-team";
 import {
 	parsePluginCommandNames as parseCommands,
 	parsePluginManifest as parseManifest,
@@ -46,7 +47,9 @@ import { SystemPluginCatalog } from "./plugin-system-catalog.js";
 export const PLUGIN_API_VERSION = "2.1.0";
 export const CORE_ACTION_PLUGIN_ID = "vetta-actions";
 
-const REQUIRED_SYSTEM_PLUGIN_IDS = new Set<string>([CORE_ACTION_PLUGIN_ID]);
+// 「预设智能体」和核心动作一样关不掉：装机团队的队长与执行者都是它贡献的人设，
+// 停用它等于让所有预设团队失去 blueprint，代价远超「少一个插件」。
+const REQUIRED_SYSTEM_PLUGIN_IDS = new Set<string>([CORE_ACTION_PLUGIN_ID, PRESET_AGENT_PLUGIN_ID]);
 const pluginsBaseDir = join(getVettaHomePath(), "plugins");
 const manifestPath = join(getVettaHomePath(), "plugins-manifest.json");
 const tmpBaseDir = join(getVettaHomePath(), "tmp", "plugins");

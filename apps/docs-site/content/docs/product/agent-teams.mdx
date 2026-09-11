@@ -57,19 +57,21 @@ Vetta 里有两种「多 Agent」，容易混淆，但边界很清楚：
 | Master | 主控 | 拆解目标、分派任务、验收结果并最终交付 |
 | Researcher | 检索员 | 搜集事实、文档、竞品与外部素材并核实来源 |
 | Architect | 策划师 | 产出技术架构、接口契约，或文档与 PRD 大纲 |
-| Executor | 执行员 | 生产核心资产：代码、成稿或完整分析 |
+| Developer | 开发员 | 生产核心资产：代码、成稿或完整分析 |
 | Auditor | 审计员 | 红队视角挑错：正确性、安全、边界与无依据的断言 |
 | Optimizer | 调优员 | 打磨已完成的成果：性能、可维护性、渠道口吻 |
 | Synthesizer | 交付员 | 把多方成果合并成一份一致的报告或交付包 |
 | Translator | 转化员 | 跨语言本地化，把技术细节转成业务语言 |
 
+其中 Master、Developer、Researcher 的人设由内置插件「预设智能体」提供，其余五个是宿主自带蓝图。该插件随宿主发布、默认启用且不可停用，因此这三个角色始终可用。
+
 以及 4 支预置团队，每支都是「1 位 Master + 3 位专家」的固定流水线：
 
 | 团队 | 阵容 | 流程 |
 | --- | --- | --- |
-| Dev Team | Master · Architect · Executor · Auditor | 先出设计与契约，再实现自测，最后审查；有阻塞缺陷就回到实现或设计 |
+| Dev Team | Master · Architect · Developer · Auditor | 先出设计与契约，再实现自测，最后审查；有阻塞缺陷就回到实现或设计 |
 | Deep Research | Master · Researcher · Auditor · Synthesizer | 把问题拆成多个角度并行取证，剔除无依据的结论，再合成结构化报告 |
-| Growth & Content | Master · Researcher · Executor · Optimizer | 先定角度和素材，写一份母稿，再按渠道产出变体 |
+| Growth & Content | Master · Researcher · Developer · Optimizer | 先定角度和素材，写一份母稿，再按渠道产出变体 |
 | Biz Strategy | Master · Architect · Auditor · Synthesizer | 搭出 PRD 与商业模型，审计致命缺陷，通过后打包成可汇报的方案 |
 
 流程不是写死在代码里的，而是写在这支团队 Master 的**团队任务书**里（见下文「配置团队」）。所以改流程就是改一段文字，不需要等版本更新。
@@ -97,7 +99,7 @@ Vetta 里有两种「多 Agent」，容易混淆，但边界很清楚：
 </Steps>
 
 <MediaFrame>
-  <img src="/images/product/team-chat.webp" alt="Vetta 团队会话，顶部是 Master、Architect、Executor、Auditor 成员条，下方是逐步委派与完成的协作过程" width="1920" height="1179" />
+  <img src="/images/product/team-chat.webp" alt="Vetta 团队会话，顶部是 Master、Architect、Developer、Auditor 成员条，下方是逐步委派与完成的协作过程" width="1920" height="1179" />
   <figcaption>主时间线只显示公开进展：负责人的计划、每次 <code>team_delegate_task</code> 委派，以及各成员完成后的结论。</figcaption>
 </MediaFrame>
 

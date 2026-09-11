@@ -3,7 +3,7 @@
 	"revision": 1,
 	"name": "Master",
 	"mentionHandle": "master",
-	"blueprintId": "master",
+	"blueprintId": "plugin:preset-agent:master",
 	"abilities": {
 		"selectionMode": "all",
 		"skills": [],

@@ -7,6 +7,9 @@ import {
 	INITIAL_AGENT_PROFILES,
 	INITIAL_AGENT_TEAM_ID,
 	INITIAL_AGENT_TEAMS,
+	PRESET_AGENT_PLUGIN_ID,
+	parsePluginBlueprintId,
+	pluginBlueprintId,
 } from "../src/index.js";
 
 describe("Agent Team initial resources", () => {
@@ -21,12 +24,22 @@ describe("Agent Team initial resources", () => {
 		for (const team of document.teams) assertTeamInvariants(team, document.agents);
 	});
 
-	it("backs every initial agent with a registered blueprint", () => {
-		for (const agent of INITIAL_AGENT_PROFILES) expect(findAgentBlueprint(agent.blueprintId)).toBeDefined();
+	it("backs every initial agent with a builtin blueprint or the preset agent plugin", () => {
+		for (const agent of INITIAL_AGENT_PROFILES) {
+			const plugin = parsePluginBlueprintId(agent.blueprintId);
+			if (plugin) {
+				// master / developer / researcher 的人设住在「预设智能体」插件里，内置表查不到是对的。
+				expect(plugin.pluginId).toBe(PRESET_AGENT_PLUGIN_ID);
+				expect(findAgentBlueprint(agent.blueprintId)).toBeUndefined();
+				continue;
+			}
+			expect(findAgentBlueprint(agent.blueprintId)).toBeDefined();
+		}
 	});
 
 	it("assembles every team as one Master leading at least two workers", () => {
-		const masterId = INITIAL_AGENT_PROFILES.find((agent) => agent.blueprintId === "master")?.id;
+		const masterBlueprintId = pluginBlueprintId(PRESET_AGENT_PLUGIN_ID, "master");
+		const masterId = INITIAL_AGENT_PROFILES.find((agent) => agent.blueprintId === masterBlueprintId)?.id;
 		expect(masterId).toBeDefined();
 		for (const team of INITIAL_AGENT_TEAMS) {
 			const leader = team.members.find((member) => member.id === team.leaderMemberId);

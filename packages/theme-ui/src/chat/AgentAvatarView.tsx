@@ -55,8 +55,15 @@ export function AgentAvatarView({
 	);
 }
 
-/** 兜底图标：新老 blueprint id 都要认，老档案里仍存着 builder / reviewer。 */
+/**
+ * 兜底图标：新老 blueprint id 都要认，老档案里仍存着 builder / reviewer。
+ *
+ * `plugin:preset-agent:*` 是搬进「预设智能体」插件后的 id；这里刻意写字面量，theme-ui 不
+ * 依赖 @vetta/agent-team。master 落在兜底的皇冠图标上，不必单列。
+ */
 const BLUEPRINT_ICON: Record<string, string> = {
+	"plugin:preset-agent:developer": "icon-[solar--code-square-linear]",
+	"plugin:preset-agent:researcher": "icon-[solar--magnifer-linear]",
 	researcher: "icon-[solar--magnifer-linear]",
 	architect: "icon-[solar--ruler-pen-linear]",
 	executor: "icon-[solar--code-square-linear]",

@@ -3,7 +3,7 @@
 	"revision": 1,
 	"name": "Researcher",
 	"mentionHandle": "researcher",
-	"blueprintId": "researcher",
+	"blueprintId": "plugin:preset-agent:researcher",
 	"abilities": {
 		"selectionMode": "all",
 		"skills": [],

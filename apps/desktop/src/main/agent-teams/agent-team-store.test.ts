@@ -1,7 +1,8 @@
 import { type AgentTeamDocument, createAgentTeamFixture, INITIAL_AGENT_PROFILES } from "@vetta/agent-team";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentTeamConfigRepository } from "./agent-team-config-repository.js";
 import { AgentTeamStore } from "./agent-team-store.js";
+import { registerPresetAgentBlueprints } from "./preset-agent-blueprints.testing.js";
 
 vi.mock("../logger.js", () => ({
 	getAppLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }),
@@ -42,6 +43,9 @@ function agentInput(name: string) {
 }
 
 describe("AgentTeamStore transaction boundary", () => {
+	// master / developer / researcher 的人设住在「预设智能体」插件里，装机档案要靠它解析。
+	beforeEach(registerPresetAgentBlueprints);
+
 	it("serializes concurrent mutations without losing either profile", async () => {
 		const repository = new MemoryRepository();
 		const store = new AgentTeamStore({ repository, createId: createIdSequence(), now: () => 10 });

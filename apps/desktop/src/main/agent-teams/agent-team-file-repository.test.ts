@@ -1,19 +1,16 @@
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-	BUILTIN_AGENT_BLUEPRINTS,
-	BUILTIN_PRESET_GENERATION,
-	createAgentTeamFixture,
-	INITIAL_AGENT_TEAMS,
-} from "@vetta/agent-team";
+import { BUILTIN_PRESET_GENERATION, createAgentTeamFixture, INITIAL_AGENT_TEAMS } from "@vetta/agent-team";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { resolveAgentBlueprint } from "./agent-blueprint-registry.js";
 import { createAgentTeamFileRepository, resolveAgentTeamResourceRoot } from "./agent-team-file-repository.js";
 import {
 	createAgentTeamStorageKey,
 	memberAssignmentFileName,
 	readAgentTeamStorageIndex,
 } from "./agent-team-storage-layout.js";
+import { registerPresetAgentBlueprints } from "./preset-agent-blueprints.testing.js";
 
 vi.mock("../logger.js", () => ({
 	getAppLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }),
@@ -103,7 +100,9 @@ describe("Agent Team file repository", () => {
 		const document = createAgentTeamFixture();
 		const firstAgent = document.agents[0];
 		if (!firstAgent) throw new Error("Expected an initial agent");
-		const blueprint = BUILTIN_AGENT_BLUEPRINTS.find((candidate) => candidate.id === firstAgent.blueprintId);
+		// 首个装机档案是 Master，人设来自「预设智能体」插件，只查内置表是找不到的。
+		registerPresetAgentBlueprints();
+		const blueprint = resolveAgentBlueprint(firstAgent.blueprintId);
 		if (!blueprint) throw new Error("Expected the initial profile blueprint");
 
 		await repository.write(document);

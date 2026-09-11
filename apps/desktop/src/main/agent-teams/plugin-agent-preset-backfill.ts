@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { AgentProfile, AgentTeamDocument, TeamMember } from "@vetta/agent-team";
-import { BUILTIN_AGENT_PROFILE_IDS, normalizeMentionHandle } from "@vetta/agent-team";
+import { BUILTIN_AGENT_PROFILE_IDS, normalizeMentionHandle, PRESET_AGENT_PLUGIN_ID } from "@vetta/agent-team";
 import type { PluginAgentPreset, PluginTeamPreset } from "./plugin-agent-presets.js";
 
 export interface PluginPresetBackfillInput {
@@ -168,7 +168,10 @@ function allocateHandle(preferred: string, taken: Set<string>): string {
 }
 
 export function pluginAgentProfileId(pluginId: string, agentId: string): string {
-	return deterministicId("agent-profile", `${pluginId}:${agentId}`);
+	// 「预设智能体」的三份档案随装机资源一起铺下，插件只接管人设：沿用装机 id，否则同一个
+	// Master 会在用户的智能体列表里出现两份。
+	const builtin = pluginId === PRESET_AGENT_PLUGIN_ID ? BUILTIN_AGENT_PROFILE_IDS[agentId] : undefined;
+	return builtin ?? deterministicId("agent-profile", `${pluginId}:${agentId}`);
 }
 
 export function pluginTeamId(pluginId: string, teamId: string): string {

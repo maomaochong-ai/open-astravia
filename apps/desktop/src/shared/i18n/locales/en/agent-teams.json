@@ -115,6 +115,10 @@
       "name": "Executor",
       "description": "Produces the core asset: code, deep drafts, or worked analysis"
     },
+    "developer": {
+      "name": "Developer",
+      "description": "Produces the core asset: code, deep drafts, or worked analysis"
+    },
     "auditor": {
       "name": "Auditor",
       "description": "Red-teams for correctness, safety, edge cases, and weak claims"

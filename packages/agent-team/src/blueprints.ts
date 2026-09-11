@@ -6,37 +6,11 @@ const WORKER_DISCIPLINE =
 
 export const BUILTIN_AGENT_BLUEPRINTS: readonly AgentBlueprint[] = Object.freeze([
 	{
-		id: "master",
-		nameKey: "blueprints.master.name",
-		descriptionKey: "blueprints.master.description",
-		systemPrompt:
-			"You are the Master of an agent team: the single entry point for the user and the owner of the final delivery. Clarify the goal, plan the workflow, and delegate each step to the specialist that fits it with team_delegate_task, dispatching independent tasks before calling team_wait_tasks. Keep the user informed about who you are engaging and why. Inspect every returned result and accept it only when it meets the goal; when it falls short, decide whether to send it back for rework, commission more evidence, or route it to another specialist, and keep iterating until the acceptance bar is met. Integrate only published results and remain accountable for the final answer. Completion notifications may wake you after a delegated task finishes; use team_get_task to verify the durable state and distinguish waiting from failure, and use team_continue_task or team_retry_task only when its state permits. Do not use subagent controls for Team work or claim work that a teammate has not completed.",
-		defaultAbilities: { selectionMode: "all", skills: [], mcpServers: [], plugins: [] },
-	},
-	{
-		id: "researcher",
-		nameKey: "blueprints.researcher.name",
-		descriptionKey: "blueprints.researcher.description",
-		systemPrompt:
-			"You are the research specialist in an agent team. Gather facts, documentation, prior art, and market or competitive signals relevant to the assignment. Verify what you report, distinguish established facts from inference, cite where each claim came from, and return a concise public result that other members can safely reuse." +
-			WORKER_DISCIPLINE,
-		defaultAbilities: { selectionMode: "all", skills: [], mcpServers: [], plugins: [] },
-	},
-	{
 		id: "architect",
 		nameKey: "blueprints.architect.name",
 		descriptionKey: "blueprints.architect.description",
 		systemPrompt:
 			"You are the design specialist in an agent team. Turn the goal into a concrete plan before anyone builds: technical architecture, interface and data contracts, or the outline of a document, PRD, or business model. State the trade-offs you weighed and the constraints the executor must respect, and keep the plan specific enough to act on without further guesswork." +
-			WORKER_DISCIPLINE,
-		defaultAbilities: { selectionMode: "all", skills: [], mcpServers: [], plugins: [] },
-	},
-	{
-		id: "executor",
-		nameKey: "blueprints.executor.name",
-		descriptionKey: "blueprints.executor.description",
-		systemPrompt:
-			"You are the production specialist in an agent team. Produce the core asset the assignment calls for — code, a substantive draft, or a worked analysis — following the agreed design and preserving existing contracts. Verify your own work before reporting, and return the observable result plus the risks that remain." +
 			WORKER_DISCIPLINE,
 		defaultAbilities: { selectionMode: "all", skills: [], mcpServers: [], plugins: [] },
 	},
@@ -83,8 +57,6 @@ export const BUILTIN_AGENT_BLUEPRINTS: readonly AgentBlueprint[] = Object.freeze
  * 解析时要认得它们，否则老配置会因为「Unknown agent blueprint」整份读不出来。
  */
 const LEGACY_BLUEPRINT_ALIASES: Readonly<Record<string, string>> = Object.freeze({
-	leader: "master",
-	builder: "executor",
 	reviewer: "auditor",
 });
 
@@ -95,6 +67,23 @@ const PLUGIN_BLUEPRINT_PREFIX = "plugin:";
 export function pluginBlueprintId(pluginId: string, agentId: string): string {
 	return `${PLUGIN_BLUEPRINT_PREFIX}${pluginId}:${agentId}`;
 }
+
+/** 「预设智能体」插件的 id：master / developer / researcher 三个通用人设由它提供。 */
+export const PRESET_AGENT_PLUGIN_ID = "preset-agent";
+
+/**
+ * 已经从内置蓝图迁到「预设智能体」插件的角色，按存量 id 索引到插件蓝图 id。
+ *
+ * 迁移刻意不改用户档案：老档案里写的仍是 `master` / `executor`（以及更早的 `leader` /
+ * `builder` 别名），解析时统一折算过去，插件在位就照常可用，插件禁用才降级。
+ */
+export const MIGRATED_PLUGIN_BLUEPRINT_IDS: Readonly<Record<string, string>> = Object.freeze({
+	master: pluginBlueprintId(PRESET_AGENT_PLUGIN_ID, "master"),
+	leader: pluginBlueprintId(PRESET_AGENT_PLUGIN_ID, "master"),
+	executor: pluginBlueprintId(PRESET_AGENT_PLUGIN_ID, "developer"),
+	builder: pluginBlueprintId(PRESET_AGENT_PLUGIN_ID, "developer"),
+	researcher: pluginBlueprintId(PRESET_AGENT_PLUGIN_ID, "researcher"),
+});
 
 /** 解析插件 blueprint id；不是插件 id 时返回 undefined。 */
 export function parsePluginBlueprintId(

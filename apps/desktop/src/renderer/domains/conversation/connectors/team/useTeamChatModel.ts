@@ -18,6 +18,7 @@ import { pathBasename } from "@shared/lib/utils";
 import { reasoningByModelAtom, selectedModelAtom } from "@shared/store/atoms";
 import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
 import type { AgentTeamDocument, TeamSessionListItem } from "@vetta/agent-team";
+import { PRESET_AGENT_PLUGIN_ID, pluginBlueprintId } from "@vetta/agent-team";
 import type { PromptAttachmentRef, SessionExecutionMode } from "@vetta/runtime-core";
 import type { ConversationScenario } from "@vetta-org/plugin-sdk";
 import { useAtomValue } from "jotai";
@@ -822,7 +823,11 @@ export function useTeamChatModel(
 		() => ({
 			leaderRoute: t("chat.leaderRoute"),
 			// 按 blueprintId 取角色名；下线的 leader / builder / reviewer 仍留在老档案里，映射到接替者。
+			// master / developer / researcher 已迁到「预设智能体」插件，插件 id 与迁移前的老 id 都要认。
 			memberRoles: {
+				[pluginBlueprintId(PRESET_AGENT_PLUGIN_ID, "master")]: t("blueprints.master.name"),
+				[pluginBlueprintId(PRESET_AGENT_PLUGIN_ID, "developer")]: t("blueprints.developer.name"),
+				[pluginBlueprintId(PRESET_AGENT_PLUGIN_ID, "researcher")]: t("blueprints.researcher.name"),
 				master: t("blueprints.master.name"),
 				researcher: t("blueprints.researcher.name"),
 				architect: t("blueprints.architect.name"),

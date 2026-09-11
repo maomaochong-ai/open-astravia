@@ -285,7 +285,8 @@ export const PluginAgentProfileManifestSchema = Type.Object(
 /**
  * 插件贡献的团队成员。
  *
- * `agent` 写本插件的智能体 id；引用宿主内置角色写 `builtin:<key>`（如 `builtin:master`）。
+ * `agent` 写本插件的智能体 id；引用宿主装机档案里的角色写 `builtin:<key>`（如 `builtin:master`、
+ * `builtin:developer`）——key 是装机档案的角色名，与那份人设由谁提供无关。
  * 刻意不支持引用别的插件——那会让一个插件的可用性取决于另一个插件是否安装。
  */
 export const PluginAgentTeamMemberManifestSchema = Type.Object(

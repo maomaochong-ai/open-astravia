@@ -1,4 +1,5 @@
 import type { AgentProfile, TeamDefinition } from "@vetta/agent-team";
+import { PRESET_AGENT_PLUGIN_ID, pluginBlueprintId } from "@vetta/agent-team";
 
 const AVATAR_DIRECTORY = "./agent-team-avatars";
 
@@ -10,6 +11,11 @@ export const AGENT_AVATAR_OPTIONS = Object.freeze(
 );
 
 const BLUEPRINT_AVATAR: Readonly<Record<string, string>> = Object.freeze({
+	// master / developer / researcher 的人设搬去了「预设智能体」插件，头像仍用宿主这套图：
+	// 插件不自带头像，缺了这三条映射就会回落到按 id 取的随机图。
+	[pluginBlueprintId(PRESET_AGENT_PLUGIN_ID, "master")]: `${AVATAR_DIRECTORY}/master.webp`,
+	[pluginBlueprintId(PRESET_AGENT_PLUGIN_ID, "developer")]: `${AVATAR_DIRECTORY}/executor.webp`,
+	[pluginBlueprintId(PRESET_AGENT_PLUGIN_ID, "researcher")]: `${AVATAR_DIRECTORY}/researcher.webp`,
 	master: `${AVATAR_DIRECTORY}/master.webp`,
 	researcher: `${AVATAR_DIRECTORY}/researcher.webp`,
 	architect: `${AVATAR_DIRECTORY}/architect.webp`,

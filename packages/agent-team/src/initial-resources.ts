@@ -1,3 +1,4 @@
+import { PRESET_AGENT_PLUGIN_ID, pluginBlueprintId } from "./blueprints.js";
 import type { AgentProfile, AgentTeamDocument, TeamDefinition, TeamMember } from "./contracts.js";
 import { AGENT_TEAM_SCHEMA_VERSION } from "./contracts.js";
 
@@ -17,8 +18,10 @@ export const BUILTIN_PRESET_GENERATION = 2;
 export const BASELINE_PRESET_GENERATION = 1;
 
 /**
- * 首次安装资源中的 Agent 池：一个 Master 加七种 Worker，与可用 Blueprint 一一对应。
- * 初始团队按「1 Master + N Workers」组装；安装后与用户创建的资源完全相同。
+ * 首次安装资源中的 Agent 池：一个 Master 加七种 Worker。
+ *
+ * master / developer / researcher 的人设已经搬进「预设智能体」插件，这里只保留档案本身
+ * ——档案 id 不变，团队成员的绑定也就不用跟着迁；插件被禁用时它们按插件智能体降级。
  */
 const INITIAL_PROFILE_DEFINITIONS = [
 	{
@@ -27,7 +30,7 @@ const INITIAL_PROFILE_DEFINITIONS = [
 		name: "Master",
 		description: "Owns the goal end to end: plans the workflow, delegates each step, accepts or reworks results.",
 		handle: "master",
-		blueprintId: "master",
+		blueprintId: pluginBlueprintId(PRESET_AGENT_PLUGIN_ID, "master"),
 		introducedIn: 1,
 	},
 	{
@@ -36,7 +39,7 @@ const INITIAL_PROFILE_DEFINITIONS = [
 		name: "Researcher",
 		description: "Collects facts, documentation, prior art, and market signals, and verifies them.",
 		handle: "researcher",
-		blueprintId: "researcher",
+		blueprintId: pluginBlueprintId(PRESET_AGENT_PLUGIN_ID, "researcher"),
 		introducedIn: 1,
 	},
 	{
@@ -50,11 +53,11 @@ const INITIAL_PROFILE_DEFINITIONS = [
 	},
 	{
 		id: "d9e51357-04b8-481d-af80-a08e1a362322",
-		key: "executor",
-		name: "Executor",
+		key: "developer",
+		name: "Developer",
 		description: "Produces the core asset: code, a substantive draft, or a worked analysis.",
-		handle: "executor",
-		blueprintId: "executor",
+		handle: "developer",
+		blueprintId: pluginBlueprintId(PRESET_AGENT_PLUGIN_ID, "developer"),
 		introducedIn: 1,
 	},
 	{
@@ -153,7 +156,7 @@ const INITIAL_TEAM_DEFINITIONS: readonly InitialTeamDefinition[] = [
 			},
 			{
 				id: "09221fe5-ce98-4555-a294-6d78e29b87b4",
-				agent: "executor",
+				agent: "developer",
 				responsibility: "Implements the design and verifies that it works.",
 			},
 			{
@@ -163,7 +166,7 @@ const INITIAL_TEAM_DEFINITIONS: readonly InitialTeamDefinition[] = [
 			},
 		],
 		workflow:
-			"Run this team as a build loop. First have the Architect turn the request into a concrete approach: the contracts to honour, the files or components in scope, and the trade-offs taken. Hand that design to the Executor to implement and self-verify. Send the result to the Auditor for review. Accept only when the Auditor reports no blocking finding; otherwise decide whether the fix belongs to the Executor or the design needs to go back to the Architect, and run the loop again. Report the design decision, what shipped, and any residual risk.",
+			"Run this team as a build loop. First have the Architect turn the request into a concrete approach: the contracts to honour, the files or components in scope, and the trade-offs taken. Hand that design to the Developer to implement and self-verify. Send the result to the Auditor for review. Accept only when the Auditor reports no blocking finding; otherwise decide whether the fix belongs to the Developer or the design needs to go back to the Architect, and run the loop again. Report the design decision, what shipped, and any residual risk.",
 		introducedIn: 1,
 	},
 	{
@@ -213,7 +216,7 @@ const INITIAL_TEAM_DEFINITIONS: readonly InitialTeamDefinition[] = [
 			},
 			{
 				id: "4408eb6d-5d20-46ba-b2df-8ca7e2b90cc1",
-				agent: "executor",
+				agent: "developer",
 				responsibility: "Writes the master draft that every channel variant derives from.",
 			},
 			{
@@ -223,7 +226,7 @@ const INITIAL_TEAM_DEFINITIONS: readonly InitialTeamDefinition[] = [
 			},
 		],
 		workflow:
-			"Run this team as a content pipeline. Decide the campaign angle first, then have the Researcher surface current trends, audience signals, and references. Brief the Executor to write one master draft that carries the message. Hand it to the Optimizer to produce a variant per target channel, naming each channel explicitly so tone and length match it. Deliver the master draft plus the variants as one publishing package, and say which channel leads.",
+			"Run this team as a content pipeline. Decide the campaign angle first, then have the Researcher surface current trends, audience signals, and references. Brief the Developer to write one master draft that carries the message. Hand it to the Optimizer to produce a variant per target channel, naming each channel explicitly so tone and length match it. Deliver the master draft plus the variants as one publishing package, and say which channel leads.",
 		introducedIn: 1,
 	},
 	{
