@@ -1001,7 +1001,7 @@
     "title": "Token activity",
     "daily": "Daily",
     "weekly": "Weekly",
-    "cumulative": "Cumulative",
+    "rolling": "Rolling",
     "empty": "No token usage yet",
     "tokens": "{{count}} tokens"
   },

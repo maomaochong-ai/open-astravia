@@ -1,4 +1,4 @@
-export type TokenActivityMode = "daily" | "weekly" | "cumulative";
+export type TokenActivityMode = "daily" | "weekly" | "rolling";
 
 export interface UsageSeriesPointLike {
 	date: string;
@@ -14,9 +14,13 @@ export interface ActivityColumn {
 	monthKey: string | null;
 	/** Left-side filler when history is shorter than the visible capacity */
 	isPad?: boolean;
+	/** 滚动窗口的起始日；仅 rolling 模式有值，供提示条展示区间 */
+	windowStart?: string;
 }
 
 export const TOKEN_ACTIVITY_MAX_ROWS = 10;
+/** 滚动窗口跨度（自然日）。 */
+export const ROLLING_WINDOW_DAYS = 30;
 /** Preferred square size used only to decide how many columns fit the width. */
 export const TOKEN_ACTIVITY_TARGET_CELL_PX = 8;
 export const TOKEN_ACTIVITY_GAP_PX = 2;
@@ -31,6 +35,12 @@ function formatYmd(d: Date): string {
 	const m = String(d.getMonth() + 1).padStart(2, "0");
 	const day = String(d.getDate()).padStart(2, "0");
 	return `${y}-${m}-${day}`;
+}
+
+function addDays(iso: string, delta: number): string {
+	const d = parseLocalDate(iso);
+	d.setDate(d.getDate() + delta);
+	return formatYmd(d);
 }
 
 /** Monday-start week key (YYYY-MM-DD of week start) */
@@ -53,12 +63,42 @@ function withMonthKeys(columns: ActivityColumn[]): ActivityColumn[] {
 	});
 }
 
+/**
+ * 滚动窗口按自然日计量，序列里缺失的日期必须当作 0 参与进出窗，
+ * 否则「过去 30 天」会在数据稀疏时退化成「最近 30 个有记录的日子」。
+ */
+function densifyDaily(points: UsageSeriesPointLike[]): { date: string; tokens: number }[] {
+	const totals = new Map<string, number>();
+	for (const p of points) totals.set(p.date, (totals.get(p.date) ?? 0) + p.tokens);
+	const dates = [...totals.keys()].sort((a, b) => a.localeCompare(b));
+	const last = dates[dates.length - 1]!;
+	const out: { date: string; tokens: number }[] = [];
+	for (let cur = dates[0]!; cur <= last; cur = addDays(cur, 1)) {
+		out.push({ date: cur, tokens: totals.get(cur) ?? 0 });
+	}
+	return out;
+}
+
 export function buildActivityColumns(points: UsageSeriesPointLike[], mode: TokenActivityMode): ActivityColumn[] {
 	if (points.length === 0) return [];
 
-	let base: { date: string; endDate: string; tokens: number }[];
+	let base: { date: string; endDate: string; tokens: number; windowStart?: string }[];
 
-	if (mode === "weekly") {
+	if (mode === "rolling") {
+		const daily = densifyDaily(points);
+		let sum = 0;
+		base = daily.map((p, i) => {
+			sum += p.tokens;
+			const expired = i - ROLLING_WINDOW_DAYS;
+			if (expired >= 0) sum -= daily[expired]!.tokens;
+			return {
+				date: p.date,
+				endDate: p.date,
+				tokens: sum,
+				windowStart: daily[Math.max(0, i - ROLLING_WINDOW_DAYS + 1)]!.date,
+			};
+		});
+	} else if (mode === "weekly") {
 		const map = new Map<string, { date: string; endDate: string; tokens: number }>();
 		for (const p of points) {
 			const start = weekStartKey(p.date);
@@ -73,13 +113,6 @@ export function buildActivityColumns(points: UsageSeriesPointLike[], mode: Token
 		base = [...map.values()].sort((a, b) => a.date.localeCompare(b.date));
 	} else {
 		base = points.map((p) => ({ date: p.date, endDate: p.date, tokens: p.tokens }));
-		if (mode === "cumulative") {
-			let sum = 0;
-			base = base.map((p) => {
-				sum += p.tokens;
-				return { ...p, tokens: sum };
-			});
-		}
 	}
 
 	return withMonthKeys(
@@ -89,6 +122,7 @@ export function buildActivityColumns(points: UsageSeriesPointLike[], mode: Token
 			endDate: p.endDate,
 			tokens: p.tokens,
 			monthKey: null,
+			...(p.windowStart ? { windowStart: p.windowStart } : {}),
 		})),
 	);
 }
@@ -152,7 +186,7 @@ export function formatTokenCount(n: number): string {
 }
 
 /**
- * 累计曲线只关心「有数据之后」的部分：服务端固定返回一整年，首次请求之前全是 0，
+ * 曲线只关心「有数据之后」的部分：服务端固定返回一整年，首次请求之前全是 0，
  * 补在左边只会画出一条无信息的平线。保留紧邻的最后一个空档作为 0 基线锚点，
  * 让曲线从底部起笔而不是凭空出现在半空。
  */
@@ -163,11 +197,11 @@ export function trimLeadingIdleColumns(columns: ActivityColumn[]): ActivityColum
 }
 
 /**
- * 累计模式是单调递增序列，用方块矩阵只会退化成「左半灰、右半全亮」的阶梯，
+ * 滚动窗口是逐日平滑变化的序列，用方块矩阵只会画成一片高度相近的柱子，
  * 因此改用面积曲线。曲线不需要一天一列，超出容量时按等距采样降采样；
  * 列数少于容量时直接铺满宽度，不像矩阵那样在左侧补空列。
  */
-export function fitCumulativeColumns(columns: ActivityColumn[], capacity: number): ActivityColumn[] {
+export function fitCurveColumns(columns: ActivityColumn[], capacity: number): ActivityColumn[] {
 	if (capacity <= 0) return [];
 	if (columns.length <= capacity) return columns;
 	if (capacity === 1) return withMonthKeys([columns[columns.length - 1]!]);
@@ -197,8 +231,8 @@ export interface AreaGeometry {
 const round = (v: number): string => (Math.round(v * 100) / 100).toFixed(2);
 
 /**
- * Fritsch–Carlson 单调三次插值的切线。累计序列本身单调不减，
- * 普通 Catmull-Rom 会在陡升段前后过冲、画出向下的假回落，这里必须用保单调的版本。
+ * Fritsch–Carlson 单调三次插值的切线。普通 Catmull-Rom 会在陡升/陡降段前后过冲，
+ * 画出数据里并不存在的假回落或假反弹，这里必须用保单调的版本。
  */
 function monotoneTangents(points: AreaGeometryPoint[]): number[] {
 	const n = points.length;

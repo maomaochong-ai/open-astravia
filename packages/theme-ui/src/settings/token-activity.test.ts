@@ -5,7 +5,8 @@ import {
 	buildAreaGeometry,
 	buildHoverZones,
 	buildSmoothPath,
-	fitCumulativeColumns,
+	fitCurveColumns,
+	ROLLING_WINDOW_DAYS,
 	trimLeadingIdleColumns,
 	type UsageSeriesPointLike,
 } from "./token-activity";
@@ -18,10 +19,46 @@ function series(days: number, tokensPerDay = 100): UsageSeriesPointLike[] {
 	});
 }
 
-describe("fitCumulativeColumns", () => {
+describe("buildActivityColumns(rolling)", () => {
+	it("窗口滚出后回落，不像累计那样只增不减", () => {
+		// 第 1 天 1000，之后全 0：30 天窗口内保持 1000，第 31 天该笔用量滚出
+		const points = series(40, 0).map((p, i) => ({ ...p, tokens: i === 0 ? 1000 : 0 }));
+		const columns = buildActivityColumns(points, "rolling");
+		expect(columns[0]?.tokens).toBe(1000);
+		expect(columns[ROLLING_WINDOW_DAYS - 1]?.tokens).toBe(1000);
+		expect(columns[ROLLING_WINDOW_DAYS]?.tokens).toBe(0);
+		expect(columns.at(-1)?.tokens).toBe(0);
+	});
+
+	it("按自然日补齐缺失日期，稀疏数据不会被压缩成「最近 30 条记录」", () => {
+		// 只有首尾两天有记录，间隔 60 天：窗口早已滚过首日
+		const points: UsageSeriesPointLike[] = [
+			{ date: "2025-01-01", tokens: 500 },
+			{ date: "2025-03-02", tokens: 700 },
+		];
+		const columns = buildActivityColumns(points, "rolling");
+		expect(columns).toHaveLength(61);
+		expect(columns.at(-1)?.tokens).toBe(700);
+	});
+
+	it("带上窗口起始日，供提示条展示区间", () => {
+		const columns = buildActivityColumns(series(45), "rolling");
+		expect(columns[0]?.windowStart).toBe(columns[0]?.date);
+		const last = columns.at(-1)!;
+		expect(last.windowStart).toBe(columns.at(-ROLLING_WINDOW_DAYS)?.date);
+		expect(last.tokens).toBe(100 * ROLLING_WINDOW_DAYS);
+	});
+
+	it("每日与每周模式不带窗口起始日", () => {
+		expect(buildActivityColumns(series(3), "daily")[0]?.windowStart).toBeUndefined();
+		expect(buildActivityColumns(series(9), "weekly")[0]?.windowStart).toBeUndefined();
+	});
+});
+
+describe("fitCurveColumns", () => {
 	it("采样保留最早与最新的历史，而不是丢弃左侧", () => {
-		const columns = buildActivityColumns(series(365), "cumulative");
-		const fitted = fitCumulativeColumns(columns, 100);
+		const columns = buildActivityColumns(series(365), "rolling");
+		const fitted = fitCurveColumns(columns, 100);
 		expect(fitted).toHaveLength(100);
 		expect(fitted[0]?.date).toBe(columns[0]?.date);
 		expect(fitted.at(-1)?.date).toBe(columns.at(-1)?.date);
@@ -29,24 +66,24 @@ describe("fitCumulativeColumns", () => {
 	});
 
 	it("列数不足容量时铺满宽度，不在左侧补空列", () => {
-		const columns = buildActivityColumns(series(3), "cumulative");
-		const fitted = fitCumulativeColumns(columns, 6);
+		const columns = buildActivityColumns(series(3), "rolling");
+		const fitted = fitCurveColumns(columns, 6);
 		expect(fitted).toHaveLength(3);
 		expect(fitted.some((c) => c.isPad)).toBe(false);
 		expect(fitted.at(-1)?.tokens).toBe(300);
 	});
 
 	it("容量为 1 时保留最新一列", () => {
-		const columns = buildActivityColumns(series(5), "cumulative");
-		expect(fitCumulativeColumns(columns, 1)).toHaveLength(1);
-		expect(fitCumulativeColumns(columns, 1)[0]?.tokens).toBe(500);
-		expect(fitCumulativeColumns(columns, 0)).toEqual([]);
+		const columns = buildActivityColumns(series(5), "rolling");
+		expect(fitCurveColumns(columns, 1)).toHaveLength(1);
+		expect(fitCurveColumns(columns, 1)[0]?.tokens).toBe(500);
+		expect(fitCurveColumns(columns, 0)).toEqual([]);
 	});
 });
 
 describe("buildAreaGeometry", () => {
 	it("把列映射到 100x100 viewBox 并闭合到底边", () => {
-		const columns = buildActivityColumns(series(3), "cumulative");
+		const columns = buildActivityColumns(series(3), "rolling");
 		const { points, linePath, areaPath } = buildAreaGeometry(columns, 300);
 		expect(points.map((p) => p.x)).toEqual([0, 50, 100]);
 		// 100 / 200 / 300 tokens → 自底向上
@@ -57,13 +94,13 @@ describe("buildAreaGeometry", () => {
 
 	it("点数不足 2 或无数据时不产生路径", () => {
 		expect(buildAreaGeometry([], 100)).toEqual({ points: [], linePath: "", areaPath: "" });
-		const one = buildAreaGeometry(buildActivityColumns(series(1), "cumulative"), 100);
+		const one = buildAreaGeometry(buildActivityColumns(series(1), "rolling"), 100);
 		expect(one.points).toHaveLength(1);
 		expect(one.linePath).toBe("");
 	});
 
 	it("maxTokens 非法时不产生 NaN 或越界坐标", () => {
-		const columns = buildActivityColumns(series(3), "cumulative");
+		const columns = buildActivityColumns(series(3), "rolling");
 		const { points } = buildAreaGeometry(columns, 0);
 		expect(points.every((p) => Number.isFinite(p.y) && p.y >= 0 && p.y <= 100)).toBe(true);
 	});
@@ -81,7 +118,7 @@ describe("activityMatrixHeightPx", () => {
 describe("trimLeadingIdleColumns", () => {
 	it("裁掉首次请求之前的空白天，只保留一个 0 基线锚点", () => {
 		const points = series(10, 0).map((p, i) => ({ ...p, tokens: i >= 6 ? 100 : 0 }));
-		const trimmed = trimLeadingIdleColumns(buildActivityColumns(points, "cumulative"));
+		const trimmed = trimLeadingIdleColumns(buildActivityColumns(points, "rolling"));
 		expect(trimmed).toHaveLength(5);
 		expect(trimmed[0]?.tokens).toBe(0);
 		expect(trimmed[1]?.tokens).toBe(100);
@@ -89,18 +126,18 @@ describe("trimLeadingIdleColumns", () => {
 	});
 
 	it("首列即有数据时不额外裁剪", () => {
-		const trimmed = trimLeadingIdleColumns(buildActivityColumns(series(3), "cumulative"));
+		const trimmed = trimLeadingIdleColumns(buildActivityColumns(series(3), "rolling"));
 		expect(trimmed).toHaveLength(3);
 		expect(trimmed[0]?.tokens).toBe(100);
 	});
 
 	it("全程无用量时返回空数组", () => {
-		expect(trimLeadingIdleColumns(buildActivityColumns(series(5, 0), "cumulative"))).toEqual([]);
+		expect(trimLeadingIdleColumns(buildActivityColumns(series(5, 0), "rolling"))).toEqual([]);
 	});
 
 	it("重新计算月份刻度，不保留被裁掉那段的起始月", () => {
 		const points = series(70, 0).map((p, i) => ({ ...p, tokens: i >= 40 ? 100 : 0 }));
-		const trimmed = trimLeadingIdleColumns(buildActivityColumns(points, "cumulative"));
+		const trimmed = trimLeadingIdleColumns(buildActivityColumns(points, "rolling"));
 		expect(trimmed[0]?.monthKey).toBe(trimmed[0]?.date.slice(0, 7));
 	});
 });
@@ -121,7 +158,7 @@ describe("buildSmoothPath", () => {
 	it("保单调：单调递增序列的曲线不会向下过冲", () => {
 		const columns = buildActivityColumns(
 			series(12, 0).map((p, i) => ({ ...p, tokens: i === 8 ? 5000 : 10 })),
-			"cumulative",
+			"rolling",
 		);
 		const { points, linePath } = buildAreaGeometry(columns, 5110);
 		// 采样贝塞尔上的控制点纵坐标，均不得低于（y 值不得大于）起点

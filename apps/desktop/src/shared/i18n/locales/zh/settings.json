@@ -1001,7 +1001,7 @@
     "title": "Token 活动",
     "daily": "每日",
     "weekly": "每周",
-    "cumulative": "累计",
+    "rolling": "滚动",
     "empty": "暂无 Token 使用记录",
     "tokens": "{{count}} tokens"
   },

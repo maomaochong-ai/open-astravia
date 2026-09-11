@@ -14,7 +14,7 @@ export function useTokenActivityChartModel(): TokenActivityChartModel {
 			title: t("tokenActivity.title"),
 			daily: t("tokenActivity.daily"),
 			weekly: t("tokenActivity.weekly"),
-			cumulative: t("tokenActivity.cumulative"),
+			rolling: t("tokenActivity.rolling"),
 			empty: t("tokenActivity.empty"),
 			tokens: (count: string) => t("tokenActivity.tokens", { count }),
 			month: (yearMonth: string) => {

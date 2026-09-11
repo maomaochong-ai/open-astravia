@@ -8,7 +8,7 @@ import {
 	buildHoverZones,
 	columnCapacity,
 	fitActivityColumns,
-	fitCumulativeColumns,
+	fitCurveColumns,
 	formatTokenCount,
 	trimLeadingIdleColumns,
 	TOKEN_ACTIVITY_GAP_PX,
@@ -30,14 +30,14 @@ export interface TokenActivityChartViewProps {
 		title: string;
 		daily: string;
 		weekly: string;
-		cumulative: string;
+		rolling: string;
 		empty: string;
 		tokens: (count: string) => string;
 		month: (yearMonth: string) => string;
 	};
 }
 
-const MODES: TokenActivityMode[] = ["daily", "weekly", "cumulative"];
+const MODES: TokenActivityMode[] = ["daily", "weekly", "rolling"];
 
 /** 相邻月份刻度的最小水平间距（px），小于此值只保留前一个刻度。 */
 const MONTH_TICK_MIN_GAP_PX = 34;
@@ -62,7 +62,7 @@ export function TokenActivityChartView({
 	embedded,
 	labels,
 }: TokenActivityChartViewProps): JSX.Element {
-	const [mode, setMode] = useState<TokenActivityMode>("cumulative");
+	const [mode, setMode] = useState<TokenActivityMode>("rolling");
 	const [hoverKey, setHoverKey] = useState<string | null>(null);
 	const trackRef = useRef<HTMLDivElement>(null);
 	const gradientId = useId();
@@ -80,11 +80,11 @@ export function TokenActivityChartView({
 
 	const rawColumns = useMemo(() => buildActivityColumns(points, mode), [points, mode]);
 	const capacity = useMemo(() => columnCapacity(width), [width]);
-	const isCurve = mode === "cumulative";
+	const isCurve = mode === "rolling";
 	const columns = useMemo(
 		() =>
 			isCurve
-				? fitCumulativeColumns(trimLeadingIdleColumns(rawColumns), capacity)
+				? fitCurveColumns(trimLeadingIdleColumns(rawColumns), capacity)
 				: fitActivityColumns(rawColumns, capacity),
 		[rawColumns, capacity, isCurve],
 	);
@@ -120,7 +120,7 @@ export function TokenActivityChartView({
 	const modeLabel = (m: TokenActivityMode): string => {
 		if (m === "daily") return labels.daily;
 		if (m === "weekly") return labels.weekly;
-		return labels.cumulative;
+		return labels.rolling;
 	};
 
 	return (
@@ -159,9 +159,11 @@ export function TokenActivityChartView({
 					{hoverCol && (
 						<div className="pointer-events-none absolute left-1/2 top-0 z-10 -translate-x-1/2 -translate-y-0.5 rounded-lg border border-border/60 bg-popover/95 px-2.5 py-1 text-[11px] text-popover-foreground">
 							<span className="text-muted-foreground">
-								{hoverCol.date === hoverCol.endDate
-									? hoverCol.date
-									: `${hoverCol.date} → ${hoverCol.endDate}`}
+								{hoverCol.windowStart
+									? `${hoverCol.windowStart} → ${hoverCol.date}`
+									: hoverCol.date === hoverCol.endDate
+										? hoverCol.date
+										: `${hoverCol.date} → ${hoverCol.endDate}`}
 							</span>
 							{" · "}
 							{labels.tokens(formatTokenCount(hoverCol.tokens))}
