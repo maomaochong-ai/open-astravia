@@ -905,7 +905,7 @@ function sortTeamTimelineItems(items: ChatConversationItem[]): void {
 		// the user input that started that same turn. Clamp only that early reply to
 		// the input timestamp, preserving the order of unrelated concurrent turns.
 		const sortTimestamp = (item: ChatConversationItem) => {
-			const userTimestamp = item.kind === "user" ? undefined : userTimestampByTurn.get(item.turnId);
+			const userTimestamp = item.kind === "agent" ? userTimestampByTurn.get(item.turnId) : undefined;
 			return userTimestamp === undefined ? itemTimestamp(item) : Math.max(itemTimestamp(item), userTimestamp);
 		};
 		const timestampDelta = sortTimestamp(left) - sortTimestamp(right);
