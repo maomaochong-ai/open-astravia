@@ -297,6 +297,16 @@ const INITIAL_TEAM_DEFINITIONS: readonly InitialTeamDefinition[] = [
 	},
 ];
 
+/**
+ * 内置 Agent 档案的 id，按角色 key 索引。
+ *
+ * 插件团队引用宿主角色（`builtin:master`）时要解析到这些 id：团队成员绑的是档案 id，
+ * 不是 blueprint id。
+ */
+export const BUILTIN_AGENT_PROFILE_IDS: Readonly<Record<string, string>> = Object.freeze(
+	Object.fromEntries(INITIAL_PROFILE_DEFINITIONS.map((profile) => [profile.key, profile.id])),
+);
+
 const AGENT_ID_BY_KEY: Readonly<Record<string, string>> = Object.freeze(
 	Object.fromEntries(INITIAL_PROFILE_DEFINITIONS.map((profile) => [profile.key, profile.id])),
 );

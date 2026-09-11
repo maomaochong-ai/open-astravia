@@ -1,6 +1,5 @@
 import { type Static, Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
-import { findAgentBlueprint } from "./blueprints.js";
 import type {
 	AgentTeamDocument,
 	CreateAgentProfileInput,
@@ -317,12 +316,12 @@ export function parseAgentTeamDocument(
 	const document: ParsedAgentTeamDocument = value;
 	const ids = new Set<string>();
 	const libraryHandles = new Set<string>();
+	// 这里刻意不校验 blueprintId 是否可解析：插件贡献的 blueprint 随插件装卸，禁用插件后
+	// 引用它的档案会暂时找不到 blueprint。那是可降级展示的正常状态，不是脏数据——为它
+	// 抛错会让整份配置读废，用户失去的是全部智能体而不是一个。
 	for (const agent of document.agents) {
 		if (ids.has(agent.id)) throw new Error(`Duplicate agent profile id: ${agent.id}`);
 		ids.add(agent.id);
-		if (!findAgentBlueprint(agent.blueprintId) && agent.systemPrompt === undefined) {
-			throw new Error(`Unknown agent blueprint: ${agent.blueprintId}`);
-		}
 		if (agent.scope.kind === "library") {
 			const handle = normalizeMentionHandle(agent.mentionHandle);
 			if (libraryHandles.has(handle)) throw new Error(`Duplicate library agent handle: ${agent.mentionHandle}`);

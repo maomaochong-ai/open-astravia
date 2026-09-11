@@ -378,12 +378,37 @@ export interface TeamSharedContextRecord {
 	};
 }
 
+/**
+ * Blueprint 的来源。内置的由宿主代码定义；插件的随插件装卸，宿主侧不可编辑。
+ *
+ * 区分来源是为了让 UI 讲清楚「这个智能体为什么不能用了」——插件禁用后它的 blueprint
+ * 会消失，引用它的档案要降级展示而不是被当成脏数据。
+ */
+export type AgentBlueprintSource =
+	| { readonly kind: "builtin" }
+	| { readonly kind: "plugin"; readonly pluginId: string };
+
 export interface AgentBlueprint {
 	readonly id: string;
+	/** i18n key；插件 blueprint 走 {@link AgentBlueprint.name} 的字面量，二者取其一。 */
 	readonly nameKey: string;
 	readonly descriptionKey: string;
+	/** 插件 blueprint 的字面名称（已按插件 locales 解析）。存在时优先于 `nameKey`。 */
+	readonly name?: string;
+	readonly description?: string;
 	readonly systemPrompt: string;
 	readonly defaultAbilities: AgentAbilitySelection;
+	/** 缺省视为内置。 */
+	readonly source?: AgentBlueprintSource;
+	/** 头像 URL；插件 blueprint 由宿主解析成插件资源地址。 */
+	readonly avatarUrl?: string;
+	/**
+	 * 强制随该智能体激活的插件能力，用户在能力面板里关不掉。
+	 *
+	 * 插件智能体的存在意义就是操作它自己的插件：全局把插件能力关掉更可能是「不想在普通
+	 * 对话里看到」，而不是「选了这个智能体也不许用」。运行时按并集解析，不写进用户档案。
+	 */
+	readonly pinnedPlugins?: readonly string[];
 }
 
 export const EMPTY_AGENT_ABILITIES: AgentAbilitySelection = Object.freeze({

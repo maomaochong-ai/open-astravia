@@ -97,6 +97,26 @@ const LEGACY_BLUEPRINT_ALIASES: Readonly<Record<string, string>> = Object.freeze
 	reviewer: "auditor",
 });
 
+/** 插件 blueprint 的全局 id 前缀。宿主内置的 id 一律不带前缀，两者不会撞。 */
+const PLUGIN_BLUEPRINT_PREFIX = "plugin:";
+
+/** 把插件内的智能体 id 拼成全局唯一的 blueprint id。 */
+export function pluginBlueprintId(pluginId: string, agentId: string): string {
+	return `${PLUGIN_BLUEPRINT_PREFIX}${pluginId}:${agentId}`;
+}
+
+/** 解析插件 blueprint id；不是插件 id 时返回 undefined。 */
+export function parsePluginBlueprintId(
+	id: string,
+): { readonly pluginId: string; readonly agentId: string } | undefined {
+	if (!id.startsWith(PLUGIN_BLUEPRINT_PREFIX)) return undefined;
+	const rest = id.slice(PLUGIN_BLUEPRINT_PREFIX.length);
+	const separator = rest.lastIndexOf(":");
+	if (separator <= 0 || separator === rest.length - 1) return undefined;
+	return { pluginId: rest.slice(0, separator), agentId: rest.slice(separator + 1) };
+}
+
+/** 只查内置 blueprint。插件贡献的那些由宿主的注册表解析（见 desktop 的 agent-blueprint-registry）。 */
 export function findAgentBlueprint(id: string): AgentBlueprint | undefined {
 	const resolved = LEGACY_BLUEPRINT_ALIASES[id] ?? id;
 	return BUILTIN_AGENT_BLUEPRINTS.find((blueprint) => blueprint.id === resolved);
