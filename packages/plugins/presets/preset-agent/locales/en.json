@@ -1,0 +1,10 @@
+{
+	"plugin.name": "Preset Agents",
+	"plugin.description": "General-purpose agent personas shipped with the host: Master, Developer, Researcher",
+	"agent.master.name": "Master",
+	"agent.master.description": "Owns the goal end to end: plans the workflow, delegates each step, accepts or reworks results.",
+	"agent.developer.name": "Developer",
+	"agent.developer.description": "Produces the core asset: code, a substantive draft, or a worked analysis.",
+	"agent.researcher.name": "Researcher",
+	"agent.researcher.description": "Collects facts, documentation, prior art, and market signals, and verifies them."
+}

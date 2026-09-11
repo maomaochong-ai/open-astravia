@@ -1,0 +1,10 @@
+{
+	"plugin.name": "预设智能体",
+	"plugin.description": "随宿主发布的通用智能体人设：主控、开发员、检索员",
+	"agent.master.name": "主控",
+	"agent.master.description": "端到端负责目标：规划流程、分派每一步、验收或打回结果。",
+	"agent.developer.name": "开发员",
+	"agent.developer.description": "产出核心交付物：代码、成稿或一份做实的分析。",
+	"agent.researcher.name": "检索员",
+	"agent.researcher.description": "收集事实、文档、既有方案与市场信号，并逐条核实。"
+}

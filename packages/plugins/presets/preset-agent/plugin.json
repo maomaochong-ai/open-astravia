@@ -1,0 +1,40 @@
+{
+	"id": "preset-agent",
+	"name": "%plugin.name%",
+	"version": "0.1.0",
+	"icon": "solar:users-group-two-rounded-linear",
+	"defaultLocale": "zh",
+	"pluginApiVersion": "^2.0.0",
+	"entry": "dist/mf-manifest.json",
+	"moduleFederation": {
+		"remoteName": "preset_agent",
+		"expose": "./plugin"
+	},
+	"agent": {
+		"agents": [
+			{
+				"id": "master",
+				"name": "%agent.master.name%",
+				"description": "%agent.master.description%",
+				"mentionHandle": "master",
+				"systemPromptPath": "agent/prompts/master.md"
+			},
+			{
+				"id": "developer",
+				"name": "%agent.developer.name%",
+				"description": "%agent.developer.description%",
+				"mentionHandle": "developer",
+				"systemPromptPath": "agent/prompts/developer.md"
+			},
+			{
+				"id": "researcher",
+				"name": "%agent.researcher.name%",
+				"description": "%agent.researcher.description%",
+				"mentionHandle": "researcher",
+				"systemPromptPath": "agent/prompts/researcher.md"
+			}
+		]
+	},
+	"description": "%plugin.description%",
+	"author": "Vetta"
+}

@@ -5,6 +5,7 @@
     "development": {
       "common": [
         "vetta-actions",
+        "preset-agent",
         "vetta-ui-design",
         "image-gen",
         "media-viewer",
@@ -22,6 +23,7 @@
     "production": {
       "common": [
         "vetta-actions",
+        "preset-agent",
         "vetta-ui-design",
         "image-gen",
         "media-viewer",
