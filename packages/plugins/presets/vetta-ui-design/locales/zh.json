@@ -323,5 +323,13 @@
 	"agent.designer.description": "在 Vetta 设计画布上产出界面：App 页面、落地页、幻灯片与海报",
 	"agent.designTeam.name": "设计团队",
 	"agent.designTeam.description": "把一个产品构想变成画布上可评审的成套界面",
-	"newSession.designResources": "设计资源"
+	"newSession.showcase.title": "Vetta 设计",
+	"newSession.showcase.subtitle": "描述你想要的东西，直接在画布上产出",
+	"newSession.showcase.mobile": "App 界面",
+	"newSession.showcase.dashboard": "后台/仪表盘",
+	"newSession.showcase.landing": "落地页",
+	"newSession.showcase.slide": "幻灯片",
+	"newSession.showcase.poster": "海报",
+	"newSession.showcase.footnote": "每一屏都是真实 React 代码，可以点着走完整个流程；选中任意元素就能让它改。",
+	"newSession.showcase.square": "社交方图"
 }

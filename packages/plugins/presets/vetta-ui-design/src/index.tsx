@@ -86,8 +86,8 @@ function pendingScreenshotCard(toolCall: PluginPendingToolCall): CardDescriptor 
 	return screenshotCardDescriptor(session.vetdPath, session.dirPath, frameId);
 }
 
-const DesignResourcesBlock = lazy(() =>
-	import("./new-session/DesignResourcesBlock").then((module) => ({ default: module.DesignResourcesBlock })),
+const DesignShowcase = lazy(() =>
+	import("./new-session/DesignShowcase").then((module) => ({ default: module.DesignShowcase })),
 );
 
 export default definePlugin({
@@ -153,12 +153,13 @@ export default definePlugin({
 		});
 		// 导出渲染图的 dialog 走全局插槽：设计画布在活动面板里太窄，
 		// 判断圆角/边框需要整窗口的预览面积。
-		// 新会话页的设计资源区：选中设计师/设计团队，或提到本插件的 skill 时由宿主唤起。
+		// 新会话页的能力橱窗：选中设计师/设计团队，或提到本插件的 skill 时由宿主唤起。
+		// 纯展示，不带交互——它出现在用户正要打字的那一刻，不该跟输入框抢注意力。
 		ctx.ui.registerNewSessionContext({
-			id: "design-resources",
-			label: "%newSession.designResources%",
+			id: "design-showcase",
+			label: "%newSession.showcase.title%",
 			activateWhen: { agents: ["designer"], skills: ["vetta-ui-design"] },
-			render: (context) => <DesignResourcesBlock context={context} />,
+			render: () => <DesignShowcase />,
 		});
 		ctx.ui.registerGlobalSlot({ id: "export-mockup-dialog", component: ExportMockupDialog });
 		ctx.ui.registerCardRenderer({
