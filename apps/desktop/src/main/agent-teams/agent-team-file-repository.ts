@@ -13,6 +13,7 @@ import type {
 import { DEFAULT_AGENT_TEAM_EXTENSIONS, findAgentBlueprint, parseAgentTeamDocument } from "@vetta/agent-team";
 import { atomicWriteFileAsync, atomicWriteJSONAsync } from "@vetta/toolkit/atomic-write";
 import { getAppLogger } from "../logger.js";
+import { backfillAgentTeamPresets } from "./agent-team-preset-backfill.js";
 import {
 	AGENT_TEAM_STORAGE_LAYOUT_VERSION,
 	type AgentTeamStorageIndex,
@@ -103,7 +104,9 @@ class DirectoryAgentTeamRepository implements AgentTeamFileRepository {
 			}
 		}
 
-		const { index } = await migrateAgentTeamStorage(this.root);
+		const { index: migrated } = await migrateAgentTeamStorage(this.root);
+		// 首铺只发生一次，之后新增的内置预设靠这一步补进存量目录。
+		const index = await backfillAgentTeamPresets(this.root, INITIAL_TEAM_RESOURCE_ROOT, migrated);
 		this.storageIndex = index;
 		const agents = await this.readAgents(index);
 		const teams: TeamDefinition[] = [];
@@ -163,6 +166,8 @@ class DirectoryAgentTeamRepository implements AgentTeamFileRepository {
 			schemaVersion: document.schemaVersion,
 			revision: document.revision,
 			layoutVersion: AGENT_TEAM_STORAGE_LAYOUT_VERSION,
+			// 批次号必须原样带过去：写丢了下次启动就会把用户删掉的预设当成「还没发过」补回来。
+			...(currentIndex.presetGeneration !== undefined ? { presetGeneration: currentIndex.presetGeneration } : {}),
 			teams: teamDirectories,
 			agents: agentDirectories,
 		};

@@ -1,7 +1,12 @@
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { BUILTIN_AGENT_BLUEPRINTS, createAgentTeamFixture, INITIAL_AGENT_TEAMS } from "@vetta/agent-team";
+import {
+	BUILTIN_AGENT_BLUEPRINTS,
+	BUILTIN_PRESET_GENERATION,
+	createAgentTeamFixture,
+	INITIAL_AGENT_TEAMS,
+} from "@vetta/agent-team";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createAgentTeamFileRepository, resolveAgentTeamResourceRoot } from "./agent-team-file-repository.js";
 import {
@@ -146,6 +151,8 @@ describe("Agent Team file repository", () => {
 	it("keeps library agents when the last team is deleted", async () => {
 		const { repository } = await createRepository();
 		const document = createAgentTeamFixture();
+		// 先走一次首铺，让目录看起来像真实装机：没有批次号的目录会被当成存量安装补预设。
+		await repository.read();
 
 		await repository.write({ ...document, teams: [] });
 
@@ -184,6 +191,8 @@ describe("Agent Team file repository", () => {
 	it("splits a member assignment between team.json and its own markdown file", async () => {
 		const { repository, root } = await createRepository();
 		const document = createAgentTeamFixture();
+		// 先走一次首铺，让目录看起来像真实装机：没有批次号的目录会被当成存量安装补预设。
+		await repository.read();
 		const team = document.teams[0];
 		if (!team) throw new Error("Expected an initial team");
 		const member = team.members[0];
@@ -217,6 +226,8 @@ describe("Agent Team file repository", () => {
 	it("removes the assignment file once the team clears it", async () => {
 		const { repository, root } = await createRepository();
 		const document = createAgentTeamFixture();
+		// 先走一次首铺，让目录看起来像真实装机：没有批次号的目录会被当成存量安装补预设。
+		await repository.read();
 		const team = document.teams[0];
 		if (!team) throw new Error("Expected an initial team");
 		const member = team.members[0];
@@ -265,6 +276,17 @@ describe("Agent Team file repository", () => {
 		await repository.write(createAgentTeamFixture());
 
 		expect(await readFile(join(root, "assets", "README.md"), "utf8")).toBe("owned by an extension");
+	});
+
+	it("keeps the recorded preset batch across writes", async () => {
+		const { repository, root } = await createRepository();
+		const loaded = await repository.read();
+		expect((await readAgentTeamStorageIndex(root)).presetGeneration).toBe(BUILTIN_PRESET_GENERATION);
+
+		// 写回时丢掉批次号，下次启动就会把用户删掉的预设当成「还没发过」重新补上。
+		await repository.write({ ...loaded, revision: loaded.revision + 1 });
+
+		expect((await readAgentTeamStorageIndex(root)).presetGeneration).toBe(BUILTIN_PRESET_GENERATION);
 	});
 
 	it("ignores legacy team workspace directories while initializing definitions", async () => {

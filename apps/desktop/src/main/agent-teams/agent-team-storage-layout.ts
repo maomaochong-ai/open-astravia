@@ -94,6 +94,12 @@ export interface AgentTeamStorageIndex {
 	readonly schemaVersion: 1;
 	readonly revision: number;
 	readonly layoutVersion: typeof AGENT_TEAM_STORAGE_LAYOUT_VERSION;
+	/**
+	 * 已经收到的内置预设批次。缺失表示这份目录建于回填机制上线之前，按基线批次处理。
+	 *
+	 * 它同时是「用户删掉的预设不再复活」的依据：批次一旦记下，那批里的东西删了就不会再补。
+	 */
+	readonly presetGeneration?: number;
 	readonly teams: Readonly<Record<string, string>>;
 	readonly agents: Readonly<Record<string, string>>;
 }
@@ -205,6 +211,7 @@ export async function readAgentTeamStorageIndex(root: string): Promise<AgentTeam
 		schemaVersion: 1,
 		revision: value.revision,
 		layoutVersion: AGENT_TEAM_STORAGE_LAYOUT_VERSION,
+		...(isNonNegativeInteger(value.presetGeneration) ? { presetGeneration: value.presetGeneration } : {}),
 		teams,
 		agents,
 	};
