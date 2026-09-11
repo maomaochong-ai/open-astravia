@@ -13,10 +13,11 @@
 
 .ns-aurora {
 	/* 深色：页面底色本身就暗，光只要略提亮就够——原配方的 brightness(5) 会烧成一片白，
-	   2.6 仍然扎眼，收到 1.5 并把整层压到四成，让它退回「底纹」而不是发光体。 */
+	   2.6 仍然扎眼，收到 1.5 并把整层压到四分之一，让它退回「底纹」而不是发光体。
+	   四成时这团光还压在新会话页的内容上，看着发脏，0.25 才是一层能忽略的底衬。 */
 	--ns-aurora-gain: 1.5;
 	--ns-aurora-saturate: 1;
-	--ns-aurora-opacity: 0.4;
+	--ns-aurora-opacity: 0.25;
 	position: absolute;
 	inset: 0;
 	overflow: hidden;
@@ -41,11 +42,11 @@
 /* 浅色（深浅由 :root 的 data-mode 决定，data-theme 是配色方案不是明暗）：
    点阵是近白的页面底色，提亮后的光同样近白，两者一叠就什么都看不见，所以这一套
    反过来走——几乎不提亮、靠饱和把色顶出来。但饱和推到 1.8 又会压成一块脏重的色斑，
-   收到 1.3、整层压到六成：白底上看得见颜色，又不至于盖过页面内容。 */
+   收到 1.3、整层压到三成半：白底上还辨得出颜色，又不至于把页面衬脏。 */
 :root[data-mode="light"] .ns-aurora {
 	--ns-aurora-gain: 1.25;
 	--ns-aurora-saturate: 1.3;
-	--ns-aurora-opacity: 0.6;
+	--ns-aurora-opacity: 0.35;
 }
 
 /* 点阵层：点画的是页面底色，因此深浅两套外观下都自动成立。 */
