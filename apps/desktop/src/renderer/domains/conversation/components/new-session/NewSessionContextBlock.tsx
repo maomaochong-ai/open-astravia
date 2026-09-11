@@ -1,3 +1,4 @@
+import { PluginI18nBoundary, usePluginTextResolver } from "@domains/plugins/runtime/plugin-i18n";
 import { cn } from "@shared/lib/utils";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -25,6 +26,7 @@ export function NewSessionContextBlock({
 	className,
 }: NewSessionContextBlockProps): JSX.Element | null {
 	const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
+	const resolvePluginText = usePluginTextResolver();
 
 	const activeIds = useMemo(() => contexts.map((entry) => entry.contribution.contextId), [contexts]);
 
@@ -62,13 +64,20 @@ export function NewSessionContextBlock({
 								)}
 							>
 								{entry.contribution.icon}
-								<span className="truncate">{entry.contribution.label}</span>
+								<span className="truncate">
+									{/* 标签由插件提供，多半是 `%key%`：交给插件语料现场解析，切语言才跟得上。 */}
+									{resolvePluginText(entry.contribution.pluginId, entry.contribution.label)}
+								</span>
 							</button>
 						);
 					})}
 				</div>
 			)}
-			<div className="p-3">{renderContext(selected)}</div>
+			{/* 插件组件由宿主渲染，必须套上这层边界：`useTranslation()` 要靠它找到插件自己的
+			    语料，插件 CSS 的 @scope 也认这个 data 属性，否则文案退化成 key、样式全丢。 */}
+			<div className="p-3">
+				<PluginI18nBoundary pluginId={selected.contribution.pluginId}>{renderContext(selected)}</PluginI18nBoundary>
+			</div>
 		</section>
 	);
 }
