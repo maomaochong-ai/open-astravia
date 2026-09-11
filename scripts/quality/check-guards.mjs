@@ -10,6 +10,7 @@ const steps = [
 	["packages/coding-agent/scripts/generate-personas.mjs", "--check"],
 	["packages/coding-agent/scripts/generate-themes.mjs", "--check"],
 	["apps/desktop/scripts/build-agent-modes.mjs", "--check"],
+	["apps/desktop/scripts/generate-agent-team-resources.ts", "--check"],
 	["scripts/quality/check-private-keys.mjs"],
 	["scripts/quality/check-conflict-markers.mjs"],
 	["scripts/quality/check-package-boundaries.mjs"],

@@ -34,6 +34,7 @@
 		"build:presets:dev": "cross-env VETTA_BUILD_ENV=development VETTA_SYSTEM_PLUGIN_PROFILE=development VETTA_SKIP_PLUGIN_TOOLING_BUILD=1 bun scripts/build-presets.mjs",
 		"build:themes": "node scripts/build-themes.mjs",
 		"generate:agent-modes": "node scripts/build-agent-modes.mjs",
+		"generate:agent-team-resources": "bun scripts/generate-agent-team-resources.ts",
 		"stage:themes:dev": "bun scripts/build-themes.mjs --development",
 		"dev:themes": "bun run --cwd ../../packages/themes/builtin/xianxia dev",
 		"build:ocr-runner:dev": "bun run prepare:ocr-models && bun run build:ocr-runner",

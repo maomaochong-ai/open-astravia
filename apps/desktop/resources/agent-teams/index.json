@@ -2,21 +2,22 @@
 	"schemaVersion": 1,
 	"revision": 1,
 	"layoutVersion": 2,
+	"presetGeneration": 2,
 	"teams": {
 		"2f631500-0d58-4458-a595-9e403affa08e": "dev-team--5013fe9a32",
 		"d1e099ee-8b1d-4fc4-9ae2-5563318ae6be": "design-team--d8bd6dc6f6",
-		"742016f1-0f8b-4d9f-a86b-6863ed6cb58a": "growth-content--ae7bf10a47",
 		"9c975a15-1a00-4b1d-b646-0c1d76c43e3c": "deep-research--6a92ad2a24",
+		"742016f1-0f8b-4d9f-a86b-6863ed6cb58a": "growth-content--ae7bf10a47",
 		"6efa6897-3e38-499c-92b4-ceeb5725b069": "biz-strategy--82104f5562"
 	},
 	"agents": {
+		"be72a2d2-5463-4d20-9ac2-3fd78e9fbb2e": "master--90f4176719",
+		"2fef0dcb-7798-4060-8694-f34b74696d0a": "researcher--cc12edc395",
 		"934d1f05-1093-4d56-94a1-00642d7eaab6": "architect--2179baa231",
-		"2680428f-7e1e-46e4-9d54-7a841ac3cbd5": "auditor--86c8f369e1",
 		"f29a77b9-e382-4b69-bb23-752f7c0a18fc": "designer--be3b59b86b",
 		"d9e51357-04b8-481d-af80-a08e1a362322": "executor--00ec9f9bed",
-		"be72a2d2-5463-4d20-9ac2-3fd78e9fbb2e": "master--90f4176719",
+		"2680428f-7e1e-46e4-9d54-7a841ac3cbd5": "auditor--86c8f369e1",
 		"c0a9ab1e-059f-40dd-91d7-92a6f1e8d52c": "optimizer--4b59671874",
-		"2fef0dcb-7798-4060-8694-f34b74696d0a": "researcher--cc12edc395",
 		"6d8baef0-b15d-43a1-8f25-826eae651779": "synthesizer--680dd309ab",
 		"f162c69d-fc73-443d-af31-b53a1563f43c": "translator--dfbb3caa89"
 	}
