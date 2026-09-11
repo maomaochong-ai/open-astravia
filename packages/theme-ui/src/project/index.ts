@@ -6,6 +6,12 @@ export type {
 } from "./BatchQueueStatusView";
 export { BatchQueueStatusView } from "./BatchQueueStatusView";
 export type {
+	ConversationTagEditorDialogViewLabels,
+	ConversationTagEditorDialogViewProps,
+	ConversationTagEditorTagView,
+} from "./ConversationTagEditorDialogView";
+export { ConversationTagEditorDialogView } from "./ConversationTagEditorDialogView";
+export type {
 	DefaultConversationSectionViewLabels,
 	DefaultConversationSectionViewProps,
 } from "./DefaultConversationSectionView";

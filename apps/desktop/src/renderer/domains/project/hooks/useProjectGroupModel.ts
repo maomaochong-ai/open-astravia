@@ -180,7 +180,7 @@ export function useProjectGroupModel({
 		(event: React.MouseEvent, session: SidebarConversationInfo) => {
 			event.preventDefault();
 			if (session.kind === "agent-team") return;
-			setContextMenu({ x: event.clientX, y: event.clientY, session, allowMutations: true });
+			setContextMenu({ x: event.clientX, y: event.clientY, session, allowMutations: true, canTag: false });
 		},
 		[setContextMenu],
 	);

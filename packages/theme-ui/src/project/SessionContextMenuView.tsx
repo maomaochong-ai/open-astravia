@@ -12,6 +12,8 @@ export interface SessionContextMenuViewProps {
 	canDelete: boolean;
 	canRename: boolean;
 	labels: SessionContextMenuViewLabels;
+	/** 挂在「重命名」之后的附加节点，例如标签二级菜单。 */
+	extraItems?: readonly ContextMenuNode[];
 	onClose: () => void;
 	onDelete: () => void;
 	onOpenInFolder: () => void;
@@ -25,6 +27,7 @@ export function SessionContextMenuView({
 	canDelete,
 	canRename,
 	labels,
+	extraItems,
 	onClose,
 	onDelete,
 	onOpenInFolder,
@@ -45,6 +48,7 @@ export function SessionContextMenuView({
 			onSelect: onRename,
 		});
 	}
+	if (extraItems && extraItems.length > 0) items.push(...extraItems);
 	items.push({
 		kind: "item",
 		id: "open-in-folder",

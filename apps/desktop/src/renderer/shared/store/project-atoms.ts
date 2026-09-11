@@ -246,6 +246,8 @@ export const sessionContextMenuAtom = atom<{
 	session: SessionInfo;
 	/** Claw 等只读来源仍允许置顶和打开目录，但不暴露重命名/删除。 */
 	allowMutations: boolean;
+	/** 仅侧边栏下方的普通会话可打标签；项目内会话没有承载标签筛选的入口。 */
+	canTag: boolean;
 } | null>(null);
 export const renamingSessionPathAtom = atom<string | null>(null);
 export const projectContextMenuAtom = atom<{ x: number; y: number; project: Project } | null>(null);

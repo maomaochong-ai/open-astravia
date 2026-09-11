@@ -5,12 +5,14 @@ import { DefaultConversationSection } from "./DefaultConversationSection";
 import { ProjectGroupsSection } from "./ProjectGroupsSection";
 import { ProjectsPanelEmptyState } from "./ProjectsPanelEmptyState";
 import { ProjectsPanelMenus } from "./ProjectsPanelMenus";
+import { useConversationTagsSync } from "../../../../hooks/useConversationTagsSync";
 import { useProjectsPanelModel } from "./useProjectsPanelModel";
 import type { ProjectsPanelProps } from "./types";
 
 export function ProjectsPanel(props: ProjectsPanelProps): JSX.Element {
 	const { t } = useTranslation("project");
 	const model = useProjectsPanelModel(props);
+	useConversationTagsSync();
 	const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
 
 	// User-added projects (and batch group under current filter). Default "对话" is separate.

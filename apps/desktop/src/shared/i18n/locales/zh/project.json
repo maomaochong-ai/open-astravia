@@ -105,7 +105,27 @@
 		"pin": "置顶会话",
 		"unpin": "取消置顶",
 		"openArtifactDir": "打开产物目录",
-		"delete": "删除"
+		"delete": "删除",
+		"tags": {
+			"label": "标签",
+			"new": "新标签…",
+			"manage": "管理标签…"
+		}
+	},
+	"tagEditor": {
+		"createTitle": "新建标签",
+		"manageTitle": "管理标签",
+		"namePlaceholder": "标签名称",
+		"colorLabel": "标签颜色",
+		"customColor": "自定义颜色",
+		"emptyNameError": "请填写标签名称",
+		"cancel": "取消",
+		"create": "创建",
+		"done": "完成",
+		"newTag": "新建标签",
+		"remove": "删除标签",
+		"empty": "还没有任何标签",
+		"removeHint": "删除后将从 {{count}} 个会话中移除"
 	},
 	"importDialog": {
 		"failedTitle": "导入失败",

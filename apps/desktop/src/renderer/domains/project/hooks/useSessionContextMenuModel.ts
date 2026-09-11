@@ -1,15 +1,24 @@
 import type { SessionInfo } from "@shared/store/atoms";
-import { pinnedSessionPathsAtom, renamingSessionPathAtom, setSessionPinnedAtom } from "@shared/store/atoms";
+import {
+	conversationTagEditorAtom,
+	conversationTagsAtom,
+	pinnedSessionPathsAtom,
+	renamingSessionPathAtom,
+	setSessionPinnedAtom,
+} from "@shared/store/atoms";
 import type { SessionContextMenuViewProps } from "@vetta/theme-ui/project";
+import type { ContextMenuNode } from "@vetta/theme-ui/shared";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { conversationTagIds } from "../../../../shared/conversation-tags";
 
 const isMac = navigator.platform.toUpperCase().includes("MAC");
 
 export function useSessionContextMenuModel(
 	session: SessionInfo,
 	allowMutations: boolean,
+	canTag: boolean,
 	onClose: () => void,
 	onDelete: (session: SessionInfo) => void,
 ): Omit<SessionContextMenuViewProps, "x" | "y"> {
@@ -17,6 +26,8 @@ export function useSessionContextMenuModel(
 	const setRenamingSessionPath = useSetAtom(renamingSessionPathAtom);
 	const pinnedSessionPaths = useAtomValue(pinnedSessionPathsAtom);
 	const setSessionPinned = useSetAtom(setSessionPinnedAtom);
+	const tags = useAtomValue(conversationTagsAtom);
+	const openTagEditor = useSetAtom(conversationTagEditorAtom);
 	const pinned = pinnedSessionPaths.has(session.path);
 
 	const handleRename = useCallback(() => {
@@ -37,9 +48,69 @@ export function useSessionContextMenuModel(
 		onClose();
 	}, [onClose, pinned, session.path, setSessionPinned]);
 
+	const extraItems = useMemo<readonly ContextMenuNode[] | undefined>(() => {
+		if (!canTag) return undefined;
+		const assigned = new Set(conversationTagIds(tags, session.path));
+		const items: ContextMenuNode[] = [
+			{
+				kind: "item",
+				id: "tag-new",
+				label: t("contextMenu.tags.new"),
+				iconClassName: "icon-[solar--add-circle-linear]",
+				onSelect: () => {
+					openTagEditor({ mode: "create", sessionPath: session.path });
+					onClose();
+				},
+			},
+		];
+		// 一个标签都没有时不画分割线与「管理标签…」——没东西可管。
+		if (tags.tags.length > 0) {
+			items.push({ kind: "separator", id: "tag-sep" });
+			for (const tag of tags.tags) {
+				const checked = assigned.has(tag.id);
+				items.push({
+					kind: "item",
+					id: `tag-${tag.id}`,
+					label: tag.name,
+					dotColor: tag.color,
+					checked,
+					onSelect: () => {
+						void window.vetta.conversationTags.assign({
+							sessionPath: session.path,
+							tagId: tag.id,
+							assigned: !checked,
+						});
+						onClose();
+					},
+				});
+			}
+			items.push({ kind: "separator", id: "tag-manage-sep" });
+			items.push({
+				kind: "item",
+				id: "tag-manage",
+				label: t("contextMenu.tags.manage"),
+				iconClassName: "icon-[solar--settings-linear]",
+				onSelect: () => {
+					openTagEditor({ mode: "manage" });
+					onClose();
+				},
+			});
+		}
+		return [
+			{
+				kind: "submenu",
+				id: "tags",
+				label: t("contextMenu.tags.label"),
+				iconClassName: "icon-[solar--tag-linear]",
+				items,
+			},
+		];
+	}, [canTag, onClose, openTagEditor, session.path, t, tags]);
+
 	return {
 		canDelete: allowMutations && session.access?.delete !== false,
 		canRename: allowMutations && session.access?.rename !== false,
+		extraItems,
 		labels: {
 			pin: pinned ? t("contextMenu.unpin") : t("contextMenu.pin"),
 			rename: t("contextMenu.rename"),

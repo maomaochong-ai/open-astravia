@@ -61,6 +61,40 @@ describe("SessionContextMenuView", () => {
 		expect(onOpenInFolder).toHaveBeenCalledOnce();
 	});
 
+	it("renders the tag submenu contents when extra items are supplied", () => {
+		const onAssign = vi.fn();
+		render(
+			<SessionContextMenuView
+				canDelete
+				canRename
+				extraItems={[
+					{
+						kind: "submenu",
+						id: "tags",
+						label: "Tags",
+						items: [
+							{ kind: "item", id: "tag-new", label: "New tag", onSelect: vi.fn() },
+							{ kind: "separator", id: "sep" },
+							{ kind: "item", id: "tag-1", label: "Urgent", dotColor: "#ff5f57", checked: true, onSelect: onAssign },
+						],
+					},
+				]}
+				labels={{ pin: "Pin", rename: "Rename", openInFolder: "Open folder", delete: "Delete" }}
+				onClose={vi.fn()}
+				onDelete={vi.fn()}
+				onOpenInFolder={vi.fn()}
+				onRename={vi.fn()}
+				onTogglePin={vi.fn()}
+				x={10}
+				y={10}
+			/>,
+		);
+
+		expect(screen.getByRole("menuitem", { name: "Tags" })).toBeTruthy();
+		fireEvent.click(screen.getByRole("menuitem", { name: "Urgent" }));
+		expect(onAssign).toHaveBeenCalledOnce();
+	});
+
 	it("renders mutating actions when the session allows them", () => {
 		const onRename = vi.fn();
 		const onDelete = vi.fn();

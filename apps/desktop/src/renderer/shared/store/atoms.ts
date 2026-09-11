@@ -7,6 +7,7 @@ export * from "./background-tasks-atoms";
 export * from "./batch-tasks-atoms";
 export * from "./browser-atoms";
 export * from "./chat-atoms";
+export * from "./conversation-tags-atoms";
 export * from "./debug-atoms";
 export * from "./deploy-mode-atoms";
 export * from "./file-atoms";

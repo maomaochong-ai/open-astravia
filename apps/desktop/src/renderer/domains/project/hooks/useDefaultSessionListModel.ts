@@ -160,7 +160,7 @@ export function useDefaultSessionListModel({
 	const openContextMenu = useCallback(
 		(event: React.MouseEvent, session: SidebarConversationInfo) => {
 			if (session.kind === "agent-team") return;
-			setContextMenu({ x: event.clientX, y: event.clientY, session, allowMutations: !isClaw });
+			setContextMenu({ x: event.clientX, y: event.clientY, session, allowMutations: !isClaw, canTag: !isClaw });
 		},
 		[isClaw, setContextMenu],
 	);

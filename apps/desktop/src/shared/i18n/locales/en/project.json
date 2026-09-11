@@ -105,7 +105,27 @@
 		"pin": "Pin conversation",
 		"unpin": "Unpin",
 		"openArtifactDir": "Open artifact folder",
-		"delete": "Delete"
+		"delete": "Delete",
+		"tags": {
+			"label": "Tags",
+			"new": "New tag…",
+			"manage": "Manage tags…"
+		}
+	},
+	"tagEditor": {
+		"createTitle": "New tag",
+		"manageTitle": "Manage tags",
+		"namePlaceholder": "Tag name",
+		"colorLabel": "Tag color",
+		"customColor": "Custom color",
+		"emptyNameError": "Enter a tag name",
+		"cancel": "Cancel",
+		"create": "Create",
+		"done": "Done",
+		"newTag": "New tag",
+		"remove": "Delete tag",
+		"empty": "No tags yet",
+		"removeHint": "Removes it from {{count}} conversation(s)"
 	},
 	"importDialog": {
 		"failedTitle": "Import failed",

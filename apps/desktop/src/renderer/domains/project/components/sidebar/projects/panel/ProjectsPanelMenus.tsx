@@ -1,4 +1,5 @@
 import { ProjectsPanelMenusView } from "@vetta/theme-ui/project";
+import { ConversationTagEditorDialog } from "../../../ConversationTagEditorDialog";
 import { useProjectsPanelMenusModel } from "../../../../hooks/useProjectsPanelMenusModel";
 import { ProjectContextMenu } from "../../../ProjectContextMenu";
 import { SessionContextMenu } from "../../../SessionContextMenu";
@@ -13,10 +14,12 @@ export function ProjectsPanelMenus({ model }: ProjectsPanelMenusProps): JSX.Elem
 
 	return (
 		<ProjectsPanelMenusView
+			dialogs={<ConversationTagEditorDialog />}
 			sessionMenu={
 				menus.contextMenu ? (
 					<SessionContextMenu
 						allowMutations={menus.contextMenu.allowMutations}
+						canTag={menus.contextMenu.canTag}
 						x={menus.contextMenu.x}
 						y={menus.contextMenu.y}
 						session={menus.contextMenu.session}
