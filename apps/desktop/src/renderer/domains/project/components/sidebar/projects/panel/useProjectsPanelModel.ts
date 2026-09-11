@@ -86,7 +86,6 @@ export function useProjectsPanelModel({
 	const [expandedBatchProjects, setExpandedBatchProjects] = useAtom(expandedBatchProjectsAtom);
 	const { deleteTask: deleteBatchTask, deleteProject: deleteBatchProject } = useBatchTasks();
 	const defaultConversationFilter = useAtomValue(defaultConversationFilterAtom);
-	const setDefaultConversationFilter = useSetAtom(defaultConversationFilterAtom);
 	// 标签档只是「对话」的一个子集视图，会话来源仍取普通对话目录。
 	const defaultConversationSource = conversationFilterSource(defaultConversationFilter);
 	const defaultConversationCwd = useAtomValue(defaultConversationCwdAtom);
@@ -175,16 +174,10 @@ export function useProjectsPanelModel({
 	);
 
 	/**
-	 * 标签档下新建的会话不属于任何标签，留在原档位用户会看不到自己刚建的会话，
-	 * 以为没建成；因此先切回「对话」再新建。
+	 * 标签档下新建的会话会继承当前标签（见 applyActiveTagFilterToNewConversation），
+	 * 所以档位保持不动：切回「对话」反而会把用户从自己选的标签视图里踢出去。
 	 */
-	const defaultNewSession = useCallback(
-		(cwd: string) => {
-			setDefaultConversationFilter("conversation");
-			newSession(cwd);
-		},
-		[newSession, setDefaultConversationFilter],
-	);
+	const defaultNewSession = newSession;
 
 	// sessionsMap 每次 listSessions 回填都会换 Map 引用。openSessionByTarget 作为
 	// onSelectSession 传进每个 memo 的 ProjectGroup，若直接依赖 sessionsMap，任意一次
