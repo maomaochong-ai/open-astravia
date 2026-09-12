@@ -5,7 +5,7 @@ export interface ProjectServiceDependencies {
 	readonly createDirectory: (path: string) => Promise<void>;
 	readonly readConfig: () => Promise<DesktopConfig>;
 	readonly writeConfig: (config: DesktopConfig) => Promise<void>;
-	readonly onProjectsChanged?: () => void;
+	readonly onProjectsChanged: () => void;
 }
 
 export interface ProjectListSnapshot {

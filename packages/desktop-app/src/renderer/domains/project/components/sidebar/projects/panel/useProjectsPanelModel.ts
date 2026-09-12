@@ -8,6 +8,7 @@ import {
 	defaultConversationFilterAtom,
 	defaultImConversationCwdAtom,
 	expandedBatchProjectsAtom,
+	externallyRemovedProjectCwdsAtom,
 	inlineFilePreviewAtom,
 	isImSession,
 } from "@shared/store/atoms";
@@ -43,6 +44,7 @@ export function useProjectsPanelModel({
 	const activeSession = useAtomValue(activeSessionAtom);
 	const imCwd = useAtomValue(defaultImConversationCwdAtom);
 	const setActiveSession = useSetAtom(activeSessionAtom);
+	const [externallyRemovedProjectCwds, setExternallyRemovedProjectCwds] = useAtom(externallyRemovedProjectCwdsAtom);
 	const setInlineFilePreview = useSetAtom(inlineFilePreviewAtom);
 	const setConfirm = useSetAtom(confirmDialogAtom);
 	const navigate = useNavigate();
@@ -211,6 +213,18 @@ export function useProjectsPanelModel({
 		},
 		[activeSession, setActiveSession, currentPath, navigate],
 	);
+
+	// 主进程侧移除或归档项目时，侧栏列表已由 projectsAtom 同步，但当前会话与详情页仍
+	// 指已消失的项目。这里按与本地删除相同的语义收尾，避免两侧行为不一致。
+	useEffect(() => {
+		if (externallyRemovedProjectCwds.length === 0) return;
+		const pending = externallyRemovedProjectCwds;
+		setExternallyRemovedProjectCwds([]);
+		for (const cwd of pending) {
+			const sessionPaths = (sessionsMap.get(cwd) ?? []).map((session) => session.path);
+			cleanupAfterProjectGone(cwd, sessionPaths);
+		}
+	}, [cleanupAfterProjectGone, externallyRemovedProjectCwds, sessionsMap, setExternallyRemovedProjectCwds]);
 
 	const confirmDeleteBatchProject = useCallback(
 		(batch: (typeof batchProjects)[number]) => {

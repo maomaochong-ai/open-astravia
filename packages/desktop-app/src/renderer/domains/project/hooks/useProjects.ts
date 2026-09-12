@@ -4,6 +4,7 @@ import {
 	defaultConversationCwdAtom,
 	defaultImConversationCwdAtom,
 	expandedProjectsAtom,
+	externallyRemovedProjectCwdsAtom,
 	NO_MESSAGES_SENTINEL,
 	type Project,
 	type ProjectType,
@@ -48,6 +49,7 @@ export function useProjects() {
 	const setScheduledSessionPaths = useSetAtom(scheduledSessionPathsAtom);
 	const setScheduledRecordsVersion = useSetAtom(scheduledRecordsVersionAtom);
 	const [expandedProjects, setExpandedProjects] = useAtom(expandedProjectsAtom);
+	const setExternallyRemovedProjectCwds = useSetAtom(externallyRemovedProjectCwdsAtom);
 	const workspacePath = useAtomValue(workspacePathAtom);
 	const defaultConversationCwd = useAtomValue(defaultConversationCwdAtom);
 	const defaultImConversationCwd = useAtomValue(defaultImConversationCwdAtom);
@@ -279,9 +281,13 @@ export function useProjects() {
 			void refreshProjectsRef
 				.current()
 				.then((next) => {
+					const nextCwds = new Set(next.map((project) => project.cwd));
 					for (const project of next) {
 						if (!knownCwds.has(project.cwd)) expandProjectRef.current(project.cwd);
 					}
+					// 主进程侧移除/归档的项目也要收尾：列表会自动同步，但当前会话与详情页不会。
+					const removed = [...knownCwds].filter((cwd) => !nextCwds.has(cwd));
+					if (removed.length > 0) setExternallyRemovedProjectCwds((prev) => [...prev, ...removed]);
 				})
 				.catch((error) => {
 					console.error("[projects] failed to refresh project list:", error);
@@ -291,7 +297,7 @@ export function useProjects() {
 			});
 		});
 		// Intentionally no cleanup: the listener lives for the renderer's lifetime.
-	}, []);
+	}, [setExternallyRemovedProjectCwds]);
 
 	const collapseProject = useCallback(
 		(cwd: string) => {
