@@ -4,6 +4,7 @@ import type { SessionExecutionMode } from "../../../../runtime-core/src/index.js
 import { type ExecutionModeOverride, normalizeExecutionModeOverride } from "../execution-mode.js";
 import { type DesktopConfig, type ProjectEntry, readDesktopConfig, writeDesktopConfig } from "../ipc/fs.js";
 import { getAppLogger } from "../logger.js";
+import { broadcastProjectsChanged } from "../projects/project-events.js";
 import { type BatchTaskState, type BatchTaskStatus, loadProjectTaskStates } from "./batch-task-state";
 
 export type { BatchTaskStatus } from "./batch-task-state";
@@ -177,6 +178,7 @@ async function registerProjectInConfig(projectPath: string, name: string): Promi
 		...config,
 		projects: [...config.projects, { path: projectPath, name }],
 	});
+	broadcastProjectsChanged();
 }
 
 async function unregisterProjectFromConfig(projectPath: string): Promise<void> {
@@ -187,6 +189,7 @@ async function unregisterProjectFromConfig(projectPath: string): Promise<void> {
 		return;
 	}
 	await writeDesktopConfig({ ...config, projects, archivedProjects });
+	broadcastProjectsChanged();
 }
 
 /**
@@ -219,6 +222,7 @@ async function autoRegisterLooseBatchProjects(config: DesktopConfig): Promise<De
 		projects: [...config.projects, ...additions],
 	};
 	await writeDesktopConfig(next);
+	broadcastProjectsChanged();
 	return next;
 }
 

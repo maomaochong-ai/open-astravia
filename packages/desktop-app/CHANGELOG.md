@@ -8,6 +8,7 @@ All notable changes to `@astravia/desktop-app` are documented in this file.
 
 - **dbx-mcp 数据库引擎随包缺失（打包链路）**：`prebuild:pack` 未自动下载 dbx-mcp 且 `prepare-pack.js` 在其缺失时静默跳过，导致产出不含数据库引擎的安装包（运行时报 `dbx-mcp binary not found at .../dbx-mcp`）。现于 `prebuild:pack` 链中接入 `prepare:dbx-mcp`，`prepare-pack.js` 缺源时直接报错（可用 `ASTRAVIA_SKIP_DBX_MCP=1` 显式跳过）；`fetch-dbx-mcp.mjs` 修复顶部未闭合块注释导致脚本整体不可用的问题，新增 `ASTRAVIA_VENDOR_PLATFORM` 支持跨平台下载（与 `prepare-pack.js` 平台解析一致），并同步刷新 darwin-arm64 本地缓存：pin 已于 8-30 切换为 fork 自建产物（`7ef5d8cd…`），但注释 bug 使脚本无法运行、本地仍留 8-22 官方过渡源旧文件，现缓存已刷新为 pin 对应产物。
 - **Windows 安装器文件名与更新元数据大小写不一致**：`build/installer.iss` 的 `OutputBaseFilename` 使用大写 `ASTRAVIA-...`，而 `build-inno-installer.mjs` 的 `fileName` 与 `latest.yml` 使用小写 `Astravia-...`。Windows 文件系统大小写不敏感使构建期 `existsSync` 校验通过，但对象存储（大小写敏感）上 `latest.yml` 引用的文件并不存在，Windows 自动更新下载返回 404。现统一为小写 `Astravia-...`。
+- **插件/新增项目不在侧栏出现（需重启应用才可见）**：渲染进程之外的项目增删（插件能力 `official.projects.create`、Action、批任务项目注册/注销与导入项目等）只写 `desktop-config.json`，而侧栏项目列表仅来自渲染进程自己发起的 `config.get()`，项目域也缺少“列表已变更”的广播通道。现 `ProjectService` 每次落盘后广播 `astravia:projects:changed`（批任务项目注册/注销、导入项目沿用同一广播），渲染进程订阅后重读配置并自动展开新项目（同时刷新批量任务分组）；订阅回调改为经 ref 取用刷新函数并将失败记入日志，避免会话列表重建后回调持有旧闭包或抛出未处理的 Promise 拒绝。
 
 ## [0.55.35] - 2026-09-08
 

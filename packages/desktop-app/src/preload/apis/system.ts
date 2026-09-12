@@ -1,4 +1,5 @@
 import type { IpcRenderer, IpcRendererEvent, WebUtils } from "electron";
+import { PROJECTS_CHANNELS } from "../../shared/projects-ipc.js";
 import type { DesktopApi } from "../api.js";
 import type { DesktopThemeChangeRequest } from "../api-types/theme.js";
 import { onIpcEvent, onIpcVoidEvent } from "./helper.js";
@@ -156,6 +157,7 @@ export function createSystemApi(
 			get: () => ipc.invoke("astravia:config:get"),
 			set: (config) => ipc.invoke("astravia:config:set", config),
 			onShortcutsChanged: (handler) => onIpcEvent(ipc, "astravia:shortcuts:changed", handler),
+			onProjectsChanged: (handler) => onIpcVoidEvent(ipc, PROJECTS_CHANNELS.CHANGED, handler),
 		},
 		knowledge: {
 			scanNow: () => ipc.invoke("astravia:kb:scan-now"),

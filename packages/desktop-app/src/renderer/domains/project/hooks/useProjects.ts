@@ -34,6 +34,9 @@ let didAutoExpand = false;
 // emits a state_patch (i.e. an IM message just created or updated a session).
 let imSubscribed = false;
 let sessionListSubscribed = false;
+// Module-level guard so the project-list-changed subscription (main process marks its
+// own project mutations) only runs once per renderer.
+let projectListSubscribed = false;
 const sessionLoadPromises = new Map<string, Promise<void>>();
 
 export function useProjects() {
@@ -102,6 +105,8 @@ export function useProjects() {
 	imCwdRef.current = defaultImConversationCwd;
 	const expandedProjectsRef = useRef(expandedProjects);
 	expandedProjectsRef.current = expandedProjects;
+	const projectsRef = useRef(projects);
+	projectsRef.current = projects;
 	useEffect(() => {
 		if (!imSubscribed) {
 			imSubscribed = true;
@@ -150,7 +155,7 @@ export function useProjects() {
 		// lifetime, mirroring the singleton-style hooks (useAppInit, etc.).
 	}, [setSessionsMap]);
 
-	const refreshProjects = useCallback(async () => {
+	const refreshProjects = useCallback(async (): Promise<Project[]> => {
 		try {
 			// Read project list from app-specific config file (not shared with CLI)
 			const config = await window.astravia.config.get();
@@ -194,6 +199,7 @@ export function useProjects() {
 				cwdsToLoad.add(all[0].cwd);
 			}
 			for (const cwd of cwdsToLoad) void loadSessions(cwd);
+			return all;
 		} finally {
 			setProjectsInitialized(true);
 		}
@@ -253,6 +259,39 @@ export function useProjects() {
 		},
 		[setExpandedProjects, loadSessions],
 	);
+
+	// 项目列表订阅在模块级只绑定一次，回调闭包不能直接捕获这些 useCallback，
+	// 否则会话列表重建后回调仍指向首次渲染的旧闭包。
+	const expandProjectRef = useRef(expandProject);
+	expandProjectRef.current = expandProject;
+	const refreshProjectsRef = useRef(refreshProjects);
+	refreshProjectsRef.current = refreshProjects;
+	const refreshBatchProjectsRef = useRef(refreshBatchProjects);
+	refreshBatchProjectsRef.current = refreshBatchProjects;
+
+	// 主进程侧（插件 / Action 能力）增删项目只写 desktop-config.json，不经过渲染进程的配置入口；
+	// 没有这段订阅时，侧栏要重启应用才能看到新项目（新项目下的会话也随之找不到）。
+	useEffect(() => {
+		if (projectListSubscribed) return;
+		projectListSubscribed = true;
+		window.astravia.config.onProjectsChanged(() => {
+			const knownCwds = new Set(projectsRef.current.map((project) => project.cwd));
+			void refreshProjectsRef
+				.current()
+				.then((next) => {
+					for (const project of next) {
+						if (!knownCwds.has(project.cwd)) expandProjectRef.current(project.cwd);
+					}
+				})
+				.catch((error) => {
+					console.error("[projects] failed to refresh project list:", error);
+				});
+			void refreshBatchProjectsRef.current().catch((error) => {
+				console.error("[projects] failed to refresh batch projects:", error);
+			});
+		});
+		// Intentionally no cleanup: the listener lives for the renderer's lifetime.
+	}, []);
 
 	const collapseProject = useCallback(
 		(cwd: string) => {

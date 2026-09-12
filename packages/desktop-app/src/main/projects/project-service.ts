@@ -5,6 +5,7 @@ export interface ProjectServiceDependencies {
 	readonly createDirectory: (path: string) => Promise<void>;
 	readonly readConfig: () => Promise<DesktopConfig>;
 	readonly writeConfig: (config: DesktopConfig) => Promise<void>;
+	readonly onProjectsChanged?: () => void;
 }
 
 export interface ProjectListSnapshot {
@@ -68,7 +69,7 @@ export class ProjectService {
 		const archivedProjects = config.archivedProjects.map((entry) => ({ ...entry }));
 		if (!findProject(projects, projectPath) && !findProject(archivedProjects, projectPath)) {
 			projects.push({ path: projectPath, name: normalizedName });
-			await this.dependencies.writeConfig({ ...config, projects, archivedProjects });
+			await this.persist({ ...config, projects, archivedProjects });
 		}
 		this.dependencies.allowProjectRoot(projectPath);
 		return { path: projectPath, name: normalizedName };
@@ -83,7 +84,7 @@ export class ProjectService {
 			.map((entry) => ({ ...entry }));
 		const entry = { path, name: name?.trim() || pathBasename(path) };
 		if (!findProject(projects, path)) projects.push(entry);
-		await this.dependencies.writeConfig({ ...config, projects, archivedProjects });
+		await this.persist({ ...config, projects, archivedProjects });
 		this.dependencies.allowProjectRoot(path);
 		return entry;
 	}
@@ -95,7 +96,7 @@ export class ProjectService {
 		const entry = findProject(projects, path) ?? findProject(archivedProjects, path);
 		if (!entry) throw new Error(`Project not found: ${path}`);
 		entry.name = name;
-		await this.dependencies.writeConfig({ ...config, projects, archivedProjects });
+		await this.persist({ ...config, projects, archivedProjects });
 		return { ...entry };
 	}
 
@@ -106,7 +107,7 @@ export class ProjectService {
 		const projects = config.projects.filter((item) => !samePath(item.path, path)).map((item) => ({ ...item }));
 		const archivedProjects = config.archivedProjects.map((item) => ({ ...item }));
 		if (!findProject(archivedProjects, path)) archivedProjects.push({ ...entry });
-		await this.dependencies.writeConfig({ ...config, projects, archivedProjects });
+		await this.persist({ ...config, projects, archivedProjects });
 	}
 
 	async unarchive(path: string): Promise<void> {
@@ -118,7 +119,7 @@ export class ProjectService {
 			.map((item) => ({ ...item }));
 		const projects = config.projects.map((item) => ({ ...item }));
 		if (!findProject(projects, path)) projects.push({ ...entry });
-		await this.dependencies.writeConfig({ ...config, projects, archivedProjects });
+		await this.persist({ ...config, projects, archivedProjects });
 		this.dependencies.allowProjectRoot(path);
 	}
 
@@ -131,6 +132,12 @@ export class ProjectService {
 		if (projects.length === config.projects.length && archivedProjects.length === config.archivedProjects.length) {
 			throw new Error(`Project not found: ${path}`);
 		}
-		await this.dependencies.writeConfig({ ...config, projects, archivedProjects });
+		await this.persist({ ...config, projects, archivedProjects });
+	}
+
+	/** 写配置后广播项目列表变更，让渲染进程（侧栏等）与磁盘状态保持一致。 */
+	private async persist(config: DesktopConfig): Promise<void> {
+		await this.dependencies.writeConfig(config);
+		this.dependencies.onProjectsChanged?.();
 	}
 }

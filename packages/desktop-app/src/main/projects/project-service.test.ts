@@ -12,6 +12,7 @@ function createFixture(initial?: Partial<DesktopConfig>) {
 	};
 	const createDirectory = vi.fn(async () => {});
 	const allowProjectRoot = vi.fn();
+	const onProjectsChanged = vi.fn();
 	const service = new ProjectService({
 		allowProjectRoot,
 		createDirectory,
@@ -19,10 +20,12 @@ function createFixture(initial?: Partial<DesktopConfig>) {
 		writeConfig: async (next) => {
 			config = structuredClone(next);
 		},
+		onProjectsChanged,
 	});
 	return {
 		allowProjectRoot,
 		createDirectory,
+		onProjectsChanged,
 		getConfig: () => config,
 		service,
 	};
@@ -39,6 +42,20 @@ describe("ProjectService", () => {
 		expect(fixture.createDirectory).toHaveBeenCalledWith("C:\\workspace\\demo");
 		expect(fixture.allowProjectRoot).toHaveBeenCalledWith("C:\\workspace\\demo");
 		expect(fixture.getConfig().projects).toEqual([{ path: "C:\\workspace\\demo", name: "demo" }]);
+	});
+
+	it("broadcasts the project list change after persisting the new project", async () => {
+		const fixture = createFixture();
+
+		await fixture.service.create("demo");
+		expect(fixture.onProjectsChanged).toHaveBeenCalledTimes(1);
+	});
+
+	it("does not broadcast when the project is rejected", async () => {
+		const fixture = createFixture();
+
+		await expect(fixture.service.create("../escape")).rejects.toThrow("Invalid project name.");
+		expect(fixture.onProjectsChanged).not.toHaveBeenCalled();
 	});
 
 	it("rejects invalid project names before creating a directory", async () => {

@@ -4,6 +4,7 @@ import { basename, join, resolve, sep } from "node:path";
 import AdmZip from "adm-zip";
 import { dialog, ipcMain } from "electron";
 import { getAppLogger } from "../logger.js";
+import { broadcastProjectsChanged } from "../projects/project-events.js";
 import { allowProjectRoot, readDesktopConfig, writeDesktopConfig } from "./fs.js";
 
 const log = getAppLogger("project-export");
@@ -426,6 +427,7 @@ async function handleImport(): Promise<ImportProjectResult | null> {
 			...fresh,
 			projects: [...fresh.projects, { path: projectDir, name }],
 		});
+		broadcastProjectsChanged();
 	}
 
 	const missingSources = manifest.type === "batch" ? collectMissingBatchSources(projectDir) : undefined;

@@ -144,4 +144,6 @@ export interface DesktopConfigApi {
 	set(config: Partial<DesktopConfigData>): Promise<void>;
 	/** 全局快捷键绑定被 GUI 或 Action 更新后广播。 */
 	onShortcutsChanged(handler: (event: ShortcutsBindingsChangedEvent) => void): () => void;
+	/** 项目列表（desktop-config.json）变更：主进程侧（插件 / Action 等）增删项目后广播。 */
+	onProjectsChanged(handler: () => void): () => void;
 }

@@ -30,6 +30,7 @@ import { allowProjectRoot, createFilesystemDirectory } from "../filesystem/files
 import { getDesktopGeneralSettingsService } from "../general-settings/general-settings-service.js";
 import { getImHost } from "../im-host/index.js";
 import { getKnowledgeService } from "../knowledge/knowledge-service.js";
+import { broadcastProjectsChanged } from "../projects/project-events.js";
 import { ProjectService } from "../projects/project-service.js";
 import { getDesktopSchedulerService } from "../scheduler/scheduler-service.js";
 import { getDesktopShortcutService } from "../shortcuts/shortcut-service.js";
@@ -86,6 +87,7 @@ export function registerDesktopDomainProviders(registry: CapabilityRegistry): Di
 		createDirectory: createFilesystemDirectory,
 		readConfig: readDesktopConfig,
 		writeConfig: writeDesktopConfig,
+		onProjectsChanged: broadcastProjectsChanged,
 	});
 	const projectRegistration = registry.registerOwner(DOMAIN_PROJECT_PROVIDER_OWNER, [
 		bindCapability(DOMAIN_PROJECT_CAPABILITIES.LIST, {
