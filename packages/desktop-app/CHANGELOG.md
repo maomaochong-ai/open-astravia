@@ -10,6 +10,7 @@ All notable changes to `@astravia/desktop-app` are documented in this file.
 - **Windows 安装器文件名与更新元数据大小写不一致**：`build/installer.iss` 的 `OutputBaseFilename` 使用大写 `ASTRAVIA-...`，而 `build-inno-installer.mjs` 的 `fileName` 与 `latest.yml` 使用小写 `Astravia-...`。Windows 文件系统大小写不敏感使构建期 `existsSync` 校验通过，但对象存储（大小写敏感）上 `latest.yml` 引用的文件并不存在，Windows 自动更新下载返回 404。现统一为小写 `Astravia-...`。
 - **插件/新增项目不在侧栏出现（需重启应用才可见）**：渲染进程之外的项目增删（插件能力 `official.projects.create`、Action、批任务项目注册/注销与导入项目等）只写 `desktop-config.json`，而侧栏项目列表仅来自渲染进程自己发起的 `config.get()`，项目域也缺少“列表已变更”的广播通道。现 `ProjectService` 每次落盘后广播 `astravia:projects:changed`（批任务项目注册/注销、导入项目沿用同一广播），渲染进程订阅后重读配置并自动展开新项目（同时刷新批量任务分组）；订阅回调改为经 ref 取用刷新函数并将失败记入日志，避免会话列表重建后回调持有旧闭包或抛出未处理的 Promise 拒绝。另：主进程侧移除/归档项目后，侧栏按与本地删除相同的语义收尾（退出已消失项目的会话、离开其详情页），不再停留在已不存在的项目上。
 - **新会话页技能徽章行取不到数据（预取结果未落到组件状态）**：`useSkillList` 的预取只在空闲时段写模块级缓存、不更新组件状态，导致技能面板尚未展开就渲染的消费方（新会话页输入栏上方的技能徽章行）拿不到数据，必须等第一次展开面板才出内容。现预取完成后把结果同步写入 `skills`/`usage` 组件状态，卸载时丢弃在途结果避免向已卸载组件写状态；已展开时的重拉逻辑保持不变。
+- **发布脚本把正常的 CHANGELOG 改动误判为“意外文件”而中断发布**：`scripts/release-desktop.mjs` 先对 `git status --porcelain` 的整体输出做 `trim()` 再按行 `slice(3)` 取路径，行首空格被吞后首个条目会丢掉路径首字符（`packages/...` → `ackages/...`），只要工作区第一项是未暂存改动就会报 `unexpected files` 并中止。现改为仅按行切分、不去除整体首尾空白。
 
 ## [0.55.35] - 2026-09-08
 

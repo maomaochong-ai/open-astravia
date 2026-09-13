@@ -79,7 +79,6 @@ function assertTagAvailable(tag) {
 
 function assertOnlyReleaseFilesChanged() {
 	const changedFiles = run("git", ["status", "--porcelain"], { capture: true })
-		.trim()
 		.split(/\r?\n/)
 		.filter(Boolean)
 		.map((line) => line.slice(3).replaceAll("\\", "/"));
