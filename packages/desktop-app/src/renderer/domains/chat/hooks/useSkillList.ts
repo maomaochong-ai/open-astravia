@@ -67,7 +67,8 @@ function whenIdle(run: () => void): () => void {
 /**
  * 命令区与批量任务 dialog 共用的 skill 数据源。
  *
- * `prefetch` 为真时在空闲时段先备好数据（面板还没展开），展开那一刻直接出内容。
+ * `prefetch` 为真时在空闲时段先备好数据（面板还没展开），展开那一刻直接出内容；
+ * 预取结果也会落到组件状态，面板未展开就渲染的消费方（新会话页的技能徽章行）因此不用等展开。
  * 展开时仍会再拉一次，保证磁盘上新增/删除的 skill 能反映出来。
  */
 export function useSkillList({
@@ -89,12 +90,24 @@ export function useSkillList({
 	const [usage, setUsage] = useState<AppMonitorPromptRefUsageMap>(cached?.usage ?? {});
 	const [loading, setLoading] = useState(false);
 
-	// 预取：不进入 loading 态，也不覆盖已展开时的实时结果。
+	// 预取：不进入 loading 态；面板未展开时以预取结果为准，已展开则交给下面那次重拉。
 	// 刻意不等 requestIdleCallback：冷启动那几秒主线程被插件与主题占满，idle 会一路拖到
 	// 超时才跑，预取赶不上第一次展开就等于没预取。IPC 本身是异步的，挂载即发起不阻塞渲染。
 	useEffect(() => {
 		if (!prefetch || open || cache.has(cacheKey(cwd, language, agentMode))) return;
-		void load(cwd, language, agentMode).catch(() => undefined);
+		// 落库到组件状态，不只是模块级缓存：技能徽章行等消费方在面板未展开时就要出内容
+		//（新会话页挂在输入栏上方），只写缓存的话它们要等到第一次展开才拿得到数据。
+		let cancelled = false;
+		void load(cwd, language, agentMode)
+			.then((data) => {
+				if (cancelled) return;
+				setSkills(data.skills);
+				setUsage(data.usage);
+			})
+			.catch(() => undefined);
+		return () => {
+			cancelled = true;
+		};
 	}, [agentMode, cwd, language, open, prefetch]);
 
 	useEffect(() => {
