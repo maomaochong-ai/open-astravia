@@ -26,7 +26,17 @@ export type PluginInitCommand =
 	| { type: "error"; message: string }
 	| { type: "init"; targetDir?: string; pluginId: string; displayName?: string; json: boolean; registerInHub: boolean };
 
-export type PluginCommand = PluginAddCommand | PluginReloadCommand | PluginDocsCommand | PluginInitCommand;
+export type PluginWatchCommand =
+	| { type: "help" }
+	| { type: "error"; message: string }
+	| { type: "watch"; dir?: string; stop: boolean; json: boolean };
+
+export type PluginCommand =
+	| PluginAddCommand
+	| PluginReloadCommand
+	| PluginDocsCommand
+	| PluginInitCommand
+	| PluginWatchCommand;
 
 export interface PluginCommandDependencies {
 	resolveNpmArchive(packageSpec: string): Promise<ResolvedNpmPluginArchive>;
@@ -46,6 +56,7 @@ Usage:
   vetta-plugin-cli reload <plugin-id> [--json]
   vetta-plugin-cli docs [--json]
   vetta-plugin-cli init --id <plugin-id> [--name <display>] [dir] [--no-hub] [--json]
+  vetta-plugin-cli watch [dir] [--stop] [--json]
 
 Examples:
   npx @vetta-org/plugin-cli add @example/vetta-plugin-demo
@@ -55,6 +66,7 @@ Examples:
   npx @vetta-org/plugin-cli reload demo
   npx @vetta-org/plugin-cli docs
   npx @vetta-org/plugin-cli init --id my-plugin --name "My Plugin"
+  npx @vetta-org/plugin-cli watch          # 让宿主改从工程目录加载，改完即生效
 `;
 
 function formatParseError(error: unknown): string {
@@ -137,6 +149,30 @@ export function parsePluginInitCommand(argv: string[]): PluginInitCommand | unde
 		...(typeof parsed.values.name === "string" ? { displayName: parsed.values.name } : {}),
 		json: parsed.values.json === true,
 		registerInHub: parsed.values["no-hub"] !== true,
+	};
+}
+
+export function parsePluginWatchCommand(argv: string[]): PluginWatchCommand | undefined {
+	if (argv[0] !== "watch") return undefined;
+	if (argv[1] === "-h" || argv[1] === "--help") return { type: "help" };
+	let parsed: ReturnType<typeof parseArgs>;
+	try {
+		parsed = parseArgs({
+			args: argv.slice(1),
+			allowPositionals: true,
+			strict: true,
+			options: { json: { type: "boolean" }, stop: { type: "boolean" } },
+		});
+	} catch (error) {
+		return { type: "error", message: formatParseError(error) };
+	}
+	const [dir, unexpected] = parsed.positionals;
+	if (unexpected) return { type: "error", message: `Unexpected argument: ${unexpected}` };
+	return {
+		type: "watch",
+		...(dir ? { dir } : {}),
+		stop: parsed.values.stop === true,
+		json: parsed.values.json === true,
 	};
 }
 
@@ -289,6 +325,10 @@ export async function runPluginCommand(
 		return runInitCommand(command, dependencies);
 	}
 
+	if (command.type === "watch") {
+		return runWatchCommand(command, dependencies);
+	}
+
 	let resolvedNpm: ResolvedNpmPluginArchive | undefined;
 	try {
 		let result: unknown;
@@ -430,11 +470,62 @@ function runInitCommand(
 	}
 }
 
+/**
+ * 让宿主改从工程目录加载本插件，之后改源码即时生效，不必每次 build → pack → install。
+ *
+ * 目标插件按 cwd 向上找，理由同 `add .`：一仓多插件时「我正站在哪个插件里」是唯一不会
+ * 弄错的意图，而 id 靠人重复输入迟早会错配到另一个插件上。
+ */
+async function runWatchCommand(
+	command: Extract<PluginCommand, { type: "watch" }>,
+	dependencies: PluginCommandDependencies,
+): Promise<number> {
+	const cwd = dependencies.cwd?.() ?? process.cwd();
+	const from = resolve(cwd, command.dir ?? ".");
+	try {
+		const project = findPluginProject(from);
+		if (!project) {
+			const hub = findPluginHub(from);
+			throw new Error(
+				hub
+					? `${from} indexes plugins but is not one itself. Run this from a plugin directory, or pass its path.`
+					: `No plugin.json found in ${from} or any parent directory.`,
+			);
+		}
+		const result = command.stop
+			? await dependencies.runAction("plugins.manage", { operation: "dev-watch-stop", id: project.pluginId })
+			: await dependencies.runAction("plugins.manage", {
+					operation: "dev-watch",
+					id: project.pluginId,
+					projectDir: project.root,
+				});
+		dependencies.writeStdout(
+			command.json
+				? `${JSON.stringify({ ok: true, result })}\n`
+				: command.stop
+					? `Stopped hot reload for ${project.pluginId}.\n`
+					: `Hot reload on for ${project.pluginId}. Vetta now loads it from ${project.root}.\n`,
+		);
+		return 0;
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		if (command.json) {
+			dependencies.writeStdout(
+				`${JSON.stringify({ ok: false, error: { code: error instanceof ActionRpcError ? error.code : "PLUGIN_WATCH_FAILED", message } })}\n`,
+			);
+		} else {
+			dependencies.writeStderr(`${message}\n`);
+		}
+		if (error instanceof ActionRpcError) return 4;
+		return isConnectionError(error) ? 3 : 5;
+	}
+}
+
 export async function runPluginCli(argv: string[]): Promise<number> {
 	if (argv.length === 0 || argv[0] === "-h" || argv[0] === "--help") {
 		return runPluginAddCommand({ type: "help" });
 	}
-	const command = parsePluginAddCommand(argv) ?? parsePluginReloadCommand(argv) ?? parsePluginDocsCommand(argv) ?? parsePluginInitCommand(argv);
+	const command = parsePluginAddCommand(argv) ?? parsePluginReloadCommand(argv) ?? parsePluginDocsCommand(argv) ?? parsePluginInitCommand(argv) ?? parsePluginWatchCommand(argv);
 	if (!command) {
 		process.stderr.write(`Unknown command: ${argv[0]}\n`);
 		return 2;

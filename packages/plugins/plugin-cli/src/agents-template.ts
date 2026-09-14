@@ -53,12 +53,16 @@ npm install
 npm run dev            # Vite + Module Federation 开发服务器
 npm run build          # 产出 dist/
 npm run install:vetta  # 打包并装进正在运行的 Vetta（需要 Vetta 已启动）
+npx vetta-plugin-cli watch   # 开热更新：宿主改从本工程目录加载，改完即生效
 \`\`\`
 
 \`install:vetta\` 走 \`vetta-plugin-cli add .\`：它找到本工程打出来的归档，交给正在运行的
 Desktop 校验、授权、安装。它**不会**直接写 \`~/.vetta/plugins\`。
 
 装完若提示有 pending 版本，用 \`npx vetta-plugin-cli reload ${input.pluginId}\` 让宿主应用它。
+
+开发期建议开热更新（\`watch\`）：之后改源码即时生效，不用每次重新打包安装。改 \`plugin.json\`
+的权限或命令声明时仍需重新安装一次，让宿主把授权落盘。\`watch --stop\` 关闭。
 
 ## 不可违反的几条
 

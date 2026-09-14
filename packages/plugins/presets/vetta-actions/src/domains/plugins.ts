@@ -31,7 +31,9 @@ type PluginsManageInput =
 			};
 	  }
 	| { operation: "uninstall"; id: string }
-	| { operation: "reload"; id: string };
+	| { operation: "reload"; id: string }
+	| { operation: "dev-watch"; id: string; projectDir: string }
+	| { operation: "dev-watch-stop"; id: string };
 
 const querySchema: PluginJsonSchema = {
 	type: "object",
@@ -121,6 +123,23 @@ const manageSchema: PluginJsonSchema = {
 			required: ["operation", "id"],
 			additionalProperties: false,
 		},
+		{
+			properties: {
+				operation: { const: "dev-watch" },
+				id: { type: "string", minLength: 1 },
+				projectDir: { type: "string", minLength: 1 },
+			},
+			required: ["operation", "id", "projectDir"],
+			additionalProperties: false,
+		},
+		{
+			properties: {
+				operation: { const: "dev-watch-stop" },
+				id: { type: "string", minLength: 1 },
+			},
+			required: ["operation", "id"],
+			additionalProperties: false,
+		},
 	],
 };
 
@@ -168,7 +187,7 @@ export function registerPluginsActions(ctx: PluginContext): void {
 		title: "管理插件",
 		summary: "启用/停用、从 URL 安装、卸载或重新加载插件。",
 		description:
-			'对象参数；operation 为 "set-enabled"、"install-from-url"、"install-from-path"、"uninstall" 或 "reload"。',
+			'对象参数；operation 为 "set-enabled"、"install-from-url"、"install-from-path"、"uninstall"、"reload"、"dev-watch" 或 "dev-watch-stop"。',
 		keywords: ["插件", "plugin", "安装", "卸载", "启用"],
 		effect: "write",
 		approval: {
@@ -183,6 +202,12 @@ export function registerPluginsActions(ctx: PluginContext): void {
 				},
 				{ id: "plugins.uninstall", title: "卸载插件确认", description: "展示待卸载插件。" },
 				{ id: "plugins.reload", title: "重载插件确认", description: "展示待重载插件。" },
+				{
+					id: "plugins.dev-watch",
+					title: "开启插件热更新确认",
+					description: "展示将被监听的工程目录；开启后该插件改从工程目录加载。",
+				},
+				{ id: "plugins.dev-watch-stop", title: "关闭插件热更新确认", description: "展示待停止监听的插件。" },
 			],
 			presentationByOperation: {
 				"set-enabled": "plugins.set-enabled",
@@ -190,6 +215,8 @@ export function registerPluginsActions(ctx: PluginContext): void {
 				"install-from-path": "plugins.install-from-path",
 				uninstall: "plugins.uninstall",
 				reload: "plugins.reload",
+				"dev-watch": "plugins.dev-watch",
+				"dev-watch-stop": "plugins.dev-watch-stop",
 			},
 		},
 		inputSchema: manageSchema,
@@ -250,6 +277,16 @@ export function registerPluginsActions(ctx: PluginContext): void {
 			}
 			if (input.operation === "uninstall") {
 				await ctx.official.plugins.uninstall(input.id);
+				return { operation: input.operation, id: input.id };
+			}
+			if (input.operation === "dev-watch") {
+				return {
+					operation: input.operation,
+					plugin: await ctx.official.plugins.startDevWatch(input.id, input.projectDir),
+				};
+			}
+			if (input.operation === "dev-watch-stop") {
+				await ctx.official.plugins.stopDevWatch(input.id);
 				return { operation: input.operation, id: input.id };
 			}
 			return {

@@ -165,6 +165,55 @@ describe("installing the current project directory", () => {
 	});
 });
 
+describe("hot reload", () => {
+	it("asks the host to load the nearest plugin from its project directory", async () => {
+		const root = scratch();
+		const pluginRoot = join(root, "plugins", "demo");
+		write(join(pluginRoot, "plugin.json"), JSON.stringify({ id: "demo", version: "1.0.0" }));
+		mkdirSync(join(pluginRoot, "src"), { recursive: true });
+		const runAction = vi.fn().mockResolvedValue({ plugin: { id: "demo" } });
+
+		const code = await runPluginCommand(
+			{ type: "watch", stop: false, json: false },
+			{
+				// 站在插件的子目录里也应该命中这个插件。
+				cwd: () => join(pluginRoot, "src"),
+				resolveNpmArchive: () => Promise.reject(new Error("unused")),
+				runAction,
+				writeStdout: () => {},
+				writeStderr: () => {},
+			},
+		);
+
+		expect(code).toBe(0);
+		expect(runAction).toHaveBeenCalledWith("plugins.manage", {
+			operation: "dev-watch",
+			id: "demo",
+			projectDir: pluginRoot,
+		});
+	});
+
+	it("stops watching without needing the project directory", async () => {
+		const root = scratch();
+		const pluginRoot = join(root, "demo");
+		write(join(pluginRoot, "plugin.json"), JSON.stringify({ id: "demo", version: "1.0.0" }));
+		const runAction = vi.fn().mockResolvedValue({});
+
+		await runPluginCommand(
+			{ type: "watch", stop: true, json: false },
+			{
+				cwd: () => pluginRoot,
+				resolveNpmArchive: () => Promise.reject(new Error("unused")),
+				runAction,
+				writeStdout: () => {},
+				writeStderr: () => {},
+			},
+		);
+
+		expect(runAction).toHaveBeenCalledWith("plugins.manage", { operation: "dev-watch-stop", id: "demo" });
+	});
+});
+
 describe("docs command", () => {
 	it("parses the docs command", () => {
 		expect(parsePluginDocsCommand(["docs", "--json"])).toEqual({ type: "docs", json: true });
