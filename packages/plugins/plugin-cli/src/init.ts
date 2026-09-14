@@ -76,7 +76,7 @@ export function initPluginProject(input: InitPluginInput): InitPluginResult {
 				"@tailwindcss/vite": "^4.1.12",
 				"@types/react": "^19.1.1",
 				"@types/react-dom": "^19.1.1",
-				"@vetta-org/plugin-cli": "^0.1.0",
+				"@vetta-org/plugin-cli": "^0.1.1",
 				"@vetta-org/plugin-sdk": input.sdkRange ?? DEFAULT_SDK_RANGE,
 				"@vetta-org/plugin-vite": input.viteRange ?? DEFAULT_VITE_RANGE,
 				react: "19.1.1",

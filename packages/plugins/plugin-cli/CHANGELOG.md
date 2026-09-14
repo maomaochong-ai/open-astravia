@@ -2,6 +2,14 @@
 
 All notable changes to `@vetta-org/plugin-cli` are documented in this file.
 
+## [0.1.1] — 2026-09-14
+
+### Fixed
+
+- `sync` no longer writes `config.api_version` / `config.permissions` / `config.commands` into the index. The host overwrites the whole `config` with values derived from `plugin.json` when it builds the catalog, so a copy in the index is unread, drift-prone noise; a copy that already disagrees with the package is now reported instead.
+- `sync` resolves bundle members, so their directories are no longer reported as unlisted abilities. The index's `abilities` array holds independently listed entries; bundle members deliberately stay out of it and carry their metadata in the package's own `ability.json`.
+- Command examples now use the full package name wherever the command runs before `npm install` or at a repository root, where the `vetta-plugin-cli` bin is not on `node_modules/.bin` and npx would resolve it as a package name.
+
 ## [Unreleased]
 
 ### Added
