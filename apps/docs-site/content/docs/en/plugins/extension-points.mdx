@@ -31,9 +31,12 @@ Keep parsing separate from UI rendering. A parse failure should become an unders
   <Card title="Tool registration" description="Provide an action with a fixed input and output contract." />
   <Card title="System prompts and skills" description="Add domain rules and repeatable workflows." />
   <Card title="Tool policy and continuation" description="Control tool availability or how a task proceeds." />
+  <Card title="Agents and teams" description="Bring the plugin's own personas and division of labour to the Agents page." />
 </Cards>
 
 Use the structured schemas provided by the SDK for tool input and map external I/O failures to stable results. When a capability needs host files, network access, or a model, declare the smallest required permission in the manifest first.
+
+Agents and teams contributed from the manifest are laid down as ordinary profiles alongside the ones a user creates. The plugin owns their persona, avatar, and prompt: disabling the plugin greys the profiles out in place, and re-enabling restores them. Once such an agent is selected, a **new-session context block** can stage the material the user is about to need beneath the composer, activated only by this plugin's own agents and abilities.
 
 ## App Action
 
