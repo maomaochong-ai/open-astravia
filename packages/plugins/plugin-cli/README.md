@@ -21,6 +21,18 @@ npx @vetta-org/plugin-cli uninstall            # the plugin in this directory
 npx @vetta-org/plugin-cli uninstall some-id    # by id, from anywhere
 ```
 
+## Keep a marketplace repository honest
+
+```bash
+npx @vetta-org/plugin-cli sync           # reconcile .vetta/marketplace.json with the ability directories
+npx @vetta-org/plugin-cli sync --check   # report only, non-zero exit — for CI
+```
+
+The index carries data that is derived from each ability package, under constraints that bite
+remotely: the host refuses to sync an entry whose version differs from the package, it will not
+install a plugin whose built entry is missing from the published directory, and clients silently
+skip an update when `marketplaceVersion` did not change. `sync` reconciles all three.
+
 ## Find the manual
 
 ```bash

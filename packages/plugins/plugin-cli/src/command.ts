@@ -4,7 +4,8 @@ import { parseArgs } from "node:util";
 import { ActionRpcError, createActionRpcClient, readActionRpcEndpoint } from "@vetta/action-rpc";
 import { resolveNpmPluginArchive, type ResolvedNpmPluginArchive } from "./npm-package.js";
 import { initPluginProject } from "./init.js";
-import { findPluginHub, findPluginProject, readManualSdkVersion, resolveManualDir } from "./workspace.js";
+import { describeIndexDrift, syncMarketplaceIndex } from "./sync.js";
+import { findPluginHub, findPluginProject, type PluginProject, readManualSdkVersion, resolveManualDir } from "./workspace.js";
 
 export type PluginAddCommand =
 	| { type: "help" }
@@ -36,8 +37,14 @@ export type PluginUninstallCommand =
 	| { type: "error"; message: string }
 	| { type: "uninstall"; pluginId?: string; json: boolean };
 
+export type PluginSyncCommand =
+	| { type: "help" }
+	| { type: "error"; message: string }
+	| { type: "sync"; check: boolean; json: boolean };
+
 export type PluginCommand =
 	| PluginAddCommand
+	| PluginSyncCommand
 	| PluginUninstallCommand
 	| PluginReloadCommand
 	| PluginDocsCommand
@@ -64,6 +71,7 @@ Usage:
   vetta-plugin-cli init --id <plugin-id> [--name <display>] [dir] [--json]
   vetta-plugin-cli watch [dir] [--stop] [--json]
   vetta-plugin-cli uninstall [plugin-id] [--json]
+  vetta-plugin-cli sync [--check] [--json]
 
 Examples:
   npx @vetta-org/plugin-cli add @example/vetta-plugin-demo
@@ -75,6 +83,8 @@ Examples:
   npx @vetta-org/plugin-cli init --id my-plugin --name "My Plugin"
   npx @vetta-org/plugin-cli watch          # 让宿主改从工程目录加载，改完即生效
   npx @vetta-org/plugin-cli uninstall      # 卸载当前插件工程对应的插件
+  npx @vetta-org/plugin-cli sync           # 在市场仓库根对账 .vetta/marketplace.json
+  npx @vetta-org/plugin-cli sync --check   # 只报不写，给 CI 用
 `;
 
 function formatParseError(error: unknown): string {
@@ -202,6 +212,25 @@ export function parsePluginUninstallCommand(argv: string[]): PluginUninstallComm
 	return { type: "uninstall", ...(pluginId ? { pluginId } : {}), json: parsed.values.json === true };
 }
 
+export function parsePluginSyncCommand(argv: string[]): PluginSyncCommand | undefined {
+	if (argv[0] !== "sync") return undefined;
+	if (argv[1] === "-h" || argv[1] === "--help") return { type: "help" };
+	let parsed: ReturnType<typeof parseArgs>;
+	try {
+		parsed = parseArgs({
+			args: argv.slice(1),
+			allowPositionals: true,
+			strict: true,
+			options: { json: { type: "boolean" }, check: { type: "boolean" } },
+		});
+	} catch (error) {
+		return { type: "error", message: formatParseError(error) };
+	}
+	const [unexpected] = parsed.positionals;
+	if (unexpected) return { type: "error", message: `Unexpected argument: ${unexpected}` };
+	return { type: "sync", check: parsed.values.check === true, json: parsed.values.json === true };
+}
+
 async function defaultRunAction(actionId: string, input: unknown): Promise<unknown> {
 	const client = createActionRpcClient(await readActionRpcEndpoint());
 	return client.run(actionId, input);
@@ -243,7 +272,7 @@ function isDirectorySource(source: string): boolean {
  * 装进 Vetta，不必记住产物叫什么名字。找不到产物时给出该跑的那条命令，而不是报一个
  * 「文件不存在」让人自己猜。
  */
-function resolveProjectArchive(source: string): { archivePath: string; pluginId: string } {
+function resolveProjectArchive(source: string): { archivePath: string; project: PluginProject } {
 	const from = resolve(source);
 	const project = findPluginProject(from);
 	if (!project) {
@@ -261,7 +290,19 @@ function resolveProjectArchive(source: string): { archivePath: string; pluginId:
 			`Packaged archive not found: ${archivePath}\nBuild it first: npm run build && npx vetta-plugin pack`,
 		);
 	}
-	return { archivePath, pluginId: project.pluginId };
+	return { archivePath, project };
+}
+
+/** 装完立刻检查索引是否还停在旧版本；不在市场仓库里时什么也不说。 */
+function indexDriftHint(project: PluginProject): string | undefined {
+	const hub = findPluginHub(project.root);
+	if (!hub) return undefined;
+	return describeIndexDrift({
+		hubRoot: hub.root,
+		manifestPath: hub.manifestPath,
+		slug: project.pluginId,
+		version: project.version,
+	});
 }
 
 function npmInstallInput(resolved: ResolvedNpmPluginArchive): Record<string, unknown> {
@@ -350,6 +391,9 @@ export async function runPluginCommand(
 	if (command.type === "init") {
 		return runInitCommand(command, dependencies);
 	}
+	if (command.type === "sync") {
+		return runSyncCommand(command, dependencies);
+	}
 
 	if (command.type === "watch") {
 		return runWatchCommand(command, dependencies);
@@ -359,6 +403,7 @@ export async function runPluginCommand(
 	}
 
 	let resolvedNpm: ResolvedNpmPluginArchive | undefined;
+	let driftHint: string | undefined;
 	try {
 		let result: unknown;
 		if (command.type === "reload") {
@@ -372,12 +417,13 @@ export async function runPluginCommand(
 				url: command.source,
 			});
 		} else if (isDirectorySource(command.source)) {
-			const { archivePath } = resolveProjectArchive(command.source);
+			const { archivePath, project } = resolveProjectArchive(command.source);
 			result = await dependencies.runAction("plugins.manage", {
 				operation: "install-from-path",
 				path: archivePath,
 				enable: true,
 			});
+			driftHint = indexDriftHint(project);
 		} else if (isLocalZip(command.source)) {
 			result = await dependencies.runAction("plugins.manage", {
 				operation: "install-from-path",
@@ -390,10 +436,10 @@ export async function runPluginCommand(
 		}
 		dependencies.writeStdout(
 			command.json
-				? `${JSON.stringify({ ok: true, result })}\n`
+				? `${JSON.stringify({ ok: true, result, ...(driftHint ? { warning: driftHint } : {}) })}\n`
 				: command.type === "reload"
 					? reloadResultSummary(result, command.pluginId)
-					: resultSummary(result),
+					: `${resultSummary(result)}${driftHint ? `${driftHint}\n` : ""}`,
 		);
 		return 0;
 	} catch (error) {
@@ -445,7 +491,13 @@ function runDocsCommand(command: { json: boolean }, dependencies: PluginCommandD
 				entry: join(manualDir, "README.md"),
 				sdkVersion,
 				project: project ? { root: project.root, pluginId: project.pluginId, version: project.version } : undefined,
-				hub: hub ? { root: hub.root, manifestPath: hub.manifestPath } : undefined,
+				hub: hub
+					? {
+							root: hub.root,
+							manifestPath: hub.manifestPath,
+							syncHint: "After changing version/permissions, run `vetta-plugin-cli sync` at the repository root.",
+						}
+					: undefined,
 			})}\n`,
 		);
 		return 0;
@@ -456,7 +508,11 @@ function runDocsCommand(command: { json: boolean }, dependencies: PluginCommandD
 		`Start here: ${join(manualDir, "README.md")}`,
 	];
 	if (project) lines.push(`Current plugin: ${project.pluginId} (${project.root})`);
-	if (hub) lines.push(`Marketplace hub: ${hub.manifestPath}`);
+	if (hub) {
+		lines.push(`Marketplace index: ${hub.manifestPath}`);
+		// Agent 几乎一定会先跑 docs，所以这是告诉它「索引要对账」的最佳时机。
+		lines.push("After changing version/permissions, run `vetta-plugin-cli sync` at the repository root.");
+	}
 	dependencies.writeStdout(`${lines.join("\n")}\n`);
 	return 0;
 }
@@ -589,11 +645,74 @@ async function runUninstallCommand(
 	}
 }
 
+/**
+ * 对账能力市场索引。定位靠向上找 `.vetta/marketplace.json`，因此在仓库任何位置都能跑。
+ *
+ * `--check` 只报不写并以非零退出，给 CI 用：索引漂移的三种后果里，两种不在作者机器上复现，
+ * 一种压根不报错，光靠人自觉看不住。
+ */
+function runSyncCommand(
+	command: Extract<PluginCommand, { type: "sync" }>,
+	dependencies: PluginCommandDependencies,
+): number {
+	const cwd = dependencies.cwd?.() ?? process.cwd();
+	const hub = findPluginHub(cwd);
+	if (!hub) {
+		const message = `No .vetta/marketplace.json found in ${cwd} or any parent directory. sync is for marketplace repositories.\n`;
+		if (command.json) {
+			dependencies.writeStdout(`${JSON.stringify({ ok: false, error: { code: "HUB_NOT_FOUND", message: message.trim() } })}\n`);
+		} else {
+			dependencies.writeStderr(message);
+		}
+		return 6;
+	}
+	try {
+		const result = syncMarketplaceIndex({ hubRoot: hub.root, manifestPath: hub.manifestPath, apply: !command.check });
+		if (command.json) {
+			dependencies.writeStdout(`${JSON.stringify({ ok: result.problems.length === 0, ...result })}\n`);
+		} else {
+			dependencies.writeStdout(formatSyncReport(result, command.check));
+		}
+		if (result.problems.length > 0) return 7;
+		// --check 的职责就是「有漂移就红」，否则 CI 拦不住任何东西。
+		return command.check && result.changes.length > 0 ? 7 : 0;
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		if (command.json) {
+			dependencies.writeStdout(`${JSON.stringify({ ok: false, error: { code: "SYNC_FAILED", message } })}\n`);
+		} else {
+			dependencies.writeStderr(`${message}\n`);
+		}
+		return 5;
+	}
+}
+
+function formatSyncReport(result: ReturnType<typeof syncMarketplaceIndex>, check: boolean): string {
+	const lines: string[] = [];
+	for (const change of result.changes) {
+		lines.push(`  ${change.slug}: ${change.field} ${JSON.stringify(change.from)} -> ${JSON.stringify(change.to)}`);
+	}
+	if (lines.length > 0) {
+		lines.unshift(check ? "Index is out of date:" : "Updated the index:");
+	}
+	if (result.problems.length > 0) {
+		lines.push("Problems:");
+		for (const problem of result.problems) lines.push(`  ${problem.slug}: ${problem.message}`);
+	}
+	if (result.unlisted.length > 0) {
+		lines.push("Ability directories not listed in the index (add them by hand when ready to publish):");
+		for (const dir of result.unlisted) lines.push(`  ${dir}`);
+	}
+	if (lines.length === 0) return "Index is in sync.\n";
+	if (check && result.changes.length > 0) lines.push("Run `vetta-plugin-cli sync` to apply.");
+	return `${lines.join("\n")}\n`;
+}
+
 export async function runPluginCli(argv: string[]): Promise<number> {
 	if (argv.length === 0 || argv[0] === "-h" || argv[0] === "--help") {
 		return runPluginAddCommand({ type: "help" });
 	}
-	const command = parsePluginAddCommand(argv) ?? parsePluginReloadCommand(argv) ?? parsePluginDocsCommand(argv) ?? parsePluginInitCommand(argv) ?? parsePluginWatchCommand(argv) ?? parsePluginUninstallCommand(argv);
+	const command = parsePluginAddCommand(argv) ?? parsePluginReloadCommand(argv) ?? parsePluginDocsCommand(argv) ?? parsePluginInitCommand(argv) ?? parsePluginWatchCommand(argv) ?? parsePluginUninstallCommand(argv) ?? parsePluginSyncCommand(argv);
 	if (!command) {
 		process.stderr.write(`Unknown command: ${argv[0]}\n`);
 		return 2;

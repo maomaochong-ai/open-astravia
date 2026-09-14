@@ -2,6 +2,7 @@ export {
 	parsePluginAddCommand,
 	parsePluginDocsCommand,
 	parsePluginInitCommand,
+	parsePluginSyncCommand,
 	parsePluginUninstallCommand,
 	parsePluginWatchCommand,
 	parsePluginReloadCommand,
@@ -11,6 +12,7 @@ export {
 	type PluginCommandDependencies,
 	type PluginDocsCommand,
 	type PluginInitCommand,
+	type PluginSyncCommand,
 	type PluginUninstallCommand,
 	type PluginWatchCommand,
 	type PluginReloadCommand,
@@ -26,6 +28,14 @@ export {
 	type InitPluginResult,
 } from "./init.js";
 export { renderAgentsGuide } from "./agents-template.js";
+export {
+	type SyncChange,
+	type SyncChangeKind,
+	type SyncInput,
+	type SyncProblem,
+	type SyncResult,
+	syncMarketplaceIndex,
+} from "./sync.js";
 export {
 	findPluginHub,
 	findPluginProject,

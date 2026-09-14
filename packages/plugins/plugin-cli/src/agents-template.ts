@@ -55,6 +55,20 @@ Desktop 校验、授权、安装。它**不会**直接写 \`~/.vetta/plugins\`�
 开发期建议开热更新（\`watch\`）：之后改源码即时生效，不用每次重新打包安装。改 \`plugin.json\`
 的权限或命令声明时仍需重新安装一次，让宿主把授权落盘。\`watch --stop\` 关闭。
 
+## 如果这个目录之上有能力市场索引
+
+\`vetta-plugin-cli docs\` 会告诉你有没有（它会打印 \`Marketplace index:\`）。有的话，**改完
+\`version\` / \`permissions\` / \`pluginApiVersion\` 之后要回仓库根跑一次**：
+
+\`\`\`bash
+npx vetta-plugin-cli sync          # 从各能力目录回填索引，并推进 marketplaceVersion
+npx vetta-plugin-cli sync --check  # 只报不写，CI 用
+\`\`\`
+
+索引里的 \`version\` 与 \`plugin.json\` 的 \`version\` 必须**完全相等**，否则宿主同步直接失败；
+而内容变了却不换 \`marketplaceVersion\` 时，客户端既不报错也不更新——用户只是永远收不到。
+\`add .\` 装完若检测到索引还停在旧版本，会当场提醒你。
+
 ## 不可违反的几条
 
 - **样式只用 Tailwind \`className\`**。禁止新建业务 CSS、禁止在 \`style.css\` 里写 \`button\`/\`div\`/\`*\`
