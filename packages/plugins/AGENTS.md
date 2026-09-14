@@ -14,6 +14,58 @@
 
 - [Module Federation 共享依赖约定](./docs/module-federation.md)：说明 `vettaPluginFederation` 的宿主共享依赖、构建期本地依赖要求、顶层求值限制和验证方式。
 
+## 改动对外合同时必须同步文档
+
+**判据**：改动会不会让仓库外的插件作者写出不一样的代码？会，就落在本节。包括
+`plugin-sdk` 的公开类型与 manifest Schema、`plugin-vite` 的构建约定、宿主对清单字段的解析行为、
+以及 `plugin-cli` 的命令与输出。纯内部重构、仓库内 preset 的业务逻辑不算。
+
+漏同步的代价不对称：**仓库外的作者只能看到手册**。代码合上了而手册没跟上，他们会照着旧手册写出
+编译不过、或者能编译但装不上的东西，而且这种错误只在别人机器上复现。
+
+### 唯一真源：`docs/plugin/`
+
+手册写在仓库根的 `docs/plugin/`，**不要在别处维护副本**。它有两个自动出口：
+
+| 出口 | 机制 | 到达谁 |
+| --- | --- | --- |
+| npm tarball | `plugin-sdk/scripts/bundle-docs.mjs` 在 `plugin-sdk` 的 `build` 里跑，把整个目录拷进包 | 插件工程的 `node_modules/@vetta-org/plugin-sdk/docs/`，由 `vetta-plugin-cli docs` 解析 |
+| 插件工作台 | 工作台内置 `plugin-cli`（`bundle-cli.mjs`），由它解析上面那份 | 工作台里开发的插件 |
+
+两条都是构建期自动的，**不需要手工拷贝**。改 `docs/plugin/` 就够了。
+
+### 一次对外合同改动要动的东西
+
+按顺序过，缺一项都会让作者在某个环节卡住：
+
+1. **`docs/plugin/<对应章节>.md`**——改字段改行为就改它。新增字段要写清默认值、失败时怎么降级。
+   规则写在手册里，**不要写进 `plugin-cli` 的脚手架模板**：模板是工程创建那天的快照，写进去的
+   规则会在所有存量工程里就地凝固。
+2. **`packages/plugins/plugin-sdk/CHANGELOG.md`**——追加到 `[Unreleased]` 或新版本段，说明**为什么**，
+   不是罗列改了什么。破坏性改动要给迁移路径。
+3. **`plugin-sdk/package.json` 的 `version`**——纯增量走 patch。注意 `plugin-vite` 的 peer 范围
+   （当前 `>=0.3.0 <0.4.0`），跨 minor 要连它一起改、一起发。
+4. **`PLUGIN_API_VERSION`**（`apps/desktop/src/main/plugins/plugin-catalog.ts`）——**只要新增了清单字段就必须推**。
+   清单校验对未知字段 fail-closed，用了新字段的插件装到旧宿主上是整份清单被拒、插件根本装不上；
+   推了版本号，作者声明 `^<新版本>` 之后旧宿主给出的才是「Unsupported plugin API version」这种
+   指向明确的错误。同时在手册里写明该写哪一档。
+5. **`apps/docs-site/content/docs/plugins/*.mdx` 与 `en/` 镜像**——公开文档站是**独立内容，不自动同步**。
+   只在能力面、权限面、或某条约束的结论变了时才需要动（例如「团队成员只能引用本插件的智能体」
+   这类判断句）。API 细节不进文档站。改了中文版就要改 `en/` 那份。
+6. **合同测试**——`plugin-sdk` 的 Schema 变化必须覆盖合法输入、拒绝输入和存量清单的兼容路径。
+   见下方「测试要求」。
+
+### 不属于 Agent 的一步
+
+**不要执行 `npm publish`**，除非用户明确要求。改完提交即可，发布由用户决定时机——桌面端往往要
+跟着发一版，两者的先后顺序有产品判断在里面。
+
+### 脚手架模板（`plugin-cli`）
+
+`plugin-cli` 的 `AGENTS.md` 模板只写「去哪读手册」，不写规则。**改了模板内容就必须推进
+`AGENTS_GUIDE_REVISION`**（`plugin-cli/src/agents-template.ts`），否则存量工程不会收到
+「说明书过期」的提示，用户也就永远不会去刷新它。
+
 ## 环境与租户打包（tenants.json）
 
 系统插件先按开发/生产 profile，再按业务租户动态构建/打包。`tenants.json`
@@ -58,8 +110,9 @@ profile + 租户的 zip 制品打入 `Resources/system-plugins`。同一次构�
 `VETTA_SYSTEM_PLUGIN_PROFILE` 与 `VETTA_TENANT`，否则打包阶段会因缺少对应 zip 而报错。
 
 若租户包含 `plugin-workbench`，`build-presets.mjs` 在算缓存哈希之前会先跑
-`presets/plugin-workbench/scripts/sync-plugin-docs.mjs`，将 monorepo
-`docs/plugin` 同步到该插件包内 `agent/docs/plugin/`（dev / dist 共用此路径）。
+`presets/plugin-workbench/scripts/bundle-cli.mjs`，把 `plugin-cli` 的构建产物内置到该插件包内
+`agent/cli/`。**工作台不再自带手册副本**：手册随 `@vetta-org/plugin-sdk` 进被编辑工程自己的
+`node_modules`，由 CLI 的 `docs` 命令解析——那份才与该工程实际编译的 SDK 版本一致。
 
 ## Preset 与外置插件的区别
 
@@ -259,3 +312,6 @@ bun run check
 - `plugin.json` 的入口与实际构建产物一致。
 - `release/<id>-<version>.zip` 根目录包含 `plugin.json` 和完整运行时文件。
 - `bun run build:presets`、`bun run check` 和 Desktop TypeScript 检查通过。
+- 改动了对外合同（`plugin-sdk` 公开类型 / manifest Schema、`plugin-vite` 构建约定、宿主对清单字段的
+  解析、`plugin-cli` 命令）时，已按「改动对外合同时必须同步文档」逐项核对：手册、CHANGELOG、
+  SDK 版本、`PLUGIN_API_VERSION`、文档站结论句、合同测试。
