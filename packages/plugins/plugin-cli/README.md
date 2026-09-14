@@ -49,11 +49,18 @@ skip an update when `marketplaceVersion` did not change. `sync` reconciles all t
 
 ```bash
 npx @vetta-org/plugin-cli docs
+npx @vetta-org/plugin-cli docs --check-latest
 ```
 
 Prints where the manual bundled with the installed `@vetta-org/plugin-sdk` lives, which SDK version
 it documents, and which plugin (and hub) the current directory belongs to. The manual is always the
 one this project compiles against, so it never describes contracts the user's host lacks.
+
+That pinning is also why the manual goes stale: a project created months ago still carries the manual
+from that day, and so does its `AGENTS.md`. Every run therefore prints how to refresh it, and
+`--check-latest` compares the installed SDK against the registry and says so outright when it is
+behind. Since `npx` resolves this CLI to the latest published version, its output is the one link in
+the chain that cannot be out of date — when it disagrees with a checked-in brief, it wins.
 
 ## Install a plugin
 
