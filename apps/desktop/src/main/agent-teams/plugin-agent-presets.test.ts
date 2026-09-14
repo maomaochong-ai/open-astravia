@@ -116,7 +116,7 @@ describe("plugin agent presets", () => {
 		expect(log.warn).toHaveBeenCalled();
 	});
 
-	it("resolves builtin team members and rejects members from another plugin", () => {
+	it("resolves a member of this plugin's own, and drops the team when that member is missing", () => {
 		const withTeams = plugin({
 			agent: {
 				agents: plugin().agent!.agents,
@@ -128,9 +128,9 @@ describe("plugin agent presets", () => {
 						workflow: "Run this team as a design loop.",
 					},
 					{
-						id: "borrowed",
-						name: "借来的团队",
-						members: [{ agent: "someone-elses-agent", responsibility: "n/a" }],
+						id: "typo",
+						name: "写错了的团队",
+						members: [{ agent: "desginer", responsibility: "n/a" }],
 					},
 				],
 			},
@@ -146,9 +146,184 @@ describe("plugin agent presets", () => {
 
 		expect(teams).toHaveLength(1);
 		expect(teams[0]?.members[0]?.blueprintId).toBe(pluginBlueprintId("vetta-ui-design", "designer"));
-		// 跨插件引用会让一个插件能否用取决于另一个插件装没装，直接拒掉；引用宿主角色同理，
-		// 宿主压根没有内置人设。
+		// 自己插件里的实体引用解析不到就是配置写错了，整支作废才能让作者立刻发现。
 		expect(log.warn).toHaveBeenCalled();
+	});
+
+	describe("cross-plugin references", () => {
+		/** 供货方：只声明角色，不知道谁会引用它。 */
+		function provider(overrides: Partial<InstalledPlugin> = {}): InstalledPlugin {
+			return {
+				id: "preset-agent",
+				enabled: true,
+				defaultLocale: "zh",
+				locales: {},
+				rootPath: "/plugins/preset-agent",
+				agent: {
+					agents: [
+						{
+							id: "developer",
+							name: "开发者",
+							systemPrompt: "You implement the plan.",
+							roles: ["developer"],
+						},
+					],
+				},
+				...overrides,
+			} as unknown as InstalledPlugin;
+		}
+
+		/** 消费方：队长是自己的人，开发位是个角色槽。 */
+		function consumer(member: Record<string, unknown>): InstalledPlugin {
+			return plugin({
+				agent: {
+					agents: plugin().agent!.agents,
+					teams: [
+						{
+							id: "design-team",
+							name: "设计团队",
+							members: [{ agent: "designer", responsibility: "Owns the visual result." }, member],
+						},
+					],
+				},
+			} as Partial<InstalledPlugin>);
+		}
+
+		it("fills a role slot from another plugin", () => {
+			const { teams } = buildPluginAgentPresets({
+				plugins: [consumer({ role: "developer", responsibility: "Implements it." }), provider()],
+				logger: logger(),
+				readResource,
+				readBinaryResource,
+			});
+
+			expect(teams).toHaveLength(1);
+			const filled = teams[0]!.members[1]!;
+			expect(filled.blueprintId).toBe(pluginBlueprintId("preset-agent", "developer"));
+			expect(filled.providerPluginId).toBe("preset-agent");
+			expect(filled.role).toBe("developer");
+			// 成员 id 由槽位推导，所以这里挂的是角色名而不是解析到的那个人。
+			expect(filled.slotKey).toBe("developer");
+		});
+
+		it("resolves a provider declared after the consumer in the plugin list", () => {
+			// 单趟循环时这一例会失败：消费方先解析，供货方还没进索引。
+			const { teams } = buildPluginAgentPresets({
+				plugins: [consumer({ agent: "preset-agent/developer", responsibility: "Implements it." }), provider()],
+				logger: logger(),
+				readResource,
+				readBinaryResource,
+			});
+
+			expect(teams[0]?.members[1]?.blueprintId).toBe(pluginBlueprintId("preset-agent", "developer"));
+		});
+
+		it("keeps the team but drops the slot when the provider is not installed", () => {
+			const log = logger();
+			const { teams } = buildPluginAgentPresets({
+				plugins: [consumer({ role: "developer", responsibility: "Implements it." })],
+				logger: log,
+				readResource,
+				readBinaryResource,
+			});
+
+			// 引用别人不该拖垮自己：少一名队员，不是少一支团队。
+			expect(teams).toHaveLength(1);
+			expect(teams[0]?.members).toHaveLength(1);
+			expect(log.warn).not.toHaveBeenCalled();
+		});
+
+		it("drops the whole team when a slot the consumer marked required is missing", () => {
+			const log = logger();
+			const { teams } = buildPluginAgentPresets({
+				plugins: [consumer({ role: "developer", responsibility: "Implements it.", optional: false })],
+				logger: log,
+				readResource,
+				readBinaryResource,
+			});
+
+			expect(teams).toEqual([]);
+			expect(log.warn).toHaveBeenCalled();
+		});
+
+		it("loses the slot when the provider is disabled, and gets it back when re-enabled", () => {
+			const args = { logger: logger(), readResource, readBinaryResource };
+			const team = consumer({ role: "developer", responsibility: "Implements it." });
+
+			const off = buildPluginAgentPresets({ plugins: [team, provider({ enabled: false })], ...args });
+			expect(off.teams[0]?.members).toHaveLength(1);
+
+			const on = buildPluginAgentPresets({ plugins: [team, provider()], ...args });
+			expect(on.teams[0]?.members).toHaveLength(2);
+		});
+
+		it("picks the same provider regardless of plugin order when several offer the role", () => {
+			const alt = provider({ id: "zz-other-agents", rootPath: "/plugins/zz-other-agents" });
+			const team = consumer({ role: "developer", responsibility: "Implements it." });
+			const args = { logger: logger(), readResource, readBinaryResource };
+
+			// 候选按 pluginId 字典序，不按插件目录的枚举顺序——否则同一份配置在两台机器上
+			// 会铺出不同的团队。
+			const forward = buildPluginAgentPresets({ plugins: [team, provider(), alt], ...args });
+			const reversed = buildPluginAgentPresets({ plugins: [alt, provider(), team], ...args });
+
+			expect(forward.teams[0]?.members[1]?.providerPluginId).toBe("preset-agent");
+			expect(reversed.teams[0]?.members[1]?.providerPluginId).toBe("preset-agent");
+		});
+
+		it("prefers its own agent over another plugin's for the same role", () => {
+			const own = plugin({
+				agent: {
+					agents: [{ ...plugin().agent!.agents![0]!, roles: ["developer"] }],
+					teams: [
+						{
+							id: "design-team",
+							name: "设计团队",
+							members: [
+								{ agent: "designer", responsibility: "Owns the visual result." },
+								{ role: "developer", responsibility: "Implements it." },
+							],
+						},
+					],
+				},
+			} as Partial<InstalledPlugin>);
+
+			const { teams } = buildPluginAgentPresets({
+				plugins: [own, provider()],
+				logger: logger(),
+				readResource,
+				readBinaryResource,
+			});
+
+			expect(teams[0]?.members[1]?.providerPluginId).toBe("vetta-ui-design");
+		});
+
+		it("refuses a team whose leader resolves to another plugin", () => {
+			const headless = plugin({
+				agent: {
+					agents: plugin().agent!.agents,
+					teams: [
+						{
+							id: "headless",
+							name: "无头团队",
+							members: [{ agent: "preset-agent/developer", responsibility: "Leads it." }],
+						},
+					],
+				},
+			} as Partial<InstalledPlugin>);
+			const log = logger();
+
+			const { teams } = buildPluginAgentPresets({
+				plugins: [headless, provider()],
+				logger: log,
+				readResource,
+				readBinaryResource,
+			});
+
+			// 队长是用户唯一的对话入口：让它落在别的插件上，那个插件一卸载团队就成了打不开的壳。
+			expect(teams).toEqual([]);
+			expect(log.warn).toHaveBeenCalled();
+		});
 	});
 
 	it("refuses an avatar path that escapes the plugin directory", () => {

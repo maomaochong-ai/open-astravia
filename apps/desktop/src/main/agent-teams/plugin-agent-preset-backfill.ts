@@ -72,7 +72,7 @@ export function backfillPluginAgentPresets(input: PluginPresetBackfillInput): Pl
 	for (const preset of input.teams) {
 		const index = findClaimableTeam(teams, preset);
 		if (index >= 0) {
-			const claimed = claimTeam(teams[index]!, preset, now);
+			const claimed = claimTeam(teams[index]!, preset, agents, now);
 			if (claimed !== teams[index]) {
 				teams[index] = claimed;
 				changed = true;
@@ -138,22 +138,86 @@ function findClaimableTeam(teams: readonly TeamDefinition[], preset: PluginTeamP
 	return teams.findIndex((team) => claimable.has(team.id));
 }
 
-/** 团队的阵容与任务书都可能被用户改过，认领时只补提供方。 */
-function claimTeam(team: TeamDefinition, preset: PluginTeamPreset, now: number): TeamDefinition {
-	if (team.source?.kind === "plugin" && team.source.pluginId === preset.pluginId) return team;
-	return { ...team, source: { kind: "plugin", pluginId: preset.pluginId }, updatedAt: now };
+/**
+ * 团队的阵容与任务书都可能被用户改过，认领时只补提供方——外加一档「补员」。
+ *
+ * 补员是跨插件引用逼出来的：X 的团队里那个 developer 槽，可能在铺这支团队时提供方还没装。
+ * 提供方后来到位了，槽位得能自己长出来，否则用户只能删掉团队重装 X。
+ */
+function claimTeam(
+	team: TeamDefinition,
+	preset: PluginTeamPreset,
+	agents: readonly AgentProfile[],
+	now: number,
+): TeamDefinition {
+	const claimed = team.source?.kind === "plugin" && team.source.pluginId === preset.pluginId;
+	const grown = growTeamRoster(team, preset, agents);
+	if (claimed && !grown) return team;
+	return {
+		...team,
+		...(grown ? { members: grown } : {}),
+		source: { kind: "plugin", pluginId: preset.pluginId },
+		updatedAt: now,
+	};
+}
+
+/**
+ * 把提供方后来才解析得到的成员补进这支团队；没有可补的返回 undefined。
+ *
+ * **只在阵容还是提供方铺的那一份时动手**：成员 id 全都能由本预设推导出来才算。用户自己加过
+ * 人就整支不动——宁可少补一个，也不该往用户编辑过的阵容里插队。
+ *
+ * 反过来，用户删掉的预设成员会被补回来。这与档案的语义一致：提供方维护的资源，缺失只可能
+ * 来自旧数据或一次异常。
+ */
+function growTeamRoster(
+	team: TeamDefinition,
+	preset: PluginTeamPreset,
+	agents: readonly AgentProfile[],
+): TeamMember[] | undefined {
+	const derivable = new Set<string>(
+		preset.members.flatMap((member, index) => [
+			pluginTeamMemberId(preset.pluginId, preset.teamId, member.slotKey),
+			// 成员 id 曾经按下标推导。存量团队认这一档，否则它们永远长不出新成员。
+			legacyPluginTeamMemberId(preset.pluginId, preset.teamId, index),
+		]),
+	);
+	if (!team.members.every((member) => derivable.has(member.id))) return undefined;
+
+	const bound = new Set(team.members.map((member) => member.binding.agentProfileId));
+	const handles = new Set(team.members.map((member) => normalizeMentionHandle(member.handle)));
+	const members = [...team.members];
+	let changed = false;
+
+	for (const member of preset.members) {
+		const profile = findLibraryProfile(agents, member.blueprintId);
+		// 按绑定的档案判重，不按 id：存量团队里那名成员带的还是下标推导出来的老 id。
+		if (!profile || bound.has(profile.id)) continue;
+		members.push({
+			id: pluginTeamMemberId(preset.pluginId, preset.teamId, member.slotKey),
+			handle: allocateHandle(profile.mentionHandle, handles),
+			binding: { kind: "reference", agentProfileId: profile.id },
+			assignment: { responsibility: member.responsibility },
+		});
+		bound.add(profile.id);
+		changed = true;
+	}
+
+	return changed ? members : undefined;
+}
+
+function findLibraryProfile(agents: readonly AgentProfile[], blueprintId: string): AgentProfile | undefined {
+	return agents.find((agent) => agent.scope.kind === "library" && agent.blueprintId === blueprintId);
 }
 
 function resolveTeamMembers(preset: PluginTeamPreset, agents: readonly AgentProfile[]): TeamMember[] | undefined {
 	const members: TeamMember[] = [];
 	const handles = new Set<string>();
 	for (const [index, member] of preset.members.entries()) {
-		const profile = agents.find(
-			(agent) => agent.scope.kind === "library" && agent.blueprintId === member.blueprintId,
-		);
+		const profile = findLibraryProfile(agents, member.blueprintId);
 		if (!profile) return undefined;
 		members.push({
-			id: pluginTeamMemberId(preset.pluginId, preset.teamId, index),
+			id: pluginTeamMemberId(preset.pluginId, preset.teamId, member.slotKey),
 			handle: allocateHandle(profile.mentionHandle, handles),
 			binding: { kind: "reference", agentProfileId: profile.id },
 			assignment: {
@@ -192,7 +256,23 @@ export function pluginTeamId(pluginId: string, teamId: string): string {
 	return deterministicId("team", `${pluginId}:${teamId}`);
 }
 
-function pluginTeamMemberId(pluginId: string, teamId: string, index: number): string {
+/**
+ * 成员 id 由**槽位**推导，不由占槽的人推导。
+ *
+ * 槽位稳定、占槽的人可替换：角色槽位换了提供方、阵容中间插了一个人，已有成员的 id 都不该跟着
+ * 漂——它们身上挂着用户的 handle 和运行时状态。
+ */
+function pluginTeamMemberId(pluginId: string, teamId: string, slotKey: string): string {
+	return deterministicId("team-member", `${pluginId}:${teamId}:${slotKey}`);
+}
+
+/**
+ * 槽位 id 之前的算法：按成员下标。
+ *
+ * 存量文档里的成员带的就是这种 id，认领与补员都要认它。**不做迁移**：成员 id 只要在一份文档
+ * 内稳定就够用，重写它反而要同步动运行时状态里的引用。
+ */
+function legacyPluginTeamMemberId(pluginId: string, teamId: string, index: number): string {
 	return deterministicId("team-member", `${pluginId}:${teamId}:${index}`);
 }
 
