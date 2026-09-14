@@ -19,6 +19,9 @@
 				"mentionHandle": "master",
 				"avatar": "agent/avatars/master.webp",
 				"systemPromptPath": "agent/prompts/master.md",
+				"roles": [
+					"master"
+				],
 				"legacyIds": [
 					"master",
 					"leader"
@@ -31,6 +34,9 @@
 				"mentionHandle": "developer",
 				"avatar": "agent/avatars/developer.webp",
 				"systemPromptPath": "agent/prompts/developer.md",
+				"roles": [
+					"developer"
+				],
 				"legacyIds": [
 					"executor",
 					"builder"
@@ -43,6 +49,9 @@
 				"mentionHandle": "researcher",
 				"avatar": "agent/avatars/researcher.webp",
 				"systemPromptPath": "agent/prompts/researcher.md",
+				"roles": [
+					"researcher"
+				],
 				"legacyIds": [
 					"researcher"
 				]
@@ -54,6 +63,9 @@
 				"mentionHandle": "auditor",
 				"avatar": "agent/avatars/auditor.webp",
 				"systemPromptPath": "agent/prompts/auditor.md",
+				"roles": [
+					"auditor"
+				],
 				"legacyIds": [
 					"auditor",
 					"reviewer"
@@ -65,7 +77,10 @@
 				"description": "%agent.business.description%",
 				"mentionHandle": "business",
 				"avatar": "agent/avatars/business.webp",
-				"systemPromptPath": "agent/prompts/business.md"
+				"systemPromptPath": "agent/prompts/business.md",
+				"roles": [
+					"business"
+				]
 			}
 		],
 		"teams": [

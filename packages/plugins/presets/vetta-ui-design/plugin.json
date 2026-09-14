@@ -75,6 +75,9 @@
 				"mentionHandle": "designer",
 				"avatar": "agent/agents/designer.webp",
 				"systemPromptPath": "agent/agents/designer.md",
+				"roles": [
+					"designer"
+				],
 				"abilities": "all"
 			}
 		]
