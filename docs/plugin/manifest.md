@@ -181,6 +181,8 @@ revision 读取；不要依次调用多次 `writeFile()` 冒充多文件事务�
 | `agent.skillPresentation` | 控制插件 Skill 在产品入口的可见性与展示文案。只影响界面呈现，不影响加载、调用或权限。 |
 | `agent.mcpServers` | **插件内聚 MCP**（三源聚合之插件源）：相对路径 `.mcp.json` 或内联 map。需 `agent.mcp.control`。内联 map 里的 `agent_mode` 已废弃（ADR-0071），容忍存在但被忽略。 |
 | `agent.toolPolicy.allow` / `.deny` | 声明式工具可见性策略（注册后的工具 id）。需 `agent.tools.control`。 |
+| `agent.agents` | **插件贡献的智能体**：人设、头像、系统提示词由插件提供，宿主把它们铺进用户的智能体库。**不需要权限**，见[贡献智能体与团队](#贡献智能体与团队)。 |
+| `agent.teams` | **插件贡献的团队**：成员只能是本插件 `agent.agents` 里的智能体。同上。 |
 
 > 在 JS 里**动态**注册 agent 工具走 `ctx.agent.registerTool`（见 [conversation-and-agent.md](./conversation-and-agent.md#注册-agent-工具)），与此处的**声明式**清单字段是两条不同路径。
 >
@@ -213,3 +215,82 @@ revision 读取；不要依次调用多次 `writeFile()` 冒充多文件事务�
 - `displayName` / `displayDescription`：仅改变用户看到的文案，不改变 Skill 名、调用路由或已保存引用；支持插件 `%catalogKey%` 本地化占位符。
 
 普通用户、项目、市场与 Vetta 内置 Skill 没有声明时继续默认可见。已安装的旧插件没有 `skillPresentation` 时按插件默认隐藏，避免把实现细节意外暴露为产品能力。
+
+## 贡献智能体与团队
+
+`agent.agents` / `agent.teams` 让插件把**自己的人设**带进产品：宿主在插件启用时把它们铺进用户的智能体库与团队列表，与用户自建的档案并列出现在智能体中心、新会话选择器和 `@` 提及里。
+
+宿主**不再内置任何人设**——装机自带的那几位现在也由 `preset-agent` 这个预置插件提供，所以你写的插件与它们走的是同一条路径、同一套字段。
+
+- **不需要权限**：这是清单声明面，不是运行时 API。用户对「装了什么插件」本身知情，因此没有单独的授权开关。
+- 校验在构建期（`vetta-plugin validate` / `pack`）就做：id 格式、路径越界、头像格式都会直接失败，而不是等用户装上后发现智能体没出现。
+
+```json
+{
+  "agent": {
+    "agents": [
+      {
+        "id": "designer",
+        "name": "%agent.designer.name%",
+        "description": "%agent.designer.description%",
+        "mentionHandle": "designer",
+        "avatar": "agent/agents/designer.webp",
+        "systemPromptPath": "agent/agents/designer.md",
+        "abilities": "all"
+      }
+    ],
+    "teams": [
+      {
+        "id": "design-team",
+        "name": "%team.design.name%",
+        "members": [
+          { "agent": "designer", "responsibility": "Owns the visual result end to end." }
+        ],
+        "workflowPath": "agent/workflows/design-team.md"
+      }
+    ]
+  }
+}
+```
+
+### agents[] 字段
+
+| 字段 | 必填 | 说明 |
+| --- | --- | --- |
+| `id` | ✅ | 插件内唯一，`^[a-z0-9][a-z0-9-]{0,63}$`。全局 id 由宿主拼成 `plugin:<pluginId>:<id>`，插件不要自己拼。 |
+| `name` | ✅ | 支持 `%key%` 占位，按插件 `locales/` 解析；切语言即时跟随。 |
+| `description` | ❌ | 同样支持 `%key%`，≤ 2000 字符。 |
+| `mentionHandle` | ❌ | `@` 提及用的短名，缺省用 `id`。与用户已有 handle 冲突时宿主自动让号。 |
+| `avatar` | ❌ | 插件包内相对路径，`.webp` / `.png` / `.jpg` / `.gif` / `.svg`，**单张 ≤ 512 KB**（要过一次 IPC）。 |
+| `systemPromptPath` / `systemPrompt` | ✅（二选一） | 人设提示词。推荐用 `systemPromptPath` 指向 Markdown：提示词值得单独 diff。内联上限 64 000 字符。 |
+| `abilities` | ❌ | `all`（默认）继承宿主全部已启用能力；`own` 只用本插件的能力。两种模式下**本插件的能力都强制激活，用户在能力面板里关不掉**——这个智能体存在的意义就是操作它自己的插件。 |
+| `legacyIds` | ❌ | 本智能体**接管**的历史 blueprint id（≤ 16 个）。见下方「接管与升级」。 |
+
+### teams[] 字段
+
+| 字段 | 必填 | 说明 |
+| --- | --- | --- |
+| `id` | ✅ | 规则同 agents。 |
+| `name` / `description` | `name` ✅ | 同样支持 `%key%` 占位。 |
+| `members` | ✅ | 1–32 个 `{ agent, responsibility }`。**`agent` 只能写本插件 `agent.agents` 里的 id**：跨插件引用会让一个插件能否用取决于另一个插件装没装，宿主直接拒掉这一支团队并打 warn。 |
+| `workflow` / `workflowPath` | ❌ | 队长的团队任务书，把这支团队的固定流水线写死。 |
+| `legacyIds` | ❌ | 本团队接管的历史团队 id。 |
+
+**第一个成员即队长**，也是用户在团队会话里唯一的对话入口。
+
+### 生命周期
+
+- **启用插件**：宿主把缺失的档案补齐——判据是「用户文档里现在有没有」，不是「历史上铺过没有」。因此用户误删、旧版本数据缺失都会被补回来。
+- **升级插件**：没被用户手改过的档案跟着提供方走（铺档案时**不落 `systemPrompt`**，人设升级才能自动生效）；用户改过的字段保留。
+- **禁用插件**：档案**灰着留在原地**，既不隐藏也不从团队里摘掉，并标出「插件已禁用」。重新启用后一切原样回来——中途不动用户的档案。
+- **贡献出错**：单个智能体/团队解析失败（提示词读不到、头像超限、成员引用非法）只跳过它自己并打 warn，不影响同插件的其它贡献。
+
+### 接管与升级（legacyIds）
+
+`legacyIds` 用于「人设从别处迁进插件」：宿主解析不到这些历史 id 时折算到本智能体，铺档案时也据此**认领**用户已有的同角色档案，而不是再铺一份新的。用户的 `@handle`、能力勾选与团队绑定因此不会被重置。
+
+装机自带人设迁进 `preset-agent` 走的正是这条路径（`executor` → `developer` 等）。宿主自己不需要知道是哪个插件接管了哪个老角色。
+
+### 配套：新会话上下文区
+
+插件贡献的智能体被选中时，往往还想在新会话页摆出「接下来多半要用到的素材」（风格库、模板墙）。那是另一个扩展点：[ui-slots → 新会话上下文区](./ui-slots.md#新会话上下文区-registernewsessioncontext)，`activateWhen.agents` 里写的就是这里的 `agents[].id`。

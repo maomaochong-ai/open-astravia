@@ -11,13 +11,13 @@
 | [getting-started.md](./getting-started.md) | 环境、脚手架、Vite/Module Federation、构建、安装（含本地路径）、调试闭环 |
 | [ability-details.md](./ability-details.md) | **能力详情页**：`ability.json`、结构化区块、Markdown 文件引用、多语言、资源打包与限制 |
 | [guiding-the-agent.md](./guiding-the-agent.md) | **引导模型用好你的扩展**：三层心智模型、name/description 正反触发段、返回值引导、skill 渐进披露、执行边界、反模式与自检清单 |
-| [manifest.md](./manifest.md) | `plugin.json` 全字段、`commands`、`contributionMode`、`agent_mode`（已废弃）、`defaultLocale` / i18n、settings、guidingWords、agent 贡献 |
+| [manifest.md](./manifest.md) | `plugin.json` 全字段、`commands`、`contributionMode`、`agent_mode`（已废弃）、`defaultLocale` / i18n、settings、guidingWords、agent 贡献、**贡献智能体与团队** |
 | [mcp.md](./mcp.md) | **MCP 三源聚合**、插件内聚 MCP（`agent.mcpServers`）、命名、生命周期、打包 |
 | [permissions.md](./permissions.md) | 权限完整清单、门控点、声明/授权流程 |
 | [ai.md](./ai.md) | 调用用户已配置的文本模型，模型列表、完成请求与凭据边界 |
 | [browser.md](./browser.md) | 宿主管理的浏览器 session、持久 profile、多账号隔离、域名范围与类型化动作 |
 | [file-explorer.md](./file-explorer.md) | 文件列表右键菜单、工具栏、装饰、定位、刷新与事件 |
-| [ui-slots.md](./ui-slots.md) | **notify 全局 Toast** / 文件预览（**含大文件 getUrl 规范**）/ 全局浮层 / **工作区视图（整页）** / 活动 Tab / 输入栏动作 / **Turn 卡** / **Tool-call 槽** |
+| [ui-slots.md](./ui-slots.md) | **notify 全局 Toast** / 文件预览（**含大文件 getUrl 规范**）/ 全局浮层 / **工作区视图（整页）** / 活动 Tab / 输入栏动作 / **新会话上下文区** / **Turn 卡** / **Tool-call 槽** |
 | [message-cards.md](./message-cards.md) | 消息卡片：`details.cards`、`registerCardRenderer`、`pendingFor`、跨轮去重 |
 | [conversation-and-agent.md](./conversation-and-agent.md) | 对话、registerTool、**registerHook**、command.run、fs、network、storage、settings、i18n、工作模式 getAgentMode |
 | [app-actions.md](./app-actions.md) | 动态 App Action：JSON Schema、审批、生命周期、取消与独立发布 |
@@ -37,6 +37,7 @@
 | 文件列表扩展 | `ctx.fileExplorer.*` | `ui.file-explorer.*` / `workspace.read` | [file-explorer](./file-explorer.md) |
 | 活动面板 Tab | `ctx.ui.registerActivityTab` / `openActivityTab` | `ui.slot.activity-tab` | [ui-slots](./ui-slots.md#活动面板-tab-registeractivitytab) |
 | 输入栏动作（toggle） | `ctx.ui.registerInputAction` | `ui.slot.input-action` | [ui-slots](./ui-slots.md#输入栏动作-registerinputaction) |
+| **新会话上下文区**（输入框下方的素材区） | `ctx.ui.registerNewSessionContext` | `ui.slot.new-session-context` | [ui-slots](./ui-slots.md#新会话上下文区-registernewsessioncontext) |
 | 消息卡片渲染器 | `ctx.ui.registerCardRenderer` | `ui.slot.message` | [message-cards](./message-cards.md) |
 | 工具行内渲染替换 | `ctx.ui.registerToolCallSlot` | `ui.slot.tool-call` | [ui-slots](./ui-slots.md#工具行内渲染-registertoolcallslot) |
 | 本轮 Turn 卡 | `ctx.ui.registerTurnCard` | `ui.slot.turn-card` | [ui-slots](./ui-slots.md#本轮-turn-卡-registerturncard) |
@@ -58,6 +59,7 @@
 | 插件 i18n | `ctx.i18n` / `useTranslation` + `locales/` | 无（catalog 随包） | [conversation-and-agent](./conversation-and-agent.md#插件-i18n) / [manifest](./manifest.md#i18n) |
 | 新会话引导词 | `plugin.json` `guidingWords` | 无 | [manifest](./manifest.md#guidingwords引导词) |
 | 打包 skill | `agent.skillPaths` | `agent.skills.control` | [manifest](./manifest.md#agent-agent-侧贡献) |
+| **贡献智能体 / 团队** | `plugin.json` `agent.agents` / `agent.teams` | 无 | [manifest](./manifest.md#贡献智能体与团队) |
 | **插件内聚 MCP（三源聚合之一）** | `agent.mcpServers` | `agent.mcp.control` | [mcp](./mcp.md) |
 | 动态 system prompt | `registerSystemPromptProvider` | `agent.systemPrompt.*` | [conversation-and-agent](./conversation-and-agent.md#注册动态系统提示词-provider) |
 | 自动续跑 | `registerContinuationProvider` | `agent.continuation.register` | [conversation-and-agent](./conversation-and-agent.md#注册-agent-自动续跑策略) |

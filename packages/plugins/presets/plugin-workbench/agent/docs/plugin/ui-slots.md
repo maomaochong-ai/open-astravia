@@ -456,6 +456,87 @@ ctx.ui.registerInputAction({
 
 配套：`setPromptAttachment`（通用一次性 prompt 上下文胶囊）、`previewImage`（全屏图片预览）——见 [conversation-and-agent 私有存储 API](./conversation-and-agent.md#插件私有存储-api)。
 
+## 新会话上下文区 registerNewSessionContext
+
+在**新会话页**输入框下方铺一块内容：用户接下来多半要用到的素材（风格库、模板墙、最近产物）。与 input-action 的分工——那是发送前的**开关**，这是发送前的**上下文**。
+
+- 权限：`ui.slot.new-session-context`（缺权限 **warn+noop**）
+- 上屏与否**由宿主裁决**，插件只负责被激活后渲染
+- 同时有多个贡献上屏时，该区域顶部出 tabbar；只有一个时直接渲染内容
+
+```ts
+interface PluginNewSessionContextContribution {
+  id: string;
+  label: string;                 // tabbar 标题；只有一个贡献上屏时不展示
+  icon?: ReactNode;              // 省略时用插件自己的图标
+  activateWhen: PluginNewSessionContextActivation;
+  width?: "input" | "wide";      // 默认 "input"
+  render(context: PluginNewSessionContext): ReactNode;
+}
+```
+
+```tsx
+ctx.ui.registerNewSessionContext({
+  id: "design-styles",
+  label: "%tab.label%",
+  // 选中本插件的设计师、或在输入框提到本插件的 skill 时上屏。
+  activateWhen: { agents: ["designer"], skills: ["vetta-ui-design"] },
+  // 画廊类内容压在输入框宽度里，每一项都会小到看不出风格。
+  width: "wide",
+  render: (context) => <DesignStyleLibrary context={context} />,
+});
+```
+
+### 激活条件 activateWhen
+
+**只能写本插件自己的东西**，填别人的 id 一律不生效。这条限制是故意的：否则插件 A 可以声明「只要用户选了 B 的智能体我就上屏」，把别人的使用场景劫持过来。
+
+| 字段 | 含义 |
+| --- | --- |
+| `agents` | 本插件在 manifest `agent.agents` 里声明的智能体 id（**不带 `plugin:` 前缀**）。省略表示「本插件的任意智能体」。 |
+| `teams` | 把团队命中收窄到指定团队。团队本身按**成员**推导：队里有本插件贡献的角色就算相关，通常省略即可。 |
+| `skills` | 本插件提供的 skill 名；用户在输入框里提到时命中。 |
+| `mcpServers` | 本插件提供的 MCP server 名。 |
+
+- 各字段取**并集**：任意一条命中即激活。
+- **至少要声明一条**：全空等于「任何新会话都上屏」，那不是上下文区该有的行为，宿主直接抛错。
+- 上屏顺序：选中目标（`target`）排在提及能力（`mention`）之前——选了设计师，设计资源就该是第一个 tab，而不是因为另一个插件装得早就抢到首位；同强度按插件 id 与注册顺序稳定排序。
+
+> ⚠️ `teams` 当前按**宿主团队 id** 比对，而插件贡献的团队在宿主侧用的是推导 id，写 manifest 里的团队 id 匹配不上。要按团队激活，先靠成员推导（省略 `teams`）。
+
+### 渲染上下文
+
+`render` 拿到的对象是一个**会继续生长**的结构：按需解构，不要假定它只有这些键。
+
+```ts
+interface PluginNewSessionContext {
+  target: { kind: "agent" | "team"; id: string; contributedId?: string } | null;
+  mentionedAbilities: { skills: readonly string[]; mcpServers: readonly string[] };
+  draft: string;          // 需 conversation.draft.read，未授予时恒为空串
+  cwd: string | null;     // 未选择项目时 null
+  composer: {
+    attach(attachment: PluginPromptAttachment): void;
+    insertText(text: string, options?: { position?: "start" | "end" }): void;
+  };
+}
+```
+
+- `target.contributedId`：目标由本插件贡献时，给出 manifest 里的那个 id。
+- `draft` **只在本贡献处于激活状态时提供**——插件拿不到「用户随便打点什么」的全程流水。
+- `composer.insertText` 始终是**插入**而非替换，免得抹掉用户已经打的内容；`position` 缺省 `"end"`（光标处），`"start"` 适合「先定题、细节由用户补」。
+- 刻意**不提供「直接发送」**：越过发送前这道关不属于本区职责。
+
+### 宽度与位置
+
+- `width: "input"`（默认）与输入框同宽，适合补充说明一类的窄内容。
+- `width: "wide"` 铺满页面可用宽度（窄窗口铺满、宽屏取八成），留给画廊、素材墙这类「内容本身就是主角」的东西。
+- 该区在输入栏**下方**独立成块，跟着内容长高；命令面板展开时整块让位——那是打断式交互。
+- 没有贡献上屏时连槽位都不给，页面不会留一块空白。
+
+### 团队会话
+
+团队会话与单智能体会话一样会把**工作区**与**轮次开始**报给插件，因此本区里挂的东西（附件、插入的文本）在团队会话里同样有去处。
+
 ## 工具行内渲染 registerToolCallSlot
 
 按 **toolName** 替换宿主默认的工具调用行内 UI（transcript 内嵌渲染）。**首个注册胜**。

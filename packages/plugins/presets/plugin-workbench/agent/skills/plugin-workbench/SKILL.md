@@ -52,6 +52,8 @@ workbenchRoot = listPlugins() 中 id === "plugin-workbench" 的 rootPath
 | --- | --- |
 | 侧栏面板 / 活动 Tab | `ui-slots.md`（activity-tab） |
 | 输入栏按钮 | `ui-slots.md`（input-action） |
+| 新会话页摆素材 / 选完智能体的第一屏 | `ui-slots.md`（new-session-context） |
+| 插件自带人设 / 团队 | `manifest.md`（贡献智能体与团队） |
 | 文件预览 | `ui-slots.md`（file-preview + **notify 错误上报**）+ `styling-and-pitfalls.md`（**面板布局边界**） |
 | 全局弹层 | `ui-slots.md`（global） |
 | 任何可能失败的 IO/解析 | `ui-slots.md`（**notify**）+ `styling-and-pitfalls.md`（错误必须上报） |
