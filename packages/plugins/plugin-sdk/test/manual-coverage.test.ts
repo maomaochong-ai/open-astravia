@@ -50,6 +50,18 @@ describe("plugin manual coverage", () => {
 		expect(undocumented).toEqual([]);
 	});
 
+	it("ships the manual inside the npm tarball", () => {
+		// 手册随包发布是「任意目录里的 Agent 都能拿到版本对齐的合同」的地基：
+		// 漏掉 files 里这一项，装包的人拿到的 node_modules 里就没有 docs/。
+		const pkg = JSON.parse(readFileSync(join(here, "..", "package.json"), "utf8")) as {
+			files?: string[];
+			scripts?: Record<string, string>;
+		};
+		expect(pkg.files ?? []).toContain("docs");
+		// prepack 保证即使有人跳过 build 直接 npm publish，tarball 里的手册也是最新的。
+		expect(pkg.scripts?.prepack).toContain("bundle-docs");
+	});
+
 	it("keeps the copy bundled with the workbench in sync with the manual", () => {
 		expect(manualFileNames(bundledDir)).toEqual(manualFileNames(manualDir));
 		const drifted = manualFileNames(manualDir).filter(

@@ -21,11 +21,14 @@
 	},
 	"files": [
 		"dist",
+		"docs",
 		"src/tailwind-theme.css"
 	],
 	"scripts": {
-		"clean": "rm -rf dist",
-		"build": "tsgo -p tsconfig.build.json"
+		"clean": "rm -rf dist docs",
+		"bundle-docs": "node scripts/bundle-docs.mjs",
+		"build": "tsgo -p tsconfig.build.json && node scripts/bundle-docs.mjs",
+		"prepack": "node scripts/bundle-docs.mjs"
 	},
 	"dependencies": {
 		"@vetta-org/capability-sdk": "^0.1.0",
