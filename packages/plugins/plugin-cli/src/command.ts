@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { ActionRpcError, createActionRpcClient, readActionRpcEndpoint } from "@vetta/action-rpc";
 import { resolveNpmPluginArchive, type ResolvedNpmPluginArchive } from "./npm-package.js";
-import { initPluginProject } from "./init.js";
+import { initHubRepository, initPluginProject } from "./init.js";
 import { describeIndexDrift, syncMarketplaceIndex } from "./sync.js";
 import { findPluginHub, findPluginProject, type PluginProject, readManualSdkVersion, resolveManualDir } from "./workspace.js";
 
@@ -25,7 +25,8 @@ export type PluginDocsCommand =
 export type PluginInitCommand =
 	| { type: "help" }
 	| { type: "error"; message: string }
-	| { type: "init"; targetDir?: string; pluginId: string; displayName?: string; json: boolean };
+	| { type: "init"; targetDir?: string; pluginId: string; displayName?: string; json: boolean }
+	| { type: "init-hub"; targetDir?: string; name: string; repository: string; minAppVersion: string; json: boolean };
 
 export type PluginWatchCommand =
 	| { type: "help" }
@@ -69,6 +70,7 @@ Usage:
   vetta-plugin-cli reload <plugin-id> [--json]
   vetta-plugin-cli docs [--json]
   vetta-plugin-cli init --id <plugin-id> [--name <display>] [dir] [--json]
+  vetta-plugin-cli init hub --name <slug> --repository <url> --min-app-version <x.y.z> [dir]
   vetta-plugin-cli watch [dir] [--stop] [--json]
   vetta-plugin-cli uninstall [plugin-id] [--json]
   vetta-plugin-cli sync [--check] [--json]
@@ -81,6 +83,7 @@ Examples:
   npx @vetta-org/plugin-cli reload demo
   npx @vetta-org/plugin-cli docs
   npx @vetta-org/plugin-cli init --id my-plugin --name "My Plugin"
+  npx @vetta-org/plugin-cli init hub --name my-market --repository https://github.com/me/my-market --min-app-version 0.55.0
   npx @vetta-org/plugin-cli watch          # 让宿主改从工程目录加载，改完即生效
   npx @vetta-org/plugin-cli uninstall      # 卸载当前插件工程对应的插件
   npx @vetta-org/plugin-cli sync           # 在市场仓库根对账 .vetta/marketplace.json
@@ -138,6 +141,7 @@ export function parsePluginDocsCommand(argv: string[]): PluginDocsCommand | unde
 export function parsePluginInitCommand(argv: string[]): PluginInitCommand | undefined {
 	if (argv[0] !== "init") return undefined;
 	if (argv[1] === "-h" || argv[1] === "--help") return { type: "help" };
+	if (argv[1] === "hub") return parseInitHubCommand(argv.slice(2));
 	let parsed: ReturnType<typeof parseArgs>;
 	try {
 		parsed = parseArgs({
@@ -164,6 +168,50 @@ export function parsePluginInitCommand(argv: string[]): PluginInitCommand | unde
 		...(targetDir ? { targetDir } : {}),
 		pluginId,
 		...(typeof parsed.values.name === "string" ? { displayName: parsed.values.name } : {}),
+		json: parsed.values.json === true,
+	};
+}
+
+function parseInitHubCommand(argv: string[]): PluginInitCommand {
+	let parsed: ReturnType<typeof parseArgs>;
+	try {
+		parsed = parseArgs({
+			args: argv,
+			allowPositionals: true,
+			strict: true,
+			options: {
+				name: { type: "string" },
+				repository: { type: "string" },
+				"min-app-version": { type: "string" },
+				json: { type: "boolean" },
+			},
+		});
+	} catch (error) {
+		return { type: "error", message: formatParseError(error) };
+	}
+	const name = parsed.values.name;
+	if (typeof name !== "string" || name.length === 0) return { type: "error", message: "Missing --name <slug>" };
+	const repository = parsed.values.repository;
+	if (typeof repository !== "string" || repository.length === 0) {
+		return { type: "error", message: "Missing --repository <https url>" };
+	}
+	// 刻意不给默认值：太低会让装不动新 schema 的旧客户端也去激活快照，太高则部分用户直接
+	// 看不到这个市场。这是发布决定，不该由工具替作者猜。
+	const minAppVersion = parsed.values["min-app-version"];
+	if (typeof minAppVersion !== "string" || minAppVersion.length === 0) {
+		return {
+			type: "error",
+			message: "Missing --min-app-version <x.y.z> (the oldest Vetta Desktop version your abilities support)",
+		};
+	}
+	const [targetDir, unexpected] = parsed.positionals;
+	if (unexpected) return { type: "error", message: `Unexpected argument: ${unexpected}` };
+	return {
+		type: "init-hub",
+		...(targetDir ? { targetDir } : {}),
+		name,
+		repository,
+		minAppVersion,
 		json: parsed.values.json === true,
 	};
 }
@@ -390,6 +438,9 @@ export async function runPluginCommand(
 	}
 	if (command.type === "init") {
 		return runInitCommand(command, dependencies);
+	}
+	if (command.type === "init-hub") {
+		return runInitHubCommand(command, dependencies);
 	}
 	if (command.type === "sync") {
 		return runSyncCommand(command, dependencies);
@@ -706,6 +757,41 @@ function formatSyncReport(result: ReturnType<typeof syncMarketplaceIndex>, check
 	if (lines.length === 0) return "Index is in sync.\n";
 	if (check && result.changes.length > 0) lines.push("Run `vetta-plugin-cli sync` to apply.");
 	return `${lines.join("\n")}\n`;
+}
+
+/** 生成一个合规的能力市场仓库骨架，连同仓库级 AGENTS.md 与对账用的 CI。 */
+function runInitHubCommand(
+	command: Extract<PluginCommand, { type: "init-hub" }>,
+	dependencies: PluginCommandDependencies,
+): number {
+	const cwd = dependencies.cwd?.() ?? process.cwd();
+	try {
+		const result = initHubRepository({
+			targetDir: resolve(cwd, command.targetDir ?? command.name),
+			name: command.name,
+			repository: command.repository,
+			minAppVersion: command.minAppVersion,
+		});
+		dependencies.writeStdout(
+			command.json
+				? `${JSON.stringify({ ok: true, ...result })}\n`
+				: [
+						`Created marketplace ${result.name} at ${result.root}`,
+						"Add an ability: npx vetta-plugin-cli init --id <slug> --name \"<Display>\" abilities/plugins/<slug>",
+						"Then list it in .vetta/marketplace.json and run: npx vetta-plugin-cli sync",
+						"The working agreement for agents is in AGENTS.md.",
+					].join("\n") + "\n",
+		);
+		return 0;
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		if (command.json) {
+			dependencies.writeStdout(`${JSON.stringify({ ok: false, error: { code: "HUB_INIT_FAILED", message } })}\n`);
+		} else {
+			dependencies.writeStderr(`${message}\n`);
+		}
+		return 5;
+	}
 }
 
 export async function runPluginCli(argv: string[]): Promise<number> {

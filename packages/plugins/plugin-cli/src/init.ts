@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { renderAgentsGuide } from "./agents-template.js";
+import { renderHubAgentsGuide, renderHubReadme, renderHubWorkflow } from "./hub-template.js";
 
 /** 与脚手架一同落地的依赖范围；两个包各自独立发布，不要合成一个版本。 */
 export const DEFAULT_SDK_RANGE = "^0.3.1";
@@ -144,4 +145,72 @@ export default definePlugin({
 	}
 
 	return { root, pluginId: input.pluginId, files: Object.keys(files).sort() };
+}
+
+const HUB_NAME_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
+const APP_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
+
+export interface InitHubInput {
+	readonly targetDir: string;
+	/** 市场名（slug）。 */
+	readonly name: string;
+	readonly repository: string;
+	/** 本市场的能力所支持的最老 Vetta 版本。 */
+	readonly minAppVersion: string;
+}
+
+export interface InitHubResult {
+	readonly root: string;
+	readonly name: string;
+	readonly files: readonly string[];
+}
+
+/** 能力按类型分目录；空目录留 .gitkeep，否则 git 不会带上它们，作者得自己猜该放哪。 */
+const HUB_ABILITY_DIRS = ["plugins", "mcp", "skills", "scenes"] as const;
+
+export function initHubRepository(input: InitHubInput): InitHubResult {
+	if (!HUB_NAME_PATTERN.test(input.name)) {
+		throw new Error(`Invalid marketplace name ${JSON.stringify(input.name)}: use lowercase kebab-case`);
+	}
+	let repository: URL;
+	try {
+		repository = new URL(input.repository);
+	} catch {
+		throw new Error(`Invalid repository URL: ${input.repository}`);
+	}
+	if (repository.protocol !== "https:") throw new Error("Repository URL must use https://");
+	if (!APP_VERSION_PATTERN.test(input.minAppVersion)) {
+		throw new Error(`Invalid --min-app-version ${JSON.stringify(input.minAppVersion)}: expected a version like 0.55.0`);
+	}
+
+	const root = resolve(input.targetDir);
+	const manifestRelativePath = join(".vetta", "marketplace.json");
+	if (existsSync(join(root, manifestRelativePath))) {
+		throw new Error(`Refusing to overwrite an existing marketplace at ${root}`);
+	}
+
+	const files: Record<string, string> = {
+		[manifestRelativePath]: json({
+			schemaVersion: 2,
+			name: input.name,
+			marketplaceVersion: "1.0.0",
+			repository: repository.toString().replace(/\/$/, ""),
+			minAppVersion: input.minAppVersion,
+			abilities: [],
+		}),
+		"AGENTS.md": renderHubAgentsGuide({ name: input.name }),
+		"README.md": renderHubReadme({ name: input.name, repository: repository.toString().replace(/\/$/, "") }),
+		[join(".github", "workflows", "marketplace.yml")]: renderHubWorkflow(),
+		// dist/ 刻意不忽略：客户端直接读能力目录安装，不会替作者构建。
+		".gitignore": "node_modules/\nrelease/\n",
+	};
+	for (const dir of HUB_ABILITY_DIRS) files[join("abilities", dir, ".gitkeep")] = "";
+
+	for (const [relativePath, content] of Object.entries(files)) {
+		const target = join(root, relativePath);
+		mkdirSync(dirname(target), { recursive: true });
+		writeFileSync(target, content, "utf8");
+	}
+
+	return { root, name: input.name, files: Object.keys(files).sort() };
 }

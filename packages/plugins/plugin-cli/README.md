@@ -21,6 +21,18 @@ npx @vetta-org/plugin-cli uninstall            # the plugin in this directory
 npx @vetta-org/plugin-cli uninstall some-id    # by id, from anywhere
 ```
 
+## Start a marketplace
+
+```bash
+npx @vetta-org/plugin-cli init hub \
+  --name my-market \
+  --repository https://github.com/me/my-market \
+  --min-app-version 0.55.0
+```
+
+Creates the index skeleton, the `abilities/` layout, a repository-level `AGENTS.md`, and a CI
+workflow running `sync --check`. Add abilities with `init` inside `abilities/plugins/<slug>`.
+
 ## Keep a marketplace repository honest
 
 ```bash

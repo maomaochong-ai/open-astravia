@@ -23,11 +23,15 @@ export {
 export {
 	DEFAULT_SDK_RANGE,
 	DEFAULT_VITE_RANGE,
+	initHubRepository,
 	initPluginProject,
+	type InitHubInput,
+	type InitHubResult,
 	type InitPluginInput,
 	type InitPluginResult,
 } from "./init.js";
 export { renderAgentsGuide } from "./agents-template.js";
+export { renderHubAgentsGuide, renderHubReadme, renderHubWorkflow } from "./hub-template.js";
 export {
 	type SyncChange,
 	type SyncChangeKind,

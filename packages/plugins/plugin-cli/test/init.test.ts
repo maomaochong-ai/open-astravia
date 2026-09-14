@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { parsePluginInitCommand } from "../src/command.js";
-import { initPluginProject } from "../src/init.js";
+import { initHubRepository, initPluginProject } from "../src/init.js";
 
 const created: string[] = [];
 
@@ -123,5 +123,116 @@ describe("scaffolding stays out of the repository's business", () => {
 
 		// 宿主按 plugin.json 的 entry/styles 直接读目录，不会替你构建。
 		expect(readFileSync(join(result.root, ".gitignore"), "utf8")).not.toContain("dist/");
+	});
+});
+
+describe("scaffolding a marketplace repository", () => {
+	it("lays down a conformant index, ability directories, an agent brief and a CI guard", () => {
+		const root = scratch();
+
+		const result = initHubRepository({
+			targetDir: join(root, "market"),
+			name: "my-market",
+			repository: "https://github.com/me/my-market",
+			minAppVersion: "0.55.0",
+		});
+
+		const manifest = JSON.parse(readFileSync(join(result.root, ".vetta", "marketplace.json"), "utf8")) as Record<
+			string,
+			unknown
+		>;
+		// 这几个字段缺一个，客户端就不认这份索引。
+		expect(manifest).toMatchObject({
+			schemaVersion: 2,
+			name: "my-market",
+			marketplaceVersion: "1.0.0",
+			repository: "https://github.com/me/my-market",
+			minAppVersion: "0.55.0",
+			abilities: [],
+		});
+		expect(result.files).toContain("AGENTS.md");
+		expect(existsSync(join(result.root, "abilities", "plugins", ".gitkeep"))).toBe(true);
+		expect(readFileSync(join(result.root, ".github", "workflows", "marketplace.yml"), "utf8")).toContain(
+			"sync --check",
+		);
+		const brief = readFileSync(join(result.root, "AGENTS.md"), "utf8");
+		// 落在仓库根的 Agent 最需要知道的两件事。
+		expect(brief).toContain("cd abilities/plugins");
+		expect(brief).toContain("vetta-plugin-cli sync");
+	});
+
+	it("keeps dist publishable by not ignoring it", () => {
+		const root = scratch();
+
+		const result = initHubRepository({
+			targetDir: join(root, "market"),
+			name: "my-market",
+			repository: "https://github.com/me/my-market",
+			minAppVersion: "0.55.0",
+		});
+
+		expect(readFileSync(join(result.root, ".gitignore"), "utf8")).not.toContain("dist/");
+	});
+
+	it("rejects inputs the client would reject", () => {
+		const root = scratch();
+		const base = {
+			targetDir: join(root, "market"),
+			name: "my-market",
+			repository: "https://github.com/me/my-market",
+			minAppVersion: "0.55.0",
+		};
+
+		expect(() => initHubRepository({ ...base, name: "My_Market" })).toThrow(/kebab-case/);
+		expect(() => initHubRepository({ ...base, repository: "git@github.com:me/x.git" })).toThrow(/Invalid repository/);
+		expect(() => initHubRepository({ ...base, repository: "http://github.com/me/x" })).toThrow(/https/);
+		expect(() => initHubRepository({ ...base, minAppVersion: "latest" })).toThrow(/min-app-version/);
+	});
+
+	it("refuses to overwrite an existing marketplace", () => {
+		const root = scratch();
+		const base = {
+			targetDir: join(root, "market"),
+			name: "my-market",
+			repository: "https://github.com/me/my-market",
+			minAppVersion: "0.55.0",
+		};
+		initHubRepository(base);
+
+		expect(() => initHubRepository(base)).toThrow(/Refusing to overwrite/);
+	});
+});
+
+describe("init hub parsing", () => {
+	it("requires the fields a publishable index cannot do without", () => {
+		expect(parsePluginInitCommand(["init", "hub"])).toEqual({ type: "error", message: "Missing --name <slug>" });
+		expect(parsePluginInitCommand(["init", "hub", "--name", "m"])).toMatchObject({ type: "error" });
+		// minAppVersion 没有安全默认值：太低放行装不动新 schema 的旧客户端，太高则部分用户看不到。
+		expect(
+			parsePluginInitCommand(["init", "hub", "--name", "m", "--repository", "https://github.com/me/m"]),
+		).toMatchObject({ type: "error", message: expect.stringContaining("min-app-version") });
+	});
+
+	it("parses a complete hub invocation", () => {
+		expect(
+			parsePluginInitCommand([
+				"init",
+				"hub",
+				"market",
+				"--name",
+				"my-market",
+				"--repository",
+				"https://github.com/me/my-market",
+				"--min-app-version",
+				"0.55.0",
+			]),
+		).toEqual({
+			type: "init-hub",
+			targetDir: "market",
+			name: "my-market",
+			repository: "https://github.com/me/my-market",
+			minAppVersion: "0.55.0",
+			json: false,
+		});
 	});
 });
