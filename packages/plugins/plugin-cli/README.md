@@ -14,6 +14,20 @@ The scaffold includes an `AGENTS.md` brief so a coding agent can pick the projec
 host-side setup. Inside a marketplace hub (a repository with `.vetta/marketplace.json`) the new
 plugin is also listed in that manifest.
 
+## Update an existing project
+
+```bash
+npm i -D @vetta-org/plugin-sdk@latest    # refresh the bundled manual
+npx @vetta-org/plugin-cli init --refresh-guide   # refresh AGENTS.md
+npx @vetta-org/plugin-cli docs --check-latest    # confirm
+```
+
+`init` refuses to overwrite an existing project, so a directory scaffolded months ago still carries
+that day's `AGENTS.md`. `--refresh-guide` rewrites only that file — the one scaffolded artifact that
+is purely derived and holds no user content — leaving source, manifest and config untouched. It reads
+the id and display name from the `plugin.json` already on disk. At a marketplace root it rewrites the
+hub brief instead.
+
 ## Remove a plugin
 
 ```bash

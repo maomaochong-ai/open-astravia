@@ -2,6 +2,14 @@
 
 All notable changes to `@vetta-org/plugin-cli` are documented in this file.
 
+## [0.1.4] — 2026-09-14
+
+### Added
+
+- `init --refresh-guide [dir]` 就地重写已有工程（或能力市场仓库）的 `AGENTS.md`。`init` 拒绝
+  覆盖已有工程，所以老目录里那份说明书从落地起就再也没变过；它是脚手架里唯一纯派生、不含用户
+  内容的文件，可以安全重写，其余文件一概不动。id 与展示名从磁盘上的 `plugin.json` 读。
+
 ## [0.1.3] — 2026-09-14
 
 ### Added
