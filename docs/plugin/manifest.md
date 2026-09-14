@@ -286,12 +286,16 @@ revision 读取；不要依次调用多次 `writeFile()` 冒充多文件事务�
 | `agent` | **实体引用**。`<agentId>` 指本插件的智能体；`<pluginId>/<agentId>` 指别的插件的。就是要那个人时用它。 |
 | `role` | **角色槽位**。只声明「这里需要一个什么角色」，宿主在全部已启用插件里解析。 |
 | `optional` | 解析不到这名成员时是否照常发布团队。缺省按引用方式走：本插件的实体引用 `false`，跨插件引用与角色槽位 `true`。 |
+| `responsibility` | 一句全队可见的职责摘要，进共享名册。必填。 |
+| `instructions` / `instructionsPath` | **这名成员的任务书**：追加在它本体人格之后、只给它看的交待。二选一，内联上限 64 000 字符。 |
 
 `agent` 与 `role` **必须恰好写一个**，写零个或两个都会在构建期失败。
 
+**队长的任务书写在团队的 `workflow` 里**，不要写进 `members[0].instructions`——两处都能写就没人说得清哪份生效，所以构建期直接拒掉。
+
 **优先用角色槽位。** 实体引用把消费方钉死在一个具体的插件 id 上；角色槽位只耦合到一个角色名，提供方换人、换插件、被第三方取代都不影响你，用户还能把槽位改绑到自己调教过的智能体。
 
-> **用到 `role` / `roles` / `optional` 的插件要把 `pluginApiVersion` 写成 `^2.2.0`。** 清单校验对未知字段 fail-closed，旧宿主会整个拒掉这份清单（不是少一项贡献）；声明版本后，旧宿主给出的是「版本不支持」这种指向明确的错误。
+> **用到 `role` / `roles` / `optional` 的插件要把 `pluginApiVersion` 写成 `^2.2.0`；再用上 `members[].instructions` 的写 `^2.3.0`。** 清单校验对未知字段 fail-closed，旧宿主会整个拒掉这份清单（不是少一项贡献）；声明版本后，旧宿主给出的是「版本不支持」这种指向明确的错误。
 
 ```json
 {
@@ -300,8 +304,14 @@ revision 读取；不要依次调用多次 `writeFile()` 冒充多文件事务�
       {
         "id": "design-team",
         "name": "%team.design.name%",
+        "workflowPath": "agent/workflows/design-team.md",
         "members": [
-          { "agent": "designer", "responsibility": "Owns the visual result end to end." },
+          { "agent": "my-lead", "responsibility": "Owns the visual result end to end." },
+          {
+            "role": "designer",
+            "responsibility": "Turns the brief into reviewable frames.",
+            "instructionsPath": "agent/briefs/designer.md"
+          },
           { "role": "developer", "responsibility": "Implements the design." }
         ]
       }
@@ -309,6 +319,15 @@ revision 读取；不要依次调用多次 `writeFile()` 冒充多文件事务�
   }
 }
 ```
+
+#### 给借来的成员派任务书
+
+`instructions` 解决的正是「把别的插件的智能体拉进来，但要它按本团队的方式做事」：
+
+- 任务书**挂在你的团队上，不碰对方的人设**。同一个设计师在别处照旧，在你的团队里按你交待的来。
+- 与 `responsibility` 分工不同：后者是一句全队可见的职责摘要（进共享名册），前者是只给这名成员看的做事方式。
+- 用 `instructionsPath` 指向 Markdown：任务书值得单独 diff，和人设提示词一个道理。**记得文件要能被打包**——路径会自动登记为插件资源，但源文件得真的在包里，缺了这名成员会让整支团队被跳过并打 warn。
+- 用户之后可以在团队设置里改这份任务书，改过的不会被插件升级盖掉。
 
 ### 被别人引用（roles）
 
