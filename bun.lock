@@ -571,7 +571,7 @@
     },
     "packages/plugins/plugin-sdk": {
       "name": "@vetta-org/plugin-sdk",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "dependencies": {
         "@sinclair/typebox": "^0.34.41",
         "@vetta-org/capability-sdk": "^0.1.0",

@@ -4,7 +4,7 @@ import { renderAgentsGuide } from "./agents-template.js";
 import { findPluginHub } from "./workspace.js";
 
 /** 与脚手架一同落地的依赖范围；两个包各自独立发布，不要合成一个版本。 */
-export const DEFAULT_SDK_RANGE = "^0.3.0";
+export const DEFAULT_SDK_RANGE = "^0.3.1";
 export const DEFAULT_VITE_RANGE = "^0.2.0";
 
 const PLUGIN_ID_PATTERN = /^[a-z][a-z0-9-]{0,62}$/;

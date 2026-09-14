@@ -2,6 +2,14 @@
 
 All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
+## [0.3.1] — 2026-09-14
+
+### Added
+
+- 手册（`docs/plugin`）随包发布，落在安装后的 `node_modules/@vetta-org/plugin-sdk/docs/`。
+  仓库外的 Agent 因此能读到与本工程实际编译版本一致的合同，不必依赖 Vetta 源码仓库或插件工作台；
+  路径用 `npx vetta-plugin-cli docs` 解析，不要硬编码。
+
 ## [0.3.0] — 2026-09-14
 
 ### Breaking Changes
