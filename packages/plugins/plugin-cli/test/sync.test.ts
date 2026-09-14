@@ -19,7 +19,12 @@ function write(path: string, content: string): void {
 	writeFileSync(path, content, "utf8");
 }
 
-function writeIndex(root: string, abilities: unknown[], marketplaceVersion = "1.0.0"): string {
+function writeIndex(
+	root: string,
+	abilities: unknown[],
+	marketplaceVersion = "1.0.0",
+	indent: string | number = 0,
+): string {
 	const manifestPath = join(root, ".vetta", "marketplace.json");
 	write(
 		manifestPath,
@@ -30,7 +35,7 @@ function writeIndex(root: string, abilities: unknown[], marketplaceVersion = "1.
 			repository: "https://github.com/openvetta/demo",
 			minAppVersion: "0.55.0",
 			abilities,
-		}),
+		}, null, indent) + "\n",
 	);
 	return manifestPath;
 }
@@ -219,6 +224,40 @@ describe("reconciling the index", () => {
 		const result = syncMarketplaceIndex({ hubRoot: root, manifestPath, apply: true });
 
 		expect(result.problems[0]?.message).toContain("marketplaceVersion");
+	});
+});
+
+describe("writing the index back", () => {
+	it.each([
+		["两个空格", "  "],
+		["四个空格", "    "],
+		["制表符", "\t"],
+	])("preserves %s indentation instead of reformatting the whole file", (_label, indent) => {
+		const root = scratch();
+		const manifestPath = writeIndex(root, [listedPlugin()], "1.0.0", indent);
+		writePlugin(root, "abilities/plugins/demo", { ...basePluginManifest, version: "1.1.0" });
+		const before = readFileSync(manifestPath, "utf8");
+
+		syncMarketplaceIndex({ hubRoot: root, manifestPath, apply: true });
+
+		const after = readFileSync(manifestPath, "utf8");
+		// 只改该改的那两行：版本与快照号。重排整份文件会和仓库里其它写它的脚本来回拉锯，
+		// 把任何并发提交升级成整文件冲突。
+		expect(after.split("\n").length).toBe(before.split("\n").length);
+		expect(after).toContain(`\n${indent}"name"`);
+		const changed = after.split("\n").filter((line, index) => line !== before.split("\n")[index]);
+		expect(changed).toHaveLength(2);
+	});
+
+	it("keeps a file that had no trailing newline without one", () => {
+		const root = scratch();
+		const manifestPath = writeIndex(root, [listedPlugin()], "1.0.0", "  ");
+		write(manifestPath, readFileSync(manifestPath, "utf8").trimEnd());
+		writePlugin(root, "abilities/plugins/demo", { ...basePluginManifest, version: "1.1.0" });
+
+		syncMarketplaceIndex({ hubRoot: root, manifestPath, apply: true });
+
+		expect(readFileSync(manifestPath, "utf8").endsWith("\n")).toBe(false);
 	});
 });
 

@@ -2,6 +2,12 @@
 
 All notable changes to `@vetta-org/plugin-cli` are documented in this file.
 
+## [0.1.2] — 2026-09-14
+
+### Fixed
+
+- `sync` preserves the marketplace index's existing indentation (and whether it ended with a newline) instead of rewriting the whole file with tabs. Reformatting turned a two-line change into a whole-file diff, fought with other scripts that write the same file, and escalated any concurrent commit into a full-file conflict. A reconciliation tool should only touch the fields it reconciles.
+
 ## [0.1.1] — 2026-09-14
 
 ### Fixed

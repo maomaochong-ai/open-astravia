@@ -46,6 +46,18 @@ export interface SyncInput {
 const SCAN_IGNORED = new Set(["node_modules", ".git", "dist", "release", ".vetta", "assets", "test", "src"]);
 const SCAN_MAX_DEPTH = 5;
 
+/**
+ * 探测 JSON 文件用的缩进，回写时沿用。
+ *
+ * 不这么做的代价很具体：索引文件本是 2 空格，工具按 Tab 重排就会把整份文件写成一个大 diff，
+ * 与仓库里其它写这份文件的脚本来回拉锯，任何并发提交都升级成整文件冲突。对账工具只该改它
+ * 要改的那几个字段。
+ */
+function detectJsonIndent(source: string): string {
+	const match = /\n([ \t]+)\S/.exec(source);
+	return match?.[1] ?? "\t";
+}
+
 function readJsonFile(path: string): Record<string, unknown> | undefined {
 	try {
 		const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
@@ -168,7 +180,9 @@ export function syncMarketplaceIndex(input: SyncInput): SyncResult {
 					"content changed but marketplaceVersion could not be bumped automatically (expected semver or an integer). Set it manually — clients skip the update when it does not change.",
 			});
 		}
-		writeFileSync(input.manifestPath, `${JSON.stringify(manifest, null, "\t")}\n`, "utf8");
+		const source = readFileSync(input.manifestPath, "utf8");
+		const serialized = JSON.stringify(manifest, null, detectJsonIndent(source));
+		writeFileSync(input.manifestPath, source.endsWith("\n") ? `${serialized}\n` : serialized, "utf8");
 		written = true;
 	}
 
