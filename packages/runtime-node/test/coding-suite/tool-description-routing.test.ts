@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	EXTRACT_TEXT_FROM_IMAGE_TOOL_DESCRIPTION,
 	EXTRACT_TEXT_FROM_PDF_TOOL_DESCRIPTION,
 	FIND_TOOL_DESCRIPTION,
 	GLOB_TOOL_DESCRIPTION,
@@ -30,7 +31,14 @@ describe("coding tool description routing", () => {
 	it("keeps the platform read description product-neutral", () => {
 		expect(READ_TOOL_DESCRIPTION).toContain("stable edit anchors");
 		expect(READ_TOOL_DESCRIPTION).toContain("offset and limit");
+		expect(READ_TOOL_DESCRIPTION).toContain("vision-capable model can inspect");
+		expect(READ_TOOL_DESCRIPTION).toContain("prefer this tool when visual understanding");
 		expect(READ_TOOL_DESCRIPTION).not.toContain("SKILL.md");
 		expect(READ_TOOL_DESCRIPTION).not.toContain("invoke_skill");
+	});
+
+	it("routes image OCR behind direct visual reading", () => {
+		expect(EXTRACT_TEXT_FROM_IMAGE_TOOL_DESCRIPTION).toContain("machine-extracted text");
+		expect(EXTRACT_TEXT_FROM_IMAGE_TOOL_DESCRIPTION).toContain("use `read` first");
 	});
 });

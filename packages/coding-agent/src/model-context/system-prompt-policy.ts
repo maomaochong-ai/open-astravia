@@ -322,7 +322,7 @@ function buildGuidelines(tools: string[], scenario?: ConversationScenario): stri
 		guidelinesList.push(URL_LINK_GUIDANCE);
 	}
 	guidelinesList.push(
-		"When the user sends images inline in their message, analyze them directly using your vision capabilities. Do NOT try to locate or read them from disk - the image data is already embedded in the message",
+		"When the user sends images inline in their message, analyze them directly using your vision capabilities. Do NOT try to locate or read them from disk - the image data is already embedded in the message. When an image is provided as a file path, use `read` first if you have vision capabilities; it returns the image for direct inspection, including visible text. Use image OCR only when you need machine-extracted text/metadata or cannot inspect the image directly",
 	);
 
 	return guidelinesList.map((guideline) => `- ${guideline}`).join("\n");

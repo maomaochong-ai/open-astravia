@@ -41,6 +41,8 @@
 
 ### Changed
 
+- 图片读取路由明确优先使用视觉能力直接读取图片；仅在需要机器化 OCR 文本/元数据或模型无法查看图片时使用 OCR。
+
 - 自定义 Context Runtime 的 `bindForTurn` 返回值需同时提供 `compactManual`，并按需提供对应提交回调；默认产品组合会将同一个 owner 注册到自动、手动和模型投影端口，不再依赖未绑定实例补齐手动能力。
 - **破坏性变更**：每个活动会话现在拥有独立 Agent Instance；同一 Composition 的新会话读取当前 Definition revision，
   已有会话保持原 revision。Composition 继续复用基础设施，`agentRuntime` 只返回 `agentId`，完整运行身份改由

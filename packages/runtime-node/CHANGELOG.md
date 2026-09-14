@@ -16,6 +16,8 @@ All notable changes to `@vetta/runtime-node` are documented in this file.
 
 ### Changed
 
+- 图片工具描述明确：具备视觉能力时优先通过 `read` 直接检查图片；`extract_text_from_img` 用于机器化 OCR 文本、元数据或结构化结果。
+
 - Node MCP supervisor 默认协议版本升级为 MCP 2025-11-25；协议包同时保留已支持版本列表供兼容策略使用。
 
 ### Breaking Changes

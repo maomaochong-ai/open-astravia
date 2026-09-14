@@ -1,2 +1,2 @@
 export const READ_TOOL_DESCRIPTION =
-	"Read a text file or supported image. Text output may be truncated; use offset and limit to continue. Text lines include stable edit anchors.";
+	"Read a text file or supported image. For an image, returns the image attachment so a vision-capable model can inspect the entire scene, including text, layout, handwriting, seals, logos, and color. Text output may be truncated; use offset and limit to continue. Text lines include stable edit anchors. For images, prefer this tool when visual understanding or reading text in context is needed; use OCR only when you specifically need machine-extracted text or structured OCR metadata.";

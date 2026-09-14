@@ -21,9 +21,11 @@ Limitations
   - Confidence is a coarse signal — don't gate decisions on a hard threshold.
 
 When to use
-  - You have a single image you need text from (screenshot of a document, scanned receipt, photo of a sign).
+  - You explicitly need machine-extracted text, OCR confidence/metadata, batch-friendly text output, or a structured JSON artifact.
+  - The model cannot inspect images directly, or direct visual reading with \`read\` is unavailable or insufficient.
 
 When NOT to use
+  - A vision-capable model can inspect the image: use \`read\` first, including when the goal is simply to read text. This preserves text's visual context and avoids treating OCR as a substitute for vision.
   - You need a VISUAL judgment on the image — presence/absence of seals (盖章/印章), signatures, handwriting, logos, layout, color. OCR returns text only; call \`read\` on the image directly so a vision-capable model can look at it.
   - The image is a multi-page PDF — use \`extract_text_from_pdf\` (text) or \`render_pdf_page\` (visual).
   - You need layout / coordinates / table structure.`;

@@ -30,5 +30,7 @@ describe("product tool description routing", () => {
 			"exact skill name shown in the current available-skills list",
 		);
 		expect(CODING_AGENT_READ_TOOL_DESCRIPTION).not.toContain('invoke_skill(name="docx")');
+		expect(CODING_AGENT_READ_TOOL_DESCRIPTION).toContain("Prefer `read` for images");
+		expect(CODING_AGENT_READ_TOOL_DESCRIPTION).toContain("Image OCR: use `extract_text_from_img` only when");
 	});
 });
