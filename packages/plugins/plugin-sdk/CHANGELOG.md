@@ -21,6 +21,20 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Added
 
+- 插件清单新增 `agent.agents` / `agent.teams`：插件可以贡献**完整的智能体与团队**（人设、头像、系统提示词、
+  `mentionHandle`、能力继承范围），宿主在插件启用时把它们铺成普通档案，禁用时灰着留在原地、重新启用即恢复。
+  人设是静态数据，因此走清单而不是运行时 API——装机目录回填要在插件前端跑起来之前就知道有哪些角色。
+  团队成员只能引用本插件自己的智能体（跨插件引用会让一个插件能否使用取决于另一个插件装没装）；
+  `legacyIds` 用于接管历史 blueprint / 团队 id，把人设迁进插件时认领用户已有档案而不是铺重复的一份。
+  头像与提示词路径同时登记进 `listPluginManifestResources` 并做越界校验，打包器据此把它们收进归档。
+
+- 新增 `ctx.ui.registerNewSessionContext()` 与 `ui.slot.new-session-context` / `conversation.draft.read` 权限：
+  在新会话页输入框下方铺一块内容，摆出用户接下来多半要用到的素材。上屏由宿主按声明式的 `activateWhen`
+  裁决而不是给插件推送——推送意味着每个注册了本槽位的插件都能拿到用户逐键输入的全程内容。激活条件只能引用
+  本插件自己的智能体 / skill / MCP，且至少要声明一条。`width: "wide"` 供画廊类内容铺满页面可用宽度；
+  上下文只提供回写输入栏的 `composer.attach` / `insertText`，没有「直接发送」。草稿另受
+  `conversation.draft.read` 门控，且只在该贡献处于激活状态时提供。
+
 - 插件清单新增 `agent.skillPresentation`：插件可按产品入口控制 Skill 可见性，并为公开 Skill 声明本地化展示名与说明；展示策略不改变运行时加载、权限或稳定 Skill 名（ADR-0110）。
 
 - 工具调用槽位的 `status` 新增 `cancelled`，用于区分用户中止与工具执行失败。
