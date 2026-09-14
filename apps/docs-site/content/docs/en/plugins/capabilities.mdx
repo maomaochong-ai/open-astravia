@@ -14,7 +14,7 @@ description: Find the UI, conversation, file, browser, Agent, storage, and App A
 | Store private data | `ctx.storage` | Keep data isolated from projects and host internals |
 | Use configured models | `ctx.ai.listModels`, `complete`, `chat` | Never persist the user's credentials |
 | Register discoverable actions | `ctx.appActions.register` | High-impact operations still need confirmation |
-| Contribute agents and teams | `agent.agents`, `agent.teams` in `plugin.json` | The host lays them down as ordinary profiles; a team may only reference this plugin's own agents |
+| Contribute agents and teams | `agent.agents`, `agent.teams` in `plugin.json` | The host lays them down as ordinary profiles; a `role` slot may reference another plugin's agent, but the leader must be this plugin's own |
 | Stage material on the new-session page | `ctx.ui.registerNewSessionContext` | Activation may only name this plugin's own agents or abilities, and never sees raw keystrokes |
 | Add localized copy | `ctx.i18n` and package locales | Keep keys and `defaultLocale` aligned |
 

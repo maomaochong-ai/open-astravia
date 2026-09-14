@@ -21,7 +21,7 @@ description: 查找插件的界面、对话、文件、浏览器、Agent、存�
 | 调用用户已配置模型 | `ctx.ai.listModels`、`complete`、`chat` | 使用用户配置的凭证，不自行保存 Key |
 | 注册可发现动作 | `ctx.appActions.register` | 高影响文件和网络操作仍需确认 |
 | 提供 Skill 或 MCP | `plugin.json` 的 agent 贡献字段 | 安装、启用和重载都要重新验证来源与权限 |
-| 贡献智能体与团队 | `plugin.json` 的 `agent.agents`、`agent.teams` | 宿主铺成普通档案；团队成员只能引用本插件自己的智能体 |
+| 贡献智能体与团队 | `plugin.json` 的 `agent.agents`、`agent.teams` | 宿主铺成普通档案；团队成员可用 `role` 槽位引用别的插件的智能体，队长必须是本插件自己的 |
 | 在新会话页摆素材 | `ctx.ui.registerNewSessionContext` | 激活条件只能写本插件自己的智能体或能力，拿不到用户逐键输入 |
 | 提供多语言文案 | `ctx.i18n` 与包内 locales | 文案 key 和 `defaultLocale` 要与清单一致 |
 
