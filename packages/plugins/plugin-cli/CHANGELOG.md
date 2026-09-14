@@ -2,6 +2,22 @@
 
 All notable changes to `@vetta-org/plugin-cli` are documented in this file.
 
+## [0.1.3] — 2026-09-14
+
+### Added
+
+- `docs` 每次都打印刷新手册的命令，并新增 `--check-latest` 对比 registry 上的最新 SDK，落后时
+  直接说出来。手册随 SDK 进 `node_modules`，所以老工程里的手册与 `AGENTS.md` 都停在初始化那天；
+  `npx` 默认取最新的 CLI，它的输出是这条链路上唯一不会过期的位置。查不到 registry（离线、私服）
+  时明说查不到，不会据此断言手册过期。
+- 在能力市场仓库根跑 `docs` 时，提示 `cd` 进能力目录，而不是让人在仓库根装一份用不上的 SDK。
+
+### Changed
+
+- 脚手架的 `AGENTS.md` 与 hub `AGENTS.md` 增加「先确认手册是否最新」一步，并写明 `docs` 的输出
+  与自身冲突时以前者为准。
+- 新建工程的 SDK 范围提到 `^0.3.2`（团队成员的角色槽位与跨插件引用）。
+
 ## [0.1.2] — 2026-09-14
 
 ### Fixed
