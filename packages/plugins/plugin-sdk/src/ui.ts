@@ -473,7 +473,7 @@ export interface PluginNotifyOptions {
  * 这条限制是故意的：否则插件 A 可以声明「只要用户选了 B 的智能体我就上屏」，把别人的
  * 使用场景劫持过来。
  *
- * 各字段取并集：任意一条命中即激活。全部留空表示「本插件的任意智能体或团队被选中时」。
+ * 各字段取并集：任意一条命中即激活。至少要声明一条——全空等于「任何新会话都上屏」，宿主拒掉。
  */
 export interface PluginNewSessionContextActivation {
 	/** 本插件在 manifest 里声明的智能体 id（不带 `plugin:` 前缀）。 */
