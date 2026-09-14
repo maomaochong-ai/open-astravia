@@ -2,6 +2,23 @@
 
 All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
+## [0.3.4] — 2026-09-14
+
+### Added
+
+- **`ctx.ui.previewFile(file, group?)`：插件可以打开宿主的全局文件预览**。此前只有
+  `previewImage`，且只吃图片 URL——插件想把自己产出的本地文件（报告、导出的表格、生成的 svg）
+  给用户看，只能自己再造一个预览面板。宿主的全局预览本来就认本地绝对路径（文件树走的就是这条），
+  这一条只是把口开出来。
+
+  预览器**按文件名的扩展名**分发渲染器，所以插件用 `registerFilePreview` 注册过的扩展名，
+  由 `previewFile` 打开时也会落回它自己的渲染器。
+
+  权限按形态定而不是按 API 名：任一条目带 `path` 需要 `fs.read`（等于把本地文件交给宿主去读），
+  纯 `url` 形态沿用 `previewImage` 的 `ui.slot.message`。
+
+  纯运行期 API，不涉及清单字段，`pluginApiVersion` 不变。
+
 ## [0.3.3] — 2026-09-14
 
 ### Added
