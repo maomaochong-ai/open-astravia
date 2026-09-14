@@ -2,7 +2,7 @@
 
 All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
-## [Unreleased]
+## [0.3.0] — 2026-09-14
 
 ### Breaking Changes
 

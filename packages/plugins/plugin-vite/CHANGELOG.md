@@ -2,7 +2,11 @@
 
 All notable changes to `@vetta-org/plugin-vite` are documented in this file.
 
-## [Unreleased]
+## [0.2.0] — 2026-09-14
+
+### Breaking Changes
+
+- Narrowed the `@vetta-org/plugin-sdk` peer range to `>=0.3.0 <0.4.0`. The 0.3.0 SDK carries breaking contract changes (plugin private storage, owned model providers, plugin-drawn configuration), so a project cannot stay on 0.2.x while packaging against this builder.
 
 ### Fixed
 
