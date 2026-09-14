@@ -257,6 +257,13 @@ function normalizeTeamMember(
 	if ((agent ? 1 : 0) + (role ? 1 : 0) !== 1) {
 		throw new Error(`Invalid ${where}: write exactly one of "agent" or "role"`);
 	}
+	if (member.instructions !== undefined && member.instructionsPath !== undefined) {
+		throw new Error(`Invalid ${where}: write at most one of "instructions" or "instructionsPath"`);
+	}
+	if (index === 0 && (member.instructions !== undefined || member.instructionsPath !== undefined)) {
+		// 队长的任务书是团队级的流水线，写在 teams[].workflow 上。两处都写就没人说得清哪份生效。
+		throw new Error(`Invalid ${where}: the leader's brief belongs in the team's "workflow"`);
+	}
 	if (agent && !CROSS_PLUGIN_AGENT_REF.test(agent) && !OWN_PLUGIN_AGENT_REF.test(agent)) {
 		throw new Error(`Invalid ${where}.agent: expected "<agentId>" or "<pluginId>/<agentId>", got "${agent}"`);
 	}
@@ -269,6 +276,9 @@ function normalizeTeamMember(
 		...member,
 		...(agent ? { agent } : {}),
 		...(role ? { role } : {}),
+		...(member.instructionsPath
+			? { instructionsPath: validatePluginRelativePath(member.instructionsPath, `${where}.instructionsPath`) }
+			: {}),
 	};
 }
 
@@ -581,6 +591,17 @@ export function listPluginManifestResources(
 	for (const team of manifest.agent?.teams ?? []) {
 		if (team.workflowPath) {
 			resources.push({ field: "agent.teams.workflowPath", path: team.workflowPath, kind: "file" });
+		}
+		for (const member of team.members) {
+			// 任务书也是插件包里的真实文件：不登记就不会被打进包，装到用户机器上时这名成员会
+			// 悄悄退化成「只有职责摘要」。
+			if (member.instructionsPath) {
+				resources.push({
+					field: "agent.teams.members.instructionsPath",
+					path: member.instructionsPath,
+					kind: "file",
+				});
+			}
 		}
 	}
 	if (typeof manifest.agent?.mcpServers === "string") {

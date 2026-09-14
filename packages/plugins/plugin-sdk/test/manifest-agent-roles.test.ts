@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { BUILTIN_PLUGIN_AGENT_ROLES, parsePluginManifest } from "../src/manifest.js";
+import { BUILTIN_PLUGIN_AGENT_ROLES, parsePluginManifest, listPluginManifestResources } from "../src/manifest.js";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
 
@@ -76,6 +76,47 @@ describe("plugin manifest agent roles", () => {
 		expect(() => parsePluginManifest(withTeam([{ role: "master", responsibility: "Leads." }]))).toThrow(
 			/team leader must be one of this plugin's own agents/,
 		);
+	});
+
+	it("carries a per-member brief and validates its path", () => {
+		const manifest = parsePluginManifest(
+			withTeam([leader, { role: "developer", responsibility: "Builds it.", instructionsPath: "agent/dev.md" }]),
+		);
+
+		expect(manifest.agent?.teams?.[0]?.members[1]?.instructionsPath).toBe("agent/dev.md");
+		expect(() =>
+			parsePluginManifest(
+				withTeam([leader, { role: "developer", responsibility: "x", instructionsPath: "../../etc/passwd" }]),
+			),
+		).toThrow();
+	});
+
+	it("registers member briefs as packaged resources", () => {
+		const manifest = parsePluginManifest(
+			withTeam([leader, { role: "developer", responsibility: "Builds it.", instructionsPath: "agent/dev.md" }]),
+		);
+
+		// 不登记就不会被打进包，装到用户机器上时这名成员会悄悄退化成「只有职责摘要」。
+		expect(listPluginManifestResources(manifest)).toContainEqual({
+			field: "agent.teams.members.instructionsPath",
+			path: "agent/dev.md",
+			kind: "file",
+		});
+	});
+
+	it("rejects a member that writes both brief forms", () => {
+		expect(() =>
+			parsePluginManifest(
+				withTeam([leader, { role: "developer", responsibility: "x", instructions: "a", instructionsPath: "b.md" }]),
+			),
+		).toThrow(/at most one of "instructions" or "instructionsPath"/);
+	});
+
+	it("sends the leader's brief to the team workflow instead of the member", () => {
+		// 两处都能写就没人说得清哪份生效。
+		expect(() =>
+			parsePluginManifest(withTeam([{ agent: "lead", responsibility: "Owns it.", instructions: "..." }])),
+		).toThrow(/leader's brief belongs in the team's "workflow"/);
 	});
 
 	/**

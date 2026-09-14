@@ -340,6 +340,18 @@ export const PluginAgentTeamMemberManifestSchema = Type.Object(
 		 * 实体引用与角色槽位为 `true`（提供方本来就可能不在场）。
 		 */
 		optional: Type.Optional(Type.Boolean()),
+		/**
+		 * 这名成员在本团队里的任务书：追加在它本体人格之后的交待。
+		 *
+		 * 与 `responsibility` 分工不同：后者是一句全队可见的职责摘要（进共享名册），这里是只给
+		 * 这名成员看的做事方式。**跨插件引用时尤其有用**——任务书挂在你的团队上，不碰对方的
+		 * 人设，所以你可以把别的插件的设计师拉进来并交待清楚本团队怎么干，而它在别处照旧。
+		 *
+		 * 与 `instructionsPath` 二选一。队长的任务书写在团队的 `workflow` 里，不要在这里重复。
+		 */
+		instructions: Type.Optional(Type.String({ maxLength: 64_000 })),
+		/** 插件包内的相对路径，指向任务书 Markdown。与 `instructions` 二选一。 */
+		instructionsPath: Type.Optional(NonWhitespaceStringSchema),
 	},
 	{ additionalProperties: false },
 );
