@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { ActionRpcError, createActionRpcClient, readActionRpcEndpoint } from "@vetta/action-rpc";
 import { readLatestNpmVersion, resolveNpmPluginArchive, type ResolvedNpmPluginArchive } from "./npm-package.js";
-import { initHubRepository, initPluginProject } from "./init.js";
+import { initHubRepository, initPluginProject, refreshAgentsGuide } from "./init.js";
 import { describeIndexDrift, syncMarketplaceIndex } from "./sync.js";
 import { findPluginHub, findPluginProject, type PluginProject, readManualSdkVersion, resolveManualDir } from "./workspace.js";
 
@@ -26,6 +26,7 @@ export type PluginInitCommand =
 	| { type: "help" }
 	| { type: "error"; message: string }
 	| { type: "init"; targetDir?: string; pluginId: string; displayName?: string; json: boolean }
+	| { type: "refresh-guide"; targetDir?: string; json: boolean }
 	| { type: "init-hub"; targetDir?: string; name: string; repository: string; minAppVersion: string; json: boolean };
 
 export type PluginWatchCommand =
@@ -72,6 +73,7 @@ Usage:
   vetta-plugin-cli reload <plugin-id> [--json]
   vetta-plugin-cli docs [--check-latest] [--json]
   vetta-plugin-cli init --id <plugin-id> [--name <display>] [dir] [--json]
+  vetta-plugin-cli init --refresh-guide [dir] [--json]
   vetta-plugin-cli init hub --name <slug> --repository <url> --min-app-version <x.y.z> [dir]
   vetta-plugin-cli watch [dir] [--stop] [--json]
   vetta-plugin-cli uninstall [plugin-id] [--json]
@@ -163,10 +165,17 @@ export function parsePluginInitCommand(argv: string[]): PluginInitCommand | unde
 				id: { type: "string" },
 				name: { type: "string" },
 				json: { type: "boolean" },
+				"refresh-guide": { type: "boolean" },
 			},
 		});
 	} catch (error) {
 		return { type: "error", message: formatParseError(error) };
+	}
+	if (parsed.values["refresh-guide"] === true) {
+		const [dir, extra] = parsed.positionals;
+		if (extra) return { type: "error", message: `Unexpected argument: ${extra}` };
+		// 刷新是就地重写，工程的 id 和展示名从磁盘上读，不再由命令行给。
+		return { type: "refresh-guide", ...(dir ? { targetDir: dir } : {}), json: parsed.values.json === true };
 	}
 	const pluginId = parsed.values.id;
 	if (typeof pluginId !== "string" || pluginId.length === 0) {
@@ -451,6 +460,9 @@ export async function runPluginCommand(
 	if (command.type === "init") {
 		return runInitCommand(command, dependencies);
 	}
+	if (command.type === "refresh-guide") {
+		return runRefreshGuideCommand(command, dependencies);
+	}
 	if (command.type === "init-hub") {
 		return runInitHubCommand(command, dependencies);
 	}
@@ -624,6 +636,38 @@ function compareSemver(left: string, right: string): number {
 	}
 	if (a[3] === b[3]) return 0;
 	return a[3] ? -1 : 1;
+}
+
+/**
+ * 在已有工程里把 AGENTS.md 重写成当前 CLI 的版本。
+ *
+ * `init` 拒绝覆盖已有工程，所以老目录里那份说明书从落地起就停在原地。它是纯派生产物，重写
+ * 它不会碰用户写过的任何东西——这也是唯一一个能这么做的脚手架文件。
+ */
+function runRefreshGuideCommand(
+	command: Extract<PluginCommand, { type: "refresh-guide" }>,
+	dependencies: PluginCommandDependencies,
+): number {
+	const cwd = dependencies.cwd?.() ?? process.cwd();
+	try {
+		const result = refreshAgentsGuide(resolve(cwd, command.targetDir ?? "."));
+		dependencies.writeStdout(
+			command.json
+				? `${JSON.stringify({ ok: true, ...result })}\n`
+				: `Rewrote ${result.file}\nNext: npx vetta-plugin-cli docs --check-latest\n`,
+		);
+		return 0;
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		if (command.json) {
+			dependencies.writeStdout(
+				`${JSON.stringify({ ok: false, error: { code: "GUIDE_REFRESH_FAILED", message } })}\n`,
+			);
+		} else {
+			dependencies.writeStderr(`${message}\n`);
+		}
+		return 7;
+	}
 }
 
 /** 在陌生目录里生成一个可直接开工的插件工程，并留下让任意 Agent 自举的 AGENTS.md。 */

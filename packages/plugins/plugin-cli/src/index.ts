@@ -25,6 +25,8 @@ export {
 	DEFAULT_VITE_RANGE,
 	initHubRepository,
 	initPluginProject,
+	refreshAgentsGuide,
+	type RefreshGuideResult,
 	type InitHubInput,
 	type InitHubResult,
 	type InitPluginInput,

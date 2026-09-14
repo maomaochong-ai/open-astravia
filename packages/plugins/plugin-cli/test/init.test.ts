@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { parsePluginInitCommand } from "../src/command.js";
-import { initHubRepository, initPluginProject } from "../src/init.js";
+import { initHubRepository, initPluginProject, refreshAgentsGuide } from "../src/init.js";
 
 const created: string[] = [];
 
@@ -235,5 +235,36 @@ describe("init hub parsing", () => {
 			minAppVersion: "0.55.0",
 			json: false,
 		});
+	});
+});
+
+describe("refreshing the agent brief in an existing directory", () => {
+	it("rewrites AGENTS.md from the plugin.json on disk, touching nothing else", () => {
+		const root = scratch();
+		initPluginProject({ targetDir: root, pluginId: "demo", displayName: "Demo" });
+		const before = readFileSync(join(root, "src", "index.tsx"), "utf8");
+		writeFileSync(join(root, "AGENTS.md"), "# stale brief from an old CLI\n", "utf8");
+
+		const result = refreshAgentsGuide(root);
+
+		expect(result).toMatchObject({ root, kind: "plugin" });
+		const guide = readFileSync(join(root, "AGENTS.md"), "utf8");
+		expect(guide).toContain("Demo");
+		expect(guide).toContain("--check-latest");
+		// 只有 AGENTS.md 是纯派生的；用户写过的源码不能被一次刷新抹掉。
+		expect(readFileSync(join(root, "src", "index.tsx"), "utf8")).toBe(before);
+	});
+
+	it("rewrites the hub brief at a marketplace root", () => {
+		const root = scratch();
+		initHubRepository({ targetDir: root, name: "my-market", repository: "https://example.com/r", minAppVersion: "0.55.0" });
+		writeFileSync(join(root, "AGENTS.md"), "# stale\n", "utf8");
+
+		expect(refreshAgentsGuide(root)).toMatchObject({ kind: "hub" });
+		expect(readFileSync(join(root, "AGENTS.md"), "utf8")).toContain("--check-latest");
+	});
+
+	it("refuses a directory that is neither", () => {
+		expect(() => refreshAgentsGuide(scratch())).toThrow(/Not a plugin project or marketplace repository/);
 	});
 });

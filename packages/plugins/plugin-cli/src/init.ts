@@ -147,6 +147,42 @@ export default definePlugin({
 	return { root, pluginId: input.pluginId, files: Object.keys(files).sort() };
 }
 
+export interface RefreshGuideResult {
+	readonly root: string;
+	readonly kind: "plugin" | "hub";
+	readonly file: string;
+}
+
+/**
+ * 在已有的工程或能力市场仓库里重写 `AGENTS.md`。
+ *
+ * `init` 拒绝覆盖已有工程，所以老目录里那份说明书从落地起就再也没变过——它写于某个版本的
+ * SDK，之后新增的约定一条都没有。这里只重写这一个文件：它是脚手架里唯一「纯派生、没有用户
+ * 内容」的产物，其余文件都可能被改过，不该被一次刷新抹掉。
+ */
+export function refreshAgentsGuide(targetDir: string): RefreshGuideResult {
+	const root = resolve(targetDir);
+	const manifestPath = join(root, "plugin.json");
+	if (existsSync(manifestPath)) {
+		const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as { id?: unknown; name?: unknown };
+		const pluginId = typeof manifest.id === "string" ? manifest.id : undefined;
+		if (!pluginId) throw new Error(`plugin.json at ${root} has no id`);
+		const displayName = typeof manifest.name === "string" && manifest.name.length > 0 ? manifest.name : pluginId;
+		writeFileSync(join(root, "AGENTS.md"), renderAgentsGuide({ pluginId, displayName }), "utf8");
+		return { root, kind: "plugin", file: join(root, "AGENTS.md") };
+	}
+
+	const hubManifest = join(root, ".vetta", "marketplace.json");
+	if (existsSync(hubManifest)) {
+		const manifest = JSON.parse(readFileSync(hubManifest, "utf8")) as { name?: unknown };
+		const name = typeof manifest.name === "string" && manifest.name.length > 0 ? manifest.name : "marketplace";
+		writeFileSync(join(root, "AGENTS.md"), renderHubAgentsGuide({ name }), "utf8");
+		return { root, kind: "hub", file: join(root, "AGENTS.md") };
+	}
+
+	throw new Error(`Not a plugin project or marketplace repository: ${root}`);
+}
+
 const HUB_NAME_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const APP_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
 
