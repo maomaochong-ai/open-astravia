@@ -3,7 +3,7 @@ import {
 	getBrowserUrlForWorkspace,
 	setBrowserUrlForWorkspaceAtom,
 } from "@shared/store/atoms";
-import type { BrowserPanelLabels } from "@vetta/theme-ui/activity";
+import type { BrowserPanelLabels } from "@vetta-org/theme-ui/activity";
 import { useAtomValue, useSetAtom } from "jotai";
 import { type FormEvent, type Ref, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";

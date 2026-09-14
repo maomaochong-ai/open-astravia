@@ -1,6 +1,6 @@
 import { THEME_HOSTED_ROUTE_PATH } from "@shared/hosted-routes/hosted-route-descriptors";
-import type { ThemeModule, ThemePageDefinition, ThemePageLayout } from "@vetta/theme-sdk";
 import { isValidHostedRouteSegment } from "@vetta-org/capability-sdk";
+import type { ThemeModule, ThemePageDefinition, ThemePageLayout } from "@vetta-org/theme-sdk";
 
 export const THEME_PAGE_ROUTE_PATH = THEME_HOSTED_ROUTE_PATH;
 

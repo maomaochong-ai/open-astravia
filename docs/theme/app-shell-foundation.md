@@ -40,7 +40,7 @@ apps/desktop/src/renderer/shared/app-shell/window-controls/
 
 `PageHeader` 是 desktop 内部 connected 容器。它负责：
 
-- 通过 `@vetta/theme-sdk/app-shell` 的 `usePageHeaderModel` facade 读取页面头部 model。
+- 通过 `@vetta-org/theme-sdk/app-shell` 的 `usePageHeaderModel` facade 读取页面头部 model。
 - 接入主题 region/component/surface。
 - 在没有 region override 时，把 model 传给 `DefaultPageHeader`。
 
@@ -51,7 +51,7 @@ apps/desktop/src/renderer/shared/app-shell/window-controls/
 窗口控制同理：
 
 - `WindowControls` 是 desktop connected 容器。
-- `useWindowControlsModel` 的主题公开入口来自 `@vetta/theme-sdk/app-shell`。
+- `useWindowControlsModel` 的主题公开入口来自 `@vetta-org/theme-sdk/app-shell`。
 - `DefaultWindowControls` 是 props 驱动 view，接收 `WindowControlsComponentProps.model`。
 
 ## Region Override
@@ -106,7 +106,7 @@ components: {
 主题如果要复用官方 app-shell view，推荐在 region 中调用 SDK hook，再把 model 传入 props 驱动 view：
 
 ```tsx
-import { usePageHeaderModel } from "@vetta/theme-sdk/app-shell";
+import { usePageHeaderModel } from "@vetta-org/theme-sdk/app-shell";
 import { DefaultPageHeader } from "@vetta/desktop-theme-ui/app-shell";
 
 export function ThemePageHeader(props: PageHeaderProps) {

@@ -1,4 +1,4 @@
-import { toCsv, toMarkdown } from "@vetta/theme-ui/shared";
+import { toCsv, toMarkdown } from "@vetta-org/theme-ui/shared";
 import { describe, expect, it } from "vitest";
 
 /** 表格工具条的「复制为 Markdown / CSV」纯逻辑。theme-ui 侧没有测试 runner，落在宿主跑。 */

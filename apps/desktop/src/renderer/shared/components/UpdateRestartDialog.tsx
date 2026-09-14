@@ -1,4 +1,4 @@
-import { useThemeComponent } from "@vetta/theme-sdk";
+import { useThemeComponent } from "@vetta-org/theme-sdk";
 import { UpdateRestartDialogView } from "./UpdateRestartDialogView";
 import { useUpdateRestartDialogModel } from "./useUpdateRestartDialogModel";
 

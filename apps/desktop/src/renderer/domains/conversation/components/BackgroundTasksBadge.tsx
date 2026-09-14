@@ -1,4 +1,4 @@
-import { BackgroundTasksBadgeView } from "@vetta/theme-ui/chat";
+import { BackgroundTasksBadgeView } from "@vetta-org/theme-ui/chat";
 import { useBackgroundTasksBadgeModel } from "../hooks/useBackgroundTasksBadgeModel";
 
 /**

@@ -1,4 +1,4 @@
-import type { WindowControlsComponentProps } from "@vetta/theme-sdk/app-shell";
+import type { WindowControlsComponentProps } from "@vetta-org/theme-sdk/app-shell";
 import type { ComponentType } from "react";
 import type { PageHeaderContentProps } from "./PageHeaderContent";
 import type { PageHeaderSidebarTrigger } from "./PageHeaderSidebarTrigger";
@@ -6,7 +6,7 @@ import type { PageHeaderTitle } from "./PageHeaderTitle";
 import type { PageHeaderWindowActions } from "./PageHeaderWindowActions";
 import type { WindowControlButton } from "./WindowControlButton";
 
-declare module "@vetta/theme-sdk" {
+declare module "@vetta-org/theme-sdk" {
 	interface ThemeComponentRegistry {
 		readonly "app.pageHeaderContent"?: ComponentType<PageHeaderContentProps>;
 		readonly "app.pageHeaderSidebarTrigger"?: typeof PageHeaderSidebarTrigger;
@@ -31,7 +31,7 @@ export type {
 	WindowControlsComponentProps,
 	WindowControlsModel,
 	WindowControlsProps,
-} from "@vetta/theme-sdk/app-shell";
+} from "@vetta-org/theme-sdk/app-shell";
 export type { DefaultPageHeaderProps } from "./DefaultPageHeader";
 export { DefaultPageHeader } from "./DefaultPageHeader";
 export { DefaultWindowControls } from "./DefaultWindowControls";

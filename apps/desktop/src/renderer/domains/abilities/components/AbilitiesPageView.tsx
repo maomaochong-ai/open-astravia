@@ -1,4 +1,4 @@
-import { SegmentedControl } from "@vetta/theme-ui/shared";
+import { SegmentedControl } from "@vetta-org/theme-ui/shared";
 import { Button } from "@vetta-org/ui";
 import { motion } from "motion/react";
 import { useRef, useState } from "react";

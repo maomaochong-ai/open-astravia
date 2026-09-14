@@ -1,2 +1,2 @@
-export type { SidebarNavigationProps } from "@vetta/theme-ui/sidebar";
-export { SidebarNavigation } from "@vetta/theme-ui/sidebar";
+export type { SidebarNavigationProps } from "@vetta-org/theme-ui/sidebar";
+export { SidebarNavigation } from "@vetta-org/theme-ui/sidebar";

@@ -1,6 +1,6 @@
 import { useMatches } from "@tanstack/react-router";
-import type { ThemePageDefinition, ThemePageLayout } from "@vetta/theme-sdk";
-import { useThemeModule } from "@vetta/theme-sdk";
+import type { ThemePageDefinition, ThemePageLayout } from "@vetta-org/theme-sdk";
+import { useThemeModule } from "@vetta-org/theme-sdk";
 import { findThemePage, getThemePageLayout } from "./themePageRegistry";
 
 interface ThemePageRouteParams {

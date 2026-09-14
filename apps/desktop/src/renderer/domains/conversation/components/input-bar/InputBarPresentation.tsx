@@ -1,4 +1,4 @@
-import { useThemeComponent } from "@vetta/theme-sdk";
+import { useThemeComponent } from "@vetta-org/theme-sdk";
 import { InputBarView } from "./InputBarView";
 import type { InputBarModel } from "./types";
 

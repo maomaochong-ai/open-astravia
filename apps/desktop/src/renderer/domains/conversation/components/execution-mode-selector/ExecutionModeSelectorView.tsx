@@ -1,5 +1,5 @@
 export type {
 	ExecutionModeOptionView as ExecutionModeOptionModel,
 	ExecutionModeSelectorViewProps,
-} from "@vetta/theme-ui/chat";
-export { ExecutionModeSelectorView } from "@vetta/theme-ui/chat";
+} from "@vetta-org/theme-ui/chat";
+export { ExecutionModeSelectorView } from "@vetta-org/theme-ui/chat";

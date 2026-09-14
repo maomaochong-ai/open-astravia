@@ -9,7 +9,7 @@ export default defineConfig({
 				__dirname,
 				"../../../../apps/desktop/src/renderer/shared/theme/sdk/sidebar-primitives.ts",
 			),
-			"@vetta/theme-sdk/pages": resolve(__dirname, "../../../theme-sdk/src/pages/index.ts"),
+			"@vetta-org/theme-sdk/pages": resolve(__dirname, "../../../theme-sdk/src/pages/index.ts"),
 		},
 	},
 	test: {

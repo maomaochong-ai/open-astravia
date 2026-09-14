@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import type { ImTransportStatus } from "@preload/api";
-import { ImChannelCardView, type ImChannelCardIcon, type ImStatusBadgeStatus } from "@vetta/theme-ui/settings";
+import { ImChannelCardView, type ImChannelCardIcon, type ImStatusBadgeStatus } from "@vetta-org/theme-ui/settings";
 
 const STATUS_LABEL: Record<ImTransportStatus, string> = {
 	offline: "imbStatusOffline",

@@ -12,7 +12,7 @@ import {
 	type SubagentTask,
 	subagentsBySessionAtom,
 } from "@shared/store/atoms";
-import type { BackgroundWorkViewItem } from "@vetta/theme-ui/activity";
+import type { BackgroundWorkViewItem } from "@vetta-org/theme-ui/activity";
 import type { TFunction } from "i18next";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";

@@ -28,7 +28,7 @@ export interface VettaPluginFederationOptions {
 	entry?: string;
 	manifestFileName?: string;
 	remoteEntryFileName?: string;
-	/** Share the narrow host UI contract exposed by `@vetta/theme-ui/plugin-ui`. */
+	/** Share the narrow host UI contract exposed by `@vetta-org/theme-ui/plugin-ui`. */
 	hostThemeUi?: boolean;
 	shared?: ModuleFederationOptions["shared"];
 	package?: boolean | VettaPluginPackageOptions;
@@ -85,6 +85,12 @@ export function createVettaPluginFederationConfig(options: VettaPluginFederation
 			...(options.hostThemeUi
 				? {
 						// Host-built UI components (model selector, …); opt in to keep unrelated plugins decoupled.
+						"@vetta-org/theme-ui/plugin-ui": {
+							singleton: true,
+							import: false,
+							requiredVersion: "*",
+						},
+						// 旧名，理由同 @vetta/ui：名字就是共享键，市场上已按旧名构建的插件要继续命中宿主实例。
 						"@vetta/theme-ui/plugin-ui": {
 							singleton: true,
 							import: false,
@@ -117,6 +123,7 @@ function createBuildDefaultsPlugin(entry: string): Plugin {
 							"@vetta-org/ui",
 							// 旧名仍然外置：否则用旧名写的插件源码会把整个 UI 库打进产物。
 							"@vetta/ui",
+							"@vetta-org/theme-ui/plugin-ui",
 							"@vetta/theme-ui/plugin-ui",
 						],
 						output: {
@@ -129,6 +136,7 @@ function createBuildDefaultsPlugin(entry: string): Plugin {
 								"@vetta-org/plugin-sdk": "vetta-host://plugin-sdk",
 								"@vetta-org/ui": "vetta-host://ui",
 								"@vetta/ui": "vetta-host://ui",
+								"@vetta-org/theme-ui/plugin-ui": "vetta-host://theme-ui-plugin",
 								"@vetta/theme-ui/plugin-ui": "vetta-host://theme-ui-plugin",
 							},
 						},

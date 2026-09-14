@@ -1,5 +1,5 @@
 import { forwardRef, type JSX } from "react";
-import type { PageHeaderSidebarTriggerProps } from "@vetta/theme-sdk/app-shell";
+import type { PageHeaderSidebarTriggerProps } from "@vetta-org/theme-sdk/app-shell";
 import { cn } from "@vetta-org/ui";
 
 export const PageHeaderSidebarTrigger = forwardRef<HTMLButtonElement, PageHeaderSidebarTriggerProps>(

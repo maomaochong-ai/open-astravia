@@ -1,5 +1,5 @@
 import { MacKeyboardPreview } from "@shared/components/MacKeyboardPreview";
-import { AppshotSettingsView as ThemeAppshotSettingsView } from "@vetta/theme-ui/settings";
+import { AppshotSettingsView as ThemeAppshotSettingsView } from "@vetta-org/theme-ui/settings";
 import { Trans } from "react-i18next";
 import { SETTINGS_SECTION } from "../registry";
 import type { AppshotSelectValue, AppshotSettingsModel } from "./useAppshotSettingsModel";

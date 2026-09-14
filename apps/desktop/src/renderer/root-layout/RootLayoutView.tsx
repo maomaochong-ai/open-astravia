@@ -1,10 +1,10 @@
 import { Outlet } from "@tanstack/react-router";
 import { cn } from "@shared/lib/utils";
 import { PerfSendProfiler } from "@shared/lib/perf-send";
-import { ThemeSurface } from "@vetta/theme-ui/appearance";
-import { RouteContentLoadingView } from "@vetta/theme-ui/app";
-import { AppFrame, MainContentFrame, SidebarDock, SidebarOverlay } from "@vetta/theme-ui/layout";
-import { useThemeComponent, useThemeSurface } from "@vetta/theme-sdk";
+import { ThemeSurface } from "@vetta-org/theme-ui/appearance";
+import { RouteContentLoadingView } from "@vetta-org/theme-ui/app";
+import { AppFrame, MainContentFrame, SidebarDock, SidebarOverlay } from "@vetta-org/theme-ui/layout";
+import { useThemeComponent, useThemeSurface } from "@vetta-org/theme-sdk";
 import { useCallback, useEffect } from "react";
 import { CommandMenu } from "../domains/command-menu/components/CommandMenu";
 import { useActiveWorkspaceViewHeader } from "../domains/plugins/components/WorkspaceViewHeaderSlot";

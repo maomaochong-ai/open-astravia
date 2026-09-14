@@ -1,4 +1,4 @@
-import { EnvironmentSettingsView as ThemeEnvironmentSettingsView } from "@vetta/theme-ui/settings";
+import { EnvironmentSettingsView as ThemeEnvironmentSettingsView } from "@vetta-org/theme-ui/settings";
 import { SettingsAiAssist } from "../ai-assist";
 import { SETTINGS_SECTION } from "../registry";
 import type { EnvironmentSettingsModel } from "./useEnvironmentSettingsModel";

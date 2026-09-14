@@ -2,5 +2,5 @@ export type {
 	SandboxPermissionCardLabels,
 	SandboxPermissionCardProps,
 	SandboxPermissionRequestModel,
-} from "@vetta/theme-ui/chat";
-export { SandboxPermissionCard } from "@vetta/theme-ui/chat";
+} from "@vetta-org/theme-ui/chat";
+export { SandboxPermissionCard } from "@vetta-org/theme-ui/chat";

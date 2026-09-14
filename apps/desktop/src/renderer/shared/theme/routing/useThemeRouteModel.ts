@@ -1,5 +1,5 @@
 import { useMatches, useNavigate } from "@tanstack/react-router";
-import type { ThemeNavigationTarget, ThemeRouteArea, ThemeRouteModel } from "@vetta/theme-sdk/routing";
+import type { ThemeNavigationTarget, ThemeRouteArea, ThemeRouteModel } from "@vetta-org/theme-sdk/routing";
 
 function resolveRouteArea(pathname: string): ThemeRouteArea {
 	if (pathname === "/automation") return "automation";

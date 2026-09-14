@@ -2,7 +2,7 @@ import { cloudEnabled } from "@shared/components/cloud-slots";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SETTINGS_SECTION } from "../registry";
-import { SegmentedControl } from "@vetta/theme-ui/shared";
+import { SegmentedControl } from "@vetta-org/theme-ui/shared";
 import { McpServerRow } from "./McpServerRow";
 import {
 	RemoteMcpDiscoverList,

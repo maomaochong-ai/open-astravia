@@ -1,4 +1,4 @@
-import { useThemeRouteModel } from "@vetta/theme-sdk";
+import { useThemeRouteModel } from "@vetta-org/theme-sdk";
 import type { JSX } from "react";
 
 const READABLE_BACKGROUND_AREAS = new Set(["automation", "batchTasks", "knowledgeBase", "skills"]);

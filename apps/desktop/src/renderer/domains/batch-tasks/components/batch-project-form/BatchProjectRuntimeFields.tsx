@@ -2,7 +2,7 @@ import { ModelSelect } from "@shared/components/ModelSelect";
 import { Input } from "@shared/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@shared/components/ui/select";
 import type { ExecutionModeOverride, SessionExecutionMode } from "@shared/store/atoms";
-import { BatchProjectRuntimeFieldsView } from "@vetta/theme-ui/batch-tasks";
+import { BatchProjectRuntimeFieldsView } from "@vetta-org/theme-ui/batch-tasks";
 import { useBatchProjectRuntimeFieldsModel } from "../../hooks/useBatchProjectRuntimeFieldsModel";
 import { normalizeTimeout } from "../../utils/batchProjectFormData";
 

@@ -1,5 +1,5 @@
-import type { FilePreviewItem } from "@vetta/theme-ui/file-preview";
-import { LightboxImageView } from "@vetta/theme-ui/file-preview";
+import type { FilePreviewItem } from "@vetta-org/theme-ui/file-preview";
+import { LightboxImageView } from "@vetta-org/theme-ui/file-preview";
 import { useImageSrc, useLightboxImageModel } from "../hooks/useLightboxImageModel";
 
 export { useImageSrc };

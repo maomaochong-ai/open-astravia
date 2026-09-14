@@ -1,4 +1,4 @@
-import { MarkdownPreviewView } from "@vetta/theme-ui/activity";
+import { MarkdownPreviewView } from "@vetta-org/theme-ui/activity";
 import { resolvedThemeAtom } from "@shared/store/atoms";
 import { useAtomValue } from "jotai";
 import { useCallback } from "react";

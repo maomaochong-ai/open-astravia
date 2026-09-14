@@ -1,5 +1,5 @@
 import type { SelectedSkill } from "@shared/store/atoms";
-import { SkillPromptAreaView } from "@vetta/theme-ui/chat";
+import { SkillPromptAreaView } from "@vetta-org/theme-ui/chat";
 import { createPortal } from "react-dom";
 import { useSkillPromptAreaModel } from "../hooks/useSkillPromptAreaModel";
 import { SkillPickerPanel } from "./command-panel/SkillPickerPanel";

@@ -3,7 +3,7 @@ import {
 	DEFAULT_PLUGIN_TAB_ICON,
 	PluginTabPickerView,
 	type HiddenTabEntryView,
-} from "@vetta/theme-ui/activity";
+} from "@vetta-org/theme-ui/activity";
 
 export { DEFAULT_PLUGIN_TAB_ICON };
 

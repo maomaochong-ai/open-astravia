@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render } from "@testing-library/react";
-import { QuickScrollOverlay } from "@vetta/theme-ui/project";
-import { ScrollFade } from "@vetta/theme-ui/shared";
+import { QuickScrollOverlay } from "@vetta-org/theme-ui/project";
+import { ScrollFade } from "@vetta-org/theme-ui/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**

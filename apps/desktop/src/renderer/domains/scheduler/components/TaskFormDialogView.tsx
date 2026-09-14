@@ -1,4 +1,4 @@
-import { TaskFormDialogView as ThemeTaskFormDialogView } from "@vetta/theme-ui/scheduler";
+import { TaskFormDialogView as ThemeTaskFormDialogView } from "@vetta-org/theme-ui/scheduler";
 import {
 	SchedulerTaskFields,
 	type SchedulerTaskDraft,

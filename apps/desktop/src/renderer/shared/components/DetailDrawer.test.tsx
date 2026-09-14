@@ -31,7 +31,7 @@ vi.mock("@vetta-org/ui", () => {
 	};
 });
 
-const { DetailDrawer } = await import("@vetta/theme-ui/overlays");
+const { DetailDrawer } = await import("@vetta-org/theme-ui/overlays");
 
 /** 能力详情、智能体档案与团队设置共用这枚抽屉壳，生命周期只在这里验证一次。 */
 describe("DetailDrawer", () => {

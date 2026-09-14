@@ -2,7 +2,7 @@ import { recordInputFilesAdded } from "@shared/lib/app-monitor-events";
 import { isImagePath } from "@shared/lib/input-tokens";
 import { isSubPath, pathBasename } from "@shared/lib/utils";
 import { activeSessionAtom, type MentionedFile, mentionedFilesAtom } from "@shared/store/atoms";
-import type { SessionDropZoneViewProps } from "@vetta/theme-ui/chat";
+import type { SessionDropZoneViewProps } from "@vetta-org/theme-ui/chat";
 import { useAtomValue } from "jotai";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";

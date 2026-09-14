@@ -1,5 +1,5 @@
-import { ContextRingView } from "@vetta/theme-ui/chat";
-import { AgentAvatarView } from "@vetta/theme-ui/chat";
+import { ContextRingView } from "@vetta-org/theme-ui/chat";
+import { AgentAvatarView } from "@vetta-org/theme-ui/chat";
 import { Button } from "@shared/components/ui/button";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@shared/components/ui/popover";
 import {

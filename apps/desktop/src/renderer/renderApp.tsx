@@ -1,5 +1,5 @@
 import { RouterProvider } from "@tanstack/react-router";
-import { ThemeHostProvider } from "@vetta/theme-sdk";
+import { ThemeHostProvider } from "@vetta-org/theme-sdk";
 import { StrictMode } from "react";
 import type { Root } from "react-dom/client";
 import { I18nextProvider } from "react-i18next";

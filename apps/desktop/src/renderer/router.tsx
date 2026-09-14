@@ -1,6 +1,6 @@
 import { createRootRoute, createRoute, createRouter, createHashHistory, redirect } from "@tanstack/react-router";
 import { lazy } from "react";
-import { RouteContentLoadingView } from "@vetta/theme-ui/app";
+import { RouteContentLoadingView } from "@vetta-org/theme-ui/app";
 import { RootLayout } from "./App";
 import { loadNewSessionPage } from "./domains/conversation/components/loadNewSessionPage";
 import { RouteErrorPage } from "./shared/components/RouteErrorPage";

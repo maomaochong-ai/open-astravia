@@ -1,4 +1,4 @@
-import type { ThemeUsageStats } from "@vetta/theme-sdk";
+import type { ThemeUsageStats } from "@vetta-org/theme-sdk";
 
 export interface CultivationRealmDefinition {
 	readonly id: string;

@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { KnowledgeContentsPanelView as ThemeKnowledgeContentsPanelView } from "@vetta/theme-ui/knowledge";
+import { KnowledgeContentsPanelView as ThemeKnowledgeContentsPanelView } from "@vetta-org/theme-ui/knowledge";
 import type { useKnowledgeContentsModel } from "../hooks/useKnowledgeContentsModel";
 import { KnowledgeBreadcrumb } from "./KnowledgeBreadcrumb";
 import { KnowledgeContextMenu } from "./KnowledgeContextMenu";

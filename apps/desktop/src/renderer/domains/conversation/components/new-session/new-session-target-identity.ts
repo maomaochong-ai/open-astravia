@@ -1,6 +1,6 @@
 import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";
 import type { AgentProfile, AgentTeamDocument } from "@vetta/agent-team";
-import type { NewSessionHeroAvatar, NewSessionHeroIdentity } from "@vetta/theme-ui";
+import type { NewSessionHeroAvatar, NewSessionHeroIdentity } from "@vetta-org/theme-ui";
 import { parseAgentTargetKey, parseTeamTargetKey } from "./target";
 
 export interface NewSessionTargetIdentityLabels {

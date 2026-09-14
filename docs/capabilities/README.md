@@ -512,7 +512,7 @@ Theme Adapter 负责：
 
 例如主题自己的 storage 权限可以展开成 `storage.get`、`storage.set`、`storage.remove` 等独立 Capability Grant，并附带固定 namespace 约束。通用权限层只看到 Capability ID 和 namespace，不知道 Theme 或 themeId。
 
-Theme 开发者仍然只使用 `@vetta/theme-sdk` 的 hook 和类型。Theme SDK、renderer host、preload/IPC 是公开 facade 到内部 Theme Adapter 的桥接，不向主题代码暴露 Capability Client、Grant 或内部 Adapter。
+Theme 开发者仍然只使用 `@vetta-org/theme-sdk` 的 hook 和类型。Theme SDK、renderer host、preload/IPC 是公开 facade 到内部 Theme Adapter 的桥接，不向主题代码暴露 Capability Client、Grant 或内部 Adapter。
 
 ### 7.5 Action Adapter
 

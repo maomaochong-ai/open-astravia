@@ -1,5 +1,5 @@
 import type { ImLegacyDetection } from "@preload/api";
-import { ImLegacyImportBannerView } from "@vetta/theme-ui/settings";
+import { ImLegacyImportBannerView } from "@vetta-org/theme-ui/settings";
 import { useTranslation } from "react-i18next";
 
 export function ImLegacyImportBanner({

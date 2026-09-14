@@ -12,7 +12,7 @@ vi.mock("react-i18next", () => ({
 	}),
 }));
 
-import { LiveThinkingView } from "@vetta/theme-ui/chat";
+import { LiveThinkingView } from "@vetta-org/theme-ui/chat";
 import { ThinkingBlockView } from "./ThinkingBlock";
 
 describe("ThinkingBlockView", () => {

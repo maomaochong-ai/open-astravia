@@ -1,4 +1,4 @@
-import { HorizontalSliceImageFrame, NineSliceImageFrame } from "@vetta/theme-ui";
+import { HorizontalSliceImageFrame, NineSliceImageFrame } from "@vetta-org/theme-ui";
 import {
 	cn,
 	Dialog,

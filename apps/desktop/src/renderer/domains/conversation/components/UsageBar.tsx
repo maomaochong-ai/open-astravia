@@ -1,4 +1,4 @@
-import { UsageBarView } from "@vetta/theme-ui/chat";
+import { UsageBarView } from "@vetta-org/theme-ui/chat";
 import { useUsageBarModel } from "../hooks/useUsageBarModel";
 
 export function UsageBar(): JSX.Element | null {

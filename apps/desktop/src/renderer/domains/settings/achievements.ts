@@ -1,4 +1,4 @@
-import type { CornerImageFrameDecoration } from "@vetta/theme-sdk";
+import type { CornerImageFrameDecoration } from "@vetta-org/theme-sdk";
 import classicAchievementSetData from "./achievement-set-data/classic.json";
 import fanrenAchievementSetData from "./achievement-set-data/fanren.json";
 import achievementSetIndexData from "./achievement-sets.json";

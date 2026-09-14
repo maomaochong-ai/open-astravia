@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { ModelsProviderFormView } from "@vetta/theme-ui/settings";
+import { ModelsProviderFormView } from "@vetta-org/theme-ui/settings";
 import { API_OPTIONS, type ProviderFormState } from "./useModelsSettingsModel";
 
 export function ModelsProviderForm({

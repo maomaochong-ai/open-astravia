@@ -1,5 +1,5 @@
-import { ProviderIcon } from "@vetta/theme-ui/shared";
-import { PresetProviderRowView } from "@vetta/theme-ui/settings";
+import { ProviderIcon } from "@vetta-org/theme-ui/shared";
+import { PresetProviderRowView } from "@vetta-org/theme-ui/settings";
 import { PresetProviderModelsList } from "./PresetProviderModelsList";
 import type {
 	PresetProviderRow as PresetProviderRowModel,

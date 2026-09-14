@@ -1,4 +1,4 @@
-import { ChatHeaderActions } from "@vetta/theme-ui/chat";
+import { ChatHeaderActions } from "@vetta-org/theme-ui/chat";
 
 interface NewSessionHeaderActionsProps {
 	activityOpen: boolean;

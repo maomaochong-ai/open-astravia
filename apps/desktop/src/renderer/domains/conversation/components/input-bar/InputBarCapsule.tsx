@@ -1,2 +1,2 @@
-export type { InputBarCapsuleLabels, InputBarCapsuleProps } from "@vetta/theme-ui/chat";
-export { InputBarCapsule } from "@vetta/theme-ui/chat";
+export type { InputBarCapsuleLabels, InputBarCapsuleProps } from "@vetta-org/theme-ui/chat";
+export { InputBarCapsule } from "@vetta-org/theme-ui/chat";

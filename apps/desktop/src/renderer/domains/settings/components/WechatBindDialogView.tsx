@@ -1,4 +1,4 @@
-import { WechatBindDialogView as ThemeWechatBindDialogView } from "@vetta/theme-ui/settings";
+import { WechatBindDialogView as ThemeWechatBindDialogView } from "@vetta-org/theme-ui/settings";
 import { ImChannelGuideButton } from "./ImChannelGuideButton";
 import type { WechatBindDialogModel } from "./useWechatBindDialogModel";
 

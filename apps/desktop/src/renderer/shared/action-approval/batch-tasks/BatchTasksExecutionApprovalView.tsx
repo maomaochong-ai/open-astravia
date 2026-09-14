@@ -1,5 +1,5 @@
-import { useThemeComponent } from "@vetta/theme-sdk";
-import { BatchTasksExecutionApprovalView as ThemeBatchTasksExecutionApprovalView } from "@vetta/theme-ui/action-approval";
+import { useThemeComponent } from "@vetta-org/theme-sdk";
+import { BatchTasksExecutionApprovalView as ThemeBatchTasksExecutionApprovalView } from "@vetta-org/theme-ui/action-approval";
 import { BatchTasksApprovalFrameView } from "./BatchTasksApprovalFrameView";
 import type { BatchTasksExecutionApprovalModel } from "./useBatchTasksExecutionApprovalModel";
 

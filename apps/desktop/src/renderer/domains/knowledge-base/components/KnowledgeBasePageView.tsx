@@ -1,4 +1,4 @@
-import { KnowledgeFilesSkeleton } from "@vetta/theme-ui/knowledge";
+import { KnowledgeFilesSkeleton } from "@vetta-org/theme-ui/knowledge";
 import { useTranslation } from "react-i18next";
 import { AnimatePresence, motion } from "motion/react";
 import { Button, cn } from "@vetta-org/ui";

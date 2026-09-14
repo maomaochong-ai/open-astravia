@@ -6,7 +6,7 @@ description: 理解 appearance、component、region、page、runtime、host hook
 `ThemeModule` 是主题的公开组合合同。主题只声明自己真正提供的能力；未提供的区域继续使用默认 UI。
 
 ```typescript
-import type { ThemeModule } from "@vetta/theme-sdk";
+import type { ThemeModule } from "@vetta-org/theme-sdk";
 
 const theme: ThemeModule = {
   meta: {
@@ -55,11 +55,11 @@ Component override 替换一个已登记的局部组件。实现必须与宿主 
 - 不依赖 Desktop 内部 atom、router、IPC 或私有 hook。
 - 不吞掉默认 action，也不假设父组件未承诺的 DOM 结构。
 
-主题可以从 `@vetta/theme-sdk/app-shell`、`sidebar` 等公开子路径读取 model hook，再把 model 传给官方 props-driven view。
+主题可以从 `@vetta-org/theme-sdk/app-shell`、`sidebar` 等公开子路径读取 model hook，再把 model 传给官方 props-driven view。
 
 ## regions
 
-Region override 接管一个完整区域，可以重排默认组件、插入主题 UI 并复用 `@vetta/theme-ui`。它仍不拥有业务数据加载和跨领域流程。
+Region override 接管一个完整区域，可以重排默认组件、插入主题 UI 并复用 `@vetta-org/theme-ui`。它仍不拥有业务数据加载和跨领域流程。
 
 Region props 提供稳定 model、actions 和 classNames。不要在主题中重新实现项目查询、会话切换、权限确认或 IPC。
 
@@ -96,7 +96,7 @@ Region props 提供稳定 model、actions 和 classNames。不要在主题中重
 `useThemeStorage()` 提供按当前 `themeId` 隔离的 JSON 可序列化键值存储：
 
 ```typescript
-import { useThemeStorage } from "@vetta/theme-sdk/storage";
+import { useThemeStorage } from "@vetta-org/theme-sdk/storage";
 
 const storage = useThemeStorage();
 const value = storage.get("progress");
@@ -114,8 +114,8 @@ storage.set("progress", { score: 42 });
 
 | 包 | 应放内容 |
 | --- | --- |
-| `@vetta/theme-sdk` | 主题协议、registry、host facade、model hook 和 props 类型 |
-| `@vetta/theme-ui` | 不绑定 Desktop 私有状态的表面、装饰和布局 primitive |
+| `@vetta-org/theme-sdk` | 主题协议、registry、host facade、model hook 和 props 类型 |
+| `@vetta-org/theme-ui` | 不绑定 Desktop 私有状态的表面、装饰和布局 primitive |
 | 具体主题包 | 主题组件、图片、样式、页面和 runtime |
 | `desktop` | 真实业务状态、IPC、router、host adapter 和默认 connected container |
 

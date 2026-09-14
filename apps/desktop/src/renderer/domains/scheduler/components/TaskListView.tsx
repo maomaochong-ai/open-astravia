@@ -2,5 +2,5 @@ export type {
 	TaskListItemView,
 	TaskListViewLabels,
 	TaskListViewProps,
-} from "@vetta/theme-ui/scheduler";
-export { TaskListView } from "@vetta/theme-ui/scheduler";
+} from "@vetta-org/theme-ui/scheduler";
+export { TaskListView } from "@vetta-org/theme-ui/scheduler";

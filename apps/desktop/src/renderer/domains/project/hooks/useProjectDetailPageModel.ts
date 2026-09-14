@@ -11,7 +11,7 @@ import {
 	sessionsMapAtom,
 } from "@shared/store/atoms";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import type { ProjectDetailPageViewProps } from "@vetta/theme-ui/project";
+import type { ProjectDetailPageViewProps } from "@vetta-org/theme-ui/project";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";

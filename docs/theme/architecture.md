@@ -59,7 +59,7 @@ UI Implementation Layer
 
 主题**自有**小型状态（进度、偏好）通过独立的 storage host 能力持久化，而不是复用应用业务 store：
 
-- SDK：`useThemeStorage` / `useThemeStorageValue`（`@vetta/theme-sdk/storage`）。
+- SDK：`useThemeStorage` / `useThemeStorageValue`（`@vetta-org/theme-sdk/storage`）。
 - Host：按当前 `theme.meta.id` 隔离，主题不能指定其他 themeId。
 - 落盘：main 进程 `~/.vetta/desktop-app/themes/<themeId>/data.json`。
 
@@ -268,7 +268,7 @@ Component override 的 props 必须与默认 fallback 组件兼容。需要作�
 
 ### Theme Route Model
 
-主题需要根据当前页面做视觉判断或受控导航时，应使用 `@vetta/theme-sdk` 暴露的 `useThemeRouteModel()`。它只返回稳定路由语义，例如 `pathname` 和 `area`，不暴露 TanStack Router 实例、route match、内部 params 或 search。
+主题需要根据当前页面做视觉判断或受控导航时，应使用 `@vetta-org/theme-sdk` 暴露的 `useThemeRouteModel()`。它只返回稳定路由语义，例如 `pathname` 和 `area`，不暴露 TanStack Router 实例、route match、内部 params 或 search。
 
 `area` 适合主题判断页面场景，例如给 `automation`、`batchTasks`、`knowledgeBase`、`skills` 等宿主页面添加主内容背景。`navigate` 只接受 desktop 明确允许的目标，不支持任意路径跳转。主题不应直接 import router，也不应通过 `window.location` 或 body class 反推业务状态。
 
@@ -349,9 +349,9 @@ UI 组件应进入独立 UI 包或主题包，而不是进入 SDK。当前公共
 packages/theme-ui/
 ```
 
-`@vetta/theme-ui` 是可选依赖，主题可以复用它，也可以完全自定义 UI。新增可复用组件的具体标准见 [组件设计要求](./component-guidelines.md)。
+`@vetta-org/theme-ui` 是可选依赖，主题可以复用它，也可以完全自定义 UI。新增可复用组件的具体标准见 [组件设计要求](./component-guidelines.md)。
 
-进入 `@vetta/theme-ui` 或官方默认 UI 包的组件应优先是 props-driven view。调用 SDK hook 的 connected container 留在 desktop，作为应用默认入口和 host adapter 的一部分。
+进入 `@vetta-org/theme-ui` 或官方默认 UI 包的组件应优先是 props-driven view。调用 SDK hook 的 connected container 留在 desktop，作为应用默认入口和 host adapter 的一部分。
 
 SDK hook 必须是 facade。真实实现由应用通过 `ThemeHostProvider` 注入：
 
@@ -366,7 +366,7 @@ SDK hook 必须是 facade。真实实现由应用通过 `ThemeHostProvider` 注�
 主题调用：
 
 ```ts
-import { useSidebarModel } from "@vetta/theme-sdk/sidebar";
+import { useSidebarModel } from "@vetta-org/theme-sdk/sidebar";
 ```
 
 但 SDK 内部不直接 import desktop 的 store、router、IPC 或 domain 私有 hook。
@@ -405,8 +405,8 @@ import { useSidebarModel } from "@vetta/theme-sdk/sidebar";
 远程主题包应基于公开 SDK 编写：
 
 ```ts
-import type { ThemeModule } from "@vetta/theme-sdk";
-import { ThemeSurface } from "@vetta/theme-ui/appearance";
+import type { ThemeModule } from "@vetta-org/theme-sdk";
+import { ThemeSurface } from "@vetta-org/theme-ui/appearance";
 ```
 
 不应依赖：
@@ -419,8 +419,8 @@ import { useProjects } from "@domains/project/hooks/useProjects";
 远程加载需要：
 
 - React / ReactDOM 单例共享。
-- `@vetta/theme-sdk` 单例共享。
-- 可选 `@vetta/theme-ui` 单例共享。
+- `@vetta-org/theme-sdk` 单例共享。
+- 可选 `@vetta-org/theme-ui` 单例共享。
 - SDK 版本声明和能力声明。
 - ErrorBoundary。
 - 加载失败回退默认 UI。

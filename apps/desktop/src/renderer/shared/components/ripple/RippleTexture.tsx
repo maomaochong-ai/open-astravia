@@ -1,4 +1,4 @@
-import { NEW_SESSION_TEXTURE_MASK, NewSessionAmbientGlow } from "@vetta/theme-ui/chat";
+import { NEW_SESSION_TEXTURE_MASK, NewSessionAmbientGlow } from "@vetta-org/theme-ui/chat";
 
 /**
  * 涟漪：一层同心圆环铺满整页，纹理之一。

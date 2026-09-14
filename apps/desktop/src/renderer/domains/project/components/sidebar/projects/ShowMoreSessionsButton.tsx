@@ -1,4 +1,4 @@
-import { ShowMoreSessionsButton as ThemeShowMoreSessionsButton } from "@vetta/theme-ui/sidebar";
+import { ShowMoreSessionsButton as ThemeShowMoreSessionsButton } from "@vetta-org/theme-ui/sidebar";
 import { useTranslation } from "react-i18next";
 
 interface ShowMoreSessionsButtonProps {

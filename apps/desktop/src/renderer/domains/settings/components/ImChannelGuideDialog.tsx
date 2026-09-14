@@ -1,5 +1,5 @@
 import type { ImTransportSelector } from "@preload/api";
-import { ImChannelGuideDialogView } from "@vetta/theme-ui/settings";
+import { ImChannelGuideDialogView } from "@vetta-org/theme-ui/settings";
 import { useTranslation } from "react-i18next";
 import { getImChannelGuide } from "./im-channel-guides";
 

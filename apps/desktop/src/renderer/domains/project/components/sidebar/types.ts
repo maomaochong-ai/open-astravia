@@ -10,4 +10,4 @@ export type {
 	SidebarNavItem,
 	SidebarProps,
 	SidebarRegionProps,
-} from "@vetta/theme-sdk/sidebar";
+} from "@vetta-org/theme-sdk/sidebar";

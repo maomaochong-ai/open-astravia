@@ -34,7 +34,7 @@ function domProps(props: Record<string, unknown>): Record<string, unknown> {
 }
 vi.mock("../GuideBadgeSwiper", () => ({ GuideBadgeSwiper: () => null }));
 vi.mock("./ornament/HeroOrnamentSlot", () => ({ HeroOrnamentSlot: () => null }));
-vi.mock("@vetta/theme-sdk", () => ({ useThemeComponent: (_key: string, fallback: unknown) => fallback }));
+vi.mock("@vetta-org/theme-sdk", () => ({ useThemeComponent: (_key: string, fallback: unknown) => fallback }));
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({
 		t: (key: string, values?: Record<string, number>) =>

@@ -1,1 +1,1 @@
-export { BotAvatar } from "@vetta/theme-ui/shared";
+export { BotAvatar } from "@vetta-org/theme-ui/shared";

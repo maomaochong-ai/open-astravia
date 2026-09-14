@@ -11,7 +11,7 @@ import {
 	subagentsBySessionAtom,
 	workflowDisplayName,
 } from "@shared/store/atoms";
-import { WorkflowFooterItemsView } from "@vetta/theme-ui/chat";
+import { WorkflowFooterItemsView } from "@vetta-org/theme-ui/chat";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";

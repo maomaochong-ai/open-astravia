@@ -1,4 +1,4 @@
-import { NotificationMessageListView as ThemeNotificationMessageListView } from "@vetta/theme-ui/sidebar";
+import { NotificationMessageListView as ThemeNotificationMessageListView } from "@vetta-org/theme-ui/sidebar";
 import type { NotificationMessageListModel } from "./useNotificationMessageListModel";
 
 export function NotificationMessageListView(model: NotificationMessageListModel): JSX.Element {

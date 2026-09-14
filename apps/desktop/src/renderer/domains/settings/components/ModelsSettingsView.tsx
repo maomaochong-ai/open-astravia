@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { SettingsPageShellView } from "@vetta/theme-ui/settings";
+import { SettingsPageShellView } from "@vetta-org/theme-ui/settings";
 import { SettingsAiAssist } from "../ai-assist";
 import { ModelsProvidersSection } from "./ModelsProvidersSection";
 import { PresetProvidersSection } from "./PresetProvidersSection";

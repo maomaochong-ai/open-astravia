@@ -1,4 +1,4 @@
-import { LiveThinkingView, SegmentShell, ToolCallGroupView } from "@vetta/theme-ui/chat";
+import { LiveThinkingView, SegmentShell, ToolCallGroupView } from "@vetta-org/theme-ui/chat";
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { ErrorBlockView } from "../blocks/ErrorBlock";

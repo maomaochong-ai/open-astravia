@@ -6,7 +6,7 @@ import { cn } from "@shared/lib/utils";
 import {
 	AchievementCurtains,
 	AchievementTitle,
-} from "@vetta/theme-ui/settings";
+} from "@vetta-org/theme-ui/settings";
 import type { Achievement } from "../achievements";
 import { ACHIEVEMENT_SCENE_LAYOUT } from "../achievement-scene-layout";
 import { ACHIEVEMENT_UI_ASSETS } from "../achievement-ui-assets";

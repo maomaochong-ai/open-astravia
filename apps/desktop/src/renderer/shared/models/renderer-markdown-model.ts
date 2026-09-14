@@ -1,4 +1,4 @@
-import type { TextBlockViewProps } from "@vetta/theme-ui/chat";
+import type { TextBlockViewProps } from "@vetta-org/theme-ui/chat";
 
 export type RendererMarkdownModel = Pick<
 	TextBlockViewProps,

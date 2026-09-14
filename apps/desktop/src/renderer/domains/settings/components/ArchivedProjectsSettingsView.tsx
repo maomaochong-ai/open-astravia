@@ -1,4 +1,4 @@
-import { ArchivedProjectsSettingsView as ThemeArchivedProjectsSettingsView } from "@vetta/theme-ui/settings";
+import { ArchivedProjectsSettingsView as ThemeArchivedProjectsSettingsView } from "@vetta-org/theme-ui/settings";
 import { SETTINGS_SECTION } from "../registry";
 import type { ArchivedProjectsSettingsModel } from "./useArchivedProjectsSettingsModel";
 

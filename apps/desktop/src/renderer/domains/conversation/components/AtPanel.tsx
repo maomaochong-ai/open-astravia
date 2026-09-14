@@ -1,4 +1,4 @@
-import { useThemeComponent } from "@vetta/theme-sdk";
+import { useThemeComponent } from "@vetta-org/theme-sdk";
 import { useAtPanelModel } from "../hooks/useAtPanelModel";
 import { AtPanelView } from "./at-panel/AtPanelView";
 import type { AtPanelProps } from "./at-panel/types";

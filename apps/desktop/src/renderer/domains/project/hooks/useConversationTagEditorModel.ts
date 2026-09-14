@@ -1,5 +1,5 @@
 import { conversationTagEditorAtom, conversationTagsAtom } from "@shared/store/atoms";
-import type { ConversationTagEditorDialogViewProps } from "@vetta/theme-ui/project";
+import type { ConversationTagEditorDialogViewProps } from "@vetta-org/theme-ui/project";
 import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";

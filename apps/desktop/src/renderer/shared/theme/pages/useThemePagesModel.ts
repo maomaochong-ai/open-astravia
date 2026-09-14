@@ -1,6 +1,6 @@
 import { useMatches } from "@tanstack/react-router";
-import { useThemeModule } from "@vetta/theme-sdk";
-import type { ThemePagesModel } from "@vetta/theme-sdk/pages";
+import { useThemeModule } from "@vetta-org/theme-sdk";
+import type { ThemePagesModel } from "@vetta-org/theme-sdk/pages";
 import { useTranslation } from "react-i18next";
 import { createThemePagesModel } from "./theme-pages-model.js";
 import { themeRendererCapabilityHost } from "./theme-renderer-capability-host.js";

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type JSX } from "react";
 import { motion } from "motion/react";
-import { useThemeComponent } from "@vetta/theme-sdk";
+import { useThemeComponent } from "@vetta-org/theme-sdk";
 import { cn } from "@vetta-org/ui";
 import type { NewSessionSceneCarouselProps } from "./NewSession";
 import { SceneCard } from "./SceneCard";

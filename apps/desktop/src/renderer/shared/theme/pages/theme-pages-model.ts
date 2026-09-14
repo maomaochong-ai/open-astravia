@@ -1,6 +1,6 @@
 import { themeHostedRoutePath } from "@shared/hosted-routes/hosted-route-descriptors";
-import type { ThemePageDefinition } from "@vetta/theme-sdk";
-import type { ThemePagesModel } from "@vetta/theme-sdk/pages";
+import type { ThemePageDefinition } from "@vetta-org/theme-sdk";
+import type { ThemePagesModel } from "@vetta-org/theme-sdk/pages";
 import { themePageRoute } from "./theme-hosted-route-capability.js";
 import { isValidThemePageId, resolveThemePageTitle } from "./themePageRegistry.js";
 

@@ -1,4 +1,4 @@
-import type { ThemeColorOverrides } from "@vetta/theme-sdk/appearance";
+import type { ThemeColorOverrides } from "@vetta-org/theme-sdk/appearance";
 import { DEFAULT_THEME_ID, getTheme, resolveThemeId } from "./themes";
 import { TOKEN_CSS_VAR, type TokenSet } from "./tokens";
 

@@ -8,7 +8,7 @@ import {
 	type InlineTokenAnnotation,
 	type InlineTokenPiece,
 	type InlineTokenSupport,
-} from "@vetta/theme-ui/chat";
+} from "@vetta-org/theme-ui/chat";
 import { memo, useMemo } from "react";
 
 interface MarkdownContentProps {

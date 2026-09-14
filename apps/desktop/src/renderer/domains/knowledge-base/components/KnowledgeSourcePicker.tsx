@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { KnowledgeSourcePickerView } from "@vetta/theme-ui/knowledge";
+import { KnowledgeSourcePickerView } from "@vetta-org/theme-ui/knowledge";
 
 interface KnowledgeSourcePickerProps {
 	onPickFiles: () => void;

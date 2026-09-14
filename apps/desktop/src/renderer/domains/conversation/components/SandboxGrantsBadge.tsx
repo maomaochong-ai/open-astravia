@@ -1,4 +1,4 @@
-import { SandboxGrantsBadgeView } from "@vetta/theme-ui/chat";
+import { SandboxGrantsBadgeView } from "@vetta-org/theme-ui/chat";
 import { useSandboxGrantsBadgeModel } from "../hooks/useSandboxGrantsBadgeModel";
 
 export function SandboxGrantsBadge(): JSX.Element | null {

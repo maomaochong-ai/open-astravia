@@ -78,6 +78,8 @@
         "@types/adm-zip": "^0.5.8",
         "@vetta-org/capability-sdk": "workspace:*",
         "@vetta-org/plugin-sdk": "workspace:*",
+        "@vetta-org/theme-sdk": "workspace:*",
+        "@vetta-org/theme-ui": "workspace:*",
         "@vetta-org/ui": "workspace:*",
         "@vetta/action-rpc": "workspace:*",
         "@vetta/agent-team": "workspace:*",
@@ -95,8 +97,6 @@
         "@vetta/runtime-storage": "workspace:*",
         "@vetta/runtime-telemetry": "workspace:*",
         "@vetta/runtime-tools": "workspace:*",
-        "@vetta/theme-sdk": "workspace:*",
-        "@vetta/theme-ui": "workspace:*",
         "@vetta/toolkit": "workspace:*",
         "@xyflow/react": "^12.10.2",
         "adm-zip": "^0.5.16",
@@ -502,8 +502,8 @@
         "@types/react-dom": "^19.1.1",
         "@vetta-org/plugin-sdk": "workspace:*",
         "@vetta-org/plugin-vite": "workspace:*",
+        "@vetta-org/theme-ui": "workspace:*",
         "@vetta-org/ui": "workspace:*",
-        "@vetta/theme-ui": "workspace:*",
         "react": "19.1.1",
         "react-dom": "19.1.1",
         "tailwindcss": "^4.1.12",
@@ -589,7 +589,7 @@
     },
     "packages/plugins/plugin-vite": {
       "name": "@vetta-org/plugin-vite",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "bin": {
         "vetta-plugin": "./dist/cli.js",
       },
@@ -1075,8 +1075,8 @@
       "version": "0.0.0",
     },
     "packages/theme-sdk": {
-      "name": "@vetta/theme-sdk",
-      "version": "0.0.1",
+      "name": "@vetta-org/theme-sdk",
+      "version": "0.1.0",
       "devDependencies": {
         "@types/react": "^19.1.1",
         "typescript": "^5.9.2",
@@ -1086,8 +1086,8 @@
       },
     },
     "packages/theme-ui": {
-      "name": "@vetta/theme-ui",
-      "version": "0.0.1",
+      "name": "@vetta-org/theme-ui",
+      "version": "0.1.0",
       "dependencies": {
         "@codemirror/lang-css": "^6.3.1",
         "@codemirror/lang-html": "^6.4.11",
@@ -1102,8 +1102,8 @@
         "@codemirror/view": "^6.43.7",
         "@lezer/highlight": "1.2.3",
         "@lobehub/icons-static-svg": "1.95.0",
+        "@vetta-org/theme-sdk": "workspace:*",
         "@vetta-org/ui": "workspace:*",
-        "@vetta/theme-sdk": "workspace:*",
         "codemirror": "^6.0.2",
         "radix-ui": "^1.6.2",
       },
@@ -1146,8 +1146,8 @@
       "name": "@vetta/theme-xianxia",
       "version": "0.1.0",
       "dependencies": {
-        "@vetta/theme-sdk": "workspace:*",
-        "@vetta/theme-ui": "workspace:*",
+        "@vetta-org/theme-sdk": "workspace:*",
+        "@vetta-org/theme-ui": "workspace:*",
         "@vetta/toolkit": "workspace:*",
         "@visx/event": "^4.0.0",
         "@visx/group": "^4.0.0",
@@ -2676,6 +2676,10 @@
 
     "@vetta-org/plugin-vite": ["@vetta-org/plugin-vite@workspace:packages/plugins/plugin-vite"],
 
+    "@vetta-org/theme-sdk": ["@vetta-org/theme-sdk@workspace:packages/theme-sdk"],
+
+    "@vetta-org/theme-ui": ["@vetta-org/theme-ui@workspace:packages/theme-ui"],
+
     "@vetta-org/ui": ["@vetta-org/ui@workspace:packages/ui"],
 
     "@vetta/action-rpc": ["@vetta/action-rpc@workspace:packages/action-rpc"],
@@ -2767,10 +2771,6 @@
     "@vetta/runtime-tools": ["@vetta/runtime-tools@workspace:packages/runtime-tools"],
 
     "@vetta/skill-presets": ["@vetta/skill-presets@workspace:packages/skill-presets"],
-
-    "@vetta/theme-sdk": ["@vetta/theme-sdk@workspace:packages/theme-sdk"],
-
-    "@vetta/theme-ui": ["@vetta/theme-ui@workspace:packages/theme-ui"],
 
     "@vetta/theme-xianxia": ["@vetta/theme-xianxia@workspace:packages/themes/builtin/xianxia"],
 

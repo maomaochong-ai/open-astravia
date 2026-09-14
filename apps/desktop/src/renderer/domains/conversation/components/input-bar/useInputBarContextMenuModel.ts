@@ -1,5 +1,5 @@
 import { recordInputImagesAdded } from "@shared/lib/app-monitor-events";
-import type { InputBarContextMenuViewProps } from "@vetta/theme-ui/chat";
+import type { InputBarContextMenuViewProps } from "@vetta-org/theme-ui/chat";
 import type { MouseEvent } from "react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";

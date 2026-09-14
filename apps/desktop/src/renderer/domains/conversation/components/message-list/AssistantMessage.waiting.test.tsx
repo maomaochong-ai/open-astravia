@@ -18,7 +18,7 @@ vi.mock("react-i18next", () => ({
 	}),
 }));
 
-vi.mock("@vetta/theme-sdk/appearance", () => ({ useThemeSurface: () => null }));
+vi.mock("@vetta-org/theme-sdk/appearance", () => ({ useThemeSurface: () => null }));
 vi.mock("@shared/components/BotAvatar", () => ({ BotAvatar: () => null }));
 vi.mock("../../hooks/useAssistantMessageModel", () => ({
 	useAssistantMessageModel: () => ({

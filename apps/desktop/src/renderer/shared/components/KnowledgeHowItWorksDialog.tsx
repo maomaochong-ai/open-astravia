@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { KnowledgeHowItWorksDialogView } from "@vetta/theme-ui/knowledge";
+import { KnowledgeHowItWorksDialogView } from "@vetta-org/theme-ui/knowledge";
 
 interface KnowledgeHowItWorksDialogProps {
 	open: boolean;

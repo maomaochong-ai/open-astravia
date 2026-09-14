@@ -1,5 +1,5 @@
 import type { BatchProject, BatchTask, SessionExecutionMode } from "@shared/store/atoms";
-import type { BatchProjectGroupLabels, BatchProjectGroupTaskItem } from "@vetta/theme-ui/batch-tasks";
+import type { BatchProjectGroupLabels, BatchProjectGroupTaskItem } from "@vetta-org/theme-ui/batch-tasks";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { relativeTime } from "../utils/batchTaskListData";

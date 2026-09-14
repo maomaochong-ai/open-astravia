@@ -1,4 +1,4 @@
-import type { BatchTaskProjectHeaderLabels } from "@vetta/theme-ui/batch-tasks";
+import type { BatchTaskProjectHeaderLabels } from "@vetta-org/theme-ui/batch-tasks";
 import { useBatchTaskListLabels } from "./useBatchTaskListLabels";
 
 export interface BatchTaskProjectHeaderModel {

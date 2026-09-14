@@ -1,5 +1,5 @@
 import type { BatchProject } from "@shared/store/atoms";
-import { BatchTaskProjectActionsView } from "@vetta/theme-ui/batch-tasks";
+import { BatchTaskProjectActionsView } from "@vetta-org/theme-ui/batch-tasks";
 import type { BatchTaskListActions, ProjectCounts } from "../../hooks/useBatchTaskListModel";
 import { useBatchTaskProjectActionsModel } from "../../hooks/useBatchTaskProjectActionsModel";
 

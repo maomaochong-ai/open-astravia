@@ -1,4 +1,4 @@
-import { BackgroundTasksTabPanelView } from "@vetta/theme-ui/activity";
+import { BackgroundTasksTabPanelView } from "@vetta-org/theme-ui/activity";
 import { useBackgroundTasksTabPanelModel } from "../hooks/useBackgroundTasksTabPanelModel";
 
 export function BackgroundTasksTabPanel(): JSX.Element {

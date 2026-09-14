@@ -1,1 +1,1 @@
-export { SettingsMenuDivider } from "@vetta/theme-ui/sidebar";
+export { SettingsMenuDivider } from "@vetta-org/theme-ui/sidebar";

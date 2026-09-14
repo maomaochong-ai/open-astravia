@@ -17,7 +17,7 @@ import { SettingsAiAssist } from "../ai-assist";
 import appearanceMascot from "../assets/appearance-mascot.webp";
 import themeLock from "../assets/theme-lock.webp";
 import { SETTINGS_SECTION } from "../registry";
-import { MotionSelect, SettingHeading } from "@vetta/theme-ui/settings";
+import { MotionSelect, SettingHeading } from "@vetta-org/theme-ui/settings";
 import type { SidebarStyle } from "@shared/theme/sidebar-style";
 import type {
 	AppearanceCursorOption,

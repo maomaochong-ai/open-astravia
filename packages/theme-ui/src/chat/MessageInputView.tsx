@@ -1,4 +1,4 @@
-import { useThemeSurface } from "@vetta/theme-sdk/appearance";
+import { useThemeSurface } from "@vetta-org/theme-sdk/appearance";
 import { cn } from "@vetta-org/ui";
 import { Slot } from "radix-ui";
 import type { ComponentPropsWithoutRef, JSX, ReactNode } from "react";

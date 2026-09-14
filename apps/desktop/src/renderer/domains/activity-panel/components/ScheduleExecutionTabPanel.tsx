@@ -1,4 +1,4 @@
-import { ScheduleExecutionTabPanelView } from "@vetta/theme-ui/activity";
+import { ScheduleExecutionTabPanelView } from "@vetta-org/theme-ui/activity";
 import { useScheduleExecutionTabPanelModel } from "../hooks/useScheduleExecutionTabPanelModel";
 
 interface ScheduleExecutionTabPanelProps {

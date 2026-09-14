@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { CornerImageFrame } from "@vetta/theme-ui/appearance";
+import { CornerImageFrame } from "@vetta-org/theme-ui/appearance";
 import { getPetBubbleStyle, type PetBubbleStyleId } from "../../../../shared/pet-bubbles";
 
 export function PetBubbleFrame({

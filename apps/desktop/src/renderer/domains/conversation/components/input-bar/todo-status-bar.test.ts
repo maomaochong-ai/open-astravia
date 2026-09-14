@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { TodoStatusBarView, type TodoStatusItem } from "@vetta/theme-ui/chat";
+import { TodoStatusBarView, type TodoStatusItem } from "@vetta-org/theme-ui/chat";
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";

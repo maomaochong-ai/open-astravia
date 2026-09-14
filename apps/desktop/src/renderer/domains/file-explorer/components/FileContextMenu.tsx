@@ -1,6 +1,6 @@
 import type { FileExplorerEntryKind } from "@preload/fs-types";
 import type { FsEntry } from "@shared/store/atoms";
-import { FileContextMenuView } from "@vetta/theme-ui/file-explorer";
+import { FileContextMenuView } from "@vetta-org/theme-ui/file-explorer";
 import { useFileContextMenuModel } from "../hooks/useFileContextMenuModel";
 
 interface FileContextMenuProps {

@@ -1,4 +1,4 @@
-import type { ThemeUsageStats } from "@vetta/theme-sdk";
+import type { ThemeUsageStats } from "@vetta-org/theme-sdk";
 import type { CultivationDailyMetrics } from "../../cultivation";
 import { levelFromXp } from "./abilityProgress";
 import { sanctumAchievements } from "./achievements";

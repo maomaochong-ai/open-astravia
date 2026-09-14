@@ -12,7 +12,7 @@ import {
 	SettingsAssistBadgeView,
 	UserMessage as UserMessagePrimitive,
 	UserMessageContextMenuView,
-} from "@vetta/theme-ui/chat";
+} from "@vetta-org/theme-ui/chat";
 import { useSetAtom } from "jotai";
 import { memo, useMemo, useState } from "react";
 import { createPortal } from "react-dom";

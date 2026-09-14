@@ -1,6 +1,6 @@
 import type { SessionInfo } from "@shared/store/atoms";
 import { sessionDisplayLabel } from "@shared/store/atoms";
-import type { SessionRenameInputViewProps } from "@vetta/theme-ui/project";
+import type { SessionRenameInputViewProps } from "@vetta-org/theme-ui/project";
 import { useCallback } from "react";
 
 interface Args {

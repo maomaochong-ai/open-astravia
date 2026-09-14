@@ -1,6 +1,6 @@
 import { DrawerCard, type DrawerTab } from "@shared/components/DrawerCard";
 import { QueueCard } from "@shared/components/QueueCard";
-import { useThemeComponent } from "@vetta/theme-sdk";
+import { useThemeComponent } from "@vetta-org/theme-sdk";
 import { memo, useMemo } from "react";
 import type { InputBarDrawerItem, InputBarLabels } from "./types";
 import { SandboxPermissionCard } from "./SandboxPermissionCard";

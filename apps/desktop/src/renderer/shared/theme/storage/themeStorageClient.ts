@@ -1,4 +1,4 @@
-import type { ThemeStorage, ThemeStorageStatus, ThemeStorageValue } from "@vetta/theme-sdk/storage";
+import type { ThemeStorage, ThemeStorageStatus, ThemeStorageValue } from "@vetta-org/theme-sdk/storage";
 import {
 	assertThemeStorageWritable,
 	isThemeStorageJson,

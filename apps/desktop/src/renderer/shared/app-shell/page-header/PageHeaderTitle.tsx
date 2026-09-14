@@ -1,2 +1,2 @@
-export type { PageHeaderTitleProps } from "@vetta/theme-ui/app-shell";
-export { PageHeaderTitle } from "@vetta/theme-ui/app-shell";
+export type { PageHeaderTitleProps } from "@vetta-org/theme-ui/app-shell";
+export { PageHeaderTitle } from "@vetta-org/theme-ui/app-shell";

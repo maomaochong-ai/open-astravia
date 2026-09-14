@@ -1,4 +1,4 @@
-import type { SidebarNavBadge } from "@vetta/theme-sdk/sidebar";
+import type { SidebarNavBadge } from "@vetta-org/theme-sdk/sidebar";
 
 /** 计数超过这个值只显示 `99+`：导航项宽度有限，再大的真实数字也没有信息量。 */
 export const NAV_BADGE_COUNT_OVERFLOW = 99;

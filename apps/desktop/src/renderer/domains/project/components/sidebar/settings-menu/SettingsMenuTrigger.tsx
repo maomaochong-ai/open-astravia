@@ -1,7 +1,7 @@
 import { forwardRef, type ComponentPropsWithoutRef } from "react";
 import { useTranslation } from "react-i18next";
 import { UserAvatar } from "@shared/components/UserAvatar";
-import { SettingsMenuTriggerView } from "@vetta/theme-ui/sidebar";
+import { SettingsMenuTriggerView } from "@vetta-org/theme-ui/sidebar";
 import type { SettingsMenuModel } from "./types";
 
 export interface SettingsMenuTriggerProps extends ComponentPropsWithoutRef<"button"> {

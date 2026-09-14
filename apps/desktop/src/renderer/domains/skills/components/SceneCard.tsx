@@ -1,4 +1,4 @@
-import { SceneCardView } from "@vetta/theme-ui/skills";
+import { SceneCardView } from "@vetta-org/theme-ui/skills";
 import { useTranslation } from "react-i18next";
 import type { ActionState, MergedSkill } from "../hooks/useSkillsPageModel";
 

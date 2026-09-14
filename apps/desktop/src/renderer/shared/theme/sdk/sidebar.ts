@@ -23,4 +23,4 @@ export type {
 	SidebarProps,
 	SidebarRegionProps,
 } from "@domains/project/components/sidebar/types";
-export { useSidebarModel } from "@vetta/theme-sdk/sidebar";
+export { useSidebarModel } from "@vetta-org/theme-sdk/sidebar";

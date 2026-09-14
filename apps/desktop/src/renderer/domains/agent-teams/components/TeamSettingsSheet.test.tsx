@@ -13,12 +13,12 @@ vi.mock("react-i18next", () => ({
 			values ? `${key}:${Object.values(values).join(":")}` : key,
 	}),
 }));
-vi.mock("@vetta/theme-ui/overlays", () => ({
+vi.mock("@vetta-org/theme-ui/overlays", () => ({
 	DetailDrawer: ({ children, open }: { children: ReactNode; open: boolean }) =>
 		open ? <div>{children}</div> : null,
 	DetailDrawerEnter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
-vi.mock("@vetta/theme-ui/chat", () => ({
+vi.mock("@vetta-org/theme-ui/chat", () => ({
 	AgentAvatarView: ({ name }: { name: string }) => <span data-testid="avatar">{name}</span>,
 }));
 vi.mock("@vetta-org/ui", () => ({

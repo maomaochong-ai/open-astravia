@@ -1,5 +1,5 @@
 import { PetBubbleFrame } from "@shared/components/pet/PetBubbleFrame";
-import { PetBubbleStylePreviewView } from "@vetta/theme-ui/settings";
+import { PetBubbleStylePreviewView } from "@vetta-org/theme-ui/settings";
 import type { PetBubbleStyleId } from "../../../../shared/pet-bubbles";
 
 export function PetBubbleStylePreview({

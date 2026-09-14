@@ -1,2 +1,2 @@
-export type { SettingsMenuActionButtonProps } from "@vetta/theme-ui/sidebar";
-export { SettingsMenuActionButton } from "@vetta/theme-ui/sidebar";
+export type { SettingsMenuActionButtonProps } from "@vetta-org/theme-ui/sidebar";
+export { SettingsMenuActionButton } from "@vetta-org/theme-ui/sidebar";

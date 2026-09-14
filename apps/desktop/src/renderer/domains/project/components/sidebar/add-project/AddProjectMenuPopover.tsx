@@ -1,4 +1,4 @@
-import { AddProjectMenuPopoverView } from "@vetta/theme-ui/sidebar";
+import { AddProjectMenuPopoverView } from "@vetta-org/theme-ui/sidebar";
 import { useTranslation } from "react-i18next";
 import type { AddProjectMenuItemModel, AddProjectMenuProps } from "./types";
 

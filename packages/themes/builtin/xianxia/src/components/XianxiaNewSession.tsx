@@ -1,12 +1,12 @@
 import { cn } from "@vetta-org/ui";
-import { useThemeSurface } from "@vetta/theme-sdk";
+import { useThemeSurface } from "@vetta-org/theme-sdk";
 import type {
 	NewSessionSceneCarouselProps,
 	NewSessionSceneItem,
 	NewSessionSkillBadgeRowProps,
 	NewSessionSkillItem,
-} from "@vetta/theme-ui";
-import { ThemeSurface, useHorizontalDragScroll } from "@vetta/theme-ui";
+} from "@vetta-org/theme-ui";
+import { ThemeSurface, useHorizontalDragScroll } from "@vetta-org/theme-ui";
 import type { JSX } from "react";
 import { xianxiaAssets } from "../assets";
 

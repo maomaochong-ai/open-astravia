@@ -1,4 +1,4 @@
-import { SettingsPageShellView, SettingSection } from "@vetta/theme-ui/settings";
+import { SettingsPageShellView, SettingSection } from "@vetta-org/theme-ui/settings";
 import { SettingsAiAssist } from "../ai-assist";
 import { SETTINGS_SECTION } from "../registry";
 import { WebhookEditorDialog } from "./WebhookEditorDialog";

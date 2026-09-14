@@ -16,8 +16,8 @@ vi.mock("jotai", async (importOriginal) => ({
 	useSetAtom: () => captured.setHeader,
 }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
-vi.mock("@vetta/theme-sdk/appearance", () => ({ useThemeSurface: () => undefined }));
-vi.mock("@vetta/theme-ui/chat", () => ({ SessionViewerPageView: () => <main /> }));
+vi.mock("@vetta-org/theme-sdk/appearance", () => ({ useThemeSurface: () => undefined }));
+vi.mock("@vetta-org/theme-ui/chat", () => ({ SessionViewerPageView: () => <main /> }));
 vi.mock("@domains/activity-panel/components/ActivityPanel", () => ({ ActivityPanel: () => <aside /> }));
 vi.mock("../hooks/useSessionViewerPageModel", () => ({
 	useSessionViewerPageModel: () => ({

@@ -74,7 +74,7 @@ description: 定义主题清单、导出 ThemeModule 并在桌面应用中验证
 ## 导出模块
 
 ```ts
-import type { ThemeModule } from "@vetta/theme-sdk";
+import type { ThemeModule } from "@vetta-org/theme-sdk";
 
 const theme: ThemeModule = {
   meta: {
@@ -102,7 +102,7 @@ export default theme;
   <Step>
     ### 配置构建
 
-    Vite 需要暴露 `./theme`，生成 `mf-manifest.json`，并将 React、`@vetta/theme-sdk` 与宿主 UI 包配置为不重复打包的共享单例。
+    Vite 需要暴露 `./theme`，生成 `mf-manifest.json`，并将 React、`@vetta-org/theme-sdk` 与宿主 UI 包配置为不重复打包的共享单例。
   </Step>
   <Step>
     ### 接入桌面应用

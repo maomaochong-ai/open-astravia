@@ -1,4 +1,4 @@
-import { AppBootLoadingView } from "@vetta/theme-ui/app-boot";
+import { AppBootLoadingView } from "@vetta-org/theme-ui/app-boot";
 import { createRoot } from "react-dom/client";
 import { applyPlatformAttribute } from "./shared/lib/platform";
 import { applyInitialTheme } from "./shared/theme/apply";

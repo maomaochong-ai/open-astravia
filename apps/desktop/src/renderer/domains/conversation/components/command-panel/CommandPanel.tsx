@@ -1,5 +1,5 @@
 import type { SkillInfo } from "@preload/api";
-import { useThemeComponent } from "@vetta/theme-sdk";
+import { useThemeComponent } from "@vetta-org/theme-sdk";
 import { useCommandPanelModel } from "../../hooks/useCommandPanelModel";
 import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
 import { CommandPanelView } from "./CommandPanelView";

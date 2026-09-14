@@ -7,7 +7,7 @@ export type {
 	ThemeSurfaceConfig,
 	ThemeSurfaceFrame,
 	ThemeSurfaceSlot,
-} from "@vetta/theme-sdk";
-export { ThemeSurface } from "@vetta/theme-ui/appearance";
+} from "@vetta-org/theme-sdk";
+export { ThemeSurface } from "@vetta-org/theme-ui/appearance";
 export * from "./app-shell";
 export * from "./sidebar";

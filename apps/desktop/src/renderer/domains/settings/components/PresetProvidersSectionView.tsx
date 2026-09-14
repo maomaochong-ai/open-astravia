@@ -1,4 +1,4 @@
-import { PresetProvidersSectionView as ThemePresetProvidersSectionView } from "@vetta/theme-ui/settings";
+import { PresetProvidersSectionView as ThemePresetProvidersSectionView } from "@vetta-org/theme-ui/settings";
 import { SETTINGS_SECTION } from "../registry";
 import { PresetProviderRow } from "./PresetProviderRow";
 import type { PresetProvidersSectionModel } from "./usePresetProvidersSectionModel";

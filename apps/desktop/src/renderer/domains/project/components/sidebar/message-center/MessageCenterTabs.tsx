@@ -1,7 +1,7 @@
 import {
 	MessageCenterTabs as ThemeMessageCenterTabs,
 	type MessageCenterTabId,
-} from "@vetta/theme-ui/sidebar";
+} from "@vetta-org/theme-ui/sidebar";
 import { useTranslation } from "react-i18next";
 import { MESSAGE_CENTER_SPRING, MESSAGE_CENTER_TABS, type MessageCenterTab } from "./types";
 

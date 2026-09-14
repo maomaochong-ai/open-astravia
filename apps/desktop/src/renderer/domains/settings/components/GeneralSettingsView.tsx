@@ -1,6 +1,6 @@
 import { useUpdateCheckerModel } from "@shared/hooks/useUpdateCheckerModel";
-import { UpdateCheckerAction, UpdateCheckerDetail } from "@vetta/theme-ui/overlays";
-import { GeneralSettingsView as ThemeGeneralSettingsView } from "@vetta/theme-ui/settings";
+import { UpdateCheckerAction, UpdateCheckerDetail } from "@vetta-org/theme-ui/overlays";
+import { GeneralSettingsView as ThemeGeneralSettingsView } from "@vetta-org/theme-ui/settings";
 import { SETTINGS_SECTION } from "../registry";
 import type { GeneralSettingsModel } from "./useGeneralSettingsModel";
 

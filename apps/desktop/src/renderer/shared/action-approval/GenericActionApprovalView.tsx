@@ -2,5 +2,5 @@ export type {
 	GenericActionApprovalField,
 	GenericActionApprovalViewLabels,
 	GenericActionApprovalViewProps,
-} from "@vetta/theme-ui/action-approval";
-export { GenericActionApprovalView } from "@vetta/theme-ui/action-approval";
+} from "@vetta-org/theme-ui/action-approval";
+export { GenericActionApprovalView } from "@vetta-org/theme-ui/action-approval";

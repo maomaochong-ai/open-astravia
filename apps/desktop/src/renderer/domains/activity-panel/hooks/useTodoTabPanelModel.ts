@@ -1,6 +1,6 @@
 import { getTodoItemsForSession, todoItemsBySessionAtom } from "@shared/store/atoms";
 import type { TodoItem } from "@shared/store/todo-atoms";
-import type { TodoTabPanelViewLabels } from "@vetta/theme-ui/activity";
+import type { TodoTabPanelViewLabels } from "@vetta-org/theme-ui/activity";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";

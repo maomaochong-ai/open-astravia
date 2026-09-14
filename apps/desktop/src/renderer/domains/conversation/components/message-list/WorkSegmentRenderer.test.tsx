@@ -18,7 +18,7 @@ vi.mock("react-i18next", () => ({
 	}),
 }));
 
-vi.mock("@vetta/theme-ui/chat", () => ({
+vi.mock("@vetta-org/theme-ui/chat", () => ({
 	ProgressGroup: {
 		Root: ({ children, done }: { children: ReactNode; done: boolean }) => (
 			<div data-group-status={done ? "done" : "running"}>{children}</div>

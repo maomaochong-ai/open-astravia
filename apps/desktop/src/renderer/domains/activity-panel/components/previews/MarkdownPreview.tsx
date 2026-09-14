@@ -1,4 +1,4 @@
-import { MarkdownPreviewView } from "@vetta/theme-ui/activity";
+import { MarkdownPreviewView } from "@vetta-org/theme-ui/activity";
 import { memo } from "react";
 import { useMarkdownPreviewModel } from "../../hooks/useMarkdownPreviewModel";
 

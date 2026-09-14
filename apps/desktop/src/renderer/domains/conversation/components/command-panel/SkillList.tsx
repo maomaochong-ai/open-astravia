@@ -1,5 +1,5 @@
 import type { SkillInfo } from "@preload/api";
-import { SkillTypeIcon } from "@vetta/theme-ui/skills";
+import { SkillTypeIcon } from "@vetta-org/theme-ui/skills";
 import { motion } from "motion/react";
 import { SkillListEmpty } from "./SkillListEmpty";
 import type { SkillListProps } from "./types";

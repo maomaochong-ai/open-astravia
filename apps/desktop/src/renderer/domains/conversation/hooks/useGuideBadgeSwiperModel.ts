@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import type { GuideBadgeSwiperViewProps, GuideBadgeViewItem } from "@vetta/theme-ui/chat";
+import type { GuideBadgeSwiperViewProps, GuideBadgeViewItem } from "@vetta-org/theme-ui/chat";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 

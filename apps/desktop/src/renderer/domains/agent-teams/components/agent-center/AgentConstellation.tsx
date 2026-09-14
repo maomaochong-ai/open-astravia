@@ -1,6 +1,6 @@
 import { useAgentAvatarResolver } from "@shared/agent-teams/agent-avatar";
 import type { AgentProfile } from "@vetta/agent-team";
-import { AgentAvatarView } from "@vetta/theme-ui/chat";
+import { AgentAvatarView } from "@vetta-org/theme-ui/chat";
 import { motion, useReducedMotion } from "motion/react";
 
 /** 头像沿一段弧线排开：直径 36 的头像每隔 30 放一枚，故意留 6px 交叠。 */

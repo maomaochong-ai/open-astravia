@@ -1,7 +1,7 @@
 import {
 	InputBarBackground,
 	type InputBarBackgroundProps,
-} from "@vetta/theme-ui";
+} from "@vetta-org/theme-ui";
 import type { JSX } from "react";
 
 export function XianxiaInputBarBackground({

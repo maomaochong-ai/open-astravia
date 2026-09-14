@@ -1,6 +1,6 @@
 import type { BatchProject } from "@shared/store/atoms";
 import { batchProjectDialogOpenAtom, batchProjectsAtom, pageHeaderTitleHiddenAtom } from "@shared/store/atoms";
-import type { BatchTasksPageLabels, BatchTasksPageStatsView } from "@vetta/theme-ui/batch-tasks";
+import type { BatchTasksPageLabels, BatchTasksPageStatsView } from "@vetta-org/theme-ui/batch-tasks";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";

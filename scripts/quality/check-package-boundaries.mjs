@@ -306,8 +306,8 @@ function checkCapabilityLayerImports(posixPath, specifiers, findings) {
 		"@vetta-org/plugin-sdk",
 		"@vetta/action-rpc",
 		"@vetta/desktop",
-		"@vetta/theme-sdk",
-		"@vetta/theme-ui",
+		"@vetta-org/theme-sdk",
+		"@vetta-org/theme-ui",
 	];
 	if (isCapabilitySdk) forbiddenPrefixes.push("@vetta/capability-runtime");
 	for (const specifier of specifiers) {

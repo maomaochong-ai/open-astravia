@@ -1,6 +1,6 @@
 {
-	"name": "@vetta/theme-sdk",
-	"version": "0.0.1",
+	"name": "@vetta-org/theme-sdk",
+	"version": "0.1.0",
 	"type": "module",
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
@@ -49,6 +49,10 @@
 
 
 	"files": ["src"],
+	"publishConfig": {
+		"access": "public",
+		"registry": "https://registry.npmjs.org/"
+	},
 	"scripts": {
 		"check": "tsgo --noEmit -p tsconfig.json"
 	},

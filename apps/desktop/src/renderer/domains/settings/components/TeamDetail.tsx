@@ -1,5 +1,5 @@
 import type { TeamDetailVO } from "@shared/lib/api";
-import { TeamDetailView } from "@vetta/theme-ui/settings";
+import { TeamDetailView } from "@vetta-org/theme-ui/settings";
 import { SETTINGS_SECTION } from "../registry";
 import type { TeamSettingsLabels } from "./useTeamSettingsModel";
 

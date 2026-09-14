@@ -1,4 +1,4 @@
-import { KnowledgeBaseSwitcherView as ThemeKnowledgeBaseSwitcherView } from "@vetta/theme-ui/knowledge";
+import { KnowledgeBaseSwitcherView as ThemeKnowledgeBaseSwitcherView } from "@vetta-org/theme-ui/knowledge";
 import type { KnowledgeBaseSwitcherModel } from "../hooks/useKnowledgeBaseSwitcherModel";
 import { KnowledgeRenameDialog } from "./KnowledgeRenameDialog";
 

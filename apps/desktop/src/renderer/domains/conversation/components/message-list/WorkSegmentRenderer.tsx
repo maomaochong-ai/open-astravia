@@ -1,7 +1,7 @@
 import type { ThinkingBlock, ToolCallBlock } from "@shared/store/atoms";
 import type { ChatToolCallPresentationViewModel } from "@shared/store/atoms";
 import { languageAtom, pluginAgentToolLabelsAtom, pluginI18nByIdAtom } from "@shared/store/atoms";
-import { LiveThinkingView, ProgressGroup, SegmentShell } from "@vetta/theme-ui/chat";
+import { LiveThinkingView, ProgressGroup, SegmentShell } from "@vetta-org/theme-ui/chat";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
 import { useTranslation } from "react-i18next";

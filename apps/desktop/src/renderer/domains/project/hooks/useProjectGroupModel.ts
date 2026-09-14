@@ -10,7 +10,7 @@ import {
 	sessionContextMenuAtom,
 	sessionDisplayLabel,
 } from "@shared/store/atoms";
-import { DEFAULT_VISIBLE_SESSIONS } from "@vetta/theme-ui/project";
+import { DEFAULT_VISIBLE_SESSIONS } from "@vetta-org/theme-ui/project";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";

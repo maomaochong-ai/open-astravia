@@ -1,4 +1,4 @@
-import { TaskFormDialogView } from "@vetta/theme-ui/scheduler";
+import { TaskFormDialogView } from "@vetta-org/theme-ui/scheduler";
 import { SkillPromptArea } from "@domains/conversation/components/SkillPromptArea";
 import { ModelSelect } from "@shared/components/ModelSelect";
 import { Popover, PopoverContent, PopoverTrigger } from "@vetta-org/ui";

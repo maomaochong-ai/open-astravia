@@ -3,7 +3,7 @@ import type {
 	FileExplorerDragEntry,
 	FileExplorerSelectOptions,
 	FileTreeNodeViewProps,
-} from "@vetta/theme-ui/file-explorer";
+} from "@vetta-org/theme-ui/file-explorer";
 import { useAtom } from "jotai";
 import { useCallback } from "react";
 

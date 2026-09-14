@@ -2,7 +2,7 @@
 
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "@vetta/theme-ui/styles.css";
+@import "@vetta-org/theme-ui/styles.css";
 @plugin "@iconify/tailwind4";
 
 /* Scan official theme UI package so utilities / iconify classes in migrated

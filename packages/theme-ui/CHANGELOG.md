@@ -1,20 +1,15 @@
-# @vetta/theme-ui
+# Changelog
 
-## [Unreleased]
+All notable changes to `@vetta-org/theme-ui` are documented in this file.
 
-### Added
+## [0.1.0] — 2026-09-14
 
-- `NewSessionHero` props carry an optional `identity` (title, subtitle, and one avatar per team member) so a theme can render the picked agent or team in place of the greeting.
-- Bash 工具终端状态支持 `cancelled`，取消后不再显示运行中的光标或等待提示。
-- Exported shared `AvatarStackView` for a compact overlapping avatar row with a bounded overflow count, replacing the session-row-only stack implementation.
-- Exported `NewSessionAmbientGlow` on its own so a host can swap the texture layer of `NewSessionBackground` while keeping the same glow. `NewSessionBackground` is unchanged.
-- Exported `NEW_SESSION_TEXTURE_MASK`, the fade every new session page texture shares. Its vertical radius is tightened so the pattern is gone before the top and bottom edges instead of being sliced off by them.
+首次发布到 npm。此前只作为 workspace 包在仓库内引用，但官方能力市场里的 shimo 插件依赖它，
+没有它该插件在任何干净环境都装不上。
+
+宿主成品 UI。其中 `./plugin-ui` 是**有意收窄**的插件面：插件通过 Module Federation 共享宿主的同一份实例，npm 依赖只用于编译期类型。
 
 ### Changed
 
-- `NewSessionPicker.Trigger` and `ProjectSelectorView` triggers use the opaque card surface instead of a translucent accent tint.
-- Session rows support a source icon with trailing participant avatars, no longer reserve trailing space for relative timestamps, and apply project-child indentation consistently across source and status icon variants.
-- MessageFeed.VirtualList 现在支持按条目数设置最小预渲染范围和恢复 Virtuoso 状态快照，动态高度消息在滚动和会话恢复时可避免批量重测导致的布局跳动。
-- Replaced the fixed ActivityPanel view shell with Radix-style compound primitives and changed the Browser panel identity contract from a conversation path to an explicit workspace ID.
-- Replaced the fixed message-input region and toolbar prop contracts with Radix-style compound primitives, Context-owned state, optional DropZone composition, and `asChild` DOM polymorphism.
-- Replaced the fixed chat message-list shells with orthogonal `MessageFeed` / `Message` behavior primitives, `MessageFeedLayout` / `MessageLayout` positional primitives, and `MessageVisual` leaves. Feed mechanics, layout positions, message abilities, visuals, and caller-owned host elements can now be assembled independently through explicit children and Radix-style `asChild` composition.
+- 包名由 `@vetta/theme-ui` 改为 `@vetta-org/theme-ui`：`@vetta` scope 不属于本账号，公开包统一
+  发在 `@vetta-org` 下（与 plugin-sdk / plugin-vite / plugin-cli / ui 一致）。

@@ -1,4 +1,4 @@
-import { AchievementCurtains as ThemeAchievementCurtains } from "@vetta/theme-ui/settings";
+import { AchievementCurtains as ThemeAchievementCurtains } from "@vetta-org/theme-ui/settings";
 import { ACHIEVEMENT_SCENE_LAYOUT } from "../achievement-scene-layout";
 import { ACHIEVEMENT_UI_ASSETS } from "../achievement-ui-assets";
 

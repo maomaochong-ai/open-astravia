@@ -1,4 +1,4 @@
-import { ChatHeaderActions } from "@vetta/theme-ui/chat";
+import { ChatHeaderActions } from "@vetta-org/theme-ui/chat";
 import { BackgroundTasksBadge } from "../BackgroundTasksBadge";
 import { SandboxGrantsBadge } from "../SandboxGrantsBadge";
 import type { ChatViewActions, ChatViewHeaderModel } from "./types";

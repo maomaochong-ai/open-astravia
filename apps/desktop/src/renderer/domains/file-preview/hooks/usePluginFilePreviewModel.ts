@@ -1,5 +1,5 @@
-import type { FilePreviewItem } from "@vetta/theme-ui/file-preview";
 import type { PluginFilePreviewContribution, PluginPreviewFile } from "@vetta-org/plugin-sdk";
+import type { FilePreviewItem } from "@vetta-org/theme-ui/file-preview";
 import { useMemo } from "react";
 
 const MIME_BY_EXTENSION: Record<string, string> = {

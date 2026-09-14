@@ -1,7 +1,7 @@
 import { useAgentAvatarResolver } from "@shared/agent-teams/agent-avatar";
 import type { AgentBlueprint, AgentProfile, AgentProfileUpdateImpact } from "@vetta/agent-team";
-import { AgentAvatarView } from "@vetta/theme-ui/chat";
-import { DetailDrawer, DetailDrawerEnter } from "@vetta/theme-ui/overlays";
+import { AgentAvatarView } from "@vetta-org/theme-ui/chat";
+import { DetailDrawer, DetailDrawerEnter } from "@vetta-org/theme-ui/overlays";
 import { Button, cn } from "@vetta-org/ui";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";

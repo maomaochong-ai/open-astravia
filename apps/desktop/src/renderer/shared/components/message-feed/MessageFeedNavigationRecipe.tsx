@@ -1,5 +1,5 @@
 import { Input } from "@shared/components/ui/input";
-import { MessageTimeline } from "@vetta/theme-ui/chat";
+import { MessageTimeline } from "@vetta-org/theme-ui/chat";
 import { useMemo } from "react";
 import { Virtuoso } from "react-virtuoso";
 import {

@@ -13,7 +13,7 @@ import {
 } from "../lib/ability-selection";
 import { AbilityIcon } from "../../abilities/components/AbilityIcon";
 import { useAgentAvatarResolver } from "../../../shared/agent-teams/agent-avatar";
-import { AgentAvatarView } from "@vetta/theme-ui/chat";
+import { AgentAvatarView } from "@vetta-org/theme-ui/chat";
 import { AgentAvatarPicker } from "./AgentAvatarPicker";
 
 export type AgentProfileTab = "basic" | "prompt" | "abilities";

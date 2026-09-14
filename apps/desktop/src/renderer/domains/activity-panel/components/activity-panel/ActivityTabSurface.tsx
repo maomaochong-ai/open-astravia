@@ -1,7 +1,7 @@
 import { TabBar } from "@shared/components/ui/tab-bar";
 import type { ActivityTabKey } from "@shared/lib/project-profile";
 import type { FloatingActivityTabPlacement } from "@shared/store/atoms";
-import { FloatingActivityTabView } from "@vetta/theme-ui/activity";
+import { FloatingActivityTabView } from "@vetta-org/theme-ui/activity";
 import { type ComponentType, type JSX, memo, useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ActivityTabActivationContextProvider } from "../../registry/activation-context";

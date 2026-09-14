@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // 只关心 section 往会话列表交出的 cwd，其余视图与筛选器都替换成最小替身。
 const sectionProps = vi.fn();
-vi.mock("@vetta/theme-ui/project", () => ({
+vi.mock("@vetta-org/theme-ui/project", () => ({
 	DefaultConversationSectionView: (props: { list: ReactNode }): JSX.Element => {
 		sectionProps(props);
 		return <div>{props.list}</div>;

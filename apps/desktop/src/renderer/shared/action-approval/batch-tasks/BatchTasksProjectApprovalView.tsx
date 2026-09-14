@@ -1,6 +1,6 @@
 import { BatchProjectFormFields } from "@domains/batch-tasks/components/BatchProjectFormFields";
-import { useThemeComponent } from "@vetta/theme-sdk";
-import { BatchTasksApprovalFrameView } from "@vetta/theme-ui/action-approval";
+import { useThemeComponent } from "@vetta-org/theme-sdk";
+import { BatchTasksApprovalFrameView } from "@vetta-org/theme-ui/action-approval";
 import { Drawer, DrawerContent } from "@vetta-org/ui";
 import type { BatchTasksProjectApprovalModel } from "./useBatchTasksProjectApprovalModel";
 

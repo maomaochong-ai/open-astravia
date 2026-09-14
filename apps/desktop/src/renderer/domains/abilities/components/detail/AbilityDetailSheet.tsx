@@ -1,4 +1,4 @@
-import { DetailDrawer } from "@vetta/theme-ui/overlays";
+import { DetailDrawer } from "@vetta-org/theme-ui/overlays";
 import { lazy, Suspense, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { AbilitiesModel } from "../../types";

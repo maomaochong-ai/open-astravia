@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { KnowledgePendingFilesDialogView } from "@vetta/theme-ui/knowledge";
+import { KnowledgePendingFilesDialogView } from "@vetta-org/theme-ui/knowledge";
 import type { UnprocessedFile } from "../lib/knowledge-base";
 
 interface KnowledgePendingFilesDialogProps {

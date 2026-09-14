@@ -6,7 +6,7 @@ import {
 	type FilePreviewItem,
 	type TextFileEditorMode,
 	type TextFileEditorViewState,
-} from "@vetta/theme-ui/file-preview";
+} from "@vetta-org/theme-ui/file-preview";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useTextFileEditor } from "../hooks/useTextFileEditor";

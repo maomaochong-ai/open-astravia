@@ -1,5 +1,5 @@
-import { useSystemInfo } from "@vetta/theme-sdk";
-import { AppBackground, type AppBackgroundProps } from "@vetta/theme-ui";
+import { useSystemInfo } from "@vetta-org/theme-sdk";
+import { AppBackground, type AppBackgroundProps } from "@vetta-org/theme-ui";
 import { cn } from "@vetta-org/ui";
 import type { JSX } from "react";
 

@@ -3,12 +3,12 @@ import {
 	ModelSelectorView,
 	type ModelSelectorOptionView,
 	type ModelSelectorProviderGroup,
-} from "@vetta/theme-ui/plugin-ui";
+} from "@vetta-org/theme-ui/plugin-ui";
 import { useMemo, type JSX } from "react";
 import type { KanbanModelOption } from "../board/board-controller";
 
 /**
- * 模型选择器。**直接用宿主输入栏的那一个**（`@vetta/theme-ui/plugin-ui` 经 Module
+ * 模型选择器。**直接用宿主输入栏的那一个**（`@vetta-org/theme-ui/plugin-ui` 经 Module
  * Federation 共享域拿到宿主运行时的同一份实例），所以搜索、provider 分组、图标、
  * 云端徽章的行为和会话页完全一致，宿主改了这里跟着改。
  *

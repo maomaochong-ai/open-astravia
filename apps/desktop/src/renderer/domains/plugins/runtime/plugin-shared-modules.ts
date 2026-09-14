@@ -1,6 +1,6 @@
 import type { ModuleFederation } from "@module-federation/enhanced/runtime";
-import * as themeUiPlugin from "@vetta/theme-ui/plugin-ui";
 import * as pluginSdk from "@vetta-org/plugin-sdk";
+import * as themeUiPlugin from "@vetta-org/theme-ui/plugin-ui";
 import * as vettaUi from "@vetta-org/ui";
 import * as React from "react";
 import * as jsxDevRuntime from "react/jsx-dev-runtime";
@@ -40,6 +40,13 @@ export const pluginSharedModules = {
 		requiredVersion: false,
 	},
 	// 宿主成品 UI 组件（模型选择器等）。清单有意收窄，见 theme-ui/src/plugin-ui。
+	"@vetta-org/theme-ui/plugin-ui": {
+		module: themeUiPlugin,
+		version: "0.0.1",
+		singleton: true,
+		requiredVersion: false,
+	},
+	// 兼容别名，理由同上：这个包 0.1.0 之前叫 @vetta/theme-ui。
 	"@vetta/theme-ui/plugin-ui": {
 		module: themeUiPlugin,
 		version: "0.0.1",

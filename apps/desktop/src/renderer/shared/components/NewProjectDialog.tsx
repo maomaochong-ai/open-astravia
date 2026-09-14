@@ -1,4 +1,4 @@
-import { NewProjectDialogView } from "@vetta/theme-ui/project";
+import { NewProjectDialogView } from "@vetta-org/theme-ui/project";
 import { useTranslation } from "react-i18next";
 
 interface NewProjectDialogProps {

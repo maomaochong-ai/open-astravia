@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { render } from "@testing-library/react";
-import { SidebarNavigation } from "@vetta/theme-ui/sidebar";
-import type { SidebarNavItem } from "@vetta/theme-sdk/sidebar";
+import { SidebarNavigation } from "@vetta-org/theme-ui/sidebar";
+import type { SidebarNavItem } from "@vetta-org/theme-sdk/sidebar";
 import { describe, expect, it } from "vitest";
 
 /**

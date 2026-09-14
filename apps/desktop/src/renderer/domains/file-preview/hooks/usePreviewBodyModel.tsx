@@ -1,6 +1,6 @@
 import { pluginFilePreviewsAtom } from "@shared/store/atoms";
-import type { FilePreviewItem, PreviewBodyViewProps } from "@vetta/theme-ui/file-preview";
-import { getExtension } from "@vetta/theme-ui/file-preview";
+import type { FilePreviewItem, PreviewBodyViewProps } from "@vetta-org/theme-ui/file-preview";
+import { getExtension } from "@vetta-org/theme-ui/file-preview";
 import { useAtomValue } from "jotai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";

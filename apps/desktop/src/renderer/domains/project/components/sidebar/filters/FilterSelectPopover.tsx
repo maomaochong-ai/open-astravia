@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { SidebarFilterSelectView } from "@vetta/theme-ui/sidebar";
+import { SidebarFilterSelectView } from "@vetta-org/theme-ui/sidebar";
 import type { DefaultConversationFilterOption, SidebarFilterOption } from "./types";
 
 interface FilterSelectPopoverProps<TValue extends string> {

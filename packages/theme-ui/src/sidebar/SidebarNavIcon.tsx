@@ -1,4 +1,4 @@
-import type { SidebarNavItem } from "@vetta/theme-sdk/sidebar";
+import type { SidebarNavItem } from "@vetta-org/theme-sdk/sidebar";
 import { cn } from "@vetta-org/ui";
 import type { JSX } from "react";
 

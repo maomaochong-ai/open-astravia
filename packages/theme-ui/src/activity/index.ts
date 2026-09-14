@@ -1,6 +1,6 @@
 import type { ActivityPanelFrame } from "./ActivityPanelFrame";
 
-declare module "@vetta/theme-sdk" {
+declare module "@vetta-org/theme-sdk" {
 	interface ThemeComponentRegistry {
 		readonly "activity.panelFrame"?: typeof ActivityPanelFrame;
 	}

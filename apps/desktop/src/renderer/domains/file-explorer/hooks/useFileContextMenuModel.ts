@@ -2,7 +2,7 @@ import type { FileExplorerEntryKind } from "@preload/fs-types";
 import { isMac } from "@shared/lib/platform";
 import { pathDirname } from "@shared/lib/utils";
 import { type FsEntry, pluginFileExplorerContextMenuActionsAtom, renamingPathAtom } from "@shared/store/atoms";
-import type { FileContextMenuViewProps } from "@vetta/theme-ui/file-explorer";
+import type { FileContextMenuViewProps } from "@vetta-org/theme-ui/file-explorer";
 import { useAtomValue, useSetAtom } from "jotai";
 import { createElement, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";

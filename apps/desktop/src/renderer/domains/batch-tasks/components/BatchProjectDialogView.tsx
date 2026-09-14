@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { BatchProjectDialogView as ThemeBatchProjectDialogView } from "@vetta/theme-ui/batch-tasks";
+import { BatchProjectDialogView as ThemeBatchProjectDialogView } from "@vetta-org/theme-ui/batch-tasks";
 import type { BatchProjectDialogModel } from "../hooks/useBatchProjectDialogModel";
 import { BatchProjectFormFields } from "./BatchProjectFormFields";
 

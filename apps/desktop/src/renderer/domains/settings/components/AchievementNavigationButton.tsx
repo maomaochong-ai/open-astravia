@@ -1,4 +1,4 @@
-import { AchievementNavigationButtonView } from "@vetta/theme-ui/settings";
+import { AchievementNavigationButtonView } from "@vetta-org/theme-ui/settings";
 import { ACHIEVEMENT_UI_ASSETS } from "../achievement-ui-assets";
 
 interface AchievementNavigationButtonProps {

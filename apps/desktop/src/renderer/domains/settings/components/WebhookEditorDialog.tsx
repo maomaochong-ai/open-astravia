@@ -1,4 +1,4 @@
-import { WebhookEndpointListView } from "@vetta/theme-ui/settings";
+import { WebhookEndpointListView } from "@vetta-org/theme-ui/settings";
 import {
 	Dialog,
 	DialogContent,

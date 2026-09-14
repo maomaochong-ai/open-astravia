@@ -1,2 +1,2 @@
-export type { AchievementPromotionConfettiProps } from "@vetta/theme-ui/settings";
-export { AchievementPromotionConfetti } from "@vetta/theme-ui/settings";
+export type { AchievementPromotionConfettiProps } from "@vetta-org/theme-ui/settings";
+export { AchievementPromotionConfetti } from "@vetta-org/theme-ui/settings";

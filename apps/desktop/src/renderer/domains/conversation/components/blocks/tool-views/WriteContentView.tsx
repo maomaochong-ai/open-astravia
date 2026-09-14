@@ -1,4 +1,4 @@
-import { WriteContentView as ThemeWriteContentView } from "@vetta/theme-ui/chat";
+import { WriteContentView as ThemeWriteContentView } from "@vetta-org/theme-ui/chat";
 import { useTranslation } from "react-i18next";
 import { getStringArg } from "./shared/parse-tool";
 

@@ -1,4 +1,4 @@
-import { UpdateCheckerAction, UpdateCheckerDetail, UpdateCheckerView } from "@vetta/theme-ui/overlays";
+import { UpdateCheckerAction, UpdateCheckerDetail, UpdateCheckerView } from "@vetta-org/theme-ui/overlays";
 import { useUpdateCheckerModel } from "../hooks/useUpdateCheckerModel";
 
 /** Standalone compose (settings 页请用 Action + Detail + SettingRow，见 GeneralSettingsView)。 */

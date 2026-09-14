@@ -1,4 +1,4 @@
-import { useThemeSurface } from "@vetta/theme-sdk";
+import { useThemeSurface } from "@vetta-org/theme-sdk";
 import { AnimatePresence, motion } from "motion/react";
 import type { JSX, ReactNode } from "react";
 

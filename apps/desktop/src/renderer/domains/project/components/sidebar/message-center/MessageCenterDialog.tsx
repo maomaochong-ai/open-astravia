@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { MessageCenterDialogView } from "@vetta/theme-ui/sidebar";
+import { MessageCenterDialogView } from "@vetta-org/theme-ui/sidebar";
 import { MessageCenterContent } from "./MessageCenterContent";
 import { MessageCenterTabs } from "./MessageCenterTabs";
 import type { MessageCenterTab } from "./types";

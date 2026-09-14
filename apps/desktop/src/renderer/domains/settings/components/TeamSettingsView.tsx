@@ -1,4 +1,4 @@
-import { TeamSettingsView as ThemeTeamSettingsView } from "@vetta/theme-ui/settings";
+import { TeamSettingsView as ThemeTeamSettingsView } from "@vetta-org/theme-ui/settings";
 import { SETTINGS_SECTION } from "../registry";
 import { CreateTeamDialog, JoinTeamDialog } from "./TeamDialogs";
 import { TeamDetail } from "./TeamDetail";

@@ -1,6 +1,6 @@
 import { TabBar } from "@shared/components/ui/tab-bar";
 import type { ActivityTabKey } from "@shared/lib/project-profile";
-import { ActivityPanel as ActivityPanelPrimitive } from "@vetta/theme-ui/activity";
+import { ActivityPanel as ActivityPanelPrimitive } from "@vetta-org/theme-ui/activity";
 import type { ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 import { useDockedOutlet } from "../../hooks/useDockedOutlet";

@@ -1,4 +1,4 @@
-import type { ToasterViewProps } from "@vetta/theme-ui/overlays";
+import type { ToasterViewProps } from "@vetta-org/theme-ui/overlays";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";

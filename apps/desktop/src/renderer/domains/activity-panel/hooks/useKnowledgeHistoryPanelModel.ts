@@ -1,6 +1,6 @@
 import { confirmDialogAtom, type SessionInfo } from "@shared/store/atoms";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import type { KnowledgeHistoryPanelViewLabels, KnowledgeHistorySessionItem } from "@vetta/theme-ui/activity";
+import type { KnowledgeHistoryPanelViewLabels, KnowledgeHistorySessionItem } from "@vetta-org/theme-ui/activity";
 import { useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";

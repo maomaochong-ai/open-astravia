@@ -1,4 +1,4 @@
-import { DefaultSidebar as ThemeDefaultSidebar } from "@vetta/theme-ui/sidebar";
+import { DefaultSidebar as ThemeDefaultSidebar } from "@vetta-org/theme-ui/sidebar";
 import { useTranslation } from "react-i18next";
 import type { SidebarModel, SidebarProps } from "./types";
 import { SidebarBottomBar } from "./SidebarBottomBar";

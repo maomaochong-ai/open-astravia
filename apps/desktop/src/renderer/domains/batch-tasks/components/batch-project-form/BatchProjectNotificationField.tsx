@@ -1,4 +1,4 @@
-import { BatchProjectNotificationFieldView } from "@vetta/theme-ui/batch-tasks";
+import { BatchProjectNotificationFieldView } from "@vetta-org/theme-ui/batch-tasks";
 import { useTranslation } from "react-i18next";
 
 export function BatchProjectNotificationField({

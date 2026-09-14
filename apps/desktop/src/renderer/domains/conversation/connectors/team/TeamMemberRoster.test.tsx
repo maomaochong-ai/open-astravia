@@ -10,7 +10,7 @@ vi.mock("react-i18next", () => ({
 		t: (key: string, values?: { name?: string }) => (values?.name ? `${key}:${values.name}` : key),
 	}),
 }));
-vi.mock("@vetta/theme-ui/chat", () => ({
+vi.mock("@vetta-org/theme-ui/chat", () => ({
 	AgentAvatarView: ({ name }: { name: string }) => <span data-testid={`avatar-${name}`} />,
 }));
 

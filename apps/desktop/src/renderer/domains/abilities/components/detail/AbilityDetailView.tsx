@@ -1,4 +1,4 @@
-import { DetailDrawerEnter } from "@vetta/theme-ui/overlays";
+import { DetailDrawerEnter } from "@vetta-org/theme-ui/overlays";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Button } from "@vetta-org/ui";
 import { useMemo, useState } from "react";

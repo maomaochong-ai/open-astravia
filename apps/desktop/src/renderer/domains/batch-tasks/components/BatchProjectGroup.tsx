@@ -1,5 +1,5 @@
 import type { BatchProject, BatchTask, SessionExecutionMode } from "@shared/store/atoms";
-import { BatchProjectGroupView } from "@vetta/theme-ui/batch-tasks";
+import { BatchProjectGroupView } from "@vetta-org/theme-ui/batch-tasks";
 import { useBatchProjectGroupModel } from "../hooks/useBatchProjectGroupModel";
 
 interface BatchProjectGroupProps {

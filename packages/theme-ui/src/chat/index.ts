@@ -12,7 +12,7 @@ import type { SceneCard } from "./SceneCard";
 import type { SkillCard } from "./SkillCard";
 import type { TodoStatusBarView } from "./TodoStatusBarView";
 
-declare module "@vetta/theme-sdk" {
+declare module "@vetta-org/theme-sdk" {
 	interface ThemeComponentRegistry {
 		readonly "chat.inputBarBackground"?: typeof InputBarBackground;
 		readonly "chat.inputBarPlaceholder"?: typeof InputBarPlaceholder;

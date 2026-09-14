@@ -1,7 +1,7 @@
 import { activeSessionAtom, currentScenarioAtom, mountedActivityWorkspacesAtom } from "@shared/store/atoms";
 import { useActiveSessionRuntimeIds } from "@shared/workspace/active-session-runtime";
 import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
-import { useThemeComponent } from "@vetta/theme-sdk";
+import { useThemeComponent } from "@vetta-org/theme-sdk";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo } from "react";
 import { useActivityPanelModel } from "../hooks/useActivityPanelModel";

@@ -10,7 +10,7 @@ import {
 	subagentsBySessionAtom,
 	workflowDisplayName,
 } from "@shared/store/atoms";
-import type { WorkflowSwitcherItem } from "@vetta/theme-ui/activity";
+import type { WorkflowSwitcherItem } from "@vetta-org/theme-ui/activity";
 import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";

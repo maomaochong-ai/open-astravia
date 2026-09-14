@@ -1,6 +1,6 @@
 import { Popover, PopoverContent, PopoverTrigger } from "@shared/components/ui/popover";
 import { cn } from "@shared/lib/utils";
-import { AgentAvatarView } from "@vetta/theme-ui/chat";
+import { AgentAvatarView } from "@vetta-org/theme-ui/chat";
 import { useState } from "react";
 import type { InputBarModel } from "./types";
 

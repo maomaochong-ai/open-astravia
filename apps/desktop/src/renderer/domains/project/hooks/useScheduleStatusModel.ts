@@ -1,7 +1,7 @@
 import { describeSchedule, parseCronExpression } from "@domains/scheduler/components/schedule-picker/cron-utils";
 import { useScheduledTasks } from "@domains/scheduler/hooks/useScheduledTasks";
 import type { ScheduledTask } from "@shared/store/atoms";
-import type { ScheduleStatusViewProps, ScheduleTaskItemView } from "@vetta/theme-ui/project";
+import type { ScheduleStatusViewProps, ScheduleTaskItemView } from "@vetta-org/theme-ui/project";
 import type { TFunction } from "i18next";
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";

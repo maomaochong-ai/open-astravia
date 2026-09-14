@@ -1,4 +1,4 @@
-import type { ThemeColorTokens } from "@vetta/theme-sdk/appearance";
+import type { ThemeColorTokens } from "@vetta-org/theme-sdk/appearance";
 
 // 主题 token 定义。键名对应 styles.css 中 [data-mode] 块下的 CSS 变量名。
 // 任意新增主题必须实现 TokenSet 完整字段，TS 会强制校验。

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, render } from "@testing-library/react";
-import { getProviderIcon, PROVIDER_ICONS, ProviderIcon } from "@vetta/theme-ui/shared";
+import { getProviderIcon, PROVIDER_ICONS, ProviderIcon } from "@vetta-org/theme-ui/shared";
 import { afterEach, describe, expect, it } from "vitest";
 
 afterEach(cleanup);

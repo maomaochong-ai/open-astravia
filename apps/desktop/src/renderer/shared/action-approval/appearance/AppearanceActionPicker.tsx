@@ -6,7 +6,7 @@ import {
 	type AppearanceModeOption,
 	type AppearanceThemeMode,
 	type AppearanceThemePreview,
-} from "@vetta/theme-ui/action-approval";
+} from "@vetta-org/theme-ui/action-approval";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 

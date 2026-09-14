@@ -4,7 +4,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { AbilityShowcase } from "@shared/lib/api";
 
-vi.mock("@vetta/theme-ui/shared", () => ({
+vi.mock("@vetta-org/theme-ui/shared", () => ({
 	BotAvatar: () => <span data-testid="bot-avatar" />,
 }));
 vi.mock("react-i18next", () => ({

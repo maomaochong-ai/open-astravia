@@ -1,4 +1,4 @@
-import { UsageStatsView } from "@vetta/theme-ui/settings";
+import { UsageStatsView } from "@vetta-org/theme-ui/settings";
 import { useUsageStatsModel } from "./useUsageStatsModel";
 
 export function UsageStats(): JSX.Element | null {

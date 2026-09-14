@@ -1,5 +1,5 @@
 import type { ToolCallBlock } from "@shared/store/atoms";
-import { ToolCall } from "@vetta/theme-ui/chat";
+import { ToolCall } from "@vetta-org/theme-ui/chat";
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { PluginI18nBoundary } from "../../../plugins/runtime/plugin-i18n";

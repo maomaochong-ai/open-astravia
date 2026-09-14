@@ -1,4 +1,4 @@
-import { WebhookEndpointListView, type WebhookEndpointRowView } from "@vetta/theme-ui/settings";
+import { WebhookEndpointListView, type WebhookEndpointRowView } from "@vetta-org/theme-ui/settings";
 import type { WebhookSettingsModel } from "./useWebhookSettingsModel";
 
 export function WebhookEndpointList({ model }: { model: WebhookSettingsModel }): JSX.Element {

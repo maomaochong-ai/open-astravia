@@ -8,7 +8,7 @@ import {
 } from "@shared/lib/input-tokens";
 import { pathBasename, toVettaFileUrl } from "@shared/lib/utils";
 import type { FilePreviewItem } from "@shared/store/atoms";
-import type { InlineTokenAnnotation } from "@vetta/theme-ui/chat";
+import type { InlineTokenAnnotation } from "@vetta-org/theme-ui/chat";
 import { isSystemAttachmentPath, isUserImageFile, parseUserPrefixes } from "../../services/chat-service";
 import type { AppshotCardData } from "../AppshotCard";
 

@@ -1,1 +1,1 @@
-export { BatchProjectNameFieldView as BatchProjectNameField } from "@vetta/theme-ui/batch-tasks";
+export { BatchProjectNameFieldView as BatchProjectNameField } from "@vetta-org/theme-ui/batch-tasks";

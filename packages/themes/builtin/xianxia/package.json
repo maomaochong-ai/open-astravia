@@ -19,8 +19,8 @@
 		"test": "bun ../../../../scripts/quality/run-vitest.mjs --run"
 	},
 	"dependencies": {
-		"@vetta/theme-sdk": "workspace:*",
-		"@vetta/theme-ui": "workspace:*",
+		"@vetta-org/theme-sdk": "workspace:*",
+		"@vetta-org/theme-ui": "workspace:*",
 		"@vetta/toolkit": "workspace:*",
 		"@visx/event": "^4.0.0",
 		"@visx/group": "^4.0.0",

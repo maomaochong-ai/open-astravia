@@ -1,5 +1,5 @@
 import { useRendererMarkdownModel } from "@shared/hooks/useRendererMarkdownModel";
-import { TextBlockView, type InlineTokenSupport } from "@vetta/theme-ui/chat";
+import { TextBlockView, type InlineTokenSupport } from "@vetta-org/theme-ui/chat";
 import { memo } from "react";
 
 export interface RendererMarkdownContentProps {

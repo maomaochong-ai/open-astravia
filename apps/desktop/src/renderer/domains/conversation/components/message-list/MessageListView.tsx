@@ -2,7 +2,7 @@ import {
 	MessageFeed,
 	MessageFeedLayout,
 	MessageSelectionContextMenuView,
-} from "@vetta/theme-ui/chat";
+} from "@vetta-org/theme-ui/chat";
 import { useMessageFeedActiveItem } from "@shared/components/message-feed/useMessageFeedActiveItem";
 import { useCallback, useMemo } from "react";
 import type { Usage } from "@vetta/ai/protocol";

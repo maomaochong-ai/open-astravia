@@ -1,4 +1,4 @@
-import { getFileIcon } from "@vetta/theme-ui/file-explorer";
+import { getFileIcon } from "@vetta-org/theme-ui/file-explorer";
 
 const DRAG_ICON_SIZE = 32;
 /** Cache by iconify class so multi-file drags of the same type stay cheap. */

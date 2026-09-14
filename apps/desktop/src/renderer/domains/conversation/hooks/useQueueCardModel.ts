@@ -7,7 +7,7 @@ import {
 	messageQueuePausedBySessionAtom,
 	setQueueForSessionAtom,
 } from "@shared/store/message-queue-atoms";
-import type { QueueCardItem, QueueCardPausedBanner, QueueCardViewLabels } from "@vetta/theme-ui/chat";
+import type { QueueCardItem, QueueCardPausedBanner, QueueCardViewLabels } from "@vetta-org/theme-ui/chat";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";

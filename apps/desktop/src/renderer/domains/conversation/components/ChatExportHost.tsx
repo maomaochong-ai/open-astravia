@@ -1,5 +1,5 @@
 import type { ChatConversationItem } from "@shared/store/atoms";
-import { ChatExportHostView } from "@vetta/theme-ui/chat";
+import { ChatExportHostView } from "@vetta-org/theme-ui/chat";
 import { useChatExportHostModel } from "../hooks/useChatExportHostModel";
 import { ExportMessageList } from "./MessageList";
 

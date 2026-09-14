@@ -1,6 +1,6 @@
 import { knowledgeImportDraftAtom } from "@shared/store/atoms";
 import { useMatches, useNavigate } from "@tanstack/react-router";
-import type { KnowledgeDropOverlayViewProps } from "@vetta/theme-ui/overlays";
+import type { KnowledgeDropOverlayViewProps } from "@vetta-org/theme-ui/overlays";
 import { useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";

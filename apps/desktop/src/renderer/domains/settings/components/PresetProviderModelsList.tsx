@@ -1,7 +1,7 @@
 import {
 	PresetProviderModelsListView,
 	type PresetProviderModelsListViewLabels,
-} from "@vetta/theme-ui/settings";
+} from "@vetta-org/theme-ui/settings";
 import type {
 	PresetProviderRow,
 	PresetProvidersSectionLabels,

@@ -1,2 +1,2 @@
-export type { InputBarBackgroundProps } from "@vetta/theme-ui/chat";
-export { InputBarBackground } from "@vetta/theme-ui/chat";
+export type { InputBarBackgroundProps } from "@vetta-org/theme-ui/chat";
+export { InputBarBackground } from "@vetta-org/theme-ui/chat";

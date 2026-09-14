@@ -1,5 +1,5 @@
 import { actionButtonHandlersAtom, visibleActionButtonsAtom } from "@shared/store/atoms";
-import type { ActionButtonBarItem } from "@vetta/theme-ui/chat";
+import type { ActionButtonBarItem } from "@vetta-org/theme-ui/chat";
 import { useAtomValue } from "jotai";
 import { useCallback } from "react";
 

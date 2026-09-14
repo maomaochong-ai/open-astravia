@@ -1,6 +1,6 @@
 import { Button } from "@shared/components/ui/button";
 import type { FsEntry } from "@shared/store/atoms";
-import type { ConfirmDeleteDialogViewProps } from "@vetta/theme-ui/file-explorer";
+import type { ConfirmDeleteDialogViewProps } from "@vetta-org/theme-ui/file-explorer";
 import { useTranslation } from "react-i18next";
 
 export function useConfirmDeleteDialogModel(

@@ -5,8 +5,8 @@ import type {
 	CommandMenuGroupView,
 	CommandMenuItemView,
 	CommandMenuViewProps,
-} from "@vetta/theme-ui/overlays";
-import { CommandMenuView } from "@vetta/theme-ui/overlays";
+} from "@vetta-org/theme-ui/overlays";
+import { CommandMenuView } from "@vetta-org/theme-ui/overlays";
 import { describe, expect, it, vi } from "vitest";
 
 const labels = {

@@ -1,11 +1,11 @@
 import {
 	ExecutionHistoryView as ThemeExecutionHistoryView,
 	type ExecutionHistoryViewLabels,
-} from "@vetta/theme-ui/scheduler";
+} from "@vetta-org/theme-ui/scheduler";
 import { useTranslation } from "react-i18next";
 import type { ExecutionHistoryRecordModel } from "../hooks/useExecutionHistoryModel";
 
-export type { ExecutionHistoryStatus } from "@vetta/theme-ui/scheduler";
+export type { ExecutionHistoryStatus } from "@vetta-org/theme-ui/scheduler";
 
 export interface ExecutionHistoryViewProps {
 	readonly embedded?: boolean;

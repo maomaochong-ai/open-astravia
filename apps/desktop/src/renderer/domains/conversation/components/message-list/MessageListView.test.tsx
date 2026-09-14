@@ -28,7 +28,7 @@ vi.mock("react-virtuoso", () => ({
 	},
 }));
 
-vi.mock("@vetta/theme-ui/chat", () => ({
+vi.mock("@vetta-org/theme-ui/chat", () => ({
 	MessageFeed: {
 		Root: ({ children }: { children: ReactNode }) => <>{children}</>,
 		VirtualList: (props: Record<string, unknown>) => {

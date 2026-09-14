@@ -1,4 +1,4 @@
-import { useThemeComponent } from "@vetta/theme-sdk";
+import { useThemeComponent } from "@vetta-org/theme-sdk";
 import { useKnowledgeDropOverlayModel } from "../hooks/useKnowledgeDropOverlayModel";
 import { KnowledgeDropOverlayView } from "./KnowledgeDropOverlayView";
 

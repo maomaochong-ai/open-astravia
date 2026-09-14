@@ -1,6 +1,6 @@
 import { activeSessionAtom } from "@shared/store/atoms";
 import type { RuntimeSandboxGrantInfo } from "@vetta/runtime-core";
-import type { SandboxGrantsBadgeViewLabels, SandboxGrantViewItem } from "@vetta/theme-ui/chat";
+import type { SandboxGrantsBadgeViewLabels, SandboxGrantViewItem } from "@vetta-org/theme-ui/chat";
 import type { TFunction } from "i18next";
 import { useAtomValue } from "jotai";
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";

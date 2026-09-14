@@ -1,4 +1,4 @@
-import { BatchProgressTabPanelView } from "@vetta/theme-ui/activity";
+import { BatchProgressTabPanelView } from "@vetta-org/theme-ui/activity";
 import { BatchQueueStatus } from "@domains/project/components/BatchQueueStatus";
 import { useBatchProgressTabPanelModel } from "../hooks/useBatchProgressTabPanelModel";
 

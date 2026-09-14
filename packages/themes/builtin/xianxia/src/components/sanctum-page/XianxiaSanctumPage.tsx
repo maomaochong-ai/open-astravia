@@ -1,4 +1,4 @@
-import type { ThemePageProps } from "@vetta/theme-sdk";
+import type { ThemePageProps } from "@vetta-org/theme-sdk";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState, type JSX } from "react";
 import { sanctumAchievements } from "./achievements";

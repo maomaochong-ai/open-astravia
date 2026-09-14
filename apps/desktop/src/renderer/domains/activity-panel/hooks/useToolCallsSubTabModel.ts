@@ -4,7 +4,7 @@ import type {
 	ToolCallFilterValue,
 	ToolCallsSubTabViewLabels,
 	ToolCallViewItem,
-} from "@vetta/theme-ui/activity";
+} from "@vetta-org/theme-ui/activity";
 import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";

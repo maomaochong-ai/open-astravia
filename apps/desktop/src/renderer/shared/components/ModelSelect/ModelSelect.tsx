@@ -1,7 +1,7 @@
-import { ProviderIcon } from "@vetta/theme-ui/shared";
+import { ProviderIcon } from "@vetta-org/theme-ui/shared";
 import { cn } from "@shared/lib/utils";
 import { modelCatalog } from "@shared/store/model-catalog";
-import { ThemeSurface } from "@vetta/theme-ui/appearance";
+import { ThemeSurface } from "@vetta-org/theme-ui/appearance";
 import {
 	DropdownMenu,
 	DropdownMenuContent,

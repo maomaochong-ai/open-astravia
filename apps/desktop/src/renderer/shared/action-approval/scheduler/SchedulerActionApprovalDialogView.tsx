@@ -2,5 +2,5 @@ export type {
 	SchedulerActionApprovalDialogViewDetail,
 	SchedulerActionApprovalDialogViewLabels,
 	SchedulerActionApprovalDialogViewProps,
-} from "@vetta/theme-ui/action-approval";
-export { SchedulerActionApprovalDialogView } from "@vetta/theme-ui/action-approval";
+} from "@vetta-org/theme-ui/action-approval";
+export { SchedulerActionApprovalDialogView } from "@vetta-org/theme-ui/action-approval";

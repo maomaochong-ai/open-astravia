@@ -1,4 +1,4 @@
-import { useThemeComponent } from "@vetta/theme-sdk";
+import { useThemeComponent } from "@vetta-org/theme-sdk";
 import { useTranslation } from "react-i18next";
 import { SchedulerActionApprovalDialogView } from "./SchedulerActionApprovalDialogView";
 import { useActionApproval, type ActiveActionApproval } from "../useActionApproval";

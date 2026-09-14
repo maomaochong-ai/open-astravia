@@ -1,5 +1,5 @@
 import type { ErrorBlock } from "@shared/store/atoms";
-import { ErrorBlockView as ThemeErrorBlockView } from "@vetta/theme-ui/chat";
+import { ErrorBlockView as ThemeErrorBlockView } from "@vetta-org/theme-ui/chat";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import type { ChatErrorKind } from "../../services/classifyChatError";

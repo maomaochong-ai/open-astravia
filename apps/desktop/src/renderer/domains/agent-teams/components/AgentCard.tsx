@@ -7,7 +7,7 @@ import {
 } from "../lib/blueprint-display";
 import { Button } from "@vetta-org/ui";
 import { useTranslation } from "react-i18next";
-import { AgentAvatarView } from "@vetta/theme-ui/chat";
+import { AgentAvatarView } from "@vetta-org/theme-ui/chat";
 
 export interface AgentCardProps {
 	readonly agent: AgentProfile;

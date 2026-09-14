@@ -2,7 +2,7 @@ import { useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { CloudLoginPopover } from "@shared/components/cloud-slots";
 import { Popover, PopoverTrigger } from "@shared/components/ui/popover";
-import { useThemeComponent } from "@vetta/theme-sdk";
+import { useThemeComponent } from "@vetta-org/theme-sdk";
 import { SettingsMenuPopover } from "./SettingsMenuPopover";
 import { SettingsMenuTrigger } from "./SettingsMenuTrigger";
 import { useRefreshBillingOnOpen, useSettingsMenuModel, useSyncUpdateOnOpen } from "./useSettingsMenuModel";

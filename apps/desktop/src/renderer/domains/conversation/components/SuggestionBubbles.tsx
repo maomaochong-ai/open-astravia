@@ -1,4 +1,4 @@
-import { SuggestionBubblesView } from "@vetta/theme-ui/chat";
+import { SuggestionBubblesView } from "@vetta-org/theme-ui/chat";
 import { useSuggestionBubblesModel } from "../hooks/useSuggestionBubblesModel";
 
 interface SuggestionBubblesProps {

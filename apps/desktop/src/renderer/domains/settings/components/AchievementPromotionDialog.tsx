@@ -3,7 +3,7 @@ import {
 	AchievementPromotionBadge3D,
 	AchievementPromotionConfetti,
 	AchievementPromotionDialogView,
-} from "@vetta/theme-ui/settings";
+} from "@vetta-org/theme-ui/settings";
 import type { Achievement } from "../achievements";
 
 interface AchievementPromotionDialogProps {

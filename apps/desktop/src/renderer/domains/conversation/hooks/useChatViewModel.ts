@@ -20,7 +20,7 @@ import {
 	sessionsMapAtom,
 	syncHardIsolationContributionModes,
 } from "@shared/store/atoms";
-import { useThemeSurface } from "@vetta/theme-sdk/appearance";
+import { useThemeSurface } from "@vetta-org/theme-sdk/appearance";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

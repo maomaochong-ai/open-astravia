@@ -6,7 +6,7 @@
  * 所以宿主代码不得静态 import `@cloud/**`。
  */
 
-import { useThemeComponent } from "@vetta/theme-sdk";
+import { useThemeComponent } from "@vetta-org/theme-sdk";
 import { LoginPopover } from "./components/LoginPopover";
 import { useAuth } from "./hooks/useAuth";
 

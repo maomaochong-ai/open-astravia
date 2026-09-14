@@ -55,7 +55,7 @@ export function Sidebar(props: SidebarProps): JSX.Element {
 这个结构保证：
 
 - `Sidebar` 是 desktop 内部 connected 容器。
-- 主题公开的 `useSidebarModel` 入口来自 `@vetta/theme-sdk/sidebar`。
+- 主题公开的 `useSidebarModel` 入口来自 `@vetta-org/theme-sdk/sidebar`。
 - 真实 `useSidebarModel` 实现仍在 desktop 内部，并通过 `ThemeHostProvider` 注入。
 - `DefaultSidebar` 是 props 驱动 view，接收 `SidebarModel` 和 actions。
 - 主题可以复用默认 UI，也可以通过 `regions.sidebar` 替换完整侧边栏。
@@ -78,12 +78,12 @@ regions: {
 
 主题实现完整侧边栏时，可以自由新增组件和调整布局，同时复用公开 UI 出口或官方 UI 包中的默认 view 组件。
 
-侧边栏 region 不负责直接访问内部 store、router 或 IPC。它可以使用 `SidebarRegionProps.model` 中的状态和 actions；如果主题自己组合完整 region，也可以调用 `@vetta/theme-sdk/sidebar` 暴露的 `useSidebarModel` facade，再把 model 作为 props 传给 props 驱动 view。
+侧边栏 region 不负责直接访问内部 store、router 或 IPC。它可以使用 `SidebarRegionProps.model` 中的状态和 actions；如果主题自己组合完整 region，也可以调用 `@vetta-org/theme-sdk/sidebar` 暴露的 `useSidebarModel` facade，再把 model 作为 props 传给 props 驱动 view。
 
 示意：
 
 ```tsx
-import { useSidebarModel } from "@vetta/theme-sdk/sidebar";
+import { useSidebarModel } from "@vetta-org/theme-sdk/sidebar";
 import { DefaultSidebar } from "@vetta/desktop-theme-ui/sidebar";
 
 export function ThemeSidebar(props: SidebarProps) {

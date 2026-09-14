@@ -1,5 +1,5 @@
 import type { SessionInfo } from "@shared/store/atoms";
-import { SessionRowView } from "@vetta/theme-ui/project";
+import { SessionRowView } from "@vetta-org/theme-ui/project";
 import { useSessionRowModel } from "../../../hooks/useSessionRowModel";
 
 interface SessionRowProps {

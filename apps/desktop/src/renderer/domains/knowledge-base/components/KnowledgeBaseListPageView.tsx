@@ -1,4 +1,4 @@
-import { KnowledgeBreadcrumbView } from "@vetta/theme-ui/knowledge";
+import { KnowledgeBreadcrumbView } from "@vetta-org/theme-ui/knowledge";
 import { useTranslation } from "react-i18next";
 import { AnimatePresence, motion } from "motion/react";
 import { Button } from "@vetta-org/ui";

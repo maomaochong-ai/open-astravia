@@ -1,5 +1,5 @@
 import { useSkillTokenMeta } from "@domains/conversation/hooks/useSkillTokenMeta";
-import { SkillTypeIcon } from "@vetta/theme-ui/skills";
+import { SkillTypeIcon } from "@vetta-org/theme-ui/skills";
 import { TokenChip } from "./TokenChip";
 
 /**

@@ -2,7 +2,7 @@ import {
 	BuiltinMcpSecretsDialogView as ThemeBuiltinMcpSecretsDialogView,
 	type BuiltinMcpSecretsDialogViewLabels,
 	type BuiltinMcpSecretsDialogViewProps as ThemeProps,
-} from "@vetta/theme-ui/settings";
+} from "@vetta-org/theme-ui/settings";
 import type { BuiltinMcpSecretsDialogModel } from "./useBuiltinMcpSecretsDialogModel";
 
 export type { BuiltinMcpSecretsDialogViewLabels };

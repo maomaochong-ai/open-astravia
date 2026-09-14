@@ -1,4 +1,4 @@
-import type { ThemeModule } from "@vetta/theme-sdk";
+import type { ThemeModule } from "@vetta-org/theme-sdk";
 import { xianxiaAppearance } from "./appearance";
 import { XianxiaAppBackground } from "./components/XianxiaAppBackground";
 import { XianxiaGuidingWords } from "./components/XianxiaGuidingWords";

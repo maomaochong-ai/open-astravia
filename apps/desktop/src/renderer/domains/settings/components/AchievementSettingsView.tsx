@@ -1,4 +1,4 @@
-import { AchievementSettingsView as ThemeAchievementSettingsView } from "@vetta/theme-ui/settings";
+import { AchievementSettingsView as ThemeAchievementSettingsView } from "@vetta-org/theme-ui/settings";
 import { AchievementCarousel } from "./AchievementCarousel";
 import { AchievementPromotionDialog } from "./AchievementPromotionDialog";
 import type { AchievementSettingsModel } from "./useAchievementSettingsModel";

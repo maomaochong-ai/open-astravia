@@ -20,7 +20,7 @@
 ## SDK 用法
 
 ```ts
-import { useThemeStorage, useThemeStorageValue } from "@vetta/theme-sdk/storage";
+import { useThemeStorage, useThemeStorageValue } from "@vetta-org/theme-sdk/storage";
 
 const DEFAULT_PROGRESS = { unlocked: ["qi-refining"] as string[] };
 
@@ -50,7 +50,7 @@ function SanctumPage() {
 
 | 层级 | 职责 |
 |------|------|
-| `@vetta/theme-sdk/storage` | 类型与 facade hook |
+| `@vetta-org/theme-sdk/storage` | 类型与 facade hook |
 | desktop `ThemeHost.storage` | 绑定 active themeId、内存缓存、乐观更新 |
 | main `theme-data-store` | 校验、配额、原子写文件 |
 | preload `vetta.themes.storage` | IPC 桥（仅 host 使用） |
@@ -104,12 +104,12 @@ Theme component
 
 ```ts
 // Prefer the main package entry so Module Federation shares one ThemeHostContext singleton.
-import { useThemeStorage, useThemeUsageStats } from "@vetta/theme-sdk";
+import { useThemeStorage, useThemeUsageStats } from "@vetta-org/theme-sdk";
 ```
 
 `ThemeUsageStats` 来自 app-monitor 聚合（经 host IPC 读取），只含使用指标，不含用户内容。主题修为规则由主题自己定义，**不**复用设置页 fanren/classic 成就阶梯。
 
-远程主题若直接 import `@vetta/theme-sdk/storage` 或 `/usage` 子路径，必须在主题包 MF `shared` 中声明对应 singleton（与 host `themeSharedModules` 对齐）；否则会打入第二份 SDK Context，运行时报 `ThemeHostProvider is required`。
+远程主题若直接 import `@vetta-org/theme-sdk/storage` 或 `/usage` 子路径，必须在主题包 MF `shared` 中声明对应 singleton（与 host `themeSharedModules` 对齐）；否则会打入第二份 SDK Context，运行时报 `ThemeHostProvider is required`。
 
 主题可声明无 UI 的 runtime 组件做同步：
 

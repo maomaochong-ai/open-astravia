@@ -1,6 +1,6 @@
 import type { BatchProject } from "@shared/store/batch-tasks-atoms";
-import type { BatchTasksPageLabels, BatchTasksPageStatsView } from "@vetta/theme-ui/batch-tasks";
-import { BatchTasksPageView as ThemeBatchTasksPageView } from "@vetta/theme-ui/batch-tasks";
+import type { BatchTasksPageLabels, BatchTasksPageStatsView } from "@vetta-org/theme-ui/batch-tasks";
+import { BatchTasksPageView as ThemeBatchTasksPageView } from "@vetta-org/theme-ui/batch-tasks";
 import { SettingsAiAssist } from "../../settings/ai-assist";
 import { BatchProjectDialog } from "./BatchProjectDialog";
 import { BatchTaskList } from "./BatchTaskList";

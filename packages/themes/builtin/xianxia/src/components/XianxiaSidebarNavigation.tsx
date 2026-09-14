@@ -4,7 +4,7 @@ import {
 	type SidebarNavigationProps,
 	type SidebarNavItem,
 } from "@vetta/desktop-theme-ui/sidebar";
-import { useThemePagesModel } from "@vetta/theme-sdk/pages";
+import { useThemePagesModel } from "@vetta-org/theme-sdk/pages";
 import type { JSX } from "react";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 

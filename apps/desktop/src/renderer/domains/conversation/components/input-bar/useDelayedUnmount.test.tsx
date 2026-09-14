@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
-import { useDelayedUnmount } from "@vetta/theme-ui/shared";
+import { useDelayedUnmount } from "@vetta-org/theme-ui/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**

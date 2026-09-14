@@ -5,7 +5,7 @@ import { useThemePagesModel } from "@shared/theme/pages/useThemePagesModel";
 import { useThemeRouteModel } from "@shared/theme/routing/useThemeRouteModel";
 import { useThemeStorage } from "@shared/theme/storage";
 import { useThemeUsageStats } from "@shared/theme/usage";
-import type { ThemeHost } from "@vetta/theme-sdk";
+import type { ThemeHost } from "@vetta-org/theme-sdk";
 
 export const desktopThemeHost: ThemeHost = {
 	appShell: {

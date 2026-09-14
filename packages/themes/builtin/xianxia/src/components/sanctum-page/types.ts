@@ -1,4 +1,4 @@
-import type { ThemeNavigationTarget, ThemeUsageStats } from "@vetta/theme-sdk";
+import type { ThemeNavigationTarget, ThemeUsageStats } from "@vetta-org/theme-sdk";
 import type { SanctumAchievement } from "./achievements";
 import type { CultivationDailyMetrics, CultivationScoreBreakdown } from "../../cultivation";
 

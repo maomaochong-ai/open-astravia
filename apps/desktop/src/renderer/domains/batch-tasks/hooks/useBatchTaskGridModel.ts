@@ -1,5 +1,5 @@
 import type { BatchTask } from "@shared/store/atoms";
-import type { BatchTaskCardLabels, BatchTaskGridLabels, BatchTaskViewItem } from "@vetta/theme-ui/batch-tasks";
+import type { BatchTaskCardLabels, BatchTaskGridLabels, BatchTaskViewItem } from "@vetta-org/theme-ui/batch-tasks";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { relativeTime, statusLabel } from "../utils/batchTaskListData";

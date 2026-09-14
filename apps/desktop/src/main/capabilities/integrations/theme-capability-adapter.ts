@@ -36,7 +36,7 @@ export function themeIdFromStorageCapabilityNamespace(namespace: string): string
 	return themeId;
 }
 
-/** Internal Theme-system adapter. Theme authors consume @vetta/theme-sdk instead. */
+/** Internal Theme-system adapter. Theme authors consume @vetta-org/theme-sdk instead. */
 export class ThemeCapabilityAdapter {
 	private readonly sessions = new Map<string, CapabilityAccessHandle>();
 

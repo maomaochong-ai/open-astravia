@@ -1,5 +1,5 @@
 import type { FsEntry } from "@shared/store/atoms";
-import { ConfirmDeleteDialogView } from "@vetta/theme-ui/file-explorer";
+import { ConfirmDeleteDialogView } from "@vetta-org/theme-ui/file-explorer";
 import { useConfirmDeleteDialogModel } from "../hooks/useConfirmDeleteDialogModel";
 
 interface ConfirmDeleteDialogProps {

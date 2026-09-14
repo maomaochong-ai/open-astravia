@@ -10,7 +10,7 @@ import type {
 	ScheduleRecordItem,
 	ScheduleSummaryCardItem,
 	ScheduleTaskControlItem,
-} from "@vetta/theme-ui/activity";
+} from "@vetta-org/theme-ui/activity";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";

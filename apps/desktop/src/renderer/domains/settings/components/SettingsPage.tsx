@@ -1,5 +1,5 @@
 import { PluginWorkspaceViewSurface } from "@domains/plugins/components/PluginWorkspaceViewRoute";
-import { useThemeSurface } from "@vetta/theme-sdk/appearance";
+import { useThemeSurface } from "@vetta-org/theme-sdk/appearance";
 import type { SettingsTab } from "@shared/store/atoms";
 import { lazy, Suspense, type ComponentType, type LazyExoticComponent } from "react";
 import { SettingsPageView } from "./SettingsPageView";

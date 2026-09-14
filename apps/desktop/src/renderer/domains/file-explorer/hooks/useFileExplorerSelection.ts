@@ -1,5 +1,5 @@
 import { type FsEntry, fileTreeCacheAtom } from "@shared/store/atoms";
-import type { FileExplorerSelectOptions } from "@vetta/theme-ui/file-explorer";
+import type { FileExplorerSelectOptions } from "@vetta-org/theme-ui/file-explorer";
 import { getDefaultStore } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { emitPluginFileExplorerSelectionChanged } from "../../plugins/runtime/plugin-file-explorer-host";

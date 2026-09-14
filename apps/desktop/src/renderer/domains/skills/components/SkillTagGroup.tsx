@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { SkillTagGroupView } from "@vetta/theme-ui/skills";
+import { SkillTagGroupView } from "@vetta-org/theme-ui/skills";
 import type { ActionState, MergedSkill } from "../hooks/useSkillsPageModel";
 import { SceneCard } from "./SceneCard";
 import { SkillCard } from "./SkillCard";

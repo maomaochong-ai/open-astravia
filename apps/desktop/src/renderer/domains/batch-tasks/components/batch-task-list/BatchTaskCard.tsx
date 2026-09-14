@@ -1,5 +1,5 @@
 import type { BatchTask } from "@shared/store/atoms";
-import { BatchTaskCardView } from "@vetta/theme-ui/batch-tasks";
+import { BatchTaskCardView } from "@vetta-org/theme-ui/batch-tasks";
 import { memo } from "react";
 import { useBatchTaskCardModel } from "../../hooks/useBatchTaskCardModel";
 import type { TaskCallbacks } from "./types";

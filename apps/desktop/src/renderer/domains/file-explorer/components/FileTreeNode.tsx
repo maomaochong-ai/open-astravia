@@ -1,6 +1,6 @@
 import type { FsEntry } from "@shared/store/atoms";
-import type { FileExplorerDragEntry, FileExplorerSelectOptions } from "@vetta/theme-ui/file-explorer";
-import { FileTreeNodeView } from "@vetta/theme-ui/file-explorer";
+import type { FileExplorerDragEntry, FileExplorerSelectOptions } from "@vetta-org/theme-ui/file-explorer";
+import { FileTreeNodeView } from "@vetta-org/theme-ui/file-explorer";
 import { useFileTreeNodeModel } from "../hooks/useFileTreeNodeModel";
 
 interface FileTreeNodeProps {

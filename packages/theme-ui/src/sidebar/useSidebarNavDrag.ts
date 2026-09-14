@@ -1,4 +1,4 @@
-import type { SidebarNavItem } from "@vetta/theme-sdk/sidebar";
+import type { SidebarNavItem } from "@vetta-org/theme-sdk/sidebar";
 import type { DragEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
 

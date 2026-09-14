@@ -1,4 +1,4 @@
-import { SettingsAiAssistButtonView } from "@vetta/theme-ui/settings";
+import { SettingsAiAssistButtonView } from "@vetta-org/theme-ui/settings";
 import { useTranslation } from "react-i18next";
 
 export interface SettingsAiAssistButtonProps {

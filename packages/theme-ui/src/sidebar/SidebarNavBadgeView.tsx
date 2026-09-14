@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import type { SidebarNavBadge, SidebarNavBadgeTone } from "@vetta/theme-sdk/sidebar";
+import type { SidebarNavBadge, SidebarNavBadgeTone } from "@vetta-org/theme-sdk/sidebar";
 import { cn } from "@vetta-org/ui";
 import { navBadgeText } from "./nav-badge-text";
 

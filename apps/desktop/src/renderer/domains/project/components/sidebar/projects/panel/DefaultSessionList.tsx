@@ -1,5 +1,5 @@
 import type { DefaultConversationFilter } from "@shared/store/atoms";
-import { DefaultSessionListView, DefaultSessionRowView } from "@vetta/theme-ui/project";
+import { DefaultSessionListView, DefaultSessionRowView } from "@vetta-org/theme-ui/project";
 import { memo, useCallback } from "react";
 import {
 	type DefaultSessionListItemView,

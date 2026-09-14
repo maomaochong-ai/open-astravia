@@ -1,4 +1,4 @@
-import { SkillDefaultIcon, SkillTypeIcon } from "@vetta/theme-ui/skills";
+import { SkillDefaultIcon, SkillTypeIcon } from "@vetta-org/theme-ui/skills";
 import { cn } from "@vetta-org/ui";
 import { useState } from "react";
 import type { AbilityType } from "@shared/lib/api";

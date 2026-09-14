@@ -21,7 +21,7 @@ Xianxia 由 `build:themes` 独立构建为主题归档。开发环境从 `.artif
 
 ## 依赖边界
 
-Xianxia 只依赖 `@vetta/theme-sdk` 和 `@vetta/theme-ui`。`AppBackground`、`InputBarBackground` 等应用 UI view 及其 registry contract 由 `@vetta/theme-ui` 导出。
+Xianxia 只依赖 `@vetta-org/theme-sdk` 和 `@vetta-org/theme-ui`。`AppBackground`、`InputBarBackground` 等应用 UI view 及其 registry contract 由 `@vetta-org/theme-ui` 导出。
 
 远程主题不应 import `@shared/*`、`@domains/*` 或 desktop 内部 hook。需要数据时调用 SDK facade hook；需要复用 UI 时，把 hook 返回的 model 作为 props 传给官方 view。
 

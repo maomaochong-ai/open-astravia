@@ -1,4 +1,4 @@
-import { KnowledgeHistoryPanelView } from "@vetta/theme-ui/activity";
+import { KnowledgeHistoryPanelView } from "@vetta-org/theme-ui/activity";
 import { useKnowledgeHistoryPanelModel } from "../hooks/useKnowledgeHistoryPanelModel";
 
 /**

@@ -1,6 +1,6 @@
 import { pathBasename } from "@shared/lib/utils";
 import { filePreviewAtom } from "@shared/store/atoms";
-import type { AppshotCardViewLabels } from "@vetta/theme-ui/chat";
+import type { AppshotCardViewLabels } from "@vetta-org/theme-ui/chat";
 import { useSetAtom } from "jotai";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";

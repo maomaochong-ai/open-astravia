@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, render, screen } from "@testing-library/react";
-import { ProjectSessionsView } from "@vetta/theme-ui/project";
+import { ProjectSessionsView } from "@vetta-org/theme-ui/project";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**

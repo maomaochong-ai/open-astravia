@@ -1,4 +1,4 @@
-import { ShortcutsSettingsView as ThemeShortcutsSettingsView } from "@vetta/theme-ui/settings";
+import { ShortcutsSettingsView as ThemeShortcutsSettingsView } from "@vetta-org/theme-ui/settings";
 import { SettingsAiAssist } from "../ai-assist";
 import { SETTINGS_SECTION } from "../registry";
 import { QuickPanelSettingsSection } from "./QuickPanelSettingsSection";

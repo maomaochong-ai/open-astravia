@@ -1,5 +1,5 @@
 import type { SessionExecutionMode, SidebarFilter } from "@shared/store/atoms";
-import { SidebarProjectsSectionView } from "@vetta/theme-ui/project";
+import { SidebarProjectsSectionView } from "@vetta-org/theme-ui/project";
 import { AddProjectMenu } from "./add-project/AddProjectMenu";
 import { SidebarFilterSelect } from "./filters/SidebarFilterSelect";
 import { ProjectsPanel } from "./projects/panel/ProjectsPanel";

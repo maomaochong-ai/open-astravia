@@ -2,7 +2,7 @@ import {
 	HistoryDrawerView as ThemeHistoryDrawerView,
 	type HistoryDrawerTaskView,
 	type HistoryDrawerViewLabels,
-} from "@vetta/theme-ui/scheduler";
+} from "@vetta-org/theme-ui/scheduler";
 import { useTranslation } from "react-i18next";
 import { ExecutionHistory } from "./ExecutionHistory";
 

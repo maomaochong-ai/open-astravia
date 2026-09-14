@@ -1,7 +1,7 @@
 import {
 	CreateTeamDialogView,
 	JoinTeamDialogView,
-} from "@vetta/theme-ui/settings";
+} from "@vetta-org/theme-ui/settings";
 import type { TeamSettingsLabels } from "./useTeamSettingsModel";
 
 export function CreateTeamDialog({

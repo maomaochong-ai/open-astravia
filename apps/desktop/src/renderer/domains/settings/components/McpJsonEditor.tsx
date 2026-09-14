@@ -1,4 +1,4 @@
-import { McpJsonEditorView } from "@vetta/theme-ui/settings";
+import { McpJsonEditorView } from "@vetta-org/theme-ui/settings";
 import { useTranslation } from "react-i18next";
 import { SETTINGS_SECTION } from "../registry";
 import type { McpSettingsModel } from "./useMcpSettingsModel";

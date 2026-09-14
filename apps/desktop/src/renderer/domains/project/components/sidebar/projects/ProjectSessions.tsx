@@ -1,5 +1,5 @@
 import type { SessionInfo } from "@shared/store/atoms";
-import { ProjectSessionsView } from "@vetta/theme-ui/project";
+import { ProjectSessionsView } from "@vetta-org/theme-ui/project";
 import { useProjectSessionsModel } from "../../../hooks/useProjectSessionsModel";
 
 interface ProjectSessionsProps {

@@ -1,5 +1,5 @@
 import { CurrentScenarioActivityPanel } from "@domains/activity-panel/components/ActivityPanel";
-import { ProjectDetailPageView } from "@vetta/theme-ui/project";
+import { ProjectDetailPageView } from "@vetta-org/theme-ui/project";
 import { motion } from "motion/react";
 import { BatchQueueStatus } from "./BatchQueueStatus";
 import { useProjectDetailPageModel } from "../hooks/useProjectDetailPageModel";

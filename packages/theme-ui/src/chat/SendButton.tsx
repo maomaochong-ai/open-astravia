@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState, type JSX } from "react";
-import { useThemeSurface } from "@vetta/theme-sdk/appearance";
+import { useThemeSurface } from "@vetta-org/theme-sdk/appearance";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 import "./send-button.css";
 

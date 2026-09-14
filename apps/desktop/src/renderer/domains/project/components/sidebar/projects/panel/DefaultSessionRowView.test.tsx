@@ -5,7 +5,7 @@ import {
 	DefaultSessionRowView,
 	type DefaultSessionRowViewProps,
 	SessionRowView,
-} from "@vetta/theme-ui/project";
+} from "@vetta-org/theme-ui/project";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 afterEach(cleanup);

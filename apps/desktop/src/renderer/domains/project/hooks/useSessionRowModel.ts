@@ -1,6 +1,6 @@
 import type { SessionInfo } from "@shared/store/atoms";
 import { sessionDisplayLabel } from "@shared/store/atoms";
-import type { SessionRowViewProps } from "@vetta/theme-ui/project";
+import type { SessionRowViewProps } from "@vetta-org/theme-ui/project";
 import { useTranslation } from "react-i18next";
 
 interface Args {

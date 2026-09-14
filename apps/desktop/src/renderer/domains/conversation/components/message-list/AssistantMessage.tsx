@@ -1,16 +1,16 @@
 import { BotAvatar } from "@shared/components/BotAvatar";
 import type { ConversationParticipantViewModel } from "@shared/conversation";
 import type { ChatAgentMessageViewModel, ChatToolCallPresentationViewModel } from "@shared/store/atoms";
-import { useThemeSurface } from "@vetta/theme-sdk/appearance";
+import { useThemeSurface } from "@vetta-org/theme-sdk/appearance";
 import type { Usage } from "@vetta/ai/protocol";
-import { ThemeSurface } from "@vetta/theme-ui/appearance";
+import { ThemeSurface } from "@vetta-org/theme-ui/appearance";
 import {
 	AssistantMessage as AssistantMessagePrimitive,
 	AgentAvatarView,
 	Message,
 	MessageLayout,
 	StreamingIndicator as ThemeStreamingIndicator,
-} from "@vetta/theme-ui/chat";
+} from "@vetta-org/theme-ui/chat";
 import { memo, useId, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useAssistantMessageModel } from "../../hooks/useAssistantMessageModel";

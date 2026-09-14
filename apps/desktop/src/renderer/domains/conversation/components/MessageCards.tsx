@@ -1,7 +1,7 @@
 import type { CardDescriptor, ConversationMessage, PluginCardProps } from "@vetta-org/plugin-sdk";
 import { Component, type ComponentType, type ErrorInfo, memo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { MessageCardsView } from "@vetta/theme-ui/chat";
+import { MessageCardsView } from "@vetta-org/theme-ui/chat";
 import { PluginI18nBoundary } from "../../plugins/runtime/plugin-i18n";
 
 /** A card descriptor resolved to its renderer + display metadata. */

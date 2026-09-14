@@ -1,4 +1,4 @@
-import type { ThemeStorageValue } from "@vetta/theme-sdk";
+import type { ThemeStorageValue } from "@vetta-org/theme-sdk";
 import { z } from "zod";
 import type { CultivationHistory, CultivationSnapshot } from "../types";
 

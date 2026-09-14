@@ -1,4 +1,4 @@
-import { SettingsSidebarView } from "@vetta/theme-ui/settings";
+import { SettingsSidebarView } from "@vetta-org/theme-ui/settings";
 import type { SettingsPageModel } from "./types";
 
 export interface SettingsSidebarProps {

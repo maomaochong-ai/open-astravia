@@ -1,4 +1,4 @@
-import { ImStatusBadgeView, type ImStatusBadgeStatus } from "@vetta/theme-ui/settings";
+import { ImStatusBadgeView, type ImStatusBadgeStatus } from "@vetta-org/theme-ui/settings";
 import type { ImTransportStatus } from "@preload/api";
 import { useTranslation } from "react-i18next";
 

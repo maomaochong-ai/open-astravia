@@ -7,7 +7,7 @@ import {
 	MessageFeedLayout,
 	MessageLayout,
 	MessageVisual,
-} from "@vetta/theme-ui/chat";
+} from "@vetta-org/theme-ui/chat";
 import { Button } from "@shared/components/ui/button";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";

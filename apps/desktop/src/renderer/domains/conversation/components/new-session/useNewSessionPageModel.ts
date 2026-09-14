@@ -22,7 +22,7 @@ import {
 	switchSessionInputDraftScope,
 } from "@shared/store/atoms";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import type { NewSessionHeroIdentity } from "@vetta/theme-ui";
+import type { NewSessionHeroIdentity } from "@vetta-org/theme-ui";
 import { useAtomValue, useSetAtom } from "jotai";
 import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";

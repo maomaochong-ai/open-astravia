@@ -15,7 +15,7 @@ vi.mock("react-i18next", () => ({
 	}),
 }));
 
-vi.mock("@vetta/theme-ui/chat", () => ({
+vi.mock("@vetta-org/theme-ui/chat", () => ({
 	MessageListFooter: {
 		Root: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 		Presence: ({ children }: { children: ReactNode }) => <>{children}</>,

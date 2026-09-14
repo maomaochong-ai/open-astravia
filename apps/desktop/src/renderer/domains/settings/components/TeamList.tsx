@@ -1,4 +1,4 @@
-import { TeamListView } from "@vetta/theme-ui/settings";
+import { TeamListView } from "@vetta-org/theme-ui/settings";
 import type { TeamVO } from "@shared/lib/api";
 import { SETTINGS_SECTION } from "../registry";
 import type { TeamSettingsLabels } from "./useTeamSettingsModel";

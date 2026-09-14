@@ -31,11 +31,11 @@ import type { WindowControlButton, WindowControlsComponentProps } from "@shared/
 import type { DrawerCard } from "@shared/components/DrawerCard";
 import type { UpdateRestartDialogView } from "@shared/components/UpdateRestartDialogView";
 import type { ConfirmDialogView } from "@shared/components/ui/ConfirmDialogView";
-import type { NewSessionHeroProps } from "@vetta/theme-ui";
-import type { ModelSelectorView } from "@vetta/theme-ui/chat";
+import type { NewSessionHeroProps } from "@vetta-org/theme-ui";
+import type { ModelSelectorView } from "@vetta-org/theme-ui/chat";
 import type { ComponentType } from "react";
 
-declare module "@vetta/theme-sdk" {
+declare module "@vetta-org/theme-sdk" {
 	interface ThemeRegionRegistry {
 		readonly "app.pageHeader"?: ComponentType<PageHeaderRegionProps>;
 		readonly sidebar?: ComponentType<SidebarRegionProps>;

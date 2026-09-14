@@ -1,4 +1,4 @@
-import { CenterSliceImageDecoration, HorizontalSliceImageFrame, NineSliceImageFrame } from "@vetta/theme-ui";
+import { CenterSliceImageDecoration, HorizontalSliceImageFrame, NineSliceImageFrame } from "@vetta-org/theme-ui";
 import { cn } from "@vetta-org/ui";
 import { motion } from "motion/react";
 import type { CSSProperties, JSX } from "react";

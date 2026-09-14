@@ -35,7 +35,7 @@ import type {
 	FileExplorerDragEntry,
 	FileExplorerSelectOptions,
 	FilesPanelViewProps,
-} from "@vetta/theme-ui/file-explorer";
+} from "@vetta-org/theme-ui/file-explorer";
 import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";

@@ -3,7 +3,7 @@ import type {
 	BatchTaskGridLabels,
 	BatchTaskProjectActionsLabels,
 	BatchTaskProjectHeaderLabels,
-} from "@vetta/theme-ui/batch-tasks";
+} from "@vetta-org/theme-ui/batch-tasks";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 

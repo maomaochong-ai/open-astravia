@@ -1,6 +1,6 @@
 import type { SkillInfo } from "@preload/api";
-import { ThemeSurface } from "@vetta/theme-ui/appearance";
-import { useThemeComponent } from "@vetta/theme-sdk";
+import { ThemeSurface } from "@vetta-org/theme-ui/appearance";
+import { useThemeComponent } from "@vetta-org/theme-sdk";
 import { AnimatePresence, motion } from "motion/react";
 import { useSkillPickerModel } from "../../hooks/useSkillPickerModel";
 import { SkillList } from "./SkillList";

@@ -21,7 +21,7 @@ import { ProviderIcon } from "../shared/provider-icon";
  * 模型选择器的视图层：搜索、按 provider 分组、推理档位子菜单、云端/默认/视觉徽章。
  *
  * 纯展示——模型从哪来、选中后写到哪、文案怎么翻译，全部由调用方通过 props 决定。
- * 宿主的输入栏用它，插件（看板等）经 `@vetta/theme-ui/plugin-ui` 用的也是同一个，
+ * 宿主的输入栏用它，插件（看板等）经 `@vetta-org/theme-ui/plugin-ui` 用的也是同一个，
  * 两边因此不会长成两副样子。
  */
 

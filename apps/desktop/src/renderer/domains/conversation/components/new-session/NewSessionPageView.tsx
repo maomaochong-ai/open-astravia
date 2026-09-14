@@ -2,9 +2,9 @@ import { CurrentScenarioActivityPanel } from "@domains/activity-panel/components
 import { motion, useReducedMotion } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@shared/lib/utils";
-import { useThemeComponent } from "@vetta/theme-sdk";
-import type { NewSessionHeroIdentity } from "@vetta/theme-ui";
-import { NewSessionPageLayoutView } from "@vetta/theme-ui/chat";
+import { useThemeComponent } from "@vetta-org/theme-sdk";
+import type { NewSessionHeroIdentity } from "@vetta-org/theme-ui";
+import { NewSessionPageLayoutView } from "@vetta-org/theme-ui/chat";
 import {
 	PANEL_REVEAL_DURATION,
 	PANEL_REVEAL_EASE,

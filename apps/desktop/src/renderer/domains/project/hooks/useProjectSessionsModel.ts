@@ -1,5 +1,5 @@
 import type { SessionInfo } from "@shared/store/atoms";
-import type { ProjectSessionsViewLabels } from "@vetta/theme-ui/project";
+import type { ProjectSessionsViewLabels } from "@vetta-org/theme-ui/project";
 import { useTranslation } from "react-i18next";
 
 interface Args {

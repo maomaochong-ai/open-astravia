@@ -1,6 +1,6 @@
 import { forwardRef, type ComponentPropsWithoutRef, type JSX } from "react";
 import { motion } from "motion/react";
-import { useThemeSurface } from "@vetta/theme-sdk/appearance";
+import { useThemeSurface } from "@vetta-org/theme-sdk/appearance";
 import { cn } from "@vetta-org/ui";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 import type { NewSessionSceneActionState, NewSessionSceneItem } from "./NewSession";

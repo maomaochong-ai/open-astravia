@@ -1,4 +1,4 @@
-import { QuickPanelSettingsSectionView } from "@vetta/theme-ui/settings";
+import { QuickPanelSettingsSectionView } from "@vetta-org/theme-ui/settings";
 import { SETTINGS_SECTION } from "../registry";
 import type { QuickPanelBehavior, QuickPanelTrigger, ShortcutsSettingsModel } from "./useShortcutsSettingsModel";
 

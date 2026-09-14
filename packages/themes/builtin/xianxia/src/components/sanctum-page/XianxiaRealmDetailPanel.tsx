@@ -1,5 +1,5 @@
-import { useThemeRouteModel } from "@vetta/theme-sdk";
-import { HorizontalSliceImageDecoration, NineSliceImageFrame } from "@vetta/theme-ui";
+import { useThemeRouteModel } from "@vetta-org/theme-sdk";
+import { HorizontalSliceImageDecoration, NineSliceImageFrame } from "@vetta-org/theme-ui";
 import { cn } from "@vetta-org/ui";
 import { motion } from "motion/react";
 import { useEffect, useRef, type JSX } from "react";

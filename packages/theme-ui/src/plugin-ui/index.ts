@@ -1,5 +1,5 @@
 /**
- * 开放给**插件**的宿主 UI 组件（`@vetta/theme-ui/plugin-ui`）。
+ * 开放给**插件**的宿主 UI 组件（`@vetta-org/theme-ui/plugin-ui`）。
  *
  * 这里是一份**有意收窄**的清单，不是 theme-ui 的全部：插件通过 Module Federation
  * 共享域拿到宿主的同一份运行时实例，因此列进来的东西就成了宿主与插件之间的公共

@@ -4,7 +4,7 @@ import type {
 	FileExplorerDragEntry,
 	FileExplorerSelectOptions,
 	FileTreeViewProps,
-} from "@vetta/theme-ui/file-explorer";
+} from "@vetta-org/theme-ui/file-explorer";
 import { useAtom, useAtomValue } from "jotai";
 import { createElement, type KeyboardEvent, useCallback } from "react";
 import { useTranslation } from "react-i18next";

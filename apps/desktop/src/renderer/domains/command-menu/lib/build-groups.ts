@@ -1,4 +1,4 @@
-import type { CommandMenuGroupView, CommandMenuItemView } from "@vetta/theme-ui/overlays";
+import type { CommandMenuGroupView, CommandMenuItemView } from "@vetta-org/theme-ui/overlays";
 import {
 	COMMAND_MENU_GROUP_LIMIT,
 	COMMAND_MENU_GROUP_ORDER,

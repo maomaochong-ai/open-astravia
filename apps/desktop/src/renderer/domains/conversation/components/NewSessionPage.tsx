@@ -1,5 +1,5 @@
 import { pageHeaderRightSlotAtom } from "@shared/store/atoms";
-import { useThemeSurface } from "@vetta/theme-sdk/appearance";
+import { useThemeSurface } from "@vetta-org/theme-sdk/appearance";
 import { useSetAtom } from "jotai";
 import { useEffect, useMemo } from "react";
 import { NewSessionHeaderActions } from "./new-session/NewSessionHeaderActions";

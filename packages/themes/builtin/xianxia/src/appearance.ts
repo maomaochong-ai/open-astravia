@@ -1,4 +1,4 @@
-import type { ThemeAppearance, ThemeSurfaceFrame } from "@vetta/theme-sdk";
+import type { ThemeAppearance, ThemeSurfaceFrame } from "@vetta-org/theme-sdk";
 import { xianxiaAssets } from "./assets";
 
 const xianxiaPanelFrame: ThemeSurfaceFrame = {

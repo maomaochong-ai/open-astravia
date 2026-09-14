@@ -1,5 +1,5 @@
 import type { SessionExecutionMode } from "@shared/store/atoms";
-import { CommandMenuView } from "@vetta/theme-ui/overlays";
+import { CommandMenuView } from "@vetta-org/theme-ui/overlays";
 import { useEffect, useRef, type JSX } from "react";
 import { useCommandMenuModel } from "../hooks/useCommandMenuModel";
 

@@ -3,7 +3,7 @@ import type { SidebarNavigationProps } from "@vetta/desktop-theme-ui/sidebar";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { XianxiaSidebarNavigation } from "./XianxiaSidebarNavigation";
 
-vi.mock("@vetta/theme-sdk/pages", () => ({
+vi.mock("@vetta-org/theme-sdk/pages", () => ({
 	useThemePagesModel: () => ({
 		actions: { openPage: vi.fn() },
 		navItems: [

@@ -1,4 +1,4 @@
-import { AddProjectMenuItem as ThemeAddProjectMenuItem } from "@vetta/theme-ui/sidebar";
+import { AddProjectMenuItem as ThemeAddProjectMenuItem } from "@vetta-org/theme-ui/sidebar";
 import { useTranslation } from "react-i18next";
 import type { AddProjectMenuItemModel } from "./types";
 

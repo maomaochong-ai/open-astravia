@@ -3,7 +3,7 @@ import {
 	formatDuration,
 	formatTime,
 	RelativeTimeLabel,
-} from "@vetta/theme-ui/chat";
+} from "@vetta-org/theme-ui/chat";
 import { useTranslation } from "react-i18next";
 
 export { formatDuration, formatTime, RelativeTimeLabel };

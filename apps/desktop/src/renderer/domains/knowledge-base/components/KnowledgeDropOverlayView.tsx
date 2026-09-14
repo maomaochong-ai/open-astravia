@@ -1,2 +1,2 @@
-export type { KnowledgeDropOverlayViewProps } from "@vetta/theme-ui/overlays";
-export { KnowledgeDropOverlayView } from "@vetta/theme-ui/overlays";
+export type { KnowledgeDropOverlayViewProps } from "@vetta-org/theme-ui/overlays";
+export { KnowledgeDropOverlayView } from "@vetta-org/theme-ui/overlays";

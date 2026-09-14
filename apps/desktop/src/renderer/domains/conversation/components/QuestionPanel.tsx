@@ -1,5 +1,5 @@
 import type { PendingQuestion } from "@shared/store/atoms";
-import { useThemeComponent } from "@vetta/theme-sdk";
+import { useThemeComponent } from "@vetta-org/theme-sdk";
 import { useQuestionPanelModel } from "../hooks/useQuestionPanelModel";
 import { QuestionPanelView } from "./question-panel/QuestionPanelView";
 import type { QuestionPanelClassNames } from "./question-panel/types";

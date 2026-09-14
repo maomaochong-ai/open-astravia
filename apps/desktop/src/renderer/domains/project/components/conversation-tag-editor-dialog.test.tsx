@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { ConversationTagEditorDialogView } from "@vetta/theme-ui/project";
+import { ConversationTagEditorDialogView } from "@vetta-org/theme-ui/project";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { CONVERSATION_TAG_PRESET_COLORS } from "../../../../shared/conversation-tags";

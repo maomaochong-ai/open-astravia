@@ -3,7 +3,7 @@ import type {
 	BatchProjectCountsView,
 	BatchTaskProjectBlockCallbacks,
 	BatchTaskViewItem,
-} from "@vetta/theme-ui/batch-tasks";
+} from "@vetta-org/theme-ui/batch-tasks";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { computeCounts, relativeTime, sortTasks, statusLabel } from "../utils/batchTaskListData";

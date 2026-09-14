@@ -2,7 +2,7 @@ import {
 	KbFilterByTagsView as ThemeKbFilterByTagsView,
 	KbListTagsView as ThemeKbListTagsView,
 	KbWritePageView as ThemeKbWritePageView,
-} from "@vetta/theme-ui/chat";
+} from "@vetta-org/theme-ui/chat";
 import { useTranslation } from "react-i18next";
 
 /** Minimal tool block shape for knowledge tool UI adapters. */

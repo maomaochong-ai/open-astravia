@@ -1,5 +1,5 @@
 import type { ChatTimelineEventViewModel } from "@shared/store/atoms";
-import { AgentAvatarView, LiveThinkingView } from "@vetta/theme-ui/chat";
+import { AgentAvatarView, LiveThinkingView } from "@vetta-org/theme-ui/chat";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 

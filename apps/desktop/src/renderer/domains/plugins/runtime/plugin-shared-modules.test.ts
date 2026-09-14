@@ -13,6 +13,12 @@ describe("plugin shared modules", () => {
 		expect(pluginSharedModules["@vetta-org/ui"].module).toBe(pluginSharedModules["@vetta/ui"].module);
 	});
 
+	it("serves the host component surface under both names too", () => {
+		expect(pluginSharedModules["@vetta-org/theme-ui/plugin-ui"].module).toBe(
+			pluginSharedModules["@vetta/theme-ui/plugin-ui"].module,
+		);
+	});
+
 	it("exposes every registered name to the federation share scope", () => {
 		const shared = createPluginRuntimeShared();
 

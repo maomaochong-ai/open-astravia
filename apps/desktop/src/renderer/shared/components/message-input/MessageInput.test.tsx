@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 
 import { cleanup, render, screen } from "@testing-library/react";
-import { MessageInput } from "@vetta/theme-ui/chat";
+import { MessageInput } from "@vetta-org/theme-ui/chat";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@vetta/theme-sdk/appearance", () => ({ useThemeSurface: () => undefined }));
+vi.mock("@vetta-org/theme-sdk/appearance", () => ({ useThemeSurface: () => undefined }));
 
 afterEach(cleanup);
 

@@ -1,7 +1,7 @@
 import { useProjectActions } from "@domains/project/hooks/useProjects";
 import { NewProjectDialog } from "@shared/components/NewProjectDialog";
 import { isDuplicateProjectName } from "@shared/lib/project-name";
-import { ProjectSelectorView } from "@vetta/theme-ui/chat";
+import { ProjectSelectorView } from "@vetta-org/theme-ui/chat";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {

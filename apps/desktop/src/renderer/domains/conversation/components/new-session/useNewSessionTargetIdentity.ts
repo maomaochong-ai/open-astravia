@@ -1,5 +1,5 @@
 import { useAgentAvatarResolver } from "@shared/agent-teams/agent-avatar";
-import type { NewSessionHeroIdentity } from "@vetta/theme-ui";
+import type { NewSessionHeroIdentity } from "@vetta-org/theme-ui";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useAgentTeamDirectoryDocument } from "./agent-team-directory";

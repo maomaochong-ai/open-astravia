@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { BashTerminal, ProgressGroup, ToolCall } from "@vetta/theme-ui/chat";
+import { BashTerminal, ProgressGroup, ToolCall } from "@vetta-org/theme-ui/chat";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";

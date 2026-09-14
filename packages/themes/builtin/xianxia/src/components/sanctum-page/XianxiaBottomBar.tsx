@@ -1,4 +1,4 @@
-import { HorizontalSliceImageDecoration, HorizontalSliceImageFrame } from "@vetta/theme-ui";
+import { HorizontalSliceImageDecoration, HorizontalSliceImageFrame } from "@vetta-org/theme-ui";
 import { motion } from "motion/react";
 import type { JSX } from "react";
 import { sanctumPageAssets } from "./assets";

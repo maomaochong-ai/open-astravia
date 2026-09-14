@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import type { ImLogEvent } from "@preload/api";
-import { ImLogDrawerView } from "@vetta/theme-ui/settings";
+import { ImLogDrawerView } from "@vetta-org/theme-ui/settings";
 import { SETTINGS_SECTION } from "../registry";
 
 export function ImLogDrawer({

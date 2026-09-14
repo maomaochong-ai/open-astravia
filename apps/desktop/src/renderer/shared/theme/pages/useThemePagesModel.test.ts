@@ -1,4 +1,4 @@
-import type { ThemePageDefinition } from "@vetta/theme-sdk";
+import type { ThemePageDefinition } from "@vetta-org/theme-sdk";
 import { describe, expect, it, vi } from "vitest";
 import { createThemePagesModel } from "./theme-pages-model.js";
 

@@ -24,7 +24,7 @@ vi.mock("react-i18next", () => ({
 	}),
 }));
 
-vi.mock("@vetta/theme-ui/chat", () => ({
+vi.mock("@vetta-org/theme-ui/chat", () => ({
 	AgentAvatarView: () => <span data-testid="member-avatar" />,
 	LiveThinkingView: ({ text }: { text: string }) => <div data-testid="live-thinking">{text}</div>,
 }));

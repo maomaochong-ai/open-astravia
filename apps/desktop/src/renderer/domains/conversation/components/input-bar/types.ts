@@ -2,7 +2,7 @@ import type { SkillInfo } from "@preload/api";
 import type { InputSegment } from "@shared/lib/input-tokens";
 import type { AppshotAttachment } from "@shared/store/atoms";
 import type { TodoItem } from "@shared/store/todo-atoms";
-import type { InputBarContextMenuViewProps, SessionDropZoneViewProps } from "@vetta/theme-ui/chat";
+import type { InputBarContextMenuViewProps, SessionDropZoneViewProps } from "@vetta-org/theme-ui/chat";
 import type { ComponentProps, MouseEvent, ReactNode } from "react";
 import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
 import type { ContextRingModel } from "../../hooks/useContextRingModel";

@@ -1,5 +1,5 @@
 import type { SessionInfo } from "@shared/store/atoms";
-import { SessionRenameInputView } from "@vetta/theme-ui/project";
+import { SessionRenameInputView } from "@vetta-org/theme-ui/project";
 import { useInlineSessionRenameModel } from "../../../hooks/useInlineSessionRenameModel";
 
 interface InlineSessionRenameInputProps {

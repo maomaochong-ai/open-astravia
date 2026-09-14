@@ -1,5 +1,5 @@
 import { loginPopoverOpenAtom } from "@shared/store/atoms";
-import { useThemeComponent } from "@vetta/theme-sdk";
+import { useThemeComponent } from "@vetta-org/theme-sdk";
 import { Popover, PopoverAnchor, PopoverContent } from "@vetta-org/ui";
 import { useAtom } from "jotai";
 import { AnimatePresence, motion } from "motion/react";

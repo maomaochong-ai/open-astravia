@@ -1,2 +1,2 @@
-export type { TimePickerProps } from "@vetta/theme-ui/shared";
-export { TimePicker } from "@vetta/theme-ui/shared";
+export type { TimePickerProps } from "@vetta-org/theme-ui/shared";
+export { TimePicker } from "@vetta-org/theme-ui/shared";

@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { ModelsProviderFormView } from "@vetta/theme-ui/settings";
+import { ModelsProviderFormView } from "@vetta-org/theme-ui/settings";
 import { Button, cn } from "@vetta-org/ui";
 import { ModelsFetchedModelsPanel } from "./ModelsFetchedModelsPanel";
 import { ModelsModelForm } from "./ModelsModelForm";

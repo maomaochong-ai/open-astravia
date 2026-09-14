@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
 	GeneralSetExecutionModeApprovalView,
 	type ExecutionModeOption,
-} from "@vetta/theme-ui/action-approval";
+} from "@vetta-org/theme-ui/action-approval";
 import { type ActiveActionApproval, useActionApproval } from "../../useActionApproval";
 import { formatExecutionMode } from "../../approvalCopy";
 import { useManageApprovalFrame } from "../useManageApprovalShell";

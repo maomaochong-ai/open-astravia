@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { fireEvent, render, screen } from "@testing-library/react";
-import { QueueCardView } from "@vetta/theme-ui/chat";
+import { QueueCardView } from "@vetta-org/theme-ui/chat";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { CommandPanelView } from "./CommandPanelView";

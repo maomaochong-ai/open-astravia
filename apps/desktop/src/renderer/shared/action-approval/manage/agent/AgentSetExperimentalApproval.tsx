@@ -3,7 +3,7 @@ import {
 	ApprovalImpactCard,
 	ApprovalSettingGroup,
 	ApprovalSettingRow,
-} from "@vetta/theme-ui/action-approval";
+} from "@vetta-org/theme-ui/action-approval";
 import { Switch } from "@vetta-org/ui";
 import { type ActiveActionApproval, useActionApproval } from "../../useActionApproval";
 import {

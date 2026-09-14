@@ -1,11 +1,11 @@
-import type { AtPanelClassNames } from "@vetta/theme-ui/chat";
+import type { AtPanelClassNames } from "@vetta-org/theme-ui/chat";
 
 export type {
 	AtPanelClassNames,
 	AtPanelEntryModel,
 	AtPanelLabels,
 	AtPanelViewProps,
-} from "@vetta/theme-ui/chat";
+} from "@vetta-org/theme-ui/chat";
 
 /** A caller supplied candidate shown alongside file results in the shared @ panel. */
 export interface AtPanelItem {

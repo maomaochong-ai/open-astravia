@@ -2,7 +2,7 @@
 import {
 	AssistantMessage,
 	type AssistantMessageFoldLabels,
-} from "@vetta/theme-ui/chat";
+} from "@vetta-org/theme-ui/chat";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";

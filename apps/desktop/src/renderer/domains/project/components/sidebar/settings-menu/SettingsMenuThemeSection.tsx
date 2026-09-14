@@ -1,4 +1,4 @@
-import { SettingsMenuThemeSection as ThemeSettingsMenuThemeSection } from "@vetta/theme-ui/sidebar";
+import { SettingsMenuThemeSection as ThemeSettingsMenuThemeSection } from "@vetta-org/theme-ui/sidebar";
 import { useTranslation } from "react-i18next";
 import type { SettingsMenuModel } from "./types";
 

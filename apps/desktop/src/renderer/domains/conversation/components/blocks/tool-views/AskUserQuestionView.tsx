@@ -1,7 +1,7 @@
 import {
 	AskUserQuestionView as ThemeAskUserQuestionView,
 	type AskUserQuestionItem,
-} from "@vetta/theme-ui/chat";
+} from "@vetta-org/theme-ui/chat";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 

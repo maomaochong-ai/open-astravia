@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { KnowledgeRenameDialogView } from "@vetta/theme-ui/knowledge";
+import { KnowledgeRenameDialogView } from "@vetta-org/theme-ui/knowledge";
 
 interface KnowledgeRenameDialogProps {
 	title: string;

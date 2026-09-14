@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { ActivityPanel } from "@vetta/theme-ui/activity";
+import { ActivityPanel } from "@vetta-org/theme-ui/activity";
 import { act, createElement, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

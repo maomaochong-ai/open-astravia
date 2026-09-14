@@ -1,4 +1,4 @@
-import type { ThemeUsageModel, ThemeUsageStats, ThemeUsageStatus } from "@vetta/theme-sdk/usage";
+import type { ThemeUsageModel, ThemeUsageStats, ThemeUsageStatus } from "@vetta-org/theme-sdk/usage";
 import { useCallback, useEffect, useState } from "react";
 
 const EMPTY_STATS: ThemeUsageStats = {

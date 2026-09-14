@@ -7,7 +7,7 @@ import { InputBar } from "./InputBar";
 
 const captured = vi.hoisted(() => ({ model: vi.fn() }));
 
-vi.mock("@vetta/theme-sdk", () => ({ useThemeComponent: (_slot: string, component: unknown) => component }));
+vi.mock("@vetta-org/theme-sdk", () => ({ useThemeComponent: (_slot: string, component: unknown) => component }));
 vi.mock("./input-bar/InputBarView", () => ({
 	InputBarView: ({ model }: { model: InputBarModel }) => {
 		captured.model(model);

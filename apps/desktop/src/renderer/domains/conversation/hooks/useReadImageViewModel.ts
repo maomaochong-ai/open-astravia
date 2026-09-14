@@ -1,4 +1,4 @@
-import type { ReadImageViewProps } from "@vetta/theme-ui/chat";
+import type { ReadImageViewProps } from "@vetta-org/theme-ui/chat";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { formatBytes, formatDimensions } from "../components/blocks/tool-views/shared/format";

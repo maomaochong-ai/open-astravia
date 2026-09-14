@@ -28,7 +28,7 @@ vi.mock("@vetta-org/ui", () => ({
 	DropdownMenuSubContent: ({ children }: { children: ReactNode }) => <div role="menu">{children}</div>,
 }));
 
-const { SessionContextMenuView } = await import("@vetta/theme-ui/project");
+const { SessionContextMenuView } = await import("@vetta-org/theme-ui/project");
 
 interface MockMenuItemProps extends Omit<ComponentProps<"button">, "onSelect"> {
 	onSelect?: (event: Event) => void;

@@ -1,6 +1,6 @@
 import type { BatchProject, BatchTask } from "@shared/store/atoms";
 import { batchQueuedTaskIdsAtom, confirmDialogAtom, openSessionFnRef } from "@shared/store/atoms";
-import type { BatchQueueStatusViewProps, BatchQueueTaskItemView } from "@vetta/theme-ui/project";
+import type { BatchQueueStatusViewProps, BatchQueueTaskItemView } from "@vetta-org/theme-ui/project";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useMemo, useState } from "react";
 import { useBatchTasks } from "../../batch-tasks/hooks/useBatchTasks";

@@ -1,5 +1,5 @@
 import { retryProgressAtom } from "@shared/store/atoms";
-import { MessageListFooter as MessageListFooterPrimitive } from "@vetta/theme-ui/chat";
+import { MessageListFooter as MessageListFooterPrimitive } from "@vetta-org/theme-ui/chat";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
 import { useTranslation } from "react-i18next";

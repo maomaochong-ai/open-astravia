@@ -1,5 +1,5 @@
 import type { Project } from "@shared/store/atoms";
-import type { ProjectContextMenuViewProps } from "@vetta/theme-ui/project";
+import type { ProjectContextMenuViewProps } from "@vetta-org/theme-ui/project";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 

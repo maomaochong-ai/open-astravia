@@ -2,7 +2,7 @@ import type { ComponentType } from "react";
 import type { SidebarNavItemButton } from "./SidebarNavItemButton";
 import type { SidebarNavigationProps } from "./SidebarNavigation";
 
-declare module "@vetta/theme-sdk" {
+declare module "@vetta-org/theme-sdk" {
 	interface ThemeComponentRegistry {
 		readonly "sidebar.navItem"?: typeof SidebarNavItemButton;
 		readonly "sidebar.navigation"?: ComponentType<SidebarNavigationProps>;
@@ -19,7 +19,7 @@ export type {
 	SidebarNavItem,
 	SidebarProps,
 	SidebarRegionProps,
-} from "@vetta/theme-sdk/sidebar";
+} from "@vetta-org/theme-sdk/sidebar";
 export type { AddProjectMenuItemProps } from "./AddProjectMenuItem";
 export { AddProjectMenuItem } from "./AddProjectMenuItem";
 export type {

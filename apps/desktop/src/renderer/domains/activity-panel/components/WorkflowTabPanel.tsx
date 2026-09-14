@@ -1,5 +1,5 @@
 import { MessageList } from "@domains/conversation/components/MessageList";
-import { WorkflowTabPanelView } from "@vetta/theme-ui/activity";
+import { WorkflowTabPanelView } from "@vetta-org/theme-ui/activity";
 import { useWorkflowTabPanelModel } from "../hooks/useWorkflowTabPanelModel";
 
 /**

@@ -1,4 +1,4 @@
-import { SkillTagGroupView } from "@vetta/theme-ui/skills";
+import { SkillTagGroupView } from "@vetta-org/theme-ui/skills";
 import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { useNarrowScreen } from "@shared/hooks/useNarrowScreen";

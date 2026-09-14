@@ -1,4 +1,4 @@
-import { useThemeComponent } from "@vetta/theme-sdk";
+import { useThemeComponent } from "@vetta-org/theme-sdk";
 import { ExecutionModeSelectorView } from "./execution-mode-selector/ExecutionModeSelectorView";
 import type { ExecutionModeSelectorViewProps } from "./execution-mode-selector/types";
 

@@ -3,7 +3,7 @@ import {
 	RemoteMcpSectionView as ThemeRemoteMcpSectionView,
 	type RemoteMcpSectionViewLabels,
 	type RemoteMcpServerRowView,
-} from "@vetta/theme-ui/settings";
+} from "@vetta-org/theme-ui/settings";
 import { SETTINGS_SECTION } from "../registry";
 import type { RemoteMcpSectionModel } from "./useRemoteMcpSectionModel";
 

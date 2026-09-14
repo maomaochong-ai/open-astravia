@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { CodeBlockCopyButtonView } from "@vetta/theme-ui/shared";
+import { CodeBlockCopyButtonView } from "@vetta-org/theme-ui/shared";
 import { useCodeClipboard } from "@shared/hooks/useCodeClipboard";
 
 interface CodeBlockCopyButtonProps {

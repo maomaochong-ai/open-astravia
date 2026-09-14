@@ -1,5 +1,5 @@
 import { type ShortcutBinding, useShortcutScope } from "@shared/shortcuts";
-import { type FilePreviewItem, getExtension, IMAGE_EXTENSIONS } from "@vetta/theme-ui/file-preview";
+import { type FilePreviewItem, getExtension, IMAGE_EXTENSIONS } from "@vetta-org/theme-ui/file-preview";
 import { useMemo } from "react";
 
 function isImageItem(item: FilePreviewItem | null | undefined): boolean {

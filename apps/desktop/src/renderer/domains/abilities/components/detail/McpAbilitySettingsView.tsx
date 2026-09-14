@@ -1,4 +1,4 @@
-import { InputField } from "@vetta/theme-ui/settings";
+import { InputField } from "@vetta-org/theme-ui/settings";
 import { Button } from "@vetta-org/ui";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";

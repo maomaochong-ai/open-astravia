@@ -1,5 +1,5 @@
 import type { BatchProject } from "@shared/store/atoms";
-import type { BatchTaskProjectActionsLabels } from "@vetta/theme-ui/batch-tasks";
+import type { BatchTaskProjectActionsLabels } from "@vetta-org/theme-ui/batch-tasks";
 import { useBatchTaskListLabels } from "./useBatchTaskListLabels";
 
 export interface BatchTaskProjectActionsModel {

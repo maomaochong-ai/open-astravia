@@ -1,5 +1,5 @@
 import { debugSubTabAtom } from "@shared/store/atoms";
-import type { DebugSubTab } from "@vetta/theme-ui/activity";
+import type { DebugSubTab } from "@vetta-org/theme-ui/activity";
 import { useAtom } from "jotai";
 import { useTranslation } from "react-i18next";
 

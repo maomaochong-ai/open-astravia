@@ -2,7 +2,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { SettingsSidebarView } from "@vetta/theme-ui/settings";
+import { SettingsSidebarView } from "@vetta-org/theme-ui/settings";
 
 const TABS = [
 	{ key: "general", icon: "icon-[a]", label: "通用设置" },

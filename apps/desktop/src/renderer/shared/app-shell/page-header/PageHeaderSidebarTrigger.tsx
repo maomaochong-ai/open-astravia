@@ -1,1 +1,1 @@
-export { PageHeaderSidebarTrigger } from "@vetta/theme-ui/app-shell";
+export { PageHeaderSidebarTrigger } from "@vetta-org/theme-ui/app-shell";

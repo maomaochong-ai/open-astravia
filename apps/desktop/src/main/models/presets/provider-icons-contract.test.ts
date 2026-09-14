@@ -1,4 +1,4 @@
-import { PROVIDER_ICONS } from "@vetta/theme-ui/shared";
+import { PROVIDER_ICONS } from "@vetta-org/theme-ui/shared";
 import { describe, expect, it } from "vitest";
 import { PRESET_PROVIDERS } from "./catalog";
 

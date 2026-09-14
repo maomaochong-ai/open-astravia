@@ -1,4 +1,4 @@
-import { selectTodoStatusSummary, type TodoStatusItem } from "@vetta/theme-ui/chat";
+import { selectTodoStatusSummary, type TodoStatusItem } from "@vetta-org/theme-ui/chat";
 import { describe, expect, it } from "vitest";
 
 function items(...statuses: TodoStatusItem["status"][]): TodoStatusItem[] {
