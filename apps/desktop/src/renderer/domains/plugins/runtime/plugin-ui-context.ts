@@ -6,6 +6,7 @@ import {
 	activityPanelOpenAtom,
 	activityPanelTabByProjectAtom,
 	attachedPluginTabsAtom,
+	type FilePreviewItem,
 	filePreviewAtom,
 	mountedActivityWorkspacesAtom,
 	persistCurrentInputActionState,
@@ -32,6 +33,7 @@ import type {
 	PluginNewSessionContextContribution,
 	PluginNotifyOptions,
 	PluginOpenActivityTabOptions,
+	PluginPreviewFileRef,
 	PluginPromptAttachment,
 	PluginShortcutScopeContribution,
 	PluginToolCallSlotContribution,
@@ -198,6 +200,37 @@ function resolvePluginBrandIcon(iconUrl: string): ReactNode {
 		className: "h-3.5 w-3.5 object-contain",
 		draggable: false,
 	});
+}
+
+/**
+ * 把插件递来的 `PluginPreviewFileRef` 归一化成全局预览 atom 认的 `FilePreviewItem`。
+ * 预览器按 **name 的扩展名**分发渲染器（不是 mime），所以 name 是必须补齐的那一项：
+ * 缺省时从本地路径的 basename 取，取不到才退到 mime 推导。
+ */
+function toFilePreviewItem(ref: PluginPreviewFileRef): FilePreviewItem {
+	if (ref == null || typeof ref !== "object") {
+		throw new Error("previewFile() requires a file reference object");
+	}
+	const path = typeof ref.path === "string" ? ref.path.trim() : "";
+	const url = typeof ref.url === "string" ? ref.url.trim() : "";
+	if (!path && !url) {
+		throw new Error("previewFile() requires either a path or a url");
+	}
+	// 相对路径在渲染进程没有可靠的 base 可解析——与其让预览器弹一个含糊的读取失败，
+	// 不如在边界上直接告诉插件它给错了。
+	if (path && !path.startsWith("/") && !/^[a-zA-Z]:[\\/]/.test(path)) {
+		throw new Error(`previewFile() requires an absolute path, got: ${path}`);
+	}
+	const declaredName = typeof ref.name === "string" ? ref.name.trim() : "";
+	const basename = path ? (path.split(/[\\/]/).pop() ?? "") : "";
+	const name = declaredName || basename || `preview.${(ref.mimeType ?? "").split("/")[1] ?? "bin"}`;
+	return {
+		name,
+		...(path ? { path } : {}),
+		...(url ? { url } : {}),
+		...(ref.mimeType ? { mime: ref.mimeType } : {}),
+		...(Number.isFinite(ref.size) ? { size: ref.size } : {}),
+	};
 }
 
 export function createPluginUiApi({
@@ -765,6 +798,28 @@ export function createPluginUiApi({
 			getDefaultStore().set(filePreviewAtom, toItem(ref));
 		}
 	};
+	const previewFile: PluginContext["ui"]["previewFile"] = (file, group) => {
+		const refs = (group ?? []).length > 1 ? (group as PluginPreviewFileRef[]) : [file];
+		// 权限按「实际递过来的是什么」决定，而不是按 API 名字：带本地路径等于让宿主去读
+		// 磁盘上的文件，和 ctx.fs.readFile 同量级，所以要 fs.read；纯 URL 形态插件本来
+		// 就能自己渲染，只是换宿主开灯箱，沿用 previewImage 的门。
+		const permissions = createPluginPermissionApi(plugin);
+		permissions.require(refs.some((ref) => ref?.path) ? "fs.read" : "ui.slot.message");
+		const items = refs.map(toFilePreviewItem);
+		const target = toFilePreviewItem(file);
+		const store = getDefaultStore();
+		if (items.length > 1) {
+			// 起始定位按「同一个文件源」找，不按对象身份——插件很可能把组里的那一项重新
+			// 构造一遍递进来，认身份会把起始位置悄悄退回第一张。
+			const index = Math.max(
+				0,
+				items.findIndex((item) => (item.path ?? item.url) === (target.path ?? target.url)),
+			);
+			store.set(filePreviewAtom, { items, index });
+		} else {
+			store.set(filePreviewAtom, target);
+		}
+	};
 	const captureRegion: PluginContext["ui"]["captureRegion"] = (rect, defaultFileName) => {
 		createPluginPermissionApi(plugin).require("ui.slot.activity-tab");
 		if (![rect.x, rect.y, rect.width, rect.height].every(Number.isFinite) || rect.width <= 0 || rect.height <= 0) {
@@ -859,6 +914,7 @@ export function createPluginUiApi({
 		setActivityPanelWidth,
 		setPromptAttachment,
 		previewImage,
+		previewFile,
 		captureRegion,
 		copyImage,
 		openExternal,

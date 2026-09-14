@@ -68,6 +68,7 @@ export type {
 	PluginAudioMetadata,
 	PluginPreviewUrlOptions,
 	PluginPreviewFile,
+	PluginPreviewFileRef,
 	PluginFilePreviewProps,
 	PluginFilePreviewContribution,
 	PluginActivityTabContribution,

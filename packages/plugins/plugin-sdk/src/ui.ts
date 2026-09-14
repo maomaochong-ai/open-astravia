@@ -207,6 +207,31 @@ export interface PluginFilePreviewProps {
 	file: PluginPreviewFile;
 }
 
+/**
+ * A file handed to {@link PluginUiApi.previewFile} — the *opening* side of the
+ * global previewer, the mirror image of {@link PluginPreviewFile} (which is the
+ * *rendering* side). Bytes never cross over: the host reads the source itself.
+ *
+ * Exactly one of `path` (local absolute path) or `url` (host media / http URL)
+ * must be given. `path` is the shape the host's own file tree uses, so the
+ * previewer also offers "在 Finder 中显示" for it.
+ */
+export interface PluginPreviewFileRef {
+	/** Local absolute path. Requires the `fs.read` permission. */
+	path?: string;
+	/** Fetchable URL (host media URL or http/https). Requires `ui.slot.message`. */
+	url?: string;
+	/**
+	 * Display name **including the extension** — the previewer dispatches to a
+	 * renderer by this extension, not by `mimeType`. Optional for `path`
+	 * sources (the host falls back to the path's basename).
+	 */
+	name?: string;
+	mimeType?: string;
+	/** Byte size, shown in the previewer's download detail when known. */
+	size?: number;
+}
+
 export interface PluginFilePreviewContribution {
 	/** Lower-case extensions without the dot, e.g. ["svg"]. */
 	extensions: string[];
@@ -702,6 +727,21 @@ export interface PluginUiApi {
 	 * the previewer shows a thumbnail strip + arrows and starts at `ref`.
 	 */
 	previewImage(ref: PluginImageRef, group?: PluginImageRef[]): void;
+	/**
+	 * Open the host's global file previewer for any file — the general form of
+	 * {@link PluginUiApi.previewImage}, which only takes image URLs. Accepts a
+	 * local absolute `path` (the shape the host's own file tree uses) as well as
+	 * a `url`; the previewer dispatches by the file's extension, so a file type
+	 * some plugin registered via `registerFilePreview` lands in that renderer.
+	 *
+	 * Pass `group` (e.g. all outputs of one run) to open as a group: images get
+	 * the thumbnail strip + arrows, and the previewer starts at `file`.
+	 *
+	 * Permissions: `fs.read` as soon as any entry carries a `path` (it hands a
+	 * local file to the host to read); `ui.slot.message` for url-only calls,
+	 * same gate as `previewImage`.
+	 */
+	previewFile(file: PluginPreviewFileRef, group?: PluginPreviewFileRef[]): void;
 	/**
 	 * Capture a rectangle in the current Vetta window and open the host save
 	 * dialog. Coordinates use renderer DIP values such as getBoundingClientRect().

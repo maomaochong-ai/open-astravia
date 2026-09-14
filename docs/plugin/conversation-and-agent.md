@@ -538,6 +538,10 @@ const ref = await ctx.storage.getBlobRef(blob.id);
 - `ctx.ui.setPromptAttachment(attachment | null)`：绑定下一轮的一次性插件上下文。`attachment` 包含 `id`、`label`、可选 `icon`、`instructions[]` 和 `metadata`；宿主展示胶囊、发送时合并内容并清除。
 - `usePromptAttachment()`：响应式读取当前插件 prompt attachment，可用于插件卡片的选中态。
 - `ctx.ui.previewImage(ref, group?)`：打开宿主全屏图片预览器。
+- `ctx.ui.previewFile(file, group?)`：打开宿主全屏文件预览器，`previewImage` 的通用形态。`file` 为 `{ path? | url?, name?, mimeType?, size? }`，`path` 与 `url` 二选一；`path` 是本地绝对路径（与文件树同形态，预览器会给出「在 Finder 中显示」）。
+  - 预览器**按 `name` 的扩展名**分发渲染器（不看 `mimeType`）：某扩展名若被插件用 `registerFilePreview` 注册过，就落进那个渲染器。`name` 省略时从 `path` 的 basename 取。
+  - 权限随形态而定：任一条目带 `path` 需要 `fs.read`（等于把本地文件交给宿主去读）；纯 `url` 形态与 `previewImage` 同门，需要 `ui.slot.message`。
+  - 传 `group` 可按组打开（图片组带缩略图条与左右翻页），起始定位到 `file`。
 
 `readBinaryFile` 用于需要原始字节的本地文件流程：宿主做路径校验、32 MiB 限额和内容签名 MIME 嗅探，不复用文本预览的编码判断。
 

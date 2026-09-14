@@ -454,7 +454,7 @@ ctx.ui.registerInputAction({
 
 `requiresActiveTool`：badge 跟随工具 `scope_use`，避免工具被场景屏蔽时仍显示无效开关。
 
-配套：`setPromptAttachment`（通用一次性 prompt 上下文胶囊）、`previewImage`（全屏图片预览）——见 [conversation-and-agent 私有存储 API](./conversation-and-agent.md#插件私有存储-api)。
+配套：`setPromptAttachment`（通用一次性 prompt 上下文胶囊）、`previewImage`（全屏图片预览）、`previewFile`（任意文件的全屏预览，支持本地绝对路径）——见 [conversation-and-agent 私有存储 API](./conversation-and-agent.md#插件私有存储-api)。
 
 ## 新会话上下文区 registerNewSessionContext
 
