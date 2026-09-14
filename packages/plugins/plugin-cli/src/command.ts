@@ -1,8 +1,9 @@
 import { existsSync } from "node:fs";
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { ActionRpcError, createActionRpcClient, readActionRpcEndpoint } from "@vetta/action-rpc";
 import { resolveNpmPluginArchive, type ResolvedNpmPluginArchive } from "./npm-package.js";
+import { findPluginHub, findPluginProject, readManualSdkVersion, resolveManualDir } from "./workspace.js";
 
 export type PluginAddCommand =
 	| { type: "help" }
@@ -14,10 +15,17 @@ export type PluginReloadCommand =
 	| { type: "error"; message: string }
 	| { type: "reload"; pluginId: string; json: boolean };
 
-export type PluginCommand = PluginAddCommand | PluginReloadCommand;
+export type PluginDocsCommand =
+	| { type: "help" }
+	| { type: "error"; message: string }
+	| { type: "docs"; json: boolean };
+
+export type PluginCommand = PluginAddCommand | PluginReloadCommand | PluginDocsCommand;
 
 export interface PluginCommandDependencies {
 	resolveNpmArchive(packageSpec: string): Promise<ResolvedNpmPluginArchive>;
+	/** 命令执行时所在目录；缺省用 process.cwd()，测试与非交互调用方可以覆盖。 */
+	cwd?(): string;
 	runAction(actionId: string, input: unknown): Promise<unknown>;
 	writeStdout(value: string): void;
 	writeStderr(value: string): void;
@@ -30,12 +38,14 @@ const HELP_TEXT = `Vetta plugin manager
 Usage:
   vetta-plugin-cli add <npm-package|zip-path|http-url> [--json]
   vetta-plugin-cli reload <plugin-id> [--json]
+  vetta-plugin-cli docs [--json]
 
 Examples:
   npx @vetta-org/plugin-cli add @example/vetta-plugin-demo
   npx @vetta-org/plugin-cli add @example/vetta-plugin-demo@1.2.0
   npx @vetta-org/plugin-cli add ./release/demo-1.2.0.zip
   npx @vetta-org/plugin-cli reload demo
+  npx @vetta-org/plugin-cli docs
 `;
 
 function formatParseError(error: unknown): string {
@@ -72,6 +82,20 @@ export function parsePluginReloadCommand(argv: string[]): PluginReloadCommand | 
 	return { type: "reload", pluginId, json: parsed.values.json === true };
 }
 
+export function parsePluginDocsCommand(argv: string[]): PluginDocsCommand | undefined {
+	if (argv[0] !== "docs") return undefined;
+	if (argv[1] === "-h" || argv[1] === "--help") return { type: "help" };
+	let parsed: ReturnType<typeof parseArgs>;
+	try {
+		parsed = parseArgs({ args: argv.slice(1), allowPositionals: true, strict: true, options: { json: { type: "boolean" } } });
+	} catch (error) {
+		return { type: "error", message: formatParseError(error) };
+	}
+	const [unexpected] = parsed.positionals;
+	if (unexpected) return { type: "error", message: `Unexpected argument: ${unexpected}` };
+	return { type: "docs", json: parsed.values.json === true };
+}
+
 async function defaultRunAction(actionId: string, input: unknown): Promise<unknown> {
 	const client = createActionRpcClient(await readActionRpcEndpoint());
 	return client.run(actionId, input);
@@ -79,6 +103,7 @@ async function defaultRunAction(actionId: string, input: unknown): Promise<unkno
 
 const defaultDependencies: PluginCommandDependencies = {
 	resolveNpmArchive: resolveNpmPluginArchive,
+	cwd: () => process.cwd(),
 	runAction: defaultRunAction,
 	writeStdout: (value) => process.stdout.write(value),
 	writeStderr: (value) => process.stderr.write(value),
@@ -177,6 +202,10 @@ export async function runPluginCommand(
 		return 2;
 	}
 
+	if (command.type === "docs") {
+		return runDocsCommand(command, dependencies);
+	}
+
 	let resolvedNpm: ResolvedNpmPluginArchive | undefined;
 	try {
 		let result: unknown;
@@ -224,11 +253,60 @@ export async function runPluginCommand(
 	}
 }
 
+/**
+ * 打印随 SDK 发布的手册目录。
+ *
+ * 存在的理由是「不要让任何人硬编码 node_modules 路径」：工作区会把依赖提升到仓库根，
+ * 一仓多插件的 hub 里每个插件也可能各装一份。Agent 只需记住这一条命令，拿回来的永远是
+ * 当前工程实际编译所针对的那个 SDK 版本的手册。
+ */
+function runDocsCommand(command: { json: boolean }, dependencies: PluginCommandDependencies): number {
+	const cwd = dependencies.cwd?.() ?? process.cwd();
+	const manualDir = resolveManualDir(cwd);
+	if (!manualDir) {
+		const message =
+			"Plugin manual not found. Install the SDK first: npm i -D @vetta-org/plugin-sdk\n";
+		if (command.json) {
+			dependencies.writeStdout(
+				`${JSON.stringify({ ok: false, error: { code: "MANUAL_NOT_FOUND", message: message.trim() } })}\n`,
+			);
+		} else {
+			dependencies.writeStderr(message);
+		}
+		return 6;
+	}
+	const project = findPluginProject(cwd);
+	const hub = findPluginHub(cwd);
+	const sdkVersion = readManualSdkVersion(manualDir);
+	if (command.json) {
+		dependencies.writeStdout(
+			`${JSON.stringify({
+				ok: true,
+				manualDir,
+				entry: join(manualDir, "README.md"),
+				sdkVersion,
+				project: project ? { root: project.root, pluginId: project.pluginId, version: project.version } : undefined,
+				hub: hub ? { root: hub.root, manifestPath: hub.manifestPath } : undefined,
+			})}\n`,
+		);
+		return 0;
+	}
+	const lines = [
+		`Plugin manual (@vetta-org/plugin-sdk${sdkVersion ? `@${sdkVersion}` : ""}):`,
+		`  ${manualDir}`,
+		`Start here: ${join(manualDir, "README.md")}`,
+	];
+	if (project) lines.push(`Current plugin: ${project.pluginId} (${project.root})`);
+	if (hub) lines.push(`Marketplace hub: ${hub.manifestPath}`);
+	dependencies.writeStdout(`${lines.join("\n")}\n`);
+	return 0;
+}
+
 export async function runPluginCli(argv: string[]): Promise<number> {
 	if (argv.length === 0 || argv[0] === "-h" || argv[0] === "--help") {
 		return runPluginAddCommand({ type: "help" });
 	}
-	const command = parsePluginAddCommand(argv) ?? parsePluginReloadCommand(argv);
+	const command = parsePluginAddCommand(argv) ?? parsePluginReloadCommand(argv) ?? parsePluginDocsCommand(argv);
 	if (!command) {
 		process.stderr.write(`Unknown command: ${argv[0]}\n`);
 		return 2;
