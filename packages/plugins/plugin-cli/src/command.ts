@@ -27,7 +27,7 @@ export type PluginInitCommand =
 	| { type: "help" }
 	| { type: "error"; message: string }
 	| { type: "init"; targetDir?: string; pluginId: string; displayName?: string; json: boolean }
-	| { type: "refresh-guide"; targetDir?: string; json: boolean }
+	| { type: "refresh-guide"; targetDir?: string; json: boolean; force: boolean; dryRun: boolean }
 	| { type: "init-hub"; targetDir?: string; name: string; repository: string; minAppVersion: string; json: boolean };
 
 export type PluginWatchCommand =
@@ -74,7 +74,7 @@ Usage:
   vetta-plugin-cli reload <plugin-id> [--json]
   vetta-plugin-cli docs [--check-latest] [--json]
   vetta-plugin-cli init --id <plugin-id> [--name <display>] [dir] [--json]
-  vetta-plugin-cli init --refresh-guide [dir] [--json]
+  vetta-plugin-cli init --refresh-guide [dir] [--dry-run] [--force] [--json]
   vetta-plugin-cli init hub --name <slug> --repository <url> --min-app-version <x.y.z> [dir]
   vetta-plugin-cli watch [dir] [--stop] [--json]
   vetta-plugin-cli uninstall [plugin-id] [--json]
@@ -167,6 +167,8 @@ export function parsePluginInitCommand(argv: string[]): PluginInitCommand | unde
 				name: { type: "string" },
 				json: { type: "boolean" },
 				"refresh-guide": { type: "boolean" },
+				force: { type: "boolean" },
+				"dry-run": { type: "boolean" },
 			},
 		});
 	} catch (error) {
@@ -176,7 +178,13 @@ export function parsePluginInitCommand(argv: string[]): PluginInitCommand | unde
 		const [dir, extra] = parsed.positionals;
 		if (extra) return { type: "error", message: `Unexpected argument: ${extra}` };
 		// 刷新是就地重写，工程的 id 和展示名从磁盘上读，不再由命令行给。
-		return { type: "refresh-guide", ...(dir ? { targetDir: dir } : {}), json: parsed.values.json === true };
+		return {
+			type: "refresh-guide",
+			...(dir ? { targetDir: dir } : {}),
+			json: parsed.values.json === true,
+			force: parsed.values.force === true,
+			dryRun: parsed.values["dry-run"] === true,
+		};
 	}
 	const pluginId = parsed.values.id;
 	if (typeof pluginId !== "string" || pluginId.length === 0) {
@@ -609,7 +617,15 @@ async function runDocsCommand(
 	}
 	if (guide.stale) {
 		// 说明书同样是快照，而且用户没有理由回头看它。这里是唯一会被读到的位置。
-		lines.push(`This brief is stale (AGENTS.md revision ${guide.revision ?? "unstamped"} < ${AGENTS_GUIDE_REVISION}). Refresh it with: ${GUIDE_REFRESH_COMMAND}`);
+		lines.push(
+			`This brief is stale (AGENTS.md revision ${guide.revision} < ${AGENTS_GUIDE_REVISION}). Refresh it with: ${GUIDE_REFRESH_COMMAND}`,
+		);
+	} else if (guide.unstamped) {
+		// 没有版本戳的文件与手写内容无从区分——能力市场仓库的根 AGENTS.md 往往是一整本手写的
+		// 市场规范。绝不能把它引导成一条覆盖命令。
+		lines.push(
+			`AGENTS.md has no revision marker, so it looks hand-written. Review the current template with \`${GUIDE_REFRESH_COMMAND} --dry-run\` and merge by hand; do not overwrite it blindly.`,
+		);
 	}
 	if (hub) {
 		lines.push(`Marketplace index: ${hub.manifestPath}`);
@@ -637,29 +653,39 @@ export interface AgentsGuideStatus {
 	readonly present: boolean;
 	/** 读到的版本戳；没有戳（模板早于版本戳，或是手写的）时缺省。 */
 	readonly revision?: number;
-	/** 落后于当前 CLI 的模板。没有 AGENTS.md 时为 false——那是「没有」，不是「旧」。 */
+	/**
+	 * **带戳**且落后于当前 CLI 的模板——只有这一档能安全地一键重写。
+	 *
+	 * 没有 AGENTS.md 时为 false（那是「没有」，不是「旧」）；没有戳时也为 false，见 {@link unstamped}。
+	 */
 	readonly stale: boolean;
+	/** 有文件但没有版本戳：可能是手写的，也可能是版本戳之前的模板，无从区分。 */
+	readonly unstamped: boolean;
 }
 
 /**
  * 判断工程里的 AGENTS.md 是不是旧模板。
  *
  * 说明书凝固在 `init` 那天，而用户没有理由回头看它——所以「它旧了」这件事只能由每次都会被
- * 跑到的 `docs` 说出来。没有版本戳的一律当作旧的：那是版本戳出现之前的模板。
+ * 跑到的 `docs` 说出来。
+ *
+ * **没有版本戳的不算「旧」，只算「来路不明」。** 早先把它判成 stale 并引导去跑刷新命令，等于
+ * 教用户覆盖自己手写的文件——能力市场仓库的根 `AGENTS.md` 常常是一整本手写的市场规范。
  */
 function inspectAgentsGuide(root: string): AgentsGuideStatus {
 	const path = join(root, "AGENTS.md");
-	if (!existsSync(path)) return { present: false, stale: false };
+	if (!existsSync(path)) return { present: false, stale: false, unstamped: false };
 	let revision: number | undefined;
 	try {
 		revision = readAgentsGuideRevision(readFileSync(path, "utf8"));
 	} catch {
-		return { present: true, stale: false };
+		return { present: true, stale: false, unstamped: false };
 	}
 	return {
 		present: true,
 		...(revision === undefined ? {} : { revision }),
-		stale: revision === undefined || revision < AGENTS_GUIDE_REVISION,
+		stale: revision !== undefined && revision < AGENTS_GUIDE_REVISION,
+		unstamped: revision === undefined,
 	};
 }
 
@@ -691,11 +717,19 @@ function runRefreshGuideCommand(
 ): number {
 	const cwd = dependencies.cwd?.() ?? process.cwd();
 	try {
-		const result = refreshAgentsGuide(resolve(cwd, command.targetDir ?? "."));
+		const result = refreshAgentsGuide(resolve(cwd, command.targetDir ?? "."), {
+			force: command.force,
+			dryRun: command.dryRun,
+		});
+		if (command.json) {
+			dependencies.writeStdout(`${JSON.stringify({ ok: true, ...result })}\n`);
+			return 0;
+		}
 		dependencies.writeStdout(
-			command.json
-				? `${JSON.stringify({ ok: true, ...result })}\n`
-				: `Rewrote ${result.file}\nNext: npx vetta-plugin-cli docs --check-latest\n`,
+			result.written
+				? `Rewrote ${result.file}\nNext: npx vetta-plugin-cli docs --check-latest\n`
+				// dry-run 把正文直接吐到 stdout，人工合并时可以重定向成文件再 diff。
+				: `${result.content}`,
 		);
 		return 0;
 	} catch (error) {

@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { renderAgentsGuide } from "./agents-template.js";
+import { readAgentsGuideRevision, renderAgentsGuide } from "./agents-template.js";
 import { renderHubAgentsGuide, renderHubReadme, renderHubWorkflow } from "./hub-template.js";
 
 /** 与脚手架一同落地的依赖范围；两个包各自独立发布，不要合成一个版本。 */
@@ -147,10 +147,20 @@ export default definePlugin({
 	return { root, pluginId: input.pluginId, files: Object.keys(files).sort() };
 }
 
+export interface RefreshGuideOptions {
+	/** 覆盖一份没有版本戳的 `AGENTS.md`。缺省拒绝——没有戳的多半是手写的。 */
+	readonly force?: boolean;
+	/** 只算出内容，不落盘。 */
+	readonly dryRun?: boolean;
+}
+
 export interface RefreshGuideResult {
 	readonly root: string;
 	readonly kind: "plugin" | "hub";
 	readonly file: string;
+	/** 这次生成的说明书正文。`dryRun` 时用它做人工合并。 */
+	readonly content: string;
+	readonly written: boolean;
 }
 
 /**
@@ -159,28 +169,95 @@ export interface RefreshGuideResult {
  * `init` 拒绝覆盖已有工程，所以老目录里那份说明书从落地起就再也没变过——它写于某个版本的
  * SDK，之后新增的约定一条都没有。这里只重写这一个文件：它是脚手架里唯一「纯派生、没有用户
  * 内容」的产物，其余文件都可能被改过，不该被一次刷新抹掉。
+ *
+ * **只有确实由脚手架生成的那份才算纯派生。** 没有版本戳的文件无法与手写内容区分——能力市场
+ * 仓库的根 `AGENTS.md` 往往是一整本手写的市场规范——所以一律拒绝覆盖，让调用方拿 `dryRun`
+ * 的内容去人工合并，或显式 `force`。宁可少刷新一份，也不能悄悄删掉别人写的东西。
  */
-export function refreshAgentsGuide(targetDir: string): RefreshGuideResult {
+export function refreshAgentsGuide(targetDir: string, options: RefreshGuideOptions = {}): RefreshGuideResult {
 	const root = resolve(targetDir);
+	const file = join(root, "AGENTS.md");
 	const manifestPath = join(root, "plugin.json");
+	const hubManifestPath = join(root, ".vetta", "marketplace.json");
+
+	let kind: "plugin" | "hub";
+	let content: string;
 	if (existsSync(manifestPath)) {
 		const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as { id?: unknown; name?: unknown };
 		const pluginId = typeof manifest.id === "string" ? manifest.id : undefined;
 		if (!pluginId) throw new Error(`plugin.json at ${root} has no id`);
-		const displayName = typeof manifest.name === "string" && manifest.name.length > 0 ? manifest.name : pluginId;
-		writeFileSync(join(root, "AGENTS.md"), renderAgentsGuide({ pluginId, displayName }), "utf8");
-		return { root, kind: "plugin", file: join(root, "AGENTS.md") };
+		kind = "plugin";
+		content = renderAgentsGuide({
+			pluginId,
+			// 多语言插件的 name 是 `%plugin.name%`，直接当标题会把占位符印在文件开头。
+			displayName: resolveManifestText(manifest.name, root, pluginId),
+			scripts: readPackageScripts(root),
+		});
+	} else if (existsSync(hubManifestPath)) {
+		const manifest = JSON.parse(readFileSync(hubManifestPath, "utf8")) as { name?: unknown };
+		kind = "hub";
+		content = renderHubAgentsGuide({
+			name: typeof manifest.name === "string" && manifest.name.length > 0 ? manifest.name : "marketplace",
+		});
+	} else {
+		throw new Error(`Not a plugin project or marketplace repository: ${root}`);
 	}
 
-	const hubManifest = join(root, ".vetta", "marketplace.json");
-	if (existsSync(hubManifest)) {
-		const manifest = JSON.parse(readFileSync(hubManifest, "utf8")) as { name?: unknown };
-		const name = typeof manifest.name === "string" && manifest.name.length > 0 ? manifest.name : "marketplace";
-		writeFileSync(join(root, "AGENTS.md"), renderHubAgentsGuide({ name }), "utf8");
-		return { root, kind: "hub", file: join(root, "AGENTS.md") };
-	}
+	if (!options.dryRun) assertSafeToOverwrite(file, options.force === true);
+	if (options.dryRun) return { root, kind, file, content, written: false };
+	writeFileSync(file, content, "utf8");
+	return { root, kind, file, content, written: true };
+}
 
-	throw new Error(`Not a plugin project or marketplace repository: ${root}`);
+/** 已有文件必须是本模板生成的（带版本戳）才允许重写。 */
+function assertSafeToOverwrite(file: string, force: boolean): void {
+	if (force || !existsSync(file)) return;
+	if (readAgentsGuideRevision(readFileSync(file, "utf8")) !== undefined) return;
+	throw new Error(
+		`${file} has no vetta-guide-revision marker, so it looks hand-written rather than scaffolded. ` +
+			"Refusing to overwrite it. Review the new template with `--dry-run`, merge what you want by hand, " +
+			"or pass `--force` to replace the file.",
+	);
+}
+
+/**
+ * 解析 manifest 里的 `%key%` 占位；解析不到就退回插件 id。
+ *
+ * 规则与宿主一致：整串恰好是 `%key%` 才查表，否则原样返回。
+ */
+function resolveManifestText(raw: unknown, root: string, fallback: string): string {
+	if (typeof raw !== "string" || raw.length === 0) return fallback;
+	const match = /^%([^%]+)%$/.exec(raw);
+	if (!match) return raw;
+	const key = match[1]!;
+	const pluginManifest = readJsonFile(join(root, "plugin.json")) as { defaultLocale?: unknown } | undefined;
+	const locale = typeof pluginManifest?.defaultLocale === "string" ? pluginManifest.defaultLocale : "zh";
+	for (const candidate of [locale, "zh", "en"]) {
+		const table = readJsonFile(join(root, "locales", `${candidate}.json`));
+		const value = table?.[key];
+		if (typeof value === "string" && value.length > 0) return value;
+	}
+	return fallback;
+}
+
+/** 工程实际有的 npm scripts；读不到就当没有。 */
+function readPackageScripts(root: string): string[] {
+	const pkg = readJsonFile(join(root, "package.json")) as { scripts?: unknown } | undefined;
+	const scripts = pkg?.scripts;
+	if (typeof scripts !== "object" || scripts === null || Array.isArray(scripts)) return [];
+	return Object.keys(scripts as Record<string, unknown>);
+}
+
+function readJsonFile(path: string): Record<string, unknown> | undefined {
+	if (!existsSync(path)) return undefined;
+	try {
+		const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
+		return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
+			? (parsed as Record<string, unknown>)
+			: undefined;
+	} catch {
+		return undefined;
+	}
 }
 
 const HUB_NAME_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;

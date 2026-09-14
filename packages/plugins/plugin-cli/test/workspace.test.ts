@@ -371,8 +371,7 @@ describe("docs command", () => {
 		const root = scratch();
 		installManual(root, "0.3.2");
 		write(join(root, "plugin.json"), JSON.stringify({ id: "demo", version: "1.0.0" }));
-		// 版本戳出现之前的模板：没有戳就是旧的。
-		write(join(root, "AGENTS.md"), "# demo\n\n手写或旧模板，没有版本戳。\n");
+		write(join(root, "AGENTS.md"), "<!-- vetta-guide-revision: 1 -->\n# demo\n");
 		let stdout = "";
 
 		const code = await runPluginCommand(
@@ -391,6 +390,34 @@ describe("docs command", () => {
 		expect(code).toBe(0);
 		expect(stdout).toContain("This brief is stale");
 		expect(stdout).toContain("--refresh-guide");
+	});
+
+	it("never points an unmarked brief at the overwrite command", async () => {
+		const root = scratch();
+		installManual(root, "0.3.2");
+		write(join(root, "plugin.json"), JSON.stringify({ id: "demo", version: "1.0.0" }));
+		// 手写的市场规范和「版本戳之前的模板」长得一样。把它判成 stale 并给出刷新命令，就是在
+		// 教用户删掉自己的文件。
+		write(join(root, "AGENTS.md"), "# 我们的市场规范\n");
+		let stdout = "";
+
+		const code = await runPluginCommand(
+			{ type: "docs", json: false, checkLatest: false },
+			{
+				cwd: () => root,
+				resolveNpmArchive: () => Promise.reject(new Error("unused")),
+				runAction: () => Promise.reject(new Error("unused")),
+				writeStdout: (value) => {
+					stdout += value;
+				},
+				writeStderr: () => {},
+			},
+		);
+
+		expect(code).toBe(0);
+		expect(stdout).toContain("looks hand-written");
+		expect(stdout).toContain("--dry-run");
+		expect(stdout).not.toContain("This brief is stale");
 	});
 
 	it("stays quiet about a brief this CLI just wrote", async () => {
@@ -414,7 +441,12 @@ describe("docs command", () => {
 		);
 
 		expect(code).toBe(0);
-		expect(JSON.parse(stdout).guide).toEqual({ present: true, revision: AGENTS_GUIDE_REVISION, stale: false });
+		expect(JSON.parse(stdout).guide).toEqual({
+			present: true,
+			revision: AGENTS_GUIDE_REVISION,
+			stale: false,
+			unstamped: false,
+		});
 	});
 
 	it("does not call a missing brief stale", async () => {
@@ -437,7 +469,7 @@ describe("docs command", () => {
 		);
 
 		// 「没有」不是「旧」：工程可以根本不用这份说明书，不该每次都催。
-		expect(JSON.parse(stdout).guide).toEqual({ present: false, stale: false });
+		expect(JSON.parse(stdout).guide).toEqual({ present: false, stale: false, unstamped: false });
 	});
 
 	it("sends the caller into an ability directory when run at a hub root", async () => {

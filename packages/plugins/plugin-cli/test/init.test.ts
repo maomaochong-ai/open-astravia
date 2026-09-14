@@ -244,15 +244,14 @@ describe("init hub parsing", () => {
 });
 
 describe("refreshing the agent brief in an existing directory", () => {
-	it("rewrites AGENTS.md from the plugin.json on disk, touching nothing else", () => {
+	it("rewrites a scaffolded brief, touching nothing else", () => {
 		const root = scratch();
 		initPluginProject({ targetDir: root, pluginId: "demo", displayName: "Demo" });
 		const before = readFileSync(join(root, "src", "index.tsx"), "utf8");
-		writeFileSync(join(root, "AGENTS.md"), "# stale brief from an old CLI\n", "utf8");
 
 		const result = refreshAgentsGuide(root);
 
-		expect(result).toMatchObject({ root, kind: "plugin" });
+		expect(result).toMatchObject({ root, kind: "plugin", written: true });
 		const guide = readFileSync(join(root, "AGENTS.md"), "utf8");
 		expect(guide).toContain("Demo");
 		expect(guide).toContain("--check-latest");
@@ -263,10 +262,80 @@ describe("refreshing the agent brief in an existing directory", () => {
 	it("rewrites the hub brief at a marketplace root", () => {
 		const root = scratch();
 		initHubRepository({ targetDir: root, name: "my-market", repository: "https://example.com/r", minAppVersion: "0.55.0" });
-		writeFileSync(join(root, "AGENTS.md"), "# stale\n", "utf8");
 
-		expect(refreshAgentsGuide(root)).toMatchObject({ kind: "hub" });
+		expect(refreshAgentsGuide(root)).toMatchObject({ kind: "hub", written: true });
 		expect(readFileSync(join(root, "AGENTS.md"), "utf8")).toContain("--check-latest");
+	});
+
+	it("refuses to overwrite a brief with no revision marker", () => {
+		const root = scratch();
+		initPluginProject({ targetDir: root, pluginId: "demo", displayName: "Demo" });
+		// 能力市场仓库的根 AGENTS.md 常常是一整本手写的市场规范，与「版本戳之前的模板」无从区分。
+		const handWritten = "# 我们的市场规范\n\n（443 行手写内容）\n";
+		writeFileSync(join(root, "AGENTS.md"), handWritten, "utf8");
+
+		expect(() => refreshAgentsGuide(root)).toThrow(/looks hand-written/);
+		expect(readFileSync(join(root, "AGENTS.md"), "utf8")).toBe(handWritten);
+	});
+
+	it("replaces an unmarked brief only when forced", () => {
+		const root = scratch();
+		initPluginProject({ targetDir: root, pluginId: "demo", displayName: "Demo" });
+		writeFileSync(join(root, "AGENTS.md"), "# hand written\n", "utf8");
+
+		expect(refreshAgentsGuide(root, { force: true }).written).toBe(true);
+		expect(readFileSync(join(root, "AGENTS.md"), "utf8")).toContain("vetta-guide-revision");
+	});
+
+	it("dry-run returns the new brief without touching the file", () => {
+		const root = scratch();
+		initPluginProject({ targetDir: root, pluginId: "demo", displayName: "Demo" });
+		const handWritten = "# 我们的市场规范\n";
+		writeFileSync(join(root, "AGENTS.md"), handWritten, "utf8");
+
+		const result = refreshAgentsGuide(root, { dryRun: true });
+
+		// dry-run 要在「拒绝覆盖」的目录上也能用——它正是人工合并的入口。
+		expect(result.written).toBe(false);
+		expect(result.content).toContain("vetta-guide-revision");
+		expect(readFileSync(join(root, "AGENTS.md"), "utf8")).toBe(handWritten);
+	});
+
+	it("resolves a localized plugin name instead of printing the placeholder", () => {
+		const root = scratch();
+		initPluginProject({ targetDir: root, pluginId: "demo", displayName: "Demo" });
+		writeFileSync(
+			join(root, "plugin.json"),
+			JSON.stringify({ id: "demo", name: "%plugin.name%", defaultLocale: "zh" }),
+			"utf8",
+		);
+		mkdirSync(join(root, "locales"), { recursive: true });
+		writeFileSync(join(root, "locales", "zh.json"), JSON.stringify({ "plugin.name": "演示插件" }), "utf8");
+
+		expect(refreshAgentsGuide(root, { force: true }).content).toContain("# 演示插件");
+	});
+
+	it("falls back to the plugin id when the placeholder cannot be resolved", () => {
+		const root = scratch();
+		initPluginProject({ targetDir: root, pluginId: "demo", displayName: "Demo" });
+		writeFileSync(join(root, "plugin.json"), JSON.stringify({ id: "demo", name: "%plugin.name%" }), "utf8");
+
+		const content = refreshAgentsGuide(root, { force: true }).content;
+		expect(content).toContain("# demo");
+		expect(content).not.toContain("%plugin.name%");
+	});
+
+	it("lists only the npm scripts the project actually has", () => {
+		const root = scratch();
+		initPluginProject({ targetDir: root, pluginId: "demo", displayName: "Demo" });
+		writeFileSync(join(root, "package.json"), JSON.stringify({ name: "demo", scripts: { build: "vite build" } }), "utf8");
+
+		const content = refreshAgentsGuide(root, { force: true }).content;
+		expect(content).toContain("npm run build");
+		// 照着不存在的 script 跑只会得到一句 "Missing script"。
+		expect(content).not.toContain("npm run dev");
+		expect(content).not.toContain("npm run install:vetta");
+		expect(content).toContain("vetta-plugin-cli add .");
 	});
 
 	it("refuses a directory that is neither", () => {
