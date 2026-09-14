@@ -57,7 +57,7 @@ describe("ProviderIcon", () => {
 
 	it("keeps every existing provider symbol backed by a downloaded SVG asset", () => {
 		expect(Object.keys(PROVIDER_ICONS)).toHaveLength(PROVIDER_SYMBOLS.length);
-		expect(Object.keys(PROVIDER_ICONS)).toEqual(expect.arrayContaining(PROVIDER_SYMBOLS));
+		expect(Object.keys(PROVIDER_ICONS)).toEqual(expect.arrayContaining([...PROVIDER_SYMBOLS]));
 		for (const symbol of PROVIDER_SYMBOLS) {
 			expect(getProviderIcon(symbol)).toEqual(expect.any(String));
 			expect(getProviderIcon(symbol)?.length).toBeGreaterThan(0);
