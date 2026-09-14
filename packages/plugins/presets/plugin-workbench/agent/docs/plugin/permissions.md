@@ -43,6 +43,7 @@ ctx.permissions.require("fs.read");  // 缺则抛 Plugin permission denied: fs.r
 | `ui.slot.message` | `ctx.ui.registerCardRenderer()` | [message-cards](./message-cards.md) |
 | `ui.slot.tool-call` | `ctx.ui.registerToolCallSlot()` | [ui-slots](./ui-slots.md#工具行内渲染-registertoolcallslot) |
 | `ui.slot.turn-card` | `ctx.ui.registerTurnCard()` | [ui-slots](./ui-slots.md#本轮-turn-卡-registerturncard) |
+| `ui.slot.ability-detail` | `ctx.ui.registerAbilityDetailSlot()` | [下方](#尚无专章的能力) |
 | `ui.shortcuts.register` | `ctx.ui.registerShortcutScope()` / `usePluginShortcutScope` | [ui-slots](./ui-slots.md#键盘快捷键-registershortcutscope) |
 | `ui.file-explorer.decorations` | `ctx.fileExplorer.registerDecorationProvider()` | [file-explorer](./file-explorer.md#文件装饰) |
 | `ui.file-explorer.context-menu` | `ctx.fileExplorer.registerContextMenuAction()` | [file-explorer](./file-explorer.md#右键菜单) |
@@ -82,10 +83,51 @@ ctx.permissions.require("fs.read");  // 缺则抛 Plugin permission denied: fs.r
 | `media.provider.register` | `ctx.media.registerProvider`（注册媒体 Provider） | [media](./media.md#注册-provider) |
 | `ai.models.list` | `ctx.ai.listModels()` | [ai](./ai.md) |
 | `ai.complete` | `ctx.ai.complete()` / `ctx.ai.stream()` / `ctx.ai.chat()` | [ai](./ai.md) |
+| `models.manage` | `ctx.models.replaceOwnedProviders()` / `listOwnedProviders()` | [下方](#尚无专章的能力) |
+| `ai.ocr.recognize` | `ctx.ocr.recognize()` / `listProviders()` / `onProvidersChanged()` | [下方](#尚无专章的能力) |
+| `ai.ocr.provider.register` | `ctx.ocr.registerProvider()`（注册 OCR Provider） | [下方](#尚无专章的能力) |
+| `shell.openExternal` | `ctx.ui.openExternal()`（交给系统默认浏览器） | [下方](#尚无专章的能力) |
 
 > 清单 `agent.agents` / `agent.teams`（插件贡献的智能体与团队）**不需要权限**——那是声明面而非运行时 API，见 [manifest](./manifest.md#贡献智能体与团队)。
 >
 > `ctx.i18n` / **`ctx.ui.notify`** **不需要权限**——分别读本插件 catalog、以及向宿主右下角推送 Toast（含错误堆栈复制）。错误上报规范见 [ui-slots → notify](./ui-slots.md#全局通知-notify)。
+
+## 尚无专章的能力
+
+以下 API 已经实装并受权限门控，但还没有独立章节。这里给出用它们之前必须知道的边界；形状以
+`@vetta-org/plugin-sdk` 的类型为准。
+
+### ctx.ui.registerAbilityDetailSlot（`ui.slot.ability-detail`）
+
+往**某个能力的详情页**里挂一块插件自绘的 UI，按 `abilityId` 定位目标能力。典型用途是承接上游
+原生的配置流程（登录、装 CLI、填端点），而不是把这些塞进 `ability.json` 的静态区块。
+
+- 缺权限 **warn+noop**；`abilityId` 必填，空串直接抛错。
+- 与 [ability-details.md](./ability-details.md) 的分工：那是**声明式**的静态详情页（showcase、
+  功能网格、Markdown），这里是**运行时**的交互区。
+
+### ctx.models（`models.manage`）
+
+维护**以本插件 id 命名**的模型 Provider，拿不到也改不了别人的。
+
+- `replaceOwnedProviders(providers)` 是**原子快照**：省略即删除。所以每次写入都得重建完整真相。
+- 正因如此，写之前先 `listOwnedProviders()` 读回宿主当前持有的状态并做对账——否则上游一时没返回的
+  模型会被当成用户丢失的模型抹掉。读回的 `apiKey` 是掩码，下次写入要带上真凭据。
+
+### ctx.ocr（`ai.ocr.recognize` / `ai.ocr.provider.register`）
+
+两个方向，权限分开：**消费**识别能力用 `ai.ocr.recognize`（`recognize()` / `listProviders()` /
+`onProvidersChanged()`），**提供**识别能力用 `ai.ocr.provider.register`（`registerProvider()`）。
+
+- 消费方提交的是批量图片引用；取消走 `options.signal`。
+- Provider 通过受控的输入 URL / 上传接口适配本地或远程服务，权限、取消、进度、能力协商与结果校验
+  统一由宿主处理（ADR-0108）。
+
+### ctx.ui.openExternal（`shell.openExternal`）
+
+把 URL 交给**系统默认浏览器**，不是宿主内置的 Browser Panel（那是 `ctx.browser.open`，见
+[browser.md](./browser.md)）。**只接受 `http:` / `https:`**，其它协议一律拒绝——这条限制是刻意的，
+避免插件借它拉起任意 scheme（含 `file://`）。
 
 ## 占位符权限（已声明、暂无对应 API）
 
