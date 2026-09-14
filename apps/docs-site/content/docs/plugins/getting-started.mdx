@@ -5,16 +5,42 @@ description: 创建、构建并安装一个最小 Vetta 桌面插件。
 
 ## 前置条件
 
-- Bun、TypeScript 和 Vite。
-- React 19。
-- 用于安装和调试插件的 Vetta 桌面客户端。
+- Node 或 Bun。
+- 用于安装和调试插件的 Vetta 桌面客户端（安装与热更新都要求它正在运行）。
 
-安装当前公开版本：
+**不需要** Vetta 的源码仓库。
+
+## 一条命令起工程
 
 ```bash
-bun add @vetta-org/plugin-sdk@^0.1.1
-bun add -d @vetta-org/plugin-vite@^0.0.5 vite@^7 react@^19
+npx @vetta-org/plugin-cli init --id my-plugin --name "My Plugin"
+cd my-plugin && npm install
 ```
+
+脚手架会落下 `plugin.json`、Vite + Module Federation 配置、Tailwind 入口，以及一份 `AGENTS.md`。
+
+<Callout title="给 Agent 的第一步" type="info">
+  开发手册随 `@vetta-org/plugin-sdk` 装进 `node_modules`，**不要硬编码那个路径**——工作区可能
+  把依赖提升到仓库根，一仓多插件时各插件还可能钉不同的 SDK 版本。用命令解析：
+
+  ```bash
+  npx vetta-plugin-cli docs
+  ```
+
+  它打印手册目录的绝对路径与对应的 SDK 版本。因为手册与 SDK 同版本发布，Agent 读到的合同
+  **就是这个工程即将编译的合同**——从网络现取最新文档做不到这一点。
+</Callout>
+
+## 开发闭环
+
+```bash
+npm run dev            # Vite + Module Federation 开发服务器
+npm run install:vetta  # 构建、打包并装进正在运行的 Vetta
+npx vetta-plugin-cli watch      # 热更新：宿主改从本工程目录加载，改完即生效
+npx vetta-plugin-cli uninstall  # 卸载
+```
+
+`install:vetta` 把归档交给正在运行的桌面端校验、授权、安装，**不会**直接写 `~/.vetta/plugins`。
 
 ## 项目结构
 
@@ -106,6 +132,34 @@ export default definePlugin({
     </Steps>
   </Tab>
 </Tabs>
+
+## 发布多个能力：能力市场仓库
+
+一个仓库要上架多个能力（插件、MCP、Skill、场景）时，用市场骨架：
+
+```bash
+npx @vetta-org/plugin-cli init hub --name my-market \
+  --repository https://github.com/me/my-market --min-app-version 0.55.0
+```
+
+它生成 `.vetta/marketplace.json` 索引、`abilities/` 目录约定、一份仓库级 `AGENTS.md`，以及跑
+`sync --check` 的 CI。之后在 `abilities/plugins/<slug>` 里照常 `init` 即可——**开发命令一律作用于
+最近的那个能力目录**，所以在市场仓库里开发与开发单插件完全一样。
+
+索引里的 `version`、`config.api_version`、`config.permissions` 都是从能力包推导的派生字段，
+由工具对账：
+
+```bash
+npx vetta-plugin-cli sync          # 回填派生字段，并推进 marketplaceVersion
+npx vetta-plugin-cli sync --check  # 只报不写，非零退出（CI 用）
+```
+
+<Callout title="三条会咬人的约束" type="warn">
+  索引条目的 `version` 与能力包不等时，宿主同步**直接失败**；`plugin.json` 的 `entry` / `styles`
+  不在已发布目录里时，本地能装、市场上装不了（客户端不会替你构建，所以那些目录要提交 `dist/`）；
+  改了内容却没换 `marketplaceVersion` 时，客户端既不报错也不更新——用户只是永远收不到。
+  `sync --check` 三条都会守住。
+</Callout>
 
 ## 下一步
 

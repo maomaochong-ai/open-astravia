@@ -96,6 +96,35 @@ Vetta exposes several extension levels so a simple workflow does not need to bec
 | **Theme** | Replace the visual system and provide theme-specific pages. | [Theme development](https://docs.openvetta.com/themes/overview/) |
 | **SDK / RPC / CLI** | Embed or drive the agent from another application or process. | [Developer paths](https://docs.openvetta.com/developers/overview/) |
 
+### Build a plugin from any directory
+
+You do not need this repository, or a Vetta source checkout, to build a plugin. Nor does an agent:
+
+```bash
+npx @vetta-org/plugin-cli init --id my-plugin --name "My Plugin"
+cd my-plugin && npm install
+npx vetta-plugin-cli docs        # where the manual is, and which SDK version it documents
+npm run install:vetta            # build, package, install into the running desktop app
+npx vetta-plugin-cli watch       # hot reload: the host loads the plugin from this directory
+```
+
+`init` also writes an `AGENTS.md`, so **any** coding agent — Claude Code, Cursor, or Vetta's own —
+picks the project up without host-side setup. The plugin manual ships inside
+`@vetta-org/plugin-sdk`, so the contract an agent reads is the contract the project compiles
+against; `docs` locates it rather than anyone hard-coding a `node_modules` path.
+
+To publish several abilities from one repository, scaffold a marketplace:
+
+```bash
+npx @vetta-org/plugin-cli init hub --name my-market \
+  --repository https://github.com/me/my-market --min-app-version 0.55.0
+```
+
+That lays down the index, the `abilities/` layout, a repository-level `AGENTS.md`, and CI running
+`vetta-plugin-cli sync --check`, which keeps `.vetta/marketplace.json` reconciled with each ability
+package. Development commands always act on the nearest ability directory, so working inside a
+marketplace is identical to working on a standalone plugin.
+
 Plugins declare capabilities in `plugin.json`; privileged operations are authorized by the host and checked again at runtime. Plugins run inside the desktop renderer and should be treated as curated code, not as an arbitrary-code sandbox. Read the [plugin trust and permission model](https://docs.openvetta.com/plugins/manifest-and-permissions/) before distributing one.
 
 ## Data and build modes

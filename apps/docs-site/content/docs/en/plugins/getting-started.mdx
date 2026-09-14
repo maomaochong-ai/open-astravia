@@ -5,16 +5,46 @@ description: Create, build, and install a minimal Vetta desktop plugin.
 
 ## Prerequisites
 
-- Bun, TypeScript, and Vite.
-- React 19.
-- Vetta Desktop for installing and debugging the plugin.
+- Node or Bun.
+- Vetta Desktop, running — installing and hot reload both talk to the live app.
 
-Install the current public packages:
+You do **not** need a Vetta source checkout.
+
+## Scaffold in one command
 
 ```bash
-bun add @vetta-org/plugin-sdk@^0.1.1
-bun add -d @vetta-org/plugin-vite@^0.0.5 vite@^7 react@^19
+npx @vetta-org/plugin-cli init --id my-plugin --name "My Plugin"
+cd my-plugin && npm install
 ```
+
+You get `plugin.json`, a Vite + Module Federation config, a Tailwind entry, and an `AGENTS.md`
+brief.
+
+<Callout title="First step for an agent" type="info">
+  The manual ships inside `@vetta-org/plugin-sdk`, so it lands in `node_modules`. **Do not
+  hard-code that path** — a workspace may hoist the dependency to the repository root, and in a
+  multi-plugin repository each plugin can pin a different SDK version. Resolve it with a command:
+
+  ```bash
+  npx vetta-plugin-cli docs
+  ```
+
+  It prints the manual's absolute path and the SDK version it documents. Because the manual is
+  published with the SDK, the contract an agent reads is the contract this project compiles
+  against — fetching the latest docs from the network cannot offer that guarantee.
+</Callout>
+
+## The development loop
+
+```bash
+npm run dev            # Vite + Module Federation dev server
+npm run install:vetta  # build, package, install into the running desktop app
+npx vetta-plugin-cli watch      # hot reload: the host loads the plugin from this directory
+npx vetta-plugin-cli uninstall  # remove it
+```
+
+`install:vetta` hands the archive to the running desktop app, which validates, authorizes, and
+installs it. It never writes `~/.vetta/plugins` directly.
 
 ## Project structure
 
@@ -106,6 +136,37 @@ Choose the path for development debugging or release installation:
     </Steps>
   </Tab>
 </Tabs>
+
+## Publishing several abilities: a marketplace repository
+
+When one repository ships several abilities (plugins, MCP servers, skills, scenes), scaffold a
+marketplace:
+
+```bash
+npx @vetta-org/plugin-cli init hub --name my-market \
+  --repository https://github.com/me/my-market --min-app-version 0.55.0
+```
+
+That creates the `.vetta/marketplace.json` index, the `abilities/` layout, a repository-level
+`AGENTS.md`, and CI running `sync --check`. Add abilities by running `init` inside
+`abilities/plugins/<slug>` — **every development command acts on the nearest ability directory**,
+so working inside a marketplace is identical to working on a standalone plugin.
+
+The index carries fields derived from each ability package, reconciled by a tool rather than by
+hand:
+
+```bash
+npx vetta-plugin-cli sync          # pull derived fields, advance marketplaceVersion
+npx vetta-plugin-cli sync --check  # report only, non-zero exit — for CI
+```
+
+<Callout title="Three constraints that bite remotely" type="warn">
+  The host refuses to sync an entry whose `version` differs from the package. It will not install a
+  plugin whose `entry` or `styles` are missing from the published directory — clients do not build
+  for you, so those directories commit their `dist/`. And when `marketplaceVersion` does not change,
+  clients silently skip the update: no error, no new version for anyone. `sync --check` covers all
+  three.
+</Callout>
 
 ## Next steps
 

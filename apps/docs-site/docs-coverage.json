@@ -152,7 +152,7 @@
 		},
 		{
 			"id": "plugin-capabilities",
-			"source": ["packages/plugins/plugin-sdk", "packages/plugins/plugin-vite", "docs/plugin"],
+			"source": ["packages/plugins/plugin-sdk", "packages/plugins/plugin-vite", "packages/plugins/plugin-cli", "docs/plugin"],
 			"status": "partial",
 			"pages": ["/plugins/overview/", "/plugins/getting-started/", "/plugins/manifest-and-permissions/", "/plugins/extension-points/", "/plugins/capabilities/"]
 		},
