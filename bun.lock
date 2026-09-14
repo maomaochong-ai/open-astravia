@@ -554,7 +554,7 @@
     },
     "packages/plugins/plugin-cli": {
       "name": "@vetta-org/plugin-cli",
-      "version": "0.1.2",
+      "version": "0.1.6",
       "bin": {
         "vetta-plugin-cli": "./dist/cli.js",
       },
@@ -571,7 +571,7 @@
     },
     "packages/plugins/plugin-sdk": {
       "name": "@vetta-org/plugin-sdk",
-      "version": "0.3.1",
+      "version": "0.3.4",
       "dependencies": {
         "@sinclair/typebox": "^0.34.41",
         "@vetta-org/capability-sdk": "^0.1.0",
