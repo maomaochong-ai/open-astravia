@@ -3,6 +3,7 @@ import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { ActionRpcError, createActionRpcClient, readActionRpcEndpoint } from "@vetta/action-rpc";
 import { resolveNpmPluginArchive, type ResolvedNpmPluginArchive } from "./npm-package.js";
+import { initPluginProject } from "./init.js";
 import { findPluginHub, findPluginProject, readManualSdkVersion, resolveManualDir } from "./workspace.js";
 
 export type PluginAddCommand =
@@ -20,7 +21,12 @@ export type PluginDocsCommand =
 	| { type: "error"; message: string }
 	| { type: "docs"; json: boolean };
 
-export type PluginCommand = PluginAddCommand | PluginReloadCommand | PluginDocsCommand;
+export type PluginInitCommand =
+	| { type: "help" }
+	| { type: "error"; message: string }
+	| { type: "init"; targetDir?: string; pluginId: string; displayName?: string; json: boolean; registerInHub: boolean };
+
+export type PluginCommand = PluginAddCommand | PluginReloadCommand | PluginDocsCommand | PluginInitCommand;
 
 export interface PluginCommandDependencies {
 	resolveNpmArchive(packageSpec: string): Promise<ResolvedNpmPluginArchive>;
@@ -39,6 +45,7 @@ Usage:
   vetta-plugin-cli add <npm-package|zip-path|http-url> [--json]
   vetta-plugin-cli reload <plugin-id> [--json]
   vetta-plugin-cli docs [--json]
+  vetta-plugin-cli init --id <plugin-id> [--name <display>] [dir] [--no-hub] [--json]
 
 Examples:
   npx @vetta-org/plugin-cli add @example/vetta-plugin-demo
@@ -47,6 +54,7 @@ Examples:
   npx @vetta-org/plugin-cli add ./release/demo-1.2.0.zip
   npx @vetta-org/plugin-cli reload demo
   npx @vetta-org/plugin-cli docs
+  npx @vetta-org/plugin-cli init --id my-plugin --name "My Plugin"
 `;
 
 function formatParseError(error: unknown): string {
@@ -95,6 +103,41 @@ export function parsePluginDocsCommand(argv: string[]): PluginDocsCommand | unde
 	const [unexpected] = parsed.positionals;
 	if (unexpected) return { type: "error", message: `Unexpected argument: ${unexpected}` };
 	return { type: "docs", json: parsed.values.json === true };
+}
+
+export function parsePluginInitCommand(argv: string[]): PluginInitCommand | undefined {
+	if (argv[0] !== "init") return undefined;
+	if (argv[1] === "-h" || argv[1] === "--help") return { type: "help" };
+	let parsed: ReturnType<typeof parseArgs>;
+	try {
+		parsed = parseArgs({
+			args: argv.slice(1),
+			allowPositionals: true,
+			strict: true,
+			options: {
+				id: { type: "string" },
+				name: { type: "string" },
+				json: { type: "boolean" },
+				"no-hub": { type: "boolean" },
+			},
+		});
+	} catch (error) {
+		return { type: "error", message: formatParseError(error) };
+	}
+	const pluginId = parsed.values.id;
+	if (typeof pluginId !== "string" || pluginId.length === 0) {
+		return { type: "error", message: "Missing --id <plugin-id>" };
+	}
+	const [targetDir, unexpected] = parsed.positionals;
+	if (unexpected) return { type: "error", message: `Unexpected argument: ${unexpected}` };
+	return {
+		type: "init",
+		...(targetDir ? { targetDir } : {}),
+		pluginId,
+		...(typeof parsed.values.name === "string" ? { displayName: parsed.values.name } : {}),
+		json: parsed.values.json === true,
+		registerInHub: parsed.values["no-hub"] !== true,
+	};
 }
 
 async function defaultRunAction(actionId: string, input: unknown): Promise<unknown> {
@@ -242,6 +285,9 @@ export async function runPluginCommand(
 	if (command.type === "docs") {
 		return runDocsCommand(command, dependencies);
 	}
+	if (command.type === "init") {
+		return runInitCommand(command, dependencies);
+	}
 
 	let resolvedNpm: ResolvedNpmPluginArchive | undefined;
 	try {
@@ -346,11 +392,49 @@ function runDocsCommand(command: { json: boolean }, dependencies: PluginCommandD
 	return 0;
 }
 
+/** 在陌生目录里生成一个可直接开工的插件工程，并留下让任意 Agent 自举的 AGENTS.md。 */
+function runInitCommand(
+	command: Extract<PluginCommand, { type: "init" }>,
+	dependencies: PluginCommandDependencies,
+): number {
+	const cwd = dependencies.cwd?.() ?? process.cwd();
+	try {
+		const result = initPluginProject({
+			targetDir: resolve(cwd, command.targetDir ?? command.pluginId),
+			pluginId: command.pluginId,
+			displayName: command.displayName ?? command.pluginId,
+			registerInHub: command.registerInHub,
+		});
+		dependencies.writeStdout(
+			command.json
+				? `${JSON.stringify({ ok: true, ...result })}\n`
+				: [
+						`Created ${result.pluginId} at ${result.root}`,
+						result.hubManifestPath ? `Listed it in ${result.hubManifestPath}` : undefined,
+						"Next: npm install && npm run install:vetta",
+						"The agent brief is in AGENTS.md; the manual is at `npx vetta-plugin-cli docs`.",
+					]
+						.filter(Boolean)
+						.join("\n")
+						.concat("\n"),
+		);
+		return 0;
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		if (command.json) {
+			dependencies.writeStdout(`${JSON.stringify({ ok: false, error: { code: "PLUGIN_INIT_FAILED", message } })}\n`);
+		} else {
+			dependencies.writeStderr(`${message}\n`);
+		}
+		return 5;
+	}
+}
+
 export async function runPluginCli(argv: string[]): Promise<number> {
 	if (argv.length === 0 || argv[0] === "-h" || argv[0] === "--help") {
 		return runPluginAddCommand({ type: "help" });
 	}
-	const command = parsePluginAddCommand(argv) ?? parsePluginReloadCommand(argv) ?? parsePluginDocsCommand(argv);
+	const command = parsePluginAddCommand(argv) ?? parsePluginReloadCommand(argv) ?? parsePluginDocsCommand(argv) ?? parsePluginInitCommand(argv);
 	if (!command) {
 		process.stderr.write(`Unknown command: ${argv[0]}\n`);
 		return 2;

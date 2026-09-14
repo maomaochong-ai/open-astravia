@@ -1,17 +1,27 @@
 export {
 	parsePluginAddCommand,
 	parsePluginDocsCommand,
+	parsePluginInitCommand,
 	parsePluginReloadCommand,
 	type PluginAddCommand,
 	type PluginAddCommandDependencies,
 	type PluginCommand,
 	type PluginCommandDependencies,
 	type PluginDocsCommand,
+	type PluginInitCommand,
 	type PluginReloadCommand,
 	runPluginAddCommand,
 	runPluginCommand,
 	runPluginCli,
 } from "./command.js";
+export {
+	DEFAULT_SDK_RANGE,
+	DEFAULT_VITE_RANGE,
+	initPluginProject,
+	type InitPluginInput,
+	type InitPluginResult,
+} from "./init.js";
+export { renderAgentsGuide } from "./agents-template.js";
 export {
 	findPluginHub,
 	findPluginProject,
