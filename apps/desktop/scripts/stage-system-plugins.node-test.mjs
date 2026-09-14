@@ -3,34 +3,13 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { resolveSystemPluginSelection } from "./stage-system-plugins.mjs";
 
-const developmentPluginIds = [
-	"vetta-actions",
-	"vetta-ui-design",
-	"image-gen",
-	"media-viewer",
-	"office-viewer",
-	"svg-viewer",
-	"chart-renderer",
-	"git",
-	"plugin-workbench",
-	"comfyui-media-provider",
-	"content-creation",
-	"browser",
-];
-
-const productionPluginIds = [
-	"vetta-actions",
-	"vetta-ui-design",
-	"image-gen",
-	"media-viewer",
-	"office-viewer",
-	"svg-viewer",
-	"chart-renderer",
-	"git",
-	"plugin-workbench",
-	"browser",
-];
-
+// 清单的真源是 packages/plugins/tenants.json。这里不再抄一份：每加一个 preset 都要同步改
+// 两处，而这个测试要验的本来就是「按租户与 profile 取到正确的那一份、顺序不乱」，不是清单内容。
+const tenants = JSON.parse(
+	await readFile(new URL("../../../packages/plugins/tenants.json", import.meta.url), "utf8"),
+);
+const developmentPluginIds = tenants.profiles.development.common;
+const productionPluginIds = tenants.profiles.production.common;
 
 test("common keeps the full plugin set in development", () => {
 	const tenant = resolveSystemPluginSelection("common", "development");
