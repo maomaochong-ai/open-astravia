@@ -1,8 +1,9 @@
-import { existsSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { ActionRpcError, createActionRpcClient, readActionRpcEndpoint } from "@vetta/action-rpc";
 import { readLatestNpmVersion, resolveNpmPluginArchive, type ResolvedNpmPluginArchive } from "./npm-package.js";
+import { AGENTS_GUIDE_REVISION, readAgentsGuideRevision } from "./agents-template.js";
 import { initHubRepository, initPluginProject, refreshAgentsGuide } from "./init.js";
 import { describeIndexDrift, syncMarketplaceIndex } from "./sync.js";
 import { findPluginHub, findPluginProject, type PluginProject, readManualSdkVersion, resolveManualDir } from "./workspace.js";
@@ -567,6 +568,7 @@ async function runDocsCommand(
 	const sdkVersion = readManualSdkVersion(manualDir);
 	const latestVersion = command.checkLatest ? await dependencies.readLatestSdkVersion?.() : undefined;
 	const outdated = sdkVersion !== undefined && latestVersion !== undefined && compareSemver(sdkVersion, latestVersion) < 0;
+	const guide = inspectAgentsGuide(project?.root ?? hub?.root ?? cwd);
 
 	if (command.json) {
 		dependencies.writeStdout(
@@ -576,6 +578,7 @@ async function runDocsCommand(
 				entry: join(manualDir, "README.md"),
 				sdkVersion,
 				refreshCommand: SDK_REFRESH_COMMAND,
+				guide,
 				...(command.checkLatest ? { latestVersion, outdated } : {}),
 				project: project ? { root: project.root, pluginId: project.pluginId, version: project.version } : undefined,
 				hub: hub
@@ -604,6 +607,10 @@ async function runDocsCommand(
 		// 这条命令必须每次都打印：读到它的 Agent 手上的 AGENTS.md 往往也是同一天的快照。
 		lines.push(`Manual follows the installed SDK. To refresh it: ${SDK_REFRESH_COMMAND}`);
 	}
+	if (guide.stale) {
+		// 说明书同样是快照，而且用户没有理由回头看它。这里是唯一会被读到的位置。
+		lines.push(`This brief is stale (AGENTS.md revision ${guide.revision ?? "unstamped"} < ${AGENTS_GUIDE_REVISION}). Refresh it with: ${GUIDE_REFRESH_COMMAND}`);
+	}
 	if (hub) {
 		lines.push(`Marketplace index: ${hub.manifestPath}`);
 		// Agent 几乎一定会先跑 docs，所以这是告诉它「索引要对账」的最佳时机。
@@ -621,6 +628,40 @@ async function runDocsCommand(
  * CLI，它的输出是这条链路上唯一不会过期的位置。
  */
 const SDK_REFRESH_COMMAND = "npm i -D @vetta-org/plugin-sdk@latest && npx vetta-plugin-cli docs";
+
+/** 刷新说明书的命令。与手册各刷各的：一个随 SDK 走，一个随 CLI 走。 */
+const GUIDE_REFRESH_COMMAND = "npx @vetta-org/plugin-cli init --refresh-guide";
+
+export interface AgentsGuideStatus {
+	/** 本工程有没有 AGENTS.md。 */
+	readonly present: boolean;
+	/** 读到的版本戳；没有戳（模板早于版本戳，或是手写的）时缺省。 */
+	readonly revision?: number;
+	/** 落后于当前 CLI 的模板。没有 AGENTS.md 时为 false——那是「没有」，不是「旧」。 */
+	readonly stale: boolean;
+}
+
+/**
+ * 判断工程里的 AGENTS.md 是不是旧模板。
+ *
+ * 说明书凝固在 `init` 那天，而用户没有理由回头看它——所以「它旧了」这件事只能由每次都会被
+ * 跑到的 `docs` 说出来。没有版本戳的一律当作旧的：那是版本戳出现之前的模板。
+ */
+function inspectAgentsGuide(root: string): AgentsGuideStatus {
+	const path = join(root, "AGENTS.md");
+	if (!existsSync(path)) return { present: false, stale: false };
+	let revision: number | undefined;
+	try {
+		revision = readAgentsGuideRevision(readFileSync(path, "utf8"));
+	} catch {
+		return { present: true, stale: false };
+	}
+	return {
+		present: true,
+		...(revision === undefined ? {} : { revision }),
+		stale: revision === undefined || revision < AGENTS_GUIDE_REVISION,
+	};
+}
 
 /** 够用的 semver 比较：只看 major.minor.patch，预发布后缀一律当作小于正式版。 */
 function compareSemver(left: string, right: string): number {

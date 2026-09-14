@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { AGENTS_GUIDE_REVISION, renderAgentsGuide } from "../src/agents-template.js";
 import { parsePluginDocsCommand, runPluginCommand } from "../src/command.js";
 import { findPluginHub, findPluginProject, resolveManualDir } from "../src/workspace.js";
 
@@ -364,6 +365,79 @@ describe("docs command", () => {
 		expect(code).toBe(0);
 		expect(stdout).toContain("Could not reach the registry");
 		expect(stdout).not.toContain("behind");
+	});
+
+	it("calls out a brief written by an older CLI", async () => {
+		const root = scratch();
+		installManual(root, "0.3.2");
+		write(join(root, "plugin.json"), JSON.stringify({ id: "demo", version: "1.0.0" }));
+		// 版本戳出现之前的模板：没有戳就是旧的。
+		write(join(root, "AGENTS.md"), "# demo\n\n手写或旧模板，没有版本戳。\n");
+		let stdout = "";
+
+		const code = await runPluginCommand(
+			{ type: "docs", json: false, checkLatest: false },
+			{
+				cwd: () => root,
+				resolveNpmArchive: () => Promise.reject(new Error("unused")),
+				runAction: () => Promise.reject(new Error("unused")),
+				writeStdout: (value) => {
+					stdout += value;
+				},
+				writeStderr: () => {},
+			},
+		);
+
+		expect(code).toBe(0);
+		expect(stdout).toContain("This brief is stale");
+		expect(stdout).toContain("--refresh-guide");
+	});
+
+	it("stays quiet about a brief this CLI just wrote", async () => {
+		const root = scratch();
+		installManual(root, "0.3.2");
+		write(join(root, "plugin.json"), JSON.stringify({ id: "demo", version: "1.0.0" }));
+		write(join(root, "AGENTS.md"), renderAgentsGuide({ pluginId: "demo", displayName: "Demo" }));
+		let stdout = "";
+
+		const code = await runPluginCommand(
+			{ type: "docs", json: true, checkLatest: false },
+			{
+				cwd: () => root,
+				resolveNpmArchive: () => Promise.reject(new Error("unused")),
+				runAction: () => Promise.reject(new Error("unused")),
+				writeStdout: (value) => {
+					stdout += value;
+				},
+				writeStderr: () => {},
+			},
+		);
+
+		expect(code).toBe(0);
+		expect(JSON.parse(stdout).guide).toEqual({ present: true, revision: AGENTS_GUIDE_REVISION, stale: false });
+	});
+
+	it("does not call a missing brief stale", async () => {
+		const root = scratch();
+		installManual(root, "0.3.2");
+		write(join(root, "plugin.json"), JSON.stringify({ id: "demo", version: "1.0.0" }));
+		let stdout = "";
+
+		await runPluginCommand(
+			{ type: "docs", json: true, checkLatest: false },
+			{
+				cwd: () => root,
+				resolveNpmArchive: () => Promise.reject(new Error("unused")),
+				runAction: () => Promise.reject(new Error("unused")),
+				writeStdout: (value) => {
+					stdout += value;
+				},
+				writeStderr: () => {},
+			},
+		);
+
+		// 「没有」不是「旧」：工程可以根本不用这份说明书，不该每次都催。
+		expect(JSON.parse(stdout).guide).toEqual({ present: false, stale: false });
 	});
 
 	it("sends the caller into an ability directory when run at a hub root", async () => {

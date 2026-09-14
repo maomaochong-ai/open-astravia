@@ -1,3 +1,5 @@
+import { AGENTS_GUIDE_REVISION } from "./agents-template.js";
+
 /**
  * 能力市场仓库的骨架。
  *
@@ -9,7 +11,8 @@
  */
 
 export function renderHubAgentsGuide(input: { name: string }): string {
-	return `# ${input.name}
+	return `<!-- vetta-guide-revision: ${AGENTS_GUIDE_REVISION} -->
+# ${input.name}
 
 Vetta 能力市场仓库。本仓库索引若干**能力**（plugin / mcp / skill / scene / bundle），
 每个能力是 \`abilities/\` 下的一个自包含目录。

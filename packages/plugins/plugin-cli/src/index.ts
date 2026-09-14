@@ -10,6 +10,7 @@ export {
 	type PluginAddCommandDependencies,
 	type PluginCommand,
 	type PluginCommandDependencies,
+	type AgentsGuideStatus,
 	type PluginDocsCommand,
 	type PluginInitCommand,
 	type PluginSyncCommand,
@@ -32,7 +33,11 @@ export {
 	type InitPluginInput,
 	type InitPluginResult,
 } from "./init.js";
-export { renderAgentsGuide } from "./agents-template.js";
+export {
+	AGENTS_GUIDE_REVISION,
+	readAgentsGuideRevision,
+	renderAgentsGuide,
+} from "./agents-template.js";
 export { renderHubAgentsGuide, renderHubReadme, renderHubWorkflow } from "./hub-template.js";
 export {
 	type SyncChange,

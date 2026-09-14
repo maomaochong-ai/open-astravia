@@ -3,6 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { parsePluginInitCommand } from "../src/command.js";
+import {
+	AGENTS_GUIDE_REVISION,
+	readAgentsGuideRevision,
+	renderAgentsGuide,
+} from "../src/agents-template.js";
 import { initHubRepository, initPluginProject, refreshAgentsGuide } from "../src/init.js";
 
 const created: string[] = [];
@@ -266,5 +271,25 @@ describe("refreshing the agent brief in an existing directory", () => {
 
 	it("refuses a directory that is neither", () => {
 		expect(() => refreshAgentsGuide(scratch())).toThrow(/Not a plugin project or marketplace repository/);
+	});
+});
+
+describe("the brief stays thin", () => {
+	const guide = renderAgentsGuide({ pluginId: "demo", displayName: "Demo" });
+
+	it("carries a revision stamp that round-trips", () => {
+		expect(readAgentsGuideRevision(guide)).toBe(AGENTS_GUIDE_REVISION);
+	});
+
+	it("keeps the rules in the manual instead of the brief", () => {
+		// 写进说明书的规则会在所有存量工程里就地凝固。这几条属于手册——它随 SDK 升级一起到位。
+		for (const rule of ["Tailwind", "notify", "agent_mode", "workspace:*"]) {
+			expect(guide).not.toContain(rule);
+		}
+		const manual = readFileSync(join(__dirname, "..", "..", "..", "..", "docs", "plugin", "README.md"), "utf8");
+		expect(manual).toContain("## 不可违反的红线");
+		for (const rule of ["Tailwind", "notify", "agent_mode", "workspace:*"]) {
+			expect(manual).toContain(rule);
+		}
 	});
 });
