@@ -189,9 +189,9 @@ export function MessageListView({
 						<MessageFeedLayout.Viewport>
 							<MessageFeedLayout.Virtualizer asChild>
 								<MessageFeed.VirtualList
-									// 会话恢复先经过空数组时，不能让 Virtuoso 复用空列表的测量缓存；
-									// 首批历史消息到达后以完整列表重新建立锚点。
-									key={`${sessionId ?? "message-list"}:${messages.length === 0 ? "empty" : "loaded"}`}
+									// 不通过 React key 强制卸载列表。runtime 建立时 sessionId
+									// 可能从过渡值切到真实路径；强制 remount 会造成整屏闪烁。
+									// 会话切换的滚动重置由 useMessageFeedActiveItem.resetKey 负责。
 					virtuosoRef={scroll.virtuosoRef}
 					restoreStateFrom={scroll.restoreStateFrom}
 					scrollerRef={scroll.scrollerRef}

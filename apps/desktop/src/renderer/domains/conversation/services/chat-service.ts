@@ -796,6 +796,12 @@ function activateAssistantTurn(
 	if (last?.kind !== "agent") {
 		return ensureDraft(prev, startedAt)[0];
 	}
+	// The renderer may create the assistant draft before runtime agent_start.
+	// The later event adopts that draft; it must not reset the visible timer.
+	if (last.phase === "streaming" && last.endedAt === undefined) {
+		draftId = last.id;
+		return prev;
+	}
 
 	draftId = last.id;
 	const blocks = restorePendingTools
