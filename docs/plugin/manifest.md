@@ -318,14 +318,31 @@ revision 读取；不要依次调用多次 `writeFile()` 冒充多文件事务�
 { "id": "developer", "name": "%agent.developer.name%", "roles": ["developer"] }
 ```
 
-之后谁引用、引用几次，供货方都不需要知道。装机自带的这几个角色由预置插件供货，任何一台机器上都解析得到，可以放心引用：
+之后谁引用、引用几次，供货方都不需要知道。
 
-| 角色 | 供货插件 |
-| --- | --- |
-| `master` / `developer` / `researcher` / `auditor` / `business` | `preset-agent` |
-| `designer` | `vetta-ui-design` |
+#### 装机自带的智能体
 
-角色词表**不是白名单**：写表外的角色照样能解析，只是团队编辑器里没有现成的槽位选择器。
+下面这些由预置插件供货，**任何一台机器上都解析得到**，可以放心引用。`role` 一列就是写进 `members[].role` 的值；想钉死某一个人，用 `agent` 列的全名。
+
+来自 `preset-agent`（装机自带的五位）：
+
+| role | agent | 名称 | 擅长什么 |
+| --- | --- | --- | --- |
+| `master` | `preset-agent/master` | 主控 | 端到端负责目标：规划流程、分派每一步、验收或打回结果 |
+| `developer` | `preset-agent/developer` | 开发员 | 产出核心交付物：代码、成稿或一份做实的分析 |
+| `researcher` | `preset-agent/researcher` | 检索员 | 收集事实、文档、既有方案与市场信号，并逐条核实 |
+| `auditor` | `preset-agent/auditor` | 审计员 | 红队挑刺：正确性、安全、边界、回归与无依据的结论 |
+| `business` | `preset-agent/business` | 业务员 | 把目标落成需求、范围与商业模式，并说清假设与风险 |
+
+来自 `vetta-ui-design`：
+
+| role | agent | 名称 | 擅长什么 |
+| --- | --- | --- | --- |
+| `designer` | `vetta-ui-design/designer` | 设计师 | 在 Vetta 设计画布上产出界面：App 页面、落地页、幻灯片与海报 |
+
+这两个插件是**预置插件**，用户可以禁用但不会卸载。禁用时槽位按 `optional` 规则降级——用 `role` 引用它们的团队会少一名队员，重新启用后原样回来。
+
+角色词表**不是白名单**：写表外的角色照样能解析，只是团队编辑器里没有现成的槽位选择器。反过来，你的插件也可以给自己的智能体写上这几个 role，用户装了之后同一个槽位就多一个候选（本插件优先，其次按 `pluginId` 字典序）。
 
 **解析规则**（`BUILTIN_PLUGIN_AGENT_ROLES` 在 SDK 里导出）：
 
