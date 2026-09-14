@@ -46,16 +46,25 @@ npx @vetta-org/plugin-cli init --id <slug> --name "<Display Name>" abilities/plu
 
 ## 索引由工具对账，不要手改派生字段
 
-\`.vetta/marketplace.json\` 里能力的 \`version\`、\`config.api_version\`、\`config.permissions\`、
-\`config.commands\` 全都是从能力包推导出来的。改完能力后：
+改完能力后：
 
 \`\`\`bash
-npx @vetta-org/plugin-cli sync          # 回填派生字段，并推进 marketplaceVersion
+npx @vetta-org/plugin-cli sync          # 对账并回填，看输出
 npx @vetta-org/plugin-cli sync --check  # 只报不写，非零退出（CI 用）
 \`\`\`
 
+\`sync\` 到底做什么，分三档看清楚——它不是万能的：
+
+| 字段 | \`sync\` 的行为 |
+| --- | --- |
+| 条目 \`version\` | **回填**成能力包里的版本 |
+| \`marketplaceVersion\` | 内容有变化时**尝试**推进。只认 semver（\`1.2.3\`）和纯整数；\`YYYY.MM.DD-NN\` 之类的格式推不动，会报出来要你手改 |
+| \`config.api_version\` / \`config.permissions\` / \`config.commands\` | **不写**。宿主建目录时用 \`plugin.json\` 整个重算 \`config\`，索引里的副本读都不读。已经存在且与真源不符时 \`sync\` 会提醒你删掉或改对 |
+
+所以 \`sync\` 跑完要看输出：它报出来的问题（尤其是推不动的 \`marketplaceVersion\`）没人会替你处理。
+
 要**手写**的只有身份与展示：\`slug\`、\`name\`、\`description\`、\`source.path\`、\`category\`、\`tags\`、
-\`detail\`。新能力上架时手动加一条这样的条目，其余字段交给 \`sync\`。
+\`detail\`。新能力上架时手动加一条这样的条目。
 
 三条容易踩的约束，\`sync --check\` 会替你守住：
 
@@ -65,7 +74,7 @@ npx @vetta-org/plugin-cli sync --check  # 只报不写，非零退出（CI 用�
 | \`plugin.json\` 的 \`entry\` / \`styles\` 必须在已发布目录里真实存在 | 本地能装，市场上装不了 |
 | 改了任何内容必须换 \`marketplaceVersion\` | 客户端不报错、也不更新，用户永远收不到 |
 
-第三条最阴险——它不报错。
+第三条最阴险——它不报错。\`sync\` 只在版本号是 semver 或整数时才推得动，其余格式要你自己换。
 
 ## 为什么插件目录里要提交 \`dist/\`
 
