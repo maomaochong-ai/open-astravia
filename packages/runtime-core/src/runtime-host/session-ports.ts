@@ -79,6 +79,7 @@ export type RuntimeSessionState = Pick<
 	| "contextTokens"
 	| "contextWindow"
 	| "contextComposition"
+	| "contextState"
 	| "activeToolNames"
 	| "parentSessionPath"
 	| "parentEntryId"

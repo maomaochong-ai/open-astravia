@@ -7,6 +7,7 @@ import {
 	backgroundTasksBySessionAtom,
 	type ChatConversationItem,
 	chatMessagesAtom,
+	contextCompactionEligibilityAtom,
 	contextUsageAtom,
 	isCompactingAtom,
 	isReloadingMcpAtom,
@@ -85,6 +86,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 	const setRetryProgress = useSetAtom(retryProgressAtom);
 	const setLastTurnUsage = useSetAtom(lastTurnUsageAtom);
 	const setContextUsage = useSetAtom(contextUsageAtom);
+	const setCompactionEligibility = useSetAtom(contextCompactionEligibilityAtom);
 	const setIsCompacting = useSetAtom(isCompactingAtom);
 	const setIsReloadingMcp = useSetAtom(isReloadingMcpAtom);
 	const setBackgroundTasks = useSetAtom(backgroundTasksBySessionAtom);
@@ -178,6 +180,17 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 			// 只能证明「本实例最后打开的是它」。真正代表用户当前会话的是模块级 owner，
 			// 它在 openSession 一进入就被置空——切走后旧会话的事件到此为止。
 			if (getChatStreamOwner() !== sessionId) return;
+			if (event.type === "session.context.state") {
+				setContextUsage({
+					percent: event.state.usage.percent,
+					contextTokens: event.state.usage.tokens,
+					contextWindow: event.state.usage.contextWindow,
+					...(event.state.usage.composition ? { composition: event.state.usage.composition } : {}),
+				});
+				setIsCompacting(event.state.compaction.status === "running");
+				setCompactionEligibility(event.state.compaction.eligibility);
+				return;
+			}
 			// ── kernel 队列镜像（ADR-0060）──
 			// 条目「消失且非本端主动移除」= 已被 turn 消费：此刻补用户气泡，
 			// 时序与模型可见顺序严格一致；agent_end 重拉由乐观对账按文本吸收。
@@ -600,6 +613,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 			setRetryProgress,
 			setSubagents,
 			setTodoItems,
+			setCompactionEligibility,
 		],
 	);
 

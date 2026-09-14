@@ -124,6 +124,7 @@ export interface InputBarCommandModel {
 	readonly onTriggerChange: (trigger: TriggerMatch | null) => void;
 	readonly onSlashClose: () => void;
 	readonly onSlashSelect: (skill: SkillInfo, icon?: string) => void;
+	readonly allowCompaction?: boolean;
 	readonly onConnectorSelect: (connector: ConnectorGridItem) => void;
 	readonly onAtClose: () => void;
 	readonly onAtSelect: (selection: AtPanelSelection) => void;

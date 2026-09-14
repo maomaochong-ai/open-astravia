@@ -5,6 +5,7 @@ import { selectConversationDocumentMessages } from "../conversation/commands.js"
 import { applyStoredEventToConversationDocument, type ConversationDocument } from "../conversation/document.js";
 import { projectConversationDocumentHistory } from "../conversation/history-projection.js";
 import type { StoredConversation, StoredSessionEvent } from "../kernel/contracts.js";
+import type { ContextCompactionEligibility } from "../session-context-state.js";
 import type { RuntimeSessionState } from "./session-ports.js";
 
 export interface RuntimeSessionIdentity {
@@ -28,6 +29,7 @@ export type RuntimeDynamicState = Pick<
 /** 由 Runtime Composition Root 提供上下文和当前 Snapshot 的实时只读状态。 */
 export interface RuntimeStateSource {
 	read(): RuntimeDynamicState;
+	readCompactionEligibility?(document: ConversationDocument): ContextCompactionEligibility;
 }
 
 /**

@@ -1,4 +1,5 @@
 import type { ErrorEvent, SessionEvent } from "../contracts.js";
+import type { SessionContextStateEvent } from "../session-context-state.js";
 import type { RuntimeHostQueueSidecar } from "./runtime-host-queue-sidecar.js";
 import { baseSessionEvent, lifecycleSessionEvent, mapRuntimeSessionObservationEvent } from "./session-events.js";
 import type { RuntimeSessionEventStream } from "./session-ports.js";
@@ -45,6 +46,7 @@ export class RuntimeHostSessionEventRelay {
 	private readonly runningChangedHandlers = new Set<
 		(sessionPath: string, running: boolean, sessionId?: string, reason?: RunningChangedReason) => void
 	>();
+	private readonly contextStateEvents = new Map<string, SessionContextStateEvent>();
 
 	constructor(private readonly options: RuntimeHostSessionEventRelayOptions) {}
 
@@ -58,6 +60,7 @@ export class RuntimeHostSessionEventRelay {
 		this.inFlightBuffers.set(sessionKey, buffer);
 		const unsubscribe = eventStream.subscribe((unsequencedEvent) => {
 			const event = this.withSequence(sessionKey, unsequencedEvent);
+			if (event.type === "session.context.state") this.contextStateEvents.set(sessionKey, event);
 			this.options.synchronizeSessionIdentity(sessionKey, handle);
 			this.observeSessionError(event);
 			this.observeSessionCompaction(event);
@@ -122,6 +125,8 @@ export class RuntimeHostSessionEventRelay {
 			type: "active_tools_update",
 			activeToolNames: [...handle.stateReader.readState().activeToolNames],
 		});
+		const contextState = this.contextStateEvents.get(sessionKey);
+		if (contextState) this.notifyExternalSubscriber(sessionKey, handler, contextState);
 		this.replayInFlight(sessionKey, canonicalSessionId, handler);
 
 		let externals = this.externalSubscribers.get(sessionKey);
@@ -170,6 +175,7 @@ export class RuntimeHostSessionEventRelay {
 		this.externalSubscriberActiveToolFingerprints.delete(sessionKey);
 		this.currentTurnStartedAt.delete(sessionKey);
 		this.nextSequences.delete(sessionKey);
+		this.contextStateEvents.delete(sessionKey);
 		this.markRunning(sessionPath, false, sessionId);
 	}
 

@@ -88,6 +88,21 @@ describe("useCommandPanelModel context compaction", () => {
 		expect(onClose).toHaveBeenCalledOnce();
 	});
 
+	it("未绑定 Runtime 时不显示会话级压缩操作", () => {
+		const { result } = renderHook(() =>
+			useCommandPanelModel({
+				open: true,
+				onClose: vi.fn(),
+				onSelect: vi.fn(),
+				onSelectConnector: vi.fn(),
+				filter: "/",
+				allowCompaction: false,
+			}),
+		);
+
+		expect(result.current.viewProps.operation).toBeUndefined();
+	});
+
 	it("新会话没有可压缩上下文时不展示压缩操作", () => {
 		const store = getDefaultStore();
 		store.set(activeSessionAtom, null);
