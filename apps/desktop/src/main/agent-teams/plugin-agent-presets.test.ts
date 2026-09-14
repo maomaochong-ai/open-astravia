@@ -298,6 +298,65 @@ describe("plugin agent presets", () => {
 			expect(teams[0]?.members[1]?.providerPluginId).toBe("vetta-ui-design");
 		});
 
+		it("gives a borrowed member a brief that lives on the consumer's team", () => {
+			const { teams } = buildPluginAgentPresets({
+				plugins: [
+					consumer({
+						role: "developer",
+						responsibility: "Implements it.",
+						instructions: "Ship behind a flag; never touch the router.",
+					}),
+					provider(),
+				],
+				logger: logger(),
+				readResource,
+				readBinaryResource,
+			});
+
+			const borrowed = teams[0]!.members[1]!;
+			expect(borrowed.providerPluginId).toBe("preset-agent");
+			// 任务书挂在消费方的团队上，被引用的那一方的人设一个字都没动。
+			expect(borrowed.instructions).toBe("Ship behind a flag; never touch the router.");
+		});
+
+		it("reads a member brief from the consumer's own package", () => {
+			const { teams } = buildPluginAgentPresets({
+				plugins: [
+					consumer({
+						role: "developer",
+						responsibility: "Implements it.",
+						instructionsPath: "agent/dev-brief.md",
+					}),
+					provider(),
+				],
+				logger: logger(),
+				// 任务书从声明团队的那个插件里读，不是从供货方。
+				readResource: (plugin, path) =>
+					plugin.id === "vetta-ui-design" && path === "agent/dev-brief.md"
+						? "Follow the design tokens."
+						: readResource(),
+				readBinaryResource,
+			});
+
+			expect(teams[0]?.members[1]?.instructions).toBe("Follow the design tokens.");
+		});
+
+		it("drops a team whose member brief file is missing rather than shipping it silently truncated", () => {
+			const log = logger();
+			const { teams } = buildPluginAgentPresets({
+				plugins: [
+					consumer({ role: "developer", responsibility: "Implements it.", instructionsPath: "agent/gone.md" }),
+					provider(),
+				],
+				logger: log,
+				readResource: (_plugin, path) => (path === "agent/gone.md" ? undefined : "prompt"),
+				readBinaryResource,
+			});
+
+			expect(teams).toEqual([]);
+			expect(log.warn).toHaveBeenCalled();
+		});
+
 		it("refuses a team whose leader resolves to another plugin", () => {
 			const headless = plugin({
 				agent: {

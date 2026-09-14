@@ -204,6 +204,27 @@ describe("plugin agent preset backfill", () => {
 			expect(after?.document.teams.at(-1)?.members[0]?.id).toBe(designerMemberId);
 		});
 
+		it("writes the member brief into the assignment, leaving the leader's workflow alone", () => {
+			const briefed: PluginTeamPreset = {
+				...withDeveloper,
+				members: withDeveloper.members.map((member, index) =>
+					index === 1 ? { ...member, instructions: "Ship behind a flag." } : member,
+				),
+			};
+
+			const result = backfillPluginAgentPresets({
+				document: baseDocument(),
+				agents: [agentPreset, developerPreset],
+				teams: [briefed],
+			});
+
+			if (!result) throw new Error("expected a backfill result");
+			const team = result.document.teams.at(-1)!;
+			expect(team.members[0]?.assignment?.instructions).toBe(briefed.workflow);
+			expect(team.members[1]?.assignment?.instructions).toBe("Ship behind a flag.");
+			expect(team.members[1]?.assignment?.responsibility).toBe("Implements the frames.");
+		});
+
 		it("grows the roster once the provider shows up", () => {
 			const first = backfillPluginAgentPresets({
 				document: baseDocument(),

@@ -1,7 +1,13 @@
 import { createHash } from "node:crypto";
-import type { AgentProfile, AgentTeamDocument, TeamDefinition, TeamMember } from "@vetta/agent-team";
+import type {
+	AgentProfile,
+	AgentTeamDocument,
+	TeamDefinition,
+	TeamMember,
+	TeamMemberAssignment,
+} from "@vetta/agent-team";
 import { normalizeMentionHandle } from "@vetta/agent-team";
-import type { PluginAgentPreset, PluginTeamPreset } from "./plugin-agent-presets.js";
+import type { PluginAgentPreset, PluginTeamPreset, PluginTeamPresetMember } from "./plugin-agent-presets.js";
 
 export interface PluginPresetBackfillInput {
 	readonly document: AgentTeamDocument;
@@ -197,13 +203,32 @@ function growTeamRoster(
 			id: pluginTeamMemberId(preset.pluginId, preset.teamId, member.slotKey),
 			handle: allocateHandle(profile.mentionHandle, handles),
 			binding: { kind: "reference", agentProfileId: profile.id },
-			assignment: { responsibility: member.responsibility },
+			// 补员永远追加在队尾，不会成为队长，所以这里的 index 取一个非 0 值即可。
+			assignment: memberAssignment(preset, member, members.length),
 		});
 		bound.add(profile.id);
 		changed = true;
 	}
 
 	return changed ? members : undefined;
+}
+
+/**
+ * 一名成员的团队内交待。
+ *
+ * 队长带的是团队级的流水线任务书（`workflow`），其余成员各带自己的 `instructions`——清单校验
+ * 已经拦过「队长又写自己的任务书」，所以这里两者不会同时出现。
+ */
+function memberAssignment(
+	preset: PluginTeamPreset,
+	member: PluginTeamPresetMember,
+	index: number,
+): TeamMemberAssignment {
+	const instructions = index === 0 ? preset.workflow : member.instructions;
+	return {
+		responsibility: member.responsibility,
+		...(instructions ? { instructions } : {}),
+	};
 }
 
 function findLibraryProfile(agents: readonly AgentProfile[], blueprintId: string): AgentProfile | undefined {
@@ -220,11 +245,7 @@ function resolveTeamMembers(preset: PluginTeamPreset, agents: readonly AgentProf
 			id: pluginTeamMemberId(preset.pluginId, preset.teamId, member.slotKey),
 			handle: allocateHandle(profile.mentionHandle, handles),
 			binding: { kind: "reference", agentProfileId: profile.id },
-			assignment: {
-				responsibility: member.responsibility,
-				// 队长带这支团队的流水线任务书，其余成员只有职责说明。
-				...(index === 0 && preset.workflow ? { instructions: preset.workflow } : {}),
-			},
+			assignment: memberAssignment(preset, member, index),
 		});
 	}
 	return members.length > 0 ? members : undefined;

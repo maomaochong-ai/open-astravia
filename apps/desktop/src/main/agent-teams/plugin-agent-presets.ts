@@ -44,6 +44,13 @@ export interface PluginTeamPresetMember {
 	/** 经角色槽位解析到的话，这里是角色 slug。 */
 	readonly role?: string;
 	readonly responsibility: string;
+	/**
+	 * 这名成员在本团队里的任务书。
+	 *
+	 * 挂在团队上，不碰对方的人设——跨插件拉来的成员因此可以被交待本团队的做事方式，而它在
+	 * 别处照旧。队长的任务书走团队级的 {@link PluginTeamPreset.workflow}。
+	 */
+	readonly instructions?: string;
 }
 
 export interface PluginTeamPreset {
@@ -222,6 +229,8 @@ interface DeclaredTeamMember {
 	readonly role?: string;
 	readonly responsibility: string;
 	readonly optional?: boolean;
+	readonly instructions?: string;
+	readonly instructionsPath?: string;
 }
 
 /**
@@ -286,12 +295,20 @@ function buildTeamPreset(
 			if (isMemberRequired(member)) throw new Error(`team member cannot be resolved: ${slotKey}`);
 			continue;
 		}
+		// 任务书从消费方的包里读：写它的人是声明这支团队的插件，不是被引用的那一方。
+		const instructions = member.instructionsPath
+			? readTextResource(plugin, member.instructionsPath, input)
+			: member.instructions;
+		if (member.instructionsPath && !instructions) {
+			throw new Error(`team member brief is missing: ${member.instructionsPath}`);
+		}
 		members.push({
 			slotKey,
 			blueprintId: pluginBlueprintId(resolved.pluginId, resolved.agentId),
 			providerPluginId: resolved.pluginId,
 			...(member.role ? { role: member.role } : {}),
 			responsibility: member.responsibility,
+			...(instructions?.trim() ? { instructions: instructions.trimEnd() } : {}),
 		});
 	}
 
