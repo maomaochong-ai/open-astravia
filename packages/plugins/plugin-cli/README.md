@@ -1,5 +1,31 @@
 # @vetta-org/plugin-cli
 
+Create, document and install Vetta Desktop plugins from any directory.
+
+## Start a plugin
+
+```bash
+npx @vetta-org/plugin-cli init --id my-plugin --name "My Plugin"
+cd my-plugin && npm install
+npm run install:vetta      # build → pack → install into the running Desktop
+```
+
+The scaffold includes an `AGENTS.md` brief so a coding agent can pick the project up without any
+host-side setup. Inside a marketplace hub (a repository with `.vetta/marketplace.json`) the new
+plugin is also listed in that manifest.
+
+## Find the manual
+
+```bash
+npx @vetta-org/plugin-cli docs
+```
+
+Prints where the manual bundled with the installed `@vetta-org/plugin-sdk` lives, which SDK version
+it documents, and which plugin (and hub) the current directory belongs to. The manual is always the
+one this project compiles against, so it never describes contracts the user's host lacks.
+
+## Install a plugin
+
 Install an npm-distributed plugin into the running Vetta Desktop app:
 
 ```bash

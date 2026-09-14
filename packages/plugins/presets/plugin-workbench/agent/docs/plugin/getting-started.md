@@ -2,6 +2,48 @@
 
 从零搭建、构建、安装、调试一个 Vetta 桌面插件。
 
+## 0. 在仓库外开发（推荐给 Agent）
+
+你不需要 Vetta 的源码仓库，也不需要插件工作台。任意空目录里：
+
+```bash
+npx @vetta-org/plugin-cli init --id my-plugin --name "My Plugin"
+cd my-plugin && npm install
+```
+
+脚手架会落下一份 `AGENTS.md`，把「先读手册再写代码」这条规矩和构建安装闭环交代清楚。
+
+**手册就在工程里**——它随 `@vetta-org/plugin-sdk` 一起装进 `node_modules`：
+
+```bash
+npx vetta-plugin-cli docs      # 打印手册目录绝对路径 + 它对应的 SDK 版本
+```
+
+**不要硬编码那个路径**：工作区可能把依赖提升到仓库根，一仓多插件时各插件还可能钉不同的
+SDK 版本。这条命令按 Node 的解析规则找，拿回来的永远是当前工程实际编译所针对的那一份。
+
+这一点很重要：手册与 SDK 同版本发布，因此它描述的合同**就是你即将编译的合同**。从网络现取
+最新文档做不到这一点——那会教你写出用户宿主还不支持的东西，而 UI 槽位这类缺失不会在构建期
+暴露，装上去只是静默跳过。
+
+装进正在运行的 Vetta：
+
+```bash
+npm run install:vetta          # = vite build && vetta-plugin pack && vetta-plugin-cli add .
+npx vetta-plugin-cli reload my-plugin   # 提示有 pending 版本时
+```
+
+`add` 传目录即可（`add .`）：它向上找到最近的 `plugin.json`，再定位该工程打出来的归档，
+交给正在运行的 Desktop 校验、授权、安装，**不直接写** `~/.vetta/plugins`。
+
+### 一仓多插件（能力市场 hub）
+
+仓库根有 `.vetta/marketplace.json` 时（如官方能力市场那种布局），命令一律作用于「最近的那个
+插件」，所以先 `cd` 进目标插件目录。在 hub 里 `init` 还会把新插件登记进那份索引——手动维护它
+是最容易漏的一步，插件建好了能装能跑、市场上却看不到。
+
+站在 hub 根执行 `add .` 会被拒绝并要求指明插件：一仓多插件时猜一个出来比报错更糟。
+
 ## 前置条件
 
 - Node / Bun（仓库统一用 [Bun](https://bun.sh)）。

@@ -1,6 +1,7 @@
 # 提交约束（Git Commit Discipline）
 
 > **最高约束层级与继承关系（Mandatory）**：
+> 0. 提交代码时不要携带`Co-Authored-By`和`Claude-Session`信息
 > 1. **全局主控**：`AGENTS.md` 是全局 **Vibe Coding 的最高统领约束**，具有顶层效力，所有 Agent 必须无条件全量遵守。
 > 2. **局部特化**：本 `CLAUDE.md` 是专门针对 **Claude Code** 场景的补充与强化约束。
 > 3. **冲突裁决**：若本文件与 `AGENTS.md` 存在细节冲突，以 `AGENTS.md` 为准；两者均未冲突时，必须同时满足两者的全部要求。任何违背均判定为任务失败。
