@@ -110,7 +110,26 @@ export function syncMarketplaceIndex(input: SyncInput): SyncResult {
 		const entry = raw as Record<string, unknown>;
 		const slug = typeof entry.slug === "string" ? entry.slug : "(unnamed)";
 		const type = typeof entry.type === "string" ? entry.type : "";
-		if (type === "bundle") continue; // bundle 只组合成员，没有自己的身份文件。
+		if (type === "bundle") {
+			// bundle 成员刻意不独立上架（索引的 abilities 是「独立上架条目」）。把它们的目录
+			// 记为已登记，否则会被当成漏登记的能力报出来。
+			const bundleConfig =
+				typeof entry.config === "object" && entry.config !== null && !Array.isArray(entry.config)
+					? (entry.config as Record<string, unknown>)
+					: undefined;
+			for (const member of Array.isArray(bundleConfig?.members) ? (bundleConfig.members as unknown[]) : []) {
+				if (typeof member !== "object" || member === null || Array.isArray(member)) continue;
+				const memberSource = (member as Record<string, unknown>).source;
+				const memberPath =
+					typeof memberSource === "object" && memberSource !== null && !Array.isArray(memberSource)
+						? (memberSource as Record<string, unknown>).path
+						: undefined;
+				if (typeof memberPath !== "string") continue;
+				const dir = resolveAbilityDir(input.hubRoot, memberPath);
+				if (dir) listedDirs.add(dir);
+			}
+			continue;
+		}
 
 		const source = typeof entry.source === "object" && entry.source !== null ? (entry.source as Record<string, unknown>) : undefined;
 		const sourcePath = typeof source?.path === "string" ? source.path : undefined;
@@ -179,26 +198,28 @@ function reconcilePlugin(context: {
 		entry.version = manifest.version;
 	}
 
-	const config = typeof entry.config === "object" && entry.config !== null && !Array.isArray(entry.config)
-		? (entry.config as Record<string, unknown>)
-		: {};
-	if (typeof manifest.pluginApiVersion === "string" && config.api_version !== manifest.pluginApiVersion) {
-		changes.push({ slug, field: "api_version", from: config.api_version, to: manifest.pluginApiVersion });
-		config.api_version = manifest.pluginApiVersion;
-	}
-	const permissions = stringArray(manifest.permissions) ?? [];
-	if (!sameStringArray(config.permissions, permissions)) {
-		changes.push({ slug, field: "permissions", from: config.permissions, to: permissions });
-		config.permissions = permissions;
-	}
-	const commands = stringArray(manifest.commands) ?? [];
-	if (commands.length > 0 || Array.isArray(config.commands)) {
-		if (!sameStringArray(config.commands, commands)) {
-			changes.push({ slug, field: "commands", from: config.commands, to: commands });
-			config.commands = commands;
+	// api_version / permissions / commands 刻意不回填：宿主在建目录时用 plugin.json 推导的值
+	// 整个覆盖 config，索引里写什么都会被重算掉。写进去只会多一份会漂移的副本，所以只在它
+	// 已经存在且与真源不符时提醒作者删掉或改对。
+	const config =
+		typeof entry.config === "object" && entry.config !== null && !Array.isArray(entry.config)
+			? (entry.config as Record<string, unknown>)
+			: undefined;
+	if (config) {
+		if (typeof config.api_version === "string" && config.api_version !== manifest.pluginApiVersion) {
+			problems.push({
+				slug,
+				message: `config.api_version ${JSON.stringify(config.api_version)} disagrees with plugin.json (${JSON.stringify(manifest.pluginApiVersion)}); the host derives this field, so drop the copy or fix it`,
+			});
+		}
+		const declared = stringArray(manifest.permissions) ?? [];
+		if (Array.isArray(config.permissions) && !sameStringArray(config.permissions, declared)) {
+			problems.push({
+				slug,
+				message: "config.permissions disagrees with plugin.json; the host derives this field, so drop the copy or fix it",
+			});
 		}
 	}
-	entry.config = config;
 
 	// 宿主按 plugin.json 直接读目录，不会替作者构建：产物不在仓库里就是装不上。
 	const entryFile = typeof manifest.entry === "string" ? manifest.entry : undefined;

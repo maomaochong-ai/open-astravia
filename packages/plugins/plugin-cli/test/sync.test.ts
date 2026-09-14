@@ -89,32 +89,52 @@ describe("reconciling the index", () => {
 		expect(result.written).toBe(false);
 	});
 
-	it("pulls version, api version and permissions from plugin.json", () => {
+	it("pulls the version from plugin.json and advances the snapshot", () => {
 		const root = scratch();
 		const manifestPath = writeIndex(root, [listedPlugin()]);
-		writePlugin(root, "abilities/plugins/demo", {
-			...basePluginManifest,
-			version: "1.1.0",
-			pluginApiVersion: "^2.1.0",
-			permissions: ["fs.read", "network.fetch"],
-		});
+		writePlugin(root, "abilities/plugins/demo", { ...basePluginManifest, version: "1.1.0" });
 
 		const result = syncMarketplaceIndex({ hubRoot: root, manifestPath, apply: true });
 
-		expect(result.changes.map((change) => change.field)).toEqual([
-			"version",
-			"api_version",
-			"permissions",
-			"marketplaceVersion",
-		]);
+		expect(result.changes.map((change) => change.field)).toEqual(["version", "marketplaceVersion"]);
 		const written = JSON.parse(readFileSync(manifestPath, "utf8")) as {
 			marketplaceVersion: string;
-			abilities: { version: string; config: { api_version: string; permissions: string[] } }[];
+			abilities: { version: string }[];
 		};
 		expect(written.abilities[0]?.version).toBe("1.1.0");
-		expect(written.abilities[0]?.config.permissions).toEqual(["fs.read", "network.fetch"]);
 		// 内容变了却不换 marketplaceVersion，客户端不会拉新快照，而且不报错。
 		expect(written.marketplaceVersion).toBe("1.0.1");
+	});
+
+	it("does not write fields the host derives, but flags a stale copy of them", () => {
+		const root = scratch();
+		const manifestPath = writeIndex(root, [listedPlugin({ config: { api_version: "^1.0.0" } })]);
+		writePlugin(root, "abilities/plugins/demo", basePluginManifest);
+
+		const result = syncMarketplaceIndex({ hubRoot: root, manifestPath, apply: true });
+
+		// 宿主建目录时用 plugin.json 推导的值整个覆盖 config，索引里的副本只会误导读者。
+		expect(result.changes).toEqual([]);
+		expect(result.problems[0]?.message).toContain("the host derives this field");
+	});
+
+	it("counts bundle members as accounted for", () => {
+		const root = scratch();
+		const manifestPath = writeIndex(root, [
+			{
+				type: "bundle",
+				slug: "suite",
+				name: "Suite",
+				version: "1.0.0",
+				config: { members: [{ type: "plugin", slug: "demo", source: { path: "abilities/plugins/demo" } }] },
+			},
+		]);
+		writePlugin(root, "abilities/plugins/demo", basePluginManifest);
+
+		const result = syncMarketplaceIndex({ hubRoot: root, manifestPath, apply: false });
+
+		// 索引的 abilities 是「独立上架条目」；bundle 成员刻意不单独列，不该被报成漏登记。
+		expect(result.unlisted).toEqual([]);
 	});
 
 	it("leaves the file alone in check mode", () => {
