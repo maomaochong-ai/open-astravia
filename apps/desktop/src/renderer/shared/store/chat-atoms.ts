@@ -193,6 +193,8 @@ export const attachedImagesAtom = atom<AttachedImage[]>([]);
 export const activeSessionAtom = atom<ActiveSession | null>(null);
 export const pendingSessionCreationAtom = atom<PendingSessionCreation | null>(null);
 export const pendingSessionOpenAtom = atom<PendingSessionOpen | null>(null);
+/** 已接受发送、但新会话/runtime 尚未准备好的 UI 过渡态。 */
+export const pendingSessionSendAtom = atom<{ messageId: string; interactionId: string } | null>(null);
 
 const LAST_ACTIVE_SESSION_STORAGE_KEY = "vetta-last-active-session";
 
@@ -256,6 +258,10 @@ export const isStreamingAtom = atom<boolean>((get) => {
 	if (!active.sessionPath) return false;
 	return get(runningSessionPathsAtom).has(active.sessionPath);
 });
+/** 面向输入栏和会话视图的忙碌态，包含新会话创建期间的发送过渡。 */
+export const isConversationBusyAtom = atom<boolean>(
+	(get) => get(isStreamingAtom) || get(pendingSessionSendAtom) !== null,
+);
 function getStoredExecutionMode(): SessionExecutionMode {
 	return localStorage.getItem("vetta-session-execution-mode") === "sandbox" ? "sandbox" : "full-access";
 }

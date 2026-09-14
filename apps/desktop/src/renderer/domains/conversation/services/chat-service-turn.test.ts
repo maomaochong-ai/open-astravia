@@ -36,6 +36,14 @@ describe("assistant turn projection", () => {
 		expect(withText.at(-1)).toMatchObject({ kind: "agent", text: "first token" });
 	});
 
+	it("does not reset the timer when runtime adopts the pre-rendered draft", () => {
+		const started = startAssistantTurn([createConversationUserMessage({ id: "user-1", text: "hello" })], 1000);
+		const adopted = startAssistantTurn(started, 9000);
+
+		expect(adopted).toBe(started);
+		expect(adopted.at(-1)).toMatchObject({ phase: "streaming", startedAt: 1000 });
+	});
+
 	it("restores an in-flight turn even when history has no assistant after the latest user", () => {
 		const startedAt = 1_700_000_000_000;
 		const messages: ChatConversationItem[] = [createConversationUserMessage({ id: "user-1", text: "slow request" })];

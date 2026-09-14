@@ -1,6 +1,9 @@
 import { perfSendBegin, perfSendMark } from "@shared/lib/perf-send";
 import type { OpenSessionOptions, SendMessageOptions, SessionExecutionMode } from "@shared/store/atoms";
+import { chatMessagesAtom, pendingSessionSendAtom } from "@shared/store/atoms";
+import { getDefaultStore } from "jotai";
 import { useCallback, useRef } from "react";
+import { startAssistantTurn } from "../../services/chat-service";
 import { restoreStagedNewSessionSend, stageNewSessionSend } from "../../services/staged-new-session-send";
 import type { SendInteractionContext } from "../input-bar/types";
 
@@ -45,12 +48,22 @@ export function useNewSessionSend(options: NewSessionSendOptions): {
 				if (!targetCwd) return;
 				const stagedInput = stageNewSessionSend(overrideText, interactionId);
 				if (!stagedInput) return;
+				getDefaultStore().set(pendingSessionSendAtom, {
+					messageId: stagedInput.optimisticMessage.id,
+					interactionId,
+				});
+				// 发送意图确认后立即建立 assistant 草稿，头像/名称与暂停按钮同帧出现；
+				// 后续 session.create、订阅和 prompt 只负责让该草稿进入正式流式生命周期。
+				getDefaultStore().set(chatMessagesAtom, (prev) => startAssistantTurn(prev, Date.now()));
 				await openSession(targetCwd, undefined, executionMode, {
 					interactionId,
 					...(agentProfileId ? { agentProfileId } : {}),
 					navigateBeforeCreate: true,
 					preserveMessagesBeforeCreate: true,
-					onCreateError: () => restoreStagedNewSessionSend(stagedInput),
+					onCreateError: () => {
+						getDefaultStore().set(pendingSessionSendAtom, null);
+						restoreStagedNewSessionSend(stagedInput);
+					},
 					onPromptReady: async () => {
 						await sendMessage(undefined, { interactionId, stagedInput }).catch((error: unknown) => {
 							console.error("[useNewSessionSend] prompt-ready send failed", error);

@@ -9,7 +9,7 @@ import {
 	emptySessionInputActionState,
 	getProjectDisplayName,
 	inlineFilePreviewContextReadonlyAtom,
-	isStreamingAtom,
+	isConversationBusyAtom,
 	loadInputActionStateForSession,
 	pageHeaderTitleAtom,
 	pendingSessionOpenAtom,
@@ -42,7 +42,7 @@ export function useChatViewModel(): ChatViewModelResult {
 	const activeSessionCwd = useAtomValue(activeSessionCwdAtom);
 	const pendingSessionOpen = useAtomValue(pendingSessionOpenAtom);
 	const messages = useAtomValue(chatMessagesAtom);
-	const isStreaming = useAtomValue(isStreamingAtom);
+	const isStreaming = useAtomValue(isConversationBusyAtom);
 	const [panelOpen, setPanelOpen] = useAtom(activityPanelOpenAtom);
 	const setHeaderTitle = useSetAtom(pageHeaderTitleAtom);
 	const inlinePreviewActive = useAtomValue(inlineFilePreviewContextReadonlyAtom) !== null;

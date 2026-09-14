@@ -4,7 +4,7 @@ import {
 	focusInputRequestAtom,
 	getTodoItemsForSession,
 	inputValueAtom,
-	isStreamingAtom,
+	isConversationBusyAtom,
 	mentionedFilesAtom,
 	pendingMcpElicitationsAtom,
 	pendingMessageEditAtom,
@@ -27,7 +27,7 @@ import { inputBlankAtom, inputImagePathsAtom, inputPlaceholderVisibleAtom } from
 
 export function useInputBarSessionSource(cwdOverride?: string) {
 	const activeSession = useAtomValue(activeSessionAtom);
-	const isStreaming = useAtomValue(isStreamingAtom);
+	const isStreaming = useAtomValue(isConversationBusyAtom);
 	const isBlank = useAtomValue(inputBlankAtom);
 	const placeholderVisible = useAtomValue(inputPlaceholderVisibleAtom);
 	const focusInputRequest = useAtomValue(focusInputRequestAtom);

@@ -35,6 +35,7 @@ import {
 	pendingMessageEditAtom,
 	pendingSessionCreationAtom,
 	pendingSessionOpenAtom,
+	pendingSessionSendAtom,
 	pluginInputActionsAtom,
 	projectsAtom,
 	promptAttachmentAtom,
@@ -53,7 +54,14 @@ import type { PromptAttachmentRef, PromptRequest } from "@vetta/runtime-core";
 import type { PluginPromptContext } from "@vetta-org/plugin-sdk";
 import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useRef } from "react";
-import { appendError, fullHistoryToChat, isUserImageFile, nextId, toChatErrorDetails } from "../services/chat-service";
+import {
+	appendError,
+	fullHistoryToChat,
+	isUserImageFile,
+	nextId,
+	startAssistantTurn,
+	toChatErrorDetails,
+} from "../services/chat-service";
 import { rememberOptimisticUserMessage } from "../services/optimistic-user-message-cache";
 import { getSessionRuntimeWhenReady } from "../services/session-runtime-readiness";
 import {
@@ -545,6 +553,11 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			promptReq.streamingBehavior = options?.streamingBehavior ?? "followUp";
 			let sendResult: SendMessageResult | undefined;
 			try {
+				if (stagedInput) {
+					getDefaultStore().set(pendingSessionSendAtom, null);
+					setChatMessages((prev) => startAssistantTurn(prev, Date.now()));
+					setActiveSessionStreaming(true);
+				}
 				perfSendMark("await-plugin-host", interactionId);
 				// 只等首次激活：热重载期间旧工具注册仍有效（last-known-good），
 				// 不再让插件集合变化把每次发送挡住最长 5 秒。
