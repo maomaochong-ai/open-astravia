@@ -589,7 +589,7 @@
     },
     "packages/plugins/plugin-vite": {
       "name": "@vetta-org/plugin-vite",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "bin": {
         "vetta-plugin": "./dist/cli.js",
       },
@@ -1087,7 +1087,7 @@
     },
     "packages/theme-ui": {
       "name": "@vetta-org/theme-ui",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
         "@codemirror/lang-css": "^6.3.1",
         "@codemirror/lang-html": "^6.4.11",

@@ -2,6 +2,14 @@
 
 All notable changes to `@vetta-org/theme-ui` are documented in this file.
 
+## [0.1.1] — 2026-09-14
+
+### Fixed
+
+- 依赖 `@vetta-org/theme-sdk` 与 `@vetta-org/ui` 改用 registry semver。0.1.0 把它们以
+  `workspace:*` 发了出去，而那是 bun/pnpm 的协议、npm 不认，导致该版本在任何地方都装不上。
+  仓库内仍解析到本地包（版本匹配），行为不变。
+
 ## [0.1.0] — 2026-09-14
 
 首次发布到 npm。此前只作为 workspace 包在仓库内引用，但官方能力市场里的 shimo 插件依赖它，
