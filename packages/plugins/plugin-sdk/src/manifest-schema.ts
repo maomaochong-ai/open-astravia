@@ -258,6 +258,26 @@ export const PluginSkillPresentationSchema = Type.Object(
 	{ additionalProperties: false },
 );
 
+/** 角色 slug。跨插件引用的唯一词汇表，格式与智能体 id 一致。 */
+export const PluginAgentRoleSchema = Type.String({ pattern: "^[a-z0-9][a-z0-9-]{0,63}$" });
+
+/**
+ * 宿主认识的角色词表。
+ *
+ * **不是白名单**：写表外的角色照样能被解析，只是团队编辑器里没有现成的槽位选择器。列在这里
+ * 的角色由预置插件供货，因此任何一台装机上都解析得到，第三方插件可以放心引用。
+ */
+export const BUILTIN_PLUGIN_AGENT_ROLES = [
+	"master",
+	"developer",
+	"researcher",
+	"auditor",
+	"business",
+	"designer",
+] as const;
+
+export type BuiltinPluginAgentRole = (typeof BUILTIN_PLUGIN_AGENT_ROLES)[number];
+
 /** 插件贡献的智能体（blueprint）。人设、头像、职责都由插件提供，宿主只负责铺档案。 */
 export const PluginAgentProfileManifestSchema = Type.Object(
 	{
@@ -286,21 +306,40 @@ export const PluginAgentProfileManifestSchema = Type.Object(
 		 * 哪个老角色。
 		 */
 		legacyIds: Type.Optional(Type.Array(NonWhitespaceStringSchema, { maxItems: 16 })),
+		/**
+		 * 本智能体能顶的角色 slug（≤ 8 个）。
+		 *
+		 * 声明了角色，别的插件就能用 `teams[].members[].role` 槽位引用到它，而不必知道它属于
+		 * 哪个插件。这是提供方唯一要做的事——被谁引用、引用几次，提供方都不需要知道。
+		 */
+		roles: Type.Optional(Type.Array(PluginAgentRoleSchema, { maxItems: 8 })),
 	},
 	{ additionalProperties: false },
 );
 
 /**
- * 插件贡献的团队成员。
+ * 插件贡献的团队成员。`agent` 与 `role` 二选一，必须恰好写一个。
  *
- * `agent` 只能写本插件 `agents[]` 里的智能体 id。刻意不支持引用别的插件——那会让一个插件的
- * 可用性取决于另一个插件是否安装；宿主也没有内置人设可引用，装机自带的那几位同样由预置
- * 插件提供。引用不到的成员会让这一支团队整体被跳过。
+ * - `agent`：**实体引用**。`<agentId>` 指本插件的智能体，`<pluginId>/<agentId>` 指别的插件的。
+ * - `role`：**角色槽位**。只声明「这里需要一个什么角色」，由宿主在全部已启用插件里解析。
+ *
+ * 推荐用角色槽位：消费方只耦合到一个角色名，提供方换人、换插件、被第三方取代都不影响它，
+ * 用户还能把槽位改绑到自己调教过的智能体。实体引用留给「就是要那个人」的场合。
+ *
+ * 跨插件引用不再被拒，但它带来的「提供方可能不在」由 `optional` 兜底，而不是让整支团队消失。
  */
 export const PluginAgentTeamMemberManifestSchema = Type.Object(
 	{
-		agent: NonWhitespaceStringSchema,
+		agent: Type.Optional(NonWhitespaceStringSchema),
+		role: Type.Optional(PluginAgentRoleSchema),
 		responsibility: Type.String({ maxLength: 2_000 }),
+		/**
+		 * 解析不到这名成员时，是否照常发布这支团队。
+		 *
+		 * 缺省值按引用方式走：本插件的实体引用为 `false`（自己的东西缺了就是配置错误），跨插件
+		 * 实体引用与角色槽位为 `true`（提供方本来就可能不在场）。
+		 */
+		optional: Type.Optional(Type.Boolean()),
 	},
 	{ additionalProperties: false },
 );

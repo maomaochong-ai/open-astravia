@@ -35,6 +35,8 @@ export {
 	PluginAgentProfileManifestSchema,
 	PluginAgentTeamManifestSchema,
 	PluginAgentTeamMemberManifestSchema,
+	PluginAgentRoleSchema,
+	BUILTIN_PLUGIN_AGENT_ROLES,
 	PluginBrowserManifestSchema,
 	PluginCommandNameSchema,
 	PluginCommandNamesSchema,
@@ -61,6 +63,7 @@ export type {
 	PluginAgentProfileManifest,
 	PluginAgentTeamManifest,
 	PluginAgentTeamMemberManifest,
+	BuiltinPluginAgentRole,
 	PluginBrowserManifest,
 	PluginCliProviderManifest,
 	PluginServiceArtifact,
@@ -222,13 +225,50 @@ function normalizeAgentManifest(agent: PluginAgentManifest | undefined): PluginA
 			systemPromptPath: profile.systemPromptPath
 				? validatePluginRelativePath(profile.systemPromptPath, "agent.agents.systemPromptPath")
 				: undefined,
+			roles: normalizeAgentRoles(profile.roles),
 		})),
 		teams: agent.teams?.map((team) => ({
 			...team,
 			workflowPath: team.workflowPath
 				? validatePluginRelativePath(team.workflowPath, "agent.teams.workflowPath")
 				: undefined,
+			members: team.members.map((member, index) => normalizeTeamMember(member, index, team.id)),
 		})),
+	};
+}
+
+function normalizeAgentRoles(roles: readonly string[] | undefined): string[] | undefined {
+	if (!roles || roles.length === 0) return undefined;
+	return [...new Set(roles.map((role) => role.trim()))];
+}
+
+/** `<pluginId>/<agentId>` 的跨插件实体引用；本插件的引用不带斜杠。 */
+const CROSS_PLUGIN_AGENT_REF = /^([a-z0-9][a-z0-9-]{0,63})\/([a-z0-9][a-z0-9-]{0,63})$/;
+const OWN_PLUGIN_AGENT_REF = /^[a-z0-9][a-z0-9-]{0,63}$/;
+
+function normalizeTeamMember(
+	member: PluginAgentTeamMemberManifest,
+	index: number,
+	teamId: string,
+): PluginAgentTeamMemberManifest {
+	const where = `agent.teams[${teamId}].members[${index}]`;
+	const agent = member.agent?.trim();
+	const role = member.role?.trim();
+	if ((agent ? 1 : 0) + (role ? 1 : 0) !== 1) {
+		throw new Error(`Invalid ${where}: write exactly one of "agent" or "role"`);
+	}
+	if (agent && !CROSS_PLUGIN_AGENT_REF.test(agent) && !OWN_PLUGIN_AGENT_REF.test(agent)) {
+		throw new Error(`Invalid ${where}.agent: expected "<agentId>" or "<pluginId>/<agentId>", got "${agent}"`);
+	}
+	if (index === 0 && (!agent || !OWN_PLUGIN_AGENT_REF.test(agent))) {
+		// 队长是用户在团队会话里唯一的对话入口。允许它落在别的插件上，那个插件一卸载，这支
+		// 团队就成了打不开的壳——比少一名队员严重得多，所以队长只能是本插件自己的智能体。
+		throw new Error(`Invalid ${where}: the team leader must be one of this plugin's own agents`);
+	}
+	return {
+		...member,
+		...(agent ? { agent } : {}),
+		...(role ? { role } : {}),
 	};
 }
 
