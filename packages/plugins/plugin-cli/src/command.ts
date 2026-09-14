@@ -31,8 +31,14 @@ export type PluginWatchCommand =
 	| { type: "error"; message: string }
 	| { type: "watch"; dir?: string; stop: boolean; json: boolean };
 
+export type PluginUninstallCommand =
+	| { type: "help" }
+	| { type: "error"; message: string }
+	| { type: "uninstall"; pluginId?: string; json: boolean };
+
 export type PluginCommand =
 	| PluginAddCommand
+	| PluginUninstallCommand
 	| PluginReloadCommand
 	| PluginDocsCommand
 	| PluginInitCommand
@@ -57,6 +63,7 @@ Usage:
   vetta-plugin-cli docs [--json]
   vetta-plugin-cli init --id <plugin-id> [--name <display>] [dir] [--json]
   vetta-plugin-cli watch [dir] [--stop] [--json]
+  vetta-plugin-cli uninstall [plugin-id] [--json]
 
 Examples:
   npx @vetta-org/plugin-cli add @example/vetta-plugin-demo
@@ -67,6 +74,7 @@ Examples:
   npx @vetta-org/plugin-cli docs
   npx @vetta-org/plugin-cli init --id my-plugin --name "My Plugin"
   npx @vetta-org/plugin-cli watch          # 让宿主改从工程目录加载，改完即生效
+  npx @vetta-org/plugin-cli uninstall      # 卸载当前插件工程对应的插件
 `;
 
 function formatParseError(error: unknown): string {
@@ -172,6 +180,26 @@ export function parsePluginWatchCommand(argv: string[]): PluginWatchCommand | un
 		stop: parsed.values.stop === true,
 		json: parsed.values.json === true,
 	};
+}
+
+export function parsePluginUninstallCommand(argv: string[]): PluginUninstallCommand | undefined {
+	if (argv[0] !== "uninstall") return undefined;
+	if (argv[1] === "-h" || argv[1] === "--help") return { type: "help" };
+	let parsed: ReturnType<typeof parseArgs>;
+	try {
+		parsed = parseArgs({
+			args: argv.slice(1),
+			allowPositionals: true,
+			strict: true,
+			options: { json: { type: "boolean" } },
+		});
+	} catch (error) {
+		return { type: "error", message: formatParseError(error) };
+	}
+	const [pluginId, unexpected] = parsed.positionals;
+	if (unexpected) return { type: "error", message: `Unexpected argument: ${unexpected}` };
+	// 省略 id 时按 cwd 推断，语义与 add . / watch 一致：站在哪个插件里就作用于哪个。
+	return { type: "uninstall", ...(pluginId ? { pluginId } : {}), json: parsed.values.json === true };
 }
 
 async function defaultRunAction(actionId: string, input: unknown): Promise<unknown> {
@@ -325,6 +353,9 @@ export async function runPluginCommand(
 
 	if (command.type === "watch") {
 		return runWatchCommand(command, dependencies);
+	}
+	if (command.type === "uninstall") {
+		return runUninstallCommand(command, dependencies);
 	}
 
 	let resolvedNpm: ResolvedNpmPluginArchive | undefined;
@@ -517,11 +548,52 @@ async function runWatchCommand(
 	}
 }
 
+/**
+ * 卸载一个插件。省略 id 时按 cwd 推断，语义与 `add .` / `watch` 一致。
+ *
+ * 刻意不在这里做二次确认：宿主自己会为写操作弹审批，CLI 再问一遍只是噪音。系统插件由
+ * 宿主拒绝，这里不重复判断——那份名单不该有第二个真相源。
+ */
+async function runUninstallCommand(
+	command: Extract<PluginCommand, { type: "uninstall" }>,
+	dependencies: PluginCommandDependencies,
+): Promise<number> {
+	const cwd = dependencies.cwd?.() ?? process.cwd();
+	try {
+		let pluginId = command.pluginId;
+		if (!pluginId) {
+			const project = findPluginProject(cwd);
+			if (!project) {
+				throw new Error(
+					`No plugin.json found in ${cwd} or any parent directory. Pass the id: vetta-plugin-cli uninstall <plugin-id>`,
+				);
+			}
+			pluginId = project.pluginId;
+		}
+		const result = await dependencies.runAction("plugins.manage", { operation: "uninstall", id: pluginId });
+		dependencies.writeStdout(
+			command.json ? `${JSON.stringify({ ok: true, result })}\n` : `Uninstalled ${pluginId}.\n`,
+		);
+		return 0;
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		if (command.json) {
+			dependencies.writeStdout(
+				`${JSON.stringify({ ok: false, error: { code: error instanceof ActionRpcError ? error.code : "PLUGIN_UNINSTALL_FAILED", message } })}\n`,
+			);
+		} else {
+			dependencies.writeStderr(`${message}\n`);
+		}
+		if (error instanceof ActionRpcError) return 4;
+		return isConnectionError(error) ? 3 : 5;
+	}
+}
+
 export async function runPluginCli(argv: string[]): Promise<number> {
 	if (argv.length === 0 || argv[0] === "-h" || argv[0] === "--help") {
 		return runPluginAddCommand({ type: "help" });
 	}
-	const command = parsePluginAddCommand(argv) ?? parsePluginReloadCommand(argv) ?? parsePluginDocsCommand(argv) ?? parsePluginInitCommand(argv) ?? parsePluginWatchCommand(argv);
+	const command = parsePluginAddCommand(argv) ?? parsePluginReloadCommand(argv) ?? parsePluginDocsCommand(argv) ?? parsePluginInitCommand(argv) ?? parsePluginWatchCommand(argv) ?? parsePluginUninstallCommand(argv);
 	if (!command) {
 		process.stderr.write(`Unknown command: ${argv[0]}\n`);
 		return 2;

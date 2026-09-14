@@ -214,6 +214,68 @@ describe("hot reload", () => {
 	});
 });
 
+describe("uninstall", () => {
+	it("infers the plugin from the current directory", async () => {
+		const root = scratch();
+		const pluginRoot = join(root, "demo");
+		write(join(pluginRoot, "plugin.json"), JSON.stringify({ id: "demo", version: "1.0.0" }));
+		const runAction = vi.fn().mockResolvedValue({ id: "demo" });
+
+		const code = await runPluginCommand(
+			{ type: "uninstall", json: false },
+			{
+				cwd: () => pluginRoot,
+				resolveNpmArchive: () => Promise.reject(new Error("unused")),
+				runAction,
+				writeStdout: () => {},
+				writeStderr: () => {},
+			},
+		);
+
+		expect(code).toBe(0);
+		expect(runAction).toHaveBeenCalledWith("plugins.manage", { operation: "uninstall", id: "demo" });
+	});
+
+	it("accepts an explicit id from anywhere", async () => {
+		const root = scratch();
+		const runAction = vi.fn().mockResolvedValue({});
+
+		await runPluginCommand(
+			{ type: "uninstall", pluginId: "other", json: false },
+			{
+				cwd: () => root,
+				resolveNpmArchive: () => Promise.reject(new Error("unused")),
+				runAction,
+				writeStdout: () => {},
+				writeStderr: () => {},
+			},
+		);
+
+		expect(runAction).toHaveBeenCalledWith("plugins.manage", { operation: "uninstall", id: "other" });
+	});
+
+	it("says how to name the plugin when the directory cannot answer", async () => {
+		const root = scratch();
+		let stderr = "";
+
+		const code = await runPluginCommand(
+			{ type: "uninstall", json: false },
+			{
+				cwd: () => root,
+				resolveNpmArchive: () => Promise.reject(new Error("unused")),
+				runAction: () => Promise.reject(new Error("unused")),
+				writeStdout: () => {},
+				writeStderr: (value) => {
+					stderr += value;
+				},
+			},
+		);
+
+		expect(code).toBe(5);
+		expect(stderr).toContain("uninstall <plugin-id>");
+	});
+});
+
 describe("docs command", () => {
 	it("parses the docs command", () => {
 		expect(parsePluginDocsCommand(["docs", "--json"])).toEqual({ type: "docs", json: true });

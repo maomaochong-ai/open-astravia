@@ -44,6 +44,7 @@ npm run dev            # Vite + Module Federation 开发服务器
 npm run build          # 产出 dist/
 npm run install:vetta  # 打包并装进正在运行的 Vetta（需要 Vetta 已启动）
 npx vetta-plugin-cli watch   # 开热更新：宿主改从本工程目录加载，改完即生效
+npx vetta-plugin-cli uninstall  # 卸载（省略 id 即本工程对应的插件）
 \`\`\`
 
 \`install:vetta\` 走 \`vetta-plugin-cli add .\`：它找到本工程打出来的归档，交给正在运行的

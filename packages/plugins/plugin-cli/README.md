@@ -14,6 +14,13 @@ The scaffold includes an `AGENTS.md` brief so a coding agent can pick the projec
 host-side setup. Inside a marketplace hub (a repository with `.vetta/marketplace.json`) the new
 plugin is also listed in that manifest.
 
+## Remove a plugin
+
+```bash
+npx @vetta-org/plugin-cli uninstall            # the plugin in this directory
+npx @vetta-org/plugin-cli uninstall some-id    # by id, from anywhere
+```
+
 ## Find the manual
 
 ```bash
