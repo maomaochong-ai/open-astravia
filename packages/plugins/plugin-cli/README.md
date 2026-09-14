@@ -28,6 +28,11 @@ is purely derived and holds no user content — leaving source, manifest and con
 the id and display name from the `plugin.json` already on disk. At a marketplace root it rewrites the
 hub brief instead.
 
+You will rarely have to remember this: the brief carries a revision stamp, and `docs` compares it on
+every run and says outright when it is behind. The brief itself holds no rules — those live in the
+manual, which travels with the SDK — so it changes seldom, and a project that refreshes once keeps
+itself current from then on.
+
 ## Remove a plugin
 
 ```bash

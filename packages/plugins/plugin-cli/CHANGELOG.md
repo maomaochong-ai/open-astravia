@@ -2,6 +2,22 @@
 
 All notable changes to `@vetta-org/plugin-cli` are documented in this file.
 
+## [0.1.5] — 2026-09-14
+
+### Changed
+
+- **脚手架的 `AGENTS.md` 削薄成纯指引**：原先写在里面的「不可违反的几条」（Tailwind-only、
+  错误必须 notify、最小权限、MF 顶层 JSX、`agent_mode` 已废弃、依赖用发布版本、`dist/` 进
+  版本库）全部移进手册的 `README.md#不可违反的红线`。写进说明书的规则会在所有存量工程里就地
+  凝固——它是 `init` 当天的快照，之后既不自更新、用户也没有理由回头看它。规则放进手册才能
+  随 SDK 升级一起到位；说明书越薄，需要回头迁移老仓库的理由就越少。
+
+### Added
+
+- `AGENTS.md` 带版本戳（`<!-- vetta-guide-revision: N -->`），`docs` 每次比对并在落后时打印
+  `This brief is stale ... npx @vetta-org/plugin-cli init --refresh-guide`。此前「说明书旧了」
+  只能靠人记得，而这正是它凝固的原因。没有 `AGENTS.md` 的工程不提示——「没有」不是「旧」。
+
 ## [0.1.4] — 2026-09-14
 
 ### Added
