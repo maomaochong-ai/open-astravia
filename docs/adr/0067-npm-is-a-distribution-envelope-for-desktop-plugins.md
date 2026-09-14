@@ -16,7 +16,7 @@ Desktop 已有经过资源校验、权限审批、版本暂存与 reload 激活�
 2. npm 插件包在 `package.json#vetta` 声明版本化元数据：`schemaVersion: 1`、`type: "desktop-plugin"`、`pluginId` 与包内 zip 相对路径。npm 包版本、元数据和 zip 中 `plugin.json` 的版本与 id 必须一致。
 3. `@vetta-org/plugin-vite` 通过显式 `npmArchive: true` 同时生成原有版本化 zip 和稳定的 `release/vetta-plugin.zip`。稳定文件与版本化文件字节一致，便于写入 npm `files`，不会改变未启用该选项的插件构建。
 4. CLI 只接受 npm registry 的 package、tag、version 或 range，不接受 git、目录和远程 tarball spec。它使用 `npm pack --ignore-scripts`，不运行包的 lifecycle script；解包时只接收 regular file，并只提取 `package.json` 与声明的 zip。CLI 计算 zip SHA-256 后通过本机 Action RPC 请求 `plugins.manage`，不直接修改 Desktop 状态目录。
-5. Desktop 是最终信任边界。主进程在复制文件前重新校验 zip SHA-256、`plugin.json` id/version 与 CLI 提交的期望值；npm 来源按 community trust 处理，不能由包自身提升权限。系统插件 id 保护、权限审批、默认启用、升级 pending/reload 等继续复用既有安装路径。
+5. Desktop 是最终信任边界。主进程在复制文件前重新校验 zip SHA-256、`plugin.json` id/version 与 CLI 提交的期望值；npm 来源按 community trust 处理，不能由包自身提升权限。系统插件 id 保护、权限审批、默认启用、升级激活（ADR-0113）等继续复用既有安装路径。
 6. npm provenance 以结构化 `distribution` 数据随安装记录保存，包括 package name、requested spec、resolved version 与可选 registry integrity；用户可见来源和 App Monitor 使用独立的 `npm` 来源值。
 
 ## 备选方案

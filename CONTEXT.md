@@ -494,7 +494,7 @@ _Avoid_: 把插件 MCP 写入 `~/.vetta/agent/mcp.json`——卸载与版本切�
 
 ### 系统插件（system plugin）
 
-随 App 一起发布、**用户不可删除/修改**的[[可信插件]]，与用户自行安装的插件（`source: "archive" | "remote"`）相对，来源标记 `source: "system"`。物理上从**只读位置直服**——打包后在 `process.resourcesPath/system-plugins/<id>/`，dev 下在 `packages/plugins/presets/<id>/`——`vetta-plugin://` 解析按 source 选 base 目录，**不**拷进 `~/.vetta`、**不**写进 `plugins-manifest.json`（该文件只存用户态：用户插件记录 + 用户对系统插件的偏好覆盖）。`listPlugins()` 时由运行时发现并与用户插件合并呈现。因随 App 发布，版本跟随 App，不走用户插件的 `availableVersion / pendingVersion` 更新流。
+随 App 一起发布、**用户不可删除/修改**的[[可信插件]]，与用户自行安装的插件（`source: "archive" | "remote"`）相对，来源标记 `source: "system"`。物理上从**只读位置直服**——打包后在 `process.resourcesPath/system-plugins/<id>/`，dev 下在 `packages/plugins/presets/<id>/`——`vetta-plugin://` 解析按 source 选 base 目录，**不**拷进 `~/.vetta`、**不**写进 `plugins-manifest.json`（该文件只存用户态：用户插件记录 + 用户对系统插件的偏好覆盖）。`listPlugins()` 时由运行时发现并与用户插件合并呈现。因随 App 发布，版本跟随 App，不走用户插件的安装更新流。
 
 ### 预置插件（preset plugin）
 
@@ -512,7 +512,7 @@ _Avoid_: 把插件 MCP 写入 `~/.vetta/agent/mcp.json`——卸载与版本切�
 
 [[插件市场]]里一个插件的 version 以**服务端 DB 当前行为唯一真相**，来源是上传 zip 内 `plugin.json` 的 `version`。单表扁平、**不保留版本历史**：同 id 重传即原地覆盖旧版本，无回滚、无旧版查询。
 
-这与 desktop 端 [[系统插件]]/用户插件自带的 `availableVersion / pendingVersion` 更新流**刻意不对称**——更新流是客户端「装了旧版、市场出了新版」的比对机制，市场侧只需提供「这个 id 当前是哪个版本的 zip」即可驱动它，不需要自己存版本历史。一期采纳与 [[技能市场]] 同构的扁平模型而非 Plugin + PluginVersion 双表，是为最小化首期实现面；代价是市场无法回滚或并存多版本。
+这与 desktop 端 [[系统插件]]/用户插件自带的更新流**刻意不对称**——更新流是客户端「装了旧版、市场出了新版」的比对机制，市场侧只需提供「这个 id 当前是哪个版本的 zip」即可驱动它，不需要自己存版本历史。一期采纳与 [[技能市场]] 同构的扁平模型而非 Plugin + PluginVersion 双表，是为最小化首期实现面；代价是市场无法回滚或并存多版本。
 
 ### 引导词（guidingWords）
 
