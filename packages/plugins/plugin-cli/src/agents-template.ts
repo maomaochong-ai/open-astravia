@@ -20,7 +20,7 @@
  * `docs` 读它来判断一份说明书是不是旧的——没有这个戳，「该不该刷新」就只能靠人记得，而这
  * 恰恰是它凝固的原因。**改动模板内容时必须一并推进它**，否则存量工程不会收到提示。
  */
-export const AGENTS_GUIDE_REVISION = 2;
+export const AGENTS_GUIDE_REVISION = 3;
 
 /** 从一份 AGENTS.md 正文里读出版本戳；不是本模板生成的（或早于版本戳）时返回 undefined。 */
 export function readAgentsGuideRevision(content: string): number | undefined {
@@ -29,7 +29,38 @@ export function readAgentsGuideRevision(content: string): number | undefined {
 	return Number(match[1]);
 }
 
-export function renderAgentsGuide(input: { pluginId: string; displayName: string }): string {
+/**
+ * 渲染常用命令块。
+ *
+ * 只列工程真有的 script：模板写死 `npm run dev` / `install:vetta`，老工程和自定义工程未必有，
+ * 照着跑就是一句 "Missing script"。读不到 package.json 时退回 CLI 直连命令——它们不依赖工程脚本。
+ */
+function renderCommands(pluginId: string, scripts: readonly string[]): string {
+	const known: readonly (readonly [string, string])[] = [
+		["dev", "npm run dev            # 开发服务器"],
+		["build", "npm run build          # 产出 dist/"],
+		["install:vetta", "npm run install:vetta  # 打包并装进正在运行的 Vetta（需要 Vetta 已启动）"],
+	];
+	const lines = known.filter(([name]) => scripts.includes(name)).map(([, line]) => line);
+	if (!scripts.includes("install:vetta")) {
+		lines.push("npx vetta-plugin-cli add .       # 打包并装进正在运行的 Vetta");
+	}
+	return [
+		...lines,
+		"",
+		"npx vetta-plugin-cli watch       # 热更新：宿主改从本工程目录加载，改完即生效",
+		`npx vetta-plugin-cli reload ${pluginId}   # 装完提示有 pending 版本时用它`,
+		"npx vetta-plugin-cli uninstall   # 卸载（省略 id 即本工程对应的插件）",
+		"npx vetta-plugin-cli sync        # 在 hub 仓库根上跑：把索引与各能力目录对账",
+	].join("\n");
+}
+
+export function renderAgentsGuide(input: {
+	pluginId: string;
+	displayName: string;
+	/** 工程 package.json 里实际存在的 script 名；缺省按脚手架的那套算。 */
+	scripts?: readonly string[];
+}): string {
 	return `<!-- vetta-guide-revision: ${AGENTS_GUIDE_REVISION} -->
 # ${input.displayName}
 
@@ -68,14 +99,7 @@ npx vetta-plugin-cli docs --check-latest
 ## 常用命令
 
 \`\`\`bash
-npm run dev            # Vite + Module Federation 开发服务器
-npm run build          # 产出 dist/
-npm run install:vetta  # 打包并装进正在运行的 Vetta（需要 Vetta 已启动）
-
-npx vetta-plugin-cli watch       # 热更新：宿主改从本工程目录加载，改完即生效
-npx vetta-plugin-cli reload ${input.pluginId}   # 装完提示有 pending 版本时用它
-npx vetta-plugin-cli uninstall   # 卸载（省略 id 即本工程对应的插件）
-npx vetta-plugin-cli sync        # 在 hub 仓库根上跑：把索引与各能力目录对账
+${renderCommands(input.pluginId, input.scripts ?? ["dev", "build", "install:vetta"])}
 \`\`\`
 
 细节都在 \`getting-started.md\`。\`docs\` 打印了 \`Marketplace index:\` 就说明这个目录之上有能力
