@@ -2,7 +2,7 @@ import type { InstalledPlugin, SkillInfo } from "@preload/api";
 import { pathBasename } from "@shared/lib/utils";
 import type { Project, RegisteredWorkspaceView } from "@shared/store/atoms";
 import { sessionDisplayLabel } from "@shared/store/atoms";
-import { getSkillDisplayDescription, getSkillDisplayName, isSkillVisibleOnSurface } from "@vetta/capability-sdk";
+import { getSkillDisplayDescription, getSkillDisplayName, isSkillVisibleOnSurface } from "@vetta-org/capability-sdk";
 import { resolveDesktopSessionOpenTarget } from "@/shared/session-access";
 import type { DesktopSessionSearchResult } from "@/shared/session-search";
 import {

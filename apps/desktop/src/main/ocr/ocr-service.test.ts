@@ -1,4 +1,4 @@
-import type { OcrProviderDescriptor, OcrResult } from "@vetta/capability-sdk";
+import type { OcrProviderDescriptor, OcrResult } from "@vetta-org/capability-sdk";
 import { describe, expect, it, vi } from "vitest";
 import { OcrProviderRegistry } from "./ocr-provider-registry.js";
 import { OcrService } from "./ocr-service.js";

@@ -5,7 +5,7 @@ import {
 	type GeneralSettingsSnapshot,
 	type NotificationsSettingInput,
 	type WorkspaceSettingInput,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import type { PluginCapabilitySessionAccess } from "../types.js";
 
 export const pluginGeneralSettingsMethods = {

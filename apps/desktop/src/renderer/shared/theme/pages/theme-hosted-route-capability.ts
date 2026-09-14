@@ -6,7 +6,7 @@ import {
 	DOMAIN_NAVIGATION_CAPABILITIES,
 	type HostedRouteRef,
 	isValidHostedRouteSegment,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 
 export const THEME_RENDERER_ROUTE_NAMESPACE = "theme-page";
 

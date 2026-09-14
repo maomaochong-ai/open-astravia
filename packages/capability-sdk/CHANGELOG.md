@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `@vetta/capability-sdk` are documented in this file.
+All notable changes to `@vetta-org/capability-sdk` are documented in this file.
 
 ## [0.1.0] — 2026-09-14
 

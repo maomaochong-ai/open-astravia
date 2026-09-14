@@ -2,7 +2,7 @@ import {
 	CAPABILITY_CONSTRAINT_KINDS,
 	CAPABILITY_ERROR_CODES,
 	FOUNDATION_BROWSER_CAPABILITIES,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import { describe, expect, it } from "vitest";
 import { PLUGIN_CAPABILITY_PERMISSIONS, PluginCapabilityAdapter } from "../index.js";
 import { RecordingAccessFactory } from "./helpers/recording-access-factory.js";

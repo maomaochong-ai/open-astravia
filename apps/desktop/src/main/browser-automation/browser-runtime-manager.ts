@@ -1,4 +1,4 @@
-import type { BrowserRuntimeInstallInput, BrowserRuntimeStatus } from "@vetta/capability-sdk";
+import type { BrowserRuntimeInstallInput, BrowserRuntimeStatus } from "@vetta-org/capability-sdk";
 import type { BrowserProcessRunner } from "./browser-process-runner.js";
 import type { BrowserAutomationLogger } from "./contracts.js";
 

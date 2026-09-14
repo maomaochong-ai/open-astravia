@@ -8,7 +8,7 @@ import {
 	type FilesystemPathInput,
 	type FilesystemReadFileResult,
 	FOUNDATION_FILESYSTEM_CAPABILITIES,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import { describe, expect, it } from "vitest";
 import { bindCapability } from "../src/provider.js";
 import { CAPABILITY_MODULE_TRUST_LEVELS, CapabilityRegistry } from "../src/registry.js";

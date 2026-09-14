@@ -1,4 +1,4 @@
-import type { CapabilityId } from "@vetta/capability-sdk";
+import type { CapabilityId } from "@vetta-org/capability-sdk";
 import {
 	DOMAIN_AGENT_SETTINGS_CAPABILITIES,
 	DOMAIN_AI_CAPABILITIES,
@@ -25,7 +25,7 @@ import {
 	FOUNDATION_JOB_CAPABILITIES,
 	FOUNDATION_NETWORK_CAPABILITIES,
 	FOUNDATION_STORAGE_CAPABILITIES,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 
 function foundationOutput(capabilityId: CapabilityId): unknown {
 	if (capabilityId === FOUNDATION_BROWSER_CAPABILITIES.RUNTIME_STATUS.id) {

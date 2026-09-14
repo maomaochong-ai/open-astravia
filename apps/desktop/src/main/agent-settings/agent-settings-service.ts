@@ -1,4 +1,4 @@
-import type { AgentExperimentalSettings, AgentExperimentalSettingsUpdate } from "@vetta/capability-sdk";
+import type { AgentExperimentalSettings, AgentExperimentalSettingsUpdate } from "@vetta-org/capability-sdk";
 import {
 	type DesktopConfig,
 	normalizeExperimental,

@@ -1,4 +1,4 @@
-import type { MediaProviderJob } from "@vetta/capability-sdk";
+import type { MediaProviderJob } from "@vetta-org/capability-sdk";
 import type { WebContents } from "electron";
 import { describe, expect, it, vi } from "vitest";
 import type { InstalledPlugin } from "../../preload/api-types/plugins.js";

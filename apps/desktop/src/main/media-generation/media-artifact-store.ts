@@ -1,6 +1,6 @@
 import { readFile, stat } from "node:fs/promises";
 import { extname } from "node:path";
-import type { MediaArtifact, MediaInput, MediaKind } from "@vetta/capability-sdk";
+import type { MediaArtifact, MediaInput, MediaKind } from "@vetta-org/capability-sdk";
 import { ArtifactStore } from "../artifacts/artifact-store.js";
 import { assertFilesystemPathWithinProject } from "../filesystem/filesystem-service.js";
 import { getPluginBlobFile } from "../plugins/plugin-storage-service.js";

@@ -32,7 +32,7 @@ Desktop 自己的 UI 可以直接调用该服务；跨扩展边界的调用必�
 
 ### 2. Capability 层只定义并保护可序列化命令
 
-`@vetta/capability-sdk` 定义通用引用：
+`@vetta-org/capability-sdk` 定义通用引用：
 
 ```ts
 interface HostedRouteRef {

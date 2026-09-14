@@ -1,4 +1,4 @@
-import { DOMAIN_UPDATER_CAPABILITIES, type UpdaterState } from "@vetta/capability-sdk";
+import { DOMAIN_UPDATER_CAPABILITIES, type UpdaterState } from "@vetta-org/capability-sdk";
 import type { PluginCapabilitySessionAccess } from "../types.js";
 
 export const pluginUpdaterMethods = {

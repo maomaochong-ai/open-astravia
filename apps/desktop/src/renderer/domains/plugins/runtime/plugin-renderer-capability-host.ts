@@ -1,6 +1,6 @@
 import type { PluginTrustLevel } from "@preload/api";
 import { rendererCapabilityHost } from "@shared/capabilities/renderer-capability-host";
-import type { CapabilityAccessSessionFactory } from "@vetta/capability-sdk";
+import type { CapabilityAccessSessionFactory } from "@vetta-org/capability-sdk";
 import {
 	createPluginRendererHostedRouteSession,
 	type PluginRendererHostedRouteSession,

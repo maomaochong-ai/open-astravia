@@ -1,4 +1,4 @@
-import type { Disposable, HostedRouteRef } from "@vetta/capability-sdk";
+import type { Disposable, HostedRouteRef } from "@vetta-org/capability-sdk";
 import { PLUGIN_RENDERER_ROUTE_NAMESPACE } from "./domains/plugins/runtime/plugin-hosted-route-capability.js";
 import { router } from "./router.js";
 import { rendererCapabilityHost } from "./shared/capabilities/renderer-capability-host.js";

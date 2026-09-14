@@ -3,7 +3,7 @@ import {
 	type ImLogEntry,
 	type ImRuntimeStatus,
 	type ImStatusSnapshot,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import { parseImAgentModelKey } from "../helpers.js";
 import type { PluginCapabilitySessionAccess } from "../types.js";
 

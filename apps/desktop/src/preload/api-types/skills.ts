@@ -1,4 +1,4 @@
-import type { SkillPresentation, SkillPresentationSurface, SkillVisibility } from "@vetta/capability-sdk";
+import type { SkillPresentation, SkillPresentationSurface, SkillVisibility } from "@vetta-org/capability-sdk";
 
 export type { SkillPresentation, SkillPresentationSurface, SkillVisibility };
 

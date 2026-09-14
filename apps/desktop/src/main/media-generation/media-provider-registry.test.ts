@@ -1,4 +1,4 @@
-import { DOMAIN_MEDIA_CAPABILITIES, MEDIA_PROTOCOL_VERSION, type MediaProviderJob } from "@vetta/capability-sdk";
+import { DOMAIN_MEDIA_CAPABILITIES, MEDIA_PROTOCOL_VERSION, type MediaProviderJob } from "@vetta-org/capability-sdk";
 import { describe, expect, it, vi } from "vitest";
 import type { VettaGatewayRequest, VettaGatewayResponse } from "../cloud-bridge.js";
 import { JobManager } from "../jobs/job-manager.js";

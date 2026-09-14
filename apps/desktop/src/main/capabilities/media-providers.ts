@@ -1,5 +1,5 @@
 import { bindCapability, type CapabilityRegistry } from "@vetta/capability-runtime";
-import { type Disposable, DOMAIN_MEDIA_CAPABILITIES } from "@vetta/capability-sdk";
+import { type Disposable, DOMAIN_MEDIA_CAPABILITIES } from "@vetta-org/capability-sdk";
 import { isCloudBuildEnabled } from "../../shared/feature-flags.js";
 import type { ArtifactStore } from "../artifacts/artifact-store.js";
 import type { JobManager } from "../jobs/job-manager.js";

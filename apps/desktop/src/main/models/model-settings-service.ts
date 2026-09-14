@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
+import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
 import type {
 	ModelConfigSnapshot,
 	ModelDefaultResult,
@@ -10,8 +11,7 @@ import type {
 	ModelProviderConfigSnapshot,
 	ModelProviderDetail,
 	ModelProviderUpsertData,
-} from "@vetta/capability-sdk";
-import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
+} from "@vetta-org/capability-sdk";
 import type { ModelCredentialStore } from "./model-credential-store.js";
 
 export interface ModelsConfig {

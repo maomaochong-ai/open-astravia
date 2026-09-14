@@ -4,8 +4,8 @@ import type {
 	CapabilityAccessSessionFactory,
 	CapabilityAccessSessionOptions,
 	CapabilityToken,
-} from "@vetta/capability-sdk";
-import { CAPABILITY_CONSTRAINT_KINDS, FOUNDATION_STORAGE_CAPABILITIES } from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
+import { CAPABILITY_CONSTRAINT_KINDS, FOUNDATION_STORAGE_CAPABILITIES } from "@vetta-org/capability-sdk";
 import { describe, expect, it } from "vitest";
 import { ThemeCapabilityAdapter, themeStorageCapabilityNamespace } from "./theme-capability-adapter.js";
 

@@ -127,7 +127,7 @@ flowchart TB
 
 它作为 `McpFeature` 向运行快照贡献工具，不直接修改 Session。
 
-### 2.7 `@vetta/capability-sdk` / `@vetta/capability-runtime`
+### 2.7 `@vetta-org/capability-sdk` / `@vetta/capability-runtime`
 
 继续拥有宿主服务调用与授权，不承载 Agent Feature 编排。
 

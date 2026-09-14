@@ -5,7 +5,7 @@ import type {
 	NotificationsSettingInput,
 	SandboxCapabilitySnapshot,
 	WorkspaceSettingInput,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import { type DesktopConfig, readDesktopConfig, writeDesktopConfig } from "../config/desktop-config-store.js";
 import { allowProjectRoot } from "../filesystem/filesystem-service.js";
 import { getSandboxCapability } from "../sandbox/capability.js";

@@ -6,7 +6,7 @@ import {
 	DOMAIN_NAVIGATION_CAPABILITIES,
 	type HostedRouteRef,
 	isValidHostedRouteSegment,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 
 export const PLUGIN_RENDERER_CAPABILITY_PERMISSIONS = {
 	WORKSPACE_VIEW: "ui.slot.workspace-view",

@@ -2,7 +2,7 @@ import {
 	CAPABILITY_ERROR_CODES,
 	DOMAIN_OCR_CAPABILITIES,
 	FOUNDATION_STORAGE_CAPABILITIES,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import { describe, expect, it } from "vitest";
 import { PLUGIN_CAPABILITY_PERMISSIONS, PluginCapabilityAdapter } from "../index.js";
 import { RecordingAccessFactory } from "./helpers/recording-access-factory.js";

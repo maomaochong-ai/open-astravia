@@ -7,8 +7,8 @@ import type {
 	JobFailure,
 	JobProgress,
 	JobStatus,
-} from "@vetta/capability-sdk";
-import { JOB_ERROR_CODES } from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
+import { JOB_ERROR_CODES } from "@vetta-org/capability-sdk";
 
 const TERMINAL_STATUSES = new Set<JobStatus>(["succeeded", "failed", "cancelled"]);
 

@@ -1,4 +1,4 @@
-import { FOUNDATION_JOB_CAPABILITIES, type Job } from "@vetta/capability-sdk";
+import { FOUNDATION_JOB_CAPABILITIES, type Job } from "@vetta-org/capability-sdk";
 import { PLUGIN_CAPABILITY_PERMISSIONS, type PluginCapabilitySessionAccess } from "../types.js";
 
 export const pluginJobMethods = {

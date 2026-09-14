@@ -1,4 +1,4 @@
-import { CAPABILITY_ERROR_CODES } from "@vetta/capability-sdk";
+import { CAPABILITY_ERROR_CODES } from "@vetta-org/capability-sdk";
 import { describe, expect, it } from "vitest";
 import { PluginNetworkError } from "../plugins/plugin-network-service.js";
 import { toPluginNetworkCapabilityError } from "./plugin-network-error.js";

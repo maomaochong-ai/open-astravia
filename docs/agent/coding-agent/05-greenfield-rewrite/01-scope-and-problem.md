@@ -114,7 +114,7 @@ runtime-mcp     -> coding-agent
 
 ### 3.4 “能力”概念存在命名冲突
 
-仓库已经有 `@vetta/capability-sdk` 和 `@vetta/capability-runtime`。它们定义的是：
+仓库已经有 `@vetta-org/capability-sdk` 和 `@vetta/capability-runtime`。它们定义的是：
 
 > 宿主向 Plugin、Theme、Action 等调用方提供的、带授权的基础能力和领域能力。
 

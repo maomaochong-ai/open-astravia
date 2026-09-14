@@ -10,7 +10,7 @@
 
 ## 决策
 
-1. `@vetta/capability-sdk` 定义版本化 `OcrRequest/OcrResult/OcrProviderDescriptor` 合同。消费者只提交 `inputs[]` 图片批次和 `output` 能力，不能看到 Provider 的密钥、网络客户端或内部任务字段。
+1. `@vetta-org/capability-sdk` 定义版本化 `OcrRequest/OcrResult/OcrProviderDescriptor` 合同。消费者只提交 `inputs[]` 图片批次和 `output` 能力，不能看到 Provider 的密钥、网络客户端或内部任务字段。
 2. `OcrService` 负责权限、配置选择、批次能力协商、取消、进度和结果顺序校验；Provider 只实现 `recognize(request, context)`。单张图片是长度为 1 的批次。
 3. 内置 `desktop-app:ppocrv5` 是默认本地实现，来自百度开源 PaddleOCR 视觉模型；协议不包含百度云 API 语义。远程或其它本地实现通过 Plugin SDK `ctx.ocr.registerProvider()` 注册，并由 manifest 权限及 Agent 配置共同门控。
 4. OCR 是基础能力，PDF 页渲染、截图转图片、文本层回退、OCR 缓存与阅读交互属于上层插件。宿主不提供 PDF Annotation Provider，也不把 PDF 解析写入 OCR 基础层。

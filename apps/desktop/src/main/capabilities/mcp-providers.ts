@@ -4,7 +4,7 @@ import {
 	CapabilityError,
 	type Disposable,
 	DOMAIN_MCP_CAPABILITIES,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import { getDesktopMcpSettingsService } from "../mcp/mcp-settings-service.js";
 
 const DOMAIN_MCP_PROVIDER_OWNER = "vetta.domain.mcp";

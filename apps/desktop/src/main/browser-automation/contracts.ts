@@ -5,7 +5,7 @@ import type {
 	BrowserSession,
 	BrowserSessionProfile,
 	BrowserSource,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 
 export interface BrowserAutomationLogger {
 	info(message: string, fields?: Record<string, unknown>): void;

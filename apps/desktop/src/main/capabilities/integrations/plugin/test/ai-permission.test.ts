@@ -1,4 +1,4 @@
-import { CAPABILITY_ERROR_CODES, DOMAIN_AI_CAPABILITIES } from "@vetta/capability-sdk";
+import { CAPABILITY_ERROR_CODES, DOMAIN_AI_CAPABILITIES } from "@vetta-org/capability-sdk";
 import { describe, expect, it } from "vitest";
 import { PLUGIN_CAPABILITY_PERMISSIONS, PluginCapabilityAdapter } from "../index.js";
 import { RecordingAccessFactory } from "./helpers/recording-access-factory.js";

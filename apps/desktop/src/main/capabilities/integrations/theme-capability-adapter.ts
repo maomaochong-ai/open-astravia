@@ -7,7 +7,7 @@ import {
 	createCapabilityGrant,
 	FOUNDATION_STORAGE_CAPABILITIES,
 	parseCapabilityJsonValue,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 
 const THEME_ID_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/;
 

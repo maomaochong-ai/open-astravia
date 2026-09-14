@@ -64,7 +64,7 @@ import type {
 	WebhookSendResult,
 	WebhookUpdateData,
 	WorkspaceSettingInput,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import type {
 	OcrProviderDescriptor,
 	OcrProviderRequest,

@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
-import type { McpServerDetail, McpServerSummary, McpServerUpsertData } from "@vetta/capability-sdk";
 import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
+import type { McpServerDetail, McpServerSummary, McpServerUpsertData } from "@vetta-org/capability-sdk";
 import type {
 	McpConfigData,
 	McpHttpServerConfigData,

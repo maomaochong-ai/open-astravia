@@ -19,7 +19,7 @@ import {
 	DOMAIN_SKILL_CAPABILITIES,
 	DOMAIN_UPDATER_CAPABILITIES,
 	DOMAIN_WEBHOOK_CAPABILITIES,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import { getDesktopAgentSettingsService } from "../agent-settings/agent-settings-service.js";
 import type { ArtifactStore } from "../artifacts/artifact-store.js";
 import { getDesktopBatchTaskService } from "../batch-tasks/batch-task-service.js";

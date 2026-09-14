@@ -5,7 +5,7 @@ import {
 	type MediaArtifact,
 	type MediaInput,
 	type MediaProviderJob,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import type {
 	PluginMediaInputUploadRequest,
 	PluginMediaProviderJob,

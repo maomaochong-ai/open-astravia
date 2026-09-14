@@ -1,4 +1,4 @@
-# @vetta/capability-sdk
+# @vetta-org/capability-sdk
 
 Host- and system-neutral capability contracts for Vetta.
 

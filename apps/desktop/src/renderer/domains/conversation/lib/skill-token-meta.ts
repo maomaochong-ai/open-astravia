@@ -8,7 +8,7 @@
  */
 import type { SkillInfo } from "@preload/api";
 import { builtinSkillIconUrl } from "@shared/lib/builtin-skill-icons";
-import { getSkillDisplayName } from "@vetta/capability-sdk";
+import { getSkillDisplayName } from "@vetta-org/capability-sdk";
 import { resolveProvidedSkillPresentationIcon } from "@/shared/ability-presentation";
 
 /** 键为 `${type}:${slug}`：本地清单里 skill 与 scene 同命名空间，同名不同类型不能互相认领。 */

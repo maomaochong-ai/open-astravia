@@ -1,4 +1,4 @@
-import { DOMAIN_DOWNLOAD_CAPABILITIES, type DownloadItem } from "@vetta/capability-sdk";
+import { DOMAIN_DOWNLOAD_CAPABILITIES, type DownloadItem } from "@vetta-org/capability-sdk";
 import type { PluginCapabilitySessionAccess } from "../types.js";
 
 export const pluginDownloadMethods = {

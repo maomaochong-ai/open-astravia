@@ -1,4 +1,4 @@
-import { DOMAIN_PROJECT_CAPABILITIES, type ProjectEntry, type ProjectListResult } from "@vetta/capability-sdk";
+import { DOMAIN_PROJECT_CAPABILITIES, type ProjectEntry, type ProjectListResult } from "@vetta-org/capability-sdk";
 import type { PluginCapabilitySessionAccess } from "../types.js";
 
 export const pluginProjectMethods = {

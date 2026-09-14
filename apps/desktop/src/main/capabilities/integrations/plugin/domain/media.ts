@@ -1,5 +1,5 @@
-import type { Job } from "@vetta/capability-sdk";
-import { DOMAIN_MEDIA_CAPABILITIES, type MediaProviderDescriptor } from "@vetta/capability-sdk";
+import type { Job } from "@vetta-org/capability-sdk";
+import { DOMAIN_MEDIA_CAPABILITIES, type MediaProviderDescriptor } from "@vetta-org/capability-sdk";
 import { PLUGIN_CAPABILITY_PERMISSIONS, type PluginCapabilitySessionAccess } from "../types.js";
 
 function isRecord(value: unknown): value is Record<string, unknown> {

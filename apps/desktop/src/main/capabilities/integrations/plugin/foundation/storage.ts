@@ -1,4 +1,4 @@
-import { FOUNDATION_STORAGE_CAPABILITIES, type StorageBlob, type StorageBlobRef } from "@vetta/capability-sdk";
+import { FOUNDATION_STORAGE_CAPABILITIES, type StorageBlob, type StorageBlobRef } from "@vetta-org/capability-sdk";
 import { PLUGIN_CAPABILITY_PERMISSIONS, type PluginCapabilitySessionAccess } from "../types.js";
 
 export const pluginStorageMethods = {

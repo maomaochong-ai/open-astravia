@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { BrowserSession, BrowserSessionProfile, BrowserSource } from "@vetta/capability-sdk";
+import type { BrowserSession, BrowserSessionProfile, BrowserSource } from "@vetta-org/capability-sdk";
 import type { BrowserSessionRecord, BrowserSessionResources } from "./contracts.js";
 import { BrowserAutomationError } from "./contracts.js";
 

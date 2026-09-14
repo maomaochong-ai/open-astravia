@@ -28,7 +28,7 @@ import {
 	FOUNDATION_JOB_CAPABILITIES,
 	FOUNDATION_NETWORK_CAPABILITIES,
 	FOUNDATION_STORAGE_CAPABILITIES,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import { PLUGIN_CAPABILITY_PERMISSIONS } from "./types.js";
 
 export function buildPluginCapabilityGrants(

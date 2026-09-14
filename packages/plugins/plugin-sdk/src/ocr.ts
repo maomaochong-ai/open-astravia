@@ -5,7 +5,7 @@ import type {
 	OcrProviderDescriptor,
 	OcrRequest as DomainOcrRequest,
 	OcrResult,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import type { Disposable } from "./disposable.js";
 
 export type { OcrBlock, OcrErrorCode, OcrItemResult, OcrProviderDescriptor, OcrResult };

@@ -76,12 +76,12 @@
         "@silvia-odwyer/photon-node": "^0.3.4",
         "@tanstack/react-router": "^1.130.15",
         "@types/adm-zip": "^0.5.8",
+        "@vetta-org/capability-sdk": "workspace:*",
         "@vetta-org/plugin-sdk": "workspace:*",
         "@vetta/action-rpc": "workspace:*",
         "@vetta/agent-team": "workspace:*",
         "@vetta/ai": "workspace:*",
         "@vetta/capability-runtime": "workspace:*",
-        "@vetta/capability-sdk": "workspace:*",
         "@vetta/cli-host": "workspace:*",
         "@vetta/coding-agent": "workspace:*",
         "@vetta/remote-control": "workspace:*",
@@ -301,7 +301,7 @@
       "name": "@vetta/capability-runtime",
       "version": "0.0.1",
       "dependencies": {
-        "@vetta/capability-sdk": "workspace:*",
+        "@vetta-org/capability-sdk": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^22.10.5",
@@ -309,7 +309,7 @@
       },
     },
     "packages/capability-sdk": {
-      "name": "@vetta/capability-sdk",
+      "name": "@vetta-org/capability-sdk",
       "version": "0.1.0",
       "dependencies": {
         "@sinclair/typebox": "^0.34.41",
@@ -574,7 +574,7 @@
       "version": "0.3.0",
       "dependencies": {
         "@sinclair/typebox": "^0.34.41",
-        "@vetta/capability-sdk": "^0.1.0",
+        "@vetta-org/capability-sdk": "^0.1.0",
       },
       "devDependencies": {
         "@types/react": "^19.1.1",
@@ -2668,6 +2668,8 @@
 
     "@vercel/analytics": ["@vercel/analytics@2.0.1", "https://registry.npmmirror.com/@vercel/analytics/-/analytics-2.0.1.tgz", { "peerDependencies": { "@remix-run/react": "^2", "@sveltejs/kit": "^1 || ^2", "next": ">= 13", "nuxt": ">= 3", "react": "^18 || ^19 || ^19.0.0-rc", "svelte": ">= 4", "vue": "^3", "vue-router": "^4" }, "optionalPeers": ["@remix-run/react", "@sveltejs/kit", "next", "nuxt", "react", "svelte", "vue", "vue-router"] }, "sha512-MTQG6V9qQrt1tsDeF+2Uoo5aPjqbVPys1xvnIftXSJYG2SrwXRHnqEvVoYID7BTruDz4lCd2Z7rM1BdkUehk2g=="],
 
+    "@vetta-org/capability-sdk": ["@vetta-org/capability-sdk@workspace:packages/capability-sdk"],
+
     "@vetta-org/plugin-cli": ["@vetta-org/plugin-cli@workspace:packages/plugins/plugin-cli"],
 
     "@vetta-org/plugin-sdk": ["@vetta-org/plugin-sdk@workspace:packages/plugins/plugin-sdk"],
@@ -2683,8 +2685,6 @@
     "@vetta/ai": ["@vetta/ai@workspace:packages/ai"],
 
     "@vetta/capability-runtime": ["@vetta/capability-runtime@workspace:packages/capability-runtime"],
-
-    "@vetta/capability-sdk": ["@vetta/capability-sdk@workspace:packages/capability-sdk"],
 
     "@vetta/cli-host": ["@vetta/cli-host@workspace:apps/cli-host"],
 

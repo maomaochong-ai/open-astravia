@@ -1,4 +1,4 @@
-import { createCapabilityGrant, DOMAIN_NAVIGATION_CAPABILITIES } from "@vetta/capability-sdk";
+import { createCapabilityGrant, DOMAIN_NAVIGATION_CAPABILITIES } from "@vetta-org/capability-sdk";
 import { describe, expect, it, vi } from "vitest";
 import { RendererCapabilityHost } from "../capabilities/renderer-capability-host.js";
 import { registerHostedRouteCapabilityProvider } from "./hosted-route-capability-provider.js";

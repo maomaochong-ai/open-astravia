@@ -4,7 +4,7 @@ import {
 	CapabilityError,
 	type Disposable,
 	DOMAIN_MODEL_CAPABILITIES,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import { getDesktopModelSettingsService } from "../models/model-settings-host.js";
 import { probeModelProvider } from "../models/probe.js";
 

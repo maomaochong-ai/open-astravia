@@ -4,7 +4,7 @@ import {
 	getSkillDisplayName,
 	isSkillVisibleOnSurface,
 	type SkillPresentationSurface,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { filterSkills, sortSkillsForPanel } from "../lib/skill-ranking";

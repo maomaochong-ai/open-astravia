@@ -3,7 +3,7 @@ import {
 	DOMAIN_MEDIA_CAPABILITIES,
 	FOUNDATION_ARTIFACT_CAPABILITIES,
 	FOUNDATION_JOB_CAPABILITIES,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import { describe, expect, it } from "vitest";
 import { PLUGIN_CAPABILITY_PERMISSIONS, PluginCapabilityAdapter } from "../index.js";
 import { RecordingAccessFactory } from "./helpers/recording-access-factory.js";

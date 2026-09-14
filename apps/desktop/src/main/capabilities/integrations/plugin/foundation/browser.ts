@@ -9,7 +9,7 @@ import {
 	CAPABILITY_ERROR_CODES,
 	CapabilityError,
 	FOUNDATION_BROWSER_CAPABILITIES,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import { PLUGIN_CAPABILITY_PERMISSIONS, type PluginCapabilitySessionAccess } from "../types.js";
 
 function normalizeRequestedHost(value: string): string {

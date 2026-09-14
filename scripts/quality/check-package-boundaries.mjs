@@ -324,7 +324,7 @@ function checkPublicSystemSdkImports(posixPath, specifiers, findings) {
 		posixPath.startsWith("packages/theme-sdk/") || posixPath.startsWith("packages/plugins/plugin-sdk/");
 	if (!isPublicSystemSdk) return;
 	for (const specifier of specifiers) {
-		if (specifier.startsWith("@vetta/capability-sdk/internal/")) {
+		if (specifier.startsWith("@vetta-org/capability-sdk/internal/")) {
 			findings.push(`${posixPath}: public system SDKs must not expose built-in capability adapters (${specifier})`);
 		}
 	}

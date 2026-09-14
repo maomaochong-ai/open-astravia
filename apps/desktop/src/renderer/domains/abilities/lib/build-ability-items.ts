@@ -15,7 +15,7 @@ import type {
 } from "@preload/api";
 import type { AbilityMember, MarketAbility } from "@shared/lib/api";
 import { builtinSkillIconUrl } from "@shared/lib/builtin-skill-icons";
-import { getSkillDisplayDescription, getSkillDisplayName, isSkillVisibleOnSurface } from "@vetta/capability-sdk";
+import { getSkillDisplayDescription, getSkillDisplayName, isSkillVisibleOnSurface } from "@vetta-org/capability-sdk";
 import type { TFunction } from "i18next";
 import {
 	type BuiltinMcpPreset,

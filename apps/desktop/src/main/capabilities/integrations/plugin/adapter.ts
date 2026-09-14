@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import type { CapabilityAccessHandle, CapabilityAccessSessionFactory } from "@vetta/capability-sdk";
-import { CAPABILITY_ERROR_CODES, CapabilityError } from "@vetta/capability-sdk";
+import type { CapabilityAccessHandle, CapabilityAccessSessionFactory } from "@vetta-org/capability-sdk";
+import { CAPABILITY_ERROR_CODES, CapabilityError } from "@vetta-org/capability-sdk";
 import { type PluginAgentSettingsMethods, pluginAgentSettingsMethods } from "./domain/agent-settings.js";
 import { type PluginAiMethods, pluginAiMethods } from "./domain/ai.js";
 import { type PluginBatchTaskMethods, pluginBatchTaskMethods } from "./domain/batch-task.js";

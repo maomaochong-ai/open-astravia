@@ -1,5 +1,11 @@
 import { randomUUID } from "node:crypto";
 import {
+	DEFAULT_OCR_PROVIDER_ID,
+	type OcrRemoteProviderPolicy,
+	VETTA_OCR_CONFIGURATION,
+	type VettaOcrConfiguration,
+} from "@vetta/runtime-tools";
+import {
 	CAPABILITY_ERROR_CODES,
 	CapabilityError,
 	type OcrInput,
@@ -7,13 +13,7 @@ import {
 	type OcrProviderInput,
 	type OcrRequest,
 	type OcrResult,
-} from "@vetta/capability-sdk";
-import {
-	DEFAULT_OCR_PROVIDER_ID,
-	type OcrRemoteProviderPolicy,
-	VETTA_OCR_CONFIGURATION,
-	type VettaOcrConfiguration,
-} from "@vetta/runtime-tools";
+} from "@vetta-org/capability-sdk";
 import type { OcrProviderContext, OcrProviderRegistry } from "./ocr-provider-registry.js";
 
 export interface OcrServiceInputResolver {

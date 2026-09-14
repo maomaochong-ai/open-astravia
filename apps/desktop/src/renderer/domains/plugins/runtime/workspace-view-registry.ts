@@ -1,6 +1,6 @@
 import { PLUGIN_HOSTED_ROUTE_PATH, pluginHostedRoutePath } from "@shared/hosted-routes/hosted-route-descriptors";
 import type { RegisteredWorkspaceView } from "@shared/store/atoms";
-import { HOSTED_ROUTE_SEGMENT_PATTERN, isValidHostedRouteSegment } from "@vetta/capability-sdk";
+import { HOSTED_ROUTE_SEGMENT_PATTERN, isValidHostedRouteSegment } from "@vetta-org/capability-sdk";
 import type { PluginNavBadge, PluginNavBadgeTone } from "@vetta-org/plugin-sdk";
 import { pluginWorkspaceRoute } from "./plugin-hosted-route-capability.js";
 

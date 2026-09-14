@@ -1,4 +1,4 @@
-import { parseCapabilityJsonValue } from "@vetta/capability-sdk";
+import { parseCapabilityJsonValue } from "@vetta-org/capability-sdk";
 import { describe, expect, it } from "vitest";
 import { normalizePluginNetworkRequest } from "./plugin-network-request";
 

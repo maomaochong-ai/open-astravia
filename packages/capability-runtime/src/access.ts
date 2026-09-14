@@ -10,7 +10,7 @@ import {
 	type CapabilityId,
 	type CapabilityInvokeOptions,
 	type CapabilityToken,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import { type CapabilityConstraintEvaluator, namespaceConstraintEvaluator } from "./constraints.js";
 import type { CapabilityHub } from "./hub.js";
 

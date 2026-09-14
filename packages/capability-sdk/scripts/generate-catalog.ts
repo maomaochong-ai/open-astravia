@@ -9,7 +9,7 @@ const check = process.argv.includes("--check");
 
 const jsonContent = `${JSON.stringify(
 	{
-		generatedFrom: "@vetta/capability-sdk Capability Tokens",
+		generatedFrom: "@vetta-org/capability-sdk Capability Tokens",
 		foundation: FOUNDATION_CAPABILITY_CATALOG,
 		domain: DOMAIN_CAPABILITY_CATALOG,
 	},

@@ -5,7 +5,7 @@ import {
 	type CapabilityExecutionContext,
 	type CapabilityId,
 	type CapabilityToken,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import { CapabilityRegistry } from "./registry.js";
 
 export class CapabilityHub {

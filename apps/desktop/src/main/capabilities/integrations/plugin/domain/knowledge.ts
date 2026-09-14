@@ -4,7 +4,7 @@ import {
 	type KnowledgeFileStatuses,
 	type KnowledgeProcessingSettings,
 	type KnowledgeScanResult,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import type { PluginCapabilitySessionAccess } from "../types.js";
 
 export const pluginKnowledgeMethods = {

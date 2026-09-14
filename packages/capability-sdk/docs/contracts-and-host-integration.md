@@ -2,7 +2,7 @@
 
 ## 目的
 
-`@vetta/capability-sdk` 是纯合同包，只承担：
+`@vetta-org/capability-sdk` 是纯合同包，只承担：
 
 - 定义宿主无关的 Capability 端口。
 - 发布稳定 Token、输入输出 Schema、Catalog、错误码和 Access 合同。

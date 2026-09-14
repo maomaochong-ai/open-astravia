@@ -15,7 +15,7 @@ import type {
 	BrowserSnapshot,
 	BrowserSnapshotInput,
 	BrowserTextContent,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import { assertAllowedBrowserUrl, assertReturnedPageAllowed } from "./browser-policy.js";
 import { browserResourceRef } from "./browser-profile-registry.js";
 import { BrowserSessionRegistry } from "./browser-session-registry.js";

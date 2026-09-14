@@ -1,6 +1,6 @@
 import type { InstalledPlugin, InstalledSkill, McpConfigData, SkillInfo } from "@preload/api";
 import { builtinSkillIconUrl } from "@shared/lib/builtin-skill-icons";
-import { getSkillDisplayDescription, getSkillDisplayName, isSkillVisibleOnSurface } from "@vetta/capability-sdk";
+import { getSkillDisplayDescription, getSkillDisplayName, isSkillVisibleOnSurface } from "@vetta-org/capability-sdk";
 import { resolvePluginText } from "@vetta-org/plugin-sdk";
 import { resolveMcpIcon } from "../../settings/mcp/builtin-mcp-presets";
 

@@ -6,7 +6,7 @@ import {
 	type FilesystemReadFileResult,
 	FOUNDATION_FILESYSTEM_CAPABILITIES,
 	FOUNDATION_STORAGE_CAPABILITIES,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import { describe, expect, it } from "vitest";
 import { type CapabilityAccessAuditEvent, CapabilityAccessController } from "../src/access.js";
 import { CapabilityHub } from "../src/hub.js";

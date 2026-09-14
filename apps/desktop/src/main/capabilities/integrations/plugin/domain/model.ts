@@ -7,7 +7,7 @@ import {
 	type ModelProviderConfigSnapshot,
 	type ModelProviderDetail,
 	type ModelProviderUpsertData,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import type { PluginCapabilitySessionAccess } from "../types.js";
 
 const OWNED_PROVIDER_ID_PATTERN = /^[a-z0-9][a-z0-9_-]{0,31}$/;

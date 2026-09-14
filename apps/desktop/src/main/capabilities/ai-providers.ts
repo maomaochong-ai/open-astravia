@@ -22,7 +22,7 @@ import {
 	CapabilityError,
 	type Disposable,
 	DOMAIN_AI_CAPABILITIES,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import { getOrCreateSharedModelRuntime } from "../agent-runtime/host-services.js";
 import { getDesktopModelSettingsService } from "../models/model-settings-host.js";
 

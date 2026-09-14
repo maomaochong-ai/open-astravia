@@ -1,4 +1,4 @@
-import type { HostedRouteRef } from "@vetta/capability-sdk";
+import type { HostedRouteRef } from "@vetta-org/capability-sdk";
 
 export const PLUGIN_HOSTED_ROUTE_PATH = "/workspace/$pluginId/$viewId";
 export const THEME_HOSTED_ROUTE_PATH = "/theme/$themeId/$pageId";

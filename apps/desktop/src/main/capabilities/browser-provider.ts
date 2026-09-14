@@ -4,7 +4,7 @@ import {
 	CapabilityError,
 	type Disposable,
 	FOUNDATION_BROWSER_CAPABILITIES,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import type { BrowserAutomationService } from "../browser-automation/browser-automation-service.js";
 import { BrowserAutomationError } from "../browser-automation/contracts.js";
 

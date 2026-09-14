@@ -10,7 +10,7 @@ import type {
 	MediaProviderDescriptor,
 	MediaProviderJob,
 	MediaSubmitInput,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import type { JobManager, ManagedJobUpdate } from "../jobs/job-manager.js";
 
 const MODE_KIND: Record<MediaGenerationMode, MediaKind> = {

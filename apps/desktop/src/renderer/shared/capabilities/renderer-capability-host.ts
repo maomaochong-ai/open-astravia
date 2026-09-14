@@ -4,7 +4,7 @@ import type {
 	CapabilityAccessSessionFactory,
 	CapabilityAccessSessionOptions,
 	Disposable,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 
 export class RendererCapabilityHost implements CapabilityAccessSessionFactory {
 	private readonly hub = new CapabilityHub();

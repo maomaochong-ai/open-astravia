@@ -1,6 +1,6 @@
 import type { openAsBlob } from "node:fs";
 import { basename } from "node:path";
-import type { OcrProviderInput, OcrResult } from "@vetta/capability-sdk";
+import type { OcrProviderInput, OcrResult } from "@vetta-org/capability-sdk";
 import type { OcrTransferResponse, OcrUploadRequest, PluginPermission } from "@vetta-org/plugin-sdk";
 import type { WebContents } from "electron";
 import type {

@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import type { OcrProviderDescriptor } from "@vetta/capability-sdk";
 import {
 	projectRuntimeConfigurationCatalog,
 	RuntimeConfigurationCenter,
@@ -7,6 +6,7 @@ import {
 	type RuntimeConfigurationJsonValue,
 } from "@vetta/runtime-core/configuration";
 import { CODING_IMAGE_CONFIGURATION, VETTA_OCR_CONFIGURATION } from "@vetta/runtime-tools";
+import type { OcrProviderDescriptor } from "@vetta-org/capability-sdk";
 import type {
 	DesktopRuntimeConfigurationCatalog,
 	DesktopRuntimeConfigurationConsumer,

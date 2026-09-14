@@ -2,7 +2,7 @@ import {
 	type CapabilityJsonValue,
 	FOUNDATION_NETWORK_CAPABILITIES,
 	parseCapabilityJsonValue,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import { PLUGIN_CAPABILITY_PERMISSIONS, type PluginCapabilitySessionAccess } from "../types.js";
 
 export const pluginNetworkMethods = {

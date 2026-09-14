@@ -1,4 +1,4 @@
-import { DOMAIN_MCP_CAPABILITIES, type McpServerDetail, type McpServerSummary } from "@vetta/capability-sdk";
+import { DOMAIN_MCP_CAPABILITIES, type McpServerDetail, type McpServerSummary } from "@vetta-org/capability-sdk";
 import type { PluginCapabilitySessionAccess } from "../types.js";
 
 export const pluginMcpMethods = {

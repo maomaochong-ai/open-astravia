@@ -12,7 +12,7 @@
 
 ### 1. 媒体生成下沉为 Domain Capability
 
-`@vetta/capability-sdk` 定义图片与视频的能力发现、任务创建、查询、取消、进度、产物、结构化错误及四个 `cap.domain.vetta.media.*` token。Provider Registry 允许为空；任何消费者都不能假定宿主一定具备生成能力。
+`@vetta-org/capability-sdk` 定义图片与视频的能力发现、任务创建、查询、取消、进度、产物、结构化错误及四个 `cap.domain.vetta.media.*` token。Provider Registry 允许为空；任何消费者都不能假定宿主一定具备生成能力。
 
 Registry 与产物存储由 desktop 主进程拥有。插件 SDK 对消费方暴露受 `media.generate` 门控的稳定请求；对 Provider 插件暴露受 `media.provider.register` 门控的注册回调。两者共用同一 Registry。
 

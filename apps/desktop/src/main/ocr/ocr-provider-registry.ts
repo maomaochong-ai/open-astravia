@@ -1,4 +1,4 @@
-import type { OcrProviderDescriptor, OcrProviderInput, OcrRequest, OcrResult } from "@vetta/capability-sdk";
+import type { OcrProviderDescriptor, OcrProviderInput, OcrRequest, OcrResult } from "@vetta-org/capability-sdk";
 
 export interface OcrProviderContext {
 	readonly signal: AbortSignal;

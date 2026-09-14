@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { BrowserAction, BrowserRuntimeStatus } from "@vetta/capability-sdk";
+import type { BrowserAction, BrowserRuntimeStatus } from "@vetta-org/capability-sdk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BrowserAutomationService } from "./browser-automation-service.js";
 import { BrowserProfileRegistry } from "./browser-profile-registry.js";

@@ -1,4 +1,8 @@
-import { type BatchProject, type BatchTaskCommandResult, DOMAIN_BATCH_TASK_CAPABILITIES } from "@vetta/capability-sdk";
+import {
+	type BatchProject,
+	type BatchTaskCommandResult,
+	DOMAIN_BATCH_TASK_CAPABILITIES,
+} from "@vetta-org/capability-sdk";
 import type { PluginCapabilitySessionAccess } from "../types.js";
 
 export const pluginBatchTaskMethods = {

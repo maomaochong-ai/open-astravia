@@ -2,7 +2,7 @@ import {
 	DOMAIN_SESSION_CAPABILITIES,
 	type SessionHistoryEntry,
 	type SessionRuntimeProject,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import type { PluginCapabilitySessionAccess } from "../types.js";
 
 export const pluginSessionMethods = {

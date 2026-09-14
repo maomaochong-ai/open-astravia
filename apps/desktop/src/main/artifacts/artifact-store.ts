@@ -6,7 +6,7 @@ import { extname, join } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
-import type { ArtifactRef } from "@vetta/capability-sdk";
+import type { ArtifactRef } from "@vetta-org/capability-sdk";
 
 export interface ArtifactStoreOptions {
 	root?: string;

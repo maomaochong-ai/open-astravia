@@ -2,7 +2,7 @@ import {
 	type AgentExperimentalSettings,
 	type AgentExperimentalSettingsUpdate,
 	DOMAIN_AGENT_SETTINGS_CAPABILITIES,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import type { PluginCapabilitySessionAccess } from "../types.js";
 
 export const pluginAgentSettingsMethods = {

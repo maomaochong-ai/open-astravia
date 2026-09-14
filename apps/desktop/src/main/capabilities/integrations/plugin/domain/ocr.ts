@@ -1,4 +1,4 @@
-import { DOMAIN_OCR_CAPABILITIES, type OcrProviderDescriptor, type OcrResult } from "@vetta/capability-sdk";
+import { DOMAIN_OCR_CAPABILITIES, type OcrProviderDescriptor, type OcrResult } from "@vetta-org/capability-sdk";
 import { PLUGIN_CAPABILITY_PERMISSIONS, type PluginCapabilitySessionAccess } from "../types.js";
 
 export const pluginOcrMethods = {

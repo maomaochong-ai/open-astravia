@@ -5,7 +5,7 @@ import type {
 	ShortcutBindingResetResult,
 	ShortcutBindingsResult,
 	ShortcutSettings,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import { BrowserWindow } from "electron";
 import {
 	findShortcutBindingConflict,

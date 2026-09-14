@@ -676,7 +676,7 @@ _Avoid_: 把工作流称作「后台任务」（那是 background-tasks 标签�
 
 ### Capability（授权契约）
 
-`@vetta/capability-sdk` / `@vetta/capability-runtime` 里的权限契约层：Capability ID、Grant、access session、constraint、audit（见 `docs/capabilities/README.md`）。回答的是「某个 subject 能否调用某个宿主能力出口」。
+`@vetta-org/capability-sdk` / `@vetta/capability-runtime` 里的权限契约层：Capability ID、Grant、access session、constraint、audit（见 `docs/capabilities/README.md`）。回答的是「某个 subject 能否调用某个宿主能力出口」。
 
 中文正式叫法为**「授权契约」**，把「能力」这个中文词让给 [[Ability（能力）]]，避免 desktop 市场条目与授权层同名不可分辨。
 

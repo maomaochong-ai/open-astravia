@@ -1,6 +1,6 @@
 import { copyFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
-import type { ArtifactPersistInput, PersistedArtifact } from "@vetta/capability-sdk";
+import type { ArtifactPersistInput, PersistedArtifact } from "@vetta-org/capability-sdk";
 import { assertFilesystemPathWithinProject } from "../filesystem/filesystem-service.js";
 import { putPluginBlobFromFile } from "../plugins/plugin-storage-service.js";
 import type { ArtifactStore } from "./artifact-store.js";

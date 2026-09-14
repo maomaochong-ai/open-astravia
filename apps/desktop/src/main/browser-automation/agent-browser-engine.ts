@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { BrowserAction } from "@vetta/capability-sdk";
+import type { BrowserAction } from "@vetta-org/capability-sdk";
 import {
 	BrowserProcessAbortedError,
 	type BrowserProcessResult,

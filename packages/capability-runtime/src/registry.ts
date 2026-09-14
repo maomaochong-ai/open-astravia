@@ -9,7 +9,7 @@ import {
 	type CapabilityToken,
 	capabilityPublisherFromId,
 	type Disposable,
-} from "@vetta/capability-sdk";
+} from "@vetta-org/capability-sdk";
 import type { CapabilityProviderBinding } from "./provider.js";
 
 interface ProviderEntry {
