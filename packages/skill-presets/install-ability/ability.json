@@ -1,0 +1,86 @@
+{
+	"schemaVersion": 1,
+	"type": "skill",
+	"slug": "install-ability",
+	"version": "1.0.0",
+	"detail": {
+		"blocks": [
+			{
+				"type": "showcase",
+				"showcase": {
+					"template": "chat-over-canvas",
+					"canvas": "code",
+					"user_prompt": "帮我把这个插件装到 Vetta 里。",
+					"assistant_reply": "我会先判断它是插件、Skill 还是 MCP，装完后检查是否有待应用的版本，需要重载就立刻重载并核对生效版本。"
+				}
+			},
+			{
+				"type": "feature-grid",
+				"title": "把能力装对、装到生效为止",
+				"items": [
+					{
+						"title": "先分类再安装",
+						"description": "区分插件、Skill/场景与 MCP，各走各自的安装通道。",
+						"icon": "solar:widget-5-linear"
+					},
+					{
+						"title": "安装后自动重载",
+						"description": "覆盖升级会挂成待应用版本，识别到就立即重载并核对生效版本。",
+						"icon": "solar:refresh-square-linear"
+					},
+					{
+						"title": "不碰注册表",
+						"description": "统一经宿主审批安装，绝不手写插件目录与配置清单。",
+						"icon": "solar:shield-check-linear"
+					},
+					{
+						"title": "装完就校验",
+						"description": "回查启用状态、版本与配置，如实报告未完成的步骤。",
+						"icon": "solar:clipboard-check-linear"
+					}
+				]
+			}
+		],
+		"i18n": {
+			"en": {
+				"blocks": [
+					{
+						"type": "showcase",
+						"showcase": {
+							"template": "chat-over-canvas",
+							"canvas": "code",
+							"user_prompt": "Install this plugin into Vetta for me.",
+							"assistant_reply": "I'll first tell whether it is a plugin, a Skill, or an MCP server, then check for a pending version after install and reload it right away."
+						}
+					},
+					{
+						"type": "feature-grid",
+						"title": "Install capabilities so they actually take effect",
+						"items": [
+							{
+								"title": "Classify first",
+								"description": "Plugins, Skills/scenes, and MCP servers each have their own install path.",
+								"icon": "solar:widget-5-linear"
+							},
+							{
+								"title": "Reload after install",
+								"description": "An upgrade lands as a pending version; detect it and reload, then verify the active version.",
+								"icon": "solar:refresh-square-linear"
+							},
+							{
+								"title": "Never touch the registry",
+								"description": "Everything goes through host approval — no hand-written plugin directories or manifests.",
+								"icon": "solar:shield-check-linear"
+							},
+							{
+								"title": "Verify and report",
+								"description": "Check enabled state, version, and config, and report anything left undone.",
+								"icon": "solar:clipboard-check-linear"
+							}
+						]
+					}
+				]
+			}
+		}
+	}
+}
