@@ -28,6 +28,11 @@ export function AbilityStatusBadges({ item }: { item: AbilityItem }): JSX.Elemen
 					{t("status.sameName", { count: item.sameNameIds.length })}
 				</span>
 			) : null}
+			{item.installed && !item.enabled && (
+				<span className="inline-flex shrink-0 items-center rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+					{t("status.disabled")}
+				</span>
+			)}
 			{item.setupRequired && (
 				<span className="inline-flex shrink-0 items-center rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
 					{t("status.setupRequired")}

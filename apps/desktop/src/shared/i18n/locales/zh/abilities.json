@@ -29,6 +29,7 @@
 	},
 	"status": {
 		"setupRequired": "需要配置",
+		"disabled": "已禁用",
 		"updateAvailable": "可更新",
 		"openSource": "开源",
 		"sameName": "{{count}} 个同名"

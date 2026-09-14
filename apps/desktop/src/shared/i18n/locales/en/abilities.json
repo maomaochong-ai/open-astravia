@@ -29,6 +29,7 @@
 	},
 	"status": {
 		"setupRequired": "Setup required",
+		"disabled": "Disabled",
 		"updateAvailable": "Update available",
 		"openSource": "Open source",
 		"sameName": "{{count}} with same name"
