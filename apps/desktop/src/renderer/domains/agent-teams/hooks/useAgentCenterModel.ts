@@ -21,7 +21,7 @@ export function useAgentCenterModel(copy: AgentLibraryCopy) {
 	const { createAgent } = library.actions;
 	const { saveAssembly } = roster.actions;
 
-	/** 有值即处于「拉拢」模式：此时点击智能体卡片是拉入/移出，而不是打开编辑。 */
+	/** 有值即处于团队成员选择模式：此时点击智能体卡片是加入/移出，而不是打开档案。 */
 	const [assembly, setAssembly] = useState<TeamAssemblyDraft>();
 	const [selectedTeamId, setSelectedTeamId] = useState<string>();
 	const [teamsExpanded, setTeamsExpanded] = useState(false);

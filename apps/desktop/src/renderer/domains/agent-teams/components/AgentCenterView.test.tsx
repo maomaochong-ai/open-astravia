@@ -168,7 +168,7 @@ describe("AgentCenterView", () => {
 		expect(screen.getByText("center.teamSelectHint")).toBeDefined();
 	});
 
-	it("selects the team when the click lands on the card footer", async () => {
+	it("enters member selection when the team card is clicked", async () => {
 		const teams = [team("squad")];
 		const model = buildModel({ teams } as Partial<AgentCenterModel>);
 		const user = userEvent.setup();
@@ -176,7 +176,7 @@ describe("AgentCenterView", () => {
 
 		// footer 的提示语与留白也在选中热区里，卡片上半部分不该是唯一能点的地方。
 		await user.click(screen.getByText("center.teamSelectHint"));
-		expect(model.actions.selectTeam).toHaveBeenCalledWith("squad");
+		expect(model.actions.startEditTeam).toHaveBeenCalledWith(expect.objectContaining({ id: "squad" }));
 	});
 
 	it("keeps the chat shortcut from toggling the card selection", async () => {
@@ -252,8 +252,14 @@ describe("AgentCenterView", () => {
 		});
 		renderView(model);
 
+		const recruitedMarker = document.querySelector<HTMLElement>('[data-agent-marker="recruited"]');
+		const recruitMarker = document.querySelector<HTMLElement>('[data-agent-marker="recruit"]');
 		expect(screen.getByRole("button", { name: "alpha" }).getAttribute("aria-pressed")).toBe("true");
 		expect(screen.getByRole("button", { name: "beta" }).getAttribute("aria-pressed")).toBe("false");
+		expect(recruitedMarker?.className).toContain("bg-destructive");
+		expect(recruitedMarker?.firstElementChild?.className).toContain("icon-[solar--close-linear]");
+		expect(recruitMarker?.firstElementChild?.className).toContain("icon-[solar--add-linear]");
+		expect(screen.queryByRole("button", { name: "center.recruit" })).toBeNull();
 		expect((screen.getByRole("button", { name: "center.saveTeam" }) as HTMLButtonElement).disabled).toBe(true);
 	});
 });

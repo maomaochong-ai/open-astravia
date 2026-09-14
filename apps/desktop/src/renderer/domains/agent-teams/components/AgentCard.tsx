@@ -61,6 +61,7 @@ export function AgentCard({
 				onClick={onActivate}
 				aria-label={agent.name}
 				aria-pressed={marker ? marker === "recruited" : undefined}
+				title={marker ? (marker === "recruited" ? t("center.dismissAgent") : t("center.recruit")) : undefined}
 				className="flex w-full cursor-pointer items-start gap-3.5 p-4 text-left outline-none"
 			>
 				<AgentAvatarView
@@ -95,16 +96,19 @@ export function AgentCard({
 			{marker && (
 				<span
 					className={[
-						"pointer-events-none absolute right-3 top-3 flex h-4.5 w-4.5 items-center justify-center rounded-full",
-						marker === "recruited" ? "bg-primary text-primary-foreground" : "bg-accent/60 text-muted-foreground",
+						"pointer-events-none absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full ring-1 ring-background",
+						marker === "recruited"
+							? "bg-destructive text-destructive-foreground"
+							: "bg-primary text-primary-foreground",
 					].join(" ")}
+					data-agent-marker={marker}
 					aria-hidden="true"
 				>
 					<span
 						className={
 							marker === "recruited"
-								? "icon-[solar--check-read-linear] h-3 w-3"
-								: "icon-[solar--add-circle-linear] h-3 w-3"
+								? "icon-[solar--close-linear] h-3.5 w-3.5"
+								: "icon-[solar--add-linear] h-3.5 w-3.5"
 						}
 					/>
 				</span>

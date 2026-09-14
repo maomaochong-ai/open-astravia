@@ -61,12 +61,12 @@ export function AgentCenterView({
 		return () => document.removeEventListener("pointerdown", onPointerDown);
 	}, [assembling, cancelAssembly, clearSelection, selectedTeamId]);
 
-	// 组队进行中点另一支团队：直接换成那支团队的组队；点回自己则退出。
+	// 点击团队就是进入该团队的成员编辑：直接复用组队草稿，避免「先选中、再找编辑入口」的隐式两步。
 	const selectTeamCard = useCallback(
 		(team: TeamDefinition) => {
 			const active = selectedTeamId === team.id;
 			if (!assembling) {
-				clearSelection(active ? undefined : team.id);
+				actions.startEditTeam(team);
 				return;
 			}
 			if (active) {
@@ -160,7 +160,7 @@ export function AgentCenterView({
 											selected={model.selectedTeam?.id === team.id}
 											onSelect={() => selectTeamCard(team)}
 											onOpenChat={() => onOpenTeamChat(team.id)}
-											onRecruit={() => actions.startEditTeam(team)}
+											{...(assembling ? {} : { onRecruit: () => actions.startEditTeam(team) })}
 											onOpenSettings={() => onOpenTeamSettings(team.id)}
 											{...(team.source ? {} : { onDelete: () => onDeleteTeam(team.id) })}
 										/>
@@ -196,7 +196,10 @@ export function AgentCenterView({
 								{t("library.empty")}
 							</p>
 						) : (
-							<div data-assembly-region="agents" className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
+							<div
+								data-assembly-region="agents"
+								className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3"
+							>
 								{model.agents.map((agent) => (
 									<AgentCard
 										key={agent.id}

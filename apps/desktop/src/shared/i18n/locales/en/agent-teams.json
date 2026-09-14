@@ -43,7 +43,7 @@
     "expandTeams": "Show {{count}} more",
     "collapseTeams": "Collapse",
     "expertCount": "{{count}} specialist(s)",
-    "teamSelectHint": "Click to select",
+    "teamSelectHint": "Click to edit members",
     "openTeamChat": "Start a session with this team",
     "teamSettings": "Team settings",
     "deleteTeam": "Delete team",

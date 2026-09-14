@@ -10,7 +10,8 @@ export interface TeamCardProps {
 	readonly selected: boolean;
 	readonly onSelect: () => void;
 	readonly onOpenChat: () => void;
-	readonly onRecruit: () => void;
+	/** 已在成员编辑态时省略，避免重复进入并丢掉尚未保存的草稿。 */
+	readonly onRecruit?: () => void;
 	readonly onOpenSettings: () => void;
 	/** 省略时不出现删除入口：提供方维护的团队不允许删除。 */
 	readonly onDelete?: () => void;
@@ -71,18 +72,20 @@ export function TeamCard({
 			<div className="mt-4 flex items-center justify-between gap-1 pt-2">
 				{selected ? (
 					<div className="flex items-center gap-1">
-						{/* 拉拢是这里唯一的正向动作，用 primary 实心把它和「设置 / 删除」两个次要动作分开。 */}
-						<Button
-							variant="primary"
-							size="sm"
-							className="h-6 gap-1 rounded-full px-2"
-							title={t("center.recruit")}
-							aria-label={t("center.recruit")}
-							onClick={stopAnd(onRecruit)}
-						>
-							<span className="icon-[solar--user-plus-linear] h-3.5 w-3.5" aria-hidden="true" />
-							<span className="text-[11px] font-medium">{t("center.recruitShort")}</span>
-						</Button>
+						{/* 未进入成员编辑态时保留显式入口；编辑态由顶部的保存/退出承接，避免重置未保存草稿。 */}
+						{onRecruit && (
+							<Button
+								variant="primary"
+								size="sm"
+								className="h-6 gap-1 rounded-full px-2"
+								title={t("center.recruit")}
+								aria-label={t("center.recruit")}
+								onClick={stopAnd(onRecruit)}
+							>
+								<span className="icon-[solar--user-plus-linear] h-3.5 w-3.5" aria-hidden="true" />
+								<span className="text-[11px] font-medium">{t("center.recruitShort")}</span>
+							</Button>
+						)}
 						<CardAction
 							icon="icon-[solar--settings-linear]"
 							label={t("center.teamSettings")}
