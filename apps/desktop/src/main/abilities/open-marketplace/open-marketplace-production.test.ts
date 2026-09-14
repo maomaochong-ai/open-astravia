@@ -120,7 +120,7 @@ describe("installOpenMarketplaceAbilityInDesktop", () => {
 			marketplaceVersion: "2026.07.3",
 			repository: "https://github.com/example/test-market",
 		};
-		const packageInput = { locales: {}, hostApiVersion: "2.0.0", rootPath: sourceDir };
+		const packageInput = { locales: {}, hostApiVersion: "2.0.0", rootPath: sourceDir, reloadToken: "1" };
 		const previous =
 			previousGrants === undefined
 				? undefined
@@ -148,7 +148,8 @@ describe("installOpenMarketplaceAbilityInDesktop", () => {
 		expect(Buffer.isBuffer(archiveBuffer)).toBe(true);
 		expect(new AdmZip(archiveBuffer as Buffer).getEntry("plugin.json")).not.toBeNull();
 		expect(installed.source).toBe("remote");
-		expect(mocks.recordAbilityInstall).toHaveBeenCalledWith("plugin", "demo-plugin", previous ? "0.9.0" : "1.0.0", {
+		// 安装即生效：台账记的是装完就在跑的版本，升级场景同样是新版本。
+		expect(mocks.recordAbilityInstall).toHaveBeenCalledWith("plugin", "demo-plugin", "1.0.0", {
 			origin,
 			configVersion: 2,
 			catalogId: "github:test-source:plugin:demo-plugin",

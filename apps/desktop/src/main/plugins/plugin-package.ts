@@ -63,6 +63,85 @@ export function toInstalledPluginUrl(pluginId: string, version: string, relative
 	return `vetta-plugin://${pluginId}/${versionedPluginPath(version, normalized)}?v=${encodeURIComponent(version)}`;
 }
 
+/**
+ * 带 reload token 的包内资源 URL：token 变化会让渲染进程丢弃已加载的旧远端（MF reloadBust），
+ * 是「同一插件换了版本」在渲染层生效的唯一手段。
+ */
+export function installedPluginResourceUrl(
+	pluginId: string,
+	version: string,
+	relativePath: string,
+	reloadToken: string,
+): string {
+	return `${toInstalledPluginUrl(pluginId, version, relativePath)}&reload=${encodeURIComponent(reloadToken)}`;
+}
+
+/** manifest 决定的版本字段；用户态（启用、授权、安装时间）不在其中。 */
+export type PluginVersionProjection = Pick<
+	InstalledPlugin,
+	| "name"
+	| "version"
+	| "pluginApiVersion"
+	| "description"
+	| "author"
+	| "entryUrl"
+	| "styleUrls"
+	| "iconUrl"
+	| "moduleFederation"
+	| "agent"
+	| "cliProviders"
+	| "serviceProviders"
+	| "guidingWords"
+	| "defaultLocale"
+	| "locales"
+	| "permissions"
+	| "allowedNetworkHosts"
+	| "allowedBrowserHosts"
+	| "declaredCommands"
+>;
+
+/**
+ * manifest → InstalledPlugin 版本字段的唯一投射。
+ *
+ * 安装、重载、dev 链接三条路径原先各写一份，覆盖的字段集互不相同，manifest 新增字段必须
+ * 在三处同步，漏一处就表现为「版本号变了、内容没变」。版本字段只从这里产出；调用方只提供
+ * 「包内相对路径如何变成可加载 URL」，并自行决定用户态字段。
+ */
+export function projectPluginVersion(input: {
+	manifest: PluginManifest;
+	locales: PluginLocales;
+	toResourceUrl: (relativePath: string) => string;
+}): PluginVersionProjection {
+	const { manifest, locales, toResourceUrl } = input;
+	return {
+		name: manifest.name,
+		version: manifest.version,
+		pluginApiVersion: manifest.pluginApiVersion,
+		description: manifest.description,
+		author: manifest.author,
+		entryUrl: toResourceUrl(manifest.entry),
+		styleUrls: (manifest.styles ?? []).map((style) => toResourceUrl(style)),
+		iconUrl: resolvePluginIcon(manifest.icon, toResourceUrl),
+		moduleFederation: manifest.moduleFederation,
+		agent: manifest.agent,
+		cliProviders: manifest.providers?.cli ?? [],
+		serviceProviders: manifest.providers?.services ?? [],
+		guidingWords: manifest.guidingWords,
+		defaultLocale: manifest.defaultLocale ?? "zh",
+		locales,
+		permissions: effectivePluginPermissions(manifest.permissions ?? []),
+		allowedNetworkHosts: manifest.network?.allowedHosts ?? [],
+		allowedBrowserHosts: manifest.browser?.allowedHosts ?? [],
+		declaredCommands: effectivePluginCommands(manifest.commands ?? []),
+	};
+}
+
+/**
+ * 装包即完整装配：新版本的资源 URL、贡献声明、locales 一次性换成新 manifest 的，
+ * `activeVersion` 同步落到新版本。安装与「生效」曾经是两步（装完只改 version、留一个
+ * pendingVersion 等调用方再调 reloadPlugin），任何忘了那一步的入口都会把旧代码挂在新版本号
+ * 下跑，且重启不会自愈。保留下来的只有用户态：启用状态、已授予的权限与命令、首次安装时间。
+ */
 export function createInstalledPluginFromManifest(input: {
 	manifest: PluginManifest;
 	options?: PluginInstallOptions;
@@ -70,56 +149,37 @@ export function createInstalledPluginFromManifest(input: {
 	locales: PluginLocales;
 	hostApiVersion: string;
 	rootPath: string;
+	reloadToken: string;
 }): InstalledPlugin {
-	const { manifest, options, previous, locales, hostApiVersion, rootPath } = input;
+	const { manifest, options, previous, locales, hostApiVersion, rootPath, reloadToken } = input;
 	if (!isPluginApiCompatible(hostApiVersion, manifest.pluginApiVersion)) {
 		throw new Error(`Unsupported plugin API version: ${manifest.pluginApiVersion}`);
 	}
 	const now = new Date().toISOString();
-	const activeVersion = previous?.activeVersion ?? manifest.version;
-	const entryUrl = previous?.entryUrl ?? toInstalledPluginUrl(manifest.id, activeVersion, manifest.entry);
-	const styleUrls =
-		previous?.styleUrls ??
-		(manifest.styles ?? []).map((style) => toInstalledPluginUrl(manifest.id, activeVersion, style));
+	const projected = projectPluginVersion({
+		manifest,
+		locales,
+		toResourceUrl: (path) => installedPluginResourceUrl(manifest.id, manifest.version, path, reloadToken),
+	});
 	const trustLevel: InstalledPlugin["trustLevel"] =
 		options?.source === "remote" || options?.source === "npm" ? "community" : "local";
-	const permissions = effectivePluginPermissions(manifest.permissions ?? []);
+	// 升级不自动扩大授权：旧授权与新声明取交集，新增权限仍要用户在确认界面勾选。
 	const grantedPermissions = Array.from(
 		new Set(
 			(options?.grantedPermissions ?? previous?.grantedPermissions ?? []).filter((permission) =>
-				permissions.includes(permission),
+				projected.permissions.includes(permission),
 			),
 		),
 	);
-	const iconUrl = previous
-		? previous.iconUrl
-		: resolvePluginIcon(manifest.icon, (path) => toInstalledPluginUrl(manifest.id, activeVersion, path));
-	const declaredCommands = effectivePluginCommands(manifest.commands ?? []);
-	const grantedCommandNames = effectivePluginCommands(previous?.grantedCommandNames ?? []);
+	const grantedCommandNames = effectivePluginCommands(previous?.grantedCommandNames ?? []).filter((name) =>
+		projected.declaredCommands.includes(name),
+	);
 	return {
 		id: manifest.id,
-		name: manifest.name,
-		version: manifest.version,
-		activeVersion,
-		pluginApiVersion: manifest.pluginApiVersion,
-		entryUrl,
-		moduleFederation: previous?.moduleFederation ?? manifest.moduleFederation,
-		agent: previous?.agent ?? manifest.agent,
-		cliProviders: previous?.cliProviders ?? manifest.providers?.cli ?? [],
-		serviceProviders: previous?.serviceProviders ?? manifest.providers?.services ?? [],
-		styleUrls,
-		permissions,
+		...projected,
+		activeVersion: manifest.version,
 		grantedPermissions,
-		allowedNetworkHosts: manifest.network?.allowedHosts ?? [],
-		allowedBrowserHosts: manifest.browser?.allowedHosts ?? [],
-		declaredCommands,
 		grantedCommandNames,
-		description: manifest.description,
-		author: manifest.author,
-		iconUrl,
-		guidingWords: manifest.guidingWords,
-		defaultLocale: manifest.defaultLocale ?? "zh",
-		locales,
 		enabled: options?.enable === true ? true : (previous?.enabled ?? false),
 		required: false,
 		installedAt: previous?.installedAt ?? now,
@@ -127,8 +187,6 @@ export function createInstalledPluginFromManifest(input: {
 		source: options?.source ?? "archive",
 		distribution: options?.source === "npm" ? options.npm : undefined,
 		trustLevel,
-		availableVersion: previous && previous.version !== manifest.version ? manifest.version : undefined,
-		pendingVersion: previous && previous.version !== manifest.version ? manifest.version : undefined,
 		rootPath,
 	};
 }

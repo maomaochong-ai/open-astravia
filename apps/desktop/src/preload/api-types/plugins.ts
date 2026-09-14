@@ -210,6 +210,10 @@ export interface InstalledPlugin {
 	distribution?: PluginNpmDistribution;
 	/** 执行权限信任级别；与安装来源分离，不能由插件 manifest 自行声明。 */
 	trustLevel: PluginTrustLevel;
+	/**
+	 * 旧宿主的「装了但没生效」状态。安装即激活后不再产生（ADR-0113），只为读取存量注册表保留，
+	 * 会在一次重载或重新安装后消失；新代码不要依赖它判断插件是否有待应用的更新。
+	 */
 	availableVersion?: string;
 	pendingVersion?: string;
 	/**

@@ -49,6 +49,7 @@ describe("createInstalledPluginFromManifest", () => {
 			locales: {},
 			hostApiVersion: "2.0.0",
 			rootPath: "C:/plugins/demo/versions/2.0.0",
+			reloadToken: "1",
 		});
 
 		expect(installed).toMatchObject({
@@ -59,22 +60,25 @@ describe("createInstalledPluginFromManifest", () => {
 		});
 	});
 
-	it("keeps the active version stable while an update is pending", () => {
+	it("activates the installed version and repoints every resource at it", () => {
 		const installed = createInstalledPluginFromManifest({
 			manifest,
 			previous: previousPlugin(),
 			locales: {},
 			hostApiVersion: "2.0.0",
-			rootPath: "C:/plugins/demo/versions/1.0.0",
+			rootPath: "C:/plugins/demo/versions/2.0.0",
+			reloadToken: "42",
 		});
 
 		expect(installed).toMatchObject({
 			version: "2.0.0",
-			activeVersion: "1.0.0",
-			pendingVersion: "2.0.0",
+			activeVersion: "2.0.0",
+			// 升级不自动扩大授权：新声明的 agent.command.run 仍未授予。
 			grantedPermissions: ["agent.skills.control"],
-			entryUrl: "vetta-plugin://demo/versions/1.0.0/dist/mf-manifest.json?v=1.0.0",
+			entryUrl: "vetta-plugin://demo/versions/2.0.0/dist/mf-manifest.json?v=2.0.0&reload=42",
+			moduleFederation: { remoteName: "demo", expose: "./plugin" },
 		});
+		expect(installed.pendingVersion).toBeUndefined();
 	});
 
 	it("prunes removed permissions without granting new declarations on update", () => {
@@ -84,7 +88,8 @@ describe("createInstalledPluginFromManifest", () => {
 			options: { source: "remote" },
 			locales: {},
 			hostApiVersion: "2.0.0",
-			rootPath: "C:/plugins/demo/versions/1.0.0",
+			rootPath: "C:/plugins/demo/versions/2.0.0",
+			reloadToken: "1",
 		});
 
 		expect(installed.permissions).toEqual(["agent.command.run"]);

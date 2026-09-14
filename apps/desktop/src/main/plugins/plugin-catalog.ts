@@ -29,16 +29,12 @@ import {
 	createInstalledPluginFromManifest,
 	extractPluginArchive,
 	findPluginManifest,
+	installedPluginResourceUrl,
+	projectPluginVersion,
 	readPluginLocales,
-	resolvePluginIcon,
-	toInstalledPluginUrl,
 	validatePluginPackageResources,
 } from "./plugin-package.js";
-import {
-	effectivePluginCommands,
-	effectivePluginPermissions,
-	grantDeclaredPluginCommands,
-} from "./plugin-permission-policy.js";
+import { effectivePluginPermissions, grantDeclaredPluginCommands } from "./plugin-permission-policy.js";
 import { PluginRegistryStore, SystemPluginPreferenceStore } from "./plugin-registry-store.js";
 import { PluginSecretsStore } from "./plugin-secrets-store.js";
 import { SystemPluginCatalog } from "./plugin-system-catalog.js";
@@ -233,11 +229,8 @@ export async function installPluginFromArchive(
 			previous,
 			locales: readPluginLocales(sourceDir, pluginLog),
 			hostApiVersion: PLUGIN_API_VERSION,
-			rootPath: computePluginRootPath(
-				manifest.id,
-				options?.source ?? "archive",
-				previous?.activeVersion ?? manifest.version,
-			),
+			rootPath: computePluginRootPath(manifest.id, options?.source ?? "archive", manifest.version),
+			reloadToken: Date.now().toString(),
 		});
 		// Fresh install with explicit grants: if caller passed permissions, keep them.
 		// ADR-0042 agent path typically grants all declared permissions at approve time.
@@ -253,7 +246,7 @@ export async function installPluginFromArchive(
 		}
 		registry[manifest.id] = installed;
 		pluginRegistry.write(registry);
-		// 能力安装台账（ADR-0049）：记生效中的版本；升级要等 reloadPlugin 切到 pendingVersion 后才改写。
+		// 能力安装台账（ADR-0049）：记生效中的版本；安装即生效，装完就是新版本。
 		recordAbilityInstall("plugin", installed.id, installed.activeVersion);
 		broadcastPluginsChanged();
 		return installed;
@@ -433,47 +426,36 @@ export function reloadPlugin(id: string): InstalledPlugin {
 	const registry = pluginRegistry.read();
 	const plugin = registry[id];
 	if (!plugin) throw new Error(`Plugin not found: ${id}`);
+	// pendingVersion 是旧版本宿主留下的「装了但没生效」状态；安装已经不再产生它，这里顺手收敛。
 	plugin.activeVersion = plugin.pendingVersion ?? plugin.version;
 	plugin.pendingVersion = undefined;
 	plugin.availableVersion = undefined;
 	const versionDir = join(pluginsBaseDir, plugin.id, "versions", plugin.activeVersion);
 	const manifestFile = join(versionDir, "plugin.json");
 	const manifest = parseManifest(JSON.parse(readFileSync(manifestFile, "utf-8")));
-	plugin.defaultLocale = manifest.defaultLocale ?? "zh";
-	plugin.locales = readPluginLocales(versionDir, pluginLog);
 	const reloadToken = Date.now().toString();
-	plugin.entryUrl = `${toInstalledPluginUrl(plugin.id, plugin.activeVersion, manifest.entry)}&reload=${reloadToken}`;
-	plugin.moduleFederation = manifest.moduleFederation;
-	plugin.agent = manifest.agent;
-	plugin.cliProviders = manifest.providers?.cli ?? [];
-	plugin.serviceProviders = manifest.providers?.services ?? [];
-	plugin.allowedNetworkHosts = manifest.network?.allowedHosts ?? [];
-	plugin.allowedBrowserHosts = manifest.browser?.allowedHosts ?? [];
-	plugin.styleUrls = (manifest.styles ?? []).map(
-		(style) => `${toInstalledPluginUrl(plugin.id, plugin.activeVersion, style)}&reload=${reloadToken}`,
+	Object.assign(
+		plugin,
+		projectPluginVersion({
+			manifest,
+			locales: readPluginLocales(versionDir, pluginLog),
+			toResourceUrl: (path) => installedPluginResourceUrl(plugin.id, plugin.activeVersion, path, reloadToken),
+		}),
 	);
-	// activeVersion 在上面已切到 pendingVersion，图标 URL 必须跟着重算（安装时刻意沿用了旧值）。
-	plugin.iconUrl = resolvePluginIcon(
-		manifest.icon,
-		(path) => `${toInstalledPluginUrl(plugin.id, plugin.activeVersion, path)}&reload=${reloadToken}`,
-	);
-	// 重载到新版本时同步命令声明，并把用户授权裁剪到新声明集合内（避免授权指向已移除的命令、
-	// 或新增命令因 declaredCommands 陈旧而永远无法授权）。
-	plugin.permissions = effectivePluginPermissions(manifest.permissions ?? []);
+	// 授权集合裁剪到新声明内（避免授权指向已移除的命令、或新增命令因 declaredCommands 陈旧而永远无法授权）。
 	plugin.grantedPermissions = effectivePluginPermissions(plugin.grantedPermissions).filter((permission) =>
 		plugin.permissions.includes(permission),
 	);
-	plugin.declaredCommands = effectivePluginCommands(manifest.commands ?? []);
 	plugin.grantedCommandNames = (plugin.grantedCommandNames ?? []).filter((name) =>
 		plugin.declaredCommands.includes(name),
 	);
 	plugin.rootPath = computePluginRootPath(plugin.id, plugin.source, plugin.activeVersion);
 	plugin.updatedAt = new Date().toISOString();
 	pluginRegistry.write(registry);
-	// activeVersion 已切到 pendingVersion，台账（ADR-0049）跟着改写为实际生效的版本。
+	// 台账（ADR-0049）跟着改写为实际生效的版本。
 	recordAbilityInstall("plugin", plugin.id, plugin.activeVersion);
-	// dev 链接期间：注册表照常应用 pendingVersion（否则「应用到 Vetta」的新版本会被
-	// 吞掉，关热更新后回落旧版本），但返回值与广播叠加 dev 快照（资源仍从工程加载）。
+	// dev 链接期间：注册表照常收敛到实际版本（否则「应用到 Vetta」的新版本会被吞掉，
+	// 关热更新后回落旧版本），但返回值与广播叠加 dev 快照（资源仍从工程加载）。
 	if (pluginDevLinkService.has(id)) {
 		return pluginDevLinkService.refresh(id);
 	}
