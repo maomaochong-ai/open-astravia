@@ -1,0 +1,22 @@
+{
+  "source": "/Volumes/attach1/dev/opensource/vetta-proj/openvetta/docs/plugin",
+  "files": [
+    "README.md",
+    "ability-details.md",
+    "ai.md",
+    "app-actions.md",
+    "browser.md",
+    "conversation-and-agent.md",
+    "file-explorer.md",
+    "getting-started.md",
+    "guiding-the-agent.md",
+    "manifest.md",
+    "mcp.md",
+    "media.md",
+    "message-cards.md",
+    "permissions.md",
+    "styling-and-pitfalls.md",
+    "system-plugins.md",
+    "ui-slots.md"
+  ]
+}

@@ -13,9 +13,6 @@ import { PLUGIN_PERMISSIONS } from "../src/permissions.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "..", "..", "..", "..");
 const manualDir = join(repoRoot, "docs", "plugin");
-/** 随插件包发到用户机器上的那一份；生产环境没有 monorepo 的 docs/plugin。 */
-const bundledDir = join(repoRoot, "packages", "plugins", "presets", "plugin-workbench", "agent", "docs", "plugin");
-
 function manualFileNames(dir: string): string[] {
 	return readdirSync(dir)
 		.filter((name) => name.endsWith(".md"))
@@ -62,12 +59,4 @@ describe("plugin manual coverage", () => {
 		expect(pkg.scripts?.prepack).toContain("bundle-docs");
 	});
 
-	it("keeps the copy bundled with the workbench in sync with the manual", () => {
-		expect(manualFileNames(bundledDir)).toEqual(manualFileNames(manualDir));
-		const drifted = manualFileNames(manualDir).filter(
-			(name) => readManual(bundledDir, name) !== readManual(manualDir, name),
-		);
-		// 修复方式：node packages/plugins/presets/plugin-workbench/scripts/sync-plugin-docs.mjs
-		expect(drifted).toEqual([]);
-	});
 });

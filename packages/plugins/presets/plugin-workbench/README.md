@@ -4,25 +4,30 @@
 
 ## Agent 文档（关键）
 
-完整插件开发手册内嵌于包内（生产 App 不带 monorepo `docs/plugin`）：
+**手册不在本包里。** 它随 `@vetta-org/plugin-sdk` 装进被编辑工程自己的 `node_modules`，
+因此与该工程实际编译的 SDK 版本一致——随 App 发版的内嵌副本做不到这一点，而且等于把同一批
+知识维护两遍。
 
-```text
-agent/docs/plugin/     ← 与仓库 docs/plugin 同源
+工作台内置 `@vetta-org/plugin-cli` 的单文件产物，由它解析手册位置：
+
+```bash
+node <workbenchRoot>/agent/cli/vetta-plugin-cli.js docs --json
 ```
 
-- **Desktop 构建会自动同步**：`apps/desktop` 的 `bun run build:presets` / `build:presets:dev`（dev 与 dist 都走）在构建前调用 `scripts/sync-plugin-docs.mjs`，把 monorepo `docs/plugin` 拷进本包；一般**不必**再手跑 sync。
-- 本地单独构建本包时：`bun run sync-docs` 或 `prebuild` 仍会跑。
-- Skill：`agent/skills/plugin-workbench/SKILL.md` 强制 agent 先 `read` 上述手册再实现。
-- 索引：`agent/skills/plugin-workbench/references/doc-index.md`
+- **构建期自动内置**：`scripts/bundle-cli.mjs`（`prebuild` 钩子；`apps/desktop` 的 `build:presets`
+  会先构建 `plugin-cli` 再调它）。产物在 `agent/cli/`，已 gitignore。
+- 内置而不是 `npx`：工作台是系统插件、随 App 发版，内置让版本关系确定，也不受首次拉包的网络影响。
+- Skill：`agent/skills/plugin-workbench/SKILL.md`；索引：`references/doc-index.md`。
+- 起工程用 CLI 的 `init`，它会同时落一份 `AGENTS.md`——在 Vetta 外用别的 Agent 打开这个工程时，
+  那份是唯一的说明书，与本 skill 同源。
 
 ## 脚本
 
 | 脚本 | 作用 |
 | --- | --- |
-| `scripts/scaffold.mjs` | 脚手架 |
 | `scripts/build-and-pack.mjs` | bump + npm install + build + `vetta-plugin pack` |
 | `scripts/check-manifest.mjs` | 委托 `vetta-plugin validate` 校验清单 |
-| `scripts/sync-plugin-docs.mjs` | 同步 docs/plugin |
+| `scripts/bundle-cli.mjs` | 内置 plugin-cli 产物到 `agent/cli/` |
 
 ## 硬隔离
 

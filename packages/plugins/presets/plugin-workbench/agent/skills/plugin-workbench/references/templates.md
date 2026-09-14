@@ -1,6 +1,6 @@
 # 常用插件模板（实现前对照文档）
 
-下列片段是起点；**字段与 API 以 `agent/docs/plugin/` 全文为准**。实现前至少已读 `getting-started.md` + 对应扩展点文档。
+下列片段是起点；**字段与 API 以手册全文为准**（`docs --json` 的 `manualDir`，见 `doc-index.md`）。实现前至少已读 `getting-started.md` + 对应扩展点文档。
 
 ## 样式（强制）
 

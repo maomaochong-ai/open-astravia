@@ -4,15 +4,15 @@ description: >
   Create, implement, build, pack, install, reload, and manage Vetta desktop plugins
   for non-developers. Use whenever the user wants a Vetta plugin, plugin scaffolding,
   apply zip to Vetta, edit plugin.json name/guidingWords, or debug plugin load/install.
-  Requires the Plugin Workbench input-bar toggle (hard isolation). Full plugin handbook
-  is bundled under the workbench root agent/docs/plugin/ (same content as docs/plugin).
+  Requires the Plugin Workbench input-bar toggle (hard isolation). The plugin handbook ships
+  inside the project's own @vetta-org/plugin-sdk; locate it with the bundled CLI's docs command.
 ---
 
 # 制作插件（完整流水线）
 
 面向**不懂开发的用户**：你读规范、写代码、跑标准脚本、装进本机；用户只回答问题与点确认。
 
-**质量底线**：没有读过内嵌插件手册就动手写实现 = 禁止。凭记忆编造 SDK API 很容易装上不能用。
+**质量底线**：没有读过插件手册就动手写实现 = 禁止。凭记忆编造 SDK API 很容易装上不能用。
 
 ---
 
@@ -26,12 +26,21 @@ workbenchRoot = listPlugins() 中 id === "plugin-workbench" 的 rootPath
 
 | 资源 | 绝对路径 |
 | --- | --- |
-| **插件开发手册（≈ docs/plugin）** | `{workbenchRoot}/agent/docs/plugin/` |
+| **插件 CLI（内置）** | `{workbenchRoot}/agent/cli/vetta-plugin-cli.js` |
 | 文档索引（本 skill 附件） | 本 skill 目录 `references/doc-index.md` |
 | 实现模板摘要 | 本 skill 目录 `references/templates.md` |
 | 标准脚本 | `{workbenchRoot}/scripts/*.mjs` |
 
-生产 App **不包含** monorepo 的 `docs/plugin`。**只认**上面 `agent/docs/plugin/` 路径。
+**手册不在工作台里**，它随 `@vetta-org/plugin-sdk` 装进**被编辑工程自己的** `node_modules`。
+这是刻意的：那份手册与该工程实际编译的 SDK 版本一致，而随 App 发版的内嵌副本做不到。用内置
+CLI 解析它的位置（工程 `npm install` 之后）：
+
+```bash
+node "{workbenchRoot}/agent/cli/vetta-plugin-cli.js" docs --json
+```
+
+返回 `manualDir`（手册目录绝对路径）、`entry`（README.md）、`sdkVersion`，以及当前命中的插件工程。
+**不要硬编码 node_modules 路径**：工作区可能把依赖提升到上层，一仓多插件时各插件还可能钉不同版本。
 
 ---
 
@@ -41,10 +50,14 @@ workbenchRoot = listPlugins() 中 id === "plugin-workbench" 的 rootPath
 
 ### 1.1 每次创建或大改插件
 
-1. `read {workbenchRoot}/agent/docs/plugin/README.md` — 能力矩阵与导航  
-2. `read {workbenchRoot}/agent/docs/plugin/getting-started.md` — 工程结构、MF、构建安装  
-3. `read {workbenchRoot}/agent/docs/plugin/manifest.md` — plugin.json  
-4. `read {workbenchRoot}/agent/docs/plugin/permissions.md` — 权限清单  
+先用上面的 `docs --json` 拿到 `manualDir`，然后（`{manualDir}` 代指它）：
+
+1. `read {manualDir}/README.md` — 能力矩阵与导航  
+2. `read {manualDir}/getting-started.md` — 工程结构、MF、构建安装  
+3. `read {manualDir}/manifest.md` — plugin.json  
+4. `read {manualDir}/permissions.md` — 权限清单  
+
+工程若还没 `npm install`，`docs` 会明确告诉你先装 SDK——那一步本来也绕不过去，构建需要它。
 
 ### 1.2 按用户目标追加（实现前）
 
@@ -66,7 +79,7 @@ workbenchRoot = listPlugins() 中 id === "plugin-workbench" 的 rootPath
 ### 1.3 实现时
 
 - API 名、权限、scope_use fail-closed、返回值形状 **以手册为准**。  
-- 模板摘要见 `references/templates.md`，但细节冲突时以 `agent/docs/plugin/*` 为准。  
+- 模板摘要见 `references/templates.md`，但细节冲突时以 `{manualDir}/*` 为准。  
 - 不确定就再 read 对应章节，或 AskUserQuestion。
 
 ---
@@ -75,7 +88,7 @@ workbenchRoot = listPlugins() 中 id === "plugin-workbench" 的 rootPath
 
 1. 用户已打开输入栏 **「制作插件」** toggle（硬隔离；关着则 skill/agent 贡献不可见）。  
 2. 工程在**当前会话 cwd**（或一层子目录），无特殊工场目录。  
-3. 用户插件依赖：`@vetta-org/plugin-sdk` / `@vetta-org/plugin-vite` 用 **registry 已发布 semver**（scaffold 默认 sdk `^0.3.1` / vite `^0.2.0`，两者版本独立；若 install 失败问用户 registry/版本）。
+3. 用户插件依赖：`@vetta-org/plugin-sdk` / `@vetta-org/plugin-vite` 用 **registry 已发布 semver**（`init` 默认 sdk `^0.3.1` / vite `^0.2.0`，两者版本独立；若 install 失败问用户 registry/版本）。
 4. 构建用 **托管 Node + npm**；标准脚本封装，禁止随意手搓另一套 pack（除非用户明确要求且你已读 getting-started 的打包约定）。
 
 ---
@@ -102,8 +115,11 @@ AskUserQuestion 收齐 §3；对照 README 能力矩阵选定扩展点 → 列�
 ### 4.2 Scaffold
 
 ```bash
-node "{workbenchRoot}/scripts/scaffold.mjs" "{cwd}/{plugin-id}" --id {id} --name "{name}"
+node "{workbenchRoot}/agent/cli/vetta-plugin-cli.js" init --id {id} --name "{name}" "{cwd}/{plugin-id}"
+cd "{cwd}/{plugin-id}" && npm install
 ```
+
+脚手架同时落一份 `AGENTS.md`（该读哪些手册、不可违反的几条）。**先读它**，它与本 skill 同源。
 
 然后按文档改：
 
@@ -210,4 +226,5 @@ Activity Tab「制作插件」（同样受 toggle 硬隔离）：扫描 cwd、�
 - `references/doc-index.md` — 手册路径与阅读表  
 - `references/templates.md` — 常见扩展点代码起点  
 
-**再次强调**：实现前 `read` `{workbenchRoot}/agent/docs/plugin/` 下对应文件；该目录即 Vetta 插件开发手册（与仓库 `docs/plugin` 同源同步）。
+**再次强调**：实现前先 `docs --json` 拿到 `manualDir`，再 `read` 其中对应的章节。手册随工程自己的
+`@vetta-org/plugin-sdk` 发布，因此它描述的合同就是这个工程即将编译的合同。

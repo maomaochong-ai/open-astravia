@@ -172,25 +172,12 @@ if (entries.length === 0) {
 	process.exit(0);
 }
 
-// 在算缓存哈希 / 构建之前：把 monorepo docs/plugin 同步进 plugin-workbench 包内，
-// 这样 dev（build:presets:dev）与 dist（build → build:presets）都会带上最新手册，
-// 且同步结果参与下方 hashDirectory，docs 变更会自然触发 rebuild。
-const pluginWorkbenchDir = join(presetsDir, "plugin-workbench");
-const pluginWorkbenchSyncScript = join(pluginWorkbenchDir, "scripts", "sync-plugin-docs.mjs");
-if (entries.includes("plugin-workbench") && existsSync(pluginWorkbenchSyncScript)) {
-	await run(
-		process.execPath,
-		[pluginWorkbenchSyncScript],
-		pluginWorkbenchDir,
-		"同步 plugin-workbench 插件开发手册 (docs/plugin → agent/docs/plugin)",
-	);
-}
 
 const cache = await readCache();
 const installHash = await hashFiles([join(monorepoRoot, "package.json"), join(monorepoRoot, "bun.lock")]);
 const workspaceNodeModulesDirs = [
 	join(monorepoRoot, "node_modules"),
-	...["plugin-sdk", "plugin-vite"].map((name) => join(pluginsDir, name, "node_modules")),
+	...["plugin-sdk", "plugin-vite", "plugin-cli"].map((name) => join(pluginsDir, name, "node_modules")),
 	...entries.map((name) => join(presetsDir, name, "node_modules")),
 ];
 if (cache.installHash === installHash && workspaceNodeModulesDirs.every((dir) => existsSync(dir))) {
@@ -204,13 +191,27 @@ if (cache.installHash === installHash && workspaceNodeModulesDirs.every((dir) =>
 if (process.env.VETTA_SKIP_PLUGIN_TOOLING_BUILD === "1") {
 	console.log("[build-presets] 插件工具包已由 workspace 前置构建完成，跳过");
 } else {
-	for (const name of ["plugin-sdk", "plugin-vite"]) {
+	for (const name of ["plugin-sdk", "plugin-vite", "plugin-cli"]) {
 		await run("bun", ["run", "build"], join(pluginsDir, name), `构建插件工具包 ${name}`);
 	}
 }
 
+// 工具包构建完才能内置：工作台不再自带手册副本，改为内置 plugin-cli 的单文件产物，
+// 由它的 `docs` 命令去解析被编辑工程自己的 node_modules 里那份手册——版本因此与工程
+// 实际编译的 SDK 一致。内置结果参与下方 hashDirectory，CLI 变更会触发 rebuild。
+const pluginWorkbenchDir = join(presetsDir, "plugin-workbench");
+const pluginWorkbenchBundleScript = join(pluginWorkbenchDir, "scripts", "bundle-cli.mjs");
+if (entries.includes("plugin-workbench") && existsSync(pluginWorkbenchBundleScript)) {
+	await run(
+		process.execPath,
+		[pluginWorkbenchBundleScript],
+		pluginWorkbenchDir,
+		"内置 plugin-cli 到 plugin-workbench (agent/cli)",
+	);
+}
+
 const toolingHash = createHash("sha256");
-for (const name of ["plugin-sdk", "plugin-vite"]) {
+for (const name of ["plugin-sdk", "plugin-vite", "plugin-cli"]) {
 	toolingHash.update(name);
 	await hashDirectory(toolingHash, join(pluginsDir, name, "dist"));
 }

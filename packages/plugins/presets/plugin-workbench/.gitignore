@@ -1,5 +1,5 @@
 dist/
 release/
 node_modules/
-# build/sync 元数据（含本机路径与时间戳，无运行时用途）
-agent/docs/plugin/.sync-meta.json
+# 构建期从 plugin-cli 的产物内置进来（scripts/bundle-cli.mjs）
+agent/cli/

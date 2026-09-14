@@ -4,8 +4,8 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"sync-docs": "node ./scripts/sync-plugin-docs.mjs",
-		"prebuild": "node ./scripts/sync-plugin-docs.mjs",
+		"bundle-cli": "node ./scripts/bundle-cli.mjs",
+		"prebuild": "node ./scripts/bundle-cli.mjs",
 		"build": "bunx vite build",
 		"check": "bunx tsc --noEmit"
 	},

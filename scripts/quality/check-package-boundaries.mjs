@@ -1594,6 +1594,8 @@ export function main() {
 		for (const file of walkFiles(root)) {
 			const posixPath = rel(file);
 			if (posixPath.includes("/node_modules/") || posixPath.includes("/dist/")) continue;
+			// 构建期内置进插件包的第三方产物（如工作台的 agent/cli/），是打包结果不是源码
+			if (posixPath.includes("/agent/cli/")) continue;
 			// examples under coding-agent may intentionally wire hosts; skip demos
 			if (posixPath.includes("/examples/")) continue;
 			let text;
