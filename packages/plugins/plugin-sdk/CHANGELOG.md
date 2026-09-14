@@ -2,6 +2,22 @@
 
 All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
+## [0.3.3] — 2026-09-14
+
+### Added
+
+- **团队成员可以带任务书（Plugin API 2.3.0）**：`teams[].members[].instructions` /
+  `instructionsPath` 给单个成员一份追加在它本体人格之后的团队内交待。与 `responsibility`
+  分工不同——后者是一句全队可见的职责摘要（进共享名册），前者是只给这名成员看的做事方式。
+
+  这一条补全了跨插件引用：任务书挂在消费方的团队上，**不碰被引用那一方的人设**，所以你可以
+  把别的插件的设计师拉进来并交待清楚本团队怎么干，而它在别处照旧。
+
+  队长的任务书仍写在团队的 `workflow` 上；`members[0]` 再写 `instructions` 会在构建期被拒，
+  两处都能写就没人说得清哪份生效。
+
+  **用到这两个字段请把 `pluginApiVersion` 写成 `^2.3.0`**（未知字段 fail-closed，理由同 0.3.2）。
+
 ## [0.3.2] — 2026-09-14
 
 ### Added
