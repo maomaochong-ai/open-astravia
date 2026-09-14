@@ -134,6 +134,61 @@ export default definePlugin({
 
 见 `manifest.md` → agent 侧贡献。
 
+## G. 贡献智能体 / 团队（清单声明，无需权限）
+
+人设、头像、提示词由插件维护；宿主铺成普通档案，停用插件时档案灰着留在原地。
+
+```json
+"agent": {
+  "agents": [
+    {
+      "id": "designer",
+      "name": "%agent.designer.name%",
+      "description": "%agent.designer.description%",
+      "mentionHandle": "designer",
+      "avatar": "agent/agents/designer.webp",
+      "systemPromptPath": "agent/agents/designer.md",
+      "abilities": "all"
+    }
+  ],
+  "teams": [
+    {
+      "id": "design-team",
+      "name": "%team.design.name%",
+      "members": [{ "agent": "designer", "responsibility": "Owns the visual result end to end." }],
+      "workflowPath": "agent/workflows/design-team.md"
+    }
+  ]
+}
+```
+
+- 团队成员 **只能**写本插件 `agents[]` 里的 id；引用别的插件或宿主角色会让整支团队被跳过。
+- 头像单张 ≤ 512 KB；提示词优先用 `systemPromptPath` 指向 Markdown。
+- 迁移已有人设时用 `legacyIds` 认领用户已有档案，别铺重复的一份。
+
+见 `manifest.md` → 贡献智能体与团队。
+
+## H. 新会话上下文区（落地区素材）
+
+权限：`ui.slot.new-session-context`（缺权限 **warn+noop**）；要读草稿再加 `conversation.draft.read`。
+
+```tsx
+ctx.ui.registerNewSessionContext({
+  id: "design-styles",
+  label: "%tab.label%",
+  // 至少声明一条激活条件，且只能写本插件自己的智能体 / skill / MCP。
+  activateWhen: { agents: ["designer"], skills: ["vetta-ui-design"] },
+  width: "wide", // 画廊类内容才用 wide；补充说明用默认的 "input"
+  render: (context) => <StyleLibrary context={context} />,
+});
+```
+
+- `render` 拿到的 `context` 会继续生长：按需解构，别假定它只有那几个键。
+- 只能回写输入栏（`composer.attach` / `insertText`），**没有**「直接发送」。
+- 未授予 `conversation.draft.read` 时 `context.draft` 恒为空串，别据此判断用户有没有打字。
+
+见 `ui-slots.md` → 新会话上下文区 registerNewSessionContext。
+
 ## 样式与陷阱（必看）
 
 - **样式只 Tailwind className**；勿手写业务 CSS（污染全局）— `styling-and-pitfalls.md`
