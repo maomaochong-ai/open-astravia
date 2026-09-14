@@ -1,6 +1,6 @@
 import type { SkillInfo } from "@preload/api";
 import { useShortcutScope, type ShortcutBinding } from "@shared/shortcuts";
-import { activeSessionAtom } from "@shared/store/atoms";
+import { activeSessionAtom, contextCompactionEligibilityAtom } from "@shared/store/atoms";
 import { getQueueForSession, messageQueueBySessionAtom } from "@shared/store/message-queue-atoms";
 import { showToast } from "@shared/store/toast-atoms";
 import { useAtomValue } from "jotai";
@@ -28,6 +28,8 @@ export interface CommandPanelModelInput {
 	filter: string;
 	cwd?: string;
 	className?: string;
+	/** 会话级操作仅在已绑定 Runtime 的聊天输入框中可用。 */
+	allowCompaction?: boolean;
 }
 
 export interface CommandPanelModel {
@@ -42,10 +44,12 @@ export function useCommandPanelModel({
 	filter,
 	cwd,
 	className,
+	allowCompaction = true,
 }: CommandPanelModelInput): CommandPanelModel {
 	const { t } = useTranslation("chat");
 	const normalizedFilter = filter.startsWith("/") ? filter.slice(1) : filter;
 	const activeSession = useAtomValue(activeSessionAtom);
+	const compactionEligibility = useAtomValue(contextCompactionEligibilityAtom);
 	const queueMap = useAtomValue(messageQueueBySessionAtom);
 	const contextRing = useDefaultContextRingModel(false);
 	const [queueingCompaction, setQueueingCompaction] = useState(false);
@@ -108,7 +112,7 @@ export function useCommandPanelModel({
 	}, [activeSession, contextRing?.isCompacting, onClose, queuedCompaction, queueingCompaction, t]);
 
 	const operation = useMemo<CommandPanelOperationItem | undefined>(() => {
-		if (!activeSession || !operationMatches) return undefined;
+		if (!allowCompaction || !activeSession || !operationMatches || compactionEligibility.status === "ineligible") return undefined;
 		const percent = contextRing ? Math.round(Math.min(100, Math.max(0, contextRing.percent))) : null;
 		const description = contextRing?.isCompacting
 			? t("slashPanel.compaction.compacting")
@@ -133,7 +137,7 @@ export function useCommandPanelModel({
 			disabled: queuedCompaction || queueingCompaction || Boolean(contextRing?.isCompacting),
 			onSelect: selectCompaction,
 		};
-	}, [activeSession, contextRing, operationMatches, queuedCompaction, queueingCompaction, selectCompaction, t]);
+	}, [activeSession, allowCompaction, compactionEligibility.status, contextRing, operationMatches, queuedCompaction, queueingCompaction, selectCompaction, t]);
 
 	const keyBindings = useMemo((): ShortcutBinding[] => {
 		const itemCount = items.length + (operation ? 1 : 0);

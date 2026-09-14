@@ -142,8 +142,9 @@ export function DefaultInputBarConnector(props: ConnectedInputBarProps): JSX.Ele
 			onConnectorSelect: trigger.handleConnectorSelect,
 			onAtClose: trigger.handleAtClose,
 			onAtSelect: trigger.handleAtSelect,
-			onOpen: trigger.handlePlusClick,
-		},
+				onOpen: trigger.handlePlusClick,
+				allowCompaction: Boolean(session.activeSession),
+			},
 		drawerItems,
 		drawerActiveTab: trigger.drawerActiveTab,
 		todo,
@@ -182,4 +183,3 @@ export function DefaultInputBarConnector(props: ConnectedInputBarProps): JSX.Ele
 
 	return <InputBar model={model} />;
 }
-

@@ -28,6 +28,7 @@ import type {
 } from "../kernel/contracts.js";
 import { sessionBusyError, sessionClosedError } from "../kernel/errors.js";
 import type { SessionInputQueueEntry, SessionInputQueueSnapshot } from "../kernel/session-input-queue.js";
+import type { SessionContextState } from "../session-context-state.js";
 import type { SessionExtensionEndpointToken } from "../session-extensions/contracts.js";
 import { ConversationDocumentMutationCoordinator } from "./conversation-document-mutation-coordinator.js";
 import { mapKernelEventToSessionEvents } from "./kernel-session-events.js";
@@ -44,6 +45,8 @@ import type {
 	RuntimeHostSessionAssemblyCandidate,
 	RuntimeSessionBackend,
 } from "./session-backend.js";
+import { SessionContextStateProjection } from "./session-context-state-projection.js";
+import { baseSessionEvent } from "./session-events.js";
 import type {
 	RuntimeSessionConfigurationController,
 	RuntimeSessionContextController,
@@ -104,6 +107,7 @@ export interface RuntimeSessionStatus {
 	readonly steeringMode: SessionInputQueueMode;
 	readonly followUpMode: SessionInputQueueMode;
 	readonly messageCount: number;
+	readonly contextState?: SessionContextState;
 }
 
 /** Kernel Runtime 当前真实具备的 RuntimeHost 核心能力。 */
@@ -321,6 +325,7 @@ export class RuntimeSession {
 			steeringMode: this.session.steeringMode,
 			followUpMode: this.session.followUpMode,
 			messageCount: this.projection.readMessageCount(),
+			contextState: this.eventSink.readContextState(),
 		};
 	}
 
@@ -337,6 +342,7 @@ export class RuntimeSession {
 			model: this.modelRuntime.readCurrentModel(),
 			thinkingLevel: this.modelRuntime.readThinkingLevel(),
 			...dynamic,
+			contextState: this.eventSink.readContextState(),
 			activeToolNames: [...dynamic.activeToolNames],
 			isStreaming: this.session.state === "running" || this.session.state === "cancelling",
 			messageCount: this.projection.readMessageCount(),
@@ -674,6 +680,7 @@ export class RuntimeSession {
 		for (const participant of this.documentParticipants) {
 			await participant.onDocumentChanged(result.document);
 		}
+		this.eventSink.refreshContextState();
 		return result;
 	}
 
@@ -748,6 +755,7 @@ export class KernelRuntimeSessionBackend<TCreateOptions>
 }
 
 class RuntimeSessionEventSink implements EventSink {
+	private readonly contextState = new SessionContextStateProjection();
 	private readonly listeners = new Set<(event: SessionEvent) => void>();
 	private readonly executionObservationListeners = new Set<
 		(observation: RuntimeSessionExecutionObservation) => Promise<void> | void
@@ -809,10 +817,13 @@ class RuntimeSessionEventSink implements EventSink {
 				continue;
 			}
 			this.notifyListeners(mapped);
+			if (mapped.channel !== "assistant") this.refreshContextState(mapped);
 		}
+		if (isStoredSessionEvent(event) || event.type === "conversation.continued") this.refreshContextState();
 	}
 
 	subscribe(handler: (event: SessionEvent) => void): () => void {
+		this.refreshContextState();
 		this.listeners.add(handler);
 		for (const event of this.initializationEvents.splice(0)) {
 			try {
@@ -821,7 +832,36 @@ class RuntimeSessionEventSink implements EventSink {
 				// Session observers are isolated from initialization recovery events.
 			}
 		}
+		const state = this.contextState.read();
+		if (state) {
+			try {
+				handler({ ...baseSessionEvent(state.sessionId, "runtime-core"), type: "session.context.state", state });
+			} catch {
+				// An observer must not prevent subscription cleanup or affect the Session.
+			}
+		}
 		return () => this.listeners.delete(handler);
+	}
+
+	readContextState(): SessionContextState | undefined {
+		return this.contextState.read();
+	}
+
+	refreshContextState(event?: SessionEvent): void {
+		if (this.initializing || !this.projection || !this.stateSource) return;
+		const document = this.projection.readDocument();
+		const state = this.contextState.update(
+			document.identity.sessionId,
+			this.stateSource.read(),
+			this.stateSource.readCompactionEligibility?.(document) ?? { status: "unknown" },
+			event,
+		);
+		if (state)
+			this.notifyListeners({
+				...baseSessionEvent(state.sessionId, "runtime-core"),
+				type: "session.context.state",
+				state,
+			});
 	}
 
 	subscribeExecutionObservation(
@@ -833,6 +873,7 @@ class RuntimeSessionEventSink implements EventSink {
 
 	finishInitialization(): void {
 		this.initializing = false;
+		this.refreshContextState();
 	}
 
 	bindProjection(projection: RuntimeSessionProjection): void {

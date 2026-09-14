@@ -1,5 +1,9 @@
 import type { Message } from "@vetta/ai";
-import { type ContextCompositionReport, RuntimeContextUsageTracker } from "@vetta/runtime-core";
+import {
+	type ContextCompactionEligibility,
+	type ContextCompositionReport,
+	RuntimeContextUsageTracker,
+} from "@vetta/runtime-core";
 import { type ConversationDocument, selectConversationDocumentModelMessages } from "@vetta/runtime-core/conversation";
 import {
 	ConsecutiveFailureCircuitBreaker,
@@ -28,12 +32,18 @@ import type {
 	CodingAgentContextUsage,
 	CodingAgentPinnedModelContext,
 } from "../../runtime-contracts/index.js";
-import { type CompactionSettings, compact, DEFAULT_COMPACTION_SETTINGS, estimateContextTokens } from "../index.js";
+import {
+	type CompactionSettings,
+	compact,
+	DEFAULT_COMPACTION_SETTINGS,
+	estimateContextTokens,
+	prepareCompaction,
+} from "../index.js";
 import { CodingAgentAutomaticCompactionStrategy } from "./automatic-compaction-strategy.js";
 import { CodingAgentCompactionCommitLifecycle } from "./compaction-commit-lifecycle.js";
 import { CompactionPrefireCache } from "./compaction-prefire-cache.js";
 import { CodingAgentContextSummaryStrategy } from "./context-summary-strategy.js";
-import { isRuntimeMessage } from "./conversation-compaction-projection.js";
+import { isRuntimeMessage, toCompactionSessionEntries } from "./conversation-compaction-projection.js";
 import { CodingAgentImageRequestFailureRecovery } from "./image-request-failure-recovery.js";
 import { CodingAgentManualCompactionStrategy } from "./manual-compaction-strategy.js";
 import { projectModelCallContext } from "./model-call-context-projection.js";
@@ -241,6 +251,19 @@ export class DefaultCodingAgentContextRuntime
 
 	readAutoCompactionEnabled(): boolean {
 		return this.readSettings().enabled;
+	}
+
+	readCompactionEligibility(document: ConversationDocument): ContextCompactionEligibility {
+		const entries = toCompactionSessionEntries(document);
+		if (!entries.some((entry) => entry.type === "message" || entry.type === "custom_message")) {
+			return { status: "ineligible", reason: "no_history" };
+		}
+		if (entries.at(-1)?.type === "compaction") {
+			return { status: "ineligible", reason: "already_compacted" };
+		}
+		return prepareCompaction(entries, this.readSettings())
+			? { status: "eligible" }
+			: { status: "ineligible", reason: "insufficient_history" };
 	}
 
 	setAutoCompactionEnabled(enabled: boolean): void {

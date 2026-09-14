@@ -7,6 +7,7 @@ import {
 	attachedImagesAtom,
 	authUserAtom,
 	confirmDialogAtom,
+	contextCompactionEligibilityAtom,
 	contextUsageAtom,
 	currentScenarioAtom,
 	defaultConversationCwdAtom,
@@ -132,6 +133,7 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 	const setHeaderTitleBadge = useSetAtom(pageHeaderTitleBadgeAtom);
 	const setHeaderTitleHidden = useSetAtom(pageHeaderTitleHiddenAtom);
 	const setContextUsage = useSetAtom(contextUsageAtom);
+	const setCompactionEligibility = useSetAtom(contextCompactionEligibilityAtom);
 	const setActiveSession = useSetAtom(activeSessionAtom);
 	const setPendingSessionCreation = useSetAtom(pendingSessionCreationAtom);
 	const setLastActiveSession = useSetAtom(lastActiveSessionAtom);
@@ -248,6 +250,7 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		setActiveToolNames(null);
 		// 清掉上一个会话残留的上下文用量，避免 ContextRing 显示旧会话的百分比。
 		setContextUsage(null);
+		setCompactionEligibility({ status: "unknown" });
 		// 清掉 activeSession，避免 InputBar 的 todo 抽屉等仍读取旧会话状态。
 		setActiveSession(null);
 		setPendingSessionCreation(null);
@@ -264,6 +267,7 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		setActiveSession,
 		setPendingSessionCreation,
 		setLastActiveSession,
+		setCompactionEligibility,
 	]);
 
 	useEffect(() => {

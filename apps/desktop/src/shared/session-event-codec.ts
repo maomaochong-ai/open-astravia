@@ -21,6 +21,7 @@ const SESSION_EVENT_TYPES = new Set([
 	"retry.start",
 	"retry.end",
 	"queue.changed",
+	"session.context.state",
 ]);
 
 const ASSISTANT_EVENT_TYPES = new Set([
@@ -100,5 +101,16 @@ export function decodeSessionEvent(value: unknown): SessionEvent {
 	}
 	if (event.channel !== undefined && event.channel !== "runtime") fail("runtime channel is invalid");
 	if (typeof event.type !== "string" || !SESSION_EVENT_TYPES.has(event.type)) fail("unknown event type");
+	if (event.type === "session.context.state") {
+		const state = record(event.state);
+		if (!state || state.sessionId !== event.sessionId || !Number.isInteger(state.revision)) {
+			fail("invalid session context state");
+		}
+		const usage = record(state.usage);
+		const compaction = record(state.compaction);
+		if (!usage || !compaction || typeof compaction.status !== "string" || !record(compaction.eligibility)) {
+			fail("invalid session context state payload");
+		}
+	}
 	return event as unknown as SessionEvent;
 }

@@ -258,6 +258,11 @@ export {
 	waitForRuntimeSessionIdle,
 	withRuntimeHostSessionRetry,
 } from "./runtime-host/index.js";
+export type {
+	ContextCompactionEligibility,
+	SessionContextState,
+	SessionContextStateEvent,
+} from "./session-context-state.js";
 export * from "./session-extensions/index.js";
 export type {
 	RuntimeSessionLifecyclePhase,

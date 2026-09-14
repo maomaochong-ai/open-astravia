@@ -140,6 +140,8 @@ export function createCodingAgentSessionRuntimeResources(
 		},
 		stateSource: {
 			read: () => readSessionState(options, stateActivation),
+			readCompactionEligibility: (document) =>
+				options.contextRuntime.readCompactionEligibility?.(document) ?? { status: "unknown" },
 		},
 		onConversationContinued: options.onConversationContinued,
 	};

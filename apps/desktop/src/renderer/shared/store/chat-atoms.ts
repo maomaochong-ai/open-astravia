@@ -9,7 +9,7 @@ import type {
 	PendingQuestion,
 } from "@shared/conversation";
 import type { InputSegment } from "@shared/lib/input-tokens";
-import type { ContextCompositionReport } from "@vetta/runtime-core";
+import type { ContextCompactionEligibility, ContextCompositionReport } from "@vetta/runtime-core";
 import { atom } from "jotai";
 import { runningSessionPathsAtom } from "./running-sessions-atoms";
 
@@ -290,6 +290,9 @@ export const contextUsageAtom = atom<ContextUsageData | null>(null);
 
 /** Whether context compaction is currently in progress */
 export const isCompactingAtom = atom<boolean>(false);
+
+/** 当前会话由 Runtime 计算的压缩资格；不属于新会话草稿。 */
+export const contextCompactionEligibilityAtom = atom<ContextCompactionEligibility>({ status: "unknown" });
 
 /** 自动重试退避中的进度；null = 没在重试。由 retry.start / retry.end 驱动。 */
 export interface RetryProgress {

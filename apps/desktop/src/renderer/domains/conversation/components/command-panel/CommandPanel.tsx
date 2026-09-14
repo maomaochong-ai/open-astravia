@@ -15,6 +15,7 @@ export interface CommandPanelProps {
 	/** 当前会话/项目 cwd，用于列出项目级 skill 目录。 */
 	cwd?: string;
 	className?: string;
+	allowCompaction?: boolean;
 }
 
 /**

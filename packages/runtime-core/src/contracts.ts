@@ -2,6 +2,7 @@ import type { ThinkingLevel, ToolPhase } from "@vetta/agent-core";
 import type { AssistantMessageEvent, CacheUsageReporting, Message, Model } from "@vetta/ai";
 import type { ContextCompositionReport } from "./context-composition/contracts.js";
 import type { RuntimeFailure, RuntimeFailureDetails, RuntimeFailureOrigin } from "./failure-contract.js";
+import type { SessionContextState, SessionContextStateEvent } from "./session-context-state.js";
 import type { SessionExtensionEndpointToken, SessionExtensionObservation } from "./session-extensions/contracts.js";
 
 export interface PromptResourceRef {
@@ -223,6 +224,7 @@ export interface CompactionStartEvent extends SessionEventBase {
 
 export interface CompactionEndEvent extends SessionEventBase {
 	type: "compaction.end";
+	cancelled?: boolean;
 	success: boolean;
 	reason?: "threshold" | "overflow" | "manual";
 	tokensBefore?: number;
@@ -245,6 +247,7 @@ export interface RuntimeSandboxGrantInfo {
 }
 
 export type SessionEvent =
+	| SessionContextStateEvent
 	| SessionLifecycleEvent
 	| SessionPathChangedEvent
 	| AssistantSessionEvent
@@ -305,6 +308,7 @@ export interface QueueChangedEvent extends SessionEventBase {
 
 export interface SessionStateSnapshot {
 	sessionId: string;
+	contextState?: SessionContextState;
 	/** 持久化 Session 所属的平级主 Agent；历史会话可缺省。 */
 	agentId?: string;
 	model?: Model<any>;
