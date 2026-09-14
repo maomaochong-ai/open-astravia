@@ -28,6 +28,11 @@ is purely derived and holds no user content — leaving source, manifest and con
 the id and display name from the `plugin.json` already on disk. At a marketplace root it rewrites the
 hub brief instead.
 
+It refuses to overwrite a brief that carries no `vetta-guide-revision` marker — that file is
+indistinguishable from a hand-written one, and a marketplace root often holds a hand-written spec.
+Use `--dry-run` to print the current template for manual merging, or `--force` to replace the file
+outright.
+
 You will rarely have to remember this: the brief carries a revision stamp, and `docs` compares it on
 every run and says outright when it is behind. The brief itself holds no rules — those live in the
 manual, which travels with the SDK — so it changes seldom, and a project that refreshes once keeps

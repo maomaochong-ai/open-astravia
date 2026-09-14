@@ -2,6 +2,29 @@
 
 All notable changes to `@vetta-org/plugin-cli` are documented in this file.
 
+## [0.1.6] — 2026-09-14
+
+### Fixed
+
+- **`init --refresh-guide` 不再覆盖手写的 `AGENTS.md`**。此前它无条件重写，而 `docs` 又把「没有
+  版本戳」判成过期并给出这条命令——两者合起来是在引导用户删掉自己的文件。已知造成一个能力市场
+  仓库根部 443 行手写市场规范被整份替换。
+
+  没有 `vetta-guide-revision` 标记的文件现在一律拒绝覆盖（退出码 7），要覆盖得显式 `--force`；
+  新增 `--dry-run` 把新模板打到 stdout 供人工合并。`docs` 对无标记文件改口为「看起来是手写的，
+  请手动合并」，只有**带标记且落后**的才会被称作 stale 并给出刷新命令。
+
+- 说明书标题不再印出未解析的本地化占位符。`plugin.json` 的 `name` 写成 `%plugin.name%` 时，按
+  `defaultLocale` 从 `locales/` 解析；解析不到退回插件 id。
+
+- 说明书的命令清单改为读 `package.json` 的 `scripts`，只列真实存在的。老工程和自定义工程未必有
+  `dev` / `install:vetta`，照着跑只会得到一句 "Missing script"；没有 `install:vetta` 时改列
+  `vetta-plugin-cli add .`。
+
+- 更正 hub `AGENTS.md` 对 `sync` 的两处描述：`marketplaceVersion` 只在 semver 或纯整数时才推得动
+  （`YYYY.MM.DD-NN` 这类会报出来要手改），`config.api_version` / `permissions` / `commands`
+  **不回填**——宿主用 `plugin.json` 整个重算 `config`，`sync` 只在副本与真源不符时提醒删掉。
+
 ## [0.1.5] — 2026-09-14
 
 ### Changed

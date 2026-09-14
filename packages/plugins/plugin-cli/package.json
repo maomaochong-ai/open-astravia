@@ -1,6 +1,6 @@
 {
 	"name": "@vetta-org/plugin-cli",
-	"version": "0.1.5",
+	"version": "0.1.6",
 	"description": "Install npm-distributed plugins into Vetta Desktop",
 	"type": "module",
 	"main": "./dist/index.js",
