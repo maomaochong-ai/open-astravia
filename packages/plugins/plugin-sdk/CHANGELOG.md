@@ -2,6 +2,24 @@
 
 All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
+## [0.3.2] — 2026-09-14
+
+### Added
+
+- **团队成员支持角色槽位与跨插件引用（Plugin API 2.2.0）**：`agents[].roles` 让一个智能体对外声明
+  它能顶的角色；`teams[].members[]` 改为 `agent` 与 `role` 二选一——`agent` 可写
+  `<pluginId>/<agentId>` 直接引用别的插件，`role` 只声明需要什么角色、由宿主解析。
+  新增 `optional` 控制解析不到时是否照常发布团队（跨插件引用与角色槽位缺省为 `true`，少一名
+  队员而不是少一支团队）。
+  装机自带的 `master`/`developer`/`researcher`/`auditor`/`business`（`preset-agent`）与
+  `designer`（`vetta-ui-design`）已对外供货，词表见 `BUILTIN_PLUGIN_AGENT_ROLES`。
+
+  队长仍限定为本插件自己的智能体：它是用户唯一的对话入口，落在别的插件上会让这支团队随那个
+  插件一起变成打不开的壳。
+
+  **用到这些字段的插件请把 `pluginApiVersion` 写成 `^2.2.0`**。清单校验对未知字段 fail-closed，
+  旧宿主会整个拒掉这份清单；声明版本后拿到的是「版本不支持」这种指向明确的错误。
+
 ## [0.3.1] — 2026-09-14
 
 ### Added
