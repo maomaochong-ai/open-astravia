@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { ActionRpcError, createActionRpcClient, readActionRpcEndpoint } from "@vetta/action-rpc";
@@ -43,6 +43,7 @@ Usage:
 Examples:
   npx @vetta-org/plugin-cli add @example/vetta-plugin-demo
   npx @vetta-org/plugin-cli add @example/vetta-plugin-demo@1.2.0
+  npx @vetta-org/plugin-cli add .                      # 当前插件工程（先 pack）
   npx @vetta-org/plugin-cli add ./release/demo-1.2.0.zip
   npx @vetta-org/plugin-cli reload demo
   npx @vetta-org/plugin-cli docs
@@ -119,7 +120,43 @@ function isHttpUrl(source: string): boolean {
 }
 
 function isLocalZip(source: string): boolean {
-	return source.toLowerCase().endsWith(".zip") || existsSync(resolve(source));
+	if (source.toLowerCase().endsWith(".zip")) return true;
+	const path = resolve(source);
+	// 目录不是压缩包：它是一个插件工程，走 resolveProjectArchive 先找它打出来的产物。
+	return existsSync(path) && !statSync(path).isDirectory();
+}
+
+function isDirectorySource(source: string): boolean {
+	const path = resolve(source);
+	return existsSync(path) && statSync(path).isDirectory();
+}
+
+/**
+ * 把「装当前这个工程」翻译成一个具体的归档路径。
+ *
+ * 这条路径是给 `install:vetta` 这类脚本用的：作者（或 Agent）在插件目录里跑一条命令就
+ * 装进 Vetta，不必记住产物叫什么名字。找不到产物时给出该跑的那条命令，而不是报一个
+ * 「文件不存在」让人自己猜。
+ */
+function resolveProjectArchive(source: string): { archivePath: string; pluginId: string } {
+	const from = resolve(source);
+	const project = findPluginProject(from);
+	if (!project) {
+		const hub = findPluginHub(from);
+		if (hub) {
+			throw new Error(
+				`${from} indexes plugins but is not one itself. Run this from a plugin directory, or pass its path: vetta-plugin-cli add ./path/to/plugin`,
+			);
+		}
+		throw new Error(`No plugin.json found in ${from} or any parent directory.`);
+	}
+	const archivePath = join(project.root, "release", `${project.pluginId}-${project.version}.zip`);
+	if (!existsSync(archivePath)) {
+		throw new Error(
+			`Packaged archive not found: ${archivePath}\nBuild it first: npm run build && npx vetta-plugin pack`,
+		);
+	}
+	return { archivePath, pluginId: project.pluginId };
 }
 
 function npmInstallInput(resolved: ResolvedNpmPluginArchive): Record<string, unknown> {
@@ -218,6 +255,13 @@ export async function runPluginCommand(
 			result = await dependencies.runAction("plugins.manage", {
 				operation: "install-from-url",
 				url: command.source,
+			});
+		} else if (isDirectorySource(command.source)) {
+			const { archivePath } = resolveProjectArchive(command.source);
+			result = await dependencies.runAction("plugins.manage", {
+				operation: "install-from-path",
+				path: archivePath,
+				enable: true,
 			});
 		} else if (isLocalZip(command.source)) {
 			result = await dependencies.runAction("plugins.manage", {

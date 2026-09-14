@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { parsePluginDocsCommand, runPluginCommand } from "../src/command.js";
 import { findPluginHub, findPluginProject, resolveManualDir } from "../src/workspace.js";
 
@@ -94,6 +94,74 @@ describe("workspace resolution", () => {
 
 		expect(findPluginProject(join(root, "nested"))).toBeUndefined();
 		expect(findPluginHub(join(root, "nested"))).toBeUndefined();
+	});
+});
+
+describe("installing the current project directory", () => {
+	function deps(overrides: Partial<Record<string, unknown>> = {}) {
+		return {
+			cwd: () => process.cwd(),
+			resolveNpmArchive: () => Promise.reject(new Error("unused")),
+			runAction: () => Promise.resolve({ plugin: { id: "demo", version: "1.0.0" } }),
+			writeStdout: () => {},
+			writeStderr: () => {},
+			...overrides,
+		};
+	}
+
+	it("installs the archive the project packed", async () => {
+		const root = scratch();
+		const pluginRoot = join(root, "plugins", "demo");
+		write(join(pluginRoot, "plugin.json"), JSON.stringify({ id: "demo", version: "1.0.0" }));
+		write(join(pluginRoot, "release", "demo-1.0.0.zip"), "zip");
+		const runAction = vi.fn().mockResolvedValue({ plugin: { id: "demo", version: "1.0.0" } });
+
+		const code = await runPluginCommand({ type: "add", source: pluginRoot, json: false }, deps({ runAction }));
+
+		expect(code).toBe(0);
+		expect(runAction).toHaveBeenCalledWith("plugins.manage", {
+			operation: "install-from-path",
+			path: join(pluginRoot, "release", "demo-1.0.0.zip"),
+			enable: true,
+		});
+	});
+
+	it("names the command to run when the project was never packed", async () => {
+		const root = scratch();
+		const pluginRoot = join(root, "plugins", "demo");
+		write(join(pluginRoot, "plugin.json"), JSON.stringify({ id: "demo", version: "1.0.0" }));
+		let stderr = "";
+
+		const code = await runPluginCommand(
+			{ type: "add", source: pluginRoot, json: false },
+			deps({
+				writeStderr: (value: string) => {
+					stderr += value;
+				},
+			}),
+		);
+
+		expect(code).toBe(5);
+		expect(stderr).toContain("vetta-plugin pack");
+	});
+
+	it("refuses to guess which plugin a hub root means", async () => {
+		const root = scratch();
+		write(join(root, ".vetta", "marketplace.json"), JSON.stringify({ name: "hub", abilities: [] }));
+		write(join(root, "plugins", "demo", "plugin.json"), JSON.stringify({ id: "demo", version: "1.0.0" }));
+		let stderr = "";
+
+		const code = await runPluginCommand(
+			{ type: "add", source: root, json: false },
+			deps({
+				writeStderr: (value: string) => {
+					stderr += value;
+				},
+			}),
+		);
+
+		expect(code).toBe(5);
+		expect(stderr).toContain("is not one itself");
 	});
 });
 
