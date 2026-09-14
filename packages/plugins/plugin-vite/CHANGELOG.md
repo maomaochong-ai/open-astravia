@@ -2,6 +2,12 @@
 
 All notable changes to `@vetta-org/plugin-vite` are documented in this file.
 
+## [0.2.1] — 2026-09-14
+
+### Fixed
+
+- Externalize and share the host design system under **both** `@vetta-org/ui` and its former name `@vetta/ui`. The package name doubles as the Module Federation share key, so a build that only knew one of them bundled the whole component library into the plugin instead of reusing the host singleton — two React component instances, and a ~10x larger artifact. Desktop now serves both names from the same module, so plugins built against either name keep resolving to the host instance.
+
 ## [0.2.0] — 2026-09-14
 
 ### Breaking Changes

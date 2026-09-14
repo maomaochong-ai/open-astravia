@@ -75,6 +75,13 @@ export function createVettaPluginFederationConfig(options: VettaPluginFederation
 				import: false,
 				requiredVersion: "*",
 			},
+			// 这个包 0.1.0 之前叫 @vetta/ui。名字同时是 MF 的共享键，只留新名会让按旧名
+			// 构建的既有插件在共享域里落空、退回自己打包的那一份（两份 React 组件实例）。
+			"@vetta/ui": {
+				singleton: true,
+				import: false,
+				requiredVersion: "*",
+			},
 			...(options.hostThemeUi
 				? {
 						// Host-built UI components (model selector, …); opt in to keep unrelated plugins decoupled.
@@ -105,7 +112,13 @@ function createBuildDefaultsPlugin(entry: string): Plugin {
 					rollupOptions: {
 						input: entry,
 						// Host-provided singletons (see desktop-app plugin-shared-modules + vetta-host protocol).
-						external: ["@vetta-org/plugin-sdk", "@vetta-org/ui", "@vetta/theme-ui/plugin-ui"],
+						external: [
+							"@vetta-org/plugin-sdk",
+							"@vetta-org/ui",
+							// 旧名仍然外置：否则用旧名写的插件源码会把整个 UI 库打进产物。
+							"@vetta/ui",
+							"@vetta/theme-ui/plugin-ui",
+						],
 						output: {
 							assetFileNames(assetInfo) {
 								return assetInfo.names.some((name) => name.endsWith(".css"))
@@ -115,6 +128,7 @@ function createBuildDefaultsPlugin(entry: string): Plugin {
 							paths: {
 								"@vetta-org/plugin-sdk": "vetta-host://plugin-sdk",
 								"@vetta-org/ui": "vetta-host://ui",
+								"@vetta/ui": "vetta-host://ui",
 								"@vetta/theme-ui/plugin-ui": "vetta-host://theme-ui-plugin",
 							},
 						},

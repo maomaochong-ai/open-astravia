@@ -130,13 +130,18 @@ export function createNodeCodingToolEnvironment(options: NodeCodingToolEnvironme
 
 	return {
 		registrations: [
-			...createNodeFileToolRegistrations(options),
+			createReadToolRegistration(options.cwd, {
+				...options.readOptions,
+				configurationSource: options.configurationSource,
+			}),
+			createEditToolRegistration(options.cwd, { pathPolicy: options.editPathPolicy }),
 			...commandEnvironment.registrations,
 			createLsToolRegistration(options.cwd),
 			createGlobToolRegistration(options.cwd),
 			createGrepToolRegistration(options.cwd, { executableResolver: options.executableResolver }),
 			createFindToolRegistration(options.cwd, { executableResolver: options.executableResolver }),
 			createTreeToolRegistration(options.cwd, { executableResolver: options.executableResolver }),
+			createWriteToolRegistration(options.cwd, { pathPolicy: options.writePathPolicy }),
 		],
 		backgroundService: commandEnvironment.backgroundService,
 		createSpecializedToolRegistrations: ({ cwd, ocrExecutionGate }) =>
