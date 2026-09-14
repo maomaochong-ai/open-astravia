@@ -32,6 +32,23 @@
 | [system-plugins.md](./system-plugins.md) | 系统插件（presets）、租户打包 |
 | [styling-and-pitfalls.md](./styling-and-pitfalls.md) | 样式、MF 顶层 JSX 陷阱、缓存与 version bump |
 
+工程里的 `AGENTS.md` 只负责把你引到这里，**规则一条都不写在那儿**——它是工程创建那天的快照，不会自更新。红线与合同都以本手册为准。
+
+## 不可违反的红线
+
+写任何代码之前先过一遍。每条都在正文里有详细章节，这里只给判据与去处。
+
+| 红线 | 为什么 | 详见 |
+| --- | --- | --- |
+| **样式只用 Tailwind `className`** | 插件与宿主共享同一个页面。在 `style.css` 里写 `button` / `div` / `*` 这类选择器会污染整个 UI，而且是只在用户机器上复现的那种污染 | [styling-and-pitfalls](./styling-and-pitfalls.md#样式隔离正常写-tailwind-或-css) |
+| **可能失败的路径必须上报用户** | 读文件、解析、网络、外部库的 `catch` 里调用 `ctx.ui.notify({ message, error })`（无需权限）。只写死一句「失败」并丢掉原始 error，用户和你都失去了唯一的线索 | [styling-and-pitfalls](./styling-and-pitfalls.md#错误必须上报用户notify) |
+| **权限按需最小声明** | 构建期会校验产物用到的能力与 `plugin.json` 是否匹配，缺了直接构建失败。**但 UI 槽位不在这条校验里**——那类缺权限在运行时只是静默跳过，得对着文档核对 | [permissions](./permissions.md) |
+| **顶层不要出现依赖共享 React 的 JSX** | Module Federation 的加载时序问题。放进组件或 `activate` 内 | [styling-and-pitfalls](./styling-and-pitfalls.md#module-federation-顶层-jsx-陷阱) |
+| **不要写 `agent_mode`** | 已废弃，无运行时语义。想收窄某个工具的使用场景，把「何时不该用它 + 替代做法」写进该工具 description 的反向触发段 | [guiding-the-agent](./guiding-the-agent.md#3-description-反向触发段在选择前说明边界) |
+| **依赖用 registry 上已发布的 semver** | 不要 `workspace:*`——那是仓库内插件专用的，发出去的包在用户机器上装不上 | [getting-started](./getting-started.md#2-packagejson) |
+| **`dist/` 要进版本库** | 插件通过仓库目录分发时，宿主直接读 `plugin.json` 指向的 `entry` 与 `styles`，**它不会替你构建**。目录里没有构建产物就装不上 | [getting-started](./getting-started.md#6-构建与打包) |
+| **信息不足时问用户** | 插件 id、展示名、要用哪些权限、功能边界、是否立刻安装——不要自己假定 | — |
+
 ## 插件能做什么
 
 一个插件在 `activate(ctx)` 里通过 `ctx` 注册贡献、调用能力；也可在 `plugin.json` **声明式**贡献（skills / MCP / guidingWords / commands…）。
