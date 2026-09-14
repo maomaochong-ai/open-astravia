@@ -586,7 +586,7 @@ function runInitCommand(
 				: [
 						`Created ${result.pluginId} at ${result.root}`,
 						"Next: npm install && npm run install:vetta",
-						"The agent brief is in AGENTS.md; the manual is at `npx vetta-plugin-cli docs`.",
+						"The agent brief is in AGENTS.md; after npm install, run `npx vetta-plugin-cli docs` for the manual.",
 					]
 						.filter(Boolean)
 						.join("\n")
@@ -777,8 +777,8 @@ function runInitHubCommand(
 				? `${JSON.stringify({ ok: true, ...result })}\n`
 				: [
 						`Created marketplace ${result.name} at ${result.root}`,
-						"Add an ability: npx vetta-plugin-cli init --id <slug> --name \"<Display>\" abilities/plugins/<slug>",
-						"Then list it in .vetta/marketplace.json and run: npx vetta-plugin-cli sync",
+						"Add an ability: npx @vetta-org/plugin-cli init --id <slug> --name \"<Display>\" abilities/plugins/<slug>",
+						"Then list it in .vetta/marketplace.json and run: npx @vetta-org/plugin-cli sync",
 						"The working agreement for agents is in AGENTS.md.",
 					].join("\n") + "\n",
 		);

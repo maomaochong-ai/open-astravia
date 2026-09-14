@@ -16,8 +16,12 @@ Vetta 能力市场仓库。本仓库索引若干**能力**（plugin / mcp / skil
 
 ## 开发时站在能力目录里，不是站在这里
 
+> 仓库根没有 \`node_modules\`，所以在根上执行时用全名 \`@vetta-org/plugin-cli\`；进了能力目录、
+> \`npm install\` 之后，裸命令 \`vetta-plugin-cli\` 才在 \`node_modules/.bin\` 里。
+
 \`\`\`bash
 cd abilities/plugins/<slug>      # ← 开发单位是这个目录
+npm install
 npx vetta-plugin-cli docs        # 手册（随该目录装的 SDK 版本）
 npm run install:vetta            # 装进正在运行的 Vetta
 npx vetta-plugin-cli watch       # 热更新
@@ -29,7 +33,7 @@ npx vetta-plugin-cli watch       # 热更新
 新建一个插件：
 
 \`\`\`bash
-npx vetta-plugin-cli init --id <slug> --name "<Display Name>" abilities/plugins/<slug>
+npx @vetta-org/plugin-cli init --id <slug> --name "<Display Name>" abilities/plugins/<slug>
 \`\`\`
 
 它只创建目录，**不会**动索引——新能力什么时候上架是人的决定。想好了再按下面的方式登记。
@@ -40,8 +44,8 @@ npx vetta-plugin-cli init --id <slug> --name "<Display Name>" abilities/plugins/
 \`config.commands\` 全都是从能力包推导出来的。改完能力后：
 
 \`\`\`bash
-npx vetta-plugin-cli sync          # 回填派生字段，并推进 marketplaceVersion
-npx vetta-plugin-cli sync --check  # 只报不写，非零退出（CI 用）
+npx @vetta-org/plugin-cli sync          # 回填派生字段，并推进 marketplaceVersion
+npx @vetta-org/plugin-cli sync --check  # 只报不写，非零退出（CI 用）
 \`\`\`
 
 要**手写**的只有身份与展示：\`slug\`、\`name\`、\`description\`、\`source.path\`、\`category\`、\`tags\`、
@@ -65,7 +69,7 @@ npx vetta-plugin-cli sync --check  # 只报不写，非零退出（CI 用）
 ## 发布
 
 1. 改能力 → 在能力目录里 build
-2. 回仓库根 \`npx vetta-plugin-cli sync\`
+2. 回仓库根 \`npx @vetta-org/plugin-cli sync\`
 3. 提交并推送；客户端在 \`marketplaceVersion\` 变化时拉新快照
 `;
 }

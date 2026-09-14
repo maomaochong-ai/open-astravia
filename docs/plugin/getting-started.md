@@ -16,7 +16,7 @@ cd my-plugin && npm install
 **手册就在工程里**——它随 `@vetta-org/plugin-sdk` 一起装进 `node_modules`：
 
 ```bash
-npx vetta-plugin-cli docs      # 打印手册目录绝对路径 + 它对应的 SDK 版本
+npx vetta-plugin-cli docs      # 装完依赖后可用；未装时用 npx @vetta-org/plugin-cli docs + 它对应的 SDK 版本
 ```
 
 **不要硬编码那个路径**：工作区可能把依赖提升到仓库根，一仓多插件时各插件还可能钉不同的

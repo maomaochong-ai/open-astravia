@@ -158,7 +158,8 @@ describe("scaffolding a marketplace repository", () => {
 		const brief = readFileSync(join(result.root, "AGENTS.md"), "utf8");
 		// 落在仓库根的 Agent 最需要知道的两件事。
 		expect(brief).toContain("cd abilities/plugins");
-		expect(brief).toContain("vetta-plugin-cli sync");
+		// 仓库根没有 node_modules，裸 bin 解析不到，必须写全名。
+		expect(brief).toContain("npx @vetta-org/plugin-cli sync");
 	});
 
 	it("keeps dist publishable by not ignoring it", () => {

@@ -14,11 +14,15 @@ export function renderAgentsGuide(input: { pluginId: string; displayName: string
 
 Vetta 桌面插件工程。**先读手册再写代码**——不要凭记忆写 SDK API，这套合同变化很快。
 
-## 第一步：找到并阅读手册
+## 第一步：装依赖，然后找到手册
 
 \`\`\`bash
+npm install
 npx vetta-plugin-cli docs
 \`\`\`
+
+\`npm install\` 必须先跑：\`vetta-plugin-cli\` 是 \`@vetta-org/plugin-cli\` 的命令名，装完才在
+\`node_modules/.bin\` 里。还没装就想跑，用全名 \`npx @vetta-org/plugin-cli docs\`。
 
 它打印出随 \`@vetta-org/plugin-sdk\` 一起装进 \`node_modules\` 的手册目录**绝对路径**，以及
 这份手册对应的 SDK 版本。**不要硬编码这个路径**：工作区可能把依赖提升到仓库根，一仓多插件
@@ -39,7 +43,6 @@ npx vetta-plugin-cli docs
 ## 开发闭环
 
 \`\`\`bash
-npm install
 npm run dev            # Vite + Module Federation 开发服务器
 npm run build          # 产出 dist/
 npm run install:vetta  # 打包并装进正在运行的 Vetta（需要 Vetta 已启动）
@@ -61,8 +64,8 @@ Desktop 校验、授权、安装。它**不会**直接写 \`~/.vetta/plugins\`�
 \`version\` / \`permissions\` / \`pluginApiVersion\` 之后要回仓库根跑一次**：
 
 \`\`\`bash
-npx vetta-plugin-cli sync          # 从各能力目录回填索引，并推进 marketplaceVersion
-npx vetta-plugin-cli sync --check  # 只报不写，CI 用
+npx @vetta-org/plugin-cli sync          # 从各能力目录回填索引，并推进 marketplaceVersion
+npx @vetta-org/plugin-cli sync --check  # 只报不写，CI 用
 \`\`\`
 
 索引里的 \`version\` 与 \`plugin.json\` 的 \`version\` 必须**完全相等**，否则宿主同步直接失败；
