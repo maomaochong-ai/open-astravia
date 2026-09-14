@@ -1,4 +1,4 @@
-import { Button } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
 import type { JSX, ReactNode } from "react";
 
 export interface WorkflowSwitcherItem {

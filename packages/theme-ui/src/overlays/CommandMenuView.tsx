@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, type JSX, type RefObject } from "react";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 import { CommandMenuRow } from "./CommandMenuRow";
 import type { CommandMenuGroupView, CommandMenuViewLabels } from "./command-menu-types";

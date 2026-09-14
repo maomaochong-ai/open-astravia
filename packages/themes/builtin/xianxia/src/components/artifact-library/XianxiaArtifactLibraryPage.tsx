@@ -1,6 +1,6 @@
 import type { ThemePageProps } from "@vetta/theme-sdk";
 import { HorizontalSliceImageFrame, NineSliceImageDecoration, NineSliceImageFrame } from "@vetta/theme-ui";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import { motion } from "motion/react";
 import type { JSX } from "react";
 import {

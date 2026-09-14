@@ -1,5 +1,5 @@
 import { useActivityTab, useTranslation } from "@vetta-org/plugin-sdk";
-import { Button, Spin } from "@vetta/ui";
+import { Button, Spin } from "@vetta-org/ui";
 import { useCallback, useEffect, useState, type JSX } from "react";
 import { getPluginContext } from "../runtime";
 import "./style.css";

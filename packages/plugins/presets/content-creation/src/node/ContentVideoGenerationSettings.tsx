@@ -1,5 +1,5 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { Popover, PopoverContent, PopoverTrigger } from "@vetta/ui";
+import { Popover, PopoverContent, PopoverTrigger } from "@vetta-org/ui";
 import type { ReactNode } from "react";
 import { useCallback, useRef, useState } from "react";
 import { resolveSupportedModelOption } from "../generation/model-options";

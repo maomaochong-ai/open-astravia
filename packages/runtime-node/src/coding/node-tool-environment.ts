@@ -35,6 +35,14 @@ export interface NodeCodingToolEnvironmentOptions {
 	readonly readOptions?: Pick<ReadToolOptions, "binaryContentHint" | "preserveFullText">;
 }
 
+export interface NodeFileToolEnvironmentOptions {
+	readonly cwd: string;
+	readonly editPathPolicy: EditPathPolicy;
+	readonly writePathPolicy: WritePathPolicy;
+	readonly configurationSource?: RuntimeConfigurationSnapshotSource;
+	readonly readOptions?: Pick<ReadToolOptions, "binaryContentHint" | "preserveFullText">;
+}
+
 export interface NodeCommandToolEnvironmentOptions {
 	readonly cwd: string;
 	readonly platform?: NodeJS.Platform;
@@ -59,6 +67,25 @@ export interface NodeCodingToolEnvironment extends NodeCommandToolEnvironment {
 	readonly createSpecializedToolRegistrations: (
 		context: NodeSpecializedToolRegistrationContext,
 	) => readonly CodingToolRegistration[];
+}
+
+/**
+ * 创建 Session 独占的文件读写工具。
+ *
+ * full-access 模式下这三个工具归 Session execution 所有（sandbox 模式换成沙箱实现），
+ * Composition 级 Tool Surface 不会再提供第二份定义。
+ */
+export function createNodeFileToolRegistrations(
+	options: NodeFileToolEnvironmentOptions,
+): readonly CodingToolRegistration[] {
+	return [
+		createReadToolRegistration(options.cwd, {
+			...options.readOptions,
+			configurationSource: options.configurationSource,
+		}),
+		createEditToolRegistration(options.cwd, { pathPolicy: options.editPathPolicy }),
+		createWriteToolRegistration(options.cwd, { pathPolicy: options.writePathPolicy }),
+	];
 }
 
 /** 创建可由 Session 独占的 Node 命令工具与后台任务环境。 */
@@ -103,18 +130,13 @@ export function createNodeCodingToolEnvironment(options: NodeCodingToolEnvironme
 
 	return {
 		registrations: [
-			createReadToolRegistration(options.cwd, {
-				...options.readOptions,
-				configurationSource: options.configurationSource,
-			}),
-			createEditToolRegistration(options.cwd, { pathPolicy: options.editPathPolicy }),
+			...createNodeFileToolRegistrations(options),
 			...commandEnvironment.registrations,
 			createLsToolRegistration(options.cwd),
 			createGlobToolRegistration(options.cwd),
 			createGrepToolRegistration(options.cwd, { executableResolver: options.executableResolver }),
 			createFindToolRegistration(options.cwd, { executableResolver: options.executableResolver }),
 			createTreeToolRegistration(options.cwd, { executableResolver: options.executableResolver }),
-			createWriteToolRegistration(options.cwd, { pathPolicy: options.writePathPolicy }),
 		],
 		backgroundService: commandEnvironment.backgroundService,
 		createSpecializedToolRegistrations: ({ cwd, ocrExecutionGate }) =>

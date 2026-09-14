@@ -1,6 +1,6 @@
 import { useThemeRouteModel } from "@vetta/theme-sdk";
 import { HorizontalSliceImageDecoration, NineSliceImageFrame } from "@vetta/theme-ui";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import { motion } from "motion/react";
 import { useEffect, useRef, type JSX } from "react";
 import { sanctumPageAssets } from "./assets";

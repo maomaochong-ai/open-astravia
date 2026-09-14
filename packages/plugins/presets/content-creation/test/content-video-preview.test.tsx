@@ -8,7 +8,7 @@ vi.mock("@vetta-org/plugin-sdk", () => ({
 	useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-vi.mock("@vetta/ui", () => ({
+vi.mock("@vetta-org/ui", () => ({
 	Slider: ({ "aria-label": ariaLabel }: { "aria-label"?: string }) => (
 		<input type="range" aria-label={ariaLabel} />
 	),

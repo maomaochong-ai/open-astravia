@@ -13,7 +13,7 @@ vi.mock("react-i18next", () => ({
 			`${key}${options?.name ?? options?.plugin ?? options?.count ?? options?.index ?? ""}`,
 	}),
 }));
-vi.mock("@vetta/ui", () => ({
+vi.mock("@vetta-org/ui", () => ({
 	Button: ({ children, ...props }: { children: ReactNode } & Record<string, unknown>) => (
 		<button {...props}>{children}</button>
 	),

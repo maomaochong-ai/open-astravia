@@ -1,4 +1,4 @@
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import { useTranslation } from "react-i18next";
 import type { AbilityOperation, AbilityOperationProgress } from "../types";
 

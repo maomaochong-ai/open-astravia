@@ -1,6 +1,6 @@
 import { memo, type ComponentPropsWithoutRef, type JSX, type ReactNode } from "react";
 import type { HorizontalSliceImageFrameDecoration } from "@vetta/theme-sdk/appearance";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 
 export interface HorizontalSliceImageFrameProps extends ComponentPropsWithoutRef<"div"> {
 	children: ReactNode;

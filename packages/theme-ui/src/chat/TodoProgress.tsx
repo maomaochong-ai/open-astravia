@@ -1,5 +1,5 @@
 import type { CSSProperties, JSX } from "react";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 
 export interface TodoStatusItem {
 	readonly id: number;

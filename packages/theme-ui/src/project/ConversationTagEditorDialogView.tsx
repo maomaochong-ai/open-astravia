@@ -1,4 +1,4 @@
-import { Button, cn, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input } from "@vetta/ui";
+import { Button, cn, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input } from "@vetta-org/ui";
 import { useCallback, useEffect, useRef, useState, type JSX } from "react";
 
 export interface ConversationTagEditorTagView {

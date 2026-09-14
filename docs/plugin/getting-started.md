@@ -104,7 +104,7 @@ dist/
 }
 ```
 
-> `react` / `react-dom` 仅用于类型与本地构建——运行时由**宿主作为共享单例提供**，不会打进你的 bundle（见 [styling-and-pitfalls.md](./styling-and-pitfalls.md)）。`@vetta-org/plugin-sdk` 同理：构建时被 external 化，运行时由宿主提供。可选 UI primitives `@vetta/ui`（`Button` / `Dialog` / `Switch`…）同样由宿主单例提供，需要时在 `devDependencies` 加类型依赖即可。仓库内插件用 `workspace:*` 直链源码；仓库外插件改用发布版本号。
+> `react` / `react-dom` 仅用于类型与本地构建——运行时由**宿主作为共享单例提供**，不会打进你的 bundle（见 [styling-and-pitfalls.md](./styling-and-pitfalls.md)）。`@vetta-org/plugin-sdk` 同理：构建时被 external 化，运行时由宿主提供。可选 UI primitives `@vetta-org/ui`（`Button` / `Dialog` / `Switch`…）同样由宿主单例提供，需要时在 `devDependencies` 加类型依赖即可。仓库内插件用 `workspace:*` 直链源码；仓库外插件改用发布版本号。
 
 ## 3. vite.config.ts
 
@@ -129,7 +129,7 @@ export default defineConfig({
 });
 ```
 
-`vettaPluginFederation` 自动：把 `react` / `react-dom` / `@vetta-org/plugin-sdk` / `@vetta/ui` 设为 `singleton`、`import:false`（用宿主的），生产构建时把 SDK 与 UI external 化，产出 `mf-manifest.json` + `remoteEntry.js`，CSS 落 `dist/style.css`。
+`vettaPluginFederation` 自动：把 `react` / `react-dom` / `@vetta-org/plugin-sdk` / `@vetta-org/ui` 设为 `singleton`、`import:false`（用宿主的），生产构建时把 SDK 与 UI external 化，产出 `mf-manifest.json` + `remoteEntry.js`，CSS 落 `dist/style.css`。
 
 它还会在插件 Tailwind 编译前自动接入 plugin-sdk 的宿主主题 Token 契约，因此
 `text-foreground`、`text-muted-foreground/50`、`bg-card` 等语义类可以直接使用；

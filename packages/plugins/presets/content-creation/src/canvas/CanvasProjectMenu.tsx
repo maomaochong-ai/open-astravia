@@ -6,7 +6,7 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-} from "@vetta/ui";
+} from "@vetta-org/ui";
 import { type ComponentProps, type ReactNode, useMemo } from "react";
 import type { ContentModelDescriptor } from "../generation/types";
 import type { ContentProjectDocument } from "../project/types";

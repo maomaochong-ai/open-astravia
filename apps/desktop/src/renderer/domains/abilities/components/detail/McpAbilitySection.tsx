@@ -1,4 +1,4 @@
-import { Button } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
 import { useTranslation } from "react-i18next";
 import { useMcpSetupStatusModel } from "../../hooks/useMcpSetupStatusModel";
 import type { AbilitiesModel, McpAbility } from "../../types";

@@ -16,7 +16,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 	cn,
-} from "@vetta/ui";
+} from "@vetta-org/ui";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AgentAvatarStack } from "./agent-center/AgentAvatarStack";

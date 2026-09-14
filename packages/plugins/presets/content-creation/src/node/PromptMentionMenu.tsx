@@ -1,5 +1,5 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { Button } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
 import { ContentAssetThumbnail } from "./ContentAssetThumbnail";
 import type { ConnectedPromptSource } from "./prompt-sources";
 import type { ContentAssetReferenceCandidate } from "./reference-candidates";

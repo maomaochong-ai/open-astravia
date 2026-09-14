@@ -1,5 +1,5 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import type { DragEvent, JSX } from "react";
 import { formatRelativeTime } from "../board/relative-time";
 import type { KanbanCard, KanbanRunState } from "../board/types";

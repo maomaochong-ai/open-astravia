@@ -7,7 +7,7 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "@vetta/ui";
+} from "@vetta-org/ui";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 
 export interface NavigationOpenApprovalField {

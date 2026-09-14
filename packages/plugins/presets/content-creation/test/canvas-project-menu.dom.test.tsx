@@ -21,7 +21,7 @@ interface DropdownState {
 
 const DropdownContext = createContext<DropdownState | null>(null);
 
-vi.mock("@vetta/ui", () => ({
+vi.mock("@vetta-org/ui", () => ({
 	DropdownMenu: ({ children }: { children: ReactNode }) => {
 		const [open, setOpen] = useState(false);
 		return <DropdownContext.Provider value={{ open, setOpen }}>{children}</DropdownContext.Provider>;

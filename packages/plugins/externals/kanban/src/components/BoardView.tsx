@@ -1,5 +1,5 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import { useCallback, useMemo, useState, type DragEvent, type JSX } from "react";
 import type { KanbanBoardController } from "../board/board-controller";
 import { findCard, resolveCardModelKey } from "../board/board-store";

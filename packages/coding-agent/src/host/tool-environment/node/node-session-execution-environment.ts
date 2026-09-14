@@ -1,4 +1,5 @@
 import {
+	createNodeFileToolRegistrations,
 	createNodeHostSessionCommandEnvironment,
 	createNodeSandboxCodingToolEnvironment,
 } from "@vetta/runtime-node/coding";
@@ -29,7 +30,15 @@ export function createCodingAgentNodeSessionExecutionEnvironment(
 		protectedDirectories: pathPolicy.protectedCommandDirectories,
 	});
 	return {
-		registrations: command.registrations,
+		registrations: [
+			...createNodeFileToolRegistrations({
+				cwd: context.cwd,
+				editPathPolicy: createCodingAgentEditPathPolicy(pathPolicy.boundaries),
+				writePathPolicy: createCodingAgentWritePathPolicy(pathPolicy.boundaries),
+				configurationSource: context.configurationSource,
+			}),
+			...command.registrations,
+		],
 		backgroundService: command.backgroundService,
 		sandbox: {
 			createToolSet: (options) =>

@@ -1,6 +1,6 @@
 import { useRef, type JSX, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Button, cn } from "@vetta/ui";
+import { Button, cn } from "@vetta-org/ui";
 import { InputField } from "./SettingsFormFields";
 import { shouldCloseEmptyApiKeyEditor } from "./shouldCloseEmptyApiKeyEditor";
 

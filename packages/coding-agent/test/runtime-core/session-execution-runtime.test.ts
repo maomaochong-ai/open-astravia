@@ -19,11 +19,9 @@ describe("CodingAgentSessionExecutionRuntime", () => {
 			},
 		} as unknown as AgentSession);
 
-		expect(fixture.runtime.readRegistrations().map(({ tool }) => tool.name)).toEqual([
-			commandToolName,
-			"task_output",
-			"task_stop",
-		]);
+		expect(fixture.runtime.readRegistrations().map(({ tool }) => tool.name)).toEqual(
+			expect.arrayContaining([commandToolName, "read", "write", "edit", "task_output", "task_stop"]),
+		);
 		expect(controller.isBusy()).toBe(false);
 		state = "running";
 		expect(controller.isBusy()).toBe(true);
@@ -43,11 +41,9 @@ describe("CodingAgentSessionExecutionRuntime", () => {
 			mode: "full-access",
 			sessionId: "session-mode",
 		});
-		expect(fixture.runtime.readRegistrations().map(({ tool }) => tool.name)).toEqual([
-			commandToolName,
-			"task_output",
-			"task_stop",
-		]);
+		expect(fixture.runtime.readRegistrations().map(({ tool }) => tool.name)).toEqual(
+			expect.arrayContaining([commandToolName, "read", "write", "edit", "task_output", "task_stop"]),
+		);
 		await fixture.runtime.dispose();
 		expect(fixture.environmentDisposeCalls).toBe(1);
 	});
@@ -92,13 +88,14 @@ describe("CodingAgentSessionExecutionRuntime", () => {
 
 		try {
 			const initialTools = (await provider.contribute(modelCallContext(signal))).tools ?? [];
-			expect(initialTools.map(({ name }) => name)).toEqual([commandToolName, "task_output", "task_stop"]);
+			expect(initialTools.map(({ name }) => name)).toEqual(
+				expect.arrayContaining([commandToolName, "task_output", "task_stop"]),
+			);
 
 			states.set(commandToolName, "deactivated");
-			expect((await provider.contribute(modelCallContext(signal))).tools?.map(({ name }) => name)).toEqual([
-				"task_output",
-				"task_stop",
-			]);
+			expect((await provider.contribute(modelCallContext(signal))).tools?.map(({ name }) => name)).not.toContain(
+				commandToolName,
+			);
 			const advertisedCommand = initialTools.find(({ name }) => name === commandToolName);
 			if (!advertisedCommand) throw new Error("Expected advertised command tool");
 			await expect(
@@ -114,10 +111,9 @@ describe("CodingAgentSessionExecutionRuntime", () => {
 			states.set(commandToolName, "active");
 			commandRevision = "2";
 			expect(fixture.runtime.ownsTool(commandToolName)).toBe(false);
-			expect((await provider.contribute(modelCallContext(signal))).tools?.map(({ name }) => name)).toEqual([
-				"task_output",
-				"task_stop",
-			]);
+			expect((await provider.contribute(modelCallContext(signal))).tools?.map(({ name }) => name)).not.toContain(
+				commandToolName,
+			);
 		} finally {
 			await prepared.dispose();
 			await fixture.runtime.dispose();

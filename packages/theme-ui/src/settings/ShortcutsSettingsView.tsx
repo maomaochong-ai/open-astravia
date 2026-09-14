@@ -1,5 +1,5 @@
 import type { JSX, ReactNode } from "react";
-import { Button } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
 import { SettingRow, SettingSection, type SettingSectionMeta } from "./SettingChrome";
 
 export interface ShortcutActionRowView {

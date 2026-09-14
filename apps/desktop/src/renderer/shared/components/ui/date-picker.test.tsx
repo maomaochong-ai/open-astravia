@@ -1,15 +1,15 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { DatePickerProps } from "@vetta/ui";
-import { Calendar as SharedCalendar, CalendarDayButton as SharedDayButton, DatePicker } from "@vetta/ui";
+import type { DatePickerProps } from "@vetta-org/ui";
+import { Calendar as SharedCalendar, CalendarDayButton as SharedDayButton, DatePicker } from "@vetta-org/ui";
 import { useState } from "react";
 import { enUS, zhCN } from "react-day-picker/locale";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Calendar, CalendarDayButton } from "./calendar";
 
 /**
- * 测试自带文案：DatePicker 是 @vetta/ui 的通用原语（也经 plugin-protocol 暴露给插件），
+ * 测试自带文案：DatePicker 是 @vetta-org/ui 的通用原语（也经 plugin-protocol 暴露给插件），
  * 它的测试不该依赖某个业务功能的 i18n 条目——那些条目会随功能下线一起消失。
  */
 const EN_CALENDAR_LABELS = {

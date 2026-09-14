@@ -1,5 +1,5 @@
 import { forwardRef, type ComponentPropsWithoutRef, type JSX, type ReactNode } from "react";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 
 export interface SettingsMenuTriggerViewProps extends ComponentPropsWithoutRef<"button"> {
 	readonly avatar?: ReactNode;

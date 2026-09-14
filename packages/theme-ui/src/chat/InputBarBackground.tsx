@@ -1,4 +1,4 @@
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import type { ComponentPropsWithoutRef, JSX, ReactNode } from "react";
 
 export interface InputBarBackgroundProps extends Omit<ComponentPropsWithoutRef<"div">, "children"> {

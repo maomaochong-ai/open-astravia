@@ -14,8 +14,8 @@
 		"noEmit": true,
 		"types": ["react"],
 		"paths": {
-			"@vetta/ui": ["../../../ui/src/index.ts"],
-			"@vetta/ui/*": ["../../../ui/src/*"]
+			"@vetta-org/ui": ["../../../ui/src/index.ts"],
+			"@vetta-org/ui/*": ["../../../ui/src/*"]
 		}
 	},
 	"include": ["src/**/*.ts", "src/**/*.tsx"],

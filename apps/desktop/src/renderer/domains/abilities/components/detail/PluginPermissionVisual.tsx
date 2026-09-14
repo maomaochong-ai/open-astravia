@@ -1,5 +1,5 @@
 import type { PluginPermission } from "@preload/api";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import { useTranslation } from "react-i18next";
 import { PLUGIN_PERMISSION_PRESENTATIONS, type PluginPermissionVisualKind } from "../../lib/plugin-permission-labels";
 import { PluginPermissionUiPreview } from "./PluginPermissionUiPreview";

@@ -13,7 +13,7 @@
 | `react-dom` | `devDependencies` 必须声明 | Desktop 宿主 share scope |
 | `react-dom/client` | 不单独安装；由 `react-dom` 提供 | Desktop 宿主 share scope |
 | `@vetta-org/plugin-sdk` | `devDependencies` 必须声明 | Desktop 宿主 shim/share scope |
-| `@vetta/ui` | 当前默认配置下必须声明 | Desktop 宿主 share scope / `vetta-host://ui` |
+| `@vetta-org/ui` | 当前默认配置下必须声明 | Desktop 宿主 share scope / `vetta-host://ui` |
 
 依赖版本应与仓库其他插件保持一致。当前仓库使用 `react` / `react-dom`
 `19.1.1`，本地包使用 `workspace:*`。
@@ -25,7 +25,7 @@
   "devDependencies": {
     "@vetta-org/plugin-sdk": "workspace:*",
     "@vetta-org/plugin-vite": "workspace:*",
-    "@vetta/ui": "workspace:*",
+    "@vetta-org/ui": "workspace:*",
     "react": "19.1.1",
     "react-dom": "19.1.1"
   }
@@ -65,7 +65,7 @@ vettaPluginFederation({
 Module Federation 仍会在构建阶段解析本地包并检测命名导出。例如：
 
 ```ts
-import { Button } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
 ```
 
 如果包没有安装，构建器会输出：
@@ -80,7 +80,7 @@ Shared dependency "..." has import: false but is not installed locally.
 ## 顶层求值限制
 
 共享模块由宿主异步注入。不要在模块顶层立即创建依赖共享运行时的值，尤其是
-JSX、`React.createContext()`、或基于 `@vetta/ui` 组件的常量：
+JSX、`React.createContext()`、或基于 `@vetta-org/ui` 组件的常量：
 
 ```tsx
 // 错误：插件 bootstrap 完成前可能读取到未初始化的共享模块。
@@ -104,7 +104,7 @@ const EmptyState = <div />;
 
 - `react` / `react-dom` 缺失：插件通常是非 UI 入口，但仍使用了默认 Federation
   配置；补充对应开发依赖，或改用 resource-only 构建路径。
-- `@vetta/ui` 缺失：补充 `workspace:*` 开发依赖，并确认宿主版本提供
+- `@vetta-org/ui` 缺失：补充 `workspace:*` 开发依赖，并确认宿主版本提供
   `vetta-host://ui` shim。
 - `@vetta/theme-ui/plugin-ui` 缺失：仅在源码确实导入该入口时开启
   `hostThemeUi`，并安装基础包 `@vetta/theme-ui`；未使用时不要把它加入

@@ -1,4 +1,4 @@
-import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@vetta/ui";
+import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@vetta-org/ui";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useMcpSetupLoginModel } from "../hooks/useMcpSetupLoginModel";

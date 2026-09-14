@@ -1,5 +1,5 @@
 import type { AgentAbilitySelection, AgentBlueprint, AgentProfile, AgentProfileUpdateImpact } from "@vetta/agent-team";
-import { Button, cn, Input, Switch } from "@vetta/ui";
+import { Button, cn, Input, Switch } from "@vetta-org/ui";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { GroupedVirtuoso } from "react-virtuoso";

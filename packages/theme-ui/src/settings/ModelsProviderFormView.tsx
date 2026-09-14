@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { Button } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
 import { CheckboxField, InputField, SelectField } from "./SettingsFormFields";
 
 export interface ModelsProviderFormStateView {

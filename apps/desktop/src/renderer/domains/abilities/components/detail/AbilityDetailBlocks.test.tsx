@@ -10,8 +10,8 @@ vi.mock("../AbilityIcon", () => ({ AbilityIcon: () => <span /> }));
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({ t: (key: string) => key }),
 }));
-vi.mock("@vetta/ui", async () => {
-	const actual = await vi.importActual<typeof import("@vetta/ui")>("@vetta/ui");
+vi.mock("@vetta-org/ui", async () => {
+	const actual = await vi.importActual<typeof import("@vetta-org/ui")>("@vetta-org/ui");
 	return {
 		...actual,
 		Dialog: ({ children, open }: { children?: unknown; open?: boolean }) => (open ? <div>{children as never}</div> : null),

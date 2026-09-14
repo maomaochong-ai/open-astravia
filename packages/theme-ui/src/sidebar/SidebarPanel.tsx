@@ -1,6 +1,6 @@
 import type { JSX, ReactNode } from "react";
 import { useThemeSurface } from "@vetta/theme-sdk/appearance";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 import { ResizeHandle } from "../layout/ResizeHandle";
 

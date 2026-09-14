@@ -108,6 +108,9 @@ export class CodingAgentTodoRuntime implements CodingAgentTodoRuntimePort {
 	}
 
 	onDocumentChanged(document: ConversationDocument): void {
+		// Turn 内的改动要等 toolResult 或 Turn 结束才落盘；此时 Document 里还是旧快照，
+		// 直接回灌会把尚未持久化的本地状态改回去（例如续跑提醒反复复活已完成的 Todo）。
+		if (this.pendingSnapshots.length > 0) return;
 		const snapshot = latestTodoSnapshot(document);
 		this.restore(snapshot ?? []);
 	}

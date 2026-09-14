@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@vetta/ui";
+import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@vetta-org/ui";
 
 /**
  * Per-channel "how this works" guide, opened from a channel's config

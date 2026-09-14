@@ -1,4 +1,4 @@
-import { Button } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
 
 import { ThemeSurface } from "@vetta/theme-ui/appearance";
 import { AnimatePresence, motion } from "motion/react";

@@ -7,7 +7,7 @@ import {
 	DialogDescription,
 	DialogTitle,
 	DialogTrigger,
-} from "@vetta/ui";
+} from "@vetta-org/ui";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState, type JSX, type ReactNode } from "react";
 import { sanctumPageAssets } from "./assets";

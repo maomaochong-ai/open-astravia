@@ -1,5 +1,5 @@
 import { type PluginCardProps, useTranslation } from "@vetta-org/plugin-sdk";
-import { Button } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
 import {
 	ArcElement,
 	BarElement,

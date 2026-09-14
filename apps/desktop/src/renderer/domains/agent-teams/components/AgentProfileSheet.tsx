@@ -2,7 +2,7 @@ import { useAgentAvatarResolver } from "@shared/agent-teams/agent-avatar";
 import type { AgentBlueprint, AgentProfile, AgentProfileUpdateImpact } from "@vetta/agent-team";
 import { AgentAvatarView } from "@vetta/theme-ui/chat";
 import { DetailDrawer, DetailDrawerEnter } from "@vetta/theme-ui/overlays";
-import { Button, cn } from "@vetta/ui";
+import { Button, cn } from "@vetta-org/ui";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AgentProfileEditInput } from "../hooks/useAgentLibraryModel";

@@ -11,6 +11,7 @@ import { CONFIG_DIR_NAME, getKnowledgeDir, getSceneDir, getUserSkillsDir } from 
 import { CODING_AGENT_READ_TOOL_OPTIONS } from "@vetta/coding-agent/host";
 import type { SettingsRuntime } from "@vetta/coding-agent/settings";
 import {
+	createNodeFileToolRegistrations,
 	createNodeHostCodingToolEnvironment,
 	createNodeHostSessionCommandEnvironment,
 	createNodePathBoundaryClassifier,
@@ -59,7 +60,16 @@ export function createCliCodingAgentSessionExecutionEnvironmentFactory(
 			protectedDirectories: host.protectedCommandDirectories,
 		});
 		return {
-			registrations: command.registrations,
+			registrations: [
+				...createNodeFileToolRegistrations({
+					cwd: context.cwd,
+					editPathPolicy: host.editPathPolicy,
+					writePathPolicy: host.writePathPolicy,
+					configurationSource: context.configurationSource,
+					readOptions: CODING_AGENT_READ_TOOL_OPTIONS,
+				}),
+				...command.registrations,
+			],
 			backgroundService: command.backgroundService,
 			sandbox: {
 				createToolSet: (sandboxOptions) =>

@@ -6,7 +6,7 @@ import type { FrameActivity } from "./design-runtime";
  * frame 活动态浮层：浏览（扫描仪+放大镜+思考头像）、修改（疾书头像+打字骨架线）、
  * 创作（流光+星光+蹦跳头像），衬在混沌流体背景（image-gen 生成骨架同款）上。
  * 纯 CSS 动画（keyframes 见 style.css 的 vetd-activity 段），不引入 motion——
- * 插件与宿主只共享 react / @vetta/ui。
+ * 插件与宿主只共享 react / @vetta-org/ui。
  *
  * 整层 pointer-events-none：它盖在 iframe / 位图上，吃掉指针会让元素选择失效
  * （同一坑见 FrameView 里的位图注释）。所有元素只动 transform / opacity，

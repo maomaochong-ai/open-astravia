@@ -1,5 +1,5 @@
 import { useMemo, useState, type JSX } from "react";
-import { Button, cn } from "@vetta/ui";
+import { Button, cn } from "@vetta-org/ui";
 import { McpDefaultIcon } from "./McpDefaultIcon";
 import type { SettingSectionMeta } from "./SettingChrome";
 

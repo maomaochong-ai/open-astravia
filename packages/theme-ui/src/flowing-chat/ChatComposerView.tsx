@@ -1,4 +1,4 @@
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import type { JSX } from "react";
 import {
 	forwardRef,

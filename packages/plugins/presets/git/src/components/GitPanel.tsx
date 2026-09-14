@@ -1,5 +1,5 @@
 import { useActivityTab, useTranslation } from "@vetta-org/plugin-sdk";
-import { Button } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { parseStatus } from "../git/parseStatus";
 import { initRepo, resolveRepoRoot, statusPorcelain } from "../git/run";

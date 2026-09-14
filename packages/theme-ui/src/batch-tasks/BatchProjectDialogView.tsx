@@ -1,5 +1,5 @@
 import type { JSX, ReactNode } from "react";
-import { Button, Dialog, DialogContent, DialogHeader, DialogTitle } from "@vetta/ui";
+import { Button, Dialog, DialogContent, DialogHeader, DialogTitle } from "@vetta-org/ui";
 
 export interface BatchProjectDialogViewLabels {
 	readonly title: string;

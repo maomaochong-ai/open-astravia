@@ -8,7 +8,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 	cn,
-} from "@vetta/ui";
+} from "@vetta-org/ui";
 
 export interface ImFeishuDialogViewLabels {
 	readonly title: string;

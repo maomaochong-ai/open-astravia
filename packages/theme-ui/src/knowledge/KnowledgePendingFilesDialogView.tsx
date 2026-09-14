@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@vetta/ui";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@vetta-org/ui";
 import { getColoredFileIcon } from "./coloredFileIcons";
 
 export interface KnowledgePendingFileRowView {

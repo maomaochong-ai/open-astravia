@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { Button, Dialog, DialogContent, cn } from "@vetta/ui";
+import { Button, Dialog, DialogContent, cn } from "@vetta-org/ui";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 
 export interface SchedulerActionApprovalDialogViewLabels {

@@ -12,7 +12,7 @@ import {
 	DropdownMenuSubContent,
 	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
-} from "@vetta/ui";
+} from "@vetta-org/ui";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 import { MultiplierTag } from "../shared/MultiplierTag";
 import { ProviderIcon } from "../shared/provider-icon";
@@ -89,7 +89,7 @@ export interface ModelSelectorViewProps {
 
 const MODEL_ITEM_SELECTOR = "[data-model-key]";
 
-/** 紧凑行：覆盖 @vetta/ui 默认的 px-3 py-2 text-[13px]，让模型多时列表不至于过长。 */
+/** 紧凑行：覆盖 @vetta-org/ui 默认的 px-3 py-2 text-[13px]，让模型多时列表不至于过长。 */
 const COMPACT_ITEM_CLASS = "gap-1.5 rounded-md px-2 py-1 text-xs";
 const COMPACT_LABEL_CLASS = "px-2 pb-0.5 pt-1 text-[10px]";
 

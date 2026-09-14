@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { Button, cn } from "@vetta/ui";
+import { Button, cn } from "@vetta-org/ui";
 import { SettingHeading, type SettingSectionMeta } from "./SettingChrome";
 
 export interface ImLogEventView {

@@ -36,7 +36,7 @@ vi.mock("@vetta-org/plugin-sdk", () => ({
 	}),
 }));
 
-vi.mock("@vetta/ui", () => ({
+vi.mock("@vetta-org/ui", () => ({
 	Button: ({ children, size: _size, variant: _variant, ...props }: MockButtonProps) => (
 		<button {...props}>{children}</button>
 	),

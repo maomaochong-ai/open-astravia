@@ -1,6 +1,6 @@
 import type { ComponentPropsWithoutRef, JSX, ReactNode } from "react";
 import { useThemeComponent } from "@vetta/theme-sdk";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 
 export interface MainContentFrameProps extends ComponentPropsWithoutRef<"main"> {
 	children: ReactNode;

@@ -1,7 +1,7 @@
 import type { JSX } from "react";
 import { useThemeComponent } from "@vetta/theme-sdk";
 import type { WindowControlsComponentProps } from "@vetta/theme-sdk/app-shell";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 import { WindowControlButton } from "./WindowControlButton";
 

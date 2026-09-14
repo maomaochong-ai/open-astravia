@@ -7,7 +7,7 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "@vetta/ui";
+} from "@vetta-org/ui";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { ContentPreparedRun } from "../agent/service";
 import type { ContentCreationPluginRuntime } from "./runtime";

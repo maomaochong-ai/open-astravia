@@ -1,5 +1,5 @@
 import type { AbilityMetaEntry, AbilityMetaKey } from "@shared/lib/api";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import { useTranslation } from "react-i18next";
 import type { AbilitiesModel, AbilityItem } from "../../types";
 import { DETAIL_KICKER, DETAIL_RULE } from "./ability-detail-surface";

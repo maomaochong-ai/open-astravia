@@ -6,8 +6,8 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "@vetta/ui";
-import { Switch } from "@vetta/ui";
+} from "@vetta-org/ui";
+import { Switch } from "@vetta-org/ui";
 import { cn } from "@shared/lib/utils";
 import { useState } from "react";
 import type { WebhookFormState, WebhookSettingsModel } from "./useWebhookSettingsModel";

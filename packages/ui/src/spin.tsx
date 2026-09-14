@@ -32,7 +32,7 @@ export interface SpinProps extends React.ComponentProps<"div"> {
  */
 function SpinKeyframes(): React.JSX.Element {
 	return (
-		<style href="@vetta/ui/spin" precedence="default">
+		<style href="@vetta-org/ui/spin" precedence="default">
 			{`@keyframes vetta-spin-rotate{0%,49.999%,100%{transform:none}50%,99.999%{transform:rotate(90deg)}}` +
 				`@keyframes vetta-spin-shift-left{0%,100%{transform:translateX(0)}50%{transform:scale(.65) translateX(-75%)}}` +
 				`@keyframes vetta-spin-shift-right{0%,100%{transform:translateX(0)}50%{transform:scale(.65) translateX(75%)}}` +

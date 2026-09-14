@@ -36,7 +36,7 @@ for (const e of report.must_host_hold || []) {
 	d[e.path] = {
 		kind: "host_primitive_hold",
 		reason:
-			"Props-driven or soft-pure UI still imports host Dialog/Drawer/Popover/Button; keep in desktop until @vetta/ui",
+			"Props-driven or soft-pure UI still imports host Dialog/Drawer/Popover/Button; keep in desktop until @vetta-org/ui",
 	};
 }
 

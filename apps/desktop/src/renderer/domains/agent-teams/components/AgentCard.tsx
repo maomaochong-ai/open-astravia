@@ -5,7 +5,7 @@ import {
 	agentUnavailableReason,
 	type BlueprintDisplayPlugin,
 } from "../lib/blueprint-display";
-import { Button } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
 import { useTranslation } from "react-i18next";
 import { AgentAvatarView } from "@vetta/theme-ui/chat";
 

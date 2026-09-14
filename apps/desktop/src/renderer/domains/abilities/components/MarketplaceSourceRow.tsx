@@ -1,5 +1,5 @@
 import type { MarketplaceSource, OpenMarketplaceSourceSnapshot } from "@preload/api";
-import { Button, Switch } from "@vetta/ui";
+import { Button, Switch } from "@vetta-org/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 

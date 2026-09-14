@@ -8,4 +8,4 @@ export {
 	DropdownMenuSubContent,
 	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
-} from "@vetta/ui";
+} from "@vetta-org/ui";

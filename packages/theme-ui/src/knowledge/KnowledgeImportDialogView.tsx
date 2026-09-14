@@ -8,7 +8,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 	cn,
-} from "@vetta/ui";
+} from "@vetta-org/ui";
 
 const NEW_BASE = "__new__";
 

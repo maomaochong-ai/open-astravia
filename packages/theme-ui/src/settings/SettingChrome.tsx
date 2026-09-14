@@ -1,5 +1,5 @@
 import type { JSX, ReactNode } from "react";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 
 /** Minimal section meta used by settings chrome (desktop registry satisfies this). */
 export interface SettingSectionMeta {

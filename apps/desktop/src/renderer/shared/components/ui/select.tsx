@@ -9,4 +9,4 @@ export {
 	SelectSeparator,
 	SelectTrigger,
 	SelectValue,
-} from "@vetta/ui";
+} from "@vetta-org/ui";

@@ -4,7 +4,7 @@
  * 所以从 FrameActivityOverlay 里提出来独立成模块。
  *
  * 纯 CSS 动画（keyframes 见 style.css 的 vetd-activity 段），不引入 motion——
- * 插件与宿主只共享 react / @vetta/ui。
+ * 插件与宿主只共享 react / @vetta-org/ui。
  */
 import type { JSX } from "react";
 

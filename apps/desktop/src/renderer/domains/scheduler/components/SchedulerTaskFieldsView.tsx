@@ -1,7 +1,7 @@
 import { TaskFormDialogView } from "@vetta/theme-ui/scheduler";
 import { SkillPromptArea } from "@domains/conversation/components/SkillPromptArea";
 import { ModelSelect } from "@shared/components/ModelSelect";
-import { Popover, PopoverContent, PopoverTrigger } from "@vetta/ui";
+import { Popover, PopoverContent, PopoverTrigger } from "@vetta-org/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type {

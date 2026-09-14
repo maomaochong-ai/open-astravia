@@ -1,6 +1,6 @@
 import { useState, type JSX, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { cn, Popover, PopoverContent, PopoverTrigger } from "@vetta/ui";
+import { cn, Popover, PopoverContent, PopoverTrigger } from "@vetta-org/ui";
 
 /**
  * 设置页 motion 下拉（对齐原 Agent 人设）。
@@ -8,7 +8,7 @@ import { cn, Popover, PopoverContent, PopoverTrigger } from "@vetta/ui";
  * 不用 Radix Select 的条件 Content：SelectValue 依赖已挂载 Item 把文案 portal
  * 到触发器，Content 关闭卸载后触发器会空白。本组件用 Popover + 显式 label。
  *
- * 视觉与 `@vetta/ui` Select 默认皮一致。
+ * 视觉与 `@vetta-org/ui` Select 默认皮一致。
  * 仅保留面板极轻淡入（无缩放/位移），选项列表不再逐项 stagger。
  */
 
@@ -52,7 +52,7 @@ export function MotionSelect({
 					aria-label={ariaLabel}
 					disabled={disabled}
 					className={cn(
-						// 与 @vetta/ui SelectTrigger 同皮
+						// 与 @vetta-org/ui SelectTrigger 同皮
 						"flex h-8 w-fit items-center justify-between gap-1.5 rounded-lg border border-border bg-card px-2.5 text-[12px] font-medium whitespace-nowrap transition-colors outline-none",
 						"hover:bg-accent data-[state=open]:bg-accent",
 						"focus-visible:border-primary/50",
@@ -101,7 +101,7 @@ export function MotionSelect({
 											onValueChange(option.value);
 										}}
 										className={cn(
-											// 与 @vetta/ui SelectItem / 原 Agent 菜单项同皮
+											// 与 @vetta-org/ui SelectItem / 原 Agent 菜单项同皮
 											"flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-[12px] font-medium transition-colors outline-none",
 											"disabled:pointer-events-none disabled:opacity-50",
 											isSelected

@@ -10,8 +10,8 @@
 		"paths": {
 			"@vetta/theme-sdk": ["../theme-sdk/src/index.ts"],
 			"@vetta/theme-sdk/*": ["../theme-sdk/src/*"],
-			"@vetta/ui": ["../ui/src/index.ts"],
-			"@vetta/ui/*": ["../ui/src/*"]
+			"@vetta-org/ui": ["../ui/src/index.ts"],
+			"@vetta-org/ui/*": ["../ui/src/*"]
 		}
 	},
 	"include": ["src/**/*.ts", "src/**/*.tsx"],

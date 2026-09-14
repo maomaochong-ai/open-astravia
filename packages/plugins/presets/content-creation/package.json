@@ -24,7 +24,7 @@
 		"@vetta/ai": "workspace:*",
 		"@vetta-org/plugin-sdk": "workspace:*",
 		"@vetta-org/plugin-vite": "workspace:*",
-		"@vetta/ui": "workspace:*",
+		"@vetta-org/ui": "workspace:*",
 		"jsdom": "26.1.0",
 		"react": "19.1.1",
 		"react-dom": "19.1.1",

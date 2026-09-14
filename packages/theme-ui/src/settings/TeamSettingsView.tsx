@@ -1,5 +1,5 @@
 import type { JSX, ReactNode } from "react";
-import { Button } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
 import type { SettingSectionMeta } from "./SettingChrome";
 import { SettingHeading } from "./SettingChrome";
 

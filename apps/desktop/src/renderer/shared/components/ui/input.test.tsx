@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Input as SharedInput } from "@vetta/ui";
+import { Input as SharedInput } from "@vetta-org/ui";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { Input } from "./input";

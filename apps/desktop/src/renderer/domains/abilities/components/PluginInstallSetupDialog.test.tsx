@@ -10,7 +10,7 @@ vi.mock("jotai", () => ({ useSetAtom: () => vi.fn() }));
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({ t: (key: string) => key }),
 }));
-vi.mock("@vetta/ui", () => ({
+vi.mock("@vetta-org/ui", () => ({
 	Button: ({ children, onClick }: { children?: ReactNode; onClick?: () => void }) => (
 		<button type="button" onClick={onClick}>
 			{children}

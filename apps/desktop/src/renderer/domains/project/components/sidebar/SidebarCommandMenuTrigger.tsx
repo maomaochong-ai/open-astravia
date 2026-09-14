@@ -1,7 +1,7 @@
 import { formatShortcut } from "@shared/lib/platform";
 import { getEffectiveShortcut, loadShortcutBindings } from "@shared/lib/shortcuts";
 import { commandMenuOpenAtom } from "@shared/store/atoms";
-import { Button } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
 import { useSetAtom } from "jotai";
 import { useEffect, useState, type JSX } from "react";
 import { useTranslation } from "react-i18next";

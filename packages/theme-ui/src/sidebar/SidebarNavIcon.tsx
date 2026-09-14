@@ -1,5 +1,5 @@
 import type { SidebarNavItem } from "@vetta/theme-sdk/sidebar";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import type { JSX } from "react";
 
 export interface SidebarNavIconProps {

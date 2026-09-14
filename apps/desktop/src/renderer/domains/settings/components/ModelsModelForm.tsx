@@ -1,7 +1,7 @@
 import { getReasoningPreset } from "@vetta/ai/reasoning-presets";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
 import { cn } from "@shared/lib/utils";
 import { CheckboxField } from "./McpSettings";
 import { InputField, SelectField } from "@vetta/theme-ui/settings";

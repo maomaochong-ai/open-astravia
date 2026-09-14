@@ -1,5 +1,5 @@
 import type { JSX, ReactNode } from "react";
-import { Button, Popover, PopoverContent, PopoverTrigger, cn } from "@vetta/ui";
+import { Button, Popover, PopoverContent, PopoverTrigger, cn } from "@vetta-org/ui";
 
 export interface KnowledgeBaseSwitcherItemView {
 	readonly id: string;

@@ -1,6 +1,6 @@
 import { forwardRef, type JSX } from "react";
 import type { WindowControlButtonProps, WindowControlKind } from "@vetta/theme-sdk/app-shell";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 
 const WINDOW_CONTROL_ICONS: Record<WindowControlKind, string> = {
 	close: "icon-[mdi--close]",

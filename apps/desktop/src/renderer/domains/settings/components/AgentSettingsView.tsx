@@ -1,5 +1,5 @@
-import { Button } from "@vetta/ui";
-import { Switch } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
+import { Switch } from "@vetta-org/ui";
 import { useMemo } from "react";
 import { SettingsAiAssist } from "../ai-assist";
 import { SETTINGS_SECTION } from "../registry";

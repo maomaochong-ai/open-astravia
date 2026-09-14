@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import { SettingsMenuDivider } from "./SettingsMenuDivider";
 
 export interface SettingsMenuQuotaSectionProps {

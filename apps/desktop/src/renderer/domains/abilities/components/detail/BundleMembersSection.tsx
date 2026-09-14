@@ -1,4 +1,4 @@
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { ABILITY_TYPE_ICON, ABILITY_TYPE_LABEL_KEY } from "../../lib/ability-presentation";

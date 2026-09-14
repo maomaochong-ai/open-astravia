@@ -171,13 +171,13 @@ function classify(abs, text, deferrals) {
 		return { status: "non_goal", rel, lines };
 	}
 	// Host design-system chrome (Dialog/Button implementations) — not business views.
-	// Migration target is @vetta/ui when primitives land, not theme-ui business domains.
+	// Migration target is @vetta-org/ui when primitives land, not theme-ui business domains.
 	if (/\/shared\/components\/ui\//.test(rel)) {
 		return {
 			status: "permanent_desktop",
 			rel,
 			lines,
-			reason: "host design-system primitive implementation (chrome); leave until @vetta/ui",
+			reason: "host design-system primitive implementation (chrome); leave until @vetta-org/ui",
 		};
 	}
 

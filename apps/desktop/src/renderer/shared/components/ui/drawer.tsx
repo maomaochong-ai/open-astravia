@@ -9,4 +9,4 @@ export {
 	DrawerFooter,
 	DrawerTitle,
 	DrawerDescription,
-} from "@vetta/ui";
+} from "@vetta-org/ui";

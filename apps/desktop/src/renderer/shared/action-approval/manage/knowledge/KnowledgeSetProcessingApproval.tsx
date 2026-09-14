@@ -5,9 +5,9 @@ import {
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@vetta/ui";
+} from "@vetta-org/ui";
 import { useMemo, useState } from "react";
-import { Switch } from "@vetta/ui";
+import { Switch } from "@vetta-org/ui";
 import { type ActiveActionApproval, useActionApproval } from "../../useActionApproval";
 import { knowledgeBaseFieldLabel } from "../../approvalCopy";
 import {

@@ -6,4 +6,4 @@ export {
 	PopoverHeader,
 	PopoverTitle,
 	PopoverTrigger,
-} from "@vetta/ui";
+} from "@vetta-org/ui";

@@ -1,4 +1,4 @@
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import { useEffect, useRef, useState, type JSX } from "react";
 import { getFileIcon } from "./fileIcons";
 import type { FileExplorerEntryKind } from "./types";

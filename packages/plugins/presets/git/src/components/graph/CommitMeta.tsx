@@ -1,5 +1,5 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { Button } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
 import type { CommitNode } from "../../git/types";
 import { CopyIcon } from "../icons";
 import { CommitMessage } from "./CommitMessage";

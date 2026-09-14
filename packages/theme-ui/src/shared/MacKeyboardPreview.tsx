@@ -1,6 +1,6 @@
 import { useMemo, type JSX } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 
 /**
  * Mac 键盘预览组件（通用、纯展示，轻拟物风格）。

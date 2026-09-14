@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from "motion/react";
 import type { JSX, ReactNode } from "react";
 import { useThemeComponent } from "@vetta/theme-sdk";
 import type { PageHeaderContentProps as SdkPageHeaderContentProps } from "@vetta/theme-sdk/app-shell";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import { PageHeaderSidebarTrigger } from "./PageHeaderSidebarTrigger";
 import { PageHeaderTitle } from "./PageHeaderTitle";
 import { PageHeaderWindowActions } from "./PageHeaderWindowActions";

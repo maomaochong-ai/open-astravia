@@ -9,7 +9,7 @@ import {
 	usePromptAttachment,
 	useTranslation,
 } from "@vetta-org/plugin-sdk";
-import { Button } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./style.css";
 import { createImageRepository, type ImageRepository } from "./image-repository";

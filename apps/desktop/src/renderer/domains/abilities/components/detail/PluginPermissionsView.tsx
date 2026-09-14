@@ -1,5 +1,5 @@
 import type { PluginPermission } from "@preload/api";
-import { Button, cn, Switch } from "@vetta/ui";
+import { Button, cn, Switch } from "@vetta-org/ui";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAbilityText } from "../../hooks/useAbilityText";

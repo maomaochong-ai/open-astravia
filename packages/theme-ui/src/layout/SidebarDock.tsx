@@ -1,6 +1,6 @@
 import { AnimatePresence, motion, type HTMLMotionProps } from "motion/react";
 import type { JSX, ReactNode } from "react";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 
 export interface SidebarDockProps extends Omit<HTMLMotionProps<"div">, "children"> {
 	children: ReactNode;

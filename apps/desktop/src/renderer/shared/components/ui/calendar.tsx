@@ -1,1 +1,1 @@
-export { Calendar, CalendarDayButton } from "@vetta/ui";
+export { Calendar, CalendarDayButton } from "@vetta-org/ui";

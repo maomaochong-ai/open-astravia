@@ -7,7 +7,7 @@ import {
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
-} from "@vetta/ui";
+} from "@vetta-org/ui";
 import type { ContentNodeAlignment, ContentNodeLayout } from "../node/layout";
 
 interface SelectionToolbarProps {

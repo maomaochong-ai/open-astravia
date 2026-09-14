@@ -1,5 +1,5 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { Button } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
 import { useEffect, useMemo, useState } from "react";
 import {
 	assignContentReferenceSlots,

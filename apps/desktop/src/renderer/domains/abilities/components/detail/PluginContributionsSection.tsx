@@ -1,4 +1,4 @@
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import { resolvePluginText } from "@vetta-org/plugin-sdk";
 import { isSkillVisibleOnSurface, resolveSkillProviderPresentation } from "@vetta-org/capability-sdk";
 import { useState } from "react";

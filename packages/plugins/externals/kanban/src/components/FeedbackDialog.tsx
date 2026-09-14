@@ -7,7 +7,7 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "@vetta/ui";
+} from "@vetta-org/ui";
 import { useEffect, useState, type JSX } from "react";
 import { PromptTextarea } from "./PromptTextarea";
 import type { KanbanSkillOption } from "../board/board-controller";

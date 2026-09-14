@@ -1,4 +1,4 @@
-import { Button } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
 import { useTranslation } from "react-i18next";
 
 /** 各渠道配置对话框头部的「使用说明」入口，样式统一在这里。 */

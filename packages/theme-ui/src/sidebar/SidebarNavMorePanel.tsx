@@ -1,6 +1,6 @@
 import type { JSX } from "react";
 import type { SidebarNavItem } from "@vetta/theme-sdk/sidebar";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import { SidebarNavBadgeView } from "./SidebarNavBadgeView";
 import type { SidebarNavDragHandlers, SidebarNavRegion } from "./useSidebarNavDrag";
 import { SidebarNavIcon } from "./SidebarNavIcon";

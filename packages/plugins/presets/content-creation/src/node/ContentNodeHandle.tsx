@@ -1,5 +1,5 @@
 import { Handle, Position } from "@xyflow/react";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import {
 	CONTENT_FLOW_LEFT_ACTION_HANDLE_ID,
 	CONTENT_FLOW_RIGHT_ACTION_HANDLE_ID,

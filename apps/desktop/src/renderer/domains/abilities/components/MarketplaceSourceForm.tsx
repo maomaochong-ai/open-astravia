@@ -1,4 +1,4 @@
-import { Button } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 

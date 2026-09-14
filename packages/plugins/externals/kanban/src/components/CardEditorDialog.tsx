@@ -8,7 +8,7 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "@vetta/ui";
+} from "@vetta-org/ui";
 import { useEffect, useRef, useState, type JSX } from "react";
 import { ModelPicker } from "./ModelPicker";
 import { ProjectPicker } from "./ProjectPicker";

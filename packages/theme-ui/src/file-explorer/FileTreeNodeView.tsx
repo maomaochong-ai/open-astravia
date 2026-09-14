@@ -1,4 +1,4 @@
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import { useEffect, useRef, useState, type JSX } from "react";
 import { FILE_TREE_NODE_DROP_CLASS, isDragLeavingElement } from "./drag-target";
 import { getFileIcon } from "./fileIcons";

@@ -1,5 +1,5 @@
 import { ShortcutRecorder } from "@domains/settings/components/ShortcutRecorder";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@vetta/ui";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@vetta-org/ui";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { type ActiveActionApproval, useActionApproval } from "../../useActionApproval";

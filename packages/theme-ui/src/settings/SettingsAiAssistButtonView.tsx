@@ -1,6 +1,6 @@
 import { forwardRef, type JSX } from "react";
 import { motion, useReducedMotion, type Variants } from "motion/react";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 
 export interface SettingsAiAssistButtonViewProps {
 	readonly label: string;

@@ -1,7 +1,7 @@
 import { KnowledgeBreadcrumbView } from "@vetta/theme-ui/knowledge";
 import { useTranslation } from "react-i18next";
 import { AnimatePresence, motion } from "motion/react";
-import { Button } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
 
 import { cn } from "@shared/lib/utils";
 import { SettingsAiAssist } from "../../settings/ai-assist";

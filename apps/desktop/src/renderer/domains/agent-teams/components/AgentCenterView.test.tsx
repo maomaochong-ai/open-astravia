@@ -14,7 +14,7 @@ vi.mock("react-i18next", () => ({
 			values ? `${key}:${Object.values(values).join(":")}` : key,
 	}),
 }));
-vi.mock("@vetta/ui", () => ({
+vi.mock("@vetta-org/ui", () => ({
 	Button: ({ children, variant: _variant, size: _size, ...props }: { children: ReactNode } & Record<string, unknown>) => (
 		<button type="button" {...props}>
 			{children}

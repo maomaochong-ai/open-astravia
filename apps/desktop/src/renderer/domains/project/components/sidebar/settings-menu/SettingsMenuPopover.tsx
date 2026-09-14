@@ -1,7 +1,7 @@
 import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { SettingsMenuSettingsItem } from "@vetta/theme-ui/sidebar";
-import { PopoverContent } from "@vetta/ui";
+import { PopoverContent } from "@vetta-org/ui";
 import type { SettingsMenuModel } from "./types";
 import { SettingsMenuAccountSection } from "./SettingsMenuAccountSection";
 import { SettingsMenuDivider } from "./SettingsMenuDivider";

@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState, type JSX, type ReactNode } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@vetta/ui";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@vetta-org/ui";
 
 export interface AchievementPromotionDialogViewLabels {
 	readonly title: string;

@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import { getProviderIcon, isMonochromeProviderIcon } from "./icons";
 
 export { PROVIDER_ICONS, getProviderIcon } from "./icons";

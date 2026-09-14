@@ -1,7 +1,7 @@
 import type { JSX, ReactNode } from "react";
 import { useThemeComponent } from "@vetta/theme-sdk";
 import type { SidebarClassNames, SidebarModel } from "@vetta/theme-sdk/sidebar";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 import { SidebarNavigation } from "./SidebarNavigation";
 import type { SidebarNavMorePanelLabels } from "./SidebarNavMorePanel";

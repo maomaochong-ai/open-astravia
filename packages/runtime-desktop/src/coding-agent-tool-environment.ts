@@ -17,6 +17,7 @@ import {
 import { CODING_AGENT_READ_TOOL_OPTIONS } from "@vetta/coding-agent/host";
 import { SettingsRuntime } from "@vetta/coding-agent/settings";
 import {
+	createNodeFileToolRegistrations,
 	createNodeHostCodingToolEnvironment,
 	createNodeHostSessionCommandEnvironment,
 	createNodePathBoundaryClassifier,
@@ -56,7 +57,16 @@ export const createDesktopCodingAgentSessionExecutionEnvironment: CodingAgentSes
 		protectedDirectories: host.protectedCommandDirectories,
 	});
 	return {
-		registrations: command.registrations,
+		registrations: [
+			...createNodeFileToolRegistrations({
+				cwd: context.cwd,
+				editPathPolicy: host.editPathPolicy,
+				writePathPolicy: host.writePathPolicy,
+				configurationSource: context.configurationSource,
+				readOptions: CODING_AGENT_READ_TOOL_OPTIONS,
+			}),
+			...command.registrations,
+		],
 		backgroundService: command.backgroundService,
 		sandbox: {
 			createToolSet: (options) =>

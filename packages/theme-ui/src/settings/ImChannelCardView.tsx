@@ -1,5 +1,5 @@
 import type { JSX, ReactNode } from "react";
-import { Button, cn } from "@vetta/ui";
+import { Button, cn } from "@vetta-org/ui";
 import { ImStatusBadgeView, type ImStatusBadgeStatus } from "./ImStatusBadgeView";
 
 export interface ImChannelCardViewLabels {

@@ -9,7 +9,7 @@ import {
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@vetta/ui";
+} from "@vetta-org/ui";
 import { useState } from "react";
 
 export interface PromptOptimizationControlProps {

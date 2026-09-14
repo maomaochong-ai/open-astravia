@@ -1,7 +1,7 @@
 import type { JSX } from "react";
 import { motion } from "motion/react";
 import { useThemeComponent } from "@vetta/theme-sdk";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import type { NewSessionSkillBadgeRowProps } from "./NewSession";
 import { SkillCard } from "./SkillCard";
 import { useHorizontalDragScroll } from "./useHorizontalDragScroll";

@@ -1,4 +1,4 @@
-import { Popover, PopoverContent, PopoverTrigger, cn } from "@vetta/ui";
+import { Popover, PopoverContent, PopoverTrigger, cn } from "@vetta-org/ui";
 import { Slot } from "radix-ui";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { createContext, forwardRef, useContext, useState } from "react";

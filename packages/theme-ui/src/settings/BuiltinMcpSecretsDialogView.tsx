@@ -6,7 +6,7 @@ import {
 	DialogContent,
 	DialogDescription,
 	DialogTitle,
-} from "@vetta/ui";
+} from "@vetta-org/ui";
 import { InputField } from "./SettingsFormFields";
 import { McpDefaultIcon } from "./McpDefaultIcon";
 

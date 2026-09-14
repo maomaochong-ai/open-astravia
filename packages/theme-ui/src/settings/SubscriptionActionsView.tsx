@@ -1,4 +1,4 @@
-import { Button, cn } from "@vetta/ui";
+import { Button, cn } from "@vetta-org/ui";
 import type { JSX } from "react";
 import { useEffect, useRef, useState } from "react";
 import type { SubscriptionCardsViewModel } from "./SubscriptionCardsView";

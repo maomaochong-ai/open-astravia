@@ -1,6 +1,6 @@
 import { UserAvatar } from "@shared/components/UserAvatar";
 import { SubscriptionCardsView, TokenActivityChartView } from "@vetta/theme-ui/settings";
-import { Button, Dialog, DialogContent, DialogTitle } from "@vetta/ui";
+import { Button, Dialog, DialogContent, DialogTitle } from "@vetta-org/ui";
 import { useEffect, useState } from "react";
 import { SubscriptionActions } from "./SubscriptionActions";
 import { SubscriptionCards } from "./SubscriptionCards";

@@ -140,7 +140,7 @@ export const getProviderIcon = themeUi.getProviderIcon;
 `);
 	}
 	if (moduleName === "ui" || moduleName === "vetta-ui") {
-		// Federation chunks can reach @vetta/ui through the host shim as well as the
+		// Federation chunks can reach @vetta-org/ui through the host shim as well as the
 		// share scope; keep this export list in sync with packages/ui/src/index.ts.
 		return moduleResponse(`
 const ui = globalThis.__VETTA_PLUGIN_HOST__.vettaUi;

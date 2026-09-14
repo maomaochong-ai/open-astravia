@@ -4,7 +4,7 @@ import {
 	DialogDescription,
 	DialogHeader,
 	DialogTitle,
-} from "@vetta/ui";
+} from "@vetta-org/ui";
 import { useTranslation } from "react-i18next";
 import { SETTINGS_SECTION } from "../registry";
 import { McpServerForm } from "./McpServerForm";

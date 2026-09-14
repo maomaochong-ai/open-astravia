@@ -1,7 +1,7 @@
 import type { ModuleFederation } from "@module-federation/enhanced/runtime";
 import * as themeUiPlugin from "@vetta/theme-ui/plugin-ui";
-import * as vettaUi from "@vetta/ui";
 import * as pluginSdk from "@vetta-org/plugin-sdk";
+import * as vettaUi from "@vetta-org/ui";
 import * as React from "react";
 import * as jsxDevRuntime from "react/jsx-dev-runtime";
 import * as jsxRuntime from "react/jsx-runtime";
@@ -24,7 +24,7 @@ export const pluginSharedModules = {
 	},
 	// Host design-system primitives (Button/Dialog/…). Plugins may import optionally;
 	// runtime is host singleton so they match App chrome. Not a frozen public API.
-	"@vetta/ui": {
+	"@vetta-org/ui": {
 		module: vettaUi,
 		version: "0.0.1",
 		singleton: true,

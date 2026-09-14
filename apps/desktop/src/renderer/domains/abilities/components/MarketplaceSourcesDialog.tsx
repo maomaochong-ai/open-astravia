@@ -12,7 +12,7 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "@vetta/ui";
+} from "@vetta-org/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { MarketplaceSourceForm, type MarketplaceSourceFormValue } from "./MarketplaceSourceForm";

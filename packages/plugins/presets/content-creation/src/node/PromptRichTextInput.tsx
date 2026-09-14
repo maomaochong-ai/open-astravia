@@ -1,5 +1,5 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { Button, Popover, PopoverAnchor, PopoverContent } from "@vetta/ui";
+import { Button, Popover, PopoverAnchor, PopoverContent } from "@vetta-org/ui";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import {
 	PromptOptimizationControl,

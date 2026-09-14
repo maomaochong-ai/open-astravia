@@ -6,7 +6,7 @@ import {
 	DropdownMenuRadioGroup,
 	DropdownMenuRadioItem,
 	DropdownMenuTrigger,
-} from "@vetta/ui";
+} from "@vetta-org/ui";
 import { useCallback, useRef, useState } from "react";
 import type { ContentModelDescriptor } from "../generation/types";
 import type { ContentNodeData, ContentNodeKind } from "../project/types";

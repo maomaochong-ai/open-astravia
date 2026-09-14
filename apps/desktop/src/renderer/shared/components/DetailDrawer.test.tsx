@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 let animationEnd: ((open: boolean) => void) | undefined;
 let latestOverlayClassName: string | undefined;
 
-vi.mock("@vetta/ui", () => {
+vi.mock("@vetta-org/ui", () => {
 	type DrawerProps = {
 		children: ReactNode;
 		open: boolean;

@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import type { JSX } from "react";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 
 export type MessageCenterTabId = "all" | "notifications" | "flowing" | "chat";
 

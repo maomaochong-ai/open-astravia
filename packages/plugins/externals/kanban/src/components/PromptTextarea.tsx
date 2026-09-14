@@ -1,5 +1,5 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { cn, Popover, PopoverAnchor, PopoverContent } from "@vetta/ui";
+import { cn, Popover, PopoverAnchor, PopoverContent } from "@vetta-org/ui";
 import {
 	forwardRef,
 	useCallback,

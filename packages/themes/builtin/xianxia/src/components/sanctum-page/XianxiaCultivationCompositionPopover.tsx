@@ -1,5 +1,5 @@
 import { NineSliceImageFrame } from "@vetta/theme-ui";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import { AnimatePresence, motion } from "motion/react";
 import { useLayoutEffect, useRef, useState, type JSX } from "react";
 import { sanctumPageAssets } from "./assets";

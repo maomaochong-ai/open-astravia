@@ -35,7 +35,7 @@ vi.mock("@vetta-org/plugin-sdk", () => ({
 	useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-vi.mock("@vetta/ui", () => ({
+vi.mock("@vetta-org/ui", () => ({
 	Button: ({ children, size: _size, variant: _variant, ...props }: MockButtonProps) => (
 		<button {...props}>{children}</button>
 	),

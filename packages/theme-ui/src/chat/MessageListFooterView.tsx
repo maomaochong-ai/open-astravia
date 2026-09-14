@@ -1,4 +1,4 @@
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import { AnimatePresence, motion, type Transition } from "motion/react";
 import { Slot } from "radix-ui";
 import { forwardRef, type ComponentPropsWithoutRef, type ReactNode } from "react";

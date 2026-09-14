@@ -1,5 +1,5 @@
 import { useState, type JSX, type ReactNode } from "react";
-import { Popover, PopoverContent, PopoverTrigger, cn } from "@vetta/ui";
+import { Popover, PopoverContent, PopoverTrigger, cn } from "@vetta-org/ui";
 
 export const DEFAULT_PLUGIN_TAB_ICON = "icon-[solar--widget-5-linear]";
 

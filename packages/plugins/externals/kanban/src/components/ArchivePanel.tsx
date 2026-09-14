@@ -1,5 +1,5 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { cn, Popover, PopoverContent, PopoverTrigger } from "@vetta/ui";
+import { cn, Popover, PopoverContent, PopoverTrigger } from "@vetta-org/ui";
 import type { JSX, ReactNode } from "react";
 import { formatRelativeTime } from "../board/relative-time";
 import type { KanbanCard } from "../board/types";

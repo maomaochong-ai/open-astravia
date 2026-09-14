@@ -27,7 +27,7 @@ interface MockButtonProps extends ComponentProps<"button"> {
 	variant?: string;
 }
 
-vi.mock("@vetta/ui", () => ({
+vi.mock("@vetta-org/ui", () => ({
 	Dialog: ({ open, children }: MockDialogProps) => (open ? <div>{children}</div> : null),
 	DialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 	DialogDescription: ({ children }: { children: ReactNode }) => <p>{children}</p>,

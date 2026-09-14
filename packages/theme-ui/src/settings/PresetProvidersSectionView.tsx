@@ -1,5 +1,5 @@
 import type { JSX, ReactNode } from "react";
-import { Button, cn } from "@vetta/ui";
+import { Button, cn } from "@vetta-org/ui";
 import { SettingSection, type SettingSectionMeta } from "./SettingChrome";
 
 export interface PresetProvidersSectionViewLabels {

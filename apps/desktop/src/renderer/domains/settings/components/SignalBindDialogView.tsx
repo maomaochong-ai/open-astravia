@@ -1,5 +1,5 @@
 import { QrBindDialogView } from "@vetta/theme-ui/settings";
-import { Button } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
 import { ImChannelGuideButton } from "./ImChannelGuideButton";
 import type { SignalBindDialogModel } from "./useSignalBindDialogModel";
 

@@ -69,7 +69,7 @@
 ## 信任模型
 
 - 插件按用户明确选择的**可信代码**处理，可以来自官方、市场或本地安装；宿主不把未知第三方代码自动提升为可信。
-- 插件跑在 renderer 进程内，经 Module Federation 与宿主**共享同一份 React / React DOM / `@vetta-org/plugin-sdk` 单例**；可选再共享 **`@vetta/ui`** 设计系统 primitives（见 [styling-and-pitfalls](./styling-and-pitfalls.md#可选vettaui-宿主-primitives)）。
+- 插件跑在 renderer 进程内，经 Module Federation 与宿主**共享同一份 React / React DOM / `@vetta-org/plugin-sdk` 单例**；可选再共享 **`@vetta-org/ui`** 设计系统 primitives（见 [styling-and-pitfalls](./styling-and-pitfalls.md#可选vettaui-宿主-primitives)）。
 - SDK 提供宿主能力出口与权限门控，可同步传递 React 组件并读取宿主公开状态，**刻意不做** iframe/worker 沙箱与异步消息桥。
 - 每项公开能力由 `plugin.json` 声明权限、宿主单独授权、运行时校验；缺权限会抛 `Plugin permission denied: <permission>` 或 warn+noop（见 [permissions.md](./permissions.md)）。这套机制服务于知情同意、治理和误用防护，不阻止同 realm 插件绕过 SDK 使用浏览器原生能力。
 

@@ -1,5 +1,5 @@
 import type { AbilityDetailBlock, AbilityType } from "@shared/lib/api";
-import { Button, cn } from "@vetta/ui";
+import { Button, cn } from "@vetta-org/ui";
 import { FeatureInspector, ImageLightbox, StepWalkthrough } from "./ability-detail-interactive";
 import { DETAIL_RULE, DetailChapterTitle } from "./ability-detail-surface";
 import { AbilityMarkdownBody } from "./AbilityMarkdownBody";

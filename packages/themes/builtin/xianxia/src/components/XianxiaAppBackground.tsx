@@ -1,6 +1,6 @@
 import { useSystemInfo } from "@vetta/theme-sdk";
 import { AppBackground, type AppBackgroundProps } from "@vetta/theme-ui";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import type { JSX } from "react";
 
 export function XianxiaAppBackground({

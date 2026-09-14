@@ -21,7 +21,7 @@ vi.mock("@vetta/theme-ui/overlays", () => ({
 vi.mock("@vetta/theme-ui/chat", () => ({
 	AgentAvatarView: ({ name }: { name: string }) => <span data-testid="avatar">{name}</span>,
 }));
-vi.mock("@vetta/ui", () => ({
+vi.mock("@vetta-org/ui", () => ({
 	Button: ({ children, variant: _v, size: _s, ...props }: { children: ReactNode } & Record<string, unknown>) => (
 		<button {...props}>{children}</button>
 	),

@@ -1,4 +1,4 @@
-import { Button } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
 import { useTranslation } from "react-i18next";
 import type { PluginAbility } from "../../types";
 import { AbilityOperationStatus } from "../AbilityOperationStatus";

@@ -9,7 +9,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 	Switch,
-} from "@vetta/ui";
+} from "@vetta-org/ui";
 import { useSetAtom } from "jotai";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";

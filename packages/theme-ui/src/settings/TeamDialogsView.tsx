@@ -7,7 +7,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 	cn,
-} from "@vetta/ui";
+} from "@vetta-org/ui";
 
 const inputClassName =
 	"h-8 w-full min-w-0 rounded-lg border border-border/60 bg-transparent px-2.5 py-1 text-base shadow-none transition-[border-color,background-color] outline-none placeholder:text-muted-foreground hover:border-border focus-visible:border-ring/60 md:text-sm dark:bg-input/20";

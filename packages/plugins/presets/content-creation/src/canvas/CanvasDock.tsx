@@ -1,5 +1,5 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CONTENT_NODE_DEFINITIONS } from "../node/definitions";
 import { NodeKindIcon } from "../node/NodeKindIcon";

@@ -8,7 +8,7 @@ import {
 	DrawerHeader,
 	DrawerTitle,
 	cn,
-} from "@vetta/ui";
+} from "@vetta-org/ui";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 
 export interface SchedulerEditApprovalDrawerViewLabels {

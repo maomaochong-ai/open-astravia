@@ -1,5 +1,5 @@
 import { Input } from "@shared/components/ui/input";
-import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@vetta/ui";
+import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@vetta-org/ui";
 import { useTranslation } from "react-i18next";
 import { ImChannelGuideButton } from "./ImChannelGuideButton";
 import type { ImChannelConfigTransport, ImChannelDialogModel } from "./useImBridgeSettingsModel";

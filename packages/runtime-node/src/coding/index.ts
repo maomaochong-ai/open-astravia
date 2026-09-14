@@ -45,10 +45,12 @@ export { nodeModelInputImageProcessor } from "./model-input-image-processor.js";
 export {
 	createNodeCodingToolEnvironment,
 	createNodeCommandToolEnvironment,
+	createNodeFileToolRegistrations,
 	type NodeCodingToolEnvironment,
 	type NodeCodingToolEnvironmentOptions,
 	type NodeCommandToolEnvironment,
 	type NodeCommandToolEnvironmentOptions,
+	type NodeFileToolEnvironmentOptions,
 	type NodeSpecializedToolRegistrationContext,
 } from "./node-tool-environment.js";
 export {

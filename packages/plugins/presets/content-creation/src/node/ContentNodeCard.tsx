@@ -1,6 +1,6 @@
 import { NodeResizer, NodeToolbar, Position, type Node, type NodeProps } from "@xyflow/react";
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { Button } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
 import { type DragEvent, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getContentNodeDefinition } from "./definitions";
 import type {

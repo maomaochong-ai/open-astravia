@@ -1,4 +1,4 @@
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import type { JSX, ReactNode, Ref, UIEventHandler } from "react";
 
 export interface ChatPanelViewLabels {

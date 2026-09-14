@@ -6,7 +6,7 @@ vi.mock("@vetta-org/plugin-sdk", () => ({
 	useTranslation: () => ({ locale: "en", t: (key: string) => key }),
 }));
 
-vi.mock("@vetta/ui", () => ({
+vi.mock("@vetta-org/ui", () => ({
 	Spin: ({ label }: { label?: string }) => <span data-testid="spin">{label}</span>,
 	Slider: ({ "aria-label": ariaLabel }: { "aria-label"?: string }) => <span data-slider aria-label={ariaLabel} />,
 }));

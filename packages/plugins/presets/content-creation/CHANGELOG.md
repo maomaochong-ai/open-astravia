@@ -110,7 +110,7 @@
 - Collapsed typed port capsules into one centered connection handle per card side; the UI now infers compatible logical ports while persisted edges keep their typed semantics.
 - Added a Mac Dock–style magnification hover effect on the bottom node-creation dock (with reduced-motion fallback).
 - Kept node bodies as zoomable content previews and mounted per-node editors in a non-scaling `NodeToolbar`, so controls remain usable at low canvas zoom.
-- Polished content-creation canvas UX: node chrome, themed React Flow controls, and broader `@vetta/ui` usage (Button / Select / DropdownMenu / Slider / Spin).
+- Polished content-creation canvas UX: node chrome, themed React Flow controls, and broader `@vetta-org/ui` usage (Button / Select / DropdownMenu / Slider / Spin).
 - Activity tab「内容创作」默认不上栏（`initiallyVisible: false`）；由 `open_content_creation` 或用户从「+」添加后再显示。
 - Replaced the permanent node inspector with content-first media nodes, persistent canvas sizing, node-bound generation composers, contextual creation menus, and a compact bottom dock inspired by Open-AI Canvas and Loomic.
 - Added multi-selection alignment and layouts, lock-aware canvas geometry, drag alignment guides, viewport-clamped context menus, inline node naming, larger connection hit targets, and detailed generation job feedback.

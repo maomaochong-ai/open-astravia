@@ -1,5 +1,5 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { Button } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
 import { useCallback, useEffect, useState } from "react";
 import { commitFileDiff, commitFiles } from "../../git/log";
 import { parseNameStatus } from "../../git/parseLog";

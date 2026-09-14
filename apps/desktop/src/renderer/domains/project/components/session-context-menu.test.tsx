@@ -4,11 +4,11 @@ import type { ComponentProps, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 /**
- * radix 的浮层原语在 jsdom 下依赖大量布局 API，仓库既有做法是把 `@vetta/ui` 换成
+ * radix 的浮层原语在 jsdom 下依赖大量布局 API，仓库既有做法是把 `@vetta-org/ui` 换成
  * 结构等价的轻量实现（见 content-creation/test/canvas-project-menu.dom.test.tsx），
  * 这里沿用同一策略：菜单树的渲染与回调路由是被测对象，定位行为交给 radix。
  */
-vi.mock("@vetta/ui", () => ({
+vi.mock("@vetta-org/ui", () => ({
 	cn: (...classes: unknown[]) => classes.filter(Boolean).join(" "),
 	DropdownMenu: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 	DropdownMenuTrigger: () => null,

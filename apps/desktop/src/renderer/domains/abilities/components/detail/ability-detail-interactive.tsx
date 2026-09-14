@@ -1,5 +1,5 @@
 import type { AbilityFeatureItem, AbilityGalleryItem, AbilityStepItem, AbilityType } from "@shared/lib/api";
-import { cn, Dialog, DialogContent, DialogDescription, DialogTitle } from "@vetta/ui";
+import { cn, Dialog, DialogContent, DialogDescription, DialogTitle } from "@vetta-org/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AbilityIcon } from "../AbilityIcon";

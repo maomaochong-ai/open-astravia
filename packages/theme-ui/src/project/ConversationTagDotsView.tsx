@@ -1,4 +1,4 @@
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import { memo, useSyncExternalStore, type CSSProperties, type JSX } from "react";
 
 /** 与行首图标同宽（h-3.5 w-3.5），色点再多也不推挤标题，列表文字保持左对齐。 */

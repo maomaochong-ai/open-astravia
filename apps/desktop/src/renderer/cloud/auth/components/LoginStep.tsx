@@ -1,5 +1,5 @@
 import { authTokenAtom } from "@shared/store/atoms";
-import { Button, Spin } from "@vetta/ui";
+import { Button, Spin } from "@vetta-org/ui";
 import { useAtomValue } from "jotai";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef } from "react";

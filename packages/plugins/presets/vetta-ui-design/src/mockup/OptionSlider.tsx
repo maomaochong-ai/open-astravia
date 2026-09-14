@@ -13,7 +13,7 @@ interface OptionSliderProps {
 
 /**
  * Track-and-pill slider matching the host's agent settings (image count).
- * Rebuilt locally rather than imported from @vetta/ui: plugin CSS is compiled
+ * Rebuilt locally rather than imported from @vetta-org/ui: plugin CSS is compiled
  * from this package's sources only, so classes living outside it never get
  * generated.
  */

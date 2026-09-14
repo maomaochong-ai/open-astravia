@@ -1,6 +1,6 @@
 import type { JSX } from "react";
 import { motion } from "motion/react";
-import { Button, Popover, PopoverContent, PopoverTrigger } from "@vetta/ui";
+import { Button, Popover, PopoverContent, PopoverTrigger } from "@vetta-org/ui";
 import { SkillTypeIcon } from "./skill-icon";
 import { SkillToggleSwitch } from "./SkillToggleSwitch";
 

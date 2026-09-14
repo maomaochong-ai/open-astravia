@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 
 /** 未配置图标时的 MCP 默认图标：主题色圆角矩形底 + 链环。 */
 export function McpDefaultIcon({ className }: { className?: string }): JSX.Element {

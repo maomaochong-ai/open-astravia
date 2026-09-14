@@ -1,4 +1,4 @@
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import { memo, type JSX } from "react";
 import { AvatarStackView } from "../shared/AvatarStackView";
 import { ConversationTagDotsView } from "./ConversationTagDotsView";

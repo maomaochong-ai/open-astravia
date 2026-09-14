@@ -127,7 +127,7 @@ export default defineConfig(({ mode }) => {
 				"@cloud": path.resolve(__dirname, "./src/renderer/cloud"),
 				"@vetta/theme-sdk": path.resolve(__dirname, "../../packages/theme-sdk/src"),
 				"@vetta/theme-ui": path.resolve(__dirname, "../../packages/theme-ui/src"),
-				"@vetta/ui": path.resolve(__dirname, "../../packages/ui/src/index.ts"),
+				"@vetta-org/ui": path.resolve(__dirname, "../../packages/ui/src/index.ts"),
 				"@vetta/remote-desktop": path.resolve(__dirname, "../../packages/remote-desktop/src/index.ts"),
 				"@": path.resolve(__dirname, "./src"),
 			},

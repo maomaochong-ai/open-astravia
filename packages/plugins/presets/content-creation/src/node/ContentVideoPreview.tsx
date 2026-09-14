@@ -1,5 +1,5 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { Slider } from "@vetta/ui";
+import { Slider } from "@vetta-org/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 interface ContentVideoPreviewProps {

@@ -1,6 +1,6 @@
 import type { JSX } from "react";
-import { Button } from "@vetta/ui";
-import { cn } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
+import { cn } from "@vetta-org/ui";
 
 export interface AchievementNavigationAssets {
 	readonly activeBackground: string;

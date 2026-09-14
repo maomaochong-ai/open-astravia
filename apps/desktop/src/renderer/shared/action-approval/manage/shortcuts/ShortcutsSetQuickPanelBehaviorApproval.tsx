@@ -1,4 +1,4 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@vetta/ui";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@vetta-org/ui";
 import { useState } from "react";
 import { type ActiveActionApproval, useActionApproval } from "../../useActionApproval";
 import {

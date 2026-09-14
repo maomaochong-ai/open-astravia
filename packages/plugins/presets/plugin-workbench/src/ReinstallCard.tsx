@@ -1,5 +1,5 @@
 import { type PluginCardProps, useTranslation } from "@vetta-org/plugin-sdk";
-import { Button } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
 import { useState, type ReactNode } from "react";
 import { findProjectById, type ProjectInfo } from "./project";
 import { reinstallPluginToVetta } from "./reinstall";

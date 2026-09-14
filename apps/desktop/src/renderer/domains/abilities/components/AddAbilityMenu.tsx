@@ -5,7 +5,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuTrigger,
-} from "@vetta/ui";
+} from "@vetta-org/ui";
 import { useTranslation } from "react-i18next";
 
 /** 本地导入通道：skill 压缩包、插件 zip、手动 MCP。 */

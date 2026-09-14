@@ -1,4 +1,4 @@
-import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@vetta/ui";
+import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@vetta-org/ui";
 import { type ReactNode, useCallback, useSyncExternalStore } from "react";
 import { shouldCloseDetailDrawer } from "./detail-drawer-guard";
 

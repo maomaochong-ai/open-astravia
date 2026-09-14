@@ -1,6 +1,6 @@
 import { KnowledgeHowItWorksDialog } from "@shared/components/KnowledgeHowItWorksDialog";
 import { ModelSelect } from "@shared/components/ModelSelect";
-import { Switch } from "@vetta/ui";
+import { Switch } from "@vetta-org/ui";
 import { cn } from "@shared/lib/utils";
 import { useMemo, useState } from "react";
 import { SettingsAiAssist } from "../ai-assist";

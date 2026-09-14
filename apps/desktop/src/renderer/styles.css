@@ -8,7 +8,7 @@
 /* Scan official theme UI package so utilities / iconify classes in migrated
    components (e.g. window minimize/maximize icons) are generated. */
 @source "../../../../packages/theme-ui/src/**/*.{ts,tsx}";
-/* Host design-system primitives live in @vetta/ui; re-exports under
+/* Host design-system primitives live in @vetta-org/ui; re-exports under
    desktop-app no longer contain className literals for Tailwind to see. */
 @source "../../../../packages/ui/src/**/*.{ts,tsx}";
 
@@ -29,7 +29,7 @@
 @source inline("icon-[solar--widget-2-linear]");
 
 @custom-variant dark (&:is([data-mode="dark"] *));
-/* Radix sets data-state="open"|"closed"; @vetta/ui uses data-open:/data-closed: utilities. */
+/* Radix sets data-state="open"|"closed"; @vetta-org/ui uses data-open:/data-closed: utilities. */
 @custom-variant data-open (&:is([data-state="open"]));
 @custom-variant data-closed (&:is([data-state="closed"]));
 
@@ -964,7 +964,7 @@ a {
 }
 
 /*
-  Safety net for DialogContent width after primitives moved to @vetta/ui.
+  Safety net for DialogContent width after primitives moved to @vetta-org/ui.
   Utility max-w-* / sm:max-w-* (utilities layer) still override this when present.
   Without a cap, only w-full may apply and dialogs span nearly the full viewport.
 */

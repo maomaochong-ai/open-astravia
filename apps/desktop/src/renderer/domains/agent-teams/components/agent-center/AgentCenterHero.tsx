@@ -1,5 +1,5 @@
 import type { AgentProfile } from "@vetta/agent-team";
-import { Button } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
 import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { AgentConstellation } from "./AgentConstellation";

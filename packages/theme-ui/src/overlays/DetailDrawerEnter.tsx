@@ -1,4 +1,4 @@
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import { motion, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
 

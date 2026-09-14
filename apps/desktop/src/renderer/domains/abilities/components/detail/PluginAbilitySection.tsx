@@ -1,4 +1,4 @@
-import { Switch } from "@vetta/ui";
+import { Switch } from "@vetta-org/ui";
 import { useTranslation } from "react-i18next";
 import { PLUGIN_PERMISSION_LABEL_KEYS, pluginSourceLabelKey } from "../../lib/plugin-permission-labels";
 import type { AbilitiesModel, PluginAbility } from "../../types";

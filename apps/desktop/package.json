@@ -140,7 +140,7 @@
 		"@vetta/theme-sdk": "workspace:*",
 		"@vetta/theme-ui": "workspace:*",
 		"@vetta/toolkit": "workspace:*",
-		"@vetta/ui": "workspace:*",
+		"@vetta-org/ui": "workspace:*",
 		"@xyflow/react": "^12.10.2",
 		"adm-zip": "^0.5.16",
 		"ajv": "^8.20.0",

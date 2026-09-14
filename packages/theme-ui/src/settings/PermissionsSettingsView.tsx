@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { cn } from "@vetta/ui";
+import { cn } from "@vetta-org/ui";
 import { SettingRow, SettingSection, type SettingSectionMeta } from "./SettingChrome";
 
 export type PermissionStatusView = "granted" | "denied" | "unknown";

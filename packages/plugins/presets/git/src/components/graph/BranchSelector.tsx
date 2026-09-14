@@ -1,5 +1,5 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@vetta/ui";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@vetta-org/ui";
 import type { BranchRef, GraphScope, GraphSelection } from "../../git/types";
 import { BranchIcon } from "../icons";
 

@@ -1,4 +1,4 @@
-import { Button } from "@vetta/ui";
+import { Button } from "@vetta-org/ui";
 import { useTranslation } from "react-i18next";
 import { ImFeishuDialogView } from "@vetta/theme-ui/settings";
 import { ImChannelGuideButton } from "./ImChannelGuideButton";

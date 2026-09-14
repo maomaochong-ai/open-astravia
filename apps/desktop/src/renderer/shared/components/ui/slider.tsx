@@ -1,1 +1,1 @@
-export { Slider } from "@vetta/ui";
+export { Slider } from "@vetta-org/ui";
