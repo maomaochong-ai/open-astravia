@@ -24,7 +24,7 @@ export type PluginDocsCommand =
 export type PluginInitCommand =
 	| { type: "help" }
 	| { type: "error"; message: string }
-	| { type: "init"; targetDir?: string; pluginId: string; displayName?: string; json: boolean; registerInHub: boolean };
+	| { type: "init"; targetDir?: string; pluginId: string; displayName?: string; json: boolean };
 
 export type PluginWatchCommand =
 	| { type: "help" }
@@ -55,7 +55,7 @@ Usage:
   vetta-plugin-cli add <npm-package|zip-path|http-url> [--json]
   vetta-plugin-cli reload <plugin-id> [--json]
   vetta-plugin-cli docs [--json]
-  vetta-plugin-cli init --id <plugin-id> [--name <display>] [dir] [--no-hub] [--json]
+  vetta-plugin-cli init --id <plugin-id> [--name <display>] [dir] [--json]
   vetta-plugin-cli watch [dir] [--stop] [--json]
 
 Examples:
@@ -130,7 +130,6 @@ export function parsePluginInitCommand(argv: string[]): PluginInitCommand | unde
 				id: { type: "string" },
 				name: { type: "string" },
 				json: { type: "boolean" },
-				"no-hub": { type: "boolean" },
 			},
 		});
 	} catch (error) {
@@ -148,7 +147,6 @@ export function parsePluginInitCommand(argv: string[]): PluginInitCommand | unde
 		pluginId,
 		...(typeof parsed.values.name === "string" ? { displayName: parsed.values.name } : {}),
 		json: parsed.values.json === true,
-		registerInHub: parsed.values["no-hub"] !== true,
 	};
 }
 
@@ -443,14 +441,12 @@ function runInitCommand(
 			targetDir: resolve(cwd, command.targetDir ?? command.pluginId),
 			pluginId: command.pluginId,
 			displayName: command.displayName ?? command.pluginId,
-			registerInHub: command.registerInHub,
 		});
 		dependencies.writeStdout(
 			command.json
 				? `${JSON.stringify({ ok: true, ...result })}\n`
 				: [
 						`Created ${result.pluginId} at ${result.root}`,
-						result.hubManifestPath ? `Listed it in ${result.hubManifestPath}` : undefined,
 						"Next: npm install && npm run install:vetta",
 						"The agent brief is in AGENTS.md; the manual is at `npx vetta-plugin-cli docs`.",
 					]

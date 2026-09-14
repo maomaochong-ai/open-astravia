@@ -1,7 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { renderAgentsGuide } from "./agents-template.js";
-import { findPluginHub } from "./workspace.js";
 
 /** 与脚手架一同落地的依赖范围；两个包各自独立发布，不要合成一个版本。 */
 export const DEFAULT_SDK_RANGE = "^0.3.1";
@@ -15,16 +14,12 @@ export interface InitPluginInput {
 	readonly displayName: string;
 	readonly sdkRange?: string;
 	readonly viteRange?: string;
-	/** 在 hub 里默认把新插件登记进 .vetta/marketplace.json；置 false 跳过。 */
-	readonly registerInHub?: boolean;
 }
 
 export interface InitPluginResult {
 	readonly root: string;
 	readonly pluginId: string;
 	readonly files: readonly string[];
-	/** 登记进了哪个 hub 清单；没有 hub 或跳过登记时为 undefined。 */
-	readonly hubManifestPath?: string;
 }
 
 function remoteNameFromId(pluginId: string): string {
@@ -45,8 +40,6 @@ export function initPluginProject(input: InitPluginInput): InitPluginResult {
 	}
 
 	const remote = remoteNameFromId(input.pluginId);
-	const hub = findPluginHub(dirname(root));
-	const registerInHub = input.registerInHub !== false && hub !== undefined;
 
 	const files: Record<string, string> = {
 		"plugin.json": json({
@@ -138,12 +131,11 @@ export default definePlugin({
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 `,
-		".gitignore": "dist/\nrelease/\nnode_modules/\n",
-		"AGENTS.md": renderAgentsGuide({
-			pluginId: input.pluginId,
-			displayName: input.displayName,
-			inHub: registerInHub,
-		}),
+		// dist/ 刻意不忽略：插件通过仓库目录分发时，宿主直接读 plugin.json 指向的 entry 与
+		// styles，它不会替你构建——目录里没有构建产物就装不上，而且那是一个只在别人机器上
+		// 复现的失败。
+		".gitignore": "release/\nnode_modules/\n",
+		"AGENTS.md": renderAgentsGuide({ pluginId: input.pluginId, displayName: input.displayName }),
 	};
 
 	mkdirSync(join(root, "src"), { recursive: true });
@@ -151,47 +143,5 @@ export default definePlugin({
 		writeFileSync(join(root, relativePath), content, "utf8");
 	}
 
-	let hubManifestPath: string | undefined;
-	if (registerInHub && hub) {
-		hubManifestPath = registerPluginInHub(hub.root, hub.manifestPath, root, input);
-	}
-
-	return { root, pluginId: input.pluginId, files: Object.keys(files).sort(), ...(hubManifestPath ? { hubManifestPath } : {}) };
-}
-
-/**
- * 把新插件登记进 hub 的 `.vetta/marketplace.json`。
- *
- * 手动维护这份索引是一仓多插件最容易漏的一步：插件建好了、能装能跑，市场上却看不到它。
- * 元数据全都能从 plugin.json 推导，没有理由让人再抄一遍。
- */
-function registerPluginInHub(
-	hubRoot: string,
-	manifestPath: string,
-	pluginRoot: string,
-	input: InitPluginInput,
-): string {
-	const raw: unknown = JSON.parse(readFileSync(manifestPath, "utf8"));
-	if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-		throw new Error(`Malformed marketplace manifest: ${manifestPath}`);
-	}
-	const manifest = raw as Record<string, unknown>;
-	const abilities = Array.isArray(manifest.abilities) ? [...(manifest.abilities as unknown[])] : [];
-	const duplicate = abilities.some(
-		(entry) => typeof entry === "object" && entry !== null && (entry as Record<string, unknown>).slug === input.pluginId,
-	);
-	if (duplicate) throw new Error(`${input.pluginId} is already listed in ${manifestPath}`);
-
-	abilities.push({
-		type: "plugin",
-		slug: input.pluginId,
-		name: input.displayName,
-		description: "",
-		version: "0.1.0",
-		source: { path: relative(hubRoot, pluginRoot).split("\\").join("/") },
-		config: { api_version: "^2.0.0", permissions: [] },
-	});
-	manifest.abilities = abilities;
-	writeFileSync(manifestPath, `${JSON.stringify(manifest, null, "\t")}\n`, "utf8");
-	return manifestPath;
+	return { root, pluginId: input.pluginId, files: Object.keys(files).sort() };
 }

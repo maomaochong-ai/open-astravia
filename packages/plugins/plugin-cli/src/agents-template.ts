@@ -6,20 +6,10 @@
  * 反过来——工程自带说明书，说明书只说「去哪读手册」，手册随 SDK 版本进 node_modules。
  * 因此任何 Agent（Claude Code、Cursor、Vetta 自己）在任何陌生目录都能自举，而且读到的
  * 永远是这个工程实际编译所针对的那份合同。
+ *
+ * 单位是插件目录本身：外面是能力市场仓库、是单插件仓库、还是一堆别的东西，都不影响这里。
  */
-export function renderAgentsGuide(input: { pluginId: string; displayName: string; inHub: boolean }): string {
-	const hubSection = input.inHub
-		? `
-## 这是能力市场仓库里的一个插件
-
-仓库根有 \`.vetta/marketplace.json\`，它索引了本仓库的全部能力。改动本插件的 **version、
-permissions、commands 或 pluginApiVersion** 之后，那份索引也要跟着更新，否则市场上装到的
-是旧元数据。
-
-命令在任何子目录执行都作用于「最近的那个插件」，所以先 \`cd\` 进要改的插件目录再动手。
-`
-		: "";
-
+export function renderAgentsGuide(input: { pluginId: string; displayName: string }): string {
 	return `# ${input.displayName}
 
 Vetta 桌面插件工程。**先读手册再写代码**——不要凭记忆写 SDK API，这套合同变化很快。
@@ -76,7 +66,8 @@ Desktop 校验、授权、安装。它**不会**直接写 \`~/.vetta/plugins\`�
   替代做法」写进该工具 description 的反向触发段。
 - **顶层不要出现依赖共享 React 的 JSX**，放进组件或 \`activate\` 内（Module Federation 的加载时序）。
 - 依赖用 registry 上已发布的 semver，不要 \`workspace:*\`。
-${hubSection}
+- **\`dist/\` 要进版本库**。插件通过仓库目录分发时，宿主直接读 \`plugin.json\` 指向的 \`entry\`
+  与 \`styles\`，它不会替你构建——目录里没有构建产物就装不上。
 ## 信息不足时
 
 插件 id、展示名、要用哪些权限、功能边界、是否立刻安装——**问用户**，不要自己假定。

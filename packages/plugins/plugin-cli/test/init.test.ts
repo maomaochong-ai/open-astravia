@@ -34,14 +34,13 @@ describe("init command parsing", () => {
 		expect(parsePluginInitCommand(["init"])).toEqual({ type: "error", message: "Missing --id <plugin-id>" });
 	});
 
-	it("reads the target directory, display name and hub opt-out", () => {
-		expect(parsePluginInitCommand(["init", "packages/demo", "--id", "demo", "--name", "Demo", "--no-hub"])).toEqual({
+	it("reads the target directory and display name", () => {
+		expect(parsePluginInitCommand(["init", "packages/demo", "--id", "demo", "--name", "Demo"])).toEqual({
 			type: "init",
 			targetDir: "packages/demo",
 			pluginId: "demo",
 			displayName: "Demo",
 			json: false,
-			registerInHub: false,
 		});
 	});
 });
@@ -106,56 +105,23 @@ describe("scaffolding a project", () => {
 	});
 });
 
-describe("scaffolding inside a marketplace hub", () => {
-	it("lists the new plugin in the hub manifest with a repo-relative source path", () => {
+describe("scaffolding stays out of the repository's business", () => {
+	it("does not touch a marketplace index that happens to sit above it", () => {
 		const root = scratch();
 		const manifestPath = hub(root);
 
-		const result = initPluginProject({
-			targetDir: join(root, "plugins", "demo"),
-			pluginId: "demo",
-			displayName: "Demo Plugin",
-		});
+		initPluginProject({ targetDir: join(root, "plugins", "demo"), pluginId: "demo", displayName: "Demo" });
 
-		expect(result.hubManifestPath).toBe(manifestPath);
-		const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as { abilities: Record<string, unknown>[] };
-		expect(manifest.abilities).toHaveLength(1);
-		expect(manifest.abilities[0]).toMatchObject({
-			type: "plugin",
-			slug: "demo",
-			version: "0.1.0",
-			// 市场按仓库相对路径取包，绝对路径或反斜杠都会让它取不到。
-			source: { path: "plugins/demo" },
-		});
-		expect(readFileSync(join(result.root, "AGENTS.md"), "utf8")).toContain("marketplace.json");
-	});
-
-	it("can skip hub registration", () => {
-		const root = scratch();
-		const manifestPath = hub(root);
-
-		const result = initPluginProject({
-			targetDir: join(root, "plugins", "demo"),
-			pluginId: "demo",
-			displayName: "Demo",
-			registerInHub: false,
-		});
-
-		expect(result.hubManifestPath).toBeUndefined();
+		// 能力目录不该知道自己在谁肚子里；索引由仓库根的 sync 负责对账。
 		expect((JSON.parse(readFileSync(manifestPath, "utf8")) as { abilities: unknown[] }).abilities).toHaveLength(0);
 	});
 
-	it("refuses to list a slug the hub already carries", () => {
+	it("keeps dist out of gitignore so a repo-distributed plugin stays installable", () => {
 		const root = scratch();
-		const manifestPath = hub(root);
-		writeFileSync(
-			manifestPath,
-			JSON.stringify({ schemaVersion: 2, name: "demo-hub", marketplaceVersion: "1", abilities: [{ slug: "demo" }] }),
-			"utf8",
-		);
 
-		expect(() =>
-			initPluginProject({ targetDir: join(root, "plugins", "demo"), pluginId: "demo", displayName: "Demo" }),
-		).toThrow(/already listed/);
+		const result = initPluginProject({ targetDir: join(root, "demo"), pluginId: "demo", displayName: "Demo" });
+
+		// 宿主按 plugin.json 的 entry/styles 直接读目录，不会替你构建。
+		expect(readFileSync(join(result.root, ".gitignore"), "utf8")).not.toContain("dist/");
 	});
 });
