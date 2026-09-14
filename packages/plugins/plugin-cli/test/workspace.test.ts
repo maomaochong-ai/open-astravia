@@ -278,7 +278,12 @@ describe("uninstall", () => {
 
 describe("docs command", () => {
 	it("parses the docs command", () => {
-		expect(parsePluginDocsCommand(["docs", "--json"])).toEqual({ type: "docs", json: true });
+		expect(parsePluginDocsCommand(["docs", "--json"])).toEqual({ type: "docs", json: true, checkLatest: false });
+		expect(parsePluginDocsCommand(["docs", "--check-latest"])).toEqual({
+			type: "docs",
+			json: false,
+			checkLatest: true,
+		});
 		expect(parsePluginDocsCommand(["add", "x"])).toBeUndefined();
 	});
 
@@ -291,7 +296,7 @@ describe("docs command", () => {
 		let stdout = "";
 
 		const code = await runPluginCommand(
-			{ type: "docs", json: true },
+			{ type: "docs", json: true, checkLatest: false },
 			{
 				cwd: () => pluginRoot,
 				resolveNpmArchive: () => Promise.reject(new Error("unused")),
@@ -308,6 +313,80 @@ describe("docs command", () => {
 		expect(payload.sdkVersion).toBe("0.3.0");
 		expect(payload.project).toMatchObject({ pluginId: "demo" });
 		expect(payload.hub).toMatchObject({ root });
+		// 手册是个快照，工程不升级它就不会变新。刷新命令必须每次都在输出里。
+		expect(payload.refreshCommand).toContain("@vetta-org/plugin-sdk@latest");
+		expect(payload).not.toHaveProperty("latestVersion");
+	});
+
+	it("reports the manual as behind when the registry has a newer SDK", async () => {
+		const root = scratch();
+		installManual(root, "0.3.0");
+		let stdout = "";
+
+		const code = await runPluginCommand(
+			{ type: "docs", json: true, checkLatest: true },
+			{
+				cwd: () => root,
+				resolveNpmArchive: () => Promise.reject(new Error("unused")),
+				runAction: () => Promise.reject(new Error("unused")),
+				readLatestSdkVersion: () => Promise.resolve("0.3.2"),
+				writeStdout: (value) => {
+					stdout += value;
+				},
+				writeStderr: () => {},
+			},
+		);
+
+		expect(code).toBe(0);
+		expect(JSON.parse(stdout)).toMatchObject({ sdkVersion: "0.3.0", latestVersion: "0.3.2", outdated: true });
+	});
+
+	it("does not call the manual stale when the registry cannot be reached", async () => {
+		const root = scratch();
+		installManual(root, "0.3.0");
+		let stdout = "";
+
+		const code = await runPluginCommand(
+			{ type: "docs", json: false, checkLatest: true },
+			{
+				cwd: () => root,
+				resolveNpmArchive: () => Promise.reject(new Error("unused")),
+				runAction: () => Promise.reject(new Error("unused")),
+				// 离线、私服没有这个包：查不到就是查不到，不能因此断言手册过期。
+				readLatestSdkVersion: () => Promise.resolve(undefined),
+				writeStdout: (value) => {
+					stdout += value;
+				},
+				writeStderr: () => {},
+			},
+		);
+
+		expect(code).toBe(0);
+		expect(stdout).toContain("Could not reach the registry");
+		expect(stdout).not.toContain("behind");
+	});
+
+	it("sends the caller into an ability directory when run at a hub root", async () => {
+		const root = scratch();
+		write(join(root, ".vetta", "marketplace.json"), JSON.stringify({ name: "hub", abilities: [] }));
+		let stderr = "";
+
+		const code = await runPluginCommand(
+			{ type: "docs", json: false, checkLatest: false },
+			{
+				cwd: () => root,
+				resolveNpmArchive: () => Promise.reject(new Error("unused")),
+				runAction: () => Promise.reject(new Error("unused")),
+				writeStdout: () => {},
+				writeStderr: (value) => {
+					stderr += value;
+				},
+			},
+		);
+
+		expect(code).toBe(6);
+		// 仓库根装一份 SDK 没有意义，手册在各能力目录里。
+		expect(stderr).toContain("cd into an ability directory");
 	});
 
 	it("tells the caller to install the SDK when no manual is present", async () => {
@@ -315,7 +394,7 @@ describe("docs command", () => {
 		let stderr = "";
 
 		const code = await runPluginCommand(
-			{ type: "docs", json: false },
+			{ type: "docs", json: false, checkLatest: false },
 			{
 				cwd: () => root,
 				resolveNpmArchive: () => Promise.reject(new Error("unused")),

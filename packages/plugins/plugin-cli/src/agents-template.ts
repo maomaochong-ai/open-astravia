@@ -24,6 +24,16 @@ npx vetta-plugin-cli docs
 \`npm install\` 必须先跑：\`vetta-plugin-cli\` 是 \`@vetta-org/plugin-cli\` 的命令名，装完才在
 \`node_modules/.bin\` 里。还没装就想跑，用全名 \`npx @vetta-org/plugin-cli docs\`。
 
+**手册会过期。** 它是随 SDK 装进 \`node_modules\` 的快照，工程不升级就永远停在初始化那天的
+版本——本文件同样是那天的快照。开工前先确认一次：
+
+\`\`\`bash
+npx vetta-plugin-cli docs --check-latest
+\`\`\`
+
+落后就按它打印的命令升级 SDK 再重读手册。\`docs\` 的输出永远比本文件新（\`npx\` 默认取最新的
+CLI），**两者冲突时以它为准**。
+
 它打印出随 \`@vetta-org/plugin-sdk\` 一起装进 \`node_modules\` 的手册目录**绝对路径**，以及
 这份手册对应的 SDK 版本。**不要硬编码这个路径**：工作区可能把依赖提升到仓库根，一仓多插件
 时各插件还可能钉不同的 SDK 版本。

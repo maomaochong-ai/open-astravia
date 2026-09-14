@@ -93,6 +93,40 @@ export const runNpmPack: NpmPackRunner = async (packageSpec, destination) => {
 	return parsePackOutput(output);
 };
 
+/**
+ * 查询 registry 上某个包的最新版本。
+ *
+ * 走 `npm view` 而不是直接请求 registry：用户的私服地址、代理、鉴权都配在 npm 里，自己发
+ * 请求等于把那套配置重写一遍。查不到（离线、私服没有这个包）返回 undefined，调用方降级。
+ */
+export async function readLatestNpmVersion(packageName: string): Promise<string | undefined> {
+	const invocation = npmInvocation();
+	const args = [...invocation.args, "view", packageName, "version", "--json"];
+	try {
+		const output = await new Promise<string>((resolvePromise, rejectPromise) => {
+			const child = spawn(invocation.command, args, {
+				shell: false,
+				windowsHide: true,
+				stdio: ["ignore", "pipe", "pipe"],
+			});
+			let stdout = "";
+			child.stdout.setEncoding("utf8").on("data", (chunk: string) => {
+				stdout += chunk;
+			});
+			child.stderr.resume();
+			child.once("error", rejectPromise);
+			child.once("exit", (code) => (code === 0 ? resolvePromise(stdout) : rejectPromise(new Error("npm view failed"))));
+		});
+		const parsed: unknown = JSON.parse(output);
+		if (typeof parsed === "string") return parsed;
+		// 带上 range 时 npm 会返回一个数组，最后一个是最新的。
+		if (Array.isArray(parsed) && typeof parsed.at(-1) === "string") return parsed.at(-1) as string;
+		return undefined;
+	} catch {
+		return undefined;
+	}
+}
+
 function registryPackageName(packageSpec: string): string {
 	const parsed = npa(packageSpec);
 	if (!parsed.registry || !parsed.name || !REGISTRY_SPEC_TYPES.has(parsed.type)) {

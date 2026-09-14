@@ -53,6 +53,7 @@ export {
 	type NpmPackRunner,
 	type NpmPluginPackageManifest,
 	type ResolvedNpmPluginArchive,
+	readLatestNpmVersion,
 	resolveNpmPluginArchive,
 	runNpmPack,
 } from "./npm-package.js";

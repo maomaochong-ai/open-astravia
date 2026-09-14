@@ -2,7 +2,7 @@ import { existsSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { ActionRpcError, createActionRpcClient, readActionRpcEndpoint } from "@vetta/action-rpc";
-import { resolveNpmPluginArchive, type ResolvedNpmPluginArchive } from "./npm-package.js";
+import { readLatestNpmVersion, resolveNpmPluginArchive, type ResolvedNpmPluginArchive } from "./npm-package.js";
 import { initHubRepository, initPluginProject } from "./init.js";
 import { describeIndexDrift, syncMarketplaceIndex } from "./sync.js";
 import { findPluginHub, findPluginProject, type PluginProject, readManualSdkVersion, resolveManualDir } from "./workspace.js";
@@ -20,7 +20,7 @@ export type PluginReloadCommand =
 export type PluginDocsCommand =
 	| { type: "help" }
 	| { type: "error"; message: string }
-	| { type: "docs"; json: boolean };
+	| { type: "docs"; json: boolean; checkLatest: boolean };
 
 export type PluginInitCommand =
 	| { type: "help" }
@@ -59,6 +59,8 @@ export interface PluginCommandDependencies {
 	runAction(actionId: string, input: unknown): Promise<unknown>;
 	writeStdout(value: string): void;
 	writeStderr(value: string): void;
+	/** `docs --check-latest` 查询 registry 上最新的 SDK 版本；查不到（离线、私服）返回 undefined。 */
+	readLatestSdkVersion?(): Promise<string | undefined>;
 }
 
 export type PluginAddCommandDependencies = PluginCommandDependencies;
@@ -68,7 +70,7 @@ const HELP_TEXT = `Vetta plugin manager
 Usage:
   vetta-plugin-cli add <npm-package|zip-path|http-url> [--json]
   vetta-plugin-cli reload <plugin-id> [--json]
-  vetta-plugin-cli docs [--json]
+  vetta-plugin-cli docs [--check-latest] [--json]
   vetta-plugin-cli init --id <plugin-id> [--name <display>] [dir] [--json]
   vetta-plugin-cli init hub --name <slug> --repository <url> --min-app-version <x.y.z> [dir]
   vetta-plugin-cli watch [dir] [--stop] [--json]
@@ -129,13 +131,22 @@ export function parsePluginDocsCommand(argv: string[]): PluginDocsCommand | unde
 	if (argv[1] === "-h" || argv[1] === "--help") return { type: "help" };
 	let parsed: ReturnType<typeof parseArgs>;
 	try {
-		parsed = parseArgs({ args: argv.slice(1), allowPositionals: true, strict: true, options: { json: { type: "boolean" } } });
+		parsed = parseArgs({
+			args: argv.slice(1),
+			allowPositionals: true,
+			strict: true,
+			options: { json: { type: "boolean" }, "check-latest": { type: "boolean" } },
+		});
 	} catch (error) {
 		return { type: "error", message: formatParseError(error) };
 	}
 	const [unexpected] = parsed.positionals;
 	if (unexpected) return { type: "error", message: `Unexpected argument: ${unexpected}` };
-	return { type: "docs", json: parsed.values.json === true };
+	return {
+		type: "docs",
+		json: parsed.values.json === true,
+		checkLatest: parsed.values["check-latest"] === true,
+	};
 }
 
 export function parsePluginInitCommand(argv: string[]): PluginInitCommand | undefined {
@@ -290,6 +301,7 @@ const defaultDependencies: PluginCommandDependencies = {
 	runAction: defaultRunAction,
 	writeStdout: (value) => process.stdout.write(value),
 	writeStderr: (value) => process.stderr.write(value),
+	readLatestSdkVersion: () => readLatestNpmVersion("@vetta-org/plugin-sdk"),
 };
 
 function isHttpUrl(source: string): boolean {
@@ -434,7 +446,7 @@ export async function runPluginCommand(
 	}
 
 	if (command.type === "docs") {
-		return runDocsCommand(command, dependencies);
+		return await runDocsCommand(command, dependencies);
 	}
 	if (command.type === "init") {
 		return runInitCommand(command, dependencies);
@@ -516,12 +528,19 @@ export async function runPluginCommand(
  * 一仓多插件的 hub 里每个插件也可能各装一份。Agent 只需记住这一条命令，拿回来的永远是
  * 当前工程实际编译所针对的那个 SDK 版本的手册。
  */
-function runDocsCommand(command: { json: boolean }, dependencies: PluginCommandDependencies): number {
+async function runDocsCommand(
+	command: { json: boolean; checkLatest: boolean },
+	dependencies: PluginCommandDependencies,
+): Promise<number> {
 	const cwd = dependencies.cwd?.() ?? process.cwd();
 	const manualDir = resolveManualDir(cwd);
 	if (!manualDir) {
-		const message =
-			"Plugin manual not found. Install the SDK first: npm i -D @vetta-org/plugin-sdk\n";
+		// 能力市场仓库的根目录通常没装 SDK，手册在各能力目录里。直接说「装 SDK」会把人引到
+		// 仓库根去装一份用不上的依赖。
+		const inHubRoot = findPluginHub(cwd) !== undefined && findPluginProject(cwd) === undefined;
+		const message = inHubRoot
+			? "Plugin manual not found at the hub root. cd into an ability directory (abilities/plugins/<slug>), then run npm install.\n"
+			: "Plugin manual not found. Install the SDK first: npm i -D @vetta-org/plugin-sdk\n";
 		if (command.json) {
 			dependencies.writeStdout(
 				`${JSON.stringify({ ok: false, error: { code: "MANUAL_NOT_FOUND", message: message.trim() } })}\n`,
@@ -534,6 +553,9 @@ function runDocsCommand(command: { json: boolean }, dependencies: PluginCommandD
 	const project = findPluginProject(cwd);
 	const hub = findPluginHub(cwd);
 	const sdkVersion = readManualSdkVersion(manualDir);
+	const latestVersion = command.checkLatest ? await dependencies.readLatestSdkVersion?.() : undefined;
+	const outdated = sdkVersion !== undefined && latestVersion !== undefined && compareSemver(sdkVersion, latestVersion) < 0;
+
 	if (command.json) {
 		dependencies.writeStdout(
 			`${JSON.stringify({
@@ -541,6 +563,8 @@ function runDocsCommand(command: { json: boolean }, dependencies: PluginCommandD
 				manualDir,
 				entry: join(manualDir, "README.md"),
 				sdkVersion,
+				refreshCommand: SDK_REFRESH_COMMAND,
+				...(command.checkLatest ? { latestVersion, outdated } : {}),
 				project: project ? { root: project.root, pluginId: project.pluginId, version: project.version } : undefined,
 				hub: hub
 					? {
@@ -559,6 +583,15 @@ function runDocsCommand(command: { json: boolean }, dependencies: PluginCommandD
 		`Start here: ${join(manualDir, "README.md")}`,
 	];
 	if (project) lines.push(`Current plugin: ${project.pluginId} (${project.root})`);
+	if (outdated) {
+		lines.push(`Manual is behind: ${sdkVersion} → ${latestVersion}. Refresh it with: ${SDK_REFRESH_COMMAND}`);
+	} else if (command.checkLatest && latestVersion === undefined) {
+		lines.push(`Could not reach the registry; cannot tell whether ${sdkVersion ?? "this manual"} is current.`);
+	} else {
+		// 手册是随 SDK 装进 node_modules 的快照，工程不升级它就永远停在初始化那天的版本。
+		// 这条命令必须每次都打印：读到它的 Agent 手上的 AGENTS.md 往往也是同一天的快照。
+		lines.push(`Manual follows the installed SDK. To refresh it: ${SDK_REFRESH_COMMAND}`);
+	}
 	if (hub) {
 		lines.push(`Marketplace index: ${hub.manifestPath}`);
 		// Agent 几乎一定会先跑 docs，所以这是告诉它「索引要对账」的最佳时机。
@@ -566,6 +599,31 @@ function runDocsCommand(command: { json: boolean }, dependencies: PluginCommandD
 	}
 	dependencies.writeStdout(`${lines.join("\n")}\n`);
 	return 0;
+}
+
+/**
+ * 刷新手册的命令。
+ *
+ * 手册不从网络现取，而是随 SDK 进 `node_modules`——Agent 读到的合同因此与工程实际编译的
+ * 版本一致。代价是它不会自己变新，所以「怎么变新」必须由 CLI 每次说一遍：`npx` 默认取最新的
+ * CLI，它的输出是这条链路上唯一不会过期的位置。
+ */
+const SDK_REFRESH_COMMAND = "npm i -D @vetta-org/plugin-sdk@latest && npx vetta-plugin-cli docs";
+
+/** 够用的 semver 比较：只看 major.minor.patch，预发布后缀一律当作小于正式版。 */
+function compareSemver(left: string, right: string): number {
+	const parse = (value: string): readonly [number, number, number, boolean] => {
+		const match = /^(\d+)\.(\d+)\.(\d+)(-.+)?$/.exec(value.trim());
+		if (!match) return [0, 0, 0, false];
+		return [Number(match[1]), Number(match[2]), Number(match[3]), match[4] !== undefined];
+	};
+	const a = parse(left);
+	const b = parse(right);
+	for (let index = 0; index < 3; index += 1) {
+		if (a[index] !== b[index]) return a[index]! < b[index]! ? -1 : 1;
+	}
+	if (a[3] === b[3]) return 0;
+	return a[3] ? -1 : 1;
 }
 
 /** 在陌生目录里生成一个可直接开工的插件工程，并留下让任意 Agent 自举的 AGENTS.md。 */

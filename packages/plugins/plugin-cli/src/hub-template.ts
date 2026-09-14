@@ -22,13 +22,16 @@ Vetta 能力市场仓库。本仓库索引若干**能力**（plugin / mcp / skil
 \`\`\`bash
 cd abilities/plugins/<slug>      # ← 开发单位是这个目录
 npm install
-npx vetta-plugin-cli docs        # 手册（随该目录装的 SDK 版本）
+npx vetta-plugin-cli docs --check-latest   # 手册（随该目录装的 SDK 版本；顺带查是否落后）
 npm run install:vetta            # 装进正在运行的 Vetta
 npx vetta-plugin-cli watch       # 热更新
 \`\`\`
 
 每个插件目录自带 \`AGENTS.md\`，里面有该读哪些手册、以及不可违反的几条。**先 \`cd\` 进去再动手**：
 所有开发命令都作用于「最近的那个能力目录」，站在仓库根上它们不知道你指的是哪一个。
+
+手册与各目录的 \`AGENTS.md\` 都是那次 \`init\` 当天的快照，各能力还可能钉着不同的 SDK 版本。
+动手前先跑 \`docs --check-latest\`，它的输出永远比这两份文件新，冲突时以它为准。
 
 新建一个插件：
 
