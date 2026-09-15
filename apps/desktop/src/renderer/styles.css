@@ -624,26 +624,25 @@ textarea:focus {
 	margin-bottom: 0 !important;
 }
 
-/* Streaming tail: 分块淡入。rehype 插件把流式末尾消息的文字按稳定片段包成 .streaming-chunk，
-   只在「该 span 首次 mount」时跑一次动画 —— 依赖 React reconciliation 复用旧 span 的 DOM，
-   旧片段的动画自然停留在终态（opacity 1），只有新追加的 span 触发新动画。
-   不使用 blur，避免大段消息持续追加时产生额外绘制压力。 */
+/* Streaming tail: 逐词淡入。TextBlockView 按帧把文字追向模型输出（打字机节奏），rehype 插件把
+   流式末尾消息的文字按词包成 .streaming-chunk，只在「该 span 首次 mount」时跑一次动画 ——
+   依赖 React reconciliation 复用旧 span 的 DOM，旧片段停留在终态，只有新追加的词淡入。
+   只动 opacity：保持 inline 排版，不用 inline-block / transform，避免换行位置变化和上下跳动；
+   也不加 will-change，免得长回复里几百个词都被永久提升成合成层。时长与 STREAMING_SETTLE_MS 一致。 */
 .markdown-streaming-tail .streaming-chunk {
-	display: inline-block;
-	vertical-align: baseline;
-	animation: streaming-chunk-fade 360ms ease-out both;
-	/* 刻意不加 will-change：每 10 个字符就是一个 chunk span，加了会把每个都
-	   永久提升成合成层——一条长回复几百个活层，GPU 进程和 WindowServer 一起被
-	   打满。动画期间浏览器本来就会自动提升，360ms 完了让它自然降回普通内容。 */
+	animation: streaming-chunk-fade 280ms ease-out both;
 }
 @keyframes streaming-chunk-fade {
 	from {
-		opacity: 0.12;
-		transform: translate3d(0, 6px, 0);
+		opacity: 0;
 	}
 	to {
 		opacity: 1;
-		transform: translate3d(0, 0, 0);
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.markdown-streaming-tail .streaming-chunk {
+		animation: none;
 	}
 }
 

@@ -19,6 +19,12 @@ import {
 	classifyMarkdownLink,
 	normalizeLocalFileLinksInMarkdown,
 } from "./markdown-link";
+import {
+	STREAMING_FRAME_INTERVAL_MS,
+	STREAMING_SETTLE_MS,
+	nextRevealEnd,
+	splitStreamingSegments,
+} from "./streaming-reveal";
 
 /** Minimal hast-like nodes for the streaming chunk rehype plugin. */
 interface HastText {
@@ -233,38 +239,33 @@ function projectAnnotationsToNormalizedMarkdown(
 	});
 }
 
-const STREAMING_CHUNK_SIZE = 10;
+const WHITESPACE_ONLY = /^\s+$/;
 
+/** 把流式尾块的正文按词包成 `.streaming-chunk`，新 mount 的片段由 CSS 淡入。 */
 function rehypeStreamingChunks() {
 	return (tree: HastRoot): void => {
 		function visit(node: HastRoot | HastElement, inCode: boolean): void {
 			const newChildren: Array<(typeof node.children)[number]> = [];
 			for (const child of node.children) {
 				if (child.type === "text" && !inCode) {
-					const value = (child as HastText).value;
-					for (let index = 0; index < value.length; ) {
-						const spaceMatch = /^\s+/.exec(value.slice(index));
-						if (spaceMatch) {
-							newChildren.push({ type: "text", value: spaceMatch[0] } as HastText);
-							index += spaceMatch[0].length;
+					for (const segment of splitStreamingSegments((child as HastText).value)) {
+						if (WHITESPACE_ONLY.test(segment)) {
+							newChildren.push({ type: "text", value: segment } as HastText);
 							continue;
 						}
-
-						const end = getSliceEnd(value, index, STREAMING_CHUNK_SIZE);
 						newChildren.push({
 							type: "element",
 							tagName: "span",
 							properties: { className: ["streaming-chunk"] },
-							children: [{ type: "text", value: value.slice(index, end) } as HastText],
+							children: [{ type: "text", value: segment } as HastText],
 						});
-						index = end;
 					}
 				} else {
 					newChildren.push(child);
 					if (child.type === "element") {
 						const tag = child.tagName;
-						// 表格也当字面量：把单元格文字拆成 inline-block 的 chunk span 会打乱
-						// 列宽测量，流式期表格会逐帧抖动。
+						// 表格也当字面量：单元格文字被逐词拆开再逐帧增长会反复触发列宽重算，
+						// 流式期表格会抖动。
 						visit(child, inCode || tag === "code" || tag === "pre" || tag === "table");
 					}
 				}
@@ -276,170 +277,113 @@ function rehypeStreamingChunks() {
 	};
 }
 
-const streamingRehypePlugins = [rehypeStreamingChunks];
-const STREAM_REVEAL_INTERVAL_MS = 500;
-
-function getSliceEnd(text: string, start: number, count: number): number {
-	let end = Math.min(text.length, start + count);
-	if (end < text.length) {
-		const previous = text.charCodeAt(end - 1);
-		const next = text.charCodeAt(end);
-		if (previous >= 0xd800 && previous <= 0xdbff && next >= 0xdc00 && next <= 0xdfff) {
-			end++;
-		}
-	}
-	return end;
-}
-
 interface StreamingDisplayState {
 	displayText: string;
 	animateChunks: boolean;
 }
 
+/**
+ * 流式尾块：按帧把显示文本追向宿主文本（打字机节奏），配合 rehype 分段做逐词淡入。
+ * 尾块结束后若还有积压，继续按节奏写完再撤掉分段，避免最后一截整块闪现。
+ *
+ * 从未作为尾块流式过的实例（历史消息、产品故事等由宿主自己驱动逐字的场景）直接镜像 `text`。
+ */
 function useStreamingDisplayText(text: string, active: boolean): StreamingDisplayState {
 	const [displayText, setDisplayText] = useState(() => (active ? "" : text));
 	const [animateChunks, setAnimateChunks] = useState(active);
 	const displayRef = useRef(active ? "" : text);
 	const targetRef = useRef(text);
+	const activeRef = useRef(active);
+	const streamedRef = useRef(active);
 	const rafRef = useRef<number | null>(null);
-	const revealTimerRef = useRef<number | null>(null);
-	const lastRevealRef = useRef<number | null>(null);
+	const lastFrameRef = useRef<number | null>(null);
 	const settleTimerRef = useRef<number | null>(null);
-	const wasActiveRef = useRef(active);
+
+	const stopFrames = useCallback((): void => {
+		if (rafRef.current !== null) {
+			cancelAnimationFrame(rafRef.current);
+			rafRef.current = null;
+		}
+		lastFrameRef.current = null;
+	}, []);
+
+	const clearSettle = useCallback((): void => {
+		if (settleTimerRef.current !== null) {
+			window.clearTimeout(settleTimerRef.current);
+			settleTimerRef.current = null;
+		}
+	}, []);
+
+	useEffect(
+		() => () => {
+			stopFrames();
+			clearSettle();
+		},
+		[stopFrames, clearSettle],
+	);
 
 	useEffect(() => {
 		targetRef.current = text;
+		activeRef.current = active;
+		if (active) streamedRef.current = true;
 
-		function clearSettleTimer(): void {
-			if (settleTimerRef.current !== null) {
-				window.clearTimeout(settleTimerRef.current);
-				settleTimerRef.current = null;
-			}
+		const shown = displayRef.current;
+		const isAppend = text.startsWith(shown);
+		const hasBacklog = isAppend && shown.length < text.length;
+
+		if (!streamedRef.current || !isAppend) {
+			// 从未流式过，或宿主改写了已显示内容（不是追加）：直接对齐，不做追赶。
+			stopFrames();
+			clearSettle();
+			displayRef.current = text;
+			setDisplayText(text);
+			setAnimateChunks(false);
+			streamedRef.current = active;
+			return;
 		}
 
-		function clearRevealTimer(): void {
-			if (revealTimerRef.current !== null) {
-				window.clearTimeout(revealTimerRef.current);
-				revealTimerRef.current = null;
-			}
+		if (!hasBacklog) {
+			if (active) clearSettle();
+			else if (rafRef.current === null) scheduleSettle();
+			return;
 		}
+
+		clearSettle();
+		setAnimateChunks(true);
+		if (rafRef.current === null) rafRef.current = requestAnimationFrame(tick);
 
 		function scheduleSettle(): void {
-			clearSettleTimer();
+			if (settleTimerRef.current !== null) return;
 			settleTimerRef.current = window.setTimeout(() => {
-				setAnimateChunks(false);
 				settleTimerRef.current = null;
-			}, STREAM_REVEAL_INTERVAL_MS);
-		}
-
-		function scheduleReveal(delayMs: number): void {
-			if (delayMs <= 0) {
-				if (rafRef.current === null) {
-					rafRef.current = requestAnimationFrame(tick);
-				}
-				return;
-			}
-			if (revealTimerRef.current !== null) return;
-			revealTimerRef.current = window.setTimeout(() => {
-				revealTimerRef.current = null;
-				if (rafRef.current === null) {
-					rafRef.current = requestAnimationFrame(tick);
-				}
-			}, delayMs);
-		}
-
-		/**
-		 * Non-tail mode (e.g. marketing story drives its own char reveal):
-		 * mirror `text` immediately. Do not 500ms-batch catch-up — that dumps
-		 * the whole backlog as one flash on top of the host’s progressive text.
-		 */
-		if (!active) {
-			if (rafRef.current !== null) {
-				cancelAnimationFrame(rafRef.current);
-				rafRef.current = null;
-			}
-			clearRevealTimer();
-			clearSettleTimer();
-			displayRef.current = text;
-			setDisplayText(text);
-			setAnimateChunks(false);
-			lastRevealRef.current = null;
-			wasActiveRef.current = active;
-			return () => {
-				clearRevealTimer();
-				clearSettleTimer();
-			};
-		}
-
-		if (!text.startsWith(displayRef.current)) {
-			if (rafRef.current !== null) {
-				cancelAnimationFrame(rafRef.current);
-				rafRef.current = null;
-			}
-			clearRevealTimer();
-			clearSettleTimer();
-			setDisplayText(text);
-			setAnimateChunks(false);
-			displayRef.current = text;
-			lastRevealRef.current = null;
-			wasActiveRef.current = active;
-			return;
+				streamedRef.current = false;
+				setAnimateChunks(false);
+			}, STREAMING_SETTLE_MS);
 		}
 
 		function tick(timestamp: number): void {
 			rafRef.current = null;
+			const previous = lastFrameRef.current;
+			if (previous !== null && timestamp - previous < STREAMING_FRAME_INTERVAL_MS) {
+				rafRef.current = requestAnimationFrame(tick);
+				return;
+			}
 			const target = targetRef.current;
 			const current = displayRef.current;
-			const backlog = target.length - current.length;
-
-			if (backlog <= 0) {
-				lastRevealRef.current = timestamp;
-				return;
-			}
-
-			const previousReveal = lastRevealRef.current;
-			if (previousReveal !== null && timestamp - previousReveal < STREAM_REVEAL_INTERVAL_MS) {
-				scheduleReveal(STREAM_REVEAL_INTERVAL_MS - (timestamp - previousReveal));
-				return;
-			}
-			lastRevealRef.current = timestamp;
-
-			// Catch up to the host target for this interval (chunk animation via rehype).
-			const next = target;
+			const end = nextRevealEnd(target, current.length, previous === null ? 0 : timestamp - previous);
+			lastFrameRef.current = timestamp;
+			const next = target.slice(0, end);
 			displayRef.current = next;
-			setAnimateChunks(true);
 			setDisplayText(next);
-		}
 
-		if (active && !wasActiveRef.current && displayRef.current.length >= text.length) {
-			clearSettleTimer();
-			displayRef.current = "";
-			setDisplayText("");
-			lastRevealRef.current = null;
-		}
-		wasActiveRef.current = active;
-		clearRevealTimer();
-		clearSettleTimer();
-		setAnimateChunks(true);
-
-		if (rafRef.current === null && displayRef.current.length < text.length) {
-			const previousReveal = lastRevealRef.current;
-			const delayMs =
-				previousReveal === null
-					? 0
-					: Math.max(0, STREAM_REVEAL_INTERVAL_MS - (performance.now() - previousReveal));
-			scheduleReveal(delayMs);
-		}
-
-		return () => {
-			if (rafRef.current !== null) {
-				cancelAnimationFrame(rafRef.current);
-				rafRef.current = null;
+			if (end < target.length) {
+				rafRef.current = requestAnimationFrame(tick);
+				return;
 			}
-			clearRevealTimer();
-			clearSettleTimer();
-		};
-	}, [text, active]);
+			lastFrameRef.current = null;
+			if (!activeRef.current) scheduleSettle();
+		}
+	}, [text, active, stopFrames, clearSettle]);
 
 	return { displayText, animateChunks };
 }
