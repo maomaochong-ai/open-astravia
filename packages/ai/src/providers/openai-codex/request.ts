@@ -1,5 +1,6 @@
 import type { Context, FetchFunction, Model } from "../../types.js";
 import { convertResponsesMessages, convertResponsesTools } from "../openai-responses-shared.js";
+import { resolveProviderMaxRetries } from "../retry-policy.js";
 import type { CodexRequestBody, OpenAICodexResponsesOptions } from "./options.js";
 
 interface OperatingSystemInfo {
@@ -10,7 +11,6 @@ interface OperatingSystemInfo {
 
 const DEFAULT_CODEX_BASE_URL = "https://chatgpt.com/backend-api";
 const JWT_CLAIM_PATH = "https://api.openai.com/auth";
-const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 1000;
 const CODEX_TOOL_CALL_PROVIDERS = new Set(["openai", "openai-codex", "opencode"]);
 
@@ -116,9 +116,11 @@ export async function fetchCodexResponse(
 	body: string,
 	signal?: AbortSignal,
 	fetchFunction: FetchFunction = globalThis.fetch,
+	maxRetries?: number,
 ): Promise<Response> {
+	const resolvedMaxRetries = resolveProviderMaxRetries(maxRetries);
 	let lastError: Error | undefined;
-	for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+	for (let attempt = 0; attempt <= resolvedMaxRetries; attempt++) {
 		if (signal?.aborted) throw new Error("Request was aborted");
 		let response: Response;
 		try {
@@ -128,7 +130,7 @@ export async function fetchCodexResponse(
 				throw new Error("Request was aborted");
 			}
 			lastError = error instanceof Error ? error : new Error(String(error));
-			if (attempt < MAX_RETRIES && !lastError.message.includes("usage limit")) {
+			if (attempt < resolvedMaxRetries && !lastError.message.includes("usage limit")) {
 				await sleep(BASE_DELAY_MS * 2 ** attempt, signal);
 				continue;
 			}
@@ -136,12 +138,12 @@ export async function fetchCodexResponse(
 		}
 		if (response.ok) return response;
 		const errorText = await response.text();
-		if (attempt < MAX_RETRIES && isRetryableError(response.status, errorText)) {
+		if (attempt < resolvedMaxRetries && isRetryableError(response.status, errorText)) {
 			await sleep(BASE_DELAY_MS * 2 ** attempt, signal);
 			continue;
 		}
 		const info = parseErrorResponse(response.status, response.statusText, errorText);
-		throw createHttpError(info.friendlyMessage || info.message, response.status);
+		throw createHttpError(info.friendlyMessage || info.message, response);
 	}
 	throw lastError ?? new Error("Failed after retries");
 }
@@ -210,8 +212,9 @@ function parseErrorResponse(
 	return { message, friendlyMessage };
 }
 
-function createHttpError(message: string, status: number): Error {
-	const error = new Error(message) as Error & { status: number };
-	error.status = status;
+function createHttpError(message: string, response: Response): Error {
+	const error = new Error(message) as Error & { status: number; responseHeaders: Headers };
+	error.status = response.status;
+	error.responseHeaders = response.headers;
 	return error;
 }

@@ -83,6 +83,13 @@ export interface StreamOptions {
 	 */
 	maxRetryDelayMs?: number;
 	/**
+	 * Maximum number of retries performed inside the provider transport.
+	 * Defaults to 0 so the application remains the single owner of retry policy,
+	 * error visibility, backoff, and cancellation. Set explicitly only when the
+	 * caller intentionally wants transport-local retries.
+	 */
+	maxRetries?: number;
+	/**
 	 * Optional metadata to include in API requests.
 	 * Providers extract the fields they understand and ignore the rest.
 	 * For example, Anthropic uses `user_id` for abuse tracking and rate limiting.

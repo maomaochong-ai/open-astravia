@@ -79,6 +79,7 @@ describe("google-gemini-cli empty stream retry", () => {
 
 		const stream = streamGoogleGeminiCli(model, context, {
 			apiKey: JSON.stringify({ token: "token", projectId: "project" }),
+			maxRetries: 2,
 		});
 
 		let startCount = 0;
@@ -104,5 +105,44 @@ describe("google-gemini-cli empty stream retry", () => {
 		expect(startCount).toBe(1);
 		expect(doneCount).toBe(1);
 		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
+
+	it("surfaces an empty stream after one request by default", async () => {
+		const fetchMock = vi.fn(
+			async () =>
+				new Response(
+					new ReadableStream<Uint8Array>({
+						start(controller) {
+							controller.close();
+						},
+					}),
+					{ status: 200, headers: { "content-type": "text/event-stream" } },
+				),
+		);
+		global.fetch = fetchMock as typeof fetch;
+
+		const stream = streamGoogleGeminiCli(
+			{
+				id: "gemini-2.5-flash",
+				name: "Gemini 2.5 Flash",
+				api: "google-gemini-cli",
+				provider: "google-gemini-cli",
+				baseUrl: "https://cloudcode-pa.googleapis.com",
+				reasoning: false,
+				input: ["text"],
+				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+				contextWindow: 128000,
+			},
+			{ messages: [{ role: "user", content: "Say hello", timestamp: 1 }] },
+			{ apiKey: JSON.stringify({ token: "token", projectId: "project" }) },
+		);
+
+		for await (const _event of stream) {
+			// Consume the public stream so its terminal error is projected to the result.
+		}
+		const result = await stream.result();
+
+		expect(result.stopReason).toBe("error");
+		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
 });

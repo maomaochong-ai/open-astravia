@@ -4,6 +4,7 @@ import { getEnvApiKey } from "../../env-api-keys.js";
 import { requireProviderCredential } from "../../provider-kit/index.js";
 import type { Context, FetchFunction, Message, Model } from "../../types.js";
 import { buildCopilotDynamicHeaders, hasCopilotVisionInput } from "../github-copilot-headers.js";
+import { resolveProviderMaxRetries } from "../retry-policy.js";
 import { resolveOpenAICompletionsCompat } from "./compatibility.js";
 import { convertMessages, convertTools } from "./messages.js";
 import type { OpenAICompletionsOptions } from "./options.js";
@@ -14,6 +15,7 @@ export function createOpenAICompletionsClient(
 	apiKey?: string,
 	optionsHeaders?: Record<string, string>,
 	providerFetch?: FetchFunction,
+	maxRetries?: number,
 ): OpenAI {
 	const resolvedApiKey = requireProviderCredential(model, apiKey || getEnvApiKey(model.provider));
 
@@ -35,6 +37,7 @@ export function createOpenAICompletionsClient(
 		dangerouslyAllowBrowser: true,
 		defaultHeaders: headers,
 		fetch: providerFetch,
+		maxRetries: resolveProviderMaxRetries(maxRetries),
 	});
 }
 

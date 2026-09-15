@@ -10,6 +10,7 @@ import {
 import { createModelCallMetadataFromMessage } from "../../runtime/model-call-result.js";
 import { createGoogleAssistantMessage } from "../google-stream/adapter.js";
 import { GeminiEventReducer } from "../google-stream/events.js";
+import { resolveProviderMaxRetries } from "../retry-policy.js";
 import type { GoogleGeminiCliOptions } from "./options.js";
 import { cloudCodeAssistResponseChunkSchema } from "./protocol.js";
 import {
@@ -26,7 +27,6 @@ import {
 	sleepWithAbort,
 } from "./retry.js";
 
-const MAX_EMPTY_STREAM_RETRIES = 2;
 const EMPTY_STREAM_BASE_DELAY_MS = 500;
 
 export const googleGeminiCliAdapter: LanguageModelAdapter<"google-gemini-cli", GoogleGeminiCliOptions> = {
@@ -74,8 +74,9 @@ async function produceGoogleGeminiCliStream(
 		let response = initial.response;
 		let started = false;
 		let completed = false;
+		const maxEmptyStreamRetries = resolveProviderMaxRetries(options?.maxRetries);
 
-		for (let attempt = 0; attempt <= MAX_EMPTY_STREAM_RETRIES; attempt++) {
+		for (let attempt = 0; attempt <= maxEmptyStreamRetries; attempt++) {
 			if (options?.signal?.aborted) throw new AIAbortedError();
 			if (attempt > 0) {
 				await sleepWithAbort(EMPTY_STREAM_BASE_DELAY_MS * 2 ** (attempt - 1), options?.signal);
@@ -99,7 +100,7 @@ async function produceGoogleGeminiCliStream(
 				if (chunk.response) reducer.consume(chunk.response);
 			}
 			if (!receivedProviderEvent) {
-				if (attempt < MAX_EMPTY_STREAM_RETRIES) {
+				if (attempt < maxEmptyStreamRetries) {
 					output = createGoogleAssistantMessage(model);
 					continue;
 				}

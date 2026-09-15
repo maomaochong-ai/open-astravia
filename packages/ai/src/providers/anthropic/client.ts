@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { FetchFunction, Model } from "../../types.js";
+import { resolveProviderMaxRetries } from "../retry-policy.js";
 
 const claudeCodeVersion = "2.1.2";
 
@@ -10,7 +11,9 @@ export function createAnthropicClient(
 	optionsHeaders?: Record<string, string>,
 	dynamicHeaders?: Record<string, string>,
 	providerFetch?: FetchFunction,
+	maxRetries?: number,
 ): { client: Anthropic; isOAuthToken: boolean } {
+	const resolvedMaxRetries = resolveProviderMaxRetries(maxRetries);
 	if (model.provider === "github-copilot") {
 		const betaFeatures = interleavedThinking ? ["interleaved-thinking-2025-05-14"] : [];
 		return {
@@ -30,6 +33,7 @@ export function createAnthropicClient(
 					optionsHeaders,
 				),
 				fetch: providerFetch,
+				maxRetries: resolvedMaxRetries,
 			}),
 			isOAuthToken: false,
 		};
@@ -57,6 +61,7 @@ export function createAnthropicClient(
 					optionsHeaders,
 				),
 				fetch: providerFetch,
+				maxRetries: resolvedMaxRetries,
 			}),
 			isOAuthToken: true,
 		};
@@ -77,6 +82,7 @@ export function createAnthropicClient(
 				optionsHeaders,
 			),
 			fetch: providerFetch,
+			maxRetries: resolvedMaxRetries,
 		}),
 		isOAuthToken: false,
 	};

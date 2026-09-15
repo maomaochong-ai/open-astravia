@@ -137,6 +137,7 @@ async function produceAnthropicStream(
 			options?.headers,
 			dynamicHeaders,
 			options?.fetch,
+			options?.maxRetries,
 		);
 		const params = buildAnthropicParams(model, context, isOAuthToken, options);
 		options?.onPayload?.(params);

@@ -146,7 +146,7 @@ describe("OpenAI-compatible native adapters", () => {
 		await expect(response.metadata).resolves.toMatchObject({ finishReason: { unified: "error" } });
 	});
 
-	it("normalizes rate limits on the native adapter boundary", async () => {
+	it("normalizes rate limits after one native transport attempt", async () => {
 		const fixture = fixtureFor("openai-completions-deepseek");
 		const rateLimitResponse = () =>
 			errorResponse(
@@ -156,7 +156,7 @@ describe("OpenAI-compatible native adapters", () => {
 					headers: { "retry-after": "0" },
 				},
 			);
-		const transport = createProviderTestTransport([rateLimitResponse(), rateLimitResponse(), rateLimitResponse()]);
+		const transport = createProviderTestTransport([rateLimitResponse()]);
 		const response = await streamModel({
 			model: model(fixture),
 			context,
@@ -168,7 +168,7 @@ describe("OpenAI-compatible native adapters", () => {
 			retryable: true,
 			statusCode: 429,
 		});
-		expect(transport.requests).toHaveLength(3);
+		expect(transport.requests).toHaveLength(1);
 	});
 
 	it("resolves credentials from the selected compatible provider", async () => {

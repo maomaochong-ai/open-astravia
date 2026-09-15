@@ -32,6 +32,8 @@
 
 ### Changed
 
+- Provider transports now make one request by default and expose `StreamOptions.maxRetries` for explicit opt-in. OpenAI, Azure OpenAI, Anthropic, Google, Bedrock, Codex, and Gemini CLI no longer hide retries from application-level error handling and retry policy.
+
 - OpenAI-compatible request clients now resolve credentials through the selected model provider's environment mapping, instead of falling back to `OPENAI_API_KEY` for every compatible endpoint.
 
 - **Google 协议族切换为原生 `LanguageModelAdapter`**：Google Generative AI、Vertex 与 Gemini CLI 不再由新 Registry 反向包装 legacy stream；三种 transport 共享 TypeBox wire schema、Gemini event reducer、usage 和严格终止律，同时保留 API key、ADC 与 Cloud Code OAuth/endpoint/retry 的独立所有权。顶层 provider 入口收敛为轻量 facade，官方/Vertex sender 与 Gemini CLI fetch 支持确定性离线测试。

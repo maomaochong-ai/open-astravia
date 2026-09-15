@@ -2,6 +2,7 @@ import { AzureOpenAI } from "openai";
 import type { ResponseCreateParamsStreaming } from "openai/resources/responses/responses.js";
 import type { Context, Model } from "../../types.js";
 import { convertResponsesMessages, convertResponsesTools } from "../openai-responses/messages.js";
+import { resolveProviderMaxRetries } from "../retry-policy.js";
 import type { AzureOpenAIResponsesOptions } from "./options.js";
 
 const DEFAULT_AZURE_API_VERSION = "v1";
@@ -33,6 +34,7 @@ export function createAzureOpenAIResponsesClient(
 		defaultHeaders: headers,
 		baseURL: baseUrl,
 		fetch: options?.fetch,
+		maxRetries: resolveProviderMaxRetries(options?.maxRetries),
 	});
 }
 

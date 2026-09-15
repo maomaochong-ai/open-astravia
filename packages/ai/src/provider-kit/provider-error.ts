@@ -38,6 +38,7 @@ export function normalizeProviderError<TApi extends Api>(error: unknown, model: 
 	const responseBodyPreview = readResponseBodyPreview(error);
 	const url = readUrl(error);
 	const phase = readPhase(error);
+	const retryableOverride = readRetryableOverride(error);
 	const options: AIErrorOptions = {
 		provider: model.provider,
 		modelId: model.id,
@@ -77,7 +78,7 @@ export function normalizeProviderError<TApi extends Api>(error: unknown, model: 
 	}
 	return new AIError(AI_ERROR_CODES.TRANSPORT_FAILED, message, {
 		...options,
-		retryable: isRetryableProviderFailure(message, statusCode),
+		retryable: retryableOverride ?? isKnownNetworkFailure(error) ?? isRetryableProviderFailure(message, statusCode),
 	});
 }
 
@@ -213,4 +214,23 @@ function readPhase(error: unknown): AIErrorOptions["phase"] {
 			record.phase === "decode")
 		? record.phase
 		: undefined;
+}
+
+function readRetryableOverride(error: unknown): boolean | undefined {
+	const record = asRecord(error);
+	return typeof record?.retryable === "boolean" ? record.retryable : undefined;
+}
+
+function isKnownNetworkFailure(error: unknown): boolean | undefined {
+	const record = asRecord(error);
+	const name = typeof record?.name === "string" ? record.name : "";
+	const code = typeof record?.code === "string" ? record.code : "";
+	const message = readMessage(error);
+	if (/^(?:APIConnectionError|APITimeoutError|FetchError)$/u.test(name)) return true;
+	if (/^(?:ECONNRESET|ECONNREFUSED|EPIPE|ENETUNREACH|EHOSTUNREACH|ETIMEDOUT|UND_ERR_CONNECT_TIMEOUT)$/u.test(code)) {
+		return true;
+	}
+	if (/^fetch failed$/iu.test(message)) return true;
+	const cause = record?.cause;
+	return cause === undefined ? undefined : isKnownNetworkFailure(cause);
 }

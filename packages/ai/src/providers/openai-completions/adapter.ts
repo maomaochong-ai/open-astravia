@@ -109,7 +109,14 @@ async function produceOpenAICompletions(
 	let systemFingerprint: string | undefined;
 	try {
 		const apiKey = requireProviderCredential(model, options?.apiKey || getEnvApiKey(model.provider));
-		const client = createOpenAICompletionsClient(model, context, apiKey, options?.headers, options?.fetch);
+		const client = createOpenAICompletionsClient(
+			model,
+			context,
+			apiKey,
+			options?.headers,
+			options?.fetch,
+			options?.maxRetries,
+		);
 		const params = buildOpenAICompletionsParams(model, context, options);
 		options?.onPayload?.(params);
 		const response = await client.chat.completions.create(params, { signal: requestAbort.signal });

@@ -1,8 +1,13 @@
 import { BedrockRuntimeClient, type BedrockRuntimeClientConfig } from "@aws-sdk/client-bedrock-runtime";
+import { resolveProviderMaxAttempts } from "../retry-policy.js";
 import type { BedrockOptions } from "./options.js";
 
 export async function createBedrockClient(options: BedrockOptions): Promise<BedrockRuntimeClient> {
-	const config: BedrockRuntimeClientConfig = { region: options.region, profile: options.profile };
+	const config: BedrockRuntimeClientConfig = {
+		region: options.region,
+		profile: options.profile,
+		maxAttempts: resolveProviderMaxAttempts(options.maxRetries),
+	};
 	if (typeof process !== "undefined" && (process.versions?.node || process.versions?.bun)) {
 		config.region = config.region || process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION;
 		if (process.env.AWS_BEDROCK_SKIP_AUTH === "1") {

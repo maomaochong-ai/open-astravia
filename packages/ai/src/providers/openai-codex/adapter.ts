@@ -57,6 +57,7 @@ export const openAICodexResponsesAdapter = createResponsesAdapter<
 		JSON.stringify(body),
 		options?.signal,
 		options?.fetch,
+		options?.maxRetries,
 	);
 	if (!response.body) throw new Error("No response body");
 	start();

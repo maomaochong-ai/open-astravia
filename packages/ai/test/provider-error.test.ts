@@ -114,6 +114,21 @@ describe("normalizeProviderError", () => {
 		});
 	});
 
+	it.each([
+		[Object.assign(new Error("connection failed"), { name: "APIConnectionError" })],
+		[new TypeError("fetch failed")],
+		[
+			Object.assign(new Error("request failed"), {
+				cause: Object.assign(new Error("reset"), { code: "ECONNRESET" }),
+			}),
+		],
+	])("marks known statusless network failures as retryable", (source) => {
+		expect(normalizeProviderError(source, model)).toMatchObject({
+			code: "AI_TRANSPORT_FAILED",
+			retryable: true,
+		});
+	});
+
 	it("does not retry quota exhaustion reported as HTTP 429", () => {
 		const source = Object.assign(new Error("insufficient_quota: account has no remaining credits"), { status: 429 });
 

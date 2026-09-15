@@ -577,6 +577,12 @@ Every `AssistantMessage` includes a `stopReason` field that indicates how the ge
 
 ## Error Handling
 
+Provider transports make one request by default and surface the first failure to the caller. Applications that own retry UI, error classification, backoff, and cancellation can therefore keep a single retry policy. A caller that intentionally wants transport-local retries can opt in with `maxRetries`:
+
+```typescript
+const response = await complete(model, context, { maxRetries: 2 });
+```
+
 When a request ends with an error (including aborts and tool call validation errors), the streaming API emits an error event:
 
 ```typescript

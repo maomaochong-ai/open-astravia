@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import type { ResponseCreateParamsStreaming } from "openai/resources/responses/responses.js";
 import type { Context, Model, Usage } from "../../types.js";
 import { buildCopilotDynamicHeaders, hasCopilotVisionInput } from "../github-copilot-headers.js";
+import { resolveProviderMaxRetries } from "../retry-policy.js";
 import { convertResponsesMessages, convertResponsesTools } from "./messages.js";
 import type { OpenAIResponsesOptions } from "./options.js";
 
@@ -33,6 +34,7 @@ export function createOpenAIResponsesClient(
 		dangerouslyAllowBrowser: true,
 		defaultHeaders: headers,
 		fetch: options?.fetch,
+		maxRetries: resolveProviderMaxRetries(options?.maxRetries),
 	});
 }
 

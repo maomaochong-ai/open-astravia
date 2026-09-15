@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import type { ModelCallRequest } from "../../runtime/language-model-adapter.js";
+import { resolveProviderMaxAttempts } from "../retry-policy.js";
 import type { GoogleVertexOptions } from "./options.js";
 
 const API_VERSION = "v1";
@@ -12,7 +13,10 @@ export function createGoogleVertexClient(request: ModelCallRequest<"google-verte
 		project: resolveProject(options),
 		location: resolveLocation(options),
 		apiVersion: API_VERSION,
-		httpOptions: headers ? { headers } : undefined,
+		httpOptions: {
+			...(headers ? { headers } : {}),
+			retryOptions: { attempts: resolveProviderMaxAttempts(options?.maxRetries) },
+		},
 	});
 }
 
