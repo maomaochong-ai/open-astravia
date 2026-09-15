@@ -1,7 +1,7 @@
 import { type AgentTeamDocument, createAgentTeamFixture, INITIAL_AGENT_PROFILES } from "@vetta/agent-team";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentTeamConfigRepository } from "./agent-team-config-repository.js";
-import { AgentTeamStore, PROVIDED_RESOURCE_DELETE_ERROR } from "./agent-team-store.js";
+import { AgentTeamStore, PROVIDED_RESOURCE_WRITE_ERROR } from "./agent-team-store.js";
 import { registerPresetPluginBlueprints } from "./preset-plugin-blueprints.testing.js";
 
 vi.mock("../logger.js", () => ({
@@ -225,6 +225,54 @@ describe("AgentTeamStore transaction boundary", () => {
 		expect((await store.read()).agents.some((agent) => agent.id === source.id)).toBe(false);
 	});
 
+	it("refuses to edit an agent or a team that a provider owns", async () => {
+		const repository = new MemoryRepository();
+		const document = repository.document;
+		const agent = document.agents[0]!;
+		const team = document.teams[0]!;
+		repository.document = {
+			...document,
+			agents: document.agents.map((candidate) =>
+				candidate.id === agent.id
+					? { ...candidate, source: { kind: "plugin" as const, pluginId: "preset-agent" } }
+					: candidate,
+			),
+			teams: document.teams.map((candidate) =>
+				candidate.id === team.id
+					? { ...candidate, source: { kind: "plugin" as const, pluginId: "preset-agent" } }
+					: candidate,
+			),
+		};
+		const store = new AgentTeamStore({ repository, createId: createIdSequence(), now: () => 10 });
+
+		// 提供方 1:1 维护的资源就地改不动：下一次插件同步会用清单整体重铺它。
+		await expect(
+			store.updateAgent(agent.id, {
+				expectedRevision: agent.revision,
+				name: "我改的名字",
+				description: agent.description,
+				mentionHandle: agent.mentionHandle,
+				abilities: agent.abilities,
+			}),
+		).rejects.toThrow(PROVIDED_RESOURCE_WRITE_ERROR);
+		await expect(
+			store.updateTeam(team.id, {
+				expectedRevision: team.revision,
+				name: "我改的队名",
+				description: team.description,
+				members: team.members.map((member) => ({
+					kind: "existing" as const,
+					memberId: member.id,
+					leader: member.id === team.leaderMemberId,
+				})),
+			}),
+		).rejects.toThrow(PROVIDED_RESOURCE_WRITE_ERROR);
+
+		const reloaded = await store.read();
+		expect(reloaded.agents.find((candidate) => candidate.id === agent.id)?.name).toBe(agent.name);
+		expect(reloaded.teams.find((candidate) => candidate.id === team.id)?.name).toBe(team.name);
+	});
+
 	it("refuses to delete an agent or a team that a provider owns", async () => {
 		const repository = new MemoryRepository();
 		const document = repository.document;
@@ -253,9 +301,9 @@ describe("AgentTeamStore transaction boundary", () => {
 				expectedTeamIds: impact.teams.map((entry) => entry.teamId),
 				expectedTeamRevisions: Object.fromEntries(impact.teams.map((entry) => [entry.teamId, entry.teamRevision])),
 			}),
-		).rejects.toThrow(PROVIDED_RESOURCE_DELETE_ERROR);
+		).rejects.toThrow(PROVIDED_RESOURCE_WRITE_ERROR);
 		await expect(store.deleteTeam(team.id, { expectedRevision: team.revision })).rejects.toThrow(
-			PROVIDED_RESOURCE_DELETE_ERROR,
+			PROVIDED_RESOURCE_WRITE_ERROR,
 		);
 
 		const reloaded = await store.read();

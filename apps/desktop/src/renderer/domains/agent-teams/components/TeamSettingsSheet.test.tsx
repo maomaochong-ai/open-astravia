@@ -73,13 +73,19 @@ const team: TeamDefinition = {
 	updatedAt: 1,
 };
 
-function renderSheet(overrides: { onSave?: ReturnType<typeof vi.fn>; onOpenMember?: ReturnType<typeof vi.fn> } = {}) {
+function renderSheet(
+	overrides: {
+		onSave?: ReturnType<typeof vi.fn>;
+		onOpenMember?: ReturnType<typeof vi.fn>;
+		team?: TeamDefinition;
+	} = {},
+) {
 	const onSave = overrides.onSave ?? vi.fn(async () => team);
 	const onOpenMember = overrides.onOpenMember ?? vi.fn();
 	render(
 		<TeamSettingsSheet
 			open
-			team={team}
+			team={overrides.team ?? team}
 			agents={agents}
 			agentsById={new Map(agents.map((item) => [item.id, item]))}
 			onClose={vi.fn()}
@@ -92,6 +98,19 @@ function renderSheet(overrides: { onSave?: ReturnType<typeof vi.fn>; onOpenMembe
 }
 
 describe("TeamSettingsSheet", () => {
+	it("shows a plugin's team as read-only, because the provider maintains it 1:1", () => {
+		renderSheet({ team: { ...team, source: { kind: "plugin", pluginId: "vetta-ui-design" } } });
+
+		// 插件升级会用清单整体重铺这支队，任何就地改动都活不过下一次同步。
+		expect(screen.queryByRole("button", { name: /settings.saveChanges/ })).toBeNull();
+		expect(screen.queryByRole("button", { name: /settings.addMember/ })).toBeNull();
+		expect(screen.queryByRole("button", { name: /settings.deleteTeam/ })).toBeNull();
+		expect(screen.queryByRole("button", { name: /teams.removeMember/ })).toBeNull();
+		expect(screen.getByLabelText("teams.name")).toHaveProperty("readOnly", true);
+		expect(screen.getByText("center.providedReadOnly")).toBeTruthy();
+	});
+
+
 	it("keeps saving disabled until the draft actually changes", async () => {
 		const { onSave } = renderSheet();
 		const save = screen.getByRole("button", { name: /settings.saveChanges/ });

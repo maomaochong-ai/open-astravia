@@ -61,7 +61,8 @@
     "saveChanges": "Save changes",
     "saving": "Saving…",
     "providedBy": "From {{name}}",
-    "providedByHint": "Provided and maintained by an extension; it cannot be deleted"
+    "providedByHint": "Provided and maintained by an extension; it cannot be edited or deleted",
+    "providedReadOnly": "Provided and maintained by an extension: it is replaced wholesale on plugin updates and cannot be edited here"
   },
   "profile": {
     "fixedPrompt": "Role: {{role}}",

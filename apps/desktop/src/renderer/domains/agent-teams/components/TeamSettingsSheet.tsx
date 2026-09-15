@@ -98,6 +98,8 @@ export function TeamSettingsSheet({
 	}
 
 	const providerName = resourceProviderName(team.source, plugins);
+	// 提供方维护的团队只读：阵容、任务书、名称都由清单说了算，插件升级会整体重铺。
+	const readOnly = team.source !== undefined;
 
 	async function save(): Promise<void> {
 		if (!canSubmitAssembly(draft)) return;
@@ -145,6 +147,12 @@ export function TeamSettingsSheet({
 									</div>
 								</div>
 
+								{readOnly ? (
+									<p className="flex items-start gap-1.5 rounded-lg bg-muted/60 px-3 py-2 text-[11px] text-muted-foreground">
+										<span className="icon-[solar--lock-keyhole-linear] mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+										<span>{t("center.providedReadOnly")}</span>
+									</p>
+								) : (
 								<div className="flex flex-wrap items-center gap-2">
 									<Button
 										variant="primary"
@@ -175,6 +183,7 @@ export function TeamSettingsSheet({
 										</Button>
 									)}
 								</div>
+								)}
 
 								{error && (
 									<p aria-live="polite" className="rounded-lg bg-destructive/10 px-3 py-2 text-[12px] text-destructive">
@@ -194,6 +203,7 @@ export function TeamSettingsSheet({
 									name="agent-team-name"
 									autoComplete="off"
 									value={draft.name}
+									readOnly={readOnly}
 									onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
 									aria-label={t("teams.name")}
 									className="h-9"
@@ -206,6 +216,7 @@ export function TeamSettingsSheet({
 								<textarea
 									value={draft.description ?? ""}
 									onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))}
+									readOnly={readOnly}
 									rows={3}
 									placeholder={t("settings.descriptionPlaceholder")}
 									aria-label={t("settings.description")}
@@ -217,10 +228,12 @@ export function TeamSettingsSheet({
 						<DetailDrawerEnter index={2} className="flex flex-col gap-3">
 							<div className="flex items-center justify-between gap-3">
 								<SectionTitle>{t("settings.members")}</SectionTitle>
-								<Button variant="outline" size="sm" onClick={() => setAddOpen(true)}>
-									<span className="icon-[solar--user-plus-linear] h-4 w-4" aria-hidden="true" />
-									<span className="text-[12px] font-medium">{t("settings.addMember")}</span>
-								</Button>
+								{!readOnly && (
+									<Button variant="outline" size="sm" onClick={() => setAddOpen(true)}>
+										<span className="icon-[solar--user-plus-linear] h-4 w-4" aria-hidden="true" />
+										<span className="text-[12px] font-medium">{t("settings.addMember")}</span>
+									</Button>
+								)}
 							</div>
 
 							<ul className="flex flex-col gap-1.5">
@@ -256,7 +269,7 @@ export function TeamSettingsSheet({
 														{member.description}
 													</span>
 												</button>
-												{!isLeader && (
+												{!isLeader && !readOnly && (
 													<Button
 														variant="ghost"
 														size="icon-sm"
@@ -268,19 +281,21 @@ export function TeamSettingsSheet({
 														<span className="icon-[solar--crown-star-linear] h-3.5 w-3.5" aria-hidden="true" />
 													</Button>
 												)}
-												<Button
-													variant="ghost"
-													size="icon-sm"
-													className="shrink-0 text-muted-foreground/60 hover:text-destructive"
-													title={t("teams.removeMember", { name: member.name })}
-													aria-label={t("teams.removeMember", { name: member.name })}
-													onClick={() => toggleMember(member.id)}
-												>
-													<span className="icon-[solar--trash-bin-trash-linear] h-3.5 w-3.5" aria-hidden="true" />
-												</Button>
+												{!readOnly && (
+													<Button
+														variant="ghost"
+														size="icon-sm"
+														className="shrink-0 text-muted-foreground/60 hover:text-destructive"
+														title={t("teams.removeMember", { name: member.name })}
+														aria-label={t("teams.removeMember", { name: member.name })}
+														onClick={() => toggleMember(member.id)}
+													>
+														<span className="icon-[solar--trash-bin-trash-linear] h-3.5 w-3.5" aria-hidden="true" />
+													</Button>
+												)}
 											</div>
 
-											{assignmentAgentId === member.id ? (
+											{assignmentAgentId === member.id && !readOnly ? (
 												<MemberAssignmentEditor
 													agent={member}
 													assignment={assemblyAssignment(draft, member.id)}
@@ -294,7 +309,7 @@ export function TeamSettingsSheet({
 												<MemberAssignmentRow
 													agent={member}
 													assignment={assemblyAssignment(draft, member.id)}
-													onOpen={() => setAssignmentAgentId(member.id)}
+													{...(readOnly ? {} : { onOpen: () => setAssignmentAgentId(member.id) })}
 												/>
 											)}
 										</li>
@@ -367,10 +382,13 @@ function MemberAssignmentRow({
 }: {
 	readonly agent: AgentProfile;
 	readonly assignment?: TeamMemberAssignment;
-	readonly onOpen: () => void;
-}): JSX.Element {
+	/** 省略即只读：提供方维护的团队不给任务书入口。 */
+	readonly onOpen?: () => void;
+}): JSX.Element | null {
 	const { t } = useTranslation("agent-teams");
 	if (!assignment) {
+		// 只读且本来就没有任务书时不留空位：一个点不动的「写任务书」按钮只会误导。
+		if (!onOpen) return null;
 		return (
 			<button
 				type="button"
@@ -387,8 +405,9 @@ function MemberAssignmentRow({
 		<button
 			type="button"
 			aria-label={t("settings.editAssignment", { name: agent.name })}
+			disabled={!onOpen}
 			onClick={onOpen}
-			className="flex w-full items-start gap-2 rounded-lg border border-primary/30 bg-primary/5 px-2.5 py-2 text-left transition-colors hover:border-primary/50 hover:bg-primary/10"
+			className="flex w-full items-start gap-2 rounded-lg border border-primary/30 bg-primary/5 px-2.5 py-2 text-left transition-colors hover:border-primary/50 hover:bg-primary/10 disabled:cursor-default disabled:hover:border-primary/30 disabled:hover:bg-primary/5"
 		>
 			<span className="icon-[solar--clipboard-text-bold] mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
 			<span className="min-w-0 flex-1">
@@ -404,7 +423,9 @@ function MemberAssignmentRow({
 					{assignment.responsibility ?? agent.description}
 				</span>
 			</span>
-			<span className="icon-[solar--pen-2-linear] mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/70" aria-hidden="true" />
+			{onOpen && (
+				<span className="icon-[solar--pen-2-linear] mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/70" aria-hidden="true" />
+			)}
 		</button>
 	);
 }

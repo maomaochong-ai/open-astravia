@@ -61,7 +61,8 @@
     "saveChanges": "保存修改",
     "saving": "保存中…",
     "providedBy": "来自 {{name}}",
-    "providedByHint": "这份资源由扩展提供并维护，不能删除"
+    "providedByHint": "这份资源由扩展提供并维护，不能修改或删除",
+    "providedReadOnly": "由扩展提供并维护：随插件升级整体更新，不能在这里修改"
   },
   "profile": {
     "fixedPrompt": "角色：{{role}}",

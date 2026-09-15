@@ -28,12 +28,13 @@ import { reconcilePluginAgentPresets } from "./plugin-agent-preset-reconcile.js"
 const log = getAppLogger("agent-teams");
 
 /**
- * 提供方维护的智能体/团队被要求删除时的错误。
+ * 提供方维护的智能体/团队被要求改写或删除时的错误。
  *
- * 用一个稳定的标识而不是人读文案：渲染进程要据此给出可读提示，而这条路径正常情况下走不到
- * ——UI 根本不该给出删除入口。
+ * 这些资源由提供方 1:1 维护：插件升级会整体覆盖它们，任何就地改动都活不过下一次同步，所以
+ * 写入直接拒掉而不是先接受再被盖掉。用一个稳定的标识而不是人读文案：渲染进程要据此给出可读
+ * 提示，而这条路径正常情况下走不到——UI 根本不该给出编辑入口。
  */
-export const PROVIDED_RESOURCE_DELETE_ERROR = "AGENT_RESOURCE_PROVIDED_BY_EXTENSION";
+export const PROVIDED_RESOURCE_WRITE_ERROR = "AGENT_RESOURCE_PROVIDED_BY_EXTENSION";
 
 export interface AgentTeamStoreOptions {
 	readonly extensions?: AgentTeamExtensionRegistry;
@@ -162,6 +163,8 @@ export class AgentTeamStore {
 			const index = document.agents.findIndex((agent) => agent.id === agentProfileId);
 			if (index < 0) throw new Error(`Agent profile not found: ${agentProfileId}`);
 			const current = document.agents[index];
+			// 提供方维护的档案不接受编辑：下一次插件同步会用清单重铺它，改动留不下来。
+			if (current.source) throw new Error(PROVIDED_RESOURCE_WRITE_ERROR);
 			if (current.revision !== input.expectedRevision)
 				throw new Error("Agent profile changed; reload before saving");
 			this.ensureUniqueHandle(document, normalizeMentionHandle(input.mentionHandle), agentProfileId);
@@ -207,7 +210,7 @@ export class AgentTeamStore {
 			if (!profile) throw new Error(`Agent profile not found: ${agentProfileId}`);
 			// 提供方维护的档案不接受删除：它在下次启动会被原样补回来，删除只会制造「删了又回来」
 			// 的错觉，还会顺带拆掉引用它的团队。UI 也不给入口，这里是最后一道闸。
-			if (profile.source) throw new Error(PROVIDED_RESOURCE_DELETE_ERROR);
+			if (profile.source) throw new Error(PROVIDED_RESOURCE_WRITE_ERROR);
 			if (profile.revision !== input.expectedRevision) {
 				throw new Error("Agent profile changed; reload before deleting");
 			}
@@ -328,6 +331,8 @@ export class AgentTeamStore {
 			const teamIndex = document.teams.findIndex((team) => team.id === teamId);
 			if (teamIndex < 0) throw new Error(`Agent team not found: ${teamId}`);
 			const current = document.teams[teamIndex];
+			// 与档案同一条规矩：提供方维护的团队由清单说了算。
+			if (current.source) throw new Error(PROVIDED_RESOURCE_WRITE_ERROR);
 			if (current.revision !== input.expectedRevision) {
 				throw new Error("Agent team changed; reload before saving");
 			}
@@ -417,7 +422,7 @@ export class AgentTeamStore {
 			const team = document.teams.find((candidate) => candidate.id === teamId);
 			if (!team) throw new Error(`Agent team not found: ${teamId}`);
 			// 与档案同一条规矩：提供方维护的团队不接受删除。
-			if (team.source) throw new Error(PROVIDED_RESOURCE_DELETE_ERROR);
+			if (team.source) throw new Error(PROVIDED_RESOURCE_WRITE_ERROR);
 			if (team.revision !== input.expectedRevision) {
 				throw new Error("Agent team changed; reload before deleting");
 			}

@@ -78,6 +78,8 @@ export function AgentProfileSheet({
 	const blueprint = blueprints.find((candidate) => candidate.id === target.blueprintId);
 	const roleLabel = agentBlueprintLabel(blueprint, (key) => t(key as never), plugins);
 	const providerName = resourceProviderName(target.source, plugins);
+	// 提供方维护的档案只读：插件升级会用清单整体重铺它，任何就地改动都活不过下一次同步。
+	const readOnly = target.source !== undefined;
 	const displayName = draft?.name?.trim() || target.name || t("center.sheetCreateTitle");
 
 	return (
@@ -131,6 +133,12 @@ export function AgentProfileSheet({
 									</p>
 								)}
 
+								{readOnly ? (
+									<p className="flex items-start gap-1.5 rounded-lg bg-muted/60 px-3 py-2 text-[11px] text-muted-foreground">
+										<span className="icon-[solar--lock-keyhole-linear] mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+										<span>{t("center.providedReadOnly")}</span>
+									</p>
+								) : (
 								<div className="flex flex-wrap items-center gap-2">
 									<Button
 										variant="primary"
@@ -161,6 +169,7 @@ export function AgentProfileSheet({
 										</Button>
 									)}
 								</div>
+								)}
 							</div>
 						</DetailDrawerEnter>
 
@@ -195,6 +204,7 @@ export function AgentProfileSheet({
 								activeTab={activeTab}
 								onActiveTabChange={setActiveTab}
 								hideSaveAction
+								readOnly={readOnly}
 								saveRequest={saveRequest}
 								onDraftChange={setDraft}
 								onSavingChange={setSaving}

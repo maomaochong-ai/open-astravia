@@ -31,6 +31,13 @@ interface AgentProfileEditorProps {
 	readonly saveRequest?: number;
 	readonly hideSaveAction?: boolean;
 	readonly onDraftChange?: (input: AgentProfileEditInput) => void;
+	/**
+	 * 只读展示：提供方 1:1 维护的档案走这一档。
+	 *
+	 * 不是「保存会失败所以先拦住」，而是这份档案根本没有用户可改的部分——下一次插件同步会用清单
+	 * 整体重铺它。给出输入框只会让用户以为自己改得动。
+	 */
+	readonly readOnly?: boolean;
 	readonly onSavingChange?: (saving: boolean) => void;
 	readonly onSaveComplete?: () => void;
 	readonly onPreview: (agentId: string) => Promise<AgentProfileUpdateImpact>;
@@ -51,6 +58,7 @@ export function AgentProfileEditor({
 	saveRequest,
 	layout = "stacked",
 	hideSaveAction = false,
+	readOnly = false,
 	onDraftChange,
 	onSavingChange,
 	onSaveComplete,
@@ -165,9 +173,9 @@ export function AgentProfileEditor({
 							</div>
 						</div>
 
-						<AgentAvatarPicker value={avatar} onChange={setAvatarOverride} />
+						{!readOnly && <AgentAvatarPicker value={avatar} onChange={setAvatarOverride} />}
 
-						<TextField label={t("profile.name")} value={name} onChange={setName} />
+						<TextField label={t("profile.name")} value={name} onChange={setName} readOnly={readOnly} />
 
 						<label className="block text-sm">
 							<span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
@@ -176,6 +184,7 @@ export function AgentProfileEditor({
 							<textarea
 								value={description}
 								onChange={(event) => setDescription(event.target.value)}
+								readOnly={readOnly}
 								rows={3}
 								placeholder={t("profile.descriptionPlaceholder")}
 								className="min-h-20 w-full resize-none rounded-xl border border-border/60 bg-background/50 px-3.5 py-2.5 text-[12px] leading-relaxed text-foreground caret-primary outline-none transition-colors placeholder:text-muted-foreground/50 hover:border-border focus:border-primary/50 focus:bg-background"
@@ -191,19 +200,22 @@ export function AgentProfileEditor({
 								<span className="block text-[12px] font-medium text-foreground">{t("profile.systemPrompt")}</span>
 								<span className="mt-0.5 block text-[11px] text-muted-foreground">{t("profile.systemPromptHint")}</span>
 							</div>
-							<Button
-								variant="ghost"
-								size="sm"
-								className="h-7 shrink-0 px-2 text-[11px] text-muted-foreground"
-								onClick={() => setSystemPrompt("")}
-							>
-								{t("profile.clearPrompt")}
-							</Button>
+							{!readOnly && (
+								<Button
+									variant="ghost"
+									size="sm"
+									className="h-7 shrink-0 px-2 text-[11px] text-muted-foreground"
+									onClick={() => setSystemPrompt("")}
+								>
+									{t("profile.clearPrompt")}
+								</Button>
+							)}
 						</div>
 						<textarea
 							aria-label={t("profile.systemPrompt")}
 							value={systemPrompt}
 							onChange={(event) => setSystemPrompt(event.target.value)}
+							readOnly={readOnly}
 							placeholder={t("profile.systemPromptPlaceholder")}
 							className="min-h-70 w-full flex-1 resize-none rounded-xl border border-border/60 bg-background/50 p-3.5 font-mono text-[12px] leading-relaxed text-foreground caret-primary outline-none transition-colors placeholder:text-muted-foreground/50 hover:border-border focus:border-primary/50 focus:bg-background"
 						/>
@@ -211,7 +223,12 @@ export function AgentProfileEditor({
 				)}
 
 				{activeTab === "abilities" && (
-					<AbilityEditor abilities={abilities} capabilities={capabilities} onChange={setAbilities} />
+					<AbilityEditor
+						abilities={abilities}
+						capabilities={capabilities}
+						onChange={setAbilities}
+						readOnly={readOnly}
+					/>
 				)}
 
 				{pendingImpact && pendingImpact.teamIds.length > 1 && (
@@ -520,10 +537,12 @@ function AbilityEditor({
 	abilities,
 	capabilities,
 	onChange,
+	readOnly = false,
 }: {
 	readonly abilities: AgentAbilitySelection;
 	readonly capabilities: readonly AgentCapabilityOption[];
 	readonly onChange: (abilities: AgentAbilitySelection) => void;
+	readonly readOnly?: boolean;
 }): JSX.Element {
 	const { t } = useTranslation("agent-teams");
 	const [query, setQuery] = useState("");
@@ -591,15 +610,17 @@ function AbilityEditor({
 						{t("profile.abilitiesHint")}
 					</p>
 				</div>
-				<Button
-					variant="outline"
-					size="sm"
-					className="h-8 gap-1.5 rounded-lg border-border/60 hover:border-primary/40 hover:bg-primary/5 transition-colors"
-					onClick={() => onChange(selectAllAgentAbilities(configurableCapabilities))}
-				>
-					<span className="icon-[solar--checklist-minimalistic-linear] h-3.5 w-3.5 text-primary" aria-hidden="true" />
-					<span className="text-xs font-medium">{t("profile.selectAll")}</span>
-				</Button>
+				{!readOnly && (
+					<Button
+						variant="outline"
+						size="sm"
+						className="h-8 gap-1.5 rounded-lg border-border/60 hover:border-primary/40 hover:bg-primary/5 transition-colors"
+						onClick={() => onChange(selectAllAgentAbilities(configurableCapabilities))}
+					>
+						<span className="icon-[solar--checklist-minimalistic-linear] h-3.5 w-3.5 text-primary" aria-hidden="true" />
+						<span className="text-xs font-medium">{t("profile.selectAll")}</span>
+					</Button>
+				)}
 			</div>
 
 			<div className="border-b border-border/50 bg-card/10 p-3.5">
@@ -635,6 +656,7 @@ function AbilityEditor({
 							<CapabilityToggle
 								option={option}
 								checked={isAgentAbilitySelected(abilities, option)}
+								readOnly={readOnly}
 								onToggle={() =>
 									onChange(toggleAgentAbility(abilities, option, capabilities))
 								}
@@ -660,10 +682,12 @@ function CapabilityToggle({
 	option,
 	checked,
 	onToggle,
+	readOnly = false,
 }: {
 	readonly option: AgentCapabilityOption;
 	readonly checked: boolean;
 	readonly onToggle: () => void;
+	readonly readOnly?: boolean;
 }): JSX.Element {
 	const { t } = useTranslation("agent-teams");
 	return (
@@ -688,7 +712,7 @@ function CapabilityToggle({
 			</div>
 			<Switch
 				checked={checked}
-				disabled={!option.enabledGlobally}
+				disabled={readOnly || !option.enabledGlobally}
 				onCheckedChange={onToggle}
 				aria-label={t("profile.toggleAbility", { name: option.title })}
 			/>
@@ -700,10 +724,12 @@ function TextField({
 	label,
 	value,
 	onChange,
+	readOnly = false,
 }: {
 	readonly label: string;
 	readonly value: string;
 	readonly onChange: (value: string) => void;
+	readonly readOnly?: boolean;
 }): JSX.Element {
 	return (
 		<label className="text-sm">
@@ -714,6 +740,7 @@ function TextField({
 				name={label}
 				autoComplete="off"
 				value={value}
+				readOnly={readOnly}
 				onChange={(event) => onChange(event.target.value)}
 				className="h-10 rounded-xl border-border/60 bg-background/50 px-3.5 text-sm transition-all hover:border-border focus:border-primary/50 focus:bg-background"
 			/>
