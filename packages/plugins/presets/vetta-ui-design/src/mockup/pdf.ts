@@ -12,11 +12,18 @@ export interface PdfPageImage {
 	/** Pixel size, used for the page aspect ratio. */
 	width: number;
 	height: number;
+	/**
+	 * This page's width in points, overriding the document-wide `pageWidth`.
+	 * Asset exports use it so a 390px phone frame and a 1440px desktop frame
+	 * keep their real proportions to each other instead of being normalised.
+	 */
+	pageWidth?: number;
 }
 
 /**
- * @param pageWidth Uniform page width in points; every page keeps its own
- * aspect ratio, so heights differ but the stack reads as one document.
+ * @param pageWidth Uniform page width in points for pages that do not carry
+ * their own; every page keeps its own aspect ratio, so heights differ but the
+ * stack reads as one document.
  */
 export function buildImagePdf(pages: PdfPageImage[], pageWidth: number): Uint8Array {
 	const encoder = new TextEncoder();
@@ -49,8 +56,9 @@ export function buildImagePdf(pages: PdfPageImage[], pageWidth: number): Uint8Ar
 	push(`<< /Type /Pages /Count ${pages.length} /Kids [${kids}] >>\nendobj\n`);
 
 	pages.forEach((page, index) => {
-		const height = page.width > 0 ? (pageWidth * page.height) / page.width : pageWidth;
-		const w = pageWidth.toFixed(2);
+		const width = page.pageWidth ?? pageWidth;
+		const height = page.width > 0 ? (width * page.height) / page.width : width;
+		const w = width.toFixed(2);
 		const h = height.toFixed(2);
 
 		startObject(objectId(index, 0));
