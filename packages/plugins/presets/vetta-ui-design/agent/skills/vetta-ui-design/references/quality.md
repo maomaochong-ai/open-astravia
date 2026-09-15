@@ -6,8 +6,9 @@ preset in SKILL.md adds emphasis, it does not replace this.
 - **Spacing** on one consistent scale (Tailwind's 4px steps). No `mt-[13px]`.
 - **Type**: at most 4 sizes per frame, with a visible weight/size gap between
   levels. If two levels look similar, merge them.
-- **Color**: theme tokens only, one accent used sparingly. Check text/background
-  contrast — light gray on white is the second most common failure.
+- **Color**: theme tokens only, one accent used sparingly, neutrals tinted toward
+  the anchor hue. Check text/background contrast — light gray on white is the
+  second most common failure. See `references/taste/color.md`.
 - **Corners, borders, shadows** consistent across the whole document.
 - **Real content**: plausible names, prices, dates, copy — never Lorem ipsum or
   `Item 1 / Item 2`. Write copy in the language the user is writing to you in,
@@ -80,6 +81,24 @@ you added last.
   content running past it.
 - Anything that renders as a raw placeholder: a broken image box, an empty list
   where content was expected, an unstyled control.
+
+**5. Generated-UI tells** — taste, but taste that users read as "AI made this"
+within a second. Look for each in the shot; the fixes are in
+`references/taste/anti-patterns.md`.
+
+- The scaffold palette still in place: indigo primary, slate surfaces and text,
+  amber accent.
+- Display and body in the same face; an italic headline or italic emphasis word.
+- Purple/blue gradient surfaces, gradient text, blurred blobs, decorative glass.
+- Card-in-card, side-stripe cards, colored glow shadows, every section boxed.
+- Three equal icon-over-title cards; four identical KPI tiles with sparklines.
+- Everything on one centre axis; every gap and padding the same size.
+- Emoji standing in for icons; more than one icon set.
+- An eyebrow label on every section, or beside its heading.
+- Numbers presented as product proof that the user never supplied; Jane Doe,
+  张三, Acme, Lorem ipsum.
+- A drawn browser bar, phone bezel or notch inside a frame.
+- The accent covering far more than a small share of the frame.
 
 Fix what you find and screenshot again. A frame is done when the image is
 clean, not when the code reads correctly.

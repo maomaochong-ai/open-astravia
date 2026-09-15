@@ -264,11 +264,11 @@ export function NavBar() {
 
 ## Workflow
 
-**New document**: pick the product type → `vetd_create` with it → start building.
-Do NOT offer the user a menu of styles: design systems are a thing the user
-opts into from the Design sidebar, not something you propose. Just design well
-for what they asked for, deriving the palette and type scale from the product
-itself.
+**New document**: pick the product type → `vetd_create` with it → set the
+direction → start building. Do NOT offer the user a menu of styles: design
+systems are a thing the user opts into from the Design sidebar, not something you
+propose. Just design well for what they asked for, deriving the palette and type
+scale from the product itself.
 
 If the **project root** has a `design-resources/<slug>/` directory, the user
 started this project from that style in the Design sidebar; it is the style
@@ -294,6 +294,27 @@ designing anything new.
 
 If `DESIGN.md` exists in the design document, the user has already applied a
 system — read it first and follow it, and do NOT rewrite it or `theme.css`.
+
+**Set the direction** when neither a pack nor `DESIGN.md` sets the style. Left to
+defaults, every design converges on the same thing — the scaffold's indigo and
+slate, one system sans at two sizes, centred cards, a three-column feature row —
+and users recognise it instantly as generated. Before the first frame:
+
+1. Read `references/taste/directions.md`, then the file for the product type:
+   `references/taste/landing-structures.md` for a landing page,
+   `references/taste/app-density.md` for app screens and dashboards.
+2. Decide tone, anchor hue, type pairing and structure, and state them in one
+   line of your reply — `Direction: technical · cobalt (256°) · Space Grotesk +
+   Geist · dense workbench`. The user redirects from that line; no menu.
+3. Rewrite every value in the scaffold `theme.css` with the direction's palette
+   (keep the token names), `vetd_install` the two faces, and import them at the
+   top of `theme.css` — all before the first frame, so no frame is ever built on
+   the placeholder palette.
+
+Read `references/taste/color.md`, `typography.md` and `copy.md` when a decision
+in them is in front of you, not up front. With a pack or `DESIGN.md` in charge,
+skip the direction and still screen every capture against
+`references/taste/anti-patterns.md` — no style asks for those.
 
 **Existing document**: `vetd_status` ONCE first. It returns the frame ids/sizes,
 `sharedShell` (existing `_layout.tsx` + `components/` — reuse them) and
@@ -415,8 +436,9 @@ using it — say so in your reply.
 
 **Done** means: every frame you touched is represented in the latest screenshot
 batch and its overview was Read, each current frame capture is free of the three
-screenshot defects, its per-frame `issues` came back empty (or a repeated false
-positive is explicitly reported as stalled), and no user note is left pending.
+screenshot defects and of the generated-UI tells in `references/quality.md` § 5,
+its per-frame `issues` came back empty (or a repeated false positive is
+explicitly reported as stalled), and no user note is left pending.
 
 That last one has a hard rule, because nothing outside this turn will catch a
 miss: **when you touched a `.vetd` design this turn, the final action — after the
@@ -492,3 +514,10 @@ Resolve against `$SKILL_DIR`. Do not read them all up front.
 | --- | --- |
 | `references/interaction.md` | Wiring clicks, `_layout.tsx`, cross-screen flows |
 | `references/quality.md` | Reviewing a screenshot; before declaring any frame done |
+| `references/taste/directions.md` | Before the first frame of a new design with no pack or `DESIGN.md` |
+| `references/taste/landing-structures.md` | Product type is a landing page |
+| `references/taste/app-density.md` | Product type is app screens or a dashboard |
+| `references/taste/color.md` | Building or changing the palette, chart or status colors |
+| `references/taste/typography.md` | Choosing faces, the type scale, CJK font stacks |
+| `references/taste/copy.md` | Writing headlines, labels, empty and error states |
+| `references/taste/anti-patterns.md` | A capture looks generic, or a tell from quality.md § 5 needs its fix |
