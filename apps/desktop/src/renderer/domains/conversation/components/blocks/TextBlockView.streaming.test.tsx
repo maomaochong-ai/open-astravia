@@ -4,19 +4,7 @@ import { TextBlockView } from "@vetta-org/theme-ui/chat";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const FULL_TEXT =
-	"The assistant streams this answer word by word so the reader never sees a whole paragraph jump onto the screen at once.";
-
-let frameQueue: FrameRequestCallback[] = [];
-let now = 0;
-
-function runFrame(stepMs = 32): void {
-	now += stepMs;
-	const callbacks = frameQueue;
-	frameQueue = [];
-	act(() => {
-		for (const callback of callbacks) callback(now);
-	});
-}
+	"As twilight falls, the city wakes up. Streetlights flicker on, shadows stretch across the pavement, and the air turns cool.";
 
 function renderView(text: string, isStreamingTail: boolean) {
 	const props = {
@@ -38,77 +26,76 @@ function shownText(container: HTMLElement): string {
 	return container.textContent ?? "";
 }
 
+function advance(ms: number): void {
+	act(() => {
+		vi.advanceTimersByTime(ms);
+	});
+}
+
 beforeEach(() => {
-	frameQueue = [];
-	now = 0;
 	vi.useFakeTimers();
-	vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
-		frameQueue.push(callback);
-		return frameQueue.length;
-	});
-	vi.stubGlobal("cancelAnimationFrame", () => {
-		frameQueue = [];
-	});
 });
 
 afterEach(() => {
 	vi.useRealTimers();
-	vi.unstubAllGlobals();
 });
 
 describe("TextBlockView streaming tail", () => {
-	it("reveals streamed text progressively across frames instead of in one batch", () => {
+	it("reveals streamed text one phrase at a time", () => {
 		const { container } = renderView(FULL_TEXT, true);
 		expect(shownText(container)).toBe("");
 
-		const lengths: number[] = [];
-		for (let frame = 0; frame < 200 && shownText(container) !== FULL_TEXT; frame++) {
-			runFrame();
-			lengths.push(shownText(container).length);
+		const snapshots: string[] = [];
+		for (let step = 0; step < 100 && shownText(container) !== FULL_TEXT; step++) {
+			advance(10);
+			const shown = shownText(container);
+			if (shown !== snapshots.at(-1)) snapshots.push(shown);
 		}
 
 		expect(shownText(container)).toBe(FULL_TEXT);
-		expect(lengths.length).toBeGreaterThan(5);
-		expect(Math.max(...lengths.slice(0, 3))).toBeLessThan(FULL_TEXT.length / 2);
-		for (let index = 1; index < lengths.length; index++) {
-			expect(lengths[index]).toBeGreaterThanOrEqual(lengths[index - 1] ?? 0);
-		}
+		expect(snapshots.slice(0, 3)).toEqual([
+			"As twilight falls,",
+			"As twilight falls, the city wakes up.",
+			"As twilight falls, the city wakes up. Streetlights flicker on,",
+		]);
 	});
 
-	it("wraps revealed words in fade segments while streaming", () => {
+	it("wraps revealed phrases in fade segments while streaming", () => {
 		const { container } = renderView(FULL_TEXT, true);
-		for (let frame = 0; frame < 40; frame++) runFrame();
+		advance(500);
 
 		const chunks = Array.from(container.querySelectorAll(".streaming-chunk"), (node) => node.textContent);
-		expect(chunks.length).toBeGreaterThan(1);
-		expect(chunks).toContain("assistant");
+		expect(chunks.slice(0, 2)).toEqual(["As twilight falls,", " the city wakes up."]);
 	});
 
-	it("keeps already shown text when the host appends more", () => {
-		const { container, rerender } = renderView("Hello there", true);
-		for (let frame = 0; frame < 40; frame++) runFrame();
-		expect(shownText(container)).toBe("Hello there");
+	it("holds back an unfinished tail until the phrase completes", () => {
+		const { container, rerender } = renderView("Hello there, gene", true);
+		advance(500);
+		expect(shownText(container)).toBe("Hello there,");
 
-		rerender("Hello there, general Kenobi", true);
-		expect(shownText(container)).toBe("Hello there");
-		runFrame();
-		expect(shownText(container).startsWith("Hello there")).toBe(true);
+		rerender("Hello there, general Kenobi. You are", true);
+		advance(500);
+		expect(shownText(container)).toBe("Hello there, general Kenobi.");
 	});
 
-	it("finishes the backlog after the tail ends, then drops the fade segments", () => {
+	it("releases a stalled unfinished tail instead of hiding it forever", () => {
+		const { container } = renderView("Hello there, gene", true);
+		advance(500);
+		expect(shownText(container)).toBe("Hello there,");
+
+		advance(1000);
+		expect(shownText(container)).toBe("Hello there, gene");
+	});
+
+	it("finishes the remaining phrases after the tail ends, then drops the fade segments", () => {
 		const { container, rerender } = renderView(FULL_TEXT, true);
-		runFrame();
-		rerender(FULL_TEXT, false);
-		expect(shownText(container).length).toBeLessThan(FULL_TEXT.length);
+		advance(1);
+		rerender(`${FULL_TEXT} The end`, false);
+		expect(shownText(container)).toBe("As twilight falls,");
 
-		for (let frame = 0; frame < 200 && shownText(container) !== FULL_TEXT; frame++) runFrame();
-		expect(shownText(container)).toBe(FULL_TEXT);
-
-		act(() => {
-			vi.runAllTimers();
-		});
+		advance(3000);
+		expect(shownText(container)).toBe(`${FULL_TEXT} The end`);
 		expect(container.querySelector(".streaming-chunk")).toBeNull();
-		expect(shownText(container)).toBe(FULL_TEXT);
 	});
 
 	it("renders non-streaming text immediately without fade segments", () => {

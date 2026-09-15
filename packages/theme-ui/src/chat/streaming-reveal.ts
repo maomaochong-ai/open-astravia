@@ -1,55 +1,116 @@
 /**
- * 流式文本的「打字机 + 逐词淡入」节奏。
+ * 流式文本的「逐短语淡入」节奏（参照 Gemini 网页端的实测行为）。
  *
- * 宿主送来的 delta 是一阵一阵的；直接上屏或攒批上屏都会让整段文字成块地跳出来。
- * 这里把「已显示长度」按帧追赶「目标长度」：积压越多追得越快，积压很少时保持最低速度，
- * 这样既不会远远落后于模型输出，也不会一次倒出一大段。
+ * - 显示单位是短语：在标点、换行处断开，过长的无标点片段按上限切开。
+ * - 只显示已经写完的短语：尾部未完成的片段先藏着，避免已上屏的片段里再「长出」没有动画的字。
+ * - 一次放出一个短语，积压越多间隔越短，快追平时逐渐放慢，结尾自然收住。
+ * - 每个短语淡入时长远大于放出间隔，多个短语同时处在不同淡入进度，形成柔和的波。
  */
 
-/** 积压很少时的最低揭示速度，保证尾巴能稳定写完。 */
-const MIN_CHARS_PER_SECOND = 45;
-/** 任意积压都大约在这段时间内被追平（按帧指数收敛）。 */
-const CATCH_UP_MS = 350;
-/** 每帧重解析 Markdown 的最小间隔；~30fps 足够顺滑，也给长消息留出主线程余量。 */
-export const STREAMING_FRAME_INTERVAL_MS = 32;
-/** 与 `.streaming-chunk` 的 CSS 淡入时长一致：追平后等最后一批淡完再撤掉分段 span。 */
-export const STREAMING_SETTLE_MS = 280;
+/** 积压很多时的最短放出间隔（≈3 帧）。 */
+const MIN_REVEAL_INTERVAL_MS = 50;
+/** 积压见底时的最长放出间隔。 */
+const MAX_REVEAL_INTERVAL_MS = 300;
+/** 间隔 ≈ 该值 / (剩余短语数 + 1)，剩余 1→200ms、3→100ms、7→50ms。 */
+const REVEAL_INTERVAL_SCALE_MS = 400;
+/** 积压超过这么多短语时一次放出多个，避免长积压（如切回正在流式的会话）拖成几十秒。 */
+const MAX_QUEUED_PHRASES = 12;
+/** 规划时最多向后数这么多个短语，只用于决定节奏，数多了没有意义。 */
+const PLAN_LOOKAHEAD_PHRASES = 64;
+/** 无标点长片段的切分上限（UTF-16 code units）。 */
+const MAX_PHRASE_LENGTH = 48;
+/** 按上限切分时，优先在这个长度之后的最后一个空白处断开。 */
+const MIN_SOFT_BREAK_LENGTH = 16;
 
-/** 返回下一帧应显示到的位置（不会切开 UTF-16 代理对）。 */
-export function nextRevealEnd(text: string, revealed: number, elapsedMs: number): number {
-	const backlog = text.length - revealed;
-	if (backlog <= 0) return text.length;
-	const rate = Math.max(MIN_CHARS_PER_SECOND, (backlog * 1000) / CATCH_UP_MS);
-	const step = Math.max(1, Math.round((rate * Math.max(0, elapsedMs)) / 1000));
-	return snapToCodePoint(text, Math.min(text.length, revealed + step));
-}
+/** 淡入时长，与 `.streaming-chunk` 的 CSS 保持一致。 */
+const STREAMING_FADE_MS = 400;
+/** 最后一个短语放出后，等淡入播完再撤掉分段 span。 */
+export const STREAMING_SETTLE_MS = STREAMING_FADE_MS + 50;
+/** 尾部未完成片段超过这么久没有新内容，就不再等标点，直接放出，避免模型停顿时文字「卡住」。 */
+export const STREAMING_STALL_FLUSH_MS = 800;
 
-function snapToCodePoint(text: string, end: number): number {
-	if (end <= 0 || end >= text.length) return end;
-	const previous = text.charCodeAt(end - 1);
-	const next = text.charCodeAt(end);
-	return previous >= 0xd800 && previous <= 0xdbff && next >= 0xdc00 && next <= 0xdfff ? end + 1 : end;
-}
+const CJK_BREAK = new Set(["，", "。", "；", "：", "！", "？", "、", "…"]);
+const CJK_TRAILING = new Set(["，", "。", "；", "：", "！", "？", "、", "…", "”", "’", "）", "」", "』", "》", "】"]);
+const LATIN_BREAK = new Set([",", ".", ";", ":", "!", "?"]);
+const WHITESPACE = /\s/;
 
-let wordSegmenter: Intl.Segmenter | null | undefined;
-
-function getWordSegmenter(): Intl.Segmenter | null {
-	if (wordSegmenter === undefined) {
-		try {
-			wordSegmenter = new Intl.Segmenter(undefined, { granularity: "word" });
-		} catch {
-			wordSegmenter = null;
-		}
-	}
-	return wordSegmenter;
+function isHighSurrogate(code: number): boolean {
+	return code >= 0xd800 && code <= 0xdbff;
 }
 
 /**
- * 把一段文本切成可逐个淡入的片段：英文按词、中文按词组、标点与空白各自独立。
- * 拼接结果恒等于输入。
+ * 从 `from` 开始的下一个短语的结束位置；尾部还没写完时返回 null。
+ * `final` 表示文本不会再增长，此时末尾剩余内容也算一个完整短语。
  */
+export function nextPhraseEnd(text: string, from: number, final: boolean): number | null {
+	const length = text.length;
+	if (from >= length) return null;
+
+	for (let index = from; index < length; index++) {
+		const char = text[index] as string;
+		if (char === "\n") return index + 1;
+
+		if (CJK_BREAK.has(char)) {
+			let end = index + 1;
+			while (end < length && CJK_TRAILING.has(text[end] as string)) end++;
+			return end;
+		}
+
+		// 英文标点只有后面跟着空白才算断句：`3.14`、`e.g.x`、URL 里的点都不断开；
+		// 标点正好在末尾时还不知道后面是什么，先当作未完成。
+		if (LATIN_BREAK.has(char)) {
+			if (index + 1 < length) {
+				if (WHITESPACE.test(text[index + 1] as string)) return index + 1;
+			} else if (!final) {
+				return null;
+			}
+		}
+
+		if (index + 1 - from >= MAX_PHRASE_LENGTH) {
+			for (let back = index; back >= from + MIN_SOFT_BREAK_LENGTH; back--) {
+				if (WHITESPACE.test(text[back] as string)) return back;
+			}
+			return isHighSurrogate(text.charCodeAt(index)) ? index + 2 : index + 1;
+		}
+	}
+
+	return final ? length : null;
+}
+
+/** 把一段文本切成可逐个淡入的短语；拼接结果恒等于输入，文本末尾总是结束最后一个短语。 */
 export function splitStreamingSegments(value: string): string[] {
-	const segmenter = getWordSegmenter();
-	if (segmenter) return Array.from(segmenter.segment(value), (part) => part.segment);
-	return value.split(/(\s+)/).filter(Boolean);
+	const segments: string[] = [];
+	for (let start = 0; start < value.length; ) {
+		const end = nextPhraseEnd(value, start, true) ?? value.length;
+		segments.push(value.slice(start, end));
+		start = end;
+	}
+	return segments;
+}
+
+export interface RevealStep {
+	/** 本次应显示到的位置。 */
+	end: number;
+	/** 距离下一次放出至少要等待的时间。 */
+	delayMs: number;
+}
+
+/** 规划下一次放出；没有完整短语可放时返回 null。 */
+export function planReveal(text: string, revealed: number, final: boolean): RevealStep | null {
+	const ends: number[] = [];
+	for (let cursor = revealed; ends.length < PLAN_LOOKAHEAD_PHRASES; ) {
+		const end = nextPhraseEnd(text, cursor, final);
+		if (end === null) break;
+		ends.push(end);
+		cursor = end;
+	}
+	if (ends.length === 0) return null;
+
+	const step = Math.max(1, Math.ceil(ends.length / MAX_QUEUED_PHRASES));
+	const remaining = ends.length - step;
+	const delayMs = Math.min(
+		MAX_REVEAL_INTERVAL_MS,
+		Math.max(MIN_REVEAL_INTERVAL_MS, Math.round(REVEAL_INTERVAL_SCALE_MS / (remaining + 1))),
+	);
+	return { end: ends[step - 1] as number, delayMs };
 }
