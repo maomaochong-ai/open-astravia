@@ -57,13 +57,36 @@ function sessionKeyOf(port: number, slot: number | null): string {
 }
 
 /**
- * 复用离屏窗口前先清掉上一帧的完成标记。
+ * 复用离屏窗口前先清掉上一帧的完成标记，再等这一帧重新画出来。
  *
- * 否则连续截同一个 frame 时 readyExpression 会立刻命中旧值，截图可能发生在本轮
- * React 更新和字体绘制之前，让“刚改完又截了一张”实际拿到旧画面。
+ * 不清的话连续截同一个 frame 时 readyExpression 会立刻命中旧值，截图可能发生在本轮
+ * React 更新、字体绘制或视口改尺寸后的重排之前，让「刚改完又截了一张」拿到旧画面。
+ *
+ * 但清完之后谁来写回，要看窗口此刻显示的是不是这一帧：
+ * - 别的帧：发 show-frame，引擎切路由、提交后由 FramePainted 写回；
+ * - 已经是这一帧：切到同一路径时路由元素引用不变，React 直接跳过渲染，FramePainted
+ *   不会再跑——只清不写就是死等，只能耗满宿主超时、销毁窗口、重开整页才截得到。
+ *   完整内容截图每帧都要连着截同一帧两次（先量高度再按内容高度截），曾因此每帧
+ *   白等一整个超时。这时脚本照 FramePainted 的顺序（一帧 → 字体 → 一帧）自己写回。
  */
 export function framePrepareScript(frameId: string): string {
-	return `window.__vetdPainted = null; window.postMessage({ vetd: true, type: "show-frame", id: ${JSON.stringify(frameId)} }, "*")`;
+	const id = JSON.stringify(frameId);
+	return `(() => {
+	var ID = ${id};
+	if (window.__vetdPainted === ID) {
+		window.__vetdPainted = null;
+		requestAnimationFrame(function () {
+			document.fonts.ready.then(function () {
+				requestAnimationFrame(function () {
+					if (window.__vetdPainted === null) window.__vetdPainted = ID;
+				});
+			});
+		});
+		return;
+	}
+	window.__vetdPainted = null;
+	window.postMessage({ vetd: true, type: "show-frame", id: ID }, "*");
+})()`;
 }
 
 /** localhost 预览进程已经不在；与页面构建失败、截图超时等可恢复的单帧错误区分。 */

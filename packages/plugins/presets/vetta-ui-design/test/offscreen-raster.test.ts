@@ -4,7 +4,7 @@ import { framePrepareScript, isOffscreenServerUnavailable } from "../src/canvas/
 it("invalidates the previous paint marker before requesting a reused frame", () => {
 	const script = framePrepareScript('detail"quoted');
 	expect(script.indexOf("window.__vetdPainted = null")).toBeLessThan(script.indexOf("window.postMessage"));
-	expect(script).toContain('id: "detail\\\"quoted"');
+	expect(script).toContain('var ID = "detail\\\"quoted"');
 });
 
 it("recognizes localhost preview server connection failures", () => {
