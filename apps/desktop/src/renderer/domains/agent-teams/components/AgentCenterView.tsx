@@ -160,7 +160,7 @@ export function AgentCenterView({
 											selected={model.selectedTeam?.id === team.id}
 											onSelect={() => selectTeamCard(team)}
 											onOpenChat={() => onOpenTeamChat(team.id)}
-											{...(assembling ? {} : { onRecruit: () => actions.startEditTeam(team) })}
+											{...(assembling || team.source ? {} : { onRecruit: () => actions.startEditTeam(team) })}
 											onOpenSettings={() => onOpenTeamSettings(team.id)}
 											{...(team.source ? {} : { onDelete: () => onDeleteTeam(team.id) })}
 										/>

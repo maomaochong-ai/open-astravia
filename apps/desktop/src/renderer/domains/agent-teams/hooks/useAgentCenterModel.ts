@@ -37,7 +37,8 @@ export function useAgentCenterModel(copy: AgentLibraryCopy) {
 
 	const startEditTeam = useCallback((team: TeamDefinition) => {
 		setSelectedTeamId(team.id);
-		setAssembly(assemblyDraftFromTeam(team));
+		// 提供方 1:1 维护的团队只选中、不进组队态：阵容由清单说了算，拉拢/移出保存时一定会被拒。
+		setAssembly(team.source ? undefined : assemblyDraftFromTeam(team));
 	}, []);
 
 	const cancelAssembly = useCallback(() => setAssembly(undefined), []);

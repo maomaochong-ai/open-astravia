@@ -160,6 +160,16 @@ describe("AgentCenterView", () => {
 		expect(model.actions.startEditTeam).toHaveBeenCalledWith(expect.objectContaining({ id: "squad" }));
 	});
 
+	it("offers no recruit or delete on a selected plugin team", () => {
+		const teams = [{ ...team("preset"), source: { kind: "plugin", pluginId: "preset-agent" } }];
+		renderView(buildModel({ teams, selectedTeam: teams[0] } as Partial<AgentCenterModel>));
+
+		// 预设团队由插件 1:1 维护：只剩设置（只读查看），不给拉拢与删除入口。
+		expect(screen.getByRole("button", { name: "center.teamSettings" })).toBeDefined();
+		expect(screen.queryByRole("button", { name: "center.recruit" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "center.deleteTeam" })).toBeNull();
+	});
+
 	it("hides the card actions until the team is selected", () => {
 		const teams = [team("squad")];
 		renderView(buildModel({ teams } as Partial<AgentCenterModel>));
