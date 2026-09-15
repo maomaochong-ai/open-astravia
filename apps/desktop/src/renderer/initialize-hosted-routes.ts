@@ -1,5 +1,7 @@
 import type { Disposable, HostedRouteRef } from "@vetta-org/capability-sdk";
+import { getDefaultStore } from "jotai";
 import { PLUGIN_RENDERER_ROUTE_NAMESPACE } from "./domains/plugins/runtime/plugin-hosted-route-capability.js";
+import { findWorkspaceView, workspaceViewRef } from "./domains/plugins/runtime/workspace-view-registry.js";
 import { router } from "./router.js";
 import { rendererCapabilityHost } from "./shared/capabilities/renderer-capability-host.js";
 import { registerHostedRouteCapabilityProvider } from "./shared/hosted-routes/hosted-route-capability-provider.js";
@@ -15,6 +17,7 @@ import {
 	desktopHostedRouteService,
 	type HostedRouteNamespaceAdapter,
 } from "./shared/hosted-routes/hosted-route-service.js";
+import { pluginWorkspaceViewsAtom } from "./shared/store/atoms.js";
 import { THEME_RENDERER_ROUTE_NAMESPACE } from "./shared/theme/pages/theme-hosted-route-capability.js";
 
 let registrations: readonly Disposable[] | undefined;
@@ -23,6 +26,15 @@ function createPluginRouterAdapter(): HostedRouteNamespaceAdapter {
 	return {
 		path: pluginHostedRoutePath,
 		open: async (route: HostedRouteRef) => {
+			const view = findWorkspaceView(getDefaultStore().get(pluginWorkspaceViewsAtom), route.ownerId, route.pageId);
+			if (view?.sidebar === false) {
+				await router.navigate({
+					to: "/settings/$tab",
+					params: { tab: "extensions" },
+					search: { view: workspaceViewRef(route.ownerId, route.pageId) },
+				});
+				return;
+			}
 			const target = pluginHostedRouteNavigationTarget(route);
 			await router.navigate({ to: PLUGIN_HOSTED_ROUTE_PATH, params: target.params });
 		},
