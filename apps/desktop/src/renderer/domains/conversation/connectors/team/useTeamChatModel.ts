@@ -683,7 +683,7 @@ export function useTeamChatModel(
 			let activeSessionId = session?.id;
 			try {
 				if (activeHandoff) await waitForCommittedPaint();
-				const loaded = session
+				let loaded = session
 					? undefined
 					: activeHandoff
 						? await createReservedTeamChatSession({
@@ -694,6 +694,16 @@ export function useTeamChatModel(
 								...(activeHandoff.workspace ? { workspace: activeHandoff.workspace } : {}),
 							})
 						: await (sessionCreationRef.current ?? createTeamChatSession(teamId, document, sessions));
+				// 新会话页的模型选择只随 handoff 传过来，不写全局偏好。必须在快照提交前把它
+				// 落进会话：否则“未配置会话取全局默认”的兜底会写入可能已失效的全局模型，而
+				// 委派任务不带 modelKey、只认 session.modelSettings。
+				if (activeHandoff?.modelKey && loaded && !loaded.snapshot.session.modelSettings) {
+					const snapshot = await window.vetta.agentTeams.updateModelSettings(loaded.snapshot.session.id, {
+						modelKey: activeHandoff.modelKey,
+						...(activeHandoff.reasoning ? { reasoning: activeHandoff.reasoning } : {}),
+					});
+					loaded = { ...loaded, snapshot };
+				}
 				const readySession = session ?? loaded?.snapshot.session;
 				if (!readySession) throw new Error("Team session is still preparing");
 				activeSessionId = readySession.id;

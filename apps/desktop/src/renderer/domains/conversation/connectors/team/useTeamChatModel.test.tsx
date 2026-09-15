@@ -783,6 +783,43 @@ describe("useTeamChatModel streaming flow", () => {
 		expect(takeTeamSessionHandoff(baseSession.id)).toBeUndefined();
 	});
 
+	it("persists the new-session composer model instead of the global default so delegated tasks inherit it", async () => {
+		const store = createStore();
+		store.set(selectedModelAtom, "vetta-go/stale-global");
+		const wrapper = ({ children }: { children: ReactNode }) => <Provider store={store}>{children}</Provider>;
+		// 真实后端的 send 快照带着已持久化的 modelSettings。
+		vi.mocked(window.vetta.agentTeams.updateModelSettings).mockImplementation(async (_id, settings) => {
+			const configured = { ...baseSnapshot, session: { ...baseSession, modelSettings: settings } };
+			vi.mocked(window.vetta.agentTeams.sendMessage).mockResolvedValue(configured);
+			return configured;
+		});
+		stageTeamSessionHandoff({
+			sessionId: baseSession.id,
+			document,
+			requestId: "handoff-model-request",
+			text: "delegate this",
+			memberMentions: [],
+			attachments: [],
+			timestamp: 10,
+			modelKey: "cli-proxy-api.google/gemini-flash",
+			reasoning: "medium",
+			executionMode: "full-access",
+		});
+
+		renderHook(() => useTeamChatModel(team.id, baseSession.id), { wrapper });
+
+		await waitFor(() => expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalled());
+		await act(async () => undefined);
+		expect(window.vetta.agentTeams.updateModelSettings).toHaveBeenCalledWith(baseSession.id, {
+			modelKey: "cli-proxy-api.google/gemini-flash",
+			reasoning: "medium",
+		});
+		expect(window.vetta.agentTeams.updateModelSettings).not.toHaveBeenCalledWith(
+			baseSession.id,
+			expect.objectContaining({ modelKey: "vetta-go/stale-global" }),
+		);
+	});
+
 	it("keeps the submitted turn through StrictMode replay and empty setup snapshots until the send settles", async () => {
 		let resolveCreation: ((value: Awaited<ReturnType<typeof createReservedTeamChatSession>>) => void) | undefined;
 		vi.mocked(createReservedTeamChatSession).mockReturnValue(
