@@ -102,15 +102,30 @@ describe("NewSessionContextBlock", () => {
 			/>,
 		);
 		const section = () => view.container.querySelector<HTMLElement>('[data-new-session-context="true"]')!;
-		expect(section().className).toContain("max-w-2xl");
+		const body = () => view.container.querySelector<HTMLElement>('[data-new-session-context-body="true"]')!;
+		expect(body().className).toContain("max-w-2xl");
 
 		// 排在后面的 `wide` 贡献被选中时要铺开，不能被第一个的 `input` 宽度压回去。
 		await user.click(screen.getByRole("tab", { name: "二" }));
 		expect(section().dataset.width).toBe("wide");
-		expect(section().className).not.toContain("max-w-2xl");
+		expect(body().className).not.toContain("max-w-2xl");
 
 		await user.click(screen.getByRole("tab", { name: "一" }));
-		expect(section().className).toContain("max-w-2xl");
+		expect(body().className).toContain("max-w-2xl");
+	});
+
+	it("pins the tabbar to the input width while a wide contribution is selected", async () => {
+		const user = userEvent.setup();
+		render(
+			<NewSessionContextBlock
+				contexts={[active("a:one", "一", "input"), active("b:two", "二", "wide")]}
+				renderContext={renderContext}
+			/>,
+		);
+
+		// tab 栏是输入框的附属控件：内容铺开时它仍留在输入框左下方，不跟着跑到页面边上。
+		await user.click(screen.getByRole("tab", { name: "二" }));
+		expect(screen.getByRole("tablist").className).toContain("max-w-2xl");
 	});
 
 	it("yields the area while the command panel is open", () => {
