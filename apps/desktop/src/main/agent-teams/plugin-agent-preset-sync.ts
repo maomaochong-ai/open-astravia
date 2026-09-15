@@ -1,6 +1,9 @@
+import { pluginBlueprintId } from "@vetta/agent-team";
+import type { InstalledPlugin } from "../../preload/api-types/plugins.js";
 import { getAppLogger } from "../logger.js";
 import { listPlugins, onPluginsChanged } from "../plugins/plugin-catalog.js";
 import { agentBlueprintRegistry } from "./agent-blueprint-registry.js";
+import { type PluginPresetDeclarations, pluginTeamId } from "./plugin-agent-preset-reconcile.js";
 import { buildPluginAgentPresets } from "./plugin-agent-presets.js";
 
 const log = getAppLogger("agent-teams");
@@ -16,6 +19,7 @@ export function refreshPluginAgentPresets(): void {
 			agents,
 			teams,
 			plugins.filter((plugin) => plugin.enabled).map((plugin) => plugin.id),
+			collectPluginPresetDeclarations(plugins),
 		);
 		log.debug?.("plugin agent presets refreshed", { agents: agents.length, teams: teams.length });
 	} catch (error) {
@@ -24,6 +28,28 @@ export function refreshPluginAgentPresets(): void {
 			error: error instanceof Error ? error.message : String(error),
 		});
 	}
+}
+
+/**
+ * 收齐**已安装**插件声明过的预设标识——禁用的也算。
+ *
+ * 这是清理残骸唯一的判据：清单里不再声明的团队才该消失，用户临时禁用插件不该让它的资产被当成
+ * 残骸清掉。历史 id 一并收进来，否则被接管过的存量资源会在下一次同步里被误判。
+ */
+export function collectPluginPresetDeclarations(plugins: readonly InstalledPlugin[]): PluginPresetDeclarations {
+	const agentBlueprintIds = new Set<string>();
+	const teamIds = new Set<string>();
+	for (const plugin of plugins) {
+		for (const agent of plugin.agent?.agents ?? []) {
+			agentBlueprintIds.add(pluginBlueprintId(plugin.id, agent.id));
+			for (const legacy of agent.legacyIds ?? []) agentBlueprintIds.add(legacy);
+		}
+		for (const team of plugin.agent?.teams ?? []) {
+			teamIds.add(pluginTeamId(plugin.id, team.id));
+			for (const legacy of team.legacyIds ?? []) teamIds.add(legacy);
+		}
+	}
+	return { agentBlueprintIds, teamIds };
 }
 
 /**

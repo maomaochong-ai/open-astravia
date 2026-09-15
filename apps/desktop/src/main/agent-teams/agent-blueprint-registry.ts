@@ -1,4 +1,5 @@
 import type { AgentBlueprint } from "@vetta/agent-team";
+import type { PluginPresetDeclarations } from "./plugin-agent-preset-reconcile.js";
 import type { PluginAgentPreset, PluginTeamPreset } from "./plugin-agent-presets.js";
 
 /**
@@ -14,16 +15,19 @@ class AgentBlueprintRegistry {
 	private byId: ReadonlyMap<string, AgentBlueprint> = new Map();
 	private byLegacyId: ReadonlyMap<string, AgentBlueprint> = new Map();
 	private enabledPlugins: readonly string[] = [];
+	private declarations: PluginPresetDeclarations | undefined;
 
 	/** 插件集合变化时整体替换：增量维护容易漏掉禁用/卸载，代价却只是重建一张小表。 */
 	replacePluginPresets(
 		agents: readonly PluginAgentPreset[],
 		teams: readonly PluginTeamPreset[],
 		enabledPlugins: readonly string[] = [],
+		declarations?: PluginPresetDeclarations,
 	): void {
 		this.pluginAgents = agents;
 		this.pluginTeams = teams;
 		this.enabledPlugins = enabledPlugins;
+		this.declarations = declarations;
 		this.byId = new Map(agents.map((preset) => [preset.blueprint.id, preset.blueprint]));
 		this.byLegacyId = new Map(
 			agents.flatMap((preset) => preset.legacyBlueprintIds.map((legacy) => [legacy, preset.blueprint] as const)),
@@ -60,6 +64,17 @@ class AgentBlueprintRegistry {
 
 	listPluginTeams(): readonly PluginTeamPreset[] {
 		return this.pluginTeams;
+	}
+
+	/**
+	 * 已安装插件（含禁用）声明过的预设标识；没有登记过时返回 undefined。
+	 *
+	 * 与 {@link listPluginAgents} 分开是因为两者回答的问题不同：那边是「现在解析得出谁」，
+	 * 这边是「还有没有插件声明过它」。清理残骸只能问后者，否则禁用一个插件就等于把它的资产
+	 * 判成残骸清掉。缺省时由调用方按「当前这批预设就是全部声明」兜底。
+	 */
+	listPluginPresetDeclarations(): PluginPresetDeclarations | undefined {
+		return this.declarations;
 	}
 }
 

@@ -24,7 +24,7 @@ import {
 	migrateAgentTeamStorage,
 	teamDefinitionPath,
 } from "./agent-team-storage-layout.js";
-import { backfillPluginAgentPresets } from "./plugin-agent-preset-backfill.js";
+import { reconcilePluginAgentPresets } from "./plugin-agent-preset-reconcile.js";
 import { dropRetiredHostPresets } from "./retired-host-presets.js";
 
 const log = getAppLogger("agent-teams");
@@ -94,25 +94,26 @@ class DirectoryAgentTeamRepository implements AgentTeamFileRepository {
 	}
 
 	/**
-	 * 把当前可用的扩展预设补进配置，并清掉宿主留下的装机残骸。
+	 * 把配置里属于扩展的那一部分对齐到清单此刻的样子，并清掉宿主留下的装机残骸。
 	 *
 	 * 宿主不带装机资源：用户第一次打开时看到的智能体与团队全部来自这一步。放在解析之后而不是
 	 * 索引层，是因为预设是现造的，走完整的 parse + write 才能保证它们和用户自建的资源满足同一
 	 * 套不变量。
 	 *
-	 * 清理排在回填之后：被扩展接管的角色那时才盖上提供方的戳，据此才放得过它们。
+	 * 清理排在对齐之后：被扩展接管的角色那时才盖上提供方的戳，据此才放得过它们。
 	 */
 	private async installPresets(document: AgentTeamDocument, index: AgentTeamStorageIndex): Promise<AgentTeamDocument> {
-		const backfilled = backfillPluginAgentPresets({
+		const reconciled = reconcilePluginAgentPresets({
 			document,
 			agents: agentBlueprintRegistry.listPluginAgents(),
 			teams: agentBlueprintRegistry.listPluginTeams(),
+			declarations: agentBlueprintRegistry.listPluginPresetDeclarations(),
 		});
-		const retired = index.hostPresetsRetired ? undefined : dropRetiredHostPresets(backfilled?.document ?? document);
-		if (!backfilled && !retired && index.hostPresetsRetired) return document;
+		const retired = index.hostPresetsRetired ? undefined : dropRetiredHostPresets(reconciled?.document ?? document);
+		if (!reconciled && !retired && index.hostPresetsRetired) return document;
 
 		this.storageIndex = { ...index, hostPresetsRetired: true };
-		const next = retired ?? backfilled?.document;
+		const next = retired ?? reconciled?.document;
 		if (!next) {
 			// 只需要记下「清理过了」这一笔，文档本身没变。
 			await atomicWriteJSONAsync(join(this.root, INDEX_FILE), this.storageIndex);
@@ -121,8 +122,10 @@ class DirectoryAgentTeamRepository implements AgentTeamFileRepository {
 		const parsed = parseAgentTeamDocument(next, this.extensions);
 		await this.write(parsed);
 		log.info("agent presets installed", {
-			agents: backfilled?.installedAgentIds.length ?? 0,
-			teams: backfilled?.installedTeamIds.length ?? 0,
+			agents: reconciled?.installedAgentIds.length ?? 0,
+			teams: reconciled?.installedTeamIds.length ?? 0,
+			removedAgents: reconciled?.removedAgentIds.length ?? 0,
+			removedTeams: reconciled?.removedTeamIds.length ?? 0,
 			retiredHostPresets: retired !== undefined,
 		});
 		return parsed;
