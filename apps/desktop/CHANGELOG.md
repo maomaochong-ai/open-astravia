@@ -40,6 +40,8 @@
 
 ### Fixed
 
+- 插件重载或停用时会先在 Renderer 边界终止旧 activation 的受管服务调用，迟到的状态轮询不再使用已撤销的 capability session 反复触发主进程错误。
+
 - 修复 JSK 等隐藏侧栏的插件设置入口跳出设置页面的问题；程序化打开此类页面现在进入「设置 → 更多选项」并选中对应页面。
 
 - 能力中心与 Skill 选择入口现在统一读取已安装包的呈现声明：插件可从 `ability.json` 补齐图标，插件 Skill 可继承 Provider 图标，普通全局 Skill 也可通过 namespaced metadata 声明包内图标；离线时不再因市场目录不可用而丢失或替换本地图标。
