@@ -318,22 +318,13 @@ export class TeamMemberAttemptRunner {
 				// calls) in the member conversation. Publish that durable partial before
 				// discarding the live stream, otherwise stopping makes the Team timeline
 				// irreversibly lose what the leader/member had already produced.
-				const cancelledHistory = this.options.runtime().getFullHistory(runtimeState.sessionId);
-				const cancelledResult = findTeamAttemptResult(cancelledHistory, previousEntryIds);
-				const cancelledAssistant = cancelledResult?.message;
-				const publicCancelled = cancelledAssistant
-					? publicAttemptAssistantMessage(cancelledHistory, previousEntryIds, cancelledAssistant)
-					: undefined;
-				if (cancelledResult && publicCancelled && hasPublicAssistantContent(publicCancelled)) {
-					cancelledResultMessageId = await this.options.publicationWorkflow.publishCancelledAttempt({
-						session: configuredSession,
-						item: collaboration.workItem,
-						attempt: collaboration.attempt,
-						sourceTurnId,
-						sourceMessageEntryId: cancelledResult.entryId,
-						assistant: publicCancelled,
-					});
-				}
+				cancelledResultMessageId = await this.publishPartialAttempt(
+					configuredSession,
+					collaboration,
+					runtimeState.sessionId,
+					previousEntryIds,
+					sourceTurnId,
+				);
 			}
 			const terminal = classifyTeamAttemptTerminal({
 				hasPublishableMessage: false,
@@ -478,6 +469,29 @@ export class TeamMemberAttemptRunner {
 			sharedContextCount: preparedContext.count,
 		});
 		return next;
+	}
+
+	/** Publishes whatever public content an unfinished attempt left in its member conversation. */
+	private async publishPartialAttempt(
+		session: TeamSessionDocument,
+		collaboration: { readonly workItem: TeamWorkItem; readonly attempt: TeamMemberTurnAttempt },
+		runtimeSessionId: string,
+		previousEntryIds: ReadonlySet<string>,
+		sourceTurnId: string,
+	): Promise<string | undefined> {
+		const history = this.options.runtime().getFullHistory(runtimeSessionId);
+		const result = findTeamAttemptResult(history, previousEntryIds);
+		if (!result) return undefined;
+		const assistant = publicAttemptAssistantMessage(history, previousEntryIds, result.message);
+		if (!hasPublicAssistantContent(assistant)) return undefined;
+		return this.options.publicationWorkflow.publishPartialAttempt({
+			session,
+			item: collaboration.workItem,
+			attempt: collaboration.attempt,
+			sourceTurnId,
+			sourceMessageEntryId: result.entryId,
+			assistant,
+		});
 	}
 
 	private isCancelled(session: TeamSessionDocument, workItemId: string, signal?: AbortSignal): boolean {

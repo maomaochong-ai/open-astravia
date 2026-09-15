@@ -35,11 +35,11 @@ export class TeamPublicationWorkflow {
 	constructor(private readonly options: TeamPublicationWorkflowOptions) {}
 
 	/**
-	 * Publishes the visible portion of an attempt that was cancelled by the user.
-	 * The work item is deliberately not completed here; the caller settles it as
-	 * cancelled after the message and its publication receipt are durable.
+	 * Publishes the visible portion of an attempt that ended without a final result.
+	 * The work item is deliberately not completed here; the caller settles it with
+	 * the attempt's terminal state after the message and its receipt are durable.
 	 */
-	async publishCancelledAttempt(input: {
+	async publishPartialAttempt(input: {
 		readonly session: TeamSessionDocument;
 		readonly item: TeamWorkItem;
 		readonly attempt: TeamMemberTurnAttempt;
@@ -190,7 +190,7 @@ export class TeamPublicationWorkflow {
 				continue;
 			}
 			if (item.state === "cancelled" || attempt.state === "cancelled") {
-				await this.publishCancelledAttempt({
+				await this.publishPartialAttempt({
 					session,
 					item,
 					attempt,
