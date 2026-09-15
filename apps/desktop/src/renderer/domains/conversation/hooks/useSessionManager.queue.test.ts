@@ -51,9 +51,10 @@ vi.mock("../services/context-composition-cache", () => ({
 }));
 
 interface SessionManagerProbe {
-	sendMessage(): Promise<
-		{ status: "sent" | "queued" | "failed"; error?: { message: string }; queueItemId?: string } | undefined
-	>;
+	sendMessage(
+		overrideText?: string,
+		options?: { stagedInput?: import("@shared/store/atoms").StagedSendInput },
+	): Promise<{ status: "sent" | "queued" | "failed"; error?: { message: string }; queueItemId?: string } | undefined>;
 	openSession(
 		cwd: string,
 		sessionPath?: string,
@@ -204,6 +205,50 @@ it("新会话在订阅建立后立即发送，不等待空历史与状态水合"
 	expect(store.get(chatMessagesAtom).some((message) => message.kind === "user" && message.text === "立即发送")).toBe(
 		true,
 	);
+});
+
+it("新会话首条消息的 prompt 被主进程拒绝时退出流式态，停止按钮不再卡住", { timeout: 30_000 }, async () => {
+	const sessionApi = (window as unknown as { vetta: { session: Record<string, unknown> } }).vetta.session;
+	sessionApi.create = vi.fn(async () => ({ cwd, sessionId: runtimeId, sessionPath }));
+	sessionApi.getSessionPath = vi.fn(async () => sessionPath);
+	sessionApi.getState = vi.fn(async () => ({
+		activeToolNames: [],
+		contextPercent: null,
+		contextWindow: 128_000,
+		executionMode: "sandbox",
+		isStreaming: false,
+		messageCount: 0,
+		model: null,
+		scenario: "project",
+	}));
+	sessionApi.updateSettings = vi.fn(async () => undefined);
+	// 模型不在目录里时 RuntimeHost.prompt 同步抛错，IPC 以 reject 返回，不会有 turn 开始。
+	mocks.prompt.mockImplementation(async () => {
+		throw new Error(
+			"Error invoking remote method 'vetta:session:prompt': AIError: Model vetta-go/gone is not available",
+		);
+	});
+	const store = await mount("发不出去", false);
+	const { activeSessionStreamingAtom } = await import("@shared/store/atoms");
+	// 与 useNewSessionSend 一致：先暂存首条消息，prompt-ready 时带着暂存输入发送。
+	const { stageNewSessionSend } = await import("../services/staged-new-session-send");
+	const stagedInput = stageNewSessionSend(undefined, "interaction-rejected");
+
+	let result: Awaited<ReturnType<SessionManagerProbe["sendMessage"]>>;
+	await act(async () => {
+		await manager?.openSession(cwd, undefined, "sandbox", {
+			onPromptReady: () => {
+				void manager?.sendMessage(undefined, { stagedInput: stagedInput ?? undefined }).then((value) => {
+					result = value;
+				});
+			},
+		});
+	});
+	await act(async () => {
+		await vi.waitFor(() => expect(result?.status).toBe("failed"));
+	});
+
+	expect(store.get(activeSessionStreamingAtom)).toBe(false);
 });
 
 it(

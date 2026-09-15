@@ -611,6 +611,13 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 					if (last?.kind === "agent" && lastError?.type === "error" && lastError.text === message) return prev;
 					return appendError(prev, message);
 				});
+				// 被拒绝的 prompt 没有开启 turn，也就不会有 agent_end 来收尾。本次发送开启的
+				// 流式态（新会话暂存发送会抢先置为 true）必须在这里退出，否则界面一直“处理中”，
+				// 停止按钮对着一个并不存在的 turn 调 abort，永远停不下来。
+				if (!streaming) {
+					setActiveSessionStreaming(false);
+					setRetryProgress(null);
+				}
 				sendResult = { status: "failed", error: { message } };
 			}
 			// ADR-0007：归一回项目根 bucket，否则「对话」session 刷的是没用的子目录桶，
