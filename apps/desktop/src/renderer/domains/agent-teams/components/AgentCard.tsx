@@ -1,10 +1,6 @@
 import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";
 import type { AgentBlueprint, AgentProfile } from "@vetta/agent-team";
-import {
-	agentBlueprintLabel,
-	agentUnavailableReason,
-	type BlueprintDisplayPlugin,
-} from "../lib/blueprint-display";
+import { agentUnavailableReason, type BlueprintDisplayPlugin } from "../lib/blueprint-display";
 import { Button } from "@vetta-org/ui";
 import { useTranslation } from "react-i18next";
 import { AgentAvatarView } from "@vetta-org/theme-ui/chat";
@@ -12,7 +8,7 @@ import { AgentAvatarView } from "@vetta-org/theme-ui/chat";
 export interface AgentCardProps {
 	readonly agent: AgentProfile;
 	readonly blueprint?: AgentBlueprint;
-	/** 用于解析插件贡献的角色名，以及说清楚「档案为什么不可用」。 */
+	/** 用于说清楚「档案为什么不可用」。 */
 	readonly plugins?: readonly BlueprintDisplayPlugin[];
 	/** 已拉拢进阵容或已选中的强调态。 */
 	readonly selected?: boolean;
@@ -43,7 +39,6 @@ export function AgentCard({
 	const { t } = useTranslation("agent-teams");
 	const hasControls = Boolean(onMakeLeader || onRemove);
 	const unavailable = agentUnavailableReason(agent, blueprint, plugins);
-	const roleLabel = agentBlueprintLabel(blueprint, (key) => t(key as never), plugins);
 
 	return (
 		<div
@@ -71,10 +66,7 @@ export function AgentCard({
 				/>
 
 				<span className="flex min-w-0 flex-1 flex-col">
-					<span className="flex items-baseline gap-1.5">
-						<span className="truncate text-[14px] font-semibold tracking-tight text-foreground">{agent.name}</span>
-						<span className="shrink-0 text-[12px] text-muted-foreground">{roleLabel ?? agent.blueprintId}</span>
-					</span>
+					<span className="truncate text-[14px] font-semibold tracking-tight text-foreground">{agent.name}</span>
 					<span className="mt-1.5 line-clamp-2 min-h-9 text-[12px] leading-relaxed text-muted-foreground/80">
 						{agent.description || t("settings.profileMissing")}
 					</span>
