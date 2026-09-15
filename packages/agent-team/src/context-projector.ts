@@ -16,8 +16,8 @@ export function stableTeamEventId(parts: readonly string[]): string {
 	return `team-v1-${fnv64(canonical, FNV_OFFSET)}${fnv64(canonical, FNV_OFFSET ^ MASK_64)}`;
 }
 /**
- * 任务书的配置指纹。成员运行时按 (Profile 修订, 任务书指纹) 判断是否需要重开，
- * 因此改团队名这类无关编辑不会牵连成员会话，改任务书则一定生效。
+ * 任务书的配置指纹。成员运行时按 (Profile 修订, 任务书指纹, 名册指纹) 判断是否需要重开，
+ * 因此改团队描述这类不进提示词的编辑不会牵连成员会话，改任务书则一定生效。
  */
 export function teamMemberAssignmentFingerprint(assignment: TeamMemberAssignment | undefined): string | undefined {
 	if (!assignment?.responsibility && !assignment?.instructions) return undefined;

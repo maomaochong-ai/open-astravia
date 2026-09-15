@@ -23,6 +23,8 @@ export async function reconfigureTeamMemberRuntime(input: {
 	readonly agentProfileRevision: number;
 	/** 团队任务书指纹，与 Profile 修订一起构成配置身份；缺省表示该成员没有任务书。 */
 	readonly assignmentFingerprint?: string;
+	/** 渲染进提示词的团队名册指纹；队友、队长变动不改本成员的 Profile 与任务书，也必须重开。 */
+	readonly rosterFingerprint?: string;
 	readonly runtime: TeamMemberRuntimeReconfigurationHost;
 	readonly resolveConfig: (sessionPath: string) => Promise<SessionConfig>;
 	readonly persist: (session: TeamSessionDocument) => Promise<void>;
@@ -34,7 +36,8 @@ export async function reconfigureTeamMemberRuntime(input: {
 	if (
 		current.agentProfileId === input.agentProfileId &&
 		current.agentProfileRevision === input.agentProfileRevision &&
-		current.assignmentFingerprint === input.assignmentFingerprint
+		current.assignmentFingerprint === input.assignmentFingerprint &&
+		current.rosterFingerprint === input.rosterFingerprint
 	) {
 		return input.session;
 	}
@@ -68,6 +71,7 @@ export async function reconfigureTeamMemberRuntime(input: {
 					agentProfileId: input.agentProfileId,
 					agentProfileRevision: input.agentProfileRevision,
 					assignmentFingerprint: input.assignmentFingerprint,
+					rosterFingerprint: input.rosterFingerprint,
 				},
 			},
 		};

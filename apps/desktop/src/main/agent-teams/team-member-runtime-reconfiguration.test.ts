@@ -128,4 +128,41 @@ describe("reconfigureTeamMemberRuntime", () => {
 		expect(runtime.createSession).toHaveBeenCalledTimes(1);
 		expect(next.memberRuntime.leader).toMatchObject({ assignmentFingerprint: "team-v1-assignment" });
 	});
+
+	it("reopens the member when only the team roster rendered into its prompt changed", async () => {
+		const paths = new Map([["old-runtime", "C:/sessions/leader.jsonl"]]);
+		const runtime: TeamMemberRuntimeReconfigurationHost = {
+			getSessionPath: (sessionId) => paths.get(sessionId),
+			disposeSession: vi.fn(async (sessionId) => {
+				paths.delete(sessionId);
+			}),
+			createSession: vi.fn(async (config) => {
+				paths.set("new-runtime", String(config.sessionPath));
+				return { sessionId: "new-runtime" };
+			}),
+		};
+		const session = sessionDocument();
+		const leader = session.memberRuntime.leader;
+		if (!leader) throw new Error("fixture session is incomplete");
+
+		// 换队长或改队友职责不动本成员的 Profile 与任务书；只看这两者会让它一直带着旧名册。
+		const next = await reconfigureTeamMemberRuntime({
+			session: {
+				...session,
+				memberRuntime: { leader: { ...leader, rosterFingerprint: "team-v1-roster-before" } },
+			},
+			memberId: "leader",
+			agentProfileId: "agent",
+			agentProfileRevision: 1,
+			rosterFingerprint: "team-v1-roster-after",
+			runtime,
+			resolveConfig: async (sessionPath) => ({ cwd: "C:/workspace", sessionPath }) satisfies SessionConfig,
+			persist: vi.fn(async () => undefined),
+			now: () => 20,
+			logger,
+		});
+
+		expect(runtime.createSession).toHaveBeenCalledTimes(1);
+		expect(next.memberRuntime.leader).toMatchObject({ rosterFingerprint: "team-v1-roster-after" });
+	});
 });

@@ -1,4 +1,5 @@
 import type { TeamRosterSnapshot } from "./collaboration.js";
+import { stableTeamEventId } from "./context-projector.js";
 
 /** Byte-identical system-level Team contract shared by every member in a roster revision. */
 export function buildTeamSharedOperatingContext(roster: TeamRosterSnapshot): string {
@@ -27,6 +28,17 @@ export function buildTeamSharedOperatingContext(roster: TeamRosterSnapshot): str
 		"- A subagent is a temporary private helper created by one Agent. It is not a Team member, never appears in this roster, cannot own Team work, and cannot publish as a Team participant.",
 		"</agent_team_operating_context>",
 	].join("\n");
+}
+
+/**
+ * 名册在提示词里的配置指纹：直接对渲染后的共享名册取指纹。
+ *
+ * 队长、成员增减、队友职责与显示名都写进每位成员的系统提示词，却不属于该成员自己的
+ * Profile 修订或任务书；不把它算进配置身份，改了别人，已有成员就会一直带着旧名册。
+ * 只对渲染结果取指纹，团队描述这类不进提示词的字段就不会触发重建。
+ */
+export function teamRosterFingerprint(roster: TeamRosterSnapshot): string {
+	return stableTeamEventId(["team-roster", buildTeamSharedOperatingContext(roster)]);
 }
 
 /**

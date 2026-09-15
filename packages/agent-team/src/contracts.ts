@@ -96,6 +96,8 @@ export interface TeamMemberRuntimeState {
 	readonly agentProfileRevision: number;
 	/** 已生效的团队任务书指纹；与 Profile 修订一起构成成员运行时的配置身份。 */
 	readonly assignmentFingerprint?: string;
+	/** 已生效的团队名册指纹；队长、成员或队友职责变化时，已有成员也要重建提示词。 */
+	readonly rosterFingerprint?: string;
 	readonly deliveredEventIds: readonly string[];
 	/** Latest immutable public checkpoint referenced by this member's private context. */
 	readonly sharedCheckpointId?: string;

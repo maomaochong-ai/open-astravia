@@ -9,6 +9,7 @@ import {
 	type TeamMember,
 	type TeamSessionDocument,
 	teamMemberAssignmentFingerprint,
+	teamRosterFingerprint,
 } from "@vetta/agent-team";
 import type {
 	CodingAgentPinnedModelContextBinder,
@@ -74,10 +75,11 @@ export class TeamRuntimeManager {
 		const blueprint = resolveAgentBlueprint(profile.blueprintId);
 		const systemPrompt = profile.systemPrompt ?? blueprint?.systemPrompt;
 		if (!systemPrompt) throw new Error(`Agent profile has no system prompt: ${profile.id}`);
+		const roster = buildTeamRosterSnapshot(document, team);
 		const promptContext = this.createMemberPromptContext(
 			teamSessionId,
 			member.id,
-			buildTeamRosterSnapshot(document, team),
+			roster,
 			systemPrompt,
 			member.assignment?.instructions,
 		);
@@ -105,6 +107,7 @@ export class TeamRuntimeManager {
 			agentProfileId: profile.id,
 			agentProfileRevision: profile.revision,
 			assignmentFingerprint: teamMemberAssignmentFingerprint(member.assignment),
+			rosterFingerprint: teamRosterFingerprint(roster),
 			deliveredEventIds: [],
 		};
 	}
@@ -187,6 +190,7 @@ export class TeamRuntimeManager {
 					assignmentFingerprint: teamMemberAssignmentFingerprint(
 						this.resolveMember(session, document, memberId).assignment,
 					),
+					rosterFingerprint: teamRosterFingerprint(this.resolveRoster(session, document)),
 				};
 			},
 			persist: (next) => this.options.sessionState.persist(next),
@@ -212,6 +216,7 @@ export class TeamRuntimeManager {
 			assignmentFingerprint: teamMemberAssignmentFingerprint(
 				this.resolveMember(session, document, memberId).assignment,
 			),
+			rosterFingerprint: teamRosterFingerprint(this.resolveRoster(session, document)),
 			runtime: this.options.runtime(),
 			resolveConfig: (sessionPath) =>
 				this.resolveMemberSessionConfig(
@@ -232,6 +237,12 @@ export class TeamRuntimeManager {
 
 	private resolveMemberProfile(session: TeamSessionDocument, document: AgentTeamDocument, memberId: string) {
 		return resolveMemberProfile(document, this.resolveMember(session, document, memberId));
+	}
+
+	private resolveRoster(session: TeamSessionDocument, document: AgentTeamDocument) {
+		const team = document.teams.find((candidate) => candidate.id === session.teamId);
+		if (!team) throw new Error(`Agent team not found: ${session.teamId}`);
+		return buildTeamRosterSnapshot(document, team);
 	}
 
 	private resolveMember(session: TeamSessionDocument, document: AgentTeamDocument, memberId: string): TeamMember {

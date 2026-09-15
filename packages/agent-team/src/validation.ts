@@ -270,6 +270,7 @@ const memberRuntime = Type.Object(
 		agentProfileId: Type.Optional(id),
 		agentProfileRevision: Type.Integer({ minimum: 1 }),
 		assignmentFingerprint: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
+		rosterFingerprint: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
 		deliveredEventIds: stringList,
 		sharedCheckpointId: Type.Optional(id),
 	},

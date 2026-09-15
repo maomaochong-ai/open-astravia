@@ -4,6 +4,7 @@ import {
 	buildTeamOperatingContext,
 	buildTeamSharedOperatingContext,
 	type TeamRosterSnapshot,
+	teamRosterFingerprint,
 } from "../src/index.js";
 
 const roster: TeamRosterSnapshot = {
@@ -92,5 +93,40 @@ describe("buildTeamOperatingContext", () => {
 	it("omits the assignment block when the team adds nothing", () => {
 		expect(buildTeamMemberOperatingContext(roster, "leader", "Lead.")).not.toContain("<team_assignment>");
 		expect(buildTeamMemberOperatingContext(roster, "leader", "Lead.", "")).not.toContain("<team_assignment>");
+	});
+});
+
+describe("teamRosterFingerprint", () => {
+	it("changes when a teammate's responsibility or the leader changes", () => {
+		const [leader, builder] = roster.members;
+		if (!leader || !builder) throw new Error("fixture roster is incomplete");
+		const retitled: TeamRosterSnapshot = {
+			...roster,
+			members: [leader, { ...builder, responsibilitySummary: "Own the release checklist" }],
+		};
+		const handedOver: TeamRosterSnapshot = {
+			...roster,
+			leaderParticipantId: "builder",
+			members: [
+				{ ...leader, isLeader: false },
+				{ ...builder, isLeader: true },
+			],
+		};
+
+		// 这些变化都渲染进每位成员的提示词，却不改变任何人自己的 Profile 修订或任务书。
+		expect(teamRosterFingerprint(retitled)).not.toBe(teamRosterFingerprint(roster));
+		expect(teamRosterFingerprint(handedOver)).not.toBe(teamRosterFingerprint(roster));
+	});
+
+	it("ignores roster facts that never reach the prompt", () => {
+		const [leader, builder] = roster.members;
+		if (!leader || !builder) throw new Error("fixture roster is incomplete");
+		const unrendered: TeamRosterSnapshot = {
+			...roster,
+			teamRevision: 7,
+			members: [{ ...leader, availability: "running", profileRevision: 4 }, builder],
+		};
+
+		expect(teamRosterFingerprint(unrendered)).toBe(teamRosterFingerprint(roster));
 	});
 });
