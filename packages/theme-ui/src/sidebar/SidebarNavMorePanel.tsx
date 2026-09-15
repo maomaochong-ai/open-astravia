@@ -33,11 +33,13 @@ function DropLine({ visible }: { visible: boolean }): JSX.Element {
 	return (
 		<span
 			aria-hidden
-			className={cn("mx-1 block h-px rounded-full transition-colors", visible ? "bg-primary" : "bg-transparent")}
+			className={cn("mx-1 block h-px rounded-full", visible ? "bg-primary" : "bg-transparent")}
 		/>
 	);
 }
 
+// 行内不加任何 transition：弹层里 20+ 行，每行的 hover 过渡（尤其 pin 按钮的 opacity）
+// 会在指针划过时反复创建合成层动画，实测 hover 帧间隔从 14ms 劣化到 p95 70ms。
 function NavRow({
 	drag,
 	item,
@@ -60,7 +62,7 @@ function NavRow({
 	return (
 		<div
 			className={cn(
-				"group/nav-row flex items-center gap-1 rounded-md pr-1 transition-opacity",
+				"group/nav-row flex items-center gap-1 rounded-md pr-1",
 				drag.draggingKey === item.key && "opacity-40",
 			)}
 			draggable={dragProps.draggable}
@@ -81,7 +83,7 @@ function NavRow({
 				title={item.title ?? item.label}
 				onClick={onClick}
 				className={cn(
-					"flex min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 py-1.5 text-[13px] transition-colors",
+					"flex min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 py-1.5 text-[13px]",
 					item.active ? "bg-accent font-semibold text-foreground" : "text-foreground hover:bg-accent/50",
 				)}
 			>
@@ -98,7 +100,7 @@ function NavRow({
 					aria-pressed={pinned}
 					onClick={onTogglePin}
 					className={cn(
-						"flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-all",
+						"flex h-6 w-6 shrink-0 items-center justify-center rounded-md",
 						pinned
 							? "text-primary hover:bg-accent/60"
 							: "text-muted-foreground/50 opacity-0 hover:bg-accent/60 hover:text-foreground focus-visible:opacity-100 group-hover/nav-row:opacity-100",
@@ -145,7 +147,7 @@ export function SidebarNavMorePanel({
 					onClick={onReset}
 					title={labels.reset}
 					aria-label={labels.reset}
-					className="-me-1 flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/60 transition-colors hover:bg-accent/50 hover:text-foreground"
+					className="-me-1 flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/60 hover:bg-accent/50 hover:text-foreground"
 				>
 					<span aria-hidden className="icon-[solar--restart-linear] h-3.5 w-3.5" />
 				</button>
