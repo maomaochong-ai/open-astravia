@@ -3,6 +3,7 @@
  * 视口尺寸；翻页脚本则必须先认帧、再滚动，滚完才亮就绪信号。
  */
 import { expect, it } from "vitest";
+import { FRAME_PAINTED_EXPRESSION } from "../src/canvas/offscreen-raster";
 import {
 	SCROLL_PROBE_SCRIPT,
 	SCROLL_RESET_SCRIPT,
@@ -39,7 +40,6 @@ it("prepare script re-targets the frame before scrolling and the ready expressio
 	// 不是目标帧时先切帧、等画完再滚：切帧在滚动之前。
 	expect(script.indexOf('type: "show-frame"')).toBeGreaterThan(0);
 	expect(script.indexOf("scrollBehavior")).toBeGreaterThan(0);
-	expect(scrollReadyExpression('detail"quoted', 1200.6)).toBe(
-		'window.__vetdPainted === "detail\\"quoted" && window.__vetdScrollAt === 1201',
-	);
+	// 就绪判据与截图一致（认地址栏显示的帧，重定向帧不会死等），外加滚动已落到位。
+	expect(scrollReadyExpression(1200.6)).toBe(`${FRAME_PAINTED_EXPRESSION} && window.__vetdScrollAt === 1201`);
 });

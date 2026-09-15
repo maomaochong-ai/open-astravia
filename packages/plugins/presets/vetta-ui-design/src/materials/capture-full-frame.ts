@@ -13,7 +13,7 @@
  */
 import type { PluginOffscreenCaptureOptions, PluginOffscreenCaptureResult } from "@vetta-org/plugin-sdk";
 import { canvasToJpegDataUrl } from "../mockup/render";
-import { framePrepareScript } from "../canvas/offscreen-raster";
+import { FRAME_READY_EXPRESSION, framePrepareScript } from "../canvas/offscreen-raster";
 import { SCROLL_PROBE_SCRIPT, SCROLL_RESET_SCRIPT, parseScrollProbe, scrollPrepareScript, scrollReadyExpression } from "./scroll-probe";
 import { planTiles } from "./tile-plan";
 
@@ -116,14 +116,13 @@ async function shootOnce(
 	viewportHeight: number,
 	extra: Partial<PluginOffscreenCaptureOptions>,
 ): Promise<PluginOffscreenCaptureResult> {
-	const frameId = JSON.stringify(request.frameId);
 	return deps.capture({
 		url: `http://127.0.0.1:${request.port}/`,
 		width: request.width,
 		height: viewportHeight,
 		sessionKey: sessionKeyOf(request.port),
 		prepareScript: framePrepareScript(request.frameId),
-		readyExpression: `window.__vetdPainted === ${frameId} && Array.from(document.images).every((img) => img.complete)`,
+		readyExpression: FRAME_READY_EXPRESSION,
 		settleMs: SETTLE_MS,
 		timeoutMs: TIMEOUT_MS,
 		format: request.format,
@@ -186,7 +185,7 @@ async function stitchTiles(
 				? first
 				: await shoot(deps, request, viewportHeight, {
 						prepareScript: scrollPrepareScript(request.frameId, tile.scrollTop),
-						readyExpression: scrollReadyExpression(request.frameId, tile.scrollTop),
+						readyExpression: scrollReadyExpression(tile.scrollTop),
 						// 最后一块出图后把滚动归零，别让共用这个窗口的下一张截图接手一个滚到底的页面。
 						...(last ? { probeScript: SCROLL_RESET_SCRIPT } : {}),
 					});

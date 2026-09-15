@@ -15,6 +15,12 @@
  * `probe: undefined`，那样就分不清「没有滚动空间」和「探针坏了」。
  */
 
+import {
+	FRAME_PAINTED_EXPRESSION,
+	NAVIGATE_TO_FRAME_STATEMENTS,
+	SHOWING_FRAME_EXPRESSION,
+} from "../canvas/offscreen-raster";
+
 /** 被选中的滚动容器打上这个标记，翻页脚本据此找回它（离屏窗口在两次请求之间保留 DOM）。 */
 const SCROLLER_ATTR = "data-vetd-scroller";
 
@@ -103,8 +109,8 @@ export function parseScrollProbe(probe: unknown): ScrollProbe | null {
  * 分块截图的翻页脚本：确保页面停在目标 frame 上，再把滚动容器滚到指定位置。
  *
  * 离屏窗口的「交付物」会话是共享的（vetd_screenshot 也用它），两块之间别的请求
- * 可能把页面切到了别的 frame。所以不能假设 DOM 还是量高度时的那份：先看
- * `__vetdPainted`，不是目标 frame 就重新切帧、等它画完再滚；标记丢了就按同一套
+ * 可能把页面切到了别的 frame。所以不能假设 DOM 还是量高度时的那份：先看地址栏
+ * 显示的是不是目标 frame，不是就重新切帧、等它画完再滚；标记丢了就按同一套
  * 规则重新找滚动容器。滚动完成的信号是 `__vetdScrollAt`，readyExpression 等它。
  */
 export function scrollPrepareScript(frameId: string, scrollTop: number): string {
@@ -127,14 +133,14 @@ export function scrollPrepareScript(frameId: string, scrollTop: number): string 
 		target.scrollTop = TOP;
 		window.__vetdScrollAt = TOP;
 	};
-	if (window.__vetdPainted === ID) {
+	if (${SHOWING_FRAME_EXPRESSION} && typeof window.__vetdPainted === "string") {
+		window.__vetdNavFrom = "";
 		apply();
 		return;
 	}
-	window.__vetdPainted = null;
-	window.postMessage({ vetd: true, type: "show-frame", id: ID }, "*");
+	${NAVIGATE_TO_FRAME_STATEMENTS}
 	var timer = setInterval(function () {
-		if (window.__vetdPainted !== ID) return;
+		if (!${FRAME_PAINTED_EXPRESSION}) return;
 		clearInterval(timer);
 		apply();
 	}, 50);
@@ -142,8 +148,9 @@ export function scrollPrepareScript(frameId: string, scrollTop: number): string 
 }
 
 /** 与 {@link scrollPrepareScript} 配对的就绪表达式。 */
-export function scrollReadyExpression(frameId: string, scrollTop: number): string {
-	return `window.__vetdPainted === ${JSON.stringify(frameId)} && window.__vetdScrollAt === ${Math.max(0, Math.round(scrollTop))}`;
+export function scrollReadyExpression(scrollTop: number): string {
+	// 与截图同一条就绪判据：重定向的帧写回的是跳转后那一帧，只认目标 id 会死等。
+	return `${FRAME_PAINTED_EXPRESSION} && window.__vetdScrollAt === ${Math.max(0, Math.round(scrollTop))}`;
 }
 
 /**
