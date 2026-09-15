@@ -26,54 +26,57 @@ export interface AgentUnavailableReason {
 export function agentUnavailableReason(
 	profile: Pick<AgentProfile, "blueprintId">,
 	blueprint: AgentBlueprint | undefined,
-	plugins: readonly BlueprintDisplayPlugin[] = [],
+	plugins: readonly BlueprintDisplayPlugin[] | undefined,
+	locale: string,
 ): AgentUnavailableReason | undefined {
 	if (blueprint) return undefined;
 	const parsed = parsePluginBlueprintId(profile.blueprintId);
 	if (!parsed) return undefined;
-	const plugin = plugins.find((candidate) => candidate.id === parsed.pluginId);
+	const plugin = plugins?.find((candidate) => candidate.id === parsed.pluginId);
 	return {
 		kind: "plugin-disabled",
 		pluginId: parsed.pluginId,
-		pluginName: plugin ? resolvePluginTextFor(plugin, plugin.name) : parsed.pluginId,
+		pluginName: plugin ? resolvePluginTextFor(plugin, plugin.name, locale) : parsed.pluginId,
 	};
 }
 
 /**
  * Blueprint 的角色名。内置的走宿主 i18n key，插件的带 `%key%` 字面量，按插件 locales 现场解析。
  *
- * 现场解析而不是在主进程定死：切换语言时插件智能体的角色名要跟着动。
+ * 现场解析而不是在主进程定死：切换语言时插件智能体的角色名要跟着动。`locale` 必须是应用里选定的
+ * 界面语言，而不是系统语言——两者不一致时插件文案会和宿主文案各说各话。
  */
 export function agentBlueprintLabel(
 	blueprint: AgentBlueprint | undefined,
 	translate: (key: string) => string,
-	plugins: readonly BlueprintDisplayPlugin[] = [],
+	plugins: readonly BlueprintDisplayPlugin[] | undefined,
+	locale: string,
 ): string | undefined {
 	if (!blueprint) return undefined;
 	const source = blueprint.source;
 	if (source?.kind !== "plugin") return blueprint.nameKey ? translate(blueprint.nameKey) : undefined;
-	const plugin = plugins.find((candidate) => candidate.id === source.pluginId);
+	const plugin = plugins?.find((candidate) => candidate.id === source.pluginId);
 	const raw = blueprint.name ?? "";
-	return plugin ? resolvePluginTextFor(plugin, raw) : stripPlaceholder(raw);
+	return plugin ? resolvePluginTextFor(plugin, raw, locale) : stripPlaceholder(raw);
 }
 
 /** Blueprint 的职责说明，规则同 {@link agentBlueprintLabel}。 */
 export function agentBlueprintDescription(
 	blueprint: AgentBlueprint | undefined,
 	translate: (key: string) => string,
-	plugins: readonly BlueprintDisplayPlugin[] = [],
+	plugins: readonly BlueprintDisplayPlugin[] | undefined,
+	locale: string,
 ): string | undefined {
 	if (!blueprint) return undefined;
 	const source = blueprint.source;
 	if (source?.kind !== "plugin") return blueprint.descriptionKey ? translate(blueprint.descriptionKey) : undefined;
-	const plugin = plugins.find((candidate) => candidate.id === source.pluginId);
+	const plugin = plugins?.find((candidate) => candidate.id === source.pluginId);
 	const raw = blueprint.description ?? "";
-	return plugin ? resolvePluginTextFor(plugin, raw) : stripPlaceholder(raw);
+	return plugin ? resolvePluginTextFor(plugin, raw, locale) : stripPlaceholder(raw);
 }
 
-function resolvePluginTextFor(plugin: BlueprintDisplayPlugin, raw: string): string {
+function resolvePluginTextFor(plugin: BlueprintDisplayPlugin, raw: string, locale: string): string {
 	if (!raw) return "";
-	const locale = typeof navigator === "undefined" ? "zh" : navigator.language.split("-")[0]!;
 	return resolvePluginText(raw, plugin.locales ?? {}, locale, plugin.defaultLocale ?? "zh");
 }
 
@@ -90,9 +93,10 @@ function stripPlaceholder(raw: string): string {
  */
 export function resourceProviderName(
 	source: AgentResourceSource | undefined,
-	plugins: readonly BlueprintDisplayPlugin[] = [],
+	plugins: readonly BlueprintDisplayPlugin[] | undefined,
+	locale: string,
 ): string | undefined {
 	if (!source) return undefined;
-	const plugin = plugins.find((candidate) => candidate.id === source.pluginId);
-	return plugin ? resolvePluginTextFor(plugin, plugin.name) : source.pluginId;
+	const plugin = plugins?.find((candidate) => candidate.id === source.pluginId);
+	return plugin ? resolvePluginTextFor(plugin, plugin.name, locale) : source.pluginId;
 }

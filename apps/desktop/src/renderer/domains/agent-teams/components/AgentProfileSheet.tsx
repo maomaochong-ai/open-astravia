@@ -57,7 +57,7 @@ export function AgentProfileSheet({
 	onCreate,
 	onDelete,
 }: AgentProfileSheetProps): JSX.Element | null {
-	const { t } = useTranslation("agent-teams");
+	const { t, i18n } = useTranslation("agent-teams");
 	const resolveAvatar = useAgentAvatarResolver();
 	const [activeTab, setActiveTab] = useState<AgentProfileTab>("basic");
 	const [saveRequest, setSaveRequest] = useState(0);
@@ -76,8 +76,8 @@ export function AgentProfileSheet({
 	if (!target) return null;
 
 	const blueprint = blueprints.find((candidate) => candidate.id === target.blueprintId);
-	const roleLabel = agentBlueprintLabel(blueprint, (key) => t(key as never), plugins);
-	const providerName = resourceProviderName(target.source, plugins);
+	const roleLabel = agentBlueprintLabel(blueprint, (key) => t(key as never), plugins, i18n.language);
+	const providerName = resourceProviderName(target.source, plugins, i18n.language);
 	// 提供方维护的档案只读：插件升级会用清单整体重铺它，任何就地改动都活不过下一次同步。
 	const readOnly = target.source !== undefined;
 	const displayName = draft?.name?.trim() || target.name || t("center.sheetCreateTitle");

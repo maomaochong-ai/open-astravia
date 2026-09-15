@@ -61,7 +61,7 @@ export function TeamSettingsSheet({
 	onDelete,
 	onOpenMember,
 }: TeamSettingsSheetProps): JSX.Element {
-	const { t } = useTranslation("agent-teams");
+	const { t, i18n } = useTranslation("agent-teams");
 	const resolveAvatar = useAgentAvatarResolver();
 	const [draft, setDraft] = useState<TeamAssemblyDraft>(() => assemblyDraftFromTeam(team));
 	const [addOpen, setAddOpen] = useState(false);
@@ -98,7 +98,7 @@ export function TeamSettingsSheet({
 		setAddOpen(false);
 	}
 
-	const providerName = resourceProviderName(team.source, plugins);
+	const providerName = resourceProviderName(team.source, plugins, i18n.language);
 	// 提供方维护的团队只读：阵容、任务书、名称都由清单说了算，插件升级会整体重铺。
 	const readOnly = team.source !== undefined;
 

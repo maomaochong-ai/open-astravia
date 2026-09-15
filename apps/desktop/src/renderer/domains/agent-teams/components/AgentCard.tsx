@@ -36,9 +36,9 @@ export function AgentCard({
 	onMakeLeader,
 	onRemove,
 }: AgentCardProps): JSX.Element {
-	const { t } = useTranslation("agent-teams");
+	const { t, i18n } = useTranslation("agent-teams");
 	const hasControls = Boolean(onMakeLeader || onRemove);
-	const unavailable = agentUnavailableReason(agent, blueprint, plugins);
+	const unavailable = agentUnavailableReason(agent, blueprint, plugins, i18n.language);
 
 	return (
 		<div

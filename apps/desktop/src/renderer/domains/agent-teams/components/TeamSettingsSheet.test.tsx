@@ -9,6 +9,7 @@ import { TeamSettingsSheet } from "./TeamSettingsSheet";
 
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({
+		i18n: { language: "zh" },
 		t: (key: string, values?: Record<string, string | number>) =>
 			values ? `${key}:${Object.values(values).join(":")}` : key,
 	}),
