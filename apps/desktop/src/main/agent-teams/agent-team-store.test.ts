@@ -42,6 +42,31 @@ function agentInput(name: string) {
 	};
 }
 
+describe("AgentTeamStore plugin preset sync", () => {
+	beforeEach(() => registerPresetPluginBlueprints());
+
+	it("applies the plugin presets to the loaded configuration and tells subscribers", async () => {
+		const repository = new MemoryRepository();
+		const store = new AgentTeamStore({ repository, createId: createIdSequence(), now: () => 10 });
+		const applied = vi.fn();
+		store.onPluginPresetsApplied(applied);
+		await store.read();
+
+		// 插件装卸与热重载走的就是这一趟：不重铺，用户看到的还是内存里那份旧配置。
+		await expect(store.syncPluginPresets()).resolves.toBe(true);
+
+		expect(applied).toHaveBeenCalledTimes(1);
+		const document = await store.read();
+		expect(document.teams.some((team) => team.source?.pluginId === "preset-agent")).toBe(true);
+		expect(applied.mock.calls[0]?.[0]).toBe(document);
+		// 已经对齐之后再同步一次不写盘，也不再叫醒订阅者。
+		const writes = repository.writes;
+		await expect(store.syncPluginPresets()).resolves.toBe(false);
+		expect(repository.writes).toBe(writes);
+		expect(applied).toHaveBeenCalledTimes(1);
+	});
+});
+
 describe("AgentTeamStore transaction boundary", () => {
 	// master / developer / researcher 的人设住在「预设智能体」插件里，装机档案要靠它解析。
 	beforeEach(() => registerPresetPluginBlueprints());

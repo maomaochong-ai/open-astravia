@@ -16,7 +16,7 @@ import {
 	parseUpdateTeamSessionModelSettingsInput,
 } from "@vetta/agent-team";
 import type { SessionExecutionMode } from "@vetta/runtime-core";
-import { dialog, ipcMain } from "electron";
+import { dialog, ipcMain, webContents } from "electron";
 import type {
 	DesktopTeamConversationDisplay,
 	DesktopTeamSessionSnapshot,
@@ -59,6 +59,9 @@ const CHANNELS = {
 	UPLOAD_AVATAR: "vetta:agent-teams:upload-avatar",
 } as const;
 
+/** 主进程推给渲染进程的「配置已变」：插件装卸与热重载会在用户没动手的情况下改动配置。 */
+const CHANGED_EVENT = "vetta:agent-teams:changed";
+
 function requiredString(value: unknown, field: string): string {
 	if (typeof value !== "string" || value.trim().length === 0) throw new Error(`${field} must be a non-empty string`);
 	return value;
@@ -86,6 +89,7 @@ export interface AgentTeamsIpcDependencies {
 	readonly listSidebarConversations?: typeof listTeamSidebarConversations;
 	readonly store: Pick<
 		typeof agentTeamStore,
+		| "onPluginPresetsApplied"
 		| "read"
 		| "listBlueprints"
 		| "createAgent"
@@ -156,6 +160,18 @@ export function registerAgentTeamsIpc(
 	// the service keeps its runtime/repository context when passed as a callback.
 	const displayProjection = sessions.displayProjection?.bind(sessions);
 	const subscriptions = new Map<string, () => void>();
+	// 插件重铺预设后必须推给渲染进程：那一份文档是它自己缓存的，没有这条广播，侧边栏要等到下次
+	// 重启 App 才跟上新的智能体与团队。
+	const unsubscribePresets = store.onPluginPresetsApplied(() => {
+		for (const contents of webContents.getAllWebContents()) {
+			if (contents.isDestroyed()) continue;
+			try {
+				contents.send(CHANGED_EVENT);
+			} catch {
+				// ignore gone frames
+			}
+		}
+	});
 	ipcMain.handle(CHANNELS.LIST, () => store.read());
 	// 让用户挑一张本地图片当头像：主进程复制进头像目录，只把渲染进程能加载的 URL 交回去。
 	ipcMain.handle(CHANNELS.UPLOAD_AVATAR, async () => {
@@ -377,6 +393,7 @@ export function registerAgentTeamsIpc(
 		subscriptions.get(key)?.();
 	});
 	return () => {
+		unsubscribePresets();
 		for (const unsubscribe of subscriptions.values()) unsubscribe();
 		subscriptions.clear();
 		for (const channel of Object.values(CHANNELS)) ipcMain.removeHandler(channel);

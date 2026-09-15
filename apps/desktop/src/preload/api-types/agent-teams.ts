@@ -23,6 +23,12 @@ import type { DesktopTeamSessionSnapshot, DesktopTeamSessionStreamEvent } from "
 
 export interface DesktopAgentTeamsApi {
 	list(): Promise<AgentTeamDocument>;
+	/**
+	 * 订阅「配置被主进程改过」：插件装卸、启停与开发态热重载会在用户没动手时重铺插件预设。
+	 *
+	 * 事件不带文档，收到后自行 `list()`：一份完整配置每次都过 IPC 不值得，而这条事件本就少见。
+	 */
+	onChanged(listener: () => void): () => void;
 	listBlueprints(): Promise<readonly AgentBlueprint[]>;
 	createAgent(input: CreateAgentProfileInput): Promise<AgentProfile>;
 	updateAgent(id: string, input: UpdateAgentProfileInput): Promise<AgentProfile>;

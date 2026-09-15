@@ -11,12 +11,33 @@ import { useEffect, useState } from "react";
 let cached: AgentTeamDocument | undefined;
 let inflight: Promise<AgentTeamDocument> | undefined;
 const listeners = new Set<() => void>();
+/** 主进程侧「配置已变」的订阅，整个模块共一份。 */
+let unsubscribeChanged: (() => void) | undefined;
+
+/**
+ * 跟随主进程的配置变更刷新缓存。
+ *
+ * 插件装卸与热重载会重铺插件贡献的智能体与团队，而这份缓存活到页面卸载之前都不会过期——不听
+ * 这条事件，新会话页会一直摆着上一版的阵容。
+ */
+function watchAgentTeamDocument(): void {
+	if (unsubscribeChanged) return;
+	unsubscribeChanged = window.vetta.agentTeams.onChanged(() => {
+		cached = undefined;
+		// 在途的那趟请求发出得比这次变更早，拿回来的是旧文档；丢掉它重新发一趟。
+		inflight = undefined;
+		loadAgentTeamDocument().catch(() => {
+			// 刷新失败就留着空缓存：下一个消费者挂载时自然会重试。
+		});
+	});
+}
 
 export function cachedAgentTeamDocument(): AgentTeamDocument | undefined {
 	return cached;
 }
 
 export function subscribeAgentTeamDocument(listener: () => void): () => void {
+	watchAgentTeamDocument();
 	listeners.add(listener);
 	return () => {
 		listeners.delete(listener);
@@ -43,6 +64,8 @@ export function resetAgentTeamDirectoryForTest(): void {
 	cached = undefined;
 	inflight = undefined;
 	listeners.clear();
+	unsubscribeChanged?.();
+	unsubscribeChanged = undefined;
 }
 
 /**

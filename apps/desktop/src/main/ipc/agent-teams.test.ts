@@ -7,12 +7,25 @@ import { type AgentTeamsIpcDependencies, registerAgentTeamsIpc } from "./agent-t
 const ipc = vi.hoisted(() => ({
 	handlers: new Map<string, (...args: unknown[]) => unknown>(),
 	removed: [] as string[],
+	sent: [] as string[],
 }));
 
 vi.mock("electron", () => ({
 	ipcMain: {
 		handle: (channel: string, handler: (...args: unknown[]) => unknown) => ipc.handlers.set(channel, handler),
 		removeHandler: (channel: string) => ipc.removed.push(channel),
+	},
+	webContents: {
+		getAllWebContents: () => [
+			{ isDestroyed: () => false, send: (channel: string) => ipc.sent.push(channel) },
+			// 已经关掉的窗口不该收到广播，也不该让这一轮广播抛出来。
+			{
+				isDestroyed: () => true,
+				send: () => {
+					throw new Error("sent to a destroyed frame");
+				},
+			},
+		],
 	},
 }));
 
@@ -40,6 +53,7 @@ function dependencies(): AgentTeamsIpcDependencies {
 	return {
 		store: {
 			read: vi.fn(async () => createEmptyAgentTeamDocument()),
+			onPluginPresetsApplied: vi.fn(() => () => {}),
 			listBlueprints: vi.fn(async () => []),
 			createAgent: vi.fn(async (input) => ({ ...input, id: "agent" })),
 			updateAgent: vi.fn(),
@@ -70,7 +84,20 @@ describe("Agent Team IPC contract", () => {
 	beforeEach(() => {
 		ipc.handlers.clear();
 		ipc.removed.length = 0;
+		ipc.sent.length = 0;
 		vi.mocked(resolveTeamSessionWorkspace).mockClear();
+	});
+
+	it("tells every live renderer when the plugin presets are reapplied", () => {
+		const deps = dependencies();
+		registerAgentTeamsIpc(deps);
+		const notify = vi.mocked(deps.store.onPluginPresetsApplied).mock.calls[0]?.[0];
+		if (!notify) throw new Error("the store was not subscribed");
+
+		// 插件热重载不经过渲染进程，没有这条广播，侧边栏要等到重启 App 才跟上。
+		notify(createEmptyAgentTeamDocument());
+
+		expect(ipc.sent).toEqual(["vetta:agent-teams:changed"]);
 	});
 
 	it("validates renderer input before invoking the domain service", async () => {

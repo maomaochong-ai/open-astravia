@@ -23,6 +23,7 @@ import { getAppLogger } from "../logger.js";
 import { agentBlueprintRegistry, resolveAgentBlueprint } from "./agent-blueprint-registry.js";
 import { type AgentTeamConfigRepository, createAgentTeamConfigRepository } from "./agent-team-config-repository.js";
 import { agentTeamExtensionHost } from "./agent-team-extension-host.js";
+import { reconcilePluginAgentPresets } from "./plugin-agent-preset-reconcile.js";
 
 const log = getAppLogger("agent-teams");
 
@@ -49,6 +50,7 @@ export class AgentTeamStore {
 	private readonly repository: AgentTeamConfigRepository;
 	private readonly createId: () => string;
 	private readonly now: () => number;
+	private readonly presetListeners = new Set<(document: AgentTeamDocument) => void>();
 
 	constructor(options: AgentTeamStoreOptions = {}) {
 		this.extensions = options.extensions ?? DEFAULT_AGENT_TEAM_EXTENSIONS;
@@ -77,6 +79,54 @@ export class AgentTeamStore {
 
 	async listBlueprints() {
 		return agentBlueprintRegistry.list();
+	}
+
+	/**
+	 * 订阅「插件预设被重铺」。变更由插件装卸/热重载触发，不是用户的编辑。
+	 *
+	 * 用户自己的改动不从这里发：那是渲染进程自己发起的写入，它手上已经有结果，再推一次只会把
+	 * 正在编辑的表单顶掉。
+	 */
+	onPluginPresetsApplied(listener: (document: AgentTeamDocument) => void): () => void {
+		this.presetListeners.add(listener);
+		return () => this.presetListeners.delete(listener);
+	}
+
+	/**
+	 * 按插件清单此刻的样子重铺配置里属于插件的那一部分。
+	 *
+	 * 插件装卸、启停与开发态热重载都要走这一趟：注册表刷新只改了主进程的解析表，用户看到的智能体
+	 * 与团队来自已经读进内存的配置文档，不重铺就会一直停在旧阵容直到重启 App。
+	 *
+	 * 返回是否真的改出了东西，调用方据此决定要不要通知渲染进程。
+	 */
+	async syncPluginPresets(): Promise<boolean> {
+		return this.enqueue(async () => {
+			const current = await this.read();
+			const reconciled = reconcilePluginAgentPresets({
+				document: current,
+				agents: agentBlueprintRegistry.listPluginAgents(),
+				teams: agentBlueprintRegistry.listPluginTeams(),
+				declarations: agentBlueprintRegistry.listPluginPresetDeclarations(),
+			});
+			if (!reconciled) return false;
+			const document = await this.persist("sync-plugin-presets", reconciled.document);
+			log.info("plugin agent presets applied", {
+				installedAgents: reconciled.installedAgentIds.length,
+				installedTeams: reconciled.installedTeamIds.length,
+				removedAgents: reconciled.removedAgentIds.length,
+				removedTeams: reconciled.removedTeamIds.length,
+			});
+			for (const listener of [...this.presetListeners]) {
+				try {
+					listener(document);
+				} catch (error) {
+					// 一个订阅者出错不该拦住其余订阅者。
+					log.warn("agent team preset listener failed", { error: errorMessage(error) });
+				}
+			}
+			return true;
+		});
 	}
 
 	async createAgent(input: CreateAgentProfileInput): Promise<AgentProfile> {
@@ -408,33 +458,42 @@ export class AgentTeamStore {
 		operationName: string,
 		apply: (document: AgentTeamDocument) => { readonly document: AgentTeamDocument; readonly result: TResult },
 	): Promise<TResult> {
-		const operation = this.mutationTail
-			.catch(() => undefined)
-			.then(async () => {
-				const current = await this.read();
-				const mutation = apply(current);
-				const normalized = parseAgentTeamDocument(
-					{ ...mutation.document, schemaVersion: AGENT_TEAM_SCHEMA_VERSION },
-					this.extensions,
-				);
-				try {
-					await this.repository.write(normalized);
-				} catch (error) {
-					log.error("failed to persist agent team configuration", {
-						operation: operationName,
-						revision: normalized.revision,
-						error: errorMessage(error),
-					});
-					throw error;
-				}
-				this.document = normalized;
-				return mutation.result;
-			});
-		this.mutationTail = operation.then(
+		return this.enqueue(async () => {
+			const current = await this.read();
+			const mutation = apply(current);
+			await this.persist(operationName, mutation.document);
+			return mutation.result;
+		});
+	}
+
+	/** 串行化所有写入：并发的两笔改动各自基于同一份旧文档，后写的那笔会吃掉前一笔。 */
+	private enqueue<TResult>(operation: () => Promise<TResult>): Promise<TResult> {
+		const queued = this.mutationTail.catch(() => undefined).then(operation);
+		this.mutationTail = queued.then(
 			() => undefined,
 			() => undefined,
 		);
-		return operation;
+		return queued;
+	}
+
+	/** 校验 + 落盘 + 更新内存副本。返回规范化后的文档。 */
+	private async persist(operationName: string, document: AgentTeamDocument): Promise<AgentTeamDocument> {
+		const normalized = parseAgentTeamDocument(
+			{ ...document, schemaVersion: AGENT_TEAM_SCHEMA_VERSION },
+			this.extensions,
+		);
+		try {
+			await this.repository.write(normalized);
+		} catch (error) {
+			log.error("failed to persist agent team configuration", {
+				operation: operationName,
+				revision: normalized.revision,
+				error: errorMessage(error),
+			});
+			throw error;
+		}
+		this.document = normalized;
+		return normalized;
 	}
 }
 

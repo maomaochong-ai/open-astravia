@@ -58,6 +58,28 @@ export function useAgentTeamResources(): AgentTeamResources {
 		}
 	}, []);
 
+	/**
+	 * 插件重铺预设后跟着刷新。
+	 *
+	 * 插件贡献的智能体与团队由提供方维护，装卸插件和开发态热重载都会在用户没动手的情况下改动
+	 * 这份文档；不听这条事件，列表会一直停在旧阵容直到重启 App。blueprint 一起重取——人设与
+	 * 头像同样随插件走。
+	 */
+	useEffect(() => {
+		return window.vetta.agentTeams.onChanged(() => {
+			void loadAgentTeamConfigurationResources()
+				.then((resources) => {
+					setDocument(resources.document);
+					setBlueprints(resources.blueprints);
+					setPlugins(resources.plugins);
+					setCapabilities(resources.capabilities);
+				})
+				.catch(() => {
+					// 后台刷新失败保持现状：用户没有发起任何操作，弹错只会平白打断他。
+				});
+		});
+	}, []);
+
 	return { document, setDocument, blueprints, plugins, capabilities, loading, error, setError, reload };
 }
 

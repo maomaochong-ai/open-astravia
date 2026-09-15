@@ -3,11 +3,19 @@ import type { DesktopApi } from "../api.js";
 import { subscribeById } from "./helper.js";
 
 const STREAM_EVENT = "vetta:agent-teams:stream-event";
+const CHANGED_EVENT = "vetta:agent-teams:changed";
 
 export function createAgentTeamsApi(ipc: IpcRenderer): Pick<DesktopApi, "agentTeams"> {
 	return {
 		agentTeams: {
 			list: () => ipc.invoke("vetta:agent-teams:list"),
+			onChanged: (listener) => {
+				const handler = (): void => listener();
+				ipc.on(CHANGED_EVENT, handler);
+				return () => {
+					ipc.removeListener(CHANGED_EVENT, handler);
+				};
+			},
 			listBlueprints: () => ipc.invoke("vetta:agent-teams:list-blueprints"),
 			createAgent: (input) => ipc.invoke("vetta:agent-teams:create-agent", input),
 			updateAgent: (id, input) => ipc.invoke("vetta:agent-teams:update-agent", id, input),

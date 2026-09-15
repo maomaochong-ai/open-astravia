@@ -3,6 +3,7 @@ import type { InstalledPlugin } from "../../preload/api-types/plugins.js";
 import { getAppLogger } from "../logger.js";
 import { listPlugins, onPluginsChanged } from "../plugins/plugin-catalog.js";
 import { agentBlueprintRegistry } from "./agent-blueprint-registry.js";
+import { agentTeamStore } from "./agent-team-store.js";
 import { type PluginPresetDeclarations, pluginTeamId } from "./plugin-agent-preset-reconcile.js";
 import { buildPluginAgentPresets } from "./plugin-agent-presets.js";
 
@@ -53,15 +54,21 @@ export function collectPluginPresetDeclarations(plugins: readonly InstalledPlugi
 }
 
 /**
- * 建立「插件变更 → 重建 blueprint」的订阅，并立即跑一次。
+ * 建立「插件变更 → 重建 blueprint → 重铺用户配置」的订阅，并立即跑一次。
  *
  * 必须早于第一次读 Agent 配置：装机目录回填要按当前可用的插件 blueprint 决定铺什么，
  * 注册表是空的就等于所有插件智能体都「不可用」。
+ *
+ * 第二步（重铺配置）不能省：注册表只是主进程的一张解析表，用户看到的智能体与团队来自已经读进
+ * 内存的那份配置文档。热重载时只刷注册表，侧边栏会一直停在旧阵容直到重启 App。
  */
 export function initPluginAgentPresetSync(): void {
 	if (!subscribed) {
 		subscribed = true;
-		onPluginsChanged(refreshPluginAgentPresets);
+		onPluginsChanged(() => {
+			refreshPluginAgentPresets();
+			void agentTeamStore.syncPluginPresets();
+		});
 	}
 	refreshPluginAgentPresets();
 }

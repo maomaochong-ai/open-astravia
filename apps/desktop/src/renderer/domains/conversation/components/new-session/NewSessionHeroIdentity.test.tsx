@@ -77,7 +77,7 @@ describe("new session hero identity", () => {
 		resetAgentTeamDirectoryForTest();
 		Object.defineProperty(window, "vetta", {
 			configurable: true,
-			value: { agentTeams: { list: vi.fn(async () => document) } },
+			value: { agentTeams: { list: vi.fn(async () => document), onChanged: () => () => {} } },
 		});
 	});
 
@@ -132,7 +132,9 @@ describe("new session hero identity", () => {
 		const smallTeam = { ...team, members: team.members.slice(0, 2) };
 		Object.defineProperty(window, "vetta", {
 			configurable: true,
-			value: { agentTeams: { list: vi.fn(async () => ({ ...document, teams: [smallTeam] })) } },
+			value: {
+				agentTeams: { list: vi.fn(async () => ({ ...document, teams: [smallTeam] })), onChanged: () => () => {} },
+			},
 		});
 		render(<Harness />);
 
