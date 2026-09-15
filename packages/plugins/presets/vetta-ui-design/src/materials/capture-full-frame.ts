@@ -31,7 +31,26 @@ const MAX_GROW_PASSES = 3;
 const MAX_CANVAS_EDGE_PX = 16_384;
 /** 出图前的静置：等图片解码、字体落地。与画布位图队列取同一个值。 */
 const SETTLE_MS = 300;
-const TIMEOUT_MS = 30_000;
+/**
+ * 单次截图的预算，取宿主允许的上限。
+ *
+ * 大头不在截图而在「准备」：引擎刚（重）启动时 vite 要现场编译 tailwind 与整帧模块，
+ * 冷启动二三十秒并不罕见；第一帧还要付一次整页加载。位图队列 20s 的预算是给热路径
+ * 的，素材导出是用户主动等着的一次性动作，宁可多等也别在编译到一半时放弃。
+ */
+const TIMEOUT_MS = 60_000;
+/**
+ * 超时后再试的次数。宿主一旦判超时就销毁那个隐藏窗口，下一次请求拿到的是干净窗口
+ * 且服务器多半已经热了——重来一次通常就成。别的错误（页面构建失败、端口没了）重试
+ * 也不会变好，原样抛出。
+ */
+const TIMEOUT_RETRIES = 1;
+
+/** 宿主超时的判据：CaptureTimeoutError 过了 IPC 只剩消息文本。 */
+export function isCaptureTimeout(error: unknown): boolean {
+	const message = error instanceof Error ? error.message : String(error);
+	return message.includes("Capture timed out");
+}
 
 export type MaterialFormat = "png" | "jpeg";
 
@@ -77,6 +96,21 @@ function encode(canvas: HTMLCanvasElement, format: MaterialFormat): string {
  * 宿主的窗口复用。
  */
 async function shoot(
+	deps: FullFrameDeps,
+	request: FullFrameRequest,
+	viewportHeight: number,
+	extra: Partial<PluginOffscreenCaptureOptions>,
+): Promise<PluginOffscreenCaptureResult> {
+	for (let attempt = 0; ; attempt += 1) {
+		try {
+			return await shootOnce(deps, request, viewportHeight, extra);
+		} catch (error) {
+			if (attempt >= TIMEOUT_RETRIES || !isCaptureTimeout(error)) throw error;
+		}
+	}
+}
+
+async function shootOnce(
 	deps: FullFrameDeps,
 	request: FullFrameRequest,
 	viewportHeight: number,

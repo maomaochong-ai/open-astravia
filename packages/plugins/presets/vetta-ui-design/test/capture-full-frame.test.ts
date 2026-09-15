@@ -165,6 +165,40 @@ it("scales the stitched image down instead of cropping when it would exceed the 
 	expect(Math.round(covered)).toBe(16_384);
 });
 
+it("retries a shot once after a host timeout and gives up on the second", async () => {
+	// 引擎冷启动：第一次请求在编译中超时，宿主销毁窗口；紧接着的重试拿到热服务器。
+	const deps = depsFor({ document: 900 });
+	let failures = 1;
+	const flaky: FullFrameDeps = {
+		...deps,
+		capture: async (options) => {
+			if (failures > 0) {
+				failures -= 1;
+				throw new Error("Error invoking remote method 'vetta:plugins:offscreen-capture': Capture timed out before readyExpression");
+			}
+			return deps.capture(options);
+		},
+	};
+	await expect(captureFullFrame(flaky, request)).resolves.toMatchObject({ cssHeight: 900 });
+	expect(shots).toHaveLength(1);
+
+	failures = 2;
+	await expect(captureFullFrame(flaky, request)).rejects.toThrow("Capture timed out");
+});
+
+it("does not retry errors that a fresh window would not fix", async () => {
+	let calls = 0;
+	const dead: FullFrameDeps = {
+		...depsFor({ document: 900 }),
+		capture: async () => {
+			calls += 1;
+			throw new Error("connect ECONNREFUSED 127.0.0.1:5173");
+		},
+	};
+	await expect(captureFullFrame(dead, request)).rejects.toThrow("ECONNREFUSED");
+	expect(calls).toBe(1);
+});
+
 it("falls back to the viewport shot when the probe did not run", async () => {
 	const deps = depsFor({ document: 5000 });
 	const broken: FullFrameDeps = {

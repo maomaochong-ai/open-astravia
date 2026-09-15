@@ -1272,6 +1272,10 @@ export function DesignCanvas({
 	 */
 	const captureMaterial = useCallback(
 		async (frame: VetdFrameEntry, format: MaterialFormat): Promise<FullFrameImage> => {
+			// 构建失败的帧渲染的是错误占位，永远不会发出「画完了」的信号——离屏截图只会
+			// 白等到超时。先问一声，立刻把编译错误报出去。
+			const buildError = getFrameError(frame.id);
+			if (buildError) throw new Error(`Frame "${frame.id}" cannot build:\n${buildError}`);
 			if (offscreenRasterSupported()) {
 				const capture = getPluginCtx().capture;
 				if (!capture) throw new Error("offscreen capture unavailable");
