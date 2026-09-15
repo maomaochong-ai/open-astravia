@@ -394,7 +394,17 @@ export interface TeamSharedContextRecord {
  * `plugin` 表示这份资源由插件贡献：人设、头像、团队流水线都由插件维护，宿主只负责铺档案
  * 与展示来源，不得删除，也不该知道具体是哪个插件。
  */
-export type AgentResourceSource = { readonly kind: "plugin"; readonly pluginId: string };
+export interface AgentResourceSource {
+	readonly kind: "plugin";
+	readonly pluginId: string;
+	/**
+	 * 名称在提供方语言包里的 key（不带 `%`）。`name` 只存默认语言的字面量，是给模型与降级
+	 * 展示用的；界面按这个 key 现场查提供方的语言包，切换语言才能立刻跟上（ADR-0033）。
+	 */
+	readonly nameKey?: string;
+	/** 描述的语言包 key，语义同 {@link AgentResourceSource.nameKey}。 */
+	readonly descriptionKey?: string;
+}
 
 export interface AgentBlueprint {
 	readonly id: string;

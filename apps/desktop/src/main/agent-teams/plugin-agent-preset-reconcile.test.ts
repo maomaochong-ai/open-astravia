@@ -32,6 +32,7 @@ const agentPreset: PluginAgentPreset = {
 	blueprint,
 	profileName: "设计师",
 	profileDescription: "画布设计",
+	profileTextKeys: { nameKey: "agent.designer.name" },
 	mentionHandle: "designer",
 	legacyBlueprintIds: [],
 	roles: ["designer"],
@@ -43,6 +44,7 @@ const developerPreset: PluginAgentPreset = {
 	blueprint: { ...blueprint, id: DEVELOPER_BLUEPRINT, source: { kind: "plugin", pluginId: PROVIDER_ID } },
 	profileName: "开发者",
 	profileDescription: "写代码的",
+	profileTextKeys: {},
 	mentionHandle: "developer",
 	legacyBlueprintIds: [],
 	roles: ["developer"],
@@ -53,6 +55,7 @@ const teamPreset: PluginTeamPreset = {
 	teamId: "design-team",
 	name: "设计团队",
 	description: "把构想变成可评审的界面",
+	textKeys: { nameKey: "team.design.name", descriptionKey: "team.design.description" },
 	members: [
 		{
 			slotKey: "designer",
@@ -116,7 +119,8 @@ describe("plugin agent preset reconcile", () => {
 		const installed = result.document.agents.find((agent) => agent.blueprintId === BLUEPRINT_ID);
 		expect(installed?.id).toBe(pluginAgentProfileId(PLUGIN_ID, "designer"));
 		expect(installed?.name).toBe("设计师");
-		expect(installed?.source).toEqual({ kind: "plugin", pluginId: PLUGIN_ID });
+		// 语言包 key 随档案落盘：字面量只有默认语言，界面靠 key 跟随切换。
+		expect(installed?.source).toEqual({ kind: "plugin", pluginId: PLUGIN_ID, nameKey: "agent.designer.name" });
 		// 头像不落档案：它是一条内联 data URL，既超出 avatar 字段的长度约定，也会让提供方换图之后
 		// 所有存量用户停在旧图上。
 		expect(installed?.avatar).toBeUndefined();
@@ -124,7 +128,12 @@ describe("plugin agent preset reconcile", () => {
 		expect(installed?.systemPrompt).toBeUndefined();
 
 		const team = designTeam(result.document);
-		expect(team?.source).toEqual({ kind: "plugin", pluginId: PLUGIN_ID });
+		expect(team?.source).toEqual({
+			kind: "plugin",
+			pluginId: PLUGIN_ID,
+			nameKey: "team.design.name",
+			descriptionKey: "team.design.description",
+		});
 		expect(team?.members).toHaveLength(1);
 		expect(team?.members[0]?.assignment?.instructions).toBe(teamPreset.workflow);
 	});
@@ -320,7 +329,7 @@ describe("plugin agent preset reconcile", () => {
 		const claimed = result.document.agents.find((agent) => agent.id === legacy?.id);
 		// 档案 id 保住了（用户的团队与会话都挂在它上面），内容换成清单这一份。
 		expect(claimed?.blueprintId).toBe(BLUEPRINT_ID);
-		expect(claimed?.source).toEqual({ kind: "plugin", pluginId: PLUGIN_ID });
+		expect(claimed?.source).toEqual({ kind: "plugin", pluginId: PLUGIN_ID, nameKey: "agent.designer.name" });
 		expect(claimed?.name).toBe("设计师");
 	});
 

@@ -62,6 +62,44 @@ describe("plugin agent presets", () => {
 		// blueprint 上留 `%key%`，档案名落字面量——前者跟着切语言，后者是用户数据。
 		expect(agents[0]?.blueprint.name).toBe("%agent.designer.name%");
 		expect(agents[0]?.profileName).toBe("设计师");
+		// 描述是字面量，没有 key 可存。
+		expect(agents[0]?.profileTextKeys).toEqual({ nameKey: "agent.designer.name" });
+	});
+
+	it("carries the team's i18n keys alongside its default-locale literals", () => {
+		const withTeam = plugin({
+			locales: {
+				zh: {
+					"agent.designer.name": "设计师",
+					"team.design.name": "设计团队",
+					"team.design.description": "出界面",
+				},
+				en: { "agent.designer.name": "Designer", "team.design.name": "Design Team" },
+			},
+			agent: {
+				agents: plugin().agent!.agents,
+				teams: [
+					{
+						id: "design-team",
+						name: "%team.design.name%",
+						description: "%team.design.description%",
+						members: [{ agent: "designer", responsibility: "Builds the frames." }],
+						workflow: "Run this team as a design loop.",
+					},
+				],
+			},
+		} as Partial<InstalledPlugin>);
+
+		const { teams } = buildPluginAgentPresets({
+			plugins: [withTeam],
+			logger: logger(),
+			readResource,
+			readBinaryResource,
+		});
+
+		expect(teams[0]?.name).toBe("设计团队");
+		expect(teams[0]?.description).toBe("出界面");
+		expect(teams[0]?.textKeys).toEqual({ nameKey: "team.design.name", descriptionKey: "team.design.description" });
 	});
 
 	it("pins its own plugin so the agent cannot be left without the ability it exists to drive", () => {

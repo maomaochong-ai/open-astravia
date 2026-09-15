@@ -48,7 +48,15 @@ const abilities = Type.Object(
 	{ additionalProperties: false },
 );
 const optionalAbilities = Type.Partial(abilities, { additionalProperties: false });
-const resourceSource = Type.Object({ kind: Type.Literal("plugin"), pluginId: id }, { additionalProperties: false });
+const resourceSource = Type.Object(
+	{
+		kind: Type.Literal("plugin"),
+		pluginId: id,
+		nameKey: Type.Optional(id),
+		descriptionKey: Type.Optional(id),
+	},
+	{ additionalProperties: false },
+);
 const profile = Type.Object(
 	{
 		id,

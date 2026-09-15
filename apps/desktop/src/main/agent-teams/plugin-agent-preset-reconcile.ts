@@ -272,7 +272,7 @@ function presetAgentProfile(
 			plugins: [...preset.blueprint.defaultAbilities.plugins],
 		},
 		scope: { kind: "library" },
-		source: { kind: "plugin", pluginId: preset.pluginId },
+		source: { kind: "plugin", pluginId: preset.pluginId, ...preset.profileTextKeys },
 		createdAt: current?.createdAt ?? now,
 		updatedAt: now,
 	};
@@ -296,7 +296,7 @@ function presetTeam(
 		members,
 		orchestrationPolicyId: current?.orchestrationPolicyId ?? "leader-delegates-v1",
 		contextPolicyId: current?.contextPolicyId ?? "public-results-v1",
-		source: { kind: "plugin", pluginId: preset.pluginId },
+		source: { kind: "plugin", pluginId: preset.pluginId, ...preset.textKeys },
 		createdAt: current?.createdAt ?? now,
 		updatedAt: now,
 	};

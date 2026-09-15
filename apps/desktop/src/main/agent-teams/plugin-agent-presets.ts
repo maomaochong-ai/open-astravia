@@ -11,10 +11,31 @@ import type { InstalledPlugin } from "../../preload/api-types/plugins.js";
  * 恰好是 %key% 才查表，否则原样返回」这一条，抄十行比拖一个 UI 依赖划算。
  */
 function resolvePluginText(raw: string, locales: Record<string, Record<string, string>>, locale: string): string {
-	const match = /^%([^%]+)%$/.exec(raw);
-	if (!match) return raw;
-	const key = match[1]!;
+	const key = pluginTextKey(raw);
+	if (key === undefined) return raw;
 	return locales[locale]?.[key] ?? key;
+}
+
+/** 整串恰好是 `%key%` 时取出 key；字面量返回 undefined。 */
+function pluginTextKey(raw: string | undefined): string | undefined {
+	return raw ? /^%([^%]+)%$/.exec(raw)?.[1] : undefined;
+}
+
+/**
+ * 名称与描述的语言包 key，随档案落盘。
+ *
+ * 档案里的字面量只能是一种语言，界面拿这两个 key 按当前语言现场解析；字面量写法的插件没有
+ * key，也就没什么可切的。
+ */
+export interface PluginPresetTextKeys {
+	readonly nameKey?: string;
+	readonly descriptionKey?: string;
+}
+
+function presetTextKeys(name: string, description: string | undefined): PluginPresetTextKeys {
+	const nameKey = pluginTextKey(name);
+	const descriptionKey = pluginTextKey(description);
+	return { ...(nameKey ? { nameKey } : {}), ...(descriptionKey ? { descriptionKey } : {}) };
 }
 
 const AVATAR_MEDIA_TYPES: Readonly<Record<string, string>> = Object.freeze({
@@ -59,6 +80,7 @@ export interface PluginTeamPreset {
 	readonly teamId: string;
 	readonly name: string;
 	readonly description: string;
+	readonly textKeys: PluginPresetTextKeys;
 	readonly members: readonly PluginTeamPresetMember[];
 	/** 队长的团队任务书。 */
 	readonly workflow: string;
@@ -71,9 +93,10 @@ export interface PluginAgentPreset {
 	/** 插件内的智能体 id，用于推导稳定的全局 id。 */
 	readonly agentId: string;
 	readonly blueprint: AgentBlueprint;
-	/** 铺档案时用的字面名称（已按插件默认语言解析）。 */
+	/** 铺档案时用的字面名称（已按插件默认语言解析）；界面另按 {@link profileTextKeys} 跟随语言。 */
 	readonly profileName: string;
 	readonly profileDescription: string;
+	readonly profileTextKeys: PluginPresetTextKeys;
 	readonly mentionHandle: string;
 	/** 本智能体接管的历史 blueprint id，用于折算老档案与认领同角色档案。 */
 	readonly legacyBlueprintIds: readonly string[];
@@ -218,6 +241,7 @@ function buildAgentPreset(
 		blueprint,
 		profileName: resolvePluginText(rawName, plugin.locales ?? {}, defaultLocale),
 		profileDescription: rawDescription ? resolvePluginText(rawDescription, plugin.locales ?? {}, defaultLocale) : "",
+		profileTextKeys: presetTextKeys(rawName, rawDescription),
 		mentionHandle: declared.mentionHandle ?? declared.id,
 		legacyBlueprintIds: declared.legacyIds ?? [],
 		roles: declared.roles ?? [],
@@ -319,6 +343,7 @@ function buildTeamPreset(
 		description: declared.description
 			? resolvePluginText(declared.description, plugin.locales ?? {}, defaultLocale)
 			: "",
+		textKeys: presetTextKeys(declared.name, declared.description),
 		members,
 		workflow: workflow?.trimEnd() ?? "",
 		legacyTeamIds: declared.legacyIds ?? [],
