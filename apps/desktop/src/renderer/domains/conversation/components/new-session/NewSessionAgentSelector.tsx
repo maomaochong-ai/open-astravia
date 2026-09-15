@@ -1,4 +1,5 @@
 import { teamMemberAvatarUrls, useAgentAvatarResolver } from "@shared/agent-teams/agent-avatar";
+import { useLocalizedAgentTeamDocument } from "@shared/agent-teams/agent-team-localization";
 import { BotAvatar } from "@shared/components/BotAvatar";
 import { type AgentTeamDocument, listLibraryAgentProfiles } from "@vetta/agent-team";
 import { NewSessionPicker, type NewSessionPickerRootProps } from "@vetta-org/theme-ui/chat";
@@ -33,7 +34,8 @@ export function NewSessionAgentSelector({
 	className,
 }: NewSessionAgentSelectorProps): JSX.Element {
 	const { t } = useTranslation("chat");
-	const [document, setDocument] = useState<AgentTeamDocument>();
+	const [loadedDocument, setDocument] = useState<AgentTeamDocument>();
+	const document = useLocalizedAgentTeamDocument(loadedDocument);
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState("");
 	const [loading, setLoading] = useState(false);

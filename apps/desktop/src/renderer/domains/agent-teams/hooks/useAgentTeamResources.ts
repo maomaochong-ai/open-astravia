@@ -1,3 +1,4 @@
+import { useLocalizedAgentTeamDocument } from "@shared/agent-teams/agent-team-localization";
 import type { AgentBlueprint, AgentTeamDocument } from "@vetta/agent-team";
 import { type Dispatch, type SetStateAction, useCallback, useEffect, useState } from "react";
 import type { BlueprintDisplayPlugin } from "../lib/blueprint-display";
@@ -9,6 +10,7 @@ import { loadAgentTeamConfigurationResources } from "../services/load-agent-team
  * 这里加载，再由各职责 model 消费，避免两套状态各自请求后互相覆盖。
  */
 export interface AgentTeamResources {
+	/** 已按界面语言解析插件名称的展示文档；`setDocument` 的函数式更新拿到的仍是原始文档。 */
 	readonly document?: AgentTeamDocument;
 	readonly setDocument: Dispatch<SetStateAction<AgentTeamDocument | undefined>>;
 	readonly blueprints: readonly AgentBlueprint[];
@@ -80,7 +82,19 @@ export function useAgentTeamResources(): AgentTeamResources {
 		});
 	}, []);
 
-	return { document, setDocument, blueprints, plugins, capabilities, loading, error, setError, reload };
+	const displayDocument = useLocalizedAgentTeamDocument(document);
+
+	return {
+		document: displayDocument,
+		setDocument,
+		blueprints,
+		plugins,
+		capabilities,
+		loading,
+		error,
+		setError,
+		reload,
+	};
 }
 
 export function agentTeamErrorMessage(cause: unknown): string {

@@ -1,3 +1,4 @@
+import { useLocalizedAgentTeamDocument } from "@shared/agent-teams/agent-team-localization";
 import type { AgentTeamDocument } from "@vetta/agent-team";
 import { useEffect, useState } from "react";
 
@@ -80,5 +81,5 @@ export function useAgentTeamDirectoryDocument(): AgentTeamDocument | undefined {
 		loadAgentTeamDocument().then(setDocument, () => {});
 		return unsubscribe;
 	}, []);
-	return document;
+	return useLocalizedAgentTeamDocument(document);
 }

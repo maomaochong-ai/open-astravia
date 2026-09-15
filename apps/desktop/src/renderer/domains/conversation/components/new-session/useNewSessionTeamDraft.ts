@@ -1,3 +1,4 @@
+import { useLocalizedAgentTeamDocument } from "@shared/agent-teams/agent-team-localization";
 import { agentDisplayName } from "@shared/agent-teams/agent-team-presentation";
 import {
 	deriveAttachments,
@@ -66,7 +67,8 @@ export function useNewSessionTeamDraft({
 	const reasoningByModel = useAtomValue(reasoningByModelAtom);
 	const store = useStore();
 	const teamId = parseTeamTargetKey(targetKey);
-	const [document, setDocument] = useState<AgentTeamDocument>();
+	const [loadedDocument, setDocument] = useState<AgentTeamDocument>();
+	const document = useLocalizedAgentTeamDocument(loadedDocument);
 	const memberMentionsByTeamRef = useRef<Readonly<Record<string, TeamDraftMemberMentions>>>({});
 	const [, refreshMemberMentions] = useReducer((revision: number) => revision + 1, 0);
 	const [executionMode, setExecutionMode] = useState<SessionExecutionMode>("full-access");

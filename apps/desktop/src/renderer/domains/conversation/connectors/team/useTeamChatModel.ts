@@ -1,5 +1,6 @@
 import type { DesktopTeamSessionSnapshot } from "@preload/api-types/team-conversation-display";
 import { useAgentAvatarResolver } from "@shared/agent-teams/agent-avatar";
+import { useLocalizedAgentTeamDocument } from "@shared/agent-teams/agent-team-localization";
 import { agentDisplayName, teamDisplayName } from "@shared/agent-teams/agent-team-presentation";
 import { notifyTeamSessionsChanged } from "@shared/agent-teams/team-session-events";
 import { abortConversationAgentMessage } from "@shared/conversation";
@@ -106,7 +107,9 @@ export function useTeamChatModel(
 	const streamsRef = useRef<TeamStreamState>({});
 	pendingRef.current = pending;
 	const routeHandoff = preferredSessionId ? peekTeamSessionHandoff(preferredSessionId) : undefined;
-	const displayDocument = routeHandoff?.document ?? document;
+	// 发往会话创建的是原始文档；本地化后的只用于渲染。
+	const handoffDocument = routeHandoff?.document ?? document;
+	const displayDocument = useLocalizedAgentTeamDocument(handoffDocument);
 	const draftScope = session?.id ?? preferredSessionId ?? teamId;
 	const draft = draftsByTeam[draftScope] ?? "";
 	const draftRef = useRef(draft);
@@ -687,7 +690,7 @@ export function useTeamChatModel(
 								teamId,
 								sessionId: activeHandoff.sessionId,
 								executionMode: activeHandoff.executionMode,
-								document: displayDocument,
+								document: handoffDocument,
 								...(activeHandoff.workspace ? { workspace: activeHandoff.workspace } : {}),
 							})
 						: await (sessionCreationRef.current ?? createTeamChatSession(teamId, document, sessions));
@@ -788,7 +791,7 @@ export function useTeamChatModel(
 			effectiveReasoning,
 			createNewSession,
 			document,
-			displayDocument,
+			handoffDocument,
 			preferredSessionId,
 			sessions,
 		],
