@@ -50,7 +50,16 @@ export function NewSessionContextBlock({
 		<section
 			data-new-session-context="true"
 			data-width={selected.contribution.width}
-			className={cn("mt-5 w-full", className)}
+			className={cn(
+				"mx-auto mt-5 w-full",
+				// 宽度跟着当前选中的贡献走，而不是排第一的那个：几个贡献宽度声明不同时，
+				// 切到 `wide` 的那栏就该铺开，切回 `input` 的那栏就该收回输入框宽度。
+				// `wide`（画廊、素材墙）占页面宽度的八成：压回输入框那 672px，每一项都会
+				// 小到看不清。八成只在宽屏成立——窄窗口上两侧各让出一成等于把本来就不够的
+				// 宽度再砍一刀，所以窄屏铺满。
+				selected.contribution.width === "wide" ? "max-w-none md:w-11/12 xl:w-4/5" : "max-w-2xl",
+				className,
+			)}
 		>
 			{contexts.length > 1 && (
 				<div role="tablist" className="mb-2.5 flex items-center gap-1">

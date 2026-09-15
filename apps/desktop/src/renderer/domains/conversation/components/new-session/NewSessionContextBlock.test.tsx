@@ -7,7 +7,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { ActiveNewSessionContext } from "./new-session-context-activation";
 import { NewSessionContextBlock } from "./NewSessionContextBlock";
 
-function active(contextId: string, label: string): ActiveNewSessionContext {
+function active(
+	contextId: string,
+	label: string,
+	width: RegisteredNewSessionContext["width"] = "input",
+): ActiveNewSessionContext {
 	return {
 		contribution: {
 			pluginId: contextId.split(":")[0]!,
@@ -15,7 +19,7 @@ function active(contextId: string, label: string): ActiveNewSessionContext {
 			contextId,
 			label,
 			activateWhen: { agents: ["designer"] },
-			width: "input",
+			width,
 			render: () => null,
 			order: 0,
 			canReadDraft: false,
@@ -87,6 +91,26 @@ describe("NewSessionContextBlock", () => {
 		view.rerender(<NewSessionContextBlock contexts={[active("a:one", "一")]} renderContext={renderContext} />);
 
 		expect(screen.getByText("content:a:one")).toBeTruthy();
+	});
+
+	it("sizes the area by the selected contribution, not the first one", async () => {
+		const user = userEvent.setup();
+		const view = render(
+			<NewSessionContextBlock
+				contexts={[active("a:one", "一", "input"), active("b:two", "二", "wide")]}
+				renderContext={renderContext}
+			/>,
+		);
+		const section = () => view.container.querySelector<HTMLElement>('[data-new-session-context="true"]')!;
+		expect(section().className).toContain("max-w-2xl");
+
+		// 排在后面的 `wide` 贡献被选中时要铺开，不能被第一个的 `input` 宽度压回去。
+		await user.click(screen.getByRole("tab", { name: "二" }));
+		expect(section().dataset.width).toBe("wide");
+		expect(section().className).not.toContain("max-w-2xl");
+
+		await user.click(screen.getByRole("tab", { name: "一" }));
+		expect(section().className).toContain("max-w-2xl");
 	});
 
 	it("yields the area while the command panel is open", () => {

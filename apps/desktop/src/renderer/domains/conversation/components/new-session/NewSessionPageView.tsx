@@ -221,23 +221,12 @@ export function NewSessionPageView({
 					   「选项目」之后，不会把这一步挤到内容底下。
 					   命令区展开时整块让位：那是打断式交互。 */
 					<div className="px-2 sm:px-4">
-						{/* `wide` 的贡献（画廊、素材墙）占页面宽度的八成：压回输入框那 672px，
-						    每一项都会小到看不清。八成只在宽屏成立——窄窗口上两侧各让出一成
-						    等于把本来就不够的宽度再砍一刀，所以窄屏铺满。 */}
-						<div
-							className={cn(
-								"mx-auto w-full",
-								contextBlock.contexts[0]?.contribution.width === "wide"
-									? "w-full max-w-none md:w-11/12 xl:w-4/5"
-									: "max-w-2xl",
-							)}
-						>
-							<NewSessionContextBlock
-								contexts={contextBlock.contexts}
-								renderContext={contextBlock.renderContext}
-								hidden={commandPanelExpanded}
-							/>
-						</div>
+						{/* 宽度由当前选中的那个贡献决定，交给上下文区自己算：这一层看不到选中态。 */}
+						<NewSessionContextBlock
+							contexts={contextBlock.contexts}
+							renderContext={contextBlock.renderContext}
+							hidden={commandPanelExpanded}
+						/>
 					</div>
 					)
 				}
