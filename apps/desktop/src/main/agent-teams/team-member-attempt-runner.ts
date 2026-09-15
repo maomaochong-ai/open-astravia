@@ -278,7 +278,12 @@ export class TeamMemberAttemptRunner {
 				});
 			}
 			let promptOutcome: Awaited<ReturnType<RuntimeHost["prompt"]>> | undefined;
-			if (mode === "continue" || mode === "recovery") {
+			if (input.continuationContext?.length) {
+				// Resolves after the Runtime continuation turn that consumes these records.
+				await this.options
+					.runtime()
+					.deliverSessionContext(runtimeState.sessionId, input.continuationContext, "triggerTurn");
+			} else if (mode === "continue" || mode === "recovery") {
 				await this.options.runtime().continue(runtimeState.sessionId);
 			} else if (mode === "retry") {
 				await this.options.runtime().retry(runtimeState.sessionId);

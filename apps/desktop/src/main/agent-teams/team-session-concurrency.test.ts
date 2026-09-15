@@ -447,6 +447,97 @@ describe("Team member concurrency", () => {
 		expect(await tasks.getTask({ ...caller, teamTaskId: admitted.teamTaskId })).toEqual(completed.tasks[0]);
 	});
 
+	it("continues an interrupted leader inside a Team attempt when its delegated task completes", async () => {
+		const fixture = await createFixture();
+		const [leader, member] = fixture.members;
+		const leaderRuntime = fixture.session.memberRuntime[leader]!.sessionId;
+		const tasks = fixture.service.taskControls(fixture.session.id);
+		const leaderTurn = fixture.turn(leader, "report");
+		leaderTurn.failure = {
+			code: "provider_unauthorized",
+			message: "unauthorized",
+			retryable: false,
+			origin: "provider",
+		};
+		leaderTurn.partial = {
+			...createAssistantMessage({ api: "openai-responses", provider: "openai", model: "test" }),
+			stopReason: "error",
+			content: [{ type: "toolCall", id: "delegate-build", name: "team_delegate_task", arguments: {} }],
+		};
+		const memberTurn = fixture.turn(member, "Build the feature");
+		continueLeaderWith(fixture, leaderRuntime, "Integrated report");
+		const leaderCompleted = fixture.workState(`work:report:${leader}`, "completed");
+		const send = fixture.service.send(fixture.session.id, {
+			requestId: "report",
+			text: "report",
+			targetMemberIds: [leader],
+		});
+		await leaderTurn.started.promise;
+		const caller = taskCaller(fixture, leader);
+		const task = await tasks.delegateTask({
+			...caller,
+			requestId: "build",
+			targetHandle: fixture.session.memberHandles[member]!,
+			objective: "Build the feature",
+		});
+		await memberTurn.started.promise;
+		memberTurn.finish.resolve();
+		await tasks.waitTasks({ ...caller, teamTaskIds: [task.teamTaskId], timeoutMs: 1_000 });
+		// The leader still owns its lane, so the completion must not start a Runtime turn beside it.
+		expect(fixture.runtime.deliverSessionContext).not.toHaveBeenCalledWith(
+			leaderRuntime,
+			expect.anything(),
+			"triggerTurn",
+		);
+
+		leaderTurn.finish.resolve();
+		await send;
+		await leaderCompleted;
+
+		expect(fixture.runtime.deliverSessionContext).toHaveBeenCalledWith(
+			leaderRuntime,
+			[expect.objectContaining({ type: "agent-team.task-completed.v1" })],
+			"triggerTurn",
+		);
+		const leaderMessages = publicAgentMessagesBy(fixture, leader);
+		expect(leaderMessages.map((entry) => entry.turnId)).toEqual(["report", "report"]);
+		expect(JSON.stringify(leaderMessages[0])).toContain("delegate-build");
+		expect(JSON.stringify(leaderMessages[1])).toContain("Integrated report");
+	});
+
+	it("publishes a leader continuation as follow-up work after the leader request already completed", async () => {
+		const fixture = await createFixture();
+		const [leader, member] = fixture.members;
+		const leaderRuntime = fixture.session.memberRuntime[leader]!.sessionId;
+		const tasks = fixture.service.taskControls(fixture.session.id);
+		const leaderTurn = fixture.turn(leader, "plan");
+		const send = fixture.service.send(fixture.session.id, {
+			requestId: "plan",
+			text: "plan",
+			targetMemberIds: [leader],
+		});
+		await leaderTurn.started.promise;
+		leaderTurn.finish.resolve();
+		await send;
+		continueLeaderWith(fixture, leaderRuntime, "Wrap-up after review");
+		const followUpCompleted = fixture.workState(`work:plan:continuation:1:${leader}`, "completed");
+		const memberTurn = fixture.turn(member, "Review the plan");
+		const caller = taskCaller(fixture, leader);
+		await tasks.delegateTask({
+			...caller,
+			requestId: "review",
+			targetHandle: fixture.session.memberHandles[member]!,
+			objective: "Review the plan",
+		});
+		await memberTurn.started.promise;
+		memberTurn.finish.resolve();
+		await followUpCompleted;
+
+		const leaderMessages = publicAgentMessagesBy(fixture, leader);
+		expect(leaderMessages.map((entry) => entry.turnId)).toEqual(["plan", "plan:continuation:1"]);
+		expect(JSON.stringify(leaderMessages[1])).toContain("Wrap-up after review");
+	});
+
 	it("lets the leader delegate fresh work to the same member after an earlier task completed", async () => {
 		const fixture = await createFixture();
 		const [leader, member] = fixture.members;
@@ -1682,6 +1773,10 @@ async function createFixture(extensions?: AgentTeamExtensionRegistry) {
 		failNextPublicAppend() {
 			failNextPublicAppend = true;
 		},
+		appendHistory(sessionId: string, message: ReturnType<typeof createAssistantMessage>) {
+			const entryId = `continued-answer-${++sequence}`;
+			history.set(sessionId, [...(history.get(sessionId) ?? []), { type: "message", entryId, message }]);
+		},
 		abortAfterPendingDelivery(controller: AbortController) {
 			pendingDeliveryAbort = controller;
 		},
@@ -1711,6 +1806,25 @@ async function createFixture(extensions?: AgentTeamExtensionRegistry) {
 			return turn;
 		},
 	};
+}
+
+/** Makes the leader's next Runtime continuation end with a final public answer. */
+function continueLeaderWith(fixture: Awaited<ReturnType<typeof createFixture>>, leaderRuntime: string, text: string) {
+	vi.mocked(fixture.runtime.deliverSessionContext).mockImplementation(async (sessionId, _records, mode) => {
+		if (mode !== "triggerTurn" || sessionId !== leaderRuntime) return;
+		fixture.appendHistory(sessionId, {
+			...createAssistantMessage({ api: "openai-responses", provider: "openai", model: "test" }),
+			content: [{ type: "text", text }],
+		});
+	});
+}
+
+function publicAgentMessagesBy(fixture: Awaited<ReturnType<typeof createFixture>>, authorId: string) {
+	return fixture.conversations
+		.get(fixture.session.coordinationRuntime!.sessionId)!
+		.entries.flatMap((entry) =>
+			entry.type === "message" && entry.kind === "agent" && entry.author.id === authorId ? [entry] : [],
+		);
 }
 
 function taskCaller(fixture: Awaited<ReturnType<typeof createFixture>>, memberId: string) {
