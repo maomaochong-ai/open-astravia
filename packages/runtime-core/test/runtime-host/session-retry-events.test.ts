@@ -135,3 +135,40 @@ function assistantFinal(): SessionEvent {
 function eventName(event: SessionEvent): string {
 	return event.type === "session.lifecycle" ? event.phase : event.type;
 }
+
+/**
+ * 某次重试在写出自己的 agent_end 之前就抛错（session.retry() 被 sessionBusy /
+ * turnPersistence 拒绝）时：auto_retry_start 已经把上一次尝试的 pendingAgentEnd
+ * 清空，若 flushPendingError 只补 error 不补 agent_end，宿主的 running 就永远
+ * 落不回 false。
+ */
+describe("DeferredRuntimeRetryEventStream 重试尝试抛错", () => {
+	it("放行扣住的 error 时补出终结用的 agent_end", () => {
+		const source = new TestEventStream();
+		const stream = new DeferredRuntimeRetryEventStream("session-1", source);
+		const observed: SessionEvent[] = [];
+		stream.subscribe((event) => observed.push(event));
+
+		// 第一次尝试失败：error + agent_end 被扣住
+		source.emit(errorEvent("503 auth_unavailable", "error-1"));
+		source.emit(lifecycle("agent_end", "end-1"));
+		// 退避开始：pendingAgentEnd 被清掉
+		stream.emitRetry({
+			type: "auto_retry_start",
+			attempt: 1,
+			maxAttempts: 3,
+			delayMs: 1_000,
+			errorMessage: "503 auth_unavailable",
+		});
+		// 这次重试在开 turn 之前就抛了：既没有 agent_start，也没有 agent_end
+		stream.emitRetry({
+			type: "auto_retry_end",
+			success: false,
+			attempt: 1,
+			finalError: "Session is busy",
+		});
+
+		expect(stream.flushPendingError()).toBe(true);
+		expect(observed.map(eventName)).toContain("agent_end");
+	});
+});

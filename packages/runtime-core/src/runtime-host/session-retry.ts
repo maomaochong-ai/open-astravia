@@ -138,6 +138,14 @@ export class DeferredRuntimeRetryEventStream implements RuntimeSessionEventStrea
 		this.retryAttempts = 0;
 	}
 
+	/**
+	 * 扣住的 error 一旦放行，回合就必须同时终结。持有的 agent_end 可能缺席：
+	 * `auto_retry_start` 会清掉上一次尝试的 agent_end，而这一次尝试可能在开出
+	 * 自己的 turn 之前就抛错（session.retry() 被 sessionBusy / turnPersistence
+	 * 拒绝）。缺席时补一个合成的 agent_end，否则宿主的 running 永远落不回 false，
+	 * 渲染端停在「处理中」，而 kernel Session 已经 idle、停止按钮的 cancel()
+	 * 直接早退，用户再没有任何手段脱身。
+	 */
 	flushPendingError(): boolean {
 		const pending = this.pendingError;
 		if (!pending) return false;
@@ -145,8 +153,16 @@ export class DeferredRuntimeRetryEventStream implements RuntimeSessionEventStrea
 		const retryAttempts = this.retryAttempts;
 		this.clearPendingError();
 		this.broadcast({ ...pending, retryAttempts });
-		if (pendingAgentEnd) this.broadcast(pendingAgentEnd);
+		this.broadcast(pendingAgentEnd ?? this.syntheticAgentEnd());
 		return true;
+	}
+
+	private syntheticAgentEnd(): SessionEvent {
+		return mapRuntimeSessionObservationEvent(this.sessionId, {
+			type: "lifecycle",
+			phase: "agent_end",
+			source: "runtime-core",
+		});
 	}
 
 	dispose(): void {
