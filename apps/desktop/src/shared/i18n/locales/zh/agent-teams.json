@@ -154,6 +154,7 @@
     "assignmentInstructionsHint": "追加在它原有人设之后，不会替换本体人设与协作规则；只有它本人看得到。",
     "assignmentCancel": "取消",
     "assignmentCollapse": "收起",
+    "assignmentEditInstructions": "编辑",
     "assignmentApply": "应用",
     "memberOverview": "点击任意成员卡片配置其角色设定与专属能力。",
     "deleteTeamTitle": "删除这个团队？",

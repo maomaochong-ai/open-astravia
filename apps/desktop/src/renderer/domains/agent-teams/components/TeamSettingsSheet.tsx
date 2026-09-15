@@ -17,7 +17,8 @@ import {
 	SelectValue,
 	cn,
 } from "@vetta-org/ui";
-import { useEffect, useState } from "react";
+import { RendererMarkdownContent } from "@shared/components/RendererMarkdownContent";
+import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AgentAvatarStack } from "./agent-center/AgentAvatarStack";
 import { type BlueprintDisplayPlugin, resourceProviderName } from "../lib/blueprint-display";
@@ -195,34 +196,49 @@ export function TeamSettingsSheet({
 
 						<DetailDrawerEnter index={1} className="flex flex-col gap-4">
 							<SectionTitle>{t("settings.identity")}</SectionTitle>
-							<label className="flex flex-col gap-1.5">
-								<span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">
-									{t("teams.name")}
-								</span>
-								<Input
-									name="agent-team-name"
-									autoComplete="off"
-									value={draft.name}
-									readOnly={readOnly}
-									onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
-									aria-label={t("teams.name")}
-									className="h-9"
-								/>
-							</label>
-							<label className="flex flex-col gap-1.5">
-								<span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">
-									{t("settings.description")}
-								</span>
-								<textarea
-									value={draft.description ?? ""}
-									onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))}
-									readOnly={readOnly}
-									rows={3}
-									placeholder={t("settings.descriptionPlaceholder")}
-									aria-label={t("settings.description")}
-									className="min-h-20 w-full resize-none rounded-xl border border-border/60 bg-background/50 px-3.5 py-2.5 text-[12px] leading-relaxed text-foreground caret-primary outline-none transition-colors placeholder:text-muted-foreground/50 hover:border-border focus:border-primary/50 focus:bg-background"
-								/>
-							</label>
+							{readOnly ? (
+								<>
+									<ReadOnlyField label={t("teams.name")}>
+										<p className="text-[13px] text-foreground">{team.name}</p>
+									</ReadOnlyField>
+									{team.description.trim() && (
+										<ReadOnlyField label={t("settings.description")}>
+											<p className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-foreground/90">
+												{team.description}
+											</p>
+										</ReadOnlyField>
+									)}
+								</>
+							) : (
+								<>
+									<label className="flex flex-col gap-1.5">
+										<span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">
+											{t("teams.name")}
+										</span>
+										<Input
+											name="agent-team-name"
+											autoComplete="off"
+											value={draft.name}
+											onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
+											aria-label={t("teams.name")}
+											className="h-9"
+										/>
+									</label>
+									<label className="flex flex-col gap-1.5">
+										<span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">
+											{t("settings.description")}
+										</span>
+										<textarea
+											value={draft.description ?? ""}
+											onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))}
+											rows={3}
+											placeholder={t("settings.descriptionPlaceholder")}
+											aria-label={t("settings.description")}
+											className="min-h-20 w-full resize-none rounded-xl border border-border/60 bg-background/50 px-3.5 py-2.5 text-[12px] leading-relaxed text-foreground caret-primary outline-none transition-colors placeholder:text-muted-foreground/50 hover:border-border focus:border-primary/50 focus:bg-background"
+										/>
+									</label>
+								</>
+							)}
 						</DetailDrawerEnter>
 
 						<DetailDrawerEnter index={2} className="flex flex-col gap-3">
@@ -295,11 +311,16 @@ export function TeamSettingsSheet({
 												)}
 											</div>
 
-											{assignmentAgentId === member.id ? (
+											{assignmentAgentId === member.id && readOnly ? (
+												<MemberAssignmentView
+													agent={member}
+													assignment={assemblyAssignment(draft, member.id)}
+													onClose={() => setAssignmentAgentId(undefined)}
+												/>
+											) : assignmentAgentId === member.id ? (
 												<MemberAssignmentEditor
 													agent={member}
 													assignment={assemblyAssignment(draft, member.id)}
-													readOnly={readOnly}
 													onClose={() => setAssignmentAgentId(undefined)}
 													onSave={(assignment) => {
 														setDraft((current) => setAssemblyAssignment(current, member.id, assignment));
@@ -447,20 +468,19 @@ function MemberAssignmentRow({
 function MemberAssignmentEditor({
 	agent,
 	assignment,
-	readOnly = false,
 	onClose,
 	onSave,
 }: {
 	readonly agent: AgentProfile;
 	readonly assignment?: TeamMemberAssignment;
-	/** 只读展开：插件写的任务书照原样给用户看，不给应用入口。 */
-	readonly readOnly?: boolean;
 	readonly onClose: () => void;
 	readonly onSave: (assignment: TeamMemberAssignment) => void;
 }): JSX.Element {
 	const { t } = useTranslation("agent-teams");
 	const [responsibility, setResponsibility] = useState(assignment?.responsibility ?? "");
 	const [instructions, setInstructions] = useState(assignment?.instructions ?? "");
+	// 已有补充指令先按 Markdown 排给人读，点「编辑」才换回源码；空的直接给输入框，省一次点击。
+	const [editingInstructions, setEditingInstructions] = useState(!assignment?.instructions?.trim());
 
 	return (
 		<div className="flex flex-col gap-3 rounded-lg border border-border/50 bg-background/40 p-3">
@@ -472,48 +492,116 @@ function MemberAssignmentEditor({
 			</div>
 
 			<label className="flex flex-col gap-1.5">
-					<span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">
-						{t("settings.assignmentResponsibility")}
-					</span>
-					<Input
-						value={responsibility}
-						onChange={(event) => setResponsibility(event.target.value)}
-						readOnly={readOnly}
-						placeholder={agent.description}
-						aria-label={t("settings.assignmentResponsibility")}
-						className="h-9"
-					/>
-					<span className="text-[11px] text-muted-foreground/60">{t("settings.assignmentResponsibilityHint")}</span>
-				</label>
+				<span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">
+					{t("settings.assignmentResponsibility")}
+				</span>
+				<Input
+					value={responsibility}
+					onChange={(event) => setResponsibility(event.target.value)}
+					placeholder={agent.description}
+					aria-label={t("settings.assignmentResponsibility")}
+					className="h-9"
+				/>
+				<span className="text-[11px] text-muted-foreground/60">{t("settings.assignmentResponsibilityHint")}</span>
+			</label>
 
-				<label className="flex flex-col gap-1.5">
+			<div className="flex flex-col gap-1.5">
+				<div className="flex items-center justify-between gap-2">
 					<span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">
 						{t("settings.assignmentInstructions")}
 					</span>
+					{!editingInstructions && (
+						<Button
+							variant="ghost"
+							size="sm"
+							className="h-6 gap-1 px-2 text-[11px] text-muted-foreground"
+							onClick={() => setEditingInstructions(true)}
+						>
+							<span className="icon-[solar--pen-2-linear] h-3 w-3" aria-hidden="true" />
+							{t("settings.assignmentEditInstructions")}
+						</Button>
+					)}
+				</div>
+				{editingInstructions ? (
 					<textarea
 						value={instructions}
 						onChange={(event) => setInstructions(event.target.value)}
-						readOnly={readOnly}
-						rows={5}
+						rows={12}
+						autoFocus={Boolean(assignment?.instructions?.trim())}
 						placeholder={t("settings.assignmentInstructionsPlaceholder")}
 						aria-label={t("settings.assignmentInstructions")}
-						className="min-h-28 w-full resize-none rounded-xl border border-border/60 bg-background/50 px-3.5 py-2.5 text-[12px] leading-relaxed text-foreground caret-primary outline-none transition-colors placeholder:text-muted-foreground/50 hover:border-border focus:border-primary/50 focus:bg-background"
+						className="min-h-60 w-full resize-y rounded-xl border border-border/60 bg-background/50 px-3.5 py-2.5 font-mono text-[12px] leading-relaxed text-foreground caret-primary outline-none transition-colors placeholder:text-muted-foreground/50 hover:border-border focus:border-primary/50 focus:bg-background"
 					/>
-					<span className="text-[11px] text-muted-foreground/60">{t("settings.assignmentInstructionsHint")}</span>
-				</label>
+				) : (
+					<InstructionsMarkdown text={instructions} />
+				)}
+				<span className="text-[11px] text-muted-foreground/60">{t("settings.assignmentInstructionsHint")}</span>
+			</div>
 
 			<div className="flex justify-end gap-2">
 				<Button variant="outline" size="sm" onClick={onClose}>
-					<span className="text-[12px] font-medium">
-						{t(readOnly ? "settings.assignmentCollapse" : "settings.assignmentCancel")}
-					</span>
+					<span className="text-[12px] font-medium">{t("settings.assignmentCancel")}</span>
 				</Button>
-				{!readOnly && (
-					<Button variant="primary" size="sm" onClick={() => onSave({ responsibility, instructions })}>
-						<span className="text-[12px] font-medium">{t("settings.assignmentApply")}</span>
-					</Button>
-				)}
+				<Button variant="primary" size="sm" onClick={() => onSave({ responsibility, instructions })}>
+					<span className="text-[12px] font-medium">{t("settings.assignmentApply")}</span>
+				</Button>
 			</div>
+		</div>
+	);
+}
+
+/** 提供方维护的任务书：只摆 label 与内容，不给任何输入框的外观——这里本来就没有可改的东西。 */
+function MemberAssignmentView({
+	agent,
+	assignment,
+	onClose,
+}: {
+	readonly agent: AgentProfile;
+	readonly assignment?: TeamMemberAssignment;
+	readonly onClose: () => void;
+}): JSX.Element {
+	const { t } = useTranslation("agent-teams");
+	return (
+		<div className="flex flex-col gap-3 rounded-lg border border-border/50 bg-background/40 p-3">
+			<h3 className="text-[12.5px] font-semibold text-foreground">
+				{t("settings.assignmentTitle", { name: agent.name })}
+			</h3>
+			{assignment?.responsibility && (
+				<ReadOnlyField label={t("settings.assignmentResponsibility")}>
+					<p className="text-[12.5px] leading-relaxed text-foreground/90">{assignment.responsibility}</p>
+				</ReadOnlyField>
+			)}
+			{assignment?.instructions && (
+				<ReadOnlyField label={t("settings.assignmentInstructions")}>
+					<InstructionsMarkdown text={assignment.instructions} />
+				</ReadOnlyField>
+			)}
+			<div className="flex justify-end">
+				<Button variant="outline" size="sm" onClick={onClose}>
+					<span className="text-[12px] font-medium">{t("settings.assignmentCollapse")}</span>
+				</Button>
+			</div>
+		</div>
+	);
+}
+
+/** 补充指令往往是整段流水线说明，给足高度再滚动，别让人在三行小框里翻页。 */
+function InstructionsMarkdown({ text }: { readonly text: string }): JSX.Element {
+	return (
+		<div
+			data-testid="assignment-instructions-markdown"
+			className="max-h-[28rem] min-h-24 overflow-y-auto rounded-xl border border-border/40 bg-background/30 px-3.5 py-2.5 text-[12.5px] leading-relaxed"
+		>
+			<RendererMarkdownContent text={text} />
+		</div>
+	);
+}
+
+function ReadOnlyField({ label, children }: { readonly label: string; readonly children: ReactNode }): JSX.Element {
+	return (
+		<div className="flex flex-col gap-1.5">
+			<span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">{label}</span>
+			{children}
 		</div>
 	);
 }

@@ -18,6 +18,9 @@ vi.mock("@vetta-org/theme-ui/overlays", () => ({
 		open ? <div>{children}</div> : null,
 	DetailDrawerEnter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
+vi.mock("@shared/components/RendererMarkdownContent", () => ({
+	RendererMarkdownContent: ({ text }: { text: string }) => <div data-testid="markdown">{text}</div>,
+}));
 vi.mock("@vetta-org/theme-ui/chat", () => ({
 	AgentAvatarView: ({ name }: { name: string }) => <span data-testid="avatar">{name}</span>,
 }));
@@ -106,17 +109,20 @@ describe("TeamSettingsSheet", () => {
 		expect(screen.queryByRole("button", { name: /settings.addMember/ })).toBeNull();
 		expect(screen.queryByRole("button", { name: /settings.deleteTeam/ })).toBeNull();
 		expect(screen.queryByRole("button", { name: /teams.removeMember/ })).toBeNull();
-		expect(screen.getByLabelText("teams.name")).toHaveProperty("readOnly", true);
+		// 只读就是 label + 内容，不摆一个锁住的输入框。
+		expect(screen.queryByLabelText("teams.name")).toBeNull();
+		expect(screen.queryByRole("textbox")).toBeNull();
+		expect(screen.getAllByText("Delivery Team").length).toBeGreaterThan(0);
 		expect(screen.getByText("center.providedReadOnly")).toBeTruthy();
 	});
 
-	it("still lets the user expand a plugin team member to read its instructions", async () => {
+	it("still lets the user expand a plugin team member to read its instructions as markdown", async () => {
 		const briefed: TeamDefinition = {
 			...team,
 			source: { kind: "plugin", pluginId: "vetta-ui-design" },
 			members: team.members.map((member) =>
 				member.id === "member-beta"
-					? { ...member, assignment: { responsibility: "Builds it.", instructions: "Ship behind a flag." } }
+					? { ...member, assignment: { responsibility: "Builds it.", instructions: "## Ship\n- behind a flag" } }
 					: member,
 			),
 		};
@@ -126,11 +132,41 @@ describe("TeamSettingsSheet", () => {
 		// 插件写的补充指令只读，但得看得到：任务书正是这支预设团队最有信息量的部分。
 		await user.click(screen.getByRole("button", { name: "settings.viewAssignment:beta" }));
 
-		expect(screen.getByLabelText("settings.assignmentInstructions")).toHaveProperty("value", "Ship behind a flag.");
-		expect(screen.getByLabelText("settings.assignmentInstructions")).toHaveProperty("readOnly", true);
+		expect(screen.getByTestId("markdown").textContent).toBe("## Ship\n- behind a flag");
+		expect(screen.getByText("Builds it.")).toBeTruthy();
+		expect(screen.queryByRole("textbox")).toBeNull();
 		expect(screen.queryByRole("button", { name: "settings.assignmentApply" })).toBeNull();
 		await user.click(screen.getByRole("button", { name: "settings.assignmentCollapse" }));
+		expect(screen.queryByTestId("markdown")).toBeNull();
+	});
+
+	it("shows a user team's existing instructions as markdown until the user chooses to edit them", async () => {
+		const briefed: TeamDefinition = {
+			...team,
+			members: team.members.map((member) =>
+				member.id === "member-beta" ? { ...member, assignment: { instructions: "## Ship it" } } : member,
+			),
+		};
+		const { onSave } = renderSheet({ team: briefed });
+		const user = userEvent.setup();
+
+		await user.click(screen.getByRole("button", { name: "settings.editAssignment:beta" }));
+		expect(screen.getByTestId("markdown").textContent).toBe("## Ship it");
 		expect(screen.queryByLabelText("settings.assignmentInstructions")).toBeNull();
+
+		await user.click(screen.getByRole("button", { name: "settings.assignmentEditInstructions" }));
+		const source = screen.getByLabelText("settings.assignmentInstructions");
+		expect(source).toHaveProperty("value", "## Ship it");
+		await user.type(source, "!");
+		await user.click(screen.getByRole("button", { name: "settings.assignmentApply" }));
+		await user.click(screen.getByRole("button", { name: /settings.saveChanges/ }));
+		await waitFor(() =>
+			expect(onSave).toHaveBeenCalledWith(
+				expect.objectContaining({
+					assignments: expect.objectContaining({ beta: expect.objectContaining({ instructions: "## Ship it!" }) }),
+				}),
+			),
+		);
 	});
 
 

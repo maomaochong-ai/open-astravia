@@ -153,6 +153,7 @@
     "assignmentInstructionsPlaceholder": "Requirements, wording and hard limits specific to this team…",
     "assignmentInstructionsHint": "Appended after its own persona; it never replaces the profile persona or the collaboration rules, and only this member sees it.",
     "assignmentCollapse": "Collapse",
+    "assignmentEditInstructions": "Edit",
     "assignmentCancel": "Cancel",
     "assignmentApply": "Apply",
     "memberOverview": "Click any member card to configure their role and capabilities.",
