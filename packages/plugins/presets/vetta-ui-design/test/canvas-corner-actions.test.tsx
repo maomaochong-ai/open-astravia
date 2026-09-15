@@ -1,6 +1,6 @@
 /**
  * 画布右上角按钮组的构成与顺序：备注显隐在最左、运行在最右，中间是
- * 刷新 / 导出渲染图 / 版本历史。顺序是这次布局调整的产品要求，不是实现细节，
+ * 刷新 / 版本历史 / 导出渲染图 / 下载素材。顺序是产品要求，不是实现细节，
  * 所以按 DOM 顺序断言。
  */
 import { expect, it, vi } from "vitest";
@@ -35,6 +35,7 @@ function render(options: { notesVisible?: boolean; runDisabled?: boolean } = {})
 				onToggleNotes={() => calls.push("notes")}
 				onRefresh={() => calls.push("refresh")}
 				onExport={() => calls.push("export")}
+				materials={{ selectedCount: 0, totalCount: 1, progress: null, onPick: (action) => calls.push(action) }}
 				onToggleHistory={() => calls.push("history")}
 				onRun={() => calls.push("run")}
 				runDisabled={options.runDisabled ?? false}
@@ -51,13 +52,14 @@ function render(options: { notesVisible?: boolean; runDisabled?: boolean } = {})
 	};
 }
 
-it("orders the group as notes | refresh history export | run", () => {
+it("orders the group as notes | refresh history export download | run", () => {
 	const { buttons, calls, cleanup } = render();
-	expect(buttons.map((button) => button.getAttribute("aria-label") ?? button.textContent)).toEqual([
+	expect(buttons.map((button) => button.getAttribute("aria-label") ?? button.getAttribute("title"))).toEqual([
 		"notes.visibility.hide",
 		"canvas.refresh",
 		"controlbar.history",
 		"controlbar.exportMockup.label",
+		"canvas.download.label",
 		"canvas.run",
 	]);
 	// 备注开关是真开关，状态要能被读出来（不只是底色深浅）。
@@ -68,14 +70,14 @@ it("orders the group as notes | refresh history export | run", () => {
 	expect(buttons[3]?.textContent).toContain("controlbar.exportMockup.label");
 
 	act(() => buttons[0]?.click());
-	act(() => buttons[4]?.click());
+	act(() => buttons[5]?.click());
 	expect(calls).toEqual(["notes", "run"]);
 	cleanup();
 });
 
 it("disables run when the design has no frames", () => {
 	const { buttons, calls, cleanup } = render({ runDisabled: true });
-	const run = buttons[4];
+	const run = buttons[5];
 	expect(run?.disabled).toBe(true);
 	act(() => run?.click());
 	expect(calls).toEqual([]);

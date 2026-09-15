@@ -13,6 +13,9 @@ import {
 import { useNotesAutoDispatch, useNotesHandoff } from "../notes/handoff";
 import type { NotesStore } from "../notes/notes-store";
 import { noteWorldPosition, pendingNotes } from "../notes/types";
+import { captureFullFrame, type FullFrameImage, type MaterialFormat } from "../materials/capture-full-frame";
+import { exportMaterials, type MaterialFrame } from "../materials/export-materials";
+import { loadImage } from "../mockup/load-image";
 import { getPluginCtx, notify } from "../plugin-context";
 import type { DesignSession } from "../vetd/design-session";
 import { classifySource, isGeneratedPath, normalizeRelative } from "../vetd/bundle-paths";
@@ -42,10 +45,12 @@ import {
 } from "./design-runtime";
 import { DesignSystemDialog } from "./DesignSystemDialog";
 import { CanvasCornerActions } from "./CanvasCornerActions";
+import type { MaterialAction, MaterialProgress } from "./DownloadMaterialsMenu";
 import { byCanvasOrder } from "./frame-order";
 import { type FrameMenuAnchor, FrameContextMenu } from "./FrameContextMenu";
 import { refreshCover } from "./cover-compose";
 import { useFrameRasters } from "./frame-raster";
+import { offscreenRasterSupported } from "./offscreen-raster";
 import { type FrameDragEdge, FrameView } from "./FrameView";
 import { GapHandles } from "./GapHandles";
 import { HistoryDrawer } from "../history/HistoryDrawer";
@@ -316,6 +321,8 @@ export function DesignCanvas({
 	const [designDialogOpen, setDesignDialogOpen] = useState(false);
 	/** 版本历史抽屉。与备注抽屉分居两侧，可以同时开着。 */
 	const [historyOpen, setHistoryOpen] = useState(false);
+	/** 下载素材的进度；非 null 时按钮上显示「2/5」且不再接受新的导出。 */
+	const [materialProgress, setMaterialProgress] = useState<MaterialProgress | null>(null);
 	/** 正在查看的旧版本。非 null 时画布上装的是那一版的内容，不是最新的。 */
 	const [peek, setPeek] = useState<PeekState | null>(null);
 	const [peekBusy, setPeekBusy] = useState(false);
@@ -1257,6 +1264,70 @@ export function DesignCanvas({
 		});
 	};
 
+	/**
+	 * 下载素材用的整帧截图：内容比画框高的部分（滚动空间）也要进图。
+	 *
+	 * 走宿主离屏窗口（见 materials/capture-full-frame）；旧宿主没有这个能力时退回
+	 * 画布 iframe 里的 html-to-image——那条路只截得到视口这一屏，是能给的最好结果。
+	 */
+	const captureMaterial = useCallback(
+		async (frame: VetdFrameEntry, format: MaterialFormat): Promise<FullFrameImage> => {
+			if (offscreenRasterSupported()) {
+				const capture = getPluginCtx().capture;
+				if (!capture) throw new Error("offscreen capture unavailable");
+				return captureFullFrame(
+					{ capture: (options) => capture.offscreen(options), loadImage },
+					{ port, frameId: frame.id, width: frame.width, height: frame.height, format },
+				);
+			}
+			const dataUrl = await captureFaithfully(frame.id, { pixelRatio: COPY_PIXEL_RATIO });
+			const image = await loadImage(dataUrl);
+			return {
+				dataUrl,
+				cssWidth: frame.width,
+				cssHeight: frame.height,
+				pixelWidth: image.naturalWidth,
+				pixelHeight: image.naturalHeight,
+			};
+		},
+		[port, captureFaithfully],
+	);
+
+	/** 「下载素材」的四个动作：范围（选中 / 全部）按画布顺序，形态（图片 / PDF）交给导出器。 */
+	const runMaterialExport = (action: MaterialAction): void => {
+		if (materialProgress) return;
+		const scope = action.startsWith("selected") ? orderedSelection : [...manifest.frames].sort(byCanvasOrder);
+		if (scope.length === 0) return;
+		const byId = new Map(scope.map((frame) => [frame.id, frame]));
+		const frames: MaterialFrame[] = scope.map((frame) => ({ id: frame.id, title: frame.title || frame.id }));
+		setMaterialProgress({ done: 0, total: frames.length });
+		void (async () => {
+			try {
+				const path = await exportMaterials({
+					designName: session.name,
+					frames,
+					kind: action.endsWith("pdf") ? "pdf" : "images",
+					capture: (frame, format) => {
+						const entry = byId.get(frame.id);
+						if (!entry) throw new Error(`frame not on canvas: ${frame.id}`);
+						return captureMaterial(entry, format);
+					},
+					saveAs: (fileName, base64, options) => getPluginCtx().fs.saveAs(fileName, base64, "base64", options),
+					saveTitle: t("canvas.download.save.title"),
+					onProgress: (done, total) => setMaterialProgress({ done, total }),
+				});
+				// 用户在另存为对话框里取消：什么都没写盘，也不需要提示。
+				if (path !== null) {
+					notify({ message: t("canvas.download.done", { path }), variant: "success", durationMs: 6000 });
+				}
+			} catch (error) {
+				notify({ message: t("canvas.download.failed"), error });
+			} finally {
+				setMaterialProgress(null);
+			}
+		})();
+	};
+
 	/** 菜单「复制为图片」：按 2 倍截一张，走宿主原生剪贴板。 */
 	const copyFrameImage = (frameId: string): void => {
 		setMenuAnchor(null);
@@ -1572,6 +1643,12 @@ export function DesignCanvas({
 					onRescanDesigns();
 				}}
 				onExport={openExport}
+				materials={{
+					selectedCount: orderedSelection.length,
+					totalCount: manifest.frames.length,
+					progress: materialProgress,
+					onPick: runMaterialExport,
+				}}
 				onToggleHistory={() => setHistoryOpen((open) => !open)}
 			/>
 

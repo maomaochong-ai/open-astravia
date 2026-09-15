@@ -1,5 +1,6 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import type { ReactNode } from "react";
+import { DownloadMaterialsMenu, type MaterialAction, type MaterialProgress } from "./DownloadMaterialsMenu";
 import { NotesVisibilitySwitch } from "./NotesVisibilitySwitch";
 
 interface CanvasCornerActionsProps {
@@ -11,6 +12,13 @@ interface CanvasCornerActionsProps {
 	onToggleNotes(): void;
 	onRefresh(): void;
 	onExport(): void;
+	/** 「下载素材」下拉：每帧完整内容的原图 / PDF，直接落文件（与渲染图工作台分开）。 */
+	materials: {
+		selectedCount: number;
+		totalCount: number;
+		progress: MaterialProgress | null;
+		onPick(action: MaterialAction): void;
+	};
 	onToggleHistory(): void;
 	/** 运行（进预览模式）：这组最右端，也是整组唯一的主色按钮。 */
 	onRun(): void;
@@ -81,7 +89,7 @@ function Action({
 }
 
 /**
- * 画布右上角的动作按钮组：备注显隐 | 刷新 / 导出渲染图 / 版本历史 | 运行。
+ * 画布右上角的动作按钮组：备注显隐 | 刷新 / 版本历史 / 导出渲染图 / 下载素材 | 运行。
  *
  * 不放进 ControlBar：那一排是「用什么工具画」（选择、拖手、画框、备注、缩放），
  * 这些不是画布工具，混进去还会让本来就长的 dock 再长一截。
@@ -93,6 +101,7 @@ export function CanvasCornerActions({
 	onToggleNotes,
 	onRefresh,
 	onExport,
+	materials,
 	onToggleHistory,
 	onRun,
 	runDisabled,
@@ -119,6 +128,12 @@ export function CanvasCornerActions({
 			<Action label={t("controlbar.exportMockup.label")} showLabel active={false} onClick={onExport}>
 				{icons.export}
 			</Action>
+			<DownloadMaterialsMenu
+				selectedCount={materials.selectedCount}
+				totalCount={materials.totalCount}
+				progress={materials.progress}
+				onPick={materials.onPick}
+			/>
 			<Divider />
 			{/* 运行带文字：它是这组里唯一一个「进入另一种模式」的动作，纯 icon 认不出来。 */}
 			<button
