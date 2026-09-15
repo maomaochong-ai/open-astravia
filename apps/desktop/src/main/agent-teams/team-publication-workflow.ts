@@ -10,6 +10,7 @@ import {
 import type { AssistantMessage } from "@vetta/ai";
 import type { RuntimeHost } from "@vetta/runtime-core";
 import type { TeamCollaborationStore } from "./team-collaboration-store.js";
+import { isTeamAttemptFinalResult } from "./team-member-result.js";
 import { publicAssistantMessage } from "./team-public-message.js";
 import type { TeamSessionStateRepository } from "./team-session-state-repository.js";
 
@@ -199,6 +200,19 @@ export class TeamPublicationWorkflow {
 					assistant,
 				});
 				await this.restoreDeliveredContext(session, item, state);
+				continue;
+			}
+			// Progress published from a failed or interrupted attempt keeps its work item
+			// open. Only a final result may drive recovery to completion.
+			if (!isTeamAttemptFinalResult(assistant)) {
+				await this.publishPartialAttempt({
+					session,
+					item,
+					attempt,
+					sourceTurnId: publication.sourceTurnId,
+					sourceMessageEntryId: publication.sourceMessageEntryId,
+					assistant,
+				});
 				continue;
 			}
 			await this.resume({

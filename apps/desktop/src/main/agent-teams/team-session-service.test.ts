@@ -945,6 +945,114 @@ describe("AgentTeamSessionService streaming contract", () => {
 		);
 	});
 
+	it("publishes the leader's visible progress when a later model call fails after tool calls", async () => {
+		const document = createAgentTeamFixture();
+		const team = document.teams[0];
+		if (!team) throw new Error("built-in Agent Team fixture is missing");
+		const entries: Array<Record<string, unknown>> = [];
+		let prompted = false;
+		let sequence = 0;
+		const model = { api: "openai-responses", provider: "openai", model: "model" } as const;
+		const runtime = {
+			createSession: vi.fn(async (config?: SessionConfig) => ({
+				sessionId: config?.sessionId ?? `runtime-${++sequence}`,
+			})),
+			getSessionPath: (sessionId: string) => `C:/runtime/${sessionId}.jsonl`,
+			disposeSession: vi.fn(async () => undefined),
+			subscribe: () => () => undefined,
+			prompt: vi.fn(async () => {
+				prompted = true;
+				return {};
+			}),
+			getFullHistory: () =>
+				prompted
+					? [
+							{
+								type: "message",
+								entryId: "leader-delegate",
+								message: {
+									...createAssistantMessage(model, { timestamp: 2 }),
+									stopReason: "toolUse",
+									content: [
+										{
+											type: "toolCall",
+											id: "call-delegate",
+											name: "team_delegate_task",
+											arguments: { description: "research" },
+										},
+									],
+								},
+							},
+							{
+								type: "message",
+								entryId: "leader-delegate-result",
+								message: {
+									role: "toolResult",
+									toolCallId: "call-delegate",
+									toolName: "team_delegate_task",
+									content: [{ type: "text", text: "delegated" }],
+									isError: false,
+									timestamp: 3,
+								},
+							},
+							{
+								type: "message",
+								entryId: "leader-transport-error",
+								message: {
+									...createAssistantMessage(model, { timestamp: 4 }),
+									stopReason: "error",
+									errorMessage: "EOF",
+									content: [],
+								},
+							},
+						]
+					: [],
+			appendConversationMessage: vi.fn(async (_sessionId: string, record: ConversationMessageRecord) => {
+				entries.push({
+					type: "message",
+					id: record.id,
+					kind: record.kind,
+					author: record.author,
+					message: record.message,
+				});
+				return { entryId: record.id };
+			}),
+			deliverSessionContext: vi.fn(async () => undefined),
+			appendSessionMetadataEntry: vi.fn(async (_sessionId: string, customType: string, data: unknown) => {
+				entries.push({ type: "custom", customType, data });
+			}),
+			readSessionDocument: () => ({ entries, activeLeafId: null }),
+			abort: vi.fn(async () => undefined),
+		} as unknown as RuntimeHost;
+		const service = new AgentTeamSessionService({
+			runtime,
+			repository: { read: vi.fn(), list: vi.fn(async () => []) },
+			readDocument: async () => document,
+		});
+		const created = await service.create(team, document, {
+			kind: "project",
+			id: "project:workspace",
+			cwd: "C:/workspace",
+		});
+
+		await service.send(created.id, {
+			requestId: "request-transport-eof",
+			text: "do work",
+			targetMemberIds: [team.leaderMemberId],
+		});
+
+		const leaderMessages = entries.filter(
+			(entry) =>
+				entry.type === "message" &&
+				entry.kind === "agent" &&
+				(entry.author as { id: string }).id === team.leaderMemberId,
+		);
+		expect(leaderMessages).toHaveLength(1);
+		expect(JSON.stringify(leaderMessages[0])).toContain("call-delegate");
+		const collaboration = await service.readCollaborationState(created.id);
+		expect(collaboration.workItems[0]?.state).toBe("waiting");
+	});
+
 	it("surfaces a failed Runtime prompt instead of silently treating it as an interruption", async () => {
 		const document = createAgentTeamFixture();
 		const team = document.teams[0];

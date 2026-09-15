@@ -795,6 +795,53 @@ describe("Team member concurrency", () => {
 		expect(fixture.runtime.prompt).not.toHaveBeenCalled();
 	});
 
+	it("publishes a failed attempt's delegation without completing its work item, even after restart", async () => {
+		const fixture = await createFixture();
+		const [member] = fixture.members;
+		const turn = fixture.turn(member, "delegate then fail");
+		turn.failure = {
+			code: "provider_unauthorized",
+			message: "unauthorized",
+			retryable: false,
+			origin: "provider",
+		};
+		turn.partial = {
+			...createAssistantMessage({ api: "openai-responses", provider: "openai", model: "test" }),
+			stopReason: "error",
+			content: [
+				{ type: "toolCall", id: "delegate-1", name: "team_delegate_task", arguments: { objective: "review" } },
+			],
+		};
+		const send = fixture.service.send(fixture.session.id, {
+			requestId: "delegate-then-fail",
+			text: "delegate then fail",
+			targetMemberIds: [member],
+		});
+		await turn.started.promise;
+		turn.finish.resolve();
+		await send;
+
+		const publicAgentMessages = () =>
+			fixture.conversations
+				.get(fixture.session.coordinationRuntime!.sessionId)!
+				.entries.filter((entry) => entry.type === "message" && entry.kind === "agent");
+		expect(publicAgentMessages()).toHaveLength(1);
+		expect(JSON.stringify(publicAgentMessages()[0])).toContain("delegate-1");
+		expect((await fixture.service.readCollaborationState(fixture.session.id)).workItems[0]?.state).toBe(
+			"attention-required",
+		);
+
+		fixture.stopRuntime();
+		const restored = fixture.restartService();
+		await restored.read(fixture.session.id, fixture.session.coordinationRuntime!.sessionPath);
+		const state = await restored.readCollaborationState(fixture.session.id);
+		expect(state.workItems[0]?.state).toBe("attention-required");
+		expect(state.attempts[0]?.state).toBe("awaiting-resource");
+		expect(state.publications.every((publication) => publication.state !== "completed")).toBe(true);
+		expect(publicAgentMessages()).toHaveLength(1);
+		expect(fixture.runtime.prompt).toHaveBeenCalledTimes(1);
+	});
+
 	it("recovers an interrupted member while its sibling is running and joins duplicate recovery", async () => {
 		const fixture = await createFixture();
 		const [first, second] = fixture.members;
@@ -1548,13 +1595,11 @@ async function createFixture(extensions?: AgentTeamExtensionRegistry) {
 			await turn.finish.promise;
 			running.delete(id);
 			activeTurns.delete(id);
-			if (active.aborted) {
-				if (turn.partial) {
-					const entryId = `partial-answer-${++sequence}`;
-					history.set(id, [...(history.get(id) ?? []), { type: "message", entryId, message: turn.partial }]);
-				}
-				throw new Error("Member execution aborted");
+			if (turn.partial && (active.aborted || turn.failure)) {
+				const entryId = `partial-answer-${++sequence}`;
+				history.set(id, [...(history.get(id) ?? []), { type: "message", entryId, message: turn.partial }]);
 			}
+			if (active.aborted) throw new Error("Member execution aborted");
 			if (turn.failure) throw turn.failure;
 			const entryId = `answer-${++sequence}`;
 			const message = {

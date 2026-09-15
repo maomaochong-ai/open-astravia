@@ -21,7 +21,7 @@ import {
 } from "@vetta/runtime-core";
 import { getAppLogger } from "../logger.js";
 import type { TeamCollaborationStore } from "./team-collaboration-store.js";
-import { findTeamAttemptResult } from "./team-member-result.js";
+import { findTeamAttemptResult, isTeamAttemptFinalResult } from "./team-member-result.js";
 import type { TeamMemberTurnRequest } from "./team-member-turn-request.js";
 import { publicAssistantMessage } from "./team-public-message.js";
 import type { TeamPublicationWorkflow } from "./team-publication-workflow.js";
@@ -312,20 +312,17 @@ export class TeamMemberAttemptRunner {
 				(isAIError(error) ? runtimeFailureFromError(error) : undefined) ??
 				promptFailure;
 			const cancelled = this.isCancelled(configuredSession, collaboration.workItem.id, signal);
-			let cancelledResultMessageId: string | undefined;
-			if (cancelled) {
-				// Runtime Core persists an aborted assistant message (including tool
-				// calls) in the member conversation. Publish that durable partial before
-				// discarding the live stream, otherwise stopping makes the Team timeline
-				// irreversibly lose what the leader/member had already produced.
-				cancelledResultMessageId = await this.publishPartialAttempt(
-					configuredSession,
-					collaboration,
-					runtimeState.sessionId,
-					previousEntryIds,
-					sourceTurnId,
-				);
-			}
+			// Runtime Core persists the aborted or failed assistant message (including
+			// tool calls) in the member conversation. Publish that durable partial before
+			// discarding the live stream, otherwise stopping or a provider failure makes
+			// the Team timeline irreversibly lose what the leader/member already produced.
+			const partialMessageId = await this.publishPartialAttempt(
+				configuredSession,
+				collaboration,
+				runtimeState.sessionId,
+				previousEntryIds,
+				sourceTurnId,
+			);
 			const terminal = classifyTeamAttemptTerminal({
 				hasPublishableMessage: false,
 				cancelled,
@@ -336,7 +333,7 @@ export class TeamMemberAttemptRunner {
 				collaboration.workItem,
 				collaboration.attempt,
 				terminal,
-				cancelledResultMessageId,
+				cancelled ? partialMessageId : undefined,
 			);
 			const recoverable =
 				terminal.state === "waiting-retry" ||
@@ -378,6 +375,13 @@ export class TeamMemberAttemptRunner {
 			signal?.removeEventListener("abort", abortTarget);
 		}
 		if (promptFailureMessage) {
+			await this.publishPartialAttempt(
+				configuredSession,
+				collaboration,
+				runtimeState.sessionId,
+				previousEntryIds,
+				sourceTurnId,
+			);
 			if (this.isCancelled(configuredSession, collaboration.workItem.id, signal)) {
 				await this.options.settleAttempt(
 					configuredSession,
@@ -411,19 +415,16 @@ export class TeamMemberAttemptRunner {
 		const attemptHistory = this.options.runtime().getFullHistory(runtimeState.sessionId);
 		const attemptResult = findTeamAttemptResult(attemptHistory, previousEntryIds);
 		const assistant = attemptResult?.message;
-		const resultText = assistant
-			? assistant.content
-					.filter((item) => item.type === "text")
-					.map((item) => item.text)
-					.join("\n")
-			: "";
-		if (
-			!attemptResult ||
-			!assistant ||
-			resultText.trim().length === 0 ||
-			assistant.stopReason === "error" ||
-			assistant.stopReason === "aborted"
-		) {
+		if (!attemptResult || !assistant || !isTeamAttemptFinalResult(assistant)) {
+			// A turn can delegate work and then lose its next model call. The work item
+			// stays waiting, but the delegation it already made must remain visible.
+			await this.publishPartialAttempt(
+				configuredSession,
+				collaboration,
+				runtimeState.sessionId,
+				previousEntryIds,
+				sourceTurnId,
+			);
 			await this.options.settleAttempt(
 				configuredSession,
 				collaboration.workItem,
