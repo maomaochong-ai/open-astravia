@@ -138,11 +138,12 @@ export function useModelSelectorModel({
 			if (scope) {
 				const defaultReasoning = resolveReasoning(options.find((option) => option.key === key))?.default;
 				scope.onModelSelect(key, defaultReasoning);
-			} else {
-				setSelectedModel(key);
-				// 全局新会话偏好；已有会话另写 session settings。
-				persistSelectedModel(key);
 			}
+			// 用户手动选择的就是“上次使用的模型”，无论在哪个输入框选的都记为全局新会话偏好；
+			// 否则 scoped 选择不落全局，刷新后普通输入框会回到一个早已不可用的旧模型。
+			// 已有会话另写 session settings。
+			setSelectedModel(key);
+			persistSelectedModel(key);
 			if (!scope && updateActiveSession && activeSession?.runtimeId) {
 				void window.vetta.session.updateSettings(activeSession.runtimeId, { modelKey: key });
 			}
