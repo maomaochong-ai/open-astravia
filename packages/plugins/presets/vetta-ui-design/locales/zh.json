@@ -318,6 +318,7 @@
 	"history.time.hours": "{{count}} 小时前",
 	"tool.vetd_history": "设计版本历史",
 	"tool.vetd_restore": "恢复设计版本",
+	"tool.vetd_export": "导出设计产物",
 	"history.peek": "查看",
 	"history.peeking": "查看中",
 	"history.peek.banner": "正在查看旧版本",

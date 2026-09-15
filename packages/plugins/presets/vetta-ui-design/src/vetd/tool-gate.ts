@@ -15,6 +15,7 @@ export const DESIGN_ONLY_TOOLS = [
 	"vetd_notes",
 	"vetd_history",
 	"vetd_restore",
+	"vetd_export",
 ] as const;
 
 /** 这一轮该不该开闸：画布开着，或者 cwd 里确实有设计稿。 */

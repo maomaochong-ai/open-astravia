@@ -410,6 +410,28 @@ At that point stop and report — do not keep polishing. If something is still o
 but you have already revised it twice, say what it is instead of attempting a
 third pass.
 
+## Exporting deliverables
+
+When the user asks to export, download or hand off the design ("导出 PDF",
+"export all frames as images"), call `vetd_export`. It writes into the current
+working directory and each file holds the frame's FULL content, including what
+scrolls below the frame's viewport:
+
+- `format: "pdf"` — one `<design>-frames.pdf`, one page per frame.
+- `format: "images"` — one PNG per frame in a `<design>-frames/` folder.
+- Omit `frames` for every frame in canvas order; pass `frames: [...]` when the
+  user named specific screens.
+
+**One format per request — the one the user asked for.** "Export PDF" means
+`pdf` only; "export images" means `images` only. Never export both: every
+format re-renders every frame, so doing both doubles a slow export for a file
+nobody asked for. If the user did not say which format, ask.
+
+**Export is not verification.** For checking a design, call `vetd_screenshot`.
+`vetd_export` runs no checks and is only for when the user asks for exported
+files — do not screenshot or re-verify before exporting, and do not Read the
+exported files afterwards. Just tell the user where they are.
+
 ## Do not rework
 
 Rewriting your own output is the single largest waste in this workflow, and it

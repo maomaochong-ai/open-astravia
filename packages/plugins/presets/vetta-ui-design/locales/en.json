@@ -318,6 +318,7 @@
 	"history.time.hours": "{{count}} h ago",
 	"tool.vetd_history": "Design history",
 	"tool.vetd_restore": "Restore design version",
+	"tool.vetd_export": "Export design",
 	"history.peek": "Peek",
 	"history.peeking": "Peeking",
 	"history.peek.banner": "Viewing an older version",
