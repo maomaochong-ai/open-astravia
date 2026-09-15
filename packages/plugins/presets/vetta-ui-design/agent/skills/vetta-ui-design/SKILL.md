@@ -94,8 +94,8 @@ same way. The templates below are already correct on all of it:
 - One default export per frame, rendering edge-to-edge — no page margins.
 - react, react-router, Tailwind v4 and Iconify are always there. Anything else
   has to be installed into the design first (see below) — importing a package
-  that is not installed fails the build. No web fonts — build contrast with
-  size/weight/tracking.
+  that is not installed fails the build. No remote font links (Google Fonts
+  `<link>`/`@import url(...)`) — typefaces are installed packages, see below.
 
 ### Dependencies are yours to choose — and yours to justify
 
@@ -117,6 +117,40 @@ Never install an icon package (icons are Iconify classes), a CSS framework
 (Tailwind v4 is here) or a router (react-router is here).
 
 Install everything you need in ONE call, then import normally.
+
+### Typefaces are packages too
+
+System fonts alone cannot give a display face and a body face that differ, and
+that sameness is a large part of why generated UI looks generated. A typeface is
+an npm package here like any other library:
+
+1. `vetd_install` the faces — `@fontsource-variable/<slug>` when the family has
+   a variable build (one file covers every weight), else `@fontsource/<slug>`,
+   whose bare import is weight 400 only — import each other weight you use
+   (`@import "@fontsource/<slug>/700.css";`) or the browser fakes the bold.
+2. Import them at the TOP of `theme.css`, above `@theme`. Install first: theme.css
+   feeds every frame, so importing a package that is not there yet breaks the
+   styling of the whole canvas, not one frame.
+3. Declare them as `--font-*` tokens and use the matching `font-*` class.
+
+```css
+@import "@fontsource-variable/fraunces";
+@import "@fontsource-variable/geist";
+
+@theme {
+	--font-display: "Fraunces Variable", "Songti SC", "SimSun", ui-serif, serif;
+	--font-sans: "Geist Variable", "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
+}
+```
+
+The family name must be the one the package registers: the `-variable` packages
+append ` Variable`, the static ones do not. A mismatch silently falls back —
+`issues` reports it, as it reports an installed face nobody imports.
+
+Latin faces only. CJK packages are megabytes per weight; Chinese and Japanese
+copy uses the platform faces listed after the Latin one in the stack above
+(serif: Songti SC / SimSun; sans: PingFang SC / Microsoft YaHei), so every stack
+names both.
 
 ### The one thing nothing catches: a token that does not exist
 

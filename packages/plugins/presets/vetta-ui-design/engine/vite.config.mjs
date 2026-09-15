@@ -218,6 +218,11 @@ export default defineConfig(({ command }) => ({
 		// Single chunk so the export snapshot can inline everything into one HTML.
 		rollupOptions: { output: { inlineDynamicImports: true } },
 		modulePreload: { polyfill: false },
+		// 字体一律内联进 CSS。设计装的字体包（@fontsource/*）在 x.vetd/node_modules/
+		// 里，而分享包快照只能从设计自己的文件里找回 /assets/ 引用（见
+		// snapshot-assets.ts，node_modules 不进包）——不内联的话，分享出去的预览全部
+		// 退回系统字体。字体包按 unicode-range 分片，拉丁字体全部分片也就一两百 KB。
+		assetsInlineLimit: (file) => (/\.(?:woff2?|ttf|otf)$/i.test(file) ? true : undefined),
 		chunkSizeWarningLimit: 4096,
 	},
 }));

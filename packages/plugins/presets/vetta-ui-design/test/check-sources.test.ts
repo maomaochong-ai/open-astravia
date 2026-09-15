@@ -263,3 +263,62 @@ it("stays quiet on a correctly written frame", () => {
 	].join("\n");
 	expect(checkSources([{ path: "frames/products.tsx", content }])).toEqual([]);
 });
+
+const FRAME = { path: "frames/home.tsx", content: 'export const frame = { width: 390, height: 844, title: "首页" };' };
+
+const fontTheme = (lines: string[]): string =>
+	[...lines, "@theme {", "\t--color-surface: oklch(97% 0.01 80);", '\t--font-display: "Fraunces Variable", ui-serif, serif;', "}"].join(
+		"\n",
+	);
+
+const fontRules = (themeCss: string, dependencies: string[], files = [FRAME]) =>
+	checkSources(files, themeCss, dependencies).filter((issue) => issue.file === "theme.css");
+
+it("stays quiet on a display font installed and imported the way the skill teaches", () => {
+	// 用户最常见的路径：vetd_install 装上字体包，theme.css 顶部 import，token 写包注册的字族名。
+	const themeCss = fontTheme(['@import "@fontsource-variable/fraunces";']);
+	expect(fontRules(themeCss, ["react", "@fontsource-variable/fraunces"])).toEqual([]);
+});
+
+it("catches a theme.css import of a font package that is not installed", () => {
+	// theme.css 进的是整张画布的样式表，这里解析失败坏的不止一帧，所以要在写完就报出来。
+	const themeCss = fontTheme(['@import "@fontsource-variable/fraunces";']);
+	const [issue] = fontRules(themeCss, ["react"]);
+	expect(issue).toMatchObject({ file: "theme.css", line: 1, rule: "uninstalled-css-import" });
+	expect(issue.message).toContain('vetd_install with packages: ["@fontsource-variable/fraunces"]');
+});
+
+it("does not treat tailwind, relative files or remote URLs in theme.css as missing packages", () => {
+	const themeCss = fontTheme(['@import "tailwindcss";', '@import "./fonts.css";', '@import url("https://example.com/a.css");']);
+	expect(fontRules(themeCss, ["react"]).map((issue) => issue.rule)).not.toContain("uninstalled-css-import");
+});
+
+it("catches a font package that is installed but never imported", () => {
+	const [issue] = fontRules(fontTheme([]), ["@fontsource-variable/fraunces"]);
+	expect(issue).toMatchObject({ file: "theme.css", line: 3, rule: "font-not-imported" });
+	expect(issue.message).toContain('@import "@fontsource-variable/fraunces";');
+});
+
+it("accepts a font package imported from a frame instead of theme.css", () => {
+	const frame = { path: "frames/home.tsx", content: `${FRAME.content}\nimport "@fontsource-variable/fraunces/wght.css";` };
+	expect(fontRules(fontTheme([]), ["@fontsource-variable/fraunces"], [frame])).toEqual([]);
+});
+
+it("catches a family name that does not match the installed package flavour", () => {
+	// @fontsource-variable 注册的名字带 " Variable"，@fontsource 不带；写反了浏览器静默回落。
+	const staticInstalled = fontRules(fontTheme(['@import "@fontsource/fraunces";']), ["@fontsource/fraunces"]);
+	expect(staticInstalled[0]).toMatchObject({ rule: "font-family-mismatch", line: 4 });
+	expect(staticInstalled[0].message).toContain('Write "Fraunces" in the token');
+
+	const variableInstalled = fontRules(
+		'@import "@fontsource-variable/space-grotesk";\n@theme {\n\t--font-display: "Space Grotesk", sans-serif;\n}',
+		["@fontsource-variable/space-grotesk"],
+	);
+	expect(variableInstalled[0].message).toContain('Write "Space Grotesk Variable" in the token');
+});
+
+it("does not guess about font families no fontsource package provides", () => {
+	// 系统字体、平台 CJK 字体都不归这条规则管：没有装的包作事实源就不报。
+	const themeCss = '@theme {\n\t--font-display: "Songti SC", "SimSun", serif;\n\t--font-body: "Segoe UI Variable", system-ui;\n}';
+	expect(fontRules(themeCss, ["react"])).toEqual([]);
+});

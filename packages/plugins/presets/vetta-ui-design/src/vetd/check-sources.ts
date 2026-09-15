@@ -203,6 +203,96 @@ function checkThemeTokens(file: SourceFile, tokens: ReadonlySet<string>): Source
 	return issues;
 }
 
+/** theme.css 里的 `@import "pkg"` / `@import url("pkg")`。 */
+const CSS_IMPORT = /@import\s+(?:url\(\s*)?["']([^"']+)["']/;
+
+/** 引擎样式表自己就在 import 的包，theme.css 里再写一遍不算缺依赖。 */
+const CSS_ENGINE_PACKAGES = new Set(["tailwindcss"]);
+
+/** `--font-display: "Fraunces Variable", serif;` 里的 token 名与第一个带引号的字族。 */
+const FONT_TOKEN = /--font-([a-z][a-z0-9-]*)\s*:\s*["']([^"']+)["']/;
+
+/**
+ * theme.css 自己 import 的包没装。
+ *
+ * 比 frame 里的 uninstalled-import 严重一档：theme.css 由引擎样式表整体引入，它
+ * 解析失败时坏的是**整张画布**的样式，不是某一帧。
+ */
+function checkThemeImports(themeCss: string, installed: ReadonlySet<string>): SourceIssue[] {
+	const issues: SourceIssue[] = [];
+	for (const [index, line] of themeCss.split("\n").entries()) {
+		const source = CSS_IMPORT.exec(line)?.[1];
+		// 带协议的是远程地址，不是包名；那是另一类问题，这条规则不管。
+		const pkg = source && !source.includes("://") ? packageNameOf(source) : null;
+		if (!pkg || CSS_ENGINE_PACKAGES.has(pkg) || installed.has(pkg)) continue;
+		issues.push({
+			file: "theme.css",
+			line: index + 1,
+			rule: "uninstalled-css-import",
+			message: `theme.css imports "${pkg}", which this design has not installed. theme.css is part of every frame's stylesheet, so this breaks styling across the whole canvas, not just one frame. Run vetd_install with packages: ["${pkg}"] first, or remove the import.`,
+		});
+	}
+	return issues;
+}
+
+/**
+ * 字体 token 指向的字族其实没有加载。
+ *
+ * 和未定义的颜色 token 是同一类静默失败：浏览器找不到字族就往后备字体落，截图里
+ * 只是「字体普通了点」，源码怎么读都对。只判能证明的两种，都以这份设计**装了的**
+ * fontsource 包为事实源，不去猜某个字族是不是系统自带：
+ *
+ * - 装了包却没有任何地方 import 它——字体文件从来没被请求过；
+ * - 字族名和装的包对不上版本：`@fontsource-variable/x` 注册的名字带 ` Variable`
+ *   后缀，`@fontsource/x` 不带，写反了就是找不到。
+ */
+function checkFontTokens(
+	themeCss: string,
+	files: readonly SourceFile[],
+	installed: ReadonlySet<string>,
+): SourceIssue[] {
+	const imported = new Set<string>();
+	const sourceImports = [
+		...themeCss.split("\n").map((line) => CSS_IMPORT.exec(line)?.[1]),
+		...files.flatMap((file) => file.content.split("\n").map((line) => IMPORT_SOURCE.exec(line)?.[1])),
+	];
+	for (const source of sourceImports) {
+		const pkg = source ? packageNameOf(source) : null;
+		if (pkg) imported.add(pkg);
+	}
+
+	const issues: SourceIssue[] = [];
+	for (const [index, line] of themeCss.split("\n").entries()) {
+		const match = FONT_TOKEN.exec(line);
+		if (!match) continue;
+		const [, token, family] = match;
+		const variable = / Variable$/.test(family);
+		const base = family.replace(/ Variable$/, "").trim();
+		const slug = base.toLowerCase().replace(/\s+/g, "-");
+		const expected = `@fontsource${variable ? "-variable" : ""}/${slug}`;
+		const other = `@fontsource${variable ? "" : "-variable"}/${slug}`;
+		if (installed.has(expected)) {
+			if (imported.has(expected)) continue;
+			issues.push({
+				file: "theme.css",
+				line: index + 1,
+				rule: "font-not-imported",
+				message: `\`--font-${token}\` uses "${family}" from "${expected}", which is installed but never imported, so the font file is never loaded and text falls back to the next font in the stack. Add \`@import "${expected}";\` at the top of theme.css.`,
+			});
+			continue;
+		}
+		if (!installed.has(other)) continue;
+		const registered = variable ? base : `${base} Variable`;
+		issues.push({
+			file: "theme.css",
+			line: index + 1,
+			rule: "font-family-mismatch",
+			message: `\`--font-${token}\` asks for "${family}", but the installed package "${other}" registers the family as "${registered}". The names must match exactly or the browser silently uses the fallback font. Write "${registered}" in the token.`,
+		});
+	}
+	return issues;
+}
+
 /** `@scope/pkg/sub` → `@scope/pkg`；`pkg/sub` → `pkg`。相对路径返回 null。 */
 function packageNameOf(source: string): string | null {
 	if (source.startsWith(".") || source.startsWith("/") || source.startsWith("@design")) return null;
@@ -355,7 +445,11 @@ export function checkSources(
 ): SourceIssue[] {
 	const issues: SourceIssue[] = [];
 	const tokens = themeColorTokens(themeCss);
-	const rules = rulesFor(new Set([...ENGINE_PACKAGES, ...designDependencies]));
+	const installed = new Set([...ENGINE_PACKAGES, ...designDependencies]);
+	const rules = rulesFor(installed);
+	if (themeCss !== null) {
+		issues.push(...checkThemeImports(themeCss, installed), ...checkFontTokens(themeCss, files, installed));
+	}
 	for (const file of files) {
 		const sizeIssue = checkFrameSize(file, files);
 		if (sizeIssue) issues.push(sizeIssue);

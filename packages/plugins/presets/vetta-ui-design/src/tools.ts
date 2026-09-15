@@ -529,7 +529,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 		name: "vetd_install",
 		label: "%tool.vetd_install%",
 		description:
-			"Install npm packages INTO this design (they land in the design's own package.json + node_modules, and travel with it). Use when a screen genuinely needs a library the design does not have — charts, markdown rendering, a rich text editor, an animation library. Import the package normally once this returns.\nDo NOT use to add a dependency to the user's own project, nor for icons (Iconify CSS classes are always available) or anything Tailwind utilities and plain React state already do well — run the repo's own package manager in a terminal for project dependencies instead.\nOnly for packages that frames of a .vetd design import.",
+			"Install npm packages INTO this design (they land in the design's own package.json + node_modules, and travel with it). Use when a screen genuinely needs a library the design does not have — charts, markdown rendering, a rich text editor, an animation library — or a typeface (`@fontsource-variable/<slug>` / `@fontsource/<slug>`, then `@import` it at the top of theme.css). Import the package normally once this returns.\nDo NOT use to add a dependency to the user's own project, nor for icons (Iconify CSS classes are always available) or anything Tailwind utilities and plain React state already do well — run the repo's own package manager in a terminal for project dependencies instead.\nOnly for packages that frames of a .vetd design import.",
 		parameters: {
 			type: "object",
 			properties: {
