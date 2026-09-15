@@ -583,21 +583,7 @@ export class TeamTurnCoordinator {
 						return latest;
 					}
 					resolvedInput.signal?.throwIfAborted();
-					const controller = new AbortController();
-					const cancellations = this.memberCancellations.get(session.id) ?? new Map<string, AbortController>();
-					cancellations.set(admission.workItem.id, controller);
-					this.memberCancellations.set(session.id, cancellations);
-					try {
-						return await this.runMemberTurn({
-							...resolvedInput,
-							signal: resolvedInput.signal
-								? AbortSignal.any([resolvedInput.signal, controller.signal])
-								: controller.signal,
-						});
-					} finally {
-						cancellations.delete(admission.workItem.id);
-						if (cancellations.size === 0) this.memberCancellations.delete(session.id);
-					}
+					return this.runCancellableMemberTurn(admission.workItem.id, resolvedInput);
 				},
 			});
 		} catch (error) {
@@ -621,8 +607,24 @@ export class TeamTurnCoordinator {
 		}
 	}
 
-	private runMemberTurn(input: TeamMemberTurnRequest): Promise<TeamSessionDocument> {
-		return this.getAttemptRunner().run(input);
+	/** Registers the admitted attempt so a Team stop or task cancellation can abort it. */
+	private async runCancellableMemberTurn(
+		workItemId: string,
+		input: TeamMemberTurnRequest,
+	): Promise<TeamSessionDocument> {
+		const controller = new AbortController();
+		const cancellations = this.memberCancellations.get(input.teamSessionId) ?? new Map<string, AbortController>();
+		cancellations.set(workItemId, controller);
+		this.memberCancellations.set(input.teamSessionId, cancellations);
+		try {
+			return await this.getAttemptRunner().run({
+				...input,
+				signal: input.signal ? AbortSignal.any([input.signal, controller.signal]) : controller.signal,
+			});
+		} finally {
+			cancellations.delete(workItemId);
+			if (cancellations.size === 0) this.memberCancellations.delete(input.teamSessionId);
+		}
 	}
 
 	private isAdmissionCurrent(sessionId: string, stopGeneration: number): boolean {
