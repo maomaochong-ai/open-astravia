@@ -141,7 +141,8 @@ export function DefaultNewSessionHero({
 						<h1 className="ns-hero-identity-title min-w-0 truncate bg-gradient-to-br from-foreground via-foreground to-foreground/70 bg-clip-text text-[24px] font-semibold tracking-[-0.02em] text-transparent">
 							{identity?.title ?? greetingTitle}
 						</h1>
-						<p className="ns-hero-identity-subtitle mt-1 truncate text-[12px] text-muted-foreground/70">
+						{/* 描述限宽到七成、超出换行：右侧装饰件是绝对定位的，单行长文案会直接压到它身上。 */}
+						<p className="ns-hero-identity-subtitle mt-1 line-clamp-3 max-w-[70%] break-words text-[12px] leading-[1.6] text-muted-foreground/70">
 							{identity ? identity.subtitle || subtitle : subtitle}
 						</p>
 					</div>
