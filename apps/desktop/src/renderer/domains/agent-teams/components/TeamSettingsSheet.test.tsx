@@ -110,6 +110,29 @@ describe("TeamSettingsSheet", () => {
 		expect(screen.getByText("center.providedReadOnly")).toBeTruthy();
 	});
 
+	it("still lets the user expand a plugin team member to read its instructions", async () => {
+		const briefed: TeamDefinition = {
+			...team,
+			source: { kind: "plugin", pluginId: "vetta-ui-design" },
+			members: team.members.map((member) =>
+				member.id === "member-beta"
+					? { ...member, assignment: { responsibility: "Builds it.", instructions: "Ship behind a flag." } }
+					: member,
+			),
+		};
+		renderSheet({ team: briefed });
+		const user = userEvent.setup();
+
+		// 插件写的补充指令只读，但得看得到：任务书正是这支预设团队最有信息量的部分。
+		await user.click(screen.getByRole("button", { name: "settings.viewAssignment:beta" }));
+
+		expect(screen.getByLabelText("settings.assignmentInstructions")).toHaveProperty("value", "Ship behind a flag.");
+		expect(screen.getByLabelText("settings.assignmentInstructions")).toHaveProperty("readOnly", true);
+		expect(screen.queryByRole("button", { name: "settings.assignmentApply" })).toBeNull();
+		await user.click(screen.getByRole("button", { name: "settings.assignmentCollapse" }));
+		expect(screen.queryByLabelText("settings.assignmentInstructions")).toBeNull();
+	});
+
 
 	it("keeps saving disabled until the draft actually changes", async () => {
 		const { onSave } = renderSheet();

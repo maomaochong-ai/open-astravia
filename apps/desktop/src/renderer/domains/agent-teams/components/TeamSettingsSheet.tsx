@@ -295,10 +295,11 @@ export function TeamSettingsSheet({
 												)}
 											</div>
 
-											{assignmentAgentId === member.id && !readOnly ? (
+											{assignmentAgentId === member.id ? (
 												<MemberAssignmentEditor
 													agent={member}
 													assignment={assemblyAssignment(draft, member.id)}
+													readOnly={readOnly}
 													onClose={() => setAssignmentAgentId(undefined)}
 													onSave={(assignment) => {
 														setDraft((current) => setAssemblyAssignment(current, member.id, assignment));
@@ -309,7 +310,8 @@ export function TeamSettingsSheet({
 												<MemberAssignmentRow
 													agent={member}
 													assignment={assemblyAssignment(draft, member.id)}
-													{...(readOnly ? {} : { onOpen: () => setAssignmentAgentId(member.id) })}
+													readOnly={readOnly}
+													onOpen={() => setAssignmentAgentId(member.id)}
 												/>
 											)}
 										</li>
@@ -378,17 +380,19 @@ export function TeamSettingsSheet({
 function MemberAssignmentRow({
 	agent,
 	assignment,
+	readOnly = false,
 	onOpen,
 }: {
 	readonly agent: AgentProfile;
 	readonly assignment?: TeamMemberAssignment;
-	/** 省略即只读：提供方维护的团队不给任务书入口。 */
-	readonly onOpen?: () => void;
+	/** 只读仍可展开查看：提供方写的职责与补充指令正是用户最想看的内容，只是改不动。 */
+	readonly readOnly?: boolean;
+	readonly onOpen: () => void;
 }): JSX.Element | null {
 	const { t } = useTranslation("agent-teams");
 	if (!assignment) {
-		// 只读且本来就没有任务书时不留空位：一个点不动的「写任务书」按钮只会误导。
-		if (!onOpen) return null;
+		// 只读且本来就没有任务书时不留空位：一个「写任务书」按钮只会误导。
+		if (readOnly) return null;
 		return (
 			<button
 				type="button"
@@ -404,10 +408,9 @@ function MemberAssignmentRow({
 	return (
 		<button
 			type="button"
-			aria-label={t("settings.editAssignment", { name: agent.name })}
-			disabled={!onOpen}
+			aria-label={t(readOnly ? "settings.viewAssignment" : "settings.editAssignment", { name: agent.name })}
 			onClick={onOpen}
-			className="flex w-full items-start gap-2 rounded-lg border border-primary/30 bg-primary/5 px-2.5 py-2 text-left transition-colors hover:border-primary/50 hover:bg-primary/10 disabled:cursor-default disabled:hover:border-primary/30 disabled:hover:bg-primary/5"
+			className="flex w-full items-start gap-2 rounded-lg border border-primary/30 bg-primary/5 px-2.5 py-2 text-left transition-colors hover:border-primary/50 hover:bg-primary/10"
 		>
 			<span className="icon-[solar--clipboard-text-bold] mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
 			<span className="min-w-0 flex-1">
@@ -423,9 +426,13 @@ function MemberAssignmentRow({
 					{assignment.responsibility ?? agent.description}
 				</span>
 			</span>
-			{onOpen && (
-				<span className="icon-[solar--pen-2-linear] mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/70" aria-hidden="true" />
-			)}
+			<span
+				className={cn(
+					"mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/70",
+					readOnly ? "icon-[solar--alt-arrow-down-linear]" : "icon-[solar--pen-2-linear]",
+				)}
+				aria-hidden="true"
+			/>
 		</button>
 	);
 }
@@ -440,11 +447,14 @@ function MemberAssignmentRow({
 function MemberAssignmentEditor({
 	agent,
 	assignment,
+	readOnly = false,
 	onClose,
 	onSave,
 }: {
 	readonly agent: AgentProfile;
 	readonly assignment?: TeamMemberAssignment;
+	/** 只读展开：插件写的任务书照原样给用户看，不给应用入口。 */
+	readonly readOnly?: boolean;
 	readonly onClose: () => void;
 	readonly onSave: (assignment: TeamMemberAssignment) => void;
 }): JSX.Element {
@@ -468,6 +478,7 @@ function MemberAssignmentEditor({
 					<Input
 						value={responsibility}
 						onChange={(event) => setResponsibility(event.target.value)}
+						readOnly={readOnly}
 						placeholder={agent.description}
 						aria-label={t("settings.assignmentResponsibility")}
 						className="h-9"
@@ -482,6 +493,7 @@ function MemberAssignmentEditor({
 					<textarea
 						value={instructions}
 						onChange={(event) => setInstructions(event.target.value)}
+						readOnly={readOnly}
 						rows={5}
 						placeholder={t("settings.assignmentInstructionsPlaceholder")}
 						aria-label={t("settings.assignmentInstructions")}
@@ -492,11 +504,15 @@ function MemberAssignmentEditor({
 
 			<div className="flex justify-end gap-2">
 				<Button variant="outline" size="sm" onClick={onClose}>
-					<span className="text-[12px] font-medium">{t("settings.assignmentCancel")}</span>
+					<span className="text-[12px] font-medium">
+						{t(readOnly ? "settings.assignmentCollapse" : "settings.assignmentCancel")}
+					</span>
 				</Button>
-				<Button variant="primary" size="sm" onClick={() => onSave({ responsibility, instructions })}>
-					<span className="text-[12px] font-medium">{t("settings.assignmentApply")}</span>
-				</Button>
+				{!readOnly && (
+					<Button variant="primary" size="sm" onClick={() => onSave({ responsibility, instructions })}>
+						<span className="text-[12px] font-medium">{t("settings.assignmentApply")}</span>
+					</Button>
+				)}
 			</div>
 		</div>
 	);
