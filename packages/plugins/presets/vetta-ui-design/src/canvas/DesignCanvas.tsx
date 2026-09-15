@@ -13,9 +13,9 @@ import {
 import { useNotesAutoDispatch, useNotesHandoff } from "../notes/handoff";
 import type { NotesStore } from "../notes/notes-store";
 import { noteWorldPosition, pendingNotes } from "../notes/types";
-import { captureFullFrame, type FullFrameImage, type MaterialFormat } from "../materials/capture-full-frame";
+import type { FullFrameImage, MaterialFormat } from "../materials/capture-full-frame";
+import { captureMaterial } from "../materials/capture-material";
 import { exportMaterials, type MaterialFrame } from "../materials/export-materials";
-import { loadImage } from "../mockup/load-image";
 import { getPluginCtx, notify } from "../plugin-context";
 import type { DesignSession } from "../vetd/design-session";
 import { classifySource, isGeneratedPath, normalizeRelative } from "../vetd/bundle-paths";
@@ -50,7 +50,6 @@ import { byCanvasOrder } from "./frame-order";
 import { type FrameMenuAnchor, FrameContextMenu } from "./FrameContextMenu";
 import { refreshCover } from "./cover-compose";
 import { useFrameRasters } from "./frame-raster";
-import { offscreenRasterSupported } from "./offscreen-raster";
 import { type FrameDragEdge, FrameView } from "./FrameView";
 import { GapHandles } from "./GapHandles";
 import { HistoryDrawer } from "../history/HistoryDrawer";
@@ -1264,36 +1263,17 @@ export function DesignCanvas({
 		});
 	};
 
-	/**
-	 * 下载素材用的整帧截图：内容比画框高的部分（滚动空间）也要进图。
-	 *
-	 * 走宿主离屏窗口（见 materials/capture-full-frame）；旧宿主没有这个能力时退回
-	 * 画布 iframe 里的 html-to-image——那条路只截得到视口这一屏，是能给的最好结果。
-	 */
-	const captureMaterial = useCallback(
-		async (frame: VetdFrameEntry, format: MaterialFormat): Promise<FullFrameImage> => {
-			// 构建失败的帧渲染的是错误占位，永远不会发出「画完了」的信号——离屏截图只会
-			// 白等到超时。先问一声，立刻把编译错误报出去。
-			const buildError = getFrameError(frame.id);
-			if (buildError) throw new Error(`Frame "${frame.id}" cannot build:\n${buildError}`);
-			if (offscreenRasterSupported()) {
-				const capture = getPluginCtx().capture;
-				if (!capture) throw new Error("offscreen capture unavailable");
-				return captureFullFrame(
-					{ capture: (options) => capture.offscreen(options), loadImage },
-					{ port, frameId: frame.id, width: frame.width, height: frame.height, format },
-				);
-			}
-			const dataUrl = await captureFaithfully(frame.id, { pixelRatio: COPY_PIXEL_RATIO });
-			const image = await loadImage(dataUrl);
-			return {
-				dataUrl,
-				cssWidth: frame.width,
-				cssHeight: frame.height,
-				pixelWidth: image.naturalWidth,
-				pixelHeight: image.naturalHeight,
-			};
-		},
+	/** 下载素材用的整帧截图（含视口外的滚动空间），见 materials/capture-material。 */
+	const captureFrameMaterial = useCallback(
+		(frame: VetdFrameEntry, format: MaterialFormat): Promise<FullFrameImage> =>
+			captureMaterial(
+				{
+					port,
+					frame,
+					captureInCanvas: (frameId) => captureFaithfully(frameId, { pixelRatio: COPY_PIXEL_RATIO }),
+				},
+				format,
+			),
 		[port, captureFaithfully],
 	);
 
@@ -1314,7 +1294,7 @@ export function DesignCanvas({
 					capture: (frame, format) => {
 						const entry = byId.get(frame.id);
 						if (!entry) throw new Error(`frame not on canvas: ${frame.id}`);
-						return captureMaterial(entry, format);
+						return captureFrameMaterial(entry, format);
 					},
 					saveAs: (fileName, base64, options) => getPluginCtx().fs.saveAs(fileName, base64, "base64", options),
 					saveTitle: t("canvas.download.save.title"),
