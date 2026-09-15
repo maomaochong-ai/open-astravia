@@ -43,7 +43,7 @@ const MAX_LINE_LENGTH = 600;
 const HEX_IN_CLASSNAME = /className\s*=\s*(?:"[^"]*#[0-9a-fA-F]{3,8}|\{`[^`]*#[0-9a-fA-F]{3,8})/;
 
 /** `import x from "pkg"` / `import "pkg"` / `export * from "pkg"` 里的模块名。 */
-const IMPORT_SOURCE = /^\s*(?:import|export)\b(?:[^'"]*\bfrom\s*)?["']([^"']+)["']/;
+const IMPORT_SOURCE = /^\s*(?:import|export)\b(?:[^'"]*\bfrom)?\s*["']([^"']+)["']/;
 
 /**
  * 引擎 node_modules 里真实存在的东西（与 engine/package.json 的 dependencies 及

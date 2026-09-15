@@ -35,6 +35,16 @@ it("catches an import of a package the engine does not have", () => {
 	expect(issue?.message).toContain("icon-[lucide--search]");
 });
 
+it("catches a side-effect import of a missing package", () => {
+	// `import "pkg"` 没有 from：import 关键字后面直接是空格加引号，漏掉它等于整类写法不查。
+	const issue = checkSources([{ path: "frames/home.tsx", content: 'import "react-toastify/dist/ReactToastify.css";' }]).find(
+		(found) => found.rule === "uninstalled-import",
+	);
+	expect(issue).toMatchObject({ line: 1 });
+	expect(issue?.message).toContain('"react-toastify"');
+	expect(rulesFor('import "./styles.css";')).not.toContain("uninstalled-import");
+});
+
 it("stays quiet on lucide-react, which the engine installs as a fallback", () => {
 	// 模型对「图标」的第一反应就是 import lucide-react，纠正不掉，所以引擎装了它
 	// （engine/package.json + vite.config 的 alias）。装了还报就是误报。
