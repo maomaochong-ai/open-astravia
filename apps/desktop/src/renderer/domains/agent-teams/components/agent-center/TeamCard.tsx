@@ -12,7 +12,8 @@ export interface TeamCardProps {
 	readonly onOpenChat: () => void;
 	/** 已在成员编辑态时省略，避免重复进入并丢掉尚未保存的草稿。 */
 	readonly onRecruit?: () => void;
-	readonly onOpenSettings: () => void;
+	/** 省略时不出现设置入口：提供方维护的团队点卡片本身就是查看详情。 */
+	readonly onOpenSettings?: () => void;
 	/** 省略时不出现删除入口：提供方维护的团队不允许删除。 */
 	readonly onDelete?: () => void;
 }
@@ -86,11 +87,13 @@ export function TeamCard({
 								<span className="text-[11px] font-medium">{t("center.recruitShort")}</span>
 							</Button>
 						)}
-						<CardAction
-							icon="icon-[solar--settings-linear]"
-							label={t("center.teamSettings")}
-							onClick={stopAnd(onOpenSettings)}
-						/>
+						{onOpenSettings && (
+							<CardAction
+								icon="icon-[solar--settings-linear]"
+								label={t("center.teamSettings")}
+								onClick={stopAnd(onOpenSettings)}
+							/>
+						)}
 						{onDelete && (
 							<CardAction
 								icon="icon-[solar--trash-bin-trash-linear]"

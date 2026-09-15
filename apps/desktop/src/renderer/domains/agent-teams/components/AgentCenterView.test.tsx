@@ -160,14 +160,21 @@ describe("AgentCenterView", () => {
 		expect(model.actions.startEditTeam).toHaveBeenCalledWith(expect.objectContaining({ id: "squad" }));
 	});
 
-	it("offers no recruit or delete on a selected plugin team", () => {
+	it("opens a plugin team's details straight from the card, without recruit, settings or delete", async () => {
 		const teams = [{ ...team("preset"), source: { kind: "plugin", pluginId: "preset-agent" } }];
-		renderView(buildModel({ teams, selectedTeam: teams[0] } as Partial<AgentCenterModel>));
+		const model = buildModel({ teams, selectedTeam: teams[0] } as Partial<AgentCenterModel>);
+		const onOpenTeamSettings = vi.fn();
+		const user = userEvent.setup();
+		renderView(model, vi.fn(), { onOpenTeamSettings });
 
-		// 预设团队由插件 1:1 维护：只剩设置（只读查看），不给拉拢与删除入口。
-		expect(screen.getByRole("button", { name: "center.teamSettings" })).toBeDefined();
+		// 预设团队由插件 1:1 维护：卡片上不给拉拢、设置与删除，点卡片本身就是查看详情。
+		expect(screen.queryByRole("button", { name: "center.teamSettings" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "center.recruit" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "center.deleteTeam" })).toBeNull();
+
+		await user.click(screen.getByText("preset description"));
+		expect(onOpenTeamSettings).toHaveBeenCalledWith("preset");
+		expect(model.actions.startEditTeam).not.toHaveBeenCalled();
 	});
 
 	it("hides the card actions until the team is selected", () => {

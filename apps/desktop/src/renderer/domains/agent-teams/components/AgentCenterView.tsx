@@ -64,6 +64,12 @@ export function AgentCenterView({
 	// 点击团队就是进入该团队的成员编辑：直接复用组队草稿，避免「先选中、再找编辑入口」的隐式两步。
 	const selectTeamCard = useCallback(
 		(team: TeamDefinition) => {
+			// 提供方维护的团队没有可编辑的阵容，点卡片直接看详情，省掉「选中 → 找设置」两步。
+			if (team.source) {
+				if (assembling) cancelAssembly();
+				onOpenTeamSettings(team.id);
+				return;
+			}
 			const active = selectedTeamId === team.id;
 			if (!assembling) {
 				actions.startEditTeam(team);
@@ -76,7 +82,7 @@ export function AgentCenterView({
 			}
 			actions.startEditTeam(team);
 		},
-		[actions, assembling, cancelAssembly, clearSelection, selectedTeamId],
+		[actions, assembling, cancelAssembly, clearSelection, onOpenTeamSettings, selectedTeamId],
 	);
 
 	return (
@@ -161,7 +167,7 @@ export function AgentCenterView({
 											onSelect={() => selectTeamCard(team)}
 											onOpenChat={() => onOpenTeamChat(team.id)}
 											{...(assembling || team.source ? {} : { onRecruit: () => actions.startEditTeam(team) })}
-											onOpenSettings={() => onOpenTeamSettings(team.id)}
+											{...(team.source ? {} : { onOpenSettings: () => onOpenTeamSettings(team.id) })}
 											{...(team.source ? {} : { onDelete: () => onDeleteTeam(team.id) })}
 										/>
 									);
