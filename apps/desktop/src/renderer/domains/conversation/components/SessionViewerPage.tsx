@@ -98,17 +98,32 @@ export function SessionViewerPage(): JSX.Element {
 					/>
 				) : null
 			}
-			messageList={<MessageList messages={model.messages} isStreaming={false} sessionId={null} />}
+			messageList={
+				<MessageList
+					messages={model.messages}
+					cwd={model.kbCwd || model.imCwd || null}
+					isStreaming={false}
+					sessionId={model.path || null}
+				/>
+			}
 			activityPanel={
 				model.isKnowledge ? (
 					<ActivityPanel
-						workspace={createActivityWorkspace(model.kbCwd || "knowledge:unbound", model.kbCwd || null, activeRuntimeIds)}
+						workspace={createActivityWorkspace(
+							model.kbCwd || "knowledge:unbound",
+							model.kbCwd || null,
+							activeRuntimeIds,
+						)}
 						enablePluginTabs={false}
 						knowledgeHistory
 					/>
 				) : (
 					<ActivityPanel
-						workspace={createActivityWorkspace(model.imCwd || "viewer:unbound", model.imCwd || null, activeRuntimeIds)}
+						workspace={createActivityWorkspace(
+							model.imCwd || "viewer:unbound",
+							model.imCwd || null,
+							activeRuntimeIds,
+						)}
 						enablePluginTabs={false}
 					/>
 				)

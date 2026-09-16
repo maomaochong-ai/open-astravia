@@ -2,14 +2,15 @@ import {
 	type MessageFeedScrollModel,
 	useMessageFeedScrollModel,
 } from "@shared/components/message-feed/useMessageFeedScrollModel";
-import { activityPanelResizingAtom, type ChatConversationItem, pendingScrollToEntryAtom } from "@shared/store/atoms";
-import { useAtomValue, useSetAtom } from "jotai";
-import { useCallback } from "react";
+import { activityPanelResizingAtom, type ChatConversationItem } from "@shared/store/atoms";
+import { useAtomValue } from "jotai";
 
 interface MessageListScrollModelInput {
 	isStreaming: boolean;
 	messages: ChatConversationItem[];
 	sessionId?: string | null;
+	initialTargetKey?: string | null;
+	onInitialTargetHandled?: () => void;
 }
 
 export interface MessageListScrollModel extends Omit<MessageFeedScrollModel, "scrollToItem"> {
@@ -24,19 +25,18 @@ export function useMessageListScrollModel({
 	isStreaming,
 	messages,
 	sessionId,
+	initialTargetKey,
+	onInitialTargetHandled,
 }: MessageListScrollModelInput): MessageListScrollModel {
 	const activityPanelResizing = useAtomValue(activityPanelResizingAtom);
-	const pendingTarget = useAtomValue(pendingScrollToEntryAtom)?.entryId ?? null;
-	const setPendingTarget = useSetAtom(pendingScrollToEntryAtom);
-	const clearPendingTarget = useCallback(() => setPendingTarget(null), [setPendingTarget]);
 	const feed = useMessageFeedScrollModel({
 		active: isStreaming,
 		items: messages,
 		resetKey: sessionId,
 		layoutResizing: activityPanelResizing,
-		initialTargetKey: pendingTarget,
+		initialTargetKey,
 		getItemKey: getMessageKey,
-		onInitialTargetHandled: clearPendingTarget,
+		onInitialTargetHandled,
 		shouldFollowOnAppend: shouldFollowUserMessage,
 	});
 	return {

@@ -12,6 +12,7 @@ import {
 	MarkdownTableRow,
 } from "../shared/MarkdownTable";
 import { SyntaxHighlightedCode } from "../shared/SyntaxHighlightedCode";
+import { useMarkdownDefinition } from "../markdown/definition";
 
 export interface MarkdownPreviewViewProps {
 	content: string;
@@ -59,10 +60,7 @@ function Frontmatter({ entries }: { entries: FrontmatterEntry[] }): JSX.Element 
 				<dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[12px] leading-[1.6]">
 					{entries.map((entry, i) => (
 						<div key={i} className="contents">
-							<dt
-								className="font-medium text-muted-foreground"
-								style={{ paddingLeft: `${entry.depth * 12}px` }}
-							>
+							<dt className="font-medium text-muted-foreground" style={{ paddingLeft: `${entry.depth * 12}px` }}>
 								{entry.key || "-"}
 							</dt>
 							<dd className="break-words text-foreground">
@@ -130,6 +128,7 @@ export const MarkdownPreviewView = memo(function MarkdownPreviewView({
 	theme,
 	onOpenExternal,
 }: MarkdownPreviewViewProps): JSX.Element {
+	const definition = useMarkdownDefinition();
 	const parsed = parseFrontmatter(content);
 	const body = parsed?.body ?? content;
 
@@ -150,9 +149,7 @@ export const MarkdownPreviewView = memo(function MarkdownPreviewView({
 			h3: ({ children }) => (
 				<h3 className="mb-2 mt-3 text-[14px] font-semibold leading-tight text-foreground">{children}</h3>
 			),
-			h4: ({ children }) => (
-				<h4 className="mb-1.5 mt-2.5 text-[13px] font-semibold text-foreground">{children}</h4>
-			),
+			h4: ({ children }) => <h4 className="mb-1.5 mt-2.5 text-[13px] font-semibold text-foreground">{children}</h4>,
 			p: ({ children }) => <p className="my-1.5 text-[13px] leading-[1.6] text-foreground">{children}</p>,
 			ul: ({ children }) => (
 				<ul className="md-bullet-list my-1.5 text-[13px] leading-[1.6] text-foreground">{children}</ul>
@@ -169,7 +166,10 @@ export const MarkdownPreviewView = memo(function MarkdownPreviewView({
 				if (isBlock) {
 					const lang = className?.replace("language-", "") ?? "";
 					const code = raw.replace(/\n$/, "");
-					return <MarkdownCodeBlock lang={lang} code={code} theme={theme} />;
+					const CodeBlock = definition.codeBlock ?? MarkdownCodeBlock;
+					return (
+						<CodeBlock lang={lang} code={code} theme={theme} labels={{ copy: "Copy code", copied: "Copied" }} />
+					);
 				}
 				return <code className="rounded bg-muted px-1 py-0.5 text-[12px] text-foreground">{children}</code>;
 			},
@@ -179,15 +179,11 @@ export const MarkdownPreviewView = memo(function MarkdownPreviewView({
 					{children}
 				</blockquote>
 			),
-			table: ({ children }) => (
-				<MarkdownTable fontSizeClass="text-[12px]">{children}</MarkdownTable>
-			),
+			table: ({ children }) => <MarkdownTable fontSizeClass="text-[12px]">{children}</MarkdownTable>,
 			thead: ({ children }) => <MarkdownTableHead>{children}</MarkdownTableHead>,
 			tbody: ({ children }) => <MarkdownTableBody>{children}</MarkdownTableBody>,
 			tr: ({ children }) => <MarkdownTableRow>{children}</MarkdownTableRow>,
-			th: ({ children, style }) => (
-				<MarkdownTableHeaderCell style={style}>{children}</MarkdownTableHeaderCell>
-			),
+			th: ({ children, style }) => <MarkdownTableHeaderCell style={style}>{children}</MarkdownTableHeaderCell>,
 			td: ({ children, style }) => <MarkdownTableCell style={style}>{children}</MarkdownTableCell>,
 			hr: () => <hr className="my-3 border-border" />,
 			a: ({ href, children }) => (
@@ -203,13 +199,19 @@ export const MarkdownPreviewView = memo(function MarkdownPreviewView({
 			),
 			strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
 			em: ({ children }) => <em className="italic">{children}</em>,
+			...definition.components,
+			...definition.elements,
 		};
-	}, [theme, onOpenExternal]);
+	}, [theme, onOpenExternal, definition]);
 
 	return (
 		<div className="markdown-body break-words p-4">
 			{parsed && parsed.entries.length > 0 && <Frontmatter entries={parsed.entries} />}
-			<ReactMarkdown remarkPlugins={MARKDOWN_REMARK_PLUGINS} components={components}>
+			<ReactMarkdown
+				remarkPlugins={[...MARKDOWN_REMARK_PLUGINS, ...(definition.remarkPlugins ?? [])]}
+				rehypePlugins={definition.rehypePlugins}
+				components={components}
+			>
 				{body}
 			</ReactMarkdown>
 		</div>

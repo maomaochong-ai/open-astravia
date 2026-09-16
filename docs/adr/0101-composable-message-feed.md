@@ -2,7 +2,7 @@
 
 ## 状态
 
-已接受
+已接受。内部虚拟列表子节点协议已由 [ADR-0116](0116-message-feed-local-rendering-extensions.md) 替代；其余分层原则保留。
 
 ## 背景
 

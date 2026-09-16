@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
-import { renderHook } from "@testing-library/react";
+import { act, render, renderHook, screen } from "@testing-library/react";
 import { createConversationAgentMessage, type ConversationAgentMessageViewModel } from "@shared/conversation";
 import type { CardDescriptor } from "@vetta-org/plugin-sdk";
-import { createStore, Provider } from "jotai";
+import { createStore, Provider, useAtomValue } from "jotai";
 import type { ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 // 真实实现是 useCallback 包住的稳定引用（plugin-i18n.tsx），mock 必须同样稳定，
 // 否则会掩盖模型层的引用稳定性。
@@ -15,11 +15,7 @@ vi.mock("../../plugins/runtime/plugin-i18n", () => ({
 
 import { chatMessagesAtom, pluginCardRenderersAtom, type RegisteredCardRenderer } from "@shared/store/atoms";
 import type { ChatConversationItem } from "@shared/store/chat-atoms";
-import {
-	resetPendingCardCacheForTests,
-	useMessageCardsHostModel,
-	useMessageRawCards,
-} from "./useMessageCardsHostModel";
+import { MessageCardsScope, useMessageCardsHostModel, useMessageRawCards } from "./useMessageCardsHostModel";
 
 const CARD_TYPE = "test:card";
 
@@ -35,7 +31,13 @@ function streamingMessage(text: string): ConversationAgentMessageViewModel {
 		text,
 		blocks: [
 			{ type: "text", id: "blk-text", text },
-			{ type: "tool_call", toolCallId: "tc-1", toolName: "vetd_screenshot", args: { frame: "Hero" }, status: "pending" },
+			{
+				type: "tool_call",
+				toolCallId: "tc-1",
+				toolName: "vetd_screenshot",
+				args: { frame: "Hero" },
+				status: "pending",
+			},
 		],
 	});
 }
@@ -54,7 +56,19 @@ function setup(renderers: RegisteredCardRenderer[], messages: ChatConversationIt
 	const store = createStore();
 	store.set(pluginCardRenderersAtom, renderers);
 	store.set(chatMessagesAtom, messages);
-	const wrapper = ({ children }: { children: ReactNode }) => <Provider store={store}>{children}</Provider>;
+	const Scope = ({ children }: { children: ReactNode }) => {
+		const items = useAtomValue(chatMessagesAtom);
+		return (
+			<MessageCardsScope messages={items} scope="test-feed">
+				{children}
+			</MessageCardsScope>
+		);
+	};
+	const wrapper = ({ children }: { children: ReactNode }) => (
+		<Provider store={store}>
+			<Scope>{children}</Scope>
+		</Provider>
+	);
 	return { store, wrapper };
 }
 
@@ -65,11 +79,46 @@ function useHost(message: ConversationAgentMessageViewModel) {
 	return { rawCards, model };
 }
 
-beforeEach(() => {
-	resetPendingCardCacheForTests();
-});
-
 describe("useMessageCardsHostModel", () => {
+	it("isolates pending cards across feeds with overlapping tool IDs and refreshes replaced renderers", () => {
+		const store = createStore();
+		const registration = renderer(({ args }) => descriptor(String(args.frame)));
+		store.set(pluginCardRenderersAtom, [registration]);
+		const first = streamingMessage("a");
+		const second = createConversationAgentMessage({
+			...first,
+			blocks: first.blocks.map((block) =>
+				block.type === "tool_call" ? { ...block, args: { frame: "Other" } } : block,
+			),
+		});
+		function Cards({ message }: { message: ConversationAgentMessageViewModel }) {
+			const { model } = useHost(message);
+			return (
+				<div>
+					{model?.cards.map((card) => (
+						<span key={card.id}>{card.title}</span>
+					))}
+				</div>
+			);
+		}
+		render(
+			<Provider store={store}>
+				<MessageCardsScope scope="one" messages={[first]}>
+					<Cards message={first} />
+				</MessageCardsScope>
+				<MessageCardsScope scope="two" messages={[second]}>
+					<Cards message={second} />
+				</MessageCardsScope>
+			</Provider>,
+		);
+		expect(screen.getByText("Hero")).toBeTruthy();
+		expect(screen.getByText("Other")).toBeTruthy();
+		act(() => store.set(pluginCardRenderersAtom, [renderer(() => descriptor("Replacement"))]));
+		expect(screen.queryByText("Hero")).toBeNull();
+		expect(screen.queryByText("Other")).toBeNull();
+		expect(screen.getAllByText("Replacement")).toHaveLength(2);
+	});
+
 	it("在途 tool call 的骨架卡不因 pendingFor 中途返回 null 而消失", () => {
 		// pendingFor 是插件回调，读插件自己的模块级状态；它在相邻两帧返回不同结果是常态。
 		let ready = true;
@@ -77,10 +126,13 @@ describe("useMessageCardsHostModel", () => {
 		const first = streamingMessage("a");
 		const { store, wrapper } = setup(renderers, [first]);
 
-		const { result, rerender } = renderHook(({ message }: { message: ConversationAgentMessageViewModel }) => useHost(message), {
-			initialProps: { message: first },
-			wrapper,
-		});
+		const { result, rerender } = renderHook(
+			({ message }: { message: ConversationAgentMessageViewModel }) => useHost(message),
+			{
+				initialProps: { message: first },
+				wrapper,
+			},
+		);
 		expect(result.current.model?.cards).toHaveLength(1);
 
 		ready = false;
@@ -96,10 +148,13 @@ describe("useMessageCardsHostModel", () => {
 		const first = streamingMessage("a");
 		const { store, wrapper } = setup(renderers, [first]);
 
-		const { result, rerender } = renderHook(({ message }: { message: ConversationAgentMessageViewModel }) => useHost(message), {
-			initialProps: { message: first },
-			wrapper,
-		});
+		const { result, rerender } = renderHook(
+			({ message }: { message: ConversationAgentMessageViewModel }) => useHost(message),
+			{
+				initialProps: { message: first },
+				wrapper,
+			},
+		);
 		const rawBefore = result.current.rawCards;
 		const cardsBefore = result.current.model?.cards;
 
@@ -142,10 +197,13 @@ describe("useMessageCardsHostModel", () => {
 		const pending = streamingMessage("a");
 		const { store, wrapper } = setup(renderers, [pending]);
 
-		const { result, rerender } = renderHook(({ message }: { message: ConversationAgentMessageViewModel }) => useHost(message), {
-			initialProps: { message: pending },
-			wrapper,
-		});
+		const { result, rerender } = renderHook(
+			({ message }: { message: ConversationAgentMessageViewModel }) => useHost(message),
+			{
+				initialProps: { message: pending },
+				wrapper,
+			},
+		);
 		expect(result.current.model?.cards[0]?.pending).toBe(true);
 
 		const settled: ConversationAgentMessageViewModel = {

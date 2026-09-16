@@ -1,18 +1,11 @@
-import {
-	MessageFeed,
-	MessageFeedLayout,
-	MessageSelectionContextMenuView,
-} from "@vetta-org/theme-ui/chat";
+import { MessageFeed, MessageFeedLayout } from "@vetta-org/theme-ui/chat";
 import { useMessageFeedActiveItem } from "@shared/components/message-feed/useMessageFeedActiveItem";
 import { useCallback, useMemo } from "react";
+import type { ReactNode } from "react";
 import type { Usage } from "@vetta/ai/protocol";
-import { createPortal } from "react-dom";
 import { conversationItemRenderKey } from "@shared/conversation";
-import { useMessageSelectionContextMenu } from "../../hooks/useMessageSelectionContextMenu";
-import { SuggestionBubbles } from "../SuggestionBubbles";
-import { ForkOriginBanner, resolveForkOriginPlacement } from "./ForkOriginBanner";
+import { MessageRow } from "./MessageRendering";
 import { MessageItem, ModelSwitchBoundary, ExportMessageList } from "./MessageItem";
-import { MessageListFooter } from "./MessageListFooter";
 import { MessageTimeline } from "./MessageTimeline";
 import type { ChatConversationItem, MessageListModel, MessageListProps } from "./types";
 
@@ -40,31 +33,26 @@ const DEFAULT_ITEM_HEIGHT = 200;
 export function MessageListView({
 	model,
 	onAbort,
-	onSend,
+	children,
 	viewportPhase,
 	sessionId = null,
 	pendingLabel,
 }: {
 	model: MessageListModel;
 	onAbort: MessageListProps["onAbort"];
-	onSend: MessageListProps["onSend"];
+	children?: ReactNode;
 	viewportPhase: "initial" | "expanded";
 	sessionId?: MessageListProps["sessionId"];
 	pendingLabel?: MessageListProps["pendingLabel"];
 }): JSX.Element {
 	const {
-		isCompacting,
 		isStreaming,
 		messages,
 		modelSwitchLabels,
-		parentEntryId,
-		parentSessionPath,
 		scroll,
-		waitingForResponse,
 		tailMessageId,
 		participantsById,
 		participants,
-		context,
 		onTeamMemberOpen,
 	} = model;
 	const scrollerElement = scroll.scrollerElement;
@@ -76,30 +64,12 @@ export function MessageListView({
 		resetKey: sessionId,
 		initialIndex: Math.max(0, messages.length - 1),
 	});
-	const forkOriginPlacement = useMemo(
-		() =>
-			resolveForkOriginPlacement(
-				messages,
-				parentEntryId,
-				Boolean(parentSessionPath),
-			),
-		[parentEntryId, parentSessionPath, messages],
-	);
-	// 倒序单次扫描一次算出两个位置，避免在 itemContent 里对每个可见条目再做一次 O(n)
-	// 的 slice/some（整条列表退化成 O(n²)，且流式期间每帧重跑）。
-	const { lastUserMessageId, lastNonUserIndex } = useMemo(() => {
-		let userId: string | null = null;
-		let nonUserIndex = -1;
+	const lastUserMessageId = useMemo(() => {
 		for (let index = messages.length - 1; index >= 0; index--) {
 			const message = messages[index];
-			if (message.kind === "user") {
-				if (userId === null) userId = message.id;
-			} else if (nonUserIndex === -1) {
-				nonUserIndex = index;
-			}
-			if (userId !== null && nonUserIndex !== -1) break;
+			if (message.kind === "user") return message.id;
 		}
-		return { lastUserMessageId: userId, lastNonUserIndex: nonUserIndex };
+		return null;
 	}, [messages]);
 	const sessionUsages = useMemo<readonly Usage[]>(
 		() => messages.flatMap((message) => (message.kind === "agent" ? (message.usages ?? []) : [])),
@@ -107,20 +77,8 @@ export function MessageListView({
 	);
 	const itemContent = useCallback(
 		(index: number, message: ChatConversationItem) => {
-			const showForkOrigin = forkOriginPlacement?.anchorIndex === index;
-			const sourceUser =
-				showForkOrigin && forkOriginPlacement
-					? messages[forkOriginPlacement.sourceUserIndex]
-					: undefined;
 			return (
-				<div
-					data-entry-id={message.entryId ?? message.id}
-					className={
-						index === messages.length - 1 && message.kind === "user" && !showForkOrigin
-							? "pb-9"
-							: "pb-5"
-					}
-				>
+				<MessageRow message={message} isLast={index === messages.length - 1}>
 					{modelSwitchLabels.has(message.id) && (
 						<ModelSwitchBoundary label={modelSwitchLabels.get(message.id) as string} />
 					)}
@@ -129,23 +87,18 @@ export function MessageListView({
 						isTailMessage={message.id === tailMessageId}
 						isStreaming={isStreaming}
 						isLastUserMessage={message.id === lastUserMessageId}
-						hasAssistantAfter={index < lastNonUserIndex}
 						onAbortEdit={onAbort}
 						participant={message.kind === "agent" ? participantsById.get(message.authorId) : undefined}
 						pendingLabel={message.kind === "agent" && message.phase === "pending" ? pendingLabel : undefined}
-						userMessageActions={context.userMessageActions}
 						participants={participants}
 						sessionUsages={sessionUsages}
 						onTeamMemberOpen={onTeamMemberOpen}
 					/>
-					{showForkOrigin && sourceUser?.kind === "user" ? <ForkOriginBanner sourceMessage={sourceUser} /> : null}
-				</div>
+				</MessageRow>
 			);
 		},
 		[
-			forkOriginPlacement,
 			isStreaming,
-			lastNonUserIndex,
 			lastUserMessageId,
 			messages.length,
 			messages,
@@ -155,66 +108,41 @@ export function MessageListView({
 			tailMessageId,
 			onTeamMemberOpen,
 			participants,
+			participantsById,
 			sessionUsages,
 		],
 	);
-	const footer = useMemo(
-		() => (
-			// Workflow footer sits above input-suggestion capsules; pb-16 clears the floating InputBar.
-			<MessageFeed.Footer asChild>
-				<div className="pb-16">
-					{context.showRuntimeFooter ? <MessageListFooter
-						isCompacting={isCompacting}
-						waiting={waitingForResponse}
-						sessionId={sessionId ?? undefined}
-						pendingLabel={pendingLabel}
-					/> : null}
-					{context.showSuggestions && onSend ? <SuggestionBubbles onSend={onSend} /> : null}
-				</div>
-			</MessageFeed.Footer>
-		),
-		[context.showRuntimeFooter, context.showSuggestions, isCompacting, waitingForResponse, onSend, pendingLabel, sessionId],
-	);
-	const selectionMenu = useMessageSelectionContextMenu();
 
 	return (
 		<>
 			<MessageFeed.Root>
 				<MessageFeedLayout.Frame asChild>
-					<div
-						ref={selectionMenu.containerRef}
-						data-message-viewport={viewportPhase}
-						onContextMenuCapture={selectionMenu.onContextMenuCapture}
-					>
+					<div data-message-viewport={viewportPhase}>
 						<MessageFeedLayout.Viewport>
 							<MessageFeedLayout.Virtualizer asChild>
 								<MessageFeed.VirtualList
 									// 不通过 React key 强制卸载列表。runtime 建立时 sessionId
 									// 可能从过渡值切到真实路径；强制 remount 会造成整屏闪烁。
 									// 会话切换的滚动重置由 useMessageFeedActiveItem.resetKey 负责。
-					virtuosoRef={scroll.virtuosoRef}
-					restoreStateFrom={scroll.restoreStateFrom}
-					scrollerRef={scroll.scrollerRef}
+									virtuosoRef={scroll.virtuosoRef}
+									restoreStateFrom={scroll.restoreStateFrom}
+									scrollerRef={scroll.scrollerRef}
 									items={messages}
 									getKey={conversationItemRenderKey}
 									atBottomStateChange={scroll.onAtBottomChange}
 									atBottomThreshold={80}
 									itemsRendered={activeItem.onItemsRendered}
-					overscan={
+									overscan={
+										useInitialViewport ? INITIAL_OVERSCAN : isStreaming ? STREAMING_OVERSCAN : IDLE_OVERSCAN
+									}
+									minOverscanItemCount={
 										useInitialViewport
-											? INITIAL_OVERSCAN
+											? INITIAL_MIN_OVERSCAN_ITEM_COUNT
 											: isStreaming
-												? STREAMING_OVERSCAN
-												: IDLE_OVERSCAN
-					}
-					minOverscanItemCount={
-						useInitialViewport
-							? INITIAL_MIN_OVERSCAN_ITEM_COUNT
-							: isStreaming
-								? STREAMING_MIN_OVERSCAN_ITEM_COUNT
-								: IDLE_MIN_OVERSCAN_ITEM_COUNT
-					}
-					increaseViewportBy={
+												? STREAMING_MIN_OVERSCAN_ITEM_COUNT
+												: IDLE_MIN_OVERSCAN_ITEM_COUNT
+									}
+									increaseViewportBy={
 										useInitialViewport
 											? INITIAL_INCREASE_VIEWPORT_BY
 											: isStreaming
@@ -224,12 +152,13 @@ export function MessageListView({
 									defaultItemHeight={DEFAULT_ITEM_HEIGHT}
 									initialTopMostItemIndex={messages.length > 0 ? messages.length - 1 : 0}
 								>
-									<MessageFeedLayout.List />
 									{(message, index) => itemContent(index, message)}
-									{footer}
 								</MessageFeed.VirtualList>
 							</MessageFeedLayout.Virtualizer>
 						</MessageFeedLayout.Viewport>
+						<MessageFeed.Footer>
+							<div className="pb-16">{children}</div>
+						</MessageFeed.Footer>
 						{/* 悬浮在会话区域左缘，不占消息列宽度；窄于 52rem 时消息列铺满整个会话区，
 						    目录会压住气泡，直接整条隐藏。 */}
 						<MessageFeedLayout.LeftRail>
@@ -245,12 +174,6 @@ export function MessageListView({
 					</div>
 				</MessageFeedLayout.Frame>
 			</MessageFeed.Root>
-			{selectionMenu.contextMenu
-				? createPortal(
-						<MessageSelectionContextMenuView {...selectionMenu.contextMenu} />,
-						document.body,
-					)
-				: null}
 		</>
 	);
 }

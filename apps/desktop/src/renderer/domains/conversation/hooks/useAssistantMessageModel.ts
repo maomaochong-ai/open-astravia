@@ -1,15 +1,9 @@
-import { useAgentModeNarration } from "@shared/agent-modes/agent-mode-registry";
 import type { TextBlock } from "@shared/conversation";
 import type { ChatAgentMessageViewModel } from "@shared/store/atoms";
-import {
-	activeSessionAtom,
-	pluginToolCallSlotsAtom,
-	promptPredictingAtom,
-	sessionAgentModeAtom,
-} from "@shared/store/atoms";
+import { pluginToolCallSlotsAtom } from "@shared/store/atoms";
 import { useAtomValue } from "jotai";
-import { selectAtom } from "jotai/utils";
 import { useMemo } from "react";
+import { useAssistantRendering } from "../components/message-list/AssistantRendering";
 import {
 	findLastProcessBlockIndex,
 	getAssistantFoldData,
@@ -18,13 +12,6 @@ import {
 } from "../components/message-list/messageBlockModel";
 import { groupBlocksForWork } from "../components/message-list/progressGroupModel";
 import type { AssistantMessageModel } from "../components/message-list/types";
-
-/**
- * 订阅必须切细：这个 hook 每条 assistant 消息都跑一份。直接订阅 activeSessionAtom
- * 整个对象，会让 session 上任何一个字段变动（token 计数、运行状态）都把视窗内所有
- * 消息重渲染一遍，连带重跑 groupBlocks / getAssistantFoldData。
- */
-const activeRuntimeIdAtom = selectAtom(activeSessionAtom, (session) => session?.runtimeId ?? null);
 
 interface AssistantMessageModelInput {
 	expanded: boolean;
@@ -41,15 +28,8 @@ export function useAssistantMessageModel({
 	isTailMessage,
 	message,
 }: AssistantMessageModelInput): AssistantMessageModel {
-	const activeRuntimeId = useAtomValue(activeRuntimeIdAtom);
+	const { narration, predicting: isRuntimePredicting } = useAssistantRendering();
 	const toolCallSlots = useAtomValue(pluginToolCallSlotsAtom);
-	// 只订阅当前 runtime 的预测位，而不是整张 map——否则任一会话的预测状态变动都会
-	// 把这条消息重渲染一遍。
-	const isPredictingAtom = useMemo(
-		() => selectAtom(promptPredictingAtom, (map) => (activeRuntimeId ? Boolean(map[activeRuntimeId]) : false)),
-		[activeRuntimeId],
-	);
-	const isRuntimePredicting = useAtomValue(isPredictingAtom);
 	const customToolNames = useMemo(() => new Set(toolCallSlots.map((slot) => slot.toolName)), [toolCallSlots]);
 	const persistentToolCallIds = useMemo(
 		() => new Set(message.toolCallPresentations?.map((presentation) => presentation.toolCallId) ?? []),
@@ -61,7 +41,7 @@ export function useAssistantMessageModel({
 		(isTailMessage && isStreaming && message.phase !== "failed" && message.phase !== "aborted");
 	// 按「本会话固化的模式」查注册表的 narration 能力位渲染，不是全局默认值，也不硬编码
 	// mode id（新增模式对本渲染层零改动）。未指定模式回退 staged（与历史会话按 work 恢复口径一致）。
-	const stagedNarration = useAgentModeNarration(useAtomValue(sessionAgentModeAtom)) === "staged";
+	const stagedNarration = narration === "staged";
 	const foldData = useMemo(
 		() => getAssistantFoldData(message.blocks, customToolNames, persistentToolCallIds),
 		[message.blocks, customToolNames, persistentToolCallIds],

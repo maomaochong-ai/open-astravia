@@ -2,6 +2,17 @@
 
 All notable changes to `@vetta-org/theme-ui` are documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- 新增 `./markdown` 公开入口：局部 Markdown definition、remark/rehype 与元素扩展，以及可组合的 `CodeBlock`。Chat 与活动面板预览共享扩展定义，原 `chat/TextBlockView` 保留转导出。
+
+### Changed
+
+- `MessageFeed.VirtualList.children` 改为单一逐项渲染函数，不再接受声明式 List/Footer 子元素；Footer 在同一 Root 中正常组合并 Portal 到虚拟列表末尾。外部消费者需按 Desktop 的消息列表扩展指南迁移。
+- 为 Footer Portal 声明 ReactDOM 19 peer dependency。
+
 ## [0.1.1] — 2026-09-14
 
 ### Fixed

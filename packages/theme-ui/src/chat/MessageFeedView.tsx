@@ -1,15 +1,9 @@
 import { cn } from "@vetta-org/ui";
 import { Slot } from "radix-ui";
-import type {
-	ComponentPropsWithoutRef,
-	JSX,
-	ReactElement,
-	ReactNode,
-	Ref,
-} from "react";
-import { createContext, forwardRef, isValidElement, useContext, useMemo } from "react";
+import type { ComponentPropsWithoutRef, JSX, ReactNode, Ref } from "react";
+import { forwardRef } from "react";
+import { createPortal } from "react-dom";
 import {
-	type Components,
 	type FollowOutput,
 	type ListItem,
 	type ListRange,
@@ -18,15 +12,7 @@ import {
 	type VirtuosoHandle,
 } from "react-virtuoso";
 import { MessageFeedProvider, useMessageFeedContext } from "./MessageFeedContext";
-import {
-	MessageFeedLayoutList,
-	type MessageFeedListLayoutProps,
-} from "./MessageFeedLayoutView";
-
-const MessageFeedVirtualFooterContext = createContext<ReactNode>(null);
-const MessageFeedVirtualListLayoutContext = createContext<
-	ReactElement<MessageFeedListLayoutProps> | null
->(null);
+import { MessageFeedLayoutList } from "./MessageFeedLayoutView";
 
 export interface MessageFeedRootProps {
 	readonly children: ReactNode;
@@ -41,32 +27,24 @@ export interface MessageFeedPrimitiveProps extends ComponentPropsWithoutRef<"div
 	readonly asChild?: boolean;
 }
 
-export const MessageFeedFooter = forwardRef<HTMLDivElement, MessageFeedPrimitiveProps>(
-	function MessageFeedFooter(
-		{ asChild = false, children, className, ...props },
-		forwardedRef,
-	) {
-		useMessageFeedContext("MessageFeed.Footer");
-		const Comp = asChild ? Slot.Root : "div";
-		return (
-			<Comp
-				ref={forwardedRef}
-				className={cn(className)}
-				data-message-feed-part="footer"
-				{...props}
-			>
-				{children}
-			</Comp>
-		);
-	},
-);
+export const MessageFeedFooter = forwardRef<HTMLDivElement, MessageFeedPrimitiveProps>(function MessageFeedFooter(
+	{ asChild = false, children, className, ...props },
+	forwardedRef,
+) {
+	const { footerHost } = useMessageFeedContext("MessageFeed.Footer");
+	if (!footerHost) return null;
+	const Comp = asChild ? Slot.Root : "div";
+	return createPortal(
+		<Comp ref={forwardedRef} className={cn(className)} data-message-feed-part="footer" {...props}>
+			{children}
+		</Comp>,
+		footerHost,
+	);
+});
 
-export interface MessageFeedVirtualListProps<T>
-	extends Omit<ComponentPropsWithoutRef<"div">, "children"> {
+export interface MessageFeedVirtualListProps<T> extends Omit<ComponentPropsWithoutRef<"div">, "children"> {
 	readonly items: readonly T[];
-	readonly children:
-		| MessageFeedVirtualListChild<T>
-		| readonly MessageFeedVirtualListChild<T>[];
+	readonly children: (item: T, index: number) => ReactNode;
 	readonly getKey?: (item: T, index: number) => string | number;
 	readonly virtuosoRef?: Ref<VirtuosoHandle>;
 	readonly scrollerRef?: (ref: HTMLElement | Window | null) => void;
@@ -82,12 +60,6 @@ export interface MessageFeedVirtualListProps<T>
 	readonly defaultItemHeight?: number;
 	readonly atBottomThreshold?: number;
 }
-
-export type MessageFeedVirtualListChild<T> =
-	| ((item: T, index: number) => ReactNode)
-	| ReactElement<MessageFeedPrimitiveProps | MessageFeedListLayoutProps>
-	| null
-	| false;
 
 /** Generic virtualized feed mechanics; item semantics and layout stay in caller composition. */
 export function MessageFeedVirtualList<T>({
@@ -112,114 +84,38 @@ export function MessageFeedVirtualList<T>({
 	...hostProps
 }: MessageFeedVirtualListProps<T>): JSX.Element {
 	useMessageFeedContext("MessageFeed.VirtualList");
-	const { renderItem, footer, listLayout } = resolveVirtualListChildren(children);
-	const components = useMemo<Components<T>>(
-		() => ({
-			List: MessageFeedVirtualListSlot,
-			...(footer ? { Footer: MessageFeedVirtualFooterSlot } : {}),
-		}),
-		[footer],
-	);
 	return (
-		<MessageFeedVirtualListLayoutContext.Provider value={listLayout}>
-			<MessageFeedVirtualFooterContext.Provider value={footer}>
-				<Virtuoso
-					{...hostProps}
-					ref={virtuosoRef}
-					data={items}
-					itemContent={(index, item) => renderItem(item, index)}
-					{...(getKey ? { computeItemKey: (index: number, item: T) => getKey(item, index) } : {})}
-					{...(scrollerRef ? { scrollerRef } : {})}
-					{...(atBottomStateChange ? { atBottomStateChange } : {})}
-					{...(itemsRendered ? { itemsRendered } : {})}
-					{...(rangeChanged ? { rangeChanged } : {})}
-					{...(restoreStateFrom ? { restoreStateFrom } : {})}
-					{...(followOutput !== undefined ? { followOutput } : {})}
-					{...(initialTopMostItemIndex !== undefined ? { initialTopMostItemIndex } : {})}
-					{...(overscan !== undefined ? { overscan } : {})}
-					{...(minOverscanItemCount !== undefined ? { minOverscanItemCount } : {})}
-					{...(increaseViewportBy !== undefined ? { increaseViewportBy } : {})}
-					{...(defaultItemHeight !== undefined ? { defaultItemHeight } : {})}
-					{...(atBottomThreshold !== undefined ? { atBottomThreshold } : {})}
-					components={components}
-					className={cn(className)}
-					style={style}
-				/>
-			</MessageFeedVirtualFooterContext.Provider>
-		</MessageFeedVirtualListLayoutContext.Provider>
-	);
-}
-
-function MessageFeedVirtualFooterSlot(): JSX.Element | null {
-	const footer = useContext(MessageFeedVirtualFooterContext);
-	return footer ? <>{footer}</> : null;
-}
-
-const MessageFeedVirtualListSlot = forwardRef<
-	HTMLDivElement,
-	ComponentPropsWithoutRef<"div">
->(function MessageFeedVirtualListSlot({ className, style, ...props }, forwardedRef) {
-	const listLayout = useContext(MessageFeedVirtualListLayoutContext);
-	if (!listLayout) {
-		throw new Error("MessageFeed.VirtualList requires one MessageFeedLayout.List child");
-	}
-	return (
-		<MessageFeedLayoutList
-			{...props}
-			ref={forwardedRef}
-			className={cn(listLayout.props.className, className)}
-			style={{ ...listLayout.props.style, ...style }}
+		<Virtuoso
+			{...hostProps}
+			ref={virtuosoRef}
+			data={items}
+			itemContent={(index, item) => children(item, index)}
+			{...(getKey ? { computeItemKey: (index: number, item: T) => getKey(item, index) } : {})}
+			{...(scrollerRef ? { scrollerRef } : {})}
+			{...(atBottomStateChange ? { atBottomStateChange } : {})}
+			{...(itemsRendered ? { itemsRendered } : {})}
+			{...(rangeChanged ? { rangeChanged } : {})}
+			{...(restoreStateFrom ? { restoreStateFrom } : {})}
+			{...(followOutput !== undefined ? { followOutput } : {})}
+			{...(initialTopMostItemIndex !== undefined ? { initialTopMostItemIndex } : {})}
+			{...(overscan !== undefined ? { overscan } : {})}
+			{...(minOverscanItemCount !== undefined ? { minOverscanItemCount } : {})}
+			{...(increaseViewportBy !== undefined ? { increaseViewportBy } : {})}
+			{...(defaultItemHeight !== undefined ? { defaultItemHeight } : {})}
+			{...(atBottomThreshold !== undefined ? { atBottomThreshold } : {})}
+			components={VIRTUAL_COMPONENTS}
+			className={cn(className)}
+			style={style}
 		/>
 	);
-});
-
-function resolveVirtualListChildren<T>(children: MessageFeedVirtualListProps<T>["children"]): {
-	readonly renderItem: (item: T, index: number) => ReactNode;
-	readonly footer: ReactElement<MessageFeedPrimitiveProps> | null;
-	readonly listLayout: ReactElement<MessageFeedListLayoutProps> | null;
-} {
-	let renderItem: ((item: T, index: number) => ReactNode) | undefined;
-	let footer: ReactElement<MessageFeedPrimitiveProps> | null = null;
-	let listLayout: ReactElement<MessageFeedListLayoutProps> | null = null;
-	const visit = (
-		child: MessageFeedVirtualListChild<T> | readonly MessageFeedVirtualListChild<T>[],
-	): void => {
-		if (Array.isArray(child)) {
-			for (const nested of child) visit(nested);
-			return;
-		}
-		if (typeof child === "function") {
-			if (renderItem) throw new Error("MessageFeed.VirtualList accepts one item renderer");
-			renderItem = child;
-			return;
-		}
-		if (child == null || child === false) return;
-		if (isValidElement<MessageFeedPrimitiveProps>(child) && child.type === MessageFeedFooter) {
-			if (footer) throw new Error("MessageFeed.VirtualList accepts one MessageFeed.Footer");
-			footer = child;
-			return;
-		}
-		if (
-			isValidElement<MessageFeedListLayoutProps>(child) &&
-			child.type === MessageFeedLayoutList
-		) {
-			if (listLayout) {
-				throw new Error("MessageFeed.VirtualList accepts one MessageFeedLayout.List");
-			}
-			listLayout = child;
-			return;
-		}
-		throw new Error(
-			"MessageFeed.VirtualList children must be an item renderer, MessageFeed.Footer, or MessageFeedLayout.List",
-		);
-	};
-	visit(children);
-	if (!renderItem) throw new Error("MessageFeed.VirtualList requires an item renderer child");
-	if (!listLayout) {
-		throw new Error("MessageFeed.VirtualList requires one MessageFeedLayout.List child");
-	}
-	return { renderItem, footer, listLayout };
 }
+
+function MessageFeedVirtualFooterSlot(): JSX.Element {
+	const { setFooterHost } = useMessageFeedContext("MessageFeed.VirtualFooter");
+	return <div ref={setFooterHost} />;
+}
+
+const VIRTUAL_COMPONENTS = { List: MessageFeedLayoutList, Footer: MessageFeedVirtualFooterSlot };
 
 export const MessageFeed = {
 	Root: MessageFeedRoot,

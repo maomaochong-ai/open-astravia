@@ -1,11 +1,10 @@
 import type { ContentBlock, ConversationAgentMessageViewModel } from "@shared/conversation";
-import { chatMessagesAtom, pluginCardRenderersAtom, type RegisteredCardRenderer } from "@shared/store/atoms";
+import { pluginCardRenderersAtom, type RegisteredCardRenderer } from "@shared/store/atoms";
 import type { ChatConversationItem } from "@shared/store/chat-atoms";
 import type { CardDescriptor, PluginCardProps } from "@vetta-org/plugin-sdk";
-import { atom, useAtomValue } from "jotai";
-import { selectAtom } from "jotai/utils";
+import { useAtomValue } from "jotai";
 import type { ComponentType, ReactNode } from "react";
-import { useMemo, useRef } from "react";
+import { createContext, createElement, useContext, useMemo, useRef } from "react";
 import { usePluginTextResolver } from "../../plugins/runtime/plugin-i18n";
 import type { ResolvedCard } from "../components/MessageCards";
 
@@ -16,19 +15,47 @@ export interface RawCard {
 	anchorId: string;
 }
 
-/**
- * 已为某个在途 tool call 合成过的 pending descriptor，按 `toolCallId → rendererType` 记住。
- *
- * `pendingFor` 是插件回调，宿主每次重渲都会调它，而它并不受纯函数约束：
- * 常见写法会去读插件自己的模块级状态（当前画布 session 之类），于是同一个在途
- * tool call 在相邻两帧可能一帧返回 descriptor、一帧返回 null，或者返回 key 不同的
- * descriptor。宿主直接把这个返回值当渲染事实源，卡片就会在「有 / 没有」之间每帧翻转
- * ——卡片区高度随之在 0 与卡片高度之间来回跳，表现为流式期间整页持续抖动。
- *
- * 这里对同一个在途 tool call 只认第一次合成成功的结果，直到它落定为止：既固定了
- * descriptor 的对象身份（下游 memo 不再每帧失效），也让骨架位不会中途消失。
- */
-const pendingDescriptorCache = new Map<string, Map<string, CardDescriptor>>();
+type PendingDescriptorCache = Map<string, Map<RegisteredCardRenderer, CardDescriptor>>;
+interface CardScope {
+	cache: PendingDescriptorCache;
+	owners: Map<string, string>;
+}
+const CardScopeContext = createContext<CardScope | null>(null);
+
+/** Cache ownership follows the feed, never the globally active conversation. */
+export function MessageCardsScope({
+	messages,
+	scope,
+	children,
+}: {
+	messages: readonly ChatConversationItem[];
+	scope: string | null;
+	children: ReactNode;
+}) {
+	const renderers = useAtomValue(pluginCardRenderersAtom);
+	const state = useMemo(
+		() => ({
+			scope,
+			cache: new Map<string, Map<RegisteredCardRenderer, CardDescriptor>>(),
+			owners: new Map<string, string>(),
+		}),
+		[scope],
+	);
+	const owners = useMemo(() => {
+		const owners = new Map<string, string>();
+		for (const message of messages) {
+			if (message.kind !== "agent") continue;
+			for (const card of cardsForMessage(message, renderers, state.cache)) {
+				if (card.descriptor.key) owners.set(card.descriptor.key, message.id);
+			}
+		}
+		collectPendingDescriptorCache(messages, state.cache);
+		if (!sameOwnerMap(state.owners, owners)) state.owners = owners;
+		return state.owners;
+	}, [messages, renderers, state]);
+	const value = useMemo(() => ({ cache: state.cache, owners }), [state, owners]);
+	return createElement(CardScopeContext.Provider, { value }, children);
+}
 
 /**
  * Cards a single message contributes, in display order:
@@ -36,7 +63,11 @@ const pendingDescriptorCache = new Map<string, Map<string, CardDescriptor>>();
  *  - pending — for each in-flight tool_call, every renderer's `pendingFor` gets
  *    a shot at synthesizing a provisional descriptor.
  */
-function cardsForMessage(message: ConversationAgentMessageViewModel, renderers: RegisteredCardRenderer[]): RawCard[] {
+function cardsForMessage(
+	message: ConversationAgentMessageViewModel,
+	renderers: RegisteredCardRenderer[],
+	pendingDescriptorCache: PendingDescriptorCache,
+): RawCard[] {
 	const blocks: ContentBlock[] = message.blocks;
 	const cards: RawCard[] = [];
 	for (const block of blocks) {
@@ -45,7 +76,7 @@ function cardsForMessage(message: ConversationAgentMessageViewModel, renderers: 
 			const toolCall = { toolName: block.toolName, args: block.args ?? {} };
 			let sticky = pendingDescriptorCache.get(block.toolCallId);
 			for (const renderer of renderers) {
-				const remembered = sticky?.get(renderer.type);
+				const remembered = sticky?.get(renderer);
 				if (remembered) {
 					cards.push({ descriptor: remembered, pending: true, anchorId: message.id });
 					continue;
@@ -56,7 +87,7 @@ function cardsForMessage(message: ConversationAgentMessageViewModel, renderers: 
 					sticky = new Map();
 					pendingDescriptorCache.set(block.toolCallId, sticky);
 				}
-				sticky.set(renderer.type, descriptor);
+				sticky.set(renderer, descriptor);
 				cards.push({ descriptor, pending: true, anchorId: message.id });
 			}
 		} else {
@@ -71,7 +102,10 @@ function cardsForMessage(message: ConversationAgentMessageViewModel, renderers: 
 }
 
 /** 丢掉已经不在消息列表里、或已不再处于 pending 的 tool call 记忆。 */
-function collectPendingDescriptorCache(messages: readonly ChatConversationItem[]): void {
+function collectPendingDescriptorCache(
+	messages: readonly ChatConversationItem[],
+	pendingDescriptorCache: PendingDescriptorCache,
+): void {
 	if (pendingDescriptorCache.size === 0) return;
 	const live = new Set<string>();
 	for (const message of messages) {
@@ -94,36 +128,6 @@ function sameOwnerMap(a: Map<string, string>, b: Map<string, string>): boolean {
 	}
 	return true;
 }
-
-/**
- * 同一个 card key 的归属：最后产出它的那条消息。
- *
- * 这本来是每条 assistant 消息各自算一遍的（全量消息 × 全量 block × 全量 renderer），
- * 于是整条列表退化成 O(N²)；流式期间消息数组每帧换引用，这个平方级扫描每帧重跑。
- * 提成派生 atom 后全局只算一次，且只有真的产出了卡片的消息才会订阅它。
- */
-const rawCardOwnerByKeyAtom = atom((get) => {
-	const messages = get(chatMessagesAtom);
-	const renderers = get(pluginCardRenderersAtom);
-	const owner = new Map<string, string>();
-	for (const message of messages) {
-		if (message.kind !== "agent") continue;
-		for (const card of cardsForMessage(message, renderers)) {
-			if (card.descriptor.key) owner.set(card.descriptor.key, message.id);
-		}
-	}
-	// 这里是唯一一处会看到全量消息的地方，顺带回收记忆：被中断/切走、永远等不到落定
-	// 事件的 tool call 不会留在缓存里。
-	collectPendingDescriptorCache(messages);
-	return owner;
-});
-
-/**
- * 归属表在流式期间几乎从不变化，但上面那个 atom 每个 token 都会产出一张新 Map。
- * 不做引用稳定化的话，所有带卡片的消息每 token 都要重算 `cards`、重建 body 元素，
- * 把插件卡片整棵子树拖进每帧重渲。
- */
-const latestCardOwnerByKeyAtom = selectAtom(rawCardOwnerByKeyAtom, (owner) => owner, sameOwnerMap);
 
 export interface MessageCardsHostModel {
 	cards: ResolvedCard[];
@@ -155,13 +159,16 @@ export function useMessageRawCards(message: ConversationAgentMessageViewModel): 
 	renderers: RegisteredCardRenderer[];
 } {
 	const renderers = useAtomValue(pluginCardRenderersAtom);
+	const scope = useContext(CardScopeContext);
+	const localCache = useRef<PendingDescriptorCache>(new Map());
+	const cache = scope?.cache ?? localCache.current;
 	const stableRef = useRef<RawCard[]>([]);
 	const rawCards = useMemo(() => {
-		const next = cardsForMessage(message, renderers);
+		const next = cardsForMessage(message, renderers, cache);
 		if (sameRawCards(stableRef.current, next)) return stableRef.current;
 		stableRef.current = next;
 		return next;
-	}, [message, renderers]);
+	}, [message, renderers, cache]);
 	return { rawCards, renderers };
 }
 
@@ -170,7 +177,7 @@ export function useMessageCardsHostModel(
 	rawCards: RawCard[],
 	renderers: RegisteredCardRenderer[],
 ): MessageCardsHostModel | null {
-	const latestOwnerByKey = useAtomValue(latestCardOwnerByKeyAtom);
+	const latestOwnerByKey = useContext(CardScopeContext)?.owners;
 	const trPlugin = usePluginTextResolver();
 
 	const rendererByType = useMemo<Map<string, RegisteredCardRenderer>>(() => {
@@ -180,7 +187,9 @@ export function useMessageCardsHostModel(
 	}, [renderers]);
 
 	const cards = useMemo<ResolvedCard[]>(() => {
-		const owned = rawCards.filter((c) => !c.descriptor.key || latestOwnerByKey.get(c.descriptor.key) === message.id);
+		const owned = rawCards.filter(
+			(c) => !c.descriptor.key || !latestOwnerByKey || latestOwnerByKey.get(c.descriptor.key) === message.id,
+		);
 		const lastIndexByKey = new Map<string, number>();
 		owned.forEach((c, i) => {
 			if (c.descriptor.key) lastIndexByKey.set(c.descriptor.key, i);
@@ -212,9 +221,4 @@ export function useMessageCardsHostModel(
 	if (cards.length === 0) return null;
 
 	return { cards, convMessage };
-}
-
-/** 测试专用：清掉在途 tool call 的 pending descriptor 记忆，隔离用例之间的状态。 */
-export function resetPendingCardCacheForTests(): void {
-	pendingDescriptorCache.clear();
 }

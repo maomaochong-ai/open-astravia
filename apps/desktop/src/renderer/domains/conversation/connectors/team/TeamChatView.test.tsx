@@ -2,15 +2,24 @@
 
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ReactNode } from "react";
 import type { TeamChatActions, TeamChatViewModel } from "./teamChatModel";
 import { TeamChatView } from "./TeamChatView";
 
-const captured = vi.hoisted(() => ({ view: vi.fn() }));
+const captured = vi.hoisted(() => ({ view: vi.fn(), feed: vi.fn() }));
 
 vi.mock("../../components/chat-view/DefaultChatView", () => ({
-	DefaultChatView: (props: unknown) => {
+	DefaultChatView: (props: { children: ReactNode }) => {
 		captured.view(props);
-		return <div data-testid="default-chat-view" />;
+		return <div data-testid="default-chat-view">{props.children}</div>;
+	},
+	ChatComposer: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+	ChatError: ({ children }: { children?: ReactNode }) => (children ? <div role="alert">{children}</div> : null),
+}));
+vi.mock("../../components/MessageList", () => ({
+	MessageList: (props: unknown) => {
+		captured.feed(props);
+		return <div data-testid="message-list" />;
 	},
 }));
 vi.mock("./TeamComposerConnector", () => ({
@@ -20,6 +29,7 @@ vi.mock("./TeamComposerConnector", () => ({
 afterEach(() => {
 	cleanup();
 	captured.view.mockReset();
+	captured.feed.mockReset();
 });
 
 function actions(): TeamChatActions {
@@ -47,8 +57,28 @@ function model(): TeamChatViewModel {
 		draft: "",
 		history: [],
 		attachments: [],
-		members: [{ id: "member-1", kind: "agent", name: "Researcher", handle: "researcher", blueprintId: "researcher", selected: false, status: "working" }],
-		feedItems: [{ id: "message-1", turnId: "turn-1", authorId: "member-1", kind: "agent", role: "assistant", phase: "streaming", blocks: [] }],
+		members: [
+			{
+				id: "member-1",
+				kind: "agent",
+				name: "Researcher",
+				handle: "researcher",
+				blueprintId: "researcher",
+				selected: false,
+				status: "working",
+			},
+		],
+		feedItems: [
+			{
+				id: "message-1",
+				turnId: "turn-1",
+				authorId: "member-1",
+				kind: "agent",
+				role: "assistant",
+				phase: "streaming",
+				blocks: [],
+			},
+		],
 		pendingLabel: "Loading team",
 		editorEnabled: true,
 		canSend: false,
@@ -87,14 +117,12 @@ describe("TeamChatView shared conversation UI", () => {
 		);
 
 		expect(screen.getByTestId("default-chat-view")).toBeTruthy();
-		expect(captured.view).toHaveBeenCalledWith(
+		expect(captured.feed).toHaveBeenCalledWith(
 			expect.objectContaining({
 				messages: [expect.objectContaining({ id: "message-1", kind: "agent", authorId: "member-1" })],
 				participants: viewModel.members,
-				messageContext: expect.objectContaining({ inheritActiveSession: false, showRuntimeFooter: false }),
 				pendingLabel: "Loading team",
 				onTeamMemberOpen: onOpenMember,
-				children: expect.anything(),
 			}),
 		);
 	});
@@ -144,11 +172,11 @@ describe("TeamChatView shared conversation UI", () => {
 			/>,
 		);
 
-		expect(captured.view).toHaveBeenCalledWith(
+		expect(captured.feed).toHaveBeenCalledWith(
 			expect.objectContaining({
 				isStreaming: false,
-				children: null,
 			}),
 		);
+		expect(screen.queryByTestId("team-input-bar")).toBeNull();
 	});
 });

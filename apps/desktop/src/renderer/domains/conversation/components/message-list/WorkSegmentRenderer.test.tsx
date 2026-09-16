@@ -2,6 +2,7 @@
 import { Provider, createStore } from "jotai";
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
+import type * as ThemeChat from "@vetta-org/theme-ui/chat";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("react-i18next", () => ({
@@ -18,7 +19,8 @@ vi.mock("react-i18next", () => ({
 	}),
 }));
 
-vi.mock("@vetta-org/theme-ui/chat", () => ({
+vi.mock("@vetta-org/theme-ui/chat", async (importOriginal) => ({
+	...(await importOriginal<typeof ThemeChat>()),
 	ProgressGroup: {
 		Root: ({ children, done }: { children: ReactNode; done: boolean }) => (
 			<div data-group-status={done ? "done" : "running"}>{children}</div>
@@ -44,9 +46,7 @@ vi.mock("@vetta-org/theme-ui/chat", () => ({
 vi.mock("../blocks/ErrorBlock", () => ({ ErrorBlockView: () => null }));
 vi.mock("../blocks/TextBlock", () => ({ TextBlockView: () => null }));
 vi.mock("../blocks/ThinkingBlock", () => ({
-	ConciseThinkingBlockView: ({ title }: { title?: string }) => (
-		<span data-testid="thinking-title">{title}</span>
-	),
+	ConciseThinkingBlockView: ({ title }: { title?: string }) => <span data-testid="thinking-title">{title}</span>,
 }));
 vi.mock("../blocks/ToolCallBlock", () => ({
 	ToolCallBlockView: () => <span data-testid="tool-details" data-embedded="no" />,
@@ -60,10 +60,7 @@ import type { ThinkingBlock, ToolCallBlock } from "@shared/store/atoms";
 import type { ProgressGroupSegment } from "./progressGroupModel";
 import { WorkSegmentRenderer } from "./WorkSegmentRenderer";
 
-function tool(
-	toolName: string,
-	overrides: Partial<ToolCallBlock> = {},
-): ToolCallBlock {
+function tool(toolName: string, overrides: Partial<ToolCallBlock> = {}): ToolCallBlock {
 	return {
 		type: "tool_call",
 		toolCallId: `tool-${toolName}`,
@@ -78,7 +75,10 @@ function thinking(text: string): ThinkingBlock {
 	return { type: "thinking", id: "thinking-1", text };
 }
 
-function stage(blocks: ProgressGroupSegment["blocks"], overrides: Partial<ProgressGroupSegment> = {}): ProgressGroupSegment {
+function stage(
+	blocks: ProgressGroupSegment["blocks"],
+	overrides: Partial<ProgressGroupSegment> = {},
+): ProgressGroupSegment {
 	return {
 		type: "progress_group",
 		id: "stage-1",
@@ -103,7 +103,9 @@ describe("WorkSegmentRenderer live activity", () => {
 		renderSegment(stage([tool("read", { currentPhase: "正在解析配置文件" })]));
 
 		expect(screen.getByTestId("group-title").textContent).toBe("正在解析配置文件");
-		expect(screen.getByTestId("group-title").closest("[data-group-status]")?.getAttribute("data-group-status")).toBe("running");
+		expect(screen.getByTestId("group-title").closest("[data-group-status]")?.getAttribute("data-group-status")).toBe(
+			"running",
+		);
 	});
 
 	it("没有工具阶段时优先展示 agent 写的 description", () => {
@@ -148,7 +150,9 @@ describe("WorkSegmentRenderer live activity", () => {
 		);
 
 		expect(screen.getByTestId("group-title").textContent).toBe("已核对项目结构");
-		expect(screen.getByTestId("group-title").closest("[data-group-status]")?.getAttribute("data-group-status")).toBe("done");
+		expect(screen.getByTestId("group-title").closest("[data-group-status]")?.getAttribute("data-group-status")).toBe(
+			"done",
+		);
 	});
 
 	it("非当前阶段保持 agent 的阶段标题", () => {

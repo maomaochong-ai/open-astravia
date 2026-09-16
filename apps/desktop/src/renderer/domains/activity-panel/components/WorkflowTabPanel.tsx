@@ -1,6 +1,7 @@
 import { MessageList } from "@domains/conversation/components/MessageList";
 import { WorkflowTabPanelView } from "@vetta-org/theme-ui/activity";
 import { useWorkflowTabPanelModel } from "../hooks/useWorkflowTabPanelModel";
+import { useActivityPanelCwd } from "../registry/context";
 
 /**
  * Workflow activity tab (ADR-0044): switcher + read-only 1:1 MessageList of
@@ -8,6 +9,7 @@ import { useWorkflowTabPanelModel } from "../hooks/useWorkflowTabPanelModel";
  */
 export function WorkflowTabPanel(): JSX.Element {
 	const model = useWorkflowTabPanelModel();
+	const cwd = useActivityPanelCwd();
 	return (
 		<WorkflowTabPanelView
 			items={model.items}
@@ -18,8 +20,9 @@ export function WorkflowTabPanel(): JSX.Element {
 			messageList={
 				<MessageList
 					messages={model.messages}
+					cwd={cwd}
 					isStreaming={model.selected?.status === "running"}
-					sessionId={null}
+					sessionId={model.selected?.sessionFile ?? null}
 				/>
 			}
 			onSelect={model.onSelect}

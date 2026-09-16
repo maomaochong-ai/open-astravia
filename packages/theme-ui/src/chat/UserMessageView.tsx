@@ -1,13 +1,7 @@
 import { motion } from "motion/react";
 import type { HTMLMotionProps, Transition } from "motion/react";
 import { Slot } from "radix-ui";
-import type {
-	ButtonHTMLAttributes,
-	ComponentPropsWithoutRef,
-	JSX,
-	MouseEvent,
-	ReactNode,
-} from "react";
+import type { ButtonHTMLAttributes, ComponentPropsWithoutRef, JSX, MouseEvent, ReactNode } from "react";
 import { forwardRef, useCallback, useLayoutEffect, useRef, useState } from "react";
 
 const HIDDEN_VISUAL_STATE = { opacity: 0, scale: 0.82, x: 14, y: 12 };
@@ -132,8 +126,7 @@ export function SkillBadgeView({
 	skillLabel: string;
 	sceneLabel: string;
 }): JSX.Element {
-	const icon =
-		type === "scene" ? "icon-[solar--clapperboard-open-linear]" : "icon-[solar--magic-stick-linear]";
+	const icon = type === "scene" ? "icon-[solar--clapperboard-open-linear]" : "icon-[solar--magic-stick-linear]";
 	const label = type === "scene" ? sceneLabel : skillLabel;
 	return (
 		<span className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2 py-0.5 text-[12px] font-medium text-primary">
@@ -192,8 +185,8 @@ export function UserMessageFrame({
 }: ComponentPropsWithoutRef<"div"> & {
 	entryState: UserMessageEntryState;
 	onEntryComplete?: () => void;
-	onContextMenu: (event: MouseEvent<HTMLDivElement>) => void;
-	onActionsVisibleChange: (visible: boolean) => void;
+	onContextMenu?: (event: MouseEvent<HTMLDivElement>) => void;
+	onActionsVisibleChange?: (visible: boolean) => void;
 	children: ReactNode;
 }): JSX.Element {
 	const shouldAnimateIn = entryState === "enter";
@@ -202,11 +195,11 @@ export function UserMessageFrame({
 		onContextMenu,
 		onMouseEnter: (event: MouseEvent<HTMLDivElement>) => {
 			onMouseEnter?.(event);
-			if (!event.defaultPrevented) onActionsVisibleChange(true);
+			if (!event.defaultPrevented) onActionsVisibleChange?.(true);
 		},
 		onMouseLeave: (event: MouseEvent<HTMLDivElement>) => {
 			onMouseLeave?.(event);
-			if (!event.defaultPrevented) onActionsVisibleChange(false);
+			if (!event.defaultPrevented) onActionsVisibleChange?.(false);
 		},
 	};
 	if (!shouldAnimateIn && !shouldHoldHidden) {

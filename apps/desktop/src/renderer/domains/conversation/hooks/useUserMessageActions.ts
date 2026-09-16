@@ -2,6 +2,7 @@ import type { ConversationUserMessageViewModel } from "@shared/conversation";
 import { type InputSegment, parseInputSegments, segmentsToText } from "@shared/lib/input-tokens";
 import {
 	type ActiveSession,
+	activeSessionAtom,
 	appshotAttachmentAtom,
 	chatMessagesAtom,
 	confirmDialogAtom,
@@ -75,7 +76,9 @@ function inputHasDraft(): boolean {
 
 async function abortAndWait(runtimeId: string): Promise<void> {
 	const store = getDefaultStore();
-	if (!store.get(isStreamingAtom)) return;
+	const targetHasStopped = (): boolean =>
+		store.get(activeSessionAtom)?.runtimeId === runtimeId && !store.get(isStreamingAtom);
+	if (targetHasStopped()) return;
 	await new Promise<void>((resolve) => {
 		let settled = false;
 		let unsubscribe: () => void = () => {};
@@ -90,7 +93,7 @@ async function abortAndWait(runtimeId: string): Promise<void> {
 		unsubscribe = window.vetta.session.onRunningChanged((payload) => {
 			if (payload.sessionId === runtimeId && payload.running === false) finish();
 		});
-		if (!store.get(isStreamingAtom)) {
+		if (targetHasStopped()) {
 			finish();
 			return;
 		}
@@ -102,7 +105,10 @@ async function abortAndWait(runtimeId: string): Promise<void> {
 
 async function reloadChatHistory(runtimeId: string): Promise<void> {
 	const history = await window.vetta.session.getFullHistory(runtimeId);
-	getDefaultStore().set(chatMessagesAtom, fullHistoryToChat(history));
+	const store = getDefaultStore();
+	if (store.get(activeSessionAtom)?.runtimeId === runtimeId) {
+		store.set(chatMessagesAtom, fullHistoryToChat(history));
+	}
 }
 
 function useInterruptibleUserMessageAction({
@@ -116,16 +122,18 @@ function useInterruptibleUserMessageAction({
 	const setConfirmDialog = useSetAtom(confirmDialogAtom);
 	return useCallback(
 		(kind: "switch" | "fork", action: (session: ActiveSession) => void | Promise<void>) => {
+			// Bind the intent before confirmation; confirmation may outlive the current page.
+			const target = getSessionRuntimeWhenReady();
 			const run = (): void => {
 				void (async () => {
-					const session = await getSessionRuntimeWhenReady();
+					const session = await target;
 					if (!session) return;
 					if (isStreaming) {
-						onAbortEdit?.();
+						if (getDefaultStore().get(activeSessionAtom)?.runtimeId === session.runtimeId) onAbortEdit?.();
 						await abortAndWait(session.runtimeId);
 					}
 					await action(session);
-				})();
+				})().catch((error) => console.error("[UserMessage] history action failed:", error));
 			};
 			if (!isStreaming) {
 				run();
@@ -160,32 +168,39 @@ export function useUserMessageEditAction({
 	const pending = Boolean(
 		pendingEdit && isLastUserMessage && (!message.entryId || pendingEdit.entryId === message.entryId),
 	);
-	const fill = useCallback(async () => {
-		let entryId = message.entryId;
-		if (!entryId) {
-			const staged = cancelStagedPendingSessionSend(message.id);
-			if (staged) {
-				restoreStagedPendingSessionSend(staged, { overwriteComposer: true });
-				return;
-			}
-			const session = await getSessionRuntimeWhenReady();
-			if (!session) return;
-			const history = await window.vetta.session.getFullHistory(session.runtimeId);
-			for (let index = history.length - 1; index >= 0; index--) {
-				const entry = history[index];
-				if (entry.type === "message" && entry.message.role === "user" && entry.entryId) {
-					entryId = entry.entryId;
-					break;
+	const fill = useCallback(
+		async (target: Promise<ActiveSession | null>) => {
+			let entryId = message.entryId;
+			if (!entryId) {
+				const staged = cancelStagedPendingSessionSend(message.id);
+				if (staged) {
+					restoreStagedPendingSessionSend(staged, { overwriteComposer: true });
+					return;
+				}
+				const session = await target;
+				if (!session) return;
+				const history = await window.vetta.session.getFullHistory(session.runtimeId);
+				if (getDefaultStore().get(activeSessionAtom)?.runtimeId !== session.runtimeId) return;
+				for (let index = history.length - 1; index >= 0; index--) {
+					const entry = history[index];
+					if (entry.type === "message" && entry.message.role === "user" && entry.entryId) {
+						entryId = entry.entryId;
+						break;
+					}
 				}
 			}
-		}
-		if (!entryId) return;
-		fillInputFromUserMessage(message);
-		getDefaultStore().set(pendingMessageEditAtom, { entryId });
-	}, [message]);
+			if (!entryId) return;
+			fillInputFromUserMessage(message);
+			getDefaultStore().set(pendingMessageEditAtom, { entryId });
+		},
+		[message],
+	);
 	const onEdit = useCallback(() => {
+		const target = getSessionRuntimeWhenReady();
+		const draftKey = getDefaultStore().get(activeSessionAtom)?.sessionPath;
 		const start = (): void => {
-			void fill().catch((error) => console.error("[UserMessage] prepare edit failed:", error));
+			if (getDefaultStore().get(activeSessionAtom)?.sessionPath !== draftKey) return;
+			void fill(target).catch((error) => console.error("[UserMessage] prepare edit failed:", error));
 		};
 		if (inputHasDraft() && !pending) {
 			setConfirmDialog({
@@ -235,10 +250,12 @@ export function useUserMessageHistoryActions({
 		if (!entryId) return;
 		runInterruptible("fork", async (session) => {
 			const store = getDefaultStore();
-			store.set(pendingMessageEditAtom, null);
+			if (store.get(activeSessionAtom)?.runtimeId === session.runtimeId) {
+				store.set(pendingMessageEditAtom, null);
+			}
 			const { path } = await window.vetta.session.forkSession(session.runtimeId, entryId);
+			if (store.get(activeSessionAtom)?.runtimeId !== session.runtimeId) return;
 			await openSessionFnRef.current?.(session.cwd, path);
-			store.set(pendingMessageEditAtom, null);
 		});
 	}, [message.entryId, runInterruptible]);
 
@@ -269,34 +286,35 @@ export function useUserMessageDeleteAction({
 	const setConfirmDialog = useSetAtom(confirmDialogAtom);
 	const available = enabled && Boolean(message.entryId);
 	const perform = useCallback(
-		async (suppressForOneMinute: boolean) => {
+		async (suppressForOneMinute: boolean, target: Promise<ActiveSession | null>) => {
 			const entryId = message.entryId;
 			if (!entryId) return;
-			const session = await getSessionRuntimeWhenReady();
+			const session = await target;
 			if (!session) return;
 			if (isStreaming) {
-				onAbortEdit?.();
+				if (getDefaultStore().get(activeSessionAtom)?.runtimeId === session.runtimeId) onAbortEdit?.();
 				await abortAndWait(session.runtimeId);
 			}
 			await window.vetta.session.deleteMessage(session.runtimeId, entryId);
 			if (suppressForOneMinute) {
 				deleteConfirmationSuppressedUntil = Date.now() + DELETE_CONFIRMATION_SUPPRESSION_MS;
 			}
-			if (pendingEdit?.entryId === entryId) {
+			if (
+				pendingEdit?.entryId === entryId &&
+				getDefaultStore().get(activeSessionAtom)?.runtimeId === session.runtimeId
+			) {
 				getDefaultStore().set(pendingMessageEditAtom, null);
 			}
 			await reloadChatHistory(session.runtimeId);
 		},
 		[isStreaming, message.entryId, onAbortEdit, pendingEdit?.entryId],
 	);
-	const run = useCallback(
-		(suppress: boolean) => {
-			void perform(suppress).catch((error) => console.error("[UserMessage] delete failed:", error));
-		},
-		[perform],
-	);
 	const onDelete = useCallback(() => {
 		if (!available) return;
+		const target = getSessionRuntimeWhenReady();
+		const run = (suppress: boolean): void => {
+			void perform(suppress, target).catch((error) => console.error("[UserMessage] delete failed:", error));
+		};
 		if (Date.now() < deleteConfirmationSuppressedUntil) {
 			run(false);
 			return;
@@ -310,7 +328,7 @@ export function useUserMessageDeleteAction({
 			variant: "danger",
 			onConfirm: run,
 		});
-	}, [available, isStreaming, run, setConfirmDialog, t]);
+	}, [available, isStreaming, perform, setConfirmDialog, t]);
 
 	return { available, onDelete };
 }

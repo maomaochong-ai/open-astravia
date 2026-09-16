@@ -88,6 +88,7 @@
 			"@vetta-org/theme-sdk": ["../../packages/theme-sdk/src/index.ts"],
 			"@vetta-org/theme-sdk/*": ["../../packages/theme-sdk/src/*"],
 			"@vetta-org/theme-ui": ["../../packages/theme-ui/src/index.ts"],
+			"@vetta-org/theme-ui/markdown": ["../../packages/theme-ui/src/markdown/index.ts"],
 			"@vetta-org/theme-ui/*": ["../../packages/theme-ui/src/*"],
 			"@vetta-org/ui": ["../../packages/ui/src/index.ts"],
 			"@vetta-org/ui/*": ["../../packages/ui/src/*"],

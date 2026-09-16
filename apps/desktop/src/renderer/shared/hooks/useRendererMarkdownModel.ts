@@ -12,9 +12,13 @@ import {
 	resolvedThemeAtom,
 } from "@shared/store/atoms";
 import { getFileIcon } from "@vetta-org/theme-ui/file-explorer";
-import { useAtomValue, useSetAtom } from "jotai";
+import { atom, useAtomValue, useSetAtom } from "jotai";
+import { selectAtom } from "jotai/utils";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+
+const activeCwdAtom = selectAtom(activeSessionAtom, (session) => session?.cwd ?? null);
+const noActiveCwdAtom = atom(null);
 
 /** Connects renderer state and file/url actions to the host-neutral markdown view. */
 export function useRendererMarkdownModel(
@@ -24,14 +28,14 @@ export function useRendererMarkdownModel(
 ): RendererMarkdownModel {
 	const { t } = useTranslation("chat");
 	const theme = useAtomValue(resolvedThemeAtom);
-	const activeSession = useAtomValue(activeSessionAtom);
+	const activeCwd = useAtomValue(cwdOverride === undefined ? activeCwdAtom : noActiveCwdAtom);
 	const setFilePreview = useSetAtom(filePreviewAtom);
 	const openInlineFilePreview = useSetAtom(openInlineFilePreviewAtom);
 	const setActivityPanelOpen = useSetAtom(activityPanelOpenAtom);
 	const setActivityTabByProject = useSetAtom(activityPanelTabByProjectAtom);
 	const openUrlInWorkspace = useSetAtom(openUrlInActivityWorkspaceAtom);
 	const narrow = useNarrowScreen();
-	const cwd = cwdOverride === undefined ? (activeSession?.cwd ?? null) : cwdOverride;
+	const cwd = cwdOverride === undefined ? activeCwd : cwdOverride;
 	const workspaceId = workspaceIdOverride ?? cwd;
 
 	const onOpenFile = useCallback(

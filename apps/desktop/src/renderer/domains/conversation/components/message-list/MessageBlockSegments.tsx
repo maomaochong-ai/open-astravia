@@ -8,6 +8,8 @@ import { ToolCallBlockView } from "../blocks/ToolCallBlock";
 import type { BlockSegment } from "./messageBlockModel";
 import type { ChatToolCallPresentationViewModel } from "@shared/store/atoms";
 import { ToolCallPresentation } from "./ToolCallPresentation";
+import { ContentRenderer } from "./ContentRendering";
+import type { GroupBlock } from "./progressGroupModel";
 
 export {
 	findLastProcessBlockIndex,
@@ -16,19 +18,6 @@ export {
 	segmentKey,
 } from "./messageBlockModel";
 export type { AssistantFoldData, BlockSegment } from "./messageBlockModel";
-
-/** Local block shapes (avoid @shared/store dataHeavy misclassification). */
-interface ToolLike {
-	type: "tool_call";
-	toolCallId: string;
-	status: string;
-}
-interface ThinkingLike {
-	type: "thinking";
-	id: string;
-	text: string;
-}
-type GroupBlock = ToolLike | ThinkingLike;
 
 const ToolCallGroup = memo(function ToolCallGroup({
 	blocks,
@@ -40,7 +29,7 @@ const ToolCallGroup = memo(function ToolCallGroup({
 	exportMode?: boolean;
 }) {
 	const { t } = useTranslation("chat");
-	const toolBlocks = blocks.filter((block): block is ToolLike => block.type === "tool_call");
+	const toolBlocks = blocks.filter((block) => block.type === "tool_call");
 	const thinkingCount = blocks.filter((block) => block.type === "thinking").length;
 	const completedCount = toolBlocks.filter((block) => block.status !== "pending").length;
 	const allDone = completedCount === toolBlocks.length;
@@ -66,16 +55,21 @@ const ToolCallGroup = memo(function ToolCallGroup({
 			allDone={allDone}
 			exportMode={exportMode}
 		>
-			{blocks.map((block) =>
-				block.type === "tool_call" ? (
-					// biome-ignore lint/suspicious/noExplicitAny: host ToolCallBlockView expects full atom type
-					<ToolCallBlockView key={block.toolCallId} block={block as any} exportMode={exportMode} />
-				) : liveThinkingId === block.id ? (
-					<LiveThinkingView key={`thinking-${block.id}`} text={block.text} />
-				) : (
-					<ThinkingBlockView key={`thinking-${block.id}`} text={block.text} exportMode={exportMode} />
-				),
-			)}
+			{blocks.map((block) => (
+				<ContentRenderer
+					key={block.type === "tool_call" ? block.toolCallId : block.id}
+					block={block}
+					exportMode={exportMode}
+				>
+					{block.type === "tool_call" ? (
+						<ToolCallBlockView block={block} exportMode={exportMode} />
+					) : liveThinkingId === block.id ? (
+						<LiveThinkingView key={`thinking-${block.id}`} text={block.text} />
+					) : (
+						<ThinkingBlockView key={`thinking-${block.id}`} text={block.text} exportMode={exportMode} />
+					)}
+				</ContentRenderer>
+			))}
 		</ToolCallGroupView>
 	);
 });
@@ -122,10 +116,7 @@ function areSegmentsEqual(previous: BlockSegment, next: BlockSegment): boolean {
 	return previous.blocks.every((block, index) => block === next.blocks[index]);
 }
 
-function areSegmentRendererPropsEqual(
-	previous: SegmentRendererProps,
-	next: SegmentRendererProps,
-): boolean {
+function areSegmentRendererPropsEqual(previous: SegmentRendererProps, next: SegmentRendererProps): boolean {
 	return (
 		previous.isStreamingTail === next.isStreamingTail &&
 		previous.liveThinkingId === next.liveThinkingId &&
@@ -148,21 +139,13 @@ export const SegmentRenderer = memo(function SegmentRenderer({
 }: SegmentRendererProps) {
 	let content: JSX.Element | null;
 	if (segment.type === "tool_group") {
-		content = (
-			<ToolCallGroup
-				blocks={segment.blocks as GroupBlock[]}
-				liveThinkingId={liveThinkingId}
-				exportMode={exportMode}
-			/>
-		);
+		content = <ToolCallGroup blocks={segment.blocks} liveThinkingId={liveThinkingId} exportMode={exportMode} />;
 	} else if (segment.type === "progress_divider") {
 		content = <ProgressDivider block={segment.block} />;
 	} else {
 		switch (segment.block.type) {
 			case "text":
-				content = (
-					<TextBlockView text={segment.block.text} isStreamingTail={isStreamingTail} />
-				);
+				content = <TextBlockView text={segment.block.text} isStreamingTail={isStreamingTail} />;
 				break;
 			case "thinking":
 				// 正在追加的那条就地展示实时滚动卡片，结束后回到折叠条。
@@ -193,5 +176,15 @@ export const SegmentRenderer = memo(function SegmentRenderer({
 		}
 	}
 
-	return <SegmentShell animateIn={animateIn}>{content}</SegmentShell>;
+	return (
+		<SegmentShell animateIn={animateIn}>
+			{segment.type === "single" || segment.type === "progress_divider" ? (
+				<ContentRenderer block={segment.block} isStreamingTail={isStreamingTail} exportMode={exportMode}>
+					{content}
+				</ContentRenderer>
+			) : (
+				content
+			)}
+		</SegmentShell>
+	);
 }, areSegmentRendererPropsEqual);

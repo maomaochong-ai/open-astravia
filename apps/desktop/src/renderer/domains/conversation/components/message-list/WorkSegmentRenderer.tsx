@@ -15,6 +15,7 @@ import type { GroupBlock, ProgressGroupSegment, WorkSegment } from "./progressGr
 import { isProgressGroupDone } from "./progressGroupModel";
 import { compactWorkActivityText, selectWorkGroupActivity } from "./workActivityModel";
 import { ToolCallPresentation } from "./ToolCallPresentation";
+import { ContentRenderer } from "./ContentRendering";
 
 function useToolLabelInputs(): void {
 	// toolLabel reads these stores outside React; subscribe here so live titles and rows
@@ -42,11 +43,7 @@ const StageRow = memo(function StageRow({ block, exportMode }: StageRowProps) {
 	useToolLabelInputs();
 	const text = rowText(block);
 	return (
-		<ProgressGroup.RowRoot
-			exportMode={exportMode}
-			expanded={expanded}
-			onToggle={toggle}
-		>
+		<ProgressGroup.RowRoot exportMode={exportMode} expanded={expanded} onToggle={toggle}>
 			<ProgressGroup.RowFrame>
 				<ProgressGroup.RowTrigger>
 					<ProgressGroup.RowStatus status={block.status} />
@@ -54,7 +51,9 @@ const StageRow = memo(function StageRow({ block, exportMode }: StageRowProps) {
 					<ProgressGroup.RowChevron />
 				</ProgressGroup.RowTrigger>
 				<ProgressGroup.RowContent>
-					<EmbeddedToolCallBlockView block={block} exportMode={exportMode} aliased />
+					<ContentRenderer block={block} exportMode={exportMode}>
+						<EmbeddedToolCallBlockView block={block} exportMode={exportMode} aliased />
+					</ContentRenderer>
 				</ProgressGroup.RowContent>
 			</ProgressGroup.RowFrame>
 		</ProgressGroup.RowRoot>
@@ -112,16 +111,20 @@ const StageGroup = memo(function StageGroup({
 					{segment.blocks.map((block) =>
 						block.type === "tool_call" ? (
 							<StageRow key={block.toolCallId} block={block} exportMode={exportMode} />
-						) : liveThinkingId === block.id ? (
-							// 进行中的思考就地展示实时滚动卡片，不脱离所属阶段组。
-							<LiveThinkingView key={`thinking-${block.id}`} text={block.text} />
 						) : (
-							<ConciseThinkingBlockView
-								key={`thinking-${block.id}`}
-								text={block.text}
-								exportMode={exportMode}
-								title={t("messageList.progressGroup.thinkingLabel")}
-							/>
+							<ContentRenderer key={block.id} block={block} exportMode={exportMode}>
+								{liveThinkingId === block.id ? (
+									// 进行中的思考就地展示实时滚动卡片，不脱离所属阶段组。
+									<LiveThinkingView key={`thinking-${block.id}`} text={block.text} />
+								) : (
+									<ConciseThinkingBlockView
+										key={`thinking-${block.id}`}
+										text={block.text}
+										exportMode={exportMode}
+										title={t("messageList.progressGroup.thinkingLabel")}
+									/>
+								)}
+							</ContentRenderer>
 						),
 					)}
 				</ProgressGroup.Content>
@@ -153,9 +156,9 @@ function arePropsEqual(previous: WorkSegmentRendererProps, next: WorkSegmentRend
 		previous.isLiveActivity !== next.isLiveActivity ||
 		previous.liveThinkingId !== next.liveThinkingId ||
 		previous.animateIn !== next.animateIn ||
-		previous.exportMode !== next.exportMode
-		|| previous.presentation !== next.presentation
-		|| previous.onTeamMemberOpen !== next.onTeamMemberOpen
+		previous.exportMode !== next.exportMode ||
+		previous.presentation !== next.presentation ||
+		previous.onTeamMemberOpen !== next.onTeamMemberOpen
 	) {
 		return false;
 	}
@@ -225,11 +228,7 @@ export const WorkSegmentRenderer = memo(function WorkSegmentRenderer({
 				fallbackTitle={
 					// 纯 thinking 的兜底组不该说「完成了 0 步操作」。
 					toolBlocks.length === 0
-						? t(
-								isLiveActivity
-									? "messageList.progressGroup.thinking"
-									: "messageList.progressGroup.thinkingLabel",
-							)
+						? t(isLiveActivity ? "messageList.progressGroup.thinking" : "messageList.progressGroup.thinkingLabel")
 						: done
 							? t("messageList.progressGroup.genericDone", { count: toolBlocks.length })
 							: t("messageList.progressGroup.genericRunning")
@@ -278,5 +277,15 @@ export const WorkSegmentRenderer = memo(function WorkSegmentRenderer({
 		}
 	}
 
-	return <SegmentShell animateIn={animateIn}>{content}</SegmentShell>;
+	return (
+		<SegmentShell animateIn={animateIn}>
+			{segment.type === "single" || segment.type === "progress_divider" ? (
+				<ContentRenderer block={segment.block} isStreamingTail={isStreamingTail} exportMode={exportMode}>
+					{content}
+				</ContentRenderer>
+			) : (
+				content
+			)}
+		</SegmentShell>
+	);
 }, arePropsEqual);

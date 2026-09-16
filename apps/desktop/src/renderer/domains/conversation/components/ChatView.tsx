@@ -5,7 +5,9 @@ import { useBoundAgentParticipants } from "../hooks/useBoundAgentParticipants";
 import { useChatViewModel } from "../hooks/useChatViewModel";
 import { ChatHeaderActionsView } from "./chat-view/ChatHeaderActionsView";
 import { ChatHeaderNewSessionButton } from "./chat-view/ChatHeaderNewSessionButton";
-import { DefaultChatView } from "./chat-view/DefaultChatView";
+import { DefaultChatView, ChatComposer } from "./chat-view/DefaultChatView";
+import { SessionMessageList } from "./SessionMessageList";
+import { SessionAssistantRendering } from "./SessionAssistantRendering";
 import { DefaultInputBarConnector } from "./input-bar/DefaultInputBarConnector";
 import type { ChatViewProps } from "./chat-view/types";
 
@@ -30,26 +32,29 @@ export function ChatView(props: ChatViewProps): JSX.Element {
 	}, [setHeaderLeftSlot]);
 
 	return (
-		<DefaultChatView
-			messages={model.messages}
-			isStreaming={model.isStreaming}
-			sessionId={model.sessionId}
-			participants={participants}
-			rootClassName={model.rootClassName}
-			onSend={props.onSend}
-			onAbort={() => void props.onAbort()}
-			exportState={
-				model.exporting
-					? { title: model.exportTitle, onFinished: actions.finishExport }
-					: undefined
-			}
-		>
-			<DefaultInputBarConnector
-				onSend={props.onSend}
-				onAbort={props.onAbort}
-				onSendQueued={props.onSendQueued}
-				cwdOverride={props.cwdOverride}
-			/>
-		</DefaultChatView>
+		<SessionAssistantRendering>
+			<DefaultChatView
+				messages={model.messages}
+				rootClassName={model.rootClassName}
+				exportState={model.exporting ? { title: model.exportTitle, onFinished: actions.finishExport } : undefined}
+			>
+				<SessionMessageList
+					messages={model.messages}
+					isStreaming={model.isStreaming}
+					sessionId={model.sessionId}
+					participants={participants}
+					onSend={props.onSend}
+					onAbort={() => void props.onAbort()}
+				/>
+				<ChatComposer>
+					<DefaultInputBarConnector
+						onSend={props.onSend}
+						onAbort={props.onAbort}
+						onSendQueued={props.onSendQueued}
+						cwdOverride={props.cwdOverride}
+					/>
+				</ChatComposer>
+			</DefaultChatView>
+		</SessionAssistantRendering>
 	);
 }

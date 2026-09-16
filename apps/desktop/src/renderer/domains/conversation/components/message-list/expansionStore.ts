@@ -6,11 +6,22 @@
  * 面板尤其明显，因为它最高）。因此展开态必须活在组件树之外，按稳定 id 记住。
  */
 
+import type { PrimitiveAtom } from "jotai";
 import { atom, useAtomValue, useSetAtom } from "jotai";
 import { selectAtom } from "jotai/utils";
-import { useCallback, useMemo } from "react";
+import type { ReactNode } from "react";
+import { createContext, createElement, useCallback, useContext, useMemo } from "react";
 
-const expandedKeysAtom = atom<Record<string, boolean>>({});
+const ExpansionContext = createContext<PrimitiveAtom<Record<string, boolean>> | null>(null);
+
+export function MessageExpansionScope({ scope, children }: { scope: string | null; children: ReactNode }) {
+	const state = useMemo(() => {
+		const value = atom<Record<string, boolean>>({});
+		value.debugLabel = `message-expansion:${scope ?? "local"}`;
+		return value;
+	}, [scope]);
+	return createElement(ExpansionContext.Provider, { value: state }, children);
+}
 
 /**
  * 按稳定 key 记住展开态，跨 Virtuoso 卸载/重挂存活。
@@ -21,12 +32,14 @@ const expandedKeysAtom = atom<Record<string, boolean>>({});
  * 无关 key 的变化不再触发渲染。
  */
 export function useExpansion(key: string, defaultExpanded = false): [boolean, () => void] {
+	const local = useMemo(() => atom<Record<string, boolean>>({}), []);
+	const state = useContext(ExpansionContext) ?? local;
 	const valueAtom = useMemo(
-		() => selectAtom(expandedKeysAtom, (map) => map[key] ?? defaultExpanded),
-		[key, defaultExpanded],
+		() => selectAtom(state, (map) => map[key] ?? defaultExpanded),
+		[state, key, defaultExpanded],
 	);
 	const expanded = useAtomValue(valueAtom);
-	const setMap = useSetAtom(expandedKeysAtom);
+	const setMap = useSetAtom(state);
 	const toggle = useCallback(() => {
 		setMap((previous) => ({ ...previous, [key]: !(previous[key] ?? defaultExpanded) }));
 	}, [key, defaultExpanded, setMap]);

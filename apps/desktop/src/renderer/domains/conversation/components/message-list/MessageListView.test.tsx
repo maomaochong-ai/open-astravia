@@ -100,14 +100,10 @@ vi.mock("./MessageTimeline", () => ({
 	),
 }));
 
-function props(
-	viewportPhase: "initial" | "expanded",
-	isStreaming = false,
-): ComponentProps<typeof MessageListView> {
+function props(viewportPhase: "initial" | "expanded", isStreaming = false): ComponentProps<typeof MessageListView> {
 	const scrollToMessage = vi.fn();
 	return {
 		model: {
-			isCompacting: false,
 			isStreaming,
 			messages: [createConversationAgentMessage({ id: "message-1", text: "full content", blocks: [] })],
 			modelSwitchLabels: new Map(),
@@ -117,19 +113,11 @@ function props(
 				onAtBottomChange: vi.fn(),
 				scrollToMessage,
 			} as never,
-			waitingForResponse: false,
 			tailMessageId: "message-1",
 			participantsById: new Map(),
 			participants: [],
-			context: {
-				inheritActiveSession: true,
-				showRuntimeFooter: true,
-				showSuggestions: true,
-				userMessageActions: { edit: true, fork: true, delete: true },
-			},
 		},
 		onAbort: vi.fn(),
-		onSend: vi.fn(async () => {}),
 		sessionId: "/sessions/a.jsonl",
 		viewportPhase,
 	};

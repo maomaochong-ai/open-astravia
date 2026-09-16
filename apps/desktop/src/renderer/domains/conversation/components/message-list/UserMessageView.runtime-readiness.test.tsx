@@ -11,12 +11,13 @@ const onBranchNext = vi.fn();
 
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({
-		t: (key: string) => ({
-			"messageList.editButton": "edit",
-			"messageList.forkButton": "fork",
-			"messageList.branch.prev": "previous",
-			"messageList.branch.next": "next",
-		}[key] ?? key),
+		t: (key: string) =>
+			({
+				"messageList.editButton": "edit",
+				"messageList.forkButton": "fork",
+				"messageList.branch.prev": "previous",
+				"messageList.branch.next": "next",
+			})[key] ?? key,
 	}),
 }));
 vi.mock("../../hooks/useSkillTokenMeta", () => ({ useSkillTokenMeta: () => vi.fn() }));
@@ -37,6 +38,7 @@ vi.mock("../../hooks/useUserMessageActions", () => ({
 }));
 
 import { UserMessage } from "./UserMessage";
+import { SessionUserMessage } from "./SessionUserMessage";
 import { TokenChip } from "../input-bar/editor/nodes/TokenChip";
 
 beforeAll(() => {
@@ -54,7 +56,7 @@ afterAll(() => vi.unstubAllGlobals());
 it("Runtime 恢复期间消息操作保持可用并立即接受点击", async () => {
 	const user = userEvent.setup();
 	render(
-		<UserMessage
+		<SessionUserMessage
 			message={createConversationUserMessage({ id: "user-1", text: "message" })}
 			isLastUserMessage
 		/>,
@@ -82,9 +84,7 @@ it("已发送的成员 mention 与输入框复用同一枚 Token 视觉组件", 
 			<UserMessage
 				message={{
 					...createConversationUserMessage({ id: "user-mention", text: "**请** @architect 你好" }),
-					memberMentions: [
-						{ participantId: "architect", handle: "architect", start: 6, end: 16 },
-					],
+					memberMentions: [{ participantId: "architect", handle: "architect", start: 6, end: 16 }],
 				}}
 				participants={[
 					{

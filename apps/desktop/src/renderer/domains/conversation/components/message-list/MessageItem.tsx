@@ -13,31 +13,22 @@ import type { ChatConversationItem } from "./types";
 import type { ConversationParticipantViewModel } from "@shared/conversation";
 import { AssistantMessage } from "./AssistantMessage";
 import { TeamMemberReplyCard } from "./TeamMemberReplyCard";
-import { UserMessage } from "./UserMessage";
+import { ReadonlyUserMessage } from "./ReadonlyUserMessage";
+import { useMessageRendering } from "./MessageRendering";
 
 export const CompactionBoundary = memo(function CompactionBoundary() {
 	const { t } = useTranslation("chat");
 	return <CompactionBoundaryView label={t("messageList.compactionBoundary")} />;
 });
 
-export const ModelSwitchBoundary = memo(function ModelSwitchBoundary({
-	label,
-}: {
-	label: string;
-}) {
+export const ModelSwitchBoundary = memo(function ModelSwitchBoundary({ label }: { label: string }) {
 	const { t } = useTranslation("chat");
 	// t includes name interpolation — pass preformatted label from host
-	return (
-		<ModelSwitchBoundaryView
-			prefix=""
-			label={t("messageList.modelSwitched", { name: label })}
-		/>
-	);
+	return <ModelSwitchBoundaryView prefix="" label={t("messageList.modelSwitched", { name: label })} />;
 });
 
-interface MessageItemProps {
+export interface MessageItemProps {
 	exportMode?: boolean;
-	hasAssistantAfter?: boolean;
 	isLastUserMessage?: boolean;
 	isStreaming: boolean;
 	isTailMessage: boolean;
@@ -46,22 +37,24 @@ interface MessageItemProps {
 	pendingLabel?: string;
 	participant?: ConversationParticipantViewModel;
 	participants?: readonly ConversationParticipantViewModel[];
-	userMessageActions?: { readonly edit: boolean; readonly fork: boolean; readonly delete: boolean };
 	onTeamMemberOpen?: (memberId: string) => void;
 	sessionUsages?: readonly Usage[];
 }
 
-export const MessageItem = memo(function MessageItem({
+export const MessageItem = memo(function MessageItem(props: MessageItemProps) {
+	const definition = useMessageRendering();
+	const message = definition.project?.(props.message) ?? props.message;
+	const Renderer = definition.renderers?.[message.kind] ?? DefaultMessageItem;
+	return <Renderer {...props} message={message} />;
+});
+
+export const DefaultMessageItem = memo(function DefaultMessageItem({
 	message,
 	isTailMessage,
 	isStreaming,
-	isLastUserMessage = false,
-	hasAssistantAfter = false,
-	onAbortEdit,
 	pendingLabel,
 	participant,
 	participants,
-	userMessageActions,
 	onTeamMemberOpen,
 	sessionUsages,
 	exportMode = false,
@@ -83,17 +76,7 @@ export const MessageItem = memo(function MessageItem({
 		);
 	}
 	if (message.kind === "user") {
-		return (
-			<UserMessage
-				message={message}
-				participants={participants}
-				isLastUserMessage={isLastUserMessage}
-				hasAssistantAfter={hasAssistantAfter}
-				isStreaming={isStreaming}
-				onAbortEdit={onAbortEdit}
-				actions={userMessageActions}
-			/>
-		);
+		return <ReadonlyUserMessage message={message} participants={participants} />;
 	}
 	return (
 		<AssistantMessage

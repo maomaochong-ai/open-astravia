@@ -5,6 +5,10 @@
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
 	"exports": {
+		"./markdown": {
+			"types": "./src/markdown/index.ts",
+			"import": "./src/markdown/index.ts"
+		},
 		".": {
 			"types": "./src/index.ts",
 			"import": "./src/index.ts"
@@ -149,6 +153,7 @@
 		"canvas-confetti": "^1.9.0",
 		"motion": "^12.0.0",
 		"react": "^19.0.0",
+		"react-dom": "^19.0.0",
 		"react-markdown": "^10.0.0",
 		"react-virtuoso": "^4.0.0",
 		"remark-gfm": "^4.0.0",
@@ -181,6 +186,7 @@
 	"devDependencies": {
 		"@types/canvas-confetti": "^1.9.0",
 		"@types/react": "^19.1.1",
+		"@types/react-dom": "^19.1.1",
 		"@types/three": "^0.185.0",
 		"@xyflow/react": "^12.10.2",
 		"canvas-confetti": "^1.9.4",

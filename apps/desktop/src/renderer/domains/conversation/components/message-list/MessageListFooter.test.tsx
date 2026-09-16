@@ -2,6 +2,7 @@
 import { Provider, createStore } from "jotai";
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
+import type * as ThemeChat from "@vetta-org/theme-ui/chat";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("react-i18next", () => ({
@@ -15,7 +16,8 @@ vi.mock("react-i18next", () => ({
 	}),
 }));
 
-vi.mock("@vetta-org/theme-ui/chat", () => ({
+vi.mock("@vetta-org/theme-ui/chat", async (importOriginal) => ({
+	...(await importOriginal<typeof ThemeChat>()),
 	MessageListFooter: {
 		Root: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 		Presence: ({ children }: { children: ReactNode }) => <>{children}</>,

@@ -1,11 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { DefaultChatView } from "./DefaultChatView";
-
-const capturedProps = vi.hoisted(() => ({
-	messageList: undefined as Record<string, unknown> | undefined,
-}));
+import { DefaultChatView, ChatComposer, ChatError } from "./DefaultChatView";
 
 vi.mock("@domains/activity-panel/components/ActivityPanel", () => ({
 	ActivityPanel: () => createElement("aside", { "data-testid": "activity-panel" }),
@@ -16,24 +12,15 @@ vi.mock("../ChatExportHost", () => ({
 	ChatExportHost: () => null,
 }));
 
-vi.mock("../MessageList", () => ({
-	MessageList: (props: Record<string, unknown>) => {
-		capturedProps.messageList = props;
-		return createElement("div", { "data-testid": "message-list" });
-	},
-}));
-
 describe("DefaultChatView layout", () => {
 	it("keeps the activity panel outside the input column (drop is owned by InputBar card)", () => {
 		const html = renderToStaticMarkup(
-			<DefaultChatView
-				messages={[]}
-				isStreaming={false}
-				sessionId="session-1"
-				onAbort={vi.fn(async () => {})}
-				onSend={vi.fn(async () => {})}
-			>
-				<div data-testid="input-bar" />
+			<DefaultChatView messages={[]}>
+				<div data-testid="message-list" />
+				<ChatError>Send failed</ChatError>
+				<ChatComposer>
+					<div data-testid="input-bar" />
+				</ChatComposer>
 			</DefaultChatView>,
 		);
 
@@ -42,22 +29,19 @@ describe("DefaultChatView layout", () => {
 		const activityPanel = html.indexOf('data-testid="activity-panel"');
 
 		expect(messageList).toBeLessThan(inputBar);
+		expect(html.indexOf('role="alert"')).toBeGreaterThan(messageList);
+		expect(html.indexOf('role="alert"')).toBeLessThan(inputBar);
 		expect(inputBar).toBeLessThan(activityPanel);
 	});
 
-	it("does not expose session startup state as presentation or interaction props", () => {
-		renderToStaticMarkup(
-			<DefaultChatView
-				messages={[]}
-				isStreaming={false}
-				sessionId={null}
-				onAbort={vi.fn(async () => {})}
-				onSend={vi.fn(async () => {})}
-			>
-				<div data-testid="input-bar" data-cwd="C:/repo" />
+	it("can compose a read-only feed without mounting a composer", () => {
+		const html = renderToStaticMarkup(
+			<DefaultChatView messages={[]}>
+				<div data-testid="read-only-feed" />
 			</DefaultChatView>,
 		);
 
-		expect(capturedProps.messageList?.pendingLabel).toBeUndefined();
+		expect(html).toContain('data-testid="read-only-feed"');
+		expect(html).not.toContain('data-testid="input-bar"');
 	});
 });

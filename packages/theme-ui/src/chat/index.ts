@@ -201,7 +201,6 @@ export {
 export type {
 	MessageFeedPrimitiveProps,
 	MessageFeedRootProps,
-	MessageFeedVirtualListChild,
 	MessageFeedVirtualListProps,
 } from "./MessageFeedView";
 export {

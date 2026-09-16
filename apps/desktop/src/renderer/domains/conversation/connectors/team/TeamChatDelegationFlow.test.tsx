@@ -99,10 +99,16 @@ vi.mock("../../components/MessageCardsHost", () => ({
 	MessageCardsHost: () => null,
 }));
 
-vi.mock("../../components/chat-view/DefaultChatView", async () => {
+vi.mock("../../components/chat-view/DefaultChatView", () => ({
+	DefaultChatView: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+	ChatComposer: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+	ChatError: ({ children }: { children: ReactNode }) => (children ? <div role="alert">{children}</div> : null),
+}));
+
+vi.mock("../../components/MessageList", async () => {
 	const { MessageItem } = await import("../../components/message-list/MessageItem");
 	return {
-		DefaultChatView: ({
+		MessageList: ({
 			children,
 			messages,
 			isStreaming,
@@ -136,7 +142,9 @@ vi.mock("../../components/chat-view/DefaultChatView", async () => {
 										? participants.find((participant) => participant.id === message.authorId)
 										: undefined
 								}
-								pendingLabel={message.kind === "agent" && message.phase === "pending" ? pendingLabel : undefined}
+								pendingLabel={
+									message.kind === "agent" && message.phase === "pending" ? pendingLabel : undefined
+								}
 								onTeamMemberOpen={onTeamMemberOpen}
 							/>
 						</div>

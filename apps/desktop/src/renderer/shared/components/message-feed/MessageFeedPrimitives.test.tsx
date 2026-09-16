@@ -12,7 +12,7 @@ import { Button } from "@shared/components/ui/button";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentType, HTMLAttributes, ReactNode } from "react";
-import { createRef } from "react";
+import { createContext, createRef, useContext } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { MessageFeedNavigation } from "./MessageFeedNavigation";
 
@@ -21,10 +21,7 @@ vi.mock("@shared/shortcuts", () => ({ useShortcutScope: () => undefined }));
 vi.mock("react-virtuoso", () => ({
 	Virtuoso: (props: {
 		readonly data: readonly { readonly key: string; readonly text: string }[];
-		readonly itemContent: (
-			index: number,
-			item: { readonly key: string; readonly text: string },
-		) => ReactNode;
+		readonly itemContent: (index: number, item: { readonly key: string; readonly text: string }) => ReactNode;
 		readonly computeItemKey?: (
 			index: number,
 			item: { readonly key: string; readonly text: string },
@@ -37,22 +34,53 @@ vi.mock("react-virtuoso", () => ({
 		readonly style?: HTMLAttributes<HTMLDivElement>["style"];
 	}) => {
 		const List = props.components?.List ?? "div";
+		const Footer = props.components?.Footer;
 		return (
 			<div data-testid="virtualizer" className={props.className} style={props.style}>
 				<List>
 					{props.data.map((item, index) => (
-						<div key={props.computeItemKey?.(index, item) ?? index}>
-							{props.itemContent(index, item)}
-						</div>
+						<div key={props.computeItemKey?.(index, item) ?? index}>{props.itemContent(index, item)}</div>
 					))}
 				</List>
-				{props.components?.Footer?.()}
+				{Footer ? <Footer /> : null}
 			</div>
 		);
 	},
 }));
 
 describe("MessageFeed compound primitives", () => {
+	it("mounts a wrapped footer in the scroller while preserving its local context, refs and events", async () => {
+		const Label = createContext("missing");
+		const forwarded = createRef<HTMLDivElement>();
+		const child = createRef<HTMLDivElement>();
+		const events: string[] = [];
+		function Extension() {
+			const label = useContext(Label);
+			return (
+				<MessageFeed.Footer asChild ref={forwarded} onClick={() => events.push("footer")}>
+					<div ref={child} onClick={() => events.push("child")}>
+						<button type="button">{label}</button>
+					</div>
+				</MessageFeed.Footer>
+			);
+		}
+		const view = render(
+			<MessageFeed.Root>
+				<MessageFeed.VirtualList items={[]}>{() => null}</MessageFeed.VirtualList>
+				<Label.Provider value="Extension action">
+					<Extension />
+				</Label.Provider>
+			</MessageFeed.Root>,
+		);
+		const button = screen.getByRole("button", { name: "Extension action" });
+		expect(screen.getByTestId("virtualizer").contains(button)).toBe(true);
+		expect(forwarded.current).toBe(child.current);
+		await userEvent.click(button);
+		expect(events).toEqual(["child", "footer"]);
+		view.unmount();
+		expect(forwarded.current).toBeNull();
+	});
+
 	it("composes virtual mechanics with an explicit feed layout", () => {
 		render(
 			<MessageFeed.Root>
@@ -66,12 +94,11 @@ describe("MessageFeed compound primitives", () => {
 								]}
 								getKey={(item) => item.key}
 							>
-								<MessageFeedLayout.List />
 								{(item) => <div>{item.text}</div>}
-								<MessageFeed.Footer>Footer</MessageFeed.Footer>
 							</MessageFeed.VirtualList>
 						</MessageFeedLayout.Virtualizer>
 					</MessageFeedLayout.Viewport>
+					<MessageFeed.Footer>Footer</MessageFeed.Footer>
 				</MessageFeedLayout.Frame>
 			</MessageFeed.Root>,
 		);
@@ -97,21 +124,13 @@ describe("MessageFeed compound primitives", () => {
 
 		const root = screen.getByRole("region", { name: "custom feed" });
 		expect(root.getAttribute("data-message-feed-root")).toBe("");
-		expect(root.querySelector("[data-message-feed-layout-part='state']")?.textContent).toBe(
-			"Empty",
-		);
+		expect(root.querySelector("[data-message-feed-layout-part='state']")?.textContent).toBe("Empty");
 	});
 
-	it("requires the internal list layout instead of hiding it in virtual mechanics", () => {
-		expect(() =>
-			render(
-				<MessageFeed.Root>
-					<MessageFeed.VirtualList items={[]}>
-						{() => null}
-					</MessageFeed.VirtualList>
-				</MessageFeed.Root>,
-			),
-		).toThrow("MessageFeed.VirtualList requires one MessageFeedLayout.List child");
+	it("requires a feed scope for virtual footer ownership", () => {
+		expect(() => render(<MessageFeed.VirtualList items={[]}>{() => null}</MessageFeed.VirtualList>)).toThrow(
+			"MessageFeed.VirtualList must be used within MessageFeed.Root",
+		);
 	});
 });
 

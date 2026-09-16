@@ -1,14 +1,8 @@
-import { DefaultChatView } from "../../components/chat-view/DefaultChatView";
+import { DefaultChatView, ChatComposer, ChatError } from "../../components/chat-view/DefaultChatView";
+import { MessageList } from "../../components/MessageList";
 import { TeamComposerConnector } from "./TeamComposerConnector";
 import { TeamMemberRoster } from "./TeamMemberRoster";
 import type { TeamChatActions, TeamChatViewModel } from "./teamChatModel";
-
-const TEAM_MESSAGE_CONTEXT = {
-	inheritActiveSession: false,
-	showRuntimeFooter: false,
-	showSuggestions: false,
-	userMessageActions: { edit: false, fork: false, delete: false },
-} as const;
 
 export interface TeamChatViewProps {
 	readonly model: TeamChatViewModel;
@@ -32,19 +26,7 @@ export function TeamChatView({
 	return (
 		<DefaultChatView
 			messages={[...model.feedItems]}
-			isStreaming={isStreaming}
-			sessionId={model.feedKey}
-			participants={model.members}
-			messageContext={TEAM_MESSAGE_CONTEXT}
-			pendingLabel={model.pendingLabel}
-			onAbort={() => void actions.abort()}
-			error={model.error}
-			activity={
-				model.workspace
-					? { workspace: model.workspace, pluginScenario: model.pluginScenario }
-					: undefined
-			}
-			onTeamMemberOpen={onOpenMember}
+			activity={model.workspace ? { workspace: model.workspace, pluginScenario: model.pluginScenario } : undefined}
 			subHeader={
 				<TeamMemberRoster
 					members={model.members}
@@ -58,7 +40,21 @@ export function TeamChatView({
 				/>
 			}
 		>
-			{model.memberViewId ? null : <TeamComposerConnector model={model} actions={actions} />}
+			<MessageList
+				messages={[...model.feedItems]}
+				cwd={model.workspace?.cwd}
+				isStreaming={isStreaming}
+				sessionId={model.feedKey}
+				participants={model.members}
+				pendingLabel={model.pendingLabel}
+				onTeamMemberOpen={onOpenMember}
+			/>
+			<ChatError>{model.error}</ChatError>
+			{model.memberViewId ? null : (
+				<ChatComposer>
+					<TeamComposerConnector model={model} actions={actions} />
+				</ChatComposer>
+			)}
 		</DefaultChatView>
 	);
 }

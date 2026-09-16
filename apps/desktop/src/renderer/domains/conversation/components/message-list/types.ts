@@ -1,5 +1,6 @@
 import type { ConversationParticipantViewModel } from "@shared/conversation";
 import type { ChatConversationItem } from "@shared/store/atoms";
+import type { ReactNode } from "react";
 import type { MessageListScrollModel } from "../../hooks/useMessageListScrollModel";
 import type { AssistantFoldData, BlockSegment } from "./messageBlockModel";
 import type { WorkSegment } from "./progressGroupModel";
@@ -10,36 +11,24 @@ export interface MessageListProps {
 	messages: ChatConversationItem[];
 	isStreaming: boolean;
 	sessionId?: string | null;
+	cwd?: string | null;
+	initialTargetKey?: string | null;
+	onInitialTargetHandled?: () => void;
 	pendingLabel?: string;
-	onSend?: (overrideText?: string) => Promise<void>;
 	onAbort?: () => void;
 	participants?: readonly ConversationParticipantViewModel[];
-	context?: {
-		readonly inheritActiveSession: boolean;
-		readonly showRuntimeFooter: boolean;
-		readonly showSuggestions: boolean;
-		readonly userMessageActions: {
-			readonly edit: boolean;
-			readonly fork: boolean;
-			readonly delete: boolean;
-		};
-	};
+	children?: ReactNode;
 	onTeamMemberOpen?: (memberId: string) => void;
 }
 
 export interface MessageListModel {
-	parentEntryId?: string;
-	parentSessionPath?: string;
-	isCompacting: boolean;
 	isStreaming: boolean;
 	messages: ChatConversationItem[];
 	modelSwitchLabels: Map<string, string>;
 	scroll: MessageListScrollModel;
-	waitingForResponse: boolean;
 	tailMessageId: string | null;
 	participantsById: ReadonlyMap<string, ConversationParticipantViewModel>;
 	participants: readonly ConversationParticipantViewModel[];
-	context: NonNullable<MessageListProps["context"]>;
 	onTeamMemberOpen?: MessageListProps["onTeamMemberOpen"];
 }
 
