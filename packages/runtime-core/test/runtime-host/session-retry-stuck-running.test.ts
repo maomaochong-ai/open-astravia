@@ -119,7 +119,7 @@ function baseAssembly(emitted: Array<(event: SessionEvent) => void>): RuntimeHos
 				abort: async () => {},
 			},
 			eventStream: {
-				subscribe: (handler) => {
+				subscribe: (handler: (event: SessionEvent) => void) => {
 					emitted.push(handler);
 					return () => {};
 				},
