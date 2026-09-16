@@ -172,9 +172,11 @@ function ActiveTabIndicator({
 			)}
 		</>
 	);
+	// 页签按钮带 1px 透明边框，绝对定位默认贴的是 padding box；用负偏移拉回边框盒，
+	// 否则轮廓整体下移 1px，下探量会多出一像素压到内容卡片上。
 	const indicatorProps = {
 		"aria-hidden": true,
-		className: "pointer-events-none absolute inset-x-0 top-0 -bottom-px rounded-t-lg bg-muted",
+		className: "pointer-events-none absolute -inset-x-px -top-px -bottom-px rounded-t-lg bg-muted",
 		"data-active-tab-indicator": true,
 	};
 
