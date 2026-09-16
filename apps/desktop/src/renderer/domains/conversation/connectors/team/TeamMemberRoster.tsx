@@ -1,7 +1,54 @@
 import { cn } from "@shared/lib/utils";
 import { AgentAvatarView } from "@vetta-org/theme-ui/chat";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TeamChatViewModel } from "./teamChatModel";
+
+export interface TeamMemberRosterWidth {
+	readonly natural: number;
+	readonly compact: number;
+}
+
+/**
+ * Share the available label space across every member. Short labels stop growing
+ * at their natural width and return the remainder to longer labels.
+ */
+export function allocateTeamMemberRosterWidths(
+	members: readonly TeamMemberRosterWidth[],
+	availableWidth: number,
+): readonly number[] {
+	if (members.length === 0) return [];
+	const available = Math.max(0, availableWidth);
+	const natural = members.map((member) => Math.max(0, member.natural));
+	const compact = members.map((member, index) => Math.min(natural[index]!, Math.max(0, member.compact)));
+	const compactTotal = compact.reduce((total, width) => total + width, 0);
+
+	if (available <= compactTotal) {
+		if (compactTotal === 0) return compact;
+		const scale = available / compactTotal;
+		return compact.map((width) => width * scale);
+	}
+
+	const widths = [...compact];
+	let remaining = available - compactTotal;
+	let active = members.map((_, index) => index).filter((index) => widths[index]! < natural[index]!);
+	while (remaining > 0 && active.length > 0) {
+		const share = remaining / active.length;
+		let spent = 0;
+		const nextActive: number[] = [];
+		for (const index of active) {
+			const growth = Math.min(share, natural[index]! - widths[index]!);
+			widths[index] = widths[index]! + growth;
+			spent += growth;
+			if (widths[index]! < natural[index]!) nextActive.push(index);
+		}
+		if (spent === 0) break;
+		remaining -= spent;
+		active = nextActive;
+	}
+
+	return widths;
+}
 
 export interface TeamMemberRosterProps {
 	readonly members: TeamChatViewModel["members"];
@@ -36,19 +83,72 @@ export function TeamMemberRoster({
 	onOpenSettings,
 }: TeamMemberRosterProps): JSX.Element | null {
 	const { t } = useTranslation("agent-teams");
+	const containerRef = useRef<HTMLDivElement>(null);
+	const rosterRef = useRef<HTMLDivElement>(null);
+	const backButtonRef = useRef<HTMLButtonElement>(null);
+	const memberButtonRefs = useRef(new Map<string, HTMLButtonElement>());
+	const labelRefs = useRef(new Map<string, HTMLSpanElement>());
+	const labelMinimumRefs = useRef(new Map<string, HTMLSpanElement>());
+	const [labelWidths, setLabelWidths] = useState<Readonly<Record<string, number>>>({});
+
+	useLayoutEffect(() => {
+		const container = containerRef.current;
+		const roster = rosterRef.current;
+		if (!container || !roster) return;
+
+		const updateLabelWidths = () => {
+			const gap = Number.parseFloat(getComputedStyle(roster).columnGap) || 0;
+			const itemCount = members.length + (activeMemberId && onBackToTeam ? 1 : 0);
+			const fixedWidth = members.reduce((total, member) => {
+				const button = memberButtonRefs.current.get(member.id);
+				const label = labelRefs.current.get(member.id);
+				if (!button || !label) return total;
+				return total + Math.max(0, button.getBoundingClientRect().width - label.getBoundingClientRect().width);
+			}, 0);
+			const backButtonWidth = activeMemberId && onBackToTeam ? (backButtonRef.current?.getBoundingClientRect().width ?? 0) : 0;
+			const availableLabelWidth = Math.max(
+				0,
+				roster.clientWidth - fixedWidth - backButtonWidth - Math.max(0, itemCount - 1) * gap,
+			);
+			const measurements = members.map((member) => {
+				const label = labelRefs.current.get(member.id);
+				const minimum = labelMinimumRefs.current.get(member.id);
+				if (!label || !minimum) return { natural: 0, compact: 0 };
+				const maximum = Number.parseFloat(getComputedStyle(label).maxWidth);
+				const natural = Number.isFinite(maximum) ? Math.min(label.scrollWidth, maximum) : label.scrollWidth;
+				return { natural, compact: minimum.getBoundingClientRect().width };
+			});
+			const widths = allocateTeamMemberRosterWidths(measurements, availableLabelWidth);
+			setLabelWidths(Object.fromEntries(members.map((member, index) => [member.id, widths[index] ?? 0])));
+		};
+
+		updateLabelWidths();
+		if (typeof ResizeObserver === "undefined") return;
+		const observer = new ResizeObserver(updateLabelWidths);
+		observer.observe(container);
+		return () => observer.disconnect();
+	}, [activeMemberId, leaderMemberId, members, onBackToTeam, onOpenSettings]);
+
 	if (members.length === 0) return null;
 
 	return (
 		// 左内边距与页头保持一致，胶囊条正对标题起始位置。设置按钮留在滚动区之外，
 		// 成员较多时不会被横向滚动带走。
-		<div className="flex min-w-0 shrink-0 items-center gap-1.5 px-3 pb-3">
+		<div
+			ref={containerRef}
+			data-team-member-roster="true"
+			className="flex w-full min-w-0 shrink-0 items-center gap-1.5 px-3 pb-3"
+		>
 			<div
+				ref={rosterRef}
 				role="group"
+				data-team-member-roster-group="true"
 				aria-label={t("chat.memberSessions")}
-				className="flex min-w-0 items-center gap-1.5 overflow-x-auto no-scrollbar"
+				className="flex w-full min-w-0 flex-1 items-center gap-1.5 overflow-hidden"
 			>
 				{activeMemberId && onBackToTeam ? (
 					<button
+						ref={backButtonRef}
 						type="button"
 						data-team-session-back="true"
 						title={t("chat.backToTeam")}
@@ -66,6 +166,10 @@ export function TeamMemberRoster({
 					const streaming = member.status === "working";
 					return (
 						<button
+							ref={(node) => {
+								if (node) memberButtonRefs.current.set(member.id, node);
+								else memberButtonRefs.current.delete(member.id);
+							}}
 							key={member.id}
 							type="button"
 							disabled={!runtimeId}
@@ -76,7 +180,7 @@ export function TeamMemberRoster({
 							title={t("chat.memberSession", { name: member.name })}
 							aria-label={t("chat.memberSession", { name: member.name })}
 							className={cn(
-								"relative flex h-7 shrink-0 items-center gap-1.5 rounded-full py-0.5 pl-1 pr-2.5 text-[12px] font-medium transition-colors disabled:pointer-events-none disabled:opacity-45",
+								"relative flex h-7 shrink-0 items-center overflow-hidden rounded-full py-0.5 pl-1 pr-2.5 text-[12px] font-medium transition-colors disabled:pointer-events-none disabled:opacity-45",
 								active
 									? "bg-primary/15 text-primary"
 									: "bg-muted text-foreground hover:bg-accent",
@@ -89,7 +193,7 @@ export function TeamMemberRoster({
 									aria-hidden="true"
 								/>
 							) : null}
-							<span className="relative flex shrink-0">
+							<span className="relative flex shrink-0" data-member-session-fixed="true">
 								<AgentAvatarView
 									name={member.name}
 									avatar={member.avatar}
@@ -105,12 +209,31 @@ export function TeamMemberRoster({
 							</span>
 							{member.id === leaderMemberId ? (
 								<span
-									className="icon-[solar--crown-star-bold] relative h-3.5 w-3.5 shrink-0 text-amber-400"
+									className="icon-[solar--crown-star-bold] relative ml-1.5 h-3.5 w-3.5 shrink-0 text-amber-400"
 									title={leaderLabel}
 									aria-hidden="true"
 								/>
 							) : null}
-							<span className="relative max-w-[9rem] truncate">{member.name}</span>
+							<span
+								ref={(node) => {
+									if (node) labelRefs.current.set(member.id, node);
+									else labelRefs.current.delete(member.id);
+								}}
+								data-member-session-label="true"
+								className="relative ml-1.5 min-w-0 max-w-[9rem] shrink-0 truncate"
+								style={labelWidths[member.id] === undefined ? undefined : { width: labelWidths[member.id] }}
+							>
+								{member.name}
+							</span>
+							<span
+								ref={(node) => {
+									if (node) labelMinimumRefs.current.set(member.id, node);
+									else labelMinimumRefs.current.delete(member.id);
+								}}
+								aria-hidden="true"
+								data-member-session-label-minimum="true"
+								className="pointer-events-none invisible absolute inline-block w-[1ch]"
+							/>
 						</button>
 					);
 				})}
