@@ -24,6 +24,7 @@ posters).
 | `landing-structures.md` | `macrostructures.md` + `macrostructures/*.md`, condensed |
 | `copy.md` | `copy.md`, plus Chinese-language equivalents |
 | `app-density.md` | not in Hallmark — written for this skill |
+| `whitespace.md` | not in Hallmark — written for this skill |
 
 ## What was deliberately left out
 

@@ -160,6 +160,24 @@ a class it cannot resolve, so `bg-brand` without `--color-brand` leaves the
 element with no background at all. Same mechanism as a blank icon: the source
 reads perfectly, and nothing renders. Add the token first, then use it.
 
+## The default look: space, not lines
+
+Structure comes from whitespace, alignment and surface tone. A border, a divider
+or a card wrapper is the exception you can justify, not the way a group is
+formed — one gap twice the size of the gaps inside a group already reads as a
+separation, and a shared gutter already reads as a column. Boxing every section
+is a generated-UI tell, not neutral styling.
+
+Lines stay earned for: dense tables, an object the user acts on, something that
+overlaps scrolling content, and a field that must be findable. Everything else
+gets space. `references/taste/whitespace.md` has the substitutions and the
+per-product-type rules; read it before the first frame of any app, dashboard or
+landing page.
+
+An explicit user instruction ("加上分割线", a wireframe look), a
+`design-resources/` pack or the design's `DESIGN.md` outranks this — when one of
+them asks for lines, follow it.
+
 ## Pick the product type
 
 This is the first decision, not an afterthought: `vetd_create` requires it
@@ -244,7 +262,7 @@ const items = [
 export function NavBar() {
 	const { pathname } = useLocation();
 	return (
-		<nav className="flex items-center gap-1 border-b border-border px-4 py-2">
+		<nav className="flex items-center gap-1 px-4 py-3">
 			{items.map((item) => (
 				<Link
 					key={item.to}
@@ -300,7 +318,8 @@ defaults, every design converges on the same thing — the scaffold's indigo and
 slate, one system sans at two sizes, centred cards, a three-column feature row —
 and users recognise it instantly as generated. Before the first frame:
 
-1. Read `references/taste/directions.md`, then the file for the product type:
+1. Read `references/taste/directions.md` and `references/taste/whitespace.md`,
+   then the file for the product type:
    `references/taste/landing-structures.md` for a landing page,
    `references/taste/app-density.md` for app screens and dashboards.
 2. Decide tone, anchor hue, type pairing and structure, and state them in one
@@ -515,6 +534,7 @@ Resolve against `$SKILL_DIR`. Do not read them all up front.
 | `references/interaction.md` | Wiring clicks, `_layout.tsx`, cross-screen flows |
 | `references/quality.md` | Reviewing a screenshot; before declaring any frame done |
 | `references/taste/directions.md` | Before the first frame of a new design with no pack or `DESIGN.md` |
+| `references/taste/whitespace.md` | Before the first frame of an app, dashboard or landing page; or when a capture looks boxed-in |
 | `references/taste/landing-structures.md` | Product type is a landing page |
 | `references/taste/app-density.md` | Product type is app screens or a dashboard |
 | `references/taste/color.md` | Building or changing the palette, chart or status colors |

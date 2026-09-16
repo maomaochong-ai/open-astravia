@@ -38,7 +38,8 @@ products. The default when nothing else fires.
 
 - Type: a serif or characterful display (Fraunces, Newsreader, Instrument Serif,
   Cormorant Garamond) over a plain sans or reading serif body.
-- Shape: hairline rules instead of card borders, square or 2–4 px corners,
+- Shape: the one family where a rule is typographic style — hairlines instead of
+  card borders, never a box around a section. Square or 2–4 px corners,
   asymmetric columns, generous but uneven whitespace.
 - Avoid: pill buttons with fills, glass, centred everything.
 
@@ -63,8 +64,11 @@ SaaS, developer tools, APIs, B2B, most dashboards and admin consoles.
 
 - Type: a grotesk display (Geist, Space Grotesk, Schibsted Grotesk, Inter Tight
   at 600+) with a mono for code and numerals (Geist Mono, JetBrains Mono).
-- Shape: 1 px visible borders carry structure, 6–8 px radii, almost no shadow.
-  Monochrome, with the accent as a signal only (active item, focus, one CTA).
+- Shape: precision comes from alignment and a strict spacing scale, not from
+  drawing the grid — a 1 px `border-border` line only where `whitespace.md` says
+  one is earned (table, real object, overlap, field). 6–8 px radii, almost no
+  shadow. Monochrome, with the accent as a signal only (active item, focus, one
+  CTA).
 - Allowed here only: pure white surface and zero-chroma greys.
 
 ```css
@@ -88,8 +92,9 @@ AI and generative tools, music, video, creative tools, anything "after dark".
 
 - Type: a weighty sans display, tight tracking (Geist 600, Bricolage Grotesque),
   or one classical serif headline for a premium register (Instrument Serif).
-- Shape: dark surfaces lifted by lightness, not shadow; at most two soft radial
-  glows in the accent hue behind content — background only, never on text.
+- Shape: dark surfaces lifted by lightness, not shadow or borders — separation
+  is a step in surface lightness; at most two soft radial glows in the accent hue
+  behind content — background only, never on text.
 - Avoid: glass, multiple accent hues, light sections sneaking into a dark page.
 
 ```css
@@ -116,7 +121,7 @@ editorial.
 - Type: a rounded or humanist display (Bricolage Grotesque, Plus Jakarta Sans,
   Figtree) with the same or a plain sans body.
 - Shape: 12 px radius ceiling on cards, soft low-chroma tinted bands between
-  sections, one soft shadow level.
+  sections (the band separates, so no border on it), one soft shadow level.
 - Avoid: saturated app-store pink/purple, emoji as icons, anything "zany".
 
 ```css
@@ -148,6 +153,10 @@ and the user did not ask for them to match, read one sibling's `theme.css` and
 differ on at least one of: surface lightness band (dark / mid / light), display
 style (serif / grotesk / rounded / mono), accent hue family (warm / cool /
 neutral). Two designs that share all three read as one template recoloured.
+
+All four families sit on top of the default in `whitespace.md`: the shape notes
+below say how a line looks *when it is earned*, never that the family boxes its
+sections.
 
 ## Product types
 
