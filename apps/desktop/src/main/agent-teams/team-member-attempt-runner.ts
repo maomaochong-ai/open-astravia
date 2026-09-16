@@ -317,22 +317,27 @@ export class TeamMemberAttemptRunner {
 				(isAIError(error) ? runtimeFailureFromError(error) : undefined) ??
 				promptFailure;
 			const cancelled = this.isCancelled(configuredSession, collaboration.workItem.id, signal);
-			// Runtime Core persists the aborted or failed assistant message (including
-			// tool calls) in the member conversation. Publish that durable partial before
-			// discarding the live stream, otherwise stopping or a provider failure makes
-			// the Team timeline irreversibly lose what the leader/member already produced.
-			const partialMessageId = await this.publishPartialAttempt(
-				configuredSession,
-				collaboration,
-				runtimeState.sessionId,
-				previousEntryIds,
-				sourceTurnId,
-			);
 			const terminal = classifyTeamAttemptTerminal({
 				hasPublishableMessage: false,
 				cancelled,
 				...(failure ? { issue: classifyTeamExecutionIssue(failure) } : {}),
 			});
+			const recoverable =
+				terminal.state === "waiting-retry" ||
+				terminal.state === "interrupted" ||
+				terminal.state === "awaiting-resource";
+			// Runtime Core persists the aborted or failed assistant message (including
+			// tool calls) in the member conversation. Publish that durable partial before
+			// discarding the live stream, otherwise stopping or a provider failure makes
+			// the Team timeline irreversibly lose what the leader/member already produced.
+			const partialMessageId = await this.tryPublishPartialAttempt(
+				configuredSession,
+				collaboration,
+				runtimeState.sessionId,
+				previousEntryIds,
+				sourceTurnId,
+				cancelled || !recoverable ? "terminal-partial" : undefined,
+			);
 			await this.options.settleAttempt(
 				configuredSession,
 				collaboration.workItem,
@@ -340,18 +345,16 @@ export class TeamMemberAttemptRunner {
 				terminal,
 				cancelled ? partialMessageId : undefined,
 			);
-			await this.publishTerminalPartial({
-				session: configuredSession,
-				item: collaboration.workItem,
-				attempt: { ...collaboration.attempt, ...terminal },
-				runtimeSessionId: runtimeState.sessionId,
-				sourceTurnId,
-				previousEntryIds,
-			});
-			const recoverable =
-				terminal.state === "waiting-retry" ||
-				terminal.state === "interrupted" ||
-				terminal.state === "awaiting-resource";
+			if (partialMessageId && (cancelled || !recoverable)) {
+				await this.publishTerminalPartial({
+					session: configuredSession,
+					item: collaboration.workItem,
+					attempt: { ...collaboration.attempt, ...terminal },
+					runtimeSessionId: runtimeState.sessionId,
+					sourceTurnId,
+					previousEntryIds,
+				});
+			}
 			this.options.eventHub.discard(
 				activeTurn,
 				cancelled ? "aborted" : recoverable ? "waiting" : "failed",
@@ -388,12 +391,13 @@ export class TeamMemberAttemptRunner {
 			signal?.removeEventListener("abort", abortTarget);
 		}
 		if (promptFailureMessage) {
-			await this.publishPartialAttempt(
+			const partialMessageId = await this.tryPublishPartialAttempt(
 				configuredSession,
 				collaboration,
 				runtimeState.sessionId,
 				previousEntryIds,
 				sourceTurnId,
+				"terminal-partial",
 			);
 			if (this.isCancelled(configuredSession, collaboration.workItem.id, signal)) {
 				const terminal = classifyTeamAttemptTerminal({ hasPublishableMessage: false, cancelled: true });
@@ -403,14 +407,16 @@ export class TeamMemberAttemptRunner {
 					collaboration.attempt,
 					terminal,
 				);
-				await this.publishTerminalPartial({
-					session: configuredSession,
-					item: collaboration.workItem,
-					attempt: { ...collaboration.attempt, ...terminal },
-					runtimeSessionId: runtimeState.sessionId,
-					sourceTurnId,
-					previousEntryIds,
-				});
+				if (partialMessageId) {
+					await this.publishTerminalPartial({
+						session: configuredSession,
+						item: collaboration.workItem,
+						attempt: { ...collaboration.attempt, ...terminal },
+						runtimeSessionId: runtimeState.sessionId,
+						sourceTurnId,
+						previousEntryIds,
+					});
+				}
 				this.options.eventHub.discard(activeTurn, "aborted");
 				return this.options.sessionState.get(configuredSession.id) ?? configuredSession;
 			}
@@ -420,14 +426,20 @@ export class TeamMemberAttemptRunner {
 				...(promptFailure ? { issue: classifyTeamExecutionIssue(promptFailure) } : {}),
 			});
 			await this.options.settleAttempt(configuredSession, collaboration.workItem, collaboration.attempt, terminal);
-			await this.publishTerminalPartial({
-				session: configuredSession,
-				item: collaboration.workItem,
-				attempt: { ...collaboration.attempt, ...terminal },
-				runtimeSessionId: runtimeState.sessionId,
-				sourceTurnId,
-				previousEntryIds,
-			});
+			const recoverable =
+				terminal.state === "waiting-retry" ||
+				terminal.state === "interrupted" ||
+				terminal.state === "awaiting-resource";
+			if (partialMessageId && !recoverable) {
+				await this.publishTerminalPartial({
+					session: configuredSession,
+					item: collaboration.workItem,
+					attempt: { ...collaboration.attempt, ...terminal },
+					runtimeSessionId: runtimeState.sessionId,
+					sourceTurnId,
+					previousEntryIds,
+				});
+			}
 			this.options.eventHub.discard(activeTurn, "failed", promptFailureMessage);
 			log.error("team member runtime returned failed outcome", {
 				teamSessionId: configuredSession.id,
@@ -448,7 +460,7 @@ export class TeamMemberAttemptRunner {
 		if (!attemptResult || !assistant || !isTeamAttemptFinalResult(assistant)) {
 			// A turn can delegate work and then lose its next model call. The work item
 			// stays waiting, but the delegation it already made must remain visible.
-			await this.publishPartialAttempt(
+			await this.tryPublishPartialAttempt(
 				configuredSession,
 				collaboration,
 				runtimeState.sessionId,
@@ -515,6 +527,7 @@ export class TeamMemberAttemptRunner {
 		runtimeSessionId: string,
 		previousEntryIds: ReadonlySet<string>,
 		sourceTurnId: string,
+		purpose?: "terminal-partial",
 	): Promise<string | undefined> {
 		const history = this.options.runtime().getFullHistory(runtimeSessionId);
 		const result = findTeamAttemptResult(history, previousEntryIds);
@@ -528,7 +541,37 @@ export class TeamMemberAttemptRunner {
 			sourceTurnId,
 			sourceMessageEntryId: result.entryId,
 			assistant,
+			...(purpose ? { purpose } : {}),
 		});
+	}
+
+	private async tryPublishPartialAttempt(
+		session: TeamSessionDocument,
+		collaboration: { readonly workItem: TeamWorkItem; readonly attempt: TeamMemberTurnAttempt },
+		runtimeSessionId: string,
+		previousEntryIds: ReadonlySet<string>,
+		sourceTurnId: string,
+		purpose?: "terminal-partial",
+	): Promise<string | undefined> {
+		try {
+			return await this.publishPartialAttempt(
+				session,
+				collaboration,
+				runtimeSessionId,
+				previousEntryIds,
+				sourceTurnId,
+				purpose,
+			);
+		} catch (error) {
+			log.error("team partial publication failed", {
+				teamSessionId: session.id,
+				memberId: collaboration.workItem.assignedToParticipantId,
+				workItemId: collaboration.workItem.id,
+				attemptId: collaboration.attempt.id,
+				error: errorMessage(error),
+			});
+			return undefined;
+		}
 	}
 
 	private isCancelled(session: TeamSessionDocument, workItemId: string, signal?: AbortSignal): boolean {
