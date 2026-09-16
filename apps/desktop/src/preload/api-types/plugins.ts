@@ -15,6 +15,8 @@ import type {
 	DefaultExecutionModeSettingInput,
 	GeneralExecutionMode,
 	GeneralSettingsSnapshot,
+	ImageGenerationSettings,
+	ImageGenerationSettingsUpdate,
 	ImLogEntry,
 	ImRuntimeStatus,
 	ImStatusSnapshot,
@@ -454,6 +456,8 @@ export interface DesktopPluginCapabilityGeneralSettingsApi {
 export interface DesktopPluginCapabilityAgentSettingsApi {
 	getExperimental(sessionId: string): Promise<AgentExperimentalSettings>;
 	setExperimental(sessionId: string, input: AgentExperimentalSettingsUpdate): Promise<AgentExperimentalSettings>;
+	getImageGeneration(sessionId: string): Promise<ImageGenerationSettings>;
+	setImageGeneration(sessionId: string, input: ImageGenerationSettingsUpdate): Promise<ImageGenerationSettings>;
 }
 
 export interface DesktopPluginCapabilityImApi {

@@ -47,6 +47,11 @@ export interface DesktopConfigData {
 		/** 适配通用 Agent Skill 开关。发现 ~/.agents/skills 与 <cwd>/.agents/skills，缺省开。 */
 		agentSkills?: boolean;
 	};
+	/** 图片生成 Provider 偏好；空值表示自动选择。 */
+	imageGeneration?: {
+		textToImageProviderId?: string | null;
+		imageToImageProviderId?: string | null;
+	};
 	/** 默认「对话」项目的绝对路径（~/.vetta/conversation），主进程已确保目录存在。 */
 	defaultConversationCwd?: string;
 	/** im-gateway 自己的 cwd（~/.vetta/im-gateway/conversation），与桌面「对话」物理分家（ADR-0005）。 */

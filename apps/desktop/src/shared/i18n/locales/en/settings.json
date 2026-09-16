@@ -610,6 +610,15 @@
     "apply": "Apply",
     "applied": "Applied",
     "saving": "Saving",
+    "imageGeneration": {
+      "auto": "Automatic",
+      "description": "Choose the default service Agent uses to generate or edit images.",
+      "imageToImage": "Image-to-image Provider",
+      "loading": "Loading image generation services…",
+      "noProviders": "No image generation services are currently available.",
+      "textToImage": "Text-to-image Provider",
+      "unavailable": "Unavailable"
+    },
     "maxRecentImages": "Max recent images",
     "images": "",
     "maxRecentImagesDesc": "Maximum number of recent images to keep in context; older ones are replaced with text placeholders to save VRAM / tokens. Lower for low-VRAM machines; higher for cloud models to retain more visual context.",

@@ -8,6 +8,7 @@ interface ImageRecord {
 	sessionId?: string;
 	createdAt: string;
 	mimeType: string;
+	providerId?: string;
 }
 
 interface LegacyImageRecord {
@@ -17,6 +18,7 @@ interface LegacyImageRecord {
 	createdAt: string;
 	ext: string;
 	mimeType: string;
+	providerId?: string;
 }
 
 type LegacyImageIndex = Record<string, LegacyImageRecord>;
@@ -25,6 +27,7 @@ export interface PersistImageMetadata {
 	rootId?: string;
 	parent?: string;
 	sessionId?: string;
+	providerId?: string;
 }
 
 export interface ImageRepository {
@@ -48,6 +51,7 @@ async function toRef(
 		id: record.id,
 		url: blob.url,
 		mimeType: record.mimeType,
+		...(record.providerId ? { providerId: record.providerId } : {}),
 		rootId: record.rootId,
 	};
 }
@@ -78,6 +82,7 @@ export function createImageRepository(storage: PluginStorageApi): ImageRepositor
 				sessionId: record.sessionId,
 				createdAt: record.createdAt,
 				mimeType: record.mimeType,
+				...(record.providerId ? { providerId: record.providerId } : {}),
 			} satisfies ImageRecord);
 		}
 		await writeJsonFile(storage, "migration/image-service-v1.json", true);
@@ -105,12 +110,14 @@ export function createImageRepository(storage: PluginStorageApi): ImageRepositor
 				sessionId: metadata.sessionId,
 				createdAt: new Date().toISOString(),
 				mimeType: blob.mimeType,
+				...(metadata.providerId ? { providerId: metadata.providerId } : {}),
 			};
 			await writeJsonFile(storage, recordKey(record.id), record);
 			return {
 				id: record.id,
 				url: blob.url,
 				mimeType: record.mimeType,
+				...(record.providerId ? { providerId: record.providerId } : {}),
 				rootId: record.rootId,
 			};
 		},

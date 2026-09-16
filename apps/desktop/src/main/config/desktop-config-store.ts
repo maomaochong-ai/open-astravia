@@ -23,6 +23,12 @@ export interface ExperimentalConfig {
 	agentSkills?: boolean;
 }
 
+/** Agent 图片生成 Provider 偏好；未设置时沿用内置 Provider 优先策略。 */
+export interface ImageGenerationConfig {
+	textToImageProviderId?: string;
+	imageToImageProviderId?: string;
+}
+
 export interface DesktopConfig {
 	projects: ProjectEntry[];
 	archivedProjects: ProjectEntry[];
@@ -36,6 +42,7 @@ export interface DesktopConfig {
 	/** 新建会话的默认工作模式（合法值来自 main/agent-modes 模式注册表，ADR-0071）。会话创建时固化进会话，改这里只影响之后新建的会话。 */
 	defaultAgentMode?: string;
 	experimental?: ExperimentalConfig;
+	imageGeneration?: ImageGenerationConfig;
 	knowledgeBase?: KnowledgeBaseConfig;
 	shortcuts?: ShortcutsConfig;
 	quickPanel?: QuickPanelConfig;
@@ -87,6 +94,7 @@ const DEFAULT_CONFIG: DesktopConfig = {
 	debugMode: false,
 	notificationsEnabled: true,
 	experimental: { vettaCli: true, agentSkills: true },
+	imageGeneration: {},
 	shortcuts: { bindings: {} },
 	quickPanel: { trigger: "none", postSendBehavior: "foreground" },
 	appshot: { enabled: false, gesture: "both-shift" },
@@ -178,6 +186,21 @@ export function normalizeExperimental(value: unknown): ExperimentalConfig {
 	};
 }
 
+export function normalizeImageGeneration(value: unknown): ImageGenerationConfig {
+	if (typeof value !== "object" || value === null) return {};
+	const input = value as Record<string, unknown>;
+	return {
+		textToImageProviderId:
+			typeof input.textToImageProviderId === "string" && input.textToImageProviderId.trim().length > 0
+				? input.textToImageProviderId
+				: undefined,
+		imageToImageProviderId:
+			typeof input.imageToImageProviderId === "string" && input.imageToImageProviderId.trim().length > 0
+				? input.imageToImageProviderId
+				: undefined,
+	};
+}
+
 export async function readDesktopConfig(): Promise<DesktopConfig> {
 	try {
 		const raw = await readFile(CONFIG_PATH, "utf8");
@@ -213,6 +236,7 @@ function parseDesktopConfig(parsed: Record<string, unknown>): DesktopConfig {
 		notificationsEnabled: typeof parsed.notificationsEnabled === "boolean" ? parsed.notificationsEnabled : true,
 		language: isLanguagePreference(parsed.language) ? parsed.language : undefined,
 		experimental: normalizeExperimental(parsed.experimental),
+		imageGeneration: normalizeImageGeneration(parsed.imageGeneration),
 		knowledgeBase: normalizeKnowledgeBase(parsed.knowledgeBase),
 		shortcuts: normalizeShortcuts(parsed.shortcuts),
 		quickPanel: normalizeQuickPanel(parsed.quickPanel),

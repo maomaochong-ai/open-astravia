@@ -182,6 +182,112 @@ describe("MediaProviderRegistry", () => {
 		);
 	});
 
+	it("records provider-aware job states without logging prompts or source paths", async () => {
+		const jobs = new JobManager();
+		const logger = { info: vi.fn(), warn: vi.fn() };
+		const registry = new MediaProviderRegistry(jobs, logger);
+		registry.registerProvider({
+			descriptor: {
+				id: "plugin:image-lab",
+				displayName: "Image Lab",
+				ownerId: "image-lab",
+				protocolVersion: MEDIA_PROTOCOL_VERSION,
+				capabilities: [{ operation: "generate", kind: "image", modes: ["image-to-image"] }],
+			},
+			submit: vi.fn().mockResolvedValue({ id: "provider-job", status: "queued", progress: 0.1 }),
+			getJob: vi.fn().mockResolvedValue(succeededJob("provider-job")),
+		});
+
+		const job = await registry.submit(
+			{
+				ownerId: "image-gen",
+				providerId: "plugin:image-lab",
+				operation: "generate",
+				kind: "image",
+				mode: "image-to-image",
+				prompt: "private prompt text",
+				dimensions: { width: 1280, height: 720 },
+				inputs: [
+					{
+						kind: "image",
+						mimeType: "image/png",
+						source: { type: "workspace-file", path: "/private/source.png" },
+					},
+				],
+			},
+			signal,
+		);
+
+		expect(logger.info).toHaveBeenCalledWith("media job submitted", {
+			attemptId: expect.any(String),
+			consumerId: "image-gen",
+			providerId: "plugin:image-lab",
+			providerOwnerId: "image-lab",
+			providerDisplayName: "Image Lab",
+			operation: "generate",
+			inputCount: 1,
+			mediaKind: "image",
+			generationMode: "image-to-image",
+			requestedWidth: 1280,
+			requestedHeight: 720,
+		});
+		expect(logger.info).toHaveBeenCalledWith(
+			"media job state",
+			expect.objectContaining({
+				jobId: job.id,
+				providerJobId: "provider-job",
+				providerId: "plugin:image-lab",
+				status: "queued",
+				progress: 0.1,
+			}),
+		);
+
+		await jobs.get("image-gen", job.id, signal);
+
+		expect(logger.info).toHaveBeenCalledWith(
+			"media job state",
+			expect.objectContaining({
+				jobId: job.id,
+				providerId: "plugin:image-lab",
+				status: "succeeded",
+				artifactCount: 1,
+				elapsedMs: expect.any(Number),
+			}),
+		);
+		const serializedLogs = JSON.stringify([logger.info.mock.calls, logger.warn.mock.calls]);
+		expect(serializedLogs).not.toContain("private prompt text");
+		expect(serializedLogs).not.toContain("/private/source.png");
+	});
+
+	it("records categorized failure details for an unavailable provider", async () => {
+		const logger = { info: vi.fn(), warn: vi.fn() };
+		const registry = new MediaProviderRegistry(new JobManager(), logger);
+
+		const job = await registry.submit(
+			{
+				ownerId: "image-gen",
+				providerId: "missing:image-provider",
+				operation: "generate",
+				kind: "image",
+				mode: "text-to-image",
+				prompt: "draw",
+				inputs: [],
+			},
+			signal,
+		);
+
+		expect(logger.warn).toHaveBeenCalledWith(
+			"media job state",
+			expect.objectContaining({
+				jobId: job.id,
+				providerId: "missing:image-provider",
+				status: "failed",
+				errorCode: "provider-unavailable",
+				retryable: false,
+			}),
+		);
+	});
+
 	it("returns stable failures for missing and unsupported providers", async () => {
 		const registry = createRegistry();
 		registry.registerProvider({

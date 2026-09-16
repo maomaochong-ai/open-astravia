@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type {
 	Disposable,
 	Job,
@@ -23,6 +24,25 @@ const MODE_KIND: Record<MediaGenerationMode, MediaKind> = {
 };
 
 const TERMINAL_STATUSES = new Set<MediaProviderJob["status"]>(["succeeded", "failed", "cancelled"]);
+
+export interface MediaProviderRegistryLogger {
+	info(message: string, fields: Record<string, unknown>): void;
+	warn(message: string, fields: Record<string, unknown>): void;
+}
+
+const NOOP_LOGGER: MediaProviderRegistryLogger = {
+	info: () => undefined,
+	warn: () => undefined,
+};
+
+interface MediaJobLogContext {
+	readonly attemptId: string;
+	readonly startedAt: number;
+	readonly fields: Record<string, unknown>;
+	jobId?: string;
+	providerJobId?: string;
+	lastStateKey?: string;
+}
 
 type ToHostProviderInput<Input> = Input extends MediaSubmitInput
 	? Omit<Input, "ownerId" | "providerId"> & { readonly inputs: readonly MediaInput[] }
@@ -188,7 +208,10 @@ function validateInputs(input: MediaSubmitInput, descriptor: MediaProviderDescri
 export class MediaProviderRegistry {
 	private readonly providers = new Map<string, RegisteredProvider>();
 
-	constructor(private readonly jobs: JobManager) {}
+	constructor(
+		private readonly jobs: JobManager,
+		private readonly logger: MediaProviderRegistryLogger = NOOP_LOGGER,
+	) {}
 
 	registerProvider(registration: MediaProviderRegistration): Disposable {
 		const { descriptor } = registration;
@@ -233,25 +256,29 @@ export class MediaProviderRegistry {
 
 	async submit(input: MediaSubmitInput, signal: AbortSignal): Promise<Job> {
 		const provider = this.providers.get(input.providerId);
+		const logContext = this.createLogContext(input, provider?.registration.descriptor);
+		this.logger.info("media job submitted", logContext.fields);
 		if (!provider) {
 			return this.createFailedJob(
 				input,
 				failure("provider-unavailable", `Media provider is unavailable: ${input.providerId}`),
+				logContext,
 			);
 		}
 		const validationFailure = validateInputs(input, provider.registration.descriptor);
-		if (validationFailure) return this.createFailedJob(input, validationFailure);
+		if (validationFailure) return this.createFailedJob(input, validationFailure, logContext);
 
 		const { ownerId, providerId, ...providerInput } = input;
 		const providerJob = await this.invoke(provider, ownerId, signal, (context) =>
 			provider.registration.submit(providerInput as MediaHostProviderSubmitInput, context),
 		);
-		if ("code" in providerJob) return this.createFailedJob(input, providerJob);
+		if ("code" in providerJob) return this.createFailedJob(input, providerJob, logContext);
+		logContext.providerJobId = providerJob.id;
 		let initial = normalizeProviderJob(providerJob);
 		if (!TERMINAL_STATUSES.has(providerJob.status) && !provider.registration.getJob) {
 			initial = failedUpdate(failure("provider-failed", "Asynchronous provider does not implement getJob"));
 		}
-		return this.jobs.create({
+		const job = this.jobs.create({
 			ownerId,
 			domain: "media",
 			operation: input.operation,
@@ -267,7 +294,9 @@ export class MediaProviderRegistry {
 							const refreshed = await this.invoke(currentProvider, ownerId, refreshSignal, (context) =>
 								currentProvider.registration.getJob!(providerJob.id, context),
 							);
-							return "code" in refreshed ? failedUpdate(refreshed) : normalizeProviderJob(refreshed);
+							const update = "code" in refreshed ? failedUpdate(refreshed) : normalizeProviderJob(refreshed);
+							this.logJobState(logContext, update);
+							return update;
 						}
 					: undefined,
 				cancel: provider.registration.cancelJob
@@ -279,21 +308,85 @@ export class MediaProviderRegistry {
 							const cancelled = await this.invoke(currentProvider, ownerId, cancelSignal, (context) =>
 								currentProvider.registration.cancelJob!(providerJob.id, context),
 							);
-							return "code" in cancelled ? failedUpdate(cancelled) : normalizeProviderJob(cancelled);
+							const update = "code" in cancelled ? failedUpdate(cancelled) : normalizeProviderJob(cancelled);
+							this.logJobState(logContext, update);
+							return update;
 						}
 					: undefined,
 			},
 		});
+		logContext.jobId = job.id;
+		this.logJobState(logContext, initial);
+		return job;
 	}
 
-	private createFailedJob(input: MediaSubmitInput, error: MediaFailure): Job {
-		return this.jobs.create({
+	private createFailedJob(input: MediaSubmitInput, error: MediaFailure, logContext: MediaJobLogContext): Job {
+		const job = this.jobs.create({
 			ownerId: input.ownerId,
 			domain: "media",
 			operation: input.operation,
 			metadata: { providerId: input.providerId },
 			...failedUpdate(error),
 		});
+		logContext.jobId = job.id;
+		this.logJobState(logContext, failedUpdate(error));
+		return job;
+	}
+
+	private createLogContext(
+		input: MediaSubmitInput,
+		descriptor: MediaProviderDescriptor | undefined,
+	): MediaJobLogContext {
+		const attemptId = randomUUID();
+		return {
+			attemptId,
+			startedAt: Date.now(),
+			fields: {
+				attemptId,
+				consumerId: input.ownerId,
+				providerId: input.providerId,
+				...(descriptor?.ownerId ? { providerOwnerId: descriptor.ownerId } : {}),
+				...(descriptor?.displayName ? { providerDisplayName: descriptor.displayName } : {}),
+				operation: input.operation,
+				inputCount: input.inputs.length,
+				...(input.operation === "generate"
+					? {
+							mediaKind: input.kind,
+							generationMode: input.mode,
+							...(input.modelId ? { modelId: input.modelId } : {}),
+							...(input.dimensions
+								? { requestedWidth: input.dimensions.width, requestedHeight: input.dimensions.height }
+								: {}),
+							...(input.aspectRatio ? { aspectRatio: input.aspectRatio } : {}),
+							...(input.resolution ? { resolution: input.resolution } : {}),
+							...(input.durationSeconds !== undefined ? { durationSeconds: input.durationSeconds } : {}),
+						}
+					: { outputKind: input.output.kind, outputMimeType: input.output.mimeType }),
+			},
+		};
+	}
+
+	private logJobState(logContext: MediaJobLogContext, update: ManagedJobUpdate): void {
+		const stateKey = [
+			update.status,
+			update.progress?.value ?? "",
+			update.artifacts?.length ?? 0,
+			update.error?.code ?? "",
+		].join(":");
+		if (stateKey === logContext.lastStateKey) return;
+		logContext.lastStateKey = stateKey;
+		const fields = {
+			...logContext.fields,
+			...(logContext.jobId ? { jobId: logContext.jobId } : {}),
+			...(logContext.providerJobId ? { providerJobId: logContext.providerJobId } : {}),
+			status: update.status,
+			...(update.progress ? { progress: update.progress.value } : {}),
+			artifactCount: update.artifacts?.length ?? 0,
+			...(TERMINAL_STATUSES.has(update.status) ? { elapsedMs: Date.now() - logContext.startedAt } : {}),
+			...(update.error ? { errorCode: update.error.code, retryable: update.error.retryable } : {}),
+		};
+		if (update.status === "failed") this.logger.warn("media job state", fields);
+		else this.logger.info("media job state", fields);
 	}
 
 	private async invoke(

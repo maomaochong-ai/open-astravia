@@ -43,6 +43,7 @@ export interface PluginServiceRequest {
 	headers?: Record<string, string>;
 	body?: unknown;
 	responseType?: "json" | "text";
+	/** Request timeout in milliseconds. The host defaults to 30 seconds and permits up to 5 minutes. */
 	timeoutMs?: number;
 }
 

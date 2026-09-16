@@ -183,6 +183,18 @@ export function registerDesktopDomainProviders(
 				return agentSettings.setExperimental(input);
 			},
 		}),
+		bindCapability(DOMAIN_AGENT_SETTINGS_CAPABILITIES.GET_IMAGE_GENERATION, {
+			execute: async (_input, context) => {
+				assertNotAborted(context.signal);
+				return agentSettings.getImageGeneration();
+			},
+		}),
+		bindCapability(DOMAIN_AGENT_SETTINGS_CAPABILITIES.SET_IMAGE_GENERATION, {
+			execute: async (input, context) => {
+				assertNotAborted(context.signal);
+				return agentSettings.setImageGeneration(input);
+			},
+		}),
 	]);
 	const generalSettingsRegistration = registry.registerOwner(DOMAIN_GENERAL_SETTINGS_PROVIDER_OWNER, [
 		bindCapability(DOMAIN_GENERAL_SETTINGS_CAPABILITIES.GET, {

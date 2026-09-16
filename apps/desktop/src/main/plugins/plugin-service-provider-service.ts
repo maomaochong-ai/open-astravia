@@ -31,6 +31,9 @@ const MAX_RESPONSE_BYTES = 16 * 1024 * 1024;
 const MAX_DATA_FILE_BYTES = 16 * 1024 * 1024;
 const DEFAULT_STARTUP_TIMEOUT_MS = 45_000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
+// Image/video generation providers may legitimately hold a request open for several minutes.
+// Keep this aligned with the plugin network and media-provider execution ceilings.
+const MAX_REQUEST_TIMEOUT_MS = 5 * 60_000;
 const STOP_GRACE_MS = 3_000;
 const TRANSPORT_READY_WAIT_MS = 15_000;
 const TRANSPORT_READY_POLL_MS = 50;
@@ -219,7 +222,7 @@ function normalizeRequest(
 	const method = request.method ?? "GET";
 	if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(method)) throw new Error("Invalid service request method");
 	const timeoutMs = request.timeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
-	if (!Number.isFinite(timeoutMs) || timeoutMs < 1_000 || timeoutMs > 120_000)
+	if (!Number.isFinite(timeoutMs) || timeoutMs < 1_000 || timeoutMs > MAX_REQUEST_TIMEOUT_MS)
 		throw new Error("Invalid service request timeout");
 	return { ...request, method, responseType: request.responseType ?? "json", timeoutMs };
 }

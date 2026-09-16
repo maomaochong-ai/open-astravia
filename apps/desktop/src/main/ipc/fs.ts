@@ -37,6 +37,7 @@ import {
 	normalizeAppshot,
 	normalizeExecutionMode,
 	normalizeExperimental,
+	normalizeImageGeneration,
 	normalizeKnowledgeBase,
 	normalizeQuickPanel,
 	normalizeShortcuts,
@@ -419,6 +420,10 @@ export function registerFsIpc(): () => void {
 				patch.experimental !== undefined
 					? normalizeExperimental({ ...current.experimental, ...patch.experimental })
 					: current.experimental,
+			imageGeneration:
+				patch.imageGeneration !== undefined
+					? normalizeImageGeneration({ ...current.imageGeneration, ...patch.imageGeneration })
+					: current.imageGeneration,
 			knowledgeBase:
 				patch.knowledgeBase !== undefined
 					? normalizeKnowledgeBase({ ...current.knowledgeBase, ...patch.knowledgeBase })

@@ -7,6 +7,8 @@ export interface PluginImageRef {
 	id: string;
 	url: string;
 	mimeType?: string;
+	/** Provider used for this generation; optional for images created before provenance was recorded. */
+	providerId?: string;
 	/**
 	 * The edit-lineage root id this image belongs to (base image + all its edits
 	 * share one rootId). Lets the host dedup per-message previews — only the

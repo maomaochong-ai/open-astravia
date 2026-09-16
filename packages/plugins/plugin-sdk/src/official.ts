@@ -19,6 +19,16 @@ export interface PluginOfficialExperimentalSettings {
 	agentSkills: boolean;
 }
 
+export interface PluginOfficialImageGenerationSettings {
+	textToImageProviderId?: string;
+	imageToImageProviderId?: string;
+}
+
+export type PluginOfficialImageGenerationSettingsUpdate = {
+	textToImageProviderId?: string | null;
+	imageToImageProviderId?: string | null;
+};
+
 export interface PluginOfficialDownloadItem {
 	id: string;
 	url: string;
@@ -436,6 +446,10 @@ export interface PluginOfficialApi {
 	agent: {
 		getExperimental(): Promise<PluginOfficialExperimentalSettings>;
 		setExperimental(input: Partial<PluginOfficialExperimentalSettings>): Promise<PluginOfficialExperimentalSettings>;
+		getImageGeneration(): Promise<PluginOfficialImageGenerationSettings>;
+		setImageGeneration(
+			input: PluginOfficialImageGenerationSettingsUpdate,
+		): Promise<PluginOfficialImageGenerationSettings>;
 	};
 	downloads: {
 		list(): Promise<PluginOfficialDownloadItem[]>;

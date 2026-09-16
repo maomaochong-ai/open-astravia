@@ -4,6 +4,7 @@ import type {
 	PluginMediaArtifact,
 	PluginMediaGenerationMode,
 	PluginMediaInput,
+	PluginMediaProviderDescriptor,
 	PluginStoredBlobRef,
 } from "@vetta-org/plugin-sdk";
 import { PluginMediaError } from "@vetta-org/plugin-sdk";
@@ -27,6 +28,7 @@ const IMAGE_REFS_CLOSE = "</vetta-images>";
 const SCOPE_USE = ["im-claw", "conversation", "project", "cli"] as const;
 const HISTORY_TAB_ID = "history";
 const BUILTIN_VETTA_PROVIDER_ID = "desktop-app:vetta";
+const AUTO_PROVIDER_ID = "__auto__";
 
 const sizeSchema = {
 	type: "string",
@@ -132,17 +134,31 @@ function dimensionsFromSize(size: string | undefined): { width: number; height: 
 	return width > 0 && height > 0 ? { width, height } : undefined;
 }
 
-async function findProvider(ctx: PluginContext, mode: PluginMediaGenerationMode): Promise<string> {
-	const providers = (await ctx.media.listProviders()).filter((candidate) =>
-			candidate.capabilities.some(
-				(capability) =>
-					capability.operation === "generate" &&
-					capability.kind === "image" &&
-					capability.modes.includes(mode),
-			),
-		);
-	const provider =
-		providers.find((candidate) => candidate.id === BUILTIN_VETTA_PROVIDER_ID) ?? providers[0];
+function supportsMode(provider: PluginMediaProviderDescriptor, mode: PluginMediaGenerationMode): boolean {
+	return provider.capabilities.some(
+		(capability) =>
+			capability.operation === "generate" &&
+			capability.kind === "image" &&
+			capability.modes.includes(mode),
+	);
+}
+
+export function selectImageProvider(
+	providers: readonly PluginMediaProviderDescriptor[],
+	mode: PluginMediaGenerationMode,
+	preferredProviderId?: string,
+): PluginMediaProviderDescriptor {
+	const candidates = providers.filter((provider) => supportsMode(provider, mode));
+	if (preferredProviderId && preferredProviderId !== AUTO_PROVIDER_ID) {
+		const preferred = candidates.find((provider) => provider.id === preferredProviderId);
+		if (preferred) return preferred;
+		throw new PluginMediaError({
+			code: "provider-unavailable",
+			message: `The selected image provider is unavailable or does not support ${mode}: ${preferredProviderId}`,
+			retryable: false,
+		});
+	}
+	const provider = candidates.find((candidate) => candidate.id === BUILTIN_VETTA_PROVIDER_ID) ?? candidates[0];
 	if (!provider) {
 		throw new PluginMediaError({
 			code: "provider-unavailable",
@@ -150,7 +166,14 @@ async function findProvider(ctx: PluginContext, mode: PluginMediaGenerationMode)
 			retryable: false,
 		});
 	}
-	return provider.id;
+	return provider;
+}
+
+async function findProvider(ctx: PluginContext, mode: PluginMediaGenerationMode): Promise<string> {
+	const providers = await ctx.media.listProviders();
+	const settings = await ctx.official.agent.getImageGeneration();
+	const preferredProviderId = mode === "text-to-image" ? settings.textToImageProviderId : settings.imageToImageProviderId;
+	return selectImageProvider(providers, mode, preferredProviderId).id;
 }
 
 function requireImageArtifact(artifact: PluginMediaArtifact | undefined): PluginMediaArtifact {
@@ -168,11 +191,12 @@ async function generateThroughMedia(
 	ctx: PluginContext,
 	input: { prompt: string; size?: string },
 	source?: PluginMediaInput,
-): Promise<PluginStoredBlobRef> {
+): Promise<{ blob: PluginStoredBlobRef; providerId: string }> {
 	const mode = source ? "image-to-image" : "text-to-image";
+	const providerId = await findProvider(ctx, mode);
 	const submitted = await ctx.media.submit({
 		operation: "generate",
-		providerId: await findProvider(ctx, mode),
+		providerId,
 		kind: "image",
 		mode,
 		prompt: input.prompt,
@@ -188,7 +212,10 @@ async function generateThroughMedia(
 	try {
 		const saved = await ctx.artifacts.persist(artifact, { type: "plugin-blob" });
 		if (saved.type !== "plugin-blob") throw new Error("Generated image was not saved to plugin storage");
-		return { id: saved.blobId, url: saved.url, mimeType: saved.mimeType };
+		return {
+			blob: { id: saved.blobId, url: saved.url, mimeType: saved.mimeType },
+			providerId,
+		};
 	} finally {
 		await ctx.artifacts.release(artifact).catch(() => undefined);
 	}
@@ -204,14 +231,17 @@ export function registerImageTools(ctx: PluginContext, repository: ImageReposito
 		timeoutMs: 300_000,
 		scope_use: SCOPE_USE,
 		handler: async ({ session, trigger }) => {
-			let blob: PluginStoredBlobRef;
+			let generated: { blob: PluginStoredBlobRef; providerId: string };
 			try {
-				blob = await generateThroughMedia(ctx, trigger.input);
+				generated = await generateThroughMedia(ctx, trigger.input);
 			} catch (error) {
 				if (error instanceof PluginMediaError) return mediaFailure(error);
 				throw error;
 			}
-			const image = await repository.persist(blob, { sessionId: session.id });
+			const image = await repository.persist(generated.blob, {
+				providerId: generated.providerId,
+				sessionId: session.id,
+			});
 			ctx.ui.openActivityTab(HISTORY_TAB_ID);
 			return result("generated", [image]);
 		},
@@ -254,9 +284,9 @@ export function registerImageTools(ctx: PluginContext, repository: ImageReposito
 					? { kind: "image", source: { type: "workspace-file", path: input.sourceImagePath } }
 					: null;
 			if (!source) throw new Error("Image source was not found");
-			let blob: PluginStoredBlobRef;
+			let generated: { blob: PluginStoredBlobRef; providerId: string };
 			try {
-				blob = await generateThroughMedia(ctx, {
+				generated = await generateThroughMedia(ctx, {
 					prompt: input.prompt,
 					size: input.size,
 				}, source);
@@ -268,9 +298,10 @@ export function registerImageTools(ctx: PluginContext, repository: ImageReposito
 				? await repository.lineage(input.sourceImageId)
 				: [];
 			const rootId = sourceLineage[0]?.rootId;
-			const image = await repository.persist(blob, {
+			const image = await repository.persist(generated.blob, {
 				rootId,
 				parent: input.sourceImageId,
+				providerId: generated.providerId,
 				sessionId: session.id,
 			});
 			ctx.ui.openActivityTab(HISTORY_TAB_ID);

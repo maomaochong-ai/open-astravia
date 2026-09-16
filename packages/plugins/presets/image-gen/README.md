@@ -10,13 +10,13 @@
 
 ## 出图链路
 
-一律走宿主 `ctx.media` 协议，默认选择 desktop 内置的 `desktop:vetta` 图片 Provider。
+一律走宿主 `ctx.media` 协议，默认选择 desktop 内置的 `desktop-app:vetta` 图片 Provider；用户可在「设置 → Agent 配置 → 图片」分别为文生图和图生图指定 Provider，或恢复为自动选择。
 插件不感知模型、不持有任何 key，也不能指定网关路径；内置 Provider 在主进程固定调用
 `POST /api/v1/images/{generate,edit}`。模型选择、provider 形态适配（含改图协议差异）、
 尺寸白名单与按次计费都在服务端，管理员在 admin 配置；能不能出图由用户的订阅档位决定
 （ADR-0056）。
 
-**插件没有任何设置项**，`contributes.settings` 已整块移除。曾经的「自定义 API」逃生舱
+**插件没有 Provider 凭据设置项**，`contributes.settings` 已整块移除。Provider 选择由宿主 Agent 设置统一管理，Provider 自己负责凭据与模型配置。曾经的「自定义 API」逃生舱
 也一并撤掉——一旦允许自带 key，插件就得重新养一套 provider 适配，而改图形态各家不同
 （官方 multipart / 聚合站 `images[].image_url`），那套适配已经在服务端存在，客户端再养
 一份就是长期双维护。存量用户填过的 key 留在 CredentialVault 里不再被读取。

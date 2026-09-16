@@ -10,6 +10,7 @@ function createConfig(): DesktopConfig {
 		defaultExecutionMode: "full-access",
 		notificationsEnabled: true,
 		experimental: { vettaCli: false, promptPrediction: false, agentSkills: true },
+		imageGeneration: {},
 	};
 }
 
@@ -42,6 +43,33 @@ describe("AgentSettingsService", () => {
 		expect(writeConfig).toHaveBeenCalledWith({
 			...createConfig(),
 			experimental: { vettaCli: false, promptPrediction: true, agentSkills: true },
+		});
+	});
+
+	it("merges and clears image provider preferences without dropping other settings", async () => {
+		const writeConfig = vi.fn<(config: DesktopConfig) => Promise<void>>(async () => {});
+		let current: DesktopConfig = {
+			...createConfig(),
+			imageGeneration: { textToImageProviderId: "remote:images" },
+		};
+		const service = new AgentSettingsService({
+			readConfig: async () => current,
+			writeConfig: async (config) => {
+				current = config;
+				await writeConfig(config);
+			},
+		});
+
+		await expect(service.setImageGeneration({ imageToImageProviderId: "remote:edit" })).resolves.toEqual({
+			textToImageProviderId: "remote:images",
+			imageToImageProviderId: "remote:edit",
+		});
+		await expect(service.setImageGeneration({ textToImageProviderId: null })).resolves.toEqual({
+			imageToImageProviderId: "remote:edit",
+		});
+		expect(writeConfig).toHaveBeenLastCalledWith({
+			...createConfig(),
+			imageGeneration: { imageToImageProviderId: "remote:edit" },
 		});
 	});
 });
