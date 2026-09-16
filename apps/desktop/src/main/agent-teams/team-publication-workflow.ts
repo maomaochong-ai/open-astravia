@@ -48,6 +48,7 @@ export class TeamPublicationWorkflow {
 		readonly sourceMessageEntryId: string;
 		readonly assistant: AssistantMessage;
 		readonly recovered?: boolean;
+		readonly purpose?: "terminal-partial";
 	}): Promise<string> {
 		const runtimeState = input.session.memberRuntime[input.item.assignedToParticipantId];
 		if (!runtimeState) throw new Error(`Team member runtime not found: ${input.item.assignedToParticipantId}`);
@@ -61,6 +62,7 @@ export class TeamPublicationWorkflow {
 			customType: "agent-team.publication-operation.v1",
 			operationId: `publish:${input.item.id}:${input.attempt.id}`,
 			workItemId: input.item.id,
+			...(input.purpose ? { purpose: input.purpose } : {}),
 			sourceParticipantConversationId: runtimeState.sessionId,
 			sourceTurnId: input.sourceTurnId,
 			sourceMessageEntryId: input.sourceMessageEntryId,
