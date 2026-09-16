@@ -5,8 +5,8 @@ describe("createConnectedTabOutlineGeometry", () => {
 	it("creates one continuous outline around the tab and both join curves", () => {
 		expect(createConnectedTabOutlineGeometry(72)).toEqual({
 			fillPath:
-				"M 0 32 A 8 8 0 0 0 8 24 V 8 A 8 8 0 0 1 16 0 H 72 A 8 8 0 0 1 80 8 V 24 A 8 8 0 0 0 88 32 V 34 H 0 Z",
-			height: 34,
+				"M 0 32 A 8 8 0 0 0 8 24 V 8 A 8 8 0 0 1 16 0 H 72 A 8 8 0 0 1 80 8 V 24 A 8 8 0 0 0 88 32 V 33 H 0 Z",
+			height: 33,
 			offsetX: 8,
 			outlinePath: "M 0 32 A 8 8 0 0 0 8 24 V 8 A 8 8 0 0 1 16 0 H 72 A 8 8 0 0 1 80 8 V 24 A 8 8 0 0 0 88 32",
 			width: 88,

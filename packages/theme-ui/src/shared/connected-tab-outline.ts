@@ -1,7 +1,8 @@
 const TAB_HEIGHT = 32;
 const TAB_RADIUS = 8;
 const JOIN_RADIUS = 8;
-const FRAME_OVERLAP = 2;
+/** 激活页签只需向下盖住内容卡片 1px 的描边，多一分就会压到卡片内容上。 */
+const FRAME_OVERLAP = 1;
 
 export interface ConnectedTabOutlineGeometry {
 	fillPath: string;
