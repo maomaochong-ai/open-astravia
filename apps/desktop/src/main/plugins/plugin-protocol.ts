@@ -111,6 +111,7 @@ export const useActiveConversation = sdk.useActiveConversation;
 export const useConversationMessages = sdk.useConversationMessages;
 export const usePromptAttachment = sdk.usePromptAttachment;
 export const useActivityTab = sdk.useActivityTab;
+export const useSidebarState = sdk.useSidebarState;
 export const __ActivityTabContext = sdk.__ActivityTabContext;
 export const __setPluginHostBridge = sdk.__setPluginHostBridge;
 export const useTranslation = sdk.useTranslation;
