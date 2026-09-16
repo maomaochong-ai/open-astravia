@@ -167,7 +167,7 @@ describe("Runtime composition contract", () => {
 		await session.dispose();
 	});
 
-	it("reflects registry changes on the next model call without rebuilding the session", async () => {
+	it("reflects deactivation while keeping replacement tool definitions pinned to the session", async () => {
 		const conversations = await createTemporaryDirectory("runtime-dynamic-tools-");
 		const commandToolName = process.platform === "win32" ? "shell" : "bash";
 		const toolLists: string[][] = [];
@@ -211,7 +211,7 @@ describe("Runtime composition contract", () => {
 		});
 		await session.prompt({ text: "third" });
 
-		expect(toolLists).toEqual([["read", commandToolName], [], [commandToolName]]);
+		expect(toolLists).toEqual([["read", commandToolName], [], []]);
 		expect(session.readState().activeToolNames).toEqual([commandToolName]);
 		await session.dispose();
 	});
