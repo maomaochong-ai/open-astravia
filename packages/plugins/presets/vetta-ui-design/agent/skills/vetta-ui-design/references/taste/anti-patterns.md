@@ -108,9 +108,11 @@ chip, a big number, a green "+12.5 %" and a sparkline. → Only real, decision-
 relevant metrics; vary emphasis (one lead figure, the rest quieter inline);
 drop the icon chips.
 
-**Everything is a card.** Every panel boxed with the same border, radius and
-shadow, on a grey page. → Sections separated by space and hairlines; cards only
-for things that are objects (a project, an order).
+**Everything is boxed.** Every panel carrying the same border, radius and shadow
+on a grey page; a divider under every heading; a border on the nav and the
+sidebar. → Space, the shared gutter and surface tone carry the structure; cards
+for things that are objects (a project, an order), and lines where they answer
+`whitespace.md`'s question.
 
 **Lists as card grids.** Twelve records rendered as twelve cards. → A table or a
 dense list with aligned columns when people compare or scan records.
