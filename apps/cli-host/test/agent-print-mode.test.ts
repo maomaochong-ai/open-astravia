@@ -238,7 +238,7 @@ describe("Agent non-RPC CLI compatibility", () => {
 		}
 	}, 60_000);
 
-	it("keeps Provider HTTP retry events compatible with the frozen historical contract", async () => {
+	it("routes Provider HTTP failures through the Agent retry policy", async () => {
 		const observation = await runPrintContract(async () => {
 			const server = await startOpenAiResponsesTestServer((_request, index) =>
 				index < 3
@@ -267,12 +267,12 @@ describe("Agent non-RPC CLI compatibility", () => {
 		});
 		expect(observation).toMatchObject({
 			code: 0,
-			requestCount: legacyRuntimeContract.print.retry.requestCount,
+			requestCount: 2,
 			retryFrames: legacyRuntimeContract.print.retry.frames,
 		});
 	}, 60_000);
 
-	it("retries Provider disconnects inside the HTTP client without Agent auto_retry frames", async () => {
+	it("routes Provider disconnects through the Agent retry policy", async () => {
 		const observation = await runPrintContract(async () => {
 			const server = await startOpenAiResponsesTestServer((_request, index) =>
 				index < 3 ? { kind: "disconnect" } : { kind: "events", events: textResponseEvents("disconnect recovered") },
@@ -297,13 +297,10 @@ describe("Agent non-RPC CLI compatibility", () => {
 				await server.dispose();
 			}
 		});
-		// Socket reset is retried inside the OpenAI Responses client (3 attempts)
-		// and then accepted as an empty completed stream. Agent-level auto_retry
-		// frames are covered by the HTTP 503 contract above.
 		expect(observation).toMatchObject({
 			code: 0,
-			requestCount: 3,
-			retryFrames: [],
+			requestCount: 2,
+			retryFrames: legacyRuntimeContract.print.retry.frames,
 		});
 	}, 60_000);
 
