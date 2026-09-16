@@ -564,7 +564,13 @@ it("会话恢复期间立即接受发送并在订阅就绪后派发到目标 Run
 		expect.objectContaining({ text: "send while restoring" }),
 		undefined,
 	);
-	expect(visibleTexts(store.get(chatMessagesAtom))).toEqual(["history", "send while restoring"]);
+	const messagesAfterDispatch = store.get(chatMessagesAtom);
+	expect(visibleTexts(messagesAfterDispatch)).toEqual(["history", "send while restoring", ""]);
+	expect(messagesAfterDispatch.at(-1)).toMatchObject({
+		kind: "agent",
+		role: "assistant",
+		phase: "streaming",
+	});
 
 	pendingPrompt?.resolve(undefined);
 	await sending;
