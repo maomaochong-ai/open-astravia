@@ -64,6 +64,8 @@ node "{workbenchRoot}/agent/cli/vetta-plugin-cli.js" docs --json
 | 用户意图 | 必读 |
 | --- | --- |
 | 侧栏面板 / 活动 Tab | `ui-slots.md`（activity-tab） |
+| 整页工作区视图 / 接管宿主页头 | `ui-slots.md`（workspace-view + setWorkspaceViewHeader） |
+| 视图要随宿主侧边栏收缩自适应 | `ui-slots.md`（useSidebarState；沉浸式页头尤其需要） |
 | 输入栏按钮 | `ui-slots.md`（input-action） |
 | 新会话页摆素材 / 选完智能体的第一屏 | `ui-slots.md`（new-session-context） |
 | 插件自带人设 / 团队 | `manifest.md`（贡献智能体与团队） |
