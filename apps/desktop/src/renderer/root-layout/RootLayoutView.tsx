@@ -75,6 +75,12 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 			<PerfSendProfiler id="Root(total)">
 			<AppFrame
 				className={cn("app-frame", appFrameSurface?.rootClassName)}
+				// 侧边栏形态挂到整帧根节点上，让任意深度的子树（含插件视图）只靠 CSS 就能自适应，
+				// 不必订阅状态再重渲染。始终写死 true/false，选择器才好写。
+				// 与 ctx.ui.getSidebarState() / useSidebarState() 同源，见 shared/app-shell/sidebar-state.ts。
+				data-sidebar-collapsed={sidebarCollapsed ? "true" : "false"}
+				data-sidebar-narrow={narrow ? "true" : "false"}
+				data-sidebar-visible={!narrow && !sidebarCollapsed ? "true" : "false"}
 				decoration={<ThemedAppBackground />}
 				overlay={<ThemeSurface className="z-20" slot="app.frameOverlay" />}
 			>
