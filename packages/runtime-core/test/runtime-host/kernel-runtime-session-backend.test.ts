@@ -485,13 +485,17 @@ describe("KernelRuntimeSessionBackend", () => {
 			timestamp: 10,
 		});
 
-		expect(events.at(-1)).toMatchObject({
+		expect(events.find((event) => event.type === "compaction.end")).toMatchObject({
 			type: "compaction.end",
 			success: true,
 			tokensBefore: 91_000,
 			contextTokens: 24_000,
 			contextPercent: 24,
 			contextWindow: 100_000,
+		});
+		expect(events.at(-1)).toMatchObject({
+			type: "session.context.state",
+			state: { usage: { tokens: 24_000, percent: 24, contextWindow: 100_000 } },
 		});
 	});
 
@@ -515,7 +519,12 @@ describe("KernelRuntimeSessionBackend", () => {
 				queueing: false,
 			},
 		]);
-		expect(events.map((event) => event.type)).toEqual(["session.lifecycle", "usage.update", "session.lifecycle"]);
+		expect(events.map((event) => event.type)).toEqual([
+			"session.context.state",
+			"session.lifecycle",
+			"usage.update",
+			"session.lifecycle",
+		]);
 		expect(await session.getState()).toMatchObject({
 			sessionId: "session-1",
 			state: "idle",
@@ -618,7 +627,12 @@ describe("KernelRuntimeSessionBackend", () => {
 			isStreaming: false,
 			messageCount: 2,
 		});
-		expect(events.map((event) => event.type)).toEqual(["session.lifecycle", "usage.update", "session.lifecycle"]);
+		expect(events.map((event) => event.type)).toEqual([
+			"session.context.state",
+			"session.lifecycle",
+			"usage.update",
+			"session.lifecycle",
+		]);
 		expect(assembly.historyReader.readHistory()).toMatchObject([
 			{ type: "message", entryId: "event-2", parentId: null, message: { role: "user" } },
 			{ type: "message", entryId: "event-3", parentId: "event-2", message: { role: "assistant" } },
@@ -781,7 +795,7 @@ describe("KernelRuntimeSessionBackend", () => {
 			type: "turn.failed",
 			error: { code: KERNEL_ERROR_CODES.TURN_INTERRUPTED },
 		});
-		expect(events.map((event) => event.type)).toEqual(["error", "session.lifecycle"]);
+		expect(events.map((event) => event.type)).toEqual(["error", "session.lifecycle", "session.context.state"]);
 		expect(events[0]).toMatchObject({
 			type: "error",
 			error: { code: KERNEL_ERROR_CODES.TURN_INTERRUPTED },
@@ -834,8 +848,9 @@ describe("KernelRuntimeSessionBackend", () => {
 			tokensBefore: 120,
 			details: { source: "test" },
 		});
-		expect(events).toHaveLength(eventCountBeforeCompaction + 1);
-		expect(events.at(-1)).toMatchObject({ type: "compaction.end", success: true, reason: "manual" });
+		expect(events).toHaveLength(eventCountBeforeCompaction + 2);
+		expect(events.at(-2)).toMatchObject({ type: "compaction.end", success: true, reason: "manual" });
+		expect(events.at(-1)).toMatchObject({ type: "session.context.state" });
 		expect(session.readHistory().at(-1)).toMatchObject({
 			type: "compaction",
 			summary: "manual summary",
