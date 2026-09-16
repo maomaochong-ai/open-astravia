@@ -34,11 +34,6 @@ pairing (`typography.md`).
 **Italic headings.** An italic headline, or one italicised word inside an
 upright one. → Upright headings; weight or accent for emphasis.
 
-**Lines doing the layout's job.** Every group boxed, a divider under every
-heading, a rule between every row, a border on the nav and the sidebar. → Space,
-alignment and surface tone carry the structure; keep only the lines
-`whitespace.md` calls earned.
-
 **Card-in-card.** A bordered panel holding bordered cards holding bordered chips.
 → One containment layer. Usually remove the outer one.
 
@@ -113,9 +108,11 @@ chip, a big number, a green "+12.5 %" and a sparkline. → Only real, decision-
 relevant metrics; vary emphasis (one lead figure, the rest quieter inline);
 drop the icon chips.
 
-**Everything is a card.** Every panel boxed with the same border, radius and
-shadow, on a grey page. → Sections separated by space and the shared gutter;
-cards only for things that are objects (a project, an order).
+**Everything is boxed.** Every panel carrying the same border, radius and shadow
+on a grey page; a divider under every heading; a border on the nav and the
+sidebar. → Space, the shared gutter and surface tone carry the structure; cards
+for things that are objects (a project, an order), and lines where they answer
+`whitespace.md`'s question.
 
 **Lists as card grids.** Twelve records rendered as twelve cards. → A table or a
 dense list with aligned columns when people compare or scan records.

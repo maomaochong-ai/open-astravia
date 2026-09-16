@@ -90,9 +90,8 @@ within a second. Look for each in the shot; the fixes are in
   amber accent.
 - Display and body in the same face; an italic headline or italic emphasis word.
 - Purple/blue gradient surfaces, gradient text, blurred blobs, decorative glass.
-- Card-in-card, side-stripe cards, colored glow shadows, every section boxed.
-- Borders and dividers where space would do: count the drawn lines and boxes and
-  name what each does that space could not (`taste/whitespace.md`).
+- Card-in-card, side-stripe cards, colored glow shadows, or lines and boxes doing
+  what space would do (`taste/whitespace.md`).
 - Three equal icon-over-title cards; four identical KPI tiles with sparklines.
 - Everything on one centre axis; every gap and padding the same size.
 - Emoji standing in for icons; more than one icon set.

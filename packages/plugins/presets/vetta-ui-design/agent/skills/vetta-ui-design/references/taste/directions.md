@@ -154,9 +154,9 @@ differ on at least one of: surface lightness band (dark / mid / light), display
 style (serif / grotesk / rounded / mono), accent hue family (warm / cool /
 neutral). Two designs that share all three read as one template recoloured.
 
-All four families sit on top of the default in `whitespace.md`: the shape notes
-below say how a line looks *when it is earned*, never that the family boxes its
-sections.
+The shape notes in each family say what a line looks like *when the design calls
+for one* (`whitespace.md`) — none of them means the family boxes its sections by
+default.
 
 ## Product types
 

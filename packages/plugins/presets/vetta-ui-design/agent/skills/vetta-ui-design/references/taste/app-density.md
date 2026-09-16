@@ -19,9 +19,9 @@ A screen where every panel has the same weight has no answer to that question.
   tables, 16–24 px between groups. Empty middle areas and 48 px card padding on
   a 1440 frame read as a template stretched to fit.
 - Use one gutter for the whole frame and align every region to it. The gutter is
-  what separates the regions — not a border, and not a card per section
-  (`whitespace.md`). No `border-b` on the page header, no `border-r` on the
-  sidebar: tone them with `surface-raised` if they need to sit apart at all.
+  usually what separates the regions, so a border or a card around a section is a
+  third choice that needs a reason (`whitespace.md`) — the page header and the
+  sidebar rarely have one; tone them with `surface-raised` instead.
 - Prefer **space, alignment and tone** to boxes. A card is for an object the user
   acts on (a project, an order, a document) — not a wrapper for every section.
 - Compare-and-scan data is a table, and the table is where the frame's hairlines
