@@ -270,6 +270,8 @@ export interface TeamPublicationOperationRecord {
 	readonly customType: "agent-team.publication-operation.v1";
 	readonly operationId: string;
 	readonly workItemId: string;
+	/** Omitted by legacy records, where publication always represented a successful result. */
+	readonly purpose?: "result" | "terminal-partial";
 	readonly sourceParticipantConversationId: string;
 	readonly sourceTurnId: string;
 	readonly sourceMessageEntryId: string;
@@ -525,6 +527,7 @@ export function isTeamPublicationOperationRecord(value: unknown): value is TeamP
 		value.customType === "agent-team.publication-operation.v1" &&
 		isNonEmptyString(value.operationId) &&
 		isNonEmptyString(value.workItemId) &&
+		(value.purpose === undefined || value.purpose === "result" || value.purpose === "terminal-partial") &&
 		isNonEmptyString(value.sourceParticipantConversationId) &&
 		isNonEmptyString(value.sourceTurnId) &&
 		isNonEmptyString(value.sourceMessageEntryId) &&

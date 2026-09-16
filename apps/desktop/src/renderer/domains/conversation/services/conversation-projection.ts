@@ -117,6 +117,8 @@ export function projectConversationAgentMessage(input: {
 	readonly executions?: readonly ConversationToolExecutionProjection[];
 }): ChatConversationItem {
 	const { message, messageId, entryId, turnId, authorId, timestamp, executions = [] } = input;
+	const phase = message.stopReason === "aborted" ? "aborted" : message.stopReason === "error" ? "failed" : "completed";
+	const toolStatus = phase === "aborted" ? "cancelled" : phase === "failed" ? "error" : "pending";
 	let items: ChatConversationItem[] = [
 		createConversationAgentMessage({
 			id: messageId,
@@ -124,12 +126,9 @@ export function projectConversationAgentMessage(input: {
 			turnId: turnId ?? messageId,
 			authorId: authorId,
 			timestamp: timestamp ?? message.timestamp,
+			phase,
 			text: message.content.flatMap((part) => (part.type === "text" ? [part.text] : [])).join(""),
-			blocks: projectAssistantMessageBlocks(
-				message,
-				messageId,
-				message.stopReason === "aborted" ? "cancelled" : "pending",
-			),
+			blocks: projectAssistantMessageBlocks(message, messageId, toolStatus),
 		}),
 	];
 	for (const execution of executions.filter((item) => item.messageId === messageId)) {

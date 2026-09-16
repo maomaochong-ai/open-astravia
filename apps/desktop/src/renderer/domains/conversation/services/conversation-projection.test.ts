@@ -54,6 +54,28 @@ describe("ConversationProjection", () => {
 		});
 	});
 
+	it("projects a failed persisted assistant and settles unfinished tools as errors", () => {
+		const message = {
+			...({ role: "assistant" } as AssistantMessage),
+			stopReason: "error",
+			content: [
+				{ type: "text", text: "partial" },
+				{ type: "toolCall", id: "call-1", name: "read", arguments: { path: "README.md" } },
+			],
+		} as AssistantMessage;
+
+		const projected = projectConversationAgentMessage({ message, messageId: "failed-message" });
+
+		expect(projected).toMatchObject({
+			kind: "agent",
+			phase: "failed",
+			text: "partial",
+			blocks: expect.arrayContaining([
+				expect.objectContaining({ type: "tool_call", toolCallId: "call-1", status: "error" }),
+			]),
+		});
+	});
+
 	it("keeps interleaved thinking, text, and tool events in wire order", () => {
 		const projection = new ConversationProjection();
 		const partial = {

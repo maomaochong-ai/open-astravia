@@ -296,6 +296,20 @@ export function reduceTeamStreamState(state: TeamStreamState, event: DesktopTeam
 				},
 			};
 		}
+		if (event.reason === "failed" || event.reason === "waiting") {
+			return {
+				...state,
+				[event.messageId]: {
+					...current,
+					sequence: event.sequence,
+					message: {
+						...settlePendingToolCalls(current.message, "error"),
+						phase: event.reason,
+						endedAt: event.timestamp,
+					},
+				},
+			};
+		}
 		const next = { ...state };
 		delete next[event.messageId];
 		return next;
@@ -393,9 +407,7 @@ export function projectTeamConversationTimeline({
 		projectMemberConversation(conversation.memberId, conversation.history),
 	);
 	const latestProjectedMemberItem = projectedMemberItems.at(-1);
-	const liveMemberTurns = Object.values(streams).filter(
-		(turn) => turn.message.phase === "streaming" || turn.message.phase === "aborted",
-	);
+	const liveMemberTurns = Object.values(streams).filter((turn) => isVisibleTeamStreamPhase(turn.message.phase));
 	const consumedLiveMessageIds = new Set<string>();
 	// User input is persisted in the coordination conversation before member
 	// turns are scheduled. Keep it as the canonical timeline item even when
@@ -607,7 +619,7 @@ export function projectTeamConversationTimeline({
 	for (const turn of Object.values(streams).sort(
 		(left, right) => (left.message.startedAt ?? 0) - (right.message.startedAt ?? 0),
 	)) {
-		if (turn.message.phase !== "streaming" && turn.message.phase !== "aborted") continue;
+		if (!isVisibleTeamStreamPhase(turn.message.phase)) continue;
 		if (consumedLiveMessageIds.has(turn.message.id)) continue;
 		if (memberId && turn.message.authorId !== memberId) continue;
 		if (
@@ -630,7 +642,7 @@ export function projectTeamConversationTimeline({
 		);
 		if (persistedIndex >= 0) {
 			const persisted = items[persistedIndex];
-			if (persisted?.kind === "agent" && turn.message.phase === "aborted") {
+			if (persisted?.kind === "agent" && turn.message.phase !== "streaming") {
 				items[persistedIndex] = decorateLeaderMessage(
 					mergeTeamAgentMessage(persisted, turn.message, streamRenderKey),
 				);
@@ -829,9 +841,11 @@ function mergeTeamAgentTurns(items: readonly ConversationAgentMessageViewModel[]
 		const withTerminalTools =
 			phase === "aborted"
 				? settlePendingToolCalls({ ...item, blocks }, "cancelled").blocks
-				: phase === "completed"
-					? settlePendingToolCalls({ ...item, blocks }, "success").blocks
-					: blocks;
+				: phase === "failed" || phase === "waiting"
+					? settlePendingToolCalls({ ...item, blocks }, "error").blocks
+					: phase === "completed"
+						? settlePendingToolCalls({ ...item, blocks }, "success").blocks
+						: blocks;
 		merged[existingIndex] = {
 			...existing,
 			phase,
@@ -906,7 +920,13 @@ function mergeTeamAgentMessage(
 		...(live.endedAt !== undefined ? { endedAt: live.endedAt } : {}),
 		...(live.durationSeconds !== undefined ? { durationSeconds: live.durationSeconds } : {}),
 	};
-	return live.phase === "aborted" ? settlePendingToolCalls(merged, "cancelled") : merged;
+	if (live.phase === "aborted") return settlePendingToolCalls(merged, "cancelled");
+	if (live.phase === "failed" || live.phase === "waiting") return settlePendingToolCalls(merged, "error");
+	return merged;
+}
+
+function isVisibleTeamStreamPhase(phase: ConversationAgentMessageViewModel["phase"]): boolean {
+	return phase === "streaming" || phase === "aborted" || phase === "failed" || phase === "waiting";
 }
 
 function mergePublicAgentText(persisted: string | undefined, live: string | undefined): string | undefined {

@@ -282,6 +282,98 @@ describe("Team member concurrency", () => {
 		expect(state.workItems[0]?.state).toBe("completed");
 	});
 
+	it("backfills public assistant steps from legacy member history once", async () => {
+		const fixture = await createFixture();
+		const [leader, member] = fixture.members;
+		const coordinationId = fixture.session.coordinationRuntime!.sessionId;
+		const workItemId = `work:legacy-public:${member}`;
+		const attemptId = `attempt:${workItemId}:1`;
+		const runtimeSessionId = fixture.session.memberRuntime[member]!.sessionId;
+		const assistant = {
+			...createAssistantMessage({ api: "openai-responses", provider: "openai", model: "test" }),
+			content: [
+				{
+					type: "toolCall" as const,
+					id: "legacy-tool",
+					name: "progress",
+					arguments: { label: "恢复旧进度" },
+				},
+			],
+			stopReason: "toolUse" as const,
+		};
+		const laterAssistant = {
+			...assistant,
+			content: [
+				{
+					type: "toolCall" as const,
+					id: "later-tool",
+					name: "progress",
+					arguments: { label: "不得混入的后续进度" },
+				},
+			],
+		};
+		fixture.history.set(runtimeSessionId, [
+			{
+				type: "message",
+				entryId: "legacy-user-1",
+				message: { role: "user", content: [{ type: "text", text: "legacy public trail" }], timestamp: 1 },
+			},
+			{ type: "message", entryId: "legacy-assistant-1", message: assistant },
+			{
+				type: "message",
+				entryId: "later-user",
+				message: { role: "user", content: [{ type: "text", text: "later work" }], timestamp: 3 },
+			},
+			{ type: "message", entryId: "later-assistant", message: laterAssistant },
+		]);
+		await fixture.runtime.appendSessionMetadataEntry(coordinationId, "agent-team.work-item.v1", {
+			id: workItemId,
+			requestTurnId: "legacy-public-request",
+			createdByParticipantId: leader,
+			assignedToParticipantId: member,
+			objective: "legacy public trail",
+			contextEntryIds: [],
+			state: "cancelled",
+			currentAttemptId: attemptId,
+			createdAt: 1,
+			updatedAt: 2,
+			revision: 2,
+		});
+		await fixture.runtime.appendSessionMetadataEntry(coordinationId, "agent-team.member-attempt.v1", {
+			id: attemptId,
+			workItemId,
+			participantConversationId: runtimeSessionId,
+			sourceTurnId: "legacy-source-turn",
+			attempt: 1,
+			mode: "initial",
+			state: "cancelled",
+			lastProgressAt: 2,
+		});
+
+		fixture.stopRuntime();
+		const restored = fixture.restartService();
+		await restored.read(fixture.session.id, fixture.session.coordinationRuntime!.sessionPath);
+		const first = await restored.readSnapshot(fixture.session.id);
+		const publication = (await restored.readCollaborationState(fixture.session.id)).publications[0];
+		const recovered = first.messages.filter((message) => message.id === publication?.publicMessageEntryId);
+		expect(recovered).toHaveLength(1);
+		expect(recovered[0]).toMatchObject({
+			kind: "agent",
+			author: { id: member },
+			message: { content: [{ type: "toolCall", name: "progress" }] },
+		});
+		expect(JSON.stringify(recovered[0])).not.toContain("不得混入的后续进度");
+
+		await restored.read(fixture.session.id, fixture.session.coordinationRuntime!.sessionPath);
+		const second = await restored.readSnapshot(fixture.session.id);
+		expect(second.messages.filter((message) => message.id === publication?.publicMessageEntryId)).toHaveLength(1);
+		expect((await restored.readCollaborationState(fixture.session.id)).publications[0]).toMatchObject({
+			workItemId,
+			purpose: "terminal-partial",
+			state: "completed",
+		});
+	});
+
 	it("recovers a pending question delivery after restart", async () => {
 		const fixture = await createFixture();
 		const [leader, member] = fixture.members;
@@ -749,6 +841,112 @@ describe("Team member concurrency", () => {
 			expect.arrayContaining([
 				expect.objectContaining({ type: "text", text: "I started the analysis" }),
 				expect.objectContaining({ type: "toolCall", id: "tool-1" }),
+			]),
+		);
+	});
+
+	it("keeps a leader/member partial assistant message and tool call after the attempt fails", async () => {
+		const fixture = await createFixture();
+		const [member] = fixture.members;
+		const turn = fixture.turn(member, "partial before failure");
+		turn.partial = {
+			...createAssistantMessage({ api: "openai-responses", provider: "openai", model: "test" }),
+			stopReason: "error",
+			content: [
+				{ type: "thinking", thinking: "private reasoning" },
+				{ type: "text", text: "I started the analysis" },
+				{ type: "toolCall", id: "tool-1", name: "read", arguments: { path: "README.md" } },
+			],
+		};
+		turn.failure = {
+			code: "provider_invalid_request",
+			message: "provider rejected the request",
+			retryable: false,
+			origin: "provider",
+		};
+		const send = fixture.service.send(fixture.session.id, {
+			requestId: "partial-failure",
+			text: "partial before failure",
+			targetMemberIds: [member],
+		});
+		await turn.started.promise;
+		turn.finish.resolve();
+		await expect(send).rejects.toMatchObject({ message: "provider rejected the request" });
+
+		const collaboration = await fixture.service.readCollaborationState(fixture.session.id);
+		expect(collaboration.workItems[0]?.state).toBe("failed");
+		expect(collaboration.attempts[0]?.state).toBe("non-retryable-failure");
+		const coordinationId = fixture.session.coordinationRuntime!.sessionId;
+		const publicMessages = fixture.conversations
+			.get(coordinationId)!
+			.entries.filter((entry) => entry.type === "message" && entry.kind === "agent");
+		expect(publicMessages).toHaveLength(1);
+		expect(publicMessages[0]).toMatchObject({
+			message: expect.objectContaining({
+				stopReason: "error",
+				content: expect.arrayContaining([
+					expect.objectContaining({ type: "text", text: "I started the analysis" }),
+					expect.objectContaining({ type: "toolCall", id: "tool-1" }),
+				]),
+			}),
+		});
+		expect(publicMessages[0]?.message.content).not.toEqual(
+			expect.arrayContaining([expect.objectContaining({ type: "thinking" })]),
+		);
+
+		fixture.stopRuntime();
+		const restored = fixture.restartService();
+		await restored.read(fixture.session.id, fixture.session.coordinationRuntime!.sessionPath);
+		const snapshot = await restored.readSnapshot(fixture.session.id);
+		expect(snapshot.messages.filter((message) => message.kind === "agent")).toHaveLength(1);
+		expect(snapshot.messages.find((message) => message.kind === "agent")?.message.content).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ type: "text", text: "I started the analysis" }),
+				expect.objectContaining({ type: "toolCall", id: "tool-1" }),
+			]),
+		);
+	});
+
+	it("recovers a failed attempt partial publication without completing the work item", async () => {
+		const fixture = await createFixture();
+		const [member] = fixture.members;
+		const turn = fixture.turn(member, "failed publication before crash");
+		turn.partial = {
+			...createAssistantMessage({ api: "openai-responses", provider: "openai", model: "test" }),
+			stopReason: "error",
+			content: [{ type: "text", text: "durable partial" }],
+		};
+		turn.failure = {
+			code: "provider_invalid_request",
+			message: "provider rejected the request",
+			retryable: false,
+			origin: "provider",
+		};
+		fixture.failNextPublicAppend();
+		const send = fixture.service.send(fixture.session.id, {
+			requestId: "failed-publication-before-crash",
+			text: "failed publication before crash",
+			targetMemberIds: [member],
+		});
+		await turn.started.promise;
+		turn.finish.resolve();
+		await expect(send).rejects.toMatchObject({ message: "provider rejected the request" });
+		const beforeRestart = await fixture.service.readCollaborationState(fixture.session.id);
+		expect(beforeRestart.workItems[0]?.state).toBe("failed");
+		expect(beforeRestart.publications[0]).toMatchObject({ purpose: "terminal-partial", state: "prepared" });
+
+		const restored = fixture.restartService();
+		await restored.read(fixture.session.id, fixture.session.coordinationRuntime!.sessionPath);
+		const state = await restored.readCollaborationState(fixture.session.id);
+		expect(state.workItems[0]?.state).toBe("failed");
+		expect(state.attempts[0]?.state).toBe("non-retryable-failure");
+		expect(state.publications[0]).toMatchObject({ purpose: "terminal-partial", state: "completed" });
+		expect((await restored.readSnapshot(fixture.session.id)).messages).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					kind: "agent",
+					message: expect.objectContaining({ content: [{ type: "text", text: "durable partial" }] }),
+				}),
 			]),
 		);
 	});
@@ -1758,6 +1956,7 @@ async function createFixture(extensions?: AgentTeamExtensionRegistry) {
 		members,
 		saved,
 		conversations,
+		history,
 		running,
 		sessionConfigs,
 		pinnedContexts,

@@ -5,6 +5,7 @@ import {
 	classifyTeamExecutionIssue,
 	filterTeamMemberActiveToolNames,
 	isTeamMessageDelivery,
+	isTeamPublicationOperationRecord,
 	matchesTeamExternalConditionChange,
 	type TeamExecutionIssue,
 	type TeamWorkItem,
@@ -244,6 +245,23 @@ describe("Agent Team collaboration contracts", () => {
 		expect(() => transitionTeamWorkItem(workItem("completed"), { state: "running", updatedAt: 2 })).toThrow(
 			"completed -> running",
 		);
+	});
+
+	it("accepts publication purpose while keeping legacy publication records readable", () => {
+		const publication = {
+			customType: "agent-team.publication-operation.v1",
+			operationId: "publish:work:attempt",
+			workItemId: "work",
+			sourceParticipantConversationId: "member-conversation",
+			sourceTurnId: "member-turn",
+			sourceMessageEntryId: "member-message",
+			state: "prepared",
+			generation: 1,
+		} as const;
+
+		expect(isTeamPublicationOperationRecord(publication)).toBe(true);
+		expect(isTeamPublicationOperationRecord({ ...publication, purpose: "terminal-partial" })).toBe(true);
+		expect(isTeamPublicationOperationRecord({ ...publication, purpose: "unknown" })).toBe(false);
 	});
 
 	it.each<{

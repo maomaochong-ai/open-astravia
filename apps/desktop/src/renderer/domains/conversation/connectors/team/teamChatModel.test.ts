@@ -649,6 +649,56 @@ describe("team chat stream state", () => {
 		expect(items).toEqual([expect.objectContaining({ kind: "agent", phase: "aborted", text: "partial" })]);
 	});
 
+	it("keeps partial leader output visible after the Team turn fails", () => {
+		const toolStart: DesktopTeamSessionStreamEvent = {
+			type: "desktop.team-tool-execution",
+			conversationId: session.id,
+			messageId: "turn",
+			turnId: "request",
+			author: { kind: "agent", id: "leader" },
+			sequence: 2,
+			timestamp: 2,
+			event: {
+				type: "start",
+				toolCallId: "failed-tool",
+				toolName: "read",
+				args: { path: "README.md" },
+				startedAt: 2,
+			},
+		};
+		const streaming = reduceTeamStreamState(reduceTeamStreamState({}, streamEvent("turn", 1, "partial")), toolStart);
+		const streams = reduceTeamStreamState(streaming, {
+			type: "conversation.agent-message-discard",
+			conversationId: session.id,
+			messageId: "turn",
+			turnId: "request",
+			author: { kind: "agent", id: "leader" },
+			sequence: 3,
+			reason: "failed",
+			timestamp: 3,
+		});
+
+		expect(streams.turn?.message).toMatchObject({
+			phase: "failed",
+			text: "partial",
+			endedAt: 3,
+			blocks: expect.arrayContaining([
+				expect.objectContaining({ type: "tool_call", toolCallId: "failed-tool", status: "error" }),
+			]),
+		});
+		const items = projectTeamConversationTimeline({
+			snapshot: snapshot(),
+			pending: undefined,
+			streams,
+			members: [member],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+		expect(items).toEqual([expect.objectContaining({ kind: "agent", phase: "failed", text: "partial" })]);
+
+		const retry = reduceTeamStreamState(streams, streamEvent("turn", 4, "retry"));
+		expect(retry.turn?.message).toMatchObject({ phase: "streaming", text: "partialretry" });
+	});
+
 	it("keeps a completed turn closed when a late stream event arrives", () => {
 		const completed = reduceTeamStreamState(reduceTeamStreamState({}, streamEvent("turn", 1, "done")), {
 			type: "conversation.agent-message-discard",

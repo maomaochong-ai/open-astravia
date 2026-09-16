@@ -340,6 +340,14 @@ export class TeamMemberAttemptRunner {
 				terminal,
 				cancelled ? partialMessageId : undefined,
 			);
+			await this.publishTerminalPartial({
+				session: configuredSession,
+				item: collaboration.workItem,
+				attempt: { ...collaboration.attempt, ...terminal },
+				runtimeSessionId: runtimeState.sessionId,
+				sourceTurnId,
+				previousEntryIds,
+			});
 			const recoverable =
 				terminal.state === "waiting-retry" ||
 				terminal.state === "interrupted" ||
@@ -388,12 +396,21 @@ export class TeamMemberAttemptRunner {
 				sourceTurnId,
 			);
 			if (this.isCancelled(configuredSession, collaboration.workItem.id, signal)) {
+				const terminal = classifyTeamAttemptTerminal({ hasPublishableMessage: false, cancelled: true });
 				await this.options.settleAttempt(
 					configuredSession,
 					collaboration.workItem,
 					collaboration.attempt,
-					classifyTeamAttemptTerminal({ hasPublishableMessage: false, cancelled: true }),
+					terminal,
 				);
+				await this.publishTerminalPartial({
+					session: configuredSession,
+					item: collaboration.workItem,
+					attempt: { ...collaboration.attempt, ...terminal },
+					runtimeSessionId: runtimeState.sessionId,
+					sourceTurnId,
+					previousEntryIds,
+				});
 				this.options.eventHub.discard(activeTurn, "aborted");
 				return this.options.sessionState.get(configuredSession.id) ?? configuredSession;
 			}
@@ -403,6 +420,14 @@ export class TeamMemberAttemptRunner {
 				...(promptFailure ? { issue: classifyTeamExecutionIssue(promptFailure) } : {}),
 			});
 			await this.options.settleAttempt(configuredSession, collaboration.workItem, collaboration.attempt, terminal);
+			await this.publishTerminalPartial({
+				session: configuredSession,
+				item: collaboration.workItem,
+				attempt: { ...collaboration.attempt, ...terminal },
+				runtimeSessionId: runtimeState.sessionId,
+				sourceTurnId,
+				previousEntryIds,
+			});
 			this.options.eventHub.discard(activeTurn, "failed", promptFailureMessage);
 			log.error("team member runtime returned failed outcome", {
 				teamSessionId: configuredSession.id,
@@ -430,12 +455,23 @@ export class TeamMemberAttemptRunner {
 				previousEntryIds,
 				sourceTurnId,
 			);
+			const terminal = classifyTeamAttemptTerminal({ hasPublishableMessage: false, cancelled: false });
 			await this.options.settleAttempt(
 				configuredSession,
 				collaboration.workItem,
 				collaboration.attempt,
-				classifyTeamAttemptTerminal({ hasPublishableMessage: false, cancelled: false }),
+				terminal,
 			);
+			if (assistant.stopReason === "error" || assistant.stopReason === "aborted") {
+				await this.publishTerminalPartial({
+					session: configuredSession,
+					item: collaboration.workItem,
+					attempt: { ...collaboration.attempt, ...terminal },
+					runtimeSessionId: runtimeState.sessionId,
+					sourceTurnId,
+					previousEntryIds,
+				});
+			}
 			this.options.eventHub.discard(activeTurn, "waiting");
 			return this.options.sessionState.get(configuredSession.id) ?? configuredSession;
 		}
@@ -505,6 +541,39 @@ export class TeamMemberAttemptRunner {
 		return this.options.collaborationStore
 			.read(session)
 			.workItems.some((item) => item.id === workItemId && item.state === "cancelled");
+	}
+
+	private async publishTerminalPartial(input: {
+		readonly session: TeamSessionDocument;
+		readonly item: TeamWorkItem;
+		readonly attempt: TeamMemberTurnAttempt;
+		readonly runtimeSessionId: string;
+		readonly sourceTurnId: string;
+		readonly previousEntryIds: ReadonlySet<string>;
+	}): Promise<void> {
+		try {
+			const history = this.options.runtime().getFullHistory(input.runtimeSessionId);
+			const result = findTeamAttemptResult(history, input.previousEntryIds);
+			if (!result) return;
+			const assistant = publicAttemptAssistantMessage(history, input.previousEntryIds, result.message);
+			if (!hasPublicAssistantContent(assistant)) return;
+			await this.options.publicationWorkflow.publishTerminalAttempt({
+				session: input.session,
+				item: input.item,
+				attempt: input.attempt,
+				sourceTurnId: input.sourceTurnId,
+				sourceMessageEntryId: result.entryId,
+				assistant,
+			});
+		} catch (error) {
+			log.error("team terminal partial publication failed", {
+				teamSessionId: input.session.id,
+				memberId: input.item.assignedToParticipantId,
+				workItemId: input.item.id,
+				attemptId: input.attempt.id,
+				error: errorMessage(error),
+			});
+		}
 	}
 }
 
