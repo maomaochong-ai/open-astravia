@@ -8,6 +8,7 @@ export default defineConfig({
 		vettaPluginFederation({
 			name: "image_gen",
 			entry: "./src/index.tsx",
+			hostUi: true,
 		}),
 	],
 	esbuild: {

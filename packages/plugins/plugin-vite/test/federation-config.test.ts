@@ -16,6 +16,24 @@ describe("createVettaPluginFederationConfig", () => {
 		expect(shared).not.toHaveProperty("@vetta-org/theme-ui/plugin-ui");
 	});
 
+	it("does not share the optional host UI contract by default", () => {
+		const shared = readShared({ name: "default_plugin" });
+
+		expect(shared).not.toHaveProperty("@vetta-org/ui");
+		expect(shared).not.toHaveProperty("@vetta/ui");
+	});
+
+	it("shares the current host UI package only when explicitly enabled", () => {
+		const shared = readShared({ name: "host_ui_plugin", hostUi: true });
+
+		expect(shared).toHaveProperty("@vetta-org/ui", {
+			singleton: true,
+			import: false,
+			requiredVersion: "*",
+		});
+		expect(shared).not.toHaveProperty("@vetta/ui");
+	});
+
 	it("shares the host Theme UI contract only when explicitly enabled", () => {
 		const shared = readShared({ name: "theme_ui_plugin", hostThemeUi: true });
 
@@ -24,5 +42,6 @@ describe("createVettaPluginFederationConfig", () => {
 			import: false,
 			requiredVersion: "*",
 		});
+		expect(shared).not.toHaveProperty("@vetta/theme-ui/plugin-ui");
 	});
 });

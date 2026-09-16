@@ -13,7 +13,6 @@
 | `react-dom` | `devDependencies` 必须声明 | Desktop 宿主 share scope |
 | `react-dom/client` | 不单独安装；由 `react-dom` 提供 | Desktop 宿主 share scope |
 | `@vetta-org/plugin-sdk` | `devDependencies` 必须声明 | Desktop 宿主 shim/share scope |
-| `@vetta-org/ui` | 当前默认配置下必须声明 | Desktop 宿主 share scope / `vetta-host://ui` |
 
 依赖版本应与仓库其他插件保持一致。当前仓库使用 `react` / `react-dom`
 `19.1.1`，本地包使用 `workspace:*`。
@@ -25,12 +24,35 @@
   "devDependencies": {
     "@vetta-org/plugin-sdk": "workspace:*",
     "@vetta-org/plugin-vite": "workspace:*",
-    "@vetta-org/ui": "workspace:*",
     "react": "19.1.1",
     "react-dom": "19.1.1"
   }
 }
 ```
+
+## 按需共享宿主 UI primitives
+
+`@vetta-org/ui` 不是默认共享依赖。只有源码实际导入该包的插件才应同时开启
+`hostUi` 并声明本地开发依赖：
+
+```ts
+vettaPluginFederation({
+  name: "my_plugin",
+  hostUi: true,
+});
+```
+
+```json
+{
+  "devDependencies": {
+    "@vetta-org/ui": "workspace:*"
+  }
+}
+```
+
+`hostUi` 会同时配置 Module Federation shared 和 Rollup external。未使用该包的
+插件不要开启 `hostUi`，也不要声明 `@vetta-org/ui`；仅为了消除构建警告增加依赖
+会掩盖配置与源码不一致。
 
 ## 按需共享宿主 Theme UI
 
@@ -92,7 +114,7 @@ const EmptyState = <div />;
 ## 新增或修改插件时的清单
 
 1. 使用 `vettaPluginFederation()` 时，先检查上述默认共享依赖是否都在
-   `devDependencies` 中。
+   `devDependencies` 中；导入 `@vetta-org/ui` 时再同时添加 `hostUi: true` 和对应依赖。
 2. 修改依赖后在仓库根目录运行 `bun install`，只提交根 `bun.lock`。
 3. 在插件目录运行生产构建，确认日志中没有 `Shared dependency` 警告。
 4. 修改 `shared` 配置时同步检查 Desktop 宿主的 share scope 和
@@ -104,8 +126,8 @@ const EmptyState = <div />;
 
 - `react` / `react-dom` 缺失：插件通常是非 UI 入口，但仍使用了默认 Federation
   配置；补充对应开发依赖，或改用 resource-only 构建路径。
-- `@vetta-org/ui` 缺失：补充 `workspace:*` 开发依赖，并确认宿主版本提供
-  `vetta-host://ui` shim。
+- `@vetta-org/ui` 缺失：仅当源码确实导入它时开启 `hostUi`、补充 `workspace:*`
+  开发依赖，并确认宿主版本提供 `vetta-host://ui` shim；未使用时不要增加依赖。
 - `@vetta-org/theme-ui/plugin-ui` 缺失：仅在源码确实导入该入口时开启
   `hostThemeUi`，并安装基础包 `@vetta-org/theme-ui`；未使用时不要把它加入
   `shared`。

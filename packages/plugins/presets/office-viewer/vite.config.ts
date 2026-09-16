@@ -8,6 +8,7 @@ export default defineConfig({
 		vettaPluginFederation({
 			name: "office_viewer",
 			entry: "./src/index.tsx",
+			hostUi: true,
 		}),
 	],
 	esbuild: {

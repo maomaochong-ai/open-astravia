@@ -8,6 +8,7 @@ export default defineConfig({
 		vettaPluginFederation({
 			name: "plugin_workbench",
 			entry: "./src/index.tsx",
+			hostUi: true,
 		}),
 	],
 	esbuild: {

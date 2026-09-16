@@ -6,7 +6,7 @@ export default defineConfig({
 		vettaPluginFederation({
 			name: "remotion_renderer",
 			entry: "./src/index.ts",
+			hostUi: true,
 		}),
 	],
 });
-

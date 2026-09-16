@@ -8,6 +8,7 @@ export default defineConfig({
 		vettaPluginFederation({
 			name: "content_creation",
 			entry: "./src/index.tsx",
+			hostUi: true,
 		}),
 	],
 	esbuild: {
@@ -15,4 +16,3 @@ export default defineConfig({
 		jsxImportSource: "react",
 	},
 });
-

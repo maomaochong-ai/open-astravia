@@ -26,7 +26,6 @@
 		"@types/react-dom": "^19.1.1",
 		"@vetta-org/plugin-sdk": "workspace:*",
 		"@vetta-org/plugin-vite": "workspace:*",
-		"@vetta-org/ui": "workspace:*",
 		"esbuild": "^0.25.0",
 		"react": "19.1.1",
 		"react-dom": "19.1.1",

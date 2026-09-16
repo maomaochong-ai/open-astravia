@@ -8,6 +8,7 @@ export default defineConfig({
 		vettaPluginFederation({
 			name: "chart_renderer",
 			entry: "./src/index.tsx",
+			hostUi: true,
 		}),
 	],
 	esbuild: {

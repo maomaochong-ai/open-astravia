@@ -18,7 +18,6 @@
 		"@types/react-dom": "19.1.1",
 		"@vetta-org/plugin-sdk": "workspace:*",
 		"@vetta-org/plugin-vite": "workspace:*",
-		"@vetta-org/ui": "workspace:*",
 		"react": "19.1.1",
 		"react-dom": "19.1.1",
 		"tailwindcss": "^4.1.12",

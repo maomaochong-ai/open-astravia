@@ -2,6 +2,12 @@
 
 All notable changes to `@vetta-org/plugin-vite` are documented in this file.
 
+## [Unreleased]
+
+### Fixed
+
+- Make the host design-system primitives explicitly opt-in through `hostUi: true`, so plugins that do not import `@vetta-org/ui` no longer need to install it. The uninstalled legacy names `@vetta/ui` and `@vetta/theme-ui/plugin-ui` are no longer default build-time shared dependencies; opted-in legacy UI source imports remain externalized to the Desktop host, and Desktop continues serving both legacy share keys for already-built plugins.
+
 ## [0.2.2] — 2026-09-14
 
 ### Fixed

@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from "node:
 import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { build } from "vite";
 import { vettaPluginFederation } from "../src/index.js";
 
@@ -13,6 +13,8 @@ const contentCreationRequire = createRequire(
 );
 const xyflowRequire = createRequire(contentCreationRequire.resolve("@xyflow/react/package.json"));
 const zustandRequire = createRequire(xyflowRequire.resolve("zustand/package.json"));
+const pluginSdkRoot = fileURLToPath(new URL("../../plugin-sdk", import.meta.url));
+const vettaUiRoot = fileURLToPath(new URL("../../../ui", import.meta.url));
 
 beforeEach(() => {
 	process.env.MFE_VITE_NO_TEST_ENV_CHECK = "true";
@@ -25,6 +27,38 @@ afterEach(async () => {
 });
 
 describe("vettaPluginFederation production build", () => {
+	it("keeps legacy UI source imports host-provided without requiring the renamed package locally", async () => {
+		const rootDir = await createLegacyUiFixture();
+		const originalCwd = process.cwd();
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+		let warningText = "";
+		process.chdir(rootDir);
+		try {
+			await build({
+				root: rootDir,
+				configFile: false,
+				logLevel: "silent",
+				plugins: vettaPluginFederation({
+					name: "legacy_ui_fixture",
+					entry: "./src/index.js",
+					hostUi: true,
+					package: false,
+				}),
+			});
+		} finally {
+			warningText = warn.mock.calls.flat().join("\n");
+			process.chdir(originalCwd);
+			warn.mockRestore();
+		}
+
+		expect(warningText).not.toContain("not installed locally");
+		const assets = await readdir(join(rootDir, "dist", "assets"));
+		const sources = await Promise.all(
+			assets.filter((file) => file.endsWith(".js")).map((file) => readFile(join(rootDir, "dist", "assets", file), "utf8")),
+		);
+		expect(sources.join("\n")).toContain("vetta-host://ui");
+	});
+
 	it(
 		"keeps transitive CommonJS React imports bound to the shared module",
 		async () => {
@@ -80,15 +114,44 @@ describe("vettaPluginFederation production build", () => {
 	);
 });
 
+async function createLegacyUiFixture(): Promise<string> {
+	const rootDir = await mkdtemp(join(fileURLToPath(new URL(".", import.meta.url)), "tmp-legacy-ui-"));
+	temporaryDirectories.push(rootDir);
+	await Promise.all([mkdir(join(rootDir, "src"), { recursive: true }), installDefaultSharedDependencies(rootDir)]);
+	await Promise.all([
+		writeFile(join(rootDir, "package.json"), JSON.stringify({ private: true, type: "module" })),
+		writeFile(
+			join(rootDir, "plugin.json"),
+			JSON.stringify({
+				id: "legacy-ui-fixture",
+				name: "Legacy UI fixture",
+				version: "0.1.0",
+				pluginApiVersion: "^2.0.0",
+				entry: "dist/mf-manifest.json",
+				moduleFederation: { remoteName: "legacy_ui_fixture", expose: "./plugin" },
+				permissions: [],
+			}),
+		),
+		writeFile(
+			join(rootDir, "src", "index.js"),
+			`import { Button } from "@vetta/ui";
+export const LegacyButton = Button;
+export default { activate() {} };
+`,
+		),
+	]);
+	return rootDir;
+}
+
 async function createCommonJsReactFixture(): Promise<string> {
 	const rootDir = await mkdtemp(join(fileURLToPath(new URL(".", import.meta.url)), "tmp-shared-react-"));
 	temporaryDirectories.push(rootDir);
 	await Promise.all([
 		mkdir(join(rootDir, "src"), { recursive: true }),
 		mkdir(join(rootDir, "node_modules"), { recursive: true }),
+		installDefaultSharedDependencies(rootDir),
 	]);
 	await Promise.all([
-		symlink(dirname(contentCreationRequire.resolve("react/package.json")), join(rootDir, "node_modules", "react"), "junction"),
 		symlink(
 			dirname(zustandRequire.resolve("use-sync-external-store/package.json")),
 			join(rootDir, "node_modules", "use-sync-external-store"),
@@ -119,4 +182,18 @@ export default { activate() {} };
 		),
 	]);
 	return rootDir;
+}
+
+async function installDefaultSharedDependencies(rootDir: string): Promise<void> {
+	await mkdir(join(rootDir, "node_modules", "@vetta-org"), { recursive: true });
+	await Promise.all([
+		symlink(dirname(contentCreationRequire.resolve("react/package.json")), join(rootDir, "node_modules", "react"), "junction"),
+		symlink(
+			dirname(contentCreationRequire.resolve("react-dom/package.json")),
+			join(rootDir, "node_modules", "react-dom"),
+			"junction",
+		),
+		symlink(pluginSdkRoot, join(rootDir, "node_modules", "@vetta-org", "plugin-sdk"), "junction"),
+		symlink(vettaUiRoot, join(rootDir, "node_modules", "@vetta-org", "ui"), "junction"),
+	]);
 }

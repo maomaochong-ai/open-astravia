@@ -8,6 +8,7 @@ export default defineConfig({
 		vettaPluginFederation({
 			name: "media_viewer",
 			entry: "./src/index.tsx",
+			hostUi: true,
 		}),
 	],
 	esbuild: {

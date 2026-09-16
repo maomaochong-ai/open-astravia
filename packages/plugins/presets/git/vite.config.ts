@@ -8,6 +8,7 @@ export default defineConfig({
 		vettaPluginFederation({
 			name: "git",
 			entry: "./src/index.tsx",
+			hostUi: true,
 		}),
 	],
 	esbuild: {
