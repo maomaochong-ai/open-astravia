@@ -1,5 +1,6 @@
 import type { ConversationParticipantViewModel } from "@shared/conversation";
 import type { ChatConversationItem } from "@shared/store/atoms";
+import type { ActivityWorkspace } from "@shared/workspace/activity-workspace";
 import type { ReactNode } from "react";
 import type { MessageListScrollModel } from "../../hooks/useMessageListScrollModel";
 import type { AssistantFoldData, BlockSegment } from "./messageBlockModel";
@@ -10,8 +11,8 @@ export type { ChatConversationItem };
 export interface MessageListProps {
 	messages: ChatConversationItem[];
 	isStreaming: boolean;
+	workspace: ActivityWorkspace;
 	sessionId?: string | null;
-	cwd?: string | null;
 	initialTargetKey?: string | null;
 	onInitialTargetHandled?: () => void;
 	pendingLabel?: string;

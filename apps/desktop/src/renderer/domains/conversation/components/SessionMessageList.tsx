@@ -57,7 +57,6 @@ export function SessionMessageList(props: MessageListProps & { onSend?: (overrid
 				<SessionSelection>
 					<MessageList
 						{...props}
-						cwd={props.cwd ?? session?.cwd ?? null}
 						initialTargetKey={pendingTarget?.entryId}
 						onInitialTargetHandled={clearPendingTarget}
 					>

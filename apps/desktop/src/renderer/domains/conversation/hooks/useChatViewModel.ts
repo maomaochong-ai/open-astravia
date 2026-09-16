@@ -166,6 +166,7 @@ export function useChatViewModel(): ChatViewModelResult {
 	return {
 		actions,
 		model: {
+			cwd: activeSessionCwd,
 			exporting,
 			exportTitle: sessionTitle ?? t("chatView.defaultSessionTitle"),
 			header,

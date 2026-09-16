@@ -63,7 +63,7 @@ describe("SessionViewerPage header composition", () => {
 		render(<SessionViewerPage />);
 		expect(captured.feed).toHaveBeenCalledWith(
 			expect.objectContaining({
-				cwd: "C:/sessions",
+				workspace: expect.objectContaining({ id: "C:/sessions", cwd: "C:/sessions" }),
 				sessionId: "C:/sessions/example.jsonl",
 				isStreaming: false,
 			}),

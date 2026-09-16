@@ -22,7 +22,7 @@ export const browserTabDefinition: ActivityTabDefinition = {
 		const { t } = useTranslation("chat");
 		const workspace = useActivityWorkspace();
 		const browserUrlMap = useAtomValue(browserUrlByWorkspaceAtom);
-		const browserUrl = getBrowserUrlForWorkspace(browserUrlMap, workspace.cwd ? workspace.id : null);
+		const browserUrl = getBrowserUrlForWorkspace(browserUrlMap, workspace.id);
 		if (!browserUrl) return null;
 		return {
 			label: t("browser.tab"),

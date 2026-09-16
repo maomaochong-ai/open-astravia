@@ -18,6 +18,7 @@ export interface ChatViewHeaderModel {
 }
 
 export interface ChatViewModel {
+	cwd: string | null;
 	exporting: boolean;
 	exportTitle: string;
 	header: ChatViewHeaderModel;

@@ -3,9 +3,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { DefaultChatView, ChatComposer, ChatError } from "./DefaultChatView";
 
+const workspace = { id: "conversation:test", cwd: null, runtimeIds: [] };
+
 vi.mock("@domains/activity-panel/components/ActivityPanel", () => ({
 	ActivityPanel: () => createElement("aside", { "data-testid": "activity-panel" }),
-	ConversationActivityPanel: () => createElement("aside", { "data-testid": "activity-panel" }),
+	CurrentScenarioActivityPanel: () => createElement("aside", { "data-testid": "activity-panel" }),
 }));
 
 vi.mock("../ChatExportHost", () => ({
@@ -15,7 +17,7 @@ vi.mock("../ChatExportHost", () => ({
 describe("DefaultChatView layout", () => {
 	it("keeps the activity panel outside the input column (drop is owned by InputBar card)", () => {
 		const html = renderToStaticMarkup(
-			<DefaultChatView messages={[]}>
+			<DefaultChatView messages={[]} workspace={workspace}>
 				<div data-testid="message-list" />
 				<ChatError>Send failed</ChatError>
 				<ChatComposer>
@@ -36,7 +38,7 @@ describe("DefaultChatView layout", () => {
 
 	it("can compose a read-only feed without mounting a composer", () => {
 		const html = renderToStaticMarkup(
-			<DefaultChatView messages={[]}>
+			<DefaultChatView messages={[]} workspace={workspace}>
 				<div data-testid="read-only-feed" />
 			</DefaultChatView>,
 		);

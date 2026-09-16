@@ -1,5 +1,6 @@
 import { DefaultChatView, ChatComposer, ChatError } from "../../components/chat-view/DefaultChatView";
 import { MessageList } from "../../components/MessageList";
+import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
 import { TeamComposerConnector } from "./TeamComposerConnector";
 import { TeamMemberRoster } from "./TeamMemberRoster";
 import type { TeamChatActions, TeamChatViewModel } from "./teamChatModel";
@@ -19,6 +20,8 @@ export function TeamChatView({
 	onBackToTeam,
 	onOpenSettings,
 }: TeamChatViewProps): JSX.Element {
+	const workspace =
+		model.workspace ?? createActivityWorkspace(`agent-team:${model.feedKey}`, null);
 	const isStreaming = model.memberViewId
 		? model.feedItems.some((item) => item.kind === "agent" && item.phase === "streaming")
 		: model.status === "sending" || model.status === "streaming" || model.status === "cancelling";
@@ -26,7 +29,8 @@ export function TeamChatView({
 	return (
 		<DefaultChatView
 			messages={[...model.feedItems]}
-			activity={model.workspace ? { workspace: model.workspace, pluginScenario: model.pluginScenario } : undefined}
+			workspace={workspace}
+			activity={{ pluginScenario: model.pluginScenario }}
 			subHeader={
 				<TeamMemberRoster
 					members={model.members}
@@ -42,7 +46,7 @@ export function TeamChatView({
 		>
 			<MessageList
 				messages={[...model.feedItems]}
-				cwd={model.workspace?.cwd}
+				workspace={workspace}
 				isStreaming={isStreaming}
 				sessionId={model.feedKey}
 				participants={model.members}

@@ -33,7 +33,7 @@ function normalizeUrl(input: string): string | null {
 }
 
 export interface BrowserPanelModel {
-	workspaceId: string | null;
+	workspaceId: string;
 	labels: BrowserPanelLabels;
 	address: string;
 	canBack: boolean;
@@ -57,7 +57,7 @@ export interface BrowserPanelModel {
 export function useBrowserPanelModel(): BrowserPanelModel {
 	const { t } = useTranslation("chat");
 	const workspace = useActivityWorkspace();
-	const workspaceId = workspace.cwd ? workspace.id : null;
+	const workspaceId = workspace.id;
 	const urlMap = useAtomValue(browserUrlByWorkspaceAtom);
 	const targetUrl = getBrowserUrlForWorkspace(urlMap, workspaceId);
 	const setWorkspaceUrl = useSetAtom(setBrowserUrlForWorkspaceAtom);
@@ -75,7 +75,7 @@ export function useBrowserPanelModel(): BrowserPanelModel {
 	// 绑定 webview 事件：导航/加载状态同步到工具栏与会话记忆。
 	useEffect(() => {
 		const el = webviewRef.current;
-		if (!el || !workspaceId) return;
+		if (!el) return;
 		const syncNav = (): void => {
 			setCanBack(el.canGoBack());
 			setCanForward(el.canGoForward());
@@ -149,7 +149,7 @@ export function useBrowserPanelModel(): BrowserPanelModel {
 	const navigate = useCallback(
 		(raw: string) => {
 			const url = normalizeUrl(raw);
-			if (!url || !workspaceId) return;
+			if (!url) return;
 			setWorkspaceUrl({ workspaceId, url });
 		},
 		[workspaceId, setWorkspaceUrl],

@@ -1,4 +1,4 @@
-import { ActivityPanel, ConversationActivityPanel } from "@domains/activity-panel/components/ActivityPanel";
+import { ActivityPanel, CurrentScenarioActivityPanel } from "@domains/activity-panel/components/ActivityPanel";
 import { cn } from "@shared/lib/utils";
 import { PerfSendProfiler } from "@shared/lib/perf-send";
 import type { ChatConversationItem } from "@shared/store/atoms";
@@ -13,13 +13,13 @@ export interface DefaultChatViewProps {
 	/** 消息流上方的常驻条（Team 的成员胶囊条就住在这里）。 */
 	readonly subHeader?: ReactNode;
 	readonly messages: ChatConversationItem[];
+	readonly workspace: ActivityWorkspace;
 	readonly rootClassName?: string;
 	readonly exportState?: {
 		readonly title: string;
 		readonly onFinished: () => void;
 	};
 	readonly activity?: {
-		readonly workspace: ActivityWorkspace;
 		readonly enablePluginTabs?: boolean;
 		readonly enabledBuiltinTabs?: readonly ActivityTabId[];
 		/** Hosts that do not drive the global scenario atom (Team) pass their own scenario. */
@@ -31,6 +31,7 @@ export function DefaultChatView({
 	children,
 	subHeader,
 	messages,
+	workspace,
 	rootClassName,
 	exportState,
 	activity,
@@ -48,13 +49,13 @@ export function DefaultChatView({
 					</div>
 					{activity ? (
 						<ActivityPanel
-							workspace={activity.workspace}
+							workspace={workspace}
 							enablePluginTabs={activity.enablePluginTabs}
 							enabledBuiltinTabs={activity.enabledBuiltinTabs}
 							pluginScenario={activity.pluginScenario}
 						/>
 					) : (
-						<ConversationActivityPanel />
+						<CurrentScenarioActivityPanel workspace={workspace} />
 					)}
 				</div>
 			</div>

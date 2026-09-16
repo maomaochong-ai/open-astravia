@@ -12,7 +12,7 @@ export { ExportMessageList };
 
 export function MessageList(props: MessageListProps): JSX.Element {
 	const model = useMessageListModel(props);
-	const markdown = useRendererMarkdownModel(props.cwd ?? null, true, props.cwd ?? props.sessionId ?? undefined);
+	const markdown = useRendererMarkdownModel(props.workspace.cwd, true, props.workspace.id);
 	const viewportPhase = useProgressiveMessageViewport(props.sessionId ?? null, props.messages.length > 0);
 	return (
 		<RendererMarkdownScope value={markdown}>

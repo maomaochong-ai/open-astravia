@@ -348,7 +348,7 @@ export function useNewSessionTeamDraft({
 			editorEnabled: true,
 			canSend: Boolean(draft.trim() || attachments.length),
 			workspace: null,
-			// 会话尚未创建，工作空间为空，面板不渲染；场景与 Team Runtime 一致。
+			// 会话尚未创建，工作空间由新会话页的活动面板适配器负责；场景与 Team Runtime 一致。
 			pluginScenario: "project",
 			activeSessionId: null,
 			executionMode,

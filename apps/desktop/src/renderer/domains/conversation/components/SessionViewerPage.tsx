@@ -23,6 +23,14 @@ export function SessionViewerPage(): JSX.Element {
 	const surface = useThemeSurface("chat.sessionViewerPage");
 	const model = useSessionViewerPageModel();
 	const setHeaderRight = useSetAtom(pageHeaderRightSlotAtom);
+	const workspace = useMemo(() => {
+		const cwd = model.kbCwd || model.imCwd || null;
+		return createActivityWorkspace(
+			cwd ?? model.path ?? (model.isKnowledge ? "knowledge:unbound" : "viewer:unbound"),
+			cwd,
+			activeRuntimeIds,
+		);
+	}, [activeRuntimeIds, model.imCwd, model.isKnowledge, model.kbCwd, model.path]);
 	const header = useMemo(
 		() => (
 			<div className="flex items-center gap-2 text-[12px] text-muted-foreground">
@@ -101,7 +109,7 @@ export function SessionViewerPage(): JSX.Element {
 			messageList={
 				<MessageList
 					messages={model.messages}
-					cwd={model.kbCwd || model.imCwd || null}
+					workspace={workspace}
 					isStreaming={false}
 					sessionId={model.path || null}
 				/>
@@ -109,23 +117,12 @@ export function SessionViewerPage(): JSX.Element {
 			activityPanel={
 				model.isKnowledge ? (
 					<ActivityPanel
-						workspace={createActivityWorkspace(
-							model.kbCwd || "knowledge:unbound",
-							model.kbCwd || null,
-							activeRuntimeIds,
-						)}
+						workspace={workspace}
 						enablePluginTabs={false}
 						knowledgeHistory
 					/>
 				) : (
-					<ActivityPanel
-						workspace={createActivityWorkspace(
-							model.imCwd || "viewer:unbound",
-							model.imCwd || null,
-							activeRuntimeIds,
-						)}
-						enablePluginTabs={false}
-					/>
+					<ActivityPanel workspace={workspace} enablePluginTabs={false} />
 				)
 			}
 		/>
