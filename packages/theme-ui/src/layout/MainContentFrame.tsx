@@ -39,7 +39,12 @@ export function MainContentFrame({
 			{...props}
 		>
 			<ThemedMainContentBackground />
-			<div className={cn("z-[2] shrink-0", headerOverlay ? "absolute inset-x-0 top-0" : "relative z-[1]")}>
+			<div
+				className={cn(
+					"main-content-header z-[2] shrink-0",
+					headerOverlay ? "absolute inset-x-0 top-0" : "relative z-[1]",
+				)}
+			>
 				{header}
 			</div>
 			<div className={cn("relative z-[1] flex min-h-0 flex-1 overflow-visible", contentClassName)}>

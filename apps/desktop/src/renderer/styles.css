@@ -567,6 +567,17 @@ textarea:disabled,
 	margin-left: 0;
 }
 
+/* 出血只给内容，不给页头：页头里给 macOS 红绿灯留的 78px 和 h-11 的垂直居中，
+   都是按「主内容帧带 AppFrame p-2 偏移」算的，跟着上面那条负 margin 一起外移后，
+   展开侧边栏按钮就比红绿灯偏左偏上（侧边栏收起时尤其明显）。这里把这 8px 在页头层补回来，
+   让沉浸式与常规页头的按钮落点完全一致；左侧同样跟随侧边栏是否在位。 */
+.app-main-frame[data-header-overlay] > .main-content-header {
+	padding: 0.5rem 0.5rem 0;
+}
+.sidebar-dock ~ .app-main-frame[data-header-overlay] > .main-content-header {
+	padding-left: 0;
+}
+
 .project-list-containment {
 	contain: layout paint style;
 }
