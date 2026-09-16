@@ -1,5 +1,6 @@
 import type { ConversationMessage, ConversationState, PluginConversationApi } from "./conversation.js";
 import type { PluginPromptAttachment } from "./prompt-attachment.js";
+import type { PluginSidebarState } from "./ui.js";
 
 // ─── Host bridge ───
 //
@@ -15,6 +16,8 @@ export interface PluginHostBridge {
 	usePromptAttachment(): PluginPromptAttachment | null;
 	/** Reactive: the host's current locale code (e.g. "zh"). */
 	useLocale(): string;
+	/** Reactive: the host sidebar's current shape (collapsed / narrow / visible). */
+	useSidebarState(): PluginSidebarState;
 	conversation: PluginConversationApi;
 }
 

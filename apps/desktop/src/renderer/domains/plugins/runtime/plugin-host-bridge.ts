@@ -1,3 +1,4 @@
+import { useSidebarState } from "@shared/app-shell/sidebar-state";
 import {
 	activeSessionAtom,
 	chatMessagesAtom,
@@ -853,6 +854,7 @@ export const pluginHostBridge: PluginHostBridge = {
 	useConversationMessages,
 	usePromptAttachment,
 	useLocale,
+	useSidebarState,
 	conversation,
 };
 

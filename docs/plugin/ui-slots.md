@@ -196,6 +196,47 @@ useEffect(() => () => ctx.ui.setWorkspaceViewHeader("board", null), []);
   从窗口第一像素开始的沉浸式整页；页头里放了 `left`/`right` 工具栏时不要开——工具栏
   会压在内容上
 
+### 感知侧边栏 useSidebarState
+
+沉浸式页头有个绕不开的副作用：侧边栏收起时，宿主会在页头左上角长出「展开侧边栏」
+按钮，压在视图自己画的那一带上。视图要让位，就得知道侧边栏此刻什么形态。
+
+```tsx
+import { useSidebarState } from "@vetta-org/plugin-sdk";
+
+function Hero() {
+  const { collapsed, narrow, visible } = useSidebarState();
+  // 侧边栏不在位 = 宿主页头有展开按钮占着左上角，标题往右让 36px
+  return <h1 style={{ paddingLeft: visible ? 0 : 36 }}>设计画廊</h1>;
+}
+```
+
+- `collapsed`：用户手动收起了侧边栏。窄屏下这一位仍只反映用户意愿
+- `narrow`：窗口窄到侧边栏改走悬浮覆盖，不再占据左侧一栏
+- `visible`：侧边栏此刻是否实际占着左边那一栏，等价于 `!collapsed && !narrow`。
+  多数自适应只需要这一位
+
+拿不到 hook 的地方（`activate()` 内、工具处理器、命令式绘制的画布）用命令式的一对：
+
+```ts
+const state = ctx.ui.getSidebarState();
+const sub = ctx.ui.onSidebarStateChanged((next) => redraw(next.visible));
+// 插件失活时宿主会兜底摘掉监听，但自己持有生命周期的地方仍应显式 sub.dispose()
+```
+
+回调按值去重，拖窗口不会把它打成回调风暴——只有三元组真的变了才通知。无需权限：
+这是纯布局信息，不含任何用户数据。
+
+**纯视觉自适应优先用 CSS**：宿主把同一份状态挂在整帧根节点上，插件不必订阅、不必
+重渲染：
+
+```css
+:root [data-sidebar-visible="false"] .my-hero { padding-left: 36px; }
+```
+
+可用属性：`data-sidebar-collapsed` / `data-sidebar-narrow` / `data-sidebar-visible`，
+值恒为 `"true"` / `"false"`。
+
 **该用哪个插槽**
 
 | 场景 | 用 |

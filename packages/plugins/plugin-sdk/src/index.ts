@@ -65,6 +65,7 @@ export type {
 	PluginWorkspaceViewProps,
 	PluginWorkspaceViewContribution,
 	PluginWorkspaceViewHeader,
+	PluginSidebarState,
 	PluginAudioMetadata,
 	PluginPreviewUrlOptions,
 	PluginPreviewFile,
@@ -406,4 +407,5 @@ export {
 	useActiveConversation,
 	useConversationMessages,
 	usePromptAttachment,
+	useSidebarState,
 } from "./hooks.js";

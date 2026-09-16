@@ -578,6 +578,20 @@ export interface PluginNewSessionContextContribution {
 	render(context: PluginNewSessionContext): ReactNode;
 }
 
+/**
+ * 宿主左侧侧边栏此刻的形态。给插件自适应布局用——尤其是沉浸式工作区视图：
+ * 侧边栏收起时宿主页头会长出「展开侧边栏」按钮并占住左上角，视图自己画在那一带的
+ * 东西需要让位。
+ */
+export interface PluginSidebarState {
+	/** 用户手动收起了侧边栏。窄屏下这一位仍然只反映用户意愿，不受窗口宽度影响。 */
+	collapsed: boolean;
+	/** 窗口窄到侧边栏改走悬浮覆盖，不再占据左侧一栏。 */
+	narrow: boolean;
+	/** 侧边栏此刻是否实际占着左边那一栏。等价于 `!collapsed && !narrow`，多数自适应只需要这一位。 */
+	visible: boolean;
+}
+
 export interface PluginUiApi {
 	registerGlobalSlot(contribution: PluginGlobalSlotContribution): Disposable;
 	registerAbilityDetailSlot(contribution: PluginAbilityDetailSlotContribution): Disposable;
@@ -771,4 +785,18 @@ export interface PluginUiApi {
 	 * (components do not receive `ctx`).
 	 */
 	notify(options: PluginNotifyOptions): void;
+	/**
+	 * 读当前侧边栏形态。无需权限——这是纯布局信息，不含任何用户数据。
+	 *
+	 * React 组件请改用 `useSidebarState()`：它会在状态变化时重渲染，不必自己订阅。
+	 * 这一对只为拿不到 hook 的地方准备（`activate()` 内、工具处理器、命令式绘制的画布）。
+	 */
+	getSidebarState(): PluginSidebarState;
+	/**
+	 * 订阅侧边栏形态变化——用户收起/展开侧边栏、或窗口跨过窄屏阈值时触发。
+	 * 返回 Disposable 取消订阅；请在插件失活时释放。
+	 *
+	 * 回调按值去重：拖窗口不会把它打成回调风暴，只有三元组真的变了才通知。
+	 */
+	onSidebarStateChanged(listener: (state: PluginSidebarState) => void): Disposable;
 }

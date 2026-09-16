@@ -1,4 +1,5 @@
 import type { InstalledPlugin } from "@preload/api";
+import { readSidebarState, subscribeSidebarState } from "@shared/app-shell/sidebar-state";
 import type { ActivityTabKey } from "@shared/lib/project-profile";
 import {
 	activeInputActionIdsAtom,
@@ -851,6 +852,20 @@ export function createPluginUiApi({
 		}
 		await window.vetta.shell.openExternal(parsed.toString());
 	};
+	const onSidebarStateChanged: PluginContext["ui"]["onSidebarStateChanged"] = (listener) => {
+		if (typeof listener !== "function") {
+			throw new Error("onSidebarStateChanged() requires a listener function");
+		}
+		let unsubscribe = subscribeSidebarState(listener);
+		// 插件忘了 dispose 时，失活也要把监听摘掉：热重载会反复激活，
+		// 残留的监听器既跑在已卸载的插件上下文里，也会随重载次数线性堆积。
+		const dispose = (): void => {
+			unsubscribe();
+			unsubscribe = () => {};
+		};
+		disposers.push(dispose);
+		return { dispose };
+	};
 	const notify = (options: PluginNotifyOptions): void => {
 		if (options == null || typeof options !== "object" || typeof options.message !== "string") {
 			throw new Error("notify() requires { message: string }");
@@ -918,6 +933,8 @@ export function createPluginUiApi({
 		captureRegion,
 		copyImage,
 		openExternal,
+		getSidebarState: () => readSidebarState(),
+		onSidebarStateChanged,
 		notify,
 	};
 }
