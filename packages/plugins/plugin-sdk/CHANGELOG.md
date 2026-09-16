@@ -2,6 +2,26 @@
 
 All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
+## [0.3.5] — 2026-09-16
+
+### Added
+
+- **`useSidebarState()` / `ctx.ui.getSidebarState()` / `ctx.ui.onSidebarStateChanged()`：插件
+  可以感知宿主左侧侧边栏的形态**。此前 `ctx.ui` 只有注册与动作，没有任何 getter 或订阅，插件
+  对宿主布局完全失明——连自己调 `setActivityPanelWidth("max")` 间接收起了侧边栏都读不到结果。
+
+  最吃亏的是沉浸式工作区视图（`setWorkspaceViewHeader` 的 `immersive: true`）：侧边栏收起时
+  宿主页头会长出「展开侧边栏」按钮压在左上角，视图画在那一带的东西没法让位。
+
+  三个字段各有分工：`collapsed` 是用户意愿（窄屏下也不受窗口宽度影响），`narrow` 是窗口窄到
+  侧边栏改走悬浮覆盖，`visible` 等价于 `!collapsed && !narrow`——多数自适应只需要最后这一位。
+
+  订阅回调按值去重，拖窗口不会把监听器打成回调风暴。无需权限：纯布局信息，不含用户数据。
+  纯视觉自适应可以完全不碰 JS——宿主把同一份状态挂在整帧根节点的
+  `data-sidebar-collapsed` / `data-sidebar-narrow` / `data-sidebar-visible` 上。
+
+  纯运行期 API，不涉及清单字段，`pluginApiVersion` 不变。
+
 ## [0.3.4] — 2026-09-14
 
 ### Added
