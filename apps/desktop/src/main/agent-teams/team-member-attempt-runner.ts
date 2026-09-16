@@ -456,13 +456,8 @@ export class TeamMemberAttemptRunner {
 				sourceTurnId,
 			);
 			const terminal = classifyTeamAttemptTerminal({ hasPublishableMessage: false, cancelled: false });
-			await this.options.settleAttempt(
-				configuredSession,
-				collaboration.workItem,
-				collaboration.attempt,
-				terminal,
-			);
-			if (assistant.stopReason === "error" || assistant.stopReason === "aborted") {
+			await this.options.settleAttempt(configuredSession, collaboration.workItem, collaboration.attempt, terminal);
+			if (assistant?.stopReason === "error" || assistant?.stopReason === "aborted") {
 				await this.publishTerminalPartial({
 					session: configuredSession,
 					item: collaboration.workItem,
