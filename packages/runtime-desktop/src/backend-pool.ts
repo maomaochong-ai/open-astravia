@@ -106,6 +106,8 @@ interface DesktopRuntimeScope extends DesktopMcpRuntimeScope {
 
 interface DesktopRuntimeBackendEntry {
 	readonly composition: CodingAgentRuntimeComposition;
+	readonly mcpKey: string | undefined;
+	liveAssemblies: number;
 }
 
 /**
@@ -119,6 +121,7 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 	private readonly entries = new Map<string, Promise<DesktopRuntimeBackendEntry>>();
 	private readonly resolvedEntries = new Map<string, DesktopRuntimeBackendEntry>();
 	private readonly mcpSources = new Map<string, Promise<DesktopManagedMcpRuntimeSource>>();
+	private readonly mcpCompositionCounts = new Map<string, number>();
 	private readonly createComposition: (
 		options: CodingAgentRuntimeCompositionOptions,
 	) => Promise<CodingAgentRuntimeComposition>;
@@ -140,6 +143,7 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 				this.entries.clear();
 				this.resolvedEntries.clear();
 				this.mcpSources.clear();
+				this.mcpCompositionCounts.clear();
 			},
 		});
 	}
@@ -152,11 +156,19 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 			);
 		}
 		const scope = resolveRuntimeScope(request);
+		const scopeKey = runtimeScopeKey(scope);
 		const entry = await this.getOrCreateEntry(scope, request);
 		if (this.disposed) throw new Error("Desktop Runtime backend pool is disposed");
-		return entry.composition.runtimeHostBackend.createAssembly(
-			toCodingAgentRuntimeSessionRequest(entry.composition, scope, request),
-		);
+		entry.liveAssemblies += 1;
+		try {
+			const assembly = await entry.composition.runtimeHostBackend.createAssembly(
+				toCodingAgentRuntimeSessionRequest(entry.composition, scope, request),
+			);
+			return attachAssemblyRelease(assembly, () => this.releaseAssembly(scopeKey, entry));
+		} catch (error) {
+			await this.releaseAssembly(scopeKey, entry);
+			throw error;
+		}
 	}
 
 	readScopeCount(): number {
@@ -216,6 +228,7 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 		const created = this.createEntry(scope, request).then(
 			(entry) => {
 				this.resolvedEntries.set(key, entry);
+				this.retainMcpComposition(entry.mcpKey);
 				return entry;
 			},
 			(error: unknown) => {
@@ -234,10 +247,12 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 		const initialModel = resolveInitialModel(request, this.options.compositionDefaults);
 		const initialThinkingLevel =
 			request.thinkingLevel ?? this.options.compositionDefaults.initialThinkingLevel ?? "off";
-		const managedMcpSource = await this.getOrCreateMcpRuntimeSource({
+		const mcpScope = {
 			cwd: scope.cwd,
 			agentDir: scope.agentDir,
-		});
+		};
+		const managedMcpSource = await this.getOrCreateMcpRuntimeSource(mcpScope);
+		const mcpKey = this.options.createMcpRuntimeSource ? this.mcpKeyFor(mcpScope) : undefined;
 		const observationOptions = resolveCompositionObservationOptions(this.options);
 		const composition = await this.createComposition({
 			...this.options.compositionDefaults,
@@ -280,7 +295,60 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 			initialThinkingLevel,
 			runtimeHostRetrySettings: createCodingAgentNodeSettingsRuntime(scope.cwd, scope.agentDir),
 		});
-		return { composition };
+		return { composition, mcpKey, liveAssemblies: 0 };
+	}
+
+	private async releaseAssembly(scopeKey: string, entry: DesktopRuntimeBackendEntry): Promise<void> {
+		if (this.disposed) return;
+		if (entry.liveAssemblies > 0) entry.liveAssemblies -= 1;
+		if (entry.liveAssemblies > 0) return;
+		// 先摘 key 再销毁：销毁是异步的，这段窗口里同 scope 的新会话必须拿到一套
+		// 新 composition，不能复用正在关闭的这套。
+		const owned = this.resolvedEntries.get(scopeKey) === entry;
+		if (owned) {
+			this.entries.delete(scopeKey);
+			this.resolvedEntries.delete(scopeKey);
+		}
+		try {
+			await entry.composition.dispose();
+		} catch (error) {
+			// 销毁失败：没有新 entry 顶上就放回去，让 RuntimeHost 的重试释放能再找到它；
+			// 已被顶上时旧 composition 由重试直接关闭，不再回到池里。
+			if (owned && !this.resolvedEntries.has(scopeKey)) {
+				this.entries.set(scopeKey, Promise.resolve(entry));
+				this.resolvedEntries.set(scopeKey, entry);
+			}
+			throw error;
+		}
+		await this.releaseMcpComposition(entry.mcpKey);
+	}
+
+	private retainMcpComposition(mcpKey: string | undefined): void {
+		if (!mcpKey) return;
+		this.mcpCompositionCounts.set(mcpKey, (this.mcpCompositionCounts.get(mcpKey) ?? 0) + 1);
+	}
+
+	private async releaseMcpComposition(mcpKey: string | undefined): Promise<void> {
+		if (!mcpKey || this.disposed) return;
+		const remaining = (this.mcpCompositionCounts.get(mcpKey) ?? 1) - 1;
+		if (remaining > 0) {
+			this.mcpCompositionCounts.set(mcpKey, remaining);
+			return;
+		}
+		this.mcpCompositionCounts.delete(mcpKey);
+		const source = this.mcpSources.get(mcpKey);
+		this.mcpSources.delete(mcpKey);
+		if (!source) return;
+		const resolved = await source.catch(() => undefined);
+		await resolved?.dispose();
+	}
+
+	private mcpKeyFor(scope: DesktopMcpRuntimeScope): string {
+		const resolvedScope = this.options.resolveMcpRuntimeScope?.(scope) ?? scope;
+		return mcpRuntimeScopeKey({
+			cwd: resolve(resolvedScope.cwd),
+			agentDir: resolvedScope.agentDir ? resolve(resolvedScope.agentDir) : undefined,
+		});
 	}
 
 	private getOrCreateMcpRuntimeSource(
@@ -303,6 +371,37 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 		this.mcpSources.set(key, created);
 		return created;
 	}
+}
+
+function attachAssemblyRelease(
+	assembly: RuntimeHostSessionAssembly,
+	release: () => Promise<void>,
+): RuntimeHostSessionAssembly {
+	const lifecycle = assembly.lifecycle;
+	let released = false;
+	return {
+		...assembly,
+		lifecycle: {
+			get sessionId() {
+				return lifecycle.sessionId;
+			},
+			get agentId() {
+				return lifecycle.agentId;
+			},
+			get sessionDirectory() {
+				return lifecycle.sessionDirectory;
+			},
+			get sessionPath() {
+				return lifecycle.sessionPath;
+			},
+			async dispose() {
+				await lifecycle.dispose();
+				if (released) return;
+				await release();
+				released = true;
+			},
+		},
+	};
 }
 
 function toCodingAgentRuntimeSessionRequest(

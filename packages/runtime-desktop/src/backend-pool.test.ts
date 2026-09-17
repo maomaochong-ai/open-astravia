@@ -175,9 +175,11 @@ describe("DesktopRuntimeBackendPool", () => {
 			expect(agents.getSession(first.sessionId)).toBeUndefined();
 			expect(agents.getSession(second.sessionId)?.instanceId).toBe(secondInstance);
 			expect(disposeMcp).not.toHaveBeenCalled();
+			expect(pool.readScopeCount()).toBe(1);
 			await runtime.disposeSession(second.sessionId);
 			expect(agents.snapshot().instances).toEqual([]);
-			expect(disposeMcp).not.toHaveBeenCalled();
+			expect(pool.readScopeCount()).toBe(0);
+			expect(disposeMcp).toHaveBeenCalledOnce();
 			await pool.dispose();
 			expect(disposeMcp).toHaveBeenCalledOnce();
 		} finally {
@@ -488,13 +490,61 @@ describe("DesktopRuntimeBackendPool", () => {
 		pools.push(pool);
 		runtimes.push(runtime);
 		await runtime.createSession({ cwd, model: MODEL, scenario: "batch" });
-		await runtime.disposeAllSessions();
-
-		await expect(pool.dispose()).rejects.toThrow("transient composition close failure");
+		await expect(runtime.disposeAllSessions()).rejects.toThrow("transient composition close failure");
 		expect(pool.readScopeCount()).toBe(1);
-		await expect(pool.dispose()).resolves.toBeUndefined();
+		await expect(runtime.disposeAllSessions()).resolves.toBeUndefined();
 		expect(pool.readScopeCount()).toBe(0);
 		expect(disposeAttempts).toBe(2);
+		await expect(pool.dispose()).resolves.toBeUndefined();
+	});
+
+	it("gives a session created while the scope composition is still closing a fresh composition", async () => {
+		const cwd = await temporaryDirectory("desktop-runtime-closing-scope-");
+		let releaseFirstDispose: (() => void) | undefined;
+		const firstDisposeStarted = new Promise<void>((resolve) => {
+			releaseFirstDispose = resolve;
+		});
+		let compositions = 0;
+		const createComposition = vi.fn(async (options: CodingAgentRuntimeCompositionOptions) => {
+			const composition = await createCodingAgentRuntimeComposition(options);
+			compositions += 1;
+			const index = compositions;
+			return {
+				...composition,
+				async dispose() {
+					if (index === 1) {
+						releaseFirstDispose?.();
+						await new Promise((resolve) => setTimeout(resolve, 20));
+					}
+					await composition.dispose();
+				},
+			};
+		});
+		const pool = new DesktopRuntimeBackendPool({
+			compositionDefaults: {
+				modelRegistry: modelRegistry(),
+				initialModel: MODEL,
+				initialThinkingLevel: "off",
+				resolveSystemPromptOptions: resolveTestSystemPromptOptions,
+			},
+			createComposition,
+		});
+		const runtime = new RuntimeHost({ sessionBackend: pool, getDefaultExecutionMode: () => "full-access" });
+		pools.push(pool);
+		runtimes.push(runtime);
+
+		const first = await runtime.createSession({ cwd, model: MODEL, scenario: "batch" });
+		const disposing = runtime.disposeSession(first.sessionId);
+		await firstDisposeStarted;
+		expect(pool.readScopeCount()).toBe(0);
+
+		const second = await runtime.createSession({ cwd, model: MODEL, scenario: "batch" });
+		await disposing;
+		expect(createComposition).toHaveBeenCalledTimes(2);
+		expect(pool.readScopeCount()).toBe(1);
+		expect(runtime.getSessionPath(second.sessionId)).toBeDefined();
+		await runtime.disposeSession(second.sessionId);
+		expect(pool.readScopeCount()).toBe(0);
 	});
 
 	it("fails closed when a Coding-only scope receives another peer Agent selection", async () => {
@@ -544,8 +594,52 @@ describe("DesktopRuntimeBackendPool", () => {
 		expect(createMcpRuntimeSource).toHaveBeenCalledWith({ cwd, agentDir: undefined });
 		expect(capturedSource).toBe(source);
 		await runtime.disposeAllSessions();
+		expect(dispose).toHaveBeenCalledTimes(1);
+		expect(pool.readScopeCount()).toBe(0);
+		expect(pool.readMcpScopeCount()).toBe(0);
 		await pool.dispose();
 		expect(dispose).toHaveBeenCalledTimes(1);
+	});
+
+	it("releases a composition when its last session is disposed and keeps a shared MCP source", async () => {
+		const firstCwd = await temporaryDirectory("desktop-runtime-shared-mcp-first-");
+		const secondCwd = await temporaryDirectory("desktop-runtime-shared-mcp-second-");
+		const dispose = vi.fn(async () => undefined);
+		const createMcpRuntimeSource = vi.fn(async () => ({
+			source: { refresh: async () => ({ tools: [] }) },
+			dispose,
+		}));
+		const pool = new DesktopRuntimeBackendPool({
+			compositionDefaults: {
+				modelRegistry: modelRegistry(),
+				initialModel: MODEL,
+				initialThinkingLevel: "off",
+				resolveSystemPromptOptions: resolveTestSystemPromptOptions,
+			},
+			createMcpRuntimeSource,
+			resolveMcpRuntimeScope: () => ({ cwd: firstCwd }),
+		});
+		const runtime = new RuntimeHost({
+			sessionBackend: pool,
+			getDefaultExecutionMode: () => "full-access",
+		});
+		pools.push(pool);
+		runtimes.push(runtime);
+
+		const first = await runtime.createSession({ cwd: firstCwd, model: MODEL, scenario: "batch" });
+		const second = await runtime.createSession({ cwd: secondCwd, model: MODEL, scenario: "batch" });
+		expect(pool.readScopeCount()).toBe(2);
+		expect(createMcpRuntimeSource).toHaveBeenCalledOnce();
+
+		await runtime.disposeSession(first.sessionId);
+		expect(pool.readScopeCount()).toBe(1);
+		expect(dispose).not.toHaveBeenCalled();
+		expect(pool.readMcpScopeCount()).toBe(1);
+
+		await runtime.disposeSession(second.sessionId);
+		expect(pool.readScopeCount()).toBe(0);
+		expect(dispose).toHaveBeenCalledOnce();
+		expect(pool.readMcpScopeCount()).toBe(0);
 	});
 
 	it("combines host and scope-specific Hook adapter factories for each composition", async () => {

@@ -504,3 +504,26 @@ export const sendMessageFnRef: {
 } = {
 	current: null,
 };
+
+export const abortMessageFnRef: {
+	current: (() => Promise<void>) | null;
+} = {
+	current: null,
+};
+
+export const sendQueuedNowFnRef: {
+	current: ((runtimeId: string, id: string) => Promise<void>) | null;
+} = {
+	current: null,
+};
+
+/**
+ * 取模块级会话管理函数。它们只由 RootLayout 那一份 useSessionManager 赋值；
+ * 为 null 说明调用发生在挂载点之外，打日志而不是静默吞掉这次操作。
+ */
+export function readSessionManagerFn<T>(ref: { current: T | null }, name: string): T | null {
+	if (ref.current === null) {
+		console.error(`[session-manager] ${name} 未挂载：RootLayout 的 useSessionManager 尚未就绪，本次调用被丢弃`);
+	}
+	return ref.current;
+}
