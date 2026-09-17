@@ -26,7 +26,9 @@ export interface ExperimentalConfig {
 /** Agent 图片生成 Provider 偏好；未设置时沿用内置 Provider 优先策略。 */
 export interface ImageGenerationConfig {
 	textToImageProviderId?: string;
+	textToImageModelId?: string;
 	imageToImageProviderId?: string;
+	imageToImageModelId?: string;
 }
 
 export interface DesktopConfig {
@@ -194,9 +196,17 @@ export function normalizeImageGeneration(value: unknown): ImageGenerationConfig 
 			typeof input.textToImageProviderId === "string" && input.textToImageProviderId.trim().length > 0
 				? input.textToImageProviderId
 				: undefined,
+		textToImageModelId:
+			typeof input.textToImageModelId === "string" && input.textToImageModelId.trim().length > 0
+				? input.textToImageModelId
+				: undefined,
 		imageToImageProviderId:
 			typeof input.imageToImageProviderId === "string" && input.imageToImageProviderId.trim().length > 0
 				? input.imageToImageProviderId
+				: undefined,
+		imageToImageModelId:
+			typeof input.imageToImageModelId === "string" && input.imageToImageModelId.trim().length > 0
+				? input.imageToImageModelId
 				: undefined,
 	};
 }

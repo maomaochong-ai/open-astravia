@@ -56,10 +56,22 @@ export class AgentSettingsService {
 				: input.textToImageProviderId !== undefined
 					? { textToImageProviderId: input.textToImageProviderId }
 					: {}),
+			...(input.textToImageModelId === null ||
+			(input.textToImageProviderId !== undefined && input.textToImageModelId === undefined)
+				? { textToImageModelId: undefined }
+				: input.textToImageModelId !== undefined
+					? { textToImageModelId: input.textToImageModelId }
+					: {}),
 			...(input.imageToImageProviderId === null
 				? { imageToImageProviderId: undefined }
 				: input.imageToImageProviderId !== undefined
 					? { imageToImageProviderId: input.imageToImageProviderId }
+					: {}),
+			...(input.imageToImageModelId === null ||
+			(input.imageToImageProviderId !== undefined && input.imageToImageModelId === undefined)
+				? { imageToImageModelId: undefined }
+				: input.imageToImageModelId !== undefined
+					? { imageToImageModelId: input.imageToImageModelId }
 					: {}),
 		});
 		await this.options.writeConfig({ ...current, imageGeneration });

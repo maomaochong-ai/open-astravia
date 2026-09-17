@@ -95,8 +95,16 @@ export function cloneMediaProviderCapabilities(
 ): MediaProviderDescriptor["capabilities"] {
 	return capabilities.map((capability) => {
 		if (capability.operation === "generate") {
-			const { aspectRatios, defaultResolution, durationsSeconds, modeCapabilities, resolutions, ...required } =
-				capability;
+			const {
+				aspectRatios,
+				defaultModelId,
+				defaultResolution,
+				durationsSeconds,
+				modeCapabilities,
+				models,
+				resolutions,
+				...required
+			} = capability;
 			return {
 				...required,
 				modes: [...capability.modes],
@@ -119,6 +127,25 @@ export function cloneMediaProviderCapabilities(
 				...(aspectRatios !== undefined ? { aspectRatios: [...aspectRatios] } : {}),
 				...(resolutions !== undefined ? { resolutions: [...resolutions] } : {}),
 				...(defaultResolution !== undefined ? { defaultResolution } : {}),
+				...(models !== undefined
+					? {
+							models: models.map((model) => {
+								const {
+									aspectRatios: modelAspectRatios,
+									modes,
+									resolutions: modelResolutions,
+									...modelRequired
+								} = model;
+								return {
+									...modelRequired,
+									modes: [...modes],
+									...(modelAspectRatios ? { aspectRatios: [...modelAspectRatios] } : {}),
+									...(modelResolutions ? { resolutions: [...modelResolutions] } : {}),
+								};
+							}),
+						}
+					: {}),
+				...(defaultModelId !== undefined ? { defaultModelId } : {}),
 				...(durationsSeconds !== undefined ? { durationsSeconds: [...durationsSeconds] } : {}),
 			};
 		}
@@ -166,19 +193,48 @@ function includesString(values: readonly string[], value: string): boolean {
 	return values.includes(value);
 }
 
-function validateGenerate(input: MediaGenerateInput, descriptor: MediaProviderDescriptor): MediaFailure | undefined {
+function resolveGenerate(
+	input: MediaGenerateInput,
+	descriptor: MediaProviderDescriptor,
+): { input: MediaGenerateInput } | { error: MediaFailure } {
 	if (MODE_KIND[input.mode] !== input.kind) {
-		return failure("invalid-request", `${input.mode} cannot produce ${input.kind}`);
+		return { error: failure("invalid-request", `${input.mode} cannot produce ${input.kind}`) };
 	}
-	const supported = descriptor.capabilities.some(
-		(capability) =>
+	const capabilities = descriptor.capabilities.filter(
+		(capability): capability is Extract<MediaProviderCapability, { operation: "generate" }> =>
 			capability.operation === "generate" && capability.kind === input.kind && capability.modes.includes(input.mode),
 	);
-	return supported ? undefined : failure("operation-unsupported", `Media provider does not support ${input.mode}`);
+	if (capabilities.length === 0) {
+		return { error: failure("operation-unsupported", `Media provider does not support ${input.mode}`) };
+	}
+	if (input.modelId) {
+		const supported = capabilities.some(
+			(capability) =>
+				!capability.models ||
+				capability.models.some((model) => model.id === input.modelId && model.modes.includes(input.mode)),
+		);
+		return supported
+			? { input }
+			: {
+					error: failure(
+						"invalid-request",
+						`Media model is unavailable or does not support ${input.mode}: ${input.modelId}`,
+					),
+				};
+	}
+	const defaultModelId = capabilities
+		.map((capability) => {
+			const preferred = capability.models?.find(
+				(model) => model.id === capability.defaultModelId && model.modes.includes(input.mode),
+			);
+			return preferred?.id ?? capability.models?.find((model) => model.modes.includes(input.mode))?.id;
+		})
+		.find((modelId): modelId is string => modelId !== undefined);
+	return { input: defaultModelId ? { ...input, modelId: defaultModelId } : input };
 }
 
 function validateInputs(input: MediaSubmitInput, descriptor: MediaProviderDescriptor): MediaFailure | undefined {
-	if (input.operation === "generate") return validateGenerate(input, descriptor);
+	if (input.operation === "generate") return undefined;
 	if (input.operation === "compose") {
 		const document = input.inputs.find((candidate) => candidate.kind === "document");
 		if (!document?.mimeType) return failure("invalid-request", "Media composition requires a typed document input");
@@ -231,6 +287,29 @@ export class MediaProviderRegistry {
 			) {
 				throw new Error(`Media provider default resolution is not declared: ${descriptor.id}`);
 			}
+			if (capability.operation === "generate" && capability.models) {
+				const ids = new Set<string>();
+				for (const model of capability.models) {
+					if (ids.has(model.id))
+						throw new Error(`Media provider model id is duplicated: ${descriptor.id}/${model.id}`);
+					ids.add(model.id);
+					if (
+						model.modes.some((mode) => !capability.modes.includes(mode) || MODE_KIND[mode] !== capability.kind)
+					) {
+						throw new Error(`Media provider model modes are invalid: ${descriptor.id}/${model.id}`);
+					}
+					if (model.defaultResolution && !model.resolutions?.includes(model.defaultResolution)) {
+						throw new Error(
+							`Media provider model default resolution is not declared: ${descriptor.id}/${model.id}`,
+						);
+					}
+				}
+				if (capability.defaultModelId && !ids.has(capability.defaultModelId)) {
+					throw new Error(`Media provider default model is not declared: ${descriptor.id}`);
+				}
+			} else if (capability.operation === "generate" && capability.defaultModelId) {
+				throw new Error(`Media provider default model requires a model catalog: ${descriptor.id}`);
+			}
 		}
 		const provider: RegisteredProvider = { registration, calls: new Set(), active: true };
 		this.providers.set(descriptor.id, provider);
@@ -265,10 +344,16 @@ export class MediaProviderRegistry {
 				logContext,
 			);
 		}
-		const validationFailure = validateInputs(input, provider.registration.descriptor);
+		let resolvedInput: MediaSubmitInput = input;
+		if (input.operation === "generate") {
+			const result = resolveGenerate(input, provider.registration.descriptor);
+			if ("error" in result) return this.createFailedJob(input, result.error, logContext);
+			resolvedInput = result.input;
+		}
+		const validationFailure = validateInputs(resolvedInput, provider.registration.descriptor);
 		if (validationFailure) return this.createFailedJob(input, validationFailure, logContext);
 
-		const { ownerId, providerId, ...providerInput } = input;
+		const { ownerId, providerId, ...providerInput } = resolvedInput;
 		const providerJob = await this.invoke(provider, ownerId, signal, (context) =>
 			provider.registration.submit(providerInput as MediaHostProviderSubmitInput, context),
 		);

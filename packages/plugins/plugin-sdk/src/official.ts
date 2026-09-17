@@ -21,12 +21,16 @@ export interface PluginOfficialExperimentalSettings {
 
 export interface PluginOfficialImageGenerationSettings {
 	textToImageProviderId?: string;
+	textToImageModelId?: string;
 	imageToImageProviderId?: string;
+	imageToImageModelId?: string;
 }
 
 export type PluginOfficialImageGenerationSettingsUpdate = {
 	textToImageProviderId?: string | null;
+	textToImageModelId?: string | null;
 	imageToImageProviderId?: string | null;
+	imageToImageModelId?: string | null;
 };
 
 export interface PluginOfficialDownloadItem {

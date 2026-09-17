@@ -31,7 +31,10 @@ const IMAGE_TO_IMAGE_MODE: ContentGenerationMode = {
 	id: "image-to-image",
 	inputs: [{ id: "referenceImages", accepts: ["image"], minItems: 1, maxItems: 1 }],
 };
-const TEXT_TO_VIDEO_MODE: ContentGenerationMode = { id: "text-to-video", inputs: [] };
+const TEXT_TO_VIDEO_MODE: ContentGenerationMode = {
+	id: "text-to-video",
+	inputs: [],
+};
 const IMAGE_TO_VIDEO_MODE: ContentGenerationMode = {
 	id: "image-to-video",
 	inputs: [{ id: "firstFrame", accepts: ["image"], minItems: 1, maxItems: 1 }],
@@ -53,6 +56,13 @@ const REFERENCE_TO_VIDEO_MODE: ContentGenerationMode = {
 interface HostMediaModelBinding {
 	provider: PluginMediaProviderDescriptor;
 	outputKind: "image" | "video";
+	mediaModelId?: string;
+}
+
+interface HostMediaModelEntry {
+	model: ContentModelDescriptor;
+	outputKind: "image" | "video";
+	mediaModelId?: string;
 }
 
 export class HostMediaProvider implements ContentProviderAdapter {
@@ -66,11 +76,15 @@ export class HostMediaProvider implements ContentProviderAdapter {
 		providers: readonly PluginMediaProviderDescriptor[],
 	) {
 		this.models = providers.flatMap((provider) => {
-			const models = createModels(provider);
-			for (const model of models) {
-				this.bindings.set(model.modelId, { provider, outputKind: model.outputKind });
+			const entries = createModelEntries(provider);
+			for (const entry of entries) {
+				this.bindings.set(entry.model.modelId, {
+					provider,
+					outputKind: entry.outputKind,
+					...(entry.mediaModelId ? { mediaModelId: entry.mediaModelId } : {}),
+				});
 			}
-			return models;
+			return entries.map((entry) => entry.model);
 		});
 	}
 
@@ -84,7 +98,7 @@ export class HostMediaProvider implements ContentProviderAdapter {
 	): Promise<GeneratedContent> {
 		const binding = this.bindings.get(request.modelId);
 		if (!binding) throw new Error(`host media provider not found: ${request.modelId}`);
-		const { provider, outputKind } = binding;
+		const { provider, outputKind, mediaModelId } = binding;
 
 		const inputs = request.references.map<PluginMediaInput>((reference) => {
 			return {
@@ -98,6 +112,7 @@ export class HostMediaProvider implements ContentProviderAdapter {
 		const job = await this.media.submit({
 			operation: "generate",
 			providerId: provider.id,
+			...(mediaModelId ? { modelId: mediaModelId } : {}),
 			kind: outputKind,
 			mode: request.modeId,
 			prompt: request.prompt,
@@ -107,7 +122,11 @@ export class HostMediaProvider implements ContentProviderAdapter {
 			durationSeconds: request.duration,
 			inputs,
 		});
-		const execution: ContentProviderExecution = { kind: "host-job", jobId: job.id, outputKind };
+		const execution: ContentProviderExecution = {
+			kind: "host-job",
+			jobId: job.id,
+			outputKind,
+		};
 		await context.onExecution?.(execution);
 		return this.waitForJob(execution, context, job);
 	}
@@ -199,8 +218,7 @@ function isMediaJob(job: PluginJob): job is PluginMediaJob {
 		job.domain === "media" &&
 		job.artifacts.every(
 			(artifact): artifact is PluginMediaArtifact =>
-				"kind" in artifact &&
-				(artifact.kind === "image" || artifact.kind === "video" || artifact.kind === "audio"),
+				"kind" in artifact && (artifact.kind === "image" || artifact.kind === "video" || artifact.kind === "audio"),
 		)
 	);
 }
@@ -211,7 +229,10 @@ function isTerminalJob(job: PluginJob): boolean {
 
 async function notifyProgress(context: ContentProviderGenerationContext, job: PluginJob): Promise<void> {
 	if (job.status !== "queued" && job.status !== "running") return;
-	await context.onProgress?.({ status: job.status, progress: job.progress?.value });
+	await context.onProgress?.({
+		status: job.status,
+		progress: job.progress?.value,
+	});
 }
 
 function abortError(signal: AbortSignal): Error {
@@ -233,15 +254,42 @@ function waitForPoll(ms: number, signal: AbortSignal): Promise<void> {
 	});
 }
 
-function createModels(provider: PluginMediaProviderDescriptor): ContentModelDescriptor[] {
-	const generationCapabilities = provider.capabilities.filter(
-		(capability) => capability.operation === "generate",
+function createModelEntries(provider: PluginMediaProviderDescriptor): HostMediaModelEntry[] {
+	const generationCapabilities = provider.capabilities.filter((capability) => capability.operation === "generate");
+	const modeled = generationCapabilities.flatMap((capability): HostMediaModelEntry[] =>
+		(capability.models ?? []).flatMap((mediaModel) => {
+			const modes = mediaModel.modes.map((mode) => contentModeFromMediaMode(mode, [capability]));
+			if (modes.length === 0) return [];
+			const resolutions = unique(mediaModel.resolutions ?? capability.resolutions ?? []);
+			const defaultResolution = mediaModel.defaultResolution ?? capability.defaultResolution;
+			const displayName = mediaModel.displayName ?? mediaModel.id;
+			return [
+				{
+					model: {
+						providerId: HOST_MEDIA_PROVIDER_ID,
+						modelId: `${provider.id}:${capability.kind}:${mediaModel.id}`,
+						displayName: mediaModel.sourceDisplayName
+							? `${mediaModel.sourceDisplayName} · ${displayName}`
+							: displayName,
+						outputKind: capability.kind,
+						modes,
+						aspectRatios: unique(mediaModel.aspectRatios ?? capability.aspectRatios ?? []),
+						resolutions,
+						...(defaultResolution && resolutions.includes(defaultResolution) ? { defaultResolution } : {}),
+						durations: unique(capability.durationsSeconds ?? []),
+					},
+					outputKind: capability.kind,
+					mediaModelId: mediaModel.id,
+				},
+			];
+		}),
 	);
-	const outputKinds = generationCapabilities
+	const legacyCapabilities = generationCapabilities.filter((capability) => !capability.models?.length);
+	const outputKinds = legacyCapabilities
 		.map((capability) => capability.kind)
 		.filter((kind, index, all) => all.indexOf(kind) === index);
-	return outputKinds.flatMap((outputKind) => {
-		const capabilities = generationCapabilities.filter((capability) => capability.kind === outputKind);
+	const legacy = outputKinds.flatMap((outputKind): HostMediaModelEntry[] => {
+		const capabilities = legacyCapabilities.filter((capability) => capability.kind === outputKind);
 		const resolutions = unique(capabilities.flatMap((capability) => capability.resolutions ?? []));
 		const defaultResolution = capabilities
 			.map((capability) => capability.defaultResolution)
@@ -251,27 +299,35 @@ function createModels(provider: PluginMediaProviderDescriptor): ContentModelDesc
 			.filter((mode, index, all) => all.indexOf(mode) === index)
 			.map((mode) => contentModeFromMediaMode(mode, capabilities));
 		if (modes.length === 0) return [];
-		return [{
-			providerId: HOST_MEDIA_PROVIDER_ID,
-			modelId: outputKinds.length === 1 ? provider.id : `${provider.id}:${outputKind}`,
-			displayName:
-				provider.displayName ??
-				(provider.id === "desktop-app:vetta" && outputKind === "image" ? "Vetta Image" : provider.id),
-			outputKind,
-			modes,
-			aspectRatios: unique(capabilities.flatMap((capability) => capability.aspectRatios ?? [])),
-			resolutions,
-			...(defaultResolution ? { defaultResolution } : {}),
-			durations: unique(capabilities.flatMap((capability) => capability.durationsSeconds ?? [])),
-		}];
+		return [
+			{
+				model: {
+					providerId: HOST_MEDIA_PROVIDER_ID,
+					modelId: outputKinds.length === 1 ? provider.id : `${provider.id}:${outputKind}`,
+					displayName:
+						provider.displayName ??
+						(provider.id === "desktop-app:vetta" && outputKind === "image" ? "Vetta Image" : provider.id),
+					outputKind,
+					modes,
+					aspectRatios: unique(capabilities.flatMap((capability) => capability.aspectRatios ?? [])),
+					resolutions,
+					...(defaultResolution ? { defaultResolution } : {}),
+					durations: unique(capabilities.flatMap((capability) => capability.durationsSeconds ?? [])),
+				},
+				outputKind,
+			},
+		];
 	});
+	return [...modeled, ...legacy];
 }
 
 function contentModeFromMediaMode(
 	mode: PluginMediaGenerationMode,
 	capabilities: readonly Extract<PluginMediaProviderDescriptor["capabilities"][number], { operation: "generate" }>[],
 ): ContentGenerationMode {
-	const declared = capabilities.flatMap((capability) => capability.modeCapabilities ?? []).find((item) => item.mode === mode);
+	const declared = capabilities
+		.flatMap((capability) => capability.modeCapabilities ?? [])
+		.find((item) => item.mode === mode);
 	if (declared) {
 		return {
 			id: mode,
@@ -322,9 +378,7 @@ function dimensionsFromAspectRatio(aspectRatio?: string): { width: number; heigh
 	};
 }
 
-function generatedContentFromArtifact(
-	artifact: PluginMediaArtifact & { kind: "image" | "video" },
-): GeneratedContent {
+function generatedContentFromArtifact(artifact: PluginMediaArtifact & { kind: "image" | "video" }): GeneratedContent {
 	return {
 		kind: artifact.kind,
 		source: { type: "host-artifact", artifactId: artifact.id },

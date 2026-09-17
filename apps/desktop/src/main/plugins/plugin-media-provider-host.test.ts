@@ -65,17 +65,20 @@ function createHarness(installed = plugin()) {
 		release: vi.fn(),
 	};
 	const runtime = { providers, artifacts } as unknown as DesktopMediaRuntime;
+	const readFile = vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3, 4]));
 	const dependencies: PluginMediaProviderHostDependencies = {
 		listPlugins: () => [installed],
 		getMediaRuntime: () => runtime,
 		createRequestId: () => "request-1",
 		fetch: vi.fn(),
 		openAsBlob: vi.fn(),
+		readFile,
 	};
 	return {
 		host: new PluginMediaProviderHost(dependencies),
 		providers,
 		artifacts,
+		readFile,
 		disposals,
 		getRegistration: () => registration,
 	};
@@ -126,6 +129,41 @@ describe("PluginMediaProviderHost", () => {
 		const result: MediaProviderJob = { id: "job-1", status: "succeeded", artifacts: [] };
 		harness.host.respond(owner, "request-1", { value: result });
 		await expect(invocation).resolves.toEqual(result);
+	});
+
+	it("reads only inputs belonging to the active invocation", async () => {
+		const harness = createHarness();
+		const owner = sender(1);
+		harness.host.register(owner, "demo", providerRegistration);
+		const registration = harness.getRegistration();
+		if (!registration) throw new Error("Provider was not registered");
+		const invocation = registration.submit(
+			{
+				inputs: [
+					{
+						id: "source",
+						kind: "image",
+						mimeType: "image/png",
+						source: { type: "workspace-file", path: "/workspace/source.png" },
+					},
+				],
+			} as unknown as Parameters<MediaProviderRegistration["submit"]>[0],
+			{ ownerId: "owner", signal: new AbortController().signal },
+		);
+
+		await expect(harness.host.readInput(owner, "request-1", "source")).resolves.toEqual({
+			mimeType: "image/png",
+			data: new Uint8Array([1, 2, 3, 4]),
+		});
+		await expect(harness.host.readInput(sender(2), "request-1", "source")).rejects.toThrow(
+			"Media provider invocation is unavailable",
+		);
+		expect(harness.readFile).toHaveBeenCalledWith("C:/plugins/demo/generated.png");
+		harness.host.respond(owner, "request-1", { value: { id: "job-1", status: "succeeded", artifacts: [] } });
+		await invocation;
+		await expect(harness.host.readInput(owner, "request-1", "source")).rejects.toThrow(
+			"Media provider invocation is unavailable",
+		);
 	});
 
 	it("rejects registration without the declared and granted permission", () => {

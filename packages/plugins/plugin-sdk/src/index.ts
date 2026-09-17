@@ -314,6 +314,7 @@ export type {
 	PluginMediaOutput,
 	PluginMediaOutputKind,
 	PluginMediaProviderDescriptor,
+	PluginMediaGenerationModelDescriptor,
 	PluginMediaProviderArtifact,
 	PluginMediaProviderArtifactSource,
 	PluginMediaProviderHandlerContext,

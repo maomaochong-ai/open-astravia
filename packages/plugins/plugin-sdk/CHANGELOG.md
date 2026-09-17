@@ -4,6 +4,8 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ## [Unreleased]
 
+- Media Provider v5 可在 `generate` capability 中声明 `models` / `defaultModelId`；生成请求的 `modelId` 现在由宿主校验。Provider handler 新增 `readInput()`，只读取当前调用输入，供 JSON 内联图片 API 使用。
+- 官方图片设置增加 `textToImageModelId` / `imageToImageModelId`，旧的仅 Provider 配置继续使用该 Provider 的默认模型。
 - 官方插件新增 `ctx.official.agent.getImageGeneration()` / `setImageGeneration()`，用于读取或更新宿主 Agent 的文生图、图生图 Provider 偏好；普通插件仍会被官方能力门控拒绝。
 - `PluginImageRef.providerId` 可记录实际生成图片所使用的 Provider，便于历史记录展示来源和后续编辑追踪。
 - `PluginServiceRequest.timeoutMs` 的宿主上限统一为 5 分钟，覆盖图片、视频等长时间运行的受管服务请求；默认值仍为 30 秒。

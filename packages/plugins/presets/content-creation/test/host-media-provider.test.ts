@@ -10,7 +10,7 @@ import { HostMediaProvider } from "../src/generation/host-media-provider";
 const providerDescriptor: PluginMediaProviderDescriptor = {
 	id: "host:media",
 	ownerId: "host",
-	protocolVersion: 4,
+	protocolVersion: 5,
 	capabilities: [
 		{
 			operation: "generate",
@@ -59,14 +59,21 @@ function createApis() {
 
 function createProvider() {
 	const apis = createApis();
-	return { ...apis, provider: new HostMediaProvider(apis.media, apis.jobs, [providerDescriptor]) };
+	return {
+		...apis,
+		provider: new HostMediaProvider(apis.media, apis.jobs, [providerDescriptor]),
+	};
 }
 
 describe("HostMediaProvider", () => {
 	it("exposes distinct image and video models from one host provider", () => {
 		const { provider } = createProvider();
 		expect(provider.listModels()).toEqual([
-			expect.objectContaining({ modelId: "host:media:image", outputKind: "image", aspectRatios: ["1:1"] }),
+			expect.objectContaining({
+				modelId: "host:media:image",
+				outputKind: "image",
+				aspectRatios: ["1:1"],
+			}),
 			expect.objectContaining({
 				modelId: "host:media:video",
 				outputKind: "video",
@@ -84,6 +91,80 @@ describe("HostMediaProvider", () => {
 			aspectRatioPolicy: "input-derived",
 			audioGeneration: "always",
 		});
+	});
+
+	it("exposes and submits each host media model independently", async () => {
+		const modeledProvider: PluginMediaProviderDescriptor = {
+			id: "cpa:images",
+			ownerId: "cpa",
+			protocolVersion: 5,
+			capabilities: [
+				{
+					operation: "generate",
+					kind: "image",
+					modes: ["text-to-image", "image-to-image"],
+					models: [
+						{
+							id: "codex/gpt-image-2",
+							displayName: "GPT Image 2",
+							sourceDisplayName: "OpenAI",
+							modes: ["text-to-image", "image-to-image"],
+						},
+						{
+							id: "antigravity/gemini-image",
+							displayName: "Gemini Image",
+							sourceDisplayName: "Google Antigravity",
+							modes: ["text-to-image"],
+						},
+					],
+				},
+			],
+		};
+		const apis = createApis();
+		const provider = new HostMediaProvider(apis.media, apis.jobs, [modeledProvider]);
+		expect(provider.listModels()).toEqual([
+			expect.objectContaining({
+				modelId: "cpa:images:image:codex/gpt-image-2",
+				displayName: "OpenAI · GPT Image 2",
+			}),
+			expect.objectContaining({
+				modelId: "cpa:images:image:antigravity/gemini-image",
+				displayName: "Google Antigravity · Gemini Image",
+			}),
+		]);
+
+		apis.submit.mockResolvedValue({
+			id: "job-modeled",
+			domain: "media",
+			operation: "generate",
+			status: "succeeded",
+			artifacts: [
+				{
+					id: "artifact-modeled",
+					kind: "image",
+					mimeType: "image/png",
+					sizeBytes: 32,
+					lifetime: "temporary",
+				},
+			],
+		});
+		await provider.generate(
+			{
+				providerId: "host-media",
+				modelId: "cpa:images:image:antigravity/gemini-image",
+				modeId: "text-to-image",
+				prompt: "draw",
+				references: [],
+			},
+			{ readReference: vi.fn() },
+		);
+
+		expect(apis.submit).toHaveBeenCalledWith(
+			expect.objectContaining({
+				providerId: "cpa:images",
+				modelId: "antigravity/gemini-image",
+			}),
+		);
 	});
 
 	it("persists the host execution before returning a completed artifact", async () => {
@@ -120,7 +201,11 @@ describe("HostMediaProvider", () => {
 			kind: "image",
 			source: { type: "host-artifact", artifactId: "artifact-1" },
 		});
-		expect(onExecution).toHaveBeenCalledWith({ kind: "host-job", jobId: "job-1", outputKind: "image" });
+		expect(onExecution).toHaveBeenCalledWith({
+			kind: "host-job",
+			jobId: "job-1",
+			outputKind: "image",
+		});
 	});
 
 	it("forwards distinct first and last frame roles through the host media contract", async () => {
@@ -182,21 +267,19 @@ describe("HostMediaProvider", () => {
 		vi.useFakeTimers();
 		try {
 			const { provider, get } = createProvider();
-			get
-				.mockResolvedValueOnce({
-					id: "job-2",
-					domain: "media",
-					operation: "generate",
-					status: "running",
-					progress: { value: 0.6 },
-					artifacts: [],
-				} as PluginMediaJob)
-				.mockResolvedValueOnce({
-					id: "job-2",
-					domain: "media",
-					operation: "generate",
-					status: "succeeded",
-					artifacts: [
+			get.mockResolvedValueOnce({
+				id: "job-2",
+				domain: "media",
+				operation: "generate",
+				status: "running",
+				progress: { value: 0.6 },
+				artifacts: [],
+			} as PluginMediaJob).mockResolvedValueOnce({
+				id: "job-2",
+				domain: "media",
+				operation: "generate",
+				status: "succeeded",
+				artifacts: [
 					{
 						id: "artifact-2",
 						kind: "video",
@@ -204,8 +287,8 @@ describe("HostMediaProvider", () => {
 						sizeBytes: 64,
 						lifetime: "temporary",
 					},
-					],
-				} as PluginMediaJob);
+				],
+			} as PluginMediaJob);
 			const onProgress = vi.fn().mockResolvedValue(undefined);
 			const result = provider.resume(
 				{ kind: "host-job", jobId: "job-2", outputKind: "video" },
@@ -213,9 +296,15 @@ describe("HostMediaProvider", () => {
 			);
 
 			await vi.advanceTimersByTimeAsync(2000);
-			await expect(result).resolves.toMatchObject({ kind: "video", source: { artifactId: "artifact-2" } });
+			await expect(result).resolves.toMatchObject({
+				kind: "video",
+				source: { artifactId: "artifact-2" },
+			});
 			expect(get).toHaveBeenCalledWith("job-2");
-			expect(onProgress).toHaveBeenCalledWith({ status: "running", progress: 0.6 });
+			expect(onProgress).toHaveBeenCalledWith({
+				status: "running",
+				progress: 0.6,
+			});
 		} finally {
 			vi.useRealTimers();
 		}
@@ -231,7 +320,11 @@ describe("HostMediaProvider", () => {
 				operation: "generate",
 				status: "failed",
 				artifacts: [],
-				error: { code: "quota-exhausted", message: "quota exhausted", retryable: false },
+				error: {
+					code: "quota-exhausted",
+					message: "quota exhausted",
+					retryable: false,
+				},
 			});
 			const result = provider.resume(
 				{ kind: "host-job", jobId: "job-3", outputKind: "image" },
@@ -258,7 +351,11 @@ describe("HostMediaProvider", () => {
 				operation: "get",
 				status: "failed",
 				artifacts: [],
-				error: { code: "job-not-found", message: "Job is unavailable: missing-job", retryable: false },
+				error: {
+					code: "job-not-found",
+					message: "Job is unavailable: missing-job",
+					retryable: false,
+				},
 			});
 			const result = provider.resume(
 				{ kind: "host-job", jobId: "missing-job", outputKind: "image" },

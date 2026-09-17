@@ -169,11 +169,50 @@ export function selectImageProvider(
 	return provider;
 }
 
-async function findProvider(ctx: PluginContext, mode: PluginMediaGenerationMode): Promise<string> {
+export function selectImageModel(
+	provider: PluginMediaProviderDescriptor,
+	mode: PluginMediaGenerationMode,
+	preferredModelId?: string,
+): string | undefined {
+	const capabilities = provider.capabilities.filter(
+		(capability) =>
+			capability.operation === "generate" && capability.kind === "image" && capability.modes.includes(mode),
+	);
+	if (preferredModelId) {
+		const available = capabilities.some(
+			(capability) =>
+				!capability.models ||
+				capability.models.some((model) => model.id === preferredModelId && model.modes.includes(mode)),
+		);
+		if (!available) {
+			throw new PluginMediaError({
+				code: "provider-unavailable",
+				message: `The selected image model is unavailable or does not support ${mode}: ${preferredModelId}`,
+				retryable: false,
+			});
+		}
+		return preferredModelId;
+	}
+	return capabilities
+		.map((capability) => {
+			const preferred = capability.models?.find(
+				(model) => model.id === capability.defaultModelId && model.modes.includes(mode),
+			);
+			return preferred?.id ?? capability.models?.find((model) => model.modes.includes(mode))?.id;
+		})
+		.find((modelId): modelId is string => modelId !== undefined);
+}
+
+async function findProviderAndModel(
+	ctx: PluginContext,
+	mode: PluginMediaGenerationMode,
+): Promise<{ providerId: string; modelId?: string }> {
 	const providers = await ctx.media.listProviders();
 	const settings = await ctx.official.agent.getImageGeneration();
 	const preferredProviderId = mode === "text-to-image" ? settings.textToImageProviderId : settings.imageToImageProviderId;
-	return selectImageProvider(providers, mode, preferredProviderId).id;
+	const preferredModelId = mode === "text-to-image" ? settings.textToImageModelId : settings.imageToImageModelId;
+	const provider = selectImageProvider(providers, mode, preferredProviderId);
+	return { providerId: provider.id, modelId: selectImageModel(provider, mode, preferredModelId) };
 }
 
 function requireImageArtifact(artifact: PluginMediaArtifact | undefined): PluginMediaArtifact {
@@ -193,13 +232,14 @@ async function generateThroughMedia(
 	source?: PluginMediaInput,
 ): Promise<{ blob: PluginStoredBlobRef; providerId: string }> {
 	const mode = source ? "image-to-image" : "text-to-image";
-	const providerId = await findProvider(ctx, mode);
+	const { providerId, modelId } = await findProviderAndModel(ctx, mode);
 	const submitted = await ctx.media.submit({
 		operation: "generate",
 		providerId,
 		kind: "image",
 		mode,
 		prompt: input.prompt,
+		modelId,
 		dimensions: dimensionsFromSize(input.size),
 		inputs: source ? [source] : [],
 	});

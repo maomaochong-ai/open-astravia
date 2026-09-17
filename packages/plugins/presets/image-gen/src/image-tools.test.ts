@@ -164,14 +164,22 @@ describe("image generation media tools", () => {
 		);
 	});
 
-	it("uses the configured provider and preserves its id on the image record", async () => {
-		getImageGeneration.mockResolvedValue({ textToImageProviderId: "remote:images" });
+	it("uses the configured provider and model and preserves the provider id on the image record", async () => {
+		getImageGeneration.mockResolvedValue({
+			textToImageProviderId: "remote:images",
+			textToImageModelId: "google/gemini-image",
+		});
 		listProviders.mockResolvedValue([
 			{
 				id: "desktop-app:vetta",
 				ownerId: "desktop-app",
 				protocolVersion: 2,
-				capabilities: [{ operation: "generate", kind: "image", modes: ["text-to-image"] }],
+				capabilities: [{
+					operation: "generate",
+					kind: "image",
+					modes: ["text-to-image"],
+					models: [{ id: "google/gemini-image", modes: ["text-to-image"] }],
+				}],
 			},
 			{
 				id: "remote:images",
@@ -202,7 +210,10 @@ describe("image generation media tools", () => {
 
 		await tool<GenerateToolInput>("generate-image").handler(toolContext({ prompt: "draw" }));
 
-		expect(submit).toHaveBeenCalledWith(expect.objectContaining({ providerId: "remote:images" }));
+		expect(submit).toHaveBeenCalledWith(expect.objectContaining({
+			providerId: "remote:images",
+			modelId: "google/gemini-image",
+		}));
 		expect(persist).toHaveBeenCalledWith(
 			expect.anything(),
 			expect.objectContaining({ providerId: "remote:images" }),

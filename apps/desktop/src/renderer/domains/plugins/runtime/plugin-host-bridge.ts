@@ -558,6 +558,7 @@ function startMediaProviderRequestListener(): void {
 		}
 		const context = {
 			invocationId: request.requestId,
+			readInput: (inputId: string) => window.vetta.plugins.readMediaProviderInput(request.requestId, inputId),
 			uploadInput: <T = unknown>(
 				inputId: string,
 				input: Parameters<typeof window.vetta.plugins.uploadMediaProviderInput>[2],

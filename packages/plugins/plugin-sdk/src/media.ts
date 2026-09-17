@@ -125,6 +125,18 @@ export interface PluginMediaGenerationModeCapability {
 	audioGeneration?: "none" | "always" | "optional";
 }
 
+export interface PluginMediaGenerationModelDescriptor {
+	id: string;
+	displayName?: string;
+	sourceId?: string;
+	sourceDisplayName?: string;
+	modes: readonly PluginMediaGenerationMode[];
+	aspectRatios?: readonly string[];
+	/** Provider-defined stable option ids; consumers must not infer pixel dimensions from their names. */
+	resolutions?: readonly string[];
+	defaultResolution?: string;
+}
+
 export type PluginMediaCapability =
 	| {
 			operation: "generate";
@@ -135,6 +147,10 @@ export type PluginMediaCapability =
 			resolutions?: readonly string[];
 			/** Preferred option when the consumer has no supported persisted resolution. */
 			defaultResolution?: string;
+			/** Optional per-model catalog. Missing means this is a legacy provider with provider-level capabilities only. */
+			models?: readonly PluginMediaGenerationModelDescriptor[];
+			/** Model used when a consumer does not send modelId. */
+			defaultModelId?: string;
 			durationsSeconds?: readonly number[];
 			modeCapabilities?: readonly PluginMediaGenerationModeCapability[];
 	  }
@@ -200,6 +216,8 @@ export interface PluginMediaTransferResponse<T = unknown> {
 
 export interface PluginMediaProviderHandlerContext {
 	readonly invocationId: string;
+	/** Reads an input that belongs to this invocation without exposing its backing path. */
+	readInput(inputId: string): Promise<{ mimeType: string; data: Uint8Array }>;
 	uploadInput<T = unknown>(
 		inputId: string,
 		request: PluginMediaInputUploadRequest,

@@ -182,6 +182,80 @@ describe("MediaProviderRegistry", () => {
 		);
 	});
 
+	it("resolves a declared default model and rejects an unavailable explicit model", async () => {
+		const registry = createRegistry();
+		const submit = vi.fn().mockResolvedValue(succeededJob());
+		registry.registerProvider({
+			descriptor: {
+				id: "plugin:images",
+				ownerId: "image-provider",
+				protocolVersion: MEDIA_PROTOCOL_VERSION,
+				capabilities: [
+					{
+						operation: "generate",
+						kind: "image",
+						modes: ["text-to-image", "image-to-image"],
+						models: [
+							{ id: "openai/gpt-image-2", modes: ["text-to-image"] },
+							{ id: "google/gemini-edit", modes: ["image-to-image"] },
+						],
+						defaultModelId: "openai/gpt-image-2",
+					},
+				],
+			},
+			submit,
+		});
+
+		await registry.submit(
+			{
+				ownerId: "consumer",
+				providerId: "plugin:images",
+				operation: "generate",
+				kind: "image",
+				mode: "text-to-image",
+				prompt: "draw a fox",
+				inputs: [],
+			},
+			signal,
+		);
+		expect(submit).toHaveBeenCalledWith(
+			expect.objectContaining({ modelId: "openai/gpt-image-2" }),
+			expect.anything(),
+		);
+		await registry.submit(
+			{
+				ownerId: "consumer",
+				providerId: "plugin:images",
+				operation: "generate",
+				kind: "image",
+				mode: "image-to-image",
+				prompt: "edit the fox",
+				inputs: [],
+			},
+			signal,
+		);
+		expect(submit).toHaveBeenLastCalledWith(
+			expect.objectContaining({ modelId: "google/gemini-edit" }),
+			expect.anything(),
+		);
+
+		const rejected = await registry.submit(
+			{
+				ownerId: "consumer",
+				providerId: "plugin:images",
+				operation: "generate",
+				kind: "image",
+				mode: "text-to-image",
+				modelId: "google/missing",
+				prompt: "draw a fox",
+				inputs: [],
+			},
+			signal,
+		);
+		expect(rejected).toMatchObject({ status: "failed", error: { code: "invalid-request" } });
+		expect(submit).toHaveBeenCalledTimes(2);
+	});
+
 	it("records provider-aware job states without logging prompts or source paths", async () => {
 		const jobs = new JobManager();
 		const logger = { info: vi.fn(), warn: vi.fn() };

@@ -25,6 +25,7 @@ import {
 	FOUNDATION_JOB_CAPABILITIES,
 	FOUNDATION_NETWORK_CAPABILITIES,
 	FOUNDATION_STORAGE_CAPABILITIES,
+	MEDIA_PROTOCOL_VERSION,
 } from "@vetta-org/capability-sdk";
 
 function foundationOutput(capabilityId: CapabilityId): unknown {
@@ -150,7 +151,7 @@ function domainOutput(capabilityId: CapabilityId): unknown {
 			{
 				id: "desktop-app:vetta",
 				ownerId: "desktop-app",
-				protocolVersion: 4,
+				protocolVersion: MEDIA_PROTOCOL_VERSION,
 				capabilities: [{ operation: "generate", kind: "image", modes: ["text-to-image", "image-to-image"] }],
 			},
 		];

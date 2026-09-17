@@ -239,7 +239,10 @@ Desktop 主进程部分目录还有更细规则；修改对应目录时必须继
 - 工作区可能同时包含用户或其他 Agent 的改动。不要覆盖、回退、移动或删除不是本次任务产生的变更。
 - 禁止使用 `git reset --hard`、`git checkout .`、`git clean -fd`、`git stash`、`git add .`、`git add -A` 和 `git commit --no-verify`。
 - 只有用户明确要求提交时才提交。暂存时逐个列出本次修改的具体路径，并在提交前用 `git status` 核对 staged 内容。
-- Commit message 使用中文，不添加 `Co-Authored-By`、`Signed-off-by` 等作者信息；存在关联工单时包含 `fixes #N` 或 `closes #N`。
+- Commit message 必须使用中文多行格式，至少包含标题、空行和正文，不得只写单行标题。
+- 标题应简短概括单一逻辑变更，并遵循仓库现有的语义化前缀风格（如 `feat(auth): ...`）；标题与正文之间保留一个空行。
+- 正文用 1–3 句说明改动动机、背景和影响，重点解释“为什么”，避免逐项复述 diff；长段落按约 72 个字符换行。
+- 不添加 `Co-Authored-By`、`Signed-off-by` 等作者信息。存在关联工单时，在正文后空一行添加独立尾注 `fixes #N` 或 `closes #N`。
 - 不 force push。Rebase 冲突若落在本次未修改的文件中，立即中止并请求用户处理。
 
 ## 交付要求

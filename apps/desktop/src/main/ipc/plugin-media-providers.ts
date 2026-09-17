@@ -18,6 +18,9 @@ export function registerPluginMediaProvidersIpc(): () => void {
 	ipcMain.handle(PLUGIN_MEDIA_CHANNELS.UPLOAD_INPUT, (event, requestId: unknown, inputId: unknown, request: unknown) =>
 		host.uploadInput(event.sender, requestId, inputId, request),
 	);
+	ipcMain.handle(PLUGIN_MEDIA_CHANNELS.READ_INPUT, (event, requestId: unknown, inputId: unknown) =>
+		host.readInput(event.sender, requestId, inputId),
+	);
 
 	return () => {
 		for (const channel of Object.values(PLUGIN_MEDIA_CHANNELS)) {
