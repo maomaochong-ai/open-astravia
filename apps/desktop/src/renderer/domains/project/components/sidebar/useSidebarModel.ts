@@ -6,7 +6,6 @@ import {
 	sidebarWidthAtom,
 } from "@shared/store/atoms";
 import { useMatches, useNavigate } from "@tanstack/react-router";
-import { SIDEBAR_LIVE_WIDTH_VAR } from "@vetta-org/theme-ui/sidebar";
 import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -261,6 +260,11 @@ export function useSidebarModel({
 	// committed 宽度。拖拽途中它不变——实时宽度只写 CSS 变量，见下面的 resize。
 	const [width, setWidth] = useAtom(sidebarWidthAtom);
 	const liveWidthRef = useRef(width);
+	const panelElementRef = useRef<HTMLDivElement | null>(null);
+	const resizingRef = useRef(false);
+	const setPanelRef = useCallback((element: HTMLDivElement | null) => {
+		panelElementRef.current = element;
+	}, []);
 	// Resolve i18n in the model layer so theme-ui nav item stays props-driven.
 	const workspaceViews = useAtomValue(pluginWorkspaceViewsAtom);
 	const resolvePluginText = usePluginTextResolver();
@@ -409,30 +413,43 @@ export function useSidebarModel({
 	}, [navigate]);
 
 	/**
-	 * 拖宽度：只更新 CSS 变量，不进 React。
+	 * 拖宽度：只往面板元素写 `style.width`，不进 React。
 	 *
-	 * 宽度一旦每帧进 state，每一帧都要重渲染整条侧边栏、根布局和当前页面（还要重测导航
-	 * 指示条，那是一次强制同步布局）。实测一次快拖 26 帧卡帧、6-11 个 long task 共 400-750ms，
-	 * 手感就是「拉不跟手」。面板与左栏占位都按 `sidebarWidthValue()` 读这个变量，committed
-	 * 值只在松手时提交一次。
+	 * 三条路都实测过（长会话页，40 次改宽的总耗时）：
+	 * - 每帧 setWidth：整条侧边栏 + 根布局 + 当前页面重渲染，一次快拖 6-11 个 long task
+	 *   共 400-750ms。
+	 * - 每帧写 `:root` 上的自定义属性：2945ms，比上一条更糟——改一个继承的自定义属性会让
+	 *   整篇文档的样式失效重算，长会话页每次 73ms。
+	 * - 每帧写面板元素的 `style.width`：622ms，失效范围收在侧边栏子树内。
 	 *
-	 * 主内容区仍然逐帧重排——实时拉伸的语义就是如此，这部分不该省。
+	 * 左栏占位读的是 committed 值，所以整趟拖拽内容区一帧都不重排（它自己一次重排约 80ms，
+	 * 逐帧跟着拖必然追不上光标）：变宽时面板盖在内容上、变窄时露出背景，松手落定一次。
 	 */
 	const resize = useCallback((delta: number) => {
 		const next = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, liveWidthRef.current + delta));
 		if (next === liveWidthRef.current) return;
 		liveWidthRef.current = next;
-		document.documentElement.style.setProperty(SIDEBAR_LIVE_WIDTH_VAR, `${next}px`);
+		const panel = panelElementRef.current;
+		if (!panel) return;
+		panel.style.width = `${next}px`;
+		if (!resizingRef.current) {
+			resizingRef.current = true;
+			// 拖宽期面板会盖在内容上，mac 经典侧边栏的半透明毛玻璃底色会让内容透出来；
+			// 标记落在面板自己身上（不是 :root），样式失效范围因此只有侧边栏子树。
+			panel.dataset.resizing = "true";
+		}
 	}, []);
 	const resizeEnd = useCallback(() => {
+		resizingRef.current = false;
+		delete panelElementRef.current?.dataset.resizing;
+		// 一次提交：committed 值落定，内容区就此重排一次。
 		setWidth(liveWidthRef.current);
 		localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(liveWidthRef.current));
 	}, [setWidth]);
 
-	// committed 值从别处变化（启动时从 localStorage 读回、宽度被夹紧）时把变量拉回同步。
+	// committed 值从别处变化（启动时从 localStorage 读回、被夹紧）时对齐实时值。
 	useLayoutEffect(() => {
 		liveWidthRef.current = width;
-		document.documentElement.style.setProperty(SIDEBAR_LIVE_WIDTH_VAR, `${width}px`);
 	}, [width]);
 	const setNavItemRef = useCallback(
 		(index: number) => (element: HTMLButtonElement | null) => {
@@ -478,6 +495,7 @@ export function useSidebarModel({
 		imOnline,
 		setNavItemRef,
 		setMoreButtonRef,
+		setPanelRef,
 		actions: {
 			openNavItem,
 			openClawSettings,

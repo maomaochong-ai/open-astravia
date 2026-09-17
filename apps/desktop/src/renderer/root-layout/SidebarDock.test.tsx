@@ -47,22 +47,20 @@ describe("SidebarDock", () => {
 		expect(container.firstElementChild).toBe(dock);
 	});
 
-	it("宽度按 CSS 变量取值，committed 值只作兜底（拖拽期不进 React）", () => {
+	it("占位宽度用 committed 值，拖拽期内容区因此不重排", () => {
 		const { container } = render(renderDock(true));
 		const dock = container.firstElementChild as HTMLElement;
-		const panel = dock.firstElementChild as HTMLElement;
-		// 拖宽度时宿主只改这个变量：进 state 就会每帧重渲染整条侧边栏与当前页面，
-		// 实测一次快拖 26 帧卡帧、6-11 个 long task。占位与面板必须读同一段取值，否则会错开。
-		const expected = `var(--sidebar-live-width, ${WIDTH}px)`;
-		expect(dock.style.width).toBe(expected);
-		expect(panel.style.width).toBe(expected);
+		// 拖宽度时宿主只往面板元素写 style.width（见 useSidebarModel 的 resize），占位留在
+		// committed 值上——内容区一帧都不重排。占位若跟着实时宽度走，长会话页每帧要多花约
+		// 80ms 重排，手柄就追不上光标。
+		expect(dock.style.width).toBe(`${WIDTH}px`);
 	});
 
 	it("布局宽度一步到位，滑动只用 transform（内容区因此只重排一次）", () => {
 		const { container, rerender } = render(renderDock(true));
 		const dock = container.firstElementChild as HTMLElement;
 		const panel = dock.firstElementChild as HTMLElement;
-		expect(dock.style.width).toBe(`var(--sidebar-live-width, ${WIDTH}px)`);
+		expect(dock.style.width).toBe(`${WIDTH}px`);
 		expect(dock.style.transitionProperty).toBe("");
 		expect(panel.className).toContain("transition-[transform,opacity]");
 		expect(panel.style.transform).toBe("translateX(0)");
@@ -70,7 +68,8 @@ describe("SidebarDock", () => {
 		rerender(renderDock(false));
 		// 宽度瞬时归零；面板整体滑出，宽度不变。
 		expect(dock.style.width).toBe("0px");
-		expect(panel.style.transform).toContain("translateX(calc(-1 *");
+		expect(panel.style.width).toBe(`${WIDTH}px`);
+		expect(panel.style.transform).toBe(`translateX(-${WIDTH}px)`);
 		// 滑动时长与宿主的延迟挂载同源，所以写在 style 上而不是拍死成工具类。
 		expect(panel.style.transitionDuration).toBe(`${SIDEBAR_DOCK_ANIMATION_MS}ms`);
 	});
