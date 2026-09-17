@@ -225,6 +225,14 @@ export function useFrameRasters({
 	const invalidationSeqRef = useRef<Map<string, number>>(new Map());
 	/** 本次挂载后已收到 rendered 信号的 frame。iframe 卸载后作废（见 mounted 同步）。 */
 	const renderedRef = useRef<Set<string>>(new Set());
+	/**
+	 * 因为构建失败被截图队列跳过的 frame。
+	 *
+	 * 这条队列没有「错误已经清掉了」的输入——错误态存在 design-runtime 的模块级 store
+	 * 里，不是本 hook 的依赖。恢复完全靠 frame 重新渲染时那条 rendered 把队列踢一脚，
+	 * 所以 notifyRendered 的去重必须把它们放行。
+	 */
+	const errorSkippedRef = useRef<Set<string>>(new Set());
 	/** 最近一次被单独选中的 frame，取消选中后仍然记着（见 mounted）。 */
 	const lastActiveRef = useRef<string | null>(null);
 	if (activeFrameId !== null) lastActiveRef.current = activeFrameId;
@@ -293,11 +301,22 @@ export function useFrameRasters({
 
 	const notifyRendered = useCallback(
 		(frameId: string): void => {
+			// 这一次挂载后的**第一条** rendered 才是门禁信号。门禁存在 ref 里、不触发
+			// 重渲染，所以那一条必须换掉 dirty 的引用，好让截图 effect 重跑、发现该
+			// frame 现在可以截了。
+			const opensGate = !renderedRef.current.has(frameId);
+			// 上一轮因构建失败被跳过：这条信号正是它唯一的复活入口，不能去重掉。
+			const recovered = errorSkippedRef.current.delete(frameId);
 			renderedRef.current.add(frameId);
 			bumpSeq(frameId);
-			// 已经在脏集合里也要换个引用：rendered 门禁靠 ref 存放，不触发重渲染，
-			// 全靠这次 state 变化让截图 effect 重跑、发现该 frame 现在可以截了。
-			setDirty((current) => new Set(current).add(frameId));
+			setDirty((current) => {
+				// 引擎侧的 FramePainted 没有依赖数组，frame 每提交一次就重发一条
+				// rendered（engine/src/main.tsx）。门禁早就开着、这一帧也还排在队列里
+				// 时，这条信号不带来任何新信息——再换一次引用只会让整块画布陪着重渲染
+				// 一轮，还把截图队列重排一遍（cleanup 作废掉正在静置的那些，从头再等）。
+				if (!opensGate && !recovered && current.has(frameId)) return current;
+				return new Set(current).add(frameId);
+			});
 		},
 		[bumpSeq],
 	);
@@ -480,7 +499,10 @@ export function useFrameRasters({
 			if (!dirty.has(frameId)) continue;
 			if (frameId === activeFrameId) continue;
 			if (!offscreenActive && !(mounted.has(frameId) && renderedRef.current.has(frameId))) continue;
-			if (getFrameError(frameId)) continue;
+			if (getFrameError(frameId)) {
+				errorSkippedRef.current.add(frameId);
+				continue;
+			}
 			startCapture(frameId);
 			started.push(frameId);
 		}

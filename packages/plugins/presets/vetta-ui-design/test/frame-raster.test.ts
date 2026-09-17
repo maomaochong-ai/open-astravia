@@ -10,6 +10,7 @@ import { createRoot, type Root } from "react-dom/client";
 import type { PluginContext } from "@vetta-org/plugin-sdk";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { BridgeHub } from "../src/canvas/bridge-client";
+import { clearFrameErrors, setFrameError } from "../src/canvas/design-runtime";
 import { type FrameRasterState, useFrameRasters } from "../src/canvas/frame-raster";
 import { setPluginCtx } from "../src/plugin-context";
 
@@ -283,3 +284,44 @@ it("预览端口失联时只上报一次并抑制并发槽的重复错误日志"
 		setPluginCtx(null as unknown as PluginContext);
 	}
 });
+
+/**
+ * 复现的 bug：引擎侧的 FramePainted 没有依赖数组，frame 每提交一次就重发一条
+ * rendered（engine/src/main.tsx）。画布收到后无条件换掉 dirty 的引用，截图 effect
+ * 跟着重跑，cleanup 把还在静置等待的那张作废重来——信号间隔短于静置时间时，这一帧
+ * 永远截不出来，整块画布还陪着一轮轮重渲染（肉眼就是画布发闪）。
+ */
+it("重复的 rendered 不会把还在静置的截图一再作废", async () => {
+	await mount(["a"]);
+
+	act(() => latest.notifyRendered("a"));
+	// 每隔「短于静置时间」就来一条，模拟 frame 持续提交。
+	for (let i = 0; i < 4; i += 1) {
+		await advance(SETTLE * 0.6);
+		act(() => latest.notifyRendered("a"));
+	}
+
+	expect(captures.length).toBeGreaterThan(0);
+});
+
+/**
+ * 去重不能把构建失败那条恢复路径一起吃掉：错误态存在 design-runtime 的模块级 store
+ * 里，不是这个 hook 的依赖，队列唯一的复活输入就是 frame 恢复渲染时那条 rendered。
+ */
+it("构建失败期间被跳过的 frame，恢复渲染后会重新进队列", async () => {
+	await mount(["a"]);
+
+	setFrameError("a", "Unexpected token");
+	act(() => latest.notifyRendered("a"));
+	await advance(SETTLE * 2);
+	expect(captures.length).toBe(0);
+
+	// 改好了：引擎重新渲染、错误清空，随后补上这一帧的 rendered。
+	setFrameError("a", null);
+	act(() => latest.notifyRendered("a"));
+	await advance(SETTLE * 2);
+	expect(captures.length).toBe(1);
+
+	clearFrameErrors();
+});
+
