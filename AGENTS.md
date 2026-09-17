@@ -209,9 +209,9 @@ Desktop 主进程部分目录还有更细规则；修改对应目录时必须继
 
 使用最小但充分的验证范围：
 
-1. 一轮代码编辑后运行 `bun run check:quick`。
-2. 运行与变更直接相关的测试，例如 `bun scripts/quality/run-vitest.mjs --run <test-file>` 或 `bun run test:pkg <name>`。
-3. 涉及多个可测包或影响范围不明确时运行 `bun run test:changed`。
+1. 一轮代码编辑后对本次任务文件运行 `bun run check:quick -- <file...>`；需要核对整个工作区时省略文件参数。
+2. 优先运行 `bun run test:impact -- <file...>`；它会选择直接测试和依赖相关测试，无法可靠缩小范围时自动回退 `test:changed`。
+3. 公共合同、删除文件、多个包或影响范围不明确时运行 `bun run test:changed -- <file...>`；提 PR 前仍可不带文件参数核对完整分支差异。
 4. 一轮代码任务完成后运行一次 `bun run check`，修复全部 error、warning 和 info。
 
 `bun run check` 不运行测试，不能替代定向行为测试。
