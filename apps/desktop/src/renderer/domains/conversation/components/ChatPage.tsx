@@ -1,4 +1,4 @@
-import { abortMessageFnRef, sendMessageFnRef, sendQueuedNowFnRef } from "@shared/store/atoms";
+import { abortMessageFnRef, readSessionManagerFn, sendMessageFnRef, sendQueuedNowFnRef } from "@shared/store/atoms";
 import { useCallback } from "react";
 import { useChatPageModel } from "../hooks/useChatPageModel";
 import { ChatPageView } from "./chat-page/ChatPageView";
@@ -9,7 +9,7 @@ export function ChatPage(): JSX.Element | null {
 	// 会话打开/发送只在 RootLayout 挂一份 useSessionManager；这里走模块级 ref，
 	// 避免 ChatPage 再挂一份实例把 send/abort 身份搅乱。
 	const handleSend = useCallback(async (overrideText?: string, context?: SendInteractionContext) => {
-		await sendMessageFnRef.current?.(
+		await readSessionManagerFn(sendMessageFnRef, "sendMessage")?.(
 			overrideText,
 			context
 				? {
@@ -20,10 +20,10 @@ export function ChatPage(): JSX.Element | null {
 		);
 	}, []);
 	const handleAbort = useCallback(async () => {
-		await abortMessageFnRef.current?.();
+		await readSessionManagerFn(abortMessageFnRef, "abortMessage")?.();
 	}, []);
 	const handleSendQueued = useCallback(async (runtimeId: string, id: string) => {
-		await sendQueuedNowFnRef.current?.(runtimeId, id);
+		await readSessionManagerFn(sendQueuedNowFnRef, "sendQueuedNow")?.(runtimeId, id);
 	}, []);
 
 	return (

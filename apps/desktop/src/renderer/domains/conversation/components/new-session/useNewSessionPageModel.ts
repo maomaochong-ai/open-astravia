@@ -21,6 +21,7 @@ import {
 	pageHeaderTitleHiddenAtom,
 	pendingSessionCreationAtom,
 	promptAttachmentAtom,
+	readSessionManagerFn,
 	sendMessageFnRef,
 	sessionExecutionModeAtom,
 	switchSessionInputDraftScope,
@@ -145,13 +146,13 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 	const authUser = useAtomValue(authUserAtom);
 	const executionMode = useAtomValue(sessionExecutionModeAtom);
 	const openSession = useCallback<NonNullable<(typeof openSessionFnRef)["current"]>>(async (...args) => {
-		await openSessionFnRef.current?.(...args);
+		await readSessionManagerFn(openSessionFnRef, "openSession")?.(...args);
 	}, []);
 	const sendMessage = useCallback<NonNullable<(typeof sendMessageFnRef)["current"]>>(async (...args) => {
-		return await sendMessageFnRef.current?.(...args);
+		return await readSessionManagerFn(sendMessageFnRef, "sendMessage")?.(...args);
 	}, []);
 	const abortMessage = useCallback(async () => {
-		await abortMessageFnRef.current?.();
+		await readSessionManagerFn(abortMessageFnRef, "abortMessage")?.();
 	}, []);
 	const { createProject } = useProjectActions();
 	const setConfirm = useSetAtom(confirmDialogAtom);
