@@ -202,3 +202,5 @@ Longer, searchable threads still belong in [GitHub Discussions](https://github.c
 Open Vetta builds on work from the wider open-source ecosystem, including pi, Codex CLI, MCP, Electron, React, Bun, models.dev, and the projects listed in [`NOTICE`](NOTICE). The complete third-party inventory and original notices live there.
 
 Licensed under [Apache-2.0](LICENSE).
+
+- **Friends & Links:** [LINUX DO](https://linux.do/) - A Chinese community for technology enthusiasts. This project is linked with and endorsed by LINUX DO.
