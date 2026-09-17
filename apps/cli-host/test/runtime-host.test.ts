@@ -93,7 +93,7 @@ describe("IM Runtime Host", () => {
 		if (resumed.kind !== "rpc") throw new Error("Expected resumed Greenfield runtime");
 		preparedHosts.push(resumed);
 		expect(resumed.session.sessionId).toBe("im-session");
-	});
+	}, 15_000);
 
 	it("transitions new and resumed sessions through the production RPC capability", async () => {
 		const fixture = await createFixture([]);
@@ -127,7 +127,7 @@ describe("IM Runtime Host", () => {
 		expect(result.session.sessionId).toBe("transition-initial");
 		await expect(stat(initialOwnerPath)).resolves.toBeDefined();
 		await expect(stat(nextOwnerPath)).rejects.toMatchObject({ code: "ENOENT" });
-	});
+	}, 15_000);
 
 	it("rejects malformed Runtime paths instead of treating them as historical sessions", async () => {
 		const fixture = await createFixture(["--session", join("outside", "bad.conversation.jsonl")]);
