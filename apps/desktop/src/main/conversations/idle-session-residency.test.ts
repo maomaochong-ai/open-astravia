@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+	collectRunningInteractiveSessionIds,
 	IDLE_RESIDENT_SESSION_LIMIT,
 	InteractiveSessionResidencyTracker,
+	reconcileIdleInteractiveSessions,
 	selectIdleSessionsToEvict,
 } from "./idle-session-residency.js";
 
@@ -111,3 +113,112 @@ describe("InteractiveSessionResidencyTracker", () => {
 		expect(tracker.idsToEvict(new Set(["old-running"]))).toEqual([]);
 	});
 });
+
+describe("reconcileIdleInteractiveSessions user flows", () => {
+	it("after opening four idle conversations, only the three most recent stay live", async () => {
+		const host = createInteractiveHost(["s1", "s2", "s3", "s4"]);
+		for (const sessionId of host.live.keys()) host.tracker.touch(sessionId);
+
+		await reconcileIdleInteractiveSessions({
+			tracker: host.tracker,
+			runningIds: host.runningIds(),
+			dispose: (sessionId) => host.dispose(sessionId),
+		});
+
+		expect([...host.live.keys()]).toEqual(["s2", "s3", "s4"]);
+		expect(host.tracker.trackedIds()).toEqual(["s2", "s3", "s4"]);
+	});
+
+	it("keeps a background-running conversation even if it is the oldest", async () => {
+		const host = createInteractiveHost(["old-running", "a", "b", "c", "d"]);
+		for (const sessionId of host.live.keys()) host.tracker.touch(sessionId);
+		host.running.add("old-running");
+
+		await reconcileIdleInteractiveSessions({
+			tracker: host.tracker,
+			runningIds: host.runningIds(),
+			dispose: (sessionId) => host.dispose(sessionId),
+		});
+
+		expect([...host.live.keys()]).toEqual(["old-running", "b", "c", "d"]);
+		expect(host.running.has("old-running")).toBe(true);
+	});
+
+	it("switching back to an older idle conversation keeps it in the warm window", async () => {
+		const host = createInteractiveHost(["s1", "s2", "s3", "s4"]);
+		for (const sessionId of host.live.keys()) host.tracker.touch(sessionId);
+		host.tracker.touch("s1");
+
+		await reconcileIdleInteractiveSessions({
+			tracker: host.tracker,
+			runningIds: host.runningIds(),
+			dispose: (sessionId) => host.dispose(sessionId),
+		});
+
+		expect([...host.live.keys()]).toEqual(["s1", "s3", "s4"]);
+	});
+
+	it("does not drop a session from tracking when dispose fails, so a later reconcile can retry", async () => {
+		const host = createInteractiveHost(["s1", "s2", "s3", "s4"]);
+		for (const sessionId of host.live.keys()) host.tracker.touch(sessionId);
+		const errors: string[] = [];
+
+		await reconcileIdleInteractiveSessions({
+			tracker: host.tracker,
+			runningIds: host.runningIds(),
+			dispose: async (sessionId) => {
+				if (sessionId === "s1") throw new Error("lock held");
+				await host.dispose(sessionId);
+			},
+			onDisposeError: (sessionId) => errors.push(sessionId),
+		});
+
+		expect(errors).toEqual(["s1"]);
+		expect(host.tracker.has("s1")).toBe(true);
+		expect(host.live.has("s1")).toBe(true);
+
+		await reconcileIdleInteractiveSessions({
+			tracker: host.tracker,
+			runningIds: host.runningIds(),
+			dispose: (sessionId) => host.dispose(sessionId),
+		});
+		expect(host.live.has("s1")).toBe(false);
+		expect(host.tracker.has("s1")).toBe(false);
+	});
+});
+
+describe("collectRunningInteractiveSessionIds", () => {
+	it("marks a tracked session running only when its live path is in the running set", () => {
+		expect([
+			...collectRunningInteractiveSessionIds(["live", "idle", "missing"], getSessionPath, ["/sessions/live.jsonl"]),
+		]).toEqual(["live"]);
+	});
+});
+
+function getSessionPath(sessionId: string): string | undefined {
+	if (sessionId === "missing") return undefined;
+	return `/sessions/${sessionId}.jsonl`;
+}
+
+function createInteractiveHost(sessionIds: readonly string[]) {
+	const live = new Map(sessionIds.map((sessionId) => [sessionId, `/sessions/${sessionId}.jsonl`]));
+	const running = new Set<string>();
+	const tracker = new InteractiveSessionResidencyTracker();
+	return {
+		live,
+		running,
+		tracker,
+		runningIds(): Set<string> {
+			return collectRunningInteractiveSessionIds(
+				tracker.trackedIds(),
+				(sessionId) => live.get(sessionId),
+				[...running].map((sessionId) => live.get(sessionId)).filter((path): path is string => path !== undefined),
+			);
+		},
+		async dispose(sessionId: string): Promise<void> {
+			live.delete(sessionId);
+			running.delete(sessionId);
+			tracker.forget(sessionId);
+		},
+	};
+}

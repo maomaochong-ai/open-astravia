@@ -74,3 +74,35 @@ export class InteractiveSessionResidencyTracker {
 		}));
 	}
 }
+
+export function collectRunningInteractiveSessionIds(
+	trackedIds: readonly string[],
+	getSessionPath: (sessionId: string) => string | undefined,
+	runningPaths: readonly string[],
+): Set<string> {
+	const running = new Set(runningPaths);
+	const ids = new Set<string>();
+	for (const sessionId of trackedIds) {
+		const sessionPath = getSessionPath(sessionId);
+		if (sessionPath && running.has(sessionPath)) ids.add(sessionId);
+	}
+	return ids;
+}
+
+export async function reconcileIdleInteractiveSessions(input: {
+	readonly tracker: InteractiveSessionResidencyTracker;
+	readonly runningIds: ReadonlySet<string>;
+	readonly dispose: (sessionId: string) => Promise<void>;
+	readonly onDisposeError?: (sessionId: string, error: unknown) => void;
+}): Promise<readonly string[]> {
+	const evicted: string[] = [];
+	for (const sessionId of input.tracker.idsToEvict(input.runningIds)) {
+		try {
+			await input.dispose(sessionId);
+			evicted.push(sessionId);
+		} catch (error) {
+			input.onDisposeError?.(sessionId, error);
+		}
+	}
+	return evicted;
+}
