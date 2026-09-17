@@ -53,7 +53,7 @@ describe("SidebarDock", () => {
 		const panel = dock.firstElementChild as HTMLElement;
 		expect(dock.style.width).toBe(`${WIDTH}px`);
 		expect(dock.style.transitionProperty).toBe("");
-		expect(panel.className).toContain("transition-transform");
+		expect(panel.className).toContain("transition-[transform,opacity]");
 		expect(panel.style.transform).toBe("translateX(0)");
 
 		rerender(renderDock(false));
@@ -63,6 +63,17 @@ describe("SidebarDock", () => {
 		expect(panel.style.transform).toBe(`translateX(-${WIDTH}px)`);
 		// 滑动时长与宿主的延迟挂载同源，所以写在 style 上而不是拍死成工具类。
 		expect(panel.style.transitionDuration).toBe(`${SIDEBAR_DOCK_ANIMATION_MS}ms`);
+	});
+
+	it("收起态整块不绘制：面板右缘会压在窗口最左那 8px 上", () => {
+		const { container, rerender } = render(renderDock(true));
+		const panel = (container.firstElementChild as HTMLElement).firstElementChild as HTMLElement;
+		expect(panel.className).toContain("opacity-100");
+
+		rerender(renderDock(false));
+		// 占位盒子左缘停在 AppFrame 的 8px 内边距上，面板按自身宽度滑出后右缘正好落在
+		// 窗口左缘；mac 经典侧边栏是半透明 tint + 右边框，不透明就会显成一条竖白条。
+		expect(panel.className).toContain("opacity-0");
 	});
 
 	it("收起态对指针与辅助技术隐藏", () => {

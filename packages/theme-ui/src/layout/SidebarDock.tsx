@@ -45,6 +45,10 @@ export interface SidebarDockProps extends Omit<ComponentPropsWithoutRef<"div">, 
  * 留住子树的代价必须还清：`inert` + `aria-hidden` 挡掉指针与 Tab（否则会多出一条看不见
  * 却能走进去的侧边栏）；`inert` 同时是「左栏不在位」的样式钩子——经典侧边栏贴边的负
  * margin、主内容左缘补色都据它判定，见 renderer/styles.css。
+ *
+ * 收起态还必须 `opacity-0`：占位盒子的左缘停在 AppFrame 的 8px 内边距上，面板按自身宽度
+ * 滑出后右缘正好压在窗口最左那 8px 上（mac 经典侧边栏是半透明 tint + 右边框，会显成一条
+ * 竖白条）。透明度跟着一起过渡，滑出过程照旧可见。
  */
 export function SidebarDock({
 	children,
@@ -65,7 +69,10 @@ export function SidebarDock({
 			{...props}
 		>
 			<div
-				className="absolute inset-y-0 left-0 transition-transform ease-[cubic-bezier(0.22,0.61,0.36,1)] motion-reduce:transition-none"
+				className={cn(
+					"absolute inset-y-0 left-0 transition-[transform,opacity] ease-[cubic-bezier(0.22,0.61,0.36,1)] motion-reduce:transition-none",
+					visible ? "opacity-100" : "opacity-0",
+				)}
 				style={{
 					width,
 					transform: visible ? "translateX(0)" : `translateX(-${width}px)`,
