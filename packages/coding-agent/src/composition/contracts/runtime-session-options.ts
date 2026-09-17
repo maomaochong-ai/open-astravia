@@ -34,6 +34,8 @@ export interface CodingAgentRuntimeSessionOptions {
 	readonly env?: Readonly<Record<string, string>>;
 	readonly enableBackgroundTasks?: boolean;
 	readonly includeAgentSkills?: boolean;
+	/** Disable Runtime-host retries when an outer durable task scheduler owns retry policy. */
+	readonly automaticRetry?: boolean;
 	readonly agentPlugins?: AgentPluginRuntimeConfig;
 	readonly invokePluginTool?: AgentPluginToolInvoker;
 	readonly invokePluginContinuation?: AgentPluginContinuationInvoker;
@@ -114,7 +116,7 @@ export function parseCodingAgentRuntimeSessionConfiguration(value: unknown): Cod
 	if (value.scenario !== undefined && !isConversationScenario(value.scenario)) {
 		throw new Error("Coding Agent Runtime Session field scenario is invalid");
 	}
-	assertOptionalBooleanFields(value, ["enableBackgroundTasks", "includeAgentSkills", "memoryMode"]);
+	assertOptionalBooleanFields(value, ["automaticRetry", "enableBackgroundTasks", "includeAgentSkills", "memoryMode"]);
 	assertOptionalNumberFields(value, ["memoryCharLimit"]);
 	assertOptionalArrayFields(value, ["forkContextMessages", "initialTodos", "sessionTools", "sessionRuntimeTools"]);
 	assertOptionalFunctionFields(value, [

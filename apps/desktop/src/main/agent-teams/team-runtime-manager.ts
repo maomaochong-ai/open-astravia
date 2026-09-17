@@ -87,6 +87,7 @@ export class TeamRuntimeManager {
 			{
 				cwd,
 				executionMode,
+				automaticRetry: false,
 				...promptContext,
 				agentConfiguration: {
 					template: null,
@@ -274,6 +275,7 @@ export class TeamRuntimeManager {
 					cwd: session.cwd,
 					executionMode,
 					sessionPath,
+					automaticRetry: false,
 					...this.createMemberPromptContext(
 						session.id,
 						memberId,

@@ -44,6 +44,14 @@ describe("Team member concurrency", () => {
 	// 装机团队的队长是插件智能体，注册表空着就取不到人设。
 	beforeEach(() => registerPresetPluginBlueprints());
 
+	it("leaves durable Team task scheduling as the only automatic retry owner", async () => {
+		const fixture = await createFixture();
+		for (const memberId of fixture.members) {
+			const sessionId = fixture.session.memberRuntime[memberId]!.sessionId;
+			expect(fixture.sessionConfigs.get(sessionId)?.automaticRetry).toBe(false);
+		}
+	});
+
 	it("restores policy-specific deltas without rerunning a changed policy after restart", async () => {
 		let text = "admitted";
 		const project = vi.fn<TeamContextProjectionPolicy["project"]>(({ session, targetMemberId }) => [

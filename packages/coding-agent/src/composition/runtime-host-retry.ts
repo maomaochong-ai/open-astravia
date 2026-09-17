@@ -1,9 +1,11 @@
 import {
 	ConfigurableRuntimeTurnRetryPolicy,
 	DeferredRuntimeRetryEventStream,
+	NoRetryPolicy,
 	type RuntimeHostSessionAssembly,
 	type RuntimeObservationPublisher,
 	type RuntimeSession,
+	type RuntimeTurnRetryPolicy,
 	runtimeError,
 	withRuntimeHostSessionRetry,
 } from "@vetta/runtime-core";
@@ -21,14 +23,23 @@ export function withCodingAgentRuntimeHostRetry(
 	assembly: RuntimeHostSessionAssembly,
 	settings: CodingAgentRuntimeHostRetrySettings,
 	observationPublisher?: RuntimeObservationPublisher,
+	automaticRetry = true,
 ): RuntimeHostSessionAssembly {
 	return withRuntimeHostSessionRetry(session, assembly, {
-		policy: new ConfigurableRuntimeTurnRetryPolicy({
-			readSettings: () => settings.getRetrySettings(),
-			setEnabled: (enabled) => settings.setRetryEnabled(enabled),
-		}),
+		policy: createCodingAgentRuntimeHostRetryPolicy(settings, automaticRetry),
 		readFailure: readCodingAgentTurnFailure,
 		observationPublisher,
+	});
+}
+
+export function createCodingAgentRuntimeHostRetryPolicy(
+	settings: CodingAgentRuntimeHostRetrySettings,
+	automaticRetry = true,
+): RuntimeTurnRetryPolicy {
+	if (!automaticRetry) return new NoRetryPolicy();
+	return new ConfigurableRuntimeTurnRetryPolicy({
+		readSettings: () => settings.getRetrySettings(),
+		setEnabled: (enabled) => settings.setRetryEnabled(enabled),
 	});
 }
 

@@ -251,12 +251,13 @@ async function assembleCodingAgentRuntimeComposition(
 			tracing: options.tracing,
 		},
 		decorateAssembly: options.runtimeHostRetrySettings
-			? ({ session, assembly }) =>
+			? ({ request, session, assembly }) =>
 					withCodingAgentRuntimeHostRetry(
 						session,
 						assembly,
 						options.runtimeHostRetrySettings!,
 						observationPublisher,
+						readCodingAgentSessionOptions(request).automaticRetry !== false,
 					)
 			: undefined,
 		mapCreationError: mapCodingAgentRuntimeSessionCreationError,
