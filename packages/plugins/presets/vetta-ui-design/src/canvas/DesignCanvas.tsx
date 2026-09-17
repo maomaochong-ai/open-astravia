@@ -538,6 +538,7 @@ export function DesignCanvas({
 		cacheKey: session.vetdPath,
 		frameIds: orderedFrameIds,
 		activeFrameId: liveFrameId,
+		interacting: view.interacting,
 		offscreen: {
 			port,
 			onUnavailable: onEngineUnavailable,

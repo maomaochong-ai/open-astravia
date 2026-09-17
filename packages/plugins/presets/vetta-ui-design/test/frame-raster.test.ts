@@ -38,6 +38,7 @@ let container: HTMLElement;
 function Harness(props: {
 	frameIds: readonly string[];
 	activeFrameId: string | null;
+	interacting?: boolean;
 	offscreen?: TestOffscreenContext | null;
 }): null {
 	latest = useFrameRasters({
@@ -45,6 +46,7 @@ function Harness(props: {
 		cacheKey: "/design/demo.vetd",
 		frameIds: props.frameIds,
 		activeFrameId: props.activeFrameId,
+		interacting: props.interacting ?? false,
 		offscreen: props.offscreen ?? null,
 	});
 	return null;
@@ -366,4 +368,56 @@ it("刚取消选中的 frame 保持挂载，再次选中时不用重建 iframe",
 	} finally {
 		setPluginCtx(null as unknown as PluginContext);
 	}
+});
+
+/**
+ * 缩放/平移途中活体 iframe 是最贵的一层：跨源渲染树套在 world 的 scale 底下，缩放每变
+ * 一档就得连同它整棵树重新光栅化。有位图的先用位图顶着，iframe 只收起不卸载。
+ */
+it("交互期把有位图的 frame 降为位图，iframe 收起但不卸载", async () => {
+	setPluginCtx({
+		capture: {
+			offscreen: () => Promise.resolve({ dataUrl: "data:offscreen", scaleFactor: 2 }),
+			releaseOffscreen: () => Promise.resolve(),
+		},
+	} as unknown as PluginContext);
+	try {
+		const offscreen = { port: 5173, sizeOf: () => ({ width: 390, height: 844 }) };
+		await mount(["a", "b"], offscreen);
+		await advance(50);
+		await flushMicrotasks();
+
+		const render = async (interacting: boolean): Promise<void> => {
+			await act(async () => {
+				root.render(createElement(Harness, { frameIds: ["a", "b"], activeFrameId: "a", interacting, offscreen }));
+			});
+		};
+
+		await render(false);
+		expect(latest.isMounted("a")).toBe(true);
+		expect(latest.isLive("a")).toBe(true);
+
+		// 手势开始：位图顶上，iframe 收起。
+		await render(true);
+		expect(latest.isLive("a")).toBe(false);
+		// 但必须还挂着——卸掉就要整页重新加载，操作结束会看见一轮重启。
+		expect(latest.isMounted("a")).toBe(true);
+
+		// 结束后恢复活体。
+		await render(false);
+		expect(latest.isLive("a")).toBe(true);
+	} finally {
+		setPluginCtx(null as unknown as PluginContext);
+	}
+});
+
+/** 还没截到位图的 frame 不能收：那是它此刻唯一有内容的层，收起来就是一片空白。 */
+it("交互期没有位图的 frame 仍然保持活体", async () => {
+	await mount(["a"]);
+
+	await act(async () => {
+		root.render(createElement(Harness, { frameIds: ["a"], activeFrameId: null, interacting: true }));
+	});
+	expect(latest.rasterOf("a")).toBe(null);
+	expect(latest.isLive("a")).toBe(true);
 });

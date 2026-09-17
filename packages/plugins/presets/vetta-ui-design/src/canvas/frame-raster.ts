@@ -74,6 +74,15 @@ interface FrameRasterOptions {
 	 */
 	activeFrameId: string | null;
 	/**
+	 * 这一趟缩放/平移还在进行（见 use-viewport 的 interacting）。
+	 *
+	 * 为真时「已经有位图的 frame」一律降为位图显示：活体 iframe 是跨源渲染树，套在
+	 * world 的 scale 底下，缩放每变一档就得连同它整棵树重新光栅化；位图是一张已经解码
+	 * 好的图，缩放只是 GPU 拉伸。iframe 本身不卸（mounted 不受影响），只是收起来，所以
+	 * 操作结束不用重新加载——交接照旧由 FrameView 押两帧，不会露白底。
+	 */
+	interacting: boolean;
+	/**
 	 * 宿主离屏截图所需的上下文（引擎端口 + frame 尺寸）。宿主支持时位图队列走
 	 * 离屏窗口：截图不再要求 frame 挂活体 iframe，也不占画布渲染进程的主线程；
 	 * 不支持（旧宿主）则整体回落 html-to-image 老路。
@@ -188,6 +197,7 @@ export function useFrameRasters({
 	cacheKey,
 	frameIds,
 	activeFrameId,
+	interacting,
 	offscreen,
 }: FrameRasterOptions): FrameRasterState {
 	/** 离屏路径是否可用。宿主能力不会中途消失，判一次即可。 */
@@ -533,12 +543,20 @@ export function useFrameRasters({
 	const liveSet = useMemo(() => {
 		const live = new Set<string>();
 		for (const frameId of mounted) {
-			if (frameId === activeFrameId || forced.has(frameId) || dirty.has(frameId) || !rasters.has(frameId)) {
+			// 截图期间被强制拉活的不能动：display:none 的 iframe 没有布局，截出来是空的。
+			if (forced.has(frameId)) {
+				live.add(frameId);
+				continue;
+			}
+			// 缩放/平移途中，有位图的一律先用位图顶着（见 interacting）。没位图的留活体：
+			// 那是它此刻唯一有内容的那一层，收起来只会在操作期间变成一片空白。
+			if (interacting && rasters.has(frameId)) continue;
+			if (frameId === activeFrameId || dirty.has(frameId) || !rasters.has(frameId)) {
 				live.add(frameId);
 			}
 		}
 		return live;
-	}, [mounted, activeFrameId, forced, dirty, rasters]);
+	}, [mounted, activeFrameId, forced, dirty, interacting, rasters]);
 
 	const liveRef = useRef(liveSet);
 	liveRef.current = liveSet;
