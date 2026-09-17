@@ -592,6 +592,31 @@
 	}
 }
 
+/* 缩放/平移进行中把画布拍平（.vetd-interacting 由 useViewport 的 interacting 驱动）。
+   ——————————————————————————————————————————————————————————
+   画布上每一帧只要还没截到位图，就盖着一层启动占位，里面是 26px 高斯模糊 + 无限旋转的
+   流体背景（.vetd-fluid-spin 及其 5 个 blob，各自还带 will-change: transform）。冷启动
+   时这种帧是**全部**，于是一屏几十个持续动画的模糊层全都套在 world 的 scale 底下：缩放
+   每变一档，每一层的有效尺度都变了，模糊必须整层重新光栅化——这就是「刚启动时缩放移动
+   卡顿、预热后就好一点」（位图到齐后占位卸掉，只剩静态 img）。
+   操作期间直接把流体层摘掉、其余无限动画就地暂停；占位自身的底色与胶囊还在，帧不会变空。
+   松手 220ms 后恢复。 */
+.vetd-interacting .vetd-fluid {
+	display: none;
+}
+.vetd-interacting .vetd-modifying::after,
+.vetd-interacting .vetd-bot-think .vetd-bot-head,
+.vetd-interacting .vetd-bot-bubble,
+.vetd-interacting .vetd-bot-write .vetd-bot-head,
+.vetd-interacting .vetd-bot-bounce .vetd-bot-head,
+.vetd-interacting .vetd-scan-beam,
+.vetd-interacting .vetd-magnifier,
+.vetd-interacting .vetd-typing-line,
+.vetd-interacting .vetd-loading-dot,
+.vetd-interacting .vetd-spark {
+	animation-play-state: paused;
+}
+
 @media (prefers-reduced-motion: reduce) {
 	.vetd-bot-think .vetd-bot-head,
 	.vetd-bot-bubble,

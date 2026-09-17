@@ -41,6 +41,13 @@ export const MAX_ZOOM = 4;
 const ZOOM_STEP = 1.2;
 /** 滚轮平移停下多久算「落定」，之后才回 state 并持久化。 */
 const PAN_SETTLE_MS = 140;
+/**
+ * 缩放/平移停下多久算「这一趟操作结束」，之后才把画布恢复成完整形态。
+ *
+ * 比落定再宽一点：触控板的惯性滚动会在停顿后再补几个 tick，按 PAN_SETTLE_MS 恢复
+ * 的话，一次连续操作里动画层会亮灭好几回，比不拍平还晃眼。
+ */
+const INTERACT_SETTLE_MS = 220;
 
 export function clampZoom(zoom: number): number {
 	return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom));
@@ -118,6 +125,13 @@ export interface ViewportController {
 	endPan: (pointerId: number) => boolean;
 	/** 平移进行中（含滚轮平移还没落定）。 */
 	isPanning: () => boolean;
+	/**
+	 * 这一趟缩放/平移还在进行（末尾带 {@link INTERACT_SETTLE_MS} 的静置）。
+	 *
+	 * 调用方据它把画布「拍平」：关掉逐帧重新光栅化的那些层（模糊流体、无限动画、
+	 * 活体 iframe），操作结束再恢复。一趟操作只翻两次，不是每个 tick 都翻。
+	 */
+	interacting: boolean;
 	zoomBy: (direction: 1 | -1) => void;
 	/** 直接落一个视口（复位、居中、fit）。 */
 	commitViewport: (next: Viewport) => void;
@@ -143,6 +157,26 @@ export function useViewport({ initial, onCommit, onPaint }: UseViewportOptions):
 	const dragRef = useRef<{ pointerId: number; startX: number; startY: number; origin: Viewport } | null>(null);
 	const rafRef = useRef<number | null>(null);
 	const wheelSettleRef = useRef<number | null>(null);
+
+	/**
+	 * 这一趟操作还在进行。走 state 是因为调用方要据它换类名/换渲染形态，但翻转只发生
+	 * 在一趟操作的头尾各一次——中间每个 tick 仍然只碰 DOM，不进 React。
+	 */
+	const [interacting, setInteracting] = useState(false);
+	const interactingRef = useRef(false);
+	const interactSettleRef = useRef<number | null>(null);
+	const markInteracting = useCallback((): void => {
+		if (!interactingRef.current) {
+			interactingRef.current = true;
+			setInteracting(true);
+		}
+		if (interactSettleRef.current !== null) window.clearTimeout(interactSettleRef.current);
+		interactSettleRef.current = window.setTimeout(() => {
+			interactSettleRef.current = null;
+			interactingRef.current = false;
+			setInteracting(false);
+		}, INTERACT_SETTLE_MS);
+	}, []);
 
 	// 回调按 ref 取用：调用方给的是内联函数时，不该让每次渲染都重建整套 handler
 	// （applyWheel 会被挂进原生 wheel 监听，重建就是一次解绑重绑）。
@@ -196,6 +230,7 @@ export function useViewport({ initial, onCommit, onPaint }: UseViewportOptions):
 		() => () => {
 			if (rafRef.current !== null) window.cancelAnimationFrame(rafRef.current);
 			if (wheelSettleRef.current !== null) window.clearTimeout(wheelSettleRef.current);
+			if (interactSettleRef.current !== null) window.clearTimeout(interactSettleRef.current);
 		},
 		[],
 	);
@@ -221,6 +256,7 @@ export function useViewport({ initial, onCommit, onPaint }: UseViewportOptions):
 		(wheel: ViewportWheel): void => {
 			const container = containerRef.current;
 			if (!container) return;
+			markInteracting();
 			const bounds = container.getBoundingClientRect();
 			const current = viewportRef.current;
 			if (wheel.ctrlKey || wheel.metaKey) {
@@ -250,17 +286,22 @@ export function useViewport({ initial, onCommit, onPaint }: UseViewportOptions):
 				commit(settled);
 			}, PAN_SETTLE_MS);
 		},
-		[clearWheelSettle, commit, commitViewport, schedulePaint],
+		[clearWheelSettle, commit, commitViewport, markInteracting, schedulePaint],
 	);
 
-	const beginPan = useCallback((pointerId: number, clientX: number, clientY: number): void => {
-		dragRef.current = { pointerId, startX: clientX, startY: clientY, origin: viewportRef.current };
-	}, []);
+	const beginPan = useCallback(
+		(pointerId: number, clientX: number, clientY: number): void => {
+			markInteracting();
+			dragRef.current = { pointerId, startX: clientX, startY: clientY, origin: viewportRef.current };
+		},
+		[markInteracting],
+	);
 
 	const panMove = useCallback(
 		(pointerId: number, clientX: number, clientY: number): boolean => {
 			const drag = dragRef.current;
 			if (!drag || drag.pointerId !== pointerId) return false;
+			markInteracting();
 			const next = {
 				...drag.origin,
 				x: drag.origin.x + (clientX - drag.startX),
@@ -271,7 +312,7 @@ export function useViewport({ initial, onCommit, onPaint }: UseViewportOptions):
 			schedulePaint();
 			return true;
 		},
-		[schedulePaint],
+		[markInteracting, schedulePaint],
 	);
 
 	const endPan = useCallback(
@@ -323,6 +364,7 @@ export function useViewport({ initial, onCommit, onPaint }: UseViewportOptions):
 		panMove,
 		endPan,
 		isPanning,
+		interacting,
 		zoomBy,
 		commitViewport,
 		toWorld,

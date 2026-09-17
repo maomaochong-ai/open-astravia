@@ -1424,7 +1424,10 @@ export function DesignCanvas({
 			ref={containerRef}
 			// select-none：画布外壳（frame 标题、尺寸标注等）不参与文本选择，
 			// 否则拖动平移会把它们刷成蓝色高亮，看着像选中了 frame。
-			className="relative h-full w-full select-none overflow-hidden outline-none vetd-canvas-bg"
+			// vetd-interacting：缩放/平移进行中把画布拍平，见 style.css 的同名段落。
+			className={`relative h-full w-full select-none overflow-hidden outline-none vetd-canvas-bg ${
+				view.interacting ? "vetd-interacting" : ""
+			}`}
 			style={{ cursor }}
 			tabIndex={-1}
 			role="application"
