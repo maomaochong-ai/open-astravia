@@ -1,27 +1,31 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
-import { SidebarDock } from "@vetta-org/theme-ui/layout";
+import { SIDEBAR_DOCK_ANIMATION_MS, SidebarDock } from "@vetta-org/theme-ui/layout";
 import { describe, expect, it } from "vitest";
 
 /**
- * 侧边栏展开/收起的性能合同：
+ * 侧边栏展开/收起的性能合同（真机实测支撑，见各条括注）：
  *
- * 1. 过渡是纯 CSS（`grid-template-columns` 0fr↔1fr），不允许回到 JS 动画——展开这一下
- *    主线程最忙，逐帧测量并写样式的动画第一个被挤掉。
- * 2. 收起不卸载子树：整棵子树重挂载一次是约 150ms 同步渲染，压在点击那一次 commit 里会把
- *    过渡的头几帧整段吃掉（真机实测 47 帧掉到 36-40 帧、最大帧间隔 99ms）。
- * 3. 因此左栏节点常驻，收起态必须带 `inert` + `aria-hidden`：既挡掉指针与 Tab，也是
- *    「左栏不在位」的样式钩子（经典侧边栏贴边的负 margin、主内容左缘补色都据它判定，
+ * 1. **布局只落一次**：占位盒子的宽度直接切到终值、不参与过渡，面板用 transform 滑动。
+ *    逐帧过渡宽度会让主内容区反复重排，而内容区里每个 ResizeObserver 都会在每个布局步上
+ *    各触发一次——插件整页工作区视图全靠它做自适应，一次收缩实测 156 次回调、long task
+ *    175ms；改成一步到位后是 26 次、long task 0。
+ * 2. **过渡纯 CSS**，不走 JS 动画：展开这一下主线程最忙，逐帧写样式的动画第一个被挤掉。
+ * 3. **收起不卸载子树**：整棵子树重挂一次是约 150ms 同步渲染，压在点击那一次 commit 里会
+ *    把滑动的头几帧整段吃掉。
+ * 4. 因此左栏节点常驻，收起态必须带 `inert` + `aria-hidden`：既挡掉指针与 Tab，也是
+ *    「左栏不在位」的样式钩子（经典侧边栏贴边负 margin、主内容左缘补色都据它判定，
  *    见 renderer/styles.css）。
  *
- * 「收起后子树确实没被卸载」这条在 jsdom 里证不了：过渡结束事件依赖真实动画时钟，卸载与
- * 不卸载的结果一样。它的证据来自真机测帧（每次展开 47-48 帧 / long task 0），这里只钉住
- * 使之成立的结构与可达性约束。
+ * 「子树确实没被卸载」「滑动确实不重排」这两条在 jsdom 里证不了（没有真实动画时钟与布局），
+ * 证据来自真机测帧；这里钉住使之成立的结构与可达性约束。
  */
+
+const WIDTH = 304;
 
 function renderDock(visible: boolean) {
 	return (
-		<SidebarDock className="sidebar-dock" visible={visible}>
+		<SidebarDock className="sidebar-dock" visible={visible} width={WIDTH}>
 			<button type="button">会话列表</button>
 		</SidebarDock>
 	);
@@ -43,28 +47,32 @@ describe("SidebarDock", () => {
 		expect(container.firstElementChild).toBe(dock);
 	});
 
-	it("宽度过渡走 CSS 轨道，不用 JS 动画逐帧写样式", () => {
+	it("布局宽度一步到位，滑动只用 transform（内容区因此只重排一次）", () => {
 		const { container, rerender } = render(renderDock(true));
 		const dock = container.firstElementChild as HTMLElement;
-		expect(dock.className).toContain("transition-[grid-template-columns,opacity,margin-left]");
-		expect(dock.className).toContain("grid-cols-[1fr]");
+		const panel = dock.firstElementChild as HTMLElement;
+		expect(dock.style.width).toBe(`${WIDTH}px`);
+		expect(dock.style.transitionProperty).toBe("");
+		expect(panel.className).toContain("transition-transform");
+		expect(panel.style.transform).toBe("translateX(0)");
 
 		rerender(renderDock(false));
-		expect(dock.className).toContain("grid-cols-[0fr]");
-		// 过渡时长与宿主的延迟挂载同源，所以写在 style 上而不是拍死成工具类。
-		expect(dock.style.transitionDuration).toBe("240ms");
+		// 宽度瞬时归零；面板整体滑出，宽度不变。
+		expect(dock.style.width).toBe("0px");
+		expect(panel.style.width).toBe(`${WIDTH}px`);
+		expect(panel.style.transform).toBe(`translateX(-${WIDTH}px)`);
+		// 滑动时长与宿主的延迟挂载同源，所以写在 style 上而不是拍死成工具类。
+		expect(panel.style.transitionDuration).toBe(`${SIDEBAR_DOCK_ANIMATION_MS}ms`);
 	});
 
-	it("收起态对指针与辅助技术隐藏，展开态恢复溢出以承载浮层", () => {
+	it("收起态对指针与辅助技术隐藏", () => {
 		const { container, rerender } = render(renderDock(true));
 		const dock = container.firstElementChild as HTMLElement;
 		expect(dock.hasAttribute("inert")).toBe(false);
 		expect(dock.getAttribute("aria-hidden")).toBeNull();
-		expect((dock.firstElementChild as HTMLElement).className).toContain("overflow-visible");
 
 		rerender(renderDock(false));
 		expect(dock.hasAttribute("inert")).toBe(true);
 		expect(dock.getAttribute("aria-hidden")).toBe("true");
-		expect((dock.firstElementChild as HTMLElement).className).toContain("overflow-hidden");
 	});
 });

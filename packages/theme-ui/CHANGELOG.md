@@ -10,6 +10,7 @@ All notable changes to `@vetta-org/theme-ui` are documented in this file.
 
 ### Changed
 
+- `SidebarDock` 改为抽屉式过渡并新增必填 `width`（px，与侧边栏面板宽度同源）：占位宽度在切换瞬间落到终值、不参与过渡，面板脱离占位盒子用 `transform` 滑动，主内容区因此只重排一次；子树挂过一次不再随收起卸载，收起态带 `inert` + `aria-hidden`（也是「左栏不在位」的样式钩子）。宿主需传入 `width`，并把依赖「收起时左栏节点不存在」的选择器改为按 `inert` 判定。
 - `MessageFeed.VirtualList.children` 改为单一逐项渲染函数，不再接受声明式 List/Footer 子元素；Footer 在同一 Root 中正常组合并 Portal 到虚拟列表末尾。外部消费者需按 Desktop 的消息列表扩展指南迁移。
 - 为 Footer Portal 声明 ReactDOM 19 peer dependency。
 

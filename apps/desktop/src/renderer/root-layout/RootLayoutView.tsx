@@ -36,6 +36,7 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 		overlayOpen,
 		routePending,
 		sidebarCollapsed,
+		sidebarWidth,
 	} = model;
 	const showSidebar = pageLayout !== "app";
 	const ensureSidebarVisible = useCallback(() => {
@@ -86,7 +87,11 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 			>
 				{showSidebar && (
 					<>
-						<SidebarDock className="sidebar-dock" visible={!narrow && !sidebarCollapsed}>
+						<SidebarDock
+							className="sidebar-dock"
+							visible={!narrow && !sidebarCollapsed}
+							width={sidebarWidth}
+						>
 							<PerfSendProfiler id="Sidebar">
 								<Sidebar onOpenSession={onOpenSession} onCollapse={actions.toggleSidebar} />
 							</PerfSendProfiler>
