@@ -530,15 +530,6 @@ textarea:disabled,
 	transition: background-color 240ms ease;
 }
 
-/* 拖宽度时左栏占位停在 committed 值上、面板盖在内容之上（见 useSidebarModel 的 resize），
-   这层半透明底色会让内容从侧边栏后面透出来，所以拖拽期改成不透明。 */
-:root[data-platform="mac"][data-sidebar-style="classic"]
-	.sidebar-dock
-	.sidebar-surface[data-resizing] {
-	background-color: var(--background);
-	transition: none;
-}
-
 /* 浅色的 --background 是纯白，同样的浓度压得比深色狠得多，透明感几乎没了，所以单独调淡。 */
 :root[data-platform="mac"][data-sidebar-style="classic"][data-mode="light"]
 	.sidebar-dock

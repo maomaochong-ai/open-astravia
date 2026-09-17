@@ -47,12 +47,11 @@ describe("SidebarDock", () => {
 		expect(container.firstElementChild).toBe(dock);
 	});
 
-	it("占位宽度用 committed 值，拖拽期内容区因此不重排", () => {
+	it("占位宽度就是 committed 值（拖拽期由宿主直接改写这个元素，不进 React）", () => {
 		const { container } = render(renderDock(true));
 		const dock = container.firstElementChild as HTMLElement;
-		// 拖宽度时宿主只往面板元素写 style.width（见 useSidebarModel 的 resize），占位留在
-		// committed 值上——内容区一帧都不重排。占位若跟着实时宽度走，长会话页每帧要多花约
-		// 80ms 重排，手柄就追不上光标。
+		// 拖宽度时宿主把实时宽度直接写到这个元素与面板上（见 useSidebarModel 的 resize）：
+		// 内容区照常逐帧重排（实测满帧），而每帧 setWidth 会重渲染整条侧边栏与当前页面。
 		expect(dock.style.width).toBe(`${WIDTH}px`);
 	});
 
