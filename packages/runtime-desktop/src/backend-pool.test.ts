@@ -498,6 +498,55 @@ describe("DesktopRuntimeBackendPool", () => {
 		await expect(pool.dispose()).resolves.toBeUndefined();
 	});
 
+	it("gives a session created while the scope composition is still closing a fresh composition", async () => {
+		const cwd = await temporaryDirectory("desktop-runtime-closing-scope-");
+		let releaseFirstDispose: (() => void) | undefined;
+		const firstDisposeStarted = new Promise<void>((resolve) => {
+			releaseFirstDispose = resolve;
+		});
+		let compositions = 0;
+		const createComposition = vi.fn(async (options: CodingAgentRuntimeCompositionOptions) => {
+			const composition = await createCodingAgentRuntimeComposition(options);
+			compositions += 1;
+			const index = compositions;
+			return {
+				...composition,
+				async dispose() {
+					if (index === 1) {
+						releaseFirstDispose?.();
+						await new Promise((resolve) => setTimeout(resolve, 20));
+					}
+					await composition.dispose();
+				},
+			};
+		});
+		const pool = new DesktopRuntimeBackendPool({
+			compositionDefaults: {
+				modelRegistry: modelRegistry(),
+				initialModel: MODEL,
+				initialThinkingLevel: "off",
+				resolveSystemPromptOptions: resolveTestSystemPromptOptions,
+			},
+			createComposition,
+		});
+		const runtime = new RuntimeHost({ sessionBackend: pool, getDefaultExecutionMode: () => "full-access" });
+		pools.push(pool);
+		runtimes.push(runtime);
+
+		const first = await runtime.createSession({ cwd, model: MODEL, scenario: "batch" });
+		const disposing = runtime.disposeSession(first.sessionId);
+		await firstDisposeStarted;
+		expect(pool.readScopeCount()).toBe(0);
+
+		const second = await runtime.createSession({ cwd, model: MODEL, scenario: "batch" });
+		await disposing;
+		expect(createComposition).toHaveBeenCalledTimes(2);
+		expect(pool.readScopeCount()).toBe(1);
+		expect(runtime.getSessionPath(second.sessionId)).toBeDefined();
+		await runtime.disposeSession(second.sessionId);
+		expect(pool.readScopeCount()).toBe(0);
+	});
+
 	it("fails closed when a Coding-only scope receives another peer Agent selection", async () => {
 		const cwd = await temporaryDirectory("desktop-runtime-agent-selection-");
 		const pool = createPool();

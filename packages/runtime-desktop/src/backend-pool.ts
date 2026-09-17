@@ -164,9 +164,9 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 			const assembly = await entry.composition.runtimeHostBackend.createAssembly(
 				toCodingAgentRuntimeSessionRequest(entry.composition, scope, request),
 			);
-			return attachAssemblyRelease(assembly, () => this.releaseAssembly(scopeKey));
+			return attachAssemblyRelease(assembly, () => this.releaseAssembly(scopeKey, entry));
 		} catch (error) {
-			await this.releaseAssembly(scopeKey);
+			await this.releaseAssembly(scopeKey, entry);
 			throw error;
 		}
 	}
@@ -298,15 +298,28 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 		return { composition, mcpKey, liveAssemblies: 0 };
 	}
 
-	private async releaseAssembly(scopeKey: string): Promise<void> {
+	private async releaseAssembly(scopeKey: string, entry: DesktopRuntimeBackendEntry): Promise<void> {
 		if (this.disposed) return;
-		const entry = this.resolvedEntries.get(scopeKey);
-		if (!entry) return;
 		if (entry.liveAssemblies > 0) entry.liveAssemblies -= 1;
 		if (entry.liveAssemblies > 0) return;
-		await entry.composition.dispose();
-		this.entries.delete(scopeKey);
-		this.resolvedEntries.delete(scopeKey);
+		// 先摘 key 再销毁：销毁是异步的，这段窗口里同 scope 的新会话必须拿到一套
+		// 新 composition，不能复用正在关闭的这套。
+		const owned = this.resolvedEntries.get(scopeKey) === entry;
+		if (owned) {
+			this.entries.delete(scopeKey);
+			this.resolvedEntries.delete(scopeKey);
+		}
+		try {
+			await entry.composition.dispose();
+		} catch (error) {
+			// 销毁失败：没有新 entry 顶上就放回去，让 RuntimeHost 的重试释放能再找到它；
+			// 已被顶上时旧 composition 由重试直接关闭，不再回到池里。
+			if (owned && !this.resolvedEntries.has(scopeKey)) {
+				this.entries.set(scopeKey, Promise.resolve(entry));
+				this.resolvedEntries.set(scopeKey, entry);
+			}
+			throw error;
+		}
 		await this.releaseMcpComposition(entry.mcpKey);
 	}
 
