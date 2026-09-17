@@ -11,7 +11,31 @@ import type { Skill } from "../src/resources/skills/index.js";
 import { SettingsRuntime } from "../src/settings/index.js";
 import { createExtensionSessionView } from "./fixtures/extension-session-view.js";
 import { createFileAuthStorage } from "./fixtures/file-auth-storage.js";
-import { createTestSessionResourceRuntime as createCodingAgentSessionResourceRuntime } from "./fixtures/node-resource-runtime.js";
+import {
+	type CreateTestSessionResourceRuntimeOptions,
+	createTestSessionResourceRuntime,
+} from "./fixtures/node-resource-runtime.js";
+
+function createCodingAgentSessionResourceRuntime(options: CreateTestSessionResourceRuntimeOptions = {}) {
+	const isolatedRoot = options.agentDir ?? options.cwd ?? process.cwd();
+	const baseResourceAccess = options.resourceAccess ?? createNodeResourceAccess();
+	const resourceAccess = {
+		...baseResourceAccess,
+		paths: {
+			...baseResourceAccess.paths,
+			homeDirectory: () => isolatedRoot,
+		},
+	};
+	return createTestSessionResourceRuntime({
+		...options,
+		resourceAccess,
+		skillLocations: options.skillLocations ?? {
+			sceneDir: join(isolatedRoot, "scene"),
+			managedSkillsDir: join(isolatedRoot, "managed-skills"),
+			manifestPath: join(isolatedRoot, "skills-manifest.json"),
+		},
+	});
+}
 
 describe("SessionResourceRuntime", () => {
 	let tempDir: string;

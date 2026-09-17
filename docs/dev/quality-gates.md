@@ -201,7 +201,7 @@ Windows、macOS、Linux runner 上真实安装基线包，驱动现有 updater �
 应用日志和升级状态文件。它使用独立的 `desktop-test` Environment，不会触碰 stable。当前 GitHub macOS runner 只验收
 其实际架构；macOS arm64 需要额外的自持 runner 矩阵。
 
-单元测试按包顺序执行，不使用根 workspace 的无界并发扇出；这会牺牲少量总耗时，但能避免多个 Vitest 进程同时争用 CPU、临时目录和子进程而产生假超时。包内测试若消费自身生成物，由该包的 `test` 脚本先生成（例如 `vetta-ui-design` 的独立 history runner），不把叶子包完整制品构建混入通用依赖预构建。CLI 的 Windows 进程型测试进一步按文件串行，避免多个 Node、Bun、MCP 与 shell 子进程争用 Runner 资源。平台相关行为至少由 Ubuntu、macOS 与 Windows 三个平台门禁覆盖。
+单元测试按包顺序执行，不使用根 workspace 的无界并发扇出；这会牺牲少量总耗时，但能避免多个 Vitest 进程同时争用 CPU、临时目录和子进程而产生假超时。包内测试若消费自身生成物，由该包的 `test` 脚本先生成（例如 `vetta-ui-design` 的独立 history runner），不把叶子包完整制品构建混入通用依赖预构建。CLI 的 Windows CI 进程型测试按文件串行，避免多个 Node、Bun、MCP 与 shell 子进程争用 Runner 资源；本地开发使用有界文件并行缩短反馈时间。平台相关行为至少由 Ubuntu、macOS 与 Windows 三个平台门禁覆盖。
 
 ## 与 OpenClaw 的对应关系（有意不做的）
 
@@ -220,9 +220,12 @@ Windows、macOS、Linux runner 上真实安装基线包，驱动现有 updater �
 # 日常开发
 # （commit 时 husky 自动 check:precommit）
 
-# 日常任务：显式列出本次修改文件
-bun run test:impact -- packages/ai/src/providers/retry-policy.ts packages/ai/test/provider-retry-policy.test.ts
+# 中间编辑轮次：先跑直接相关测试；形成一个完整修改批次后跑快速检查
+bun scripts/quality/run-vitest.mjs --run packages/ai/test/provider-retry-policy.test.ts
 bun run check:quick -- packages/ai/src/providers/retry-policy.ts packages/ai/test/provider-retry-policy.test.ts
+
+# 任务完成：显式列出本次修改文件；完整 check 已覆盖 quick 的静态检查，无需紧邻重复执行
+bun run test:impact -- packages/ai/src/providers/retry-policy.ts packages/ai/test/provider-retry-policy.test.ts
 bun run check
 
 # 改多个包 / 不确定范围

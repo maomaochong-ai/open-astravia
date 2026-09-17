@@ -98,6 +98,13 @@ export function ok(message) {
 	console.log(message);
 }
 
+export function formatElapsedTime(milliseconds) {
+	if (!Number.isFinite(milliseconds) || milliseconds < 0) {
+		throw new Error("elapsed time must be a non-negative finite number");
+	}
+	return milliseconds < 1000 ? `${Math.round(milliseconds)}ms` : `${(milliseconds / 1000).toFixed(1)}s`;
+}
+
 export function git(args, { allowFail = false } = {}) {
 	const result = spawnSync("git", args, {
 		cwd: repoRoot,

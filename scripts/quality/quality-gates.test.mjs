@@ -17,6 +17,7 @@ import {
 	buildableTestDependencies,
 	changedFiles,
 	expandTestablePackages,
+	formatElapsedTime,
 	packagesFromPaths,
 	parseBaseArgs,
 	parseFileSelectionArgs,
@@ -88,6 +89,14 @@ describe("changed file selection", () => {
 			files: ["packages/ai/src/index.ts"],
 		});
 		expect(() => parseFileSelectionArgs(["../outside.ts"])).toThrow("inside the repository");
+	});
+});
+
+describe("quality timing output", () => {
+	it("keeps short timings readable and longer timings comparable", () => {
+		expect(formatElapsedTime(412)).toBe("412ms");
+		expect(formatElapsedTime(12_345)).toBe("12.3s");
+		expect(() => formatElapsedTime(-1)).toThrow("non-negative finite number");
 	});
 });
 

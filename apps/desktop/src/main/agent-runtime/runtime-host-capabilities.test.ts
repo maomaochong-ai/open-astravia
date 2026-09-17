@@ -262,7 +262,9 @@ describe("Desktop RuntimeHost capabilities", () => {
 		await vi.waitFor(() => expect(generateCompaction).toHaveBeenCalledOnce());
 		await vi.waitFor(() => expect(events).toEqual(["compaction.start:manual", "compaction.end:manual"]));
 		expect(runtime.getFullHistory(created.sessionId).map(({ type }) => type)).toContain("compaction");
-		expect(runtime.readSessionContextCompactionState(created.sessionId).isCompacting).toBe(false);
+		await vi.waitFor(() =>
+			expect(runtime.readSessionContextCompactionState(created.sessionId).isCompacting).toBe(false),
+		);
 		unsubscribe();
 	});
 
