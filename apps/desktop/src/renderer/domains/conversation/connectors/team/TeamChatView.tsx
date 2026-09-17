@@ -1,4 +1,4 @@
-import { DefaultChatView, ChatComposer, ChatError } from "../../components/chat-view/DefaultChatView";
+import { DefaultChatView, ChatComposer } from "../../components/chat-view/DefaultChatView";
 import { MessageList } from "../../components/MessageList";
 import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
 import { TeamComposerConnector } from "./TeamComposerConnector";
@@ -53,7 +53,6 @@ export function TeamChatView({
 				pendingLabel={model.pendingLabel}
 				onTeamMemberOpen={onOpenMember}
 			/>
-			<ChatError>{model.error}</ChatError>
 			{model.memberViewId ? null : (
 				<ChatComposer>
 					<TeamComposerConnector model={model} actions={actions} />

@@ -6,6 +6,7 @@ import type { TeamDefinition, TeamSessionDocument } from "@vetta/agent-team";
 import { createAssistantMessage } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
 import {
+	placeTeamErrorInTimeline,
 	projectTeamConversationTimeline,
 	reduceTeamStreamState,
 	resolveTeamMembers,
@@ -175,6 +176,44 @@ describe("resolveTeamMembers", () => {
 });
 
 describe("team chat stream state", () => {
+	it("restores a failed assistant as an error block and merges a duplicate IPC failure", () => {
+		const failed = agentMessage("failed-result", "failed-request", "leader", "Partial work", 2);
+		const items = projectTeamConversationTimeline({
+			snapshot: snapshot({
+				messages: [
+					userMessage("prompt", "failed-request", "Build this", 1),
+					{
+						...failed,
+						message: { ...failed.message, stopReason: "error", errorMessage: "Internal Server Error" },
+					},
+				],
+			}),
+			pending: undefined,
+			streams: {},
+			members: [member],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+		const reconciled = placeTeamErrorInTimeline(
+			items,
+			{
+				message: "Error invoking remote method 'vetta:agent-teams:send-message': Error: Internal Server Error",
+				turnId: "failed-request",
+				authorId: "leader",
+			},
+			"leader",
+		);
+		const replies = reconciled.filter((item) => item.kind === "agent");
+		expect(replies).toHaveLength(1);
+		expect(replies[0]).toMatchObject({
+			phase: "failed",
+			blocks: expect.arrayContaining([
+				expect.objectContaining({ type: "error", kind: "server", text: "Internal Server Error" }),
+			]),
+		});
+		expect(replies[0]?.kind === "agent" && replies[0].blocks.filter((block) => block.type === "error")).toHaveLength(
+			1,
+		);
+	});
 	it("shows the submitted message and leader immediately before the session snapshot arrives", () => {
 		const items = projectTeamConversationTimeline({
 			snapshot: undefined,

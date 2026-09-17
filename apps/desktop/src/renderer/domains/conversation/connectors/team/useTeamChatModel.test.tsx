@@ -1372,7 +1372,9 @@ describe("useTeamChatModel streaming flow", () => {
 			await sendPromise;
 		});
 		expect(result.current.model.status).toBe(outcome === "aborted" ? "ready" : "error");
-		expect(result.current.model.error).toBe(outcome === "aborted" ? undefined : "send stopped");
+		expect(result.current.model.feedItems.some((item) =>
+			item.kind === "agent" && item.blocks.some((block) => block.type === "error" && block.text === "send stopped"),
+		)).toBe(outcome !== "aborted");
 		expect(result.current.model.draft).toBe("edited while sending");
 		expect(result.current.model.editorEnabled).toBe(true);
 		expect(result.current.model.canSend).toBe(true);

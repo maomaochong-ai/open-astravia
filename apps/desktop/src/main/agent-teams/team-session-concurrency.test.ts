@@ -18,6 +18,7 @@ import type { CodingAgentPinnedModelContext } from "@vetta/coding-agent/runtime"
 import {
 	type ConversationDocument,
 	createEmptyConversationDocument,
+	type RuntimeFailure,
 	type RuntimeHost,
 	type RuntimeObservationContext,
 	type RuntimeSessionContextDeliveryMode,
@@ -1270,6 +1271,34 @@ describe("Team member concurrency", () => {
 		expect(fixture.runtime.retry).toHaveBeenCalledTimes(1);
 	});
 
+	it("keeps a failed Runtime outcome pending and completes after its automatic retry", async () => {
+		const fixture = await createFixture();
+		const [member] = fixture.members;
+		const initial = fixture.turn(member, "temporary server failure");
+		initial.failedOutcome = {
+			code: "AI_TRANSPORT_FAILED",
+			message: "Retryable HTTP Error: Internal Server Error",
+			retryable: true,
+			origin: "provider",
+			details: { statusCode: 500, retryAfterMs: 0 },
+		};
+		const retry = fixture.turn(member, "retry");
+		const send = fixture.service.send(fixture.session.id, {
+			requestId: "temporary-server-failure",
+			text: "temporary server failure",
+			targetMemberIds: [member],
+		});
+		await initial.started.promise;
+		initial.finish.resolve();
+		await retry.started.promise;
+		retry.finish.resolve();
+		await expect(send).resolves.toBeDefined();
+		const state = await fixture.service.readCollaborationState(fixture.session.id);
+		expect(state.workItems[0]?.state).toBe("completed");
+		expect(state.attempts.map((attempt) => attempt.state)).toEqual(["waiting-retry", "completed"]);
+		expect(fixture.runtime.retry).toHaveBeenCalledTimes(1);
+	});
+
 	it("drops a scheduled automatic retry when the user stops and reopens the team", async () => {
 		vi.useFakeTimers();
 		try {
@@ -1890,6 +1919,7 @@ async function createFixture(extensions?: AgentTeamExtensionRegistry) {
 			}
 			if (active.aborted) throw new Error("Member execution aborted");
 			if (turn.failure) throw turn.failure;
+			if (turn.failedOutcome) return { status: "failed" as const, error: turn.failedOutcome };
 			const entryId = `answer-${++sequence}`;
 			const message = {
 				...createAssistantMessage({ api: "openai-responses", provider: "openai", model: "test" }),
@@ -2039,6 +2069,7 @@ interface TestMemberTurn {
 	readonly started: ReturnType<typeof deferred>;
 	readonly finish: ReturnType<typeof deferred>;
 	failure?: unknown;
+	failedOutcome?: RuntimeFailure;
 	partial?: ReturnType<typeof createAssistantMessage>;
 }
 

@@ -391,13 +391,19 @@ export class TeamMemberAttemptRunner {
 			signal?.removeEventListener("abort", abortTarget);
 		}
 		if (promptFailureMessage) {
+			const terminal = classifyTeamAttemptTerminal({
+				hasPublishableMessage: false,
+				cancelled: this.isCancelled(configuredSession, collaboration.workItem.id, signal),
+				...(promptFailure ? { issue: classifyTeamExecutionIssue(promptFailure) } : {}),
+			});
+			const waitingRetry = terminal.state === "waiting-retry";
 			const partialMessageId = await this.tryPublishPartialAttempt(
 				configuredSession,
 				collaboration,
 				runtimeState.sessionId,
 				previousEntryIds,
 				sourceTurnId,
-				"terminal-partial",
+				waitingRetry ? undefined : "terminal-partial",
 			);
 			if (this.isCancelled(configuredSession, collaboration.workItem.id, signal)) {
 				const terminal = classifyTeamAttemptTerminal({ hasPublishableMessage: false, cancelled: true });
@@ -420,17 +426,8 @@ export class TeamMemberAttemptRunner {
 				this.options.eventHub.discard(activeTurn, "aborted");
 				return this.options.sessionState.get(configuredSession.id) ?? configuredSession;
 			}
-			const terminal = classifyTeamAttemptTerminal({
-				hasPublishableMessage: false,
-				cancelled: false,
-				...(promptFailure ? { issue: classifyTeamExecutionIssue(promptFailure) } : {}),
-			});
 			await this.options.settleAttempt(configuredSession, collaboration.workItem, collaboration.attempt, terminal);
-			const recoverable =
-				terminal.state === "waiting-retry" ||
-				terminal.state === "interrupted" ||
-				terminal.state === "awaiting-resource";
-			if (partialMessageId && !recoverable) {
+			if (partialMessageId && !waitingRetry) {
 				await this.publishTerminalPartial({
 					session: configuredSession,
 					item: collaboration.workItem,
@@ -440,8 +437,12 @@ export class TeamMemberAttemptRunner {
 					previousEntryIds,
 				});
 			}
-			this.options.eventHub.discard(activeTurn, "failed", promptFailureMessage);
-			log.error("team member runtime returned failed outcome", {
+			this.options.eventHub.discard(
+				activeTurn,
+				waitingRetry ? "waiting" : "failed",
+				waitingRetry ? undefined : promptFailureMessage,
+			);
+			log[waitingRetry ? "warn" : "error"]("team member runtime returned failed outcome", {
 				teamSessionId: configuredSession.id,
 				memberId,
 				requestId,
@@ -451,6 +452,7 @@ export class TeamMemberAttemptRunner {
 				elapsedMs: Date.now() - runtimeCallStartedAt,
 				error: promptFailureMessage,
 			});
+			if (waitingRetry) return this.options.sessionState.get(configuredSession.id) ?? configuredSession;
 			throw new Error(promptFailureMessage);
 		}
 

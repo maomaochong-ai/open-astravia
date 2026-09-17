@@ -44,6 +44,8 @@
 
 ### Fixed
 
+- 无状态码的 `Retryable HTTP Error` 现在保留 SDK 明确的可重试信号，避免瞬时 500 被误判为永久传输失败。
+
 - OpenAI 兼容协议不再把 `completion_tokens_details.reasoning_tokens` 重复计入输出量：它本就是 `completion_tokens` 的细分项，重复相加会让推理模型的输出 token 与费用翻倍（`prompt_tokens_details.cached_tokens` 一侧的减法一直是对的）。
 
 - 修复 Gemini 3 并行工具调用回放时，将缺失 `thoughtSignature` 的后续调用错误转换为普通文本，导致对应 `functionResponse` 与 `functionCall` 失配；现在保留调用结构，对确实缺失签名的历史调用使用 Google replay sentinel。

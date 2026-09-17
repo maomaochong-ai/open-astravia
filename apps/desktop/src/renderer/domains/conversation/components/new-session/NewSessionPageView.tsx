@@ -183,7 +183,7 @@ export function NewSessionPageView({
 									aria-busy="true"
 									className="mx-auto flex h-[136px] w-full max-w-2xl items-center justify-center rounded-xl border border-border bg-card/80 px-4 text-sm text-muted-foreground shadow-sm"
 								>
-									{teamComposer.model?.error ?? t("newSession.agentSelector.loading")}
+									{t("newSession.agentSelector.loading")}
 								</div>
 							)
 						) : (

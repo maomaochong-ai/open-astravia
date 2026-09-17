@@ -99,6 +99,14 @@ vi.mock("../../components/MessageCardsHost", () => ({
 	MessageCardsHost: () => null,
 }));
 
+vi.mock("../../components/blocks/ErrorBlock", () => ({
+	ErrorBlockView: ({ block }: { block: { kind: string; text: string } }) => (
+		<div data-testid="conversation-error" data-kind={block.kind} data-detail={block.text}>
+			服务暂时不可用
+		</div>
+	),
+}));
+
 vi.mock("../../components/chat-view/DefaultChatView", () => ({
 	DefaultChatView: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 	ChatComposer: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -277,6 +285,62 @@ describe("Team delegation message-to-UI flow", () => {
 				session: { getAgentModes: vi.fn(async () => []) },
 			},
 		});
+	});
+
+	it("shows a failed send in the conversation error block without an input-area alert", async () => {
+		let rejectSend: ((reason: Error) => void) | undefined;
+		vi.mocked(window.vetta.agentTeams.sendMessage).mockReturnValueOnce(
+			new Promise((_resolve, reject) => {
+				rejectSend = reject;
+			}),
+		);
+		render(<TeamFlow />);
+		await waitFor(() => expect(streamListener).toBeTypeOf("function"));
+		fireEvent.change(screen.getByRole("textbox", { name: "团队任务" }), {
+			target: { value: "处理团队任务" },
+		});
+		fireEvent.click(screen.getByRole("button", { name: "发送" }));
+		await waitFor(() => expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledTimes(1));
+		const requestId = vi.mocked(window.vetta.agentTeams.sendMessage).mock.calls[0]?.[1].requestId;
+		if (!requestId) throw new Error("send request id is missing");
+		act(() => {
+			streamListener?.({
+				type: "conversation.agent-message-discard",
+				conversationId: session.id,
+				messageId: "failed-turn",
+				turnId: requestId,
+				author: { kind: "agent", id: leader.id },
+				sequence: 1,
+				reason: "failed",
+				error: "Retryable HTTP Error: Internal Server Error",
+				timestamp: Date.now(),
+			});
+		});
+		await act(async () => {
+			rejectSend?.(new Error("Error invoking remote method 'vetta:agent-teams:send-message': Error: Retryable HTTP Error: Internal Server Error"));
+		});
+		const error = within(screen.getByTestId("message-list")).getByTestId("conversation-error");
+		expect(error.getAttribute("data-kind")).toBe("server");
+		expect(error.getAttribute("data-detail")).toBe("Retryable HTTP Error: Internal Server Error");
+		expect(screen.queryByRole("alert")).toBeNull();
+		expect(screen.getByRole("textbox", { name: "团队任务" })).toBeTruthy();
+	});
+
+	it("shows a rejected send in the message list even without a member failure event", async () => {
+		vi.mocked(window.vetta.agentTeams.sendMessage).mockRejectedValueOnce(
+			new Error("Error invoking remote method 'vetta:agent-teams:send-message': Error: Internal Server Error"),
+		);
+		render(<TeamFlow />);
+		await waitFor(() => expect(streamListener).toBeTypeOf("function"));
+		fireEvent.change(screen.getByRole("textbox", { name: "团队任务" }), {
+			target: { value: "处理团队任务" },
+		});
+		fireEvent.click(screen.getByRole("button", { name: "发送" }));
+		const error = await within(screen.getByTestId("message-list")).findByTestId("conversation-error");
+		expect(error.getAttribute("data-kind")).toBe("server");
+		expect(error.getAttribute("data-detail")).toBe("Internal Server Error");
+		expect(screen.queryByRole("alert")).toBeNull();
+		expect(screen.getByRole("textbox", { name: "团队任务" })).toHaveProperty("value", "处理团队任务");
 	});
 
 	it("keeps one stable public timeline from delegation through completion and reopening", async () => {
