@@ -475,6 +475,12 @@ textarea:disabled,
 	margin: -0.5rem 0 -0.5rem -0.5rem;
 }
 
+/* 收起态：左栏仍是流内的 0 宽盒子（子树不随收起卸载，见 SidebarDock），贴边用的 -8px
+   会把主内容多拉 8px 到窗口外，所以跟着宽度一起过渡回 0。 */
+:root[data-sidebar-style="classic"] .sidebar-dock[inert] {
+	margin-left: 0;
+}
+
 :root[data-sidebar-style="classic"] .sidebar-dock .sidebar-surface {
 	border-radius: 0;
 	border-width: 0;
@@ -549,10 +555,10 @@ textarea:disabled,
 }
 
 /* 侧边栏在位时，左边那 8px 已经被它自己盖住，::before 不能再往左伸——否则会压住毛玻璃右缘。
-   侧边栏收起（或窄屏浮层态）时 .sidebar-dock 整个不渲染，此规则不命中，
-   ::before 就按上面的 inset 一路铺到窗口左边，不会留下透出桌面的空白条。 */
+   收起（或窄屏浮层态）时左栏节点仍在，但带 inert，此规则不命中，::before 就按上面的 inset
+   一路铺到窗口左边，不会留下透出桌面的空白条。 */
 :root[data-platform="mac"][data-sidebar-style="classic"]
-	.sidebar-dock
+	.sidebar-dock:not([inert])
 	~ .app-main-frame::before {
 	left: 0;
 }
@@ -563,7 +569,7 @@ textarea:disabled,
 .app-main-frame[data-header-overlay] {
 	margin: -0.5rem -0.5rem -0.5rem -0.5rem;
 }
-.sidebar-dock ~ .app-main-frame[data-header-overlay] {
+.sidebar-dock:not([inert]) ~ .app-main-frame[data-header-overlay] {
 	margin-left: 0;
 }
 
@@ -574,7 +580,7 @@ textarea:disabled,
 .app-main-frame[data-header-overlay] > .main-content-header {
 	padding: 0.5rem 0.5rem 0;
 }
-.sidebar-dock ~ .app-main-frame[data-header-overlay] > .main-content-header {
+.sidebar-dock:not([inert]) ~ .app-main-frame[data-header-overlay] > .main-content-header {
 	padding-left: 0;
 }
 

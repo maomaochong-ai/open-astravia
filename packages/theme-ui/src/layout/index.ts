@@ -5,6 +5,6 @@ export { MainContentFrame } from "./MainContentFrame";
 export type { ResizeHandleProps } from "./ResizeHandle";
 export { ResizeHandle } from "./ResizeHandle";
 export type { SidebarDockProps } from "./SidebarDock";
-export { SidebarDock } from "./SidebarDock";
+export { SIDEBAR_DOCK_ANIMATION_MS, SidebarDock } from "./SidebarDock";
 export type { SidebarOverlayProps } from "./SidebarOverlay";
 export { SidebarOverlay } from "./SidebarOverlay";
