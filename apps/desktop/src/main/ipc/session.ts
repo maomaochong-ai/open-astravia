@@ -46,6 +46,7 @@ import { onConversationListChanged } from "../conversations/conversation-list-ev
 import { assertOrdinaryConversationPath } from "../conversations/conversation-ownership-guard.js";
 import { getDesktopConversationService } from "../conversations/desktop-conversation-service.js";
 import { desktopSessionSearch } from "../conversations/desktop-session-search.js";
+import { InteractiveSessionResidencyTracker } from "../conversations/idle-session-residency.js";
 import { getDesktopMcpElicitationBroker } from "../conversations/mcp-elicitation-broker.js";
 import { purgeProjectSessions } from "../conversations/project-session-purge.js";
 import { parsePromptRequest } from "../conversations/prompt-request-schema.js";
@@ -395,6 +396,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	const debugSeqMap = new Map<string, number>();
 	/** Track turn start time per session for duration calculation */
 	const turnStartMap = new Map<string, number>();
+	const interactiveResidency = new InteractiveSessionResidencyTracker();
 	/**
 	 * ADR-0002: 交互式 session 的常驻通知订阅（独立于渲染端视图订阅，不随
 	 * 切换 session 销毁）。只有经本 IPC CHANNELS.CREATE 创建的 session 才会挂，
@@ -464,6 +466,38 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		if (unsubscribe) {
 			unsubscribe();
 			notificationSubs.delete(sessionId);
+		}
+	};
+
+	const forgetInteractiveSession = (sessionId: string): void => {
+		interactiveResidency.forget(sessionId);
+		sessionCwdMap.delete(sessionId);
+		debugSeqMap.delete(sessionId);
+		turnStartMap.delete(sessionId);
+		detachNotificationSub(sessionId);
+		stopMonitoringRuntimeSession(sessionId);
+	};
+
+	const disposeInteractiveSession = async (sessionId: string): Promise<void> => {
+		forgetInteractiveSession(sessionId);
+		await runtime.disposeSession(sessionId);
+	};
+
+	const runningInteractiveSessionIds = (): Set<string> => {
+		const runningPaths = new Set(runtime.getRunningSessionPaths());
+		const runningIds = new Set<string>();
+		for (const sessionId of interactiveResidency.trackedIds()) {
+			const sessionPath = runtime.getSessionPath(sessionId);
+			if (sessionPath && runningPaths.has(sessionPath)) runningIds.add(sessionId);
+		}
+		return runningIds;
+	};
+
+	const reconcileIdleInteractiveSessions = (): void => {
+		for (const sessionId of interactiveResidency.idsToEvict(runningInteractiveSessionIds())) {
+			void disposeInteractiveSession(sessionId).catch((error: unknown) => {
+				sessionLog.warn("idle interactive session dispose failed", sessionId, error);
+			});
 		}
 	};
 
@@ -882,11 +916,13 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			const traceContext = parseSessionTraceContext(rawTraceContext);
 			const result = await conversationService.createSession(config, kind, "interactive", traceContext);
 			const effectiveCwd = result.cwd;
+			interactiveResidency.touch(result.sessionId);
 			if (effectiveCwd) {
 				sessionCwdMap.set(result.sessionId, effectiveCwd);
 			}
 			// ADR-0002: 经本通道创建的即交互式 session，挂常驻通知订阅。
 			attachNotificationSub(result.sessionId, effectiveCwd);
+			reconcileIdleInteractiveSessions();
 			// ADR-0007: 把实际 cwd（可能是「对话」per-session 子目录）返回给渲染端，
 			// 否则 activeSession.cwd 仍是用户传入的项目根，ActivityPanel 文件树会
 			// 落到项目根、看到其他 session 的子目录。
@@ -919,6 +955,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 
 	ipcMain.handle(CHANNELS.PROMPT, async (_event, sessionId: unknown, request: unknown, rawTraceContext: unknown) => {
 		assertNonEmptyString(sessionId, "sessionId");
+		interactiveResidency.touch(sessionId);
 		const traceContext = parseSessionTraceContext(rawTraceContext);
 		const req = parsePromptRequest(request);
 		sessionLog.info(
@@ -1199,9 +1236,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 
 	ipcMain.handle(CHANNELS.DISPOSE, async (_event, sessionId: unknown) => {
 		assertNonEmptyString(sessionId, "sessionId");
-		detachNotificationSub(sessionId);
-		await runtime.disposeSession(sessionId);
-		stopMonitoringRuntimeSession(sessionId);
+		await disposeInteractiveSession(sessionId);
 	});
 
 	ipcMain.handle(CHANNELS.GET_SESSION_PATH, (_event, sessionId: unknown) => {
@@ -1265,13 +1300,11 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		}
 		await Promise.all(
 			toDispose.map(async (sessionId) => {
-				detachNotificationSub(sessionId);
 				try {
-					await runtime.disposeSession(sessionId);
+					await disposeInteractiveSession(sessionId);
 				} catch (err) {
 					sessionLog.error("clear-default-conversation dispose failed", sessionId, err);
 				}
-				sessionCwdMap.delete(sessionId);
 			}),
 		);
 
@@ -1333,6 +1366,9 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	};
 	const unsubscribeRunning = runtime.onRunningChanged((sessionPath, running, sessionId, reason) => {
 		broadcastRunningChanged({ sessionPath, running, sessionId, reason });
+		if (!sessionId || !interactiveResidency.has(sessionId)) return;
+		interactiveResidency.touch(sessionId);
+		if (!running) reconcileIdleInteractiveSessions();
 	});
 	const unsubscribeTeamRunning = agentTeamSessionService.onRunningChanged((sessionPath, running, sessionId) =>
 		broadcastRunningChanged({ sessionPath, running, sessionId }),
