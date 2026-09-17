@@ -35,12 +35,16 @@ cd my-plugin && npm install
 
 ```bash
 npm run dev            # Vite + Module Federation 开发服务器
+npm run validate       # 校验清单与构建产物
 npm run install:vetta  # 构建、打包并装进正在运行的 Vetta
 npx vetta-plugin-cli watch      # 热更新：宿主改从本工程目录加载，改完即生效
+npx vetta-plugin-cli reload <id>  # 提示有 pending 版本时切换过去
 npx vetta-plugin-cli uninstall  # 卸载
 ```
 
 `install:vetta` 把归档交给正在运行的桌面端校验、授权、安装，**不会**直接写 `~/.vetta/plugins`。
+
+安装一个更新版本只被记录为 pending，应用继续加载当前活动版本，直到 `reload` 才切换。改了代码却看不到变化时，先确认 `plugin.json` 的 `version` 已经提升。
 
 ## 项目结构
 

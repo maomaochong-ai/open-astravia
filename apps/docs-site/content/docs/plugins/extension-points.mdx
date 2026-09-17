@@ -1,54 +1,135 @@
 ---
 title: 选择插件扩展点
-description: 根据产品目标选择 UI、文件、消息、Agent 或 App Action 扩展点。
+description: 按产品目标选择界面、文件、Agent、Provider 或 App Action 扩展点，并对齐每项所需权限。
 ---
 
 先选择最接近用户任务的扩展点，再在 `activate(ctx)` 中注册。一个插件可以组合多个扩展点，但每项都应有明确用途和独立权限。
 
-## UI 与页面
+清单声明面（技能、MCP、智能体、引导词）在插件安装时就生效，不依赖 `activate()` 执行；运行时注册面需要插件被启用并加载。
+
+<Callout title="宿主不再提供设置页配置槽" type="warn">
+  `plugin.json` 的 `contributes.settings` 与只读的 `ctx.settings` 已在 Plugin API 1.6.0 移除。配置界面由插件自己渲染：完整配置页用 `ctx.ui.registerWorkspaceView`，一两个开关直接放进已有的活动 Tab 或全局槽；普通配置值存 `ctx.storage`，API Key 等密钥存 `ctx.secrets`。
+</Callout>
+
+## 界面扩展点
+
+`ctx.ui` 提供的注册面，每项对应一个独立权限：
+
+| 扩展点 | API | 权限 |
+| --- | --- | --- |
+| 全局通知 Toast | `ctx.ui.notify` | 无需权限 |
+| 全局浮层 | `registerGlobalSlot` | `ui.slot.global` |
+| 工作区视图（整页 + 侧边栏入口） | `registerWorkspaceView`、`openWorkspaceView`、`setWorkspaceViewBadge`、`setWorkspaceViewHeader` | `ui.slot.workspace-view` |
+| 文件预览 | `registerFilePreview` | `ui.slot.file-preview` |
+| 活动面板 Tab | `registerActivityTab`、`openActivityTab`、`setActivityTabVisible` | `ui.slot.activity-tab` |
+| 输入栏动作与附件 | `registerInputAction`、`setPromptAttachment` | `ui.slot.input-action` |
+| 新会话上下文区 | `registerNewSessionContext` | `ui.slot.new-session-context` |
+| 消息卡片渲染器 | `registerCardRenderer` | `ui.slot.message` |
+| 工具调用行内渲染 | `registerToolCallSlot` | `ui.slot.tool-call` |
+| 本轮 Turn 卡 | `registerTurnCard` | `ui.slot.turn-card` |
+| 能力详情页运行时区块 | `registerAbilityDetailSlot` | `ui.slot.ability-detail` |
+| 键盘快捷键 scope | `registerShortcutScope`、`usePluginShortcutScope` | `ui.shortcuts.register` |
+| 打开系统默认浏览器 | `openExternal` | `shell.openExternal` |
+
+组件使用宿主共享的 React 与设计令牌。注册函数返回 `Disposable`，在停用阶段释放，避免重载后重复注册。
+
+<Callout title="样式只用 className" type="warn">
+  插件与宿主共享同一个页面。在样式入口里写 `button`、`div`、`*` 这类元素选择器会污染整个界面，而且是只在用户机器上复现的那种污染。`@vetta-org/plugin-vite` 会自动把插件 CSS 限定到插件根节点并接入宿主主题令牌，`text-foreground`、`bg-card` 这类语义类直接可用。
+</Callout>
+
+面板类槽位（文件预览、活动 Tab、工作区视图）禁止使用铺满视口的固定定位浮层，它们会盖住宿主自己的界面。
+
+## 文件浏览器扩展点
+
+`ctx.fileExplorer` 单独成组，读取工作区结构与写入界面装饰是两类权限：
+
+| 扩展点 | API | 权限 |
+| --- | --- | --- |
+| 右键菜单动作 | `registerContextMenuAction` | `ui.file-explorer.context-menu` |
+| 工具栏动作 | `registerToolbarAction` | `ui.file-explorer.toolbar` |
+| 文件装饰（角标、颜色） | `registerDecorationProvider` | `ui.file-explorer.decorations` |
+| 读取根目录、选择、定位与刷新 | `getWorkspaceRoots`、`getSelection`、`reveal`、`refresh`、`onDidChangeSelection`、`onDidChangeFiles` | `workspace.read` |
+
+文件解析和界面渲染应分离，解析失败时返回可理解的错误状态，不要让单个文件使整个会话视图崩溃。
+
+## Agent 扩展点
+
+运行时注册面（`ctx.agent`）：
+
+| 扩展点 | API | 权限 |
+| --- | --- | --- |
+| 注册 Agent 工具 | `registerTool` | `agent.tools.register` + `agent.toolHandler.execute` |
+| 注册 Coding Agent 生命周期 Hook | `registerHook` | `agent.hooks.register` + `agent.hookHandler.execute` |
+| 动态系统提示词 Provider | `registerSystemPromptProvider` | `agent.systemPrompt.write`；操作非本插件的 block 另需 `agent.systemPrompt.fullControl` |
+| 自动续跑策略 | `registerContinuationProvider` | `agent.continuation.register` |
+| 动态开关工具 | Provider 的 `actions.tools.setEnabled` | `agent.tools.control` |
+
+清单声明面（`plugin.json`）：
+
+| 扩展点 | 字段 | 权限 |
+| --- | --- | --- |
+| 打包技能 | `agent.skillPaths` | `agent.skills.control` |
+| 追加系统提示词文件 | `agent.systemPrompt.promptPaths` | `agent.systemPrompt.write` |
+| 工具策略 | `agent.toolPolicy` | `agent.tools.control` |
+| 插件内聚 MCP Server | `agent.mcpServers` | `agent.mcp.control` |
+| 贡献智能体与团队 | `agent.agents`、`agent.teams` | 无需权限 |
+| 新会话引导词 | `guidingWords` | 无需权限 |
+
+工具输入使用结构化 schema，并把外部 I/O 错误映射为稳定结果。需要宿主文件、网络或模型能力时，先在清单中声明最小权限。
+
+### 插件内聚 MCP 是第三配置源
+
+会话的 MCP 工具面来自三源合并，互相并列而不是覆盖：用户全局 `mcp.json`、项目侧配置、以及插件清单贡献。插件源不回写用户文件，禁用或卸载插件只撤掉自己那部分。插件 Server 的运行时名统一为 `plugin-<插件 id>-<本地 key>`，与另外两源同时存在也不会撞名。
+
+设置页的 MCP 编辑器只读写用户文件，不会列出也无法编辑插件内聚的 Server。
+
+### 智能体与团队
+
+插件在清单里贡献的智能体与团队会被铺成普通档案，与用户自己创建的并列。人设、头像和提示词由插件维护：停用插件时档案灰着留在原地，重新启用即恢复。
+
+团队有两条硬约束：队长必须是本插件自己的智能体（否则被引用的插件一卸载，这支团队就成了打不开的壳），队长的任务书写在团队的 `workflow` 而不是成员条目上（两处都写就无法确定哪份生效）。其余成员可以用 `<插件 id>/<智能体 id>` 引用别的插件的智能体。
+
+选中这类智能体后还可以用新会话上下文区在输入框下方摆出接下来要用的素材，激活条件只能写本插件自己的东西。
+
+## Provider 扩展点
+
+插件不只消费宿主能力，也可以反过来给宿主提供能力：
 
 <Cards>
-  <Card title="全局或局部插槽" description="在宿主预留位置增加操作或状态。" />
-  <Card title="页面与导航" description="提供需要完整工作区的功能。" />
-  <Card title="设置项" description="让用户配置插件行为，避免把可变值写死。" />
+  <Card title="模型 Provider" description="ctx.models 维护以本插件 id 命名的模型服务商。replaceOwnedProviders 是原子快照，写入前先读回对账。需要 models.manage。" />
+  <Card title="媒体生成 Provider" description="ctx.media.registerProvider 接入本地或远程的图像与视频生成服务。需要 media.provider.register。" />
+  <Card title="OCR Provider" description="ctx.ocr.registerProvider 提供识别能力；消费识别能力是另一个权限 ai.ocr.recognize。" />
+  <Card title="CLI Provider" description="清单 providers.cli 声明探测与安装命令，宿主负责检测、引导安装并汇报状态。" />
+  <Card title="受管本地服务" description="清单 providers.services 声明分平台产物、配置模板、凭据与健康检查，宿主负责生命周期；MCP 可用 type: service 绑上去。" />
 </Cards>
-
-组件应使用宿主共享的 React 和设计令牌。注册函数返回清理句柄时，在停用阶段释放，避免重载后重复注册。
-
-## 文件与消息
-
-<Cards>
-  <Card title="文件预览" description="为特定扩展名或内容提供查看器。" />
-  <Card title="消息卡片" description="把插件或工具结果渲染为可操作的会话内容。" />
-  <Card title="输入区操作" description="为清晰、频繁的命令增加入口。" />
-</Cards>
-
-文件解析和 UI 渲染应分离，解析失败时返回可理解的错误状态，不要让单个文件使整个会话视图崩溃。
-
-## Agent 能力
-
-<Cards>
-  <Card title="工具注册" description="提供有固定输入输出契约的动作。" />
-  <Card title="系统提示与技能" description="补充领域规则和工作流程。" />
-  <Card title="工具策略与继续执行" description="控制工具可用性或任务推进。" />
-  <Card title="智能体与团队" description="把插件自己的人设与分工带进智能体页。" />
-</Cards>
-
-工具输入使用 SDK 提供的结构化 schema，并把外部 I/O 错误映射为稳定结果。需要宿主文件、网络或模型能力时，先在清单中声明最小权限。
-
-插件在清单里贡献的智能体与团队会被铺成普通档案，与用户自己创建的并列。人设、头像和提示词由插件维护：停用插件时档案灰着留在原地，重新启用即恢复。选中这类智能体后还可以用**新会话上下文区**在输入框下方摆出接下来要用的素材，激活条件只能写本插件自己的东西。
 
 ## App Action
 
-App Action 让插件通过宿主动作系统暴露可发现命令，适合导航、打开面板或执行确定性操作。
+App Action 让插件通过宿主动作系统暴露可发现命令，适合导航、打开面板或执行确定性操作。注册需要 `app.actions.register`，handler 被调用时需要 `app.actionHandler.execute`。
 
 <Callout title="不要绕过确认" type="warn">
   不要用 App Action 绕过用户确认去执行高风险文件或网络操作。
 </Callout>
 
+## 缺权限时会发生什么
+
+不同注册点对「声明了但未授权」的处理不同，这个差异会直接影响你怎么组织 `activate()`：
+
+| 行为 | 涉及的注册点 |
+| --- | --- |
+| 抛出 `Plugin permission denied` 并中断调用 | `registerInputAction`、`registerCardRenderer`、`registerToolCallSlot`、`registerTurnCard`、`registerShortcutScope`、`openActivityTab`、`setActivityTabVisible`、`setPromptAttachment`、`fileExplorer.*`、`registerSystemPromptProvider`、`registerContinuationProvider`、`conversation.*`、`fs.*`、`network.*`、`storage.*`、`media.*`、`ai.*`、`command.run` |
+| 跳过该贡献并打印警告，不影响其它能力 | `registerGlobalSlot`、`registerFilePreview`、`registerActivityTab`、`registerNewSessionContext`、`agent.registerTool`、`agent.registerHook`、`appActions.register` |
+
+<Callout title="把可选能力的注册拆开" type="info">
+  一个缺失权限不应拖垮插件的其它能力。在 `activate()` 里让各项注册互相独立，避免一处抛错中断整段初始化。运行时也可以用 `ctx.permissions.has()` 自查后再决定是否注册。
+</Callout>
+
+界面槽位的权限缺失不会在构建期暴露，装上去只是静默不显示，需要对照上表核对。
+
 ## 相关文档
 
 <Cards>
   <Card title="创建第一个插件" href="/plugins/getting-started/" description="完整加载、构建与安装流程。" />
-  <Card title="清单与权限" href="/plugins/manifest-and-permissions/" description="权限声明与发布前检查。" />
+  <Card title="清单与权限" href="/plugins/manifest-and-permissions/" description="清单全字段、权限清单与发布前检查。" />
+  <Card title="插件能力参考" href="/plugins/capabilities/" description="按目标查找对应的 ctx API 与边界。" />
 </Cards>

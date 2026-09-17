@@ -1,54 +1,135 @@
 ---
 title: Choose an extension point
-description: Select UI, file, message, Agent, or App Action extension points according to the product goal.
+description: Select UI, file, Agent, provider, or App Action extension points by product goal, and align each with the permission it needs.
 ---
 
 Choose the extension point closest to the user's task, then register it from `activate(ctx)`. A plugin can combine several extension points, but each one should have a clear purpose and independent permissions.
 
-## UI and pages
+Manifest contributions (skills, MCP, agents, guiding words) take effect at install time and do not depend on `activate()` running. Runtime registrations require the plugin to be enabled and loaded.
 
-<Cards>
-  <Card title="Global or local slots" description="Add an action or status indicator at a host-provided location." />
-  <Card title="Pages and navigation" description="Provide a feature that needs a complete workspace surface." />
-  <Card title="Settings" description="Let users configure behavior instead of hard-coding mutable values." />
-</Cards>
+<Callout title="The host no longer provides a settings slot" type="warn">
+  `contributes.settings` in `plugin.json` and the read-only `ctx.settings` were removed in Plugin API 1.6.0. A plugin renders its own configuration surface: use `ctx.ui.registerWorkspaceView` for a full settings page, or an existing activity tab or global slot for one or two switches. Store ordinary values in `ctx.storage` and API keys in `ctx.secrets`.
+</Callout>
 
-Use the host's shared React runtime and design tokens. When a registration function returns a cleanup handle, release it during deactivation so reloads do not register the same UI twice.
+## User interface
 
-## Files and messages
+Every `ctx.ui` registration maps to its own permission:
 
-<Cards>
-  <Card title="File preview" description="Render a viewer for a specific extension or content type." />
-  <Card title="Message card" description="Present a plugin or tool result as actionable session content." />
-  <Card title="Composer action" description="Add an entry point for a clear, frequent command." />
-</Cards>
+| Extension point | API | Permission |
+| --- | --- | --- |
+| Global toast | `ctx.ui.notify` | none |
+| Global overlay | `registerGlobalSlot` | `ui.slot.global` |
+| Workspace view (full page plus sidebar entry) | `registerWorkspaceView`, `openWorkspaceView`, `setWorkspaceViewBadge`, `setWorkspaceViewHeader` | `ui.slot.workspace-view` |
+| File preview | `registerFilePreview` | `ui.slot.file-preview` |
+| Activity panel tab | `registerActivityTab`, `openActivityTab`, `setActivityTabVisible` | `ui.slot.activity-tab` |
+| Composer action and attachment | `registerInputAction`, `setPromptAttachment` | `ui.slot.input-action` |
+| New-session context block | `registerNewSessionContext` | `ui.slot.new-session-context` |
+| Message card renderer | `registerCardRenderer` | `ui.slot.message` |
+| Inline tool-call rendering | `registerToolCallSlot` | `ui.slot.tool-call` |
+| Turn card | `registerTurnCard` | `ui.slot.turn-card` |
+| Runtime block on an ability detail page | `registerAbilityDetailSlot` | `ui.slot.ability-detail` |
+| Keyboard shortcut scope | `registerShortcutScope`, `usePluginShortcutScope` | `ui.shortcuts.register` |
+| Open the system browser | `openExternal` | `shell.openExternal` |
+
+Components use the host's shared React runtime and design tokens. Registration functions return a `Disposable`; release it during deactivation so reloads do not register the same UI twice.
+
+<Callout title="Style through className only" type="warn">
+  A plugin shares one page with the host. Element selectors such as `button`, `div`, or `*` in a stylesheet entry leak into the whole interface, and they leak only on the user's machine. `@vetta-org/plugin-vite` scopes plugin CSS to the plugin root and wires in the host theme tokens, so semantic classes such as `text-foreground` and `bg-card` work directly.
+</Callout>
+
+Panel-style slots (file preview, activity tab, workspace view) must not use viewport-filling fixed overlays, which cover the host's own chrome.
+
+## File explorer
+
+`ctx.fileExplorer` is its own group, and reading the workspace is a different permission from decorating it:
+
+| Extension point | API | Permission |
+| --- | --- | --- |
+| Context menu action | `registerContextMenuAction` | `ui.file-explorer.context-menu` |
+| Toolbar action | `registerToolbarAction` | `ui.file-explorer.toolbar` |
+| File decoration (badges, colors) | `registerDecorationProvider` | `ui.file-explorer.decorations` |
+| Read roots, selection, reveal, refresh | `getWorkspaceRoots`, `getSelection`, `reveal`, `refresh`, `onDidChangeSelection`, `onDidChangeFiles` | `workspace.read` |
 
 Keep parsing separate from UI rendering. A parse failure should become an understandable error state rather than crashing the whole session view.
 
 ## Agent capabilities
 
+Runtime registrations on `ctx.agent`:
+
+| Extension point | API | Permission |
+| --- | --- | --- |
+| Register an Agent tool | `registerTool` | `agent.tools.register` + `agent.toolHandler.execute` |
+| Register a Coding Agent lifecycle hook | `registerHook` | `agent.hooks.register` + `agent.hookHandler.execute` |
+| Dynamic system prompt provider | `registerSystemPromptProvider` | `agent.systemPrompt.write`; operating on another plugin's block also needs `agent.systemPrompt.fullControl` |
+| Continuation policy | `registerContinuationProvider` | `agent.continuation.register` |
+| Toggle tools at runtime | `actions.tools.setEnabled` inside a provider | `agent.tools.control` |
+
+Manifest contributions in `plugin.json`:
+
+| Extension point | Field | Permission |
+| --- | --- | --- |
+| Bundled skills | `agent.skillPaths` | `agent.skills.control` |
+| Extra system prompt files | `agent.systemPrompt.promptPaths` | `agent.systemPrompt.write` |
+| Tool policy | `agent.toolPolicy` | `agent.tools.control` |
+| Plugin-owned MCP servers | `agent.mcpServers` | `agent.mcp.control` |
+| Contributed agents and teams | `agent.agents`, `agent.teams` | none |
+| New-session guiding words | `guidingWords` | none |
+
+Use structured schemas for tool input and map external I/O failures to stable results. When a capability needs host files, network access, or a model, declare the smallest required permission in the manifest first.
+
+### Plugin MCP is the third configuration source
+
+The MCP tool surface of a session merges three sources side by side rather than overriding: the user's global `mcp.json`, the project configuration, and plugin manifest contributions. The plugin source never writes back to the user's file, so disabling or uninstalling a plugin only withdraws its own servers. A plugin server is named `plugin-<plugin id>-<local key>` at runtime, so it cannot collide with the other two sources.
+
+The MCP editor in settings reads and writes the user file only; it neither lists nor edits plugin-owned servers.
+
+### Agents and teams
+
+Agents and teams contributed from the manifest are laid down as ordinary profiles alongside the ones a user creates. The plugin owns their persona, avatar, and prompt: disabling the plugin greys the profiles out in place, and re-enabling restores them.
+
+Teams carry two hard constraints. The leader must be one of this plugin's own agents, because if it pointed at another plugin, uninstalling that plugin would leave a team nobody can open. The leader's brief belongs to the team's `workflow` rather than to a member entry, because writing it in both places makes it impossible to say which one applies. Other members may reference another plugin's agent as `<plugin id>/<agent id>`.
+
+Once such an agent is selected, a new-session context block can stage the material the user is about to need beneath the composer, activated only by this plugin's own agents and abilities.
+
+## Provider extension points
+
+A plugin does not only consume host capabilities; it can also supply them:
+
 <Cards>
-  <Card title="Tool registration" description="Provide an action with a fixed input and output contract." />
-  <Card title="System prompts and skills" description="Add domain rules and repeatable workflows." />
-  <Card title="Tool policy and continuation" description="Control tool availability or how a task proceeds." />
-  <Card title="Agents and teams" description="Bring the plugin's own personas and division of labour to the Agents page." />
+  <Card title="Model provider" description="ctx.models maintains providers namespaced to this plugin's id. replaceOwnedProviders is an atomic snapshot, so read back and reconcile before writing. Needs models.manage." />
+  <Card title="Media generation provider" description="ctx.media.registerProvider plugs a local or remote image and video service into the host. Needs media.provider.register." />
+  <Card title="OCR provider" description="ctx.ocr.registerProvider supplies recognition; consuming recognition is the separate ai.ocr.recognize permission." />
+  <Card title="CLI provider" description="providers.cli in the manifest declares probe and install commands; the host detects, guides installation, and reports status." />
+  <Card title="Managed local service" description="providers.services declares per-platform artifacts, config templates, credentials, and health checks, and the host owns the lifecycle. An MCP server can bind to it with type: service." />
 </Cards>
-
-Use the structured schemas provided by the SDK for tool input and map external I/O failures to stable results. When a capability needs host files, network access, or a model, declare the smallest required permission in the manifest first.
-
-Agents and teams contributed from the manifest are laid down as ordinary profiles alongside the ones a user creates. The plugin owns their persona, avatar, and prompt: disabling the plugin greys the profiles out in place, and re-enabling restores them. Once such an agent is selected, a **new-session context block** can stage the material the user is about to need beneath the composer, activated only by this plugin's own agents and abilities.
 
 ## App Action
 
-App Actions expose discoverable commands through the host action system. They are useful for navigation, opening a panel, or executing a deterministic operation.
+App Actions expose discoverable commands through the host action system. They are useful for navigation, opening a panel, or executing a deterministic operation. Registration needs `app.actions.register`, and running the handler needs `app.actionHandler.execute`.
 
 <Callout title="Do not bypass confirmation" type="warn">
   Do not use an App Action to bypass user confirmation for high-risk file or network operations.
 </Callout>
 
+## What a missing permission does
+
+Registration points differ in how they treat "declared but not granted", and the difference shapes how you organise `activate()`:
+
+| Behaviour | Registration points |
+| --- | --- |
+| Throws `Plugin permission denied` and aborts the call | `registerInputAction`, `registerCardRenderer`, `registerToolCallSlot`, `registerTurnCard`, `registerShortcutScope`, `openActivityTab`, `setActivityTabVisible`, `setPromptAttachment`, `fileExplorer.*`, `registerSystemPromptProvider`, `registerContinuationProvider`, `conversation.*`, `fs.*`, `network.*`, `storage.*`, `media.*`, `ai.*`, `command.run` |
+| Skips the contribution with a console warning, leaving other capabilities intact | `registerGlobalSlot`, `registerFilePreview`, `registerActivityTab`, `registerNewSessionContext`, `agent.registerTool`, `agent.registerHook`, `appActions.register` |
+
+<Callout title="Keep optional registrations independent" type="info">
+  One missing permission should not take down the rest of the plugin. Keep each registration in `activate()` independent so a single throw does not abort the whole initialisation, and use `ctx.permissions.has()` to check before registering optional surfaces.
+</Callout>
+
+A missing UI slot permission never surfaces at build time; the contribution is simply skipped after installation, so check it against the table above.
+
 ## Related documentation
 
 <Cards>
   <Card title="Create your first plugin" href="/plugins/getting-started/" description="The complete loading, build, and installation flow." />
-  <Card title="Manifest and permissions" href="/plugins/manifest-and-permissions/" description="Permission declarations and release checks." />
+  <Card title="Manifest and permissions" href="/plugins/manifest-and-permissions/" description="Every manifest field, the permission list, and release checks." />
+  <Card title="Plugin capability reference" href="/plugins/capabilities/" description="Find the ctx API and boundary for each goal." />
 </Cards>

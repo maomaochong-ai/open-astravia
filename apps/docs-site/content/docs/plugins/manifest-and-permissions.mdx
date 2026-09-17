@@ -1,9 +1,11 @@
 ---
 title: 清单与权限
-description: 声明插件身份、加载入口、样式、权限和 Agent 贡献。
+description: 声明插件身份、加载入口、样式、权限、命令、网络范围和 Agent 贡献，并理解授权与校验流程。
 ---
 
-`plugin.json` 位于插件归档根目录。宿主在加载代码前用它校验身份、兼容性和权限，因此清单必须与构建产物一致。
+`plugin.json` 位于插件归档根目录（或归档内唯一的顶层文件夹里）。宿主在加载代码前用它校验身份、兼容性和权限，因此清单必须与构建产物一致。
+
+清单结构的唯一实现是 `@vetta-org/plugin-sdk/manifest` 导出的 TypeBox Schema：`PluginManifestSchema` 可直接序列化为 JSON Schema，`parsePluginManifest()` 负责校验、默认值、去重、相对路径归一化和跨字段约束。Schema 有意允许未知字段，这样更高版本清单不会被旧宿主直接拒绝。
 
 ```json
 {
@@ -17,26 +19,34 @@ description: 声明插件身份、加载入口、样式、权限和 Agent 贡献
     "expose": "./plugin"
   },
   "styles": ["dist/style.css"],
-  "permissions": ["ui.slot.global"]
+  "permissions": ["ui.slot.activity-tab", "agent.command.run", "network.fetch"],
+  "commands": ["git"],
+  "network": { "allowedHosts": ["api.example.com", "*.cdn.example.com"] },
+  "defaultLocale": "zh"
 }
 ```
 
-## 关键字段
+## 字段
 
 <TypeTable
   type={{
     id: {
-      description: "插件稳定标识。发布后应保持不变。",
+      description: "插件稳定标识，1 到 64 个字符，仅小写字母、数字、点、下划线和短横线。决定安装目录，发布后应保持不变。",
       type: "string",
       required: true,
     },
     name: {
-      description: "面向用户显示的名称。",
+      description: "面向用户显示的名称。值写成 %catalogKey% 时查包内 locales 目录。",
       type: "string",
       required: true,
     },
     version: {
-      description: "插件版本。版本变化时同步更新清单和发布包。",
+      description: "插件版本。提升版本号会让宿主重新拉取产物，绕过缓存。",
+      type: "string",
+      required: true,
+    },
+    pluginApiVersion: {
+      description: "兼容的 Plugin API 版本范围，当前为 ^2.0.0。",
       type: "string",
       required: true,
     },
@@ -46,35 +56,144 @@ description: 声明插件身份、加载入口、样式、权限和 Agent 贡献
       required: true,
     },
     "moduleFederation.remoteName": {
-      description: "合法且唯一的 Module Federation 远程名称，须与 Vite 配置一致。",
+      description: "Module Federation 远程名称，须与 Vite 配置中的 name 一致。",
       type: "string",
       required: true,
     },
     "moduleFederation.expose": {
-      description: "暴露入口，须与 Vite 配置中的 expose 一致。",
+      description: "暴露入口，须与 Vite 配置中的 expose 一致，默认 ./plugin。",
       type: "string",
       required: true,
     },
     styles: {
-      description: "需要注入的样式文件列表。",
+      description: "需要注入的样式文件列表，相对插件根目录。",
       type: "string[]",
     },
     permissions: {
       description: "插件实际使用的权限列表。声明不等于已获授权。",
       type: "string[]",
     },
+    commands: {
+      description: "允许 ctx.command.run 调用的可执行文件名，例如 git 或 node。粒度是文件名而不是完整命令行。",
+      type: "string[]",
+    },
+    network: {
+      description: "网络主机白名单。声明 network.fetch 时必填。",
+      type: "{ allowedHosts: string[] }",
+    },
+    browser: {
+      description: "浏览器顶层导航的最大主机授权。声明任一 browser 权限时必填，会话只能在此基础上收窄。",
+      type: "{ allowedHosts: string[] }",
+    },
+    icon: {
+      description: "能力页与插件列表的图标。可省略，也可写 Iconify 名称、http(s) 外链或包内相对路径。",
+      type: "string",
+    },
+    defaultLocale: {
+      description: "多语言缺译时的回退 locale，默认 zh。",
+      type: "string",
+    },
+    guidingWords: {
+      description: "新会话引导词，条目可用 %catalogKey%。",
+      type: "string[]",
+    },
+    agent: {
+      description: "Agent 侧贡献：systemPrompt、skillPaths、mcpServers、toolPolicy、agents、teams。",
+      type: "object",
+    },
+    providers: {
+      description: "插件提供的 CLI Provider 与受管本地服务。",
+      type: "{ cli?, services? }",
+    },
+    contributionMode: {
+      description: "贡献硬隔离。开启后，模式未打开时该插件的工具、技能、MCP 和系统提示词不进入会话。用户自建插件通常不需要。",
+      type: "{ hardIsolation: boolean }",
+    },
   }}
 />
 
-## 最小权限原则
-
-只声明插件实际使用的权限。常见权限按用途分为 UI 插槽、Agent 提示与工具、文件系统、网络、存储、模型、导航和自动化。
-
-<Callout title="声明 ≠ 授权" type="info">
-  声明权限不等于获得权限：用户安装授权和运行时校验仍会生效。
+<Callout title="加载方式只有一种" type="info">
+  清单不提供加载模式选择字段。写了 `runtime` 字段会被校验器直接拒绝，避免清单看起来像在选一条宿主并不存在的加载路径。`agent_mode` 字段已废弃且没有任何运行时语义，新插件不要写。
 </Callout>
 
-开发时先从最小清单开始。调用宿主 API 报权限错误时，确认该行为确实必要，再增加对应权限并重新走安装授权。不要为了省事复制其他插件的完整权限数组。
+## 路径与主机名会被归一化
+
+所有清单路径都会过越界校验：拒绝绝对路径与盘符前缀，展开 `.` 与 `..`，向上越过插件根直接报错。安装时还会再查一遍，声明的资源必须真实存在、类型正确且位于包根之内。
+
+`network.allowedHosts` 与 `browser.allowedHosts` 的每一项也会归一化：`*` 表示全通配，`*.example.com` 是前缀通配，带端口、用户名或密码的写法一律拒绝。通配项不匹配裸域名本身，`*.example.com` 不覆盖 `example.com`。
+
+## 安装目录与版本
+
+用户插件按版本存放在 `~/.vetta/plugins/<id>/versions/<version>/`。安装一个更新版本只被记录为 pending，应用继续加载当前活动版本，直到触发 reload 才切换。调试时改了代码要提升 `version` 并 reload 才稳妥生效。
+
+系统插件不进这个目录，随应用发布、每次启动从只读目录重新发现，声明的权限自动全量授予且用户不可撤销。
+
+## 声明、授权与校验
+
+<Steps>
+  <Step>
+    ### 在清单中声明
+
+    在 `plugin.json` 的 `permissions` 数组列出权限。没声明的权限永远拿不到。
+  </Step>
+  <Step>
+    ### 安装时授权
+
+    用户在插件页逐项勾选授权。Agent 通过本地路径安装时，用户确认后可按声明一次性授予。
+  </Step>
+  <Step>
+    ### 运行时校验
+
+    宿主在调用对应 API 时再次校验，声明与授权必须同时成立。运行时也可以用 `ctx.permissions.has()` 自查、`require()` 主动抛错。
+  </Step>
+</Steps>
+
+更新插件时，宿主保留用户已授予且新版本仍声明的权限，不自动授予新增权限，也不恢复用户主动撤销的权限——从一份空的授权记录无法反推用户原来的选择。
+
+## 权限清单
+
+<Accordions type="single">
+  <Accordion title="界面与文件浏览器">
+    `ui.slot.global`、`ui.slot.workspace-view`、`ui.slot.file-preview`、`ui.slot.activity-tab`、`ui.slot.input-action`、`ui.slot.new-session-context`、`ui.slot.message`、`ui.slot.tool-call`、`ui.slot.turn-card`、`ui.slot.ability-detail`、`ui.shortcuts.register`、`ui.file-explorer.decorations`、`ui.file-explorer.context-menu`、`ui.file-explorer.toolbar`、`workspace.read`、`conversation.draft.read`、`shell.openExternal`
+  </Accordion>
+  <Accordion title="对话与命令">
+    `agent.session.read`、`agent.session.write`、`agent.command.run`、`agent.command.spawn`、`capture.offscreen`
+  </Accordion>
+  <Accordion title="Agent 扩展">
+    `agent.tools.register`、`agent.toolHandler.execute`、`agent.hooks.register`、`agent.hookHandler.execute`、`agent.tools.control`、`agent.skills.control`、`agent.mcp.control`、`agent.systemPrompt.write`、`agent.systemPrompt.fullControl`、`agent.continuation.register`
+  </Accordion>
+  <Accordion title="浏览器">
+    `browser.open`、`browser.read`、`browser.interact`、`browser.profile.persist`、`browser.attach`、`browser.runtime.manage`。`browser.interact` 必须与 `browser.read` 一起声明，`browser.open` 只打开内置浏览器面板、不读取也不操作页面。
+  </Accordion>
+  <Accordion title="模型、媒体与 OCR">
+    `ai.models.list`、`ai.complete`、`models.manage`、`media.generate`、`media.provider.register`、`ai.ocr.recognize`、`ai.ocr.provider.register`
+  </Accordion>
+  <Accordion title="文件、网络与存储">
+    `fs.read`、`fs.write`、`network.fetch`、`storage.read`、`storage.write`、`secrets.read`、`secrets.write`
+  </Accordion>
+  <Accordion title="App Action">
+    `app.actions.register`、`app.actionHandler.execute`
+  </Accordion>
+  <Accordion title="占位符（声明了但暂无对应 API）">
+    `agent.systemPrompt.read`、`agent.state.read`、`agent.state.write`、`agent.runtime.configure`、`settings.read`、`settings.write`。声明它们不会解锁任何功能。
+  </Accordion>
+</Accordions>
+
+清单里的 `agent.agents`、`agent.teams`、`guidingWords`，以及 `ctx.ui.notify` 和 `ctx.i18n` 都不需要权限。
+
+## commands 是命令执行的第二道闸
+
+`ctx.command.run` 要跑一个二进制，需要 `agent.command.run` 权限**并且**该可执行文件名在清单 `commands` 里。未列入的二进制被硬拒绝；已声明的可以由用户在插件设置里逐条开关，关闭后调用被拦截。
+
+宿主不经用户可控的 shell 启动进程，`node`、`npm`、`npx` 会被重定向到宿主托管的运行时。
+
+## 最小权限原则
+
+只声明插件实际使用的权限，声明越小用户授权越省心、审核越快。开发时先从最小清单开始，调用宿主 API 报权限错误时确认该行为确实必要，再增加对应权限并重新走安装授权。不要为了省事复制其他插件的完整权限数组。
+
+<Callout title="构建期就会对账" type="info">
+  `@vetta-org/plugin-vite` 在构建和打包时扫描最终 JavaScript 产物，检出 `registerTool`、`registerHook`、`registerSystemPromptProvider`、`registerContinuationProvider`、运行时工具开关等调用点，以及清单里的 `agent.toolPolicy`，缺少对应权限会直接终止构建。界面槽位不在这条校验里，缺权限只在运行时静默跳过，需要对照[扩展点](/plugins/extension-points/)核对。
+</Callout>
 
 ## 发布前检查
 
@@ -82,16 +201,16 @@ description: 声明插件身份、加载入口、样式、权限和 Agent 贡献
   <Step>
     ### 检查归档结构
 
-    解压最终 ZIP，确认根目录包含 `plugin.json` 与 `dist/`，清单引用的入口和样式都存在。
+    解压最终 ZIP，确认 `plugin.json` 在根目录或唯一的顶层文件夹里，清单引用的入口、样式、技能和提示词文件都存在。
   </Step>
   <Step>
     ### 验证权限提示
 
-    使用全新安装流程验证权限提示是否与清单声明一致。
+    使用全新安装流程验证权限提示是否与清单声明一致，确认没有多余权限。
   </Step>
   <Step>
     ### 逐项触发能力
 
-    再逐项触发插件能力。本地开发链接成功不能替代发布包验证。
+    再逐项触发插件能力，包括撤销某项权限后的降级表现。本地开发链接成功不能替代发布包验证。
   </Step>
 </Steps>

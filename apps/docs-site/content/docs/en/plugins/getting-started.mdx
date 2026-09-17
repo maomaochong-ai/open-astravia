@@ -38,13 +38,19 @@ brief.
 
 ```bash
 npm run dev            # Vite + Module Federation dev server
+npm run validate       # check the manifest against the build output
 npm run install:vetta  # build, package, install into the running desktop app
 npx vetta-plugin-cli watch      # hot reload: the host loads the plugin from this directory
+npx vetta-plugin-cli reload <id>  # switch over when a pending version is reported
 npx vetta-plugin-cli uninstall  # remove it
 ```
 
 `install:vetta` hands the archive to the running desktop app, which validates, authorizes, and
 installs it. It never writes `~/.vetta/plugins` directly.
+
+Installing a newer version is only recorded as pending; the app keeps loading the current active
+version until `reload` switches over. If a code change does not show up, check that `version` in
+`plugin.json` was raised.
 
 ## Project structure
 
