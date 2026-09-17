@@ -18,6 +18,9 @@ describe("Coding Agent session initialization profile", () => {
 		const createContextRuntime = (() => {
 			throw new Error("not called by profile projection");
 		}) as NonNullable<CodingAgentRuntimeCompositionOptions["createContextRuntime"]>;
+		const streamFn = (() => {
+			throw new Error("not called by profile projection");
+		}) as NonNullable<CodingAgentRuntimeCompositionOptions["streamFn"]>;
 		const options = {
 			...createBaseOptions(),
 			promptResourceSource,
@@ -26,6 +29,7 @@ describe("Coding Agent session initialization profile", () => {
 			createPluginRuntime,
 			createSessionHookAdapterFactories,
 			createContextRuntime,
+			streamFn,
 			enableSubagents: false,
 			subagentMaxConcurrent: 4,
 			systemPromptAdvertisedToolNames: ["read", "write"],
@@ -67,6 +71,7 @@ describe("Coding Agent session initialization profile", () => {
 			"resolvePromptResource",
 			"resolveSystemPromptOptions",
 			"sessionExtensionFunctions",
+			"streamFn",
 			"subagentMaxConcurrent",
 			"subagentPathPort",
 			"subagentTypeRegistry",
@@ -80,10 +85,10 @@ describe("Coding Agent session initialization profile", () => {
 		expect(profile.createPromptRuntimeSources).toBe(createPromptRuntimeSources);
 		expect(profile.createPluginRuntime).toBe(createPluginRuntime);
 		expect(profile.createContextRuntime).toBe(createContextRuntime);
+		expect(profile.streamFn).toBe(streamFn);
 		expect(profile.initialModel).toBe(MODEL);
 		expect("conversationDir" in profile).toBe(false);
 		expect("mcpSource" in profile).toBe(false);
-		expect("streamFn" in profile).toBe(false);
 	});
 
 	it("在创建运行时资源前校验 prompt 动态来源必须成对提供", () => {

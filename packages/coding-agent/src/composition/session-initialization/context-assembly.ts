@@ -76,6 +76,8 @@ export function createCodingAgentSessionContextAssembly(
 	peripherals.sessionExtensions.services.require(CODING_AGENT_SESSION_ASSISTANCE_RUNTIME_OWNER).attach(
 		new CodingAgentSessionAssistanceRuntime({
 			models: modelRuntime,
+			readSessionId: options.readSessionId,
+			streamFn: profile.streamFn,
 			observationPublisher: options.observationPublisher,
 		}),
 	);

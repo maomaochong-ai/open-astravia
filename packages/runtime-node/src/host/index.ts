@@ -35,6 +35,7 @@ export {
 	type NodeLegacySessionFormatLeaseResult,
 	type NodeLegacySessionHostOptions,
 } from "./legacy-session-host.js";
+export { createLoopbackSessionAffinityStream } from "./loopback-session-affinity-stream.js";
 export {
 	createNodeResourceAccess,
 	type NodeResourceAccess,

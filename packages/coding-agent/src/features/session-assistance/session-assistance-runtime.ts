@@ -1,9 +1,10 @@
+import type { StreamFn } from "@vetta/agent-core";
 import {
 	type Api,
-	completeSimple,
 	getReasoningPreset,
 	type Model,
 	normalizeAssistantMessageError,
+	streamSimple,
 	type TextContent,
 	type Tool,
 	type ToolCall,
@@ -19,6 +20,8 @@ const modelCooldownUntil = new Map<string, number>();
 
 export interface CodingAgentSessionAssistanceRuntimeOptions {
 	readonly models: RuntimeSessionModelView;
+	readonly readSessionId: () => string;
+	readonly streamFn?: StreamFn;
 	readonly observationPublisher?: RuntimeObservationPublisher;
 	readonly now?: () => number;
 }
@@ -51,7 +54,7 @@ export class CodingAgentSessionAssistanceRuntime {
 			`<assistant_reply>\n${trimmedAssistant}\n</assistant_reply>`;
 
 		return this.runWithFailover("title.generate", async ({ model, apiKey, reasoning }) => {
-			const response = await completeSimple(
+			const stream = await (this.options.streamFn ?? streamSimple)(
 				model,
 				{
 					systemPrompt:
@@ -64,8 +67,9 @@ export class CodingAgentSessionAssistanceRuntime {
 						},
 					],
 				},
-				{ apiKey, maxTokens: 256, reasoning },
+				{ apiKey, maxTokens: 256, reasoning, sessionId: this.options.readSessionId() },
 			);
+			const response = await stream.result();
 			if (response.stopReason === "error") {
 				throw toModelFailure(normalizeAssistantMessageError(response, model));
 			}
@@ -89,7 +93,7 @@ export class CodingAgentSessionAssistanceRuntime {
 			`<conversation>\n${trimmed}\n</conversation>`;
 
 		const result = await this.runWithFailover("next-prompts.generate", async ({ model, apiKey, reasoning }) => {
-			const response = await completeSimple(
+			const stream = await (this.options.streamFn ?? streamSimple)(
 				model,
 				{
 					systemPrompt:
@@ -103,8 +107,9 @@ export class CodingAgentSessionAssistanceRuntime {
 					],
 					tools: [SUGGESTIONS_TOOL],
 				},
-				{ apiKey, maxTokens: 800, reasoning },
+				{ apiKey, maxTokens: 800, reasoning, sessionId: this.options.readSessionId() },
 			);
+			const response = await stream.result();
 			if (response.stopReason === "error") {
 				throw toModelFailure(normalizeAssistantMessageError(response, model));
 			}

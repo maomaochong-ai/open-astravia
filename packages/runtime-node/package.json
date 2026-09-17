@@ -51,6 +51,7 @@
 		"@silvia-odwyer/photon-node": "^0.3.4",
 		"@sinclair/typebox": "^0.34.41",
 		"@vetta/action-rpc": "workspace:*",
+		"@vetta/ai": "workspace:*",
 		"@vetta/runtime-core": "workspace:*",
 		"@vetta/runtime-knowledge": "workspace:*",
 		"@vetta/runtime-mcp": "workspace:*",
@@ -68,7 +69,6 @@
 		"@types/diff": "^7.0.2",
 		"@types/node": "^22.10.5",
 		"@types/proper-lockfile": "^4.1.4",
-		"@vetta/ai": "workspace:*",
 		"typescript": "^5.9.2",
 		"vitest": "^3.2.4"
 	},

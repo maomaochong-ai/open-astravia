@@ -47,6 +47,7 @@ import {
 	resolveSessionIdFromPath,
 } from "@vetta/runtime-node/conversation";
 import {
+	createLoopbackSessionAffinityStream,
 	createNodeKnowledgeRuntime,
 	createNodeResultArtifactStorage,
 	NodeTextFileStorage,
@@ -144,6 +145,7 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 			modelInputImageProcessor: nodeModelInputImageProcessor,
 			initialModel: options.initialModel,
 			initialThinkingLevel: options.initialThinkingLevel,
+			streamFn: createLoopbackSessionAffinityStream(),
 			ocrMaxConcurrent: resolvePositiveInteger(process.env.VETTA_KB_OCR_CONCURRENCY),
 			cwd: bootstrap.cwd,
 			workspaceFacts: detectWorkspaceFacts(bootstrap.cwd, (cwd) =>
