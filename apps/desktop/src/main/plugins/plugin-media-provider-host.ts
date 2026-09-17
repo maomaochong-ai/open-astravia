@@ -29,6 +29,7 @@ import {
 const PROVIDER_TIMEOUT_MS = 30 * 60_000;
 const TRANSFER_TIMEOUT_MS = 10 * 60_000;
 const MAX_TRANSFER_RESPONSE_BYTES = 4 * 1024 * 1024;
+const MAX_INPUT_READ_BYTES = 32 * 1024 * 1024;
 
 interface PendingInvocation {
 	pluginId: string;
@@ -52,6 +53,7 @@ export interface PluginMediaProviderHostDependencies {
 	createRequestId(): string;
 	fetch: typeof fetch;
 	openAsBlob: typeof openAsBlob;
+	readFile(path: string): Promise<Uint8Array>;
 }
 
 export class PluginMediaProviderHost {
@@ -184,6 +186,32 @@ export class PluginMediaProviderHost {
 		} finally {
 			transfer.dispose();
 		}
+	}
+
+	async readInput(
+		sender: WebContents,
+		requestIdValue: unknown,
+		inputIdValue: unknown,
+	): Promise<{ mimeType: string; data: Uint8Array }> {
+		const requestId = requireString(requestIdValue, "Media provider request id");
+		const invocation = this.pending.get(requestId);
+		if (!invocation || invocation.sender.id !== sender.id) {
+			throw new Error("Media provider invocation is unavailable");
+		}
+		const inputId = requireString(inputIdValue, "Media input id");
+		const input = invocation.inputs.get(inputId);
+		if (!input) throw new Error(`Media input is unavailable: ${inputId}`);
+		if (invocation.signal.aborted) throw new Error("Media provider invocation was cancelled");
+		const file = await this.dependencies.getMediaRuntime().artifacts.resolveInputFile(input);
+		if (file.sizeBytes > MAX_INPUT_READ_BYTES) {
+			throw new Error(`Media input exceeds ${MAX_INPUT_READ_BYTES} bytes`);
+		}
+		const data = await this.dependencies.readFile(file.path);
+		if (data.byteLength > MAX_INPUT_READ_BYTES) {
+			throw new Error(`Media input exceeds ${MAX_INPUT_READ_BYTES} bytes`);
+		}
+		if (invocation.signal.aborted) throw new Error("Media provider invocation was cancelled");
+		return { mimeType: file.mimeType, data };
 	}
 
 	dispose(): void {

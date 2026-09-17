@@ -44,7 +44,11 @@ import {
 	PathFilteredRuntimeSessionCatalog,
 } from "@vetta/runtime-desktop";
 import { FileConversationRuntimeSessionFileHistoryReader } from "@vetta/runtime-node/conversation";
-import { createNodeKnowledgeRuntime, NodeTextFileStorage } from "@vetta/runtime-node/host";
+import {
+	createLoopbackSessionAffinityStream,
+	createNodeKnowledgeRuntime,
+	NodeTextFileStorage,
+} from "@vetta/runtime-node/host";
 import { getModePrompt } from "../agent-modes/index.js";
 import { createDesktopAgentObservability } from "../agent-observability/composition.js";
 import {
@@ -113,6 +117,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 	const mcpTaskCoordinator = getDesktopMcpTaskCoordinator();
 	const mcpAppHost = getDesktopMcpAppRegistry();
 	const providerObservationRuntime = getDesktopProviderObservationRuntime();
+	const modelStream = createLoopbackSessionAffinityStream(providerObservationRuntime?.streamFn);
 	const getDefaultExecutionMode = async () => (await readDesktopConfig()).defaultExecutionMode;
 	const sandboxHostPath = resolveWindowsSandboxHostBinary()?.path;
 	const linuxBubblewrapPath = getAvailableLinuxBubblewrapPath();
@@ -165,7 +170,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 				observationHub: {
 					onIssue: (issue) => log.warn("[runtime-observation] coding agent hub issue", issue),
 				},
-				...(providerObservationRuntime ? { streamFn: providerObservationRuntime.streamFn } : {}),
+				streamFn: modelStream,
 				createPluginMcpRuntime: ({ cwd, agentDir }) => {
 					const resolvedAgentDir = agentDir ?? getAgentDir();
 					const resultArtifacts = createDesktopResultArtifactRuntime(resolvedAgentDir);

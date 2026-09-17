@@ -8,6 +8,7 @@ import {
 import { createMcpToolResultPolicy, EMPTY_MCP_CONFIG_SOURCE, type McpServerSupervisor } from "@vetta/runtime-mcp";
 import { nodeModelInputImageProcessor, nodeWorkspaceFactsFileSource } from "@vetta/runtime-node/coding";
 import {
+	createLoopbackSessionAffinityStream,
 	createNodeHtmlExportFileAdapters,
 	createNodeKnowledgeRuntime,
 	createNodeResultArtifactStorage,
@@ -262,6 +263,7 @@ async function createCodingAgentSdkSessionComposition(
 			modelInputImageProcessor: nodeModelInputImageProcessor,
 			initialModel: initial.model,
 			initialThinkingLevel: initial.thinkingLevel,
+			streamFn: createLoopbackSessionAffinityStream(),
 			cwd,
 			workspaceFacts,
 			agentDir,

@@ -114,6 +114,14 @@ describe("normalizeProviderError", () => {
 		});
 	});
 
+	it("preserves a statusless SDK retryable HTTP failure for recovery", () => {
+		expect(normalizeProviderError(new Error("Retryable HTTP Error: Internal Server Error"), model)).toMatchObject({
+			code: "AI_TRANSPORT_FAILED",
+			retryable: true,
+			message: "Retryable HTTP Error: Internal Server Error",
+		});
+	});
+
 	it.each([
 		[Object.assign(new Error("connection failed"), { name: "APIConnectionError" })],
 		[new TypeError("fetch failed")],

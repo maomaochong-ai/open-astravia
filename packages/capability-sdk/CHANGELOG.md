@@ -4,7 +4,10 @@ All notable changes to `@vetta-org/capability-sdk` are documented in this file.
 
 ## [Unreleased]
 
-- 新增 Agent 图片生成设置能力，允许官方插件读取或更新文生图、图生图 Provider 偏好，并以空值恢复自动选择。
+## [0.1.2] — 2026-09-17
+
+- Media Provider 协议升级到 v5：生成能力可声明模型目录与默认模型，宿主会校验显式模型并解析默认值。
+- Agent 图片生成设置在 Provider 偏好之外增加文生图、图生图模型偏好；旧配置仍按 Provider 默认模型工作。
 
 ## [0.1.0] — 2026-09-14
 

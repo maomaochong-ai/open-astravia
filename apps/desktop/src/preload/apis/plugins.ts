@@ -483,6 +483,8 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 			respondMediaProvider: (requestId, result) => ipc.invoke(PLUGIN_MEDIA_CHANNELS.RESPONSE, requestId, result),
 			uploadMediaProviderInput: (requestId, inputId, request) =>
 				ipc.invoke(PLUGIN_MEDIA_CHANNELS.UPLOAD_INPUT, requestId, inputId, request),
+			readMediaProviderInput: (requestId, inputId) =>
+				ipc.invoke(PLUGIN_MEDIA_CHANNELS.READ_INPUT, requestId, inputId),
 			registerOcrProvider: (pluginId, registration) =>
 				ipc.invoke(PLUGIN_OCR_CHANNELS.REGISTER, pluginId, registration),
 			unregisterOcrProvider: (pluginId, providerId, activationId) =>

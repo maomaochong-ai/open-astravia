@@ -13,6 +13,7 @@
 | 质量脚本测试 | `bun run test:quality` | 修改 `scripts/quality` | 变更选择、依赖传播与包边界规则 |
 | 单元测试 | `bun run test` / `bun run test:unit` | 逻辑变更 | 先由 Turbo 生成测试消费的 workspace 依赖产物，再顺序运行所有声明 `test` 的 TypeScript workspace |
 | 按包 | `bun run test:pkg <name>` | 改单包 | 例：`test:pkg ai` |
+| 按任务影响 | `bun run test:impact -- <file...>` | 日常实现与 Agent 任务 | 直接运行显式测试和 Vitest 依赖相关测试；高风险或不确定输入自动回退 `test:changed` |
 | 按变更 | `bun run test:changed` | 提 PR 前可选 | 合并已提交/工作区/未跟踪改动，测试触达包及其下游依赖 |
 | 按需 Desktop UI 验收 | `bun run verify:ui:*` | 仅用户明确要求使用 UI 验证或具体命令时 | 不由 UI、图标、样式或 Renderer/Main 改动自动触发；见 [README](./README.md) |
 | Desktop 生产边界 | `bun run verify:desktop:contracts`；受影响时由 GitHub Actions 在 Windows/macOS/Linux 运行 packaged smoke 与 updater E2E | 修改 Desktop 主进程、preload、打包脚本、原生依赖或远程控制 | 见下文 |
@@ -37,6 +38,7 @@ scripts/quality/
   check-turbo-config.mjs       Turbo 输入、环境、入口与 Remote Cache 安全合同
   check-source-path-maps.mjs   根 tsconfig path map 必须显式覆盖 workspace 包的 types 子路径导出
   test-pkg.mjs                 按包名跑 vitest
+  test-impact.mjs              按任务文件选择直接测试与 Vitest 相关测试
   test-changed.mjs             按 git 变更和依赖图选包
   quality-gates.test.mjs       质量脚本定向测试
 knip.config.ts                 Knip（可选）
@@ -61,6 +63,7 @@ knip.config.ts                 Knip（可选）
 | `test:quality` | 质量脚本定向测试 |
 | `test` / `test:unit` | 从 workspace manifest 自动发现并顺序运行所有声明 `test` 的包 |
 | `test:pkg` | 见 `bun run test:pkg --list` |
+| `test:impact` | 显式任务文件走精确测试；公共合同、删除和配置变化自动回退 `test:changed` |
 | `test:changed` | 默认比较 `origin/dev`；`--base origin/main` 可改基线 |
 | `deadcode` / `deadcode:report` | Knip 严格 / 仅报告 |
 
@@ -148,7 +151,9 @@ Desktop build task 显式依赖 `@vetta-org/plugin-vite`。开发前置构建读
 
 `test:changed` 会从根 workspace 和各包 `package.json#scripts.test` 自动发现可测包，并按全部 workspace manifest 自动计算下游依赖闭包；没有测试脚本的上游包发生变化时，其可测消费者也会进入计划。测试启动前，`test-pkg.mjs` 会让 Turbo 构建所选测试消费的 workspace 依赖，确保干净 checkout 中指向 `dist` 的包导出可被解析，同时不会构建 Desktop、Docs 或 Remote Relay 这些叶子应用本身。`package.json`、`bun.lock`、根 TypeScript/Biome 配置和 `scripts/quality/**` 变化会触发全部 workspace 测试；无效基线会直接失败，不会静默跳过。
 
-`check:quick` 复用同一套 Git 变更选择器，因此不会漏掉未暂存或未跟踪文件。删除文件会从 Biome 输入中排除；修改任意 `biome.json` / `biome.jsonc` 或根 `.editorconfig` 时，会自动回退为全仓 Biome，避免配置影响未被检查。它不做类型检查，不能替代任务结束时的完整 `check`。
+`test:impact` 面向本地短反馈循环：显式测试文件直接运行，普通源码交给 Vitest 的 `related` 依赖图选择；若没有关联测试则回退包测试。公共入口、包/测试配置、删除文件、无测试 workspace 和根配置会自动转交 `test:changed`，因此精确模式不会把无法证明安全的范围当作“无需测试”。不传文件时它仍使用完整 Git 差异。CI 继续使用 `test:changed`，保证跨包、跨平台门禁不因本地加速而收窄。
+
+`check:quick` 复用同一套 Git 变更选择器，因此不带路径时不会漏掉未暂存或未跟踪文件；`check:quick -- <file...>` 可限制为本次任务实际修改的文件。删除文件会从 Biome 输入中排除；修改任意 `biome.json` / `biome.jsonc` 或根 `.editorconfig` 时，会自动回退为全仓 Biome，避免配置影响未被检查。它不做类型检查，不能替代任务结束时的完整 `check`。
 
 根 `tsconfig.json` 已包含 `apps/cli-host/src/**/*` 和 `apps/cli-host/test/**/*`。完整 `check`
 仍额外显式执行 `apps/cli-host` 的 `typecheck`，避免未来调整根 `include` 时静默漏掉 CLI，也让
@@ -196,14 +201,14 @@ Windows、macOS、Linux runner 上真实安装基线包，驱动现有 updater �
 应用日志和升级状态文件。它使用独立的 `desktop-test` Environment，不会触碰 stable。当前 GitHub macOS runner 只验收
 其实际架构；macOS arm64 需要额外的自持 runner 矩阵。
 
-单元测试按包顺序执行，不使用根 workspace 的无界并发扇出；这会牺牲少量总耗时，但能避免多个 Vitest 进程同时争用 CPU、临时目录和子进程而产生假超时。包内测试若消费自身生成物，由该包的 `test` 脚本先生成（例如 `vetta-ui-design` 的独立 history runner），不把叶子包完整制品构建混入通用依赖预构建。CLI 的 Windows 进程型测试进一步按文件串行，避免多个 Node、Bun、MCP 与 shell 子进程争用 Runner 资源。平台相关行为至少由 Ubuntu、macOS 与 Windows 三个平台门禁覆盖。
+单元测试按包顺序执行，不使用根 workspace 的无界并发扇出；这会牺牲少量总耗时，但能避免多个 Vitest 进程同时争用 CPU、临时目录和子进程而产生假超时。包内测试若消费自身生成物，由该包的 `test` 脚本先生成（例如 `vetta-ui-design` 的独立 history runner），不把叶子包完整制品构建混入通用依赖预构建。CLI 的 Windows CI 进程型测试按文件串行，避免多个 Node、Bun、MCP 与 shell 子进程争用 Runner 资源；本地开发使用有界文件并行缩短反馈时间。平台相关行为至少由 Ubuntu、macOS 与 Windows 三个平台门禁覆盖。
 
 ## 与 OpenClaw 的对应关系（有意不做的）
 
 | OpenClaw | 本仓库选择 |
 |----------|------------|
 | oxlint / oxfmt | 继续 **Biome**（已覆盖 lint+format） |
-| 170+ test shards | `test:pkg` / `test:changed` 薄封装 |
+| 170+ test shards | 本地用 `test:impact` 缩短反馈；CI 用 `test:changed` 保持下游覆盖 |
 | pre-commit 全家桶 | husky + 快路径；类型检查放 `check` |
 | knip 阻断 CI | 仅扫描四个核心包，`deadcode:report` 先观察，再收紧 |
 | OpenGrep / CodeQL | 未引入；有安全面再加 |
@@ -215,9 +220,12 @@ Windows、macOS、Linux runner 上真实安装基线包，驱动现有 updater �
 # 日常开发
 # （commit 时 husky 自动 check:precommit）
 
-# 改核心库
-bun run test:pkg ai
-bun run check:quick
+# 中间编辑轮次：先跑直接相关测试；形成一个完整修改批次后跑快速检查
+bun scripts/quality/run-vitest.mjs --run packages/ai/test/provider-retry-policy.test.ts
+bun run check:quick -- packages/ai/src/providers/retry-policy.ts packages/ai/test/provider-retry-policy.test.ts
+
+# 任务完成：显式列出本次修改文件；完整 check 已覆盖 quick 的静态检查，无需紧邻重复执行
+bun run test:impact -- packages/ai/src/providers/retry-policy.ts packages/ai/test/provider-retry-policy.test.ts
 bun run check
 
 # 改多个包 / 不确定范围

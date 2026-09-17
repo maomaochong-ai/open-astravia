@@ -13,9 +13,12 @@ export function useGalleryColumns(): { ref: (node: HTMLElement | null) => void; 
 
 	useEffect(() => {
 		if (!node) return;
-		const measure = (): void => setColumns(galleryColumnCount(node.clientWidth));
-		measure();
-		const observer = new ResizeObserver(measure);
+		setColumns(galleryColumnCount(node.clientWidth));
+		// 回调里读 contentRect 而不是 clientWidth：同一批回调里别人可能已经写过样式，
+		// 再读一次布局属性就是一次强制同步布局。
+		const observer = new ResizeObserver((entries) => {
+			for (const entry of entries) setColumns(galleryColumnCount(entry.contentRect.width));
+		});
 		observer.observe(node);
 		return () => observer.disconnect();
 	}, [node]);

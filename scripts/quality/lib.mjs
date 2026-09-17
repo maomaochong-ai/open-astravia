@@ -5,7 +5,7 @@
 
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative, resolve, sep } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const repoRoot = process.cwd();
@@ -98,6 +98,13 @@ export function ok(message) {
 	console.log(message);
 }
 
+export function formatElapsedTime(milliseconds) {
+	if (!Number.isFinite(milliseconds) || milliseconds < 0) {
+		throw new Error("elapsed time must be a non-negative finite number");
+	}
+	return milliseconds < 1000 ? `${Math.round(milliseconds)}ms` : `${(milliseconds / 1000).toFixed(1)}s`;
+}
+
 export function git(args, { allowFail = false } = {}) {
 	const result = spawnSync("git", args, {
 		cwd: repoRoot,
@@ -149,6 +156,57 @@ export function parseBaseArgs(args, defaultBase = "origin/dev") {
 		throw new Error(`unknown argument: ${arg}`);
 	}
 	return { base };
+}
+
+export function normalizeRepoPath(input, root = repoRoot) {
+	if (typeof input !== "string" || input.length === 0) throw new Error("file path must be non-empty");
+	const absolute = resolve(root, input);
+	const relativePath = relative(root, absolute);
+	if (
+		relativePath === "" ||
+		relativePath.startsWith(`..${sep}`) ||
+		relativePath === ".." ||
+		isAbsolute(relativePath)
+	) {
+		throw new Error(`file path must stay inside the repository: ${input}`);
+	}
+	return toPosix(relativePath);
+}
+
+/** Parse a Git base plus optional task-owned files for changed-file quality commands. */
+export function parseFileSelectionArgs(args, defaultBase = "origin/dev", root = repoRoot) {
+	let base = defaultBase;
+	const files = [];
+	for (let i = 0; i < args.length; i += 1) {
+		const arg = args[i];
+		if (arg === "--") continue;
+		if (arg === "--base") {
+			const value = args[i + 1];
+			if (!value || value.startsWith("--")) throw new Error("--base requires a git ref");
+			base = value;
+			i += 1;
+			continue;
+		}
+		if (arg.startsWith("--base=")) {
+			base = arg.slice("--base=".length);
+			if (!base) throw new Error("--base requires a git ref");
+			continue;
+		}
+		if (arg === "--file") {
+			const value = args[i + 1];
+			if (!value || value.startsWith("--")) throw new Error("--file requires a repository path");
+			files.push(normalizeRepoPath(value, root));
+			i += 1;
+			continue;
+		}
+		if (arg.startsWith("--file=")) {
+			files.push(normalizeRepoPath(arg.slice("--file=".length), root));
+			continue;
+		}
+		if (arg.startsWith("--")) throw new Error(`unknown argument: ${arg}`);
+		files.push(normalizeRepoPath(arg, root));
+	}
+	return { base, files: [...new Set(files)].sort() };
 }
 
 export function packagesFromPaths(paths) {

@@ -42,12 +42,13 @@ import { SystemPluginCatalog } from "./plugin-system-catalog.js";
 /**
  * - 2.2.0：团队成员的角色槽位与跨插件引用（`agents[].roles`、`members[].role/optional`）。
  * - 2.3.0：团队成员的任务书（`members[].instructions` / `instructionsPath`）。
+ * - 2.4.0：Media Provider v5 的模型目录与受控输入读取。
  *
  * 清单校验对未知字段 fail-closed，所以用到这些字段的插件装到旧宿主上会整个解析失败，而不是
  * 少一项贡献。作者把 `pluginApiVersion` 写成用到的那一档，旧宿主才会给出「版本不支持」这种
  * 指向明确的错误。
  */
-export const PLUGIN_API_VERSION = "2.3.0";
+export const PLUGIN_API_VERSION = "2.4.0";
 export const CORE_ACTION_PLUGIN_ID = "vetta-actions";
 
 const REQUIRED_SYSTEM_PLUGIN_IDS = new Set<string>([CORE_ACTION_PLUGIN_ID]);

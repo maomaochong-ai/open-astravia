@@ -145,6 +145,7 @@ export {
 	type MediaGenerationInputSlot,
 	type MediaGenerationMode,
 	type MediaGenerationModeCapability,
+	type MediaGenerationModelDescriptor,
 	type MediaInput,
 	type MediaInputKind,
 	type MediaInputSource,

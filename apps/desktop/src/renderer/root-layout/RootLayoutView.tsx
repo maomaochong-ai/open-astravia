@@ -5,7 +5,7 @@ import { ThemeSurface } from "@vetta-org/theme-ui/appearance";
 import { RouteContentLoadingView } from "@vetta-org/theme-ui/app";
 import { AppFrame, MainContentFrame, SidebarDock, SidebarOverlay } from "@vetta-org/theme-ui/layout";
 import { useThemeComponent, useThemeSurface } from "@vetta-org/theme-sdk";
-import { useCallback, useEffect } from "react";
+import { memo, useCallback, useEffect } from "react";
 import { CommandMenu } from "../domains/command-menu/components/CommandMenu";
 import { useActiveWorkspaceViewHeader } from "../domains/plugins/components/WorkspaceViewHeaderSlot";
 import { Sidebar } from "../domains/project/components/sidebar/Sidebar";
@@ -16,6 +16,22 @@ import { SidebarTour } from "../shared/tour";
 import { AppBackground } from "./app-background/AppBackground";
 import { RootGlobalOverlays } from "./RootGlobalOverlays";
 import type { RootLayoutModel } from "./types";
+
+/**
+ * 路由内容独立成 memo：侧边栏折叠状态就在本文件的 model 里，不隔离的话每次展开/收起都会
+ * 把整棵内容树重渲染一遍——插件的整页工作区视图动辄几十个节点一棵（风格墙一屏 25 张卡），
+ * 一次 toggle 实测多出 ~28ms 的同步渲染，正好吃掉滑动的第一帧。
+ *
+ * 内容树不需要这个状态：形态走 AppFrame 上的 data-sidebar-* 属性（CSS 自适应），需要响应
+ * 的插件走 ctx.ui 的订阅，两条都不经过这里的 render。
+ */
+const RouteContent = memo(function RouteContent({ routePending }: { routePending: boolean }): JSX.Element {
+	return (
+		<PerfSendProfiler id="RouteOutlet">
+			{routePending ? <RouteContentLoadingView /> : <Outlet />}
+		</PerfSendProfiler>
+	);
+});
 
 interface RootLayoutViewProps {
 	model: RootLayoutModel;
@@ -36,6 +52,7 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 		overlayOpen,
 		routePending,
 		sidebarCollapsed,
+		sidebarWidth,
 	} = model;
 	const showSidebar = pageLayout !== "app";
 	const ensureSidebarVisible = useCallback(() => {
@@ -86,7 +103,11 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 			>
 				{showSidebar && (
 					<>
-						<SidebarDock className="sidebar-dock" visible={!narrow && !sidebarCollapsed}>
+						<SidebarDock
+							className="sidebar-dock"
+							visible={!narrow && !sidebarCollapsed}
+							width={sidebarWidth}
+						>
 							<PerfSendProfiler id="Sidebar">
 								<Sidebar onOpenSession={onOpenSession} onCollapse={actions.toggleSidebar} />
 							</PerfSendProfiler>
@@ -103,7 +124,7 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 				)}
 				{pageLayout === "app" ? (
 					<div className="app-main-frame relative flex min-h-0 min-w-[320px] flex-1 overflow-visible">
-						{routePending ? <RouteContentLoadingView /> : <Outlet />}
+						<RouteContent routePending={routePending} />
 					</div>
 				) : (
 					<MainContentFrame
@@ -111,9 +132,7 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 						header={pageHeader}
 						headerOverlay={workspaceViewHeader?.immersive === true}
 					>
-						<PerfSendProfiler id="RouteOutlet">
-							{routePending ? <RouteContentLoadingView /> : <Outlet />}
-						</PerfSendProfiler>
+						<RouteContent routePending={routePending} />
 					</MainContentFrame>
 				)}
 				{/* 复用 Sidebar 那条 onOpenSession：会话打开的落点逻辑只应有一处宿主实现。 */}

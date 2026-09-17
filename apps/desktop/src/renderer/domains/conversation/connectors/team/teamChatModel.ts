@@ -20,6 +20,7 @@ import type { AgentTeamDocument, TeamDefinition } from "@vetta/agent-team";
 import type { HistoryEntry, PromptAttachmentRef, SessionExecutionMode } from "@vetta/runtime-core";
 import type { ConversationScenario } from "@vetta-org/plugin-sdk";
 import { fullHistoryToChat } from "../../services/chat-service";
+import { classifyChatError } from "../../services/classifyChatError";
 import {
 	projectConversationAgentMessage,
 	reduceConversationToolExecutionEvent,
@@ -53,7 +54,6 @@ export interface TeamChatViewModel {
 	readonly leaderMemberId?: string;
 	readonly feedItems: readonly ChatConversationItem[];
 	readonly pendingLabel?: string;
-	readonly error?: string;
 	readonly editorEnabled: boolean;
 	readonly canSend: boolean;
 	readonly workspace: ActivityWorkspace | null;
@@ -134,6 +134,12 @@ export interface TeamPendingRequest {
 	}[];
 	readonly leaderMemberId?: string;
 	readonly timestamp?: number;
+}
+
+export interface TeamDisplayError {
+	readonly message: string;
+	readonly turnId?: string;
+	readonly authorId?: string;
 }
 
 export type TeamStreamState = Readonly<Record<string, ConversationMessageEventState>>;
@@ -707,6 +713,55 @@ export function projectTeamConversationTimeline({
 	return items;
 }
 
+export function placeTeamErrorInTimeline(
+	items: readonly ChatConversationItem[],
+	error: TeamDisplayError | undefined,
+	leaderMemberId: string,
+): ChatConversationItem[] {
+	if (!error) return [...items];
+	const text = error.message.replace(/^Error invoking remote method '[^']+': Error: /u, "");
+	const block = {
+		type: "error" as const,
+		id: `team:error:${error.turnId ?? "operation"}`,
+		...(error.turnId ? { turnId: error.turnId } : {}),
+		text,
+		kind: classifyChatError(text),
+	};
+	const authorId = error.authorId ?? leaderMemberId;
+	let matchingIndex = -1;
+	if (error.turnId) {
+		for (let index = items.length - 1; index >= 0; index--) {
+			const item = items[index];
+			if (item?.kind === "agent" && item.turnId === error.turnId && item.authorId === authorId) {
+				matchingIndex = index;
+				break;
+			}
+		}
+	}
+	if (matchingIndex >= 0) {
+		const item = items[matchingIndex];
+		if (item?.kind !== "agent") return [...items];
+		if (item.blocks.some((existing) => existing.type === "error" && existing.turnId === error.turnId))
+			return [...items];
+		const next = [...items];
+		next[matchingIndex] = { ...item, phase: "failed", blocks: [...item.blocks, block] };
+		return next;
+	}
+	return [
+		...items,
+		{
+			id: block.id,
+			turnId: error.turnId ?? block.id,
+			authorId,
+			kind: "agent",
+			role: "assistant",
+			phase: "failed",
+			blocks: [block],
+			timestamp: Date.now(),
+		},
+	];
+}
+
 function matchesActivityReply(
 	activity: DesktopTeamSessionSnapshot["activities"][number],
 	item: ConversationAgentMessageViewModel,
@@ -777,6 +832,15 @@ function projectLegacySnapshotMessages(snapshot: DesktopTeamSessionSnapshot): Ch
 			timestamp: record.timestamp,
 			executions: toolExecutions,
 		});
+		if (projected.kind === "agent" && record.message.stopReason === "error" && record.message.errorMessage) {
+			projected.blocks.push({
+				type: "error",
+				id: `${record.id}:error`,
+				turnId: record.turnId,
+				text: record.message.errorMessage,
+				kind: classifyChatError(record.message.errorMessage),
+			});
+		}
 		const normalized =
 			projected.kind === "agent" && (record.message.stopReason === "stop" || record.message.stopReason === "aborted")
 				? patchLegacyPendingTools(projected, record.message.stopReason === "aborted")

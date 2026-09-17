@@ -4,6 +4,7 @@
  * Usage:
  *   bun run test:changed
  *   bun run test:changed --base origin/main
+ *   bun run test:changed -- packages/runtime-core/src/index.ts
  */
 
 import {
@@ -12,7 +13,7 @@ import {
 	isDirectRun,
 	ok,
 	packagesFromPaths,
-	parseBaseArgs,
+	parseFileSelectionArgs,
 	runBun,
 	TESTABLE_PACKAGES,
 } from "./lib.mjs";
@@ -27,7 +28,7 @@ const GLOBAL_TEST_FILES = new Set([
 	"tsconfig.json",
 ]);
 
-export const parseArgs = parseBaseArgs;
+export const parseArgs = parseFileSelectionArgs;
 
 export function isGlobalTestTrigger(file) {
 	const normalized = file.replaceAll("\\", "/");
@@ -53,11 +54,15 @@ export function createChangedTestPlan(files) {
 
 export function main(args = process.argv.slice(2)) {
 	try {
-		const { base } = parseArgs(args);
-		const files = changedFiles(base);
+		const selection = parseArgs(args);
+		const files = selection.files.length > 0 ? selection.files : changedFiles(selection.base);
 		const plan = createChangedTestPlan(files);
 
-		console.log(`[test:changed] base=${base}`);
+		console.log(
+			selection.files.length > 0
+				? `[test:changed] scope=explicit files=${selection.files.length}`
+				: `[test:changed] scope=git base=${selection.base}`,
+		);
 		console.log(`[test:changed] changed files: ${files.length}`);
 		console.log(`[test:changed] touched packages: ${plan.touched.join(", ") || "(none)"}`);
 		if (plan.globalTriggers.length > 0) {

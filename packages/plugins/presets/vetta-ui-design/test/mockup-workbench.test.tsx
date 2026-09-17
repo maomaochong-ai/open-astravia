@@ -253,7 +253,9 @@ describe("ExportMockupDialog", () => {
 			expect(scaleOf(world.style.transform)).toBeGreaterThan(scaleBefore);
 			expect(previewCanvas().width).toBe(rasterBefore);
 
-			// 落定：位图按新倍率重画。
+			// 落定分两段：先是视口本身回到 state（缩放途中只写 DOM，见 use-viewport），
+			// 再是位图按这个最终倍率重画。两段各等一次。
+			act(() => vi.advanceTimersByTime(500));
 			act(() => vi.advanceTimersByTime(500));
 			expect(previewCanvas().width).toBeGreaterThan(rasterBefore);
 		} finally {

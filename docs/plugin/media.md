@@ -24,6 +24,7 @@ const submitted = await ctx.media.submit({
   kind: "image",
   mode: "text-to-image",
   prompt: "a red fox in snow",
+  modelId: "openai/gpt-image-2",
   dimensions: { width: 1024, height: 1024 },
   inputs: [],
 });
@@ -77,9 +78,10 @@ try {
 
 消费插件可用 `onProvidersChanged()` 监听 Provider 增删，并重新执行能力发现。插件并行激活时不能依赖固定加载顺序。
 
-官方系统插件如果需要遵循宿主 Agent 的图片 Provider 选择，应使用 `ctx.official.agent.getImageGeneration()` 读取
-`textToImageProviderId` / `imageToImageProviderId`，再把值传给自己的策略选择器；未设置时由插件按能力定义自动选择。
-已保存但当前不存在或不支持对应模式的 Provider 必须报告 `provider-unavailable`，不能静默切换到另一家服务。
+官方系统插件如果需要遵循宿主 Agent 的图片 Provider 与模型选择，应使用 `ctx.official.agent.getImageGeneration()` 读取
+`textToImageProviderId` / `textToImageModelId` 与 `imageToImageProviderId` / `imageToImageModelId`。只保存了 Provider 的旧配置
+继续使用该 Provider 的 `defaultModelId`。已保存但当前不存在或不支持对应模式的 Provider/模型必须报告
+`provider-unavailable`，不能静默切换到另一条路由。
 Provider 的凭据、模型和服务端参数仍由 Provider 自己管理，不应复制到 Agent 设置。
 
 ## 注册 Provider
@@ -97,6 +99,14 @@ ctx.media.registerProvider({
     aspectRatios: ["16:9", "9:16"],
     resolutions: ["efficient", "balanced", "quality"],
     defaultResolution: "balanced",
+    models: [{
+      id: "acme/video-v2",
+      displayName: "Video v2",
+      sourceId: "acme",
+      sourceDisplayName: "Acme",
+      modes: ["image-to-video"],
+    }],
+    defaultModelId: "acme/video-v2",
     durationsSeconds: [5, 10],
   }],
   async submit(request, context) {
@@ -129,13 +139,15 @@ ctx.media.registerProvider({
 });
 ```
 
-Provider 收到的 `inputs` 只有不透明 ID、媒体类型和 MIME，不包含插件 Blob 命名空间或工作区路径。只有当前任务上下文能用 `uploadInput()` 把对应文件流式上传到 HTTP(S) 服务。Provider 输出 source 支持 `remote-url`、`plugin-blob` 和 `workspace-file`，宿主会按 Provider 权限读取并导入为消费方临时产物。
+Provider 收到的 `inputs` 只有不透明 ID、媒体类型和 MIME，不包含插件 Blob 命名空间或工作区路径。只有当前任务上下文能读取它们：`uploadInput()` 把文件流式上传到 HTTP(S) 服务；`readInput()` 返回 `{ mimeType, data }`，用于 Gemini `inlineData` 一类必须把字节放进 JSON 的 API。`readInput()` 上限 32 MB，调用结束、取消或 Provider 卸载后句柄立即失效，不能读取未列入本次请求的文件。Provider 输出 source 支持 `remote-url`、`plugin-blob` 和 `workspace-file`，宿主会按 Provider 权限读取并导入为消费方临时产物。
+
+`models` 是可选的兼容字段：省略时按旧版 Provider 级能力工作。提供时，模型 `id` 在同一 capability 内必须唯一，模型的 `modes` 必须是 Provider `modes` 的子集，`defaultModelId` 必须引用目录中的模型。消费者没有传 `modelId` 时宿主使用 `defaultModelId`；显式模型缺失或不支持当前模式时返回 `invalid-request`，不会静默替换。模型可用 `sourceId` / `sourceDisplayName` 表达同一 Provider 后面的上游供应商分组。
 
 `resolutions` 是 Provider 自定义的稳定选项 ID，不保证具有 `720p`、`2K` 等固定视频制式语义；例如本地模型可以用它表达像素预算档位，再在 Provider 内转换为最终宽高。若声明 `defaultResolution`，该值必须同时出现在 `resolutions` 中。消费者在没有已保存值或已有值不受当前模型支持时优先采用这个显式默认值。
 
 ## Provider SPI
 
-通用媒体契约和 capability token 定义在 `@vetta-org/capability-sdk`，当前协议版本为 4。注册表、通用任务、临时产物存储、输入解析与网络传输位于 desktop 主进程。插件 Provider 通过受控 IPC 回调桥接到同一个 Registry，注销时会中止仍在执行的调用。
+通用媒体契约和 capability token 定义在 `@vetta-org/capability-sdk`，当前协议版本为 5。注册表、通用任务、临时产物存储、输入解析与网络传输位于 desktop 主进程。插件 Provider 通过受控 IPC 回调桥接到同一个 Registry，注销时会中止仍在执行的调用。使用模型目录或 `readInput()` 的插件应声明 `pluginApiVersion: ^2.4.0`；旧 Provider 不声明模型目录时继续按原行为运行。
 
 需要宿主凭据或其它主进程特权的实现仍应注册为宿主 Provider；普通远端服务、本地模型或 sidecar 可用 Provider 插件适配。两者对消费者暴露同一契约。
 

@@ -33,9 +33,13 @@ describe("agent settings domain capabilities", () => {
 		expect(
 			DOMAIN_AGENT_SETTINGS_CAPABILITIES.GET_IMAGE_GENERATION.parseOutput({
 				textToImageProviderId: "remote:images",
+				textToImageModelId: "google/gemini-image",
 				ignored: true,
 			}),
-		).toEqual({ textToImageProviderId: "remote:images" });
+		).toEqual({
+			textToImageProviderId: "remote:images",
+			textToImageModelId: "google/gemini-image",
+		});
 		expect(
 			DOMAIN_AGENT_SETTINGS_CAPABILITIES.SET_IMAGE_GENERATION.parseInput({
 				textToImageProviderId: null,

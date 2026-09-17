@@ -6,6 +6,7 @@ import {
 	MEDIA_GENERATION_MODES,
 	MEDIA_KINDS,
 	MEDIA_OPERATIONS,
+	MEDIA_PROTOCOL_VERSION,
 } from "../../src/domain.js";
 import { JOB_STATUSES } from "../../src/foundation.js";
 
@@ -69,7 +70,7 @@ describe("media domain capabilities", () => {
 				{
 					id: "plugin:minimax-h3",
 					ownerId: "comfyui-media-provider",
-					protocolVersion: 4,
+					protocolVersion: MEDIA_PROTOCOL_VERSION,
 					capabilities: [
 						{
 							operation: "generate",

@@ -924,6 +924,7 @@ export interface DesktopPluginsApi {
 		inputId: string,
 		request: PluginMediaInputUploadRequest,
 	): Promise<PluginMediaTransferResponse<T>>;
+	readMediaProviderInput(requestId: string, inputId: string): Promise<{ mimeType: string; data: Uint8Array }>;
 	registerOcrProvider(pluginId: string, registration: PluginOcrProviderHostRegistration): Promise<void>;
 	unregisterOcrProvider(pluginId: string, providerId: string, activationId: string): Promise<void>;
 	onOcrProviderRequest(handler: (request: PluginOcrProviderInvocationRequest) => void): () => void;

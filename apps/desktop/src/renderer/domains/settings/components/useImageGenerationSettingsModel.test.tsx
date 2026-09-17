@@ -23,19 +23,23 @@ describe("useImageGenerationSettingsModel", () => {
 						id: "remote:all",
 						displayName: "Remote Images",
 						ownerId: "remote",
-						protocolVersion: 4,
+						protocolVersion: 5,
 						capabilities: [
 							{
 								operation: "generate",
 								kind: "image",
 								modes: ["text-to-image", "image-to-image"],
+								models: [
+									{ id: "openai/gpt-image-2", displayName: "GPT Image 2", sourceDisplayName: "OpenAI", modes: ["text-to-image", "image-to-image"] },
+								],
+								defaultModelId: "openai/gpt-image-2",
 							},
 						],
 					},
 					{
 						id: "remote:text-only",
 						ownerId: "remote",
-						protocolVersion: 4,
+						protocolVersion: 5,
 						capabilities: [
 							{ operation: "generate", kind: "image", modes: ["text-to-image"] },
 						],
@@ -48,29 +52,29 @@ describe("useImageGenerationSettingsModel", () => {
 		const { result } = renderHook(() => useImageGenerationSettingsModel());
 		await waitFor(() => expect(result.current.loading).toBe(false));
 
-		expect(result.current.textToImageProviderId).toBe("remote:all");
+		expect(result.current.textToImageRouteId).toBe("remote%3Aall::openai%2Fgpt-image-2");
 		expect(result.current.textToImageOptions.map((option) => option.value)).toEqual([
 			AUTO_IMAGE_PROVIDER_ID,
-			"remote:all",
-			"remote:text-only",
+			"remote%3Aall::openai%2Fgpt-image-2",
+			"remote%3Atext-only",
 		]);
 		expect(result.current.imageToImageOptions.map((option) => option.value)).toEqual([
 			AUTO_IMAGE_PROVIDER_ID,
-			"remote:all",
+			"remote%3Aall::openai%2Fgpt-image-2",
 		]);
 
 		await act(async () => {
-			await result.current.actions.setImageToImageProvider("remote:all");
+			await result.current.actions.setImageToImageRoute("remote%3Aall::openai%2Fgpt-image-2");
 		});
 		expect(set).toHaveBeenCalledWith({
-			imageGeneration: { imageToImageProviderId: "remote:all" },
+			imageGeneration: { imageToImageProviderId: "remote:all", imageToImageModelId: "openai/gpt-image-2" },
 		});
 
 		await act(async () => {
-			await result.current.actions.setTextToImageProvider(AUTO_IMAGE_PROVIDER_ID);
+			await result.current.actions.setTextToImageRoute(AUTO_IMAGE_PROVIDER_ID);
 		});
 		expect(set).toHaveBeenLastCalledWith({
-			imageGeneration: { textToImageProviderId: null },
+			imageGeneration: { textToImageProviderId: null, textToImageModelId: null },
 		});
 		expect(onMediaProvidersChanged).toHaveBeenCalledOnce();
 	});
@@ -88,7 +92,7 @@ describe("useImageGenerationSettingsModel", () => {
 		await waitFor(() => expect(result.current.loading).toBe(false));
 
 		expect(result.current.textToImageOptions).toContainEqual({
-			value: "missing:images",
+			value: "missing%3Aimages",
 			label: "missing:images (agentSettings.imageGeneration.unavailable)",
 		});
 	});

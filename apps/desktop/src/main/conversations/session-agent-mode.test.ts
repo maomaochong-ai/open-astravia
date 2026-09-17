@@ -60,6 +60,15 @@ afterEach(async () => {
 });
 
 describe("会话级工作模式固化", () => {
+	it("把会话级自动重试所有权投影到 Coding Agent 配置", async () => {
+		const root = await createTemporaryRoot();
+		const resolved = await resolveDesktopSessionConfig({ cwd: root, automaticRetry: false }, "other", "interactive");
+		expect(
+			parseCodingAgentRuntimeSessionConfiguration(resolved.config.agent?.sessionConfiguration).automaticRetry,
+		).toBe(false);
+		expect(resolved.config).not.toHaveProperty("automaticRetry");
+	});
+
 	it("改默认值只影响新会话，已有会话保持创建时的模式", async () => {
 		const root = await createTemporaryRoot();
 

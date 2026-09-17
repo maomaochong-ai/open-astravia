@@ -2,6 +2,8 @@
 
 ### Added
 
+- Runtime Session 新增可选的 `automaticRetry` 策略输入；由外层持久任务调度器负责重试的宿主可以关闭 Runtime Host 内层自动重试，默认行为保持开启。
+
 - Plugin Runtime 的 Skill 路径贡献可携带独立展示策略，宿主能够保留运行时 Skill 的同时控制各产品入口的呈现（ADR-0110）。
 
 - Runtime Session 可分别提供宿主拥有的稳定 system cache-prefix addon 与易变 trusted addon；最终 Frame 在首个易变块前建立明确断点，使共享 Team 契约与成员身份无需混成同一提示词字符串。
@@ -19,6 +21,8 @@
   轮询、取消和恢复所有权，Task 不进入 Coding Agent 自身后台 bash/subagent 状态机。
 
 ### Fixed
+
+- 自动标题和下一问建议现在沿用所属 Conversation 的 `sessionId`，避免同一用户 Turn 的辅助模型请求被本地多账号网关路由到另一份凭据。
 
 - Session execution owner 尚未完成索引或正在回滚时，全局工具 Provider 不再贡献 `shell`、`bash`、`read`、`write`、`edit` 等 Session 工具，避免与 Session-local 工具产生重复定义。
 

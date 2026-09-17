@@ -1,10 +1,19 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { type CSSProperties, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+	type CSSProperties,
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from "react";
 import { type MockupExportRequest, onMockupExport, requestMockupExport } from "../canvas/design-runtime";
 import { byCanvasOrder } from "../canvas/frame-order";
 import { loadRasters } from "../canvas/raster-cache";
 import { parseThemeTokens } from "../canvas/theme-tokens";
-import { fitViewport, useViewport } from "../canvas/use-viewport";
+import { fitViewport, inverseScale, useViewport, type ViewportController } from "../canvas/use-viewport";
 import { getPluginCtx, notify } from "../plugin-context";
 import { attachFrame, detachFrame, railFrames, swapFrames } from "./attach";
 import { bytesToBase64, dataUrlToBytes } from "./binary";
@@ -43,6 +52,18 @@ interface CaptureState {
 
 interface ShotEntry extends MockupShot {
 	error: string | null;
+}
+
+/**
+ * 缩放百分比单独成组件。
+ *
+ * 捏合途中视口只走 DOM，整个对话框刻意不重渲染（见 use-viewport）；读数要是直接取
+ * `view.viewport.zoom`，捏合时它会僵在原地、松手才跳一下。订阅之后跟着 tick 重渲染的
+ * 只有这一个 span。
+ */
+function ZoomPercent({ view }: { view: ViewportController }) {
+	const zoom = useSyncExternalStore(view.subscribeZoom, () => view.viewportRef.current.zoom);
+	return <>{Math.round(zoom * 100)}%</>;
 }
 
 /**
@@ -467,7 +488,7 @@ export function ExportMockupDialog() {
 									transform: view.worldTransform,
 									transformOrigin: "0 0",
 									// 选中框、报错卡片、页码标签按它反向缩放，保持恒定视觉大小。
-									"--vetd-lscale": Math.min(1 / view.viewport.zoom, 8),
+									"--vetd-lscale": inverseScale(view.viewport.zoom),
 								} as CSSProperties
 							}
 						>
@@ -576,7 +597,7 @@ export function ExportMockupDialog() {
 								−
 							</button>
 							<span className="min-w-11 text-center text-[11px] tabular-nums text-muted-foreground">
-								{Math.round(view.viewport.zoom * 100)}%
+								<ZoomPercent view={view} />
 							</span>
 							<button
 								type="button"

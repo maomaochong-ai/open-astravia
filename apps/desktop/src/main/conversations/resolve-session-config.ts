@@ -33,6 +33,7 @@ export interface DesktopCodingAgentSessionConfig extends SessionConfig {
 	readonly systemPromptVolatileAddon?: string;
 	readonly enableBackgroundTasks?: boolean;
 	readonly includeAgentSkills?: boolean;
+	readonly automaticRetry?: boolean;
 	readonly agentConfiguration?: AgentConfigurationSelection;
 	readonly sessionRuntimeTools?: readonly CodingAgentRuntimeToolRegistration[];
 	readonly bindPinnedModelContext?: CodingAgentPinnedModelContextBinder;
@@ -98,6 +99,7 @@ export async function resolveDesktopSessionConfig(
 		systemPromptVolatileAddon: _systemPromptVolatileAddon,
 		enableBackgroundTasks: _enableBackgroundTasks,
 		includeAgentSkills: _includeAgentSkills,
+		automaticRetry: _automaticRetry,
 		bindPinnedModelContext: _bindPinnedModelContext,
 		promptCacheKey: _promptCacheKey,
 		agentConfiguration: _agentConfiguration,
@@ -117,6 +119,7 @@ export async function resolveDesktopSessionConfig(
 					systemPromptVolatileAddon: config?.systemPromptVolatileAddon,
 					enableBackgroundTasks,
 					includeAgentSkills,
+					automaticRetry: config?.automaticRetry,
 					agentConfiguration: config?.agentConfiguration,
 					sessionRuntimeTools: config?.sessionRuntimeTools,
 					bindPinnedModelContext: config?.bindPinnedModelContext,

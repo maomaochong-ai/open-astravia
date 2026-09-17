@@ -26,7 +26,9 @@ const agentExperimentalSettingsUpdateType = Type.Object(
 const imageGenerationSettingsType = Type.Object(
 	{
 		textToImageProviderId: Type.Optional(Type.String({ minLength: 1, maxLength: 129 })),
+		textToImageModelId: Type.Optional(Type.String({ minLength: 1, maxLength: 256 })),
 		imageToImageProviderId: Type.Optional(Type.String({ minLength: 1, maxLength: 129 })),
+		imageToImageModelId: Type.Optional(Type.String({ minLength: 1, maxLength: 256 })),
 	},
 	{ additionalProperties: false },
 );
@@ -34,7 +36,9 @@ const imageGenerationSettingsType = Type.Object(
 const imageGenerationSettingsUpdateType = Type.Object(
 	{
 		textToImageProviderId: Type.Optional(Type.Union([Type.String({ minLength: 1, maxLength: 129 }), Type.Null()])),
+		textToImageModelId: Type.Optional(Type.Union([Type.String({ minLength: 1, maxLength: 256 }), Type.Null()])),
 		imageToImageProviderId: Type.Optional(Type.Union([Type.String({ minLength: 1, maxLength: 129 }), Type.Null()])),
+		imageToImageModelId: Type.Optional(Type.Union([Type.String({ minLength: 1, maxLength: 256 }), Type.Null()])),
 	},
 	{ additionalProperties: false, minProperties: 1 },
 );

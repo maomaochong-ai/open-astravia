@@ -5,11 +5,12 @@
  * Usage:
  *   bun run check:quick
  *   bun run check:quick --base origin/main
+ *   bun run check:quick -- packages/ai/src/index.ts
  */
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { changedFiles, isDirectRun, ok, parseBaseArgs, repoRoot, runBun } from "./lib.mjs";
+import { changedFiles, isDirectRun, ok, parseFileSelectionArgs, repoRoot, runBun } from "./lib.mjs";
 
 const MAX_BATCH_CHARS = 16_000;
 
@@ -70,9 +71,13 @@ function runBiome(plan) {
 
 export function main(args = process.argv.slice(2)) {
 	try {
-		const { base } = parseBaseArgs(args);
-		const files = changedFiles(base);
-		console.log(`[check:quick] base=${base}`);
+		const selection = parseFileSelectionArgs(args);
+		const files = selection.files.length > 0 ? selection.files : changedFiles(selection.base);
+		console.log(
+			selection.files.length > 0
+				? `[check:quick] scope=explicit files=${selection.files.length}`
+				: `[check:quick] scope=git base=${selection.base}`,
+		);
 		console.log(`[check:quick] changed files: ${files.length}`);
 		if (files.length === 0) {
 			ok("[check:quick] no changed files; skip");

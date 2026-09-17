@@ -40,6 +40,7 @@ export type CodingAgentSessionInitializationProfile = Pick<
 	| "subagentPathPort"
 	| "subagentWorkspacePort"
 	| "systemPromptAdvertisedToolNames"
+	| "streamFn"
 	| "workspaceFacts"
 >;
 
@@ -89,6 +90,7 @@ export function createCodingAgentSessionInitializationProfile(
 		subagentPathPort: options.subagentPathPort,
 		subagentWorkspacePort: options.subagentWorkspacePort,
 		systemPromptAdvertisedToolNames: options.systemPromptAdvertisedToolNames,
+		streamFn: options.streamFn,
 		workspaceFacts: options.workspaceFacts,
 	};
 }

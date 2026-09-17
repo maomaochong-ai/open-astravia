@@ -74,6 +74,15 @@ interface FrameRasterOptions {
 	 */
 	activeFrameId: string | null;
 	/**
+	 * 这一趟缩放/平移还在进行（见 use-viewport 的 interacting）。
+	 *
+	 * 为真时「已经有位图的 frame」一律降为位图显示：活体 iframe 是跨源渲染树，套在
+	 * world 的 scale 底下，缩放每变一档就得连同它整棵树重新光栅化；位图是一张已经解码
+	 * 好的图，缩放只是 GPU 拉伸。iframe 本身不卸（mounted 不受影响），只是收起来，所以
+	 * 操作结束不用重新加载——交接照旧由 FrameView 押两帧，不会露白底。
+	 */
+	interacting: boolean;
+	/**
 	 * 宿主离屏截图所需的上下文（引擎端口 + frame 尺寸）。宿主支持时位图队列走
 	 * 离屏窗口：截图不再要求 frame 挂活体 iframe，也不占画布渲染进程的主线程；
 	 * 不支持（旧宿主）则整体回落 html-to-image 老路。
@@ -188,6 +197,7 @@ export function useFrameRasters({
 	cacheKey,
 	frameIds,
 	activeFrameId,
+	interacting,
 	offscreen,
 }: FrameRasterOptions): FrameRasterState {
 	/** 离屏路径是否可用。宿主能力不会中途消失，判一次即可。 */
@@ -225,6 +235,14 @@ export function useFrameRasters({
 	const invalidationSeqRef = useRef<Map<string, number>>(new Map());
 	/** 本次挂载后已收到 rendered 信号的 frame。iframe 卸载后作废（见 mounted 同步）。 */
 	const renderedRef = useRef<Set<string>>(new Set());
+	/**
+	 * 因为构建失败被截图队列跳过的 frame。
+	 *
+	 * 这条队列没有「错误已经清掉了」的输入——错误态存在 design-runtime 的模块级 store
+	 * 里，不是本 hook 的依赖。恢复完全靠 frame 重新渲染时那条 rendered 把队列踢一脚，
+	 * 所以 notifyRendered 的去重必须把它们放行。
+	 */
+	const errorSkippedRef = useRef<Set<string>>(new Set());
 	/** 最近一次被单独选中的 frame，取消选中后仍然记着（见 mounted）。 */
 	const lastActiveRef = useRef<string | null>(null);
 	if (activeFrameId !== null) lastActiveRef.current = activeFrameId;
@@ -293,11 +311,22 @@ export function useFrameRasters({
 
 	const notifyRendered = useCallback(
 		(frameId: string): void => {
+			// 这一次挂载后的**第一条** rendered 才是门禁信号。门禁存在 ref 里、不触发
+			// 重渲染，所以那一条必须换掉 dirty 的引用，好让截图 effect 重跑、发现该
+			// frame 现在可以截了。
+			const opensGate = !renderedRef.current.has(frameId);
+			// 上一轮因构建失败被跳过：这条信号正是它唯一的复活入口，不能去重掉。
+			const recovered = errorSkippedRef.current.delete(frameId);
 			renderedRef.current.add(frameId);
 			bumpSeq(frameId);
-			// 已经在脏集合里也要换个引用：rendered 门禁靠 ref 存放，不触发重渲染，
-			// 全靠这次 state 变化让截图 effect 重跑、发现该 frame 现在可以截了。
-			setDirty((current) => new Set(current).add(frameId));
+			setDirty((current) => {
+				// 引擎侧的 FramePainted 没有依赖数组，frame 每提交一次就重发一条
+				// rendered（engine/src/main.tsx）。门禁早就开着、这一帧也还排在队列里
+				// 时，这条信号不带来任何新信息——再换一次引用只会让整块画布陪着重渲染
+				// 一轮，还把截图队列重排一遍（cleanup 作废掉正在静置的那些，从头再等）。
+				if (!opensGate && !recovered && current.has(frameId)) return current;
+				return new Set(current).add(frameId);
+			});
 		},
 		[bumpSeq],
 	);
@@ -331,11 +360,17 @@ export function useFrameRasters({
 	const mounted = useMemo(() => {
 		const allowed = new Set<string>();
 		if (activeFrameId) allowed.add(activeFrameId);
-		// 刚取消选中的那一帧，只要还没有位图就继续留活体。否则 iframe 当场卸掉，画面
-		// 退回启动占位，要一直等到队列轮到它才恢复——用户看到的就是「点一下正常了，
-		// 取消选中又开始转圈」。它此刻已经渲染好了，留着不用重新加载。
+		// 刚取消选中的那一帧继续挂着（有没有位图都一样）。
+		//
+		// 没位图时不留会退回启动占位，要一直等到队列轮到它才恢复——用户看到的是
+		// 「点一下正常了，取消选中又开始转圈」。
+		// 有位图时不留的代价同样实在：离屏模式下有位图的 frame 一律不挂 iframe，于是
+		// **每一次选中都是从零新建一个跨源 iframe、整页重启引擎**，取消选中再整个销毁。
+		// 来回点几下就是来回重建几次，每次都要重走一遍「空白 → 位图盖住 → 画出来」，
+		// 画布跟着一闪一闪。留着它只多一个 display:none 的 iframe（还在 MOUNT_WINDOW
+		// 的量级上），换来的是再次选中时只翻一个 display，不用重新加载。
 		const recent = lastActiveRef.current;
-		if (recent !== null && !rasters.has(recent)) allowed.add(recent);
+		if (recent !== null) allowed.add(recent);
 		// 正在截图的那个必须留住。frameIds 的顺序跟着视口走（见 DesignCanvas），平移
 		// 一下队列就重排，把它挤出挂载窗口会当场卸掉 iframe——这一张连同它已经等过的
 		// SETTLE 一起白费，还要从头再来一遍。（离屏模式截图不经过 iframe，不用留。）
@@ -480,7 +515,10 @@ export function useFrameRasters({
 			if (!dirty.has(frameId)) continue;
 			if (frameId === activeFrameId) continue;
 			if (!offscreenActive && !(mounted.has(frameId) && renderedRef.current.has(frameId))) continue;
-			if (getFrameError(frameId)) continue;
+			if (getFrameError(frameId)) {
+				errorSkippedRef.current.add(frameId);
+				continue;
+			}
 			startCapture(frameId);
 			started.push(frameId);
 		}
@@ -505,12 +543,20 @@ export function useFrameRasters({
 	const liveSet = useMemo(() => {
 		const live = new Set<string>();
 		for (const frameId of mounted) {
-			if (frameId === activeFrameId || forced.has(frameId) || dirty.has(frameId) || !rasters.has(frameId)) {
+			// 截图期间被强制拉活的不能动：display:none 的 iframe 没有布局，截出来是空的。
+			if (forced.has(frameId)) {
+				live.add(frameId);
+				continue;
+			}
+			// 缩放/平移途中，有位图的一律先用位图顶着（见 interacting）。没位图的留活体：
+			// 那是它此刻唯一有内容的那一层，收起来只会在操作期间变成一片空白。
+			if (interacting && rasters.has(frameId)) continue;
+			if (frameId === activeFrameId || dirty.has(frameId) || !rasters.has(frameId)) {
 				live.add(frameId);
 			}
 		}
 		return live;
-	}, [mounted, activeFrameId, forced, dirty, rasters]);
+	}, [mounted, activeFrameId, forced, dirty, interacting, rasters]);
 
 	const liveRef = useRef(liveSet);
 	liveRef.current = liveSet;

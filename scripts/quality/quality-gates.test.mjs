@@ -17,14 +17,17 @@ import {
 	buildableTestDependencies,
 	changedFiles,
 	expandTestablePackages,
+	formatElapsedTime,
 	packagesFromPaths,
 	parseBaseArgs,
+	parseFileSelectionArgs,
 	repoRoot,
 	stagedFiles,
 	TESTABLE_PACKAGES,
 	WORKSPACE_PACKAGES,
 } from "./lib.mjs";
 import { createChangedTestPlan, parseArgs } from "./test-changed.mjs";
+import { createImpactTestPlan, parseImpactArgs } from "./test-impact.mjs";
 
 describe("changed file selection", () => {
 	it("combines committed, working tree, and untracked paths", () => {
@@ -78,6 +81,22 @@ describe("changed file selection", () => {
 		expect(parseBaseArgs(["--base", "origin/main"])).toEqual({ base: "origin/main" });
 		expect(() => parseBaseArgs(["--base", "--unknown"])).toThrow("--base requires a git ref");
 		expect(() => parseBaseArgs(["--unknown"])).toThrow("unknown argument");
+	});
+
+	it("accepts explicit task files and rejects paths outside the repository", () => {
+		expect(parseFileSelectionArgs(["--base=origin/main", "packages\\ai\\src\\index.ts"])).toEqual({
+			base: "origin/main",
+			files: ["packages/ai/src/index.ts"],
+		});
+		expect(() => parseFileSelectionArgs(["../outside.ts"])).toThrow("inside the repository");
+	});
+});
+
+describe("quality timing output", () => {
+	it("keeps short timings readable and longer timings comparable", () => {
+		expect(formatElapsedTime(412)).toBe("412ms");
+		expect(formatElapsedTime(12_345)).toBe("12.3s");
+		expect(() => formatElapsedTime(-1)).toThrow("non-negative finite number");
 	});
 });
 
@@ -292,9 +311,46 @@ describe("affected package selection", () => {
 	});
 
 	it("accepts both base argument forms and rejects unknown arguments", () => {
-		expect(parseArgs(["--base", "origin/main"])).toEqual({ base: "origin/main" });
-		expect(parseArgs(["--base=origin/release"])).toEqual({ base: "origin/release" });
+		expect(parseArgs(["--base", "origin/main"])).toEqual({ base: "origin/main", files: [] });
+		expect(parseArgs(["--base=origin/release"])).toEqual({ base: "origin/release", files: [] });
 		expect(() => parseArgs(["--unknown"])).toThrow("unknown argument");
+	});
+
+	it("selects direct and related tests for ordinary task files", () => {
+		const plan = createImpactTestPlan([
+			"packages/ai/test/provider-retry-policy.test.ts",
+			"packages/ai/src/providers/retry-policy.ts",
+		]);
+		expect(plan.fallbackChanged).toBe(false);
+		expect(plan.targets).toMatchObject([
+			{
+				key: "ai",
+				directTests: ["test/provider-retry-policy.test.ts"],
+				relatedSources: ["src/providers/retry-policy.ts"],
+				full: false,
+			},
+		]);
+	});
+
+	it("falls back for public contracts, deleted files, and workspaces without tests", () => {
+		expect(createImpactTestPlan(["packages/ai/src/index.ts"]).fallbackChanged).toBe(true);
+		expect(
+			createImpactTestPlan(["packages/coding-agent/src/composition/contracts/runtime-session-options.ts"])
+				.fallbackChanged,
+		).toBe(true);
+		expect(createImpactTestPlan(["packages/ai/src/provider.ts"], () => false).fallbackChanged).toBe(true);
+		expect(createImpactTestPlan(["packages/action-rpc/src/rpc.ts"]).fallbackChanged).toBe(true);
+	});
+
+	it("runs quality tests for scripts while documentation-only changes need no package tests", () => {
+		const quality = createImpactTestPlan(["scripts/quality/test-impact.mjs"]);
+		expect(quality).toMatchObject({ runQuality: true, fallbackChanged: false, targets: [] });
+		const docs = createImpactTestPlan(["docs/dev/quality-gates.md"]);
+		expect(docs).toMatchObject({ runQuality: false, fallbackChanged: false, targets: [] });
+		expect(parseImpactArgs(["--dry-run", "packages/ai/src/providers/retry-policy.ts"])).toMatchObject({
+			dryRun: true,
+			files: ["packages/ai/src/providers/retry-policy.ts"],
+		});
 	});
 
 	it("builds generated workspace exports required by tests without building leaf applications", () => {

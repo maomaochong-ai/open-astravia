@@ -6,6 +6,8 @@ All notable changes to `@vetta/runtime-node` are documented in this file.
 
 ### Added
 
+- 新增本地模型网关会话亲和性 Stream 适配器，由 Node 宿主显式把 Runtime Session 映射为
+  `X-Session-ID`；远程 Provider 请求与调用方已有 Header 保持不变。
 - HTTP MCP Client 在 initialize 时调用 runtime-only `resolveUrl`，后续鉴权错误使用解析后的地址。
 - Node MCP 组合暂以 `2025-11-25` 作为兼容默认版本，同时公开 `2026-07-28` Modern 协议合同，避免在现代
   Transport 尚未启用前误把旧 Session Client 宣称为 Modern Client。

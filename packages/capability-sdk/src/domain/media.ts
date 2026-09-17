@@ -4,7 +4,7 @@ import { CAPABILITY_LAYERS, defineCapability } from "../contracts.js";
 import { JOB_TYPE, type Job } from "../foundation/job.js";
 import { defineCapabilityInputSchema, defineCapabilityOutputSchema } from "../schema.js";
 
-export const MEDIA_PROTOCOL_VERSION = 4 as const;
+export const MEDIA_PROTOCOL_VERSION = 5 as const;
 
 export const MEDIA_OPERATIONS = {
 	GENERATE: "generate",
@@ -138,6 +138,19 @@ const mediaGenerationModeCapabilityType = Type.Object(
 	},
 	{ additionalProperties: false },
 );
+const mediaGenerationModelDescriptorType = Type.Object(
+	{
+		id: requiredStringType,
+		displayName: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
+		sourceId: Type.Optional(requiredStringType),
+		sourceDisplayName: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
+		modes: Type.Array(mediaGenerationModeType, { minItems: 1 }),
+		aspectRatios: Type.Optional(Type.Array(requiredStringType)),
+		resolutions: Type.Optional(Type.Array(requiredStringType)),
+		defaultResolution: Type.Optional(requiredStringType),
+	},
+	{ additionalProperties: false },
+);
 const mediaGenerateCapabilityType = Type.Object(
 	{
 		operation: Type.Literal(MEDIA_OPERATIONS.GENERATE),
@@ -146,6 +159,8 @@ const mediaGenerateCapabilityType = Type.Object(
 		aspectRatios: Type.Optional(Type.Array(requiredStringType)),
 		resolutions: Type.Optional(Type.Array(requiredStringType)),
 		defaultResolution: Type.Optional(requiredStringType),
+		models: Type.Optional(Type.Array(mediaGenerationModelDescriptorType, { minItems: 1 })),
+		defaultModelId: Type.Optional(requiredStringType),
 		durationsSeconds: Type.Optional(Type.Array(Type.Number({ exclusiveMinimum: 0 }))),
 		modeCapabilities: Type.Optional(Type.Array(mediaGenerationModeCapabilityType)),
 	},
@@ -258,6 +273,7 @@ export type MediaOutput = Readonly<Static<typeof mediaOutputType>>;
 export type MediaArtifact = Readonly<Static<typeof mediaArtifactType>>;
 export type MediaGenerationInputSlot = Readonly<Static<typeof mediaGenerationInputSlotType>>;
 export type MediaGenerationModeCapability = Readonly<Static<typeof mediaGenerationModeCapabilityType>>;
+export type MediaGenerationModelDescriptor = Readonly<Static<typeof mediaGenerationModelDescriptorType>>;
 export type MediaProviderCapability = Readonly<Static<typeof mediaProviderCapabilityType>>;
 export type MediaProviderDescriptor = Readonly<Static<typeof mediaProviderDescriptorType>>;
 export type MediaSubmitInput = Readonly<Static<typeof mediaSubmitInputType>>;

@@ -62,7 +62,7 @@
     },
     "apps/desktop": {
       "name": "@vetta/desktop",
-      "version": "0.5.57",
+      "version": "0.5.58",
       "dependencies": {
         "@dagrejs/dagre": "^3.0.0",
         "@fontsource-variable/geist": "^5.2.8",
@@ -310,7 +310,7 @@
     },
     "packages/capability-sdk": {
       "name": "@vetta-org/capability-sdk",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "dependencies": {
         "@sinclair/typebox": "^0.34.41",
       },
@@ -567,7 +567,7 @@
     },
     "packages/plugins/plugin-sdk": {
       "name": "@vetta-org/plugin-sdk",
-      "version": "0.3.5",
+      "version": "0.3.6",
       "dependencies": {
         "@sinclair/typebox": "^0.34.41",
         "@vetta-org/capability-sdk": "^0.1.0",
@@ -992,6 +992,7 @@
         "@silvia-odwyer/photon-node": "^0.3.4",
         "@sinclair/typebox": "^0.34.41",
         "@vetta/action-rpc": "workspace:*",
+        "@vetta/ai": "workspace:*",
         "@vetta/runtime-core": "workspace:*",
         "@vetta/runtime-knowledge": "workspace:*",
         "@vetta/runtime-mcp": "workspace:*",
@@ -1009,7 +1010,6 @@
         "@types/diff": "^7.0.2",
         "@types/node": "^22.10.5",
         "@types/proper-lockfile": "^4.1.4",
-        "@vetta/ai": "workspace:*",
         "typescript": "^5.9.2",
         "vitest": "^3.2.4",
       },

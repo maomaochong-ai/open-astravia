@@ -12,6 +12,7 @@ import { join } from "node:path";
 import {
 	buildableTestDependencies,
 	fail,
+	formatElapsedTime,
 	ok,
 	PACKAGE_DIRS,
 	packageHasTestScript,
@@ -35,9 +36,12 @@ if (args.includes("--list") || args.includes("-l") || (args.length === 0 && !run
 
 const names = runAll ? Object.keys(TESTABLE_PACKAGES) : args.filter((a) => !a.startsWith("-"));
 let failed = 0;
+const startedAt = performance.now();
+const results = [];
 
 const buildDependencies = buildableTestDependencies(names);
 if (buildDependencies.length > 0) {
+	const buildStartedAt = performance.now();
 	ok(`[test:pkg] building workspace dependencies: ${buildDependencies.join(", ")}`);
 	const buildCode = runBun([
 		"x",
@@ -48,6 +52,7 @@ if (buildDependencies.length > 0) {
 		...buildDependencies.map((packageName) => `--filter=${packageName}`),
 	]);
 	if (buildCode !== 0) process.exit(buildCode);
+	ok(`[test:pkg] workspace dependencies built in ${formatElapsedTime(performance.now() - buildStartedAt)}`);
 }
 
 for (const name of names) {
@@ -69,8 +74,22 @@ for (const name of names) {
 		continue;
 	}
 	ok(`[test:pkg] ${name} → ${dir}`);
+	const packageStartedAt = performance.now();
 	const code = runBun(["run", "test"], { cwd: abs });
+	const elapsedMs = performance.now() - packageStartedAt;
+	results.push({ name, code, elapsedMs });
+	ok(`[test:pkg] ${name} ${code === 0 ? "passed" : "failed"} in ${formatElapsedTime(elapsedMs)}`);
 	if (code !== 0) failed = code;
+}
+
+if (results.length > 0) {
+	console.log("[test:pkg] duration summary (slowest first)");
+	for (const result of [...results].sort((left, right) => right.elapsedMs - left.elapsedMs)) {
+		console.log(
+			`  ${result.name.padEnd(28)} ${formatElapsedTime(result.elapsedMs).padStart(8)}  ${result.code === 0 ? "passed" : "failed"}`,
+		);
+	}
+	console.log(`[test:pkg] total ${formatElapsedTime(performance.now() - startedAt)}`);
 }
 
 process.exit(failed);

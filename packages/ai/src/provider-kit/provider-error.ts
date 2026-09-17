@@ -78,7 +78,10 @@ export function normalizeProviderError<TApi extends Api>(error: unknown, model: 
 	}
 	return new AIError(AI_ERROR_CODES.TRANSPORT_FAILED, message, {
 		...options,
-		retryable: retryableOverride ?? isKnownNetworkFailure(error) ?? isRetryableProviderFailure(message, statusCode),
+		retryable:
+			retryableOverride ??
+			isKnownNetworkFailure(error) ??
+			(/^Retryable HTTP Error:/i.test(message) || isRetryableProviderFailure(message, statusCode)),
 	});
 }
 

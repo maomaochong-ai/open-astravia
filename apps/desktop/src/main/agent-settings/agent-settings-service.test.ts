@@ -72,4 +72,35 @@ describe("AgentSettingsService", () => {
 			imageGeneration: { imageToImageProviderId: "remote:edit" },
 		});
 	});
+
+	it("stores model preferences with their provider and clears stale models when the provider changes", async () => {
+		let current: DesktopConfig = {
+			...createConfig(),
+			imageGeneration: {
+				textToImageProviderId: "cpa:images",
+				textToImageModelId: "codex/gpt-image-2",
+			},
+		};
+		const service = new AgentSettingsService({
+			readConfig: async () => current,
+			writeConfig: async (config) => {
+				current = config;
+			},
+		});
+
+		await expect(
+			service.setImageGeneration({
+				textToImageProviderId: "other:images",
+			}),
+		).resolves.toEqual({ textToImageProviderId: "other:images" });
+		await expect(
+			service.setImageGeneration({
+				textToImageProviderId: "cpa:images",
+				textToImageModelId: "antigravity/gemini-image",
+			}),
+		).resolves.toEqual({
+			textToImageProviderId: "cpa:images",
+			textToImageModelId: "antigravity/gemini-image",
+		});
+	});
 });

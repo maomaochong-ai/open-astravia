@@ -5,7 +5,13 @@
  * 选星轨/火把/马里奥/燃烧/玩手/能源井时挂上对应的那枚。
  */
 import { render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { OrnamentId } from "@shared/theme/ornament";
+import { HeroOrnamentSlot } from "./HeroOrnamentSlot";
+
+const useHeroOrnament = vi.hoisted(() => vi.fn());
+
+vi.mock("@shared/hooks/useHeroOrnament", () => ({ useHeroOrnament }));
 
 vi.mock("./presets/BlazeOrnament", () => ({
 	BlazeOrnament: () => <div data-testid="blaze" />,
@@ -35,84 +41,34 @@ vi.mock("./presets/ViviOrnament", () => ({
 	ViviOrnament: () => <div data-testid="vivi" />,
 }));
 
-const STORAGE_KEY = "vetta-hero-ornament";
-
-/** atom 的初值在模块加载时就从 localStorage 读走了，所以每次都要先写值再重新 import。 */
-async function renderSlot(stored: string | null): Promise<void> {
-	if (stored === null) window.localStorage.removeItem(STORAGE_KEY);
-	else window.localStorage.setItem(STORAGE_KEY, stored);
-	vi.resetModules();
-	const { HeroOrnamentSlot } = await import("./HeroOrnamentSlot");
+function renderSlot(ornamentId: OrnamentId): void {
+	useHeroOrnament.mockReturnValue({ ornamentId });
 	render(<HeroOrnamentSlot autoplay={false} mounted />);
 }
 
 beforeEach(() => {
-	window.localStorage.clear();
-});
-
-afterEach(() => {
-	vi.resetModules();
+	useHeroOrnament.mockReset();
 });
 
 describe("HeroOrnamentSlot", () => {
-	it("未选过时挂上默认的燃烧", async () => {
-		await renderSlot(null);
-
-		expect(screen.getByTestId("blaze")).toBeTruthy();
-	});
-
-	it("选「无」时不渲染任何装饰件", async () => {
-		await renderSlot("none");
+	it("选「无」时不渲染任何装饰件", () => {
+		renderSlot("none");
 
 		expect(screen.queryByTestId("blaze")).toBeNull();
 		expect(screen.queryByTestId("vivi")).toBeNull();
 	});
 
-	it("选 Vivi 时挂上 Vivi", async () => {
-		await renderSlot("vivi");
+	it.each([
+		["blaze", "blaze"],
+		["vivi", "vivi"],
+		["orbit", "orbit"],
+		["torch", "torch"],
+		["mario", "mario"],
+		["hand", "hand"],
+		["well", "well"],
+	] satisfies readonly (readonly [OrnamentId, string])[])("选择 %s 时渲染对应装饰件", (ornamentId, testId) => {
+		renderSlot(ornamentId);
 
-		expect(screen.getByTestId("vivi")).toBeTruthy();
-		expect(screen.queryByTestId("blaze")).toBeNull();
-	});
-
-	it("选星轨时挂上星轨", async () => {
-		await renderSlot("orbit");
-
-		expect(screen.getByTestId("orbit")).toBeTruthy();
-		expect(screen.queryByTestId("blaze")).toBeNull();
-	});
-
-	it("选火把时挂上火把", async () => {
-		await renderSlot("torch");
-
-		expect(screen.getByTestId("torch")).toBeTruthy();
-		expect(screen.queryByTestId("blaze")).toBeNull();
-	});
-
-	it("选马里奥时挂上马里奥", async () => {
-		await renderSlot("mario");
-
-		expect(screen.getByTestId("mario")).toBeTruthy();
-		expect(screen.queryByTestId("blaze")).toBeNull();
-	});
-
-	it("选玩手时挂上玩手", async () => {
-		await renderSlot("hand");
-
-		expect(screen.getByTestId("hand")).toBeTruthy();
-		expect(screen.queryByTestId("blaze")).toBeNull();
-	});
-
-	it("选能源井时挂上能源井", async () => {
-		await renderSlot("well");
-
-		expect(screen.getByTestId("well")).toBeTruthy();
-		expect(screen.queryByTestId("blaze")).toBeNull();
-	});
-
-	it("存了未知装饰件时回落到默认的燃烧", async () => {
-		await renderSlot("not-an-ornament");
-
-		expect(screen.getByTestId("blaze")).toBeTruthy();
+		expect(screen.getByTestId(testId)).toBeTruthy();
 	});
 });

@@ -14,4 +14,6 @@ export interface RootLayoutModel {
 	overlayOpen: boolean;
 	routePending: boolean;
 	sidebarCollapsed: boolean;
+	/** 左栏宽度（px）：左栏占位与侧边栏面板必须同源，见 SidebarDock。 */
+	sidebarWidth: number;
 }

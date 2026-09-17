@@ -10,6 +10,7 @@ import { createRoot, type Root } from "react-dom/client";
 import type { PluginContext } from "@vetta-org/plugin-sdk";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { BridgeHub } from "../src/canvas/bridge-client";
+import { clearFrameErrors, setFrameError } from "../src/canvas/design-runtime";
 import { type FrameRasterState, useFrameRasters } from "../src/canvas/frame-raster";
 import { setPluginCtx } from "../src/plugin-context";
 
@@ -37,6 +38,7 @@ let container: HTMLElement;
 function Harness(props: {
 	frameIds: readonly string[];
 	activeFrameId: string | null;
+	interacting?: boolean;
 	offscreen?: TestOffscreenContext | null;
 }): null {
 	latest = useFrameRasters({
@@ -44,6 +46,7 @@ function Harness(props: {
 		cacheKey: "/design/demo.vetd",
 		frameIds: props.frameIds,
 		activeFrameId: props.activeFrameId,
+		interacting: props.interacting ?? false,
 		offscreen: props.offscreen ?? null,
 	});
 	return null;
@@ -282,4 +285,139 @@ it("预览端口失联时只上报一次并抑制并发槽的重复错误日志"
 		consoleError.mockRestore();
 		setPluginCtx(null as unknown as PluginContext);
 	}
+});
+
+/**
+ * 复现的 bug：引擎侧的 FramePainted 没有依赖数组，frame 每提交一次就重发一条
+ * rendered（engine/src/main.tsx）。画布收到后无条件换掉 dirty 的引用，截图 effect
+ * 跟着重跑，cleanup 把还在静置等待的那张作废重来——信号间隔短于静置时间时，这一帧
+ * 永远截不出来，整块画布还陪着一轮轮重渲染（肉眼就是画布发闪）。
+ */
+it("重复的 rendered 不会把还在静置的截图一再作废", async () => {
+	await mount(["a"]);
+
+	act(() => latest.notifyRendered("a"));
+	// 每隔「短于静置时间」就来一条，模拟 frame 持续提交。
+	for (let i = 0; i < 4; i += 1) {
+		await advance(SETTLE * 0.6);
+		act(() => latest.notifyRendered("a"));
+	}
+
+	expect(captures.length).toBeGreaterThan(0);
+});
+
+/**
+ * 去重不能把构建失败那条恢复路径一起吃掉：错误态存在 design-runtime 的模块级 store
+ * 里，不是这个 hook 的依赖，队列唯一的复活输入就是 frame 恢复渲染时那条 rendered。
+ */
+it("构建失败期间被跳过的 frame，恢复渲染后会重新进队列", async () => {
+	await mount(["a"]);
+
+	setFrameError("a", "Unexpected token");
+	act(() => latest.notifyRendered("a"));
+	await advance(SETTLE * 2);
+	expect(captures.length).toBe(0);
+
+	// 改好了：引擎重新渲染、错误清空，随后补上这一帧的 rendered。
+	setFrameError("a", null);
+	act(() => latest.notifyRendered("a"));
+	await advance(SETTLE * 2);
+	expect(captures.length).toBe(1);
+
+	clearFrameErrors();
+});
+
+/**
+ * 离屏模式下「有位图的 frame 一律不挂 iframe」，于是每次选中都要从零新建一个跨源
+ * iframe、整页重启引擎，取消选中再销毁。来回点选就是来回重建，每次都重走一遍
+ * 「空白 → 位图盖住 → 画出来」，画布跟着闪。刚取消选中的那一帧要留住。
+ */
+it("刚取消选中的 frame 保持挂载，再次选中时不用重建 iframe", async () => {
+	setPluginCtx({
+		capture: {
+			offscreen: () => Promise.resolve({ dataUrl: "data:offscreen", scaleFactor: 2 }),
+			releaseOffscreen: () => Promise.resolve(),
+		},
+	} as unknown as PluginContext);
+	try {
+		const offscreen = { port: 5173, sizeOf: () => ({ width: 390, height: 844 }) };
+		await mount(["a", "b"], offscreen);
+		await advance(50);
+		await flushMicrotasks();
+
+		// 两帧都截好了，都退出活体。
+		expect(latest.isMounted("a")).toBe(false);
+
+		const render = async (activeFrameId: string | null): Promise<void> => {
+			await act(async () => {
+				root.render(createElement(Harness, { frameIds: ["a", "b"], activeFrameId, offscreen }));
+			});
+		};
+
+		await render("a");
+		expect(latest.isMounted("a")).toBe(true);
+		expect(latest.isLive("a")).toBe(true);
+
+		// 取消选中：位图接管画面，但 iframe 留着，再次选中只翻一个 display。
+		await render(null);
+		expect(latest.isMounted("a")).toBe(true);
+		expect(latest.isLive("a")).toBe(false);
+
+		await render("a");
+		expect(latest.isLive("a")).toBe(true);
+	} finally {
+		setPluginCtx(null as unknown as PluginContext);
+	}
+});
+
+/**
+ * 缩放/平移途中活体 iframe 是最贵的一层：跨源渲染树套在 world 的 scale 底下，缩放每变
+ * 一档就得连同它整棵树重新光栅化。有位图的先用位图顶着，iframe 只收起不卸载。
+ */
+it("交互期把有位图的 frame 降为位图，iframe 收起但不卸载", async () => {
+	setPluginCtx({
+		capture: {
+			offscreen: () => Promise.resolve({ dataUrl: "data:offscreen", scaleFactor: 2 }),
+			releaseOffscreen: () => Promise.resolve(),
+		},
+	} as unknown as PluginContext);
+	try {
+		const offscreen = { port: 5173, sizeOf: () => ({ width: 390, height: 844 }) };
+		await mount(["a", "b"], offscreen);
+		await advance(50);
+		await flushMicrotasks();
+
+		const render = async (interacting: boolean): Promise<void> => {
+			await act(async () => {
+				root.render(createElement(Harness, { frameIds: ["a", "b"], activeFrameId: "a", interacting, offscreen }));
+			});
+		};
+
+		await render(false);
+		expect(latest.isMounted("a")).toBe(true);
+		expect(latest.isLive("a")).toBe(true);
+
+		// 手势开始：位图顶上，iframe 收起。
+		await render(true);
+		expect(latest.isLive("a")).toBe(false);
+		// 但必须还挂着——卸掉就要整页重新加载，操作结束会看见一轮重启。
+		expect(latest.isMounted("a")).toBe(true);
+
+		// 结束后恢复活体。
+		await render(false);
+		expect(latest.isLive("a")).toBe(true);
+	} finally {
+		setPluginCtx(null as unknown as PluginContext);
+	}
+});
+
+/** 还没截到位图的 frame 不能收：那是它此刻唯一有内容的层，收起来就是一片空白。 */
+it("交互期没有位图的 frame 仍然保持活体", async () => {
+	await mount(["a"]);
+
+	await act(async () => {
+		root.render(createElement(Harness, { frameIds: ["a"], activeFrameId: null, interacting: true }));
+	});
+	expect(latest.rasterOf("a")).toBe(null);
+	expect(latest.isLive("a")).toBe(true);
 });

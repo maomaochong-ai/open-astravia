@@ -159,6 +159,36 @@ export const FrameView = memo(function FrameView({
 		if (paintTick > paintBaselineRef.current) setLoaded(true);
 	}, [paintTick]);
 
+	/**
+	 * 活体真的能露出来了——位图要盖到这一刻才撤。
+	 *
+	 * 比 `live && loaded` 多押两帧，这两帧是必须的：
+	 * - paintTick 来自引擎里的 FramePainted（engine/src/main.tsx），它只证明 **iframe
+	 *   自己那个渲染进程**画完了。跨源 iframe 是独立 renderer，父进程要等子帧的合成面
+	 *   提交上来才有内容，在此之前那块区域是空的。位图一收到信号就开始淡出，露出的就是
+	 *   容器白底——「选中画框时闪一下」正是这么来的，而且是竞态，所以时有时无。
+	 * - 同一段等待也覆盖 display:none → block 这条路：iframe 还挂着、只是被收起来的
+	 *   frame 重新变活体时没有任何新的 paintTick，靠 loaded 判断会当场撤位图。
+	 *
+	 * live / loaded 仍然同步参与 shouldShowRaster（见下），所以这里只会推迟交接、
+	 * 不会让位图提前消失。
+	 */
+	const [revealed, setRevealed] = useState(false);
+	useEffect(() => {
+		if (!live || !loaded) {
+			setRevealed(false);
+			return;
+		}
+		let inner = 0;
+		const outer = requestAnimationFrame(() => {
+			inner = requestAnimationFrame(() => setRevealed(true));
+		});
+		return () => {
+			cancelAnimationFrame(outer);
+			cancelAnimationFrame(inner);
+		};
+	}, [live, loaded]);
+
 	useEffect(() => {
 		return () => {
 			if (fallbackRef.current !== null) window.clearTimeout(fallbackRef.current);
@@ -173,7 +203,9 @@ export const FrameView = memo(function FrameView({
 	const [paintedRaster, setPaintedRaster] = useState<string | null>(null);
 	const rasterPainted = raster !== null && paintedRaster === raster;
 
-	const shouldShowRaster = !live || !loaded || buildError !== null;
+	// live / loaded 必须同步参与：revealed 在 effect 里落下，比这两者慢一个提交，
+	// 只靠它的话「活体刚被收起来」的那一帧位图已经是透明的，照样露白底。
+	const shouldShowRaster = !live || !loaded || !revealed || buildError !== null;
 	/** 活体要多留一会儿：位图还没画出来时它是唯一有内容的那一层。 */
 	const keepLiveVisible = live || (raster !== null && !rasterPainted);
 

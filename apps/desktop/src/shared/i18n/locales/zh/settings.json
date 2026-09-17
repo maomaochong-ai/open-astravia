@@ -612,11 +612,11 @@
     "saving": "保存中",
     "imageGeneration": {
       "auto": "自动选择",
-      "description": "选择 Agent 生成或编辑图片时使用的默认服务。",
-      "imageToImage": "图生图 Provider",
+      "description": "选择 Agent 生成或编辑图片时使用的默认模型；自动选择会跟随可用服务。",
+      "imageToImage": "图生图模型",
       "loading": "正在读取图片生成服务…",
       "noProviders": "当前没有可用的图片生成服务。",
-      "textToImage": "文生图 Provider",
+      "textToImage": "文生图模型",
       "unavailable": "不可用"
     },
     "maxRecentImages": "上下文保留图片数",

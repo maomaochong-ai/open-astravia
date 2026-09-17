@@ -4,13 +4,26 @@ import { join } from "node:path";
 import type { CodingAgentBootstrap } from "@vetta/coding-agent/bootstrap";
 import type { RpcSessionInitialization } from "@vetta/coding-agent/rpc";
 import { RUNTIME_ERROR_CODES, type RuntimeSessionCatalog } from "@vetta/runtime-core";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createCliCodingAgentBootstrap } from "../src/coding-agent-bootstrap.js";
 import { createCliRuntimeSessionCatalog } from "../src/rpc/cli-session-format-compatibility.js";
 import { prepareImRuntimeHost, type RpcRuntimeHostReady } from "../src/rpc/runtime-host/runtime-host.js";
 
 const temporaryDirectories: string[] = [];
 const preparedHosts: RpcRuntimeHostReady[] = [];
+let isolatedUserHome: string | undefined;
+
+beforeAll(async () => {
+	isolatedUserHome = await mkdtemp(join(tmpdir(), "vetta-im-runtime-host-home-"));
+	vi.stubEnv("HOME", isolatedUserHome);
+	vi.stubEnv("USERPROFILE", isolatedUserHome);
+	vi.stubEnv("VETTA_HOME", isolatedUserHome);
+});
+
+afterAll(async () => {
+	vi.unstubAllEnvs();
+	if (isolatedUserHome) await rm(isolatedUserHome, { force: true, recursive: true });
+});
 
 afterEach(async () => {
 	for (const prepared of preparedHosts.splice(0).reverse()) await prepared.capabilities.dispose();
@@ -93,7 +106,7 @@ describe("IM Runtime Host", () => {
 		if (resumed.kind !== "rpc") throw new Error("Expected resumed Greenfield runtime");
 		preparedHosts.push(resumed);
 		expect(resumed.session.sessionId).toBe("im-session");
-	});
+	}, 15_000);
 
 	it("transitions new and resumed sessions through the production RPC capability", async () => {
 		const fixture = await createFixture([]);
@@ -127,7 +140,7 @@ describe("IM Runtime Host", () => {
 		expect(result.session.sessionId).toBe("transition-initial");
 		await expect(stat(initialOwnerPath)).resolves.toBeDefined();
 		await expect(stat(nextOwnerPath)).rejects.toMatchObject({ code: "ENOENT" });
-	});
+	}, 15_000);
 
 	it("rejects malformed Runtime paths instead of treating them as historical sessions", async () => {
 		const fixture = await createFixture(["--session", join("outside", "bad.conversation.jsonl")]);

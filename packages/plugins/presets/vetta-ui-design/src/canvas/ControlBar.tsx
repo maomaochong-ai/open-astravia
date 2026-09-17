@@ -1,12 +1,27 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import {
+	type PointerEvent as ReactPointerEvent,
+	type ReactNode,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from "react";
 import { DOCK_GAP, DOCK_ICON, dockMagnifyScale, dockTransition, usePrefersReducedMotion } from "./dock-magnify";
 
 export type CanvasTool = "select" | "hand" | "frame" | "note";
 
 interface ControlBarProps {
 	tool: CanvasTool;
-	zoom: number;
+	/**
+	 * 缩放读数的来源：一个「当前值 + 订阅」的二元组，而不是一个数。
+	 *
+	 * 缩放途中视口只走 DOM，画布整棵树刻意不重渲染（见 use-viewport）；百分比要是靠 prop
+	 * 下发，就只能等落定后才更新——捏合时它僵在原地、松手才跳一下。改成订阅之后，跟着每个
+	 * tick 重渲染的只有这一条工具栏。
+	 */
+	zoom: { get(): number; subscribe(listener: () => void): () => void };
 	/** 设计体系 Dialog 开着时高亮按钮。 */
 	designSystemsActive: boolean;
 	/** 待处理备注数，挂在备注工具按钮的右上角；0 不显示。 */
@@ -88,7 +103,7 @@ const icons = {
  */
 export function ControlBar({
 	tool,
-	zoom,
+	zoom: zoomSource,
 	designSystemsActive,
 	pendingNotes,
 	onToolChange,
@@ -97,6 +112,7 @@ export function ControlBar({
 	onDesignSystems,
 }: ControlBarProps) {
 	const { t } = useTranslation();
+	const zoom = useSyncExternalStore(zoomSource.subscribe, zoomSource.get);
 	const dockRef = useRef<HTMLDivElement>(null);
 	const slotRefs = useRef<(HTMLElement | null)[]>([]);
 	/** 放大只走 transform，布局宽度不变，所以中心点测一次即可缓存。 */

@@ -50,7 +50,9 @@ export interface DesktopConfigData {
 	/** 图片生成 Provider 偏好；空值表示自动选择。 */
 	imageGeneration?: {
 		textToImageProviderId?: string | null;
+		textToImageModelId?: string | null;
 		imageToImageProviderId?: string | null;
+		imageToImageModelId?: string | null;
 	};
 	/** 默认「对话」项目的绝对路径（~/.vetta/conversation），主进程已确保目录存在。 */
 	defaultConversationCwd?: string;

@@ -21,8 +21,8 @@ export function ImageGenerationSettingsSection({ model }: { model: ImageGenerati
 							description={hasTextToImageOptions ? undefined : model.labels.noProviders}
 						>
 							<MotionSelect
-								value={model.textToImageProviderId}
-								onValueChange={(value) => void model.actions.setTextToImageProvider(value)}
+								value={model.textToImageRouteId}
+								onValueChange={(value) => void model.actions.setTextToImageRoute(value)}
 								options={model.textToImageOptions}
 								disabled={!hasTextToImageOptions}
 								triggerClassName="min-w-[220px]"
@@ -35,8 +35,8 @@ export function ImageGenerationSettingsSection({ model }: { model: ImageGenerati
 							border={false}
 						>
 							<MotionSelect
-								value={model.imageToImageProviderId}
-								onValueChange={(value) => void model.actions.setImageToImageProvider(value)}
+								value={model.imageToImageRouteId}
+								onValueChange={(value) => void model.actions.setImageToImageRoute(value)}
 								options={model.imageToImageOptions}
 								disabled={!hasImageToImageOptions}
 								triggerClassName="min-w-[220px]"

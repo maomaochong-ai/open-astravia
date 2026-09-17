@@ -104,6 +104,7 @@ export const PLUGIN_MEDIA_CHANNELS = {
 	CHANGED: "vetta:plugins:media-providers-changed",
 	RESPONSE: "vetta:plugins:media-provider-response",
 	UPLOAD_INPUT: "vetta:plugins:media-provider-input-upload",
+	READ_INPUT: "vetta:plugins:media-provider-input-read",
 } as const;
 
 export const PLUGIN_OCR_CHANNELS = {

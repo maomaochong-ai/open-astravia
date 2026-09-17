@@ -2872,9 +2872,19 @@
             "maxLength": 129,
             "type": "string"
           },
+          "textToImageModelId": {
+            "minLength": 1,
+            "maxLength": 256,
+            "type": "string"
+          },
           "imageToImageProviderId": {
             "minLength": 1,
             "maxLength": 129,
+            "type": "string"
+          },
+          "imageToImageModelId": {
+            "minLength": 1,
+            "maxLength": 256,
             "type": "string"
           }
         }
@@ -2900,11 +2910,35 @@
               }
             ]
           },
+          "textToImageModelId": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "imageToImageProviderId": {
             "anyOf": [
               {
                 "minLength": 1,
                 "maxLength": 129,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "imageToImageModelId": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "maxLength": 256,
                 "type": "string"
               },
               {
@@ -2925,9 +2959,19 @@
             "maxLength": 129,
             "type": "string"
           },
+          "textToImageModelId": {
+            "minLength": 1,
+            "maxLength": 256,
+            "type": "string"
+          },
           "imageToImageProviderId": {
             "minLength": 1,
             "maxLength": 129,
+            "type": "string"
+          },
+          "imageToImageModelId": {
+            "minLength": 1,
+            "maxLength": 256,
             "type": "string"
           }
         }
@@ -6837,7 +6881,7 @@
               "type": "string"
             },
             "protocolVersion": {
-              "const": 4,
+              "const": 5,
               "type": "number"
             },
             "capabilities": {
@@ -6917,6 +6961,92 @@
                         }
                       },
                       "defaultResolution": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "models": {
+                        "minItems": 1,
+                        "type": "array",
+                        "items": {
+                          "additionalProperties": false,
+                          "type": "object",
+                          "required": [
+                            "id",
+                            "modes"
+                          ],
+                          "properties": {
+                            "id": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "displayName": {
+                              "minLength": 1,
+                              "maxLength": 128,
+                              "type": "string"
+                            },
+                            "sourceId": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "sourceDisplayName": {
+                              "minLength": 1,
+                              "maxLength": 128,
+                              "type": "string"
+                            },
+                            "modes": {
+                              "minItems": 1,
+                              "type": "array",
+                              "items": {
+                                "anyOf": [
+                                  {
+                                    "const": "text-to-image",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "image-to-image",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "text-to-video",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "image-to-video",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "video-to-video",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "reference-to-video",
+                                    "type": "string"
+                                  }
+                                ]
+                              }
+                            },
+                            "aspectRatios": {
+                              "type": "array",
+                              "items": {
+                                "minLength": 1,
+                                "type": "string"
+                              }
+                            },
+                            "resolutions": {
+                              "type": "array",
+                              "items": {
+                                "minLength": 1,
+                                "type": "string"
+                              }
+                            },
+                            "defaultResolution": {
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "defaultModelId": {
                         "minLength": 1,
                         "type": "string"
                       },

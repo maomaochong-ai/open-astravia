@@ -41,6 +41,7 @@ import {
 	type TeamSessionSendHandoff,
 } from "./team-session-handoff";
 import {
+	placeTeamErrorInTimeline,
 	projectTeamConversationTimeline,
 	reduceTeamStreamState,
 	resolveTeamMembers,
@@ -48,6 +49,7 @@ import {
 	type TeamChatActions,
 	type TeamChatStatus,
 	type TeamChatViewModel,
+	type TeamDisplayError,
 	type TeamPendingRequest,
 	type TeamStreamState,
 	updateScopedTeamDraft,
@@ -87,7 +89,7 @@ export function useTeamChatModel(
 	const [streams, setStreams] = useState<TeamStreamState>({});
 	const [status, setStatus] = useState<TeamChatStatus>("loading");
 	const [, startTeamTransition] = useTransition();
-	const [error, setError] = useState<string>();
+	const [error, setError] = useState<TeamDisplayError>();
 	const [contextUsages, setContextUsages] = useState<
 		Readonly<Record<string, NonNullable<TeamChatViewModel["contextUsage"]>>>
 	>({});
@@ -239,7 +241,7 @@ export function useTeamChatModel(
 							});
 						})
 						.catch((cause: unknown) => {
-							if (!cancelled) setError(errorMessage(cause));
+							if (!cancelled) setError({ message: errorMessage(cause) });
 						});
 					return;
 				}
@@ -248,7 +250,7 @@ export function useTeamChatModel(
 				applyLoadedSession(opened);
 			} catch (cause) {
 				if (cancelled) return;
-				setError(errorMessage(cause));
+				setError({ message: errorMessage(cause) });
 				setStatus("error");
 			}
 		})();
@@ -266,7 +268,7 @@ export function useTeamChatModel(
 			try {
 				applyLoadedSession(await loadTeamChatSession(teamId, sessionId));
 			} catch (cause) {
-				setError(errorMessage(cause));
+				setError({ message: errorMessage(cause) });
 				setStatus("error");
 			}
 		},
@@ -282,7 +284,7 @@ export function useTeamChatModel(
 			notifyTeamSessionsChanged(teamId);
 			return loaded.snapshot.session.id;
 		} catch (cause) {
-			setError(errorMessage(cause));
+			setError({ message: errorMessage(cause) });
 			setStatus("error");
 			return undefined;
 		}
@@ -298,7 +300,7 @@ export function useTeamChatModel(
 				});
 				setSnapshot(next);
 			} catch (cause) {
-				setError(errorMessage(cause));
+				setError({ message: errorMessage(cause) });
 			}
 		},
 		[session],
@@ -411,7 +413,7 @@ export function useTeamChatModel(
 				setStatus(pendingRef.current ? "sending" : "ready");
 			} else if (event.type === "conversation.agent-message-discard") {
 				if (event.reason === "failed") {
-					setError(event.error ?? t("chat.failed"));
+					setError({ message: event.error ?? t("chat.failed"), turnId: event.turnId, authorId: event.author.id });
 					setStatus("error");
 				} else if (event.reason === "aborted") {
 					setStatus("ready");
@@ -427,7 +429,7 @@ export function useTeamChatModel(
 			})
 			.catch((cause: unknown) => {
 				if (!mounted) return;
-				setError(errorMessage(cause));
+				setError({ message: errorMessage(cause) });
 				setStatus("error");
 			});
 		return () => {
@@ -443,7 +445,7 @@ export function useTeamChatModel(
 				const next = await window.vetta.agentTeams.setExecutionMode(session.id, mode);
 				setSnapshot(next);
 			} catch (cause) {
-				setError(errorMessage(cause));
+				setError({ message: errorMessage(cause) });
 				throw cause;
 			}
 		},
@@ -533,18 +535,32 @@ export function useTeamChatModel(
 			: undefined;
 	const feedItems = useMemo(
 		() =>
-			projectTeamConversationTimeline({
-				snapshot,
-				pending: visiblePending,
-				streams,
-				members,
-				labels: {
-					delegation: (from, to) => t("chat.delegation", { from, to }),
-					unknownMember: t("chat.member"),
-				},
-				memberId: memberViewId,
-			}),
-		[memberViewId, members, snapshot, streams, t, visiblePending],
+			placeTeamErrorInTimeline(
+				projectTeamConversationTimeline({
+					snapshot,
+					pending: visiblePending,
+					streams,
+					members,
+					labels: {
+						delegation: (from, to) => t("chat.delegation", { from, to }),
+						unknownMember: t("chat.member"),
+					},
+					memberId: memberViewId,
+				}),
+				error,
+				session?.leaderMemberId ?? team?.leaderMemberId ?? "leader",
+			),
+		[
+			error,
+			memberViewId,
+			members,
+			session?.leaderMemberId,
+			snapshot,
+			streams,
+			t,
+			team?.leaderMemberId,
+			visiblePending,
+		],
 	);
 
 	const addAttachments = useCallback(
@@ -769,7 +785,15 @@ export function useTeamChatModel(
 				if (cancelledRequests.current.delete(requestId)) {
 					if (inFlightRequestIds.current.size <= 1) setStatus("ready");
 				} else {
-					setError(errorMessage(cause));
+					setError((current) =>
+						current?.turnId === requestId
+							? current
+							: {
+									message: errorMessage(cause),
+									turnId: requestId,
+									authorId: session?.leaderMemberId ?? team?.leaderMemberId,
+								},
+					);
 					if (inFlightRequestIds.current.size <= 1) setStatus("error");
 				}
 				const restoreSubmittedDraft = draftRef.current.length === 0;
@@ -840,7 +864,7 @@ export function useTeamChatModel(
 			await window.vetta.agentTeams.abort(target.id);
 		} catch (cause) {
 			if (request) cancelledRequests.current.delete(request.requestId);
-			setError(errorMessage(cause));
+			setError({ message: errorMessage(cause) });
 			setStatus("error");
 		}
 	}, []);
@@ -888,7 +912,6 @@ export function useTeamChatModel(
 			...(session?.leaderMemberId ? { leaderMemberId: session.leaderMemberId } : {}),
 			feedItems,
 			...(pendingLabel ? { pendingLabel } : {}),
-			...(error ? { error } : {}),
 			editorEnabled: Boolean(session || createNewSession || preferredSessionId) && !memberViewId,
 			canSend: Boolean(
 				(session || createNewSession || preferredSessionId) &&
@@ -933,7 +956,6 @@ export function useTeamChatModel(
 			members,
 			feedItems,
 			pendingLabel,
-			error,
 			session,
 			pending,
 			preferredSessionId,
