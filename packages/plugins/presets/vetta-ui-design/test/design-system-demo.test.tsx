@@ -22,6 +22,18 @@ class ImmediateIntersectionObserver {
 }
 vi.stubGlobal("IntersectionObserver", ImmediateIntersectionObserver);
 
+/** 可手动触发的 ResizeObserver：用来模拟卡片宽度变化（收侧边栏、拖窗口、宫格换列）。 */
+const resizeCallbacks: Array<(entries: Array<{ contentRect: { width: number } }>) => void> = [];
+class ManualResizeObserver {
+	constructor(private readonly callback: (entries: Array<{ contentRect: { width: number } }>) => void) {
+		resizeCallbacks.push(callback);
+	}
+	observe(): void {}
+	unobserve(): void {}
+	disconnect(): void {}
+}
+vi.stubGlobal("ResizeObserver", ManualResizeObserver);
+
 const DEMO_HTML = "<!doctype html><html><body><h1>Linear</h1></body></html>";
 
 function system(resources: DesignResource[]): DesignSystem {
@@ -45,6 +57,7 @@ let host: HTMLDivElement;
 let root: Root;
 
 beforeEach(() => {
+	resizeCallbacks.length = 0;
 	host = document.createElement("div");
 	document.body.appendChild(host);
 	root = createRoot(host);
@@ -125,6 +138,28 @@ describe("DesignSystemDemo", () => {
 	it("iframe 还没 load 时预览层是透明的，底下露着色板", () => {
 		act(() => root.render(<DesignSystemDemo system={withDemo} active={false} />));
 		expect(frame()?.parentElement?.style.opacity).toBe("0");
+	});
+
+	it("卡片宽度变化只写 DOM，不进 React", () => {
+		act(() => root.render(<DesignSystemDemo system={withDemo} active={false} />));
+		const scaled = frame()?.parentElement as HTMLElement;
+
+		// 故意不包 act：写 DOM 的实现同步生效；改回 setState 的话这里只会读到旧值
+		// （React 要等调度）。这条是性能合同——风格墙一屏 25 张卡，宽度每变一次就重渲染
+		// 25 棵预览树，收一次侧边栏实测 150 次重渲染、long task 175ms。
+		resizeCallbacks[0]?.([{ contentRect: { width: 640 } }]);
+		expect(scaled.style.transform).toBe(`scale(${640 / 1280})`);
+
+		resizeCallbacks[0]?.([{ contentRect: { width: 320 } }]);
+		expect(scaled.style.transform).toBe(`scale(${320 / 1280})`);
+	});
+
+	it("量到 0 宽时保留上一次缩放，不把预览压成 0", () => {
+		act(() => root.render(<DesignSystemDemo system={withDemo} active={false} />));
+		const scaled = frame()?.parentElement as HTMLElement;
+		resizeCallbacks[0]?.([{ contentRect: { width: 640 } }]);
+		resizeCallbacks[0]?.([{ contentRect: { width: 0 } }]);
+		expect(scaled.style.transform).toBe(`scale(${640 / 1280})`);
 	});
 
 	it("iframe load 之后预览层才淡入", () => {

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { parsePreviewTokens, tint } from "../design-systems/preview-tokens";
 import type { DesignSystem } from "../design-systems/types";
 
@@ -7,8 +7,18 @@ import type { DesignSystem } from "../design-systems/types";
  * 所有颜色/圆角/阴影都取自该体系的 theme.css（单一真源），Tailwind 只负责布局
  * ——动态值走 inline style，JIT 扫不到运行期字符串。
  * className 可覆盖尺寸（默认 164px 定高，宫格里传 aspect 比例自适应列宽）。
+ *
+ * memo 是它的使用前提：这是几十个带 inline style 的节点，而它挂在风格墙上——一屏 25 张卡，
+ * 外层任何一次状态变化（悬停哪张、卡片尺寸变化）都会把这棵树重建 25 遍。props 只有
+ * `system`（引用稳定）与 `className`（常量），浅比较足够。
  */
-export function DesignSystemPreview({ system, className }: { system: DesignSystem; className?: string }) {
+export const DesignSystemPreview = memo(function DesignSystemPreview({
+	system,
+	className,
+}: {
+	system: DesignSystem;
+	className?: string;
+}) {
 	const tokens = useMemo(() => parsePreviewTokens(system.themeCss), [system.themeCss]);
 	const { colors, radius, shadow } = tokens;
 	const fg = colors["surface-foreground"];
@@ -110,4 +120,4 @@ export function DesignSystemPreview({ system, className }: { system: DesignSyste
 			</div>
 		</div>
 	);
-}
+})
