@@ -8,10 +8,24 @@ Vetta plugins extend the desktop UI, file browser, conversations, and Agent capa
 ## Runtime and trust
 
 - Plugins run in the Desktop renderer's shared JavaScript realm, not an iframe or Worker sandbox.
+- Module Federation is the only loading path; the manifest offers no alternative.
+- React, React DOM, and the plugin SDK are provided by the host as shared singletons, and the host design system can optionally be shared too.
+- File, network, command, and model calls travel through the main process capability bus, where each one is re-checked against the grant list and constrained to this plugin's namespace.
 - A permission must be declared in `plugin.json`, approved during installation, and checked by the host at runtime.
 - Registration APIs return cleanup handles; dispose them during deactivate and reload.
 - Install only trusted sources and request the smallest capability set.
 
+## What a plugin can extend
+
+The extension surface falls into four groups:
+
+- **Interface and file explorer.** More than a dozen slots covering global overlays, full-page workspace views, file previews, activity panel tabs, composer actions, the new-session context block, message cards, inline tool-call rendering, turn cards, keyboard shortcuts, and file explorer context menus, toolbars, and decorations.
+- **Agent capabilities.** Register tools and lifecycle hooks, shape the system prompt, and decide whether a task continues. The manifest can also contribute skills, plugin-owned MCP servers, tool policy, agents, and teams.
+- **Providers.** Supply the host with capabilities it lacks: model providers, media generation, OCR, CLI providers, and managed local services.
+- **Host capabilities.** Once granted, reach files, the network, browser automation, private plugin storage, encrypted secrets, offscreen capture, and the models the user has configured.
+
+The host no longer provides a settings slot, so a plugin renders and persists its own configuration surface.
+
 Choose a [skill](/product/abilities/) for instructions and workflows, [MCP](/product/mcp/) for an external tool or data service, and a plugin only when you need the Desktop host, UI, or full lifecycle.
 
-Continue with [plugin setup](/plugins/getting-started/) and the [capability reference](/plugins/capabilities/).
+Continue with [plugin setup](/plugins/getting-started/), the [extension points](/plugins/extension-points/), and the [capability reference](/plugins/capabilities/).

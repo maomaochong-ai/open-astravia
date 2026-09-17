@@ -20,9 +20,10 @@ Vetta 插件用于扩展桌面客户端的界面、文件浏览器、对话和 A
 
 <Beats>
   <li>插件使用 React、TypeScript 和 Vite 开发。</li>
-  <li>生产产物通过 Module Federation 加载。</li>
-  <li>React、React DOM 和插件 SDK 由宿主以共享单例提供。</li>
+  <li>生产产物通过 Module Federation 加载，清单不提供其它加载方式。</li>
+  <li>React、React DOM 和插件 SDK 由宿主以共享单例提供，可选再共享宿主设计系统组件。</li>
   <li>插件在桌面渲染进程内运行，不是 iframe 或 Worker 沙箱。</li>
+  <li>需要文件、网络、命令或模型时，调用经由主进程的能力总线，逐次校验授权并约束到本插件命名空间。</li>
 </Beats>
 
 ## 信任与权限
@@ -60,7 +61,16 @@ Vetta 插件用于扩展桌面客户端的界面、文件浏览器、对话和 A
 
 ## 可扩展范围
 
-插件可以注册界面插槽、页面、文件预览、消息卡片、Agent 工具和 App Action，也可以在获得授权后访问文件、网络、私有存储、自动化任务及用户配置的 AI 模型。
+插件的扩展面分成四类：
+
+<Entries>
+  <Entry href="/plugins/extension-points/" kicker="UI" title="界面与文件浏览器">十余个界面槽位，涵盖全局浮层、工作区整页视图、文件预览、活动面板 Tab、输入栏动作、新会话上下文区、消息卡片、工具调用行内渲染、Turn 卡、快捷键，以及文件浏览器的右键菜单、工具栏与装饰。</Entry>
+  <Entry href="/plugins/extension-points/" kicker="AGENT" title="Agent 能力">注册工具与生命周期 Hook、干预系统提示词、决定是否自动续跑；清单侧还可以贡献技能、内聚 MCP Server、工具策略、智能体与团队。</Entry>
+  <Entry href="/plugins/extension-points/" kicker="PROVIDER" title="Provider">反过来给宿主补齐能力：模型服务商、媒体生成、OCR、CLI Provider 和受管本地服务。</Entry>
+  <Entry href="/plugins/capabilities/" kicker="HOST" title="宿主能力">在获得授权后访问文件、网络、浏览器自动化、插件私有存储、加密密钥、离屏截图，以及用户已配置的 AI 模型。</Entry>
+</Entries>
+
+宿主已不再提供设置页配置槽，插件的配置界面由插件自己渲染、自己持久化。
 
 <Continue>
   <ContinueLink href="/plugins/getting-started/" title="创建第一个插件" description="从最小项目结构到构建、安装与开发调试。" />

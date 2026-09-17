@@ -1,21 +1,78 @@
 ---
 title: Plugin capability reference
-description: Find the UI, conversation, file, browser, Agent, storage, and App Action APIs available to plugins.
+description: Find the UI, conversation, Agent, file, network, browser, model, media, and storage APIs on ctx, and the permission boundary of each.
 ---
 
-| Goal | Typical entry point | Boundary to respect |
-| --- | --- | --- |
-| Add workspace UI | `ctx.ui.registerGlobalSlot`, `registerWorkspaceView` | Dispose registration handles on deactivate |
-| Extend files and previews | `ctx.fileExplorer`, `ctx.ui.registerFilePreview` | Return a recoverable parse error |
-| Render messages and tools | `ctx.ui.registerCardRenderer`, `registerTurnCard` | Handle pending state and cross-turn deduplication |
-| Drive the current conversation | `ctx.conversation.sendPrompt`, `insertText`, `abort` | Requires the appropriate Agent session permission |
-| Register tools and hooks | `ctx.agent.registerTool`, `registerHook` | Use structured schemas and stable errors |
-| Call commands or networks | `ctx.command`, `ctx.network.request` | Declare the smallest command and host permissions |
-| Store private data | `ctx.storage` | Keep data isolated from projects and host internals |
-| Use configured models | `ctx.ai.listModels`, `complete`, `chat` | Never persist the user's credentials |
-| Register discoverable actions | `ctx.appActions.register` | High-impact operations still need confirmation |
-| Contribute agents and teams | `agent.agents`, `agent.teams` in `plugin.json` | The host lays them down as ordinary profiles; a `role` slot may reference another plugin's agent, but the leader must be this plugin's own |
-| Stage material on the new-session page | `ctx.ui.registerNewSessionContext` | Activation may only name this plugin's own agents or abilities, and never sees raw keystrokes |
-| Add localized copy | `ctx.i18n` and package locales | Keep keys and `defaultLocale` aligned |
+The plugin API comes from `@vetta-org/plugin-sdk`, the build from `@vetta-org/plugin-vite`, and the scaffold and install commands from `@vetta-org/plugin-cli`. Plugin code runs inside the shared JavaScript realm of the Desktop renderer process; permission declarations serve informed consent and host API gating, not iframe, Worker, or malicious-code sandboxing.
 
-The full capability must pass manifest declaration, installation approval, and runtime checks. See [manifest and permissions](/plugins/manifest-and-permissions/) before publishing.
+The `ctx` passed to `activate(ctx)` is the single outlet for every capability. On the main-process side the host does not know about "plugins" at all, only about a capability session carrying a grant list, so each call is re-checked, constrained to this plugin's namespace, and recorded for audit.
+
+## Capability map
+
+| Goal | Typical entry point | Permission | Boundary to respect |
+| --- | --- | --- | --- |
+| Report errors and notices | `ctx.ui.notify` | none | Any failing path should pass the original error along |
+| Add UI and pages | `ctx.ui.register*` | one per slot | Dispose the returned `Disposable` on deactivate |
+| Extend the file explorer | `ctx.fileExplorer.*` | `ui.file-explorer.*`, `workspace.read` | Return a recoverable parse error |
+| Read conversation state and events | `ctx.conversation.on` and conversation hooks | `agent.session.read` | Events are a read-only view of host state |
+| Drive the current conversation | `ctx.conversation.sendPrompt`, `insertText`, `abort` | `agent.session.write` | Never start a turn the user did not ask for |
+| Register tools and hooks | `ctx.agent.registerTool`, `registerHook` | `agent.tools.register` / `agent.hooks.register` plus the matching execute | Use structured schemas and stable errors |
+| Shape system prompts and continuation | `registerSystemPromptProvider`, `registerContinuationProvider` | `agent.systemPrompt.write`, `agent.continuation.register` | A provider is evaluated once per Turn and does not re-run when plugin state changes mid-Turn |
+| Run host commands | `ctx.command.run`, `ctx.command.spawn` | `agent.command.run` / `agent.command.spawn` | The manifest must declare `commands`; keep secrets out of arguments |
+| Capture an offscreen render | `ctx.capture.offscreen` | `capture.offscreen` | `undefined` on older hosts, so check before use |
+| Read and write files | `ctx.fs.*` | `fs.read` / `fs.write` | `stat` large files before deciding how to read them |
+| Call external networks | `ctx.network.request` | `network.fetch` | Declare the smallest `network.allowedHosts` |
+| Browser automation | `ctx.browser.*` | `browser.open` / `read` / `interact` and others | Use logical profiles; no cookies, tokens, or arbitrary JS execution |
+| Store private plugin data | `ctx.storage.*` | `storage.read` / `storage.write` | Isolated by plugin id; use one `commit()` for multi-file consistency instead of consecutive `writeFile()` calls |
+| Store secrets | `ctx.secrets.*` | `secrets.read` / `secrets.write` | The host's encrypted credential store; never put keys in ordinary storage |
+| Use configured models | `ctx.ai.listModels`, `complete`, `stream`, `chat` | `ai.models.list` / `ai.complete` | Uses the user's credentials; never persist a key yourself |
+| Maintain your own model providers | `ctx.models.replaceOwnedProviders`, `listOwnedProviders` | `models.manage` | Writes are atomic snapshots, so omitting deletes; read back and reconcile first, and note the returned apiKey is masked |
+| Generate and provide media | `ctx.media.submit`, `registerProvider` | `media.generate` / `media.provider.register` | Track progress and cancellation of long work through `ctx.jobs` |
+| Recognise and provide OCR | `ctx.ocr.recognize`, `registerProvider` | `ai.ocr.recognize` / `ai.ocr.provider.register` | Consuming and providing are separate permissions |
+| Manage CLIs and local services | `ctx.cliProviders.*`, `ctx.services.*` | declared through manifest `providers` | The host owns probing, installation, start and stop, and health checks |
+| Register discoverable actions | `ctx.appActions.register` | `app.actions.register` + `app.actionHandler.execute` | High-impact operations still need confirmation |
+| Provide skills or MCP servers | the `agent` field in `plugin.json` | `agent.skills.control` / `agent.mcp.control` | Re-verify source and permissions on install, enable, and reload |
+| Contribute agents and teams | `agent.agents`, `agent.teams` in `plugin.json` | none | The host lays them down as ordinary profiles; members may cross plugins, but the leader must be this plugin's own |
+| Stage material on the new-session page | `ctx.ui.registerNewSessionContext` | `ui.slot.new-session-context` | Activation may only name this plugin's own agents or abilities, and never sees raw keystrokes |
+| Add localized copy | `ctx.i18n` and package `locales/` | none | Keep keys and `defaultLocale` aligned |
+
+<Callout title="Two fields must be null-checked" type="warn">
+  `ctx.capture` is `undefined` on hosts without offscreen capture, and `ctx.gateway` is available only to built-in official plugins, so third-party plugins always read `undefined`. Check before use rather than assuming they exist.
+</Callout>
+
+## What the network API actually enforces
+
+`ctx.network.request` is proxied by the main process, and beyond the host allowlist it applies a fixed set of limits: a 120-second default timeout capped at 300 seconds, 32 MB each for the request and response body, at most 5 redirects, and http or https only.
+
+Each redirect hop is re-checked against the allowlist, redirects on anything other than GET or HEAD are refused, and a cross-origin hop strips the `authorization` and `cookie` headers. Failures come back as enumerated reasons rather than a generic network error, so you can tell an undeclared host from an oversized body, a timeout, or a transport failure.
+
+## Choosing the right API
+
+- To add a method for the Agent, prefer a skill or an Agent contribution before building a complex UI.
+- To connect an external service, prefer a standalone MCP server; a plugin-owned MCP server fits a service tied to the plugin lifecycle.
+- For colors, surfaces, and component replacement, use the theme system.
+- Use a plugin when you need a full page, a file preview, a message card, or a host action.
+- To add a class of capability the host lacks, such as a model provider, media generation, OCR, or a local service, use the matching provider extension point rather than rebuilding it inside your own UI.
+
+## Permissions and lifecycle
+
+A complete capability passes three layers: the manifest declares intent and the smallest permission, the user approves at install time, and the host checks again at runtime and cleans registrations up on reload or deactivation.
+
+`activate()` may return a cleanup function or a `Disposable`, binding resource ownership to that one activation. During a hot update the old and new activations briefly coexist and their cleanups do not interfere, so stateful resources should prefer this form over a module-level `deactivate()`.
+
+Built-in and external plugins follow different approval policies: system plugins ship with the app and are granted in full, while external plugins should still be reviewed as untrusted code. See [manifest and permissions](/plugins/manifest-and-permissions/).
+
+## Before publishing
+
+<Checklist title="Verify at least these">
+  <li>On a fresh install, manifest fields, entry, styles, and build output paths all line up.</li>
+  <li>The permission prompt contains only what the task needs.</li>
+  <li>Disable, reload, and re-enable never register the same UI, tool, or listener twice.</li>
+  <li>Revoking any optional permission leaves the rest of the plugin usable.</li>
+  <li>Missing permissions, network failures, parse failures, and model failures all surface a recoverable error.</li>
+  <li>Both the published archive and the development link are verified; a working link is not a substitute for testing the archive.</li>
+</Checklist>
+
+<Callout title="A plugin is not a security sandbox" type="warn">
+  A shared renderer realm means the plugin's source is itself the security boundary. Install trusted sources only, review build output and updates, and grant the smallest capability set.
+</Callout>

@@ -1,9 +1,11 @@
 ---
 title: Manifest and permissions
-description: Declare plugin identity, entry points, styles, permissions, and Agent contributions.
+description: Declare plugin identity, entry, styles, permissions, commands, network scope, and Agent contributions, and understand how grants are checked.
 ---
 
-`plugin.json` lives at the root of the plugin archive. The host validates identity, compatibility, and permissions from this file before loading code, so it must match the build artifact.
+`plugin.json` sits at the root of the plugin archive, or inside its single top-level folder. The host validates identity, compatibility, and permissions from it before loading any code, so the manifest must match the build output.
+
+The manifest structure has exactly one implementation: the TypeBox schema exported from `@vetta-org/plugin-sdk/manifest`. `PluginManifestSchema` serialises directly to JSON Schema, and `parsePluginManifest()` handles validation, defaults, de-duplication, relative-path normalisation, and cross-field constraints. The schema deliberately allows unknown fields so a newer manifest is not rejected outright by an older host.
 
 ```json
 {
@@ -17,81 +19,198 @@ description: Declare plugin identity, entry points, styles, permissions, and Age
     "expose": "./plugin"
   },
   "styles": ["dist/style.css"],
-  "permissions": ["ui.slot.global"]
+  "permissions": ["ui.slot.activity-tab", "agent.command.run", "network.fetch"],
+  "commands": ["git"],
+  "network": { "allowedHosts": ["api.example.com", "*.cdn.example.com"] },
+  "defaultLocale": "en"
 }
 ```
 
-## Key fields
+## Fields
 
 <TypeTable
   type={{
     id: {
-      description: "The stable plugin identifier. Keep it unchanged after release.",
+      description: "Stable plugin identifier, 1 to 64 characters of lowercase letters, digits, dot, underscore, or dash. It determines the install directory and should not change after release.",
       type: "string",
       required: true,
     },
     name: {
-      description: "The name displayed to users.",
+      description: "User-facing display name. A value written as %catalogKey% is looked up in the package locales directory.",
       type: "string",
       required: true,
     },
     version: {
-      description: "The plugin version. Update the manifest and release archive together.",
+      description: "Plugin version. Raising it makes the host re-fetch the artifact and bypass caches.",
+      type: "string",
+      required: true,
+    },
+    pluginApiVersion: {
+      description: "Compatible Plugin API range, currently ^2.0.0.",
       type: "string",
       required: true,
     },
     entry: {
-      description: "The Module Federation manifest path, normally dist/mf-manifest.json.",
+      description: "Module Federation manifest path, usually dist/mf-manifest.json.",
       type: "string",
       required: true,
     },
     "moduleFederation.remoteName": {
-      description: "A valid, unique Module Federation remote name matching the Vite configuration.",
+      description: "Module Federation remote name; must match the name in the Vite config.",
       type: "string",
       required: true,
     },
     "moduleFederation.expose": {
-      description: "The exposed entry matching the expose value in the Vite configuration.",
+      description: "Exposed entry; must match the expose in the Vite config. Defaults to ./plugin.",
       type: "string",
       required: true,
     },
     styles: {
-      description: "Stylesheets that the host must inject.",
+      description: "Stylesheets to inject, relative to the plugin root.",
       type: "string[]",
     },
     permissions: {
-      description: "The permissions the plugin actually uses. Declaration is not authorization.",
+      description: "Permissions the plugin actually uses. Declaring is not the same as being granted.",
       type: "string[]",
+    },
+    commands: {
+      description: "Executable names ctx.command.run may launch, such as git or node. The granularity is the file name, not a full command line.",
+      type: "string[]",
+    },
+    network: {
+      description: "Network host allowlist. Required when network.fetch is declared.",
+      type: "{ allowedHosts: string[] }",
+    },
+    browser: {
+      description: "Maximum host grant for top-level browser navigation. Required with any browser permission; a session may only narrow it.",
+      type: "{ allowedHosts: string[] }",
+    },
+    icon: {
+      description: "Icon for the ability page and plugin list. Omit it, or give an Iconify name, an http(s) URL, or a path inside the package.",
+      type: "string",
+    },
+    defaultLocale: {
+      description: "Fallback locale for missing translations. Defaults to zh.",
+      type: "string",
+    },
+    guidingWords: {
+      description: "New-session guiding words; each entry may use %catalogKey%.",
+      type: "string[]",
+    },
+    agent: {
+      description: "Agent-side contributions: systemPrompt, skillPaths, mcpServers, toolPolicy, agents, teams.",
+      type: "object",
+    },
+    providers: {
+      description: "CLI providers and managed local services supplied by the plugin.",
+      type: "{ cli?, services? }",
+    },
+    contributionMode: {
+      description: "Hard isolation. When enabled, this plugin's tools, skills, MCP servers, and system prompts stay out of a session until the mode is switched on. User-built plugins rarely need it.",
+      type: "{ hardIsolation: boolean }",
     },
   }}
 />
 
-## Least privilege
-
-Declare only permissions the plugin really uses. Common groups include UI slots, Agent prompts and tools, filesystem, network, storage, models, navigation, and automation.
-
-<Callout title="Declaration is not authorization" type="info">
-  Declaring a permission does not grant it. Installation approval and runtime checks still apply.
+<Callout title="There is only one loading path" type="info">
+  The manifest has no field for selecting a loading mode. A `runtime` field is rejected by the validator so a manifest never looks like it is choosing a path the host does not implement. The `agent_mode` field is deprecated and carries no runtime semantics; do not write it in new plugins.
 </Callout>
 
-Start development with the smallest manifest. If a host API reports a permission error, confirm that the behavior is necessary, add only the required permission, and repeat the installation approval flow. Do not copy another plugin's complete permission list for convenience.
+## Paths and hostnames are normalised
 
-## Release checks
+Every manifest path is checked for escapes: absolute paths and drive prefixes are rejected, `.` and `..` are expanded, and climbing above the plugin root is an error. Installation checks again, requiring each declared resource to exist, to have the right type, and to stay inside the package root.
+
+Each entry of `network.allowedHosts` and `browser.allowedHosts` is normalised too. `*` matches everything, `*.example.com` is a prefix wildcard, and entries carrying a port, username, or password are rejected. A wildcard does not match the bare domain: `*.example.com` does not cover `example.com`.
+
+## Install directory and versions
+
+User plugins are stored per version under `~/.vetta/plugins/<id>/versions/<version>/`. Installing a newer version is only recorded as pending; the app keeps loading the current active version until a reload switches over. While debugging, raise `version` and reload for a change to take effect reliably.
+
+System plugins never enter that directory. They ship with the app, are rediscovered from a read-only location on every start, and have their declared permissions granted in full without the user being able to revoke them.
+
+## Declare, approve, check
 
 <Steps>
   <Step>
-    ### Check the archive structure
+    ### Declare in the manifest
 
-    Extract the final ZIP and confirm that its root contains `plugin.json` and `dist/`, and that every referenced entry and stylesheet exists.
+    List permissions in the `permissions` array of `plugin.json`. An undeclared permission can never be obtained.
   </Step>
   <Step>
-    ### Verify permission prompts
+    ### Approve at install time
 
-    Use a clean installation to confirm that the permission prompt matches the manifest.
+    The user approves each permission on the plugin page. When an Agent installs from a local path, confirming can grant the declared set in one step.
   </Step>
   <Step>
-    ### Trigger each capability
+    ### Check at runtime
 
-    Invoke every plugin capability one by one. A successful development link does not replace release archive verification.
+    The host checks again when the API is called: declared and granted must both hold. A plugin can also inspect its own state with `ctx.permissions.has()` or throw deliberately with `require()`.
+  </Step>
+</Steps>
+
+On update the host keeps permissions that were already granted and are still declared, does not auto-grant newly added ones, and does not restore permissions the user revoked. An empty grant record carries no information about what the user originally chose.
+
+## Permission list
+
+<Accordions type="single">
+  <Accordion title="Interface and file explorer">
+    `ui.slot.global`, `ui.slot.workspace-view`, `ui.slot.file-preview`, `ui.slot.activity-tab`, `ui.slot.input-action`, `ui.slot.new-session-context`, `ui.slot.message`, `ui.slot.tool-call`, `ui.slot.turn-card`, `ui.slot.ability-detail`, `ui.shortcuts.register`, `ui.file-explorer.decorations`, `ui.file-explorer.context-menu`, `ui.file-explorer.toolbar`, `workspace.read`, `conversation.draft.read`, `shell.openExternal`
+  </Accordion>
+  <Accordion title="Conversation and commands">
+    `agent.session.read`, `agent.session.write`, `agent.command.run`, `agent.command.spawn`, `capture.offscreen`
+  </Accordion>
+  <Accordion title="Agent extensions">
+    `agent.tools.register`, `agent.toolHandler.execute`, `agent.hooks.register`, `agent.hookHandler.execute`, `agent.tools.control`, `agent.skills.control`, `agent.mcp.control`, `agent.systemPrompt.write`, `agent.systemPrompt.fullControl`, `agent.continuation.register`
+  </Accordion>
+  <Accordion title="Browser">
+    `browser.open`, `browser.read`, `browser.interact`, `browser.profile.persist`, `browser.attach`, `browser.runtime.manage`. `browser.interact` must be declared together with `browser.read`, and `browser.open` only opens the built-in browser panel without reading or driving the page.
+  </Accordion>
+  <Accordion title="Models, media, and OCR">
+    `ai.models.list`, `ai.complete`, `models.manage`, `media.generate`, `media.provider.register`, `ai.ocr.recognize`, `ai.ocr.provider.register`
+  </Accordion>
+  <Accordion title="Files, network, and storage">
+    `fs.read`, `fs.write`, `network.fetch`, `storage.read`, `storage.write`, `secrets.read`, `secrets.write`
+  </Accordion>
+  <Accordion title="App Action">
+    `app.actions.register`, `app.actionHandler.execute`
+  </Accordion>
+  <Accordion title="Placeholders (declared, no API yet)">
+    `agent.systemPrompt.read`, `agent.state.read`, `agent.state.write`, `agent.runtime.configure`, `settings.read`, `settings.write`. Declaring these unlocks nothing today.
+  </Accordion>
+</Accordions>
+
+The manifest fields `agent.agents`, `agent.teams`, and `guidingWords` need no permission, and neither do `ctx.ui.notify` or `ctx.i18n`.
+
+## commands is a second gate on execution
+
+For `ctx.command.run` to launch a binary, the plugin needs the `agent.command.run` permission **and** the executable name must appear in the manifest `commands` array. A binary that is not listed is refused outright; a declared one can be toggled individually by the user in plugin settings, and calls are intercepted once it is off.
+
+The host does not start processes through a caller-controlled shell, and `node`, `npm`, and `npx` are redirected to the host-managed runtime.
+
+## Least privilege
+
+Declare only what the plugin actually uses. A smaller set means an easier approval for the user and a faster review. Start from the minimal manifest, and when a host API reports a permission error, confirm the behaviour is really needed before adding the permission and re-running the approval flow. Do not copy another plugin's full permission array for convenience.
+
+<Callout title="The build reconciles this for you" type="info">
+  `@vetta-org/plugin-vite` scans the final JavaScript output during build and packaging. When it detects `registerTool`, `registerHook`, `registerSystemPromptProvider`, `registerContinuationProvider`, runtime tool toggles, or an `agent.toolPolicy` in the manifest without the matching permission, it fails the build. UI slots are not part of this check: a missing slot permission is only skipped silently at runtime, so verify those against [extension points](/plugins/extension-points/).
+</Callout>
+
+## Before publishing
+
+<Steps>
+  <Step>
+    ### Check the archive layout
+
+    Unzip the final archive and confirm `plugin.json` sits at the root or in the single top-level folder, and that every entry, stylesheet, skill, and prompt file it references exists.
+  </Step>
+  <Step>
+    ### Verify the permission prompt
+
+    Run a fresh installation and confirm the prompt matches the manifest with nothing extra.
+  </Step>
+  <Step>
+    ### Exercise each capability
+
+    Trigger every capability, including how it degrades after a permission is revoked. A working development link is not a substitute for testing the published archive.
   </Step>
 </Steps>
