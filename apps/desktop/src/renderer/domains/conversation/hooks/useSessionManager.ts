@@ -1,11 +1,13 @@
 import { pluginSendMessageRef } from "@domains/plugins/runtime/plugin-host-bridge";
 import {
+	abortMessageFnRef,
 	type OpenSessionOptions,
 	openSessionFnRef,
 	type SendMessageOptions,
 	type SendMessageResult,
 	type SessionExecutionMode,
 	sendMessageFnRef,
+	sendQueuedNowFnRef,
 } from "@shared/store/atoms";
 import type { MutableRefObject } from "react";
 import { useSessionMessageSender } from "./useSessionMessageSender";
@@ -33,6 +35,8 @@ export function useSessionManager(): SessionManagerResult {
 	openSessionFnRef.current = openSession;
 	pluginSendMessageRef.current = sendMessage;
 	sendMessageFnRef.current = sendMessage;
+	abortMessageFnRef.current = abortMessage;
+	sendQueuedNowFnRef.current = sendQueuedNow;
 
 	return { openSession, sendMessage, abortMessage, sendQueuedNow, openSessionRef };
 }

@@ -95,9 +95,8 @@ afterEach(async () => {
 });
 
 it("陈旧实例的 sendMessage 仍应发给当前激活会话，而不是该实例最后打开的会话", { timeout: 30_000 }, async () => {
-	// 复现事故形态：useSessionManager 在 RootLayout / ChatPage / NewSessionPage 同时挂载，
-	// pluginSendMessageRef 只留最后渲染者的 sendMessage。若插件派活拿到的是「很久以前
-	// 打开过另一个会话」的实例，消息必须仍落进 activeSessionAtom 指向的当前会话。
+	// 生产路径只在 RootLayout 挂一份；本测试仍双挂载，证明即便 pluginSendMessageRef
+	// 被后渲染实例改写，陈旧实例的 sendMessage 也必须落进 activeSessionAtom 当前会话。
 	const { activeSessionAtom, chatMessagesAtom } = await import("@shared/store/atoms");
 	const { useSessionManager } = await import("./useSessionManager");
 	const store = getDefaultStore();
