@@ -350,11 +350,17 @@ export function useFrameRasters({
 	const mounted = useMemo(() => {
 		const allowed = new Set<string>();
 		if (activeFrameId) allowed.add(activeFrameId);
-		// 刚取消选中的那一帧，只要还没有位图就继续留活体。否则 iframe 当场卸掉，画面
-		// 退回启动占位，要一直等到队列轮到它才恢复——用户看到的就是「点一下正常了，
-		// 取消选中又开始转圈」。它此刻已经渲染好了，留着不用重新加载。
+		// 刚取消选中的那一帧继续挂着（有没有位图都一样）。
+		//
+		// 没位图时不留会退回启动占位，要一直等到队列轮到它才恢复——用户看到的是
+		// 「点一下正常了，取消选中又开始转圈」。
+		// 有位图时不留的代价同样实在：离屏模式下有位图的 frame 一律不挂 iframe，于是
+		// **每一次选中都是从零新建一个跨源 iframe、整页重启引擎**，取消选中再整个销毁。
+		// 来回点几下就是来回重建几次，每次都要重走一遍「空白 → 位图盖住 → 画出来」，
+		// 画布跟着一闪一闪。留着它只多一个 display:none 的 iframe（还在 MOUNT_WINDOW
+		// 的量级上），换来的是再次选中时只翻一个 display，不用重新加载。
 		const recent = lastActiveRef.current;
-		if (recent !== null && !rasters.has(recent)) allowed.add(recent);
+		if (recent !== null) allowed.add(recent);
 		// 正在截图的那个必须留住。frameIds 的顺序跟着视口走（见 DesignCanvas），平移
 		// 一下队列就重排，把它挤出挂载窗口会当场卸掉 iframe——这一张连同它已经等过的
 		// SETTLE 一起白费，还要从头再来一遍。（离屏模式截图不经过 iframe，不用留。）

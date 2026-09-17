@@ -325,3 +325,45 @@ it("构建失败期间被跳过的 frame，恢复渲染后会重新进队列", a
 	clearFrameErrors();
 });
 
+/**
+ * 离屏模式下「有位图的 frame 一律不挂 iframe」，于是每次选中都要从零新建一个跨源
+ * iframe、整页重启引擎，取消选中再销毁。来回点选就是来回重建，每次都重走一遍
+ * 「空白 → 位图盖住 → 画出来」，画布跟着闪。刚取消选中的那一帧要留住。
+ */
+it("刚取消选中的 frame 保持挂载，再次选中时不用重建 iframe", async () => {
+	setPluginCtx({
+		capture: {
+			offscreen: () => Promise.resolve({ dataUrl: "data:offscreen", scaleFactor: 2 }),
+			releaseOffscreen: () => Promise.resolve(),
+		},
+	} as unknown as PluginContext);
+	try {
+		const offscreen = { port: 5173, sizeOf: () => ({ width: 390, height: 844 }) };
+		await mount(["a", "b"], offscreen);
+		await advance(50);
+		await flushMicrotasks();
+
+		// 两帧都截好了，都退出活体。
+		expect(latest.isMounted("a")).toBe(false);
+
+		const render = async (activeFrameId: string | null): Promise<void> => {
+			await act(async () => {
+				root.render(createElement(Harness, { frameIds: ["a", "b"], activeFrameId, offscreen }));
+			});
+		};
+
+		await render("a");
+		expect(latest.isMounted("a")).toBe(true);
+		expect(latest.isLive("a")).toBe(true);
+
+		// 取消选中：位图接管画面，但 iframe 留着，再次选中只翻一个 display。
+		await render(null);
+		expect(latest.isMounted("a")).toBe(true);
+		expect(latest.isLive("a")).toBe(false);
+
+		await render("a");
+		expect(latest.isLive("a")).toBe(true);
+	} finally {
+		setPluginCtx(null as unknown as PluginContext);
+	}
+});
