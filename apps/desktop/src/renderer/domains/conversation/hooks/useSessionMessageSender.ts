@@ -127,10 +127,10 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			let stagedInput = options?.stagedInput;
 			// 目标会话读共享 atom（store 直读，不走 React 闭包）：openSession 同步写入
 			// activeSessionAtom，同一 tick 内「创建会话+发送」的组合仍读得到新值。不能读
-			// 实例级 activeSessionRef——useSessionManager 同时挂载多份（RootLayout /
-			// ChatPage / NewSessionPage），pluginSendMessageRef 只留最后渲染者的
-			// sendMessage，而该实例的 ref 记的是「它自己最后打开的会话」，与用户当前
-			// 激活会话可能相差很久：插件派活曾因此落进另一个 workspace 的陈年会话。
+			// 实例级 activeSessionRef。生产路径只在 RootLayout 挂一份 useSessionManager，
+			// 但 pluginSendMessageRef 仍可能被测试或其它挂载点改写；该实例的 ref 记的是
+			// 「它自己最后打开的会话」，与用户当前激活会话可能相差很久：插件派活曾因此
+			// 落进另一个 workspace 的陈年会话。
 			const store = getDefaultStore();
 			const transitionPending =
 				store.get(pendingSessionOpenAtom) !== null || store.get(pendingSessionCreationAtom) !== null;

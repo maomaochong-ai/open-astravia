@@ -504,3 +504,15 @@ export const sendMessageFnRef: {
 } = {
 	current: null,
 };
+
+export const abortMessageFnRef: {
+	current: (() => Promise<void>) | null;
+} = {
+	current: null,
+};
+
+export const sendQueuedNowFnRef: {
+	current: ((runtimeId: string, id: string) => Promise<void>) | null;
+} = {
+	current: null,
+};

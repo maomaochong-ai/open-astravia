@@ -1,6 +1,7 @@
 import { useProjectActions } from "@domains/project/hooks/useProjects";
 import { i18n } from "@shared/i18n";
 import {
+	abortMessageFnRef,
 	activeSessionAtom,
 	activeToolNamesAtom,
 	applyInputActionWorkingState,
@@ -14,11 +15,13 @@ import {
 	emptySessionInputActionState,
 	lastActiveSessionAtom,
 	newSessionInputDraftKey,
+	openSessionFnRef,
 	pageHeaderTitleAtom,
 	pageHeaderTitleBadgeAtom,
 	pageHeaderTitleHiddenAtom,
 	pendingSessionCreationAtom,
 	promptAttachmentAtom,
+	sendMessageFnRef,
 	sessionExecutionModeAtom,
 	switchSessionInputDraftScope,
 } from "@shared/store/atoms";
@@ -28,7 +31,6 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TeamChatActions, TeamChatViewModel } from "../../connectors/team/teamChatModel";
-import { useSessionManager } from "../../hooks/useSessionManager";
 import { useSkillList } from "../../hooks/useSkillList";
 import type { SendInteractionContext } from "../input-bar/types";
 import { PANEL_SHIFT_MIN_ITEMS } from "./constants";
@@ -142,7 +144,15 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 	const setActiveToolNames = useSetAtom(activeToolNamesAtom);
 	const authUser = useAtomValue(authUserAtom);
 	const executionMode = useAtomValue(sessionExecutionModeAtom);
-	const { openSession, sendMessage, abortMessage } = useSessionManager();
+	const openSession = useCallback<NonNullable<(typeof openSessionFnRef)["current"]>>(async (...args) => {
+		await openSessionFnRef.current?.(...args);
+	}, []);
+	const sendMessage = useCallback<NonNullable<(typeof sendMessageFnRef)["current"]>>(async (...args) => {
+		return await sendMessageFnRef.current?.(...args);
+	}, []);
+	const abortMessage = useCallback(async () => {
+		await abortMessageFnRef.current?.();
+	}, []);
 	const { createProject } = useProjectActions();
 	const setConfirm = useSetAtom(confirmDialogAtom);
 	const [preparingProject, setPreparingProject] = useState(false);
