@@ -100,7 +100,7 @@ export { SidebarNavigation } from "./SidebarNavigation";
 export type { SidebarNavMorePanelLabels, SidebarNavMorePanelProps } from "./SidebarNavMorePanel";
 export { SidebarNavMorePanel } from "./SidebarNavMorePanel";
 export type { SidebarPanelProps } from "./SidebarPanel";
-export { SidebarPanel } from "./SidebarPanel";
+export { SIDEBAR_LIVE_WIDTH_VAR, SidebarPanel, sidebarWidthValue } from "./SidebarPanel";
 export type {
 	SidebarTopBarClassNames,
 	SidebarTopBarLabels,

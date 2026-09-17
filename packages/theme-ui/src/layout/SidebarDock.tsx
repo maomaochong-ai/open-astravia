@@ -1,6 +1,7 @@
 import type { ComponentPropsWithoutRef, JSX, ReactNode } from "react";
 import { useRef } from "react";
 import { cn } from "@vetta-org/ui";
+import { sidebarWidthValue } from "../sidebar/SidebarPanel";
 
 /**
  * 展开/收起的滑动时长（毫秒）。
@@ -18,6 +19,8 @@ export interface SidebarDockProps extends Omit<ComponentPropsWithoutRef<"div">, 
 	 *
 	 * 必须显式给值、不能靠内容撑：抽屉式过渡要求布局宽度一步到位，而「按内容宽度」在
 	 * 收起态量不到（面板已被移出占位盒子的尺寸计算）。
+	 *
+	 * 这是 committed 值；拖拽途中的实时宽度走 CSS 变量，见 `sidebarWidthValue`。
 	 */
 	width: number;
 }
@@ -64,7 +67,7 @@ export function SidebarDock({
 		<div
 			// z-10：收起时面板要贴着已经铺开的内容区滑出去，不能被它盖住。
 			className={cn("relative z-10 shrink-0 overflow-visible", className)}
-			style={{ width: visible ? width : 0, ...style }}
+			style={{ width: visible ? sidebarWidthValue(width) : 0, ...style }}
 			{...(visible ? {} : { inert: true, "aria-hidden": true })}
 			{...props}
 		>
@@ -74,8 +77,8 @@ export function SidebarDock({
 					visible ? "opacity-100" : "opacity-0",
 				)}
 				style={{
-					width,
-					transform: visible ? "translateX(0)" : `translateX(-${width}px)`,
+					width: sidebarWidthValue(width),
+					transform: visible ? "translateX(0)" : `translateX(calc(-1 * ${sidebarWidthValue(width)}))`,
 					transitionDuration: `${SIDEBAR_DOCK_ANIMATION_MS}ms`,
 				}}
 			>
