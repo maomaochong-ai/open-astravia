@@ -1,11 +1,8 @@
 import type { ThinkingLevel } from "@vetta/agent-core";
-import { type Api, type Model, modelsAreEqual, supportsXhigh } from "@vetta/ai";
+import { type Api, getModelReasoningPreset, type Model, modelsAreEqual } from "@vetta/ai";
 import type { RuntimeHostSession } from "@vetta/runtime-core";
 import type { CodingAgentModelCycleResult, CodingAgentScopedModel } from "../../public-api/sdk/sdk-session-contract.js";
 import type { CodingAgentSdkSessionCapabilitySettings } from "./session-capability-options.js";
-
-const THINKING_LEVELS: readonly ThinkingLevel[] = ["off", "minimal", "low", "medium", "high"];
-const THINKING_LEVELS_WITH_XHIGH: readonly ThinkingLevel[] = [...THINKING_LEVELS, "xhigh"];
 
 export interface CodingAgentSessionModelCapabilitiesOptions {
 	readonly readSession: () => RuntimeHostSession;
@@ -74,7 +71,7 @@ export class CodingAgentSessionModelCapabilities {
 
 	supportsXhighThinking(): boolean {
 		const model = this.options.readSession().readCurrentModel();
-		return model ? supportsXhigh(model) : false;
+		return availableThinkingLevels(model).includes("xhigh");
 	}
 
 	supportsThinking(): boolean {
@@ -84,7 +81,7 @@ export class CodingAgentSessionModelCapabilities {
 
 function availableThinkingLevels(model: Model<Api> | undefined): readonly ThinkingLevel[] {
 	if (!model?.reasoning) return ["off"];
-	return supportsXhigh(model) ? THINKING_LEVELS_WITH_XHIGH : THINKING_LEVELS;
+	return getModelReasoningPreset(model)?.levels ?? ["off"];
 }
 
 async function readUsableScopedModels(

@@ -44,6 +44,8 @@
 
 ### Fixed
 
+- 模型运行合同保留 `reasoningLevels` / `defaultReasoningLevel`；统一按模型声明或 API 预设读取档位，Azure 与 Codex Responses 的 simple stream 不再按旧模型名称白名单把 `xhigh` 降为 `high`。
+
 - 无状态码的 `Retryable HTTP Error` 现在保留 SDK 明确的可重试信号，避免瞬时 500 被误判为永久传输失败。
 
 - OpenAI 兼容协议不再把 `completion_tokens_details.reasoning_tokens` 重复计入输出量：它本就是 `completion_tokens` 的细分项，重复相加会让推理模型的输出 token 与费用翻倍（`prompt_tokens_details.cached_tokens` 一侧的减法一直是对的）。

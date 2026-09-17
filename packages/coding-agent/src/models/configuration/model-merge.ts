@@ -78,6 +78,8 @@ function applyModelOverride(
 	const result = { ...model };
 	if (override.name !== undefined) result.name = override.name;
 	if (override.reasoning !== undefined) result.reasoning = override.reasoning;
+	if (override.reasoningLevels !== undefined) result.reasoningLevels = [...override.reasoningLevels];
+	if (override.defaultReasoningLevel !== undefined) result.defaultReasoningLevel = override.defaultReasoningLevel;
 	if (override.input !== undefined) result.input = override.input;
 	if (override.contextWindow !== undefined) result.contextWindow = override.contextWindow;
 	if (override.maxTokens !== undefined) result.maxTokens = override.maxTokens;

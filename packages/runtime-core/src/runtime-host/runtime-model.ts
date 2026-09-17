@@ -5,7 +5,7 @@ import {
 	modelsAreEqual,
 	providerAuthenticationError,
 	providerModelNotFoundError,
-	supportsXhigh,
+	resolveModelThinkingLevel,
 } from "@vetta/ai";
 import type {
 	RuntimeSnapshotAcquireContext,
@@ -18,9 +18,6 @@ import type {
 	RuntimeSessionModelController,
 	RuntimeSessionModelView,
 } from "./session-ports.js";
-
-const THINKING_LEVELS: readonly ThinkingLevel[] = ["off", "minimal", "low", "medium", "high"];
-const THINKING_LEVELS_WITH_XHIGH: readonly ThinkingLevel[] = [...THINKING_LEVELS, "xhigh"];
 
 /** Session 作用域的模型目录；具体 Registry 和远端加载留给组合根适配。 */
 export interface RuntimeModelCatalog {
@@ -67,7 +64,7 @@ export class RuntimeModel implements RuntimeModelRuntime {
 		this.catalog = options.catalog;
 		this.credentials = options.credentials;
 		this.currentModel = options.initialModel;
-		this.thinkingLevel = this.clampThinkingLevel(options.initialThinkingLevel);
+		this.thinkingLevel = resolveModelThinkingLevel(this.currentModel, options.initialThinkingLevel);
 	}
 
 	async selectModel(modelKey: string, strategy: RuntimeModelSelectionStrategy): Promise<void> {
@@ -85,12 +82,12 @@ export class RuntimeModel implements RuntimeModelRuntime {
 		}
 		if (revision !== this.configurationRevision) return;
 		this.currentModel = model;
-		this.thinkingLevel = clampThinkingLevelForModel(this.thinkingLevel, model);
+		this.thinkingLevel = resolveModelThinkingLevel(model, this.thinkingLevel);
 	}
 
 	setThinkingLevel(level: ThinkingLevel): void {
 		this.configurationRevision += 1;
-		this.thinkingLevel = this.clampThinkingLevel(level);
+		this.thinkingLevel = resolveModelThinkingLevel(this.currentModel, level);
 	}
 
 	async refreshAuth(token: string | undefined): Promise<void> {
@@ -143,7 +140,7 @@ export class RuntimeModel implements RuntimeModelRuntime {
 				throw providerAuthenticationError(model, `No credentials configured for ${model.provider}/${model.id}`);
 			}
 		}
-		const thinkingLevel = clampThinkingLevelForModel(requestedThinkingLevel, model);
+		const thinkingLevel = resolveModelThinkingLevel(model, requestedThinkingLevel);
 		if (revision === this.configurationRevision) {
 			this.currentModel = model;
 			this.thinkingLevel = thinkingLevel;
@@ -172,10 +169,6 @@ export class RuntimeModel implements RuntimeModelRuntime {
 			this.catalog.find(provider, modelId)
 		);
 	}
-
-	private clampThinkingLevel(level: ThinkingLevel): ThinkingLevel {
-		return clampThinkingLevelForModel(level, this.currentModel);
-	}
 }
 
 function createModelBinding(
@@ -188,26 +181,4 @@ function createModelBinding(
 		reasoning: thinkingLevel === "off" ? undefined : thinkingLevel,
 		credential,
 	});
-}
-
-function clampThinkingLevelForModel(level: ThinkingLevel, model: Model<Api>): ThinkingLevel {
-	const availableLevels = availableThinkingLevelsForModel(model);
-	if (!THINKING_LEVELS_WITH_XHIGH.includes(level)) return level;
-	if (availableLevels.includes(level)) return level;
-
-	const requestedIndex = THINKING_LEVELS_WITH_XHIGH.indexOf(level);
-	for (let index = requestedIndex; index < THINKING_LEVELS_WITH_XHIGH.length; index++) {
-		const candidate = THINKING_LEVELS_WITH_XHIGH[index];
-		if (availableLevels.includes(candidate)) return candidate;
-	}
-	for (let index = requestedIndex - 1; index >= 0; index--) {
-		const candidate = THINKING_LEVELS_WITH_XHIGH[index];
-		if (availableLevels.includes(candidate)) return candidate;
-	}
-	return availableLevels[0] ?? "off";
-}
-
-function availableThinkingLevelsForModel(model: Model<Api>): readonly ThinkingLevel[] {
-	if (!model.reasoning) return ["off"];
-	return supportsXhigh(model) ? THINKING_LEVELS_WITH_XHIGH : THINKING_LEVELS;
 }

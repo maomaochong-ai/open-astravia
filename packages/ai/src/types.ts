@@ -194,6 +194,9 @@ export interface Model<TApi extends Api> {
 	/** If set, requests are sent to this URL instead of baseUrl. baseUrl is still used for compat detection. */
 	gatewayUrl?: string;
 	reasoning: boolean;
+	/** Provider-native effort values; an empty list falls back to the API preset. */
+	reasoningLevels?: string[];
+	defaultReasoningLevel?: string;
 	input: ("text" | "image")[];
 	cost: {
 		input: number; // $/million tokens

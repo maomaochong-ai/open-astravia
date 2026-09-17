@@ -4,6 +4,8 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ## [Unreleased]
 
+- `PluginModelDefinition` exposes `reasoningLevels` and `defaultReasoningLevel`, so model providers can publish their native reasoning choices without losing them at the host's write boundary. Requires the corresponding Desktop capability schema fix.
+
 - Media Provider v5 可在 `generate` capability 中声明 `models` / `defaultModelId`；生成请求的 `modelId` 现在由宿主校验。Provider handler 新增 `readInput()`，只读取当前调用输入，供 JSON 内联图片 API 使用。
 - 官方图片设置增加 `textToImageModelId` / `imageToImageModelId`，旧的仅 Provider 配置继续使用该 Provider 的默认模型。
 - 官方插件新增 `ctx.official.agent.getImageGeneration()` / `setImageGeneration()`，用于读取或更新宿主 Agent 的文生图、图生图 Provider 偏好；普通插件仍会被官方能力门控拒绝。

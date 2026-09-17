@@ -237,6 +237,9 @@ class ModelRuntimeImplementation implements CodingAgentModelRuntime {
 				this.models.push({
 					...definition,
 					input: [...definition.input],
+					...(definition.reasoningLevels === undefined
+						? {}
+						: { reasoningLevels: [...definition.reasoningLevels] }),
 					api,
 					provider: providerName,
 					baseUrl: config.baseUrl,

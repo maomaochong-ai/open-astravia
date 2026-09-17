@@ -43,6 +43,8 @@ export function calculateCost<TApi extends Api>(model: Model<TApi>, usage: Usage
  * - Anthropic Messages API Opus 4.6 models (xhigh maps to adaptive effort "max")
  */
 export function supportsXhigh<TApi extends Api>(model: Model<TApi>): boolean {
+	if (!model.reasoning) return false;
+	if (model.reasoningLevels?.length) return model.reasoningLevels.includes("xhigh");
 	if (model.id.includes("gpt-5.2") || model.id.includes("gpt-5.3")) {
 		return true;
 	}

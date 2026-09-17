@@ -36,3 +36,9 @@ status: accepted
 - 接 anthropic 时：其档位 value 仍是字符串，由 anthropic provider 层把字符串映射成 adaptive effort / budget_tokens（复用现有 `defaultBudgets`），上层与本 ADR 不变；
 - 若某 provider 的推理参数确实无法用单一字符串表达，再在 provider 层内做 value→结构的私有映射，不上浮到配置模型；
 - 若要服务端下发多语言档位展示名，参照 [[预设模板]] 在线合并/离线快照，把 i18n 映射扩为「内置静态 + 服务端合并」两源。
+
+## 2026-09-17 实现核对与修复
+
+Issue #10 暴露出实现与本 ADR 的透传决定不一致：模型配置加载未保留档位元数据，Runtime Session、启动流程及 Azure/Codex simple stream 仍按旧名称白名单夹取 `xhigh`。本次补齐本地、远程、动态注册与覆盖路径，运行时对推理模型保留调用方选定的原始值；API 预设仅用于展示与缺省选项，不作为执行上限。非推理模型仍关闭推理，现有 `off` 到无推理请求的兼容转换保留，原生 token 预算 provider 的转换不变。CLI/SDK/RPC 的档位列表与 Desktop 使用同一模型声明解析器。
+
+`reasoning` 当前仍是显式能力开关（未提供时可从非空档位列表推导），并非所有旧目录都已迁移成纯列表；不能将上文的目标描述误读为既有数据已全部迁移。`supportsXhigh` 仅为旧调用方保留兼容查询，显式列表优先，不再用于上述请求链路的执行降档。

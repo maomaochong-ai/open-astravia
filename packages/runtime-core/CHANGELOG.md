@@ -6,6 +6,8 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Fixed
 
+- 会话初始化、切模、设置档位与 Turn 绑定保留推理模型请求的原始 effort，修复 GPT-5.6 / GPT-6 及模型别名的 `xhigh` 在发送前被静默降为 `high`；非推理模型仍关闭推理。
+
 - 手动与自动上下文压缩提交后会立即刷新 Context Usage，并通过一次 `compaction.end` 事件通知宿主；队列压缩不再重复发送成功事件。
 
 - 同一持久化 Session 路径并发恢复时现在复用同一个进行中的创建操作，避免重复装配 Session、共享资源注册冲突和部分初始化残留。

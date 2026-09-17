@@ -1,4 +1,4 @@
-import type { Api } from "./types.js";
+import type { Api, Model } from "./types.js";
 
 /**
  * Per-api-type reasoning-level preset. This is the "new model prefill + empty-list
@@ -38,4 +38,31 @@ const PRESETS: Partial<Record<Api, ReasoningPreset>> = {
 /** Resolve the built-in reasoning preset for an api type, or undefined if none. */
 export function getReasoningPreset(api: string): ReasoningPreset | undefined {
 	return PRESETS[api as Api];
+}
+
+/** Resolve model declarations without inferring capabilities from a model name. */
+export function getModelReasoningPreset(model: {
+	api?: string;
+	reasoning?: boolean;
+	reasoningLevels?: readonly string[];
+	defaultReasoningLevel?: string;
+}): ReasoningPreset | undefined {
+	if (!model.reasoning) return undefined;
+	if (model.reasoningLevels?.length) {
+		const levels = [...model.reasoningLevels];
+		return {
+			levels,
+			default:
+				model.defaultReasoningLevel && levels.includes(model.defaultReasoningLevel)
+					? model.defaultReasoningLevel
+					: levels[0],
+		};
+	}
+	const preset = model.api ? getReasoningPreset(model.api) : undefined;
+	return preset ? { levels: [...preset.levels], default: preset.default } : undefined;
+}
+
+/** Presets describe choices, not a ceiling on provider-native effort values. */
+export function resolveModelThinkingLevel(model: Pick<Model<Api>, "reasoning">, level: string): string {
+	return model.reasoning ? level : "off";
 }

@@ -3,6 +3,35 @@ import { CAPABILITY_ERROR_CODES, CAPABILITY_PREFIXES } from "../../src/contracts
 import { DOMAIN_MODEL_CAPABILITIES, DOMAIN_MODEL_CAPABILITY_CATALOG } from "../../src/domain.js";
 
 describe("model domain capabilities", () => {
+	it("preserves reasoning declarations through both provider write contracts", () => {
+		const model = {
+			id: "gpt-6-astra",
+			reasoning: true,
+			reasoningLevels: ["low", "medium", "high", "xhigh", "max"],
+			defaultReasoningLevel: "medium",
+		};
+		const data = { api: "openai-responses", models: [{ ...model, ignored: true }] };
+		const upsert = DOMAIN_MODEL_CAPABILITIES.UPSERT_PROVIDER.parseInput({ provider: "cpa", data });
+		const replace = DOMAIN_MODEL_CAPABILITIES.REPLACE_OWNED_PROVIDERS.parseInput({
+			owner: "cpa",
+			providers: { responses: data },
+		});
+		expect(upsert.data.models).toEqual([model]);
+		expect(replace.providers.responses?.models).toEqual([model]);
+	});
+
+	it.each([{ reasoningLevels: "xhigh" }, { reasoningLevels: [42] }, { defaultReasoningLevel: 42 }])(
+		"rejects malformed reasoning declarations: %j",
+		(fields) => {
+			expect(() =>
+				DOMAIN_MODEL_CAPABILITIES.UPSERT_PROVIDER.parseInput({
+					provider: "cpa",
+					data: { models: [{ id: "gpt-6-astra", ...fields }] },
+				}),
+			).toThrow();
+		},
+	);
+
 	it("uses one stable id per model operation", () => {
 		expect(Object.values(DOMAIN_MODEL_CAPABILITIES).map((capability) => capability.id)).toEqual([
 			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}model.list`,

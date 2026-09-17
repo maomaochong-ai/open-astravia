@@ -1,5 +1,5 @@
 import type { ThinkingLevel } from "@vetta/agent-core";
-import { type Api, type Model, supportsXhigh } from "@vetta/ai";
+import { type Api, type Model, resolveModelThinkingLevel } from "@vetta/ai";
 import type { CodingAgentAuthRuntime } from "../auth/index.js";
 import {
 	type CodingAgentExtensionRequirements,
@@ -165,7 +165,6 @@ export async function resolveCodingAgentInitialModel(
 	}
 
 	if (parsed.thinking) thinkingLevel = parsed.thinking;
-	if (model && !model.reasoning) thinkingLevel = "off";
-	if (model && thinkingLevel === "xhigh" && !supportsXhigh(model)) thinkingLevel = "high";
+	if (model) thinkingLevel = resolveModelThinkingLevel(model, thinkingLevel);
 	return { model, thinkingLevel, scopedModels, warning, error };
 }

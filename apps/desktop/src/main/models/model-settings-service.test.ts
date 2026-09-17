@@ -1,3 +1,4 @@
+import { DOMAIN_MODEL_CAPABILITIES } from "@vetta-org/capability-sdk";
 import { describe, expect, it, vi } from "vitest";
 import type { ModelCredentialStore } from "./model-credential-store.js";
 import { ModelSettingsService, type ModelsConfig } from "./model-settings-service.js";
@@ -35,6 +36,43 @@ function createCredentialStore(initial: Record<string, string> = {}): ModelCrede
 }
 
 describe("ModelSettingsService", () => {
+	it("persists plugin reasoning choices through capability parsing and model read-back", async () => {
+		let config: ModelsConfig = { providers: {} };
+		const service = new ModelSettingsService({
+			readConfig: async () => config,
+			writeConfig: async (next) => {
+				config = next;
+			},
+			refreshRegistry: async () => {},
+			credentials: createCredentialStore(),
+		});
+		const models = ["gpt-5.6-sol", "gpt-6-astra"].map((id) => ({
+			id,
+			reasoning: true,
+			reasoningLevels: ["low", "medium", "high", "xhigh", "max"],
+			defaultReasoningLevel: "medium",
+		}));
+		const input = DOMAIN_MODEL_CAPABILITIES.REPLACE_OWNED_PROVIDERS.parseInput({
+			owner: "cli-proxy-api",
+			providers: { responses: { api: "openai-responses", models } },
+		});
+		await service.replaceOwnedProviders(input.owner, input.providers);
+		expect(config.providers["cli-proxy-api.responses"]?.models).toEqual(models);
+		const snapshot = DOMAIN_MODEL_CAPABILITIES.GET_PROVIDER.parseOutput(
+			await service.getSanitizedProvider("cli-proxy-api.responses"),
+		);
+		expect(snapshot.models).toEqual(models);
+		const restored = new ModelSettingsService({
+			readConfig: async () => config,
+			writeConfig: async (next) => {
+				config = next;
+			},
+			refreshRegistry: async () => {},
+			credentials: createCredentialStore(),
+		});
+		expect((await restored.getRendererConfig()).providers["cli-proxy-api.responses"]?.models).toEqual(models);
+	});
+
 	it("returns masked renderer config and sanitized capability data", async () => {
 		const credentials = createCredentialStore({ "openai-credential": "secret" });
 		const service = new ModelSettingsService({
