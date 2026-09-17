@@ -2,6 +2,7 @@ import { cn } from "@vetta-org/ui";
 import { memo, type JSX } from "react";
 import { AvatarStackView } from "../shared/AvatarStackView";
 import { ConversationTagDotsView } from "./ConversationTagDotsView";
+import { IMMEDIATE_SESSION_SELECTION_STYLE } from "./session-row-transition";
 import { SessionRenameInputView } from "./SessionRenameInputView";
 import { prepareSidebarSelection } from "./useActiveSessionAutoScroll";
 
@@ -81,9 +82,10 @@ export const DefaultSessionRowView = memo(function DefaultSessionRowView({
 				onOpenContextMenu(event);
 			}}
 			className={cn(
-				"flex w-full items-center gap-2 rounded-md px-2.5 py-[6px] text-left transition-colors duration-100",
+				"flex w-full items-center gap-2 rounded-md px-2.5 py-[6px] text-left",
 				active ? "bg-primary/15 text-foreground" : "hover:bg-accent/50",
 			)}
+			style={IMMEDIATE_SESSION_SELECTION_STYLE}
 			title={title}
 		>
 			{renaming ? (

@@ -28,6 +28,7 @@ import {
 	type SidebarConversationInfo,
 } from "../../../../services/sidebar-conversation-projection";
 import type { BatchProjectEntry, ProjectsPanelModel, ProjectsPanelProps } from "./types";
+import { useSidebarSelectionIntent } from "./useSidebarSelectionIntent";
 
 const EMPTY_SESSIONS: SessionInfo[] = [];
 
@@ -64,6 +65,7 @@ export function useProjectsPanelModel({
 	const activeSessionPathValue = useAtomValue(activeSessionPathAtom);
 	const pendingSessionPath = useAtomValue(pendingSessionPathAtom);
 	const activeSessionCwd = useAtomValue(activeSessionCwdAtom);
+	const { selectionIntent: sidebarSelectionIntent, selectAfterPaint } = useSidebarSelectionIntent();
 	const imCwd = useAtomValue(defaultImConversationCwdAtom);
 	const setActiveSession = useSetAtom(activeSessionAtom);
 	const setInlineFilePreview = useSetAtom(inlineFilePreviewAtom);
@@ -77,11 +79,24 @@ export function useProjectsPanelModel({
 	const viewerSessionPath = routeParams?.path ? decodeURIComponent(routeParams.path) : "";
 	/** `/project/$cwd` 与 `/new-session/$cwd` 的参数值本身是编码过的（见导航处的 encodeURIComponent）。 */
 	const routeCwd = routeParams?.cwd ? decodeURIComponent(routeParams.cwd) : "";
-	const activeSessionPath = viewerSessionPath || pendingSessionPath || activeSessionPathValue;
-	const activeTeamSessionId =
+	const routeActiveTeamSessionId =
 		currentPath.startsWith("/agent-teams/") && routeParams?.sessionId
 			? decodeURIComponent(routeParams.sessionId)
 			: "";
+	const activeSessionPath =
+		sidebarSelectionIntent?.kind === "conversation"
+			? sidebarSelectionIntent.path
+			: sidebarSelectionIntent
+				? ""
+				: pendingSessionPath || viewerSessionPath || activeSessionPathValue;
+	const activeTeamSessionId =
+		sidebarSelectionIntent?.kind === "agent-team"
+			? sidebarSelectionIntent.sessionId
+			: sidebarSelectionIntent
+				? ""
+				: pendingSessionPath || viewerSessionPath
+					? ""
+					: routeActiveTeamSessionId;
 	const batchProjects = useAtomValue(batchProjectsAtom);
 	const [expandedBatchProjects, setExpandedBatchProjects] = useAtom(expandedBatchProjectsAtom);
 	const { deleteTask: deleteBatchTask, deleteProject: deleteBatchProject } = useBatchTasks();
@@ -190,28 +205,32 @@ export function useProjectsPanelModel({
 	const openSessionByTarget = useCallback(
 		(cwd: string, path: string) => {
 			const target = resolveSessionOpenTarget(sessionsMapRef.current.get(cwd), path);
+			if (target === "unavailable") return;
 			if (target === "viewer") {
-				void navigate({ to: "/viewer/$path", params: { path: encodeURIComponent(path) } });
+				selectAfterPaint({ kind: "conversation", path }, () =>
+					navigate({ to: "/viewer/$path", params: { path: encodeURIComponent(path) } }),
+				);
 				return;
 			}
-			if (target === "unavailable") return;
-			void onOpenSession(cwd, path);
+			selectAfterPaint({ kind: "conversation", path }, () => onOpenSession(cwd, path));
 		},
-		[onOpenSession, navigate],
+		[navigate, onOpenSession, selectAfterPaint],
 	);
 
 	const selectSidebarSession = useCallback(
 		(cwd: string, session: SidebarConversationInfo) => {
 			if (session.kind === "agent-team") {
-				void navigate({
-					to: "/agent-teams/$teamId/sessions/$sessionId",
-					params: { teamId: session.teamId, sessionId: session.teamSessionId },
-				});
+				selectAfterPaint({ kind: "agent-team", sessionId: session.teamSessionId }, () =>
+					navigate({
+						to: "/agent-teams/$teamId/sessions/$sessionId",
+						params: { teamId: session.teamId, sessionId: session.teamSessionId },
+					}),
+				);
 				return;
 			}
 			openSessionByTarget(cwd, session.path);
 		},
-		[navigate, openSessionByTarget],
+		[navigate, openSessionByTarget, selectAfterPaint],
 	);
 
 	const selectBatchSession = useCallback(
@@ -219,9 +238,12 @@ export function useProjectsPanelModel({
 			const task = visibleBatchProjects
 				.flatMap((project) => project.tasks)
 				.find((item) => item.sessionPath === session.path);
-			if (task) void onOpenSession(task.cwd, session.path, task.executionMode);
+			if (!task) return;
+			selectAfterPaint({ kind: "conversation", path: session.path }, () =>
+				onOpenSession(task.cwd, session.path, task.executionMode),
+			);
 		},
-		[visibleBatchProjects, onOpenSession],
+		[onOpenSession, selectAfterPaint, visibleBatchProjects],
 	);
 
 	// 默认区（含 claw）与项目区共用同一套判定；cwd 由 defaultSessionsCwd 逐层传下，

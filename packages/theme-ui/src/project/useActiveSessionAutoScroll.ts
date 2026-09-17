@@ -62,7 +62,8 @@ function scrollMountedActiveRow(scrollParent: HTMLElement): boolean {
 }
 
 /**
- * 点击时把行滚进安全区。**不阻塞导航**：滚动动画和 `openSession` 并行跑。
+ * 点击时把行滚进安全区。测量推迟到选择态完成一次绘制之后，避免同步布局读取
+ * 阻塞点击反馈；滚动动画和 `openSession` 继续并行。
  *
  * 这里原本会返回一个「等滚动结束」的 Promise，调用方 `Promise.all` 完它（再叠加一个
  * 「等面板 max-height 过渡结束」的 Promise）之后才发起会话切换，fallback 分别是 800ms
@@ -73,9 +74,14 @@ function scrollMountedActiveRow(scrollParent: HTMLElement): boolean {
  * 连点由 openSession 自己的 token 机制去重，不需要这里再排队。
  */
 export function prepareSidebarSelection(element: HTMLElement): void {
-	const scrollParent = element.closest<HTMLElement>('[data-sidebar-selection-scroll="true"]');
-	if (!scrollParent) return;
-	scrollElementIntoSafeZone(scrollParent, element);
+	window.requestAnimationFrame(() => {
+		window.requestAnimationFrame(() => {
+			if (!element.isConnected) return;
+			const scrollParent = element.closest<HTMLElement>('[data-sidebar-selection-scroll="true"]');
+			if (!scrollParent) return;
+			scrollElementIntoSafeZone(scrollParent, element);
+		});
+	});
 }
 
 /** Scrolls a newly expanded project row only when it falls outside the shared safety band. */
