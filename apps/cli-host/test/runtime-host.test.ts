@@ -4,13 +4,26 @@ import { join } from "node:path";
 import type { CodingAgentBootstrap } from "@vetta/coding-agent/bootstrap";
 import type { RpcSessionInitialization } from "@vetta/coding-agent/rpc";
 import { RUNTIME_ERROR_CODES, type RuntimeSessionCatalog } from "@vetta/runtime-core";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createCliCodingAgentBootstrap } from "../src/coding-agent-bootstrap.js";
 import { createCliRuntimeSessionCatalog } from "../src/rpc/cli-session-format-compatibility.js";
 import { prepareImRuntimeHost, type RpcRuntimeHostReady } from "../src/rpc/runtime-host/runtime-host.js";
 
 const temporaryDirectories: string[] = [];
 const preparedHosts: RpcRuntimeHostReady[] = [];
+let isolatedUserHome: string | undefined;
+
+beforeAll(async () => {
+	isolatedUserHome = await mkdtemp(join(tmpdir(), "vetta-im-runtime-host-home-"));
+	vi.stubEnv("HOME", isolatedUserHome);
+	vi.stubEnv("USERPROFILE", isolatedUserHome);
+	vi.stubEnv("VETTA_HOME", isolatedUserHome);
+});
+
+afterAll(async () => {
+	vi.unstubAllEnvs();
+	if (isolatedUserHome) await rm(isolatedUserHome, { force: true, recursive: true });
+});
 
 afterEach(async () => {
 	for (const prepared of preparedHosts.splice(0).reverse()) await prepared.capabilities.dispose();

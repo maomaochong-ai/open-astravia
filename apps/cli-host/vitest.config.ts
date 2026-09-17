@@ -232,8 +232,8 @@ export default defineConfig({
 		environment: "node",
 		globalSetup: "./test/support/agent-rpc-global-setup.ts",
 		// CLI contract tests launch nested Node, Bun, MCP and shell processes. Keep
-		// Windows files serial so one runner cannot starve or cross-talk with another;
-		// other platforms retain bounded parallel collection.
-		maxWorkers: process.platform === "win32" ? 1 : 4,
+		// Windows CI serial because shared runners can starve child processes; local
+		// development retains bounded parallel collection for faster feedback.
+		maxWorkers: process.platform === "win32" && process.env.CI ? 1 : 4,
 	},
 });
