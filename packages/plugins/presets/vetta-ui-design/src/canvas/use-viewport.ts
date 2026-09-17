@@ -54,6 +54,17 @@ export function clampZoom(zoom: number): number {
 }
 
 /**
+ * world 层上的 `--vetd-lscale`：画框标题、手柄、浮层按它反向缩放，任何缩放下都是屏幕上
+ * 同样的大小。上限 8 是为了画布缩到很小时那些装饰件不至于比画框本身还大。
+ *
+ * 只此一处定义：它既由 React 写进 worldStyle（落定后的快照），也在缩放途中由
+ * paintViewport 直接写 DOM，两边漂开的话缩放中途标题会一跳。
+ */
+export function inverseScale(zoom: number): number {
+	return Math.min(1 / zoom, 8);
+}
+
+/**
  * 绕定点缩放：`anchor` 是容器内坐标，缩放前后它对应的世界点保持不动。
  * 光标缩放与按钮缩放（锚点取容器中心）共用它。
  */
@@ -132,6 +143,8 @@ export interface ViewportController {
 	 * 活体 iframe），操作结束再恢复。一趟操作只翻两次，不是每个 tick 都翻。
 	 */
 	interacting: boolean;
+	/** 订阅缩放变化（含缩放途中的每一帧）。只给需要实时读数的小组件用。 */
+	subscribeZoom: (listener: () => void) => () => void;
 	zoomBy: (direction: 1 | -1) => void;
 	/** 直接落一个视口（复位、居中、fit）。 */
 	commitViewport: (next: Viewport) => void;
@@ -185,17 +198,45 @@ export function useViewport({ initial, onCommit, onPaint }: UseViewportOptions):
 	const paintRef = useRef(onPaint);
 	paintRef.current = onPaint;
 
-	const commit = useCallback((next: Viewport): void => {
-		setViewport(next);
-		commitRef.current?.(next);
+	/**
+	 * 缩放读数（ControlBar 的百分比）的订阅者。
+	 *
+	 * 缩放途中权威值只在 DOM 和 ref 里走，画布整棵树不重渲染——但那个百分比必须实时
+	 * 跟手，否则捏合时它会僵在原地、松手才跳一下。所以单独开一条订阅：只有那一个
+	 * 小组件跟着 tick 重渲染。
+	 */
+	const zoomListenersRef = useRef<Set<() => void>>(new Set());
+	const subscribeZoom = useCallback((listener: () => void): (() => void) => {
+		zoomListenersRef.current.add(listener);
+		return () => {
+			zoomListenersRef.current.delete(listener);
+		};
+	}, []);
+	const notifyZoom = useCallback((): void => {
+		for (const listener of zoomListenersRef.current) listener();
 	}, []);
 
-	const paintViewport = useCallback((next: Viewport): void => {
-		const world = worldRef.current;
-		if (world) {
-			world.style.transform = `translate(${next.x}px, ${next.y}px) scale(${next.zoom})`;
-		}
-	}, []);
+	const commit = useCallback(
+		(next: Viewport): void => {
+			setViewport(next);
+			commitRef.current?.(next);
+			notifyZoom();
+		},
+		[notifyZoom],
+	);
+
+	const paintViewport = useCallback(
+		(next: Viewport): void => {
+			const world = worldRef.current;
+			if (world) {
+				world.style.transform = `translate(${next.x}px, ${next.y}px) scale(${next.zoom})`;
+				// 反向缩放同样走 DOM：缩放途中不进 state，标题/手柄/浮层的大小只能从这里更新。
+				world.style.setProperty("--vetd-lscale", String(inverseScale(next.zoom)));
+			}
+			notifyZoom();
+		},
+		[notifyZoom],
+	);
 
 	/** 把高频 pointermove 折叠到每帧一次实际绘制。 */
 	const schedulePaint = useCallback((): void => {
@@ -259,21 +300,21 @@ export function useViewport({ initial, onCommit, onPaint }: UseViewportOptions):
 			markInteracting();
 			const bounds = container.getBoundingClientRect();
 			const current = viewportRef.current;
-			if (wheel.ctrlKey || wheel.metaKey) {
-				const next = zoomAround(
-					current,
-					current.zoom * Math.exp(-wheel.deltaY * 0.01),
-					wheel.clientX - bounds.left,
-					wheel.clientY - bounds.top,
-				);
-				// 缩放要重渲染（frame 标题与手柄按 zoom 反向缩放），走 state。
-				// 先撤掉可能还挂着的滚轮平移实时值，否则 layout effect 会拿旧位置盖回去。
-				commitViewport(next);
-				return;
-			}
-			// 滚轮平移与托手拖拽同理：走 DOM，不逐事件进 state（触控板两指平移同样高频）。
-			// 停下来一小会儿再落 state 与磁盘。
-			const next = { ...current, x: current.x - wheel.deltaX, y: current.y - wheel.deltaY };
+			// 缩放与平移走同一条路：逐 tick 只碰 DOM，停下来一小会儿再落 state 与磁盘。
+			//
+			// 缩放曾经每个 tick 都 commit，理由是「标题与手柄要按 zoom 反向缩放，必须重
+			// 渲染」——但那个反向缩放本来就是 world 层上的一个 CSS 变量，paintViewport
+			// 直接写它就够了。逐 tick 进 state 的代价是每次捏合都把整棵画布树连同 N 个
+			// FrameView 的 props 比对重跑一遍，还附带一次视口落盘，这正是缩放不跟手的来源。
+			const next =
+				wheel.ctrlKey || wheel.metaKey
+					? zoomAround(
+							current,
+							current.zoom * Math.exp(-wheel.deltaY * 0.01),
+							wheel.clientX - bounds.left,
+							wheel.clientY - bounds.top,
+						)
+					: { ...current, x: current.x - wheel.deltaX, y: current.y - wheel.deltaY };
 			viewportRef.current = next;
 			panLiveRef.current = next;
 			schedulePaint();
@@ -286,7 +327,7 @@ export function useViewport({ initial, onCommit, onPaint }: UseViewportOptions):
 				commit(settled);
 			}, PAN_SETTLE_MS);
 		},
-		[clearWheelSettle, commit, commitViewport, markInteracting, schedulePaint],
+		[clearWheelSettle, commit, markInteracting, schedulePaint],
 	);
 
 	const beginPan = useCallback(
@@ -365,6 +406,7 @@ export function useViewport({ initial, onCommit, onPaint }: UseViewportOptions):
 		endPan,
 		isPanning,
 		interacting,
+		subscribeZoom,
 		zoomBy,
 		commitViewport,
 		toWorld,

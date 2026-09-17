@@ -70,7 +70,7 @@ import {
 	type SnapSolution,
 	solveSnap,
 } from "./snap";
-import { useViewport, type Viewport } from "./use-viewport";
+import { inverseScale, useViewport, type Viewport } from "./use-viewport";
 import { SelectionAskBadge } from "./SelectionAskBadge";
 import { SnapGuides } from "./SnapGuides";
 
@@ -1096,6 +1096,17 @@ export function DesignCanvas({
 	const getZoom = useCallback((): number => viewportRef.current.zoom, []);
 
 	/**
+	 * 工具栏的缩放读数自己去订阅，不随画布的 state 下发。
+	 *
+	 * 缩放途中视口只走 DOM（见 use-viewport），画布整棵树刻意不重渲染；百分比要是当 prop
+	 * 传，就得等落定后才更新。对象引用必须稳定，否则 useSyncExternalStore 每次渲染都重订阅。
+	 */
+	const zoomSource = useMemo(
+		() => ({ get: getZoom, subscribe: view.subscribeZoom }),
+		[getZoom, view.subscribeZoom],
+	);
+
+	/**
 	 * 位图态的 frame 是 display:none，没有布局也就截不出东西，先经 runLive 拉回活体。
 	 *
 	 * 交付物这条路曾经开着 cacheBust 兜「素材缓存缺 CORS 头」，实测三条都不成立：
@@ -1411,7 +1422,7 @@ export function DesignCanvas({
 				transformOrigin: "0 0",
 				// frame 标题与手柄按它反向缩放。走 CSS 变量而不是 prop：否则每个 wheel
 				// tick 都要重渲染全部 FrameView，而这里只是改一个元素的 style。
-				"--vetd-lscale": Math.min(1 / viewport.zoom, 8),
+				"--vetd-lscale": inverseScale(viewport.zoom),
 				// 刻意不加 will-change / translateZ：这一层的包围盒覆盖所有 frame，
 				// 动辄上万像素，强行提升成合成层会超出 GPU 纹理上限，合成器降级后
 				// 整窗口撕裂闪烁。让浏览器自己决定要不要提升。
@@ -1688,7 +1699,7 @@ export function DesignCanvas({
 
 			<ControlBar
 				tool={tool}
-				zoom={viewport.zoom}
+				zoom={zoomSource}
 				designSystemsActive={designDialogOpen}
 				pendingNotes={pendingNoteCount}
 				onToolChange={setTool}
