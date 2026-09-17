@@ -7,6 +7,8 @@ describe("agent settings domain capabilities", () => {
 		expect(Object.values(DOMAIN_AGENT_SETTINGS_CAPABILITIES).map((capability) => capability.id)).toEqual([
 			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}agent-settings.experimental.get`,
 			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}agent-settings.experimental.set`,
+			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}agent-settings.image-generation.get`,
+			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}agent-settings.image-generation.set`,
 		]);
 	});
 
@@ -28,6 +30,20 @@ describe("agent settings domain capabilities", () => {
 		expect(() =>
 			DOMAIN_AGENT_SETTINGS_CAPABILITIES.SET_EXPERIMENTAL.parseInput({ promptPrediction: "yes" }),
 		).toThrowError(expect.objectContaining({ code: CAPABILITY_ERROR_CODES.INVALID_INPUT }));
+		expect(
+			DOMAIN_AGENT_SETTINGS_CAPABILITIES.GET_IMAGE_GENERATION.parseOutput({
+				textToImageProviderId: "remote:images",
+				ignored: true,
+			}),
+		).toEqual({ textToImageProviderId: "remote:images" });
+		expect(
+			DOMAIN_AGENT_SETTINGS_CAPABILITIES.SET_IMAGE_GENERATION.parseInput({
+				textToImageProviderId: null,
+			}),
+		).toEqual({ textToImageProviderId: null });
+		expect(() => DOMAIN_AGENT_SETTINGS_CAPABILITIES.SET_IMAGE_GENERATION.parseInput({})).toThrowError(
+			expect.objectContaining({ code: CAPABILITY_ERROR_CODES.INVALID_INPUT }),
+		);
 		expect(() =>
 			DOMAIN_AGENT_SETTINGS_CAPABILITIES.SET_EXPERIMENTAL.parseInput({
 				promptPrediction: true,
@@ -37,7 +53,7 @@ describe("agent settings domain capabilities", () => {
 	});
 
 	it("publishes schemas for agent settings discovery", () => {
-		expect(DOMAIN_AGENT_SETTINGS_CAPABILITY_CATALOG).toHaveLength(2);
+		expect(DOMAIN_AGENT_SETTINGS_CAPABILITY_CATALOG).toHaveLength(4);
 		expect(DOMAIN_AGENT_SETTINGS_CAPABILITY_CATALOG[0]?.inputSchema).toEqual({
 			type: "object",
 			properties: {},
@@ -52,6 +68,10 @@ describe("agent settings domain capabilities", () => {
 			type: "object",
 			additionalProperties: false,
 			minProperties: 1,
+		});
+		expect(DOMAIN_AGENT_SETTINGS_CAPABILITY_CATALOG[2]?.outputSchema).toMatchObject({
+			type: "object",
+			additionalProperties: false,
 		});
 		expect(() => JSON.stringify(DOMAIN_AGENT_SETTINGS_CAPABILITY_CATALOG)).not.toThrow();
 	});

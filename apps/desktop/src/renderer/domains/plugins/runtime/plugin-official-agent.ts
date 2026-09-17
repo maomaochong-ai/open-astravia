@@ -14,5 +14,13 @@ export function createOfficialAgentApi(
 			assertOfficial();
 			return agentSettings.setExperimental(capabilitySessionId, input);
 		},
+		getImageGeneration: async () => {
+			assertOfficial();
+			return agentSettings.getImageGeneration(capabilitySessionId);
+		},
+		setImageGeneration: async (input) => {
+			assertOfficial();
+			return agentSettings.setImageGeneration(capabilitySessionId, input);
+		},
 	};
 }

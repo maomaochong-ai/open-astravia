@@ -2855,6 +2855,86 @@
       "version": 1
     },
     {
+      "id": "cap.domain.vetta.agent-settings.image-generation.get",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {}
+      },
+      "kind": "query",
+      "layer": "domain",
+      "outputSchema": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {
+          "textToImageProviderId": {
+            "minLength": 1,
+            "maxLength": 129,
+            "type": "string"
+          },
+          "imageToImageProviderId": {
+            "minLength": 1,
+            "maxLength": 129,
+            "type": "string"
+          }
+        }
+      },
+      "version": 1
+    },
+    {
+      "id": "cap.domain.vetta.agent-settings.image-generation.set",
+      "inputSchema": {
+        "additionalProperties": false,
+        "minProperties": 1,
+        "type": "object",
+        "properties": {
+          "textToImageProviderId": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "maxLength": 129,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "imageToImageProviderId": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "maxLength": 129,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "kind": "command",
+      "layer": "domain",
+      "outputSchema": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {
+          "textToImageProviderId": {
+            "minLength": 1,
+            "maxLength": 129,
+            "type": "string"
+          },
+          "imageToImageProviderId": {
+            "minLength": 1,
+            "maxLength": 129,
+            "type": "string"
+          }
+        }
+      },
+      "version": 1
+    },
+    {
       "id": "cap.domain.vetta.ai.models.list",
       "inputSchema": {
         "additionalProperties": false,

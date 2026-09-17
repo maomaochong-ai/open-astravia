@@ -173,3 +173,5 @@ Pull Request 发往 **`dev`** 分支。贡献地图、测试要求与评审门�
 Open Vetta 建立在广泛的开源生态之上，包括 pi、Codex CLI、MCP、Electron、React、Bun、models.dev，以及 [`NOTICE`](NOTICE) 中列出的项目。完整第三方清单与原始版权声明以该文件为准。
 
 本项目采用 [Apache-2.0](LICENSE) 许可。
+
+- **友情链接：** [LINUX DO](https://linux.do/) - 一个面向技术爱好者的中文社区，本项目链接并认可 LINUX DO，欢迎佬友交流和反馈。

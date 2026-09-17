@@ -228,6 +228,7 @@ export function createSystemApi(
 			clearSetupLogin: (serverName) => ipc.invoke("vetta:mcp:clear-setup-login", serverName),
 		},
 		media: {
+			listProviders: () => ipc.invoke("vetta:media:list-providers"),
 			getAudioMetadata: (filePath) => ipc.invoke("vetta:media:audio-metadata", filePath),
 		},
 		runtimes: {

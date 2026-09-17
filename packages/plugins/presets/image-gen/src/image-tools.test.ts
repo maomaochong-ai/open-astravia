@@ -3,14 +3,17 @@ import type {
 	PluginAgentToolRegistration,
 	PluginContext,
 	PluginImageRef,
+	PluginJob,
+	PluginJobRef,
 	PluginJobsApi,
+	PluginJobWaitOptions,
 	PluginMediaArtifact,
 	PluginMediaApi,
 	PluginMediaJob,
 } from "@vetta-org/plugin-sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ImageRepository } from "./image-repository";
-import { registerImageTools } from "./image-tools";
+import { registerImageTools, selectImageProvider } from "./image-tools";
 
 interface GenerateToolInput {
 	prompt: string;
@@ -33,7 +36,9 @@ describe("image generation media tools", () => {
 	const registrations = new Map<string, PluginAgentToolRegistration<unknown>>();
 	const listProviders = vi.fn<PluginMediaApi["listProviders"]>();
 	const submit = vi.fn<PluginMediaApi["submit"]>();
-	const wait = vi.fn<PluginJobsApi["wait"]>();
+	const wait = vi.fn<
+		(job: PluginJob | PluginJobRef | string, options?: PluginJobWaitOptions) => Promise<PluginJob>
+	>();
 	const persistArtifact = vi.fn<PluginArtifactsApi["persist"]>();
 	const releaseArtifact = vi.fn<PluginArtifactsApi["release"]>();
 	const persist = vi.fn<ImageRepository["persist"]>();
@@ -41,13 +46,21 @@ describe("image generation media tools", () => {
 	const lineage = vi.fn<ImageRepository["lineage"]>();
 	const sessionLineages = vi.fn<ImageRepository["sessionLineages"]>();
 	const openActivityTab = vi.fn();
+	const getImageGeneration = vi.fn();
 	const media: PluginMediaApi = {
 		registerProvider: vi.fn(),
 		listProviders,
 		onProvidersChanged: vi.fn(),
 		submit,
 	};
-	const jobs: PluginJobsApi = { get: vi.fn(), cancel: vi.fn(), wait };
+	const jobs: PluginJobsApi = {
+		get: vi.fn(),
+		cancel: vi.fn(),
+		wait: async <TJob extends PluginJob = PluginJob>(
+			job: TJob | PluginJobRef | string,
+			options?: PluginJobWaitOptions,
+		): Promise<TJob> => (await wait(job, options)) as TJob,
+	};
 	const artifacts: PluginArtifactsApi = { persist: persistArtifact, release: releaseArtifact };
 	const repository: ImageRepository = { persist, read, lineage, sessionLineages };
 	const ctx = {
@@ -61,11 +74,13 @@ describe("image generation media tools", () => {
 			},
 		},
 		ui: { openActivityTab },
+		official: { agent: { getImageGeneration } },
 	} as unknown as PluginContext;
 
 	beforeEach(() => {
 		registrations.clear();
 		vi.clearAllMocks();
+		getImageGeneration.mockResolvedValue({});
 		listProviders.mockResolvedValue([
 			{
 				id: "desktop-app:vetta",
@@ -86,15 +101,22 @@ describe("image generation media tools", () => {
 		return registration as PluginAgentToolRegistration<TInput>;
 	}
 
-	// 两个工具每次调用都产生外部计费且不可撤销，描述必须自带排除段（改造方案 1.1）。
+	// 两个工具每次调用都产生外部计费且不可撤销，描述必须自带排除段。
 	it.each(["generate-image", "edit-image"])(
-		"%s describes when NOT to use it and its only legitimate scenario",
+		"%s describes when NOT to use the billed operation",
 		(id) => {
 			const description = tool(id).description ?? "";
 			expect(description).toMatch(/\bDo NOT use\b/);
-			expect(description).toMatch(/\bOnly for\b/);
+			expect(description).toContain("Every call is billed");
 		},
 	);
+
+	it("registers explicit positive routing for generated visual deliverables", () => {
+		const description = tool("generate-image").description ?? "";
+		expect(description).toContain("actual visual deliverable");
+		expect(description).toContain("brief requests in any language");
+		expect(description).toContain("Use `edit_image` only when modifying an existing image");
+	});
 
 	// 注册合同不再携带工具副作用分级。
 	it.each(["generate-image", "edit-image"])("%s registers without side-effect metadata", (id) => {
@@ -138,7 +160,52 @@ describe("image generation media tools", () => {
 		expect(releaseArtifact).toHaveBeenCalledWith(artifact);
 		expect(persist).toHaveBeenCalledWith(
 			{ id: "blob-1", url: "vetta-media://local/blob-1", mimeType: "image/png" },
-			{ sessionId: "session-1" },
+			{ providerId: "desktop-app:vetta", sessionId: "session-1" },
+		);
+	});
+
+	it("uses the configured provider and preserves its id on the image record", async () => {
+		getImageGeneration.mockResolvedValue({ textToImageProviderId: "remote:images" });
+		listProviders.mockResolvedValue([
+			{
+				id: "desktop-app:vetta",
+				ownerId: "desktop-app",
+				protocolVersion: 2,
+				capabilities: [{ operation: "generate", kind: "image", modes: ["text-to-image"] }],
+			},
+			{
+				id: "remote:images",
+				ownerId: "remote",
+				protocolVersion: 2,
+				displayName: "Remote Images",
+				capabilities: [{ operation: "generate", kind: "image", modes: ["text-to-image"] }],
+			},
+		]);
+		const artifact = imageArtifact("artifact-preferred", "image/png", 32);
+		const job = succeededJob("job-preferred", artifact);
+		submit.mockResolvedValue(job);
+		wait.mockResolvedValue(job);
+		persistArtifact.mockResolvedValue({
+			type: "plugin-blob",
+			blobId: "blob-preferred",
+			url: "vetta-media://local/blob-preferred",
+			mimeType: "image/png",
+			sizeBytes: 32,
+		});
+		persist.mockResolvedValue({
+			id: "blob-preferred",
+			rootId: "blob-preferred",
+			url: "vetta-media://local/blob-preferred",
+			mimeType: "image/png",
+			providerId: "remote:images",
+		});
+
+		await tool<GenerateToolInput>("generate-image").handler(toolContext({ prompt: "draw" }));
+
+		expect(submit).toHaveBeenCalledWith(expect.objectContaining({ providerId: "remote:images" }));
+		expect(persist).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ providerId: "remote:images" }),
 		);
 	});
 
@@ -189,6 +256,37 @@ describe("image generation media tools", () => {
 		);
 		expect(read).not.toHaveBeenCalled();
 		expect(releaseArtifact).toHaveBeenCalledWith(artifact);
+	});
+});
+
+describe("selectImageProvider", () => {
+	const providers = [
+		{
+			id: "desktop-app:vetta",
+			ownerId: "desktop-app",
+			protocolVersion: 2 as const,
+			capabilities: [{ operation: "generate" as const, kind: "image" as const, modes: ["text-to-image" as const] }],
+		},
+		{
+			id: "remote:images",
+			ownerId: "remote",
+			protocolVersion: 2 as const,
+			capabilities: [{ operation: "generate" as const, kind: "image" as const, modes: ["text-to-image" as const] }],
+		},
+	];
+
+	it("prefers the configured provider over the built-in provider", () => {
+		expect(selectImageProvider(providers, "text-to-image", "remote:images").id).toBe("remote:images");
+	});
+
+	it("fails closed when a configured provider is unavailable", () => {
+		expect(() => selectImageProvider(providers, "text-to-image", "missing:provider")).toThrow(
+			"selected image provider is unavailable",
+		);
+	});
+
+	it("keeps the built-in provider as the automatic default", () => {
+		expect(selectImageProvider(providers, "text-to-image").id).toBe("desktop-app:vetta");
 	});
 });
 

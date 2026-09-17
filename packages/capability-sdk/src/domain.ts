@@ -8,6 +8,8 @@ export {
 	type AgentExperimentalSettingsUpdate,
 	DOMAIN_AGENT_SETTINGS_CAPABILITIES,
 	DOMAIN_AGENT_SETTINGS_CAPABILITY_CATALOG,
+	type ImageGenerationSettings,
+	type ImageGenerationSettingsUpdate,
 } from "./domain/agent-settings.js";
 export {
 	type AiChatInput,

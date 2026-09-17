@@ -2,6 +2,10 @@
 
 All notable changes to `@vetta-org/capability-sdk` are documented in this file.
 
+## [Unreleased]
+
+- 新增 Agent 图片生成设置能力，允许官方插件读取或更新文生图、图生图 Provider 偏好，并以空值恢复自动选择。
+
 ## [0.1.0] — 2026-09-14
 
 首次发布到 npm。此前它只作为 workspace 包在仓库内被引用，但 `@vetta-org/plugin-sdk`

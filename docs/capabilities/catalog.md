@@ -46,6 +46,8 @@
 | `cap.foundation.vetta.gateway.request` | foundation | command | 1 |
 | `cap.domain.vetta.agent-settings.experimental.get` | domain | query | 1 |
 | `cap.domain.vetta.agent-settings.experimental.set` | domain | command | 1 |
+| `cap.domain.vetta.agent-settings.image-generation.get` | domain | query | 1 |
+| `cap.domain.vetta.agent-settings.image-generation.set` | domain | command | 1 |
 | `cap.domain.vetta.ai.models.list` | domain | query | 1 |
 | `cap.domain.vetta.ai.complete` | domain | command | 1 |
 | `cap.domain.vetta.ai.chat` | domain | command | 1 |

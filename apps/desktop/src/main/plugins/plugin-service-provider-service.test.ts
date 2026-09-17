@@ -184,6 +184,20 @@ describe("PluginServiceProviderService", () => {
 		f.service.stopAll();
 	});
 
+	it("allows the five-minute timeout required by long-running media generation", async () => {
+		const f = await fixture();
+		await f.service.start(f.plugin.id, "bridge");
+
+		await expect(
+			f.service.request(f.plugin.id, "bridge", {
+				path: "/images/generate",
+				method: "POST",
+				timeoutMs: 300_000,
+			}),
+		).resolves.toMatchObject({ ok: true, status: 200 });
+		f.service.stopAll();
+	});
+
 	it("reports the plugin and service when a request times out without logging credentials", async () => {
 		const f = await fixture();
 		await f.service.start(f.plugin.id, "bridge");

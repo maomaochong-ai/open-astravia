@@ -204,6 +204,14 @@ export function registerPluginCapabilitiesIpc(): () => void {
 		(_event, sessionId: unknown, input: unknown) =>
 			adapter.setAgentExperimental(requireString(sessionId, "sessionId"), input),
 	);
+	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.AGENT_SETTINGS_IMAGE_GENERATION_GET, (_event, sessionId: unknown) =>
+		adapter.getAgentImageGeneration(requireString(sessionId, "sessionId")),
+	);
+	ipcMain.handle(
+		PLUGIN_CAPABILITY_CHANNELS.AGENT_SETTINGS_IMAGE_GENERATION_SET,
+		(_event, sessionId: unknown, input: unknown) =>
+			adapter.setAgentImageGeneration(requireString(sessionId, "sessionId"), input),
+	);
 	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.GENERAL_SETTINGS_GET, (_event, sessionId: unknown) =>
 		adapter.getGeneralSettings(requireString(sessionId, "sessionId")),
 	);

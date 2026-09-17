@@ -177,6 +177,8 @@ export type {
 	PluginOfficialGeneralSettings,
 	PluginOfficialGeneralSettingsUpdate,
 	PluginOfficialExperimentalSettings,
+	PluginOfficialImageGenerationSettings,
+	PluginOfficialImageGenerationSettingsUpdate,
 	PluginOfficialDownloadItem,
 	PluginOfficialUpdaterState,
 	PluginOfficialWebhookKind,

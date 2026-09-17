@@ -1,9 +1,12 @@
+import type { MediaProviderDescriptor } from "@vetta-org/capability-sdk";
 import { ipcMain } from "electron";
 import { parseFile } from "music-metadata";
 import type { AudioMetadata } from "../../preload/api-types/media.js";
+import { getDesktopMediaRuntime } from "../capabilities/media-providers.js";
 import { assertPathReadableForPreview } from "./fs.js";
 
 const CHANNELS = {
+	LIST_PROVIDERS: "vetta:media:list-providers",
 	AUDIO_METADATA: "vetta:media:audio-metadata",
 } as const;
 
@@ -13,6 +16,13 @@ const CHANNELS = {
  * 渲染进程只拿到一张小封面 DataURL 而非整个音频文件。
  */
 export function registerMediaIpc(): () => void {
+	ipcMain.handle(CHANNELS.LIST_PROVIDERS, (): MediaProviderDescriptor[] => {
+		try {
+			return getDesktopMediaRuntime().providers.listProviders();
+		} catch {
+			return [];
+		}
+	});
 	ipcMain.handle(CHANNELS.AUDIO_METADATA, async (_event, filePath: unknown): Promise<AudioMetadata> => {
 		if (typeof filePath !== "string" || filePath.trim().length === 0) {
 			throw new Error("Invalid filePath");
@@ -36,6 +46,7 @@ export function registerMediaIpc(): () => void {
 	});
 
 	return () => {
+		ipcMain.removeHandler(CHANNELS.LIST_PROVIDERS);
 		ipcMain.removeHandler(CHANNELS.AUDIO_METADATA);
 	};
 }

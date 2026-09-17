@@ -7,13 +7,16 @@ import { MotionSelect, SettingHeading, SettingRow, SettingSection } from "@vetta
 import type { AgentSettingsModel } from "./useAgentSettingsModel";
 import { RuntimeConfigurationSections } from "./RuntimeConfigurationSections";
 import type { RuntimeConfigurationModel } from "./useRuntimeConfigurationModel";
+import { ImageGenerationSettingsSection } from "./ImageGenerationSettingsSection";
+import type { ImageGenerationSettingsModel } from "./useImageGenerationSettingsModel";
 
 export interface AgentSettingsViewProps {
 	model: AgentSettingsModel;
+	imageGeneration: ImageGenerationSettingsModel;
 	runtimeConfiguration: RuntimeConfigurationModel;
 }
 
-export function AgentSettingsView({ model, runtimeConfiguration }: AgentSettingsViewProps): JSX.Element {
+export function AgentSettingsView({ model, imageGeneration, runtimeConfiguration }: AgentSettingsViewProps): JSX.Element {
 	const personaOptions = useMemo(
 		() => model.personas.map((persona) => ({ value: persona.id, label: persona.label })),
 		[model.personas],
@@ -83,6 +86,8 @@ export function AgentSettingsView({ model, runtimeConfiguration }: AgentSettings
 					</Button>
 				</div>
 			</div>
+
+			<ImageGenerationSettingsSection model={imageGeneration} />
 
 			<div>
 				<SettingSection title={model.labels.sections.experimental} section={SETTINGS_SECTION["agent-experimental"]}>

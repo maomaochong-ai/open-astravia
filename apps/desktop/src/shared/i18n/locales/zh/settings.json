@@ -610,6 +610,15 @@
     "apply": "应用",
     "applied": "已应用",
     "saving": "保存中",
+    "imageGeneration": {
+      "auto": "自动选择",
+      "description": "选择 Agent 生成或编辑图片时使用的默认服务。",
+      "imageToImage": "图生图 Provider",
+      "loading": "正在读取图片生成服务…",
+      "noProviders": "当前没有可用的图片生成服务。",
+      "textToImage": "文生图 Provider",
+      "unavailable": "不可用"
+    },
     "maxRecentImages": "上下文保留图片数",
     "images": "张",
     "maxRecentImagesDesc": "上下文中最多保留最近几张图片，更早的图片会被替换为文字占位以节省显存 / token。",

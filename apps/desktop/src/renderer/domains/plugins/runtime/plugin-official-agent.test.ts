@@ -11,6 +11,8 @@ describe("createOfficialAgentApi", () => {
 		const agentSettings = {
 			getExperimental: vi.fn().mockResolvedValue(settings),
 			setExperimental: vi.fn().mockResolvedValue({ ...settings, promptPrediction: true }),
+			getImageGeneration: vi.fn().mockResolvedValue({}),
+			setImageGeneration: vi.fn().mockResolvedValue({ textToImageProviderId: "remote:images" }),
 		};
 		Object.defineProperty(globalThis, "window", {
 			configurable: true,
@@ -29,6 +31,14 @@ describe("createOfficialAgentApi", () => {
 		expect(agentSettings.getExperimental).toHaveBeenCalledWith("capability-session");
 		expect(agentSettings.setExperimental).toHaveBeenCalledWith("capability-session", {
 			promptPrediction: true,
+		});
+		await expect(api.getImageGeneration()).resolves.toEqual({});
+		await expect(api.setImageGeneration({ textToImageProviderId: "remote:images" })).resolves.toEqual({
+			textToImageProviderId: "remote:images",
+		});
+		expect(agentSettings.getImageGeneration).toHaveBeenCalledWith("capability-session");
+		expect(agentSettings.setImageGeneration).toHaveBeenCalledWith("capability-session", {
+			textToImageProviderId: "remote:images",
 		});
 	});
 });

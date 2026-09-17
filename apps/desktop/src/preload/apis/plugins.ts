@@ -103,6 +103,10 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.AGENT_SETTINGS_EXPERIMENTAL_GET, sessionId),
 					setExperimental: (sessionId, input) =>
 						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.AGENT_SETTINGS_EXPERIMENTAL_SET, sessionId, input),
+					getImageGeneration: (sessionId) =>
+						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.AGENT_SETTINGS_IMAGE_GENERATION_GET, sessionId),
+					setImageGeneration: (sessionId, input) =>
+						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.AGENT_SETTINGS_IMAGE_GENERATION_SET, sessionId, input),
 				},
 				generalSettings: {
 					get: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.GENERAL_SETTINGS_GET, sessionId),

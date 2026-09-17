@@ -77,6 +77,11 @@ try {
 
 消费插件可用 `onProvidersChanged()` 监听 Provider 增删，并重新执行能力发现。插件并行激活时不能依赖固定加载顺序。
 
+官方系统插件如果需要遵循宿主 Agent 的图片 Provider 选择，应使用 `ctx.official.agent.getImageGeneration()` 读取
+`textToImageProviderId` / `imageToImageProviderId`，再把值传给自己的策略选择器；未设置时由插件按能力定义自动选择。
+已保存但当前不存在或不支持对应模式的 Provider 必须报告 `provider-unavailable`，不能静默切换到另一家服务。
+Provider 的凭据、模型和服务端参数仍由 Provider 自己管理，不应复制到 Agent 设置。
+
 ## 注册 Provider
 
 Provider 插件需要 `media.provider.register`。只有远程传输才需要 `network.fetch`；本地渲染输出可使用插件 Blob 或工作区文件。
