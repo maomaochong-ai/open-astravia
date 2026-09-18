@@ -98,7 +98,14 @@ export function PetVideoSurface({
 	}, []);
 
 	if (!shouldShowVideo) {
-		return <MissingPetVideo />;
+		return (
+			<div
+				ref={videoRef}
+				className="relative"
+			>
+				<MissingPetVideo />
+			</div>
+		);
 	}
 
 	return (

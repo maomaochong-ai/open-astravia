@@ -5,6 +5,7 @@ import { applyInitialTheme, applyStoredTheme, MODE_STORAGE_KEY, THEME_STORAGE_KE
 import { applyStoredCursorStyle, CURSOR_STORAGE_KEY, LEGACY_CURSOR_STORAGE_KEY } from "./shared/theme/cursor";
 import { initializeRendererErrorMonitoring } from "./telemetry/error-monitoring";
 import "./styles.css";
+import "./pet-shell.css";
 
 initializeRendererErrorMonitoring("pet");
 
