@@ -34,6 +34,11 @@ export interface PresetProviderInfo {
 	icon: string;
 	/** 公共目录里该家的模型(免 key 可见)。填 key 后由账号实际可用的 /models 结果取代。 */
 	catalogModels: ModelDefinition[];
+	/**
+	 * 已被新一代取代的模型,默认收起。与 catalogModels 不重叠,拼起来才是该家的完整目录——
+	 * 渲染层必须给出展开入口,否则老模型就等于被删掉了(见 model-tiers.ts 的取舍)。
+	 */
+	legacyCatalogModels: ModelDefinition[];
 }
 
 export interface PresetProvidersResult {
@@ -68,18 +73,23 @@ export async function listPresetProviders(): Promise<PresetProvidersResult> {
 			api: def.api,
 			baseUrl: def.baseUrl,
 			icon: def.icon,
-			catalogModels: catalogModelsFor(catalog, def),
+			...catalogModelsFor(catalog, def),
 		})),
 	};
 }
 
-function catalogModelsFor(catalog: ModelsDevCatalog | null, def: PresetProviderDef): ModelDefinition[] {
+function catalogModelsFor(
+	catalog: ModelsDevCatalog | null,
+	def: PresetProviderDef,
+): Pick<PresetProviderInfo, "catalogModels" | "legacyCatalogModels"> {
 	const entries = catalog?.providers[def.id];
-	if (!entries) return [];
-	const models = Object.values(entries)
-		.filter((entry) => def.isChatModel(entry.model.id))
-		.map((entry) => entry.model);
-	return enrichModelsFromCatalog(catalog, def.id, models);
+	if (!entries) return { catalogModels: [], legacyCatalogModels: [] };
+	const chat = Object.values(entries).filter((entry) => def.isChatModel(entry.model.id));
+	const enrich = (models: ModelDefinition[]): ModelDefinition[] => enrichModelsFromCatalog(catalog, def.id, models);
+	return {
+		catalogModels: enrich(chat.filter((entry) => !entry.legacy).map((entry) => entry.model)),
+		legacyCatalogModels: enrich(chat.filter((entry) => entry.legacy).map((entry) => entry.model)),
+	};
 }
 
 /**

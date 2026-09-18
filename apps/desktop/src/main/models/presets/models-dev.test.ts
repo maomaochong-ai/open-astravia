@@ -72,6 +72,31 @@ async function fetchCatalog(): Promise<ModelsDevCatalog> {
 }
 
 describe("models.dev 目录", () => {
+	it("被同档位新一代取代的模型标为历史,当代不标", async () => {
+		const catalog = buildCatalog(
+			{
+				anthropic: {
+					models: {
+						"claude-opus-5": {
+							family: "claude-opus",
+							release_date: "2026-07-24",
+							modalities: { output: ["text"] },
+						},
+						"claude-opus-4-8": {
+							family: "claude-opus",
+							release_date: "2026-05-28",
+							modalities: { output: ["text"] },
+						},
+					},
+				},
+			},
+			NOW,
+		);
+
+		expect(catalog.providers.claude["claude-opus-5"].legacy).toBeUndefined();
+		expect(catalog.providers.claude["claude-opus-4-8"].legacy).toBe(true);
+	});
+
 	it("只保留预设服务商并折算成 ModelDefinition", async () => {
 		const catalog = await fetchCatalog();
 
@@ -172,6 +197,25 @@ describe("随包内置快照", () => {
 				expect(entry.model?.id, `${presetId}/${id}`).toBe(id);
 			}
 		}
+	});
+
+	it("每家都有可选的当前模型——代际收敛不能把整家清空", () => {
+		// 收敛规则误伤时最坏的表现是某家只剩历史模型,用户打开设置页看到空列表还以为目录拉挂了。
+		for (const [presetId, entries] of Object.entries(MODELS_DEV_SNAPSHOT.providers)) {
+			const current = Object.values(entries).filter((entry) => !entry.legacy);
+			expect(current.length, presetId).toBeGreaterThan(0);
+		}
+	});
+
+	it("被新一代取代的模型标为历史,当代与无继任者的档位保留", () => {
+		const claude = MODELS_DEV_SNAPSHOT.providers.claude;
+		const openai = MODELS_DEV_SNAPSHOT.providers.openai;
+
+		// o 系列早被 gpt-5 系列取代,上游却一直没标 deprecated——正是收敛要处理的那批。
+		expect(openai.o3?.legacy).toBe(true);
+		// Haiku 4.5 没有继任者,仍是该档唯一在售选项,不能被收进历史。
+		expect(claude["claude-haiku-4-5"]?.legacy).toBeUndefined();
+		expect(claude["claude-sonnet-4-5"]?.legacy).toBe(true);
 	});
 
 	it("目录中的可用模型不会再按系列折叠", () => {

@@ -15,9 +15,10 @@ export interface PresetProviderDef {
 }
 
 // live / realtime 走独立的双向流式接口,veo / lyria / imagen 是视频音乐图像生成模型,
+// deep-research / computer-use / 角色定制版走各自的专用接口或专用参数,当普通对话模型用会报错,
 // 都不能当普通对话模型用,一并滤掉。
 const NON_CHAT =
-	/embedding|embed|whisper|tts|audio|realtime|-live-|moderation|dall-e|image|transcribe|rerank|vision-ocr|veo-|lyria|imagen/i;
+	/embedding|embed|whisper|tts|audio|realtime|-live-|moderation|dall-e|image|transcribe|rerank|vision-ocr|veo-|lyria|imagen|deep-research|computer-use|-character|livetranslate/i;
 
 export const PRESET_PROVIDERS: readonly PresetProviderDef[] = [
 	{

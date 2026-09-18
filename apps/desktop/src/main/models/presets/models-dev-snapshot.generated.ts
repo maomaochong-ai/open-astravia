@@ -3,8 +3,8 @@
 import type { ModelsDevCatalog } from "./models-dev.js";
 
 export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
-	version: 4,
-	fetchedAt: "2026-09-18T04:46:25.592Z",
+	version: 5,
+	fetchedAt: "2026-09-18T06:44:04.815Z",
 	providers: {
 		claude: {
 			"claude-sonnet-4-6": {
@@ -23,6 +23,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 3.75,
 					},
 				},
+				legacy: true,
 			},
 			"claude-opus-5": {
 				model: {
@@ -57,6 +58,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 6.25,
 					},
 				},
+				legacy: true,
 			},
 			"claude-fable-5-1": {
 				model: {
@@ -91,6 +93,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 6.25,
 					},
 				},
+				legacy: true,
 			},
 			"claude-sonnet-4-5-20250929": {
 				model: {
@@ -107,6 +110,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 3.75,
 					},
 				},
+				legacy: true,
 			},
 			"claude-opus-4-7": {
 				model: {
@@ -124,6 +128,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 6.25,
 					},
 				},
+				legacy: true,
 			},
 			"claude-haiku-4-5-20251001": {
 				model: {
@@ -140,6 +145,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 1.25,
 					},
 				},
+				legacy: true,
 			},
 			"claude-fable-5": {
 				model: {
@@ -157,6 +163,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 12.5,
 					},
 				},
+				legacy: true,
 			},
 			"claude-haiku-4-5": {
 				model: {
@@ -189,6 +196,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 3.75,
 					},
 				},
+				legacy: true,
 			},
 			"claude-opus-4-8": {
 				model: {
@@ -206,6 +214,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 6.25,
 					},
 				},
+				legacy: true,
 			},
 			"claude-sonnet-5": {
 				model: {
@@ -240,6 +249,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 6.25,
 					},
 				},
+				legacy: true,
 			},
 		},
 		openai: {
@@ -259,6 +269,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"gpt-5-pro": {
 				model: {
@@ -276,14 +287,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
-			},
-			"chatgpt-image-latest": {
-				model: {
-					id: "chatgpt-image-latest",
-					name: "chatgpt-image-latest",
-					reasoning: false,
-					input: ["text", "image"],
-				},
+				legacy: true,
 			},
 			"gpt-5.6-sol": {
 				model: {
@@ -317,6 +321,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"gpt-6-astra": {
 				model: {
@@ -351,6 +356,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"gpt-5.3-codex-spark": {
 				model: {
@@ -384,6 +390,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"gpt-5.4": {
 				model: {
@@ -401,6 +408,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"gpt-5.1": {
 				model: {
@@ -418,6 +426,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"gpt-4o": {
 				model: {
@@ -434,6 +443,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"gpt-5.6-luna": {
 				model: {
@@ -484,14 +494,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
-			},
-			"gpt-image-1.5": {
-				model: {
-					id: "gpt-image-1.5",
-					name: "gpt-image-1.5",
-					reasoning: false,
-					input: ["text", "image"],
-				},
+				legacy: true,
 			},
 			"gpt-4.1": {
 				model: {
@@ -508,22 +511,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
-			},
-			"text-embedding-ada-002": {
-				model: {
-					id: "text-embedding-ada-002",
-					name: "text-embedding-ada-002",
-					reasoning: false,
-					input: ["text"],
-					contextWindow: 8192,
-					maxTokens: 1536,
-					cost: {
-						input: 0.1,
-						output: 0,
-						cacheRead: 0,
-						cacheWrite: 0,
-					},
-				},
+				legacy: true,
 			},
 			"gpt-5.4-nano": {
 				model: {
@@ -557,14 +545,6 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheRead: 0,
 						cacheWrite: 0,
 					},
-				},
-			},
-			"gpt-image-1-mini": {
-				model: {
-					id: "gpt-image-1-mini",
-					name: "gpt-image-1-mini",
-					reasoning: false,
-					input: ["text", "image"],
 				},
 			},
 			"gpt-5.4-mini": {
@@ -601,22 +581,6 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 			},
-			"text-embedding-3-small": {
-				model: {
-					id: "text-embedding-3-small",
-					name: "text-embedding-3-small",
-					reasoning: false,
-					input: ["text"],
-					contextWindow: 8191,
-					maxTokens: 1536,
-					cost: {
-						input: 0.02,
-						output: 0,
-						cacheRead: 0,
-						cacheWrite: 0,
-					},
-				},
-			},
 			"gpt-5-mini": {
 				model: {
 					id: "gpt-5-mini",
@@ -633,6 +597,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"gpt-5.4-pro": {
 				model: {
@@ -650,22 +615,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
-			},
-			"text-embedding-3-large": {
-				model: {
-					id: "text-embedding-3-large",
-					name: "text-embedding-3-large",
-					reasoning: false,
-					input: ["text"],
-					contextWindow: 8191,
-					maxTokens: 3072,
-					cost: {
-						input: 0.13,
-						output: 0,
-						cacheRead: 0,
-						cacheWrite: 0,
-					},
-				},
+				legacy: true,
 			},
 			"gpt-5.6-terra": {
 				model: {
@@ -700,6 +650,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"gpt-5": {
 				model: {
@@ -717,23 +668,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
-			},
-			"gpt-realtime-2.1": {
-				model: {
-					id: "gpt-realtime-2.1",
-					name: "GPT-Realtime-2.1",
-					reasoning: true,
-					reasoningLevels: ["minimal", "low", "medium", "high", "xhigh"],
-					input: ["text", "image"],
-					contextWindow: 128000,
-					maxTokens: 32000,
-					cost: {
-						input: 4,
-						output: 24,
-						cacheRead: 0.4,
-						cacheWrite: 0,
-					},
-				},
+				legacy: true,
 			},
 			o3: {
 				model: {
@@ -751,6 +686,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"o3-pro": {
 				model: {
@@ -768,6 +704,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"gpt-5.5": {
 				model: {
@@ -801,6 +738,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 		},
 		deepseek: {
@@ -820,6 +758,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"deepseek-v4-flash": {
 				model: {
@@ -837,6 +776,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"deepseek-v4-pro": {
 				model: {
@@ -889,6 +829,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"glm-4.5-air": {
 				model: {
@@ -921,6 +862,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"glm-4.6v": {
 				model: {
@@ -937,6 +879,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"glm-5.2": {
 				model: {
@@ -954,6 +897,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"glm-4.5-flash": {
 				model: {
@@ -970,6 +914,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"glm-5.3-flash": {
 				model: {
@@ -1003,6 +948,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"glm-4.5v": {
 				model: {
@@ -1019,6 +965,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"glm-4.7-flashx": {
 				model: {
@@ -1051,6 +998,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"glm-5.1": {
 				model: {
@@ -1067,6 +1015,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"glm-5-turbo": {
 				model: {
@@ -1083,6 +1032,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"glm-5.3": {
 				model: {
@@ -1132,6 +1082,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 		},
 		kimi: {
@@ -1150,6 +1101,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"kimi-k2.6": {
 				model: {
@@ -1166,6 +1118,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"kimi-k2.7-code": {
 				model: {
@@ -1211,6 +1164,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					contextWindow: 262144,
 					maxTokens: 32768,
 				},
+				legacy: true,
 			},
 			"gemini-3.1-pro-preview-customtools": {
 				model: {
@@ -1228,88 +1182,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
-			},
-			"gemini-3.1-flash-lite-image": {
-				model: {
-					id: "gemini-3.1-flash-lite-image",
-					name: "Nano Banana 2 Lite",
-					reasoning: true,
-					reasoningLevels: ["minimal", "high"],
-					input: ["text", "image"],
-					contextWindow: 65536,
-					maxTokens: 65536,
-					cost: {
-						input: 0.25,
-						output: 30,
-						cacheRead: 0,
-						cacheWrite: 0,
-					},
-				},
-			},
-			"lyria-3-clip-preview": {
-				model: {
-					id: "lyria-3-clip-preview",
-					name: "Lyria 3 Clip Preview",
-					reasoning: false,
-					input: ["text", "image"],
-					contextWindow: 1048576,
-					maxTokens: 65536,
-					cost: {
-						input: 0,
-						output: 0,
-						cacheRead: 0,
-						cacheWrite: 0,
-					},
-				},
-			},
-			"gemini-2.5-flash-image": {
-				model: {
-					id: "gemini-2.5-flash-image",
-					name: "Nano Banana",
-					reasoning: true,
-					input: ["text", "image"],
-					contextWindow: 32768,
-					maxTokens: 32768,
-					cost: {
-						input: 0.3,
-						output: 30,
-						cacheRead: 0.075,
-						cacheWrite: 0,
-					},
-				},
-			},
-			"deep-research-max-preview-04-2026": {
-				model: {
-					id: "deep-research-max-preview-04-2026",
-					name: "Deep Research Max Preview (Apr-21-2026)",
-					reasoning: true,
-					input: ["text", "image"],
-					contextWindow: 131072,
-					maxTokens: 65536,
-					cost: {
-						input: 2,
-						output: 12,
-						cacheRead: 0.2,
-						cacheWrite: 0,
-					},
-				},
-			},
-			"gemini-3-pro-image": {
-				model: {
-					id: "gemini-3-pro-image",
-					name: "Nano Banana Pro",
-					reasoning: true,
-					reasoningLevels: ["low", "high"],
-					input: ["text", "image"],
-					contextWindow: 131072,
-					maxTokens: 32768,
-					cost: {
-						input: 2,
-						output: 120,
-						cacheRead: 0,
-						cacheWrite: 0,
-					},
-				},
+				legacy: true,
 			},
 			"gemini-3.1-pro-preview": {
 				model: {
@@ -1319,22 +1192,6 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					reasoningLevels: ["low", "medium", "high"],
 					input: ["text", "image"],
 					contextWindow: 1048576,
-					maxTokens: 65536,
-					cost: {
-						input: 2,
-						output: 12,
-						cacheRead: 0.2,
-						cacheWrite: 0,
-					},
-				},
-			},
-			"deep-research-preview-04-2026": {
-				model: {
-					id: "deep-research-preview-04-2026",
-					name: "Deep Research Preview (Apr-21-2026)",
-					reasoning: true,
-					input: ["text", "image"],
-					contextWindow: 131072,
 					maxTokens: 65536,
 					cost: {
 						input: 2,
@@ -1359,22 +1216,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
-			},
-			"gemini-2.5-computer-use-preview-10-2025": {
-				model: {
-					id: "gemini-2.5-computer-use-preview-10-2025",
-					name: "Gemini 2.5 Computer Use Preview 10-2025",
-					reasoning: true,
-					input: ["text", "image"],
-					contextWindow: 131072,
-					maxTokens: 65536,
-					cost: {
-						input: 1.25,
-						output: 10,
-						cacheRead: 0,
-						cacheWrite: 0,
-					},
-				},
+				legacy: true,
 			},
 			"gemini-3.6-flash": {
 				model: {
@@ -1392,6 +1234,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"gemini-3.1-flash-lite": {
 				model: {
@@ -1409,23 +1252,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
-			},
-			"gemini-3.1-flash-live-preview": {
-				model: {
-					id: "gemini-3.1-flash-live-preview",
-					name: "Gemini 3.1 Flash Live Preview",
-					reasoning: true,
-					reasoningLevels: ["minimal", "low", "medium", "high"],
-					input: ["text", "image"],
-					contextWindow: 131072,
-					maxTokens: 65536,
-					cost: {
-						input: 0.75,
-						output: 4.5,
-						cacheRead: 0,
-						cacheWrite: 0,
-					},
-				},
+				legacy: true,
 			},
 			"gemini-3.5-flash": {
 				model: {
@@ -1443,39 +1270,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
-			},
-			"gemini-embedding-001": {
-				model: {
-					id: "gemini-embedding-001",
-					name: "Gemini Embedding 001",
-					reasoning: false,
-					input: ["text"],
-					contextWindow: 2048,
-					maxTokens: 1,
-					cost: {
-						input: 0.15,
-						output: 0,
-						cacheRead: 0,
-						cacheWrite: 0,
-					},
-				},
-			},
-			"gemini-3.1-flash-image": {
-				model: {
-					id: "gemini-3.1-flash-image",
-					name: "Nano Banana 2",
-					reasoning: true,
-					reasoningLevels: ["minimal", "high"],
-					input: ["text", "image"],
-					contextWindow: 65536,
-					maxTokens: 65536,
-					cost: {
-						input: 0.5,
-						output: 60,
-						cacheRead: 0,
-						cacheWrite: 0,
-					},
-				},
+				legacy: true,
 			},
 			"gemini-3.5-flash-lite": {
 				model: {
@@ -1490,22 +1285,6 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						input: 0.3,
 						output: 2.5,
 						cacheRead: 0.03,
-						cacheWrite: 0,
-					},
-				},
-			},
-			"gemini-3-pro-image-preview": {
-				model: {
-					id: "gemini-3-pro-image-preview",
-					name: "Nano Banana Pro",
-					reasoning: true,
-					input: ["text", "image"],
-					contextWindow: 131072,
-					maxTokens: 32768,
-					cost: {
-						input: 2,
-						output: 120,
-						cacheRead: 0,
 						cacheWrite: 0,
 					},
 				},
@@ -1526,6 +1305,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"gemma-4-31b-it": {
 				model: {
@@ -1535,22 +1315,6 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					input: ["text", "image"],
 					contextWindow: 262144,
 					maxTokens: 32768,
-				},
-			},
-			"gemini-embedding-2": {
-				model: {
-					id: "gemini-embedding-2",
-					name: "Gemini Embedding 2",
-					reasoning: false,
-					input: ["text", "image"],
-					contextWindow: 8192,
-					maxTokens: 1,
-					cost: {
-						input: 0.2,
-						output: 0,
-						cacheRead: 0,
-						cacheWrite: 0,
-					},
 				},
 			},
 			"gemini-3-flash-preview": {
@@ -1569,6 +1333,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"gemini-3.8-flash": {
 				model: {
@@ -1583,37 +1348,6 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						input: 0.75,
 						output: 3.75,
 						cacheRead: 0.075,
-						cacheWrite: 0,
-					},
-				},
-			},
-			"gemini-3.5-live-translate-preview": {
-				model: {
-					id: "gemini-3.5-live-translate-preview",
-					name: "Gemini 3.5 Live Translate Preview",
-					reasoning: false,
-					contextWindow: 16384,
-					maxTokens: 32768,
-					cost: {
-						input: 3.5,
-						output: 21,
-						cacheRead: 0,
-						cacheWrite: 0,
-					},
-				},
-			},
-			"lyria-3-pro-preview": {
-				model: {
-					id: "lyria-3-pro-preview",
-					name: "Lyria 3 Pro Preview",
-					reasoning: false,
-					input: ["text", "image"],
-					contextWindow: 1048576,
-					maxTokens: 65536,
-					cost: {
-						input: 0,
-						output: 0,
-						cacheRead: 0,
 						cacheWrite: 0,
 					},
 				},
@@ -1634,6 +1368,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"gemini-2.5-pro": {
 				model: {
@@ -1650,6 +1385,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"gemini-flash-latest": {
 				model: {
@@ -1667,23 +1403,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
-			},
-			"gemini-3.1-flash-image-preview": {
-				model: {
-					id: "gemini-3.1-flash-image-preview",
-					name: "Nano Banana 2",
-					reasoning: true,
-					reasoningLevels: ["minimal", "high"],
-					input: ["text", "image"],
-					contextWindow: 65536,
-					maxTokens: 65536,
-					cost: {
-						input: 0.5,
-						output: 60,
-						cacheRead: 0,
-						cacheWrite: 0,
-					},
-				},
+				legacy: true,
 			},
 			"gemini-2.5-flash": {
 				model: {
@@ -1700,6 +1420,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 		},
 		grok: {
@@ -1719,6 +1440,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"grok-4.20-0309-reasoning": {
 				model: {
@@ -1735,6 +1457,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"grok-4.20-multi-agent-0309": {
 				model: {
@@ -1752,6 +1475,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"grok-4.5": {
 				model: {
@@ -1769,6 +1493,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"grok-build-0.1": {
 				model: {
@@ -1818,6 +1543,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 		},
 		qwen: {
@@ -1836,6 +1562,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 3.125,
 					},
 				},
+				legacy: true,
 			},
 			"qwen2-5-72b-instruct": {
 				model: {
@@ -1852,23 +1579,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
-			},
-			"deepseek-v4-flash-0731": {
-				model: {
-					id: "deepseek-v4-flash-0731",
-					name: "DeepSeek V4 Flash 0731",
-					reasoning: true,
-					reasoningLevels: ["high", "max"],
-					input: ["text"],
-					contextWindow: 1000000,
-					maxTokens: 384000,
-					cost: {
-						input: 0.2,
-						output: 0.4,
-						cacheRead: 0.04,
-						cacheWrite: 0,
-					},
-				},
+				legacy: true,
 			},
 			"qwen3-coder-plus": {
 				model: {
@@ -1901,6 +1612,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"qwen2-5-omni-7b": {
 				model: {
@@ -1917,22 +1629,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
-			},
-			"qwen-mt-turbo": {
-				model: {
-					id: "qwen-mt-turbo",
-					name: "Qwen-MT Turbo",
-					reasoning: false,
-					input: ["text"],
-					contextWindow: 16384,
-					maxTokens: 8192,
-					cost: {
-						input: 0.16,
-						output: 0.49,
-						cacheRead: 0,
-						cacheWrite: 0,
-					},
-				},
+				legacy: true,
 			},
 			"qwen-vl-max": {
 				model: {
@@ -1949,6 +1646,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"qwen3-next-80b-a3b-instruct": {
 				model: {
@@ -1965,6 +1663,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"qwen3-coder-flash": {
 				model: {
@@ -1997,6 +1696,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"qwen-max": {
 				model: {
@@ -2013,6 +1713,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"qwen3.6-plus": {
 				model: {
@@ -2029,6 +1730,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0.625,
 					},
 				},
+				legacy: true,
 			},
 			"qwen-vl-plus": {
 				model: {
@@ -2045,22 +1747,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
-			},
-			"qwen-omni-turbo-realtime": {
-				model: {
-					id: "qwen-omni-turbo-realtime",
-					name: "Qwen-Omni Turbo Realtime",
-					reasoning: false,
-					input: ["text", "image"],
-					contextWindow: 32768,
-					maxTokens: 2048,
-					cost: {
-						input: 0.27,
-						output: 1.07,
-						cacheRead: 0,
-						cacheWrite: 0,
-					},
-				},
+				legacy: true,
 			},
 			"qwen3.5-27b": {
 				model: {
@@ -2077,6 +1764,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"qwen3.5-35b-a3b": {
 				model: {
@@ -2093,6 +1781,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"qwen-flash": {
 				model: {
@@ -2109,23 +1798,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
-			},
-			"glm-5.2": {
-				model: {
-					id: "glm-5.2",
-					name: "GLM-5.2",
-					reasoning: true,
-					reasoningLevels: ["none", "minimal", "low", "medium", "high", "xhigh", "max"],
-					input: ["text"],
-					contextWindow: 1000000,
-					maxTokens: 131072,
-					cost: {
-						input: 1.4,
-						output: 4.4,
-						cacheRead: 0.28,
-						cacheWrite: 0,
-					},
-				},
+				legacy: true,
 			},
 			"qwen-turbo": {
 				model: {
@@ -2142,22 +1815,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
-			},
-			"qwen3-livetranslate-flash-realtime": {
-				model: {
-					id: "qwen3-livetranslate-flash-realtime",
-					name: "Qwen3-LiveTranslate Flash Realtime",
-					reasoning: false,
-					input: ["text", "image"],
-					contextWindow: 53248,
-					maxTokens: 4096,
-					cost: {
-						input: 10,
-						output: 10,
-						cacheRead: 0,
-						cacheWrite: 0,
-					},
-				},
+				legacy: true,
 			},
 			"qwen3-vl-30b-a3b": {
 				model: {
@@ -2174,22 +1832,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
-			},
-			"qwen-vl-ocr": {
-				model: {
-					id: "qwen-vl-ocr",
-					name: "Qwen-VL OCR",
-					reasoning: false,
-					input: ["text", "image"],
-					contextWindow: 34096,
-					maxTokens: 4096,
-					cost: {
-						input: 0.72,
-						output: 0.72,
-						cacheRead: 0,
-						cacheWrite: 0,
-					},
-				},
+				legacy: true,
 			},
 			"qwen3-32b": {
 				model: {
@@ -2206,6 +1849,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"qwq-plus": {
 				model: {
@@ -2222,6 +1866,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"qwen3-vl-plus": {
 				model: {
@@ -2254,6 +1899,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"qwen3-coder-30b-a3b-instruct": {
 				model: {
@@ -2270,6 +1916,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"qwen3.5-397b-a17b": {
 				model: {
@@ -2286,6 +1933,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"qwen3.6-27b": {
 				model: {
@@ -2298,21 +1946,6 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					cost: {
 						input: 0.6,
 						output: 3.6,
-						cacheRead: 0,
-						cacheWrite: 0,
-					},
-				},
-			},
-			"qwen3-asr-flash": {
-				model: {
-					id: "qwen3-asr-flash",
-					name: "Qwen3-ASR Flash",
-					reasoning: false,
-					contextWindow: 53248,
-					maxTokens: 4096,
-					cost: {
-						input: 0.035,
-						output: 0.035,
 						cacheRead: 0,
 						cacheWrite: 0,
 					},
@@ -2334,23 +1967,6 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 			},
-			"kimi-k3": {
-				model: {
-					id: "kimi-k3",
-					name: "Kimi K3",
-					reasoning: true,
-					reasoningLevels: ["low", "high", "max"],
-					input: ["text", "image"],
-					contextWindow: 1048576,
-					maxTokens: 1048576,
-					cost: {
-						input: 3,
-						output: 15,
-						cacheRead: 0.3,
-						cacheWrite: 0,
-					},
-				},
-			},
 			"qwen2-5-vl-72b-instruct": {
 				model: {
 					id: "qwen2-5-vl-72b-instruct",
@@ -2366,6 +1982,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"qwen3.6-35b-a3b": {
 				model: {
@@ -2382,6 +1999,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"qwen3-max": {
 				model: {
@@ -2398,6 +2016,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"qwen-plus": {
 				model: {
@@ -2414,6 +2033,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"qwen3.5-122b-a10b": {
 				model: {
@@ -2430,22 +2050,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
-			},
-			"qwen3-omni-flash-realtime": {
-				model: {
-					id: "qwen3-omni-flash-realtime",
-					name: "Qwen3-Omni Flash Realtime",
-					reasoning: false,
-					input: ["text", "image"],
-					contextWindow: 65536,
-					maxTokens: 16384,
-					cost: {
-						input: 0.52,
-						output: 1.99,
-						cacheRead: 0,
-						cacheWrite: 0,
-					},
-				},
+				legacy: true,
 			},
 			"qwen2-5-vl-7b-instruct": {
 				model: {
@@ -2462,6 +2067,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"qwen3.6-flash": {
 				model: {
@@ -2511,6 +2117,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"qwen3.6-max-preview": {
 				model: {
@@ -2527,22 +2134,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 1.625,
 					},
 				},
-			},
-			"qwen-plus-character-ja": {
-				model: {
-					id: "qwen-plus-character-ja",
-					name: "Qwen Plus Character (Japanese)",
-					reasoning: false,
-					input: ["text"],
-					contextWindow: 8192,
-					maxTokens: 512,
-					cost: {
-						input: 0.5,
-						output: 1.4,
-						cacheRead: 0,
-						cacheWrite: 0,
-					},
-				},
+				legacy: true,
 			},
 			"qwen3.8-max": {
 				model: {
@@ -2576,6 +2168,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"qwen3-235b-a22b": {
 				model: {
@@ -2592,6 +2185,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"qwen3.7-plus": {
 				model: {
@@ -2624,6 +2218,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"qwen3-coder-480b-a35b-instruct": {
 				model: {
@@ -2640,6 +2235,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"qwen2-5-32b-instruct": {
 				model: {
@@ -2656,6 +2252,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"qwen3-vl-235b-a22b": {
 				model: {
@@ -2672,6 +2269,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 			"qwen3.5-plus": {
 				model: {
@@ -2688,22 +2286,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
-			},
-			"qwen-mt-plus": {
-				model: {
-					id: "qwen-mt-plus",
-					name: "Qwen-MT Plus",
-					reasoning: false,
-					input: ["text"],
-					contextWindow: 16384,
-					maxTokens: 8192,
-					cost: {
-						input: 2.46,
-						output: 7.37,
-						cacheRead: 0,
-						cacheWrite: 0,
-					},
-				},
+				legacy: true,
 			},
 			"qvq-max": {
 				model: {
@@ -2720,6 +2303,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				legacy: true,
 			},
 		},
 	},

@@ -1,5 +1,7 @@
 import type { ModelDefinition } from "../model-settings-service.js";
+import { getPresetProvider } from "./catalog.js";
 import type { FetchImpl } from "./fetch.js";
+import { selectCurrentModelIds } from "./model-tiers.js";
 
 /**
  * models.dev 目录:补齐各家 `/models` 不返回的元数据(价格、上下文长度、视觉/思考能力)。
@@ -23,7 +25,7 @@ export const CATALOG_TTL_MS = 12 * 60 * 60 * 1000;
  * 新加的预设服务商就会一直显示 0 个模型(最长 12 小时)。+1 让老缓存整份作废,
  * 先退到随包快照(已含新家)再后台重拉。
  */
-const CATALOG_VERSION = 4;
+const CATALOG_VERSION = 5;
 
 /** 预设标识 → models.dev 的 provider key。 */
 const PROVIDER_KEYS: Record<string, string> = {
@@ -41,8 +43,10 @@ const PROVIDER_KEYS: Record<string, string> = {
 interface RawModel {
 	name?: string;
 	status?: string;
-	/** 仅用于兼容上游形状；不同产品档位可能共用 family，不能据此删模型。 */
+	/** 代际收敛的分组依据之一，见 model-tiers.ts；单独用它删模型仍然不行。 */
 	family?: string;
+	release_date?: string;
+	tool_call?: boolean;
 	reasoning?: boolean;
 	reasoning_options?: Array<{ type?: string; values?: string[] }>;
 	modalities?: { input?: string[]; output?: string[] };
@@ -53,6 +57,11 @@ interface RawModel {
 /** 目录条目。状态字段只用于生成时过滤，不进入缓存。 */
 export interface CatalogEntry {
 	model: ModelDefinition;
+	/**
+	 * 已被新一代取代、默认收进「历史模型」的条目。判定见 model-tiers.ts。
+	 * 只影响免 Key 时的默认展示——模型本身仍在目录里，展开即可选，元数据补齐也照旧。
+	 */
+	legacy?: true;
 }
 
 /** 只保留预设那几家、只保留用得上的字段——原始 api.json 有 170+ 家、3MB 出头。 */
@@ -102,14 +111,29 @@ function shrink(body: Record<string, { models?: Record<string, RawModel> }>): Mo
 	for (const [presetId, key] of Object.entries(PROVIDER_KEYS)) {
 		const models = body[key]?.models;
 		if (!models) continue;
-		const entries: Record<string, CatalogEntry> = {};
-		for (const [id, raw] of Object.entries(models)) {
+		// 代际收敛必须在非对话模型剔除之后跑:否则 gpt-realtime-2.1 这类会作为该组「最新一代」
+		// 把同组的对话模型顶掉,自己再被 isChatModel 滤掉,整组就一个不剩。
+		const isChatModel = getPresetProvider(presetId)?.isChatModel ?? (() => true);
+		const usable = Object.entries(models).filter(([id, raw]) => {
 			// models.dev 已明确标记下线的模型不再作为免 Key 的可选项展示。
-			if (raw.status?.toLowerCase() === "deprecated") continue;
+			if (raw.status?.toLowerCase() === "deprecated") return false;
+			if (!isChatModel(id)) return false;
 			// 只留会吐文本的模型:滤掉视频(veo)、音乐(lyria)、TTS、纯图像生成等。
 			// 与带 key 时 Gemini 按 generateContent 过滤的口径一致。
-			if (raw.modalities?.output && !raw.modalities.output.includes("text")) continue;
-			entries[id] = { model: toModelDefinition(id, raw) };
+			return !raw.modalities?.output || raw.modalities.output.includes("text");
+		});
+		// 还在售但已被新一代取代的,标记为历史,默认不进免 Key 的列表(见 model-tiers.ts)。
+		const current = selectCurrentModelIds(
+			usable.map(([id, raw]) => ({
+				id,
+				family: raw.family,
+				releaseDate: raw.release_date,
+				toolCall: raw.tool_call,
+			})),
+		);
+		const entries: Record<string, CatalogEntry> = {};
+		for (const [id, raw] of usable) {
+			entries[id] = { model: toModelDefinition(id, raw), ...(current.has(id) ? {} : { legacy: true as const }) };
 		}
 		providers[presetId] = entries;
 	}
