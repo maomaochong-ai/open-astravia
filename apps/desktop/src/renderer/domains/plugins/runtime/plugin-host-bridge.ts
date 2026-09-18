@@ -48,6 +48,7 @@ import {
 	getPluginHostBridgeRuntimeState,
 	type PluginAppActionHandlerEntry,
 } from "./plugin-host-bridge-runtime-state.js";
+import { installPluginLogSink } from "./plugin-log-sink.js";
 
 const store = getDefaultStore();
 const runtimeState = getPluginHostBridgeRuntimeState();
@@ -861,6 +862,7 @@ export const pluginHostBridge: PluginHostBridge = {
 
 /** Inject the bridge into the shared plugin-sdk and start the event translator. */
 export function installPluginHostBridge(): void {
+	installPluginLogSink();
 	startTranslator();
 	startToolRequestListener();
 	startHookRequestListener();

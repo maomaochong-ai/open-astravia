@@ -384,6 +384,17 @@ export type {
 } from "./i18n.js";
 export { interpolatePluginText, resolveCatalogKey, resolvePluginText } from "./i18n.js";
 
+// Build-bound logging
+export type {
+	PluginLogEntry,
+	PluginLogFields,
+	PluginLogIdentity,
+	PluginLogLevel,
+	PluginLogger,
+	PluginLogSink,
+} from "./logging.js";
+export { __createPluginLogger, __setPluginLogSink } from "./logging.js";
+
 // Context & lifecycle
 export type {
 	PluginPermissionApi,

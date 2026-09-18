@@ -61,7 +61,7 @@ Schema 只描述 `plugin.json` 数据本身；Plugin API 版本是否兼容、�
 | `id` | ✅ | string | 全局唯一插件 id。决定安装目录、id 冲突时的去重，建议小写短横线。 |
 | `name` | ✅ | string | 展示名。可用 `%key%`（见 [i18n](#i18n)）。 |
 | `version` | ✅ | string | 语义化版本。**bump 它可强制宿主重新拉取**绕过缓存（见 [styling-and-pitfalls.md](./styling-and-pitfalls.md)）。 |
-| `pluginApiVersion` | ✅ | string | 兼容的 SDK API 版本范围（当前为 `^2.0.0`）。 |
+| `pluginApiVersion` | ✅ | string | 兼容的宿主 Plugin API 版本范围；基础插件可用 `^2.0.0`，使用较新能力时按对应文档提高下限。 |
 | `entry` | ✅ | string | Module Federation 清单路径，通常为 `dist/mf-manifest.json`。 |
 | `moduleFederation` | ✅ | `{ remoteName, expose }` | `remoteName` 与 vite 配置 `name` 一致；`expose` 与 vite `expose` 一致（默认 `./plugin`）。 |
 | `styles` | ❌ | string[] | 要注入的 CSS 文件路径（相对插件根）。 |

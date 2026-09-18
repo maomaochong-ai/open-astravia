@@ -17,6 +17,7 @@
 | 文档 | 内容 |
 | --- | --- |
 | [getting-started.md](./getting-started.md) | 环境、脚手架、Vite/Module Federation、构建、安装（含本地路径）、调试闭环 |
+| [logging.md](./logging.md) | **插件持久化日志**：自动绑定插件身份、子作用域、结构化字段、隐私与版本要求 |
 | [ability-details.md](./ability-details.md) | **能力详情页**：`ability.json`、结构化区块、Markdown 文件引用、多语言、资源打包与限制 |
 | [guiding-the-agent.md](./guiding-the-agent.md) | **引导模型用好你的扩展**：三层心智模型、name/description 正反触发段、返回值引导、skill 渐进披露、执行边界、反模式与自检清单 |
 | [manifest.md](./manifest.md) | `plugin.json` 全字段、`commands`、`contributionMode`、`agent_mode`（已废弃）、`defaultLocale` / i18n、settings、guidingWords、agent 贡献、**贡献智能体与团队** |
@@ -56,6 +57,7 @@
 | 能力 | 入口 | 权限 | 文档 |
 | --- | --- | --- | --- |
 | **全局 Toast / 错误通知** | `ctx.ui.notify` | 无 | [ui-slots](./ui-slots.md#全局通知-notify) |
+| **持久化诊断日志** | `logger`（`@vetta-org/plugin-sdk/logger`） | 无 | [logging](./logging.md) |
 | 全局浮层 UI | `ctx.ui.registerGlobalSlot` | `ui.slot.global` | [ui-slots](./ui-slots.md#全局浮层-registerglobalslot) |
 | **工作区视图**（整页 + 侧边栏入口） | `ctx.ui.registerWorkspaceView` | `ui.slot.workspace-view` | [ui-slots](./ui-slots.md#工作区视图-registerworkspaceview) |
 | 文件预览 | `ctx.ui.registerFilePreview` | `ui.slot.file-preview` | [ui-slots](./ui-slots.md#文件预览-registerfilepreview) |
