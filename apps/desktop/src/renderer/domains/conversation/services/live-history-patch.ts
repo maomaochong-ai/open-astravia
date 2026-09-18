@@ -14,6 +14,15 @@ function sameBranch(
 	);
 }
 
+function sameModel(
+	left: Extract<ChatConversationItem, { kind: "user" }>["model"],
+	right: Extract<ChatConversationItem, { kind: "user" }>["model"],
+): boolean {
+	if (left === right) return true;
+	if (!left || !right) return !left && !right;
+	return left.provider === right.provider && left.id === right.id;
+}
+
 function withStableRenderKey<T extends ChatConversationItem>(item: T): T {
 	if (item.renderKey) return item;
 	return { ...item, renderKey: item.id };
@@ -50,10 +59,18 @@ export function patchLiveMessagesWithCanonical(
 			const entryId = canonicalItem.entryId ?? liveItem.entryId;
 			const parentId = canonicalItem.parentId ?? liveItem.parentId;
 			const branch = canonicalItem.branch ?? liveItem.branch;
+			// 本轮实际使用的模型只由落盘的 assistant 条目回填到 user 消息（见 fullHistoryToChat）。
+			// 乐观气泡带的是发送时的选中模型，队列接力消费的气泡则没有；补丁路径跳过整表投影后，
+			// 这里必须以 canonical 为准，否则「模型切换」横幅要到重开会话才出现。
+			const model =
+				canonicalItem.model && !sameModel(liveItem.model, canonicalItem.model)
+					? canonicalItem.model
+					: liveItem.model;
 			if (
 				liveItem.entryId === entryId &&
 				liveItem.parentId === parentId &&
 				sameBranch(liveItem.branch, branch) &&
+				liveItem.model === model &&
 				liveItem.deliveryPhase === "completed"
 			) {
 				next.push(liveItem);
@@ -65,6 +82,7 @@ export function patchLiveMessagesWithCanonical(
 					entryId,
 					parentId,
 					branch,
+					model,
 					deliveryPhase: "completed",
 				}),
 			);
