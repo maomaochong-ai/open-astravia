@@ -1,4 +1,4 @@
-# 提交约束（Git Commit Discipline）
+# 交付与提交约束（Delivery & Git Commit Discipline）
 
 > **最高约束层级与继承关系（Mandatory）**：
 > 0. 提交代码时不要携带`Co-Authored-By`和`Claude-Session`信息
@@ -52,7 +52,36 @@
 - **严禁未经授权 Push**：在用户未明确下达 push 指令前，严禁执行 `git push`。本地 commit 零成本，推送带全局副作用。
 
 ---
-### 五、Commit 报告规范（强制执行）
+
+### 五、发布说明补充（Release Notes，强制执行）
+
+**核心准则**：代码改完不等于任务完成，发布说明写完才算。
+
+**写入位置**：`.github/release-notes/v<版本号>.md`，一个版本一个文件。版本号以 `apps/desktop/package.json` 的 `version` 字段为准，文件不存在时直接新建。该文件会被 `desktop-release` 流水线直接用作 GitHub Release 正文，写法规范见 `.github/release-notes/README.md`。
+
+**强制触发条件**：以下任意一项完成后，必须在同一次任务内把对应条目写入当前版本的发布说明，严禁留作后续工作：
+
+- **新增**：任何新功能、新能力、新配置项。
+- **修正**：任何缺陷修复。
+- **改动**：任何对既有行为的调整，含性能、交互、文案层面用户可感知的变化。
+- **解决 PR**：合并任何 Pull Request。
+- **Close Issue**：关闭任何 issue。
+
+**书写要求**：
+
+- 按 `## 新增` / `## 改进` / `## 修复` / `## 其他` 归类，无内容的小节直接省略。
+- 站在用户视角描述影响与代价，严禁复述 diff 或罗列函数名。
+- 关联 PR 或 issue 时统一使用 `owner/repo#123` 格式（如 `openvetta/open-vetta#8`）。
+- 无用户可感知影响的纯内部改动（内部重构、测试、开发文档）仍需在「其他」留一条一句话记录。
+- 已发布版本的说明文件严禁修改；`apps/desktop/CHANGELOG.md` 自 0.5.58 起冻结，不再追加。
+
+**违规后果警告**：
+
+- **发版直接失败**：缺失对应版本文件时，`desktop-release` 的 quality 阶段即以 `node scripts/release/release-notes.mjs --check` 报错中止。
+- **补救窗口关闭**：流水线由 tag 推送触发，tag 一旦推出即开始构建，此时再补写已无法进入本次发布。
+
+---
+### 六、Commit 报告规范（强制执行）
 
 1. **触发条件**：
    - 仅当在**当前对话中实际执行了 `git commit` 并成功生成提交**时，才必须在最终回复的最底部输出提交记录。

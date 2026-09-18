@@ -230,10 +230,32 @@ Desktop 主进程部分目录还有更细规则；修改对应目录时必须继
 
 ## 发布说明与新增包
 
-- 发布说明写在 `.github/release-notes/v<版本号>.md`，一个版本一个文件，版本号以 `apps/desktop/package.json` 的 `version` 为准；该文件就是 GitHub Release 的正文，写法见 [`.github/release-notes/README.md`](.github/release-notes/README.md)。
-- 完成新功能、修复缺陷、合并 PR、关闭 issue 后，都要把对应条目补进当前开发中版本的发布说明；文件不存在就新建。面向用户描述影响与代价，不复述 diff，关联工单用 `owner/repo#123` 格式。
+发布说明写在 `.github/release-notes/v<版本号>.md`，一个版本一个文件，版本号以 `apps/desktop/package.json` 的 `version` 为准。**该文件就是 GitHub Release 的正文**，用户在 Release 页面读到的就是这里写的内容，写法见 [`.github/release-notes/README.md`](.github/release-notes/README.md)。
+
+### 必须写入发布说明
+
+以下任一情况完成后，都要把对应条目补进**当前开发中版本**的发布说明，文件不存在就新建。这是任务的一部分，不是可选的后续工作：
+
+- 新增功能或能力
+- 修复缺陷
+- 调整或修正既有行为，包括性能、交互和文案的可感知变化
+- 合并 PR
+- 关闭 issue
+
+补写发布说明与代码改动放在同一次任务里完成：流水线由 tag 触发，tag 一推就开始构建，那时再补已经进不了这次发布。
+
+### 怎么写
+
+- 分 `## 新增` / `## 改进` / `## 修复` / `## 其他` 四节，没有内容的小节省略。
+- 面向用户描述影响：说清楚用户会看到什么变化，而不是改了哪个函数；行为有取舍时把代价一并写出来。
+- 关联 PR 或 issue 时统一用 `owner/repo#123` 格式，例如 `openvetta/open-vetta#8`。
+- 没有用户可感知影响的纯内部改动（内部重构、测试、开发文档）仍要在「其他」留一条，但保持一句话，不要挤占正文。
+- 已发布版本的发布说明不得修改；发现写错另起一条修订说明。
 - 发布说明缺失会让 `desktop-release` 流水线在质量阶段直接失败（`node scripts/release/release-notes.mjs --check`），补不上就没有正文可发。
-- 已发布版本的发布说明不得修改。`apps/desktop/CHANGELOG.md` 自 0.5.58 起冻结，只保留历史记录，不再追加。
+- `apps/desktop/CHANGELOG.md` 自 0.5.58 起冻结，只保留历史记录，不再追加。
+
+### 新增包
+
 - 新增 workspace 包时先判断归属：应用进 `apps/*`，可复用模块进 `packages/*`。随后遵循 [`docs/monorepo-new-package.md`](docs/monorepo-new-package.md)，同时更新 workspace、TypeScript path maps、构建分层和必要的 Desktop 源码映射。
 - 不执行版本发布、制品上传、registry 发布或部署，除非用户明确要求。
 
@@ -256,6 +278,7 @@ Desktop 主进程部分目录还有更细规则；修改对应目录时必须继
 - 修改了哪些主要文件
 - 实际运行了哪些测试和检查及其结果
 - 哪些验证未运行以及原因
+- 本次条目已写入 `.github/release-notes/v<版本号>.md`（改动、修正、新增、合并 PR、关闭 issue 均需写入）
 - 已知风险、兼容性影响或仍需用户决定的事项
 
 不得声称未实际执行的测试、构建或人工验证已经通过。
