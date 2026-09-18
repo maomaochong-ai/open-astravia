@@ -29,6 +29,7 @@ export interface SidebarNavigationProps {
 	/** 「更多」自定义面板文案；缺省时退化为不带自定义能力的旧列表。 */
 	navCustomizeLabels?: SidebarNavMorePanelLabels;
 	onItemClick: (item: SidebarNavItem) => void;
+	onItemIntent?: (item: SidebarNavItem) => void;
 	onMoreOpenChange?: (open: boolean) => void;
 	onNavMove?: (key: string, region: "pinned" | "more", beforeKey: string | null) => void;
 	onPinNavItem?: (key: string) => void;
@@ -52,6 +53,7 @@ export function SidebarNavigation({
 	moreOpen = false,
 	navCustomizeLabels,
 	onItemClick,
+	onItemIntent,
 	onMoreOpenChange,
 	onNavMove,
 	onPinNavItem,
@@ -122,6 +124,8 @@ export function SidebarNavigation({
 							}}
 							item={item}
 							onClick={() => onItemClick(item)}
+							onFocus={() => onItemIntent?.(item)}
+							onMouseEnter={() => onItemIntent?.(item)}
 							ref={setItemRef(index)}
 						/>
 					</div>
@@ -187,6 +191,7 @@ export function SidebarNavigation({
 									onItemClick(item);
 									onMoreOpenChange?.(false);
 								}}
+								onItemIntent={onItemIntent}
 								onPin={onPinNavItem ?? noop}
 								onUnpin={onUnpinNavItem ?? noop}
 								onReset={onResetNavLayout ?? noop}
@@ -197,10 +202,12 @@ export function SidebarNavigation({
 									key={item.key}
 									type="button"
 									title={item.title ?? item.label}
-									onClick={() => {
-										onItemClick(item);
-										onMoreOpenChange?.(false);
-									}}
+										onClick={() => {
+											onItemClick(item);
+											onMoreOpenChange?.(false);
+										}}
+										onFocus={() => onItemIntent?.(item)}
+										onMouseEnter={() => onItemIntent?.(item)}
 									className={cn(
 										"flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px]",
 										item.active

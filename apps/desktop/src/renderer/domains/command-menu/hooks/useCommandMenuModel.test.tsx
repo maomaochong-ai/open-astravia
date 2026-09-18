@@ -15,8 +15,10 @@ const sessionSearchState = vi.hoisted(() => ({
 }));
 const scopeBindings = vi.hoisted(() => ({ current: [] as { key: string; run: () => void }[] }));
 const projectSessions = vi.hoisted(() => ({ current: [] as unknown[] }));
+const prefetchCommandMenuAction = vi.hoisted(() => vi.fn());
 
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => navigate }));
+vi.mock("../../../root-layout/nav-route-prefetch", () => ({ prefetchCommandMenuAction }));
 vi.mock("../../project/hooks/useSessionSearch", () => ({
 	useSessionSearch: () => sessionSearchState,
 }));
@@ -68,6 +70,7 @@ function render() {
 
 beforeEach(() => {
 	navigate.mockReset();
+	prefetchCommandMenuAction.mockReset();
 	scopeBindings.current = [];
 	sessionSearchState.results = [];
 	sessionSearchState.loading = false;
@@ -87,6 +90,15 @@ beforeEach(() => {
 		{ cwd: "/w/alpha", name: "alpha", sessionCount: 0, type: "normal" },
 		{ cwd: "/w/alpine", name: "alpine", sessionCount: 0, type: "normal" },
 	]);
+});
+
+it("prepares the selected settings command without activating it", () => {
+	const { result } = render();
+	const settings = result.current.groups.find((group) => group.key === "settings")?.items[0];
+	expect(settings).toBeDefined();
+	act(() => result.current.onHoverItem(settings?.id ?? ""));
+	expect(prefetchCommandMenuAction).toHaveBeenCalledWith(expect.objectContaining({ kind: "openSettingsSection" }));
+	expect(navigate).not.toHaveBeenCalled();
 });
 
 it("keeps the selection anchored to the id when async session results arrive", async () => {

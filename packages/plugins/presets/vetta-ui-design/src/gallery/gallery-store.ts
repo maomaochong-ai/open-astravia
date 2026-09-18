@@ -4,7 +4,6 @@
  * 缓存的意义只有一个：再次进入画廊时先画上一次的结果，不要白屏一秒再跳出内容。
  * 它不是事实源——每次进入都会重扫一遍并覆盖。
  */
-import { composeCover } from "../canvas/cover-compose";
 import { loadCover, saveCover } from "../canvas/raster-cache";
 import { getPluginCtx } from "../plugin-context";
 import { manifestPathOf, type VetdManifest } from "../vetd/manifest-types";
@@ -32,16 +31,47 @@ export interface GallerySnapshot {
 }
 
 let cached: GallerySnapshot | null = null;
+const GALLERY_COVER_CONCURRENCY = 2;
+
+export function isGalleryAbortError(error: unknown): boolean {
+	return error instanceof Error && error.name === "AbortError";
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+	if (signal?.aborted) throw new DOMException("Gallery load aborted", "AbortError");
+}
+
+async function mapPool<T, R>(
+	items: readonly T[],
+	mapper: (item: T) => Promise<R>,
+	signal?: AbortSignal,
+): Promise<R[]> {
+	const results: R[] = new Array(items.length);
+	let cursor = 0;
+	const worker = async (): Promise<void> => {
+		while (cursor < items.length) {
+			throwIfAborted(signal);
+			const index = cursor++;
+			results[index] = await mapper(items[index] as T);
+		}
+	};
+	await Promise.all(Array.from({ length: Math.min(GALLERY_COVER_CONCURRENCY, items.length) }, worker));
+	throwIfAborted(signal);
+	return results;
+}
 
 export function getCachedSnapshot(): GallerySnapshot | null {
 	return cached;
 }
 
-async function readAccent(vetdPath: string): Promise<string | null> {
+async function readAccent(vetdPath: string, signal?: AbortSignal): Promise<string | null> {
+	throwIfAborted(signal);
 	try {
 		const file = await getPluginCtx().fs.readFile(`${vetdPath}/theme.css`);
+		throwIfAborted(signal);
 		return parseAccentColor(file.content);
-	} catch {
+	} catch (error) {
+		if (isGalleryAbortError(error)) throw error;
 		return null;
 	}
 }
@@ -55,17 +85,27 @@ async function readAccent(vetdPath: string): Promise<string | null> {
  *
  * 只在缺封面时才走这条路：读一次 manifest + 解码若干 jpeg，不是每张卡每次都付。
  */
-async function resolveCover(vetdPath: string): Promise<string | null> {
-	const cached = await loadCover(vetdPath);
-	if (cached) return cached;
+async function resolveCover(vetdPath: string, signal?: AbortSignal): Promise<string | null> {
+	throwIfAborted(signal);
+	const cachedCover = await loadCover(vetdPath);
+	throwIfAborted(signal);
+	if (cachedCover) return cachedCover;
 	try {
 		const raw = await getPluginCtx().fs.readFile(manifestPathOf(vetdPath));
+		throwIfAborted(signal);
 		const manifest = JSON.parse(raw.content) as VetdManifest;
 		if (!Array.isArray(manifest.frames) || manifest.frames.length === 0) return null;
-		const composed = await composeCover(vetdPath, manifest.frames);
+		const { composeCover } = await import("../canvas/cover-compose");
+		throwIfAborted(signal);
+		const composed = await composeCover(vetdPath, manifest.frames, signal);
+		throwIfAborted(signal);
 		if (composed) await saveCover(vetdPath, composed);
 		return composed;
-	} catch {
+	} catch (error) {
+		if (isGalleryAbortError(error) || signal?.aborted) {
+			throwIfAborted(signal);
+			throw error;
+		}
 		// manifest 读不了/不是 JSON：这份设计本来也打不开，交给占位色。
 		return null;
 	}
@@ -76,20 +116,29 @@ async function resolveCover(vetdPath: string): Promise<string | null> {
  *
  * 归档项目不收：归档本来就是「从视野里拿走」，画廊再把它捞回来是自相矛盾的。
  */
-export async function loadGallery(): Promise<GallerySnapshot> {
+export async function loadGallery(signal?: AbortSignal): Promise<GallerySnapshot> {
+	throwIfAborted(signal);
 	const ctx = getPluginCtx();
 	const [snapshot, runningCwds] = await Promise.all([
 		ctx.official.projects.list(),
 		ctx.official.sessions.listRunningCwds().catch(() => [] as string[]),
 	]);
-	const cards = await Promise.all(
+	throwIfAborted(signal);
+	const scanned = await Promise.all(
 		snapshot.projects.map(async (project) => {
+			throwIfAborted(signal);
 			const designs = await scanProjectDesigns(ctx.fs, project.path);
-			const card = toGalleryProject(project, designs);
-			if (!card) return null;
+			throwIfAborted(signal);
+			return toGalleryProject(project, designs);
+		}),
+	);
+	throwIfAborted(signal);
+	const cards = await mapPool(
+		scanned.filter((card): card is GalleryProject => card !== null),
+		async (card) => {
 			const [coverDataUrl, accent] = await Promise.all([
-				resolveCover(card.cover.vetdPath),
-				readAccent(card.cover.vetdPath),
+				resolveCover(card.cover.vetdPath, signal),
+				readAccent(card.cover.vetdPath, signal),
 			]);
 			return {
 				...card,
@@ -97,10 +146,12 @@ export async function loadGallery(): Promise<GallerySnapshot> {
 				accent,
 				running: hasRunningSession(card.cwd, runningCwds),
 			} satisfies GalleryCard;
-		}),
+		},
+		signal,
 	);
+	throwIfAborted(signal);
 	const next: GallerySnapshot = {
-		cards: sortGalleryProjects(cards.filter((card): card is GalleryCard => card !== null)),
+		cards: sortGalleryProjects(cards),
 		workspacePath: snapshot.workspacePath,
 	};
 	cached = next;

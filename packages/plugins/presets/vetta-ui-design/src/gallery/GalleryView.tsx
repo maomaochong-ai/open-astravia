@@ -27,7 +27,7 @@ import {
 } from "./gallery-actions";
 import type { DesignSystem } from "../design-systems/types";
 import { filterGalleryProjects, type GalleryDesign } from "./gallery-model";
-import { type GalleryCard as GalleryCardData, getCachedSnapshot, loadGallery } from "./gallery-store";
+import { type GalleryCard as GalleryCardData, getCachedSnapshot, isGalleryAbortError, loadGallery } from "./gallery-store";
 import { openProjectFromGallery, startDesignProject } from "./open-project";
 import { startDesignFromSystem } from "./start-from-system";
 
@@ -57,9 +57,13 @@ export function GalleryView() {
 	const rootRef = useRef<HTMLDivElement | null>(null);
 	/** Hero 的「逛逛风格库」滚动目标。 */
 	const stylesRef = useRef<HTMLDivElement | null>(null);
+	const loadAbortRef = useRef<AbortController | null>(null);
 
 	const refresh = useCallback(
 		async (options?: { forceCatalog?: boolean }) => {
+			loadAbortRef.current?.abort();
+			const controller = new AbortController();
+			loadAbortRef.current = controller;
 			setLoading(true);
 			// 用户手动点「刷新」才强制拉风格库（不受 TTL 挡）；进入页面的自动刷新
 			// 走 TTL + ETag（见下方 mount effect），低配机首开不再固定多扛一次
@@ -68,11 +72,17 @@ export function GalleryView() {
 				void refreshDesignCatalog(getPluginCtx(), Date.now(), { force: true });
 			}
 			try {
-				setSnapshot(await loadGallery());
+				const next = await loadGallery(controller.signal);
+				if (!controller.signal.aborted) setSnapshot(next);
 			} catch (error) {
-				notify({ message: t("gallery.load.failed"), error });
+				if (!controller.signal.aborted && !isGalleryAbortError(error)) {
+					notify({ message: t("gallery.load.failed"), error });
+				}
 			} finally {
-				setLoading(false);
+				if (loadAbortRef.current === controller) {
+					loadAbortRef.current = null;
+					if (!controller.signal.aborted) setLoading(false);
+				}
 			}
 		},
 		[t],
@@ -83,6 +93,7 @@ export function GalleryView() {
 	useEffect(() => {
 		void refresh();
 		void refreshDesignCatalog(getPluginCtx());
+		return () => loadAbortRef.current?.abort();
 	}, [refresh]);
 
 	/** 导完直接进项目看设计：包里已经有成品，用户刚表达的意图就是「打开它」。 */

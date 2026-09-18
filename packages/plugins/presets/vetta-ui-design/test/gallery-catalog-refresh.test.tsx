@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -19,10 +20,11 @@ vi.mock("../src/design-systems/index", () => ({
 	useCatalogState: () => ({ systems: [], status: "ready" }),
 }));
 
-const loadGallery = vi.fn(async () => ({ cards: [], workspacePath: "/tmp/designs" }));
+const loadGallery = vi.fn(async (_signal?: AbortSignal) => ({ cards: [], workspacePath: "/tmp/designs" }));
 vi.mock("../src/gallery/gallery-store", () => ({
 	getCachedSnapshot: () => null,
-	loadGallery: () => loadGallery(),
+	isGalleryAbortError: (error: unknown) => error instanceof Error && error.name === "AbortError",
+	loadGallery: (signal?: AbortSignal) => loadGallery(signal),
 }));
 
 // 工具栏现在挂在宿主页头上（ui.setWorkspaceViewHeader），测试扮演宿主：接住
@@ -67,7 +69,7 @@ let headerRoot: Root;
 
 beforeEach(() => {
 	refreshDesignCatalog.mockClear();
-	loadGallery.mockClear();
+	loadGallery.mockReset().mockResolvedValue({ cards: [], workspacePath: "/tmp/designs" });
 	hostHeader.current = null;
 	host = document.createElement("div");
 	document.body.appendChild(host);
@@ -104,6 +106,17 @@ async function mountGallery(): Promise<void> {
 }
 
 describe("画廊风格库刷新策略", () => {
+	it("离开画廊时取消仍在进行的扫描", async () => {
+		loadGallery.mockImplementationOnce(() => new Promise(() => {}));
+		await mountGallery();
+		const signal = loadGallery.mock.calls[0]?.[0];
+		expect(signal).toBeInstanceOf(AbortSignal);
+		expect(signal?.aborted).toBe(false);
+		act(() => root.unmount());
+		expect(signal?.aborted).toBe(true);
+		root = createRoot(host);
+	});
+
 	it("挂载自动刷新不带 force（走 TTL + ETag）", async () => {
 		await mountGallery();
 		expect(loadGallery).toHaveBeenCalled();

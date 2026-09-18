@@ -1,5 +1,5 @@
 import { useSetAtom } from "jotai";
-import { useEffect, useMemo } from "react";
+import { memo, useCallback, useEffect, useMemo } from "react";
 import { pageHeaderLeftSlotAtom, pageHeaderRightSlotAtom } from "@shared/store/atoms";
 import { useActiveSessionRuntimeIds } from "@shared/workspace/active-session-runtime";
 import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
@@ -12,6 +12,8 @@ import { SessionMessageList } from "./SessionMessageList";
 import { SessionAssistantRendering } from "./SessionAssistantRendering";
 import { DefaultInputBarConnector } from "./input-bar/DefaultInputBarConnector";
 import type { ChatViewProps } from "./chat-view/types";
+
+const SessionFeed = memo(SessionMessageList);
 
 export function ChatView(props: ChatViewProps): JSX.Element {
 	const { actions, model } = useChatViewModel();
@@ -32,6 +34,9 @@ export function ChatView(props: ChatViewProps): JSX.Element {
 			),
 		[model.cwd, model.sessionId, runtimeIds],
 	);
+	const onAbort = useCallback(() => {
+		void props.onAbort();
+	}, [props.onAbort]);
 
 	useEffect(() => {
 		setHeaderRightSlot(headerActions);
@@ -51,14 +56,14 @@ export function ChatView(props: ChatViewProps): JSX.Element {
 				rootClassName={model.rootClassName}
 				exportState={model.exporting ? { title: model.exportTitle, onFinished: actions.finishExport } : undefined}
 			>
-				<SessionMessageList
+				<SessionFeed
 					messages={model.messages}
 					workspace={workspace}
 					isStreaming={model.isStreaming}
 					sessionId={model.sessionId}
 					participants={participants}
 					onSend={props.onSend}
-					onAbort={() => void props.onAbort()}
+					onAbort={onAbort}
 				/>
 				<ChatComposer>
 					<DefaultInputBarConnector

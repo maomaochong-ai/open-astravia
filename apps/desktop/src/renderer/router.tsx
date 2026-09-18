@@ -2,7 +2,17 @@ import { createRootRoute, createRoute, createRouter, createHashHistory, redirect
 import { lazy } from "react";
 import { RouteContentLoadingView } from "@vetta-org/theme-ui/app";
 import { RootLayout } from "./App";
-import { loadNewSessionPage } from "./domains/conversation/components/loadNewSessionPage";
+import {
+	loadAbilitiesPage,
+	loadAgentCenterPage,
+	loadAutomationPage,
+	loadBatchTasksPage,
+	loadKnowledgeBasePage,
+	loadNewSessionPage,
+	loadPluginWorkspaceViewRoute,
+	loadScenesPage,
+	loadSettingsPage,
+} from "./route-page-loaders";
 import { RouteErrorPage } from "./shared/components/RouteErrorPage";
 import {
 	PLUGIN_HOSTED_ROUTE_PATH,
@@ -16,39 +26,23 @@ const NewSessionPage = lazy(loadNewSessionPage);
 const SessionViewerPage = lazy(async () => ({
 	default: (await import("./domains/conversation/components/SessionViewerPage")).SessionViewerPage,
 }));
-const AutomationPage = lazy(async () => ({
-	default: (await import("./domains/scheduler/components/AutomationPage")).AutomationPage,
-}));
-const BatchTasksPage = lazy(async () => ({
-	default: (await import("./domains/batch-tasks/components/BatchTasksPage")).BatchTasksPage,
-}));
-const AbilitiesPage = lazy(async () => ({
-	default: (await import("./domains/abilities/components/AbilitiesPage")).AbilitiesPage,
-}));
-const AgentCenterPage = lazy(async () => ({
-	default: (await import("./domains/agent-teams/components/AgentCenterPage")).AgentCenterPage,
-}));
+const AutomationPage = lazy(loadAutomationPage);
+const BatchTasksPage = lazy(loadBatchTasksPage);
+const AbilitiesPage = lazy(loadAbilitiesPage);
+const AgentCenterPage = lazy(loadAgentCenterPage);
 const TeamChatPage = lazy(async () => ({
 	default: (await import("./domains/conversation/connectors/team/TeamChatPage")).TeamChatPage,
 }));
-const ScenesPage = lazy(async () => ({
-	default: (await import("./domains/skills/components/ScenesPage")).ScenesPage,
-}));
-const SettingsPage = lazy(async () => ({
-	default: (await import("./domains/settings/components/SettingsPage")).SettingsPage,
-}));
+const ScenesPage = lazy(loadScenesPage);
+const SettingsPage = lazy(loadSettingsPage);
 const ProjectDetailPage = lazy(async () => ({
 	default: (await import("./domains/project/components/ProjectDetailPage")).ProjectDetailPage,
 }));
-const KnowledgeBasePage = lazy(async () => ({
-	default: (await import("./domains/knowledge-base/components/KnowledgeBasePage")).KnowledgeBasePage,
-}));
+const KnowledgeBasePage = lazy(loadKnowledgeBasePage);
 const KnowledgeBaseListPage = lazy(async () => ({
 	default: (await import("./domains/knowledge-base/components/KnowledgeBaseListPage")).KnowledgeBaseListPage,
 }));
-const PluginWorkspaceViewRoute = lazy(async () => ({
-	default: (await import("./domains/plugins/components/PluginWorkspaceViewRoute")).PluginWorkspaceViewRoute,
-}));
+const PluginWorkspaceViewRoute = lazy(loadPluginWorkspaceViewRoute);
 const ThemePageRoute = lazy(async () => ({
 	default: (await import("./shared/theme/pages/ThemePageRoute")).ThemePageRoute,
 }));

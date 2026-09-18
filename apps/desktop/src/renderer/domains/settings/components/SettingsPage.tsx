@@ -3,60 +3,29 @@ import { useThemeSurface } from "@vetta-org/theme-sdk/appearance";
 import type { SettingsTab } from "@shared/store/atoms";
 import { lazy, Suspense, type ComponentType, type LazyExoticComponent } from "react";
 import { SettingsPageView } from "./SettingsPageView";
+import { SETTINGS_TAB_LOADERS } from "./settings-tab-loaders";
 import { useSettingsPageModel } from "./useSettingsPageModel";
 import "./settings-highlight.css";
 
-const AccountSettings = lazy(async () => ({ default: (await import("./AccountSettings")).AccountSettings }));
-const AgentSettings = lazy(async () => ({ default: (await import("./AgentSettings")).AgentSettings }));
-const AppearanceSettings = lazy(async () => ({
-	default: (await import("./AppearanceSettings")).AppearanceSettings,
-}));
-const AppshotSettings = lazy(async () => ({ default: (await import("./AppshotSettings")).AppshotSettings }));
-const ArchivedProjectsSettings = lazy(async () => ({
-	default: (await import("./ArchivedProjectsSettings")).ArchivedProjectsSettings,
-}));
-const ExtensionsSettings = lazy(async () => ({
-	default: (await import("./ExtensionsSettings")).ExtensionsSettings,
-}));
-const EnvironmentSettings = lazy(async () => ({
-	default: (await import("./EnvironmentSettings")).EnvironmentSettings,
-}));
-const GeneralSettings = lazy(async () => ({ default: (await import("./GeneralSettings")).GeneralSettings }));
-const ImBridgeSettings = lazy(async () => ({ default: (await import("./ImBridgeSettings")).ImBridgeSettings }));
-const KnowledgeBaseSettings = lazy(async () => ({
-	default: (await import("./KnowledgeBaseSettings")).KnowledgeBaseSettings,
-}));
-const ModelsSettings = lazy(async () => ({ default: (await import("./ModelsSettings")).ModelsSettings }));
-const PermissionsSettings = lazy(async () => ({
-	default: (await import("./PermissionsSettings")).PermissionsSettings,
-}));
-const RemotePairingSettings = lazy(async () => ({ default: (await import("./RemotePairingSettings")).RemotePairingSettings }));
-const PetSettings = lazy(async () => ({ default: (await import("./PetSettings")).PetSettings }));
-const ShortcutsSettings = lazy(async () => ({
-	default: (await import("./ShortcutsSettings")).ShortcutsSettings,
-}));
-const TeamSettings = lazy(async () => ({ default: (await import("./TeamSettings")).TeamSettings }));
-const WebhookSettings = lazy(async () => ({ default: (await import("./WebhookSettings")).WebhookSettings }));
-
 /** MCP 已迁至扩展 → 连接器；`mcp` 保留在 SettingsTab 供 analytics / 旧链接重定向，此处不渲染。 */
 const SETTINGS_CONTENT: Record<Exclude<SettingsTab, "mcp">, LazyExoticComponent<ComponentType>> = {
-	general: GeneralSettings,
-	appearance: AppearanceSettings,
-	account: AccountSettings,
-	models: ModelsSettings,
-	environment: EnvironmentSettings,
-	extensions: ExtensionsSettings,
-	permissions: PermissionsSettings,
-	im: ImBridgeSettings,
-	webhook: WebhookSettings,
-	shortcuts: ShortcutsSettings,
-	appshot: AppshotSettings,
-	archive: ArchivedProjectsSettings,
-	team: TeamSettings,
-	context: AgentSettings,
-	knowledge: KnowledgeBaseSettings,
-	pet: PetSettings,
-	remote: RemotePairingSettings,
+	general: lazy(SETTINGS_TAB_LOADERS.general),
+	appearance: lazy(SETTINGS_TAB_LOADERS.appearance),
+	account: lazy(SETTINGS_TAB_LOADERS.account),
+	models: lazy(SETTINGS_TAB_LOADERS.models),
+	environment: lazy(SETTINGS_TAB_LOADERS.environment),
+	extensions: lazy(SETTINGS_TAB_LOADERS.extensions),
+	permissions: lazy(SETTINGS_TAB_LOADERS.permissions),
+	im: lazy(SETTINGS_TAB_LOADERS.im),
+	webhook: lazy(SETTINGS_TAB_LOADERS.webhook),
+	shortcuts: lazy(SETTINGS_TAB_LOADERS.shortcuts),
+	appshot: lazy(SETTINGS_TAB_LOADERS.appshot),
+	archive: lazy(SETTINGS_TAB_LOADERS.archive),
+	team: lazy(SETTINGS_TAB_LOADERS.team),
+	context: lazy(SETTINGS_TAB_LOADERS.context),
+	knowledge: lazy(SETTINGS_TAB_LOADERS.knowledge),
+	pet: lazy(SETTINGS_TAB_LOADERS.pet),
+	remote: lazy(SETTINGS_TAB_LOADERS.remote),
 };
 
 export function SettingsPage(): JSX.Element {

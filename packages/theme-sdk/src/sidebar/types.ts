@@ -124,6 +124,8 @@ export interface SidebarModel {
 		readonly collapse?: () => void;
 		readonly openClawSettings: () => void;
 		readonly openNavItem: (item: SidebarNavItem) => void;
+		/** Optional code prefetch on navigation intent; does not activate the route. */
+		readonly prefetchNavItem?: (item: SidebarNavItem) => void;
 		readonly resize: (delta: number) => void;
 		readonly resizeEnd: () => void;
 		readonly setMoreOpen: (open: boolean) => void;

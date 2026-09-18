@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { SettingsSidebarView } from "@vetta-org/theme-ui/settings";
@@ -44,6 +44,18 @@ function renderSidebar(overrides: SidebarOverrides = {}) {
 }
 
 describe("SettingsSidebarView", () => {
+	it("悬停或聚焦标签只预取代码，点击仍选择该标签", () => {
+		const onTabIntent = vi.fn();
+		const { onSelectTab } = renderSidebar({ onTabIntent });
+		const settings = screen.getByRole("button", { name: "通用设置" });
+		fireEvent.mouseEnter(settings);
+		fireEvent.focus(settings);
+		expect(onTabIntent).toHaveBeenCalledWith("general");
+		expect(onSelectTab).not.toHaveBeenCalled();
+		fireEvent.click(settings);
+		expect(onSelectTab).toHaveBeenCalledWith("general");
+	});
+
 	it("选中该标签时清单跟着展开，点行即导航", async () => {
 		const { onSelectTab, onSelectChild } = renderSidebar();
 

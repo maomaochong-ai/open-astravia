@@ -5,7 +5,7 @@ import type { ChatConversationItem } from "@shared/store/atoms";
 import type { ActivityWorkspace } from "@shared/workspace/activity-workspace";
 import type { ActivityTabId } from "@domains/activity-panel/registry/types";
 import type { ConversationScenario } from "@vetta-org/plugin-sdk";
-import type { ReactNode } from "react";
+import { memo, type ReactNode } from "react";
 import { ChatExportHost } from "../ChatExportHost";
 
 export interface DefaultChatViewProps {
@@ -27,6 +27,46 @@ export interface DefaultChatViewProps {
 	};
 }
 
+function sameIds(left: readonly string[], right: readonly string[]): boolean {
+	return left === right || (left.length === right.length && left.every((id, index) => id === right[index]));
+}
+
+function sameOptionalIds(left?: readonly string[], right?: readonly string[]): boolean {
+	if (!left || !right) return left === right;
+	return sameIds(left, right);
+}
+
+function sameActivity(
+	left: DefaultChatViewProps["activity"],
+	right: DefaultChatViewProps["activity"],
+): boolean {
+	if (left === right) return true;
+	if (!left || !right) return false;
+	return left.enablePluginTabs === right.enablePluginTabs &&
+		left.pluginScenario === right.pluginScenario &&
+		sameOptionalIds(left.enabledBuiltinTabs, right.enabledBuiltinTabs);
+}
+
+const ActivityColumn = memo(
+	function ActivityColumn({ workspace, activity }: Pick<DefaultChatViewProps, "workspace" | "activity">) {
+		return activity ? (
+			<ActivityPanel
+				workspace={workspace}
+				enablePluginTabs={activity.enablePluginTabs}
+				enabledBuiltinTabs={activity.enabledBuiltinTabs}
+				pluginScenario={activity.pluginScenario}
+			/>
+		) : (
+			<CurrentScenarioActivityPanel workspace={workspace} />
+		);
+	},
+	(previous, next) =>
+		previous.workspace.id === next.workspace.id &&
+		previous.workspace.cwd === next.workspace.cwd &&
+		sameIds(previous.workspace.runtimeIds, next.workspace.runtimeIds) &&
+		sameActivity(previous.activity, next.activity),
+);
+
 export function DefaultChatView({
 	children,
 	subHeader,
@@ -47,16 +87,7 @@ export function DefaultChatView({
 						{subHeader}
 						{children}
 					</div>
-					{activity ? (
-						<ActivityPanel
-							workspace={workspace}
-							enablePluginTabs={activity.enablePluginTabs}
-							enabledBuiltinTabs={activity.enabledBuiltinTabs}
-							pluginScenario={activity.pluginScenario}
-						/>
-					) : (
-						<CurrentScenarioActivityPanel workspace={workspace} />
-					)}
+					<ActivityColumn workspace={workspace} activity={activity} />
 				</div>
 			</div>
 		</PerfSendProfiler>

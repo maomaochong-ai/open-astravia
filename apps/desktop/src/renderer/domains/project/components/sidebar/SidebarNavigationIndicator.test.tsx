@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { SidebarNavigation } from "@vetta-org/theme-ui/sidebar";
 import type { SidebarNavItem } from "@vetta-org/theme-sdk/sidebar";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 /**
  * 侧栏导航指示条的合同：纵向只走 CSS transform 直接落位，不做补间动画，更不允许
@@ -31,6 +31,53 @@ function queryIndicator(container: HTMLElement): HTMLElement | null {
 }
 
 describe("SidebarNavigation 指示条", () => {
+	it("悬停或键盘聚焦只预取代码，点击仍按原入口导航", () => {
+		const onItemIntent = vi.fn();
+		const onItemClick = vi.fn();
+		render(
+			<SidebarNavigation
+				indicatorBounds={null}
+				items={ITEMS}
+				onItemClick={onItemClick}
+				onItemIntent={onItemIntent}
+				setItemRef={() => () => {}}
+			/>,
+		);
+		const scenes = screen.getByRole("button", { name: "场景" });
+		fireEvent.mouseEnter(scenes);
+		fireEvent.focus(scenes);
+		expect(onItemIntent).toHaveBeenCalledWith(ITEMS[1]);
+		expect(onItemClick).not.toHaveBeenCalled();
+		fireEvent.click(scenes);
+		expect(onItemClick).toHaveBeenCalledWith(ITEMS[1]);
+	});
+
+	it("更多菜单中的入口也在聚焦时预取，点击行为不变", () => {
+		const moreItem = {
+			key: "/knowledge", label: "知识库", icon: "icon-[solar--book-linear]", active: false, path: "/knowledge",
+		} as SidebarNavItem;
+		const onItemIntent = vi.fn();
+		const onItemClick = vi.fn();
+		render(
+			<SidebarNavigation
+				indicatorBounds={null}
+				items={ITEMS}
+				moreItems={[moreItem]}
+				moreLabel="更多"
+				moreOpen
+				onItemClick={onItemClick}
+				onItemIntent={onItemIntent}
+				setItemRef={() => () => {}}
+			/>,
+		);
+		const knowledge = screen.getByRole("button", { name: "知识库" });
+		fireEvent.focus(knowledge);
+		expect(onItemIntent).toHaveBeenCalledWith(moreItem);
+		expect(onItemClick).not.toHaveBeenCalled();
+		fireEvent.click(knowledge);
+		expect(onItemClick).toHaveBeenCalledWith(moreItem);
+	});
+
 	it("无 bounds 时不渲染指示条", () => {
 		const { container } = renderNav(null);
 		expect(queryIndicator(container)).toBeNull();
