@@ -1,22 +1,8 @@
 import type { JSX } from "react";
 
 /**
- * First-load skeleton while disk list is pending.
- * Grid columns match KnowledgeGrid (auto-fill / 140px).
+ * 列表还没有缓存时占满内容区。不要铺脉冲宫格：切进知识库时标题已经说明点生效了。
  */
 export function KnowledgeFilesSkeleton(): JSX.Element {
-	return (
-		<div className="flex min-h-0 flex-1 px-8 pb-8">
-			<div className="min-h-0 flex-1 overflow-hidden">
-				<div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-1 py-3">
-					{Array.from({ length: 18 }, (_, i) => (
-						<div key={i} className="flex flex-col items-center gap-2 px-2 py-3">
-							<div className="h-[72px] w-[72px] animate-pulse rounded-2xl bg-foreground/[0.06]" />
-							<div className="h-2.5 w-16 animate-pulse rounded bg-foreground/[0.06]" />
-						</div>
-					))}
-				</div>
-			</div>
-		</div>
-	);
+	return <div className="flex min-h-0 flex-1" aria-busy="true" />;
 }

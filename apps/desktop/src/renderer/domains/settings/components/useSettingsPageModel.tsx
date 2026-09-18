@@ -1,42 +1,39 @@
 import { useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
 import { Button } from "@shared/components/ui/button";
 import { useNarrowScreen } from "@shared/hooks/useNarrowScreen";
+import { useOwnedHeaderTitleHidden } from "@shared/hooks/useOwnedHeaderTitleHidden";
 import { isMac, isWindows } from "@shared/lib/platform";
-import {
-	isPersonalModeAtom,
-	pageHeaderLeftSlotAtom,
-	pageHeaderTitleHiddenAtom,
-	type SettingsTab,
-} from "@shared/store/atoms";
+import { isPersonalModeAtom, pageHeaderLeftSlotAtom, type SettingsTab } from "@shared/store/atoms";
 import { authUserAtom } from "@shared/store/auth-atoms";
+import { useInactiveFrozenValue, useSurfaceActive } from "@shared/surface-active";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { parseWorkspaceViewRef, workspaceViewNavKey } from "../../plugins/runtime/workspace-view-registry";
 import { filterVisibleSettingsTabs, findSettingsSection, SETTINGS_TABS } from "../registry";
+import { prefetchSettingsTab } from "./settings-tab-loaders";
 import type { SettingsNavigationItem, SettingsPageModel } from "./types";
 import { useExtensionsSettingsModel } from "./useExtensionsSettingsModel";
 
 export function useSettingsPageModel(): SettingsPageModel {
 	const { t } = useTranslation("settings");
 	const { t: tCommon } = useTranslation("common");
-	const { tab: rawTab } = useParams({ strict: false }) as { tab?: string };
-	const search = useSearch({ strict: false }) as Record<string, unknown>;
+	const { tab: rawTabFromRoute } = useParams({ strict: false }) as { tab?: string };
+	const searchFromRoute = useSearch({ strict: false }) as Record<string, unknown>;
 	const navigate = useNavigate();
 	const router = useRouter();
 	const isPersonal = useAtomValue(isPersonalModeAtom);
 	const authUser = useAtomValue(authUserAtom);
-	const setHeaderTitleHidden = useSetAtom(pageHeaderTitleHiddenAtom);
 	const setHeaderLeftSlot = useSetAtom(pageHeaderLeftSlotAtom);
 	const narrow = useNarrowScreen(1000);
 	const highlightingRef = useRef(false);
+	const surfaceActive = useSurfaceActive();
+	const rawTab = useInactiveFrozenValue(surfaceActive, rawTabFromRoute);
+	const search = useInactiveFrozenValue(surfaceActive, searchFromRoute);
+	useOwnedHeaderTitleHidden(surfaceActive);
 
 	useEffect(() => {
-		setHeaderTitleHidden(true);
-		return () => setHeaderTitleHidden(false);
-	}, [setHeaderTitleHidden]);
-
-	useEffect(() => {
+		if (!surfaceActive) return;
 		const back = tCommon("actions.back");
 		setHeaderLeftSlot(
 			<Button
@@ -50,7 +47,7 @@ export function useSettingsPageModel(): SettingsPageModel {
 			</Button>,
 		);
 		return () => setHeaderLeftSlot(null);
-	}, [setHeaderLeftSlot, router, tCommon]);
+	}, [setHeaderLeftSlot, router, surfaceActive, tCommon]);
 
 	const visibleTabRegistrations = useMemo(
 		() =>
@@ -79,12 +76,14 @@ export function useSettingsPageModel(): SettingsPageModel {
 
 	// MCP 已并入能力页（ADR-0049）；旧 /settings/mcp 与 mcp-* section 深链重定向过去。
 	useEffect(() => {
+		if (!surfaceActive) return;
 		if (rawTab === "mcp" || targetSection?.tab === "mcp") {
 			void navigate({ to: "/abilities", replace: true });
 		}
-	}, [navigate, rawTab, targetSection]);
+	}, [navigate, rawTab, surfaceActive, targetSection]);
 
 	useEffect(() => {
+		if (!surfaceActive) return;
 		if (!targetSection || targetSection.tab === activeTab || !validTabKeys.has(targetSection.tab)) {
 			return;
 		}
@@ -94,9 +93,10 @@ export function useSettingsPageModel(): SettingsPageModel {
 			params: { tab: targetSection.tab },
 			search: { section: targetSection.id },
 		});
-	}, [activeTab, navigate, targetSection, validTabKeys]);
+	}, [activeTab, navigate, surfaceActive, targetSection, validTabKeys]);
 
 	useEffect(() => {
+		if (!surfaceActive) return;
 		if (!targetSection || targetSection.tab !== activeTab || highlightingRef.current) return;
 
 		const element = document.getElementById(targetSection.id);
@@ -126,7 +126,7 @@ export function useSettingsPageModel(): SettingsPageModel {
 			target.classList.remove("setting-section-breathe");
 			highlightingRef.current = false;
 		};
-	}, [activeTab, navigationNonce, targetSection]);
+	}, [activeTab, navigationNonce, surfaceActive, targetSection]);
 
 	const toNavigationItem = useCallback(
 		(tab: (typeof visibleTabRegistrations)[number]): SettingsNavigationItem => {
@@ -179,9 +179,11 @@ export function useSettingsPageModel(): SettingsPageModel {
 		betaBadgeLabel: t("betaBadge"),
 		narrow,
 		onSelectTab: (tab) => {
+			prefetchSettingsTab(tab);
 			// 显式落到标签本身：从内嵌的插件视图切回设置项时要把 `view` 清掉。
 			void navigate({ to: "/settings/$tab", params: { tab }, search: {} });
 		},
+		onTabIntent: prefetchSettingsTab,
 		tabs,
 		title: t("title"),
 	};

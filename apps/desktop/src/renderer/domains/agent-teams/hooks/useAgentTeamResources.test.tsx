@@ -5,10 +5,14 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { useAgentTeamResources } from "./useAgentTeamResources";
 
-const mocks = vi.hoisted(() => ({ load: vi.fn() }));
+const mocks = vi.hoisted(() => ({ load: vi.fn(), waitForPaint: vi.fn() }));
 
 vi.mock("../services/load-agent-team-resources", () => ({
 	loadAgentTeamConfigurationResources: mocks.load,
+}));
+
+vi.mock("@shared/lib/committed-paint", () => ({
+	waitForCommittedPaint: mocks.waitForPaint,
 }));
 
 function resources(revision: number) {
@@ -21,7 +25,29 @@ function resources(revision: number) {
 }
 
 describe("useAgentTeamResources", () => {
+	it("does not fetch team config until the first page paint has committed", async () => {
+		let releasePaint: ((value: "painted") => void) | undefined;
+		mocks.waitForPaint.mockReturnValue(
+			new Promise<"painted">((resolve) => {
+				releasePaint = resolve;
+			}),
+		);
+		mocks.load.mockResolvedValue(resources(1));
+		Object.defineProperty(window, "vetta", {
+			configurable: true,
+			value: { agentTeams: { list: vi.fn(), onChanged: () => () => undefined } },
+		});
+
+		renderHook(() => useAgentTeamResources());
+		await Promise.resolve();
+		expect(mocks.load).not.toHaveBeenCalled();
+
+		releasePaint?.("painted");
+		await waitFor(() => expect(mocks.load).toHaveBeenCalledTimes(1));
+	});
+
 	it("picks up the new roster when a plugin reapplies its presets", async () => {
+		mocks.waitForPaint.mockResolvedValue("painted");
 		let revision = 1;
 		mocks.load.mockImplementation(async () => resources(revision));
 		const listeners = new Set<() => void>();

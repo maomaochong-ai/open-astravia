@@ -147,6 +147,7 @@ describe("TeamChatView shared conversation UI", () => {
 
 		expect(captured.view).toHaveBeenCalledWith(
 			expect.objectContaining({
+				messages: [],
 				workspace: viewModel.workspace,
 				activity: { pluginScenario: "project" },
 			}),

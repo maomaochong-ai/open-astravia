@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { filterVisibleSettingsTabs, SETTINGS_TABS, type SettingsTabVisibilityContext } from "./registry";
+import {
+	filterVisibleSettingsTabs,
+	SETTINGS_TABS,
+	type SettingsTabVisibilityContext,
+	settingsTabTitleKey,
+} from "./registry";
 
 const BASE: SettingsTabVisibilityContext = {
 	isPersonal: true,
@@ -45,5 +50,14 @@ describe("更多选项入口", () => {
 	it("不带平台或登录限制，任何环境都能进插件页面", () => {
 		expect(visibleKeys({})).toContain("extensions");
 		expect(visibleKeys({ hasAuthUser: false, isPersonal: false })).toContain("extensions");
+	});
+});
+
+describe("settingsTabTitleKey", () => {
+	it("已登记标签用侧栏 labelKey，未登记标签回退到设置标题", () => {
+		expect(settingsTabTitleKey("general")).toBe("tabGeneral");
+		expect(settingsTabTitleKey("models")).toBe("tabModels");
+		expect(settingsTabTitleKey("mcp")).toBe("tabGeneral");
+		expect(settingsTabTitleKey("team")).toBe("title");
 	});
 });

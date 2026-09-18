@@ -24,6 +24,8 @@ export interface SettingsSidebarViewProps {
 	readonly betaBadgeLabel: string;
 	readonly narrow: boolean;
 	readonly onSelectTab: (tab: string) => void;
+	/** 悬停 / 聚焦时预取对应设置标签；缺省则只在点击时加载。 */
+	readonly onTabIntent?: (tab: string) => void;
 	/** 下级入口不是设置标签，导航由宿主决定。 */
 	readonly onSelectChild?: (key: string) => void;
 	/** 当前正在显示的下级入口；它所属的标签会自动展开并高亮该项。 */
@@ -42,6 +44,7 @@ export function SettingsSidebarView({
 	betaBadgeLabel,
 	narrow,
 	onSelectTab,
+	onTabIntent,
 	onSelectChild,
 	activeChildKey,
 	tabs,
@@ -79,6 +82,9 @@ export function SettingsSidebarView({
 									aria-expanded={expandable ? expanded : undefined}
 									// 进页面与展开清单合成一个动作：点行即导航，清单跟着选中态展开。
 									onClick={() => onSelectTab(item.key)}
+									onFocus={() => onTabIntent?.(item.key)}
+									onMouseEnter={() => onTabIntent?.(item.key)}
+									onPointerDown={() => onTabIntent?.(item.key)}
 									className={cn(
 										"flex min-w-0 flex-1 items-center rounded-lg outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring",
 										narrow ? "justify-center px-0 py-2" : "gap-2.5 py-[7px] ps-2.5 pe-2.5",

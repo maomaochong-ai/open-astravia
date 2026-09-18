@@ -11,6 +11,7 @@ vi.mock("@vetta-org/plugin-sdk", () => ({
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { DesignSystemGrid } from "../src/gallery/DesignSystemGrid";
+import { SectionHeader } from "../src/gallery/SectionHeader";
 import { markCatalogFailed, resetDesignSystems, setDesignSystems } from "../src/design-systems/registry";
 import type { DesignSystem } from "../src/design-systems/types";
 
@@ -26,6 +27,13 @@ class ImmediateIntersectionObserver {
 	unobserve(): void {}
 }
 vi.stubGlobal("IntersectionObserver", ImmediateIntersectionObserver);
+
+class StubResizeObserver {
+	observe(): void {}
+	disconnect(): void {}
+	unobserve(): void {}
+}
+vi.stubGlobal("ResizeObserver", StubResizeObserver);
 
 function system(id: string, name: string): DesignSystem {
 	return {
@@ -73,6 +81,25 @@ describe("DesignSystemGrid", () => {
 		expect(document.body.textContent).toContain("Stripe");
 	});
 
+	it("默认画出风格分区标题", () => {
+		render(<DesignSystemGrid busy={false} onPick={() => {}} />);
+		expect(document.body.querySelector("h2")?.textContent).toBe("gallery.styles.title");
+		expect(document.body.textContent).toContain("gallery.styles.hint");
+	});
+
+	it("父级已画出标题时 hideHeader 不再叠第二个 h2", () => {
+		render(
+			<section>
+				<SectionHeader title="gallery.styles.title" hint="gallery.styles.hint" />
+				<DesignSystemGrid hideHeader busy={false} onPick={() => {}} />
+			</section>,
+		);
+		expect([...document.body.querySelectorAll("h2")].map((node) => node.textContent)).toEqual([
+			"gallery.styles.title",
+		]);
+		expect(tiles()).toHaveLength(2);
+	});
+
 	it("跟在项目宫格之后时画分隔线，当首屏主角时不画", () => {
 		render(<DesignSystemGrid divided busy={false} onPick={() => {}} />);
 		expect(document.body.querySelector("section")?.className).toContain("border-t");
@@ -82,7 +109,7 @@ describe("DesignSystemGrid", () => {
 
 	it("和项目卡片用同一套宫格，不是横向滚动条", () => {
 		render(<DesignSystemGrid busy={false} onPick={() => {}} />);
-		const grid = document.body.querySelector("section > div");
+		const grid = document.body.querySelector("section .grid");
 		expect(grid?.className).toContain("grid");
 		expect(grid?.className).not.toContain("overflow-x-auto");
 	});
@@ -114,27 +141,32 @@ describe("DesignSystemGrid", () => {
 		]);
 	});
 
-	it("悬停点燃对应卡片的 demo 预览，移开熄灭", () => {
+	it("悬停才挂 HTML demo，移开卸掉 iframe", () => {
 		const html = "<!doctype html><html><body>demo</body></html>";
 		setDesignSystems([
 			{
 				...system("linear", "Linear"),
 				resources: [{ path: "demo.html", role: "demo", encoding: "text", content: html, bytes: html.length }],
 			},
-			system("stripe", "Stripe"),
+			{
+				...system("stripe", "Stripe"),
+				resources: [{ path: "demo.html", role: "demo", encoding: "text", content: html, bytes: html.length }],
+			},
 		]);
 		render(<DesignSystemGrid busy={false} onPick={() => {}} />);
-		const active = (): number => document.body.querySelectorAll("[data-active]").length;
-		expect(active()).toBe(0);
+		expect(document.body.querySelectorAll("iframe")).toHaveLength(0);
+		expect(document.body.querySelectorAll("[data-active]")).toHaveLength(0);
 		// React 的 onMouseEnter/Leave 由委托的 mouseover/mouseout 驱动。
 		act(() => {
 			tiles()[0].dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
 		});
-		expect(active()).toBe(1);
+		expect(document.body.querySelectorAll("iframe")).toHaveLength(1);
+		expect(document.body.querySelectorAll("[data-active]")).toHaveLength(1);
 		act(() => {
 			tiles()[0].dispatchEvent(new MouseEvent("mouseout", { bubbles: true }));
 		});
-		expect(active()).toBe(0);
+		expect(document.body.querySelectorAll("iframe")).toHaveLength(0);
+		expect(document.body.querySelectorAll("[data-active]")).toHaveLength(0);
 	});
 });
 
@@ -162,3 +194,17 @@ describe("目录拿不到时的状态", () => {
 		expect(document.body.textContent).not.toContain("gallery.styles.offline.title");
 	});
 });
+
+describe("风格库窗口化", () => {
+	it("只渲染视口附近的行，不把整面墙一次性挂上", () => {
+		const previousHeight = window.innerHeight;
+		Object.defineProperty(window, "innerHeight", { configurable: true, value: 600 });
+		setDesignSystems(Array.from({ length: 30 }, (_, index) => system(`s${index}`, `Style ${index}`)));
+		render(<DesignSystemGrid busy={false} onPick={() => {}} />);
+		expect(tiles().length).toBeGreaterThan(0);
+		expect(tiles().length).toBeLessThan(30);
+		expect(document.body.textContent).toContain("Style 0");
+		Object.defineProperty(window, "innerHeight", { configurable: true, value: previousHeight });
+	});
+});
+
