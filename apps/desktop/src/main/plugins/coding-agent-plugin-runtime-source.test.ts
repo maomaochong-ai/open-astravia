@@ -66,7 +66,7 @@ describe("DesktopCodingAgentPluginRuntimeSource", () => {
 		source.subscribe(listener);
 		expect(source.readAgentPlugins()?.skillPathContributions?.at(-1)?.paths).toEqual(paths);
 
-		paths = ["C:/vetta/builtin-skills/create-skill", "C:/vetta/builtin-skills/vetta-blog"];
+		paths = ["C:/vetta/builtin-skills/create-skill", "C:/vetta/builtin-skills/install-ability"];
 		expect(source.readAgentPlugins()?.skillPathContributions?.at(-1)?.paths).toEqual(paths);
 		expect(listener).toHaveBeenCalledOnce();
 	});
