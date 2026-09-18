@@ -94,7 +94,7 @@ export function AbilitiesPageView({
 									placeholder={t("search.placeholder")}
 									value={model.searchQuery}
 									onChange={(event) => model.setSearchQuery(event.target.value)}
-									className="h-8 w-full rounded-lg border border-border/40 bg-secondary/80 pl-8 pr-3 text-[12px] text-foreground placeholder:text-muted-foreground/40 transition-colors hover:border-border/70 hover:bg-secondary focus:border-border/80 focus:bg-secondary focus:outline-none"
+									className="h-8 w-full rounded-lg bg-secondary pl-8 pr-3 text-[12px] text-foreground placeholder:text-muted-foreground/40 transition-colors hover:bg-accent focus:bg-accent focus:outline-none"
 								/>
 							</div>
 							<AddAbilityMenu
@@ -169,8 +169,8 @@ export function AbilitiesPageView({
 							<div className="flex flex-col gap-6">
 								{categorized ? (
 									model.groups.map((group) => (
-										<section key={group.category} className="flex flex-col gap-2.5">
-											<div className="flex items-center gap-2 pt-1">
+										<section key={group.category} className="flex flex-col gap-2">
+											<div className="flex items-baseline gap-2">
 												<h2 className="text-[13px] font-semibold text-foreground/90">
 													{group.category === ABILITY_CATEGORY_UNCATEGORIZED
 														? t("group.uncategorized")
@@ -180,11 +180,11 @@ export function AbilitiesPageView({
 																? t("group.vettaBuiltin")
 																: resolveCategoryLabel(group.category, group.categoryI18n, i18n.language)}
 												</h2>
-												<span className="rounded-full border border-border/40 bg-secondary/80 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground/60">
+												<span className="text-[11px] tabular-nums text-muted-foreground/50">
 													{group.items.length}
 												</span>
 											</div>
-											<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+											<div className="grid grid-cols-2 gap-x-3 gap-y-0.5 lg:grid-cols-3">
 												{group.items.map((item) => (
 													<AbilityCard key={item.id} item={item} model={model} />
 												))}
@@ -192,7 +192,7 @@ export function AbilitiesPageView({
 										</section>
 									))
 								) : (
-									<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+									<div className="grid grid-cols-2 gap-x-3 gap-y-0.5 lg:grid-cols-3">
 										{model.items.map((item) => (
 											<AbilityCard key={item.id} item={item} model={model} />
 										))}
