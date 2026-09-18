@@ -1,14 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { FetchImpl } from "./fetch.js";
 import {
+	buildCatalog,
 	CATALOG_TTL_MS,
 	enrichFromCatalog,
+	enrichModelsFromCatalog,
 	fetchModelsDevCatalog,
 	isCatalogFresh,
 	isCatalogUsable,
 	lookupCatalogModel,
 	type ModelsDevCatalog,
-	selectLatestModels,
 } from "./models-dev.js";
 import { MODELS_DEV_SNAPSHOT } from "./models-dev-snapshot.generated.js";
 
@@ -24,6 +25,11 @@ const RAW_API_JSON = {
 				modalities: { input: ["text", "image", "pdf"], output: ["text"] },
 				limit: { context: 1000000, output: 128000 },
 				cost: { input: 5, output: 25, cache_read: 0.5, cache_write: 6.25 },
+			},
+			"claude-3-opus": {
+				name: "Claude 3 Opus",
+				status: "deprecated",
+				modalities: { input: ["text"], output: ["text"] },
 			},
 		},
 	},
@@ -72,6 +78,8 @@ describe("models.dev 目录", () => {
 		expect(Object.keys(catalog.providers).sort()).toEqual(["claude", "deepseek", "gemini"]);
 		// 不吐文本的模型(视频/音乐/图像生成)不进目录。
 		expect(Object.keys(catalog.providers.gemini)).toEqual(["gemini-3.5-flash"]);
+		// 上游明确标记 deprecated 的文本模型也不应继续出现在公共目录。
+		expect(catalog.providers.claude["claude-3-opus"]).toBeUndefined();
 		expect(catalog.providers.deepseek["deepseek-v4-flash"].model).toEqual({
 			id: "deepseek-v4-flash",
 			name: "DeepSeek V4 Flash",
@@ -166,63 +174,41 @@ describe("随包内置快照", () => {
 		}
 	});
 
-	it("能按系列折叠出最新一档", () => {
+	it("目录中的可用模型不会再按系列折叠", () => {
 		const models = Object.values(MODELS_DEV_SNAPSHOT.providers.claude).map((entry) => entry.model);
-		const latest = selectLatestModels(
-			MODELS_DEV_SNAPSHOT,
-			"claude",
-			models,
-			Date.parse(MODELS_DEV_SNAPSHOT.fetchedAt),
-		);
+		const enriched = enrichModelsFromCatalog(MODELS_DEV_SNAPSHOT, "claude", models);
 
-		expect(latest.length).toBeGreaterThan(0);
-		expect(latest.length).toBeLessThan(models.length);
+		expect(enriched).toHaveLength(models.length);
 	});
 });
 
-describe("selectLatestModels", () => {
-	const catalog: ModelsDevCatalog = {
-		version: 2,
-		fetchedAt: new Date(NOW).toISOString(),
-		providers: {
-			openai: {
-				"gpt-5.6-sol": { model: { id: "gpt-5.6-sol" }, family: "gpt-sol", releaseDate: "2026-07-09" },
-				"gpt-5.4": { model: { id: "gpt-5.4" }, family: "gpt-sol", releaseDate: "2026-02-01" },
-				"gpt-5.4-mini": { model: { id: "gpt-5.4-mini" }, family: "gpt-mini", releaseDate: "2026-02-01" },
-				"gpt-4o": { model: { id: "gpt-4o" }, family: "gpt-4o", releaseDate: "2024-05-13" },
-				// 只给到月份,应被归一化后参与比较。
-				"gpt-5.5": { model: { id: "gpt-5.5" }, family: "gpt-sol", releaseDate: "2026-04" },
-			},
-		},
-	};
+describe("enrichModelsFromCatalog", () => {
 	const ids = (models: Array<{ id: string }>) => models.map((model) => model.id);
 
-	it("每个系列只留发布最新的一档", () => {
-		const kept = selectLatestModels(
-			catalog,
-			"openai",
-			[{ id: "gpt-5.6-sol" }, { id: "gpt-5.5" }, { id: "gpt-5.4" }, { id: "gpt-5.4-mini" }],
+	it("同一 family 的不同服务档位和目录未知模型全部保留", () => {
+		const catalog = buildCatalog(
+			{
+				alibaba: {
+					models: {
+						"qwen3-max": { name: "Qwen3 Max", family: "qwen", modalities: { output: ["text"] } },
+						"qwen3-plus": { name: "Qwen3 Plus", family: "qwen", modalities: { output: ["text"] } },
+						"qwen3-flash": { name: "Qwen3 Flash", family: "qwen", modalities: { output: ["text"] } },
+					},
+				},
+			},
 			NOW,
 		);
+		const models = [{ id: "qwen3-plus" }, { id: "qwen-account-preview" }, { id: "qwen3-flash" }, { id: "qwen3-max" }];
 
-		expect(ids(kept)).toEqual(["gpt-5.4-mini", "gpt-5.6-sol"]);
+		const kept = enrichModelsFromCatalog(catalog, "qwen", models);
+
+		expect(ids(kept)).toEqual(["qwen-account-preview", "qwen3-flash", "qwen3-max", "qwen3-plus"]);
+		expect(kept.find((model) => model.id === "qwen3-max")?.name).toBe("Qwen3 Max");
 	});
 
-	it("发布超过一年的整族淘汰", () => {
-		const kept = selectLatestModels(catalog, "openai", [{ id: "gpt-4o" }], NOW);
+	it("没有目录时仍保留并按 id 排序", () => {
+		const models = [{ id: "b" }, { id: "a" }];
 
-		expect(kept).toEqual([]);
-	});
-
-	it("目录里查不到的模型一律保留——可能是刚发布或账号专属", () => {
-		const kept = selectLatestModels(catalog, "openai", [{ id: "gpt-5.4" }, { id: "gpt-7-internal" }], NOW);
-
-		expect(ids(kept)).toEqual(["gpt-5.4", "gpt-7-internal"]);
-	});
-
-	it("没有目录时原样返回", () => {
-		const models = [{ id: "a" }, { id: "b" }];
-
-		expect(selectLatestModels(null, "openai", models, NOW)).toEqual(models);
+		expect(ids(enrichModelsFromCatalog(null, "openai", models))).toEqual(["a", "b"]);
 	});
 });

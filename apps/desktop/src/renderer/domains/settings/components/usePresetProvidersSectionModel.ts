@@ -55,6 +55,10 @@ export interface PresetProvidersSectionLabels {
 	encryptedApiKeyPlaceholder: string;
 	save: string;
 	noModels: string;
+	noMatchingModels: string;
+	searchModels: (provider: string) => string;
+	clearModelSearch: string;
+	modelListLabel: (provider: string) => string;
 	thinking: string;
 	perMillionTokens: string;
 	refreshModels: string;
@@ -368,6 +372,10 @@ export function usePresetProvidersSectionModel({
 			encryptedApiKeyPlaceholder: t("replaceApiKeyPlaceholder"),
 			save: t("save"),
 			noModels: t("noModels"),
+			noMatchingModels: t("noMatchingModels"),
+			searchModels: (provider: string) => t("searchModels", { provider }),
+			clearModelSearch: t("clearModelSearch"),
+			modelListLabel: (provider: string) => t("modelListLabel", { provider }),
 			thinking: t("thinking"),
 			perMillionTokens: t("perMillionTokens"),
 			refreshModels: t("refreshModels"),
