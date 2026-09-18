@@ -13,6 +13,8 @@ import type {
 const DRAG_MIME = "application/vetta-path";
 
 export interface FileTreeNodeViewProps {
+	/** DOM id referenced by the tree's `aria-activedescendant`; rows themselves are not focusable. */
+	rowId?: string;
 	entry: FileExplorerEntry;
 	depth: number;
 	isExpanded: boolean;
@@ -90,6 +92,7 @@ function parseInternalDragPaths(raw: string): string[] {
  * Single file-tree row: chevron, icon, name / rename input, drag-drop.
  */
 export function FileTreeNodeView({
+	rowId,
 	entry,
 	depth,
 	isExpanded,
@@ -229,10 +232,10 @@ export function FileTreeNodeView({
 
 	return (
 		<div
+			id={rowId}
 			role="treeitem"
 			aria-selected={isSelected}
 			data-file-path={entry.path}
-			tabIndex={isFocused || isSelected ? 0 : -1}
 			draggable={!isRenaming}
 			onClick={handleClick}
 			onContextMenu={handleContextMenu}
@@ -241,13 +244,6 @@ export function FileTreeNodeView({
 			onDragOver={handleDragOver}
 			onDragLeave={handleDragLeave}
 			onDrop={handleDrop}
-			onKeyDown={(e) => {
-				if (e.key === "Enter") {
-					e.preventDefault();
-					onSelectEntry(entry, { toggle: false, range: false, activate: true });
-					if (entry.isDirectory) onToggleDir(entry.path);
-				}
-			}}
 			className={cn(
 				"flex items-center gap-1.5 rounded-md px-1.5 py-[3px] text-[12px] cursor-default select-none transition-colors",
 				isSelected && !isRenaming ? "bg-accent text-foreground" : "text-foreground hover:bg-accent/50",

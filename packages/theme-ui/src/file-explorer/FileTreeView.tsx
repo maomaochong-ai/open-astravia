@@ -1,16 +1,19 @@
 import {
 	type DragEvent,
+	type FocusEvent,
 	type JSX,
 	type KeyboardEvent,
 	type MouseEvent,
 	useCallback,
 	useEffect,
+	useId,
 	useMemo,
 	useRef,
 	useState,
 } from "react";
 import { type VirtuosoHandle, Virtuoso } from "react-virtuoso";
 import { FILE_TREE_ROOT_DROP_CLASS, isDragLeavingElement } from "./drag-target";
+import { fileTreeRowDomId, isFileTreeEditableTarget } from "./file-tree-dom";
 import { FileTreeCreateRow } from "./FileTreeCreateRow";
 import { FileTreeNodeView } from "./FileTreeNodeView";
 import {
@@ -127,7 +130,7 @@ export function FileTreeView({
 	onTreeKeyDown,
 }: FileTreeViewProps): JSX.Element {
 	const virtuosoRef = useRef<VirtuosoHandle>(null);
-	const visibleRangeRef = useRef({ startIndex: 0, endIndex: 0 });
+	const treeId = useId();
 	const rowsRef = useRef<readonly FileTreeRow[]>([]);
 	const [rootDragOver, setRootDragOver] = useState(false);
 	const rows = useMemo(
@@ -205,14 +208,40 @@ export function FileTreeView({
 		rowMetrics: rowHeights,
 	});
 
-	useEffect(() => {
-		if (!focusedPath) return;
-		const index = rowsRef.current.findIndex((row) => row.type === "entry" && row.entry.path === focusedPath);
-		if (index < 0) return;
-		const { startIndex, endIndex } = visibleRangeRef.current;
-		if (index >= startIndex && index <= endIndex) return;
-		virtuosoRef.current?.scrollIntoView({ index, align: "center" });
+	// Keyboard focus stays on the tree container (rows are recycled by the virtual list, so a
+	// focused row element would drop focus to <body> when it scrolls out). The active row is
+	// announced through aria-activedescendant and kept in view through Virtuoso, which only
+	// scrolls when the row is outside the viewport.
+	const focusedIndex = useMemo(
+		() => (focusedPath ? rows.findIndex((row) => row.type === "entry" && row.entry.path === focusedPath) : -1),
+		[rows, focusedPath],
+	);
+	const focusedRow = focusedIndex >= 0 ? rows[focusedIndex] : undefined;
+	const focusedEntry = focusedRow?.type === "entry" ? focusedRow.entry : null;
+	const revealFocusedRow = useCallback(() => {
+		const index = focusedPath
+			? rowsRef.current.findIndex((row) => row.type === "entry" && row.entry.path === focusedPath)
+			: -1;
+		if (index >= 0) virtuosoRef.current?.scrollIntoView({ index });
 	}, [focusedPath]);
+	useEffect(() => {
+		revealFocusedRow();
+	}, [revealFocusedRow]);
+
+	function handleTreeFocus(event: FocusEvent<HTMLDivElement>): void {
+		// Rename / create inputs manage their own visibility; only chrome focus reveals the active row.
+		if (isFileTreeEditableTarget(event.target)) return;
+		revealFocusedRow();
+	}
+
+	function handleTreeKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
+		onTreeKeyDown?.(event);
+		if (event.defaultPrevented || event.key !== "Enter") return;
+		if (isFileTreeEditableTarget(event.target) || renamingPath || creatingEntry || !focusedEntry) return;
+		event.preventDefault();
+		onSelectEntry(focusedEntry, { toggle: false, range: false, activate: true });
+		if (focusedEntry.isDirectory) onToggleDir(focusedEntry.path);
+	}
 
 	function handleRootDragOver(event: DragEvent): void {
 		const types = Array.from(event.dataTransfer.types);
@@ -252,7 +281,7 @@ export function FileTreeView({
 		onRootContextMenu(event.clientX, event.clientY);
 	}
 
-	function renderRow(row: FileTreeRow): JSX.Element {
+	function renderRow(index: number, row: FileTreeRow): JSX.Element {
 		if (row.type === "create") {
 			return (
 				<FileTreeCreateRow
@@ -279,6 +308,7 @@ export function FileTreeView({
 					];
 		return (
 			<FileTreeNodeView
+				rowId={fileTreeRowDomId(treeId, index)}
 				entry={row.entry}
 				depth={row.depth}
 				isExpanded={expandedDirs.has(row.entry.path)}
@@ -321,13 +351,14 @@ export function FileTreeView({
 				}}
 				role="tree"
 				tabIndex={0}
+				data-file-tree-root={rootDir}
 				onClick={handleBackgroundClick}
 				onContextMenu={handleRootContextMenu}
 				onMouseDown={onMarqueeMouseDown}
 				onDragOver={handleRootDragOver}
 				onDragLeave={handleRootDragLeave}
 				onDrop={handleRootDrop}
-				onKeyDown={onTreeKeyDown}
+				onKeyDown={handleTreeKeyDown}
 				className={`flex h-full min-h-0 items-center justify-center overflow-y-auto px-4 py-6 text-center text-[11px] text-muted-foreground outline-none select-none ${rootDragOver ? FILE_TREE_ROOT_DROP_CLASS : ""}`}
 			>
 				{emptyLabel}
@@ -340,6 +371,8 @@ export function FileTreeView({
 		<div
 			role="tree"
 			tabIndex={0}
+			aria-activedescendant={focusedIndex >= 0 ? fileTreeRowDomId(treeId, focusedIndex) : undefined}
+			data-file-tree-root={rootDir}
 			className={`relative h-full min-h-0 overflow-hidden outline-none select-none ${rootDragOver ? FILE_TREE_ROOT_DROP_CLASS : ""}`}
 			onClick={handleBackgroundClick}
 			onContextMenu={handleRootContextMenu}
@@ -347,7 +380,8 @@ export function FileTreeView({
 			onDragOver={handleRootDragOver}
 			onDragLeave={handleRootDragLeave}
 			onDrop={handleRootDrop}
-			onKeyDown={onTreeKeyDown}
+			onFocus={handleTreeFocus}
+			onKeyDown={handleTreeKeyDown}
 		>
 			<Virtuoso
 				ref={virtuosoRef}
@@ -359,10 +393,7 @@ export function FileTreeView({
 				scrollerRef={(ref) => {
 					scrollRef.current = toScrollerElement(ref);
 				}}
-				rangeChanged={(range) => {
-					visibleRangeRef.current = range;
-				}}
-				itemContent={(_index, row) => renderRow(row)}
+				itemContent={(index, row) => renderRow(index, row)}
 				className="h-full"
 				style={{ height: "100%" }}
 			/>

@@ -118,6 +118,11 @@ export function useFileExplorerSelection(input: {
 		[commit],
 	);
 
+	/** Move the keyboard focus row without touching the selection (plugin reveal with `select: false`). */
+	const focusEntry = useCallback((entry: FsEntry) => {
+		setState((prev) => (prev.focusedPath === entry.path ? prev : { ...prev, focusedPath: entry.path }));
+	}, []);
+
 	/** Marquee / bulk path set (already the full desired selection). */
 	const selectPaths = useCallback(
 		(paths: readonly string[]) => {
@@ -188,6 +193,7 @@ export function useFileExplorerSelection(input: {
 			selectAll,
 			moveFocus,
 			replaceWith,
+			focusEntry,
 			entryByPath,
 		}),
 		[
@@ -203,6 +209,7 @@ export function useFileExplorerSelection(input: {
 			selectAll,
 			moveFocus,
 			replaceWith,
+			focusEntry,
 			entryByPath,
 		],
 	);

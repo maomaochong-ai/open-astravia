@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type { FileExplorerEntry, FileTreeViewProps } from "@vetta-org/theme-ui/file-explorer";
-import { FileTreeView } from "@vetta-org/theme-ui/file-explorer";
+import { FileTreeView, findFileTreeElement } from "@vetta-org/theme-ui/file-explorer";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -203,5 +203,68 @@ describe("FileTreeView rename draft", () => {
 		fireEvent.change(input, { target: { value: "blurred.ts" } });
 		fireEvent.blur(input);
 		expect(onRenameSubmit).toHaveBeenCalledWith("/proj/f-5.ts", "blurred.ts");
+	});
+});
+
+describe("FileTreeView keyboard focus", () => {
+	it("焦点行被虚拟列表回收后，键盘焦点仍在树上，方向键照常送达", () => {
+		const onTreeKeyDown = vi.fn();
+		render(<FileTreeView {...makeProps({ focusedPath: "/proj/f-5.ts", onTreeKeyDown })} />);
+		const tree = screen.getByRole("tree");
+		// Rows are not focus targets any more; the tree container owns focus.
+		expect(screen.getAllByRole("treeitem")[0]?.hasAttribute("tabindex")).toBe(false);
+		act(() => tree.focus());
+		expect(tree.getAttribute("aria-activedescendant")).toBe(screen.getAllByRole("treeitem")[5]?.id);
+
+		mountWindow([50, 80]);
+		expect(document.activeElement).toBe(tree);
+		fireEvent.keyDown(tree, { key: "ArrowDown" });
+		expect(onTreeKeyDown).toHaveBeenCalledTimes(1);
+	});
+
+	it("方向键把焦点移到尚未渲染的行时，树把那一行滚进视口并更新 aria-activedescendant", () => {
+		const props = makeProps({ focusedPath: "/proj/f-5.ts" });
+		const { rerender } = render(<FileTreeView {...props} />);
+		mountWindow([0, 20]);
+		virtuoso.scrollIntoView.mockClear();
+
+		rerender(<FileTreeView {...props} focusedPath="/proj/f-150.ts" />);
+		expect(virtuoso.scrollIntoView).toHaveBeenCalledWith({ index: 150 });
+
+		mountWindow([140, 160]);
+		const tree = screen.getByRole("tree");
+		const activeRow = document.getElementById(tree.getAttribute("aria-activedescendant") ?? "");
+		expect(activeRow?.getAttribute("data-file-path")).toBe("/proj/f-150.ts");
+	});
+
+	it("宿主按 rootDir 找到树并聚焦时，当前焦点行会被滚入视口（插件 reveal 的路径）", () => {
+		render(<FileTreeView {...makeProps({ focusedPath: "/proj/f-100.ts" })} />);
+		mountWindow([0, 20]);
+		virtuoso.scrollIntoView.mockClear();
+
+		expect(findFileTreeElement("/other")).toBeNull();
+		const tree = findFileTreeElement("/proj");
+		expect(tree).toBe(screen.getByRole("tree"));
+		act(() => tree?.focus({ preventScroll: true }));
+
+		expect(document.activeElement).toBe(tree);
+		expect(virtuoso.scrollIntoView).toHaveBeenCalledWith({ index: 100 });
+	});
+
+	it("宿主没有接管 Enter 时，树自己激活焦点行；宿主已处理则不重复触发", () => {
+		const onSelectEntry = vi.fn();
+		const props = makeProps({ focusedPath: "/proj/f-3.ts", onSelectEntry });
+		const { rerender } = render(<FileTreeView {...props} />);
+		const tree = screen.getByRole("tree");
+		fireEvent.keyDown(tree, { key: "Enter" });
+		expect(onSelectEntry).toHaveBeenCalledWith(
+			expect.objectContaining({ path: "/proj/f-3.ts" }),
+			{ toggle: false, range: false, activate: true },
+		);
+
+		onSelectEntry.mockClear();
+		rerender(<FileTreeView {...props} onTreeKeyDown={(event) => event.preventDefault()} />);
+		fireEvent.keyDown(tree, { key: "Enter" });
+		expect(onSelectEntry).not.toHaveBeenCalled();
 	});
 });
