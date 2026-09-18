@@ -91,7 +91,7 @@ UI 优先不等于隐藏加载状态。界面应分别表达：
 必须遵守：
 
 - **可见壳在 transition 里不能依赖未完成的 `React.lazy`。** 即使包了 Suspense fallback，React 19 仍可能等 chunk 才露出新页。第一次作为前台页挂载时先提交同步标题壳，等这一帧画完再开始 `import()`；模块 promise 落地之前不要把 lazy 叶子放进树。
-- **绘制门闩放在 Activity 外面。** 隐藏预挂要立刻开始拉 chunk；Activity hidden 会拆 effects，钩子若写在 hidden 树里，预挂页会一直停在壳上。设置整页会预挂，标签仍是点到才挂：在 render 阶段踢加载，不要把绘制门闩套在标签树上。
+- **绘制门闩放在 Activity 外面。** Activity hidden 会拆 effects，钩子若写在 hidden 树里，切走后保活的页会一直停在壳上。内置页只有真正访问过才挂树，启动后不预挂未访问的页；设置标签同样是点到才挂：在 render 阶段踢加载，不要把绘制门闩套在标签树上。
 - **画廊这类插件视图若钩子必须写在页内：** 第一次走进会始终先出页内同步壳（例如 Hero 标题），再挂重 chunk。宿主不要再把整页工作区改成 `React.lazy`，否则切页过渡会再次空等。
 
 `useAllowLazyAfterFirstPaint` 只表达「这一帧能不能开始拉模块」；`useSurfacePageReady` 还要等模块回来，避免预挂到一半被点进去时树里仍有未完成的 lazy。
@@ -105,4 +105,4 @@ UI 优先不等于隐藏加载状态。界面应分别表达：
 - [ ] 临时状态能否成功规范化、失败恢复并避免重复初始化？
 - [ ] 测试是否证明了“UI 先于后台工作”，而非只证明最终结果？
 - [ ] 切页 `startTransition` 的新树里是否仍有未完成的 `React.lazy`？
-- [ ] 绘制门闩是否写在 Activity 外面，隐藏预挂是否仍能加载 chunk？
+- [ ] 绘制门闩是否写在 Activity 外面，切走后保活的隐藏树是否仍能加载 chunk？

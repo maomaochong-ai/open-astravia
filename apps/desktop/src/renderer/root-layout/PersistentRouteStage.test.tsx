@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, waitFor } from "@testing-library/react";
+import { act, render, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("./persistent-page-loaders", () => ({
@@ -178,28 +178,19 @@ describe("PersistentRouteStage", () => {
 		});
 	});
 
-	it("首屏后预挂隐藏的能力页和知识库，第一次点侧栏不必再等 Suspense", async () => {
+	it("启动后未访问过的页面不会被挂进隐藏树", async () => {
 		const { container } = render(<PersistentRouteStage currentPath="/" />);
-		expect(container.textContent).not.toContain("abilities-body");
 		await waitFor(() => {
 			expect(container.textContent).toContain("chat-body");
 		});
-		await waitFor(
-			() => {
-				expect(container.textContent).toContain("abilities-body");
-			},
-			{ timeout: 2000 },
-		);
-		await waitFor(
-			() => {
-				expect(container.textContent).toContain("knowledge-body");
-			},
-			{ timeout: 2500 },
-		);
-		const abilities = [...container.querySelectorAll("p")].find((node) => node.textContent === "abilities-body");
-		expect(abilities?.closest("[hidden]")).not.toBeNull();
-		const knowledge = [...container.querySelectorAll("p")].find((node) => node.textContent === "knowledge-body");
-		expect(knowledge?.closest("[hidden]")).not.toBeNull();
+		// 留出比早先启动期预挂更长的窗口，确认没有空闲回调把未访问页挂进来。
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 600));
+		});
+		expect(container.textContent).not.toContain("abilities-body");
+		expect(container.textContent).not.toContain("knowledge-body");
+		expect(container.textContent).not.toContain("settings-body");
+		expect(container.querySelector("[hidden]")).toBeNull();
 		const chat = [...container.querySelectorAll("p")].find((node) => node.textContent === "chat-body");
 		expect(chat?.closest("[hidden]")).toBeNull();
 	});

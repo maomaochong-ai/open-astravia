@@ -4,7 +4,7 @@ import { TitledPageShell } from "@shared/components/TitledPageShell";
 import { keepAliveShouldStackLeave } from "@shared/components/deferred-surface-display";
 import { useSurfacePageReady } from "@shared/hooks/useSurfacePageReady";
 import { PluginWorkspaceViewSurface } from "../domains/plugins/components/PluginWorkspaceViewRoute";
-import { lazy, Suspense, useCallback, useEffect, useState, type ComponentType, type JSX, type LazyExoticComponent } from "react";
+import { lazy, Suspense, useCallback, useState, type ComponentType, type JSX, type LazyExoticComponent } from "react";
 import { useTranslation } from "react-i18next";
 import { ChatSurface } from "./ChatSurface";
 import { ChatSurfaceShell } from "./ChatSurfaceShell";
@@ -37,12 +37,10 @@ import {
 	loadTeamChatPage,
 } from "./persistent-page-loaders";
 import {
-	IDLE_PREMOUNT_SURFACES,
 	persistentSurfaceIdForPath,
 	rememberVisitedSurface,
 	type PersistentSurfaceId,
 } from "./persistent-surface";
-import { scheduleIdleCallback } from "./route-prefetch";
 import {
 	rememberVisitedTeamChat,
 	teamChatSurfaceForPath,
@@ -110,7 +108,7 @@ function PersistentPage({
 }): JSX.Element {
 	const ready = useSurfacePageReady(active, LOAD_BY_SURFACE[id]);
 	return (
-		<DeferredSurface active={active} name={id} premount stackLeave={stackLeave}>
+		<DeferredSurface active={active} name={id} stackLeave={stackLeave}>
 			{ready ? (
 				<Suspense fallback={<PersistentSurfaceShell id={id} />}>
 					<Page />
@@ -254,25 +252,6 @@ export function PersistentRouteStage({ currentPath }: PersistentRouteStageProps)
 	if (nextTeamChats !== visitedTeamChats) setVisitedTeamChats(nextTeamChats);
 	const nextDetails = rememberVisitedDetail(visitedDetails, detail);
 	if (nextDetails !== visitedDetails) setVisitedDetails(nextDetails);
-
-	useEffect(() => {
-		let cancelled = false;
-		const cancels: Array<() => void> = [];
-		const run = (index: number): void => {
-			if (cancelled || index >= IDLE_PREMOUNT_SURFACES.length) return;
-			const id = IDLE_PREMOUNT_SURFACES[index];
-			if (id) setVisited((prev) => rememberVisitedSurface(prev, id));
-			if (index + 1 < IDLE_PREMOUNT_SURFACES.length) {
-				cancels.push(scheduleIdleCallback(() => run(index + 1), 400));
-			}
-		};
-		const timeoutId = globalThis.setTimeout(() => run(0), 300);
-		return () => {
-			cancelled = true;
-			globalThis.clearTimeout(timeoutId);
-			for (const cancel of cancels) cancel();
-		};
-	}, []);
 
 	const keepAlive = surface !== null || workspace !== null || teamChat !== null || detail !== null;
 	const overlayLeave = keepAliveShouldStackLeave(

@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-	IDLE_PREMOUNT_SURFACES,
-	type PersistentSurfaceId,
-	persistentSurfaceIdForPath,
-	rememberVisitedSurface,
-} from "./persistent-surface";
+import { type PersistentSurfaceId, persistentSurfaceIdForPath, rememberVisitedSurface } from "./persistent-surface";
 
 describe("persistentSurfaceIdForPath", () => {
 	it("把侧栏高频入口映射到保活 surface", () => {
@@ -18,19 +13,6 @@ describe("persistentSurfaceIdForPath", () => {
 		expect(persistentSurfaceIdForPath("/scenes")).toBe("scenes");
 		expect(persistentSurfaceIdForPath("/automation")).toBe("automation");
 		expect(persistentSurfaceIdForPath("/batch-tasks")).toBe("batch-tasks");
-	});
-
-	it("空闲预挂能力、智能体、设置和其余侧栏高频页，第一次点侧栏不必等 chunk", () => {
-		expect(IDLE_PREMOUNT_SURFACES).toEqual([
-			"abilities",
-			"agents",
-			"settings",
-			"knowledge",
-			"knowledge-all",
-			"scenes",
-			"automation",
-			"batch-tasks",
-		]);
 	});
 
 	it("团队会话走独立 LRU，不映射到内置 surface", () => {

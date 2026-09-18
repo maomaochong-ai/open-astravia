@@ -17,18 +17,6 @@ export type PersistentSurfaceId =
 	| "scenes"
 	| "settings";
 
-/** 首屏之后按空闲预挂隐藏树，第一次点侧栏不必再等 Suspense。 */
-export const IDLE_PREMOUNT_SURFACES: readonly Exclude<PersistentSurfaceId, "chat">[] = [
-	"abilities",
-	"agents",
-	"settings",
-	"knowledge",
-	"knowledge-all",
-	"scenes",
-	"automation",
-	"batch-tasks",
-];
-
 export function persistentSurfaceIdForPath(pathname: string): PersistentSurfaceId | null {
 	const path = pathname === "" ? "/" : pathname;
 	if (path === "/knowledge/all" || path.startsWith("/knowledge/all/")) return "knowledge-all";

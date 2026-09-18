@@ -52,18 +52,14 @@ vi.mock("./outlet-page-loaders", () => ({
 
 const { PersistentRouteStage } = await import("./PersistentRouteStage.js");
 
-describe("PersistentRouteStage premount pending", () => {
-	it("隐藏预挂 chunk 未完成时点进去仍先露出标题壳", async () => {
+describe("PersistentRouteStage pending chunk", () => {
+	it("第一次点进 chunk 未完成的页面先露出标题壳，之前不会挂进隐藏树", async () => {
 		const { container, rerender } = render(<PersistentRouteStage currentPath="/" />);
-		await waitFor(
-			() => {
-				expect(container.textContent).toContain("page.title");
-			},
-			{ timeout: 2000 },
-		);
-		expect(container.textContent).not.toContain("abilities-body");
-		const hiddenTitle = [...container.querySelectorAll("h1")].find((node) => node.textContent === "page.title");
-		expect(hiddenTitle?.closest("[hidden]")).not.toBeNull();
+		await waitFor(() => {
+			expect(container.textContent).toContain("chat-body");
+		});
+		expect(container.textContent).not.toContain("page.title");
+		expect(container.querySelector("[hidden]")).toBeNull();
 
 		act(() => {
 			startTransition(() => {

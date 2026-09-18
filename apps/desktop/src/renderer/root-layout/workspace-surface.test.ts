@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-	DEFAULT_PINNED_WORKSPACE,
 	MAX_RESIDENT_WORKSPACE_SURFACES,
 	rememberVisitedWorkspace,
 	workspaceSurfaceForPath,
@@ -13,7 +12,6 @@ describe("workspaceSurfaceForPath", () => {
 			viewId: "gallery",
 			key: "vetta-ui-design/gallery",
 		});
-		expect(workspaceSurfaceForPath("/workspace/vetta-ui-design/gallery")).toEqual(DEFAULT_PINNED_WORKSPACE);
 	});
 
 	it("解码 URL 段，拒绝缺段或非法编码", () => {

@@ -12,13 +12,6 @@ export interface WorkspaceSurfaceRef {
 /** 与空闲会话驻留上限同量级：最近用过的工作区立刻切回，更早的卸树。 */
 export const MAX_RESIDENT_WORKSPACE_SURFACES = 3;
 
-/** 侧栏默认置顶的设计画廊。与 `DEFAULT_PINNED_NAV_KEYS` 同一身份，供首屏预挂。 */
-export const DEFAULT_PINNED_WORKSPACE: WorkspaceSurfaceRef = {
-	pluginId: "vetta-ui-design",
-	viewId: "gallery",
-	key: "vetta-ui-design/gallery",
-};
-
 const WORKSPACE_PATH = /^\/workspace\/([^/]+)\/([^/]+)\/?$/;
 
 export function workspaceSurfaceForPath(pathname: string): WorkspaceSurfaceRef | null {
