@@ -1,4 +1,3 @@
-// @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -14,31 +13,16 @@ vi.mock("@vetta-org/plugin-sdk", () => {
 	return { useTranslation: () => ({ t, locale: "zh" }) };
 });
 
-const {
-	refreshDesignCatalog,
-	catalogSnapshot,
-	galleryCache,
-	loadGallery,
-} = vi.hoisted(() => ({
-	refreshDesignCatalog: vi.fn(),
-	catalogSnapshot: { current: { systems: [] as { id: string }[], status: "ready" as const } },
-	galleryCache: { current: null as { cards: unknown[]; workspacePath: string } | null },
-	loadGallery: vi.fn(async (_options?: { signal?: AbortSignal; skipCovers?: boolean; force?: boolean }) => ({
-		cards: [],
-		workspacePath: "/tmp/designs",
-	})),
-}));
+const refreshDesignCatalog = vi.fn();
 vi.mock("../src/design-systems/index", () => ({
 	refreshDesignCatalog: (...args: unknown[]) => refreshDesignCatalog(...args),
 	useCatalogState: () => ({ systems: [], status: "ready" }),
-	catalogState: () => catalogSnapshot.current,
 }));
+
+const loadGallery = vi.fn(async () => ({ cards: [], workspacePath: "/tmp/designs" }));
 vi.mock("../src/gallery/gallery-store", () => ({
-	getCachedSnapshot: () => galleryCache.current,
-	isGalleryCacheFresh: () => galleryCache.current !== null,
-	isGalleryCoverCacheComplete: () => galleryCache.current !== null,
-	isGalleryAbortError: (error: unknown) => error instanceof Error && error.name === "AbortError",
-	loadGallery: (options?: { signal?: AbortSignal; skipCovers?: boolean; force?: boolean }) => loadGallery(options),
+	getCachedSnapshot: () => null,
+	loadGallery: () => loadGallery(),
 }));
 
 // 工具栏现在挂在宿主页头上（ui.setWorkspaceViewHeader），测试扮演宿主：接住
@@ -56,16 +40,14 @@ vi.mock("../src/plugin-context", () => ({
 }));
 
 // 子视图与画廊数据无关，全部替换成最小替身，只保留刷新按钮所在的工具栏路径。
-vi.mock("../src/gallery/DesignSystemGrid", () => ({ DesignSystemGrid: () => <p>style-grid</p> }));
+vi.mock("../src/gallery/DesignSystemGrid", () => ({ DesignSystemGrid: () => null }));
 vi.mock("../src/gallery/AllProjectsView", () => ({ AllProjectsView: () => null }));
 vi.mock("../src/gallery/GalleryCard", () => ({ GalleryCard: () => null }));
 vi.mock("../src/gallery/CardContextMenu", () => ({ CardContextMenu: () => null }));
 vi.mock("../src/gallery/CreateDesignDialog", () => ({ CreateDesignDialog: () => null }));
 vi.mock("../src/gallery/DesignSystemDetailDialog", () => ({ DesignSystemDetailDialog: () => null }));
 vi.mock("../src/canvas/ConfirmDialog", () => ({ ConfirmDialog: () => null }));
-vi.mock("../src/gallery/use-gallery-columns", () => ({
-	useGalleryColumns: () => ({ ref: () => undefined, columns: 3 }),
-}));
+vi.mock("../src/gallery/use-gallery-columns", () => ({ useGalleryColumns: () => 3 }));
 vi.mock("../src/gallery/open-project", () => ({
 	openProjectFromGallery: vi.fn(),
 	startDesignProject: vi.fn(),
@@ -85,13 +67,7 @@ let headerRoot: Root;
 
 beforeEach(() => {
 	refreshDesignCatalog.mockClear();
-	loadGallery.mockReset();
-	loadGallery.mockImplementation(async () => ({
-		cards: [],
-		workspacePath: "/tmp/designs",
-	}));
-	galleryCache.current = null;
-	catalogSnapshot.current = { systems: [], status: "ready" };
+	loadGallery.mockClear();
 	hostHeader.current = null;
 	host = document.createElement("div");
 	document.body.appendChild(host);
@@ -109,21 +85,10 @@ afterEach(() => {
 	document.body.innerHTML = "";
 });
 
-async function flushPaint(): Promise<void> {
-	await act(async () => {
-		await new Promise<void>((resolve) => {
-			requestAnimationFrame(() => {
-				requestAnimationFrame(() => resolve());
-			});
-		});
-	});
-}
-
 async function mountGallery(): Promise<void> {
 	await act(async () => {
 		root.render(<GalleryView />);
 	});
-	await flushPaint();
 	await act(async () => {
 		await Promise.resolve();
 	});
@@ -142,8 +107,6 @@ describe("画廊风格库刷新策略", () => {
 	it("挂载自动刷新不带 force（走 TTL + ETag）", async () => {
 		await mountGallery();
 		expect(loadGallery).toHaveBeenCalled();
-		expect(loadGallery.mock.calls[0]?.[0]?.skipCovers).toBe(true);
-		expect(loadGallery.mock.calls.some((call) => call[0]?.skipCovers !== true)).toBe(true);
 		expect(refreshDesignCatalog).toHaveBeenCalled();
 		for (const call of refreshDesignCatalog.mock.calls) {
 			const options = call[2] as { force?: boolean } | undefined;
@@ -165,59 +128,5 @@ describe("画廊风格库刷新策略", () => {
 			(call) => (call[2] as { force?: boolean } | undefined)?.force === true,
 		);
 		expect(forced).toBe(true);
-	});
-
-	it("首屏立刻画出 Hero 标题和风格墙，项目扫描仍等第一帧绘制之后", async () => {
-		let resolveLoad: ((value: { cards: unknown[]; workspacePath: string }) => void) | undefined;
-		loadGallery.mockImplementation(
-			() =>
-				new Promise((resolve) => {
-					resolveLoad = resolve;
-				}),
-		);
-		await act(async () => {
-			root.render(<GalleryView />);
-		});
-		expect(host.textContent).toContain("gallery.hero.title");
-		expect(host.textContent).toContain("gallery.styles.title");
-		expect(host.textContent).toContain("style-grid");
-		expect(loadGallery).not.toHaveBeenCalled();
-		await flushPaint();
-		expect(loadGallery.mock.calls[0]?.[0]?.skipCovers).toBe(true);
-		loadGallery.mockImplementation(async () => ({
-			cards: [],
-			workspacePath: "/tmp/designs",
-		}));
-		await act(async () => {
-			resolveLoad?.({ cards: [], workspacePath: "/tmp/designs" });
-			await Promise.resolve();
-		});
-	});
-
-	it("离开画廊会中止进行中的项目扫描", async () => {
-		await mountGallery();
-		const signal = loadGallery.mock.calls[0]?.[0]?.signal;
-		expect(signal).toBeInstanceOf(AbortSignal);
-		expect(signal?.aborted).toBe(false);
-		await act(async () => {
-			root.unmount();
-		});
-		expect(signal?.aborted).toBe(true);
-		root = createRoot(host);
-	});
-
-	it("缓存仍新鲜且风格库已在内存时再挂载不重扫、不重拉清单", async () => {
-		await mountGallery();
-		galleryCache.current = { cards: [], workspacePath: "/tmp/designs" };
-		catalogSnapshot.current = { systems: [{ id: "linear" }], status: "ready" };
-		loadGallery.mockClear();
-		refreshDesignCatalog.mockClear();
-		await act(async () => {
-			root.unmount();
-		});
-		root = createRoot(host);
-		await mountGallery();
-		expect(loadGallery).not.toHaveBeenCalled();
-		expect(refreshDesignCatalog).not.toHaveBeenCalled();
 	});
 });

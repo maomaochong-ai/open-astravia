@@ -40,11 +40,11 @@ export interface SessionViewerPageModel {
 	onExportFinished: () => void;
 }
 
-export function useSessionViewerPageModel(pathProp?: string): SessionViewerPageModel {
+export function useSessionViewerPageModel(): SessionViewerPageModel {
 	const { t } = useTranslation("chat");
 	const params = useParams({ strict: false }) as { path?: string };
-	const encodedPath = params.path;
-	const path = pathProp !== undefined ? pathProp : encodedPath ? decodeURIComponent(encodedPath) : "";
+	const encodedPath = params.path as string | undefined;
+	const path = encodedPath ? decodeURIComponent(encodedPath) : "";
 
 	const [messages, setMessages] = useState<ChatConversationItem[]>([]);
 	const [error, setError] = useState<string | null>(null);

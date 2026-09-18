@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 
-import { SurfaceActiveContext } from "@shared/surface-active";
 import { cleanup, render } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -95,8 +94,6 @@ afterEach(() => {
 	captured.viewProps = null;
 	captured.title = null;
 	captured.navigate.mockReset();
-	captured.params.teamId = "team-1";
-	captured.params.sessionId = "session-1";
 	captured.params.memberId = undefined;
 });
 
@@ -122,28 +119,5 @@ describe("TeamChatPage navigation", () => {
 			to: "/agent-teams/$teamId/settings",
 			params: { teamId: "team-1" },
 		});
-	});
-
-	it("保活宿主传入的团队参数优先于当前路由 params", () => {
-		captured.params.teamId = "from-route";
-		captured.params.sessionId = "from-route-session";
-		render(<TeamChatPage teamId="kept-team" sessionId="kept-session" />);
-
-		captured.viewProps?.onOpenSettings();
-
-		expect(captured.navigate).toHaveBeenCalledWith({
-			to: "/agent-teams/$teamId/settings",
-			params: { teamId: "kept-team" },
-		});
-	});
-
-	it("隐藏保活时不向顶栏投稿", () => {
-		render(
-			<SurfaceActiveContext.Provider value={false}>
-				<TeamChatPage teamId="kept-team" sessionId="kept-session" />
-			</SurfaceActiveContext.Provider>,
-		);
-		expect(captured.title).toBeNull();
-		expect(captured.right).toBeNull();
 	});
 });

@@ -69,8 +69,15 @@ export function useTeamChatModel(
 	const selectedModel = useAtomValue(selectedModelAtom);
 	const reasoningByModel = useAtomValue(reasoningByModelAtom);
 	const [document, setDocument] = useState<AgentTeamDocument>();
-	const [snapshot, setSnapshot] = useState<DesktopTeamSessionSnapshot>();
+	const [storedSnapshot, setSnapshot] = useState<DesktopTeamSessionSnapshot>();
 	const [sessions, setSessions] = useState<readonly TeamSessionListItem[]>([]);
+	// Route params change before the loading effect clears the previous snapshot.
+	// Never expose a session from the previous route to send or the current view.
+	const snapshot =
+		storedSnapshot?.session.teamId === teamId &&
+		(!preferredSessionId || storedSnapshot.session.id === preferredSessionId)
+			? storedSnapshot
+			: undefined;
 	const session = snapshot?.session;
 	const effectiveModelKey = session?.modelSettings?.modelKey ?? selectedModel;
 	const effectiveReasoning =

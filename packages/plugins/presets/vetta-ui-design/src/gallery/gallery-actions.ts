@@ -6,12 +6,10 @@
  */
 import { exportDesign } from "../export/export-design";
 import { importPackagedVetd, parsePackagedVetd } from "../export/import-design";
-import { isSharePackageName } from "../export/share-format";
+import { SHARE_PREVIEW_EXTENSIONS } from "../export/share-format";
 import { getPluginCtx } from "../plugin-context";
 import { DesignSession } from "../vetd/design-session";
 import { sanitizeDesignName } from "../vetd/scaffold";
-
-export { isSharePackageName };
 
 export interface CreatedDesign {
 	cwd: string;
@@ -37,6 +35,12 @@ export async function createDesignProject(rawName: string): Promise<{ cwd: strin
 	const ctx = getPluginCtx();
 	const entry = await ctx.official.projects.create(toProjectName(rawName));
 	return { cwd: entry.path };
+}
+
+/** 这个文件名看起来是不是一个分享包。 */
+export function isSharePackageName(fileName: string): boolean {
+	const extension = fileName.split(".").pop()?.toLowerCase() ?? "";
+	return (SHARE_PREVIEW_EXTENSIONS as readonly string[]).includes(extension);
 }
 
 /** 分享包文件名 → 项目名：去掉扩展名与导出时加的 `-share` 后缀。 */

@@ -124,8 +124,6 @@ export interface SidebarModel {
 		readonly collapse?: () => void;
 		readonly openClawSettings: () => void;
 		readonly openNavItem: (item: SidebarNavItem) => void;
-		/** 指针悬停或聚焦导航项时预取对应路由 chunk；缺省则不做意图预取。 */
-		readonly prefetchNavItem?: (item: SidebarNavItem) => void;
 		readonly resize: (delta: number) => void;
 		readonly resizeEnd: () => void;
 		readonly setMoreOpen: (open: boolean) => void;

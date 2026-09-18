@@ -5,10 +5,8 @@ import type { ChatConversationItem } from "@shared/store/atoms";
 import type { ActivityWorkspace } from "@shared/workspace/activity-workspace";
 import type { ActivityTabId } from "@domains/activity-panel/registry/types";
 import type { ConversationScenario } from "@vetta-org/plugin-sdk";
-import { memo, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { ChatExportHost } from "../ChatExportHost";
-
-export const EMPTY_CHAT_MESSAGES: ChatConversationItem[] = [];
 
 export interface DefaultChatViewProps {
 	readonly children: ReactNode;
@@ -28,51 +26,6 @@ export interface DefaultChatViewProps {
 		readonly pluginScenario?: ConversationScenario;
 	};
 }
-
-function sameStringList(left: readonly string[] | undefined, right: readonly string[] | undefined): boolean {
-	if (left === right) return true;
-	if (!left || !right || left.length !== right.length) return false;
-	return left.every((value, index) => value === right[index]);
-}
-
-function isSameWorkspace(left: ActivityWorkspace, right: ActivityWorkspace): boolean {
-	return left.id === right.id && left.cwd === right.cwd && sameStringList(left.runtimeIds, right.runtimeIds);
-}
-
-function isSameActivity(
-	left: DefaultChatViewProps["activity"],
-	right: DefaultChatViewProps["activity"],
-): boolean {
-	if (left === right) return true;
-	if (!left || !right) return false;
-	return (
-		left.enablePluginTabs === right.enablePluginTabs &&
-		left.pluginScenario === right.pluginScenario &&
-		sameStringList(left.enabledBuiltinTabs, right.enabledBuiltinTabs)
-	);
-}
-
-const FrozenActivityColumn = memo(
-	function FrozenActivityColumn({
-		workspace,
-		activity,
-	}: {
-		workspace: ActivityWorkspace;
-		activity?: DefaultChatViewProps["activity"];
-	}) {
-		return activity ? (
-			<ActivityPanel
-				workspace={workspace}
-				enablePluginTabs={activity.enablePluginTabs}
-				enabledBuiltinTabs={activity.enabledBuiltinTabs}
-				pluginScenario={activity.pluginScenario}
-			/>
-		) : (
-			<CurrentScenarioActivityPanel workspace={workspace} />
-		);
-	},
-	(previous, next) => isSameWorkspace(previous.workspace, next.workspace) && isSameActivity(previous.activity, next.activity),
-);
 
 export function DefaultChatView({
 	children,
@@ -94,7 +47,16 @@ export function DefaultChatView({
 						{subHeader}
 						{children}
 					</div>
-					<FrozenActivityColumn workspace={workspace} activity={activity} />
+					{activity ? (
+						<ActivityPanel
+							workspace={workspace}
+							enablePluginTabs={activity.enablePluginTabs}
+							enabledBuiltinTabs={activity.enabledBuiltinTabs}
+							pluginScenario={activity.pluginScenario}
+						/>
+					) : (
+						<CurrentScenarioActivityPanel workspace={workspace} />
+					)}
 				</div>
 			</div>
 		</PerfSendProfiler>

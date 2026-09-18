@@ -1,12 +1,10 @@
 import type { InstalledSkill, SkillInfo } from "@preload/api";
-import { useOwnedHeaderTitleHidden } from "@shared/hooks/useOwnedHeaderTitleHidden";
 import { i18n } from "@shared/i18n";
 import type { MarketAbility } from "@shared/lib/api";
 import { downloadAbility, fetchMarketAbilities } from "@shared/lib/api";
-import { authTokenAtom } from "@shared/store/atoms";
-import { useSurfaceActive } from "@shared/surface-active";
+import { authTokenAtom, pageHeaderTitleHiddenAtom } from "@shared/store/atoms";
 import { useNavigate } from "@tanstack/react-router";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import type { ChangeEvent, RefObject } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { groupByCategory, type MergedSkill, mergeScenes } from "../lib/merge-scenes";
@@ -47,7 +45,7 @@ export function useSkillsPageModel(): SkillsPageModel {
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const token = useAtomValue(authTokenAtom);
-	useOwnedHeaderTitleHidden(useSurfaceActive());
+	const setHeaderTitleHidden = useSetAtom(pageHeaderTitleHiddenAtom);
 
 	const refresh = useCallback(() => {
 		void window.vetta.skills.getMarketManifest().then(setManifest);
@@ -85,6 +83,12 @@ export function useSkillsPageModel(): SkillsPageModel {
 		refresh();
 		loadMarket();
 	}, [refresh, loadMarket]);
+
+	// 场景页内已有大号标题，隐藏顶栏左上角路由标题。
+	useEffect(() => {
+		setHeaderTitleHidden(true);
+		return () => setHeaderTitleHidden(false);
+	}, [setHeaderTitleHidden]);
 
 	const setActionState = useCallback((name: string, state: ActionState) => {
 		setActionStates((prev) => ({ ...prev, [name]: state }));

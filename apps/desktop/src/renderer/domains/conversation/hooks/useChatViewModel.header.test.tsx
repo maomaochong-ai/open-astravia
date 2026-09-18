@@ -1,9 +1,7 @@
 // @vitest-environment jsdom
-import { ChatSurfaceActiveContext } from "@shared/chat-surface-active";
 import { act, renderHook } from "@testing-library/react";
 import { getDefaultStore } from "jotai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ReactNode } from "react";
 
 /**
  * 发送链路级联提交的合同：ChatView 把 actions/header memo 成 header slot 元素写进
@@ -12,6 +10,7 @@ import type { ReactNode } from "react";
  * 计数等）变动也不得触发重算。
  */
 
+// t 固定为稳定引用，与真实 react-i18next 行为一致（同一 i18n 实例下 t 身份稳定）。
 vi.mock("react-i18next", () => {
 	const t = (key: string) => key;
 	return { useTranslation: () => ({ t, i18n: { language: "zh" } }) };
@@ -38,23 +37,7 @@ function makeActiveSession(extra: Record<string, unknown> = {}) {
 		sessionPath: "/sessions/a.jsonl",
 		cwd: "/repo/a",
 		...extra,
-	} as never;
-}
-
-function renderChatViewModel(initialActive = true) {
-	const surface = { current: initialActive };
-	const view = renderHook(() => useChatViewModel(), {
-		wrapper: ({ children }: { children: ReactNode }) => (
-			<ChatSurfaceActiveContext.Provider value={surface.current}>{children}</ChatSurfaceActiveContext.Provider>
-		),
-	});
-	return {
-		...view,
-		setActive(next: boolean) {
-			surface.current = next;
-			view.rerender();
-		},
-	};
+	} as unknown as ReturnType<typeof getDefaultStore>["get"] extends never ? never : never;
 }
 
 describe("useChatViewModel 引用稳定性", () => {
@@ -64,13 +47,12 @@ describe("useChatViewModel 引用稳定性", () => {
 		store.set(atoms.chatMessagesAtom, [
 			{ id: "m1", role: "user", blocks: [{ type: "text", text: "hi" }] },
 		] as never);
-		store.set(atoms.activeSessionAtom, makeActiveSession());
+		store.set(atoms.activeSessionAtom, makeActiveSession() as never);
 		store.set(atoms.pendingSessionOpenAtom, null);
-		store.set(atoms.pageHeaderTitleAtom, null);
 	});
 
 	it("追加消息（非空→非空）不改变 actions / header 引用", () => {
-		const { result, rerender } = renderChatViewModel();
+		const { result, rerender } = renderHook(() => useChatViewModel());
 		const firstActions = result.current.actions;
 		const firstHeader = result.current.model.header;
 
@@ -86,15 +68,19 @@ describe("useChatViewModel 引用稳定性", () => {
 
 		expect(result.current.actions).toBe(firstActions);
 		expect(result.current.model.header).toBe(firstHeader);
+		// 消息本身照常透传。
 		expect(result.current.model.messages).toHaveLength(2);
 	});
 
 	it("activeSession 无关字段变动不改变 header 引用与 sessionId", () => {
-		const { result, rerender } = renderChatViewModel();
+		const { result, rerender } = renderHook(() => useChatViewModel());
 		const firstHeader = result.current.model.header;
 
 		act(() => {
-			getDefaultStore().set(atoms.activeSessionAtom, makeActiveSession({ contextUsage: { used: 1234 } }));
+			getDefaultStore().set(
+				atoms.activeSessionAtom,
+				makeActiveSession({ contextUsage: { used: 1234 } }) as never,
+			);
 		});
 		rerender();
 
@@ -106,7 +92,7 @@ describe("useChatViewModel 引用稳定性", () => {
 		act(() => {
 			getDefaultStore().set(atoms.chatMessagesAtom, [] as never);
 		});
-		const { result, rerender } = renderChatViewModel();
+		const { result, rerender } = renderHook(() => useChatViewModel());
 		expect(result.current.model.header.exportDisabled).toBe(true);
 
 		act(() => {
@@ -118,41 +104,8 @@ describe("useChatViewModel 引用稳定性", () => {
 		expect(result.current.model.header.exportDisabled).toBe(false);
 	});
 
-	it("切到其它页后清掉自己的顶栏标题，隐藏态卸载不再清别人的", () => {
-		const view = renderChatViewModel(true);
-		expect(getDefaultStore().get(atoms.pageHeaderTitleAtom)).not.toBeNull();
-
-		act(() => {
-			view.setActive(false);
-		});
-		expect(getDefaultStore().get(atoms.pageHeaderTitleAtom)).toBeNull();
-
-		act(() => {
-			getDefaultStore().set(atoms.pageHeaderTitleAtom, "Settings");
-		});
-		view.unmount();
-		expect(getDefaultStore().get(atoms.pageHeaderTitleAtom)).toBe("Settings");
-	});
-
-	it("聊天页不在前台时消息流不再驱动 view model", () => {
-		const { result, rerender } = renderChatViewModel(false);
-		const frozen = result.current.model.messages;
-
-		act(() => {
-			const store = getDefaultStore();
-			const prev = store.get(atoms.chatMessagesAtom);
-			store.set(atoms.chatMessagesAtom, [
-				...prev,
-				{ id: "m-hidden", role: "user", blocks: [{ type: "text", text: "后台" }] },
-			] as never);
-		});
-		rerender();
-		expect(result.current.model.messages).toBe(frozen);
-		expect(result.current.model.messages).toHaveLength(1);
-	});
-
 	it("打开已有会话时用目标路径稳定列表身份，并进入历史预览模式", () => {
-		const { result, rerender } = renderChatViewModel();
+		const { result, rerender } = renderHook(() => useChatViewModel());
 
 		act(() => {
 			getDefaultStore().set(atoms.pendingSessionOpenAtom, {
@@ -165,38 +118,5 @@ describe("useChatViewModel 引用稳定性", () => {
 		rerender();
 
 		expect(result.current.model.sessionId).toBe("/sessions/b.jsonl");
-	});
-
-	it("其它会话列表更新不改当前会话标题", () => {
-		const store = getDefaultStore();
-		store.set(
-			atoms.sessionsMapAtom,
-			new Map([
-				[
-					"/repo/a",
-					[{ id: "a", path: "/sessions/a.jsonl", cwd: "/repo/a", firstMessage: "当前会话", modifiedAt: 1 }],
-				],
-			]),
-		);
-		const { result, rerender } = renderChatViewModel();
-		expect(result.current.model.exportTitle).toBe("当前会话");
-
-		act(() => {
-			store.set(
-				atoms.sessionsMapAtom,
-				new Map([
-					[
-						"/repo/a",
-						[{ id: "a", path: "/sessions/a.jsonl", cwd: "/repo/a", firstMessage: "当前会话", modifiedAt: 1 }],
-					],
-					[
-						"/repo/b",
-						[{ id: "b", path: "/sessions/b.jsonl", cwd: "/repo/b", firstMessage: "别的会话", modifiedAt: 2 }],
-					],
-				]),
-			);
-		});
-		rerender();
-		expect(result.current.model.exportTitle).toBe("当前会话");
 	});
 });

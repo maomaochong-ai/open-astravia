@@ -53,7 +53,7 @@ export function createDispatchWorkflowsTool(
 		label: "dispatch_workflows",
 		description: DISPATCH_WORKFLOWS_TOOL_DESCRIPTION,
 		inputSchema: DispatchWorkflowsToolInputSchema,
-		async execute({ input }) {
+		async execute({ input, toolCallId }) {
 			const dispatcher = requireWorkflowDispatcher(options);
 			batchSequence += 1;
 			const batchId = `workflow-batch-${batchSequence}`;
@@ -66,6 +66,7 @@ export function createDispatchWorkflowsTool(
 					todos: workflow.todos,
 					deliveryMode: "batch",
 					batchId,
+					originToolCallId: toolCallId,
 				})),
 			);
 			const lines = [`Dispatched ${snapshots.length} workflow(s):`];

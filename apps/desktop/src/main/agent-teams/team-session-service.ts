@@ -52,6 +52,7 @@ import {
 	type TeamLegacySessionMigrationPort,
 } from "./team-legacy-session-migration.js";
 import { TeamMemberAttemptRunner } from "./team-member-attempt-runner.js";
+import { type TeamMemberModelPreference, teamMemberModelPreferences } from "./team-member-model-preferences.js";
 import { ensureLegacyAgentTeamOwnershipCatalog } from "./team-ownership-backfill.js";
 import { TeamPublicationWorkflow } from "./team-publication-workflow.js";
 import { TeamRuntimeManager } from "./team-runtime-manager.js";
@@ -76,6 +77,10 @@ export interface AgentTeamSessionServiceOptions {
 	readonly extensions?: AgentTeamExtensionRegistry;
 	readonly repository?: LegacyTeamSessionRepository;
 	readonly readDocument?: () => Promise<AgentTeamDocument>;
+	readonly readMemberModelPreference?: (
+		teamId: string,
+		memberId: string,
+	) => Promise<TeamMemberModelPreference | undefined>;
 	readonly ownershipCatalog?: ConversationOwnershipCatalogPort;
 	readonly externalConditionChanges?: {
 		subscribe(listener: (change: TeamExternalConditionChange) => void): () => void;
@@ -154,6 +159,7 @@ export class AgentTeamSessionService {
 			eventHub: this.eventHub,
 			readSession: (sessionId) => this.read(sessionId),
 			readDocument: () => this.readDocument(),
+			readMemberModelPreference: options.readMemberModelPreference,
 			observations: (session) => this.observations(session),
 			publishSessionUpdated: (session) => this.publishSessionUpdated(session),
 		});
@@ -1079,6 +1085,7 @@ export class AgentTeamSessionService {
 export const agentTeamSessionService = new AgentTeamSessionService({
 	extensions: agentTeamExtensionHost,
 	readDocument: () => agentTeamStore.read(),
+	readMemberModelPreference: (teamId, memberId) => teamMemberModelPreferences.get(teamId, memberId),
 	ownershipCatalog: conversationOwnershipCatalog,
 	externalConditionChanges: agentTeamExternalConditionChanges,
 });

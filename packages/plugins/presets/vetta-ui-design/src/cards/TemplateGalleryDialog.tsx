@@ -20,8 +20,7 @@ interface TemplateGalleryDialogProps {
 /**
  * 全量设计体系选择 Dialog。两个入口共用：会话宫格的「更多」，以及画布工具栏的
  * 设计资源按钮。点卡只是选中、点底部「应用」才执行——与会话宫格「点击即发送」
- * 相反，这里刻意加一道确认，避免在长列表里手滑误发。静态只铺色板，悬停到哪张
- * 才挂 HTML demo，避免一打开就把几十个 iframe 解析一遍。
+ * 相反，这里刻意加一道确认，避免在长列表里手滑误发。
  */
 export function TemplateGalleryDialog({
 	onApply,
@@ -34,7 +33,6 @@ export function TemplateGalleryDialog({
 	const { t } = useTranslation();
 	const systems = useDesignSystems();
 	const [selectedId, setSelectedId] = useState<string | null>(null);
-	const [hovered, setHovered] = useState<string | null>(null);
 	const selected = selectedId ? designSystemById(selectedId) : undefined;
 	const applied = appliedId ? designSystemById(appliedId) : undefined;
 
@@ -110,10 +108,6 @@ export function TemplateGalleryDialog({
 										key={system.id}
 										type="button"
 										onClick={() => setSelectedId(isSelected ? null : system.id)}
-										onMouseEnter={() => setHovered(system.id)}
-										onMouseLeave={() => setHovered((current) => (current === system.id ? null : current))}
-										onFocus={() => setHovered(system.id)}
-										onBlur={() => setHovered((current) => (current === system.id ? null : current))}
 										className={`flex aspect-square min-w-0 flex-col gap-1.5 overflow-hidden rounded-xl border p-2 text-left transition-all duration-200 ${
 											isSelected
 												? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary"
@@ -122,8 +116,6 @@ export function TemplateGalleryDialog({
 									>
 										<DesignSystemTileContent
 											system={system}
-											demo={hovered === system.id}
-											demoActive={hovered === system.id}
 											badge={
 												appliedId === system.id ? (
 													<span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-px text-[10px] font-medium text-primary">

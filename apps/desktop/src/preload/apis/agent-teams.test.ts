@@ -35,6 +35,9 @@ describe("createAgentTeamsApi", () => {
 		await api.renameSession({ id: "session", coordinationSessionPath: "C:/sessions/team.jsonl" }, "Renamed");
 		await api.deleteSession({ id: "session", coordinationSessionPath: "C:/sessions/team.jsonl" });
 		await api.updateModelSettings("session", { modelKey: "openai/gpt-5", reasoning: "high" });
+		await api.listMemberModels("team");
+		await api.setMemberModel("team", "member", { modelKey: "openai/gpt-5" });
+		await api.setMemberModel("team", "member", null);
 		await api.sendMessage("session", message);
 
 		expect(invoke).toHaveBeenNthCalledWith(1, "vetta:agent-teams:create-agent", agent);
@@ -76,6 +79,11 @@ describe("createAgentTeamsApi", () => {
 			modelKey: "openai/gpt-5",
 			reasoning: "high",
 		});
-		expect(invoke).toHaveBeenNthCalledWith(13, "vetta:agent-teams:send-message", "session", message);
+		expect(invoke).toHaveBeenNthCalledWith(13, "vetta:agent-teams:list-member-models", "team");
+		expect(invoke).toHaveBeenNthCalledWith(14, "vetta:agent-teams:set-member-model", "team", "member", {
+			modelKey: "openai/gpt-5",
+		});
+		expect(invoke).toHaveBeenNthCalledWith(15, "vetta:agent-teams:set-member-model", "team", "member", null);
+		expect(invoke).toHaveBeenNthCalledWith(16, "vetta:agent-teams:send-message", "session", message);
 	});
 });

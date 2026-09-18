@@ -795,6 +795,20 @@
 	"session": {
 		"emptyMessageLabel": "(图片)"
 	},
+	"subagentCard": {
+		"back": "返回父会话",
+		"open": "查看子代理 {{name}} 的消息",
+		"viewerSubtitle": "子代理消息（只读）",
+		"waitingForSession": "子代理会话准备中",
+		"status": {
+			"queued": "排队中",
+			"pending": "准备中",
+			"running": "进行中",
+			"completed": "已完成",
+			"failed": "失败",
+			"interrupted": "已中断"
+		}
+	},
 	"sessionViewer": {
 		"badge": {
 			"liveUpdate": "实时更新",

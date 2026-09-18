@@ -65,7 +65,7 @@ export function AbilitiesPageView({
 			<div className="relative shrink-0 px-8 pb-4">
 				<motion.div
 					className="mx-auto flex w-full max-w-5xl items-end justify-between gap-4"
-					initial={false}
+					initial={{ opacity: 0, y: -8 }}
 					animate={{ opacity: 1, y: 0 }}
 					transition={{ duration: 0.5, ease: easeOut }}
 				>

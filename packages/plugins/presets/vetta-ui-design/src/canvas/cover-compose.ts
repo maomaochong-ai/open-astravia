@@ -24,23 +24,11 @@ interface CoverPiece {
 	frame: VetdFrameEntry;
 }
 
-function loadImage(dataUrl: string, signal?: AbortSignal): Promise<HTMLImageElement | null> {
-	if (signal?.aborted) return Promise.resolve(null);
+function loadImage(dataUrl: string): Promise<HTMLImageElement | null> {
 	return new Promise((resolve) => {
 		const image = new Image();
-		const finish = (value: HTMLImageElement | null): void => {
-			signal?.removeEventListener("abort", onAbort);
-			resolve(value);
-		};
-		const onAbort = (): void => {
-			image.onload = null;
-			image.onerror = null;
-			image.src = "";
-			finish(null);
-		};
-		signal?.addEventListener("abort", onAbort, { once: true });
-		image.onload = () => finish(image);
-		image.onerror = () => finish(null);
+		image.onload = () => resolve(image);
+		image.onerror = () => resolve(null);
 		image.src = dataUrl;
 	});
 }
@@ -91,27 +79,21 @@ export function planCover(
  * 合成一张全景封面并返回 jpeg dataURL。缺素材、画布不可用等一律返回 null——
  * 封面是锦上添花，任何失败都不该冒泡到调用方的主流程。
  */
-export async function composeCover(
-	vetdPath: string,
-	frames: readonly VetdFrameEntry[],
-	signal?: AbortSignal,
-): Promise<string | null> {
-	if (frames.length === 0 || signal?.aborted) return null;
+export async function composeCover(vetdPath: string, frames: readonly VetdFrameEntry[]): Promise<string | null> {
+	if (frames.length === 0) return null;
 	const rasters = await loadRasters(
 		vetdPath,
 		frames.map((frame) => frame.id),
 	);
-	if (rasters.size === 0 || signal?.aborted) return null;
+	if (rasters.size === 0) return null;
 
 	const pieces: CoverPiece[] = [];
 	for (const frame of frames) {
-		if (signal?.aborted) return null;
 		const dataUrl = rasters.get(frame.id);
 		if (!dataUrl) continue;
-		const image = await loadImage(dataUrl, signal);
+		const image = await loadImage(dataUrl);
 		if (image) pieces.push({ image, frame });
 	}
-	if (signal?.aborted) return null;
 	const plan = planCover(pieces.map((piece) => piece.frame));
 	if (!plan) return null;
 	const { bounds, scale } = plan;
@@ -133,7 +115,6 @@ export async function composeCover(
 		);
 	}
 	try {
-		if (signal?.aborted) return null;
 		return canvas.toDataURL("image/jpeg", COVER_QUALITY);
 	} catch {
 		return null;

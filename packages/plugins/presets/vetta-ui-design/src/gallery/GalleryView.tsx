@@ -1,59 +1,44 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConfirmDialog } from "../canvas/ConfirmDialog";
-import { SHARE_EXTENSION, SHARE_PREVIEW_EXTENSIONS, isSharePackageName } from "../export/share-format";
-import { catalogState, refreshDesignCatalog } from "../design-systems/index";
+import { SHARE_EXTENSION, SHARE_PREVIEW_EXTENSIONS } from "../export/share-format";
+import { refreshDesignCatalog } from "../design-systems/index";
 import { getPluginCtx, notify } from "../plugin-context";
 import { GALLERY_VIEW_ID } from "../tab-ids";
+import { AllProjectsView } from "./AllProjectsView";
 import { CardContextMenu, type CardMenuAnchor } from "./CardContextMenu";
+import { CreateDesignDialog } from "./CreateDesignDialog";
+import { DesignSystemDetailDialog } from "./DesignSystemDetailDialog";
+import { DesignSystemGrid } from "./DesignSystemGrid";
 import { GalleryCard } from "./GalleryCard";
 import { GalleryHero } from "./GalleryHero";
 import { GalleryToolbarLeft, GalleryToolbarRight } from "./GalleryToolbar";
 import { SectionHeader } from "./SectionHeader";
 import { hasMoreProjects, homeVisibleCount, PROJECT_GRID_CLASS } from "./gallery-layout";
 import { useGalleryColumns } from "./use-gallery-columns";
-import type { CreatedDesign } from "./gallery-actions";
+import {
+	archiveProject,
+	type CreatedDesign,
+	createDesignProject,
+	exportDesignByPath,
+	importDesignPackage,
+	isSharePackageName,
+	revealProject,
+} from "./gallery-actions";
 import type { DesignSystem } from "../design-systems/types";
 import { filterGalleryProjects, type GalleryDesign } from "./gallery-model";
-import {
-	type GalleryCard as GalleryCardData,
-	getCachedSnapshot,
-	isGalleryAbortError,
-	isGalleryCacheFresh,
-	isGalleryCoverCacheComplete,
-	loadGallery,
-} from "./gallery-store";
-import { useAfterFirstPaint } from "./after-first-paint";
-
-const DesignSystemGrid = lazy(async () => {
-	const { DesignSystemGrid: Grid } = await import("./DesignSystemGrid");
-	return { default: Grid };
-});
-const AllProjectsView = lazy(async () => {
-	const { AllProjectsView: View } = await import("./AllProjectsView");
-	return { default: View };
-});
-const CreateDesignDialog = lazy(async () => {
-	const { CreateDesignDialog: Dialog } = await import("./CreateDesignDialog");
-	return { default: Dialog };
-});
-const DesignSystemDetailDialog = lazy(async () => {
-	const { DesignSystemDetailDialog: Dialog } = await import("./DesignSystemDetailDialog");
-	return { default: Dialog };
-});
+import { type GalleryCard as GalleryCardData, getCachedSnapshot, loadGallery } from "./gallery-store";
+import { openProjectFromGallery, startDesignProject } from "./open-project";
+import { startDesignFromSystem } from "./start-from-system";
 
 /**
  * 设计画廊：所有「带设计稿的项目」的注册中心。
  *
- * 先用上一次的缓存渲染，免得每次进来都白屏一下。短 TTL 内再进入不重扫；手动刷新
- * 和过期后仍会扫。自己建/导/归档后走局部更新。切走中止进行中的封面合成。
- *
- * 可见完成：Hero + 风格分区标题跟 GalleryView 一起提交。风格墙本体也一起挂
- * （chunk 在 Hero 期间预取）；扫描/拉清单仍等第一帧绘制后再开工。
+ * 数据在每次进入时重扫一遍（每个项目一次 readDir，便宜），但先用上一次的缓存渲染，
+ * 免得每次进来都白屏一下。自己建/导/归档后走局部更新，不重扫。
  */
 export function GalleryView() {
 	const { t, locale } = useTranslation();
-	const bodyReady = useAfterFirstPaint();
 	const [snapshot, setSnapshot] = useState(() => getCachedSnapshot());
 	const [loading, setLoading] = useState(!getCachedSnapshot());
 	const [keyword, setKeyword] = useState("");
@@ -73,14 +58,9 @@ export function GalleryView() {
 	/** Hero 的「逛逛风格库」滚动目标。 */
 	const stylesRef = useRef<HTMLDivElement | null>(null);
 
-	const loadAbortRef = useRef<AbortController | null>(null);
 	const refresh = useCallback(
-		async (options?: { force?: boolean; forceCatalog?: boolean }) => {
-			loadAbortRef.current?.abort();
-			const controller = new AbortController();
-			loadAbortRef.current = controller;
-			const force = options?.force === true;
-			if (force || !getCachedSnapshot()) setLoading(true);
+		async (options?: { forceCatalog?: boolean }) => {
+			setLoading(true);
 			// 用户手动点「刷新」才强制拉风格库（不受 TTL 挡）；进入页面的自动刷新
 			// 走 TTL + ETag（见下方 mount effect），低配机首开不再固定多扛一次
 			// 300+ KB 的清单下载。
@@ -88,44 +68,27 @@ export function GalleryView() {
 				void refreshDesignCatalog(getPluginCtx(), Date.now(), { force: true });
 			}
 			try {
-				const listed = await loadGallery({
-					signal: controller.signal,
-					force,
-					skipCovers: true,
-				});
-				if (controller.signal.aborted) return;
-				setSnapshot(listed);
-				setLoading(false);
-				const filled = await loadGallery({ signal: controller.signal });
-				if (controller.signal.aborted) return;
-				setSnapshot(filled);
+				setSnapshot(await loadGallery());
 			} catch (error) {
-				if (controller.signal.aborted || isGalleryAbortError(error)) return;
 				notify({ message: t("gallery.load.failed"), error });
 			} finally {
-				if (!controller.signal.aborted) setLoading(false);
+				setLoading(false);
 			}
 		},
 		[t],
 	);
 
-	// 真正第一次进页才扫项目、拉风格库。等 Hero 那一帧画完再开工，避免和标题抢主线程。
-	// React 19 `<Activity hidden>` 会拆 effect 但保留 DOM：切回若再当挂载处理，
-	// 会把整面风格墙重绘一次（实测 ~100ms 长任务）。
+	// 进设计页扫一遍项目 + 顺带看一眼风格库有没有更新。风格库走 TTL 节流 + ETag，
+	// 内容没变时只是一个 304，所以用户不需要记得点刷新。
 	useEffect(() => {
-		if (!bodyReady) return;
-		if (!isGalleryCacheFresh() || !isGalleryCoverCacheComplete()) void refresh();
-		if (catalogState().systems.length === 0) void refreshDesignCatalog(getPluginCtx());
-		return () => {
-			loadAbortRef.current?.abort();
-		};
-	}, [bodyReady, refresh]);
+		void refresh();
+		void refreshDesignCatalog(getPluginCtx());
+	}, [refresh]);
 
 	/** 导完直接进项目看设计：包里已经有成品，用户刚表达的意图就是「打开它」。 */
 	const enterCreated = useCallback(
 		async (created: CreatedDesign) => {
-			await refresh({ force: true });
-			const { openProjectFromGallery } = await import("./open-project");
+			await refresh();
 			await openProjectFromGallery({ cwd: created.cwd, vetdPath: created.vetdPath });
 		},
 		[refresh],
@@ -139,10 +102,6 @@ export function GalleryView() {
 		async (name: string) => {
 			setBusy(true);
 			try {
-				const [{ createDesignProject }, { startDesignProject }] = await Promise.all([
-					import("./gallery-actions"),
-					import("./open-project"),
-				]);
 				const created = await createDesignProject(name);
 				setCreating(false);
 				await startDesignProject(created.cwd);
@@ -163,7 +122,6 @@ export function GalleryView() {
 		async (system: DesignSystem, name: string) => {
 			setBusy(true);
 			try {
-				const { startDesignFromSystem } = await import("./start-from-system");
 				await startDesignFromSystem(system, name, locale);
 				setPendingSystem(null);
 			} catch (error) {
@@ -179,7 +137,6 @@ export function GalleryView() {
 		async (fileName: string, bytes: Uint8Array) => {
 			setBusy(true);
 			try {
-				const { importDesignPackage } = await import("./gallery-actions");
 				const created = await importDesignPackage(fileName, bytes);
 				notify({ message: t("gallery.import.done"), variant: "success", durationMs: 3000 });
 				await enterCreated(created);
@@ -228,7 +185,7 @@ export function GalleryView() {
 			setBusy(true);
 			notify({ message: t("gallery.export.started", { name: design.name }) });
 			try {
-				const path = await (await import("./gallery-actions")).exportDesignByPath(design.vetdPath);
+				const path = await exportDesignByPath(design.vetdPath);
 				// 用户在另存为对话框里取消：什么都没写盘，也不需要提示。
 				if (path === null) return;
 				notify({ message: t("gallery.export.done", { path }), variant: "success", durationMs: 4000 });
@@ -245,7 +202,7 @@ export function GalleryView() {
 		async (card: GalleryCardData) => {
 			setArchiveTarget(null);
 			try {
-				await (await import("./gallery-actions")).archiveProject(card.cwd);
+				await archiveProject(card.cwd);
 				// 局部更新即可：归档只从列表里拿走一张卡，没必要重扫全部项目。
 				setSnapshot((prev) =>
 					prev ? { ...prev, cards: prev.cards.filter((item) => item.cwd !== card.cwd) } : prev,
@@ -268,9 +225,7 @@ export function GalleryView() {
 	const overflowing = hasMoreProjects(cards.length, columns);
 
 	const openCard = useCallback((card: GalleryCardData) => {
-		void import("./open-project").then(({ openProjectFromGallery }) =>
-			openProjectFromGallery({ cwd: card.cwd, vetdPath: card.cover.vetdPath }),
-		);
+		void openProjectFromGallery({ cwd: card.cwd, vetdPath: card.cover.vetdPath });
 	}, []);
 
 	const openCardMenu = useCallback((event: React.MouseEvent, card: GalleryCardData) => {
@@ -284,25 +239,20 @@ export function GalleryView() {
 	}, []);
 
 	/**
-	 * 页头接管。首页把工具栏长在 Hero 里，页头只收掉宿主标题、留作窗口拖拽区；
-	 * 「全部设计」列表页没有 Hero，工具栏回到页头。
+	 * 页头接管。首页把工具栏长在 Hero 里（见 GalleryHero 的说明），页头因此只需要
+	 * 收掉宿主标题、留作窗口拖拽区；「全部设计」列表页没有 Hero，工具栏回到页头。
 	 *
-	 * 首页 header 与搜索无关：每次输入都 store.set 会拖宿主 PageHeader 一起重渲，
-	 * 切走瞬间更容易卡。列表页仍按 keyword / loading / busy 更新工具栏。
-	 *
-	 * 不在 effect cleanup 里撤接管：宿主按当前路由选页头，切到别的页面自然不会
-	 * 用这份记录。React `<Activity hidden>` 会拆 effect，若这里写 null，目的页
-	 * 第一帧还要吃一次 jotai 写入。
+	 * 刻意不写依赖数组——节点闭包着 keyword / loading / busy 等每次渲染都可能变的
+	 * 状态，漏一个依赖就会让页头里的搜索框停在旧值上。写入是幂等的 store.set，
+	 * 且页头不会反过来触发本组件重渲染，不存在循环。
 	 */
 	useEffect(() => {
-		if (view === "projects") return;
-		// immersive：页头浮在画廊之上，Hero 从窗口第一像素开始铺，
-		// 不再被 44px 页头推出一条谁也画不了的空带。
-		getPluginCtx().ui.setWorkspaceViewHeader(GALLERY_VIEW_ID, { hideTitle: true, immersive: true });
-	}, [view]);
-
-	useEffect(() => {
-		if (view !== "projects") return;
+		if (view !== "projects") {
+			// immersive：页头浮在画廊之上，Hero 从窗口第一像素开始铺，
+			// 不再被 44px 页头推出一条谁也画不了的空带。
+			getPluginCtx().ui.setWorkspaceViewHeader(GALLERY_VIEW_ID, { hideTitle: true, immersive: true });
+			return;
+		}
 		getPluginCtx().ui.setWorkspaceViewHeader(GALLERY_VIEW_ID, {
 			hideTitle: true,
 			left: (
@@ -318,13 +268,16 @@ export function GalleryView() {
 				<GalleryToolbarRight
 					loading={loading}
 					busy={busy}
-					onRefresh={() => void refresh({ force: true, forceCatalog: true })}
+					onRefresh={() => void refresh({ forceCatalog: true })}
 					onImport={() => void onPickImport()}
 					onCreate={() => setCreating(true)}
 				/>
 			),
 		});
-	}, [view, cards.length, keyword, loading, busy, refresh, onPickImport]);
+	});
+
+	// 离开画廊就把页头还给宿主（否则切到别的页面还挂着已卸载组件的节点）。
+	useEffect(() => () => getPluginCtx().ui.setWorkspaceViewHeader(GALLERY_VIEW_ID, null), []);
 
 	// 首页与空态共用同一块 Hero，只有副标题和统计随「库里有没有东西」变。
 	const hero = (
@@ -336,24 +289,11 @@ export function GalleryView() {
 			busy={busy}
 			keyword={keyword}
 			onKeywordChange={setKeyword}
-			onRefresh={() => void refresh({ force: true, forceCatalog: true })}
+			onRefresh={() => void refresh({ forceCatalog: true })}
 			onImport={() => void onPickImport()}
 			onCreate={() => setCreating(true)}
 			onBrowseStyles={() => stylesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
 		/>
-	);
-
-	// 风格分区标题跟本页一起提交（可见完成）。宫格跟 GalleryView 一起挂，
-	// 不再等第二次绘制——导航 transition 已经结束，chunk 在 Hero 期间预取。
-	const stylesLibrary = (
-		<div ref={stylesRef}>
-			<section className={empty ? "" : "mt-8 border-t border-border/60 pt-6"}>
-				<SectionHeader title={t("gallery.styles.title")} hint={t("gallery.styles.hint")} />
-				<Suspense fallback={null}>
-					<DesignSystemGrid hideHeader busy={busy} onPick={setDetailSystem} />
-				</Suspense>
-			</section>
-		</div>
 	);
 
 	return (
@@ -375,17 +315,8 @@ export function GalleryView() {
 			<div className="vetd-gallery-scroll flex-1 overflow-y-auto overflow-x-hidden px-5 pb-8">
 				{view === "projects" ? (
 					// 全部设计：整页宫格，滚动到底部自动翻页。
-					// fallback 写在本文件：不能从 AllProjectsView 取壳，否则列表 chunk 会打进首包。
 					<>
-						<Suspense
-							fallback={
-								<section>
-									<SectionHeader title={t("gallery.section.mine")} />
-								</section>
-							}
-						>
-							<AllProjectsView cards={cards} onOpen={openCard} onCardContextMenu={openCardMenu} />
-						</Suspense>
+						<AllProjectsView cards={cards} onOpen={openCard} onCardContextMenu={openCardMenu} />
 						{cards.length === 0 ? (
 							<p className="mt-8 text-center text-xs text-muted-foreground">{t("gallery.search.noMatch")}</p>
 						) : null}
@@ -395,7 +326,9 @@ export function GalleryView() {
 					// 点一套风格就能开工，比对着空白画布想第一句话快。
 					<>
 						{hero}
-						{stylesLibrary}
+						<div ref={stylesRef}>
+							<DesignSystemGrid busy={busy} onPick={setDetailSystem} />
+						</div>
 					</>
 				) : (
 					<>
@@ -442,7 +375,9 @@ export function GalleryView() {
 						) : null}
 
 						{/* 风格库排在用户自己的作品之后，同一套宫格、跟着一起滚。 */}
-						{stylesLibrary}
+						<div ref={stylesRef}>
+							<DesignSystemGrid divided busy={busy} onPick={setDetailSystem} />
+						</div>
 					</>
 				)}
 			</div>
@@ -455,11 +390,9 @@ export function GalleryView() {
 					onReveal={() => {
 						const target = menu.card.cwd;
 						setMenu(null);
-						void import("./gallery-actions")
-							.then(({ revealProject }) => revealProject(target))
-							.catch((error: unknown) => {
-								notify({ message: t("gallery.reveal.failed"), error });
-							});
+						void revealProject(target).catch((error: unknown) => {
+							notify({ message: t("gallery.reveal.failed"), error });
+						});
 					}}
 					onArchive={() => {
 						setArchiveTarget(menu.card);
@@ -470,41 +403,35 @@ export function GalleryView() {
 			) : null}
 
 			{creating ? (
-				<Suspense fallback={null}>
-					<CreateDesignDialog
-						workspacePath={snapshot?.workspacePath ?? ""}
-						busy={busy}
-						onCreate={(name) => void onCreate(name)}
-						onClose={() => setCreating(false)}
-					/>
-				</Suspense>
+				<CreateDesignDialog
+					workspacePath={snapshot?.workspacePath ?? ""}
+					busy={busy}
+					onCreate={(name) => void onCreate(name)}
+					onClose={() => setCreating(false)}
+				/>
 			) : null}
 
 			{detailSystem ? (
-				<Suspense fallback={null}>
-					<DesignSystemDetailDialog
-						system={detailSystem}
-						busy={busy}
-						onUse={(system) => {
-							// 详情的使命到此为止：收起自己，把风格交给命名对话框。
-							setDetailSystem(null);
-							setPendingSystem(system);
-						}}
-						onClose={() => setDetailSystem(null)}
-					/>
-				</Suspense>
+				<DesignSystemDetailDialog
+					system={detailSystem}
+					busy={busy}
+					onUse={(system) => {
+						// 详情的使命到此为止：收起自己，把风格交给命名对话框。
+						setDetailSystem(null);
+						setPendingSystem(system);
+					}}
+					onClose={() => setDetailSystem(null)}
+				/>
 			) : null}
 
 			{pendingSystem ? (
-				<Suspense fallback={null}>
-					<CreateDesignDialog
-						workspacePath={snapshot?.workspacePath ?? ""}
-						busy={busy}
-						styleName={pendingSystem.name}
-						onCreate={(name) => void onCreateFromSystem(pendingSystem, name)}
-						onClose={() => setPendingSystem(null)}
-					/>
-				</Suspense>
+				<CreateDesignDialog
+					workspacePath={snapshot?.workspacePath ?? ""}
+					busy={busy}
+					styleName={pendingSystem.name}
+					onCreate={(name) => void onCreateFromSystem(pendingSystem, name)}
+					onClose={() => setPendingSystem(null)}
+				/>
 			) : null}
 
 			{archiveTarget ? (

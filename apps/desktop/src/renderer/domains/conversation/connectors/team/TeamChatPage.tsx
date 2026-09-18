@@ -1,10 +1,8 @@
-import { useOwnedHeaderSlot } from "@shared/hooks/useOwnedHeaderSlot";
 import {
 	activityPanelOpenAtom,
 	pageHeaderRightSlotAtom,
 	pageHeaderTitleAtom,
 } from "@shared/store/atoms";
-import { useSurfaceActive } from "@shared/surface-active";
 import { ChatHeaderActions } from "@vetta-org/theme-ui/chat";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useAtom, useSetAtom } from "jotai";
@@ -13,28 +11,11 @@ import { useTranslation } from "react-i18next";
 import { useTeamChatModel } from "./useTeamChatModel";
 import { TeamChatView } from "./TeamChatView";
 
-export interface TeamChatPageProps {
-	readonly createNewSession?: boolean;
-	/** 保活宿主传入：切走后 URL 不再带团队参数，不能再读 useParams。 */
-	readonly teamId?: string;
-	readonly sessionId?: string;
-	readonly memberId?: string;
-}
-
-export function TeamChatPage({
-	createNewSession = false,
-	teamId: teamIdProp,
-	sessionId: sessionIdProp,
-	memberId: memberIdProp,
-}: TeamChatPageProps): JSX.Element {
+export function TeamChatPage({ createNewSession = false }: { readonly createNewSession?: boolean }): JSX.Element {
 	const { t } = useTranslation("agent-teams");
 	const navigate = useNavigate();
-	const params = useParams({ strict: false });
-	const teamId = teamIdProp ?? params.teamId;
-	const sessionId = teamIdProp !== undefined ? sessionIdProp : params.sessionId;
-	const memberId = teamIdProp !== undefined ? memberIdProp : params.memberId;
+	const { teamId, sessionId, memberId } = useParams({ strict: false });
 	if (!teamId) throw new Error("Team route is missing teamId");
-	const surfaceActive = useSurfaceActive();
 	const setHeaderTitle = useSetAtom(pageHeaderTitleAtom);
 	const setHeaderRight = useSetAtom(pageHeaderRightSlotAtom);
 	const { model, actions } = useTeamChatModel(teamId, sessionId, memberId, createNewSession);
@@ -62,14 +43,13 @@ export function TeamChatPage({
 	}, [navigate, teamId]);
 
 	useEffect(() => {
-		if (!surfaceActive) return;
 		if (sessionId || !model.activeSessionId) return;
 		void navigate({
 			to: "/agent-teams/$teamId/sessions/$sessionId",
 			params: { teamId, sessionId: model.activeSessionId },
 			replace: true,
 		});
-	}, [model.activeSessionId, navigate, sessionId, surfaceActive, teamId]);
+	}, [model.activeSessionId, navigate, sessionId, teamId]);
 
 	const headerActions = useMemo(
 		() => (
@@ -82,8 +62,14 @@ export function TeamChatPage({
 		[activityOpen, setActivityOpen, t],
 	);
 
-	useOwnedHeaderSlot(surfaceActive, activeSessionTitle ?? model.title, setHeaderTitle);
-	useOwnedHeaderSlot(surfaceActive, headerActions, setHeaderRight);
+	useEffect(() => {
+		setHeaderTitle(activeSessionTitle ?? model.title);
+		setHeaderRight(headerActions);
+		return () => {
+			setHeaderTitle(null);
+			setHeaderRight(null);
+		};
+	}, [activeSessionTitle, headerActions, model.title, setHeaderRight, setHeaderTitle]);
 
 	return (
 		<TeamChatView

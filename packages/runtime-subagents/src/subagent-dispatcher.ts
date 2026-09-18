@@ -201,6 +201,7 @@ export class SubagentDispatcher<TProfile> {
 			status,
 			task: request.message,
 			parentSessionId: this.options.parentSessionId,
+			...(request.originToolCallId ? { originToolCallId: request.originToolCallId } : {}),
 			startedAt: this.clock.now(),
 			usage: emptyUsage(),
 			generation: 0,
@@ -270,6 +271,7 @@ export class SubagentDispatcher<TProfile> {
 				message: request.task,
 				agentType: request.agentType,
 				title: request.title,
+				originToolCallId: request.originToolCallId,
 				deliveryMode: request.deliveryMode,
 				batchId: request.batchId,
 			});

@@ -64,7 +64,6 @@ export function DefaultSidebar({
 						moreLabel={model.moreLabel}
 						moreOpen={model.moreOpen}
 						onItemClick={model.actions.openNavItem}
-						onItemIntent={model.actions.prefetchNavItem}
 						onMoreOpenChange={model.actions.setMoreOpen}
 						onNavMove={model.actions.moveNavItem}
 						onPinNavItem={model.actions.pinNavItem}

@@ -17,7 +17,6 @@ import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { resolveDesktopSessionOpenTarget } from "@/shared/session-access";
-import { prefetchCommandMenuAction } from "../../../root-layout/route-prefetch";
 import { usePluginTextResolver } from "../../plugins/runtime/plugin-i18n";
 import { useSessionSearch } from "../../project/hooks/useSessionSearch";
 import { buildCommandMenuGroups, type CommandMenuGroupLabels } from "../lib/build-groups";
@@ -235,12 +234,6 @@ export function useCommandMenuModel({ onOpenSession }: UseCommandMenuModelArgs):
 			return orderedIds[0] ?? null;
 		});
 	}, [orderedIds]);
-
-	useEffect(() => {
-		if (!open || !selectedId) return;
-		const entry = entryById.get(selectedId);
-		if (entry) prefetchCommandMenuAction(entry.action);
-	}, [entryById, open, selectedId]);
 
 	const close = useCallback(() => {
 		setOpen(false);

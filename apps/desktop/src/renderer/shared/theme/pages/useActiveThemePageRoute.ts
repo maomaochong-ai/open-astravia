@@ -21,14 +21,11 @@ function readThemePageRouteParams(params: Record<string, unknown> | undefined): 
 	return { themeId, pageId };
 }
 
-export function useActiveThemePageRoute(override?: {
-	themeId: string;
-	pageId: string;
-}): ActiveThemePageRoute | undefined {
+export function useActiveThemePageRoute(): ActiveThemePageRoute | undefined {
 	const theme = useThemeModule();
 	const matches = useMatches();
 	const currentMatch = matches[matches.length - 1];
-	const params = override ?? readThemePageRouteParams(currentMatch?.params as Record<string, unknown> | undefined);
+	const params = readThemePageRouteParams(currentMatch?.params as Record<string, unknown> | undefined);
 	if (!params) return undefined;
 
 	const page = findThemePage(theme, params.themeId, params.pageId);

@@ -18,6 +18,7 @@ import type {
 	UpdateTeamSessionModelSettingsInput,
 } from "@vetta/agent-team";
 import type { SessionExecutionMode } from "@vetta/runtime-core";
+import type { TeamMemberModelPreference, TeamMemberModelSelection } from "../../shared/agent-team-member-model.js";
 import type { DesktopTeamSidebarConversation } from "../../shared/sidebar-conversation.js";
 import type { DesktopTeamSessionSnapshot, DesktopTeamSessionStreamEvent } from "./team-conversation-display.js";
 
@@ -45,6 +46,12 @@ export interface DesktopAgentTeamsApi {
 	renameSession(reference: TeamSessionReference | string, name: string): Promise<DesktopTeamSessionSnapshot>;
 	deleteSession(reference: TeamSessionReference | string): Promise<void>;
 	updateModelSettings(id: string, input: UpdateTeamSessionModelSettingsInput): Promise<DesktopTeamSessionSnapshot>;
+	listMemberModels(teamId: string): Promise<Readonly<Record<string, TeamMemberModelPreference>>>;
+	setMemberModel(
+		teamId: string,
+		memberId: string,
+		selection: TeamMemberModelSelection | null,
+	): Promise<Readonly<Record<string, TeamMemberModelPreference>>>;
 	setExecutionMode(id: string, mode: SessionExecutionMode): Promise<DesktopTeamSessionSnapshot>;
 	getSession(reference: TeamSessionReference | string): Promise<DesktopTeamSessionSnapshot>;
 	subscribe(id: string, handler: (event: DesktopTeamSessionStreamEvent) => void): Promise<() => void>;

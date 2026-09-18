@@ -23,7 +23,6 @@ export interface SidebarNavMorePanelProps {
 	labels: SidebarNavMorePanelLabels;
 	moreItems: readonly SidebarNavItem[];
 	onItemClick: (item: SidebarNavItem) => void;
-	onItemIntent?: (item: SidebarNavItem) => void;
 	onPin: (key: string) => void;
 	onReset: () => void;
 	onUnpin: (key: string) => void;
@@ -46,7 +45,6 @@ function NavRow({
 	item,
 	labels,
 	onClick,
-	onIntent,
 	onTogglePin,
 	pinDisabled,
 	region,
@@ -55,7 +53,6 @@ function NavRow({
 	item: SidebarNavItem;
 	labels: SidebarNavMorePanelLabels;
 	onClick: () => void;
-	onIntent?: () => void;
 	onTogglePin: (() => void) | null;
 	pinDisabled: boolean;
 	region: SidebarNavRegion;
@@ -85,9 +82,6 @@ function NavRow({
 				type="button"
 				title={item.title ?? item.label}
 				onClick={onClick}
-				onFocus={onIntent}
-				onMouseEnter={onIntent}
-				onPointerDown={onIntent}
 				className={cn(
 					"flex min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 py-1.5 text-[13px]",
 					item.active ? "bg-accent font-semibold text-foreground" : "text-foreground hover:bg-accent/50",
@@ -133,7 +127,6 @@ export function SidebarNavMorePanel({
 	labels,
 	moreItems,
 	onItemClick,
-	onItemIntent,
 	onPin,
 	onReset,
 	onUnpin,
@@ -168,7 +161,6 @@ export function SidebarNavMorePanel({
 							item={item}
 							labels={labels}
 							onClick={() => onItemClick(item)}
-							onIntent={onItemIntent ? () => onItemIntent(item) : undefined}
 							onTogglePin={item.locked === true ? null : () => onUnpin(item.key)}
 							pinDisabled={false}
 							region="pinned"
@@ -195,7 +187,6 @@ export function SidebarNavMorePanel({
 								item={item}
 								labels={labels}
 								onClick={() => onItemClick(item)}
-								onIntent={onItemIntent ? () => onItemIntent(item) : undefined}
 								onTogglePin={item.locked === true ? null : () => onPin(item.key)}
 								pinDisabled={!canPinMore}
 								region="more"

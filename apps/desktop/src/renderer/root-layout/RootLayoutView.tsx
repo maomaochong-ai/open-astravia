@@ -1,6 +1,8 @@
+import { Outlet } from "@tanstack/react-router";
 import { cn } from "@shared/lib/utils";
 import { PerfSendProfiler } from "@shared/lib/perf-send";
 import { ThemeSurface } from "@vetta-org/theme-ui/appearance";
+import { RouteContentLoadingView } from "@vetta-org/theme-ui/app";
 import { AppFrame, MainContentFrame, SidebarDock, SidebarOverlay } from "@vetta-org/theme-ui/layout";
 import { useThemeComponent, useThemeSurface } from "@vetta-org/theme-sdk";
 import { memo, useCallback, useEffect } from "react";
@@ -12,10 +14,8 @@ import { TooltipProvider } from "../shared/components/ui/tooltip";
 import { useActiveThemePageRoute } from "../shared/theme/pages";
 import { SidebarTour } from "../shared/tour";
 import { AppBackground } from "./app-background/AppBackground";
-import { PersistentRouteStage } from "./PersistentRouteStage";
 import { RootGlobalOverlays } from "./RootGlobalOverlays";
 import type { RootLayoutModel } from "./types";
-import { RoutePendingShell } from "../shared/components/RoutePendingShell";
 
 /**
  * 路由内容独立成 memo：侧边栏折叠状态就在本文件的 model 里，不隔离的话每次展开/收起都会
@@ -24,25 +24,11 @@ import { RoutePendingShell } from "../shared/components/RoutePendingShell";
  *
  * 内容树不需要这个状态：形态走 AppFrame 上的 data-sidebar-* 属性（CSS 自适应），需要响应
  * 的插件走 ctx.ui 的订阅，两条都不经过这里的 render。
- *
- * 保活舞台必须始终挂在同一个 MainContentFrame 里：按 pageLayout 拆成两套主区会在
- * 洞天类页面进出时卸掉 PersistentRouteStage，切回已访问页会重新挂树。
  */
-const RouteContent = memo(function RouteContent({
-	currentPath,
-	routePending,
-}: {
-	currentPath: string;
-	routePending: boolean;
-}): JSX.Element {
+const RouteContent = memo(function RouteContent({ routePending }: { routePending: boolean }): JSX.Element {
 	return (
 		<PerfSendProfiler id="RouteOutlet">
-			{routePending ? (
-				<div className="absolute inset-0 z-10">
-					<RoutePendingShell />
-				</div>
-			) : null}
-			<PersistentRouteStage currentPath={currentPath} />
+			{routePending ? <RouteContentLoadingView /> : <Outlet />}
 		</PerfSendProfiler>
 	);
 });
@@ -61,7 +47,6 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 	const workspaceViewHeader = useActiveWorkspaceViewHeader();
 	const {
 		actions,
-		currentPath,
 		narrow,
 		onOpenSession,
 		overlayOpen,
@@ -137,13 +122,19 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 						<SidebarTour onEnsureSidebarVisible={ensureSidebarVisible} />
 					</>
 				)}
-				<MainContentFrame
-					className="app-main-frame"
-					header={pageLayout === "content" ? pageHeader : null}
-					headerOverlay={pageLayout === "content" && workspaceViewHeader?.immersive === true}
-				>
-					<RouteContent currentPath={currentPath} routePending={routePending} />
-				</MainContentFrame>
+				{pageLayout === "app" ? (
+					<div className="app-main-frame relative flex min-h-0 min-w-[320px] flex-1 overflow-visible">
+						<RouteContent routePending={routePending} />
+					</div>
+				) : (
+					<MainContentFrame
+						className="app-main-frame"
+						header={pageHeader}
+						headerOverlay={workspaceViewHeader?.immersive === true}
+					>
+						<RouteContent routePending={routePending} />
+					</MainContentFrame>
+				)}
 				{/* 复用 Sidebar 那条 onOpenSession：会话打开的落点逻辑只应有一处宿主实现。 */}
 				<CommandMenu onOpenSession={onOpenSession} />
 				<PerfSendProfiler id="RootGlobalOverlays">

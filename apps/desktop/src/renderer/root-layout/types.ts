@@ -9,8 +9,6 @@ export interface RootLayoutActions {
 
 export interface RootLayoutModel {
 	actions: RootLayoutActions;
-	chatSurfaceActive: boolean;
-	currentPath: string;
 	narrow: boolean;
 	onOpenSession: SidebarProps["onOpenSession"];
 	overlayOpen: boolean;

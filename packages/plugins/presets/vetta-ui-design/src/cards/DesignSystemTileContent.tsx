@@ -13,7 +13,7 @@ export function DesignSystemTileContent({
 	system,
 	badge,
 	demoActive = false,
-	demo = false,
+	demo = true,
 }: {
 	system: DesignSystem;
 	/** 名称右侧的状态徽标（「已选择」/「当前」），没有就不占位。 */
@@ -23,8 +23,8 @@ export function DesignSystemTileContent({
 	/**
 	 * 是否挂载 HTML demo（一个 iframe，一份完整文档）。
 	 *
-	 * 默认不挂：风格库那面墙是几十张连排，全挂 iframe 光解析文档就能把滚动拖垮。
-	 * 调用方悬停到哪张再打开那一张。
+	 * 一屏只有十来张卡时无所谓；风格库那面墙是几十张连排，全挂 iframe 光解析文档就能把
+	 * 滚动拖垮。那边默认只铺色板，悬停到哪张才把那一张换成真 demo。
 	 */
 	demo?: boolean;
 }) {

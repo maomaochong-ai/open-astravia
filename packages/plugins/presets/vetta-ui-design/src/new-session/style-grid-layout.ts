@@ -24,17 +24,11 @@ export interface StyleGridMetrics {
 	readonly rowHeight: number;
 }
 
-export function styleGridMetricsFor(width: number, columns: number, gap: number): StyleGridMetrics {
-	const safeColumns = Math.max(1, columns);
-	if (!Number.isFinite(width) || width <= 0) return { columns: safeColumns, rowHeight: 0 };
-	const card = (width - gap * (safeColumns - 1)) / safeColumns;
-	return { columns: safeColumns, rowHeight: card / ASPECT + gap };
-}
-
 export function styleGridMetrics(width: number): StyleGridMetrics {
 	if (!Number.isFinite(width) || width <= 0) return { columns: STYLE_GRID_MAX_COLUMNS, rowHeight: 0 };
 	const columns = Math.min(STYLE_GRID_MAX_COLUMNS, galleryColumnCount(width, MIN_CARD_WIDTH, STYLE_GRID_GAP));
-	return styleGridMetricsFor(width, columns, STYLE_GRID_GAP);
+	const card = (width - STYLE_GRID_GAP * (columns - 1)) / columns;
+	return { columns, rowHeight: card / ASPECT + STYLE_GRID_GAP };
 }
 
 export interface StyleGridWindow {

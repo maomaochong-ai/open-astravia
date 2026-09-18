@@ -1,16 +1,57 @@
 import { createRootRoute, createRoute, createRouter, createHashHistory, redirect } from "@tanstack/react-router";
+import { lazy } from "react";
+import { RouteContentLoadingView } from "@vetta-org/theme-ui/app";
 import { RootLayout } from "./App";
+import { loadNewSessionPage } from "./domains/conversation/components/loadNewSessionPage";
 import { RouteErrorPage } from "./shared/components/RouteErrorPage";
-import { RoutePendingShell } from "./shared/components/RoutePendingShell";
 import {
 	PLUGIN_HOSTED_ROUTE_PATH,
 	THEME_HOSTED_ROUTE_PATH,
 } from "./shared/hosted-routes/hosted-route-descriptors";
 
-/** 保活页由 PersistentRouteStage 承载，路由只负责 URL，Outlet 不再挂这些页面。 */
-function EmptyPersistentRoute(): null {
-	return null;
-}
+const ChatPage = lazy(async () => ({
+	default: (await import("./domains/conversation/components/ChatPage")).ChatPage,
+}));
+const NewSessionPage = lazy(loadNewSessionPage);
+const SessionViewerPage = lazy(async () => ({
+	default: (await import("./domains/conversation/components/SessionViewerPage")).SessionViewerPage,
+}));
+const AutomationPage = lazy(async () => ({
+	default: (await import("./domains/scheduler/components/AutomationPage")).AutomationPage,
+}));
+const BatchTasksPage = lazy(async () => ({
+	default: (await import("./domains/batch-tasks/components/BatchTasksPage")).BatchTasksPage,
+}));
+const AbilitiesPage = lazy(async () => ({
+	default: (await import("./domains/abilities/components/AbilitiesPage")).AbilitiesPage,
+}));
+const AgentCenterPage = lazy(async () => ({
+	default: (await import("./domains/agent-teams/components/AgentCenterPage")).AgentCenterPage,
+}));
+const TeamChatPage = lazy(async () => ({
+	default: (await import("./domains/conversation/connectors/team/TeamChatPage")).TeamChatPage,
+}));
+const ScenesPage = lazy(async () => ({
+	default: (await import("./domains/skills/components/ScenesPage")).ScenesPage,
+}));
+const SettingsPage = lazy(async () => ({
+	default: (await import("./domains/settings/components/SettingsPage")).SettingsPage,
+}));
+const ProjectDetailPage = lazy(async () => ({
+	default: (await import("./domains/project/components/ProjectDetailPage")).ProjectDetailPage,
+}));
+const KnowledgeBasePage = lazy(async () => ({
+	default: (await import("./domains/knowledge-base/components/KnowledgeBasePage")).KnowledgeBasePage,
+}));
+const KnowledgeBaseListPage = lazy(async () => ({
+	default: (await import("./domains/knowledge-base/components/KnowledgeBaseListPage")).KnowledgeBaseListPage,
+}));
+const PluginWorkspaceViewRoute = lazy(async () => ({
+	default: (await import("./domains/plugins/components/PluginWorkspaceViewRoute")).PluginWorkspaceViewRoute,
+}));
+const ThemePageRoute = lazy(async () => ({
+	default: (await import("./shared/theme/pages/ThemePageRoute")).ThemePageRoute,
+}));
 
 const rootRoute = createRootRoute({
 	component: RootLayout,
@@ -19,19 +60,24 @@ const rootRoute = createRootRoute({
 const indexRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/",
-	component: EmptyPersistentRoute,
+	component: ChatPage,
 });
+
+/** 设置 / 自动化 / 批量任务不显示切页骨架：pending 期间留空白，内容就绪后直出。 */
+const NoPendingComponent = (): null => null;
 
 const automationRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/automation",
-	component: EmptyPersistentRoute,
+	component: AutomationPage,
+	pendingComponent: NoPendingComponent,
 });
 
 const batchTasksRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/batch-tasks",
-	component: EmptyPersistentRoute,
+	component: BatchTasksPage,
+	pendingComponent: NoPendingComponent,
 });
 
 /**
@@ -43,7 +89,7 @@ const batchTasksRoute = createRoute({
 const abilitiesRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/abilities",
-	component: EmptyPersistentRoute,
+	component: AbilitiesPage,
 	validateSearch: (search: Record<string, unknown>) => ({
 		...(typeof search.detail === "string" ? { detail: search.detail } : {}),
 		...(typeof search.q === "string" && search.q ? { q: search.q } : {}),
@@ -54,7 +100,8 @@ const abilitiesRoute = createRoute({
 const agentCenterRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/agents",
-	component: EmptyPersistentRoute,
+	component: AgentCenterPage,
+	pendingComponent: NoPendingComponent,
 	// 智能体档案与团队设置都是抽屉，用 search 驱动，Esc 与返回键即关闭。
 	validateSearch: (search: Record<string, unknown>) => ({
 		...(typeof search.agent === "string" ? { agent: search.agent } : {}),
@@ -74,13 +121,15 @@ const teamListRedirectRoute = createRoute({
 const teamChatRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/agent-teams/$teamId",
-	component: EmptyPersistentRoute,
+	component: TeamChatPage,
+	pendingComponent: NoPendingComponent,
 });
 
 const teamSessionRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/agent-teams/$teamId/sessions/$sessionId",
-	component: EmptyPersistentRoute,
+	component: TeamChatPage,
+	pendingComponent: NoPendingComponent,
 });
 
 const teamNewSessionRoute = createRoute({
@@ -94,7 +143,8 @@ const teamNewSessionRoute = createRoute({
 const teamMemberSessionRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/agent-teams/$teamId/sessions/$sessionId/members/$memberId",
-	component: EmptyPersistentRoute,
+	component: TeamChatPage,
+	pendingComponent: NoPendingComponent,
 });
 
 /** 团队设置已改为智能体中心的抽屉，深链保持可用。 */
@@ -134,7 +184,7 @@ const skillsRedirectRoute = createRoute({
 const scenesRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/scenes",
-	component: EmptyPersistentRoute,
+	component: ScenesPage,
 });
 
 const pluginsRedirectRoute = createRoute({
@@ -148,19 +198,20 @@ const pluginsRedirectRoute = createRoute({
 const knowledgeRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/knowledge",
-	component: EmptyPersistentRoute,
+	component: KnowledgeBasePage,
 });
 
 const knowledgeListRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/knowledge/all",
-	component: EmptyPersistentRoute,
+	component: KnowledgeBaseListPage,
 });
 
 const settingsTabRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/settings/$tab",
-	component: EmptyPersistentRoute,
+	component: SettingsPage,
+	pendingComponent: NoPendingComponent,
 	validateSearch: (search: Record<string, unknown>) => {
 		const section = typeof search.section === "string" ? search.section : undefined;
 		const h2 = typeof search.h2 === "string" ? search.h2 : undefined;
@@ -179,7 +230,7 @@ const settingsTabRoute = createRoute({
 const projectDetailRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/project/$cwd",
-	component: EmptyPersistentRoute,
+	component: ProjectDetailPage,
 });
 
 const newSessionRoute = createRoute({
@@ -189,7 +240,7 @@ const newSessionRoute = createRoute({
 		...(typeof search.cwd === "string" ? { cwd: search.cwd } : {}),
 		...(typeof search.target === "string" ? { target: search.target } : {}),
 	}),
-	component: EmptyPersistentRoute,
+	component: NewSessionPage,
 });
 
 const legacyNewSessionRoute = createRoute({
@@ -203,20 +254,24 @@ const legacyNewSessionRoute = createRoute({
 const sessionViewerRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/viewer/$path",
-	component: EmptyPersistentRoute,
+	component: SessionViewerPage,
+	validateSearch: (search: Record<string, unknown>) => ({
+		...(search.origin === "subagent" ? { origin: "subagent" as const } : {}),
+	}),
 });
 
 const themePageRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: THEME_HOSTED_ROUTE_PATH,
-	component: EmptyPersistentRoute,
+	component: ThemePageRoute,
 });
 
-/** 插件工作区视图整页路由（`/workspace/$pluginId/$viewId`）。保活由 PersistentRouteStage 承载。 */
+/** 插件工作区视图整页路由（`/workspace/$pluginId/$viewId`）。 */
 const pluginWorkspaceViewRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: PLUGIN_HOSTED_ROUTE_PATH,
-	component: EmptyPersistentRoute,
+	component: PluginWorkspaceViewRoute,
+	pendingComponent: NoPendingComponent,
 });
 
 const routeTree = rootRoute.addChildren([
@@ -249,12 +304,9 @@ const routeTree = rootRoute.addChildren([
 export const router = createRouter({
 	routeTree,
 	history: createHashHistory(),
-	defaultNotFoundComponent: EmptyPersistentRoute,
+	defaultNotFoundComponent: ChatPage,
 	defaultErrorComponent: RouteErrorPage,
-	defaultPendingComponent: RoutePendingShell,
-	defaultPendingMs: 0,
-	defaultPendingMinMs: 0,
-	defaultPreload: "intent",
+	defaultPendingComponent: RouteContentLoadingView,
 });
 
 declare module "@tanstack/react-router" {

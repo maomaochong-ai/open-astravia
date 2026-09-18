@@ -732,6 +732,52 @@ describe("useTeamChatModel streaming flow", () => {
 		expect(vi.mocked(loadTeamChatSession).mock.calls.length).toBe(loadCalls);
 	});
 
+	it("sends a staged new Team conversation to its reserved session after another session was open", async () => {
+		const nextSessionId = "team-session-next";
+		const nextSnapshot = {
+			...baseSnapshot,
+			session: { ...baseSession, id: nextSessionId },
+		};
+		vi.mocked(createReservedTeamChatSession).mockResolvedValueOnce({
+			document,
+			snapshot: nextSnapshot,
+			sessions: [],
+		});
+		vi.mocked(window.vetta.agentTeams.sendMessage).mockResolvedValueOnce(nextSnapshot);
+		const { result, rerender } = renderHook(
+			({ preferredSessionId }: { preferredSessionId: string }) =>
+				useTeamChatModel(team.id, preferredSessionId),
+			{ initialProps: { preferredSessionId: baseSession.id } },
+		);
+		await waitFor(() => expect(result.current.model.activeSessionId).toBe(baseSession.id));
+
+		stageTeamSessionHandoff({
+			sessionId: nextSessionId,
+			document,
+			requestId: "next-session-request",
+			text: "start a separate conversation",
+			memberMentions: [],
+			attachments: [],
+			timestamp: 20,
+			executionMode: "full-access",
+		});
+		rerender({ preferredSessionId: nextSessionId });
+
+		await waitFor(() =>
+			expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledWith(
+				nextSessionId,
+				expect.objectContaining({ requestId: "next-session-request" }),
+			),
+		);
+		expect(createReservedTeamChatSession).toHaveBeenCalledWith(
+			expect.objectContaining({ teamId: team.id, sessionId: nextSessionId }),
+		);
+		expect(window.vetta.agentTeams.sendMessage).not.toHaveBeenCalledWith(
+			baseSession.id,
+			expect.objectContaining({ requestId: "next-session-request" }),
+		);
+	});
+
 	it("continues a staged first message after the new-session route handoff", async () => {
 		let releasePaint: (() => void) | undefined;
 		vi.mocked(waitForCommittedPaint).mockReturnValue(

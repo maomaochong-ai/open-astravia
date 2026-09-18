@@ -5,6 +5,19 @@ import { DelayedAbortChild, TestChild } from "./support/test-child.js";
 import { delay, waitUntil } from "./support/wait.js";
 
 describe("SubagentCoordinator scheduling", () => {
+	it("keeps the initiating tool call through queued execution", async () => {
+		const fixture = createFixture({ maxConcurrent: 1 });
+		fixture.coordinator.spawnMany([
+			{ ...request("first"), originToolCallId: "call-1" },
+			{ ...request("second"), originToolCallId: "call-2" },
+		]);
+		expect(fixture.coordinator.get("second")).toMatchObject({ status: "queued", originToolCallId: "call-2" });
+		await waitUntil(() => fixture.coordinator.get("first")?.status === "running");
+		fixture.children[0]?.complete("done");
+		await waitUntil(() => fixture.coordinator.get("second")?.status === "running");
+		expect(fixture.coordinator.get("second")?.originToolCallId).toBe("call-2");
+	});
+
 	it("queues overflow in FIFO order and refills the active slot", async () => {
 		const fixture = createFixture({ maxConcurrent: 1 });
 		const snapshots = fixture.coordinator.spawnMany([request("first"), request("second"), request("third")]);
