@@ -319,6 +319,14 @@ describe("DesktopRuntimeBackendPool", () => {
 		const expectedConversationDir = resolveCodingAgentSessionDir(defaultCwd);
 		expect(capturedDefaultFactory).toBeTypeOf("function");
 		expect(dirname(defaultRuntime.getSessionPath(created.sessionId) ?? "")).toBe(expectedConversationDir);
+		// 子代理向同一工厂申请父会话下的 .subagents 目录；落回项目目录会让侧栏把子会话当普通会话列出。
+		const childConversationDir = join(expectedConversationDir, ".subagents", created.sessionId);
+		const childPersistence = await capturedDefaultFactory!({ conversationDir: childConversationDir });
+		try {
+			expect(dirname(childPersistence.resolveSessionPath("child") ?? "")).toBe(childConversationDir);
+		} finally {
+			await childPersistence.dispose();
+		}
 
 		const overrideCwd = await temporaryDirectory("desktop-runtime-override-persistence-");
 		const overrideFactory = vi.fn(() => createInMemoryConversationPersistence());

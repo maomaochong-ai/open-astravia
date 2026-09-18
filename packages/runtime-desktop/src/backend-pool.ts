@@ -264,7 +264,7 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 				resolvePositiveInteger(process.env.VETTA_KB_OCR_CONCURRENCY),
 			createConversationPersistence:
 				this.options.compositionDefaults.createConversationPersistence ??
-				(() => createFileConversationPersistence(scope.conversationDir)),
+				(({ conversationDir }) => createFileConversationPersistence(conversationDir)),
 			createToolEnvironment: createDesktopCodingAgentToolEnvironment,
 			createSessionExecutionEnvironment: createDesktopCodingAgentSessionExecutionEnvironment,
 			codingToolResultPolicy:

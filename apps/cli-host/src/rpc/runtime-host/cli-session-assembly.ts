@@ -137,7 +137,7 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 		const scenario = options.backend === "im" ? "im-claw" : (parsed.scenario ?? "cli");
 		runtime = await createCodingAgentRuntimeComposition({
 			conversationDir: options.conversationDir,
-			createConversationPersistence: () => createFileConversationPersistence(options.conversationDir),
+			createConversationPersistence: ({ conversationDir }) => createFileConversationPersistence(conversationDir),
 			createToolEnvironment,
 			createSessionExecutionEnvironment,
 			codingToolResultPolicy,
