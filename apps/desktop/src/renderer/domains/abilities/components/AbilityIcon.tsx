@@ -25,7 +25,7 @@ export function AbilityIcon({
 	return (
 		<div
 			className={cn(
-				"flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border/40 bg-accent/50 text-foreground",
+				"flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border/50 bg-secondary/60 text-foreground shadow-xs transition-colors group-hover:border-border/70 group-hover:bg-secondary/80",
 				className,
 			)}
 		>
@@ -36,7 +36,7 @@ export function AbilityIcon({
 					alt=""
 					loading="lazy"
 					decoding="async"
-					className="h-full w-full object-contain"
+					className="h-full w-full object-contain p-0.5"
 					onError={() => setFailedIcon(icon)}
 				/>
 			) : isIconifyIcon(icon) ? (

@@ -28,27 +28,27 @@ export function AbilityStatusBadges({ item }: { item: AbilityItem }): JSX.Elemen
 	return (
 		<>
 			{isPreset && (
-				<span className="inline-flex shrink-0 items-center rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+				<span className="inline-flex shrink-0 items-center rounded-md border border-border/40 bg-secondary/80 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground/75">
 					{t("status.builtin")}
 				</span>
 			)}
 			{item.sameNameIds?.length ? (
-				<span className="inline-flex shrink-0 items-center rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+				<span className="inline-flex shrink-0 items-center rounded-md border border-sky-500/25 bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-medium text-sky-400">
 					{t("status.sameName", { count: item.sameNameIds.length })}
 				</span>
 			) : null}
 			{item.installed && !item.enabled && (
-				<span className="inline-flex shrink-0 items-center rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+				<span className="inline-flex shrink-0 items-center rounded-md border border-border/30 bg-muted/80 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground/60">
 					{t("status.disabled")}
 				</span>
 			)}
 			{item.setupRequired && (
-				<span className="inline-flex shrink-0 items-center rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
+				<span className="inline-flex shrink-0 items-center rounded-md border border-amber-500/25 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
 					{t("status.setupRequired")}
 				</span>
 			)}
 			{item.needsUpdate && (
-				<span className="inline-flex shrink-0 items-center rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
+				<span className="inline-flex shrink-0 items-center rounded-md border border-primary/25 bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary">
 					{t("status.updateAvailable")}
 				</span>
 			)}
