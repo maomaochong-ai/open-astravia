@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, posix, relative, resolve, sep } from "node:path";
 import AdmZip from "adm-zip";
 import type {
@@ -20,6 +20,7 @@ import { DEFAULT_MARKETPLACE_SOURCE_ID } from "./official-marketplace-source.js"
 const STATE_SCHEMA_VERSION = 1;
 const DEFAULT_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_UPDATE_CHECK_INTERVAL_MS = 5 * 60 * 1000;
+const SNAPSHOT_GRACE_PERIOD_MS = 24 * 60 * 60 * 1000;
 const MAX_ARCHIVE_BYTES = 25 * 1024 * 1024;
 const MAX_MANIFEST_BYTES = 2 * 1024 * 1024;
 const MAX_UNCOMPRESSED_BYTES = 100 * 1024 * 1024;
@@ -296,6 +297,8 @@ export class OpenMarketplaceService {
 	private lastUpdateCheckAt: number | undefined;
 	private backgroundUpdate: Promise<void> | undefined;
 	private syncInFlight: Promise<OpenMarketplaceSnapshot> | undefined;
+	private snapshotCleanupInFlight: Promise<void> | undefined;
+	private snapshotCleanupRequested = false;
 	/** 进程内快照：避免同会话反复 list 时对每个 ability 包做全量校验。 */
 	private memorySnapshot: OpenMarketplaceSnapshot | undefined;
 
@@ -531,6 +534,7 @@ export class OpenMarketplaceService {
 		const active = await this.readActiveMarketplace();
 		if (!active) return null;
 		const elapsed = this.now().getTime() - Date.parse(active.state.syncedAt);
+		this.scheduleSnapshotCleanup();
 		return {
 			sourceId: this.sourceId,
 			abilities: active.manifest.abilities.map((ability) =>
@@ -541,6 +545,54 @@ export class OpenMarketplaceService {
 			syncedAt: active.state.syncedAt,
 			stale: !Number.isFinite(elapsed) || elapsed >= this.syncIntervalMs,
 		};
+	}
+
+	private scheduleSnapshotCleanup(): void {
+		this.snapshotCleanupRequested = true;
+		if (this.snapshotCleanupInFlight) return;
+		const cleanup = (async () => {
+			while (this.snapshotCleanupRequested) {
+				this.snapshotCleanupRequested = false;
+				try {
+					await this.pruneInactiveSnapshots();
+				} catch (error) {
+					log.warn("marketplace snapshot cleanup failed", { sourceId: this.sourceId }, error);
+				}
+			}
+		})().finally(() => {
+			if (this.snapshotCleanupInFlight === cleanup) this.snapshotCleanupInFlight = undefined;
+			if (this.snapshotCleanupRequested) this.scheduleSnapshotCleanup();
+		});
+		this.snapshotCleanupInFlight = cleanup;
+	}
+
+	private async pruneInactiveSnapshots(): Promise<void> {
+		const state = await this.readState();
+		if (!state || !this.matchesCurrentSource(state)) return;
+		const snapshotsRoot = await lstat(this.snapshotsDir);
+		if (!snapshotsRoot.isDirectory() || snapshotsRoot.isSymbolicLink()) return;
+		if (!existsSync(join(this.snapshotsDir, state.marketplaceVersion))) return;
+
+		const directories = await readdir(this.snapshotsDir, { withFileTypes: true });
+		const inactive: Array<{ name: string; modifiedAt: number }> = [];
+		for (const entry of directories) {
+			if (!entry.isDirectory() || entry.name === state.marketplaceVersion) continue;
+			const details = await lstat(join(this.snapshotsDir, entry.name));
+			if (!details.isDirectory() || details.isSymbolicLink()) continue;
+			inactive.push({ name: entry.name, modifiedAt: details.mtimeMs });
+		}
+		inactive.sort((left, right) => right.modifiedAt - left.modifiedAt || right.name.localeCompare(left.name));
+		const cutoff = this.now().getTime() - SNAPSHOT_GRACE_PERIOD_MS;
+		for (const entry of inactive.slice(1)) {
+			if (entry.modifiedAt >= cutoff) continue;
+			const currentState = await this.readState();
+			if (!currentState || !this.matchesCurrentSource(currentState)) return;
+			if (currentState.marketplaceVersion !== state.marketplaceVersion) {
+				this.scheduleSnapshotCleanup();
+				return;
+			}
+			await rm(join(this.snapshotsDir, entry.name), { recursive: true, force: true });
+		}
 	}
 
 	private async downloadArchive(): Promise<Buffer> {
