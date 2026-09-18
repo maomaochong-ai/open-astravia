@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { PresetProviderModelsList } from "./PresetProviderModelsList";
 import type { PresetProviderRow, PresetProvidersSectionLabels } from "./usePresetProvidersSectionModel";
 
@@ -72,6 +72,9 @@ const row: PresetProviderRow = {
 	hasApiKey: false,
 	modelsError: null,
 };
+
+// 未开 globals,testing-library 的自动清理不会注册:不手动清,后一个用例会撞上前一个留下的 DOM。
+afterEach(cleanup);
 
 describe("PresetProviderModelsList", () => {
 	it("按模型名称或 ID 即时过滤，并能清除搜索恢复完整列表", async () => {
