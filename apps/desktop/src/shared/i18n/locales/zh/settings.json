@@ -1186,8 +1186,6 @@
   "catalogModels": "公共目录，填入 Key 后按账号刷新",
   "searchModels": "搜索 {{provider}} 模型",
   "clearModelSearch": "清除模型搜索",
-  "showLegacyModels": "显示 {{count}} 个旧版模型",
-  "hideLegacyModels": "收起旧版模型",
   "noMatchingModels": "没有匹配的模型",
   "modelListLabel": "{{provider}} 模型列表",
   "catalogUnavailable": "公共模型目录暂不可达，当前使用随版本内置的快照（{{time}}）",

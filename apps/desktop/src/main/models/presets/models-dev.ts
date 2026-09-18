@@ -25,7 +25,7 @@ export const CATALOG_TTL_MS = 12 * 60 * 60 * 1000;
  * 新加的预设服务商就会一直显示 0 个模型(最长 12 小时)。+1 让老缓存整份作废,
  * 先退到随包快照(已含新家)再后台重拉。
  */
-const CATALOG_VERSION = 6;
+const CATALOG_VERSION = 7;
 
 /** 预设标识 → models.dev 的 provider key。 */
 const PROVIDER_KEYS: Record<string, string> = {
@@ -57,11 +57,6 @@ interface RawModel {
 /** 目录条目。状态字段只用于生成时过滤，不进入缓存。 */
 export interface CatalogEntry {
 	model: ModelDefinition;
-	/**
-	 * 已被新一代取代、默认收进「历史模型」的条目。判定见 model-tiers.ts。
-	 * 只影响免 Key 时的默认展示——模型本身仍在目录里，展开即可选，元数据补齐也照旧。
-	 */
-	legacy?: true;
 	/** 上游给的发布日期(`2026-07` / `2026-07-09` 两种精度)，列表按它倒序排。 */
 	releaseDate?: string;
 }
@@ -124,7 +119,8 @@ function shrink(body: Record<string, { models?: Record<string, RawModel> }>): Mo
 			// 与带 key 时 Gemini 按 generateContent 过滤的口径一致。
 			return !raw.modalities?.output || raw.modalities.output.includes("text");
 		});
-		// 还在售但已被新一代取代的,标记为历史,默认不进免 Key 的列表(见 model-tiers.ts)。
+		// 还在售但已被新一代取代的直接不收进目录(见 model-tiers.ts)。代际判定需要看到全集,
+		// 所以过滤发生在这里而不是更早——不知道有哪些新模型就判不出谁旧。
 		const current = selectCurrentModelIds(
 			usable.map(([id, raw]) => ({
 				id,
@@ -135,9 +131,9 @@ function shrink(body: Record<string, { models?: Record<string, RawModel> }>): Mo
 		);
 		const entries: Record<string, CatalogEntry> = {};
 		for (const [id, raw] of usable) {
+			if (!current.has(id)) continue;
 			entries[id] = {
 				model: toModelDefinition(id, raw),
-				...(current.has(id) ? {} : { legacy: true as const }),
 				...(raw.release_date ? { releaseDate: raw.release_date } : {}),
 			};
 		}

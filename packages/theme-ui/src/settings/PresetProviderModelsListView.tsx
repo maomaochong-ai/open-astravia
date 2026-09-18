@@ -12,8 +12,6 @@ export interface PresetProviderModelRowView {
 
 export interface PresetProviderModelsListViewLabels {
 	readonly clearSearch: string;
-	readonly showLegacyModels: (count: number) => string;
-	readonly hideLegacyModels: string;
 	readonly listLabel: string;
 	readonly noMatchingModels: string;
 	readonly noModels: string;
@@ -28,13 +26,6 @@ export interface PresetProviderModelsListViewProps {
 	readonly onSearchQueryChange: (value: string) => void;
 	readonly searchQuery: string;
 	readonly totalModelCount: number;
-	/**
-	 * 被新一代取代、默认收起的模型数。为 0 时不出现展开入口。
-	 * 搜索时调用方会把历史模型一并纳入结果,这里应当传 0——否则用户会以为搜索漏了东西。
-	 */
-	readonly legacyModelCount?: number;
-	readonly legacyExpanded?: boolean;
-	readonly onToggleLegacy?: () => void;
 }
 
 export function PresetProviderModelsListView({
@@ -43,9 +34,6 @@ export function PresetProviderModelsListView({
 	onSearchQueryChange,
 	searchQuery,
 	totalModelCount,
-	legacyModelCount = 0,
-	legacyExpanded = false,
-	onToggleLegacy,
 }: PresetProviderModelsListViewProps): JSX.Element {
 	return (
 		<div className="border-t border-border bg-secondary/30">
@@ -115,20 +103,6 @@ export function PresetProviderModelsListView({
 						)}
 					</div>
 				))}
-				{legacyModelCount > 0 && onToggleLegacy && (
-					<button
-						type="button"
-						onClick={onToggleLegacy}
-						aria-expanded={legacyExpanded}
-						className="flex w-full items-center gap-1 border-border/50 border-t px-5 py-2 pl-12 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-					>
-						<span
-							aria-hidden="true"
-							className={`size-3.5 ${legacyExpanded ? "icon-[solar--alt-arrow-up-linear]" : "icon-[solar--alt-arrow-down-linear]"}`}
-						/>
-						{legacyExpanded ? labels.hideLegacyModels : labels.showLegacyModels(legacyModelCount)}
-					</button>
-				)}
 			</div>
 		</div>
 	);

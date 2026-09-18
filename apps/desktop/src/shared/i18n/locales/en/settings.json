@@ -1186,8 +1186,6 @@
   "catalogModels": "Public catalog; enter a key to sync your account",
   "searchModels": "Search {{provider}} models",
   "clearModelSearch": "Clear model search",
-  "showLegacyModels": "Show {{count}} older models",
-  "hideLegacyModels": "Hide older models",
   "noMatchingModels": "No matching models",
   "modelListLabel": "{{provider}} model list",
   "catalogUnavailable": "Public model catalog unreachable; using the snapshot bundled with this version ({{time}})",
