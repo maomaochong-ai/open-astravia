@@ -1,6 +1,6 @@
 import type { TFunction } from "i18next";
 import { describe, expect, it } from "vitest";
-import type { SkillAbility } from "../types";
+import type { PluginAbility, SkillAbility } from "../types";
 import { queryAbilityCatalog } from "./ability-catalog-query";
 import { buildMcpAbilities } from "./build-ability-items";
 
@@ -29,6 +29,40 @@ function ability(index: number, overrides: Partial<SkillAbility> = {}): SkillAbi
 		isBuiltin: false,
 		fromMarket: true,
 		searchTerms: [slug, `keyword-${index}`],
+		...overrides,
+	};
+}
+
+function pluginAbility(index: number, overrides: Partial<PluginAbility> = {}): PluginAbility {
+	const slug = `plugin-${String(index).padStart(3, "0")}`;
+	return {
+		id: `plugin:${slug}`,
+		slug,
+		type: "plugin",
+		catalogSource: { kind: "server", id: "server" },
+		title: `Plugin ${String(index).padStart(3, "0")}`,
+		description: "",
+		category: "General",
+		tags: [],
+		author: "",
+		license: "MIT",
+		version: "1.0.0",
+		installed: false,
+		enabled: false,
+		readonly: false,
+		needsUpdate: false,
+		setupRequired: false,
+		busy: false,
+		downloadCount: 0,
+		isCustom: false,
+		isBuiltin: false,
+		fromMarket: true,
+		searchTerms: [slug],
+		plugin: null,
+		permissions: [],
+		grantedPermissions: [],
+		commands: [],
+		grantedCommands: [],
 		...overrides,
 	};
 }
@@ -91,24 +125,68 @@ describe("queryAbilityCatalog", () => {
 			catalogSource: { kind: "builtin", id: "builtin" },
 			title: "E Builtin Skill",
 		});
+		const manualPlugin = pluginAbility(6, {
+			title: "F Manual Plugin",
+			fromMarket: false,
+			installed: true,
+			isCustom: true,
+			isBuiltin: false,
+			catalogSource: { kind: "server", id: "server" },
+			plugin: {
+				id: "manual-plugin",
+				name: "Manual Plugin",
+				version: "1.0.0",
+				activeVersion: "1.0.0",
+				source: "archive",
+			} as unknown as PluginAbility["plugin"],
+		});
+		const marketPlugin = pluginAbility(7, {
+			title: "G Market Plugin",
+			fromMarket: true,
+			installed: true,
+			isCustom: false,
+			isBuiltin: false,
+			catalogSource: {
+				kind: "github",
+				id: "official",
+				name: "Official",
+				repository: "https://github.com/example/official",
+			},
+			plugin: {
+				id: "market-plugin",
+				name: "Market Plugin",
+				version: "1.0.0",
+				activeVersion: "1.0.0",
+				source: "remote",
+			} as unknown as PluginAbility["plugin"],
+		});
 
-		const personalPage = queryAbilityCatalog(
-			[installedMarket, uninstalledMarket, genericAgentSkill, customImportedSkill, builtinSkill],
-			{ scope: "mine", page: 1, pageSize: 60 },
-		);
+		const allAbilities = [
+			installedMarket,
+			uninstalledMarket,
+			genericAgentSkill,
+			customImportedSkill,
+			builtinSkill,
+			manualPlugin,
+			marketPlugin,
+		];
 
-		// 个人：只展示通用 skill 和手动安装的能力（排除从市场安装的能力与内置能力）
-		expect(personalPage.items.map((item) => item.id)).toEqual([genericAgentSkill.id, customImportedSkill.id]);
+		const personalPage = queryAbilityCatalog(allAbilities, { scope: "mine", page: 1, pageSize: 60 });
 
-		const publicPage = queryAbilityCatalog(
-			[installedMarket, uninstalledMarket, genericAgentSkill, customImportedSkill, builtinSkill],
-			{ scope: "discover", page: 1, pageSize: 60 },
-		);
+		// 个人：只展示通用 skill 和手动安装的能力（含本地插件、自定义 skill，排除市场能力与内置能力）
+		expect(personalPage.items.map((item) => item.id)).toEqual([
+			genericAgentSkill.id,
+			customImportedSkill.id,
+			manualPlugin.id,
+		]);
 
-		// 公开：展示市场能力（不论是否已安装）与 Vetta 内置能力，排除本地未上架的个人技能
+		const publicPage = queryAbilityCatalog(allAbilities, { scope: "discover", page: 1, pageSize: 60 });
+
+		// 公开：展示市场能力（不论是否已安装）与 Vetta 内置能力，排除本地未上架的个人技能与手动插件
 		expect(publicPage.items.map((item) => item.id)).toEqual([
 			installedMarket.id,
 			uninstalledMarket.id,
+			marketPlugin.id,
 			builtinSkill.id,
 		]);
 	});

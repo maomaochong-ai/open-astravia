@@ -30,13 +30,27 @@ function sourceId(item: AbilityItem): string {
 	return item.catalogSource.id;
 }
 
-/** 判断条目是否来自能力市场（在线市场条目、未独立上架的成员、或由市场安装到本地的条目）。 */
-export function isAbilityFromMarket(item: AbilityItem): boolean {
-	if (item.fromMarket) return true;
-	if (item.catalogSource.kind === "github" || item.catalogSource.kind === "server") return true;
-	if (item.origin?.kind === "github-marketplace" || item.origin?.kind === "server") return true;
-	if (item.type === "skill" && item.skillProvenance?.kind === "native" && item.skillProvenance.scope === "market") {
-		return true;
+/** 是否为通用 Skill（~/.agents/skills 等通用 Agent 技能目录）。 */
+export function isUniversalSkill(item: AbilityItem): boolean {
+	return item.type === "skill" && Boolean(item.skillSource?.startsWith("agents-"));
+}
+
+/** 是否为手动安装/本地创建的能力（本地导入的 skill、本地 zip/npm 插件、手动添加的 MCP 服务）。 */
+export function isManuallyInstalledAbility(item: AbilityItem): boolean {
+	if (!item.installed || item.isBuiltin) return false;
+	if (item.isCustom) return true;
+	if (item.type === "plugin") {
+		return item.plugin?.source === "archive" || item.plugin?.source === "npm";
+	}
+	if (item.type === "skill") {
+		return (
+			(item.skillProvenance?.kind === "native" && item.skillProvenance.scope === "custom") ||
+			item.skillSource === "user" ||
+			item.skillSource === "project"
+		);
+	}
+	if (item.type === "mcp") {
+		return !item.fromMarket && item.origin?.kind !== "github-marketplace" && !item.preset;
 	}
 	return false;
 }
@@ -46,9 +60,9 @@ export function isAbilityListedInDiscover(item: AbilityItem): boolean {
 	return (item.fromMarket && (!item.market || isMarketAbilityListed(item.market))) || item.isBuiltin;
 }
 
-/** 「个人」只展示通用 skill 和手动安装的能力（排除从能力市场上安装的能力与 Vetta 内置能力）。 */
+/** 「个人」只展示通用 skill 和手动安装的能力。 */
 export function isAbilityListedInPersonal(item: AbilityItem): boolean {
-	return item.installed && !item.isBuiltin && !isAbilityFromMarket(item);
+	return isUniversalSkill(item) || isManuallyInstalledAbility(item);
 }
 
 export function queryAbilityCatalog(items: AbilityItem[], query: AbilityCatalogQuery): AbilityCatalogPage {
