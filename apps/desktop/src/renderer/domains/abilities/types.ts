@@ -45,6 +45,12 @@ export const ABILITY_CATEGORY_CONNECTORS = "__connectors__";
  */
 export const ABILITY_CATEGORY_VETTA_BUILTIN = "__vetta_builtin__";
 
+/**
+ * 是否按分类分组展示能力列表。
+ * 当前能力数量较少时默认不分类，平铺在网格中；后续能力丰富后可改回 true 开启分组。
+ */
+export const ENABLE_ABILITY_CATEGORIES = false;
+
 /** 用户触发的能力操作阶段；用于让列表与详情说明当前正在发生什么。 */
 export type AbilityOperation =
 	| "checkingSource"
