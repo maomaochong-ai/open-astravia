@@ -86,9 +86,10 @@ export function getBuiltinSkillPaths(): string[] {
  * 清单里的中文只作缺译回退。i18next 缺 key 时原样吐回 key，故以此判定。
  */
 export function builtinSkillText(name: string, field: "name" | "description", fallback?: string): string | undefined {
-	const key = `skills:builtin.${name}.${field}`;
-	const translated = mainT(key);
-	return translated === key ? fallback : translated;
+	const path = `builtin.${name}.${field}`;
+	const translated = mainT(`skills:${path}`);
+	// i18next 缺 key 时回吐的是去掉 ns 前缀的 key，比对要用 path 而非带 ns 的完整 key。
+	return translated === path ? fallback : translated;
 }
 
 export function isBuiltinSkillFile(filePath: string): boolean {

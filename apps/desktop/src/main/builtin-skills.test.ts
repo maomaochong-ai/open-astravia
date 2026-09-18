@@ -2,13 +2,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const flags = vi.hoisted(() => ({ cloud: true }));
 const files = vi.hoisted(() => ({ manifest: "{}" }));
+const catalog = vi.hoisted(() => ({ entries: {} as Record<string, string> }));
 
 vi.mock("electron", () => ({
 	app: { isPackaged: false, getAppPath: () => "/repo/apps/desktop" },
 }));
 
+// 复刻 i18next 行为：缺 key 时回吐的是去掉 ns 前缀的 key。
 vi.mock("./i18n/index.js", () => ({
-	mainT: (key: string) => key,
+	mainT: (key: string) => catalog.entries[key] ?? key.replace(/^[^:]+:/, ""),
 }));
 
 vi.mock("../shared/feature-flags.js", () => ({
@@ -20,7 +22,7 @@ vi.mock("node:fs", () => ({
 	readFileSync: () => files.manifest,
 }));
 
-import { readBuiltinSkillsManifest } from "./builtin-skills.js";
+import { builtinSkillText, readBuiltinSkillsManifest } from "./builtin-skills.js";
 
 const MANIFEST = {
 	"create-skill": {
@@ -60,5 +62,21 @@ describe("readBuiltinSkillsManifest", () => {
 	it("lite 构建过滤 requiresCloud 技能（publish-ability 等发布类技能不出现）", () => {
 		flags.cloud = false;
 		expect(Object.keys(readBuiltinSkillsManifest())).toEqual(["create-skill", "vetta-blog"]);
+	});
+});
+
+describe("builtinSkillText", () => {
+	beforeEach(() => {
+		catalog.entries = {};
+	});
+
+	it("命中 catalog 时返回译文", () => {
+		catalog.entries["skills:builtin.install-ability.name"] = "安装能力";
+		expect(builtinSkillText("install-ability", "name", "fallback")).toBe("安装能力");
+	});
+
+	it("缺译时回退清单文案，而不是把 key 当文案吐给 UI", () => {
+		expect(builtinSkillText("install-ability", "name", "安装能力")).toBe("安装能力");
+		expect(builtinSkillText("install-ability", "description")).toBeUndefined();
 	});
 });
