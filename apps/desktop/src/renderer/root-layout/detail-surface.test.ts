@@ -32,6 +32,29 @@ describe("detailSurfaceForPath", () => {
 		expect(detailSurfaceForPath("/new-session/%2Ftmp%2Fdemo")).toBeNull();
 	});
 
+	it("认得路由器双层编码的项目与查看器路径", () => {
+		const cwd = "/Users/m4/.vetta/workspace/无纸会议移动端";
+		expect(detailSurfaceForPath(`/project/${encodeURIComponent(encodeURIComponent(cwd))}`)).toEqual({
+			kind: "project",
+			key: `project:${cwd}`,
+			cwd,
+		});
+		const sessionPath = "/Users/m4/.vetta/workspace/无纸会议移动端/session.jsonl";
+		expect(detailSurfaceForPath(`/viewer/${encodeURIComponent(encodeURIComponent(sessionPath))}`)).toEqual({
+			kind: "viewer",
+			key: `viewer:${sessionPath}`,
+			path: sessionPath,
+		});
+	});
+
+	it("不把路径里字面量的百分号当成转义继续解", () => {
+		expect(detailSurfaceForPath(`/project/${encodeURIComponent("/tmp/100%done")}`)).toEqual({
+			kind: "project",
+			key: "project:/tmp/100%done",
+			cwd: "/tmp/100%done",
+		});
+	});
+
 	it("解码 URL 段，拒绝非法编码", () => {
 		expect(detailSurfaceForPath("/theme/a%2Fb/page")).toEqual({
 			kind: "theme",
