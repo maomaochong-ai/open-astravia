@@ -1,7 +1,24 @@
-import { Fragment, useCallback, useState, type JSX, type KeyboardEvent, type MouseEvent } from "react";
+import {
+	type DragEvent,
+	type JSX,
+	type KeyboardEvent,
+	type MouseEvent,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import { type VirtuosoHandle, Virtuoso } from "react-virtuoso";
 import { FILE_TREE_ROOT_DROP_CLASS, isDragLeavingElement } from "./drag-target";
 import { FileTreeCreateRow } from "./FileTreeCreateRow";
 import { FileTreeNodeView } from "./FileTreeNodeView";
+import {
+	type FileTreeRow,
+	buildFileTreeRows,
+	FILE_TREE_OVERSCAN,
+	FILE_TREE_ROW_HEIGHT,
+} from "./file-tree-rows";
 import type {
 	FileExplorerCreatingEntry,
 	FileExplorerDragEntry,
@@ -45,33 +62,6 @@ export interface FileTreeViewProps {
 	onTreeKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void;
 }
 
-interface FlatNode {
-	entry: FileExplorerEntry;
-	depth: number;
-}
-
-function buildFlatList(
-	rootDir: string,
-	cache: ReadonlyMap<string, readonly FileExplorerEntry[]>,
-	expandedDirs: ReadonlySet<string>,
-): FlatNode[] {
-	const result: FlatNode[] = [];
-
-	function walk(dirPath: string, depth: number) {
-		const entries = cache.get(dirPath);
-		if (!entries) return;
-		for (const entry of entries) {
-			result.push({ entry, depth });
-			if (entry.isDirectory && expandedDirs.has(entry.path)) {
-				walk(entry.path, depth + 1);
-			}
-		}
-	}
-
-	walk(rootDir, 0);
-	return result;
-}
-
 function parseInternalDragPaths(raw: string): string[] {
 	if (!raw) return [];
 	try {
@@ -93,8 +83,12 @@ function isTreeBackgroundTarget(target: EventTarget | null): boolean {
 	return true;
 }
 
+function toScrollerElement(ref: HTMLElement | Window | null): HTMLElement | null {
+	return ref instanceof HTMLElement ? ref : null;
+}
+
 /**
- * Flattened file tree. Host owns cache / expand / rename path atoms.
+ * Flattened, virtualized file tree. Host owns cache / expand / rename path atoms.
  */
 export function FileTreeView({
 	rootDir,
@@ -124,12 +118,24 @@ export function FileTreeView({
 	onPrefetchNativeDragIcons,
 	onTreeKeyDown,
 }: FileTreeViewProps): JSX.Element {
+	const virtuosoRef = useRef<VirtuosoHandle>(null);
+	const visibleRangeRef = useRef({ startIndex: 0, endIndex: 0 });
+	const rowsRef = useRef<readonly FileTreeRow[]>([]);
 	const [rootDragOver, setRootDragOver] = useState(false);
-	const flatList = buildFlatList(rootDir, cache, expandedDirs);
-	const selectedDragEntries: FileExplorerDragEntry[] = flatList
-		.map((node) => node.entry)
-		.filter((entry) => selectedPaths.has(entry.path))
-		.map((entry) => ({ path: entry.path, name: entry.name, isDirectory: entry.isDirectory }));
+	const rows = useMemo(
+		() => buildFileTreeRows({ rootDir, cache, expandedDirs, creatingEntry }),
+		[rootDir, cache, expandedDirs, creatingEntry],
+	);
+	rowsRef.current = rows;
+	const selectedDragEntries: FileExplorerDragEntry[] = useMemo(
+		() =>
+			rows
+				.filter((row): row is Extract<FileTreeRow, { type: "entry" }> => row.type === "entry")
+				.map((row) => row.entry)
+				.filter((entry) => selectedPaths.has(entry.path))
+				.map((entry) => ({ path: entry.path, name: entry.name, isDirectory: entry.isDirectory })),
+		[rows, selectedPaths],
+	);
 
 	const handleMarqueeSelect = useCallback(
 		(paths: readonly string[]) => {
@@ -140,9 +146,19 @@ export function FileTreeView({
 	const { scrollRef, marquee, onMouseDown: onMarqueeMouseDown } = useFileTreeMarqueeSelection({
 		selectedPaths,
 		onMarqueeSelect: handleMarqueeSelect,
+		rows,
 	});
 
-	function handleRootDragOver(event: React.DragEvent): void {
+	useEffect(() => {
+		if (!focusedPath) return;
+		const index = rowsRef.current.findIndex((row) => row.type === "entry" && row.entry.path === focusedPath);
+		if (index < 0) return;
+		const { startIndex, endIndex } = visibleRangeRef.current;
+		if (index >= startIndex && index <= endIndex) return;
+		virtuosoRef.current?.scrollIntoView({ index, align: "center" });
+	}, [focusedPath]);
+
+	function handleRootDragOver(event: DragEvent): void {
 		const types = Array.from(event.dataTransfer.types);
 		const internal = types.includes("application/vetta-path");
 		if (!internal && !types.includes("Files")) return;
@@ -151,12 +167,12 @@ export function FileTreeView({
 		setRootDragOver(true);
 	}
 
-	function handleRootDragLeave(event: React.DragEvent): void {
+	function handleRootDragLeave(event: DragEvent): void {
 		if (!isDragLeavingElement(event)) return;
 		setRootDragOver(false);
 	}
 
-	function handleRootDrop(event: React.DragEvent): void {
+	function handleRootDrop(event: DragEvent): void {
 		setRootDragOver(false);
 		event.preventDefault();
 		const sourceRaw = event.dataTransfer.getData("application/vetta-path");
@@ -180,26 +196,71 @@ export function FileTreeView({
 		onRootContextMenu(event.clientX, event.clientY);
 	}
 
-	const rootCreateRow = creatingEntry?.parentPath === rootDir ? (
-		<FileTreeCreateRow
-			key={`${creatingEntry.parentPath}:${creatingEntry.kind}`}
-			kind={creatingEntry.kind}
-			depth={0}
-			inputLabel={createInputLabel}
-			error={creatingEntry.error}
-			busy={creatingEntry.busy}
-			onSubmit={onCreateSubmit}
-			onCancel={onCreateCancel}
-		/>
-	) : null;
+	function renderRow(row: FileTreeRow): JSX.Element {
+		if (row.type === "create") {
+			return (
+				<FileTreeCreateRow
+					kind={row.kind}
+					depth={row.depth}
+					inputLabel={createInputLabel}
+					error={creatingEntry?.error ?? null}
+					busy={creatingEntry?.busy ?? false}
+					onSubmit={onCreateSubmit}
+					onCancel={onCreateCancel}
+				/>
+			);
+		}
+		const isSelected = selectedPaths.has(row.entry.path);
+		const dragEntries: FileExplorerDragEntry[] =
+			isSelected && selectedDragEntries.length > 0
+				? selectedDragEntries
+				: [
+						{
+							path: row.entry.path,
+							name: row.entry.name,
+							isDirectory: row.entry.isDirectory,
+						},
+					];
+		return (
+			<FileTreeNodeView
+				entry={row.entry}
+				depth={row.depth}
+				isExpanded={expandedDirs.has(row.entry.path)}
+				isLoading={loadingDirs.has(row.entry.path)}
+				isSelected={isSelected}
+				isFocused={focusedPath === row.entry.path}
+				isRenaming={renamingPath === row.entry.path}
+				decoration={getDecoration?.(row.entry)}
+				dragEntries={dragEntries}
+				onToggleDir={onToggleDir}
+				onSelectEntry={onSelectEntry}
+				onContextMenu={onContextMenu}
+				onRenameSubmit={onRenameSubmit}
+				onRenameCancel={onRenameCancel}
+				onFileMove={onFileMove}
+				onExternalDrop={onExternalDrop}
+				onNativeDragStart={onNativeDragStart}
+				onPrefetchNativeDragIcons={onPrefetchNativeDragIcons}
+			/>
+		);
+	}
 
-	const treeClass = `relative min-h-full py-0.5 transition-colors outline-none select-none ${rootDragOver ? FILE_TREE_ROOT_DROP_CLASS : ""}`;
+	const viewportMarquee = marquee
+		? {
+				left: marquee.left - (scrollRef.current?.scrollLeft ?? 0),
+				top: marquee.top - (scrollRef.current?.scrollTop ?? 0),
+				width: marquee.width,
+				height: marquee.height,
+			}
+		: null;
 
-	if (flatList.length === 0 && !loadingDirs.has(rootDir) && !rootCreateRow) {
+	if (rows.length === 0 && !loadingDirs.has(rootDir)) {
 		return (
 			// biome-ignore lint/a11y/noStaticElementInteractions: marquee selection on empty chrome
 			<div
-				ref={scrollRef}
+				ref={(node) => {
+					scrollRef.current = node;
+				}}
 				role="tree"
 				tabIndex={0}
 				onClick={handleBackgroundClick}
@@ -217,85 +278,41 @@ export function FileTreeView({
 	}
 
 	return (
-		// biome-ignore lint/a11y/noStaticElementInteractions: marquee selection on empty chrome
+		// biome-ignore lint/a11y/noStaticElementInteractions: marquee selection and tree keyboard on the host chrome
 		<div
-			ref={scrollRef}
-			className="relative h-full min-h-0 overflow-y-auto"
+			role="tree"
+			tabIndex={0}
+			className={`relative h-full min-h-0 overflow-hidden outline-none select-none ${rootDragOver ? FILE_TREE_ROOT_DROP_CLASS : ""}`}
+			onClick={handleBackgroundClick}
+			onContextMenu={handleRootContextMenu}
 			onMouseDown={onMarqueeMouseDown}
+			onDragOver={handleRootDragOver}
+			onDragLeave={handleRootDragLeave}
+			onDrop={handleRootDrop}
+			onKeyDown={onTreeKeyDown}
 		>
-			<div
-				role="tree"
-				tabIndex={0}
-				onClick={handleBackgroundClick}
-				onContextMenu={handleRootContextMenu}
-				onDragOver={handleRootDragOver}
-				onDragLeave={handleRootDragLeave}
-				onDrop={handleRootDrop}
-				onKeyDown={onTreeKeyDown}
-				className={treeClass}
-			>
-				{rootCreateRow}
-				{flatList.map((node) => {
-					const isSelected = selectedPaths.has(node.entry.path);
-					const dragEntries: FileExplorerDragEntry[] =
-						isSelected && selectedDragEntries.length > 0
-							? selectedDragEntries
-							: [
-									{
-										path: node.entry.path,
-										name: node.entry.name,
-										isDirectory: node.entry.isDirectory,
-									},
-								];
-					return (
-						<Fragment key={node.entry.path}>
-							<FileTreeNodeView
-								entry={node.entry}
-								depth={node.depth}
-								isExpanded={expandedDirs.has(node.entry.path)}
-								isLoading={loadingDirs.has(node.entry.path)}
-								isSelected={isSelected}
-								isFocused={focusedPath === node.entry.path}
-								isRenaming={renamingPath === node.entry.path}
-								decoration={getDecoration?.(node.entry)}
-								dragEntries={dragEntries}
-								onToggleDir={onToggleDir}
-								onSelectEntry={onSelectEntry}
-								onContextMenu={onContextMenu}
-								onRenameSubmit={onRenameSubmit}
-								onRenameCancel={onRenameCancel}
-								onFileMove={onFileMove}
-								onExternalDrop={onExternalDrop}
-								onNativeDragStart={onNativeDragStart}
-								onPrefetchNativeDragIcons={onPrefetchNativeDragIcons}
-							/>
-							{creatingEntry?.parentPath === node.entry.path ? (
-								<FileTreeCreateRow
-									key={`${creatingEntry.parentPath}:${creatingEntry.kind}`}
-									kind={creatingEntry.kind}
-									depth={node.depth + 1}
-									inputLabel={createInputLabel}
-									error={creatingEntry.error}
-									busy={creatingEntry.busy}
-									onSubmit={onCreateSubmit}
-									onCancel={onCreateCancel}
-								/>
-							) : null}
-						</Fragment>
-					);
-				})}
-				{marquee ? (
-					<div
-						className="pointer-events-none absolute z-10 rounded-sm border border-primary/50 bg-primary/10"
-						style={{
-							left: marquee.left,
-							top: marquee.top,
-							width: marquee.width,
-							height: marquee.height,
-						}}
-					/>
-				) : null}
-			</div>
+			<Virtuoso
+				ref={virtuosoRef}
+				data={rows}
+				defaultItemHeight={FILE_TREE_ROW_HEIGHT}
+				overscan={FILE_TREE_OVERSCAN}
+				computeItemKey={(_index, row) => row.key}
+				scrollerRef={(ref) => {
+					scrollRef.current = toScrollerElement(ref);
+				}}
+				rangeChanged={(range) => {
+					visibleRangeRef.current = range;
+				}}
+				itemContent={(_index, row) => renderRow(row)}
+				className="h-full"
+				style={{ height: "100%" }}
+			/>
+			{viewportMarquee ? (
+				<div
+					className="pointer-events-none absolute z-10 rounded-sm border border-primary/50 bg-primary/10"
+					style={viewportMarquee}
+				/>
+			) : null}
 		</div>
 	);
 }

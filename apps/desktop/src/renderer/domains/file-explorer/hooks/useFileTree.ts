@@ -9,6 +9,7 @@ import {
 import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { emitPluginFileExplorerFilesChanged } from "../../plugins/runtime/plugin-file-explorer-host";
+import { createDirectoryReloadScheduler } from "./file-tree-watch-coalesce";
 
 /**
  * @param cwdOverride 显式指定的根目录。不传则回退到当前活动 session 的 cwd，
@@ -242,14 +243,19 @@ export function useFileTree(cwdOverride?: string | null) {
 
 	// Subscribe to dir-changed events from main process
 	useEffect(() => {
-		const unsub = window.vetta.fs.onDirChanged((dirPath: string) => {
+		const scheduler = createDirectoryReloadScheduler((dirPath: string) => {
 			emitPluginFileExplorerFilesChanged([{ type: "changed", path: dirPath }]);
-			// Only reload if this dir is currently visible (root or expanded)
 			if (watchedDirsRef.current.has(dirPath)) {
 				void loadDir(dirPath);
 			}
 		});
-		return unsub;
+		const unsub = window.vetta.fs.onDirChanged((dirPath: string) => {
+			scheduler.notify(dirPath);
+		});
+		return () => {
+			unsub();
+			scheduler.dispose();
+		};
 	}, [loadDir]);
 
 	return {
