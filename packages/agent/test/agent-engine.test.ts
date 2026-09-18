@@ -244,16 +244,7 @@ describe("runAgentTurn", () => {
 				successResponse(assistant([toolCall("first", "noop", {})], "toolUse")),
 				{ events: overflow, result: overflow.result() },
 			]),
-			resolveTools: async () => [
-				{
-					name: "noop",
-					description: "noop",
-					inputSchema: Type.Object({}),
-					async execute() {
-						return { content: [{ type: "text", text: "ok" }], details: {} };
-					},
-				},
-			],
+			resolveTools: async () => [noopTool()],
 			checkpoint: async ({ reason, assistantMessage }) => {
 				if (reason === "assistant_error") errorCheckpointMessages.push(assistantMessage);
 				return undefined;
@@ -264,6 +255,29 @@ describe("runAgentTurn", () => {
 		expect(errorCheckpointMessages).toHaveLength(1);
 		expect(errorCheckpointMessages[0]).toMatchObject({ stopReason: "error" });
 		expect(errorCheckpointMessages[0]?.errorMessage).toContain(overflowMessage);
+	});
+
+	it("restarts the recovery attempt count once a model call makes progress", async () => {
+		const errorAttempts: number[] = [];
+		const run = runAgentTurn({
+			...request([
+				failedResponse(new Error("overflow-1")),
+				successResponse(assistant([toolCall("progress", "noop", {})], "toolUse")),
+				failedResponse(new Error("overflow-2")),
+				failedResponse(new Error("overflow-3")),
+				successResponse(assistant([])),
+			]),
+			limits: { ...DEFAULT_LIMITS, maxRecoveryAttempts: 5 },
+			resolveTools: async () => [noopTool()],
+			checkpoint: async ({ reason, recoveryAttempt }) => {
+				if (reason !== "assistant_error") return undefined;
+				errorAttempts.push(recoveryAttempt);
+				return { retry: true };
+			},
+		});
+
+		await expect(run.result).resolves.toMatchObject({ status: "completed", recoveryAttempts: 3 });
+		expect(errorAttempts).toEqual([0, 0, 1]);
 	});
 
 	it("ends with recovery_exhausted after the configured retry budget", async () => {
@@ -749,6 +763,17 @@ function successResponse(message: AssistantMessage): ModelStreamResponse {
 	stream.push({ type: "start", partial: message });
 	stream.push({ type: "done", reason: message.stopReason === "toolUse" ? "toolUse" : "stop", message });
 	return { events: stream, result: stream.result() };
+}
+
+function noopTool(): RuntimeToolDefinition {
+	return {
+		name: "noop",
+		description: "noop",
+		inputSchema: Type.Object({}),
+		async execute() {
+			return { content: [{ type: "text", text: "ok" }], details: {} };
+		},
+	};
 }
 
 function failedResponse(error: unknown): ModelStreamResponse {
