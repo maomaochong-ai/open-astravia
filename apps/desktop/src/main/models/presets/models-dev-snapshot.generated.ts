@@ -3,8 +3,8 @@
 import type { ModelsDevCatalog } from "./models-dev.js";
 
 export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
-	version: 5,
-	fetchedAt: "2026-09-18T06:44:04.815Z",
+	version: 6,
+	fetchedAt: "2026-09-18T07:14:12.896Z",
 	providers: {
 		claude: {
 			"claude-sonnet-4-6": {
@@ -24,6 +24,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-02-17",
 			},
 			"claude-opus-5": {
 				model: {
@@ -41,6 +42,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 6.25,
 					},
 				},
+				releaseDate: "2026-07-24",
 			},
 			"claude-opus-4-5": {
 				model: {
@@ -59,6 +61,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-11-24",
 			},
 			"claude-fable-5-1": {
 				model: {
@@ -76,6 +79,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 12.5,
 					},
 				},
+				releaseDate: "2026-09-01",
 			},
 			"claude-opus-4-6": {
 				model: {
@@ -94,6 +98,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-02-04",
 			},
 			"claude-sonnet-4-5-20250929": {
 				model: {
@@ -111,6 +116,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-09-29",
 			},
 			"claude-opus-4-7": {
 				model: {
@@ -129,6 +135,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-04-14",
 			},
 			"claude-haiku-4-5-20251001": {
 				model: {
@@ -146,6 +153,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-10-15",
 			},
 			"claude-fable-5": {
 				model: {
@@ -164,6 +172,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-06-07",
 			},
 			"claude-haiku-4-5": {
 				model: {
@@ -180,6 +189,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 1.25,
 					},
 				},
+				releaseDate: "2025-10-15",
 			},
 			"claude-sonnet-4-5": {
 				model: {
@@ -197,6 +207,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-09-29",
 			},
 			"claude-opus-4-8": {
 				model: {
@@ -215,6 +226,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-05-28",
 			},
 			"claude-sonnet-5": {
 				model: {
@@ -232,6 +244,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 2.5,
 					},
 				},
+				releaseDate: "2026-06-29",
 			},
 			"claude-opus-4-5-20251101": {
 				model: {
@@ -250,6 +263,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-11-24",
 			},
 		},
 		openai: {
@@ -270,6 +284,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-08-07",
 			},
 			"gpt-5-pro": {
 				model: {
@@ -288,6 +303,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-10-06",
 			},
 			"gpt-5.6-sol": {
 				model: {
@@ -305,6 +321,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 5,
 					},
 				},
+				releaseDate: "2026-07-09",
 			},
 			"gpt-4o-2024-08-06": {
 				model: {
@@ -322,6 +339,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2024-08-06",
 			},
 			"gpt-6-astra": {
 				model: {
@@ -339,6 +357,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 12.5,
 					},
 				},
+				releaseDate: "2026-09-04",
 			},
 			"gpt-5.2-pro": {
 				model: {
@@ -357,6 +376,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-12-11",
 			},
 			"gpt-5.3-codex-spark": {
 				model: {
@@ -374,6 +394,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				releaseDate: "2026-02-05",
 			},
 			"gpt-4.1-mini": {
 				model: {
@@ -391,6 +412,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-04-14",
 			},
 			"gpt-5.4": {
 				model: {
@@ -409,6 +431,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-03-05",
 			},
 			"gpt-5.1": {
 				model: {
@@ -427,6 +450,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-11-13",
 			},
 			"gpt-4o": {
 				model: {
@@ -444,6 +468,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2024-05-13",
 			},
 			"gpt-5.6-luna": {
 				model: {
@@ -461,6 +486,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0.25,
 					},
 				},
+				releaseDate: "2026-07-09",
 			},
 			"gpt-5.3-codex": {
 				model: {
@@ -478,6 +504,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				releaseDate: "2026-02-05",
 			},
 			"gpt-4o-mini": {
 				model: {
@@ -495,6 +522,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2024-07-18",
 			},
 			"gpt-4.1": {
 				model: {
@@ -512,6 +540,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-04-14",
 			},
 			"gpt-5.4-nano": {
 				model: {
@@ -529,6 +558,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				releaseDate: "2026-03-17",
 			},
 			"gpt-5.5-pro": {
 				model: {
@@ -546,6 +576,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				releaseDate: "2026-04-23",
 			},
 			"gpt-5.4-mini": {
 				model: {
@@ -563,6 +594,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				releaseDate: "2026-03-17",
 			},
 			"gpt-5.6": {
 				model: {
@@ -580,6 +612,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 5,
 					},
 				},
+				releaseDate: "2026-07-09",
 			},
 			"gpt-5-mini": {
 				model: {
@@ -598,6 +631,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-08-07",
 			},
 			"gpt-5.4-pro": {
 				model: {
@@ -616,6 +650,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-03-05",
 			},
 			"gpt-5.6-terra": {
 				model: {
@@ -633,6 +668,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 2.5,
 					},
 				},
+				releaseDate: "2026-07-09",
 			},
 			"gpt-5.2": {
 				model: {
@@ -651,6 +687,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-12-11",
 			},
 			"gpt-5": {
 				model: {
@@ -669,6 +706,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-08-07",
 			},
 			o3: {
 				model: {
@@ -687,6 +725,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-04-16",
 			},
 			"o3-pro": {
 				model: {
@@ -705,6 +744,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-06-10",
 			},
 			"gpt-5.5": {
 				model: {
@@ -722,6 +762,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				releaseDate: "2026-04-23",
 			},
 			"gpt-4o-2024-11-20": {
 				model: {
@@ -739,6 +780,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2024-11-20",
 			},
 		},
 		deepseek: {
@@ -759,6 +801,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-09-10",
 			},
 			"deepseek-v4-flash": {
 				model: {
@@ -777,6 +820,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-09-10",
 			},
 			"deepseek-v4-pro": {
 				model: {
@@ -794,6 +838,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				releaseDate: "2026-08-12",
 			},
 			"deepseek-flash": {
 				model: {
@@ -811,6 +856,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				releaseDate: "2026-09-10",
 			},
 		},
 		zai: {
@@ -830,6 +876,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-12-22",
 			},
 			"glm-4.5-air": {
 				model: {
@@ -846,6 +893,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				releaseDate: "2025-07-28",
 			},
 			"glm-4.6": {
 				model: {
@@ -863,6 +911,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-09-30",
 			},
 			"glm-4.6v": {
 				model: {
@@ -880,6 +929,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-12-08",
 			},
 			"glm-5.2": {
 				model: {
@@ -898,6 +948,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-06-13",
 			},
 			"glm-4.5-flash": {
 				model: {
@@ -915,6 +966,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-07-28",
 			},
 			"glm-5.3-flash": {
 				model: {
@@ -932,6 +984,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				releaseDate: "2026-08-26",
 			},
 			"glm-4.5": {
 				model: {
@@ -949,6 +1002,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-07-28",
 			},
 			"glm-4.5v": {
 				model: {
@@ -966,6 +1020,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-08-11",
 			},
 			"glm-4.7-flashx": {
 				model: {
@@ -982,6 +1037,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				releaseDate: "2026-01-19",
 			},
 			"glm-5": {
 				model: {
@@ -999,6 +1055,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-02-12",
 			},
 			"glm-5.1": {
 				model: {
@@ -1016,6 +1073,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-04-07",
 			},
 			"glm-5-turbo": {
 				model: {
@@ -1033,6 +1091,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-03-16",
 			},
 			"glm-5.3": {
 				model: {
@@ -1050,6 +1109,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				releaseDate: "2026-08-14",
 			},
 			"glm-5v-turbo": {
 				model: {
@@ -1066,6 +1126,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				releaseDate: "2026-04-01",
 			},
 			"glm-4.7-flash": {
 				model: {
@@ -1083,6 +1144,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-01-19",
 			},
 		},
 		kimi: {
@@ -1102,6 +1164,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-06-12",
 			},
 			"kimi-k2.6": {
 				model: {
@@ -1119,6 +1182,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-04-21",
 			},
 			"kimi-k2.7-code": {
 				model: {
@@ -1135,6 +1199,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				releaseDate: "2026-06-12",
 			},
 			"kimi-k3": {
 				model: {
@@ -1152,6 +1217,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				releaseDate: "2026-07-16",
 			},
 		},
 		gemini: {
@@ -1165,6 +1231,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					maxTokens: 32768,
 				},
 				legacy: true,
+				releaseDate: "2026-04-02",
 			},
 			"gemini-3.1-pro-preview-customtools": {
 				model: {
@@ -1183,6 +1250,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-02-19",
 			},
 			"gemini-3.1-pro-preview": {
 				model: {
@@ -1200,6 +1268,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				releaseDate: "2026-02-19",
 			},
 			"gemini-2.5-flash-lite": {
 				model: {
@@ -1217,6 +1286,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-06-17",
 			},
 			"gemini-3.6-flash": {
 				model: {
@@ -1235,6 +1305,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-07-21",
 			},
 			"gemini-3.1-flash-lite": {
 				model: {
@@ -1253,6 +1324,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-05-07",
 			},
 			"gemini-3.5-flash": {
 				model: {
@@ -1271,6 +1343,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-05-19",
 			},
 			"gemini-3.5-flash-lite": {
 				model: {
@@ -1288,6 +1361,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				releaseDate: "2026-07-21",
 			},
 			"gemini-flash-lite-latest": {
 				model: {
@@ -1306,6 +1380,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-07-21",
 			},
 			"gemma-4-31b-it": {
 				model: {
@@ -1316,6 +1391,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					contextWindow: 262144,
 					maxTokens: 32768,
 				},
+				releaseDate: "2026-04-02",
 			},
 			"gemini-3-flash-preview": {
 				model: {
@@ -1334,6 +1410,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-12-17",
 			},
 			"gemini-3.8-flash": {
 				model: {
@@ -1351,6 +1428,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				releaseDate: "2026-09-02",
 			},
 			"gemini-3.7-flash": {
 				model: {
@@ -1369,6 +1447,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-08-13",
 			},
 			"gemini-2.5-pro": {
 				model: {
@@ -1386,6 +1465,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-06-17",
 			},
 			"gemini-flash-latest": {
 				model: {
@@ -1404,6 +1484,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-08-13",
 			},
 			"gemini-2.5-flash": {
 				model: {
@@ -1421,6 +1502,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-06-17",
 			},
 		},
 		grok: {
@@ -1441,6 +1523,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-04-17",
 			},
 			"grok-4.20-0309-reasoning": {
 				model: {
@@ -1458,6 +1541,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-03-09",
 			},
 			"grok-4.20-multi-agent-0309": {
 				model: {
@@ -1476,6 +1560,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-03-09",
 			},
 			"grok-4.5": {
 				model: {
@@ -1494,6 +1579,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-07-08",
 			},
 			"grok-build-0.1": {
 				model: {
@@ -1510,6 +1596,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				releaseDate: "2026-04-16",
 			},
 			"grok-4.6": {
 				model: {
@@ -1527,6 +1614,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				releaseDate: "2026-08-12",
 			},
 			"grok-4.20-0309-non-reasoning": {
 				model: {
@@ -1544,6 +1632,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-03-09",
 			},
 		},
 		qwen: {
@@ -1563,6 +1652,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-05-21",
 			},
 			"qwen2-5-72b-instruct": {
 				model: {
@@ -1580,6 +1670,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2024-09",
 			},
 			"qwen3-coder-plus": {
 				model: {
@@ -1596,6 +1687,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				releaseDate: "2025-07-23",
 			},
 			"qwen3-next-80b-a3b-thinking": {
 				model: {
@@ -1613,6 +1705,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-09",
 			},
 			"qwen2-5-omni-7b": {
 				model: {
@@ -1630,6 +1723,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2024-12",
 			},
 			"qwen-vl-max": {
 				model: {
@@ -1647,6 +1741,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2024-04-08",
 			},
 			"qwen3-next-80b-a3b-instruct": {
 				model: {
@@ -1664,6 +1759,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-09",
 			},
 			"qwen3-coder-flash": {
 				model: {
@@ -1680,6 +1776,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				releaseDate: "2025-07-28",
 			},
 			"qwen3-14b": {
 				model: {
@@ -1697,6 +1794,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-04",
 			},
 			"qwen-max": {
 				model: {
@@ -1714,6 +1812,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2024-04-03",
 			},
 			"qwen3.6-plus": {
 				model: {
@@ -1731,6 +1830,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-04-02",
 			},
 			"qwen-vl-plus": {
 				model: {
@@ -1748,6 +1848,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2024-01-25",
 			},
 			"qwen3.5-27b": {
 				model: {
@@ -1765,6 +1866,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-02-23",
 			},
 			"qwen3.5-35b-a3b": {
 				model: {
@@ -1782,6 +1884,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-02-23",
 			},
 			"qwen-flash": {
 				model: {
@@ -1799,6 +1902,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-07-28",
 			},
 			"qwen-turbo": {
 				model: {
@@ -1816,6 +1920,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2024-11-01",
 			},
 			"qwen3-vl-30b-a3b": {
 				model: {
@@ -1833,6 +1938,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-04",
 			},
 			"qwen3-32b": {
 				model: {
@@ -1850,6 +1956,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-04",
 			},
 			"qwq-plus": {
 				model: {
@@ -1867,6 +1974,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-03-05",
 			},
 			"qwen3-vl-plus": {
 				model: {
@@ -1883,6 +1991,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				releaseDate: "2025-09-23",
 			},
 			"qwen2-5-7b-instruct": {
 				model: {
@@ -1900,6 +2009,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2024-09",
 			},
 			"qwen3-coder-30b-a3b-instruct": {
 				model: {
@@ -1917,6 +2027,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-04",
 			},
 			"qwen3.5-397b-a17b": {
 				model: {
@@ -1934,6 +2045,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-02-15",
 			},
 			"qwen3.6-27b": {
 				model: {
@@ -1950,6 +2062,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				releaseDate: "2026-04-22",
 			},
 			"qwen3-omni-flash": {
 				model: {
@@ -1966,6 +2079,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0,
 					},
 				},
+				releaseDate: "2025-09-15",
 			},
 			"qwen2-5-vl-72b-instruct": {
 				model: {
@@ -1983,6 +2097,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2024-09",
 			},
 			"qwen3.6-35b-a3b": {
 				model: {
@@ -2000,6 +2115,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-04-17",
 			},
 			"qwen3-max": {
 				model: {
@@ -2017,6 +2133,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-09-23",
 			},
 			"qwen-plus": {
 				model: {
@@ -2034,6 +2151,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2024-01-25",
 			},
 			"qwen3.5-122b-a10b": {
 				model: {
@@ -2051,6 +2169,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-02-23",
 			},
 			"qwen2-5-vl-7b-instruct": {
 				model: {
@@ -2068,6 +2187,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2024-09",
 			},
 			"qwen3.6-flash": {
 				model: {
@@ -2084,6 +2204,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0.234375,
 					},
 				},
+				releaseDate: "2026-04-27",
 			},
 			"qwen3.8-flash": {
 				model: {
@@ -2101,6 +2222,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0.2,
 					},
 				},
+				releaseDate: "2026-08-26",
 			},
 			"qwen2-5-14b-instruct": {
 				model: {
@@ -2118,6 +2240,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2024-09",
 			},
 			"qwen3.6-max-preview": {
 				model: {
@@ -2135,6 +2258,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-04-20",
 			},
 			"qwen3.8-max": {
 				model: {
@@ -2152,6 +2276,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 2.5,
 					},
 				},
+				releaseDate: "2026-08-03",
 			},
 			"qwen3-8b": {
 				model: {
@@ -2169,6 +2294,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-04",
 			},
 			"qwen3-235b-a22b": {
 				model: {
@@ -2186,6 +2312,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-04",
 			},
 			"qwen3.7-plus": {
 				model: {
@@ -2202,6 +2329,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 						cacheWrite: 0.625,
 					},
 				},
+				releaseDate: "2026-06-02",
 			},
 			"qwen-omni-turbo": {
 				model: {
@@ -2219,6 +2347,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-01-19",
 			},
 			"qwen3-coder-480b-a35b-instruct": {
 				model: {
@@ -2236,6 +2365,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-04",
 			},
 			"qwen2-5-32b-instruct": {
 				model: {
@@ -2253,6 +2383,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2024-09",
 			},
 			"qwen3-vl-235b-a22b": {
 				model: {
@@ -2270,6 +2401,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-04",
 			},
 			"qwen3.5-plus": {
 				model: {
@@ -2287,6 +2419,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2026-02-16",
 			},
 			"qvq-max": {
 				model: {
@@ -2304,6 +2437,7 @@ export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
 					},
 				},
 				legacy: true,
+				releaseDate: "2025-03-25",
 			},
 		},
 	},

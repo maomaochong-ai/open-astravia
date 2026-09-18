@@ -1,7 +1,7 @@
 import type { ModelDefinition } from "../model-settings-service.js";
 import { getPresetProvider } from "./catalog.js";
 import type { FetchImpl } from "./fetch.js";
-import { selectCurrentModelIds } from "./model-tiers.js";
+import { parseReleaseDate, selectCurrentModelIds } from "./model-tiers.js";
 
 /**
  * models.dev 目录:补齐各家 `/models` 不返回的元数据(价格、上下文长度、视觉/思考能力)。
@@ -25,7 +25,7 @@ export const CATALOG_TTL_MS = 12 * 60 * 60 * 1000;
  * 新加的预设服务商就会一直显示 0 个模型(最长 12 小时)。+1 让老缓存整份作废,
  * 先退到随包快照(已含新家)再后台重拉。
  */
-const CATALOG_VERSION = 5;
+const CATALOG_VERSION = 6;
 
 /** 预设标识 → models.dev 的 provider key。 */
 const PROVIDER_KEYS: Record<string, string> = {
@@ -62,6 +62,8 @@ export interface CatalogEntry {
 	 * 只影响免 Key 时的默认展示——模型本身仍在目录里，展开即可选，元数据补齐也照旧。
 	 */
 	legacy?: true;
+	/** 上游给的发布日期(`2026-07` / `2026-07-09` 两种精度)，列表按它倒序排。 */
+	releaseDate?: string;
 }
 
 /** 只保留预设那几家、只保留用得上的字段——原始 api.json 有 170+ 家、3MB 出头。 */
@@ -133,7 +135,11 @@ function shrink(body: Record<string, { models?: Record<string, RawModel> }>): Mo
 		);
 		const entries: Record<string, CatalogEntry> = {};
 		for (const [id, raw] of usable) {
-			entries[id] = { model: toModelDefinition(id, raw), ...(current.has(id) ? {} : { legacy: true as const }) };
+			entries[id] = {
+				model: toModelDefinition(id, raw),
+				...(current.has(id) ? {} : { legacy: true as const }),
+				...(raw.release_date ? { releaseDate: raw.release_date } : {}),
+			};
 		}
 		providers[presetId] = entries;
 	}
@@ -192,15 +198,29 @@ export function lookupCatalogModel(
 }
 
 /**
- * 用目录补齐一组模型并按 id 排序。模型集合以调用方为准：models.dev 只补元数据，
+ * 用目录补齐一组模型并按发布日期倒序排。模型集合以调用方为准：models.dev 只补元数据，
  * 不能再按 family、发布日期或目录命中情况删除服务商接口实际返回的模型。
+ *
+ * 新的排在前面：用户来选模型时想要的几乎总是最新那批，按 id 字典序排会把 gpt-6-astra
+ * 甩到 gpt-5.3-codex 后面。目录里查不到日期的（服务商接口返回、目录还没收录的新模型）
+ * 排在最后并按 id 排——没有日期就没有可比的依据，但它也不该插进有日期的序列里。
  */
 export function enrichModelsFromCatalog(
 	catalog: ModelsDevCatalog | null,
 	presetId: string,
 	models: ModelDefinition[],
 ): ModelDefinition[] {
-	return models.map((model) => enrichFromCatalog(catalog, presetId, model)).sort((a, b) => a.id.localeCompare(b.id));
+	const releasedAt = new Map(
+		models.map((model) => [model.id, parseReleaseDate(lookupCatalogModel(catalog, presetId, model.id)?.releaseDate)]),
+	);
+	return models
+		.map((model) => enrichFromCatalog(catalog, presetId, model))
+		.sort((a, b) => {
+			const left = releasedAt.get(a.id) ?? Number.NaN;
+			const right = releasedAt.get(b.id) ?? Number.NaN;
+			if (Number.isNaN(left) !== Number.isNaN(right)) return Number.isNaN(left) ? 1 : -1;
+			return (Number.isNaN(left) ? 0 : right - left) || a.id.localeCompare(b.id);
+		});
 }
 
 /**

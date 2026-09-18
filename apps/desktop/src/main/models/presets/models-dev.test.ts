@@ -250,6 +250,54 @@ describe("enrichModelsFromCatalog", () => {
 		expect(kept.find((model) => model.id === "qwen3-max")?.name).toBe("Qwen3 Max");
 	});
 
+	it("按发布日期倒序排,新的在前", () => {
+		// 按 id 字典序排会把 gpt-6-astra 甩到 gpt-5.3-codex 后面,而用户来选模型时要的几乎总是最新那批。
+		const catalog = buildCatalog(
+			{
+				openai: {
+					models: {
+						"gpt-6-astra": { family: "gpt-astra", release_date: "2026-09-04", modalities: { output: ["text"] } },
+						"gpt-5.3-codex": {
+							family: "gpt-codex",
+							release_date: "2026-02-05",
+							modalities: { output: ["text"] },
+						},
+						"gpt-5.6": { family: "gpt-sol", release_date: "2026-07-09", modalities: { output: ["text"] } },
+					},
+				},
+			},
+			NOW,
+		);
+		const models = [{ id: "gpt-5.3-codex" }, { id: "gpt-6-astra" }, { id: "gpt-5.6" }];
+
+		expect(ids(enrichModelsFromCatalog(catalog, "openai", models))).toEqual([
+			"gpt-6-astra",
+			"gpt-5.6",
+			"gpt-5.3-codex",
+		]);
+	});
+
+	it("目录里查不到发布日期的模型排在最后", () => {
+		// 账号接口返回、目录还没收录的新模型没有可比依据,但也不该插进有日期的序列里。
+		const catalog = buildCatalog(
+			{
+				openai: {
+					models: {
+						"gpt-5.6": { family: "gpt-sol", release_date: "2026-07-09", modalities: { output: ["text"] } },
+					},
+				},
+			},
+			NOW,
+		);
+		const models = [{ id: "zz-account-only" }, { id: "aa-account-only" }, { id: "gpt-5.6" }];
+
+		expect(ids(enrichModelsFromCatalog(catalog, "openai", models))).toEqual([
+			"gpt-5.6",
+			"aa-account-only",
+			"zz-account-only",
+		]);
+	});
+
 	it("没有目录时仍保留并按 id 排序", () => {
 		const models = [{ id: "b" }, { id: "a" }];
 
