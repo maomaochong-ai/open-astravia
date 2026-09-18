@@ -882,31 +882,51 @@ export class AgentTeamSessionService {
 		// of enqueueing against an incomplete roster and then losing the request.
 		const session = await this.read(sessionId);
 		await this.waitForMemberRuntimeWarmup(session, input.targetMemberIds ?? []);
-		this.scheduleAutoTitle(session, input.text);
+		this.scheduleAutoTitle(this.sessionState.get(sessionId) ?? session, input);
 		return this.turnCoordinator.send(sessionId, input);
 	}
 
-	private scheduleAutoTitle(session: TeamSessionDocument, userText: string): void {
+	private scheduleAutoTitle(session: TeamSessionDocument, input: SendTeamMessageInput): void {
 		const runtime = this.getRuntime();
 		const coordination = session.coordinationRuntime;
-		const text = userText.trim();
+		const firstUser = this.snapshot(session).messages.find((message) => message.kind === "user");
+		const firstContent = firstUser?.message.content;
+		const firstText =
+			typeof firstContent === "string"
+				? firstContent
+				: firstContent
+						?.filter((item) => item.type === "text")
+						.map((item) => item.text)
+						.join("\n");
+		const text = (firstText?.trim() || input.text.trim()).trim();
 		if (
 			!coordination ||
 			!text ||
 			session.title ||
 			this.autoTitleScheduledSessions.has(session.id) ||
-			typeof runtime.invokeSessionExtension !== "function" ||
-			this.snapshot(session).messages.some((message) => message.kind === "user")
+			typeof runtime.invokeSessionExtension !== "function"
 		) {
 			return;
 		}
 
 		this.autoTitleScheduledSessions.add(session.id);
-		void runtime
-			.invokeSessionExtension(coordination.sessionId, CODING_AGENT_SESSION_TITLE_GENERATE, {
+		void (async () => {
+			const modelKey = input.modelKey ?? session.modelSettings?.modelKey;
+			if (modelKey) {
+				try {
+					await runtime.selectSessionModel(coordination.sessionId, modelKey, "if-changed");
+				} catch (error) {
+					log.warn("Agent Team auto-title model selection failed", {
+						teamSessionId: session.id,
+						error: errorMessage(error),
+					});
+				}
+			}
+			return runtime.invokeSessionExtension(coordination.sessionId, CODING_AGENT_SESSION_TITLE_GENERATE, {
 				userText: text,
 				assistantText: "",
-			})
+			});
+		})()
 			.then(async (title) => {
 				if (!title) return;
 				await this.sessionState.coordinateLoaded(session.id, async (current) => {

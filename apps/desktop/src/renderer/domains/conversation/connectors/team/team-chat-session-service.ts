@@ -97,7 +97,7 @@ export async function createReservedTeamChatSession({
 	return {
 		...(document ? { document } : {}),
 		snapshot,
-		sessions: withSnapshot([], snapshot),
+		sessions: withTeamChatSnapshot([], snapshot),
 	};
 }
 
@@ -113,7 +113,7 @@ async function createTeamChatSessionInternal(
 	const snapshot = await createSessionRecord(teamId);
 	const storageKey = `${SESSION_STORAGE_PREFIX}${teamId}`;
 	window.localStorage.setItem(storageKey, JSON.stringify(toReference(snapshot)));
-	return { ...(document ? { document } : {}), snapshot, sessions: withSnapshot(knownSessions, snapshot) };
+	return { ...(document ? { document } : {}), snapshot, sessions: withTeamChatSnapshot(knownSessions, snapshot) };
 }
 
 function toReference(snapshot: DesktopTeamSessionSnapshot): TeamSessionReference {
@@ -134,7 +134,7 @@ async function openTeamChatSession(
 			: { id: reference.id, coordinationSessionPath: reference.coordinationSessionPath };
 	const snapshot = await window.vetta.agentTeams.getSession(ipcReference);
 	window.localStorage.setItem(storageKey, JSON.stringify(toReference(snapshot)));
-	return { document, snapshot, sessions: withSnapshot(sessions, snapshot) };
+	return { document, snapshot, sessions: withTeamChatSnapshot(sessions, snapshot) };
 }
 
 function parseStoredReference(value: string): TeamSessionReference | string {
@@ -156,18 +156,49 @@ function parseStoredReference(value: string): TeamSessionReference | string {
 	return value;
 }
 
-function withSnapshot(
+export function withTeamChatSnapshot(
 	sessions: readonly TeamSessionListItem[],
 	snapshot: DesktopTeamSessionSnapshot,
 ): readonly TeamSessionListItem[] {
-	const reference = toReference(snapshot);
-	const item: TeamSessionListItem = {
-		...reference,
+	const existing = sessions.find((session) => session.id === snapshot.session.id);
+	const coordinationSessionPath =
+		snapshot.session.coordinationRuntime?.sessionPath ?? existing?.coordinationSessionPath;
+	if (!coordinationSessionPath) return sessions;
+	const snapshotItem: TeamSessionListItem = {
+		id: snapshot.session.id,
+		coordinationSessionPath,
 		title: snapshot.session.title ?? "",
 		createdAt: snapshot.session.createdAt,
 		updatedAt: snapshot.session.updatedAt,
 	};
+	const item =
+		existing &&
+		(existing.updatedAt > snapshotItem.updatedAt ||
+			(existing.updatedAt === snapshotItem.updatedAt && existing.title && !snapshotItem.title))
+			? existing
+			: snapshotItem;
 	return [item, ...sessions.filter((session) => session.id !== item.id)].sort(
+		(left, right) => right.updatedAt - left.updatedAt,
+	);
+}
+
+export function mergeTeamChatBootstrapSessions(
+	bootstrap: readonly TeamSessionListItem[],
+	current: readonly TeamSessionListItem[],
+	activeSessionId: string | undefined,
+): readonly TeamSessionListItem[] {
+	if (!activeSessionId) return bootstrap;
+	const currentActive = current.find((session) => session.id === activeSessionId);
+	if (!currentActive) return bootstrap;
+	const bootstrapActive = bootstrap.find((session) => session.id === activeSessionId);
+	if (
+		bootstrapActive &&
+		(bootstrapActive.updatedAt > currentActive.updatedAt ||
+			(bootstrapActive.updatedAt === currentActive.updatedAt && (bootstrapActive.title || !currentActive.title)))
+	) {
+		return bootstrap;
+	}
+	return [currentActive, ...bootstrap.filter((session) => session.id !== activeSessionId)].sort(
 		(left, right) => right.updatedAt - left.updatedAt,
 	);
 }

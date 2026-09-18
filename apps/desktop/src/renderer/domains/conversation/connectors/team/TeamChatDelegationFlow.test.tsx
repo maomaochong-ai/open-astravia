@@ -55,7 +55,8 @@ vi.mock("@shared/lib/committed-paint", () => ({
 	waitForCommittedPaint: vi.fn(async () => "painted"),
 }));
 
-vi.mock("./team-chat-session-service", () => ({
+vi.mock("./team-chat-session-service", async (importOriginal) => ({
+	...(await importOriginal<Record<string, unknown>>()),
 	loadTeamChatSession: vi.fn(),
 	loadTeamChatBootstrap: vi.fn(),
 	createTeamChatSession: vi.fn(),

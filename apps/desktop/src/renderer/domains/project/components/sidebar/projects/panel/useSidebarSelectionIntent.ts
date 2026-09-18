@@ -1,12 +1,28 @@
 import { waitForCommittedPaint } from "@shared/lib/committed-paint";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import type { SidebarSelectionTarget } from "./sidebar-selection-state";
 
-export type SidebarSelectionTarget = { kind: "conversation"; path: string } | { kind: "agent-team"; sessionId: string };
+type SidebarSelectionIntent = SidebarSelectionTarget & {
+	requestId: number;
+	completed: boolean;
+	settledTarget?: SidebarSelectionTarget;
+};
 
-type SidebarSelectionIntent = SidebarSelectionTarget & { requestId: number };
+function sameSelection(left: SidebarSelectionTarget | null, right: SidebarSelectionTarget | null): boolean {
+	if (!left || !right) return left === right;
+	if (left.kind === "conversation" && right.kind === "conversation") return left.path === right.path;
+	if (left.kind === "agent-team" && right.kind === "agent-team") return left.sessionId === right.sessionId;
+	return false;
+}
 
-export function useSidebarSelectionIntent(): {
+function isSelectionTarget(value: unknown): value is SidebarSelectionTarget {
+	if (typeof value !== "object" || value === null || !("kind" in value)) return false;
+	if (value.kind === "conversation") return "path" in value && typeof value.path === "string";
+	return value.kind === "agent-team" && "sessionId" in value && typeof value.sessionId === "string";
+}
+
+export function useSidebarSelectionIntent(settledSelection: SidebarSelectionTarget | null): {
 	selectionIntent: SidebarSelectionTarget | null;
 	selectAfterPaint: (selection: SidebarSelectionTarget, action: () => Promise<unknown>) => void;
 } {
@@ -25,6 +41,7 @@ export function useSidebarSelectionIntent(): {
 			const request: SidebarSelectionIntent = {
 				...selection,
 				requestId: ++sequenceRef.current,
+				completed: false,
 			};
 			currentIntentRef.current = request;
 			// This is a discrete pointer action. Commit the lightweight sidebar state before
@@ -44,13 +61,35 @@ export function useSidebarSelectionIntent(): {
 					return;
 				}
 				void operation.then(
-					() => finishSelection(request.requestId),
+					(result) => {
+						if (currentIntentRef.current?.requestId !== request.requestId) return;
+						if (result === false) {
+							finishSelection(request.requestId);
+							return;
+						}
+						const completed = {
+							...currentIntentRef.current,
+							completed: true,
+							settledTarget: isSelectionTarget(result) ? result : selection,
+						};
+						currentIntentRef.current = completed;
+						setSelectionIntent(completed);
+					},
 					() => finishSelection(request.requestId),
 				);
 			});
 		},
 		[finishSelection],
 	);
+
+	useEffect(() => {
+		if (
+			selectionIntent?.completed &&
+			sameSelection(selectionIntent.settledTarget ?? selectionIntent, settledSelection)
+		) {
+			finishSelection(selectionIntent.requestId);
+		}
+	}, [finishSelection, selectionIntent, settledSelection]);
 
 	useEffect(
 		() => () => {
