@@ -7,9 +7,11 @@ All notable changes to `@vetta-org/theme-ui` are documented in this file.
 ### Added
 
 - 新增 `./markdown` 公开入口：局部 Markdown definition、remark/rehype 与元素扩展，以及可组合的 `CodeBlock`。Chat 与活动面板预览共享扩展定义，原 `chat/TextBlockView` 保留转导出。
+- 流式 Markdown 只把已经闭合的代码围栏冻成稳定块，后续 token 只重跑尾块；空行不再拆段，避免把松散列表和缩进代码拆进多个文档。代码高亮在围栏仍在增长或滚出视口时改为等宽纯文本，避免热路径反复跑 Shiki。
 
 ### Changed
 
+- 思考中卡片的入场改为 CSS grid 过渡，滚动追随只在正文变化后短跑 rAF，不再整段思考期间无限动画帧。
 - `SidebarPanel` 新增 `panelRef`，`SidebarModel` 新增 `setPanelRef`：宿主在拖拽宽度时直接往面板元素写 `style.width`，`width` 作为 committed 值只在松手时由 React 写回。左栏占位仍用 committed 值，因此拖拽期主内容区不重排。
 - `SidebarDock` 改为抽屉式过渡并新增必填 `width`（px，与侧边栏面板宽度同源）：占位宽度在切换瞬间落到终值、不参与过渡，面板脱离占位盒子用 `transform` 滑动，主内容区因此只重排一次；子树挂过一次不再随收起卸载，收起态带 `inert` + `aria-hidden`（也是「左栏不在位」的样式钩子）。宿主需传入 `width`，并把依赖「收起时左栏节点不存在」的选择器改为按 `inert` 判定。
 - `MessageFeed.VirtualList.children` 改为单一逐项渲染函数，不再接受声明式 List/Footer 子元素；Footer 在同一 Root 中正常组合并 Portal 到虚拟列表末尾。外部消费者需按 Desktop 的消息列表扩展指南迁移。
