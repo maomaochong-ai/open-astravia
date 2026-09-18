@@ -28,7 +28,8 @@ function readFenceMarker(line: string): FenceMarker | null {
 function isFenceOpeningLine(line: string): FenceMarker | null {
 	const fence = readFenceMarker(line);
 	if (!fence) return null;
-	if (line.includes(fence.char, fence.markerEnd)) return null;
+	// CommonMark：只有反引号围栏的 info string 不能含反引号，波浪线围栏的 info string 可以含 `~`。
+	if (fence.char === "`" && line.includes("`", fence.markerEnd)) return null;
 	return fence;
 }
 
@@ -48,7 +49,10 @@ function isFenceClosingLine(line: string, fenceChar: FenceMarker["char"], fenceL
  * Only an unindented closed code fence followed by more text is committed.
  * Indented fences stay in the tail so list items that wrap a code block are not
  * split into two documents (the second list would restart at 1). Blank lines
- * are not terminators. When streaming ends the caller re-parses the whole document.
+ * are not terminators. Because only whole top-level fences are committed, the
+ * committed blocks of a prefix are a prefix of the committed blocks of any
+ * append-only extension, so the caller keeps the split after streaming ends
+ * instead of re-parsing the whole document (which would remount every node).
  */
 export function splitStableMarkdownBlocks(text: string): StableMarkdownSplit {
 	if (text.length === 0) return { committed: [], tail: "" };

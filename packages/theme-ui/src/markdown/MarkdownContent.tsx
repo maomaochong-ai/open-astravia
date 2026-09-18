@@ -77,7 +77,7 @@ interface MarkdownDocumentProps {
 
 /**
  * 一块已经冻结或仍在增长的 markdown。独立 memo：流式时只有 tail 的 `text` 变，
- * 已提交块不会跟着整篇重跑 remark。
+ * 已提交块不会跟着整篇重跑 remark；流式结束后分块结构保持不变，已提交块不会重挂。
  */
 const MarkdownDocument = memo(function MarkdownDocument({
 	animateChunks,
@@ -335,7 +335,12 @@ export const MarkdownContent = memo(function MarkdownContent({
 		[theme],
 	);
 
-	const split = isStreamingTail && !inlineTokens ? splitStableMarkdownBlocks(displayText) : null;
+	// 切块一旦启用就保持到实例卸载：流式结束时 `animateChunks` 要等 settle 才关，若此刻把
+	// 已冻结块并回单一文档，已上屏的节点会整段重挂并再包成 `.streaming-chunk` 重放淡入。
+	// 稳定块只按已闭合的顶层围栏切分，分块与整篇渲染结果一致，因此结束后不需要再合并。
+	const frozenBlocksRef = useRef(false);
+	if (isStreamingTail && !inlineTokens) frozenBlocksRef.current = true;
+	const split = frozenBlocksRef.current && !inlineTokens ? splitStableMarkdownBlocks(displayText) : null;
 	const committed = split?.committed ?? [];
 	const tail = split ? split.tail : displayText;
 	const showTail = !split || tail.length > 0 || committed.length === 0;

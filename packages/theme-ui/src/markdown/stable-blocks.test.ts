@@ -51,6 +51,14 @@ describe("splitStableMarkdownBlocks", () => {
 		expect(splitStableMarkdownBlocks(text)).toEqual({ committed: [], tail: text });
 	});
 
+	it("波浪线围栏的 info string 允许含波浪线", () => {
+		const text = "~~~ a~b\ncode\n~~~\n\nafter";
+		expect(splitStableMarkdownBlocks(text)).toEqual({
+			committed: ["~~~ a~b\ncode\n~~~\n"],
+			tail: "\nafter",
+		});
+	});
+
 	it("波浪线围栏与反引号围栏互不闭合", () => {
 		const text = "~~~\ncode\n```\nstill\n~~~\n\nafter";
 		expect(splitStableMarkdownBlocks(text)).toEqual({
