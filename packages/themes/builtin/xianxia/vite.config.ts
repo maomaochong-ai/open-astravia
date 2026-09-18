@@ -46,6 +46,11 @@ export default defineConfig({
 		rollupOptions: {
 			input: "./src/index.ts",
 			output: {
+				// Module Federation 的共享包虚拟 chunk 名会拼进完整包名，可达 140+ 字符；
+				// Windows 安装目录下整条路径会超过 MAX_PATH，导致 MSI 打包失败。
+				chunkFileNames(chunkInfo) {
+					return chunkInfo.name.startsWith("_virtual_mf") ? "assets/mf-[hash].js" : "assets/[name]-[hash].js";
+				},
 				assetFileNames(assetInfo) {
 					return assetInfo.names.some((name) => name.endsWith(".css"))
 						? "style.css"
