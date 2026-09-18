@@ -70,6 +70,10 @@ VETTA_SITE_URL=https://www.example.com
 
 然后在 `apps/desktop` 执行 `bun run dist:desktop`（或对应的 `dist:win` / `dist:mac` / `dist:linux`）。商业版默认使用 `generic` provider 和官方 stable 更新源；自有部署应显式覆盖 `VETTA_UPDATE_URL`。
 
+Linux 可以用 `bun run package:linux` 一次生成 AppImage、DEB 和 RPM，也可以用 `package:linux:appimage`、`package:linux:deb`、`package:linux:rpm` 或 `package:linux:tar.gz` 只生成一种格式；相同命令追加 `:test` 即读取测试构建环境。
+
+Windows 可以用 `bun run package:win` 一次生成 Inno、MSI 和 ZIP，也可以用 `package:win:inno`、`package:win:msi`、`package:win:zip` 或 `package:win:portable` 只生成一种格式；这些命令同样提供 `:test` 变体。自动更新清单只引用 Inno，MSI/ZIP 作为额外下载格式发布。
+
 `VETTA_SERVER_URL` 在商业版下是必填的，生产构建还要求 HTTPS。缺失或非法配置会在清理旧产物、下载依赖和编译之前一次性报出。
 
 `VETTA_SITE_URL` 可省略，会从 `VETTA_SERVER_URL` 推导：去掉 `api.` 前缀、端口 `8080` 换 `3000`。

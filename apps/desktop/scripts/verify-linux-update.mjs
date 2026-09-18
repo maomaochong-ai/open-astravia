@@ -6,6 +6,7 @@ import { pathToFileURL } from "node:url";
 import { pipeline } from "node:stream/promises";
 import { inflateRawSync } from "node:zlib";
 import { parse } from "yaml";
+import { LINUX_RELEASE_EXTENSIONS } from "./linux-packaging-contract.mjs";
 
 const defaultReleaseDir = resolve(import.meta.dirname, "../release");
 const metadataPattern = /^latest-linux(?:-[a-z0-9_-]+)?\.ya?ml$/i;
@@ -102,7 +103,7 @@ async function verifyArtifact(releaseDir, file) {
 	return { fileName, sha512: actualSha512 };
 }
 
-async function verifyMetadata(releaseDir, metadataFile) {
+async function verifyMetadata(releaseDir, metadataFile, requiredExtensions) {
 	const document = parse(await readFile(join(releaseDir, metadataFile), "utf8"));
 	if (!document || typeof document !== "object" || !/^\d+\.\d+\.\d+$/.test(document.version)) {
 		throw new Error(`[verify-linux-update] ${metadataFile} has an invalid version`);
@@ -113,8 +114,10 @@ async function verifyMetadata(releaseDir, metadataFile) {
 
 	const artifacts = [];
 	for (const file of document.files) artifacts.push(await verifyArtifact(releaseDir, file));
-	if (!artifacts.some((artifact) => artifact.fileName.toLowerCase().endsWith(".appimage"))) {
-		throw new Error(`[verify-linux-update] ${metadataFile} does not reference an AppImage`);
+	for (const extension of requiredExtensions) {
+		if (!artifacts.some((artifact) => artifact.fileName.toLowerCase().endsWith(extension.toLowerCase()))) {
+			throw new Error(`[verify-linux-update] ${metadataFile} does not reference ${extension}`);
+		}
 	}
 	if (typeof document.path !== "string" || document.path.length === 0) {
 		throw new Error(`[verify-linux-update] ${metadataFile} has no primary artifact`);
@@ -127,7 +130,10 @@ async function verifyMetadata(releaseDir, metadataFile) {
 	return document.version;
 }
 
-export async function verifyLinuxUpdates({ releaseDir = defaultReleaseDir } = {}) {
+export async function verifyLinuxUpdates({ releaseDir = defaultReleaseDir, requiredExtensions = [".AppImage"] } = {}) {
+	if (!Array.isArray(requiredExtensions) || requiredExtensions.length === 0) {
+		throw new Error("[verify-linux-update] requiredExtensions must contain at least one extension");
+	}
 	const metadataFiles = (await readdir(releaseDir, { withFileTypes: true }))
 		.filter((entry) => entry.isFile() && metadataPattern.test(entry.name))
 		.map((entry) => entry.name)
@@ -137,7 +143,7 @@ export async function verifyLinuxUpdates({ releaseDir = defaultReleaseDir } = {}
 	}
 	const versions = new Set();
 	for (const metadataFile of metadataFiles) {
-		versions.add(await verifyMetadata(releaseDir, metadataFile));
+		versions.add(await verifyMetadata(releaseDir, metadataFile, requiredExtensions));
 	}
 	if (versions.size !== 1) {
 		throw new Error("[verify-linux-update] Linux update metadata must contain exactly one version");
@@ -148,7 +154,14 @@ export async function verifyLinuxUpdates({ releaseDir = defaultReleaseDir } = {}
 }
 
 export async function main() {
-	await verifyLinuxUpdates();
+	const args = process.argv.slice(2);
+	const unknownArgs = args.filter((arg) => arg !== "--release");
+	if (unknownArgs.length > 0) {
+		throw new Error(`[verify-linux-update] unknown argument: ${unknownArgs[0]}`);
+	}
+	await verifyLinuxUpdates({
+		requiredExtensions: args.includes("--release") ? LINUX_RELEASE_EXTENSIONS : [".AppImage"],
+	});
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
