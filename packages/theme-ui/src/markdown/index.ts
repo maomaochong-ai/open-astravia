@@ -4,3 +4,5 @@ export { defaultMarkdown, extendMarkdown, MarkdownProvider, useMarkdownDefinitio
 export type { InlineTokenAnnotation, InlineTokenPiece, InlineTokenSupport } from "./inline-tokens";
 export type { MarkdownContentProps, MarkdownLabels } from "./MarkdownContent";
 export { MarkdownContent } from "./MarkdownContent";
+export type { StableMarkdownSplit } from "./stable-blocks";
+export { splitStableMarkdownBlocks } from "./stable-blocks";

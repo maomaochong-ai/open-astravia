@@ -1,4 +1,4 @@
-import { memo, useMemo, useRef } from "react";
+import { createContext, memo, useContext, useMemo, useRef } from "react";
 import type { JSX } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Components, Options } from "react-markdown";
@@ -26,11 +26,15 @@ import type { InlineTokenSupport } from "./inline-tokens";
 import type { HastElement } from "./nodes";
 import { useMarkdownDefinition } from "./definition";
 import type { MarkdownDefinition } from "./definition";
+import { splitStableMarkdownBlocks } from "./stable-blocks";
+
 /** 文件 / 链接 badge 的公共样式：半透明主题色底 + 主题色描边与文字。 */
 const LINK_BADGE_CLASS =
 	"inline-flex max-w-full items-center gap-1 rounded-md border border-primary/25 bg-primary/10 px-1.5 py-px align-middle text-[13px] font-medium text-primary no-underline transition-colors hover:bg-primary/20";
 
 const remarkPlugins = [remarkGfm];
+
+const MarkdownCodeLiveContext = createContext(false);
 
 function cn(...parts: Array<string | false | null | undefined>): string {
 	return parts.filter(Boolean).join(" ");
@@ -61,6 +65,71 @@ function basename(path: string): string {
 	const idx = Math.max(normalized.lastIndexOf("/"), normalized.lastIndexOf("\\"));
 	return idx === -1 ? normalized : normalized.slice(idx + 1);
 }
+
+interface MarkdownDocumentProps {
+	animateChunks: boolean;
+	components: Components;
+	definition: MarkdownDefinition;
+	inlineTokens?: InlineTokenSupport;
+	live: boolean;
+	text: string;
+}
+
+/**
+ * 一块已经冻结或仍在增长的 markdown。独立 memo：流式时只有 tail 的 `text` 变，
+ * 已提交块不会跟着整篇重跑 remark。
+ */
+const MarkdownDocument = memo(function MarkdownDocument({
+	animateChunks,
+	components,
+	definition,
+	inlineTokens,
+	live,
+	text,
+}: MarkdownDocumentProps): JSX.Element {
+	const hasStructuredAnnotations = inlineTokens?.annotations !== undefined;
+	const rehypePlugins = useMemo(() => {
+		const plugins: NonNullable<Options["rehypePlugins"]> = [...(definition.rehypePlugins ?? [])];
+		if (animateChunks) plugins.push(rehypeStreamingChunks);
+		if (inlineTokens && !hasStructuredAnnotations) plugins.push(() => rehypeInlineTokens(inlineTokens.parse));
+		return plugins.length > 0 ? plugins : undefined;
+	}, [animateChunks, hasStructuredAnnotations, inlineTokens, definition]);
+	const markdownSource = useMemo(() => normalizeLocalFileLinksInMarkdown(text), [text]);
+	const normalizedAnnotations = useMemo(
+		() =>
+			inlineTokens?.annotations
+				? projectAnnotationsToNormalizedMarkdown(text, markdownSource, inlineTokens.annotations)
+				: undefined,
+		[text, inlineTokens?.annotations, markdownSource],
+	);
+	const activeRemarkPlugins = useMemo(
+		() =>
+			normalizedAnnotations?.length
+				? [
+						...remarkPlugins,
+						...(definition.remarkPlugins ?? []),
+						() => remarkInlineTokenAnnotations(normalizedAnnotations),
+					]
+				: [...remarkPlugins, ...(definition.remarkPlugins ?? [])],
+		[normalizedAnnotations, definition],
+	);
+	const resolvedComponents = useMemo(
+		() => ({ ...components, ...definition.components, ...definition.elements }),
+		[components, definition],
+	);
+	return (
+		<MarkdownCodeLiveContext.Provider value={live}>
+			<ReactMarkdown
+				remarkPlugins={activeRemarkPlugins}
+				rehypePlugins={rehypePlugins}
+				components={resolvedComponents}
+				urlTransform={chatUrlTransform}
+			>
+				{markdownSource}
+			</ReactMarkdown>
+		</MarkdownCodeLiveContext.Provider>
+	);
+});
 
 /**
  * Memo'd markdown renderer for chat text blocks. Host injects file/url handlers and theme.
@@ -120,14 +189,15 @@ export const MarkdownContent = memo(function MarkdownContent({
 				</ol>
 			),
 			li: ({ children }) => <li>{children}</li>,
-			code: ({ className: codeClassName, children }) => {
+			code: function MarkdownCode({ className: codeClassName, children }) {
+				const live = useContext(MarkdownCodeLiveContext);
 				const raw = String(children);
 				const isBlock = (codeClassName?.startsWith("language-") ?? false) || raw.includes("\n");
 				if (isBlock) {
 					const lang = codeClassName?.replace("language-", "") ?? "";
 					const code = raw.replace(/\n$/, "");
 					const CodeBlock = definitionRef.current.codeBlock ?? DefaultCodeBlock;
-					return <CodeBlock lang={lang} code={code} theme={theme} labels={labelsRef.current} />;
+					return <CodeBlock lang={lang} code={code} theme={theme} labels={labelsRef.current} live={live} />;
 				}
 				return <code className="rounded bg-muted px-1 py-0.5 text-[13px] text-foreground">{children}</code>;
 			},
@@ -265,49 +335,34 @@ export const MarkdownContent = memo(function MarkdownContent({
 		[theme],
 	);
 
-	const hasStructuredAnnotations = inlineTokens?.annotations !== undefined;
-	const rehypePlugins = useMemo(() => {
-		const plugins: NonNullable<Options["rehypePlugins"]> = [...(definition.rehypePlugins ?? [])];
-		if (animateChunks) plugins.push(rehypeStreamingChunks);
-		// Exact editor/history annotations are complete. Falling back to text parsing
-		// here would reinterpret plain text that only happens to look like a token.
-		if (inlineTokens && !hasStructuredAnnotations) plugins.push(() => rehypeInlineTokens(inlineTokens.parse));
-		return plugins.length > 0 ? plugins : undefined;
-	}, [animateChunks, hasStructuredAnnotations, inlineTokens, definition]);
-	const markdownSource = useMemo(() => normalizeLocalFileLinksInMarkdown(displayText), [displayText]);
-	const normalizedAnnotations = useMemo(
-		() =>
-			inlineTokens?.annotations
-				? projectAnnotationsToNormalizedMarkdown(displayText, markdownSource, inlineTokens.annotations)
-				: undefined,
-		[displayText, inlineTokens?.annotations, markdownSource],
-	);
-	const activeRemarkPlugins = useMemo(
-		() =>
-			normalizedAnnotations?.length
-				? [
-						...remarkPlugins,
-						...(definition.remarkPlugins ?? []),
-						() => remarkInlineTokenAnnotations(normalizedAnnotations),
-					]
-				: [...remarkPlugins, ...(definition.remarkPlugins ?? [])],
-		[normalizedAnnotations, definition],
-	);
+	const split = isStreamingTail && !inlineTokens ? splitStableMarkdownBlocks(displayText) : null;
+	const committed = split?.committed ?? [];
+	const tail = split ? split.tail : displayText;
+	const showTail = !split || tail.length > 0 || committed.length === 0;
 
-	const resolvedComponents = useMemo(
-		() => ({ ...components, ...definition.components, ...definition.elements }),
-		[components, definition],
-	);
 	return (
 		<div className={cn("markdown-body break-words", animateChunks && "markdown-streaming-tail", className)}>
-			<ReactMarkdown
-				remarkPlugins={activeRemarkPlugins}
-				rehypePlugins={rehypePlugins}
-				components={resolvedComponents}
-				urlTransform={chatUrlTransform}
-			>
-				{markdownSource}
-			</ReactMarkdown>
+			{committed.map((block, index) => (
+				<MarkdownDocument
+					key={`committed-${index}`}
+					animateChunks={false}
+					components={components}
+					definition={definition}
+					live={false}
+					text={block}
+				/>
+			))}
+			{showTail ? (
+				<MarkdownDocument
+					key="tail"
+					animateChunks={animateChunks}
+					components={components}
+					definition={definition}
+					inlineTokens={inlineTokens}
+					live={isStreamingTail}
+					text={tail}
+				/>
+			) : null}
 		</div>
 	);
 });

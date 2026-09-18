@@ -73,8 +73,10 @@ export function CodeBlockLanguage() {
 }
 
 export function CodeBlockContent() {
-	const { code, lang, theme } = useCodeBlock();
-	return <SyntaxHighlightedCode code={code} lang={lang} theme={theme} fontSizeClass="text-[13px]" />;
+	const { code, lang, theme, live } = useCodeBlock();
+	return (
+		<SyntaxHighlightedCode code={code} lang={lang} theme={theme} fontSizeClass="text-[13px]" live={live} />
+	);
 }
 
 export function DefaultCodeBlock(props: MarkdownCodeBlockProps) {
