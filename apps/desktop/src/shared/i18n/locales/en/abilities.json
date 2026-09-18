@@ -32,7 +32,8 @@
 		"disabled": "Disabled",
 		"updateAvailable": "Update available",
 		"openSource": "Open source",
-		"sameName": "{{count}} with same name"
+		"sameName": "{{count}} with same name",
+		"builtin": "Built-in"
 	},
 	"card": {
 		"noDescription": "No description"

@@ -160,12 +160,12 @@ export function AbilityCard({ item, model }: { item: AbilityItem; model: Abiliti
 					<InstalledMoreMenu item={item} model={model} onOpenDetail={openDetail} />
 				) : (
 					<Button
-						variant="secondary"
+						variant="ghost"
 						size="icon-sm"
 						disabled={item.busy}
 						aria-label={t("actions.add")}
 						title={t("actions.add")}
-						className="rounded-lg border border-border bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+						className="rounded-lg border border-transparent bg-transparent text-muted-foreground/60 transition-colors hover:border-border hover:bg-muted hover:text-foreground"
 						onClick={() => (item.type === "bundle" ? openDetail() : model.install(item))}
 					>
 						{item.busy ? (

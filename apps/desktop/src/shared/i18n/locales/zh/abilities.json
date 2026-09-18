@@ -32,7 +32,8 @@
 		"disabled": "已禁用",
 		"updateAvailable": "可更新",
 		"openSource": "开源",
-		"sameName": "{{count}} 个同名"
+		"sameName": "{{count}} 个同名",
+		"builtin": "内建"
 	},
 	"card": {
 		"noDescription": "暂无能力说明"
