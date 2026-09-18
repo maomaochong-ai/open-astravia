@@ -128,13 +128,13 @@ function QuestionBody({
 }): JSX.Element {
 	return (
 		<div className="rounded-lg border border-border/60 bg-background/40 p-2">
-			<div className="mb-2 flex items-start gap-1.5">
+			<div className="mb-2 flex flex-col gap-1">
 				{showHeader && question.header && (
-					<span className="shrink-0 whitespace-nowrap rounded bg-muted px-1.5 py-0.5 text-[10px] leading-5 text-muted-foreground">
+					<span className="self-start rounded bg-muted px-1.5 py-0.5 text-[10px] leading-5 text-muted-foreground">
 						{question.header}
 					</span>
 				)}
-				<span className="min-w-0 flex-1 text-[12px] leading-5 text-foreground/90">{question.question}</span>
+				<span className="break-words text-[12px] leading-5 text-foreground/90">{question.question}</span>
 			</div>
 			<div className="flex flex-col gap-1">
 				{question.options.map((opt) => {
@@ -142,21 +142,28 @@ function QuestionBody({
 					return (
 						<div
 							key={opt.label}
-							className={`flex items-center gap-1.5 rounded px-1.5 py-0.5 text-[11px] ${
+							className={`grid grid-cols-[auto_minmax(0,1fr)] gap-x-1.5 gap-y-1 rounded px-1.5 py-0.5 text-[11px] ${
 								isChosen ? "bg-primary/10 text-foreground" : "text-muted-foreground/60"
 							}`}
 						>
 							<span
-								className={`size-3 shrink-0 ${
+								className={`mt-0.5 size-3 shrink-0 ${
 									isChosen ? "icon-[mdi--check-circle] text-primary" : "icon-[mdi--circle-outline]"
 								}`}
 							/>
-							<span className="min-w-0 flex-1">{opt.label}</span>
-							{opt.badges?.map((b) => (
-								<span key={b} className="shrink-0 rounded-full bg-primary/15 px-1 text-[9px] text-primary">
-									{b}
-								</span>
-							))}
+							<span className="break-words leading-4">{opt.label}</span>
+							{opt.badges && opt.badges.length > 0 && (
+								<div className="col-start-2 flex flex-wrap items-center gap-1">
+									{opt.badges.map((b) => (
+										<span
+											key={b}
+											className="whitespace-nowrap rounded-full bg-primary/15 px-1 text-[9px] leading-4 text-primary"
+										>
+											{b}
+										</span>
+									))}
+								</div>
+							)}
 						</div>
 					);
 				})}

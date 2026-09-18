@@ -329,13 +329,13 @@ function QuestionBody({
 
 	return (
 		<div className="rounded-xl border border-border bg-background/40 p-2">
-			<div className="mb-2 flex items-start gap-1.5 px-1">
+			<div className="mb-2 flex flex-col gap-1 px-1">
 				{showHeader && question.header && (
-					<span className="shrink-0 whitespace-nowrap rounded bg-muted px-1.5 py-0.5 text-[10px] leading-5 text-muted-foreground">
+					<span className="self-start rounded bg-muted px-1.5 py-0.5 text-[10px] leading-5 text-muted-foreground">
 						{question.header}
 					</span>
 				)}
-				<span className="min-w-0 flex-1 text-sm leading-5 text-foreground">{question.question}</span>
+				<span className="break-words text-sm leading-6 text-foreground">{question.question}</span>
 			</div>
 			{multiSelect && <p className="mb-1 px-1 text-xs text-muted-foreground">{multiSelectHint}</p>}
 
@@ -353,33 +353,39 @@ function QuestionBody({
 								onToggleOption(opt.label);
 							}}
 							onMouseEnter={() => onFocusOption(i)}
-							className={`flex flex-col gap-0.5 rounded-lg border px-3 py-2 text-left transition-colors ${
+							className={`grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-1 rounded-lg border px-3 py-2 text-left transition-colors ${
 								selected ? "border-primary bg-primary/10" : "border-border hover:bg-muted/50"
 							} ${isFocused ? "ring-1 ring-primary/50" : ""}`}
 						>
-							<div className="flex items-center gap-2">
-								<span
-									className={`size-3.5 shrink-0 ${
-										selected
-											? multiSelect
-												? "icon-[mdi--checkbox-marked] text-primary"
-												: "icon-[mdi--radiobox-marked] text-primary"
-											: multiSelect
-												? "icon-[mdi--checkbox-blank-outline] text-muted-foreground"
-												: "icon-[mdi--radiobox-blank] text-muted-foreground"
-									}`}
-								/>
-								<span className="text-sm font-medium text-foreground">{opt.label}</span>
-								{opt.badges?.map((badge) => (
-									<span
-										key={badge}
-										className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary"
-									>
-										{badge}
-									</span>
-								))}
-							</div>
-							{opt.description && <span className="pl-5 text-xs text-muted-foreground">{opt.description}</span>}
+							<span
+								className={`mt-0.5 size-3.5 shrink-0 ${
+									selected
+										? multiSelect
+											? "icon-[mdi--checkbox-marked] text-primary"
+											: "icon-[mdi--radiobox-marked] text-primary"
+										: multiSelect
+											? "icon-[mdi--checkbox-blank-outline] text-muted-foreground"
+											: "icon-[mdi--radiobox-blank] text-muted-foreground"
+								}`}
+							/>
+							<span className="break-words text-sm font-medium leading-5 text-foreground">{opt.label}</span>
+							{opt.badges && opt.badges.length > 0 && (
+								<div className="col-start-2 flex flex-wrap items-center gap-1">
+									{opt.badges.map((badge) => (
+										<span
+											key={badge}
+											className="whitespace-nowrap rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium leading-4 text-primary"
+										>
+											{badge}
+										</span>
+									))}
+								</div>
+							)}
+							{opt.description && (
+								<span className="col-start-2 break-words text-xs leading-5 text-muted-foreground">
+									{opt.description}
+								</span>
+							)}
 						</button>
 					);
 				})}
