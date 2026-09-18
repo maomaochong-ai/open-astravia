@@ -112,4 +112,16 @@ describe("setWorkspaceViewHeader", () => {
 		expect(headerEntry()).toBeUndefined();
 		expect(store.get(pluginWorkspaceViewHeadersAtom)[otherKey]).toBeDefined();
 	});
+
+	it("does not rewrite the atom when the takeover is unchanged", () => {
+		const { ui } = createUi();
+		ui.registerWorkspaceView({ id: VIEW_ID, label: "Gallery", component: () => null });
+		ui.setWorkspaceViewHeader(VIEW_ID, { hideTitle: true, immersive: true });
+		const store = getDefaultStore();
+		const before = store.get(pluginWorkspaceViewHeadersAtom);
+
+		ui.setWorkspaceViewHeader(VIEW_ID, { hideTitle: true, immersive: true });
+
+		expect(store.get(pluginWorkspaceViewHeadersAtom)).toBe(before);
+	});
 });

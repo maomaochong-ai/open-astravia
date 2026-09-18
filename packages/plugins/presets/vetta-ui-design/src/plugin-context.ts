@@ -6,6 +6,10 @@ export function setPluginCtx(ctx: PluginContext): void {
 	pluginCtx = ctx;
 }
 
+export function hasPluginCtx(): boolean {
+	return pluginCtx !== null;
+}
+
 export function getPluginCtx(): PluginContext {
 	if (!pluginCtx) throw new Error("vetta-ui-design plugin context not ready");
 	return pluginCtx;

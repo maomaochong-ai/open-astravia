@@ -1,13 +1,22 @@
+// @vitest-environment jsdom
+import { render } from "@testing-library/react";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
-import { DefaultChatView, ChatComposer, ChatError } from "./DefaultChatView";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ChatComposer, ChatError, DefaultChatView } from "./DefaultChatView";
 
 const workspace = { id: "conversation:test", cwd: null, runtimeIds: [] };
+const panelRenders = vi.hoisted(() => ({ count: 0 }));
 
 vi.mock("@domains/activity-panel/components/ActivityPanel", () => ({
-	ActivityPanel: () => createElement("aside", { "data-testid": "activity-panel" }),
-	CurrentScenarioActivityPanel: () => createElement("aside", { "data-testid": "activity-panel" }),
+	ActivityPanel: () => {
+		panelRenders.count += 1;
+		return createElement("aside", { "data-testid": "activity-panel" });
+	},
+	CurrentScenarioActivityPanel: () => {
+		panelRenders.count += 1;
+		return createElement("aside", { "data-testid": "activity-panel" });
+	},
 }));
 
 vi.mock("../ChatExportHost", () => ({
@@ -15,6 +24,10 @@ vi.mock("../ChatExportHost", () => ({
 }));
 
 describe("DefaultChatView layout", () => {
+	beforeEach(() => {
+		panelRenders.count = 0;
+	});
+
 	it("keeps the activity panel outside the input column (drop is owned by InputBar card)", () => {
 		const html = renderToStaticMarkup(
 			<DefaultChatView messages={[]} workspace={workspace}>
@@ -45,5 +58,21 @@ describe("DefaultChatView layout", () => {
 
 		expect(html).toContain('data-testid="read-only-feed"');
 		expect(html).not.toContain('data-testid="input-bar"');
+	});
+
+	it("does not remount the activity panel when only the transcript grows", () => {
+		const { rerender } = render(
+			<DefaultChatView messages={[]} workspace={workspace}>
+				<div />
+			</DefaultChatView>,
+		);
+		expect(panelRenders.count).toBe(1);
+
+		rerender(
+			<DefaultChatView messages={[{ id: "m1" } as never]} workspace={{ ...workspace }}>
+				<div />
+			</DefaultChatView>,
+		);
+		expect(panelRenders.count).toBe(1);
 	});
 });

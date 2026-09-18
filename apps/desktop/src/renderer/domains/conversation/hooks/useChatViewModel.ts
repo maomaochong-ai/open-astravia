@@ -1,3 +1,6 @@
+import { useChatSurfaceActive } from "@shared/chat-surface-active";
+import { useOwnedHeaderSlot } from "@shared/hooks/useOwnedHeaderSlot";
+import { usePausedAtomValue } from "@shared/hooks/usePausedAtomValue";
 import {
 	activeSessionAtom,
 	activityPanelOpenAtom,
@@ -5,9 +8,7 @@ import {
 	captureInputActionWorkingState,
 	chatMessagesAtom,
 	closeInlineFilePreviewAtom,
-	defaultConversationCwdAtom,
 	emptySessionInputActionState,
-	getProjectDisplayName,
 	inlineFilePreviewContextReadonlyAtom,
 	isConversationBusyAtom,
 	loadInputActionStateForSession,
@@ -16,8 +17,6 @@ import {
 	persistCurrentInputActionState,
 	persistInputActionStateForSession,
 	promptAttachmentAtom,
-	sessionDisplayLabel,
-	sessionsMapAtom,
 	syncHardIsolationContributionModes,
 } from "@shared/store/atoms";
 import { useThemeSurface } from "@vetta-org/theme-sdk/appearance";
@@ -26,6 +25,7 @@ import { selectAtom } from "jotai/utils";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ChatViewModelResult } from "../components/chat-view/types";
+import { chatSessionTitleAtom } from "./chat-session-title";
 
 /**
  * ChatView 只需要当前会话的 path / cwd。订阅 activeSession 整个对象会让流式期间
@@ -41,14 +41,13 @@ export function useChatViewModel(): ChatViewModelResult {
 	const activeSessionPath = useAtomValue(activeSessionPathAtom);
 	const activeSessionCwd = useAtomValue(activeSessionCwdAtom);
 	const pendingSessionOpen = useAtomValue(pendingSessionOpenAtom);
-	const messages = useAtomValue(chatMessagesAtom);
-	const isStreaming = useAtomValue(isConversationBusyAtom);
+	const chatSurfaceActive = useChatSurfaceActive();
+	const messages = usePausedAtomValue(chatMessagesAtom, !chatSurfaceActive);
+	const isStreaming = usePausedAtomValue(isConversationBusyAtom, !chatSurfaceActive);
 	const [panelOpen, setPanelOpen] = useAtom(activityPanelOpenAtom);
 	const setHeaderTitle = useSetAtom(pageHeaderTitleAtom);
 	const inlinePreviewActive = useAtomValue(inlineFilePreviewContextReadonlyAtom) !== null;
 	const closeInlinePreview = useSetAtom(closeInlineFilePreviewAtom);
-	const defaultCwd = useAtomValue(defaultConversationCwdAtom);
-	const sessionsMap = useAtomValue(sessionsMapAtom);
 	const setPromptAttachment = useSetAtom(promptAttachmentAtom);
 
 	// 按 sessionPath 恢复 / 切换 AI 输入栏 toggle（插件 input-action + 知识检索）。
@@ -122,19 +121,15 @@ export function useChatViewModel(): ChatViewModelResult {
 		setPanelOpen((open) => !open);
 	}, [closeInlinePreview, inlinePreviewActive, setPanelOpen]);
 
-	const sessionTitle = useMemo(() => {
-		if (activeSessionPath === null && activeSessionCwd === null) return null;
-		for (const list of sessionsMap.values()) {
-			const found = list.find((session) => session.path === activeSessionPath);
-			if (found) return sessionDisplayLabel(found);
-		}
-		return getProjectDisplayName(activeSessionCwd ?? "", defaultCwd);
-	}, [activeSessionPath, activeSessionCwd, defaultCwd, sessionsMap]);
+	const sessionTitle = useAtomValue(chatSessionTitleAtom);
 
-	useEffect(() => {
-		setHeaderTitle(sessionTitle);
-		return () => setHeaderTitle(null);
-	}, [sessionTitle, setHeaderTitle]);
+	const writeHeaderTitle = useCallback(
+		(title: string | null) => {
+			setHeaderTitle(() => title);
+		},
+		[setHeaderTitle],
+	);
+	useOwnedHeaderSlot(chatSurfaceActive, sessionTitle, writeHeaderTitle);
 
 	// actions / header 保持引用稳定：ChatView 用它们 memo 出 header slot 元素并写进
 	// 全局 pageHeader atom；若每次渲染都换引用，发送/流式期间每条消息都会级联一次

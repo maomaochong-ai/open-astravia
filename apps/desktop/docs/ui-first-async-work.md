@@ -84,7 +84,19 @@ UI 优先不等于隐藏加载状态。界面应分别表达：
 
 性能记录至少区分 `intent → visible` 与 `intent → ready`。优化首帧时不能只报告总耗时；优化后台准备时也不能用更早显示空壳掩盖功能就绪退化。
 
-## 7. 评审清单
+## 7. React 19 Activity、startTransition 与懒加载
+
+侧栏保活页会同时碰到三件事：`navigate` 被放进 `startTransition`、页面用 `React.lazy` 切 chunk、切走后用 `<Activity mode="hidden">` 保活。
+
+必须遵守：
+
+- **可见壳在 transition 里不能依赖未完成的 `React.lazy`。** 即使包了 Suspense fallback，React 19 仍可能等 chunk 才露出新页。第一次作为前台页挂载时先提交同步标题壳，等这一帧画完再开始 `import()`；模块 promise 落地之前不要把 lazy 叶子放进树。
+- **绘制门闩放在 Activity 外面。** 隐藏预挂要立刻开始拉 chunk；Activity hidden 会拆 effects，钩子若写在 hidden 树里，预挂页会一直停在壳上。设置整页会预挂，标签仍是点到才挂：在 render 阶段踢加载，不要把绘制门闩套在标签树上。
+- **画廊这类插件视图若钩子必须写在页内：** 第一次走进会始终先出页内同步壳（例如 Hero 标题），再挂重 chunk。宿主不要再把整页工作区改成 `React.lazy`，否则切页过渡会再次空等。
+
+`useAllowLazyAfterFirstPaint` 只表达「这一帧能不能开始拉模块」；`useSurfacePageReady` 还要等模块回来，避免预挂到一半被点进去时树里仍有未完成的 lazy。
+
+## 8. 评审清单
 
 - [ ] 是否有昂贵工作仍位于 `navigate()` 或可见状态提交之前？
 - [ ] 首屏是否加载了用户尚未需要的数据、插件、工具或 Runtime？
@@ -92,3 +104,5 @@ UI 优先不等于隐藏加载状态。界面应分别表达：
 - [ ] Connector、View、IPC 和 Runtime 的职责是否清晰？
 - [ ] 临时状态能否成功规范化、失败恢复并避免重复初始化？
 - [ ] 测试是否证明了“UI 先于后台工作”，而非只证明最终结果？
+- [ ] 切页 `startTransition` 的新树里是否仍有未完成的 `React.lazy`？
+- [ ] 绘制门闩是否写在 Activity 外面，隐藏预挂是否仍能加载 chunk？

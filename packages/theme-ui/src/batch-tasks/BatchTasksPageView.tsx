@@ -33,7 +33,7 @@ export function BatchTasksPageView({
 			<div className="relative shrink-0 px-8 pb-4">
 				<div className="flex items-end justify-between gap-4">
 					<motion.div
-						initial={{ opacity: 0, y: -8 }}
+						initial={false}
 						animate={{ opacity: 1, y: 0 }}
 						transition={{ duration: 0.5, ease: easeOut }}
 					>
@@ -102,7 +102,7 @@ function EmptyState({ labels, onNew }: { labels: BatchTasksPageLabels; onNew: ()
 	return (
 		<motion.div
 			className="flex flex-1 flex-col items-center justify-center gap-5 text-center"
-			initial={{ opacity: 0, y: 12 }}
+			initial={false}
 			animate={{ opacity: 1, y: 0 }}
 			transition={{ duration: 0.5, ease: easeOut }}
 		>

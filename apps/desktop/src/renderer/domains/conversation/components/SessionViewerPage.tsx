@@ -1,13 +1,15 @@
 import { ActivityPanel } from "@domains/activity-panel/components/ActivityPanel";
 import { Button } from "@shared/components/ui/button";
+import { useOwnedHeaderSlot } from "@shared/hooks/useOwnedHeaderSlot";
 import { cn } from "@shared/lib/utils";
 import { pageHeaderRightSlotAtom } from "@shared/store/atoms";
+import { useSurfaceActive } from "@shared/surface-active";
 import { useActiveSessionRuntimeIds } from "@shared/workspace/active-session-runtime";
 import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
 import { useThemeSurface } from "@vetta-org/theme-sdk/appearance";
 import { SessionViewerPageView } from "@vetta-org/theme-ui/chat";
 import { useSetAtom } from "jotai";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useSessionViewerPageModel } from "../hooks/useSessionViewerPageModel";
 import { ChatExportHost } from "./ChatExportHost";
@@ -17,11 +19,11 @@ import { MessageList } from "./MessageList";
  * Read-only viewer for sessions the desktop app does not own (currently
  * IM sessions written by im-gateway).
  */
-export function SessionViewerPage(): JSX.Element {
+export function SessionViewerPage({ path }: { path?: string } = {}): JSX.Element {
 	const { t } = useTranslation("chat");
 	const activeRuntimeIds = useActiveSessionRuntimeIds();
 	const surface = useThemeSurface("chat.sessionViewerPage");
-	const model = useSessionViewerPageModel();
+	const model = useSessionViewerPageModel(path);
 	const setHeaderRight = useSetAtom(pageHeaderRightSlotAtom);
 	const workspace = useMemo(() => {
 		const cwd = model.kbCwd || model.imCwd || null;
@@ -85,10 +87,7 @@ export function SessionViewerPage(): JSX.Element {
 		],
 	);
 
-	useEffect(() => {
-		setHeaderRight(header);
-		return () => setHeaderRight(null);
-	}, [header, setHeaderRight]);
+	useOwnedHeaderSlot(useSurfaceActive(), header, setHeaderRight);
 
 	return (
 		<SessionViewerPageView

@@ -1,4 +1,5 @@
 import { useLocalizedAgentTeamDocument } from "@shared/agent-teams/agent-team-localization";
+import { waitForCommittedPaint } from "@shared/lib/committed-paint";
 import type { AgentBlueprint, AgentTeamDocument } from "@vetta/agent-team";
 import { type Dispatch, type SetStateAction, useCallback, useEffect, useState } from "react";
 import type { BlueprintDisplayPlugin } from "../lib/blueprint-display";
@@ -32,9 +33,13 @@ export function useAgentTeamResources(): AgentTeamResources {
 
 	useEffect(() => {
 		let cancelled = false;
-		void loadAgentTeamConfigurationResources()
-			.then((resources) => {
+		void waitForCommittedPaint()
+			.then(() => {
 				if (cancelled) return;
+				return loadAgentTeamConfigurationResources();
+			})
+			.then((resources) => {
+				if (cancelled || !resources) return;
 				setDocument(resources.document);
 				setBlueprints(resources.blueprints);
 				setPlugins(resources.plugins);

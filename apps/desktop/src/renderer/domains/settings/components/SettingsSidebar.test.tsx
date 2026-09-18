@@ -95,4 +95,12 @@ describe("SettingsSidebarView", () => {
 		expect(onSelectTab).toHaveBeenCalledWith("general");
 		expect(screen.getByText("通用设置").closest("button")?.getAttribute("aria-expanded")).toBeNull();
 	});
+
+	it("悬停标签时调用 onTabIntent 预取，不导航", async () => {
+		const onTabIntent = vi.fn();
+		const { onSelectTab } = renderSidebar({ onTabIntent });
+		await userEvent.hover(screen.getByText("通用设置"));
+		expect(onTabIntent).toHaveBeenCalledWith("general");
+		expect(onSelectTab).not.toHaveBeenCalled();
+	});
 });

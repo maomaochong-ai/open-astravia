@@ -28,12 +28,12 @@ vi.mock("@shared/shortcuts", () => ({
 		if (active) scopeBindings.current = bindings;
 	},
 }));
-vi.mock("react-i18next", () => ({
-	// 文案直接回显 key，断言看的是行为不是译文。
-	useTranslation: () => ({ t: (key: string) => key }),
+vi.mock("../../../root-layout/route-prefetch", () => ({
+	prefetchCommandMenuAction: vi.fn(),
 }));
 
 import { commandMenuOpenAtom, projectsAtom } from "@shared/store/atoms";
+import { prefetchCommandMenuAction } from "../../../root-layout/route-prefetch";
 import { useCommandMenuModel } from "./useCommandMenuModel";
 
 function sessionResult(path: string, title: string): DesktopSessionSearchResult {
@@ -237,4 +237,15 @@ it("keeps an unavailable session out of keyboard navigation", async () => {
 	// 禁用行不参与导航，回车不应打开它。
 	act(() => result.current.onActivateItem("session:/w/locked.jsonl"));
 	expect(navigate).not.toHaveBeenCalled();
+});
+
+it("悬停设置项时预取对应路由 chunk", () => {
+	const { result } = render();
+	const settingsItem = result.current.groups.find((group) => group.key === "settings")?.items[0];
+	expect(settingsItem).toBeTruthy();
+	vi.mocked(prefetchCommandMenuAction).mockClear();
+	act(() => {
+		result.current.onHoverItem(settingsItem!.id);
+	});
+	expect(prefetchCommandMenuAction).toHaveBeenCalledWith(expect.objectContaining({ kind: "openSettingsSection" }));
 });

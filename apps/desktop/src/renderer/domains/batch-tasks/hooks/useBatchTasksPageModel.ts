@@ -1,7 +1,9 @@
+import { useOwnedHeaderTitleHidden } from "@shared/hooks/useOwnedHeaderTitleHidden";
 import type { BatchProject } from "@shared/store/atoms";
-import { batchProjectDialogOpenAtom, batchProjectsAtom, pageHeaderTitleHiddenAtom } from "@shared/store/atoms";
+import { batchProjectDialogOpenAtom, batchProjectsAtom } from "@shared/store/atoms";
+import { useSurfaceActive } from "@shared/surface-active";
 import type { BatchTasksPageLabels, BatchTasksPageStatsView } from "@vetta-org/theme-ui/batch-tasks";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useBatchTasks } from "./useBatchTasks";
@@ -45,18 +47,13 @@ export function useBatchTasksPageModel(): BatchTasksPageModel {
 	const { t } = useTranslation("batch-tasks");
 	const projects = useAtomValue(batchProjectsAtom);
 	const [dialogProject, setDialogProject] = useAtom(batchProjectDialogOpenAtom);
-	const setHeaderTitleHidden = useSetAtom(pageHeaderTitleHiddenAtom);
 	const { refreshProjects } = useBatchTasks();
+	useOwnedHeaderTitleHidden(useSurfaceActive());
 	const [dialogOpen, setDialogOpen] = useState(false);
 
 	useEffect(() => {
 		refreshProjects();
 	}, [refreshProjects]);
-
-	useEffect(() => {
-		setHeaderTitleHidden(true);
-		return () => setHeaderTitleHidden(false);
-	}, [setHeaderTitleHidden]);
 
 	useEffect(() => {
 		if (dialogProject !== undefined) {

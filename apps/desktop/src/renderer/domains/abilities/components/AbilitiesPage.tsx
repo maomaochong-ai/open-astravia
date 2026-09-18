@@ -1,6 +1,6 @@
-import { pageHeaderTitleHiddenAtom } from "@shared/store/atoms";
+import { useOwnedHeaderTitleHidden } from "@shared/hooks/useOwnedHeaderTitleHidden";
+import { useSurfaceActive } from "@shared/surface-active";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { useSetAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import type { AbilityScope } from "../types";
 import { useAbilitiesModel } from "../hooks/useAbilitiesModel";
@@ -23,14 +23,8 @@ export function AbilitiesPage(): JSX.Element {
 		scope?: AbilityScope;
 	};
 	const model = useAbilitiesModel({ initialSearchQuery: q, initialScope: scope });
-	const setHeaderTitleHidden = useSetAtom(pageHeaderTitleHiddenAtom);
 	const navigate = useNavigate();
-
-	// 页面内已有大号标题，隐藏顶栏左上角路由标题。
-	useEffect(() => {
-		setHeaderTitleHidden(true);
-		return () => setHeaderTitleHidden(false);
-	}, [setHeaderTitleHidden]);
+	useOwnedHeaderTitleHidden(useSurfaceActive());
 
 	const closeDetail = useCallback(() => {
 		void navigate({ to: "/abilities", search: {}, replace: true });

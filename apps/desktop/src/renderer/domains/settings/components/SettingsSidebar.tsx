@@ -12,6 +12,7 @@ export function SettingsSidebar({ model }: SettingsSidebarProps): JSX.Element {
 			betaBadgeLabel={model.betaBadgeLabel}
 			narrow={model.narrow}
 			onSelectTab={(tab) => model.onSelectTab(tab as typeof model.activeTab)}
+			onTabIntent={(tab) => model.onTabIntent?.(tab as typeof model.activeTab)}
 			tabs={model.tabs}
 			onSelectChild={model.onSelectNavigationChild}
 			activeChildKey={model.activeNavigationChildKey}

@@ -23,6 +23,7 @@ export interface SettingsPageModel {
 	betaBadgeLabel: string;
 	narrow: boolean;
 	onSelectTab: (tab: SettingsTab) => void;
+	onTabIntent?: (tab: SettingsTab) => void;
 	tabs: readonly SettingsNavigationItem[];
 	/** 内容区改渲染这个插件工作区视图（设置壳内嵌），而不是标签自己的设置页。 */
 	embeddedView?: { pluginId: string; viewId: string };

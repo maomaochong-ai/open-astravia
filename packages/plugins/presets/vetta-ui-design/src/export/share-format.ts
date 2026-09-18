@@ -10,3 +10,8 @@ export const SHARE_EXTENSION = "vetdz";
 
 /** 能被当作分享包打开的扩展名：新的 `.vetdz`，以及历史导出的 `.vetd` zip。 */
 export const SHARE_PREVIEW_EXTENSIONS = [SHARE_EXTENSION, "vetd"] as const;
+
+export function isSharePackageName(fileName: string): boolean {
+	const extension = fileName.split(".").pop()?.toLowerCase() ?? "";
+	return (SHARE_PREVIEW_EXTENSIONS as readonly string[]).includes(extension);
+}

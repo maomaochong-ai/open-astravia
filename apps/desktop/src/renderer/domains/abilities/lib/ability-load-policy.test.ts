@@ -4,6 +4,7 @@ import {
 	areAllAttemptedMarketSourcesUnavailable,
 	getOpenMarketplaceLoadState,
 	shouldReportAbilityLoadFailure,
+	shouldSkipAbilityCatalogLoad,
 } from "./ability-load-policy";
 
 function catalog(overrides: Partial<OpenMarketplaceCatalog> = {}): OpenMarketplaceCatalog {
@@ -111,5 +112,12 @@ describe("ability load policy", () => {
 				open: { attempted: true, usable: true },
 			}),
 		).toBe(false);
+	});
+
+	it("same language and token skip catalog reload on Activity restore", () => {
+		expect(shouldSkipAbilityCatalogLoad(null, "en", undefined)).toBe(false);
+		expect(shouldSkipAbilityCatalogLoad("en|", "en", undefined)).toBe(true);
+		expect(shouldSkipAbilityCatalogLoad("en|", "zh", undefined)).toBe(false);
+		expect(shouldSkipAbilityCatalogLoad("en|", "en", "tok")).toBe(false);
 	});
 });

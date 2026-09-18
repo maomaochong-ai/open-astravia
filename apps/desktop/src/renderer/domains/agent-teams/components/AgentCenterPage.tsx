@@ -1,5 +1,7 @@
 import { teamDisplayName } from "@shared/agent-teams/agent-team-presentation";
-import { confirmDialogAtom, pageHeaderTitleHiddenAtom } from "@shared/store/atoms";
+import { confirmDialogAtom } from "@shared/store/atoms";
+import { useOwnedHeaderTitleHidden } from "@shared/hooks/useOwnedHeaderTitleHidden";
+import { useSurfaceActive } from "@shared/surface-active";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useSetAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
@@ -17,7 +19,7 @@ import { TeamSettingsSheet } from "./TeamSettingsSheet";
 export function AgentCenterPage(): JSX.Element {
 	const { t } = useTranslation("agent-teams");
 	const confirm = useSetAtom(confirmDialogAtom);
-	const setHeaderTitleHidden = useSetAtom(pageHeaderTitleHiddenAtom);
+	useOwnedHeaderTitleHidden(useSurfaceActive());
 	const navigate = useNavigate();
 	const { agent: agentParam, team: teamParam } = useSearch({ strict: false }) as {
 		agent?: string;
@@ -27,11 +29,6 @@ export function AgentCenterPage(): JSX.Element {
 		defaultName: t("library.defaultAgentName"),
 		defaultDescription: t("library.defaultAgentDescription"),
 	});
-
-	useEffect(() => {
-		setHeaderTitleHidden(true);
-		return () => setHeaderTitleHidden(false);
-	}, [setHeaderTitleHidden]);
 
 	const openAgent = useCallback(
 		(agentId: string) => void navigate({ to: "/agents", search: { agent: agentId }, replace: true }),
@@ -103,12 +100,15 @@ export function AgentCenterPage(): JSX.Element {
 		});
 	}
 
-	if (model.loading) {
-		return <div className="p-8 text-[13px] text-muted-foreground">{t("loading")}</div>;
-	}
-
 	if (model.error && !model.document) {
-		return <div className="p-8 text-[13px] text-destructive">{t("error.load", { error: model.error })}</div>;
+		return (
+			<div className="relative flex h-full w-full flex-1 flex-col overflow-hidden">
+				<div className="relative shrink-0 px-8 pb-4 pt-5">
+					<h1 className="text-[26px] font-semibold leading-tight tracking-tight text-foreground">{t("center.title")}</h1>
+					<p className="mt-4 text-[13px] text-destructive">{t("error.load", { error: model.error })}</p>
+				</div>
+			</div>
+		);
 	}
 
 	return (
