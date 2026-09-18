@@ -92,7 +92,8 @@ export function DefaultNewSessionHero({
 	return (
 		<div className={cn("relative mb-3 flex w-full max-w-2xl flex-col items-start", className)} {...props}>
 			<motion.div
-				initial={{ opacity: 0, y: 12 }}
+				// Activity 切回会重建 motion Effect；initial:false 避免问候语从透明再淡入 500ms。
+				initial={false}
 				animate={{ opacity: mounted ? 1 : 0, y: mounted ? 0 : 12 }}
 				transition={{ duration: 0.5, ease: easeOut }}
 				className="flex w-full flex-col items-start"

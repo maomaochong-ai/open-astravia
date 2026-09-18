@@ -1,3 +1,4 @@
+import { useOwnedHeaderTitleHidden } from "@shared/hooks/useOwnedHeaderTitleHidden";
 import { isMac } from "@shared/lib/platform";
 import { pathBasename } from "@shared/lib/utils";
 import { useShortcutScope } from "@shared/shortcuts";
@@ -6,10 +7,10 @@ import {
 	batchProjectsAtom,
 	confirmDialogAtom,
 	isPersonalModeAtom,
-	pageHeaderTitleHiddenAtom,
 	projectsAtom,
 	sessionsMapAtom,
 } from "@shared/store/atoms";
+import { useSurfaceActive } from "@shared/surface-active";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import type { ProjectDetailPageViewProps } from "@vetta-org/theme-ui/project";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -56,10 +57,12 @@ function useAgentsMd(cwd: string) {
 	const [original, setOriginal] = useState("");
 	const [loading, setLoading] = useState(true);
 	const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+	const loadedPathRef = useRef<string | null>(null);
 
 	const filePath = `${cwd}/AGENTS.md`;
 
 	const load = useCallback(async () => {
+		if (loadedPathRef.current === filePath) return;
 		setLoading(true);
 		try {
 			const result = await window.vetta.fs.readFile(filePath);
@@ -69,6 +72,7 @@ function useAgentsMd(cwd: string) {
 			setContent("");
 			setOriginal("");
 		}
+		loadedPathRef.current = filePath;
 		setLoading(false);
 	}, [filePath]);
 
@@ -114,11 +118,11 @@ export interface ProjectDetailPageModel extends Omit<ProjectDetailPageViewProps,
 	projectType: "normal" | "batch" | undefined;
 }
 
-export function useProjectDetailPageModel(): ProjectDetailPageModel {
+export function useProjectDetailPageModel(cwdProp?: string): ProjectDetailPageModel {
 	const { t, i18n } = useTranslation("project");
 	const dateLocale = i18n.language === "zh" ? "zh-CN" : "en-US";
-	const { cwd } = useParams({ strict: false }) as { cwd: string };
-	const decodedCwd = decodeURIComponent(cwd);
+	const params = useParams({ strict: false }) as { cwd: string };
+	const decodedCwd = cwdProp ?? decodeURIComponent(params.cwd);
 
 	const { project, sessionCount, batchProject } = useProjectDetail(decodedCwd);
 	const createdAt = useCreatedAt(decodedCwd);
@@ -127,14 +131,9 @@ export function useProjectDetailPageModel(): ProjectDetailPageModel {
 	const isPersonal = useAtomValue(isPersonalModeAtom);
 	const [activityOpen, setActivityOpen] = useAtom(activityPanelOpenAtom);
 	const setConfirm = useSetAtom(confirmDialogAtom);
-	const setHeaderTitleHidden = useSetAtom(pageHeaderTitleHiddenAtom);
 	const [editorFocused, setEditorFocused] = useState(false);
 	const navigate = useNavigate();
-
-	useEffect(() => {
-		setHeaderTitleHidden(true);
-		return () => setHeaderTitleHidden(false);
-	}, [setHeaderTitleHidden]);
+	useOwnedHeaderTitleHidden(useSurfaceActive());
 
 	const displayName = project?.name ?? pathBasename(decodedCwd);
 	const isBatch = !!batchProject;

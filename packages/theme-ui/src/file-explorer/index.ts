@@ -17,6 +17,21 @@ export type { FileTreeNodeViewProps } from "./FileTreeNodeView";
 export { FileTreeNodeView } from "./FileTreeNodeView";
 export type { FileTreeViewProps } from "./FileTreeView";
 export { FileTreeView } from "./FileTreeView";
+export { FILE_TREE_ROOT_ATTR, findFileTreeElement } from "./file-tree-dom";
+export type {
+	FileTreeCreateRowModel,
+	FileTreeEntryRow,
+	FileTreeRow,
+	FileTreeRowHeightStore,
+	FileTreeRowMetrics,
+} from "./file-tree-rows";
+export {
+	buildFileTreeRows,
+	createFileTreeRowHeightStore,
+	FILE_TREE_OVERSCAN,
+	FILE_TREE_ROW_HEIGHT,
+	hitTestFileTreeMarquee,
+} from "./file-tree-rows";
 export { getFileIcon } from "./fileIcons";
 export type {
 	FileExplorerCreatingEntry,

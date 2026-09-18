@@ -9,6 +9,8 @@ export interface MarkdownCodeBlockProps {
 	lang: string;
 	theme: "light" | "dark";
 	labels: { copy: string; copied: string };
+	/** 流式尾块：代码仍可能增长时跳过 Shiki，只显示等宽纯文本。 */
+	live?: boolean;
 }
 
 /** Definitions are immutable, local to a React subtree, and contain no host state. */

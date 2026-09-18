@@ -156,6 +156,13 @@ export function getSettingsSectionsByTab(tab: SettingsTab): SettingsSectionRegis
 	return SETTINGS_SECTIONS.filter((section) => section.tab === tab);
 }
 
+/** 设置标签内容区首帧标题。未登记的标签（如已下线的 team）回退到「设置」。 */
+export function settingsTabTitleKey(tab: SettingsTab): SettingsTabLabelKey | "title" {
+	if (tab === "mcp") return "tabGeneral";
+	const registered = SETTINGS_TABS.find((item) => item.key === tab);
+	return registered?.labelKey ?? "title";
+}
+
 export function findSettingsSection(id: string): SettingsSectionRegistration | undefined {
 	return SETTINGS_SECTIONS.find((section) => section.id === id);
 }

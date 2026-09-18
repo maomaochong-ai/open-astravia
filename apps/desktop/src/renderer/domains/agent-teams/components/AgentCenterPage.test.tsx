@@ -4,7 +4,7 @@ import { confirmDialogAtom } from "@shared/store/atoms";
 import type { AgentProfileDeleteImpact } from "@vetta/agent-team";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { AgentCenterPage } from "./AgentCenterPage";
 
 const mocks = vi.hoisted(() => ({
@@ -15,6 +15,9 @@ const mocks = vi.hoisted(() => ({
 	selectTeam: vi.fn(),
 	navigate: vi.fn(),
 	search: vi.fn(() => ({ agent: "agent" })),
+	loading: false,
+	error: undefined as string | undefined,
+	hasDocument: true,
 }));
 
 const agent = {
@@ -65,8 +68,9 @@ vi.mock("./AgentProfileSheet", () => ({
 vi.mock("./TeamSettingsSheet", () => ({ TeamSettingsSheet: () => <div>team sheet</div> }));
 vi.mock("../hooks/useAgentCenterModel", () => ({
 	useAgentCenterModel: () => ({
-		loading: false,
-		document: { schemaVersion: 1, revision: 1, agents: [agent], teams: [team] },
+		loading: mocks.loading,
+		error: mocks.error,
+		document: mocks.hasDocument ? { schemaVersion: 1, revision: 1, agents: [agent], teams: [team] } : undefined,
 		teams: [team],
 		agents: [agent],
 		selectedTeam: team,
@@ -90,6 +94,28 @@ vi.mock("../hooks/useAgentCenterModel", () => ({
 }));
 
 describe("AgentCenterPage", () => {
+	afterEach(() => {
+		mocks.loading = false;
+		mocks.error = undefined;
+		mocks.hasDocument = true;
+		mocks.search.mockReturnValue({ agent: "agent" });
+	});
+
+	it("数据还在加载时仍画出页面，不把标题换成加载文案", () => {
+		mocks.loading = true;
+		render(<AgentCenterPage />);
+		expect(screen.queryByText("loading")).toBeNull();
+		expect(screen.getByRole("button", { name: "delete-team" })).toBeTruthy();
+	});
+
+	it("配置加载失败时仍保留页标题", () => {
+		mocks.hasDocument = false;
+		mocks.error = "boom";
+		render(<AgentCenterPage />);
+		expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("center.title");
+		expect(screen.getByText("error.load:boom")).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "delete-team" })).toBeNull();
+	});
 	it("shows every affected team and deletes with the reviewed reference set", async () => {
 		const impact: AgentProfileDeleteImpact = {
 			agentProfileId: "agent",

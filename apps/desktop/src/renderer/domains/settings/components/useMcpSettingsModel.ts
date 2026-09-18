@@ -186,6 +186,8 @@ export function useMcpSettingsModel(options?: McpSettingsModelOptions): McpSetti
 	}, []);
 
 	useEffect(() => {
+		// `<Activity hidden>` 拆 Effect 再挂时 config 已在 ref 里，不要再打 mcp.get()。
+		if (configRef.current !== null) return;
 		void window.vetta.mcp.get().then((loadedConfig) => {
 			configRef.current = loadedConfig;
 			setConfig(loadedConfig);

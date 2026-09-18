@@ -45,6 +45,15 @@ export type PetVideoHitbox = {
 	height: number;
 };
 
+/**
+ * 主进程下发给渲染层的内容偏移：y>0 气泡在精灵上方，y<0 在下方；
+ * x 为精灵在窗口内的水平平移量（气泡贴边放不下时让精灵留在原地、气泡内收）。
+ */
+export type PetContentOffset = {
+	x: number;
+	y: number;
+};
+
 export type PetContentBounds = {
 	bounds: {
 		x: number;
@@ -58,6 +67,8 @@ export type PetContentBounds = {
 		width: number;
 		height: number;
 	};
+	/** 渲染层测量这份布局时生效的内容偏移；缺省视为气泡在上方、精灵未平移。 */
+	contentOffset?: PetContentOffset;
 };
 
 export type PetCommand =

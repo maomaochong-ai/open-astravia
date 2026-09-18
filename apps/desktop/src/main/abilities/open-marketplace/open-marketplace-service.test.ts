@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { cp, mkdtemp, readdir, readFile, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import AdmZip from "adm-zip";
@@ -512,6 +512,67 @@ describe("OpenMarketplaceService", () => {
 			sourceId: "vetta-official",
 			ref: "main",
 			marketplaceVersion: "2026.07.1",
+		});
+	});
+	it("prunes old marketplace caches after reopening while keeping offline installs available", async () => {
+		const rootDir = await temporaryRoot();
+		const activeVersion = "2026.07.4";
+		const activeDir = join(rootDir, "snapshots", activeVersion);
+		const initial = new OpenMarketplaceService({
+			appVersion: APP_VERSION,
+			rootDir,
+			fetchArchive: async () => response(archive({ marketplaceVersion: activeVersion })),
+		});
+		await initial.refresh();
+
+		for (const [index, version] of ["2026.07.1", "2026.07.2", "2026.07.3"].entries()) {
+			const historicalDir = join(rootDir, "snapshots", version);
+			await cp(activeDir, historicalDir, { recursive: true });
+			const manifestPath = join(historicalDir, ".vetta", "marketplace.json");
+			const manifest = JSON.parse(await readFile(manifestPath, "utf-8")) as Record<string, unknown>;
+			await writeFile(manifestPath, JSON.stringify({ ...manifest, marketplaceVersion: version }));
+			const age = new Date(Date.now() - [96, 12, 6][index]! * 60 * 60 * 1000);
+			await utimes(historicalDir, age, age);
+		}
+		await writeFile(join(rootDir, "snapshots", "unrelated.txt"), "keep");
+		const installAbility = vi.fn(
+			async (_root: string, _ability: object, _origin: GitHubMarketplaceOrigin) => undefined,
+		);
+		const nextArchive = archive({ marketplaceVersion: "2026.07.5" });
+		const reopened = new OpenMarketplaceService({
+			appVersion: APP_VERSION,
+			rootDir,
+			fetchArchive: async () => response(nextArchive),
+			fetchManifest: async () => {
+				throw new Error("offline");
+			},
+			installAbility,
+		});
+
+		expect((await reopened.listCached()).marketplaceVersion).toBe(activeVersion);
+		await vi.waitFor(async () => {
+			expect((await readdir(join(rootDir, "snapshots"))).sort()).toEqual([
+				"2026.07.2",
+				"2026.07.3",
+				activeVersion,
+				"unrelated.txt",
+			]);
+		});
+		await reopened.install("skill", "demo-skill");
+		expect(installAbility.mock.calls[0]?.[0]).toBe(activeDir);
+
+		for (const version of ["2026.07.2", "2026.07.3"]) {
+			const aged = new Date(Date.now() - 48 * 60 * 60 * 1000);
+			await utimes(join(rootDir, "snapshots", version), aged, aged);
+		}
+		const refreshed = await reopened.refresh();
+		expect(refreshed.marketplaceVersion).toBe("2026.07.5");
+		await vi.waitFor(async () => {
+			expect((await readdir(join(rootDir, "snapshots"))).sort()).toEqual([
+				activeVersion,
+				"2026.07.5",
+				"unrelated.txt",
+			]);
 		});
 	});
 

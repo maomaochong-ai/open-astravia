@@ -1,4 +1,10 @@
 import { type MouseEvent, type RefObject, useCallback, useRef, useState } from "react";
+import {
+	FILE_TREE_ROW_HEIGHT,
+	type FileTreeRow,
+	type FileTreeRowMetrics,
+	hitTestFileTreeMarquee,
+} from "./file-tree-rows";
 
 export interface FileTreeMarqueeRect {
 	left: number;
@@ -15,10 +21,14 @@ interface UseFileTreeMarqueeSelectionParams {
 	 * Non-additive starts with `[]` before the drag threshold; then passes hit paths (or base∪hits).
 	 */
 	onMarqueeSelect: (paths: readonly string[]) => void;
+	/** Flattened visible rows; hit-testing uses row geometry so virtualized rows stay selectable. */
+	rows: readonly FileTreeRow[];
+	/** Measured row heights from the virtual list; falls back to `FILE_TREE_ROW_HEIGHT` when omitted. */
+	rowMetrics?: FileTreeRowMetrics;
 }
 
 interface UseFileTreeMarqueeSelectionResult {
-	scrollRef: RefObject<HTMLDivElement | null>;
+	scrollRef: RefObject<HTMLElement | null>;
 	marquee: FileTreeMarqueeRect | null;
 	onMouseDown: (event: MouseEvent) => void;
 }
@@ -28,17 +38,23 @@ const ROW_SELECTOR = "[data-file-path]";
 
 /**
  * Drag-select on empty space in the file tree scroll container.
- * Intersects rows with `data-file-path`. cmd/ctrl/shift = additive (base ∪ hits).
+ * Intersects flattened row geometry. cmd/ctrl/shift = additive (base ∪ hits).
  * Swallows the trailing click after a real marquee so row/background click handlers do not wipe the selection.
  */
 export function useFileTreeMarqueeSelection({
 	selectedPaths,
 	onMarqueeSelect,
+	rows,
+	rowMetrics,
 }: UseFileTreeMarqueeSelectionParams): UseFileTreeMarqueeSelectionResult {
-	const scrollRef = useRef<HTMLDivElement>(null);
+	const scrollRef = useRef<HTMLElement>(null);
 	const [marquee, setMarquee] = useState<FileTreeMarqueeRect | null>(null);
 	const selectedPathsRef = useRef(selectedPaths);
 	selectedPathsRef.current = selectedPaths;
+	const rowsRef = useRef(rows);
+	rowsRef.current = rows;
+	const rowMetricsRef = useRef(rowMetrics);
+	rowMetricsRef.current = rowMetrics;
 
 	const onMouseDown = useCallback(
 		(event: MouseEvent) => {
@@ -75,19 +91,11 @@ export function useFileTreeMarqueeSelection({
 				moved = true;
 				e.preventDefault();
 				setMarquee({ left, top, width, height });
-
-				const right = left + width;
-				const bottom = top + height;
-				const hits: string[] = [];
-				for (const el of container.querySelectorAll<HTMLElement>(ROW_SELECTOR)) {
-					const ir = el.getBoundingClientRect();
-					const ix = ir.left - rect.left + container.scrollLeft;
-					const iy = ir.top - rect.top + container.scrollTop;
-					const intersects = ix < right && ix + ir.width > left && iy < bottom && iy + ir.height > top;
-					if (!intersects) continue;
-					const path = el.dataset.filePath;
-					if (path) hits.push(path);
-				}
+				const hits = hitTestFileTreeMarquee(
+					rowsRef.current,
+					{ left, top, width, height },
+					rowMetricsRef.current ?? FILE_TREE_ROW_HEIGHT,
+				);
 				onMarqueeSelect(additive ? [...new Set([...basePaths, ...hits])] : hits);
 			};
 

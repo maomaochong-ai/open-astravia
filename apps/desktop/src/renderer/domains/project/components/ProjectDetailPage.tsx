@@ -8,8 +8,8 @@ import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
 
 const easeOut = [0.22, 1, 0.36, 1] as const;
 
-export function ProjectDetailPage(): JSX.Element {
-	const model = useProjectDetailPageModel();
+export function ProjectDetailPage({ cwd }: { cwd?: string } = {}): JSX.Element {
+	const model = useProjectDetailPageModel(cwd);
 	const activeRuntimeIds = useActiveSessionRuntimeIds();
 
 	const batchSection =

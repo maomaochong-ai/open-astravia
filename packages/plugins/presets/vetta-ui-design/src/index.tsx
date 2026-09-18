@@ -10,10 +10,13 @@ import {
 	notifyFrameSettled,
 	setPendingDesignPath,
 } from "./canvas/design-runtime";
+import { CanvasTabShell } from "./canvas/CanvasTabShell";
 import { refreshDesignCatalog } from "./design-systems/index";
 import { stopAllDesignServers } from "./engine/engine-manager";
 import { SHARE_EXTENSION, SHARE_PREVIEW_EXTENSIONS } from "./export/share-format";
 import { claimCanvasReveal } from "./gallery/open-project";
+import { GalleryRoute } from "./gallery/GalleryRoute";
+import { scheduleGallerySurfacePrefetch } from "./gallery/prefetch-gallery-surface";
 import { registerTurnHistory } from "./history/turn-history";
 import { watchPickedSystem } from "./new-session/picked-system";
 import { setPluginCtx } from "./plugin-context";
@@ -26,23 +29,24 @@ import { isPureDesignProject, pickDesignPaths } from "./vetd/discover";
 
 /**
  * 大件 UI 面组件全部懒加载：App 启动时宿主会整包求值本插件的入口 chunk，
- * 画布 / 画廊 / 导出 / 预览的代码只有在对应面真正打开时才需要。切开后
- * activate() 只注册描述符，入口 chunk 的解析与求值成本大幅下降（低配机
- * 上直接决定「设计入口首开」与冷启动首轮发送的等待时长）。
+ * 画布 / 导出 / 预览的代码只有在对应面真正打开时才需要。画廊工作区注册同步薄壳，
+ * GalleryView 仍动态 import，避免切页 transition 把标题一起卡住。
  */
-function lazySurface<P extends object>(load: () => Promise<{ default: ComponentType<P> }>): (props: P) => JSX.Element {
+function lazySurface<P extends object>(
+	load: () => Promise<{ default: ComponentType<P> }>,
+	Fallback?: ComponentType,
+): (props: P) => JSX.Element {
 	const Lazy = lazy(load);
 	return function LazyPluginSurface(props: P) {
 		return (
-			<Suspense fallback={null}>
+			<Suspense fallback={Fallback ? <Fallback /> : null}>
 				<Lazy {...props} />
 			</Suspense>
 		);
 	};
 }
 
-const CanvasTab = lazySurface(async () => ({ default: (await import("./canvas/CanvasTab")).CanvasTab }));
-const GalleryView = lazySurface(async () => ({ default: (await import("./gallery/GalleryView")).GalleryView }));
+const CanvasTab = lazySurface(async () => ({ default: (await import("./canvas/CanvasTab")).CanvasTab }), CanvasTabShell);
 const ExportMockupDialog = lazySurface(async () => ({
 	default: (await import("./mockup/ExportMockupDialog")).ExportMockupDialog,
 }));
@@ -91,9 +95,13 @@ const DesignStyleLibrary = lazy(() =>
 	import("./new-session/DesignStyleLibrary").then((module) => ({ default: module.DesignStyleLibrary })),
 );
 
+let cancelGalleryPrefetch: (() => void) | undefined;
+
 export default definePlugin({
 	activate(ctx) {
 		setPluginCtx(ctx);
+		cancelGalleryPrefetch?.();
+		cancelGalleryPrefetch = scheduleGallerySurfacePrefetch();
 		// 设计体系清单：先用打包内置那份渲染，随后静默换成缓存/远端的最新版本。
 		// 拉不到就一直用内置的，用户不感知「源」，所以这里不等待、不报错。
 		void refreshDesignCatalog(ctx);
@@ -179,7 +187,7 @@ export default definePlugin({
 			label: "%gallery.nav.label%",
 			icon: "icon-[solar--ruler-pen-linear]",
 			description: "%gallery.nav.description%",
-			component: GalleryView,
+			component: GalleryRoute,
 		});
 		// 设计版本历史的自动提交（ADR-0069）。commitTurn 只遍历 cwd 下真实存在的
 		// .vetd 目录，纯代码仓库里是空操作，所以无条件注册不会产生噪音提交。
@@ -241,6 +249,8 @@ export default definePlugin({
 		registerToolGate(ctx);
 	},
 	deactivate() {
+		cancelGalleryPrefetch?.();
+		cancelGalleryPrefetch = undefined;
 		void stopAllDesignServers();
 	},
 });

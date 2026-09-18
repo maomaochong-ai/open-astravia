@@ -15,6 +15,7 @@ import {
 	pluginWorkspaceViewHeadersAtom,
 	promptAttachmentAtom,
 	resolveActivityWorkspaceKey,
+	sameWorkspaceViewHeader,
 	setActivityPanelWidthAtom,
 	workspaceViewHeaderKey,
 } from "@shared/store/atoms";
@@ -672,17 +673,21 @@ export function createPluginUiApi({
 		}
 		const title = typeof header.title === "string" ? header.title.trim() : "";
 		const store = getDefaultStore();
+		const key = workspaceViewHeaderKey(plugin.id, id);
+		const next = {
+			pluginId: plugin.id,
+			viewId: id,
+			...(title ? { title } : {}),
+			...(header.hideTitle === true ? { hideTitle: true } : {}),
+			...(header.immersive === true ? { immersive: true } : {}),
+			...(header.left != null ? { left: header.left } : {}),
+			...(header.right != null ? { right: header.right } : {}),
+		};
+		const current = store.get(pluginWorkspaceViewHeadersAtom);
+		if (sameWorkspaceViewHeader(current[key], next)) return;
 		store.set(pluginWorkspaceViewHeadersAtom, {
-			...store.get(pluginWorkspaceViewHeadersAtom),
-			[workspaceViewHeaderKey(plugin.id, id)]: {
-				pluginId: plugin.id,
-				viewId: id,
-				...(title ? { title } : {}),
-				...(header.hideTitle === true ? { hideTitle: true } : {}),
-				...(header.immersive === true ? { immersive: true } : {}),
-				...(header.left != null ? { left: header.left } : {}),
-				...(header.right != null ? { right: header.right } : {}),
-			},
+			...current,
+			[key]: next,
 		});
 	};
 	// 插件整体卸载/重载时注册项是被整表清空的（不逐个走 dispose），页头接管必须

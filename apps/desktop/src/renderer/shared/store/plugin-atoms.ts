@@ -139,6 +139,23 @@ export interface RegisteredWorkspaceViewHeader extends PluginWorkspaceViewHeader
 	viewId: string;
 }
 
+/** Activity 切回会重跑 effect；内容没变就不要 store.set，免得拖 PageHeader 一起重渲。 */
+export function sameWorkspaceViewHeader(
+	current: RegisteredWorkspaceViewHeader | undefined,
+	next: RegisteredWorkspaceViewHeader,
+): boolean {
+	if (!current) return false;
+	return (
+		current.pluginId === next.pluginId &&
+		current.viewId === next.viewId &&
+		current.title === next.title &&
+		Boolean(current.hideTitle) === Boolean(next.hideTitle) &&
+		Boolean(current.immersive) === Boolean(next.immersive) &&
+		current.left === next.left &&
+		current.right === next.right
+	);
+}
+
 /**
  * 工作区视图对宿主页头的接管，键为 `${pluginId}:${viewId}`。
  *

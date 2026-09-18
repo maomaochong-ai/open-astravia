@@ -1,11 +1,12 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useSetAtom } from "jotai";
+import { useOwnedHeaderTitleHidden } from "@shared/hooks/useOwnedHeaderTitleHidden";
 import {
 	pageHeaderRightSlotAtom,
 	pageHeaderTitleBadgeAtom,
-	pageHeaderTitleHiddenAtom,
 } from "@shared/store/atoms";
+import { useSurfaceActive } from "@shared/surface-active";
 import { Button } from "@shared/components/ui/button";
 import { SettingsAiAssist } from "../../settings/ai-assist";
 import { useKnowledgeBasePageModel } from "../hooks/useKnowledgeBasePageModel";
@@ -16,20 +17,18 @@ export function KnowledgeBasePage(): JSX.Element {
 	const { t } = useTranslation("settings");
 	const model = useKnowledgeBasePageModel();
 	const setTitleBadge = useSetAtom(pageHeaderTitleBadgeAtom);
-	const setHeaderTitleHidden = useSetAtom(pageHeaderTitleHiddenAtom);
 	const setHeaderRightSlot = useSetAtom(pageHeaderRightSlotAtom);
+	const surfaceActive = useSurfaceActive();
+	useOwnedHeaderTitleHidden(surfaceActive);
 
 	useEffect(() => {
-		setHeaderTitleHidden(true);
-		return () => setHeaderTitleHidden(false);
-	}, [setHeaderTitleHidden]);
-
-	useEffect(() => {
+		if (!surfaceActive) return;
 		setTitleBadge(<KnowledgeProcessingBadge />);
 		return () => setTitleBadge(null);
-	}, [setTitleBadge]);
+	}, [setTitleBadge, surfaceActive]);
 
 	useEffect(() => {
+		if (!surfaceActive) return;
 		setHeaderRightSlot(
 			<>
 				<SettingsAiAssist tabId="knowledgeBase" />
@@ -62,6 +61,7 @@ export function KnowledgeBasePage(): JSX.Element {
 		model.pendingCount,
 		model.setPendingOpen,
 		setHeaderRightSlot,
+		surfaceActive,
 		t,
 	]);
 

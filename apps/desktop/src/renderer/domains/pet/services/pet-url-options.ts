@@ -67,7 +67,7 @@ export function getInitialAction(videos: PetVideoMap): PetActionId | undefined {
 	return pickIdleAction(videos);
 }
 
-/** 默认贴主屏工作区右下角（与 main `getInitialPetContentOffset` 一致）；URL 优先。 */
+/** 窗口贴顶时 y<0，气泡改到精灵下方。位置由主进程窗口 bounds 承担，不再做 CSS 平移。 */
 export function getInitialContentOffset(): { x: number; y: number } {
 	const params = getSearchParams();
 	const x = Number(params.get("contentOffsetX"));

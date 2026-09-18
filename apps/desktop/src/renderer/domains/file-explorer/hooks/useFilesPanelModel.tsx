@@ -36,6 +36,7 @@ import type {
 	FileExplorerSelectOptions,
 	FilesPanelViewProps,
 } from "@vetta-org/theme-ui/file-explorer";
+import { findFileTreeElement } from "@vetta-org/theme-ui/file-explorer";
 import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -270,15 +271,14 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 				if (!entry) throw new Error(`Path is not visible in the active workspace: ${path}`);
 				if (options?.select !== false) {
 					selection.replaceWith(entry);
+				} else if (options?.focus) {
+					selection.focusEntry(entry);
 				}
 				if (options?.focus) {
+					// Rows are virtualized and not focusable: focus the tree container, which keeps
+					// the focused row as aria-activedescendant and scrolls it into view on focus.
 					requestAnimationFrame(() => {
-						const rows = document.querySelectorAll<HTMLElement>("[data-file-path]");
-						for (const row of rows) {
-							if (row.dataset.filePath !== path) continue;
-							row.focus();
-							break;
-						}
+						findFileTreeElement(rootDir)?.focus({ preventScroll: true });
 					});
 				}
 			},

@@ -1,14 +1,13 @@
 import { powerMonitor } from "electron";
 import { getAppLogger } from "../logger.js";
-import { getPetWindow, sendPetCommandToWindow } from "../pet-window.js";
+import { getPetWindow, sendPetCommandToWindow, setPetWindowCreatedListener } from "../pet-window.js";
+import { applyPetPlaybackIntent, playbackCommandForNewWindow } from "./pet-playback-policy.js";
 
 const log = getAppLogger("pet-idle-guard");
 
 /**
  * 系统锁屏或休眠时暂停桌宠视频解码，解锁或唤醒后恢复。
- *
- * 无人使用桌面时无需继续解码与合成循环视频；暂停可降低后台 CPU 和 GPU 占用，
- * 但正常空闲状态不再干预播放。
+ * 正常空闲状态不暂停播放。
  */
 let started = false;
 let paused = false;
@@ -16,12 +15,15 @@ let screenLocked = false;
 let systemSuspended = false;
 
 function setPlayback(playing: boolean): void {
-	if (paused === !playing) return;
-	// 无桌宠窗口时不必发（关闭/未启用），恢复播放时也无副作用。
-	if (!getPetWindow()) return;
-	paused = !playing;
-	sendPetCommandToWindow({ type: "set-playback", playing });
-	log.info(playing ? "resume" : "pause");
+	const result = applyPetPlaybackIntent({
+		paused,
+		playing,
+		windowOpen: Boolean(getPetWindow()),
+	});
+	paused = result.paused;
+	if (result.sendPlaying === undefined) return;
+	sendPetCommandToWindow({ type: "set-playback", playing: result.sendPlaying });
+	log.info(result.sendPlaying ? "resume" : "pause");
 }
 
 function syncPlayback(): void {
@@ -32,6 +34,9 @@ function syncPlayback(): void {
 export function startPetIdleGuard(): void {
 	if (started) return;
 	started = true;
+	setPetWindowCreatedListener(() => {
+		sendPetCommandToWindow(playbackCommandForNewWindow(paused));
+	});
 	powerMonitor.on("lock-screen", () => {
 		screenLocked = true;
 		syncPlayback();

@@ -24,7 +24,12 @@ import { authTokenAtom } from "@shared/store/atoms";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { getOpenMarketplaceLoadState, shouldReportAbilityLoadFailure } from "../lib/ability-load-policy";
+import {
+	abilityCatalogLoadKey,
+	getOpenMarketplaceLoadState,
+	shouldReportAbilityLoadFailure,
+	shouldSkipAbilityCatalogLoad,
+} from "../lib/ability-load-policy";
 import { isReadonlyLocalSkillSource } from "../lib/local-skill-source-policy";
 import { mergeAbilityCatalogs } from "../lib/merge-ability-catalogs";
 import { useOpenMarketplaceData } from "./useOpenMarketplaceData";
@@ -57,6 +62,10 @@ export interface AbilityData {
 
 export function useAbilityData(): AbilityData {
 	const token = useAtomValue(authTokenAtom);
+	const { i18n: i18nInstance } = useTranslation();
+	const language = i18nInstance.language;
+	const catalogKeyRef = useRef(abilityCatalogLoadKey(language, token));
+	catalogKeyRef.current = abilityCatalogLoadKey(language, token);
 	const [serverMarket, setServerMarket] = useState<MarketAbility[]>([]);
 	const open = useOpenMarketplaceData();
 	const loadOpen = open.load;
@@ -71,6 +80,8 @@ export function useAbilityData(): AbilityData {
 	const [refreshing, setRefreshing] = useState(false);
 	const [localFailed, setLocalFailed] = useState(false);
 	const loadGenerationRef = useRef(0);
+	const completedCatalogLoadKeyRef = useRef<string | null>(null);
+	const loadEffectAttachedRef = useRef(false);
 
 	const loadLocalState = useCallback(async () => {
 		return Promise.all([
@@ -98,6 +109,7 @@ export function useAbilityData(): AbilityData {
 	const load = useCallback(
 		(forceOpenMarketplaceRefresh: boolean) => {
 			const generation = ++loadGenerationRef.current;
+			const loadKey = catalogKeyRef.current;
 			setRefreshing(true);
 
 			const local = loadLocalState();
@@ -138,6 +150,10 @@ export function useAbilityData(): AbilityData {
 			void Promise.allSettled([local, remote, openResultPromise]).finally(() => {
 				if (generation !== loadGenerationRef.current) return;
 				setRefreshing(false);
+				// 用户点刷新始终记完成键；自动 load 只有 Effect 还挂着才记，避免 hidden 拆掉后误跳过未落地的市场结果。
+				if (forceOpenMarketplaceRefresh || loadEffectAttachedRef.current) {
+					completedCatalogLoadKeyRef.current = loadKey;
+				}
 			});
 		},
 		[applyLocalState, loadLocalState, loadOpen, token],
@@ -162,12 +178,15 @@ export function useAbilityData(): AbilityData {
 		}
 	}, [applyLocalState, loadLocalState]);
 	// 内置 skill 的展示文案由主进程按当前语言给出（`skills:builtin.*`），切语言要重新取数。
-	const { i18n: i18nInstance } = useTranslation();
-	const language = i18nInstance.language;
+	// React `<Activity hidden>` 会拆 Effects；切回保活页时若 language+token 已拉完则不要再打 IPC。
 	useEffect(() => {
-		void language;
+		if (shouldSkipAbilityCatalogLoad(completedCatalogLoadKeyRef.current, language, token)) return;
+		loadEffectAttachedRef.current = true;
 		load(false);
-	}, [load, language]);
+		return () => {
+			loadEffectAttachedRef.current = false;
+		};
+	}, [language, load, token]);
 
 	const market = useMemo(
 		() => mergeAbilityCatalogs(serverMarket, open.catalog.snapshots),

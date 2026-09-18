@@ -1,5 +1,3 @@
-import { motion } from "motion/react";
-import type { Transition } from "motion/react";
 import type { CSSProperties, JSX } from "react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -10,23 +8,15 @@ const FADE_SIZE = 16;
 /** 每帧向目标位置逼近的比例，越小拖尾越长。 */
 const SCROLL_EASING = 0.14;
 
-/** 入场：从零高度展开并轻微上浮。 */
-const CARD_INITIAL = { opacity: 0, height: 0, y: 8 };
-const CARD_ANIMATE = { opacity: 1, height: "auto", y: 0 };
-const CARD_TRANSITION = {
-	duration: 0.32,
-	ease: [0.22, 1, 0.36, 1] as const,
-} satisfies Transition;
-
 function prefersReducedMotion(): boolean {
 	return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
 /**
- * 让滚动容器持续缓动追随内容底部：思考文本每次追加都会拉长内容，
- * rAF 逐帧逼近目标位置，形成连续上滚而不是逐段跳变。
+ * 思考文本追加时缓动追随底部。只在 `text` 变化后跑 rAF，追上目标即停，
+ * 不再整段思考期间无限 `requestAnimationFrame`。
  */
-function useTrailingScrollToBottom(el: HTMLDivElement | null): boolean {
+function useTrailingScrollToBottom(el: HTMLDivElement | null, text: string): boolean {
 	const [overflowing, setOverflowing] = useState(false);
 
 	useEffect(() => {
@@ -36,7 +26,10 @@ function useTrailingScrollToBottom(el: HTMLDivElement | null): boolean {
 		}
 
 		const reduced = prefersReducedMotion();
-		let frame = requestAnimationFrame(function step() {
+		let cancelled = false;
+		let frame = 0;
+		const step = (): void => {
+			if (cancelled) return;
 			const target = el.scrollHeight - el.clientHeight;
 			setOverflowing((prev) => {
 				const next = target > 1;
@@ -44,15 +37,22 @@ function useTrailingScrollToBottom(el: HTMLDivElement | null): boolean {
 			});
 			if (reduced) {
 				el.scrollTop = target;
-			} else {
-				const delta = target - el.scrollTop;
-				el.scrollTop = Math.abs(delta) < 0.5 ? target : el.scrollTop + delta * SCROLL_EASING;
+				return;
 			}
+			const delta = target - el.scrollTop;
+			if (Math.abs(delta) < 0.5) {
+				el.scrollTop = target;
+				return;
+			}
+			el.scrollTop += delta * SCROLL_EASING;
 			frame = requestAnimationFrame(step);
-		});
-
-		return () => cancelAnimationFrame(frame);
-	}, [el]);
+		};
+		frame = requestAnimationFrame(step);
+		return () => {
+			cancelled = true;
+			cancelAnimationFrame(frame);
+		};
+	}, [el, text]);
 
 	return overflowing;
 }
@@ -66,13 +66,21 @@ export interface LiveThinkingViewProps {
  * 正在进行中的思考卡片：渲染在该 thinking block 原本所在的位置（可能在某个阶段组内），
  * 正文在卡片内的固定高度窗口里随流式内容缓动上滚、上下边缘渐隐。思考结束后由宿主
  * 换回原位的折叠条。
+ *
+ * 入场用 CSS `grid-template-rows` 过渡，避免 motion 的 `height: auto` 每帧写内联高度、
+ * 再触发消息列表 ResizeObserver。
  */
 export function LiveThinkingView({ text }: LiveThinkingViewProps): JSX.Element {
 	const [el, setEl] = useState<HTMLDivElement | null>(null);
+	const [expanded, setExpanded] = useState(false);
 	const setRef = useCallback((node: HTMLDivElement | null) => setEl(node), []);
-	const overflowing = useTrailingScrollToBottom(el);
+	const overflowing = useTrailingScrollToBottom(el, text);
 
-	// 内容不足一屏时不加遮罩，否则首行会被无谓地压暗。
+	useEffect(() => {
+		const frame = requestAnimationFrame(() => setExpanded(true));
+		return () => cancelAnimationFrame(frame);
+	}, []);
+
 	const maskImage = overflowing
 		? `linear-gradient(to bottom, transparent 0, black ${FADE_SIZE}px, black calc(100% - ${FADE_SIZE}px), transparent 100%)`
 		: undefined;
@@ -82,21 +90,22 @@ export function LiveThinkingView({ text }: LiveThinkingViewProps): JSX.Element {
 	};
 
 	return (
-		<motion.div
-			className="overflow-hidden pt-1"
-			initial={CARD_INITIAL}
-			animate={CARD_ANIMATE}
-			transition={CARD_TRANSITION}
+		<div
+			className={`grid overflow-hidden pt-1 transition-[grid-template-rows,opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
+				expanded ? "grid-rows-[1fr] translate-y-0 opacity-100" : "grid-rows-[0fr] translate-y-2 opacity-0"
+			}`}
 		>
-			<div
-				ref={setRef}
-				className="min-w-0 max-w-full overflow-hidden rounded-xl bg-muted/25 px-3 py-2"
-				style={viewportStyle}
-			>
-				<div className="whitespace-pre-wrap break-words text-[12px] leading-[1.6] text-muted-foreground/55">
-					{text}
+			<div className="min-h-0 overflow-hidden">
+				<div
+					ref={setRef}
+					className="min-w-0 max-w-full overflow-hidden rounded-xl bg-muted/25 px-3 py-2"
+					style={viewportStyle}
+				>
+					<div className="whitespace-pre-wrap break-words text-[12px] leading-[1.6] text-muted-foreground/55">
+						{text}
+					</div>
 				</div>
 			</div>
-		</motion.div>
+		</div>
 	);
 }

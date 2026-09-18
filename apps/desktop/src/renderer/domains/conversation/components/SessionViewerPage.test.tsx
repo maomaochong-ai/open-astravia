@@ -13,6 +13,7 @@ const captured = vi.hoisted(() => ({
 	onStartExport: vi.fn(),
 	onTogglePanel: vi.fn(),
 	feed: vi.fn(),
+	pathArg: undefined as string | undefined,
 }));
 
 vi.mock("jotai", async (importOriginal) => ({
@@ -27,23 +28,26 @@ vi.mock("@vetta-org/theme-ui/chat", async (importOriginal) => ({
 }));
 vi.mock("@domains/activity-panel/components/ActivityPanel", () => ({ ActivityPanel: () => <aside /> }));
 vi.mock("../hooks/useSessionViewerPageModel", () => ({
-	useSessionViewerPageModel: () => ({
-		path: "C:/sessions/example.jsonl",
-		error: null,
-		messages: [{ id: "message-1" }],
-		exporting: false,
-		exportTitle: "Example",
-		isKnowledge: false,
-		isIm: true,
-		imCwd: "C:/sessions",
-		kbCwd: "",
-		panelOpen: false,
-		emptyPathLabel: "empty",
-		errorPrefix: "error",
-		onStartExport: captured.onStartExport,
-		onTogglePanel: captured.onTogglePanel,
-		onExportFinished: vi.fn(),
-	}),
+	useSessionViewerPageModel: (path?: string) => {
+		captured.pathArg = path;
+		return {
+			path: "C:/sessions/example.jsonl",
+			error: null,
+			messages: [{ id: "message-1" }],
+			exporting: false,
+			exportTitle: "Example",
+			isKnowledge: false,
+			isIm: true,
+			imCwd: "C:/sessions",
+			kbCwd: "",
+			panelOpen: false,
+			emptyPathLabel: "empty",
+			errorPrefix: "error",
+			onStartExport: captured.onStartExport,
+			onTogglePanel: captured.onTogglePanel,
+			onExportFinished: vi.fn(),
+		};
+	},
 }));
 vi.mock("./ChatExportHost", () => ({ ChatExportHost: () => null }));
 vi.mock("./MessageList", () => ({
@@ -56,6 +60,7 @@ vi.mock("./MessageList", () => ({
 afterEach(() => {
 	cleanup();
 	vi.clearAllMocks();
+	captured.pathArg = undefined;
 });
 
 describe("SessionViewerPage header composition", () => {
@@ -78,5 +83,13 @@ describe("SessionViewerPage header composition", () => {
 
 		expect(captured.onStartExport).toHaveBeenCalledOnce();
 		expect(captured.onTogglePanel).toHaveBeenCalledOnce();
+	});
+});
+
+describe("SessionViewerPage keep-alive identity", () => {
+	it("把保活宿主传入的 path 交给 viewer model，而不是当前路由", () => {
+		const kept = encodeURIComponent("/kept/session.jsonl");
+		render(<SessionViewerPage path={kept} />);
+		expect(captured.pathArg).toBe(kept);
 	});
 });

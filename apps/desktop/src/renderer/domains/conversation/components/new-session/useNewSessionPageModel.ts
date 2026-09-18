@@ -26,10 +26,11 @@ import {
 	sessionExecutionModeAtom,
 	switchSessionInputDraftScope,
 } from "@shared/store/atoms";
+import { useInactiveFrozenValue, useSurfaceActive } from "@shared/surface-active";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { NewSessionHeroIdentity } from "@vetta-org/theme-ui";
 import { useAtomValue, useSetAtom } from "jotai";
-import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TeamChatActions, TeamChatViewModel } from "../../connectors/team/teamChatModel";
 import { useSkillList } from "../../hooks/useSkillList";
@@ -98,17 +99,23 @@ interface NewSessionPageModel {
 
 export function useNewSessionPageModel(): NewSessionPageModel {
 	const { t } = useTranslation(["common", "chat"]);
-	const search = useSearch({ strict: false }) as { cwd?: string; target?: string };
+	const searchFromRoute = useSearch({ strict: false }) as { cwd?: string; target?: string };
 	const navigate = useNavigate();
+	const surfaceActive = useSurfaceActive();
+	const search = useInactiveFrozenValue(surfaceActive, searchFromRoute);
 	const defaultConversationCwd = useAtomValue(defaultConversationCwdAtom);
 	const decodedCwd = search.cwd ? decodeURIComponent(search.cwd) : defaultConversationCwd;
 	const initialTargetKey = search.target ? parseNewSessionTarget(search.target) : null;
 	const [targetKey, setTargetKey] = useState<NewSessionTargetKey | null>(
 		initialTargetKey === "conversation" ? null : initialTargetKey,
 	);
+	const appliedTargetRef = useRef(search.target ?? "");
 	useEffect(() => {
+		const identity = search.target ?? "";
+		if (appliedTargetRef.current === identity) return;
+		appliedTargetRef.current = identity;
 		setTargetKey(initialTargetKey === "conversation" ? null : initialTargetKey);
-	}, [initialTargetKey]);
+	}, [initialTargetKey, search.target]);
 	// 单个智能体走的是普通会话链路，只在创建时多带一个身份；只有团队才需要 Team 编排。
 	const selectedTeamKey = isTeamTarget(targetKey) ? targetKey : null;
 	const selectedAgentProfileId = parseAgentTargetKey(targetKey);
@@ -282,6 +289,7 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 	]);
 
 	useEffect(() => {
+		if (!surfaceActive) return;
 		setHeaderTitle(t("appShell.routeTitles.chat"));
 		setHeaderTitleBadge(contextLabel);
 		setHeaderTitleHidden(false);
@@ -290,11 +298,14 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 			setHeaderTitleBadge(null);
 			setHeaderTitleHidden(false);
 		};
-	}, [contextLabel, setHeaderTitle, setHeaderTitleBadge, setHeaderTitleHidden, t]);
+	}, [contextLabel, setHeaderTitle, setHeaderTitleBadge, setHeaderTitleHidden, surfaceActive, t]);
 
+	const playedHeroCwdRef = useRef<string | undefined>(undefined);
 	useEffect(() => {
-		// decodedCwd 是路由切换的 hero 重播 key；effect body 不需要读取其值。
-		void decodedCwd;
+		const first = playedHeroCwdRef.current === undefined;
+		const cwdChanged = playedHeroCwdRef.current !== decodedCwd;
+		playedHeroCwdRef.current = decodedCwd;
+		if (!first && !cwdChanged) return;
 		setMounted(false);
 		setAvatarAutoplay(false);
 		const mountTimer = window.setTimeout(() => {

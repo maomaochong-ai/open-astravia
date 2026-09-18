@@ -4,7 +4,7 @@ import { useAtomValue } from "jotai";
 import { Component, useCallback, useEffect, useState } from "react";
 import type { ErrorInfo, JSX, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { waitForPluginHostReady } from "../runtime/plugin-events";
+import { isPluginHostCycleReady, isPluginHostEverReady, waitForPluginHostReady } from "../runtime/plugin-events";
 import { PluginI18nBoundary } from "../runtime/plugin-i18n";
 import { findWorkspaceView } from "../runtime/workspace-view-registry";
 
@@ -43,23 +43,34 @@ function WorkspaceViewMessage({ text }: { text: string }): JSX.Element {
  * 插件宿主是异步加载的，所以「找不到视图」有两种含义：宿主还没就绪（等）与
  * 宿主已就绪但确实没这条注册（交给调用方兜底）。二者必须分开，否则冷启动会
  * 把用户直接踢走。
+ *
+ * 注册表里已经有这条视图时立刻渲染，不要为了等宿主再闪一帧 loading。
+ * 只有视图缺失才等当前加载周期：宿主曾经就绪且没有新的 `markPluginHostLoading`
+ * 时，首帧就能判定 missing，不必再空转一个 effect。
  */
 export function PluginWorkspaceViewSurface({
 	pluginId,
 	viewId,
 	onMissing,
+	active = true,
 }: {
 	pluginId: string | undefined;
 	viewId: string | undefined;
 	/** 宿主已就绪但视图确实不存在时调用；不传则原地显示缺失文案。 */
 	onMissing?: () => void;
+	/**
+	 * 当前是否是正在看的那一页。保活隐藏树在插件还没注册时不要 onMissing，
+	 * 否则会把用户从别的页面踢回首页。
+	 */
+	active?: boolean;
 }): JSX.Element {
 	const { t } = useTranslation("project");
 	const views = useAtomValue(pluginWorkspaceViewsAtom);
-	const [hostReady, setHostReady] = useState(false);
+	const [hostReady, setHostReady] = useState(() => isPluginHostEverReady() && isPluginHostCycleReady());
 	const view = findWorkspaceView(views, pluginId, viewId);
 
 	useEffect(() => {
+		if (view || hostReady) return;
 		let cancelled = false;
 		void waitForPluginHostReady().then(() => {
 			if (!cancelled) setHostReady(true);
@@ -67,12 +78,12 @@ export function PluginWorkspaceViewSurface({
 		return () => {
 			cancelled = true;
 		};
-	}, []);
+	}, [view, hostReady]);
 
 	useEffect(() => {
-		if (view || !hostReady) return;
+		if (!active || view || !hostReady) return;
 		onMissing?.();
-	}, [view, hostReady, onMissing]);
+	}, [active, view, hostReady, onMissing]);
 
 	if (!view) {
 		return <WorkspaceViewMessage text={hostReady ? t("workspaceView.missing") : t("workspaceView.loading")} />;

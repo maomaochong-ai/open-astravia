@@ -1,11 +1,7 @@
+import { useOwnedHeaderTitleHidden } from "@shared/hooks/useOwnedHeaderTitleHidden";
 import type { ScheduledTask } from "@shared/store/atoms";
-import {
-	formOpenAtom,
-	pageHeaderTitleHiddenAtom,
-	runningTaskIdsAtom,
-	scheduledTasksAtom,
-	selectedTaskIdAtom,
-} from "@shared/store/atoms";
+import { formOpenAtom, runningTaskIdsAtom, scheduledTasksAtom, selectedTaskIdAtom } from "@shared/store/atoms";
+import { useSurfaceActive } from "@shared/surface-active";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -44,18 +40,13 @@ export function useAutomationPageModel(): AutomationPageModel {
 	const [formEditingTask, setFormEditingTask] = useAtom(formOpenAtom);
 	const { refreshTasks } = useScheduledTasks();
 	const setRunningTaskIds = useSetAtom(runningTaskIdsAtom);
-	const setHeaderTitleHidden = useSetAtom(pageHeaderTitleHiddenAtom);
+	useOwnedHeaderTitleHidden(useSurfaceActive());
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [createDraft, setCreateDraft] = useState<SchedulerTaskDraft | undefined>(undefined);
 
 	useEffect(() => {
 		refreshTasks();
 	}, [refreshTasks]);
-
-	useEffect(() => {
-		setHeaderTitleHidden(true);
-		return () => setHeaderTitleHidden(false);
-	}, [setHeaderTitleHidden]);
 
 	useEffect(() => {
 		void window.vetta.scheduler.getRunningTaskIds().then((ids) => {

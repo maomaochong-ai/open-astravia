@@ -4,7 +4,12 @@ import type { MarketAbility } from "@shared/lib/api";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ cloud: true, fetchMarket: vi.fn(), language: { language: "en" } }));
+const mocks = vi.hoisted(() => ({
+	cloud: true,
+	fetchMarket: vi.fn(),
+	language: { language: "en" },
+	token: null as string | null | undefined,
+}));
 vi.mock("@shared/components/cloud-slots", () => ({
 	get cloudEnabled() { return mocks.cloud; },
 }));
@@ -15,8 +20,9 @@ vi.mock("@shared/i18n", () => ({
 	},
 }));
 vi.mock("@shared/store/atoms", () => ({ authTokenAtom: {} }));
-vi.mock("jotai", () => ({ useAtomValue: () => undefined }));
+vi.mock("jotai", () => ({ useAtomValue: () => mocks.token }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ i18n: mocks.language }) }));
+import { Activity, type ReactNode } from "react";
 import { useAbilityData } from "./useAbilityData";
 
 function catalog(slug = "existing", failed = false, id = "official"): OpenMarketplaceCatalog {
@@ -93,10 +99,34 @@ const api = {
 		return () => undefined;
 	}),
 };
+const skillsApi = {
+	getMarketManifest: vi.fn(async () => ({})),
+	list: vi.fn(async () => []),
+};
+const pluginsApi = { listAll: vi.fn(async () => []) };
+
+function catalogIpcCounts() {
+	return {
+		ledger: api.getLedger.mock.calls.length,
+		list: api.listOpenMarketplaces.mock.calls.length,
+		market: mocks.fetchMarket.mock.calls.length,
+		skills: skillsApi.list.mock.calls.length,
+	};
+}
+
+function renderKeepAliveAbilityData(hidden: { current: boolean }) {
+	return renderHook(() => useAbilityData(), {
+		wrapper: ({ children }: { children: ReactNode }) => (
+			<Activity mode={hidden.current ? "hidden" : "visible"}>{children}</Activity>
+		),
+	});
+}
 
 beforeEach(() => {
 	vi.clearAllMocks();
 	mocks.cloud = true;
+	mocks.language.language = "en";
+	mocks.token = null;
 	mocks.fetchMarket.mockResolvedValue([]);
 	api.listOpenMarketplaces.mockResolvedValue(catalog());
 	api.refreshOpenMarketplaces.mockResolvedValue(catalog("x-api-mcp"));
@@ -104,8 +134,8 @@ beforeEach(() => {
 		configurable: true,
 		value: {
 			abilities: api,
-			skills: { getMarketManifest: async () => ({}), list: async () => [] },
-			plugins: { listAll: async () => [] },
+			skills: skillsApi,
+			plugins: pluginsApi,
 		},
 	});
 	vi.spyOn(console, "warn").mockImplementation(() => undefined);
@@ -218,5 +248,97 @@ describe("useAbilityData independent markets", () => {
 		act(() => updated());
 		await act(async () => next.resolve(catalog("refreshed")));
 		await waitFor(() => expect(result.current.market[0]?.slug).toBe("background"));
+	});
+});
+
+describe("useAbilityData keep-alive reveal", () => {
+	it("does not refetch ledger, market, or GitHub list when Activity restores the same language and token", async () => {
+		const hidden = { current: false };
+		const { result, rerender } = renderKeepAliveAbilityData(hidden);
+		await waitFor(() => expect(result.current.refreshing).toBe(false));
+		expect(result.current.loading).toBe(false);
+		expect(result.current.market.map((ability) => ability.slug)).toEqual(["existing"]);
+		const first = catalogIpcCounts();
+		const subscriptions = api.onOpenMarketplacesUpdated.mock.calls.length;
+		expect(first.ledger).toBeGreaterThan(0);
+		expect(first.list).toBeGreaterThan(0);
+		expect(first.market).toBeGreaterThan(0);
+
+		act(() => {
+			hidden.current = true;
+			rerender();
+		});
+		act(() => {
+			hidden.current = false;
+			rerender();
+		});
+
+		expect(api.onOpenMarketplacesUpdated.mock.calls.length).toBeGreaterThan(subscriptions);
+		expect(result.current.loading).toBe(false);
+		expect(result.current.refreshing).toBe(false);
+		expect(result.current.market.map((ability) => ability.slug)).toEqual(["existing"]);
+		expect(catalogIpcCounts()).toEqual(first);
+	});
+
+	it("does not refetch when the load effect re-runs with the same token-ish identity", async () => {
+		const { result, rerender } = renderHook(() => useAbilityData());
+		await waitFor(() => expect(result.current.refreshing).toBe(false));
+		const first = catalogIpcCounts();
+
+		// null 与 undefined 同一身份；token 引用变化会重建 load，从而重跑 effect。
+		mocks.token = undefined;
+		rerender();
+
+		expect(result.current.loading).toBe(false);
+		expect(catalogIpcCounts()).toEqual(first);
+	});
+
+	it("reloads when the UI language changes", async () => {
+		const { result, rerender } = renderHook(() => useAbilityData());
+		await waitFor(() => expect(result.current.refreshing).toBe(false));
+		const first = catalogIpcCounts();
+
+		mocks.language.language = "zh";
+		rerender();
+		await waitFor(() => expect(api.getLedger.mock.calls.length).toBe(first.ledger + 1));
+		expect(api.listOpenMarketplaces.mock.calls.length).toBe(first.list + 1);
+		expect(mocks.fetchMarket.mock.calls.length).toBe(first.market + 1);
+		expect(skillsApi.list.mock.calls.length).toBe(first.skills + 1);
+	});
+
+	it("reloads when the auth token changes", async () => {
+		const { result, rerender } = renderHook(() => useAbilityData());
+		await waitFor(() => expect(result.current.refreshing).toBe(false));
+		const first = catalogIpcCounts();
+
+		mocks.token = "access-token";
+		rerender();
+		await waitFor(() => expect(api.getLedger.mock.calls.length).toBe(first.ledger + 1));
+		expect(mocks.fetchMarket).toHaveBeenLastCalledWith("access-token");
+		expect(api.listOpenMarketplaces.mock.calls.length).toBe(first.list + 1);
+	});
+
+	it("reloads when the user refreshes", async () => {
+		const { result } = renderHook(() => useAbilityData());
+		await waitFor(() => expect(result.current.refreshing).toBe(false));
+		const first = catalogIpcCounts();
+
+		act(() => result.current.refresh());
+		await waitFor(() => expect(result.current.refreshing).toBe(false));
+		expect(api.getLedger.mock.calls.length).toBe(first.ledger + 1);
+		expect(api.refreshOpenMarketplaces).toHaveBeenCalled();
+		expect(mocks.fetchMarket.mock.calls.length).toBe(first.market + 1);
+		expect(result.current.market.map((ability) => ability.slug)).toEqual(["x-api-mcp"]);
+	});
+
+	it("still reloads local install state after a keep-alive skip", async () => {
+		const { result } = renderHook(() => useAbilityData());
+		await waitFor(() => expect(result.current.refreshing).toBe(false));
+		const first = catalogIpcCounts();
+
+		await act(() => result.current.refreshLocalInstallState());
+		expect(api.getLedger.mock.calls.length).toBe(first.ledger + 1);
+		expect(api.listOpenMarketplaces.mock.calls.length).toBe(first.list);
+		expect(mocks.fetchMarket.mock.calls.length).toBe(first.market);
 	});
 });
