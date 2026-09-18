@@ -116,13 +116,19 @@ export function useOpenMarketplaceData() {
 		}
 	}, [load, refreshing]);
 
-	const failedNames = catalog.sources
-		.filter((source) => source.enabled && catalog.failedSourceIds.includes(source.id))
-		.map((source) => source.name);
-	const error = loadFailed
-		? i18n.t("abilities:error.loadFailed")
-		: failedNames.length
-			? i18n.t("abilities:error.sourcesFailed", { names: failedNames.join(", ") })
-			: null;
+	const failedSources = catalog.sources.filter(
+		(source) => source.enabled && catalog.failedSourceIds.includes(source.id),
+	);
+	// 版本过旧的源单独成句：把它混进「同步失败」里，用户只会一遍遍去查网络。
+	const outdatedIds = new Set(
+		catalog.snapshots.filter((snapshot) => snapshot.error === "app-outdated").map((snapshot) => snapshot.sourceId),
+	);
+	const outdatedNames = failedSources.filter((source) => outdatedIds.has(source.id)).map((source) => source.name);
+	const failedNames = failedSources.filter((source) => !outdatedIds.has(source.id)).map((source) => source.name);
+	const messages = [
+		failedNames.length ? i18n.t("abilities:error.sourcesFailed", { names: failedNames.join(", ") }) : null,
+		outdatedNames.length ? i18n.t("abilities:error.sourcesOutdated", { names: outdatedNames.join(", ") }) : null,
+	].filter((message): message is string => message !== null);
+	const error = loadFailed ? i18n.t("abilities:error.loadFailed") : messages.join(" ") || null;
 	return { catalog, refreshing, error, load, refreshSource, addSource, updateSource, removeSource, clearCredential };
 }

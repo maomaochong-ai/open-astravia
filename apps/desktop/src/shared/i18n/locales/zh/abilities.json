@@ -95,6 +95,7 @@
 	},
 	"error": {
 		"sourcesFailed": "以下 GitHub 来源同步失败（如有缓存则继续显示）：{{names}}",
+		"sourcesOutdated": "以下来源需要更新 Vetta 后才能加载：{{names}}",
 		"serverFailed": "云能力市场加载失败，其他来源仍可使用",
 		"loadFailed": "能力列表加载失败",
 		"downloadFailed": "下载失败：{{status}}",
@@ -500,6 +501,7 @@
 			"forbidden": "GitHub 凭据无权读取此仓库",
 			"notFound": "仓库、分支或市场清单不存在",
 			"rateLimited": "GitHub 请求频率受限，请稍后重试",
+			"appOutdated": "当前 Vetta 版本过旧，需升级到 {{version}} 或更高版本",
 			"ready": "已同步 · {{version}}",
 			"failed": "同步失败，可重试",
 			"cached": "同步失败，正在显示上次缓存"

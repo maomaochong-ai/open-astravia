@@ -714,7 +714,12 @@ describe("OpenMarketplaceService", () => {
 
 		const fallback = await service.refresh();
 
-		expect(fallback).toMatchObject({ marketplaceVersion: "2026.07.1", stale: true, error: "sync-failed" });
+		expect(fallback).toMatchObject({
+			marketplaceVersion: "2026.07.1",
+			stale: true,
+			error: "app-outdated",
+			requiredAppVersion: "0.6.0",
+		});
 		expect(fallback.abilities[0]?.description).toBe("Compatible");
 	});
 
@@ -727,10 +732,17 @@ describe("OpenMarketplaceService", () => {
 
 		const snapshot = await service.refresh();
 
-		expect(snapshot).toMatchObject({ abilities: [], marketplaceVersion: null, stale: true, error: "sync-failed" });
+		// 版本不达标必须和网络故障区分开，否则界面只会说「同步失败」，用户永远不知道要升级。
+		expect(snapshot).toMatchObject({
+			abilities: [],
+			marketplaceVersion: null,
+			stale: true,
+			error: "app-outdated",
+			requiredAppVersion: "0.6.0",
+		});
 		expect(marketplaceLog.error).toHaveBeenCalledWith(
 			"marketplace sync failed",
-			expect.objectContaining({ operation: "refresh", errorCode: "sync-failed" }),
+			expect.objectContaining({ operation: "refresh", errorCode: "app-outdated" }),
 			expect.objectContaining({
 				message: "Marketplace 2026.07.1 requires desktop app 0.6.0 or newer",
 			}),

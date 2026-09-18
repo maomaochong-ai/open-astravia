@@ -45,6 +45,8 @@ class MarketplaceRequestError extends Error {
 	constructor(
 		readonly code: MarketplaceSyncError,
 		message: string,
+		/** 仅 `app-outdated`：清单要求的最低桌面端版本，用于告诉用户该升到哪。 */
+		readonly requiredAppVersion?: string,
 	) {
 		super(message);
 	}
@@ -69,6 +71,10 @@ function requestError(status: number, operation: string): MarketplaceRequestErro
 
 function syncError(error: unknown): MarketplaceSyncError {
 	return error instanceof MarketplaceRequestError ? error.code : "sync-failed";
+}
+
+function requiredAppVersion(error: unknown): string | undefined {
+	return error instanceof MarketplaceRequestError ? error.requiredAppVersion : undefined;
 }
 
 type FetchArchive = (url: string, init?: RequestInit) => Promise<Response>;
@@ -373,8 +379,9 @@ export class OpenMarketplaceService {
 		} catch (error) {
 			const cached = this.memorySnapshot ?? (await this.readCachedSnapshot());
 			const errorCode = syncError(error);
+			const minAppVersion = requiredAppVersion(error);
 			this.logSyncFailure("refresh", error, errorCode, cached !== null);
-			const failed = cached
+			const base = cached
 				? { ...cached, stale: true, error: errorCode }
 				: {
 						sourceId: this.sourceId,
@@ -385,6 +392,7 @@ export class OpenMarketplaceService {
 						stale: true,
 						error: errorCode,
 					};
+			const failed = minAppVersion ? { ...base, requiredAppVersion: minAppVersion } : base;
 			this.memorySnapshot = failed;
 			return failed;
 		}
@@ -502,10 +510,19 @@ export class OpenMarketplaceService {
 		}
 	}
 
+	/**
+	 * 版本不达标不是网络故障，必须给出自己的错误码。
+	 *
+	 * 早先这里抛的是普通 Error，被 {@link syncError} 一律归成 `sync-failed`，
+	 * 界面只说「同步失败」——用户和排障的人都会把它当成网络问题去查，
+	 * 而实际上无论网络怎么修，不升级就永远是空的。
+	 */
 	private assertManifestCompatible(manifest: MarketplaceManifest): void {
 		if (!isAppVersionCompatible(this.appVersion, manifest.minAppVersion)) {
-			throw new Error(
+			throw new MarketplaceRequestError(
+				"app-outdated",
 				`Marketplace ${manifest.marketplaceVersion} requires desktop app ${manifest.minAppVersion} or newer`,
+				manifest.minAppVersion,
 			);
 		}
 	}
