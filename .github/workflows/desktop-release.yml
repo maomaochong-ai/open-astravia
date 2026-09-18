@@ -197,6 +197,11 @@ jobs:
         working-directory: apps/im-gateway
         run: go test ./...
 
+      # 发布说明就是 GitHub Release 的正文。放在这里失败，而不是等四个平台
+      # 签名公证跑完两小时后才发现没有正文可发。
+      - name: Verify release notes exist
+        run: node scripts/release/release-notes.mjs --check
+
       - name: Run repository checks
         run: bun run check
 
@@ -501,9 +506,11 @@ jobs:
           VETTA_DESKTOP_RELEASE_VERSION: ${{ needs.prepare.outputs.build-version }}
         run: node scripts/verify-update-feed.mjs
 
+  # R2 目标也要发 GitHub Release：R2 是更新源，GitHub Release 是对外的下载入口和
+  # 版本说明归档，两者同时发布。test 渠道除外——它的构建不该出现在正式 Release 列表里。
   publish-github:
     name: publish GitHub Release
-    if: needs.prepare.outputs.should-build == 'true' && needs.prepare.outputs.should-publish == 'true' && needs.prepare.outputs.release_target != 'r2'
+    if: needs.prepare.outputs.should-build == 'true' && needs.prepare.outputs.should-publish == 'true' && needs.prepare.outputs.channel != 'test'
     needs: [prepare, quality, build]
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -539,10 +546,12 @@ jobs:
       - name: Publish release after all assets are ready
         env:
           GH_TOKEN: ${{ github.token }}
+          BUILD_VERSION: ${{ needs.prepare.outputs.build-version }}
         shell: bash
         run: |
-          VERSION="$(node -p "require('./apps/desktop/package.json').version")"
+          VERSION="${BUILD_VERSION:-$(node -p "require('./apps/desktop/package.json').version")}"
           TAG="v${VERSION}"
+          NOTES_FILE="$(node scripts/release/release-notes.mjs --version "${VERSION}")"
           if gh release view "${TAG}" >/dev/null 2>&1; then
             IS_DRAFT="$(gh release view "${TAG}" --json isDraft --jq .isDraft)"
             if [[ "${IS_DRAFT}" != "true" ]]; then
@@ -550,8 +559,9 @@ jobs:
               exit 1
             fi
             echo "Resuming draft release ${TAG}"
+            gh release edit "${TAG}" --notes-file "${NOTES_FILE}"
           else
-            gh release create "${TAG}" --draft --generate-notes --title "Vetta ${VERSION}" --target "${GITHUB_SHA}"
+            gh release create "${TAG}" --draft --notes-file "${NOTES_FILE}" --title "Vetta ${VERSION}" --target "${GITHUB_SHA}"
           fi
           find apps/desktop/release -maxdepth 1 -type f -print0 \
             | xargs -0 gh release upload "${TAG}" --clobber
@@ -560,7 +570,7 @@ jobs:
       - name: Verify published update feed
         working-directory: apps/desktop
         env:
-          VETTA_DESKTOP_RELEASE_VERSION: ${{ github.ref_name }}
+          VETTA_DESKTOP_RELEASE_VERSION: ${{ needs.prepare.outputs.build-version }}
           VETTA_UPDATE_PROVIDER: github
           VETTA_UPDATE_GITHUB_OWNER: ${{ github.repository_owner }}
           VETTA_UPDATE_GITHUB_REPO: ${{ github.event.repository.name }}

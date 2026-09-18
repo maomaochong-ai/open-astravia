@@ -114,6 +114,23 @@ describe("Desktop release workflow contracts", () => {
 		expect(timeout).toBeGreaterThanOrEqual(120);
 	});
 
+	// R2 是更新源，GitHub Release 是对外的下载入口和版本说明归档。早先两个发布 job
+	// 按 release_target 互斥，商业版发版在 GitHub 上什么都看不到。
+	it("publishes a GitHub Release alongside R2 for every non-test channel", () => {
+		expect(workflow).toContain("  publish-github:");
+		expect(workflow).toContain("needs.prepare.outputs.channel != 'test'");
+		expect(workflow).not.toContain("needs.prepare.outputs.release_target != 'r2'");
+	});
+
+	it("uses the versioned release note as the GitHub Release body", () => {
+		expect(workflow).toContain("node scripts/release/release-notes.mjs --check");
+		expect(workflow).toContain('--notes-file "' + "$" + '{NOTES_FILE}"');
+		expect(workflow).not.toContain("--generate-notes");
+		// 正文缺失要在质量阶段就失败，而不是等平台矩阵签名公证跑完。
+		const qualityJob = workflow.slice(workflow.indexOf("\n  quality:"), workflow.indexOf("\n  build:"));
+		expect(qualityJob).toContain("node scripts/release/release-notes.mjs --check");
+	});
+
 	it("provides an isolated test-channel workflow for real install and restart upgrades", () => {
 		expect(upgradeWorkflow).toContain("baseline_version:");
 		expect(upgradeWorkflow).toContain("candidate_version:");
