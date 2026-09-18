@@ -18,6 +18,9 @@ export interface SidebarDockProps extends Omit<ComponentPropsWithoutRef<"div">, 
 	 *
 	 * 必须显式给值、不能靠内容撑：抽屉式过渡要求布局宽度一步到位，而「按内容宽度」在
 	 * 收起态量不到（面板已被移出占位盒子的尺寸计算）。
+	 *
+	 * 这是 committed 值。拖宽度时宿主把实时宽度直接写到这个占位元素与面板上（见
+	 * `SidebarModel.setPanelRef`），不进 React——内容区照常逐帧跟着重排，实测仍是满帧。
 	 */
 	width: number;
 }

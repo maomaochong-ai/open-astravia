@@ -58,7 +58,11 @@ function parseRemoteModels(response: RemoteModelsResponse): RemoteModelLoadResul
 				provider: providerName,
 				baseUrl: raw.upstreamBaseUrl || gatewayUrl,
 				gatewayUrl: raw.upstreamBaseUrl ? gatewayUrl : undefined,
-				reasoning: definition.reasoning ?? false,
+				reasoning: definition.reasoning ?? Boolean(definition.reasoningLevels?.length),
+				...(definition.reasoningLevels === undefined ? {} : { reasoningLevels: [...definition.reasoningLevels] }),
+				...(definition.defaultReasoningLevel === undefined
+					? {}
+					: { defaultReasoningLevel: definition.defaultReasoningLevel }),
 				input: (definition.input ?? ["text"]) as ("text" | "image")[],
 				cost: definition.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
 				contextWindow: definition.contextWindow ?? 128_000,

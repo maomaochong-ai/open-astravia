@@ -1,5 +1,5 @@
 import type { AgentMessage, ThinkingLevel } from "@vetta/agent-core";
-import { type Api, type AssistantMessage, type Model, supportsXhigh } from "@vetta/ai";
+import { type Api, type AssistantMessage, getModelReasoningPreset, type Model } from "@vetta/ai";
 import type { ConversationDocument } from "@vetta/runtime-core";
 import type { CodingAgentHtmlExportRuntime } from "../export-html/index.js";
 import { projectCodingAgentMessages } from "../sessions/projection/conversation-context-projector.js";
@@ -48,9 +48,8 @@ export function resolveNextCodingAgentRpcThinkingLevel(
 	current: ThinkingLevel,
 ): ThinkingLevel | undefined {
 	if (!model?.reasoning) return undefined;
-	const levels: readonly ThinkingLevel[] = supportsXhigh(model)
-		? ["off", "minimal", "low", "medium", "high", "xhigh"]
-		: ["off", "minimal", "low", "medium", "high"];
+	const levels = getModelReasoningPreset(model)?.levels;
+	if (!levels?.length) return undefined;
 	return levels[(levels.indexOf(current) + 1) % levels.length];
 }
 

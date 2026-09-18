@@ -4,6 +4,10 @@ All notable changes to `@vetta-org/plugin-vite` are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Bind `@vetta-org/plugin-sdk/logger` to the current plugin's validated manifest identity in both production builds and the development server. The generated facade keeps plugin code free from `ctx` plumbing without using a mutable shared-SDK identity; this release requires `@vetta-org/plugin-sdk >=0.3.7`.
+
 ### Fixed
 
 - Make the host design-system primitives explicitly opt-in through `hostUi: true`, so plugins that do not import `@vetta-org/ui` no longer need to install it. The uninstalled legacy names `@vetta/ui` and `@vetta/theme-ui/plugin-ui` are no longer default build-time shared dependencies; opted-in legacy UI source imports remain externalized to the Desktop host, and Desktop continues serving both legacy share keys for already-built plugins.

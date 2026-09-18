@@ -27,6 +27,61 @@ function props(overrides: Partial<DefaultSessionRowViewProps> = {}): DefaultSess
 }
 
 describe("DefaultSessionRowView leading icon", () => {
+	it("applies the selected background without a color transition", () => {
+		const view = render(<DefaultSessionRowView {...props({ active: true })} />);
+		const row = view.getByRole("button", { name: "Conversation" });
+
+		expect(row.className).toContain("bg-primary/15");
+		expect(row.style.transitionProperty).toBe("color, border-color");
+		expect(row.style.transitionProperty).not.toContain("background-color");
+	});
+
+	it("selects synchronously and defers scroll measurement until after a paint", () => {
+		const frames: FrameRequestCallback[] = [];
+		vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+			frames.push(callback);
+			return frames.length;
+		});
+		try {
+			const onSelect = vi.fn();
+			const view = render(
+				<div data-sidebar-selection-scroll="true">
+					<DefaultSessionRowView {...props({ onSelect })} />
+				</div>,
+			);
+			const row = view.getByRole("button", { name: "Conversation" });
+			const scrollParent = row.parentElement;
+			if (!scrollParent) throw new Error("missing scroll parent");
+			Object.defineProperties(scrollParent, {
+				clientHeight: { configurable: true, value: 100 },
+				scrollHeight: { configurable: true, value: 300 },
+			});
+			vi.spyOn(scrollParent, "getBoundingClientRect").mockReturnValue({
+				bottom: 100,
+				height: 100,
+				left: 0,
+				right: 200,
+				top: 0,
+				width: 200,
+				x: 0,
+				y: 0,
+				toJSON: () => ({}),
+			});
+			const measureRow = vi.spyOn(row, "getBoundingClientRect");
+
+			fireEvent.click(row);
+
+			expect(onSelect).toHaveBeenCalledOnce();
+			expect(measureRow).not.toHaveBeenCalled();
+			act(() => frames.shift()?.(0));
+			expect(measureRow).not.toHaveBeenCalled();
+			act(() => frames.shift()?.(16));
+			expect(measureRow).toHaveBeenCalledOnce();
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
+
 	it("forwards the context-menu gesture for an enabled Team conversation row", () => {
 		const onOpenContextMenu = vi.fn();
 		const view = render(
@@ -194,6 +249,27 @@ describe("DefaultSessionRowView tag dots", () => {
 });
 
 describe("SessionRowView Team identity", () => {
+	it("applies the selected background without a color transition", () => {
+		const view = render(
+			<SessionRowView
+				active
+				label="Conversation"
+				onOpenContextMenu={vi.fn()}
+				onRename={vi.fn()}
+				onRenameDone={vi.fn()}
+				onSelect={vi.fn()}
+				renaming={false}
+				running={false}
+				scheduled={false}
+			/>,
+		);
+		const row = view.getByRole("button", { name: "Conversation" });
+
+		expect(row.className).toContain("bg-accent");
+		expect(row.style.transitionProperty).toBe("color, border-color");
+		expect(row.style.transitionProperty).not.toContain("background-color");
+	});
+
 	it("forwards the context-menu gesture from a Team conversation inside a project", () => {
 		const onOpenContextMenu = vi.fn();
 		const view = render(

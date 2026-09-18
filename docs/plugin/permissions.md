@@ -113,6 +113,10 @@ ctx.permissions.require("fs.read");  // 缺则抛 Plugin permission denied: fs.r
 - `replaceOwnedProviders(providers)` 是**原子快照**：省略即删除。所以每次写入都得重建完整真相。
 - 正因如此，写之前先 `listOwnedProviders()` 读回宿主当前持有的状态并做对账——否则上游一时没返回的
   模型会被当成用户丢失的模型抹掉。读回的 `apiKey` 是掩码，下次写入要带上真凭据。
+- SDK 0.3.7 的模型定义可声明 `reasoning: true`、`reasoningLevels`（上游原始档位字符串数组）和
+  `defaultReasoningLevel`。例如 CPA 可发布 `["low", "medium", "high", "xhigh", "max"]`。
+  档位省略或为空时回退到宿主的 API 类型预设；显式列表的默认值无效或省略时使用第一项，用户已选择的档位优先。
+  需搭配保留这两个字段的 Desktop 模型写入合同；旧宿主可能静默清除它们，单独升级插件不能修复宿主。
 
 ### ctx.ocr（`ai.ocr.recognize` / `ai.ocr.provider.register`）
 

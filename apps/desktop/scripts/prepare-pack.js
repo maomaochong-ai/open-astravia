@@ -6,6 +6,7 @@ import { dirname, join } from "node:path";
 import { resolveBuildResourceFilters } from "./build-resource-filters.mjs";
 import { validateDesktopBuildEnvironment } from "./desktop-build-environment.mjs";
 import { DESKTOP_BUILD_OUTPUTS } from "./desktop-packaging-layout.mjs";
+import { LINUX_PACKAGE_METADATA, LINUX_RELEASE_TARGETS } from "./linux-packaging-contract.mjs";
 import { loadBuildEnv } from "./load-build-env.mjs";
 import { resolvePackagedNativeDependencies } from "./packaged-native-dependencies.mjs";
 import { resolveReleaseInfo } from "./resolve-release-info.mjs";
@@ -272,7 +273,9 @@ const appPkg = {
 	name: "vetta",
 	version: appVersion,
 	description: "Vetta Desktop App",
-	author: "Vetta",
+	author: LINUX_PACKAGE_METADATA.author,
+	homepage: LINUX_PACKAGE_METADATA.homepage,
+	license: LINUX_PACKAGE_METADATA.license,
 	type: "module",
 	main: "main/index.js",
 	dependencies: Object.fromEntries(externalDepInfos.map(({ dep, version }) => [dep, version])),
@@ -789,9 +792,13 @@ const builderConfig = {
 		icon: "build/icon.ico",
 	},
 	linux: {
-		target: ["AppImage"],
+		target: LINUX_RELEASE_TARGETS,
 		category: "Utility",
+		description: "Vetta AI agent desktop application",
 		icon: "build/icon.png",
+		maintainer: LINUX_PACKAGE_METADATA.maintainer,
+		synopsis: "AI agent desktop application",
+		vendor: LINUX_PACKAGE_METADATA.vendor,
 	},
 	// Sidecar binaries are picked up from the staged ./im-gateway dir
 	// (populated above by the cross-build step).

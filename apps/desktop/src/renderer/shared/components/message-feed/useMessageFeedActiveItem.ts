@@ -30,31 +30,45 @@ export function useMessageFeedActiveItem<T>({
 		if (index != null) setActiveIndex(index);
 	}, [scrollerElement]);
 
+	/**
+	 * 读 `scrollTop` 是一次布局读取，必须折叠到每帧一次。
+	 *
+	 * 滚动那条路径本来就这么做了，条目重渲染这条漏了：虚拟列表在一次尺寸变化里会反复回调
+	 * `itemsRendered`，而每次回调都紧跟在 DOM 写入之后——同步读就是一次强制同步布局，整条
+	 * 消息列表重排一遍。拖侧边栏宽度时尺寸每帧都在变，实测这一处吃掉 750ms。
+	 */
+	const frameRef = useRef<number | null>(null);
+	const scheduleSync = useCallback(() => {
+		if (frameRef.current != null) return;
+		frameRef.current = requestAnimationFrame(() => {
+			frameRef.current = null;
+			syncActiveIndex();
+		});
+	}, [syncActiveIndex]);
+
 	const onItemsRendered = useCallback(
 		(items: ListItem<T>[]) => {
 			renderedItemsRef.current = items.map(({ index, offset, size }) => ({ index, offset, size }));
-			syncActiveIndex();
+			scheduleSync();
 		},
-		[syncActiveIndex],
+		[scheduleSync],
 	);
 
 	useEffect(() => {
 		if (!scrollerElement) return;
-		let frame: number | null = null;
-		const onScroll = (): void => {
-			if (frame != null) return;
-			frame = requestAnimationFrame(() => {
-				frame = null;
-				syncActiveIndex();
-			});
-		};
-		scrollerElement.addEventListener("scroll", onScroll, { passive: true });
-		syncActiveIndex();
+		scrollerElement.addEventListener("scroll", scheduleSync, { passive: true });
+		scheduleSync();
 		return () => {
-			if (frame != null) cancelAnimationFrame(frame);
-			scrollerElement.removeEventListener("scroll", onScroll);
+			scrollerElement.removeEventListener("scroll", scheduleSync);
 		};
-	}, [scrollerElement, syncActiveIndex]);
+	}, [scrollerElement, scheduleSync]);
+
+	useEffect(
+		() => () => {
+			if (frameRef.current != null) cancelAnimationFrame(frameRef.current);
+		},
+		[],
+	);
 
 	return { activeIndex, onItemsRendered };
 }

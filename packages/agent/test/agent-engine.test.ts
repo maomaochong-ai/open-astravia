@@ -227,6 +227,59 @@ describe("runAgentTurn", () => {
 		expect(checkpointReasons).toEqual(["model_call", "assistant_error", "model_call", "assistant_result"]);
 	});
 
+	it("hands the failed assistant message to the assistant_error checkpoint for overflow recovery", async () => {
+		const overflowMessage = "This model's maximum context length is 200000 tokens.";
+		const failure = new AIError("AI_CONTEXT_OVERFLOW", overflowMessage);
+		const overflow = new LanguageModelStream();
+		overflow.push({
+			type: "error",
+			reason: "error",
+			error: { ...assistant([]), stopReason: "error", errorMessage: overflowMessage },
+			failure: getAIErrorDetails(failure),
+		});
+		overflow.fail(failure);
+		const errorCheckpointMessages: (AssistantMessage | undefined)[] = [];
+		const run = runAgentTurn({
+			...request([
+				successResponse(assistant([toolCall("first", "noop", {})], "toolUse")),
+				{ events: overflow, result: overflow.result() },
+			]),
+			resolveTools: async () => [noopTool()],
+			checkpoint: async ({ reason, assistantMessage }) => {
+				if (reason === "assistant_error") errorCheckpointMessages.push(assistantMessage);
+				return undefined;
+			},
+		});
+
+		await expect(run.result).resolves.toMatchObject({ status: "failed" });
+		expect(errorCheckpointMessages).toHaveLength(1);
+		expect(errorCheckpointMessages[0]).toMatchObject({ stopReason: "error" });
+		expect(errorCheckpointMessages[0]?.errorMessage).toContain(overflowMessage);
+	});
+
+	it("restarts the recovery attempt count once a model call makes progress", async () => {
+		const errorAttempts: number[] = [];
+		const run = runAgentTurn({
+			...request([
+				failedResponse(new Error("overflow-1")),
+				successResponse(assistant([toolCall("progress", "noop", {})], "toolUse")),
+				failedResponse(new Error("overflow-2")),
+				failedResponse(new Error("overflow-3")),
+				successResponse(assistant([])),
+			]),
+			limits: { ...DEFAULT_LIMITS, maxRecoveryAttempts: 5 },
+			resolveTools: async () => [noopTool()],
+			checkpoint: async ({ reason, recoveryAttempt }) => {
+				if (reason !== "assistant_error") return undefined;
+				errorAttempts.push(recoveryAttempt);
+				return { retry: true };
+			},
+		});
+
+		await expect(run.result).resolves.toMatchObject({ status: "completed", recoveryAttempts: 3 });
+		expect(errorAttempts).toEqual([0, 0, 1]);
+	});
+
 	it("ends with recovery_exhausted after the configured retry budget", async () => {
 		const run = runAgentTurn({
 			...request([
@@ -710,6 +763,17 @@ function successResponse(message: AssistantMessage): ModelStreamResponse {
 	stream.push({ type: "start", partial: message });
 	stream.push({ type: "done", reason: message.stopReason === "toolUse" ? "toolUse" : "stop", message });
 	return { events: stream, result: stream.result() };
+}
+
+function noopTool(): RuntimeToolDefinition {
+	return {
+		name: "noop",
+		description: "noop",
+		inputSchema: Type.Object({}),
+		async execute() {
+			return { content: [{ type: "text", text: "ok" }], details: {} };
+		},
+	};
 }
 
 function failedResponse(error: unknown): ModelStreamResponse {

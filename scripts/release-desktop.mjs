@@ -4,11 +4,11 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { requireReleaseNotes } from "./release/release-notes.mjs";
 
 const DESKTOP_PACKAGE_PATH = "apps/desktop/package.json";
-const DESKTOP_CHANGELOG_PATH = "apps/desktop/CHANGELOG.md";
 const LOCKFILE_PATH = "bun.lock";
-const RELEASE_FILES = [DESKTOP_PACKAGE_PATH, DESKTOP_CHANGELOG_PATH, LOCKFILE_PATH];
+const RELEASE_FILES = [DESKTOP_PACKAGE_PATH, LOCKFILE_PATH];
 
 function run(command, args, options = {}) {
 	console.log(`$ ${command} ${args.join(" ")}`);
@@ -31,19 +31,6 @@ export function bumpVersion(version, bumpType) {
 	const minor = Number(match[2]);
 	const patch = Number(match[3]);
 	return bumpType === "minor" ? `${major}.${minor + 1}.0` : `${major}.${minor}.${patch + 1}`;
-}
-
-function updateChangelog(version) {
-	const changelog = readFileSync(DESKTOP_CHANGELOG_PATH, "utf8");
-	const unreleasedHeading = /^## \[Unreleased\].*$/m;
-	if (!unreleasedHeading.test(changelog)) {
-		throw new Error(`${DESKTOP_CHANGELOG_PATH} is missing an [Unreleased] section`);
-	}
-
-	const date = new Date().toISOString().slice(0, 10);
-	const releasedHeading = `## [${version}] - ${date}`;
-	const updated = changelog.replace(unreleasedHeading, `## [Unreleased]\n\n${releasedHeading}`);
-	writeFileSync(DESKTOP_CHANGELOG_PATH, updated);
 }
 
 function assertCleanWorktree() {
@@ -117,10 +104,12 @@ function main() {
 	const version = bumpVersion(desktopPackage.version, bumpType);
 	const tag = `v${version}`;
 	assertTagAvailable(tag);
+	// 发布说明是 Release 的正文，必须在打 tag 之前就已经写好并提交：
+	// 流水线由 tag 触发，这时再补文件已经来不及进这次发布。
+	requireReleaseNotes(version);
 
 	desktopPackage.version = version;
 	writeFileSync(DESKTOP_PACKAGE_PATH, `${JSON.stringify(desktopPackage, null, "\t")}\n`);
-	updateChangelog(version);
 	run("bun", ["install", "--lockfile-only"]);
 	assertOnlyReleaseFilesChanged();
 

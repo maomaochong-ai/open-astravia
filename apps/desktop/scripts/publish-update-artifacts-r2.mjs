@@ -7,6 +7,7 @@ import { HeadObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { parse } from "yaml";
 import { referencedFileName, updaterMetadataPattern } from "./updater-metadata.mjs";
+import { windowsSupplementalArtifactNames } from "./windows-packaging-contract.mjs";
 
 const projectRoot = join(import.meta.dirname, "..");
 const releaseDir = join(projectRoot, "release");
@@ -99,12 +100,15 @@ export async function verifyRemoteMetadataVersions({
 	}
 }
 
-function contentTypeFor(fileName) {
+export function contentTypeFor(fileName) {
 	const lower = fileName.toLowerCase();
 	if (lower.endsWith(".yml") || lower.endsWith(".yaml")) return "application/yaml";
 	if (lower.endsWith(".zip")) return "application/zip";
 	if (lower.endsWith(".dmg")) return "application/x-apple-diskimage";
 	if (lower.endsWith(".exe")) return "application/vnd.microsoft.portable-executable";
+	if (lower.endsWith(".msi")) return "application/x-msi";
+	if (lower.endsWith(".deb")) return "application/vnd.debian.binary-package";
+	if (lower.endsWith(".rpm")) return "application/x-rpm";
 	return "application/octet-stream";
 }
 
@@ -118,8 +122,12 @@ export async function collectArtifacts(directory = releaseDir) {
 	}
 
 	const artifacts = new Set();
+	const releaseVersions = new Set();
 	for (const metadataFile of metadataFiles) {
 		const document = parse(await readFile(join(directory, metadataFile), "utf8"));
+		if (typeof document?.version === "string" && /^\d+\.\d+\.\d+$/.test(document.version)) {
+			releaseVersions.add(document.version);
+		}
 		const references = [
 			document?.path,
 			...(Array.isArray(document?.files) ? document.files.map((file) => file?.url) : []),
@@ -133,6 +141,12 @@ export async function collectArtifacts(directory = releaseDir) {
 			artifacts.add(fileName);
 			const blockmap = `${fileName}.blockmap`;
 			if (availableFiles.has(blockmap)) artifacts.add(blockmap);
+		}
+	}
+	if (releaseVersions.size === 1) {
+		const [releaseVersion] = releaseVersions;
+		for (const fileName of windowsSupplementalArtifactNames(releaseVersion)) {
+			if (availableFiles.has(fileName)) artifacts.add(fileName);
 		}
 	}
 

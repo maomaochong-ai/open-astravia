@@ -140,6 +140,7 @@ export interface AgentCheckpointRequest {
 	readonly reason: AgentCheckpointReason;
 	readonly messages: readonly Message[];
 	readonly modelCallIndex: number;
+	/** 自最近一次模型调用产出可用结果以来的连续恢复次数，不是整轮累计。 */
 	readonly recoveryAttempt: number;
 	readonly assistantMessage?: AssistantMessage;
 }

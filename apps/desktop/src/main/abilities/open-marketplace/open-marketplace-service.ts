@@ -25,6 +25,18 @@ const MAX_MANIFEST_BYTES = 2 * 1024 * 1024;
 const MAX_UNCOMPRESSED_BYTES = 100 * 1024 * 1024;
 const MAX_ARCHIVE_ENTRIES = 10_000;
 const DOWNLOAD_TIMEOUT_MS = 15_000;
+/**
+ * 归档下载按「停顿」判超时，而不是按总时长。
+ *
+ * codeload 是现打包现传的，官方市场的 zip 已经 7 MB 左右，正常网络下也要 20 秒上下——
+ * 早先那个覆盖整个 body 的 15 秒总超时，在完全健康的链路上同样会把下载掐断。
+ * 只要字节还在进来就继续等，真正断流才放弃。
+ */
+const ARCHIVE_HEADER_TIMEOUT_MS = 20_000;
+const ARCHIVE_STALL_TIMEOUT_MS = 30_000;
+const ARCHIVE_TOTAL_TIMEOUT_MS = 180_000;
+const ARCHIVE_ATTEMPTS = 2;
+const ARCHIVE_RETRY_DELAY_MS = 1_000;
 const log = getAppLogger("open-marketplace");
 
 type MarketplaceSyncError = NonNullable<OpenMarketplaceSnapshot["error"]>;
@@ -33,10 +45,15 @@ class MarketplaceRequestError extends Error {
 	constructor(
 		readonly code: MarketplaceSyncError,
 		message: string,
+		/** 仅 `app-outdated`：清单要求的最低桌面端版本，用于告诉用户该升到哪。 */
+		readonly requiredAppVersion?: string,
 	) {
 		super(message);
 	}
 }
+
+/** 内容本身不可接受：重试同一个归档不会有不同结果。 */
+class MarketplaceContentError extends Error {}
 
 function requestError(status: number, operation: string): MarketplaceRequestError {
 	const code: MarketplaceSyncError =
@@ -56,7 +73,18 @@ function syncError(error: unknown): MarketplaceSyncError {
 	return error instanceof MarketplaceRequestError ? error.code : "sync-failed";
 }
 
+function requiredAppVersion(error: unknown): string | undefined {
+	return error instanceof MarketplaceRequestError ? error.requiredAppVersion : undefined;
+}
+
 type FetchArchive = (url: string, init?: RequestInit) => Promise<Response>;
+export interface ArchiveDownloadTimings {
+	headerTimeoutMs?: number;
+	stallTimeoutMs?: number;
+	totalTimeoutMs?: number;
+	attempts?: number;
+	retryDelayMs?: number;
+}
 type InstallAbility = (
 	snapshotRoot: string,
 	ability: MarketplaceManifest["abilities"][number],
@@ -104,6 +132,7 @@ export interface OpenMarketplaceServiceOptions {
 	readMcpSetupStatus?: ReadMcpSetupStatus;
 	onBackgroundUpdate?: (snapshot: OpenMarketplaceSnapshot) => void;
 	createTemporaryDirectory?: () => Promise<string>;
+	archiveDownload?: ArchiveDownloadTimings;
 }
 
 function isContained(parent: string, target: string): boolean {
@@ -263,6 +292,7 @@ export class OpenMarketplaceService {
 	private readonly readMcpSetupStatusOverride?: ReadMcpSetupStatus;
 	private readonly onBackgroundUpdate?: (snapshot: OpenMarketplaceSnapshot) => void;
 	private readonly createTemporaryDirectory: () => Promise<string>;
+	private readonly archiveDownload: Required<ArchiveDownloadTimings>;
 	private lastUpdateCheckAt: number | undefined;
 	private backgroundUpdate: Promise<void> | undefined;
 	private syncInFlight: Promise<OpenMarketplaceSnapshot> | undefined;
@@ -297,6 +327,13 @@ export class OpenMarketplaceService {
 		this.prepareMcpAbilityOverride = options.prepareMcpAbility;
 		this.readMcpSetupStatusOverride = options.readMcpSetupStatus;
 		this.onBackgroundUpdate = options.onBackgroundUpdate;
+		this.archiveDownload = {
+			headerTimeoutMs: options.archiveDownload?.headerTimeoutMs ?? ARCHIVE_HEADER_TIMEOUT_MS,
+			stallTimeoutMs: options.archiveDownload?.stallTimeoutMs ?? ARCHIVE_STALL_TIMEOUT_MS,
+			totalTimeoutMs: options.archiveDownload?.totalTimeoutMs ?? ARCHIVE_TOTAL_TIMEOUT_MS,
+			attempts: options.archiveDownload?.attempts ?? ARCHIVE_ATTEMPTS,
+			retryDelayMs: options.archiveDownload?.retryDelayMs ?? ARCHIVE_RETRY_DELAY_MS,
+		};
 		this.createTemporaryDirectory =
 			options.createTemporaryDirectory ??
 			(options.rootDir
@@ -342,8 +379,9 @@ export class OpenMarketplaceService {
 		} catch (error) {
 			const cached = this.memorySnapshot ?? (await this.readCachedSnapshot());
 			const errorCode = syncError(error);
+			const minAppVersion = requiredAppVersion(error);
 			this.logSyncFailure("refresh", error, errorCode, cached !== null);
-			const failed = cached
+			const base = cached
 				? { ...cached, stale: true, error: errorCode }
 				: {
 						sourceId: this.sourceId,
@@ -354,6 +392,7 @@ export class OpenMarketplaceService {
 						stale: true,
 						error: errorCode,
 					};
+			const failed = minAppVersion ? { ...base, requiredAppVersion: minAppVersion } : base;
 			this.memorySnapshot = failed;
 			return failed;
 		}
@@ -471,10 +510,19 @@ export class OpenMarketplaceService {
 		}
 	}
 
+	/**
+	 * 版本不达标不是网络故障，必须给出自己的错误码。
+	 *
+	 * 早先这里抛的是普通 Error，被 {@link syncError} 一律归成 `sync-failed`，
+	 * 界面只说「同步失败」——用户和排障的人都会把它当成网络问题去查，
+	 * 而实际上无论网络怎么修，不升级就永远是空的。
+	 */
 	private assertManifestCompatible(manifest: MarketplaceManifest): void {
 		if (!isAppVersionCompatible(this.appVersion, manifest.minAppVersion)) {
-			throw new Error(
+			throw new MarketplaceRequestError(
+				"app-outdated",
 				`Marketplace ${manifest.marketplaceVersion} requires desktop app ${manifest.minAppVersion} or newer`,
+				manifest.minAppVersion,
 			);
 		}
 	}
@@ -496,8 +544,31 @@ export class OpenMarketplaceService {
 	}
 
 	private async downloadArchive(): Promise<Buffer> {
+		let lastError: unknown;
+		for (let attempt = 0; attempt < this.archiveDownload.attempts; attempt += 1) {
+			if (attempt > 0) {
+				await new Promise((resolve) => setTimeout(resolve, this.archiveDownload.retryDelayMs));
+			}
+			try {
+				return await this.downloadArchiveOnce();
+			} catch (error) {
+				// HTTP 状态与内容体积是确定性的，重试只会白等；只有链路层的中断值得再试一次。
+				if (error instanceof MarketplaceRequestError || error instanceof MarketplaceContentError) throw error;
+				lastError = error;
+			}
+		}
+		throw lastError;
+	}
+
+	private async downloadArchiveOnce(): Promise<Buffer> {
 		const controller = new AbortController();
-		const timer = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
+		let stallTimer: ReturnType<typeof setTimeout> | undefined;
+		const armStall = (ms: number): void => {
+			if (stallTimer) clearTimeout(stallTimer);
+			stallTimer = setTimeout(() => controller.abort(), ms);
+		};
+		const totalTimer = setTimeout(() => controller.abort(), this.archiveDownload.totalTimeoutMs);
+		armStall(this.archiveDownload.headerTimeoutMs);
 		try {
 			const token = this.getAccessToken()?.trim();
 			const response = await this.fetchArchive(
@@ -515,14 +586,43 @@ export class OpenMarketplaceService {
 			if (!response.ok) throw requestError(response.status, "Open marketplace download");
 			const declaredLength = Number(response.headers.get("content-length"));
 			if (Number.isFinite(declaredLength) && declaredLength > MAX_ARCHIVE_BYTES) {
-				throw new Error("Open marketplace archive is too large");
+				throw new MarketplaceContentError("Open marketplace archive is too large");
 			}
-			const buffer = Buffer.from(await response.arrayBuffer());
-			if (buffer.byteLength > MAX_ARCHIVE_BYTES) throw new Error("Open marketplace archive is too large");
+			armStall(this.archiveDownload.stallTimeoutMs);
+			const buffer = await this.readArchiveBody(response, armStall);
+			if (buffer.byteLength > MAX_ARCHIVE_BYTES) {
+				throw new MarketplaceContentError("Open marketplace archive is too large");
+			}
 			return buffer;
 		} finally {
-			clearTimeout(timer);
+			clearTimeout(totalTimer);
+			if (stallTimer) clearTimeout(stallTimer);
 		}
+	}
+
+	/** 逐块读取，每收到一块就把停顿计时器推后；边读边核对体积，超限立刻断流。 */
+	private async readArchiveBody(response: Response, armStall: (ms: number) => void): Promise<Buffer> {
+		const body = response.body;
+		if (!body) return Buffer.from(await response.arrayBuffer());
+		const reader = body.getReader();
+		const chunks: Uint8Array[] = [];
+		let size = 0;
+		try {
+			for (;;) {
+				const chunk = await reader.read();
+				if (chunk.done) break;
+				size += chunk.value.byteLength;
+				if (size > MAX_ARCHIVE_BYTES) {
+					await reader.cancel();
+					throw new MarketplaceContentError("Open marketplace archive is too large");
+				}
+				chunks.push(chunk.value);
+				armStall(this.archiveDownload.stallTimeoutMs);
+			}
+		} finally {
+			reader.releaseLock();
+		}
+		return Buffer.concat(chunks, size);
 	}
 
 	private async downloadManifest(): Promise<MarketplaceManifest> {

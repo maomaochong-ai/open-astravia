@@ -7,6 +7,34 @@ import {
 } from "../../src/runtime-host/index.js";
 
 describe("RuntimeModel", () => {
+	it.each(["gpt-5.6", "gpt-6", "custom-gpt-alias"])(
+		"preserves xhigh for %s on initialization, selection and turn binding",
+		async (id) => {
+			const selected: Model<Api> = {
+				...model("proxy", id, true),
+				api: "openai-responses",
+				reasoningLevels: ["low", "high", "xhigh"],
+			};
+			const runtime = new RuntimeModel({
+				initialModel: selected,
+				initialThinkingLevel: "xhigh",
+				catalog: catalog([selected]),
+				credentials: { resolve: async () => "test-key", refreshAuth: async () => {} },
+			});
+			expect(runtime.readThinkingLevel()).toBe("xhigh");
+			await runtime.selectModel(`proxy/${id}`, "always");
+			runtime.setThinkingLevel("xhigh");
+			expect(runtime.readThinkingLevel()).toBe("xhigh");
+			const binding = await runtime.bind({
+				sessionId: "session-1",
+				operationId: "turn-1",
+				reason: "turn",
+				signal: new AbortController().signal,
+				request: { payload: "hello", displayText: "hello", model: { reasoning: "xhigh" } },
+			});
+			expect(binding.reasoning).toBe("xhigh");
+		},
+	);
 	it("resolves available models before fallback and preserves model ids containing slashes", async () => {
 		const available = model("available", "model/with/slash", true);
 		const fallback = model("fallback", "fallback-model", true);
@@ -79,7 +107,7 @@ describe("RuntimeModel", () => {
 		expect(runtime.readCurrentModel()).toBe(INITIAL_MODEL);
 	});
 
-	it("clamps canonical thinking levels while preserving custom model levels", async () => {
+	it("disables reasoning for plain models and preserves provider-native effort values", async () => {
 		const reasoning = model("test", "reasoning", true);
 		const xhigh = model("openai", "gpt-5.3-test", true);
 		const runtime = createRuntime({
@@ -89,11 +117,11 @@ describe("RuntimeModel", () => {
 
 		expect(runtime.readThinkingLevel()).toBe("off");
 		runtime.setThinkingLevel("custom-max");
-		expect(runtime.readThinkingLevel()).toBe("custom-max");
+		expect(runtime.readThinkingLevel()).toBe("off");
 
 		await runtime.selectModel("test/reasoning", "always");
 		runtime.setThinkingLevel("xhigh");
-		expect(runtime.readThinkingLevel()).toBe("high");
+		expect(runtime.readThinkingLevel()).toBe("xhigh");
 
 		await runtime.selectModel("openai/gpt-5.3-test", "always");
 		runtime.setThinkingLevel("xhigh");

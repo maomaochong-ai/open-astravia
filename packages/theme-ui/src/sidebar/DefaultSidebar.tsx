@@ -35,6 +35,7 @@ export function DefaultSidebar({
 		<SidebarPanel
 			className={classNames?.panel}
 			contentClassName={classNames?.panelContent}
+			panelRef={model.setPanelRef}
 			width={model.width}
 			onResize={model.actions.resize}
 			onResizeEnd={model.actions.resizeEnd}

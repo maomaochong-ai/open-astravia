@@ -48,6 +48,8 @@ export interface CodingAgentProviderModel {
 	readonly name: string;
 	readonly api?: Api;
 	readonly reasoning: boolean;
+	readonly reasoningLevels?: string[];
+	readonly defaultReasoningLevel?: string;
 	readonly input: readonly ("text" | "image")[];
 	readonly cost: Model<Api>["cost"];
 	readonly contextWindow: number;

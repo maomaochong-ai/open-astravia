@@ -2,6 +2,7 @@ import { cn } from "@vetta-org/ui";
 import { memo, type JSX } from "react";
 import { SessionStatusIcon } from "../sidebar/SessionStatusIcon";
 import { AvatarStackView } from "../shared/AvatarStackView";
+import { IMMEDIATE_SESSION_SELECTION_STYLE } from "./session-row-transition";
 import { SessionRenameInputView } from "./SessionRenameInputView";
 import { prepareSidebarSelection } from "./useActiveSessionAutoScroll";
 
@@ -62,9 +63,10 @@ export const SessionRowView = memo(function SessionRowView({
 			}}
 			onContextMenu={onOpenContextMenu}
 			className={cn(
-				"relative flex w-full items-center gap-2 rounded-lg py-[6px] pr-2.5 pl-[30px] text-left transition-colors duration-100",
+				"relative flex w-full items-center gap-2 rounded-lg py-[6px] pr-2.5 pl-[30px] text-left",
 				active ? "bg-accent text-foreground" : "hover:bg-accent/50",
 			)}
+			style={IMMEDIATE_SESSION_SELECTION_STYLE}
 			title={title}
 		>
 			{renaming ? (

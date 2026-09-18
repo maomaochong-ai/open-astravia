@@ -6,12 +6,19 @@ import test from "node:test";
 import {
 	assertNotDowngrade,
 	collectArtifacts,
+	contentTypeFor,
 	readReleaseVersion,
 	validatePublishTarget,
 	verifyRemoteMetadataVersions,
 } from "./publish-update-artifacts-r2.mjs";
 
-test("collectArtifacts uploads only files referenced by updater metadata and publishes metadata last", async () => {
+test("contentTypeFor publishes native package formats with package media types", () => {
+	assert.equal(contentTypeFor("vetta_1.2.3_amd64.deb"), "application/vnd.debian.binary-package");
+	assert.equal(contentTypeFor("vetta-1.2.3.x86_64.rpm"), "application/x-rpm");
+	assert.equal(contentTypeFor("Vetta-1.2.3-win-x64.msi"), "application/x-msi");
+});
+
+test("collectArtifacts uploads updater files and matching Windows supplements before metadata", async () => {
 	const directory = await mkdtemp(join(tmpdir(), "vetta-r2-publish-"));
 	try {
 		await Promise.all([
@@ -21,12 +28,17 @@ test("collectArtifacts uploads only files referenced by updater metadata and pub
 			),
 			writeFile(join(directory, "Vetta Setup 1.2.3.exe"), "installer"),
 			writeFile(join(directory, "Vetta Setup 1.2.3.exe.blockmap"), "blockmap"),
+			writeFile(join(directory, "Vetta-1.2.3-win-x64.msi"), "msi"),
+			writeFile(join(directory, "Vetta-1.2.3-win-x64.zip"), "zip"),
 			writeFile(join(directory, "Vetta Setup 1.2.2.exe"), "stale"),
+			writeFile(join(directory, "Vetta-1.2.2-win-x64.msi"), "stale"),
 		]);
 
 		assert.deepEqual(await collectArtifacts(directory), [
 			"Vetta Setup 1.2.3.exe",
 			"Vetta Setup 1.2.3.exe.blockmap",
+			"Vetta-1.2.3-win-x64.msi",
+			"Vetta-1.2.3-win-x64.zip",
 			"latest.yml",
 		]);
 	} finally {

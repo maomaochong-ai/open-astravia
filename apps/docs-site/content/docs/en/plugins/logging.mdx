@@ -1,0 +1,39 @@
+---
+title: Logging
+description: Emit structured logs with an automatically bound plugin identity and host-managed persistence.
+---
+
+Import the identity-bound `logger` directly from the SDK. It does not need to be passed through
+`PluginContext`:
+
+```ts
+import { logger } from "@vetta-org/plugin-sdk/logger";
+
+logger.info("Proxy configuration loaded", { provider: "codex" });
+
+const syncLogger = logger.child("sync");
+syncLogger.warn("Remote catalog is unavailable", { retryInMs: 5_000 });
+```
+
+During development and production builds, `@vetta-org/plugin-vite` reads the validated
+`plugin.json` and binds this entry point to the current plugin's `id` and `version`. The desktop
+host adds that identity, bounds and redacts structured fields, and persists the result to the
+Renderer log. On Windows, the default path is
+`%USERPROFILE%\.vetta\desktop-app\logs\render\YYYY-MM-DD.log`.
+
+The supported levels are `debug`, `info`, `warn`, and `error`. Use the second argument for
+searchable structured fields. Never log tokens, cookies, passwords, full request headers, or user
+content. Host redaction is a final safety net, not a replacement for avoiding sensitive output at
+the source.
+
+<Callout title="Version requirements" type="info">
+  This entry point requires `@vetta-org/plugin-sdk >= 0.3.7`, `@vetta-org/plugin-vite >= 0.2.3`,
+  and `pluginApiVersion: "^2.5.0"` in `plugin.json`. Existing plugins do not need to migrate and
+  continue to load unchanged.
+</Callout>
+
+`logger` is for diagnostics and does not show notifications to users. When the user needs to take
+action, continue to use `ctx.notify.info()`, `ctx.notify.warning()`, or `ctx.notify.error()`.
+
+The stdout/stderr of a managed service process started by a plugin belongs to the host's service
+lifecycle logging and does not automatically pass through this JavaScript `logger`.

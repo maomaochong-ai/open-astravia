@@ -1,0 +1,35 @@
+---
+title: 日志
+description: 输出自动带插件身份、由桌面宿主持久化的结构化日志。
+---
+
+插件可以直接从 SDK 导入已经绑定身份的 `logger`，不需要从 `PluginContext` 逐层传递：
+
+```ts
+import { logger } from "@vetta-org/plugin-sdk/logger";
+
+logger.info("Proxy configuration loaded", { provider: "codex" });
+
+const syncLogger = logger.child("sync");
+syncLogger.warn("Remote catalog is unavailable", { retryInMs: 5_000 });
+```
+
+`@vetta-org/plugin-vite` 会在开发和生产构建中读取经过校验的 `plugin.json`，把这个入口绑定到
+当前插件的 `id` 和 `version`。桌面宿主接收日志后统一添加插件标识、限制字段大小、脱敏常见
+敏感字段，并写入 Renderer 日志文件。Windows 默认位置是
+`%USERPROFILE%\.vetta\desktop-app\logs\render\YYYY-MM-DD.log`。
+
+支持 `debug`、`info`、`warn` 和 `error` 四个级别。第二个参数应当是便于检索的结构化字段；
+不要记录 Token、Cookie、密码、完整请求头或用户内容。宿主脱敏只是最后一道防线，不能代替插件
+在源头避免输出敏感数据。
+
+<Callout title="版本要求" type="info">
+  这一入口要求 `@vetta-org/plugin-sdk >= 0.3.7`、`@vetta-org/plugin-vite >= 0.2.3`，并在
+  `plugin.json` 中声明 `pluginApiVersion: "^2.5.0"`。旧插件无需迁移，仍可照常加载。
+</Callout>
+
+`logger` 用于诊断日志，不会向用户显示通知。需要用户采取行动时，继续使用
+`ctx.notify.info()`、`ctx.notify.warning()` 或 `ctx.notify.error()`。
+
+由插件启动的托管服务进程，其 stdout/stderr 属于宿主的服务生命周期日志，不会自动经过这个
+JavaScript `logger`。

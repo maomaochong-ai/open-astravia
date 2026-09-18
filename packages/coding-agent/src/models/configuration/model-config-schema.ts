@@ -29,6 +29,8 @@ export const ModelDefinitionSchema = Type.Object({
 	name: Type.Optional(Type.String({ minLength: 1 })),
 	api: Type.Optional(Type.String({ minLength: 1 })),
 	reasoning: Type.Optional(Type.Boolean()),
+	reasoningLevels: Type.Optional(Type.Array(Type.String({ minLength: 1 }))),
+	defaultReasoningLevel: Type.Optional(Type.String({ minLength: 1 })),
 	input: Type.Optional(Type.Array(Type.Union([Type.Literal("text"), Type.Literal("image")]))),
 	cost: Type.Optional(
 		Type.Object({
@@ -47,6 +49,8 @@ export const ModelDefinitionSchema = Type.Object({
 export const ModelOverrideSchema = Type.Object({
 	name: Type.Optional(Type.String({ minLength: 1 })),
 	reasoning: Type.Optional(Type.Boolean()),
+	reasoningLevels: Type.Optional(Type.Array(Type.String({ minLength: 1 }))),
+	defaultReasoningLevel: Type.Optional(Type.String({ minLength: 1 })),
 	input: Type.Optional(Type.Array(Type.Union([Type.Literal("text"), Type.Literal("image")]))),
 	cost: Type.Optional(
 		Type.Object({
@@ -88,6 +92,8 @@ const RemoteModelDefinitionSchema = Type.Object({
 	upstreamBaseUrl: Type.Optional(Type.String()),
 	api: Type.Optional(Type.String()),
 	reasoning: Type.Optional(Type.Boolean()),
+	reasoningLevels: Type.Optional(Type.Array(Type.String({ minLength: 1 }))),
+	defaultReasoningLevel: Type.Optional(Type.String({ minLength: 1 })),
 	input: Type.Optional(Type.Array(Type.String())),
 	cost: Type.Optional(
 		Type.Object({

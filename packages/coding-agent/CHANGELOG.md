@@ -22,6 +22,8 @@
 
 ### Fixed
 
+- 本地、远程和动态模型配置保留推理档位列表及默认值；SDK / RPC 档位选择使用模型声明，启动时不再按旧模型名称白名单降低 `xhigh`。
+
 - 自动标题和下一问建议现在沿用所属 Conversation 的 `sessionId`，避免同一用户 Turn 的辅助模型请求被本地多账号网关路由到另一份凭据。
 
 - Session execution owner 尚未完成索引或正在回滚时，全局工具 Provider 不再贡献 `shell`、`bash`、`read`、`write`、`edit` 等 Session 工具，避免与 Session-local 工具产生重复定义。

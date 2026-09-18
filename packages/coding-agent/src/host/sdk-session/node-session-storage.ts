@@ -54,7 +54,7 @@ export function resolveCodingAgentSdkSessionStorage(
 			operation: "create",
 			sessionId: normalizeSessionId(target.sessionId, target, createSessionId),
 			conversationDir: resolvedConversationDir,
-			createConversationPersistence: () => createFileConversationPersistence(resolvedConversationDir),
+			createConversationPersistence: ({ conversationDir }) => createFileConversationPersistence(conversationDir),
 		};
 	}
 
@@ -70,7 +70,7 @@ export function resolveCodingAgentSdkSessionStorage(
 		operation: "resume",
 		sessionId,
 		conversationDir: resolvedConversationDir,
-		createConversationPersistence: () => createFileConversationPersistence(resolvedConversationDir),
+		createConversationPersistence: ({ conversationDir }) => createFileConversationPersistence(conversationDir),
 	};
 }
 

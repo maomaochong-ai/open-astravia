@@ -13,6 +13,7 @@ import { createHostThemeBridgePlugin } from "./host-theme.js";
 import { type CreateVettaPluginPackageOptions, createVettaPluginPackage } from "./pack.js";
 import { assertPluginPermissionContract } from "./permission-contract.js";
 import { createPluginStyleScopePlugin } from "./style-scope.js";
+import { createPluginLoggerBindingPlugin } from "./plugin-logger.js";
 
 const SHARED_REACT_COMMONJS_BRIDGE_ID = "virtual:vetta-plugin-shared-react-commonjs";
 const RESOLVED_SHARED_REACT_COMMONJS_BRIDGE_ID = `\0${SHARED_REACT_COMMONJS_BRIDGE_ID}`;
@@ -235,6 +236,7 @@ export function vettaPluginFederation(options: VettaPluginFederationOptions): Pl
 	const plugins: PluginOption[] = [
 		createPluginBuildWarningFilter(),
 		createHostThemeBridgePlugin(),
+		createPluginLoggerBindingPlugin(),
 		...(devServer ? createVettaPluginDevPlugins(entry) : []),
 		createBuildDefaultsPlugin(entry, options),
 		createSharedReactCommonJsBridgePlugin(),

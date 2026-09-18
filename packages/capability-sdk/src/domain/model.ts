@@ -151,6 +151,8 @@ const modelProviderUpsertModelType = Type.Object(
 		name: Type.Optional(Type.String()),
 		api: Type.Optional(Type.String()),
 		reasoning: Type.Optional(Type.Boolean()),
+		reasoningLevels: modelDefinitionDetailType.properties.reasoningLevels,
+		defaultReasoningLevel: modelDefinitionDetailType.properties.defaultReasoningLevel,
 		contextWindow: Type.Optional(Type.Number()),
 		maxTokens: Type.Optional(Type.Number()),
 	},

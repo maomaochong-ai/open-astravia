@@ -1,11 +1,10 @@
 import { getEnvApiKey } from "../env-api-keys.js";
-import { supportsXhigh } from "../models.js";
 import { requireProviderCredential } from "../provider-kit/index.js";
 import type { Context, Model, SimpleStreamOptions, StreamFunction } from "../types.js";
 import { azureOpenAIResponsesAdapter } from "./azure-openai-responses/adapter.js";
 import type { AzureOpenAIResponsesOptions } from "./azure-openai-responses/options.js";
 import { projectResponsesAdapter } from "./openai-responses/legacy-stream.js";
-import { buildBaseOptions, clampReasoning } from "./simple-options.js";
+import { buildBaseOptions } from "./simple-options.js";
 
 export { azureOpenAIResponsesAdapter } from "./azure-openai-responses/adapter.js";
 export type { AzureOpenAIResponsesOptions } from "./azure-openai-responses/options.js";
@@ -24,6 +23,6 @@ export const streamSimpleAzureOpenAIResponses: StreamFunction<"azure-openai-resp
 	const apiKey = requireProviderCredential(model, options?.apiKey || getEnvApiKey(model.provider));
 	return streamAzureOpenAIResponses(model, context, {
 		...buildBaseOptions(model, options, apiKey),
-		reasoningEffort: supportsXhigh(model) ? options?.reasoning : clampReasoning(options?.reasoning),
+		reasoningEffort: options?.reasoning,
 	} satisfies AzureOpenAIResponsesOptions);
 };

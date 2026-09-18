@@ -24,6 +24,8 @@ interface RunState {
 	modelCalls: number;
 	toolCalls: number;
 	recoveryAttempts: number;
+	/** 自最近一次模型调用产出可用结果以来的连续恢复次数；恢复策略据此区分“重试仍失败”与“推进后再次失败”。 */
+	consecutiveRecoveryAttempts: number;
 	lastAssistantMessage?: AgentRunResult["lastAssistantMessage"];
 }
 
@@ -56,6 +58,7 @@ async function executeRun(
 		modelCalls: 0,
 		toolCalls: 0,
 		recoveryAttempts: 0,
+		consecutiveRecoveryAttempts: 0,
 	};
 	const emit = createEmitter(stream, request.observer);
 	emit({ type: "run_start" });
@@ -84,6 +87,7 @@ async function executeRun(
 
 			state.modelCalls += 1;
 			let resolved: ResolvedModelCall | undefined;
+			let failedAssistant: AgentRunResult["lastAssistantMessage"];
 			let modelCallFinished = false;
 			try {
 				const resolving = request
@@ -109,6 +113,7 @@ async function executeRun(
 				state.lastAssistantMessage = assistant;
 				state.messages.push(assistant);
 				if (consumed.failure) {
+					failedAssistant = assistant;
 					emit({ type: "model_call_finish", modelCallIndex, callId: resolved.callId, status: "failed" });
 					modelCallFinished = true;
 					emit({
@@ -125,7 +130,14 @@ async function executeRun(
 					emit({ type: "model_call_finish", modelCallIndex, callId: resolved?.callId, status: "failed" });
 				}
 				if (signal.aborted) throw error;
-				const recovery = await checkpoint(request, "assistant_error", state, modelCallIndex, signal);
+				const recovery = await checkpoint(
+					request,
+					"assistant_error",
+					state,
+					modelCallIndex,
+					signal,
+					failedAssistant,
+				);
 				if (recovery?.retry) {
 					if (state.recoveryAttempts >= request.limits.maxRecoveryAttempts) {
 						finish("recovery_exhausted", state, emit, error);
@@ -133,6 +145,7 @@ async function executeRun(
 					}
 					state.messages = [...(recovery.contextMessages ?? recovery.messages ?? state.messages)];
 					state.recoveryAttempts += 1;
+					state.consecutiveRecoveryAttempts += 1;
 					pendingInput = await takeInput(request, "steering", state, signal);
 					continue;
 				}
@@ -162,9 +175,11 @@ async function executeRun(
 					}
 					state.messages = [...(completed.contextMessages ?? completed.messages ?? state.messages)];
 					state.recoveryAttempts += 1;
+					state.consecutiveRecoveryAttempts += 1;
 					pendingInput = await takeInput(request, "steering", state, signal);
 					continue;
 				}
+				state.consecutiveRecoveryAttempts = 0;
 
 				pendingInput =
 					(await takeInput(request, "steering", state, signal)) ??
@@ -178,6 +193,7 @@ async function executeRun(
 				return;
 			}
 			state.toolCalls += toolCalls.length;
+			state.consecutiveRecoveryAttempts = 0;
 			const batch = await interruptible(
 				executeRuntimeToolCalls({
 					calls: toolCalls,
@@ -301,7 +317,7 @@ async function checkpoint(
 				reason,
 				messages: [...state.messages],
 				modelCallIndex,
-				recoveryAttempt: state.recoveryAttempts,
+				recoveryAttempt: state.consecutiveRecoveryAttempts,
 				assistantMessage,
 			},
 			signal,

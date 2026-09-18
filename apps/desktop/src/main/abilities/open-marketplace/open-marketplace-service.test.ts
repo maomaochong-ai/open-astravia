@@ -169,6 +169,47 @@ function response(buffer: Buffer): Response {
 	});
 }
 
+/**
+ * 按块吐出归档的响应，模拟真实下载：`stallAfterChunk` 之后不再推进也不结束，
+ * 只有调用方 abort 才会让流出错——跟 Chromium/undici 中断 body 的行为一致。
+ */
+function streamingResponse(
+	buffer: Buffer,
+	options: { chunkCount: number; chunkIntervalMs: number; stallAfterChunk?: number; signal?: AbortSignal },
+): Response {
+	const chunkSize = Math.ceil(buffer.byteLength / options.chunkCount);
+	let sent = 0;
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const body = new ReadableStream<Uint8Array>({
+		start(controller) {
+			const abort = (): void => {
+				if (timer) clearTimeout(timer);
+				controller.error(new Error("The operation was aborted"));
+			};
+			if (options.signal?.aborted) return abort();
+			options.signal?.addEventListener("abort", abort, { once: true });
+			const push = (): void => {
+				if (options.stallAfterChunk !== undefined && sent >= options.stallAfterChunk) return;
+				if (sent * chunkSize >= buffer.byteLength) {
+					controller.close();
+					return;
+				}
+				controller.enqueue(new Uint8Array(buffer.subarray(sent * chunkSize, (sent + 1) * chunkSize)));
+				sent += 1;
+				timer = setTimeout(push, options.chunkIntervalMs);
+			};
+			timer = setTimeout(push, options.chunkIntervalMs);
+		},
+		cancel() {
+			if (timer) clearTimeout(timer);
+		},
+	});
+	return new Response(body, {
+		status: 200,
+		headers: { "content-type": "application/zip", "content-length": String(buffer.byteLength) },
+	});
+}
+
 function manifestResponse(buffer: Buffer): Response {
 	const entry = new AdmZip(buffer).getEntry("vetta-abilities-main/.vetta/marketplace.json");
 	if (!entry) throw new Error("Marketplace manifest fixture is missing");
@@ -340,6 +381,62 @@ describe("OpenMarketplaceService", () => {
 			}
 		},
 	);
+
+	it("keeps waiting while a slow archive download is still making progress", async () => {
+		// 早先的实现用一个覆盖整个 body 的总超时，稳定推进的慢下载也会被掐断。
+		const body = archive();
+		const service = new OpenMarketplaceService({
+			appVersion: APP_VERSION,
+			rootDir: await temporaryRoot(),
+			archiveDownload: { headerTimeoutMs: 200, stallTimeoutMs: 200, totalTimeoutMs: 10_000 },
+			fetchArchive: async (_url, init) =>
+				streamingResponse(body, { chunkCount: 12, chunkIntervalMs: 60, signal: init?.signal ?? undefined }),
+		});
+
+		const snapshot = await service.refresh();
+
+		expect(snapshot).toMatchObject({ marketplaceVersion: "2026.07.1", stale: false });
+		expect(snapshot.abilities.length).toBeGreaterThan(0);
+	});
+
+	it("aborts a stalled archive download and retries once", async () => {
+		const body = archive();
+		const fetchArchive = vi
+			.fn<(url: string, init?: RequestInit) => Promise<Response>>()
+			.mockImplementationOnce(async (_url, init) =>
+				streamingResponse(body, {
+					chunkCount: 12,
+					chunkIntervalMs: 10,
+					stallAfterChunk: 2,
+					signal: init?.signal ?? undefined,
+				}),
+			)
+			.mockImplementation(async () => response(body));
+		const service = new OpenMarketplaceService({
+			appVersion: APP_VERSION,
+			rootDir: await temporaryRoot(),
+			archiveDownload: { stallTimeoutMs: 150, retryDelayMs: 1 },
+			fetchArchive,
+		});
+
+		const snapshot = await service.refresh();
+
+		expect(snapshot).toMatchObject({ marketplaceVersion: "2026.07.1", stale: false });
+		expect(fetchArchive).toHaveBeenCalledTimes(2);
+	});
+
+	it("does not retry an archive download that failed with an HTTP status", async () => {
+		const fetchArchive = vi.fn(async () => new Response("", { status: 404 }));
+		const service = new OpenMarketplaceService({
+			appVersion: APP_VERSION,
+			rootDir: await temporaryRoot(),
+			archiveDownload: { retryDelayMs: 1 },
+			fetchArchive,
+		});
+
+		expect(await service.refresh()).toMatchObject({ error: "not-found", abilities: [] });
+		expect(fetchArchive).toHaveBeenCalledOnce();
+	});
 
 	it("shares concurrent refreshes and permits a subsequent retry", async () => {
 		const rootDir = await temporaryRoot();
@@ -617,7 +714,12 @@ describe("OpenMarketplaceService", () => {
 
 		const fallback = await service.refresh();
 
-		expect(fallback).toMatchObject({ marketplaceVersion: "2026.07.1", stale: true, error: "sync-failed" });
+		expect(fallback).toMatchObject({
+			marketplaceVersion: "2026.07.1",
+			stale: true,
+			error: "app-outdated",
+			requiredAppVersion: "0.6.0",
+		});
 		expect(fallback.abilities[0]?.description).toBe("Compatible");
 	});
 
@@ -630,10 +732,17 @@ describe("OpenMarketplaceService", () => {
 
 		const snapshot = await service.refresh();
 
-		expect(snapshot).toMatchObject({ abilities: [], marketplaceVersion: null, stale: true, error: "sync-failed" });
+		// 版本不达标必须和网络故障区分开，否则界面只会说「同步失败」，用户永远不知道要升级。
+		expect(snapshot).toMatchObject({
+			abilities: [],
+			marketplaceVersion: null,
+			stale: true,
+			error: "app-outdated",
+			requiredAppVersion: "0.6.0",
+		});
 		expect(marketplaceLog.error).toHaveBeenCalledWith(
 			"marketplace sync failed",
-			expect.objectContaining({ operation: "refresh", errorCode: "sync-failed" }),
+			expect.objectContaining({ operation: "refresh", errorCode: "app-outdated" }),
 			expect.objectContaining({
 				message: "Marketplace 2026.07.1 requires desktop app 0.6.0 or newer",
 			}),

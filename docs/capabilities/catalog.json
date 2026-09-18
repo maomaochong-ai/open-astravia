@@ -9159,6 +9159,15 @@
                     "reasoning": {
                       "type": "boolean"
                     },
+                    "reasoningLevels": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "defaultReasoningLevel": {
+                      "type": "string"
+                    },
                     "contextWindow": {
                       "type": "number"
                     },
@@ -9362,6 +9371,15 @@
                         },
                         "reasoning": {
                           "type": "boolean"
+                        },
+                        "reasoningLevels": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "defaultReasoningLevel": {
+                          "type": "string"
                         },
                         "contextWindow": {
                           "type": "number"

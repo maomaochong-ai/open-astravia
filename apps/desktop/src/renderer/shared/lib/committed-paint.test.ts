@@ -36,4 +36,30 @@ describe("waitForCommittedPaint", () => {
 		await expect(waitForCommittedPaint()).resolves.toBe("skipped-hidden");
 		expect(requestFrame).not.toHaveBeenCalled();
 	});
+
+	it("does not let a timeout bypass a required visible paint", async () => {
+		vi.useFakeTimers();
+		try {
+			vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+			const frames: FrameRequestCallback[] = [];
+			vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+				frames.push(callback);
+				return frames.length;
+			});
+			const barrier = waitForCommittedPaint({ timeoutMs: null });
+			let settled = false;
+			void barrier.then(() => {
+				settled = true;
+			});
+
+			await vi.advanceTimersByTimeAsync(1_000);
+			expect(settled).toBe(false);
+
+			frames.shift()?.(0);
+			frames.shift()?.(16);
+			await expect(barrier).resolves.toBe("painted");
+		} finally {
+			vi.useRealTimers();
+		}
+	});
 });

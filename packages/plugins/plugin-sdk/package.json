@@ -1,6 +1,6 @@
 {
 	"name": "@vetta-org/plugin-sdk",
-	"version": "0.3.6",
+	"version": "0.3.7",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -16,6 +16,10 @@
 		"./npm-package": {
 			"types": "./dist/npm-package.d.ts",
 			"import": "./dist/npm-package.js"
+		},
+		"./logger": {
+			"types": "./dist/logger.d.ts",
+			"import": "./dist/logger.js"
 		},
 		"./tailwind-theme.css": "./src/tailwind-theme.css"
 	},

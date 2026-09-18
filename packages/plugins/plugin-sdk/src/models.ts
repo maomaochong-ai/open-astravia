@@ -3,6 +3,10 @@ export interface PluginModelDefinition {
 	name?: string;
 	api?: string;
 	reasoning?: boolean;
+	/** Provider-native choices; omitted or empty uses the host's API preset. */
+	reasoningLevels?: string[];
+	/** Used when no user choice exists; otherwise the first declared level wins. */
+	defaultReasoningLevel?: string;
 	contextWindow?: number;
 	maxTokens?: number;
 }

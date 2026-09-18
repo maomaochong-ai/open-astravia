@@ -4,6 +4,7 @@ export type CodingAgentSubagentIssueOperation =
 	| "coordinator"
 	| "recovery"
 	| "notification-delivery"
+	| "report-delivery"
 	| "session-observation";
 
 export interface CodingAgentSubagentIssueObservation {

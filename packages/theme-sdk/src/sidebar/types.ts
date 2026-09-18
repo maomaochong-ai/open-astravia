@@ -155,6 +155,15 @@ export interface SidebarModel {
 	/** 置顶区是否还有空位（含「新会话」计数，上限 5）。 */
 	readonly canPinMore: boolean;
 	readonly setMoreButtonRef: RefCallback<HTMLButtonElement>;
+	/**
+	 * 侧边栏面板根节点。
+	 *
+	 * 拖宽度时宿主直接往这个元素（以及它所在的左栏占位）写 `style.width`，不进 React：
+	 * 宽度每帧进 state 会重渲染整条侧边栏与当前页面；而把宽度挂成 `:root` 上的自定义属性
+	 * 同样不行——改一个继承的自定义属性会让整篇文档的样式失效重算，长会话页实测每次 73ms。
+	 * 直接写元素时样式不失效，只剩一次纯布局，内容区因此可以照常逐帧跟着走（实测满帧）。
+	 */
+	readonly setPanelRef: RefCallback<HTMLDivElement>;
 	readonly setNavItemRef: (index: number) => RefCallback<HTMLButtonElement>;
 	readonly width: number;
 }

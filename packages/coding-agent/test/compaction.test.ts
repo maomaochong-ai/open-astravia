@@ -9,6 +9,8 @@ import {
 	calculateContextTokens,
 	compact,
 	DEFAULT_COMPACTION_SETTINGS,
+	estimateContextTokens,
+	estimateTokens,
 	findCutPoint,
 	getLastAssistantUsage,
 	prepareCompaction,
@@ -59,6 +61,17 @@ function createAssistantMessage(text: string, usage?: Usage): AssistantMessage {
 		api: "anthropic-messages",
 		provider: "anthropic",
 		model: "claude-sonnet-4-5",
+	};
+}
+
+function createToolResult(text: string): AgentMessage {
+	return {
+		role: "toolResult",
+		toolCallId: "call-1",
+		toolName: "read",
+		content: [{ type: "text", text }],
+		isError: false,
+		timestamp: Date.now(),
 	};
 }
 
@@ -143,6 +156,25 @@ describe("Token calculation", () => {
 	it("should handle zero values", () => {
 		const usage = createMockUsage(0, 0, 0, 0);
 		expect(calculateContextTokens(usage)).toBe(0);
+	});
+
+	it("keeps the chars/4 estimate for ASCII text", () => {
+		expect(estimateTokens(createToolResult("a".repeat(4000)))).toBe(1000);
+	});
+
+	it("estimates CJK text at roughly one token per character instead of chars/4", () => {
+		expect(estimateTokens(createToolResult("上下文压缩".repeat(200)))).toBeGreaterThanOrEqual(1000);
+	});
+
+	it("triggers compaction before CJK tool results push a 200k window past its hard limit", () => {
+		// 复现：上次 usage 147k，本步并行读回 3 段约 1.44 万汉字，真实输入约 193k，已超过 200k 窗口扣掉 16k 输出后的上限。
+		const messages: AgentMessage[] = [
+			createAssistantMessage("reading", createMockUsage(147_553, 20)),
+			...Array.from({ length: 3 }, () => createToolResult("中".repeat(14_400))),
+		];
+		const tokens = estimateContextTokens(messages).tokens;
+		expect(tokens).toBeGreaterThan(183_616);
+		expect(shouldCompact(tokens, 200_000, DEFAULT_COMPACTION_SETTINGS)).toBe(true);
 	});
 });
 
@@ -247,6 +279,21 @@ describe("findCutPoint", () => {
 
 		const result = findCutPoint(entries, 0, entries.length, 50000);
 		expect(result.firstKeptEntryIndex).toBe(0);
+	});
+
+	it("cuts at the latest assistant when the budget runs out inside its trailing tool results", () => {
+		const entries: SessionEntry[] = [
+			createMessageEntry(createUserMessage("read the files")),
+			createMessageEntry(createAssistantMessage("batch 1")),
+			createMessageEntry(createToolResult("x".repeat(40_000))),
+			createMessageEntry(createAssistantMessage("batch 2")), // index 3
+			createMessageEntry(createToolResult("x".repeat(40_000))),
+			createMessageEntry(createToolResult("x".repeat(40_000))),
+		];
+
+		const result = findCutPoint(entries, 0, entries.length, 15_000);
+
+		expect(result).toEqual({ firstKeptEntryIndex: 3, turnStartIndex: 0, isSplitTurn: true });
 	});
 
 	it("should indicate split turn when cutting at assistant message", () => {

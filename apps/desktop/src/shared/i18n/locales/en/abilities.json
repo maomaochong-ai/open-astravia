@@ -95,6 +95,7 @@
 	},
 	"error": {
 		"sourcesFailed": "GitHub sources failed to sync (cached content remains available): {{names}}",
+		"sourcesOutdated": "These sources need a newer Vetta before they can load: {{names}}",
 		"serverFailed": "Cloud marketplace failed to load; other sources remain available",
 		"loadFailed": "Failed to load abilities",
 		"downloadFailed": "Download failed: {{status}}",
@@ -500,6 +501,7 @@
 			"forbidden": "The GitHub credential cannot read this repository",
 			"notFound": "The repository, branch, or marketplace manifest was not found",
 			"rateLimited": "GitHub rate limit reached; try again later",
+			"appOutdated": "This Vetta version is too old; upgrade to {{version}} or newer",
 			"ready": "Synced · {{version}}",
 			"failed": "Sync failed; retry available",
 			"cached": "Sync failed; showing cached content"

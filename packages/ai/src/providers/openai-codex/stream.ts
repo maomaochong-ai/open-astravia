@@ -1,10 +1,9 @@
 import { getEnvApiKey } from "../../env-api-keys.js";
-import { supportsXhigh } from "../../models.js";
 import { requireProviderCredential } from "../../provider-kit/index.js";
 import type { Context, Model, SimpleStreamOptions, StreamFunction } from "../../types.js";
 import type { AssistantMessageEventStream } from "../../utils/event-stream.js";
 import { projectResponsesAdapter } from "../openai-responses/legacy-stream.js";
-import { buildBaseOptions, clampReasoning } from "../simple-options.js";
+import { buildBaseOptions } from "../simple-options.js";
 import { openAICodexResponsesAdapter } from "./adapter.js";
 import type { OpenAICodexResponsesOptions } from "./options.js";
 
@@ -25,6 +24,6 @@ export const streamSimpleOpenAICodexResponses: StreamFunction<"openai-codex-resp
 	const base = buildBaseOptions(model, options, apiKey);
 	return streamOpenAICodexResponses(model, context, {
 		...base,
-		reasoningEffort: supportsXhigh(model) ? options?.reasoning : clampReasoning(options?.reasoning),
+		reasoningEffort: options?.reasoning,
 	} satisfies OpenAICodexResponsesOptions);
 };

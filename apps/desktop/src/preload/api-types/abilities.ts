@@ -209,7 +209,9 @@ export interface OpenMarketplaceSnapshot {
 	syncedAt: string | null;
 	stale: boolean;
 	/** 刷新失败但仍返回上次可用快照时携带。 */
-	error?: "sync-failed" | "auth-required" | "forbidden" | "not-found" | "rate-limited";
+	error?: "sync-failed" | "auth-required" | "forbidden" | "not-found" | "rate-limited" | "app-outdated";
+	/** 仅 `app-outdated`：市场清单要求的最低桌面端版本。 */
+	requiredAppVersion?: string;
 }
 
 export interface MarketplaceSource {

@@ -26,7 +26,7 @@
 | --- | --- | --- |
 | 触发器 | tag / `workflow_dispatch` | 决定版本来源和是否允许表单输入 |
 | `channel` | `default` / `stable` / `test` | 决定是否发布、更新 URL 和 R2 prefix |
-| `release_target` | `github` / `r2` | 决定开源 GitHub Release 或商业 R2 |
+| `release_target` | `github` / `r2` | 决定自动更新源是 GitHub Release 还是商业 R2。两种取值都会发 GitHub Release（test channel 除外）|
 | `cloud_enabled` | `false` / `true` | 决定开源版或商业版；GitHub 与 `false`、R2 与 `true` 必须配对 |
 
 tag 和手动 stable/test 使用同一套构建、校验和发布 jobs。差异只在输入和发布环境：tag 隐式表达正式发布，手动运行显式选择 channel。
@@ -42,7 +42,7 @@ flowchart LR
     A --> R{shouldPublish}
     R -->|false: default dispatch| E[结束，保留临时 Artifact]
     R -->|test| RT[desktop-test / R2 test]
-    R -->|stable 或匹配 tag| RS[desktop-production / R2 或 GitHub]
+    R -->|stable 或匹配 tag| RS[desktop-production / R2 与 GitHub Release]
     RT --> F[公开 feed 校验]
     RS --> F
 ```
@@ -52,6 +52,8 @@ flowchart LR
 - 匹配的 tag push：发布。
 - `workflow_dispatch + channel=test`：发布到 R2 test。
 - `workflow_dispatch + channel=stable`：发布到 stable。
+- 非 test 的发布都会同时创建 GitHub Release，正文取自 `.github/release-notes/v<version>.md`：
+  `release_target=r2` 时 R2 仍是自动更新源，GitHub Release 承担对外下载入口与版本说明归档。
 - 其它手动运行（通常是 `channel=default`）：只构建，不发布。
 - `test` 不能由 tag 触发；`build_version` 只能用于 test channel。
 
@@ -142,7 +144,7 @@ APPLE_TEAM_ID
 ### 推荐：推送版本 tag
 
 1. 更新 `apps/desktop/package.json` 版本。
-2. 完成对应版本的 `apps/desktop/CHANGELOG.md`，必须存在 `## [version]` 段落。
+2. 完成对应版本的发布说明 `.github/release-notes/v<version>.md`，它会作为 GitHub Release 的正文；缺失时 quality job 直接失败（`node scripts/release/release-notes.mjs --check`）。
 3. 确认 `desktop-production` 的 server、更新源、R2、签名和可选遥测配置完整。
 4. 合并目标 commit。
 5. 创建并推送完全匹配的 tag：

@@ -89,6 +89,7 @@ describe("changed file selection", () => {
 			files: ["packages/ai/src/index.ts"],
 		});
 		expect(() => parseFileSelectionArgs(["../outside.ts"])).toThrow("inside the repository");
+		expect(() => parseFileSelectionArgs(["..\\outside.ts"])).toThrow("inside the repository");
 	});
 });
 

@@ -4,6 +4,10 @@ All notable changes to `@vetta-org/capability-sdk` are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Preserve `reasoningLevels` and `defaultReasoningLevel` when updating model providers, including plugin-owned model catalogs, instead of silently removing them during input parsing.
+
 ## [0.1.2] — 2026-09-17
 
 - Media Provider 协议升级到 v5：生成能力可声明模型目录与默认模型，宿主会校验显式模型并解析默认值。

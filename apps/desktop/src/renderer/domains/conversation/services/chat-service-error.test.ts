@@ -10,6 +10,28 @@ function failed(errorMessage: string) {
 	return { role: "assistant", content: [], stopReason: "error", errorMessage };
 }
 
+/** 持久化历史里完整的 assistant message。 */
+function durableAssistant(overrides: Partial<AssistantMessage>): AssistantMessage {
+	return {
+		role: "assistant",
+		content: [],
+		api: "openai-completions",
+		provider: "qwen",
+		model: "qwen3.8-flash-next",
+		usage: {
+			input: 0,
+			output: 0,
+			cacheRead: 0,
+			cacheWrite: 0,
+			totalTokens: 0,
+			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+		},
+		stopReason: "stop",
+		timestamp: 2,
+		...overrides,
+	};
+}
+
 function errorBlocksOf(messages: ReturnType<typeof historyToChat>): ErrorBlock[] {
 	return messages.flatMap((message) =>
 		message.kind === "agent" ? message.blocks.filter((block): block is ErrorBlock => block.type === "error") : [],
@@ -47,16 +69,35 @@ describe("历史回放的错误折叠", () => {
 		expect(errors[0].text).toBe("429 窗口额度已用尽，将于 18:00 重置");
 	});
 
-	it("被工具调用隔开的同类错误不合并", () => {
+	it("被用户消息隔开的同类错误不合并", () => {
 		const errors = errorBlocksOf(
-			historyToChat([
-				failed("500 server error"),
-				{ role: "assistant", content: [{ type: "toolCall", id: "t1", name: "read", arguments: {} }] },
-				failed("500 server error"),
-			]),
+			historyToChat([failed("500 server error"), { role: "user", content: "again" }, failed("500 server error")]),
 		);
 
 		expect(errors).toHaveLength(2);
+	});
+
+	it("同一轮里随后成功的失败尝试不再显示错误", () => {
+		const messages = historyToChat([
+			{ role: "user", content: "hi" },
+			failed("429 rate limit"),
+			{ role: "assistant", content: [{ type: "text", text: "done" }], stopReason: "stop" },
+		]);
+
+		expect(errorBlocksOf(messages)).toEqual([]);
+		expect(messages.at(-1)).toMatchObject({ kind: "agent", text: "done" });
+	});
+
+	it("失败后被用户中断的尝试仍显示错误", () => {
+		const errors = errorBlocksOf(
+			historyToChat([
+				{ role: "user", content: "hi" },
+				failed("500 server error"),
+				{ role: "assistant", content: [], stopReason: "aborted" },
+			]),
+		);
+
+		expect(errors).toHaveLength(1);
 	});
 });
 
@@ -95,6 +136,30 @@ describe("appendError", () => {
 });
 
 describe("fullHistoryToChat error entries", () => {
+	it("hides a context overflow that auto compaction recovered within the turn", () => {
+		const overflow = "400 This model's maximum context length is 200000 tokens.";
+		const messages = fullHistoryToChat([
+			{ type: "message", message: { role: "user", content: "read everything", timestamp: 1 } },
+			{ type: "message", message: durableAssistant({ stopReason: "error", errorMessage: overflow }) },
+			{ type: "compaction", entryId: "compaction-1", summary: "summary", tokensBefore: 193_000, timestamp: "2" },
+			{ type: "message", message: durableAssistant({ content: [{ type: "text", text: "done" }] }) },
+		]);
+
+		expect(errorBlocksOf(messages)).toEqual([]);
+		expect(messages.map((message) => message.kind)).toEqual(["user", "agent", "event", "agent"]);
+	});
+
+	it("keeps an overflow that ended the turn", () => {
+		const overflow = "400 This model's maximum context length is 200000 tokens.";
+		const messages = fullHistoryToChat([
+			{ type: "message", message: { role: "user", content: "read everything", timestamp: 1 } },
+			{ type: "message", message: durableAssistant({ stopReason: "error", errorMessage: overflow }) },
+			{ type: "message", message: { role: "user", content: "next", timestamp: 3 } },
+		]);
+
+		expect(errorBlocksOf(messages)).toEqual([expect.objectContaining({ text: overflow })]);
+	});
+
 	it("renders a durable turn failure as an error card", () => {
 		const messages = fullHistoryToChat([
 			{ type: "message", message: { role: "user", content: "hello", timestamp: 1 } },

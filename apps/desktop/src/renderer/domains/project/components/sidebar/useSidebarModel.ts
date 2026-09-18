@@ -257,9 +257,15 @@ export function useSidebarModel({
 	const [moreOpen, setMoreOpen] = useState(false);
 
 	const onNewChat = useNewChatNavigation();
+	// committed 宽度。拖拽途中它不变——实时宽度只写 CSS 变量，见下面的 resize。
 	const [width, setWidth] = useAtom(sidebarWidthAtom);
-	const widthRef = useRef(width);
-	widthRef.current = width;
+	const liveWidthRef = useRef(width);
+	const panelElementRef = useRef<HTMLDivElement | null>(null);
+	/** 左栏占位：与面板一起逐帧改写，内容区才会跟着走。挂载后从面板往上取一次。 */
+	const dockElementRef = useRef<HTMLElement | null>(null);
+	const setPanelRef = useCallback((element: HTMLDivElement | null) => {
+		panelElementRef.current = element;
+	}, []);
 	// Resolve i18n in the model layer so theme-ui nav item stays props-driven.
 	const workspaceViews = useAtomValue(pluginWorkspaceViewsAtom);
 	const resolvePluginText = usePluginTextResolver();
@@ -407,15 +413,41 @@ export function useSidebarModel({
 		void navigate({ to: "/settings/$tab", params: { tab: "im" } });
 	}, [navigate]);
 
-	const resize = useCallback(
-		(delta: number) => {
-			setWidth((w) => Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, w + delta)));
-		},
-		[setWidth],
-	);
-	const resizeEnd = useCallback(() => {
-		localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(widthRef.current));
+	/**
+	 * 拖宽度：把实时宽度直接写到左栏占位与面板这两个元素上，不进 React。
+	 *
+	 * 关键是「不进 React」而不是「不重排」。长会话页 40 次改宽的总耗时实测：
+	 * - 每帧 setWidth：整条侧边栏 + 根布局 + 当前页面重渲染，一次快拖 6-11 个长任务共
+	 *   400-750ms。
+	 * - 每帧写 `:root` 上的自定义属性：2945ms。改一个继承的自定义属性会让整篇文档的样式
+	 *   失效重算，比上一条更糟。
+	 * - 每帧直接写这两个元素：571ms，p50 14.3ms（满帧）。样式不失效，只有一次纯布局。
+	 *
+	 * 所以内容区照常逐帧跟着重排——不必冻结、也不必拿 transform 去补偿接缝（两者都会在
+	 * 拖拽途中留下破绽：冻结时窄了露缺口、宽了盖住内容，补偿时破绽挪到窗口右缘）。
+	 */
+	const resize = useCallback((delta: number) => {
+		const next = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, liveWidthRef.current + delta));
+		if (next === liveWidthRef.current) return;
+		liveWidthRef.current = next;
+		const panel = panelElementRef.current;
+		if (!panel) return;
+		// 占位是面板的祖先容器，类名由宿主在 RootLayoutView 里给出，也是 styles.css 的钩子。
+		if (!dockElementRef.current) dockElementRef.current = panel.closest<HTMLElement>(".sidebar-dock");
+		panel.style.width = `${next}px`;
+		if (dockElementRef.current) dockElementRef.current.style.width = `${next}px`;
 	}, []);
+
+	const resizeEnd = useCallback(() => {
+		// committed 值落定：React 的 width 与 DOM 上已写入的值对齐，后续渲染不会再跳。
+		setWidth(liveWidthRef.current);
+		localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(liveWidthRef.current));
+	}, [setWidth]);
+
+	// committed 值从别处变化（启动时从 localStorage 读回、被夹紧）时对齐实时值。
+	useLayoutEffect(() => {
+		liveWidthRef.current = width;
+	}, [width]);
 	const setNavItemRef = useCallback(
 		(index: number) => (element: HTMLButtonElement | null) => {
 			navItemRefs.current[index] = element;
@@ -460,6 +492,7 @@ export function useSidebarModel({
 		imOnline,
 		setNavItemRef,
 		setMoreButtonRef,
+		setPanelRef,
 		actions: {
 			openNavItem,
 			openClawSettings,

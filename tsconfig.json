@@ -89,6 +89,7 @@
 			"@vetta/agent-team": ["./packages/agent-team/src/index.ts"],
 			"@vetta/agent-team/*": ["./packages/agent-team/src/*"],
 			"@vetta-org/plugin-sdk": ["./packages/plugins/plugin-sdk/src/index.ts"],
+			"@vetta-org/plugin-sdk/logger": ["./packages/plugins/plugin-sdk/src/logger.ts"],
 			"@vetta-org/plugin-sdk/manifest": ["./packages/plugins/plugin-sdk/src/manifest.ts"],
 			"@vetta-org/plugin-sdk/npm-package": ["./packages/plugins/plugin-sdk/src/npm-package.ts"],
 			"@vetta-org/plugin-sdk/*": ["./packages/plugins/plugin-sdk/src/*"],

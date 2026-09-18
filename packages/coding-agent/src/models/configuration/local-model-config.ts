@@ -113,7 +113,11 @@ function parseModels(
 				api: (API_TYPE_ALIASES[rawApi] ?? rawApi) as Api,
 				provider: providerName,
 				baseUrl: provider.baseUrl as string,
-				reasoning: definition.reasoning ?? false,
+				reasoning: definition.reasoning ?? Boolean(definition.reasoningLevels?.length),
+				...(definition.reasoningLevels === undefined ? {} : { reasoningLevels: [...definition.reasoningLevels] }),
+				...(definition.defaultReasoningLevel === undefined
+					? {}
+					: { defaultReasoningLevel: definition.defaultReasoningLevel }),
 				input: definition.input ?? ["text"],
 				cost: definition.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
 				contextWindow: definition.contextWindow ?? 128_000,

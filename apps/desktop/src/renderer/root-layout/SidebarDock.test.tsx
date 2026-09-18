@@ -47,6 +47,14 @@ describe("SidebarDock", () => {
 		expect(container.firstElementChild).toBe(dock);
 	});
 
+	it("占位宽度就是 committed 值（拖拽期由宿主直接改写这个元素，不进 React）", () => {
+		const { container } = render(renderDock(true));
+		const dock = container.firstElementChild as HTMLElement;
+		// 拖宽度时宿主把实时宽度直接写到这个元素与面板上（见 useSidebarModel 的 resize）：
+		// 内容区照常逐帧重排（实测满帧），而每帧 setWidth 会重渲染整条侧边栏与当前页面。
+		expect(dock.style.width).toBe(`${WIDTH}px`);
+	});
+
 	it("布局宽度一步到位，滑动只用 transform（内容区因此只重排一次）", () => {
 		const { container, rerender } = render(renderDock(true));
 		const dock = container.firstElementChild as HTMLElement;

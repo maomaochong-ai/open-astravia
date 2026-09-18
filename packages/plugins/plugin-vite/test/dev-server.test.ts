@@ -85,10 +85,11 @@ describe("startVettaPluginDevServer", () => {
 			origin: server.origin,
 		});
 
-		const [manifest, preamble, virtualEntry, pluginEntry, cssModule, rawCssModule] = await Promise.all([
+		const [manifest, preamble, virtualEntry, virtualLogger, pluginEntry, cssModule, rawCssModule] = await Promise.all([
 			fetch(server.entryUrl),
 			fetch(`${server.origin}/@vetta-plugin-dev-preamble`),
 			fetch(`${server.origin}/@id/__x00__virtual:vetta-plugin-dev-entry`),
+			fetch(`${server.origin}/@id/__x00__virtual:vetta-plugin-logger`),
 			fetch(`${server.origin}/src/index.tsx`),
 			fetch(`${server.origin}/src/style.css`),
 			fetch(`${server.origin}/src/theme.css?raw`),
@@ -102,6 +103,9 @@ describe("startVettaPluginDevServer", () => {
 		expect(virtualEntry.headers.get("content-type")).toContain("javascript");
 		expect(virtualEntryText).toContain("__VETTA_PLUGIN_DEV_MODULES__");
 		expect(virtualEntryText).toContain("triggeredBy");
+		const virtualLoggerText = await virtualLogger.text();
+		expect(virtualLogger.status).toBe(200);
+		expect(virtualLoggerText).toContain('__createPluginLogger({"id":"dev-server-test","version":"0.1.0"})');
 		expect(await pluginEntry.text()).toContain("/@vite/client");
 		const cssText = await cssModule.text();
 		expect(cssText).toContain("@scope ([data-vetta-plugin-root=dev-server-test])");

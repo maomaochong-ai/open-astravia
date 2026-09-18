@@ -9,9 +9,12 @@ type FailedStatusKey =
 	| "abilities:sources.status.forbidden"
 	| "abilities:sources.status.notFound"
 	| "abilities:sources.status.rateLimited"
+	| "abilities:sources.status.appOutdated"
 	| "abilities:sources.status.failed";
 
 function failedStatusKey(snapshot?: OpenMarketplaceSourceSnapshot): FailedStatusKey {
+	// 版本过旧要盖过「正在显示缓存」：缓存能不能继续用是次要的，升级才是唯一出路。
+	if (snapshot?.error === "app-outdated") return "abilities:sources.status.appOutdated";
 	if (snapshot?.marketplaceVersion) return "abilities:sources.status.cached";
 	switch (snapshot?.error) {
 		case "auth-required":
@@ -73,7 +76,7 @@ export function MarketplaceSourceRow({
 					{!source.enabled
 						? t("abilities:sources.status.disabled")
 						: failed
-							? t(failedStatusKey(snapshot))
+							? t(failedStatusKey(snapshot), { version: snapshot?.requiredAppVersion })
 							: snapshot?.marketplaceVersion
 								? t("abilities:sources.status.ready", { version: snapshot.marketplaceVersion })
 								: t("abilities:sources.status.pending")}

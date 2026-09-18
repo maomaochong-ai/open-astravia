@@ -160,7 +160,7 @@ export function parseBaseArgs(args, defaultBase = "origin/dev") {
 
 export function normalizeRepoPath(input, root = repoRoot) {
 	if (typeof input !== "string" || input.length === 0) throw new Error("file path must be non-empty");
-	const absolute = resolve(root, input);
+	const absolute = resolve(root, input.replaceAll("\\", sep));
 	const relativePath = relative(root, absolute);
 	if (
 		relativePath === "" ||

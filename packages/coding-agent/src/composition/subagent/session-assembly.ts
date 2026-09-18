@@ -20,7 +20,10 @@ import type {
 } from "@vetta/runtime-subagents";
 import type { ConversationScenario } from "../../profiles/index.js";
 import type { CodingAgentRuntimeToolRegistration, CodingAgentToolActivation } from "../../runtime-contracts/index.js";
-import { CODING_AGENT_SUBAGENT_ISSUE_OBSERVATION } from "../../runtime-contracts/subagent-observability.js";
+import {
+	CODING_AGENT_SUBAGENT_ISSUE_OBSERVATION,
+	type CodingAgentSubagentIssueOperation,
+} from "../../runtime-contracts/subagent-observability.js";
 import type {
 	CodingAgentConversationSessionPathAssessment,
 	CodingAgentSubagentChildFactory,
@@ -194,7 +197,7 @@ export function createCodingAgentSubagentSessionAssembly(
 
 function observeSubagentIssue(
 	options: CodingAgentSubagentSessionAssemblyOptions,
-	operation: "coordinator" | "recovery" | "notification-delivery" | "session-observation",
+	operation: CodingAgentSubagentIssueOperation,
 	failure: ReturnType<typeof runtimeObservationFailure>,
 ): void {
 	options.observationPublisher?.record(CODING_AGENT_SUBAGENT_ISSUE_OBSERVATION, { operation, failure });
@@ -254,15 +257,20 @@ async function openChild(
 	const reportTool = createSubagentReportToParentToolRegistration({
 		id: childSessionId,
 		taskName: requestOrSnapshot.taskName,
+		// 父会话常阻塞在 wait_agent 里等本子代理；续跑要等父 Turn 结束才消费，等待它会互相死锁。
 		onReport: async (envelope) => {
-			await options.resourceContext.deliverAsyncContext([
-				{
-					type: "subagent-report",
-					content: [{ type: "text", text: formatSubagentReport(envelope) }],
-					modelVisible: true,
-					display: true,
-				},
-			]);
+			void options.resourceContext
+				.deliverAsyncContext([
+					{
+						type: "subagent-report",
+						content: [{ type: "text", text: formatSubagentReport(envelope) }],
+						modelVisible: true,
+						display: true,
+					},
+				])
+				.catch((error: unknown) => {
+					observeSubagentIssue(options, "report-delivery", runtimeObservationFailure(error));
+				});
 		},
 	});
 	const sessionRuntimeTools = filterDeniedRuntimeTools(
