@@ -162,8 +162,8 @@ Desktop 主进程部分目录还有更细规则；修改对应目录时必须继
 
 | 任务类型 | 最低完成标准 |
 | --- | --- |
-| Bug 修复 | 可失败的复现或明确基线、回归测试、实现修复、相关检查跑绿 |
-| 新功能 | 实现、用户常见使用操作流程与关键行为测试、必要的用户文档/i18n、适用时更新 Changelog |
+| Bug 修复 | 可失败的复现或明确基线、回归测试、实现修复、相关检查跑绿、补充当前版本的发布说明 |
+| 新功能 | 实现、用户常见使用操作流程与关键行为测试、必要的用户文档/i18n、补充当前版本的发布说明 |
 | 内部重构 | 说明保持的不变量，以现有测试、差分测试或合同测试证明行为未变 |
 | 公共合同变更 | 检查生产者与消费者、兼容或迁移策略、协议/Schema/API 合同测试 |
 | UI 交互变更 | 交互状态测试；真实跨进程风险使用定向 Electron E2E。只有用户明确要求时才运行 `verify:ui:*` |
@@ -228,9 +228,12 @@ Desktop 主进程部分目录还有更细规则；修改对应目录时必须继
 
 详细质量门禁见 [`docs/dev/quality-gates.md`](docs/dev/quality-gates.md)，Desktop 验证流程见 [`docs/dev/README.md`](docs/dev/README.md)。
 
-## Changelog 与新增包
+## 发布说明与新增包
 
-- 影响已发布包的用户可见功能、修复或公共 API 时，检查对应 `packages/*/CHANGELOG.md` 或 `apps/*/CHANGELOG.md` 的完整 `[Unreleased]` 段并追加到已有分类；不得修改已发布版本段。
+- 发布说明写在 `.github/release-notes/v<版本号>.md`，一个版本一个文件，版本号以 `apps/desktop/package.json` 的 `version` 为准；该文件就是 GitHub Release 的正文，写法见 [`.github/release-notes/README.md`](.github/release-notes/README.md)。
+- 完成新功能、修复缺陷、合并 PR、关闭 issue 后，都要把对应条目补进当前开发中版本的发布说明；文件不存在就新建。面向用户描述影响与代价，不复述 diff，关联工单用 `owner/repo#123` 格式。
+- 发布说明缺失会让 `desktop-release` 流水线在质量阶段直接失败（`node scripts/release/release-notes.mjs --check`），补不上就没有正文可发。
+- 已发布版本的发布说明不得修改。`apps/desktop/CHANGELOG.md` 自 0.5.58 起冻结，只保留历史记录，不再追加。
 - 新增 workspace 包时先判断归属：应用进 `apps/*`，可复用模块进 `packages/*`。随后遵循 [`docs/monorepo-new-package.md`](docs/monorepo-new-package.md)，同时更新 workspace、TypeScript path maps、构建分层和必要的 Desktop 源码映射。
 - 不执行版本发布、制品上传、registry 发布或部署，除非用户明确要求。
 
