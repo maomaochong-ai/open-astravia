@@ -20,6 +20,7 @@ import {
 	createCodingAgentSubagentSessionAssembly,
 } from "../../src/composition/subagent/session-assembly.js";
 import { CODING_AGENT_SUBAGENTS_OBSERVATION } from "../../src/composition/subagent/subagent-session-extension-contract.js";
+import type { CodingAgentRuntimeToolRegistration } from "../../src/runtime-contracts/index.js";
 import { CODING_AGENT_SUBAGENT_ISSUE_OBSERVATION } from "../../src/runtime-contracts/subagent-observability.js";
 
 describe("Coding Agent Subagent session assembly", () => {
@@ -239,6 +240,82 @@ describe("Coding Agent Subagent session assembly", () => {
 			),
 		);
 		expect(JSON.stringify(records)).not.toContain("secret notification content");
+		await runtime.dispose();
+	});
+
+	it("returns report_to_parent without waiting for the busy parent to consume the report", async () => {
+		const records: RuntimeObservationRecord[] = [];
+		const delivered: SessionContextRecord[] = [];
+		let rejectDelivery: ((error: Error) => void) | undefined;
+		const reportTools: CodingAgentRuntimeToolRegistration[] = [];
+		const runtime = createCodingAgentSubagentSessionAssembly({
+			...baseOptions(),
+			observationPublisher: createRuntimeObservationPublisher({
+				port: {
+					record: (record) => {
+						records.push(record);
+					},
+				},
+			}),
+			resourceContext: {
+				// 父会话正阻塞在 wait_agent：续跑要等它的当前 Turn 结束才会被消费。
+				deliverAsyncContext(context) {
+					delivered.push(...context);
+					return new Promise<void>((_resolve, reject) => {
+						rejectDelivery = reject;
+					});
+				},
+				async reportObservation() {},
+			},
+			createChildComposition: async () => ({
+				createSession: async (options) => {
+					reportTools.push(...(options.sessionRuntimeTools ?? []));
+					return childSession(options.sessionId, []);
+				},
+				resumeSession: async (options) => childSession(options.sessionId, []),
+				appendSessionContext() {},
+				async deliverSessionContext() {},
+				async dispose() {},
+			}),
+		});
+		if (!runtime) throw new Error("Expected enabled Subagent runtime");
+		const spawnTool = runtime.readTools().find(({ name }) => name === "spawn_agent");
+		if (!spawnTool) throw new Error("Expected spawn_agent tool");
+		await spawnTool.execute({
+			sessionId: "parent",
+			turnId: "turn-1",
+			toolCallId: "spawn-1",
+			signal: new AbortController().signal,
+			input: { task_name: "report_progress", message: "Report progress.", agent_type: "general" },
+		});
+		const reportTool = reportTools.find(({ tool }) => tool.name === "report_to_parent")?.tool;
+		if (!reportTool) throw new Error("Expected report_to_parent tool");
+
+		const result = await Promise.race([
+			reportTool.execute({
+				sessionId: "child",
+				turnId: "child-turn",
+				toolCallId: "report-1",
+				signal: new AbortController().signal,
+				input: { status: "progress", summary: "halfway" },
+			}),
+			new Promise<"blocked">((resolve) => setTimeout(() => resolve("blocked"), 50)),
+		]);
+
+		expect(result).not.toBe("blocked");
+		expect(delivered).toEqual([expect.objectContaining({ type: "subagent-report" })]);
+		rejectDelivery?.(new Error("secret report content"));
+		await vi.waitFor(() =>
+			expect(records).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						token: CODING_AGENT_SUBAGENT_ISSUE_OBSERVATION,
+						payload: { operation: "report-delivery", failure: { category: "error", errorName: "Error" } },
+					}),
+				]),
+			),
+		);
+		expect(JSON.stringify(records)).not.toContain("secret report content");
 		await runtime.dispose();
 	});
 
