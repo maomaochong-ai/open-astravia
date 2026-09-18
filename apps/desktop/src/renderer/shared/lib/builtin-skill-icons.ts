@@ -8,6 +8,7 @@ const BUILTIN_SKILL_ICON_BASE = "./skills";
 /** skill 名（= skill-presets 目录名）→ 图标文件名。未列出的落默认图。 */
 const BUILTIN_SKILL_ICON_FILES: Record<string, string> = {
 	"create-skill": "create-skill.png",
+	"install-ability": "install-ability.png",
 	"publish-ability": "publish-ability.png",
 };
 

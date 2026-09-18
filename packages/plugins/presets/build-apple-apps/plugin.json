@@ -2,7 +2,7 @@
 	"id": "build-apple-apps",
 	"name": "%plugin.name%",
 	"version": "0.1.1",
-	"icon": "solar:smartphone-2-linear",
+	"icon": "icon.png",
 	"defaultLocale": "zh",
 	"pluginApiVersion": "^2.0.0",
 	"entry": "dist/mf-manifest.json",
