@@ -146,7 +146,7 @@ export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Ele
 									<p className="text-[13px] font-semibold text-foreground">
 										{model.searchQuery
 											? t("empty.noMatch")
-											: model.scope === "discover"
+											: model.scope === "discover" || (model.scope as string) === "public"
 												? t("empty.discover")
 												: t("empty.mine")}
 									</p>

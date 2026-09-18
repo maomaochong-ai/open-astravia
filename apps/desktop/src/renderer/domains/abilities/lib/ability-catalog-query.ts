@@ -30,9 +30,25 @@ function sourceId(item: AbilityItem): string {
 	return item.catalogSource.id;
 }
 
-/** 「发现」只展示已列入市场的条目；应用内置项不再作为能力市场来源。 */
+/** 判断条目是否来自能力市场（在线市场条目、未独立上架的成员、或由市场安装到本地的条目）。 */
+export function isAbilityFromMarket(item: AbilityItem): boolean {
+	if (item.fromMarket) return true;
+	if (item.catalogSource.kind === "github" || item.catalogSource.kind === "server") return true;
+	if (item.origin?.kind === "github-marketplace" || item.origin?.kind === "server") return true;
+	if (item.type === "skill" && item.skillProvenance?.kind === "native" && item.skillProvenance.scope === "market") {
+		return true;
+	}
+	return false;
+}
+
+/** 「公开」展示已列入市场的条目以及 Vetta 内置能力。 */
 export function isAbilityListedInDiscover(item: AbilityItem): boolean {
-	return item.fromMarket && (!item.market || isMarketAbilityListed(item.market));
+	return (item.fromMarket && (!item.market || isMarketAbilityListed(item.market))) || item.isBuiltin;
+}
+
+/** 「个人」只展示通用 skill 和手动安装的能力（排除从能力市场上安装的能力与 Vetta 内置能力）。 */
+export function isAbilityListedInPersonal(item: AbilityItem): boolean {
+	return item.installed && !item.isBuiltin && !isAbilityFromMarket(item);
 }
 
 export function queryAbilityCatalog(items: AbilityItem[], query: AbilityCatalogQuery): AbilityCatalogPage {
@@ -41,8 +57,9 @@ export function queryAbilityCatalog(items: AbilityItem[], query: AbilityCatalogQ
 	const sourceIds = query.sourceIds ? new Set(query.sourceIds) : null;
 	const page = Number.isInteger(query.page) && query.page > 0 ? query.page : 1;
 	const pageSize = Number.isInteger(query.pageSize) && query.pageSize > 0 ? query.pageSize : 60;
+	const isPublic = query.scope === "discover" || (query.scope as string) === "public";
 	const filtered = items
-		.filter((item) => (query.scope === "discover" ? isAbilityListedInDiscover(item) : item.installed))
+		.filter((item) => (isPublic ? isAbilityListedInDiscover(item) : isAbilityListedInPersonal(item)))
 		.filter((item) => !keyword || item.searchTerms.some((term) => term.toLowerCase().includes(keyword)))
 		.filter((item) => !query.category || item.category === query.category)
 		.filter((item) => !types || types.has(item.type))

@@ -17,7 +17,12 @@ import type { AbilityDetail, AbilityMember, AbilityType, MarketAbility } from "@
 import type { McpSettingsModel } from "../settings/components/useMcpSettingsModel";
 import type { BuiltinMcpPreset } from "../settings/mcp/builtin-mcp-presets";
 
-export type AbilityScope = "discover" | "mine";
+/**
+ * 能力市场分区：
+ * - "discover" / "public"：公开能力（市场条目 + Vetta 内置能力）
+ * - "mine" / "personal"：个人能力（通用 skill + 手动安装的能力）
+ */
+export type AbilityScope = "discover" | "mine" | "public" | "personal";
 export type AbilityCatalogSource =
 	| { kind: "builtin"; id: "builtin" }
 	| { kind: "local"; id: "local" }

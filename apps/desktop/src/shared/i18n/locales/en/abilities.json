@@ -16,8 +16,8 @@
 		"bundle": "Bundle"
 	},
 	"scope": {
-		"discover": "Discover",
-		"mine": "Mine"
+		"discover": "Public",
+		"mine": "Personal"
 	},
 	"group": {
 		"connectors": "Connections",
@@ -89,8 +89,8 @@
 	"empty": {
 		"noMatch": "No matching abilities",
 		"noMatchHint": "Try a different keyword",
-		"discover": "Nothing to discover yet",
-		"mine": "No abilities added yet",
+		"discover": "No public abilities yet",
+		"mine": "No personal abilities added yet",
 		"hint": "Refresh later, or import one via \"Add ability\" above"
 	},
 	"error": {

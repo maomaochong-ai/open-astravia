@@ -146,7 +146,8 @@ it("keeps bundle-only members out of discovery and its banner while preserving d
 	// Supply the stable source identity of an already installed member, as recorded before unlisting.
 	window.vetta.abilities.getLedger = async () => ({ "skill:guide": { type: "skill", version: "1.0.0", configVersion: 1, installedAt: "2026-08-30", origin: base.origin, catalogId: guideId, slug: "guide" } });
 	act(() => { result.current.setSearchQuery(""); result.current.setScope("mine"); result.current.refresh(); });
-	await waitFor(() => expect(result.current.items).toMatchObject([{ id: guideId, installed: true, enabled: false, needsUpdate: true }]));
+	await waitFor(() => expect(result.current.findById(guideId)).toMatchObject({ id: guideId, installed: true, enabled: false, needsUpdate: true }));
+	expect(result.current.items.filter((item) => item.id === guideId)).toHaveLength(0);
 	act(() => result.current.setScope("discover"));
 	expect(result.current.items.filter((item) => item.fromMarket).map((item) => item.id)).toEqual([bundleId]);
 	// Independently listing the same package changes visibility, not its catalog identity.

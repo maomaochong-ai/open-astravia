@@ -60,8 +60,8 @@
 				"description": "Search to find a capability quickly, or use Add to import a local Skill / plugin or configure an MCP connector."
 			},
 			"scope": {
-				"title": "Discover / Mine",
-				"description": "Discover browses capabilities you can add. Mine manages what you already installed — enable, configure, or remove."
+				"title": "Public / Personal",
+				"description": "Public browses available capabilities and Vetta built-in abilities. Personal manages universal skills and manually installed capabilities — enable, configure, or remove."
 			},
 			"list": {
 				"title": "Capability cards",

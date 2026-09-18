@@ -44,7 +44,7 @@ describe("queryAbilityCatalog", () => {
 		expect(page.items[0]?.slug).toBe("ability-060");
 	});
 
-	it("returns every builtin ability regardless of the page window", () => {
+	it("returns every builtin ability in discover regardless of the page window", () => {
 		const market = Array.from({ length: 80 }, (_, index) =>
 			ability(index, { downloadCount: 1000 - index, installed: true }),
 		);
@@ -58,11 +58,59 @@ describe("queryAbilityCatalog", () => {
 			}),
 		);
 
-		const page = queryAbilityCatalog([...market, ...builtin], { scope: "mine", page: 1, pageSize: 60 });
+		const page = queryAbilityCatalog([...market, ...builtin], { scope: "discover", page: 1, pageSize: 60 });
 
 		expect(page.total).toBe(92);
 		expect(page.items.filter((item) => item.isBuiltin)).toHaveLength(12);
 		expect(page.items.filter((item) => !item.isBuiltin)).toHaveLength(60);
+	});
+
+	it("limits personal scope to universal skills and manually installed abilities, excluding market abilities and builtins", () => {
+		const installedMarket = ability(1, { installed: true, title: "A Installed Market", fromMarket: true });
+		const uninstalledMarket = ability(2, { installed: false, title: "B Uninstalled Market", fromMarket: true });
+		const genericAgentSkill = ability(3, {
+			installed: true,
+			isBuiltin: false,
+			fromMarket: false,
+			skillSource: "agents-user",
+			catalogSource: { kind: "local", id: "local" },
+			title: "C Generic Agent Skill",
+		});
+		const customImportedSkill = ability(4, {
+			installed: true,
+			isBuiltin: false,
+			isCustom: true,
+			fromMarket: false,
+			catalogSource: { kind: "local", id: "local" },
+			title: "D Custom Imported Skill",
+		});
+		const builtinSkill = ability(5, {
+			installed: true,
+			isBuiltin: true,
+			fromMarket: false,
+			catalogSource: { kind: "builtin", id: "builtin" },
+			title: "E Builtin Skill",
+		});
+
+		const personalPage = queryAbilityCatalog(
+			[installedMarket, uninstalledMarket, genericAgentSkill, customImportedSkill, builtinSkill],
+			{ scope: "mine", page: 1, pageSize: 60 },
+		);
+
+		// 个人：只展示通用 skill 和手动安装的能力（排除从市场安装的能力与内置能力）
+		expect(personalPage.items.map((item) => item.id)).toEqual([genericAgentSkill.id, customImportedSkill.id]);
+
+		const publicPage = queryAbilityCatalog(
+			[installedMarket, uninstalledMarket, genericAgentSkill, customImportedSkill, builtinSkill],
+			{ scope: "discover", page: 1, pageSize: 60 },
+		);
+
+		// 公开：展示市场能力（不论是否已安装）与 Vetta 内置能力，排除本地未上架的个人技能
+		expect(publicPage.items.map((item) => item.id)).toEqual([
+			installedMarket.id,
+			uninstalledMarket.id,
+			builtinSkill.id,
+		]);
 	});
 
 	it("filters locally by keyword, category, type and source", () => {
@@ -97,9 +145,21 @@ describe("queryAbilityCatalog", () => {
 		expect(page.items.map((item) => item.id)).toEqual([github.id]);
 	});
 
-	it("sorts deterministically and limits mine to installed abilities", () => {
-		const second = ability(2, { installed: true, title: "Same" });
-		const first = ability(1, { installed: true, title: "Same" });
+	it("sorts deterministically and limits mine to installed personal abilities", () => {
+		const second = ability(2, {
+			installed: true,
+			title: "Same",
+			fromMarket: false,
+			catalogSource: { kind: "local", id: "local" },
+			isCustom: true,
+		});
+		const first = ability(1, {
+			installed: true,
+			title: "Same",
+			fromMarket: false,
+			catalogSource: { kind: "local", id: "local" },
+			isCustom: true,
+		});
 
 		const page = queryAbilityCatalog([second, ability(3), first], {
 			scope: "mine",
