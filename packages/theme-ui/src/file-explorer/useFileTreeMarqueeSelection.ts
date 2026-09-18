@@ -1,5 +1,10 @@
 import { type MouseEvent, type RefObject, useCallback, useRef, useState } from "react";
-import { type FileTreeRow, hitTestFileTreeMarquee } from "./file-tree-rows";
+import {
+	FILE_TREE_ROW_HEIGHT,
+	type FileTreeRow,
+	type FileTreeRowMetrics,
+	hitTestFileTreeMarquee,
+} from "./file-tree-rows";
 
 export interface FileTreeMarqueeRect {
 	left: number;
@@ -18,6 +23,8 @@ interface UseFileTreeMarqueeSelectionParams {
 	onMarqueeSelect: (paths: readonly string[]) => void;
 	/** Flattened visible rows; hit-testing uses row geometry so virtualized rows stay selectable. */
 	rows: readonly FileTreeRow[];
+	/** Measured row heights from the virtual list; falls back to `FILE_TREE_ROW_HEIGHT` when omitted. */
+	rowMetrics?: FileTreeRowMetrics;
 }
 
 interface UseFileTreeMarqueeSelectionResult {
@@ -38,6 +45,7 @@ export function useFileTreeMarqueeSelection({
 	selectedPaths,
 	onMarqueeSelect,
 	rows,
+	rowMetrics,
 }: UseFileTreeMarqueeSelectionParams): UseFileTreeMarqueeSelectionResult {
 	const scrollRef = useRef<HTMLElement>(null);
 	const [marquee, setMarquee] = useState<FileTreeMarqueeRect | null>(null);
@@ -45,6 +53,8 @@ export function useFileTreeMarqueeSelection({
 	selectedPathsRef.current = selectedPaths;
 	const rowsRef = useRef(rows);
 	rowsRef.current = rows;
+	const rowMetricsRef = useRef(rowMetrics);
+	rowMetricsRef.current = rowMetrics;
 
 	const onMouseDown = useCallback(
 		(event: MouseEvent) => {
@@ -81,7 +91,11 @@ export function useFileTreeMarqueeSelection({
 				moved = true;
 				e.preventDefault();
 				setMarquee({ left, top, width, height });
-				const hits = hitTestFileTreeMarquee(rowsRef.current, { left, top, width, height });
+				const hits = hitTestFileTreeMarquee(
+					rowsRef.current,
+					{ left, top, width, height },
+					rowMetricsRef.current ?? FILE_TREE_ROW_HEIGHT,
+				);
 				onMarqueeSelect(additive ? [...new Set([...basePaths, ...hits])] : hits);
 			};
 

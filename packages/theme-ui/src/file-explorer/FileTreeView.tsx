@@ -16,6 +16,7 @@ import { FileTreeNodeView } from "./FileTreeNodeView";
 import {
 	type FileTreeRow,
 	buildFileTreeRows,
+	createFileTreeRowHeightStore,
 	FILE_TREE_OVERSCAN,
 	FILE_TREE_ROW_HEIGHT,
 } from "./file-tree-rows";
@@ -87,6 +88,13 @@ function toScrollerElement(ref: HTMLElement | Window | null): HTMLElement | null
 	return ref instanceof HTMLElement ? ref : null;
 }
 
+/** Virtuoso stamps the measured item wrapper with `data-item-index` (`data-index` on older builds). */
+function readVirtuosoItemIndex(el: HTMLElement): number {
+	const raw = el.dataset.itemIndex ?? el.dataset.index;
+	const index = raw === undefined ? Number.NaN : Number(raw);
+	return Number.isInteger(index) ? index : -1;
+}
+
 /**
  * Flattened, virtualized file tree. Host owns cache / expand / rename path atoms.
  */
@@ -127,6 +135,22 @@ export function FileTreeView({
 		[rootDir, cache, expandedDirs, creatingEntry],
 	);
 	rowsRef.current = rows;
+	// Measured heights win over FILE_TREE_ROW_HEIGHT so marquee geometry cannot drift from the painted rows.
+	const [rowHeights] = useState(() => createFileTreeRowHeightStore(FILE_TREE_ROW_HEIGHT));
+	useEffect(() => {
+		rowHeights.prune(new Set(rows.map((row) => row.key)));
+	}, [rows, rowHeights]);
+	const measureItemSize = useCallback(
+		(el: HTMLElement, field: "offsetHeight" | "offsetWidth"): number => {
+			const size = el.getBoundingClientRect()[field === "offsetHeight" ? "height" : "width"];
+			if (field === "offsetHeight") {
+				const row = rowsRef.current[readVirtuosoItemIndex(el)];
+				if (row) rowHeights.record(row.key, size);
+			}
+			return size;
+		},
+		[rowHeights],
+	);
 	const selectedDragEntries: FileExplorerDragEntry[] = useMemo(
 		() =>
 			rows
@@ -147,6 +171,7 @@ export function FileTreeView({
 		selectedPaths,
 		onMarqueeSelect: handleMarqueeSelect,
 		rows,
+		rowMetrics: rowHeights,
 	});
 
 	useEffect(() => {
@@ -295,6 +320,7 @@ export function FileTreeView({
 				ref={virtuosoRef}
 				data={rows}
 				defaultItemHeight={FILE_TREE_ROW_HEIGHT}
+				itemSize={measureItemSize}
 				overscan={FILE_TREE_OVERSCAN}
 				computeItemKey={(_index, row) => row.key}
 				scrollerRef={(ref) => {
