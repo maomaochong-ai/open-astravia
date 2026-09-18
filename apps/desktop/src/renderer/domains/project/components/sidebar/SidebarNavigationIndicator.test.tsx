@@ -5,8 +5,8 @@ import type { SidebarNavItem } from "@vetta-org/theme-sdk/sidebar";
 import { describe, expect, it } from "vitest";
 
 /**
- * 侧栏导航指示条的性能合同：位置动画必须由 CSS transform 过渡承担（合成器友好），
- * 不允许回到逐帧写 left/top 的 JS 弹簧动画（低配机上每帧触发整条侧栏 layout）。
+ * 侧栏导航指示条的合同：位置只走 CSS transform 直接落位，不做补间动画，
+ * 更不允许回到逐帧写 left/top 的 JS 弹簧动画（低配机上每帧触发整条侧栏 layout）。
  */
 
 const ITEMS: SidebarNavItem[] = [
@@ -47,14 +47,14 @@ describe("SidebarNavigation 指示条", () => {
 		expect(indicator?.style.top).toBe("");
 	});
 
-	it("声明了具体属性的 CSS 过渡并尊重 reduce-motion", () => {
+	it("不声明任何过渡：切换导航项时指示条直接落位", () => {
 		const { container } = renderNav({ left: 8, top: 24, width: 180, height: 32 });
 		const indicator = queryIndicator(container);
-		expect(indicator?.className).toContain("transition-[transform,width,height]");
-		expect(indicator?.className).toContain("motion-reduce:transition-none");
+		expect(indicator?.className).not.toContain("transition");
+		expect(indicator?.style.transition).toBe("");
 	});
 
-	it("bounds 变化时更新 transform（由 CSS 过渡插值，无 JS 动画帧）", () => {
+	it("bounds 变化时更新 transform（直接落位，无 JS 动画帧）", () => {
 		const { container, rerender } = renderNav({ left: 8, top: 24, width: 180, height: 32 });
 		rerender(
 			<SidebarNavigation

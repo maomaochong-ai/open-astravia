@@ -80,13 +80,12 @@ export function SidebarNavigation({
 	return (
 		<nav className={cn("relative flex flex-col gap-0.5 px-1.5 pb-2 pt-2", className)}>
 			{indicatorBounds && (
-				// CSS 过渡替代 motion spring：位置走 transform（合成器承担），宽高只重排这个
-				// absolute 元素自身，低配机上不再逐帧触发整条侧栏 layout。
+				// 指示条直接落到目标位置：位置仍走 transform（合成器承担），但不做补间，
+				// 切换导航项时没有滑动动画。
 				<span
 					data-sidebar-nav-indicator=""
 					className={cn(
 						"pointer-events-none absolute left-0 top-0 z-10 overflow-visible rounded-md bg-accent",
-						"transition-[transform,width,height] duration-200 ease-out motion-reduce:transition-none",
 						classNames?.indicator,
 					)}
 					style={{
