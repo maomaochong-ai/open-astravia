@@ -46,6 +46,38 @@ test("collectArtifacts uploads updater files and matching Windows supplements be
 	}
 });
 
+test("collectArtifacts uploads the deb and rpm packages listed in Linux metadata", async () => {
+	const directory = await mkdtemp(join(tmpdir(), "vetta-r2-publish-"));
+	try {
+		await Promise.all([
+			writeFile(
+				join(directory, "latest-linux.yml"),
+				[
+					"version: 1.2.3",
+					"files:",
+					"  - url: Vetta-1.2.3.AppImage",
+					"  - url: vetta_1.2.3_amd64.deb",
+					"  - url: vetta-1.2.3.x86_64.rpm",
+					"path: Vetta-1.2.3.AppImage",
+					"",
+				].join("\n"),
+			),
+			writeFile(join(directory, "Vetta-1.2.3.AppImage"), "appimage"),
+			writeFile(join(directory, "vetta_1.2.3_amd64.deb"), "deb"),
+			writeFile(join(directory, "vetta-1.2.3.x86_64.rpm"), "rpm"),
+		]);
+
+		assert.deepEqual(await collectArtifacts(directory), [
+			"Vetta-1.2.3.AppImage",
+			"vetta-1.2.3.x86_64.rpm",
+			"vetta_1.2.3_amd64.deb",
+			"latest-linux.yml",
+		]);
+	} finally {
+		await rm(directory, { recursive: true, force: true });
+	}
+});
+
 test("collectArtifacts rejects metadata that points to a missing artifact", async () => {
 	const directory = await mkdtemp(join(tmpdir(), "vetta-r2-publish-"));
 	try {
