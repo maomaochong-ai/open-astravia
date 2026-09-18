@@ -33,12 +33,12 @@ import { getAppLogger } from "./logger.js";
 import { MEDIA_PROTOCOL_SCHEME } from "./media-protocol.js";
 import { nextPetMousePollMs } from "./pet/pet-mouse-poll.js";
 import {
+	DEFAULT_PET_CONTENT_OFFSET,
 	initialPetVideoScreen,
-	nextPetWindowBounds,
+	layoutPetWidget,
 	normalizePetContentBounds,
-	petContentOffsetForBubblePlacement,
+	type PetWidgetLayout,
 	squarePetContent,
-	videoScreenAfterWindowLayout,
 	videoScreenForContentResize,
 	videoScreenRectFromWindow,
 } from "./pet/pet-widget-bounds.js";
@@ -61,7 +61,7 @@ let windowMoveSession: PetWindowMoveSession | undefined;
 let windowResizeSession: PetWindowResizeSession | undefined;
 let isMousePassthroughEnabled = false;
 let petVideoHitbox: PetVideoHitbox | undefined;
-let petContentOffset = { x: 0, y: 1 };
+let petContentOffset = { ...DEFAULT_PET_CONTENT_OFFSET };
 let petContentLayout: PetContentBounds | undefined;
 let lastVideoScreen: { x: number; y: number; width: number; height: number } | undefined;
 let mousePassthroughPollTimer: ReturnType<typeof setTimeout> | undefined;
@@ -121,13 +121,13 @@ function getInitialBounds(): Electron.Rectangle {
 	const workArea = screen.getPrimaryDisplay().workArea;
 	const size = normalizePetSize(petConfig.size);
 	petContentLayout = squarePetContent(size);
-	const videoScreen = initialPetVideoScreen(workArea, size, PET_SCREEN_EDGE_MARGIN);
-	lastVideoScreen = videoScreen;
-	return nextPetWindowBounds({
+	const layout = layoutPetWidget({
 		workArea,
-		videoScreen,
+		videoScreen: initialPetVideoScreen(workArea, size, PET_SCREEN_EDGE_MARGIN),
 		content: petContentLayout,
 	});
+	lastVideoScreen = layout.videoScreen;
+	return layout.windowBounds;
 }
 
 function buildPetQuery(config: PetConfig, contentOffset: Electron.Point): string {
@@ -155,17 +155,25 @@ function currentPetContent(): PetContentBounds {
 	return petContentLayout ?? squarePetContent(normalizePetSize(petConfig.size));
 }
 
-function applyPetWidgetBounds(win: BrowserWindow, videoScreen: Electron.Rectangle): void {
+function currentPetWidgetLayout(videoScreen: Electron.Rectangle): PetWidgetLayout {
 	const workArea = screen.getDisplayNearestPoint({ x: videoScreen.x, y: videoScreen.y }).workArea;
-	const content = currentPetContent();
-	const next = nextPetWindowBounds({
-		workArea,
-		videoScreen,
-		content,
-	});
-	setPetOverlayBounds(win, next);
-	lastVideoScreen = videoScreenAfterWindowLayout(next, content);
-	sendPetContentOffset(win, petContentOffsetForBubblePlacement(next, workArea));
+	return layoutPetWidget({ workArea, videoScreen, content: currentPetContent() });
+}
+
+/**
+ * 精灵的逻辑位置只由拖动决定：气泡撑窗时靠放置方向与水平平移让位，不把窗口夹紧结果回写成精灵坐标。
+ * `resyncContent` 用于处理渲染层的内容上报：上报的布局若不是目标布局，即使偏移值没变也重发一次，
+ * 避免 set-content-offset 在页面监听注册前丢失后窗口永远对不齐。
+ */
+function applyPetWidgetBounds(
+	win: BrowserWindow,
+	videoScreen: Electron.Rectangle,
+	options: { resyncContent?: boolean } = {},
+): void {
+	const layout = currentPetWidgetLayout(videoScreen);
+	lastVideoScreen = layout.videoScreen;
+	setPetOverlayBounds(win, layout.windowBounds);
+	sendPetContentOffset(win, layout.contentOffset, options.resyncContent === true && !layout.contentInSync);
 }
 
 function getPetAnchorScreenPoint(win: BrowserWindow): Electron.Point {
@@ -245,8 +253,13 @@ function getPetEntryUrl(query: string): string {
 }
 
 function loadPetEntry(win: BrowserWindow): void {
-	const workArea = screen.getDisplayNearestPoint({ x: win.getBounds().x, y: win.getBounds().y }).workArea;
-	petContentOffset = petContentOffsetForBubblePlacement(win.getBounds(), workArea);
+	petContentOffset = currentPetWidgetLayout(
+		videoScreenForContentResize({
+			lastVideoScreen,
+			windowBounds: win.getBounds(),
+			hitbox: petVideoHitbox,
+		}),
+	).contentOffset;
 	const query = buildPetQuery(petConfig, petContentOffset);
 	const url = getPetEntryUrl(query);
 	log.info("load entry", {
@@ -563,7 +576,7 @@ export function createPetWindow(): BrowserWindow {
 		petVideoHitbox = undefined;
 		petContentLayout = undefined;
 		lastVideoScreen = undefined;
-		petContentOffset = { x: 0, y: 1 };
+		petContentOffset = { ...DEFAULT_PET_CONTENT_OFFSET };
 		windowMoveSession = undefined;
 		windowResizeSession = undefined;
 		isMousePassthroughEnabled = false;
@@ -709,6 +722,7 @@ export function setPetWindowContentSize(content: number | PetContentBounds): voi
 			windowBounds: win.getBounds(),
 			hitbox: petVideoHitbox,
 		}),
+		{ resyncContent: true },
 	);
 }
 

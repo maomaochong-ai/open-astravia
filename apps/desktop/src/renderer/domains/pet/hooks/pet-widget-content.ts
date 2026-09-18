@@ -1,4 +1,4 @@
-import type { PetContentBounds, PetVideoHitbox } from "../../../../shared/pet-ipc";
+import type { PetContentBounds, PetContentOffset, PetVideoHitbox } from "../../../../shared/pet-ipc";
 
 export function clientRectToHitbox(
 	rect: { left: number; top: number; right: number; bottom: number },
@@ -17,9 +17,14 @@ export function clientRectToHitbox(
 	};
 }
 
+/**
+ * 上报给主进程的内容布局。带上测量时生效的 contentOffset，
+ * 主进程才能分辨这份布局是否已经按它下发的放置方向 / 平移排好，而不是靠猜。
+ */
 export function measurePetWidgetContent(input: {
 	shell: { width: number; height: number };
 	video?: { left: number; top: number; width: number; height: number };
+	contentOffset: PetContentOffset;
 }): PetContentBounds {
 	const bounds = {
 		x: 0,
@@ -27,11 +32,13 @@ export function measurePetWidgetContent(input: {
 		width: Math.max(1, Math.ceil(input.shell.width)),
 		height: Math.max(1, Math.ceil(input.shell.height)),
 	};
+	const contentOffset = { x: Math.round(input.contentOffset.x), y: Math.round(input.contentOffset.y) };
 	const video = input.video;
 	if (!video || video.width <= 0 || video.height <= 0) {
 		return {
 			bounds,
 			anchor: { x: 0, y: 0, width: bounds.width, height: bounds.height },
+			contentOffset,
 		};
 	}
 	return {
@@ -42,6 +49,7 @@ export function measurePetWidgetContent(input: {
 			width: Math.max(1, Math.round(video.width)),
 			height: Math.max(1, Math.round(video.height)),
 		},
+		contentOffset,
 	};
 }
 
@@ -60,6 +68,8 @@ export function samePetContentBounds(left?: PetContentBounds, right?: PetContent
 		left.anchor.x === right.anchor.x &&
 		left.anchor.y === right.anchor.y &&
 		left.anchor.width === right.anchor.width &&
-		left.anchor.height === right.anchor.height
+		left.anchor.height === right.anchor.height &&
+		left.contentOffset?.x === right.contentOffset?.x &&
+		left.contentOffset?.y === right.contentOffset?.y
 	);
 }

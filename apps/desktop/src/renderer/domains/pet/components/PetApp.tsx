@@ -123,6 +123,7 @@ export function PetApp(): JSX.Element {
 	usePetWidgetLayout({
 		shellRef,
 		videoRef,
+		contentOffset,
 	});
 
 	useEffect(() => {
@@ -253,9 +254,12 @@ export function PetApp(): JSX.Element {
 			{bubblePlacement === "above" ? speechBubble : null}
 			<div
 				className="relative flex cursor-move items-center justify-center"
+				data-testid="pet-video-slot"
 				style={{
 					width: `${videoSize.width}px`,
 					height: `${videoSize.height}px`,
+					// 气泡贴边放不下时主进程让精灵在窗口内平移，精灵的屏幕位置由此保持不变。
+					...(contentOffset.x !== 0 ? { transform: `translateX(${contentOffset.x}px)` } : {}),
 				}}
 			>
 				<PetVideoSurface
