@@ -5,8 +5,9 @@ import type { SidebarNavItem } from "@vetta-org/theme-sdk/sidebar";
 import { describe, expect, it } from "vitest";
 
 /**
- * 侧栏导航指示条的合同：位置只走 CSS transform 直接落位，不做补间动画，
- * 更不允许回到逐帧写 left/top 的 JS 弹簧动画（低配机上每帧触发整条侧栏 layout）。
+ * 侧栏导航指示条的合同：纵向只走 CSS transform 直接落位，不做补间动画，更不允许
+ * 回到逐帧写 left/top 的 JS 弹簧动画（低配机上每帧触发整条侧栏 layout）；横向必须由
+ * CSS 拉伸，不能吃测量宽度——拖宽侧边栏时宽度不重渲染，测量值要等松手才追上。
  */
 
 const ITEMS: SidebarNavItem[] = [
@@ -35,16 +36,22 @@ describe("SidebarNavigation 指示条", () => {
 		expect(queryIndicator(container)).toBeNull();
 	});
 
-	it("位置走 transform + 宽高内联样式，而不是 left/top", () => {
+	it("纵向走 transform + 高度内联样式，而不是 left/top", () => {
 		const { container } = renderNav({ left: 8, top: 24, width: 180, height: 32 });
 		const indicator = queryIndicator(container);
 		expect(indicator).not.toBeNull();
-		expect(indicator?.style.transform).toBe("translate3d(8px, 24px, 0)");
-		expect(indicator?.style.width).toBe("180px");
+		expect(indicator?.style.transform).toBe("translate3d(0, 24px, 0)");
 		expect(indicator?.style.height).toBe("32px");
 		// left/top 不参与动画：固定为 0（由 class 提供），内联样式不写 left/top。
 		expect(indicator?.style.left).toBe("");
 		expect(indicator?.style.top).toBe("");
+	});
+
+	it("横向不吃测量宽度：由 inset-x 跟随侧栏实时宽度", () => {
+		const { container } = renderNav({ left: 8, top: 24, width: 180, height: 32 });
+		const indicator = queryIndicator(container);
+		expect(indicator?.style.width).toBe("");
+		expect(indicator?.className).toContain("inset-x-1.5");
 	});
 
 	it("不声明任何过渡：切换导航项时指示条直接落位", () => {
@@ -65,6 +72,6 @@ describe("SidebarNavigation 指示条", () => {
 			/>,
 		);
 		const indicator = queryIndicator(container);
-		expect(indicator?.style.transform).toBe("translate3d(8px, 60px, 0)");
+		expect(indicator?.style.transform).toBe("translate3d(0, 60px, 0)");
 	});
 });

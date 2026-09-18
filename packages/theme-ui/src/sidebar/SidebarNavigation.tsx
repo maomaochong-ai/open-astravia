@@ -80,17 +80,17 @@ export function SidebarNavigation({
 	return (
 		<nav className={cn("relative flex flex-col gap-0.5 px-1.5 pb-2 pt-2", className)}>
 			{indicatorBounds && (
-				// 指示条直接落到目标位置：位置仍走 transform（合成器承担），但不做补间，
-				// 切换导航项时没有滑动动画。
+				// 纵向用测量出的 top/height 直接落位（无补间）；横向不吃测量值，靠 inset-x
+				// 跟着 <nav> 内容宽度走——拖宽侧边栏时宽度是实时写进 DOM 的，不会重渲染，
+				// 测量宽度要等松手才更新，指示条就会短一截。
 				<span
 					data-sidebar-nav-indicator=""
 					className={cn(
-						"pointer-events-none absolute left-0 top-0 z-10 overflow-visible rounded-md bg-accent",
+						"pointer-events-none absolute inset-x-1.5 top-0 z-10 overflow-visible rounded-md bg-accent",
 						classNames?.indicator,
 					)}
 					style={{
-						transform: `translate3d(${indicatorBounds.left}px, ${indicatorBounds.top}px, 0)`,
-						width: indicatorBounds.width,
+						transform: `translate3d(0, ${indicatorBounds.top}px, 0)`,
 						height: indicatorBounds.height,
 					}}
 				>
