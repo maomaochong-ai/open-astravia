@@ -26,6 +26,8 @@ export interface PresetProviderRow {
 	icon?: string;
 	models: NonNullable<ProviderEntry["models"]>;
 	modelRows: PresetProviderModelRow[];
+	/** 被新一代取代的模型,默认收起。填了 key 的服务商以账号实际列表为准,这里为空。 */
+	legacyModelRows: PresetProviderModelRow[];
 	offline: boolean;
 	adopted: boolean;
 	isOpen: boolean;
@@ -58,6 +60,8 @@ export interface PresetProvidersSectionLabels {
 	noMatchingModels: string;
 	searchModels: (provider: string) => string;
 	clearModelSearch: string;
+	showLegacyModels: (count: number) => string;
+	hideLegacyModels: string;
 	modelListLabel: (provider: string) => string;
 	thinking: string;
 	perMillionTokens: string;
@@ -149,6 +153,7 @@ export function usePresetProvidersSectionModel({
 				baseUrl: provider.baseUrl,
 				icon: provider.icon,
 				models: provider.models ?? [],
+				legacyModels: [],
 				offline: true,
 			}));
 		const presetRows: BaseRow[] = presets.map((preset) => ({
@@ -159,6 +164,8 @@ export function usePresetProvidersSectionModel({
 			icon: preset.icon,
 			// 已启用的用账号实际可用的 /models 结果,未启用的展示 models.dev 公共目录。
 			models: config.providers[preset.id]?.models ?? preset.catalogModels,
+			// 账号实际可用的列表是服务商自己给的,不做代际收敛——只有免 key 的公共目录才分当代与历史。
+			legacyModels: config.providers[preset.id]?.models ? [] : preset.legacyCatalogModels,
 			offline: false,
 		}));
 
@@ -166,14 +173,8 @@ export function usePresetProvidersSectionModel({
 			const adopted = config.providers[row.id]?.source === "template";
 			return {
 				...row,
-				modelRows: row.models.map((model) => ({
-					id: model.id,
-					name: model.name || model.id,
-					contextWindow: model.contextWindow,
-					hasVision: model.input?.includes("image") ?? false,
-					hasReasoning: Boolean(model.reasoning),
-					price: formatPrice(model.cost, t),
-				})),
+				modelRows: row.models.map((model) => toModelRow(model, t)),
+				legacyModelRows: row.legacyModels.map((model) => toModelRow(model, t)),
 				adopted,
 				isOpen: openId === row.id,
 				isExpanded: expandedId === row.id,
@@ -375,6 +376,8 @@ export function usePresetProvidersSectionModel({
 			noMatchingModels: t("noMatchingModels"),
 			searchModels: (provider: string) => t("searchModels", { provider }),
 			clearModelSearch: t("clearModelSearch"),
+			showLegacyModels: (count: number) => t("showLegacyModels", { count }),
+			hideLegacyModels: t("hideLegacyModels"),
 			modelListLabel: (provider: string) => t("modelListLabel", { provider }),
 			thinking: t("thinking"),
 			perMillionTokens: t("perMillionTokens"),
@@ -395,6 +398,20 @@ export function usePresetProvidersSectionModel({
 	};
 }
 
+function toModelRow(
+	model: NonNullable<ProviderEntry["models"]>[number],
+	t: TFunction<"settings">,
+): PresetProviderModelRow {
+	return {
+		id: model.id,
+		name: model.name || model.id,
+		contextWindow: model.contextWindow,
+		hasVision: model.input?.includes("image") ?? false,
+		hasReasoning: Boolean(model.reasoning),
+		price: formatPrice(model.cost, t),
+	};
+}
+
 interface BaseRow {
 	id: string;
 	displayName: string;
@@ -402,6 +419,7 @@ interface BaseRow {
 	baseUrl?: string;
 	icon?: string;
 	models: NonNullable<ProviderEntry["models"]>;
+	legacyModels: NonNullable<ProviderEntry["models"]>;
 	offline: boolean;
 }
 

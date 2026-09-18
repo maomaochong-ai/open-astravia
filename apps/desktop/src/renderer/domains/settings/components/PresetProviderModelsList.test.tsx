@@ -27,6 +27,8 @@ const labels: PresetProvidersSectionLabels = {
 	noMatchingModels: "No matching models",
 	searchModels: (provider) => `Search ${provider} models`,
 	clearModelSearch: "Clear model search",
+	showLegacyModels: (count) => `Show ${count} older models`,
+	hideLegacyModels: "Hide older models",
 	modelListLabel: (provider) => `${provider} model list`,
 	thinking: "Thinking",
 	perMillionTokens: "/M tokens",
@@ -59,6 +61,15 @@ const row: PresetProviderRow = {
 		{
 			id: "qwen3-flash",
 			name: "Qwen3 Flash",
+			hasVision: false,
+			hasReasoning: false,
+			price: null,
+		},
+	],
+	legacyModelRows: [
+		{
+			id: "qwen2-5-72b-instruct",
+			name: "Qwen2.5 72B",
 			hasVision: false,
 			hasReasoning: false,
 			price: null,
@@ -98,6 +109,32 @@ describe("PresetProviderModelsList", () => {
 		await user.click(screen.getByRole("button", { name: "Clear model search" }));
 		expect(screen.getByText("Qwen3 Max")).toBeTruthy();
 		expect(screen.getByText("Coding Expert")).toBeTruthy();
+	});
+
+	it("旧版模型默认收起，展开后可见并能再次收起", async () => {
+		const user = userEvent.setup();
+		render(<PresetProviderModelsList row={row} labels={labels} />);
+
+		expect(screen.queryByText("Qwen2.5 72B")).toBeNull();
+
+		await user.click(screen.getByRole("button", { name: "Show 1 older models" }));
+		expect(screen.getByText("Qwen2.5 72B")).toBeTruthy();
+		// 展开不该把当代模型挤掉,两段是叠加关系。
+		expect(screen.getByText("Qwen3 Max")).toBeTruthy();
+
+		await user.click(screen.getByRole("button", { name: "Hide older models" }));
+		expect(screen.queryByText("Qwen2.5 72B")).toBeNull();
+	});
+
+	it("搜索覆盖收起的旧版模型，用户不会因为收敛而搜不到", async () => {
+		const user = userEvent.setup();
+		render(<PresetProviderModelsList row={row} labels={labels} />);
+
+		await user.type(screen.getByRole("searchbox", { name: "Search Qwen models" }), "qwen2");
+
+		expect(screen.getByText("Qwen2.5 72B")).toBeTruthy();
+		// 结果里已经含历史模型,再留个展开入口会让人以为还有没搜到的。
+		expect(screen.queryByRole("button", { name: /older models/ })).toBeNull();
 	});
 
 	it("搜索无匹配项时显示明确空态，并让结果区保持限高滚动", async () => {
