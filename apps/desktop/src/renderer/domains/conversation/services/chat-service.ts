@@ -411,6 +411,36 @@ function pushHistoryError(
 	});
 }
 
+interface DeferredHistoryError {
+	readonly target: ConversationAgentMessageViewModel;
+	readonly message: string;
+	readonly details?: ChatErrorDetails;
+}
+
+/**
+ * 历史里失败的 assistant 尝试先暂存：同一轮随后有正常结束的 assistant（自动重试成功、
+ * 上下文溢出压缩后重试成功）就丢弃，与 live 链路 runtime-core 延迟发射的表现一致；
+ * 到用户消息、持久化的 turn 失败或历史结尾仍未恢复，才落成错误卡。
+ */
+function createDeferredHistoryErrors() {
+	let pending: DeferredHistoryError[] = [];
+	return {
+		defer(error: DeferredHistoryError): void {
+			pending.push(error);
+		},
+		recover(): void {
+			pending = [];
+		},
+		flush(): void {
+			for (const { target, message, details } of pending) {
+				pushHistoryError(target.blocks!, message, undefined, details);
+				if (!target.text) target.text = message;
+			}
+			pending = [];
+		},
+	};
+}
+
 /**
  * Convert history messages (user, assistant, toolResult) into ChatMessages.
  * Tool results are merged into their corresponding tool_call blocks.
@@ -433,6 +463,7 @@ export function historyToChat(
 ): ChatConversationItem[] {
 	const messages: ChatConversationItem[] = [];
 	const toolCallIndex = new Map<string, ToolCallBlock>();
+	const historyErrors = createDeferredHistoryErrors();
 
 	/** Get or create the current assistant message to accumulate blocks into. */
 	function currentAssistant(): ConversationAgentMessageViewModel {
@@ -449,6 +480,7 @@ export function historyToChat(
 
 	for (const m of history) {
 		if (m.role === "user") {
+			historyErrors.flush();
 			const text = extractText(m.content);
 			const parsedUser = parseUserPrefixes(text);
 			const legacyPromptRef: PromptResourceRef | undefined =
@@ -466,6 +498,7 @@ export function historyToChat(
 			});
 			messages.push(userMsg);
 		} else if (m.role === "assistant") {
+			if (m.stopReason !== "error" && m.stopReason !== "aborted") historyErrors.recover();
 			// Merge consecutive assistant messages into one (same agent turn)
 			const target = currentAssistant();
 			if (target.timestamp === undefined) target.timestamp = m.timestamp;
@@ -480,13 +513,11 @@ export function historyToChat(
 			if (text) target.text = target.text ? `${target.text}\n${text}` : text;
 			// Handle error messages (e.g. provider 404)
 			if (m.stopReason === "error" && m.errorMessage) {
-				pushHistoryError(
-					target.blocks!,
-					m.errorMessage,
-					undefined,
-					toChatErrorDetails({ details: m.details, provider: m.provider, modelId: m.model }),
-				);
-				if (!target.text) target.text = m.errorMessage;
+				historyErrors.defer({
+					target,
+					message: m.errorMessage,
+					details: toChatErrorDetails({ details: m.details, provider: m.provider, modelId: m.model }),
+				});
 			}
 		} else if (m.role === "toolResult" && m.toolCallId) {
 			const block = toolCallIndex.get(String(m.toolCallId));
@@ -503,6 +534,7 @@ export function historyToChat(
 			}
 		}
 	}
+	historyErrors.flush();
 	return messages;
 }
 
@@ -513,6 +545,7 @@ export function historyToChat(
 export function fullHistoryToChat(entries: HistoryEntry[]): ChatConversationItem[] {
 	const messages: ChatConversationItem[] = [];
 	const toolCallIndex = new Map<string, ToolCallBlock>();
+	const historyErrors = createDeferredHistoryErrors();
 
 	function currentAssistant(): ConversationAgentMessageViewModel {
 		const last = messages.at(-1);
@@ -606,6 +639,7 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatConversationItem
 		}
 
 		if (entry.type === "error") {
+			historyErrors.flush();
 			const target = currentAssistant();
 			pushHistoryError(
 				target.blocks!,
@@ -639,6 +673,7 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatConversationItem
 		};
 
 		if (m.role === "user") {
+			historyErrors.flush();
 			const text = extractText(m.content);
 			const parsedUser = parseUserPrefixes(text);
 			const legacyPromptRef: PromptResourceRef | undefined =
@@ -669,6 +704,7 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatConversationItem
 			pendingAttachments = undefined;
 			messages.push(userMsg);
 		} else if (m.role === "assistant") {
+			if (m.stopReason !== "error" && m.stopReason !== "aborted") historyErrors.recover();
 			pendingSettingsAssistTabId = undefined;
 			pendingPromptRef = undefined;
 			pendingAttachments = undefined;
@@ -689,13 +725,11 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatConversationItem
 			const text = extractText(m.content);
 			if (text) target.text = target.text ? `${target.text}\n${text}` : text;
 			if (m.stopReason === "error" && m.errorMessage) {
-				pushHistoryError(
-					target.blocks!,
-					m.errorMessage,
-					undefined,
-					toChatErrorDetails({ details: m.details, provider: m.provider, modelId: m.model }),
-				);
-				if (!target.text) target.text = m.errorMessage;
+				historyErrors.defer({
+					target,
+					message: m.errorMessage,
+					details: toChatErrorDetails({ details: m.details, provider: m.provider, modelId: m.model }),
+				});
 			}
 			// 回填本轮 user 消息实际使用的模型：从末尾向前找到第一条尚未标注 model 的 user 消息。
 			if (m.provider && m.model) {
@@ -722,6 +756,7 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatConversationItem
 			}
 		}
 	}
+	historyErrors.flush();
 	return messages;
 }
 
