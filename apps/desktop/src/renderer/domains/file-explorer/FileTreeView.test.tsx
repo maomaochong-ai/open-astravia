@@ -150,3 +150,58 @@ describe("FileTreeView marquee selection", () => {
 		expect(onSelectPaths).toHaveBeenLastCalledWith(["/proj/y.ts"]);
 	});
 });
+
+describe("FileTreeView rename draft", () => {
+	it("重命名到一半的行滚出虚拟窗口再滚回来时，草稿和焦点都还在，回车提交的是草稿", () => {
+		const onRenameSubmit = vi.fn();
+		const onRenameCancel = vi.fn();
+		render(<FileTreeView {...makeProps({ renamingPath: "/proj/f-5.ts", onRenameSubmit, onRenameCancel })} />);
+		const input = screen.getByRole("textbox");
+		expect(document.activeElement).toBe(input);
+		fireEvent.change(input, { target: { value: "draft.ts" } });
+
+		// Recycling unmounts the row. React drops DOM events during its commit, so no blur reaches
+		// the input; the risk is the row-local draft being reset on remount, not a stray submit.
+		mountWindow([50, 80]);
+		expect(screen.queryByRole("textbox")).toBeNull();
+		expect(onRenameSubmit).not.toHaveBeenCalled();
+		expect(onRenameCancel).not.toHaveBeenCalled();
+
+		mountWindow(null);
+		const restored = screen.getByRole<HTMLInputElement>("textbox");
+		expect(restored.value).toBe("draft.ts");
+		expect(document.activeElement).toBe(restored);
+
+		fireEvent.keyDown(restored, { key: "Enter" });
+		expect(onRenameSubmit).toHaveBeenCalledWith("/proj/f-5.ts", "draft.ts");
+	});
+
+	it("行被回收期间用户把焦点移到别处，滚回来时保留草稿但不抢焦点", () => {
+		const onRenameSubmit = vi.fn();
+		render(
+			<>
+				<button type="button">elsewhere</button>
+				<FileTreeView {...makeProps({ renamingPath: "/proj/f-5.ts", onRenameSubmit })} />
+			</>,
+		);
+		fireEvent.change(screen.getByRole("textbox"), { target: { value: "draft.ts" } });
+
+		mountWindow([50, 80]);
+		const elsewhere = screen.getByRole("button", { name: "elsewhere" });
+		act(() => elsewhere.focus());
+
+		mountWindow(null);
+		expect(screen.getByRole<HTMLInputElement>("textbox").value).toBe("draft.ts");
+		expect(document.activeElement).toBe(elsewhere);
+		expect(onRenameSubmit).not.toHaveBeenCalled();
+	});
+
+	it("用户点到别处让输入框失焦时仍然提交重命名", () => {
+		const onRenameSubmit = vi.fn();
+		render(<FileTreeView {...makeProps({ renamingPath: "/proj/f-5.ts", onRenameSubmit })} />);
+		const input = screen.getByRole("textbox");
+		fireEvent.change(input, { target: { value: "blurred.ts" } });
+		fireEvent.blur(input);
+		expect(onRenameSubmit).toHaveBeenCalledWith("/proj/f-5.ts", "blurred.ts");
+	});
+});

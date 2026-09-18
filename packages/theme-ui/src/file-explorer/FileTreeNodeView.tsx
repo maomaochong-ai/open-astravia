@@ -20,6 +20,12 @@ export interface FileTreeNodeViewProps {
 	isSelected: boolean;
 	isFocused?: boolean;
 	isRenaming: boolean;
+	/**
+	 * Tree-owned rename draft. When set, the input is controlled and a remount
+	 * (virtual list recycling) restores the draft instead of resetting to `entry.name`.
+	 */
+	renameValue?: string;
+	onRenameValueChange?: (value: string) => void;
 	decoration?: FileExplorerNodeDecoration | null;
 	/** Entries included in the active multi-select when dragging this row. */
 	dragEntries?: readonly FileExplorerDragEntry[];
@@ -54,6 +60,19 @@ function isSubPath(path: string, parent: string): boolean {
 	return p === base || p.startsWith(`${base}/`);
 }
 
+/**
+ * After a recycled rename row remounts, focus is idle if it fell back to the body or
+ * sits on the tree chrome; a focus the user moved elsewhere (editor, dialog) is left alone.
+ */
+function shouldReclaimRenameFocus(input: HTMLInputElement): boolean {
+	const doc = input.ownerDocument;
+	const active = doc.activeElement;
+	if (!active || active === doc.body) return true;
+	if (active === input) return false;
+	const tree = input.closest('[role="tree"]');
+	return tree !== null && tree.contains(active);
+}
+
 function parseInternalDragPaths(raw: string): string[] {
 	if (!raw) return [];
 	try {
@@ -78,6 +97,8 @@ export function FileTreeNodeView({
 	isSelected,
 	isFocused = false,
 	isRenaming,
+	renameValue: draftValue,
+	onRenameValueChange,
 	decoration,
 	dragEntries,
 	onToggleDir,
@@ -91,19 +112,34 @@ export function FileTreeNodeView({
 	onPrefetchNativeDragIcons,
 }: FileTreeNodeViewProps): JSX.Element {
 	const [dragOver, setDragOver] = useState(false);
-	const [renameValue, setRenameValue] = useState(entry.name);
+	const [localRenameValue, setLocalRenameValue] = useState(entry.name);
+	const renameValue = draftValue ?? localRenameValue;
 	const inputRef = useRef<HTMLInputElement>(null);
 	const icon = getFileIcon(entry.name, entry.isDirectory, isExpanded);
 
+	const hasDraftRef = useRef(draftValue !== undefined);
+	hasDraftRef.current = draftValue !== undefined;
+
 	useEffect(() => {
-		if (isRenaming && inputRef.current) {
-			inputRef.current.focus();
-			const dotIdx = entry.name.lastIndexOf(".");
-			const end = entry.isDirectory || dotIdx <= 0 ? entry.name.length : dotIdx;
-			inputRef.current.setSelectionRange(0, end);
-			setRenameValue(entry.name);
+		const input = inputRef.current;
+		if (!isRenaming || !input) return;
+		if (hasDraftRef.current) {
+			// Remounted mid-rename (row scrolled back into the virtual window): keep the draft and
+			// only take focus back if nothing else claimed it while the row was unmounted.
+			if (shouldReclaimRenameFocus(input)) input.focus({ preventScroll: true });
+			return;
 		}
+		input.focus();
+		const dotIdx = entry.name.lastIndexOf(".");
+		const end = entry.isDirectory || dotIdx <= 0 ? entry.name.length : dotIdx;
+		input.setSelectionRange(0, end);
+		setLocalRenameValue(entry.name);
 	}, [isRenaming, entry.name, entry.isDirectory]);
+
+	function setRenameValue(value: string): void {
+		setLocalRenameValue(value);
+		onRenameValueChange?.(value);
+	}
 
 	function handleClick(e: React.MouseEvent) {
 		const toggle = e.ctrlKey || e.metaKey;

@@ -161,6 +161,37 @@ export function FileTreeView({
 		[rows, selectedPaths],
 	);
 
+	// The rename draft lives here, not in the row: Virtuoso recycles rows that scroll out of
+	// the overscan window, and a row-local draft would be lost (or committed) on that unmount.
+	const [renameDraft, setRenameDraft] = useState<{ path: string; value: string } | null>(null);
+	useEffect(() => {
+		if (!renamingPath) {
+			setRenameDraft(null);
+			return;
+		}
+		const row = rowsRef.current.find((candidate) => candidate.type === "entry" && candidate.entry.path === renamingPath);
+		const name = row?.type === "entry" ? row.entry.name : "";
+		setRenameDraft((prev) => (prev?.path === renamingPath ? prev : { path: renamingPath, value: name }));
+	}, [renamingPath]);
+	const handleRenameValueChange = useCallback(
+		(value: string) => {
+			if (!renamingPath) return;
+			setRenameDraft({ path: renamingPath, value });
+		},
+		[renamingPath],
+	);
+	const handleRenameSubmit = useCallback(
+		(oldPath: string, newName: string) => {
+			setRenameDraft(null);
+			onRenameSubmit(oldPath, newName);
+		},
+		[onRenameSubmit],
+	);
+	const handleRenameCancel = useCallback(() => {
+		setRenameDraft(null);
+		onRenameCancel();
+	}, [onRenameCancel]);
+
 	const handleMarqueeSelect = useCallback(
 		(paths: readonly string[]) => {
 			onSelectPaths(paths);
@@ -255,13 +286,15 @@ export function FileTreeView({
 				isSelected={isSelected}
 				isFocused={focusedPath === row.entry.path}
 				isRenaming={renamingPath === row.entry.path}
+				renameValue={renameDraft?.path === row.entry.path ? renameDraft.value : undefined}
+				onRenameValueChange={handleRenameValueChange}
 				decoration={getDecoration?.(row.entry)}
 				dragEntries={dragEntries}
 				onToggleDir={onToggleDir}
 				onSelectEntry={onSelectEntry}
 				onContextMenu={onContextMenu}
-				onRenameSubmit={onRenameSubmit}
-				onRenameCancel={onRenameCancel}
+				onRenameSubmit={handleRenameSubmit}
+				onRenameCancel={handleRenameCancel}
 				onFileMove={onFileMove}
 				onExternalDrop={onExternalDrop}
 				onNativeDragStart={onNativeDragStart}
