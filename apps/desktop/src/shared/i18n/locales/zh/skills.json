@@ -74,6 +74,10 @@
 			"name": "创建技能",
 			"description": "创建或更新符合 Vetta 规范的 Agent Skill，并正确放置文件、注册 skills-manifest.json 或更新插件配置。"
 		},
+		"install-ability": {
+			"name": "安装能力",
+			"description": "在本机 Vetta 中安装插件、Skill/场景与 MCP 能力，并在插件升级挂起待应用版本时立即重载。"
+		},
 		"publish-ability": {
 			"name": "发布能力",
 			"description": "把 skill、scene、MCP、插件或能力套装提交到 Vetta 能力市场，讲清必填字段、多语言与审核流程。"
