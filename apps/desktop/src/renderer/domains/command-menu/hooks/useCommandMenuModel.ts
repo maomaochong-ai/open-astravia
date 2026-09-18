@@ -17,7 +17,7 @@ import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { resolveDesktopSessionOpenTarget } from "@/shared/session-access";
-import { prefetchCommandMenuAction } from "../../../root-layout/route-prefetch";
+import { prefetchCommandMenuAction } from "../../../root-layout/nav-route-prefetch";
 import { usePluginTextResolver } from "../../plugins/runtime/plugin-i18n";
 import { useSessionSearch } from "../../project/hooks/useSessionSearch";
 import { buildCommandMenuGroups, type CommandMenuGroupLabels } from "../lib/build-groups";

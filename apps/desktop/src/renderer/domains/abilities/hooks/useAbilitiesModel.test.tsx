@@ -146,7 +146,8 @@ it("keeps bundle-only members out of discovery and its banner while preserving d
 	// Supply the stable source identity of an already installed member, as recorded before unlisting.
 	window.vetta.abilities.getLedger = async () => ({ "skill:guide": { type: "skill", version: "1.0.0", configVersion: 1, installedAt: "2026-08-30", origin: base.origin, catalogId: guideId, slug: "guide" } });
 	act(() => { result.current.setSearchQuery(""); result.current.setScope("mine"); result.current.refresh(); });
-	await waitFor(() => expect(result.current.items).toMatchObject([{ id: guideId, installed: true, enabled: false, needsUpdate: true }]));
+	await waitFor(() => expect(result.current.findById(guideId)).toMatchObject({ id: guideId, installed: true, enabled: false, needsUpdate: true }));
+	expect(result.current.items.filter((item) => item.id === guideId)).toHaveLength(0);
 	act(() => result.current.setScope("discover"));
 	expect(result.current.items.filter((item) => item.fromMarket).map((item) => item.id)).toEqual([bundleId]);
 	// Independently listing the same package changes visibility, not its catalog identity.
@@ -208,7 +209,7 @@ it("follows the application language broadcast for cached GitHub names, descript
 	const itemId = "github:official:mcp:xiaohongshu-mcp";
 	expect(result.current.findById(itemId)).toMatchObject({ title: "Xiaohongshu MCP", description: "Search social content" });
 	const categoryIds = result.current.groups.map((group) => group.category);
-	render(<AbilitiesPageView model={result.current} />);
+	render(<AbilitiesPageView model={result.current} categorized={true} />);
 	expect(screen.getByRole("heading", { name: "Social" })).toBeTruthy();
 	act(() => result.current.setSearchQuery("小红书"));
 	expect(result.current.items).toHaveLength(0);
@@ -294,4 +295,41 @@ it("seeds the search keyword from an external deep link and lets the page take o
 	const mine = renderHook(() => useAbilitiesModel({ initialSearchQuery: "Notion", initialScope: "mine" }));
 	await waitFor(() => expect(mine.result.current.refreshing).toBe(false));
 	expect(mine.result.current.scope).toBe("mine");
+});
+
+it("renders abilities in a flat grid by default when ENABLE_ABILITY_CATEGORIES is false", async () => {
+	const repository = "https://github.com/example/flat";
+	const source: MarketplaceSource = {
+		id: "flat-source", name: "Flat", type: "github", repository,
+		archiveUrl: `${repository}/archive/main.zip`, ref: "main",
+		enabled: true, builtin: false, autoUpdate: false, priority: 100,
+		createdAt: "2026-08-30T00:00:00.000Z", updatedAt: "2026-08-30T00:00:00.000Z",
+	};
+	const snapshot: OpenMarketplaceSourceSnapshot = {
+		source, sourceId: source.id, marketplaceVersion: "1", repository, syncedAt: source.updatedAt, stale: false,
+		abilities: [
+			{ type: "skill", slug: "skill-a", name: "Skill A", description: "", icon: "", version: "1.0.0", configVersion: 1, author: "", license: "", category: "CategoryA", tags: [], config: {}, detail: {}, origin: { kind: "github-marketplace", sourceId: source.id, marketplace: "flat", marketplaceVersion: "1", repository } },
+			{ type: "skill", slug: "skill-b", name: "Skill B", description: "", icon: "", version: "1.0.0", configVersion: 1, author: "", license: "", category: "CategoryB", tags: [], config: {}, detail: {}, origin: { kind: "github-marketplace", sourceId: source.id, marketplace: "flat", marketplaceVersion: "1", repository } },
+		],
+	};
+	const catalog: OpenMarketplaceCatalog = { sources: [source], snapshots: [snapshot], abilities: snapshot.abilities, failedSourceIds: [] };
+	Object.defineProperty(window, "vetta", { configurable: true, value: {
+		abilities: {
+			getLedger: async () => ({}), listLocalPresentations: async () => ({}), getOpenMcpSetupStatus: async () => ({}),
+			listOpenMarketplaces: async () => structuredClone(catalog), refreshOpenMarketplaces: async () => structuredClone(catalog),
+			onOpenMarketplacesUpdated: () => () => undefined,
+		},
+		skills: { getMarketManifest: async () => ({}), list: async () => [] },
+		plugins: { listAll: async () => [] },
+		mcp: { get: async () => ({ mcpServers: {} }) },
+	} });
+	initI18n();
+	const { result } = renderHook(() => useAbilitiesModel());
+	await waitFor(() => expect(result.current.refreshing).toBe(false));
+	const view = render(<AbilitiesPageView model={result.current} />);
+	expect(screen.queryByRole("heading", { name: "CategoryA" })).toBeNull();
+	expect(screen.queryByRole("heading", { name: "CategoryB" })).toBeNull();
+	expect(screen.getByText("Skill A")).toBeTruthy();
+	expect(screen.getByText("Skill B")).toBeTruthy();
+	view.unmount();
 });

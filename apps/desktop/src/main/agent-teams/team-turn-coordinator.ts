@@ -22,9 +22,11 @@ import type { PromptAttachmentRef, RuntimeHost } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import { stopSessionBackgroundWork } from "../agent-runtime/stop-session-work.js";
 import { getAppLogger } from "../logger.js";
+import { resolveTeamMemberModel } from "./resolve-team-member-model.js";
 import type { TeamCollaborationState, TeamCollaborationStore } from "./team-collaboration-store.js";
 import { planTeamInitiatorContinuation } from "./team-initiator-continuation.js";
 import type { TeamMemberAttemptRunner } from "./team-member-attempt-runner.js";
+import type { TeamMemberModelPreference } from "./team-member-model-preferences.js";
 import { TeamMemberScheduler } from "./team-member-scheduler.js";
 import type { TeamMemberTurnRequest } from "./team-member-turn-request.js";
 import { TeamMessageControlService } from "./team-message-control-service.js";
@@ -46,6 +48,10 @@ export interface TeamTurnCoordinatorOptions {
 	readonly eventHub: TeamSessionEventHub;
 	readonly readSession: (sessionId: string) => Promise<TeamSessionDocument>;
 	readonly readDocument: () => Promise<AgentTeamDocument>;
+	readonly readMemberModelPreference?: (
+		teamId: string,
+		memberId: string,
+	) => Promise<TeamMemberModelPreference | undefined>;
 	readonly observations: (session: TeamSessionDocument) => TeamObservationPublisher | undefined;
 	readonly publishSessionUpdated: (session: TeamSessionDocument) => void;
 }
@@ -593,11 +599,18 @@ export class TeamTurnCoordinator {
 		const stopGeneration = this.stopGenerations.get(input.teamSessionId) ?? 0;
 		const session = await this.options.readSession(input.teamSessionId);
 		if (!this.isAdmissionCurrent(input.teamSessionId, stopGeneration)) throw new Error("Team session was stopped");
-		const modelKey = input.modelKey ?? session.modelSettings?.modelKey;
-		const reasoning =
-			input.reasoning ?? (input.modelKey === undefined ? session.modelSettings?.reasoning : undefined);
+		const preference = await this.options.readMemberModelPreference?.(session.teamId, input.memberId);
+		const { modelKey, reasoning } = resolveTeamMemberModel({
+			modelKey: input.modelKey,
+			reasoning: input.reasoning,
+			sessionModelKey: session.modelSettings?.modelKey,
+			sessionReasoning: session.modelSettings?.reasoning,
+			agentProfileId: session.memberRuntime[input.memberId]?.agentProfileId,
+			preference,
+		});
+		const { modelKey: _requestedModelKey, reasoning: _requestedReasoning, ...inputWithoutModel } = input;
 		const resolvedInput: TeamMemberTurnRequest = {
-			...input,
+			...inputWithoutModel,
 			...(modelKey ? { modelKey } : {}),
 			...(reasoning ? { reasoning } : {}),
 		};

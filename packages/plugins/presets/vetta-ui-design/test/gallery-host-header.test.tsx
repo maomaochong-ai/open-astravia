@@ -20,7 +20,6 @@ vi.mock("../src/plugin-context", () => ({
 vi.mock("../src/design-systems/index", () => ({
 	refreshDesignCatalog: vi.fn(),
 	useCatalogState: () => ({ systems: [], status: "ready" }),
-	catalogState: () => ({ systems: [{ id: "linear" }], status: "ready" }),
 }));
 
 function project(name: string) {
@@ -31,9 +30,6 @@ function project(name: string) {
 const CARDS = [project("alpha"), project("beta"), project("gamma"), project("delta")];
 vi.mock("../src/gallery/gallery-store", () => ({
 	getCachedSnapshot: () => ({ cards: CARDS, workspacePath: "/w" }),
-	isGalleryCacheFresh: () => true,
-	isGalleryCoverCacheComplete: () => true,
-	isGalleryAbortError: (error: unknown) => error instanceof Error && error.name === "AbortError",
 	loadGallery: async () => ({ cards: CARDS, workspacePath: "/w" }),
 }));
 
@@ -145,23 +141,6 @@ describe("画廊与宿主页头", () => {
 		act(() => root.unmount());
 	});
 
-	it("首页改搜索不再反复改写宿主页头", async () => {
-		await mountGallery();
-		const writesAfterMount = setWorkspaceViewHeader.mock.calls.length;
-		expect(writesAfterMount).toBeGreaterThan(0);
-
-		const input = host.querySelector<HTMLInputElement>('input[aria-label="gallery.search"]');
-		expect(input).not.toBeNull();
-		await act(async () => {
-			const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
-			setter?.call(input, "alpha");
-			input?.dispatchEvent(new Event("input", { bubbles: true }));
-		});
-
-		expect(setWorkspaceViewHeader.mock.calls.length).toBe(writesAfterMount);
-		act(() => root.unmount());
-	});
-
 	it("进「全部设计」后工具栏回到页头", async () => {
 		await mountGallery();
 
@@ -184,12 +163,11 @@ describe("画廊与宿主页头", () => {
 		act(() => root.unmount());
 	});
 
-	it("卸树时不撤页头接管：宿主按当前路由忽略非当前视图，Activity 切走清 null 会拖目的页第一帧", async () => {
+	it("离开画廊时把页头还给宿主", async () => {
 		await mountGallery();
-		setWorkspaceViewHeader.mockClear();
 
 		act(() => root.unmount());
 
-		expect(setWorkspaceViewHeader).not.toHaveBeenCalled();
+		expect(setWorkspaceViewHeader).toHaveBeenLastCalledWith("gallery", null);
 	});
 });

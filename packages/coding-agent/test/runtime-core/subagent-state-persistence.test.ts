@@ -20,6 +20,7 @@ describe("CodingAgentSubagentStatePersistence", () => {
 		const context = recordingContext();
 		const initial: CodingAgentSubagentSnapshot = {
 			...snapshot("child-1", "completed"),
+			originToolCallId: "spawn-call-1",
 			deliveryMode: "batch",
 			batchId: "workflow-batch-2",
 			todoProgress: { done: 2, total: 2 },

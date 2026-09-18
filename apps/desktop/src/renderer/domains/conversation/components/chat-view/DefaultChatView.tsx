@@ -8,8 +8,6 @@ import type { ConversationScenario } from "@vetta-org/plugin-sdk";
 import { memo, type ReactNode } from "react";
 import { ChatExportHost } from "../ChatExportHost";
 
-export const EMPTY_CHAT_MESSAGES: ChatConversationItem[] = [];
-
 export interface DefaultChatViewProps {
 	readonly children: ReactNode;
 	/** 消息流上方的常驻条（Team 的成员胶囊条就住在这里）。 */
@@ -29,37 +27,28 @@ export interface DefaultChatViewProps {
 	};
 }
 
-function sameStringList(left: readonly string[] | undefined, right: readonly string[] | undefined): boolean {
-	if (left === right) return true;
-	if (!left || !right || left.length !== right.length) return false;
-	return left.every((value, index) => value === right[index]);
+function sameIds(left: readonly string[], right: readonly string[]): boolean {
+	return left === right || (left.length === right.length && left.every((id, index) => id === right[index]));
 }
 
-function isSameWorkspace(left: ActivityWorkspace, right: ActivityWorkspace): boolean {
-	return left.id === right.id && left.cwd === right.cwd && sameStringList(left.runtimeIds, right.runtimeIds);
+function sameOptionalIds(left?: readonly string[], right?: readonly string[]): boolean {
+	if (!left || !right) return left === right;
+	return sameIds(left, right);
 }
 
-function isSameActivity(
+function sameActivity(
 	left: DefaultChatViewProps["activity"],
 	right: DefaultChatViewProps["activity"],
 ): boolean {
 	if (left === right) return true;
 	if (!left || !right) return false;
-	return (
-		left.enablePluginTabs === right.enablePluginTabs &&
+	return left.enablePluginTabs === right.enablePluginTabs &&
 		left.pluginScenario === right.pluginScenario &&
-		sameStringList(left.enabledBuiltinTabs, right.enabledBuiltinTabs)
-	);
+		sameOptionalIds(left.enabledBuiltinTabs, right.enabledBuiltinTabs);
 }
 
-const FrozenActivityColumn = memo(
-	function FrozenActivityColumn({
-		workspace,
-		activity,
-	}: {
-		workspace: ActivityWorkspace;
-		activity?: DefaultChatViewProps["activity"];
-	}) {
+const ActivityColumn = memo(
+	function ActivityColumn({ workspace, activity }: Pick<DefaultChatViewProps, "workspace" | "activity">) {
 		return activity ? (
 			<ActivityPanel
 				workspace={workspace}
@@ -71,7 +60,11 @@ const FrozenActivityColumn = memo(
 			<CurrentScenarioActivityPanel workspace={workspace} />
 		);
 	},
-	(previous, next) => isSameWorkspace(previous.workspace, next.workspace) && isSameActivity(previous.activity, next.activity),
+	(previous, next) =>
+		previous.workspace.id === next.workspace.id &&
+		previous.workspace.cwd === next.workspace.cwd &&
+		sameIds(previous.workspace.runtimeIds, next.workspace.runtimeIds) &&
+		sameActivity(previous.activity, next.activity),
 );
 
 export function DefaultChatView({
@@ -94,7 +87,7 @@ export function DefaultChatView({
 						{subHeader}
 						{children}
 					</div>
-					<FrozenActivityColumn workspace={workspace} activity={activity} />
+					<ActivityColumn workspace={workspace} activity={activity} />
 				</div>
 			</div>
 		</PerfSendProfiler>

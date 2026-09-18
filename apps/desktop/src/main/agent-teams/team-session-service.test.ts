@@ -284,6 +284,8 @@ describe("AgentTeamSessionService streaming contract", () => {
 			subscribe: () => () => undefined,
 			appendSessionMetadataEntry: vi.fn(async () => undefined),
 			readSessionDocument: () => ({ entries: [], activeLeafId: null, revision: 0 }),
+			selectSessionModel: vi.fn(async () => undefined),
+			invokeSessionExtension: vi.fn(async () => null),
 		} as unknown as RuntimeHost;
 		const service = new AgentTeamSessionService({ runtime, readDocument: async () => document });
 
@@ -325,6 +327,7 @@ describe("AgentTeamSessionService streaming contract", () => {
 		const warmed = await service.read(record.id);
 		expect(warmed.runtimeStatus).toBe("ready");
 		expect(Object.keys(warmed.memberRuntime)).toHaveLength(team.members.length);
+		expect(runtime.selectSessionModel).toHaveBeenCalledWith(record.id, "openai/test", "if-changed");
 	});
 
 	it("admits a leader message without waiting for unrelated member runtimes", async () => {
@@ -375,6 +378,108 @@ describe("AgentTeamSessionService streaming contract", () => {
 		);
 		releaseSibling?.();
 		await send;
+	});
+
+	it("names a new Team session with its selected model and retries using the first task", async () => {
+		const document = createAgentTeamFixture();
+		const team = document.teams[0];
+		if (!team) throw new Error("built-in Agent Team fixture is missing");
+		const entries: Array<Record<string, unknown>> = [];
+		const ownershipRecords = new Map<string, ConversationOwnershipRecord>();
+		const ownershipCatalog: ConversationOwnershipCatalogPort = {
+			register: async (records) => {
+				for (const record of records) ownershipRecords.set(record.sessionPath, record);
+			},
+			listByTeam: async (teamId) =>
+				[...ownershipRecords.values()].filter((record) => record.owner.teamId === teamId),
+			getOwner: async (path) => ownershipRecords.get(path)?.owner,
+			filterUserSessions: async (sessions) => [...sessions],
+		};
+		let memberSequence = 0;
+		let titleModel: string | undefined;
+		let omitNextTitle = false;
+		const runtime = {
+			createSession: vi.fn(async (config?: SessionConfig) => ({
+				sessionId: config?.sessionId ?? `member-runtime-${++memberSequence}`,
+			})),
+			getSessionPath: (sessionId: string) => `C:/runtime/${sessionId}.jsonl`,
+			readSessionDocument: (sessionId: string) => ({
+				entries: entries.filter((entry) => entry.sessionId === sessionId),
+				activeLeafId: null,
+				revision: entries.length,
+			}),
+			appendSessionMetadataEntry: vi.fn(async (sessionId: string, customType: string, data: unknown) => {
+				entries.push({ type: "custom", sessionId, customType, data });
+			}),
+			appendConversationMessage: vi.fn(async (sessionId: string, record: ConversationMessageRecord) => {
+				entries.push({ type: "message", sessionId, ...record });
+				return { entryId: record.id };
+			}),
+			selectSessionModel: vi.fn(async (_id: string, modelKey: string) => {
+				titleModel = modelKey;
+			}),
+			invokeSessionExtension: vi.fn(async () => {
+				if (omitNextTitle) {
+					omitNextTitle = false;
+					return null;
+				}
+				return titleModel === "openai/gpt-test" ? "团队标题已生成" : null;
+			}),
+			subscribe: () => () => undefined,
+			prompt: vi.fn(async () => ({})),
+			getFullHistory: () => [],
+			deliverSessionContext: vi.fn(async () => undefined),
+			updateSettings: vi.fn(async () => undefined),
+			disposeSession: vi.fn(async () => undefined),
+			abort: vi.fn(async () => undefined),
+		} as unknown as RuntimeHost;
+		const service = new AgentTeamSessionService({
+			runtime,
+			ownershipCatalog,
+			repository: { read: vi.fn(), list: vi.fn(async () => []) },
+			readDocument: async () => document,
+		});
+		const created = await service.createRecord(team, document, {
+			kind: "project",
+			id: "project:workspace",
+			cwd: "C:/workspace",
+		});
+		await service.updateModelSettings(created.id, { modelKey: "openai/gpt-test" });
+		await service.send(created.id, { requestId: "first-task", text: "制定发布计划", targetMemberIds: [] });
+		await vi.waitFor(async () => {
+			expect((await service.listSessions(team.id)).find((item) => item.id === created.id)?.title).toBe(
+				"团队标题已生成",
+			);
+		});
+		const restored = await service.read(created.id);
+		expect(restored.title).toBe("团队标题已生成");
+		expect(runtime.selectSessionModel).toHaveBeenCalledWith(created.id, "openai/gpt-test", "if-changed");
+
+		const retrySession = await service.createRecord(team, document, {
+			kind: "project",
+			id: "project:workspace",
+			cwd: "C:/workspace",
+		});
+		await service.updateModelSettings(retrySession.id, { modelKey: "openai/gpt-test" });
+		omitNextTitle = true;
+		await service.send(retrySession.id, {
+			requestId: "retry-first-task",
+			text: "检查账户权限",
+			targetMemberIds: [],
+		});
+		expect((await service.read(retrySession.id)).title).toBeUndefined();
+		await service.send(retrySession.id, {
+			requestId: "retry-second-task",
+			text: "继续执行",
+			targetMemberIds: [],
+		});
+		await vi.waitFor(async () => {
+			expect((await service.read(retrySession.id)).title).toBe("团队标题已生成");
+		});
+		expect(runtime.invokeSessionExtension).toHaveBeenLastCalledWith(retrySession.id, expect.anything(), {
+			userText: "检查账户权限",
+			assistantText: "",
+		});
 	});
 
 	it("publishes ordered deltas and persists the same non-empty final answer", async () => {

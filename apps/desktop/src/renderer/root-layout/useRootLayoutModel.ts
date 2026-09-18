@@ -44,7 +44,6 @@ import {
 } from "../shared/store/atoms";
 import { showToast } from "../shared/store/toast-atoms";
 import { shouldShowChatRoutePending } from "./chat-route-pending";
-import { isChatSurfacePath } from "./isChatSurfacePath";
 import type { RootLayoutModel } from "./types";
 
 type SessionRestoreState = "pending" | "restoring" | "complete";
@@ -63,7 +62,6 @@ export function useRootLayoutModel(): RootLayoutModel {
 	const [lastActiveSession, setLastActiveSession] = useAtom(lastActiveSessionAtom);
 	const matchesForGuard = useMatches();
 	const currentPath = matchesForGuard[matchesForGuard.length - 1]?.pathname ?? "/";
-	const chatSurfaceActive = isChatSurfacePath(currentPath);
 	const [sidebarCollapsed, setSidebarCollapsed] = useAtom(sidebarCollapsedAtom);
 	// 左栏占位宽度与侧边栏面板读同一个 atom（拖拽改宽时逐帧同步），见 SidebarDock。
 	const sidebarWidth = useAtomValue(sidebarWidthAtom);
@@ -497,8 +495,6 @@ export function useRootLayoutModel(): RootLayoutModel {
 			scheduleOverlayClose,
 			toggleSidebar,
 		},
-		chatSurfaceActive,
-		currentPath,
 		narrow,
 		onOpenSession: openSession,
 		overlayOpen,

@@ -10,6 +10,7 @@ import {
 	ABILITY_CATEGORY_CONNECTORS,
 	ABILITY_CATEGORY_UNCATEGORIZED,
 	ABILITY_CATEGORY_VETTA_BUILTIN,
+	ENABLE_ABILITY_CATEGORIES,
 	type AbilitiesModel,
 	type AbilityScope,
 } from "../types";
@@ -21,7 +22,16 @@ import { MarketplaceSourcesDialog } from "./MarketplaceSourcesDialog";
 
 const easeOut = [0.22, 1, 0.36, 1] as const;
 
-export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Element {
+export interface AbilitiesPageViewProps {
+	model: AbilitiesModel;
+	/** 是否按分类展示；缺省由代码级常量 ENABLE_ABILITY_CATEGORIES 控制。 */
+	categorized?: boolean;
+}
+
+export function AbilitiesPageView({
+	model,
+	categorized = ENABLE_ABILITY_CATEGORIES,
+}: AbilitiesPageViewProps): JSX.Element {
 	const { t, i18n } = useTranslation("abilities");
 	const skillFileInputRef = useRef<HTMLInputElement>(null);
 	const pluginFileInputRef = useRef<HTMLInputElement>(null);
@@ -55,7 +65,7 @@ export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Ele
 			<div className="relative shrink-0 px-8 pb-4">
 				<motion.div
 					className="mx-auto flex w-full max-w-5xl items-end justify-between gap-4"
-					initial={false}
+					initial={{ opacity: 0, y: -8 }}
 					animate={{ opacity: 1, y: 0 }}
 					transition={{ duration: 0.5, ease: easeOut }}
 				>
@@ -146,7 +156,7 @@ export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Ele
 									<p className="text-[13px] font-semibold text-foreground">
 										{model.searchQuery
 											? t("empty.noMatch")
-											: model.scope === "discover"
+											: model.scope === "discover" || (model.scope as string) === "public"
 												? t("empty.discover")
 												: t("empty.mine")}
 									</p>
@@ -157,29 +167,37 @@ export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Ele
 							</div>
 						) : (
 							<div className="flex flex-col gap-6">
-								{model.groups.map((group) => (
-									<section key={group.category} className="flex flex-col gap-2">
-										<div className="flex items-baseline gap-2">
-											<h2 className="text-[13px] font-semibold text-foreground/90">
-														{group.category === ABILITY_CATEGORY_UNCATEGORIZED
-															? t("group.uncategorized")
-															: group.category === ABILITY_CATEGORY_CONNECTORS
-																? t("group.connectors")
-																: group.category === ABILITY_CATEGORY_VETTA_BUILTIN
-																	? t("group.vettaBuiltin")
-																	: resolveCategoryLabel(group.category, group.categoryI18n, i18n.language)}
-											</h2>
-											<span className="text-[11px] tabular-nums text-muted-foreground/50">
-												{group.items.length}
-											</span>
-										</div>
-										<div className="grid grid-cols-2 gap-x-3 gap-y-0.5 lg:grid-cols-3">
-											{group.items.map((item) => (
-												<AbilityCard key={item.id} item={item} model={model} />
-											))}
-										</div>
-									</section>
-								))}
+								{categorized ? (
+									model.groups.map((group) => (
+										<section key={group.category} className="flex flex-col gap-2">
+											<div className="flex items-baseline gap-2">
+												<h2 className="text-[13px] font-semibold text-foreground/90">
+													{group.category === ABILITY_CATEGORY_UNCATEGORIZED
+														? t("group.uncategorized")
+														: group.category === ABILITY_CATEGORY_CONNECTORS
+															? t("group.connectors")
+															: group.category === ABILITY_CATEGORY_VETTA_BUILTIN
+																? t("group.vettaBuiltin")
+																: resolveCategoryLabel(group.category, group.categoryI18n, i18n.language)}
+												</h2>
+												<span className="text-[11px] tabular-nums text-muted-foreground/50">
+													{group.items.length}
+												</span>
+											</div>
+											<div className="grid grid-cols-2 gap-x-3 gap-y-0.5 lg:grid-cols-3">
+												{group.items.map((item) => (
+													<AbilityCard key={item.id} item={item} model={model} />
+												))}
+											</div>
+										</section>
+									))
+								) : (
+									<div className="grid grid-cols-2 gap-x-3 gap-y-0.5 lg:grid-cols-3">
+										{model.items.map((item) => (
+											<AbilityCard key={item.id} item={item} model={model} />
+										))}
+									</div>
+								)}
 								{model.hasMore && (
 									<div className="flex justify-center pt-2">
 										<Button variant="secondary" size="sm" onClick={model.loadMore}>

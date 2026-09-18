@@ -1722,6 +1722,47 @@ describe("Team member concurrency", () => {
 		expect(messages).toHaveLength(4);
 	});
 
+	it("uses a fixed member model while another member follows the changed conversation model", async () => {
+		const preferences = new Map<string, { agentProfileId: string; modelKey: string; reasoning?: string }>();
+		const readPreference = async (_teamId: string, memberId: string) => preferences.get(memberId);
+		const fixture = await createFixture(undefined, readPreference);
+		const [pinnedMember, inheritingMember] = fixture.members;
+		preferences.set(pinnedMember, {
+			agentProfileId: fixture.session.memberRuntime[pinnedMember]!.agentProfileId!,
+			modelKey: "provider/fixed",
+			reasoning: "medium",
+		});
+		await fixture.service.updateModelSettings(fixture.session.id, {
+			modelKey: "provider/conversation",
+			reasoning: "high",
+		});
+		vi.mocked(fixture.runtime.updateSettings).mockClear();
+		const first = fixture.turn(pinnedMember, "Use both models");
+		const second = fixture.turn(inheritingMember, "Use both models");
+		const send = fixture.service.send(fixture.session.id, {
+			requestId: "two-models",
+			text: "Use both models",
+			targetMemberIds: [pinnedMember, inheritingMember],
+			modelKey: "provider/conversation",
+			reasoning: "high",
+		});
+		try {
+			await Promise.all([first.started.promise, second.started.promise]);
+			expect(fixture.runtime.updateSettings).toHaveBeenCalledWith(
+				fixture.session.memberRuntime[pinnedMember]!.sessionId,
+				{ modelKey: "provider/fixed", thinkingLevel: "medium" },
+			);
+			expect(fixture.runtime.updateSettings).toHaveBeenCalledWith(
+				fixture.session.memberRuntime[inheritingMember]!.sessionId,
+				{ modelKey: "provider/conversation", thinkingLevel: "high" },
+			);
+		} finally {
+			first.finish.resolve();
+			second.finish.resolve();
+			await send;
+		}
+	});
+
 	it("surfaces an unavailable model from a reopened Team instead of completing the send as interrupted", async () => {
 		const fixture = await createFixture();
 		const [member] = fixture.members;
@@ -1794,7 +1835,13 @@ describe("Team member concurrency", () => {
 	});
 });
 
-async function createFixture(extensions?: AgentTeamExtensionRegistry) {
+async function createFixture(
+	extensions?: AgentTeamExtensionRegistry,
+	readMemberModelPreference?: (
+		teamId: string,
+		memberId: string,
+	) => Promise<{ agentProfileId: string; modelKey: string; reasoning?: string } | undefined>,
+) {
 	const document = createAgentTeamFixture();
 	const team = document.teams[0];
 	if (!team || team.members.length < 2) throw new Error("Team fixture requires two members");
@@ -1961,6 +2008,7 @@ async function createFixture(extensions?: AgentTeamExtensionRegistry) {
 		runtime,
 		extensions,
 		readDocument: async () => document,
+		readMemberModelPreference,
 		repository: {
 			read: async (id) => saved.get(id)!,
 		},
@@ -2022,6 +2070,7 @@ async function createFixture(extensions?: AgentTeamExtensionRegistry) {
 				runtime,
 				extensions,
 				readDocument: async () => document,
+				readMemberModelPreference,
 				repository: {
 					read: async (id) => saved.get(id)!,
 				},

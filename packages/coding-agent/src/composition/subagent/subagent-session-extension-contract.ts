@@ -26,6 +26,7 @@ const CodingAgentSubagentSnapshotSchema = Type.Object(
 		]),
 		task: Type.String(),
 		parentSessionId: Type.String(),
+		originToolCallId: Type.Optional(Type.String()),
 		sessionFile: Type.Optional(Type.String()),
 		startedAt: Type.Number(),
 		endedAt: Type.Optional(Type.Number()),

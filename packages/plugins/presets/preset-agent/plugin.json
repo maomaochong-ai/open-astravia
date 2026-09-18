@@ -2,7 +2,7 @@
 	"id": "preset-agent",
 	"name": "%plugin.name%",
 	"version": "0.1.0",
-	"icon": "solar:users-group-two-rounded-linear",
+	"icon": "icon.png",
 	"defaultLocale": "zh",
 	"pluginApiVersion": "^2.0.0",
 	"entry": "dist/mf-manifest.json",

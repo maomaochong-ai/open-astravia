@@ -30,6 +30,7 @@ const SubagentSnapshotSchema = z
 		status: SubagentStatusSchema,
 		task: z.string(),
 		parentSessionId: z.string().min(1),
+		originToolCallId: z.string().min(1).optional(),
 		sessionFile: z.string().min(1).optional(),
 		startedAt: z.number().finite(),
 		endedAt: z.number().finite().optional(),

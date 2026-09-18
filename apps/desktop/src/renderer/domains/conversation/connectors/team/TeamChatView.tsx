@@ -1,13 +1,9 @@
 import { DefaultChatView, ChatComposer } from "../../components/chat-view/DefaultChatView";
 import { MessageList } from "../../components/MessageList";
 import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
-import type { ChatConversationItem } from "@shared/store/atoms";
-import { useMemo } from "react";
 import { TeamComposerConnector } from "./TeamComposerConnector";
 import { TeamMemberRoster } from "./TeamMemberRoster";
 import type { TeamChatActions, TeamChatViewModel } from "./teamChatModel";
-
-const EMPTY_TEAM_CHAT_MESSAGES: ChatConversationItem[] = [];
 
 export interface TeamChatViewProps {
 	readonly model: TeamChatViewModel;
@@ -24,20 +20,17 @@ export function TeamChatView({
 	onBackToTeam,
 	onOpenSettings,
 }: TeamChatViewProps): JSX.Element {
-	const workspace = useMemo(
-		() => model.workspace ?? createActivityWorkspace(`agent-team:${model.feedKey}`, null),
-		[model.feedKey, model.workspace],
-	);
-	const activity = useMemo(() => ({ pluginScenario: model.pluginScenario }), [model.pluginScenario]);
+	const workspace =
+		model.workspace ?? createActivityWorkspace(`agent-team:${model.feedKey}`, null);
 	const isStreaming = model.memberViewId
 		? model.feedItems.some((item) => item.kind === "agent" && item.phase === "streaming")
 		: model.status === "sending" || model.status === "streaming" || model.status === "cancelling";
 
 	return (
 		<DefaultChatView
-			messages={EMPTY_TEAM_CHAT_MESSAGES}
+			messages={[...model.feedItems]}
 			workspace={workspace}
-			activity={activity}
+			activity={{ pluginScenario: model.pluginScenario }}
 			subHeader={
 				<TeamMemberRoster
 					members={model.members}

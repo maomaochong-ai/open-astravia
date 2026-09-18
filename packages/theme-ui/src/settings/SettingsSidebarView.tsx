@@ -24,7 +24,6 @@ export interface SettingsSidebarViewProps {
 	readonly betaBadgeLabel: string;
 	readonly narrow: boolean;
 	readonly onSelectTab: (tab: string) => void;
-	/** 悬停 / 聚焦时预取对应设置标签；缺省则只在点击时加载。 */
 	readonly onTabIntent?: (tab: string) => void;
 	/** 下级入口不是设置标签，导航由宿主决定。 */
 	readonly onSelectChild?: (key: string) => void;
@@ -84,7 +83,6 @@ export function SettingsSidebarView({
 									onClick={() => onSelectTab(item.key)}
 									onFocus={() => onTabIntent?.(item.key)}
 									onMouseEnter={() => onTabIntent?.(item.key)}
-									onPointerDown={() => onTabIntent?.(item.key)}
 									className={cn(
 										"flex min-w-0 flex-1 items-center rounded-lg outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring",
 										narrow ? "justify-center px-0 py-2" : "gap-2.5 py-[7px] ps-2.5 pe-2.5",

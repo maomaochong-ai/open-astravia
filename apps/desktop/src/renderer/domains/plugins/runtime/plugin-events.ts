@@ -7,19 +7,9 @@ let pluginHostReadyPromise = new Promise<void>((resolve) => {
 
 let resolvePluginHostFirstReady: (() => void) | undefined;
 let pluginHostEverReady = false;
-/** 当前加载周期是否已 settle；`markPluginHostLoading` 会重新打开。 */
-let pluginHostCycleReady = false;
 const pluginHostFirstReadyPromise = new Promise<void>((resolve) => {
 	resolvePluginHostFirstReady = resolve;
 });
-
-export function isPluginHostEverReady(): boolean {
-	return pluginHostEverReady;
-}
-
-export function isPluginHostCycleReady(): boolean {
-	return pluginHostCycleReady;
-}
 
 function debugPluginAgent(message: string, data?: Record<string, unknown>): void {
 	console.info(`[plugin-agent] ${message}${data ? ` ${JSON.stringify(data)}` : ""}`);
@@ -31,7 +21,6 @@ export function notifyPluginsChanged(): void {
 
 export function markPluginHostLoading(): void {
 	debugPluginAgent("host loading");
-	pluginHostCycleReady = false;
 	pluginHostReadyPromise = new Promise<void>((resolve) => {
 		resolvePluginHostReady = resolve;
 	});
@@ -39,7 +28,6 @@ export function markPluginHostLoading(): void {
 
 export function markPluginHostReady(): void {
 	debugPluginAgent("host ready");
-	pluginHostCycleReady = true;
 	resolvePluginHostReady?.();
 	resolvePluginHostReady = undefined;
 	pluginHostEverReady = true;
@@ -82,7 +70,6 @@ export async function waitForPluginHostFirstReady(timeoutMs = 5000): Promise<voi
 }
 
 export async function waitForPluginHostReady(timeoutMs = 5000): Promise<void> {
-	if (pluginHostCycleReady) return;
 	let timeout: ReturnType<typeof setTimeout> | undefined;
 	let timedOut = false;
 	debugPluginAgent("wait host ready start", { timeoutMs });

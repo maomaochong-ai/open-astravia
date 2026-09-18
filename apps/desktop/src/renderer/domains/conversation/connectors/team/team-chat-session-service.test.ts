@@ -2,11 +2,28 @@
 
 import { createAgentTeamFixture, type TeamSessionSnapshot } from "@vetta/agent-team";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createReservedTeamChatSession, createTeamChatSession, loadTeamChatSession } from "./team-chat-session-service";
+import {
+	createReservedTeamChatSession,
+	createTeamChatSession,
+	loadTeamChatSession,
+	mergeTeamChatBootstrapSessions,
+} from "./team-chat-session-service";
 
 const document = createAgentTeamFixture();
 const team = document.teams[0];
 if (!team) throw new Error("built-in Agent Team fixture is missing");
+
+it("保留活动团队会话在旧列表回填前获得的标题", () => {
+	const item = {
+		id: "new-session",
+		coordinationSessionPath: "C:/runtime/new-session.jsonl",
+		createdAt: 1,
+		updatedAt: 1,
+		title: "",
+	};
+	const titled = { ...item, updatedAt: 2, title: "Review deployment plan" };
+	expect(mergeTeamChatBootstrapSessions([item], [titled], item.id)).toEqual([titled]);
+});
 
 function snapshot(id: string, sessionPath: string): TeamSessionSnapshot {
 	return {

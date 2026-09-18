@@ -34,13 +34,14 @@ export function createSpawnAgentTool(options: SpawnAgentToolOptions): RuntimeToo
 		label: "spawn_agent",
 		description: SPAWN_AGENT_TOOL_DESCRIPTION,
 		inputSchema: SpawnAgentToolInputSchema,
-		async execute({ input }) {
+		async execute({ input, toolCallId }) {
 			const coordinator = requireCoordinator(options);
 			const message = resolveSubagentTaskMessage(input);
 			const snapshot = await coordinator.spawn({
 				taskName: input.task_name,
 				message,
 				agentType: input.agent_type,
+				originToolCallId: toolCallId,
 			});
 			const text = [
 				`Spawned subagent ${snapshot.id}`,

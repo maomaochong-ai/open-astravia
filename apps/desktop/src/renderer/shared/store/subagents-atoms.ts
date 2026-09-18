@@ -9,6 +9,7 @@ export interface SubagentTask {
 	status: "queued" | "pending" | "running" | "completed" | "failed" | "interrupted";
 	task: string;
 	parentSessionId: string;
+	originToolCallId?: string;
 	sessionFile?: string;
 	startedAt: number;
 	endedAt?: number;

@@ -55,26 +55,6 @@ describe("plugin-events 就绪门", () => {
 		expect(await settles(wait)).toBe(true);
 	});
 
-	it("isPluginHostEverReady 在首次就绪后保持为 true，即使再次进入加载周期", async () => {
-		const events = await loadModule();
-		expect(events.isPluginHostEverReady()).toBe(false);
-		expect(events.isPluginHostCycleReady()).toBe(false);
-		events.markPluginHostLoading();
-		events.markPluginHostReady();
-		expect(events.isPluginHostEverReady()).toBe(true);
-		expect(events.isPluginHostCycleReady()).toBe(true);
-		events.markPluginHostLoading();
-		expect(events.isPluginHostEverReady()).toBe(true);
-		expect(events.isPluginHostCycleReady()).toBe(false);
-	});
-
-	it("当前周期已就绪时 waitForPluginHostReady 立即放行，不必再等 5 秒", async () => {
-		const events = await loadModule();
-		events.markPluginHostLoading();
-		events.markPluginHostReady();
-		expect(await settles(events.waitForPluginHostReady(10_000))).toBe(true);
-	});
-
 	it("发送门超时兜底仍然有效（宿主一直不就绪也最多等 timeoutMs）", async () => {
 		vi.useFakeTimers();
 		try {

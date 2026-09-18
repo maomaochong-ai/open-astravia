@@ -7,36 +7,9 @@ vi.mock("@vetta-org/plugin-sdk", () => ({
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { TemplateGalleryDialog } from "../src/cards/TemplateGalleryDialog";
-import { resetDesignSystems, setDesignSystems } from "../src/design-systems/registry";
-import type { DesignSystem } from "../src/design-systems/types";
 
 /** React 19 的 act 需要这个开关，否则每次更新都会告警。 */
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-
-class ImmediateIntersectionObserver {
-	constructor(private readonly callback: (entries: { isIntersecting: boolean }[]) => void) {}
-	observe(): void {
-		this.callback([{ isIntersecting: true }]);
-	}
-	disconnect(): void {}
-	unobserve(): void {}
-}
-vi.stubGlobal("IntersectionObserver", ImmediateIntersectionObserver);
-
-const DEMO_HTML = "<!doctype html><html><body>demo</body></html>";
-
-function system(id: string, name: string): DesignSystem {
-	return {
-		id,
-		name,
-		category: "dev",
-		vibe: "dark",
-		blurb: "blurb",
-		resources: [{ path: "demo.html", role: "demo", encoding: "text", content: DEMO_HTML, bytes: DEMO_HTML.length }],
-		themeCss: "@theme { --color-primary: #000; }",
-		designMd: `# ${name}`,
-	};
-}
 
 let host: HTMLDivElement;
 let root: Root;
@@ -51,7 +24,6 @@ afterEach(() => {
 	act(() => root.unmount());
 	host.remove();
 	document.body.innerHTML = "";
-	resetDesignSystems();
 });
 
 function queryByLabel(label: string): HTMLElement {
@@ -95,25 +67,5 @@ describe("TemplateGalleryDialog", () => {
 		fire(queryByLabel("ds.close"), "pointerdown");
 
 		expect(onPointerDown).not.toHaveBeenCalled();
-	});
-
-	it("打开时只铺色板，悬停才挂 HTML demo", () => {
-		setDesignSystems([system("linear", "Linear"), system("stripe", "Stripe")]);
-		act(() => {
-			root.render(<TemplateGalleryDialog onApply={vi.fn()} onClose={vi.fn()} />);
-		});
-		expect(document.body.querySelectorAll("iframe")).toHaveLength(0);
-		const tiles = [...document.body.querySelectorAll("button")].filter((button) =>
-			button.textContent?.includes("Linear"),
-		);
-		expect(tiles[0]).toBeDefined();
-		act(() => {
-			tiles[0]?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
-		});
-		expect(document.body.querySelectorAll("iframe")).toHaveLength(1);
-		act(() => {
-			tiles[0]?.dispatchEvent(new MouseEvent("mouseout", { bubbles: true }));
-		});
-		expect(document.body.querySelectorAll("iframe")).toHaveLength(0);
 	});
 });

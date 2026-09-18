@@ -15,8 +15,10 @@ const sessionSearchState = vi.hoisted(() => ({
 }));
 const scopeBindings = vi.hoisted(() => ({ current: [] as { key: string; run: () => void }[] }));
 const projectSessions = vi.hoisted(() => ({ current: [] as unknown[] }));
+const prefetchCommandMenuAction = vi.hoisted(() => vi.fn());
 
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => navigate }));
+vi.mock("../../../root-layout/nav-route-prefetch", () => ({ prefetchCommandMenuAction }));
 vi.mock("../../project/hooks/useSessionSearch", () => ({
 	useSessionSearch: () => sessionSearchState,
 }));
@@ -28,12 +30,12 @@ vi.mock("@shared/shortcuts", () => ({
 		if (active) scopeBindings.current = bindings;
 	},
 }));
-vi.mock("../../../root-layout/route-prefetch", () => ({
-	prefetchCommandMenuAction: vi.fn(),
+vi.mock("react-i18next", () => ({
+	// 文案直接回显 key，断言看的是行为不是译文。
+	useTranslation: () => ({ t: (key: string) => key }),
 }));
 
 import { commandMenuOpenAtom, projectsAtom } from "@shared/store/atoms";
-import { prefetchCommandMenuAction } from "../../../root-layout/route-prefetch";
 import { useCommandMenuModel } from "./useCommandMenuModel";
 
 function sessionResult(path: string, title: string): DesktopSessionSearchResult {
@@ -68,6 +70,7 @@ function render() {
 
 beforeEach(() => {
 	navigate.mockReset();
+	prefetchCommandMenuAction.mockReset();
 	scopeBindings.current = [];
 	sessionSearchState.results = [];
 	sessionSearchState.loading = false;
@@ -87,6 +90,15 @@ beforeEach(() => {
 		{ cwd: "/w/alpha", name: "alpha", sessionCount: 0, type: "normal" },
 		{ cwd: "/w/alpine", name: "alpine", sessionCount: 0, type: "normal" },
 	]);
+});
+
+it("prepares the selected settings command without activating it", () => {
+	const { result } = render();
+	const settings = result.current.groups.find((group) => group.key === "settings")?.items[0];
+	expect(settings).toBeDefined();
+	act(() => result.current.onHoverItem(settings?.id ?? ""));
+	expect(prefetchCommandMenuAction).toHaveBeenCalledWith(expect.objectContaining({ kind: "openSettingsSection" }));
+	expect(navigate).not.toHaveBeenCalled();
 });
 
 it("keeps the selection anchored to the id when async session results arrive", async () => {
@@ -237,15 +249,4 @@ it("keeps an unavailable session out of keyboard navigation", async () => {
 	// 禁用行不参与导航，回车不应打开它。
 	act(() => result.current.onActivateItem("session:/w/locked.jsonl"));
 	expect(navigate).not.toHaveBeenCalled();
-});
-
-it("悬停设置项时预取对应路由 chunk", () => {
-	const { result } = render();
-	const settingsItem = result.current.groups.find((group) => group.key === "settings")?.items[0];
-	expect(settingsItem).toBeTruthy();
-	vi.mocked(prefetchCommandMenuAction).mockClear();
-	act(() => {
-		result.current.onHoverItem(settingsItem!.id);
-	});
-	expect(prefetchCommandMenuAction).toHaveBeenCalledWith(expect.objectContaining({ kind: "openSettingsSection" }));
 });

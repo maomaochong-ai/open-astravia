@@ -51,6 +51,10 @@ vi.mock("../logger.js", () => ({
 
 function dependencies(): AgentTeamsIpcDependencies {
 	return {
+		memberModels: {
+			list: vi.fn(async () => ({})),
+			set: vi.fn(async () => ({})),
+		},
 		store: {
 			read: vi.fn(async () => createEmptyAgentTeamDocument()),
 			onPluginPresetsApplied: vi.fn(() => () => {}),
@@ -364,6 +368,29 @@ describe("Agent Team IPC contract", () => {
 		await expect(updateModelSettings({}, "session", { reasoning: "high" })).rejects.toThrow(
 			"Invalid Team session model settings input",
 		);
+	});
+
+	it("validates and forwards member model preferences for an existing team", async () => {
+		const deps = dependencies();
+		const document = createAgentTeamFixture();
+		const team = document.teams[0]!;
+		const memberId = team.members[0]!.id;
+		deps.store.read = vi.fn(async () => document);
+		registerAgentTeamsIpc(deps);
+		const list = ipc.handlers.get("vetta:agent-teams:list-member-models");
+		const set = ipc.handlers.get("vetta:agent-teams:set-member-model");
+		if (!list || !set) throw new Error("member model handlers were not registered");
+		await list({}, team.id);
+		expect(deps.memberModels?.list).toHaveBeenCalledWith(team);
+		await set({}, team.id, memberId, { modelKey: "provider/model", reasoning: "high" });
+		expect(deps.memberModels?.set).toHaveBeenCalledWith(team, memberId, {
+			modelKey: "provider/model",
+			reasoning: "high",
+		});
+		await set({}, team.id, memberId, null);
+		expect(deps.memberModels?.set).toHaveBeenLastCalledWith(team, memberId, null);
+		await expect(set({}, team.id, memberId, { modelKey: "invalid" })).rejects.toThrow();
+		await expect(set({}, "missing", memberId, null)).rejects.toThrow("Team not found");
 	});
 
 	it("validates and forwards the Team-scoped execution mode", async () => {

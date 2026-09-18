@@ -1,15 +1,12 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import type { JSX } from "react";
 import { useThemeRuntime } from "../runtime";
-import { ThemePageRouteShell } from "./ThemePageRouteShell";
 import { useActiveThemePageRoute } from "./useActiveThemePageRoute";
 
-export function ThemePageRoute({ themeId, pageId }: { themeId?: string; pageId?: string } = {}): JSX.Element {
+export function ThemePageRoute(): JSX.Element | null {
 	const navigate = useNavigate();
 	const { activeThemeId, availableThemes, selectTheme, status } = useThemeRuntime();
-	const override = themeId !== undefined && pageId !== undefined ? { themeId, pageId } : undefined;
-	const themePageRoute = useActiveThemePageRoute(override);
+	const themePageRoute = useActiveThemePageRoute();
 
 	useEffect(() => {
 		if (!themePageRoute?.isThemePageRoute) return;
@@ -25,9 +22,7 @@ export function ThemePageRoute({ themeId, pageId }: { themeId?: string; pageId?:
 		void navigate({ to: "/", replace: true });
 	}, [navigate, themePageRoute, status, activeThemeId, availableThemes, selectTheme]);
 
-	if (status !== "ready" || !themePageRoute?.page) {
-		return <ThemePageRouteShell themeId={themeId} pageId={pageId} />;
-	}
+	if (status !== "ready" || !themePageRoute?.page) return null;
 
 	const Page = themePageRoute.page.component;
 	return (

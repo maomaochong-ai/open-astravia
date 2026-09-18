@@ -9,7 +9,7 @@ import { useMatches, useNavigate } from "@tanstack/react-router";
 import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { prefetchNavItem } from "../../../../root-layout/route-prefetch";
+import { prefetchNavItem } from "../../../../root-layout/nav-route-prefetch";
 import { pluginWorkspaceRoute } from "../../../plugins/runtime/plugin-hosted-route-capability";
 import { usePluginTextResolver } from "../../../plugins/runtime/plugin-i18n";
 import {

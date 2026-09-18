@@ -1,29 +1,27 @@
 import { ActivityPanel } from "@domains/activity-panel/components/ActivityPanel";
 import { Button } from "@shared/components/ui/button";
-import { useOwnedHeaderSlot } from "@shared/hooks/useOwnedHeaderSlot";
 import { cn } from "@shared/lib/utils";
 import { pageHeaderRightSlotAtom } from "@shared/store/atoms";
-import { useSurfaceActive } from "@shared/surface-active";
 import { useActiveSessionRuntimeIds } from "@shared/workspace/active-session-runtime";
 import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
 import { useThemeSurface } from "@vetta-org/theme-sdk/appearance";
 import { SessionViewerPageView } from "@vetta-org/theme-ui/chat";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useSetAtom } from "jotai";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useSessionViewerPageModel } from "../hooks/useSessionViewerPageModel";
 import { ChatExportHost } from "./ChatExportHost";
 import { MessageList } from "./MessageList";
 
-/**
- * Read-only viewer for sessions the desktop app does not own (currently
- * IM sessions written by im-gateway).
- */
-export function SessionViewerPage({ path }: { path?: string } = {}): JSX.Element {
+/** Read-only viewer for external and child sessions. */
+export function SessionViewerPage(): JSX.Element {
 	const { t } = useTranslation("chat");
+	const navigate = useNavigate();
+	const isSubagent = useSearch({ strict: false }).origin === "subagent";
 	const activeRuntimeIds = useActiveSessionRuntimeIds();
 	const surface = useThemeSurface("chat.sessionViewerPage");
-	const model = useSessionViewerPageModel(path);
+	const model = useSessionViewerPageModel();
 	const setHeaderRight = useSetAtom(pageHeaderRightSlotAtom);
 	const workspace = useMemo(() => {
 		const cwd = model.kbCwd || model.imCwd || null;
@@ -36,7 +34,8 @@ export function SessionViewerPage({ path }: { path?: string } = {}): JSX.Element
 	const header = useMemo(
 		() => (
 			<div className="flex items-center gap-2 text-[12px] text-muted-foreground">
-				<span className="hidden truncate sm:inline">{t("sessionViewer.header.subtitle")}</span>
+				{isSubagent ? <Button size="sm" variant="ghost" onClick={() => void navigate({ to: "/" })}>{t("subagentCard.back")}</Button> : null}
+				<span className="hidden truncate sm:inline">{t(isSubagent ? "subagentCard.viewerSubtitle" : "sessionViewer.header.subtitle")}</span>
 				<span
 					className={
 						model.isIm
@@ -77,17 +76,22 @@ export function SessionViewerPage({ path }: { path?: string } = {}): JSX.Element
 			</div>
 		),
 		[
+			isSubagent,
 			model.exporting,
 			model.isIm,
 			model.messages.length,
 			model.onStartExport,
 			model.onTogglePanel,
 			model.panelOpen,
+			navigate,
 			t,
 		],
 	);
 
-	useOwnedHeaderSlot(useSurfaceActive(), header, setHeaderRight);
+	useEffect(() => {
+		setHeaderRight(header);
+		return () => setHeaderRight(null);
+	}, [header, setHeaderRight]);
 
 	return (
 		<SessionViewerPageView

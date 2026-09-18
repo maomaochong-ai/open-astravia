@@ -1,6 +1,7 @@
 import type { ChatToolCallPresentationViewModel, ToolCallBlock } from "@shared/store/atoms";
 import { memo } from "react";
 import { ToolCallBlockView } from "../blocks/ToolCallBlock";
+import { SubagentReplyCards } from "./SubagentReplyCards";
 import { TeamMemberReplyCard } from "./TeamMemberReplyCard";
 
 interface ToolCallPresentationProps {
@@ -36,6 +37,9 @@ export const ToolCallPresentation = memo(function ToolCallPresentation({
 						/>
 					))}
 				</div>
+			) : null}
+			{!exportMode && (block.toolName === "spawn_agent" || block.toolName === "dispatch_workflows") ? (
+				<SubagentReplyCards toolCallId={block.toolCallId} />
 			) : null}
 		</div>
 	);

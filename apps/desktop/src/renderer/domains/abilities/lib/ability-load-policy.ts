@@ -31,16 +31,3 @@ export function shouldReportAbilityLoadFailure(input: {
 	if (input.localFailed) return true;
 	return areAllAttemptedMarketSourcesUnavailable([input.server, input.open]);
 }
-
-/** 语言或登录态变了才重拉；`<Activity>` 切回只重跑 effect，key 相同就跳过。 */
-export function abilityCatalogLoadKey(language: string, token: string | null | undefined): string {
-	return `${language}|${token ?? ""}`;
-}
-
-export function shouldSkipAbilityCatalogLoad(
-	lastKey: string | null,
-	language: string,
-	token: string | null | undefined,
-): boolean {
-	return lastKey === abilityCatalogLoadKey(language, token);
-}

@@ -795,6 +795,20 @@
 	"session": {
 		"emptyMessageLabel": "(image)"
 	},
+	"subagentCard": {
+		"back": "Back to parent session",
+		"open": "View messages from subagent {{name}}",
+		"viewerSubtitle": "Subagent messages (read only)",
+		"waitingForSession": "Subagent session is preparing",
+		"status": {
+			"queued": "Queued",
+			"pending": "Preparing",
+			"running": "Running",
+			"completed": "Completed",
+			"failed": "Failed",
+			"interrupted": "Interrupted"
+		}
+	},
 	"sessionViewer": {
 		"badge": {
 			"liveUpdate": "Live update",

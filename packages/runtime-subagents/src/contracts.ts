@@ -18,6 +18,8 @@ export interface SubagentSnapshot {
 	readonly status: SubagentStatus;
 	readonly task: string;
 	readonly parentSessionId: string;
+	/** Tool call in the parent conversation that created this child. */
+	readonly originToolCallId?: string;
 	readonly sessionFile?: string;
 	readonly startedAt: number;
 	readonly endedAt?: number;
@@ -34,6 +36,7 @@ export interface SubagentSnapshot {
 
 export interface SubagentSpawnRequest {
 	readonly taskName: string;
+	readonly originToolCallId?: string;
 	readonly message: string;
 	readonly agentType: SubagentTypeId;
 	readonly title?: string;

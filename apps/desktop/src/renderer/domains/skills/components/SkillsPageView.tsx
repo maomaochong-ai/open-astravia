@@ -43,7 +43,7 @@ export function SkillsPageView({ model }: { model: SkillsPageModel }): JSX.Eleme
 					className={`mx-auto flex w-full max-w-5xl gap-4 ${narrow ? "flex-col items-stretch" : "items-end justify-between"}`}
 				>
 					<motion.div
-						initial={false}
+						initial={{ opacity: 0, y: -8 }}
 						animate={{ opacity: 1, y: 0 }}
 						transition={{ duration: 0.5, ease: easeOut }}
 					>

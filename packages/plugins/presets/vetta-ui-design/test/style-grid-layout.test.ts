@@ -3,7 +3,6 @@ import {
 	STYLE_GRID_GAP,
 	STYLE_GRID_MAX_COLUMNS,
 	styleGridMetrics,
-	styleGridMetricsFor,
 	styleGridWindow,
 } from "../src/new-session/style-grid-layout";
 
@@ -23,13 +22,6 @@ describe("style grid metrics", () => {
 		const { columns, rowHeight } = styleGridMetrics(1200);
 		const card = (1200 - STYLE_GRID_GAP * (columns - 1)) / columns;
 		expect(rowHeight).toBeCloseTo((card * 3) / 4 + STYLE_GRID_GAP);
-	});
-
-	it("can pin column count and gap for the gallery wall", () => {
-		const { columns, rowHeight } = styleGridMetricsFor(960, 3, 16);
-		expect(columns).toBe(3);
-		const card = (960 - 16 * 2) / 3;
-		expect(rowHeight).toBeCloseTo(card / (4 / 3) + 16);
 	});
 
 	it("reports no row height before the first measurement", () => {

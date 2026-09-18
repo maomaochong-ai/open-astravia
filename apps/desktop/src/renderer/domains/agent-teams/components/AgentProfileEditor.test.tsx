@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { AgentProfile, AgentProfileUpdateImpact } from "@vetta/agent-team";
+import type { AgentBlueprint, AgentProfile, AgentProfileUpdateImpact } from "@vetta/agent-team";
 import { type ReactNode, useState } from "react";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -75,6 +75,16 @@ const agent: AgentProfile = {
 	updatedAt: 0,
 };
 
+const blueprint: AgentBlueprint = {
+	id: "researcher",
+	nameKey: "",
+	descriptionKey: "",
+	name: "Researcher",
+	systemPrompt: "You are the Researcher. Establish the facts first.",
+	defaultAbilities: { selectionMode: "all", skills: [], mcpServers: [], plugins: [] },
+	source: { kind: "plugin", pluginId: "preset-agent" },
+};
+
 const impact: AgentProfileUpdateImpact = {
 	agentProfileId: agent.id,
 	teamIds: ["team-a", "team-b"],
@@ -143,6 +153,64 @@ describe("AgentProfileEditor", () => {
 		await waitFor(() => expect(onSave).toHaveBeenCalledWith(agent, expect.objectContaining({
 			systemPrompt: "Use file-backed instructions.",
 		})));
+	});
+
+	it("shows the blueprint prompt when the profile carries no override", () => {
+		render(
+			<AgentProfileEditor
+				agent={agent}
+				blueprint={blueprint}
+				capabilities={[]}
+				onPreview={vi.fn(async () => ({ ...impact, teamIds: [], teamNames: [] }))}
+				onSave={vi.fn(async () => ({ updated: agent, impact }))}
+			/>,
+		);
+
+		const prompt = screen.getByLabelText("profile.systemPrompt") as HTMLTextAreaElement;
+		expect(prompt.value).toBe(blueprint.systemPrompt);
+	});
+
+	it("saves no override while the prompt still matches the blueprint default", async () => {
+		const user = userEvent.setup();
+		const onSave = vi.fn(async () => ({ updated: agent, impact }));
+		render(
+			<AgentProfileEditor
+				agent={agent}
+				blueprint={blueprint}
+				capabilities={[]}
+				onPreview={vi.fn(async () => ({ ...impact, teamIds: [], teamNames: [] }))}
+				onSave={onSave}
+			/>,
+		);
+
+		await user.click(screen.getByRole("button", { name: "profile.save" }));
+		await waitFor(() =>
+			expect(onSave).toHaveBeenCalledWith(agent, expect.objectContaining({ systemPrompt: "" })),
+		);
+	});
+
+	it("keeps the prompt an override once the user edits it", async () => {
+		const user = userEvent.setup();
+		const onSave = vi.fn(async () => ({ updated: agent, impact }));
+		render(
+			<AgentProfileEditor
+				agent={agent}
+				blueprint={blueprint}
+				capabilities={[]}
+				onPreview={vi.fn(async () => ({ ...impact, teamIds: [], teamNames: [] }))}
+				onSave={onSave}
+			/>,
+		);
+
+		const prompt = screen.getByLabelText("profile.systemPrompt");
+		await user.type(prompt, " Cite every source.");
+		await user.click(screen.getByRole("button", { name: "profile.save" }));
+		await waitFor(() =>
+			expect(onSave).toHaveBeenCalledWith(
+				agent,
+				expect.objectContaining({ systemPrompt: `${blueprint.systemPrompt} Cite every source.` }),
+			),
+		);
 	});
 
 	it("requires confirmation before saving a profile shared by multiple teams", async () => {

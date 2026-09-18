@@ -60,8 +60,8 @@
 				"description": "Search to find a capability quickly, or use Add to import a local Skill / plugin or configure an MCP connector."
 			},
 			"scope": {
-				"title": "Discover / Mine",
-				"description": "Discover browses capabilities you can add. Mine manages what you already installed — enable, configure, or remove."
+				"title": "Public / Personal",
+				"description": "Public browses available capabilities and Vetta built-in abilities. Personal manages universal skills and manually installed capabilities — enable, configure, or remove."
 			},
 			"list": {
 				"title": "Capability cards",
@@ -74,13 +74,13 @@
 			"name": "Create Skill",
 			"description": "Create or update an Agent Skill that follows the Vetta spec: place the files, register it in skills-manifest.json, or update the plugin config."
 		},
+		"install-ability": {
+			"name": "Install Ability",
+			"description": "Install plugins, Skills/scenes, and MCP servers into this machine's Vetta, reloading right away when a plugin upgrade leaves a pending version."
+		},
 		"publish-ability": {
 			"name": "Publish Ability",
 			"description": "Submit a skill, scene, MCP server, plugin, or ability bundle to the Vetta marketplace, covering required fields, localization, and the review flow."
-		},
-		"vetta-blog": {
-			"name": "Vetta Blog",
-			"description": "Research, test, write, and review evidence-backed Vetta product and technical blogs."
 		}
 	}
 }

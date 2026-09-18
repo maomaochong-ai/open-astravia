@@ -31,6 +31,8 @@ import {
 	createTeamChatSession,
 	loadTeamChatBootstrap,
 	loadTeamChatSession,
+	mergeTeamChatBootstrapSessions,
+	withTeamChatSnapshot,
 } from "./team-chat-session-service";
 import {
 	claimTeamSessionHandoff,
@@ -69,8 +71,15 @@ export function useTeamChatModel(
 	const selectedModel = useAtomValue(selectedModelAtom);
 	const reasoningByModel = useAtomValue(reasoningByModelAtom);
 	const [document, setDocument] = useState<AgentTeamDocument>();
-	const [snapshot, setSnapshot] = useState<DesktopTeamSessionSnapshot>();
+	const [storedSnapshot, setSnapshot] = useState<DesktopTeamSessionSnapshot>();
 	const [sessions, setSessions] = useState<readonly TeamSessionListItem[]>([]);
+	// Route params change before the loading effect clears the previous snapshot.
+	// Never expose a session from the previous route to send or the current view.
+	const snapshot =
+		storedSnapshot?.session.teamId === teamId &&
+		(!preferredSessionId || storedSnapshot.session.id === preferredSessionId)
+			? storedSnapshot
+			: undefined;
 	const session = snapshot?.session;
 	const effectiveModelKey = session?.modelSettings?.modelKey ?? selectedModel;
 	const effectiveReasoning =
@@ -170,6 +179,22 @@ export function useTeamChatModel(
 		},
 		[teamId],
 	);
+	const applyBootstrap = useCallback(
+		(bootstrap: Awaited<ReturnType<typeof loadTeamChatBootstrap>>) => {
+			startTeamTransition(() => {
+				setDocument(bootstrap.document);
+				const current = snapshotRef.current;
+				const fromSnapshot =
+					current?.session.teamId === teamId
+						? withTeamChatSnapshot(bootstrap.sessions, current)
+						: bootstrap.sessions;
+				const activeSessionId =
+					loadedSessionRef.current?.teamId === teamId ? loadedSessionRef.current.sessionId : undefined;
+				setSessions((existing) => mergeTeamChatBootstrapSessions(fromSnapshot, existing, activeSessionId));
+			});
+		},
+		[teamId],
+	);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -209,10 +234,7 @@ export function useTeamChatModel(
 					void loadTeamChatBootstrap(teamId)
 						.then((bootstrap) => {
 							if (cancelled) return;
-							startTeamTransition(() => {
-								setDocument(bootstrap.document);
-								setSessions(bootstrap.sessions);
-							});
+							applyBootstrap(bootstrap);
 						})
 						.catch((cause: unknown) => {
 							console.warn("[agent-team] deferred Team bootstrap failed", {
@@ -235,10 +257,7 @@ export function useTeamChatModel(
 					void loadTeamChatBootstrap(teamId)
 						.then((bootstrap) => {
 							if (cancelled) return;
-							startTeamTransition(() => {
-								setDocument(bootstrap.document);
-								setSessions(bootstrap.sessions);
-							});
+							applyBootstrap(bootstrap);
 						})
 						.catch((cause: unknown) => {
 							if (!cancelled) setError({ message: errorMessage(cause) });
@@ -258,7 +277,7 @@ export function useTeamChatModel(
 			cancelled = true;
 			sessionCreationRef.current = undefined;
 		};
-	}, [teamId, preferredSessionId, createNewSession, applyLoadedSession]);
+	}, [teamId, preferredSessionId, createNewSession, applyBootstrap, applyLoadedSession]);
 
 	const openSession = useCallback(
 		async (sessionId: string) => {
@@ -349,19 +368,7 @@ export function useTeamChatModel(
 					snapshotRef.current = event.snapshot;
 					setSnapshot(event.snapshot);
 					if (titleChanged) {
-						setSessions((current) =>
-							current
-								.map((item) =>
-									item.id === event.teamSessionId
-										? {
-												...item,
-												title: event.snapshot.session.title ?? "",
-												updatedAt: event.snapshot.session.updatedAt,
-											}
-										: item,
-								)
-								.sort((left, right) => right.updatedAt - left.updatedAt),
-						);
+						setSessions((current) => withTeamChatSnapshot(current, event.snapshot));
 						notifyTeamSessionsChanged(teamId);
 					}
 				}
@@ -754,6 +761,7 @@ export function useTeamChatModel(
 						? next
 						: current,
 				);
+				setSessions((current) => withTeamChatSnapshot(current, next));
 				setContextUsages((current) => ({ ...current, ...readSnapshotContextUsages(next) }));
 				setError(undefined);
 				if (inFlightRequestIds.current.size <= 1) setStatus("ready");

@@ -16,8 +16,8 @@
 		"bundle": "套装"
 	},
 	"scope": {
-		"discover": "发现",
-		"mine": "我的"
+		"discover": "公开",
+		"mine": "个人"
 	},
 	"group": {
 		"connectors": "连接",
@@ -32,7 +32,8 @@
 		"disabled": "已禁用",
 		"updateAvailable": "可更新",
 		"openSource": "开源",
-		"sameName": "{{count}} 个同名"
+		"sameName": "{{count}} 个同名",
+		"builtin": "内建"
 	},
 	"card": {
 		"noDescription": "暂无能力说明"
@@ -89,8 +90,8 @@
 	"empty": {
 		"noMatch": "没有匹配的能力",
 		"noMatchHint": "试试换个关键词",
-		"discover": "暂时没有可发现的能力",
-		"mine": "还没有添加能力",
+		"discover": "暂时没有公开的能力",
+		"mine": "还没有个人能力",
 		"hint": "稍后刷新，或通过上方「添加能力」导入"
 	},
 	"error": {

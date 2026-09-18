@@ -87,7 +87,6 @@ function NavRow({
 				onClick={onClick}
 				onFocus={onIntent}
 				onMouseEnter={onIntent}
-				onPointerDown={onIntent}
 				className={cn(
 					"flex min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 py-1.5 text-[13px]",
 					item.active ? "bg-accent font-semibold text-foreground" : "text-foreground hover:bg-accent/50",

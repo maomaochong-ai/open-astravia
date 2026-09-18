@@ -40,7 +40,8 @@ vi.mock("react-i18next", () => ({
 			values ? `${key}:${Object.values(values).join(":")}` : key,
 	}),
 }));
-vi.mock("./team-chat-session-service", () => ({
+vi.mock("./team-chat-session-service", async (importOriginal) => ({
+	...(await importOriginal<Record<string, unknown>>()),
 	loadTeamChatSession: vi.fn(),
 	loadTeamChatBootstrap: vi.fn(),
 	createTeamChatSession: vi.fn(),
@@ -233,6 +234,57 @@ describe("useTeamChatModel streaming flow", () => {
 		} finally {
 			window.removeEventListener(TEAM_SESSIONS_CHANGED_EVENT, changed);
 		}
+	});
+
+	it("发送结果已带自动标题时，即使错过标题事件也更新会话列表", async () => {
+		vi.mocked(window.vetta.agentTeams.sendMessage).mockResolvedValueOnce({
+			...baseSnapshot,
+			session: { ...baseSession, revision: 2, title: "Review deployment plan" },
+		});
+		const { result } = renderHook(() => useTeamChatModel(team.id));
+		await waitFor(() => expect(result.current.model.status).toBe("ready"));
+		act(() => result.current.actions.setDraft("review deployment"));
+		await act(async () => result.current.actions.send());
+
+		expect(result.current.model.sessions).toContainEqual({
+			id: baseSession.id,
+			label: "Review deployment plan",
+		});
+	});
+
+	it("新建团队会话的旧列表回填不会覆盖刚生成的标题", async () => {
+		let finishBootstrap: ((value: Awaited<ReturnType<typeof loadTeamChatBootstrap>>) => void) | undefined;
+		vi.mocked(loadTeamChatBootstrap).mockReturnValueOnce(new Promise((resolve) => {
+			finishBootstrap = resolve;
+		}));
+		const snapshot = {
+			...baseSnapshot,
+			session: {
+				...baseSession,
+				coordinationRuntime: { sessionId: baseSession.id, sessionPath: "C:/sessions/team.conversation.jsonl" },
+			},
+		};
+		const oldItem = {
+			id: baseSession.id,
+			coordinationSessionPath: "C:/sessions/team.conversation.jsonl",
+			title: "",
+			createdAt: baseSession.createdAt,
+			updatedAt: baseSession.updatedAt,
+		};
+		vi.mocked(createTeamChatSession).mockResolvedValueOnce({ document, snapshot, sessions: [oldItem] });
+		const { result } = renderHook(() => useTeamChatModel(team.id, undefined, undefined, true));
+		await waitFor(() => expect(streamListener).toBeTypeOf("function"));
+		act(() => streamListener?.({
+			type: "session-updated",
+			teamSessionId: baseSession.id,
+			snapshot: {
+				...snapshot,
+				session: { ...snapshot.session, revision: 2, updatedAt: 3, title: "Review deployment plan" },
+			},
+		}));
+		expect(result.current.model.sessions).toContainEqual({ id: baseSession.id, label: "Review deployment plan" });
+		await act(async () => finishBootstrap?.({ document, sessions: [oldItem] }));
+		expect(result.current.model.sessions).toContainEqual({ id: baseSession.id, label: "Review deployment plan" });
 	});
 
 	it("shows ordered partial text and keeps the persisted final result after the stream closes", async () => {
@@ -730,6 +782,52 @@ describe("useTeamChatModel streaming flow", () => {
 		rerender({ preferredSessionId: baseSession.id });
 
 		expect(vi.mocked(loadTeamChatSession).mock.calls.length).toBe(loadCalls);
+	});
+
+	it("sends a staged new Team conversation to its reserved session after another session was open", async () => {
+		const nextSessionId = "team-session-next";
+		const nextSnapshot = {
+			...baseSnapshot,
+			session: { ...baseSession, id: nextSessionId },
+		};
+		vi.mocked(createReservedTeamChatSession).mockResolvedValueOnce({
+			document,
+			snapshot: nextSnapshot,
+			sessions: [],
+		});
+		vi.mocked(window.vetta.agentTeams.sendMessage).mockResolvedValueOnce(nextSnapshot);
+		const { result, rerender } = renderHook(
+			({ preferredSessionId }: { preferredSessionId: string }) =>
+				useTeamChatModel(team.id, preferredSessionId),
+			{ initialProps: { preferredSessionId: baseSession.id } },
+		);
+		await waitFor(() => expect(result.current.model.activeSessionId).toBe(baseSession.id));
+
+		stageTeamSessionHandoff({
+			sessionId: nextSessionId,
+			document,
+			requestId: "next-session-request",
+			text: "start a separate conversation",
+			memberMentions: [],
+			attachments: [],
+			timestamp: 20,
+			executionMode: "full-access",
+		});
+		rerender({ preferredSessionId: nextSessionId });
+
+		await waitFor(() =>
+			expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledWith(
+				nextSessionId,
+				expect.objectContaining({ requestId: "next-session-request" }),
+			),
+		);
+		expect(createReservedTeamChatSession).toHaveBeenCalledWith(
+			expect.objectContaining({ teamId: team.id, sessionId: nextSessionId }),
+		);
+		expect(window.vetta.agentTeams.sendMessage).not.toHaveBeenCalledWith(
+			baseSession.id,
+			expect.objectContaining({ requestId: "next-session-request" }),
+		);
 	});
 
 	it("continues a staged first message after the new-session route handoff", async () => {

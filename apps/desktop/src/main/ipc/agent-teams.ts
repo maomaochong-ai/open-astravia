@@ -25,6 +25,10 @@ import type {
 import { storeAgentAvatarFile } from "../agent-teams/agent-avatar-store.js";
 import { agentTeamStore } from "../agent-teams/agent-team-store.js";
 import { initPluginAgentPresetSync } from "../agent-teams/plugin-agent-preset-sync.js";
+import {
+	parseTeamMemberModelSelection,
+	teamMemberModelPreferences,
+} from "../agent-teams/team-member-model-preferences.js";
 import { agentTeamSessionService } from "../agent-teams/team-session-service.js";
 import { resolveTeamSessionWorkspace } from "../agent-teams/team-workspace.js";
 import { listTeamSidebarConversations } from "../conversations/team-sidebar-conversation-projection.js";
@@ -50,6 +54,8 @@ const CHANNELS = {
 	RENAME_SESSION: "vetta:agent-teams:rename-session",
 	DELETE_SESSION: "vetta:agent-teams:delete-session",
 	UPDATE_MODEL_SETTINGS: "vetta:agent-teams:update-model-settings",
+	LIST_MEMBER_MODELS: "vetta:agent-teams:list-member-models",
+	SET_MEMBER_MODEL: "vetta:agent-teams:set-member-model",
 	SET_EXECUTION_MODE: "vetta:agent-teams:set-execution-mode",
 	GET_SESSION: "vetta:agent-teams:get-session",
 	SEND_MESSAGE: "vetta:agent-teams:send-message",
@@ -87,6 +93,7 @@ function teamSessionReference(value: unknown): { readonly id: string; readonly c
 
 export interface AgentTeamsIpcDependencies {
 	readonly listSidebarConversations?: typeof listTeamSidebarConversations;
+	readonly memberModels?: Pick<typeof teamMemberModelPreferences, "list" | "set">;
 	readonly store: Pick<
 		typeof agentTeamStore,
 		| "onPluginPresetsApplied"
@@ -154,6 +161,7 @@ export function registerAgentTeamsIpc(
 	dependencies: AgentTeamsIpcDependencies = { store: agentTeamStore, sessions: agentTeamSessionService },
 ): () => void {
 	const { store, sessions } = dependencies;
+	const memberModels = dependencies.memberModels ?? teamMemberModelPreferences;
 	// 必须先于任何一次读配置：回填要按当前可用的插件 blueprint 决定铺哪些档案。
 	initPluginAgentPresetSync();
 	// `displayProjection` is invoked later by IPC callbacks. Bind it once here so
@@ -207,6 +215,18 @@ export function registerAgentTeamsIpc(
 	ipcMain.handle(CHANNELS.DELETE_TEAM, (_event, teamId: unknown, input: unknown) =>
 		store.deleteTeam(requiredString(teamId, "teamId"), parseDeleteTeamInput(input)),
 	);
+	ipcMain.handle(CHANNELS.LIST_MEMBER_MODELS, async (_event, teamId: unknown) => {
+		const id = requiredString(teamId, "teamId");
+		const team = (await store.read()).teams.find((candidate) => candidate.id === id);
+		if (!team) throw new Error("Team not found");
+		return memberModels.list(team);
+	});
+	ipcMain.handle(CHANNELS.SET_MEMBER_MODEL, async (_event, teamId: unknown, memberId: unknown, value: unknown) => {
+		const id = requiredString(teamId, "teamId");
+		const team = (await store.read()).teams.find((candidate) => candidate.id === id);
+		if (!team) throw new Error("Team not found");
+		return memberModels.set(team, requiredString(memberId, "memberId"), parseTeamMemberModelSelection(value));
+	});
 	ipcMain.handle(CHANNELS.CREATE_SESSION, async (_event, teamId: unknown) => {
 		const document = await store.read();
 		const parsedTeamId = requiredString(teamId, "teamId");

@@ -4,7 +4,7 @@ import type { AgentProfile, TeamDefinition } from "@vetta/agent-team";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TeamSettingsSheet } from "./TeamSettingsSheet";
 
 vi.mock("react-i18next", () => ({
@@ -24,6 +24,18 @@ vi.mock("@shared/components/RendererMarkdownContent", () => ({
 }));
 vi.mock("@vetta-org/theme-ui/chat", () => ({
 	AgentAvatarView: ({ name }: { name: string }) => <span data-testid="avatar">{name}</span>,
+}));
+vi.mock("@shared/components/ModelSelect/useModelOptions", () => ({
+	useModelOptions: () => ({ options: [{ key: "provider/fixed" }, { key: "provider/other" }] }),
+}));
+vi.mock("@shared/components/ModelSelect", () => ({
+	ModelSelect: ({ value, onChange, placeholder }: { value: string | null; onChange: (value: string | null) => void; placeholder: string }) => (
+		<select aria-label="member-model" value={value ?? ""} onChange={(event) => onChange(event.target.value || null)}>
+			<option value="">{placeholder}</option>
+			<option value="provider/fixed">Fixed</option>
+			<option value="provider/other">Other</option>
+		</select>
+	),
 }));
 vi.mock("@vetta-org/ui", () => ({
 	Button: ({ children, variant: _v, size: _s, ...props }: { children: ReactNode } & Record<string, unknown>) => (
@@ -77,6 +89,18 @@ const team: TeamDefinition = {
 	updatedAt: 1,
 };
 
+let savedModels: Record<string, { agentProfileId: string; modelKey: string }> = {};
+const setMemberModel = vi.fn(async (_teamId: string, memberId: string, selection: { modelKey: string } | null) => {
+	if (selection) savedModels[memberId] = { agentProfileId: memberId === "member-alpha" ? "alpha" : "beta", modelKey: selection.modelKey };
+	else delete savedModels[memberId];
+	return { ...savedModels };
+});
+beforeEach(() => {
+	savedModels = {};
+	setMemberModel.mockClear();
+	Object.defineProperty(window, "vetta", { configurable: true, value: { agentTeams: { listMemberModels: async () => ({ ...savedModels }), setMemberModel } } });
+});
+
 function renderSheet(
 	overrides: {
 		onSave?: ReturnType<typeof vi.fn>;
@@ -102,6 +126,24 @@ function renderSheet(
 }
 
 describe("TeamSettingsSheet", () => {
+	it("lets a plugin team's member pin and clear a model without editing its definition", async () => {
+		renderSheet({ team: { ...team, source: { kind: "plugin", pluginId: "preset" } } });
+		const user = userEvent.setup();
+		const selectors = screen.getAllByLabelText("member-model");
+		await user.selectOptions(selectors[0] as HTMLSelectElement, "provider/fixed");
+		await waitFor(() => expect(setMemberModel).toHaveBeenCalledWith("team", "member-alpha", { modelKey: "provider/fixed" }));
+		await user.selectOptions(selectors[0] as HTMLSelectElement, "");
+		await waitFor(() => expect(setMemberModel).toHaveBeenLastCalledWith("team", "member-alpha", null));
+	});
+
+	it("keeps an unavailable fixed model visible and asks the user to change it", async () => {
+		savedModels["member-alpha"] = { agentProfileId: "alpha", modelKey: "provider/retired" };
+		renderSheet();
+		await waitFor(() => expect(screen.getByRole("status").textContent).toContain("provider/retired"));
+		const selectors = screen.getAllByLabelText("member-model");
+		expect((selectors[0] as HTMLSelectElement).value).toBe("");
+	});
+
 	it("shows a plugin's team as read-only, because the provider maintains it 1:1", () => {
 		renderSheet({ team: { ...team, source: { kind: "plugin", pluginId: "vetta-ui-design" } } });
 
@@ -114,7 +156,7 @@ describe("TeamSettingsSheet", () => {
 		expect(screen.queryByLabelText("teams.name")).toBeNull();
 		expect(screen.queryByRole("textbox")).toBeNull();
 		expect(screen.getAllByText("Delivery Team").length).toBeGreaterThan(0);
-		expect(screen.getByText("center.providedReadOnly")).toBeTruthy();
+		expect(screen.getByText("settings.providedDefinitionReadOnly")).toBeTruthy();
 	});
 
 	it("still lets the user expand a plugin team member to read its instructions as markdown", async () => {

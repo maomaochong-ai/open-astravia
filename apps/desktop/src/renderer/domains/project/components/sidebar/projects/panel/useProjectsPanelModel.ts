@@ -15,7 +15,7 @@ import {
 	pendingSessionOpenAtom,
 } from "@shared/store/atoms";
 import { useMatches, useNavigate } from "@tanstack/react-router";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
@@ -27,6 +27,7 @@ import {
 	projectSidebarConversations,
 	type SidebarConversationInfo,
 } from "../../../../services/sidebar-conversation-projection";
+import { resolveSidebarSelectionState } from "./sidebar-selection-state";
 import type { BatchProjectEntry, ProjectsPanelModel, ProjectsPanelProps } from "./types";
 import { useSidebarSelectionIntent } from "./useSidebarSelectionIntent";
 
@@ -65,7 +66,7 @@ export function useProjectsPanelModel({
 	const activeSessionPathValue = useAtomValue(activeSessionPathAtom);
 	const pendingSessionPath = useAtomValue(pendingSessionPathAtom);
 	const activeSessionCwd = useAtomValue(activeSessionCwdAtom);
-	const { selectionIntent: sidebarSelectionIntent, selectAfterPaint } = useSidebarSelectionIntent();
+	const store = useStore();
 	const imCwd = useAtomValue(defaultImConversationCwdAtom);
 	const setActiveSession = useSetAtom(activeSessionAtom);
 	const setInlineFilePreview = useSetAtom(inlineFilePreviewAtom);
@@ -83,20 +84,17 @@ export function useProjectsPanelModel({
 		currentPath.startsWith("/agent-teams/") && routeParams?.sessionId
 			? decodeURIComponent(routeParams.sessionId)
 			: "";
-	const activeSessionPath =
-		sidebarSelectionIntent?.kind === "conversation"
-			? sidebarSelectionIntent.path
-			: sidebarSelectionIntent
-				? ""
-				: pendingSessionPath || viewerSessionPath || activeSessionPathValue;
-	const activeTeamSessionId =
-		sidebarSelectionIntent?.kind === "agent-team"
-			? sidebarSelectionIntent.sessionId
-			: sidebarSelectionIntent
-				? ""
-				: pendingSessionPath || viewerSessionPath
-					? ""
-					: routeActiveTeamSessionId;
+	const { fallbackSelection, settledSelection } = resolveSidebarSelectionState({
+		currentPath,
+		activeSessionPath: activeSessionPathValue,
+		pendingSessionPath,
+		viewerSessionPath,
+		routeTeamSessionId: routeActiveTeamSessionId,
+	});
+	const { selectionIntent: sidebarSelectionIntent, selectAfterPaint } = useSidebarSelectionIntent(settledSelection);
+	const selectedSession = sidebarSelectionIntent ?? fallbackSelection;
+	const activeSessionPath = selectedSession?.kind === "conversation" ? selectedSession.path : "";
+	const activeTeamSessionId = selectedSession?.kind === "agent-team" ? selectedSession.sessionId : "";
 	const batchProjects = useAtomValue(batchProjectsAtom);
 	const [expandedBatchProjects, setExpandedBatchProjects] = useAtom(expandedBatchProjectsAtom);
 	const { deleteTask: deleteBatchTask, deleteProject: deleteBatchProject } = useBatchTasks();
@@ -201,6 +199,17 @@ export function useProjectsPanelModel({
 	useEffect(() => {
 		sessionsMapRef.current = sessionsMap;
 	}, [sessionsMap]);
+	const openInteractiveSession = useCallback(
+		async (cwd: string, path: string, executionMode?: Parameters<ProjectsPanelProps["onOpenSession"]>[2]) => {
+			const previousPath = store.get(activeSessionAtom)?.sessionPath;
+			if (executionMode === undefined) await onOpenSession(cwd, path);
+			else await onOpenSession(cwd, path, executionMode);
+			const activePath = store.get(activeSessionAtom)?.sessionPath;
+			if (!activePath) return false;
+			return activePath === previousPath ? undefined : ({ kind: "conversation", path: activePath } as const);
+		},
+		[onOpenSession, store],
+	);
 
 	const openSessionByTarget = useCallback(
 		(cwd: string, path: string) => {
@@ -212,9 +221,9 @@ export function useProjectsPanelModel({
 				);
 				return;
 			}
-			selectAfterPaint({ kind: "conversation", path }, () => onOpenSession(cwd, path));
+			selectAfterPaint({ kind: "conversation", path }, () => openInteractiveSession(cwd, path));
 		},
-		[navigate, onOpenSession, selectAfterPaint],
+		[navigate, openInteractiveSession, selectAfterPaint],
 	);
 
 	const selectSidebarSession = useCallback(
@@ -240,10 +249,10 @@ export function useProjectsPanelModel({
 				.find((item) => item.sessionPath === session.path);
 			if (!task) return;
 			selectAfterPaint({ kind: "conversation", path: session.path }, () =>
-				onOpenSession(task.cwd, session.path, task.executionMode),
+				openInteractiveSession(task.cwd, session.path, task.executionMode),
 			);
 		},
-		[onOpenSession, selectAfterPaint, visibleBatchProjects],
+		[openInteractiveSession, selectAfterPaint, visibleBatchProjects],
 	);
 
 	// 默认区（含 claw）与项目区共用同一套判定；cwd 由 defaultSessionsCwd 逐层传下，

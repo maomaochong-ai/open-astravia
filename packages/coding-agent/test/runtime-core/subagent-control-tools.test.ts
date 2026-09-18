@@ -82,6 +82,7 @@ describe("subagent control runtime tools", () => {
 		});
 		expect(fixture.spawn).toHaveBeenCalledWith({
 			taskName: "inspect",
+			originToolCallId: "tool-call-1",
 			message: renderSubagentTaskContract(task),
 			agentType: "explorer",
 		});
@@ -118,6 +119,7 @@ describe("subagent control runtime tools", () => {
 				todos: ["inspect", "change"],
 				deliveryMode: "batch",
 				batchId: "workflow-batch-1",
+				originToolCallId: "tool-call-1",
 			},
 		]);
 		expect(dispatchResult.content).toEqual([

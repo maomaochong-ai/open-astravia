@@ -26,7 +26,7 @@ export function AgentCenterHero(props: AgentCenterHeroProps): JSX.Element {
 			// 页面级的「点空白处退出组队」靠这个标记放行标题区里的保存/退出按钮，别删。
 			data-assembly-region="hero"
 			className="shrink-0 pb-5 pt-4 @md:pb-6"
-			initial={false}
+			initial={{ opacity: 0, y: -10 }}
 			animate={{ opacity: 1, y: 0 }}
 			transition={{ duration: 0.45, ease: easeOut }}
 		>

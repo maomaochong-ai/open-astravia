@@ -1,56 +1,33 @@
 import type { SettingsTab } from "@shared/store/atoms";
 import type { ComponentType } from "react";
 
-export type SettingsContentTab = Exclude<SettingsTab, "mcp">;
+type SettingsTabLoader = () => Promise<{ default: ComponentType }>;
 
-function memoizeLoader<T>(load: () => Promise<T>): () => Promise<T> {
-	let promise: Promise<T> | null = null;
-	return () => {
-		promise ??= load();
-		return promise;
-	};
-}
-
-type TabModule = { default: ComponentType };
-
-export const SETTINGS_TAB_LOADERS: Record<SettingsContentTab, () => Promise<TabModule>> = {
-	account: memoizeLoader(() => import("./AccountSettings").then((module) => ({ default: module.AccountSettings }))),
-	appearance: memoizeLoader(() =>
-		import("./AppearanceSettings").then((module) => ({ default: module.AppearanceSettings })),
-	),
-	appshot: memoizeLoader(() => import("./AppshotSettings").then((module) => ({ default: module.AppshotSettings }))),
-	archive: memoizeLoader(() =>
-		import("./ArchivedProjectsSettings").then((module) => ({ default: module.ArchivedProjectsSettings })),
-	),
-	context: memoizeLoader(() => import("./AgentSettings").then((module) => ({ default: module.AgentSettings }))),
-	environment: memoizeLoader(() =>
-		import("./EnvironmentSettings").then((module) => ({ default: module.EnvironmentSettings })),
-	),
-	extensions: memoizeLoader(() =>
-		import("./ExtensionsSettings").then((module) => ({ default: module.ExtensionsSettings })),
-	),
-	general: memoizeLoader(() => import("./GeneralSettings").then((module) => ({ default: module.GeneralSettings }))),
-	im: memoizeLoader(() => import("./ImBridgeSettings").then((module) => ({ default: module.ImBridgeSettings }))),
-	knowledge: memoizeLoader(() =>
-		import("./KnowledgeBaseSettings").then((module) => ({ default: module.KnowledgeBaseSettings })),
-	),
-	models: memoizeLoader(() => import("./ModelsSettings").then((module) => ({ default: module.ModelsSettings }))),
-	permissions: memoizeLoader(() =>
-		import("./PermissionsSettings").then((module) => ({ default: module.PermissionsSettings })),
-	),
-	pet: memoizeLoader(() => import("./PetSettings").then((module) => ({ default: module.PetSettings }))),
-	remote: memoizeLoader(() =>
-		import("./RemotePairingSettings").then((module) => ({ default: module.RemotePairingSettings })),
-	),
-	shortcuts: memoizeLoader(() =>
-		import("./ShortcutsSettings").then((module) => ({ default: module.ShortcutsSettings })),
-	),
-	team: memoizeLoader(() => import("./TeamSettings").then((module) => ({ default: module.TeamSettings }))),
-	webhook: memoizeLoader(() => import("./WebhookSettings").then((module) => ({ default: module.WebhookSettings }))),
-};
+/** The same imports serve both React.lazy and intent prefetch. */
+export const SETTINGS_TAB_LOADERS = {
+	account: async () => ({ default: (await import("./AccountSettings")).AccountSettings }),
+	context: async () => ({ default: (await import("./AgentSettings")).AgentSettings }),
+	appearance: async () => ({ default: (await import("./AppearanceSettings")).AppearanceSettings }),
+	appshot: async () => ({ default: (await import("./AppshotSettings")).AppshotSettings }),
+	archive: async () => ({ default: (await import("./ArchivedProjectsSettings")).ArchivedProjectsSettings }),
+	extensions: async () => ({ default: (await import("./ExtensionsSettings")).ExtensionsSettings }),
+	environment: async () => ({ default: (await import("./EnvironmentSettings")).EnvironmentSettings }),
+	general: async () => ({ default: (await import("./GeneralSettings")).GeneralSettings }),
+	im: async () => ({ default: (await import("./ImBridgeSettings")).ImBridgeSettings }),
+	knowledge: async () => ({ default: (await import("./KnowledgeBaseSettings")).KnowledgeBaseSettings }),
+	models: async () => ({ default: (await import("./ModelsSettings")).ModelsSettings }),
+	permissions: async () => ({ default: (await import("./PermissionsSettings")).PermissionsSettings }),
+	remote: async () => ({ default: (await import("./RemotePairingSettings")).RemotePairingSettings }),
+	pet: async () => ({ default: (await import("./PetSettings")).PetSettings }),
+	shortcuts: async () => ({ default: (await import("./ShortcutsSettings")).ShortcutsSettings }),
+	team: async () => ({ default: (await import("./TeamSettings")).TeamSettings }),
+	webhook: async () => ({ default: (await import("./WebhookSettings")).WebhookSettings }),
+} satisfies Record<Exclude<SettingsTab, "mcp">, SettingsTabLoader>;
 
 export function prefetchSettingsTab(tab: string): void {
-	const key = tab === "mcp" ? "general" : tab;
-	const loader = SETTINGS_TAB_LOADERS[key as SettingsContentTab];
-	if (loader) void loader().catch(() => undefined);
+	const load = (SETTINGS_TAB_LOADERS as Record<string, SettingsTabLoader>)[tab];
+	if (!load) return;
+	void load().catch(() => {
+		// React.lazy still handles navigation errors; prefetch remains optional.
+	});
 }

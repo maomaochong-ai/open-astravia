@@ -2,12 +2,6 @@
 
 All notable changes to `@vetta-org/theme-sdk` are documented in this file.
 
-## [Unreleased]
-
-### Added
-
-- `SidebarModel.actions.prefetchNavItem`：可选的导航意图预取入口，悬停或聚焦侧栏项时由宿主拉取对应路由。
-
 ## [0.1.0] — 2026-09-14
 
 首次发布到 npm。此前只作为 workspace 包在仓库内引用，但官方能力市场里的 shimo 插件依赖它，

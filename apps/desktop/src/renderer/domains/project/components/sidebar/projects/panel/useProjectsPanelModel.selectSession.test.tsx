@@ -229,6 +229,135 @@ describe("useProjectsPanelModel.selectSession", () => {
 		expect(result.current.activeSessionPath).toBe("s1");
 	});
 
+	it("打开操作先结束而活动会话稍后提交时，高亮不会退回旧会话", async () => {
+		const cwd = "/repo/a";
+		const paint = deferred<"painted">();
+		waitForCommittedPaintSpy.mockReturnValueOnce(paint.promise);
+		useProjectsMock.mockReturnValue(projectsState(new Map([[cwd, [makeSession("old", cwd), makeSession("next", cwd)]]])));
+		getDefaultStore().set(activeSessionAtom, { cwd, sessionPath: "old", runtimeId: "runtime-old" });
+		const onOpenSession = vi.fn().mockResolvedValue(undefined);
+		const { result } = renderHook(() => useProjectsPanelModel({ filter: "all", onOpenSession }));
+
+		act(() => result.current.actions.selectSession(cwd, { ...makeSession("next", cwd), kind: "conversation" }));
+		expect(result.current.activeSessionPath).toBe("next");
+		await act(async () => {
+			paint.resolve("painted");
+			await paint.promise;
+			await Promise.resolve();
+		});
+		expect(result.current.activeSessionPath).toBe("next");
+
+		act(() => getDefaultStore().set(activeSessionAtom, { cwd, sessionPath: "next", runtimeId: "runtime-next" }));
+		expect(result.current.activeSessionPath).toBe("next");
+	});
+
+	it("上一会话的待打开状态尚未清理时，切换普通会话不会出现新旧新高亮", async () => {
+		const cwd = "/repo/a";
+		const paint = deferred<"painted">();
+		waitForCommittedPaintSpy.mockReturnValueOnce(paint.promise);
+		useProjectsMock.mockReturnValue(projectsState(new Map([[cwd, [makeSession("old", cwd), makeSession("next", cwd)]]])));
+		getDefaultStore().set(activeSessionAtom, { cwd, sessionPath: "old", runtimeId: "runtime-old" });
+		getDefaultStore().set(pendingSessionOpenAtom, { cwd, sessionPath: "old", interactionId: "old-open" });
+		const onOpenSession = vi.fn(async () => {
+			getDefaultStore().set(activeSessionAtom, { cwd, sessionPath: "next", runtimeId: "runtime-next" });
+		});
+		const { result } = renderHook(() => useProjectsPanelModel({ filter: "all", onOpenSession }));
+		expect(result.current.activeSessionPath).toBe("old");
+
+		act(() => result.current.actions.selectSession(cwd, { ...makeSession("next", cwd), kind: "conversation" }));
+		expect(result.current.activeSessionPath).toBe("next");
+		await act(async () => {
+			paint.resolve("painted");
+			await paint.promise;
+			await Promise.resolve();
+		});
+		expect(result.current.activeSessionPath).toBe("next");
+		act(() => getDefaultStore().set(pendingSessionOpenAtom, null));
+		expect(result.current.activeSessionPath).toBe("next");
+	});
+
+	it("旧会话迁移到新路径后，高亮跟随实际打开的会话路径", async () => {
+		const cwd = "/repo/a";
+		useProjectsMock.mockReturnValue(projectsState(new Map([[cwd, [makeSession("legacy", cwd)]]])));
+		getDefaultStore().set(activeSessionAtom, { cwd, sessionPath: "old", runtimeId: "runtime-old" });
+		const onOpenSession = vi.fn(async () => {
+			getDefaultStore().set(pendingSessionOpenAtom, { cwd, sessionPath: "legacy", interactionId: "migration" });
+			getDefaultStore().set(activeSessionAtom, { cwd, sessionPath: "canonical", runtimeId: "runtime-canonical" });
+		});
+		const { result } = renderHook(() => useProjectsPanelModel({ filter: "all", onOpenSession }));
+		await act(async () => {
+			result.current.actions.selectSession(cwd, { ...makeSession("legacy", cwd), kind: "conversation" });
+			await Promise.resolve();
+			await Promise.resolve();
+		});
+		expect(result.current.activeSessionPath).toBe("legacy");
+		act(() => getDefaultStore().set(pendingSessionOpenAtom, null));
+		expect(result.current.activeSessionPath).toBe("canonical");
+	});
+
+	it("旧普通会话待打开时切换 Team，会一直高亮目标 Team 会话", async () => {
+		const cwd = "/repo/a";
+		useProjectsMock.mockReturnValue(projectsState(new Map()));
+		getDefaultStore().set(activeSessionAtom, { cwd, sessionPath: "old", runtimeId: "runtime-old" });
+		getDefaultStore().set(pendingSessionOpenAtom, { cwd, sessionPath: "old", interactionId: "old-open" });
+		const { result, rerender } = renderHook(() =>
+			useProjectsPanelModel({ filter: "all", onOpenSession: vi.fn().mockResolvedValue(undefined) }),
+		);
+		act(() => result.current.actions.selectSession(cwd, {
+			kind: "agent-team", id: "next", path: "/team/next.jsonl", cwd,
+			firstMessage: "Next", modifiedAt: 2, teamId: "team-1", teamSessionId: "next",
+			memberAvatarUrls: [], sessionTitle: "Next",
+		}));
+		expect(result.current.activeTeamSessionId).toBe("next");
+		await act(async () => Promise.resolve());
+		routeMatches = [{ pathname: "/agent-teams/team-1/sessions/next", params: { sessionId: "next" } }];
+		rerender();
+		expect(result.current.activeTeamSessionId).toBe("next");
+		expect(result.current.activeSessionPath).toBe("");
+		act(() => getDefaultStore().set(pendingSessionOpenAtom, null));
+		expect(result.current.activeTeamSessionId).toBe("next");
+		expect(result.current.activeSessionPath).toBe("");
+	});
+
+	it("打开会话失败后清除临时高亮", async () => {
+		const cwd = "/repo/a";
+		useProjectsMock.mockReturnValue(projectsState(new Map([[cwd, [makeSession("next", cwd)]]])));
+		const onOpenSession = vi.fn(async () => {
+			getDefaultStore().set(activeSessionAtom, null);
+		});
+		const { result } = renderHook(() => useProjectsPanelModel({ filter: "all", onOpenSession }));
+		await act(async () => {
+			result.current.actions.selectSession(cwd, { ...makeSession("next", cwd), kind: "conversation" });
+			await Promise.resolve();
+			await Promise.resolve();
+		});
+		expect(result.current.activeSessionPath).toBe("");
+	});
+
+	it("Team 跳转先结束而路由稍后提交时，高亮不会退回旧会话", async () => {
+		const paint = deferred<"painted">();
+		waitForCommittedPaintSpy.mockReturnValueOnce(paint.promise);
+		routeMatches = [{ pathname: "/agent-teams/team-1/sessions/old", params: { sessionId: "old" } }];
+		useProjectsMock.mockReturnValue(projectsState(new Map()));
+		const { result, rerender } = renderHook(() =>
+			useProjectsPanelModel({ filter: "all", onOpenSession: vi.fn().mockResolvedValue(undefined) }),
+		);
+		act(() => result.current.actions.selectSession("/repo/a", {
+			kind: "agent-team", id: "next", path: "/team/next.jsonl", cwd: "/repo/a",
+			firstMessage: "Next", modifiedAt: 2, teamId: "team-1", teamSessionId: "next",
+			memberAvatarUrls: [], sessionTitle: "Next",
+		}));
+		await act(async () => {
+			paint.resolve("painted");
+			await paint.promise;
+			await Promise.resolve();
+		});
+		expect(result.current.activeTeamSessionId).toBe("next");
+		routeMatches = [{ pathname: "/agent-teams/team-1/sessions/next", params: { sessionId: "next" } }];
+		rerender();
+		expect(result.current.activeTeamSessionId).toBe("next");
+	});
+
 	it("点击下方对话区域的会话时同样立即切换高亮", async () => {
 		const cwd = "/default/conversations";
 		const target = makeSession("default-s1", cwd);

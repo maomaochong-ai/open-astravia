@@ -29,7 +29,6 @@ export interface SidebarNavigationProps {
 	/** 「更多」自定义面板文案；缺省时退化为不带自定义能力的旧列表。 */
 	navCustomizeLabels?: SidebarNavMorePanelLabels;
 	onItemClick: (item: SidebarNavItem) => void;
-	/** 悬停 / 聚焦时预取对应页面；缺省则只在点击时加载。 */
 	onItemIntent?: (item: SidebarNavItem) => void;
 	onMoreOpenChange?: (open: boolean) => void;
 	onNavMove?: (key: string, region: "pinned" | "more", beforeKey: string | null) => void;
@@ -80,18 +79,17 @@ export function SidebarNavigation({
 	return (
 		<nav className={cn("relative flex flex-col gap-0.5 px-1.5 pb-2 pt-2", className)}>
 			{indicatorBounds && (
-				// CSS 过渡替代 motion spring：位置走 transform（合成器承担），宽高只重排这个
-				// absolute 元素自身，低配机上不再逐帧触发整条侧栏 layout。
+				// 纵向用测量出的 top/height 直接落位（无补间）；横向不吃测量值，靠 inset-x
+				// 跟着 <nav> 内容宽度走——拖宽侧边栏时宽度是实时写进 DOM 的，不会重渲染，
+				// 测量宽度要等松手才更新，指示条就会短一截。
 				<span
 					data-sidebar-nav-indicator=""
 					className={cn(
-						"pointer-events-none absolute left-0 top-0 z-10 overflow-visible rounded-md bg-accent",
-						"transition-[transform,width,height] duration-200 ease-out motion-reduce:transition-none",
+						"pointer-events-none absolute inset-x-1.5 top-0 z-10 overflow-visible rounded-md bg-accent",
 						classNames?.indicator,
 					)}
 					style={{
-						transform: `translate3d(${indicatorBounds.left}px, ${indicatorBounds.top}px, 0)`,
-						width: indicatorBounds.width,
+						transform: `translate3d(0, ${indicatorBounds.top}px, 0)`,
 						height: indicatorBounds.height,
 					}}
 				>
@@ -128,7 +126,6 @@ export function SidebarNavigation({
 							onClick={() => onItemClick(item)}
 							onFocus={() => onItemIntent?.(item)}
 							onMouseEnter={() => onItemIntent?.(item)}
-							onPointerDown={() => onItemIntent?.(item)}
 							ref={setItemRef(index)}
 						/>
 					</div>
@@ -205,13 +202,12 @@ export function SidebarNavigation({
 									key={item.key}
 									type="button"
 									title={item.title ?? item.label}
-									onClick={() => {
-										onItemClick(item);
-										onMoreOpenChange?.(false);
-									}}
-									onFocus={() => onItemIntent?.(item)}
-									onMouseEnter={() => onItemIntent?.(item)}
-									onPointerDown={() => onItemIntent?.(item)}
+										onClick={() => {
+											onItemClick(item);
+											onMoreOpenChange?.(false);
+										}}
+										onFocus={() => onItemIntent?.(item)}
+										onMouseEnter={() => onItemIntent?.(item)}
 									className={cn(
 										"flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px]",
 										item.active

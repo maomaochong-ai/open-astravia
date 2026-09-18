@@ -26,6 +26,14 @@ describe("Coding Agent Subagent session extension contract", () => {
 		const malformed: SessionEvent = { ...envelope, payload: [{ ...snapshot(), status: "unknown" }] };
 		expect(readCodingAgentSubagentsObservation(malformed)).toBeUndefined();
 	});
+
+	it("accepts both linked and legacy snapshots", () => {
+		const linked = { ...snapshot(), originToolCallId: "call-1" };
+		const legacy = snapshot();
+		expect(
+			readCodingAgentSubagentsObservation(extensionEvent(CODING_AGENT_SUBAGENTS_OBSERVATION, [linked, legacy])),
+		).toEqual([linked, legacy]);
+	});
 });
 
 function snapshot() {

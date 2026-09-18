@@ -26,11 +26,10 @@ import {
 	sessionExecutionModeAtom,
 	switchSessionInputDraftScope,
 } from "@shared/store/atoms";
-import { useInactiveFrozenValue, useSurfaceActive } from "@shared/surface-active";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { NewSessionHeroIdentity } from "@vetta-org/theme-ui";
 import { useAtomValue, useSetAtom } from "jotai";
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TeamChatActions, TeamChatViewModel } from "../../connectors/team/teamChatModel";
 import { useSkillList } from "../../hooks/useSkillList";
@@ -49,6 +48,7 @@ import {
 import { createNewSessionTargetStrategyRegistry } from "./target-strategy";
 import { useNewSessionActivityPanel } from "./useNewSessionActivityPanel";
 import { type NewSessionContextBlockModel, useNewSessionContextBlock } from "./useNewSessionContextBlock";
+import { useNewSessionHeroEntry } from "./useNewSessionHeroEntry";
 import { useNewSessionSend } from "./useNewSessionSend";
 import { useNewSessionTargetIdentity } from "./useNewSessionTargetIdentity";
 import { useNewSessionTeamDraft } from "./useNewSessionTeamDraft";
@@ -99,23 +99,17 @@ interface NewSessionPageModel {
 
 export function useNewSessionPageModel(): NewSessionPageModel {
 	const { t } = useTranslation(["common", "chat"]);
-	const searchFromRoute = useSearch({ strict: false }) as { cwd?: string; target?: string };
+	const search = useSearch({ strict: false }) as { cwd?: string; target?: string };
 	const navigate = useNavigate();
-	const surfaceActive = useSurfaceActive();
-	const search = useInactiveFrozenValue(surfaceActive, searchFromRoute);
 	const defaultConversationCwd = useAtomValue(defaultConversationCwdAtom);
 	const decodedCwd = search.cwd ? decodeURIComponent(search.cwd) : defaultConversationCwd;
 	const initialTargetKey = search.target ? parseNewSessionTarget(search.target) : null;
 	const [targetKey, setTargetKey] = useState<NewSessionTargetKey | null>(
 		initialTargetKey === "conversation" ? null : initialTargetKey,
 	);
-	const appliedTargetRef = useRef(search.target ?? "");
 	useEffect(() => {
-		const identity = search.target ?? "";
-		if (appliedTargetRef.current === identity) return;
-		appliedTargetRef.current = identity;
 		setTargetKey(initialTargetKey === "conversation" ? null : initialTargetKey);
-	}, [initialTargetKey, search.target]);
+	}, [initialTargetKey]);
 	// 单个智能体走的是普通会话链路，只在创建时多带一个身份；只有团队才需要 Team 编排。
 	const selectedTeamKey = isTeamTarget(targetKey) ? targetKey : null;
 	const selectedAgentProfileId = parseAgentTargetKey(targetKey);
@@ -131,8 +125,7 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 			: t("chat:newSession.projectContext", { name: contextName });
 
 	// Hero 首帧即挂载（仅用 opacity 入场），避免 idle 延迟插入导致输入栏被顶动。
-	const [mounted, setMounted] = useState(false);
-	const [avatarAutoplay, setAvatarAutoplay] = useState(false);
+	const { mounted, avatarAutoplay } = useNewSessionHeroEntry(decodedCwd);
 	const [commandPanelExpanded, setCommandPanelExpanded] = useState(false);
 	const { open: activityOpen, toggle: handleToggleActivity } = useNewSessionActivityPanel(
 		projectSelection.activityPanelCwd,
@@ -289,7 +282,6 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 	]);
 
 	useEffect(() => {
-		if (!surfaceActive) return;
 		setHeaderTitle(t("appShell.routeTitles.chat"));
 		setHeaderTitleBadge(contextLabel);
 		setHeaderTitleHidden(false);
@@ -298,27 +290,7 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 			setHeaderTitleBadge(null);
 			setHeaderTitleHidden(false);
 		};
-	}, [contextLabel, setHeaderTitle, setHeaderTitleBadge, setHeaderTitleHidden, surfaceActive, t]);
-
-	const playedHeroCwdRef = useRef<string | undefined>(undefined);
-	useEffect(() => {
-		const first = playedHeroCwdRef.current === undefined;
-		const cwdChanged = playedHeroCwdRef.current !== decodedCwd;
-		playedHeroCwdRef.current = decodedCwd;
-		if (!first && !cwdChanged) return;
-		setMounted(false);
-		setAvatarAutoplay(false);
-		const mountTimer = window.setTimeout(() => {
-			startTransition(() => setMounted(true));
-		}, 30);
-		const autoplayTimer = window.setTimeout(() => {
-			startTransition(() => setAvatarAutoplay(true));
-		}, 300);
-		return () => {
-			window.clearTimeout(mountTimer);
-			window.clearTimeout(autoplayTimer);
-		};
-	}, [decodedCwd]);
+	}, [contextLabel, setHeaderTitle, setHeaderTitleBadge, setHeaderTitleHidden, t]);
 
 	useEffect(() => {
 		void window.vetta.window.isAlwaysOnTop().then(setPinned);

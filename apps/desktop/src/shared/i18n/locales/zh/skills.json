@@ -60,8 +60,8 @@
 				"description": "用搜索快速定位能力；也可点「添加能力」从本地导入 Skill / 插件，或手动配置 MCP 连接器。"
 			},
 			"scope": {
-				"title": "发现 / 我的",
-				"description": "「发现」浏览可添加的能力；「我的」管理已安装的能力，包括启用、配置与移除。"
+				"title": "公开 / 个人",
+				"description": "「公开」浏览公共能力与 Vetta 内置能力；「个人」管理通用 Skill 与手动安装的能力，包括启用、配置与移除。"
 			},
 			"list": {
 				"title": "能力卡片",
@@ -74,13 +74,13 @@
 			"name": "创建技能",
 			"description": "创建或更新符合 Vetta 规范的 Agent Skill，并正确放置文件、注册 skills-manifest.json 或更新插件配置。"
 		},
+		"install-ability": {
+			"name": "安装能力",
+			"description": "在本机 Vetta 中安装插件、Skill/场景与 MCP 能力，并在插件升级挂起待应用版本时立即重载。"
+		},
 		"publish-ability": {
 			"name": "发布能力",
 			"description": "把 skill、scene、MCP、插件或能力套装提交到 Vetta 能力市场，讲清必填字段、多语言与审核流程。"
-		},
-		"vetta-blog": {
-			"name": "Vetta 博客",
-			"description": "研究、实测、撰写和审查有证据的 Vetta 产品与技术博客。"
 		}
 	}
 }
