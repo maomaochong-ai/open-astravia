@@ -227,6 +227,45 @@ describe("runAgentTurn", () => {
 		expect(checkpointReasons).toEqual(["model_call", "assistant_error", "model_call", "assistant_result"]);
 	});
 
+	it("hands the failed assistant message to the assistant_error checkpoint for overflow recovery", async () => {
+		const overflowMessage = "This model's maximum context length is 200000 tokens.";
+		const failure = new AIError("AI_CONTEXT_OVERFLOW", overflowMessage);
+		const overflow = new LanguageModelStream();
+		overflow.push({
+			type: "error",
+			reason: "error",
+			error: { ...assistant([]), stopReason: "error", errorMessage: overflowMessage },
+			failure: getAIErrorDetails(failure),
+		});
+		overflow.fail(failure);
+		const errorCheckpointMessages: (AssistantMessage | undefined)[] = [];
+		const run = runAgentTurn({
+			...request([
+				successResponse(assistant([toolCall("first", "noop", {})], "toolUse")),
+				{ events: overflow, result: overflow.result() },
+			]),
+			resolveTools: async () => [
+				{
+					name: "noop",
+					description: "noop",
+					inputSchema: Type.Object({}),
+					async execute() {
+						return { content: [{ type: "text", text: "ok" }], details: {} };
+					},
+				},
+			],
+			checkpoint: async ({ reason, assistantMessage }) => {
+				if (reason === "assistant_error") errorCheckpointMessages.push(assistantMessage);
+				return undefined;
+			},
+		});
+
+		await expect(run.result).resolves.toMatchObject({ status: "failed" });
+		expect(errorCheckpointMessages).toHaveLength(1);
+		expect(errorCheckpointMessages[0]).toMatchObject({ stopReason: "error" });
+		expect(errorCheckpointMessages[0]?.errorMessage).toContain(overflowMessage);
+	});
+
 	it("ends with recovery_exhausted after the configured retry budget", async () => {
 		const run = runAgentTurn({
 			...request([

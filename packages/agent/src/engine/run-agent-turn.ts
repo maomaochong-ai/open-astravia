@@ -84,6 +84,7 @@ async function executeRun(
 
 			state.modelCalls += 1;
 			let resolved: ResolvedModelCall | undefined;
+			let failedAssistant: AgentRunResult["lastAssistantMessage"];
 			let modelCallFinished = false;
 			try {
 				const resolving = request
@@ -109,6 +110,7 @@ async function executeRun(
 				state.lastAssistantMessage = assistant;
 				state.messages.push(assistant);
 				if (consumed.failure) {
+					failedAssistant = assistant;
 					emit({ type: "model_call_finish", modelCallIndex, callId: resolved.callId, status: "failed" });
 					modelCallFinished = true;
 					emit({
@@ -125,7 +127,14 @@ async function executeRun(
 					emit({ type: "model_call_finish", modelCallIndex, callId: resolved?.callId, status: "failed" });
 				}
 				if (signal.aborted) throw error;
-				const recovery = await checkpoint(request, "assistant_error", state, modelCallIndex, signal);
+				const recovery = await checkpoint(
+					request,
+					"assistant_error",
+					state,
+					modelCallIndex,
+					signal,
+					failedAssistant,
+				);
 				if (recovery?.retry) {
 					if (state.recoveryAttempts >= request.limits.maxRecoveryAttempts) {
 						finish("recovery_exhausted", state, emit, error);
