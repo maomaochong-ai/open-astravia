@@ -1,11 +1,12 @@
 import { MessageFeed, MessageFeedLayout } from "@vetta-org/theme-ui/chat";
 import { useMessageFeedActiveItem } from "@shared/components/message-feed/useMessageFeedActiveItem";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
 import type { Usage } from "@vetta/ai/protocol";
 import { conversationItemRenderKey } from "@shared/conversation";
 import { MessageRow } from "./MessageRendering";
 import { MessageItem, ModelSwitchBoundary, ExportMessageList } from "./MessageItem";
+import { collectAgentUsages } from "./message-list-derived";
 import { MessageTimeline } from "./MessageTimeline";
 import type { ChatConversationItem, MessageListModel, MessageListProps } from "./types";
 
@@ -71,10 +72,9 @@ export function MessageListView({
 		}
 		return null;
 	}, [messages]);
-	const sessionUsages = useMemo<readonly Usage[]>(
-		() => messages.flatMap((message) => (message.kind === "agent" ? (message.usages ?? []) : [])),
-		[messages],
-	);
+	const sessionUsages = useMemo<readonly Usage[]>(() => collectAgentUsages(messages), [messages]);
+	const sessionUsagesRef = useRef(sessionUsages);
+	sessionUsagesRef.current = sessionUsages;
 	const itemContent = useCallback(
 		(index: number, message: ChatConversationItem) => {
 			return (
@@ -91,7 +91,7 @@ export function MessageListView({
 						participant={message.kind === "agent" ? participantsById.get(message.authorId) : undefined}
 						pendingLabel={message.kind === "agent" && message.phase === "pending" ? pendingLabel : undefined}
 						participants={participants}
-						sessionUsages={sessionUsages}
+						sessionUsages={message.kind === "agent" ? sessionUsagesRef.current : undefined}
 						onTeamMemberOpen={onTeamMemberOpen}
 					/>
 				</MessageRow>
@@ -101,7 +101,6 @@ export function MessageListView({
 			isStreaming,
 			lastUserMessageId,
 			messages.length,
-			messages,
 			modelSwitchLabels,
 			onAbort,
 			pendingLabel,
@@ -109,7 +108,6 @@ export function MessageListView({
 			onTeamMemberOpen,
 			participants,
 			participantsById,
-			sessionUsages,
 		],
 	);
 
