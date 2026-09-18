@@ -71,43 +71,65 @@ export function shouldCompact(contextTokens: number, contextWindow: number, sett
 	return contextTokens > getCompactThreshold(contextWindow, settings);
 }
 
-/** Conservatively estimate a message with the established chars/4 policy. */
+/**
+ * Conservatively estimate text tokens by script: ASCII follows chars/4, CJK and other
+ * wide scripts (U+2E80 and up) count one token per code unit, and remaining non-ASCII
+ * text counts half a token. Plain chars/4 undercounts Chinese by 3-4x, which lets a
+ * single tool batch jump past the compaction threshold straight into a provider overflow.
+ */
+export function estimateTextTokens(text: string): number {
+	let ascii = 0;
+	let wide = 0;
+	let other = 0;
+	for (let index = 0; index < text.length; index++) {
+		const code = text.charCodeAt(index);
+		if (code < 0x80) ascii += 1;
+		else if (code >= 0x2e80) wide += 1;
+		else other += 1;
+	}
+	return ascii / 4 + wide + other / 2;
+}
+
+const IMAGE_TOKENS = 1200;
+
+/** Conservatively estimate a message's tokens; see estimateTextTokens for the text policy. */
 export function estimateTokens(message: AgentMessage): number {
-	let chars = 0;
+	let tokens = 0;
 	switch (message.role) {
 		case "user": {
 			const content = (message as { content: string | Array<{ type: string; text?: string }> }).content;
 			if (typeof content === "string") {
-				chars = content.length;
+				tokens = estimateTextTokens(content);
 			} else {
 				for (const block of content) {
-					if (block.type === "text" && block.text) chars += block.text.length;
+					if (block.type === "text" && block.text) tokens += estimateTextTokens(block.text);
 				}
 			}
-			return Math.ceil(chars / 4);
+			return Math.ceil(tokens);
 		}
 		case "assistant":
 			for (const block of message.content) {
-				if (block.type === "text") chars += block.text.length;
-				else if (block.type === "thinking") chars += block.thinking.length;
-				else if (block.type === "toolCall") chars += block.name.length + JSON.stringify(block.arguments).length;
+				if (block.type === "text") tokens += estimateTextTokens(block.text);
+				else if (block.type === "thinking") tokens += estimateTextTokens(block.thinking);
+				else if (block.type === "toolCall")
+					tokens += estimateTextTokens(block.name) + estimateTextTokens(JSON.stringify(block.arguments));
 			}
-			return Math.ceil(chars / 4);
+			return Math.ceil(tokens);
 		case "custom":
 		case "toolResult":
-			if (typeof message.content === "string") chars = message.content.length;
+			if (typeof message.content === "string") tokens = estimateTextTokens(message.content);
 			else {
 				for (const block of message.content) {
-					if (block.type === "text" && block.text) chars += block.text.length;
-					if (block.type === "image") chars += 4800;
+					if (block.type === "text" && block.text) tokens += estimateTextTokens(block.text);
+					if (block.type === "image") tokens += IMAGE_TOKENS;
 				}
 			}
-			return Math.ceil(chars / 4);
+			return Math.ceil(tokens);
 		case "bashExecution":
-			return Math.ceil((message.command.length + message.output.length) / 4);
+			return Math.ceil(estimateTextTokens(message.command) + estimateTextTokens(message.output));
 		case "branchSummary":
 		case "compactionSummary":
-			return Math.ceil(message.summary.length / 4);
+			return Math.ceil(estimateTextTokens(message.summary));
 	}
 	return 0;
 }
