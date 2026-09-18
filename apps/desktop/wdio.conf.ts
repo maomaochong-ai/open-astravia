@@ -10,6 +10,7 @@ import {
 	resolveElectronE2eSpecRetryOptions,
 } from "./scripts/electron-e2e-service-options.mjs";
 import {
+	clearLinuxUnpackedPackageType,
 	resolvePackagedE2eBinaryPath,
 	stagePackagedE2eAppImage,
 } from "./scripts/packaged-e2e-binary.mjs";
@@ -62,6 +63,7 @@ function resolveElectronServiceOptions(): {
 			const staged = stagePackagedE2eAppImage(packagedArtifactRoot, packageVersion);
 			stagedAppImageRoot = staged.stagingRoot;
 			process.env.APPIMAGE = staged.appImagePath;
+			clearLinuxUnpackedPackageType(packagedArtifactRoot);
 		}
 		return {
 			// Windows release/Vetta.exe is a detached stable launcher. ChromeDriver

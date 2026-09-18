@@ -49,6 +49,15 @@ export function stagePackagedE2eAppImage(packageRoot, version, temporaryRoot = t
 	}
 }
 
+/**
+ * electron-builder writes resources/package-type into the shared linux-unpacked
+ * directory while building deb/rpm. electron-updater then picks the deb/rpm
+ * updater instead of the AppImage one, so the AppImage-backed E2E must drop it.
+ */
+export function clearLinuxUnpackedPackageType(packageRoot) {
+	rmSync(join(packageRoot, "release", "linux-unpacked", "resources", "package-type"), { force: true });
+}
+
 export function resolvePackagedE2eBinaryPath(packageRoot, platform = process.platform) {
 	const releaseRoot = join(packageRoot, "release");
 	const candidates =
