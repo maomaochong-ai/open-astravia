@@ -162,6 +162,76 @@ function pluginBundleArchive(pluginId = "demo-plugin"): Buffer {
 	return zip.toBuffer();
 }
 
+function versionedPluginArchive(bundleOnly = false): Buffer {
+	const releases = [
+		{
+			version: "1.0.0",
+			minAppVersion: "0.5.57",
+			pluginApiVersion: "^2.4.0",
+			artifact: { url: "https://example.com/demo-1.0.0.zip", sha256: "a".repeat(64) },
+		},
+		{
+			version: "1.2.0",
+			minAppVersion: "0.5.58",
+			pluginApiVersion: "^2.5.0",
+			artifact: { url: "https://example.com/demo-1.2.0.zip", sha256: "b".repeat(64) },
+		},
+	];
+	const manifest = {
+		schemaVersion: 3,
+		name: "vetta-open-abilities",
+		marketplaceVersion: "2026.09.18-2",
+		repository: "https://github.com/example/vetta-abilities",
+		minAppVersion: "0.5.57",
+		abilities: [
+			...(!bundleOnly
+				? [
+						{
+							type: "plugin",
+							slug: "demo-plugin",
+							name: "Demo Plugin",
+							version: "1.2.0",
+							source: { path: "abilities/plugins/demo-plugin" },
+							releases,
+						},
+					]
+				: []),
+			{
+				type: "bundle",
+				slug: "starter",
+				name: "Starter",
+				version: "1.0.0",
+				config: {
+					members: [
+						{
+							type: "plugin",
+							slug: "demo-plugin",
+							...(bundleOnly ? { source: { path: "abilities/plugins/demo-plugin" }, releases } : {}),
+						},
+					],
+				},
+			},
+		],
+	};
+	const zip = new AdmZip();
+	zip.addFile("vetta-abilities-main/.vetta/marketplace.json", Buffer.from(JSON.stringify(manifest)));
+	zip.addFile("vetta-abilities-main/abilities/plugins/demo-plugin/README.md", Buffer.from("Demo"));
+	if (bundleOnly)
+		zip.addFile(
+			"vetta-abilities-main/abilities/plugins/demo-plugin/ability.json",
+			Buffer.from(
+				JSON.stringify({
+					schemaVersion: 1,
+					type: "plugin",
+					slug: "demo-plugin",
+					name: "Demo Plugin",
+					version: "1.2.0",
+				}),
+			),
+		);
+	return zip.toBuffer();
+}
+
 function response(buffer: Buffer): Response {
 	return new Response(new Uint8Array(buffer), {
 		status: 200,
@@ -246,6 +316,49 @@ afterEach(async () => {
 });
 
 describe("OpenMarketplaceService", () => {
+	it("lists and installs the compatible plugin release from a catalog without committed build output", async () => {
+		const source = versionedPluginArchive();
+		const installed: string[] = [];
+		for (const [appVersion, hostApiVersion, expected] of [
+			["0.5.57", "2.4.0", "1.0.0"],
+			["0.5.58", "2.5.0", "1.2.0"],
+		] as const) {
+			const rootDir = await temporaryRoot();
+			const service = new OpenMarketplaceService({
+				appVersion,
+				hostApiVersion,
+				rootDir,
+				fetchArchive: async () => response(source),
+				installAbility: async (_root, ability) => {
+					installed.push(ability.version);
+				},
+			});
+			const snapshot = await service.refresh();
+			expect(snapshot.error).toBeUndefined();
+			expect(snapshot.abilities.find((ability) => ability.slug === "demo-plugin")?.version).toBe(expected);
+			expect(snapshot.abilities.find((ability) => ability.slug === "starter")?.config.members?.[0]?.version).toBe(
+				expected,
+			);
+			await service.install("plugin", "demo-plugin");
+		}
+		expect(installed).toEqual(["1.0.0", "1.2.0"]);
+	});
+	it("resolves a bundle-only plugin from the same versioned artifact contract", async () => {
+		const rootDir = await temporaryRoot();
+		const service = new OpenMarketplaceService({
+			appVersion: "0.5.57",
+			hostApiVersion: "2.4.0",
+			rootDir,
+			fetchArchive: async () => response(versionedPluginArchive(true)),
+		});
+		const snapshot = await service.refresh();
+		expect(snapshot.error).toBeUndefined();
+		expect(snapshot.abilities.find((ability) => ability.slug === "demo-plugin")?.version).toBe("1.0.0");
+		expect(snapshot.abilities.find((ability) => ability.slug === "starter")?.config.members?.[0]).toMatchObject({
+			slug: "demo-plugin",
+			version: "1.0.0",
+		});
+	});
 	it("uses a GitHub token for the REST archive request and lets Electron follow the signed redirect", async () => {
 		const rootDir = await temporaryRoot();
 		const zip = archive();

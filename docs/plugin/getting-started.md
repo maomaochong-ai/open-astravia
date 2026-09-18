@@ -215,6 +215,14 @@ bunx vite build      # 产出 dist/（mf-manifest.json + remoteEntry.js + style.
 > 归档根目录必须有 `plugin.json`，或只含**一个**顶层文件夹、`plugin.json` 在其中。
 > 能力详情是可选的；需要 showcase、功能网格、图片或长篇 Markdown 时见 [ability-details.md](./ability-details.md)。
 
+GitHub 能力市场有两种分发合同：schema v1/v2 从 `source.path` 目录直接安装，
+所以该目录必须包含构建后的 `dist/`；schema v3 从 `releases[]` 指向的固定 ZIP
+安装，市场仓库的 `source.path` 只放详情资源，`dist/` 和 ZIP 留在制品存储。
+每个新版本写明已经发布的最低 App 版本、实际使用的 `pluginApiVersion`、ZIP URL
+和 SHA-256；市场会按用户 App 与宿主 API 版本选择可安装的版本。见仓库的
+[`docs/open-marketplace.md`](../open-marketplace.md#pluginmcp-与-bundle) 和
+[ADR-0120](../adr/0120-plugin-marketplace-releases-are-versioned-artifacts.md)。
+
 ## 7. 安装
 
 ### GUI

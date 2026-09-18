@@ -2,6 +2,12 @@
 
 All notable changes to `@vetta-org/plugin-cli` are documented in this file.
 
+## Unreleased
+
+### Changed
+
+- `sync --check` accepts schema v3 plugin releases without local `dist/` and validates release metadata for independently listed and bundle-only plugins. The marketplace publication gate separately verifies the referenced App releases and artifact digests.
+
 ## [0.1.6] — 2026-09-14
 
 ### Fixed

@@ -12,8 +12,10 @@ import type {
 import type { McpServerConfigData } from "../../../preload/api-types/mcp.js";
 import { getApplicationCacheService } from "../../cache/application-cache-service.js";
 import { getAppLogger } from "../../logger.js";
+import { PLUGIN_API_VERSION } from "../../plugins/plugin-api-version.js";
 import { loadMarketplaceCatalog } from "./marketplace-catalog.js";
 import { isAppVersionCompatible, isValidAppVersion } from "./marketplace-compatibility.js";
+import { selectMarketplacePluginReleases } from "./marketplace-plugin-releases.js";
 import { type MarketplaceManifest, parseMarketplaceManifest } from "./marketplace-schema.js";
 import { DEFAULT_MARKETPLACE_SOURCE_ID } from "./official-marketplace-source.js";
 
@@ -90,6 +92,7 @@ type InstallAbility = (
 	snapshotRoot: string,
 	ability: MarketplaceManifest["abilities"][number],
 	origin: GitHubMarketplaceOrigin,
+	accessToken?: string,
 ) => Promise<void>;
 type PrepareMcpAbility = (
 	snapshotRoot: string,
@@ -117,6 +120,7 @@ interface OpenMarketplaceState {
 
 export interface OpenMarketplaceServiceOptions {
 	appVersion: string;
+	hostApiVersion?: string;
 	rootDir?: string;
 	sourceId?: string;
 	sourceRef?: string;
@@ -282,6 +286,7 @@ export class OpenMarketplaceService {
 	private readonly archiveUrl: string;
 	private readonly repository: string;
 	private readonly appVersion: string;
+	private readonly hostApiVersion: string;
 	private readonly fetchArchive: FetchArchive;
 	private readonly fetchManifest: FetchArchive;
 	private readonly getAccessToken: () => string | undefined;
@@ -320,6 +325,7 @@ export class OpenMarketplaceService {
 			throw new Error(`Invalid desktop app version: ${options.appVersion}`);
 		}
 		this.appVersion = options.appVersion;
+		this.hostApiVersion = options.hostApiVersion ?? PLUGIN_API_VERSION;
 		this.fetchArchive = options.fetchArchive ?? fetch;
 		this.fetchManifest = options.fetchManifest ?? fetch;
 		this.getAccessToken = options.getAccessToken ?? (() => undefined);
@@ -410,13 +416,18 @@ export class OpenMarketplaceService {
 		const installAbility =
 			this.installAbilityOverride ??
 			(await import("./open-marketplace-production.js")).installOpenMarketplaceAbilityInDesktop;
-		await installAbility(active.snapshotRoot, ability, {
-			kind: "github-marketplace",
-			sourceId: this.sourceId,
-			marketplace: active.manifest.name,
-			marketplaceVersion: active.manifest.marketplaceVersion,
-			repository: active.manifest.repository,
-		});
+		await installAbility(
+			active.snapshotRoot,
+			ability,
+			{
+				kind: "github-marketplace",
+				sourceId: this.sourceId,
+				marketplace: active.manifest.name,
+				marketplaceVersion: active.manifest.marketplaceVersion,
+				repository: active.manifest.repository,
+			},
+			this.getAccessToken(),
+		);
 	}
 
 	async prepareMcp(
@@ -505,7 +516,10 @@ export class OpenMarketplaceService {
 			return {
 				state,
 				snapshotRoot,
-				manifest: { ...manifest, abilities: catalog.abilities },
+				manifest: {
+					...manifest,
+					abilities: selectMarketplacePluginReleases(catalog.abilities, this.appVersion, this.hostApiVersion),
+				},
 				listedSlugs: catalog.listedSlugs,
 			};
 		} catch {

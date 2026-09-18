@@ -35,11 +35,32 @@ describe("resolveDesktopReleaseConfig", () => {
 			channel: "default",
 			cloudEnabled: "false",
 			marketplaceRepository: "",
+			marketplaceRef: "main",
 			releaseTarget: "github",
 			shouldPublish: true,
 			updateProvider: "github",
 			serverUrl: "",
 		});
+	});
+
+	it("passes the selected marketplace ref through release outputs and build environment", () => {
+		const fromVars = resolveDesktopReleaseConfig({
+			eventName: "push",
+			refType: "tag",
+			vars: { VETTA_OPEN_MARKETPLACE_REF: "marketplace-v3" },
+		});
+		expect(fromVars.marketplaceRef).toBe("marketplace-v3");
+		expect(toGithubOutput(fromVars)).toContain("marketplace_ref=marketplace-v3");
+		expect(toGithubEnv(fromVars)).toContain("VETTA_OPEN_MARKETPLACE_REF=marketplace-v3");
+		expect(resolveDesktopReleaseConfig({
+			vars: { VETTA_OPEN_MARKETPLACE_REF: "main" },
+			inputs: { marketplace_ref: "marketplace-v3" },
+		}).marketplaceRef).toBe("marketplace-v3");
+		expect(resolveDesktopReleaseConfig({
+			eventName: "push",
+			vars: { VETTA_OPEN_MARKETPLACE_REF: "main" },
+			inputs: { marketplace_ref: "marketplace-v3" },
+		}).marketplaceRef).toBe("main");
 	});
 
 	it.each(["github", "r2"])("uses only explicit marketplace configuration for %s releases", (releaseTarget) => {

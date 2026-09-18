@@ -13,6 +13,7 @@ import {
 	writeSkillsManifest,
 } from "../../skills/skill-service.js";
 import { recordAbilityInstall } from "../ability-ledger.js";
+import { fetchVerifiedMarketplacePluginArtifact } from "./marketplace-plugin-artifact.js";
 import type { MarketplaceAbilityManifest } from "./marketplace-schema.js";
 import {
 	installOpenMarketplaceAbility,
@@ -83,15 +84,22 @@ export async function installOpenMarketplaceAbilityInDesktop(
 	snapshotRoot: string,
 	ability: MarketplaceAbilityManifest,
 	origin: GitHubMarketplaceOrigin,
+	accessToken?: string,
 ): Promise<void> {
 	if (ability.type === "bundle") throw new Error("Bundles are installed through their members");
 	if (ability.type === "mcp") throw new Error("MCP abilities are installed through MCP settings");
 	if (ability.type === "plugin") {
-		const sourceDir = join(snapshotRoot, ability.source.path);
-		validateOpenMarketplacePlugin(sourceDir, ability);
-		const installed = await installPluginFromArchive(createOpenMarketplacePluginArchive(sourceDir), {
+		const release = ability.releases?.[0];
+		if (!release) validateOpenMarketplacePlugin(join(snapshotRoot, ability.source.path), ability);
+		const archive = release
+			? await fetchVerifiedMarketplacePluginArtifact(release, ability.slug, origin.repository, accessToken)
+			: createOpenMarketplacePluginArchive(join(snapshotRoot, ability.source.path));
+		const installed = await installPluginFromArchive(archive, {
 			source: "remote",
 			enable: false,
+			expectedId: ability.slug,
+			expectedVersion: ability.version,
+			...(release ? { expectedSha256: release.artifact.sha256 } : {}),
 			// Omit grants: fresh installs default to none; updates retain the user's existing consent.
 		});
 		recordAbilityInstall("plugin", installed.id, installed.activeVersion, {

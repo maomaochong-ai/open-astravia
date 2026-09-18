@@ -7,7 +7,7 @@
 Electron 桌面应用，提供 AI Coding Agent 的图形化界面。
 
 > **改到插件对外合同时先读 [`packages/plugins/AGENTS.md`](../../packages/plugins/AGENTS.md#改动对外合同时必须同步文档)。**
-> 宿主这侧有几处会直接改变仓库外插件作者该怎么写清单：`src/main/plugins/plugin-catalog.ts` 的
+> 宿主这侧有几处会直接改变仓库外插件作者该怎么写清单：`src/main/plugins/plugin-api-version.ts` 的
 > `PLUGIN_API_VERSION`、`src/main/plugins/` 对清单字段的解析、以及 `src/main/agent-teams/` 里
 > 把清单折算成预设的那几个模块。改了它们而手册没跟上，作者会照着旧手册写出装不上的插件——
 > 这种错误只在别人机器上复现。

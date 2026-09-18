@@ -82,6 +82,53 @@ afterEach(() => {
 });
 
 describe("reconciling the index", () => {
+	it("accepts a schema v3 plugin whose build is an immutable remote artifact", () => {
+		const root = scratch();
+		write(join(root, "abilities/plugins/demo/README.md"), "Demo plugin");
+		const release = {
+			version: "1.2.0",
+			minAppVersion: "0.55.0",
+			pluginApiVersion: "^2.5.0",
+			permissions: ["storage.read"],
+			artifact: { url: "https://example.com/demo-1.2.0.zip", sha256: "a".repeat(64) },
+		};
+		const manifestPath = join(root, ".vetta", "marketplace.json");
+		const manifest = {
+			schemaVersion: 3,
+			name: "demo-hub",
+			marketplaceVersion: "1.0.0",
+			repository: "https://github.com/openvetta/demo",
+			minAppVersion: "0.55.0",
+			abilities: [{ type: "plugin", slug: "demo", name: "Demo", version: "1.2.0", source: { path: "abilities/plugins/demo" }, releases: [release] }],
+		};
+		write(manifestPath, JSON.stringify(manifest));
+		const result = syncMarketplaceIndex({ hubRoot: root, manifestPath, apply: false });
+		expect(result.problems).toEqual([]);
+		expect(result.changes).toEqual([]);
+		manifest.abilities[0]!.version = "1.0.0";
+		write(manifestPath, JSON.stringify(manifest));
+		expect(syncMarketplaceIndex({ hubRoot: root, manifestPath, apply: false }).changes).toContainEqual(
+			expect.objectContaining({ slug: "demo", field: "version", to: "1.2.0" }),
+		);
+	});
+	it("checks versioned bundle-only plugins without local build files", () => {
+		const root = scratch();
+		const dir = "abilities/plugins/demo";
+		write(join(root, dir, "ability.json"), JSON.stringify({ schemaVersion: 1, type: "plugin", slug: "demo", name: "Demo", version: "1.2.0" }));
+		const manifestPath = join(root, ".vetta", "marketplace.json");
+		const member = { type: "plugin", slug: "demo", source: { path: dir }, releases: [{
+			version: "1.2.0",
+			minAppVersion: "0.5.58",
+			pluginApiVersion: "^2.5.0",
+			artifact: { url: "https://example.com/demo.zip", sha256: "a".repeat(64) },
+		}] };
+		write(manifestPath, JSON.stringify({ schemaVersion: 3, marketplaceVersion: "1.0.0", minAppVersion: "0.5.58", abilities: [{ type: "bundle", slug: "starter", config: { members: [member] } }] }));
+		expect(syncMarketplaceIndex({ hubRoot: root, manifestPath, apply: false }).problems).toEqual([]);
+		write(join(root, dir, "ability.json"), JSON.stringify({ schemaVersion: 1, type: "plugin", slug: "demo", name: "Demo", version: "1.0.0" }));
+		expect(syncMarketplaceIndex({ hubRoot: root, manifestPath, apply: false }).problems).toContainEqual(
+			expect.objectContaining({ slug: "demo", message: expect.stringContaining("does not match latest release") }),
+		);
+	});
 	it("reports nothing when the index already matches", () => {
 		const root = scratch();
 		const manifestPath = writeIndex(root, [listedPlugin()]);

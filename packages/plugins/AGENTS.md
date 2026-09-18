@@ -45,7 +45,7 @@
    不是罗列改了什么。破坏性改动要给迁移路径。
 3. **`plugin-sdk/package.json` 的 `version`**——纯增量走 patch。注意 `plugin-vite` 的 peer 范围
    （当前 `>=0.3.0 <0.4.0`），跨 minor 要连它一起改、一起发。
-4. **`PLUGIN_API_VERSION`**（`apps/desktop/src/main/plugins/plugin-catalog.ts`）——**只要新增了清单字段就必须推**。
+4. **`PLUGIN_API_VERSION`**（`apps/desktop/src/main/plugins/plugin-api-version.ts`）——**只要新增了清单字段就必须推**。
    清单校验对未知字段 fail-closed，用了新字段的插件装到旧宿主上是整份清单被拒、插件根本装不上；
    推了版本号，作者声明 `^<新版本>` 之后旧宿主给出的才是「Unsupported plugin API version」这种
    指向明确的错误。同时在手册里写明该写哪一档。
