@@ -58,6 +58,7 @@ import type { DesktopCodingAgentSessionConfig } from "../conversations/resolve-s
 import { getDesktopSandboxAuthorizationBroker } from "../conversations/sandbox-authorization-broker.js";
 import { isConversationSubCwd, readSessionCwdFromHeader } from "../conversations/session-paths.js";
 import { listRuntimeSessionProjects, listSessionHistory } from "../conversations/session-query-service.js";
+import { slimSessionEventForIpc } from "../conversations/slim-session-event-for-ipc.js";
 import { getDesktopUserQuestionBroker } from "../conversations/user-question-broker.js";
 import { type DebugRequestData, writeDebugRequest } from "../debug-writer.js";
 import { getAppLogger } from "../logger.js";
@@ -1549,7 +1550,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			// "Render frame was disposed before WebFrameMain could be accessed"。
 			// 此处提前 bail，避免把事件 buffer 灌进死掉的渲染端。
 			if (webContents.isDestroyed()) return;
-			webContents.send(CHANNELS.EVENT, subscriptionId, runtimeEvent);
+			webContents.send(CHANNELS.EVENT, subscriptionId, slimSessionEventForIpc(runtimeEvent));
 		});
 		subscriptionMap.set(subscriptionId, unsubscribe);
 

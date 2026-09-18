@@ -56,15 +56,17 @@ import {
 } from "../services/chat-service";
 import { clearCachedContextComposition, writeCachedContextComposition } from "../services/context-composition-cache";
 import { ConversationProjection } from "../services/conversation-projection";
+import { applyAgentEndHistoryRefresh } from "../services/live-history-patch";
 import {
 	reconcileOptimisticUserMessages,
 	rememberOptimisticUserMessage,
 } from "../services/optimistic-user-message-cache";
 import { diffConsumedQueueEntries } from "../services/queue-mirror";
-import { reconcileHistoryWithLiveTerminalErrors } from "../services/terminal-error-reconciliation";
 import type { ActiveSessionHandle } from "./session-manager-types";
 
 const DELTA_FLUSH_INTERVAL_MS = 100;
+// Keep a 100ms ceiling rather than rAF: markdown re-parse of the live tail is the
+// expensive work, and a 120Hz display would otherwise commit ~2× more parses.
 
 export interface SessionEventController {
 	bumpSuggestionToken: (runtimeId: string) => void;
@@ -258,14 +260,15 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 					// Write total duration onto the last assistant message
 					setChatMessages((prev) => finishAssistantTurn(prev, endedAt));
 
-					// Reload full history so user bubbles get session entryId / branch siblings
+					// Reload history identities so user bubbles get session entryId / branch siblings
 					// (optimistic messages use synthetic ids and cannot be edited until this).
+					// Matching timelines keep live assistant blocks; mismatched shapes still replace.
 					void window.vetta.session
 						.getFullHistory(sessionId)
 						.then((history) => {
 							if (activeSessionRef.current?.runtimeId !== sessionId) return;
-							// 判活：本轮结束时/后若发生过队列派发（立即发送 / 自然出队），这次整体
-							// 替换已「跨到下一轮」——会冲掉下一轮的乐观用户气泡、令 draft 串台，或与
+							// 判活：本轮结束时/后若发生过队列派发（立即发送 / 自然出队），这次历史
+							// 回流已「跨到下一轮」——会冲掉下一轮的乐观用户气泡、令 draft 串台，或与
 							// 已抢先落盘的 mapped 重复。跳过，交由下一轮自己的 agent_end 安全重拉。
 							if (getQueuedDispatchSeq(sessionId) !== (turnStartDispatchSeqRef.current.get(sessionId) ?? 0)) {
 								return;
@@ -288,7 +291,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 									}
 								}
 							}
-							setChatMessages((liveMessages) => reconcileHistoryWithLiveTerminalErrors(mapped, liveMessages));
+							setChatMessages((liveMessages) => applyAgentEndHistoryRefresh(liveMessages, mapped));
 						})
 						.catch((err) => {
 							console.warn("[useSessionManager] getFullHistory after agent_end failed", err);
