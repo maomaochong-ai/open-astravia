@@ -74,6 +74,10 @@ VETTA_SITE_URL=https://www.example.com
 
 Then run `bun run dist:desktop` (or `dist:win`, `dist:mac`, or `dist:linux`) from `apps/desktop`. Commercial builds default to the `generic` provider and the official stable update feed; self-hosted deployments should explicitly override `VETTA_UPDATE_URL`.
 
+On Linux, `bun run package:linux` builds AppImage, DEB, and RPM together. Use `package:linux:appimage`, `package:linux:deb`, `package:linux:rpm`, or `package:linux:tar.gz` to build one format; append `:test` to the same command to use the test build environment.
+
+On Windows, `bun run package:win` builds Inno, MSI, and ZIP together. Use `package:win:inno`, `package:win:msi`, `package:win:zip`, or `package:win:portable` to build one format; each command also has a `:test` variant. The updater manifest continues to reference only Inno; MSI and ZIP are supplemental downloads.
+
 `VETTA_SERVER_URL` is required for commercial builds, and production builds require HTTPS. Missing or invalid settings fail before old output is cleaned, dependencies are downloaded, or compilation begins.
 
 `VETTA_SITE_URL` is optional; it is derived from `VETTA_SERVER_URL` by stripping the `api.` prefix and mapping port `8080` to `3000`.

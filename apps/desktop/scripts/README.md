@@ -196,7 +196,31 @@ bun run dist:opensource -- --target dir
 
 该入口读取 `.env.opensource`，固定关闭 cloud、使用 GitHub provider，并为客户端更新仓库提供默认值；fork 可在文件或 shell 中覆盖更新 owner、repo。能力 Marketplace 未配置 `VETTA_OPEN_MARKETPLACE_REPOSITORY` 时内置 Vetta 官方源；fork 可用该变量替换成自己的仓库。
 
-正式发布 workflow 会先运行根 `check`、质量脚本测试和 Desktop packaging 测试，全部通过后才启动四个 Windows / macOS 双架构 / Linux 构建任务。每个平台构建后都会启动真实 packaged 应用并运行启动与 updater E2E，再校验 updater metadata、hash、blockmap 和可安装内容；真正发布到 R2 或 GitHub 后，再由 `verify-update-feed.mjs` 通过公开 URL 检查三平台 metadata 与其引用的安装包是否可读。
+需要只生成某一种 Linux 格式时，在 `apps/desktop` 使用独立的 `package:*` 入口；不带格式的入口一次生成正式发布使用的 AppImage、DEB 和 RPM：
+
+```bash
+bun run package:linux
+bun run package:linux:appimage
+bun run package:linux:deb
+bun run package:linux:rpm
+bun run package:linux:tar.gz
+```
+
+每个入口都有对应的 `:test` 变体，例如 `bun run package:linux:deb:test`。原有 `dist:linux:*` 命令保留为兼容别名。单格式构建只会在 `latest-linux.yml` 中登记该次生成的目标；正式发布仍必须使用 `package:linux`，由发布门禁要求 AppImage、DEB 和 RPM 同时存在。
+
+Windows 同样提供单独打包入口；不带格式的入口会一次生成自定义 Inno 安装器、MSI 和 ZIP，`portable` 保留为按需构建格式：
+
+```bash
+bun run package:win
+bun run package:win:inno
+bun run package:win:msi
+bun run package:win:zip
+bun run package:win:portable
+```
+
+这些入口也都有 `:test` 变体，原有 `dist:win:*` 是兼容别名。`latest.yml` 始终只引用支持现有版本目录切换和差分更新的 Inno 安装器；MSI 与 ZIP 是同版本的补充分发制品，不会改写自动更新清单。
+
+正式发布 workflow 会先运行根 `check`、质量脚本测试和 Desktop packaging 测试，全部通过后才启动四个 Windows / macOS 双架构 / Linux 构建任务。Windows x64 在同一次构建中生成 Inno、MSI 和 ZIP，Linux x64 在同一次 electron-builder 调用中生成 AppImage、DEB 和 RPM，避免多个目标分别覆盖更新清单。每个平台构建后都会启动真实 packaged 应用并运行启动与 updater E2E，再校验 updater metadata、hash、blockmap 和可安装内容；MSI/ZIP 会在 Windows 上解包检查版本目录，DEB/RPM 还会分别在 Ubuntu/Fedora 容器中完成真实安装。真正发布到 R2 或 GitHub 后，再由 `verify-update-feed.mjs` 通过公开 URL 检查三平台 metadata 与其引用的安装包是否可读。
 
 ## Desktop 自动更新发布
 
@@ -229,9 +253,9 @@ https://releases.openvetta.com/desktop/stable
 
 electron-builder 会随各平台产物生成更新清单：
 
-- Windows：`latest.yml`、Inno Setup 安装包与 blockmap。应用运行时由 Inno Setup 静默安装到新版本目录，重启时由稳定启动器切换版本。
+- Windows x64：`latest.yml`、Inno Setup 安装包与 blockmap，以及供手动分发的 MSI、ZIP。应用自动更新只使用 Inno 静默安装到新版本目录，重启时由稳定启动器切换版本；MSI/ZIP 不进入 updater metadata。
 - macOS：`latest-mac.yml`、ZIP/DMG 与 blockmap。签名并公证后由 Squirrel.Mac 原位替换应用；客户端会等到原生 `update-downloaded` 事件后才显示“可重启”，不会把“ZIP 下载完成”误当成“更新已可安装”。
-- Linux：`latest-linux.yml`、AppImage 与 blockmap。
+- Linux x64：`latest-linux.yml`、AppImage、DEB、RPM 与 AppImage blockmap。客户端根据当前安装包写入的 `package-type` 选择同格式更新；arm64 暂未进入发布矩阵。
 
 ### 发布到 R2
 
@@ -241,15 +265,19 @@ electron-builder 会随各平台产物生成更新清单：
 bun run publish:updates:r2
 ```
 
-发布前会按当前目录中的平台清单执行门禁：Windows 在 Windows 上校验 Inno 版本；macOS 校验 `latest-mac.yml`、ZIP、大小、SHA-512 和 blockmap；Linux 校验 `latest-linux*.yml`、AppImage、大小、SHA-512 和内嵌 blockmap 信息。在 macOS 正式签名构建中还应设置 `VETTA_REQUIRE_MAC_SIGNATURE=1`，此时会解压 ZIP 并执行 `codesign`、`spctl` 与 `stapler` 校验。也可以单独执行：
+发布前会按当前目录中的平台清单执行门禁：Windows 在 Windows 上校验 Inno 版本，并分别解包 MSI/ZIP 检查启动器、`current.json` 与版本目录；macOS 校验 `latest-mac.yml`、ZIP、大小、SHA-512 和 blockmap；Linux 普通校验命令兼容只生成 AppImage 的开发/PR 构建，正式发布命令还要求清单同时引用 AppImage、DEB 和 RPM，并检查两个原生包的名称、版本、架构、可执行文件、desktop entry、图标与 `package-type`。在 macOS 正式签名构建中还应设置 `VETTA_REQUIRE_MAC_SIGNATURE=1`，此时会解压 ZIP 并执行 `codesign`、`spctl` 与 `stapler` 校验。也可以单独执行：
 
 ```bash
 bun run verify:updates:windows
+bun run verify:packages:windows
 bun run verify:updates:mac
 bun run verify:updates:linux
+bun run verify:updates:linux:release
 ```
 
-Windows 的运行时安装校验只能在 Windows 执行；R2 汇总发布任务运行在 Linux 时会跳过这项系统相关检查，依赖各平台构建 Job 已通过自己的门禁。
+当前 DEB/RPM 是通过 HTTPS Release 或 R2 直接分发的未签名单包，不是 APT/DNF 仓库；构建和发布不需要 GPG 私钥。RPM 手动安装时需要 `dnf --nogpgcheck`。若未来提供软件源，再为 APT Release 元数据和 RPM/仓库元数据引入独立签名与密钥轮换流程。
+
+Windows 的运行时安装与 MSI/ZIP 解包校验只能在 Windows 执行；R2 汇总发布任务运行在 Linux 时会跳过这些系统相关检查，依赖 Windows 构建 Job 已通过自己的门禁。Windows 代码签名不是生成 MSI/ZIP 的前置条件；配置 electron-builder 支持的签名凭据时，应用二进制与 MSI 会使用该签名，ZIP 包含同一批二进制。未配置时仍可构建，但 Windows 可能显示未知发布者警告；自定义 Inno 安装器若要消除该警告，还需要单独接入安装器签名。
 
 上传脚本要求通过 CI Secret 注入：
 
@@ -262,7 +290,7 @@ VETTA_R2_PREFIX=desktop/stable
 VETTA_UPDATE_URL=https://releases.openvetta.com/desktop/stable
 ```
 
-脚本解析 `latest*.yml`，只发布清单引用的版本化安装包和对应 blockmap；大文件使用 16 MiB S3 multipart 分片。上传前会读取公开通道的现有清单，拒绝用更低版本覆盖；安装包经公开域名验证可读后才覆盖 `latest*.yml`，避免客户端读到尚未完整发布的版本。R2 自定义域名应对安装包启用长期缓存；`latest*.yml` 保持短缓存，不要被 Cache Everything 规则强制长缓存。
+脚本解析 `latest*.yml`，发布清单引用的版本化安装包、对应 blockmap，以及与清单版本精确匹配的 Windows MSI/ZIP 补充制品；大文件使用 16 MiB S3 multipart 分片。上传前会读取公开通道的现有清单，拒绝用更低版本覆盖；安装包经公开域名验证可读后才覆盖 `latest*.yml`，避免客户端读到尚未完整发布的版本。R2 自定义域名应对安装包启用长期缓存；`latest*.yml` 保持短缓存，不要被 Cache Everything 规则强制长缓存。
 
 ### 发布到 GitHub Releases
 
@@ -272,7 +300,7 @@ VETTA_UPDATE_URL=https://releases.openvetta.com/desktop/stable
 bun run dist:opensource
 ```
 
-Windows 的 Inno Setup 安装包是自定义产物，应由仓库的 release workflow（或 `gh release upload`）连同 `latest.yml` 和 blockmap 上传。各操作系统仍应在对应系统的 CI runner 上构建；它们可以共同上传到同一个 GitHub Release。
+Windows 的 Inno Setup 安装包是自定义产物，应由仓库的 release workflow（或 `gh release upload`）连同 `latest.yml`、blockmap、MSI 和 ZIP 上传。各操作系统仍应在对应系统的 CI runner 上构建；它们可以共同上传到同一个 GitHub Release。
 
 工作流的 `workflow_dispatch` 默认只执行三平台构建、校验并保留临时 Artifact；选择 `channel=test` 会发布到隔离的 `desktop-test` R2，选择 `channel=stable` 会在 `desktop-production` Environment 审批后进入与匹配 tag 相同的 R2/GitHub 发布 Job。生产 tag 仍必须是 `v<package-version>`；其它 `v*` tag 经轻量 scope Job 判定后跳过打包。所有会发布的构建都要求 macOS 签名与公证。GitHub Release 已经公开后不允许 CI 用 `--clobber` 修改，只能恢复尚未公开的 draft。
 

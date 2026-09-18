@@ -3,6 +3,8 @@ import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { LINUX_RELEASE_TARGETS } from "./linux-packaging-contract.mjs";
+import { WINDOWS_RELEASE_TARGETS } from "./windows-packaging-contract.mjs";
 
 const buildStageDir = join(tmpdir(), "vetta-desktop-build");
 const builderConfigPath = join(buildStageDir, "electron-builder.json");
@@ -23,10 +25,30 @@ const archArgMap = {
 };
 
 const defaultTargetsByPlatform = {
-	linux: ["AppImage"],
+	linux: LINUX_RELEASE_TARGETS,
 	mac: ["dmg", "zip"],
-	win: ["inno"],
+	win: WINDOWS_RELEASE_TARGETS,
 };
+
+export function resolveDefaultTargets(platform) {
+	const targets = defaultTargetsByPlatform[platform];
+	if (!targets) throw new Error(`Unsupported desktop build platform: ${platform}`);
+	return [...targets];
+}
+
+export function resolveElectronBuilderTargets(platform, targets) {
+	const usesInno = targets.some((target) => target.toLowerCase() === "inno");
+	if (usesInno && platform !== "win") {
+		throw new Error("The inno target requires a Windows build.");
+	}
+	if (!usesInno) return { targets: [...targets], usesInno: false };
+	const builderTargets = ["dir"];
+	for (const target of targets) {
+		if (target.toLowerCase() === "inno" || builderTargets.includes(target)) continue;
+		builderTargets.push(target);
+	}
+	return { targets: builderTargets, usesInno: true };
+}
 
 function resolveDefaultPlatform() {
 	if (process.platform === "darwin") return "mac";
@@ -139,18 +161,14 @@ function main() {
 		assertLinuxSandboxBinaries(archs);
 	}
 
-	const targets = cliOptions.targets.length > 0 ? cliOptions.targets : defaultTargetsByPlatform[platform];
-	const usesInno = targets.some((target) => target.toLowerCase() === "inno");
-	if (usesInno && (platform !== "win" || targets.length !== 1)) {
-		throw new Error("The inno target must be the only target of a Windows build.");
-	}
+	const targets = cliOptions.targets.length > 0 ? cliOptions.targets : resolveDefaultTargets(platform);
+	const { targets: electronBuilderTargets, usesInno } = resolveElectronBuilderTargets(platform, targets);
 	if (usesInno && process.platform !== "win32") {
 		throw new Error("The inno target requires a Windows build host.");
 	}
 	if (usesInno && cliOptions.publish) {
 		throw new Error("The inno target creates custom artifacts; publish them through the release workflow.");
 	}
-	const electronBuilderTargets = usesInno ? ["dir"] : targets;
 	const publishMode = resolveElectronBuilderPublishMode(cliOptions.publish);
 	const args = [
 		"electron-builder",

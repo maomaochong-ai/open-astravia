@@ -56,6 +56,53 @@ describe("Desktop release workflow contracts", () => {
 		}
 	});
 
+	it("builds, verifies, installs, and uploads all Linux release formats", () => {
+		expect(workflow).toContain("command: dist:linux");
+		expect(workflow).toContain("verify: verify:updates:linux:release");
+		expect(workflow).toContain("pkg-config xz-utils rpm");
+		expect(workflow).toContain("Verify native Linux package installation");
+		expect(workflow).toContain("ubuntu:24.04");
+		expect(workflow).toContain("fedora:latest");
+		expect(workflow).toContain("dnf install --assumeyes --nogpgcheck");
+		expect(workflow).toContain('test "$(cat /opt/Vetta/resources/package-type)" = "deb"');
+		expect(workflow).toContain('test "$(cat /opt/Vetta/resources/package-type)" = "rpm"');
+		expect(workflow).toContain("apps/desktop/release/*.AppImage");
+		expect(workflow).toContain("apps/desktop/release/*.deb");
+		expect(workflow).toContain("apps/desktop/release/*.rpm");
+	});
+
+	it("keeps pull-request Linux packaging on the AppImage smoke target", () => {
+		expect(packagedWorkflow).toContain("command: dist:linux:test");
+		const desktopPackage = JSON.parse(
+			readFileSync(join(import.meta.dirname, "../../apps/desktop/package.json"), "utf8"),
+		);
+		expect(desktopPackage.scripts["dist:linux:test"]).toContain("dist:linux:appimage");
+	});
+
+	it("builds, verifies, and uploads all Windows release formats", () => {
+		expect(workflow).toContain("command: dist:win");
+		expect(workflow).toContain("verify: verify:updates:windows");
+		expect(workflow).toContain("Verify supplemental Windows packages");
+		expect(workflow).toContain("run: bun run verify:packages:windows");
+		expect(workflow).toContain("apps/desktop/release/*.exe");
+		expect(workflow).toContain("apps/desktop/release/*.msi");
+		expect(workflow).toContain("apps/desktop/release/*.zip");
+
+		const desktopPackage = JSON.parse(
+			readFileSync(join(import.meta.dirname, "../../apps/desktop/package.json"), "utf8"),
+		);
+		expect(desktopPackage.scripts["dist:win"]).toBe("bun run package:win");
+		expect(desktopPackage.scripts["package:win"]).toMatch(/--platform win$/);
+	});
+
+	it("keeps pull-request Windows packaging on the unpacked smoke target", () => {
+		expect(packagedWorkflow).toContain("build-command: pack:win:test");
+		const desktopPackage = JSON.parse(
+			readFileSync(join(import.meta.dirname, "../../apps/desktop/package.json"), "utf8"),
+		);
+		expect(desktopPackage.scripts["pack:win:test"]).toContain("pack:win");
+	});
+
 	it("installs the Electron audio runtime required by Ubuntu 24.04", () => {
 		const packagedSmokeJob = packagedWorkflow.split("\n  smoke:\n")[1];
 		const releaseBuildJob = workflow.split("\n  build:\n")[1]?.split("\n  publish-github:\n")[0];

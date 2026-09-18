@@ -250,7 +250,7 @@ jobs:
           - platform: linux
             runner: ubuntu-latest
             command: dist:linux
-            verify: verify:updates:linux
+            verify: verify:updates:linux:release
             macArch: ""
 
     steps:
@@ -274,7 +274,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y build-essential libcap-dev meson ninja-build pkg-config xz-utils
+          sudo apt-get install --no-install-recommends -y build-essential libcap-dev meson ninja-build pkg-config xz-utils rpm
 
       - name: Install Linux Electron runtime dependencies
         if: runner.os == 'Linux'
@@ -400,6 +400,34 @@ jobs:
         working-directory: apps/desktop
         run: bun run ${{ matrix.verify }}
 
+      # latest.yml 仍只描述自定义 Inno 更新包；MSI/ZIP 是额外下载格式，单独解包
+      # 检查它们是否保留 launcher + versions/<version> 的可更新目录布局。
+      - name: Verify supplemental Windows packages
+        if: matrix.platform == 'windows'
+        working-directory: apps/desktop
+        run: bun run verify:packages:windows
+
+      # 包内清单校验能捕获元数据和路径错误；容器安装再覆盖 dpkg/dnf 的真实事务、
+      # desktop entry 与 electron-updater 用于选择 deb/rpm 的 package-type 标记。
+      - name: Verify native Linux package installation
+        if: matrix.platform == 'linux'
+        working-directory: apps/desktop
+        shell: bash
+        run: |
+          docker run --rm --volume "${PWD}/release:/release:ro" ubuntu:24.04 bash -euo pipefail -c '
+            apt-get update
+            apt-get install --yes /release/*.deb
+            test -x /opt/Vetta/Vetta
+            test "$(cat /opt/Vetta/resources/package-type)" = "deb"
+            find /usr/share/applications -maxdepth 1 -type f -iname "*vetta*.desktop" -print -quit | grep -q .
+          '
+          docker run --rm --volume "${PWD}/release:/release:ro" fedora:latest bash -euo pipefail -c '
+            dnf install --assumeyes --nogpgcheck /release/*.rpm
+            test -x /opt/Vetta/Vetta
+            test "$(cat /opt/Vetta/resources/package-type)" = "rpm"
+            find /usr/share/applications -maxdepth 1 -type f -iname "*vetta*.desktop" -print -quit | grep -q .
+          '
+
       - name: Run packaged app and updater E2E
         working-directory: apps/desktop
         env:
@@ -434,8 +462,11 @@ jobs:
           path: |
             apps/desktop/release/*.AppImage
             apps/desktop/release/*.blockmap
+            apps/desktop/release/*.deb
             apps/desktop/release/*.dmg
             apps/desktop/release/*.exe
+            apps/desktop/release/*.msi
+            apps/desktop/release/*.rpm
             apps/desktop/release/*.zip
             apps/desktop/release/latest*.yml
 
