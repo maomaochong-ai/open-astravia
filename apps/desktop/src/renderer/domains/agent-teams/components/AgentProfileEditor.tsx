@@ -68,7 +68,10 @@ export function AgentProfileEditor({
 	const { t } = useTranslation("agent-teams");
 	const [name, setName] = useState(agent.name);
 	const [description, setDescription] = useState(agent.description);
-	const [systemPrompt, setSystemPrompt] = useState(agent.systemPrompt ?? "");
+	// blueprint 上那份是运行时真正生效的提示词，档案里的只是覆盖。面板必须显示生效值，
+	// 否则插件预设的智能体看起来像「没有系统提示词」。
+	const inheritedPrompt = blueprint?.systemPrompt ?? "";
+	const [systemPrompt, setSystemPrompt] = useState(agent.systemPrompt ?? inheritedPrompt);
 	// 只存用户自己挑的那张：提供方给的头像是现场解析出来的，落进档案会在提供方换图后永远停在旧图，
 	// 而且它多半是一条内联 data URL，长度也超出档案里 avatar 字段的约定。
 	const resolveAvatar = useAgentAvatarResolver();
@@ -89,24 +92,32 @@ export function AgentProfileEditor({
 	useEffect(() => {
 		setName(agent.name);
 		setDescription(agent.description);
-		setSystemPrompt(agent.systemPrompt ?? "");
+		setSystemPrompt(agent.systemPrompt ?? inheritedPrompt);
 		setAvatarOverride(agent.avatar);
 		setAbilities(normalizeAgentAbilitySelection(agent.abilities, capabilities));
 		setPendingImpact(undefined);
 		setSaved(false);
 		setError(undefined);
-	}, [agent, capabilities, displayDescription, displayName]);
+	}, [agent, capabilities, displayDescription, displayName, inheritedPrompt]);
+
+	/**
+	 * 落盘用的覆盖值：与继承值一字不差就交空串。
+	 *
+	 * store 把空串当「清除覆盖」，档案因此继续跟随 blueprint——插件下一版改了提示词，用户
+	 * 这边跟着变；只要用户真的动了笔，才在档案里留下一份自己的。
+	 */
+	const promptOverride = systemPrompt === inheritedPrompt ? "" : systemPrompt;
 
 	useEffect(() => {
 		onDraftChange?.({
 			name,
 			description,
-			systemPrompt,
+			systemPrompt: promptOverride,
 			...(avatarOverride ? { avatar: avatarOverride } : {}),
 			mentionHandle: agent.mentionHandle,
 			abilities,
 		});
-	}, [abilities, agent.mentionHandle, avatarOverride, description, name, onDraftChange, systemPrompt]);
+	}, [abilities, agent.mentionHandle, avatarOverride, description, name, onDraftChange, promptOverride]);
 
 	useEffect(() => {
 		onSavingChange?.(saving);
@@ -133,7 +144,7 @@ export function AgentProfileEditor({
 			await onSave(agent, {
 				name,
 				description,
-				systemPrompt,
+				systemPrompt: promptOverride,
 				...(avatarOverride ? { avatar: avatarOverride } : {}),
 				mentionHandle: agent.mentionHandle,
 				abilities,
@@ -205,7 +216,7 @@ export function AgentProfileEditor({
 									variant="ghost"
 									size="sm"
 									className="h-7 shrink-0 px-2 text-[11px] text-muted-foreground"
-									onClick={() => setSystemPrompt("")}
+									onClick={() => setSystemPrompt(inheritedPrompt)}
 								>
 									{t("profile.clearPrompt")}
 								</Button>
@@ -395,6 +406,7 @@ export function AgentProfileEditor({
 									aria-label={t("profile.systemPrompt")}
 									value={systemPrompt}
 									onChange={(event) => setSystemPrompt(event.target.value)}
+									readOnly={readOnly}
 									placeholder={t("profile.systemPromptPlaceholder")}
 									className="flex-1 min-h-[360px] w-full cursor-text resize-none rounded-xl border border-border/60 bg-background/50 p-4 text-xs font-mono leading-relaxed text-foreground caret-primary outline-none transition-all placeholder:text-muted-foreground/40 hover:border-border focus:border-primary/50 focus:bg-background"
 								/>
@@ -479,6 +491,7 @@ export function AgentProfileEditor({
 								aria-label={t("profile.systemPrompt")}
 								value={systemPrompt}
 								onChange={(event) => setSystemPrompt(event.target.value)}
+								readOnly={readOnly}
 								className="min-h-40 w-full resize-y rounded-xl border border-border/60 bg-background/50 px-3.5 py-2.5 text-sm font-mono leading-relaxed outline-none transition-all placeholder:text-muted-foreground/50 hover:border-border focus:border-primary/50 focus:bg-background"
 							/>
 						</label>
