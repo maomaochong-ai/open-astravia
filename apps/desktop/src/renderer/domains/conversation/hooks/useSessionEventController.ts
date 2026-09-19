@@ -12,6 +12,7 @@ import {
 	isCompactingAtom,
 	isReloadingMcpAtom,
 	lastTurnUsageAtom,
+	planModeStateBySessionAtom,
 	projectsAtom,
 	promptPredictingAtom,
 	promptSuggestionsAtom,
@@ -32,6 +33,7 @@ import {
 	isCodingAgentMcpReloadStarted,
 	readCodingAgentBackgroundTasksObservation,
 	readCodingAgentMcpReloadFinished,
+	readCodingAgentPlanModeObservation,
 	readCodingAgentSubagentsObservation,
 	readCodingAgentTodoObservation,
 } from "@vetta/coding-agent/session-extensions";
@@ -95,6 +97,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 	const setSubagents = useSetAtom(subagentsBySessionAtom);
 	const setActiveToolNames = useSetAtom(activeToolNamesAtom);
 	const setTodoItems = useSetAtom(todoItemsBySessionAtom);
+	const setPlanModeStates = useSetAtom(planModeStateBySessionAtom);
 	const setPromptSuggestions = useSetAtom(promptSuggestionsAtom);
 	const setPromptPredicting = useSetAtom(promptPredictingAtom);
 	const suggestionTokenRef = useRef<Map<string, number>>(new Map());
@@ -581,6 +584,12 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 					}
 					return;
 				}
+				const planModeState = readCodingAgentPlanModeObservation(event);
+				if (planModeState) {
+					const sid = activeSessionRef.current?.runtimeId;
+					if (sid) setPlanModeStates((prev) => ({ ...prev, [sid]: planModeState }));
+					return;
+				}
 				const items = readCodingAgentTodoObservation(event);
 				if (!items) return;
 				const sid = activeSessionRef.current?.runtimeId;
@@ -612,6 +621,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 			setIsCompacting,
 			setIsReloadingMcp,
 			setLastTurnUsage,
+			setPlanModeStates,
 			setPromptSuggestions,
 			setRetryProgress,
 			setSubagents,

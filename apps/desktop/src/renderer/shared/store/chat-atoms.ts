@@ -55,6 +55,7 @@ export type {
 	ErrorBlock,
 	KnowledgeToolUiDetails,
 	PendingQuestion,
+	PlanReviewResolution,
 	QuestionAnswer,
 	QuestionItem,
 	QuestionOption,

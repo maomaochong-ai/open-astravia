@@ -4,13 +4,14 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	InputBarAttachmentActions,
+	InputBarPlanModeAction,
 	InputBarSendAction,
 	InputBarSpeechAction,
 } from "./InputBarToolbar";
 
 vi.mock("./InputBarToolbarButton", () => ({
-	InputBarToolbarButton: ({ title, onClick }: { title: string; onClick: () => void }) => (
-		<button type="button" onClick={onClick}>
+	InputBarToolbarButton: ({ title, onClick, pressed }: { title: string; onClick: () => void; pressed?: boolean }) => (
+		<button type="button" onClick={onClick} aria-pressed={pressed}>
 			{title}
 		</button>
 	),
@@ -91,5 +92,20 @@ describe("InputBar toolbar abilities", () => {
 			/>,
 		);
 		expect(screen.getByRole("button", { name: "Send" })).toBeTruthy();
+	});
+
+	it("exposes plan mode as a toggle whose pressed state follows the session", () => {
+		const onToggle = vi.fn();
+		const view = render(
+			<InputBarPlanModeAction visible model={{ active: false, title: "Plan mode", onToggle }} />,
+		);
+		const toggle = screen.getByRole("button", { name: "Plan mode" });
+		expect(toggle.getAttribute("aria-pressed")).toBe("false");
+
+		fireEvent.click(toggle);
+		expect(onToggle).toHaveBeenCalledOnce();
+
+		view.rerender(<InputBarPlanModeAction visible model={{ active: true, title: "Exit plan mode", onToggle }} />);
+		expect(screen.getByRole("button", { name: "Exit plan mode" }).getAttribute("aria-pressed")).toBe("true");
 	});
 });

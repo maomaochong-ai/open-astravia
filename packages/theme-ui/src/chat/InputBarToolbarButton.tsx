@@ -13,6 +13,8 @@ export interface InputBarToolbarButtonProps {
 	disabled?: boolean;
 	onClick?: () => void;
 	active?: boolean;
+	/** 开关型按钮的按下状态；提供后以 `aria-pressed` 暴露给辅助技术。 */
+	pressed?: boolean;
 }
 
 export const InputBarToolbarButton = memo(function InputBarToolbarButton({
@@ -21,11 +23,14 @@ export const InputBarToolbarButton = memo(function InputBarToolbarButton({
 	disabled,
 	onClick,
 	active,
+	pressed,
 }: InputBarToolbarButtonProps): JSX.Element {
 	return (
 		<button
 			type="button"
 			title={title}
+			aria-label={title}
+			aria-pressed={pressed}
 			disabled={disabled}
 			onClick={onClick}
 			className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors disabled:pointer-events-none disabled:opacity-30 ${

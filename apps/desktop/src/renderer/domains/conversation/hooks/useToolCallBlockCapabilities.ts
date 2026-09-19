@@ -35,7 +35,8 @@ export function projectToolCallBlock(block: ToolCallBlock, exportMode = false) {
 				getStringArg(block.args, "oldText") !== null ||
 				getStringArg(block.args, "newText") !== null ||
 				Array.isArray(block.args.edits))) ||
-		(block.toolName === "ask_user_question" && Array.isArray(block.args.questions));
+		(block.toolName === "ask_user_question" && Array.isArray(block.args.questions)) ||
+		(block.toolName === "exit_plan_mode" && getStringArg(block.args, "plan") !== null);
 	const mcp = parseMcpTool(block.toolName);
 	const imagePreviews = block.imagePreviews ?? (block.imagePreview ? [block.imagePreview] : []);
 

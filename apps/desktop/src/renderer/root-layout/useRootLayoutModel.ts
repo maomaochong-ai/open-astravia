@@ -5,6 +5,7 @@ import type {
 	DesktopUserQuestionRequest,
 } from "@preload/api";
 import { useMatches, useNavigate } from "@tanstack/react-router";
+import type { CodingAgentPlanReviewRequest } from "@vetta/coding-agent/function-extensions";
 import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FILE_EDITOR_SAVE_EVENT } from "@/shared/shortcuts";
@@ -31,6 +32,7 @@ import {
 	lastActiveSessionAtom,
 	mcpTasksBySessionAtom,
 	pendingMcpElicitationsAtom,
+	pendingPlanReviewsAtom,
 	pendingQuestionsAtom,
 	pendingSessionCreationAtom,
 	pendingSessionOpenAtom,
@@ -292,6 +294,21 @@ export function useRootLayoutModel(): RootLayoutModel {
 				(error) => console.warn("[RootLayout] sync pending MCP elicitations failed", error),
 			),
 		[setPendingMcpElicitations],
+	);
+
+	const setPendingPlanReviews = useSetAtom(pendingPlanReviewsAtom);
+	useEffect(
+		() =>
+			syncPendingInteractions<CodingAgentPlanReviewRequest>(
+				{
+					onRequest: (handler) => window.vetta.session.onPlanReviewRequest(handler),
+					onResolved: (handler) => window.vetta.session.onPlanReviewResolved(handler),
+					listPending: () => window.vetta.session.listPendingPlanReviews(),
+				},
+				setPendingPlanReviews,
+				(error) => console.warn("[RootLayout] sync pending plan reviews failed", error),
+			),
+		[setPendingPlanReviews],
 	);
 
 	const setMcpTasks = useSetAtom(mcpTasksBySessionAtom);

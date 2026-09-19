@@ -14,6 +14,7 @@ import {
 import { McpAppSurface } from "../mcp-app/McpAppSurface";
 import { MarkdownContent } from "./TextBlock";
 import { AskUserQuestionView } from "./tool-views/AskUserQuestionView";
+import { ExitPlanModeView } from "./tool-views/ExitPlanModeView";
 import { BashTerminalCard } from "./tool-views/BashTerminalCard";
 import { EditDiffView } from "./tool-views/EditDiffView";
 import { KbFilterByTagsView, KbListTagsView, KbWritePageView } from "./tool-views/KnowledgeToolViews";
@@ -180,6 +181,14 @@ function ToolSpecificContent({
 		);
 	}
 	if (block.toolName === "ask_user_question") return <AskUserQuestionView block={block} />;
+	if (block.toolName === "exit_plan_mode") {
+		return (
+			<>
+				<ExitPlanModeView block={block} />
+				<ToolErrorResult block={block} />
+			</>
+		);
+	}
 	if (block.toolName === "kb_filter_by_tags") return <KbFilterByTagsView block={block} />;
 	if (block.toolName === "kb_list_available_tags") return <KbListTagsView block={block} />;
 	if (block.toolName === "kb_write_page") return <KbWritePageView block={block} />;

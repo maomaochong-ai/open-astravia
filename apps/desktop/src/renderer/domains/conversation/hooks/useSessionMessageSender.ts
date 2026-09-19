@@ -63,6 +63,7 @@ import {
 	toChatErrorDetails,
 } from "../services/chat-service";
 import { rememberOptimisticUserMessage } from "../services/optimistic-user-message-cache";
+import { applyDraftPlanMode } from "../services/plan-mode-draft";
 import { getSessionRuntimeWhenReady } from "../services/session-runtime-readiness";
 import {
 	restoreStagedPendingSessionSend,
@@ -455,6 +456,16 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 						}
 					}
 				}
+			}
+
+			// 新会话页上选的计划模式要赶在第一条消息之前落到 Runtime；落不上就不发，
+			// 不能把「先出计划」静默降级成直接执行。
+			try {
+				await applyDraftPlanMode(session.runtimeId);
+			} catch (err) {
+				console.error("[useSessionManager.sendMessage] applyDraftPlanMode failed:", err);
+				setChatMessages((prev) => appendError(prev, err instanceof Error ? err.message : String(err)));
+				return;
 			}
 
 			const promptReq: PromptRequest = {

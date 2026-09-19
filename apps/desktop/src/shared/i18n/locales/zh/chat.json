@@ -772,6 +772,43 @@
 			"switchTitle": "更换本次会话的团队或智能体"
 		}
 	},
+	"planMode": {
+		"review": {
+			"approve": "批准并开始",
+			"back": "返回",
+			"commentOnStep": "对步骤 {{number}} 提意见",
+			"dismiss": "稍后再说",
+			"doneEditing": "完成编辑",
+			"edit": "编辑计划",
+			"edited": "已编辑",
+			"editorLabel": "计划内容",
+			"feedbackLabel": "需要怎么改？",
+			"feedbackPlaceholder": "例如：先不要动数据库迁移；把步骤 3 拆成两步…",
+			"requestChanges": "要求修改",
+			"resetEdits": "还原",
+			"sendFeedback": "发送修改意见",
+			"sendFeedbackWithComments": "发送修改意见（{{count}}）",
+			"stepCommentPlaceholder": "这一步要怎么改…",
+			"subtitle": "批准后 Vetta 会按这份计划开始执行；在此之前不会改动任何内容。",
+			"title": "计划待你批准"
+		},
+		"status": {
+			"exit": "退出",
+			"text": "计划模式 · 批准计划前不会改动任何内容"
+		},
+		"switchFailed": "无法切换计划模式",
+		"toggle": {
+			"disable": "退出计划模式（{{shortcut}}）",
+			"enable": "计划模式：先出计划，你批准后才会动手（{{shortcut}}）"
+		},
+		"toolCard": {
+			"approved": "已批准",
+			"changesRequested": "已退回修改",
+			"dismissed": "尚未决定",
+			"pending": "等待你批准",
+			"title": "计划"
+		}
+	},
 	"questionPanel": {
 		"keyboardHint": "↑↓ 选择 · 空格选中 · ←→ 切换 · Enter 下一题",
 		"multiSelectHint": "可多选",

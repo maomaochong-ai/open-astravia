@@ -13,11 +13,13 @@ import { ActionButtonBar } from "../ActionButtonBar";
 import { AtPanel } from "../AtPanel";
 import { CommandPanel } from "../command-panel/CommandPanel";
 import { McpElicitationPanel } from "../McpElicitationPanel";
+import { PlanReviewPanel } from "../PlanReviewPanel";
 import { QuestionPanel } from "../QuestionPanel";
 import { InputBarBackground } from "./InputBarBackground";
 import { InputBarAttachmentPreview } from "./InputBarAttachmentPreview";
 import { InputBarDrawer } from "./InputBarDrawer";
 import { InputBarFooter } from "./InputBarFooter";
+import { InputBarPlanModeStatus } from "./InputBarPlanModeStatus";
 import { InputBarSpeechStatus } from "./InputBarSpeechStatus";
 import { InputBarTodoStatus } from "./InputBarTodoStatus";
 import { InputBarMention } from "./InputBarMention";
@@ -27,6 +29,7 @@ import {
 	InputBarContextAction,
 	InputBarExecutionModeAction,
 	InputBarModelAction,
+	InputBarPlanModeAction,
 	InputBarSendAction,
 	InputBarSkillsAction,
 	InputBarSpeechAction,
@@ -39,7 +42,9 @@ import type { InputBarViewProps } from "./types";
 const SOFT = { duration: 0.18, ease: [0.22, 0.61, 0.36, 1] as const };
 
 export function InputBarView({ model, className, classNames }: InputBarViewProps): JSX.Element {
-	const hasPendingInteraction = Boolean(model.pendingMcpElicitation || model.pendingQuestion);
+	const hasPendingInteraction = Boolean(
+		model.pendingMcpElicitation || model.pendingQuestion || model.pendingPlanReview,
+	);
 	const commands = model.commands;
 	const slashOpen = commands?.slashOpen ?? false;
 	const slashVisible = commands?.slashVisible ?? false;
@@ -83,6 +88,17 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 						className="absolute inset-x-0 bottom-0 z-20"
 					>
 						<QuestionPanel pending={model.pendingQuestion} />
+					</motion.div>
+				) : model.pendingPlanReview ? (
+					<motion.div
+						key="plan-review"
+						initial={{ opacity: 0, y: 12 }}
+						animate={{ opacity: 1, y: 0 }}
+						exit={{ opacity: 0, y: 12 }}
+						transition={SOFT}
+						className="absolute inset-x-0 bottom-0 z-20"
+					>
+						<PlanReviewPanel pending={model.pendingPlanReview} />
 					</motion.div>
 				) : null}
 			</AnimatePresence>
@@ -173,7 +189,13 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 										.filter(Boolean)
 										.join(" ")}
 								>
-									<div className="relative">
+									<div
+										className="relative"
+										onKeyDownCapture={(event) => {
+											// 先于编辑器拿到按键：被连接层认领的组合键不再进入 Lexical。
+											if (model.actions.handleKeyDown?.(event.nativeEvent)) event.stopPropagation();
+										}}
+									>
 										<PerfSendProfiler id="ib:InputEditor">
 											<InputEditor
 												ariaLabel={model.placeholderTexts[0]}
@@ -228,9 +250,13 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 												onSelectFiles={() => void model.actions.handleSelectFiles()}
 												onSelectImages={() => void model.actions.handleSelectImages()}
 											/>
-							{model.leadingTools.map((tool) => (
-								<InputBarExecutionModeAction key={tool.kind} visible={!slashOpen} model={tool.model} />
-							))}
+							{model.leadingTools.map((tool) =>
+								tool.kind === "execution-mode" ? (
+									<InputBarExecutionModeAction key={tool.kind} visible={!slashOpen} model={tool.model} />
+								) : (
+									<InputBarPlanModeAction key={tool.kind} visible={!slashOpen} model={tool.model} />
+								),
+							)}
 											<InputBarActiveActions
 												items={model.activeActions}
 												removeHint={model.labels.capsule.removeDefault}
@@ -279,6 +305,9 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 								onRemove={model.actions.removePromptAttachment}
 							/>
 						) : null}
+					</InputBarFooter.Item>
+					<InputBarFooter.Item>
+						{model.planModeStatus ? <InputBarPlanModeStatus status={model.planModeStatus} /> : null}
 					</InputBarFooter.Item>
 					<InputBarFooter.Item>
 						{model.todo ? <InputBarTodoStatus todo={model.todo} /> : null}

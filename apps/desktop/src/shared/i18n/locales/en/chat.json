@@ -772,6 +772,43 @@
 			"switchTitle": "Switch the team or agent for this session"
 		}
 	},
+	"planMode": {
+		"review": {
+			"approve": "Approve and start",
+			"back": "Back",
+			"commentOnStep": "Comment on step {{number}}",
+			"dismiss": "Decide later",
+			"doneEditing": "Done editing",
+			"edit": "Edit plan",
+			"edited": "Edited",
+			"editorLabel": "Plan text",
+			"feedbackLabel": "What should change?",
+			"feedbackPlaceholder": "For example: leave the database migration alone; split step 3 in two…",
+			"requestChanges": "Request changes",
+			"resetEdits": "Reset",
+			"sendFeedback": "Send feedback",
+			"sendFeedbackWithComments": "Send feedback ({{count}})",
+			"stepCommentPlaceholder": "How should this step change…",
+			"subtitle": "Vetta starts working from this plan once you approve it. Nothing is changed before that.",
+			"title": "A plan is waiting for your approval"
+		},
+		"status": {
+			"exit": "Exit",
+			"text": "Plan mode · Nothing is changed until you approve a plan"
+		},
+		"switchFailed": "Couldn't switch plan mode",
+		"toggle": {
+			"disable": "Exit plan mode ({{shortcut}})",
+			"enable": "Plan mode: get a plan first, work starts after you approve ({{shortcut}})"
+		},
+		"toolCard": {
+			"approved": "Approved",
+			"changesRequested": "Sent back for changes",
+			"dismissed": "Not decided yet",
+			"pending": "Waiting for your approval",
+			"title": "Plan"
+		}
+	},
 	"questionPanel": {
 		"keyboardHint": "↑↓ Navigate · Space select · ←→ Switch · Enter next",
 		"multiSelectHint": "Multiple choice",

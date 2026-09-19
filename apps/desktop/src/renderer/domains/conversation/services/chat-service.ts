@@ -11,6 +11,7 @@ import type {
 	ChatErrorDetails,
 	ContentBlock,
 	KnowledgeToolUiDetails,
+	PlanReviewResolution,
 	ToolAudioPreview,
 	ToolCallBlock,
 	ToolCallUiDetails,
@@ -241,13 +242,21 @@ export function extractToolUiDetails(result: unknown, details: unknown): ToolCal
 	const firstChangedLine = asFiniteNumber(detailsRecord.firstChangedLine);
 	const askUserQuestion = extractAskUserQuestion(detailsRecord);
 	const knowledge = extractKnowledge(detailsRecord);
-	if (diff === undefined && firstChangedLine === undefined && askUserQuestion === undefined && knowledge === undefined)
+	const planReview = extractPlanReview(detailsRecord);
+	if (
+		diff === undefined &&
+		firstChangedLine === undefined &&
+		askUserQuestion === undefined &&
+		knowledge === undefined &&
+		planReview === undefined
+	)
 		return undefined;
 
 	return {
 		...(diff !== undefined ? { diff } : {}),
 		...(firstChangedLine !== undefined ? { firstChangedLine } : {}),
 		...(askUserQuestion !== undefined ? { askUserQuestion } : {}),
+		...(planReview !== undefined ? { planReview } : {}),
 		...(knowledge !== undefined ? { knowledge } : {}),
 	};
 }
@@ -313,6 +322,13 @@ export function extractToolCards(result: unknown, details: unknown): CardDescrip
 		});
 	}
 	return cards.length > 0 ? cards : undefined;
+}
+
+/** exit_plan_mode 的 details（{decision, plan?}）→ 计划卡片上的审批结论。 */
+function extractPlanReview(detailsRecord: Record<string, unknown>): PlanReviewResolution | undefined {
+	const { decision, plan } = detailsRecord;
+	if (decision !== "approve" && decision !== "revise" && decision !== "cancelled") return undefined;
+	return { decision, ...(typeof plan === "string" ? { plan } : {}) };
 }
 
 /** ask_user_question 的 details（{cancelled, answers}）→ transcript 富视图用的 resolution。 */

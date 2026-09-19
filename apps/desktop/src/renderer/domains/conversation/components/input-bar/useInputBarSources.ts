@@ -8,6 +8,7 @@ import {
 	mentionedFilesAtom,
 	pendingMcpElicitationsAtom,
 	pendingMessageEditAtom,
+	pendingPlanReviewsAtom,
 	pendingQuestionsAtom,
 	promptAttachmentAtom,
 	promptSuggestionsAtom,
@@ -68,6 +69,7 @@ export function useInputBarDraftSource() {
 export function useInputBarInteractionSource(runtimeId?: string | readonly string[]) {
 	const pendingQuestions = useAtomValue(pendingQuestionsAtom);
 	const pendingMcpElicitations = useAtomValue(pendingMcpElicitationsAtom);
+	const pendingPlanReviews = useAtomValue(pendingPlanReviewsAtom);
 	const sandboxPermission = useAtomValue(sandboxPermissionDrawerAtom);
 	const runtimeIds =
 		runtimeId === undefined ? undefined : new Set(typeof runtimeId === "string" ? [runtimeId] : runtimeId);
@@ -75,7 +77,9 @@ export function useInputBarInteractionSource(runtimeId?: string | readonly strin
 	const primaryRuntimeId = typeof runtimeId === "string" ? runtimeId : scopedRuntimeIds[0];
 	const pendingQuestionRuntimeId = scopedRuntimeIds.find((id) => pendingQuestions[id]);
 	const pendingMcpRuntimeId = scopedRuntimeIds.find((id) => pendingMcpElicitations[id]);
+	const pendingPlanReviewRuntimeId = scopedRuntimeIds.find((id) => pendingPlanReviews[id]);
 	return {
+		pendingPlanReview: pendingPlanReviewRuntimeId ? pendingPlanReviews[pendingPlanReviewRuntimeId] : undefined,
 		pendingMcpElicitation: runtimeIds
 			? pendingMcpRuntimeId
 				? pendingMcpElicitations[pendingMcpRuntimeId]

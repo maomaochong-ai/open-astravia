@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { pendingQuestionsAtom, sandboxPermissionDrawerAtom } from "@shared/store/atoms";
+import { pendingPlanReviewsAtom, pendingQuestionsAtom, sandboxPermissionDrawerAtom } from "@shared/store/atoms";
 import { renderHook } from "@testing-library/react";
 import { createStore, Provider } from "jotai";
 import type { ReactNode } from "react";
@@ -40,5 +40,21 @@ describe("useInputBarInteractionSource", () => {
 		});
 		expect(ordinaryChat.result.current.pendingQuestion).toBeUndefined();
 		expect(owningTeam.result.current.pendingQuestion).toMatchObject({ requestId: "question-request" });
+	});
+
+	it("hands a pending plan review only to the input bar of the session that submitted it", () => {
+		const store = createStore();
+		store.set(pendingPlanReviewsAtom, {
+			"planning-runtime": { requestId: "review-request", sessionId: "planning-runtime", plan: "1. Ship" },
+		});
+		const wrapper = ({ children }: { children: ReactNode }) => <Provider store={store}>{children}</Provider>;
+
+		const otherChat = renderHook(() => useInputBarInteractionSource("other-runtime"), { wrapper });
+		const planningChat = renderHook(() => useInputBarInteractionSource("planning-runtime"), { wrapper });
+		const newSessionPage = renderHook(() => useInputBarInteractionSource(undefined), { wrapper });
+
+		expect(otherChat.result.current.pendingPlanReview).toBeUndefined();
+		expect(newSessionPage.result.current.pendingPlanReview).toBeUndefined();
+		expect(planningChat.result.current.pendingPlanReview).toMatchObject({ requestId: "review-request" });
 	});
 });

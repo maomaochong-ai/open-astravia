@@ -59,6 +59,13 @@ export const SHORTCUT_ACTIONS = [
 		defaultShortcut: "mod+enter",
 		scope: "editor",
 	},
+	{
+		id: "toggle-plan-mode",
+		labelKey: "shortcutTogglePlanModeLabel",
+		descriptionKey: "shortcutTogglePlanModeDesc",
+		defaultShortcut: "shift+tab",
+		scope: "editor",
+	},
 ] as const satisfies readonly ShortcutActionDef[];
 
 export type ShortcutActionId = (typeof SHORTCUT_ACTIONS)[number]["id"];

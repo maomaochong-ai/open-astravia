@@ -21,6 +21,7 @@ import { useSessionDropZoneModel } from "../../hooks/useSessionDropZoneModel";
 import { useInputActionBarModel } from "../useInputActionBarModel";
 import { useDefaultContextRingModel } from "../../hooks/useContextRingModel";
 import { useDefaultExecutionModeSelectorModel } from "../../hooks/useExecutionModeSelectorModel";
+import { usePlanModeModel } from "../../hooks/usePlanModeModel";
 
 /** 普通 Chat 的默认配方；每项能力由独立 source/model 提供，其他 Connector 可自行取舍。 */
 export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(props: ConnectedInputBarProps): JSX.Element {
@@ -35,6 +36,7 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 	const actionBar = useInputActionBarModel();
 	const speechInput = useSpeechInput(session.hasSession);
 	const executionModeModel = useDefaultExecutionModeSelectorModel();
+	const planMode = usePlanModeModel();
 	const contextUsageModel = useDefaultContextRingModel(true);
 	const canSend =
 		session.hasSession &&
@@ -118,6 +120,8 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 		sendPending: props.sendPending,
 		pendingQuestion: interactions.pendingQuestion,
 		pendingMcpElicitation: interactions.pendingMcpElicitation,
+		pendingPlanReview: interactions.pendingPlanReview,
+		planModeStatus: planMode.status,
 		imageAttachments,
 		activeActions,
 		appshotAttachment: draft.appshotAttachment,
@@ -160,7 +164,10 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 		contextMenu,
 		editor: { namespace: "chat-input" },
 		modelSelector: { updateActiveSession: true },
-		leadingTools: [{ kind: "execution-mode", model: executionModeModel }],
+		leadingTools: [
+			{ kind: "execution-mode", model: executionModeModel },
+			{ kind: "plan-mode", model: planMode.toggle },
+		],
 		trailingTools: contextUsageModel ? [{ kind: "context-usage", model: contextUsageModel }] : [],
 		sendBehavior: "queueable",
 		labels,
@@ -168,6 +175,7 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 			setFocused: trigger.setIsFocused,
 			setDrawerActiveTab: trigger.setDrawerActiveTab,
 			handleEnter: trigger.handleEnter,
+			handleKeyDown: planMode.handleKeyDown,
 			handleContextMenu: contextMenuModel.onContextMenu,
 			removeImage: attachments.removeImage,
 			openImagePreview: attachments.openImagePreview,

@@ -2,6 +2,7 @@ import type { SkillInfo } from "@preload/api";
 import type { InputSegment } from "@shared/lib/input-tokens";
 import type { AppshotAttachment } from "@shared/store/atoms";
 import type { TodoItem } from "@shared/store/todo-atoms";
+import type { CodingAgentPlanReviewRequest } from "@vetta/coding-agent/function-extensions";
 import type { InputBarContextMenuViewProps, SessionDropZoneViewProps } from "@vetta-org/theme-ui/chat";
 import type { ComponentProps, MouseEvent, ReactNode } from "react";
 import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
@@ -131,10 +132,27 @@ export interface InputBarCommandModel {
 	readonly onOpen: () => void;
 }
 
-export type InputBarLeadingTool = {
-	readonly kind: "execution-mode";
-	readonly model: ExecutionModeSelectorViewProps;
-};
+export interface InputBarPlanModeToggleModel {
+	readonly active: boolean;
+	readonly title: string;
+	readonly onToggle: () => void;
+}
+
+export interface InputBarPlanModeStatusModel {
+	readonly text: string;
+	readonly exitLabel: string;
+	readonly onExit: () => void;
+}
+
+export type InputBarLeadingTool =
+	| {
+			readonly kind: "execution-mode";
+			readonly model: ExecutionModeSelectorViewProps;
+	  }
+	| {
+			readonly kind: "plan-mode";
+			readonly model: InputBarPlanModeToggleModel;
+	  };
 export type InputBarTrailingTool = {
 	readonly kind: "context-usage";
 	readonly model: ContextRingModel;
@@ -149,6 +167,10 @@ export interface InputBarModel {
 	sendPending?: { readonly label: string };
 	pendingQuestion: ComponentProps<typeof QuestionPanel>["pending"] | undefined;
 	pendingMcpElicitation: ComponentProps<typeof McpElicitationPanel>["request"] | undefined;
+	/** exit_plan_mode 提交的计划在等用户审批；不支持计划模式的 Connector 不提供。 */
+	pendingPlanReview?: CodingAgentPlanReviewRequest;
+	/** 计划模式开启时的下沿状态条。 */
+	planModeStatus?: InputBarPlanModeStatusModel | null;
 	/** 输入卡片上方的图片缩略图行；label 与文本流里的「图 N」胶囊同源。 */
 	imageAttachments: ReadonlyArray<{ path: string; name: string; url: string; label: string }>;
 	/** 已激活的 input action；全量开关在命令面板里，这里只留激活提示。 */
@@ -234,6 +256,8 @@ export interface InputBarModel {
 		setDrawerActiveTab: (tabId: string | null) => void;
 		/** 回车键；返回 true 表示已当作发送处理，编辑器不再插换行。 */
 		handleEnter: (event?: KeyboardEvent) => boolean;
+		/** 输入区内的附加键盘入口（如切换计划模式）；返回 true 表示已处理。 */
+		handleKeyDown?: (event: KeyboardEvent) => boolean;
 		handleContextMenu: (e: MouseEvent<HTMLDivElement>) => void;
 		/** 从文本流里删掉该图片的 token（缩略图行的 × 按钮）。 */
 		removeImage: (path: string) => void;

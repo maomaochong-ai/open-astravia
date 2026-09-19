@@ -1515,6 +1515,8 @@
   "shortcutNewSessionDesc": "Create a new chat session in the current project",
   "shortcutSteerMessageLabel": "Prioritize Message",
   "shortcutSteerMessageDesc": "Handle the editor message after the current model call or tool execution finishes",
+  "shortcutTogglePlanModeLabel": "Toggle Plan Mode",
+  "shortcutTogglePlanModeDesc": "Turn plan mode on or off from the message box: plan first, execute after you approve",
   "shortcutOpenProjectLabel": "Open Project",
   "shortcutOpenProjectDesc": "Select and open a project folder",
   "shortcutOpenSettingsLabel": "Open Settings",

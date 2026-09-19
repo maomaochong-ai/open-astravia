@@ -16,6 +16,7 @@ export * from "./knowledge-base-atoms";
 export * from "./mcp-task-atoms";
 export * from "./model-catalog";
 export * from "./notification-atoms";
+export * from "./plan-mode-atoms";
 export * from "./plugin-atoms";
 export * from "./project-atoms";
 export * from "./running-sessions-atoms";

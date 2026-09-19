@@ -1515,6 +1515,8 @@
   "shortcutNewSessionDesc": "在当前项目下创建新的对话会话",
   "shortcutSteerMessageLabel": "优先发送消息",
   "shortcutSteerMessageDesc": "在当前模型调用或工具执行结束后优先处理输入框消息",
+  "shortcutTogglePlanModeLabel": "切换计划模式",
+  "shortcutTogglePlanModeDesc": "在输入框中开启或退出计划模式：先出计划，批准后才执行",
   "shortcutOpenProjectLabel": "打开项目",
   "shortcutOpenProjectDesc": "选择并打开一个项目文件夹",
   "shortcutOpenSettingsLabel": "打开设置",
