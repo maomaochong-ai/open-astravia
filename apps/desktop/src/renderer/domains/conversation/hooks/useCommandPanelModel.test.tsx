@@ -14,7 +14,7 @@ vi.mock("./useSkillList", () => ({ useSkillList: () => ({ items: [] }) }));
 vi.mock("./useConnectorGrid", () => ({ useConnectorGrid: () => ({ items: [], columns: 4 }) }));
 vi.mock("./useSkillIconMap", () => ({ useSkillIconMap: () => new Map(), skillIconOf: () => undefined }));
 vi.mock("../components/useInputActionBarModel", () => ({
-	useInputActionBarModel: () => ({ knowledge: undefined, items: [], actions: { toggleItem: vi.fn() } }),
+	useInputActionBarModel: () => ({ builtins: [], items: [], actions: { toggleItem: vi.fn() } }),
 }));
 vi.mock("@shared/shortcuts", () => ({ useShortcutScope: vi.fn() }));
 

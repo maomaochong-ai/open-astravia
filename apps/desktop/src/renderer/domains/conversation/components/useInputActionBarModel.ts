@@ -18,6 +18,7 @@ import {
 	recordInputActionToggled,
 } from "../../../shared/lib/app-monitor-events";
 import { usePluginTextResolver } from "../../plugins/runtime/plugin-i18n";
+import { usePlanModeModel } from "../hooks/usePlanModeModel";
 
 const KNOWLEDGE_TOOLS = ["kb_filter_by_tags", "kb_list_available_tags"];
 
@@ -28,22 +29,34 @@ export interface InputActionBarItem {
 	label: string;
 }
 
+/** 宿主自带的输入动作：与插件动作同一份列表、同一种胶囊，只是开关由宿主自己实现。 */
+export interface BuiltinInputAction {
+	active: boolean;
+	/** iconify class；尺寸由各展示位置自行决定。 */
+	iconClass: string;
+	id: string;
+	label: string;
+	onToggle: () => void;
+}
+
+export const BUILTIN_PLAN_MODE_ACTION_ID = "__builtin_plan_mode__";
+
 export interface InputActionBarModel {
 	actions: {
 		toggleItem: (id: string) => void;
-		toggleKnowledge: () => void;
 	};
+	builtins: readonly BuiltinInputAction[];
 	items: readonly InputActionBarItem[];
-	knowledge: {
-		active: boolean;
-		label: string;
-		tooltip: string;
-	} | null;
 	visible: boolean;
 }
 
 function knowledgeVisible(activeTools: Set<string> | null): boolean {
 	return activeTools === null || KNOWLEDGE_TOOLS.some((tool) => activeTools.has(tool));
+}
+
+/** 计划模式需要有人审批计划；新会话页（场景未定）也放行，由发送时落地。 */
+function planModeVisible(scenario: ConversationScenario | null): boolean {
+	return scenario === null || scenario === "conversation" || scenario === "project";
 }
 
 function actionVisible(
@@ -65,6 +78,7 @@ export function useInputActionBarModel(): InputActionBarModel {
 	const activeTools = useAtomValue(activeToolNamesAtom);
 	const currentScenario = useAtomValue(currentScenarioAtom);
 	const sessionPath = useAtomValue(activeSessionAtom)?.sessionPath || null;
+	const planMode = usePlanModeModel();
 	const showKnowledge = knowledgeBaseEnabled && knowledgeVisible(activeTools);
 	const visibleActions = allActions.filter((action) => actionVisible(action, activeTools, currentScenario));
 
@@ -103,24 +117,40 @@ export function useInputActionBarModel(): InputActionBarModel {
 		recordInputActionToggled("builtin", BUILTIN_KNOWLEDGE_RETRIEVAL_ACTION_ID, willActivate);
 	}, [activeIds, knowledgeActive, sessionPath, setKnowledgeActive]);
 
+	const builtins: BuiltinInputAction[] = [
+		...(showKnowledge
+			? [
+					{
+						id: BUILTIN_KNOWLEDGE_RETRIEVAL_ACTION_ID,
+						label: t("inputActionBar.knowledgeRetrieval.label"),
+						iconClass: "icon-[mdi--book-search-outline]",
+						active: knowledgeActive,
+						onToggle: toggleKnowledge,
+					},
+				]
+			: []),
+		...(planModeVisible(currentScenario)
+			? [
+					{
+						id: BUILTIN_PLAN_MODE_ACTION_ID,
+						label: t("inputActionBar.planMode.label"),
+						iconClass: "icon-[solar--clipboard-list-linear]",
+						active: planMode.active,
+						onToggle: planMode.onToggle,
+					},
+				]
+			: []),
+	];
+
 	return {
-		actions: {
-			toggleItem,
-			toggleKnowledge,
-		},
+		actions: { toggleItem },
+		builtins,
 		items: visibleActions.map((action) => ({
 			active: activeIds.has(action.actionId),
 			icon: action.icon,
 			id: action.actionId,
 			label: resolvePluginText(action.pluginId, action.label),
 		})),
-		knowledge: showKnowledge
-			? {
-					active: knowledgeActive,
-					label: t("inputActionBar.knowledgeRetrieval.label"),
-					tooltip: t("inputActionBar.knowledgeRetrieval.tooltip"),
-				}
-			: null,
-		visible: showKnowledge || visibleActions.length > 0,
+		visible: builtins.length > 0 || visibleActions.length > 0,
 	};
 }

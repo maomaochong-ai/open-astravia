@@ -77,9 +77,9 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 	});
 	const activeActions = useMemo<ActiveActionCapsule[]>(
 		() => [
-			...(actionBar.knowledge?.active
-				? [{ id: "__builtin_knowledge_retrieval__", label: actionBar.knowledge.label, icon: <span className="icon-[mdi--book-search-outline] h-3 w-3" />, onToggle: actionBar.actions.toggleKnowledge }]
-				: []),
+			...actionBar.builtins
+				.filter((builtin) => builtin.active)
+				.map((builtin) => ({ id: builtin.id, label: builtin.label, icon: <span className={`${builtin.iconClass} h-3 w-3`} />, onToggle: builtin.onToggle })),
 			...actionBar.items.filter((item) => item.active).map((item) => ({ id: item.id, label: item.label, icon: item.icon, onToggle: () => actionBar.actions.toggleItem(item.id) })),
 		],
 		[actionBar],
@@ -121,7 +121,6 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 		pendingQuestion: interactions.pendingQuestion,
 		pendingMcpElicitation: interactions.pendingMcpElicitation,
 		pendingPlanReview: interactions.pendingPlanReview,
-		planModeStatus: planMode.status,
 		imageAttachments,
 		activeActions,
 		appshotAttachment: draft.appshotAttachment,
@@ -164,10 +163,7 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 		contextMenu,
 		editor: { namespace: "chat-input" },
 		modelSelector: { updateActiveSession: true },
-		leadingTools: [
-			{ kind: "execution-mode", model: executionModeModel },
-			{ kind: "plan-mode", model: planMode.toggle },
-		],
+		leadingTools: [{ kind: "execution-mode", model: executionModeModel }],
 		trailingTools: contextUsageModel ? [{ kind: "context-usage", model: contextUsageModel }] : [],
 		sendBehavior: "queueable",
 		labels,

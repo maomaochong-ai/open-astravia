@@ -5,7 +5,7 @@ import { SendButton } from "../SendButton";
 import type { ReactNode } from "react";
 import { ActiveActionCapsules, type ActiveActionCapsule } from "./ActiveActionCapsules";
 import { InputBarToolbarButton } from "./InputBarToolbarButton";
-import type { InputBarPlanModeToggleModel, SpeechInputModel } from "./types";
+import type { SpeechInputModel } from "./types";
 import type { ContextRingModel } from "../../hooks/useContextRingModel";
 import type { ExecutionModeSelectorViewProps } from "../execution-mode-selector/types";
 import type { ModelSelectorScope } from "../../hooks/useModelSelectorModel";
@@ -86,27 +86,6 @@ export function InputBarExecutionModeAction({ visible, model }: { readonly visib
 	return (
 		<div className={visible ? "min-w-0 shrink" : "hidden"}>
 			<ExecutionModeSelector model={model} />
-		</div>
-	);
-}
-
-/** 计划模式开关：与其它工具栏按钮同形，激活态即「当前受计划模式约束」。 */
-export function InputBarPlanModeAction({
-	visible,
-	model,
-}: {
-	readonly visible: boolean;
-	readonly model: InputBarPlanModeToggleModel;
-}): JSX.Element {
-	return (
-		<div className={visible ? "flex shrink-0" : "hidden"}>
-			<InputBarToolbarButton
-				icon="icon-[solar--clipboard-list-linear]"
-				title={model.title}
-				active={model.active}
-				pressed={model.active}
-				onClick={model.onToggle}
-			/>
 		</div>
 	);
 }

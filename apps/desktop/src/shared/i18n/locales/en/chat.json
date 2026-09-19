@@ -388,6 +388,9 @@
 		"knowledgeRetrieval": {
 			"label": "Knowledge search",
 			"tooltip": "When on, this turn can call knowledge-base tools and prefers answering from your knowledge base"
+		},
+		"planMode": {
+			"label": "Plan mode"
 		}
 	},
 	"inputBar": {
@@ -792,15 +795,7 @@
 			"subtitle": "Vetta starts working from this plan once you approve it. Nothing is changed before that.",
 			"title": "A plan is waiting for your approval"
 		},
-		"status": {
-			"exit": "Exit",
-			"text": "Plan mode · Nothing is changed until you approve a plan"
-		},
 		"switchFailed": "Couldn't switch plan mode",
-		"toggle": {
-			"disable": "Exit plan mode ({{shortcut}})",
-			"enable": "Plan mode: get a plan first, work starts after you approve ({{shortcut}})"
-		},
 		"toolCard": {
 			"approved": "Approved",
 			"changesRequested": "Sent back for changes",

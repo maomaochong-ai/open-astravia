@@ -36,12 +36,10 @@ describe("plan mode toggle", () => {
 
 	it("remembers the choice on the new-session page and applies it before the first message", async () => {
 		const { result } = renderHook(() => usePlanModeModel());
-		expect(result.current.toggle.active).toBe(false);
-		expect(result.current.status).toBeNull();
+		expect(result.current.active).toBe(false);
 
-		act(() => result.current.toggle.onToggle());
-		expect(result.current.toggle.active).toBe(true);
-		expect(result.current.status?.text).toBe("planMode.status.text");
+		act(() => result.current.onToggle());
+		expect(result.current.active).toBe(true);
 		expect(setPermissionMode).not.toHaveBeenCalled();
 
 		await act(() => applyDraftPlanMode("runtime-1"));
@@ -50,7 +48,7 @@ describe("plan mode toggle", () => {
 
 		// 会话创建后，开关读的是该会话自己的状态，而不是已清空的草稿。
 		act(() => store.set(activeSessionAtom, session));
-		expect(result.current.toggle.active).toBe(true);
+		expect(result.current.active).toBe(true);
 	});
 
 	it("keeps the draft and fails the send when the session cannot enter plan mode", async () => {
@@ -60,16 +58,16 @@ describe("plan mode toggle", () => {
 		expect(store.get(draftPlanModeAtom)).toBe(true);
 	});
 
-	it("switches the running session and leaves plan mode from the status bar", async () => {
+	it("switches the running session on and off", async () => {
 		store.set(activeSessionAtom, session);
 		const { result } = renderHook(() => usePlanModeModel());
 
-		act(() => result.current.toggle.onToggle());
-		await waitFor(() => expect(result.current.toggle.active).toBe(true));
+		act(() => result.current.onToggle());
+		await waitFor(() => expect(result.current.active).toBe(true));
 		expect(setPermissionMode).toHaveBeenLastCalledWith("runtime-1", "plan");
 
-		act(() => result.current.status?.onExit());
-		await waitFor(() => expect(result.current.toggle.active).toBe(false));
+		act(() => result.current.onToggle());
+		await waitFor(() => expect(result.current.active).toBe(false));
 		expect(setPermissionMode).toHaveBeenLastCalledWith("runtime-1", "default");
 	});
 
@@ -77,10 +75,10 @@ describe("plan mode toggle", () => {
 		store.set(activeSessionAtom, session);
 		store.set(planModeStateBySessionAtom, { "runtime-1": { permissionMode: "plan" } });
 		const { result } = renderHook(() => usePlanModeModel());
-		expect(result.current.toggle.active).toBe(true);
+		expect(result.current.active).toBe(true);
 
 		act(() => store.set(planModeStateBySessionAtom, { "runtime-1": { permissionMode: "default" } }));
-		expect(result.current.toggle.active).toBe(false);
+		expect(result.current.active).toBe(false);
 	});
 
 	it("toggles from the configured shortcut and ignores other keys", () => {
@@ -96,6 +94,6 @@ describe("plan mode toggle", () => {
 		});
 		expect(handled).toBe(true);
 		expect(shortcut.defaultPrevented).toBe(true);
-		expect(result.current.toggle.active).toBe(true);
+		expect(result.current.active).toBe(true);
 	});
 });

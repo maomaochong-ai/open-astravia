@@ -19,7 +19,6 @@ import { InputBarBackground } from "./InputBarBackground";
 import { InputBarAttachmentPreview } from "./InputBarAttachmentPreview";
 import { InputBarDrawer } from "./InputBarDrawer";
 import { InputBarFooter } from "./InputBarFooter";
-import { InputBarPlanModeStatus } from "./InputBarPlanModeStatus";
 import { InputBarSpeechStatus } from "./InputBarSpeechStatus";
 import { InputBarTodoStatus } from "./InputBarTodoStatus";
 import { InputBarMention } from "./InputBarMention";
@@ -29,7 +28,6 @@ import {
 	InputBarContextAction,
 	InputBarExecutionModeAction,
 	InputBarModelAction,
-	InputBarPlanModeAction,
 	InputBarSendAction,
 	InputBarSkillsAction,
 	InputBarSpeechAction,
@@ -250,13 +248,9 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 												onSelectFiles={() => void model.actions.handleSelectFiles()}
 												onSelectImages={() => void model.actions.handleSelectImages()}
 											/>
-							{model.leadingTools.map((tool) =>
-								tool.kind === "execution-mode" ? (
-									<InputBarExecutionModeAction key={tool.kind} visible={!slashOpen} model={tool.model} />
-								) : (
-									<InputBarPlanModeAction key={tool.kind} visible={!slashOpen} model={tool.model} />
-								),
-							)}
+							{model.leadingTools.map((tool) => (
+								<InputBarExecutionModeAction key={tool.kind} visible={!slashOpen} model={tool.model} />
+							))}
 											<InputBarActiveActions
 												items={model.activeActions}
 												removeHint={model.labels.capsule.removeDefault}
@@ -305,9 +299,6 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 								onRemove={model.actions.removePromptAttachment}
 							/>
 						) : null}
-					</InputBarFooter.Item>
-					<InputBarFooter.Item>
-						{model.planModeStatus ? <InputBarPlanModeStatus status={model.planModeStatus} /> : null}
 					</InputBarFooter.Item>
 					<InputBarFooter.Item>
 						{model.todo ? <InputBarTodoStatus todo={model.todo} /> : null}

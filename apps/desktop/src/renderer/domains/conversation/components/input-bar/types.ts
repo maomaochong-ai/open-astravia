@@ -132,27 +132,10 @@ export interface InputBarCommandModel {
 	readonly onOpen: () => void;
 }
 
-export interface InputBarPlanModeToggleModel {
-	readonly active: boolean;
-	readonly title: string;
-	readonly onToggle: () => void;
-}
-
-export interface InputBarPlanModeStatusModel {
-	readonly text: string;
-	readonly exitLabel: string;
-	readonly onExit: () => void;
-}
-
-export type InputBarLeadingTool =
-	| {
-			readonly kind: "execution-mode";
-			readonly model: ExecutionModeSelectorViewProps;
-	  }
-	| {
-			readonly kind: "plan-mode";
-			readonly model: InputBarPlanModeToggleModel;
-	  };
+export type InputBarLeadingTool = {
+	readonly kind: "execution-mode";
+	readonly model: ExecutionModeSelectorViewProps;
+};
 export type InputBarTrailingTool = {
 	readonly kind: "context-usage";
 	readonly model: ContextRingModel;
@@ -169,8 +152,6 @@ export interface InputBarModel {
 	pendingMcpElicitation: ComponentProps<typeof McpElicitationPanel>["request"] | undefined;
 	/** exit_plan_mode 提交的计划在等用户审批；不支持计划模式的 Connector 不提供。 */
 	pendingPlanReview?: CodingAgentPlanReviewRequest;
-	/** 计划模式开启时的下沿状态条。 */
-	planModeStatus?: InputBarPlanModeStatusModel | null;
 	/** 输入卡片上方的图片缩略图行；label 与文本流里的「图 N」胶囊同源。 */
 	imageAttachments: ReadonlyArray<{ path: string; name: string; url: string; label: string }>;
 	/** 已激活的 input action；全量开关在命令面板里，这里只留激活提示。 */

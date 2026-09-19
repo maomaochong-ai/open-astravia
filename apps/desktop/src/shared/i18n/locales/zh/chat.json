@@ -388,6 +388,9 @@
 		"knowledgeRetrieval": {
 			"label": "知识检索",
 			"tooltip": "开启后本轮才能调用知识库工具，并优先用知识库回答"
+		},
+		"planMode": {
+			"label": "计划模式"
 		}
 	},
 	"inputBar": {
@@ -792,15 +795,7 @@
 			"subtitle": "批准后 Vetta 会按这份计划开始执行；在此之前不会改动任何内容。",
 			"title": "计划待你批准"
 		},
-		"status": {
-			"exit": "退出",
-			"text": "计划模式 · 批准计划前不会改动任何内容"
-		},
 		"switchFailed": "无法切换计划模式",
-		"toggle": {
-			"disable": "退出计划模式（{{shortcut}}）",
-			"enable": "计划模式：先出计划，你批准后才会动手（{{shortcut}}）"
-		},
 		"toolCard": {
 			"approved": "已批准",
 			"changesRequested": "已退回修改",

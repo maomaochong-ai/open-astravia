@@ -1,16 +1,14 @@
 import { useEffectiveShortcut } from "@shared/hooks/useShortcuts";
-import { formatShortcut, matchesShortcut } from "@shared/lib/platform";
+import { matchesShortcut } from "@shared/lib/platform";
 import { activeSessionAtom, draftPlanModeAtom, planModeStateBySessionAtom } from "@shared/store/atoms";
 import { showToast } from "@shared/store/toast-atoms";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import type { InputBarPlanModeStatusModel, InputBarPlanModeToggleModel } from "../components/input-bar/types";
 
 export interface PlanModeModel {
-	readonly toggle: InputBarPlanModeToggleModel;
-	/** 计划模式开启时挂在输入卡片下沿的状态条；关闭时为 null。 */
-	readonly status: InputBarPlanModeStatusModel | null;
+	readonly active: boolean;
+	readonly onToggle: () => void;
 	/** 输入区内的键盘入口；返回 true 表示已处理。 */
 	readonly handleKeyDown: (event: KeyboardEvent) => boolean;
 }
@@ -57,22 +55,5 @@ export function usePlanModeModel(): PlanModeModel {
 		[onToggle, shortcut],
 	);
 
-	return useMemo(() => {
-		const shortcutLabel = shortcut ? formatShortcut(shortcut) : "";
-		return {
-			toggle: {
-				active,
-				title: t(active ? "planMode.toggle.disable" : "planMode.toggle.enable", { shortcut: shortcutLabel }),
-				onToggle,
-			},
-			status: active
-				? {
-						text: t("planMode.status.text"),
-						exitLabel: t("planMode.status.exit"),
-						onExit: () => void setActive(false),
-					}
-				: null,
-			handleKeyDown,
-		};
-	}, [active, handleKeyDown, onToggle, setActive, shortcut, t]);
+	return useMemo(() => ({ active, onToggle, handleKeyDown }), [active, handleKeyDown, onToggle]);
 }
