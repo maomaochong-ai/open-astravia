@@ -9,7 +9,7 @@ export function PlanTabPanel(): JSX.Element | null {
 	return (
 		<div className="flex flex-1 flex-col overflow-hidden">
 			<div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3">
-				<span aria-hidden className="icon-[solar--clipboard-list-linear] h-4 w-4 shrink-0 text-primary" />
+				<span aria-hidden className="icon-[solar--checklist-minimalistic-linear] h-4 w-4 shrink-0 text-primary" />
 				<h2 className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">{model.headline}</h2>
 				<PlanStatusBadge tone={model.plan.tone} label={model.plan.statusLabel} />
 			</div>

@@ -134,7 +134,7 @@ export function useInputActionBarModel(): InputActionBarModel {
 					{
 						id: BUILTIN_PLAN_MODE_ACTION_ID,
 						label: t("inputActionBar.planMode.label"),
-						iconClass: "icon-[solar--clipboard-list-linear]",
+						iconClass: "icon-[solar--checklist-minimalistic-linear]",
 						active: planMode.active,
 						onToggle: planMode.onToggle,
 					},

@@ -69,7 +69,7 @@ export function PlanReviewPanelView({
 				<ThemeSurface slot="chat.questionPanel" />
 				<div className="relative z-10 rounded-[inherit]">
 					<header className="mb-2 flex items-start gap-2 px-1">
-						<span className="icon-[solar--clipboard-list-linear] mt-0.5 size-4 shrink-0 text-primary" />
+						<span className="icon-[solar--checklist-minimalistic-linear] mt-0.5 size-4 shrink-0 text-primary" />
 						<div className="min-w-0 flex-1">
 							<h2 id="plan-review-title" className="text-sm font-medium text-foreground">
 								{labels.title}

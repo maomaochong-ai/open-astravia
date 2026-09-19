@@ -13,7 +13,7 @@ export const planTabDefinition: ActivityTabDefinition = {
 		const { t } = useTranslation("chat");
 		const plan = useActivityPlan();
 		if (!plan) return null;
-		return { label: t("activityPanel.tabs.plan"), icon: "icon-[solar--clipboard-list-linear]" };
+		return { label: t("activityPanel.tabs.plan"), icon: "icon-[solar--checklist-minimalistic-linear]" };
 	},
 	component: PlanTabPanel,
 };

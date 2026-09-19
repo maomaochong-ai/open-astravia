@@ -108,7 +108,7 @@ export function toolIcon(name: string): string {
 		case "ask_user_question":
 			return "icon-[mdi--comment-question-outline]";
 		case "exit_plan_mode":
-			return "icon-[solar--clipboard-list-linear]";
+			return "icon-[solar--checklist-minimalistic-linear]";
 		case "easy_use_vettaApp":
 			return "icon-[mdi--application-cog-outline]";
 		case "kb_write_page":
