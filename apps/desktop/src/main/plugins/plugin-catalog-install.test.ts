@@ -2,18 +2,21 @@ import { existsSync, readFileSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import AdmZip from "adm-zip";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { InstalledPlugin, PluginManifest } from "../../preload/api-types/plugins.js";
 
 const testPaths = vi.hoisted(() => {
 	const root = `${process.cwd()}/.tmp-plugin-catalog-install-${process.pid}`;
 	return { root, home: `${root}/home`, resources: `${root}/resources` };
 });
+const sendToRenderer = vi.hoisted(() => vi.fn());
 
 vi.mock("@vetta/action-rpc", () => ({ getVettaHomePath: () => testPaths.home }));
 vi.mock("electron", () => ({
 	app: { isPackaged: true, resourcesPath: testPaths.resources },
-	webContents: { getAllWebContents: () => [] },
+	webContents: {
+		getAllWebContents: () => [{ isDestroyed: () => false, send: sendToRenderer }],
+	},
 }));
 vi.mock("../abilities/ability-ledger.js", () => ({
 	recordAbilityInstall: vi.fn(),
@@ -61,6 +64,10 @@ beforeAll(async () => {
 	await mkdir(testPaths.home, { recursive: true });
 });
 
+beforeEach(() => {
+	sendToRenderer.mockClear();
+});
+
 afterAll(async () => {
 	await rm(testPaths.root, { recursive: true, force: true });
 	if (originalResourcesPath) Object.defineProperty(process, "resourcesPath", originalResourcesPath);
@@ -68,6 +75,13 @@ afterAll(async () => {
 });
 
 describe("installPluginFromArchive", () => {
+	it("安装完成后只通知渲染进程重载目标插件", async () => {
+		await installPluginFromArchive(archive("0.0.0"), { source: "archive" });
+
+		expect(sendToRenderer).toHaveBeenCalledOnce();
+		expect(sendToRenderer).toHaveBeenCalledWith("vetta:plugins:changed", { pluginIds: [PLUGIN_ID] });
+	});
+
 	it("从 .vettapkg 路径安装，并继续兼容旧 .zip 插件包", async () => {
 		const packagePath = join(testPaths.root, "install-activation-demo-0.0.0.vettapkg");
 		const legacyPath = join(testPaths.root, "install-activation-demo-0.0.0.zip");

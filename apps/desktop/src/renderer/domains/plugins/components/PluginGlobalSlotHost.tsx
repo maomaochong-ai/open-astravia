@@ -31,7 +31,7 @@ import type { PluginsChangedEvent } from "@preload/api";
 import { getDefaultStore, useSetAtom } from "jotai";
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { PluginGlobalSlotContribution } from "@vetta-org/plugin-sdk";
-import { markPluginHostLoading, markPluginHostReady, PLUGINS_CHANGED_EVENT } from "../runtime/plugin-events";
+import { markPluginHostLoading, markPluginHostReady } from "../runtime/plugin-events";
 import { installPluginHostBridge } from "../runtime/plugin-host-bridge";
 import { installPluginHostShim } from "../runtime/plugin-host-shim";
 import { PluginI18nBoundary } from "../runtime/plugin-i18n";
@@ -87,13 +87,9 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 			for (const pluginId of event.pluginIds) pendingPluginIdsRef.current.add(pluginId);
 			reloadPlugins();
 		};
-		window.addEventListener(PLUGINS_CHANGED_EVENT, requestFullReload);
 		// Main process install/enable/reload (Action / workbench) → re-load remotes.
 		const unsubMain = window.vetta.plugins.onPluginsChanged(requestMainReload);
-		return () => {
-			window.removeEventListener(PLUGINS_CHANGED_EVENT, requestFullReload);
-			unsubMain();
-		};
+		return unsubMain;
 	}, [reloadPlugins]);
 
 	useEffect(() => {

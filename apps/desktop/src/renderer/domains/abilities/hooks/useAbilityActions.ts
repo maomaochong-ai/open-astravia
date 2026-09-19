@@ -9,7 +9,6 @@ import { authTokenAtom } from "@shared/store/atoms";
 import { showToast } from "@shared/store/toast-atoms";
 import { useAtomValue } from "jotai";
 import { useCallback, useMemo, useState } from "react";
-import { notifyPluginsChanged } from "../../plugins/runtime/plugin-events";
 import type { McpSettingsModel } from "../../settings/components/useMcpSettingsModel";
 import { type InstallOutcome, installSelectedBundleMembers } from "../lib/install-bundle-members";
 import type {
@@ -199,63 +198,57 @@ export function useAbilityActions({
 		[token],
 	);
 
-	const finishPluginInstall = useCallback(
-		async (item: PluginAbility, setOperation?: (next: AbilityOperation) => void): Promise<void> => {
-			if (item.installed) {
-				const installedPlugin = (await window.vetta.plugins.listAll?.())?.find((plugin) => plugin.id === item.slug);
-				if (installedPlugin) {
-					const permissionChanges = changeSet(item.permissions, installedPlugin.permissions);
-					const commandChanges = changeSet(item.commands, installedPlugin.declaredCommands);
-					if (hasChanges(permissionChanges) || hasChanges(commandChanges)) {
-						setPendingPluginSetup({
-							...item,
-							installed: true,
-							enabled: installedPlugin.enabled,
-							busy: false,
-							plugin: installedPlugin,
-							permissions: installedPlugin.permissions,
-							grantedPermissions: installedPlugin.grantedPermissions,
-							commands: installedPlugin.declaredCommands,
-							grantedCommands: installedPlugin.grantedCommandNames,
-							permissionChanges,
-							commandChanges,
-							setupMode: "update",
-						});
-						setPermissionPromptSlug(item.slug);
-						return;
-					}
-				}
-				setOperation?.("applyingUpdate");
-				await reloadPluginAndConfirm(item);
-			}
-			notifyPluginsChanged();
-			if (item.installed) {
-				showToast({
-					variant: "success",
-					message: i18n.t("abilities:message.updatedAndReloaded", {
-						name: item.title,
-						version: item.version,
-					}),
-				});
-				return;
-			}
+	const finishPluginInstall = useCallback(async (item: PluginAbility): Promise<void> => {
+		if (item.installed) {
 			const installedPlugin = (await window.vetta.plugins.listAll?.())?.find((plugin) => plugin.id === item.slug);
 			if (installedPlugin) {
-				setPendingPluginSetup({
-					...item,
-					installed: true,
-					enabled: installedPlugin.enabled,
-					busy: false,
-					plugin: installedPlugin,
-					grantedPermissions: installedPlugin.grantedPermissions,
-					grantedCommands: installedPlugin.grantedCommandNames,
-					setupMode: "install",
-				});
+				const permissionChanges = changeSet(item.permissions, installedPlugin.permissions);
+				const commandChanges = changeSet(item.commands, installedPlugin.declaredCommands);
+				if (hasChanges(permissionChanges) || hasChanges(commandChanges)) {
+					setPendingPluginSetup({
+						...item,
+						installed: true,
+						enabled: installedPlugin.enabled,
+						busy: false,
+						plugin: installedPlugin,
+						permissions: installedPlugin.permissions,
+						grantedPermissions: installedPlugin.grantedPermissions,
+						commands: installedPlugin.declaredCommands,
+						grantedCommands: installedPlugin.grantedCommandNames,
+						permissionChanges,
+						commandChanges,
+						setupMode: "update",
+					});
+					setPermissionPromptSlug(item.slug);
+					return;
+				}
 			}
-			setPermissionPromptSlug(item.slug);
-		},
-		[reloadPluginAndConfirm],
-	);
+		}
+		if (item.installed) {
+			showToast({
+				variant: "success",
+				message: i18n.t("abilities:message.updatedAndReloaded", {
+					name: item.title,
+					version: item.version,
+				}),
+			});
+			return;
+		}
+		const installedPlugin = (await window.vetta.plugins.listAll?.())?.find((plugin) => plugin.id === item.slug);
+		if (installedPlugin) {
+			setPendingPluginSetup({
+				...item,
+				installed: true,
+				enabled: installedPlugin.enabled,
+				busy: false,
+				plugin: installedPlugin,
+				grantedPermissions: installedPlugin.grantedPermissions,
+				grantedCommands: installedPlugin.grantedCommandNames,
+				setupMode: "install",
+			});
+		}
+		setPermissionPromptSlug(item.slug);
+	}, []);
 
 	const installPlugin = useCallback(
 		async (item: PluginAbility, setOperation?: (next: AbilityOperation) => void): Promise<InstallOutcome> => {
@@ -263,7 +256,7 @@ export function useAbilityActions({
 				if (!item.installed) setOperation?.("checkingSource");
 				await window.vetta.abilities.installOpenAbility("plugin", item.slug, item.origin.sourceId);
 				setOperation?.("installing");
-				await finishPluginInstall(item, setOperation);
+				await finishPluginInstall(item);
 				return "installed";
 			}
 			const buffer = await downloadAbility("plugin", item.slug, token);
@@ -271,7 +264,7 @@ export function useAbilityActions({
 				source: "remote",
 				expectedSha256: item.sha256,
 			});
-			await finishPluginInstall(item, setOperation);
+			await finishPluginInstall(item);
 			return "installed";
 		},
 		[finishPluginInstall, token],
@@ -364,7 +357,6 @@ export function useAbilityActions({
 		async (item: AbilityItem): Promise<void> => {
 			if (item.type === "plugin") {
 				await window.vetta.plugins.uninstall(item.slug);
-				notifyPluginsChanged();
 			} else if (item.type === "mcp") {
 				await mcp.onDeleteServer(item.serverName);
 				if (item.origin?.kind === "github-marketplace") {
@@ -435,7 +427,6 @@ export function useAbilityActions({
 		async (item: AbilityItem): Promise<void> => {
 			if (item.type === "plugin") {
 				await window.vetta.plugins.setEnabled(item.slug, !item.enabled);
-				notifyPluginsChanged();
 				return;
 			}
 			if (item.type === "mcp") {
@@ -471,7 +462,6 @@ export function useAbilityActions({
 			run(`${item.id}:permission:${permission}`, "saving", async () => {
 				if (granted) await window.vetta.plugins.grantPermissions(item.slug, [permission]);
 				else await window.vetta.plugins.revokePermissions(item.slug, [permission]);
-				notifyPluginsChanged();
 			});
 		},
 		[run],
@@ -488,7 +478,6 @@ export function useAbilityActions({
 				if (item.setupMode === "update" && item.pendingVersion) {
 					await reloadPluginAndConfirm(item);
 				}
-				notifyPluginsChanged();
 			});
 		},
 		[reloadPluginAndConfirm, run],
@@ -499,7 +488,6 @@ export function useAbilityActions({
 			run(`${item.id}:command:${command}`, "saving", async () => {
 				if (granted) await window.vetta.plugins.grantCommands(item.slug, [command]);
 				else await window.vetta.plugins.revokeCommands(item.slug, [command]);
-				notifyPluginsChanged();
 			});
 		},
 		[run],
@@ -509,7 +497,6 @@ export function useAbilityActions({
 		(item: PluginAbility) => {
 			run(item.id, "reloading", async () => {
 				await reloadPluginAndConfirm(item);
-				notifyPluginsChanged();
 				showToast({
 					variant: "success",
 					message: i18n.t("abilities:message.reloaded", {
@@ -546,7 +533,6 @@ export function useAbilityActions({
 				.arrayBuffer()
 				.then((buffer) => window.vetta.plugins.installFromArchive(buffer, { source: "archive" }))
 				.then((plugin) => {
-					notifyPluginsChanged();
 					setPermissionPromptSlug(plugin.id);
 				})
 				.catch((err: unknown) => setError(errorMessage(err)))

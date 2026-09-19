@@ -116,6 +116,11 @@ export function broadcastPluginsChanged(event?: PluginsChangedEvent): void {
 		}
 	}
 }
+
+function broadcastPluginChanged(pluginId: string): void {
+	broadcastPluginsChanged({ pluginIds: [pluginId] });
+}
+
 // =============================================================================
 // 系统插件（ADR-0024）—— 随 App 发布、用户不可删改，源在 packages/plugins/presets
 // =============================================================================
@@ -243,7 +248,7 @@ export async function installPluginFromArchive(
 		pluginRegistry.write(registry);
 		// 能力安装台账（ADR-0049）：记生效中的版本；安装即生效，装完就是新版本。
 		recordAbilityInstall("plugin", installed.id, installed.activeVersion);
-		broadcastPluginsChanged();
+		broadcastPluginChanged(installed.id);
 		return installed;
 	} finally {
 		await rm(extractDir, { recursive: true, force: true }).catch(() => {});
@@ -301,7 +306,7 @@ export function uninstallPlugin(id: string): void {
 	pluginRegistry.write(registry);
 	removeAbilityLedgerEntry("plugin", id);
 	rmSync(join(pluginsBaseDir, id), { recursive: true, force: true });
-	broadcastPluginsChanged();
+	broadcastPluginChanged(id);
 }
 
 export function setPluginEnabled(id: string, enabled: boolean): InstalledPlugin {
@@ -309,7 +314,7 @@ export function setPluginEnabled(id: string, enabled: boolean): InstalledPlugin 
 	// 系统插件可停用但不可删改：偏好写进独立的 prefs 文件，本体不入注册表（ADR-0024）。
 	if (isSystemPluginId(id)) {
 		const refreshed = pluginSystemCatalog.setEnabled(id, enabled);
-		broadcastPluginsChanged();
+		broadcastPluginChanged(id);
 		return refreshed;
 	}
 	const registry = pluginRegistry.read();
@@ -318,7 +323,7 @@ export function setPluginEnabled(id: string, enabled: boolean): InstalledPlugin 
 	plugin.enabled = enabled;
 	plugin.updatedAt = new Date().toISOString();
 	pluginRegistry.write(registry);
-	broadcastPluginsChanged();
+	broadcastPluginChanged(id);
 	return plugin;
 }
 
@@ -334,7 +339,7 @@ export function grantPluginPermissions(id: string, permissions: PluginPermission
 	);
 	plugin.updatedAt = new Date().toISOString();
 	pluginRegistry.write(registry);
-	broadcastPluginsChanged();
+	broadcastPluginChanged(id);
 	return plugin;
 }
 
@@ -348,7 +353,7 @@ export function revokePluginPermissions(id: string, permissions: PluginPermissio
 	plugin.grantedPermissions = plugin.grantedPermissions.filter((permission) => !revoked.has(permission));
 	plugin.updatedAt = new Date().toISOString();
 	pluginRegistry.write(registry);
-	broadcastPluginsChanged();
+	broadcastPluginChanged(id);
 	return plugin;
 }
 
@@ -359,7 +364,11 @@ export function revokePluginPermissions(id: string, permissions: PluginPermissio
  */
 export function grantPluginCommands(id: string, names: string[]): InstalledPlugin {
 	validatePluginId(id);
-	if (isSystemPluginId(id)) return pluginSystemCatalog.grantCommands(id, names);
+	if (isSystemPluginId(id)) {
+		const plugin = pluginSystemCatalog.grantCommands(id, names);
+		broadcastPluginChanged(id);
+		return plugin;
+	}
 	const requested = parseCommands(names);
 	const registry = pluginRegistry.read();
 	const plugin = registry[id];
@@ -371,7 +380,7 @@ export function grantPluginCommands(id: string, names: string[]): InstalledPlugi
 	);
 	plugin.updatedAt = new Date().toISOString();
 	pluginRegistry.write(registry);
-	broadcastPluginsChanged();
+	broadcastPluginChanged(id);
 	return plugin;
 }
 
@@ -379,7 +388,11 @@ export function grantPluginCommands(id: string, names: string[]): InstalledPlugi
 export function revokePluginCommands(id: string, names: string[]): InstalledPlugin {
 	validatePluginId(id);
 	const requested = parseCommands(names);
-	if (isSystemPluginId(id)) return pluginSystemCatalog.revokeCommands(id, names);
+	if (isSystemPluginId(id)) {
+		const plugin = pluginSystemCatalog.revokeCommands(id, names);
+		broadcastPluginChanged(id);
+		return plugin;
+	}
 	const registry = pluginRegistry.read();
 	const plugin = registry[id];
 	if (!plugin) throw new Error(`Plugin not found: ${id}`);
@@ -387,7 +400,7 @@ export function revokePluginCommands(id: string, names: string[]): InstalledPlug
 	plugin.grantedCommandNames = plugin.grantedCommandNames.filter((name) => !revoked.has(name));
 	plugin.updatedAt = new Date().toISOString();
 	pluginRegistry.write(registry);
-	broadcastPluginsChanged();
+	broadcastPluginChanged(id);
 	return plugin;
 }
 
@@ -413,7 +426,7 @@ export function applyPluginSetup(
 	plugin.enabled = input.enabled;
 	plugin.updatedAt = new Date().toISOString();
 	pluginRegistry.write(registry);
-	broadcastPluginsChanged();
+	broadcastPluginChanged(id);
 	return plugin;
 }
 
@@ -424,7 +437,7 @@ export function reloadPlugin(id: string): InstalledPlugin {
 		const refreshed = discoverSystemPlugins(true).find((plugin) => plugin.id === id);
 		if (!refreshed) throw new Error(`Plugin not found: ${id}`);
 		if (pluginDevLinkService.has(id)) return pluginDevLinkService.refresh(id);
-		broadcastPluginsChanged();
+		broadcastPluginChanged(id);
 		return refreshed;
 	}
 	const registry = pluginRegistry.read();
@@ -463,7 +476,7 @@ export function reloadPlugin(id: string): InstalledPlugin {
 	if (pluginDevLinkService.has(id)) {
 		return pluginDevLinkService.refresh(id);
 	}
-	broadcastPluginsChanged();
+	broadcastPluginChanged(id);
 	return plugin;
 }
 

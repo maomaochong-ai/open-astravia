@@ -1,5 +1,3 @@
-export const PLUGINS_CHANGED_EVENT = "vetta:plugins-changed";
-
 let resolvePluginHostReady: (() => void) | undefined;
 let pluginHostReadyPromise = new Promise<void>((resolve) => {
 	resolvePluginHostReady = resolve;
@@ -13,10 +11,6 @@ const pluginHostFirstReadyPromise = new Promise<void>((resolve) => {
 
 function debugPluginAgent(message: string, data?: Record<string, unknown>): void {
 	console.info(`[plugin-agent] ${message}${data ? ` ${JSON.stringify(data)}` : ""}`);
-}
-
-export function notifyPluginsChanged(): void {
-	window.dispatchEvent(new Event(PLUGINS_CHANGED_EVENT));
 }
 
 export function markPluginHostLoading(): void {
