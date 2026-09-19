@@ -76,3 +76,47 @@ export function composePlanFeedback(general: string, stepComments: readonly Plan
 	if (parts.length === 0) return overall;
 	return [...(overall ? [overall, ""] : []), "Comments on specific steps:", ...parts].join("\n");
 }
+
+const PLAN_ENTRY_PREVIEW_STEPS = 3;
+
+export interface PlanOutline {
+	readonly stepCount: number;
+	/** 入口卡片上预览的前几步；完整计划在活动面板里看。 */
+	readonly previewSteps: readonly { readonly number: number; readonly title: string }[];
+	readonly remainingSteps: number;
+}
+
+export function outlinePlan(plan: string): PlanOutline {
+	const steps = splitPlanIntoSegments(plan).flatMap((segment) =>
+		segment.kind === "step" ? [{ number: segment.number, title: segment.title }] : [],
+	);
+	const previewSteps = steps.slice(0, PLAN_ENTRY_PREVIEW_STEPS);
+	return { stepCount: steps.length, previewSteps, remainingSteps: steps.length - previewSteps.length };
+}
+
+interface PlanToolCallLike {
+	readonly type: string;
+	readonly toolName?: string;
+	readonly uiDetails?: { readonly planReview?: { readonly decision: string } };
+}
+
+/** 已批准的 exit_plan_mode 调用：消息列表里以「计划入口卡片」常驻展示，而不是一行工具记录。 */
+export function isApprovedPlanBlock(block: PlanToolCallLike): boolean {
+	return (
+		block.type === "tool_call" &&
+		block.toolName === "exit_plan_mode" &&
+		block.uiDetails?.planReview?.decision === "approve"
+	);
+}
+
+/**
+ * 回合收起后只渲染答案区；批准计划之后往往跟着一长串执行过程，计划卡片会落在被折走的过程区里。
+ * 把它钉回答案区之前——它是这一回合「按什么在做」的依据，不该随过程一起消失。
+ * 刻意不把它当作折叠分界的「产物」：那样卡片之后的整段执行过程都不会再被折叠。
+ */
+export function pinApprovedPlanBlocks<Block extends PlanToolCallLike>(
+	processBlocks: readonly Block[],
+	answerBlocks: readonly Block[],
+): Block[] {
+	return [...processBlocks.filter(isApprovedPlanBlock), ...answerBlocks];
+}

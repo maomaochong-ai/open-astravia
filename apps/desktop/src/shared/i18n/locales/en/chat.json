@@ -780,6 +780,12 @@
 		}
 	},
 	"planMode": {
+		"entryCard": {
+			"moreSteps": "{{count}} more steps",
+			"open": "View plan",
+			"stepCount": "{{count}} steps",
+			"title": "Implementation plan"
+		},
 		"review": {
 			"approve": "Approve and start",
 			"back": "Back",

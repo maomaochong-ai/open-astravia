@@ -9,6 +9,7 @@ export type ActivityTabKey =
 	| "file"
 	| "batch-progress"
 	| "schedule-records"
+	| "plan"
 	| "todo"
 	| "background-tasks"
 	| "workflow"

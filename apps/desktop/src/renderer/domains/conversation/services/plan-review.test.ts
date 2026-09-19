@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { composePlanFeedback, splitPlanIntoSegments } from "./plan-review";
+import { composePlanFeedback, isApprovedPlanBlock, pinApprovedPlanBlocks, splitPlanIntoSegments } from "./plan-review";
 
 describe("splitPlanIntoSegments", () => {
 	it("separates the preamble, each top-level step and trailing sections", () => {
@@ -57,5 +57,29 @@ describe("composePlanFeedback", () => {
 	it("returns only the overall feedback when no step was commented", () => {
 		expect(composePlanFeedback("换个方案", [])).toBe("换个方案");
 		expect(composePlanFeedback("", [])).toBe("");
+	});
+});
+
+describe("approved plan blocks in a collapsed turn", () => {
+	const planCall = (decision: string) => ({
+		type: "tool_call",
+		toolName: "exit_plan_mode",
+		uiDetails: { planReview: { decision } },
+	});
+
+	it("recognises only an approved exit_plan_mode call", () => {
+		expect(isApprovedPlanBlock(planCall("approve"))).toBe(true);
+		expect(isApprovedPlanBlock(planCall("revise"))).toBe(false);
+		expect(isApprovedPlanBlock({ type: "tool_call", toolName: "exit_plan_mode" })).toBe(false);
+		expect(isApprovedPlanBlock({ ...planCall("approve"), toolName: "write" })).toBe(false);
+	});
+
+	it("keeps the approved plan above the answer while the execution steps stay folded", () => {
+		const approved = planCall("approve");
+		const rejected = planCall("revise");
+		const edit = { type: "tool_call", toolName: "edit" };
+		const answer = { type: "text" };
+		expect(pinApprovedPlanBlocks([rejected, approved, edit], [answer])).toEqual([approved, answer]);
+		expect(pinApprovedPlanBlocks([edit], [answer])).toEqual([answer]);
 	});
 });

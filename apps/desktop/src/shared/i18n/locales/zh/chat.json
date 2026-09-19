@@ -780,6 +780,12 @@
 		}
 	},
 	"planMode": {
+		"entryCard": {
+			"moreSteps": "还有 {{count}} 步",
+			"open": "查看计划",
+			"stepCount": "共 {{count}} 步",
+			"title": "实施计划"
+		},
 		"review": {
 			"approve": "批准并开始",
 			"back": "返回",

@@ -12,6 +12,7 @@ import {
 } from "../components/message-list/messageBlockModel";
 import { groupBlocksForWork } from "../components/message-list/progressGroupModel";
 import type { AssistantMessageModel } from "../components/message-list/types";
+import { isApprovedPlanBlock, pinApprovedPlanBlocks } from "../services/plan-review";
 
 interface AssistantMessageModelInput {
 	expanded: boolean;
@@ -35,6 +36,14 @@ export function useAssistantMessageModel({
 		() => new Set(message.toolCallPresentations?.map((presentation) => presentation.toolCallId) ?? []),
 		[message.toolCallPresentations],
 	);
+	// 已批准的计划在列表里是独立卡片、不并入工具组；但不参与折叠分界（见 pinApprovedPlanBlocks）。
+	const standaloneToolCallIds = useMemo(() => {
+		const ids = new Set(persistentToolCallIds);
+		for (const block of message.blocks) {
+			if (block.type === "tool_call" && isApprovedPlanBlock(block)) ids.add(block.toolCallId);
+		}
+		return ids;
+	}, [message.blocks, persistentToolCallIds]);
 	const isCurrentlyStreaming =
 		message.phase === "pending" ||
 		message.phase === "streaming" ||
@@ -50,14 +59,14 @@ export function useAssistantMessageModel({
 		// 收起时渲染整个答案区（含插件产物卡片），而不是只留文本。
 		if (exportMode && foldData) return foldData.answerBlocks;
 		if (!foldData || expanded || isCurrentlyStreaming) return message.blocks;
-		return foldData.answerBlocks;
+		return pinApprovedPlanBlocks(foldData.processBlocks, foldData.answerBlocks);
 	}, [expanded, exportMode, foldData, isCurrentlyStreaming, message.blocks]);
 	const segments = useMemo(
 		() =>
 			stagedNarration
-				? groupBlocksForWork(visibleBlocks, customToolNames, isCurrentlyStreaming, persistentToolCallIds)
-				: groupBlocks(visibleBlocks, customToolNames, persistentToolCallIds),
-		[stagedNarration, visibleBlocks, customToolNames, isCurrentlyStreaming, persistentToolCallIds],
+				? groupBlocksForWork(visibleBlocks, customToolNames, isCurrentlyStreaming, standaloneToolCallIds)
+				: groupBlocks(visibleBlocks, customToolNames, standaloneToolCallIds),
+		[stagedNarration, visibleBlocks, customToolNames, isCurrentlyStreaming, standaloneToolCallIds],
 	);
 	// Work 折叠条按「阶段数」计数，而不是 coding 的原始 block 数——用户看到的单位就是阶段。
 	const workFoldCount = useMemo(() => {
