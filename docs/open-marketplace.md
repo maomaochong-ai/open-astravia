@@ -4,7 +4,8 @@ Desktop 从 GitHub 下载配置 ref 的归档，并在本地读取 `.vetta/marke
 
 ## 推荐发布模式：静态分发分支
 
-市场源码与可安装分发分开：main 保存能力源码与 `.vetta/marketplace.source.json`；
+市场源码与可安装分发分开：新仓库通常由 main 保存能力源码；已有官方市场为避免影响仍读取
+schema v2 的旧版 Desktop，使用独立的 marketplace-source 保存 `.vetta/marketplace.source.json`，并冻结 main 作为兼容来源；
 普通源码 PR 审核通过后，CI 构建未发布的插件版本并上传不可变 `.vettapkg`，
 再生成 gh-pages 上的 `.vetta/marketplace.json`、展示资源和非插件安装文件。
 Desktop 的市场来源 ref 配置为 gh-pages，无需另建注册服务或启用 GitHub Pages。
@@ -15,7 +16,7 @@ Desktop 的市场来源 ref 配置为 gh-pages，无需另建注册服务或启�
 
 客户端继续读取精简的分发归档，插件包按需下载；Skill、MCP、Bundle 保持既有目录合同。
 它不会从源码分支读取 marketplace.source.json。已有用户来源不会自动切换，
-新 gh-pages 验证成功后由维护者安排迁移；旧版本客户端仍需保留其原有 ref。
+新 gh-pages 验证成功后由维护者安排新版迁移；旧版本客户端继续读取原有 main。
 详见 [ADR-0122](adr/0122-marketplaces-publish-generated-static-distributions.md)。
 
 ## 客户端来源管理
@@ -462,14 +463,22 @@ abilities/mcp/context7/
 
 ### 不接触线上来源的候选验证
 
-在 Desktop 仓库设置 `VETTA_MARKETPLACE_CANDIDATE_ROOT` 为本地候选市场仓库的绝对路径，运行：
+先在市场源码分支生成本地候选分发：
 
 ```powershell
-$env:VETTA_MARKETPLACE_CANDIDATE_ROOT = 'C:\path\to\vetta-official-marketplace'
+$env:VETTA_PYTHON = python -c "import sys; print(sys.executable)"
+node scripts/marketplace.mjs build --output .marketplace-build/local-e2e
+```
+
+再在 Desktop 仓库把候选目录和制品目录分别传给隔离测试：
+
+```powershell
+$env:VETTA_MARKETPLACE_CANDIDATE_ROOT = 'C:\path\to\marketplace\.marketplace-build\local-e2e\site'
+$env:VETTA_MARKETPLACE_CANDIDATE_ARTIFACTS = 'C:\path\to\marketplace\.marketplace-build\local-e2e\artifacts'
 bun scripts/quality/run-vitest.mjs --run apps/desktop/src/main/abilities/open-marketplace/marketplace-candidate.local.test.ts
 ```
 
-该检查用候选仓库的 Git 跟踪文件组装市场归档，读取本地 `.release-artifacts/` 中的真实 ZIP，
+该检查读取生成的精简分发目录和真实 `.vettapkg`，
 以临时 `VETTA_HOME` 走 Desktop 同步、版本选择、下载校验和插件安装，再检查旧版客户端的升级提示。
 所有网络请求都由本地文件响应替代；不启动日常 Desktop，也不发布仓库或制品。未设置环境变量时该测试跳过。
 
