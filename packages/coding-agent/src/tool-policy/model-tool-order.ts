@@ -31,6 +31,7 @@ export const CODING_AGENT_MODEL_TOOL_ORDER = Object.freeze({
 	taskStop: 2_400,
 	subagentStart: 2_500,
 	askUserQuestion: 3_200,
+	exitPlanMode: 3_250,
 	plugin: 3_300,
 });
 
