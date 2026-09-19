@@ -21,6 +21,12 @@ import {
 	type CodingAgentAskUserQuestionExtensionRuntime,
 	createCodingAgentAskUserQuestionSessionExtension,
 } from "../../features/ask-user-question/index.js";
+import {
+	CODING_AGENT_PLAN_MODE_OBSERVATION,
+	CODING_AGENT_PLAN_MODE_RUNTIME,
+	type CodingAgentPlanModeExtensionRuntime,
+	createCodingAgentPlanModeSessionExtension,
+} from "../../features/plan-mode/index.js";
 import { createCodingAgentSessionAssistanceExtension } from "../../features/session-assistance/session-assistance-session-extension.js";
 import type { CodingAgentTodoRuntime } from "../../features/todo/contracts.js";
 import {
@@ -84,6 +90,7 @@ export interface CodingAgentSessionPeripheralAssembly {
 	readonly todoRegistration: CodingAgentRuntimeToolRegistration;
 	readonly todoEnabled: boolean;
 	readonly askUserQuestionRuntime: CodingAgentAskUserQuestionExtensionRuntime;
+	readonly planModeRuntime: CodingAgentPlanModeExtensionRuntime;
 	readonly sessionExtensions: SessionExtensionComposition;
 	readonly baseCapabilities: RuntimeCapabilityDefinition;
 }
@@ -173,6 +180,15 @@ export async function createCodingAgentSessionPeripheralAssembly(
 				configurationState,
 			}),
 			createCodingAgentAskUserQuestionSessionExtension({ scenario: options.scenario }),
+			createCodingAgentPlanModeSessionExtension({
+				scenario: options.scenario,
+				isTodoToolAvailable: () => sessionExtensions.services.require(CODING_AGENT_TODO_RUNTIME).toolEnabled,
+				reportUpdate: (state) =>
+					options.resourceContext.reportObservation({
+						...sessionExtensionObservation(CODING_AGENT_PLAN_MODE_OBSERVATION, state),
+						source: "extension",
+					}),
+			}),
 			createCodingAgentSandboxAuthorizationSessionExtension(),
 			createCodingAgentBackgroundWorkSessionExtension(),
 			createCodingAgentPluginConfigurationSessionExtension(),
@@ -201,6 +217,7 @@ export async function createCodingAgentSessionPeripheralAssembly(
 	const todoRegistration = todoExtension.toolRegistration;
 	const todoEnabled = todoExtension.toolEnabled;
 	const askUserQuestionRuntime = sessionExtensions.services.require(CODING_AGENT_ASK_USER_QUESTION_RUNTIME);
+	const planModeRuntime = sessionExtensions.services.require(CODING_AGENT_PLAN_MODE_RUNTIME);
 	const sandboxAuthorization = sessionExtensions.services.require(CODING_AGENT_SANDBOX_AUTHORIZATION_RUNTIME);
 
 	const executionEnvironment = await profile.createSessionExecutionEnvironment({
@@ -282,6 +299,7 @@ export async function createCodingAgentSessionPeripheralAssembly(
 	return {
 		configurationState,
 		askUserQuestionRuntime,
+		planModeRuntime,
 		specializedToolRegistrations,
 		specializedToolFeature,
 		pluginRuntime,

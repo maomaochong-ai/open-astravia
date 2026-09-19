@@ -21,6 +21,7 @@ import { createCodingAgentTurnCapabilitySessionAssembly } from "../../src/compos
 import { CodingAgentImageSettingsSnapshotRouter } from "../../src/composition/turn/image-settings-snapshot-router.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../src/execution/session/runtime.js";
 import { CodingAgentExtensionRunBridge } from "../../src/extensions/runtime/extension-run-bridge.js";
+import { CodingAgentPlanModeRuntime } from "../../src/features/plan-mode/index.js";
 import { CodingAgentTodoRuntime } from "../../src/features/todo/todo-runtime.js";
 import type { CodingAgentContextRuntime } from "../../src/runtime-contracts/index.js";
 import { createFileSettingsRuntime } from "../fixtures/file-settings-runtime.js";
@@ -94,6 +95,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			specializedToolFeature: createFeature("specialized", [specializedTool]),
 			specializedToolRegistrations: [],
 			continuationSources: [],
+			planModeRuntime: inactivePlanMode(),
 			todoRuntime,
 			contextRuntime,
 			conversationContextProjector: {
@@ -195,6 +197,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			specializedToolFeature: createFeature("specialized", []),
 			specializedToolRegistrations: [],
 			continuationSources: [],
+			planModeRuntime: inactivePlanMode(),
 			todoRuntime,
 			contextRuntime: createContextRuntime(),
 			conversationContextProjector: { project: () => [] } satisfies ConversationContextProjector,
@@ -279,6 +282,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			specializedToolFeature: createFeature("specialized", []),
 			specializedToolRegistrations: [],
 			continuationSources: [],
+			planModeRuntime: inactivePlanMode(),
 			todoRuntime,
 			contextRuntime: createContextRuntime(),
 			conversationContextProjector: { project: () => [] } satisfies ConversationContextProjector,
@@ -360,6 +364,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 				},
 			},
 			continuationSources: [],
+			planModeRuntime: inactivePlanMode(),
 			todoRuntime,
 			contextRuntime: createContextRuntime(),
 			conversationContextProjector: { project: () => [] } satisfies ConversationContextProjector,
@@ -398,7 +403,103 @@ describe("Coding Agent Turn Capability session assembly", () => {
 
 		expect(executed).toEqual([toolName, toolName]);
 	});
+	it("closes the tool surface and the execution path while plan mode is active", async () => {
+		const codingTools = createCodingToolsRuntimeComposition({
+			cwd: "C:\\workspace",
+			environment: emptyToolEnvironment(),
+			activation: { mode: "explicit", toolNames: [] },
+		});
+		disposals.push(() => codingTools.dispose());
+		const todoRuntime = new CodingAgentTodoRuntime();
+		disposals.push(() => todoRuntime.dispose());
+		const executed: string[] = [];
+		const frameTools = ["read", "write", "bash", "mcp__github__create_issue"].map((name) =>
+			createTool(name, executed),
+		);
+		const planModeRuntime = new CodingAgentPlanModeRuntime({ createEntryId: () => "plan-entry", now: () => 1 });
+		planModeRuntime.setPermissionMode("plan");
+		const executionRuntime = {
+			feature: createFeature("execution", []),
+			ownsTool: () => false,
+			readAvailableTools: () => new Map(),
+		} as unknown as CodingAgentSessionExecutionRuntime;
+		const assembly = await createCodingAgentTurnCapabilitySessionAssembly({
+			agentConfiguration: createConfiguration(),
+			readAllAgentPlugins: () => undefined,
+			session: {
+				initialSessionId: "session-1",
+				readSessionId: () => "session-1",
+				cwd: "C:\\workspace",
+				scenario: "cli",
+			},
+			activation: {
+				resolve: () => ({ mode: "explicit", toolNames: [] }),
+				readAgentMode: () => undefined,
+				readAgentPlugins: () => undefined,
+				readActiveToolNamesOverride: () => undefined,
+			},
+			prompt: { systemPromptOptionsResolver: async () => ({ cwd: "C:\\workspace" }) },
+			baseCapabilities: codingTools.capabilities,
+			codingTools,
+			executionRuntime,
+			specializedToolFeature: createFeature("specialized", []),
+			specializedToolRegistrations: [],
+			continuationSources: [],
+			planModeRuntime,
+			todoRuntime,
+			contextRuntime: createContextRuntime(),
+			conversationContextProjector: { project: () => [] } satisfies ConversationContextProjector,
+			modelRuntime: { bind: () => undefined } as unknown as RuntimeModel,
+			hookRuntime: createPassthroughHookRuntime(),
+			extensionEvents: new CodingAgentExtensionRunBridge(),
+			imageSettingsSnapshots: new CodingAgentImageSettingsSnapshotRouter(),
+		});
+		disposals.push(() => assembly.dispose());
+		const capabilities = await compileAssemblyCapabilities(assembly);
+		disposals.push(() => capabilities.close());
+
+		const lease = await capabilities.acquire({
+			sessionId: "session-1",
+			operationId: "turn-1",
+			reason: "turn",
+			signal: new AbortController().signal,
+		});
+		try {
+			const composer = lease.snapshot.modelCallFrameComposer!;
+			const compose = () =>
+				composer.compose({
+					sessionId: "session-1",
+					turnId: "turn-1",
+					signal: new AbortController().signal,
+					messages: [],
+					modelBinding: { model: TEST_MODEL },
+					frame: { instructions: [], tools: new Map(frameTools.map((tool) => [tool.name, tool])) },
+				} as unknown as Parameters<typeof composer.compose>[0]);
+
+			const planning = await compose();
+			expect([...planning.tools.keys()].sort()).toEqual(["bash", "read"]);
+			const bash = planning.tools.get("bash")!;
+			await bash.execute({ ...toolRequest("call-1"), input: { command: "git status" } });
+			await expect(bash.execute({ ...toolRequest("call-2"), input: { command: "rm -rf src" } })).rejects.toThrow(
+				"Plan mode is active",
+			);
+			expect(executed).toEqual(["bash"]);
+
+			// 审批通过是本 Turn 自己产生的状态：下一次模型调用立即拿回完整工具面。
+			planModeRuntime.approvePlan("1. Ship it");
+			const executing = await compose();
+			expect([...executing.tools.keys()].sort()).toEqual(["bash", "mcp__github__create_issue", "read", "write"]);
+			await executing.tools.get("bash")!.execute({ ...toolRequest("call-3"), input: { command: "rm -rf src" } });
+			expect(executed).toEqual(["bash", "bash"]);
+		} finally {
+			await lease.release();
+		}
+	});
 });
+
+function inactivePlanMode() {
+	return new CodingAgentPlanModeRuntime({ createEntryId: () => "plan-entry", now: () => 1 });
+}
 
 function compileAssemblyCapabilities(
 	assembly: Awaited<ReturnType<typeof createCodingAgentTurnCapabilitySessionAssembly>>,

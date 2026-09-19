@@ -14,3 +14,9 @@ export {
 	type CodingAgentQuestionRequest,
 	type CodingAgentQuestionResult,
 } from "../features/ask-user-question/contracts.js";
+export {
+	CODING_AGENT_PLAN_MODE_EXTENSION_ID,
+	CODING_AGENT_PLAN_REVIEW_FUNCTION,
+	type CodingAgentPlanReviewRequest,
+	type CodingAgentPlanReviewResult,
+} from "../features/plan-mode/contracts.js";

@@ -34,6 +34,19 @@ export {
 	readCodingAgentBackgroundTasksObservation,
 } from "../execution/background/background-work-session-extension-contract.js";
 export {
+	type CodingAgentPermissionMode,
+	type CodingAgentPlan,
+	type CodingAgentPlanModeState,
+	type CodingAgentPlanStatus,
+	isCodingAgentPermissionMode,
+} from "../features/plan-mode/contracts.js";
+export {
+	CODING_AGENT_PERMISSION_MODE_SET,
+	CODING_AGENT_PLAN_MODE_OBSERVATION,
+	CODING_AGENT_PLAN_MODE_STATE_READ,
+	readCodingAgentPlanModeObservation,
+} from "../features/plan-mode/plan-mode-session-extension-contract.js";
+export {
 	CODING_AGENT_NEXT_PROMPT_SUGGESTIONS,
 	CODING_AGENT_SESSION_TITLE_GENERATE,
 	type CodingAgentSessionTitleRequest,
