@@ -3,7 +3,7 @@ import { defineSessionExtensionFunction } from "@vetta/runtime-core/session-exte
 export const CODING_AGENT_PLAN_MODE_EXTENSION_ID = "coding-agent.plan-mode";
 
 /**
- * 会话级权限轴。与工作模式（任务先验，ADR-0071）和场景（scope_use）正交：
+ * 会话级权限轴（ADR-0122）。与工作模式（任务先验，ADR-0071）和场景（scope_use）正交：
  * `plan` 是硬闸——模型调用的工具面收敛到只读集合，直到用户批准计划。
  */
 export const CODING_AGENT_PERMISSION_MODES = ["default", "plan"] as const;
