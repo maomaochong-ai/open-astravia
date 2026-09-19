@@ -30,8 +30,12 @@ export async function installCiDependencies(options = {}) {
 			throw new Error(`Bun dependency installation failed after ${maxAttempts} attempts.`);
 		}
 
-		log("::warning::Bun dependency installation failed; clearing the runner cache before retrying.");
-		await runCommand("bun", ["pm", "cache", "rm"]);
+		if (attempt > 1) {
+			log("::warning::Bun dependency installation failed repeatedly; clearing the runner cache before retrying.");
+			await runCommand("bun", ["pm", "cache", "rm"]);
+		} else {
+			log("::warning::Bun dependency installation failed; retrying with completed downloads intact.");
+		}
 		await delay(attempt * 2_000);
 	}
 }

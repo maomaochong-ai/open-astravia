@@ -4,6 +4,7 @@
 - [Windows 自动更新、R2 发版与排障](./windows-auto-update.md)：Inno 后台版本目录、稳定启动器与回退、增量下载原理、历史问题和排障清单。
 - [macOS 自动更新、R2 发版与排障](./macos-auto-update.md)：Squirrel.Mac 暂存流程、双架构与元数据合并、签名公证门禁、自持 runner 和排障清单。
 - [桌面应用发布入口](../deploy/desktop-releases.md)：兼容旧链接的导航页。
+- [发版缓存与失败恢复](./release-ci.md)：默认分支下载预热、构建检查点、失败任务独立重跑和缓存限制。
 - [看板（Kanban）功能介绍](./kanban-board.md)：三条泳道、Agent 自行认领派单、并发闸门与依赖顺序。
 - [看板与工作区视图：方案评估](./kanban-board-evaluation.md)：本轮取舍依据、需求覆盖对照、测试范围与遗留风险。
 - [设计画廊（Design Gallery）功能介绍](./design-gallery.md)：设计稿的注册中心——主动收集、画布全景封面、点卡回到最近的会话、新建与导入。

@@ -223,4 +223,4 @@ VETTA_R2_PREFIX      = desktop/stable
 
 发布矩阵前会先等待独立质量 Job：根 `bun run check`、质量脚本测试、Desktop packaging 合同测试全部通过后才开始平台构建。每个平台构建后还会校验 updater metadata、hash、blockmap 和可安装内容。
 
-`workflow_dispatch` 只构建并保留 Actions Artifact，并在 job summary 打印本次解析结果；它不会验证线上更新源。只有匹配 `package.json` 版本的正式 tag 才会发布到 R2 / GitHub Releases；发布完成后 workflow 会通过公开 URL 检查 `latest.yml`、`latest-mac.yml`、`latest-linux.yml` 及其引用的安装包。表单定义必须在 GitHub 默认分支上才看得到。
+匹配 Desktop 版本的 tag，以及解析后 channel 为 `stable` / `test` 的 `workflow_dispatch` 会进入发布流程；其他手动构建只保留 Actions Artifact。发布完成后，独立任务通过公开 URL 检查 `latest.yml`、`latest-mac.yml`、`latest-linux.yml` 及其引用的安装包。表单定义必须在 GitHub 默认分支上才看得到。下载预热、阶段检查点和失败重跑方法见 [发版缓存与失败恢复](./release-ci.md)。

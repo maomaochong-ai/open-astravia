@@ -11,6 +11,7 @@ import { loadBuildEnv } from "./load-build-env.mjs";
 import { resolvePackagedNativeDependencies } from "./packaged-native-dependencies.mjs";
 import { resolveReleaseInfo } from "./resolve-release-info.mjs";
 import { prepareSpeechModels, SPEECH_MODEL_RESOURCE_ROOT } from "./fetch-speech-models.mjs";
+import { prepareVendorRuntimes } from "./fetch-vendor-runtimes.mjs";
 import {
 	resolveSpeechInputBuildConfig,
 	resolveSpeechInputTargetTags,
@@ -30,7 +31,6 @@ const macSigning = buildEnvironment.macSigning;
 
 const projectRoot = join(import.meta.dirname, "..");
 const buildStageDir = join(tmpdir(), "vetta-desktop-build");
-const vendorCacheDir = join(tmpdir(), "vetta-desktop-vendor-cache");
 const imGatewayDir = join(projectRoot, "..", "im-gateway");
 const imGatewayDistDir = join(imGatewayDir, "dist");
 const codingAgentDir = join(projectRoot, "..", "..", "packages", "coding-agent");
@@ -543,53 +543,13 @@ async function stageVendorRuntimes() {
 		console.warn("[prepare-pack] VETTA_SKIP_VENDOR=1 —— 跳过内置运行时,产物将依赖面板手动下载");
 		return;
 	}
-	const manifestPath = join(projectRoot, "src", "main", "runtimes", "manifest.json");
-	const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
 	const platformTag = process.env.VETTA_VENDOR_PLATFORM || `${process.platform}-${process.arch}`;
 	const stagedVendorDir = join(buildStageDir, "vendor");
-
-	for (const type of ["node", "python"]) {
-		const def = manifest[type];
-		const entry = def.platforms[platformTag];
-		if (!entry) {
-			throw new Error(
-				`[prepare-pack] manifest 缺少 ${type} 平台 ${platformTag};跨平台打包请设 VETTA_VENDOR_PLATFORM`,
-			);
-		}
+	const archives = await prepareVendorRuntimes({ platformTag });
+	for (const { type, def, entry, archivePath } of archives) {
 		const destTypeDir = join(stagedVendorDir, type);
 		rmSync(destTypeDir, { recursive: true, force: true });
 		mkdirSync(destTypeDir, { recursive: true });
-
-		const urls = def.sources.map((tpl) =>
-			tpl
-				.replace("{version}", def.version)
-				.replace("{release}", def.release ?? "")
-				.replace("{filename}", entry.filename),
-		);
-		const cacheTypeDir = join(vendorCacheDir, platformTag, type);
-		const archivePath = join(cacheTypeDir, entry.filename);
-		mkdirSync(cacheTypeDir, { recursive: true });
-
-		let readyArchive = existsSync(archivePath);
-		if (readyArchive) {
-			console.log(`[prepare-pack] using cached vendor ${type} archive -> ${archivePath}`);
-		}
-		for (const url of urls) {
-			if (readyArchive) break;
-			try {
-				console.log(`[prepare-pack] downloading vendor ${type} <- ${url}`);
-				const res = await fetch(url, { redirect: "follow" });
-				if (!res.ok) throw new Error(`HTTP ${res.status}`);
-				writeFileSync(archivePath, Buffer.from(await res.arrayBuffer()));
-				readyArchive = true;
-				break;
-			} catch (err) {
-				console.warn(`[prepare-pack] download failed (${url}): ${err.message}`);
-			}
-		}
-		if (!readyArchive) {
-			throw new Error(`[prepare-pack] 无法下载 vendor ${type}(${platformTag});检查构建机网络或设 VETTA_SKIP_VENDOR=1`);
-		}
 
 		// macOS 必须内置解压目录：electron-builder 只签得到文件系统上可见的 Mach-O，
 		// 而 Apple 公证服务会解开归档递归校验，归档内的 python/node 二进制一律被判

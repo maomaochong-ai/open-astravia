@@ -1,0 +1,35 @@
+name: Restore Desktop packaging downloads
+description: Restore Electron and electron-builder downloads, isolated by operating system and architecture.
+outputs:
+  tools-path:
+    value: ${{ steps.paths.outputs.tools-path }}
+    description: Download directory to save after packaging.
+  tools-key:
+    value: ${{ steps.tools.outputs.cache-primary-key }}
+    description: Immutable cache key.
+  tools-cache-hit:
+    value: ${{ steps.tools.outputs.cache-hit }}
+    description: Whether the exact cache exists.
+runs:
+  using: composite
+  steps:
+    - name: Set download paths
+      id: paths
+      shell: bash
+      run: |
+        node --input-type=module -e '
+          import { appendFileSync } from "node:fs";
+          import { join } from "node:path";
+          const root = join(process.env.RUNNER_TEMP, "vetta-packaging-downloads");
+          appendFileSync(process.env.GITHUB_OUTPUT, `tools-path=${root}\n`);
+          appendFileSync(process.env.GITHUB_ENV, `ELECTRON_CACHE=${join(root, "electron")}\nelectron_config_cache=${join(root, "electron")}\nELECTRON_BUILDER_CACHE=${join(root, "electron-builder")}\n`);
+        '
+    - name: Restore packaging downloads
+      id: tools
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ steps.paths.outputs.tools-path }}
+        key: desktop-tools-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock', '.github/actions/desktop-download-cache/action.yml') }}
+        restore-keys: |
+          desktop-tools-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock', '.github/actions/desktop-download-cache/action.yml') }}-
+          desktop-tools-v1-${{ runner.os }}-${{ runner.arch }}-

@@ -1,4 +1,17 @@
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import {
+	chmodSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	readlinkSync,
+	rmSync,
+	statSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
+import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -12,7 +25,135 @@ const upgradeWorkflow = readFileSync(
 	"utf8",
 );
 
+const require = createRequire(join(import.meta.dirname, "../../apps/desktop/package.json"));
+const { parse } = require("yaml");
+const jobs = parse(workflow).jobs;
+function actionSteps(name) {
+	return parse(readFileSync(join(import.meta.dirname, `../../.github/actions/${name}/action.yml`), "utf8")).runs.steps;
+}
+
 describe("Desktop release workflow contracts", () => {
+	it("saves successful dependency downloads before later build or verification failures", () => {
+		const steps = actionSteps("install-bun-dependencies");
+		const restore = steps.findIndex((step) => step.uses === "actions/cache/restore@v4");
+		const install = steps.findIndex((step) => step.run?.includes("install-ci-dependencies.mjs"));
+		const save = steps.findIndex((step) => step.uses === "actions/cache/save@v4");
+		expect(restore).toBeLessThan(install);
+		expect(install).toBeLessThan(save);
+		expect(steps[save].if).toBe("steps.bun-cache.outputs.cache-hit != 'true'");
+		expect(steps[restore].with.path).toBe("~/.bun/install/cache");
+		expect(steps[restore].with.key).toContain("runner.arch");
+	});
+
+	it("isolates model inputs and saves resources before compilation without caching application outputs", () => {
+		const steps = actionSteps("prepare-desktop-resources");
+		const restore = steps.find((step) => step.uses === "actions/cache/restore@v4");
+		expect(restore.with["restore-keys"]).toBeUndefined();
+		for (const input of [
+			"runtimes/manifest.json",
+			"speech-input/model-manifest.json",
+			"fetch-ocr-models.js",
+			"runner.arch",
+		]) {
+			expect(restore.with.key).toContain(input);
+		}
+		const save = steps.findIndex((step) => step.uses === "actions/cache/save@v4");
+		expect(steps.findIndex((step) => step.name === "Download release resources")).toBeLessThan(save);
+		expect(steps[save].with.path).toBe(restore.with.path);
+		expect(restore.with.path).not.toMatch(/node_modules|build-stage|\.turbo|release\//);
+		expect(
+			jobs.build.steps.findIndex((step) => step.uses === "./.github/actions/prepare-desktop-resources"),
+		).toBeLessThan(jobs.build.steps.findIndex((step) => step.name === "Build updater artifacts"));
+	});
+
+	it("retries verification using the same run's completed build without packaging again", () => {
+		expect(jobs.build.strategy["fail-fast"]).toBe(false);
+		expect(jobs.verify?.needs).toEqual(["prepare", "build"]);
+		expect(jobs.verify?.strategy.matrix).toEqual(jobs.build.strategy.matrix);
+		const buildSteps = jobs.build.steps;
+		const verifySteps = jobs.verify?.steps ?? [];
+		expect(buildSteps.some((step) => step.name === "Run packaged app and updater E2E")).toBe(false);
+		const checkpoint = buildSteps.find((step) => step.name === "Upload build checkpoint");
+		expect(checkpoint?.with.name).toBe("release-build-$" + "{{ matrix.platform }}");
+		expect(checkpoint?.with["retention-days"]).toBe(30);
+		expect(checkpoint?.with.overwrite).toBe(true);
+		const download = verifySteps.find((step) => step.uses === "actions/download-artifact@v4");
+		expect(download?.with.name).toBe(checkpoint?.with.name);
+		expect(download?.with["run-id"]).toBeUndefined();
+		expect(verifySteps.some((step) => step.run?.includes("matrix.command"))).toBe(false);
+		expect(verifySteps.findIndex((step) => step.name === "Restore build checkpoint")).toBeLessThan(
+			verifySteps.findIndex((step) => step.name === "Verify platform updater artifacts"),
+		);
+		for (const target of ["publish-r2", "publish-github"]) {
+			expect(jobs[target].needs).toContain("verify");
+			expect(jobs[target].steps.find((step) => step.uses === "actions/download-artifact@v4").with.pattern).toBe(
+				"desktop-*",
+			);
+		}
+	});
+
+	it("restores a failed verification attempt with original bytes, executable modes, symlinks and candidate version", () => {
+		const root = mkdtempSync(join(tmpdir(), "vetta-release-checkpoint-"));
+		try {
+			const desktop = join(root, "apps/desktop");
+			const release = join(desktop, "release");
+			const runnerTemp = join(root, "runner");
+			mkdirSync(release, { recursive: true });
+			mkdirSync(runnerTemp);
+			writeFileSync(join(desktop, "package.json"), JSON.stringify({ version: "0.5.58" }));
+			writeFileSync(join(release, "Vetta"), "signed executable fixture");
+			chmodSync(join(release, "Vetta"), 0o755);
+			if (process.platform !== "win32") symlinkSync("Vetta", join(release, "bundle-link"));
+			writeFileSync(join(release, "latest.yml"), "version: 0.5.59\n");
+			writeFileSync(join(release, "installer.exe.files.json"), "verification manifest");
+			const envFile = join(root, "github-env");
+			const env = {
+				...process.env,
+				RUNNER_TEMP: runnerTemp,
+				GITHUB_WORKSPACE: root,
+				GITHUB_ENV: envFile,
+				VETTA_REQUIRE_MAC_SIGNATURE: "1",
+				BUILD_VERSION: "0.5.59",
+			};
+			execFileSync(
+				"bash",
+				["-e", "-c", jobs.build.steps.find((step) => step.name === "Archive build checkpoint").run],
+				{ cwd: root, env },
+			);
+			mkdirSync(join(runnerTemp, "release-checkpoint"));
+			writeFileSync(
+				join(runnerTemp, "release-checkpoint/release-build.tar"),
+				readFileSync(join(runnerTemp, "release-build.tar")),
+			);
+			// Verification can mutate the unpacked executable; retries must start from the saved build.
+			writeFileSync(join(release, "Vetta"), "mutated during failed test");
+			const restore = jobs.verify.steps.find((step) => step.name === "Restore build checkpoint").run;
+			for (let attempt = 0; attempt < 2; attempt += 1) {
+				execFileSync("bash", ["-e", "-c", restore], { cwd: root, env });
+				expect(readFileSync(join(release, "Vetta"), "utf8")).toBe("signed executable fixture");
+				expect(readFileSync(join(release, "installer.exe.files.json"), "utf8")).toBe("verification manifest");
+				expect(JSON.parse(readFileSync(join(desktop, "package.json"), "utf8")).version).toBe("0.5.59");
+				if (process.platform !== "win32") {
+					expect(statSync(join(release, "Vetta")).mode & 0o777).toBe(0o755);
+					expect(readlinkSync(join(release, "bundle-link"))).toBe("Vetta");
+				}
+			}
+			expect(readFileSync(envFile, "utf8")).toContain("VETTA_REQUIRE_MAC_SIGNATURE=1");
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	it("prewarms tag-readable downloads on the default branch without building or publishing", () => {
+		const warm = parse(readFileSync(join(import.meta.dirname, "../../.github/workflows/desktop-cache.yml"), "utf8"));
+		expect(warm.on.schedule).toHaveLength(1);
+		expect(warm.jobs.warm.if).toContain("github.event.repository.default_branch");
+		expect([...warm.jobs.warm.strategy.matrix.runner].sort()).toEqual(
+			jobs.build.strategy.matrix.include.map((entry) => entry.runner).sort(),
+		);
+		expect(warm.jobs.warm.steps.some((step) => /dist:|publish:/.test(step.run ?? ""))).toBe(false);
+	});
+
 	it("runs quality and packaging tests before the platform matrix", () => {
 		expect(workflow).toContain("  quality:");
 		expect(workflow).toContain("run: bun run check");
@@ -24,7 +165,15 @@ describe("Desktop release workflow contracts", () => {
 
 	it("verifies the public update feed after either publish target", () => {
 		expect(workflow.match(/node scripts\/verify-update-feed\.mjs/g)).toHaveLength(2);
-		expect(workflow.match(/needs: \[prepare, quality, build\]/g)).toHaveLength(2);
+		expect(workflow.match(/needs: \[prepare, quality, build, verify\]/g)).toHaveLength(2);
+		for (const target of ["r2", "github"]) {
+			const feed = jobs[`verify-feed-${target}`];
+			expect(feed.needs).toEqual(["prepare", `publish-${target}`]);
+			expect(feed.steps.some((step) => step.run?.includes("verify-update-feed.mjs"))).toBe(true);
+			expect(feed.steps.some((step) => step.uses?.includes("download-artifact"))).toBe(false);
+			expect(feed.steps.some((step) => /publish:|gh release|matrix.command/.test(step.run ?? ""))).toBe(false);
+			expect(JSON.stringify(feed)).not.toContain("secrets.");
+		}
 	});
 
 	it("runs packaged boot and updater E2E on every release platform", () => {

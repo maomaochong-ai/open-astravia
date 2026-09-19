@@ -178,7 +178,7 @@ jobs:
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.3.7"
+          bun-version-file: package.json
 
       - name: Install dependencies
         uses: ./.github/actions/install-bun-dependencies
@@ -225,7 +225,7 @@ jobs:
     environment: ${{ needs.prepare.outputs.channel == 'test' && 'desktop-test' || 'desktop-production' }}
     strategy:
       fail-fast: false
-      matrix:
+      matrix: &release-platforms
         include:
           - platform: windows
             runner: windows-latest
@@ -259,13 +259,17 @@ jobs:
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.3.7"
+          bun-version-file: package.json
 
       - name: Set up Go for IM gateway
         uses: actions/setup-go@v5
         with:
           go-version-file: apps/im-gateway/go.mod
           cache-dependency-path: apps/im-gateway/go.sum
+
+      - name: Restore packaging tool downloads
+        id: download-cache
+        uses: ./.github/actions/desktop-download-cache
 
       - name: Install dependencies
         uses: ./.github/actions/install-bun-dependencies
@@ -275,11 +279,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y build-essential libcap-dev meson ninja-build pkg-config xz-utils rpm
-
-      - name: Install Linux Electron runtime dependencies
-        if: runner.os == 'Linux'
-        # Ubuntu 24.04's libasound2t64 provides the libasound.so.2 linked by Electron.
-        run: sudo apt-get install --no-install-recommends -y libasound2t64
 
       - name: Configure macOS signing and notarization
         if: matrix.macArch != ''
@@ -386,6 +385,9 @@ jobs:
           OUTPUT_UPDATE_URL: ${{ needs.prepare.outputs.update_url }}
         run: node scripts/release/resolve-desktop-release-config.mjs --from-outputs --export-env >> "${GITHUB_ENV}"
 
+      - name: Prepare cached release resources
+        uses: ./.github/actions/prepare-desktop-resources
+
       - name: Build updater artifacts
         working-directory: apps/desktop
         env:
@@ -394,6 +396,85 @@ jobs:
           VETTA_UPDATE_GITHUB_OWNER: ${{ github.repository_owner }}
           VETTA_UPDATE_GITHUB_REPO: ${{ github.event.repository.name }}
         run: bun run ${{ matrix.command }}
+
+      # Archive before verification so an E2E/install failure never discards a signed build.
+      # tar preserves executable modes and macOS bundle symlinks across artifact transfer.
+      - name: Archive build checkpoint
+        shell: bash
+        run: |
+          echo "${VETTA_REQUIRE_MAC_SIGNATURE:-0}" > apps/desktop/release/require-mac-signature.txt
+          (cd "${RUNNER_TEMP}" && tar --exclude=builder-debug.yml --exclude=builder-effective-config.yaml -cf release-build.tar -C "${GITHUB_WORKSPACE}/apps/desktop" release)
+
+      - name: Upload build checkpoint
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-build-${{ matrix.platform }}
+          path: ${{ runner.temp }}/release-build.tar
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+          overwrite: true
+
+      - name: Save packaging tool downloads
+        if: ${{ !cancelled() && steps.download-cache.outputs.tools-key != '' && steps.download-cache.outputs.tools-cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.download-cache.outputs.tools-path }}
+          key: ${{ steps.download-cache.outputs.tools-key }}
+
+  verify:
+    name: verify ${{ matrix.platform }}
+    needs: [prepare, build]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix: *release-platforms
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install dependencies
+        uses: ./.github/actions/install-bun-dependencies
+
+      - name: Install Linux Electron runtime dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y rpm libasound2t64
+
+      - name: Download build checkpoint
+        uses: actions/download-artifact@v4
+        with:
+          name: release-build-${{ matrix.platform }}
+          path: ${{ runner.temp }}/release-checkpoint
+
+      - name: Restore build checkpoint
+        shell: bash
+        env:
+          BUILD_VERSION: ${{ needs.prepare.outputs.build-version }}
+        run: |
+          rm -rf apps/desktop/release
+          (cd "${RUNNER_TEMP}/release-checkpoint" && tar -xf release-build.tar -C "${GITHUB_WORKSPACE}/apps/desktop")
+          SIGNATURE="$(cat apps/desktop/release/require-mac-signature.txt)"
+          case "${SIGNATURE}" in 0|1) ;; *) echo "Invalid signature requirement" >&2; exit 1 ;; esac
+          echo "VETTA_REQUIRE_MAC_SIGNATURE=${SIGNATURE}" >> "${GITHUB_ENV}"
+          # WDIO's update fixture and Linux AppImage path must use the dispatched candidate version.
+          node --input-type=module -e '
+            import { readFileSync, writeFileSync } from "node:fs";
+            if (process.env.BUILD_VERSION) {
+              if (!/^\d+\.\d+\.\d+$/.test(process.env.BUILD_VERSION)) throw new Error("Invalid build version");
+              const file = "apps/desktop/package.json";
+              const pkg = JSON.parse(readFileSync(file, "utf8"));
+              pkg.version = process.env.BUILD_VERSION;
+              writeFileSync(file, JSON.stringify(pkg));
+            }
+          '
 
       - name: Verify platform updater artifacts
         if: matrix.verify != ''
@@ -458,7 +539,9 @@ jobs:
         with:
           name: desktop-${{ matrix.platform }}
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 30
+          compression-level: 0
+          overwrite: true
           path: |
             apps/desktop/release/*.AppImage
             apps/desktop/release/*.blockmap
@@ -473,7 +556,7 @@ jobs:
   publish-r2:
     name: publish R2
     if: needs.prepare.outputs.should-build == 'true' && needs.prepare.outputs.should-publish == 'true' && needs.prepare.outputs.release_target == 'r2'
-    needs: [prepare, quality, build]
+    needs: [prepare, quality, build, verify]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: ${{ needs.prepare.outputs.channel == 'test' && 'desktop-test' || 'desktop-production' }}
@@ -487,7 +570,7 @@ jobs:
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.3.7"
+          bun-version-file: package.json
 
       - name: Install dependencies
         uses: ./.github/actions/install-bun-dependencies
@@ -531,18 +614,12 @@ jobs:
           VETTA_R2_SECRET_ACCESS_KEY: ${{ secrets.VETTA_R2_SECRET_ACCESS_KEY }}
         run: bun run publish:updates:r2
 
-      - name: Verify published update feed
-        working-directory: apps/desktop
-        env:
-          VETTA_DESKTOP_RELEASE_VERSION: ${{ needs.prepare.outputs.build-version }}
-        run: node scripts/verify-update-feed.mjs
-
   # R2 目标也要发 GitHub Release：R2 是更新源，GitHub Release 是对外的下载入口和
   # 版本说明归档，两者同时发布。test 渠道除外——它的构建不该出现在正式 Release 列表里。
   publish-github:
     name: publish GitHub Release
     if: needs.prepare.outputs.should-build == 'true' && needs.prepare.outputs.should-publish == 'true' && needs.prepare.outputs.channel != 'test'
-    needs: [prepare, quality, build]
+    needs: [prepare, quality, build, verify]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: desktop-production
@@ -558,7 +635,7 @@ jobs:
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.3.7"
+          bun-version-file: package.json
 
       - name: Install dependencies
         uses: ./.github/actions/install-bun-dependencies
@@ -598,11 +675,51 @@ jobs:
             | xargs -0 gh release upload "${TAG}" --clobber
           gh release edit "${TAG}" --draft=false
 
+  verify-feed-r2:
+    name: verify published r2 feed
+    needs: [prepare, publish-r2]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - name: Install dependencies
+        uses: ./.github/actions/install-bun-dependencies
       - name: Verify published update feed
         working-directory: apps/desktop
+        shell: bash
         env:
-          VETTA_DESKTOP_RELEASE_VERSION: ${{ needs.prepare.outputs.build-version }}
+          BUILD_VERSION: ${{ needs.prepare.outputs.build-version }}
+          VETTA_UPDATE_PROVIDER: generic
+          VETTA_UPDATE_URL: ${{ needs.prepare.outputs.update_url }}
+        run: |
+          export VETTA_DESKTOP_RELEASE_VERSION="${BUILD_VERSION:-$(node -p "require('./package.json').version")}"
+          node scripts/verify-update-feed.mjs
+
+  verify-feed-github:
+    name: verify published github feed
+    needs: [prepare, publish-github]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - name: Install dependencies
+        uses: ./.github/actions/install-bun-dependencies
+      - name: Verify published update feed
+        working-directory: apps/desktop
+        shell: bash
+        env:
+          BUILD_VERSION: ${{ needs.prepare.outputs.build-version }}
           VETTA_UPDATE_PROVIDER: github
           VETTA_UPDATE_GITHUB_OWNER: ${{ github.repository_owner }}
           VETTA_UPDATE_GITHUB_REPO: ${{ github.event.repository.name }}
-        run: node scripts/verify-update-feed.mjs
+        run: |
+          export VETTA_DESKTOP_RELEASE_VERSION="${BUILD_VERSION:-$(node -p "require('./package.json').version")}"
+          node scripts/verify-update-feed.mjs
