@@ -7,7 +7,8 @@
 			"backgroundTasks": "后台任务",
 			"debug": "调试",
 			"knowledgeHistory": "知识库加工历史",
-			"workflow": "工作流"
+			"workflow": "工作流",
+			"plan": "计划"
 		},
 		"backgroundTasks": {
 			"statusRunning": "运行中",
@@ -109,6 +110,9 @@
 			"statusInterrupted": "已中断",
 			"processingTitle": "有 {{count}} 个工作流正在处理",
 			"doneTitle": "工作流已全部结束"
+		},
+		"plan": {
+			"headline": "当前计划"
 		}
 	},
 	"fileExplorer": {
