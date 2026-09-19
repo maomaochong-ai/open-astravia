@@ -95,6 +95,11 @@ describe("Coding Agent plan mode session extension", () => {
 		const contribute = await session.bindTurn();
 		const planning = await contribute();
 		expect(planning.instructions?.[0]?.content).toContain("Plan mode is active");
+		// 先补齐信息差、再列计划：澄清步骤必须排在设计与提交之前。
+		const guidance = planning.instructions?.[0]?.content ?? "";
+		expect(guidance.indexOf("Close the gaps with the user")).toBeGreaterThan(guidance.indexOf("Explore first"));
+		expect(guidance.indexOf("Design the approach")).toBeGreaterThan(guidance.indexOf("Close the gaps with the user"));
+		expect(guidance).toContain("Do not interrogate");
 		expect(planning.tools?.map(({ name }) => name)).toEqual(["exit_plan_mode"]);
 
 		const result = await submit(planning, "1. Draft step");
@@ -155,7 +160,7 @@ describe("Coding Agent plan mode session extension", () => {
 		session.setMode("plan");
 		const contribution = await (await session.bindTurn())();
 		expect(contribution.tools).toBeUndefined();
-		expect(contribution.instructions?.[0]?.content).toContain("Present the complete plan as your reply");
+		expect(contribution.instructions?.[0]?.content).toContain("**Present the complete plan** as your reply");
 	});
 
 	it("applies a tightening toggle from the next turn but a relaxing toggle immediately", async () => {
