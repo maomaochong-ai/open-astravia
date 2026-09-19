@@ -454,7 +454,8 @@ function normalizeResourceStats(value: unknown): AppMonitorResourceStats | null 
 	const lastOperation = normalizeMetricKey(stats.lastOperation);
 	const source = normalizeMetricKey(stats.source);
 	const base = normalizeResourceKindStats(stats);
-	if ((kind !== "skill" && kind !== "scene" && kind !== "plugin") || id === "" || base.events === 0) return null;
+	if ((kind !== "skill" && kind !== "scene" && kind !== "plugin" && kind !== "mcp") || id === "" || base.events === 0)
+		return null;
 	return {
 		...base,
 		kind,
@@ -1005,7 +1006,7 @@ function findMostOperatedResourcesByKind(
 	statsByKey: Record<string, AppMonitorResourceStats>,
 ): Record<string, AppMonitorResourceStats> {
 	const result: Record<string, AppMonitorResourceStats> = {};
-	for (const kind of ["skill", "scene", "plugin"]) {
+	for (const kind of ["skill", "scene", "plugin", "mcp"]) {
 		const stats = findMostOperatedResource(statsByKey, kind);
 		if (stats) result[kind] = stats;
 	}
@@ -1016,7 +1017,7 @@ function findRecentResourcesByKind(
 	statsByKey: Record<string, AppMonitorResourceStats>,
 ): Record<string, AppMonitorResourceStats> {
 	const result: Record<string, AppMonitorResourceStats> = {};
-	for (const kind of ["skill", "scene", "plugin"]) {
+	for (const kind of ["skill", "scene", "plugin", "mcp"]) {
 		const stats = findRecentResource(statsByKey, kind);
 		if (stats) result[kind] = stats;
 	}

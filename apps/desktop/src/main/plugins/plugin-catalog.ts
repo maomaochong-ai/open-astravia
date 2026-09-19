@@ -16,6 +16,7 @@ import type {
 } from "../../preload/api-types/plugins.js";
 import { PLUGIN_CONTRIBUTION_CHANNELS } from "../../shared/plugin-ipc.js";
 import { recordAbilityInstall, removeAbilityLedgerEntry } from "../abilities/ability-ledger.js";
+import { logAbilityRuntimeLoaded } from "../abilities/ability-lifecycle-log.js";
 import { getDesktopCredentialVault } from "../credentials/desktop-credential-vault.js";
 import { getAppLogger } from "../logger.js";
 import { verifySha256 } from "../utils/integrity.js";
@@ -62,6 +63,14 @@ export const pluginAgentContributionService = new PluginAgentContributionService
 	logger: pluginLog,
 	hooks: desktopPluginHookRegistry,
 	handlers: new DesktopPluginAgentHandlerRegistry(),
+	onRuntimeLoaded: (plugin, activationId) =>
+		logAbilityRuntimeLoaded({
+			abilityType: "plugin",
+			abilityId: plugin.id,
+			version: plugin.activeVersion,
+			source: plugin.source,
+			activationId,
+		}),
 });
 export const pluginSystemCatalog = new SystemPluginCatalog({
 	baseDir: systemPluginsBaseDir,

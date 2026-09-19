@@ -223,7 +223,7 @@ export class SkillService {
 
 		const bySource: Record<string, number> = {};
 		for (const item of listed) bySource[item.source] = (bySource[item.source] ?? 0) + 1;
-		skillsLog.info("skills listed", {
+		skillsLog.debug("skills listed", {
 			scope: cwd ? "workspace" : "global",
 			includeAgentSkills,
 			total: listed.length,

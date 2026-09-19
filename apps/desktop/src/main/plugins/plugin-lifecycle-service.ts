@@ -172,9 +172,25 @@ export class PluginLifecycleService {
 		if (plugin.enabled) this.dependencies.ensureCliProviders(id);
 		else this.actionService.clear(id);
 		this.dependencies.refreshRuntime();
-		this.recordPluginEvent(plugin, "permissions-granted", {
-			permissionCount: countAdded(previous?.grantedPermissions ?? [], plugin.grantedPermissions),
-		});
+		if (previous?.enabled !== plugin.enabled) {
+			this.recordPluginEvent(plugin, plugin.enabled ? "enabled" : "disabled");
+		}
+		const grantedPermissionCount = countAdded(previous?.grantedPermissions ?? [], plugin.grantedPermissions);
+		if (grantedPermissionCount > 0) {
+			this.recordPluginEvent(plugin, "permissions-granted", { permissionCount: grantedPermissionCount });
+		}
+		const revokedPermissionCount = countRemoved(previous?.grantedPermissions ?? [], plugin.grantedPermissions);
+		if (revokedPermissionCount > 0) {
+			this.recordPluginEvent(plugin, "permissions-revoked", { permissionCount: revokedPermissionCount });
+		}
+		const grantedCommandCount = countAdded(previous?.grantedCommandNames ?? [], plugin.grantedCommandNames);
+		if (grantedCommandCount > 0) {
+			this.recordPluginEvent(plugin, "commands-granted", { commandCount: grantedCommandCount });
+		}
+		const revokedCommandCount = countRemoved(previous?.grantedCommandNames ?? [], plugin.grantedCommandNames);
+		if (revokedCommandCount > 0) {
+			this.recordPluginEvent(plugin, "commands-revoked", { commandCount: revokedCommandCount });
+		}
 		return plugin;
 	}
 

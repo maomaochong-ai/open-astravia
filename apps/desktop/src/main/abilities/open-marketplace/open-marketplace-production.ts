@@ -5,6 +5,7 @@ import type {
 	OpenMarketplaceMcpRuntimeProgress,
 } from "../../../preload/api-types/abilities.js";
 import type { McpServerConfigData } from "../../../preload/api-types/mcp.js";
+import { recordAppMonitorEvent } from "../../app-monitor/app-monitor-service.js";
 import { installPluginFromArchive } from "../../plugins/plugin-catalog.js";
 import {
 	getSkillBaseDir,
@@ -108,6 +109,17 @@ export async function installOpenMarketplaceAbilityInDesktop(
 			catalogId: `github:${origin.sourceId ?? origin.repository}:plugin:${ability.slug}`,
 			slug: ability.slug,
 		});
+		try {
+			recordAppMonitorEvent({
+				type: "resource.lifecycle",
+				resourceKind: "plugin",
+				resourceId: installed.id,
+				operation: installed.installedAt === installed.updatedAt ? "installed" : "updated",
+				source: "remote",
+			});
+		} catch {
+			// Monitoring and logging must not affect a completed installation.
+		}
 		return;
 	}
 	await installOpenMarketplaceAbility(snapshotRoot, ability, origin, dependencies);

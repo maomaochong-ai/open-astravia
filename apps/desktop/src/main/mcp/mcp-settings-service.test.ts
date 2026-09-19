@@ -21,6 +21,28 @@ function createConfig(): McpConfigData {
 }
 
 describe("McpSettingsService", () => {
+	it("records a newly added MCP server as an installed ability", async () => {
+		let config: McpConfigData = { mcpServers: {} };
+		const recordEvent = vi.fn();
+		const service = new McpSettingsService({
+			readConfig: async () => config,
+			writeConfig: async (next) => {
+				config = next;
+			},
+			recordEvent,
+		});
+
+		await service.upsert("demo", { type: "http", url: "https://mcp.example.com" });
+
+		expect(recordEvent).toHaveBeenCalledWith({
+			type: "resource.lifecycle",
+			resourceKind: "mcp",
+			resourceId: "demo",
+			operation: "installed",
+			source: "custom",
+		});
+	});
+
 	it("returns redacted server details without exposing secrets", async () => {
 		const service = new McpSettingsService({
 			readConfig: async () => createConfig(),
@@ -46,12 +68,14 @@ describe("McpSettingsService", () => {
 
 	it("updates one server while preserving internal OAuth fields", async () => {
 		let config = createConfig();
+		const recordEvent = vi.fn();
 		const writeConfig = vi.fn<(next: McpConfigData) => Promise<void>>(async (next) => {
 			config = next;
 		});
 		const service = new McpSettingsService({
 			readConfig: async () => config,
 			writeConfig,
+			recordEvent,
 		});
 
 		await expect(
@@ -83,15 +107,23 @@ describe("McpSettingsService", () => {
 				},
 			},
 		});
+		expect(recordEvent).toHaveBeenCalledWith({
+			type: "resource.lifecycle",
+			resourceKind: "mcp",
+			resourceId: "web",
+			operation: "updated",
+		});
 	});
 
 	it("serializes enabled-state changes and removal", async () => {
 		let config = createConfig();
+		const recordEvent = vi.fn();
 		const service = new McpSettingsService({
 			readConfig: async () => config,
 			writeConfig: async (next) => {
 				config = next;
 			},
+			recordEvent,
 		});
 
 		await service.setEnabled("local", false);
@@ -107,5 +139,19 @@ describe("McpSettingsService", () => {
 				},
 			},
 		});
+		expect(recordEvent.mock.calls.map(([event]) => event)).toEqual([
+			{
+				type: "resource.lifecycle",
+				resourceKind: "mcp",
+				resourceId: "local",
+				operation: "disabled",
+			},
+			{
+				type: "resource.lifecycle",
+				resourceKind: "mcp",
+				resourceId: "web",
+				operation: "uninstalled",
+			},
+		]);
 	});
 });

@@ -80,7 +80,7 @@ function createHarness(plugin = installedPlugin()) {
 		destroyOffscreenSessions: vi.fn(() => events.push("destroy-offscreen")),
 		hardRevokeAgentHandlers: vi.fn((_id: string, reason: string) => events.push(`hard-revoke:${reason}`)),
 		refreshRuntime: vi.fn(() => events.push("refresh-runtime")),
-		recordEvent: vi.fn(() => events.push("record-event")),
+		recordEvent: vi.fn((_input: unknown) => events.push("record-event")),
 	};
 	return { service: new PluginLifecycleService(actions, dependencies), dependencies, actions, events };
 }
@@ -153,6 +153,11 @@ describe("PluginLifecycleService", () => {
 		expect(harness.dependencies.applySetup).toHaveBeenCalledOnce();
 		expect(harness.dependencies.refreshRuntime).toHaveBeenCalledOnce();
 		expect(harness.dependencies.ensureCliProviders).toHaveBeenCalledWith("demo");
+		expect(harness.dependencies.recordEvent.mock.calls.map(([event]) => event)).toEqual([
+			expect.objectContaining({ operation: "enabled" }),
+			expect.objectContaining({ operation: "permissions-granted", permissionCount: 1 }),
+			expect.objectContaining({ operation: "commands-granted", commandCount: 1 }),
+		]);
 	});
 
 	it("hard-revokes admitted Hook leases only when Hook execution permission is revoked", () => {

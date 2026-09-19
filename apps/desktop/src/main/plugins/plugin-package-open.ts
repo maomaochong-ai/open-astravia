@@ -1,5 +1,6 @@
 import { basename } from "node:path";
 import { dialog, type MessageBoxOptions, type MessageBoxReturnValue } from "electron";
+import { recordAppMonitorEvent } from "../app-monitor/app-monitor-service.js";
 import { mainT } from "../i18n/index.js";
 import { getAppLogger } from "../logger.js";
 import { getMainWindow, showMainWindow } from "../window-manager.js";
@@ -51,6 +52,17 @@ export function createDesktopPluginPackageOpenService(): PluginPackageOpenServic
 				enable: false,
 				grantedPermissions: manifest.permissions ?? [],
 			});
+			try {
+				recordAppMonitorEvent({
+					type: "resource.lifecycle",
+					resourceKind: "plugin",
+					resourceId: installed.id,
+					operation: installed.installedAt === installed.updatedAt ? "installed" : "updated",
+					source: "archive",
+				});
+			} catch {
+				// Monitoring and logging must not affect a completed installation.
+			}
 			return applyPluginSetup(installed.id, {
 				enabled: true,
 				grantedPermissions: manifest.permissions ?? [],
@@ -58,10 +70,6 @@ export function createDesktopPluginPackageOpenService(): PluginPackageOpenServic
 			});
 		},
 		notifyInstalled: async (plugin) => {
-			log.info("package installed", {
-				pluginId: plugin.id,
-				version: plugin.activeVersion,
-			});
 			await showMessageBox({
 				type: "info",
 				title: mainT("pluginPackage.installedTitle"),

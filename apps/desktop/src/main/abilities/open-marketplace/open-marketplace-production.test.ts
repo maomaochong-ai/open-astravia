@@ -17,6 +17,7 @@ import { parseMarketplaceManifest } from "./marketplace-schema";
 const mocks = vi.hoisted(() => ({
 	installPluginFromArchive: vi.fn<(archive: Buffer, options?: PluginInstallOptions) => Promise<InstalledPlugin>>(),
 	recordAbilityInstall: vi.fn(),
+	recordAppMonitorEvent: vi.fn(),
 }));
 
 vi.mock("../../plugins/plugin-catalog", () => ({
@@ -24,6 +25,9 @@ vi.mock("../../plugins/plugin-catalog", () => ({
 }));
 vi.mock("../ability-ledger", () => ({
 	recordAbilityInstall: mocks.recordAbilityInstall,
+}));
+vi.mock("../../app-monitor/app-monitor-service", () => ({
+	recordAppMonitorEvent: mocks.recordAppMonitorEvent,
 }));
 vi.mock("../../skills/skill-service", () => ({
 	getSkillBaseDir: vi.fn(),
@@ -40,6 +44,7 @@ afterEach(async () => {
 	vi.unstubAllGlobals();
 	mocks.installPluginFromArchive.mockReset();
 	mocks.recordAbilityInstall.mockClear();
+	mocks.recordAppMonitorEvent.mockClear();
 	await Promise.all(temporaryRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
 
@@ -113,6 +118,13 @@ describe("installOpenMarketplaceAbilityInDesktop", () => {
 			}),
 		);
 		expect(mocks.recordAbilityInstall).toHaveBeenCalledWith("plugin", "demo-plugin", "1.2.0", expect.anything());
+		expect(mocks.recordAppMonitorEvent).toHaveBeenCalledWith({
+			type: "resource.lifecycle",
+			resourceKind: "plugin",
+			resourceId: "demo-plugin",
+			operation: "installed",
+			source: "remote",
+		});
 	});
 	it("does not route MCP configuration through the file installer", async () => {
 		const manifest = parseMarketplaceManifest({
