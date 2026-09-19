@@ -50,6 +50,7 @@ export async function applyPluginToVetta(options: ApplyPluginOptions): Promise<{
 	if (!st) throw new Error(`Package not found: ${packagePath}`);
 
 	await plugins.installFromPath(packagePath, {
+		initiator: "plugin-workbench",
 		grantedPermissions: project.permissions,
 		enable: true,
 	});

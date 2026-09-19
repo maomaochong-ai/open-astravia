@@ -569,10 +569,14 @@ export interface PluginOfficialApi {
 		list(): Promise<PluginOfficialPluginSummary[]>;
 		get(id: string): Promise<PluginOfficialPluginSummary>;
 		setEnabled(id: string, enabled: boolean): Promise<PluginOfficialPluginSummary>;
-		installFromUrl(url: string): Promise<PluginOfficialPluginSummary>;
+		installFromUrl(
+			url: string,
+			options?: { initiator?: "plugin-cli" },
+		): Promise<PluginOfficialPluginSummary>;
 		installFromPath(
 			path: string,
 			options?: {
+				initiator?: "plugin-cli" | "plugin-workbench";
 				grantedPermissions?: string[];
 				enable?: boolean;
 				source?: "archive" | "npm";

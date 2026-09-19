@@ -7,6 +7,7 @@ import type { AppMonitorResourceOperation } from "../../preload/api-types/app-mo
 import type { SkillPresentation, SkillProvenance } from "../../preload/api-types/skills.js";
 import { resolveProvidedSkillPresentationIcon } from "../../shared/ability-presentation.js";
 import { removeAbilityLedgerEntry } from "../abilities/ability-ledger.js";
+import type { AbilityLifecycleLogContext } from "../abilities/ability-lifecycle-log.js";
 import {
 	installedPluginAssetUrl,
 	resolveInstalledPluginPresentationIcon,
@@ -84,15 +85,19 @@ export function recordSkillResourceEvent(input: {
 	type: InstalledSkillType;
 	source?: "market" | "custom";
 	operation: AppMonitorResourceOperation;
+	logContext?: AbilityLifecycleLogContext;
 }): void {
 	try {
-		recordAppMonitorEvent({
-			type: "resource.lifecycle",
-			resourceKind: input.type,
-			operation: input.operation,
-			resourceId: input.name,
-			...(input.source ? { source: input.source } : {}),
-		});
+		recordAppMonitorEvent(
+			{
+				type: "resource.lifecycle",
+				resourceKind: input.type,
+				operation: input.operation,
+				resourceId: input.name,
+				...(input.source ? { source: input.source } : {}),
+			},
+			input.logContext,
+		);
 	} catch {
 		// Monitoring must not affect skill operations.
 	}

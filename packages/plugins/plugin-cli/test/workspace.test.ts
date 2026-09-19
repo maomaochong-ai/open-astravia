@@ -122,6 +122,7 @@ describe("installing the current project directory", () => {
 		expect(code).toBe(0);
 		expect(runAction).toHaveBeenCalledWith("plugins.manage", {
 			operation: "install-from-path",
+			initiator: "plugin-cli",
 			path: join(pluginRoot, "release", "demo-1.0.0.vettapkg"),
 			enable: true,
 		});

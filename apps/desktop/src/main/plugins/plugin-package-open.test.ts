@@ -69,8 +69,23 @@ describe("PluginPackageOpenService", () => {
 		expect(dependencies.notifyError).toHaveBeenCalledWith(
 			"C:/Downloads/broken.vettapkg",
 			expect.objectContaining({ message: "invalid package" }),
+			undefined,
 		);
 		expect(dependencies.install).toHaveBeenCalledWith("C:/Downloads/demo.vettapkg", manifest);
+	});
+
+	it("keeps the inspected identity when package installation fails", async () => {
+		const { dependencies, service } = harness();
+		dependencies.install.mockRejectedValueOnce(new Error("copy failed"));
+		service.markReady();
+		service.enqueue("C:/Downloads/demo.vettapkg");
+		await service.waitForIdle();
+
+		expect(dependencies.notifyError).toHaveBeenCalledWith(
+			"C:/Downloads/demo.vettapkg",
+			expect.objectContaining({ message: "copy failed" }),
+			manifest,
+		);
 	});
 });
 

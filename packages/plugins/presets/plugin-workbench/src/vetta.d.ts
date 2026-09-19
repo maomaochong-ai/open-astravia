@@ -33,7 +33,11 @@ interface VettaPluginsApi {
 	): Promise<{ id: string; name: string; version: string }>;
 	installFromPath(
 		path: string,
-		options?: { grantedPermissions?: string[]; enable?: boolean },
+		options?: {
+			initiator?: "plugin-workbench";
+			grantedPermissions?: string[];
+			enable?: boolean;
+		},
 	): Promise<{ id: string; name: string; version: string }>;
 	uninstall(id: string): Promise<void>;
 	reload(id: string): Promise<unknown>;

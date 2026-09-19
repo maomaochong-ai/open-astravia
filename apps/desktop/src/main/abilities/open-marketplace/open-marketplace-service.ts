@@ -225,6 +225,7 @@ function githubApiHeaders(accept: string, token: string): Record<string, string>
 
 function toOpenMarketplaceAbility(
 	sourceId: string,
+	sourceRef: string,
 	manifest: MarketplaceManifest,
 	ability: MarketplaceManifest["abilities"][number],
 	listed: boolean,
@@ -235,6 +236,7 @@ function toOpenMarketplaceAbility(
 		marketplace: manifest.name,
 		marketplaceVersion: manifest.marketplaceVersion,
 		repository: manifest.repository,
+		ref: sourceRef,
 	};
 	const meta = [...(ability.detail.meta ?? [])];
 	if (!meta.some((entry) => entry.key === "repository")) {
@@ -425,6 +427,7 @@ export class OpenMarketplaceService {
 				marketplace: active.manifest.name,
 				marketplaceVersion: active.manifest.marketplaceVersion,
 				repository: active.manifest.repository,
+				ref: this.sourceRef,
 			},
 			this.getAccessToken(),
 		);
@@ -552,7 +555,13 @@ export class OpenMarketplaceService {
 		return {
 			sourceId: this.sourceId,
 			abilities: active.manifest.abilities.map((ability) =>
-				toOpenMarketplaceAbility(this.sourceId, active.manifest, ability, active.listedSlugs.has(ability.slug)),
+				toOpenMarketplaceAbility(
+					this.sourceId,
+					this.sourceRef,
+					active.manifest,
+					ability,
+					active.listedSlugs.has(ability.slug),
+				),
 			),
 			marketplaceVersion: active.manifest.marketplaceVersion,
 			repository: active.manifest.repository,

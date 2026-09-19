@@ -51,6 +51,7 @@ describe("plugin add command", () => {
 		expect(code).toBe(0);
 		expect(runAction).toHaveBeenCalledWith("plugins.manage", {
 			operation: "install-from-path",
+			initiator: "plugin-cli",
 			path: "C:/tmp/vetta-plugin.vettapkg",
 			enable: true,
 			source: "npm",

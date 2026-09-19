@@ -1,6 +1,6 @@
 import type { RuntimeHost, SessionEvent } from "@vetta/runtime-core";
 import type { AppMonitorEvent, AppMonitorInputImageAttachment } from "../../preload/api-types/app-monitor.js";
-import { logAbilityLifecycleEvent } from "../abilities/ability-lifecycle-log.js";
+import { type AbilityLifecycleLogContext, logAbilityLifecycleEvent } from "../abilities/ability-lifecycle-log.js";
 import { getAppLogger } from "../logger.js";
 import { formatDayKey, getDayBounds, getPreviousDayKey, getPreviousMonthKey } from "./app-monitor-calendar.js";
 import { type AppMonitorData, createDefaultAppMonitorData } from "./app-monitor-data.js";
@@ -1095,11 +1095,11 @@ export function recordAppMonitorUserActivity(): void {
 	appMonitor.recordUserActivity();
 }
 
-export function recordAppMonitorEvent(event: AppMonitorEvent): void {
+export function recordAppMonitorEvent(event: AppMonitorEvent, logContext?: AbilityLifecycleLogContext): void {
 	appMonitor.recordEvent(event);
 	if (event.type === "resource.lifecycle") {
 		try {
-			logAbilityLifecycleEvent(event);
+			logAbilityLifecycleEvent(event, logContext);
 		} catch {
 			// Logging must not affect the lifecycle operation or monitoring data.
 		}

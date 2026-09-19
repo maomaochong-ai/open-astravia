@@ -47,5 +47,10 @@ describe("applyPluginToVetta", () => {
 		await expect(
 			applyPluginToVetta({ project, workbenchRoot: "C:/workbench", startHotReload: true }),
 		).rejects.toThrow("plugin dev server unavailable");
+		expect(mocks.installFromPath).toHaveBeenCalledWith(project.packagePath, {
+			initiator: "plugin-workbench",
+			grantedPermissions: [],
+			enable: true,
+		});
 	});
 });

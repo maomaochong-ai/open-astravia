@@ -387,6 +387,7 @@ function indexDriftHint(project: PluginProject): string | undefined {
 function npmInstallInput(resolved: ResolvedNpmPluginArchive): Record<string, unknown> {
 	return {
 		operation: "install-from-path",
+		initiator: "plugin-cli",
 		path: resolved.archivePath,
 		enable: true,
 		source: "npm",
@@ -499,12 +500,14 @@ export async function runPluginCommand(
 		} else if (isHttpUrl(command.source)) {
 			result = await dependencies.runAction("plugins.manage", {
 				operation: "install-from-url",
+				initiator: "plugin-cli",
 				url: command.source,
 			});
 		} else if (isDirectorySource(command.source)) {
 			const { archivePath, project } = resolveProjectArchive(command.source);
 			result = await dependencies.runAction("plugins.manage", {
 				operation: "install-from-path",
+				initiator: "plugin-cli",
 				path: archivePath,
 				enable: true,
 			});
@@ -512,6 +515,7 @@ export async function runPluginCommand(
 		} else if (isLocalPackage(command.source)) {
 			result = await dependencies.runAction("plugins.manage", {
 				operation: "install-from-path",
+				initiator: "plugin-cli",
 				path: resolve(command.source),
 				enable: true,
 			});

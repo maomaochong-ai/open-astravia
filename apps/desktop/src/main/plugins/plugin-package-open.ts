@@ -1,8 +1,8 @@
 import { basename } from "node:path";
 import { dialog, type MessageBoxOptions, type MessageBoxReturnValue } from "electron";
+import { logAbilityInstallFailed, logAbilityInstallStarted } from "../abilities/ability-lifecycle-log.js";
 import { recordAppMonitorEvent } from "../app-monitor/app-monitor-service.js";
 import { mainT } from "../i18n/index.js";
-import { getAppLogger } from "../logger.js";
 import { getMainWindow, showMainWindow } from "../window-manager.js";
 import { applyPluginSetup, installPluginFromPath, readPluginPackageFromPath } from "./plugin-catalog.js";
 import { readPluginManifestFromArchive } from "./plugin-package.js";
@@ -21,7 +21,6 @@ async function showMessageBox(options: MessageBoxOptions): Promise<MessageBoxRet
 }
 
 export function createDesktopPluginPackageOpenService(): PluginPackageOpenService {
-	const log = getAppLogger("plugin-package");
 	return new PluginPackageOpenService({
 		inspect: async (filePath) => readPluginManifestFromArchive(await readPluginPackageFromPath(filePath)),
 		confirm: async (filePath, manifest) => {
@@ -47,19 +46,34 @@ export function createDesktopPluginPackageOpenService(): PluginPackageOpenServic
 			return result.response === 0;
 		},
 		install: async (filePath, manifest) => {
+			const artifactName = basename(filePath);
+			const logContext = {
+				abilityType: "plugin" as const,
+				abilityId: manifest.id,
+				version: manifest.version,
+				installMode: "manual-package" as const,
+				artifactKind: artifactName.toLowerCase().endsWith(".vettapkg")
+					? ("vettapkg" as const)
+					: ("legacy-zip" as const),
+				artifactName,
+			};
+			logAbilityInstallStarted(logContext);
 			const installed = await installPluginFromPath(filePath, {
 				source: "archive",
 				enable: false,
 				grantedPermissions: manifest.permissions ?? [],
 			});
 			try {
-				recordAppMonitorEvent({
-					type: "resource.lifecycle",
-					resourceKind: "plugin",
-					resourceId: installed.id,
-					operation: installed.installedAt === installed.updatedAt ? "installed" : "updated",
-					source: "archive",
-				});
+				recordAppMonitorEvent(
+					{
+						type: "resource.lifecycle",
+						resourceKind: "plugin",
+						resourceId: installed.id,
+						operation: installed.installedAt === installed.updatedAt ? "installed" : "updated",
+						source: "archive",
+					},
+					logContext,
+				);
 			} catch {
 				// Monitoring and logging must not affect a completed installation.
 			}
@@ -77,8 +91,18 @@ export function createDesktopPluginPackageOpenService(): PluginPackageOpenServic
 				buttons: [mainT("pluginPackage.done")],
 			});
 		},
-		notifyError: async (filePath, error) => {
-			log.error("package install failed", { filePath, error });
+		notifyError: async (filePath, error, manifest) => {
+			const artifactName = basename(filePath);
+			logAbilityInstallFailed(
+				{
+					abilityType: "plugin",
+					...(manifest ? { abilityId: manifest.id, version: manifest.version } : {}),
+					installMode: "manual-package",
+					artifactKind: "vettapkg",
+					artifactName,
+				},
+				error,
+			);
 			await showMessageBox({
 				type: "error",
 				title: mainT("pluginPackage.failedTitle"),

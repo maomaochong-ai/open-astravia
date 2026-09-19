@@ -81,6 +81,8 @@ function createHarness(plugin = installedPlugin()) {
 		hardRevokeAgentHandlers: vi.fn((_id: string, reason: string) => events.push(`hard-revoke:${reason}`)),
 		refreshRuntime: vi.fn(() => events.push("refresh-runtime")),
 		recordEvent: vi.fn((_input: unknown) => events.push("record-event")),
+		logInstallStarted: vi.fn(),
+		logInstallFailed: vi.fn(),
 	};
 	return { service: new PluginLifecycleService(actions, dependencies), dependencies, actions, events };
 }
@@ -91,6 +93,46 @@ describe("PluginLifecycleService", () => {
 
 		await harness.service.installArchive(new ArrayBuffer(0));
 		expect(harness.events).toEqual(["record-event", "ensure-cli-providers", "refresh-runtime"]);
+	});
+
+	it("records plugin-cli package provenance on a completed install", async () => {
+		const harness = createHarness();
+
+		await harness.service.installPath("C:/project/release/demo-1.0.0.vettapkg", {
+			initiator: "plugin-cli",
+		});
+
+		expect(harness.dependencies.logInstallStarted).toHaveBeenCalledWith({
+			abilityType: "plugin",
+			installMode: "plugin-cli",
+			artifactKind: "vettapkg",
+			artifactName: "demo-1.0.0.vettapkg",
+		});
+		expect(harness.dependencies.recordEvent).toHaveBeenCalledWith(
+			expect.objectContaining({ operation: "installed", resourceId: "demo" }),
+			expect.objectContaining({
+				version: "1.0.0",
+				installMode: "plugin-cli",
+				artifactKind: "vettapkg",
+			}),
+		);
+	});
+
+	it("records the attempted package source when installation fails", async () => {
+		const harness = createHarness();
+		const failure = new Error("broken package");
+		harness.dependencies.installFromPath = vi.fn().mockRejectedValue(failure);
+
+		await expect(harness.service.installPath("C:/Downloads/broken.zip")).rejects.toThrow("broken package");
+
+		expect(harness.dependencies.logInstallFailed).toHaveBeenCalledWith(
+			expect.objectContaining({
+				installMode: "manual-package",
+				artifactKind: "legacy-zip",
+				artifactName: "broken.zip",
+			}),
+			failure,
+		);
 	});
 
 	it("owns the complete disable lifecycle", () => {

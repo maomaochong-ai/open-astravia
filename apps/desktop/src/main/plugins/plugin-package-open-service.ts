@@ -15,7 +15,7 @@ export interface PluginPackageOpenDependencies {
 	confirm(filePath: string, manifest: PluginManifest): Promise<boolean>;
 	install(filePath: string, manifest: PluginManifest): Promise<InstalledPlugin>;
 	notifyInstalled(plugin: InstalledPlugin): Promise<void>;
-	notifyError(filePath: string, error: unknown): Promise<void>;
+	notifyError(filePath: string, error: unknown, manifest?: PluginManifest): Promise<void>;
 	revealApp(): void;
 }
 
@@ -58,13 +58,14 @@ export class PluginPackageOpenService {
 
 	private async open(filePath: string): Promise<void> {
 		this.dependencies.revealApp();
+		let manifest: PluginManifest | undefined;
 		try {
-			const manifest = await this.dependencies.inspect(filePath);
+			manifest = await this.dependencies.inspect(filePath);
 			if (!(await this.dependencies.confirm(filePath, manifest))) return;
 			const installed = await this.dependencies.install(filePath, manifest);
 			await this.dependencies.notifyInstalled(installed);
 		} catch (error) {
-			await this.dependencies.notifyError(filePath, error);
+			await this.dependencies.notifyError(filePath, error, manifest);
 		}
 	}
 }

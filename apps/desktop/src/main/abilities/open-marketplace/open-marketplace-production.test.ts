@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => ({
 	installPluginFromArchive: vi.fn<(archive: Buffer, options?: PluginInstallOptions) => Promise<InstalledPlugin>>(),
 	recordAbilityInstall: vi.fn(),
 	recordAppMonitorEvent: vi.fn(),
+	logAbilityInstallStarted: vi.fn(),
+	logAbilityInstallFailed: vi.fn(),
 }));
 
 vi.mock("../../plugins/plugin-catalog", () => ({
@@ -28,6 +30,10 @@ vi.mock("../ability-ledger", () => ({
 }));
 vi.mock("../../app-monitor/app-monitor-service", () => ({
 	recordAppMonitorEvent: mocks.recordAppMonitorEvent,
+}));
+vi.mock("../ability-lifecycle-log", () => ({
+	logAbilityInstallStarted: mocks.logAbilityInstallStarted,
+	logAbilityInstallFailed: mocks.logAbilityInstallFailed,
 }));
 vi.mock("../../skills/skill-service", () => ({
 	getSkillBaseDir: vi.fn(),
@@ -45,6 +51,8 @@ afterEach(async () => {
 	mocks.installPluginFromArchive.mockReset();
 	mocks.recordAbilityInstall.mockClear();
 	mocks.recordAppMonitorEvent.mockClear();
+	mocks.logAbilityInstallStarted.mockClear();
+	mocks.logAbilityInstallFailed.mockClear();
 	await Promise.all(temporaryRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
 
@@ -108,6 +116,7 @@ describe("installOpenMarketplaceAbilityInDesktop", () => {
 			marketplace: "test-market",
 			marketplaceVersion: "3",
 			repository: "https://github.com/example/test-market",
+			ref: "refa/market-v3",
 		});
 		expect(mocks.installPluginFromArchive).toHaveBeenCalledWith(
 			bytes,
@@ -118,13 +127,31 @@ describe("installOpenMarketplaceAbilityInDesktop", () => {
 			}),
 		);
 		expect(mocks.recordAbilityInstall).toHaveBeenCalledWith("plugin", "demo-plugin", "1.2.0", expect.anything());
-		expect(mocks.recordAppMonitorEvent).toHaveBeenCalledWith({
-			type: "resource.lifecycle",
-			resourceKind: "plugin",
-			resourceId: "demo-plugin",
-			operation: "installed",
-			source: "remote",
-		});
+		expect(mocks.recordAppMonitorEvent).toHaveBeenCalledWith(
+			{
+				type: "resource.lifecycle",
+				resourceKind: "plugin",
+				resourceId: "demo-plugin",
+				operation: "installed",
+				source: "remote",
+			},
+			expect.objectContaining({
+				version: "1.2.0",
+				installMode: "marketplace",
+				artifactKind: "legacy-zip",
+				artifactName: "demo-1.2.0.zip",
+				artifactSha256: sha256,
+				marketplaceSourceId: "test-source",
+				marketplaceRef: "refa/market-v3",
+			}),
+		);
+		expect(mocks.logAbilityInstallStarted).toHaveBeenCalledWith(
+			expect.objectContaining({
+				abilityId: "demo-plugin",
+				artifactKind: "legacy-zip",
+				marketplaceRef: "refa/market-v3",
+			}),
+		);
 	});
 	it("does not route MCP configuration through the file installer", async () => {
 		const manifest = parseMarketplaceManifest({

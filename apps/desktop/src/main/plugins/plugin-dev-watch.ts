@@ -1,5 +1,6 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import type { InstalledPlugin } from "../../preload/api-types/plugins.js";
+import { logAbilityDevelopmentLink } from "../abilities/ability-lifecycle-log.js";
 import { getAppLogger } from "../logger.js";
 import { pluginDevLinkService, type SetPluginDevLinkOptions } from "./plugin-catalog.js";
 import { resolvePluginDevCliPath } from "./plugin-dev-cli.js";
@@ -149,6 +150,12 @@ function handleDevServerEvent(
 			entry.startupTimer = null;
 			refreshAgentPlugins({ reason: "plugin-dev:server-ready", pluginId: id, force: true });
 			log.info(`dev-watch: server ready for ${id} at ${event.origin}`);
+			logAbilityDevelopmentLink("linked", {
+				abilityType: "plugin",
+				abilityId: id,
+				version: plugin.activeVersion,
+				projectDir: entry.projectDir,
+			});
 			settleInitialStartup(entry, plugin);
 			return;
 		}
@@ -267,6 +274,11 @@ export function stopPluginDevWatch(id: string): void {
 		stopChild(entry.child);
 		entries.delete(id);
 		log.info(`dev-watch: stopped for ${id}`);
+		logAbilityDevelopmentLink("unlinked", {
+			abilityType: "plugin",
+			abilityId: id,
+			projectDir: entry.projectDir,
+		});
 	}
 	pluginDevLinkService.clear(id);
 }

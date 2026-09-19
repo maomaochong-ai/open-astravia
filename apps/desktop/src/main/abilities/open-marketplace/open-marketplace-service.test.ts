@@ -612,7 +612,7 @@ describe("OpenMarketplaceService", () => {
 		expect(snapshot.abilities[0]).toMatchObject({
 			slug: "demo-skill",
 			configVersion: 2,
-			origin: { kind: "github-marketplace", marketplace: "vetta-open-abilities" },
+			origin: { kind: "github-marketplace", marketplace: "vetta-open-abilities", ref: "main" },
 		});
 		const stored = await readFile(
 			join(rootDir, "snapshots", "2026.07.1", "abilities", "skills", "demo-skill", "SKILL.md"),
@@ -1131,6 +1131,7 @@ describe("OpenMarketplaceService", () => {
 		expect(installAbility.mock.calls[0]?.[2]).toMatchObject({
 			kind: "github-marketplace",
 			marketplaceVersion: "2026.07.1",
+			ref: "main",
 		});
 	});
 });

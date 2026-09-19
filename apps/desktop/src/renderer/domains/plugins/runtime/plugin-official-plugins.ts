@@ -38,9 +38,9 @@ export function createOfficialPluginsApi(
 			assertOfficial();
 			return summarizePlugin(await pluginSystem.setEnabled(capabilitySessionId, id, enabled));
 		},
-		installFromUrl: async (url) => {
+		installFromUrl: async (url, options) => {
 			assertOfficial();
-			return summarizePlugin(await pluginSystem.installFromUrl(capabilitySessionId, url));
+			return summarizePlugin(await pluginSystem.installFromUrl(capabilitySessionId, url, options));
 		},
 		installFromPath: async (path, options) => {
 			assertOfficial();
