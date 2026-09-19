@@ -2,7 +2,7 @@ import claudeIcon from "@lobehub/icons-static-svg/icons/claude-color.svg?url";
 import deepseekIcon from "@lobehub/icons-static-svg/icons/deepseek-color.svg?url";
 import geminiIcon from "@lobehub/icons-static-svg/icons/gemini-color.svg?url";
 import grokIcon from "@lobehub/icons-static-svg/icons/grok.svg?url";
-import kimiIcon from "@lobehub/icons-static-svg/icons/kimi-color.svg?url";
+import kimiIcon from "@lobehub/icons-static-svg/icons/kimi.svg?url";
 import minimaxIcon from "@lobehub/icons-static-svg/icons/minimax-color.svg?url";
 import nvidiaIcon from "@lobehub/icons-static-svg/icons/nvidia-color.svg?url";
 import ollamaIcon from "@lobehub/icons-static-svg/icons/ollama.svg?url";
@@ -27,7 +27,7 @@ const PROVIDER_ICON_ASSETS = {
 	deepseek: { src: deepseekIcon, appearance: "color" },
 	grok: { src: grokIcon, appearance: "monochrome" },
 	qwen: { src: qwenIcon, appearance: "color" },
-	kimi: { src: kimiIcon, appearance: "color" },
+	kimi: { src: kimiIcon, appearance: "monochrome" },
 	minimax: { src: minimaxIcon, appearance: "color" },
 	nvidia: { src: nvidiaIcon, appearance: "color" },
 	ollama: { src: ollamaIcon, appearance: "monochrome" },
