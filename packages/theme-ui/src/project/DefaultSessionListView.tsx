@@ -16,6 +16,8 @@ export interface DefaultSessionListViewItem {
 export interface DefaultSessionListViewLabels {
 	collapse: string;
 	expand: string;
+	/** Accessible name for each row's hover "more" trigger. */
+	more: string;
 	/** Primary empty-state line. */
 	emptyTitle: string;
 	/** Guidance under the title. */

@@ -15,6 +15,7 @@ import type { SidebarConversationInfo } from "../../../../services/sidebar-conve
 const DefaultSessionRow = memo(function DefaultSessionRow({
 	item,
 	contextMenuEnabled,
+	moreLabel,
 	onOpenContextMenu,
 	onRename,
 	onRenameDone,
@@ -22,6 +23,7 @@ const DefaultSessionRow = memo(function DefaultSessionRow({
 }: {
 	item: DefaultSessionListItemView;
 	contextMenuEnabled: boolean;
+	moreLabel: string;
 	onOpenContextMenu: (event: React.MouseEvent, session: SidebarConversationInfo) => void;
 	onRename: (session: SidebarConversationInfo, name: string) => void;
 	onRenameDone: () => void;
@@ -41,6 +43,7 @@ const DefaultSessionRow = memo(function DefaultSessionRow({
 			contextMenuEnabled={contextMenuEnabled}
 			iconClassName={item.iconClassName}
 			label={item.label}
+			moreLabel={moreLabel}
 			pinned={item.pinned}
 			renaming={item.renaming}
 			running={item.running}
@@ -93,6 +96,7 @@ export const DefaultSessionList = memo(function DefaultSessionList(
 					key={item.key}
 					item={item}
 					contextMenuEnabled={model.contextMenuEnabled}
+					moreLabel={model.labels.more}
 					onOpenContextMenu={model.actions.openContextMenu}
 					onRename={model.actions.rename}
 					onRenameDone={model.actions.renameDone}

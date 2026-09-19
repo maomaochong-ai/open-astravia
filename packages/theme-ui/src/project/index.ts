@@ -74,6 +74,8 @@ export type {
 export { SessionContextMenuView } from "./SessionContextMenuView";
 export type { SessionRenameInputViewProps } from "./SessionRenameInputView";
 export { SessionRenameInputView } from "./SessionRenameInputView";
+export type { SessionRowMoreButtonProps } from "./SessionRowMoreButton";
+export { SessionRowMoreButton } from "./SessionRowMoreButton";
 export type { SessionRowViewProps } from "./SessionRowView";
 export { SessionRowView } from "./SessionRowView";
 export type { SidebarProjectsSectionViewProps } from "./SidebarProjectsSectionView";
