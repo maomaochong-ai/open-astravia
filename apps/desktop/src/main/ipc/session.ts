@@ -23,12 +23,15 @@ import {
 	CODING_AGENT_BACKGROUND_TASKS_OBSERVATION,
 	CODING_AGENT_BACKGROUND_TASKS_READ,
 	CODING_AGENT_NEXT_PROMPT_SUGGESTIONS,
+	CODING_AGENT_PERMISSION_MODE_SET,
+	CODING_AGENT_PLAN_MODE_STATE_READ,
 	CODING_AGENT_SESSION_PROFILE_STATE_READ,
 	CODING_AGENT_SESSION_TITLE_GENERATE,
 	CODING_AGENT_SUBAGENT_INTERRUPT,
 	CODING_AGENT_SUBAGENTS_OBSERVATION,
 	CODING_AGENT_SUBAGENTS_READ,
 	CODING_AGENT_TODO_CLEAR,
+	isCodingAgentPermissionMode,
 } from "@vetta/coding-agent/session-extensions";
 import type { SessionEvent, SessionExecutionMode, SettingsPatch } from "@vetta/runtime-core";
 import { sessionExtensionObservation } from "@vetta/runtime-core/session-extensions";
@@ -52,6 +55,7 @@ import {
 	reconcileIdleInteractiveSessions,
 } from "../conversations/idle-session-residency.js";
 import { getDesktopMcpElicitationBroker } from "../conversations/mcp-elicitation-broker.js";
+import { getDesktopPlanReviewBroker } from "../conversations/plan-review-broker.js";
 import { purgeProjectSessions } from "../conversations/project-session-purge.js";
 import { parsePromptRequest } from "../conversations/prompt-request-schema.js";
 import type { DesktopCodingAgentSessionConfig } from "../conversations/resolve-session-config.js";
@@ -199,6 +203,12 @@ const CHANNELS = {
 	QUESTION_LIST_PENDING: "vetta:session:question-list-pending",
 	QUESTION_RESOLVED: "vetta:session:question-resolved",
 	QUESTION_RESPONSE: "vetta:session:question-response",
+	PLAN_MODE_GET_STATE: "vetta:session:plan-mode-get-state",
+	PLAN_MODE_SET_PERMISSION_MODE: "vetta:session:plan-mode-set-permission-mode",
+	PLAN_REVIEW_REQUEST: "vetta:session:plan-review-request",
+	PLAN_REVIEW_LIST_PENDING: "vetta:session:plan-review-list-pending",
+	PLAN_REVIEW_RESOLVED: "vetta:session:plan-review-resolved",
+	PLAN_REVIEW_RESPONSE: "vetta:session:plan-review-response",
 	MCP_ELICITATION_REQUEST: "vetta:session:mcp-elicitation-request",
 	MCP_ELICITATION_LIST_PENDING: "vetta:session:mcp-elicitation-list-pending",
 	MCP_ELICITATION_RESOLVED: "vetta:session:mcp-elicitation-resolved",
@@ -550,6 +560,28 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		} catch {
 			// Renderer may be between render-process-gone and reload; snapshot sync will recover.
 		}
+	});
+
+	// exit_plan_mode 后端：审批的挂起与应答由 broker 拥有，这里只把它接到本窗口。
+	// 计划等待审批与「有问题待回答」对用户是同一件事——会话在等你，复用同一个待办标记与通知。
+	const planReviewBroker = getDesktopPlanReviewBroker();
+	const unregisterPlanReviewPresenter = planReviewBroker.setPresenter({
+		present: (request) => {
+			if (webContents.isDestroyed()) {
+				planReviewBroker.respond(request.requestId, undefined);
+				return;
+			}
+			webContents.send(CHANNELS.PLAN_REVIEW_REQUEST, request);
+			const sessionPath = runtime.getSessionPath(request.sessionId);
+			const cwd = sessionCwdMap.get(request.sessionId);
+			if (sessionPath) setPendingQuestion(sessionPath, true);
+			if (sessionPath && cwd) void notify({ type: "agent-question-pending", sessionPath, cwd });
+		},
+		resolved: (event) => {
+			const sessionPath = runtime.getSessionPath(event.sessionId);
+			if (sessionPath) setPendingQuestion(sessionPath, false);
+			if (!webContents.isDestroyed()) webContents.send(CHANNELS.PLAN_REVIEW_RESOLVED, event);
+		},
 	});
 
 	const unregisterMcpElicitationHandler = mcpElicitationBroker.setInteractiveHandler((request, signal) => {
@@ -1387,6 +1419,21 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		resolve(normalizeQuestionResult(result));
 	});
 
+	ipcMain.handle(CHANNELS.PLAN_REVIEW_LIST_PENDING, () => planReviewBroker.listPending());
+	ipcMain.handle(CHANNELS.PLAN_REVIEW_RESPONSE, (_event, requestId: unknown, result: unknown) => {
+		assertNonEmptyString(requestId, "requestId");
+		planReviewBroker.respond(requestId, result);
+	});
+	ipcMain.handle(CHANNELS.PLAN_MODE_GET_STATE, (_event, sessionId: unknown) => {
+		assertNonEmptyString(sessionId, "sessionId");
+		return runtime.invokeSessionExtensionSync(sessionId, CODING_AGENT_PLAN_MODE_STATE_READ, undefined);
+	});
+	ipcMain.handle(CHANNELS.PLAN_MODE_SET_PERMISSION_MODE, (_event, sessionId: unknown, permissionMode: unknown) => {
+		assertNonEmptyString(sessionId, "sessionId");
+		if (!isCodingAgentPermissionMode(permissionMode)) throw new Error("Invalid permission mode");
+		return runtime.invokeSessionExtensionSync(sessionId, CODING_AGENT_PERMISSION_MODE_SET, { permissionMode });
+	});
+
 	ipcMain.handle(CHANNELS.MCP_ELICITATION_RESPONSE, (_event, requestId: unknown, result: unknown) => {
 		assertNonEmptyString(requestId, "requestId");
 		mcpElicitationMap.get(requestId)?.(normalizeMcpElicitationResponse(result));
@@ -1640,6 +1687,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			resolve(CANCELLED_QUESTION);
 		}
 		questionMap.clear();
+		planReviewBroker.cancelAll();
 		for (const resolve of mcpElicitationMap.values()) resolve({ action: "cancel" });
 		mcpElicitationMap.clear();
 		for (const resolve of sandboxGrantMap.values()) {
@@ -1747,6 +1795,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			resolve(CANCELLED_QUESTION);
 		}
 		questionMap.clear();
+		planReviewBroker.cancelAll();
 		for (const resolve of mcpElicitationMap.values()) resolve({ action: "cancel" });
 		mcpElicitationMap.clear();
 		for (const resolve of sandboxGrantMap.values()) {
@@ -1766,6 +1815,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		}
 		pluginContinuationMap.clear();
 		unregisterInteractiveQuestionHandler();
+		unregisterPlanReviewPresenter();
 		unregisterQuestionResolved();
 		unregisterMcpElicitationHandler();
 		unregisterMcpElicitationResolved();

@@ -1,11 +1,14 @@
 import type { Message } from "@vetta/ai";
 import type {
+	CodingAgentPlanReviewRequest,
+	CodingAgentPlanReviewResult,
 	CodingAgentQuestionFunctionRequest,
 	CodingAgentQuestionResult,
 	CodingAgentSandboxAuthorizationDecision,
 	CodingAgentSandboxAuthorizationFunctionRequest,
 } from "@vetta/coding-agent/function-extensions";
 import type { ConversationScenario } from "@vetta/coding-agent/profile";
+import type { CodingAgentPermissionMode, CodingAgentPlanModeState } from "@vetta/coding-agent/session-extensions";
 import type {
 	HistoryEntry,
 	ProjectInfo,
@@ -116,6 +119,11 @@ export interface DesktopUserQuestionResolvedEvent {
 	sessionId: string;
 }
 
+export interface DesktopPlanReviewResolvedEvent {
+	requestId: string;
+	sessionId: string;
+}
+
 export interface DesktopSessionApi {
 	create(
 		config: DesktopCodingAgentSessionConfig | undefined,
@@ -165,6 +173,17 @@ export interface DesktopSessionApi {
 	onQuestionResolved(handler: (event: DesktopUserQuestionResolvedEvent) => void): () => void;
 	/** 回传用户对某次提问的答案 / 取消。 */
 	respondToQuestion(requestId: string, result: CodingAgentQuestionResult): Promise<void>;
+	/** Plan 模式：读取会话当前的权限模式与最近一份计划。 */
+	getPlanModeState(sessionId: string): Promise<CodingAgentPlanModeState>;
+	/** Plan 模式：用户手势切换权限模式；收紧从下一轮生效，放宽立即生效。 */
+	setPermissionMode(sessionId: string, permissionMode: CodingAgentPermissionMode): Promise<CodingAgentPlanModeState>;
+	/** exit_plan_mode：监听主进程发来的计划审批请求。 */
+	onPlanReviewRequest(handler: (request: CodingAgentPlanReviewRequest) => void): () => void;
+	/** 当前仍等待审批的计划快照，供 Renderer 初始化或重载后恢复真实状态。 */
+	listPendingPlanReviews(): Promise<CodingAgentPlanReviewRequest[]>;
+	onPlanReviewResolved(handler: (event: DesktopPlanReviewResolvedEvent) => void): () => void;
+	/** 回传用户对计划的审批结论（批准 / 退回修改 / 未决定）。 */
+	respondToPlanReview(requestId: string, result: CodingAgentPlanReviewResult): Promise<void>;
 	onMcpElicitationRequest(handler: (request: DesktopMcpElicitationRequest) => void): () => void;
 	listPendingMcpElicitations(): Promise<DesktopMcpElicitationRequest[]>;
 	onMcpElicitationResolved(handler: (event: DesktopMcpElicitationResolvedEvent) => void): () => void;
