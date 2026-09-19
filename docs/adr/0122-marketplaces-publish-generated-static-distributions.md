@@ -25,6 +25,11 @@ Desktop 沿用 GitHub 来源协议读取 gh-pages 的精简归档，插件包按
 旧 schema v1/v2 入口和用户来源配置不自动迁移，`main` 在受支持旧版仍使用期间保持有效；
 确认新分发有效后，新版 Desktop 显式切换到 `gh-pages`。
 
+首个依赖新协议的 Desktop 版本可以在市场发布配置中钉到 OpenVetta 的不可变
+commit，先发布并联调真实 gh-pages 与 Release 制品。该候选只在同版本稳定 Release
+尚不存在时生效，且门禁会从 commit 中核对 Desktop 包版本、Plugin API 和 schema；
+稳定 Release 发布后自动改用 tag 证明，不保留宽泛的跳过开关。
+
 构建任务只读，写入任务不执行插件构建脚本。已发布制品禁止覆盖；任务失败重跑
 必须校验已有字节。仅在制品检查通过后更新分发分支，源码或分发基线前进则拒绝旧任务。
 

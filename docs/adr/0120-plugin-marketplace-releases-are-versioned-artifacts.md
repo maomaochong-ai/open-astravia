@@ -26,8 +26,11 @@ GitHub 市场 v1/v2 从仓库归档中的 `source.path` 读取已构建插件，
    重定向到资源域名后不转发。其他 HTTPS 制品不携带来源令牌。
 4. 正式市场晋级前运行 `check-plugin-marketplace-publication.mjs`：逐个检查插件
    声明的最低 App 版本确有已发布的稳定 GitHub Release、该 tag 的宿主 Plugin API
-   满足要求、制品可下载且摘要一致。候选 ZIP 可以先构建，正式目录只引用通过
-   门禁的固定制品，不在晋级时重建。
+   满足要求、制品可下载且摘要一致。首次联调尚未发布的 App 版本时，市场可以显式
+   把该版本钉到 40 位不可变 App commit；门禁只在稳定 Release 返回 404 时读取该
+   commit，并核对 Desktop 版本、Plugin API 与 schema v3。稳定 Release 一旦存在就
+   优先校验 Release，不能用候选 commit 绕过不完整发布。候选 ZIP 可以先构建，正式
+   目录只引用通过门禁的固定制品，不在晋级时重建。
 5. 旧客户端不认识 schema v3。发行方必须在旧 `main` 来源仍受支持期间维护它，
    新版 Desktop 改用单独的 v3 ref 或仓库；确认旧客户端退役后才移除旧来源中的
    构建文件。市场来源身份、缓存和安装台账仍按现有规则区分。

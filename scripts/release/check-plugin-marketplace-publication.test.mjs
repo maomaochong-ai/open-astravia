@@ -23,18 +23,34 @@ function manifest() {
 	};
 }
 
-function fixture({ published = true, apiVersion = "2.5.0", schemaVersion = 3, archive = bytes } = {}) {
+const candidateCommit = "a".repeat(40);
+
+function fixture({
+	published = true,
+	releaseMissing = false,
+	apiVersion = "2.5.0",
+	schemaVersion = 3,
+	appVersion = "0.5.58",
+	archive = bytes,
+} = {}) {
 	const requests = [];
 	const fetcher = async (input, init) => {
 		const url = String(input);
 		requests.push({ url, authorization: new Headers(init?.headers).get("authorization") });
 		if (url.endsWith("/releases/tags/v0.5.58")) {
+			if (releaseMissing) return new Response(null, { status: 404 });
 			return Response.json({
 				tag_name: "v0.5.58",
 				draft: false,
 				prerelease: false,
 				published_at: published ? "2026-09-18T00:00:00Z" : null,
 				assets: [{ id: 1 }],
+			});
+		}
+		if (url.includes("/contents/apps/desktop/package.json")) {
+			return Response.json({
+				encoding: "base64",
+				content: Buffer.from(JSON.stringify({ version: appVersion })).toString("base64"),
 			});
 		}
 		if (url.includes("/contents/apps/desktop/src/main/plugins/plugin-api-version.ts")) {
@@ -69,6 +85,39 @@ test("accepts an immutable plugin artifact only after its required App release c
 
 test("blocks a plugin before its minimum App version is publicly released", async () => {
 	await assert.rejects(verifyMarketplacePublication(manifest(), { fetcher: fixture({ published: false }).fetcher }), /not a completed stable/);
+});
+
+test("accepts an explicitly pinned App candidate when the stable release does not exist yet", async () => {
+	const { fetcher, requests } = fixture({ releaseMissing: true });
+	assert.deepEqual(await verifyMarketplacePublication(manifest(), {
+		fetcher,
+		candidateAppCommits: { "0.5.58": candidateCommit },
+	}), { releases: 1, appVersions: ["0.5.58"] });
+	assert.ok(requests.some(({ url }) => url.endsWith(`/contents/apps/desktop/package.json?ref=${candidateCommit}`)));
+});
+
+test("still blocks a missing stable App release when no candidate is configured", async () => {
+	await assert.rejects(verifyMarketplacePublication(manifest(), {
+		fetcher: fixture({ releaseMissing: true }).fetcher,
+	}), /GitHub release check failed \(404\)/);
+});
+
+test("blocks candidate refs that are mutable or declare a different App version", async () => {
+	await assert.rejects(verifyMarketplacePublication(manifest(), {
+		fetcher: fixture({ releaseMissing: true }).fetcher,
+		candidateAppCommits: { "0.5.58": "dev" },
+	}), /full commit/);
+	await assert.rejects(verifyMarketplacePublication(manifest(), {
+		fetcher: fixture({ releaseMissing: true, appVersion: "0.5.59" }).fetcher,
+		candidateAppCommits: { "0.5.58": candidateCommit },
+	}), /expected 0\.5\.58/);
+});
+
+test("does not use a candidate to bypass an existing but incomplete stable release", async () => {
+	await assert.rejects(verifyMarketplacePublication(manifest(), {
+		fetcher: fixture({ published: false }).fetcher,
+		candidateAppCommits: { "0.5.58": candidateCommit },
+	}), /not a completed stable/);
 });
 
 test("blocks a plugin whose declared minimum App lacks the Plugin API", async () => {
