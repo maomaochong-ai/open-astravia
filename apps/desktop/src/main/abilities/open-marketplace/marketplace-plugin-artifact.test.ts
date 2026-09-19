@@ -39,10 +39,18 @@ function fixture() {
 describe("marketplace plugin artifact", () => {
 	it("downloads an authenticated GitHub asset, verifies its bytes and drops authorization on redirect", async () => {
 		const { bytes, release } = fixture();
-		const requests: Array<{ url: string; authorization: string | undefined }> = [];
+		const requests: Array<{
+			url: string;
+			authorization: string | undefined;
+			redirect: RequestRedirect | undefined;
+		}> = [];
 		const fetcher: typeof fetch = async (input, init) => {
 			const url = String(input);
-			requests.push({ url, authorization: new Headers(init?.headers).get("authorization") ?? undefined });
+			requests.push({
+				url,
+				authorization: new Headers(init?.headers).get("authorization") ?? undefined,
+				redirect: init?.redirect,
+			});
 			return requests.length === 1
 				? new Response(null, {
 						status: 302,
@@ -58,7 +66,38 @@ describe("marketplace plugin artifact", () => {
 			fetcher,
 		);
 		expect(actual).toEqual(bytes);
-		expect(requests.map((request) => request.authorization)).toEqual(["Bearer secret", undefined]);
+		expect(requests).toEqual([
+			{
+				url: release.artifact.url,
+				authorization: "Bearer secret",
+				redirect: "manual",
+			},
+			{
+				url: "https://release-assets.githubusercontent.com/demo.zip",
+				authorization: undefined,
+				redirect: "manual",
+			},
+		]);
+	});
+
+	it("lets Electron follow a public GitHub Release redirect", async () => {
+		const { bytes, release } = fixture();
+		release.artifact.url = "https://github.com/example/market/releases/download/plugin-demo-1.2.0/demo-1.2.0.zip";
+		const redirects: Array<RequestRedirect | undefined> = [];
+		const fetcher: typeof fetch = async (_input, init) => {
+			redirects.push(init?.redirect);
+			if (init?.redirect === "manual") throw new Error("Redirect was cancelled");
+			return new Response(new Uint8Array(bytes), { status: 200 });
+		};
+		const actual = await fetchVerifiedMarketplacePluginArtifact(
+			release,
+			"demo",
+			"https://github.com/example/market",
+			"secret",
+			fetcher,
+		);
+		expect(actual).toEqual(bytes);
+		expect(redirects).toEqual(["follow"]);
 	});
 
 	it("rejects a changed archive before installing it", async () => {

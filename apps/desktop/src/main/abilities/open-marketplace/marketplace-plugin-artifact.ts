@@ -52,26 +52,40 @@ export async function fetchVerifiedMarketplacePluginArtifact(
 	const timeout = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
 	try {
 		let url = assertArtifactUrl(release.artifact.url);
-		let response: Response | undefined;
-		for (let redirect = 0; redirect <= MAX_REDIRECTS; redirect += 1) {
-			const authorization = githubAssetAuthorization(url, repository, accessToken);
+		const initialAuthorization = githubAssetAuthorization(url, repository, accessToken);
+		let response: Response;
+		if (!initialAuthorization) {
 			response = await fetcher(url, {
 				signal: controller.signal,
-				redirect: "manual",
+				redirect: "follow",
 				headers: {
 					Accept: "application/octet-stream",
 					"User-Agent": "Vetta-Desktop",
-					...(authorization ? { Authorization: authorization } : {}),
 				},
 			});
-			if (![301, 302, 303, 307, 308].includes(response.status)) break;
-			const location = response.headers.get("location");
-			if (!location || redirect === MAX_REDIRECTS)
-				throw new Error("Marketplace plugin artifact redirected too many times");
-			url = assertArtifactUrl(new URL(location, url).toString());
+		} else {
+			for (let redirect = 0; ; redirect += 1) {
+				const authorization = githubAssetAuthorization(url, repository, accessToken);
+				response = await fetcher(url, {
+					signal: controller.signal,
+					redirect: "manual",
+					headers: {
+						Accept: "application/octet-stream",
+						"User-Agent": "Vetta-Desktop",
+						...(authorization ? { Authorization: authorization } : {}),
+					},
+				});
+				if (![301, 302, 303, 307, 308].includes(response.status)) break;
+				const location = response.headers.get("location");
+				if (!location || redirect === MAX_REDIRECTS) {
+					throw new Error("Marketplace plugin artifact redirected too many times");
+				}
+				url = assertArtifactUrl(new URL(location, url).toString());
+			}
 		}
-		if (!response?.ok || !response.body) {
-			throw new Error(`Marketplace plugin artifact download failed: ${response?.status ?? "no response"}`);
+		if (response.url) assertArtifactUrl(response.url);
+		if (!response.ok || !response.body) {
+			throw new Error(`Marketplace plugin artifact download failed: ${response.status}`);
 		}
 		const contentLength = Number(response.headers.get("content-length"));
 		if (Number.isFinite(contentLength) && contentLength > MAX_PLUGIN_ARCHIVE_BYTES) {
