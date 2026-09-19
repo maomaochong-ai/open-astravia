@@ -58,6 +58,10 @@ export function createDesktopPluginPackageOpenService(): PluginPackageOpenServic
 			});
 		},
 		notifyInstalled: async (plugin) => {
+			log.info("package installed", {
+				pluginId: plugin.id,
+				version: plugin.activeVersion,
+			});
 			await showMessageBox({
 				type: "info",
 				title: mainT("pluginPackage.installedTitle"),
