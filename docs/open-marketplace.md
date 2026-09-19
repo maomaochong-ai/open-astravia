@@ -22,9 +22,9 @@ Desktop 的市场来源 ref 配置为 gh-pages，无需另建注册服务或启�
 ## 客户端来源管理
 
 云市场与 GitHub 来源独立启用：开源版只不包含云服务，仍可配置多个 GitHub 仓库；云版可同时浏览两类来源。
-商业版默认不包含 GitHub 仓库。发行方通过 `VETTA_OPEN_MARKETPLACE_REPOSITORY` 声明可选内置来源，
-未设置、空串或纯空白都不注册。开源发行版要随包提供官方源时同样配置这个变量，代码没有仓库地址兜底。
-分支由 `VETTA_OPEN_MARKETPLACE_REF` 指定，省略时为 `main`；归档 URL 可单独配置，否则从仓库与分支推导。
+内置官方 GitHub 来源与云市场独立存在。发行方可以通过 `VETTA_OPEN_MARKETPLACE_REPOSITORY` 替换其仓库；
+未配置时使用 OpenVetta 官方仓库。分支由 `VETTA_OPEN_MARKETPLACE_REF` 指定；官方仓库省略时使用
+`gh-pages`，自定义仓库省略时保留 `main` 兼容行为。归档 URL 可单独配置，否则从仓库与分支推导。
 
 在「能力 → 市场来源」可添加多个仓库，分别设置启用、自动更新和分支，并单独刷新。
 内置来源可启停及设置自动更新，但不能在界面修改坐标或删除；自定义来源支持编辑和删除。
@@ -139,8 +139,10 @@ Plugin 的 `source.path` 指向一个可直接安装的插件目录。目录至�
 ```
 
 上例省略了市场顶层其它必填字段；版本和摘要只展示格式，必须替换成真实发布值。
-`version` 必须等于 `releases[]` 中最高的稳定版本。每个 `minAppVersion` 必须是已经
-正式发布且包含相应 Plugin API 的 App 版本，不能填尚在主分支或候选通道的版本。
+`version` 必须等于 `releases[]` 中最高的稳定版本。每个 `minAppVersion` 通常必须是已经
+正式发布且包含相应 Plugin API 的 App 版本。首次联调新协议时，市场发布配置可以把该
+版本显式钉到 OpenVetta 的 40 位不可变 commit；门禁会核对 Desktop 版本、Plugin API
+与 schema，并在稳定 Release 存在后自动优先检查正式版本。
 客户端按当前 App 版本和 Plugin API 版本选最高兼容版本；没有兼容版本的插件及依赖
 它的 Bundle 暂不展示。下载安装前后都会检查 ZIP 的摘要与身份，下载后还核对
 `pluginApiVersion`、权限和命令是否与目录一致。私有来源可使用同仓库的 GitHub
@@ -159,8 +161,8 @@ node tools/open-vetta/scripts/release/check-plugin-marketplace-publication.mjs .
 
 上述示例假定市场 CI 已将一个固定版本的 `open-vetta` 检出到 `tools/open-vetta/`；
 同时运行与该版本配套的 `vetta-plugin-cli sync --check`。它核实每个最低 App 版本的
-稳定 GitHub Release、对应 tag 的 Plugin API 和 ZIP 摘要。候选 ZIP 可提前构建；
-只有 App 正式发布并通过此门禁后，才能更新正式市场目录。已发布的插件版本不得
+稳定 GitHub Release 或显式固定的首次联调 commit、对应宿主的 Plugin API 和 ZIP 摘要。
+候选配置只在稳定 Release 返回 404 时生效，不能绕过不完整的正式发布。已发布的插件版本不得
 覆盖制品或改变摘要；建议对承载插件 ZIP 的 GitHub 仓库启用 Immutable releases。
 回滚应把目录指针退回此前的版本记录。
 

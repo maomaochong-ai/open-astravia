@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MarketplaceSource } from "../../../preload/api-types/abilities";
 import { MarketplaceSourceStore } from "./marketplace-source-store";
-import { OFFICIAL_MARKETPLACE_REPOSITORY } from "./official-marketplace-source";
+import { OFFICIAL_MARKETPLACE_REF, OFFICIAL_MARKETPLACE_REPOSITORY } from "./official-marketplace-source";
 
 const temporaryRoots: string[] = [];
 const originalRepository = process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY;
@@ -105,7 +105,7 @@ describe("MarketplaceSourceStore", () => {
 	});
 
 	it.each(["true", "false"])(
-		"registers the Vetta official source without configuration with cloud=%s",
+		"registers the Vetta official gh-pages distribution without configuration with cloud=%s",
 		async (cloud) => {
 			vi.stubEnv("VETTA_CLOUD_ENABLED", cloud);
 			for (const repository of [undefined, "", "   "]) {
@@ -115,6 +115,8 @@ describe("MarketplaceSourceStore", () => {
 						id: "vetta-official",
 						name: "Vetta Official",
 						repository: OFFICIAL_MARKETPLACE_REPOSITORY,
+						ref: OFFICIAL_MARKETPLACE_REF,
+						archiveUrl: `${OFFICIAL_MARKETPLACE_REPOSITORY}/archive/refs/heads/${OFFICIAL_MARKETPLACE_REF}.zip`,
 						builtin: true,
 						enabled: true,
 					},
@@ -122,6 +124,18 @@ describe("MarketplaceSourceStore", () => {
 			}
 		},
 	);
+
+	it("keeps main as the fallback for a custom distribution repository", async () => {
+		vi.stubEnv("VETTA_OPEN_MARKETPLACE_REPOSITORY", "example/community-market");
+		vi.stubEnv("VETTA_OPEN_MARKETPLACE_REF", undefined);
+		expect(new MarketplaceSourceStore({ filePath: await temporaryFile() }).list()).toMatchObject([
+			{
+				repository: "https://github.com/example/community-market",
+				ref: "main",
+				archiveUrl: "https://github.com/example/community-market/archive/refs/heads/main.zip",
+			},
+		]);
+	});
 
 	it("keeps persisted sources when a later distribution registers the official default", async () => {
 		vi.stubEnv("VETTA_OPEN_MARKETPLACE_REPOSITORY", undefined);
