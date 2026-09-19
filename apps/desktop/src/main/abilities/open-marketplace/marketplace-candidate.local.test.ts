@@ -1,5 +1,4 @@
-import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import { join, relative, resolve, sep } from "node:path";
 import AdmZip from "adm-zip";
@@ -61,9 +60,16 @@ const manifest = candidateRoot
 			JSON.parse(readFileSync(join(candidateRoot, ".vetta", "marketplace.json"), "utf8")) as unknown,
 		)
 	: undefined;
-const entries = candidateRoot
-	? execFileSync("git", ["ls-files", "-z"], { cwd: candidateRoot }).toString("utf8").split("\0").filter(Boolean)
-	: [];
+function distributionFiles(directory: string, prefix = ""): string[] {
+	return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+		if ([".git", "node_modules", ".release-artifacts"].includes(entry.name)) return [];
+		if (entry.isSymbolicLink()) throw new Error("Candidate contains a symbolic link");
+		const path = `${prefix}${entry.name}`;
+		return entry.isDirectory() ? distributionFiles(join(directory, entry.name), `${path}/`) : [path];
+	});
+}
+const entries = candidateRoot ? distributionFiles(candidateRoot) : [];
+const artifactsRoot = process.env.VETTA_MARKETPLACE_CANDIDATE_ARTIFACTS;
 const sourceArchive = new AdmZip();
 for (const path of entries) {
 	sourceArchive.addFile(
@@ -85,13 +91,13 @@ it.skipIf(!candidateRoot)(
 		vi.stubGlobal("fetch", async (url: URL) => {
 			const filename = url.pathname.split("/").at(-1);
 			if (!filename) throw new Error(`Unexpected artifact URL: ${url}`);
-			return response(readFileSync(join(candidateRoot, ".release-artifacts", filename)));
+			return response(readFileSync(join(artifactsRoot ?? join(candidateRoot, ".release-artifacts"), filename)));
 		});
 		const service = new OpenMarketplaceService({
 			appVersion: "0.5.59",
 			rootDir: join(isolatedRoot, "marketplace"),
 			repository: manifest.repository,
-			sourceRef: "marketplace-v3",
+			sourceRef: "gh-pages",
 			fetchArchive: async () => response(archiveBytes),
 			fetchManifest: async () => new Response(JSON.stringify(manifest), { status: 200 }),
 		});
@@ -127,7 +133,7 @@ it.skipIf(!candidateRoot)("reports an app upgrade requirement to an older Deskto
 		appVersion: "0.5.58",
 		rootDir: join(isolatedRoot, "old-marketplace"),
 		repository: manifest.repository,
-		sourceRef: "marketplace-v3",
+		sourceRef: "gh-pages",
 		fetchArchive: async () => response(archiveBytes),
 		fetchManifest: async () => new Response(JSON.stringify(manifest), { status: 200 }),
 	});

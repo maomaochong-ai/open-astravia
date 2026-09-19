@@ -1,6 +1,22 @@
 # GitHub 开源能力市场格式
 
-Desktop 从 GitHub 下载完整仓库归档，并在本地读取 `.vetta/marketplace.json`。GitHub 不承担搜索、筛选或分页；这些操作全部基于客户端已校验的本地快照完成。
+Desktop 从 GitHub 下载配置 ref 的归档，并在本地读取 `.vetta/marketplace.json`。GitHub 不承担搜索、筛选或分页；这些操作全部基于客户端已校验的本地快照完成。
+
+## 推荐发布模式：静态分发分支
+
+市场源码与可安装分发分开：main 保存能力源码与 `.vetta/marketplace.source.json`；
+普通源码 PR 审核通过后，CI 构建未发布的插件版本并上传不可变 `.vettapkg`，
+再生成 gh-pages 上的 `.vetta/marketplace.json`、展示资源和非插件安装文件。
+Desktop 的市场来源 ref 配置为 gh-pages，无需另建注册服务或启用 GitHub Pages。
+
+源码配置省略 marketplaceVersion 与插件 releases，插件条目声明 minAppVersion；
+发布工具派生版本历史、API、权限、命令和摘要。市场版本仅在分发内容变化时生成。
+提高能力版本的普通 PR 合并即允许发布，不再为生成索引创建第二个 PR。
+
+客户端继续读取精简的分发归档，插件包按需下载；Skill、MCP、Bundle 保持既有目录合同。
+它不会从源码分支读取 marketplace.source.json。已有用户来源不会自动切换，
+新 gh-pages 验证成功后由维护者安排迁移；旧版本客户端仍需保留其原有 ref。
+详见 [ADR-0122](adr/0122-marketplaces-publish-generated-static-distributions.md)。
 
 ## 客户端来源管理
 
