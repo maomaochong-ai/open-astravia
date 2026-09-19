@@ -550,7 +550,7 @@
     },
     "packages/plugins/plugin-cli": {
       "name": "@vetta-org/plugin-cli",
-      "version": "0.1.6",
+      "version": "0.1.7",
       "bin": {
         "vetta-plugin-cli": "./dist/cli.js",
       },
@@ -585,7 +585,7 @@
     },
     "packages/plugins/plugin-vite": {
       "name": "@vetta-org/plugin-vite",
-      "version": "0.2.3",
+      "version": "0.2.4",
       "bin": {
         "vetta-plugin": "./dist/cli.js",
       },

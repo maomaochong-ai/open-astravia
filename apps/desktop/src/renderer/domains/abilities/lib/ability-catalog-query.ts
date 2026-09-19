@@ -35,7 +35,7 @@ export function isUniversalSkill(item: AbilityItem): boolean {
 	return item.type === "skill" && Boolean(item.skillSource?.startsWith("agents-"));
 }
 
-/** 是否为手动安装/本地创建的能力（本地导入的 skill、本地 zip/npm 插件、手动添加的 MCP 服务）。 */
+/** 是否为手动安装/本地创建的能力（本地导入的 skill、本地插件包/npm 插件、手动添加的 MCP 服务）。 */
 export function isManuallyInstalledAbility(item: AbilityItem): boolean {
 	if (!item.installed || item.isBuiltin) return false;
 	if (item.isCustom) return true;

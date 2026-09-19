@@ -13,7 +13,7 @@
 
 - `plugin-sdk/`：插件运行时 API 和类型。
 - `plugin-vite/`：插件 Vite 配置与 zip 打包工具。
-- `plugin-cli/`：从 npm 包、本地 zip 或 URL 安装插件的公开 CLI。
+- `plugin-cli/`：从 npm 包、本地 .vettapkg（兼容旧 .zip）或 URL 安装插件的公开 CLI。
 - `presets/`：随 Vetta Desktop 发布的系统插件。
 - `externals/`：不随 App 打包的外置插件示例。
 
@@ -49,12 +49,12 @@ Preset 不会安装到 `~/.vetta/plugins`。
 {
   "name": "@example/vetta-plugin-demo",
   "version": "1.0.0",
-  "files": ["release/vetta-plugin.zip"],
+  "files": ["release/vetta-plugin.vettapkg"],
   "vetta": {
     "schemaVersion": 1,
     "type": "desktop-plugin",
     "pluginId": "demo",
-    "archive": "release/vetta-plugin.zip"
+    "archive": "release/vetta-plugin.vettapkg"
   }
 }
 ```

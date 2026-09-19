@@ -3,7 +3,7 @@ name: plugin-workbench
 description: >
   Create, implement, build, pack, install, reload, and manage Vetta desktop plugins
   for non-developers. Use whenever the user wants a Vetta plugin, plugin scaffolding,
-  apply zip to Vetta, edit plugin.json name/guidingWords, or debug plugin load/install.
+  apply a `.vettapkg` package to Vetta, edit plugin.json name/guidingWords, or debug plugin load/install.
   Requires the Plugin Workbench input-bar toggle (hard isolation). The plugin handbook ships
   inside the project's own @vetta-org/plugin-sdk; locate it with the bundled CLI's docs command.
 ---
@@ -163,9 +163,9 @@ node "{workbenchRoot}/scripts/check-manifest.mjs" "{pluginRoot}"
 node "{workbenchRoot}/scripts/build-and-pack.mjs" "{pluginRoot}"
 ```
 
-- 默认：patch bump → `npm install` → `npm run build` → `release/{id}-{version}.zip`  
-- 解析 stdout JSON：`zipPath`、`id`、`version`  
-- 失败：读 stderr，按 getting-started / styling 修；缺依赖或 registry 问题 → AskUserQuestion  
+- 默认：patch bump → `npm install` → `npm run build` → `release/{id}-{version}.vettapkg`
+- 解析 stdout JSON：`packagePath`、`id`、`version`
+- 失败：读 stderr，按 getting-started / styling 修；缺依赖或 registry 问题 → AskUserQuestion
 
 ### 4.5 安装到本机 Vetta（引导用户在面板点击，不要弹确认）
 
@@ -192,7 +192,7 @@ node "{workbenchRoot}/scripts/build-and-pack.mjs" "{pluginRoot}"
 
 Activity Tab「制作插件」（同样受 toggle 硬隔离）：扫描 cwd、构建、应用、卸载、重载、改 name/引导词。与对话同一规则与同一脚本。
 
-每张工程卡片有 **「热更新」开关（已安装后默认开）**：宿主把插件 dev 链接到工程目录并常驻 `vetta-plugin dev`；React / CSS 走 HMR，其余资源定向重载（无需 bump/重打 zip/手动 reload）。适合迭代调试。
+每张工程卡片有 **「热更新」开关（已安装后默认开）**：宿主把插件 dev 链接到工程目录并常驻 `vetta-plugin dev`；React / CSS 走 HMR，其余资源定向重载（无需 bump/重打包/手动 reload）。适合迭代调试。
 
 已安装时还有 **「重新安装」**（与消息卡按钮同路径）：强制 build-and-pack → 把权限/命令**持久写入注册表** → **刷新整个 Vetta 窗口**。日常改代码 / 改 plugin.json 靠热更新即可（dev 会话内权限声明自动放行）；重新安装用于落盘授权或热更新异常时兜底。首次安装仍用「应用到 Vetta」。
 

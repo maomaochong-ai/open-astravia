@@ -54,6 +54,19 @@
 	"pet": {
 		"openDevTools": "Open Pet DevTools"
 	},
+	"pluginPackage": {
+		"confirmTitle": "Install Vetta Plugin",
+		"confirmMessage": "Install and enable {{name}} {{version}}?",
+		"confirmDetail": "File: {{file}}\nPlugin ID: {{id}}\nVersion: {{version}}\n\nPermissions to grant:\n{{permissions}}\n\nCommands to enable:\n{{commands}}\n\nPlugin code runs inside Vetta. Install files only from sources you trust.",
+		"none": "None",
+		"install": "Install and Enable",
+		"cancel": "Cancel",
+		"done": "Done",
+		"installedTitle": "Plugin Installed",
+		"installedMessage": "{{name}} {{version}} is installed and enabled.",
+		"failedTitle": "Plugin Installation Failed",
+		"failedMessage": "{{file}} is not a valid Vetta plugin package or is incompatible with this version."
+	},
 	"mcpOAuth": {
 		"authorizationSuccessful": "Authorization successful",
 		"authorizationFailed": "Authorization failed",

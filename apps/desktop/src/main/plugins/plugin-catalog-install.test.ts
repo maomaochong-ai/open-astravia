@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { mkdir, rm } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import AdmZip from "adm-zip";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -25,7 +25,7 @@ vi.mock("../logger.js", () => ({
 }));
 
 import { recordAbilityInstall } from "../abilities/ability-ledger.js";
-import { getPluginsBaseDir, installPluginFromArchive } from "./plugin-catalog.js";
+import { getPluginsBaseDir, installPluginFromArchive, installPluginFromPath } from "./plugin-catalog.js";
 
 const PLUGIN_ID = "install-activation-demo";
 const originalResourcesPath = Object.getOwnPropertyDescriptor(process, "resourcesPath");
@@ -68,6 +68,18 @@ afterAll(async () => {
 });
 
 describe("installPluginFromArchive", () => {
+	it("从 .vettapkg 路径安装，并继续兼容旧 .zip 插件包", async () => {
+		const packagePath = join(testPaths.root, "install-activation-demo-0.0.0.vettapkg");
+		const legacyPath = join(testPaths.root, "install-activation-demo-0.0.0.zip");
+		const invalidPath = join(testPaths.root, "plugin.tar");
+		const bytes = archive("0.0.0");
+		await Promise.all([writeFile(packagePath, bytes), writeFile(legacyPath, bytes), writeFile(invalidPath, bytes)]);
+
+		await expect(installPluginFromPath(packagePath)).resolves.toMatchObject({ activeVersion: "0.0.0" });
+		await expect(installPluginFromPath(legacyPath)).resolves.toMatchObject({ activeVersion: "0.0.0" });
+		await expect(installPluginFromPath(invalidPath)).rejects.toThrow(".vettapkg");
+	});
+
 	it("手动装了新版本 zip 之后，无需任何重载动作就加载新版本内容", async () => {
 		const first = await installPluginFromArchive(archive("0.0.1"), { source: "archive", enable: true });
 		expect(first.activeVersion).toBe("0.0.1");

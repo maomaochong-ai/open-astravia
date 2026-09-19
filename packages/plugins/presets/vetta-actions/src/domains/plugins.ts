@@ -148,10 +148,10 @@ const queryExamples: PluginAppActionExample<PluginsQueryInput>[] = [
 ];
 const manageExamples: PluginAppActionExample<PluginsManageInput>[] = [
 	{ description: "停用插件", input: { operation: "set-enabled", id: "my-plugin", enabled: false } },
-	{ description: "从 URL 安装", input: { operation: "install-from-url", url: "https://example.com/plugin.zip" } },
+	{ description: "从 URL 安装", input: { operation: "install-from-url", url: "https://example.com/plugin.vettapkg" } },
 	{
-		description: "从本地 zip 安装",
-		input: { operation: "install-from-path", path: "/abs/path/to/my-plugin-0.1.0.zip" },
+		description: "从本地插件包安装",
+		input: { operation: "install-from-path", path: "/abs/path/to/my-plugin-0.1.0.vettapkg" },
 	},
 ];
 

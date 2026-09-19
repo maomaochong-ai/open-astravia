@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, rmSync } from "node:fs";
-import { readFile, rm } from "node:fs/promises";
+import { readFile, rm, stat } from "node:fs/promises";
 import { isAbsolute, join, resolve } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
 import {
@@ -33,6 +33,7 @@ import {
 	installedPluginResourceUrl,
 	projectPluginVersion,
 	readPluginLocales,
+	VETTA_PLUGIN_PACKAGE_EXTENSION,
 	validatePluginPackageResources,
 } from "./plugin-package.js";
 import { effectivePluginPermissions, grantDeclaredPluginCommands } from "./plugin-permission-policy.js";
@@ -47,6 +48,7 @@ const REQUIRED_SYSTEM_PLUGIN_IDS = new Set<string>([CORE_ACTION_PLUGIN_ID]);
 const pluginsBaseDir = join(getVettaHomePath(), "plugins");
 const manifestPath = join(getVettaHomePath(), "plugins-manifest.json");
 const tmpBaseDir = join(getVettaHomePath(), "tmp", "plugins");
+const MAX_LOCAL_PLUGIN_PACKAGE_BYTES = 512 * 1024 * 1024;
 // 系统插件的用户态偏好（目前仅停用开关），与用户插件注册表分离（ADR-0024）。
 const systemPrefsPath = join(getVettaHomePath(), "system-plugin-prefs.json");
 const pluginRegistry = new PluginRegistryStore(manifestPath, pluginsBaseDir);
@@ -261,11 +263,16 @@ export async function installPluginFromUrl(url: string, options?: PluginInstallO
 	return installPluginFromArchive(buffer, { ...options, source: "remote" });
 }
 
-/** Install from a local zip path (ADR-0042). */
+/** Install from a local Vetta package path; legacy .zip remains importable. */
 export async function installPluginFromPath(
 	filePath: string,
 	options?: PluginInstallOptions,
 ): Promise<InstalledPlugin> {
+	const buffer = await readPluginPackageFromPath(filePath);
+	return installPluginFromArchive(buffer, { ...options, source: options?.source ?? "archive" });
+}
+
+export async function readPluginPackageFromPath(filePath: string): Promise<Buffer> {
 	if (typeof filePath !== "string" || filePath.trim().length === 0) {
 		throw new Error("Plugin path is required");
 	}
@@ -273,11 +280,15 @@ export async function installPluginFromPath(
 	if (!existsSync(resolved)) {
 		throw new Error(`Plugin archive not found: ${resolved}`);
 	}
-	if (!resolved.toLowerCase().endsWith(".zip")) {
-		throw new Error("Plugin path must be a .zip archive");
+	const lowerPath = resolved.toLowerCase();
+	if (!lowerPath.endsWith(VETTA_PLUGIN_PACKAGE_EXTENSION) && !lowerPath.endsWith(".zip")) {
+		throw new Error(`Plugin path must be a ${VETTA_PLUGIN_PACKAGE_EXTENSION} package or legacy .zip archive`);
 	}
-	const buffer = await readFile(resolved);
-	return installPluginFromArchive(buffer, { ...options, source: options?.source ?? "archive" });
+	const info = await stat(resolved);
+	if (!info.isFile() || info.size > MAX_LOCAL_PLUGIN_PACKAGE_BYTES) {
+		throw new Error("Plugin package is not a regular file or exceeds the 512 MB limit");
+	}
+	return readFile(resolved);
 }
 
 export function uninstallPlugin(id: string): void {

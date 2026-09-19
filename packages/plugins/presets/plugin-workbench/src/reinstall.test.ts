@@ -31,7 +31,7 @@ const project: ProjectInfo = {
 	version: "0.1.0",
 	guidingWords: [],
 	permissions: [],
-	zipPath: "C:/plugins/demo/release/demo-0.1.0.zip",
+	packagePath: "C:/plugins/demo/release/demo-0.1.0.vettapkg",
 };
 
 beforeEach(() => {

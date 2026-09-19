@@ -115,7 +115,7 @@ Choose the path for development debugging or release installation:
 
 <Tabs items={["Development", "Release installation"]}>
   <Tab value="Development">
-    Run `bunx vetta-plugin dev` to start the plugin development server, then load it through a Vetta development link. This is useful for quickly checking UI and tool registration, but run the production build and ZIP installation flow before release.
+    Run `bunx vetta-plugin dev` to start the plugin development server, then load it through a Vetta development link. This is useful for quickly checking UI and tool registration, but run the production build and `.vettapkg` installation flow before release.
   </Tab>
   <Tab value="Release installation">
     <Steps>
@@ -127,12 +127,12 @@ Choose the path for development debugging or release installation:
       <Step>
         ### Archive the package
 
-        The archive root must contain `plugin.json` and `dist/`.
+        Use the `.vettapkg` extension and ZIP container. Its archive root must contain `plugin.json` and `dist/`. Once Vetta is installed, users can double-click the file to install it.
       </Step>
       <Step>
         ### Install and enable
 
-        In the **Capabilities** page, open **Add capability → Import plugin archive** and select the ZIP. Enable it and grant permissions in the **Enable and permissions** dialog.
+        In the **Capabilities** page, open **Add capability → Import plugin package** and select the `.vettapkg` file. Enable it and grant permissions in the **Enable and permissions** dialog.
       </Step>
       <Step>
         ### Verify loading

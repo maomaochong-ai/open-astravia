@@ -8,7 +8,7 @@ const validPackage = {
 		schemaVersion: 1,
 		type: "desktop-plugin",
 		pluginId: "demo",
-		archive: "release/vetta-plugin.zip",
+		archive: "release/vetta-plugin.vettapkg",
 	},
 };
 

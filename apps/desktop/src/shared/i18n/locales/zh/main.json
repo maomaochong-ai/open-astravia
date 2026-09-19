@@ -54,6 +54,19 @@
 	"pet": {
 		"openDevTools": "打开桌宠开发者工具"
 	},
+	"pluginPackage": {
+		"confirmTitle": "安装 Vetta 插件",
+		"confirmMessage": "安装并启用 {{name}} {{version}}？",
+		"confirmDetail": "文件：{{file}}\n插件 ID：{{id}}\n版本：{{version}}\n\n将授予的权限：\n{{permissions}}\n\n将启用的命令：\n{{commands}}\n\n插件代码会在 Vetta 中运行，请只安装你信任的文件。",
+		"none": "无",
+		"install": "安装并启用",
+		"cancel": "取消",
+		"done": "完成",
+		"installedTitle": "插件安装完成",
+		"installedMessage": "{{name}} {{version}} 已安装并启用。",
+		"failedTitle": "无法安装插件",
+		"failedMessage": "{{file}} 不是有效的 Vetta 插件包，或与当前版本不兼容。"
+	},
 	"mcpOAuth": {
 		"authorizationSuccessful": "授权成功",
 		"authorizationFailed": "授权失败",

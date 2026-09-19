@@ -82,8 +82,8 @@
 		"title": "选择添加方式",
 		"importSkill": "导入技能压缩包",
 		"importSkillHint": "从本地 zip、tar.gz 或 tgz 压缩包安装",
-		"importPlugin": "导入插件压缩包",
-		"importPluginHint": "从本地 zip 安装（需包含 plugin.json）",
+		"importPlugin": "导入插件包",
+		"importPluginHint": "从本地 .vettapkg 安装（兼容旧 .zip，需包含 plugin.json）",
 		"addMcp": "手动添加 MCP",
 		"addMcpHint": "手动配置 stdio 或 HTTP MCP 服务"
 	},
@@ -169,7 +169,7 @@
 			"remote": "远程安装",
 			"npm": "npm 包",
 			"system": "系统内置",
-			"local": "本地 zip"
+			"local": "本地插件包"
 		},
 		"reloadVersion": "重载至 {{version}}",
 		"permissions": "权限",

@@ -15,7 +15,7 @@ bun run build
 The installable archive is written to:
 
 ```text
-packages/plugins/externals/global-slot-demo/release/global-slot-demo-0.1.0.zip
+packages/plugins/externals/global-slot-demo/release/global-slot-demo-0.1.0.vettapkg
 ```
 
 The archive contains only runtime files required by the desktop host. Module Federation build metadata remains in `dist/` for diagnostics, but is not included in the zip.
@@ -27,7 +27,7 @@ After opening the desktop app, run:
 
 ```js
 const file = await window.showOpenFilePicker({
-  types: [{ description: "Vetta plugin", accept: { "application/zip": [".zip"] } }]
+  types: [{ description: "Vetta plugin", accept: { "application/vnd.vetta.plugin+zip": [".vettapkg"] } }]
 });
 const buffer = await (await file[0].getFile()).arrayBuffer();
 await window.vetta.plugins.installFromArchive(buffer, {

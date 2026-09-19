@@ -6,6 +6,8 @@ All notable changes to `@vetta-org/plugin-vite` are documented in this file.
 
 ### Added
 
+- Package installable plugins as `.vettapkg` files while retaining the ZIP container and manifest layout. The dedicated extension lets Desktop register double-click installation without claiming ordinary ZIP files.
+
 - Bind `@vetta-org/plugin-sdk/logger` to the current plugin's validated manifest identity in both production builds and the development server. The generated facade keeps plugin code free from `ctx` plumbing without using a mutable shared-SDK identity; this release requires `@vetta-org/plugin-sdk >=0.3.7`.
 
 ### Fixed

@@ -26,7 +26,7 @@ describe("plugin add command", () => {
 			{ type: "add", source: "@example/demo@1.2.0", json: false },
 			{
 				resolveNpmArchive: vi.fn().mockResolvedValue({
-					archivePath: "C:/tmp/vetta-plugin.zip",
+					archivePath: "C:/tmp/vetta-plugin.vettapkg",
 					cleanup,
 					expectedSha256: "a".repeat(64),
 					integrity: "sha512-test",
@@ -38,7 +38,7 @@ describe("plugin add command", () => {
 							schemaVersion: 1,
 							type: "desktop-plugin",
 							pluginId: "demo",
-							archive: "release/vetta-plugin.zip",
+							archive: "release/vetta-plugin.vettapkg",
 						},
 					},
 				}),
@@ -51,7 +51,7 @@ describe("plugin add command", () => {
 		expect(code).toBe(0);
 		expect(runAction).toHaveBeenCalledWith("plugins.manage", {
 			operation: "install-from-path",
-			path: "C:/tmp/vetta-plugin.zip",
+			path: "C:/tmp/vetta-plugin.vettapkg",
 			enable: true,
 			source: "npm",
 			expectedSha256: "a".repeat(64),

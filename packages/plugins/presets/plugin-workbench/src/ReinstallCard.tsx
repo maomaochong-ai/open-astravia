@@ -69,7 +69,7 @@ export function ReinstallCard({ descriptor, pending }: PluginCardProps): ReactNo
 					version: "0.0.0",
 					guidingWords: [],
 					permissions: payload.permissions ?? [],
-					zipPath: null,
+					packagePath: null,
 				} satisfies ProjectInfo);
 			await reinstallPluginToVetta(project);
 			// page reloads on success

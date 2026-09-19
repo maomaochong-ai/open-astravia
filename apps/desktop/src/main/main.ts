@@ -64,6 +64,7 @@ import { discoverSystemPlugins } from "./plugins/plugin-catalog.js";
 import { startConfiguredPluginDevWatches } from "./plugins/plugin-dev-bootstrap.js";
 import { stopAllPluginDevWatches } from "./plugins/plugin-dev-watch.js";
 import { migrateLegacyPluginSettings } from "./plugins/plugin-legacy-settings-migration.js";
+import { createDesktopPluginPackageOpenService } from "./plugins/plugin-package-open.js";
 import { PLUGIN_PROTOCOL_PRIVILEGES, registerPluginProtocols } from "./plugins/plugin-protocol.js";
 import { stopAllUiohookConsumers } from "./quickpanel-trigger.js";
 import { createQuickPanelWindow } from "./quickpanel-window.js";
@@ -337,6 +338,16 @@ app.on("open-url", (event, url) => {
 
 // Windows/Linux: second instance passes URL via argv
 const gotSingleLock = isCliMode ? true : app.requestSingleInstanceLock();
+const pluginPackageOpenService = isCliMode ? undefined : createDesktopPluginPackageOpenService();
+pluginPackageOpenService?.enqueueFromArgv(process.argv);
+
+// macOS Finder sends associated files through open-file. The service queues
+// startup events until language, window, and plugin infrastructure are ready.
+app.on("open-file", (event, filePath) => {
+	if (!pluginPackageOpenService?.enqueue(filePath)) return;
+	event.preventDefault();
+});
+
 if (!gotSingleLock) {
 	app.exit(0);
 } else {
@@ -345,6 +356,7 @@ if (!gotSingleLock) {
 		if (protocolUrl) {
 			handleProtocolUrl(protocolUrl);
 		}
+		pluginPackageOpenService?.enqueueFromArgv(argv);
 		showMainWindow();
 	});
 	app.whenReady().then(async () => {
@@ -736,6 +748,7 @@ if (!gotSingleLock) {
 		// 后台 poller 等真实内容绘制后再启动。
 		registerKnowledgeIpc();
 		appLifecycle.markReady();
+		pluginPackageOpenService?.markReady();
 		void remotePairingService.restore();
 		if (!app.isPackaged) {
 			void startConfiguredPluginDevWatches(appRoot)

@@ -90,7 +90,7 @@ describe("reconciling the index", () => {
 			minAppVersion: "0.55.0",
 			pluginApiVersion: "^2.5.0",
 			permissions: ["storage.read"],
-			artifact: { url: "https://example.com/demo-1.2.0.zip", sha256: "a".repeat(64) },
+			artifact: { url: "https://example.com/demo-1.2.0.vettapkg", sha256: "a".repeat(64) },
 		};
 		const manifestPath = join(root, ".vetta", "marketplace.json");
 		const manifest = {
@@ -348,7 +348,7 @@ describe("sync command", () => {
 		writeIndex(root, [listedPlugin()]);
 		const pluginDir = join(root, "abilities", "plugins", "demo");
 		writePlugin(root, "abilities/plugins/demo", { ...basePluginManifest, version: "1.1.0" });
-		write(join(pluginDir, "release", "demo-1.1.0.zip"), "zip");
+		write(join(pluginDir, "release", "demo-1.1.0.vettapkg"), "package");
 		const sink = { out: "", err: "" };
 
 		const code = await runPluginCommand({ type: "add", source: pluginDir, json: false }, {
@@ -366,7 +366,7 @@ describe("sync command", () => {
 		const root = scratch();
 		const pluginDir = join(root, "demo");
 		writePlugin(root, "demo", basePluginManifest);
-		write(join(pluginDir, "release", "demo-1.0.0.zip"), "zip");
+		write(join(pluginDir, "release", "demo-1.0.0.vettapkg"), "package");
 		const sink = { out: "", err: "" };
 
 		await runPluginCommand({ type: "add", source: pluginDir, json: false }, {

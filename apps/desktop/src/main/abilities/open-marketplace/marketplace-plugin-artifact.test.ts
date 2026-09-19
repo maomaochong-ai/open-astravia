@@ -82,7 +82,8 @@ describe("marketplace plugin artifact", () => {
 
 	it("lets Electron follow a public GitHub Release redirect", async () => {
 		const { bytes, release } = fixture();
-		release.artifact.url = "https://github.com/example/market/releases/download/plugin-demo-1.2.0/demo-1.2.0.zip";
+		release.artifact.url =
+			"https://github.com/example/market/releases/download/plugin-demo-1.2.0/demo-1.2.0.vettapkg";
 		const redirects: Array<RequestRedirect | undefined> = [];
 		const fetcher: typeof fetch = async (_input, init) => {
 			redirects.push(init?.redirect);

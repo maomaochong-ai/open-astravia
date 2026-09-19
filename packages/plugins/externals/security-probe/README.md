@@ -36,7 +36,7 @@ bun run build
 产物 zip：
 
 ```text
-packages/plugins/externals/security-probe/release/security-probe-0.1.0.zip
+packages/plugins/externals/security-probe/release/security-probe-0.1.0.vettapkg
 ```
 
 ## 安装
@@ -45,7 +45,7 @@ packages/plugins/externals/security-probe/release/security-probe-0.1.0.zip
 
 ```js
 const file = await window.showOpenFilePicker({
-  types: [{ description: "Vetta plugin", accept: { "application/zip": [".zip"] } }],
+  types: [{ description: "Vetta plugin", accept: { "application/vnd.vetta.plugin+zip": [".vettapkg"] } }],
 });
 const buffer = await (await file[0].getFile()).arrayBuffer();
 await window.vetta.plugins.installFromArchive(buffer, {

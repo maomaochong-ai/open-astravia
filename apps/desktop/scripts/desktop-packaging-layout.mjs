@@ -13,6 +13,14 @@ export const DESKTOP_BUILD_OUTPUTS = Object.freeze([
 	{ source: "dist/ocr-runner", target: "ocr-runner" },
 ]);
 
+export const VETTA_PLUGIN_FILE_ASSOCIATION = Object.freeze({
+	ext: "vettapkg",
+	name: "Vetta Plugin Package",
+	description: "Installable Vetta plugin package",
+	mimeType: "application/vnd.vetta.plugin+zip",
+	role: "Editor",
+});
+
 export const DESKTOP_REQUIRED_SOURCE_FILES = Object.freeze([
 	"src/main/main.ts",
 	"src/preload/index.ts",

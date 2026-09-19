@@ -123,7 +123,7 @@ profile + 租户的 zip 制品打入 `Resources/system-plugins`。同一次构�
 | Vetta 开发包依赖 | 可使用 `workspace:*` 或与本地包匹配的 semver | 仓库内同左；移出仓库后必须使用已发布版本 |
 | 安装方式 | 随 Desktop 发布，不需要用户安装 | 构建 zip 后由用户安装 |
 | 开发加载 | 构建 zip 后解压到 Desktop `.artifacts/system-plugins`；`bun dev` 默认叠加当前租户全部 preset 的内存 dev 链接 | 从 `~/.vetta/plugins` 读取已安装版本；显式 dev 链接可覆盖 |
-| App 打包 | 从 `release/<id>-<version>.zip` 解压到 `Resources/system-plugins` | 不随 App 打包 |
+| App 打包 | 从 `release/<id>-<version>.vettapkg` 解压到 `Resources/system-plugins` | 不随 App 打包 |
 | 插件制品 | `@vetta-org/plugin-vite` 在构建后生成 zip | `@vetta-org/plugin-vite` 在构建后生成安装 zip |
 | 权限 | manifest 中声明的权限自动授予，不可撤销 | 安装后由用户授权 |
 | 生命周期 | 默认启用，可停用，不可卸载，版本随 App | 可安装、更新、重载和卸载 |
@@ -297,7 +297,7 @@ bun run check
 `build:presets` 会先按根 `bun.lock` 为根 workspace
 执行一次 `bun install --frozen-lockfile`，构建根 workspace 中的 SDK/构建包，
 再遍历 `presets/` 构建。每个插件构建会生成 `dist/` 和
-`release/<id>-<version>.zip`，随后 zip 会经过路径、manifest 和入口校验，
+`release/<id>-<version>.vettapkg`，随后插件包会经过路径、manifest 和入口校验，
 解压到 `apps/desktop/.artifacts/system-plugins/<id>/` 供开发加载。
 
 ## 提交前检查
@@ -310,7 +310,7 @@ bun run check
   可由当前本地包满足且已按发布场景验证的 semver。
 - `dist/`、`release/`、`node_modules/` 已加入 `.gitignore`，没有提交。
 - `plugin.json` 的入口与实际构建产物一致。
-- `release/<id>-<version>.zip` 根目录包含 `plugin.json` 和完整运行时文件。
+- `release/<id>-<version>.vettapkg` 的 ZIP 容器根目录包含 `plugin.json` 和完整运行时文件。
 - `bun run build:presets`、`bun run check` 和 Desktop TypeScript 检查通过。
 - 改动了对外合同（`plugin-sdk` 公开类型 / manifest Schema、`plugin-vite` 构建约定、宿主对清单字段的
   解析、`plugin-cli` 命令）时，已按「改动对外合同时必须同步文档」逐项核对：手册、CHANGELOG、

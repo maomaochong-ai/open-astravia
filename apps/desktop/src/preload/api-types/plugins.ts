@@ -773,7 +773,7 @@ export interface DesktopPluginsApi {
 	listAll(): Promise<InstalledPlugin[]>;
 	installFromArchive(archiveBuffer: ArrayBuffer, options?: PluginInstallOptions): Promise<InstalledPlugin>;
 	installFromUrl(url: string, options?: PluginInstallOptions): Promise<InstalledPlugin>;
-	/** Install from a local zip absolute path (ADR-0042). */
+	/** Install from a local .vettapkg absolute path; legacy .zip is accepted for compatibility. */
 	installFromPath(path: string, options?: PluginInstallOptions): Promise<InstalledPlugin>;
 	uninstall(id: string): Promise<void>;
 	setEnabled(id: string, enabled: boolean): Promise<void>;
