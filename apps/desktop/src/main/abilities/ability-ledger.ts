@@ -72,6 +72,7 @@ function parseEntry(value: unknown): AbilityLedgerEntry | null {
 				marketplace: candidate.marketplace,
 				marketplaceVersion: candidate.marketplaceVersion,
 				repository: candidate.repository,
+				...(typeof candidate.ref === "string" ? { ref: candidate.ref } : {}),
 			};
 		}
 	}

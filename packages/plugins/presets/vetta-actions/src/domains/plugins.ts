@@ -13,10 +13,11 @@ type PluginsQueryInput =
 	| { operation: "get"; id: string };
 type PluginsManageInput =
 	| { operation: "set-enabled"; id: string; enabled: boolean }
-	| { operation: "install-from-url"; url: string }
+	| { operation: "install-from-url"; url: string; initiator?: "plugin-cli" }
 	| {
 			operation: "install-from-path";
 			path: string;
+			initiator?: "plugin-cli";
 			grantedPermissions?: string[];
 			enable?: boolean;
 			source?: "archive" | "npm";
@@ -67,6 +68,7 @@ const manageSchema: PluginJsonSchema = {
 			properties: {
 				operation: { const: "install-from-url" },
 				url: { type: "string", minLength: 1 },
+				initiator: { const: "plugin-cli" },
 			},
 			required: ["operation", "url"],
 			additionalProperties: false,
@@ -75,6 +77,7 @@ const manageSchema: PluginJsonSchema = {
 			properties: {
 				operation: { const: "install-from-path" },
 				path: { type: "string", minLength: 1 },
+				initiator: { const: "plugin-cli" },
 				grantedPermissions: { type: "array", items: { type: "string" } },
 				enable: { type: "boolean" },
 				source: { const: "archive" },
@@ -87,6 +90,7 @@ const manageSchema: PluginJsonSchema = {
 			properties: {
 				operation: { const: "install-from-path" },
 				path: { type: "string", minLength: 1 },
+				initiator: { const: "plugin-cli" },
 				enable: { type: "boolean" },
 				source: { const: "npm" },
 				expectedSha256: { type: "string", minLength: 64, maxLength: 64 },
@@ -148,10 +152,10 @@ const queryExamples: PluginAppActionExample<PluginsQueryInput>[] = [
 ];
 const manageExamples: PluginAppActionExample<PluginsManageInput>[] = [
 	{ description: "停用插件", input: { operation: "set-enabled", id: "my-plugin", enabled: false } },
-	{ description: "从 URL 安装", input: { operation: "install-from-url", url: "https://example.com/plugin.zip" } },
+	{ description: "从 URL 安装", input: { operation: "install-from-url", url: "https://example.com/plugin.vettapkg" } },
 	{
-		description: "从本地 zip 安装",
-		input: { operation: "install-from-path", path: "/abs/path/to/my-plugin-0.1.0.zip" },
+		description: "从本地插件包安装",
+		input: { operation: "install-from-path", path: "/abs/path/to/my-plugin-0.1.0.vettapkg" },
 	},
 ];
 
@@ -258,13 +262,16 @@ export function registerPluginsActions(ctx: PluginContext): void {
 			if (input.operation === "install-from-url") {
 				return {
 					operation: input.operation,
-					plugin: await ctx.official.plugins.installFromUrl(input.url),
+					plugin: await ctx.official.plugins.installFromUrl(input.url, {
+						initiator: input.initiator,
+					}),
 				};
 			}
 			if (input.operation === "install-from-path") {
 				return {
 					operation: input.operation,
 					plugin: await ctx.official.plugins.installFromPath(input.path, {
+						initiator: input.initiator,
 						grantedPermissions: input.grantedPermissions,
 						enable: input.enable,
 						source: input.source,

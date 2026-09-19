@@ -461,7 +461,6 @@ export class PluginActionService {
 			this.activeActivations.delete(pluginId);
 			this.disposeActivation(pluginId, active, "Plugin action activation was cleared");
 		}
-		log.info("plugin actions cleared", { pluginId, activationId });
 	}
 
 	respond(requestId: string, result: unknown): void {

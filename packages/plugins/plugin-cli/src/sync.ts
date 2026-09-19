@@ -131,14 +131,33 @@ export function syncMarketplaceIndex(input: SyncInput): SyncResult {
 					: undefined;
 			for (const member of Array.isArray(bundleConfig?.members) ? (bundleConfig.members as unknown[]) : []) {
 				if (typeof member !== "object" || member === null || Array.isArray(member)) continue;
-				const memberSource = (member as Record<string, unknown>).source;
+				const memberEntry = member as Record<string, unknown>;
+				const memberSource = memberEntry.source;
 				const memberPath =
 					typeof memberSource === "object" && memberSource !== null && !Array.isArray(memberSource)
 						? (memberSource as Record<string, unknown>).path
 						: undefined;
 				if (typeof memberPath !== "string") continue;
 				const dir = resolveAbilityDir(input.hubRoot, memberPath);
-				if (dir) listedDirs.add(dir);
+				if (dir) {
+					listedDirs.add(dir);
+					if (manifest.schemaVersion === 3 && memberEntry.type === "plugin") {
+						const descriptor = readJsonFile(join(dir, "ability.json"));
+						const memberChanges: SyncChange[] = [];
+						reconcilePlugin({
+							entry: { ...memberEntry, version: descriptor?.version },
+							slug: typeof memberEntry.slug === "string" ? memberEntry.slug : "(unnamed)",
+							abilityDir: dir,
+							schemaVersion: manifest.schemaVersion,
+							minAppVersion: manifest.minAppVersion,
+							changes: memberChanges,
+							problems,
+						});
+						for (const change of memberChanges) {
+							problems.push({ slug: change.slug, message: `ability.json version does not match latest release: ${change.to}` });
+						}
+					}
+				}
 			}
 			continue;
 		}
@@ -156,7 +175,7 @@ export function syncMarketplaceIndex(input: SyncInput): SyncResult {
 		}
 		listedDirs.add(abilityDir);
 
-		if (type === "plugin") reconcilePlugin({ entry, slug, abilityDir, changes, problems });
+		if (type === "plugin") reconcilePlugin({ entry, slug, abilityDir, schemaVersion: manifest.schemaVersion, minAppVersion: manifest.minAppVersion, changes, problems });
 		else if (type === "mcp") reconcileIdentityFile({ entry, slug, abilityDir, fileName: "mcp.json", changes, problems });
 		// skill / scene 目录里没有身份文件，目录存在即算通过。
 	}
@@ -193,10 +212,84 @@ function reconcilePlugin(context: {
 	entry: Record<string, unknown>;
 	slug: string;
 	abilityDir: string;
+	schemaVersion: unknown;
+	minAppVersion: unknown;
 	changes: SyncChange[];
 	problems: SyncProblem[];
 }): void {
-	const { entry, slug, abilityDir, changes, problems } = context;
+	const { entry, slug, abilityDir, schemaVersion, minAppVersion, changes, problems } = context;
+	if (schemaVersion === 3 && !("releases" in entry)) {
+		problems.push({ slug, message: "schemaVersion 3 plugin requires versioned releases" });
+		return;
+	}
+	if ("releases" in entry) {
+		if (schemaVersion !== 3) {
+			problems.push({ slug, message: "versioned plugin releases require marketplace schemaVersion 3" });
+			return;
+		}
+		const releases = entry.releases;
+		if (!Array.isArray(releases) || releases.length === 0) {
+			problems.push({ slug, message: "plugin releases must be a nonempty array" });
+			return;
+		}
+		let latest: { version: string; parts: [number, number, number] } | undefined;
+		const seen = new Set<string>();
+		for (const raw of releases) {
+			if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+				problems.push({ slug, message: "plugin release must be an object" });
+				continue;
+			}
+			const release = raw as Record<string, unknown>;
+			const match = typeof release.version === "string" ? /^(\d+)\.(\d+)\.(\d+)$/.exec(release.version) : null;
+			if (!match || seen.has(release.version as string)) {
+				problems.push({ slug, message: `invalid or duplicate plugin release version: ${String(release.version)}` });
+				continue;
+			}
+			seen.add(release.version as string);
+			const minimum = typeof release.minAppVersion === "string" ? /^(\d+)\.(\d+)\.(\d+)$/.exec(release.minAppVersion) : null;
+			if (!minimum || typeof minAppVersion !== "string" || !/^(\d+)\.(\d+)\.(\d+)$/.test(minAppVersion)) {
+				problems.push({ slug, message: `release ${release.version} has an invalid minAppVersion` });
+			} else {
+				const marketMinimum = /^(\d+)\.(\d+)\.(\d+)$/.exec(minAppVersion);
+				if (marketMinimum && compareVersionParts(minimum.slice(1).map(Number), marketMinimum.slice(1).map(Number)) < 0) {
+					problems.push({ slug, message: `release ${release.version} requires an app older than the marketplace` });
+				}
+			}
+			if (typeof release.pluginApiVersion !== "string" || !/^\^\d+\.\d+\.\d+$/.test(release.pluginApiVersion)) {
+				problems.push({ slug, message: `release ${release.version} has an invalid pluginApiVersion` });
+			}
+			for (const field of ["permissions", "commands"] as const) {
+				if (release[field] !== undefined && !stringArray(release[field])) {
+					problems.push({ slug, message: `release ${release.version} has invalid ${field}` });
+				}
+			}
+			const parts: [number, number, number] = [Number(match[1]), Number(match[2]), Number(match[3])];
+			if (!latest || compareVersionParts(parts, latest.parts) > 0) {
+				latest = { version: release.version as string, parts };
+			}
+			const artifact = release.artifact;
+			if (typeof artifact !== "object" || artifact === null || Array.isArray(artifact)) {
+				problems.push({ slug, message: `release ${release.version} has no artifact` });
+				continue;
+			}
+			const { url, sha256 } = artifact as Record<string, unknown>;
+			let validUrl = false;
+			try {
+				const parsed = new URL(String(url));
+				validUrl = parsed.protocol === "https:" && !parsed.username && !parsed.password && !parsed.hash;
+			} catch {
+				// Report the malformed URL below.
+			}
+			if (!validUrl || typeof sha256 !== "string" || !/^[a-f0-9]{64}$/.test(sha256)) {
+				problems.push({ slug, message: `release ${release.version} has an invalid HTTPS artifact or SHA-256` });
+			}
+		}
+		if (latest && entry.version !== latest.version) {
+			changes.push({ slug, field: "version", from: entry.version, to: latest.version });
+			entry.version = latest.version;
+		}
+		return;
+	}
 	const manifest = readJsonFile(join(abilityDir, "plugin.json"));
 	if (!manifest) {
 		problems.push({ slug, message: "plugin.json is missing or malformed" });
@@ -245,6 +338,13 @@ function reconcilePlugin(context: {
 			problems.push({ slug, message: `declared style is missing from the published directory: ${style}` });
 		}
 	}
+}
+
+function compareVersionParts(left: readonly number[], right: readonly number[]): number {
+	for (let index = 0; index < 3; index += 1) {
+		if (left[index] !== right[index]) return (left[index] ?? 0) - (right[index] ?? 0);
+	}
+	return 0;
 }
 
 function reconcileIdentityFile(context: {

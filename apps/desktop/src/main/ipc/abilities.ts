@@ -10,6 +10,7 @@ import { readAbilityLedger, recordAbilityInstall } from "../abilities/ability-le
 import { DEFAULT_MARKETPLACE_SOURCE_ID } from "../abilities/open-marketplace/official-marketplace-source.js";
 import { getOpenMarketplaceManager } from "../abilities/open-marketplace/open-marketplace-manager.js";
 import { listLocalAbilityPresentations } from "../abilities/presentation/local-ability-presentations.js";
+import { recordAppMonitorEvent } from "../app-monitor/app-monitor-service.js";
 import { readMcpConfig } from "../mcp/mcp-settings-service.js";
 
 function requireString(value: unknown, field: string): string {
@@ -79,6 +80,7 @@ function parseAbilityInstallOrigin(value: unknown): AbilityInstallOrigin | undef
 		marketplace: requireString(origin.marketplace, "origin.marketplace"),
 		marketplaceVersion: requireString(origin.marketplaceVersion, "origin.marketplaceVersion"),
 		repository: requireString(origin.repository, "origin.repository"),
+		...(origin.ref === undefined ? {} : { ref: requireString(origin.ref, "origin.ref") }),
 	};
 }
 
@@ -185,10 +187,33 @@ export function registerAbilitiesIpc(): () => void {
 			}
 			const config = await readMcpConfig();
 			if (!config.mcpServers[runtimeName]) return;
+			const previous = readAbilityLedger()[`mcp:${runtimeName}`];
 			recordAbilityInstall("mcp", runtimeName, version, {
 				...parsedMetadata,
 				runtimeName,
 			});
+			if (parsedMetadata?.origin?.kind === "github-marketplace") {
+				const origin = parsedMetadata.origin;
+				recordAppMonitorEvent(
+					{
+						type: "resource.lifecycle",
+						resourceKind: "mcp",
+						resourceId: runtimeName,
+						operation: previous ? "updated" : "installed",
+						source: "market",
+					},
+					{
+						version,
+						installMode: "marketplace",
+						artifactKind: "snapshot-source",
+						...(origin.sourceId ? { marketplaceSourceId: origin.sourceId } : {}),
+						marketplaceName: origin.marketplace,
+						marketplaceVersion: origin.marketplaceVersion,
+						marketplaceRepository: origin.repository,
+						...(origin.ref ? { marketplaceRef: origin.ref } : {}),
+					},
+				);
+			}
 		},
 	);
 

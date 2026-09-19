@@ -3,6 +3,7 @@ import { mkdtemp, rename, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { GitHubMarketplaceOrigin } from "../../../preload/api-types/abilities.js";
 import type { InstalledSkill } from "../../skills/skill-service.js";
+import type { AbilityLifecycleLogContext } from "../ability-lifecycle-log.js";
 import type { MarketplaceAbilityManifest } from "./marketplace-schema.js";
 import { assertSafeSkillTree, validateSkillPackage } from "./skill-package.js";
 
@@ -29,6 +30,7 @@ export interface OpenMarketplaceInstallerDependencies {
 		type: "skill" | "scene";
 		source: "market";
 		operation: "installed" | "updated";
+		logContext: AbilityLifecycleLogContext;
 	}) => void;
 }
 
@@ -104,6 +106,16 @@ export async function installOpenMarketplaceAbility(
 			type: ability.type,
 			source: "market",
 			operation: previousEntry ? "updated" : "installed",
+			logContext: {
+				version: ability.version,
+				installMode: "marketplace",
+				artifactKind: "snapshot-source",
+				...(origin.sourceId ? { marketplaceSourceId: origin.sourceId } : {}),
+				marketplaceName: origin.marketplace,
+				marketplaceVersion: origin.marketplaceVersion,
+				marketplaceRepository: origin.repository,
+				...(origin.ref ? { marketplaceRef: origin.ref } : {}),
+			},
 		});
 	} catch (error) {
 		try {

@@ -51,7 +51,7 @@ Vetta 服务；界面只显示“已配置”，不会回显令牌。更新或�
 
 版本字段职责不同：
 
-- `schemaVersion`：JSON 结构版本。支持 `1` 与 `2`；包路径 bundle 成员需要 `2`。
+- `schemaVersion`：JSON 结构版本。支持 `1`、`2` 与 `3`；包路径 bundle 成员需要 `2` 或更新版本，远程插件版本目录需要 `3`。
 - `marketplaceVersion`：仓库内容发布版本；同一版本的归档内容不得变化。
 - `minAppVersion`：必填，能够读取该内容的最低 Desktop SemVer 版本。
 - `abilities[].version`：单个能力的产物版本。
@@ -78,6 +78,74 @@ Vetta 服务；界面只显示“已配置”，不会回显令牌。更新或�
 ## Plugin、MCP 与 Bundle
 
 Plugin 的 `source.path` 指向一个可直接安装的插件目录。目录至少包含 `plugin.json` 以及清单声明的已构建入口文件。客户端同步时校验 `plugin.json` 的 `id`、`version`、入口、样式路径，并从清单派生权限和命令展示信息；安装时复用 Desktop Plugin Store，默认保持禁用且不授予权限。
+
+上述是 schema v1/v2 的目录包合同。schema v3 的插件可以把 ZIP 放在独立的
+不可变制品存储中；此时 `source.path` 只放 `ability.json`、详情、图片等展示文件，
+不需要提交 `plugin.json`、`dist/` 或 `release/`。例如：
+
+```json
+{
+  "schemaVersion": 3,
+  "minAppVersion": "0.5.59",
+  "abilities": [{
+    "type": "plugin",
+    "slug": "demo-plugin",
+    "name": "Demo Plugin",
+    "version": "1.2.0",
+    "source": { "path": "abilities/plugins/demo-plugin" },
+    "releases": [
+      {
+        "version": "1.0.0",
+        "minAppVersion": "0.5.59",
+        "pluginApiVersion": "^2.4.0",
+        "permissions": [],
+        "commands": [],
+        "artifact": {
+          "url": "https://github.com/example/market/releases/download/demo-1.0.0/demo-1.0.0.zip",
+          "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        }
+      },
+      {
+        "version": "1.2.0",
+        "minAppVersion": "0.5.60",
+        "pluginApiVersion": "^2.5.0",
+        "permissions": ["storage.read"],
+        "commands": [],
+        "artifact": {
+          "url": "https://github.com/example/market/releases/download/demo-1.2.0/demo-1.2.0.zip",
+          "sha256": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+        }
+      }
+    ]
+  }]
+}
+```
+
+上例省略了市场顶层其它必填字段；版本和摘要只展示格式，必须替换成真实发布值。
+`version` 必须等于 `releases[]` 中最高的稳定版本。每个 `minAppVersion` 必须是已经
+正式发布且包含相应 Plugin API 的 App 版本，不能填尚在主分支或候选通道的版本。
+客户端按当前 App 版本和 Plugin API 版本选最高兼容版本；没有兼容版本的插件及依赖
+它的 Bundle 暂不展示。下载安装前后都会检查 ZIP 的摘要与身份，下载后还核对
+`pluginApiVersion`、权限和命令是否与目录一致。私有来源可使用同仓库的 GitHub
+Release asset API URL；令牌只送到匹配来源的 GitHub API，不跟随资源重定向。
+
+只在 Bundle 中出现的插件，把同样的 `releases` 数组写在
+`config.members[]` 的该插件成员上，并保留 `source.path`。成员目录的
+`ability.json` 用最高版本作为展示身份；目录不需构建文件。发布门禁也会检查
+这些成员的每个版本。多个 Bundle 引用同一个成员时，版本记录应保持一致。
+
+发布 ZIP 后，在将其引用加入正式市场 ref 前运行：
+
+```bash
+node tools/open-vetta/scripts/release/check-plugin-marketplace-publication.mjs .vetta/marketplace.json
+```
+
+上述示例假定市场 CI 已将一个固定版本的 `open-vetta` 检出到 `tools/open-vetta/`；
+同时运行与该版本配套的 `vetta-plugin-cli sync --check`。它核实每个最低 App 版本的
+稳定 GitHub Release、对应 tag 的 Plugin API 和 ZIP 摘要。候选 ZIP 可提前构建；
+只有 App 正式发布并通过此门禁后，才能更新正式市场目录。已发布的插件版本不得
+覆盖制品或改变摘要；建议对承载插件 ZIP 的 GitHub 仓库启用 Immutable releases。
+回滚应把目录指针退回此前的版本记录。
 
 ```json
 {
@@ -365,7 +433,9 @@ abilities/mcp/context7/
 - 新增字段应优先设计为可选字段，不改变已有字段含义。
 - 客户端版本低于 `minAppVersion` 时不会激活新快照；存在旧的兼容快照时继续使用旧快照。
 - 开发期不兼容缺少 `minAppVersion` 或使用旧字段名的 Manifest；直接修改仓库中的 `.vetta/marketplace.json`。
-- 当前不使用 `marketplace-index.json`。只有同一仓库确实需要并存互不兼容的 Schema 时才重新评估。
+- 旧 Desktop 不理解 schema v3，且会拒绝整个来源并沿用已有缓存。v3 来源应使用
+  单独 ref 或仓库；旧来源保持 v1/v2 和目录构建文件，直到旧客户端退出支持。
+- 当前不使用 `marketplace-index.json`。多版本选择发生在插件条目中，不依赖第二份索引。
 
 ## 发布规则
 
@@ -373,6 +443,19 @@ abilities/mcp/context7/
 2. 每个 Manifest 都必须设置对应的 `minAppVersion`。
 3. 不从 GitHub 仓库执行 JavaScript、shell、PowerShell 或其它安装/迁移脚本。
 4. 发布前必须校验 Manifest、能力目录、能力版本和来源路径。
+
+### 不接触线上来源的候选验证
+
+在 Desktop 仓库设置 `VETTA_MARKETPLACE_CANDIDATE_ROOT` 为本地候选市场仓库的绝对路径，运行：
+
+```powershell
+$env:VETTA_MARKETPLACE_CANDIDATE_ROOT = 'C:\path\to\vetta-official-marketplace'
+bun scripts/quality/run-vitest.mjs --run apps/desktop/src/main/abilities/open-marketplace/marketplace-candidate.local.test.ts
+```
+
+该检查用候选仓库的 Git 跟踪文件组装市场归档，读取本地 `.release-artifacts/` 中的真实 ZIP，
+以临时 `VETTA_HOME` 走 Desktop 同步、版本选择、下载校验和插件安装，再检查旧版客户端的升级提示。
+所有网络请求都由本地文件响应替代；不启动日常 Desktop，也不发布仓库或制品。未设置环境变量时该测试跳过。
 
 ## 本地缓存身份
 

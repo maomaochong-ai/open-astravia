@@ -293,7 +293,8 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 				},
 				pluginSystem: {
 					list: (sessionId) => ipc.invoke(PLUGIN_SYSTEM_CHANNELS.LIST, sessionId),
-					installFromUrl: (sessionId, url) => ipc.invoke(PLUGIN_SYSTEM_CHANNELS.INSTALL_FROM_URL, sessionId, url),
+					installFromUrl: (sessionId, url, options) =>
+						ipc.invoke(PLUGIN_SYSTEM_CHANNELS.INSTALL_FROM_URL, sessionId, url, options),
 					installFromPath: (sessionId, path, options) =>
 						ipc.invoke(PLUGIN_SYSTEM_CHANNELS.INSTALL_FROM_PATH, sessionId, path, options),
 					uninstall: (sessionId, id) => ipc.invoke(PLUGIN_SYSTEM_CHANNELS.UNINSTALL, sessionId, id),

@@ -22,6 +22,37 @@ function validManifest(): Record<string, unknown> {
 }
 
 describe("parseMarketplaceManifest", () => {
+	it("requires versioned releases for bundle-only plugins in schema v3", () => {
+		const member = {
+			type: "plugin",
+			slug: "demo",
+			source: { path: "abilities/plugins/demo" },
+			releases: [
+				{
+					version: "1.0.0",
+					minAppVersion: "0.5.58",
+					pluginApiVersion: "^2.5.0",
+					artifact: { url: "https://example.com/demo.zip", sha256: "a".repeat(64) },
+				},
+			],
+		};
+		const bundle = {
+			type: "bundle",
+			slug: "starter",
+			name: "Starter",
+			version: "1.0.0",
+			config: { members: [member] },
+		};
+		const input = { ...validManifest(), schemaVersion: 3, minAppVersion: "0.5.58", abilities: [bundle] };
+		expect(parseMarketplaceManifest(input).abilities[0]).toMatchObject({ config: { members: [member] } });
+		expect(() =>
+			parseMarketplaceManifest({
+				...input,
+				abilities: [{ ...bundle, config: { members: [{ ...member, releases: undefined }] } }],
+			}),
+		).toThrow(/versioned releases/);
+		expect(() => parseMarketplaceManifest({ ...input, schemaVersion: 2 })).toThrow(/schemaVersion 3/);
+	});
 	it.each(["../escape", "/absolute", "C:relative", "C:/absolute", "\\\\server\\share", "bad\0path", "."])(
 		"rejects unsafe member paths: %s",
 		(path) => {

@@ -166,7 +166,7 @@ export function stageSystemPluginsFromArchives(targetDir, logPrefix = "system-pl
 			throw new Error(`[${logPrefix}] preset 目录名与插件 id 不一致：${name} != ${sourceManifest.id}`);
 		}
 
-		const archivePath = join(pluginDir, "release", `${sourceManifest.id}-${sourceManifest.version}.zip`);
+		const archivePath = join(pluginDir, "release", `${sourceManifest.id}-${sourceManifest.version}.vettapkg`);
 		if (!existsSync(archivePath)) {
 			throw new Error(`[${logPrefix}] 缺少插件归档：${archivePath}；请先运行 build:presets`);
 		}

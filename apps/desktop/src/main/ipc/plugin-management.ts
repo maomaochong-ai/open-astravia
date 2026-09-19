@@ -74,10 +74,13 @@ export function registerPluginManagementIpc(pluginActionService: PluginActionSer
 		capabilityAdapter.assertOfficialSession(asPluginId(sessionId));
 		return lifecycle.list();
 	});
-	ipcMain.handle(PLUGIN_SYSTEM_CHANNELS.INSTALL_FROM_URL, (_event, sessionId: unknown, url: unknown) => {
-		capabilityAdapter.assertOfficialSession(asPluginId(sessionId));
-		return lifecycle.installUrl(asRequiredString(url, "plugin URL"));
-	});
+	ipcMain.handle(
+		PLUGIN_SYSTEM_CHANNELS.INSTALL_FROM_URL,
+		(_event, sessionId: unknown, url: unknown, options: unknown) => {
+			capabilityAdapter.assertOfficialSession(asPluginId(sessionId));
+			return lifecycle.installUrl(asRequiredString(url, "plugin URL"), asOptions(options));
+		},
+	);
 	ipcMain.handle(
 		PLUGIN_SYSTEM_CHANNELS.INSTALL_FROM_PATH,
 		(_event, sessionId: unknown, path: unknown, options: unknown) => {

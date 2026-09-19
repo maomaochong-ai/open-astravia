@@ -123,7 +123,7 @@ export default defineConfig({
       entry: "./src/index.tsx", // 入口（默认即此）
       expose: "./plugin",       // 暴露名（默认 "./plugin"，与 plugin.json.moduleFederation.expose 一致）
       // hostUi: true,           // 仅在导入 @vetta-org/ui 时开启
-      // package: true,         // 见 §5：构建后自动产出 release/<id>-<version>.zip
+      // package: true,         // 见 §5：构建后自动产出 release/<id>-<version>.vettapkg
     }),
   ],
   esbuild: { jsx: "automatic", jsxImportSource: "react" },
@@ -195,13 +195,13 @@ export default definePlugin({
 bunx vite build      # 产出 dist/（mf-manifest.json + remoteEntry.js + style.css）
 ```
 
-发布需要一个 **zip**：根目录放 `plugin.json`，其下 `dist/`。两种方式：
+发布需要一个 **`.vettapkg` 插件包**。它使用 ZIP 容器，根目录放 `plugin.json`，其下 `dist/`。两种方式：
 
-- **自动**：`vettaPluginFederation({ ..., package: true })`，`vite build` 后自动产出 `release/<id>-<version>.zip`（打包 `plugin.json` + `dist/` + 清单声明的 `styles` / `agent.promptPaths` / `agent.skillPaths`；存在 `ability.json` 时也打包它和 `presentation/`）。
-- **手动**：自行把 `plugin.json` 与 `dist/` 一起 zip：
+- **自动**：`vettaPluginFederation({ ..., package: true })`，`vite build` 后自动产出 `release/<id>-<version>.vettapkg`（打包 `plugin.json` + `dist/` + 清单声明的 `styles` / `agent.promptPaths` / `agent.skillPaths`；存在 `ability.json` 时也打包它和 `presentation/`）。
+- **手动**：自行用 ZIP 容器打包 `plugin.json` 与 `dist/`，并使用 `.vettapkg` 扩展名：
 
   ```text
-  my-plugin.zip
+  my-plugin.vettapkg
     plugin.json
     ability.json                 # 可选
     presentation/               # 使用 ability.json 时可选
@@ -215,13 +215,21 @@ bunx vite build      # 产出 dist/（mf-manifest.json + remoteEntry.js + style.
 > 归档根目录必须有 `plugin.json`，或只含**一个**顶层文件夹、`plugin.json` 在其中。
 > 能力详情是可选的；需要 showcase、功能网格、图片或长篇 Markdown 时见 [ability-details.md](./ability-details.md)。
 
+GitHub 能力市场有两种分发合同：schema v1/v2 从 `source.path` 目录直接安装，
+所以该目录必须包含构建后的 `dist/`；schema v3 从 `releases[]` 指向的固定 `.vettapkg`
+安装，市场仓库的 `source.path` 只放详情资源，`dist/` 和插件包留在制品存储。
+每个新版本写明已经发布的最低 App 版本、实际使用的 `pluginApiVersion`、插件包 URL
+和 SHA-256；市场会按用户 App 与宿主 API 版本选择可安装的版本。见仓库的
+[`docs/open-marketplace.md`](../open-marketplace.md#pluginmcp-与-bundle) 和
+[ADR-0120](../adr/0120-plugin-marketplace-releases-are-versioned-artifacts.md)。
+
 ## 7. 安装
 
 ### GUI
 
 通过桌面 App **设置 → 插件**（或独立插件页）安装：
 
-- **本地 zip**：选择本地 `.zip` 文件（`installFromArchive`）。
+- **本地插件包**：选择本地 `.vettapkg` 文件（`installFromArchive`）。旧 `.zip` 插件包仍可导入，但新发布应使用专用扩展名。
 - **远程 URL**：填写 zip 下载地址（`installFromUrl`）。
 
 安装后用户插件落在：
@@ -241,11 +249,11 @@ bunx vite build      # 产出 dist/（mf-manifest.json + remoteEntry.js + style.
 ```json
 {
   "operation": "install-from-path",
-  "path": "/abs/path/to/my-plugin-0.1.2.zip"
+  "path": "/abs/path/to/my-plugin-0.1.2.vettapkg"
 }
 ```
 
-- 路径：本机可读 **`.zip` 绝对路径**（不限 cwd）。
+- 路径：本机可读 **`.vettapkg` 绝对路径**（不限 cwd；兼容旧 `.zip`）。
 - 用户确认后：按 `plugin.json` **一次授予声明权限**并默认**启用**。
 - Desktop API：`window.vetta.plugins.installFromPath(path, { grantedPermissions?, enable? })`。
 - 不可覆盖系统插件 id。

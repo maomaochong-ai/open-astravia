@@ -4,6 +4,7 @@ import type {
 	AppMonitorResourceSource,
 } from "../../preload/api-types/app-monitor.js";
 import type { InstalledPlugin, PluginInstallOptions, PluginPermission } from "../../preload/api-types/plugins.js";
+import type { AbilityInstallLogInput, AbilityLifecycleLogContext } from "../abilities/ability-lifecycle-log.js";
 import type { PluginActionService } from "./plugin-action-service.js";
 
 export interface PluginLifecycleDependencies {
@@ -34,7 +35,9 @@ export interface PluginLifecycleDependencies {
 		kinds?: readonly ("tool" | "hook" | "continuation" | "system-prompt")[],
 	): void;
 	refreshRuntime(): void;
-	recordEvent(input: AppMonitorEvent): void;
+	recordEvent(input: AppMonitorEvent, logContext?: AbilityLifecycleLogContext): void;
+	logInstallStarted(input: AbilityInstallLogInput): void;
+	logInstallFailed(input: AbilityInstallLogInput, error: unknown): void;
 }
 
 export class PluginLifecycleService {
@@ -49,15 +52,21 @@ export class PluginLifecycleService {
 	}
 
 	async installArchive(buffer: ArrayBuffer | Buffer, options?: PluginInstallOptions): Promise<InstalledPlugin> {
-		return this.finishInstall(await this.dependencies.installFromArchive(buffer, options));
+		return this.installWithLogging(pluginArchiveInstallContext(options), () =>
+			this.dependencies.installFromArchive(buffer, options),
+		);
 	}
 
 	async installUrl(url: string, options?: PluginInstallOptions): Promise<InstalledPlugin> {
-		return this.finishInstall(await this.dependencies.installFromUrl(url, options));
+		return this.installWithLogging(pluginUrlInstallContext(url, options), () =>
+			this.dependencies.installFromUrl(url, options),
+		);
 	}
 
 	async installPath(path: string, options?: PluginInstallOptions): Promise<InstalledPlugin> {
-		return this.finishInstall(await this.dependencies.installFromPath(path, options));
+		return this.installWithLogging(pluginPathInstallContext(path, options), () =>
+			this.dependencies.installFromPath(path, options),
+		);
 	}
 
 	async installOfficialPath(path: string, options?: PluginInstallOptions): Promise<InstalledPlugin> {
@@ -172,9 +181,25 @@ export class PluginLifecycleService {
 		if (plugin.enabled) this.dependencies.ensureCliProviders(id);
 		else this.actionService.clear(id);
 		this.dependencies.refreshRuntime();
-		this.recordPluginEvent(plugin, "permissions-granted", {
-			permissionCount: countAdded(previous?.grantedPermissions ?? [], plugin.grantedPermissions),
-		});
+		if (previous?.enabled !== plugin.enabled) {
+			this.recordPluginEvent(plugin, plugin.enabled ? "enabled" : "disabled");
+		}
+		const grantedPermissionCount = countAdded(previous?.grantedPermissions ?? [], plugin.grantedPermissions);
+		if (grantedPermissionCount > 0) {
+			this.recordPluginEvent(plugin, "permissions-granted", { permissionCount: grantedPermissionCount });
+		}
+		const revokedPermissionCount = countRemoved(previous?.grantedPermissions ?? [], plugin.grantedPermissions);
+		if (revokedPermissionCount > 0) {
+			this.recordPluginEvent(plugin, "permissions-revoked", { permissionCount: revokedPermissionCount });
+		}
+		const grantedCommandCount = countAdded(previous?.grantedCommandNames ?? [], plugin.grantedCommandNames);
+		if (grantedCommandCount > 0) {
+			this.recordPluginEvent(plugin, "commands-granted", { commandCount: grantedCommandCount });
+		}
+		const revokedCommandCount = countRemoved(previous?.grantedCommandNames ?? [], plugin.grantedCommandNames);
+		if (revokedCommandCount > 0) {
+			this.recordPluginEvent(plugin, "commands-revoked", { commandCount: revokedCommandCount });
+		}
 		return plugin;
 	}
 
@@ -194,8 +219,30 @@ export class PluginLifecycleService {
 		this.dependencies.refreshRuntime();
 	}
 
-	private finishInstall(plugin: InstalledPlugin): InstalledPlugin {
-		this.recordPluginEvent(plugin, plugin.installedAt === plugin.updatedAt ? "installed" : "updated");
+	private async installWithLogging(
+		context: AbilityInstallLogInput,
+		install: () => Promise<InstalledPlugin>,
+	): Promise<InstalledPlugin> {
+		this.dependencies.logInstallStarted(context);
+		try {
+			return this.finishInstall(await install(), context);
+		} catch (error) {
+			this.dependencies.logInstallFailed(context, error);
+			throw error;
+		}
+	}
+
+	private finishInstall(plugin: InstalledPlugin, context: AbilityInstallLogInput): InstalledPlugin {
+		const { abilityType: _abilityType, abilityId: _abilityId, ...installContext } = context;
+		this.recordPluginEvent(
+			plugin,
+			plugin.installedAt === plugin.updatedAt ? "installed" : "updated",
+			{},
+			{
+				...installContext,
+				version: plugin.activeVersion,
+			},
+		);
 		if (plugin.enabled) {
 			this.dependencies.ensureCliProviders(plugin.id);
 		}
@@ -219,9 +266,10 @@ export class PluginLifecycleService {
 		plugin: Pick<InstalledPlugin, "id" | "source">,
 		operation: AppMonitorResourceOperation,
 		counts: { permissionCount?: number; commandCount?: number } = {},
+		logContext?: AbilityLifecycleLogContext,
 	): void {
 		try {
-			this.dependencies.recordEvent({
+			const event: AppMonitorEvent = {
 				type: "resource.lifecycle",
 				resourceKind: "plugin",
 				operation,
@@ -229,11 +277,68 @@ export class PluginLifecycleService {
 				source: toAppMonitorPluginSource(plugin.source),
 				system: plugin.source === "system",
 				...counts,
-			});
+			};
+			if (logContext) this.dependencies.recordEvent(event, logContext);
+			else this.dependencies.recordEvent(event);
 		} catch {
 			// Monitoring must not affect plugin operations.
 		}
 	}
+}
+
+function installMode(options: PluginInstallOptions | undefined, fallback: "manual-package" | "plugin-api") {
+	if (options?.initiator === "plugin-cli") return "plugin-cli" as const;
+	if (options?.initiator === "plugin-workbench") return "plugin-workbench" as const;
+	return fallback;
+}
+
+function artifactKind(value: string): "vettapkg" | "legacy-zip" | "remote-archive" {
+	const lower = value.toLowerCase();
+	if (lower.endsWith(".vettapkg")) return "vettapkg";
+	if (lower.endsWith(".zip")) return "legacy-zip";
+	return "remote-archive";
+}
+
+function pluginArchiveInstallContext(options: PluginInstallOptions | undefined): AbilityInstallLogInput {
+	return {
+		abilityType: "plugin",
+		...(options?.expectedId ? { abilityId: options.expectedId } : {}),
+		...(options?.expectedVersion ? { version: options.expectedVersion } : {}),
+		installMode: installMode(options, "plugin-api"),
+		artifactKind: options?.source === "npm" ? "npm-package" : "archive-buffer",
+		...(options?.expectedSha256 ? { artifactSha256: options.expectedSha256 } : {}),
+		...(options?.npm?.packageName ? { npmPackage: options.npm.packageName } : {}),
+	};
+}
+
+function pluginPathInstallContext(path: string, options: PluginInstallOptions | undefined): AbilityInstallLogInput {
+	const normalized = path.replaceAll("\\", "/");
+	const artifactName = normalized.slice(normalized.lastIndexOf("/") + 1);
+	return {
+		abilityType: "plugin",
+		...(options?.expectedId ? { abilityId: options.expectedId } : {}),
+		...(options?.expectedVersion ? { version: options.expectedVersion } : {}),
+		installMode: installMode(options, "manual-package"),
+		artifactKind: options?.source === "npm" ? "npm-package" : artifactKind(artifactName),
+		artifactName,
+		...(options?.expectedSha256 ? { artifactSha256: options.expectedSha256 } : {}),
+		...(options?.npm?.packageName ? { npmPackage: options.npm.packageName } : {}),
+	};
+}
+
+function pluginUrlInstallContext(url: string, options: PluginInstallOptions | undefined): AbilityInstallLogInput {
+	const parsed = new URL(url);
+	const artifactName = parsed.pathname.slice(parsed.pathname.lastIndexOf("/") + 1);
+	return {
+		abilityType: "plugin",
+		...(options?.expectedId ? { abilityId: options.expectedId } : {}),
+		...(options?.expectedVersion ? { version: options.expectedVersion } : {}),
+		installMode: installMode(options, "plugin-api"),
+		artifactKind: artifactKind(artifactName),
+		...(artifactName ? { artifactName } : {}),
+		artifactUrl: parsed.origin + parsed.pathname,
+		...(options?.expectedSha256 ? { artifactSha256: options.expectedSha256 } : {}),
+	};
 }
 
 function toAppMonitorPluginSource(source: InstalledPlugin["source"]): AppMonitorResourceSource {

@@ -47,7 +47,7 @@
 | **顶层不要出现依赖共享 React 的 JSX** | Module Federation 的加载时序问题。放进组件或 `activate` 内 | [styling-and-pitfalls](./styling-and-pitfalls.md#module-federation-顶层-jsx-陷阱) |
 | **不要写 `agent_mode`** | 已废弃，无运行时语义。想收窄某个工具的使用场景，把「何时不该用它 + 替代做法」写进该工具 description 的反向触发段 | [guiding-the-agent](./guiding-the-agent.md#3-description-反向触发段在选择前说明边界) |
 | **依赖用 registry 上已发布的 semver** | 不要 `workspace:*`——那是仓库内插件专用的，发出去的包在用户机器上装不上 | [getting-started](./getting-started.md#2-packagejson) |
-| **`dist/` 要进版本库** | 插件通过仓库目录分发时，宿主直接读 `plugin.json` 指向的 `entry` 与 `styles`，**它不会替你构建**。目录里没有构建产物就装不上 | [getting-started](./getting-started.md#6-构建与打包) |
+| **目录市场发布要有构建制品** | 旧版 GitHub 市场通过仓库目录安装时，宿主直接读 `entry` 与 `styles`；新版 schema v3 可把 `.vettapkg` 发布为独立制品，市场仓库只保留元数据 | [getting-started](./getting-started.md#6-构建与打包) |
 | **信息不足时问用户** | 插件 id、展示名、要用哪些权限、功能边界、是否立刻安装——不要自己假定 | — |
 
 ## 插件能做什么

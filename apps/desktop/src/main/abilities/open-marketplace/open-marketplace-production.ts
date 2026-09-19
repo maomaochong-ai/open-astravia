@@ -1,10 +1,11 @@
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
 import type {
 	GitHubMarketplaceOrigin,
 	OpenMarketplaceMcpRuntimeProgress,
 } from "../../../preload/api-types/abilities.js";
 import type { McpServerConfigData } from "../../../preload/api-types/mcp.js";
+import { recordAppMonitorEvent } from "../../app-monitor/app-monitor-service.js";
 import { installPluginFromArchive } from "../../plugins/plugin-catalog.js";
 import {
 	getSkillBaseDir,
@@ -13,6 +14,13 @@ import {
 	writeSkillsManifest,
 } from "../../skills/skill-service.js";
 import { recordAbilityInstall } from "../ability-ledger.js";
+import {
+	type AbilityArtifactKind,
+	type AbilityLifecycleLogContext,
+	logAbilityInstallFailed,
+	logAbilityInstallStarted,
+} from "../ability-lifecycle-log.js";
+import { fetchVerifiedMarketplacePluginArtifact } from "./marketplace-plugin-artifact.js";
 import type { MarketplaceAbilityManifest } from "./marketplace-schema.js";
 import {
 	installOpenMarketplaceAbility,
@@ -33,8 +41,40 @@ const dependencies: OpenMarketplaceInstallerDependencies = {
 	readManifest: readSkillsManifest,
 	writeManifest: writeSkillsManifest,
 	recordInstall: (type, slug, version, metadata) => recordAbilityInstall(type, slug, version, metadata),
-	recordEvent: recordSkillResourceEvent,
+	recordEvent: (input) => recordSkillResourceEvent(input),
 };
+
+function artifactKindFromUrl(url: string): AbilityArtifactKind {
+	const pathname = new URL(url).pathname.toLowerCase();
+	if (pathname.endsWith(".vettapkg")) return "vettapkg";
+	if (pathname.endsWith(".zip")) return "legacy-zip";
+	return "remote-archive";
+}
+
+function marketplaceInstallContext(
+	ability: Exclude<MarketplaceAbilityManifest, { type: "bundle" }>,
+	origin: GitHubMarketplaceOrigin,
+): AbilityLifecycleLogContext {
+	const release = ability.type === "plugin" ? ability.releases?.[0] : undefined;
+	const artifactUrl = release?.artifact.url;
+	return {
+		version: ability.version,
+		installMode: "marketplace",
+		artifactKind: artifactUrl ? artifactKindFromUrl(artifactUrl) : "snapshot-source",
+		...(artifactUrl
+			? {
+					artifactName: basename(new URL(artifactUrl).pathname),
+					artifactUrl: new URL(artifactUrl).origin + new URL(artifactUrl).pathname,
+				}
+			: {}),
+		...(release?.artifact.sha256 ? { artifactSha256: release.artifact.sha256 } : {}),
+		...(origin.sourceId ? { marketplaceSourceId: origin.sourceId } : {}),
+		marketplaceName: origin.marketplace,
+		marketplaceVersion: origin.marketplaceVersion,
+		marketplaceRepository: origin.repository,
+		...(origin.ref ? { marketplaceRef: origin.ref } : {}),
+	};
+}
 
 export async function prepareOpenMarketplaceMcpInDesktop(
 	snapshotRoot: string,
@@ -83,24 +123,52 @@ export async function installOpenMarketplaceAbilityInDesktop(
 	snapshotRoot: string,
 	ability: MarketplaceAbilityManifest,
 	origin: GitHubMarketplaceOrigin,
+	accessToken?: string,
 ): Promise<void> {
 	if (ability.type === "bundle") throw new Error("Bundles are installed through their members");
 	if (ability.type === "mcp") throw new Error("MCP abilities are installed through MCP settings");
-	if (ability.type === "plugin") {
-		const sourceDir = join(snapshotRoot, ability.source.path);
-		validateOpenMarketplacePlugin(sourceDir, ability);
-		const installed = await installPluginFromArchive(createOpenMarketplacePluginArchive(sourceDir), {
-			source: "remote",
-			enable: false,
-			// Omit grants: fresh installs default to none; updates retain the user's existing consent.
-		});
-		recordAbilityInstall("plugin", installed.id, installed.activeVersion, {
-			origin,
-			configVersion: ability.configVersion,
-			catalogId: `github:${origin.sourceId ?? origin.repository}:plugin:${ability.slug}`,
-			slug: ability.slug,
-		});
-		return;
+	const logContext = marketplaceInstallContext(ability, origin);
+	logAbilityInstallStarted({ abilityType: ability.type, abilityId: ability.slug, ...logContext });
+	try {
+		if (ability.type === "plugin") {
+			const release = ability.releases?.[0];
+			if (!release) validateOpenMarketplacePlugin(join(snapshotRoot, ability.source.path), ability);
+			const archive = release
+				? await fetchVerifiedMarketplacePluginArtifact(release, ability.slug, origin.repository, accessToken)
+				: createOpenMarketplacePluginArchive(join(snapshotRoot, ability.source.path));
+			const installed = await installPluginFromArchive(archive, {
+				source: "remote",
+				enable: false,
+				expectedId: ability.slug,
+				expectedVersion: ability.version,
+				...(release ? { expectedSha256: release.artifact.sha256 } : {}),
+				// Omit grants: fresh installs default to none; updates retain the user's existing consent.
+			});
+			recordAbilityInstall("plugin", installed.id, installed.activeVersion, {
+				origin,
+				configVersion: ability.configVersion,
+				catalogId: `github:${origin.sourceId ?? origin.repository}:plugin:${ability.slug}`,
+				slug: ability.slug,
+			});
+			try {
+				recordAppMonitorEvent(
+					{
+						type: "resource.lifecycle",
+						resourceKind: "plugin",
+						resourceId: installed.id,
+						operation: installed.installedAt === installed.updatedAt ? "installed" : "updated",
+						source: "remote",
+					},
+					logContext,
+				);
+			} catch {
+				// Monitoring and logging must not affect a completed installation.
+			}
+			return;
+		}
+		await installOpenMarketplaceAbility(snapshotRoot, ability, origin, dependencies);
+	} catch (error) {
+		logAbilityInstallFailed({ abilityType: ability.type, abilityId: ability.slug, ...logContext }, error);
+		throw error;
 	}
-	await installOpenMarketplaceAbility(snapshotRoot, ability, origin, dependencies);
 }

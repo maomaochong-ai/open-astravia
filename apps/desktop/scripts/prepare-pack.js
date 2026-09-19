@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { resolveBuildResourceFilters } from "./build-resource-filters.mjs";
 import { validateDesktopBuildEnvironment } from "./desktop-build-environment.mjs";
-import { DESKTOP_BUILD_OUTPUTS } from "./desktop-packaging-layout.mjs";
+import { DESKTOP_BUILD_OUTPUTS, VETTA_PLUGIN_FILE_ASSOCIATION } from "./desktop-packaging-layout.mjs";
 import { LINUX_PACKAGE_METADATA, LINUX_RELEASE_TARGETS } from "./linux-packaging-contract.mjs";
 import { loadBuildEnv } from "./load-build-env.mjs";
 import { resolvePackagedNativeDependencies } from "./packaged-native-dependencies.mjs";
@@ -580,7 +580,7 @@ await stageVendorRuntimes();
 // 系统插件（extraResources）—— ADR-0024
 // =============================================================================
 //
-// build:presets 已为每个 preset 生成 release/<id>-<version>.zip。打包阶段只消费
+// build:presets 已为每个 preset 生成 release/<id>-<version>.vettapkg。打包阶段只消费
 // zip 制品，校验后解压到 Resources/system-plugins/<id>/，不读取源码 dist。
 // 按 profile + 租户筛选打包进 App 的系统插件。
 console.log(
@@ -681,6 +681,7 @@ const builderConfig = {
 		name: "Vetta",
 		schemes: ["vetta"],
 	},
+	fileAssociations: [VETTA_PLUGIN_FILE_ASSOCIATION],
 	mac: {
 		target: ["dmg", "zip"],
 		category: "public.app-category.productivity",

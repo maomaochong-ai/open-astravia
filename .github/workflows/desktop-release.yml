@@ -23,6 +23,10 @@ on:
         description: "Optional GitHub marketplace source for either edition. Empty keeps Environment / repo value."
         type: string
         required: false
+      marketplace_ref:
+        description: "Optional marketplace Git ref. Empty keeps Environment / repo value, then main."
+        type: string
+        required: false
       tenant:
         description: "VETTA_TENANT override (packages/plugins/tenants.json)."
         type: string
@@ -75,6 +79,7 @@ jobs:
       channel: ${{ steps.config.outputs.channel }}
       cloud_enabled: ${{ steps.config.outputs.cloud_enabled }}
       marketplace_repository: ${{ steps.config.outputs.marketplace_repository }}
+      marketplace_ref: ${{ steps.config.outputs.marketplace_ref }}
       notes: ${{ steps.config.outputs.notes }}
       r2_bucket: ${{ steps.config.outputs.r2_bucket }}
       r2_prefix: ${{ steps.config.outputs.r2_prefix }}
@@ -119,6 +124,7 @@ jobs:
           INPUT_CHANNEL: ${{ github.event.inputs.channel }}
           INPUT_CLOUD_ENABLED: ${{ github.event.inputs.cloud_enabled }}
           INPUT_MARKETPLACE_REPOSITORY: ${{ github.event.inputs.marketplace_repository }}
+          INPUT_MARKETPLACE_REF: ${{ github.event.inputs.marketplace_ref }}
           INPUT_NOTES: ${{ github.event.inputs.notes }}
           INPUT_R2_PREFIX: ${{ github.event.inputs.r2_prefix }}
           INPUT_RELEASE_TARGET: ${{ github.event.inputs.release_target }}
@@ -129,6 +135,7 @@ jobs:
           INPUT_UPDATE_URL: ${{ github.event.inputs.update_url }}
           VAR_CLOUD_ENABLED: ${{ vars.VETTA_CLOUD_ENABLED }}
           VAR_MARKETPLACE_REPOSITORY: ${{ vars.VETTA_OPEN_MARKETPLACE_REPOSITORY }}
+          VAR_MARKETPLACE_REF: ${{ vars.VETTA_OPEN_MARKETPLACE_REF }}
           VAR_R2_BUCKET: ${{ vars.VETTA_R2_BUCKET }}
           VAR_R2_PREFIX: ${{ vars.VETTA_R2_PREFIX }}
           VAR_R2_PREFIX_STABLE: ${{ vars.VETTA_R2_PREFIX_STABLE }}
@@ -152,6 +159,7 @@ jobs:
           OUTPUT_CHANNEL: ${{ steps.config.outputs.channel }}
           OUTPUT_CLOUD_ENABLED: ${{ steps.config.outputs.cloud_enabled }}
           OUTPUT_MARKETPLACE_REPOSITORY: ${{ steps.config.outputs.marketplace_repository }}
+          OUTPUT_MARKETPLACE_REF: ${{ steps.config.outputs.marketplace_ref }}
           OUTPUT_NOTES: ${{ steps.config.outputs.notes }}
           OUTPUT_R2_BUCKET: ${{ steps.config.outputs.r2_bucket }}
           OUTPUT_R2_PREFIX: ${{ steps.config.outputs.r2_prefix }}
@@ -372,6 +380,7 @@ jobs:
           OUTPUT_CHANNEL: ${{ needs.prepare.outputs.channel }}
           OUTPUT_CLOUD_ENABLED: ${{ needs.prepare.outputs.cloud_enabled }}
           OUTPUT_MARKETPLACE_REPOSITORY: ${{ needs.prepare.outputs.marketplace_repository }}
+          OUTPUT_MARKETPLACE_REF: ${{ needs.prepare.outputs.marketplace_ref }}
           OUTPUT_NOTES: ${{ needs.prepare.outputs.notes }}
           OUTPUT_R2_BUCKET: ${{ needs.prepare.outputs.r2_bucket }}
           OUTPUT_R2_PREFIX: ${{ needs.prepare.outputs.r2_prefix }}
@@ -593,6 +602,7 @@ jobs:
           OUTPUT_CHANNEL: ${{ needs.prepare.outputs.channel }}
           OUTPUT_CLOUD_ENABLED: ${{ needs.prepare.outputs.cloud_enabled }}
           OUTPUT_MARKETPLACE_REPOSITORY: ${{ needs.prepare.outputs.marketplace_repository }}
+          OUTPUT_MARKETPLACE_REF: ${{ needs.prepare.outputs.marketplace_ref }}
           OUTPUT_NOTES: ${{ needs.prepare.outputs.notes }}
           OUTPUT_R2_BUCKET: ${{ needs.prepare.outputs.r2_bucket }}
           OUTPUT_R2_PREFIX: ${{ needs.prepare.outputs.r2_prefix }}

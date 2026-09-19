@@ -33,7 +33,10 @@ function plugin(overrides: Partial<InstalledPlugin> = {}): InstalledPlugin {
 	};
 }
 
-function createService(installed: InstalledPlugin) {
+function createService(
+	installed: InstalledPlugin,
+	onRuntimeLoaded?: (plugin: InstalledPlugin, activationId: string) => void,
+) {
 	const hooks = {
 		register: vi.fn(),
 		unregister: vi.fn(() => true),
@@ -47,6 +50,7 @@ function createService(installed: InstalledPlugin) {
 		logger: { debug: vi.fn(), warn: vi.fn() },
 		hooks,
 		handlers: new DesktopPluginAgentHandlerRegistry(),
+		onRuntimeLoaded,
 	});
 }
 
@@ -80,5 +84,16 @@ describe("PluginAgentContributionService", () => {
 				handlerId: "handler",
 			}),
 		).toThrow("Plugin permission denied: agent.tools.register");
+	});
+
+	it("reports a runtime load only after the activation commits", () => {
+		const onRuntimeLoaded = vi.fn();
+		const service = createService(plugin(), onRuntimeLoaded);
+
+		service.beginLoad("demo", "activation-1");
+		expect(onRuntimeLoaded).not.toHaveBeenCalled();
+		service.commitLoad("demo", "activation-1");
+
+		expect(onRuntimeLoaded).toHaveBeenCalledWith(expect.objectContaining({ id: "demo" }), "activation-1");
 	});
 });

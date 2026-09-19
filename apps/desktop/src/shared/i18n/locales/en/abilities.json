@@ -82,8 +82,8 @@
 		"title": "Choose how to add",
 		"importSkill": "Import skill archive",
 		"importSkillHint": "Install from a local zip, tar.gz or tgz archive",
-		"importPlugin": "Import plugin archive",
-		"importPluginHint": "Install from a local zip that contains plugin.json",
+		"importPlugin": "Import plugin package",
+		"importPluginHint": "Install from a local .vettapkg (legacy .zip is supported; must contain plugin.json)",
 		"addMcp": "Add MCP manually",
 		"addMcpHint": "Configure a stdio or HTTP MCP server by hand"
 	},
@@ -169,7 +169,7 @@
 			"remote": "Remote install",
 			"npm": "npm package",
 			"system": "Built-in",
-			"local": "Local zip"
+			"local": "Local package"
 		},
 		"reloadVersion": "Reload to {{version}}",
 		"permissions": "Permissions",

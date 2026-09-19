@@ -54,4 +54,20 @@ describe("parseAppMonitorEvent", () => {
 			images: [{ format: "png", width: 100, height: 50 }],
 		});
 	});
+
+	it("accepts MCP ability lifecycle events", () => {
+		expect(
+			parseAppMonitorEvent({
+				type: "resource.lifecycle",
+				resourceKind: "mcp",
+				resourceId: "demo-server",
+				operation: "uninstalled",
+			}),
+		).toEqual({
+			type: "resource.lifecycle",
+			resourceKind: "mcp",
+			resourceId: "demo-server",
+			operation: "uninstalled",
+		});
+	});
 });

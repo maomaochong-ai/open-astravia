@@ -1,6 +1,7 @@
+import AdmZip from "adm-zip";
 import { describe, expect, it } from "vitest";
 import type { InstalledPlugin, PluginManifest } from "../../preload/api-types/plugins.js";
-import { createInstalledPluginFromManifest } from "./plugin-package.js";
+import { createInstalledPluginFromManifest, readPluginManifestFromArchive } from "./plugin-package.js";
 
 const manifest: PluginManifest = {
 	id: "demo",
@@ -94,5 +95,29 @@ describe("createInstalledPluginFromManifest", () => {
 
 		expect(installed.permissions).toEqual(["agent.command.run"]);
 		expect(installed.grantedPermissions).toEqual([]);
+	});
+});
+
+describe("readPluginManifestFromArchive", () => {
+	it.each(["plugin.json", "demo/plugin.json"])("recognizes a Vetta package whose manifest is at %s", (path) => {
+		const archive = new AdmZip();
+		archive.addFile(path, Buffer.from(JSON.stringify(manifest)));
+
+		expect(readPluginManifestFromArchive(archive.toBuffer())).toMatchObject({ id: "demo", version: "2.0.0" });
+	});
+
+	it("rejects an archive without an identifiable plugin manifest", () => {
+		const archive = new AdmZip();
+		archive.addFile("README.md", Buffer.from("not a plugin"));
+
+		expect(() => readPluginManifestFromArchive(archive.toBuffer())).toThrow("plugin.json not found");
+	});
+
+	it("rejects an ambiguous nested package root", () => {
+		const archive = new AdmZip();
+		archive.addFile("demo/plugin.json", Buffer.from(JSON.stringify(manifest)));
+		archive.addFile("other/readme.md", Buffer.from("unexpected second root"));
+
+		expect(() => readPluginManifestFromArchive(archive.toBuffer())).toThrow("plugin.json not found");
 	});
 });

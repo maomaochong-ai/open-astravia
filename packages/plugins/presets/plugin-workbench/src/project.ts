@@ -14,7 +14,7 @@ export interface ProjectInfo {
 	version: string;
 	guidingWords: string[];
 	permissions: PluginPermission[];
-	zipPath: string | null;
+	packagePath: string | null;
 }
 
 export function joinPath(base: string, ...parts: string[]): string {
@@ -62,12 +62,12 @@ export async function discoverProjects(cwd: string): Promise<ProjectInfo[]> {
 		const permissions = Array.isArray(manifest.permissions)
 			? manifest.permissions.filter(isPluginPermission)
 			: [];
-		const zipPath = joinPath(dir, "release", `${id}-${version}.zip`);
-		let zipExists = false;
+		const packagePath = joinPath(dir, "release", `${id}-${version}.vettapkg`);
+		let packageExists = false;
 		try {
-			zipExists = (await fs.stat(zipPath)) != null;
+			packageExists = (await fs.stat(packagePath)) != null;
 		} catch {
-			zipExists = false;
+			packageExists = false;
 		}
 		projects.push({
 			dir,
@@ -76,7 +76,7 @@ export async function discoverProjects(cwd: string): Promise<ProjectInfo[]> {
 			version,
 			guidingWords,
 			permissions,
-			zipPath: zipExists ? zipPath : null,
+			packagePath: packageExists ? packagePath : null,
 		});
 	}
 	return projects;

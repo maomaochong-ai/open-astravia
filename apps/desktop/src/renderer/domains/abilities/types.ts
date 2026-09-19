@@ -103,7 +103,7 @@ export interface AbilityBase {
 	/** 受管 MCP 运行时准备进度；普通能力操作没有此字段。 */
 	operationProgress?: AbilityOperationProgress;
 	downloadCount: number;
-	/** 用户自行导入（本地 zip / 从路径安装）。 */
+	/** 用户自行导入（本地插件包 / 从路径安装）。 */
 	isCustom: boolean;
 	/** 随 App 分发的内置能力（skill-presets、系统插件）。 */
 	isBuiltin: boolean;
