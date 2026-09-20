@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const listDirectory = vi.fn();
-vi.mock("../ssh/ssh-runtime.js", () => ({ getSshConnection: () => ({ listDirectory }) }));
+// 这一组测的是没有 helper 时的轮询降级；helper 那条路见 remote-directory-watch.helper.test.ts。
+vi.mock("../ssh/ssh-runtime.js", () => ({
+	getSshConnection: () => ({ listDirectory, helper: async () => undefined }),
+}));
 
 const { allowRemoteProjectRoot } = await import("./remote-filesystem.js");
 const { watchRemoteDirectory } = await import("./remote-directory-watch.js");

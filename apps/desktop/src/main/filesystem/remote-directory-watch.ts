@@ -5,10 +5,10 @@ import { assertRemotePathWithinProject } from "./remote-filesystem.js";
 /**
  * 远端目录的变更监听。
  *
- * 远端零安装（ADR-0124 第一阶段），拿不到 inotify，只能定期列目录、与上一次的快照比对。
- * Agent 在远端改了文件而文件树不动，用户会以为改动没发生——所以宁可用轮询换来「几秒内
- * 一定刷新」，也不让远程项目的文件树停在打开那一刻。第二阶段的远端 helper 接上真正的
- * 文件监听后，只需要替换这个模块的实现。
+ * 远端有 helper 时由它在那台机器上本地比对，有变化才推一条通知；没有 helper（平台不支持、
+ * 上传失败）时退回到从本机定期列目录、与上一次的快照比对。两条路对调用方是同一个接口：
+ * Agent 在远端改了文件而文件树不动，用户会以为改动没发生，所以无论哪条路都保证「几秒内
+ * 一定刷新」。
  */
 const POLL_INTERVAL_MS = 3_000;
 /** 连不上时放慢节奏，别对着一台掉线的主机每 3 秒重试一次。 */
@@ -34,6 +34,7 @@ export function watchRemoteDirectory(
 	let stopped = false;
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	let previous: string | undefined;
+	let releaseHelper: (() => void) | undefined;
 
 	const schedule = (delay: number): void => {
 		if (stopped) return;
@@ -54,11 +55,49 @@ export function watchRemoteDirectory(
 		}
 		schedule(nextDelay);
 	};
-	schedule(0);
+
+	const start = async (): Promise<void> => {
+		const helper = await getSshConnection(location.hostId)
+			.helper()
+			.catch(() => undefined);
+		if (stopped) return;
+		if (!helper) {
+			schedule(0);
+			return;
+		}
+		try {
+			await helper.call("watch.subscribe", { path: location.remotePath });
+		} catch {
+			// helper 说不行（目录不存在、没权限）：轮询那条路会按自己的节奏重试。
+			schedule(0);
+			return;
+		}
+		const off = helper.on("watch.changed", (params) => {
+			if ((params as { path?: unknown } | undefined)?.path === location.remotePath && !stopped) onChange();
+		});
+		// 通道断了就重新来过：helper 回来接着订阅，回不来就落到轮询。期间可能漏掉的变化
+		// 用一次通知补上——多刷新一次无害，漏刷新才是问题。
+		const offClose = helper.onClose(() => {
+			off();
+			releaseHelper = undefined;
+			if (stopped) return;
+			onChange();
+			timer = setTimeout(() => void start(), backoff);
+			timer.unref?.();
+		});
+		releaseHelper = () => {
+			off();
+			offClose();
+			void helper.call("watch.unsubscribe", { path: location.remotePath }).catch(() => {});
+		};
+		if (stopped) releaseHelper();
+	};
+	void start();
 
 	return () => {
 		stopped = true;
 		if (timer) clearTimeout(timer);
+		releaseHelper?.();
 	};
 }
 
