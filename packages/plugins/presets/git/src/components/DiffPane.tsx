@@ -108,7 +108,7 @@ export function DiffPane({
 	return (
 		// 顶部内缩与提交卡片一致（pt-1 = mt-1），两块的上沿才在同一条线上；左上角用同一档
 		// 圆角，否则一块圆角卡片紧挨着一个直角色块，接缝会很突兀。
-		<div className="mx-2 mb-2 mt-1 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-border/70 bg-background">
+		<div className="mb-2 ml-0.5 mr-2 mt-1 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-border/70 bg-background">
 			<div className="flex h-9 shrink-0 items-center gap-1.5 px-2">
 				<Button
 					type="button"

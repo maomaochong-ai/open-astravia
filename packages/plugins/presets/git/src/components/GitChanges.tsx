@@ -218,7 +218,7 @@ export function GitChanges({ root, groups }: { root: string; groups: StatusGroup
 								treeCollapsed={treeCollapsed}
 							/>
 						) : (
-							<div className="mx-2 mb-2 mt-1 flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-2 rounded-lg border border-border/70 bg-background text-muted-foreground">
+							<div className="mb-2 ml-0.5 mr-2 mt-1 flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-2 rounded-lg border border-border/70 bg-background text-muted-foreground">
 								<FileIcon className="h-6 w-6 opacity-50" />
 								<span className="text-[12px]">{t("diff.selectPrompt")}</span>
 							</div>
