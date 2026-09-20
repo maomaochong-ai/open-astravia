@@ -165,6 +165,13 @@ export class SshConnection {
 		return result.stdout;
 	}
 
+	/** 只取文件开头若干字节，用于判断类型：不必为了看一眼文件头把整份文件拖过网络。 */
+	async readFileHead(remotePath: string, byteCount: number, signal?: AbortSignal): Promise<Uint8Array> {
+		const count = Math.max(0, Math.floor(byteCount));
+		const result = await this.runChecked(`head -c ${count} -- ${quoteShellArgument(remotePath)}`, { signal });
+		return result.stdout;
+	}
+
 	/** 原子写，保留原文件的权限位并穿透符号链接，见 {@link buildWriteFileCommand}。 */
 	async writeFile(remotePath: string, content: Uint8Array, signal?: AbortSignal): Promise<void> {
 		const command = buildWriteFileCommand(remotePath, `.vetta-tmp-${Date.now().toString(36)}`);

@@ -1,4 +1,11 @@
-import type { EditOperations, LsOperations, ReadOperations, WriteOperations } from "@vetta/runtime-node/coding";
+import {
+	detectSupportedImageMimeTypeFromBuffer,
+	type EditOperations,
+	IMAGE_SNIFF_BYTES,
+	type LsOperations,
+	type ReadOperations,
+	type WriteOperations,
+} from "@vetta/runtime-node/coding";
 import type { SshConnection } from "@vetta/ssh-transport";
 
 /**
@@ -25,6 +32,11 @@ export function createSshReadOperations(connection: SshConnection): ReadOperatio
 			// 「文件不存在」和「读到了空文件」。
 			if (entry === null) throw new Error(`ENOENT: no such file or directory, access '${absolutePath}'`);
 		},
+		// 缺了它，read 会把远端的每张图片都当成二进制文件拒掉。
+		detectImageMimeType: async (absolutePath) =>
+			detectSupportedImageMimeTypeFromBuffer(
+				await connection.readFileHead(await expand(absolutePath), IMAGE_SNIFF_BYTES),
+			),
 	};
 }
 

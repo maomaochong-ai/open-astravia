@@ -198,6 +198,20 @@ describe("远程项目的 Agent 工具", () => {
 		expect([...files.keys()]).toEqual(["/home/dev/notes.md"]);
 	});
 
+	it("read 能把远端的图片交给模型看，而不是当成二进制文件拒掉", async () => {
+		const png = Uint8Array.from(
+			Buffer.from(
+				"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+				"base64",
+			),
+		);
+		const { environment } = createEnvironment(new Map(), new Map([["/srv/app/logo.png", png]]));
+
+		const result = await execute(toolByName(environment.registrations, "read"), { path: "logo.png" });
+
+		expect(result.content.some((item) => item.type === "image")).toBe(true);
+	});
+
 	it("bash 超时后告诉模型超时了多久，并保留已经产生的输出", async () => {
 		const { environment } = createEnvironment(new Map());
 
