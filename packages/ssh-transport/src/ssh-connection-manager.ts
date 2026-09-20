@@ -1,7 +1,7 @@
 import { SshTransportError } from "./errors.js";
 import type { SshProcessRunner } from "./process-runner.js";
 import { buildControlPath } from "./ssh-argv.js";
-import { SshConnection } from "./ssh-connection.js";
+import { SshConnection, type SshConnectionOptions } from "./ssh-connection.js";
 import type { SshConnectionStatus, SshHost } from "./ssh-host.js";
 
 export interface SshConnectionManagerOptions {
@@ -17,6 +17,8 @@ export interface SshConnectionManagerOptions {
 	 * 才能取对凭据、也才能在弹窗里说清是谁在要口令。
 	 */
 	readonly resolveEnv?: (hostId: string) => Readonly<Record<string, string>> | undefined;
+	/** 诊断钩子，透传给每条连接。见 {@link SshConnectionOptions.onTrace}。 */
+	readonly onTrace?: SshConnectionOptions["onTrace"];
 	readonly onStatusChanged?: (hostId: string, status: SshConnectionStatus) => void;
 }
 
@@ -54,6 +56,7 @@ export class SshConnectionManager {
 			runner: this.options.runner,
 			controlPath: buildControlPath(this.options.controlDirectory, hostId),
 			env: this.options.resolveEnv?.(hostId),
+			onTrace: this.options.onTrace,
 		});
 		this.connections.set(hostId, connection);
 		return connection;

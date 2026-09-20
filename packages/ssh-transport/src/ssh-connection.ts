@@ -51,6 +51,19 @@ export interface SshConnectionOptions {
 	/** 传给 ssh 子进程的额外环境变量，用于挂 askpass。 */
 	readonly env?: Readonly<Record<string, string>>;
 	readonly connectTimeoutSeconds?: number;
+	/**
+	 * 诊断钩子。
+	 *
+	 * 目录列举这类操作会出现「命令退出 0、输出也有内容，但解析完是空的」——界面只能
+	 * 显示「没有子目录」，从现象完全反推不到原因（实际遇到过：远端是中文 locale，
+	 * stat 输出「目录」而不是 directory）。把原始命令与输出留给宿主记日志，这类故障
+	 * 才有可能被查出来。
+	 */
+	readonly onTrace?: (event: {
+		readonly command: string;
+		readonly output: string;
+		readonly entryCount: number;
+	}) => void;
 }
 
 /**
@@ -143,8 +156,16 @@ export class SshConnection {
 
 	async listDirectory(remotePath: string, signal?: AbortSignal): Promise<RemoteDirectoryEntry[]> {
 		const platform = await this.probePlatform(signal);
-		const result = await this.runChecked(buildListDirectoryCommand(remotePath, platform.statFlavor), { signal });
-		return parseRemoteDirectoryListing(decode(result.stdout));
+		const command = buildListDirectoryCommand(remotePath, platform.statFlavor);
+		const result = await this.runChecked(command, { signal });
+		const output = decode(result.stdout);
+		const entries = parseRemoteDirectoryListing(output);
+		// 只在「有输出却解析不出条目」时上报：那是解析与远端输出格式对不上的信号，
+		// 也是唯一一种不会报错、却让界面显示为空的故障。
+		if (entries.length === 0 && output.trim().length > 0) {
+			this.options.onTrace?.({ command, output: output.slice(0, 2_000), entryCount: 0 });
+		}
+		return entries;
 	}
 
 	/** 路径不存在时返回 null——这是远端给出的正面答复，不是「问不到」。 */

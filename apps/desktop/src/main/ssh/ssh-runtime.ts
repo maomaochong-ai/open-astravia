@@ -10,8 +10,11 @@ import {
 	type SshConnectionStatus,
 } from "@vetta/ssh-transport";
 import { readConfigSync } from "../config/desktop-config-store.js";
+import { getAppLogger } from "../logger.js";
 import { resetSshPromptState, resolveAskpassEnvironment } from "./askpass-runtime.js";
 import { broadcastSshHostStatus } from "./ssh-events.js";
+
+const log = getAppLogger("ssh");
 
 let manager: SshConnectionManager | undefined;
 
@@ -59,6 +62,11 @@ export function getSshConnectionManager(): SshConnectionManager {
 				hostId,
 				(id) => readConfigSync().sshHosts?.find((host) => host.id === id)?.label ?? id,
 			),
+		onTrace: ({ command, output }) => {
+			// 远端有输出却一条都解析不出：多半是远端的 stat 输出格式与预期不符。
+			// 界面只会显示「没有子目录」，不记下来就无从查起。
+			log.warn("remote directory listing parsed to nothing", { command, output });
+		},
 		onStatusChanged: (hostId, status) => {
 			// 连上了就说明这轮认证过了，把「存档凭据已用过」的标记清掉，
 			// 下次连接才会继续优先用存档而不是又去问用户。
