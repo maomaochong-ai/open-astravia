@@ -42,6 +42,8 @@ interface GitRuntime {
 	settingsListeners: Set<(settings: unknown) => void>;
 	/** Subscribers to "the user asked to commit now" requests from the turn card. */
 	commitRequestListeners: Set<(root: string) => void>;
+	/** cwds whose tab this session already auto-attached (see {@link claimTabAttach}). */
+	attachedCwds: Set<string>;
 }
 
 const KEY = "__vettaGitPluginRuntime__";
@@ -64,6 +66,7 @@ function runtime(): GitRuntime {
 			refreshTimer: null,
 			settingsListeners: new Set<(settings: unknown) => void>(),
 			commitRequestListeners: new Set<(root: string) => void>(),
+			attachedCwds: new Set<string>(),
 		} satisfies GitRuntime;
 	}
 	return g[KEY] as GitRuntime;
@@ -193,6 +196,21 @@ export function getOfficialApi(): PluginOfficialApi {
  */
 export function settingsListeners(): Set<(settings: unknown) => void> {
 	return runtime().settingsListeners;
+}
+
+/**
+ * Claim the one automatic tab attach allowed per cwd in this session.
+ *
+ * Returns false once the cwd has been claimed, so switching conversations back
+ * and forth does not keep re-attaching a tab the user has since closed — the
+ * host records a manual close as an explicit "hidden" entry, and the plugin has
+ * no way to read it back.
+ */
+export function claimTabAttach(cwd: string): boolean {
+	const set = runtime().attachedCwds;
+	if (set.has(cwd)) return false;
+	set.add(cwd);
+	return true;
 }
 
 /** Register the host-backed panel resizer (wired in activate from ctx.ui). */

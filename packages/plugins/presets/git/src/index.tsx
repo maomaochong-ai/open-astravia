@@ -4,7 +4,18 @@ import { GitPanel } from "./components/GitPanel";
 import { GitSettingsView } from "./components/GitSettingsView";
 import { GitTurnCard } from "./components/GitTurnCard";
 import { GitIcon } from "./components/icons";
-import { emitRefreshSignal, emitTurnPhase, setAiApi, setFsApi, setGitCommand, setUiApi, setOfficialApi, setPanelResizer, setStorageApi } from "./git/runtime";
+import {
+	claimTabAttach,
+	emitRefreshSignal,
+	emitTurnPhase,
+	setAiApi,
+	setFsApi,
+	setGitCommand,
+	setOfficialApi,
+	setPanelResizer,
+	setStorageApi,
+	setUiApi,
+} from "./git/runtime";
 import { CHANGES_TAB_ID, isInsideGitWorkTree } from "./git/tab-visibility";
 
 export default definePlugin({
@@ -50,7 +61,14 @@ export default definePlugin({
 				void isInsideGitWorkTree(ctx.command, cwd).then((inRepo) => {
 					// 探测是异步的，期间可能已切走——切走后再写就会写到别人的 cwd 上。
 					if (latestCwd !== cwd) return;
-					ctx.ui.setActivityTabVisible(CHANGES_TAB_ID, inRepo);
+					// 必须显式带上 cwd：不带时宿主拿「前台工作区」当作用域，而会话切换回放
+					// 时前台未必已经就绪，那次写入会被直接丢弃，标签卡也就永远不上栏。
+					if (!inRepo) {
+						ctx.ui.setActivityTabVisible(CHANGES_TAB_ID, false, { cwd });
+						return;
+					}
+					// 每个 cwd 只自动上栏一次：用户手动关掉之后不该被下一次会话切换顶回来。
+					if (claimTabAttach(cwd)) ctx.ui.setActivityTabVisible(CHANGES_TAB_ID, true, { cwd });
 				});
 			}
 		});
