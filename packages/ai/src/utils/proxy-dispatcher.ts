@@ -13,6 +13,7 @@
  */
 
 import type { FetchFunction } from "../types.js";
+import { shouldBypassProxy } from "./proxy-config.js";
 
 /** 一个自带 dispatcher 的 fetch，连同它那份连接池的释放句柄。 */
 export interface ManagedFetch {
@@ -23,6 +24,8 @@ export interface ManagedFetch {
 
 /** undici dispatcher 是结构化鸭子类型，这里只约束到本模块真正用到的部分。 */
 export interface UndiciDispatcher {
+	/** `opts.origin` 是本次请求的目标源，分流判定只需要它。 */
+	dispatch(opts: { origin?: string | URL }, handler: unknown): boolean;
 	close(): Promise<void>;
 }
 
@@ -49,7 +52,12 @@ export interface GlobalProxyDispatcherHandle {
 }
 
 /**
- * 把全局 dispatcher 换成走代理的那个，返回还原句柄。
+ * 把全局 dispatcher 换成按目标分流的那个，返回还原句柄。
+ *
+ * 必须分流而不能直接装 `ProxyAgent`：后者对任何目标都建隧道，本机与内网地址也
+ * 不例外——CLIProxyAPI 这类跑在 127.0.0.1 的桥接网关、局域网模型服务会当场连不上。
+ * undici 的 `EnvHttpProxyAgent` 虽然认 NO_PROXY，但只比对主机名和子域后缀，表达
+ * 不了网段，所以这里自己按 `shouldBypassProxy` 分流。
  *
  * 还原而不是清空：装上之前那个可能是 `EnvHttpProxyAgent`（用户在 shell 里导出
  * 过代理），直接扔掉等于把他原有的代理弄没了。
@@ -60,12 +68,25 @@ export async function installGlobalProxyDispatcher(
 ): Promise<GlobalProxyDispatcherHandle> {
 	const control = await loadControl();
 	const previous = control.get();
-	const agent = control.createProxyAgent(proxyUrl);
-	control.set(agent);
+	const proxyAgent = control.createProxyAgent(proxyUrl);
+	const directAgent = control.createDirectAgent();
+
+	const splitting: UndiciDispatcher = {
+		dispatch: (opts, handler) => {
+			const origin = typeof opts.origin === "string" ? opts.origin : opts.origin?.toString();
+			const agent = origin && shouldBypassProxy(origin) ? directAgent : proxyAgent;
+			return agent.dispatch(opts, handler);
+		},
+		close: async () => {
+			await Promise.all([proxyAgent.close(), directAgent.close()]);
+		},
+	};
+	control.set(splitting);
+
 	return {
 		dispose: async () => {
 			control.set(previous);
-			await agent.close();
+			await splitting.close();
 		},
 	};
 }

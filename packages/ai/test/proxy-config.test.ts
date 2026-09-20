@@ -85,8 +85,29 @@ describe("shouldBypassProxy", () => {
 		}
 	});
 
+	it("bypasses LAN targets so a self-hosted gateway or model server stays reachable", () => {
+		// CLIProxyAPI 桥接网关、局域网推理机绕外网代理出去必然连不上。
+		for (const url of [
+			"http://192.168.50.50:8124/v1",
+			"http://10.1.2.3:8000",
+			"http://172.20.0.5/v1",
+			"http://169.254.1.1/",
+			"http://gateway.local:3000",
+			"http://[fe80::1]:8080",
+			"http://[fd00::1]/",
+		]) {
+			expect(shouldBypassProxy(url)).toBe(true);
+		}
+	});
+
 	it("does not bypass remote targets", () => {
-		for (const url of ["https://api.anthropic.com/v1", "https://127.0.0.1.evil.com/"]) {
+		for (const url of [
+			"https://api.anthropic.com/v1",
+			"https://127.0.0.1.evil.com/",
+			"http://172.32.0.1/",
+			"http://11.0.0.1/",
+			"http://192.169.0.1/",
+		]) {
 			expect(shouldBypassProxy(url)).toBe(false);
 		}
 	});
