@@ -5,10 +5,8 @@ import { GitFileTree } from "./GitFileTree";
 import { GitFlatList } from "./GitFlatList";
 import { ChevronIcon } from "./icons";
 
-/** Height budget for one section's body so three sections share the column. */
-const ROW_HEIGHT = 24;
-const MIN_BODY = ROW_HEIGHT * 2;
-const MAX_BODY = ROW_HEIGHT * 12;
+/** Floor for a section body, so a one-file section is still usable when squeezed. */
+const MIN_BODY = 48;
 
 /**
  * One labelled, collapsible section of the change list (conflicts / staged /
@@ -44,12 +42,15 @@ export function ChangeSectionList({
 	tone?: "danger";
 }): JSX.Element | null {
 	if (entries.length === 0) return null;
-	// The tree renders into a fixed-height host, so give it a share of the column
-	// that grows with its content instead of a hard split.
-	const bodyHeight = Math.min(MAX_BODY, Math.max(MIN_BODY, entries.length * ROW_HEIGHT + 4));
 
 	return (
-		<div className="flex shrink-0 flex-col border-b border-border/60 last:border-b-0">
+		// Expanded sections share all the space left below the commit box, split in
+		// proportion to how many files each holds; the tree scrolls internally once
+		// its share is too small. A collapsed section keeps only its header.
+		<div
+			className={`flex flex-col border-b border-border/60 last:border-b-0 ${collapsed ? "shrink-0" : "min-h-0"}`}
+			style={collapsed ? undefined : { flex: `${entries.length} 1 0`, minHeight: MIN_BODY }}
+		>
 			<div className="group flex h-6 items-center gap-1 px-1.5">
 				<button
 					type="button"
@@ -63,7 +64,7 @@ export function ChangeSectionList({
 				{actions && <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">{actions}</div>}
 			</div>
 			{!collapsed && (
-				<div className="min-h-0 overflow-hidden" style={viewMode === "tree" ? { height: bodyHeight } : undefined}>
+				<div className="min-h-0 flex-1 overflow-hidden">
 					{viewMode === "tree" ? (
 						<GitFileTree entries={entries} selectedPaths={selectedPaths} onSelectionChange={onSelectionChange} renderMenu={renderMenu} />
 					) : (

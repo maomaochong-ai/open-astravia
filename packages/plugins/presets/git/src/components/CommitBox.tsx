@@ -68,14 +68,6 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 		return () => clearTimeout(timer);
 	}, [root, message]);
 
-	// 自适应高度：1 行起，超过上限后内部滚动。
-	useEffect(() => {
-		const el = textareaRef.current;
-		if (!el) return;
-		el.style.height = "auto";
-		el.style.height = `${Math.min(el.scrollHeight, 132)}px`;
-	}, [message]);
-
 	const disabledReason = hasConflicts ? t("commit.blockedByConflicts") : !hasAnyChange ? t("commit.nothingToCommit") : null;
 	const canCommit = pending === null && disabledReason === null && message.trim().length > 0;
 
@@ -194,20 +186,21 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 					readOnly={generating}
 					onChange={(event) => setMessage(event.target.value)}
 					onKeyDown={onKeyDown}
-					rows={1}
+					rows={3}
 					placeholder={t("commit.placeholder")}
-					className="w-full resize-none rounded-md border border-border bg-background py-1.5 pl-2 pr-8 text-[12px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/70 focus:border-ring"
+					// resize-y：高度交给用户拖，不再由脚本每次输入都重算（那会把手动拖动的高度顶掉）。
+					className="min-h-[68px] w-full resize-y rounded-md border border-border bg-background py-1.5 pl-2 pr-10 text-[12px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/70 focus:border-ring"
 				/>
 				<Button
 					type="button"
 					variant="ghost"
-					size="icon-xs"
-					className="absolute bottom-1 right-3"
+					size="icon-sm"
+					className="absolute right-3 top-3"
 					disabled={pending !== null || (!generating && !hasAnyChange)}
 					title={generating ? t("ai.stop") : t("ai.generate")}
 					onClick={() => (generating ? abortRef.current?.abort() : requestGenerate())}
 				>
-					{generating ? <StopIcon className="h-3 w-3 text-muted-foreground" /> : <SparkleIcon className="h-3.5 w-3.5 text-sky-500" />}
+					{generating ? <StopIcon className="h-4 w-4 text-muted-foreground" /> : <SparkleIcon className="h-[18px] w-[18px] text-sky-500" />}
 				</Button>
 			</div>
 			<div className="flex items-center gap-1 px-2 py-1.5">

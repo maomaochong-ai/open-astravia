@@ -206,7 +206,8 @@ export function GitChanges({ root, groups }: { root: string; groups: StatusGroup
 						>
 							<BranchBar root={root} />
 							<CommitBox root={root} groups={groups} />
-							<div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+							{/* 分区自己吃满剩余高度并各自内部滚动，外层不再整体滚动。 */}
+							<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
 								{SECTION_ORDER.map((section) => (
 									<ChangeSectionList
 										key={section}
