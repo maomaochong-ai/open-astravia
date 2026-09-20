@@ -1,4 +1,4 @@
-import { homedir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import {
 	type CodingAgentSessionExecutionEnvironmentFactory,
@@ -13,6 +13,7 @@ import {
 	getKnowledgeDir,
 	getSceneDir,
 	getUserSkillsDir,
+	getVettaHomePath,
 } from "@vetta/coding-agent/config";
 import { CODING_AGENT_READ_TOOL_OPTIONS } from "@vetta/coding-agent/host";
 import { SettingsRuntime } from "@vetta/coding-agent/settings";
@@ -48,6 +49,7 @@ export const createDesktopCodingAgentToolEnvironment: CodingAgentToolEnvironment
 			editPathPolicy: policies.editPathPolicy,
 			writePathPolicy: policies.writePathPolicy,
 			readOptions: CODING_AGENT_READ_TOOL_OPTIONS,
+			localReadRoots: resolveLocalReadRoots(context.agentDir),
 		});
 	}
 	const host = createDesktopNodeToolHost(context.cwd, context.agentDir);
@@ -83,6 +85,7 @@ export const createDesktopCodingAgentSessionExecutionEnvironment: CodingAgentSes
 			editPathPolicy: policies.editPathPolicy,
 			writePathPolicy: policies.writePathPolicy,
 			readOptions: CODING_AGENT_READ_TOOL_OPTIONS,
+			localReadRoots: resolveLocalReadRoots(context.agentDir),
 		});
 		return {
 			registrations: environment.registrations,
@@ -172,4 +175,25 @@ function createDesktopNodeToolHost(cwd: string, configuredAgentDir?: string) {
 		editPathPolicy: createCodingAgentEditPathPolicy(boundaries),
 		writePathPolicy: createCodingAgentWritePathPolicy(boundaries),
 	};
+}
+
+/**
+ * 远程会话里仍要从本机读取的目录：宿主交给模型的本机路径都落在这几处。
+ *
+ * - Vetta 主目录：粘贴图片的缓存、用户技能、场景、会话产物。
+ * - agent 目录：通常在主目录之下，自定义位置时单独列出。
+ * - 系统临时目录：被截断的命令输出的完整日志、远端后台任务的本地日志。
+ * - 应用资源目录：随应用分发的预设插件技能。
+ */
+function resolveLocalReadRoots(configuredAgentDir: string | undefined): readonly string[] {
+	const roots = [
+		getVettaHomePath(),
+		configuredAgentDir ?? getAgentDir(),
+		getUserSkillsDir(),
+		getSceneDir(),
+		tmpdir(),
+		// Electron 主进程才有；CLI 与测试里是 undefined。
+		(process as NodeJS.Process & { resourcesPath?: string }).resourcesPath,
+	];
+	return roots.filter((root): root is string => typeof root === "string" && root.length > 0);
 }

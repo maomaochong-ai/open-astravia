@@ -1,3 +1,6 @@
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
 import type { CodingToolRegistration } from "@vetta/runtime-tools";
 import { SshConnection, type SshHost, type SshProcessResult, type SshProcessRunner } from "@vetta/ssh-transport";
@@ -221,6 +224,27 @@ describe("远程项目的 Agent 工具", () => {
 		const result = await execute(toolByName(environment.registrations, "read"), { path: "logo.png" });
 
 		expect(result.content.some((item) => item.type === "image")).toBe(true);
+	});
+
+	it("宿主交给模型的本机路径（粘贴的图片、技能资料）在远程会话里读的是本机", async () => {
+		const localRoot = mkdtempSync(join(tmpdir(), "vetta-local-artifacts-"));
+		writeFileSync(join(localRoot, "reference.md"), "LOCAL SKILL REFERENCE\n");
+		const fake = createFakeHost(new Map([["/srv/app/main.ts", "remote"]]));
+		const environment = createSshCodingToolEnvironment({
+			connection: fake.connection,
+			remoteCwd: REMOTE_CWD,
+			editPathPolicy: { getRejectionReason: () => undefined },
+			writePathPolicy: { getRejectionReason: () => undefined },
+			localReadRoots: [localRoot],
+		});
+		const read = toolByName(environment.registrations, "read");
+
+		expect(textOf(await execute(read, { path: join(localRoot, "reference.md") }))).toContain("LOCAL SKILL REFERENCE");
+		// 挂载目录之外的路径照旧读远端，哪怕本机恰好也有同名文件。
+		expect(textOf(await execute(read, { path: "/srv/app/main.ts" }))).toContain("remote");
+		// 用 `..` 跳出挂载目录不算在其下。
+		await expect(execute(read, { path: join(localRoot, "../outside.md") })).rejects.toThrow();
+		expect(fake.commands.some((command) => command.includes("reference.md"))).toBe(false);
 	});
 
 	it("bash 超时后告诉模型超时了多久，并保留已经产生的输出", async () => {

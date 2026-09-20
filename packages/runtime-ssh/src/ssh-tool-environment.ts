@@ -26,6 +26,7 @@ import {
 	createSshLsOperations,
 	createSshReadOperations,
 	createSshWriteOperations,
+	type SshReadOperationsOptions,
 } from "./ssh-file-operations.js";
 import { createSshExecutableResolver, createSshToolProcessSpawner } from "./ssh-tool-process.js";
 
@@ -43,6 +44,8 @@ export interface SshCodingToolEnvironmentOptions {
 	readonly writePathPolicy: WritePathPolicy;
 	readonly readOptions?: Pick<ReadToolOptions, "binaryContentHint" | "preserveFullText">;
 	readonly blockUntilSec?: number;
+	/** 见 {@link SshReadOperationsOptions.localReadRoots}。 */
+	readonly localReadRoots?: readonly string[];
 }
 
 export interface SshCodingToolEnvironment {
@@ -93,7 +96,7 @@ export function createSshCodingToolEnvironment(options: SshCodingToolEnvironment
 			createReadToolRegistration(remoteCwd, {
 				...options.readOptions,
 				pathHost,
-				operations: createSshReadOperations(connection),
+				operations: createSshReadOperations(connection, { localReadRoots: options.localReadRoots }),
 			}),
 			createEditToolRegistration(remoteCwd, {
 				pathPolicy: options.editPathPolicy,
