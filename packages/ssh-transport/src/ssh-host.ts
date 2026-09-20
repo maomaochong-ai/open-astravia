@@ -30,7 +30,7 @@ export interface SshHost {
 	readonly credentialRef?: string;
 }
 
-/** 连接生命周期。`unverifiable` 不能与 `disconnected` 合并，见 ADR-0120 的执行边界。 */
+/** 连接生命周期。`unverifiable` 不能与 `disconnected` 合并，见 ADR-0124 的执行边界。 */
 export type SshConnectionStatus = "disconnected" | "connecting" | "connected" | "unverifiable";
 
 export interface SshHostInput {

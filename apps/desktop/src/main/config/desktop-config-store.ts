@@ -59,7 +59,7 @@ export interface DesktopConfig {
 		inputEnabled?: boolean;
 	};
 	/**
-	 * 可作为远程项目宿主的 SSH 主机（ADR-0120）。
+	 * 可作为远程项目宿主的 SSH 主机（ADR-0124）。
 	 *
 	 * 注意与上面的 `remoteControl` 是两件事：那个是「手机遥控本机」，这个是
 	 * 「本机连到远端主机上开发」，方向相反。

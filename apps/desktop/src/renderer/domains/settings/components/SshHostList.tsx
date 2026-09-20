@@ -68,7 +68,7 @@ export function SshHostList({ model }: { model: SshHostsSettingsModel }): JSX.El
  * 连接状态。
  *
  * `unverifiable` 单独成一档，不并进「未连接」：它的含义是「刚才问不到」，可能只是
- * 网络抖了一下，而不是主机不可用（ADR-0120）。把它显示成失败会让用户白跑一趟去查
+ * 网络抖了一下，而不是主机不可用（ADR-0124）。把它显示成失败会让用户白跑一趟去查
  * 一台其实好好的机器。
  */
 function StatusBadge({

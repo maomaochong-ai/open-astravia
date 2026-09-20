@@ -2,7 +2,7 @@
 
 远程项目的 SSH 传输层：主机模型、连接复用、远端命令执行与文件操作。
 
-架构决策见 [ADR-0120](../../docs/adr/0120-ssh-remote-projects-and-execution-boundary.md)。
+架构决策见 [ADR-0124](../../docs/adr/0124-ssh-remote-projects-and-execution-boundary.md)。
 
 ## 边界
 

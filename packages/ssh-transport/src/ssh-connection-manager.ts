@@ -53,7 +53,7 @@ export class SshConnectionManager {
 		return connection;
 	}
 
-	/** 连通性探测。成功即把状态置为 connected，失败按 ADR-0120 置为 unverifiable。 */
+	/** 连通性探测。成功即把状态置为 connected，失败按 ADR-0124 置为 unverifiable。 */
 	async probe(hostId: string, signal?: AbortSignal): Promise<SshConnectionStatus> {
 		this.setStatus(hostId, "connecting");
 		try {

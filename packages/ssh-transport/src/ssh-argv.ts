@@ -26,7 +26,7 @@ export interface SshArgvOptions {
  * 已经挡掉。
  *
  * 刻意**不**设置 `StrictHostKeyChecking`：保持 OpenSSH 默认的 `ask`。首次连接和主机
- * 密钥变更都必须由用户确认——设成 `no` 会让中间人攻击静默通过，这是 ADR-0120 明确
+ * 密钥变更都必须由用户确认——设成 `no` 会让中间人攻击静默通过，这是 ADR-0124 明确
  * 禁止的；设成 `accept-new` 则跳过了首次确认。
  */
 export function buildSshArgv(host: SshHost, options: SshArgvOptions, remoteCommand?: string): string[] {

@@ -38,7 +38,7 @@ export function getDesktopProjectService(): ProjectService {
 					return entry !== null && entry.kind !== "directory";
 				} catch {
 					// 连不上不代表它不是目录。这里只做准入校验，判不了就别拦，
-					// 真正的失败会在打开项目时带着连接错误浮出来（ADR-0120：不臆断问不到的事）。
+					// 真正的失败会在打开项目时带着连接错误浮出来（ADR-0124：不臆断问不到的事）。
 					return false;
 				}
 			}

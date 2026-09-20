@@ -52,7 +52,7 @@ export interface SshCodingToolEnvironment {
  *
  * **刻意不注册 grep / glob / find / tree**：这四个工具在内部直接 spawn 本机的
  * ripgrep，注册到远程会话里就会去搜**本机**磁盘，然后把本机的命中当作远端项目的
- * 内容交给模型——这正是 ADR-0120 要禁止的静默回退。在它们的进程启动点被抽成可注入
+ * 内容交给模型——这正是 ADR-0124 要禁止的静默回退。在它们的进程启动点被抽成可注入
  * 端口之前，远程会话让模型改用 bash 里的 grep/find，慢但结果属于正确的那台机器。
  */
 export function createSshCodingToolEnvironment(options: SshCodingToolEnvironmentOptions): SshCodingToolEnvironment {

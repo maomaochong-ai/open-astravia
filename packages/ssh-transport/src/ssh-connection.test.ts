@@ -106,7 +106,7 @@ describe("目录列举", () => {
 	});
 });
 
-describe("失败分类（ADR-0120 执行边界）", () => {
+describe("失败分类（ADR-0124 执行边界）", () => {
 	it("ssh 退出 255 判为传输故障，判定是 unverifiable 而不是 exited", async () => {
 		const { connection } = connect(() => ({
 			exitCode: 255,
