@@ -34,13 +34,17 @@ export {
 	sameProjectLocation,
 } from "./project-uri.js";
 export {
+	buildCreateEntryCommand,
 	buildListDirectoryCommand,
+	buildListFilesRecursiveCommand,
 	buildRealPathCommand,
 	buildRemoteCommand,
 	buildRemoteScript,
 	buildStatCommand,
 	buildWriteFileCommand,
+	type ListFilesRecursiveOptions,
 	quoteShellArgument,
+	REMOTE_ENTRY_EXISTS_EXIT_CODE,
 	type RemoteCommandOptions,
 	type RemoteStatFlavor,
 } from "./remote-command.js";

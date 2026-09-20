@@ -17,13 +17,16 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { parseRemoteDirectoryListing } from "./directory-listing.js";
 import {
+	buildCreateEntryCommand,
 	buildKillCommand,
 	buildListDirectoryCommand,
+	buildListFilesRecursiveCommand,
 	buildRemoteCommand,
 	buildRemoteScript,
 	buildStatCommand,
 	buildWriteFileCommand,
 	quoteShellArgument,
+	REMOTE_ENTRY_EXISTS_EXIT_CODE,
 } from "./remote-command.js";
 
 describe("quoteShellArgument", () => {
@@ -236,5 +239,42 @@ describe("stat 与目录列举（在真实 shell 上执行并解析）", () => {
 
 		expect(parseRemoteDirectoryListing(run(buildStatCommand(dir, flavor)))[0]?.kind).toBe("directory");
 		expect(run(buildStatCommand(join(dir, "missing"), flavor))).toBe("");
+	});
+});
+
+describe("文件树操作（在真实 shell 上执行）", () => {
+	const run = (command: string) => spawnSync("/bin/sh", ["-c", command], { encoding: "utf8" });
+
+	it("独占创建：新建成功，目标已存在时用约定的退出码拒绝且不动原文件", () => {
+		const dir = mkdtempSync(join(tmpdir(), "vetta-create-"));
+		expect(run(buildCreateEntryCommand(join(dir, "it's new.txt"), "file")).status).toBe(0);
+		expect(readFileSync(join(dir, "it's new.txt"), "utf8")).toBe("");
+		expect(run(buildCreateEntryCommand(join(dir, "src"), "directory")).status).toBe(0);
+		expect(statSync(join(dir, "src")).isDirectory()).toBe(true);
+
+		writeFileSync(join(dir, "keep.txt"), "precious");
+		expect(run(buildCreateEntryCommand(join(dir, "keep.txt"), "file")).status).toBe(REMOTE_ENTRY_EXISTS_EXIT_CODE);
+		expect(run(buildCreateEntryCommand(join(dir, "src"), "directory")).status).toBe(REMOTE_ENTRY_EXISTS_EXIT_CODE);
+		expect(readFileSync(join(dir, "keep.txt"), "utf8")).toBe("precious");
+	});
+
+	it("递归列举跳过点开头的条目与忽略目录，且不会因为起点是 . 而把整棵树剪掉", () => {
+		const dir = mkdtempSync(join(tmpdir(), "vetta-walk-"));
+		for (const sub of ["src/deep", "node_modules/pkg", ".git"]) mkdirSync(join(dir, sub), { recursive: true });
+		writeFileSync(join(dir, "README.md"), "");
+		writeFileSync(join(dir, "src/deep/a b.ts"), "");
+		writeFileSync(join(dir, "node_modules/pkg/index.js"), "");
+		writeFileSync(join(dir, ".git/config"), "");
+		writeFileSync(join(dir, ".env"), "");
+
+		const command = buildListFilesRecursiveCommand(dir, { ignoredDirectoryNames: ["node_modules"], limit: 100 });
+		expect(run(command).stdout.trim().split("\n").sort()).toEqual(["./README.md", "./src/deep/a b.ts"]);
+	});
+
+	it("递归列举到达上限就停", () => {
+		const dir = mkdtempSync(join(tmpdir(), "vetta-walk-"));
+		for (let index = 0; index < 5; index++) writeFileSync(join(dir, `f${index}.txt`), "");
+		const command = buildListFilesRecursiveCommand(dir, { ignoredDirectoryNames: [], limit: 2 });
+		expect(run(command).stdout.trim().split("\n")).toHaveLength(2);
 	});
 });

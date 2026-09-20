@@ -2,14 +2,19 @@ import { randomBytes } from "node:crypto";
 import { parseRemoteDirectoryListing, type RemoteDirectoryEntry } from "./directory-listing.js";
 import { SshOperationAbortedError, SshRemoteCommandError, SshTransportError } from "./errors.js";
 import { SSH_TRANSPORT_FAILURE_EXIT_CODE, type SshProcessResult, type SshProcessRunner } from "./process-runner.js";
+import { normalizeRemotePath } from "./project-uri.js";
 import {
+	buildCreateEntryCommand,
 	buildKillCommand,
 	buildListDirectoryCommand,
+	buildListFilesRecursiveCommand,
 	buildRealPathCommand,
 	buildRemoteCommand,
 	buildStatCommand,
 	buildWriteFileCommand,
+	type ListFilesRecursiveOptions,
 	quoteShellArgument,
+	REMOTE_ENTRY_EXISTS_EXIT_CODE,
 	type RemoteStatFlavor,
 } from "./remote-command.js";
 import { buildSshArgv } from "./ssh-argv.js";
@@ -177,6 +182,47 @@ export class SshConnection {
 	async writeFile(remotePath: string, content: Uint8Array, signal?: AbortSignal): Promise<void> {
 		const command = buildWriteFileCommand(remotePath, `.vetta-tmp-${Date.now().toString(36)}`);
 		await this.runChecked(command, { signal, stdin: content });
+	}
+
+	/** 同一文件系统内是原子改名；跨文件系统时 `mv` 自己退化成复制加删除。目标已存在则覆盖。 */
+	async rename(fromPath: string, toPath: string, signal?: AbortSignal): Promise<void> {
+		await this.runChecked(`mv -f -- ${quoteShellArgument(fromPath)} ${quoteShellArgument(toPath)}`, { signal });
+	}
+
+	/** 递归删除。路径不存在也算成功——与本机 `rm(force)` 同义。 */
+	async remove(remotePath: string, signal?: AbortSignal): Promise<void> {
+		if (normalizeRemotePath(remotePath) === "/") throw new Error("Refusing to remove the remote root directory.");
+		await this.runChecked(`rm -rf -- ${quoteShellArgument(remotePath)}`, { signal });
+	}
+
+	/** 新建空文件或目录；已存在时返回 `"exists"` 而不是覆盖。 */
+	async createEntry(
+		remotePath: string,
+		kind: "file" | "directory",
+		signal?: AbortSignal,
+	): Promise<"created" | "exists"> {
+		const result = await this.run(buildCreateEntryCommand(remotePath, kind), { signal });
+		if (result.exitCode === 0) return "created";
+		if (result.exitCode === REMOTE_ENTRY_EXISTS_EXIT_CODE) return "exists";
+		throw new SshRemoteCommandError(
+			`Remote command failed on ${this.host.label} (exit ${result.exitCode}): ${result.stderr.trim()}`,
+			this.host.id,
+			result.exitCode ?? -1,
+			result.stderr,
+		);
+	}
+
+	/** 递归列出普通文件的相对路径（POSIX 分隔，无 `./` 前缀）。 */
+	async listFilesRecursive(
+		remotePath: string,
+		options: ListFilesRecursiveOptions,
+		signal?: AbortSignal,
+	): Promise<string[]> {
+		const result = await this.runChecked(buildListFilesRecursiveCommand(remotePath, options), { signal });
+		return decode(result.stdout)
+			.split("\n")
+			.map((line) => line.replace(/^\.\//, ""))
+			.filter((line) => line.length > 0);
 	}
 
 	async makeDirectory(remotePath: string, signal?: AbortSignal): Promise<void> {

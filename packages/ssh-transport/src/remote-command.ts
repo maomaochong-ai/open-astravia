@@ -205,6 +205,47 @@ export function buildWriteFileCommand(remotePath: string, temporarySuffix: strin
 	return `/bin/sh -c ${quoteShellArgument(script)}`;
 }
 
+/** 远端「已存在」的退出码。取 EEXIST 的数值，便于调用方与本机的同名错误对齐。 */
+export const REMOTE_ENTRY_EXISTS_EXIT_CODE = 17;
+
+/**
+ * 新建空文件或目录，目标已存在时以 {@link REMOTE_ENTRY_EXISTS_EXIT_CODE} 失败。
+ *
+ * 文件用 noclobber 重定向而不是「先判断再创建」：两步之间别人建了同名文件的话，后者会
+ * 把它截断成空文件。
+ */
+export function buildCreateEntryCommand(remotePath: string, kind: "file" | "directory"): string {
+	const quoted = quoteShellArgument(remotePath);
+	const create = kind === "directory" ? `mkdir -- ${quoted}` : `( set -C; : > ${quoted} ) 2>/dev/null`;
+	const script = [
+		`if [ -e ${quoted} ] || [ -L ${quoted} ]; then exit ${REMOTE_ENTRY_EXISTS_EXIT_CODE}; fi`,
+		create,
+	].join("\n");
+	return `/bin/sh -c ${quoteShellArgument(script)}`;
+}
+
+export interface ListFilesRecursiveOptions {
+	/** 整个子树都跳过的目录名（`node_modules`、`dist` 之类）。点开头的条目总是跳过。 */
+	readonly ignoredDirectoryNames: readonly string[];
+	readonly limit: number;
+}
+
+/**
+ * 递归列出普通文件，输出相对路径，一行一个。
+ *
+ * 一次 `find` 取回整棵树：逐层 readdir 在远端就是「目录数」次往返，稍大的仓库要几十秒。
+ * `-mindepth 1` 是必须的——起点 `.` 本身也匹配 `.*`，不加的话整棵树在第一步就被剪掉。
+ */
+export function buildListFilesRecursiveCommand(remotePath: string, options: ListFilesRecursiveOptions): string {
+	const pruned = [".*", ...options.ignoredDirectoryNames].map((name) => `-name ${quoteShellArgument(name)}`);
+	const limit = Math.max(1, Math.floor(options.limit));
+	const script = [
+		`cd ${quoteShellArgument(remotePath)} || exit 1`,
+		`find . -mindepth 1 \\( ${pruned.join(" -o ")} \\) -prune -o -type f -print | head -n ${limit}`,
+	].join("\n");
+	return `/bin/sh -c ${quoteShellArgument(script)}`;
+}
+
 const ENV_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 function assertEnvName(name: string): void {
