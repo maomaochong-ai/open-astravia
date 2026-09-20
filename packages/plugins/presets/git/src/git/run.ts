@@ -85,6 +85,39 @@ export async function fileDiff(root: string, entry: ChangeEntry): Promise<string
 	return unstaged.stdout;
 }
 
+/** Current branch name, or null on a detached HEAD / unborn branch. */
+export async function currentBranch(root: string): Promise<string | null> {
+	const res = await git(root, ["branch", "--show-current"]);
+	if (res.exitCode !== 0) return null;
+	const name = res.stdout.trim();
+	return name.length > 0 ? name : null;
+}
+
+/**
+ * Whether the current branch has an upstream configured.
+ *
+ * Distinct from {@link aheadBehind} returning null, which also covers plain
+ * failures — pushing needs to know specifically that the branch was never
+ * published, so it can offer `--set-upstream` instead of failing with git's
+ * "has no upstream branch" error.
+ */
+export async function hasUpstream(root: string): Promise<boolean> {
+	const res = await git(root, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"]);
+	return res.exitCode === 0 && res.stdout.trim().length > 0;
+}
+
+/** Remote to publish a new branch to: `origin` when present, else the first one. */
+export async function defaultRemote(root: string): Promise<string | null> {
+	const res = await git(root, ["remote"]);
+	if (res.exitCode !== 0) return null;
+	const remotes = res.stdout
+		.split("\n")
+		.map((line) => line.trim())
+		.filter(Boolean);
+	if (remotes.length === 0) return null;
+	return remotes.includes("origin") ? "origin" : (remotes[0] as string);
+}
+
 /** Commits the upstream is ahead/behind by, or null when there is no upstream. */
 export async function aheadBehind(root: string): Promise<{ ahead: number; behind: number } | null> {
 	const res = await git(root, ["rev-list", "--left-right", "--count", "@{upstream}...HEAD"]);
@@ -202,9 +235,20 @@ export function gitPull(root: string): Promise<void> {
 	return runGit(root, ["pull"]);
 }
 
-/** Push the current branch. */
+/** Push the current branch (requires an upstream; see {@link gitPublishBranch}). */
 export function gitPush(root: string): Promise<void> {
 	return runGit(root, ["push"]);
+}
+
+/**
+ * Publish a branch that has no upstream: `push -u <remote> <branch>`.
+ *
+ * Kept separate from {@link gitPush} on purpose — `-u` writes the tracking
+ * config into `.git/config`, so it is a persistent side effect the user
+ * confirms rather than something we slip in on a failed push.
+ */
+export function gitPublishBranch(root: string, remote: string, branch: string): Promise<void> {
+	return runGit(root, ["push", "-u", remote, branch]);
 }
 
 /** Sync = pull then push (push only if the pull succeeds), as one queued unit. */
