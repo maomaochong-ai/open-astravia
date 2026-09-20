@@ -4,7 +4,7 @@ Call this once your research is done, open questions about requirements and scop
 
 Usage notes:
 - \`plan\` is the complete plan in Markdown, written in the language of the user's latest message. Each call replaces the previous submission, so always send the full plan rather than a diff.
-- Structure the plan as numbered steps the user can comment on individually. Name the concrete files, functions and commands involved, state the verification for the work, and call out risks or decisions the user should weigh.
+- Structure the plan as numbered steps the user can comment on individually. Name the concrete files, functions and commands involved, state the verification for the work, and call out risks or decisions the user should weigh. Open with what the user confirmed and the defaults you assumed for what you did not ask, so a wrong assumption is caught here rather than after the work is done.
 - Do NOT use this tool to ask clarifying questions — use ask_user_question for that, before submitting.
 - Do NOT call this for pure research or explanation tasks that involve no changes; just answer.
 

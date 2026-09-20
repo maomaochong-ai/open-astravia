@@ -100,6 +100,10 @@ describe("Coding Agent plan mode session extension", () => {
 		expect(guidance.indexOf("Close the gaps with the user")).toBeGreaterThan(guidance.indexOf("Explore first"));
 		expect(guidance.indexOf("Design the approach")).toBeGreaterThan(guidance.indexOf("Close the gaps with the user"));
 		expect(guidance).toContain("Do not interrogate");
+		// 澄清的收尾由「是否还有会改变计划的未决项」决定，不写死轮数
+		expect(guidance).toContain("There is no fixed number of rounds");
+		expect(guidance).not.toContain("ONE round");
+		expect(guidance).toContain("the defaults you assumed");
 		expect(planning.tools?.map(({ name }) => name)).toEqual(["exit_plan_mode"]);
 
 		const result = await submit(planning, "1. Draft step");
