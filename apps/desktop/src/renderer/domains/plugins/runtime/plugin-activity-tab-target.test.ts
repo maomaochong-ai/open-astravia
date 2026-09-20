@@ -111,6 +111,12 @@ describe("activity-tab command target cwd", () => {
 		expect(store.get(attachedPluginTabsAtom).get("agent-team:ws-1")).toEqual(["demo-plugin:canvas"]);
 	});
 
+	it("accepts a remote project cwd, since it identifies a workspace just like a local path", () => {
+		const ui = createUi();
+		expect(() => ui.setActivityTabVisible("canvas", false, { cwd: "ssh://host-1/srv/app" })).not.toThrow();
+		expect(() => ui.openActivityTab("canvas", { cwd: "ssh://host-1/srv/app" })).not.toThrow();
+	});
+
 	it("rejects a relative cwd instead of creating an unreachable persistence key", () => {
 		const ui = createUi();
 		expect(() => ui.openActivityTab("canvas", { cwd: "relative/project" })).toThrow(

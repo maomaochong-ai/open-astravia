@@ -20,6 +20,7 @@ import {
 	workspaceViewHeaderKey,
 } from "@shared/store/atoms";
 import { showToast } from "@shared/store/toast-atoms";
+import { isSshProjectUri } from "@vetta/ssh-transport/project-uri";
 import type {
 	Disposable,
 	PluginAbilityDetailSlotContribution,
@@ -699,7 +700,11 @@ export function createPluginUiApi({
 	};
 	const validateActivityTabCwd = (cwd: string | undefined): void => {
 		if (cwd === undefined) return;
-		if (typeof cwd !== "string" || cwd.trim().length === 0 || !(cwd.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(cwd))) {
+		// 远程项目的 cwd 是 `ssh://<hostId>/<路径>`：它同样是一个确定的工作区标识，
+		// 拒掉它会让所有按会话 cwd 定位标签卡的插件在远程会话里直接抛错。
+		const isWorkspaceIdentity =
+			typeof cwd === "string" && (cwd.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(cwd) || isSshProjectUri(cwd));
+		if (!isWorkspaceIdentity) {
 			throw new Error("Activity tab cwd must be an absolute path");
 		}
 	};
