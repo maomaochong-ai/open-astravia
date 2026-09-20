@@ -1,4 +1,5 @@
 import {
+	type AsyncExecutionGate,
 	collectToolProcess,
 	createBackgroundCommandService,
 	createBackgroundCommandToolExecutor,
@@ -19,6 +20,7 @@ import {
 } from "@vetta/runtime-node/coding";
 import type { BackgroundCommandService, CodingToolRegistration } from "@vetta/runtime-tools";
 import type { SshConnection } from "@vetta/ssh-transport";
+import { createRemoteFileToolRegistrations } from "./remote-file-tool-bridge.js";
 import { createSshBackgroundCommandHost } from "./ssh-background-command-host.js";
 import { createSshForegroundCommandOperations } from "./ssh-command-operations.js";
 import {
@@ -44,12 +46,23 @@ export interface SshCodingToolEnvironmentOptions {
 	readonly writePathPolicy: WritePathPolicy;
 	readonly readOptions?: Pick<ReadToolOptions, "binaryContentHint" | "preserveFullText">;
 	readonly blockUntilSec?: number;
+	/**
+	 * 以一个本机目录为 cwd 创建 PDF / OCR / 文档转换这类依赖本机引擎的工具。给出时它们经
+	 * {@link createRemoteFileToolRegistrations} 桥接到远端文件上；不给则远程会话没有这组工具。
+	 */
+	readonly createLocalFileToolRegistrations?: (
+		localCwd: string,
+		context: { readonly ocrExecutionGate: AsyncExecutionGate },
+	) => readonly CodingToolRegistration[];
 	/** 见 {@link SshReadOperationsOptions.localReadRoots}。 */
 	readonly localReadRoots?: readonly string[];
 }
 
 export interface SshCodingToolEnvironment {
 	readonly registrations: readonly CodingToolRegistration[];
+	readonly createSpecializedToolRegistrations?: (context: {
+		readonly ocrExecutionGate: AsyncExecutionGate;
+	}) => readonly CodingToolRegistration[];
 	readonly backgroundService: BackgroundCommandService;
 	dispose(): void;
 }
@@ -65,6 +78,7 @@ export interface SshCodingToolEnvironment {
  */
 export function createSshCodingToolEnvironment(options: SshCodingToolEnvironmentOptions): SshCodingToolEnvironment {
 	const { connection, remoteCwd } = options;
+	const createLocal = options.createLocalFileToolRegistrations;
 	// 路径一律按远端解析：不探本机磁盘、不按本机家目录展开 `~`、固定 POSIX 语义。
 	const pathHost = remotePosixToolPathHost;
 	const lsOperations = createSshLsOperations(connection);
@@ -127,6 +141,16 @@ export function createSshCodingToolEnvironment(options: SshCodingToolEnvironment
 			createBashToolRegistration(remoteCwd, { executor: commandExecutor }),
 		],
 		backgroundService,
+		...(createLocal
+			? {
+					createSpecializedToolRegistrations: (context: { readonly ocrExecutionGate: AsyncExecutionGate }) =>
+						createRemoteFileToolRegistrations({
+							connection,
+							remoteCwd,
+							createLocalRegistrations: (localCwd) => createLocal(localCwd, context),
+						}),
+				}
+			: {}),
 		// 连接的生命周期由连接管理器按主机持有，会话结束不该把它关掉——同一台主机上
 		// 的其它会话还在用同一条 ControlMaster。这里只收掉本会话自己的后台任务。
 		dispose: () => backgroundService.dispose(),

@@ -24,6 +24,7 @@ import {
 	createNodePathBoundaryClassifier,
 	createNodeSandboxCodingToolEnvironment,
 	createNodeShellEnvironment,
+	createNodeSpecializedToolRegistrations,
 	getNodeShellCommandPrefix,
 	resolveNodeShell,
 } from "@vetta/runtime-node/coding";
@@ -50,6 +51,9 @@ export const createDesktopCodingAgentToolEnvironment: CodingAgentToolEnvironment
 			writePathPolicy: policies.writePathPolicy,
 			readOptions: CODING_AGENT_READ_TOOL_OPTIONS,
 			localReadRoots: resolveLocalReadRoots(context.agentDir),
+			// PDF / OCR / 文档转换依赖本机的引擎：远端文件取回本机处理，产物再传回去。
+			createLocalFileToolRegistrations: (localCwd, { ocrExecutionGate }) =>
+				createNodeSpecializedToolRegistrations(localCwd, { executionGate: ocrExecutionGate }),
 		});
 	}
 	const host = createDesktopNodeToolHost(context.cwd, context.agentDir);
