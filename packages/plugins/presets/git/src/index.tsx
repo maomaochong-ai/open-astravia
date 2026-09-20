@@ -3,7 +3,7 @@ import "./style.css";
 import { GitPanel } from "./components/GitPanel";
 import { GitTurnCard } from "./components/GitTurnCard";
 import { GitIcon } from "./components/icons";
-import { emitRefreshSignal, emitTurnPhase, setGitCommand, setPanelResizer } from "./git/runtime";
+import { emitRefreshSignal, emitTurnPhase, setFsApi, setGitCommand, setOfficialApi, setPanelResizer } from "./git/runtime";
 import { CHANGES_TAB_ID, isInsideGitWorkTree } from "./git/tab-visibility";
 
 export default definePlugin({
@@ -11,6 +11,9 @@ export default definePlugin({
 		// Stash the command API for panels (zero-prop activity-tab components read it
 		// via the globalThis runtime holder).
 		setGitCommand(ctx.command);
+		// 同理：右键菜单的「忽略此文件」要写 .gitignore，「在文件管理器中显示」走官方窄口子。
+		setFsApi(ctx.fs);
+		setOfficialApi(ctx.official);
 
 		/** 最近一次 conversation-changed 的 cwd，用于丢弃过期的仓库探测结果。 */
 		let latestCwd: string | null = null;

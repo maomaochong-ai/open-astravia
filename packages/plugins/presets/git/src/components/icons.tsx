@@ -146,3 +146,21 @@ export function ChevronIcon({ className }: IconProps): JSX.Element {
 		</svg>
 	);
 }
+
+/** Stage: a plus, matching the "add to index" mental model. */
+export function StageIcon({ className }: IconProps): JSX.Element {
+	return (
+		<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+			<path d="M12 5v14M5 12h14" />
+		</svg>
+	);
+}
+
+/** Unstage: a minus, the exact inverse of {@link StageIcon}. */
+export function UnstageIcon({ className }: IconProps): JSX.Element {
+	return (
+		<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+			<path d="M5 12h14" />
+		</svg>
+	);
+}

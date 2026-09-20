@@ -1,8 +1,10 @@
 import { themeToTreeStyles } from "@pierre/trees";
 import { FileTree, useFileTree } from "@pierre/trees/react";
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef } from "react";
 import { buildGitStatus } from "../git/gitStatus";
 import type { ChangeEntry } from "../git/types";
+import type { MenuPoint } from "./ChangeMenu";
 import { readCssVar, useHostMode } from "./hostTheme";
 
 /** Same membership, ignoring order — used to skip echoes of our own sync. */
@@ -25,11 +27,14 @@ export function GitFileTree({
 	entries,
 	selectedPaths,
 	onSelectionChange,
+	renderMenu,
 }: {
 	entries: readonly ChangeEntry[];
 	selectedPaths: readonly string[];
 	/** `added` is the path that was just brought into the selection, if any. */
 	onSelectionChange: (paths: string[], added: string | null) => void;
+	/** Context-menu body for the right-clicked paths; omit to disable the menu. */
+	renderMenu?: (paths: string[], close: () => void, point?: MenuPoint) => ReactNode;
 }): JSX.Element {
 	const mode = useHostMode();
 	const { paths, gitStatus } = useMemo(() => buildGitStatus(entries), [entries]);
@@ -98,5 +103,19 @@ export function GitFileTree({
 		} as React.CSSProperties;
 	}, [mode]);
 
-	return <FileTree model={model} style={style} />;
+	// 右键作用于「右键那一行」：它已在多选内就对整个多选生效，否则只针对它自己。
+	const menuTarget = (path: string): string[] => (selectedPaths.includes(path) ? [...selectedPaths] : [path]);
+
+	return (
+		<FileTree
+			model={model}
+			style={style}
+			renderContextMenu={
+				renderMenu
+					? (item, context) =>
+							item.kind === "file" ? renderMenu(menuTarget(item.path), () => context.close()) : null
+					: undefined
+			}
+		/>
+	);
 }

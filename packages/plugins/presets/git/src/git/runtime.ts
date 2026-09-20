@@ -1,4 +1,4 @@
-import type { PluginCommandApi } from "@vetta-org/plugin-sdk";
+import type { PluginCommandApi, PluginFsApi, PluginOfficialApi } from "@vetta-org/plugin-sdk";
 import type { ChangeCode, TurnChangeDelta } from "./types";
 
 /**
@@ -25,6 +25,8 @@ interface TurnCardState {
 
 interface GitRuntime {
 	command: PluginCommandApi | null;
+	fs: PluginFsApi | null;
+	official: PluginOfficialApi | null;
 	resizePanel: PanelResizer | null;
 	refreshListeners: Set<() => void>;
 	turnPhaseListeners: Set<(phase: TurnPhase) => void>;
@@ -42,6 +44,8 @@ function runtime(): GitRuntime {
 	if (!g[KEY]) {
 		g[KEY] = {
 			command: null,
+			fs: null,
+			official: null,
 			resizePanel: null,
 			refreshListeners: new Set<() => void>(),
 			turnPhaseListeners: new Set<(phase: TurnPhase) => void>(),
@@ -110,6 +114,26 @@ export function setGitCommand(api: PluginCommandApi): void {
 export function getGitCommand(): PluginCommandApi {
 	const api = runtime().command;
 	if (!api) throw new Error("Git plugin command API not initialized");
+	return api;
+}
+
+export function setFsApi(api: PluginFsApi): void {
+	runtime().fs = api;
+}
+
+export function getFsApi(): PluginFsApi {
+	const api = runtime().fs;
+	if (!api) throw new Error("Git plugin fs API not initialized");
+	return api;
+}
+
+export function setOfficialApi(api: PluginOfficialApi): void {
+	runtime().official = api;
+}
+
+export function getOfficialApi(): PluginOfficialApi {
+	const api = runtime().official;
+	if (!api) throw new Error("Git plugin official API not initialized");
 	return api;
 }
 

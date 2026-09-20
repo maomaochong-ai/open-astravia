@@ -1,6 +1,7 @@
-import type { MouseEvent } from "react";
-import { useMemo, useRef } from "react";
+import type { MouseEvent, ReactNode } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { ChangeEntry } from "../git/types";
+import type { MenuPoint } from "./ChangeMenu";
 import { FileIcon } from "./icons";
 import { StatusBadge } from "./StatusBadge";
 
@@ -16,15 +17,26 @@ export function GitFlatList({
 	entries,
 	selectedPaths,
 	onSelectionChange,
+	renderMenu,
 }: {
 	entries: readonly ChangeEntry[];
 	selectedPaths: readonly string[];
 	/** `added` is the path that was just brought into the selection, if any. */
 	onSelectionChange: (paths: string[], added: string | null) => void;
+	/** Context-menu body for the right-clicked paths; omit to disable the menu. */
+	renderMenu?: (paths: string[], close: () => void, point?: MenuPoint) => ReactNode;
 }): JSX.Element {
 	const sorted = useMemo(() => [...entries].sort((a, b) => a.path.localeCompare(b.path)), [entries]);
 	// Anchor for shift-range selection: the row of the last unmodified click.
 	const anchorRef = useRef<string | null>(null);
+	const [menu, setMenu] = useState<{ x: number; y: number; paths: string[] } | null>(null);
+
+	// 右键作用于「右键那一行」：它已在多选内就对整个多选生效，否则只针对它自己。
+	const handleContextMenu = (path: string, event: MouseEvent): void => {
+		if (!renderMenu) return;
+		event.preventDefault();
+		setMenu({ x: event.clientX, y: event.clientY, paths: selectedPaths.includes(path) ? [...selectedPaths] : [path] });
+	};
 
 	const handleClick = (path: string, event: MouseEvent): void => {
 		const additive = event.ctrlKey || event.metaKey;
@@ -65,6 +77,7 @@ export function GitFlatList({
 						type="button"
 						key={entry.path}
 						onClick={(event) => handleClick(entry.path, event)}
+						onContextMenu={(event) => handleContextMenu(entry.path, event)}
 						title={entry.origPath ? `${entry.origPath} → ${entry.path}` : entry.path}
 						className={`flex items-center gap-1.5 px-2 py-1 text-left text-[12px] transition-colors ${
 							selected ? "bg-accent text-foreground" : "text-foreground hover:bg-accent/50"
@@ -79,6 +92,7 @@ export function GitFlatList({
 					</button>
 				);
 			})}
+			{menu && renderMenu?.(menu.paths, () => setMenu(null), { x: menu.x, y: menu.y })}
 		</div>
 	);
 }

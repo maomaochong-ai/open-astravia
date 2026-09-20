@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { ChangeEntry } from "../git/types";
+import type { MenuPoint } from "./ChangeMenu";
 import { GitFileTree } from "./GitFileTree";
 import { GitFlatList } from "./GitFlatList";
 import { ChevronIcon } from "./icons";
@@ -25,6 +26,7 @@ export function ChangeSectionList({
 	onToggleCollapsed,
 	selectedPaths,
 	onSelectionChange,
+	renderMenu,
 	actions,
 	tone,
 }: {
@@ -35,6 +37,8 @@ export function ChangeSectionList({
 	onToggleCollapsed: () => void;
 	selectedPaths: readonly string[];
 	onSelectionChange: (paths: string[], added: string | null) => void;
+	/** Context-menu body for the right-clicked paths in this section. */
+	renderMenu?: (paths: string[], close: () => void, point?: MenuPoint) => ReactNode;
 	/** Section-level buttons, revealed on hover of the header. */
 	actions?: ReactNode;
 	tone?: "danger";
@@ -61,9 +65,9 @@ export function ChangeSectionList({
 			{!collapsed && (
 				<div className="min-h-0 overflow-hidden" style={viewMode === "tree" ? { height: bodyHeight } : undefined}>
 					{viewMode === "tree" ? (
-						<GitFileTree entries={entries} selectedPaths={selectedPaths} onSelectionChange={onSelectionChange} />
+						<GitFileTree entries={entries} selectedPaths={selectedPaths} onSelectionChange={onSelectionChange} renderMenu={renderMenu} />
 					) : (
-						<GitFlatList entries={entries} selectedPaths={selectedPaths} onSelectionChange={onSelectionChange} />
+						<GitFlatList entries={entries} selectedPaths={selectedPaths} onSelectionChange={onSelectionChange} renderMenu={renderMenu} />
 					)}
 				</div>
 			)}

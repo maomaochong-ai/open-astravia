@@ -5,11 +5,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { findEntry } from "../git/gitStatus";
 import { resizePanel } from "../git/runtime";
 import type { ChangeRef, ChangeSection, StatusGroups } from "../git/types";
+import type { MenuPoint } from "./ChangeMenu";
+import { ChangeMenuItems, FloatingChangeMenu } from "./ChangeMenu";
 import { ChangeSectionList } from "./ChangeSectionList";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { DiffPane } from "./DiffPane";
 import { GitActions } from "./GitActions";
-import { FileIcon, ListViewIcon, TreeViewIcon } from "./icons";
+import { FileIcon, ListViewIcon, StageIcon, TreeViewIcon, UnstageIcon } from "./icons";
 import { SplitHandle } from "./SplitHandle";
+import { useChangeActions } from "./useChangeActions";
 
 type ViewMode = "tree" | "flat";
 const VIEW_MODE_KEY = "vetta-git-view-mode";
@@ -22,6 +26,9 @@ const TREE_DEFAULT_WIDTH = 248;
 const TREE_MIN_WIDTH = 180;
 // diff 展开时给右侧 diff 保留的最小宽度，限制树列最大宽度。
 const DIFF_RESERVED_WIDTH = 260;
+
+/** Files listed by name in the discard confirmation before it says "and N more". */
+const DISCARD_PREVIEW = 5;
 
 /** Render order of the sections: conflicts first, they block committing. */
 const SECTION_ORDER: readonly ChangeSection[] = ["conflict", "staged", "unstaged"];
@@ -49,6 +56,8 @@ export function GitChanges({ root, groups }: { root: string; groups: StatusGroup
 	const [viewMode, setViewMode] = useState<ViewMode>(() =>
 		typeof localStorage !== "undefined" && localStorage.getItem(VIEW_MODE_KEY) === "flat" ? "flat" : "tree",
 	);
+
+	const actions = useChangeActions(root, groups);
 
 	const toggleView = useCallback(() => {
 		setViewMode((m) => {
@@ -135,6 +144,37 @@ export function GitChanges({ root, groups }: { root: string; groups: StatusGroup
 		[t],
 	);
 
+	// 右键菜单：树视图由组件自己的菜单插槽承载，平铺视图需要自己定位一个浮层。
+	const renderSectionMenu = useCallback(
+		(section: ChangeSection, paths: string[], close: () => void, point?: MenuPoint): JSX.Element =>
+			point ? (
+				<FloatingChangeMenu x={point.x} y={point.y} target={{ section, paths }} handlers={actions.handlers} onClose={close} />
+			) : (
+				<ChangeMenuItems target={{ section, paths }} handlers={actions.handlers} onDone={close} />
+			),
+		[actions.handlers],
+	);
+
+	const renderSectionActions = (section: ChangeSection): JSX.Element | null => {
+		if (section === "staged") {
+			return (
+				<Button type="button" variant="ghost" size="icon-xs" title={t("action.unstageAll")} disabled={actions.busy} onClick={actions.unstageAllFiles}>
+					<UnstageIcon className="h-3.5 w-3.5" />
+				</Button>
+			);
+		}
+		if (section === "unstaged") {
+			return (
+				<Button type="button" variant="ghost" size="icon-xs" title={t("action.stageAll")} disabled={actions.busy} onClick={actions.stageAllFiles}>
+					<StageIcon className="h-3.5 w-3.5" />
+				</Button>
+			);
+		}
+		return null;
+	};
+
+	const discardCount = actions.pendingDiscard ? actions.pendingDiscard.tracked.length + actions.pendingDiscard.untracked.length : 0;
+
 	return (
 		<div className="flex h-full min-h-0 flex-col">
 			<div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-2">
@@ -176,6 +216,8 @@ export function GitChanges({ root, groups }: { root: string; groups: StatusGroup
 										onToggleCollapsed={() => setCollapsed((prev) => ({ ...prev, [section]: !prev[section] }))}
 										selectedPaths={selection.section === section ? selection.paths : []}
 										onSelectionChange={(paths, added) => handleSelection(section, paths, added)}
+										renderMenu={(paths, close, point) => renderSectionMenu(section, paths, close, point)}
+										actions={renderSectionActions(section)}
 										tone={section === "conflict" ? "danger" : undefined}
 									/>
 								))}
@@ -201,6 +243,39 @@ export function GitChanges({ root, groups }: { root: string; groups: StatusGroup
 						))}
 				</div>
 			)}
+
+			{actions.error && (
+				<button
+					type="button"
+					onClick={actions.dismissError}
+					title={t("action.dismiss")}
+					className="shrink-0 border-t border-border px-3 py-1.5 text-left text-[11px] text-rose-500"
+				>
+					{actions.error}
+				</button>
+			)}
+
+			<ConfirmDialog
+				open={actions.pendingDiscard !== null}
+				destructive
+				title={t("discard.title", { count: discardCount })}
+				description={t("discard.description")}
+				detail={
+					actions.pendingDiscard && (
+						<ul className="max-h-32 overflow-y-auto rounded border border-border bg-muted/40 px-2 py-1 text-[11px] text-muted-foreground">
+							{[...actions.pendingDiscard.tracked, ...actions.pendingDiscard.untracked].slice(0, DISCARD_PREVIEW).map((path) => (
+								<li key={path} className="truncate">
+									{path}
+								</li>
+							))}
+							{discardCount > DISCARD_PREVIEW && <li className="italic">{t("discard.more", { count: discardCount - DISCARD_PREVIEW })}</li>}
+						</ul>
+					)
+				}
+				confirmLabel={t("discard.confirm")}
+				onConfirm={actions.confirmDiscard}
+				onCancel={actions.cancelDiscard}
+			/>
 		</div>
 	);
 }

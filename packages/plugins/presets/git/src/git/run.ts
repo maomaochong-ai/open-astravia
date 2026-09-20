@@ -262,3 +262,61 @@ export function gitSync(root: string): Promise<void> {
 		await runGitRaw(root, ["push"]);
 	});
 }
+
+/**
+ * Stage paths. Also the "mark as resolved" action for conflicts — git models
+ * resolution as "the worktree content is now what I want in the index".
+ */
+export function stagePaths(root: string, paths: readonly string[]): Promise<void> {
+	return runGit(root, ["add", "--", ...paths]);
+}
+
+/** Stage everything, including untracked files (`add -A`). */
+export function stageAll(root: string): Promise<void> {
+	return runGit(root, ["add", "-A"]);
+}
+
+/**
+ * Unstage paths, keeping the worktree untouched.
+ *
+ * `restore --staged` needs HEAD to restore the index entry from, so a repo
+ * without any commit falls back to `rm --cached`, which just drops the entry.
+ */
+export function unstagePaths(root: string, paths: readonly string[]): Promise<void> {
+	return enqueueWrite(async () => {
+		const res = await getGitCommand().run("git", ["restore", "--staged", "--", ...paths], { cwd: root, timeoutMs: 60_000 });
+		if (res.exitCode === 0) return;
+		await runGitRaw(root, ["rm", "--cached", "-q", "--", ...paths]);
+	});
+}
+
+/** Unstage everything (index back to HEAD), keeping the worktree untouched. */
+export function unstageAll(root: string): Promise<void> {
+	return runGit(root, ["reset", "-q"]);
+}
+
+/**
+ * Discard worktree changes. Destructive and unrecoverable — callers confirm
+ * first.
+ *
+ * Tracked paths are restored from the index; untracked ones have no stored
+ * content to restore, so they are removed with `clean -f` (git's own delete,
+ * rather than us unlinking files behind its back).
+ */
+export function discardPaths(root: string, tracked: readonly string[], untracked: readonly string[]): Promise<void> {
+	return enqueueWrite(async () => {
+		if (tracked.length > 0) await runGitRaw(root, ["restore", "--", ...tracked]);
+		if (untracked.length > 0) await runGitRaw(root, ["clean", "-f", "-q", "--", ...untracked]);
+	});
+}
+
+/** Which side of a conflict to keep wholesale. */
+export type ConflictSide = "ours" | "theirs";
+
+/** Resolve conflicts by taking one side verbatim, then staging the result. */
+export function resolveWithSide(root: string, side: ConflictSide, paths: readonly string[]): Promise<void> {
+	return enqueueWrite(async () => {
+		await runGitRaw(root, ["checkout", `--${side}`, "--", ...paths]);
+		await runGitRaw(root, ["add", "--", ...paths]);
+	});
+}
