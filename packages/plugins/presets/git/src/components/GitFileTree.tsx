@@ -113,7 +113,13 @@ export function GitFileTree({
 			renderContextMenu={
 				renderMenu
 					? (item, context) =>
-							item.kind === "file" ? renderMenu(menuTarget(item.path), () => context.close()) : null
+							item.kind === "file"
+								? // 锚在行的左下角：菜单自己会做视口夹取，面板贴着窗口右缘时也不会被裁掉。
+									renderMenu(menuTarget(item.path), () => context.close(), {
+										x: context.anchorRect.left,
+										y: context.anchorRect.bottom,
+									})
+								: null
 					: undefined
 			}
 		/>

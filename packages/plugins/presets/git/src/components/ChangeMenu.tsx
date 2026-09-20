@@ -1,5 +1,6 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { ChangeSection } from "../git/types";
 
 /** Viewport coordinates of the right-click, for views that position their own menu. */
@@ -107,10 +108,16 @@ export function ChangeMenuItems({
 	);
 }
 
+/** Gap kept between the menu and the viewport edge when it has to be nudged. */
+const VIEWPORT_MARGIN = 8;
+
 /**
- * Floating host for {@link ChangeMenuItems} in the flat view, which has no
- * built-in context-menu surface of its own. Positioned at the cursor and closed
- * by an outside click, Escape, or scroll.
+ * Floating host for {@link ChangeMenuItems}, portalled to the document body.
+ *
+ * The portal matters: the panel columns clip their overflow, and a menu rendered
+ * inside the list would be cut off near the panel's right edge — which is where
+ * the activity panel always sits. Position is clamped against the measured menu
+ * size, flipping to the other side of the anchor when there is no room.
  */
 export function FloatingChangeMenu({
 	x,
@@ -126,6 +133,22 @@ export function FloatingChangeMenu({
 	onClose: () => void;
 }): JSX.Element {
 	const ref = useRef<HTMLDivElement>(null);
+	const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
+
+	// Measure before paint so the menu never flashes at the unclamped spot.
+	useLayoutEffect(() => {
+		const el = ref.current;
+		if (!el) return;
+		const { width, height } = el.getBoundingClientRect();
+		const maxLeft = window.innerWidth - width - VIEWPORT_MARGIN;
+		const maxTop = window.innerHeight - height - VIEWPORT_MARGIN;
+		setPosition({
+			// Flip to the left of the cursor rather than merely sliding inward, so the
+			// menu never covers the row that was right-clicked.
+			left: Math.max(VIEWPORT_MARGIN, x > maxLeft ? Math.min(x - width, maxLeft) : x),
+			top: Math.max(VIEWPORT_MARGIN, Math.min(y, maxTop)),
+		});
+	}, [x, y]);
 
 	useEffect(() => {
 		const onPointerDown = (event: PointerEvent): void => {
@@ -139,22 +162,27 @@ export function FloatingChangeMenu({
 		window.addEventListener("pointerdown", onPointerDown, true);
 		window.addEventListener("keydown", onKeyDown, true);
 		window.addEventListener("scroll", onClose, true);
+		window.addEventListener("resize", onClose);
 		return () => {
 			window.removeEventListener("pointerdown", onPointerDown, true);
 			window.removeEventListener("keydown", onKeyDown, true);
 			window.removeEventListener("scroll", onClose, true);
+			window.removeEventListener("resize", onClose);
 		};
 	}, [onClose]);
 
-	// Keep the menu inside the viewport when the click is near an edge.
-	const style: React.CSSProperties = {
-		left: Math.min(x, window.innerWidth - 200),
-		top: Math.min(y, window.innerHeight - 220),
-	};
-
-	return (
-		<div ref={ref} className="fixed z-50" style={style}>
+	return createPortal(
+		<div
+			ref={ref}
+			data-vetta-plugin-root="git"
+			// Marks this as part of the tree's own menu surface, so the library does not
+			// treat clicks inside it as an outside click.
+			data-file-tree-context-menu-root="true"
+			className="fixed z-50"
+			style={{ left: position?.left ?? x, top: position?.top ?? y, visibility: position ? "visible" : "hidden" }}
+		>
 			<ChangeMenuItems target={target} handlers={handlers} onDone={onClose} />
-		</div>
+		</div>,
+		document.body,
 	);
 }

@@ -6,7 +6,7 @@ import { findEntry } from "../git/gitStatus";
 import { resizePanel } from "../git/runtime";
 import type { ChangeRef, ChangeSection, StatusGroups } from "../git/types";
 import type { MenuPoint } from "./ChangeMenu";
-import { ChangeMenuItems, FloatingChangeMenu } from "./ChangeMenu";
+import { FloatingChangeMenu } from "./ChangeMenu";
 import { BranchBar } from "./BranchBar";
 import { ChangeSectionList } from "./ChangeSectionList";
 import { CommitBox } from "./CommitBox";
@@ -146,14 +146,11 @@ export function GitChanges({ root, groups }: { root: string; groups: StatusGroup
 		[t],
 	);
 
-	// 右键菜单：树视图由组件自己的菜单插槽承载，平铺视图需要自己定位一个浮层。
+	// 两种视图共用同一个浮层菜单：它 portal 到 body 并做视口夹取，不会被列容器裁掉。
 	const renderSectionMenu = useCallback(
-		(section: ChangeSection, paths: string[], close: () => void, point?: MenuPoint): JSX.Element =>
-			point ? (
-				<FloatingChangeMenu x={point.x} y={point.y} target={{ section, paths }} handlers={actions.handlers} onClose={close} />
-			) : (
-				<ChangeMenuItems target={{ section, paths }} handlers={actions.handlers} onDone={close} />
-			),
+		(section: ChangeSection, paths: string[], close: () => void, point?: MenuPoint): JSX.Element => (
+			<FloatingChangeMenu x={point?.x ?? 0} y={point?.y ?? 0} target={{ section, paths }} handlers={actions.handlers} onClose={close} />
+		),
 		[actions.handlers],
 	);
 
