@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { constants } from "node:fs";
 import { access, readFile } from "node:fs/promises";
 import { isAbsolute, relative, resolve } from "node:path";
@@ -10,7 +11,7 @@ import {
 	type ReadOperations,
 	type WriteOperations,
 } from "@vetta/runtime-node/coding";
-import type { SshConnection } from "@vetta/ssh-transport";
+import { type SshConnection, SshHelperClosedError, SshHelperError } from "@vetta/ssh-transport";
 
 /**
  * 把工具的文件端口接到一条 SSH 连接上。
@@ -88,13 +89,54 @@ export function createSshWriteOperations(connection: SshConnection): WriteOperat
 	};
 }
 
+/**
+ * edit 是「读—改—写」：读回来的内容在本机改完再整份写回去。远端的这个窗口比本地长得多
+ * （两次网络往返，中间还隔着模型的一次思考），期间文件被别人改掉的话，整份写回会把对方的
+ * 修改悄悄盖掉。
+ *
+ * 远端有 helper 时写入带上读取那一刻的内容摘要，由 helper 在同一台机器上原子地核对：对不上
+ * 就拒绝，让模型重新读。没有 helper 时退回无条件写——与引入 helper 之前一致。
+ */
 export function createSshEditOperations(connection: SshConnection): EditOperations {
 	const read = createSshReadOperations(connection);
 	const write = createSshWriteOperations(connection);
+	const revisions = new Map<string, string>();
+	const digest = (bytes: Uint8Array): string => createHash("sha256").update(bytes).digest("hex");
 	return {
-		readFile: read.readFile,
+		readFile: async (absolutePath) => {
+			const content = await read.readFile(absolutePath);
+			revisions.set(absolutePath, digest(content));
+			return content;
+		},
 		access: read.access,
-		writeFile: write.writeFile,
+		writeFile: async (absolutePath, content) => {
+			const bytes = new TextEncoder().encode(content);
+			const expectedRevision = revisions.get(absolutePath);
+			const helper = expectedRevision ? await connection.helper().catch(() => undefined) : undefined;
+			if (!helper || helper.isClosed || !expectedRevision) {
+				await write.writeFile(absolutePath, content);
+			} else {
+				try {
+					await helper.call("fs.writeFile", {
+						path: await connection.expandRemotePath(absolutePath),
+						data: Buffer.from(bytes).toString("base64"),
+						expectedRevision,
+					});
+				} catch (error) {
+					if (error instanceof SshHelperError && error.code === "ECONFLICT") {
+						revisions.delete(absolutePath);
+						throw new Error(
+							`${absolutePath} was modified on the remote host after it was read. ` +
+								"Read the file again and re-apply the edit to its current content.",
+						);
+					}
+					// 通道断了：没问到，不代表写入失败，也不代表成功——退回无条件写。
+					if (!(error instanceof SshHelperClosedError)) throw error;
+					await write.writeFile(absolutePath, content);
+				}
+			}
+			revisions.set(absolutePath, digest(bytes));
+		},
 	};
 }
 
