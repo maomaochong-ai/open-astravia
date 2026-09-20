@@ -4,13 +4,15 @@ import { cleanup, render, screen } from "@testing-library/react";
 import type { Usage } from "@vetta/ai";
 import { createConversationAgentMessage } from "@shared/conversation";
 import userEvent from "@testing-library/user-event";
-import { type ComponentProps, Fragment, type ReactNode } from "react";
+import { type ComponentProps, Fragment, type ReactNode, useEffect } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MessageListView } from "./MessageListView";
 
 const captured = vi.hoisted(() => ({
 	virtuosoProps: undefined as Record<string, unknown> | undefined,
 	messageItemProps: [] as Array<Record<string, unknown>>,
+	virtualListMounts: 0,
+	virtualListUnmounts: 0,
 }));
 
 vi.mock("react-virtuoso", () => ({
@@ -32,6 +34,12 @@ vi.mock("@vetta-org/theme-ui/chat", () => ({
 	MessageFeed: {
 		Root: ({ children }: { children: ReactNode }) => <>{children}</>,
 		VirtualList: (props: Record<string, unknown>) => {
+			useEffect(() => {
+				captured.virtualListMounts++;
+				return () => {
+					captured.virtualListUnmounts++;
+				};
+			}, []);
 			captured.virtuosoProps = props;
 			const data = props.items as Array<{ id: string; renderKey?: string }>;
 			const getKey = props.getKey as (message: { id: string; renderKey?: string }) => string;
@@ -100,11 +108,7 @@ vi.mock("./MessageTimeline", () => ({
 	),
 }));
 
-function props(
-	deferredContentReady: boolean,
-	isStreaming = false,
-	historyBufferEnabled = false,
-): ComponentProps<typeof MessageListView> {
+function props(deferredContentReady: boolean, isStreaming = false): ComponentProps<typeof MessageListView> {
 	const scrollToMessage = vi.fn();
 	return {
 		model: {
@@ -118,7 +122,6 @@ function props(
 				onTotalListHeightChange: vi.fn(),
 				scrollToMessage,
 				followOutput: "auto",
-				historyBufferEnabled,
 				initialTopMostItemIndex: 0,
 			} as never,
 			tailMessageId: "message-1",
@@ -131,43 +134,84 @@ function props(
 	};
 }
 
-describe("MessageListView history buffering", () => {
+describe("MessageListView virtualization", () => {
 	beforeEach(() => {
 		cleanup();
 		captured.virtuosoProps = undefined;
 		captured.messageItemProps = [];
+		captured.virtualListMounts = 0;
+		captured.virtualListUnmounts = 0;
 	});
 
-	it("非关键内容就绪不会扩张历史缓冲，用户开始浏览后才预渲染旧消息", () => {
-		const { rerender } = render(<MessageListView {...props(false)} />);
+	it("非关键内容就绪不会在滚动期间改写虚拟列表布局参数", () => {
+		const initial = props(false);
+		const { rerender } = render(<MessageListView {...initial} />);
 
 		expect(screen.getByTestId("full-message").textContent).toBe("message-1");
 		expect(captured.virtuosoProps?.overscan).toBe(0);
-		expect(captured.virtuosoProps?.minOverscanItemCount).toEqual({ top: 0, bottom: 0 });
-		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 0, bottom: 0 });
+		expect(captured.virtuosoProps?.minOverscanItemCount).toBeUndefined();
+		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 320, bottom: 80 });
+		expect(captured.virtuosoProps?.heightEstimates).toEqual([expect.any(Number)]);
+		expect(captured.virtuosoProps?.defaultItemHeight).toBeUndefined();
+		expect(captured.virtuosoProps?.itemSize).toEqual(expect.any(Function));
 		expect(captured.virtuosoProps?.followOutput).toBe("auto");
 		expect(captured.virtuosoProps?.initialTopMostItemIndex).toBe(0);
 		expect(captured.virtuosoProps?.totalListHeightChanged).toEqual(expect.any(Function));
+		// 普通滚动始终保留真实消息；不能让 Virtuoso 用空白占位替换整屏内容。
+		expect(captured.virtuosoProps?.scrollSeekConfiguration).toBeUndefined();
 		expect(screen.queryByRole("button", { name: "message timeline" })).toBeNull();
 
 		rerender(<MessageListView {...props(true)} />);
 
 		expect(captured.virtuosoProps?.overscan).toBe(0);
-		expect(captured.virtuosoProps?.minOverscanItemCount).toEqual({ top: 0, bottom: 0 });
-		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 0, bottom: 0 });
+		expect(captured.virtuosoProps?.minOverscanItemCount).toBeUndefined();
+		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 320, bottom: 80 });
+		expect(captured.virtuosoProps?.scrollSeekConfiguration).toBeUndefined();
 		expect(screen.queryByRole("button", { name: "message timeline" })).not.toBeNull();
+	});
 
-		rerender(<MessageListView {...props(true, false, true)} />);
+	it("缓存消息实测高度供同一会话后续渲染复用", () => {
+		const viewProps = props(true);
+		const { rerender } = render(<MessageListView {...viewProps} />);
+		const itemSize = captured.virtuosoProps?.itemSize as (
+			element: HTMLElement,
+			field: "offsetHeight" | "offsetWidth",
+		) => number;
+		const element = document.createElement("div");
+		element.dataset.itemIndex = "0";
+		Object.defineProperty(element, "offsetHeight", { configurable: true, value: 460 });
 
-		expect(screen.getByTestId("full-message").textContent).toBe("message-1");
-		expect(captured.virtuosoProps?.overscan).toBe(400);
-		expect(captured.virtuosoProps?.minOverscanItemCount).toEqual({ top: 12, bottom: 4 });
-		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 600, bottom: 200 });
+		expect(itemSize(element, "offsetHeight")).toBe(460);
+
+		rerender(<MessageListView {...props(true)} />);
+		expect(captured.virtuosoProps?.heightEstimates).toEqual([460]);
+	});
+
+	it("真实会话切换会重建高度树，临时会话解析为持久路径时保持当前列表", () => {
+		const pending = props(true);
+		pending.sessionId = null;
+		const { rerender } = render(<MessageListView {...pending} />);
+		expect(captured.virtualListMounts).toBe(1);
+
+		const resolved = props(true);
+		rerender(<MessageListView {...resolved} />);
+		expect(captured.virtualListMounts).toBe(1);
+		expect(captured.virtualListUnmounts).toBe(0);
+
+		const switched = props(true);
+		switched.sessionId = "/sessions/b.jsonl";
+		switched.model.messages = [
+			createConversationAgentMessage({ id: "message-b", text: "other conversation", blocks: [] }),
+		];
+		rerender(<MessageListView {...switched} />);
+
+		expect(captured.virtualListMounts).toBe(2);
+		expect(captured.virtualListUnmounts).toBe(1);
 	});
 
 	it("恢复已测量位置时立即启用历史缓冲且不启用尾随", () => {
 		const restoreStateFrom = { scrollTop: 320, ranges: [] };
-		const initialBase = props(false, false, true);
+		const initialBase = props(false);
 		const initial = {
 			...initialBase,
 			model: {
@@ -186,11 +230,11 @@ describe("MessageListView history buffering", () => {
 		expect(captured.virtuosoProps?.followOutput).toBe(false);
 		expect(captured.virtuosoProps?.restoreStateFrom).toEqual({ scrollTop: 320, ranges: [] });
 		expect(captured.virtuosoProps?.initialTopMostItemIndex).toBeUndefined();
-		expect(captured.virtuosoProps?.overscan).toBe(400);
-		expect(captured.virtuosoProps?.minOverscanItemCount).toEqual({ top: 12, bottom: 4 });
-		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 600, bottom: 200 });
+		expect(captured.virtuosoProps?.overscan).toBe(0);
+		expect(captured.virtuosoProps?.minOverscanItemCount).toBeUndefined();
+		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 320, bottom: 80 });
 
-		const expandedBase = props(true, false, true);
+		const expandedBase = props(true);
 		const expanded = {
 			...expandedBase,
 			model: {
@@ -206,9 +250,9 @@ describe("MessageListView history buffering", () => {
 		rerender(<MessageListView {...expanded} />);
 
 		expect(captured.virtuosoProps?.initialTopMostItemIndex).toBeUndefined();
-		expect(captured.virtuosoProps?.overscan).toBe(400);
-		expect(captured.virtuosoProps?.minOverscanItemCount).toEqual({ top: 12, bottom: 4 });
-		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 600, bottom: 200 });
+		expect(captured.virtuosoProps?.overscan).toBe(0);
+		expect(captured.virtuosoProps?.minOverscanItemCount).toBeUndefined();
+		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 320, bottom: 80 });
 	});
 
 	it("消息从乐观状态规范化为持久化状态时保留可见 DOM 行", () => {
@@ -255,21 +299,22 @@ describe("MessageListView history buffering", () => {
 		expect(screen.getByTestId("full-message").getAttribute("data-pending-label")).toBeNull();
 	});
 
-	it("空会话仍使用零缓冲首屏，避免没有消息时预渲染无意义内容", () => {
+	it("空会话保留固定布局参数并提供空高度表", () => {
 		const viewProps = props(false);
 		viewProps.model.messages = [];
 		render(<MessageListView {...viewProps} />);
 
 		expect(captured.virtuosoProps?.overscan).toBe(0);
-		expect(captured.virtuosoProps?.minOverscanItemCount).toEqual({ top: 0, bottom: 0 });
-		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 0, bottom: 0 });
+		expect(captured.virtuosoProps?.minOverscanItemCount).toBeUndefined();
+		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 320, bottom: 80 });
+		expect(captured.virtuosoProps?.heightEstimates).toEqual([]);
 	});
 
-	it("流式回复期间也为向上滚动保留历史消息缓冲", () => {
-		render(<MessageListView {...props(true, true, true)} />);
+	it("流式回复期间沿用同一套固定渲染窗口", () => {
+		render(<MessageListView {...props(true, true)} />);
 
-		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 400, bottom: 80 });
-		expect(captured.virtuosoProps?.minOverscanItemCount).toEqual({ top: 8, bottom: 2 });
+		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 320, bottom: 80 });
+		expect(captured.virtuosoProps?.minOverscanItemCount).toBeUndefined();
 	});
 
 	it("把时间线的消息索引交给统一滚动模型", async () => {

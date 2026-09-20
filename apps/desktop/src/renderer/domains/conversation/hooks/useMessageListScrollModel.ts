@@ -43,7 +43,6 @@ export function useMessageListScrollModel({
 	return useMemo(
 		() => ({
 			followOutput: feed.followOutput,
-			historyBufferEnabled: feed.historyBufferEnabled,
 			initialTopMostItemIndex: feed.initialTopMostItemIndex,
 			onAtBottomChange: feed.onAtBottomChange,
 			onTotalListHeightChange: feed.onTotalListHeightChange,
@@ -55,7 +54,6 @@ export function useMessageListScrollModel({
 		}),
 		[
 			feed.followOutput,
-			feed.historyBufferEnabled,
 			feed.initialTopMostItemIndex,
 			feed.onAtBottomChange,
 			feed.onTotalListHeightChange,

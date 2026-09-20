@@ -20,9 +20,7 @@ it("keeps the message-list view model stable when its inputs did not change", ()
 		isStreaming: false,
 		workspace: { id: "workspace-1", cwd: "C:/workspace", runtimeIds: [] },
 	};
-	const scroll = {
-		historyBufferEnabled: false,
-	} as MessageListScrollModel;
+	const scroll = {} as MessageListScrollModel;
 	const { result, rerender } = renderHook(
 		({ renderPass }) => {
 			void renderPass;

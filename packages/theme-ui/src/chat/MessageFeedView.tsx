@@ -5,8 +5,10 @@ import { forwardRef } from "react";
 import { createPortal } from "react-dom";
 import {
 	type FollowOutput,
+	type IndexLocationWithAlign,
 	type ListItem,
 	type ListRange,
+	type SizeFunction,
 	type StateSnapshot,
 	Virtuoso,
 	type VirtuosoHandle,
@@ -54,11 +56,13 @@ export interface MessageFeedVirtualListProps<T> extends Omit<ComponentPropsWitho
 	readonly rangeChanged?: (range: ListRange) => void;
 	readonly restoreStateFrom?: StateSnapshot;
 	readonly followOutput?: FollowOutput;
-	readonly initialTopMostItemIndex?: number;
+	readonly initialTopMostItemIndex?: IndexLocationWithAlign | number;
 	readonly overscan?: number | { main: number; reverse: number };
 	readonly minOverscanItemCount?: number | { readonly top: number; readonly bottom: number };
 	readonly increaseViewportBy?: number | { readonly top: number; readonly bottom: number };
 	readonly defaultItemHeight?: number;
+	readonly heightEstimates?: number[];
+	readonly itemSize?: SizeFunction;
 	readonly atBottomThreshold?: number;
 }
 
@@ -80,17 +84,28 @@ export function MessageFeedVirtualList<T>({
 	increaseViewportBy,
 	minOverscanItemCount,
 	defaultItemHeight,
+	heightEstimates,
+	itemSize,
 	atBottomThreshold,
 	className,
 	style,
 	...hostProps
 }: MessageFeedVirtualListProps<T>): JSX.Element {
 	useMessageFeedContext("MessageFeed.VirtualList");
+	// Virtuoso only accepts the first source that seeds an empty size tree. Forwarding both
+	// makes the uniform default win before per-item estimates can describe tall message rows.
+	const initialSizeProps =
+		heightEstimates !== undefined && heightEstimates.length > 0
+			? { heightEstimates }
+			: defaultItemHeight !== undefined
+				? { defaultItemHeight }
+				: {};
 	return (
 		<Virtuoso
 			{...hostProps}
 			ref={virtuosoRef}
 			data={items}
+			skipAnimationFrameInResizeObserver
 			itemContent={(index, item) => children(item, index)}
 			{...(getKey ? { computeItemKey: (index: number, item: T) => getKey(item, index) } : {})}
 			{...(scrollerRef ? { scrollerRef } : {})}
@@ -104,7 +119,8 @@ export function MessageFeedVirtualList<T>({
 			{...(overscan !== undefined ? { overscan } : {})}
 			{...(minOverscanItemCount !== undefined ? { minOverscanItemCount } : {})}
 			{...(increaseViewportBy !== undefined ? { increaseViewportBy } : {})}
-			{...(defaultItemHeight !== undefined ? { defaultItemHeight } : {})}
+			{...initialSizeProps}
+			{...(itemSize !== undefined ? { itemSize } : {})}
 			{...(atBottomThreshold !== undefined ? { atBottomThreshold } : {})}
 			components={VIRTUAL_COMPONENTS}
 			className={cn(className)}

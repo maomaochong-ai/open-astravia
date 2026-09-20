@@ -135,7 +135,7 @@
         "react-dom": "^19.1.1",
         "react-i18next": "^17.0.8",
         "react-markdown": "^10.1.0",
-        "react-virtuoso": "^4.18.5",
+        "react-virtuoso": "^4.18.14",
         "rehype-highlight": "^7.0.2",
         "remark-gfm": "^4.0.1",
         "shadcn": "^4.1.0",
@@ -1111,7 +1111,7 @@
         "canvas-confetti": "^1.9.4",
         "motion": "^12.23.12",
         "react-markdown": "^10.1.0",
-        "react-virtuoso": "^4.18.5",
+        "react-virtuoso": "^4.18.14",
         "remark-gfm": "^4.0.1",
         "shiki": "^4.0.2",
         "three": "^0.185.0",
@@ -4579,7 +4579,7 @@
 
     "react-use-measure": ["react-use-measure@2.1.7", "https://registry.npmmirror.com/react-use-measure/-/react-use-measure-2.1.7.tgz", { "peerDependencies": { "react": ">=16.13", "react-dom": ">=16.13" }, "optionalPeers": ["react-dom"] }, "sha512-KrvcAo13I/60HpwGO5jpW7E9DfusKyLPLvuHlUyP5zqnmAPhNc6qTRjUQrdTADl0lpPpDVU2/Gg51UlOGHXbdg=="],
 
-    "react-virtuoso": ["react-virtuoso@4.18.7", "https://registry.npmmirror.com/react-virtuoso/-/react-virtuoso-4.18.7.tgz", { "peerDependencies": { "react": ">=16 || >=17 || >= 18 || >= 19", "react-dom": ">=16 || >=17 || >= 18 || >=19" } }, "sha512-xNF5zDGEEIMB7cKwcen/pLig0YDf6OnfFrVgKFa7sHPf9fRem0CaLshyObbBcP88jzn0enavL39EgplgdyT21g=="],
+    "react-virtuoso": ["react-virtuoso@4.18.14", "", { "peerDependencies": { "react": ">=16 || >=17 || >= 18 || >= 19", "react-dom": ">=16 || >=17 || >= 18 || >=19" } }, "sha512-rwkivTuIeKyaDvMEZjanntcR8CUCE5lRVppgvXhQ9sTBbz3u/pSoN0d9S8sOBaiQyAlBAzjRv7HhirLAz85fqg=="],
 
     "read-binary-file-arch": ["read-binary-file-arch@1.0.6", "https://registry.npmmirror.com/read-binary-file-arch/-/read-binary-file-arch-1.0.6.tgz", { "dependencies": { "debug": "^4.3.4" }, "bin": { "read-binary-file-arch": "cli.js" } }, "sha512-BNg9EN3DD3GsDXX7Aa8O4p92sryjkmzYYgmgTAc6CA4uGLEDzFfxOxugu21akOxpcXHiEgsYkC6nPsQvLLLmEg=="],
 
