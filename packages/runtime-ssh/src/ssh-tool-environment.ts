@@ -1,11 +1,16 @@
 import {
+	collectToolProcess,
 	createBackgroundCommandService,
 	createBackgroundCommandToolExecutor,
 	createBashToolRegistration,
 	createEditToolRegistration,
+	createFindToolRegistration,
 	createForegroundCommandToolExecutor,
+	createGlobToolRegistration,
+	createGrepToolRegistration,
 	createLsToolRegistration,
 	createReadToolRegistration,
+	createTreeToolRegistration,
 	createWriteToolRegistration,
 	type EditPathPolicy,
 	type ReadToolOptions,
@@ -22,6 +27,7 @@ import {
 	createSshReadOperations,
 	createSshWriteOperations,
 } from "./ssh-file-operations.js";
+import { createSshExecutableResolver, createSshToolProcessSpawner } from "./ssh-tool-process.js";
 
 export interface SshCodingToolEnvironmentOptions {
 	readonly connection: SshConnection;
@@ -51,15 +57,21 @@ export interface SshCodingToolEnvironment {
  * 复用 runtime-node 的工具实现，只把它们的文件与命令端口换成 SSH 版；模型看到的
  * schema、描述和结果格式与本地完全一致。
  *
- * **刻意不注册 grep / glob / find / tree**：这四个工具在内部直接 spawn 本机的
- * ripgrep，注册到远程会话里就会去搜**本机**磁盘，然后把本机的命中当作远端项目的
- * 内容交给模型——这正是 ADR-0124 要禁止的静默回退。在它们的进程启动点被抽成可注入
- * 端口之前，远程会话让模型改用 bash 里的 grep/find，慢但结果属于正确的那台机器。
+ * 搜索类工具（grep / glob / find / dir_tree）同样注册：它们的 ripgrep / fd 改在远端启动，
+ * 命中来自正确的那台机器。远端没装时工具会明说，模型改用 bash 里的 grep / find。
  */
 export function createSshCodingToolEnvironment(options: SshCodingToolEnvironmentOptions): SshCodingToolEnvironment {
 	const { connection, remoteCwd } = options;
 	// 路径一律按远端解析：不探本机磁盘、不按本机家目录展开 `~`、固定 POSIX 语义。
 	const pathHost = remotePosixToolPathHost;
+	const lsOperations = createSshLsOperations(connection);
+	const isDirectory = async (absolutePath: string): Promise<boolean> =>
+		(await lsOperations.stat(absolutePath)).isDirectory();
+	const search = {
+		pathHost,
+		spawnProcess: createSshToolProcessSpawner(connection),
+		executableResolver: createSshExecutableResolver(connection),
+	};
 	// 本机环境变量不进远端。远端自己的 PATH 由登录 shell 提供。
 	const environment = () => ({});
 	const backgroundService = createBackgroundCommandService(createSshBackgroundCommandHost(connection));
@@ -93,7 +105,22 @@ export function createSshCodingToolEnvironment(options: SshCodingToolEnvironment
 				pathHost,
 				operations: createSshWriteOperations(connection),
 			}),
-			createLsToolRegistration(remoteCwd, { pathHost, operations: createSshLsOperations(connection) }),
+			createLsToolRegistration(remoteCwd, { pathHost, operations: lsOperations }),
+			createGrepToolRegistration(remoteCwd, { ...search, operations: { isDirectory } }),
+			createGlobToolRegistration(remoteCwd, { ...search, operations: { isDirectory } }),
+			createFindToolRegistration(remoteCwd, search),
+			createTreeToolRegistration(remoteCwd, {
+				...search,
+				// 目录是否存在也得问远端：缺省实现查的是本机磁盘。
+				operations: {
+					exists: lsOperations.exists,
+					stat: lsOperations.stat,
+					runFd: async (fdPath, args) => {
+						const result = await collectToolProcess(search.spawnProcess, fdPath, args);
+						return { status: result.code, stdout: result.stdout, stderr: result.stderr };
+					},
+				},
+			}),
 			createBashToolRegistration(remoteCwd, { executor: commandExecutor }),
 		],
 		backgroundService,

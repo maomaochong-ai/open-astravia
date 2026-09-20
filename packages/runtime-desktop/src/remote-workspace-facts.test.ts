@@ -20,8 +20,9 @@ describe("远程项目的工作区说明", () => {
 		expect(facts).toContain("no sandbox");
 	});
 
-	it("告诉模型搜索要走命令行", () => {
-		// 远程会话不注册 grep/glob，模型需要知道替代做法，否则会反复调用不存在的工具。
-		expect(facts).toMatch(/grep|rg|find/);
+	it("告诉模型搜索工具在远端执行，以及远端没装时的退路", () => {
+		// 远端缺 ripgrep 时工具会报错；模型得事先知道该换 grep/find，而不是反复重试。
+		expect(facts).toContain("on the remote machine");
+		expect(facts).toMatch(/fall back to `grep` or `find`/);
 	});
 });

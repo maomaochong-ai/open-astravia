@@ -18,6 +18,7 @@ export function renderRemoteWorkspaceFacts(remotePath: string): string {
 		"- MCP servers, plugins and any other tooling run on the local computer and CANNOT see this project. " +
 			"A local path that looks identical belongs to a different machine and a different repository.",
 		"- Commands run as the remote login user with no sandbox. There is no separate approval layer on that side.",
-		"- Searching is not available as a dedicated tool here; use `grep`, `rg` or `find` through the command tool instead.",
+		"- The search tools run ripgrep and fd on the remote machine. If one reports that the program is not installed there, " +
+			"fall back to `grep` or `find` through the command tool.",
 	].join("\n");
 }

@@ -49,7 +49,8 @@ export interface GlobToolDetails {
 
 export interface GlobOperations {
 	readonly isDirectory: (absolutePath: string) => Promise<boolean> | boolean;
-	readonly glob: (
+	/** 给出时完全取代 ripgrep；只想换掉 `isDirectory`（文件在另一台机器上）时留空。 */
+	readonly glob?: (
 		pattern: string,
 		cwd: string,
 		options: { readonly limit: number; readonly signal?: AbortSignal },
@@ -256,7 +257,7 @@ export function createGlobTool(cwd: string, options: GlobToolOptions = {}): Runt
 			if (!isDirectory) throw new Error(`Not a directory: ${searchPath}`);
 
 			const limit = Math.max(1, request.input.limit ?? DEFAULT_LIMIT);
-			if (customOps) {
+			if (customOps?.glob) {
 				const rawResults = await customOps.glob(pattern, searchPath, { limit, signal: request.signal });
 				return formatResults(rawResults, searchPath, limit, start, rawResults.length > limit, path);
 			}

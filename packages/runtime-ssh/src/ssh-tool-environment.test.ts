@@ -18,7 +18,11 @@ function encode(text: string): Uint8Array {
  * 构造、引用和输出解析都在被测路径里，测试才能证明「工具确实作用在远端」而不是
  * 「我们调用了自己写的 mock」。
  */
-function createFakeHost(files: Map<string, string>, binaryFiles = new Map<string, Uint8Array>()) {
+function createFakeHost(
+	files: Map<string, string>,
+	binaryFiles = new Map<string, Uint8Array>(),
+	behaviour: { missingExecutables?: boolean } = {},
+) {
 	const commands: string[] = [];
 	const runner: SshProcessRunner = {
 		run: async (invocation): Promise<SshProcessResult> => {
@@ -34,6 +38,9 @@ function createFakeHost(files: Map<string, string>, binaryFiles = new Map<string
 			if (remoteCommand.includes("uname")) return ok("Linux\nx86_64\n");
 
 			if (remoteCommand.includes("HOME")) return ok("/home/dev");
+			if (remoteCommand.includes("command -v") && behaviour.missingExecutables) {
+				return { exitCode: 1, stdout: new Uint8Array(), stderr: "", aborted: false };
+			}
 
 			const head = /^head -c \d+ -- '(.+)'$/.exec(remoteCommand);
 			if (head) {
@@ -108,8 +115,12 @@ function execute(tool: ReturnType<typeof toolByName>, input: Record<string, unkn
 	} as never);
 }
 
-function createEnvironment(files: Map<string, string>, binaryFiles?: Map<string, Uint8Array>) {
-	const fake = createFakeHost(files, binaryFiles);
+function createEnvironment(
+	files: Map<string, string>,
+	binaryFiles?: Map<string, Uint8Array>,
+	behaviour?: { missingExecutables?: boolean },
+) {
+	const fake = createFakeHost(files, binaryFiles, behaviour);
 	const environment = createSshCodingToolEnvironment({
 		connection: fake.connection,
 		remoteCwd: REMOTE_CWD,
@@ -224,12 +235,22 @@ describe("远程项目的 Agent 工具", () => {
 		expect(String((error as Error).message)).toContain("timed out after 5 seconds");
 	});
 
-	it("不注册会去搜本机磁盘的搜索工具", async () => {
-		// grep/glob/find/tree 内部直接 spawn 本机 ripgrep。注册进远程会话就会把本机的
-		// 命中当成远端项目的内容交给模型——正是执行边界要禁止的静默回退。
+	it("工具集与本地项目一致，搜索工具也在", async () => {
 		const { environment } = createEnvironment(new Map());
 
 		const names = environment.registrations.map((registration) => registration.tool.name);
-		expect(names).toEqual(["read", "edit", "write", "ls", "bash"]);
+		expect(names).toEqual(["read", "edit", "write", "ls", "grep", "glob", "find", "dir_tree", "bash"]);
+	});
+
+	it("远端没装 ripgrep 时明说，并指给模型可用的替代办法", async () => {
+		const files = new Map([["/srv/app/main.ts", "x"]]);
+		const { environment } = createEnvironment(files, undefined, { missingExecutables: true });
+
+		const error = await execute(toolByName(environment.registrations, "grep"), { pattern: "x" }).catch(
+			(e: unknown) => e,
+		);
+
+		expect(String((error as Error).message)).toContain("not installed on the remote host 构建机");
+		expect(String((error as Error).message)).toContain("bash tool");
 	});
 });
