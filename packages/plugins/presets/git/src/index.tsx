@@ -24,7 +24,12 @@ export default definePlugin({
 		let latestCwd: string | null = null;
 
 		// Let panels resize their host activity panel (narrow click → max, close → narrow).
-		setPanelResizer((width) => ctx.ui.openActivityTab(CHANGES_TAB_ID, width === undefined ? undefined : { width }));
+		// 面板内部改宽度走 setActivityPanelWidth：openActivityTab 语义是「打开某个标签卡」，
+		// 在已经身处该标签卡里时用它拉宽，等于每次点文件都重新打开一次自己。
+		setPanelResizer((width) => {
+			if (width === undefined) ctx.ui.openActivityTab(CHANGES_TAB_ID);
+			else ctx.ui.setActivityPanelWidth(width);
+		});
 
 		// Refresh the panel after each agent turn (it may have edited files), and
 		// surface turn start/end phases for the turn card's per-turn baseline diff.
