@@ -13,12 +13,9 @@ import { CommitBox } from "./CommitBox";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { DiffPane } from "./DiffPane";
 import { GitActions } from "./GitActions";
-import { FileIcon, ListViewIcon, StageIcon, TreeViewIcon, UnstageIcon } from "./icons";
+import { FileIcon, StageIcon, UnstageIcon } from "./icons";
 import { SplitHandle } from "./SplitHandle";
 import { useChangeActions } from "./useChangeActions";
-
-type ViewMode = "tree" | "flat";
-const VIEW_MODE_KEY = "vetta-git-view-mode";
 
 // 容器宽于此值时显示右侧 diff 区；窄于此值只显示文件树（拖窄自动收起 diff）。
 // 阈值要留得住「树 + 一屏能读的 diff」，否则一拉宽就挤出一条读不了的窄 diff。
@@ -53,21 +50,7 @@ export function GitChanges({ root, groups }: { root: string; groups: StatusGroup
 	});
 	const [treeWidth, setTreeWidth] = useState(TREE_DEFAULT_WIDTH);
 	const [treeCollapsed, setTreeCollapsed] = useState(false);
-	const [viewMode, setViewMode] = useState<ViewMode>(() =>
-		typeof localStorage !== "undefined" && localStorage.getItem(VIEW_MODE_KEY) === "flat" ? "flat" : "tree",
-	);
-
 	const actions = useChangeActions(root, groups);
-
-	const toggleView = useCallback(() => {
-		setViewMode((m) => {
-			const next: ViewMode = m === "tree" ? "flat" : "tree";
-			try {
-				localStorage.setItem(VIEW_MODE_KEY, next);
-			} catch {}
-			return next;
-		});
-	}, []);
 
 	// 预热 diff 高亮器：共享高亮器是会话级单例，首个 diff 渲染时若主题尚未挂载，
 	// 渲染器会跳过同步渲染返回空白，须切换文件才恢复。文件列表出现即提前挂载明暗
@@ -188,17 +171,6 @@ export function GitChanges({ root, groups }: { root: string; groups: StatusGroup
 				<BranchBar root={root} />
 				<div className="ml-auto flex items-center gap-1">
 					<GitActions root={root} />
-				{total > 0 && (
-					<Button
-						type="button"
-						variant="ghost"
-						size="icon-xs"
-						onClick={toggleView}
-						title={viewMode === "tree" ? t("view.switchToFlat") : t("view.switchToTree")}
-					>
-						{viewMode === "tree" ? <ListViewIcon className="h-3.5 w-3.5" /> : <TreeViewIcon className="h-3.5 w-3.5" />}
-					</Button>
-					)}
 				</div>
 			</div>
 
@@ -223,7 +195,6 @@ export function GitChanges({ root, groups }: { root: string; groups: StatusGroup
 										key={section}
 										title={sectionTitles[section]}
 										entries={groups[section]}
-										viewMode={viewMode}
 										collapsed={collapsed[section]}
 										onToggleCollapsed={() => setCollapsed((prev) => ({ ...prev, [section]: !prev[section] }))}
 										selectedPaths={selection.section === section ? selection.paths : []}

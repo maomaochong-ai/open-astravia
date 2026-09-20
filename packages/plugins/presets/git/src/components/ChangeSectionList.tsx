@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import type { ChangeEntry } from "../git/types";
 import type { MenuPoint } from "./ChangeMenu";
 import { GitFileTree } from "./GitFileTree";
-import { GitFlatList } from "./GitFlatList";
 import { ChevronIcon } from "./icons";
 
 /** Floor for a section body, so a one-file section is still usable when squeezed. */
@@ -19,7 +18,6 @@ const MIN_BODY = 48;
 export function ChangeSectionList({
 	title,
 	entries,
-	viewMode,
 	collapsed,
 	onToggleCollapsed,
 	selectedPaths,
@@ -30,7 +28,6 @@ export function ChangeSectionList({
 }: {
 	title: string;
 	entries: readonly ChangeEntry[];
-	viewMode: "tree" | "flat";
 	collapsed: boolean;
 	onToggleCollapsed: () => void;
 	selectedPaths: readonly string[];
@@ -65,11 +62,7 @@ export function ChangeSectionList({
 			</div>
 			{!collapsed && (
 				<div className="min-h-0 flex-1 overflow-hidden">
-					{viewMode === "tree" ? (
-						<GitFileTree entries={entries} selectedPaths={selectedPaths} onSelectionChange={onSelectionChange} renderMenu={renderMenu} />
-					) : (
-						<GitFlatList entries={entries} selectedPaths={selectedPaths} onSelectionChange={onSelectionChange} renderMenu={renderMenu} />
-					)}
+					<GitFileTree entries={entries} selectedPaths={selectedPaths} onSelectionChange={onSelectionChange} renderMenu={renderMenu} />
 				</div>
 			)}
 		</div>
