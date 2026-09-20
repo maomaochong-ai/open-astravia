@@ -6,8 +6,12 @@ import {
 	type UndiciDispatcher,
 } from "../src/utils/proxy-dispatcher.js";
 
+function agent(): UndiciDispatcher {
+	return { dispatch: vi.fn(() => true), close: vi.fn(async () => {}) };
+}
+
 function fakeControl() {
-	const inherited: UndiciDispatcher = { close: vi.fn(async () => {}) };
+	const inherited = agent();
 	let current = inherited;
 	const proxyAgents: { url: string; agent: UndiciDispatcher }[] = [];
 	const directAgents: UndiciDispatcher[] = [];
@@ -17,28 +21,43 @@ function fakeControl() {
 			current = dispatcher;
 		},
 		createProxyAgent: (url) => {
-			const agent: UndiciDispatcher = { close: vi.fn(async () => {}) };
-			proxyAgents.push({ url, agent });
-			return agent;
+			const created = agent();
+			proxyAgents.push({ url, agent: created });
+			return created;
 		},
 		createDirectAgent: () => {
-			const agent: UndiciDispatcher = { close: vi.fn(async () => {}) };
-			directAgents.push(agent);
-			return agent;
+			const created = agent();
+			directAgents.push(created);
+			return created;
 		},
 	};
 	return { control, inherited, proxyAgents, directAgents, currentOf: () => current };
 }
 
 describe("installGlobalProxyDispatcher", () => {
-	it("routes every bare fetch through the proxy by swapping the global dispatcher", async () => {
+	it("sends remote origins through the proxy agent", async () => {
 		// `@google/genai` 调裸 fetch，没有注入口，只有全局 dispatcher 覆盖得到它。
 		const f = fakeControl();
 
 		await installGlobalProxyDispatcher("http://proxy.example.com:3128", async () => f.control);
+		f.currentOf().dispatch({ origin: "https://generativelanguage.googleapis.com" }, {});
 
 		expect(f.proxyAgents.map((entry) => entry.url)).toEqual(["http://proxy.example.com:3128"]);
-		expect(f.currentOf()).toBe(f.proxyAgents[0]?.agent);
+		expect(f.proxyAgents[0]?.agent.dispatch).toHaveBeenCalledOnce();
+		expect(f.directAgents[0]?.dispatch).not.toHaveBeenCalled();
+	});
+
+	it("sends local and LAN origins direct, so a self-hosted gateway keeps working", async () => {
+		// 装裸 ProxyAgent 会对 127.0.0.1 也建隧道，本机桥接网关当场连不上。
+		const f = fakeControl();
+
+		await installGlobalProxyDispatcher("http://proxy.example.com:3128", async () => f.control);
+		for (const origin of ["http://127.0.0.1:49507", "http://192.168.50.50:8124", "http://gateway.local:3000"]) {
+			f.currentOf().dispatch({ origin }, {});
+		}
+
+		expect(f.directAgents[0]?.dispatch).toHaveBeenCalledTimes(3);
+		expect(f.proxyAgents[0]?.agent.dispatch).not.toHaveBeenCalled();
 	});
 
 	it("restores the inherited dispatcher on dispose instead of clearing it", async () => {
@@ -50,6 +69,7 @@ describe("installGlobalProxyDispatcher", () => {
 
 		expect(f.currentOf()).toBe(f.inherited);
 		expect(f.proxyAgents[0]?.agent.close).toHaveBeenCalledOnce();
+		expect(f.directAgents[0]?.close).toHaveBeenCalledOnce();
 	});
 });
 

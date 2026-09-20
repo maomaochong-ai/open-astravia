@@ -31,10 +31,19 @@ export type ProxyResolution =
 	  }
 	| { readonly mode: "invalid"; readonly reason: ProxyConfigErrorReason };
 
-/** 环回地址永不走代理：本地 Ollama / LM Studio 这类端点绕一圈代理必然失败。 */
-const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1", "[::1]", "0.0.0.0"]);
+/**
+ * 本机与内网地址永不走代理：本地 Ollama / LM Studio、局域网模型服务、以及像
+ * CLIProxyAPI 这样跑在 127.0.0.1 的桥接网关，绕一圈外网代理必然连不上。
+ */
+const LOCAL_HOSTNAMES = new Set(["localhost", "::1", "[::1]", "0.0.0.0"]);
 
-export const NO_PROXY_HOSTS = "localhost,127.0.0.1,::1";
+const LOCAL_HOSTNAME_SUFFIXES = [".local", ".localhost", ".internal", ".home.arpa"];
+
+/**
+ * 交给 shell、Go sidecar 与 node 侧 SDK 的 NO_PROXY。Go 的 httpproxy 认 CIDR；
+ * 只认主机名的实现会忽略网段那几项，退化成仅豁免环回，不会误伤。
+ */
+export const NO_PROXY_HOSTS = "localhost,127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,169.254.0.0/16,*.local";
 
 export function isProxyProtocol(value: unknown): value is ProxyProtocol {
 	return typeof value === "string" && (PROXY_PROTOCOLS as readonly string[]).includes(value);
@@ -104,8 +113,33 @@ export function shouldBypassProxy(targetUrl: string): boolean {
 	} catch {
 		return false;
 	}
+	return isLocalHostname(hostname);
+}
+
+/** 主机名是否属于本机或内网。供设置页与传输层共用同一判据。 */
+export function isLocalHostname(hostname: string): boolean {
 	const normalized = hostname.toLowerCase();
-	if (LOOPBACK_HOSTNAMES.has(normalized)) return true;
-	// 127.0.0.0/8 整段都是环回，不止 127.0.0.1。
-	return /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(normalized);
+	if (LOCAL_HOSTNAMES.has(normalized)) return true;
+	if (LOCAL_HOSTNAME_SUFFIXES.some((suffix) => normalized.endsWith(suffix))) return true;
+	if (isPrivateIpv4(normalized)) return true;
+	return isPrivateIpv6(normalized);
+}
+
+function isPrivateIpv4(hostname: string): boolean {
+	const match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(hostname);
+	if (!match) return false;
+	const octets = match.slice(1).map(Number);
+	if (octets.some((octet) => octet > 255)) return false;
+	const [a = 0, b = 0] = octets;
+	// 127.0.0.0/8 环回、10/8、172.16/12、192.168/16 私网、169.254/16 链路本地。
+	if (a === 127 || a === 10) return true;
+	if (a === 172 && b >= 16 && b <= 31) return true;
+	if (a === 192 && b === 168) return true;
+	return a === 169 && b === 254;
+}
+
+function isPrivateIpv6(hostname: string): boolean {
+	const inner = hostname.startsWith("[") && hostname.endsWith("]") ? hostname.slice(1, -1) : hostname;
+	// fc00::/7 唯一本地、fe80::/10 链路本地。
+	return /^f[cd][0-9a-f]{2}:/.test(inner) || /^fe[89ab][0-9a-f]:/.test(inner);
 }

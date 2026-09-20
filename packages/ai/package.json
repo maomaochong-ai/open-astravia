@@ -18,6 +18,10 @@
 			"types": "./dist/protocol/index.d.ts",
 			"default": "./dist/protocol/index.js"
 		},
+		"./proxy": {
+			"types": "./dist/utils/proxy-config.d.ts",
+			"default": "./dist/utils/proxy-config.js"
+		},
 		"./testkit": {
 			"types": "./dist/testkit/index.d.ts",
 			"default": "./dist/testkit/index.js"

@@ -1,5 +1,6 @@
 import type { DesktopProxyConfigPatchData, DesktopProxyProtocol } from "@preload/api-types/config";
 import { supportsProviderFetchInjection } from "@vetta/ai/protocol";
+import { shouldBypassProxy } from "@vetta/ai/proxy";
 import type { ProxyProviderRowView } from "@vetta-org/theme-ui/settings";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -7,12 +8,15 @@ import { useTranslation } from "react-i18next";
 /** 文本字段逐字保存会让每个按键都触发一次落盘与代理重建。 */
 const TEXT_COMMIT_DELAY_MS = 400;
 
+/** 供应商开关被锁住的原因；`undefined` 表示可自由开关。 */
+type ProxyProviderLock = "local" | "vendor-sdk";
+
 /** 列表数据本身，不含任何文案；展示用的行由 `t` 在渲染期拼出来。 */
 interface LoadedProxyProvider {
 	readonly id: string;
 	readonly displayName: string;
 	readonly useProxy: boolean;
-	readonly supported: boolean;
+	readonly lock?: ProxyProviderLock;
 }
 
 export interface ProxySettingsDraft {
@@ -108,15 +112,21 @@ export function useProxySettingsModel(): ProxySettingsModel {
 	useEffect(() => {
 		void window.vetta.models.get().then((config) => {
 			setProviders(
-				Object.entries(config.providers ?? {}).map(([id, provider]) => ({
-					id,
-					displayName: provider.displayName ?? id,
-					// 缺省跟随全局：开启代理后默认走代理，显式 false 才排除。
-					useProxy: provider.useProxy !== false,
-					supported: supportsProviderFetchInjection(
+				Object.entries(config.providers ?? {}).map(([id, provider]) => {
+					// 上游在本机或内网时，这一跳根本没出网，开关没有意义。
+					const local = Boolean(provider.baseUrl && shouldBypassProxy(provider.baseUrl));
+					const supported = supportsProviderFetchInjection(
 						provider.api ?? provider.models?.[0]?.api ?? "openai-completions",
-					),
-				})),
+					);
+					const lock: ProxyProviderLock | undefined = local ? "local" : supported ? undefined : "vendor-sdk";
+					return {
+						id,
+						displayName: provider.displayName ?? id,
+						// 缺省跟随全局：开启代理后默认走代理，显式 false 才排除。
+						useProxy: local ? false : provider.useProxy !== false,
+						...(lock ? { lock } : {}),
+					};
+				}),
 			);
 		});
 	}, []);
@@ -217,7 +227,12 @@ export function useProxySettingsModel(): ProxySettingsModel {
 				id: provider.id,
 				displayName: provider.displayName,
 				useProxy: provider.useProxy,
-				...(provider.supported ? {} : { lockedReason: t("proxy.providerFollowsGlobal") }),
+				...(provider.lock
+					? {
+							lockedReason:
+								provider.lock === "local" ? t("proxy.providerLocal") : t("proxy.providerFollowsGlobal"),
+						}
+					: {}),
 			})),
 		[providers, t],
 	);

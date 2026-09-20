@@ -264,6 +264,7 @@
     "providersDescription": "Every provider uses the proxy by default. Turn it off for providers you can reach faster directly.",
     "noProviders": "No providers configured yet.",
     "invalidConfig": "The proxy host or port is invalid. Model requests will fail rather than silently falling back to a direct connection.",
+    "providerLocal": "The upstream is on this machine or your LAN, so this hop never leaves the network and always connects directly. How that service reaches the internet is its own configuration.",
     "providerFollowsGlobal": "This provider's vendor SDK issues its own requests and cannot see the injected transport, so it always follows the global proxy and cannot be excluded on its own."
   },
   "workspace": {

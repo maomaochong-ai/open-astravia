@@ -129,11 +129,12 @@ export async function applyDesktopProxy(
 	return { mode: "proxy", target: resolution.target };
 }
 
-function routingFor(model: { provider: string; api: string }, options: ProxyRuntimeOptions) {
+function routingFor(model: { provider: string; api: string; baseUrl?: string }, options: ProxyRuntimeOptions) {
 	return decideProxyRouting({
 		proxyActive: true,
 		providerUseProxy: options.readProviderUseProxy(model.provider),
 		api: model.api,
+		baseUrl: model.baseUrl,
 	});
 }
 
