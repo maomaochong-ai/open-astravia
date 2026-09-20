@@ -23,7 +23,7 @@ describe("createProxyFetch", () => {
 	});
 
 	it("sends remote requests through the proxy dispatcher", async () => {
-		const baseFetch = vi.fn(async () => okResponse());
+		const baseFetch = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => okResponse());
 		const dispatcher = fakeDispatcherLoader();
 
 		const proxied = createProxyFetch(config(), { baseFetch, loadDispatcher: dispatcher.load });
@@ -38,7 +38,7 @@ describe("createProxyFetch", () => {
 	});
 
 	it("sends loopback requests directly so a local model server still works", async () => {
-		const baseFetch = vi.fn(async () => okResponse());
+		const baseFetch = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => okResponse());
 		const dispatcher = fakeDispatcherLoader();
 
 		const proxied = createProxyFetch(config(), { baseFetch, loadDispatcher: dispatcher.load });
@@ -50,7 +50,7 @@ describe("createProxyFetch", () => {
 	});
 
 	it("reuses one dispatcher across requests instead of rebuilding the tunnel", async () => {
-		const baseFetch = vi.fn(async () => okResponse());
+		const baseFetch = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => okResponse());
 		const dispatcher = fakeDispatcherLoader();
 
 		const proxied = createProxyFetch(config(), { baseFetch, loadDispatcher: dispatcher.load });
@@ -61,7 +61,7 @@ describe("createProxyFetch", () => {
 	});
 
 	it("fails every request when the proxy config is invalid rather than going direct", async () => {
-		const baseFetch = vi.fn(async () => okResponse());
+		const baseFetch = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => okResponse());
 
 		const proxied = createProxyFetch(config({ host: "" }), { baseFetch });
 
@@ -72,7 +72,7 @@ describe("createProxyFetch", () => {
 	});
 
 	it("closes the dispatcher on dispose", async () => {
-		const baseFetch = vi.fn(async () => okResponse());
+		const baseFetch = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => okResponse());
 		const dispatcher = fakeDispatcherLoader();
 
 		const proxied = createProxyFetch(config(), { baseFetch, loadDispatcher: dispatcher.load });
