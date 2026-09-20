@@ -3,6 +3,7 @@ import {
 	buildListDirectoryCommand,
 	buildRemoteCommand,
 	buildRemoteScript,
+	buildStatCommand,
 	quoteShellArgument,
 } from "./remote-command.js";
 
@@ -80,5 +81,18 @@ describe("buildListDirectoryCommand", () => {
 
 	it("目录路径被引用", () => {
 		expect(buildListDirectoryCommand("/srv/a b", "gnu")).toContain("cd '/srv/a b'");
+	});
+
+	it("锁死 C locale，否则中文系统上 stat 会输出「目录」而不是 directory", () => {
+		// 现场故障：远端是中文 locale，每个条目都被判成未知类型，目录列表显示为空，
+		// 而且没有任何报错——从现象完全反推不到原因。
+		expect(buildListDirectoryCommand("/srv", "gnu")).toContain("LC_ALL=C");
+		expect(buildStatCommand("/srv/app", "gnu")).toContain("LC_ALL=C");
+	});
+
+	it("用 env 设置 locale，而不是 POSIX 的前缀赋值", () => {
+		// `LC_ALL=C cmd` 是 POSIX shell 语法，远端登录 shell 若是 fish 就会报错；
+		// `env` 在任何 shell 里都只是一个普通命令。
+		expect(buildListDirectoryCommand("/srv", "gnu")).toContain("env LC_ALL=C");
 	});
 });

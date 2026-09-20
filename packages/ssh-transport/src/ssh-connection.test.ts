@@ -146,18 +146,32 @@ describe("失败分类（ADR-0124 执行边界）", () => {
 });
 
 describe("用户命令执行", () => {
+	it("先建立连接再跑命令：认证不能受调用方那条短超时的约束", async () => {
+		// 口令、2FA 和指纹确认只发生在第一条命令上。若它跟着「这条命令该跑多久」的
+		// 超时走，用户还在输密码时 ssh 就被杀了，表现为输完密码却提示连接失败。
+		const { connection, calls } = connect((remoteCommand) =>
+			remoteCommand.includes("uname") ? ok("Linux\nx86_64\n") : ok(""),
+		);
+
+		await connection.exec("npm test", { timeoutMs: 1_000 });
+
+		expect(String(calls[0].argv[calls[0].argv.length - 1])).toContain("uname");
+		expect(calls[0].timeoutMs).toBeGreaterThan(60_000);
+	});
+
 	it("带工作目录与流式输出，退出码原样返回而不抛", async () => {
 		const onStdout = vi.fn();
-		const { connection, calls } = connect(() => ({
-			exitCode: 1,
-			stdout: encode("test failed"),
-			stderr: "",
-			aborted: false,
-		}));
+		const { connection, calls } = connect((remoteCommand) =>
+			// 第一条命令是建立连接的平台探测；用户命令才是被测的那一条。
+			remoteCommand.includes("uname")
+				? ok("Linux\nx86_64\n")
+				: { exitCode: 1, stdout: encode("test failed"), stderr: "", aborted: false },
+		);
 		await expect(connection.exec("npm test", { cwd: "/srv/app", onStdout })).resolves.toMatchObject({
 			exitCode: 1,
 		});
 		// 引用语义由 remote-command 的测试守住，这里只证明 cwd 确实被透传下去。
-		expect(String(calls[0].argv[calls[0].argv.length - 1])).toBe(buildRemoteCommand("npm test", { cwd: "/srv/app" }));
+		const userCommand = calls.map((call) => String(call.argv[call.argv.length - 1])).at(-1);
+		expect(userCommand).toBe(buildRemoteCommand("npm test", { cwd: "/srv/app" }));
 	});
 });

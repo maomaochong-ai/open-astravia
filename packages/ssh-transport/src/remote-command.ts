@@ -58,6 +58,27 @@ export function buildRemoteScript(command: string, options: RemoteCommandOptions
 export type RemoteStatFlavor = "gnu" | "bsd";
 
 /**
+ * `stat` 的类型字段会被远端 locale 翻译：中文系统上 `%F` 给的是「目录」而不是
+ * `directory`，按英文解析就会把每个条目都判成未知类型，目录列表随即变成空的。
+ *
+ * 用 `env` 而不是 `LC_ALL=C cmd` 这种前缀赋值：后者是 POSIX shell 语法，fish 之类
+ * 的登录 shell 不认；`env` 在任何 shell 里都只是一个普通命令。
+ */
+const FORCE_C_LOCALE = "env LC_ALL=C LANG=C";
+
+/** stat 的格式串。名字放最后一个字段，因为文件名可以包含制表符。 */
+function statFormat(flavor: RemoteStatFlavor): string {
+	return flavor === "gnu" ? `--printf='%F\\t%s\\t%Y\\t%n\\n'` : `-f '%HT\\t%z\\t%m\\t%N'`;
+}
+
+/** 单个路径的 stat，与目录列举同格式，便于共用一套解析。 */
+export function buildStatCommand(remotePath: string, flavor: RemoteStatFlavor): string {
+	const quoted = quoteShellArgument(remotePath);
+	// `[ -e ]` 先判存在：不存在时直接退 0 并输出空，避免把 stat 的报错当成传输故障。
+	return `[ -e ${quoted} ] && ${FORCE_C_LOCALE} stat ${statFormat(flavor)} ${quoted} || true`;
+}
+
+/**
  * 目录列举：一次往返拿回每个条目的类型、大小和修改时间。
  *
  * 逐个文件 stat 在几百个条目的目录上就是几百次往返，展开一个 node_modules 能卡住
@@ -68,12 +89,10 @@ export type RemoteStatFlavor = "gnu" | "bsd";
  * 命令部分成功时给出半截输出。
  */
 export function buildListDirectoryCommand(remotePath: string, flavor: RemoteStatFlavor): string {
-	// 名字放在最后一个字段：文件名可以包含除 `/` 和 NUL 之外的任何字符（含制表符），
-	// 放在中间会让分隔符解析失效。
-	const format = flavor === "gnu" ? `--printf='%F\\t%s\\t%Y\\t%n\\n'` : `-f '%HT\\t%z\\t%m\\t%N'`;
-	return [`cd ${quoteShellArgument(remotePath)}`, `find . -maxdepth 1 -mindepth 1 -exec stat ${format} {} +`].join(
-		" && ",
-	);
+	return [
+		`cd ${quoteShellArgument(remotePath)}`,
+		`find . -maxdepth 1 -mindepth 1 -exec ${FORCE_C_LOCALE} stat ${statFormat(flavor)} {} +`,
+	].join(" && ");
 }
 
 const ENV_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;

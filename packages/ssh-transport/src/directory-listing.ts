@@ -46,11 +46,15 @@ function stripLeadingDotSlash(value: string): string {
  * GNU `%F` 给 `regular file` / `directory` / `symbolic link`，
  * BSD `%HT` 给 `Regular File` / `Directory` / `Symbolic Link`。
  * 统一转小写后按子串判定，避免为两套字面量各写一份映射表。
+ *
+ * 命令侧已用 `LC_ALL=C` 锁死英文（见 buildListDirectoryCommand）。这里仍兜住几种
+ * 常见本地化写法：中文系统上 `%F` 给的是「目录」，一旦漏掉 locale 设置，整个目录
+ * 会被判成未知类型然后在界面上显示为空——那是个很难从现象反推到原因的故障。
  */
 function classifyStatType(raw: string): RemoteDirectoryEntry["kind"] {
 	const value = raw.toLowerCase();
-	if (value.includes("directory")) return "directory";
-	if (value.includes("link")) return "symlink";
-	if (value.includes("regular")) return "file";
+	if (value.includes("directory") || value.includes("目录") || value.includes("ディレクトリ")) return "directory";
+	if (value.includes("link") || value.includes("符号链接") || value.includes("链接")) return "symlink";
+	if (value.includes("regular") || value.includes("普通文件") || value.includes("文件")) return "file";
 	return "other";
 }

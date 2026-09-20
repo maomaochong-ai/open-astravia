@@ -4,11 +4,23 @@ import { SSH_TRANSPORT_FAILURE_EXIT_CODE, type SshProcessResult, type SshProcess
 import {
 	buildListDirectoryCommand,
 	buildRemoteCommand,
+	buildStatCommand,
 	quoteShellArgument,
 	type RemoteStatFlavor,
 } from "./remote-command.js";
 import { buildSshArgv } from "./ssh-argv.js";
 import type { SshHost } from "./ssh-host.js";
+
+/**
+ * 一台主机上第一条命令的超时。
+ *
+ * 它同时是建立连接的那一条，所以要把用户输入口令、私钥密码或 2FA 验证码的时间算进去。
+ * 按「几秒就该连上」设的话，弹窗还在等用户打字，ssh 就被我们自己杀掉了，表现为输完
+ * 密码却提示连接失败。
+ *
+ * 主机不可达由 OpenSSH 自己的 `ConnectTimeout` 兜底（见 buildSshArgv），不依赖这里。
+ */
+const FIRST_COMMAND_TIMEOUT_MS = 4 * 60 * 1000;
 
 export interface RemotePlatform {
 	/** `uname -s`，例如 `Linux`、`Darwin`。 */
@@ -64,7 +76,7 @@ export class SshConnection {
 	/** 探测远端平台，结果缓存到连接对象上——同一台机器不会中途换系统。 */
 	async probePlatform(signal?: AbortSignal): Promise<RemotePlatform> {
 		if (this.platform) return this.platform;
-		const result = await this.runChecked("uname -s && uname -m", { signal, timeoutMs: 20_000 });
+		const result = await this.runChecked("uname -s && uname -m", { signal, timeoutMs: FIRST_COMMAND_TIMEOUT_MS });
 		const [os = "", arch = ""] = decode(result.stdout).trim().split("\n");
 		this.platform = {
 			os: os.trim(),
@@ -99,6 +111,10 @@ export class SshConnection {
 
 	/** 执行用户命令。走登录 shell，因此 nvm、pyenv 之类的 PATH 设置生效。 */
 	async exec(command: string, options: SshExecOptions = {}): Promise<SshExecResult> {
+		// 先确保连接已建立。认证（口令、2FA、指纹确认）只发生在第一条命令上，而调用方
+		// 给的 timeout 是按「这条命令该跑多久」定的——几十秒——会在用户还在输密码时
+		// 把 ssh 杀掉。探测结果有缓存，之后的调用不会多一次往返。
+		await this.probePlatform(options.signal);
 		const result = await this.run(buildRemoteCommand(command, { cwd: options.cwd, env: options.env }), options);
 		return { exitCode: result.exitCode ?? 0, stdout: result.stdout, stderr: result.stderr };
 	}
@@ -134,10 +150,7 @@ export class SshConnection {
 	/** 路径不存在时返回 null——这是远端给出的正面答复，不是「问不到」。 */
 	async stat(remotePath: string, signal?: AbortSignal): Promise<RemoteDirectoryEntry | null> {
 		const platform = await this.probePlatform(signal);
-		const format = platform.statFlavor === "gnu" ? `--printf='%F\\t%s\\t%Y\\t%n\\n'` : `-f '%HT\\t%z\\t%m\\t%N'`;
-		const quoted = quoteShellArgument(remotePath);
-		// `[ -e ]` 先判存在：不存在时直接退 0 并输出空，避免把 stat 的报错当成传输故障。
-		const result = await this.runChecked(`[ -e ${quoted} ] && stat ${format} ${quoted} || true`, { signal });
+		const result = await this.runChecked(buildStatCommand(remotePath, platform.statFlavor), { signal });
 		const entries = parseRemoteDirectoryListing(decode(result.stdout));
 		const entry = entries[0];
 		if (!entry) return null;

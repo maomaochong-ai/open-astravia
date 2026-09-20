@@ -42,8 +42,11 @@ export function useRemoteProjectPickerModel(): RemoteProjectPickerModel {
 		try {
 			const listing = await window.vetta.ssh.listRemoteDirectory({ hostId, remotePath: path });
 			setRemotePath(listing.remotePath);
-			// 只留目录：这里在选项目根，文件不是可选项，列出来只会让用户误点。
-			setEntries(listing.entries.filter((entry) => entry.kind === "directory"));
+			// 这里在选项目根，普通文件不是可选项，列出来只会让用户误点。
+			// 软链接保留：指向目录的软链接很常见（项目盘挂载、家目录里的快捷方式），
+			// stat 报的是链接本身而不是目标，按类型滤掉会让这些目录凭空消失。
+			// 真的不是目录时，进去那一步的 `cd` 会失败并给出错误。
+			setEntries(listing.entries.filter((entry) => entry.kind === "directory" || entry.kind === "symlink"));
 		} catch (caught) {
 			// 保留当前路径不变，让用户能原地退回上一级重试，而不是被踢回起点。
 			setEntries([]);
