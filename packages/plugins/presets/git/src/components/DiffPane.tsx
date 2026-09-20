@@ -95,18 +95,18 @@ export function DiffPane({
 		[mode, diffStyle],
 	);
 
-	// 把 diff 的基础/上下文/缓冲/分隔背景钉到宿主活动面板底色（--muted），
+	// diff 区用 --background、文件列用 --muted：两块区域靠表面色分层，而不是靠一条竖线。
 	// 保留 +/- 行的增删着色。-override 变量是库提供的覆盖入口。
 	const diffCssVars = {
-		"--diffs-bg": "var(--muted)",
-		"--diffs-bg-context-override": "var(--muted)",
-		"--diffs-bg-context-gutter-override": "var(--muted)",
-		"--diffs-bg-buffer-override": "var(--muted)",
-		"--diffs-bg-separator-override": "var(--muted)",
+		"--diffs-bg": "var(--background)",
+		"--diffs-bg-context-override": "var(--background)",
+		"--diffs-bg-context-gutter-override": "var(--background)",
+		"--diffs-bg-buffer-override": "var(--background)",
+		"--diffs-bg-separator-override": "var(--background)",
 	} as React.CSSProperties;
 
 	return (
-		<div className="flex min-h-0 min-w-0 flex-1 flex-col">
+		<div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
 			<div className="flex h-9 shrink-0 items-center gap-1.5 px-2">
 				<Button
 					type="button"

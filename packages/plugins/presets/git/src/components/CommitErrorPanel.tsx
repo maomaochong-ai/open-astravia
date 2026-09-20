@@ -26,7 +26,7 @@ export function CommitErrorPanel({ message, onDismiss }: { message: string; onDi
 	const firstLine = message.split("\n")[0] ?? "";
 
 	return (
-		<div className="shrink-0 border-t border-rose-500/30 bg-rose-500/5">
+		<div className="mt-1.5 shrink-0 rounded-lg bg-rose-500/10 px-1">
 			<div className="flex h-7 items-center gap-1 px-1.5">
 				<button
 					type="button"

@@ -184,7 +184,7 @@ export function GitChanges({ root, groups }: { root: string; groups: StatusGroup
 
 	return (
 		<div className="flex h-full min-h-0 flex-col">
-			<div className="flex h-9 shrink-0 items-center gap-1 border-b border-border px-2">
+			<div className="flex h-9 shrink-0 items-center gap-1 px-2">
 				<BranchBar root={root} />
 				<div className="ml-auto flex items-center gap-1">
 					<GitActions root={root} />
@@ -210,8 +210,8 @@ export function GitChanges({ root, groups }: { root: string; groups: StatusGroup
 						<div
 							className={
 								wide
-									? "relative flex min-h-0 shrink-0 flex-col overflow-hidden border-r border-border"
-									: "flex min-h-0 flex-1 flex-col overflow-hidden"
+									? "relative flex min-h-0 shrink-0 flex-col overflow-hidden bg-muted"
+									: "flex min-h-0 flex-1 flex-col overflow-hidden bg-muted"
 							}
 							style={wide ? { width: treeWidth } : undefined}
 						>
@@ -247,7 +247,7 @@ export function GitChanges({ root, groups }: { root: string; groups: StatusGroup
 								treeCollapsed={treeCollapsed}
 							/>
 						) : (
-							<div className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-2 text-muted-foreground">
+							<div className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-2 bg-background text-muted-foreground">
 								<FileIcon className="h-6 w-6 opacity-50" />
 								<span className="text-[12px]">{t("diff.selectPrompt")}</span>
 							</div>

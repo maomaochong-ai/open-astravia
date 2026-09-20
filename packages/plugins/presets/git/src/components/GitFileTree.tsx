@@ -88,7 +88,7 @@ export function GitFileTree({
 	}, [model, selectedPaths]);
 
 	const style = useMemo<React.CSSProperties>(() => {
-		// 背景沿用活动面板卡片底色（--muted），让树与宿主面板融为一体。
+		// 树沿用文件列的 --muted 表面，和右侧 --background 的 diff 区形成层级。
 		const bg = readCssVar("--muted");
 		const fg = readCssVar("--foreground");
 		const border = readCssVar("--border");

@@ -14,3 +14,70 @@
 .git-mono {
 	font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 }
+
+/* 文件类型图标配色：镜像自 @pierre/trees 的 shadow DOM 变量。
+   树把这些变量定义在自己的 shadow root 里，卡片等树外场景取不到，故在这里按
+   同一套色相复刻一份，保证面板与会话卡片的同一个文件长得一模一样。 */
+.git-file-icon {
+	--git-icon-gray: light-dark(#84848a, #adadb1);
+	--git-icon-red: light-dark(#d52c36, #ff6762);
+	--git-icon-vermilion: light-dark(#ff8c5b, #d5512f);
+	--git-icon-orange: light-dark(#d47628, #ffa359);
+	--git-icon-yellow: light-dark(#d5a910, #ffd452);
+	--git-icon-green: light-dark(#199f43, #5ecc71);
+	--git-icon-teal: light-dark(#17a5af, #64d1db);
+	--git-icon-cyan: light-dark(#1ca1c7, #68cdf2);
+	--git-icon-blue: light-dark(#1a85d4, #69b1ff);
+	--git-icon-indigo: light-dark(#693acf, #9d6afb);
+	--git-icon-purple: light-dark(#a631be, #d568ea);
+	--git-icon-pink: light-dark(#d32a61, #ff678d);
+	--git-icon-mauve: light-dark(#594c5b, #79697b);
+	color: var(--git-icon-gray);
+}
+.git-file-icon[data-icon-token="astro"] { color: var(--git-icon-purple); }
+.git-file-icon[data-icon-token="babel"] { color: var(--git-icon-yellow); }
+.git-file-icon[data-icon-token="bash"] { color: var(--git-icon-green); }
+.git-file-icon[data-icon-token="biome"] { color: var(--git-icon-blue); }
+.git-file-icon[data-icon-token="bootstrap"] { color: var(--git-icon-indigo); }
+.git-file-icon[data-icon-token="browserslist"] { color: var(--git-icon-yellow); }
+.git-file-icon[data-icon-token="bun"] { color: var(--git-icon-mauve); }
+.git-file-icon[data-icon-token="c"] { color: var(--git-icon-blue); }
+.git-file-icon[data-icon-token="cpp"] { color: var(--git-icon-blue); }
+.git-file-icon[data-icon-token="claude"] { color: var(--git-icon-orange); }
+.git-file-icon[data-icon-token="css"] { color: var(--git-icon-indigo); }
+.git-file-icon[data-icon-token="database"] { color: var(--git-icon-purple); }
+.git-file-icon[data-icon-token="docker"] { color: var(--git-icon-blue); }
+.git-file-icon[data-icon-token="eslint"] { color: var(--git-icon-indigo); }
+.git-file-icon[data-icon-token="go"] { color: var(--git-icon-cyan); }
+.git-file-icon[data-icon-token="graphql"] { color: var(--git-icon-pink); }
+.git-file-icon[data-icon-token="html"] { color: var(--git-icon-orange); }
+.git-file-icon[data-icon-token="image"] { color: var(--git-icon-pink); }
+.git-file-icon[data-icon-token="javascript"] { color: var(--git-icon-yellow); }
+.git-file-icon[data-icon-token="json"] { color: var(--git-icon-orange); }
+.git-file-icon[data-icon-token="markdown"] { color: var(--git-icon-green); }
+.git-file-icon[data-icon-token="mcp"] { color: var(--git-icon-teal); }
+.git-file-icon[data-icon-token="npm"] { color: var(--git-icon-red); }
+.git-file-icon[data-icon-token="postcss"] { color: var(--git-icon-red); }
+.git-file-icon[data-icon-token="prettier"] { color: var(--git-icon-teal); }
+.git-file-icon[data-icon-token="python"] { color: var(--git-icon-blue); }
+.git-file-icon[data-icon-token="react"] { color: var(--git-icon-cyan); }
+.git-file-icon[data-icon-token="ruby"] { color: var(--git-icon-red); }
+.git-file-icon[data-icon-token="rust"] { color: var(--git-icon-orange); }
+.git-file-icon[data-icon-token="sass"] { color: var(--git-icon-pink); }
+.git-file-icon[data-icon-token="svg"] { color: var(--git-icon-orange); }
+.git-file-icon[data-icon-token="svelte"] { color: var(--git-icon-red); }
+.git-file-icon[data-icon-token="svgo"] { color: var(--git-icon-green); }
+.git-file-icon[data-icon-token="swift"] { color: var(--git-icon-orange); }
+.git-file-icon[data-icon-token="table"] { color: var(--git-icon-teal); }
+.git-file-icon[data-icon-token="text"] { color: var(--git-icon-gray); }
+.git-file-icon[data-icon-token="tailwind"] { color: var(--git-icon-cyan); }
+.git-file-icon[data-icon-token="terraform"] { color: var(--git-icon-indigo); }
+.git-file-icon[data-icon-token="typescript"] { color: var(--git-icon-blue); }
+.git-file-icon[data-icon-token="vite"] { color: var(--git-icon-purple); }
+.git-file-icon[data-icon-token="vscode"] { color: var(--git-icon-blue); }
+.git-file-icon[data-icon-token="vue"] { color: var(--git-icon-green); }
+.git-file-icon[data-icon-token="wasm"] { color: var(--git-icon-indigo); }
+.git-file-icon[data-icon-token="webpack"] { color: var(--git-icon-blue); }
+.git-file-icon[data-icon-token="yml"] { color: var(--git-icon-red); }
+.git-file-icon[data-icon-token="zig"] { color: var(--git-icon-orange); }
+.git-file-icon[data-icon-token="zip"] { color: var(--git-icon-orange); }

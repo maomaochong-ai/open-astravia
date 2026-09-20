@@ -15,7 +15,8 @@ import {
 } from "../git/runtime";
 import type { ChangeCode, TurnChangeDelta } from "../git/types";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { FileIcon, GitIcon } from "./icons";
+import { FileTypeIcon } from "./FileTypeIcon";
+import { GitIcon } from "./icons";
 import { StatusBadge } from "./StatusBadge";
 
 /** Most items the card shows inline; beyond this it collapses to a "view all" row. */
@@ -167,26 +168,20 @@ export function GitTurnCard(): JSX.Element | null {
 	const open = (): void => resizePanel("max");
 
 	return (
-		<div className="overflow-hidden rounded-lg border border-border bg-card text-[12px]">
-			<button
-				type="button"
-				onClick={open}
-				title={t("turnCard.open")}
-				className="flex w-full items-center gap-2 border-b border-border px-3 py-2 text-left transition-colors hover:bg-accent"
-			>
+		// 去线留白：卡片只保留一层淡边与内边距，内部各区靠间距分隔，不再用分隔线切块。
+		<div className="rounded-xl border border-border/60 bg-card/60 p-2 text-[12px]">
+			<div className="flex items-center gap-2 px-1 py-0.5">
 				<GitIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-				<span className="font-medium text-foreground">{t("turnCard.summary", { count: sorted.length })}</span>
-				<span className="ml-auto flex items-center gap-1.5 font-medium tabular-nums">
-					<span className="text-emerald-500">+{data.additions}</span>
-					<span className="text-rose-500">−{data.deletions}</span>
+				<button type="button" onClick={open} title={t("turnCard.open")} className="min-w-0 truncate text-left font-medium text-foreground hover:underline">
+					{t("turnCard.summary", { count: sorted.length })}
+				</button>
+				<span className="ml-auto flex shrink-0 items-center gap-1.5 font-medium tabular-nums">
+					<span className="text-emerald-500/90">+{data.additions}</span>
+					<span className="text-rose-500/90">−{data.deletions}</span>
 				</span>
-			</button>
-			<div className="flex items-center justify-end border-b border-border px-2 py-1.5">
-				<Button type="button" size="xs" variant="secondary" disabled={busy} onClick={commitThisTurn}>
-					{t("turnCard.commitTurn")}
-				</Button>
 			</div>
-			<div className="flex flex-col py-1">
+
+			<div className="mt-1.5 flex flex-col">
 				{shown.map((entry) => {
 					const slash = entry.path.lastIndexOf("/");
 					const dir = slash < 0 ? "" : entry.path.slice(0, slash + 1);
@@ -197,12 +192,12 @@ export function GitTurnCard(): JSX.Element | null {
 							key={entry.path}
 							onClick={open}
 							title={entry.origPath ? `${entry.origPath} → ${entry.path}` : entry.path}
-							className="flex items-center gap-1.5 px-3 py-1 text-left text-foreground transition-colors hover:bg-accent/50"
+							className="flex items-center gap-2 rounded-md px-1 py-1 text-left text-foreground transition-colors hover:bg-accent/40"
 						>
-							<FileIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
+							<FileTypeIcon path={entry.path} className="h-4 w-4 shrink-0" />
 							<span className="min-w-0 flex-1 truncate">
 								<span>{name}</span>
-								{dir && <span className="text-muted-foreground/60"> {dir}</span>}
+								{dir && <span className="text-muted-foreground/50"> {dir}</span>}
 							</span>
 							<StatusBadge code={entry.code} />
 						</button>
@@ -212,11 +207,17 @@ export function GitTurnCard(): JSX.Element | null {
 					<button
 						type="button"
 						onClick={open}
-						className="flex items-center gap-1.5 px-3 py-1 text-left font-medium text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+						className="rounded-md px-1 py-1 text-left text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
 					>
 						{t("turnCard.viewAll", { count: remaining })}
 					</button>
 				)}
+			</div>
+
+			<div className="mt-1.5 flex justify-end px-1">
+				<Button type="button" size="xs" variant="ghost" className="px-2 text-sky-500 hover:bg-sky-500/10 hover:text-sky-400" disabled={busy} onClick={commitThisTurn}>
+					{t("turnCard.commitTurn")}
+				</Button>
 			</div>
 
 			{/* 默认「仅提交本轮」：取消暂存只动索引、不丢改动，错了点两下就回来；

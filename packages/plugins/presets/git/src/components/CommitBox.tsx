@@ -178,10 +178,10 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 					: t("commit.action");
 
 	return (
-		<div className="shrink-0 px-2 pb-2 pt-1.5">
-			{/* 一张卡片承载「写信息 + 提交」，而不是几条铺满面板宽度的横带：面板可以被
-			    拖得很宽，元素一旦各自拉满，重心就散了。 */}
-			<div className="rounded-lg border border-border bg-muted/30 transition-colors focus-within:border-ring/70">
+		<div className="shrink-0 px-2 pb-2 pt-1">
+			{/* 去线留白：没有卡片边框、没有内部分隔线，靠一层极淡的底色把「写信息 + 提交」
+			    圈在一起，聚焦时才浮出描边。 */}
+			<div className="rounded-xl bg-background p-1.5 shadow-sm transition-shadow focus-within:ring-1 focus-within:ring-ring/50">
 				<textarea
 					ref={textareaRef}
 					value={message}
@@ -191,9 +191,9 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 					rows={3}
 					placeholder={t("commit.placeholder")}
 					// resize-y：高度交给用户拖，不再由脚本每次输入都重算（那会把手动拖动的高度顶掉）。
-					className="block max-h-64 min-h-[66px] w-full resize-y bg-transparent px-2.5 py-2 text-[12.5px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/60"
+					className="block max-h-64 min-h-[60px] w-full resize-y bg-transparent px-1.5 py-1 text-[12.5px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/50"
 				/>
-				<div className="flex items-center gap-1.5 border-t border-border/60 px-1.5 py-1.5">
+				<div className="mt-1 flex items-center gap-1">
 					{/* AI 生成是这块面板的主打能力，给它文字标签而不是一枚要猜的小图标。 */}
 					<Button
 						type="button"
@@ -208,11 +208,11 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 						<span className="text-[11.5px] font-medium">{generating ? t("ai.stop") : t("ai.generate")}</span>
 					</Button>
 
-					<div className="ml-auto flex items-center">
+					<div className="ml-auto flex items-center gap-px">
 						<Button
 							type="button"
 							size="xs"
-							className="rounded-r-none border-r border-primary-foreground/15 px-2.5"
+							className="rounded-r-sm px-2.5"
 							disabled={!canCommit}
 							title={disabledReason ?? undefined}
 							onClick={commit}
@@ -221,7 +221,7 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 						</Button>
 						<DropdownMenu>
 							<DropdownMenuTrigger asChild>
-								<Button type="button" size="xs" className="rounded-l-none px-1" disabled={pending !== null} title={t("commit.more")}>
+								<Button type="button" size="xs" className="rounded-l-sm px-1" disabled={pending !== null} title={t("commit.more")}>
 									<ChevronIcon className="h-3.5 w-3.5" />
 								</Button>
 							</DropdownMenuTrigger>
@@ -237,9 +237,7 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 					</div>
 				</div>
 				{/* pre-commit 钩子可能跑很久，必须给出「还在跑」的明确信号，而不是只让按钮转圈。 */}
-				{pending !== null && (
-					<div className="border-t border-border/60 px-2.5 py-1.5 text-[11px] text-muted-foreground">{t("commit.hookHint")}</div>
-				)}
+				{pending !== null && <div className="px-1.5 pb-0.5 pt-1.5 text-[11px] text-muted-foreground">{t("commit.hookHint")}</div>}
 			</div>
 
 			{error && <CommitErrorPanel message={error} onDismiss={() => setError(null)} />}
