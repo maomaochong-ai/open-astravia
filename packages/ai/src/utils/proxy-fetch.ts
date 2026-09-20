@@ -15,6 +15,7 @@ import {
 	resolveProxyConfig,
 	shouldBypassProxy,
 } from "./proxy-config.js";
+import type { ManagedFetch } from "./proxy-dispatcher.js";
 
 /** 代理配置无效时抛出。绝不静默降级为直连：用户以为被代理保护着，实际在裸奔。 */
 export class ProxyConfigurationError extends Error {
@@ -54,12 +55,6 @@ export interface CreateProxyFetchOptions {
 	readonly loadDispatcher?: ProxyDispatcherLoader;
 }
 
-export interface ProxyFetch {
-	readonly fetch: FetchFunction;
-	/** 释放底层连接池。配置变更或宿主退出时调用。 */
-	dispose(): Promise<void>;
-}
-
 /**
  * 按配置构造代理 fetch。
  *
@@ -70,7 +65,7 @@ export interface ProxyFetch {
 export function createProxyFetch(
 	config: ProxyConfig | undefined,
 	options: CreateProxyFetchOptions = {},
-): ProxyFetch | undefined {
+): ManagedFetch | undefined {
 	const resolution = resolveProxyConfig(config);
 	if (resolution.mode === "direct") return undefined;
 	return createProxyFetchFromResolution(resolution, options);
@@ -79,7 +74,7 @@ export function createProxyFetch(
 export function createProxyFetchFromResolution(
 	resolution: Exclude<ProxyResolution, { mode: "direct" }>,
 	options: CreateProxyFetchOptions = {},
-): ProxyFetch {
+): ManagedFetch {
 	const baseFetch = options.baseFetch ?? globalThis.fetch;
 	const loadDispatcher = options.loadDispatcher ?? defaultLoader;
 

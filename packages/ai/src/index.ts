@@ -26,6 +26,7 @@ export * from "./utils/json-parse.js";
 export * from "./utils/oauth/index.js";
 export * from "./utils/overflow.js";
 export * from "./utils/proxy-config.js";
+export * from "./utils/proxy-dispatcher.js";
 export * from "./utils/proxy-fetch.js";
 export * from "./utils/typebox-helpers.js";
 export * from "./utils/validation.js";
