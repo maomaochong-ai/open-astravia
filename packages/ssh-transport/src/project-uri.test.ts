@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	formatSshProjectUri,
 	isSshProjectUri,
+	normalizeProjectCwd,
 	normalizeRemotePath,
 	parseProjectLocation,
 	sameProjectLocation,
@@ -62,6 +63,24 @@ describe("项目身份比较", () => {
 	it("本地与远程同名路径绝不相等", () => {
 		// 本机很可能真的存在 /srv/app。两者若判定相等，远程项目的操作会落到本地仓库上。
 		expect(sameProjectLocation("/srv/app", "ssh://h/srv/app")).toBe(false);
+	});
+});
+
+describe("normalizeProjectCwd", () => {
+	const resolveLocal = (value: string): string => `/resolved${value}`;
+
+	it("远程 URI 原样保留，不交给本地路径解析", () => {
+		// resolve("ssh://h/srv/app") 会得到 "<进程目录>/ssh:/h/srv/app"——既不是远端路径，
+		// 也不再以 ssh:// 开头，下游会把远程会话当成本地会话，工具悄悄换回本地实现。
+		expect(normalizeProjectCwd("ssh://build-01/srv/app", resolveLocal)).toBe("ssh://build-01/srv/app");
+	});
+
+	it("顺带归一化远端路径，写法不同不会分裂成两个主键", () => {
+		expect(normalizeProjectCwd("ssh://build-01/srv//app/", resolveLocal)).toBe("ssh://build-01/srv/app");
+	});
+
+	it("本地路径照常交给调用方的解析函数", () => {
+		expect(normalizeProjectCwd("/srv/app", resolveLocal)).toBe("/resolved/srv/app");
 	});
 });
 

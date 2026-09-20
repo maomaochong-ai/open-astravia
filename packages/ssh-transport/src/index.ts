@@ -17,6 +17,7 @@ export {
 	formatSshProjectUri,
 	isSshProjectUri,
 	type LocalProjectLocation,
+	normalizeProjectCwd,
 	normalizeRemotePath,
 	type ProjectLocation,
 	parseProjectLocation,

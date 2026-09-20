@@ -72,6 +72,22 @@ export function parseProjectLocation(value: string): ProjectLocation {
 }
 
 /**
+ * 把项目 cwd 交给 `node:path` 之前必须先过这里。
+ *
+ * `resolve("ssh://h/srv/app")` 得到的是 `<当前进程目录>/ssh:/h/srv/app`——一个既不是
+ * 远端路径、也不指向任何真实位置的本地路径。更糟的是它不再以 `ssh://` 开头，于是下游
+ * 的位置判断会把它当成本地项目，把远程会话的工具悄悄换成本地实现。
+ *
+ * `resolveLocal` 由调用方注入（通常是 `node:path` 的 `resolve`），本包因此不必关心
+ * 宿主用的是哪套路径语义。
+ */
+export function normalizeProjectCwd(cwd: string, resolveLocal: (value: string) => string): string {
+	if (!isSshProjectUri(cwd)) return resolveLocal(cwd);
+	const location = parseProjectLocation(cwd);
+	return formatProjectLocation(location);
+}
+
+/**
  * 去掉重复分隔符和结尾斜杠，保留开头的 `/`。
  *
  * 归一化必须在「进入主键」之前做一次并且只做这一次：`/srv/app` 与 `/srv/app/` 若被当成

@@ -29,7 +29,7 @@ import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
 import { nodeModelInputImageProcessor, nodeWorkspaceFactsFileSource } from "@vetta/runtime-node/coding";
 import { createFileConversationPersistence, resolveSessionIdFromPath } from "@vetta/runtime-node/conversation";
 import type { CodingToolResultPolicy } from "@vetta/runtime-tools";
-import { parseProjectLocation } from "@vetta/ssh-transport";
+import { normalizeProjectCwd, parseProjectLocation } from "@vetta/ssh-transport";
 import {
 	createDesktopCodingAgentSessionExecutionEnvironment,
 	createDesktopCodingAgentToolEnvironment,
@@ -452,7 +452,9 @@ function resolveCompositionObservationOptions(
 
 function resolveRuntimeScope(request: RuntimeSessionCreateRequest): DesktopRuntimeScope {
 	const sessionOptions = readCodingAgentRequestConfiguration(request);
-	const cwd = resolve(request.cwd ?? process.cwd());
+	// 远程项目的 cwd 是 `ssh://…` URI，不能交给 resolve()——那会把它变成一个本地路径，
+	// 下游的位置判断随即把远程会话当成本地会话，工具悄悄换回本地实现。
+	const cwd = normalizeProjectCwd(request.cwd ?? process.cwd(), resolve);
 	const sessionPath = request.sessionPath?.trim();
 	// 缺省落点是 agent 目录下按 cwd 编码分片的全局目录，**不是** `<cwd>/.vetta/sessions`：
 	// 会话产物是宿主状态，不该在用户工程里长出未跟踪文件（还会被 `git add -A` 误提交）。
