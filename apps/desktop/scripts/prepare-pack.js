@@ -391,6 +391,56 @@ if (existsSync(imGatewayDistDir)) {
 }
 
 // =============================================================================
+// ssh-helper: remote-project helper binaries (extraResources) —— ADR-0124
+// =============================================================================
+//
+// The helper runs on the REMOTE host of an SSH project, so its targets have
+// nothing to do with the desktop platform being packaged: a Windows build of
+// the app still needs the linux/arm64 helper to upload. Every supported remote
+// platform therefore ships in every package (~3 MB each, static, CGO off).
+//
+// A missing helper is not fatal at runtime — remote projects fall back to plain
+// `ssh exec` — but a packaging run that silently ships without it would turn
+// "background tasks survive a disconnect" into a per-build lottery, so fail here.
+
+const sshHelperDir = join(projectRoot, "..", "ssh-helper");
+const SSH_HELPER_TARGETS = [
+	{ os: "linux", arch: "amd64" },
+	{ os: "linux", arch: "arm64" },
+	{ os: "darwin", arch: "amd64" },
+	{ os: "darwin", arch: "arm64" },
+];
+
+console.log("[prepare-pack] cross-building ssh-helper...");
+const stagedSshHelperDir = join(buildStageDir, "ssh-helper");
+rmSync(stagedSshHelperDir, { recursive: true, force: true });
+for (const target of SSH_HELPER_TARGETS) {
+	const outputDir = join(stagedSshHelperDir, `${target.os}-${target.arch}`);
+	const outputPath = join(outputDir, "vetta-ssh-helper");
+	mkdirSync(outputDir, { recursive: true });
+	console.log(`  -> ${outputPath}`);
+	try {
+		execFileSync(
+			process.platform === "win32" ? "go.exe" : "go",
+			["build", "-trimpath", "-ldflags", "-s -w", "-o", outputPath, "./cmd/vetta-ssh-helper"],
+			{
+				cwd: sshHelperDir,
+				env: { ...process.env, CGO_ENABLED: "0", GOARCH: target.arch, GOOS: target.os },
+				stdio: "inherit",
+			},
+		);
+	} catch (err) {
+		console.error("[prepare-pack] ssh-helper cross-build failed");
+		throw err;
+	}
+	try {
+		chmodSync(outputPath, 0o755);
+	} catch {
+		// best effort on Windows / FAT; the desktop app chmods it again after upload
+	}
+}
+
+// =============================================================================
 // coding-agent runtime assets (extraResources)
 // =============================================================================
 //
@@ -600,6 +650,11 @@ function resolveExtraResources() {
 			from: "im-gateway",
 			to: "im-gateway",
 			filter: ["im-gateway-*"],
+		},
+		{
+			from: "ssh-helper",
+			to: "ssh-helper",
+			filter: ["**/*"],
 		},
 		{
 			from: "coding-agent",
