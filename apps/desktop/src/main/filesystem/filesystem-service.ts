@@ -28,10 +28,18 @@ import {
 import type { PreviewFileSource } from "./preview-file-source.js";
 import {
 	allowRemoteProjectRoot,
+	createRemoteDirectory,
+	createRemoteEntry,
+	deleteRemotePath,
+	listRemoteFilesRecursive,
+	moveRemotePath,
+	openRemotePreviewSource,
 	readRemoteDirectory,
 	readRemoteEditableTextFile,
+	renameRemotePath,
 	saveRemoteEditableTextFile,
 	statRemotePath,
+	writeRemoteFile,
 } from "./remote-filesystem.js";
 import { decodeProbableUtf8Prefix, decodeProbableUtf8Text } from "./text-content.js";
 
@@ -175,6 +183,7 @@ export async function readFilesystemDirectory(dirPath: string): Promise<FsEntry[
 }
 
 function openPreviewSource(filePath: string): PreviewFileSource {
+	if (isSshProjectUri(filePath)) return openRemotePreviewSource(filePath);
 	assertPathReadableForPreview(filePath);
 	const resolved = resolve(filePath);
 	return {
@@ -321,6 +330,9 @@ export async function writeFilesystemFile(
 	content: string,
 	encoding: "utf8" | "base64" = "utf8",
 ): Promise<void> {
+	if (isSshProjectUri(filePath)) {
+		return writeRemoteFile(filePath, Buffer.from(content, encoding === "base64" ? "base64" : "utf8"));
+	}
 	assertFilesystemPathWithinProject(filePath);
 	const resolved = resolve(filePath);
 	await mkdir(dirname(resolved), { recursive: true });
@@ -343,17 +355,22 @@ export async function statFilesystemPath(filePath: string): Promise<FsStatResult
 }
 
 export async function renameFilesystemPath(oldPath: string, newPath: string): Promise<void> {
+	if (isSshProjectUri(oldPath) || isSshProjectUri(newPath)) return renameRemotePath(oldPath, newPath);
 	assertFilesystemPathWithinProject(oldPath);
 	assertFilesystemPathWithinProject(newPath);
 	await rename(resolve(oldPath), resolve(newPath));
 }
 
 export async function deleteFilesystemPath(targetPath: string): Promise<void> {
+	if (isSshProjectUri(targetPath)) return deleteRemotePath(targetPath);
 	assertFilesystemPathWithinProject(targetPath);
 	await rm(resolve(targetPath), { recursive: true, force: true });
 }
 
 export async function moveFilesystemPath(sourcePath: string, destinationDirectory: string): Promise<void> {
+	if (isSshProjectUri(sourcePath) || isSshProjectUri(destinationDirectory)) {
+		return moveRemotePath(sourcePath, destinationDirectory);
+	}
 	assertFilesystemPathWithinProject(sourcePath);
 	assertFilesystemPathWithinProject(destinationDirectory);
 	const resolvedSource = resolve(sourcePath);
@@ -368,6 +385,7 @@ export async function moveFilesystemPath(sourcePath: string, destinationDirector
 }
 
 export async function createFilesystemDirectory(dirPath: string): Promise<void> {
+	if (isSshProjectUri(dirPath)) return createRemoteDirectory(dirPath);
 	await mkdir(resolve(expandTilde(dirPath)), { recursive: true });
 }
 
@@ -376,6 +394,7 @@ export async function createFilesystemEntry(
 	name: string,
 	kind: FileExplorerEntryKind,
 ): Promise<FsEntry> {
+	if (isSshProjectUri(parentDirectory)) return createRemoteEntry(parentDirectory, name, kind);
 	assertFilesystemPathWithinProject(parentDirectory);
 	const issue = getFileExplorerEntryNameIssue(name, { windows: process.platform === "win32" });
 	if (issue) throw new Error(`FILE_EXPLORER_INVALID_ENTRY_NAME:${issue}`);
@@ -410,6 +429,12 @@ export async function createFilesystemEntry(
 }
 
 export async function listFilesystemFilesRecursive(rootPath: string): Promise<FsFileRef[]> {
+	if (isSshProjectUri(rootPath)) {
+		return listRemoteFilesRecursive(rootPath, {
+			ignoredDirectoryNames: [...RECURSIVE_IGNORED_DIRS],
+			limit: MAX_RECURSIVE_FILES,
+		});
+	}
 	assertFilesystemPathWithinProject(rootPath);
 	const root = resolve(rootPath);
 	const results: FsFileRef[] = [];
