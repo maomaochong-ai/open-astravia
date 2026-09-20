@@ -42,9 +42,11 @@ function createFakeHost(files: Map<string, string>) {
 				return ok(content);
 			}
 
-			const write = /^cat > '(.+)\.vetta-tmp-[a-z0-9]+' && mv -f -- '.+' '(.+)'$/.exec(remoteCommand);
-			if (write) {
-				files.set(write[2], new TextDecoder().decode(invocation.stdin ?? new Uint8Array()));
+			// 写文件是唯一带 stdin 的操作；目标路径是脚本里的第一个赋值。
+			if (invocation.stdin !== undefined) {
+				const target = /p='\\''(.+?)'\\''\n/.exec(remoteCommand)?.[1];
+				if (target === undefined) throw new Error(`unrecognised write command: ${remoteCommand}`);
+				files.set(target, new TextDecoder().decode(invocation.stdin));
 				return ok("");
 			}
 
