@@ -37,6 +37,7 @@ export {
 	buildListDirectoryCommand,
 	buildRemoteCommand,
 	buildRemoteScript,
+	buildWriteFileCommand,
 	quoteShellArgument,
 	type RemoteCommandOptions,
 	type RemoteStatFlavor,

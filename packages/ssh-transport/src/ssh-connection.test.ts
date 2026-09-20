@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { SshOperationAbortedError, SshRemoteCommandError, SshTransportError } from "./errors.js";
 import type { SshProcessInvocation, SshProcessResult, SshProcessRunner } from "./process-runner.js";
-import { buildRemoteCommand } from "./remote-command.js";
+import { buildRemoteCommand, buildWriteFileCommand } from "./remote-command.js";
 import { SshConnection } from "./ssh-connection.js";
 import type { SshHost } from "./ssh-host.js";
 
@@ -69,8 +69,9 @@ describe("远端文件读写", () => {
 		const { connection, calls } = connect(() => ok(""));
 		await connection.writeFile("/srv/a.txt", encode("hello"));
 		const remoteCommand = String(calls[0].argv[calls[0].argv.length - 1]);
-		expect(remoteCommand).toMatch(/^cat > '\/srv\/a\.txt\.vetta-tmp-[a-z0-9]+' && mv -f -- /);
-		expect(remoteCommand).toContain(`'/srv/a.txt'`);
+		expect(remoteCommand).toBe(
+			buildWriteFileCommand("/srv/a.txt", remoteCommand.match(/\.vetta-tmp-[a-z0-9]+/)?.[0] ?? ""),
+		);
 		expect(calls[0].stdin).toEqual(encode("hello"));
 	});
 

@@ -95,6 +95,35 @@ export function buildListDirectoryCommand(remotePath: string, flavor: RemoteStat
 	].join(" && ");
 }
 
+/**
+ * 原子写文件：内容从 stdin 进来，先落到目标同目录的临时文件，再 `mv` 过去。
+ *
+ * 同目录是必须的——`mv` 只有在同一文件系统内才是原子的，写到 /tmp 再 mv 会退化成
+ * 「复制 + 删除」，中途失败会留下一个被截断的目标文件。
+ *
+ * 两件事不能丢，否则「改一行脚本」就会悄悄改变文件的性质：
+ * - **权限位与属主**：临时文件先用 `cp -p` 从原文件克隆，再被 `cat >` 截断重写，
+ *   截断不改 mode。直接新建的话文件按 umask 落成 0644，可执行脚本就丢了 `+x`。
+ * - **符号链接**：先解析到真实文件再替换。对着链接本身 `mv` 会把链接换成普通文件，
+ *   链接指向的那份则原封不动——用户看到的是「改了却没生效」。
+ *
+ * 整段交给 `/bin/sh`：sshd 用账号的登录 shell 解释命令串，而 fish 之类不认 POSIX 语法。
+ */
+export function buildWriteFileCommand(remotePath: string, temporarySuffix: string): string {
+	const script = [
+		`p=${quoteShellArgument(remotePath)}`,
+		// readlink -f 在 GNU 与 macOS 12.3+ 都有；更老的 BSD 上失败就退回原路径。
+		`t=$(readlink -f -- "$p" 2>/dev/null) || t=$p`,
+		`[ -n "$t" ] || t=$p`,
+		`tmp="$t"${quoteShellArgument(temporarySuffix)}`,
+		`if [ -f "$t" ]; then cp -p -- "$t" "$tmp" || exit 1; fi`,
+		`if cat > "$tmp" && mv -f -- "$tmp" "$t"; then exit 0; fi`,
+		`rm -f -- "$tmp"`,
+		"exit 1",
+	].join("\n");
+	return `/bin/sh -c ${quoteShellArgument(script)}`;
+}
+
 const ENV_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 function assertEnvName(name: string): void {

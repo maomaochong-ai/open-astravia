@@ -5,6 +5,7 @@ import {
 	buildListDirectoryCommand,
 	buildRemoteCommand,
 	buildStatCommand,
+	buildWriteFileCommand,
 	quoteShellArgument,
 	type RemoteStatFlavor,
 } from "./remote-command.js";
@@ -137,16 +138,9 @@ export class SshConnection {
 		return result.stdout;
 	}
 
-	/**
-	 * 原子写：先写同目录下的临时文件再 `mv`。
-	 *
-	 * 同目录是必须的——`mv` 只有在同一文件系统内才是原子的，写到 /tmp 再 mv 会退化成
-	 * 「复制 + 删除」，中途失败会留下一个被截断的目标文件。
-	 */
+	/** 原子写，保留原文件的权限位并穿透符号链接，见 {@link buildWriteFileCommand}。 */
 	async writeFile(remotePath: string, content: Uint8Array, signal?: AbortSignal): Promise<void> {
-		const temporary = `${remotePath}.vetta-tmp-${Date.now().toString(36)}`;
-		const quotedTemp = quoteShellArgument(temporary);
-		const command = `cat > ${quotedTemp} && mv -f -- ${quotedTemp} ${quoteShellArgument(remotePath)}`;
+		const command = buildWriteFileCommand(remotePath, `.vetta-tmp-${Date.now().toString(36)}`);
 		await this.runChecked(command, { signal, stdin: content });
 	}
 

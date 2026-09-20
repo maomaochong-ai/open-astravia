@@ -1,9 +1,23 @@
+import { execFileSync } from "node:child_process";
+import {
+	chmodSync,
+	lstatSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	statSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
 	buildListDirectoryCommand,
 	buildRemoteCommand,
 	buildRemoteScript,
 	buildStatCommand,
+	buildWriteFileCommand,
 	quoteShellArgument,
 } from "./remote-command.js";
 
@@ -94,5 +108,47 @@ describe("buildListDirectoryCommand", () => {
 		// `LC_ALL=C cmd` 是 POSIX shell 语法，远端登录 shell 若是 fish 就会报错；
 		// `env` 在任何 shell 里都只是一个普通命令。
 		expect(buildListDirectoryCommand("/srv", "gnu")).toContain("env LC_ALL=C");
+	});
+});
+
+describe("buildWriteFileCommand（在真实 /bin/sh 上执行）", () => {
+	// 这段脚本的正确性取决于 shell 的真实语义（截断是否保留 mode、mv 对符号链接做什么），
+	// 断言字符串证明不了任何事，所以直接在本机 sh 上跑。
+	function write(target: string, content: string): void {
+		execFileSync("/bin/sh", ["-c", buildWriteFileCommand(target, ".vetta-tmp-test")], { input: content });
+	}
+
+	it("新文件直接落盘，不留临时文件", () => {
+		const dir = mkdtempSync(join(tmpdir(), "vetta-write-"));
+		write(join(dir, "a b'c.txt"), "hello");
+		expect(readFileSync(join(dir, "a b'c.txt"), "utf8")).toBe("hello");
+		expect(readdirSync(dir)).toEqual(["a b'c.txt"]);
+	});
+
+	it("覆盖可执行脚本后仍然可执行", () => {
+		const dir = mkdtempSync(join(tmpdir(), "vetta-write-"));
+		const script = join(dir, "run.sh");
+		writeFileSync(script, "old");
+		chmodSync(script, 0o755);
+		write(script, "new");
+		expect(readFileSync(script, "utf8")).toBe("new");
+		expect(statSync(script).mode & 0o777).toBe(0o755);
+	});
+
+	it("写符号链接时改的是它指向的文件，链接本身保持为链接", () => {
+		const dir = mkdtempSync(join(tmpdir(), "vetta-write-"));
+		const real = join(dir, "real.txt");
+		const link = join(dir, "link.txt");
+		writeFileSync(real, "old");
+		symlinkSync(real, link);
+		write(link, "new");
+		expect(lstatSync(link).isSymbolicLink()).toBe(true);
+		expect(readFileSync(real, "utf8")).toBe("new");
+	});
+
+	it("目录不存在时失败，且不留下临时文件", () => {
+		const dir = mkdtempSync(join(tmpdir(), "vetta-write-"));
+		expect(() => write(join(dir, "missing", "a.txt"), "x")).toThrow();
+		expect(readdirSync(dir)).toEqual([]);
 	});
 });
