@@ -19,13 +19,14 @@ import {
 	type SessionResourceRuntimeOptions,
 } from "@vetta/coding-agent/resources";
 import { createSettingsRuntimeFromStorage, type SettingsRuntime } from "@vetta/coding-agent/settings";
-import { resolveProjectSettingsPath } from "@vetta/runtime-desktop";
+import { createProjectResourceAccess, resolveProjectSettingsPath } from "@vetta/runtime-desktop";
 import {
 	createNodeCommandExecutor,
 	createNodeResourcePackageHost,
 	NodeScopedTextStorage,
 	nodeTextFileWatchPort,
 } from "@vetta/runtime-node/host";
+import { getSshConnection } from "../ssh/ssh-runtime.js";
 
 interface DesktopResourceRuntimeScope {
 	readonly cwd: string;
@@ -69,7 +70,11 @@ export function createDesktopSessionResourceRuntime(
 		defaultThemeName: detectTerminalBackground(process.env),
 		watcher: nodeTextFileWatchPort,
 	});
-	const host = createNodeResourcePackageHost();
+	const nodeHost = createNodeResourcePackageHost();
+	// 同一个端口同时服务本地与远程项目：`ssh://` 路径读远端，其余读本机。远程项目的 cwd
+	// 是 URI，由它派生的每条路径（向上找 AGENTS.md、拼项目技能目录）因此都落到远端；
+	// 交给纯本机端口的话，URI 会被解析到本机进程 cwd 之下，再沿本机祖先目录向上读。
+	const host = { ...nodeHost, resourceAccess: createProjectResourceAccess(nodeHost.resourceAccess, getSshConnection) };
 	const packages = createResourcePackageRuntime({
 		cwd: options.cwd,
 		agentDir: options.agentDir,
