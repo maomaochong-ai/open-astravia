@@ -29,6 +29,7 @@ import {
 import { NodeScopedTextStorage } from "@vetta/runtime-node/host";
 import { createSshCodingToolEnvironment, createSshPathPolicies } from "@vetta/runtime-ssh";
 import { parseProjectLocation } from "@vetta/ssh-transport";
+import { resolveProjectSettingsPath } from "./project-settings-path.js";
 import { resolveDesktopSshConnection } from "./ssh-connection-resolver.js";
 
 /**
@@ -137,7 +138,7 @@ function createDesktopNodeToolHost(cwd: string, configuredAgentDir?: string) {
 	const settings = SettingsRuntime.fromStorage(
 		new NodeScopedTextStorage({
 			global: settingsPath,
-			project: join(cwd, CONFIG_DIR_NAME, "settings.json"),
+			project: resolveProjectSettingsPath(cwd, agentDir),
 		}),
 	);
 	const protectedCommandDirectories = [

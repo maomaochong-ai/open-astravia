@@ -3,6 +3,7 @@ export * from "./coding-agent-tool-environment.js";
 export * from "./historical-session-format.js";
 export * from "./historical-session-import-backend.js";
 export * from "./lifecycle.js";
+export * from "./project-settings-path.js";
 export * from "./remote-execution-mode.js";
 export * from "./remote-workspace-facts.js";
 export * from "./result-artifact-runtime.js";

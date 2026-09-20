@@ -3,13 +3,7 @@ import type {
 	CodingAgentPromptRuntimeSourceContext,
 	CodingAgentPromptRuntimeSources,
 } from "@vetta/coding-agent/composition";
-import {
-	CONFIG_DIR_NAME,
-	getAgentDir,
-	getSceneDir,
-	getUserSkillsDir,
-	getVettaHomePath,
-} from "@vetta/coding-agent/config";
+import { getAgentDir, getSceneDir, getUserSkillsDir, getVettaHomePath } from "@vetta/coding-agent/config";
 import {
 	configureThemeRuntime,
 	detectColorMode,
@@ -25,6 +19,7 @@ import {
 	type SessionResourceRuntimeOptions,
 } from "@vetta/coding-agent/resources";
 import { createSettingsRuntimeFromStorage, type SettingsRuntime } from "@vetta/coding-agent/settings";
+import { resolveProjectSettingsPath } from "@vetta/runtime-desktop";
 import {
 	createNodeCommandExecutor,
 	createNodeResourcePackageHost,
@@ -57,7 +52,7 @@ export function createDesktopSettingsRuntime(cwd: string, agentDir: string): Set
 	return createSettingsRuntimeFromStorage(
 		new NodeScopedTextStorage({
 			global: join(agentDir, "settings.json"),
-			project: join(cwd, CONFIG_DIR_NAME, "settings.json"),
+			project: resolveProjectSettingsPath(cwd, agentDir),
 		}),
 		{
 			clearOnShrink: process.env.PI_CLEAR_ON_SHRINK === "1",
