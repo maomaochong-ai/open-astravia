@@ -21,10 +21,11 @@ type ViewMode = "tree" | "flat";
 const VIEW_MODE_KEY = "vetta-git-view-mode";
 
 // 容器宽于此值时显示右侧 diff 区；窄于此值只显示文件树（拖窄自动收起 diff）。
-const DIFF_MIN_WIDTH = 460;
+// 阈值要留得住「树 + 一屏能读的 diff」，否则一拉宽就挤出一条读不了的窄 diff。
+const DIFF_MIN_WIDTH = 560;
 // 关闭 diff 时把面板收窄到此宽度（低于阈值即收起 diff，回到只剩树）。
 const COLLAPSE_WIDTH = 380;
-const TREE_DEFAULT_WIDTH = 248;
+const TREE_DEFAULT_WIDTH = 300;
 const TREE_MIN_WIDTH = 180;
 // diff 展开时给右侧 diff 保留的最小宽度，限制树列最大宽度。
 const DIFF_RESERVED_WIDTH = 260;
@@ -44,7 +45,6 @@ interface Selection {
 /** Ready-state body: sectioned change list on the left, width-gated diff pane on the right. */
 export function GitChanges({ root, groups }: { root: string; groups: StatusGroups }): JSX.Element {
 	const { t } = useTranslation();
-	const containerRef = useRef<HTMLDivElement>(null);
 	const [containerWidth, setContainerWidth] = useState(0);
 	const [active, setActive] = useState<ChangeRef | null>(null);
 	const [selection, setSelection] = useState<Selection>({ section: "unstaged", paths: [] });
@@ -78,15 +78,28 @@ export function GitChanges({ root, groups }: { root: string; groups: StatusGroup
 		void preloadHighlighter({ themes: ["github-dark-default", "github-light-default"], langs: ["text"] });
 	}, []);
 
-	useEffect(() => {
-		const el = containerRef.current;
+	/**
+	 * Width probe as a callback ref, not a mount effect.
+	 *
+	 * The measured element only exists while there are changes, so a `[]` effect
+	 * would run once against a null ref on a clean tree and never retry — the
+	 * panel then stayed in its narrow single-column layout no matter how wide the
+	 * user dragged it, and the diff pane never appeared.
+	 */
+	const observerRef = useRef<ResizeObserver | null>(null);
+	const measureRef = useCallback((el: HTMLDivElement | null) => {
+		observerRef.current?.disconnect();
+		observerRef.current = null;
 		if (!el) return;
+		setContainerWidth(el.getBoundingClientRect().width);
 		const observer = new ResizeObserver((items) => {
 			for (const item of items) setContainerWidth(item.contentRect.width);
 		});
 		observer.observe(el);
-		return () => observer.disconnect();
+		observerRef.current = observer;
 	}, []);
+
+	useEffect(() => () => observerRef.current?.disconnect(), []);
 
 	const total = groups.conflict.length + groups.staged.length + groups.unstaged.length;
 	const wide = containerWidth >= DIFF_MIN_WIDTH;
@@ -194,7 +207,7 @@ export function GitChanges({ root, groups }: { root: string; groups: StatusGroup
 			{total === 0 ? (
 				<div className="flex flex-1 items-center justify-center px-3 py-4 text-[12px] text-muted-foreground">{t("state.clean")}</div>
 			) : (
-				<div ref={containerRef} className="flex min-h-0 flex-1 overflow-hidden">
+				<div ref={measureRef} className="flex min-h-0 flex-1 overflow-hidden">
 					{showTree && (
 						<div
 							className={
