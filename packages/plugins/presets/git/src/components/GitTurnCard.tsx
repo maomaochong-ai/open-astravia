@@ -169,7 +169,7 @@ export function GitTurnCard(): JSX.Element | null {
 
 	return (
 		// 去线留白：卡片只保留一层淡边与内边距，内部各区靠间距分隔，不再用分隔线切块。
-		<div className="rounded-xl border border-border/60 bg-card/60 p-2 text-[12px]">
+		<div className="rounded-lg border border-border/60 bg-card/60 p-2 text-[12px]">
 			<div className="flex items-center gap-2 px-1 py-0.5">
 				<GitIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
 				<button type="button" onClick={open} title={t("turnCard.open")} className="min-w-0 truncate text-left font-medium text-foreground hover:underline">

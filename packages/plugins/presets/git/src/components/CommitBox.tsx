@@ -175,10 +175,13 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 					: t("commit.action");
 
 	const stagedCount = groups.staged.length;
+	// 两半共用同一档绿：禁用时压成同色系的灰绿，而不是换成中性灰——后者会让按钮
+	// 断成「一块灰 + 一块绿」两个物件。
+	const commitTone = canCommit ? "bg-[#1f883d] text-white hover:bg-[#1a7f37]" : "bg-[#1f883d]/35 text-white/60";
 
 	return (
 		<div className="shrink-0 px-2 pb-2 pt-1">
-			<div className="overflow-hidden rounded-xl border border-border/70 bg-background transition-shadow focus-within:ring-1 focus-within:ring-ring/40">
+			<div className="overflow-hidden rounded-lg border border-border/70 bg-background transition-shadow focus-within:ring-1 focus-within:ring-ring/40">
 				<div className="px-2.5 pt-1.5 text-[11.5px] font-medium text-muted-foreground">{t("commit.title")}</div>
 
 				<textarea
@@ -217,13 +220,13 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 			</div>
 
 			{/* 主操作放在卡片外：它是对这张卡片的执行，不是卡片的一部分；圆角与卡片同档。 */}
-			<div className="mt-1.5 flex items-stretch overflow-hidden rounded-xl">
+			<div className="mt-1.5 flex items-stretch overflow-hidden rounded-lg">
 				<button
 					type="button"
 					disabled={!canCommit}
 					title={disabledReason ?? undefined}
 					onClick={commit}
-					className="flex h-8 min-w-0 flex-1 items-center justify-center gap-1.5 bg-[#1f883d] px-2 text-[12px] font-medium text-white transition-colors hover:bg-[#1a7f37] disabled:bg-muted disabled:text-muted-foreground"
+					className={`flex h-8 min-w-0 flex-1 items-center justify-center gap-1.5 px-2 text-[12px] font-medium transition-colors ${commitTone}`}
 				>
 					<CommitIcon className="h-3.5 w-3.5 shrink-0" />
 					<span className="truncate">{label}</span>
@@ -234,7 +237,7 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 							type="button"
 							disabled={pending !== null}
 							title={t("commit.more")}
-							className="flex h-8 w-8 shrink-0 items-center justify-center border-l border-white/20 bg-[#1f883d] text-white transition-colors hover:bg-[#1a7f37] disabled:border-transparent disabled:bg-muted disabled:text-muted-foreground"
+							className={`flex h-8 w-8 shrink-0 items-center justify-center border-l border-white/20 transition-colors ${commitTone}`}
 						>
 							<ChevronIcon className="h-3.5 w-3.5" />
 						</button>
