@@ -10,6 +10,8 @@ export interface ToolPathSyntax {
 	readonly dirname: (path: string) => string;
 	readonly basename: (path: string) => string;
 	readonly relative: (from: string, to: string) => string;
+	readonly parse: (path: string) => { readonly root: string };
+	readonly sep: string;
 }
 
 /**

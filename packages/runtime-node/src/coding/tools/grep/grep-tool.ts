@@ -1,12 +1,17 @@
-import { spawn } from "node:child_process";
 import { statSync } from "node:fs";
-import { basename, relative } from "node:path";
 import { createInterface } from "node:readline";
 import { type Static, Type } from "@sinclair/typebox";
 import type { RuntimeToolDefinition, RuntimeToolResult } from "@vetta/runtime-core/kernel";
 import type { CodingToolExecutableResolver } from "../../host/executable-resolver.js";
 import { anchorLineHash } from "../../shared/anchors.js";
-import { formatNotFoundPath, resolveExistingPath } from "../../shared/path-resolution.js";
+import {
+	formatNotFoundPath,
+	localToolPathHost,
+	resolveExistingPath,
+	type ToolPathHost,
+	type ToolPathSyntax,
+} from "../../shared/path-resolution.js";
+import { spawnLocalToolProcess, type ToolProcessSpawner } from "../../shared/tool-process.js";
 import {
 	formatSize,
 	GREP_MAX_LINE_LENGTH,
@@ -62,6 +67,10 @@ export interface GrepToolOptions {
 	readonly operations?: GrepOperations;
 	readonly rgPath?: string;
 	readonly executableResolver?: CodingToolExecutableResolver;
+	/** 路径在哪台机器上解析；缺省为本机。 */
+	readonly pathHost?: ToolPathHost;
+	/** 外部程序在哪台机器上启动；缺省为本机。远端项目必须与 `pathHost` 一起换掉。 */
+	readonly spawnProcess?: ToolProcessSpawner;
 }
 
 interface RipgrepLines {
@@ -109,6 +118,8 @@ function decodeEventLine(lines: RipgrepLines | undefined): string | undefined {
 export function createGrepTool(cwd: string, options: GrepToolOptions = {}): RuntimeToolDefinition<GrepToolInput> {
 	const operations = options.operations ?? defaultGrepOperations;
 	const rgPath = options.rgPath ?? "rg";
+	const pathHost = options.pathHost ?? localToolPathHost;
+	const spawnProcess = options.spawnProcess ?? spawnLocalToolProcess;
 
 	return {
 		name: "grep",
@@ -120,12 +131,12 @@ export function createGrepTool(cwd: string, options: GrepToolOptions = {}): Runt
 				throw new Error("Operation aborted");
 			}
 
-			const searchPath = resolveExistingPath(request.input.path ?? ".", cwd);
+			const searchPath = resolveExistingPath(request.input.path ?? ".", cwd, pathHost);
 			let isDirectory: boolean;
 			try {
 				isDirectory = await operations.isDirectory(searchPath);
 			} catch {
-				throw new Error(formatNotFoundPath(searchPath, cwd));
+				throw new Error(formatNotFoundPath(searchPath, cwd, pathHost));
 			}
 
 			const limit = Math.max(1, request.input.limit ?? DEFAULT_LIMIT);
@@ -153,6 +164,8 @@ export function createGrepTool(cwd: string, options: GrepToolOptions = {}): Runt
 			return runRipgrep({
 				args,
 				rgPath: resolvedRgPath,
+				spawnProcess,
+				path: pathHost.path,
 				isDirectory,
 				searchPath,
 				filesOnly,
@@ -167,6 +180,8 @@ export function createGrepTool(cwd: string, options: GrepToolOptions = {}): Runt
 interface RunRipgrepInput {
 	readonly args: readonly string[];
 	readonly rgPath: string;
+	readonly spawnProcess: ToolProcessSpawner;
+	readonly path: ToolPathSyntax;
 	readonly isDirectory: boolean;
 	readonly searchPath: string;
 	readonly filesOnly: boolean;
@@ -177,9 +192,7 @@ interface RunRipgrepInput {
 
 function runRipgrep(input: RunRipgrepInput): Promise<RuntimeToolResult> {
 	return new Promise((resolve, reject) => {
-		const child = spawn(input.rgPath, input.args, {
-			stdio: ["ignore", "pipe", "pipe"],
-		});
+		const child = input.spawnProcess(input.rgPath, input.args);
 		const reader = createInterface({ input: child.stdout });
 		const lines: GrepLine[] = [];
 		const filePaths: string[] = [];
@@ -204,7 +217,7 @@ function runRipgrep(input: RunRipgrepInput): Promise<RuntimeToolResult> {
 		};
 		const stopChild = (dueToLimit = false) => {
 			killedDueToLimit = dueToLimit;
-			if (!child.killed) child.kill();
+			child.kill();
 		};
 		const onAbort = () => {
 			aborted = true;
@@ -265,11 +278,11 @@ function runRipgrep(input: RunRipgrepInput): Promise<RuntimeToolResult> {
 			matchCount += 1;
 			if (matchCount >= input.limit) matchLimitReached = true;
 		});
-		child.on("error", (error) => {
+		child.onError((error) => {
 			cleanup();
 			settle(() => reject(new Error(`Failed to run ripgrep: ${error.message}`)));
 		});
-		child.on("close", (code) => {
+		child.onClose((code) => {
 			cleanup();
 			if (aborted) {
 				settle(() => reject(new Error("Operation aborted")));
@@ -333,10 +346,10 @@ function parseEvent(line: string): RipgrepEvent | undefined {
 	}
 }
 
-function toRelativePath(filePath: string, input: Pick<RunRipgrepInput, "isDirectory" | "searchPath">): string {
+function toRelativePath(filePath: string, input: Pick<RunRipgrepInput, "isDirectory" | "searchPath" | "path">): string {
 	return input.isDirectory
-		? relative(input.searchPath, filePath).replace(/\\/g, "/") || basename(filePath)
-		: basename(filePath);
+		? input.path.relative(input.searchPath, filePath).replace(/\\/g, "/") || input.path.basename(filePath)
+		: input.path.basename(filePath);
 }
 
 function formatLines(lines: readonly GrepLine[], input: RunRipgrepInput): string {

@@ -1,11 +1,16 @@
-import { spawn } from "node:child_process";
 import { statSync } from "node:fs";
-import { basename, dirname, isAbsolute, join, parse, relative, sep } from "node:path";
 import { type Static, Type } from "@sinclair/typebox";
 import type { RuntimeToolDefinition, RuntimeToolResult } from "@vetta/runtime-core/kernel";
 import { Minimatch } from "minimatch";
 import type { CodingToolExecutableResolver } from "../../host/executable-resolver.js";
-import { formatNotFoundPath, resolveExistingPath } from "../../shared/path-resolution.js";
+import {
+	formatNotFoundPath,
+	localToolPathHost,
+	resolveExistingPath,
+	type ToolPathHost,
+	type ToolPathSyntax,
+} from "../../shared/path-resolution.js";
+import { spawnLocalToolProcess, type ToolProcessSpawner } from "../../shared/tool-process.js";
 import { formatSize, type TruncationResult, truncateHead } from "../../shared/truncation.js";
 import { GLOB_TOOL_DESCRIPTION } from "./description.js";
 
@@ -55,35 +60,44 @@ export interface GlobToolOptions {
 	readonly operations?: GlobOperations;
 	readonly rgPath?: string;
 	readonly executableResolver?: CodingToolExecutableResolver;
+	/** 路径在哪台机器上解析；缺省为本机。 */
+	readonly pathHost?: ToolPathHost;
+	/** 外部程序在哪台机器上启动；缺省为本机。远端项目必须与 `pathHost` 一起换掉。 */
+	readonly spawnProcess?: ToolProcessSpawner;
 }
 
 const defaultGlobOperations: Pick<GlobOperations, "isDirectory"> = {
 	isDirectory: (absolutePath) => statSync(absolutePath).isDirectory(),
 };
 
-function extractGlobBaseDirectory(patternValue: string): { baseDir: string | undefined; relativePattern: string } {
+function extractGlobBaseDirectory(
+	patternValue: string,
+	path: ToolPathSyntax,
+): { baseDir: string | undefined; relativePattern: string } {
 	// `/` is a path separator, not a metacharacter: treating it as one makes every absolute
 	// pattern look like it starts with a wildcard, leaving no static prefix to search under.
 	const firstGlobChar = patternValue.search(/[*?[{]/);
 	if (firstGlobChar === -1) {
-		return { baseDir: dirname(patternValue), relativePattern: basename(patternValue) };
+		return { baseDir: path.dirname(patternValue), relativePattern: path.basename(patternValue) };
 	}
 	const staticPrefix = patternValue.slice(0, firstGlobChar);
 	const lastSlash = Math.max(staticPrefix.lastIndexOf("/"), staticPrefix.lastIndexOf("\\"));
 	if (lastSlash === -1) return { baseDir: undefined, relativePattern: patternValue };
 	let baseDir = staticPrefix.slice(0, lastSlash);
-	if (baseDir === "" && lastSlash === 0) baseDir = parse(patternValue).root || sep;
-	if (process.platform === "win32" && /^[A-Za-z]:$/.test(baseDir)) baseDir += sep;
+	if (baseDir === "" && lastSlash === 0) baseDir = path.parse(patternValue).root || path.sep;
+	// 以路径语法而不是本机平台为准：本机是 Windows 时，远端路径仍然是 POSIX 的。
+	const windowsPaths = path.sep === "\\";
+	if (windowsPaths && /^[A-Za-z]:$/.test(baseDir)) baseDir += path.sep;
 	const relativePattern = patternValue.slice(lastSlash + 1);
 	return {
 		baseDir,
-		relativePattern: process.platform === "win32" ? relativePattern.replaceAll("\\", "/") : relativePattern,
+		relativePattern: windowsPaths ? relativePattern.replaceAll("\\", "/") : relativePattern,
 	};
 }
 
-function normalizeOutputPath(filePath: string, searchPath: string): string {
-	const absolute = isAbsolute(filePath) ? filePath : join(searchPath, filePath);
-	return (relative(searchPath, absolute) || basename(absolute)).replace(/\\/g, "/");
+function normalizeOutputPath(filePath: string, searchPath: string, path: ToolPathSyntax): string {
+	const absolute = path.isAbsolute(filePath) ? filePath : path.join(searchPath, filePath);
+	return (path.relative(searchPath, absolute) || path.basename(absolute)).replace(/\\/g, "/");
 }
 
 /**
@@ -112,6 +126,7 @@ function buildRipgrepFilesArgs(searchPath: string): string[] {
 interface RipgrepFilesInput {
 	readonly args: readonly string[];
 	readonly rgPath: string;
+	readonly spawnProcess: ToolProcessSpawner;
 	readonly limit: number;
 	readonly signal: AbortSignal;
 	/** Applied to each candidate path, already relative to the search root and posix-separated. */
@@ -132,7 +147,7 @@ interface RipgrepFilesResult {
  */
 function runRipgrepFiles(input: RipgrepFilesInput): Promise<RipgrepFilesResult> {
 	return new Promise((resolve, reject) => {
-		const child = spawn(input.rgPath, input.args, { stdio: ["ignore", "pipe", "pipe"] });
+		const child = input.spawnProcess(input.rgPath, input.args);
 		const paths: string[] = [];
 		let pending = "";
 		let stderr = "";
@@ -150,7 +165,7 @@ function runRipgrepFiles(input: RipgrepFilesInput): Promise<RipgrepFilesResult> 
 		const cleanup = () => input.signal.removeEventListener("abort", onAbort);
 		const stopChild = (dueToLimit = false) => {
 			killedDueToLimit = dueToLimit;
-			if (!child.killed) child.kill();
+			child.kill();
 		};
 		function onAbort() {
 			aborted = true;
@@ -185,11 +200,11 @@ function runRipgrepFiles(input: RipgrepFilesInput): Promise<RipgrepFilesResult> 
 				separator = pending.indexOf("\0");
 			}
 		});
-		child.on("error", (error) => {
+		child.onError((error) => {
 			cleanup();
 			settle(() => reject(new Error(`Failed to run ripgrep: ${error.message}`)));
 		});
-		child.on("close", (code) => {
+		child.onClose((code) => {
 			cleanup();
 			if (aborted) {
 				settle(() => reject(new Error("Operation aborted")));
@@ -211,6 +226,9 @@ function runRipgrepFiles(input: RipgrepFilesInput): Promise<RipgrepFilesResult> 
 export function createGlobTool(cwd: string, options: GlobToolOptions = {}): RuntimeToolDefinition<GlobToolInput> {
 	const customOps = options.operations;
 	const rgPath = options.rgPath ?? "rg";
+	const pathHost = options.pathHost ?? localToolPathHost;
+	const path = pathHost.path;
+	const spawnProcess = options.spawnProcess ?? spawnLocalToolProcess;
 
 	return {
 		name: "glob",
@@ -219,12 +237,12 @@ export function createGlobTool(cwd: string, options: GlobToolOptions = {}): Runt
 		inputSchema: GlobToolInputSchema,
 		async execute(request) {
 			const start = Date.now();
-			let searchPath = resolveExistingPath(request.input.path ?? ".", cwd);
+			let searchPath = resolveExistingPath(request.input.path ?? ".", cwd, pathHost);
 			let pattern = request.input.pattern;
-			if (isAbsolute(pattern)) {
-				const extracted = extractGlobBaseDirectory(pattern);
+			if (path.isAbsolute(pattern)) {
+				const extracted = extractGlobBaseDirectory(pattern, path);
 				if (extracted.baseDir) {
-					searchPath = resolveExistingPath(extracted.baseDir, cwd);
+					searchPath = resolveExistingPath(extracted.baseDir, cwd, pathHost);
 					pattern = extracted.relativePattern;
 				}
 			}
@@ -233,14 +251,14 @@ export function createGlobTool(cwd: string, options: GlobToolOptions = {}): Runt
 			try {
 				isDirectory = await operations.isDirectory(searchPath);
 			} catch {
-				throw new Error(formatNotFoundPath(searchPath, cwd));
+				throw new Error(formatNotFoundPath(searchPath, cwd, pathHost));
 			}
 			if (!isDirectory) throw new Error(`Not a directory: ${searchPath}`);
 
 			const limit = Math.max(1, request.input.limit ?? DEFAULT_LIMIT);
 			if (customOps) {
 				const rawResults = await customOps.glob(pattern, searchPath, { limit, signal: request.signal });
-				return formatResults(rawResults, searchPath, limit, start, rawResults.length > limit);
+				return formatResults(rawResults, searchPath, limit, start, rawResults.length > limit, path);
 			}
 
 			if (request.signal.aborted) throw new Error("Operation aborted");
@@ -252,12 +270,13 @@ export function createGlobTool(cwd: string, options: GlobToolOptions = {}): Runt
 			const { paths, limitReached } = await runRipgrepFiles({
 				args: buildRipgrepFilesArgs(searchPath),
 				rgPath: resolvedRgPath,
+				spawnProcess,
 				limit,
 				signal: request.signal,
 				accepts: (relativePath) => matcher.match(relativePath),
-				toRelativePath: (absolutePath) => normalizeOutputPath(absolutePath, searchPath),
+				toRelativePath: (absolutePath) => normalizeOutputPath(absolutePath, searchPath, path),
 			});
-			return formatResults(paths, searchPath, limit, start, limitReached);
+			return formatResults(paths, searchPath, limit, start, limitReached, path);
 		},
 	};
 }
@@ -268,8 +287,9 @@ function formatResults(
 	limit: number,
 	start: number,
 	limitReached: boolean,
+	path: ToolPathSyntax,
 ): RuntimeToolResult {
-	const normalized = rawResults.map((filePath) => normalizeOutputPath(filePath, searchPath));
+	const normalized = rawResults.map((filePath) => normalizeOutputPath(filePath, searchPath, path));
 	const uniqueResults = Array.from(new Set(normalized));
 	const limitedResults = uniqueResults.slice(0, limit);
 	const truncation = truncateHead(limitedResults.join("\n"), { maxLines: Number.MAX_SAFE_INTEGER });

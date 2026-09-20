@@ -110,6 +110,12 @@ export {
 } from "./shared/path-resolution.js";
 export { decodeTextBuffer, sanitizeBinaryOutput } from "./shared/text-decoding.js";
 export {
+	collectToolProcess,
+	spawnLocalToolProcess,
+	type ToolProcess,
+	type ToolProcessSpawner,
+} from "./shared/tool-process.js";
+export {
 	DEFAULT_MAX_BYTES,
 	DEFAULT_MAX_LINES,
 	formatSize,

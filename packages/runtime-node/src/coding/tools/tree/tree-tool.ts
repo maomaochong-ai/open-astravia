@@ -1,10 +1,14 @@
-import { spawnSync } from "node:child_process";
 import { existsSync, statSync } from "node:fs";
-import { basename } from "node:path";
 import { type Static, Type } from "@sinclair/typebox";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import type { CodingToolExecutableResolver } from "../../host/executable-resolver.js";
-import { formatNotFoundPath, resolveExistingPath } from "../../shared/path-resolution.js";
+import {
+	formatNotFoundPath,
+	localToolPathHost,
+	resolveExistingPath,
+	type ToolPathHost,
+} from "../../shared/path-resolution.js";
+import { collectToolProcess, spawnLocalToolProcess, type ToolProcessSpawner } from "../../shared/tool-process.js";
 import { DEFAULT_MAX_BYTES, formatSize, type TruncationResult, truncateHead } from "../../shared/truncation.js";
 import { TREE_TOOL_DESCRIPTION } from "./description.js";
 import { buildFdArgs, parseFdOutput, renderTreeOutput } from "./tree-model.js";
@@ -56,19 +60,35 @@ export interface TreeToolOptions {
 	readonly operations?: TreeOperations;
 	readonly fdPath?: string;
 	readonly executableResolver?: CodingToolExecutableResolver;
+	/** 路径在哪台机器上解析；缺省为本机。 */
+	readonly pathHost?: ToolPathHost;
+	/** 外部程序在哪台机器上启动；缺省为本机。远端项目必须与 `pathHost` 一起换掉。 */
+	readonly spawnProcess?: ToolProcessSpawner;
 }
 
 const defaultTreeOperations: TreeOperations = {
 	exists: existsSync,
 	stat: statSync,
-	runFd: async (fdPath, args) => {
-		const result = spawnSync(fdPath, args, { encoding: "utf-8", maxBuffer: 20 * 1024 * 1024 });
-		return { status: result.status, stdout: result.stdout ?? "", stderr: result.stderr ?? "" };
-	},
+	runFd: (fdPath, args) => runFdWith(spawnLocalToolProcess, fdPath, args),
 };
 
+async function runFdWith(
+	spawnProcess: ToolProcessSpawner,
+	fdPath: string,
+	args: readonly string[],
+): Promise<{ readonly status: number | null; readonly stdout: string; readonly stderr: string }> {
+	const result = await collectToolProcess(spawnProcess, fdPath, args);
+	return { status: result.code, stdout: result.stdout, stderr: result.stderr };
+}
+
 export function createTreeTool(cwd: string, options: TreeToolOptions = {}): RuntimeToolDefinition<TreeToolInput> {
-	const operations = options.operations ?? defaultTreeOperations;
+	const pathHost = options.pathHost ?? localToolPathHost;
+	const spawnProcess = options.spawnProcess;
+	const operations: TreeOperations =
+		options.operations ??
+		(spawnProcess
+			? { ...defaultTreeOperations, runFd: (fdPath, args) => runFdWith(spawnProcess, fdPath, args) }
+			: defaultTreeOperations);
 	const fdPath = options.fdPath ?? "fd";
 	return {
 		name: "dir_tree",
@@ -77,7 +97,7 @@ export function createTreeTool(cwd: string, options: TreeToolOptions = {}): Runt
 		inputSchema: TreeToolInputSchema,
 		async execute(request) {
 			if (request.signal.aborted) throw new Error("Operation aborted");
-			const searchPath = resolveExistingPath(request.input.path ?? ".", cwd);
+			const searchPath = resolveExistingPath(request.input.path ?? ".", cwd, pathHost);
 			const maxDepth = Math.max(0, Math.floor(request.input.maxDepth ?? DEFAULT_MAX_DEPTH));
 			const limit = Math.max(1, Math.floor(request.input.limit ?? DEFAULT_LIMIT));
 			const includeFiles = request.input.includeFiles ?? true;
@@ -85,7 +105,7 @@ export function createTreeTool(cwd: string, options: TreeToolOptions = {}): Runt
 			const ignore = (request.input.ignore ?? []).filter((pattern) => pattern.trim().length > 0);
 			const scanLimit = Math.max(limit * 4, 2000);
 
-			if (!(await operations.exists(searchPath))) throw new Error(formatNotFoundPath(searchPath, cwd));
+			if (!(await operations.exists(searchPath))) throw new Error(formatNotFoundPath(searchPath, cwd, pathHost));
 			const stats = await operations.stat(searchPath);
 			if (!stats.isDirectory()) throw new Error(`Not a directory: ${searchPath}`);
 			const resolvedFdPath = options.executableResolver ? await options.executableResolver.resolve("fd") : fdPath;
@@ -103,12 +123,12 @@ export function createTreeTool(cwd: string, options: TreeToolOptions = {}): Runt
 					buildFdArgs("file", searchPath, maxDepth, scanLimit, includeHidden, ignore),
 				);
 				assertSuccessfulScan(fileResult);
-				filePaths = parseFdOutput(fileResult.stdout, searchPath);
+				filePaths = parseFdOutput(fileResult.stdout, searchPath, pathHost.path);
 			}
 
-			const directoryPaths = parseFdOutput(directoryResult.stdout, searchPath);
+			const directoryPaths = parseFdOutput(directoryResult.stdout, searchPath, pathHost.path);
 			const rendered = renderTreeOutput(
-				basename(searchPath) || searchPath,
+				pathHost.path.basename(searchPath) || searchPath,
 				directoryPaths,
 				filePaths,
 				maxDepth,
