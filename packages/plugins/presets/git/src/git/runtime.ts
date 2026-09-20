@@ -39,6 +39,8 @@ interface GitRuntime {
 	refreshTimer: ReturnType<typeof setTimeout> | null;
 	/** Subscribers to settings saves (see `settings.ts`). */
 	settingsListeners: Set<(settings: unknown) => void>;
+	/** Subscribers to "the user asked to commit now" requests from the turn card. */
+	commitRequestListeners: Set<(root: string) => void>;
 }
 
 const KEY = "__vettaGitPluginRuntime__";
@@ -59,6 +61,7 @@ function runtime(): GitRuntime {
 			writeQueue: Promise.resolve(),
 			refreshTimer: null,
 			settingsListeners: new Set<(settings: unknown) => void>(),
+			commitRequestListeners: new Set<(root: string) => void>(),
 		} satisfies GitRuntime;
 	}
 	return g[KEY] as GitRuntime;
@@ -218,6 +221,21 @@ export function onTurnPhase(listener: (phase: TurnPhase) => void): () => void {
 	const set = runtime().turnPhaseListeners;
 	set.add(listener);
 	return () => set.delete(listener);
+}
+
+/**
+ * Subscribe to commit requests raised elsewhere (the turn card's "commit this
+ * turn"), so the commit box can take focus and draft a message for them.
+ */
+export function onCommitRequest(listener: (root: string) => void): () => void {
+	const set = runtime().commitRequestListeners;
+	set.add(listener);
+	return () => set.delete(listener);
+}
+
+/** Ask the commit box for `root` to take over (it is the one that owns drafting). */
+export function requestCommit(root: string): void {
+	for (const listener of runtime().commitRequestListeners) listener(root);
 }
 
 /** Fire a turn lifecycle phase to subscribers. */

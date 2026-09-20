@@ -1,16 +1,20 @@
 import { useActiveConversation, useTranslation } from "@vetta-org/plugin-sdk";
-import { useEffect, useRef, useState } from "react";
-import { diffStatForEntries, resolveRepoRoot, statusPorcelain } from "../git/run";
+import { Button } from "@vetta-org/ui";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { diffStatForEntries, resolveRepoRoot, stagePaths, statusPorcelain, unstageAll } from "../git/run";
 import { collapseByPath, parseStatus } from "../git/parseStatus";
 import {
+	emitRefreshSignal,
 	getTurnBaseline,
 	getTurnDelta,
 	onTurnPhase,
+	requestCommit,
 	resizePanel,
 	setTurnBaseline,
 	setTurnDelta,
 } from "../git/runtime";
 import type { ChangeCode, TurnChangeDelta } from "../git/types";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { FileIcon, GitIcon } from "./icons";
 import { StatusBadge } from "./StatusBadge";
 
@@ -32,6 +36,9 @@ export function GitTurnCard(): JSX.Element | null {
 	const { cwd } = useActiveConversation();
 	const { t } = useTranslation();
 	const [data, setData] = useState<TurnChangeDelta | null>(null);
+	const [busy, setBusy] = useState(false);
+	// 暂存区里已经有别的文件，等用户裁决是「一并提交」还是「只提交本轮」。
+	const [askMixed, setAskMixed] = useState<{ root: string; paths: string[] } | null>(null);
 	const tokenRef = useRef(0);
 
 	useEffect(() => {
@@ -112,6 +119,45 @@ export function GitTurnCard(): JSX.Element | null {
 		return off;
 	}, [cwd]);
 
+	/**
+	 * Stage exactly this turn's files, then hand over to the panel's commit box.
+	 *
+	 * The turn card is the only surface that knows which files belong to THIS turn
+	 * (the panel only sees every uncommitted file), which is what makes a one-click
+	 * atomic commit possible here.
+	 */
+	const stageAndCommit = useCallback(
+		async (root: string, paths: string[], resetIndexFirst: boolean): Promise<void> => {
+			setBusy(true);
+			try {
+				if (resetIndexFirst) await unstageAll(root);
+				await stagePaths(root, paths);
+				emitRefreshSignal();
+				resizePanel("max");
+				requestCommit(root);
+			} finally {
+				setBusy(false);
+			}
+		},
+		[],
+	);
+
+	const commitThisTurn = useCallback((): void => {
+		if (!cwd || !data || busy) return;
+		const paths = data.entries.map((entry) => entry.path);
+		void (async () => {
+			const root = await resolveRepoRoot(cwd);
+			if (!root) return;
+			const groups = parseStatus(await statusPorcelain(root));
+			// 暂存区里已经躺着别的文件：直接提交会把它们一起带走，违背原子提交。
+			if (groups.staged.length > 0) {
+				setAskMixed({ root, paths });
+				return;
+			}
+			await stageAndCommit(root, paths, false);
+		})();
+	}, [cwd, data, busy, stageAndCommit]);
+
 	if (!data) return null;
 
 	const sorted = [...data.entries].sort((a, b) => a.path.localeCompare(b.path));
@@ -135,6 +181,11 @@ export function GitTurnCard(): JSX.Element | null {
 					<span className="text-rose-500">−{data.deletions}</span>
 				</span>
 			</button>
+			<div className="flex items-center justify-end border-b border-border px-2 py-1.5">
+				<Button type="button" size="xs" variant="secondary" disabled={busy} onClick={commitThisTurn}>
+					{t("turnCard.commitTurn")}
+				</Button>
+			</div>
 			<div className="flex flex-col py-1">
 				{shown.map((entry) => {
 					const slash = entry.path.lastIndexOf("/");
@@ -167,6 +218,34 @@ export function GitTurnCard(): JSX.Element | null {
 					</button>
 				)}
 			</div>
+
+			{/* 默认「仅提交本轮」：取消暂存只动索引、不丢改动，错了点两下就回来；
+			    「一并提交」错了则要改历史。默认值必须站在可逆的那一侧。 */}
+			<ConfirmDialog
+				open={askMixed !== null}
+				title={t("turnCard.mixedTitle")}
+				description={t("turnCard.mixedDescription")}
+				confirmLabel={t("turnCard.mixedOnlyTurn")}
+				detail={
+					<button
+						type="button"
+						className="w-full rounded border border-border px-2 py-1.5 text-left text-[12px] text-muted-foreground transition-colors hover:bg-accent"
+						onClick={() => {
+							const target = askMixed;
+							setAskMixed(null);
+							if (target) void stageAndCommit(target.root, target.paths, false);
+						}}
+					>
+						{t("turnCard.mixedIncludeAll")}
+					</button>
+				}
+				onConfirm={() => {
+					const target = askMixed;
+					setAskMixed(null);
+					if (target) void stageAndCommit(target.root, target.paths, true);
+				}}
+				onCancel={() => setAskMixed(null)}
+			/>
 		</div>
 	);
 }

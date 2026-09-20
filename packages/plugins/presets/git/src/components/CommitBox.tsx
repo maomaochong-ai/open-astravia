@@ -7,7 +7,7 @@ import { generateCommitMessage } from "../git/aiMessage";
 import { loadDraft, saveDraft } from "../git/draftStore";
 import { readMergeMessage } from "../git/mergeMsg";
 import { gitCommit, gitPush, headCommitMessage } from "../git/run";
-import { emitRefreshSignal } from "../git/runtime";
+import { emitRefreshSignal, onCommitRequest } from "../git/runtime";
 import type { StatusGroups } from "../git/types";
 import { CommitErrorPanel } from "./CommitErrorPanel";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -157,6 +157,17 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 		if (message.trim().length > 0) setAskOverwrite(true);
 		else generate();
 	}, [message, generate]);
+
+	// turn 卡把本轮文件暂存好之后会点过来：聚焦输入框并顺手起一份草稿。
+	useEffect(
+		() =>
+			onCommitRequest((requestedRoot) => {
+				if (requestedRoot !== root) return;
+				textareaRef.current?.focus();
+				requestGenerate();
+			}),
+		[root, requestGenerate],
+	);
 
 	const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
 		if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
