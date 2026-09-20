@@ -43,11 +43,13 @@ function runSshProcess(
 		const stdoutChunks: Buffer[] = [];
 		const stderrChunks: Buffer[] = [];
 		let aborted = false;
+		let timedOut = false;
 		let settled = false;
 
-		const stop = (): void => {
+		const stop = (reason: "signal" | "timeout"): void => {
 			if (settled || child.killed) return;
 			aborted = true;
+			timedOut = reason === "timeout";
 			// 先 SIGTERM 让 ssh 有机会清理 master 连接；它不理会时再硬杀。
 			child.kill("SIGTERM");
 			setTimeout(() => {
@@ -55,9 +57,10 @@ function runSshProcess(
 			}, 2000).unref?.();
 		};
 
-		const timer = invocation.timeoutMs === undefined ? undefined : setTimeout(stop, invocation.timeoutMs);
+		const timer =
+			invocation.timeoutMs === undefined ? undefined : setTimeout(() => stop("timeout"), invocation.timeoutMs);
 		timer?.unref?.();
-		const onAbort = (): void => stop();
+		const onAbort = (): void => stop("signal");
 		invocation.signal?.addEventListener("abort", onAbort, { once: true });
 
 		child.stdout.on("data", (chunk: Buffer) => {
@@ -79,6 +82,7 @@ function runSshProcess(
 				stdout: Buffer.concat(stdoutChunks),
 				stderr: Buffer.concat(stderrChunks).toString("utf8"),
 				aborted,
+				timedOut,
 			});
 		};
 

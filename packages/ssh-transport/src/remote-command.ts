@@ -21,6 +21,11 @@ export interface RemoteCommandOptions {
 	readonly cwd?: string;
 	/** 追加到命令之前的环境变量。值同样会被引用。 */
 	readonly env?: Readonly<Record<string, string>>;
+	/**
+	 * 给出时，命令启动前把自己的进程组号记到远端临时目录下的这个文件名里，供
+	 * {@link buildKillCommand} 事后终止。只能是文件名，不是路径。
+	 */
+	readonly processToken?: string;
 }
 
 /**
@@ -32,12 +37,66 @@ export interface RemoteCommandOptions {
  *
  * `cd` 用 `&&` 连接而不是 `;`：目录不存在时必须直接失败，继续在家目录里执行用户的
  * 命令属于「静默换了个仓库」，正是执行边界规则要禁止的。
+ *
+ * 最外层固定交给 `/bin/sh`：sshd 用账号的登录 shell 解释这条命令串，而 fish 之类
+ * 不认 `${VAR:-default}`。外层只用「命令 + 单引号参数」这一种所有 shell 都认的写法。
  */
 export function buildRemoteCommand(command: string, options: RemoteCommandOptions = {}): string {
-	// 整段脚本会作为 `-c` 的单个参数再被引用一层，因此这里的引号会在最终命令串里
-	// 出现二次转义。两层分开构造，才能各自断言。
+	// 整段脚本会作为位置参数再被引用一层，因此这里的引号会在最终命令串里出现二次转义。
+	// 两层分开构造，才能各自断言。
+	const script = quoteShellArgument(buildRemoteScript(command, options));
 	// `${SHELL:-/bin/sh}`：远端账号可能没设 SHELL（cron、部分容器镜像），缺省回落到 sh。
-	return `exec "\${SHELL:-/bin/sh}" -l -c ${quoteShellArgument(buildRemoteScript(command, options))}`;
+	if (options.processToken === undefined) {
+		return `/bin/sh -c 'exec "\${SHELL:-/bin/sh}" -l -c "$1"' vetta ${script}`;
+	}
+	assertProcessToken(options.processToken);
+	const launcher = [
+		`f="\${TMPDIR:-/tmp}/${options.processToken}"`,
+		// 记进程组而不是 pid：用户命令会派生子进程（npm → node → esbuild），只杀领头的
+		// 那个会把其余的留成孤儿。sshd 为无 pty 的会话调用过 setsid()，所以这个组里只有
+		// 本条命令的进程。拿不到 pgid（精简版 ps）时退回自己的 pid。
+		`g=$(ps -o pgid= -p $$ 2>/dev/null | tr -d ' ')`,
+		`printf %s "\${g:-$$}" > "$f"`,
+		`"\${SHELL:-/bin/sh}" -l -c "$1"`,
+		"s=$?",
+		`rm -f -- "$f"`,
+		"exit $s",
+	].join("\n");
+	return `/bin/sh -c ${quoteShellArgument(launcher)} vetta ${script}`;
+}
+
+/**
+ * 终止一条带 `processToken` 启动的命令及其派生的全部进程。
+ *
+ * 必须有这一步：`ssh -T` 不分配 pty，本地中止 ssh 只是关掉通道，远端进程**不会**收到
+ * SIGHUP——没有控制终端就没有挂断信号。它要么活到下一次往已关闭的 stdout 写入时被
+ * SIGPIPE 杀掉，要么（不产生输出的进程）永远留在远端。
+ *
+ * 先 TERM 再 KILL：给 dev server 一次清理端口和临时文件的机会。
+ */
+export function buildKillCommand(processToken: string): string {
+	assertProcessToken(processToken);
+	const script = [
+		`f="\${TMPDIR:-/tmp}/${processToken}"`,
+		`g=$(cat "$f" 2>/dev/null) || exit 0`,
+		`rm -f -- "$f"`,
+		// 只接受大于 1 的纯数字：`kill -- -1` 会杀掉该用户的所有进程。
+		`case "$g" in ''|*[!0-9]*|0|1) exit 0 ;; esac`,
+		`kill -TERM -- "-$g" 2>/dev/null || kill -TERM "$g" 2>/dev/null || exit 0`,
+		"i=0",
+		`while [ $i -lt 20 ] && kill -0 -- "-$g" 2>/dev/null; do sleep 0.1; i=$((i+1)); done`,
+		`kill -KILL -- "-$g" 2>/dev/null`,
+		"exit 0",
+	].join("\n");
+	return `/bin/sh -c ${quoteShellArgument(script)}`;
+}
+
+const PROCESS_TOKEN_PATTERN = /^[A-Za-z0-9._-]+$/;
+
+function assertProcessToken(token: string): void {
+	if (!PROCESS_TOKEN_PATTERN.test(token)) {
+		throw new Error(`Invalid remote process token: ${token}`);
+	}
 }
 
 /** {@link buildRemoteCommand} 交给登录 shell 的那段脚本，未经外层引用。 */

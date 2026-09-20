@@ -1,7 +1,9 @@
+import { randomBytes } from "node:crypto";
 import { parseRemoteDirectoryListing, type RemoteDirectoryEntry } from "./directory-listing.js";
 import { SshOperationAbortedError, SshRemoteCommandError, SshTransportError } from "./errors.js";
 import { SSH_TRANSPORT_FAILURE_EXIT_CODE, type SshProcessResult, type SshProcessRunner } from "./process-runner.js";
 import {
+	buildKillCommand,
 	buildListDirectoryCommand,
 	buildRemoteCommand,
 	buildStatCommand,
@@ -22,6 +24,9 @@ import type { SshHost } from "./ssh-host.js";
  * 主机不可达由 OpenSSH 自己的 `ConnectTimeout` 兜底（见 buildSshArgv），不依赖这里。
  */
 const FIRST_COMMAND_TIMEOUT_MS = 4 * 60 * 1000;
+
+/** 终止远端进程组的那条命令自己的超时：TERM 后最多等 2 秒再 KILL，留足余量。 */
+const REMOTE_KILL_TIMEOUT_MS = 15_000;
 
 export interface RemotePlatform {
 	/** `uname -s`，例如 `Linux`、`Darwin`。 */
@@ -129,8 +134,30 @@ export class SshConnection {
 		// 给的 timeout 是按「这条命令该跑多久」定的——几十秒——会在用户还在输密码时
 		// 把 ssh 杀掉。探测结果有缓存，之后的调用不会多一次往返。
 		await this.probePlatform(options.signal);
-		const result = await this.run(buildRemoteCommand(command, { cwd: options.cwd, env: options.env }), options);
-		return { exitCode: result.exitCode ?? 0, stdout: result.stdout, stderr: result.stderr };
+		const processToken = `vetta-exec-${randomBytes(8).toString("hex")}`;
+		let result: SshProcessResult;
+		try {
+			result = await this.run(
+				buildRemoteCommand(command, { cwd: options.cwd, env: options.env, processToken }),
+				options,
+			);
+		} catch (error) {
+			// 本地 ssh 已经被掐掉，但没有 pty 的远端进程不会因此结束，得显式去杀。
+			// 传输故障时同样尝试：连接可能只是这一条通道断了。杀不到就算了，错误照原样抛。
+			if (error instanceof SshOperationAbortedError || error instanceof SshTransportError) {
+				await this.run(buildKillCommand(processToken), { timeoutMs: REMOTE_KILL_TIMEOUT_MS }).catch(() => {});
+			}
+			throw error;
+		}
+		if (result.exitCode === null) {
+			// 本地 ssh 被外部信号杀掉：远端命令的结局不可知，不能报成 0。
+			throw new SshTransportError(
+				`Lost the connection to ${this.host.label} while the command was running.`,
+				this.host.id,
+				result.stderr,
+			);
+		}
+		return { exitCode: result.exitCode, stdout: result.stdout, stderr: result.stderr };
 	}
 
 	async readFile(remotePath: string, signal?: AbortSignal): Promise<Uint8Array> {
@@ -215,7 +242,13 @@ export class SshConnection {
 			env: this.options.env,
 		});
 		if (result.aborted) {
-			throw new SshOperationAbortedError(`Remote operation on ${this.host.label} was cancelled.`, this.host.id);
+			throw new SshOperationAbortedError(
+				result.timedOut
+					? `Remote operation on ${this.host.label} timed out.`
+					: `Remote operation on ${this.host.label} was cancelled.`,
+				this.host.id,
+				result.timedOut ? "timeout" : "aborted",
+			);
 		}
 		// 255 是 OpenSSH 表示连接层失败的保留码。远端命令本身也可能返回 255，两者无法
 		// 完全区分；宁可报成「问不到」——把连接故障误判成「命令失败」会让上层以为拿到了

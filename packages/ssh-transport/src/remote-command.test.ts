@@ -1,18 +1,21 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import {
 	chmodSync,
+	existsSync,
 	lstatSync,
 	mkdtempSync,
 	readdirSync,
 	readFileSync,
+	realpathSync,
 	statSync,
 	symlinkSync,
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
+	buildKillCommand,
 	buildListDirectoryCommand,
 	buildRemoteCommand,
 	buildRemoteScript,
@@ -54,17 +57,76 @@ describe("quoteShellArgument", () => {
 	});
 });
 
-describe("buildRemoteCommand", () => {
-	it("走登录 shell，让 nvm、pyenv 这类只改 profile 的 PATH 生效", () => {
-		// 用正则而不是字面量：`${…}` 写在普通字符串里会被 lint 当成写漏的模板串。
-		expect(buildRemoteCommand("node -v")).toMatch(/^exec "\$\{SHELL:-\/bin\/sh}" -l -c /);
+describe("buildRemoteCommand（在真实 /bin/sh 上执行）", () => {
+	// 引用有两层，断言字符串只能证明「长得像」。真正的合同是：交给 shell 之后，用户命令
+	// 在正确的目录里、由登录 shell 执行，退出码原样回来。
+	const run = (remoteCommand: string, env: NodeJS.ProcessEnv = {}) =>
+		spawnSync("/bin/sh", ["-c", remoteCommand], { encoding: "utf8", env: { ...process.env, ...env } });
+
+	it("走账号的登录 shell，让 nvm、pyenv 这类只改 profile 的 PATH 生效", () => {
+		const dir = mkdtempSync(join(tmpdir(), "vetta-shell-"));
+		const fakeShell = join(dir, "fake-shell");
+		writeFileSync(fakeShell, '#!/bin/sh\nprintf "%s|" "$@"\n');
+		chmodSync(fakeShell, 0o755);
+		expect(run(buildRemoteCommand("node -v"), { SHELL: fakeShell }).stdout).toBe("-l|-c|node -v|");
 	});
 
-	it("整段脚本作为 -c 的单个参数被引用，&& 不会落到外层", () => {
+	it("cd 与用户命令作为一个整体执行，&& 不会落到外层", () => {
 		// 直接把 `cd x && cmd` 摊在 -c 外面，cmd 就跑在了家目录而不是项目里。
-		expect(buildRemoteCommand("npm test", { cwd: "/srv/app" })).toBe(
-			`exec "\${SHELL:-/bin/sh}" -l -c 'cd '\\''/srv/app'\\'' && npm test'`,
+		const dir = realpathSync(mkdtempSync(join(tmpdir(), "vetta it's-")));
+		const result = run(buildRemoteCommand("pwd; exit 3", { cwd: dir }), { SHELL: "/bin/sh" });
+		expect(result.stdout.trim()).toBe(dir);
+		expect(result.status).toBe(3);
+	});
+
+	it("带 processToken 时退出码照旧，结束后不留记号文件", () => {
+		const tmp = mkdtempSync(join(tmpdir(), "vetta-token-"));
+		const result = run(buildRemoteCommand("exit 7", { processToken: "vetta-exec-t1" }), {
+			SHELL: "/bin/sh",
+			TMPDIR: tmp,
+		});
+		expect(result.status).toBe(7);
+		expect(readdirSync(tmp)).toEqual([]);
+	});
+
+	it("processToken 只能是文件名，不能借它写到别处", () => {
+		expect(() => buildRemoteCommand("ls", { processToken: "../x" })).toThrow(/Invalid remote process token/);
+		expect(() => buildKillCommand("a b")).toThrow(/Invalid remote process token/);
+	});
+});
+
+describe("buildKillCommand（在真实 /bin/sh 上执行）", () => {
+	it("连同派生的子进程一起杀掉——只杀领头进程会把 dev server 留成孤儿", async () => {
+		const tmp = mkdtempSync(join(tmpdir(), "vetta-kill-"));
+		const env = { ...process.env, SHELL: "/bin/sh", TMPDIR: tmp };
+		const marker = join(tmp, "child.pid");
+		// detached 让它自成一个会话，与 sshd 为无 pty 会话做的 setsid() 同构。
+		const child = spawn(
+			"/bin/sh",
+			[
+				"-c",
+				buildRemoteCommand(`sh -c 'echo $$ > ${marker}; sleep 60' & sleep 60`, { processToken: "vetta-exec-k1" }),
+			],
+			{ env, detached: true, stdio: "ignore" },
 		);
+		const exited = new Promise<void>((resolve) => child.on("exit", () => resolve()));
+		await vi.waitFor(() => expect(existsSync(marker) && readFileSync(marker, "utf8").trim()).toBeTruthy());
+		const grandchildPid = Number(readFileSync(marker, "utf8").trim());
+
+		execFileSync("/bin/sh", ["-c", buildKillCommand("vetta-exec-k1")], { env });
+
+		await exited;
+		await vi.waitFor(() => expect(() => process.kill(grandchildPid, 0)).toThrow());
+		expect(readdirSync(tmp)).toEqual(["child.pid"]);
+	});
+
+	it("记号文件不存在或内容不是进程号时什么都不做", () => {
+		const tmp = mkdtempSync(join(tmpdir(), "vetta-kill-"));
+		const env = { ...process.env, TMPDIR: tmp };
+		expect(() => execFileSync("/bin/sh", ["-c", buildKillCommand("vetta-exec-none")], { env })).not.toThrow();
+		// `kill -- -1` 会杀掉该用户的全部进程，必须被挡在外面。
+		writeFileSync(join(tmp, "vetta-exec-bad"), "1");
+		expect(() => execFileSync("/bin/sh", ["-c", buildKillCommand("vetta-exec-bad")], { env })).not.toThrow();
 	});
 });
 

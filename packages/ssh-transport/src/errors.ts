@@ -44,6 +44,8 @@ export class SshOperationAbortedError extends Error {
 	constructor(
 		message: string,
 		readonly hostId: string,
+		/** 调用方要据此给出不同的说法：「你取消了」和「跑太久被掐了」不是一回事。 */
+		readonly reason: "aborted" | "timeout" = "aborted",
 	) {
 		super(message);
 		this.name = "SshOperationAbortedError";

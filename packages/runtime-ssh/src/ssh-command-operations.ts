@@ -1,5 +1,5 @@
 import type { ForegroundCommandOperations } from "@vetta/runtime-tools";
-import type { SshConnection } from "@vetta/ssh-transport";
+import { type SshConnection, SshOperationAbortedError } from "@vetta/ssh-transport";
 
 /**
  * Agent 的 bash 工具在远端执行。
@@ -11,18 +11,27 @@ import type { SshConnection } from "@vetta/ssh-transport";
 export function createSshForegroundCommandOperations(connection: SshConnection): ForegroundCommandOperations {
 	return {
 		exec: async (command, cwd, options) => {
-			const result = await connection.exec(command, {
-				cwd,
-				// 本机环境变量不透传远端（ADR-0124）：远端有自己的 PATH、代理和凭据配置，
-				// 把本机的盖上去只会让「在终端里能跑」和「Agent 跑」得到不同结果。
-				env: toStringRecord(options.env),
-				onStdout: options.onData,
-				// stderr 也并进同一条流：bash 工具的合同是「一份合并输出」，分开回传会让
-				// 报错和正常输出在时间上错位。
-				onStderr: options.onData,
-				signal: options.signal,
-				timeoutMs: options.timeout === undefined ? undefined : options.timeout * 1000,
-			});
+			const result = await connection
+				.exec(command, {
+					cwd,
+					// 本机环境变量不透传远端（ADR-0124）：远端有自己的 PATH、代理和凭据配置，
+					// 把本机的盖上去只会让「在终端里能跑」和「Agent 跑」得到不同结果。
+					env: toStringRecord(options.env),
+					onStdout: options.onData,
+					// stderr 也并进同一条流：bash 工具的合同是「一份合并输出」，分开回传会让
+					// 报错和正常输出在时间上错位。
+					onStderr: options.onData,
+					signal: options.signal,
+					timeoutMs: options.timeout === undefined ? undefined : options.timeout * 1000,
+				})
+				.catch((error: unknown) => {
+					// 执行器靠这两个字面量认出取消与超时（与本地实现同一约定），认不出就会把
+					// 已经收到的输出整个丢掉，只留一句看不出原因的报错。
+					if (error instanceof SshOperationAbortedError) {
+						throw new Error(error.reason === "timeout" ? `timeout:${options.timeout}` : "aborted");
+					}
+					throw error;
+				});
 			return { exitCode: result.exitCode };
 		},
 	};

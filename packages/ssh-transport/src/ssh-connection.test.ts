@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { SshOperationAbortedError, SshRemoteCommandError, SshTransportError } from "./errors.js";
 import type { SshProcessInvocation, SshProcessResult, SshProcessRunner } from "./process-runner.js";
-import { buildRemoteCommand, buildWriteFileCommand } from "./remote-command.js";
+import { buildKillCommand, buildRemoteCommand, buildWriteFileCommand } from "./remote-command.js";
 import { SshConnection } from "./ssh-connection.js";
 import type { SshHost } from "./ssh-host.js";
 
@@ -132,6 +132,40 @@ describe("失败分类（ADR-0124 执行边界）", () => {
 		expect((error as SshOperationAbortedError).verdict).toBe("unverifiable");
 	});
 
+	it("超时与取消分得开，调用方才能告诉模型「跑太久了」而不是「被取消了」", async () => {
+		const { connection } = connect((remoteCommand) =>
+			remoteCommand.includes("uname")
+				? ok("Linux\nx86_64\n")
+				: { exitCode: null, stdout: new Uint8Array(), stderr: "", aborted: true, timedOut: true },
+		);
+		const error = await connection.exec("make").catch((e: unknown) => e);
+		expect((error as SshOperationAbortedError).reason).toBe("timeout");
+	});
+
+	it("命令被掐断后去远端把进程组杀掉：没有 pty，关通道不会让远端进程结束", async () => {
+		const { connection, calls } = connect((remoteCommand) => {
+			if (remoteCommand.includes("uname")) return ok("Linux\nx86_64\n");
+			if (remoteCommand.includes("npm run dev")) {
+				return { exitCode: null, stdout: new Uint8Array(), stderr: "", aborted: true };
+			}
+			return ok("");
+		});
+		await connection.exec("npm run dev").catch(() => {});
+		const commands = calls.map((call) => String(call.argv[call.argv.length - 1]));
+		const token = commands[1].match(/vetta-exec-[0-9a-f]+/)?.[0] ?? "";
+		expect(token).not.toBe("");
+		expect(commands[2]).toBe(buildKillCommand(token));
+	});
+
+	it("本地 ssh 被外部杀掉时不报成功：远端命令的结局不可知", async () => {
+		const { connection } = connect((remoteCommand) =>
+			remoteCommand.includes("uname")
+				? ok("Linux\nx86_64\n")
+				: { exitCode: null, stdout: new Uint8Array(), stderr: "", aborted: false },
+		);
+		await expect(connection.exec("make")).rejects.toBeInstanceOf(SshTransportError);
+	});
+
 	it("命令返回非零是 exited——远端确实回答了", async () => {
 		const { connection } = connect(() => ({
 			exitCode: 2,
@@ -173,6 +207,7 @@ describe("用户命令执行", () => {
 		});
 		// 引用语义由 remote-command 的测试守住，这里只证明 cwd 确实被透传下去。
 		const userCommand = calls.map((call) => String(call.argv[call.argv.length - 1])).at(-1);
-		expect(userCommand).toBe(buildRemoteCommand("npm test", { cwd: "/srv/app" }));
+		const processToken = userCommand?.match(/vetta-exec-[0-9a-f]+/)?.[0];
+		expect(userCommand).toBe(buildRemoteCommand("npm test", { cwd: "/srv/app", processToken }));
 	});
 });

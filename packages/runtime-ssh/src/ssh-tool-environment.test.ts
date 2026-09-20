@@ -68,6 +68,10 @@ function createFakeHost(files: Map<string, string>) {
 			}
 
 			// 其余当作用户命令（bash 工具）。
+			if (remoteCommand.includes("sleep 999")) {
+				invocation.onStdout?.(encode("partial output\n"));
+				return { exitCode: null, stdout: new Uint8Array(), stderr: "", aborted: true, timedOut: true };
+			}
 			return ok("remote command ran\n");
 		},
 	};
@@ -172,6 +176,18 @@ describe("远程项目的 Agent 工具", () => {
 		expect(userCommand).toContain("cd '\\''/srv/app'\\''");
 		// 本机的 PATH、代理和凭据不该出现在远端命令里。
 		expect(userCommand).not.toContain("export PATH=");
+	});
+
+	it("bash 超时后告诉模型超时了多久，并保留已经产生的输出", async () => {
+		const { environment } = createEnvironment(new Map());
+
+		const error = await execute(toolByName(environment.registrations, "bash"), {
+			command: "sleep 999",
+			timeout: 5,
+		}).catch((e: unknown) => e);
+
+		expect(String((error as Error).message)).toContain("partial output");
+		expect(String((error as Error).message)).toContain("timed out after 5 seconds");
 	});
 
 	it("不注册会去搜本机磁盘的搜索工具", async () => {

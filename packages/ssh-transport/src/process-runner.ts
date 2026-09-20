@@ -26,6 +26,8 @@ export interface SshProcessResult {
 	readonly stderr: string;
 	/** 因超时或 AbortSignal 终止。与「远端命令返回非零」是不同性质的失败。 */
 	readonly aborted: boolean;
+	/** `aborted` 的原因是 `timeoutMs` 到点，而不是 AbortSignal。 */
+	readonly timedOut?: boolean;
 }
 
 export interface SshProcessRunner {
