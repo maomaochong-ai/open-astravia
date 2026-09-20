@@ -2124,5 +2124,14 @@
   "sshStatusUnknown": "Not connected",
   "sshImportFromConfig": "Import from ssh config",
   "sshImportNone": "No new aliases found. Existing hosts are never overwritten.",
-  "sshImportDone": "Imported {{count}} host(s)."
+  "sshImportDone": "Imported {{count}} host(s).",
+  "sshPromptConfirmTitle": "Confirm this host's identity",
+  "sshPromptSecretTitle": "Credentials needed to connect",
+  "sshPromptHost": "Host: {{host}}",
+  "sshPromptSecretLabel": "Secret",
+  "sshPromptCodeLabel": "Verification code",
+  "sshPromptRemember": "Remember it (encrypted on this machine, filled in next time)",
+  "sshPromptSubmit": "Continue connecting",
+  "sshPromptAccept": "Confirm and connect",
+  "sshPromptReject": "Cancel connection"
 }

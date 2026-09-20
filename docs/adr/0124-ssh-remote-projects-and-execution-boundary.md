@@ -39,7 +39,12 @@ Vetta 当前没有终端、没有 Git 面板、没有 LSP、没有端口转发�
 
 以系统 OpenSSH 二进制为主路径，每主机一条 `ControlMaster` 复用连接。理由是 `~/.ssh/config`、Include、ProxyJump、ProxyCommand、ssh-agent、FIDO 安全密钥、GSSAPI、known_hosts 全部由 OpenSSH 原生支持——用户只要 `ssh host` 能通，Vetta 就能通。传输层定义为接口，Windows 或无系统 ssh 的环境后续可补 `ssh2` 实现。
 
-交互式提示（口令、2FA、主机指纹确认）通过自制 askpass 程序接回 Vetta UI。
+交互式提示（口令、私钥密码、2FA、主机指纹确认）通过自制 askpass 程序接回 Vetta UI：
+系统 `ssh` 的这些提示不读 stdin，只执行 `SSH_ASKPASS` 指向的程序。该程序在运行时生成，
+经一个带 token 的 Unix domain socket 把提示交给主进程，再由全局浮层问用户。
+
+拿不到回传通道时 askpass 必须以非零退出。若此时静默成功，确认类提示会退化为「默认同意」，
+中间人可以静默通过。
 
 ### 远端交付
 
@@ -51,7 +56,7 @@ helper 的安装目录与握手版本使用**语义化协议版本号**，不使
 
 - 主机密钥首次连接必须由用户确认指纹，变更时硬性阻断，不提供 `StrictHostKeyChecking=no` 开关。
 - 凭据复用既有 `CredentialVault` 与 `safeStorage`，配置内只存 `credentialRef`，不存明文口令。
-- keyboard-interactive / MFA 主机，Agent 不得自行发起连接，必须由用户在 UI 完成认证。
+- keyboard-interactive / MFA 主机由用户在 UI 完成认证；一次性验证码不进凭据库。口令与私钥密码仅在用户显式勾选「记住」时写入 `CredentialVault`，且同一轮认证被重复追问即判定存档失效并删除——否则错误的存档会让 OpenSSH 把它连试三次，用户只看到卡住然后失败。
 - agent forwarding 默认关闭，按主机显式开启并提示风险。
 - 本机环境变量不透传远端；远端凭据使用远端自身配置。
 - helper 以登录用户身份运行，不提权，仅通过 stdio 通信，不监听 TCP。

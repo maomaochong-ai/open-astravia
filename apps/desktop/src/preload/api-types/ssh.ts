@@ -1,5 +1,6 @@
 import type { RemoteDirectoryEntry, SshConnectionStatus, SshHost } from "@vetta/ssh-transport";
 import type { SshHostStatusEvent } from "../../shared/ssh-ipc.js";
+import type { SshPromptRequestEvent, SshPromptResponse } from "../../shared/ssh-prompt-ipc.js";
 
 // ─── 远程项目宿主（SSH） ───
 //
@@ -54,4 +55,12 @@ export interface DesktopSshApi {
 	listRemoteDirectory(input: { hostId: string; remotePath?: string }): Promise<SshRemoteListing>;
 	onHostsChanged(listener: () => void): () => void;
 	onHostStatusChanged(listener: (event: SshHostStatusEvent) => void): () => void;
+	/**
+	 * OpenSSH 要用户回答一次提示：远端口令、私钥密码、一次性验证码，或首次主机指纹确认。
+	 * 由全局浮层接管——提示可能由后台的一次工具调用触发，那时用户并不在设置页。
+	 */
+	onPromptRequest(listener: (event: SshPromptRequestEvent) => void): () => void;
+	/** 提示已失效（连接取消或超时），关掉界面即可。 */
+	onPromptCancelled(listener: (id: string) => void): () => void;
+	respondToPrompt(response: SshPromptResponse): void;
 }

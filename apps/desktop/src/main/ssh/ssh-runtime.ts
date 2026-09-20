@@ -10,6 +10,7 @@ import {
 	type SshConnectionStatus,
 } from "@vetta/ssh-transport";
 import { readConfigSync } from "../config/desktop-config-store.js";
+import { resetSshPromptState, resolveAskpassEnvironment } from "./askpass-runtime.js";
 import { broadcastSshHostStatus } from "./ssh-events.js";
 
 let manager: SshConnectionManager | undefined;
@@ -51,7 +52,19 @@ export function getSshConnectionManager(): SshConnectionManager {
 		// 同步读配置：连接可能在任意一次工具调用中途建立，异步读会让这里变成一个
 		// 需要在每个调用点 await 的入口。
 		resolveHost: (hostId) => readConfigSync().sshHosts?.find((host) => host.id === hostId),
-		onStatusChanged: (hostId, status) => broadcastSshHostStatus(hostId, status),
+		// 口令、私钥密码、2FA 和首次主机指纹确认都靠它接到界面上；缺了这套环境变量，
+		// 这些连接只会挂到超时。
+		resolveEnv: (hostId) =>
+			resolveAskpassEnvironment(
+				hostId,
+				(id) => readConfigSync().sshHosts?.find((host) => host.id === id)?.label ?? id,
+			),
+		onStatusChanged: (hostId, status) => {
+			// 连上了就说明这轮认证过了，把「存档凭据已用过」的标记清掉，
+			// 下次连接才会继续优先用存档而不是又去问用户。
+			if (status === "connected") resetSshPromptState(hostId);
+			broadcastSshHostStatus(hostId, status);
+		},
 	});
 	return manager;
 }

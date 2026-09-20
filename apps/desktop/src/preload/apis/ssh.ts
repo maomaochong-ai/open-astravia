@@ -1,5 +1,6 @@
 import type { IpcRenderer, IpcRendererEvent } from "electron";
 import { SSH_CHANNELS, type SshHostStatusEvent } from "../../shared/ssh-ipc.js";
+import { SSH_PROMPT_CHANNELS, type SshPromptRequestEvent } from "../../shared/ssh-prompt-ipc.js";
 import type { DesktopApi } from "../api.js";
 
 const CHANNELS = {
@@ -36,6 +37,17 @@ export function createSshApi(ipc: IpcRenderer): Pick<DesktopApi, "ssh"> {
 				ipc.on(SSH_CHANNELS.HOST_STATUS, handler);
 				return () => ipc.removeListener(SSH_CHANNELS.HOST_STATUS, handler);
 			},
+			onPromptRequest: (listener) => {
+				const handler = (_event: IpcRendererEvent, payload: SshPromptRequestEvent): void => listener(payload);
+				ipc.on(SSH_PROMPT_CHANNELS.REQUEST, handler);
+				return () => ipc.removeListener(SSH_PROMPT_CHANNELS.REQUEST, handler);
+			},
+			onPromptCancelled: (listener) => {
+				const handler = (_event: IpcRendererEvent, id: string): void => listener(id);
+				ipc.on(SSH_PROMPT_CHANNELS.CANCEL, handler);
+				return () => ipc.removeListener(SSH_PROMPT_CHANNELS.CANCEL, handler);
+			},
+			respondToPrompt: (response) => ipc.send(SSH_PROMPT_CHANNELS.RESPOND, response),
 		},
 	};
 }

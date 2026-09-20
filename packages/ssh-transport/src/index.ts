@@ -1,3 +1,11 @@
+export {
+	buildAskpassEnvironment,
+	classifySshPrompt,
+	isRememberableSshPrompt,
+	type SshAskpassEnvironment,
+	type SshPromptKind,
+	type SshPromptRequest,
+} from "./askpass.js";
 export { parseRemoteDirectoryListing, type RemoteDirectoryEntry } from "./directory-listing.js";
 export {
 	RemoteProjectNotSupportedError,

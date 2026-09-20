@@ -2124,5 +2124,14 @@
   "sshStatusUnknown": "未连接",
   "sshImportFromConfig": "从 ssh config 导入",
   "sshImportNone": "没有发现可导入的新别名。已登记的主机不会被覆盖。",
-  "sshImportDone": "已导入 {{count}} 台主机。"
+  "sshImportDone": "已导入 {{count}} 台主机。",
+  "sshPromptConfirmTitle": "确认这台主机的身份",
+  "sshPromptSecretTitle": "需要凭据才能连接",
+  "sshPromptHost": "主机：{{host}}",
+  "sshPromptSecretLabel": "口令",
+  "sshPromptCodeLabel": "验证码",
+  "sshPromptRemember": "记住它（加密保存在本机，下次自动填）",
+  "sshPromptSubmit": "继续连接",
+  "sshPromptAccept": "确认并连接",
+  "sshPromptReject": "取消连接"
 }

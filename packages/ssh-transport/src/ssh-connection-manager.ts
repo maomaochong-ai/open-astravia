@@ -10,7 +10,13 @@ export interface SshConnectionManagerOptions {
 	readonly controlDirectory: string;
 	/** 查主机。返回 undefined 表示这台主机已经被用户删掉。 */
 	readonly resolveHost: (hostId: string) => SshHost | undefined;
-	readonly env?: Readonly<Record<string, string>>;
+	/**
+	 * 传给 ssh 子进程的额外环境变量。
+	 *
+	 * 按 hostId 生成而不是全局共享一份：askpass 要靠环境变量知道这次提示属于哪台主机，
+	 * 才能取对凭据、也才能在弹窗里说清是谁在要口令。
+	 */
+	readonly resolveEnv?: (hostId: string) => Readonly<Record<string, string>> | undefined;
 	readonly onStatusChanged?: (hostId: string, status: SshConnectionStatus) => void;
 }
 
@@ -47,7 +53,7 @@ export class SshConnectionManager {
 		const connection = new SshConnection(host, {
 			runner: this.options.runner,
 			controlPath: buildControlPath(this.options.controlDirectory, hostId),
-			env: this.options.env,
+			env: this.options.resolveEnv?.(hostId),
 		});
 		this.connections.set(hostId, connection);
 		return connection;
