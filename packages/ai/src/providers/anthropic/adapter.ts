@@ -161,20 +161,15 @@ async function produceAnthropicStream(
 		}
 		stream.push({ type: "done", reason: output.stopReason, message: output });
 	} catch (error) {
-		const normalizedError = normalizeAnthropicSdkStreamError(error, receivedProviderEvent, model);
-		failLanguageModelStream(
-			stream,
-			model,
-			options?.signal?.aborted
-				? new AIAbortedError(undefined, { provider: model.provider, modelId: model.id, cause: normalizedError })
-				: normalizeProviderError(normalizedError, model),
-			options?.signal?.aborted ? "aborted" : "error",
-			{
-				...output,
-				stopReason: options?.signal?.aborted ? "aborted" : "error",
-				errorMessage: normalizedError instanceof Error ? normalizedError.message : String(normalizedError),
-			},
-		);
+		const normalizedSdkError = normalizeAnthropicSdkStreamError(error, receivedProviderEvent, model);
+		const normalizedError = options?.signal?.aborted
+			? new AIAbortedError(undefined, { provider: model.provider, modelId: model.id, cause: normalizedSdkError })
+			: normalizeProviderError(normalizedSdkError, model);
+		failLanguageModelStream(stream, model, normalizedError, options?.signal?.aborted ? "aborted" : "error", {
+			...output,
+			stopReason: options?.signal?.aborted ? "aborted" : "error",
+			errorMessage: normalizedError.message,
+		});
 	}
 }
 

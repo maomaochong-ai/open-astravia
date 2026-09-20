@@ -27,6 +27,7 @@ export function logRuntimeSessionError(event: RuntimeSessionErrorEvent, logger: 
 		...(details?.provider === undefined ? {} : { provider: details.provider }),
 		...(details?.modelId === undefined ? {} : { modelId: details.modelId }),
 		...(details?.requestId === undefined ? {} : { requestId: details.requestId }),
+		...(details?.providerCode === undefined ? {} : { providerCode: details.providerCode }),
 	});
 }
 

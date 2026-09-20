@@ -115,19 +115,14 @@ async function produceResponses<TApi extends Api, TOptions extends StreamOptions
 		}
 		stream.push({ type: "done", reason: output.stopReason, message: output });
 	} catch (error) {
-		failLanguageModelStream(
-			stream,
-			model,
-			signal?.aborted
-				? new AIAbortedError(undefined, { provider: model.provider, modelId: model.id, cause: error })
-				: normalizeProviderError(error, model),
-			signal?.aborted ? "aborted" : "error",
-			{
-				...output,
-				stopReason: signal?.aborted ? "aborted" : "error",
-				errorMessage: error instanceof Error ? error.message : String(error),
-			},
-		);
+		const normalizedError = signal?.aborted
+			? new AIAbortedError(undefined, { provider: model.provider, modelId: model.id, cause: error })
+			: normalizeProviderError(error, model);
+		failLanguageModelStream(stream, model, normalizedError, signal?.aborted ? "aborted" : "error", {
+			...output,
+			stopReason: signal?.aborted ? "aborted" : "error",
+			errorMessage: normalizedError.message,
+		});
 	}
 }
 

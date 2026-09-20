@@ -24,6 +24,7 @@ describe("runtime session error logger", () => {
 						provider: "openai",
 						modelId: "gpt-test",
 						requestId: "request-1",
+						providerCode: "rate_limit_exceeded",
 					},
 				},
 			} satisfies ErrorEvent,
@@ -43,6 +44,7 @@ describe("runtime session error logger", () => {
 			provider: "openai",
 			modelId: "gpt-test",
 			requestId: "request-1",
+			providerCode: "rate_limit_exceeded",
 		});
 	});
 

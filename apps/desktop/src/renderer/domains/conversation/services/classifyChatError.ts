@@ -29,7 +29,7 @@ const RATE_LIMIT = /\b429\b|rate.?limit|too many requests|overloaded|请求过�
 
 /** 服务端故障：网关或上游 5xx。 */
 const SERVER =
-	/\b5\d{2}\b|service.?unavailable|server error|internal error|bad gateway|upstream.?connect|gateway.?timeout/i;
+	/\b5\d{2}\b|service.?unavailable|server error|internal error|bad gateway|upstream.?connect|gateway.?timeout|no capacity available|model.?capacity.?exhausted/i;
 
 /** 本地网络够不着服务：连不上、断流、超时。 */
 const NETWORK =

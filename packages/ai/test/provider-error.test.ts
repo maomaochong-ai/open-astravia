@@ -122,6 +122,47 @@ describe("normalizeProviderError", () => {
 		});
 	});
 
+	it("extracts Google provider diagnostics from a JSON error message", () => {
+		const payload = {
+			error: {
+				code: 503,
+				message: "No capacity available for model gpt-oss-120b-medium",
+				status: "UNAVAILABLE",
+				details: [{ reason: "MODEL_CAPACITY_EXHAUSTED" }],
+			},
+		};
+		const source = Object.assign(new Error(JSON.stringify(payload)), { name: "ApiError", status: 503 });
+
+		expect(normalizeProviderError(source, model)).toMatchObject({
+			code: "AI_TRANSPORT_FAILED",
+			message: "No capacity available for model gpt-oss-120b-medium",
+			statusCode: 503,
+			providerCode: "MODEL_CAPACITY_EXHAUSTED",
+			responseBodyPreview: JSON.stringify(payload),
+			retryable: true,
+		});
+	});
+
+	it("extracts Anthropic-style nested SDK error diagnostics", () => {
+		const source = Object.assign(new Error("503 upstream request failed"), {
+			status: 503,
+			error: {
+				error: {
+					message: "Provider is overloaded",
+					type: "overloaded_error",
+				},
+			},
+		});
+
+		expect(normalizeProviderError(source, model)).toMatchObject({
+			message: "Provider is overloaded",
+			statusCode: 503,
+			providerCode: "overloaded_error",
+			responseBodyPreview: '{"error":{"message":"Provider is overloaded","type":"overloaded_error"}}',
+			retryable: true,
+		});
+	});
+
 	it.each([
 		[Object.assign(new Error("connection failed"), { name: "APIConnectionError" })],
 		[new TypeError("fetch failed")],

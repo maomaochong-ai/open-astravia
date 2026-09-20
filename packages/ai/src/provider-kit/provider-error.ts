@@ -29,13 +29,14 @@ const SAFE_RESPONSE_HEADERS = new Set([
 export function normalizeProviderError<TApi extends Api>(error: unknown, model: Model<TApi>): AIError {
 	if (isAIError(error)) return error;
 
-	const statusCode = readStatusCode(error);
-	const message = readMessage(error);
-	const providerCode = readProviderCode(error);
+	const structuredError = readStructuredProviderError(error);
+	const statusCode = readStatusCode(error) ?? structuredError?.statusCode;
+	const message = structuredError?.message ?? readMessage(error);
+	const providerCode = structuredError?.providerCode ?? readProviderCode(error);
 	const responseHeaders = readResponseHeaders(error);
 	const requestId = readRequestId(error, responseHeaders);
 	const retryAfterMs = readRetryAfterMs(error, responseHeaders);
-	const responseBodyPreview = readResponseBodyPreview(error);
+	const responseBodyPreview = readResponseBodyPreview(error) ?? structuredError?.responseBodyPreview;
 	const url = readUrl(error);
 	const phase = readPhase(error);
 	const retryableOverride = readRetryableOverride(error);
@@ -103,6 +104,87 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
 	return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : undefined;
 }
 
+interface StructuredProviderError {
+	readonly message?: string;
+	readonly providerCode?: string;
+	readonly statusCode?: number;
+	readonly responseBodyPreview: string;
+}
+
+function readStructuredProviderError(error: unknown): StructuredProviderError | undefined {
+	const record = asRecord(error);
+	if (!record) return undefined;
+	const candidates = [
+		record.responseBody,
+		record.body,
+		asRecord(record.response)?.body,
+		record.data,
+		record.error,
+		record.message,
+	];
+	for (const candidate of candidates) {
+		const parsed = parseStructuredErrorCandidate(candidate);
+		if (parsed) return parsed;
+	}
+	return undefined;
+}
+
+function parseStructuredErrorCandidate(value: unknown, depth = 0): StructuredProviderError | undefined {
+	let parsed: unknown = value;
+	let responseBodyPreview: string;
+	if (typeof value === "string") {
+		const trimmed = value.trim();
+		if (!trimmed.startsWith("{")) return undefined;
+		try {
+			parsed = JSON.parse(trimmed);
+		} catch {
+			return undefined;
+		}
+		responseBodyPreview = truncateResponseBodyPreview(trimmed);
+	} else {
+		const record = asRecord(value);
+		if (!record) return undefined;
+		try {
+			responseBodyPreview = truncateResponseBodyPreview(JSON.stringify(record));
+		} catch {
+			return undefined;
+		}
+	}
+
+	const root = asRecord(parsed);
+	if (!root) return undefined;
+	const body = asRecord(root.error) ?? root;
+	const message = typeof body.message === "string" && body.message.length > 0 ? body.message : undefined;
+	const details = Array.isArray(body.details) ? body.details : [];
+	const reason = details
+		.map((detail) => asRecord(detail)?.reason)
+		.find((candidate): candidate is string => typeof candidate === "string" && candidate.length > 0);
+	const fallbackCode = [body.code, body.type, body.status].find(
+		(candidate): candidate is string => typeof candidate === "string" && candidate.length > 0,
+	);
+	const numericCode = typeof body.code === "number" ? body.code : undefined;
+	const statusCode = numericCode !== undefined && numericCode >= 100 && numericCode <= 599 ? numericCode : undefined;
+	const nested =
+		depth < 2 && typeof body.message === "string"
+			? parseStructuredErrorCandidate(body.message, depth + 1)
+			: undefined;
+	if (nested) {
+		return {
+			message: nested.message,
+			providerCode: nested.providerCode ?? reason ?? fallbackCode,
+			statusCode: statusCode ?? nested.statusCode,
+			responseBodyPreview,
+		};
+	}
+	if (!message && !reason && !fallbackCode && statusCode === undefined) return undefined;
+	return {
+		message,
+		providerCode: reason ?? fallbackCode,
+		statusCode,
+		responseBodyPreview,
+	};
+}
+
 function readStatusCode(error: unknown): number | undefined {
 	const record = asRecord(error);
 	if (!record) return undefined;
@@ -133,6 +215,15 @@ function readProviderCode(error: unknown): string | undefined {
 	if (data && typeof data.code === "string") return data.code;
 	const body = asRecord(record.error);
 	if (body && typeof body.code === "string") return body.code;
+	if (
+		typeof record.name === "string" &&
+		record.name.length > 0 &&
+		!/^(?:Error|TypeError|RangeError|AbortError|FetchError|APIError|ApiError|APIConnectionError|APITimeoutError)$/u.test(
+			record.name,
+		)
+	) {
+		return record.name;
+	}
 	return undefined;
 }
 
@@ -176,6 +267,10 @@ function readResponseBodyPreview(error: unknown): string | undefined {
 			text = "[unserializable response body]";
 		}
 	}
+	return truncateResponseBodyPreview(text);
+}
+
+function truncateResponseBodyPreview(text: string): string {
 	return text.length > RESPONSE_BODY_PREVIEW_LIMIT ? `${text.slice(0, RESPONSE_BODY_PREVIEW_LIMIT)}…` : text;
 }
 

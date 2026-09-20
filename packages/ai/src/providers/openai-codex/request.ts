@@ -143,7 +143,7 @@ export async function fetchCodexResponse(
 			continue;
 		}
 		const info = parseErrorResponse(response.status, response.statusText, errorText);
-		throw createHttpError(info.friendlyMessage || info.message, response);
+		throw createHttpError(info.friendlyMessage || info.message, response, errorText);
 	}
 	throw lastError ?? new Error("Failed after retries");
 }
@@ -212,9 +212,10 @@ function parseErrorResponse(
 	return { message, friendlyMessage };
 }
 
-function createHttpError(message: string, response: Response): Error {
-	const error = new Error(message) as Error & { status: number; responseHeaders: Headers };
+function createHttpError(message: string, response: Response, responseBody: string): Error {
+	const error = new Error(message) as Error & { status: number; responseHeaders: Headers; responseBody: string };
 	error.status = response.status;
 	error.responseHeaders = response.headers;
+	error.responseBody = responseBody;
 	return error;
 }

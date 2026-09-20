@@ -22,7 +22,7 @@ export function isRetryableRuntimeError(message: string): boolean {
 	) {
 		return false;
 	}
-	return /overloaded|rate.?limit|too many requests|429|500|502|503|504|service.?unavailable|server error|internal error|connection.?error|connection.?refused|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|EPIPE|EHOSTUNREACH|ENETUNREACH|other side closed|fetch failed|upstream.?connect|reset before headers|terminated|retry delay/i.test(
+	return /overloaded|rate.?limit|too many requests|no capacity available|model.?capacity.?exhausted|429|500|502|503|504|service.?unavailable|server error|internal error|connection.?error|connection.?refused|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|EPIPE|EHOSTUNREACH|ENETUNREACH|other side closed|fetch failed|upstream.?connect|reset before headers|terminated|retry delay/i.test(
 		message,
 	);
 }

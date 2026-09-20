@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { getEnvApiKey } from "../../env-api-keys.js";
 import { requireProviderCredential } from "../../provider-kit/index.js";
 import type { ModelCallRequest } from "../../runtime/language-model-adapter.js";
-import { resolveProviderMaxAttempts } from "../retry-policy.js";
+import { resolveProviderMaxRetries } from "../retry-policy.js";
 import type { GoogleOptions } from "./options.js";
 
 export function createGoogleClient(request: ModelCallRequest<"google-generative-ai", GoogleOptions>): GoogleGenAI {
@@ -11,8 +11,10 @@ export function createGoogleClient(request: ModelCallRequest<"google-generative-
 		baseUrl?: string;
 		apiVersion?: string;
 		headers?: Record<string, string>;
-		retryOptions: { attempts: number };
-	} = { retryOptions: { attempts: resolveProviderMaxAttempts(options?.maxRetries) } };
+	} = {};
+	// Validate here even though retries run at our adapter boundary. @google/genai's
+	// retry wrapper discards the final status and response body before parsing it.
+	resolveProviderMaxRetries(options?.maxRetries);
 	if (model.baseUrl) {
 		httpOptions.baseUrl = model.baseUrl;
 		httpOptions.apiVersion = "";

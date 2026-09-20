@@ -156,10 +156,16 @@ export async function processResponsesStream<TApi extends Api>(
 			applyCompletedResponse(event.response, output, model, options);
 			receivedTerminalEvent = true;
 		} else if (event.type === "error") {
-			throw new Error(`Error Code ${event.code ?? "unknown"}: ${event.message}`);
+			throw Object.assign(new Error(event.message), {
+				...(event.code ? { code: event.code } : {}),
+				responseBody: { error: { code: event.code, message: event.message, param: event.param } },
+			});
 		} else if (event.type === "response.failed") {
-			const providerMessage = event.response.error?.message;
-			throw new Error(providerMessage || "OpenAI Responses request failed");
+			const providerError = event.response.error;
+			throw Object.assign(new Error(providerError?.message || "OpenAI Responses request failed"), {
+				...(providerError?.code ? { code: providerError.code } : {}),
+				...(providerError ? { responseBody: { error: providerError } } : {}),
+			});
 		}
 	}
 

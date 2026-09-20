@@ -184,8 +184,16 @@ for (const fixture of fixtures) {
 			const response = await fixture.stream(transport.fetch);
 			const settled = await settleResponse(response);
 
-			expect(settled.eventError).toMatchObject({ code: "AI_TRANSPORT_FAILED" });
-			expect(settled.resultError).toMatchObject({ code: "AI_TRANSPORT_FAILED" });
+			expect(settled.eventError).toMatchObject({
+				code: "AI_TRANSPORT_FAILED",
+				message: "provider failed",
+				providerCode: "provider_failed",
+			});
+			expect(settled.resultError).toMatchObject({
+				code: "AI_TRANSPORT_FAILED",
+				message: "provider failed",
+				providerCode: "provider_failed",
+			});
 		});
 
 		it("maps HTTP errors without converting them into successful results", async () => {
@@ -195,8 +203,18 @@ for (const fixture of fixtures) {
 			const response = await fixture.stream(transport.fetch);
 			const settled = await settleResponse(response);
 
-			expect(settled.eventError).toMatchObject({ code: "AI_INVALID_REQUEST", statusCode: 400 });
-			expect(settled.resultError).toMatchObject({ code: "AI_INVALID_REQUEST", statusCode: 400 });
+			expect(settled.eventError).toMatchObject({
+				code: "AI_INVALID_REQUEST",
+				message: "bad request",
+				statusCode: 400,
+				providerCode: "invalid_request_error",
+			});
+			expect(settled.resultError).toMatchObject({
+				code: "AI_INVALID_REQUEST",
+				message: "bad request",
+				statusCode: 400,
+				providerCode: "invalid_request_error",
+			});
 		});
 
 		it("settles an already aborted call without touching transport", async () => {

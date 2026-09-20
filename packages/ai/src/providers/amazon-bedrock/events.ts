@@ -58,15 +58,30 @@ export class BedrockEventReducer {
 			this.#requireMessageStart("metadata");
 			handleMetadata(item.metadata, this.model, this.output);
 		} else if (item.internalServerException) {
-			throw bedrockEventError("Internal server error", item.internalServerException.message, 500);
+			throw bedrockEventError(
+				"Internal server error",
+				item.internalServerException.message,
+				500,
+				"InternalServerException",
+			);
 		} else if (item.modelStreamErrorException) {
-			throw bedrockEventError("Model stream error", item.modelStreamErrorException.message, 500);
+			throw bedrockEventError(
+				"Model stream error",
+				item.modelStreamErrorException.message,
+				500,
+				"ModelStreamErrorException",
+			);
 		} else if (item.validationException) {
-			throw bedrockEventError("Validation error", item.validationException.message, 400);
+			throw bedrockEventError("Validation error", item.validationException.message, 400, "ValidationException");
 		} else if (item.throttlingException) {
-			throw bedrockEventError("Throttling error", item.throttlingException.message, 429);
+			throw bedrockEventError("Throttling error", item.throttlingException.message, 429, "ThrottlingException");
 		} else if (item.serviceUnavailableException) {
-			throw bedrockEventError("Service unavailable", item.serviceUnavailableException.message, 503);
+			throw bedrockEventError(
+				"Service unavailable",
+				item.serviceUnavailableException.message,
+				503,
+				"ServiceUnavailableException",
+			);
 		} else {
 			this.#fail("Received an unknown Bedrock Converse stream event");
 		}
@@ -258,6 +273,11 @@ function mapStopReason(reason: string | undefined): StopReason {
 	}
 }
 
-function bedrockEventError(prefix: string, message: string | undefined, status: number): Error & { status: number } {
-	return Object.assign(new Error(`${prefix}: ${message || "Unknown error"}`), { status });
+function bedrockEventError(
+	prefix: string,
+	message: string | undefined,
+	status: number,
+	code: string,
+): Error & { status: number; code: string } {
+	return Object.assign(new Error(`${prefix}: ${message || "Unknown error"}`), { status, code });
 }
