@@ -347,7 +347,7 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 	private mcpKeyFor(scope: DesktopMcpRuntimeScope): string {
 		const resolvedScope = this.options.resolveMcpRuntimeScope?.(scope) ?? scope;
 		return mcpRuntimeScopeKey({
-			cwd: resolve(resolvedScope.cwd),
+			cwd: normalizeProjectCwd(resolvedScope.cwd, resolve),
 			agentDir: resolvedScope.agentDir ? resolve(resolvedScope.agentDir) : undefined,
 		});
 	}
@@ -358,7 +358,7 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 		if (!this.options.createMcpRuntimeSource) return undefined;
 		const resolvedScope = this.options.resolveMcpRuntimeScope?.(scope) ?? scope;
 		const normalizedScope = {
-			cwd: resolve(resolvedScope.cwd),
+			cwd: normalizeProjectCwd(resolvedScope.cwd, resolve),
 			agentDir: resolvedScope.agentDir ? resolve(resolvedScope.agentDir) : undefined,
 		};
 		const key = mcpRuntimeScopeKey(normalizedScope);

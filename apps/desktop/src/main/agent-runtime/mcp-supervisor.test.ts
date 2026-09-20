@@ -12,6 +12,15 @@ describe("createDesktopMcpInteractionHandlers", () => {
 		});
 	});
 
+	it("advertises no root for a remote project instead of a fabricated local file:// address", async () => {
+		// MCP server 跑在本机；把项目 URI 转成 file:// 会指向本机进程 cwd 下的假目录。
+		const handlers = createDesktopMcpInteractionHandlers({ projectRoot: "ssh://host-1/srv/app" });
+
+		await expect(handlers.roots?.({}, { serverName: "demo", method: "roots/list", round: 1 })).resolves.toEqual({
+			roots: [],
+		});
+	});
+
 	it("does not advertise sampling until an approved host policy is injected", () => {
 		const withoutPolicy = createDesktopMcpInteractionHandlers({ projectRoot: process.cwd() });
 		expect(withoutPolicy.sampling).toBeUndefined();
