@@ -1,4 +1,4 @@
-import type { Dirent, Stats } from "node:fs";
+import type { Dirent } from "node:fs";
 import { cp, lstat, mkdir, open, readdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
@@ -25,6 +25,7 @@ import {
 	getFileRevision,
 	MAX_EDITABLE_TEXT_FILE_SIZE,
 } from "./editable-text.js";
+import type { PreviewFileSource } from "./preview-file-source.js";
 import {
 	allowRemoteProjectRoot,
 	readRemoteDirectory,
@@ -173,23 +174,44 @@ export async function readFilesystemDirectory(dirPath: string): Promise<FsEntry[
 	return results;
 }
 
-export async function readFilesystemFile(filePath: string): Promise<{ content: string; encoding: "utf8" | "base64" }> {
+function openPreviewSource(filePath: string): PreviewFileSource {
 	assertPathReadableForPreview(filePath);
 	const resolved = resolve(filePath);
-	let stats: Stats;
-	try {
-		stats = await stat(resolved);
-	} catch (error: unknown) {
-		if ((error as NodeJS.ErrnoException).code === "ENOENT") return { content: "", encoding: "utf8" };
-		throw error;
-	}
+	return {
+		path: resolved,
+		stat: async () => {
+			try {
+				const stats = await stat(resolved);
+				return { size: stats.size, isFile: stats.isFile() };
+			} catch (error: unknown) {
+				if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+				throw error;
+			}
+		},
+		read: () => readFile(resolved),
+		readHead: async (byteCount) => {
+			const buffer = Buffer.allocUnsafe(byteCount);
+			const handle = await open(resolved, "r");
+			try {
+				const { bytesRead } = await handle.read(buffer, 0, byteCount, 0);
+				return buffer.subarray(0, bytesRead);
+			} finally {
+				await handle.close();
+			}
+		},
+	};
+}
+
+export async function readFilesystemFile(filePath: string): Promise<{ content: string; encoding: "utf8" | "base64" }> {
+	const source = openPreviewSource(filePath);
+	const stats = await source.stat();
+	if (!stats) return { content: "", encoding: "utf8" };
 	if (stats.size > MAX_FILE_SIZE) throw new Error("File too large to preview (>10 MB)");
-	const extension = extname(resolved).slice(1).toLowerCase();
-	if (BINARY_EXTENSIONS.has(extension)) {
-		const buffer = await readFile(resolved);
-		return { content: buffer.toString("base64"), encoding: "base64" };
-	}
-	return { content: await readFile(resolved, "utf8"), encoding: "utf8" };
+	const extension = extname(source.path).slice(1).toLowerCase();
+	const buffer = await source.read();
+	return BINARY_EXTENSIONS.has(extension)
+		? { content: buffer.toString("base64"), encoding: "base64" }
+		: { content: buffer.toString("utf8"), encoding: "utf8" };
 }
 
 /**
@@ -198,26 +220,17 @@ export async function readFilesystemFile(filePath: string): Promise<{ content: s
  * replacement-character-filled text.
  */
 export async function readTextPreviewFile(filePath: string): Promise<FsTextPreviewResult> {
-	assertPathReadableForPreview(filePath);
-	const resolved = resolve(filePath);
-	const stats = await stat(resolved);
-	if (!stats.isFile()) throw new Error("Path is not a file");
+	const source = openPreviewSource(filePath);
+	const stats = await source.stat();
+	if (!stats) throw new Error("Path does not exist");
+	if (!stats.isFile) throw new Error("Path is not a file");
 
-	const probeSize = Math.min(stats.size, MAX_TEXT_PROBE_SIZE);
-	const probeBuffer = Buffer.allocUnsafe(probeSize);
-	const handle = await open(resolved, "r");
-	let bytesRead = 0;
-	try {
-		({ bytesRead } = await handle.read(probeBuffer, 0, probeSize, 0));
-	} finally {
-		await handle.close();
-	}
-	const probe = probeBuffer.subarray(0, bytesRead);
+	const probe = await source.readHead(Math.min(stats.size, MAX_TEXT_PROBE_SIZE));
 	const decodedProbe = stats.size > probe.byteLength ? decodeProbableUtf8Prefix(probe) : decodeProbableUtf8Text(probe);
 	if (!decodedProbe) return { status: "binary", size: stats.size };
 	if (stats.size > MAX_FILE_SIZE) throw new Error("File too large to preview (>10 MB)");
 
-	const buffer = await readFile(resolved);
+	const buffer = await source.read();
 	const decoded = decodeProbableUtf8Text(buffer);
 	if (!decoded) return { status: "binary", size: buffer.byteLength };
 	return { status: "text", content: decoded.content, size: buffer.byteLength };
@@ -291,15 +304,14 @@ function detectBinaryMimeType(buffer: Buffer, filePath: string): string {
 export async function readFilesystemBinaryFile(
 	filePath: string,
 ): Promise<{ data: string; mimeType: string; size: number }> {
-	assertPathReadableForPreview(filePath);
-	const resolved = resolve(filePath);
-	const stats = await stat(resolved);
-	if (!stats.isFile()) throw new Error("Path is not a file");
+	const source = openPreviewSource(filePath);
+	const stats = await source.stat();
+	if (!stats?.isFile) throw new Error("Path is not a file");
 	if (stats.size > MAX_BINARY_FILE_SIZE) throw new Error("Binary file too large (>32 MB)");
-	const buffer = await readFile(resolved);
+	const buffer = await source.read();
 	return {
 		data: buffer.toString("base64"),
-		mimeType: detectBinaryMimeType(buffer, resolved),
+		mimeType: detectBinaryMimeType(buffer, source.path),
 		size: buffer.byteLength,
 	};
 }
