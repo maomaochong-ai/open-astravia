@@ -78,6 +78,32 @@ export interface TeamChatViewModel {
 	readonly labels: TeamChatLabels;
 }
 
+/** Input-area slice kept independent from the high-frequency Team feed. */
+export type TeamComposerViewModel = Pick<
+	TeamChatViewModel,
+	| "activeSessionId"
+	| "attachments"
+	| "canSend"
+	| "compactingByRuntime"
+	| "contextUsage"
+	| "contextUsagesByRuntime"
+	| "draft"
+	| "draftMemberMentions"
+	| "editorEnabled"
+	| "executionMode"
+	| "history"
+	| "isCompacting"
+	| "labels"
+	| "leaderMemberId"
+	| "memberRuntimeIds"
+	| "members"
+	| "modelKey"
+	| "reasoning"
+	| "runtimeSessionIds"
+	| "status"
+	| "workspace"
+>;
+
 export interface TeamChatActions {
 	readonly setDraft: (draft: string, segments?: readonly InputSegment[]) => void;
 	readonly selectFiles: () => Promise<void>;

@@ -4,7 +4,7 @@ import { useChatExportHostModel } from "../hooks/useChatExportHostModel";
 import { ExportMessageList } from "./MessageList";
 
 interface ChatExportHostProps {
-	messages: ChatConversationItem[];
+	messages: readonly ChatConversationItem[];
 	title: string;
 	onFinished: () => void;
 }

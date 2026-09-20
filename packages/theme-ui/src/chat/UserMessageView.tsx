@@ -2,7 +2,7 @@ import { motion } from "motion/react";
 import type { HTMLMotionProps, Transition } from "motion/react";
 import { Slot } from "radix-ui";
 import type { ButtonHTMLAttributes, ComponentPropsWithoutRef, JSX, MouseEvent, ReactNode } from "react";
-import { forwardRef, useCallback, useLayoutEffect, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 const HIDDEN_VISUAL_STATE = { opacity: 0, scale: 0.82, x: 14, y: 12 };
 const VISIBLE_VISUAL_STATE = { opacity: 1, scale: 1, x: 0, y: 0 };
@@ -21,6 +21,40 @@ const TEXT_TRANSITION = {
 const MESSAGE_STYLE = { originX: 1, originY: 1 };
 const USER_MESSAGE_COLLAPSED_LINES = 10;
 const USER_MESSAGE_COLLAPSED_MAX_HEIGHT = `${USER_MESSAGE_COLLAPSED_LINES * 1.6}em`;
+
+const pendingOverflowMeasurements = new Set<() => void>();
+let overflowPaintFrame: number | null = null;
+let overflowMeasurementFrame: number | null = null;
+
+/** Batch geometry reads from all newly mounted history rows after their first paint. */
+function scheduleOverflowMeasurement(measure: () => void): () => void {
+	pendingOverflowMeasurements.add(measure);
+	if (overflowPaintFrame === null && overflowMeasurementFrame === null) {
+		overflowPaintFrame = window.requestAnimationFrame(() => {
+			overflowPaintFrame = null;
+			overflowMeasurementFrame = window.requestAnimationFrame(() => {
+				overflowMeasurementFrame = null;
+				const measurements = [...pendingOverflowMeasurements];
+				pendingOverflowMeasurements.clear();
+				for (const runMeasurement of measurements) runMeasurement();
+			});
+		});
+	}
+
+	return () => {
+		pendingOverflowMeasurements.delete(measure);
+		if (pendingOverflowMeasurements.size === 0) {
+			if (overflowPaintFrame !== null) {
+				window.cancelAnimationFrame(overflowPaintFrame);
+				overflowPaintFrame = null;
+			}
+			if (overflowMeasurementFrame !== null) {
+				window.cancelAnimationFrame(overflowMeasurementFrame);
+				overflowMeasurementFrame = null;
+			}
+		}
+	};
+}
 
 export type UserMessageEntryState = "static" | "hidden" | "enter";
 
@@ -57,9 +91,7 @@ export function UserMessageText({
 	const measureOverflow = useCallback(() => {
 		const content = contentRef.current;
 		if (!content) return;
-		const fontSize = Number.parseFloat(window.getComputedStyle(content).fontSize);
-		const collapsedHeight = fontSize * 1.6 * USER_MESSAGE_COLLAPSED_LINES;
-		setCanExpand(content.scrollHeight > collapsedHeight + 1);
+		setCanExpand(content.scrollHeight > content.clientHeight + 1);
 	}, []);
 
 	// Expand is sticky for the lifetime of this mount (session switch / refresh remounts).
@@ -68,17 +100,24 @@ export function UserMessageText({
 		setExpanded(false);
 	}, [contentKey]);
 
-	useLayoutEffect(() => {
-		measureOverflow();
+	useEffect(() => {
 		const content = contentRef.current;
 		if (!content) return;
-		const observer = new ResizeObserver(measureOverflow);
+		let cancelMeasurement = scheduleOverflowMeasurement(measureOverflow);
+		const observer = new ResizeObserver(() => {
+			cancelMeasurement();
+			cancelMeasurement = scheduleOverflowMeasurement(measureOverflow);
+		});
 		observer.observe(content);
-		return () => observer.disconnect();
-	}, [measureOverflow, contentKey, children]);
+		return () => {
+			cancelMeasurement();
+			observer.disconnect();
+		};
+	}, [measureOverflow, contentKey]);
 
 	return (
 		<div
+			ref={contentRef}
 			className="relative min-w-0 max-w-full overflow-hidden"
 			style={{ maxHeight: expanded ? undefined : USER_MESSAGE_COLLAPSED_MAX_HEIGHT }}
 		>
@@ -86,7 +125,6 @@ export function UserMessageText({
 			    给每条都套一层动画组件只是白付出订阅与逐帧调度的开销。 */}
 			{shouldAnimateIn || shouldHoldHidden ? (
 				<motion.div
-					ref={contentRef}
 					className="min-w-0 max-w-full"
 					initial={shouldAnimateIn ? TEXT_INITIAL : false}
 					animate={shouldHoldHidden ? TEXT_INITIAL : TEXT_VISIBLE}
@@ -95,7 +133,7 @@ export function UserMessageText({
 					{children}
 				</motion.div>
 			) : (
-				<div ref={contentRef} className="min-w-0 max-w-full">
+				<div className="min-w-0 max-w-full">
 					{children}
 				</div>
 			)}

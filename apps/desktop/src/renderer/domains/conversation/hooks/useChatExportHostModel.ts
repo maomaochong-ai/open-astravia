@@ -23,7 +23,7 @@ export function useChatExportHostModel({
 	title,
 	onFinished,
 }: {
-	messages: ChatConversationItem[];
+	messages: readonly ChatConversationItem[];
 	title: string;
 	onFinished: () => void;
 }): ChatExportHostModel {

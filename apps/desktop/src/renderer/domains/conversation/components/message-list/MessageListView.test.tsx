@@ -146,6 +146,39 @@ describe("MessageListView viewport phases", () => {
 		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 600, bottom: 200 });
 	});
 
+	it("恢复已测量会话时先只渲染可见区域，再扩大屏幕外缓冲", () => {
+		const restoreStateFrom = { scrollTop: 320, ranges: [] };
+		const initialBase = props("initial");
+		const initial = {
+			...initialBase,
+			model: {
+				...initialBase.model,
+				scroll: { ...initialBase.model.scroll, restoreStateFrom },
+			},
+		};
+		const { rerender } = render(<MessageListView {...initial} />);
+
+		expect(screen.getByTestId("full-message").textContent).toBe("message-1");
+		expect(captured.virtuosoProps?.restoreStateFrom).toEqual({ scrollTop: 320, ranges: [] });
+		expect(captured.virtuosoProps?.overscan).toBe(0);
+		expect(captured.virtuosoProps?.minOverscanItemCount).toEqual({ top: 0, bottom: 0 });
+		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 0, bottom: 0 });
+
+		const expandedBase = props("expanded");
+		const expanded = {
+			...expandedBase,
+			model: {
+				...expandedBase.model,
+				scroll: { ...expandedBase.model.scroll, restoreStateFrom },
+			},
+		};
+		rerender(<MessageListView {...expanded} />);
+
+		expect(captured.virtuosoProps?.overscan).toBe(400);
+		expect(captured.virtuosoProps?.minOverscanItemCount).toEqual({ top: 12, bottom: 4 });
+		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 600, bottom: 200 });
+	});
+
 	it("消息从乐观状态规范化为持久化状态时保留可见 DOM 行", () => {
 		const initial = props("expanded", true);
 		initial.model.messages = [

@@ -152,7 +152,8 @@ export function useTeamChatModel(
 				? serializeInputSegments(segments)
 				: { text: next, memberMentions: [], tokens: [] };
 			setMemberMentionsByTeam((current) => ({ ...current, [draftScope]: serialized.memberMentions }));
-			setSelectedMemberIds([...new Set(serialized.memberMentions.map((mention) => mention.participantId))]);
+			const nextMemberIds = [...new Set(serialized.memberMentions.map((mention) => mention.participantId))];
+			setSelectedMemberIds((current) => (sameStrings(current, nextMemberIds) ? current : nextMemberIds));
 			const derived = deriveAttachments(activeSegments).map((attachment) => ({
 				path: attachment.path,
 				name: pathBasename(attachment.path),
@@ -906,10 +907,29 @@ export function useTeamChatModel(
 	// 自有工作空间标成 "conversation"，scope_use:["project"] 的插件就会出现「工具在
 	// Team 里可用、页签却永不上栏」的错位（scope_use 是 fail-closed 的）。
 	const pluginScenario: ConversationScenario = "project";
+	const feedKey = `${session?.id ?? preferredSessionId ?? teamId}:${memberViewId ?? "team"}`;
+	const workspace = useMemo(
+		() =>
+			createActivityWorkspace(
+				session?.workspaceId ?? `agent-team:${teamId}`,
+				session?.cwd ?? null,
+				activityRuntimeIds,
+			),
+		[activityRuntimeIds, session?.cwd, session?.workspaceId, teamId],
+	);
+	const runtimeSessionIds = useMemo(() => Object.values(memberRuntimeIds), [memberRuntimeIds]);
+	const sessionOptions = useMemo(
+		() =>
+			sessions.map((item, index) => ({
+				id: item.id,
+				label: item.title || t("chat.sessionLabel", { index: sessions.length - index }),
+			})),
+		[sessions, t],
+	);
 
 	const model = useMemo<TeamChatViewModel>(
 		() => ({
-			feedKey: `${session?.id ?? preferredSessionId ?? teamId}:${memberViewId ?? "team"}`,
+			feedKey,
 			title: team ? teamDisplayName(team, t) : t("teams.title"),
 			status: routeHandoff && !session ? "sending" : status,
 			draft,
@@ -927,14 +947,10 @@ export function useTeamChatModel(
 					(draft.trim() || attachments.length > 0) &&
 					!visiblePending,
 			),
-			workspace: createActivityWorkspace(
-				session?.workspaceId ?? `agent-team:${teamId}`,
-				session?.cwd ?? null,
-				activityRuntimeIds,
-			),
+			workspace,
 			pluginScenario,
 			activeSessionId: session?.id ?? (routeHandoff || pending ? (preferredSessionId ?? null) : null),
-			runtimeSessionIds: session ? Object.values(session.memberRuntime).map((runtime) => runtime.sessionId) : [],
+			runtimeSessionIds,
 			memberRuntimeIds,
 			...(memberViewId ? { memberViewId } : {}),
 			executionMode:
@@ -945,15 +961,12 @@ export function useTeamChatModel(
 			isCompacting,
 			modelKey: effectiveModelKey,
 			...(effectiveReasoning ? { reasoning: effectiveReasoning } : {}),
-			sessions: sessions.map((item, index) => ({
-				id: item.id,
-				label: item.title || t("chat.sessionLabel", { index: sessions.length - index }),
-			})),
+			sessions: sessionOptions,
 			sessionActionsDisabled: status === "loading" || Boolean(visiblePending),
 			labels,
 		}),
 		[
-			teamId,
+			feedKey,
 			team,
 			t,
 			status,
@@ -968,7 +981,7 @@ export function useTeamChatModel(
 			pending,
 			preferredSessionId,
 			routeHandoff,
-			sessions,
+			sessionOptions,
 			effectiveModelKey,
 			effectiveReasoning,
 			labels,
@@ -981,7 +994,8 @@ export function useTeamChatModel(
 			createNewSession,
 			snapshot?.display?.executionMode,
 			visiblePending,
-			activityRuntimeIds,
+			runtimeSessionIds,
+			workspace,
 		],
 	);
 	const actions = useMemo<TeamChatActions>(
@@ -1025,6 +1039,10 @@ function mergeAttachments(
 	const byPath = new Map(current.map((attachment) => [attachment.path, attachment]));
 	for (const attachment of additions) byPath.set(attachment.path, attachment);
 	return [...byPath.values()];
+}
+
+function sameStrings(left: readonly string[], right: readonly string[]): boolean {
+	return left === right || (left.length === right.length && left.every((value, index) => value === right[index]));
 }
 
 function toFileAttachment(path: string): TeamAttachmentViewModel {

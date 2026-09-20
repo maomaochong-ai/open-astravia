@@ -1,6 +1,6 @@
 import { cn } from "@shared/lib/utils";
 import { AgentAvatarView } from "@vetta-org/theme-ui/chat";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TeamChatViewModel } from "./teamChatModel";
 
@@ -91,10 +91,11 @@ export function TeamMemberRoster({
 	const labelMinimumRefs = useRef(new Map<string, HTMLSpanElement>());
 	const [labelWidths, setLabelWidths] = useState<Readonly<Record<string, number>>>({});
 
-	useLayoutEffect(() => {
+	useEffect(() => {
 		const container = containerRef.current;
 		const roster = rosterRef.current;
 		if (!container || !roster) return;
+		let frameId: number | null = null;
 
 		const updateLabelWidths = () => {
 			const gap = Number.parseFloat(getComputedStyle(roster).columnGap) || 0;
@@ -122,11 +123,26 @@ export function TeamMemberRoster({
 			setLabelWidths(Object.fromEntries(members.map((member, index) => [member.id, widths[index] ?? 0])));
 		};
 
-		updateLabelWidths();
-		if (typeof ResizeObserver === "undefined") return;
-		const observer = new ResizeObserver(updateLabelWidths);
+		const scheduleLabelWidths = () => {
+			if (frameId !== null) window.cancelAnimationFrame(frameId);
+			frameId = window.requestAnimationFrame(() => {
+				frameId = null;
+				updateLabelWidths();
+			});
+		};
+
+		scheduleLabelWidths();
+		if (typeof ResizeObserver === "undefined") {
+			return () => {
+				if (frameId !== null) window.cancelAnimationFrame(frameId);
+			};
+		}
+		const observer = new ResizeObserver(scheduleLabelWidths);
 		observer.observe(container);
-		return () => observer.disconnect();
+		return () => {
+			observer.disconnect();
+			if (frameId !== null) window.cancelAnimationFrame(frameId);
+		};
 	}, [activeMemberId, leaderMemberId, members, onBackToTeam, onOpenSettings]);
 
 	if (members.length === 0) return null;

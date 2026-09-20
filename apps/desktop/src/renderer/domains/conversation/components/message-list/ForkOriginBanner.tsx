@@ -72,7 +72,7 @@ export interface ForkOriginPlacement {
  * (user + following non-user messages; tip = last assistant/compaction in that turn).
  */
 export function resolveForkOriginPlacement(
-	messages: ChatConversationItem[],
+	messages: readonly ChatConversationItem[],
 	parentEntryId: string | undefined,
 	hasParentSession: boolean,
 ): ForkOriginPlacement | null {

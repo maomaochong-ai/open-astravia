@@ -9,7 +9,7 @@ import type { WorkSegment } from "./progressGroupModel";
 export type { ChatConversationItem };
 
 export interface MessageListProps {
-	messages: ChatConversationItem[];
+	messages: readonly ChatConversationItem[];
 	isStreaming: boolean;
 	workspace: ActivityWorkspace;
 	sessionId?: string | null;
@@ -24,7 +24,7 @@ export interface MessageListProps {
 
 export interface MessageListModel {
 	isStreaming: boolean;
-	messages: ChatConversationItem[];
+	messages: readonly ChatConversationItem[];
 	modelSwitchLabels: Map<string, string>;
 	scroll: MessageListScrollModel;
 	tailMessageId: string | null;

@@ -45,7 +45,7 @@ interface SessionSwitchTrace {
 const traces = new Map<string, SessionSwitchTrace>();
 let currentInteractionId: string | null = null;
 
-function isEnabled(): boolean {
+export function perfSessionSwitchEnabled(): boolean {
 	try {
 		return window.localStorage.getItem(ENABLED_KEY) === "1";
 	} catch {
@@ -60,7 +60,7 @@ function now(): number {
 /** 已有会话打开动作的起点；即使未启用诊断也返回跨进程关联 id。 */
 export function perfSessionSwitchBegin(trigger: string): string {
 	const interactionId = crypto.randomUUID();
-	if (!isEnabled()) return interactionId;
+	if (!perfSessionSwitchEnabled()) return interactionId;
 
 	const started: SessionSwitchTrace = {
 		interactionId,

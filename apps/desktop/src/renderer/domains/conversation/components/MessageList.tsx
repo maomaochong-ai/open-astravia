@@ -23,7 +23,11 @@ export function MessageList(props: MessageListProps): JSX.Element {
 	const subagentSessionId = props.sessionId && props.sessionId === activeSessionPath ? activeRuntimeId : null;
 	const model = useMessageListModel(props);
 	const markdown = useRendererMarkdownModel(props.workspace.cwd, true, props.workspace.id);
-	const viewportPhase = useProgressiveMessageViewport(props.sessionId ?? null, props.messages.length > 0);
+	const viewportPhase = useProgressiveMessageViewport(
+		props.sessionId ?? null,
+		props.messages.length > 0,
+		model.scroll.restoreStateFrom !== undefined,
+	);
 	return (
 		<RendererMarkdownScope value={markdown}>
 			<SubagentCardsScope sessionId={subagentSessionId}>
