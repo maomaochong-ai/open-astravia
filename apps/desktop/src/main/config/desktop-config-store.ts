@@ -7,6 +7,7 @@ import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
 import { isLanguagePreference, type LanguagePreference } from "../../shared/i18n/config.js";
 import { normalizeShortcutsConfig, type ShortcutsConfig } from "../../shared/shortcuts.js";
 import { isAgentMode } from "../agent-modes/index.js";
+import { DEFAULT_PROXY_CONFIG, type DesktopProxyConfig, normalizeProxyConfig } from "../proxy/proxy-settings.js";
 
 export interface ProjectEntry {
 	path: string;
@@ -44,6 +45,8 @@ export interface DesktopConfig {
 	/** 新建会话的默认工作模式（合法值来自 main/agent-modes 模式注册表，ADR-0071）。会话创建时固化进会话，改这里只影响之后新建的会话。 */
 	defaultAgentMode?: string;
 	experimental?: ExperimentalConfig;
+	/** 应用代理（设置 → 通用设置 → 网络代理）。缺省不启用。 */
+	proxy?: DesktopProxyConfig;
 	imageGeneration?: ImageGenerationConfig;
 	knowledgeBase?: KnowledgeBaseConfig;
 	shortcuts?: ShortcutsConfig;
@@ -96,6 +99,7 @@ const DEFAULT_CONFIG: DesktopConfig = {
 	debugMode: false,
 	notificationsEnabled: true,
 	experimental: { vettaCli: true, agentSkills: true },
+	proxy: { ...DEFAULT_PROXY_CONFIG },
 	imageGeneration: {},
 	shortcuts: { bindings: {} },
 	quickPanel: { trigger: "none", postSendBehavior: "foreground" },
@@ -246,6 +250,7 @@ function parseDesktopConfig(parsed: Record<string, unknown>): DesktopConfig {
 		notificationsEnabled: typeof parsed.notificationsEnabled === "boolean" ? parsed.notificationsEnabled : true,
 		language: isLanguagePreference(parsed.language) ? parsed.language : undefined,
 		experimental: normalizeExperimental(parsed.experimental),
+		proxy: normalizeProxyConfig(parsed.proxy),
 		imageGeneration: normalizeImageGeneration(parsed.imageGeneration),
 		knowledgeBase: normalizeKnowledgeBase(parsed.knowledgeBase),
 		shortcuts: normalizeShortcuts(parsed.shortcuts),

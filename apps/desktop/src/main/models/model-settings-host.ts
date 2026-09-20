@@ -1,6 +1,7 @@
 import { getOrCreateSharedModelRuntime, syncSharedModelRuntimeCredentials } from "../agent-runtime/host-services.js";
 import { agentTeamExternalConditionChanges } from "../agent-teams/team-external-condition-channel.js";
 import { getAppLogger } from "../logger.js";
+import { invalidateProxyProviderRouting } from "../proxy/proxy-host.js";
 import { getDesktopModelCredentialStore } from "./model-credential-store.js";
 import {
 	ModelSettingsService,
@@ -35,6 +36,8 @@ export function getDesktopModelSettingsService(): ModelSettingsService {
 				}
 			},
 			onConfigChanged: (providerIds) => {
+				// 供应商的代理开关就存在 models.json 里，改完要让代理解析器重读。
+				invalidateProxyProviderRouting();
 				for (const listener of modelSettingsChangedListeners) listener(providerIds);
 			},
 		});

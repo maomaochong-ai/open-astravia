@@ -8786,6 +8786,9 @@
                   "authHeader": {
                     "type": "boolean"
                   },
+                  "useProxy": {
+                    "type": "boolean"
+                  },
                   "headers": {
                     "type": "object",
                     "patternProperties": {
@@ -8914,6 +8917,9 @@
             "type": "string"
           },
           "authHeader": {
+            "type": "boolean"
+          },
+          "useProxy": {
             "type": "boolean"
           },
           "headers": {
@@ -9129,6 +9135,9 @@
               "authHeader": {
                 "type": "boolean"
               },
+              "useProxy": {
+                "type": "boolean"
+              },
               "headers": {
                 "type": "object",
                 "patternProperties": {
@@ -9200,6 +9209,9 @@
             "type": "string"
           },
           "authHeader": {
+            "type": "boolean"
+          },
+          "useProxy": {
             "type": "boolean"
           },
           "headers": {
@@ -9342,6 +9354,9 @@
                   "authHeader": {
                     "type": "boolean"
                   },
+                  "useProxy": {
+                    "type": "boolean"
+                  },
                   "headers": {
                     "type": "object",
                     "patternProperties": {
@@ -9445,6 +9460,9 @@
                     "type": "string"
                   },
                   "authHeader": {
+                    "type": "boolean"
+                  },
+                  "useProxy": {
                     "type": "boolean"
                   },
                   "headers": {

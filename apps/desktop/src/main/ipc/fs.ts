@@ -72,6 +72,8 @@ import { fetchProviderModels } from "../models/fetch-models.js";
 import { getDesktopModelSettingsService, onDesktopModelSettingsChanged } from "../models/model-settings-host.js";
 import type { ModelsConfig } from "../models/model-settings-service.js";
 import { probeModelProvider } from "../models/probe.js";
+import { refreshDesktopProxy } from "../proxy/proxy-host.js";
+import { type DesktopProxyConfigSnapshot, mergeProxyConfigPatch, redactProxyConfig } from "../proxy/proxy-settings.js";
 import { getLinuxSandboxCapability, getSandboxCapability, type SandboxCapability } from "../sandbox/capability.js";
 import { getDesktopShortcutService } from "../shortcuts/shortcut-service.js";
 
@@ -83,7 +85,9 @@ export interface LinuxSandboxConfigState {
 	checkedAt?: number;
 }
 
-export interface DesktopConfigSnapshot extends DesktopConfig {
+export interface DesktopConfigSnapshot extends Omit<DesktopConfig, "proxy"> {
+	/** 代理口令不进快照，只留「存过没有」。 */
+	proxy: DesktopProxyConfigSnapshot;
 	sandbox: SandboxCapability;
 	linuxSandbox: LinuxSandboxConfigState;
 	/** 默认「对话」项目的绝对路径（~/.vetta/conversation），主进程已确保目录存在。 */
@@ -387,6 +391,8 @@ export function registerFsIpc(): () => void {
 		allowProjectRoot(KB_PROCESSING_CWD);
 		return {
 			...config,
+			// 代理口令与 API Key 同级，绝不下发渲染层。
+			proxy: redactProxyConfig(config.proxy),
 			sandbox: getSandboxCapability(),
 			linuxSandbox: getLinuxSandboxCapability(),
 			defaultConversationCwd: DEFAULT_CONVERSATION_CWD,
@@ -398,7 +404,8 @@ export function registerFsIpc(): () => void {
 	ipcMain.handle(CHANNELS.CONFIG_SET, async (_event, config: unknown) => {
 		if (typeof config !== "object" || config === null) throw new Error("Invalid config");
 		const current = await readDesktopConfig();
-		const patch = config as Partial<DesktopConfig>;
+		// proxy 走补丁语义（口令可省略），与其余整体覆盖的字段不同，故单独放宽为 unknown。
+		const patch = config as Partial<Omit<DesktopConfig, "proxy">> & { proxy?: unknown };
 		const next: DesktopConfig = {
 			projects: patch.projects ?? current.projects,
 			archivedProjects: patch.archivedProjects ?? current.archivedProjects,
@@ -436,6 +443,8 @@ export function registerFsIpc(): () => void {
 					: current.quickPanel,
 			appshot:
 				patch.appshot !== undefined ? normalizeAppshot({ ...current.appshot, ...patch.appshot }) : current.appshot,
+			// 补丁省略 password 即沿用已存口令，渲染层不必回传明文。
+			proxy: patch.proxy !== undefined ? mergeProxyConfigPatch(current.proxy, patch.proxy) : current.proxy,
 		};
 		// Allow all known roots for file operations
 		for (const p of next.projects) allowProjectRoot(p.path);
@@ -446,6 +455,8 @@ export function registerFsIpc(): () => void {
 			const bindings = next.shortcuts?.bindings ?? {};
 			shortcuts.notifyBindingsChanged(bindings as Record<string, string>);
 		}
+		// 代理改动必须立刻生效：用户改完地址不该还得重启应用。
+		if (patch.proxy !== undefined) await refreshDesktopProxy();
 	});
 
 	ipcMain.handle(CHANNELS.MODELS_GET, async (): Promise<ModelsConfig> => {

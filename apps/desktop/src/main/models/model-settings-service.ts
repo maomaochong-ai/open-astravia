@@ -33,6 +33,11 @@ export interface ProviderConfig {
 	icon?: string;
 	/** 预设服务商模型列表最近一次从上游 /models 同步的时间(ISO)。 */
 	modelsSyncedAt?: string;
+	/**
+	 * 该服务商的模型请求是否经应用代理出网。缺省(undefined)跟随全局，即代理
+	 * 开启后默认走代理；显式 false 才排除。应用代理未启用时本字段无效。
+	 */
+	useProxy?: boolean;
 	models?: ModelDefinition[];
 	modelOverrides?: Record<string, Record<string, unknown>>;
 }
@@ -145,6 +150,7 @@ function redactProvider(provider: ProviderConfig): ModelProviderConfigSnapshot {
 		...(provider.api === undefined ? {} : { api: provider.api }),
 		...(provider.displayName === undefined ? {} : { displayName: provider.displayName }),
 		...(provider.authHeader === undefined ? {} : { authHeader: provider.authHeader }),
+		...(provider.useProxy === undefined ? {} : { useProxy: provider.useProxy }),
 		...(headers === undefined ? {} : { headers }),
 		...(provider.models === undefined ? {} : { models: provider.models.map(copyModel) }),
 	};
@@ -323,6 +329,7 @@ export class ModelSettingsService {
 			if (data.api !== undefined) next.api = data.api;
 			if (data.displayName !== undefined) next.displayName = data.displayName;
 			if (data.authHeader !== undefined) next.authHeader = data.authHeader;
+			if (data.useProxy !== undefined) next.useProxy = data.useProxy;
 			if (data.headers !== undefined) next.headers = { ...data.headers };
 			if (data.models !== undefined) next.models = data.models.map((model) => ({ ...model }));
 			const persisted = await this.persist(

@@ -247,7 +247,24 @@
   "language": "Language",
   "proxy": {
     "title": "Proxy",
-    "placeholder": "Example: http://127.0.0.1:7890"
+    "placeholder": "Example: http://127.0.0.1:7890",
+    "sectionTitle": "Network proxy",
+    "enableTitle": "Enable app proxy",
+    "enableDescription": "Model requests, local commands and downloads go through this proxy by default. Loopback addresses (localhost / 127.0.0.1) always connect directly.",
+    "protocolTitle": "Proxy type",
+    "hostTitle": "Proxy host",
+    "hostPlaceholder": "e.g. 127.0.0.1",
+    "portTitle": "Port",
+    "usernameTitle": "Username",
+    "usernamePlaceholder": "Optional",
+    "passwordTitle": "Password",
+    "passwordPlaceholder": "Optional",
+    "passwordStoredPlaceholder": "Saved \u2014 leave blank to keep it",
+    "providersTitle": "Per provider",
+    "providersDescription": "Every provider uses the proxy by default. Turn it off for providers you can reach faster directly.",
+    "noProviders": "No providers configured yet.",
+    "invalidConfig": "The proxy host or port is invalid. Model requests will fail rather than silently falling back to a direct connection.",
+    "providerUnsupported": "This provider's vendor SDK issues its own requests, so it can only follow the system proxy environment variables."
   },
   "workspace": {
     "title": "Workspace",
@@ -1082,6 +1099,7 @@
   "section_remote-pairing": "Phone pairing",
   "section_remote-permissions": "Control permissions",
   "section_general-basics": "Basics",
+  "section_general-network": "Network proxy",
   "section_general-app": "App",
   "section_general-developer": "Developer",
   "section_appearance-mode": "Appearance Mode",

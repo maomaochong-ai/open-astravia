@@ -247,7 +247,24 @@
   "language": "语言",
   "proxy": {
     "title": "代理",
-    "placeholder": "示例：http://127.0.0.1:7890"
+    "placeholder": "示例：http://127.0.0.1:7890",
+    "sectionTitle": "网络代理",
+    "enableTitle": "启用应用代理",
+    "enableDescription": "开启后，模型请求、本地命令与下载默认经该代理出网；本机地址（localhost / 127.0.0.1）始终直连。",
+    "protocolTitle": "代理类型",
+    "hostTitle": "代理地址",
+    "hostPlaceholder": "例如 127.0.0.1",
+    "portTitle": "端口",
+    "usernameTitle": "用户名",
+    "usernamePlaceholder": "选填",
+    "passwordTitle": "密码",
+    "passwordPlaceholder": "选填",
+    "passwordStoredPlaceholder": "已保存，留空则不修改",
+    "providersTitle": "按服务商",
+    "providersDescription": "默认全部走代理。国内服务商或本地模型可以在这里单独关掉，避免绕远。",
+    "noProviders": "还没有配置服务商。",
+    "invalidConfig": "代理地址或端口无效，模型请求会直接失败而不会改走直连。请填写有效的地址和端口。",
+    "providerUnsupported": "该服务商由厂商 SDK 自己发请求，只能跟随系统代理环境变量，无法单独开关。"
   },
   "workspace": {
     "title": "工作区",
@@ -1082,6 +1099,7 @@
   "section_remote-pairing": "手机配对",
   "section_remote-permissions": "控制权限",
   "section_general-basics": "基础",
+  "section_general-network": "网络代理",
   "section_general-app": "应用",
   "section_general-developer": "开发者",
   "section_appearance-mode": "外观模式",

@@ -56,6 +56,8 @@ export interface GeneralSettingsViewProps {
 	readonly exportingDiagnostics: boolean;
 	readonly onExportDiagnostics: () => void;
 	readonly onStartAppGuide: () => void;
+	/** 网络代理区块，由宿主注入（需要读 models.json 的服务商列表）。 */
+	readonly networkSection?: ReactNode;
 }
 
 /**
@@ -64,6 +66,7 @@ export interface GeneralSettingsViewProps {
  *
  * Grouped into 3 sections to reduce one-setting-per-card scatter:
  * - basics: workspace, sandbox, notifications
+ * - network: 应用代理（宿主注入）
  * - app: updates, setup guide
  * - developer: debug mode, diagnostics export
  */
@@ -86,6 +89,7 @@ export function GeneralSettingsView({
 	exportingDiagnostics,
 	onExportDiagnostics,
 	onStartAppGuide,
+	networkSection,
 }: GeneralSettingsViewProps): JSX.Element {
 	return (
 		<div className="mx-auto w-full max-w-[680px] px-8 pt-2 pb-4">
@@ -137,6 +141,8 @@ export function GeneralSettingsView({
 					<Switch checked={notificationsEnabled} onCheckedChange={onNotificationsChange} />
 				</SettingRow>
 			</SettingSection>
+
+			{networkSection}
 
 			<SettingSection title={labels.sections.app} section={sections.app}>
 				{/* 与下方 App 引导同一 SettingRow：左标题+描述，右 outline sm 按钮。 */}

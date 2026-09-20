@@ -66,6 +66,7 @@ import { stopAllPluginDevWatches } from "./plugins/plugin-dev-watch.js";
 import { migrateLegacyPluginSettings } from "./plugins/plugin-legacy-settings-migration.js";
 import { createDesktopPluginPackageOpenService } from "./plugins/plugin-package-open.js";
 import { PLUGIN_PROTOCOL_PRIVILEGES, registerPluginProtocols } from "./plugins/plugin-protocol.js";
+import { refreshDesktopProxy } from "./proxy/proxy-host.js";
 import { stopAllUiohookConsumers } from "./quickpanel-trigger.js";
 import { createQuickPanelWindow } from "./quickpanel-window.js";
 import { isQuitCleanupStarted, runQuitCleanup, setQuitCleanup } from "./quit-cleanup.js";
@@ -671,6 +672,13 @@ if (!gotSingleLock) {
 		// 首帧之后执行，避免这些维护工作阻塞窗口出现。
 		const runtimeManager = getRuntimeManager();
 		runtimeManager.applyEnv();
+		// 应用代理紧跟托管运行时的 env 注入：它既装 Provider 传输解析器，也写代理
+		// 环境变量，必须早于 im sidecar bootstrap 和任何模型请求。
+		try {
+			await refreshDesktopProxy();
+		} catch (err) {
+			mainLog.error("failed to apply application proxy", err);
+		}
 		if (remoteControlUrl && remotePairingToken) {
 			void startDesktopRemoteAccess({
 				controlUrl: remoteControlUrl,
