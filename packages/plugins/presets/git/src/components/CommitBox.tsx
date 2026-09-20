@@ -2,13 +2,16 @@ import { useTranslation } from "@vetta-org/plugin-sdk";
 import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@vetta-org/ui";
 import type { KeyboardEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { resolveDiffScope } from "../git/aiContext";
+import { generateCommitMessage } from "../git/aiMessage";
 import { loadDraft, saveDraft } from "../git/draftStore";
 import { readMergeMessage } from "../git/mergeMsg";
 import { gitCommit, gitPush, headCommitMessage } from "../git/run";
 import { emitRefreshSignal } from "../git/runtime";
 import type { StatusGroups } from "../git/types";
 import { CommitErrorPanel } from "./CommitErrorPanel";
-import { ChevronIcon } from "./icons";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { ChevronIcon, SparkleIcon, StopIcon } from "./icons";
 import { useGitSettings } from "./useGitSettings";
 
 /** Draft writes are debounced so typing does not hit storage on every keystroke. */
@@ -29,6 +32,9 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 	const [message, setMessage] = useState("");
 	const [pending, setPending] = useState<Pending>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [generating, setGenerating] = useState(false);
+	const [askOverwrite, setAskOverwrite] = useState(false);
+	const abortRef = useRef<AbortController | null>(null);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	// Guards the draft effect from writing back the draft it just loaded.
 	const hydratedRef = useRef(false);
@@ -115,6 +121,43 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 		});
 	}, [pending, hasConflicts, run, root, message, stageAll]);
 
+	/**
+	 * Generate into the box. The scope comes from the same function the commit path
+	 * uses, so the message always describes exactly what the button will commit.
+	 */
+	const generate = useCallback(() => {
+		if (generating || pending !== null || !hasAnyChange) return;
+		const controller = new AbortController();
+		abortRef.current = controller;
+		setGenerating(true);
+		setError(null);
+		void generateCommitMessage({
+			root,
+			scope: resolveDiffScope(hasStaged),
+			template: settings.messageTemplate,
+			modelKey: settings.modelKey ?? undefined,
+			signal: controller.signal,
+			// 流式回填：生成期间 textarea 只读，避免光标与流入的文本打架。
+			onDelta: (text) => setMessage(text),
+		})
+			.then((text) => setMessage(text))
+			.catch((err: unknown) => {
+				if (controller.signal.aborted) return;
+				const raw = err instanceof Error ? err.message : String(err);
+				setError(raw === "empty-diff" ? t("ai.emptyDiff") : `${t("ai.failed")}\n\n${raw}`);
+			})
+			.finally(() => {
+				abortRef.current = null;
+				setGenerating(false);
+			});
+	}, [generating, pending, hasAnyChange, root, hasStaged, settings.messageTemplate, settings.modelKey, t]);
+
+	// 已有内容时先问一句，避免一键抹掉用户手写的信息。
+	const requestGenerate = useCallback(() => {
+		if (message.trim().length > 0) setAskOverwrite(true);
+		else generate();
+	}, [message, generate]);
+
 	const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
 		if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
 			event.preventDefault();
@@ -133,16 +176,28 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 
 	return (
 		<div className="shrink-0 border-b border-border">
-			<div className="px-2 pt-2">
+			<div className="relative px-2 pt-2">
 				<textarea
 					ref={textareaRef}
 					value={message}
+					readOnly={generating}
 					onChange={(event) => setMessage(event.target.value)}
 					onKeyDown={onKeyDown}
 					rows={1}
 					placeholder={t("commit.placeholder")}
-					className="w-full resize-none rounded-md border border-border bg-background px-2 py-1.5 text-[12px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/70 focus:border-ring"
+					className="w-full resize-none rounded-md border border-border bg-background py-1.5 pl-2 pr-8 text-[12px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/70 focus:border-ring"
 				/>
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon-xs"
+					className="absolute bottom-1 right-3"
+					disabled={pending !== null || (!generating && !hasAnyChange)}
+					title={generating ? t("ai.stop") : t("ai.generate")}
+					onClick={() => (generating ? abortRef.current?.abort() : requestGenerate())}
+				>
+					{generating ? <StopIcon className="h-3 w-3 text-muted-foreground" /> : <SparkleIcon className="h-3.5 w-3.5 text-sky-500" />}
+				</Button>
 			</div>
 			<div className="flex items-center gap-1 px-2 py-1.5">
 				<Button
@@ -174,6 +229,18 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 			{/* pre-commit 钩子可能跑很久，必须给出「还在跑」的明确信号，而不是只让按钮转圈。 */}
 			{pending !== null && <div className="px-2 pb-1.5 text-[11px] text-muted-foreground">{t("commit.hookHint")}</div>}
 			{error && <CommitErrorPanel message={error} onDismiss={() => setError(null)} />}
+
+			<ConfirmDialog
+				open={askOverwrite}
+				title={t("ai.overwriteTitle")}
+				description={t("ai.overwriteDescription")}
+				confirmLabel={t("ai.overwriteConfirm")}
+				onConfirm={() => {
+					setAskOverwrite(false);
+					generate();
+				}}
+				onCancel={() => setAskOverwrite(false)}
+			/>
 		</div>
 	);
 }

@@ -4,7 +4,7 @@ import { GitPanel } from "./components/GitPanel";
 import { GitSettingsView } from "./components/GitSettingsView";
 import { GitTurnCard } from "./components/GitTurnCard";
 import { GitIcon } from "./components/icons";
-import { emitRefreshSignal, emitTurnPhase, setFsApi, setGitCommand, setOfficialApi, setPanelResizer, setStorageApi } from "./git/runtime";
+import { emitRefreshSignal, emitTurnPhase, setAiApi, setFsApi, setGitCommand, setOfficialApi, setPanelResizer, setStorageApi } from "./git/runtime";
 import { CHANGES_TAB_ID, isInsideGitWorkTree } from "./git/tab-visibility";
 
 export default definePlugin({
@@ -17,6 +17,8 @@ export default definePlugin({
 		setOfficialApi(ctx.official);
 		// 提交信息草稿按仓库持久化，避免切会话/重启后白写一场。
 		setStorageApi(ctx.storage);
+		// 提交信息的一键生成走宿主推理，不建会话、不落 session 文件。
+		setAiApi(ctx.ai);
 
 		/** 最近一次 conversation-changed 的 cwd，用于丢弃过期的仓库探测结果。 */
 		let latestCwd: string | null = null;

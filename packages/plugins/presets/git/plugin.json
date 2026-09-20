@@ -18,6 +18,8 @@
 		"agent.session.read",
 		"agent.command.run",
 		"fs.read",
+		"ai.complete",
+		"ai.models.list",
 		"storage.read",
 		"storage.write",
 		"fs.write"

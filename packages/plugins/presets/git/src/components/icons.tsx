@@ -164,3 +164,22 @@ export function UnstageIcon({ className }: IconProps): JSX.Element {
 		</svg>
 	);
 }
+
+/** Sparkle: AI generation. */
+export function SparkleIcon({ className }: IconProps): JSX.Element {
+	return (
+		<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+			<path d="M12 3l1.8 4.9L18.7 9.7l-4.9 1.8L12 16.4l-1.8-4.9L5.3 9.7l4.9-1.8L12 3Z" />
+			<path d="M18 16l.8 2.2L21 19l-2.2.8L18 22l-.8-2.2L15 19l2.2-.8L18 16Z" />
+		</svg>
+	);
+}
+
+/** Stop: cancel an in-flight generation. */
+export function StopIcon({ className }: IconProps): JSX.Element {
+	return (
+		<svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+			<rect x="7" y="7" width="10" height="10" rx="1.5" />
+		</svg>
+	);
+}

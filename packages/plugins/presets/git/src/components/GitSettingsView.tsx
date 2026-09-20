@@ -1,7 +1,11 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { Button, Switch } from "@vetta-org/ui";
+import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch } from "@vetta-org/ui";
 import { useCallback, useEffect, useState } from "react";
+import { getAiApi } from "../git/runtime";
 import { DEFAULT_SETTINGS, type GitSettings, loadSettings, saveSettings } from "../git/settings";
+
+/** Sentinel for "follow the host's default model" in the picker. */
+const FOLLOW_DEFAULT = "__default__";
 
 /** One labelled row with a description and a control on the right. */
 function SettingRow({
@@ -36,6 +40,22 @@ export function GitSettingsView(): JSX.Element {
 	const { t } = useTranslation();
 	const [settings, setSettings] = useState<GitSettings | null>(null);
 	const [saved, setSaved] = useState(false);
+	const [models, setModels] = useState<Array<{ modelKey: string; name: string }>>([]);
+
+	useEffect(() => {
+		let alive = true;
+		void getAiApi()
+			.listModels()
+			.then((result) => {
+				if (alive) setModels(result.models.map((model) => ({ modelKey: model.modelKey, name: model.name })));
+			})
+			.catch(() => {
+				// 模型列表拿不到不该拖垮整页：选择器退化成「跟随默认」。
+			});
+		return () => {
+			alive = false;
+		};
+	}, []);
 
 	useEffect(() => {
 		let alive = true;
@@ -81,6 +101,25 @@ export function GitSettingsView(): JSX.Element {
 						className="mt-2 w-full resize-y rounded-md border border-border bg-background px-2.5 py-2 text-[12px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/70 focus:border-ring"
 					/>
 				</div>
+
+				<SettingRow title={t("settings.modelTitle")} description={t("settings.modelHint")}>
+					<Select
+						value={settings.modelKey ?? FOLLOW_DEFAULT}
+						onValueChange={(next) => update({ modelKey: next === FOLLOW_DEFAULT ? null : next })}
+					>
+						<SelectTrigger className="w-56">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent data-vetta-plugin-root="git">
+							<SelectItem value={FOLLOW_DEFAULT}>{t("settings.modelDefault")}</SelectItem>
+							{models.map((model) => (
+								<SelectItem key={model.modelKey} value={model.modelKey}>
+									{model.name}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</SettingRow>
 
 				<SettingRow title={t("settings.pushAfterCommitTitle")} description={t("settings.pushAfterCommitHint")}>
 					<Switch checked={settings.pushAfterCommit} onCheckedChange={(next) => update({ pushAfterCommit: next })} />

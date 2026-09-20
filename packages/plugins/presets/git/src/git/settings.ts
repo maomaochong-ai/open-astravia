@@ -14,6 +14,8 @@ export interface GitSettings {
 	 * template is the user's personal fallback for projects that state nothing.
 	 */
 	messageTemplate: string;
+	/** Model used to generate messages; null follows the host's default model. */
+	modelKey: string | null;
 	/** Push straight after a successful commit from the main button. */
 	pushAfterCommit: boolean;
 	/** Ask before discarding working-tree changes. Off is a deliberate opt-out. */
@@ -22,6 +24,7 @@ export interface GitSettings {
 
 export const DEFAULT_SETTINGS: GitSettings = {
 	messageTemplate: "",
+	modelKey: null,
 	pushAfterCommit: false,
 	confirmDiscard: true,
 };
@@ -30,6 +33,7 @@ export const DEFAULT_SETTINGS: GitSettings = {
 function normalize(raw: Partial<GitSettings> | null): GitSettings {
 	return {
 		messageTemplate: typeof raw?.messageTemplate === "string" ? raw.messageTemplate : DEFAULT_SETTINGS.messageTemplate,
+		modelKey: typeof raw?.modelKey === "string" && raw.modelKey.length > 0 ? raw.modelKey : null,
 		pushAfterCommit: raw?.pushAfterCommit === true,
 		confirmDiscard: raw?.confirmDiscard !== false,
 	};

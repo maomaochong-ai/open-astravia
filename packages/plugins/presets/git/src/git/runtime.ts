@@ -1,4 +1,4 @@
-import type { PluginCommandApi, PluginFsApi, PluginOfficialApi, PluginStorageApi } from "@vetta-org/plugin-sdk";
+import type { PluginAiApi, PluginCommandApi, PluginFsApi, PluginOfficialApi, PluginStorageApi } from "@vetta-org/plugin-sdk";
 import type { ChangeCode, TurnChangeDelta } from "./types";
 
 /**
@@ -28,6 +28,7 @@ interface GitRuntime {
 	fs: PluginFsApi | null;
 	official: PluginOfficialApi | null;
 	storage: PluginStorageApi | null;
+	ai: PluginAiApi | null;
 	resizePanel: PanelResizer | null;
 	refreshListeners: Set<() => void>;
 	turnPhaseListeners: Set<(phase: TurnPhase) => void>;
@@ -50,6 +51,7 @@ function runtime(): GitRuntime {
 			fs: null,
 			official: null,
 			storage: null,
+			ai: null,
 			resizePanel: null,
 			refreshListeners: new Set<() => void>(),
 			turnPhaseListeners: new Set<(phase: TurnPhase) => void>(),
@@ -139,6 +141,16 @@ export function setStorageApi(api: PluginStorageApi): void {
 export function getStorageApi(): PluginStorageApi {
 	const api = runtime().storage;
 	if (!api) throw new Error("Git plugin storage API not initialized");
+	return api;
+}
+
+export function setAiApi(api: PluginAiApi): void {
+	runtime().ai = api;
+}
+
+export function getAiApi(): PluginAiApi {
+	const api = runtime().ai;
+	if (!api) throw new Error("Git plugin ai API not initialized");
 	return api;
 }
 
