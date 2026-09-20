@@ -57,10 +57,9 @@ export function MessageListView({
 		onTeamMemberOpen,
 	} = model;
 	const scrollerElement = scroll.scrollerElement;
-	// 未缓存的历史消息必须直接使用完整缓冲，避免 Virtuoso 首次测量时反复修正总高度。
-	// 已缓存会话带有精确的测量快照，可以先恢复可见行，再于稳定后的空闲期扩大缓冲。
-	const useInitialViewport =
-		viewportPhase === "initial" && (messages.length === 0 || scroll.restoreStateFrom !== undefined);
+	// 冷、热会话都先只渲染真实可见行。initialTopMostItemIndex 与可选的恢复快照
+	// 负责把首屏锚在尾部；屏幕外缓冲在界面稳定后的空闲期统一补齐。
+	const useInitialViewport = viewportPhase === "initial";
 	const activeItem = useMessageFeedActiveItem<ChatConversationItem>({
 		scrollerElement,
 		resetKey: sessionId,
@@ -73,7 +72,10 @@ export function MessageListView({
 		}
 		return null;
 	}, [messages]);
-	const sessionUsages = useMemo<readonly Usage[]>(() => collectAgentUsages(messages), [messages]);
+	const sessionUsages = useMemo<readonly Usage[]>(
+		() => collectAgentUsages(viewportPhase === "initial" ? messages.slice(-4) : messages),
+		[messages, viewportPhase],
+	);
 	const sessionUsagesRef = useRef(sessionUsages);
 	sessionUsagesRef.current = sessionUsages;
 	const itemContent = useCallback(
@@ -160,7 +162,7 @@ export function MessageListView({
 						</MessageFeed.Footer>
 						{/* 悬浮在会话区域左缘，不占消息列宽度；窄于 52rem 时消息列铺满整个会话区，
 						    目录会压住气泡，直接整条隐藏。 */}
-						<MessageFeedLayout.LeftRail>
+						{viewportPhase === "expanded" ? <MessageFeedLayout.LeftRail>
 							<MessageFeedLayout.RailContent>
 								<MessageTimeline
 									key={sessionId ?? "message-timeline"}
@@ -169,7 +171,7 @@ export function MessageListView({
 									onNavigate={scroll.scrollToMessage}
 								/>
 							</MessageFeedLayout.RailContent>
-						</MessageFeedLayout.LeftRail>
+						</MessageFeedLayout.LeftRail> : null}
 					</div>
 				</MessageFeedLayout.Frame>
 			</MessageFeed.Root>

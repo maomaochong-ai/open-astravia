@@ -54,11 +54,11 @@ export function shareChatMessageSnapshot(
  * replacing that persisted base with Runtime-canonical history.
  */
 export function preserveMessagesAddedAfterSnapshot(
-	preview: readonly ChatConversationItem[],
+	_preview: readonly ChatConversationItem[],
 	canonical: readonly ChatConversationItem[],
 	current: readonly ChatConversationItem[],
 ): ChatConversationItem[] {
-	const previewIds = new Set(preview.map((message) => message.id));
-	const additions = current.filter((message) => !previewIds.has(message.id));
+	const persistedIds = new Set(canonical.map((message) => message.id));
+	const additions = current.filter((message) => !persistedIds.has(message.id));
 	return additions.length === 0 ? (canonical as ChatConversationItem[]) : [...canonical, ...additions];
 }

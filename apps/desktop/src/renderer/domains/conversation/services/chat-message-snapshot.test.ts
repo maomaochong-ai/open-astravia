@@ -50,4 +50,12 @@ describe("shareChatMessageSnapshot", () => {
 
 		expect(result).toEqual([...canonical, optimistic]);
 	});
+
+	it("延迟回填时不重复追加已被 canonical 对账吸收的消息", () => {
+		const queued = createConversationUserMessage({ id: "queued-user", text: "next" });
+
+		const result = preserveMessagesAddedAfterSnapshot([], [queued], [queued]);
+
+		expect(result).toEqual([queued]);
+	});
 });

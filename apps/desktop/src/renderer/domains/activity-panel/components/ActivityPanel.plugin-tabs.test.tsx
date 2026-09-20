@@ -1,10 +1,15 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import { createStore, Provider } from "jotai";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { activityPanelOpenAtom, pluginActivityTabsAtom, type RegisteredActivityTab } from "@shared/store/atoms";
+import {
+	activityPanelOpenAtom,
+	floatingActivityTabsByProjectAtom,
+	pluginActivityTabsAtom,
+	type RegisteredActivityTab,
+} from "@shared/store/atoms";
 import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
 import { ActivityPanel } from "./ActivityPanel";
 
@@ -56,18 +61,21 @@ function pluginTab(): RegisteredActivityTab {
 	};
 }
 
-function renderPanel(scenario: "conversation" | undefined): void {
+const workspace = createActivityWorkspace("agent-team:workspace", "/tmp/team-cwd", ["member-runtime"]);
+
+function renderPanel(scenario: "conversation" | undefined, open = true) {
 	const store = createStore();
-	store.set(activityPanelOpenAtom, true);
+	store.set(activityPanelOpenAtom, open);
 	store.set(pluginActivityTabsAtom, [pluginTab()]);
 	render(
 		<Provider store={store}>
 			<ActivityPanel
-				workspace={createActivityWorkspace("agent-team:workspace", "/tmp/team-cwd", ["member-runtime"])}
+				workspace={workspace}
 				{...(scenario ? { pluginScenario: scenario } : {})}
 			/>
 		</Provider>,
 	);
+	return store;
 }
 
 describe("activity panel plugin tabs outside the ordinary conversation host", () => {
@@ -82,5 +90,35 @@ describe("activity panel plugin tabs outside the ordinary conversation host", ()
 	it("keeps plugin tabs off the bar when the host supplies no scenario", () => {
 		renderPanel(undefined);
 		expect(screen.queryByText("Demo panel")).toBeNull();
+	});
+
+	it("does not mount the docked tab bar or docked content while closed", () => {
+		const store = renderPanel("conversation", false);
+
+		expect(screen.queryByText("Demo panel")).toBeNull();
+		expect(screen.queryByText("file body")).toBeNull();
+
+		act(() => store.set(activityPanelOpenAtom, true));
+		expect(screen.queryByText("Demo panel")).not.toBeNull();
+		expect(screen.queryByText("file body")).not.toBeNull();
+	});
+
+	it("keeps floating tab content mounted while the docked panel is closed", () => {
+		const store = createStore();
+		store.set(activityPanelOpenAtom, false);
+		store.set(floatingActivityTabsByProjectAtom, new Map([
+			[
+				workspace.id,
+				[{ key: "file", x: 20, y: 20, width: 480, height: 360, zIndex: 1 }],
+			],
+		]));
+
+		render(
+			<Provider store={store}>
+				<ActivityPanel workspace={workspace} pluginScenario="conversation" />
+			</Provider>,
+		);
+
+		expect(screen.queryByText("file body")).not.toBeNull();
 	});
 });

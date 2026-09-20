@@ -2,27 +2,16 @@ import { useModelOptions } from "@shared/components/ModelSelect/useModelOptions"
 import { useMemo, useRef } from "react";
 import { collectModelSwitchLabels, userModelSwitchFingerprint } from "../components/message-list/message-list-derived";
 import type { MessageListModel, MessageListProps } from "../components/message-list/types";
-import { useMessageListScrollModel } from "./useMessageListScrollModel";
+import type { MessageListScrollModel } from "./useMessageListScrollModel";
 
-export function useMessageListModel({
-	messages,
-	isStreaming,
-	sessionId,
-	initialTargetKey,
-	onInitialTargetHandled,
-	participants = [],
-	onTeamMemberOpen,
-}: MessageListProps): MessageListModel {
-	const scroll = useMessageListScrollModel({
-		isStreaming,
-		messages,
-		sessionId,
-		initialTargetKey,
-		onInitialTargetHandled,
-	});
+export function useMessageListModel(
+	{ messages, isStreaming, participants = [], onTeamMemberOpen }: MessageListProps,
+	scroll: MessageListScrollModel,
+	derivationMessages: MessageListProps["messages"],
+): MessageListModel {
 	const { options } = useModelOptions();
 	const modelNames = useMemo(() => new Map(options.map((option) => [option.key, option.displayName])), [options]);
-	const modelSwitchFingerprint = userModelSwitchFingerprint(messages);
+	const modelSwitchFingerprint = userModelSwitchFingerprint(derivationMessages);
 	const modelSwitchCacheRef = useRef<{
 		fingerprint: string;
 		modelNames: ReadonlyMap<string, string>;
@@ -33,7 +22,7 @@ export function useMessageListModel({
 		modelSwitchCacheRef.current = {
 			fingerprint: modelSwitchFingerprint,
 			modelNames,
-			labels: collectModelSwitchLabels(messages, modelNames),
+			labels: collectModelSwitchLabels(derivationMessages, modelNames),
 		};
 	}
 	const modelSwitchLabels = modelSwitchCacheRef.current.labels;

@@ -428,7 +428,7 @@ it("已有会话先提交加载态，快速切换时只有最后一次打开可�
 	expect(store.get(activeSessionAtom)).toBeNull();
 	expect(store.get(chatMessagesAtom)).toEqual([]);
 	expect(sessionApi.create).not.toHaveBeenCalled();
-	expect(sessionApi.openViewer).toHaveBeenCalledWith(firstSessionPath);
+	expect(sessionApi.openViewer).toHaveBeenCalledWith(firstSessionPath, { tailTurns: 2 });
 
 	let secondOpening: Promise<void> | undefined;
 	await act(async () => {
@@ -468,6 +468,9 @@ it("已有会话先提交加载态，快速切换时只有最后一次打开可�
 	expect(store.get(activeSessionAtom)?.runtimeId).toBe("runtime-second");
 	expect(store.get(pendingSessionOpenAtom)).toBeNull();
 	expect(store.get(chatMessagesAtom)).toBe(previewMessages);
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
 	expect(mocks.perfSessionSwitchMark).toHaveBeenCalledWith("session-history-commit-skipped-equivalent", "open-second");
 
 	await act(async () => {
@@ -624,6 +627,7 @@ it("只读历史预览失败时回退到 Runtime 历史水合", { timeout: 10_00
 	const { activeSessionAtom, chatMessagesAtom, pendingSessionOpenAtom } = await import("@shared/store/atoms");
 	const { useSessionManager } = await import("./useSessionManager");
 	const store = getDefaultStore();
+	const fullHistory = deferred<ReturnType<typeof userHistory>>();
 	const sessionApi = {
 		autoTitle: vi.fn(),
 		create: vi.fn(async () => ({
@@ -631,7 +635,7 @@ it("只读历史预览失败时回退到 Runtime 历史水合", { timeout: 10_00
 			sessionId: "runtime-fallback",
 			sessionPath: firstCanonicalPath,
 		})),
-		getFullHistory: vi.fn(async () => userHistory("runtime fallback", "fallback-user")),
+		getFullHistory: vi.fn(() => fullHistory.promise),
 		getQueueState: vi.fn(async () => ({ paused: false, entries: [] })),
 		getSessionPath: vi.fn(async () => firstCanonicalPath),
 		getState: vi.fn(async () => ({
@@ -676,6 +680,12 @@ it("只读历史预览失败时回退到 Runtime 历史水合", { timeout: 10_00
 
 	expect(store.get(activeSessionAtom)?.runtimeId).toBe("runtime-fallback");
 	expect(store.get(pendingSessionOpenAtom)).toBeNull();
+	expect(visibleTexts(store.get(chatMessagesAtom))).toEqual([]);
+	await act(async () => {
+		fullHistory.resolve(userHistory("runtime fallback", "fallback-user"));
+		await Promise.resolve();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
 	expect(visibleTexts(store.get(chatMessagesAtom))).toEqual(["runtime fallback"]);
 	expect(mocks.perfSessionSwitchMark).toHaveBeenCalledWith("session-preview-history-failed", "open-fallback");
 	expect(mocks.perfSessionSwitchComplete).toHaveBeenCalledWith("completed", "open-fallback");

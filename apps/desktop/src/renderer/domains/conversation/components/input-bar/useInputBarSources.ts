@@ -23,11 +23,18 @@ import {
 	messageQueuePausedBySessionAtom,
 } from "@shared/store/message-queue-atoms";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { selectAtom } from "jotai/utils";
 import { useMemo } from "react";
 import { inputBlankAtom, inputImagePathsAtom, inputPlaceholderVisibleAtom } from "./editor/tokens/projectionAtoms";
 
+const inputActiveSessionAtom = selectAtom(
+	activeSessionAtom,
+	(session) => (session ? { cwd: session.cwd, runtimeId: session.runtimeId } : null),
+	(left, right) => left?.cwd === right?.cwd && left?.runtimeId === right?.runtimeId,
+);
+
 export function useInputBarSessionSource(cwdOverride?: string) {
-	const activeSession = useAtomValue(activeSessionAtom);
+	const activeSession = useAtomValue(inputActiveSessionAtom);
 	const isStreaming = useAtomValue(isConversationBusyAtom);
 	const isBlank = useAtomValue(inputBlankAtom);
 	const placeholderVisible = useAtomValue(inputPlaceholderVisibleAtom);

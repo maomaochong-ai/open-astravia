@@ -130,13 +130,14 @@ describe("MessageListView viewport phases", () => {
 		captured.messageItemProps = [];
 	});
 
-	it("首屏与扩大预渲染阶段都使用同一套完整消息组件", () => {
+	it("冷会话首屏也使用零缓冲，扩大后恢复完整预渲染", () => {
 		const { rerender } = render(<MessageListView {...props("initial")} />);
 
 		expect(screen.getByTestId("full-message").textContent).toBe("message-1");
-		expect(captured.virtuosoProps?.overscan).toBe(400);
-		expect(captured.virtuosoProps?.minOverscanItemCount).toEqual({ top: 12, bottom: 4 });
-		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 600, bottom: 200 });
+		expect(captured.virtuosoProps?.overscan).toBe(0);
+		expect(captured.virtuosoProps?.minOverscanItemCount).toEqual({ top: 0, bottom: 0 });
+		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 0, bottom: 0 });
+		expect(screen.queryByRole("button", { name: "message timeline" })).toBeNull();
 
 		rerender(<MessageListView {...props("expanded")} />);
 
@@ -144,6 +145,7 @@ describe("MessageListView viewport phases", () => {
 		expect(captured.virtuosoProps?.overscan).toBe(400);
 		expect(captured.virtuosoProps?.minOverscanItemCount).toEqual({ top: 12, bottom: 4 });
 		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 600, bottom: 200 });
+		expect(screen.queryByRole("button", { name: "message timeline" })).not.toBeNull();
 	});
 
 	it("恢复已测量会话时先只渲染可见区域，再扩大屏幕外缓冲", () => {
