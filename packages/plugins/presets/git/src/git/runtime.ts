@@ -6,8 +6,11 @@ import type { ChangeCode, TurnChangeDelta } from "./types";
  * shared mutable runtime state hangs on globalThis (see the host's plugin notes
  * about MF module singletons). Holds the command API and a refresh signal bus.
  */
-/** Resize the activity panel that hosts the Git tab (px or "max"); omit to keep current width. */
-export type PanelResizer = (width?: number | "max") => void;
+/** Resize the activity panel that hosts the Git tab (px or "max"). */
+export type PanelResizer = (width: number | "max") => void;
+
+/** Bring the Git tab to the front, opening the activity panel if it is closed. */
+export type PanelOpener = () => void;
 
 /** Agent turn lifecycle phase, surfaced from `ctx.conversation.on` to plugin components. */
 export type TurnPhase = "start" | "end";
@@ -31,6 +34,7 @@ interface GitRuntime {
 	ai: PluginAiApi | null;
 	ui: PluginUiApi | null;
 	resizePanel: PanelResizer | null;
+	openPanel: PanelOpener | null;
 	refreshListeners: Set<() => void>;
 	turnPhaseListeners: Set<(phase: TurnPhase) => void>;
 	turnCardStates: Map<string, TurnCardState>;
@@ -59,6 +63,7 @@ function runtime(): GitRuntime {
 			ai: null,
 			ui: null,
 			resizePanel: null,
+			openPanel: null,
 			refreshListeners: new Set<() => void>(),
 			turnPhaseListeners: new Set<(phase: TurnPhase) => void>(),
 			turnCardStates: new Map<string, TurnCardState>(),
@@ -219,8 +224,21 @@ export function setPanelResizer(resize: PanelResizer): void {
 }
 
 /** Resize the activity panel (no-op until the resizer is registered). */
-export function resizePanel(width?: number | "max"): void {
+export function resizePanel(width: number | "max"): void {
 	runtime().resizePanel?.(width);
+}
+
+export function setPanelOpener(open: PanelOpener): void {
+	runtime().openPanel = open;
+}
+
+/**
+ * Open the Git tab. Surfaces outside the panel (the turn card) must use this
+ * rather than {@link resizePanel}: widening a panel that is showing some other
+ * tab — or is closed — leaves the user staring at the wrong thing.
+ */
+export function openPanel(): void {
+	runtime().openPanel?.();
 }
 
 /** Subscribe a panel to global refresh signals (turn-end, etc). Returns unsubscribe. */

@@ -9,7 +9,7 @@ import {
 	getTurnDelta,
 	onTurnPhase,
 	requestCommit,
-	resizePanel,
+	openPanel,
 	setTurnBaseline,
 	setTurnDelta,
 } from "../git/runtime";
@@ -134,7 +134,7 @@ export function GitTurnCard(): JSX.Element | null {
 				if (resetIndexFirst) await unstageAll(root);
 				await stagePaths(root, paths);
 				emitRefreshSignal();
-				resizePanel("max");
+				openPanel();
 				requestCommit(root);
 			} finally {
 				setBusy(false);
@@ -165,7 +165,7 @@ export function GitTurnCard(): JSX.Element | null {
 	const overflow = sorted.length > MAX_ITEMS;
 	const shown = overflow ? sorted.slice(0, MAX_ITEMS - 1) : sorted;
 	const remaining = sorted.length - shown.length;
-	const open = (): void => resizePanel("max");
+	const open = (): void => openPanel();
 
 	return (
 		// 去线留白：卡片只保留一层淡边与内边距，内部各区靠间距分隔，不再用分隔线切块。

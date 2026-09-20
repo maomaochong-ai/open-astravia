@@ -12,6 +12,7 @@ import {
 	setFsApi,
 	setGitCommand,
 	setOfficialApi,
+	setPanelOpener,
 	setPanelResizer,
 	setStorageApi,
 	setUiApi,
@@ -39,10 +40,10 @@ export default definePlugin({
 		// Let panels resize their host activity panel (narrow click → max, close → narrow).
 		// 面板内部改宽度走 setActivityPanelWidth：openActivityTab 语义是「打开某个标签卡」，
 		// 在已经身处该标签卡里时用它拉宽，等于每次点文件都重新打开一次自己。
-		setPanelResizer((width) => {
-			if (width === undefined) ctx.ui.openActivityTab(CHANGES_TAB_ID);
-			else ctx.ui.setActivityPanelWidth(width);
-		});
+		setPanelResizer((width) => ctx.ui.setActivityPanelWidth(width));
+		// 会话里的 turn 卡要的是「把 Git 面板拿到眼前」，不是改宽度：不覆盖用户拖出来的
+		// 宽度，也不会把聊天区挤没。
+		setPanelOpener(() => ctx.ui.openActivityTab(CHANGES_TAB_ID));
 
 		// Refresh the panel after each agent turn (it may have edited files), and
 		// surface turn start/end phases for the turn card's per-turn baseline diff.
@@ -78,6 +79,8 @@ export default definePlugin({
 			label: "%tab.label%",
 			icon: <GitIcon className="h-4 w-4" />,
 			component: GitPanel,
+			// 排在计划/待办之后、后台任务之前：写代码的项目里，Git 比后台任务更常看。
+			order: 25,
 			// 仅在普通项目对话里出现。
 			scope_use: ["project"],
 			// 出现条件由插件自己驱动：上面的 conversation-changed 探测到 git 工作区才上栏。
