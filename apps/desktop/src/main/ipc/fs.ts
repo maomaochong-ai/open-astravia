@@ -3,6 +3,7 @@ import { watch } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { resolveNodeConfigurationValue } from "@vetta/runtime-node/host";
+import { isSshProjectUri } from "@vetta/ssh-transport";
 import { BrowserWindow, clipboard, ipcMain } from "electron";
 import type {
 	McpConfigData,
@@ -65,6 +66,7 @@ import {
 	statFilesystemPath,
 	writeFilesystemFile,
 } from "../filesystem/filesystem-service.js";
+import { watchRemoteDirectory } from "../filesystem/remote-directory-watch.js";
 import { getDesktopMcpOAuthService } from "../mcp/mcp-oauth-service.js";
 import { getDesktopMcpSettingsService, readMcpConfig, writeMcpConfig } from "../mcp/mcp-settings-service.js";
 import { getDesktopMcpSetupLoginService } from "../mcp/mcp-setup-login-service.js";
@@ -323,6 +325,7 @@ export function registerFsIpc(): () => void {
 	// same directory. Only close the underlying watcher when the last releases it.
 	const watchers = new Map<string, { watcher: FSWatcher; count: number }>();
 	const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+	const remoteWatchers = new Map<string, { stop: () => void; count: number }>();
 
 	function broadcastDirChanged(dirPath: string): void {
 		for (const win of BrowserWindow.getAllWindows()) {
@@ -332,6 +335,20 @@ export function registerFsIpc(): () => void {
 
 	ipcMain.handle(CHANNELS.WATCH_DIR, async (_event, dirPath: unknown) => {
 		assertNonEmptyString(dirPath, "dirPath");
+		if (isSshProjectUri(dirPath)) {
+			const existingRemote = remoteWatchers.get(dirPath);
+			if (existingRemote) {
+				existingRemote.count++;
+				return;
+			}
+			try {
+				const stop = watchRemoteDirectory(dirPath, () => broadcastDirChanged(dirPath));
+				remoteWatchers.set(dirPath, { stop, count: 1 });
+			} catch {
+				// 与本机分支一致：监听不上不算错误，文件树仍可手动刷新。
+			}
+			return;
+		}
 		const resolved = resolve(dirPath);
 		const existing = watchers.get(resolved);
 		if (existing) {
@@ -364,6 +381,14 @@ export function registerFsIpc(): () => void {
 
 	ipcMain.handle(CHANNELS.UNWATCH_DIR, async (_event, dirPath: unknown) => {
 		assertNonEmptyString(dirPath, "dirPath");
+		if (isSshProjectUri(dirPath)) {
+			const remote = remoteWatchers.get(dirPath);
+			if (remote && --remote.count <= 0) {
+				remote.stop();
+				remoteWatchers.delete(dirPath);
+			}
+			return;
+		}
 		const resolved = resolve(dirPath);
 		const entry = watchers.get(resolved);
 		if (entry) {
