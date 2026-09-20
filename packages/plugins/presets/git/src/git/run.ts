@@ -1,6 +1,7 @@
 import type { PluginCommandRunResult } from "@vetta-org/plugin-sdk";
 import { enqueueWrite, getGitCommand } from "./runtime";
 import type { ChangeEntry, ChangeSection } from "./types";
+import { rebaseOntoWorkspace } from "./workspacePath";
 
 /** Max git processes in flight for a per-file fan-out (one `git diff` each). */
 const FANOUT_CONCURRENCY = 8;
@@ -37,7 +38,7 @@ async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (item: T) 
 export async function resolveRepoRoot(cwd: string): Promise<string | null> {
 	try {
 		const res = await git(cwd, ["rev-parse", "--show-toplevel"]);
-		if (res.exitCode === 0 && res.stdout.trim().length > 0) return res.stdout.trim();
+		if (res.exitCode === 0 && res.stdout.trim().length > 0) return rebaseOntoWorkspace(cwd, res.stdout.trim());
 		return null;
 	} catch {
 		return null;
