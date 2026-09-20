@@ -35,14 +35,14 @@ export function MessageListView({
 	model,
 	onAbort,
 	children,
-	viewportPhase,
+	deferredContentReady,
 	sessionId = null,
 	pendingLabel,
 }: {
 	model: MessageListModel;
 	onAbort: MessageListProps["onAbort"];
 	children?: ReactNode;
-	viewportPhase: "initial" | "expanded";
+	deferredContentReady: boolean;
 	sessionId?: MessageListProps["sessionId"];
 	pendingLabel?: MessageListProps["pendingLabel"];
 }): JSX.Element {
@@ -57,9 +57,9 @@ export function MessageListView({
 		onTeamMemberOpen,
 	} = model;
 	const scrollerElement = scroll.scrollerElement;
-	// 冷、热会话都先只渲染真实可见行。initialTopMostItemIndex 与可选的恢复快照
-	// 负责把首屏锚在尾部；屏幕外缓冲在界面稳定后的空闲期统一补齐。
-	const useInitialViewport = viewportPhase === "initial";
+	// 打开会话时只渲染真实可见行。顶部历史缓冲由滚动模型在用户开始向上浏览、
+	// 恢复旧位置或导航到历史消息时启用，不再由空闲定时器改写当前布局。
+	const historyBufferEnabled = scroll.historyBufferEnabled;
 	const activeItem = useMessageFeedActiveItem<ChatConversationItem>({
 		scrollerElement,
 		resetKey: sessionId,
@@ -73,8 +73,8 @@ export function MessageListView({
 		return null;
 	}, [messages]);
 	const sessionUsages = useMemo<readonly Usage[]>(
-		() => collectAgentUsages(viewportPhase === "initial" ? messages.slice(-4) : messages),
-		[messages, viewportPhase],
+		() => collectAgentUsages(deferredContentReady ? messages : messages.slice(-4)),
+		[deferredContentReady, messages],
 	);
 	const sessionUsagesRef = useRef(sessionUsages);
 	sessionUsagesRef.current = sessionUsages;
@@ -118,7 +118,7 @@ export function MessageListView({
 		<>
 			<MessageFeed.Root>
 				<MessageFeedLayout.Frame asChild>
-					<div data-message-viewport={viewportPhase}>
+					<div data-message-viewport={historyBufferEnabled ? "history" : "tail"}>
 						<MessageFeedLayout.Viewport>
 							<MessageFeedLayout.Virtualizer asChild>
 								<MessageFeed.VirtualList
@@ -131,27 +131,29 @@ export function MessageListView({
 									items={messages}
 									getKey={conversationItemRenderKey}
 									atBottomStateChange={scroll.onAtBottomChange}
+									totalListHeightChanged={scroll.onTotalListHeightChange}
+									followOutput={scroll.followOutput}
 									atBottomThreshold={80}
 									itemsRendered={activeItem.onItemsRendered}
 									overscan={
-										useInitialViewport ? INITIAL_OVERSCAN : isStreaming ? STREAMING_OVERSCAN : IDLE_OVERSCAN
+										historyBufferEnabled ? (isStreaming ? STREAMING_OVERSCAN : IDLE_OVERSCAN) : INITIAL_OVERSCAN
 									}
 									minOverscanItemCount={
-										useInitialViewport
-											? INITIAL_MIN_OVERSCAN_ITEM_COUNT
-											: isStreaming
+										historyBufferEnabled
+											? isStreaming
 												? STREAMING_MIN_OVERSCAN_ITEM_COUNT
 												: IDLE_MIN_OVERSCAN_ITEM_COUNT
+											: INITIAL_MIN_OVERSCAN_ITEM_COUNT
 									}
 									increaseViewportBy={
-										useInitialViewport
-											? INITIAL_INCREASE_VIEWPORT_BY
-											: isStreaming
+										historyBufferEnabled
+											? isStreaming
 												? STREAMING_INCREASE_VIEWPORT_BY
 												: IDLE_INCREASE_VIEWPORT_BY
+											: INITIAL_INCREASE_VIEWPORT_BY
 									}
 									defaultItemHeight={DEFAULT_ITEM_HEIGHT}
-									initialTopMostItemIndex={messages.length > 0 ? messages.length - 1 : 0}
+									initialTopMostItemIndex={scroll.initialTopMostItemIndex}
 								>
 									{(message, index) => itemContent(index, message)}
 								</MessageFeed.VirtualList>
@@ -162,7 +164,7 @@ export function MessageListView({
 						</MessageFeed.Footer>
 						{/* 悬浮在会话区域左缘，不占消息列宽度；窄于 52rem 时消息列铺满整个会话区，
 						    目录会压住气泡，直接整条隐藏。 */}
-						{viewportPhase === "expanded" ? <MessageFeedLayout.LeftRail>
+						{deferredContentReady ? <MessageFeedLayout.LeftRail>
 							<MessageFeedLayout.RailContent>
 								<MessageTimeline
 									key={sessionId ?? "message-timeline"}

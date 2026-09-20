@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { StateSnapshot, VirtuosoHandle } from "react-virtuoso";
+import type { FollowOutput, StateSnapshot, VirtuosoHandle } from "react-virtuoso";
 
 const MIN_SCROLL_LERP_RATIO = 0.045;
 const IDLE_MAX_SCROLL_LERP_RATIO = 0.18;
@@ -12,6 +12,12 @@ interface CachedFeedState {
 	readonly itemIdentity: string | null;
 	readonly itemCount: number;
 	readonly snapshot: StateSnapshot;
+}
+
+interface InitialViewportSelection {
+	readonly resetKey: string | null | undefined;
+	readonly snapshot?: StateSnapshot;
+	readonly initialTopMostItemIndex?: number;
 }
 
 const feedStateCache = new Map<string, CachedFeedState>();
@@ -63,7 +69,11 @@ function getScrollLerpRatio(diff: number, active: boolean): number {
 }
 
 export interface MessageFeedScrollModel {
+	readonly followOutput: FollowOutput;
+	readonly historyBufferEnabled: boolean;
+	readonly initialTopMostItemIndex?: number;
 	readonly onAtBottomChange: (atBottom: boolean) => void;
+	readonly onTotalListHeightChange: (height: number) => void;
 	readonly scrollerElement: HTMLElement | null;
 	readonly scrollerRef: (element: HTMLElement | Window | null) => void;
 	readonly scrollToItem: (index: number) => void;
@@ -95,17 +105,45 @@ export function useMessageFeedScrollModel<T>({
 }: MessageFeedScrollModelInput<T>): MessageFeedScrollModel {
 	const virtuosoRef = useRef<VirtuosoHandle>(null);
 	const itemIdentity = getItemIdentity(items, getItemKey);
-	const restoreStateFrom = readCachedFeedState(resetKey, items.length, itemIdentity);
+	const initialViewportSelectionRef = useRef<InitialViewportSelection | null>(null);
+	if (initialViewportSelectionRef.current === null || initialViewportSelectionRef.current.resetKey !== resetKey) {
+		// Virtuoso 的 restoreStateFrom 是初始化输入。会话先以空列表挂载、随后再补齐历史时，
+		// 不应在中途注入旧快照或改写初始索引，否则会覆盖正在进行的底部定位。
+		const snapshot = readCachedFeedState(resetKey, items.length, itemIdentity);
+		initialViewportSelectionRef.current = {
+			resetKey,
+			snapshot,
+			initialTopMostItemIndex: snapshot === undefined ? Math.max(0, items.length - 1) : undefined,
+		};
+	}
+	const { initialTopMostItemIndex, snapshot: restoreStateFrom } = initialViewportSelectionRef.current;
 	const scrollerElementRef = useRef<HTMLElement | null>(null);
 	const [scrollerElement, setScrollerElement] = useState<HTMLElement | null>(null);
 	const layoutResizingRef = useRef(layoutResizing);
 	const previousLayoutResizingRef = useRef(layoutResizing);
 	layoutResizingRef.current = layoutResizing;
-	const shouldFollowBottomRef = useRef(true);
+	const shouldInitiallyFollowBottom = !initialTargetKey && restoreStateFrom === undefined;
+	const shouldInitiallyBufferHistory = Boolean(initialTargetKey || restoreStateFrom);
+	const [followOutputState, setFollowOutputState] = useState(() => ({
+		resetKey,
+		enabled: shouldInitiallyFollowBottom,
+	}));
+	const [historyBufferState, setHistoryBufferState] = useState(() => ({
+		resetKey,
+		enabled: shouldInitiallyBufferHistory,
+	}));
+	const followOutputEnabled =
+		followOutputState.resetKey === resetKey ? followOutputState.enabled : shouldInitiallyFollowBottom;
+	const historyBufferEnabled =
+		historyBufferState.resetKey === resetKey ? historyBufferState.enabled : shouldInitiallyBufferHistory;
+	const shouldFollowBottomRef = useRef(followOutputEnabled);
+	shouldFollowBottomRef.current = followOutputEnabled;
 	const lerpAnimationFrameRef = useRef<number | null>(null);
 	const snapAnimationFrameRef = useRef<number | null>(null);
 	const idleFrameCountRef = useRef(0);
 	const lastTouchYRef = useRef<number | null>(null);
+	const lastScrollTopRef = useRef(0);
+	const pointerScrollingRef = useRef(false);
 	const activeRef = useRef(active);
 	activeRef.current = active;
 	const skipNextLerpRef = useRef(false);
@@ -116,6 +154,24 @@ export function useMessageFeedScrollModel<T>({
 	stateKeyRef.current = resetKey;
 	stateItemCountRef.current = items.length;
 	stateItemIdentityRef.current = itemIdentity;
+	const setShouldFollowBottom = useCallback((shouldFollow: boolean) => {
+		shouldFollowBottomRef.current = shouldFollow;
+		const currentResetKey = stateKeyRef.current;
+		setFollowOutputState((current) =>
+			current.resetKey === currentResetKey && current.enabled === shouldFollow
+				? current
+				: { resetKey: currentResetKey, enabled: shouldFollow },
+		);
+	}, []);
+	const setHistoryBufferEnabled = useCallback((enabled: boolean) => {
+		const currentResetKey = stateKeyRef.current;
+		setHistoryBufferState((current) =>
+			current.resetKey === currentResetKey && current.enabled === enabled
+				? current
+				: { resetKey: currentResetKey, enabled },
+		);
+	}, []);
+	const enableHistoryBuffer = useCallback(() => setHistoryBufferEnabled(true), [setHistoryBufferEnabled]);
 
 	const captureState = useCallback(() => {
 		const key = stateKeyRef.current;
@@ -167,21 +223,22 @@ export function useMessageFeedScrollModel<T>({
 	}, [tickLerp]);
 
 	const stopFollowingBottom = useCallback(() => {
-		shouldFollowBottomRef.current = false;
+		enableHistoryBuffer();
+		setShouldFollowBottom(false);
 		idleFrameCountRef.current = 0;
 		if (lerpAnimationFrameRef.current !== null) {
 			cancelAnimationFrame(lerpAnimationFrameRef.current);
 			lerpAnimationFrameRef.current = null;
 		}
-	}, []);
+	}, [enableHistoryBuffer, setShouldFollowBottom]);
 
 	const onAtBottomChange = useCallback(
 		(atBottom: boolean) => {
 			if (!atBottom) return;
-			shouldFollowBottomRef.current = true;
+			setShouldFollowBottom(true);
 			startFollowingBottom();
 		},
-		[startFollowingBottom],
+		[setShouldFollowBottom, startFollowingBottom],
 	);
 
 	const scrollToItem = useCallback(
@@ -212,6 +269,25 @@ export function useMessageFeedScrollModel<T>({
 		},
 		[stopFollowingBottom],
 	);
+	const onPointerDown = useCallback((event: PointerEvent) => {
+		if (event.button !== 0) return;
+		pointerScrollingRef.current = true;
+		lastScrollTopRef.current = scrollerElementRef.current?.scrollTop ?? 0;
+	}, []);
+	const onPointerEnd = useCallback(() => {
+		pointerScrollingRef.current = false;
+	}, []);
+	const onScroll = useCallback(() => {
+		const element = scrollerElementRef.current;
+		if (element) {
+			const scrollTop = element.scrollTop;
+			if (pointerScrollingRef.current && scrollTop < lastScrollTopRef.current - 0.5) {
+				stopFollowingBottom();
+			}
+			lastScrollTopRef.current = scrollTop;
+		}
+		scheduleStateCapture();
+	}, [scheduleStateCapture, stopFollowingBottom]);
 
 	const previousResetKeyRef = useRef<string | null | undefined>(resetKey);
 	useEffect(() => {
@@ -221,31 +297,40 @@ export function useMessageFeedScrollModel<T>({
 			cancelAnimationFrame(lerpAnimationFrameRef.current);
 			lerpAnimationFrameRef.current = null;
 		}
-		shouldFollowBottomRef.current = !initialTargetKey;
+		setShouldFollowBottom(shouldInitiallyFollowBottom);
+		setHistoryBufferEnabled(shouldInitiallyBufferHistory);
 		skipNextLerpRef.current = true;
 		if (initialTargetKey) return;
+		if (!shouldInitiallyFollowBottom) return;
 		requestAnimationFrame(() => {
 			virtuosoRef.current?.scrollToIndex({ index: "LAST", align: "end", behavior: "auto" });
 		});
-	}, [initialTargetKey, resetKey]);
+	}, [
+		initialTargetKey,
+		resetKey,
+		setHistoryBufferEnabled,
+		setShouldFollowBottom,
+		shouldInitiallyBufferHistory,
+		shouldInitiallyFollowBottom,
+	]);
 
 	useEffect(() => {
 		if (!initialTargetKey || !getItemKey || items.length === 0) return;
 		const index = items.findIndex((item) => getItemKey(item) === initialTargetKey);
 		onInitialTargetHandled?.();
 		if (index < 0) {
-			shouldFollowBottomRef.current = true;
+			setShouldFollowBottom(true);
 			requestAnimationFrame(() => {
 				virtuosoRef.current?.scrollToIndex({ index: "LAST", align: "end", behavior: "auto" });
 			});
 			return;
 		}
-		shouldFollowBottomRef.current = false;
+		setShouldFollowBottom(false);
 		skipNextLerpRef.current = true;
 		requestAnimationFrame(() => {
 			virtuosoRef.current?.scrollToIndex({ index, align: "center", behavior: "smooth" });
 		});
-	}, [getItemKey, initialTargetKey, items, onInitialTargetHandled]);
+	}, [getItemKey, initialTargetKey, items, onInitialTargetHandled, setShouldFollowBottom]);
 
 	useEffect(() => {
 		void items;
@@ -267,13 +352,14 @@ export function useMessageFeedScrollModel<T>({
 			appendedItem !== undefined &&
 			(shouldFollowOnAppend?.(appendedItem) ?? false)
 		) {
-			shouldFollowBottomRef.current = true;
+			setShouldFollowBottom(true);
 		}
-	}, [items, shouldFollowOnAppend]);
+	}, [items, setShouldFollowBottom, shouldFollowOnAppend]);
 
 	const scrollerRef = useCallback((element: HTMLElement | Window | null) => {
 		const next = element instanceof HTMLElement ? element : null;
 		scrollerElementRef.current = next;
+		lastScrollTopRef.current = next?.scrollTop ?? 0;
 		setScrollerElement(next);
 		if (next) next.style.overflowAnchor = "none";
 	}, []);
@@ -285,6 +371,20 @@ export function useMessageFeedScrollModel<T>({
 		const target = Math.max(0, element.scrollHeight - element.clientHeight);
 		if (Math.abs(target - element.scrollTop) > 0.5) element.scrollTop = target;
 	}, []);
+
+	const scheduleSnapToBottom = useCallback(() => {
+		if (layoutResizingRef.current || !shouldFollowBottomRef.current || snapAnimationFrameRef.current !== null) {
+			return;
+		}
+		snapAnimationFrameRef.current = requestAnimationFrame(snapToBottom);
+	}, [snapToBottom]);
+
+	const onTotalListHeightChange = useCallback(
+		(_height: number) => {
+			scheduleSnapToBottom();
+		},
+		[scheduleSnapToBottom],
+	);
 
 	useEffect(() => {
 		const wasResizing = previousLayoutResizingRef.current;
@@ -300,17 +400,22 @@ export function useMessageFeedScrollModel<T>({
 		element.addEventListener("wheel", onWheel, { passive: true });
 		element.addEventListener("touchstart", onTouchStart, { passive: true });
 		element.addEventListener("touchmove", onTouchMove, { passive: true });
-		element.addEventListener("scroll", scheduleStateCapture, { passive: true });
+		element.addEventListener("pointerdown", onPointerDown, { passive: true });
+		element.addEventListener("pointerup", onPointerEnd, { passive: true });
+		element.addEventListener("pointercancel", onPointerEnd, { passive: true });
+		element.addEventListener("scroll", onScroll, { passive: true });
 		const resizeObserver = new ResizeObserver(() => {
-			if (layoutResizingRef.current || snapAnimationFrameRef.current !== null) return;
-			snapAnimationFrameRef.current = requestAnimationFrame(snapToBottom);
+			scheduleSnapToBottom();
 		});
 		resizeObserver.observe(element);
 		return () => {
 			element.removeEventListener("wheel", onWheel);
 			element.removeEventListener("touchstart", onTouchStart);
 			element.removeEventListener("touchmove", onTouchMove);
-			element.removeEventListener("scroll", scheduleStateCapture);
+			element.removeEventListener("pointerdown", onPointerDown);
+			element.removeEventListener("pointerup", onPointerEnd);
+			element.removeEventListener("pointercancel", onPointerEnd);
+			element.removeEventListener("scroll", onScroll);
 			resizeObserver.disconnect();
 			if (stateCaptureFrameRef.current !== null) {
 				cancelAnimationFrame(stateCaptureFrameRef.current);
@@ -322,7 +427,17 @@ export function useMessageFeedScrollModel<T>({
 				snapAnimationFrameRef.current = null;
 			}
 		};
-	}, [captureState, onTouchMove, onTouchStart, onWheel, scheduleStateCapture, scrollerElement, snapToBottom]);
+	}, [
+		captureState,
+		onPointerDown,
+		onPointerEnd,
+		onScroll,
+		onTouchMove,
+		onTouchStart,
+		onWheel,
+		scheduleSnapToBottom,
+		scrollerElement,
+	]);
 
 	useEffect(
 		() => () => {
@@ -334,5 +449,18 @@ export function useMessageFeedScrollModel<T>({
 		[captureState],
 	);
 
-	return { onAtBottomChange, restoreStateFrom, scrollerElement, scrollerRef, scrollToItem, virtuosoRef };
+	// Virtuoso 的 followOutput 只短暂观察内容增长。总高度事件覆盖延迟挂载、
+	// Markdown 与工具结果的多轮重测；顶部历史缓冲则只在用户开始浏览后启用。
+	return {
+		followOutput: followOutputEnabled ? "auto" : false,
+		historyBufferEnabled,
+		initialTopMostItemIndex,
+		onAtBottomChange,
+		onTotalListHeightChange,
+		restoreStateFrom,
+		scrollerElement,
+		scrollerRef,
+		scrollToItem,
+		virtuosoRef,
+	};
 }

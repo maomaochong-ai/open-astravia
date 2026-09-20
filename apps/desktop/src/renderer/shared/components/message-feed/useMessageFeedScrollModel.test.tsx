@@ -111,6 +111,7 @@ describe("useMessageFeedScrollModel", () => {
 		act(() => result.current.scrollToItem(3));
 
 		expect(scrollToIndex).toHaveBeenCalledWith({ index: 3, align: "start", behavior: "smooth" });
+		expect(result.current.historyBufferEnabled).toBe(true);
 	});
 
 	it("resolves an initial target through a scenario-provided logical key", () => {
@@ -141,6 +142,161 @@ describe("useMessageFeedScrollModel", () => {
 
 		expect(onInitialTargetHandled).toHaveBeenCalledOnce();
 		expect(scrollToIndex).toHaveBeenCalledWith({ index: 1, align: "center", behavior: "smooth" });
+	});
+
+	it("keeps the tail lightweight until the user starts browsing history", () => {
+		vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
+		vi.stubGlobal("cancelAnimationFrame", vi.fn());
+		vi.stubGlobal(
+			"ResizeObserver",
+			class {
+				observe() {}
+				disconnect() {}
+			},
+		);
+		const { result } = renderHook(() =>
+			useMessageFeedScrollModel({
+				active: false,
+				items: [{ id: "message-1" }],
+				resetKey: "feed-1",
+			}),
+		);
+		const element = document.createElement("div");
+
+		act(() => result.current.scrollerRef(element));
+
+		expect(result.current).toMatchObject({ followOutput: "auto", historyBufferEnabled: false });
+
+		act(() => element.dispatchEvent(new WheelEvent("wheel", { deltaY: -1 })));
+
+		expect(result.current).toMatchObject({ followOutput: false, historyBufferEnabled: true });
+
+		act(() => result.current.onAtBottomChange(true));
+
+		expect(result.current).toMatchObject({ followOutput: "auto", historyBufferEnabled: true });
+	});
+
+	it("recognizes an upward scrollbar drag as history-browsing intent", () => {
+		vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
+		vi.stubGlobal("cancelAnimationFrame", vi.fn());
+		vi.stubGlobal(
+			"ResizeObserver",
+			class {
+				observe() {}
+				disconnect() {}
+			},
+		);
+		const { result } = renderHook(() =>
+			useMessageFeedScrollModel({
+				active: false,
+				items: [{ id: "message-1" }],
+				resetKey: "feed-pointer",
+			}),
+		);
+		const element = document.createElement("div");
+		Object.defineProperty(element, "scrollTop", { configurable: true, writable: true, value: 600 });
+
+		act(() => result.current.scrollerRef(element));
+		act(() => element.dispatchEvent(new MouseEvent("pointerdown", { button: 0 })));
+		element.scrollTop = 400;
+		act(() => element.dispatchEvent(new Event("scroll")));
+
+		expect(result.current).toMatchObject({ followOutput: false, historyBufferEnabled: true });
+	});
+
+	it("coalesces virtual total-height changes and pins the tail only while follow intent is active", () => {
+		const frames: FrameRequestCallback[] = [];
+		vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+			frames.push(callback);
+			return frames.length;
+		});
+		vi.stubGlobal("cancelAnimationFrame", vi.fn());
+		vi.stubGlobal(
+			"ResizeObserver",
+			class {
+				observe() {}
+				disconnect() {}
+			},
+		);
+		const { result } = renderHook(() =>
+			useMessageFeedScrollModel({
+				active: false,
+				items: [{ id: "message-1" }],
+				resetKey: "feed-height",
+			}),
+		);
+		const element = document.createElement("div");
+		Object.defineProperties(element, {
+			scrollHeight: { configurable: true, writable: true, value: 1200 },
+			clientHeight: { configurable: true, value: 400 },
+			scrollTop: { configurable: true, writable: true, value: 600 },
+		});
+
+		act(() => result.current.scrollerRef(element));
+		frames.splice(0);
+		act(() => {
+			result.current.onTotalListHeightChange(1100);
+			result.current.onTotalListHeightChange(1200);
+		});
+
+		expect(frames).toHaveLength(1);
+		act(() => frames.shift()?.(0));
+		expect(element.scrollTop).toBe(800);
+
+		act(() => element.dispatchEvent(new WheelEvent("wheel", { deltaY: -1 })));
+		Object.defineProperty(element, "scrollHeight", { configurable: true, writable: true, value: 1600 });
+		act(() => result.current.onTotalListHeightChange(1600));
+
+		expect(frames).toHaveLength(0);
+		expect(element.scrollTop).toBe(800);
+	});
+
+	it("does not leak history-browsing state into the next session", () => {
+		vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
+		vi.stubGlobal("cancelAnimationFrame", vi.fn());
+		vi.stubGlobal(
+			"ResizeObserver",
+			class {
+				observe() {}
+				disconnect() {}
+			},
+		);
+		const { result, rerender } = renderHook(
+			({ resetKey }) =>
+				useMessageFeedScrollModel({
+					active: false,
+					items: [{ id: "message-1" }],
+					resetKey,
+				}),
+			{ initialProps: { resetKey: "feed-a" } },
+		);
+		const element = document.createElement("div");
+
+		act(() => result.current.scrollerRef(element));
+		act(() => element.dispatchEvent(new WheelEvent("wheel", { deltaY: -1 })));
+		expect(result.current.historyBufferEnabled).toBe(true);
+
+		rerender({ resetKey: "feed-b" });
+
+		expect(result.current).toMatchObject({ followOutput: "auto", historyBufferEnabled: false });
+	});
+
+	it("keeps the initial index stable while an empty session hydrates", () => {
+		const { result, rerender } = renderHook(
+			({ items }: { items: Array<{ id: string }> }) =>
+				useMessageFeedScrollModel({
+					active: false,
+					items,
+					resetKey: "progressive-feed",
+				}),
+			{ initialProps: { items: [] as Array<{ id: string }> } },
+		);
+
+		expect(result.current).toMatchObject({ initialTopMostItemIndex: 0 });
+
+		rerender({ items: Array.from({ length: 25 }, (_, index) => ({ id: `message-${index}` })) });
+
+		expect(result.current).toMatchObject({ initialTopMostItemIndex: 0 });
 	});
 
 	it("caches measured item state and exposes it for a later remount", () => {
@@ -178,7 +334,29 @@ describe("useMessageFeedScrollModel", () => {
 			}),
 		);
 
-		expect(second.result.current.restoreStateFrom).toEqual(snapshot);
+		expect(second.result.current).toMatchObject({
+			followOutput: false,
+			historyBufferEnabled: true,
+			restoreStateFrom: snapshot,
+			initialTopMostItemIndex: undefined,
+		});
 		second.unmount();
+
+		const progressive = renderHook(
+			({ items }: { items: Array<{ id: string }> }) =>
+				useMessageFeedScrollModel({
+					active: false,
+					items,
+					resetKey,
+				}),
+			{ initialProps: { items: [] as Array<{ id: string }> } },
+		);
+
+		expect(progressive.result.current.restoreStateFrom).toBeUndefined();
+
+		progressive.rerender({ items: [{ id: "message-1" }, { id: "message-2" }] });
+
+		expect(progressive.result.current.restoreStateFrom).toBeUndefined();
+		progressive.unmount();
 	});
 });

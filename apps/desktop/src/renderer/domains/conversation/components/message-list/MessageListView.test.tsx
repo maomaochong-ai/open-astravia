@@ -100,7 +100,11 @@ vi.mock("./MessageTimeline", () => ({
 	),
 }));
 
-function props(viewportPhase: "initial" | "expanded", isStreaming = false): ComponentProps<typeof MessageListView> {
+function props(
+	deferredContentReady: boolean,
+	isStreaming = false,
+	historyBufferEnabled = false,
+): ComponentProps<typeof MessageListView> {
 	const scrollToMessage = vi.fn();
 	return {
 		model: {
@@ -111,7 +115,11 @@ function props(viewportPhase: "initial" | "expanded", isStreaming = false): Comp
 				virtuosoRef: { current: null },
 				scrollerRef: vi.fn(),
 				onAtBottomChange: vi.fn(),
+				onTotalListHeightChange: vi.fn(),
 				scrollToMessage,
+				followOutput: "auto",
+				historyBufferEnabled,
+				initialTopMostItemIndex: 0,
 			} as never,
 			tailMessageId: "message-1",
 			participantsById: new Map(),
@@ -119,70 +127,92 @@ function props(viewportPhase: "initial" | "expanded", isStreaming = false): Comp
 		},
 		onAbort: vi.fn(),
 		sessionId: "/sessions/a.jsonl",
-		viewportPhase,
+		deferredContentReady,
 	};
 }
 
-describe("MessageListView viewport phases", () => {
+describe("MessageListView history buffering", () => {
 	beforeEach(() => {
 		cleanup();
 		captured.virtuosoProps = undefined;
 		captured.messageItemProps = [];
 	});
 
-	it("冷会话首屏也使用零缓冲，扩大后恢复完整预渲染", () => {
-		const { rerender } = render(<MessageListView {...props("initial")} />);
+	it("非关键内容就绪不会扩张历史缓冲，用户开始浏览后才预渲染旧消息", () => {
+		const { rerender } = render(<MessageListView {...props(false)} />);
 
 		expect(screen.getByTestId("full-message").textContent).toBe("message-1");
 		expect(captured.virtuosoProps?.overscan).toBe(0);
 		expect(captured.virtuosoProps?.minOverscanItemCount).toEqual({ top: 0, bottom: 0 });
 		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 0, bottom: 0 });
+		expect(captured.virtuosoProps?.followOutput).toBe("auto");
+		expect(captured.virtuosoProps?.initialTopMostItemIndex).toBe(0);
+		expect(captured.virtuosoProps?.totalListHeightChanged).toEqual(expect.any(Function));
 		expect(screen.queryByRole("button", { name: "message timeline" })).toBeNull();
 
-		rerender(<MessageListView {...props("expanded")} />);
+		rerender(<MessageListView {...props(true)} />);
+
+		expect(captured.virtuosoProps?.overscan).toBe(0);
+		expect(captured.virtuosoProps?.minOverscanItemCount).toEqual({ top: 0, bottom: 0 });
+		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 0, bottom: 0 });
+		expect(screen.queryByRole("button", { name: "message timeline" })).not.toBeNull();
+
+		rerender(<MessageListView {...props(true, false, true)} />);
 
 		expect(screen.getByTestId("full-message").textContent).toBe("message-1");
 		expect(captured.virtuosoProps?.overscan).toBe(400);
 		expect(captured.virtuosoProps?.minOverscanItemCount).toEqual({ top: 12, bottom: 4 });
 		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 600, bottom: 200 });
-		expect(screen.queryByRole("button", { name: "message timeline" })).not.toBeNull();
 	});
 
-	it("恢复已测量会话时先只渲染可见区域，再扩大屏幕外缓冲", () => {
+	it("恢复已测量位置时立即启用历史缓冲且不启用尾随", () => {
 		const restoreStateFrom = { scrollTop: 320, ranges: [] };
-		const initialBase = props("initial");
+		const initialBase = props(false, false, true);
 		const initial = {
 			...initialBase,
 			model: {
 				...initialBase.model,
-				scroll: { ...initialBase.model.scroll, restoreStateFrom },
+				scroll: {
+					...initialBase.model.scroll,
+					followOutput: false,
+					restoreStateFrom,
+					initialTopMostItemIndex: undefined,
+				},
 			},
 		};
 		const { rerender } = render(<MessageListView {...initial} />);
 
 		expect(screen.getByTestId("full-message").textContent).toBe("message-1");
+		expect(captured.virtuosoProps?.followOutput).toBe(false);
 		expect(captured.virtuosoProps?.restoreStateFrom).toEqual({ scrollTop: 320, ranges: [] });
-		expect(captured.virtuosoProps?.overscan).toBe(0);
-		expect(captured.virtuosoProps?.minOverscanItemCount).toEqual({ top: 0, bottom: 0 });
-		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 0, bottom: 0 });
+		expect(captured.virtuosoProps?.initialTopMostItemIndex).toBeUndefined();
+		expect(captured.virtuosoProps?.overscan).toBe(400);
+		expect(captured.virtuosoProps?.minOverscanItemCount).toEqual({ top: 12, bottom: 4 });
+		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 600, bottom: 200 });
 
-		const expandedBase = props("expanded");
+		const expandedBase = props(true, false, true);
 		const expanded = {
 			...expandedBase,
 			model: {
 				...expandedBase.model,
-				scroll: { ...expandedBase.model.scroll, restoreStateFrom },
+				scroll: {
+					...expandedBase.model.scroll,
+					followOutput: false,
+					restoreStateFrom,
+					initialTopMostItemIndex: undefined,
+				},
 			},
 		};
 		rerender(<MessageListView {...expanded} />);
 
+		expect(captured.virtuosoProps?.initialTopMostItemIndex).toBeUndefined();
 		expect(captured.virtuosoProps?.overscan).toBe(400);
 		expect(captured.virtuosoProps?.minOverscanItemCount).toEqual({ top: 12, bottom: 4 });
 		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 600, bottom: 200 });
 	});
 
 	it("消息从乐观状态规范化为持久化状态时保留可见 DOM 行", () => {
-		const initial = props("expanded", true);
+		const initial = props(true, true);
 		initial.model.messages = [
 			{
 				...createConversationAgentMessage({ id: "waiting-message", text: "", blocks: [] }),
@@ -192,7 +222,7 @@ describe("MessageListView viewport phases", () => {
 		const { rerender } = render(<MessageListView {...initial} />);
 		const visibleRow = screen.getByTestId("full-message");
 
-		const persisted = props("expanded");
+		const persisted = props(true);
 		persisted.model.messages = [
 			{
 				...createConversationAgentMessage({ id: "persisted-message", text: "done", blocks: [] }),
@@ -206,7 +236,7 @@ describe("MessageListView viewport phases", () => {
 	});
 
 	it("只把处理阶段文案传给尚未开始输出的待回复消息", () => {
-		const waiting = props("expanded", true);
+		const waiting = props(true, true);
 		waiting.pendingLabel = "团队正在加载";
 		waiting.model.messages = [
 			createConversationAgentMessage({ id: "waiting-message", phase: "pending", text: "", blocks: [] }),
@@ -215,7 +245,7 @@ describe("MessageListView viewport phases", () => {
 
 		expect(screen.getByTestId("full-message").getAttribute("data-pending-label")).toBe("团队正在加载");
 
-		const streaming = props("expanded", true);
+		const streaming = props(true, true);
 		streaming.pendingLabel = "等待模型响应";
 		streaming.model.messages = [
 			createConversationAgentMessage({ id: "waiting-message", phase: "streaming", text: "回答", blocks: [] }),
@@ -226,7 +256,7 @@ describe("MessageListView viewport phases", () => {
 	});
 
 	it("空会话仍使用零缓冲首屏，避免没有消息时预渲染无意义内容", () => {
-		const viewProps = props("initial");
+		const viewProps = props(false);
 		viewProps.model.messages = [];
 		render(<MessageListView {...viewProps} />);
 
@@ -236,14 +266,14 @@ describe("MessageListView viewport phases", () => {
 	});
 
 	it("流式回复期间也为向上滚动保留历史消息缓冲", () => {
-		render(<MessageListView {...props("expanded", true)} />);
+		render(<MessageListView {...props(true, true, true)} />);
 
 		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 400, bottom: 80 });
 		expect(captured.virtuosoProps?.minOverscanItemCount).toEqual({ top: 8, bottom: 2 });
 	});
 
 	it("把时间线的消息索引交给统一滚动模型", async () => {
-		const viewProps = props("expanded");
+		const viewProps = props(true);
 		render(<MessageListView {...viewProps} />);
 
 		await userEvent.click(screen.getByRole("button", { name: "message timeline" }));
@@ -253,7 +283,7 @@ describe("MessageListView viewport phases", () => {
 	});
 
 	it("把提问目录悬浮在会话区域左侧，不占消息列宽度", () => {
-		render(<MessageListView {...props("expanded")} />);
+		render(<MessageListView {...props(true)} />);
 		const trigger = screen.getByRole("button", { name: "message timeline" });
 		const host = trigger.closest(".absolute");
 		expect(host?.className).toContain("left-3");
@@ -261,7 +291,7 @@ describe("MessageListView viewport phases", () => {
 	});
 
 	it("窄屏隐藏提问目录，避免压住右对齐气泡", () => {
-		render(<MessageListView {...props("expanded")} />);
+		render(<MessageListView {...props(true)} />);
 		const host = screen.getByRole("button", { name: "message timeline" }).closest(".absolute");
 		expect(host?.className).toContain("@max-[52rem]:hidden");
 	});
@@ -269,7 +299,7 @@ describe("MessageListView viewport phases", () => {
 	it("把所有历史助手消息的 usage 汇总后传给 Token 面板", () => {
 		const firstUsage = usage({ input: 20, output: 10 });
 		const secondUsage = usage({ input: 100, output: 70 });
-		const viewProps = props("expanded");
+		const viewProps = props(true);
 		viewProps.model.messages = [
 			createConversationAgentMessage({ id: "message-1", text: "first", blocks: [], usages: [firstUsage] }),
 			createConversationAgentMessage({ id: "message-2", text: "second", blocks: [], usages: [secondUsage] }),

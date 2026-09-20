@@ -7,6 +7,26 @@ import { describe, expect, it, vi } from "vitest";
 import { useMessageListScrollModel } from "./useMessageListScrollModel";
 
 describe("useMessageListScrollModel navigation", () => {
+	it("keeps the adapter model stable across unrelated rerenders", () => {
+		const messages = [createConversationUserMessage({ id: "message-1", text: "hello" })];
+		const { result, rerender } = renderHook(
+			({ renderPass }) => {
+				void renderPass;
+				return useMessageListScrollModel({
+					isStreaming: false,
+					messages,
+					sessionId: "session-stable",
+				});
+			},
+			{ initialProps: { renderPass: 0 } },
+		);
+		const first = result.current;
+
+		rerender({ renderPass: 1 });
+
+		expect(result.current).toBe(first);
+	});
+
 	it("uses the shared Virtuoso instance to jump to an exact message", () => {
 		const scrollToIndex = vi.fn();
 		const { result } = renderHook(() =>

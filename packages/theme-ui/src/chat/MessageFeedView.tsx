@@ -49,6 +49,7 @@ export interface MessageFeedVirtualListProps<T> extends Omit<ComponentPropsWitho
 	readonly virtuosoRef?: Ref<VirtuosoHandle>;
 	readonly scrollerRef?: (ref: HTMLElement | Window | null) => void;
 	readonly atBottomStateChange?: (atBottom: boolean) => void;
+	readonly totalListHeightChanged?: (height: number) => void;
 	readonly itemsRendered?: (items: ListItem<T>[]) => void;
 	readonly rangeChanged?: (range: ListRange) => void;
 	readonly restoreStateFrom?: StateSnapshot;
@@ -69,6 +70,7 @@ export function MessageFeedVirtualList<T>({
 	virtuosoRef,
 	scrollerRef,
 	atBottomStateChange,
+	totalListHeightChanged,
 	itemsRendered,
 	rangeChanged,
 	restoreStateFrom,
@@ -93,6 +95,7 @@ export function MessageFeedVirtualList<T>({
 			{...(getKey ? { computeItemKey: (index: number, item: T) => getKey(item, index) } : {})}
 			{...(scrollerRef ? { scrollerRef } : {})}
 			{...(atBottomStateChange ? { atBottomStateChange } : {})}
+			{...(totalListHeightChanged ? { totalListHeightChanged } : {})}
 			{...(itemsRendered ? { itemsRendered } : {})}
 			{...(rangeChanged ? { rangeChanged } : {})}
 			{...(restoreStateFrom ? { restoreStateFrom } : {})}
