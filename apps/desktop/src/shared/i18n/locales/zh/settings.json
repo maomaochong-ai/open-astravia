@@ -264,7 +264,7 @@
     "providersDescription": "默认全部走代理。国内服务商或本地模型可以在这里单独关掉，避免绕远。",
     "noProviders": "还没有配置服务商。",
     "invalidConfig": "代理地址或端口无效，模型请求会直接失败而不会改走直连。请填写有效的地址和端口。",
-    "providerUnsupported": "该服务商由厂商 SDK 自己发请求，只能跟随系统代理环境变量，无法单独开关。"
+    "providerFollowsGlobal": "该服务商由厂商 SDK 自己发请求，够不到应用内的传输设置，只能跟随全局代理，无法单独排除。"
   },
   "workspace": {
     "title": "工作区",

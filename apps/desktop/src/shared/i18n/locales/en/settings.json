@@ -264,7 +264,7 @@
     "providersDescription": "Every provider uses the proxy by default. Turn it off for providers you can reach faster directly.",
     "noProviders": "No providers configured yet.",
     "invalidConfig": "The proxy host or port is invalid. Model requests will fail rather than silently falling back to a direct connection.",
-    "providerUnsupported": "This provider's vendor SDK issues its own requests, so it can only follow the system proxy environment variables."
+    "providerFollowsGlobal": "This provider's vendor SDK issues its own requests and cannot see the injected transport, so it always follows the global proxy and cannot be excluded on its own."
   },
   "workspace": {
     "title": "Workspace",

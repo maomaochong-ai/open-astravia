@@ -12,7 +12,13 @@ export interface ProxyRoutingDecisionInput {
 	readonly api: Api;
 }
 
-export type ProxyRoutingDecision = "proxy" | "direct" | "unsupported-api";
+export type ProxyRoutingDecision =
+	/** 走代理。由进程级全局 dispatcher 兜住，不需要注入。 */
+	| "proxy"
+	/** 用户显式排除。需要注入直连 fetch 才能把全局代理盖掉。 */
+	| "direct"
+	/** 厂商 SDK 自己发请求，够不到注入的传输：只能跟随全局，无法单独排除。 */
+	| "follows-global";
 
 /**
  * 默认走代理、按供应商排除，而不是默认直连、按供应商加入：用户打开「应用代理」
@@ -21,9 +27,9 @@ export type ProxyRoutingDecision = "proxy" | "direct" | "unsupported-api";
  */
 export function decideProxyRouting(input: ProxyRoutingDecisionInput): ProxyRoutingDecision {
 	if (!input.proxyActive) return "direct";
+	// 支持性先于用户开关：拿不到注入传输的 API，开关拨到哪边都改变不了它的去向，
+	// 只能如实说「跟随全局」，不能让界面显得排除成功了。
+	if (!supportsProviderFetchInjection(input.api)) return "follows-global";
 	if (input.providerUseProxy === false) return "direct";
-	// 厂商 SDK 自己发请求，注入的 fetch 到不了它——只能如实说不支持，
-	// 不能让开关看着生效、请求却裸奔出去。
-	if (!supportsProviderFetchInjection(input.api)) return "unsupported-api";
 	return "proxy";
 }

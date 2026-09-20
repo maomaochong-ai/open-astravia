@@ -20,9 +20,11 @@ describe("decideProxyRouting", () => {
 		);
 	});
 
-	it("reports vendor-SDK APIs as unsupported rather than pretending the switch worked", () => {
+	it("keeps vendor-SDK APIs on the global dispatcher whichever way their switch is set", () => {
+		// 它们够不到注入的传输，开关拨到哪边都改变不了去向；谎称排除成功比不支持更糟。
 		for (const api of ["bedrock-converse-stream", "google-generative-ai", "google-vertex"] as const) {
-			expect(decideProxyRouting({ proxyActive: true, providerUseProxy: true, api })).toBe("unsupported-api");
+			expect(decideProxyRouting({ proxyActive: true, providerUseProxy: true, api })).toBe("follows-global");
+			expect(decideProxyRouting({ proxyActive: true, providerUseProxy: false, api })).toBe("follows-global");
 		}
 	});
 });

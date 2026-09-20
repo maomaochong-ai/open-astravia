@@ -126,13 +126,15 @@ describe("网络代理设置", () => {
 		expect(isOn(switchByName("Anthropic"))).toBe(true);
 	});
 
-	it("厂商 SDK 自己发请求的服务商开关只读，并说明原因", async () => {
+	it("厂商 SDK 自己发请求的服务商显示为跟随全局、开关只读，并说明原因", async () => {
 		installVetta({ proxyEnabled: true });
 		render(<Harness />);
 
 		await waitFor(() => expect(switchByName("Google")).toBeTruthy());
+		// 它确实走代理，只是拨不动——显示成关着会让人以为漏了它。
+		expect(isOn(switchByName("Google"))).toBe(true);
 		expect(switchByName("Google").disabled).toBe(true);
-		expect(screen.getByText("proxy.providerUnsupported")).toBeTruthy();
+		expect(screen.getByText("proxy.providerFollowsGlobal")).toBeTruthy();
 	});
 
 	it("地址填不全时提示请求会失败，而不是让用户以为改走了直连", async () => {

@@ -217,7 +217,7 @@ export function useProxySettingsModel(): ProxySettingsModel {
 				id: provider.id,
 				displayName: provider.displayName,
 				useProxy: provider.useProxy,
-				...(provider.supported ? {} : { unsupportedReason: t("proxy.providerUnsupported") }),
+				...(provider.supported ? {} : { lockedReason: t("proxy.providerFollowsGlobal") }),
 			})),
 		[providers, t],
 	);

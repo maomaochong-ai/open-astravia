@@ -10,10 +10,10 @@ export interface ProxyProviderRowView {
 	/** 该服务商是否经代理出网。 */
 	readonly useProxy: boolean;
 	/**
-	 * 非空表示此服务商无法走应用代理（厂商 SDK 自己发请求），
-	 * 文案直接展示给用户，开关置为只读。
+	 * 非空表示此服务商只能跟随全局代理、无法单独排除（厂商 SDK 自己发请求，
+	 * 够不到注入的传输）。文案直接展示给用户，开关置为只读。
 	 */
-	readonly unsupportedReason?: string;
+	readonly lockedReason?: string;
 }
 
 export interface ProxySettingsSectionViewLabels {
@@ -161,13 +161,13 @@ export function ProxySettingsSectionView({
 								<SettingRow
 									key={provider.id}
 									title={provider.displayName}
-									description={provider.unsupportedReason}
+									description={provider.lockedReason}
 									border={index < providers.length - 1}
 								>
-									<div className={cn(provider.unsupportedReason && "opacity-40")}>
+									<div className={cn(provider.lockedReason && "opacity-40")}>
 										<Switch
-											checked={provider.unsupportedReason ? false : provider.useProxy}
-											disabled={Boolean(provider.unsupportedReason)}
+											checked={provider.useProxy}
+											disabled={Boolean(provider.lockedReason)}
 											onCheckedChange={(checked) => onProviderUseProxyChange(provider.id, checked)}
 											aria-label={provider.displayName}
 										/>

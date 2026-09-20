@@ -1,17 +1,24 @@
 /**
  * 把桌面端的应用代理配置装到出网链路上。
  *
- * 两条通道，覆盖面不同，缺一不可：
- * - **Provider 传输**：`@vetta/ai` 的解析器，逐个供应商决定走代理还是直连。
- * - **代理环境变量**：本地命令、sidecar，以及 Bedrock / Google 这类自带 SDK、
- *   拿不到注入 fetch 的 Provider，只认 `HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY`。
- *   它是进程级的，给不了按供应商的粒度，所以只当兜底。
+ * 三条通道，覆盖面依次收窄：
+ * - **全局 dispatcher**：代理有效时换掉 undici 的全局 dispatcher，凡是走裸
+ *   `fetch` 的出网点都跟着走代理——`@google/genai` 没有任何注入口，只能靠这条。
+ * - **Provider 传输**：注入的 fetch 只用来做**例外**，把被用户排除的供应商显式
+ *   拉回直连；代理配置无效时它还负责让请求带着原因失败。
+ * - **代理环境变量**：本地命令、Go sidecar 与 Bedrock（走 node http，不吃 undici
+ *   全局 dispatcher）只认 `HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY`。
+ *
+ * 默认方向因此是反的：全局走代理、个别排除，而不是全局直连、个别加入。
  */
 
 import {
+	createDirectFetch,
 	createProxyFetch,
+	type GlobalProxyDispatcherHandle,
+	installGlobalProxyDispatcher,
+	type ManagedFetch,
 	NO_PROXY_HOSTS,
-	type ProxyFetch,
 	resolveProxyConfig,
 	setProviderFetchResolver,
 } from "@vetta/ai";
@@ -43,27 +50,49 @@ export interface ProxyRuntimeOptions {
 	/** 读取各供应商的代理开关。默认接 models.json。 */
 	readonly readProviderUseProxy: (providerId: string) => boolean | undefined;
 	readonly env?: NodeJS.ProcessEnv;
+	/** 测试注入点，避开真实 undici 与进程级全局状态。 */
+	readonly installGlobalDispatcher?: (proxyUrl: string) => Promise<GlobalProxyDispatcherHandle>;
+	readonly makeDirectFetch?: () => ManagedFetch;
 }
 
-let activeProxyFetch: ProxyFetch | undefined;
+export type ProxyRuntimeMode = "direct" | "proxy" | "invalid";
+
+export interface ProxyRuntimeState {
+	readonly mode: ProxyRuntimeMode;
+	/** 仅 proxy：host:port，不含凭据。 */
+	readonly target?: string;
+}
+
+interface ActiveProxyResources {
+	readonly globalDispatcher?: GlobalProxyDispatcherHandle;
+	readonly fetches: readonly ManagedFetch[];
+}
+
+let active: ActiveProxyResources | undefined;
+
+async function releaseActive(): Promise<void> {
+	const previous = active;
+	active = undefined;
+	if (!previous) return;
+	// 旧连接池必须显式释放：改完地址还留着上一份，隧道会继续指向旧代理。
+	await previous.globalDispatcher?.dispose().catch(() => {});
+	for (const managed of previous.fetches) await managed.dispose().catch(() => {});
+}
 
 /**
  * 应用一份代理配置。启动时与每次配置变更后各调一次；重复调用安全。
  *
  * 返回本次生效的形态，供调用方记录日志或回给设置页。
  */
-export function applyDesktopProxy(
+export async function applyDesktopProxy(
 	config: DesktopProxyConfig | undefined,
 	options: ProxyRuntimeOptions,
-): { mode: "direct" | "proxy" | "invalid"; target?: string } {
+): Promise<ProxyRuntimeState> {
 	const env = options.env ?? process.env;
 	rememberInheritedProxyEnv(env);
 	const resolution = resolveProxyConfig(config);
 
-	// 旧连接池必须显式释放：改完地址还留着上一份，隧道会继续指向旧代理。
-	const previous = activeProxyFetch;
-	activeProxyFetch = undefined;
-	if (previous) void previous.dispose().catch(() => {});
+	await releaseActive();
 
 	if (resolution.mode === "direct") {
 		setProviderFetchResolver(undefined);
@@ -72,35 +101,40 @@ export function applyDesktopProxy(
 		return { mode: "direct" };
 	}
 
-	const proxyFetch = createProxyFetch(config, {});
-	if (!proxyFetch) {
-		setProviderFetchResolver(undefined);
-		restoreProxyEnv(env);
-		return { mode: "direct" };
-	}
-	activeProxyFetch = proxyFetch;
-
-	setProviderFetchResolver((model) => {
-		const decision = decideProxyRouting({
-			proxyActive: true,
-			providerUseProxy: options.readProviderUseProxy(model.provider),
-			api: model.api,
-		});
-		return decision === "proxy" ? proxyFetch.fetch : undefined;
-	});
-
 	if (resolution.mode === "invalid") {
-		// 不写代理环境变量，也不撤回解析器：每个请求都会带着具体原因失败，
-		// 而不是安静地直连出去。
+		// 全局 dispatcher 保持不动：一个拒绝一切的全局 dispatcher 会把更新检查、
+		// 图片加载一并打死，代价远超收益。这里只让「本该走代理」的模型请求带着原因
+		// 失败，配置无效本身由设置页那条提示负责告诉用户。
+		const failing = createProxyFetch(config, {});
+		if (failing) {
+			active = { fetches: [failing] };
+			setProviderFetchResolver((model) => (routingFor(model, options) === "proxy" ? failing.fetch : undefined));
+		}
 		restoreProxyEnv(env);
-		log.warn(`application proxy configuration is invalid (${resolution.reason}); provider requests will fail`);
+		log.warn(`application proxy configuration is invalid (${resolution.reason}); proxied requests will fail`);
 		return { mode: "invalid" };
 	}
+
+	const globalDispatcher = await (options.installGlobalDispatcher ?? installGlobalProxyDispatcher)(resolution.url);
+	// 只有被排除的供应商才需要注入：其余的由全局 dispatcher 兜住，包括那些拿不到
+	// 注入 fetch 的厂商 SDK。
+	const directFetch = (options.makeDirectFetch ?? createDirectFetch)();
+	active = { globalDispatcher, fetches: [directFetch] };
+
+	setProviderFetchResolver((model) => (routingFor(model, options) === "direct" ? directFetch.fetch : undefined));
 
 	applyProxyEnv(env, resolution.url);
 	// 只记 host:port，凭据绝不进日志。
 	log.info(`application proxy enabled via ${resolution.target}`);
 	return { mode: "proxy", target: resolution.target };
+}
+
+function routingFor(model: { provider: string; api: string }, options: ProxyRuntimeOptions) {
+	return decideProxyRouting({
+		proxyActive: true,
+		providerUseProxy: options.readProviderUseProxy(model.provider),
+		api: model.api,
+	});
 }
 
 function applyProxyEnv(env: NodeJS.ProcessEnv, proxyUrl: string): void {

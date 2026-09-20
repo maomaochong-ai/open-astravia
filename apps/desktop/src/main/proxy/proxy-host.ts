@@ -30,5 +30,5 @@ export function invalidateProxyProviderRouting(): void {
 export async function refreshDesktopProxy(): Promise<void> {
 	invalidateProxyProviderRouting();
 	const config = await readDesktopConfig();
-	applyDesktopProxy(config.proxy, { readProviderUseProxy });
+	await applyDesktopProxy(config.proxy, { readProviderUseProxy });
 }
