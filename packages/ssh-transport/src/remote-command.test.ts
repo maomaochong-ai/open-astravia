@@ -3,6 +3,7 @@ import {
 	chmodSync,
 	existsSync,
 	lstatSync,
+	mkdirSync,
 	mkdtempSync,
 	readdirSync,
 	readFileSync,
@@ -14,6 +15,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
+import { parseRemoteDirectoryListing } from "./directory-listing.js";
 import {
 	buildKillCommand,
 	buildListDirectoryCommand,
@@ -212,5 +214,27 @@ describe("buildWriteFileCommand（在真实 /bin/sh 上执行）", () => {
 		const dir = mkdtempSync(join(tmpdir(), "vetta-write-"));
 		expect(() => write(join(dir, "missing", "a.txt"), "x")).toThrow();
 		expect(readdirSync(dir)).toEqual([]);
+	});
+});
+
+describe("stat 与目录列举（在真实 shell 上执行并解析）", () => {
+	// 格式串的转义规则 GNU 与 BSD 不同，只有真的跑一遍才知道输出能不能被解析。
+	const flavor = process.platform === "darwin" ? "bsd" : "gnu";
+	const run = (command: string): string => execFileSync("/bin/sh", ["-c", command], { encoding: "utf8" });
+
+	it("本机这一家的 stat 输出能被解析成条目", () => {
+		const dir = mkdtempSync(join(tmpdir(), "vetta-stat-"));
+		writeFileSync(join(dir, "a b.txt"), "hello");
+		mkdirSync(join(dir, "src"));
+
+		const entries = parseRemoteDirectoryListing(run(buildListDirectoryCommand(dir, flavor)));
+		expect(entries.map((entry) => [entry.name, entry.kind]).sort()).toEqual([
+			["a b.txt", "file"],
+			["src", "directory"],
+		]);
+		expect(entries.find((entry) => entry.name === "a b.txt")?.sizeBytes).toBe(5);
+
+		expect(parseRemoteDirectoryListing(run(buildStatCommand(dir, flavor)))[0]?.kind).toBe("directory");
+		expect(run(buildStatCommand(join(dir, "missing"), flavor))).toBe("");
 	});
 });

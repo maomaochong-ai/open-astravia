@@ -125,9 +125,15 @@ export type RemoteStatFlavor = "gnu" | "bsd";
  */
 const FORCE_C_LOCALE = "env LC_ALL=C LANG=C";
 
-/** stat 的格式串。名字放最后一个字段，因为文件名可以包含制表符。 */
+/**
+ * stat 的格式串。名字放最后一个字段，因为文件名可以包含制表符。
+ *
+ * 两家对转义的处理不同：GNU `--printf` 解释 `\\t`，BSD `-f` **不解释**，会原样输出
+ * 反斜杠加 t，整行随即解析不出任何字段。BSD 这边因此直接嵌入真正的制表符；换行由
+ * BSD stat 自己在每条记录后补上。
+ */
 function statFormat(flavor: RemoteStatFlavor): string {
-	return flavor === "gnu" ? `--printf='%F\\t%s\\t%Y\\t%n\\n'` : `-f '%HT\\t%z\\t%m\\t%N'`;
+	return flavor === "gnu" ? `--printf='%F\\t%s\\t%Y\\t%n\\n'` : `-f '%HT\t%z\t%m\t%N'`;
 }
 
 /** 单个路径的 stat，与目录列举同格式，便于共用一套解析。 */
