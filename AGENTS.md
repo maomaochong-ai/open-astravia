@@ -12,7 +12,7 @@ Vetta 是一套 AI Agent 产品栈。**本仓库是客户端侧的开源仓库**
 
 顶层目录按「是否被别的包依赖」划分，新增目录必须遵守：
 
-- `apps/`：可交付的应用，依赖图的叶子节点，不被任何包 import。`desktop`、`cli-host`、`docs-site`、`mobile`（Kotlin Multiplatform，仅 Android）与 `im-gateway`（Go）。
+- `apps/`：可交付的应用，依赖图的叶子节点，不被任何包 import。`desktop`、`cli-host`、`docs-site`、`mobile`（Kotlin Multiplatform，仅 Android）、`im-gateway`（Go）与 `ssh-helper`（Go，远程项目的远端 helper，见 ADR-0124）。
 - `packages/`：可复用模块，只能被 `apps/` 或其它 `packages/` 依赖。
 
 主要分层：
@@ -26,7 +26,7 @@ Vetta 是一套 AI Agent 产品栈。**本仓库是客户端侧的开源仓库**
 核心依赖方向：
 
 ```text
-apps/*  (desktop / cli-host / docs-site / mobile / im-gateway)
+apps/*  (desktop / cli-host / docs-site / mobile / im-gateway / ssh-helper)
                       |
                       v
        coding-agent / runtime-* / capability-*
