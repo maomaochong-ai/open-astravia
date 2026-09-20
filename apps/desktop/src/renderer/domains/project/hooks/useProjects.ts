@@ -269,17 +269,29 @@ export function useProjectActions() {
 		[refreshProjects, setExpandedProjects],
 	);
 
+	/**
+	 * 登记一个已存在的目录。
+	 *
+	 * `path` 既可以是本地绝对路径，也可以是远程项目的 `ssh://<hostId>/<路径>`——
+	 * 两者走同一个服务，校验、授权根登记和变更广播才不会有两套行为。
+	 */
+	const openProjectPath = useCallback(
+		async (path: string): Promise<string> => {
+			await window.vetta.project.open({ path });
+			await refreshProjects();
+			setExpandedProjects((prev) => new Set([...prev, path]));
+			await loadSessions(path);
+			return path;
+		},
+		[refreshProjects, setExpandedProjects, loadSessions],
+	);
+
 	/** Open an existing directory and register it */
 	const openProject = useCallback(async () => {
 		const cwd = await window.vetta.dialog.selectFolder();
 		if (!cwd) return null;
-
-		await window.vetta.project.open({ path: cwd });
-		await refreshProjects();
-		setExpandedProjects((prev) => new Set([...prev, cwd]));
-		await loadSessions(cwd);
-		return cwd;
-	}, [refreshProjects, setExpandedProjects, loadSessions]);
+		return openProjectPath(cwd);
+	}, [openProjectPath]);
 
 	const expandProject = useCallback(
 		(cwd: string) => {
@@ -474,6 +486,7 @@ export function useProjectActions() {
 		loadSessions,
 		createProject,
 		openProject,
+		openProjectPath,
 		removeProject,
 		archiveProject,
 		unarchiveProject,

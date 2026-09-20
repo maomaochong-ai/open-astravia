@@ -16,7 +16,8 @@ export type SettingsTabLabelKey =
 	| "tabKnowledge"
 	| "tabPet"
 	| "tabPermissions"
-	| "tabRemote";
+	| "tabRemote"
+	| "tabSshHosts";
 
 export interface SettingsTabRegistration {
 	key: SettingsTab;
@@ -47,6 +48,12 @@ export const SETTINGS_TABS: readonly SettingsTabRegistration[] = [
 		labelKey: "tabRemote",
 		icon: "icon-[solar--smartphone-rotate-angle-linear]",
 		windowsOnly: true,
+	},
+	{
+		key: "sshHosts",
+		label: "SSH 主机",
+		labelKey: "tabSshHosts",
+		icon: "icon-[solar--server-linear]",
 	},
 	{ key: "appearance", label: "外观", labelKey: "tabAppearance", icon: "icon-[mdi--palette-outline]" },
 	{ key: "context", label: "Agent配置", labelKey: "tabContext", icon: "icon-[mdi--robot-outline]" },
@@ -89,6 +96,7 @@ export const SETTINGS_SECTIONS = [
 	{ tab: "general", id: "general-developer", title: "开发者", titleKey: "section_general-developer" },
 	{ tab: "remote", id: "remote-pairing", title: "手机配对", titleKey: "section_remote-pairing" },
 	{ tab: "remote", id: "remote-permissions", title: "控制权限", titleKey: "section_remote-permissions" },
+	{ tab: "sshHosts", id: "ssh-hosts-list", title: "主机列表", titleKey: "section_ssh-hosts-list" },
 	{ tab: "appearance", id: "appearance-mode", title: "外观模式", titleKey: "section_appearance-mode" },
 	{ tab: "appearance", id: "appearance-ui-theme", title: "界面主题", titleKey: "section_appearance-ui-theme" },
 	{ tab: "appearance", id: "appearance-cursor", title: "鼠标指针", titleKey: "section_appearance-cursor" },

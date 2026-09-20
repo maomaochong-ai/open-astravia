@@ -92,7 +92,8 @@
 		"newProject": "新建项目",
 		"openProject": "打开项目",
 		"importProject": "导入项目",
-		"more": "更多"
+		"more": "更多",
+		"addFromRemoteHost": "从远程主机添加"
 	},
 	"contextMenu": {
 		"openInFinder": "在访达中打开",
@@ -218,5 +219,20 @@
 		"loading": "正在加载插件…",
 		"missing": "该工作区视图已不存在，正在返回首页。",
 		"failed": "该工作区视图渲染失败，请查看开发者工具中的错误详情。"
+	},
+	"remotePicker": {
+		"title": "从远程主机添加项目",
+		"pickHost": "选择一台已登记的主机",
+		"loading": "读取中…",
+		"noHosts": "还没有登记任何远程主机",
+		"noHostsHint": "先在「设置 → SSH 主机」里添加一台，或从 ~/.ssh/config 导入已有的别名。",
+		"parent": "上一级",
+		"emptyDir": "这个目录下没有子目录。可以直接把当前目录添加为项目。",
+		"browseFailed": "读不到这个目录。可能是连接断开，或当前账号没有权限。",
+		"details": "技术详情",
+		"backToHosts": "换一台主机",
+		"cancel": "取消",
+		"confirm": "添加此目录为项目",
+		"failedTitle": "无法添加这个项目"
 	}
 }

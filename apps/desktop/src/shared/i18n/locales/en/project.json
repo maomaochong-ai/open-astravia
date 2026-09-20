@@ -92,7 +92,8 @@
 		"newProject": "New Project",
 		"openProject": "Open Project",
 		"importProject": "Import Project",
-		"more": "More"
+		"more": "More",
+		"addFromRemoteHost": "Add from remote host"
 	},
 	"contextMenu": {
 		"openInFinder": "Reveal in Finder",
@@ -218,5 +219,20 @@
 		"loading": "Loading plugins…",
 		"missing": "This workspace view no longer exists. Returning to home.",
 		"failed": "This workspace view failed to render. Check DevTools for details."
+	},
+	"remotePicker": {
+		"title": "Add a project from a remote host",
+		"pickHost": "Pick a registered host",
+		"loading": "Loading…",
+		"noHosts": "No remote hosts registered yet",
+		"noHostsHint": "Add one under Settings, SSH hosts — or import the aliases you already have in ~/.ssh/config.",
+		"parent": "Parent folder",
+		"emptyDir": "No sub-folders here. You can add this folder as the project.",
+		"browseFailed": "Could not read this folder. The connection may be down, or this account may lack permission.",
+		"details": "Technical details",
+		"backToHosts": "Pick another host",
+		"cancel": "Cancel",
+		"confirm": "Add this folder as a project",
+		"failedTitle": "Could not add this project"
 	}
 }

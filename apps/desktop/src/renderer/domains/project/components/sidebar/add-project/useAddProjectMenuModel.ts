@@ -15,18 +15,22 @@ export function useAddProjectMenuModel(): {
 	showNewProject: boolean;
 	closeNewProjectDialog: () => void;
 	confirmNewProject: (name: string) => void;
+	showRemotePicker: boolean;
+	closeRemotePicker: () => void;
+	confirmRemoteProject: (hostId: string, remotePath: string) => void;
 	isProjectNameTaken: (name: string) => boolean;
 	toggleOpen: () => void;
 } {
 	const { t } = useTranslation("project");
 	// 判重只在点确认时读一次项目列表：这里刻意不订阅 projectsAtom，保持菜单模型零订阅面。
 	const store = getDefaultStore();
-	const { createProject, openProject, refreshProjects } = useProjectActions();
+	const { createProject, openProject, openProjectPath, refreshProjects } = useProjectActions();
 	const { refreshProjects: refreshBatchProjects } = useBatchTasks();
 	const setConfirm = useSetAtom(confirmDialogAtom);
 	const navigate = useNavigate();
 	const [open, setOpen] = useState(false);
 	const [showNewProject, setShowNewProject] = useState(false);
+	const [showRemotePicker, setShowRemotePicker] = useState(false);
 	const menuRef = useRef<HTMLDivElement>(null);
 
 	const handleImport = async (): Promise<void> => {
@@ -110,6 +114,15 @@ export function useAddProjectMenuModel(): {
 				},
 			},
 			{
+				action: "addFromRemoteHost",
+				icon: "icon-[solar--server-linear]",
+				labelKey: "actions.addFromRemoteHost",
+				onSelect: () => {
+					setOpen(false);
+					setShowRemotePicker(true);
+				},
+			},
+			{
 				action: "importProject",
 				icon: "icon-[solar--import-linear]",
 				labelKey: "actions.importProject",
@@ -133,6 +146,22 @@ export function useAddProjectMenuModel(): {
 		confirmNewProject: (name: string) => {
 			setShowNewProject(false);
 			void createProject(name);
+		},
+		showRemotePicker,
+		closeRemotePicker: () => setShowRemotePicker(false),
+		confirmRemoteProject: (hostId: string, remotePath: string) => {
+			setShowRemotePicker(false);
+			// 远程项目的标识是 ssh URI；登记走与本地项目同一个服务，校验和广播才一致。
+			void openProjectPath(`ssh://${hostId}${remotePath}`).catch((error: unknown) => {
+				// 主机被删掉、选中的目录其实是文件——这些都要说清楚，否则用户只会看到
+				// 对话框关了但项目没出现。
+				setConfirm({
+					title: t("remotePicker.failedTitle"),
+					message: error instanceof Error ? error.message : String(error),
+					variant: "danger",
+					onConfirm: () => {},
+				});
+			});
 		},
 		toggleOpen: () => setOpen((value) => !value),
 	};
