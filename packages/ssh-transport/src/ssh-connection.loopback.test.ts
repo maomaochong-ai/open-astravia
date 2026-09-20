@@ -9,6 +9,16 @@ function createRemoteDirectory(): string {
 }
 
 describe("SshConnection 的文件操作（经回环 SSH 跑在真实 shell 上）", () => {
+	it("按范围读到的正是那一段字节，二进制内容不被改写", async () => {
+		const dir = createRemoteDirectory();
+		writeFileSync(join(dir, "data.bin"), Buffer.from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 255, 0, 10]));
+		const connection = createLoopbackSshConnection();
+
+		expect([...(await connection.readFileRange(join(dir, "data.bin"), 3, 5))]).toEqual([3, 4, 5, 6, 7]);
+		expect([...(await connection.readFileRange(join(dir, "data.bin"), 10, 100))]).toEqual([255, 0, 10]);
+		expect([...(await connection.readFileHead(join(dir, "data.bin"), 2))]).toEqual([0, 1]);
+	});
+
 	it("写、读、改名、删除一个带空格与引号的文件", async () => {
 		const dir = createRemoteDirectory();
 		const connection = createLoopbackSshConnection();

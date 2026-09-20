@@ -178,6 +178,18 @@ export class SshConnection {
 		return result.stdout;
 	}
 
+	/**
+	 * 读取 `[start, start + length)` 这一段字节。媒体播放按 Range 取数据，拖动进度条时不必
+	 * 把整份文件拖过网络。`tail -c +N` 从第 N 个字节起（从 1 计数），GNU 与 BSD 同义。
+	 */
+	async readFileRange(remotePath: string, start: number, length: number, signal?: AbortSignal): Promise<Uint8Array> {
+		const from = Math.max(0, Math.floor(start)) + 1;
+		const count = Math.max(0, Math.floor(length));
+		const quoted = quoteShellArgument(remotePath);
+		const result = await this.runChecked(`tail -c +${from} -- ${quoted} | head -c ${count}`, { signal });
+		return result.stdout;
+	}
+
 	/** 原子写，保留原文件的权限位并穿透符号链接，见 {@link buildWriteFileCommand}。 */
 	async writeFile(remotePath: string, content: Uint8Array, signal?: AbortSignal): Promise<void> {
 		const command = buildWriteFileCommand(remotePath, `.vetta-tmp-${Date.now().toString(36)}`);
