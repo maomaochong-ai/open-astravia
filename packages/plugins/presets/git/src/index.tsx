@@ -3,7 +3,7 @@ import "./style.css";
 import { GitPanel } from "./components/GitPanel";
 import { GitTurnCard } from "./components/GitTurnCard";
 import { GitIcon } from "./components/icons";
-import { emitRefreshSignal, emitTurnPhase, setFsApi, setGitCommand, setOfficialApi, setPanelResizer } from "./git/runtime";
+import { emitRefreshSignal, emitTurnPhase, setFsApi, setGitCommand, setOfficialApi, setPanelResizer, setStorageApi } from "./git/runtime";
 import { CHANGES_TAB_ID, isInsideGitWorkTree } from "./git/tab-visibility";
 
 export default definePlugin({
@@ -14,6 +14,8 @@ export default definePlugin({
 		// 同理：右键菜单的「忽略此文件」要写 .gitignore，「在文件管理器中显示」走官方窄口子。
 		setFsApi(ctx.fs);
 		setOfficialApi(ctx.official);
+		// 提交信息草稿按仓库持久化，避免切会话/重启后白写一场。
+		setStorageApi(ctx.storage);
 
 		/** 最近一次 conversation-changed 的 cwd，用于丢弃过期的仓库探测结果。 */
 		let latestCwd: string | null = null;

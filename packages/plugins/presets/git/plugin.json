@@ -17,6 +17,8 @@
 		"agent.session.read",
 		"agent.command.run",
 		"fs.read",
+		"storage.read",
+		"storage.write",
 		"fs.write"
 	],
 	"commands": ["git"],

@@ -320,3 +320,47 @@ export function resolveWithSide(root: string, side: ConflictSide, paths: readonl
 		await runGitRaw(root, ["add", "--", ...paths]);
 	});
 }
+
+/**
+ * Commit timeout. Far longer than other commands because `git commit` runs the
+ * repository's pre-commit hook, and a monorepo's lint/typecheck hook routinely
+ * takes minutes — the honest fix is to wait for it, never `--no-verify`.
+ */
+const COMMIT_TIMEOUT_MS = 600_000;
+
+export interface CommitOptions {
+	/** Stage every change first (`add -A`), for the empty-index shortcut. */
+	stageAll?: boolean;
+	/** Rewrite the previous commit instead of creating a new one. */
+	amend?: boolean;
+}
+
+/**
+ * Create (or amend) a commit, as one queued unit so nothing slips between the
+ * optional `add -A` and the commit itself.
+ *
+ * The message goes through a single `-m`: git treats it as the whole message
+ * (first line as subject), and passing several `-m` values would silently insert
+ * blank lines into what the user typed. Arguments never touch a shell, so
+ * newlines, quotes and backticks are safe as-is.
+ *
+ * Failures reject with git's full stderr — a hook's output is the only thing the
+ * user can act on, so it must not be truncated.
+ */
+export function gitCommit(root: string, message: string, options: CommitOptions = {}): Promise<void> {
+	return enqueueWrite(async () => {
+		if (options.stageAll) await runGitRaw(root, ["add", "-A"]);
+		const args = ["commit", ...(options.amend ? ["--amend"] : []), "-m", message];
+		const res = await getGitCommand().run("git", args, { cwd: root, timeoutMs: COMMIT_TIMEOUT_MS });
+		if (res.exitCode === 0) return;
+		const detail = [res.stderr, res.stdout].map((part) => part.trim()).filter(Boolean).join("\n\n");
+		throw new Error(detail || `git commit failed (exit ${res.exitCode})`);
+	});
+}
+
+/** Subject + body of HEAD, used to prefill the box when amending. */
+export async function headCommitMessage(root: string): Promise<string> {
+	const res = await git(root, ["log", "-1", "--pretty=%B"]);
+	if (res.exitCode !== 0) return "";
+	return res.stdout.replace(/\n+$/, "");
+}
