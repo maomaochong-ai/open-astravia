@@ -35,6 +35,7 @@ import {
 } from "@vetta/coding-agent/session-extensions";
 import type { SessionEvent, SessionExecutionMode, SettingsPatch } from "@vetta/runtime-core";
 import { sessionExtensionObservation } from "@vetta/runtime-core/session-extensions";
+import { assertProjectSupportsExecutionMode } from "@vetta/runtime-desktop";
 import { isMcpJsonValue, type McpJsonObject } from "@vetta/runtime-mcp";
 import { BrowserWindow, ipcMain, type WebContents } from "electron";
 import type { DesktopMcpAppResourceRead, DesktopMcpAppToolCall } from "../../shared/mcp-app.js";
@@ -1065,6 +1066,9 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	ipcMain.handle(CHANNELS.SET_EXECUTION_MODE, async (_event, sessionId: unknown, mode: unknown) => {
 		assertNonEmptyString(sessionId, "sessionId");
 		assertExecutionMode(mode);
+		const sessionPath = runtime.getSessionPath(sessionId);
+		const sessionCwd = sessionPath ? await readSessionCwdFromHeader(sessionPath) : undefined;
+		assertProjectSupportsExecutionMode(sessionCwd, mode as SessionExecutionMode);
 		await assertSandboxAvailableForMode(mode as SessionExecutionMode, resolveDefaultExecutionMode);
 		await runtime.setExecutionMode(sessionId, mode as SessionExecutionMode);
 	});

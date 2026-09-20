@@ -13,7 +13,7 @@ import {
 	runtimeFailureFromAIErrorDetails,
 	type SessionEvent,
 } from "@vetta/runtime-core";
-import { sanitizeRuntimeErrorMessage } from "@vetta/runtime-desktop";
+import { resolveProjectExecutionMode, sanitizeRuntimeErrorMessage } from "@vetta/runtime-desktop";
 import { isSshProjectUri, normalizeProjectCwd } from "@vetta/ssh-transport";
 import { type DesktopSessionHistoryInfo, UNAVAILABLE_RUNTIME_SESSION_ACCESS } from "../../shared/session-access.js";
 import { agentTeamStore } from "../agent-teams/agent-team-store.js";
@@ -201,6 +201,10 @@ export class DesktopConversationService {
 					});
 				}
 			}
+			// 远程项目没有沙箱可言，先把模式定下来：否则默认开着沙箱的用户会在这里被
+			// 「本机沙箱不可用」挡住，或者带着一套不存在的沙箱工具集进入会话。
+			const executionMode = resolveProjectExecutionMode(config?.cwd, config?.executionMode);
+			if (config && executionMode !== config.executionMode) config = { ...config, executionMode };
 			await trace.measure("sandbox-check", () =>
 				assertSandboxAvailableForMode(config?.executionMode, async () => {
 					const desktopConfig = await readDesktopConfig();

@@ -34,6 +34,7 @@ import {
 	createDesktopCodingAgentSessionExecutionEnvironment,
 	createDesktopCodingAgentToolEnvironment,
 } from "./coding-agent-tool-environment.js";
+import { resolveProjectExecutionMode } from "./remote-execution-mode.js";
 import { renderRemoteWorkspaceFacts } from "./remote-workspace-facts.js";
 
 type CompositionFixedOption =
@@ -423,7 +424,7 @@ function toCodingAgentRuntimeSessionRequest(
 		cwd: request.cwd ?? scope.cwd,
 		model: request.model,
 		thinkingLevel: request.thinkingLevel,
-		executionMode: request.executionMode,
+		executionMode: resolveProjectExecutionMode(request.cwd ?? scope.cwd, request.executionMode),
 		env: request.env,
 		sandboxHostPath: request.sandboxHostPath,
 		linuxBubblewrapPath: request.linuxBubblewrapPath,
