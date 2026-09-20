@@ -106,7 +106,9 @@ export function DiffPane({
 	} as React.CSSProperties;
 
 	return (
-		<div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
+		// 顶部内缩与提交卡片一致（pt-1 = mt-1），两块的上沿才在同一条线上；左上角用同一档
+		// 圆角，否则一块圆角卡片紧挨着一个直角色块，接缝会很突兀。
+		<div className="mt-1 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-tl-xl bg-background">
 			<div className="flex h-9 shrink-0 items-center gap-1.5 px-2">
 				<Button
 					type="button"
