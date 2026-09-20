@@ -107,7 +107,6 @@
 	"diff.switchToUnified": "Unified view",
 	"commit.title": "Commit message",
 	"commit.stagedCount": "{{count}} file(s) staged",
-	"commit.willStageAll": "Will stage all {{count}} change(s)",
 	"state.loading": "Loading…",
 	"state.noCwd": "No project directory available.",
 	"state.clean": "No changes. The working tree is clean.",

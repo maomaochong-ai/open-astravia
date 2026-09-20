@@ -107,7 +107,6 @@
 	"diff.switchToUnified": "切换到单栏对比",
 	"commit.title": "提交说明",
 	"commit.stagedCount": "已暂存 {{count}} 个文件",
-	"commit.willStageAll": "将暂存全部 {{count}} 项改动",
 	"state.loading": "加载中…",
 	"state.noCwd": "没有可用的项目目录。",
 	"state.clean": "没有变更，工作区是干净的。",

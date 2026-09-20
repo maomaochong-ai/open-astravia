@@ -212,3 +212,13 @@ export function CheckIcon({ className }: IconProps): JSX.Element {
 		</svg>
 	);
 }
+
+/** Git commit glyph: a node on a line, used on the commit button. */
+export function CommitIcon({ className }: IconProps): JSX.Element {
+	return (
+		<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+			<circle cx="12" cy="12" r="3.5" />
+			<path d="M2 12h6.5M15.5 12H22" />
+		</svg>
+	);
+}
