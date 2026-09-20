@@ -206,7 +206,7 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 						className="inline-flex h-7 min-w-0 shrink items-center gap-1.5 rounded-md border border-transparent bg-transparent px-1 text-[12px] font-medium text-primary outline-none transition-opacity hover:opacity-80 focus-visible:border-ring disabled:pointer-events-none disabled:opacity-50"
 					>
 						{generating ? <StopIcon className="h-3.5 w-3.5 shrink-0" /> : <SparkleIcon className="h-3.5 w-3.5 shrink-0" />}
-						<span className="truncate">{generating ? t("ai.stop") : t("ai.generate")}</span>
+						<span className="git-ai-shimmer truncate">{generating ? t("ai.stop") : t("ai.generate")}</span>
 					</button>
 					{stagedCount > 0 && (
 						<span className="ml-auto flex min-w-0 shrink-0 items-center gap-1 pr-1 text-[11px] text-muted-foreground">

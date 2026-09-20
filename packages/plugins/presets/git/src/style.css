@@ -10,6 +10,42 @@
    的图标不需要宿主在自己的 CSS 里逐条放行。 */
 @plugin "@iconify/tailwind4";
 
+/* AI 生成按钮的光斑文字：写法对齐宿主 workflow 标题的 shimmer（同一套 --primary
+   与 color-mix 中点），让插件里的「AI 在干活」和宿主的观感一致。 */
+@keyframes git-ai-shimmer {
+	from {
+		background-position: 200% 0;
+	}
+	to {
+		background-position: -200% 0;
+	}
+}
+
+.git-ai-shimmer {
+	background-image: linear-gradient(
+		90deg,
+		var(--primary) 0%,
+		var(--primary) 35%,
+		color-mix(in srgb, var(--primary) 45%, white) 50%,
+		var(--primary) 65%,
+		var(--primary) 100%
+	);
+	background-size: 200% 100%;
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+	animation: git-ai-shimmer 2.4s linear infinite;
+}
+
+/* 关掉动效的用户只保留主题色文字，不留一段透明文字。 */
+@media (prefers-reduced-motion: reduce) {
+	.git-ai-shimmer {
+		background-image: none;
+		color: var(--primary);
+		animation: none;
+	}
+}
+
 /* diff 行等宽字体回退 */
 .git-mono {
 	font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
