@@ -81,14 +81,15 @@ export function BranchBar({ root }: { root: string }): JSX.Element {
 	};
 
 	return (
-		<div className="shrink-0 border-b border-border">
-			<div className="flex h-8 items-center gap-1 px-2">
+		// 不再自占一条通栏：分支是个标识，挤在工具栏里就够，省下一条分隔线和 8px 高度。
+		<div className="flex min-w-0 items-center">
+			<>
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
-						<Button type="button" variant="ghost" size="xs" className="min-w-0 max-w-full gap-1 px-1.5" disabled={busy} title={t("branch.switch")}>
+						<Button type="button" variant="ghost" size="xs" className="min-w-0 max-w-[160px] gap-1 px-1.5" disabled={busy} title={t("branch.switch")}>
 							<BranchIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
 							<span className="truncate text-[12px] font-medium">{branch ?? t("branch.detached")}</span>
-							<ChevronIcon className="h-3 w-3 shrink-0 text-muted-foreground" />
+							<ChevronIcon className="h-3 w-3 shrink-0 text-muted-foreground/70" />
 						</Button>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="start" className="max-h-80 overflow-y-auto" data-vetta-plugin-root="git">
@@ -118,11 +119,11 @@ export function BranchBar({ root }: { root: string }): JSX.Element {
 					</DropdownMenuContent>
 				</DropdownMenu>
 				{error && (
-					<span className="min-w-0 flex-1 truncate text-right text-[11px] text-rose-500" title={`${error}\n${t("branch.switchFailedHint")}`}>
+					<span className="min-w-0 max-w-[140px] truncate text-[11px] text-rose-500" title={`${error}\n${t("branch.switchFailedHint")}`}>
 						{error.split("\n")[0]}
 					</span>
 				)}
-			</div>
+			</>
 
 			<Dialog open={creating} onOpenChange={(open) => !open && setCreating(false)}>
 				<DialogContent data-vetta-plugin-root="git" className="max-w-sm">

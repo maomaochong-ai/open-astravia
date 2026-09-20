@@ -189,8 +189,10 @@ export function GitChanges({ root, groups }: { root: string; groups: StatusGroup
 
 	return (
 		<div className="flex h-full min-h-0 flex-col">
-			<div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-2">
-				<GitActions root={root} />
+			<div className="flex h-9 shrink-0 items-center gap-1 border-b border-border px-2">
+				<BranchBar root={root} />
+				<div className="ml-auto flex items-center gap-1">
+					<GitActions root={root} />
 				{total > 0 && (
 					<Button
 						type="button"
@@ -201,7 +203,8 @@ export function GitChanges({ root, groups }: { root: string; groups: StatusGroup
 					>
 						{viewMode === "tree" ? <ListViewIcon className="h-3.5 w-3.5" /> : <TreeViewIcon className="h-3.5 w-3.5" />}
 					</Button>
-				)}
+					)}
+				</div>
 			</div>
 
 			{total === 0 ? (
@@ -217,7 +220,6 @@ export function GitChanges({ root, groups }: { root: string; groups: StatusGroup
 							}
 							style={wide ? { width: treeWidth } : undefined}
 						>
-							<BranchBar root={root} />
 							<CommitBox root={root} groups={groups} />
 							{/* 分区自己吃满剩余高度并各自内部滚动，外层不再整体滚动。 */}
 							<div className="flex min-h-0 flex-1 flex-col overflow-hidden">

@@ -178,8 +178,10 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 					: t("commit.action");
 
 	return (
-		<div className="shrink-0 border-b border-border">
-			<div className="relative px-2 pt-2">
+		<div className="shrink-0 px-2 pb-2 pt-1.5">
+			{/* 一张卡片承载「写信息 + 提交」，而不是几条铺满面板宽度的横带：面板可以被
+			    拖得很宽，元素一旦各自拉满，重心就散了。 */}
+			<div className="rounded-lg border border-border bg-muted/30 transition-colors focus-within:border-ring/70">
 				<textarea
 					ref={textareaRef}
 					value={message}
@@ -189,49 +191,57 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 					rows={3}
 					placeholder={t("commit.placeholder")}
 					// resize-y：高度交给用户拖，不再由脚本每次输入都重算（那会把手动拖动的高度顶掉）。
-					className="min-h-[68px] w-full resize-y rounded-md border border-border bg-background py-1.5 pl-2 pr-10 text-[12px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/70 focus:border-ring"
+					className="block max-h-64 min-h-[66px] w-full resize-y bg-transparent px-2.5 py-2 text-[12.5px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/60"
 				/>
-				<Button
-					type="button"
-					variant="ghost"
-					size="icon-sm"
-					className="absolute right-3 top-3"
-					disabled={pending !== null || (!generating && !hasAnyChange)}
-					title={generating ? t("ai.stop") : t("ai.generate")}
-					onClick={() => (generating ? abortRef.current?.abort() : requestGenerate())}
-				>
-					{generating ? <StopIcon className="h-4 w-4 text-muted-foreground" /> : <SparkleIcon className="h-[18px] w-[18px] text-sky-500" />}
-				</Button>
-			</div>
-			<div className="flex items-center gap-1 px-2 py-1.5">
-				<Button
-					type="button"
-					size="xs"
-					className="flex-1"
-					disabled={!canCommit}
-					title={disabledReason ?? undefined}
-					onClick={commit}
-				>
-					{label}
-				</Button>
-				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<Button type="button" size="xs" variant="secondary" className="px-1" disabled={pending !== null} title={t("commit.more")}>
-							<ChevronIcon className="h-3.5 w-3.5" />
+				<div className="flex items-center gap-1.5 border-t border-border/60 px-1.5 py-1.5">
+					{/* AI 生成是这块面板的主打能力，给它文字标签而不是一枚要猜的小图标。 */}
+					<Button
+						type="button"
+						variant="ghost"
+						size="xs"
+						className="gap-1 px-1.5 text-sky-500 hover:bg-sky-500/10 hover:text-sky-400"
+						disabled={pending !== null || (!generating && !hasAnyChange)}
+						title={generating ? t("ai.stop") : t("ai.generateHint")}
+						onClick={() => (generating ? abortRef.current?.abort() : requestGenerate())}
+					>
+						{generating ? <StopIcon className="h-3.5 w-3.5" /> : <SparkleIcon className="h-3.5 w-3.5" />}
+						<span className="text-[11.5px] font-medium">{generating ? t("ai.stop") : t("ai.generate")}</span>
+					</Button>
+
+					<div className="ml-auto flex items-center">
+						<Button
+							type="button"
+							size="xs"
+							className="rounded-r-none border-r border-primary-foreground/15 px-2.5"
+							disabled={!canCommit}
+							title={disabledReason ?? undefined}
+							onClick={commit}
+						>
+							{label}
 						</Button>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent align="end" data-vetta-plugin-root="git">
-						<DropdownMenuItem disabled={!canCommit} onSelect={commitAndPush}>
-							{t("commit.andPush")}
-						</DropdownMenuItem>
-						<DropdownMenuItem disabled={pending !== null || hasConflicts} onSelect={amend}>
-							{t("commit.amend")}
-						</DropdownMenuItem>
-					</DropdownMenuContent>
-				</DropdownMenu>
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button type="button" size="xs" className="rounded-l-none px-1" disabled={pending !== null} title={t("commit.more")}>
+									<ChevronIcon className="h-3.5 w-3.5" />
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end" data-vetta-plugin-root="git">
+								<DropdownMenuItem disabled={!canCommit} onSelect={commitAndPush}>
+									{t("commit.andPush")}
+								</DropdownMenuItem>
+								<DropdownMenuItem disabled={pending !== null || hasConflicts} onSelect={amend}>
+									{t("commit.amend")}
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
+					</div>
+				</div>
+				{/* pre-commit 钩子可能跑很久，必须给出「还在跑」的明确信号，而不是只让按钮转圈。 */}
+				{pending !== null && (
+					<div className="border-t border-border/60 px-2.5 py-1.5 text-[11px] text-muted-foreground">{t("commit.hookHint")}</div>
+				)}
 			</div>
-			{/* pre-commit 钩子可能跑很久，必须给出「还在跑」的明确信号，而不是只让按钮转圈。 */}
-			{pending !== null && <div className="px-2 pb-1.5 text-[11px] text-muted-foreground">{t("commit.hookHint")}</div>}
+
 			{error && <CommitErrorPanel message={error} onDismiss={() => setError(null)} />}
 
 			<ConfirmDialog

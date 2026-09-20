@@ -129,7 +129,7 @@ export function GitActions({ root }: { root: string }): JSX.Element {
 	const spin = (kind: ActionKind): string => (busy === kind ? "animate-spin" : "");
 
 	return (
-		<div className="flex items-center gap-1.5">
+		<div className="flex items-center gap-2">
 			<div className="flex items-center gap-0.5">
 				<Button
 					type="button"
@@ -139,7 +139,7 @@ export function GitActions({ root }: { root: string }): JSX.Element {
 					disabled={busy !== null}
 					onClick={() => runAction("fetch", async () => (await gitFetch(root), "done"))}
 				>
-					<FetchIcon className={`h-4 w-4 text-sky-500 ${spin("fetch")}`} />
+					<FetchIcon className={`h-4 w-4 text-muted-foreground ${spin("fetch")}`} />
 				</Button>
 				<Button
 					type="button"
@@ -150,7 +150,7 @@ export function GitActions({ root }: { root: string }): JSX.Element {
 					disabled={busy !== null}
 					onClick={() => runAction("pull", async () => (await gitPull(root), "done"))}
 				>
-					<PullIcon className={`h-4 w-4 text-sky-500 ${spin("pull")}`} />
+					<PullIcon className={`h-4 w-4 ${ab && ab.behind > 0 ? "text-sky-500" : "text-muted-foreground"} ${spin("pull")}`} />
 					{ab && ab.behind > 0 && <span className="text-[11px] font-semibold tabular-nums leading-none text-sky-500">{ab.behind}</span>}
 				</Button>
 				<Button
@@ -162,7 +162,7 @@ export function GitActions({ root }: { root: string }): JSX.Element {
 					disabled={busy !== null}
 					onClick={handlePush}
 				>
-					<PushIcon className={`h-4 w-4 text-emerald-500 ${spin("push")}`} />
+					<PushIcon className={`h-4 w-4 ${ab && ab.ahead > 0 ? "text-emerald-500" : "text-muted-foreground"} ${spin("push")}`} />
 					{ab && ab.ahead > 0 && <span className="text-[11px] font-semibold tabular-nums leading-none text-emerald-500">{ab.ahead}</span>}
 				</Button>
 				<Button type="button" variant="ghost" size="icon-xs" title={t("action.sync")} disabled={busy !== null} onClick={handleSync}>
@@ -172,7 +172,7 @@ export function GitActions({ root }: { root: string }): JSX.Element {
 
 			{stat.additions > 0 && (
 				<span
-					className="rounded-md bg-emerald-500/15 px-1.5 py-1 text-[11px] font-semibold leading-none tabular-nums text-emerald-500"
+					className="text-[11px] font-medium leading-none tabular-nums text-emerald-500/90"
 					title={stat.untrackedTruncated ? t("stat.untrackedTruncated") : undefined}
 				>
 					+{stat.additions}
@@ -180,7 +180,7 @@ export function GitActions({ root }: { root: string }): JSX.Element {
 				</span>
 			)}
 			{stat.deletions > 0 && (
-				<span className="rounded-md bg-rose-500/15 px-1.5 py-1 text-[11px] font-semibold leading-none tabular-nums text-rose-500">−{stat.deletions}</span>
+				<span className="text-[11px] font-medium leading-none tabular-nums text-rose-500/90">−{stat.deletions}</span>
 			)}
 			{error && (
 				<span className="cursor-default font-semibold text-rose-500" title={error}>
