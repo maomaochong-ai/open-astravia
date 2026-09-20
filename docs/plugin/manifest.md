@@ -70,7 +70,7 @@ Schema 只描述 `plugin.json` 数据本身；Plugin API 版本是否兼容、�
 | `browser` | 使用 `browser.*` 权限时必填 | `{ allowedHosts: string[] }` | 浏览器顶层导航的最大 host 授权；session 只能收窄，见 [browser.md](./browser.md)。 |
 | `description` | ❌ | string | 简介。可用 `%key%`。 |
 | `author` | ❌ | string | 作者。 |
-| `icon` | ❌ | string | 能力页/插件列表展示的图标，也是[工作区视图](./ui-slots.md#工作区视图-registerworkspaceview)与活动 Tab 未声明图标时的回落。三态：省略（按类型落默认图）、Iconify 名（如 `solar:widget-add-bold`）、`http(s)://` 外链，或包内相对路径（如 `assets/icon.png`）。 |
+| `icon` | ❌ | string | 能力页/插件列表展示的图标，也是所有带图标的宿主入口未单独声明时的默认图标，包括[工作区视图、Activity Tab、输入动作与新会话上下文](./ui-slots.md)、[消息卡片](./message-cards.md)及[文件操作](./file-explorer.md)。任一入口都可声明自己的 `icon` 覆盖它。支持 Iconify 名（如 `solar:widget-add-bold`）、`http(s)://` 外链，或包内相对路径（如 `assets/icon.png`）。 |
 | `defaultLocale` | ❌ | string | i18n 缺译回退 locale，默认 `"zh"`。见 [i18n](#i18n)。 |
 | `guidingWords` | ❌ | string[] | 新会话引导词，见 [下文](#guidingwords引导词)。条目可用 `%key%`。 |
 | `agent` | ❌ | object | Agent 侧贡献（prompt / skill / **MCP** / toolPolicy），见 [Agent 清单](#agent-agent-侧贡献)。 |

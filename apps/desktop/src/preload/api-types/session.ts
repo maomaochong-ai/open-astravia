@@ -286,7 +286,7 @@ export interface DesktopSessionApi {
 	 * session-file lock, so IM-owned sessions (sidecar may be actively
 	 * writing) can be viewed live without conflict.
 	 */
-	openViewer(path: string): Promise<{ history: HistoryEntry[] }>;
+	openViewer(path: string, options?: { tailTurns?: number }): Promise<{ history: HistoryEntry[] }>;
 	/**
 	 * Subscribe to live updates for a viewer-mode session. Handler fires
 	 * whenever the underlying .jsonl is written. Returns an unsubscribe

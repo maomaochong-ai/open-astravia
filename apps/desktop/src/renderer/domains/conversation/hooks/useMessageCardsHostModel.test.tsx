@@ -3,7 +3,7 @@ import { act, render, renderHook, screen } from "@testing-library/react";
 import { createConversationAgentMessage, type ConversationAgentMessageViewModel } from "@shared/conversation";
 import type { CardDescriptor } from "@vetta-org/plugin-sdk";
 import { createStore, Provider, useAtomValue } from "jotai";
-import type { ReactNode } from "react";
+import { isValidElement, type ReactElement, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 // 真实实现是 useCallback 包住的稳定引用（plugin-i18n.tsx），mock 必须同样稳定，
@@ -225,5 +225,34 @@ describe("useMessageCardsHostModel", () => {
 
 		expect(result.current.model?.cards).toHaveLength(1);
 		expect(result.current.model?.cards[0]?.pending).toBe(false);
+	});
+
+	it("卡片描述符的图标覆盖 renderer 默认图标", () => {
+		const settled = createConversationAgentMessage({
+			id: "m1",
+			text: "done",
+			blocks: [
+				{
+					type: "tool_call",
+					toolCallId: "tc-1",
+					toolName: "demo",
+					args: {},
+					status: "success",
+					cards: [{ ...descriptor("result"), icon: "solar:star-bold" }],
+				},
+			],
+		});
+		const registration = {
+			...renderer(() => null),
+			icon: <span data-icon="renderer-default" />,
+		};
+		const { wrapper } = setup([registration], [settled]);
+		const { result } = renderHook(() => useHost(settled), { wrapper });
+
+		const icon = result.current.model?.cards[0]?.icon;
+		expect(isValidElement(icon)).toBe(true);
+		const element = icon as ReactElement<{ className?: string }>;
+		expect(element.type).toBe("span");
+		expect(element.props.className).toContain("icon-[solar--star-bold]");
 	});
 });

@@ -9,11 +9,7 @@ const EXPANDED_VIEWPORT_IDLE_TIMEOUT_MS = 1_500;
  * and row identity never change between phases, so Virtuoso has no visible
  * height correction to perform.
  */
-export function useProgressiveMessageViewport(
-	sessionId: string | null,
-	hasMessages: boolean,
-	hasRestorableState: boolean,
-): "initial" | "expanded" {
+export function useProgressiveMessageViewport(sessionId: string | null, hasMessages: boolean): "initial" | "expanded" {
 	const sessionRef = useRef(sessionId);
 	const generationRef = useRef(0);
 	if (sessionRef.current !== sessionId) {
@@ -23,22 +19,16 @@ export function useProgressiveMessageViewport(
 	const generation = generationRef.current;
 	const [expandedViewport, setExpandedViewport] = useState(() => ({
 		generation,
-		expanded: hasMessages && !hasRestorableState,
+		expanded: false,
 	}));
 	const phase = !hasMessages
 		? "initial"
-		: !hasRestorableState || (expandedViewport.generation === generation && expandedViewport.expanded)
+		: expandedViewport.generation === generation && expandedViewport.expanded
 			? "expanded"
 			: "initial";
 
 	useEffect(() => {
 		if (!hasMessages) return;
-		if (!hasRestorableState) {
-			setExpandedViewport((current) =>
-				current.generation === generation && current.expanded ? current : { generation, expanded: true },
-			);
-			return;
-		}
 		if (phase === "expanded") return;
 		let cancelled = false;
 		let firstFrameId: number | null = null;
@@ -84,7 +74,7 @@ export function useProgressiveMessageViewport(
 			if (stabilizationTimerId !== null) window.clearTimeout(stabilizationTimerId);
 			if (idleCallbackId !== null) window.cancelIdleCallback(idleCallbackId);
 		};
-	}, [generation, hasMessages, hasRestorableState, phase]);
+	}, [generation, hasMessages, phase]);
 
 	return phase;
 }

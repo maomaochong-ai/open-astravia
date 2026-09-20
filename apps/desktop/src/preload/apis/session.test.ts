@@ -81,4 +81,16 @@ describe("createSessionApi trace propagation", () => {
 			limit: 20,
 		});
 	});
+
+	it("forwards the tail-first viewer option", async () => {
+		const invoke = vi.fn(async () => ({ history: [] }));
+		const ipc = { invoke } as unknown as IpcRenderer;
+		const session = createSessionApi(ipc).session;
+
+		await session.openViewer("C:/sessions/one.jsonl", { tailTurns: 2 });
+
+		expect(invoke).toHaveBeenCalledWith("vetta:session:viewer-open", "C:/sessions/one.jsonl", {
+			tailTurns: 2,
+		});
+	});
 });

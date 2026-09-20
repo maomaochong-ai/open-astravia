@@ -15,6 +15,24 @@ import type { ChatViewProps } from "./chat-view/types";
 
 const SessionFeed = memo(SessionMessageList);
 
+export const DefaultChatComposer = memo(function DefaultChatComposer({
+	onSend,
+	onAbort,
+	onSendQueued,
+	cwdOverride,
+}: ChatViewProps): JSX.Element {
+	return (
+		<ChatComposer>
+			<DefaultInputBarConnector
+				onSend={onSend}
+				onAbort={onAbort}
+				onSendQueued={onSendQueued}
+				cwdOverride={cwdOverride}
+			/>
+		</ChatComposer>
+	);
+});
+
 export function ChatView(props: ChatViewProps): JSX.Element {
 	const { actions, model } = useChatViewModel();
 	const participants = useBoundAgentParticipants();
@@ -49,13 +67,13 @@ export function ChatView(props: ChatViewProps): JSX.Element {
 	}, [setHeaderLeftSlot]);
 
 	return (
-		<SessionAssistantRendering>
-			<DefaultChatView
-				messages={model.messages}
-				workspace={workspace}
-				rootClassName={model.rootClassName}
-				exportState={model.exporting ? { title: model.exportTitle, onFinished: actions.finishExport } : undefined}
-			>
+		<DefaultChatView
+			messages={model.messages}
+			workspace={workspace}
+			rootClassName={model.rootClassName}
+			exportState={model.exporting ? { title: model.exportTitle, onFinished: actions.finishExport } : undefined}
+		>
+			<SessionAssistantRendering>
 				<SessionFeed
 					messages={model.messages}
 					workspace={workspace}
@@ -65,15 +83,8 @@ export function ChatView(props: ChatViewProps): JSX.Element {
 					onSend={props.onSend}
 					onAbort={onAbort}
 				/>
-				<ChatComposer>
-					<DefaultInputBarConnector
-						onSend={props.onSend}
-						onAbort={props.onAbort}
-						onSendQueued={props.onSendQueued}
-						cwdOverride={props.cwdOverride}
-					/>
-				</ChatComposer>
-			</DefaultChatView>
-		</SessionAssistantRendering>
+			</SessionAssistantRendering>
+			<DefaultChatComposer {...props} />
+		</DefaultChatView>
 	);
 }

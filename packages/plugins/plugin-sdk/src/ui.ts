@@ -341,7 +341,7 @@ export interface PluginPromptDecoration {
 export interface PluginInputActionContribution {
 	id: string;
 	label: string;
-	/** Button icon as a React node (not an iconify class string). */
+	/** Button icon as a React node. Omit to inherit the plugin's `plugin.json#icon`. */
 	icon?: ReactNode;
 	/** Whether the action begins in the active state. Defaults to false. */
 	defaultActive?: boolean;
@@ -414,7 +414,7 @@ export interface PluginCardProps {
 /**
  * A card renderer registered by a plugin, keyed by `type`. A descriptor whose
  * `type` matches is rendered by `component`. `title`/`icon` are the default tab
- * label/icon (a descriptor may override `title`). `pendingFor`, given an
+ * label/icon (a descriptor may override either). `pendingFor`, given an
  * in-flight tool call, returns a provisional descriptor so a skeleton card
  * appears (and claims a tab) before the tool's result lands — or null when this
  * renderer doesn't handle that tool. The `type` must be globally unique across
@@ -424,7 +424,7 @@ export interface PluginCardRendererContribution {
 	type: string;
 	component: ComponentType<PluginCardProps>;
 	title?: string;
-	/** Default tab icon as a React node (not an iconify class string). */
+	/** Default tab icon as a React node. Omit to inherit the plugin's `plugin.json#icon`. */
 	icon?: ReactNode;
 	pendingFor?: (toolCall: PluginPendingToolCall) => CardDescriptor | null;
 }
