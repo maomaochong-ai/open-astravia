@@ -1,6 +1,7 @@
 import { definePlugin } from "@vetta-org/plugin-sdk";
 import "./style.css";
 import { GitPanel } from "./components/GitPanel";
+import { GitSettingsView } from "./components/GitSettingsView";
 import { GitTurnCard } from "./components/GitTurnCard";
 import { GitIcon } from "./components/icons";
 import { emitRefreshSignal, emitTurnPhase, setFsApi, setGitCommand, setOfficialApi, setPanelResizer, setStorageApi } from "./git/runtime";
@@ -54,6 +55,17 @@ export default definePlugin({
 			scope_use: ["project"],
 			// 出现条件由插件自己驱动：上面的 conversation-changed 探测到 git 工作区才上栏。
 			initiallyVisible: false,
+		});
+
+		// Git 相关配置（提交信息模板、常用行为开关）。纯配置页，配好之后很少再来：
+		// sidebar: false 只让它出现在 设置 → 扩展 里，不占侧边栏。
+		ctx.ui.registerWorkspaceView({
+			id: "settings",
+			label: "%settings.title%",
+			icon: "icon-[solar--code-square-linear]",
+			description: "%settings.tagline%",
+			sidebar: false,
+			component: GitSettingsView,
 		});
 
 		// 消息列表底部的 turn 卡：仅当目录是 Git 仓库且有变更时自显示。

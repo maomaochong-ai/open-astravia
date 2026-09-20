@@ -9,6 +9,7 @@ import { emitRefreshSignal } from "../git/runtime";
 import type { StatusGroups } from "../git/types";
 import { CommitErrorPanel } from "./CommitErrorPanel";
 import { ChevronIcon } from "./icons";
+import { useGitSettings } from "./useGitSettings";
 
 /** Draft writes are debounced so typing does not hit storage on every keystroke. */
 const DRAFT_SAVE_DEBOUNCE_MS = 500;
@@ -24,6 +25,7 @@ type Pending = "commit" | "commitPush" | "amend" | null;
  */
 export function CommitBox({ root, groups }: { root: string; groups: StatusGroups }): JSX.Element {
 	const { t } = useTranslation();
+	const settings = useGitSettings();
 	const [message, setMessage] = useState("");
 	const [pending, setPending] = useState<Pending>(null);
 	const [error, setError] = useState<string | null>(null);
@@ -89,8 +91,12 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 
 	const commit = useCallback(() => {
 		if (!canCommit) return;
-		run("commit", () => gitCommit(root, message, { stageAll }));
-	}, [canCommit, run, root, message, stageAll]);
+		run("commit", async () => {
+			await gitCommit(root, message, { stageAll });
+			// 配置开了「提交后自动推送」时，主按钮就等于提交并推送。
+			if (settings.pushAfterCommit) await gitPush(root);
+		});
+	}, [canCommit, run, root, message, stageAll, settings.pushAfterCommit]);
 
 	const commitAndPush = useCallback(() => {
 		if (!canCommit) return;
@@ -116,7 +122,14 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 		}
 	};
 
-	const label = pending !== null ? t("commit.running") : stageAll ? t("commit.stageAllAndCommit") : t("commit.action");
+	const label =
+		pending !== null
+			? t("commit.running")
+			: stageAll
+				? t("commit.stageAllAndCommit")
+				: settings.pushAfterCommit
+					? t("commit.andPush")
+					: t("commit.action");
 
 	return (
 		<div className="shrink-0 border-b border-border">

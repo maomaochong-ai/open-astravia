@@ -36,6 +36,8 @@ interface GitRuntime {
 	writeQueue: Promise<void>;
 	/** Pending debounce timer for {@link emitRefreshSignal}. */
 	refreshTimer: ReturnType<typeof setTimeout> | null;
+	/** Subscribers to settings saves (see `settings.ts`). */
+	settingsListeners: Set<(settings: unknown) => void>;
 }
 
 const KEY = "__vettaGitPluginRuntime__";
@@ -54,6 +56,7 @@ function runtime(): GitRuntime {
 			turnCardStates: new Map<string, TurnCardState>(),
 			writeQueue: Promise.resolve(),
 			refreshTimer: null,
+			settingsListeners: new Set<(settings: unknown) => void>(),
 		} satisfies GitRuntime;
 	}
 	return g[KEY] as GitRuntime;
@@ -147,6 +150,15 @@ export function getOfficialApi(): PluginOfficialApi {
 	const api = runtime().official;
 	if (!api) throw new Error("Git plugin official API not initialized");
 	return api;
+}
+
+/**
+ * Settings-change bus. Lives on the runtime for the same reason the rest does:
+ * Module Federation may hand the settings page and the panel different copies of
+ * a module, and a module-scoped Set would then never reach the other side.
+ */
+export function settingsListeners(): Set<(settings: unknown) => void> {
+	return runtime().settingsListeners;
 }
 
 /** Register the host-backed panel resizer (wired in activate from ctx.ui). */

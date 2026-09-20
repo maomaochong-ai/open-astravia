@@ -4,6 +4,7 @@ import { discardPaths, resolveWithSide, stageAll, stagePaths, unstageAll, unstag
 import { emitRefreshSignal, getOfficialApi } from "../git/runtime";
 import type { StatusGroups } from "../git/types";
 import type { ChangeMenuHandlers, ChangeMenuTarget } from "./ChangeMenu";
+import { useGitSettings } from "./useGitSettings";
 
 /** Paths queued for a destructive discard, awaiting confirmation. */
 export interface PendingDiscard {
@@ -32,6 +33,7 @@ export interface ChangeActions {
  * refresh signal instead of each caller reloading by itself.
  */
 export function useChangeActions(root: string, groups: StatusGroups): ChangeActions {
+	const settings = useGitSettings();
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [pendingDiscard, setPendingDiscard] = useState<PendingDiscard | null>(null);
@@ -60,8 +62,13 @@ export function useChangeActions(root: string, groups: StatusGroups): ChangeActi
 	const handlers: ChangeMenuHandlers = {
 		onStage: (target: ChangeMenuTarget) => run(() => stagePaths(root, target.paths)),
 		onUnstage: (target) => run(() => unstagePaths(root, target.paths)),
-		// Destructive: only records the intent; the dialog decides.
-		onDiscard: (target) => setPendingDiscard(splitTracked(target.paths)),
+		onDiscard: (target) => {
+			const split = splitTracked(target.paths);
+			// Destructive: normally only records the intent and lets the dialog decide.
+			// The confirmation is opt-out in settings, for users who want it out of the way.
+			if (settings.confirmDiscard) setPendingDiscard(split);
+			else run(() => discardPaths(root, split.tracked, split.untracked));
+		},
 		onIgnore: (target) => run(() => appendToGitignore(root, target.paths)),
 		onResolve: (target, side) =>
 			run(() => (side === "staged" ? stagePaths(root, target.paths) : resolveWithSide(root, side, target.paths))),

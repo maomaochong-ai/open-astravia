@@ -14,6 +14,7 @@
 	"permissions": [
 		"ui.slot.activity-tab",
 		"ui.slot.turn-card",
+		"ui.slot.workspace-view",
 		"agent.session.read",
 		"agent.command.run",
 		"fs.read",
