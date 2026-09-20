@@ -30,7 +30,7 @@ interface PendingPublish {
  * ahead-behind counts) plus the working-tree added/deleted line totals. Reloads
  * on the shared refresh signal and after each action.
  */
-export function GitActions({ root }: { root: string }): JSX.Element {
+export function GitActions({ root, labelled = false }: { root: string; labelled?: boolean }): JSX.Element {
 	const { t } = useTranslation();
 	const [ab, setAb] = useState<{ ahead: number; behind: number } | null>(null);
 	const [stat, setStat] = useState({ additions: 0, deletions: 0, untrackedTruncated: false });
@@ -126,47 +126,92 @@ export function GitActions({ root }: { root: string }): JSX.Element {
 
 	const spin = (kind: ActionKind): string => (busy === kind ? "animate-spin" : "");
 
+	/** One toolbar action, rendered either as a bare icon or as a labelled segment. */
+	const items: Array<{
+		kind: ActionKind;
+		/** Visible label; kept short so the segments stay compact. */
+		label: string;
+		/** Tooltip, where the longer explanation lives. */
+		title: string;
+		icon: (className: string) => JSX.Element;
+		count?: number;
+		tone?: string;
+		onClick: () => void;
+	}> = [
+		{
+			kind: "fetch",
+			label: t("action.fetch"),
+			title: t("action.fetch"),
+			icon: (cn) => <FetchIcon className={cn} />,
+			onClick: () => runAction("fetch", async () => (await gitFetch(root), "done")),
+		},
+		{
+			kind: "pull",
+			label: t("action.pull"),
+			title: t("action.pull"),
+			icon: (cn) => <PullIcon className={cn} />,
+			count: ab && ab.behind > 0 ? ab.behind : undefined,
+			tone: "text-sky-500",
+			onClick: () => runAction("pull", async () => (await gitPull(root), "done")),
+		},
+		{
+			kind: "push",
+			label: t("action.push"),
+			title: t("action.push"),
+			icon: (cn) => <PushIcon className={cn} />,
+			count: ab && ab.ahead > 0 ? ab.ahead : undefined,
+			tone: "text-emerald-500",
+			onClick: handlePush,
+		},
+		{ kind: "sync", label: t("action.syncLabel"), title: t("action.sync"), icon: (cn) => <SyncIcon className={cn} />, onClick: handleSync },
+	];
+
 	return (
 		<div className="flex items-center gap-2">
-			<div className="flex items-center gap-0.5">
-				<Button
-					type="button"
-					variant="ghost"
-					size="icon-xs"
-					title={t("action.fetch")}
-					disabled={busy !== null}
-					onClick={() => runAction("fetch", async () => (await gitFetch(root), "done"))}
-				>
-					<FetchIcon className={`h-4 w-4 text-muted-foreground ${spin("fetch")}`} />
-				</Button>
-				<Button
-					type="button"
-					variant="ghost"
-					size="xs"
-					className="px-1.5"
-					title={ab && ab.behind > 0 ? `${t("action.pull")} (${ab.behind})` : t("action.pull")}
-					disabled={busy !== null}
-					onClick={() => runAction("pull", async () => (await gitPull(root), "done"))}
-				>
-					<PullIcon className={`h-4 w-4 ${ab && ab.behind > 0 ? "text-sky-500" : "text-muted-foreground"} ${spin("pull")}`} />
-					{ab && ab.behind > 0 && <span className="text-[11px] font-semibold tabular-nums leading-none text-sky-500">{ab.behind}</span>}
-				</Button>
-				<Button
-					type="button"
-					variant="ghost"
-					size="xs"
-					className="px-1.5"
-					title={ab && ab.ahead > 0 ? `${t("action.push")} (${ab.ahead})` : t("action.push")}
-					disabled={busy !== null}
-					onClick={handlePush}
-				>
-					<PushIcon className={`h-4 w-4 ${ab && ab.ahead > 0 ? "text-emerald-500" : "text-muted-foreground"} ${spin("push")}`} />
-					{ab && ab.ahead > 0 && <span className="text-[11px] font-semibold tabular-nums leading-none text-emerald-500">{ab.ahead}</span>}
-				</Button>
-				<Button type="button" variant="ghost" size="icon-xs" title={t("action.sync")} disabled={busy !== null} onClick={handleSync}>
-					<SyncIcon className={`h-4 w-4 text-muted-foreground ${spin("sync")}`} />
-				</Button>
-			</div>
+			{labelled ? (
+				// 宽面板下工具栏空得发慌，四枚裸图标既看不出是一组、也认不出是什么。
+				// 合成一枚分段控件并补上文案，待推/待拉的数字跟在文案后面。
+				<div className="flex items-center overflow-hidden rounded-lg border border-border/60">
+					{items.map((item, index) => (
+						<button
+							key={item.kind}
+							type="button"
+							title={item.count ? `${item.title} (${item.count})` : item.title}
+							disabled={busy !== null}
+							onClick={item.onClick}
+							className={`flex h-7 items-center gap-1.5 px-2.5 text-[12px] text-foreground transition-colors hover:bg-accent disabled:opacity-50 ${
+								index > 0 ? "border-l border-border/60" : ""
+							}`}
+						>
+							{item.icon(`h-3.5 w-3.5 ${item.count ? (item.tone ?? "") : "text-muted-foreground"} ${spin(item.kind)}`)}
+							<span>{item.label}</span>
+							{item.count !== undefined && (
+								<span className={`text-[11px] font-semibold tabular-nums leading-none ${item.tone ?? ""}`}>{item.count}</span>
+							)}
+						</button>
+					))}
+				</div>
+			) : (
+				<div className="flex items-center gap-0.5">
+					{items.map((item) => (
+						<Button
+							key={item.kind}
+							type="button"
+							variant="ghost"
+							size="xs"
+							className="px-1.5"
+							title={item.count ? `${item.title} (${item.count})` : item.title}
+							disabled={busy !== null}
+							onClick={item.onClick}
+						>
+							{item.icon(`h-4 w-4 ${item.count ? (item.tone ?? "") : "text-muted-foreground"} ${spin(item.kind)}`)}
+							{item.count !== undefined && (
+								<span className={`text-[11px] font-semibold tabular-nums leading-none ${item.tone ?? ""}`}>{item.count}</span>
+							)}
+						</Button>
+					))}
+				</div>
+			)}
 
 			{stat.additions > 0 && (
 				<span

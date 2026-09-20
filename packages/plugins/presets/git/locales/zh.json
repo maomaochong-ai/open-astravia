@@ -7,6 +7,7 @@
 	"action.fetch": "获取",
 	"action.pull": "拉取",
 	"action.push": "推送",
+	"action.syncLabel": "同步",
 	"action.sync": "同步（先拉取后推送）",
 	"action.close": "关闭",
 	"action.showTree": "显示文件树",

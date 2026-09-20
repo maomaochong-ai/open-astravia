@@ -7,6 +7,7 @@
 	"action.fetch": "Fetch",
 	"action.pull": "Pull",
 	"action.push": "Push",
+	"action.syncLabel": "Sync",
 	"action.sync": "Sync (pull then push)",
 	"action.close": "Close",
 	"action.showTree": "Show file tree",

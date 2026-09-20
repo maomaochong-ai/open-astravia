@@ -170,7 +170,7 @@ export function GitChanges({ root, groups }: { root: string; groups: StatusGroup
 			<div className="flex h-9 shrink-0 items-center gap-1 px-2">
 				<BranchBar root={root} />
 				<div className="ml-auto flex items-center gap-1">
-					<GitActions root={root} />
+					<GitActions root={root} labelled={wide} />
 				</div>
 			</div>
 
