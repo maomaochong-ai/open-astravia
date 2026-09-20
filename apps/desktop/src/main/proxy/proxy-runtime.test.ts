@@ -12,13 +12,13 @@ function proxyConfig(overrides: Partial<DesktopProxyConfig> = {}): DesktopProxyC
 	return { ...DEFAULT_PROXY_CONFIG, enabled: true, host: "proxy.example.com", port: 3128, ...overrides };
 }
 
-function model(provider: string, api: Api = "openai-completions"): Model<Api> {
+function model(provider: string, api: Api = "openai-completions", baseUrl = "https://provider.test"): Model<Api> {
 	return {
 		id: "m",
 		name: "M",
 		api,
 		provider,
-		baseUrl: "https://provider.test",
+		baseUrl,
 		reasoning: false,
 		input: ["text"],
 		cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
@@ -135,6 +135,26 @@ describe("应用代理设置流程", () => {
 		// 没有注入 = 落在全局代理 dispatcher 上，而不是被静默拉回直连。
 		expect((await optionsSeenByProvider(model("google", "google-generative-ai")))?.fetch).toBeUndefined();
 		expect(h.directFetch).not.toHaveBeenCalled();
+	});
+
+	it("上游在本机的供应商不注入传输，交给全局 dispatcher 的本机豁免", async () => {
+		// CLIProxyAPI 这类本机桥接网关：这一跳不出网，注入直连或代理都是多余的。
+		const h = harness();
+
+		await applyDesktopProxy(proxyConfig(), h.options);
+
+		const local = model("cli-proxy-api.google", "google-generative-ai", "http://127.0.0.1:49507/v1beta");
+		expect((await optionsSeenByProvider(local))?.fetch).toBeUndefined();
+		expect(h.directFetch).not.toHaveBeenCalled();
+	});
+
+	it("配置无效时本机上游照常工作，不被一起打死", async () => {
+		const h = harness();
+
+		await applyDesktopProxy(proxyConfig({ host: "" }), h.options);
+
+		const local = model("qwen-local", "openai-completions", "http://192.168.50.50:8124/v1");
+		expect((await optionsSeenByProvider(local))?.fetch).toBeUndefined();
 	});
 
 	it("关掉代理后还原全局 dispatcher，供应商请求回到直连", async () => {

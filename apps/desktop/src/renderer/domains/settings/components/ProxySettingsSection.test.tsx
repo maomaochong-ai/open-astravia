@@ -34,10 +34,20 @@ function installVetta(options: { proxyEnabled?: boolean } = {}): {
 	const modelsSet = vi.fn(async () => {});
 	const modelsConfig = {
 		providers: {
-			anthropic: { displayName: "Anthropic", api: "anthropic-messages" },
-			deepseek: { displayName: "DeepSeek", api: "openai-completions" },
+			anthropic: { displayName: "Anthropic", api: "anthropic-messages", baseUrl: "https://api.anthropic.com" },
+			deepseek: { displayName: "DeepSeek", api: "openai-completions", baseUrl: "https://api.deepseek.com" },
 			// 厂商 SDK 自己发请求，注入的传输到不了它。
-			google: { displayName: "Google", api: "google-generative-ai" },
+			google: {
+				displayName: "Google",
+				api: "google-generative-ai",
+				baseUrl: "https://generativelanguage.googleapis.com",
+			},
+			// 本机桥接网关：这一跳根本没出网。
+			"cli-proxy-api": {
+				displayName: "CLIProxyAPI",
+				api: "google-generative-ai",
+				baseUrl: "http://127.0.0.1:49507/v1beta",
+			},
 		},
 	};
 	Object.defineProperty(window, "vetta", {
@@ -135,6 +145,17 @@ describe("网络代理设置", () => {
 		expect(isOn(switchByName("Google"))).toBe(true);
 		expect(switchByName("Google").disabled).toBe(true);
 		expect(screen.getByText("proxy.providerFollowsGlobal")).toBeTruthy();
+	});
+
+	it("上游在本机的服务商显示为始终直连、开关只读，并说明原因", async () => {
+		installVetta({ proxyEnabled: true });
+		render(<Harness />);
+
+		await waitFor(() => expect(switchByName("CLIProxyAPI")).toBeTruthy());
+		// 它压根不出网，显示成「走代理」会让人以为开了代理就被接管了。
+		expect(isOn(switchByName("CLIProxyAPI"))).toBe(false);
+		expect(switchByName("CLIProxyAPI").disabled).toBe(true);
+		expect(screen.getByText("proxy.providerLocal")).toBeTruthy();
 	});
 
 	it("地址填不全时提示请求会失败，而不是让用户以为改走了直连", async () => {

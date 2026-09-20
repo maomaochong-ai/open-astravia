@@ -38,6 +38,7 @@ export default defineConfig({
 			},
 			{ find: "@vetta/ai/testing", replacement: resolve(__dirname, "../../packages/ai/src/testing/index.ts") },
 			{ find: "@vetta/ai/protocol", replacement: resolve(__dirname, "../../packages/ai/src/protocol/index.ts") },
+			{ find: "@vetta/ai/proxy", replacement: resolve(__dirname, "../../packages/ai/src/utils/proxy-config.ts") },
 			{ find: "@vetta/ai", replacement: resolve(__dirname, "../../packages/ai/src/index.ts") },
 			{ find: "@vetta/agent-core", replacement: resolve(__dirname, "../../packages/agent/src/index.ts") },
 			{
