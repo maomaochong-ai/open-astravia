@@ -82,6 +82,7 @@
 			"@vetta/runtime-ssh": ["./packages/runtime-ssh/src/index.ts"],
 			"@vetta/runtime-ssh/*": ["./packages/runtime-ssh/src/*"],
 			"@vetta/ssh-transport": ["./packages/ssh-transport/src/index.ts"],
+			"@vetta/ssh-transport/project-uri": ["./packages/ssh-transport/src/project-uri.ts"],
 			"@vetta/ssh-transport/testing": ["./packages/ssh-transport/src/testing.ts"],
 			"@vetta/ssh-transport/*": ["./packages/ssh-transport/src/*"],
 			"@vetta/remote-control": ["./packages/remote-control/src/index.ts"],
