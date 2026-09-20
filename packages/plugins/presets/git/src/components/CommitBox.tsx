@@ -237,7 +237,8 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 							type="button"
 							disabled={pending !== null}
 							title={t("commit.more")}
-							className={`flex h-8 w-8 shrink-0 items-center justify-center border-l border-white/20 transition-colors ${commitTone}`}
+							// 分隔线只占八成高度并居中：通高的那条会把按钮视觉上劈成两半。
+							className={`relative flex h-8 w-8 shrink-0 items-center justify-center transition-colors before:absolute before:left-0 before:top-[10%] before:h-[80%] before:w-px before:bg-white/15 ${commitTone}`}
 						>
 							<ChevronIcon className="h-3.5 w-3.5" />
 						</button>
