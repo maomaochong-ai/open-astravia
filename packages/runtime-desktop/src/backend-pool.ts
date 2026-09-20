@@ -29,10 +29,12 @@ import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
 import { nodeModelInputImageProcessor, nodeWorkspaceFactsFileSource } from "@vetta/runtime-node/coding";
 import { createFileConversationPersistence, resolveSessionIdFromPath } from "@vetta/runtime-node/conversation";
 import type { CodingToolResultPolicy } from "@vetta/runtime-tools";
+import { parseProjectLocation } from "@vetta/ssh-transport";
 import {
 	createDesktopCodingAgentSessionExecutionEnvironment,
 	createDesktopCodingAgentToolEnvironment,
 } from "./coding-agent-tool-environment.js";
+import { renderRemoteWorkspaceFacts } from "./remote-workspace-facts.js";
 
 type CompositionFixedOption =
 	| "agentDir"
@@ -283,9 +285,7 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 			...(managedMcpSource ? { mcpSource: managedMcpSource.source } : {}),
 			conversationDir: scope.conversationDir,
 			cwd: scope.cwd,
-			workspaceFacts: detectWorkspaceFacts(scope.cwd, (cwd) =>
-				probeWorkspaceSignals(cwd, nodeWorkspaceFactsFileSource),
-			),
+			workspaceFacts: resolveWorkspaceFacts(scope.cwd),
 			agentDir: scope.agentDir,
 			scenario: scope.scenario,
 			enableSubagents: scope.enableSubagents,
@@ -507,4 +507,17 @@ function runtimeScopeKey(scope: DesktopRuntimeScope): string {
 
 function mcpRuntimeScopeKey(scope: DesktopMcpRuntimeScope): string {
 	return JSON.stringify([scope.cwd, scope.agentDir ?? null]);
+}
+
+/**
+ * 会话创建时固化的工作区说明。
+ *
+ * 远程项目不能走本地探测：`probeWorkspaceSignals` 同步读本机磁盘，对着一个
+ * `ssh://…` 的 cwd 只会什么都探不到，然后静默给出「没有任何事实」——模型于是
+ * 默认自己在一个空目录里，可能另起一个新工程。
+ */
+function resolveWorkspaceFacts(cwd: string): string | undefined {
+	const location = parseProjectLocation(cwd);
+	if (location.kind === "ssh") return renderRemoteWorkspaceFacts(location.remotePath);
+	return detectWorkspaceFacts(cwd, (root) => probeWorkspaceSignals(root, nodeWorkspaceFactsFileSource));
 }
