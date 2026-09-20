@@ -345,6 +345,7 @@ pdfjs.getDocument({ url: file.getUrl() });
 
 向活动面板注册一个 tab。
 
+- **`order` 决定默认排位**（越小越靠前，缺省 100 即排在全部内置之后）。内置取值可作标尺：文件 0、批量 10、浏览器 15、计划 18、待办 20、后台任务 30。宿主把下限钳到 10，「文件」永远第一；用户拖出来的顺序优先于它
 - 权限：`ui.slot.activity-tab`（注册 **warn+noop**；`openActivityTab` / `setActivityTabVisible` **抛错**）
 - **`scope_use` fail-closed**（必写，否则任何场景不显示）
 - **默认注册即上栏**（`initiallyVisible` 缺省 `true`）。声明 `initiallyVisible: false` 表示「出现条件我自己管」：注册只入池，之后用 `setActivityTabVisible` 静默上栏/下栏（如 git 只在仓库目录上栏、工作台跟随输入栏 toggle），或用 `openActivityTab` 上栏并抢焦点打开（如图像生成完成后跳到历史）

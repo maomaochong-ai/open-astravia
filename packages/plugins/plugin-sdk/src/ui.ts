@@ -247,6 +247,13 @@ export interface PluginFilePreviewContribution {
 export type PluginActivityTabRetention = "active-only" | "warm" | "pinned";
 
 export interface PluginActivityTabContribution {
+	/**
+	 * 标签栏上的默认相对位置，越小越靠前；缺省 100（排在全部内置标签卡之后）。
+	 *
+	 * 内置的取值可作标尺：文件 0、批量 10、浏览器 15、计划 18、待办 20、后台任务 30。
+	 * 下限被宿主钳到 10，「文件」永远是第一枚；用户拖拽出来的顺序优先于这个值。
+	 */
+	order?: number;
 	id: string;
 	label: string;
 	/**
