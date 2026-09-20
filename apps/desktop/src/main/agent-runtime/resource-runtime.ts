@@ -26,6 +26,7 @@ import {
 	NodeScopedTextStorage,
 	nodeTextFileWatchPort,
 } from "@vetta/runtime-node/host";
+import { isSshProjectUri, parseProjectLocation } from "@vetta/ssh-transport";
 import { getSshConnection } from "../ssh/ssh-runtime.js";
 
 interface DesktopResourceRuntimeScope {
@@ -82,7 +83,7 @@ export function createDesktopSessionResourceRuntime(
 		...host,
 		managedSkillsDir: getUserSkillsDir(),
 	});
-	return createSessionResourceRuntime({
+	const runtime = createSessionResourceRuntime({
 		...options,
 		packages,
 		resourceAccess: host.resourceAccess,
@@ -95,6 +96,51 @@ export function createDesktopSessionResourceRuntime(
 			manifestPath: host.resourceAccess.paths.join(getVettaHomePath(), "skills-manifest.json"),
 		},
 	});
+	return isSshProjectUri(options.cwd) ? presentRemotePathsAsSeenByTools(runtime) : runtime;
+}
+
+/**
+ * 远程项目的资源在发现阶段带着 `ssh://<hostId>/…` 形态的路径——那是宿主用来决定「去哪台
+ * 机器读」的内部表示。交给模型之前必须换成远端上的绝对路径：模型拿路径去喂 read 和 bash，
+ * 而这两个工具就跑在那台机器上。原样给 URI 的话，`bash "$SKILL_DIR/scripts/run.sh"` 会
+ * 去执行一个名叫 `ssh:` 的目录下的脚本。
+ *
+ * 只改对外读出的视图，运行时内部仍用 URI 作为资源身份。
+ */
+function presentRemotePathsAsSeenByTools(runtime: SessionResourceRuntime): SessionResourceRuntime {
+	return new Proxy(runtime, {
+		get(target, property, receiver) {
+			if (property === "getSkills") {
+				return () => {
+					const result = target.getSkills();
+					return {
+						...result,
+						skills: result.skills.map((skill) => ({
+							...skill,
+							filePath: toToolFacingPath(skill.filePath),
+							baseDir: toToolFacingPath(skill.baseDir),
+						})),
+					};
+				};
+			}
+			if (property === "getAgentsFiles") {
+				return () => ({
+					agentsFiles: target.getAgentsFiles().agentsFiles.map((file) => ({
+						...file,
+						path: toToolFacingPath(file.path),
+					})),
+				});
+			}
+			const value: unknown = Reflect.get(target, property, receiver);
+			return typeof value === "function" ? value.bind(target) : value;
+		},
+	});
+}
+
+function toToolFacingPath(path: string): string {
+	if (!isSshProjectUri(path)) return path;
+	const location = parseProjectLocation(path);
+	return location.kind === "ssh" ? location.remotePath : path;
 }
 
 export async function createDesktopPromptRuntimeSources(

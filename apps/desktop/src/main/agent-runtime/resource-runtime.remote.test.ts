@@ -49,9 +49,12 @@ describe("远程项目会话的资源发现", () => {
 		expect(agentsFiles.map((file) => file.content)).toContain("REMOTE-PROJECT-RULES\n");
 		// 这条测试自己就跑在一个带 AGENTS.md 的仓库里：旧实现会把 URI 解析到进程 cwd 之下，
 		// 再沿本机祖先目录向上，把本仓库的 AGENTS.md 当成远端项目的规则读进来。
-		expect(
-			agentsFiles.every((file) => file.path.startsWith("ssh://build-01/") || file.path.startsWith(agentDir)),
-		).toBe(true);
-		expect(resourceSource.getSkills().skills.map((skill) => skill.name)).toContain("deploy");
+		expect(agentsFiles.every((file) => file.path.startsWith(remoteRoot) || file.path.startsWith(agentDir))).toBe(
+			true,
+		);
+		const deploy = resourceSource.getSkills().skills.find((skill) => skill.name === "deploy");
+		// 模型会把这条路径直接交给跑在远端的 bash：必须是那台机器上的绝对路径，不是 URI。
+		expect(deploy?.baseDir).toBe(join(remoteRoot, ".agents/skills/deploy"));
+		expect(deploy?.filePath).toBe(join(remoteRoot, ".agents/skills/deploy/SKILL.md"));
 	});
 });
