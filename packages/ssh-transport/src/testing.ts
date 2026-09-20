@@ -1,6 +1,8 @@
+import { spawnSync } from "node:child_process";
 import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createNodeSshProcessRunner } from "./node-process-runner.js";
 import { SshConnection, type SshConnectionOptions } from "./ssh-connection.js";
 
@@ -49,4 +51,22 @@ export function createLoopbackSshConnection(
 			...options,
 		},
 	);
+}
+
+let builtHelper: string | undefined | null = null;
+
+/**
+ * 编译一份本机平台的远端 helper 供端到端测试使用；没有 Go 工具链时返回 undefined，
+ * 调用方据此跳过。同一进程内只编一次。
+ */
+export function buildSshHelperForTests(): string | undefined {
+	if (builtHelper !== null) return builtHelper;
+	const source = resolve(dirname(fileURLToPath(import.meta.url)), "../../../apps/ssh-helper");
+	const output = join(mkdtempSync(join(tmpdir(), "vetta-helper-build-")), "vetta-ssh-helper");
+	const result = spawnSync("go", ["build", "-o", output, "./cmd/vetta-ssh-helper"], {
+		cwd: source,
+		env: { ...process.env, CGO_ENABLED: "0" },
+	});
+	builtHelper = result.status === 0 ? output : undefined;
+	return builtHelper;
 }
