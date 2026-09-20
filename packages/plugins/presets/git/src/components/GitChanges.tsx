@@ -9,6 +9,7 @@ import type { MenuPoint } from "./ChangeMenu";
 import { FloatingChangeMenu } from "./ChangeMenu";
 import { BranchBar } from "./BranchBar";
 import { ChangeSectionList } from "./ChangeSectionList";
+import { CleanState } from "./CleanState";
 import { CommitBox } from "./CommitBox";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { DiffPane } from "./DiffPane";
@@ -38,7 +39,7 @@ interface Selection {
 }
 
 /** Ready-state body: sectioned change list on the left, width-gated diff pane on the right. */
-export function GitChanges({ root, groups }: { root: string; groups: StatusGroups }): JSX.Element {
+export function GitChanges({ root, groups, onOpenGraph }: { root: string; groups: StatusGroups; onOpenGraph: () => void }): JSX.Element {
 	const { t } = useTranslation();
 	const [containerWidth, setContainerWidth] = useState(0);
 	const [active, setActive] = useState<ChangeRef | null>(null);
@@ -175,7 +176,7 @@ export function GitChanges({ root, groups }: { root: string; groups: StatusGroup
 			</div>
 
 			{total === 0 ? (
-				<div className="flex flex-1 items-center justify-center px-3 py-4 text-[12px] text-muted-foreground">{t("state.clean")}</div>
+				<CleanState root={root} onOpenGraph={onOpenGraph} />
 			) : (
 				<div ref={measureRef} className="flex min-h-0 flex-1 overflow-hidden">
 					{showTree && (

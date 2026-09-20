@@ -118,7 +118,7 @@ export function GitPanel(): JSX.Element {
 				(view === "graph" ? (
 					<GraphView root={state.root} reloadToken={graphReloadToken} />
 				) : (
-					<GitChanges root={state.root} groups={state.groups} />
+					<GitChanges root={state.root} groups={state.groups} onOpenGraph={() => setView("graph")} />
 				))}
 		</div>
 	);
