@@ -228,6 +228,16 @@
 		box-shadow 180ms ease !important;
 }
 
+/* View Transition 已经用根快照完成整页过渡。捕获和播放期间暂停页面内部的普通 transition，
+   避免主题 token 变化让 transition-all / transition-colors 元素各自启动非合成颜色动画。
+   fallback 路径带 theme-transitioning class，需要继续使用上面的颜色渐变。 */
+:root[data-theme-transition]:not(.theme-transitioning),
+:root[data-theme-transition]:not(.theme-transitioning) *,
+:root[data-theme-transition]:not(.theme-transitioning) *::before,
+:root[data-theme-transition]:not(.theme-transitioning) *::after {
+	transition: none !important;
+}
+
 ::view-transition-old(root),
 ::view-transition-new(root) {
 	animation: none;
@@ -235,22 +245,7 @@
 }
 
 ::view-transition-new(root) {
-	animation: theme-reveal 620ms ease-in-out both;
 	z-index: 1;
-}
-
-@keyframes theme-reveal {
-	from {
-		clip-path: circle(
-			0 at var(--theme-transition-x, 50%) var(--theme-transition-y, 50%)
-		);
-	}
-	to {
-		clip-path: circle(
-			var(--theme-transition-radius, 150vmax) at var(--theme-transition-x, 50%)
-				var(--theme-transition-y, 50%)
-		);
-	}
 }
 
 :root {

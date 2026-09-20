@@ -18,7 +18,6 @@ import { useModelCatalogSync } from "../shared/hooks/useModelCatalogSync";
 import { useNarrowScreen } from "../shared/hooks/useNarrowScreen";
 import { useRunningSessionsSync } from "../shared/hooks/useRunningSessionsSync";
 import { useGlobalShortcuts } from "../shared/hooks/useShortcuts";
-import { useTheme } from "../shared/hooks/useTheme";
 import { useUpdaterInit } from "../shared/hooks/useUpdaterInit";
 import { i18n } from "../shared/i18n";
 import {
@@ -104,7 +103,6 @@ export function useRootLayoutModel(): RootLayoutModel {
 		}
 	}, [narrow, cancelOverlayClose]);
 
-	useTheme();
 	// 云会话生命周期已上移到 App 根部的 <CloudAuthBoot />（lite 构建不挂载）
 	useAppInit();
 	useNotificationInit();

@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
 import { useThemeAppearance } from "@vetta-org/theme-sdk/appearance";
-import { useTheme } from "../hooks/useTheme";
+import { useThemeActions } from "../hooks/useTheme";
 import { applyStoredTheme, setThemeColorOverrides } from "./apply";
 
 /**
@@ -9,7 +9,7 @@ import { applyStoredTheme, setThemeColorOverrides } from "./apply";
  */
 export function ThemeColorOverrideBridge(): null {
 	const appearance = useThemeAppearance();
-	const { setMode } = useTheme();
+	const { setMode } = useThemeActions();
 	// 只在 colorScheme 变化时切一次，避免 colors 重渲染时覆盖用户手动改的模式。
 	const lastForcedSchemeRef = useRef<"light" | "dark" | null>(null);
 

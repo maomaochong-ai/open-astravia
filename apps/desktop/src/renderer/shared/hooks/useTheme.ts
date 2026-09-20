@@ -1,12 +1,13 @@
 import { i18n } from "@shared/i18n";
-import { useAtom } from "jotai";
-import { useCallback, useEffect } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
+import { useCallback, useEffect, useMemo } from "react";
 import type { DesktopThemeSnapshot } from "../../../preload/api-types/theme";
 import { cursorStyleAtom, resolvedThemeAtom, type ThemeMode, themeModeAtom, themeNameAtom } from "../store/atoms";
 import {
 	applyTheme,
 	MODE_STORAGE_KEY,
 	type ResolvedMode,
+	resolveThemeMode,
 	THEME_STORAGE_KEY,
 	type ThemeTransitionOptions,
 	withThemeTransition,
@@ -20,51 +21,122 @@ const COLOR_THEME_LABEL_KEYS = {
 	sand: "colorThemes.sand",
 } as const;
 
+function getThemeSnapshot(): DesktopThemeSnapshot {
+	const storedMode = localStorage.getItem(MODE_STORAGE_KEY);
+	const storedThemeId = localStorage.getItem(THEME_STORAGE_KEY);
+	const root = document.documentElement;
+	const resolvedMode = root.getAttribute("data-mode");
+	return {
+		mode: storedMode === "light" || storedMode === "dark" || storedMode === "auto" ? storedMode : "dark",
+		themeId: resolveThemeId(storedThemeId && storedThemeId.length > 0 ? storedThemeId : DEFAULT_THEME_ID),
+		resolved: resolvedMode === "light" || resolvedMode === "dark" ? resolvedMode : null,
+		appliedThemeId: root.getAttribute("data-theme"),
+		cursorStyle: getStoredCursorStyle(),
+	};
+}
+
+export interface ThemeActions {
+	setMode: (
+		newMode: ThemeMode,
+		transitionOptions?: ThemeTransitionOptions,
+		themeNameOverride?: string,
+	) => Promise<void>;
+	setThemeName: (name: string, transitionOptions?: ThemeTransitionOptions) => void;
+}
+
+/**
+ * 只暴露稳定写操作，不订阅主题 atom。
+ * 根布局、桥接器等只需要发起切换的调用方不会再因主题变化整棵重渲染。
+ */
+export function useThemeActions(): ThemeActions {
+	const setModeAtom = useSetAtom(themeModeAtom);
+	const setResolved = useSetAtom(resolvedThemeAtom);
+	const setThemeNameAtom = useSetAtom(themeNameAtom);
+
+	const setMode = useCallback(
+		(newMode: ThemeMode, transitionOptions?: ThemeTransitionOptions, themeNameOverride?: string): Promise<void> => {
+			localStorage.setItem(MODE_STORAGE_KEY, newMode);
+			const resolved = resolveThemeMode(newMode);
+			const nextThemeName = resolveThemeId(
+				themeNameOverride ?? localStorage.getItem(THEME_STORAGE_KEY) ?? DEFAULT_THEME_ID,
+			);
+
+			// 页面颜色必须立即响应点击；nativeTheme / vibrancy 通过唯一的控制器异步跟进。
+			withThemeTransition(() => {
+				setModeAtom(newMode);
+				setResolved(resolved);
+				applyTheme(resolved, nextThemeName);
+			}, transitionOptions);
+			return Promise.resolve();
+		},
+		[setModeAtom, setResolved],
+	);
+
+	const setThemeName = useCallback(
+		(name: string, transitionOptions?: ThemeTransitionOptions) => {
+			const nextName = resolveThemeId(name);
+			const appliedMode = document.documentElement.getAttribute("data-mode");
+			const resolved =
+				appliedMode === "light" || appliedMode === "dark"
+					? appliedMode
+					: resolveThemeMode((localStorage.getItem(MODE_STORAGE_KEY) as ThemeMode | null) ?? "dark");
+			localStorage.setItem(THEME_STORAGE_KEY, nextName);
+			withThemeTransition(() => {
+				setThemeNameAtom(nextName);
+				applyTheme(resolved, nextName);
+			}, transitionOptions);
+		},
+		[setThemeNameAtom],
+	);
+
+	return useMemo(() => ({ setMode, setThemeName }), [setMode, setThemeName]);
+}
+
 export function useTheme() {
-	const [mode, setModeAtom] = useAtom(themeModeAtom);
-	const [resolved, setResolved] = useAtom(resolvedThemeAtom);
-	const [themeName, setThemeNameAtom] = useAtom(themeNameAtom);
-	const [, setCursorStyleAtom] = useAtom(cursorStyleAtom);
+	const mode = useAtomValue(themeModeAtom);
+	const resolved = useAtomValue(resolvedThemeAtom);
+	const themeName = useAtomValue(themeNameAtom);
+	const { setMode, setThemeName } = useThemeActions();
 
-	const getThemeSnapshot = useCallback((): DesktopThemeSnapshot => {
-		const storedMode = localStorage.getItem(MODE_STORAGE_KEY);
-		const storedThemeId = localStorage.getItem(THEME_STORAGE_KEY);
-		const root = document.documentElement;
-		const resolvedMode = root.getAttribute("data-mode");
-		return {
-			mode: storedMode === "light" || storedMode === "dark" || storedMode === "auto" ? storedMode : "dark",
-			themeId: resolveThemeId(storedThemeId && storedThemeId.length > 0 ? storedThemeId : DEFAULT_THEME_ID),
-			resolved: resolvedMode === "light" || resolvedMode === "dark" ? resolvedMode : null,
-			appliedThemeId: root.getAttribute("data-theme"),
-			cursorStyle: getStoredCursorStyle(),
-		};
-	}, []);
+	return { mode, resolved, themeName, setMode, setThemeName };
+}
 
-	// 挂载时与 mode 变化时同步原生窗口主题 + 解析当前 mode。
-	// applyInitialTheme() 已在 main.tsx 启动时写过一次 inline style，这里只做：
-	// 1) auto 模式下查询原生当前是 dark 还是 light（异步，更权威）
-	// 2) 通知主进程切换 nativeTheme（影响 macOS vibrancy）
+/** 全局主题生命周期。只能由应用根部的 ThemeController 挂载一次。 */
+export function useThemeController(): void {
+	const mode = useAtomValue(themeModeAtom);
+	const setResolved = useSetAtom(resolvedThemeAtom);
+	const setThemeNameAtom = useSetAtom(themeNameAtom);
+	const setCursorStyleAtom = useSetAtom(cursorStyleAtom);
+	const { setMode, setThemeName } = useThemeActions();
+
+	// applyInitialTheme() 已在 React 挂载前完成页面着色。这里仅异步同步 nativeTheme，
+	// auto 模式再用原生结果校正 matchMedia 的同步预估。
 	useEffect(() => {
+		let cancelled = false;
 		async function syncWithNative() {
-			let isDark: boolean;
-			if (mode === "auto") {
-				try {
-					const native = await window.vetta.theme.getNative();
-					isDark = native.shouldUseDarkColors;
-				} catch {
-					isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-				}
-				await window.vetta.theme.set("system").catch(() => {});
-			} else {
-				isDark = mode === "dark";
+			if (mode !== "auto") {
+				setResolved(mode);
 				await window.vetta.theme.set(mode).catch(() => {});
+				return;
 			}
-			const r: ResolvedMode = isDark ? "dark" : "light";
+
+			await window.vetta.theme.set("system").catch(() => {});
+			let resolved: ResolvedMode;
+			try {
+				const native = await window.vetta.theme.getNative();
+				resolved = native.shouldUseDarkColors ? "dark" : "light";
+			} catch {
+				resolved = resolveThemeMode("auto");
+			}
+			if (cancelled || localStorage.getItem(MODE_STORAGE_KEY) !== "auto") return;
 			const currentTheme = resolveThemeId(localStorage.getItem(THEME_STORAGE_KEY) ?? DEFAULT_THEME_ID);
-			setResolved(r);
-			applyTheme(r, currentTheme);
+			setResolved(resolved);
+			applyTheme(resolved, currentTheme);
 		}
 		void syncWithNative();
+		return () => {
+			cancelled = true;
+		};
 	}, [mode, setResolved]);
 
 	// 监听原生主题变化（auto 模式下才响应）。
@@ -80,50 +152,11 @@ export function useTheme() {
 		return unsubscribe;
 	}, [setResolved]);
 
-	const setMode = useCallback(
-		async (newMode: ThemeMode, transitionOptions?: ThemeTransitionOptions, themeNameOverride?: string) => {
-			localStorage.setItem(MODE_STORAGE_KEY, newMode);
-
-			let r: ResolvedMode;
-			if (newMode === "auto") {
-				await window.vetta.theme.set("system").catch(() => {});
-				try {
-					const native = await window.vetta.theme.getNative();
-					r = native.shouldUseDarkColors ? "dark" : "light";
-				} catch {
-					r = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-				}
-			} else {
-				await window.vetta.theme.set(newMode).catch(() => {});
-				r = newMode;
-			}
-			const nextThemeName = themeNameOverride ?? themeName;
-			withThemeTransition(() => {
-				setModeAtom(newMode);
-				setResolved(r);
-				applyTheme(r, nextThemeName);
-			}, transitionOptions);
-		},
-		[setModeAtom, setResolved, themeName],
-	);
-
 	useEffect(() => {
 		return window.vetta.theme.onModeRequested(({ mode: requestedMode }) => {
 			void setMode(requestedMode);
 		});
 	}, [setMode]);
-
-	const setThemeName = useCallback(
-		(name: string, transitionOptions?: ThemeTransitionOptions) => {
-			const nextName = resolveThemeId(name);
-			localStorage.setItem(THEME_STORAGE_KEY, nextName);
-			withThemeTransition(() => {
-				setThemeNameAtom(nextName);
-				applyTheme(resolved, nextName);
-			}, transitionOptions);
-		},
-		[resolved, setThemeNameAtom],
-	);
 
 	useEffect(() => {
 		return window.vetta.theme.onChangeRequested(async ({ mode: requestedMode, themeId, cursorStyle }) => {
@@ -147,11 +180,11 @@ export function useTheme() {
 			}
 			return getThemeSnapshot();
 		});
-	}, [getThemeSnapshot, setCursorStyleAtom, setMode, setThemeName, setThemeNameAtom]);
+	}, [setCursorStyleAtom, setMode, setThemeName, setThemeNameAtom]);
 
 	useEffect(() => {
 		return window.vetta.theme.onStateRequested(getThemeSnapshot);
-	}, [getThemeSnapshot]);
+	}, []);
 
 	useEffect(() => {
 		return window.vetta.theme.onHelpRequested(() => ({
@@ -164,7 +197,5 @@ export function useTheme() {
 				};
 			}),
 		}));
-	}, [getThemeSnapshot]);
-
-	return { mode, resolved, themeName, setMode, setThemeName };
+	}, []);
 }

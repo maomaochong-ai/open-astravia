@@ -35,7 +35,7 @@ export function applyTheme(mode: ResolvedMode, themeId: string): void {
 	writeTokens(tokens);
 }
 
-function getStoredResolvedMode(mode: ThemeMode): ResolvedMode {
+export function resolveThemeMode(mode: ThemeMode): ResolvedMode {
 	if (mode === "auto") {
 		return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 	}
@@ -49,7 +49,7 @@ export function applyStoredTheme(): void {
 	if (themeId !== rawThemeId) {
 		localStorage.setItem(THEME_STORAGE_KEY, themeId);
 	}
-	applyTheme(getStoredResolvedMode(mode), themeId);
+	applyTheme(resolveThemeMode(mode), themeId);
 }
 
 // 启动时同步调用：在 React 挂载前把主题写入 inline style，避免冷启动闪烁。
@@ -66,7 +66,9 @@ const TRANSITION_CLASS = "theme-transitioning";
  */
 const TRANSITION_ATTR = "data-theme-transition";
 const TRANSITION_MS = 180;
+const VIEW_TRANSITION_MS = 620;
 let transitionTimer: number | null = null;
+let viewTransitionSequence = 0;
 
 export interface ThemeTransitionOptions {
 	x?: number;
@@ -91,6 +93,18 @@ function runFallbackTransition(root: HTMLElement, fn: () => void): void {
 	}, TRANSITION_MS);
 }
 
+function animateThemeReveal(root: HTMLElement, x: number, y: number, endRadius: number): void {
+	root.animate(
+		[{ clipPath: `circle(0px at ${x}px ${y}px)` }, { clipPath: `circle(${endRadius}px at ${x}px ${y}px)` }],
+		{
+			duration: VIEW_TRANSITION_MS,
+			easing: "ease-in-out",
+			fill: "both",
+			pseudoElement: "::view-transition-new(root)",
+		},
+	);
+}
+
 // 切换主题/模式时优先使用 View Transition 做圆形揭示；不支持时回退为颜色过渡。
 export function withThemeTransition(fn: () => void, options: ThemeTransitionOptions = {}): void {
 	const root = document.documentElement;
@@ -102,16 +116,28 @@ export function withThemeTransition(fn: () => void, options: ThemeTransitionOpti
 	const x = options.x ?? window.innerWidth / 2;
 	const y = options.y ?? window.innerHeight / 2;
 	const endRadius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
-	root.style.setProperty("--theme-transition-x", `${x}px`);
-	root.style.setProperty("--theme-transition-y", `${y}px`);
-	root.style.setProperty("--theme-transition-radius", `${endRadius}px`);
-	root.setAttribute(TRANSITION_ATTR, "");
-	const transition = document.startViewTransition(fn);
-
-	void transition.finished.finally(() => {
-		root.style.removeProperty("--theme-transition-x");
-		root.style.removeProperty("--theme-transition-y");
-		root.style.removeProperty("--theme-transition-radius");
-		root.removeAttribute(TRANSITION_ATTR);
+	const sequence = ++viewTransitionSequence;
+	const transition = document.startViewTransition(() => {
+		// 旧页面快照完成后再启用隔离，让 transition:none 与新主题在同一次样式计算中生效。
+		root.setAttribute(TRANSITION_ATTR, "");
+		fn();
 	});
+
+	// 直接动画 View Transition 伪元素，避免把坐标写成会继承到整棵 DOM 的根节点变量。
+	// ready 在伪元素树创建后、首次绘制前兑现，因此圆形揭示不会闪出未裁剪的新页面。
+	void transition.ready
+		.then(() => {
+			if (sequence === viewTransitionSequence) {
+				animateThemeReveal(root, x, y, endRadius);
+			}
+		})
+		.catch(() => {});
+
+	const cleanup = () => {
+		// 新切换会让旧 View Transition 提前结束；旧任务不能清掉新任务仍需的隔离状态。
+		if (sequence === viewTransitionSequence) {
+			root.removeAttribute(TRANSITION_ATTR);
+		}
+	};
+	void transition.finished.then(cleanup, cleanup);
 }
