@@ -12,6 +12,7 @@ import {
 import { readConfigSync } from "../config/desktop-config-store.js";
 import { getAppLogger } from "../logger.js";
 import { resetSshPromptState, resolveAskpassEnvironment } from "./askpass-runtime.js";
+import { resolveSshHelperBinary } from "./helper-assets.js";
 import { broadcastSshHostStatus } from "./ssh-events.js";
 
 const log = getAppLogger("ssh");
@@ -62,6 +63,11 @@ export function getSshConnectionManager(): SshConnectionManager {
 				hostId,
 				(id) => readConfigSync().sshHosts?.find((host) => host.id === id)?.label ?? id,
 			),
+		helper: {
+			resolveBinary: resolveSshHelperBinary,
+			// helper 起不来不影响使用，但要能查：否则「后台任务断线就没了」无从解释。
+			onDiagnostic: (message) => log.info(message),
+		},
 		onTrace: ({ command, output }) => {
 			// 远端有输出却一条都解析不出：多半是远端的 stat 输出格式与预期不符。
 			// 界面只会显示「没有子目录」，不记下来就无从查起。
