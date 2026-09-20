@@ -91,9 +91,9 @@
 	"actions": {
 		"newProject": "新建项目",
 		"openProject": "打开项目",
+		"addFromRemoteHost": "从远程主机添加",
 		"importProject": "导入项目",
-		"more": "更多",
-		"addFromRemoteHost": "从远程主机添加"
+		"more": "更多"
 	},
 	"contextMenu": {
 		"openInFinder": "在访达中打开",

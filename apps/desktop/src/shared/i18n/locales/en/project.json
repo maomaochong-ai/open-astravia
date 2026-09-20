@@ -91,9 +91,9 @@
 	"actions": {
 		"newProject": "New Project",
 		"openProject": "Open Project",
+		"addFromRemoteHost": "Add from remote host",
 		"importProject": "Import Project",
-		"more": "More",
-		"addFromRemoteHost": "Add from remote host"
+		"more": "More"
 	},
 	"contextMenu": {
 		"openInFinder": "Reveal in Finder",
@@ -225,7 +225,7 @@
 		"pickHost": "Pick a registered host",
 		"loading": "Loading…",
 		"noHosts": "No remote hosts registered yet",
-		"noHostsHint": "Add one under Settings, SSH hosts — or import the aliases you already have in ~/.ssh/config.",
+		"noHostsHint": "Add one under Settings → SSH hosts, or import the aliases you already have in ~/.ssh/config.",
 		"parent": "Parent folder",
 		"emptyDir": "No sub-folders here. You can add this folder as the project.",
 		"browseFailed": "Could not read this folder. The connection may be down, or this account may lack permission.",
