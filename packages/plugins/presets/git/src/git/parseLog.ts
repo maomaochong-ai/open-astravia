@@ -74,9 +74,9 @@ export function parseNameStatus(raw: string): ChangeEntry[] {
 		const letter = cols[0]?.[0];
 		if (!letter) continue;
 		if ((letter === "R" || letter === "C") && cols.length >= 3) {
-			out.push({ path: cols[2], origPath: cols[1], code: "R", staged: false });
+			out.push({ path: cols[2], origPath: cols[1], code: "R" });
 		} else if (cols.length >= 2) {
-			out.push({ path: cols[1], code: mapStatus(letter), staged: false });
+			out.push({ path: cols[1], code: mapStatus(letter) });
 		}
 	}
 	return out;

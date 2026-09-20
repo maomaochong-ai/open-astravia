@@ -5,27 +5,40 @@ import { buildGitStatus } from "../git/gitStatus";
 import type { ChangeEntry } from "../git/types";
 import { readCssVar, useHostMode } from "./hostTheme";
 
+/** Same membership, ignoring order — used to skip echoes of our own sync. */
+function sameSet(a: readonly string[], b: readonly string[]): boolean {
+	if (a.length !== b.length) return false;
+	const set = new Set(a);
+	return b.every((item) => set.has(item));
+}
+
 /**
- * File tree backed by `@pierre/trees`: renders the change set as a path-first
- * hierarchy with built-in git-status badges (M/A/D/R/U) and the descendant
- * indicator on folders. Selection is lifted to the parent; this component never
- * owns the diff.
+ * File tree backed by `@pierre/trees`: renders one section's change set as a
+ * path-first hierarchy with built-in git-status badges (M/A/D/R/U) and the
+ * descendant indicator on folders.
+ *
+ * Selection lives in the parent (one section may be multi-selected at a time),
+ * and the tree contributes its native ctrl/cmd-additive and shift-range click
+ * handling on top of it. This component never owns the diff.
  */
 export function GitFileTree({
 	entries,
-	selectedPath,
-	onSelect,
+	selectedPaths,
+	onSelectionChange,
 }: {
 	entries: readonly ChangeEntry[];
-	selectedPath: string | null;
-	onSelect: (path: string) => void;
+	selectedPaths: readonly string[];
+	/** `added` is the path that was just brought into the selection, if any. */
+	onSelectionChange: (paths: string[], added: string | null) => void;
 }): JSX.Element {
 	const mode = useHostMode();
 	const { paths, gitStatus } = useMemo(() => buildGitStatus(entries), [entries]);
 
-	// onSelect 经 ref 透传：useFileTree 只在挂载时读一次 options，闭包不能捕获会过期的回调。
-	const onSelectRef = useRef(onSelect);
-	onSelectRef.current = onSelect;
+	// onSelectionChange 经 ref 透传：useFileTree 只在挂载时读一次 options，闭包不能捕获会过期的回调。
+	const onChangeRef = useRef(onSelectionChange);
+	onChangeRef.current = onSelectionChange;
+	// 最近一次已知选中集，用来算出「新进入选中的那个路径」并过滤自身同步产生的回声。
+	const knownRef = useRef<readonly string[]>(selectedPaths);
 
 	const { model } = useFileTree({
 		paths,
@@ -33,8 +46,11 @@ export function GitFileTree({
 		initialExpansion: "open",
 		flattenEmptyDirectories: true,
 		onSelectionChange: (selected) => {
-			const path = selected[0];
-			if (path) onSelectRef.current(path);
+			const next = [...selected];
+			if (sameSet(next, knownRef.current)) return;
+			const added = next.find((path) => !knownRef.current.includes(path)) ?? null;
+			knownRef.current = next;
+			onChangeRef.current(next, added);
 		},
 	});
 
@@ -50,12 +66,21 @@ export function GitFileTree({
 		model.setGitStatus(gitStatus);
 	}, [model, paths, gitStatus]);
 
-	// 选中态由外部驱动，保持 tree 高亮与 selectedPath 一致（如刷新后仍选中同一文件）。
+	// 选中态由外部驱动：把 model 的选中集对齐到 props（含清空——切到别的分区多选时本分区要退出选中）。
 	useEffect(() => {
-		if (!selectedPath) return;
-		const item = model.getItem(selectedPath);
-		if (item && !item.isSelected()) item.select();
-	}, [model, selectedPath]);
+		if (sameSet(model.getSelectedPaths(), selectedPaths)) {
+			knownRef.current = selectedPaths;
+			return;
+		}
+		knownRef.current = selectedPaths;
+		for (const path of model.getSelectedPaths()) {
+			if (!selectedPaths.includes(path)) model.getItem(path)?.deselect();
+		}
+		for (const path of selectedPaths) {
+			const item = model.getItem(path);
+			if (item && !item.isSelected()) item.select();
+		}
+	}, [model, selectedPaths]);
 
 	const style = useMemo<React.CSSProperties>(() => {
 		// 背景沿用活动面板卡片底色（--muted），让树与宿主面板融为一体。

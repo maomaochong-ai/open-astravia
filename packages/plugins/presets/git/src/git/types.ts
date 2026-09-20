@@ -1,5 +1,11 @@
-/** Single-letter status shown in the tree (collapsed from porcelain XY). */
-export type ChangeCode = "M" | "A" | "D" | "R" | "U";
+/**
+ * Single-letter status shown in the tree. One side of a porcelain XY pair, plus
+ * `U` for untracked and `C` for an unmerged (conflicting) path.
+ *
+ * Note `C` is NOT git's "copied" letter — copies are folded into `A`, so this
+ * vocabulary stays unambiguous for the conflict section.
+ */
+export type ChangeCode = "M" | "A" | "D" | "R" | "U" | "C";
 
 export interface ChangeEntry {
 	/** Repo-root-relative path (forward slashes). For renames this is the new path. */
@@ -7,8 +13,26 @@ export interface ChangeEntry {
 	/** Original path for renames. */
 	origPath?: string;
 	code: ChangeCode;
-	/** True when the change is (at least partly) staged in the index. */
-	staged: boolean;
+}
+
+/**
+ * Which list a change belongs to. A path with both index and worktree changes
+ * (porcelain `MM`) appears in `staged` AND `unstaged` with its respective code,
+ * exactly as git models it — the two sides diff against different things.
+ */
+export type ChangeSection = "conflict" | "staged" | "unstaged";
+
+/** `git status` split into the three lists the panel renders. */
+export interface StatusGroups {
+	conflict: ChangeEntry[];
+	staged: ChangeEntry[];
+	unstaged: ChangeEntry[];
+}
+
+/** A file identified by both its section and path — sections may repeat a path. */
+export interface ChangeRef {
+	section: ChangeSection;
+	path: string;
 }
 
 /** A computed "this turn's changes" result for the turn card (persisted per cwd). */

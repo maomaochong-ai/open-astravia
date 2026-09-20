@@ -1,10 +1,10 @@
 import { useActivityTab, useTranslation } from "@vetta-org/plugin-sdk";
 import { Button } from "@vetta-org/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { parseStatus } from "../git/parseStatus";
+import { countChanges, parseStatus } from "../git/parseStatus";
 import { initRepo, resolveRepoRoot, statusPorcelain } from "../git/run";
 import { onRefreshSignal } from "../git/runtime";
-import type { ChangeEntry } from "../git/types";
+import type { StatusGroups } from "../git/types";
 import { GitChanges } from "./GitChanges";
 import { GraphView } from "./graph/GraphView";
 import { GitIcon, GraphIcon, RefreshIcon } from "./icons";
@@ -16,7 +16,7 @@ type State =
 	| { kind: "loading" }
 	| { kind: "no-cwd" }
 	| { kind: "not-repo" }
-	| { kind: "ready"; root: string; entries: ChangeEntry[] }
+	| { kind: "ready"; root: string; groups: StatusGroups }
 	| { kind: "error"; message: string };
 
 export function GitPanel(): JSX.Element {
@@ -42,7 +42,7 @@ export function GitPanel(): JSX.Element {
 			}
 			const raw = await statusPorcelain(root);
 			if (id !== loadIdRef.current) return;
-			setState({ kind: "ready", root, entries: parseStatus(raw) });
+			setState({ kind: "ready", root, groups: parseStatus(raw) });
 		} catch (err) {
 			if (id !== loadIdRef.current) return;
 			setState({ kind: "error", message: err instanceof Error ? err.message : String(err) });
@@ -72,7 +72,7 @@ export function GitPanel(): JSX.Element {
 		await load();
 	}, [cwd, load]);
 
-	const count = state.kind === "ready" ? state.entries.length : null;
+	const count = state.kind === "ready" ? countChanges(state.groups) : null;
 
 	const handleRefresh = useCallback(() => {
 		if (view === "graph") setGraphReloadToken((n) => n + 1);
@@ -118,7 +118,7 @@ export function GitPanel(): JSX.Element {
 				(view === "graph" ? (
 					<GraphView root={state.root} reloadToken={graphReloadToken} />
 				) : (
-					<GitChanges root={state.root} entries={state.entries} />
+					<GitChanges root={state.root} groups={state.groups} />
 				))}
 		</div>
 	);

@@ -1,14 +1,13 @@
 import { preloadHighlighter } from "@pierre/diffs";
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { Button } from "@vetta-org/ui";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { findEntry } from "../git/gitStatus";
 import { resizePanel } from "../git/runtime";
-import type { ChangeEntry } from "../git/types";
+import type { ChangeRef, ChangeSection, StatusGroups } from "../git/types";
+import { ChangeSectionList } from "./ChangeSectionList";
 import { DiffPane } from "./DiffPane";
 import { GitActions } from "./GitActions";
-import { GitFileTree } from "./GitFileTree";
-import { GitFlatList } from "./GitFlatList";
 import { FileIcon, ListViewIcon, TreeViewIcon } from "./icons";
 import { SplitHandle } from "./SplitHandle";
 
@@ -24,12 +23,27 @@ const TREE_MIN_WIDTH = 180;
 // diff 展开时给右侧 diff 保留的最小宽度，限制树列最大宽度。
 const DIFF_RESERVED_WIDTH = 260;
 
-/** Ready-state body: file tree on the left, width-gated diff pane on the right. */
-export function GitChanges({ root, entries }: { root: string; entries: ChangeEntry[] }): JSX.Element {
+/** Render order of the sections: conflicts first, they block committing. */
+const SECTION_ORDER: readonly ChangeSection[] = ["conflict", "staged", "unstaged"];
+
+/** Selection is confined to one section at a time (see {@link ChangeSectionList}). */
+interface Selection {
+	section: ChangeSection;
+	paths: readonly string[];
+}
+
+/** Ready-state body: sectioned change list on the left, width-gated diff pane on the right. */
+export function GitChanges({ root, groups }: { root: string; groups: StatusGroups }): JSX.Element {
 	const { t } = useTranslation();
 	const containerRef = useRef<HTMLDivElement>(null);
 	const [containerWidth, setContainerWidth] = useState(0);
-	const [selectedPath, setSelectedPath] = useState<string | null>(null);
+	const [active, setActive] = useState<ChangeRef | null>(null);
+	const [selection, setSelection] = useState<Selection>({ section: "unstaged", paths: [] });
+	const [collapsed, setCollapsed] = useState<Record<ChangeSection, boolean>>({
+		conflict: false,
+		staged: false,
+		unstaged: false,
+	});
 	const [treeWidth, setTreeWidth] = useState(TREE_DEFAULT_WIDTH);
 	const [treeCollapsed, setTreeCollapsed] = useState(false);
 	const [viewMode, setViewMode] = useState<ViewMode>(() =>
@@ -63,32 +77,40 @@ export function GitChanges({ root, entries }: { root: string; entries: ChangeEnt
 		return () => observer.disconnect();
 	}, []);
 
+	const total = groups.conflict.length + groups.staged.length + groups.unstaged.length;
 	const wide = containerWidth >= DIFF_MIN_WIDTH;
-	const selectedEntry = selectedPath ? findEntry(entries, selectedPath) : null;
+	const activeEntry = active ? findEntry(groups[active.section], active.path) : null;
 	const showTree = !wide || !treeCollapsed;
 
 	// 拉宽且无有效选择时，默认选中第一个变更文件（仿文件活动面板）。
 	// 选中文件被移除（刷新后失效）时也回落到第一个。
 	useEffect(() => {
-		if (!wide || selectedEntry) return;
-		const first = entries[0];
-		if (first) setSelectedPath(first.path);
-	}, [wide, selectedEntry, entries]);
+		if (!wide || activeEntry) return;
+		for (const section of SECTION_ORDER) {
+			const first = groups[section][0];
+			if (first) {
+				setActive({ section, path: first.path });
+				return;
+			}
+		}
+	}, [wide, activeEntry, groups]);
 
 	// 收起 diff（窄屏或无选择）时复位树折叠态，避免残留隐藏。
 	useEffect(() => {
-		if (!wide || !selectedEntry) setTreeCollapsed(false);
-	}, [wide, selectedEntry]);
+		if (!wide || !activeEntry) setTreeCollapsed(false);
+	}, [wide, activeEntry]);
 
-	// 仅文件可驱动 diff：点目录只在树内展开/折叠，不改选中。
+	// 选中变化：只保留一个分区的多选，并把「刚进入选中的那个文件」作为 diff 的对象。
 	// 窄屏点文件时把面板拉到最大并打开 diff（仿文件面板）。
-	const handleSelect = useCallback(
-		(path: string) => {
-			if (!findEntry(entries, path)) return;
-			setSelectedPath(path);
-			if (!wide) resizePanel("max");
+	const handleSelection = useCallback(
+		(section: ChangeSection, paths: string[], added: string | null) => {
+			setSelection({ section, paths });
+			if (added) {
+				setActive({ section, path: added });
+				if (!wide) resizePanel("max");
+			}
 		},
-		[entries, wide],
+		[wide],
 	);
 
 	// 关闭 diff：把面板收窄到阈值以下，回到只剩树（保留选中，再拉宽即恢复同一文件）。
@@ -104,11 +126,20 @@ export function GitChanges({ root, entries }: { root: string; entries: ChangeEnt
 		[containerWidth],
 	);
 
+	const sectionTitles = useMemo<Record<ChangeSection, string>>(
+		() => ({
+			conflict: t("section.conflict"),
+			staged: t("section.staged"),
+			unstaged: t("section.unstaged"),
+		}),
+		[t],
+	);
+
 	return (
 		<div className="flex h-full min-h-0 flex-col">
 			<div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-2">
 				<GitActions root={root} />
-				{entries.length > 0 && (
+				{total > 0 && (
 					<Button
 						type="button"
 						variant="ghost"
@@ -121,7 +152,7 @@ export function GitChanges({ root, entries }: { root: string; entries: ChangeEnt
 				)}
 			</div>
 
-			{entries.length === 0 ? (
+			{total === 0 ? (
 				<div className="flex flex-1 items-center justify-center px-3 py-4 text-[12px] text-muted-foreground">{t("state.clean")}</div>
 			) : (
 				<div ref={containerRef} className="flex min-h-0 flex-1 overflow-hidden">
@@ -134,21 +165,30 @@ export function GitChanges({ root, entries }: { root: string; entries: ChangeEnt
 							}
 							style={wide ? { width: treeWidth } : undefined}
 						>
-							<div className="flex min-h-0 flex-1 flex-col">
-								{viewMode === "tree" ? (
-									<GitFileTree entries={entries} selectedPath={selectedPath} onSelect={handleSelect} />
-								) : (
-									<GitFlatList entries={entries} selectedPath={selectedPath} onSelect={handleSelect} />
-								)}
+							<div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+								{SECTION_ORDER.map((section) => (
+									<ChangeSectionList
+										key={section}
+										title={sectionTitles[section]}
+										entries={groups[section]}
+										viewMode={viewMode}
+										collapsed={collapsed[section]}
+										onToggleCollapsed={() => setCollapsed((prev) => ({ ...prev, [section]: !prev[section] }))}
+										selectedPaths={selection.section === section ? selection.paths : []}
+										onSelectionChange={(paths, added) => handleSelection(section, paths, added)}
+										tone={section === "conflict" ? "danger" : undefined}
+									/>
+								))}
 							</div>
 							{wide && <SplitHandle onDrag={onSplitDrag} />}
 						</div>
 					)}
 					{wide &&
-						(selectedEntry ? (
+						(activeEntry && active ? (
 							<DiffPane
 								root={root}
-								entry={selectedEntry}
+								entry={activeEntry}
+								section={active.section}
 								onClose={handleClose}
 								onToggleTree={() => setTreeCollapsed((c) => !c)}
 								treeCollapsed={treeCollapsed}

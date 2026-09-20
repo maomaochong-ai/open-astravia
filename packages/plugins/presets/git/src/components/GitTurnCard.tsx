@@ -1,7 +1,7 @@
 import { useActiveConversation, useTranslation } from "@vetta-org/plugin-sdk";
 import { useEffect, useRef, useState } from "react";
 import { diffStatForEntries, resolveRepoRoot, statusPorcelain } from "../git/run";
-import { parseStatus } from "../git/parseStatus";
+import { collapseByPath, parseStatus } from "../git/parseStatus";
 import {
 	getTurnBaseline,
 	getTurnDelta,
@@ -47,7 +47,7 @@ export function GitTurnCard(): JSX.Element | null {
 			const root = await resolveRepoRoot(cwd);
 			if (!root) return null;
 			try {
-				return new Map(parseStatus(await statusPorcelain(root)).map((e) => [e.path, e.code]));
+				return new Map(collapseByPath(parseStatus(await statusPorcelain(root))).map((e) => [e.path, e.code]));
 			} catch {
 				return null;
 			}
@@ -70,7 +70,7 @@ export function GitTurnCard(): JSX.Element | null {
 					setData(null);
 					return;
 				}
-				const current = parseStatus(await statusPorcelain(root));
+				const current = collapseByPath(parseStatus(await statusPorcelain(root)));
 				if (myToken !== tokenRef.current) return;
 				const currentMap = new Map(current.map((e) => [e.path, e.code]));
 				// 没基线（挂载快照尚未就绪/失败）：本轮不显示，仅把当前状态记为基线，下轮再比。

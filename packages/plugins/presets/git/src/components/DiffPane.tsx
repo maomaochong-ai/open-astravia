@@ -4,7 +4,7 @@ import { Button } from "@vetta-org/ui";
 import { Component, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { fileDiff } from "../git/run";
-import type { ChangeEntry } from "../git/types";
+import type { ChangeEntry, ChangeSection } from "../git/types";
 import { DiffView } from "./DiffView";
 import { useHostMode } from "./hostTheme";
 import { CloseIcon, FileIcon, SidebarIcon } from "./icons";
@@ -41,12 +41,15 @@ function basename(path: string): string {
 export function DiffPane({
 	root,
 	entry,
+	section,
 	onClose,
 	onToggleTree,
 	treeCollapsed,
 }: {
 	root: string;
 	entry: ChangeEntry;
+	/** Which list the file was picked from — decides index vs worktree diff. */
+	section: ChangeSection;
 	onClose: () => void;
 	onToggleTree: () => void;
 	treeCollapsed: boolean;
@@ -62,7 +65,7 @@ export function DiffPane({
 		setLoading(true);
 		setError(null);
 		setPatch(null);
-		fileDiff(root, entry)
+		fileDiff(root, entry, section)
 			.then((value) => {
 				if (alive) setPatch(value);
 			})
@@ -75,7 +78,7 @@ export function DiffPane({
 		return () => {
 			alive = false;
 		};
-	}, [root, entry]);
+	}, [root, entry, section]);
 
 	const options = useMemo(
 		() => ({

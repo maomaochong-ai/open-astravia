@@ -1,6 +1,6 @@
 import type { PluginCommandRunResult } from "@vetta-org/plugin-sdk";
 import { enqueueWrite, getGitCommand } from "./runtime";
-import type { ChangeEntry } from "./types";
+import type { ChangeEntry, ChangeSection } from "./types";
 
 /** Max git processes in flight for a per-file fan-out (one `git diff` each). */
 const FANOUT_CONCURRENCY = 8;
@@ -64,10 +64,15 @@ export function initRepo(cwd: string): Promise<void> {
 }
 
 /**
- * Unified diff text for one changed file: all uncommitted changes vs HEAD.
- * Untracked files are synthesized as an addition via `--no-index`.
+ * Unified diff text for one changed file, scoped to the section it was selected
+ * in: the staged list diffs the index against HEAD (`--cached`), the unstaged
+ * list diffs the worktree against the index. Showing `diff HEAD` for both would
+ * misreport what staging or discarding is about to act on.
+ *
+ * Untracked files are synthesized as an addition via `--no-index`; conflicts get
+ * the worktree diff, which carries git's `<<<<<<<` markers.
  */
-export async function fileDiff(root: string, entry: ChangeEntry): Promise<string> {
+export async function fileDiff(root: string, entry: ChangeEntry, section: ChangeSection): Promise<string> {
 	if (entry.code === "U") {
 		// --no-index: 0 = identical, 1 = differs (the normal case), >1 = real error.
 		const res = await git(root, ["diff", "--no-index", "--", "/dev/null", entry.path]);
@@ -76,13 +81,12 @@ export async function fileDiff(root: string, entry: ChangeEntry): Promise<string
 		}
 		return res.stdout;
 	}
-	const head = await git(root, ["diff", "HEAD", "--", entry.path]);
-	if (head.exitCode === 0 || head.exitCode === 1) return head.stdout;
-	// No HEAD yet (repo without commits): combine staged + unstaged.
-	const staged = await git(root, ["diff", "--cached", "--", entry.path]);
-	if (staged.stdout.trim().length > 0) return staged.stdout;
-	const unstaged = await git(root, ["diff", "--", entry.path]);
-	return unstaged.stdout;
+	// Renames: pass both paths so git pairs them instead of showing a lone add.
+	const paths = entry.origPath ? [entry.origPath, entry.path] : [entry.path];
+	const args = section === "staged" ? ["diff", "--cached", "--", ...paths] : ["diff", "--", ...paths];
+	const res = await git(root, args);
+	if (res.exitCode === 0 || res.exitCode === 1) return res.stdout;
+	throw new Error(res.stderr.trim() || `git diff failed (exit ${res.exitCode})`);
 }
 
 /** Current branch name, or null on a detached HEAD / unborn branch. */
