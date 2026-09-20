@@ -28,6 +28,7 @@ import {
 import type { PreviewFileSource } from "./preview-file-source.js";
 import {
 	allowRemoteProjectRoot,
+	assertRemotePathWithinProject,
 	createRemoteDirectory,
 	createRemoteEntry,
 	deleteRemotePath,
@@ -110,6 +111,12 @@ export function assertFilesystemPathWithinProject(targetPath: string): void {
 
 /** 同时解析现有祖先路径，阻止项目目录内的符号链接跳出授权根。 */
 export async function assertFilesystemRealPathWithinProject(targetPath: string): Promise<void> {
+	// 远程路径有自己的授权根。不能落到下面的本机检查：那里会把 URI resolve 到本机进程
+	// cwd 之下，要么把合法的远程路径拒掉，要么（开发态）对着本机的幽灵路径放行。
+	if (isSshProjectUri(targetPath)) {
+		assertRemotePathWithinProject(targetPath);
+		return;
+	}
 	assertFilesystemPathWithinProject(targetPath);
 	let existingPath = resolve(targetPath);
 	while (true) {

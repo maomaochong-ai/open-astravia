@@ -86,6 +86,13 @@ describe("远程项目的文件树：用户在面板里的一串常见操作", (
 		expect(statSync(join(remoteRoot, "run.sh")).mode & 0o777).toBe(0o755);
 	});
 
+	it("插件文件能力用的授权检查认得远程路径：项目内放行，项目外拒绝", async () => {
+		await expect(service.assertFilesystemRealPathWithinProject(`${root}/.git/MERGE_MSG`)).resolves.toBeUndefined();
+		await expect(service.assertFilesystemRealPathWithinProject("ssh://build-01/etc/passwd")).rejects.toThrow(
+			/outside any known project/,
+		);
+	});
+
 	it("项目之外、靠 .. 绕出去、或项目根本身，一律不许动", async () => {
 		await expect(service.deleteFilesystemPath(root)).rejects.toThrow(/project root/);
 		await expect(service.deleteFilesystemPath(`${root}/../outside`)).rejects.toThrow(/outside any known project/);

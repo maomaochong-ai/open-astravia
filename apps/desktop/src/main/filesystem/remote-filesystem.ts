@@ -36,7 +36,8 @@ export function allowRemoteProjectRoot(projectUri: string): void {
 	allowedRemoteRoots.add(normalizeRemoteUri(projectUri));
 }
 
-function assertRemotePathWithinProject(uri: string): void {
+/** 远端路径的授权检查：必须落在某个已登记的远程项目根之下。 */
+export function assertRemotePathWithinProject(uri: string): void {
 	const target = normalizeRemoteUri(uri);
 	// 前缀比较看不出 `..`：`<项目>/../../etc/passwd` 字面上仍以项目根开头。合法调用方给的
 	// 都是文件树里点出来的路径，不会带 `..`，直接拒绝比在这里模拟远端的路径解析可靠。
