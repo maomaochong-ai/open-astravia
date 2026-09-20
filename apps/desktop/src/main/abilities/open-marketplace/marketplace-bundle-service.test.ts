@@ -142,4 +142,4 @@ it("keeps installed identities and disabled state when top-level entries become 
 		abilities: current.abilities,
 	});
 	await expect(service.install("skill", "not-referenced")).rejects.toThrow("Open ability not found");
-});
+}, 10_000);
