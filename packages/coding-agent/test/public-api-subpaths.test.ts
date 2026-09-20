@@ -48,7 +48,7 @@ import {
 	createCodingAgentTurnExecutor,
 } from "../src/public-api/runtime.js";
 import { createCodingAgentSession } from "../src/public-api/sdk.js";
-import { SettingsRuntime } from "../src/public-api/settings.js";
+import { CODING_AGENT_COMPACTION_CONFIGURATION, SettingsRuntime } from "../src/public-api/settings.js";
 
 describe("coding-agent public subpaths", () => {
 	it("keeps the package root identical to the stable Extension facade", () => {
@@ -98,6 +98,7 @@ describe("coding-agent public subpaths", () => {
 		expect(createCodingAgentWritePathPolicy).toBeTypeOf("function");
 		expect(getCodingAgentOcrExecutionGate).toBeTypeOf("function");
 		expect(HostSettingsRuntime).toBe(SettingsRuntime);
+		expect(CODING_AGENT_COMPACTION_CONFIGURATION.id).toBe("coding.compaction");
 		expect(createCodingAgentHtmlExportRuntime).toBeTypeOf("function");
 		expect(createCodingAgentHistoricalSessionCatalog).toBeTypeOf("function");
 		expect(createCodingAgentHistoricalSessionFileHistoryReader).toBeTypeOf("function");

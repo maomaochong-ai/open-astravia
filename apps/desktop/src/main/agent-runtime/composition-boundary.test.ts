@@ -47,6 +47,12 @@ describe("Desktop Runtime composition boundary", () => {
 		expect(productionSources.composition).toContain('from "../agent-modes/index.js"');
 	});
 
+	it("binds persisted context compaction settings into Turn admission", () => {
+		expect(productionSources.composition).toContain(
+			"resolveCompactionSettings: () => runtimeConfiguration.readCompactionSettings()",
+		);
+	});
+
 	it("keeps the Runtime entry limited to singleton lifecycle ownership", () => {
 		expect(productionSources.runtimeEntry).toContain("DesktopRuntimeController");
 		expect(productionSources.runtimeEntry).not.toContain("CatalogRoutedRuntimeHostSessionBackend");

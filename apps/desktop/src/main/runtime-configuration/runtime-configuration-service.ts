@@ -1,5 +1,11 @@
 import { createHash } from "node:crypto";
 import {
+	CODING_AGENT_COMPACTION_CONFIGURATION,
+	CODING_AGENT_COMPACTION_CONFIGURATION_ID,
+	type CodingAgentCompactionConfiguration,
+	type ResolvedCompactionSettings,
+} from "@vetta/coding-agent/settings";
+import {
 	projectRuntimeConfigurationCatalog,
 	RuntimeConfigurationCenter,
 	type RuntimeConfigurationJsonObject,
@@ -13,7 +19,7 @@ import type {
 	DesktopRuntimeConfigurationEntry,
 } from "../../preload/api.js";
 
-const BUILTIN_DEFINITION_SOURCE = { id: "runtime-tools", revision: "coding-images-and-ocr-v1" } as const;
+const BUILTIN_DEFINITION_SOURCE = { id: "desktop-builtins", revision: "coding-context-images-and-ocr-v2" } as const;
 const DESKTOP_LAYER_SOURCE_ID = "desktop.runtime-configuration";
 const DESKTOP_LAYER_ID = "desktop.persisted-settings";
 
@@ -66,12 +72,34 @@ export class DesktopRuntimeConfigurationService {
 		}
 	}
 
+	/** Turn admission 同步读取同一配置快照；无效的磁盘层由 Resolver 回退到产品默认值。 */
+	readCompactionSettings(): ResolvedCompactionSettings {
+		this.synchronize();
+		const lease = this.center.acquire();
+		try {
+			const configuration =
+				lease.snapshot.read(CODING_AGENT_COMPACTION_CONFIGURATION) ??
+				CODING_AGENT_COMPACTION_CONFIGURATION.defaultValue;
+			return toResolvedCompactionSettings(configuration);
+		} finally {
+			void lease
+				.release()
+				.catch((error) =>
+					this.dependencies.logger.warn("failed to release context compaction configuration snapshot", error),
+				);
+		}
+	}
+
 	async set(
 		configurationId: string,
 		patch: RuntimeConfigurationJsonObject,
 	): Promise<DesktopRuntimeConfigurationCatalog> {
 		this.synchronize();
-		if (configurationId !== CODING_IMAGE_CONFIGURATION.id && configurationId !== VETTA_OCR_CONFIGURATION.id) {
+		if (
+			configurationId !== CODING_AGENT_COMPACTION_CONFIGURATION.id &&
+			configurationId !== CODING_IMAGE_CONFIGURATION.id &&
+			configurationId !== VETTA_OCR_CONFIGURATION.id
+		) {
 			throw new Error(`Runtime Configuration is not editable: ${configurationId}`);
 		}
 		const definitionLease = this.center.definitions.acquire(configurationId);
@@ -85,7 +113,11 @@ export class DesktopRuntimeConfigurationService {
 		}
 
 		this.dependencies.updateAgentSettings((settings) => {
-			if (configurationId === CODING_IMAGE_CONFIGURATION.id) settings.images = decoded;
+			if (configurationId === CODING_AGENT_COMPACTION_CONFIGURATION.id) {
+				settings.compaction = toPersistedCompactionSettings(
+					CODING_AGENT_COMPACTION_CONFIGURATION.codec.decode(decoded),
+				);
+			} else if (configurationId === CODING_IMAGE_CONFIGURATION.id) settings.images = decoded;
 			else settings.ocr = decoded;
 		});
 		this.dependencies.logger.info("runtime configuration updated", { configurationId });
@@ -100,6 +132,10 @@ export class DesktopRuntimeConfigurationService {
 		if (!this.builtinPublished) {
 			this.center.definitions.upsert({
 				source: BUILTIN_DEFINITION_SOURCE,
+				definition: CODING_AGENT_COMPACTION_CONFIGURATION,
+			});
+			this.center.definitions.upsert({
+				source: BUILTIN_DEFINITION_SOURCE,
 				definition: CODING_IMAGE_CONFIGURATION,
 			});
 			this.center.definitions.upsert({
@@ -110,9 +146,14 @@ export class DesktopRuntimeConfigurationService {
 		}
 
 		const values: Record<string, RuntimeConfigurationJsonObject> = {};
-		const images = this.dependencies.readAgentSettings().images;
+		const settings = this.dependencies.readAgentSettings();
+		const compaction = settings.compaction;
+		if (isRecord(compaction)) {
+			values[CODING_AGENT_COMPACTION_CONFIGURATION.id] = projectPersistedCompactionSettings(compaction);
+		}
+		const images = settings.images;
 		if (isRecord(images)) values[CODING_IMAGE_CONFIGURATION.id] = toJsonObject(images);
-		const ocr = this.dependencies.readAgentSettings().ocr;
+		const ocr = settings.ocr;
 		if (isRecord(ocr)) values[VETTA_OCR_CONFIGURATION.id] = toJsonObject(ocr);
 		const revision = hashJson(values);
 		this.center.layers.replaceSource({ id: DESKTOP_LAYER_SOURCE_ID, revision }, [
@@ -126,10 +167,56 @@ export class DesktopRuntimeConfigurationService {
 	}
 
 	private readPersistedValue(configurationId: string): RuntimeConfigurationJsonObject {
-		const value =
-			this.dependencies.readAgentSettings()[configurationId === CODING_IMAGE_CONFIGURATION.id ? "images" : "ocr"];
+		const field = configurationId === CODING_IMAGE_CONFIGURATION.id ? "images" : "ocr";
+		if (configurationId === CODING_AGENT_COMPACTION_CONFIGURATION.id) {
+			const compaction = this.dependencies.readAgentSettings().compaction;
+			return isRecord(compaction) ? projectPersistedCompactionSettings(compaction) : {};
+		}
+		const value = this.dependencies.readAgentSettings()[field];
 		return isRecord(value) ? toJsonObject(value) : {};
 	}
+}
+
+function projectPersistedCompactionSettings(value: Record<string, unknown>): RuntimeConfigurationJsonObject {
+	const result: Record<string, RuntimeConfigurationJsonValue> = {};
+	copyJsonField(value, result, "enabled");
+	copyJsonField(value, result, "reserveTokens");
+	copyJsonField(value, result, "keepRecentTokens");
+	if (typeof value.minFreePercent === "number") {
+		result.contextThresholdPercent = 100 - value.minFreePercent;
+	} else if (isJsonValue(value.minFreePercent)) {
+		result.contextThresholdPercent = value.minFreePercent;
+	}
+	return result;
+}
+
+function toPersistedCompactionSettings(
+	configuration: CodingAgentCompactionConfiguration,
+): RuntimeConfigurationJsonObject {
+	return {
+		enabled: configuration.enabled,
+		reserveTokens: configuration.reserveTokens,
+		minFreePercent: 100 - configuration.contextThresholdPercent,
+		keepRecentTokens: configuration.keepRecentTokens,
+	};
+}
+
+function toResolvedCompactionSettings(configuration: CodingAgentCompactionConfiguration): ResolvedCompactionSettings {
+	return {
+		enabled: configuration.enabled,
+		reserveTokens: configuration.reserveTokens,
+		minFreePercent: 100 - configuration.contextThresholdPercent,
+		keepRecentTokens: configuration.keepRecentTokens,
+	};
+}
+
+function copyJsonField(
+	source: Record<string, unknown>,
+	target: Record<string, RuntimeConfigurationJsonValue>,
+	field: string,
+): void {
+	const value = source[field];
+	if (isJsonValue(value)) target[field] = value;
 }
 
 function enrichOcrDescriptor(
@@ -151,6 +238,9 @@ function enrichOcrDescriptor(
 }
 
 function resolveConsumers(configurationId: string): DesktopRuntimeConfigurationConsumer[] {
+	if (configurationId === CODING_AGENT_COMPACTION_CONFIGURATION_ID) {
+		return [{ kind: "runtime", id: "context-compaction", support: "native" }];
+	}
 	if (configurationId === VETTA_OCR_CONFIGURATION.id) {
 		return [
 			{ kind: "tool", id: "extract_text_from_img", support: "native" },

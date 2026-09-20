@@ -66,6 +66,7 @@ import { getDesktopMcpTaskCoordinator } from "../mcp/mcp-task-runtime.js";
 import { createDesktopPluginHookAdapterFactory } from "../plugins/coding-agent-hook-adapter.js";
 import { pluginAgentContributionService } from "../plugins/plugin-catalog.js";
 import { getDesktopCodingAgentPluginRuntimeSource } from "../plugins/plugin-runtime-service.js";
+import { getDesktopRuntimeConfigurationService } from "../runtime-configuration/runtime-configuration-composition.js";
 import { getAvailableLinuxBubblewrapPath, getAvailableMacosSandboxExecPath } from "../sandbox/capability.js";
 import { resolveWindowsSandboxHostBinary } from "../sandbox/windows-binary-resolver.js";
 import { createCodingAgentObservationLogPort } from "./coding-agent-observation-log-port.js";
@@ -117,6 +118,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 	const mcpTaskCoordinator = getDesktopMcpTaskCoordinator();
 	const mcpAppHost = getDesktopMcpAppRegistry();
 	const providerObservationRuntime = getDesktopProviderObservationRuntime();
+	const runtimeConfiguration = getDesktopRuntimeConfigurationService();
 	const modelStream = createLoopbackSessionAffinityStream(providerObservationRuntime?.streamFn);
 	const getDefaultExecutionMode = async () => (await readDesktopConfig()).defaultExecutionMode;
 	const sandboxHostPath = resolveWindowsSandboxHostBinary()?.path;
@@ -147,6 +149,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 				tracing: { captureContent: false, detail: "standard" },
 				agentRuntime: { runtime: agentRuntime },
 				modelRegistry: modelRuntime,
+				resolveCompactionSettings: () => runtimeConfiguration.readCompactionSettings(),
 				createPromptRuntimeSources: createDesktopPromptRuntimeSources,
 				createPluginRuntime: () => getDesktopCodingAgentPluginRuntimeSource(),
 				// 工作模式注册表归 desktop 所有（ADR-0071 修订）：coding-agent 只保留 core.mode

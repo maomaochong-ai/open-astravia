@@ -1,3 +1,4 @@
+import { DEFAULT_COMPACTION_SETTINGS } from "../../compaction/contracts.js";
 import type { SessionSettingsPort } from "../contracts/session-settings.js";
 import type { SettingsStatePort } from "../runtime/settings-state.js";
 
@@ -7,11 +8,14 @@ export function createSessionSettingsView(state: SettingsStatePort): SessionSett
 		setSteeringMode: (steeringMode) => state.patchGlobal({ steeringMode }),
 		getFollowUpMode: () => state.read().followUpMode ?? "one-at-a-time",
 		setFollowUpMode: (followUpMode) => state.patchGlobal({ followUpMode }),
-		getCompactionEnabled: () => state.read().compaction?.enabled ?? true,
+		getCompactionEnabled: () => state.read().compaction?.enabled ?? DEFAULT_COMPACTION_SETTINGS.enabled,
 		setCompactionEnabled: (enabled) => state.patchGlobal({ compaction: { enabled } }),
-		getCompactionReserveTokens: () => state.read().compaction?.reserveTokens ?? 36000,
-		getCompactionMinFreePercent: () => state.read().compaction?.minFreePercent ?? 20,
-		getCompactionKeepRecentTokens: () => state.read().compaction?.keepRecentTokens ?? 20000,
+		getCompactionReserveTokens: () =>
+			state.read().compaction?.reserveTokens ?? DEFAULT_COMPACTION_SETTINGS.reserveTokens,
+		getCompactionMinFreePercent: () =>
+			state.read().compaction?.minFreePercent ?? DEFAULT_COMPACTION_SETTINGS.minFreePercent,
+		getCompactionKeepRecentTokens: () =>
+			state.read().compaction?.keepRecentTokens ?? DEFAULT_COMPACTION_SETTINGS.keepRecentTokens,
 		getCompactionSettings: () => ({
 			enabled: view.getCompactionEnabled(),
 			reserveTokens: view.getCompactionReserveTokens(),

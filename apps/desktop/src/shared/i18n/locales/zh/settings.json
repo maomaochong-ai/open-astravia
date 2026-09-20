@@ -324,6 +324,10 @@
     },
     "configurations": {
       "coding": {
+        "compaction": {
+          "title": "上下文压缩",
+          "description": "控制对话使用多少上下文后自动压缩，以及压缩后保留多少最近对话。手动压缩不受开关影响。"
+        },
         "images": {
           "title": "图片处理",
           "description": "配置图片规范化、安全限制、压缩和模型请求预算。"
@@ -337,6 +341,10 @@
       }
     },
     "fields": {
+      "enabled": { "title": "自动压缩", "description": "在上下文接近模型上限时自动整理长对话；关闭后仍可手动压缩。" },
+      "reserveTokens": { "title": "剩余空间阈值（tokens）", "description": "剩余可用上下文少于这个数值，且已用上下文达到压缩阈值时，自动压缩。" },
+      "contextThresholdPercent": { "title": "上下文压缩阈值（%）", "description": "已用上下文达到这个比例，且剩余空间也低于上面的 token 阈值时，自动压缩。" },
+      "keepRecentTokens": { "title": "压缩后保留的最近对话（tokens）", "description": "每次压缩时，最近约这么多 token 的对话保留原文；更早的内容整理成摘要。数值越大，保留的近期细节越多。" },
       "autoResize": { "title": "自动缩放", "description": "在图片超出限制时自动缩放和压缩。" },
       "blockImages": { "title": "阻止图片", "description": "阻止图片进入模型上下文。" },
       "resize": {

@@ -324,6 +324,10 @@
     },
     "configurations": {
       "coding": {
+        "compaction": {
+          "title": "Context compaction",
+          "description": "Control how much context a conversation uses before automatic compaction and how much recent conversation remains unchanged. Manual compaction is unaffected."
+        },
         "images": {
           "title": "Image processing",
           "description": "Configure image normalization, safety limits, compression, and model request budgets."
@@ -337,6 +341,10 @@
       }
     },
     "fields": {
+      "enabled": { "title": "Automatic compaction", "description": "Compact long conversations as they approach the model limit. Manual compaction remains available when this is off." },
+      "reserveTokens": { "title": "Remaining-space threshold (tokens)", "description": "Compact automatically when less than this much context remains and context usage has reached the percentage threshold." },
+      "contextThresholdPercent": { "title": "Context compaction threshold (%)", "description": "Compact automatically when context usage reaches this percentage and the remaining space is also below the token threshold above." },
+      "keepRecentTokens": { "title": "Recent conversation kept after compaction (tokens)", "description": "Keep approximately this much of the most recent conversation unchanged and summarize older content. Higher values preserve more recent detail." },
       "autoResize": { "title": "Automatic resize", "description": "Resize and compress images when they exceed configured limits." },
       "blockImages": { "title": "Block images", "description": "Prevent images from entering model context." },
       "resize": {
