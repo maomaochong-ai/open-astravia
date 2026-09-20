@@ -136,11 +136,27 @@ function statFormat(flavor: RemoteStatFlavor): string {
 	return flavor === "gnu" ? `--printf='%F\\t%s\\t%Y\\t%n\\n'` : `-f '%HT\t%z\t%m\t%N'`;
 }
 
-/** 单个路径的 stat，与目录列举同格式，便于共用一套解析。 */
-export function buildStatCommand(remotePath: string, flavor: RemoteStatFlavor): string {
+/**
+ * 单个路径的 stat，与目录列举同格式，便于共用一套解析。
+ *
+ * `followSymlinks` 对应 `stat -L`（GNU 与 BSD 同名）：问的是「链接指向的东西是什么」。
+ * 缺省不跟随，文件树才能把链接显示成链接。
+ */
+export function buildStatCommand(
+	remotePath: string,
+	flavor: RemoteStatFlavor,
+	options: { readonly followSymlinks?: boolean } = {},
+): string {
 	const quoted = quoteShellArgument(remotePath);
+	const follow = options.followSymlinks ? " -L" : "";
 	// `[ -e ]` 先判存在：不存在时直接退 0 并输出空，避免把 stat 的报错当成传输故障。
-	return `[ -e ${quoted} ] && ${FORCE_C_LOCALE} stat ${statFormat(flavor)} ${quoted} || true`;
+	return `[ -e ${quoted} ] && ${FORCE_C_LOCALE} stat${follow} ${statFormat(flavor)} ${quoted} || true`;
+}
+
+/** 解析符号链接与 `..` 后的真实路径；路径不存在时输出为空。 */
+export function buildRealPathCommand(remotePath: string): string {
+	const quoted = quoteShellArgument(remotePath);
+	return `[ -e ${quoted} ] && readlink -f -- ${quoted} || true`;
 }
 
 /**

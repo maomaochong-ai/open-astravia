@@ -35,8 +35,10 @@ export {
 } from "./project-uri.js";
 export {
 	buildListDirectoryCommand,
+	buildRealPathCommand,
 	buildRemoteCommand,
 	buildRemoteScript,
+	buildStatCommand,
 	buildWriteFileCommand,
 	quoteShellArgument,
 	type RemoteCommandOptions,

@@ -5,6 +5,7 @@ import { SSH_TRANSPORT_FAILURE_EXIT_CODE, type SshProcessResult, type SshProcess
 import {
 	buildKillCommand,
 	buildListDirectoryCommand,
+	buildRealPathCommand,
 	buildRemoteCommand,
 	buildStatCommand,
 	buildWriteFileCommand,
@@ -197,14 +198,25 @@ export class SshConnection {
 	}
 
 	/** 路径不存在时返回 null——这是远端给出的正面答复，不是「问不到」。 */
-	async stat(remotePath: string, signal?: AbortSignal): Promise<RemoteDirectoryEntry | null> {
+	async stat(
+		remotePath: string,
+		signal?: AbortSignal,
+		options: { readonly followSymlinks?: boolean } = {},
+	): Promise<RemoteDirectoryEntry | null> {
 		const platform = await this.probePlatform(signal);
-		const result = await this.runChecked(buildStatCommand(remotePath, platform.statFlavor), { signal });
+		const result = await this.runChecked(buildStatCommand(remotePath, platform.statFlavor, options), { signal });
 		const entries = parseRemoteDirectoryListing(decode(result.stdout));
 		const entry = entries[0];
 		if (!entry) return null;
 		// stat 回显的是传入路径，这里换回调用方期望的名字。
 		return { ...entry, name: basename(remotePath) };
+	}
+
+	/** 真实路径。路径不存在，或远端的 readlink 不支持 `-f` 时，原样返回传入的路径。 */
+	async realPath(remotePath: string, signal?: AbortSignal): Promise<string> {
+		const result = await this.run(buildRealPathCommand(remotePath), { signal });
+		const resolved = decode(result.stdout).trim();
+		return result.exitCode === 0 && resolved.startsWith("/") ? resolved : remotePath;
 	}
 
 	/** 退出码非零即抛。内部操作都用它——它们没有「失败也算正常」的分支。 */
