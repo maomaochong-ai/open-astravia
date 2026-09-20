@@ -10,8 +10,14 @@
    的图标不需要宿主在自己的 CSS 里逐条放行。 */
 @plugin "@iconify/tailwind4";
 
-/* AI 生成按钮的光斑文字：写法对齐宿主 workflow 标题的 shimmer（同一套 --primary
-   与 color-mix 中点），让插件里的「AI 在干活」和宿主的观感一致。 */
+/* AI 生成入口的蓝紫基调：与宿主 workflow 标题同一套 shimmer 写法（background-clip
+   + 200% 背景平移），但不跟随 --primary——这枚入口要在任何主题色下都读成「AI」。
+   图标走 currentColor，因此把基调色挂在按钮上，图标与文字一起变。
+   深浅色各给一档：浅色下用更重的紫，深色下用更亮的紫，保证都压得住背景。 */
+.git-ai-accent {
+	color: light-dark(#6d28d9, #a78bfa);
+}
+
 @keyframes git-ai-shimmer {
 	from {
 		background-position: 200% 0;
@@ -24,11 +30,11 @@
 .git-ai-shimmer {
 	background-image: linear-gradient(
 		90deg,
-		var(--primary) 0%,
-		var(--primary) 35%,
-		color-mix(in srgb, var(--primary) 45%, white) 50%,
-		var(--primary) 65%,
-		var(--primary) 100%
+		light-dark(#6d28d9, #a78bfa) 0%,
+		light-dark(#6d28d9, #a78bfa) 30%,
+		light-dark(#3b82f6, #93c5fd) 50%,
+		light-dark(#6d28d9, #a78bfa) 70%,
+		light-dark(#6d28d9, #a78bfa) 100%
 	);
 	background-size: 200% 100%;
 	-webkit-background-clip: text;
@@ -37,11 +43,11 @@
 	animation: git-ai-shimmer 2.4s linear infinite;
 }
 
-/* 关掉动效的用户只保留主题色文字，不留一段透明文字。 */
+/* 关掉动效的用户只保留纯色文字，不留一段透明文字。 */
 @media (prefers-reduced-motion: reduce) {
 	.git-ai-shimmer {
 		background-image: none;
-		color: var(--primary);
+		color: light-dark(#6d28d9, #a78bfa);
 		animation: none;
 	}
 }

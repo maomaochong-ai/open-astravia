@@ -203,7 +203,7 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 						disabled={pending !== null || (!generating && !hasAnyChange)}
 						title={generating ? t("ai.stop") : t("ai.generateHint")}
 						onClick={() => (generating ? abortRef.current?.abort() : requestGenerate())}
-						className="inline-flex h-7 min-w-0 shrink items-center gap-1.5 rounded-md border border-transparent bg-transparent px-1 text-[12px] font-medium text-primary outline-none transition-opacity hover:opacity-80 focus-visible:border-ring disabled:pointer-events-none disabled:opacity-50"
+						className="git-ai-accent inline-flex h-7 min-w-0 shrink items-center gap-1.5 rounded-md border border-transparent bg-transparent px-1 text-[12px] font-medium outline-none transition-opacity hover:opacity-80 focus-visible:border-ring disabled:pointer-events-none disabled:opacity-50"
 					>
 						{generating ? <StopIcon className="h-3.5 w-3.5 shrink-0" /> : <SparkleIcon className="h-3.5 w-3.5 shrink-0" />}
 						<span className="git-ai-shimmer truncate">{generating ? t("ai.stop") : t("ai.generate")}</span>
