@@ -3,8 +3,10 @@ import { stat } from "node:fs/promises";
 import { extname, isAbsolute, join, relative, resolve } from "node:path";
 import { Readable } from "node:stream";
 import { getVettaHomePath } from "@vetta/action-rpc";
+import { isSshProjectUri } from "@vetta/ssh-transport";
 import { type CustomScheme, protocol } from "electron";
-import { assertPathReadableForPreview } from "./ipc/fs.js";
+import { assertPathReadableForPreview } from "./filesystem/filesystem-service.js";
+import { openRemoteMediaSource } from "./filesystem/remote-filesystem.js";
 import { createEphemeralMediaToken, resolveEphemeralMediaToken } from "./media-token-store.js";
 
 /**
@@ -90,68 +92,97 @@ function parseRange(header: string | null, size: number): { start: number; end: 
 	return { start, end };
 }
 
-export function registerMediaProtocolHandler(): void {
-	protocol.handle(MEDIA_PROTOCOL_SCHEME, async (request) => {
-		let filePath: string;
-		let mediaKind: string | null = null;
-		let declaredMimeType: string | null = null;
-		try {
-			const url = new URL(request.url);
-			const token = url.searchParams.get("token");
-			const ephemeral = token ? resolveEphemeralMediaToken(token) : undefined;
-			if (token && !ephemeral && !url.searchParams.get("path")) {
-				return new Response("Expired media token", { status: 410 });
-			}
-			const rawPath = ephemeral?.path ?? url.searchParams.get("path");
-			if (!rawPath) return new Response("Missing path", { status: 400 });
-			mediaKind = url.searchParams.get("kind");
-			filePath = resolve(rawPath);
-			const requestedMimeType = ephemeral?.mimeType ?? url.searchParams.get("mime");
-			if (requestedMimeType && isPluginDataPath(filePath) && MIME_TYPE_PATTERN.test(requestedMimeType)) {
-				declaredMimeType = requestedMimeType;
-			}
-			// 与 fs IPC 预览读取同一道沙箱边界：防止渲染进程借本协议任意读取磁盘文件
-			assertPathReadableForPreview(filePath);
-		} catch {
-			return new Response("Forbidden", { status: 403 });
+interface MediaSource {
+	readonly path: string;
+	readonly size: number;
+	stream(start: number, end: number): ReadableStream;
+	/** 调用方声明的 MIME 只对插件数据目录生效，远端文件不适用。 */
+	readonly allowsDeclaredMimeType: boolean;
+}
+
+/**
+ * 打开一份媒体的字节来源。授权失败抛出，路径不存在或不是文件返回 null。
+ *
+ * 远程项目的路径是 `ssh://` URI，绝不能先 `resolve()`：那会把它变成本机进程 cwd 之下的
+ * 路径，再去过本机的授权检查——开发态下恰好能通过，读到的却是本机文件。
+ */
+async function openMediaSource(rawPath: string): Promise<MediaSource | null> {
+	if (isSshProjectUri(rawPath)) {
+		const remote = await openRemoteMediaSource(rawPath);
+		return remote ? { ...remote, allowsDeclaredMimeType: false } : null;
+	}
+	const filePath = resolve(rawPath);
+	// 与 fs IPC 预览读取同一道沙箱边界：防止渲染进程借本协议任意读取磁盘文件
+	assertPathReadableForPreview(filePath);
+	let size: number;
+	try {
+		const stats = await stat(filePath);
+		if (!stats.isFile()) return null;
+		size = stats.size;
+	} catch {
+		return null;
+	}
+	return {
+		path: filePath,
+		size,
+		stream: (start, end) => Readable.toWeb(createReadStream(filePath, { start, end })) as ReadableStream,
+		allowsDeclaredMimeType: isPluginDataPath(filePath),
+	};
+}
+
+/** 协议处理的主体，与 Electron 的注册解耦以便测试。 */
+export async function handleMediaRequest(request: Request): Promise<Response> {
+	let source: MediaSource | null;
+	let mediaKind: string | null = null;
+	let requestedMimeType: string | null | undefined;
+	try {
+		const url = new URL(request.url);
+		const token = url.searchParams.get("token");
+		const ephemeral = token ? resolveEphemeralMediaToken(token) : undefined;
+		if (token && !ephemeral && !url.searchParams.get("path")) {
+			return new Response("Expired media token", { status: 410 });
 		}
+		const rawPath = ephemeral?.path ?? url.searchParams.get("path");
+		if (!rawPath) return new Response("Missing path", { status: 400 });
+		mediaKind = url.searchParams.get("kind");
+		requestedMimeType = ephemeral?.mimeType ?? url.searchParams.get("mime");
+		source = await openMediaSource(rawPath);
+	} catch {
+		return new Response("Forbidden", { status: 403 });
+	}
+	if (!source) return new Response("Not found", { status: 404 });
 
-		let size: number;
-		try {
-			const stats = await stat(filePath);
-			if (!stats.isFile()) return new Response("Not a file", { status: 404 });
-			size = stats.size;
-		} catch {
-			return new Response("Not found", { status: 404 });
-		}
+	const declaredMimeType =
+		requestedMimeType && source.allowsDeclaredMimeType && MIME_TYPE_PATTERN.test(requestedMimeType)
+			? requestedMimeType
+			: null;
+	const ext = extname(source.path).slice(1).toLowerCase();
+	const contentType =
+		declaredMimeType ??
+		(ext === "webm" && mediaKind === "video" ? "video/webm" : (MEDIA_MIME[ext] ?? "application/octet-stream"));
+	const baseHeaders: Record<string, string> = {
+		"Content-Type": contentType,
+		"Accept-Ranges": "bytes",
+		"Access-Control-Allow-Origin": "*",
+	};
 
-		const ext = extname(filePath).slice(1).toLowerCase();
-		const contentType =
-			declaredMimeType ??
-			(ext === "webm" && mediaKind === "video" ? "video/webm" : (MEDIA_MIME[ext] ?? "application/octet-stream"));
-		const baseHeaders: Record<string, string> = {
-			"Content-Type": contentType,
-			"Accept-Ranges": "bytes",
-			"Access-Control-Allow-Origin": "*",
-		};
-
-		const range = parseRange(request.headers.get("Range"), size);
-		if (range) {
-			const stream = createReadStream(filePath, { start: range.start, end: range.end });
-			return new Response(Readable.toWeb(stream) as ReadableStream, {
-				status: 206,
-				headers: {
-					...baseHeaders,
-					"Content-Length": String(range.end - range.start + 1),
-					"Content-Range": `bytes ${range.start}-${range.end}/${size}`,
-				},
-			});
-		}
-
-		const stream = createReadStream(filePath);
-		return new Response(Readable.toWeb(stream) as ReadableStream, {
-			status: 200,
-			headers: { ...baseHeaders, "Content-Length": String(size) },
+	const range = parseRange(request.headers.get("Range"), source.size);
+	if (range) {
+		return new Response(source.stream(range.start, range.end), {
+			status: 206,
+			headers: {
+				...baseHeaders,
+				"Content-Length": String(range.end - range.start + 1),
+				"Content-Range": `bytes ${range.start}-${range.end}/${source.size}`,
+			},
 		});
+	}
+	return new Response(source.size === 0 ? null : source.stream(0, source.size - 1), {
+		status: 200,
+		headers: { ...baseHeaders, "Content-Length": String(source.size) },
 	});
+}
+
+export function registerMediaProtocolHandler(): void {
+	protocol.handle(MEDIA_PROTOCOL_SCHEME, handleMediaRequest);
 }

@@ -252,3 +252,47 @@ export async function listRemoteFilesRecursive(
 function assertSameHost(first: string, second: string): void {
 	if (first !== second) throw new Error("Cannot move files between different remote hosts");
 }
+
+/** 远端媒体按这个粒度分块取回：一块一次往返，太小拖慢播放，太大让拖动进度条变迟钝。 */
+const REMOTE_MEDIA_CHUNK_BYTES = 1024 * 1024;
+
+export interface RemoteMediaSource {
+	/** 远端路径，用来取扩展名判断 Content-Type。 */
+	readonly path: string;
+	readonly size: number;
+	/** `[start, end]` 闭区间，与 HTTP Range 同义。 */
+	stream(start: number, end: number): ReadableStream<Uint8Array>;
+}
+
+/** 媒体协议的远端字节来源；路径不存在或不是文件时返回 null。 */
+export async function openRemoteMediaSource(uri: string): Promise<RemoteMediaSource | null> {
+	assertRemotePathWithinProject(uri);
+	const { hostId, remotePath } = split(uri);
+	const connection = getSshConnection(hostId);
+	const entry = await connection.stat(remotePath, undefined, { followSymlinks: true });
+	if (!entry || entry.kind !== "file") return null;
+	return {
+		path: remotePath,
+		size: entry.sizeBytes,
+		stream(start, end) {
+			let offset = start;
+			return new ReadableStream<Uint8Array>({
+				// 按需取块：播放器暂停或跳走时不会继续把后面的内容拖过网络。
+				async pull(controller) {
+					if (offset > end) {
+						controller.close();
+						return;
+					}
+					const length = Math.min(REMOTE_MEDIA_CHUNK_BYTES, end - offset + 1);
+					const chunk = await connection.readFileRange(remotePath, offset, length);
+					if (chunk.byteLength === 0) {
+						controller.close();
+						return;
+					}
+					offset += chunk.byteLength;
+					controller.enqueue(chunk);
+				},
+			});
+		},
+	};
+}
