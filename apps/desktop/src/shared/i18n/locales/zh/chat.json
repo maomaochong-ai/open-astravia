@@ -362,7 +362,8 @@
 			"label": "沙盒受限",
 			"title": "仅允许工作区受限访问"
 		},
-		"sandboxUnavailable": "{{platform}} 沙盒不可用：{{reason}}"
+		"sandboxUnavailable": "{{platform}} 沙盒不可用：{{reason}}",
+		"sandboxUnavailableRemote": "远程项目没有沙盒：沙盒只能约束这台电脑上的进程，而远程项目的命令在远端主机上执行"
 	},
 	"export": {
 		"shareNavDescription": "分享了一个会话",

@@ -362,7 +362,8 @@
 			"label": "Sandboxed",
 			"title": "Allow restricted access within the workspace only"
 		},
-		"sandboxUnavailable": "{{platform}} sandbox unavailable: {{reason}}"
+		"sandboxUnavailable": "{{platform}} sandbox unavailable: {{reason}}",
+		"sandboxUnavailableRemote": "Sandbox is not available for remote projects: it only constrains processes on this computer, and a remote project's commands run on the remote host"
 	},
 	"export": {
 		"shareNavDescription": "shared a session",
