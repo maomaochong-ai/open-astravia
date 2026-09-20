@@ -9,6 +9,7 @@ import {
 	createWriteToolRegistration,
 	type EditPathPolicy,
 	type ReadToolOptions,
+	remotePosixToolPathHost,
 	type WritePathPolicy,
 } from "@vetta/runtime-node/coding";
 import type { BackgroundCommandService, CodingToolRegistration } from "@vetta/runtime-tools";
@@ -57,16 +58,20 @@ export interface SshCodingToolEnvironment {
  */
 export function createSshCodingToolEnvironment(options: SshCodingToolEnvironmentOptions): SshCodingToolEnvironment {
 	const { connection, remoteCwd } = options;
+	// 路径一律按远端解析：不探本机磁盘、不按本机家目录展开 `~`、固定 POSIX 语义。
+	const pathHost = remotePosixToolPathHost;
 	// 本机环境变量不进远端。远端自己的 PATH 由登录 shell 提供。
 	const environment = () => ({});
 	const backgroundService = createBackgroundCommandService(createSshBackgroundCommandHost(connection));
 	const foregroundExecutor = createForegroundCommandToolExecutor({
 		operations: createSshForegroundCommandOperations(connection),
 		environment,
+		pathHost,
 		blockUntilSec: options.blockUntilSec,
 	});
 	const commandExecutor = createBackgroundCommandToolExecutor({
 		environment,
+		pathHost,
 		foregroundExecutor,
 		backgroundService,
 	});
@@ -75,17 +80,20 @@ export function createSshCodingToolEnvironment(options: SshCodingToolEnvironment
 		registrations: [
 			createReadToolRegistration(remoteCwd, {
 				...options.readOptions,
+				pathHost,
 				operations: createSshReadOperations(connection),
 			}),
 			createEditToolRegistration(remoteCwd, {
 				pathPolicy: options.editPathPolicy,
+				pathHost,
 				operations: createSshEditOperations(connection),
 			}),
 			createWriteToolRegistration(remoteCwd, {
 				pathPolicy: options.writePathPolicy,
+				pathHost,
 				operations: createSshWriteOperations(connection),
 			}),
-			createLsToolRegistration(remoteCwd, { operations: createSshLsOperations(connection) }),
+			createLsToolRegistration(remoteCwd, { pathHost, operations: createSshLsOperations(connection) }),
 			createBashToolRegistration(remoteCwd, { executor: commandExecutor }),
 		],
 		backgroundService,

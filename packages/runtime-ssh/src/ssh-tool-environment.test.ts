@@ -18,7 +18,7 @@ function encode(text: string): Uint8Array {
  * 构造、引用和输出解析都在被测路径里，测试才能证明「工具确实作用在远端」而不是
  * 「我们调用了自己写的 mock」。
  */
-function createFakeHost(files: Map<string, string>) {
+function createFakeHost(files: Map<string, string>, binaryFiles = new Map<string, Uint8Array>()) {
 	const commands: string[] = [];
 	const runner: SshProcessRunner = {
 		run: async (invocation): Promise<SshProcessResult> => {
@@ -33,7 +33,16 @@ function createFakeHost(files: Map<string, string>) {
 
 			if (remoteCommand.includes("uname")) return ok("Linux\nx86_64\n");
 
+			if (remoteCommand.includes("HOME")) return ok("/home/dev");
+
+			const head = /^head -c \d+ -- '(.+)'$/.exec(remoteCommand);
+			if (head) {
+				const bytes = binaryFiles.get(head[1]);
+				return bytes ? { ...ok(""), stdout: bytes } : ok(files.get(head[1]) ?? "");
+			}
+
 			const cat = /^cat -- '(.+)'$/.exec(remoteCommand);
+			if (cat && binaryFiles.has(cat[1])) return { ...ok(""), stdout: binaryFiles.get(cat[1]) as Uint8Array };
 			if (cat) {
 				const content = files.get(cat[1]);
 				if (content === undefined) {
@@ -52,6 +61,8 @@ function createFakeHost(files: Map<string, string>) {
 
 			if (remoteCommand.startsWith("[ -e ")) {
 				const target = /^\[ -e '(.+?)' \]/.exec(remoteCommand)?.[1] ?? "";
+				if (binaryFiles.has(target))
+					return ok(`regular file\t${binaryFiles.get(target)?.byteLength}\t1700000000\t${target}\n`);
 				if (files.has(target)) return ok(`regular file\t${files.get(target)?.length}\t1700000000\t${target}\n`);
 				const isDirectory = [...files.keys()].some((path) => path.startsWith(`${target}/`));
 				return ok(isDirectory ? `directory\t4096\t1700000000\t${target}\n` : "");
@@ -97,8 +108,8 @@ function execute(tool: ReturnType<typeof toolByName>, input: Record<string, unkn
 	} as never);
 }
 
-function createEnvironment(files: Map<string, string>) {
-	const fake = createFakeHost(files);
+function createEnvironment(files: Map<string, string>, binaryFiles?: Map<string, Uint8Array>) {
+	const fake = createFakeHost(files, binaryFiles);
 	const environment = createSshCodingToolEnvironment({
 		connection: fake.connection,
 		remoteCwd: REMOTE_CWD,
@@ -176,6 +187,15 @@ describe("远程项目的 Agent 工具", () => {
 		expect(userCommand).toContain("cd '\\''/srv/app'\\''");
 		// 本机的 PATH、代理和凭据不该出现在远端命令里。
 		expect(userCommand).not.toContain("export PATH=");
+	});
+
+	it("~ 指的是远端的家目录，不是本机的", async () => {
+		const files = new Map<string, string>();
+		const { environment } = createEnvironment(files);
+
+		await execute(toolByName(environment.registrations, "write"), { path: "~/notes.md", content: "hi" });
+
+		expect([...files.keys()]).toEqual(["/home/dev/notes.md"]);
 	});
 
 	it("bash 超时后告诉模型超时了多久，并保留已经产生的输出", async () => {
