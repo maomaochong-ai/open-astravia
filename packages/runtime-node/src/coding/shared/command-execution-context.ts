@@ -1,3 +1,4 @@
+import type { ToolPathHost } from "./path-resolution.js";
 import { type PathLiteralCorrection, rewriteQuotedPathLiterals } from "./quoted-path-correction.js";
 
 export interface CommandSpawnContext {
@@ -12,6 +13,8 @@ export interface CommandExecutionContextOptions {
 	readonly environment?: () => NodeJS.ProcessEnv;
 	readonly commandPrefix?: string;
 	readonly spawnHook?: CommandSpawnHook;
+	/** 命令里带引号的路径在哪台机器上核对；缺省为本机。 */
+	readonly pathHost?: ToolPathHost;
 }
 
 export interface ResolvedCommandExecutionContext {
@@ -25,7 +28,11 @@ export function resolveCommandExecutionContext(
 	options: CommandExecutionContextOptions,
 ): ResolvedCommandExecutionContext {
 	const prefixedCommand = prependCommandPrefixes(command, [options.commandPrefix]);
-	const { output: correctedCommand, pathCorrections } = rewriteQuotedPathLiterals(prefixedCommand, cwd);
+	const { output: correctedCommand, pathCorrections } = rewriteQuotedPathLiterals(
+		prefixedCommand,
+		cwd,
+		options.pathHost,
+	);
 	const baseContext: CommandSpawnContext = {
 		command: correctedCommand,
 		cwd,

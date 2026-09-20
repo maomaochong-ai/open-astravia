@@ -8,7 +8,7 @@ import {
 	type RuntimeToolResult,
 } from "@vetta/runtime-core/kernel";
 import { renderAnchoredLines } from "../../shared/anchors.js";
-import { resolveReadPath } from "../../shared/path-resolution.js";
+import { localToolPathHost, resolveReadPath, type ToolPathHost } from "../../shared/path-resolution.js";
 import { decodeTextBuffer } from "../../shared/text-decoding.js";
 import { DEFAULT_MAX_BYTES, formatSize, type TruncationResult, truncateHead } from "../../shared/truncation.js";
 import { READ_TOOL_DESCRIPTION } from "./description.js";
@@ -72,6 +72,8 @@ export interface ReadToolOptions {
 	readonly imageResizeOptions?: ImageResizeOptions;
 	readonly preserveFullText?: (absolutePath: string) => boolean;
 	readonly binaryContentHint?: (extension: string) => string | undefined;
+	/** 路径在哪台机器上解析；缺省为本机。远端项目必须换掉，见 {@link ToolPathHost}。 */
+	readonly pathHost?: ToolPathHost;
 }
 
 const defaultReadOperations: ReadOperations = {
@@ -132,7 +134,7 @@ export function createReadTool(cwd: string, options: ReadToolOptions = {}): Runt
 		inputSchema: ReadToolInputSchema,
 		execute(request) {
 			const { path, offset, limit } = request.input;
-			const absolutePath = resolveReadPath(path, cwd);
+			const absolutePath = resolveReadPath(path, cwd, options?.pathHost ?? localToolPathHost);
 
 			return new Promise<RuntimeToolResult>((resolve, reject) => {
 				if (request.signal.aborted) {

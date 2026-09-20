@@ -1,8 +1,12 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
 import { type Static, Type } from "@sinclair/typebox";
 import type { RuntimeToolDefinition, RuntimeToolResult } from "@vetta/runtime-core/kernel";
-import { formatNotFoundPath, resolveExistingPath } from "../../shared/path-resolution.js";
+import {
+	formatNotFoundPath,
+	localToolPathHost,
+	resolveExistingPath,
+	type ToolPathHost,
+} from "../../shared/path-resolution.js";
 import { DEFAULT_MAX_BYTES, formatSize, type TruncationResult, truncateHead } from "../../shared/truncation.js";
 import { LS_TOOL_DESCRIPTION } from "./description.js";
 
@@ -36,6 +40,8 @@ export interface LsOperations {
 
 export interface LsToolOptions {
 	readonly operations?: LsOperations;
+	/** 路径在哪台机器上解析；缺省为本机。远端项目必须换掉，见 {@link ToolPathHost}。 */
+	readonly pathHost?: ToolPathHost;
 }
 
 const DEFAULT_LIMIT = 500;
@@ -48,6 +54,7 @@ const defaultLsOperations: LsOperations = {
 
 export function createLsTool(cwd: string, options: LsToolOptions = {}): RuntimeToolDefinition<LsToolInput> {
 	const operations = options.operations ?? defaultLsOperations;
+	const pathHost = options.pathHost ?? localToolPathHost;
 
 	return {
 		name: "ls",
@@ -66,11 +73,11 @@ export function createLsTool(cwd: string, options: LsToolOptions = {}): RuntimeT
 
 				(async () => {
 					try {
-						const directoryPath = resolveExistingPath(request.input.path || ".", cwd);
+						const directoryPath = resolveExistingPath(request.input.path || ".", cwd, pathHost);
 						const effectiveLimit = request.input.limit ?? DEFAULT_LIMIT;
 
 						if (!(await operations.exists(directoryPath))) {
-							reject(new Error(formatNotFoundPath(directoryPath, cwd)));
+							reject(new Error(formatNotFoundPath(directoryPath, cwd, pathHost)));
 							return;
 						}
 
@@ -99,7 +106,7 @@ export function createLsTool(cwd: string, options: LsToolOptions = {}): RuntimeT
 								break;
 							}
 
-							const entryPath = join(directoryPath, entry);
+							const entryPath = pathHost.path.join(directoryPath, entry);
 							let suffix = "";
 							try {
 								const entryStat = await operations.stat(entryPath);

@@ -101,7 +101,13 @@ export {
 	type ForegroundCommandOperations,
 	type ForegroundCommandToolDetails,
 } from "./shared/foreground-command-executor.js";
-export { resolveExistingPath } from "./shared/path-resolution.js";
+export {
+	localToolPathHost,
+	remotePosixToolPathHost,
+	resolveExistingPath,
+	type ToolPathHost,
+	type ToolPathSyntax,
+} from "./shared/path-resolution.js";
 export { decodeTextBuffer, sanitizeBinaryOutput } from "./shared/text-decoding.js";
 export {
 	DEFAULT_MAX_BYTES,
