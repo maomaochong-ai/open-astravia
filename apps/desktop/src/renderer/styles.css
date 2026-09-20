@@ -21,12 +21,15 @@
  * 不整目录 @source 进插件源码：那会把 preset 里成百上千个只有插件自己用的工具类
  * 一并生成进宿主 CSS。这里按图标逐条放行，与 SOLAR_SKILL_ICON_CLASS 同一个思路
  * （让编译器看见字面量），新增系统插件的导航图标时在这儿补一行。
- * 第三方插件仍然只能拿到默认图标，那需要运行时渲染，不在本清单能解决的范围内。 */
+ * 第三方插件仍然只能拿到默认图标，那需要运行时渲染，不在本清单能解决的范围内。
+ * 图标名必须在已安装的图标集里真实存在（solar 没有任何 git 图标，分支图标取自 mdi），
+ * 否则这里补了行也依然是空格子。 */
 @source inline("icon-[solar--ruler-pen-linear]");
 @source inline("icon-[solar--archive-minimalistic-outline]");
 @source inline("icon-[solar--smartphone-2-linear]");
 @source inline("icon-[solar--video-frame-play-horizontal-linear]");
 @source inline("icon-[solar--widget-2-linear]");
+@source inline("icon-[mdi--source-branch]");
 
 @custom-variant dark (&:is([data-mode="dark"] *));
 /* Radix sets data-state="open"|"closed"; @vetta-org/ui uses data-open:/data-closed: utilities. */

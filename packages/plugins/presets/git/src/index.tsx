@@ -64,7 +64,7 @@ export default definePlugin({
 		ctx.ui.registerWorkspaceView({
 			id: "settings",
 			label: "%settings.title%",
-			icon: "icon-[solar--code-square-linear]",
+			icon: "icon-[mdi--source-branch]",
 			description: "%settings.tagline%",
 			sidebar: false,
 			component: GitSettingsView,
