@@ -2,9 +2,9 @@ import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
+import { createLoopbackSshConnection } from "@vetta/ssh-transport/testing";
 import { describe, expect, it } from "vitest";
 import { createSshCodingToolEnvironment } from "./ssh-tool-environment.js";
-import { createLoopbackSshConnection } from "./test-support/loopback-ssh.js";
 
 function createProject(): string {
 	const root = realpathSync(mkdtempSync(join(tmpdir(), "vetta-remote-project-")));

@@ -1,8 +1,8 @@
 import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createLoopbackSshConnection } from "@vetta/ssh-transport/testing";
 import { describe, expect, it, vi } from "vitest";
-import { createLoopbackSshConnection } from "../ssh/test-support/loopback-ssh.js";
 
 const connection = createLoopbackSshConnection();
 vi.mock("../ssh/ssh-runtime.js", () => ({ getSshConnection: () => connection }));

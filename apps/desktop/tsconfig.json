@@ -104,6 +104,7 @@
 			"@vetta/runtime-ssh": ["../../packages/runtime-ssh/src/index.ts"],
 			"@vetta/runtime-ssh/*": ["../../packages/runtime-ssh/src/*"],
 			"@vetta/ssh-transport": ["../../packages/ssh-transport/src/index.ts"],
+			"@vetta/ssh-transport/testing": ["../../packages/ssh-transport/src/testing.ts"],
 			"@vetta/ssh-transport/*": ["../../packages/ssh-transport/src/*"],
 			"@vetta/toolkit": ["../../packages/toolkit/src/index.ts"],
 			"@vetta/toolkit/*": ["../../packages/toolkit/src/*"]

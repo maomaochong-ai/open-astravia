@@ -2,9 +2,9 @@ import { mkdirSync, mkdtempSync, realpathSync, symlinkSync, writeFileSync } from
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createNodeResourceAccess } from "@vetta/runtime-node/host";
+import { createLoopbackSshConnection } from "@vetta/ssh-transport/testing";
 import { describe, expect, it } from "vitest";
 import { createProjectResourceAccess } from "./project-resource-access.js";
-import { createLoopbackSshConnection } from "./test-support/loopback-ssh.js";
 
 function createAccess() {
 	const connection = createLoopbackSshConnection();
