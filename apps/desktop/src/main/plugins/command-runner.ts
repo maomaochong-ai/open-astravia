@@ -1,4 +1,5 @@
 import type { ChildProcess } from "node:child_process";
+import { isSshProjectUri } from "@vetta/ssh-transport";
 import type {
 	InstalledPlugin,
 	PluginCommandRunOptions,
@@ -8,6 +9,7 @@ import { getAppLogger } from "../logger.js";
 import { createPluginCommandEnvironment } from "./command-environment.js";
 import { spawnCrossPlatformCommand } from "./command-launcher.js";
 import { listPlugins } from "./plugin-catalog.js";
+import { runRemotePluginCommand } from "./remote-command-runner.js";
 
 const commandLog = getAppLogger("plugin");
 
@@ -82,6 +84,17 @@ export async function runPluginCommand(
 	const env = sanitizeEnv(options?.env);
 	const cwd = typeof options?.cwd === "string" && options.cwd.trim().length > 0 ? options.cwd : undefined;
 	const timeout = clampTimeout(options?.timeoutMs);
+
+	if (cwd !== undefined && isSshProjectUri(cwd)) {
+		return runRemotePluginCommand({
+			file,
+			args: normalizedArgs,
+			cwd,
+			env,
+			timeoutMs: timeout,
+			maxBufferBytes: MAX_BUFFER_BYTES,
+		});
+	}
 
 	let child: ChildProcess;
 	try {
