@@ -13,9 +13,26 @@ export {
 	SshRemoteCommandError,
 	SshTransportError,
 } from "./errors.js";
+export {
+	HELPER_PROTOCOL_VERSION,
+	isCompatibleHelperVersion,
+	SshHelperClient,
+	SshHelperClosedError,
+	SshHelperError,
+	type SshHelperHello,
+} from "./helper-client.js";
+export {
+	type ConnectSshHelperOptions,
+	connectSshHelper,
+	resolveSshHelperTarget,
+	type SshHelperBinaryResolver,
+	type SshHelperTarget,
+} from "./helper-deployment.js";
 export { createNodeSshProcessRunner, type NodeSshProcessRunnerOptions } from "./node-process-runner.js";
 export {
 	SSH_TRANSPORT_FAILURE_EXIT_CODE,
+	type SshChannelInvocation,
+	type SshProcessChannel,
 	type SshProcessInvocation,
 	type SshProcessResult,
 	type SshProcessRunner,

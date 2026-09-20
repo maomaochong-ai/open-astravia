@@ -1,7 +1,14 @@
 import { randomBytes } from "node:crypto";
 import { parseRemoteDirectoryListing, type RemoteDirectoryEntry } from "./directory-listing.js";
 import { SshOperationAbortedError, SshRemoteCommandError, SshTransportError } from "./errors.js";
-import { SSH_TRANSPORT_FAILURE_EXIT_CODE, type SshProcessResult, type SshProcessRunner } from "./process-runner.js";
+import type { SshHelperClient } from "./helper-client.js";
+import { type ConnectSshHelperOptions, connectSshHelper } from "./helper-deployment.js";
+import {
+	SSH_TRANSPORT_FAILURE_EXIT_CODE,
+	type SshProcessChannel,
+	type SshProcessResult,
+	type SshProcessRunner,
+} from "./process-runner.js";
 import { normalizeRemotePath } from "./project-uri.js";
 import {
 	buildCreateEntryCommand,
@@ -71,6 +78,11 @@ export interface SshConnectionOptions {
 	 * stat 输出「目录」而不是 directory）。把原始命令与输出留给宿主记日志，这类故障
 	 * 才有可能被查出来。
 	 */
+	/**
+	 * 给出时，连接会按需把远端 helper 送过去并连上（见 {@link SshConnection.helper}）。
+	 * 不给就始终走 `ssh exec`。
+	 */
+	readonly helper?: ConnectSshHelperOptions;
 	readonly onTrace?: (event: {
 		readonly command: string;
 		readonly output: string;
@@ -92,6 +104,7 @@ export interface SshConnectionOptions {
 export class SshConnection {
 	private platform: RemotePlatform | undefined;
 	private homeDirectory: string | undefined;
+	private helperClient: Promise<SshHelperClient | undefined> | undefined;
 
 	constructor(
 		readonly host: SshHost,
@@ -275,6 +288,41 @@ export class SshConnection {
 		const result = await this.run(buildRealPathCommand(remotePath), { signal });
 		const resolved = decode(result.stdout).trim();
 		return result.exitCode === 0 && resolved.startsWith("/") ? resolved : remotePath;
+	}
+
+	/**
+	 * 远端 helper；不可用时为 undefined，调用方必须有 `ssh exec` 的降级路径。
+	 *
+	 * 同一条连接上只建立一次。helper 的通道断了（网络抖动、远端被杀）之后下一次调用会重连，
+	 * 而「这台主机用不了 helper」的结论同样被记住，不会每个操作都重新上传一遍试试。
+	 */
+	helper(): Promise<SshHelperClient | undefined> {
+		const options = this.options.helper;
+		if (!options) return Promise.resolve(undefined);
+		if (!this.helperClient) {
+			const attempt = connectSshHelper(this, options).then((client) => {
+				client?.onClose(() => {
+					if (this.helperClient === attempt) this.helperClient = undefined;
+				});
+				return client;
+			});
+			this.helperClient = attempt;
+		}
+		return this.helperClient;
+	}
+
+	/**
+	 * 打开一条保持连接的通道，远端命令的 stdin/stdout 交给调用方。执行器不支持时返回
+	 * undefined，调用方据此走一问一答的降级路径。
+	 */
+	openChannel(remoteCommand: string, onStdout: (chunk: Uint8Array) => void): SshProcessChannel | undefined {
+		if (!this.options.runner.open) return undefined;
+		const argv = buildSshArgv(
+			this.host,
+			{ controlPath: this.options.controlPath, connectTimeoutSeconds: this.options.connectTimeoutSeconds },
+			remoteCommand,
+		);
+		return this.options.runner.open({ argv, onStdout, env: this.options.env });
 	}
 
 	/** 退出码非零即抛。内部操作都用它——它们没有「失败也算正常」的分支。 */

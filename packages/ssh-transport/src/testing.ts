@@ -1,8 +1,8 @@
-import { chmodSync, mkdtempSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createNodeSshProcessRunner } from "./node-process-runner.js";
-import { SshConnection } from "./ssh-connection.js";
+import { SshConnection, type SshConnectionOptions } from "./ssh-connection.js";
 
 /**
  * 一条「连到本机」的 SSH 连接，不需要 sshd。仅供测试使用。
@@ -12,8 +12,14 @@ import { SshConnection } from "./ssh-connection.js";
  * shell 上：测试证明的是功能真的可用，而不是我们拼出了预期的字符串、调用了自己写的 mock。
  * 它已经抓出过 BSD stat 不解释 `\t` 这类只有真跑才会暴露的问题。
  */
-export function createLoopbackSshConnection(hostId = "loopback"): SshConnection {
+export function createLoopbackSshConnection(
+	hostId = "loopback",
+	options: Pick<SshConnectionOptions, "helper"> = {},
+): SshConnection {
 	const directory = mkdtempSync(join(tmpdir(), "vetta-loopback-ssh-"));
+	// 「远端」有自己的家目录：helper 会往 ~/.cache 里装东西，不能装进开发者真实的家目录。
+	const home = join(directory, "home");
+	mkdirSync(home);
 	const fakeSsh = join(directory, "ssh");
 	writeFileSync(fakeSsh, '#!/bin/sh\nfor last; do :; done\nexec /bin/sh -c "$last"\n');
 	chmodSync(fakeSsh, 0o755);
@@ -21,8 +27,12 @@ export function createLoopbackSshConnection(hostId = "loopback"): SshConnection 
 		{ id: hostId, label: hostId, target: hostId, source: "manual" },
 		{
 			// 固定 /bin/sh 当登录 shell：开发者自己的 zsh profile 既慢，又让结果因人而异。
-			runner: createNodeSshProcessRunner({ sshBinary: fakeSsh, baseEnv: { ...process.env, SHELL: "/bin/sh" } }),
+			runner: createNodeSshProcessRunner({
+				sshBinary: fakeSsh,
+				baseEnv: { ...process.env, SHELL: "/bin/sh", HOME: home },
+			}),
 			controlPath: join(directory, "cp"),
+			...options,
 		},
 	);
 }
