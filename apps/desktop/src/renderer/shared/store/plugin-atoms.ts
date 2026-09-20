@@ -85,6 +85,8 @@ export interface RegisteredActivityTab {
 	component: PluginActivityTabContribution["component"];
 	/** 允许出现的对话场景（fail-closed：缺省/空 = 任何会话都不显示）。见契约。 */
 	scope_use?: PluginActivityTabContribution["scope_use"];
+	/** 标签栏默认相对位置，越小越靠前；缺省 100。 */
+	order?: PluginActivityTabContribution["order"];
 	/** 注册后是否默认上栏（缺省 true）；false = 出现条件由插件自己驱动。 */
 	initiallyVisible?: PluginActivityTabContribution["initiallyVisible"];
 	/** 未激活时的驻留策略；缺省 warm。 */

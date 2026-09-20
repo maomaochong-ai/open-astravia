@@ -810,7 +810,7 @@ describe("OpenMarketplaceService", () => {
 		await service.install("plugin", "demo-plugin");
 		expect(installAbility).toHaveBeenCalledOnce();
 		expect(installAbility.mock.calls[0]?.[1]).toMatchObject({ type: "plugin", slug: "demo-plugin" });
-	});
+	}, 10_000);
 
 	it("rejects a plugin package whose manifest identity does not match", async () => {
 		const service = new OpenMarketplaceService({

@@ -8,6 +8,9 @@ const CODE_TO_STATUS: Record<ChangeCode, GitStatusEntry["status"]> = {
 	D: "deleted",
 	R: "renamed",
 	U: "untracked",
+	// The tree library has no conflict status; modified is the closest marker and
+	// the conflict section already carries the meaning.
+	C: "modified",
 };
 
 /** Flatten change entries into the path list + git-status entries the tree consumes. */

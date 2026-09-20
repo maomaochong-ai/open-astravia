@@ -21,7 +21,7 @@ import {
 	type ContextRingModel,
 } from "../../hooks/useContextRingModel";
 import { useExecutionModeSelectorModel } from "../../hooks/useExecutionModeSelectorModel";
-import type { TeamAttachmentViewModel, TeamChatActions, TeamChatViewModel } from "./teamChatModel";
+import type { TeamAttachmentViewModel, TeamChatActions, TeamComposerViewModel } from "./teamChatModel";
 import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";
 
 const VETTA_PATH_MIME = "application/vetta-path";
@@ -34,7 +34,7 @@ function attachmentFromPath(path: string): TeamAttachmentViewModel {
 	};
 }
 
-function projectTeamDraftSegments(model: TeamChatViewModel): readonly InputSegment[] {
+function projectTeamDraftSegments(model: TeamComposerViewModel): readonly InputSegment[] {
 	const mentions = [...(model.draftMemberMentions ?? [])].sort((left, right) => left.start - right.start);
 	if (mentions.length === 0) return parseInputSegments(model.draft).segments;
 	const members = new Map(model.members.map((member) => [member.id, member]));
@@ -69,7 +69,7 @@ export function TeamComposerConnector({
 	actions,
 	onExpandedChange,
 }: {
-	readonly model: TeamChatViewModel;
+	readonly model: TeamComposerViewModel;
 	readonly actions: TeamChatActions;
 	/** 命令区展开回调：新会话页据此淡出 hero，否则 hero（含装饰件）会压住向上生长的面板。 */
 	readonly onExpandedChange?: (expanded: boolean) => void;

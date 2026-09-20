@@ -67,6 +67,11 @@ export function CommitDetailPane({ root, node, onClose }: { root: string; node: 
 	const [files, setFiles] = useState<ChangeEntry[] | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [selectedPath, setSelectedPath] = useState<string | null>(null);
+	// 提交详情里一次只看一个文件的 diff，多选没有意义：把列表的选中集固定成这一个。
+	const selectedPaths = selectedPath ? [selectedPath] : [];
+	const handleSelection = useCallback((_paths: string[], added: string | null) => {
+		if (added) setSelectedPath(added);
+	}, []);
 	const [viewMode, setViewMode] = useState<ViewMode>(() =>
 		typeof localStorage !== "undefined" && localStorage.getItem(VIEW_MODE_KEY) === "flat" ? "flat" : "tree",
 	);
@@ -137,9 +142,9 @@ export function CommitDetailPane({ root, node, onClose }: { root: string; node: 
 					{/* File list: auto height, capped, scrolls internally past the cap. */}
 					<div className="max-h-[40%] shrink-0 overflow-y-auto border-b border-border">
 						{viewMode === "tree" ? (
-							<GitFileTree entries={files} selectedPath={selectedPath} onSelect={setSelectedPath} />
+							<GitFileTree entries={files} selectedPaths={selectedPaths} onSelectionChange={handleSelection} />
 						) : (
-							<GitFlatList entries={files} selectedPath={selectedPath} onSelect={setSelectedPath} />
+							<GitFlatList entries={files} selectedPaths={selectedPaths} onSelectionChange={handleSelection} />
 						)}
 					</div>
 					{selectedEntry && <CommitFileDiff root={root} hash={node.hash} entry={selectedEntry} />}

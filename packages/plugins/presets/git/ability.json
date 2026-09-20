@@ -2,7 +2,7 @@
 	"schemaVersion": 1,
 	"type": "plugin",
 	"slug": "git",
-	"version": "0.2.9",
+	"version": "0.3.0",
 	"detail": {
 		"blocks": [
 			{
@@ -18,6 +18,16 @@
 				"type": "feature-grid",
 				"title": "项目内的 Git 工作台",
 				"items": [
+					{
+						"title": "暂存与提交",
+						"description": "分区查看暂存/未暂存/冲突，右键暂存、丢弃，面板内直接提交。",
+						"icon": "solar:check-square-linear"
+					},
+					{
+						"title": "AI 写提交信息",
+						"description": "一键按项目规范生成提交信息，不新建会话，生成后仍可手改。",
+						"icon": "solar:magic-stick-3-linear"
+					},
 					{
 						"title": "变更状态树",
 						"description": "按目录查看已修改、新增、删除、重命名和未跟踪文件。",
@@ -57,6 +67,16 @@
 						"type": "feature-grid",
 						"title": "A Git workspace inside your project",
 						"items": [
+							{
+								"title": "Stage and commit",
+								"description": "Staged, unstaged and conflicting files in separate lists; stage, discard and commit without leaving the panel.",
+								"icon": "solar:check-square-linear"
+							},
+							{
+								"title": "AI commit messages",
+								"description": "Draft a message from the project's own rules in one click — no new conversation, and still editable.",
+								"icon": "solar:magic-stick-3-linear"
+							},
 							{
 								"title": "Change tree",
 								"description": "Browse modified, added, deleted, renamed, and untracked files by folder.",

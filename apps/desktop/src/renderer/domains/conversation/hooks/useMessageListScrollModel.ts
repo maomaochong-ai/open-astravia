@@ -7,7 +7,7 @@ import { useAtomValue } from "jotai";
 
 interface MessageListScrollModelInput {
 	isStreaming: boolean;
-	messages: ChatConversationItem[];
+	messages: readonly ChatConversationItem[];
 	sessionId?: string | null;
 	initialTargetKey?: string | null;
 	onInitialTargetHandled?: () => void;

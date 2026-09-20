@@ -21,7 +21,7 @@ function visibleMessageText(message: ChatConversationItem): string {
 }
 
 /** Chat adapter: projects the domain message schema into the shared navigation contract. */
-export function buildMessageNavigationTurns(messages: ChatConversationItem[]): MessageFeedNavigationTurn[] {
+export function buildMessageNavigationTurns(messages: readonly ChatConversationItem[]): MessageFeedNavigationTurn[] {
 	const turns: Array<{
 		id: string;
 		turnNumber: number;

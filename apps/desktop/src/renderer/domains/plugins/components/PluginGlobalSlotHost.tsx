@@ -238,6 +238,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 				label: tab.label,
 				icon: tab.icon,
 				component: tab.component,
+				order: tab.order,
 				scope_use: tab.scope_use,
 				initiallyVisible: tab.initiallyVisible,
 				retention: tab.retention,

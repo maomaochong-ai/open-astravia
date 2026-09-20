@@ -13,7 +13,7 @@ export function MessageTimeline({
 	onNavigate,
 }: {
 	activeMessageIndex: number;
-	messages: ChatConversationItem[];
+	messages: readonly ChatConversationItem[];
 	onNavigate: (messageIndex: number) => void;
 }): JSX.Element | null {
 	const { t } = useTranslation("chat");

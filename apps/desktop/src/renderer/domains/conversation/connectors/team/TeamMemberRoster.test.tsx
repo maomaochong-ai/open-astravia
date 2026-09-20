@@ -58,6 +58,12 @@ describe("TeamMemberRoster", () => {
 	it("restores member labels after the roster narrows and widens again", () => {
 		let rosterWidth = 202;
 		let notifyResize: () => void = () => undefined;
+		const frames: FrameRequestCallback[] = [];
+		vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+			frames.push(callback);
+			return frames.length;
+		});
+		vi.stubGlobal("cancelAnimationFrame", vi.fn());
 		vi.stubGlobal(
 			"ResizeObserver",
 			class {
@@ -100,12 +106,16 @@ describe("TeamMemberRoster", () => {
 			const buildLabel = build.querySelector('[data-member-session-label="true"]') as HTMLElement;
 			expect(research.style.width).toBe("");
 			expect(build.style.width).toBe("");
+			expect(researchLabel.style.width).toBe("");
+			act(() => frames.shift()?.(0));
 			expect(researchLabel.style.width).toBe("70px");
 			expect(buildLabel.style.width).toBe("50px");
 			expect(researchLabel.className).toContain("ml-1.5");
 
 			rosterWidth = 160;
 			act(() => notifyResize());
+			expect(researchLabel.style.width).toBe("70px");
+			act(() => frames.shift()?.(16));
 			expect(researchLabel.style.width).toBe("42px");
 			expect(buildLabel.style.width).toBe("42px");
 			expect(Number.parseFloat(researchLabel.style.width) + Number.parseFloat(buildLabel.style.width) + 76).toBe(
@@ -115,6 +125,7 @@ describe("TeamMemberRoster", () => {
 
 			rosterWidth = 202;
 			act(() => notifyResize());
+			act(() => frames.shift()?.(32));
 			expect(researchLabel.style.width).toBe("70px");
 			expect(buildLabel.style.width).toBe("50px");
 		} finally {

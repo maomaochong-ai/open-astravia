@@ -12,7 +12,7 @@ export interface DefaultChatViewProps {
 	readonly children: ReactNode;
 	/** 消息流上方的常驻条（Team 的成员胶囊条就住在这里）。 */
 	readonly subHeader?: ReactNode;
-	readonly messages: ChatConversationItem[];
+	readonly messages: readonly ChatConversationItem[];
 	readonly workspace: ActivityWorkspace;
 	readonly rootClassName?: string;
 	readonly exportState?: {

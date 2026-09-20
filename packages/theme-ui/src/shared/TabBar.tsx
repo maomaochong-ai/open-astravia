@@ -3,7 +3,6 @@ import {
 	useCallback,
 	useEffect,
 	useId,
-	useLayoutEffect,
 	useRef,
 	useState,
 	type JSX,
@@ -129,14 +128,13 @@ function ActiveTabIndicator({
 	const indicatorRef = useRef<HTMLSpanElement>(null);
 	const [tabWidth, setTabWidth] = useState(0);
 
-	useLayoutEffect(() => {
+	useEffect(() => {
 		const indicator = indicatorRef.current;
 		if (!indicator) return;
-		const updateWidth = (): void => {
-			const nextWidth = indicator.offsetWidth;
+		const updateWidth: ResizeObserverCallback = (entries): void => {
+			const nextWidth = entries[0]?.contentRect.width ?? 0;
 			setTabWidth((currentWidth) => (currentWidth === nextWidth ? currentWidth : nextWidth));
 		};
-		updateWidth();
 		const observer = new ResizeObserver(updateWidth);
 		observer.observe(indicator);
 		return () => observer.disconnect();
@@ -556,13 +554,17 @@ export function TabBar<T extends string>({
 
 	useEffect(() => {
 		if (!responsive) return;
-		recompute();
 		const row = rowRef.current;
 		if (!row) return;
-		const ro = new ResizeObserver(() => {
+		recompute();
+		const scheduleRecompute = () => {
 			if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
-			rafRef.current = requestAnimationFrame(recompute);
-		});
+			rafRef.current = requestAnimationFrame(() => {
+				rafRef.current = undefined;
+				recompute();
+			});
+		};
+		const ro = new ResizeObserver(scheduleRecompute);
 		ro.observe(row);
 		return () => {
 			ro.disconnect();

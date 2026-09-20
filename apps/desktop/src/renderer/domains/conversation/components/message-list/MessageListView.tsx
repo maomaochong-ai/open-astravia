@@ -57,9 +57,10 @@ export function MessageListView({
 		onTeamMemberOpen,
 	} = model;
 	const scrollerElement = scroll.scrollerElement;
-	// 有历史消息时不能先用空列表的零缓冲配置再异步扩大；会话恢复期间这会让 Virtuoso
-	// 重新挂载整批历史行并修正总高度。只有真正的空会话才使用轻量首屏配置。
-	const useInitialViewport = viewportPhase === "initial" && messages.length === 0;
+	// 未缓存的历史消息必须直接使用完整缓冲，避免 Virtuoso 首次测量时反复修正总高度。
+	// 已缓存会话带有精确的测量快照，可以先恢复可见行，再于稳定后的空闲期扩大缓冲。
+	const useInitialViewport =
+		viewportPhase === "initial" && (messages.length === 0 || scroll.restoreStateFrom !== undefined);
 	const activeItem = useMessageFeedActiveItem<ChatConversationItem>({
 		scrollerElement,
 		resetKey: sessionId,
