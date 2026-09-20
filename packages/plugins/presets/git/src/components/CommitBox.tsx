@@ -193,35 +193,36 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 					// resize-y：高度交给用户拖，不再由脚本每次输入都重算（那会把手动拖动的高度顶掉）。
 					className="block max-h-64 min-h-[60px] w-full resize-y bg-transparent px-1.5 py-1 text-[12.5px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/50"
 				/>
-				<div className="mt-1 flex items-center gap-1">
+				{/* 树列可以被拖到 180px：按钮排不下时换行留在卡片内，而不是溢出到卡片外面。 */}
+				<div className="mt-1 flex flex-wrap items-center gap-1">
 					{/* AI 生成是这块面板的主打能力，给它文字标签而不是一枚要猜的小图标。 */}
 					<Button
 						type="button"
 						variant="ghost"
 						size="xs"
-						className="gap-1 px-1.5 text-sky-500 hover:bg-sky-500/10 hover:text-sky-400"
+						className="min-w-0 shrink gap-1 px-1.5 text-sky-500 hover:bg-sky-500/10 hover:text-sky-400"
 						disabled={pending !== null || (!generating && !hasAnyChange)}
 						title={generating ? t("ai.stop") : t("ai.generateHint")}
 						onClick={() => (generating ? abortRef.current?.abort() : requestGenerate())}
 					>
 						{generating ? <StopIcon className="h-3.5 w-3.5" /> : <SparkleIcon className="h-3.5 w-3.5" />}
-						<span className="text-[11.5px] font-medium">{generating ? t("ai.stop") : t("ai.generate")}</span>
+						<span className="truncate text-[11.5px] font-medium">{generating ? t("ai.stop") : t("ai.generate")}</span>
 					</Button>
 
-					<div className="ml-auto flex items-center gap-px">
+					<div className="ml-auto flex min-w-0 items-center gap-px">
 						<Button
 							type="button"
 							size="xs"
-							className="rounded-r-sm px-2.5"
+							className="min-w-0 rounded-r-sm px-2.5"
 							disabled={!canCommit}
 							title={disabledReason ?? undefined}
 							onClick={commit}
 						>
-							{label}
+							<span className="truncate">{label}</span>
 						</Button>
 						<DropdownMenu>
 							<DropdownMenuTrigger asChild>
-								<Button type="button" size="xs" className="rounded-l-sm px-1" disabled={pending !== null} title={t("commit.more")}>
+								<Button type="button" size="xs" className="shrink-0 rounded-l-sm px-1" disabled={pending !== null} title={t("commit.more")}>
 									<ChevronIcon className="h-3.5 w-3.5" />
 								</Button>
 							</DropdownMenuTrigger>
