@@ -4,6 +4,8 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ## [Unreleased]
 
+- Activity Tab、新会话上下文、输入动作、消息卡片 renderer 与文件浏览器操作在未声明 `icon` 时统一继承 `plugin.json#icon`；各贡献仍可用自己的 `icon` 覆盖，显式 `null` 保持无图标。`CardDescriptor.icon` 现在也会按既有合同覆盖 renderer 默认图标。纯运行期默认行为调整，不涉及清单字段，`pluginApiVersion` 不变。
+
 - Official plugin installation options accept the reserved `initiator` diagnostic marker used by `plugin-cli` and Plugin Workbench. Desktop records it in local ability lifecycle logs; third-party plugins should leave it unset.
 
 - `PluginModelDefinition` exposes `reasoningLevels` and `defaultReasoningLevel`, so model providers can publish their native reasoning choices without losing them at the host's write boundary. Requires the corresponding Desktop capability schema fix.

@@ -6,18 +6,20 @@ import { useProgressiveMessageViewport } from "./useProgressiveMessageViewport";
 
 const frames: FrameRequestCallback[] = [];
 const idleCallbacks = new Map<number, IdleRequestCallback>();
+let nextIdleCallbackId = 1;
 
 beforeEach(() => {
 	vi.useFakeTimers();
 	frames.length = 0;
 	idleCallbacks.clear();
+	nextIdleCallbackId = 1;
 	vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
 		frames.push(callback);
 		return frames.length;
 	});
 	vi.stubGlobal("cancelAnimationFrame", vi.fn());
 	vi.stubGlobal("requestIdleCallback", (callback: IdleRequestCallback) => {
-		const id = idleCallbacks.size + 1;
+		const id = nextIdleCallbackId++;
 		idleCallbacks.set(id, callback);
 		return id;
 	});
@@ -30,26 +32,8 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
-it("仅在有可恢复视口状态时收窄预渲染，并在首屏稳定后的空闲期扩大", () => {
-	const { result, rerender } = renderHook(
-		({ sessionId, hasMessages, hasRestorableState }) =>
-			useProgressiveMessageViewport(sessionId, hasMessages, hasRestorableState),
-		{
-			initialProps: { sessionId: "session-a", hasMessages: true, hasRestorableState: false },
-		},
-	);
-	expect(result.current).toBe("expanded");
-
-	rerender({ sessionId: "session-b", hasMessages: false, hasRestorableState: false });
-	expect(result.current).toBe("initial");
-	act(() => vi.runAllTimers());
-	expect(result.current).toBe("initial");
-
-	rerender({ sessionId: "session-b", hasMessages: true, hasRestorableState: false });
-	expect(result.current).toBe("expanded");
-	expect(frames).toHaveLength(0);
-
-	rerender({ sessionId: "session-c", hasMessages: true, hasRestorableState: true });
+it("冷、热会话都先收窄预渲染，并在首屏稳定后的空闲期扩大", () => {
+	const { result } = renderHook(() => useProgressiveMessageViewport("session-a", true));
 	expect(result.current).toBe("initial");
 
 	act(() => frames.shift()?.(0));
@@ -66,15 +50,14 @@ it("仅在有可恢复视口状态时收窄预渲染，并在首屏稳定后的�
 
 it("空壳异步接入缓存历史后仍等待首屏稳定再扩大视口", () => {
 	const { result, rerender } = renderHook(
-		({ hasMessages, hasRestorableState }) =>
-			useProgressiveMessageViewport("session-a", hasMessages, hasRestorableState),
+		({ hasMessages }) => useProgressiveMessageViewport("session-a", hasMessages),
 		{
-			initialProps: { hasMessages: false, hasRestorableState: false },
+			initialProps: { hasMessages: false },
 		},
 	);
 	expect(result.current).toBe("initial");
 
-	rerender({ hasMessages: true, hasRestorableState: true });
+	rerender({ hasMessages: true });
 	expect(result.current).toBe("initial");
 
 	act(() => frames.shift()?.(0));
@@ -91,16 +74,15 @@ it("空壳异步接入缓存历史后仍等待首屏稳定再扩大视口", () =
 
 it("快速连续切换会取消旧会话的扩大任务", () => {
 	const { result, rerender } = renderHook(
-		({ sessionId, hasMessages, hasRestorableState }) =>
-			useProgressiveMessageViewport(sessionId, hasMessages, hasRestorableState),
+		({ sessionId, hasMessages }) => useProgressiveMessageViewport(sessionId, hasMessages),
 		{
-			initialProps: { sessionId: "session-a", hasMessages: true, hasRestorableState: false },
+			initialProps: { sessionId: "session-a", hasMessages: true },
 		},
 	);
 
-	rerender({ sessionId: "session-b", hasMessages: true, hasRestorableState: true });
+	rerender({ sessionId: "session-b", hasMessages: true });
 	act(() => frames.shift()?.(0));
-	rerender({ sessionId: "session-a", hasMessages: true, hasRestorableState: true });
+	rerender({ sessionId: "session-a", hasMessages: true });
 	expect(result.current).toBe("initial");
 
 	act(() => vi.runAllTimers());
@@ -108,12 +90,4 @@ it("快速连续切换会取消旧会话的扩大任务", () => {
 		act(() => callback({ didTimeout: false, timeRemaining: () => 8 }));
 	}
 	expect(result.current).toBe("initial");
-
-	frames.shift(); // 已取消的 session-b 第二帧
-	act(() => frames.shift()?.(16));
-	act(() => frames.shift()?.(32));
-	act(() => vi.advanceTimersByTime(400));
-	const latestIdleCallback = [...idleCallbacks.values()].at(-1);
-	act(() => latestIdleCallback?.({ didTimeout: false, timeRemaining: () => 8 }));
-	expect(result.current).toBe("expanded");
 });

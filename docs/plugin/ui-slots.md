@@ -358,7 +358,7 @@ pdfjs.getDocument({ url: file.getUrl() });
 interface PluginActivityTabContribution {
   id: string;
   label: string;              // 可用 %catalogKey%（见 i18n）
-  icon?: ReactNode;
+  icon?: ReactNode;              // 省略时用插件自己的图标
   component: ComponentType;   // 零 props
   scope_use?: readonly ConversationScenario[]; // fail-closed
   initiallyVisible?: boolean;  // 缺省 true：注册即上栏；false = 出现条件由插件自己驱动
@@ -448,7 +448,7 @@ ctx.ui.registerInputAction({
 interface PluginInputActionContribution {
   id: string;
   label: string;
-  icon?: ReactNode;
+  icon?: ReactNode;              // 省略时用插件自己的图标
   defaultActive?: boolean;
   requiresActiveTool?: string;   // 仅当该 agent 工具在本会话激活时显示
   scope_use?: readonly ConversationScenario[];
