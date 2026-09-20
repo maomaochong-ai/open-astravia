@@ -1,5 +1,6 @@
 import type { InstalledPlugin } from "@preload/api";
 import { readSidebarState, subscribeSidebarState } from "@shared/app-shell/sidebar-state";
+import { resolvePluginContributionIcon } from "@shared/lib/plugin-icon";
 import type { ActivityTabKey } from "@shared/lib/project-profile";
 import {
 	activeInputActionIdsAtom,
@@ -44,7 +45,7 @@ import type {
 } from "@vetta-org/plugin-sdk";
 import { getDefaultStore } from "jotai";
 import QRCode from "qrcode";
-import { type ComponentType, createElement, type ReactNode } from "react";
+import type { ComponentType } from "react";
 import { explicitTabVisibility, withPluginTabVisibility } from "./attached-tabs";
 import type { PluginAgentApiRegistration } from "./plugin-agent-context";
 import { copyTextToClipboard, formatPluginErrorDetail, resolvePluginDisplayText } from "./plugin-host-apis";
@@ -54,7 +55,7 @@ import type {
 	ResolvedPluginNewSessionContextContribution,
 	ResolvedPluginWorkspaceViewContribution,
 } from "./plugin-local-contributions";
-import { classifyPluginNavIcon, resolveNavIcon } from "./plugin-nav-icon";
+import { resolveNavIcon } from "./plugin-nav-icon";
 import {
 	createPluginPermissionApi,
 	hasPluginPermission,
@@ -183,24 +184,6 @@ function openPluginActivityTab(pluginId: string, tabId: string, options?: Plugin
 			widthRequested: options?.width != null,
 		})}`,
 	);
-}
-
-/**
- * Map host-resolved `InstalledPlugin.iconUrl` into an activity-tab icon. Unlike the
- * sidebar (class strings only), a tab icon is a ReactNode, so a packaged image renders
- * as a plain `<img>` and keeps its own colors.
- * Protocol stays host-private; plugins only see the opaque `iconUrl` string.
- */
-function resolvePluginBrandIcon(iconUrl: string): ReactNode {
-	const icon = classifyPluginNavIcon(iconUrl);
-	if (!icon) return undefined;
-	if (icon.kind === "class") return icon.value;
-	return createElement("img", {
-		src: icon.url,
-		alt: "",
-		className: "h-3.5 w-3.5 object-contain",
-		draggable: false,
-	});
 }
 
 /**
@@ -355,12 +338,10 @@ export function createPluginUiApi({
 		) {
 			throw new Error("Activity tab retention is invalid");
 		}
-		const brandIcon =
-			contribution.icon === undefined && plugin.iconUrl ? resolvePluginBrandIcon(plugin.iconUrl) : undefined;
 		const normalized: PluginActivityTabContribution = {
 			id: contribution.id,
 			label: contribution.label,
-			icon: contribution.icon ?? brandIcon,
+			icon: resolvePluginContributionIcon(contribution.icon, plugin.iconUrl, "h-4 w-4"),
 			component: contribution.component,
 			scope_use: contribution.scope_use,
 			initiallyVisible: contribution.initiallyVisible,
@@ -415,7 +396,7 @@ export function createPluginUiApi({
 		const normalized: ResolvedPluginNewSessionContextContribution = {
 			id: `${plugin.id}:${contribution.id}`,
 			label: contribution.label,
-			icon: contribution.icon,
+			icon: resolvePluginContributionIcon(contribution.icon, plugin.iconUrl),
 			activateWhen,
 			width: contribution.width === "wide" ? "wide" : "input",
 			render: contribution.render,
@@ -455,7 +436,7 @@ export function createPluginUiApi({
 		const normalized: PluginInputActionContribution = {
 			id: namespacedId,
 			label: contribution.label,
-			icon: contribution.icon,
+			icon: resolvePluginContributionIcon(contribution.icon, plugin.iconUrl),
 			defaultActive: contribution.defaultActive,
 			requiresActiveTool: contribution.requiresActiveTool,
 			scope_use: contribution.scope_use,
@@ -497,7 +478,7 @@ export function createPluginUiApi({
 			type: contribution.type,
 			component: contribution.component,
 			title: contribution.title,
-			icon: contribution.icon,
+			icon: resolvePluginContributionIcon(contribution.icon, plugin.iconUrl),
 			pendingFor: contribution.pendingFor,
 		};
 		cardRenderers.push(normalized);

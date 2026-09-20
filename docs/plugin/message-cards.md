@@ -60,7 +60,7 @@ interface PluginCardRendererContribution {
   type: string;                          // 与描述符 type 完全一致
   component: ComponentType<PluginCardProps>;
   title?: string;                        // 默认 tab 标签
-  icon?: ReactNode;                      // 默认 tab 图标（React 节点）
+  icon?: ReactNode;                      // 默认 tab 图标；省略时用插件自己的图标
   pendingFor?: (toolCall: PluginPendingToolCall) => CardDescriptor | null;
 }
 ```
@@ -78,6 +78,10 @@ ctx.ui.registerCardRenderer({
   pendingFor: pendingPreviewCard,     // 见下
 });
 ```
+
+`plugin.json#icon` 是 renderer 的缺省 tab 图标；注册时传入 `icon` 可为这一类卡片设置专用图标，
+单个 `CardDescriptor.icon` 又可覆盖 renderer 默认值。描述符跨 agent → 宿主边界传递，因此该字段使用
+Iconify 名或 `icon-[…]` 字符串，而不是 React 节点。
 
 ## 生成中骨架 pendingFor
 

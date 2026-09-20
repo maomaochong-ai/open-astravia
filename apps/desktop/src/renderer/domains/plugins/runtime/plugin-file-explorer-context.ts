@@ -1,4 +1,5 @@
 import type { InstalledPlugin } from "@preload/api";
+import { resolvePluginContributionIcon } from "@shared/lib/plugin-icon";
 import type {
 	Disposable,
 	PluginContext,
@@ -49,6 +50,7 @@ export function createPluginFileExplorerApi({
 			...contribution,
 			id: `${plugin.id}:${contribution.id.trim()}`,
 			label: contribution.label.trim(),
+			icon: resolvePluginContributionIcon(contribution.icon, plugin.iconUrl),
 		};
 		fileExplorerContextMenuActions.push(normalized);
 		onChanged();
@@ -75,6 +77,7 @@ export function createPluginFileExplorerApi({
 			...contribution,
 			id: `${plugin.id}:${contribution.id.trim()}`,
 			label: contribution.label.trim(),
+			icon: resolvePluginContributionIcon(contribution.icon, plugin.iconUrl),
 		};
 		fileExplorerToolbarActions.push(normalized);
 		onChanged();

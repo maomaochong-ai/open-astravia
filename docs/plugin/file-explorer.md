@@ -35,6 +35,8 @@ ctx.fileExplorer.registerContextMenuAction({
 });
 ```
 
+省略菜单项的 `icon` 时，宿主使用 `plugin.json#icon`；传入 React 节点可只覆盖这一项。
+
 `when` 支持：
 
 - `resourceType`: `file` 或 `directory`
@@ -56,9 +58,14 @@ ctx.fileExplorer.registerToolbarAction({
 });
 ```
 
+省略工具栏动作的 `icon` 时同样继承插件图标；传入 React 节点可只覆盖这一项。
+
 工具栏动作只在文件列表存在活动工作区时显示。`selection` 是当前文件列表选中项的只读快照。
 
 ## 文件装饰
+
+文件装饰不是插件入口：它的 `icon` 会替换某个具体文件或目录的内置图标，因此不会从
+`plugin.json#icon` 自动继承；只有 provider 明确返回 `icon` 时才替换。
 
 ```tsx
 ctx.fileExplorer.registerDecorationProvider({

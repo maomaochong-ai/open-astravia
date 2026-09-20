@@ -32,6 +32,7 @@ export interface PluginFileExplorerActionContext {
 export interface PluginFileExplorerContextMenuContribution {
 	id: string;
 	label: string;
+	/** Action icon. Omit to inherit the plugin's `plugin.json#icon`. */
 	icon?: ReactNode;
 	when?: PluginFileExplorerWhen;
 	/** Lower values render first. Defaults to 100. */
@@ -47,6 +48,7 @@ export interface PluginFileExplorerToolbarContext {
 export interface PluginFileExplorerToolbarContribution {
 	id: string;
 	label: string;
+	/** Action icon. Omit to inherit the plugin's `plugin.json#icon`. */
 	icon?: ReactNode;
 	/** Lower values render first. Defaults to 100. */
 	order?: number;

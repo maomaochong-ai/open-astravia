@@ -1,4 +1,5 @@
 import type { ContentBlock, ConversationAgentMessageViewModel } from "@shared/conversation";
+import { resolvePluginIconNode } from "@shared/lib/plugin-icon";
 import { pluginCardRenderersAtom, type RegisteredCardRenderer } from "@shared/store/atoms";
 import type { ChatConversationItem } from "@shared/store/chat-atoms";
 import type { CardDescriptor, PluginCardProps } from "@vetta-org/plugin-sdk";
@@ -207,7 +208,7 @@ export function useMessageCardsHostModel(
 				pending: c.pending,
 				Component: renderer.component as ComponentType<PluginCardProps>,
 				title: rawTitle ? trPlugin(renderer.pluginId, rawTitle) : renderer.pluginId,
-				icon: renderer.icon as ReactNode,
+				icon: resolvePluginIconNode(c.descriptor.icon) ?? (renderer.icon as ReactNode),
 			});
 		});
 		return resolved;
