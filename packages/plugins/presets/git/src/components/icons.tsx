@@ -183,3 +183,23 @@ export function StopIcon({ className }: IconProps): JSX.Element {
 		</svg>
 	);
 }
+
+/** Side-by-side diff layout. */
+export function SplitViewIcon({ className }: IconProps): JSX.Element {
+	return (
+		<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+			<rect x="3" y="4" width="18" height="16" rx="2" />
+			<path d="M12 4v16" />
+		</svg>
+	);
+}
+
+/** Single-column (unified) diff layout. */
+export function UnifiedViewIcon({ className }: IconProps): JSX.Element {
+	return (
+		<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+			<rect x="3" y="4" width="18" height="16" rx="2" />
+			<path d="M3 12h18" />
+		</svg>
+	);
+}

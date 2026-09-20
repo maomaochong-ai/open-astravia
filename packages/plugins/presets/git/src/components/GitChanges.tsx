@@ -23,8 +23,6 @@ const VIEW_MODE_KEY = "vetta-git-view-mode";
 // 容器宽于此值时显示右侧 diff 区；窄于此值只显示文件树（拖窄自动收起 diff）。
 // 阈值要留得住「树 + 一屏能读的 diff」，否则一拉宽就挤出一条读不了的窄 diff。
 const DIFF_MIN_WIDTH = 560;
-// 关闭 diff 时把面板收窄到此宽度（低于阈值即收起 diff，回到只剩树）。
-const COLLAPSE_WIDTH = 380;
 const TREE_DEFAULT_WIDTH = 300;
 const TREE_MIN_WIDTH = 180;
 // diff 展开时给右侧 diff 保留的最小宽度，限制树列最大宽度。
@@ -137,9 +135,6 @@ export function GitChanges({ root, groups }: { root: string; groups: StatusGroup
 		[wide],
 	);
 
-	// 关闭 diff：把面板收窄到阈值以下，回到只剩树（保留选中，再拉宽即恢复同一文件）。
-	const handleClose = useCallback(() => resizePanel(COLLAPSE_WIDTH), []);
-
 	const onSplitDrag = useCallback(
 		(deltaX: number) => {
 			setTreeWidth((w) => {
@@ -248,7 +243,6 @@ export function GitChanges({ root, groups }: { root: string; groups: StatusGroup
 								root={root}
 								entry={activeEntry}
 								section={active.section}
-								onClose={handleClose}
 								onToggleTree={() => setTreeCollapsed((c) => !c)}
 								treeCollapsed={treeCollapsed}
 							/>

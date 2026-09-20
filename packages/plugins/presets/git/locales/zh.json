@@ -103,6 +103,8 @@
 	"turnCard.mixedDescription": "现在提交会把它们一起带上。取消暂存不会丢失任何改动，文件内容保持原样。",
 	"turnCard.mixedOnlyTurn": "仅提交本轮文件",
 	"turnCard.mixedIncludeAll": "连同已暂存的文件一起提交",
+	"diff.switchToSplit": "切换到分栏对比",
+	"diff.switchToUnified": "切换到单栏对比",
 	"state.loading": "加载中…",
 	"state.noCwd": "没有可用的项目目录。",
 	"state.clean": "没有变更，工作区是干净的。",

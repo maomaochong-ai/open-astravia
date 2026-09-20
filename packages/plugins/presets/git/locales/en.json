@@ -103,6 +103,8 @@
 	"turnCard.mixedDescription": "Committing now would include them. Unstaging does not lose any change — the files stay exactly as they are.",
 	"turnCard.mixedOnlyTurn": "Only this turn's files",
 	"turnCard.mixedIncludeAll": "Include the already-staged files",
+	"diff.switchToSplit": "Side-by-side view",
+	"diff.switchToUnified": "Unified view",
 	"state.loading": "Loading…",
 	"state.noCwd": "No project directory available.",
 	"state.clean": "No changes. The working tree is clean.",
