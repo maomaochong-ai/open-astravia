@@ -41,6 +41,10 @@ export {
 	type NodeForegroundCommandHostOptions,
 	type NodeShellCommand,
 } from "./host/index.js";
+export {
+	createNodeSpecializedToolRegistrations,
+	type NodeSpecializedToolRegistrationOptions,
+} from "./host/specialized-tool-registrations.js";
 export { nodeModelInputImageProcessor } from "./model-input-image-processor.js";
 export {
 	createNodeCodingToolEnvironment,
