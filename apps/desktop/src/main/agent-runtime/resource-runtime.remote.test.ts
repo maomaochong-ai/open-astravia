@@ -1,28 +1,10 @@
-import { chmodSync, mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createNodeSshProcessRunner, SshConnection } from "@vetta/ssh-transport";
 import { describe, expect, it, vi } from "vitest";
+import { createLoopbackSshConnection } from "../ssh/test-support/loopback-ssh.js";
 
-/**
- * 顶替 `ssh` 的脚本只认最后一个参数，并把它交给本机 /bin/sh——这正是 sshd 对远端命令
- * 做的事。于是「远端」就是本机的一个临时目录，命令构造与解析都跑在真实 shell 上。
- */
-function createLoopbackConnection(): SshConnection {
-	const directory = mkdtempSync(join(tmpdir(), "vetta-loopback-ssh-"));
-	const fakeSsh = join(directory, "ssh");
-	writeFileSync(fakeSsh, '#!/bin/sh\nfor last; do :; done\nexec /bin/sh -c "$last"\n');
-	chmodSync(fakeSsh, 0o755);
-	return new SshConnection(
-		{ id: "build-01", label: "build-01", target: "build-01", source: "manual" },
-		{
-			runner: createNodeSshProcessRunner({ sshBinary: fakeSsh, baseEnv: { ...process.env, SHELL: "/bin/sh" } }),
-			controlPath: join(directory, "cp"),
-		},
-	);
-}
-
-const connection = createLoopbackConnection();
+const connection = createLoopbackSshConnection();
 vi.mock("../ssh/ssh-runtime.js", () => ({ getSshConnection: () => connection }));
 
 const { createDesktopPromptRuntimeSources } = await import("./resource-runtime.js");
