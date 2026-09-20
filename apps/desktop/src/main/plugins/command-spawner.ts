@@ -1,5 +1,6 @@
 import { type ChildProcess, execFile } from "node:child_process";
 import { createServer } from "node:net";
+import { isSshProjectUri, RemoteProjectNotSupportedError } from "@vetta/ssh-transport";
 import { webContents } from "electron";
 import type { InstalledPlugin, PluginCommandSpawnStatus } from "../../preload/api-types/plugins.js";
 import { PLUGIN_EXECUTION_CHANNELS } from "../../shared/plugin-ipc.js";
@@ -180,6 +181,12 @@ export async function spawnPluginCommand(
 	let normalizedArgs = sanitizeArgs(args);
 	let env = sanitizeEnv(options?.env);
 	const cwd = typeof options?.cwd === "string" && options.cwd.trim().length > 0 ? options.cwd : undefined;
+	// 长驻进程（dev server、预览引擎）靠本机端口与渲染进程通信，项目在远端时它读不到项目
+	// 文件，搬到远端执行则本机连不上它的端口。明确拒绝，而不是让 spawn 以一句看似「本机
+	// 没装 node」的 ENOENT 失败。
+	if (cwd !== undefined && isSshProjectUri(cwd)) {
+		throw new RemoteProjectNotSupportedError(`plugin command "${file}"`, cwd);
+	}
 
 	let port: number | undefined;
 	if (options?.allocatePort === true) {
