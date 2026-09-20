@@ -68,13 +68,6 @@ function InstalledMoreMenu({
 
 	// 只读能力没有可执行的操作，右侧留空即可，不用「锁」占位。
 	if (item.readonly) return null;
-	if (item.busy) {
-		return (
-			<div className="px-2 py-1 text-[11px] text-muted-foreground">
-				<AbilityOperationStatus operation={item.operation} progress={item.operationProgress} />
-			</div>
-		);
-	}
 
 	return (
 		<DropdownMenu>
@@ -151,31 +144,38 @@ export function AbilityCard({ item, model }: { item: AbilityItem; model: Abiliti
 					<h3 className="truncate text-[13px] font-semibold text-foreground">{title}</h3>
 					<AbilityStatusBadges item={item} />
 				</div>
-				<p className="mt-0.5 truncate text-[11px] leading-relaxed text-muted-foreground/70">
-					{description || t("card.noDescription")}
-				</p>
-			</div>
-			<div className="shrink-0" onClick={(event) => event.stopPropagation()}>
-				{item.installed ? (
-					<InstalledMoreMenu item={item} model={model} onOpenDetail={openDetail} />
+				{item.busy ? (
+					<div className="mt-0.5 min-w-0 overflow-hidden text-[11px] leading-relaxed text-muted-foreground">
+						<AbilityOperationStatus
+							operation={item.operation}
+							progress={item.operationProgress}
+							className="max-w-full"
+						/>
+					</div>
 				) : (
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						disabled={item.busy}
-						aria-label={t("actions.add")}
-						title={t("actions.add")}
-						className="rounded-lg border border-transparent bg-transparent text-muted-foreground/60 transition-colors hover:border-border hover:bg-muted hover:text-foreground"
-						onClick={() => (item.type === "bundle" ? openDetail() : model.install(item))}
-					>
-						{item.busy ? (
-							<AbilityOperationStatus operation={item.operation} progress={item.operationProgress} />
-						) : (
-							<span className="icon-[solar--add-linear] h-4 w-4" />
-						)}
-					</Button>
+					<p className="mt-0.5 truncate text-[11px] leading-relaxed text-muted-foreground/70">
+						{description || t("card.noDescription")}
+					</p>
 				)}
 			</div>
+			{!item.busy && (
+				<div className="shrink-0" onClick={(event) => event.stopPropagation()}>
+					{item.installed ? (
+						<InstalledMoreMenu item={item} model={model} onOpenDetail={openDetail} />
+					) : (
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label={t("actions.add")}
+							title={t("actions.add")}
+							className="rounded-lg border border-transparent bg-transparent text-muted-foreground/60 transition-colors hover:border-border hover:bg-muted hover:text-foreground"
+							onClick={() => (item.type === "bundle" ? openDetail() : model.install(item))}
+						>
+							<span className="icon-[solar--add-linear] h-4 w-4" />
+						</Button>
+					)}
+				</div>
+			)}
 		</div>
 	);
 }

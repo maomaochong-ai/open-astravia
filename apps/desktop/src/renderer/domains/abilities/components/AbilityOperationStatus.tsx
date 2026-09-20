@@ -42,14 +42,17 @@ export function AbilityOperationStatus({
 					: `${formatBytes(progress.downloadedBytes)}${progress.totalBytes ? ` / ${formatBytes(progress.totalBytes)}` : ""}`,
 			].filter(Boolean).join(" · ")
 		: "";
+	const statusLabel = progressLabel ?? (operation ? t(`operation.${operation}`) : t("operation.processing"));
 	return (
-		<span role="status" aria-live="polite" className={cn("inline-flex items-center gap-1.5", className)}>
+		<span role="status" aria-live="polite" className={cn("inline-flex min-w-0 items-center gap-1.5", className)}>
 			<span
 				aria-hidden="true"
-				className={cn("icon-[solar--refresh-linear] h-3.5 w-3.5 animate-spin", iconClassName)}
+				className={cn("icon-[solar--refresh-linear] h-3.5 w-3.5 shrink-0 animate-spin", iconClassName)}
 			/>
-			{progressLabel ?? (operation ? t(`operation.${operation}`) : t("operation.processing"))}
-			{progressDetail ? ` · ${progressDetail}` : ""}
+			<span className="min-w-0 truncate">
+				{statusLabel}
+				{progressDetail ? ` · ${progressDetail}` : ""}
+			</span>
 		</span>
 	);
 }
