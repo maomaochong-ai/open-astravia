@@ -17,6 +17,10 @@ export function renderRemoteWorkspaceFacts(remotePath: string): string {
 		"- The built-in file and command tools operate on the remote machine. Use them for anything inside this project.",
 		"- MCP servers, plugins and any other tooling run on the local computer and CANNOT see this project. " +
 			"A local path that looks identical belongs to a different machine and a different repository.",
+		"- Skill directories (`SKILL_DIR`), pasted images and other files this app hands you live on the LOCAL computer. " +
+			"The read tool can open them, but commands run on the remote machine and cannot see them. " +
+			"To run a script that ships with a skill, read it and write a copy into a temporary directory on the remote machine first, " +
+			"then run that copy. Skills that belong to this project are already on the remote machine and need no copying.",
 		"- Commands run as the remote login user with no sandbox. There is no separate approval layer on that side.",
 		"- The search tools run ripgrep and fd on the remote machine. If one reports that the program is not installed there, " +
 			"fall back to `grep` or `find` through the command tool.",

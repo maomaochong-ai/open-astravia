@@ -16,6 +16,13 @@ describe("远程项目的工作区说明", () => {
 		expect(facts).toMatch(/CANNOT see this project/);
 	});
 
+	it("说明技能脚本在本机、命令在远端，以及怎么让脚本跑起来", () => {
+		// 技能正文让模型执行 `bash "$SKILL_DIR/scripts/run.sh"`，而 SKILL_DIR 是本机路径：
+		// 不讲清楚的话，模型只会对着远端一个不存在的路径反复重试。
+		expect(facts).toContain("SKILL_DIR");
+		expect(facts).toMatch(/read it and write a copy/);
+	});
+
 	it("说明远端命令没有沙箱", () => {
 		expect(facts).toContain("no sandbox");
 	});
