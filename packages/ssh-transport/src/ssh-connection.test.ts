@@ -142,19 +142,59 @@ describe("失败分类（ADR-0124 执行边界）", () => {
 		expect((error as SshOperationAbortedError).reason).toBe("timeout");
 	});
 
-	it("命令被掐断后去远端把进程组杀掉：没有 pty，关通道不会让远端进程结束", async () => {
-		const { connection, calls } = connect((remoteCommand) => {
-			if (remoteCommand.includes("uname")) return ok("Linux\nx86_64\n");
-			if (remoteCommand.includes("npm run dev")) {
-				return { exitCode: null, stdout: new Uint8Array(), stderr: "", aborted: true };
-			}
-			return ok("");
-		});
-		await connection.exec("npm run dev").catch(() => {});
+	it("取消的那一刻就去远端杀进程组，不等本地 ssh 自己退出", async () => {
+		// 没有 pty，关通道不会让远端进程结束；而远端进程攥着 stdout 时，本地 ssh 也未必退得出来。
+		const calls: SshProcessInvocation[] = [];
+		const controller = new AbortController();
+		const runner: SshProcessRunner = {
+			run: (invocation) => {
+				calls.push(invocation);
+				const remoteCommand = String(invocation.argv[invocation.argv.length - 1]);
+				if (remoteCommand.includes("uname")) return Promise.resolve(ok("Linux\nx86_64\n"));
+				if (!remoteCommand.includes("npm run dev")) return Promise.resolve(ok(""));
+				// 用户命令一直不结束，直到被掐断。
+				return new Promise((resolve) => {
+					invocation.signal?.addEventListener("abort", () =>
+						resolve({ exitCode: null, stdout: new Uint8Array(), stderr: "", aborted: true }),
+					);
+				});
+			},
+		};
+		const connection = new SshConnection(host, { runner, controlPath: "/tmp/cp" });
+
+		const pending = connection.exec("npm run dev", { signal: controller.signal }).catch((e: unknown) => e);
+		await vi.waitFor(() => expect(calls).toHaveLength(2));
+		controller.abort();
+
+		const error = await pending;
+		expect(error).toBeInstanceOf(SshOperationAbortedError);
+		expect((error as SshOperationAbortedError).reason).toBe("aborted");
 		const commands = calls.map((call) => String(call.argv[call.argv.length - 1]));
 		const token = commands[1].match(/vetta-exec-[0-9a-f]+/)?.[0] ?? "";
-		expect(token).not.toBe("");
 		expect(commands[2]).toBe(buildKillCommand(token));
+	});
+
+	it("超时由连接自己计时，到点同样先杀远端再报超时", async () => {
+		const calls: string[] = [];
+		const runner: SshProcessRunner = {
+			run: (invocation) => {
+				const remoteCommand = String(invocation.argv[invocation.argv.length - 1]);
+				calls.push(remoteCommand);
+				if (remoteCommand.includes("uname")) return Promise.resolve(ok("Linux\nx86_64\n"));
+				if (!remoteCommand.includes("sleep 999")) return Promise.resolve(ok(""));
+				return new Promise((resolve) => {
+					invocation.signal?.addEventListener("abort", () =>
+						resolve({ exitCode: null, stdout: new Uint8Array(), stderr: "", aborted: true }),
+					);
+				});
+			},
+		};
+		const connection = new SshConnection(host, { runner, controlPath: "/tmp/cp" });
+
+		const error = await connection.exec("sleep 999", { timeoutMs: 30 }).catch((e: unknown) => e);
+
+		expect((error as SshOperationAbortedError).reason).toBe("timeout");
+		expect(calls.some((command) => command.includes("kill -TERM"))).toBe(true);
 	});
 
 	it("本地 ssh 被外部杀掉时不报成功：远端命令的结局不可知", async () => {

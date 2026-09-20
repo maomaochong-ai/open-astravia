@@ -54,9 +54,14 @@ export function buildRemoteCommand(command: string, options: RemoteCommandOption
 		`f="\${TMPDIR:-/tmp}/${options.processToken}"`,
 		// 记进程组而不是 pid：用户命令会派生子进程（npm → node → esbuild），只杀领头的
 		// 那个会把其余的留成孤儿。sshd 为无 pty 的会话调用过 setsid()，所以这个组里只有
-		// 本条命令的进程。拿不到 pgid（精简版 ps）时退回自己的 pid。
+		// 本条命令的进程。
+		//
+		// 但「整组杀掉」只在这个组**确实属于本条命令**时才安全：组长必须是自己或自己的父进程
+		// （sshd 起的那个登录 shell）。否则——某些 sshd 替代品、或者任何没有 setsid 的环境——
+		// 这个组里还有别人的进程，整组杀掉会连带杀死同一条连接上的其它命令。那种情况下只记
+		// 自己的 pid（前缀 p），终止时退化为杀单个进程及其直接子进程。
 		`g=$(ps -o pgid= -p $$ 2>/dev/null | tr -d ' ')`,
-		`printf %s "\${g:-$$}" > "$f"`,
+		`if [ -n "$g" ] && { [ "$g" = "$$" ] || [ "$g" = "$PPID" ]; }; then printf 'g%s' "$g" > "$f"; else printf 'p%s' "$$" > "$f"; fi`,
 		`"\${SHELL:-/bin/sh}" -l -c "$1"`,
 		"s=$?",
 		`rm -f -- "$f"`,
@@ -78,14 +83,18 @@ export function buildKillCommand(processToken: string): string {
 	assertProcessToken(processToken);
 	const script = [
 		`f="\${TMPDIR:-/tmp}/${processToken}"`,
-		`g=$(cat "$f" 2>/dev/null) || exit 0`,
+		`r=$(cat "$f" 2>/dev/null) || exit 0`,
 		`rm -f -- "$f"`,
+		`k=\${r%"\${r#?}"}`,
+		`n=\${r#?}`,
 		// 只接受大于 1 的纯数字：`kill -- -1` 会杀掉该用户的所有进程。
-		`case "$g" in ''|*[!0-9]*|0|1) exit 0 ;; esac`,
-		`kill -TERM -- "-$g" 2>/dev/null || kill -TERM "$g" 2>/dev/null || exit 0`,
+		`case "$n" in ''|*[!0-9]*|0|1) exit 0 ;; esac`,
+		`if [ "$k" = g ]; then t="-$n"; else t="$n"; pkill -TERM -P "$n" 2>/dev/null; fi`,
+		`kill -TERM -- "$t" 2>/dev/null || exit 0`,
 		"i=0",
-		`while [ $i -lt 20 ] && kill -0 -- "-$g" 2>/dev/null; do sleep 0.1; i=$((i+1)); done`,
-		`kill -KILL -- "-$g" 2>/dev/null`,
+		`while [ $i -lt 20 ] && kill -0 -- "$t" 2>/dev/null; do sleep 0.1; i=$((i+1)); done`,
+		`if [ "$k" != g ]; then pkill -KILL -P "$n" 2>/dev/null; fi`,
+		`kill -KILL -- "$t" 2>/dev/null`,
 		"exit 0",
 	].join("\n");
 	return `/bin/sh -c ${quoteShellArgument(script)}`;

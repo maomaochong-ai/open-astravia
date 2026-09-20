@@ -125,12 +125,30 @@ describe("buildKillCommand（在真实 /bin/sh 上执行）", () => {
 		expect(readdirSync(tmp)).toEqual(["child.pid"]);
 	});
 
+	it("命令不在自己的会话里时只记单个进程，绝不整组终止——那个组里还有别人", async () => {
+		// 回归：没有 setsid 的环境下，记到的进程组是启动者的组；整组 TERM 会把同组的其它进程
+		// （这里就是测试运行器自己）一并杀掉。
+		const tmp = mkdtempSync(join(tmpdir(), "vetta-kill-"));
+		const env = { ...process.env, SHELL: "/bin/sh", TMPDIR: tmp };
+		const child = spawn("/bin/sh", ["-c", buildRemoteCommand("sleep 60", { processToken: "vetta-exec-k2" })], {
+			env,
+			stdio: "ignore",
+		});
+		const exited = new Promise<void>((resolve) => child.on("exit", () => resolve()));
+		await vi.waitFor(() => expect(existsSync(join(tmp, "vetta-exec-k2"))).toBe(true));
+		expect(readFileSync(join(tmp, "vetta-exec-k2"), "utf8")).toMatch(/^p\d+$/);
+
+		execFileSync("/bin/sh", ["-c", buildKillCommand("vetta-exec-k2")], { env });
+
+		await exited; // 走到这里说明被杀的只是那条命令，而不是我们自己。
+	});
+
 	it("记号文件不存在或内容不是进程号时什么都不做", () => {
 		const tmp = mkdtempSync(join(tmpdir(), "vetta-kill-"));
 		const env = { ...process.env, TMPDIR: tmp };
 		expect(() => execFileSync("/bin/sh", ["-c", buildKillCommand("vetta-exec-none")], { env })).not.toThrow();
 		// `kill -- -1` 会杀掉该用户的全部进程，必须被挡在外面。
-		writeFileSync(join(tmp, "vetta-exec-bad"), "1");
+		writeFileSync(join(tmp, "vetta-exec-bad"), "g1");
 		expect(() => execFileSync("/bin/sh", ["-c", buildKillCommand("vetta-exec-bad")], { env })).not.toThrow();
 	});
 });

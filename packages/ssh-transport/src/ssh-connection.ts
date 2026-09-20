@@ -154,19 +154,51 @@ export class SshConnection {
 		// 把 ssh 杀掉。探测结果有缓存，之后的调用不会多一次往返。
 		await this.probePlatform(options.signal);
 		const processToken = `vetta-exec-${randomBytes(8).toString("hex")}`;
+		// 取消与超时都收到这里统一处理，因为两者要做同一件事：**立刻**去远端把进程组杀掉。
+		// 没有 pty，掐掉本地 ssh 并不会让远端进程结束；而等本地 ssh 自己退出再去杀也不行——
+		// 远端进程还攥着通道的 stdout，本地 ssh 可能就一直等在那里。
+		const controller = new AbortController();
+		let interruption: "aborted" | "timeout" | undefined;
+		let remoteKill: Promise<unknown> | undefined;
+		const interrupt = (reason: "aborted" | "timeout"): void => {
+			if (interruption) return;
+			interruption = reason;
+			remoteKill = this.run(buildKillCommand(processToken), { timeoutMs: REMOTE_KILL_TIMEOUT_MS }).catch(() => {});
+			controller.abort();
+		};
+		const onAbort = (): void => interrupt("aborted");
+		if (options.signal?.aborted) interrupt("aborted");
+		options.signal?.addEventListener("abort", onAbort, { once: true });
+		const timer =
+			options.timeoutMs === undefined ? undefined : setTimeout(() => interrupt("timeout"), options.timeoutMs);
+		timer?.unref?.();
+
 		let result: SshProcessResult;
 		try {
-			result = await this.run(
-				buildRemoteCommand(command, { cwd: options.cwd, env: options.env, processToken }),
-				options,
-			);
+			result = await this.run(buildRemoteCommand(command, { cwd: options.cwd, env: options.env, processToken }), {
+				onStdout: options.onStdout,
+				onStderr: options.onStderr,
+				signal: controller.signal,
+			});
 		} catch (error) {
-			// 本地 ssh 已经被掐掉，但没有 pty 的远端进程不会因此结束，得显式去杀。
-			// 传输故障时同样尝试：连接可能只是这一条通道断了。杀不到就算了，错误照原样抛。
-			if (error instanceof SshOperationAbortedError || error instanceof SshTransportError) {
+			if (interruption) {
+				await remoteKill;
+				throw new SshOperationAbortedError(
+					interruption === "timeout"
+						? `Remote operation on ${this.host.label} timed out.`
+						: `Remote operation on ${this.host.label} was cancelled.`,
+					this.host.id,
+					interruption,
+				);
+			}
+			// 传输故障时也尝试清理：可能只是这一条通道断了。杀不到就算了，错误照原样抛。
+			if (error instanceof SshTransportError) {
 				await this.run(buildKillCommand(processToken), { timeoutMs: REMOTE_KILL_TIMEOUT_MS }).catch(() => {});
 			}
 			throw error;
+		} finally {
+			if (timer !== undefined) clearTimeout(timer);
+			options.signal?.removeEventListener("abort", onAbort);
 		}
 		if (result.exitCode === null) {
 			// 本地 ssh 被外部信号杀掉：远端命令的结局不可知，不能报成 0。

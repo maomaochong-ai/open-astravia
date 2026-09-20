@@ -21,7 +21,21 @@ export function createLoopbackSshConnection(
 	const home = join(directory, "home");
 	mkdirSync(home);
 	const fakeSsh = join(directory, "ssh");
-	writeFileSync(fakeSsh, '#!/bin/sh\nfor last; do :; done\nexec /bin/sh -c "$last"\n');
+	// sshd 为每条无 pty 的会话调用 setsid()；远端命令的「整组终止」依赖这一点。回环里用 perl
+	// 补上同样的一步，否则命令会落在测试运行器自己的进程组里。没有 perl 时不建新会话——
+	// 终止逻辑自带保险，只会退化为杀单个进程，不会误伤。
+	writeFileSync(
+		fakeSsh,
+		[
+			"#!/bin/sh",
+			"for last; do :; done",
+			"if command -v perl >/dev/null 2>&1; then",
+			"  exec perl -MPOSIX -e 'POSIX::setsid(); exec @ARGV' /bin/sh -c \"$last\"",
+			"fi",
+			'exec /bin/sh -c "$last"',
+			"",
+		].join("\n"),
+	);
 	chmodSync(fakeSsh, 0o755);
 	return new SshConnection(
 		{ id: hostId, label: hostId, target: hostId, source: "manual" },
