@@ -34,6 +34,7 @@
 		"packages/runtime-telemetry",
 		"packages/runtime-desktop",
 		"packages/toolkit",
+		"packages/ssh-transport",
 		"packages/skill-presets",
 		"apps/cli-host",
 		"apps/desktop",

@@ -101,6 +101,8 @@
 			"@vetta/remote-control/*": ["../../packages/remote-control/src/*"],
 			"@vetta/remote-desktop": ["../../packages/remote-desktop/src/index.ts"],
 			"@vetta/remote-desktop/*": ["../../packages/remote-desktop/src/*"],
+			"@vetta/ssh-transport": ["../../packages/ssh-transport/src/index.ts"],
+			"@vetta/ssh-transport/*": ["../../packages/ssh-transport/src/*"],
 			"@vetta/toolkit": ["../../packages/toolkit/src/index.ts"],
 			"@vetta/toolkit/*": ["../../packages/toolkit/src/*"]
 		},

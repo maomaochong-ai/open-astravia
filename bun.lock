@@ -1069,6 +1069,14 @@
       "name": "@vetta/skill-presets",
       "version": "0.0.0",
     },
+    "packages/ssh-transport": {
+      "name": "@vetta/ssh-transport",
+      "version": "0.0.1",
+      "devDependencies": {
+        "@types/node": "^22.10.5",
+        "typescript": "^5.9.2",
+      },
+    },
     "packages/theme-sdk": {
       "name": "@vetta-org/theme-sdk",
       "version": "0.1.0",
@@ -2768,6 +2776,8 @@
     "@vetta/runtime-tools": ["@vetta/runtime-tools@workspace:packages/runtime-tools"],
 
     "@vetta/skill-presets": ["@vetta/skill-presets@workspace:packages/skill-presets"],
+
+    "@vetta/ssh-transport": ["@vetta/ssh-transport@workspace:packages/ssh-transport"],
 
     "@vetta/theme-xianxia": ["@vetta/theme-xianxia@workspace:packages/themes/builtin/xianxia"],
 

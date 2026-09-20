@@ -79,6 +79,8 @@
 			"@vetta/runtime-desktop/*": ["./packages/runtime-desktop/src/*"],
 			"@vetta/action-rpc": ["./packages/action-rpc/src/index.ts"],
 			"@vetta/action-rpc/*": ["./packages/action-rpc/src/*"],
+			"@vetta/ssh-transport": ["./packages/ssh-transport/src/index.ts"],
+			"@vetta/ssh-transport/*": ["./packages/ssh-transport/src/*"],
 			"@vetta/remote-control": ["./packages/remote-control/src/index.ts"],
 			"@vetta/remote-control/*": ["./packages/remote-control/src/*"],
 			"@vetta/remote-desktop": ["./packages/remote-desktop/src/index.ts"],
@@ -146,6 +148,7 @@
 		}
 	},
 	"include": [
+		"packages/ssh-transport/src/**/*",
 		"packages/capability-sdk/src/**/*",
 		"packages/capability-sdk/test/**/*",
 		"packages/capability-runtime/src/**/*",
