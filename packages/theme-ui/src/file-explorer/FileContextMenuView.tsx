@@ -31,6 +31,11 @@ export interface FileContextMenuViewProps {
 	showEntryActions: boolean;
 	canPaste: boolean;
 	canRename: boolean;
+	/**
+	 * False when the entry has no counterpart on this computer (a file in a remote project):
+	 * there is nothing for the system file manager to show. Defaults to true.
+	 */
+	canOpenInFolder?: boolean;
 	pluginActions?: readonly FileContextMenuPluginAction[];
 }
 
@@ -55,6 +60,7 @@ export function FileContextMenuView({
 	onCreateFile,
 	onCreateFolder,
 	onOpenInFolder,
+	canOpenInFolder = true,
 	onCopy,
 	onPaste,
 	onCopyPath,
@@ -117,14 +123,16 @@ export function FileContextMenuView({
 					{labels.newFolder}
 				</button>
 				<div className="mx-1.5 my-1 h-px bg-border" />
-				<button
-					type="button"
-					onClick={onOpenInFolder}
-					className="flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-[12px] font-medium text-foreground transition-colors hover:bg-accent"
-				>
-					<span className="icon-[solar--folder-open-linear] h-3.5 w-3.5" />
-					{labels.openInFolder}
-				</button>
+				{canOpenInFolder ? (
+					<button
+						type="button"
+						onClick={onOpenInFolder}
+						className="flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-[12px] font-medium text-foreground transition-colors hover:bg-accent"
+					>
+						<span className="icon-[solar--folder-open-linear] h-3.5 w-3.5" />
+						{labels.openInFolder}
+					</button>
+				) : null}
 				{showEntryActions ? (
 					<button
 						type="button"

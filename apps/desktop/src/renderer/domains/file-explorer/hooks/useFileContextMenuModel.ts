@@ -2,6 +2,7 @@ import type { FileExplorerEntryKind } from "@preload/fs-types";
 import { isMac } from "@shared/lib/platform";
 import { pathDirname } from "@shared/lib/utils";
 import { type FsEntry, pluginFileExplorerContextMenuActionsAtom, renamingPathAtom } from "@shared/store/atoms";
+import { isSshProjectUri } from "@vetta/ssh-transport/project-uri";
 import type { FileContextMenuViewProps } from "@vetta-org/theme-ui/file-explorer";
 import { useAtomValue, useSetAtom } from "jotai";
 import { createElement, useCallback, useMemo } from "react";
@@ -135,6 +136,8 @@ export function useFileContextMenuModel(input: {
 		showEntryActions: !isRoot,
 		canPaste,
 		canRename,
+		// 远端文件在这台电脑上没有对应的位置，系统文件管理器无从显示。
+		canOpenInFolder: !isSshProjectUri(entry.path),
 		pluginActions: resolvedPluginActions,
 	};
 }
