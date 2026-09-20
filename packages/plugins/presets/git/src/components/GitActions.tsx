@@ -13,7 +13,7 @@ import {
 	gitSync,
 	hasUpstream,
 } from "../git/run";
-import { emitRefreshSignal, onRefreshSignal } from "../git/runtime";
+import { emitRefreshSignal, notifyError, onRefreshSignal } from "../git/runtime";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { FetchIcon, PullIcon, PushIcon, SyncIcon } from "./icons";
 
@@ -35,7 +35,6 @@ export function GitActions({ root }: { root: string }): JSX.Element {
 	const [ab, setAb] = useState<{ ahead: number; behind: number } | null>(null);
 	const [stat, setStat] = useState({ additions: 0, deletions: 0, untrackedTruncated: false });
 	const [busy, setBusy] = useState<ActionKind | null>(null);
-	const [error, setError] = useState<string | null>(null);
 	const [pendingPublish, setPendingPublish] = useState<PendingPublish | null>(null);
 	// Reloads overlap (refresh signal + post-action), and they finish out of order;
 	// only the newest one may write state.
@@ -70,14 +69,13 @@ export function GitActions({ root }: { root: string }): JSX.Element {
 		(kind: ActionKind, fn: () => Promise<"done" | "deferred">) => {
 			if (busy) return;
 			setBusy(kind);
-			setError(null);
 			fn()
 				.then((outcome) => {
 					if (outcome !== "done") return;
 					emitRefreshSignal();
 					reload();
 				})
-				.catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
+				.catch((err: unknown) => notifyError(String(err instanceof Error ? err.message : err), err))
 				.finally(() => setBusy(null));
 		},
 		[busy, reload],
@@ -181,11 +179,6 @@ export function GitActions({ root }: { root: string }): JSX.Element {
 			)}
 			{stat.deletions > 0 && (
 				<span className="text-[11px] font-medium leading-none tabular-nums text-rose-500/90">−{stat.deletions}</span>
-			)}
-			{error && (
-				<span className="cursor-default font-semibold text-rose-500" title={error}>
-					!
-				</span>
 			)}
 
 			<ConfirmDialog

@@ -1,4 +1,4 @@
-import type { PluginAiApi, PluginCommandApi, PluginFsApi, PluginOfficialApi, PluginStorageApi } from "@vetta-org/plugin-sdk";
+import type { PluginAiApi, PluginCommandApi, PluginFsApi, PluginOfficialApi, PluginStorageApi, PluginUiApi } from "@vetta-org/plugin-sdk";
 import type { ChangeCode, TurnChangeDelta } from "./types";
 
 /**
@@ -29,6 +29,7 @@ interface GitRuntime {
 	official: PluginOfficialApi | null;
 	storage: PluginStorageApi | null;
 	ai: PluginAiApi | null;
+	ui: PluginUiApi | null;
 	resizePanel: PanelResizer | null;
 	refreshListeners: Set<() => void>;
 	turnPhaseListeners: Set<(phase: TurnPhase) => void>;
@@ -54,6 +55,7 @@ function runtime(): GitRuntime {
 			official: null,
 			storage: null,
 			ai: null,
+			ui: null,
 			resizePanel: null,
 			refreshListeners: new Set<() => void>(),
 			turnPhaseListeners: new Set<(phase: TurnPhase) => void>(),
@@ -155,6 +157,23 @@ export function getAiApi(): PluginAiApi {
 	const api = runtime().ai;
 	if (!api) throw new Error("Git plugin ai API not initialized");
 	return api;
+}
+
+export function setUiApi(api: PluginUiApi): void {
+	runtime().ui = api;
+}
+
+/**
+ * Surface a failure as a host toast.
+ *
+ * Errors used to be drawn inside the panel, which cost permanent layout to a
+ * transient event and gave the user no way to copy a hook's output. The host
+ * toast formats the cause, adds a "copy stack" action and stays until dismissed.
+ */
+export function notifyError(message: string, error?: unknown): void {
+	const ui = runtime().ui;
+	if (!ui) return;
+	ui.notify({ message, error, variant: "error" });
 }
 
 export function setOfficialApi(api: PluginOfficialApi): void {

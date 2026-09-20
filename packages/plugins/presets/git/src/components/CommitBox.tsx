@@ -7,9 +7,8 @@ import { generateCommitMessage } from "../git/aiMessage";
 import { loadDraft, saveDraft } from "../git/draftStore";
 import { readMergeMessage } from "../git/mergeMsg";
 import { gitCommit, gitPush, headCommitMessage } from "../git/run";
-import { emitRefreshSignal, onCommitRequest } from "../git/runtime";
+import { emitRefreshSignal, notifyError, onCommitRequest } from "../git/runtime";
 import type { StatusGroups } from "../git/types";
-import { CommitErrorPanel } from "./CommitErrorPanel";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { CheckIcon, ChevronIcon, CommitIcon, SparkleIcon, StopIcon } from "./icons";
 import { useGitSettings } from "./useGitSettings";
@@ -31,7 +30,6 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 	const settings = useGitSettings();
 	const [message, setMessage] = useState("");
 	const [pending, setPending] = useState<Pending>(null);
-	const [error, setError] = useState<string | null>(null);
 	const [generating, setGenerating] = useState(false);
 	const [askOverwrite, setAskOverwrite] = useState(false);
 	const abortRef = useRef<AbortController | null>(null);
@@ -74,17 +72,16 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 	const run = useCallback(
 		(kind: Exclude<Pending, null>, task: () => Promise<void>) => {
 			setPending(kind);
-			setError(null);
 			task()
 				.then(async () => {
 					setMessage("");
 					await saveDraft(root, "");
 					emitRefreshSignal();
 				})
-				.catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
+				.catch((err: unknown) => notifyError(t("commit.failed"), err))
 				.finally(() => setPending(null));
 		},
-		[root],
+		[root, t],
 	);
 
 	const commit = useCallback(() => {
@@ -122,7 +119,6 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 		const controller = new AbortController();
 		abortRef.current = controller;
 		setGenerating(true);
-		setError(null);
 		void generateCommitMessage({
 			root,
 			scope: resolveDiffScope(hasStaged),
@@ -136,7 +132,8 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 			.catch((err: unknown) => {
 				if (controller.signal.aborted) return;
 				const raw = err instanceof Error ? err.message : String(err);
-				setError(raw === "empty-diff" ? t("ai.emptyDiff") : `${t("ai.failed")}\n\n${raw}`);
+				if (raw === "empty-diff") notifyError(t("ai.emptyDiff"));
+				else notifyError(t("ai.failed"), err);
 			})
 			.finally(() => {
 				abortRef.current = null;
@@ -216,45 +213,45 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 					)}
 				</div>
 
-				{/* 主操作占满卡片宽度：这一列很窄时，靠右的小按钮既难点也没有分量。 */}
-				<div className="flex w-full items-stretch border-t border-border/60">
-					<button
-						type="button"
-						disabled={!canCommit}
-						title={disabledReason ?? undefined}
-						onClick={commit}
-						className="flex h-8 min-w-0 flex-1 items-center justify-center gap-1.5 bg-primary px-2 text-[12px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
-					>
-						<CommitIcon className="h-3.5 w-3.5 shrink-0" />
-						<span className="truncate">{label}</span>
-					</button>
-					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<button
-								type="button"
-								disabled={pending !== null}
-								title={t("commit.more")}
-								className="flex h-8 w-8 shrink-0 items-center justify-center border-l border-primary-foreground/20 bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:border-transparent disabled:bg-muted disabled:text-muted-foreground"
-							>
-								<ChevronIcon className="h-3.5 w-3.5" />
-							</button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end" data-vetta-plugin-root="git">
-							<DropdownMenuItem disabled={!canCommit} onSelect={commitAndPush}>
-								{t("commit.andPush")}
-							</DropdownMenuItem>
-							<DropdownMenuItem disabled={pending !== null || hasConflicts} onSelect={amend}>
-								{t("commit.amend")}
-							</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
-				</div>
 
-				{/* pre-commit 钩子可能跑很久，必须给出「还在跑」的明确信号，而不是只让按钮转圈。 */}
-				{pending !== null && <div className="border-t border-border/60 px-2.5 py-1.5 text-[11px] text-muted-foreground">{t("commit.hookHint")}</div>}
 			</div>
 
-			{error && <CommitErrorPanel message={error} onDismiss={() => setError(null)} />}
+			{/* 主操作放在卡片外：它是对这张卡片的执行，不是卡片的一部分；圆角与卡片同档。 */}
+			<div className="mt-1.5 flex items-stretch overflow-hidden rounded-xl">
+				<button
+					type="button"
+					disabled={!canCommit}
+					title={disabledReason ?? undefined}
+					onClick={commit}
+					className="flex h-8 min-w-0 flex-1 items-center justify-center gap-1.5 bg-[#1f883d] px-2 text-[12px] font-medium text-white transition-colors hover:bg-[#1a7f37] disabled:bg-muted disabled:text-muted-foreground"
+				>
+					<CommitIcon className="h-3.5 w-3.5 shrink-0" />
+					<span className="truncate">{label}</span>
+				</button>
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<button
+							type="button"
+							disabled={pending !== null}
+							title={t("commit.more")}
+							className="flex h-8 w-8 shrink-0 items-center justify-center border-l border-white/20 bg-[#1f883d] text-white transition-colors hover:bg-[#1a7f37] disabled:border-transparent disabled:bg-muted disabled:text-muted-foreground"
+						>
+							<ChevronIcon className="h-3.5 w-3.5" />
+						</button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end" data-vetta-plugin-root="git">
+						<DropdownMenuItem disabled={!canCommit} onSelect={commitAndPush}>
+							{t("commit.andPush")}
+						</DropdownMenuItem>
+						<DropdownMenuItem disabled={pending !== null || hasConflicts} onSelect={amend}>
+							{t("commit.amend")}
+						</DropdownMenuItem>
+					</DropdownMenuContent>
+				</DropdownMenu>
+			</div>
+
+			{/* pre-commit 钩子可能跑很久，必须给出「还在跑」的明确信号，而不是只让按钮转圈。 */}
+			{pending !== null && <div className="px-1 pt-1 text-[11px] text-muted-foreground">{t("commit.hookHint")}</div>}
 
 			<ConfirmDialog
 				open={askOverwrite}

@@ -226,17 +226,6 @@ export function GitChanges({ root, groups }: { root: string; groups: StatusGroup
 				</div>
 			)}
 
-			{actions.error && (
-				<button
-					type="button"
-					onClick={actions.dismissError}
-					title={t("action.dismiss")}
-					className="shrink-0 border-t border-border px-3 py-1.5 text-left text-[11px] text-rose-500"
-				>
-					{actions.error}
-				</button>
-			)}
-
 			<ConfirmDialog
 				open={actions.pendingDiscard !== null}
 				destructive

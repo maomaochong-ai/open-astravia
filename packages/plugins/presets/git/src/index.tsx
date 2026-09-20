@@ -4,7 +4,7 @@ import { GitPanel } from "./components/GitPanel";
 import { GitSettingsView } from "./components/GitSettingsView";
 import { GitTurnCard } from "./components/GitTurnCard";
 import { GitIcon } from "./components/icons";
-import { emitRefreshSignal, emitTurnPhase, setAiApi, setFsApi, setGitCommand, setOfficialApi, setPanelResizer, setStorageApi } from "./git/runtime";
+import { emitRefreshSignal, emitTurnPhase, setAiApi, setFsApi, setGitCommand, setUiApi, setOfficialApi, setPanelResizer, setStorageApi } from "./git/runtime";
 import { CHANGES_TAB_ID, isInsideGitWorkTree } from "./git/tab-visibility";
 
 export default definePlugin({
@@ -19,6 +19,8 @@ export default definePlugin({
 		setStorageApi(ctx.storage);
 		// 提交信息的一键生成走宿主推理，不建会话、不落 session 文件。
 		setAiApi(ctx.ai);
+		// 失败统一走宿主 toast（自带「复制堆栈」），不在面板里长期占位。
+		setUiApi(ctx.ui);
 
 		/** 最近一次 conversation-changed 的 cwd，用于丢弃过期的仓库探测结果。 */
 		let latestCwd: string | null = null;

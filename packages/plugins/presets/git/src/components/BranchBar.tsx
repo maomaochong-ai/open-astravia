@@ -18,7 +18,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { listBranches } from "../git/log";
 import { checkoutBranch, createBranch, currentBranch } from "../git/run";
-import { emitRefreshSignal, onRefreshSignal } from "../git/runtime";
+import { emitRefreshSignal, notifyError, onRefreshSignal } from "../git/runtime";
 import type { BranchRef } from "../git/types";
 import { BranchIcon, ChevronIcon } from "./icons";
 
@@ -45,7 +45,6 @@ export function BranchBar({ root }: { root: string }): JSX.Element {
 	const [creating, setCreating] = useState(false);
 	const [newName, setNewName] = useState("");
 	const [busy, setBusy] = useState(false);
-	const [error, setError] = useState<string | null>(null);
 
 	const reload = useCallback(() => {
 		void currentBranch(root).then(setBranch).catch(() => setBranch(null));
@@ -60,10 +59,10 @@ export function BranchBar({ root }: { root: string }): JSX.Element {
 
 	const run = useCallback((task: () => Promise<void>) => {
 		setBusy(true);
-		setError(null);
 		task()
 			.then(() => emitRefreshSignal())
-			.catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
+			// 切换失败最常见的原因是本地改动会被覆盖，git 的原话已经说清，附上一句该怎么办。
+			.catch((err: unknown) => notifyError(`${err instanceof Error ? err.message : String(err)}\n\n${t("branch.switchFailedHint")}`, err))
 			.finally(() => setBusy(false));
 	}, []);
 
@@ -118,11 +117,6 @@ export function BranchBar({ root }: { root: string }): JSX.Element {
 						)}
 					</DropdownMenuContent>
 				</DropdownMenu>
-				{error && (
-					<span className="min-w-0 max-w-[140px] truncate text-[11px] text-rose-500" title={`${error}\n${t("branch.switchFailedHint")}`}>
-						{error.split("\n")[0]}
-					</span>
-				)}
 			</>
 
 			<Dialog open={creating} onOpenChange={(open) => !open && setCreating(false)}>

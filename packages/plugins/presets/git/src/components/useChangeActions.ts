@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { appendToGitignore } from "../git/ignore";
 import { discardPaths, resolveWithSide, stageAll, stagePaths, unstageAll, unstagePaths } from "../git/run";
-import { emitRefreshSignal, getOfficialApi } from "../git/runtime";
+import { emitRefreshSignal, getOfficialApi, notifyError } from "../git/runtime";
 import type { StatusGroups } from "../git/types";
 import type { ChangeMenuHandlers, ChangeMenuTarget } from "./ChangeMenu";
 import { useGitSettings } from "./useGitSettings";
@@ -17,8 +17,6 @@ export interface ChangeActions {
 	stageAllFiles: () => void;
 	unstageAllFiles: () => void;
 	busy: boolean;
-	error: string | null;
-	dismissError: () => void;
 	pendingDiscard: PendingDiscard | null;
 	confirmDiscard: () => void;
 	cancelDiscard: () => void;
@@ -35,15 +33,13 @@ export interface ChangeActions {
 export function useChangeActions(root: string, groups: StatusGroups): ChangeActions {
 	const settings = useGitSettings();
 	const [busy, setBusy] = useState(false);
-	const [error, setError] = useState<string | null>(null);
 	const [pendingDiscard, setPendingDiscard] = useState<PendingDiscard | null>(null);
 
 	const run = useCallback((task: () => Promise<void>) => {
 		setBusy(true);
-		setError(null);
 		task()
 			.then(() => emitRefreshSignal())
-			.catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
+			.catch((err: unknown) => notifyError(String(err instanceof Error ? err.message : err), err))
 			.finally(() => setBusy(false));
 	}, []);
 
@@ -74,14 +70,14 @@ export function useChangeActions(root: string, groups: StatusGroups): ChangeActi
 			run(() => (side === "staged" ? stagePaths(root, target.paths) : resolveWithSide(root, side, target.paths))),
 		onCopyPath: (target, absolute) => {
 			const text = target.paths.map((path) => (absolute ? `${root}/${path}` : path)).join("\n");
-			void navigator.clipboard?.writeText(text).catch(() => setError("clipboard unavailable"));
+			void navigator.clipboard?.writeText(text).catch((err: unknown) => notifyError("clipboard unavailable", err));
 		},
 		onRevealInFolder: (target) => {
 			const path = target.paths[0];
 			if (!path) return;
 			void getOfficialApi()
 				.shell.showItemInFolder(`${root}/${path}`)
-				.catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
+				.catch((err: unknown) => notifyError(String(err instanceof Error ? err.message : err), err));
 		},
 	};
 
@@ -90,8 +86,6 @@ export function useChangeActions(root: string, groups: StatusGroups): ChangeActi
 		stageAllFiles: () => run(() => stageAll(root)),
 		unstageAllFiles: () => run(() => unstageAll(root)),
 		busy,
-		error,
-		dismissError: () => setError(null),
 		pendingDiscard,
 		confirmDiscard: () => {
 			const target = pendingDiscard;
