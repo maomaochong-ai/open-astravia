@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { cn, Switch } from "@vetta-org/ui";
+import { Switch } from "@vetta-org/ui";
 import { MotionSelect } from "./MotionSelect";
 import { SettingRow, SettingSection, type SettingSectionMeta } from "./SettingChrome";
 import { InputField } from "./SettingsFormFields";
@@ -164,14 +164,14 @@ export function ProxySettingsSectionView({
 									description={provider.lockedReason}
 									border={index < providers.length - 1}
 								>
-									<div className={cn(provider.lockedReason && "opacity-40")}>
-										<Switch
-											checked={provider.useProxy}
-											disabled={Boolean(provider.lockedReason)}
-											onCheckedChange={(checked) => onProviderUseProxyChange(provider.id, checked)}
-											aria-label={provider.displayName}
-										/>
-									</div>
+									{/* 不要再套 opacity：Switch 自带 data-disabled:opacity-50，
+									    叠一层会把开关状态压暗到读不出来。 */}
+									<Switch
+										checked={provider.useProxy}
+										disabled={Boolean(provider.lockedReason)}
+										onCheckedChange={(checked) => onProviderUseProxyChange(provider.id, checked)}
+										aria-label={provider.displayName}
+									/>
 								</SettingRow>
 							))}
 						</div>
