@@ -5,6 +5,11 @@
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 
+/* 插件自带 iconify 图标：本插件在 index.tsx 里声明的 icon class 由这里生成，随
+   dist/style.css 一起装进安装包。宿主加载插件样式后 class 即存在，因此工作区视图
+   的图标不需要宿主在自己的 CSS 里逐条放行。 */
+@plugin "@iconify/tailwind4";
+
 /* diff 行等宽字体回退 */
 .git-mono {
 	font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
