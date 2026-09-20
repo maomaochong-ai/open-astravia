@@ -1,3 +1,4 @@
+export { createProjectResourceAccess } from "./project-resource-access.js";
 export { createSshForegroundCommandOperations } from "./ssh-command-operations.js";
 export {
 	createSshEditOperations,
