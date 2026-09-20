@@ -1,6 +1,6 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { Button } from "@vetta-org/ui";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { aheadBehind, diffStat, gitFetch, gitPull, gitPush, gitSync } from "../git/run";
 import { emitRefreshSignal, onRefreshSignal } from "../git/runtime";
 import { FetchIcon, PullIcon, PushIcon, SyncIcon } from "./icons";
@@ -15,16 +15,26 @@ type ActionKind = "fetch" | "pull" | "push" | "sync";
 export function GitActions({ root }: { root: string }): JSX.Element {
 	const { t } = useTranslation();
 	const [ab, setAb] = useState<{ ahead: number; behind: number } | null>(null);
-	const [stat, setStat] = useState({ additions: 0, deletions: 0 });
+	const [stat, setStat] = useState({ additions: 0, deletions: 0, untrackedTruncated: false });
 	const [busy, setBusy] = useState<ActionKind | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	// Reloads overlap (refresh signal + post-action), and they finish out of order;
+	// only the newest one may write state.
+	const reloadIdRef = useRef(0);
 
 	const reload = useCallback(() => {
+		const id = ++reloadIdRef.current;
 		aheadBehind(root)
-			.then(setAb)
-			.catch(() => setAb(null));
+			.then((value) => {
+				if (id === reloadIdRef.current) setAb(value);
+			})
+			.catch(() => {
+				if (id === reloadIdRef.current) setAb(null);
+			});
 		diffStat(root)
-			.then(setStat)
+			.then((value) => {
+				if (id === reloadIdRef.current) setStat(value);
+			})
 			.catch(() => {});
 	}, [root]);
 
@@ -101,7 +111,13 @@ export function GitActions({ root }: { root: string }): JSX.Element {
 			</div>
 
 			{stat.additions > 0 && (
-				<span className="rounded-md bg-emerald-500/15 px-1.5 py-1 text-[11px] font-semibold leading-none tabular-nums text-emerald-500">+{stat.additions}</span>
+				<span
+					className="rounded-md bg-emerald-500/15 px-1.5 py-1 text-[11px] font-semibold leading-none tabular-nums text-emerald-500"
+					title={stat.untrackedTruncated ? t("stat.untrackedTruncated") : undefined}
+				>
+					+{stat.additions}
+					{stat.untrackedTruncated && "+"}
+				</span>
 			)}
 			{stat.deletions > 0 && (
 				<span className="rounded-md bg-rose-500/15 px-1.5 py-1 text-[11px] font-semibold leading-none tabular-nums text-rose-500">−{stat.deletions}</span>

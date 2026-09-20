@@ -23,6 +23,7 @@
 	"list.empty": "No commits.",
 	"commit.close": "Close",
 	"commit.copyHash": "Copy commit hash",
+	"stat.untrackedTruncated": "Untracked-file line counts are capped; the real total is higher",
 	"state.loading": "Loading…",
 	"state.noCwd": "No project directory available.",
 	"state.clean": "No changes. The working tree is clean.",

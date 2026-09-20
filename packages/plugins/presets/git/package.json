@@ -5,7 +5,8 @@
 	"type": "module",
 	"scripts": {
 		"build": "bunx vite build",
-		"check": "bunx tsc --noEmit"
+		"check": "bunx tsc --noEmit",
+		"test": "bun ../../../../scripts/quality/run-vitest.mjs --run"
 	},
 	"dependencies": {
 		"@pierre/diffs": "^1.2.11",

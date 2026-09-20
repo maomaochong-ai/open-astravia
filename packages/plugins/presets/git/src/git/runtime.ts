@@ -29,6 +29,10 @@ interface GitRuntime {
 	refreshListeners: Set<() => void>;
 	turnPhaseListeners: Set<(phase: TurnPhase) => void>;
 	turnCardStates: Map<string, TurnCardState>;
+	/** Tail of the serialized write chain (see {@link enqueueWrite}). */
+	writeQueue: Promise<void>;
+	/** Pending debounce timer for {@link emitRefreshSignal}. */
+	refreshTimer: ReturnType<typeof setTimeout> | null;
 }
 
 const KEY = "__vettaGitPluginRuntime__";
@@ -42,9 +46,33 @@ function runtime(): GitRuntime {
 			refreshListeners: new Set<() => void>(),
 			turnPhaseListeners: new Set<(phase: TurnPhase) => void>(),
 			turnCardStates: new Map<string, TurnCardState>(),
+			writeQueue: Promise.resolve(),
+			refreshTimer: null,
 		} satisfies GitRuntime;
 	}
 	return g[KEY] as GitRuntime;
+}
+
+/**
+ * Serialize a git *write* (add / restore / commit / checkout / push …) against
+ * every other write in this process.
+ *
+ * Git takes `.git/index.lock` for any index-touching command and fails outright
+ * when it is already held, so two concurrent writes are not slow — the loser
+ * errors. Staging is click-frequency (unlike the old push/pull-only toolbar),
+ * and the agent may be running git in the same repo, so writes queue here while
+ * reads (status / diff) stay parallel and unthrottled.
+ */
+export function enqueueWrite<T>(task: () => Promise<T>): Promise<T> {
+	const rt = runtime();
+	// Run `task` whether the previous write resolved or rejected — one failure
+	// must not wedge the queue.
+	const result = rt.writeQueue.then(task, task);
+	rt.writeQueue = result.then(
+		() => undefined,
+		() => undefined,
+	);
+	return result;
 }
 
 function turnCardState(cwd: string): TurnCardState {
@@ -102,9 +130,23 @@ export function onRefreshSignal(listener: () => void): () => void {
 	return () => set.delete(listener);
 }
 
-/** Fire a refresh signal to all mounted panels. */
+/** Debounce window for refresh signals: long enough to collapse a burst of writes. */
+const REFRESH_DEBOUNCE_MS = 150;
+
+/**
+ * Fire a refresh signal to all mounted panels, coalescing bursts.
+ *
+ * A batch action (stage 12 files, commit-then-push) emits one signal per step,
+ * and each signal costs every panel a full `git status` + diff-stat sweep. The
+ * debounce turns the burst into a single reload once the dust settles.
+ */
 export function emitRefreshSignal(): void {
-	for (const listener of runtime().refreshListeners) listener();
+	const rt = runtime();
+	if (rt.refreshTimer !== null) clearTimeout(rt.refreshTimer);
+	rt.refreshTimer = setTimeout(() => {
+		rt.refreshTimer = null;
+		for (const listener of rt.refreshListeners) listener();
+	}, REFRESH_DEBOUNCE_MS);
 }
 
 /**

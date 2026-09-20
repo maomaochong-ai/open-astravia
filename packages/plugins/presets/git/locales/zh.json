@@ -23,6 +23,7 @@
 	"list.empty": "暂无提交。",
 	"commit.close": "关闭",
 	"commit.copyHash": "复制提交哈希",
+	"stat.untrackedTruncated": "未跟踪文件的行数统计有上限，实际数量更多",
 	"state.loading": "加载中…",
 	"state.noCwd": "没有可用的项目目录。",
 	"state.clean": "没有变更，工作区是干净的。",

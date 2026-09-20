@@ -1,9 +1,36 @@
 import type { PluginCommandRunResult } from "@vetta-org/plugin-sdk";
-import { getGitCommand } from "./runtime";
+import { enqueueWrite, getGitCommand } from "./runtime";
 import type { ChangeEntry } from "./types";
+
+/** Max git processes in flight for a per-file fan-out (one `git diff` each). */
+const FANOUT_CONCURRENCY = 8;
+
+/**
+ * Untracked files to line-count in {@link diffStat}. Each one costs a `git diff
+ * --no-index` process, and `--no-index` takes exactly two paths so there is no
+ * batch form; a repo without a `.gitignore` (node_modules checked in) would
+ * otherwise spawn thousands of processes on every refresh. Past the cap the
+ * total is reported as approximate.
+ */
+const UNTRACKED_STAT_LIMIT = 50;
 
 function git(cwd: string, args: string[]): Promise<PluginCommandRunResult> {
 	return getGitCommand().run("git", args, { cwd });
+}
+
+/** `Promise.all(items.map(fn))` with a ceiling on how many run at once. */
+async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+	const out = new Array<R>(items.length);
+	let next = 0;
+	const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+		for (;;) {
+			const index = next++;
+			if (index >= items.length) return;
+			out[index] = await fn(items[index] as T);
+		}
+	});
+	await Promise.all(workers);
+	return out;
 }
 
 /** Resolve the working tree root for a directory, or null when it is not a repo. */
@@ -27,11 +54,13 @@ export async function statusPorcelain(root: string): Promise<string> {
 }
 
 /** Initialize a repository at the given directory. */
-export async function initRepo(cwd: string): Promise<void> {
-	const res = await git(cwd, ["init"]);
-	if (res.exitCode !== 0) {
-		throw new Error(res.stderr.trim() || `git init failed (exit ${res.exitCode})`);
-	}
+export function initRepo(cwd: string): Promise<void> {
+	return enqueueWrite(async () => {
+		const res = await git(cwd, ["init"]);
+		if (res.exitCode !== 0) {
+			throw new Error(res.stderr.trim() || `git init failed (exit ${res.exitCode})`);
+		}
+	});
 }
 
 /**
@@ -81,8 +110,12 @@ function sumNumstat(out: string, addsOnly = false): { a: number; d: number } {
 	return { a, d };
 }
 
-/** Added/deleted line totals across all uncommitted changes, including untracked files. */
-export async function diffStat(root: string): Promise<{ additions: number; deletions: number }> {
+/**
+ * Added/deleted line totals across all uncommitted changes, including untracked
+ * files. `untrackedTruncated` marks the totals as a lower bound: more untracked
+ * files existed than {@link UNTRACKED_STAT_LIMIT} allowed us to count.
+ */
+export async function diffStat(root: string): Promise<{ additions: number; deletions: number; untrackedTruncated: boolean }> {
 	let additions = 0;
 	let deletions = 0;
 
@@ -99,19 +132,19 @@ export async function diffStat(root: string): Promise<{ additions: number; delet
 		deletions += cached.d + unstaged.d;
 	}
 
-	// Untracked files: every line counts as an addition (one --no-index diff each).
+	// Untracked files: every line counts as an addition (one --no-index diff each),
+	// capped and rate-limited — see UNTRACKED_STAT_LIMIT.
 	const others = await git(root, ["ls-files", "--others", "--exclude-standard", "-z"]);
 	const files = others.stdout.split("\0").filter(Boolean);
-	const adds = await Promise.all(
-		files.map((f) =>
-			git(root, ["diff", "--no-index", "--numstat", "--", "/dev/null", f])
-				.then((r) => sumNumstat(r.stdout, true).a)
-				.catch(() => 0),
-		),
+	const counted = files.slice(0, UNTRACKED_STAT_LIMIT);
+	const adds = await mapLimit(counted, FANOUT_CONCURRENCY, (f) =>
+		git(root, ["diff", "--no-index", "--numstat", "--", "/dev/null", f])
+			.then((r) => sumNumstat(r.stdout, true).a)
+			.catch(() => 0),
 	);
 	additions += adds.reduce((sum, n) => sum + n, 0);
 
-	return { additions, deletions };
+	return { additions, deletions, untrackedTruncated: files.length > counted.length };
 }
 
 /**
@@ -123,22 +156,18 @@ export async function diffStatForEntries(
 	root: string,
 	entries: readonly ChangeEntry[],
 ): Promise<{ additions: number; deletions: number }> {
-	const per = await Promise.all(
-		entries.map(async (entry) => {
-			if (entry.code === "U") {
-				const r = await git(root, ["diff", "--no-index", "--numstat", "--", "/dev/null", entry.path]).catch(
-					() => null,
-				);
-				return r ? { a: sumNumstat(r.stdout, true).a, d: 0 } : { a: 0, d: 0 };
-			}
-			const head = await git(root, ["diff", "HEAD", "--numstat", "--", entry.path]);
-			if (head.exitCode === 0 || head.exitCode === 1) return sumNumstat(head.stdout);
-			// No HEAD yet: combine staged + unstaged for this path.
-			const cached = sumNumstat((await git(root, ["diff", "--cached", "--numstat", "--", entry.path])).stdout);
-			const unstaged = sumNumstat((await git(root, ["diff", "--numstat", "--", entry.path])).stdout);
-			return { a: cached.a + unstaged.a, d: cached.d + unstaged.d };
-		}),
-	);
+	const per = await mapLimit(entries, FANOUT_CONCURRENCY, async (entry) => {
+		if (entry.code === "U") {
+			const r = await git(root, ["diff", "--no-index", "--numstat", "--", "/dev/null", entry.path]).catch(() => null);
+			return r ? { a: sumNumstat(r.stdout, true).a, d: 0 } : { a: 0, d: 0 };
+		}
+		const head = await git(root, ["diff", "HEAD", "--numstat", "--", entry.path]);
+		if (head.exitCode === 0 || head.exitCode === 1) return sumNumstat(head.stdout);
+		// No HEAD yet: combine staged + unstaged for this path.
+		const cached = sumNumstat((await git(root, ["diff", "--cached", "--numstat", "--", entry.path])).stdout);
+		const unstaged = sumNumstat((await git(root, ["diff", "--numstat", "--", entry.path])).stdout);
+		return { a: cached.a + unstaged.a, d: cached.d + unstaged.d };
+	});
 	let additions = 0;
 	let deletions = 0;
 	for (const p of per) {
@@ -148,9 +177,19 @@ export async function diffStatForEntries(
 	return { additions, deletions };
 }
 
-async function runGit(root: string, args: string[]): Promise<void> {
+/**
+ * Run a mutating git command. NOT queued — callers inside an {@link enqueueWrite}
+ * task must use this one, since enqueuing from within a queued task would wait
+ * on the chain that is itself waiting on that task.
+ */
+async function runGitRaw(root: string, args: string[]): Promise<void> {
 	const res = await getGitCommand().run("git", args, { cwd: root, timeoutMs: 60_000 });
 	if (res.exitCode !== 0) throw new Error(res.stderr.trim() || `git ${args[0]} failed (exit ${res.exitCode})`);
+}
+
+/** Run a mutating git command, serialized against every other write. */
+function runGit(root: string, args: string[]): Promise<void> {
+	return enqueueWrite(() => runGitRaw(root, args));
 }
 
 /** Fetch from all remotes. */
@@ -168,8 +207,10 @@ export function gitPush(root: string): Promise<void> {
 	return runGit(root, ["push"]);
 }
 
-/** Sync = pull then push (push only if the pull succeeds). */
-export async function gitSync(root: string): Promise<void> {
-	await runGit(root, ["pull"]);
-	await runGit(root, ["push"]);
+/** Sync = pull then push (push only if the pull succeeds), as one queued unit. */
+export function gitSync(root: string): Promise<void> {
+	return enqueueWrite(async () => {
+		await runGitRaw(root, ["pull"]);
+		await runGitRaw(root, ["push"]);
+	});
 }
