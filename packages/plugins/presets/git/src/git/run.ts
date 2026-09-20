@@ -364,3 +364,17 @@ export async function headCommitMessage(root: string): Promise<string> {
 	if (res.exitCode !== 0) return "";
 	return res.stdout.replace(/\n+$/, "");
 }
+
+/**
+ * Switch branches. No automatic stashing: git refuses when local changes would
+ * be overwritten, and its own message is more accurate than anything we could
+ * invent — silently moving the user's work into the stash is worse than an error.
+ */
+export function checkoutBranch(root: string, name: string): Promise<void> {
+	return runGit(root, ["checkout", name]);
+}
+
+/** Create a branch at HEAD and switch to it. */
+export function createBranch(root: string, name: string): Promise<void> {
+	return runGit(root, ["checkout", "-b", name]);
+}

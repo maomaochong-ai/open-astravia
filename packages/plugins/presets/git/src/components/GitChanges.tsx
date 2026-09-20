@@ -7,6 +7,7 @@ import { resizePanel } from "../git/runtime";
 import type { ChangeRef, ChangeSection, StatusGroups } from "../git/types";
 import type { MenuPoint } from "./ChangeMenu";
 import { ChangeMenuItems, FloatingChangeMenu } from "./ChangeMenu";
+import { BranchBar } from "./BranchBar";
 import { ChangeSectionList } from "./ChangeSectionList";
 import { CommitBox } from "./CommitBox";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -206,6 +207,7 @@ export function GitChanges({ root, groups }: { root: string; groups: StatusGroup
 							}
 							style={wide ? { width: treeWidth } : undefined}
 						>
+							<BranchBar root={root} />
 							<CommitBox root={root} groups={groups} />
 							<div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
 								{SECTION_ORDER.map((section) => (
