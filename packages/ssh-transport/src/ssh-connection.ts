@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { parseRemoteDirectoryListing, type RemoteDirectoryEntry } from "./directory-listing.js";
 import { SshOperationAbortedError, SshRemoteCommandError, SshTransportError } from "./errors.js";
-import type { SshHelperClient } from "./helper-client.js";
+import { type SshHelperClient, SshHelperClosedError, SshHelperError } from "./helper-client.js";
 import { type ConnectSshHelperOptions, connectSshHelper } from "./helper-deployment.js";
 import {
 	SSH_TRANSPORT_FAILURE_EXIT_CODE,
@@ -105,6 +105,8 @@ export class SshConnection {
 	private platform: RemotePlatform | undefined;
 	private homeDirectory: string | undefined;
 	private helperClient: Promise<SshHelperClient | undefined> | undefined;
+	/** 已经握手成功、可以直接用的 helper。部署过程中为空，那时文件操作走 `ssh exec`。 */
+	private readyHelper: SshHelperClient | undefined;
 
 	constructor(
 		readonly host: SshHost,
@@ -122,6 +124,8 @@ export class SshConnection {
 			// BSD 家族（macOS、FreeBSD）的 stat 用 -f，其余按 GNU 处理。
 			statFlavor: /darwin|bsd/i.test(os) ? "bsd" : "gnu",
 		};
+		// 连接一通就在后台把 helper 备好：就绪之后文件操作不必再为每一次读写新起一个 ssh 进程。
+		if (this.options.helper) void this.helper().catch(() => {});
 		return this.platform;
 	}
 
@@ -212,12 +216,24 @@ export class SshConnection {
 	}
 
 	async readFile(remotePath: string, signal?: AbortSignal): Promise<Uint8Array> {
+		const viaHelper = await this.viaHelper((helper) =>
+			helper.call<{ data: string }>("fs.readFile", { path: remotePath, offset: 0, length: -1 }),
+		);
+		if (viaHelper) return Buffer.from(viaHelper.value.data, "base64");
 		const result = await this.runChecked(`cat -- ${quoteShellArgument(remotePath)}`, { signal });
 		return result.stdout;
 	}
 
 	/** 只取文件开头若干字节，用于判断类型：不必为了看一眼文件头把整份文件拖过网络。 */
 	async readFileHead(remotePath: string, byteCount: number, signal?: AbortSignal): Promise<Uint8Array> {
+		const viaHelper = await this.viaHelper((helper) =>
+			helper.call<{ data: string }>("fs.readFile", {
+				path: remotePath,
+				offset: 0,
+				length: Math.max(0, Math.floor(byteCount)),
+			}),
+		);
+		if (viaHelper) return Buffer.from(viaHelper.value.data, "base64");
 		const count = Math.max(0, Math.floor(byteCount));
 		const result = await this.runChecked(`head -c ${count} -- ${quoteShellArgument(remotePath)}`, { signal });
 		return result.stdout;
@@ -228,6 +244,14 @@ export class SshConnection {
 	 * 把整份文件拖过网络。`tail -c +N` 从第 N 个字节起（从 1 计数），GNU 与 BSD 同义。
 	 */
 	async readFileRange(remotePath: string, start: number, length: number, signal?: AbortSignal): Promise<Uint8Array> {
+		const viaHelper = await this.viaHelper((helper) =>
+			helper.call<{ data: string }>("fs.readFile", {
+				path: remotePath,
+				offset: Math.max(0, Math.floor(start)),
+				length: Math.max(0, Math.floor(length)),
+			}),
+		);
+		if (viaHelper) return Buffer.from(viaHelper.value.data, "base64");
 		const from = Math.max(0, Math.floor(start)) + 1;
 		const count = Math.max(0, Math.floor(length));
 		const quoted = quoteShellArgument(remotePath);
@@ -237,18 +261,24 @@ export class SshConnection {
 
 	/** 原子写，保留原文件的权限位并穿透符号链接，见 {@link buildWriteFileCommand}。 */
 	async writeFile(remotePath: string, content: Uint8Array, signal?: AbortSignal): Promise<void> {
+		const viaHelper = await this.viaHelper((helper) =>
+			helper.call("fs.writeFile", { path: remotePath, data: Buffer.from(content).toString("base64") }),
+		);
+		if (viaHelper) return;
 		const command = buildWriteFileCommand(remotePath, `.vetta-tmp-${Date.now().toString(36)}`);
 		await this.runChecked(command, { signal, stdin: content });
 	}
 
 	/** 同一文件系统内是原子改名；跨文件系统时 `mv` 自己退化成复制加删除。目标已存在则覆盖。 */
 	async rename(fromPath: string, toPath: string, signal?: AbortSignal): Promise<void> {
+		if (await this.viaHelper((helper) => helper.call("fs.rename", { from: fromPath, to: toPath }))) return;
 		await this.runChecked(`mv -f -- ${quoteShellArgument(fromPath)} ${quoteShellArgument(toPath)}`, { signal });
 	}
 
 	/** 递归删除。路径不存在也算成功——与本机 `rm(force)` 同义。 */
 	async remove(remotePath: string, signal?: AbortSignal): Promise<void> {
 		if (normalizeRemotePath(remotePath) === "/") throw new Error("Refusing to remove the remote root directory.");
+		if (await this.viaHelper((helper) => helper.call("fs.remove", { path: remotePath }))) return;
 		await this.runChecked(`rm -rf -- ${quoteShellArgument(remotePath)}`, { signal });
 	}
 
@@ -258,6 +288,16 @@ export class SshConnection {
 		kind: "file" | "directory",
 		signal?: AbortSignal,
 	): Promise<"created" | "exists"> {
+		const viaHelper = await this.viaHelper(async (helper) => {
+			try {
+				await helper.call("fs.createEntry", { path: remotePath, kind });
+				return "created" as const;
+			} catch (error) {
+				if (error instanceof SshHelperError && error.code === "EEXIST") return "exists" as const;
+				throw error;
+			}
+		});
+		if (viaHelper) return viaHelper.value;
 		const result = await this.run(buildCreateEntryCommand(remotePath, kind), { signal });
 		if (result.exitCode === 0) return "created";
 		if (result.exitCode === REMOTE_ENTRY_EXISTS_EXIT_CODE) return "exists";
@@ -275,6 +315,14 @@ export class SshConnection {
 		options: ListFilesRecursiveOptions,
 		signal?: AbortSignal,
 	): Promise<string[]> {
+		const viaHelper = await this.viaHelper((helper) =>
+			helper.call<{ files: string[] }>("fs.listRecursive", {
+				path: remotePath,
+				ignoredDirectories: options.ignoredDirectoryNames,
+				limit: options.limit,
+			}),
+		);
+		if (viaHelper) return viaHelper.value.files;
 		const result = await this.runChecked(buildListFilesRecursiveCommand(remotePath, options), { signal });
 		return decode(result.stdout)
 			.split("\n")
@@ -283,10 +331,15 @@ export class SshConnection {
 	}
 
 	async makeDirectory(remotePath: string, signal?: AbortSignal): Promise<void> {
+		if (await this.viaHelper((helper) => helper.call("fs.mkdir", { path: remotePath }))) return;
 		await this.runChecked(`mkdir -p -- ${quoteShellArgument(remotePath)}`, { signal });
 	}
 
 	async listDirectory(remotePath: string, signal?: AbortSignal): Promise<RemoteDirectoryEntry[]> {
+		const viaHelper = await this.viaHelper((helper) =>
+			helper.call<{ entries: HelperEntry[] }>("fs.readDir", { path: remotePath }),
+		);
+		if (viaHelper) return viaHelper.value.entries.map(fromHelperEntry);
 		const platform = await this.probePlatform(signal);
 		const command = buildListDirectoryCommand(remotePath, platform.statFlavor);
 		const result = await this.runChecked(command, { signal });
@@ -306,6 +359,13 @@ export class SshConnection {
 		signal?: AbortSignal,
 		options: { readonly followSymlinks?: boolean } = {},
 	): Promise<RemoteDirectoryEntry | null> {
+		const viaHelper = await this.viaHelper((helper) =>
+			helper.call<{ entry: HelperEntry | null }>("fs.stat", {
+				path: remotePath,
+				followSymlinks: options.followSymlinks === true,
+			}),
+		);
+		if (viaHelper) return viaHelper.value.entry ? fromHelperEntry(viaHelper.value.entry) : null;
 		const platform = await this.probePlatform(signal);
 		const result = await this.runChecked(buildStatCommand(remotePath, platform.statFlavor, options), { signal });
 		const entries = parseRemoteDirectoryListing(decode(result.stdout));
@@ -317,6 +377,16 @@ export class SshConnection {
 
 	/** 真实路径。路径不存在，或远端的 readlink 不支持 `-f` 时，原样返回传入的路径。 */
 	async realPath(remotePath: string, signal?: AbortSignal): Promise<string> {
+		const viaHelper = await this.viaHelper(async (helper) => {
+			try {
+				return (await helper.call<{ path: string }>("fs.realPath", { path: remotePath })).path;
+			} catch (error) {
+				// 与 exec 那条路同义：路径不存在时原样返回。
+				if (error instanceof SshHelperError && error.code === "ENOENT") return remotePath;
+				throw error;
+			}
+		});
+		if (viaHelper) return viaHelper.value;
 		const result = await this.run(buildRealPathCommand(remotePath), { signal });
 		const resolved = decode(result.stdout).trim();
 		return result.exitCode === 0 && resolved.startsWith("/") ? resolved : remotePath;
@@ -333,7 +403,9 @@ export class SshConnection {
 		if (!options) return Promise.resolve(undefined);
 		if (!this.helperClient) {
 			const attempt = connectSshHelper(this, options).then((client) => {
+				this.readyHelper = client;
 				client?.onClose(() => {
+					if (this.readyHelper === client) this.readyHelper = undefined;
 					if (this.helperClient === attempt) this.helperClient = undefined;
 				});
 				return client;
@@ -355,6 +427,34 @@ export class SshConnection {
 			remoteCommand,
 		);
 		return this.options.runner.open({ argv, onStdout, env: this.options.env });
+	}
+
+	/**
+	 * helper 就绪时经它完成一次操作；返回 undefined 表示「这次没走成，请用 `ssh exec`」。
+	 *
+	 * 两种失败要分开：helper **明确回答了不行**（文件不存在、没权限）是远端的答复，换一条路
+	 * 再问一遍只会得到同样的结果，直接按远端命令失败上报；而**通道断了**说明没问到，这时
+	 * 退回 `ssh exec` 才有意义。
+	 */
+	private async viaHelper<Value>(
+		operation: (helper: SshHelperClient) => Promise<Value>,
+	): Promise<{ readonly value: Value } | undefined> {
+		const helper = this.readyHelper;
+		if (!helper || helper.isClosed) return undefined;
+		try {
+			return { value: await operation(helper) };
+		} catch (error) {
+			if (error instanceof SshHelperClosedError) return undefined;
+			if (error instanceof SshHelperError) {
+				throw new SshRemoteCommandError(
+					`Remote operation failed on ${this.host.label} (${error.code}): ${error.message}`,
+					this.host.id,
+					1,
+					error.message,
+				);
+			}
+			throw error;
+		}
 	}
 
 	/** 退出码非零即抛。内部操作都用它——它们没有「失败也算正常」的分支。 */
@@ -419,6 +519,22 @@ export class SshConnection {
 		}
 		return result;
 	}
+}
+
+interface HelperEntry {
+	readonly name: string;
+	readonly kind: RemoteDirectoryEntry["kind"];
+	readonly size: number;
+	readonly modifiedMs: number;
+}
+
+function fromHelperEntry(entry: HelperEntry): RemoteDirectoryEntry {
+	return {
+		name: entry.name,
+		kind: entry.kind,
+		sizeBytes: entry.size,
+		modifiedAtSeconds: Math.floor(entry.modifiedMs / 1000),
+	};
 }
 
 function decode(bytes: Uint8Array): string {
