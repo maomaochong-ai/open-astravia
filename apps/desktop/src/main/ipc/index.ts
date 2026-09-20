@@ -25,6 +25,7 @@ import { registerPluginMediaProvidersIpc } from "./plugin-media-providers.js";
 import { registerPluginOcrProvidersIpc } from "./plugin-ocr-providers.js";
 import { registerPluginsIpc } from "./plugins.js";
 import { registerProjectExportIpc } from "./project-export.js";
+import { registerProjectsIpc } from "./projects.js";
 import { registerQuickPanelIpc } from "./quickpanel.js";
 import { registerRemotePairingIpc } from "./remote-pairing.js";
 import { registerRuntimeConfigurationIpc } from "./runtime-configuration.js";
@@ -57,6 +58,7 @@ interface IpcTeardown {
 	teardownMedia: () => void;
 	teardownDebug: () => void;
 	teardownProjectExport: () => void;
+	teardownProjects: () => void;
 	teardownWebhook: () => void;
 	teardownRuntimes: () => void;
 	teardownRuntimeConfiguration: () => void;
@@ -103,6 +105,7 @@ export function registerAllIpc(
 		teardownMedia: registerMediaIpc(),
 		teardownDebug: registerDebugIpc(),
 		teardownProjectExport: registerProjectExportIpc(),
+		teardownProjects: registerProjectsIpc(),
 		teardownWebhook: registerWebhookIpc(),
 		teardownRuntimes: registerRuntimesIpc(),
 		teardownRuntimeConfiguration: registerRuntimeConfigurationIpc(webContents),
@@ -142,6 +145,7 @@ export function teardownAllIpc(teardown: IpcTeardown): void {
 	teardown.teardownMedia();
 	teardown.teardownDebug();
 	teardown.teardownProjectExport();
+	teardown.teardownProjects();
 	teardown.teardownWebhook();
 	teardown.teardownRuntimes();
 	teardown.teardownRuntimeConfiguration();

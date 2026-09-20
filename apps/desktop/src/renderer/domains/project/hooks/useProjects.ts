@@ -14,7 +14,6 @@ import {
 	scheduledSessionPathsAtom,
 	sessionLoadingCwdsAtom,
 	sessionsMapAtom,
-	workspacePathAtom,
 } from "@shared/store/atoms";
 import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
@@ -259,42 +258,23 @@ export function useProjectActions() {
 		// 同上：刻意不退订，订阅与 renderer 同寿命。
 	}, []);
 
-	/** Create a new project directory in workspace and add to config; returns resolved cwd. */
+	/** Create a new project directory in workspace and register it; returns resolved cwd. */
 	const createProject = useCallback(
 		async (name: string): Promise<string> => {
-			const workspacePath = store.get(workspacePathAtom);
-			const projectPath = `${workspacePath}/${name}`;
-			await window.vetta.fs.createDirectory(projectPath);
-			// Read the resolved path back via listSubDirs to get the absolute path
-			const subDirs = await window.vetta.fs.listSubDirs(workspacePath);
-			const created = subDirs.find((d) => d.name === name);
-			const resolvedPath = created?.path ?? projectPath;
-
-			// Add to config with the user-provided name
-			const config = await window.vetta.config.get();
-			if (!config.projects.some((p) => p.path === resolvedPath)) {
-				config.projects.push({ path: resolvedPath, name });
-				await window.vetta.config.set({ projects: config.projects });
-			}
-
+			const entry = await window.vetta.project.create({ name });
 			await refreshProjects();
-			setExpandedProjects((prev) => new Set([...prev, resolvedPath]));
-			return resolvedPath;
+			setExpandedProjects((prev) => new Set([...prev, entry.path]));
+			return entry.path;
 		},
-		[store, refreshProjects, setExpandedProjects],
+		[refreshProjects, setExpandedProjects],
 	);
 
-	/** Open an existing directory and add to config */
+	/** Open an existing directory and register it */
 	const openProject = useCallback(async () => {
 		const cwd = await window.vetta.dialog.selectFolder();
 		if (!cwd) return null;
 
-		const config = await window.vetta.config.get();
-		if (!config.projects.some((p) => p.path === cwd)) {
-			config.projects.push({ path: cwd });
-			await window.vetta.config.set({ projects: config.projects });
-		}
-
+		await window.vetta.project.open({ path: cwd });
 		await refreshProjects();
 		setExpandedProjects((prev) => new Set([...prev, cwd]));
 		await loadSessions(cwd);
@@ -347,9 +327,7 @@ export function useProjectActions() {
 		async (cwd: string) => {
 			// 默认「对话」项目不允许从列表中移除。
 			if (cwd === store.get(defaultConversationCwdAtom)) return;
-			const config = await window.vetta.config.get();
-			config.projects = config.projects.filter((p) => p.path !== cwd);
-			await window.vetta.config.set({ projects: config.projects });
+			await window.vetta.project.remove(cwd);
 			await refreshProjects();
 		},
 		[refreshProjects, store],
@@ -358,14 +336,7 @@ export function useProjectActions() {
 	const archiveProject = useCallback(
 		async (cwd: string) => {
 			if (cwd === store.get(defaultConversationCwdAtom)) return;
-			const config = await window.vetta.config.get();
-			const entry = config.projects.find((p) => p.path === cwd);
-			config.projects = config.projects.filter((p) => p.path !== cwd);
-			const archived = config.archivedProjects ?? [];
-			if (!archived.some((p) => p.path === cwd)) {
-				archived.push(entry ?? { path: cwd });
-			}
-			await window.vetta.config.set({ projects: config.projects, archivedProjects: archived });
+			await window.vetta.project.archive(cwd);
 			await refreshProjects();
 		},
 		[refreshProjects, store],
@@ -373,21 +344,14 @@ export function useProjectActions() {
 
 	const unarchiveProject = useCallback(
 		async (cwd: string) => {
-			const config = await window.vetta.config.get();
-			const archived = (config.archivedProjects ?? []).filter((p) => p.path !== cwd);
-			const projects = config.projects.some((p) => p.path === cwd)
-				? config.projects
-				: [...config.projects, { path: cwd }];
-			await window.vetta.config.set({ projects, archivedProjects: archived });
+			await window.vetta.project.unarchive(cwd);
 			await refreshProjects();
 		},
 		[refreshProjects],
 	);
 
 	const deleteArchivedProject = useCallback(async (cwd: string) => {
-		const config = await window.vetta.config.get();
-		const archived = (config.archivedProjects ?? []).filter((p) => p.path !== cwd);
-		await window.vetta.config.set({ archivedProjects: archived });
+		await window.vetta.project.remove(cwd);
 	}, []);
 
 	/** Remove project from config AND delete from disk */
@@ -398,10 +362,7 @@ export function useProjectActions() {
 			// 否则同路径重建同名项目时旧会话会连同产物一起复活。清理必须发生在项目仍
 			// 注册于 config 时——分片 root 由 config.projects 推导（composition.ts）。
 			await window.vetta.session.deleteAllForCwd(cwd);
-			const config = await window.vetta.config.get();
-			config.projects = config.projects.filter((p) => p.path !== cwd);
-			const archived = (config.archivedProjects ?? []).filter((p) => p.path !== cwd);
-			await window.vetta.config.set({ projects: config.projects, archivedProjects: archived });
+			await window.vetta.project.remove(cwd);
 			await window.vetta.fs.delete(cwd);
 			await refreshProjects();
 		},

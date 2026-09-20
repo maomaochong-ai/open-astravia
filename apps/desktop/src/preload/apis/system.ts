@@ -31,7 +31,6 @@ export function createSystemApi(
 	| "tray"
 	| "debug"
 	| "diagnostics"
-	| "project"
 	| "permissions"
 > {
 	return {
@@ -302,11 +301,6 @@ export function createSystemApi(
 		diagnostics: {
 			exportDiagnosticsPackage: () => ipc.invoke("vetta:diagnostics:export"),
 			getLogDir: () => ipc.invoke("vetta:diagnostics:get-log-dir"),
-		},
-		project: {
-			export: (projectDir) => ipc.invoke("vetta:project:export", projectDir),
-			import: () => ipc.invoke("vetta:project:import"),
-			readMeta: (projectDir) => ipc.invoke("vetta:project:read-meta", projectDir),
 		},
 		permissions: {
 			checkAll: () => ipc.invoke("vetta:permissions:check-all"),
