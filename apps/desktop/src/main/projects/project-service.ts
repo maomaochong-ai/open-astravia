@@ -72,17 +72,6 @@ function assertProjectName(name: string): string {
 export class ProjectService {
 	constructor(private readonly dependencies: ProjectServiceDependencies) {}
 
-	/**
-	 * 把项目目录加进本地文件系统沙箱的授权根。
-	 *
-	 * 远程项目直接跳过：授权根是 filesystem-service 的本地概念，塞一个 `ssh://…`
-	 * 进去既起不到授权作用，又会让「某个路径为什么被允许」这件事多出一条看不懂的
-	 * 规则。规则放在服务里而不是各个装配点，新的宿主接进来时不必重新发现一遍。
-	 */
-	private allowLocalProjectRoot(path: string): void {
-		if (resolveLocation(path).kind === "local") this.dependencies.allowProjectRoot(path);
-	}
-
 	/** 唯一的写路径：落盘 + 广播。任何改动项目列表的地方都必须经由它。 */
 	private async commit(config: DesktopConfig): Promise<void> {
 		await this.dependencies.writeConfig(config);
@@ -116,7 +105,7 @@ export class ProjectService {
 			projects.push({ path: projectPath, name: normalizedName });
 			await this.commit({ ...config, projects, archivedProjects });
 		}
-		this.allowLocalProjectRoot(projectPath);
+		this.dependencies.allowProjectRoot(projectPath);
 		return { path: projectPath, name: normalizedName };
 	}
 
@@ -144,7 +133,7 @@ export class ProjectService {
 		const entry = { path, name: name?.trim() || pathBasename(path) };
 		if (!findProject(projects, path)) projects.push(entry);
 		await this.commit({ ...config, projects, archivedProjects });
-		this.allowLocalProjectRoot(path);
+		this.dependencies.allowProjectRoot(path);
 		return entry;
 	}
 
@@ -179,7 +168,7 @@ export class ProjectService {
 		const projects = config.projects.map((item) => ({ ...item }));
 		if (!findProject(projects, path)) projects.push({ ...entry });
 		await this.commit({ ...config, projects, archivedProjects });
-		this.allowLocalProjectRoot(path);
+		this.dependencies.allowProjectRoot(path);
 	}
 
 	async remove(path: string): Promise<void> {

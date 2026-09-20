@@ -136,13 +136,13 @@ describe("ProjectService 与远程项目", () => {
 		expect(fixture.getConfig().projects).toEqual([{ path: "ssh://build-01/srv/app", name: "app" }]);
 	});
 
-	it("远端项目不进本地文件系统的授权根", async () => {
-		// allowedRoots 是本地沙箱边界，塞进一个 ssh:// 串只会让那条规则变得看不懂。
+	it("远端项目同样登记授权根，由文件服务决定进哪一套", async () => {
+		// 不登记的话文件树展开远端目录会被判成「不在任何已知项目内」。
 		const fixture = createFixture();
 
 		await fixture.service.open("ssh://build-01/srv/app");
 
-		expect(fixture.allowProjectRoot).not.toHaveBeenCalled();
+		expect(fixture.allowProjectRoot).toHaveBeenCalledWith("ssh://build-01/srv/app");
 	});
 
 	it("主机不存在时拒绝登记，而不是留下一条永远打不开的条目", async () => {

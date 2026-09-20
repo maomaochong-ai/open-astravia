@@ -1,8 +1,8 @@
-import { createHash } from "node:crypto";
 import type { Dirent, Stats } from "node:fs";
 import { cp, lstat, mkdir, open, readdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
+import { isSshProjectUri } from "@vetta/ssh-transport";
 import {
 	FILE_EXPLORER_ENTRY_EXISTS_ERROR,
 	getFileExplorerEntryNameIssue,
@@ -19,7 +19,20 @@ import {
 	type FsTextPreviewResult,
 } from "../../preload/fs-types.js";
 import { isConversationWorkspaceDirEntry } from "../conversations/session-paths.js";
-import { decodeProbableUtf8Prefix, decodeProbableUtf8Text, decodeUtf8Text } from "./text-content.js";
+import {
+	decodeEditableText,
+	encodeEditableText,
+	getFileRevision,
+	MAX_EDITABLE_TEXT_FILE_SIZE,
+} from "./editable-text.js";
+import {
+	allowRemoteProjectRoot,
+	readRemoteDirectory,
+	readRemoteEditableTextFile,
+	saveRemoteEditableTextFile,
+	statRemotePath,
+} from "./remote-filesystem.js";
+import { decodeProbableUtf8Prefix, decodeProbableUtf8Text } from "./text-content.js";
 
 const BINARY_EXTENSIONS = new Set([
 	"png",
@@ -42,7 +55,6 @@ const BINARY_EXTENSIONS = new Set([
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_TEXT_PROBE_SIZE = 64 * 1024;
 const MAX_BINARY_FILE_SIZE = 32 * 1024 * 1024;
-const MAX_EDITABLE_TEXT_FILE_SIZE = 2 * 1024 * 1024;
 const HIDDEN_FILES = new Set([".DS_Store", "Thumbs.db", "desktop.ini"]);
 const RECURSIVE_IGNORED_DIRS = new Set([
 	"node_modules",
@@ -115,6 +127,12 @@ export async function assertFilesystemRealPathWithinProject(targetPath: string):
 }
 
 export function allowProjectRoot(cwd: string): void {
+	// 远程项目走另一套授权根：远端路径是 POSIX 且大小写敏感，混进本地这套按本机规则
+	// 归一化的集合里，`/srv/App` 和 `/srv/app` 会互相授权。
+	if (isSshProjectUri(cwd)) {
+		allowRemoteProjectRoot(cwd);
+		return;
+	}
 	allowedRoots.add(resolve(cwd));
 }
 
@@ -125,6 +143,7 @@ export function assertPathReadableForPreview(targetPath: string): void {
 }
 
 export async function readFilesystemDirectory(dirPath: string): Promise<FsEntry[]> {
+	if (isSshProjectUri(dirPath)) return readRemoteDirectory(dirPath);
 	assertFilesystemPathWithinProject(dirPath);
 	const resolved = resolve(dirPath);
 	const entries = await readdir(resolved, { withFileTypes: true });
@@ -204,22 +223,8 @@ export async function readTextPreviewFile(filePath: string): Promise<FsTextPrevi
 	return { status: "text", content: decoded.content, size: buffer.byteLength };
 }
 
-function getFileRevision(buffer: Buffer): string {
-	return createHash("sha256").update(buffer).digest("hex");
-}
-
-function decodeEditableText(buffer: Buffer): { content: string; hasBom: boolean; lineEnding: "lf" | "crlf" } {
-	const decoded = decodeUtf8Text(buffer);
-	if (!decoded) throw new Error(FS_EDITABLE_TEXT_ERROR.NOT_UTF8);
-	const { content, hasBom } = decoded;
-	return {
-		content,
-		hasBom,
-		lineEnding: content.includes("\r\n") ? "crlf" : "lf",
-	};
-}
-
 export async function readEditableTextFile(filePath: string): Promise<FsEditableTextSnapshot> {
+	if (isSshProjectUri(filePath)) return readRemoteEditableTextFile(filePath);
 	assertFilesystemPathWithinProject(filePath);
 	const resolved = resolve(filePath);
 	const stats = await stat(resolved);
@@ -240,6 +245,7 @@ export async function saveEditableTextFile(
 	content: string,
 	options: FsSaveEditableTextOptions,
 ): Promise<FsSaveEditableTextResult> {
+	if (isSshProjectUri(filePath)) return saveRemoteEditableTextFile(filePath, content, options);
 	assertFilesystemPathWithinProject(filePath);
 	const resolved = resolve(filePath);
 	const current = await readFile(resolved);
@@ -248,8 +254,7 @@ export async function saveEditableTextFile(
 		return { status: "conflict", revision: currentRevision };
 	}
 
-	const contentBuffer = Buffer.from(content, "utf8");
-	const nextBuffer = options.hasBom ? Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), contentBuffer]) : contentBuffer;
+	const nextBuffer = encodeEditableText(content, options.hasBom);
 	if (nextBuffer.byteLength > MAX_EDITABLE_TEXT_FILE_SIZE) {
 		throw new Error(FS_EDITABLE_TEXT_ERROR.TOO_LARGE);
 	}
@@ -315,6 +320,7 @@ export async function writeFilesystemFile(
 }
 
 export async function statFilesystemPath(filePath: string): Promise<FsStatResult | null> {
+	if (isSshProjectUri(filePath)) return statRemotePath(filePath);
 	assertFilesystemPathWithinProject(filePath);
 	try {
 		const stats = await stat(resolve(filePath));
