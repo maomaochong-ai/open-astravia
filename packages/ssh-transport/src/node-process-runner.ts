@@ -1,5 +1,11 @@
 import { spawn } from "node:child_process";
-import type { SshProcessInvocation, SshProcessResult, SshProcessRunner } from "./process-runner.js";
+import type {
+	SshChannelInvocation,
+	SshProcessChannel,
+	SshProcessInvocation,
+	SshProcessResult,
+	SshProcessRunner,
+} from "./process-runner.js";
 
 export interface NodeSshProcessRunnerOptions {
 	/** `ssh` 可执行文件。默认用 PATH 里的 `ssh`。 */
@@ -21,6 +27,9 @@ export function createNodeSshProcessRunner(options: NodeSshProcessRunnerOptions 
 	return {
 		run(invocation: SshProcessInvocation): Promise<SshProcessResult> {
 			return runSshProcess(sshBinary, options.baseEnv ?? process.env, invocation);
+		},
+		open(invocation: SshChannelInvocation): SshProcessChannel {
+			return openSshChannel(sshBinary, options.baseEnv ?? process.env, invocation);
 		},
 	};
 }
@@ -110,6 +119,39 @@ function runSshProcess(
 			child.stdin.end();
 		}
 	});
+}
+
+function openSshChannel(
+	sshBinary: string,
+	baseEnv: NodeJS.ProcessEnv,
+	invocation: SshChannelInvocation,
+): SshProcessChannel {
+	const child = spawn(sshBinary, [...invocation.argv], {
+		env: { ...baseEnv, ...invocation.env },
+		stdio: ["pipe", "pipe", "pipe"],
+	});
+	const stderrChunks: Buffer[] = [];
+	child.stdout.on("data", (chunk: Buffer) => invocation.onStdout(chunk));
+	child.stderr.on("data", (chunk: Buffer) => keepTail(stderrChunks, chunk, STREAMED_STDERR_TAIL_BYTES));
+	// 对端先走一步时写入会 EPIPE；真正的原因在退出码和 stderr 里，由 exited 报告。
+	child.stdin.on("error", () => {});
+	const exited = new Promise<{ exitCode: number | null; stderr: string }>((resolve) => {
+		const finish = (exitCode: number | null): void =>
+			resolve({ exitCode, stderr: Buffer.concat(stderrChunks).toString("utf8") });
+		// 启动失败（找不到 ssh）只有 error 没有 close。
+		child.once("error", () => finish(null));
+		child.once("close", (code) => finish(code));
+	});
+	return {
+		write: (data) => {
+			if (child.stdin.writable) child.stdin.write(data);
+		},
+		end: () => child.stdin.end(),
+		kill: () => {
+			if (!child.killed) child.kill("SIGTERM");
+		},
+		exited,
+	};
 }
 
 const STREAMED_STDERR_TAIL_BYTES = 16 * 1024;

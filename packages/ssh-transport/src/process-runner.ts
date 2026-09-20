@@ -33,8 +33,27 @@ export interface SshProcessResult {
 	readonly timedOut?: boolean;
 }
 
+/** 一条保持打开的双向通道：远端 helper 这类要来回说很多句话的对端用它。 */
+export interface SshProcessChannel {
+	write(data: Uint8Array): void;
+	/** 关闭 stdin。对端据此知道不会再有请求，收尾后退出。 */
+	end(): void;
+	/** 立刻终止本地 ssh 进程。 */
+	kill(): void;
+	/** 进程结束后兑现；被信号杀死时 exitCode 为 null。 */
+	readonly exited: Promise<{ readonly exitCode: number | null; readonly stderr: string }>;
+}
+
+export interface SshChannelInvocation {
+	readonly argv: readonly string[];
+	readonly onStdout: (chunk: Uint8Array) => void;
+	readonly env?: Readonly<Record<string, string>>;
+}
+
 export interface SshProcessRunner {
 	run(invocation: SshProcessInvocation): Promise<SshProcessResult>;
+	/** 可选：只支持一问一答的执行器（测试替身）不必实现，调用方据此降级。 */
+	open?(invocation: SshChannelInvocation): SshProcessChannel;
 }
 
 /** `ssh` 自身的退出码。255 是 OpenSSH 用来表示「连接层失败」的保留值。 */
