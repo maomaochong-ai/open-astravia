@@ -10,7 +10,10 @@ export interface SshProcessInvocation {
 	readonly argv: readonly string[];
 	/** 写入 stdin 后立刻关闭。用于把文件内容推给远端的 `base64 -d`。 */
 	readonly stdin?: Uint8Array;
-	/** 增量 stdout。给出时表示调用方要流式消费，实现仍会累积一份完整结果。 */
+	/**
+	 * 增量 stdout。给出时表示调用方要流式消费，结果里的 `stdout` 为空——长驻的后台
+	 * 任务（dev server）会一直吐日志，再累积一份等于让内存随运行时间无限增长。
+	 */
 	readonly onStdout?: (chunk: Uint8Array) => void;
 	readonly onStderr?: (chunk: Uint8Array) => void;
 	readonly signal?: AbortSignal;

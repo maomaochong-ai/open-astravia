@@ -64,12 +64,17 @@ function runSshProcess(
 		invocation.signal?.addEventListener("abort", onAbort, { once: true });
 
 		child.stdout.on("data", (chunk: Buffer) => {
-			stdoutChunks.push(chunk);
-			invocation.onStdout?.(chunk);
+			if (invocation.onStdout) invocation.onStdout(chunk);
+			else stdoutChunks.push(chunk);
 		});
 		child.stderr.on("data", (chunk: Buffer) => {
-			stderrChunks.push(chunk);
-			invocation.onStderr?.(chunk);
+			// stderr 只留尾部：错误分类只需要最后几行，而流式消费的长任务同样会写个不停。
+			if (invocation.onStderr) {
+				invocation.onStderr(chunk);
+				keepTail(stderrChunks, chunk, STREAMED_STDERR_TAIL_BYTES);
+			} else {
+				stderrChunks.push(chunk);
+			}
 		});
 
 		const finish = (exitCode: number | null): void => {
@@ -105,4 +110,16 @@ function runSshProcess(
 			child.stdin.end();
 		}
 	});
+}
+
+const STREAMED_STDERR_TAIL_BYTES = 16 * 1024;
+
+function keepTail(chunks: Buffer[], chunk: Buffer, limitBytes: number): void {
+	chunks.push(chunk);
+	let total = 0;
+	for (const item of chunks) total += item.byteLength;
+	while (chunks.length > 1 && total - chunks[0].byteLength >= limitBytes) {
+		total -= chunks[0].byteLength;
+		chunks.shift();
+	}
 }
