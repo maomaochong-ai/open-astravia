@@ -35,6 +35,7 @@
 		"packages/runtime-desktop",
 		"packages/toolkit",
 		"packages/ssh-transport",
+		"packages/runtime-ssh",
 		"packages/skill-presets",
 		"apps/cli-host",
 		"apps/desktop",

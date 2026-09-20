@@ -1,0 +1,29 @@
+{
+	"name": "@vetta/runtime-ssh",
+	"version": "0.0.1",
+	"description": "Coding Agent tool environment that executes against a remote host over SSH.",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"files": ["dist"],
+	"scripts": {
+		"clean": "rm -rf dist",
+		"build": "tsgo -p tsconfig.build.json"
+	},
+	"dependencies": {
+		"@vetta/runtime-core": "workspace:*",
+		"@vetta/runtime-node": "workspace:*",
+		"@vetta/runtime-tools": "workspace:*",
+		"@vetta/ssh-transport": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/node": "^22.10.5",
+		"typescript": "^5.9.2"
+	}
+}

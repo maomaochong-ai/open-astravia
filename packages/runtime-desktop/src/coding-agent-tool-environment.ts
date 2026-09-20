@@ -27,9 +27,28 @@ import {
 	resolveNodeShell,
 } from "@vetta/runtime-node/coding";
 import { NodeScopedTextStorage } from "@vetta/runtime-node/host";
+import { createSshCodingToolEnvironment, createSshPathPolicies } from "@vetta/runtime-ssh";
+import { parseProjectLocation } from "@vetta/ssh-transport";
+import { resolveDesktopSshConnection } from "./ssh-connection-resolver.js";
 
-/** Desktop Composition Root selection of Coding Agent's Node tool implementations. */
+/**
+ * Desktop Composition Root selection of Coding Agent's tool implementations.
+ *
+ * 远程项目（cwd 是 `ssh://<hostId>/<路径>`）换成 SSH 实现，工具逻辑仍是同一份；
+ * 传进去的是解析出来的远端绝对路径，而不是 URI——工具内部所有相对路径解析都基于它。
+ */
 export const createDesktopCodingAgentToolEnvironment: CodingAgentToolEnvironmentFactory = (context) => {
+	const location = parseProjectLocation(context.cwd);
+	if (location.kind === "ssh") {
+		const policies = createSshPathPolicies(location.remotePath);
+		return createSshCodingToolEnvironment({
+			connection: resolveDesktopSshConnection(location.hostId),
+			remoteCwd: location.remotePath,
+			editPathPolicy: policies.editPathPolicy,
+			writePathPolicy: policies.writePathPolicy,
+			readOptions: CODING_AGENT_READ_TOOL_OPTIONS,
+		});
+	}
 	const host = createDesktopNodeToolHost(context.cwd, context.agentDir);
 	return createNodeHostCodingToolEnvironment({
 		cwd: context.cwd,
@@ -44,10 +63,35 @@ export const createDesktopCodingAgentToolEnvironment: CodingAgentToolEnvironment
 	});
 };
 
-/** Desktop Composition Root selection of Session-local command and sandbox implementations. */
+/**
+ * Desktop Composition Root selection of Session-local command and sandbox implementations.
+ *
+ * 远程项目没有可用的沙箱：seatbelt 与 bubblewrap 都是本机进程语义，对远端命令不起
+ * 任何作用。这里返回与工具环境同一套 SSH 实现并且**不提供** sandbox，宁可让上层在
+ * 需要沙箱时失败，也不给出一个名义上开着、实际不设防的沙箱。
+ */
 export const createDesktopCodingAgentSessionExecutionEnvironment: CodingAgentSessionExecutionEnvironmentFactory = (
 	context,
 ) => {
+	const location = parseProjectLocation(context.cwd);
+	if (location.kind === "ssh") {
+		const policies = createSshPathPolicies(location.remotePath);
+		const environment = createSshCodingToolEnvironment({
+			connection: resolveDesktopSshConnection(location.hostId),
+			remoteCwd: location.remotePath,
+			editPathPolicy: policies.editPathPolicy,
+			writePathPolicy: policies.writePathPolicy,
+			readOptions: CODING_AGENT_READ_TOOL_OPTIONS,
+		});
+		return {
+			registrations: environment.registrations,
+			backgroundService: environment.backgroundService,
+			// 返回一个不提供工具集的沙箱，而不是假装沙箱存在：本机的 seatbelt/bubblewrap
+			// 对远端命令毫无作用，给出「名义上开着、实际不设防」的沙箱比明确没有更危险。
+			sandbox: { createToolSet: () => undefined },
+			dispose: () => environment.dispose(),
+		};
+	}
 	const host = createDesktopNodeToolHost(context.cwd, context.agentDir);
 	const command = createNodeHostSessionCommandEnvironment({
 		cwd: context.cwd,

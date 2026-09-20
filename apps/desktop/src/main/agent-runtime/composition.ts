@@ -42,6 +42,7 @@ import {
 	isSessionPathInDirectory,
 	logRuntimeSessionError,
 	PathFilteredRuntimeSessionCatalog,
+	setDesktopSshConnectionResolver,
 } from "@vetta/runtime-desktop";
 import { FileConversationRuntimeSessionFileHistoryReader } from "@vetta/runtime-node/conversation";
 import {
@@ -69,6 +70,7 @@ import { getDesktopCodingAgentPluginRuntimeSource } from "../plugins/plugin-runt
 import { getDesktopRuntimeConfigurationService } from "../runtime-configuration/runtime-configuration-composition.js";
 import { getAvailableLinuxBubblewrapPath, getAvailableMacosSandboxExecPath } from "../sandbox/capability.js";
 import { resolveWindowsSandboxHostBinary } from "../sandbox/windows-binary-resolver.js";
+import { getSshConnection } from "../ssh/ssh-runtime.js";
 import { createCodingAgentObservationLogPort } from "./coding-agent-observation-log-port.js";
 import { createDesktopCodingAgentFunctionSource } from "./function-extension-source.js";
 import { getOrCreateSharedModelRuntime, readDesktopMcpDebug } from "./host-services.js";
@@ -82,6 +84,9 @@ import { createSessionInitializationLogPort } from "./session-initialization-log
 const log = getAppLogger("runtime");
 
 export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
+	// 远程项目的工具环境要按 hostId 取 SSH 连接，而主机配置属于应用层，
+	// runtime-desktop 不能反向依赖它，所以在这里把实现注册进去。
+	setDesktopSshConnectionResolver(getSshConnection);
 	const observability = createDesktopAgentObservability(getAgentDir(), log);
 	const observationHub = new RuntimeObservationHub({
 		onIssue: (issue) => log.warn("[runtime-observation] application hub issue", issue),

@@ -953,8 +953,10 @@
         "@vetta/runtime-core": "workspace:*",
         "@vetta/runtime-mcp": "workspace:*",
         "@vetta/runtime-node": "workspace:*",
+        "@vetta/runtime-ssh": "workspace:*",
         "@vetta/runtime-storage": "workspace:*",
         "@vetta/runtime-tools": "workspace:*",
+        "@vetta/ssh-transport": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^22.10.5",
@@ -1015,6 +1017,20 @@
         "@types/proper-lockfile": "^4.1.4",
         "typescript": "^5.9.2",
         "vitest": "^3.2.4",
+      },
+    },
+    "packages/runtime-ssh": {
+      "name": "@vetta/runtime-ssh",
+      "version": "0.0.1",
+      "dependencies": {
+        "@vetta/runtime-core": "workspace:*",
+        "@vetta/runtime-node": "workspace:*",
+        "@vetta/runtime-tools": "workspace:*",
+        "@vetta/ssh-transport": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^22.10.5",
+        "typescript": "^5.9.2",
       },
     },
     "packages/runtime-storage": {
@@ -2767,6 +2783,8 @@
     "@vetta/runtime-mcp": ["@vetta/runtime-mcp@workspace:packages/runtime-mcp"],
 
     "@vetta/runtime-node": ["@vetta/runtime-node@workspace:packages/runtime-node"],
+
+    "@vetta/runtime-ssh": ["@vetta/runtime-ssh@workspace:packages/runtime-ssh"],
 
     "@vetta/runtime-storage": ["@vetta/runtime-storage@workspace:packages/runtime-storage"],
 

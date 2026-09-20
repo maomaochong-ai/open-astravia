@@ -19,6 +19,8 @@
 		"prepublishOnly": "bun run clean && bun run build"
 	},
 	"dependencies": {
+		"@vetta/runtime-ssh": "workspace:*",
+		"@vetta/ssh-transport": "workspace:*",
 		"@vetta/ai": "workspace:*",
 		"@vetta/coding-agent": "workspace:*",
 		"@vetta/runtime-core": "workspace:*",

@@ -9,3 +9,4 @@ export * from "./runtime-host-platform.js";
 export * from "./session-catalog.js";
 export * from "./session-compaction-logger.js";
 export * from "./session-error-logger.js";
+export * from "./ssh-connection-resolver.js";
