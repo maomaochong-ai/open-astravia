@@ -14,9 +14,11 @@ function createFixture(initial?: Partial<DesktopConfig>) {
 	const allowProjectRoot = vi.fn();
 	const broadcastChanged = vi.fn();
 	const nonDirectoryPaths = new Set<string>();
+	const knownSshHosts = new Set<string>(["build-01"]);
 	const service = new ProjectService({
 		allowProjectRoot,
 		createDirectory,
+		isKnownSshHost: async (hostId) => knownSshHosts.has(hostId),
 		readConfig: async () => structuredClone(config),
 		writeConfig: async (next) => {
 			config = structuredClone(next);
@@ -27,6 +29,7 @@ function createFixture(initial?: Partial<DesktopConfig>) {
 	return {
 		allowProjectRoot,
 		broadcastChanged,
+		knownSshHosts,
 		nonDirectoryPaths,
 		createDirectory,
 		getConfig: () => config,
@@ -119,5 +122,81 @@ describe("ProjectService", () => {
 
 		expect(fixture.getConfig().archivedProjects).toEqual([]);
 		expect(fixture.createDirectory).not.toHaveBeenCalled();
+	});
+});
+
+describe("ProjectService 与远程项目", () => {
+	it("登记远端目录，显示名取远端路径的最后一段", async () => {
+		const fixture = createFixture();
+
+		await expect(fixture.service.open("ssh://build-01/srv/app")).resolves.toEqual({
+			path: "ssh://build-01/srv/app",
+			name: "app",
+		});
+		expect(fixture.getConfig().projects).toEqual([{ path: "ssh://build-01/srv/app", name: "app" }]);
+	});
+
+	it("远端项目不进本地文件系统的授权根", async () => {
+		// allowedRoots 是本地沙箱边界，塞进一个 ssh:// 串只会让那条规则变得看不懂。
+		const fixture = createFixture();
+
+		await fixture.service.open("ssh://build-01/srv/app");
+
+		expect(fixture.allowProjectRoot).not.toHaveBeenCalled();
+	});
+
+	it("主机不存在时拒绝登记，而不是留下一条永远打不开的条目", async () => {
+		const fixture = createFixture();
+
+		await expect(fixture.service.open("ssh://ghost/srv/app")).rejects.toThrow("Unknown SSH host: ghost");
+		expect(fixture.getConfig().projects).toEqual([]);
+		expect(fixture.broadcastChanged).not.toHaveBeenCalled();
+	});
+
+	it("畸形的 ssh:// 串被拒绝，不会当成本地相对路径落到本机目录上", async () => {
+		const fixture = createFixture();
+
+		await expect(fixture.service.open("ssh://build-01")).rejects.toThrow("Invalid project path");
+	});
+
+	it("远端的文件不能登记成项目", async () => {
+		const fixture = createFixture();
+		fixture.nonDirectoryPaths.add("ssh://build-01/srv/notes.txt");
+
+		await expect(fixture.service.open("ssh://build-01/srv/notes.txt")).rejects.toThrow(
+			"Project path must be a directory.",
+		);
+	});
+
+	it("新建项目只发生在本地工作区，远端目录必须走 open", async () => {
+		const fixture = createFixture();
+
+		await expect(fixture.service.create("demo", "ssh://build-01/srv/demo")).rejects.toThrow(
+			"Remote projects must be registered with open()",
+		);
+		expect(fixture.createDirectory).not.toHaveBeenCalled();
+	});
+
+	it("同路径的本地项目与远端项目互不干扰", async () => {
+		// 本机很可能真的存在 /srv/app；若两者被判为同一个项目，归档远端项目会连本地
+		// 一起摘掉，会话历史也会串到一起。
+		const fixture = createFixture();
+
+		await fixture.service.open("/srv/app");
+		await fixture.service.open("ssh://build-01/srv/app");
+		expect(fixture.getConfig().projects).toHaveLength(2);
+
+		await fixture.service.archive("ssh://build-01/srv/app");
+		expect(fixture.getConfig().projects).toEqual([{ path: "/srv/app", name: "app" }]);
+		expect(fixture.getConfig().archivedProjects).toEqual([{ path: "ssh://build-01/srv/app", name: "app" }]);
+	});
+
+	it("远端路径大小写敏感——Linux 上 App 与 app 是两个目录", async () => {
+		const fixture = createFixture();
+
+		await fixture.service.open("ssh://build-01/srv/App");
+		await fixture.service.open("ssh://build-01/srv/app");
+
+		expect(fixture.getConfig().projects).toHaveLength(2);
 	});
 });

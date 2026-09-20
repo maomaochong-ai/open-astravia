@@ -161,6 +161,7 @@
 		"@vetta/runtime-node": "workspace:*",
 		"@vetta/runtime-storage": "workspace:*",
 		"@vetta/runtime-tools": "workspace:*",
+		"@vetta/ssh-transport": "workspace:*",
 		"@vetta-org/theme-sdk": "workspace:*",
 		"@vetta-org/theme-ui": "workspace:*",
 		"@vetta/toolkit": "workspace:*",

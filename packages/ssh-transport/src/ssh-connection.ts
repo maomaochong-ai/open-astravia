@@ -54,6 +54,7 @@ export interface SshConnectionOptions {
  */
 export class SshConnection {
 	private platform: RemotePlatform | undefined;
+	private homeDirectory: string | undefined;
 
 	constructor(
 		readonly host: SshHost,
@@ -72,6 +73,28 @@ export class SshConnection {
 			statFlavor: /darwin|bsd/i.test(os) ? "bsd" : "gnu",
 		};
 		return this.platform;
+	}
+
+	/**
+	 * 远端家目录，结果缓存。
+	 *
+	 * 需要显式解析是因为所有路径都会被单引号引用，而 `'~'` 在 shell 里就是一个名叫
+	 * `~` 的目录，不会展开。让调用方拿到真实路径再传进来，比在每个操作里偷偷展开
+	 * 要好——后者会让「传进去的路径」和「实际操作的路径」对不上。
+	 */
+	async resolveHomeDirectory(signal?: AbortSignal): Promise<string> {
+		if (this.homeDirectory !== undefined) return this.homeDirectory;
+		// 模板串里写 `\${`：普通字符串里的 `${` 会被 lint 当成写漏的模板插值。
+		const result = await this.runChecked(`printf %s "\${HOME:?no home}"`, { signal });
+		this.homeDirectory = decode(result.stdout).trim();
+		return this.homeDirectory;
+	}
+
+	/** 把开头的 `~` 展开成远端家目录；其余路径原样返回。 */
+	async expandRemotePath(remotePath: string, signal?: AbortSignal): Promise<string> {
+		if (remotePath !== "~" && !remotePath.startsWith("~/")) return remotePath;
+		const home = await this.resolveHomeDirectory(signal);
+		return remotePath === "~" ? home : `${home.replace(/\/+$/, "")}${remotePath.slice(1)}`;
 	}
 
 	/** 执行用户命令。走登录 shell，因此 nvm、pyenv 之类的 PATH 设置生效。 */

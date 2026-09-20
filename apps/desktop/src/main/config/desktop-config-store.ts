@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
+import type { SshHost } from "@vetta/ssh-transport";
 import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
 import { isLanguagePreference, type LanguagePreference } from "../../shared/i18n/config.js";
 import { normalizeShortcutsConfig, type ShortcutsConfig } from "../../shared/shortcuts.js";
@@ -57,6 +58,13 @@ export interface DesktopConfig {
 		pairingId?: string;
 		inputEnabled?: boolean;
 	};
+	/**
+	 * 可作为远程项目宿主的 SSH 主机（ADR-0120）。
+	 *
+	 * 注意与上面的 `remoteControl` 是两件事：那个是「手机遥控本机」，这个是
+	 * 「本机连到远端主机上开发」，方向相反。
+	 */
+	sshHosts?: SshHost[];
 }
 
 export type AppshotGesture = "both-shift" | "both-mod" | "both-alt";
@@ -257,6 +265,7 @@ function parseDesktopConfig(parsed: Record<string, unknown>): DesktopConfig {
 		quickPanel: normalizeQuickPanel(parsed.quickPanel),
 		appshot: normalizeAppshot(parsed.appshot),
 		remoteControl: normalizeRemoteControl(parsed.remoteControl),
+		sshHosts: normalizeSshHosts(parsed.sshHosts),
 	};
 }
 
@@ -268,6 +277,39 @@ function normalizeRemoteControl(value: unknown): DesktopConfig["remoteControl"] 
 		pairingId: typeof input.pairingId === "string" ? input.pairingId : undefined,
 		inputEnabled: input.inputEnabled === true,
 	};
+}
+
+/**
+ * 逐条校验持久化的 SSH 主机。
+ *
+ * 配置文件可能被用户手工编辑，也可能来自更旧的版本。缺 id 或缺连接目标的条目直接
+ * 丢弃而不是补默认值——一个指向错误主机的条目会让远程项目静默连到别的机器上。
+ */
+function normalizeSshHosts(value: unknown): SshHost[] | undefined {
+	if (!Array.isArray(value)) return undefined;
+	const hosts: SshHost[] = [];
+	for (const raw of value) {
+		if (typeof raw !== "object" || raw === null) continue;
+		const input = raw as Record<string, unknown>;
+		const id = typeof input.id === "string" ? input.id.trim() : "";
+		const target = typeof input.target === "string" ? input.target.trim() : "";
+		if (id.length === 0 || target.length === 0) continue;
+		const port = typeof input.port === "number" && Number.isInteger(input.port) ? input.port : undefined;
+		hosts.push({
+			id,
+			label: typeof input.label === "string" && input.label.trim().length > 0 ? input.label.trim() : target,
+			target,
+			...(port !== undefined && port > 0 && port <= 65535 ? { port } : {}),
+			...(typeof input.identityFile === "string" && input.identityFile.trim().length > 0
+				? { identityFile: input.identityFile.trim() }
+				: {}),
+			source: input.source === "ssh-config" ? "ssh-config" : "manual",
+			...(typeof input.credentialRef === "string" && input.credentialRef.length > 0
+				? { credentialRef: input.credentialRef }
+				: {}),
+		});
+	}
+	return hosts;
 }
 
 export async function writeDesktopConfig(config: DesktopConfig): Promise<void> {

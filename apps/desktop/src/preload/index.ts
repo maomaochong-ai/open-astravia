@@ -22,6 +22,7 @@ import { createRuntimeConfigurationApi } from "./apis/runtime-configuration.js";
 import { createSchedulerApi } from "./apis/scheduler.js";
 import { createSessionApi } from "./apis/session.js";
 import { createSpeechInputApi } from "./apis/speech-input.js";
+import { createSshApi } from "./apis/ssh.js";
 import { createSystemApi } from "./apis/system.js";
 import { createTelemetryApi } from "./apis/telemetry.js";
 import { createThemesApi } from "./apis/themes.js";
@@ -54,6 +55,7 @@ const rawApi: Omit<DesktopApi, "hostAccess"> = {
 	...createPetApi(ipcRenderer),
 	...createConversationTagsApi(ipcRenderer),
 	...createProjectApi(ipcRenderer),
+	...createSshApi(ipcRenderer),
 	...createQuickPanelApi(ipcRenderer),
 	...createRuntimeConfigurationApi(ipcRenderer),
 	remotePairing: createRemotePairingApi(ipcRenderer),

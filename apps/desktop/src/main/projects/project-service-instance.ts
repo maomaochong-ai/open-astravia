@@ -1,6 +1,8 @@
 import { stat } from "node:fs/promises";
+import { parseProjectLocation } from "@vetta/ssh-transport";
 import { readDesktopConfig, writeDesktopConfig } from "../config/desktop-config-store.js";
 import { allowProjectRoot, createFilesystemDirectory } from "../filesystem/filesystem-service.js";
+import { getSshConnection } from "../ssh/ssh-runtime.js";
 import { broadcastProjectsChanged } from "./project-events.js";
 import { ProjectService } from "./project-service.js";
 
@@ -23,9 +25,25 @@ export function getDesktopProjectService(): ProjectService {
 		readConfig: readDesktopConfig,
 		writeConfig: writeDesktopConfig,
 		broadcastChanged: broadcastProjectsChanged,
-		// 直接查磁盘：这是「能不能登记成项目」的判断，此刻该路径还不在任何授权根里，
-		// 走不了 filesystem-service 那套带 allowedRoots 断言的入口。
+		isKnownSshHost: async (hostId) => {
+			const config = await readDesktopConfig();
+			return (config.sshHosts ?? []).some((host) => host.id === hostId);
+		},
 		isExistingNonDirectory: async (path) => {
+			const location = parseProjectLocation(path);
+			if (location.kind === "ssh") {
+				try {
+					const entry = await getSshConnection(location.hostId).stat(location.remotePath);
+					// 远端说「没有这个路径」时放行——与本地一致，open 允许登记还没建出来的目录。
+					return entry !== null && entry.kind !== "directory";
+				} catch {
+					// 连不上不代表它不是目录。这里只做准入校验，判不了就别拦，
+					// 真正的失败会在打开项目时带着连接错误浮出来（ADR-0120：不臆断问不到的事）。
+					return false;
+				}
+			}
+			// 直接查磁盘：这是「能不能登记成项目」的判断，此刻该路径还不在任何授权根里，
+			// 走不了 filesystem-service 那套带 allowedRoots 断言的入口。
 			try {
 				return !(await stat(path)).isDirectory();
 			} catch {

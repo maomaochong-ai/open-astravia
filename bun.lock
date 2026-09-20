@@ -97,6 +97,7 @@
         "@vetta/runtime-storage": "workspace:*",
         "@vetta/runtime-telemetry": "workspace:*",
         "@vetta/runtime-tools": "workspace:*",
+        "@vetta/ssh-transport": "workspace:*",
         "@vetta/toolkit": "workspace:*",
         "@xyflow/react": "^12.10.2",
         "adm-zip": "^0.5.16",
