@@ -423,11 +423,12 @@ function DecorCard({
  * 都由实现决定，另画一份迟早会和页面对不上。
  */
 /**
- * 流光按整页尺寸算，模糊半径 7em 塞进这枚方格只剩一团糊。
- * 预览里把模糊按比例缩小、格距同步收紧，点阵才不至于只剩两三行。
+ * 流光按整页尺寸算，原尺寸的色斑塞进这枚方格只剩一团均匀的光。
+ * 预览里把光晕半径和色斑尺度按比例缩小、格距同步收紧，点阵才不至于只剩两三行。
  */
 const AURORA_PREVIEW_VARS = {
-	"--ns-aurora-blur": "2.2em",
+	"--ns-aurora-radius": "60px",
+	"--ns-aurora-field-scale": "0.12",
 	"--ns-aurora-cell": "5px",
 	"--ns-aurora-dot": "1.4px",
 } as CSSProperties;
