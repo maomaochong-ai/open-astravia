@@ -30,6 +30,7 @@
 | `fs.mkdir` `fs.rename` `fs.remove` `fs.createEntry` | 写。`createEntry` 从不覆盖（`EEXIST`） |
 | `watch.subscribe` `watch.unsubscribe` | 订阅目录；变化时推送 `watch.changed` |
 | `proc.spawn` `proc.status` `proc.list` `proc.read` `proc.kill` `proc.remove` | 后台任务。`proc.read` 支持 `waitMs` 长轮询 |
+| `net.listeners` | 正在 LISTEN 的 TCP 端口，供端口转发挑选。只在 Linux 上实现（读 `/proc`）；其他系统返回 `ENOSYS`，由调用方退回 `lsof` |
 
 错误码：`ENOENT`、`EEXIST`、`EINVAL`、`ECONFLICT`、`ENOSYS`、`EIO`。
 

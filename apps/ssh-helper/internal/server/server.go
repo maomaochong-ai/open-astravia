@@ -52,6 +52,7 @@ func New(options Options) *Server {
 		"fs.createEntry":    bind(fsCreateEntry),
 		"fs.realPath":       bind(fsRealPath),
 		"fs.listRecursive":  bind(fsListRecursive),
+		"net.listeners":     bind(netListeners),
 		"watch.subscribe":   bind(s.watcher.subscribe),
 		"watch.unsubscribe": bind(s.watcher.unsubscribe),
 		"proc.spawn":        bind(s.procSpawn),
