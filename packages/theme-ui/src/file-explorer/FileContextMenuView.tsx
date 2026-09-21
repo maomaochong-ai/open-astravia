@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, type JSX, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type JSX, type ReactNode } from "react";
 
 export interface FileContextMenuViewLabels {
 	newFile: string;
@@ -46,6 +46,14 @@ export interface FileContextMenuPluginAction {
 	onSelect: () => void;
 }
 
+const VIEWPORT_MARGIN = 8;
+
+/** 超出视口就翻到光标另一侧；两侧都放不下时贴住起始边，宁可裁尾也别裁头。 */
+function clampToViewport(start: number, size: number, viewport: number): number {
+	if (start + size <= viewport - VIEWPORT_MARGIN) return start;
+	return Math.max(VIEWPORT_MARGIN, Math.min(start - size, viewport - VIEWPORT_MARGIN - size));
+}
+
 /**
  * File tree context menu shell. Host wires IPC / rename atom / i18n.
  *
@@ -73,6 +81,22 @@ export function FileContextMenuView({
 	pluginActions = [],
 }: FileContextMenuViewProps): JSX.Element {
 	const menuRef = useRef<HTMLDivElement>(null);
+	const [position, setPosition] = useState({ left: x, top: y });
+
+	// 光标贴近面板右/下边缘时，菜单按原始坐标铺开会伸出窗口外被裁掉，
+	// 这里量完实际尺寸再朝内翻转，保证整份菜单始终落在视口内。
+	useLayoutEffect(() => {
+		const el = menuRef.current;
+		if (!el) return;
+		// offsetWidth/Height 不受入场动画的 scale 影响，拿到的是真实布局尺寸。
+		const width = el.offsetWidth;
+		const height = el.offsetHeight;
+		const next = {
+			left: clampToViewport(x, width, window.innerWidth),
+			top: clampToViewport(y, height, window.innerHeight),
+		};
+		setPosition((prev) => (prev.left === next.left && prev.top === next.top ? prev : next));
+	}, [x, y, showEntryActions, canPaste, canRename, canOpenInFolder, pluginActions.length]);
 
 	useEffect(() => {
 		function handleClick(e: MouseEvent) {
@@ -101,9 +125,10 @@ export function FileContextMenuView({
 				exit={{ opacity: 0, scale: 0.95 }}
 				transition={{ duration: 0.12, ease: [0.25, 0.1, 0.25, 1] }}
 				className="fixed z-50 w-[180px] overflow-hidden rounded-lg border border-border bg-popover p-1 shadow-lg"
+				data-testid="file-context-menu"
 				style={{
-					left: `${x}px`,
-					top: `${y}px`,
+					left: `${position.left}px`,
+					top: `${position.top}px`,
 				}}
 			>
 				<button
