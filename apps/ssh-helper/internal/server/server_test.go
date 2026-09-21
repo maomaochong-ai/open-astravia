@@ -376,7 +376,7 @@ func TestKillStopsTheWholeProcessTree(t *testing.T) {
 	var started taskView
 	c.mustCall("proc.spawn", map[string]any{
 		// A dev server is never one process: the shell spawns a child that would be
-		// orphaned if only the leader were signalled.
+		// orphaned if only the leader were signaled.
 		"command": "sh -c 'echo $$ > " + marker + "; sleep 60' & sleep 60",
 		"cwd":     workDir,
 	}, &started)
