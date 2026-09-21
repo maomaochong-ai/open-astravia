@@ -1,6 +1,11 @@
 import type { PortForward } from "@preload/api-types/ssh";
-import { openUrlInActivityWorkspaceAtom } from "@shared/store/atoms";
+import {
+	backgroundTasksBySessionAtom,
+	getBackgroundTasksForSession,
+	openUrlInActivityWorkspaceAtom,
+} from "@shared/store/atoms";
 import type { RemoteListeningPort } from "@vetta/ssh-transport";
+import { parseProjectLocation } from "@vetta/ssh-transport/project-uri";
 import type {
 	PortCandidateViewItem,
 	PortForwardViewItem,
@@ -8,10 +13,12 @@ import type {
 	PortsTabPanelViewLabels,
 	PortsTabPanelViewProps,
 } from "@vetta-org/theme-ui/activity";
-import { useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useActivityWorkspace } from "../registry/context";
+import { useActivityRuntimeIds, useActivityWorkspace } from "../registry/context";
+import { detectPortsInOutput } from "../services/detect-ports-in-output";
+import { collectRuntimeItems } from "../services/runtime-scope";
 import { useRemoteProjectHostId, useSshPortForwards } from "./useSshPortForwards";
 
 /** 「已复制」的提示留多久。 */
@@ -49,6 +56,8 @@ export function usePortsTabPanelModel(): PortsTabPanelViewProps {
 	const workspace = useActivityWorkspace();
 	const hostId = useRemoteProjectHostId(workspace.cwd);
 	const forwards = useSshPortForwards(hostId);
+	const runtimeIds = useActivityRuntimeIds();
+	const backgroundTasksMap = useAtomValue(backgroundTasksBySessionAtom);
 	const openUrlInWorkspace = useSetAtom(openUrlInActivityWorkspaceAtom);
 
 	const [listeners, setListeners] = useState<readonly RemoteListeningPort[]>([]);
@@ -184,10 +193,41 @@ export function usePortsTabPanelModel(): PortsTabPanelViewProps {
 		[t],
 	);
 
-	const candidates = useMemo(() => {
+	/**
+	 * 后台任务（dev server 就跑在那里）自己打出来的地址。
+	 *
+	 * 它比扫描更早也更准：任务刚起来时端口已经在输出里，而扫描要等用户点刷新；远端没有扫描
+	 * 工具时这还是唯一的线索。只认归属这台主机的任务——同一个会话里可能还有本机的任务。
+	 */
+	const detectedPorts = useMemo(() => {
+		if (!hostId) return [];
+		const tasks = collectRuntimeItems(runtimeIds, (runtimeId) =>
+			getBackgroundTasksForSession(backgroundTasksMap, runtimeId),
+		);
+		const ports: number[] = [];
+		for (const task of tasks) {
+			const location = parseProjectLocation(task.cwd);
+			if (location.kind !== "ssh" || location.hostId !== hostId) continue;
+			for (const port of detectPortsInOutput(task.tail)) if (!ports.includes(port)) ports.push(port);
+		}
+		return ports;
+	}, [backgroundTasksMap, hostId, runtimeIds]);
+
+	const candidates = useMemo((): PortCandidateViewItem[] => {
 		const forwarded = new Set(forwards.map((forward) => forward.remotePort));
-		return listeners.filter((port) => !forwarded.has(port.port)).map(toCandidateViewItem);
-	}, [forwards, listeners]);
+		const scanned = listeners.filter((port) => !forwarded.has(port.port));
+		const scannedByPort = new Map(scanned.map((port) => [port.port, port]));
+		// 从输出认出来的排在前面：那是用户刚刚起的那个服务，也是他此刻想看的。
+		const fromOutput = detectedPorts
+			.filter((port) => !forwarded.has(port))
+			.map((port) => ({
+				port,
+				processName: scannedByPort.get(port)?.processName,
+				origin: "output" as const,
+			}));
+		const shown = new Set(fromOutput.map((candidate) => candidate.port));
+		return [...fromOutput, ...scanned.filter((port) => !shown.has(port.port)).map(toCandidateViewItem)];
+	}, [detectedPorts, forwards, listeners]);
 
 	return {
 		forwards: forwards.map(toForwardViewItem),

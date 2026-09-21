@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import type { PortForward } from "@preload/api-types/ssh";
-import { activityPanelTabByProjectAtom, browserUrlByWorkspaceAtom } from "@shared/store/atoms";
+import { activityPanelTabByProjectAtom, backgroundTasksBySessionAtom, browserUrlByWorkspaceAtom } from "@shared/store/atoms";
+import type { BackgroundTask } from "@shared/store/background-tasks-atoms";
 import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
 import type { RemoteListenerScan } from "@vetta/ssh-transport";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
@@ -106,6 +107,60 @@ describe("端口面板", () => {
 			expect(store.get(browserUrlByWorkspaceAtom).get(REMOTE_CWD)).toBe("http://localhost:3000");
 			expect(store.get(activityPanelTabByProjectAtom).get(REMOTE_CWD)).toBe("browser");
 		});
+	});
+
+	it("后台任务打出地址后端口立刻出现在候选里，不必等扫描", async () => {
+		// dev server 一起来就把地址打出来了，那是用户此刻最想看的东西；远端没有扫描工具时
+		// 这还是唯一的线索。
+		const store = createStore();
+		store.set(
+			backgroundTasksBySessionAtom,
+			new Map<string, BackgroundTask[]>([
+				[
+					"runtime-1",
+					[
+						{
+							id: "task-1",
+							command: "npm run dev",
+							cwd: REMOTE_CWD,
+							status: "running",
+							outputFile: "/tmp/out.log",
+							exitCode: undefined,
+							startedAt: 0,
+							tail: "  ➜  Local:   http://localhost:5173/",
+						},
+						// 本机的任务不算：它的端口本来就在本机，转发它没有意义。
+						{
+							id: "task-2",
+							command: "npm run docs",
+							cwd: "/Users/me/other",
+							status: "running",
+							outputFile: "/tmp/out2.log",
+							exitCode: undefined,
+							startedAt: 0,
+							tail: "http://localhost:4321/",
+						},
+					],
+				],
+			]),
+		);
+		const user = userEvent.setup();
+		renderPanel(store);
+
+		expect(await screen.findByText("5173")).toBeTruthy();
+		expect(screen.getByText("activityPanel.ports.fromOutput")).toBeTruthy();
+		expect(screen.queryByText("4321")).toBeNull();
+
+		await user.click(screen.getByRole("button", { name: "activityPanel.ports.forward" }));
+
+		expect(ssh.openPortForward).toHaveBeenCalledWith({
+			hostId: "host-1",
+			remotePort: 5173,
+			label: undefined,
+			source: "detected",
+		});
+		// 转发之后它不再作为候选重复出现。
+		await waitFor(() => expect(screen.queryByText("activityPanel.ports.fromOutput")).toBeNull());
 	});
 
 	it("手动填一个端口号也能转发，非法输入就地提示且不发请求", async () => {
