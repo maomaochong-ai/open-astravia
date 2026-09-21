@@ -74,11 +74,6 @@ export function resolveAskpassEnvironment(
 	}
 }
 
-/** 连接成功后调用：清掉「这轮已经用过存档凭据」的标记。 */
-export function resetSshPromptState(hostId: string): void {
-	promptService?.reset(hostId);
-}
-
 export function disposeAskpassChannel(): void {
 	channel?.close();
 	channel = undefined;

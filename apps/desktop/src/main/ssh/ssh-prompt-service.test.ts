@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { SshPromptService, type SshPromptUserAnswer } from "./ssh-prompt-service.js";
 
-function createFixture(options?: { stored?: Record<string, string>; answer?: SshPromptUserAnswer }) {
+function createFixture(options?: {
+	stored?: Record<string, string>;
+	answer?: SshPromptUserAnswer;
+	now?: () => number;
+}) {
 	const stored = new Map(Object.entries(options?.stored ?? {}));
 	const askUser = vi.fn(async () => options?.answer ?? { ok: true, value: "typed" });
 	const removeStoredSecret = vi.fn((ref: { ownerId: string; name: string }) => {
@@ -16,11 +20,13 @@ function createFixture(options?: { stored?: Record<string, string>; answer?: Ssh
 		writeStoredSecret,
 		removeStoredSecret,
 		askUser,
+		...(options?.now === undefined ? {} : { now: options.now }),
 	});
 	return { service, askUser, writeStoredSecret, removeStoredSecret, stored };
 }
 
-const passwordRequest = { hostId: "h1", kind: "password" as const, prompt: "me@build-01's password: " };
+/** 同一个 `round` 代表同一个 ssh 进程，也就是同一轮认证。 */
+const passwordRequest = { hostId: "h1", kind: "password" as const, prompt: "me@build-01's password: ", round: 4242 };
 
 describe("SSH 交互提示", () => {
 	it("有存档凭据时直接回答，不打扰用户", async () => {
@@ -43,11 +49,41 @@ describe("SSH 交互提示", () => {
 		expect(fixture.askUser).toHaveBeenCalledOnce();
 	});
 
-	it("连接成功后重置，下次仍先用存档", async () => {
+	it("换一个 ssh 进程就是新一轮，仍然先用存档", async () => {
+		// 这是「勾了记住却每次还问」的回归点：轮次一旦按应用生命周期来算，同一次运行里的
+		// 第二次连接就会被当成「存档是错的」，把刚存下的密码当场删掉。
 		const fixture = createFixture({ stored: { "h1:password": "saved" } });
 
 		await fixture.service.resolve(passwordRequest);
-		fixture.service.reset("h1");
+		await expect(fixture.service.resolve({ ...passwordRequest, round: 4243 })).resolves.toEqual({
+			ok: true,
+			value: "saved",
+		});
+
+		expect(fixture.askUser).not.toHaveBeenCalled();
+		expect(fixture.removeStoredSecret).not.toHaveBeenCalled();
+		expect(fixture.stored.get("h1:password")).toBe("saved");
+	});
+
+	it("用户勾选记住后，下一轮直接用存档而不再问", async () => {
+		const fixture = createFixture({ answer: { ok: true, value: "secret", remember: true } });
+
+		await fixture.service.resolve(passwordRequest);
+		await expect(fixture.service.resolve({ ...passwordRequest, round: 4243 })).resolves.toEqual({
+			ok: true,
+			value: "secret",
+		});
+
+		expect(fixture.askUser).toHaveBeenCalledOnce();
+	});
+
+	it("标记过期后不再拦着存档", async () => {
+		// 标记按 ssh 进程号分桶，而进程退出没有任何事件通知我们清理；过期是这个 Map 的唯一上界。
+		let clock = 0;
+		const fixture = createFixture({ stored: { "h1:password": "saved" }, now: () => clock });
+
+		await fixture.service.resolve(passwordRequest);
+		clock += 11 * 60 * 1000;
 		await expect(fixture.service.resolve(passwordRequest)).resolves.toEqual({ ok: true, value: "saved" });
 		expect(fixture.askUser).not.toHaveBeenCalled();
 	});

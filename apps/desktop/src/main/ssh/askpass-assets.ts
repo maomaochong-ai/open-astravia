@@ -29,6 +29,9 @@ const token = process.env.VETTA_ASKPASS_TOKEN;
 const prompt = process.argv[2] ?? "";
 const hostId = process.env.VETTA_ASKPASS_HOST ?? "";
 const promptEnv = process.env.SSH_ASKPASS_PROMPT ?? "";
+// 父进程就是发起这次提示的那个 ssh——外层 shell 用的是 exec，没有多套一层。
+// 上层靠它区分「同一轮认证的第二次追问」与「下一次连接」。
+const round = process.ppid;
 
 if (!socketPath || !token) {
 	// 没有回传通道就必须失败。这里若静默放行，确认类提示会变成「默认同意」。
@@ -49,7 +52,7 @@ function finish(code, answer) {
 }
 
 socket.on("connect", () => {
-	socket.write(JSON.stringify({ token, hostId, prompt, promptEnv }) + "\\n");
+	socket.write(JSON.stringify({ token, hostId, prompt, promptEnv, round }) + "\\n");
 });
 socket.on("data", (chunk) => {
 	buffer += chunk.toString("utf8");

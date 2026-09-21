@@ -11,7 +11,7 @@ import {
 } from "@vetta/ssh-transport";
 import { readConfigSync } from "../config/desktop-config-store.js";
 import { getAppLogger } from "../logger.js";
-import { resetSshPromptState, resolveAskpassEnvironment } from "./askpass-runtime.js";
+import { resolveAskpassEnvironment } from "./askpass-runtime.js";
 import { resolveSshHelperBinary } from "./helper-assets.js";
 import { broadcastSshHostStatus } from "./ssh-events.js";
 
@@ -73,12 +73,7 @@ export function getSshConnectionManager(): SshConnectionManager {
 			// 界面只会显示「没有子目录」，不记下来就无从查起。
 			log.warn("remote directory listing parsed to nothing", { command, output });
 		},
-		onStatusChanged: (hostId, status) => {
-			// 连上了就说明这轮认证过了，把「存档凭据已用过」的标记清掉，
-			// 下次连接才会继续优先用存档而不是又去问用户。
-			if (status === "connected") resetSshPromptState(hostId);
-			broadcastSshHostStatus(hostId, status);
-		},
+		onStatusChanged: broadcastSshHostStatus,
 	});
 	return manager;
 }

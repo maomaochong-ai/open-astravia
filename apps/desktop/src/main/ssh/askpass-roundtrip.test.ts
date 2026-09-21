@@ -73,7 +73,19 @@ describe.skipIf(process.platform === "win32")("askpass 与 OpenSSH 的合同", (
 
 		await invoke(prompt);
 
-		expect(resolver).toHaveBeenCalledWith({ hostId: "h1", kind: "passphrase", prompt });
+		expect(resolver).toHaveBeenCalledWith(expect.objectContaining({ hostId: "h1", kind: "passphrase", prompt }));
+	});
+
+	it("带上发起提示的进程号，供上层区分认证轮次", async () => {
+		// askpass 是被 ssh 直接 exec 出来的，父进程号就是那个 ssh。上层靠它判断「同一轮里
+		// 又被问了一次」，进而认定存档凭据已失效——认错轮次就会把刚存好的密码当场删掉。
+		resolver.mockResolvedValueOnce({ ok: true, value: "pp" });
+
+		await invoke("me@build-01's password: ");
+
+		const [request] = resolver.mock.calls[0] as [{ round?: number }];
+		expect(request.round).toBeTypeOf("number");
+		expect(request.round).toBeGreaterThan(0);
 	});
 
 	it("确认类提示：同意即退出 0，且不往 stdout 写东西", async () => {

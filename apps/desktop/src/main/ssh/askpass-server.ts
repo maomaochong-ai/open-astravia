@@ -17,6 +17,14 @@ export interface SshAskpassRequest {
 	readonly hostId: string;
 	readonly kind: SshPromptKind;
 	readonly prompt: string;
+	/**
+	 * 发起这次提示的 `ssh` 进程号，用来判断两次提示是不是同一轮认证。
+	 *
+	 * OpenSSH 不给轮次标识，但 askpass 是被 `ssh` 直接 exec 出来的，父进程号就是那个
+	 * `ssh`。密码错了它会在同一个进程里连问三次，换一轮则必然是另一个进程。
+	 * 拿不到时为 undefined，此时所有提示会退化成共用一轮。
+	 */
+	readonly round?: number;
 }
 
 export type SshPromptResolver = (request: SshAskpassRequest) => Promise<SshPromptAnswer>;
@@ -79,7 +87,7 @@ async function answer(socket: Socket, line: string, token: string, resolve: SshP
 	const reply = (value: SshPromptAnswer): void => {
 		socket.end(`${JSON.stringify(value)}\n`);
 	};
-	let request: { token?: unknown; hostId?: unknown; prompt?: unknown; promptEnv?: unknown };
+	let request: { token?: unknown; hostId?: unknown; prompt?: unknown; promptEnv?: unknown; round?: unknown };
 	try {
 		request = JSON.parse(line) as typeof request;
 	} catch {
@@ -93,8 +101,19 @@ async function answer(socket: Socket, line: string, token: string, resolve: SshP
 	const prompt = typeof request.prompt === "string" ? request.prompt : "";
 	const promptEnv = typeof request.promptEnv === "string" ? request.promptEnv : undefined;
 	const hostId = typeof request.hostId === "string" ? request.hostId : "";
+	const round =
+		typeof request.round === "number" && Number.isInteger(request.round) && request.round > 0
+			? request.round
+			: undefined;
 	try {
-		reply(await resolve({ hostId, kind: classifySshPrompt(prompt, promptEnv), prompt }));
+		reply(
+			await resolve({
+				hostId,
+				kind: classifySshPrompt(prompt, promptEnv),
+				prompt,
+				...(round === undefined ? {} : { round }),
+			}),
+		);
 	} catch {
 		// 上层出错时按「拒绝」处理：确认类提示绝不能因为一次异常就变成默认同意。
 		reply({ ok: false });
