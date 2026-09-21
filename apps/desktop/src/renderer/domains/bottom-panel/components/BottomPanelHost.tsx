@@ -11,7 +11,8 @@ import { BottomPanelSplitView } from "./BottomPanelSplitView";
 /**
  * 会话页底部面板。
  *
- * 挂在会话页根容器里、与「消息列 + 活动面板」那一行是纵向兄弟，所以横跨整页宽度。
+ * 挂在消息列内部的底部，只占消息列的宽度，不压到右侧活动面板下方——活动面板是与消息流
+ * 并列的独立一列，被底部面板截断会让两者看起来是同一块区域。
  * 折叠或没有任何 tab 时整块不渲染——此时 tab 以 pill 的形式出现在输入框下方。
  */
 export function BottomPanelHost(): JSX.Element | null {

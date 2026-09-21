@@ -40,7 +40,7 @@ describe("DefaultChatView layout", () => {
 		expect(inputBar).toBeLessThan(activityPanel);
 	});
 
-	it("底部面板排在消息列与活动面板之后：它横跨整页，不属于消息列", () => {
+	it("底部面板住在消息列内部：排在输入框之后、活动面板之前", () => {
 		const html = renderToStaticMarkup(
 			<DefaultChatView messages={[]} workspace={workspace}>
 				<div data-testid="message-list" />
@@ -50,12 +50,14 @@ describe("DefaultChatView layout", () => {
 			</DefaultChatView>,
 		);
 
+		const inputBar = html.indexOf('data-testid="input-bar"');
 		const activityPanel = html.indexOf('data-testid="activity-panel"');
 		const bottomPanel = html.indexOf('data-testid="bottom-panel"');
 
-		// 在活动面板之后 = 它是那一整行的纵向兄弟；放进消息列里会被右侧面板挤窄，
-		// 终端可用列数就会随侧栏开合变化。
-		expect(bottomPanel).toBeGreaterThan(activityPanel);
+		// 夹在输入框与活动面板之间 = 它是消息列的最后一个子节点，宽度跟着消息列走，
+		// 不会横穿到右侧活动面板底下把两列看成一块。
+		expect(bottomPanel).toBeGreaterThan(inputBar);
+		expect(bottomPanel).toBeLessThan(activityPanel);
 	});
 
 	it("can compose a read-only feed without mounting a composer", () => {

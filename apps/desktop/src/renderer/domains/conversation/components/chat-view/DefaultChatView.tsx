@@ -87,14 +87,14 @@ export function DefaultChatView({
 					<div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
 						{subHeader}
 						{children}
+						{/*
+						 * 底部面板住在消息列内部，宽度跟着消息列走、不伸到活动面板下方：
+						 * 活动面板是与消息流并列的一列，横穿它的底边会把两列看成一块。
+						 */}
+						<BottomPanelHost />
 					</div>
 					<ActivityColumn workspace={workspace} activity={activity} />
 				</div>
-				{/*
-				 * 底部面板是上面那一行的纵向兄弟，所以横跨整页宽度、压在活动面板下方。
-				 * 放进消息列里会被活动面板挤窄，终端可用列数会随侧栏开合变化。
-				 */}
-				<BottomPanelHost />
 			</div>
 		</PerfSendProfiler>
 	);
