@@ -41,7 +41,7 @@ export interface BottomPanelFrameProps extends ComponentPropsWithoutRef<"div"> {
 export function BottomPanelFrame({ children, className, ...props }: BottomPanelFrameProps): JSX.Element {
 	return (
 		<div
-			className={cn("relative flex min-h-0 w-full flex-col overflow-hidden bg-muted", className)}
+			className={cn("relative flex min-h-0 w-full flex-col overflow-hidden bg-background", className)}
 			data-theme-surface-root="bottomPanel.panel"
 			{...props}
 		>
