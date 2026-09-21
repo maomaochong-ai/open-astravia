@@ -785,25 +785,6 @@ a {
 
 /* ─── InputBar visual effects ─── */
 
-@keyframes input-shimmer {
-	0% {
-		background-position: -200% 0;
-	}
-	100% {
-		background-position: 200% 0;
-	}
-}
-
-@keyframes input-focus-pulse {
-	0%,
-	100% {
-		opacity: 0.3;
-	}
-	50% {
-		opacity: 0.5;
-	}
-}
-
 @keyframes message-bell-swing {
 	0%,
 	28%,
@@ -872,38 +853,6 @@ a {
 	-webkit-text-fill-color: transparent;
 	animation: tool-call-text-shimmer 2.4s linear infinite;
 	will-change: background-position;
-}
-
-/* Soft halo behind the card on focus. */
-.input-halo::after {
-	content: "";
-	position: absolute;
-	inset: -4px;
-	border-radius: inherit;
-	background: radial-gradient(
-		60% 80% at 50% 100%,
-		color-mix(in srgb, var(--primary) 14%, transparent),
-		transparent 70%
-	);
-	filter: blur(10px);
-	pointer-events: none;
-	z-index: -1;
-	animation: input-focus-pulse 4s ease-in-out infinite;
-}
-
-/* Shimmer text used as the streaming placeholder. */
-.input-shimmer-text {
-	background: linear-gradient(
-		90deg,
-		color-mix(in srgb, var(--muted-foreground) 50%, transparent) 0%,
-		var(--primary) 50%,
-		color-mix(in srgb, var(--muted-foreground) 50%, transparent) 100%
-	);
-	background-size: 200% 100%;
-	-webkit-background-clip: text;
-	background-clip: text;
-	-webkit-text-fill-color: transparent;
-	animation: input-shimmer 2s linear infinite;
 }
 
 /* 主题色卡（active）blob 漂移缩放，叠加容器重模糊后呈现混沌涟漪流转感。
