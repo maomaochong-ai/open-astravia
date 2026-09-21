@@ -95,6 +95,7 @@ export function createCodingAgentSessionContextAssembly(
 			getSessionId: options.readSessionId,
 			getTranscriptPath: () => options.resolveConversationPath(options.readSessionId()),
 			getModelId: () => modelRuntime.readCurrentModel().id,
+			getPermissionMode: () => peripherals.planModeRuntime.readPermissionMode(),
 			abortCurrentRun: options.resourceContext.abortCurrentRun,
 			recordAdditionalContexts: (contexts) => {
 				options.resourceContext.contextAppender.append(

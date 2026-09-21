@@ -1,7 +1,7 @@
 import { cn } from "@vetta-org/ui";
 import type { JSX, Ref } from "react";
 import { RunningPulseDot } from "../sidebar/RunningPulseDot";
-import { PROJECT_TYPE_ICONS, type ProjectTypeIconKey } from "./types";
+import { PROJECT_TYPE_ICONS, type ProjectTypeIconKey, REMOTE_PROJECT_ICON } from "./types";
 
 export interface ProjectRowViewProps {
 	badge?: string;
@@ -18,6 +18,8 @@ export interface ProjectRowViewProps {
 	onOpenContextMenu: (event: React.MouseEvent) => void;
 	projectCwd: string;
 	projectType: ProjectTypeIconKey;
+	/** 远程（SSH）项目：折叠态用服务器图标替代项目类型图标。 */
+	remote?: boolean;
 	rowRef?: Ref<HTMLDivElement>;
 }
 
@@ -36,6 +38,7 @@ export function ProjectRowView({
 	onOpenContextMenu,
 	projectCwd,
 	projectType,
+	remote = false,
 	rowRef,
 }: ProjectRowViewProps): JSX.Element {
 	return (
@@ -63,7 +66,11 @@ export function ProjectRowView({
 			>
 				<span
 					className={cn(
-						expanded ? "icon-[solar--alt-arrow-down-linear]" : PROJECT_TYPE_ICONS[projectType],
+						expanded
+							? "icon-[solar--alt-arrow-down-linear]"
+							: remote
+								? REMOTE_PROJECT_ICON
+								: PROJECT_TYPE_ICONS[projectType],
 						"h-4 w-4 text-foreground",
 					)}
 				/>

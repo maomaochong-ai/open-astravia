@@ -6,6 +6,7 @@ import {
 	InputBarContextMenuView,
 	InputBarPlaceholder,
 } from "@vetta-org/theme-ui/chat";
+import { BottomPanelPillsView } from "@vetta-org/theme-ui/bottom-panel";
 import { useDelayedUnmount } from "@vetta-org/theme-ui/shared";
 import { AnimatePresence, motion } from "motion/react";
 import { createPortal } from "react-dom";
@@ -13,6 +14,7 @@ import { ActionButtonBar } from "../ActionButtonBar";
 import { AtPanel } from "../AtPanel";
 import { CommandPanel } from "../command-panel/CommandPanel";
 import { McpElicitationPanel } from "../McpElicitationPanel";
+import { PlanReviewPanel } from "../PlanReviewPanel";
 import { QuestionPanel } from "../QuestionPanel";
 import { InputBarBackground } from "./InputBarBackground";
 import { InputBarAttachmentPreview } from "./InputBarAttachmentPreview";
@@ -39,7 +41,9 @@ import type { InputBarViewProps } from "./types";
 const SOFT = { duration: 0.18, ease: [0.22, 0.61, 0.36, 1] as const };
 
 export function InputBarView({ model, className, classNames }: InputBarViewProps): JSX.Element {
-	const hasPendingInteraction = Boolean(model.pendingMcpElicitation || model.pendingQuestion);
+	const hasPendingInteraction = Boolean(
+		model.pendingMcpElicitation || model.pendingQuestion || model.pendingPlanReview,
+	);
 	const commands = model.commands;
 	const slashOpen = commands?.slashOpen ?? false;
 	const slashVisible = commands?.slashVisible ?? false;
@@ -83,6 +87,17 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 						className="absolute inset-x-0 bottom-0 z-20"
 					>
 						<QuestionPanel pending={model.pendingQuestion} />
+					</motion.div>
+				) : model.pendingPlanReview ? (
+					<motion.div
+						key="plan-review"
+						initial={{ opacity: 0, y: 12 }}
+						animate={{ opacity: 1, y: 0 }}
+						exit={{ opacity: 0, y: 12 }}
+						transition={SOFT}
+						className="absolute inset-x-0 bottom-0 z-20"
+					>
+						<PlanReviewPanel pending={model.pendingPlanReview} />
 					</motion.div>
 				) : null}
 			</AnimatePresence>
@@ -173,7 +188,13 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 										.filter(Boolean)
 										.join(" ")}
 								>
-									<div className="relative">
+									<div
+										className="relative"
+										onKeyDownCapture={(event) => {
+											// 先于编辑器拿到按键：被连接层认领的组合键不再进入 Lexical。
+											if (model.actions.handleKeyDown?.(event.nativeEvent)) event.stopPropagation();
+										}}
+									>
 										<PerfSendProfiler id="ib:InputEditor">
 											<InputEditor
 												ariaLabel={model.placeholderTexts[0]}
@@ -281,7 +302,22 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 						) : null}
 					</InputBarFooter.Item>
 					<InputBarFooter.Item>
-						{model.todo ? <InputBarTodoStatus todo={model.todo} /> : null}
+						{/*
+						 * 待办条与底部面板 pill 同属一行：放进两个 Item 会变成纵向堆叠，
+						 * 而它们是同一类「这个会话现在有什么在跑」的指示物。
+						 */}
+						{model.todo || model.bottomPanelPills ? (
+							<div className="flex min-w-0 items-center gap-2">
+								{model.todo ? <InputBarTodoStatus todo={model.todo} /> : null}
+								{model.bottomPanelPills ? (
+									<BottomPanelPillsView
+										pills={model.bottomPanelPills.pills}
+										onSelect={model.bottomPanelPills.onSelect}
+										labels={{ group: model.bottomPanelPills.groupLabel }}
+									/>
+								) : null}
+							</div>
+						) : null}
 					</InputBarFooter.Item>
 					<InputBarFooter.Item>
 						{model.speechInput?.statusText ? (

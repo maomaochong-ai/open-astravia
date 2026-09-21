@@ -25,6 +25,7 @@ import { registerPluginMediaProvidersIpc } from "./plugin-media-providers.js";
 import { registerPluginOcrProvidersIpc } from "./plugin-ocr-providers.js";
 import { registerPluginsIpc } from "./plugins.js";
 import { registerProjectExportIpc } from "./project-export.js";
+import { registerProjectsIpc } from "./projects.js";
 import { registerQuickPanelIpc } from "./quickpanel.js";
 import { registerRemotePairingIpc } from "./remote-pairing.js";
 import { registerRuntimeConfigurationIpc } from "./runtime-configuration.js";
@@ -33,6 +34,8 @@ import { registerSessionIpc } from "./session.js";
 import { registerSettingsIpc } from "./settings.js";
 import { registerSkillsIpc } from "./skills.js";
 import { registerSpeechInputIpc } from "./speech-input.js";
+import { registerSshIpc } from "./ssh.js";
+import { registerTerminalIpc } from "./terminal.js";
 import { registerThemesIpc } from "./themes.js";
 import { registerUpdaterIpc } from "./updater.js";
 import { registerWebhookIpc } from "./webhook.js";
@@ -57,6 +60,8 @@ interface IpcTeardown {
 	teardownMedia: () => void;
 	teardownDebug: () => void;
 	teardownProjectExport: () => void;
+	teardownProjects: () => void;
+	teardownSsh: () => void;
 	teardownWebhook: () => void;
 	teardownRuntimes: () => void;
 	teardownRuntimeConfiguration: () => void;
@@ -67,6 +72,7 @@ interface IpcTeardown {
 	teardownPluginOcrProviders: () => void;
 	teardownNotifications: () => void;
 	teardownPet: () => void;
+	teardownTerminal: () => void;
 	teardownConversationTags: () => void;
 	teardownQuickPanel: () => void;
 	teardownAppshot: () => void;
@@ -103,6 +109,8 @@ export function registerAllIpc(
 		teardownMedia: registerMediaIpc(),
 		teardownDebug: registerDebugIpc(),
 		teardownProjectExport: registerProjectExportIpc(),
+		teardownProjects: registerProjectsIpc(),
+		teardownSsh: registerSshIpc(),
 		teardownWebhook: registerWebhookIpc(),
 		teardownRuntimes: registerRuntimesIpc(),
 		teardownRuntimeConfiguration: registerRuntimeConfigurationIpc(webContents),
@@ -113,6 +121,7 @@ export function registerAllIpc(
 		teardownPluginOcrProviders: registerPluginOcrProvidersIpc(),
 		teardownNotifications: registerNotificationIpc(webContents),
 		teardownPet: registerPetIpc(),
+		teardownTerminal: registerTerminalIpc(),
 		teardownConversationTags: registerConversationTagsIpc(webContents),
 		teardownQuickPanel: registerQuickPanelIpc(),
 		teardownAppshot: registerAppshotIpc(),
@@ -142,6 +151,8 @@ export function teardownAllIpc(teardown: IpcTeardown): void {
 	teardown.teardownMedia();
 	teardown.teardownDebug();
 	teardown.teardownProjectExport();
+	teardown.teardownProjects();
+	teardown.teardownSsh();
 	teardown.teardownWebhook();
 	teardown.teardownRuntimes();
 	teardown.teardownRuntimeConfiguration();
@@ -152,6 +163,7 @@ export function teardownAllIpc(teardown: IpcTeardown): void {
 	teardown.teardownPluginOcrProviders();
 	teardown.teardownNotifications();
 	teardown.teardownPet();
+	teardown.teardownTerminal();
 	teardown.teardownConversationTags();
 	teardown.teardownQuickPanel();
 	teardown.teardownAppshot();

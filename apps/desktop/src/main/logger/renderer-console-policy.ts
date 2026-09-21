@@ -1,6 +1,6 @@
 export type RendererConsoleLevel = "log" | "info" | "warn" | "error";
 
-const LOW_SIGNAL_PREFIXES = ["[plugin-agent]", "[activity-tab-debug]", "[vite-hmr]"] as const;
+const LOW_SIGNAL_PREFIXES = ["[plugin-agent]", "[activity-tab-debug]", "[vite-hmr]", "[skills] loaded"] as const;
 
 /**
  * Renderer 的 console 是不可信的混合入口：既有用户操作错误，也有 HMR/插件调试输出。

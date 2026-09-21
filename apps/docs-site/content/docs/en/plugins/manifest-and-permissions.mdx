@@ -3,7 +3,7 @@ title: Manifest and permissions
 description: Declare plugin identity, entry, styles, permissions, commands, network scope, and Agent contributions, and understand how grants are checked.
 ---
 
-`plugin.json` sits at the root of the plugin archive, or inside its single top-level folder. The host validates identity, compatibility, and permissions from it before loading any code, so the manifest must match the build output.
+`plugin.json` sits at the root of the `.vettapkg` ZIP container, or inside its single top-level folder. The host validates identity, compatibility, and permissions from it before loading any code, so the manifest must match the build output.
 
 The manifest structure has exactly one implementation: the TypeBox schema exported from `@vetta-org/plugin-sdk/manifest`. `PluginManifestSchema` serialises directly to JSON Schema, and `parsePluginManifest()` handles validation, defaults, de-duplication, relative-path normalisation, and cross-field constraints. The schema deliberately allows unknown fields so a newer manifest is not rejected outright by an older host.
 
@@ -201,7 +201,7 @@ Declare only what the plugin actually uses. A smaller set means an easier approv
   <Step>
     ### Check the archive layout
 
-    Unzip the final archive and confirm `plugin.json` sits at the root or in the single top-level folder, and that every entry, stylesheet, skill, and prompt file it references exists.
+    Unzip the final `.vettapkg` and confirm `plugin.json` sits at the ZIP container root or in the single top-level folder, and that every entry, stylesheet, skill, and prompt file it references exists.
   </Step>
   <Step>
     ### Verify the permission prompt

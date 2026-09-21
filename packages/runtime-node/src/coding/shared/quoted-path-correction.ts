@@ -1,10 +1,6 @@
-import { accessSync, constants } from "node:fs";
-import { homedir } from "node:os";
-import { isAbsolute, relative, resolve } from "node:path";
-import { resolveExistingPath } from "./path-resolution.js";
+import { localToolPathHost, resolveExistingPath, resolveToCwd, type ToolPathHost } from "./path-resolution.js";
 
 const CJK_CHARS = /[\u3400-\u9fff\uf900-\ufaff]/;
-const UNICODE_SPACES = /[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g;
 
 export interface PathLiteralCorrection {
 	readonly original: string;
@@ -20,6 +16,7 @@ interface QuotedSegment {
 export function rewriteQuotedPathLiterals(
 	input: string,
 	cwd: string,
+	host: ToolPathHost = localToolPathHost,
 ): { readonly output: string; readonly pathCorrections: readonly PathLiteralCorrection[] } {
 	let output = input;
 	const pathCorrections: PathLiteralCorrection[] = [];
@@ -29,34 +26,18 @@ export function rewriteQuotedPathLiterals(
 		const segment = segments[index];
 		if (!isLikelyLiteralPath(segment.value)) continue;
 
-		const originalPath = resolveLiteralPath(segment.value, cwd);
-		if (pathExists(originalPath)) continue;
-		const correctedPath = resolveExistingPath(segment.value, cwd);
-		if (correctedPath === originalPath || !pathExists(correctedPath)) continue;
+		const originalPath = resolveToCwd(segment.value, cwd, host);
+		if (host.exists(originalPath)) continue;
+		const correctedPath = resolveExistingPath(segment.value, cwd, host);
+		if (correctedPath === originalPath || !host.exists(correctedPath)) continue;
 
-		const correctedLiteral = formatCorrectedPathLiteral(segment.value, correctedPath, cwd);
+		const correctedLiteral = formatCorrectedPathLiteral(segment.value, correctedPath, cwd, host);
 		if (correctedLiteral === segment.value) continue;
 		output = output.slice(0, segment.contentStart) + correctedLiteral + output.slice(segment.contentEnd);
 		pathCorrections.unshift({ original: segment.value, corrected: correctedLiteral });
 	}
 
 	return { output, pathCorrections };
-}
-
-function resolveLiteralPath(value: string, cwd: string): string {
-	const normalized = value.replace(UNICODE_SPACES, " ");
-	const expanded =
-		normalized === "~" ? homedir() : normalized.startsWith("~/") ? homedir() + normalized.slice(1) : normalized;
-	return isAbsolute(expanded) ? expanded : resolve(cwd, expanded);
-}
-
-function pathExists(path: string): boolean {
-	try {
-		accessSync(path, constants.F_OK);
-		return true;
-	} catch {
-		return false;
-	}
 }
 
 function isLikelyLiteralPath(value: string): boolean {
@@ -85,13 +66,13 @@ function findQuotedSegments(text: string): QuotedSegment[] {
 	return segments;
 }
 
-function formatCorrectedPathLiteral(original: string, correctedPath: string, cwd: string): string {
-	const home = homedir();
+function formatCorrectedPathLiteral(original: string, correctedPath: string, cwd: string, host: ToolPathHost): string {
+	const home = host.homeDirectory();
 	if (original === "~") return "~";
-	if (original.startsWith("~/")) {
+	if (original.startsWith("~/") && home !== undefined) {
 		if (correctedPath === home) return "~";
 		if (correctedPath.startsWith(`${home}/`)) return `~/${correctedPath.slice(home.length + 1)}`;
 	}
-	if (isAbsolute(original)) return correctedPath;
-	return relative(cwd, correctedPath) || ".";
+	if (host.path.isAbsolute(original)) return correctedPath;
+	return host.path.relative(cwd, correctedPath) || ".";
 }

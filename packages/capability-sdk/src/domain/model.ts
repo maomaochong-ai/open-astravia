@@ -77,6 +77,8 @@ const modelProviderConfigFields = {
 	api: Type.Optional(Type.String()),
 	displayName: Type.Optional(Type.String()),
 	authHeader: Type.Optional(Type.Boolean()),
+	/** 该服务商是否经应用代理出网；缺省跟随全局代理开关。 */
+	useProxy: Type.Optional(Type.Boolean()),
 	headers: Type.Optional(modelStringMapType),
 	models: Type.Optional(Type.Array(modelDefinitionDetailType)),
 };
@@ -166,6 +168,7 @@ const modelProviderUpsertDataType = Type.Object(
 		api: Type.Optional(Type.String()),
 		displayName: Type.Optional(Type.String()),
 		authHeader: Type.Optional(Type.Boolean()),
+		useProxy: Type.Optional(Type.Boolean()),
 		headers: Type.Optional(modelStringMapType),
 		models: Type.Optional(Type.Array(modelProviderUpsertModelType)),
 	},

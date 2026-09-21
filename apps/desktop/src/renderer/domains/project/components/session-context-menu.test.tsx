@@ -119,4 +119,27 @@ describe("SessionContextMenuView", () => {
 		expect(onRename).toHaveBeenCalledOnce();
 		expect(onDelete).toHaveBeenCalledOnce();
 	});
+
+	it("hides the folder action for a session with no counterpart on this computer", () => {
+		// 远程（SSH）项目下的会话：工作目录在那台机器上，点了只会毫无反应。
+		render(
+			<SessionContextMenuView
+				canDelete
+				canOpenInFolder={false}
+				canRename
+				labels={{ pin: "Pin", rename: "Rename", openInFolder: "Open folder", delete: "Delete" }}
+				onClose={vi.fn()}
+				onDelete={vi.fn()}
+				onOpenInFolder={vi.fn()}
+				onRename={vi.fn()}
+				onTogglePin={vi.fn()}
+				x={10}
+				y={10}
+			/>,
+		);
+
+		expect(screen.queryByRole("menuitem", { name: "Open folder" })).toBeNull();
+		expect(screen.queryByRole("menuitem", { name: "Rename" })).not.toBeNull();
+		expect(screen.queryByRole("menuitem", { name: "Pin" })).not.toBeNull();
+	});
 });

@@ -10,6 +10,7 @@ import {
 	type McpServerSupervisor,
 } from "@vetta/runtime-mcp";
 import { createMcpClient, createNodeMcpSupervisor } from "@vetta/runtime-node/mcp";
+import { isSshProjectUri } from "@vetta/ssh-transport";
 import { ensureOpenMarketplaceManagedMcpRuntime } from "../abilities/open-marketplace/open-marketplace-mcp-runtime-host.js";
 import { getDesktopMcpElicitationBroker } from "../conversations/mcp-elicitation-broker.js";
 import { getAppLogger } from "../logger.js";
@@ -34,11 +35,21 @@ export function createDesktopMcpInteractionHandlers(
 			onDiagnostic(`interaction completed method=elicitation/create action=${result.action}`);
 			return result;
 		},
-		roots: async () => ({
-			roots: [{ uri: pathToFileURL(options.projectRoot).href, name: basename(options.projectRoot) || "workspace" }],
-		}),
+		roots: async () => ({ roots: resolveMcpRoots(options.projectRoot) }),
 		...(options.samplingHandler ? { sampling: options.samplingHandler } : {}),
 	};
+}
+
+/**
+ * 向 MCP server 通告的工作区根。
+ *
+ * MCP server 跑在本机，只能碰本机文件；远程项目在本机没有对应的目录，所以如实通告
+ * 「没有根」。把项目 URI 交给 `pathToFileURL` 会得到一个指向本机进程 cwd 之下的假
+ * `file://` 地址，filesystem 类的 server 会把它当成可以读写的工作区。
+ */
+export function resolveMcpRoots(projectRoot: string): { uri: string; name: string }[] {
+	if (isSshProjectUri(projectRoot)) return [];
+	return [{ uri: pathToFileURL(projectRoot).href, name: basename(projectRoot) || "workspace" }];
 }
 
 function managedRuntimeId(config: unknown): string | undefined {

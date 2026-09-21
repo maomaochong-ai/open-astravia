@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, rmSync } from "node:fs";
-import { readFile, rm } from "node:fs/promises";
+import { readFile, rm, stat } from "node:fs/promises";
 import { isAbsolute, join, resolve } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
 import {
@@ -16,12 +16,14 @@ import type {
 } from "../../preload/api-types/plugins.js";
 import { PLUGIN_CONTRIBUTION_CHANNELS } from "../../shared/plugin-ipc.js";
 import { recordAbilityInstall, removeAbilityLedgerEntry } from "../abilities/ability-ledger.js";
+import { logAbilityRuntimeLoaded } from "../abilities/ability-lifecycle-log.js";
 import { getDesktopCredentialVault } from "../credentials/desktop-credential-vault.js";
 import { getAppLogger } from "../logger.js";
 import { verifySha256 } from "../utils/integrity.js";
 import { DesktopPluginAgentHandlerRegistry } from "./coding-agent-handler-registry.js";
 import { desktopPluginHookRegistry } from "./coding-agent-hook-registry.js";
 import { PluginAgentContributionService } from "./plugin-agent-contribution-service.js";
+import { PLUGIN_API_VERSION } from "./plugin-api-version.js";
 import { PluginDevLinkService } from "./plugin-dev-link-service.js";
 import { assertPluginInstallIdentity } from "./plugin-install-options.js";
 import {
@@ -32,6 +34,7 @@ import {
 	installedPluginResourceUrl,
 	projectPluginVersion,
 	readPluginLocales,
+	VETTA_PLUGIN_PACKAGE_EXTENSION,
 	validatePluginPackageResources,
 } from "./plugin-package.js";
 import { effectivePluginPermissions, grantDeclaredPluginCommands } from "./plugin-permission-policy.js";
@@ -39,23 +42,14 @@ import { PluginRegistryStore, SystemPluginPreferenceStore } from "./plugin-regis
 import { PluginSecretsStore } from "./plugin-secrets-store.js";
 import { SystemPluginCatalog } from "./plugin-system-catalog.js";
 
-/**
- * - 2.2.0：团队成员的角色槽位与跨插件引用（`agents[].roles`、`members[].role/optional`）。
- * - 2.3.0：团队成员的任务书（`members[].instructions` / `instructionsPath`）。
- * - 2.4.0：Media Provider v5 的模型目录与受控输入读取。
- * - 2.5.0：构建期绑定插件身份的持久化 logger。
- *
- * 清单校验对未知字段 fail-closed，所以用到这些字段的插件装到旧宿主上会整个解析失败，而不是
- * 少一项贡献。作者把 `pluginApiVersion` 写成用到的那一档，旧宿主才会给出「版本不支持」这种
- * 指向明确的错误。
- */
-export const PLUGIN_API_VERSION = "2.5.0";
+export { PLUGIN_API_VERSION } from "./plugin-api-version.js";
 export const CORE_ACTION_PLUGIN_ID = "vetta-actions";
 
 const REQUIRED_SYSTEM_PLUGIN_IDS = new Set<string>([CORE_ACTION_PLUGIN_ID]);
 const pluginsBaseDir = join(getVettaHomePath(), "plugins");
 const manifestPath = join(getVettaHomePath(), "plugins-manifest.json");
 const tmpBaseDir = join(getVettaHomePath(), "tmp", "plugins");
+const MAX_LOCAL_PLUGIN_PACKAGE_BYTES = 512 * 1024 * 1024;
 // 系统插件的用户态偏好（目前仅停用开关），与用户插件注册表分离（ADR-0024）。
 const systemPrefsPath = join(getVettaHomePath(), "system-plugin-prefs.json");
 const pluginRegistry = new PluginRegistryStore(manifestPath, pluginsBaseDir);
@@ -69,6 +63,14 @@ export const pluginAgentContributionService = new PluginAgentContributionService
 	logger: pluginLog,
 	hooks: desktopPluginHookRegistry,
 	handlers: new DesktopPluginAgentHandlerRegistry(),
+	onRuntimeLoaded: (plugin, activationId) =>
+		logAbilityRuntimeLoaded({
+			abilityType: "plugin",
+			abilityId: plugin.id,
+			version: plugin.activeVersion,
+			source: plugin.source,
+			activationId,
+		}),
 });
 export const pluginSystemCatalog = new SystemPluginCatalog({
 	baseDir: systemPluginsBaseDir,
@@ -123,6 +125,11 @@ export function broadcastPluginsChanged(event?: PluginsChangedEvent): void {
 		}
 	}
 }
+
+function broadcastPluginChanged(pluginId: string): void {
+	broadcastPluginsChanged({ pluginIds: [pluginId] });
+}
+
 // =============================================================================
 // 系统插件（ADR-0024）—— 随 App 发布、用户不可删改，源在 packages/plugins/presets
 // =============================================================================
@@ -250,7 +257,7 @@ export async function installPluginFromArchive(
 		pluginRegistry.write(registry);
 		// 能力安装台账（ADR-0049）：记生效中的版本；安装即生效，装完就是新版本。
 		recordAbilityInstall("plugin", installed.id, installed.activeVersion);
-		broadcastPluginsChanged();
+		broadcastPluginChanged(installed.id);
 		return installed;
 	} finally {
 		await rm(extractDir, { recursive: true, force: true }).catch(() => {});
@@ -270,11 +277,16 @@ export async function installPluginFromUrl(url: string, options?: PluginInstallO
 	return installPluginFromArchive(buffer, { ...options, source: "remote" });
 }
 
-/** Install from a local zip path (ADR-0042). */
+/** Install from a local Vetta package path; legacy .zip remains importable. */
 export async function installPluginFromPath(
 	filePath: string,
 	options?: PluginInstallOptions,
 ): Promise<InstalledPlugin> {
+	const buffer = await readPluginPackageFromPath(filePath);
+	return installPluginFromArchive(buffer, { ...options, source: options?.source ?? "archive" });
+}
+
+export async function readPluginPackageFromPath(filePath: string): Promise<Buffer> {
 	if (typeof filePath !== "string" || filePath.trim().length === 0) {
 		throw new Error("Plugin path is required");
 	}
@@ -282,11 +294,15 @@ export async function installPluginFromPath(
 	if (!existsSync(resolved)) {
 		throw new Error(`Plugin archive not found: ${resolved}`);
 	}
-	if (!resolved.toLowerCase().endsWith(".zip")) {
-		throw new Error("Plugin path must be a .zip archive");
+	const lowerPath = resolved.toLowerCase();
+	if (!lowerPath.endsWith(VETTA_PLUGIN_PACKAGE_EXTENSION) && !lowerPath.endsWith(".zip")) {
+		throw new Error(`Plugin path must be a ${VETTA_PLUGIN_PACKAGE_EXTENSION} package or legacy .zip archive`);
 	}
-	const buffer = await readFile(resolved);
-	return installPluginFromArchive(buffer, { ...options, source: options?.source ?? "archive" });
+	const info = await stat(resolved);
+	if (!info.isFile() || info.size > MAX_LOCAL_PLUGIN_PACKAGE_BYTES) {
+		throw new Error("Plugin package is not a regular file or exceeds the 512 MB limit");
+	}
+	return readFile(resolved);
 }
 
 export function uninstallPlugin(id: string): void {
@@ -299,7 +315,7 @@ export function uninstallPlugin(id: string): void {
 	pluginRegistry.write(registry);
 	removeAbilityLedgerEntry("plugin", id);
 	rmSync(join(pluginsBaseDir, id), { recursive: true, force: true });
-	broadcastPluginsChanged();
+	broadcastPluginChanged(id);
 }
 
 export function setPluginEnabled(id: string, enabled: boolean): InstalledPlugin {
@@ -307,7 +323,7 @@ export function setPluginEnabled(id: string, enabled: boolean): InstalledPlugin 
 	// 系统插件可停用但不可删改：偏好写进独立的 prefs 文件，本体不入注册表（ADR-0024）。
 	if (isSystemPluginId(id)) {
 		const refreshed = pluginSystemCatalog.setEnabled(id, enabled);
-		broadcastPluginsChanged();
+		broadcastPluginChanged(id);
 		return refreshed;
 	}
 	const registry = pluginRegistry.read();
@@ -316,7 +332,7 @@ export function setPluginEnabled(id: string, enabled: boolean): InstalledPlugin 
 	plugin.enabled = enabled;
 	plugin.updatedAt = new Date().toISOString();
 	pluginRegistry.write(registry);
-	broadcastPluginsChanged();
+	broadcastPluginChanged(id);
 	return plugin;
 }
 
@@ -332,7 +348,7 @@ export function grantPluginPermissions(id: string, permissions: PluginPermission
 	);
 	plugin.updatedAt = new Date().toISOString();
 	pluginRegistry.write(registry);
-	broadcastPluginsChanged();
+	broadcastPluginChanged(id);
 	return plugin;
 }
 
@@ -346,7 +362,7 @@ export function revokePluginPermissions(id: string, permissions: PluginPermissio
 	plugin.grantedPermissions = plugin.grantedPermissions.filter((permission) => !revoked.has(permission));
 	plugin.updatedAt = new Date().toISOString();
 	pluginRegistry.write(registry);
-	broadcastPluginsChanged();
+	broadcastPluginChanged(id);
 	return plugin;
 }
 
@@ -357,7 +373,11 @@ export function revokePluginPermissions(id: string, permissions: PluginPermissio
  */
 export function grantPluginCommands(id: string, names: string[]): InstalledPlugin {
 	validatePluginId(id);
-	if (isSystemPluginId(id)) return pluginSystemCatalog.grantCommands(id, names);
+	if (isSystemPluginId(id)) {
+		const plugin = pluginSystemCatalog.grantCommands(id, names);
+		broadcastPluginChanged(id);
+		return plugin;
+	}
 	const requested = parseCommands(names);
 	const registry = pluginRegistry.read();
 	const plugin = registry[id];
@@ -369,7 +389,7 @@ export function grantPluginCommands(id: string, names: string[]): InstalledPlugi
 	);
 	plugin.updatedAt = new Date().toISOString();
 	pluginRegistry.write(registry);
-	broadcastPluginsChanged();
+	broadcastPluginChanged(id);
 	return plugin;
 }
 
@@ -377,7 +397,11 @@ export function grantPluginCommands(id: string, names: string[]): InstalledPlugi
 export function revokePluginCommands(id: string, names: string[]): InstalledPlugin {
 	validatePluginId(id);
 	const requested = parseCommands(names);
-	if (isSystemPluginId(id)) return pluginSystemCatalog.revokeCommands(id, names);
+	if (isSystemPluginId(id)) {
+		const plugin = pluginSystemCatalog.revokeCommands(id, names);
+		broadcastPluginChanged(id);
+		return plugin;
+	}
 	const registry = pluginRegistry.read();
 	const plugin = registry[id];
 	if (!plugin) throw new Error(`Plugin not found: ${id}`);
@@ -385,7 +409,7 @@ export function revokePluginCommands(id: string, names: string[]): InstalledPlug
 	plugin.grantedCommandNames = plugin.grantedCommandNames.filter((name) => !revoked.has(name));
 	plugin.updatedAt = new Date().toISOString();
 	pluginRegistry.write(registry);
-	broadcastPluginsChanged();
+	broadcastPluginChanged(id);
 	return plugin;
 }
 
@@ -411,7 +435,7 @@ export function applyPluginSetup(
 	plugin.enabled = input.enabled;
 	plugin.updatedAt = new Date().toISOString();
 	pluginRegistry.write(registry);
-	broadcastPluginsChanged();
+	broadcastPluginChanged(id);
 	return plugin;
 }
 
@@ -422,7 +446,7 @@ export function reloadPlugin(id: string): InstalledPlugin {
 		const refreshed = discoverSystemPlugins(true).find((plugin) => plugin.id === id);
 		if (!refreshed) throw new Error(`Plugin not found: ${id}`);
 		if (pluginDevLinkService.has(id)) return pluginDevLinkService.refresh(id);
-		broadcastPluginsChanged();
+		broadcastPluginChanged(id);
 		return refreshed;
 	}
 	const registry = pluginRegistry.read();
@@ -461,7 +485,7 @@ export function reloadPlugin(id: string): InstalledPlugin {
 	if (pluginDevLinkService.has(id)) {
 		return pluginDevLinkService.refresh(id);
 	}
-	broadcastPluginsChanged();
+	broadcastPluginChanged(id);
 	return plugin;
 }
 

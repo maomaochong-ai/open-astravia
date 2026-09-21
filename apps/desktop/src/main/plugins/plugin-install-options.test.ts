@@ -2,6 +2,15 @@ import { describe, expect, it } from "vitest";
 import { assertPluginInstallIdentity, parsePluginInstallOptions } from "./plugin-install-options.js";
 
 describe("parsePluginInstallOptions", () => {
+	it("preserves known diagnostic install initiators", () => {
+		expect(parsePluginInstallOptions({ initiator: "plugin-cli" })).toMatchObject({
+			initiator: "plugin-cli",
+		});
+		expect(parsePluginInstallOptions({ initiator: "unknown" })).toMatchObject({
+			initiator: undefined,
+		});
+	});
+
 	it("accepts a complete npm installation identity", () => {
 		expect(
 			parsePluginInstallOptions({

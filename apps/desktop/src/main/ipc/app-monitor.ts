@@ -35,7 +35,7 @@ const INPUT_ATTACHMENT_SOURCES = new Set<AppMonitorInputAttachmentSource>([
 ]);
 const INPUT_ACTION_KINDS = new Set<AppMonitorInputActionKind>(["builtin", "plugin"]);
 const INPUT_PROMPT_REF_KINDS = new Set<AppMonitorInputPromptRefKind>(["scene", "skill"]);
-const RESOURCE_KINDS = new Set<AppMonitorResourceKind>(["skill", "scene", "plugin"]);
+const RESOURCE_KINDS = new Set<AppMonitorResourceKind>(["skill", "scene", "plugin", "mcp"]);
 const RESOURCE_OPERATIONS = new Set<AppMonitorResourceOperation>([
 	"installed",
 	"updated",

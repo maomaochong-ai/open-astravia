@@ -10,6 +10,11 @@ export interface SessionContextMenuViewLabels {
 
 export interface SessionContextMenuViewProps {
 	canDelete: boolean;
+	/**
+	 * False when the session's project has no counterpart on this computer (a remote
+	 * project): there is nothing for the system file manager to show. Defaults to true.
+	 */
+	canOpenInFolder?: boolean;
 	canRename: boolean;
 	labels: SessionContextMenuViewLabels;
 	/** 挂在「重命名」之后的附加节点，例如标签二级菜单。 */
@@ -25,6 +30,7 @@ export interface SessionContextMenuViewProps {
 
 export function SessionContextMenuView({
 	canDelete,
+	canOpenInFolder = true,
 	canRename,
 	labels,
 	extraItems,
@@ -49,13 +55,15 @@ export function SessionContextMenuView({
 		});
 	}
 	if (extraItems && extraItems.length > 0) items.push(...extraItems);
-	items.push({
-		kind: "item",
-		id: "open-in-folder",
-		label: labels.openInFolder,
-		iconClassName: "icon-[solar--folder-open-linear]",
-		onSelect: onOpenInFolder,
-	});
+	if (canOpenInFolder) {
+		items.push({
+			kind: "item",
+			id: "open-in-folder",
+			label: labels.openInFolder,
+			iconClassName: "icon-[solar--folder-open-linear]",
+			onSelect: onOpenInFolder,
+		});
+	}
 	if (canDelete) {
 		items.push({
 			kind: "item",

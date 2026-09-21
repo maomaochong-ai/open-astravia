@@ -94,19 +94,14 @@ async function produceBedrockStream(
 		}
 		stream.push({ type: "done", reason: output.stopReason, message: output });
 	} catch (error) {
-		failLanguageModelStream(
-			stream,
-			model,
-			options.signal?.aborted
-				? new AIAbortedError(undefined, { provider: model.provider, modelId: model.id, cause: error })
-				: normalizeProviderError(error, model),
-			options.signal?.aborted ? "aborted" : "error",
-			{
-				...output,
-				stopReason: options.signal?.aborted ? "aborted" : "error",
-				errorMessage: error instanceof Error ? error.message : String(error),
-			},
-		);
+		const normalizedError = options.signal?.aborted
+			? new AIAbortedError(undefined, { provider: model.provider, modelId: model.id, cause: error })
+			: normalizeProviderError(error, model);
+		failLanguageModelStream(stream, model, normalizedError, options.signal?.aborted ? "aborted" : "error", {
+			...output,
+			stopReason: options.signal?.aborted ? "aborted" : "error",
+			errorMessage: normalizedError.message,
+		});
 	}
 }
 

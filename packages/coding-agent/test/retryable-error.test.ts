@@ -5,6 +5,7 @@ describe("runtime failure classification", () => {
 	it.each([
 		["prompt is too long: 101 tokens > 100 maximum", "input-too-large"],
 		["HTTP 429 too many requests", "transient"],
+		["No capacity available: MODEL_CAPACITY_EXHAUSTED", "transient"],
 		["ECONNRESET", "transient"],
 		["invalid API key", "permanent"],
 		["AbortError: cancelled", "aborted"],

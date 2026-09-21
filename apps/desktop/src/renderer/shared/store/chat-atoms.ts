@@ -11,6 +11,7 @@ import type {
 import type { InputSegment } from "@shared/lib/input-tokens";
 import type { ContextCompactionEligibility, ContextCompositionReport } from "@vetta/runtime-core";
 import { atom } from "jotai";
+import { selectAtom } from "jotai/utils";
 import { runningSessionPathsAtom } from "./running-sessions-atoms";
 
 export type TeamMemberSummaryEventViewModel = {
@@ -33,7 +34,7 @@ export type ChatTimelineEventViewModel =
 	| { readonly kind: "delegation"; readonly label: string; readonly requestId: string; readonly timestamp: number }
 	| TeamMemberSummaryEventViewModel;
 
-/** Display-only content kept beside a specific tool row and outside process folding. */
+/** Display-only content kept beside a specific tool row and rendered independently while the process is expanded. */
 export interface ChatToolCallPresentationViewModel {
 	readonly toolCallId: string;
 	readonly activities: readonly TeamMemberSummaryEventViewModel[];
@@ -55,6 +56,7 @@ export type {
 	ErrorBlock,
 	KnowledgeToolUiDetails,
 	PendingQuestion,
+	PlanReviewResolution,
 	QuestionAnswer,
 	QuestionItem,
 	QuestionOption,
@@ -191,6 +193,13 @@ export const inputValueAtom = atom<string>("");
 export const inputSegmentsAtom = atom<InputSegment[]>([]);
 export const attachedImagesAtom = atom<AttachedImage[]>([]);
 export const activeSessionAtom = atom<ActiveSession | null>(null);
+
+/**
+ * 当前会话的 cwd（本地绝对路径或 `ssh://<hostId>/<path>`）。
+ * 单独派生一个 atom：消费方只关心目录变化，订阅整个 activeSession 会让流式期间
+ * 每条消息都触发一次重渲。
+ */
+export const activeSessionCwdAtom = selectAtom(activeSessionAtom, (session) => session?.cwd ?? null);
 export const pendingSessionCreationAtom = atom<PendingSessionCreation | null>(null);
 export const pendingSessionOpenAtom = atom<PendingSessionOpen | null>(null);
 /** 已接受发送、但新会话/runtime 尚未准备好的 UI 过渡态。 */

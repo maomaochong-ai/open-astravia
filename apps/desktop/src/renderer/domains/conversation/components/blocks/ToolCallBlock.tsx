@@ -11,15 +11,19 @@ import {
 	useToolCallPluginSlot,
 	useToolCallTiming,
 } from "../../hooks/useToolCallBlockCapabilities";
+import { isApprovedPlanBlock } from "../../services/plan-review";
 import { McpAppSurface } from "../mcp-app/McpAppSurface";
+import { PlanEntryCard } from "../PlanEntryCard";
 import { MarkdownContent } from "./TextBlock";
 import { AskUserQuestionView } from "./tool-views/AskUserQuestionView";
+import { ExitPlanModeView } from "./tool-views/ExitPlanModeView";
 import { BashTerminalCard } from "./tool-views/BashTerminalCard";
 import { EditDiffView } from "./tool-views/EditDiffView";
 import { KbFilterByTagsView, KbListTagsView, KbWritePageView } from "./tool-views/KnowledgeToolViews";
 import { ReadImageView } from "./tool-views/ReadImageView";
 import { WriteContentView } from "./tool-views/WriteContentView";
 import { formatDurationPrecise, formatPhases, formatStartedAt } from "./tool-views/shared/format";
+import { getStringArg } from "./tool-views/shared/parse-tool";
 
 interface ToolCallBlockProps {
 	block: ToolCallBlock;
@@ -73,6 +77,12 @@ function PluginToolCallContent({
 			</PluginToolCallErrorBoundary>
 		</>
 	);
+}
+
+/** 已批准的计划不是一条工具记录，而是通往计划页的入口；导出的静态页面没有活动面板，仍走普通视图。 */
+function approvedPlanOf(block: ToolCallBlock, exportMode: boolean): string | null {
+	if (exportMode || !isApprovedPlanBlock(block)) return null;
+	return block.uiDetails?.planReview?.plan ?? getStringArg(block.args, "plan");
 }
 
 function ToolCallContent({
@@ -180,6 +190,14 @@ function ToolSpecificContent({
 		);
 	}
 	if (block.toolName === "ask_user_question") return <AskUserQuestionView block={block} />;
+	if (block.toolName === "exit_plan_mode") {
+		return (
+			<>
+				<ExitPlanModeView block={block} />
+				<ToolErrorResult block={block} />
+			</>
+		);
+	}
 	if (block.toolName === "kb_filter_by_tags") return <KbFilterByTagsView block={block} />;
 	if (block.toolName === "kb_list_available_tags") return <KbListTagsView block={block} />;
 	if (block.toolName === "kb_write_page") return <KbWritePageView block={block} />;
@@ -209,7 +227,9 @@ export function ToolCallBlockViewHost({
 	const backgroundTask = useToolCallBackgroundTask(block.toolCallId, projection.shellCommand);
 	const expansion = useToolCallExpansion(exportMode);
 	const timing = useToolCallTiming(block);
+	const approvedPlan = approvedPlanOf(block, exportMode);
 
+	if (approvedPlan) return <PlanEntryCard plan={approvedPlan} />;
 	if (pluginSlot) {
 		return <PluginToolCallContent block={block} mdIntro={projection.mdIntro} pluginSlot={pluginSlot} />;
 	}
@@ -256,7 +276,9 @@ export function EmbeddedToolCallBlockView({
 	const projection = projectToolCallBlock(block, exportMode);
 	const pluginSlot = useToolCallPluginSlot(block.toolName);
 	const backgroundTask = useToolCallBackgroundTask(block.toolCallId, projection.shellCommand);
+	const approvedPlan = approvedPlanOf(block, exportMode);
 
+	if (approvedPlan) return <PlanEntryCard plan={approvedPlan} />;
 	if (pluginSlot) {
 		return <PluginToolCallContent block={block} mdIntro={projection.mdIntro} pluginSlot={pluginSlot} />;
 	}

@@ -1,7 +1,8 @@
 // Shared Desktop host services used by the production Agent Runtime composition.
+
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { CONFIG_DIR_NAME, getAgentDir } from "@vetta/coding-agent/config";
+import { getAgentDir } from "@vetta/coding-agent/config";
 import {
 	AuthStorage,
 	type CodingAgentAuthRuntime,
@@ -9,6 +10,7 @@ import {
 	createCodingAgentModelRuntime,
 	SettingsRuntime,
 } from "@vetta/coding-agent/host-services";
+import { resolveProjectSettingsPath } from "@vetta/runtime-desktop";
 import {
 	NodeScopedTextStorage,
 	NodeTransactionalTextStorage,
@@ -68,7 +70,7 @@ export function readDesktopMcpDebug(cwd: string, agentDir: string): boolean {
 	return SettingsRuntime.fromStorage(
 		new NodeScopedTextStorage({
 			global: join(agentDir, "settings.json"),
-			project: join(cwd, CONFIG_DIR_NAME, "settings.json"),
+			project: resolveProjectSettingsPath(cwd, agentDir),
 		}),
 	).getMcpDebug();
 }

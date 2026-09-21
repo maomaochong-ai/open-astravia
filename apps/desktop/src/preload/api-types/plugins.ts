@@ -229,6 +229,8 @@ export interface InstalledPlugin {
 
 export interface PluginInstallOptions {
 	source?: "archive" | "remote" | "npm";
+	/** Diagnostic initiator; the host uses it to distinguish CLI/workbench installs from manual package imports. */
+	initiator?: "plugin-cli" | "plugin-workbench";
 	grantedPermissions?: PluginPermission[];
 	/** When true, enable the plugin after install (default false for GUI parity; agent path may set true). */
 	enable?: boolean;
@@ -642,11 +644,25 @@ export interface DesktopPluginCapabilityWebhookApi {
 
 export interface DesktopPluginSystemApi {
 	list(sessionId: string): Promise<InstalledPlugin[]>;
-	installFromUrl(sessionId: string, url: string): Promise<InstalledPlugin>;
+	installFromUrl(sessionId: string, url: string, options?: { initiator?: "plugin-cli" }): Promise<InstalledPlugin>;
 	installFromPath(
 		sessionId: string,
 		path: string,
-		options?: { grantedPermissions?: string[]; enable?: boolean },
+		options?: {
+			initiator?: "plugin-cli" | "plugin-workbench";
+			grantedPermissions?: string[];
+			enable?: boolean;
+			source?: "archive" | "npm";
+			expectedSha256?: string;
+			expectedId?: string;
+			expectedVersion?: string;
+			npm?: {
+				packageName: string;
+				requestedSpec: string;
+				resolvedVersion: string;
+				integrity?: string;
+			};
+		},
 	): Promise<InstalledPlugin>;
 	uninstall(sessionId: string, id: string): Promise<void>;
 	setEnabled(sessionId: string, id: string, enabled: boolean): Promise<InstalledPlugin>;
@@ -773,7 +789,7 @@ export interface DesktopPluginsApi {
 	listAll(): Promise<InstalledPlugin[]>;
 	installFromArchive(archiveBuffer: ArrayBuffer, options?: PluginInstallOptions): Promise<InstalledPlugin>;
 	installFromUrl(url: string, options?: PluginInstallOptions): Promise<InstalledPlugin>;
-	/** Install from a local zip absolute path (ADR-0042). */
+	/** Install from a local .vettapkg absolute path; legacy .zip is accepted for compatibility. */
 	installFromPath(path: string, options?: PluginInstallOptions): Promise<InstalledPlugin>;
 	uninstall(id: string): Promise<void>;
 	setEnabled(id: string, enabled: boolean): Promise<void>;

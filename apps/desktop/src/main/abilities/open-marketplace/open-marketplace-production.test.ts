@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -16,6 +17,9 @@ import { parseMarketplaceManifest } from "./marketplace-schema";
 const mocks = vi.hoisted(() => ({
 	installPluginFromArchive: vi.fn<(archive: Buffer, options?: PluginInstallOptions) => Promise<InstalledPlugin>>(),
 	recordAbilityInstall: vi.fn(),
+	recordAppMonitorEvent: vi.fn(),
+	logAbilityInstallStarted: vi.fn(),
+	logAbilityInstallFailed: vi.fn(),
 }));
 
 vi.mock("../../plugins/plugin-catalog", () => ({
@@ -23,6 +27,13 @@ vi.mock("../../plugins/plugin-catalog", () => ({
 }));
 vi.mock("../ability-ledger", () => ({
 	recordAbilityInstall: mocks.recordAbilityInstall,
+}));
+vi.mock("../../app-monitor/app-monitor-service", () => ({
+	recordAppMonitorEvent: mocks.recordAppMonitorEvent,
+}));
+vi.mock("../ability-lifecycle-log", () => ({
+	logAbilityInstallStarted: mocks.logAbilityInstallStarted,
+	logAbilityInstallFailed: mocks.logAbilityInstallFailed,
 }));
 vi.mock("../../skills/skill-service", () => ({
 	getSkillBaseDir: vi.fn(),
@@ -36,12 +47,112 @@ import { installOpenMarketplaceAbilityInDesktop } from "./open-marketplace-produ
 const temporaryRoots: string[] = [];
 
 afterEach(async () => {
+	vi.unstubAllGlobals();
 	mocks.installPluginFromArchive.mockReset();
 	mocks.recordAbilityInstall.mockClear();
+	mocks.recordAppMonitorEvent.mockClear();
+	mocks.logAbilityInstallStarted.mockClear();
+	mocks.logAbilityInstallFailed.mockClear();
 	await Promise.all(temporaryRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
 
 describe("installOpenMarketplaceAbilityInDesktop", () => {
+	it("installs a verified remote release without a compiled plugin directory in the market archive", async () => {
+		const pluginManifest: PluginManifest = {
+			id: "demo-plugin",
+			name: "Demo Plugin",
+			version: "1.2.0",
+			pluginApiVersion: "^2.5.0",
+			entry: "dist/index.js",
+			moduleFederation: { remoteName: "demo_plugin", expose: "./plugin" },
+			permissions: ["storage.read"],
+		};
+		const zip = new AdmZip();
+		zip.addFile("plugin.json", Buffer.from(JSON.stringify(pluginManifest)));
+		zip.addFile("dist/index.js", Buffer.from("export default {};"));
+		const bytes = zip.toBuffer();
+		const sha256 = createHash("sha256").update(bytes).digest("hex");
+		vi.stubGlobal("fetch", async () => new Response(new Uint8Array(bytes), { status: 200 }));
+		const manifest = parseMarketplaceManifest({
+			schemaVersion: 3,
+			name: "test-market",
+			marketplaceVersion: "3",
+			repository: "https://github.com/example/test-market",
+			minAppVersion: "0.5.58",
+			abilities: [
+				{
+					type: "plugin",
+					slug: "demo-plugin",
+					name: "Demo Plugin",
+					version: "1.2.0",
+					source: { path: "abilities/plugins/demo-plugin" },
+					releases: [
+						{
+							version: "1.2.0",
+							minAppVersion: "0.5.58",
+							pluginApiVersion: "^2.5.0",
+							permissions: ["storage.read"],
+							artifact: { url: "https://example.com/demo-1.2.0.zip", sha256 },
+						},
+					],
+				},
+			],
+		});
+		const ability = manifest.abilities[0];
+		if (!ability || ability.type !== "plugin") throw new Error("Plugin fixture is missing");
+		mocks.installPluginFromArchive.mockImplementationOnce(async (archive, options) =>
+			createInstalledPluginFromManifest({
+				manifest: parsePluginManifest(JSON.parse(new AdmZip(archive).readAsText("plugin.json"))),
+				options,
+				locales: {},
+				hostApiVersion: "2.5.0",
+				rootPath: "unused",
+				reloadToken: "1",
+			}),
+		);
+		await installOpenMarketplaceAbilityInDesktop("unused", ability, {
+			kind: "github-marketplace",
+			sourceId: "test-source",
+			marketplace: "test-market",
+			marketplaceVersion: "3",
+			repository: "https://github.com/example/test-market",
+			ref: "refa/market-v3",
+		});
+		expect(mocks.installPluginFromArchive).toHaveBeenCalledWith(
+			bytes,
+			expect.objectContaining({
+				expectedId: "demo-plugin",
+				expectedVersion: "1.2.0",
+				expectedSha256: sha256,
+			}),
+		);
+		expect(mocks.recordAbilityInstall).toHaveBeenCalledWith("plugin", "demo-plugin", "1.2.0", expect.anything());
+		expect(mocks.recordAppMonitorEvent).toHaveBeenCalledWith(
+			{
+				type: "resource.lifecycle",
+				resourceKind: "plugin",
+				resourceId: "demo-plugin",
+				operation: "installed",
+				source: "remote",
+			},
+			expect.objectContaining({
+				version: "1.2.0",
+				installMode: "marketplace",
+				artifactKind: "legacy-zip",
+				artifactName: "demo-1.2.0.zip",
+				artifactSha256: sha256,
+				marketplaceSourceId: "test-source",
+				marketplaceRef: "refa/market-v3",
+			}),
+		);
+		expect(mocks.logAbilityInstallStarted).toHaveBeenCalledWith(
+			expect.objectContaining({
+				abilityId: "demo-plugin",
+				artifactKind: "legacy-zip",
+				marketplaceRef: "refa/market-v3",
+			}),
+		);
+	});
 	it("does not route MCP configuration through the file installer", async () => {
 		const manifest = parseMarketplaceManifest({
 			schemaVersion: 1,

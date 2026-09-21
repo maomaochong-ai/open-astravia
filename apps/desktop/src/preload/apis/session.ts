@@ -39,6 +39,12 @@ const CHANNELS = {
 	QUESTION_LIST_PENDING: "vetta:session:question-list-pending",
 	QUESTION_RESOLVED: "vetta:session:question-resolved",
 	QUESTION_RESPONSE: "vetta:session:question-response",
+	PLAN_MODE_GET_STATE: "vetta:session:plan-mode-get-state",
+	PLAN_MODE_SET_PERMISSION_MODE: "vetta:session:plan-mode-set-permission-mode",
+	PLAN_REVIEW_REQUEST: "vetta:session:plan-review-request",
+	PLAN_REVIEW_LIST_PENDING: "vetta:session:plan-review-list-pending",
+	PLAN_REVIEW_RESOLVED: "vetta:session:plan-review-resolved",
+	PLAN_REVIEW_RESPONSE: "vetta:session:plan-review-response",
 	MCP_ELICITATION_REQUEST: "vetta:session:mcp-elicitation-request",
 	MCP_ELICITATION_LIST_PENDING: "vetta:session:mcp-elicitation-list-pending",
 	MCP_ELICITATION_RESOLVED: "vetta:session:mcp-elicitation-resolved",
@@ -116,6 +122,13 @@ export function createSessionApi(ipc: IpcRenderer): Pick<DesktopApi, "session"> 
 			listPendingQuestions: () => ipc.invoke(CHANNELS.QUESTION_LIST_PENDING),
 			onQuestionResolved: (handler) => onIpcEvent(ipc, CHANNELS.QUESTION_RESOLVED, handler),
 			respondToQuestion: (requestId, result) => ipc.invoke(CHANNELS.QUESTION_RESPONSE, requestId, result),
+			getPlanModeState: (sessionId) => ipc.invoke(CHANNELS.PLAN_MODE_GET_STATE, sessionId),
+			setPermissionMode: (sessionId, permissionMode) =>
+				ipc.invoke(CHANNELS.PLAN_MODE_SET_PERMISSION_MODE, sessionId, permissionMode),
+			onPlanReviewRequest: (handler) => onIpcEvent(ipc, CHANNELS.PLAN_REVIEW_REQUEST, handler),
+			listPendingPlanReviews: () => ipc.invoke(CHANNELS.PLAN_REVIEW_LIST_PENDING),
+			onPlanReviewResolved: (handler) => onIpcEvent(ipc, CHANNELS.PLAN_REVIEW_RESOLVED, handler),
+			respondToPlanReview: (requestId, result) => ipc.invoke(CHANNELS.PLAN_REVIEW_RESPONSE, requestId, result),
 			onMcpElicitationRequest: (handler) => onIpcEvent(ipc, CHANNELS.MCP_ELICITATION_REQUEST, handler),
 			listPendingMcpElicitations: () => ipc.invoke(CHANNELS.MCP_ELICITATION_LIST_PENDING),
 			onMcpElicitationResolved: (handler) => onIpcEvent(ipc, CHANNELS.MCP_ELICITATION_RESOLVED, handler),
@@ -173,7 +186,10 @@ export function createSessionApi(ipc: IpcRenderer): Pick<DesktopApi, "session"> 
 			onRunningChanged: (handler) => onIpcEvent(ipc, CHANNELS.RUNNING_CHANGED, handler),
 			clearDefaultConversation: (scope) => ipc.invoke(CHANNELS.CLEAR_DEFAULT_CONVERSATION, scope),
 			clearDefaultArtifacts: (scope) => ipc.invoke(CHANNELS.CLEAR_DEFAULT_ARTIFACTS, scope),
-			openViewer: (path) => ipc.invoke(CHANNELS.VIEWER_OPEN, path),
+			openViewer: (path, options) =>
+				options === undefined
+					? ipc.invoke(CHANNELS.VIEWER_OPEN, path)
+					: ipc.invoke(CHANNELS.VIEWER_OPEN, path, options),
 			subscribeViewer: (path, handler) =>
 				subscribeById(ipc, CHANNELS.VIEWER_SUBSCRIBE, CHANNELS.VIEWER_EVENT, CHANNELS.VIEWER_UNSUBSCRIBE, handler, [
 					path,

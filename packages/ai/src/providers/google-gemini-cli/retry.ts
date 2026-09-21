@@ -175,9 +175,10 @@ function createHttpError(
 	status: number,
 	errorText: string,
 	responseHeaders?: Headers,
-): Error & { status: number; responseHeaders?: Headers } {
+): Error & { status: number; responseHeaders?: Headers; responseBody: string } {
 	return Object.assign(new Error(`Cloud Code Assist API error (${status}): ${extractErrorMessage(errorText)}`), {
 		status,
+		responseBody: errorText,
 		...(responseHeaders ? { responseHeaders } : {}),
 	});
 }

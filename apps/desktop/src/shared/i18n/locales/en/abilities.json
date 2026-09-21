@@ -82,8 +82,8 @@
 		"title": "Choose how to add",
 		"importSkill": "Import skill archive",
 		"importSkillHint": "Install from a local zip, tar.gz or tgz archive",
-		"importPlugin": "Import plugin archive",
-		"importPluginHint": "Install from a local zip that contains plugin.json",
+		"importPlugin": "Import plugin package",
+		"importPluginHint": "Install from a local .vettapkg (legacy .zip is supported; must contain plugin.json)",
 		"addMcp": "Add MCP manually",
 		"addMcpHint": "Configure a stdio or HTTP MCP server by hand"
 	},
@@ -169,7 +169,7 @@
 			"remote": "Remote install",
 			"npm": "npm package",
 			"system": "Built-in",
-			"local": "Local zip"
+			"local": "Local package"
 		},
 		"reloadVersion": "Reload to {{version}}",
 		"permissions": "Permissions",
@@ -275,6 +275,7 @@
 				"global": "Plugin content can appear in shared app areas that persist across pages",
 				"filePreview": "The plugin can render a specialized content viewer in the file preview area",
 				"activityTab": "The plugin can add and populate a tab in the right-side activity panel",
+				"bottomPanel": "Bottom panel",
 				"inputAction": "The plugin can add an action button to the conversation input",
 				"message": "Plugin content can be attached below a specific chat message",
 				"toolCall": "The plugin can present tool-call progress and results in a specialized card",
@@ -360,6 +361,7 @@
 			"uiSlotAbilityDetail": "Lets the plugin show installation, setup, or runtime status on its own ability detail page.",
 			"uiSlotFilePreview": "Lets the plugin show custom content or a viewer in the file preview area.",
 			"uiSlotActivityTab": "Lets the plugin add a selectable tab to the right-side activity panel.",
+			"uiSlotBottomPanel": "Lets the plugin contribute a component to the session's bottom panel; several instances can be open and split side by side.",
 			"uiSlotInputAction": "Lets the plugin add a clickable action near the chat input.",
 			"uiSlotMessage": "Lets the plugin add custom content or actions below chat messages.",
 			"uiSlotToolCall": "Lets the plugin customize how Agent tool-call results are presented.",
@@ -421,6 +423,7 @@
 		"uiSlotAbilityDetail": "Show detail configuration panel",
 		"uiSlotFilePreview": "File preview slot",
 		"uiSlotActivityTab": "Activity panel tab",
+		"uiSlotBottomPanel": "Bottom panel component",
 		"uiSlotInputAction": "Input bar action slot",
 		"uiSlotMessage": "Below-message slot",
 		"uiSlotToolCall": "Tool call render slot",

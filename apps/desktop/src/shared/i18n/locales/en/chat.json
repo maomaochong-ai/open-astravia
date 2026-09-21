@@ -7,7 +7,9 @@
 			"backgroundTasks": "Background tasks",
 			"debug": "Debug",
 			"knowledgeHistory": "Processing history",
-			"workflow": "Workflows"
+			"workflow": "Workflows",
+			"plan": "Plan",
+			"ports": "Port forwarding"
 		},
 		"backgroundTasks": {
 			"statusRunning": "Running",
@@ -50,6 +52,52 @@
 			"statusDone": "Done",
 			"statusInProgress": "In progress",
 			"statusPending": "Pending"
+		},
+		"ports": {
+			"heading": "Remote services",
+			"runningStat": "{{count}} running",
+			"forwardedStat": "{{count}} forwarded",
+			"sectionForwarded": "Forwarded",
+			"sectionRunning": "Running",
+			"manualTitle": "Forward a port",
+			"remotePortLabel": "Remote port",
+			"localPortLabel": "Local port",
+			"empty": "Nothing is running on the remote host yet",
+			"emptyHint": "Start a server on the remote host (for example npm run dev) and it shows up here; click Forward to open it on this machine.",
+			"remotePortPlaceholder": "e.g. 3000",
+			"localPortPlaceholder": "Same",
+			"localPortPrefix": "localhost:",
+			"add": "Forward",
+			"addManual": "Enter a port number",
+			"forward": "Forward",
+			"preview": "Preview",
+			"openExternal": "Open in system browser",
+			"copyAddress": "Copy address",
+			"copied": "Copied",
+			"changeLocalPort": "Change local port",
+			"stop": "Stop forwarding",
+			"retry": "Retry",
+			"refresh": "Scan again",
+			"statusActive": "Forwarded",
+			"statusReconnecting": "Reconnecting",
+			"statusFailed": "Forwarding stopped",
+			"scanUnsupported": "This host has no port scanner available (ss / netstat / lsof). Enter the port number to forward it.",
+			"scanFailed": "Could not read the remote host's ports",
+			"fromOutput": "Task output",
+			"notListening": "Nothing is listening on this port anymore",
+			"publicBind": "Listening on all interfaces: other machines on the remote network can reach it",
+			"justNow": "just now",
+			"terminate": "Stop process",
+			"forceTerminate": "Force stop",
+			"terminateConfirm": "Stop {{name}}?",
+			"terminateStubborn": "{{name}} ignored the stop signal and is still running. Click Force stop to kill it.",
+			"terminateFailed": "Could not stop {{name}}: {{reason}}",
+			"sensitiveToggle": "{{count}} system ports",
+			"sensitiveHint": "Privileged ports (below 1024) and the port this SSH connection uses. Stopping them could drop the connection, so they cannot be stopped from here.",
+			"unnamedToggle": "{{count}} ports with an unknown process",
+			"unnamedHint": "The owning process could not be read, usually because it belongs to another user.",
+			"ephemeralToggle": "{{count}} more ephemeral ports (above 32768)",
+			"invalidPort": "Enter a port number between 1 and 65535"
 		},
 		"toolCalls": {
 			"filterAll": "All",
@@ -109,9 +157,25 @@
 			"statusInterrupted": "Interrupted",
 			"processingTitle": "{{count}} workflow(s) in progress",
 			"doneTitle": "All workflows finished"
+		},
+		"plan": {
+			"headline": "Current plan"
 		}
 	},
 	"fileExplorer": {
+		"display": {
+			"invalidPatterns": "Use up to 100 patterns, each no longer than 1024 characters",
+			"title": "File display settings",
+			"showHidden": "Show dotfiles and folders",
+			"exclude": "Exclude patterns",
+			"excludeHint": "One workspace-relative pattern per line, e.g. **/node_modules or **/*.log. Clear to show all ordinary files.",
+			"iconTheme": "File icon theme",
+			"builtin": "Built-in icons",
+			"unavailable": "Selected theme unavailable (using built-in icons)",
+			"apply": "Apply exclude patterns",
+			"reset": "Restore default display",
+			"saveFailed": "Could not save display settings. Try again."
+		},
 		"clearArtifactsTitle": "Clear artifacts",
 		"clearArtifactsMessage": "This will delete all artifact files under the {{label}} project cwd (session records are kept). This cannot be undone.",
 		"clearArtifactsConfirm": "Clear",
@@ -245,6 +309,47 @@
 		"copyCommand": "Copy command",
 		"metaDescription": "Local metadata, UI only, not sent to the model"
 	},
+	"bottomPanel": {
+		"tablist": "Bottom panel tabs",
+		"closeTab": "Close",
+		"tabFailed": "This panel failed to render",
+		"pillsGroup": "Bottom panel",
+		"empty": {
+			"title": "The bottom panel is empty",
+			"description": "Pick a panel to add.",
+			"pickerLabel": "Panels you can add"
+		},
+		"actions": {
+			"add": "New panel",
+			"splitRight": "Split right",
+			"splitDown": "Split down",
+			"splitLimit": "Split limit reached",
+			"collapse": "Collapse bottom panel"
+		},
+		"addMenu": {
+			"builtinGroup": "Built-in",
+			"pluginGroup": "Plugins",
+			"instanceLimit": "Instance limit reached for this panel"
+		},
+		"closeConfirm": {
+			"title": "Close this panel?",
+			"message": "Work in progress inside the panel will be interrupted.",
+			"confirm": "Close"
+		},
+		"terminal": {
+			"title": "Terminal",
+			"exited": "[process exited with code {{code}}]",
+			"previousOutput": "-- output above is from the previous session (process ended) --",
+			"unavailable": "A terminal cannot be started in this environment",
+			"noResize": "This host has no helper installed, so the terminal size is fixed and will not follow the window.",
+			"replayTruncated": "[earlier output omitted]",
+			"closeConfirm": {
+				"title": "Close the terminal?",
+				"message": "“{{process}}” is still running; closing the terminal ends it.",
+				"confirm": "Close and end process"
+			}
+		}
+	},
 	"browser": {
 		"addressPlaceholder": "Enter a URL and press Enter",
 		"back": "Back",
@@ -269,6 +374,10 @@
 	},
 	"chatView": {
 		"defaultSessionTitle": "Vetta Session",
+		"bottomPanelButton": {
+			"closed": "Open bottom panel",
+			"open": "Close bottom panel"
+		},
 		"exportButton": {
 			"title": "Export full session as HTML"
 		},
@@ -282,7 +391,8 @@
 		"pinButton": {
 			"pinned": "Unpin window",
 			"unpinned": "Pin window (keep on top)"
-		}
+		},
+		"remoteBadge": "Remote"
 	},
 	"contextRing": {
 		"tooltip": {
@@ -358,7 +468,8 @@
 			"label": "Sandboxed",
 			"title": "Allow restricted access within the workspace only"
 		},
-		"sandboxUnavailable": "{{platform}} sandbox unavailable: {{reason}}"
+		"sandboxUnavailable": "{{platform}} sandbox unavailable: {{reason}}",
+		"sandboxUnavailableRemote": "Sandbox is not available for remote projects: it only constrains processes on this computer, and a remote project's commands run on the remote host"
 	},
 	"export": {
 		"shareNavDescription": "shared a session",
@@ -388,6 +499,9 @@
 		"knowledgeRetrieval": {
 			"label": "Knowledge search",
 			"tooltip": "When on, this turn can call knowledge-base tools and prefers answering from your knowledge base"
+		},
+		"planMode": {
+			"label": "Plan mode"
 		}
 	},
 	"inputBar": {
@@ -770,6 +884,41 @@
 			"pick": "Switch agent",
 			"pickTitle": "Pick a team or a single agent for this task",
 			"switchTitle": "Switch the team or agent for this session"
+		}
+	},
+	"planMode": {
+		"entryCard": {
+			"moreSteps": "{{count}} more steps",
+			"open": "View plan",
+			"stepCount": "{{count}} steps",
+			"title": "Implementation plan"
+		},
+		"review": {
+			"approve": "Approve and start",
+			"back": "Back",
+			"commentOnStep": "Comment on step {{number}}",
+			"dismiss": "Decide later",
+			"doneEditing": "Done editing",
+			"edit": "Edit plan",
+			"edited": "Edited",
+			"editorLabel": "Plan text",
+			"feedbackLabel": "What should change?",
+			"feedbackPlaceholder": "For example: leave the database migration alone; split step 3 in two…",
+			"requestChanges": "Request changes",
+			"resetEdits": "Reset",
+			"sendFeedback": "Send feedback",
+			"sendFeedbackWithComments": "Send feedback ({{count}})",
+			"stepCommentPlaceholder": "How should this step change…",
+			"subtitle": "Vetta starts working from this plan once you approve it. Nothing is changed before that.",
+			"title": "A plan is waiting for your approval"
+		},
+		"switchFailed": "Couldn't switch plan mode",
+		"toolCard": {
+			"approved": "Approved",
+			"changesRequested": "Sent back for changes",
+			"dismissed": "Not decided yet",
+			"pending": "Waiting for your approval",
+			"title": "Plan"
 		}
 	},
 	"questionPanel": {

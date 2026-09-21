@@ -1,7 +1,7 @@
 import { posix } from "node:path";
 
 export const updaterMetadataPattern = /^latest(?:-(?:mac|linux)(?:-[a-z0-9_-]+)?)?\.ya?ml$/i;
-const artifactPattern = /\.(?:appimage|blockmap|dmg|exe|zip)$/i;
+const artifactPattern = /\.(?:appimage|blockmap|deb|dmg|exe|rpm|zip)$/i;
 
 export function referencedFileName(reference) {
 	if (typeof reference !== "string" || !reference.trim()) return undefined;

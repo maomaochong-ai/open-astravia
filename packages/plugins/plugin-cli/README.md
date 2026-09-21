@@ -69,6 +69,13 @@ remotely: the host refuses to sync an entry whose version differs from the packa
 install a plugin whose built entry is missing from the published directory, and clients silently
 skip an update when `marketplaceVersion` did not change. `sync` reconciles all three.
 
+For marketplace schema v3, a plugin may instead list immutable `releases[]` with HTTPS `.vettapkg` URLs
+and SHA-256 digests. Its `source.path` then contains presentation files only. `sync --check`
+checks release metadata and reconciles the catalog version with the highest release; the
+Desktop installation verifies the downloaded package. Before advancing a stable marketplace ref,
+run the publication check from a fixed `open-vetta` checkout as described in
+[`docs/open-marketplace.md`](../../../docs/open-marketplace.md).
+
 ## Find the manual
 
 ```bash
@@ -101,8 +108,8 @@ The npm package is fetched with lifecycle scripts disabled. The CLI extracts onl
 Local archives and HTTP(S) archives use the same command:
 
 ```bash
-npx @vetta-org/plugin-cli add ./release/demo-1.0.0.zip
-npx @vetta-org/plugin-cli add https://example.com/demo-1.0.0.zip
+npx @vetta-org/plugin-cli add ./release/demo-1.0.0.vettapkg
+npx @vetta-org/plugin-cli add https://example.com/demo-1.0.0.vettapkg
 ```
 
 When an update is installed as a pending version, apply it through the running Desktop host instead of
@@ -125,12 +132,12 @@ The published plugin package must include a standard Desktop plugin archive and 
 {
   "name": "@example/vetta-plugin-demo",
   "version": "1.0.0",
-  "files": ["release/vetta-plugin.zip"],
+  "files": ["release/vetta-plugin.vettapkg"],
   "vetta": {
     "schemaVersion": 1,
     "type": "desktop-plugin",
     "pluginId": "demo",
-    "archive": "release/vetta-plugin.zip"
+    "archive": "release/vetta-plugin.vettapkg"
   }
 }
 ```

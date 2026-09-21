@@ -165,8 +165,10 @@ describe("OpenAI-compatible native adapters", () => {
 
 		await expect(response.result).rejects.toMatchObject({
 			code: "AI_RATE_LIMITED",
+			message: "too many requests",
 			retryable: true,
 			statusCode: 429,
+			providerCode: "rate_limit_error",
 		});
 		expect(transport.requests).toHaveLength(1);
 	});

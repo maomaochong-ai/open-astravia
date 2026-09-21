@@ -46,6 +46,13 @@ describe("ProviderIcon", () => {
 		expect(icon?.getAttribute("style")).toContain(getProviderIcon("openai"));
 	});
 
+	it("renders kimi as a current-color mask so it stays visible in light mode", () => {
+		const view = render(<ProviderIcon symbol="kimi" className="h-4 w-4" />);
+
+		expect(view.container.querySelector("img")).toBeNull();
+		expect(view.container.querySelector("span")?.className).toContain("bg-current");
+	});
+
 	it("does not render empty, unknown, or prototype-chain symbols", () => {
 		expect(getProviderIcon(undefined)).toBeUndefined();
 		expect(getProviderIcon("unknown")).toBeUndefined();

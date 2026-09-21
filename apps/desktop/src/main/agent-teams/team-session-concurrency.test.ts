@@ -44,6 +44,282 @@ describe("Team member concurrency", () => {
 	// 装机团队的队长是插件智能体，注册表空着就取不到人设。
 	beforeEach(() => registerPresetPluginBlueprints());
 
+	it.each([
+		{ code: "provider_unauthorized", retryable: false, expected: "attention-required" },
+		{ code: "AI_INVALID_REQUEST", retryable: false, expected: "failed" },
+		{ code: "unclassified", retryable: false, expected: "waiting" },
+	])(
+		"wakes the initiator with a durable status when delegated work ends with $code",
+		async ({ code, retryable, expected }) => {
+			const fixture = await createFixture();
+			const [leader, member] = fixture.members;
+			const leaderRuntime = fixture.session.memberRuntime[leader]!.sessionId;
+			continueLeaderWith(fixture, leaderRuntime, "The delegated task needs attention");
+			const notification = deferred();
+			const deliver = fixture.runtime.deliverSessionContext;
+			vi.spyOn(fixture.runtime, "deliverSessionContext").mockImplementation(async (id, records, mode) => {
+				await deliver(id, records, mode);
+				if (mode === "triggerTurn") notification.resolve();
+			});
+			const turn = fixture.turn(member, "Investigate failure");
+			turn.failure =
+				code === "unclassified"
+					? new Error("interrupted")
+					: { code, retryable, message: "failed", origin: "provider" };
+			const tasks = fixture.service.taskControls(fixture.session.id);
+			const caller = taskCaller(fixture, leader);
+			const task = await tasks.delegateTask({
+				...caller,
+				requestId: "failure",
+				targetHandle: fixture.session.memberHandles[member]!,
+				objective: "Investigate failure",
+			});
+			await turn.started.promise;
+			turn.finish.resolve();
+			await notification.promise;
+			const snapshot = await tasks.getTask({ ...caller, teamTaskId: task.teamTaskId });
+			expect(snapshot.workItem.state).toBe(expected);
+			expect(fixture.runtime.deliverSessionContext).toHaveBeenCalledWith(
+				leaderRuntime,
+				[
+					expect.objectContaining({
+						type: "agent-team.task-status.v1",
+						metadata: expect.objectContaining({ state: expected, teamTaskId: task.teamTaskId }),
+					}),
+				],
+				"triggerTurn",
+			);
+			await fixture.service.abort(fixture.session.id);
+		},
+	);
+
+	it("inspects local liveness without replaying a healthy long-running member and respects stop", async () => {
+		vi.useFakeTimers();
+		try {
+			const fixture = await createFixture();
+			const member = fixture.members[0];
+			const turn = fixture.turn(member, "Long tool operation");
+			const send = fixture.service.send(fixture.session.id, {
+				requestId: "long",
+				text: "Long tool operation",
+				targetMemberIds: [member],
+			});
+			await turn.started.promise;
+			await vi.advanceTimersByTimeAsync(90_000);
+			expect(fixture.runtime.prompt).toHaveBeenCalledTimes(1);
+			expect(fixture.runtime.retry).not.toHaveBeenCalled();
+			expect((await fixture.service.readCollaborationState(fixture.session.id)).workItems[0]?.state).toBe("running");
+			await fixture.service.abort(fixture.session.id);
+			await send;
+			await vi.advanceTimersByTimeAsync(90_000);
+			expect(fixture.runtime.retry).not.toHaveBeenCalled();
+			expect((await fixture.service.readCollaborationState(fixture.session.id)).workItems[0]?.state).toBe(
+				"cancelled",
+			);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("reads a durable failure from a void retry result instead of publishing earlier progress as success", async () => {
+		vi.useFakeTimers();
+		try {
+			const fixture = await createFixture();
+			const member = fixture.members[0];
+			const runtimeId = fixture.session.memberRuntime[member]!.sessionId;
+			const turn = fixture.turn(member, "initial-timeout");
+			turn.failure = { code: "AI_TIMEOUT", message: "timeout", origin: "provider", retryable: true };
+			const send = fixture.service.send(fixture.session.id, {
+				requestId: "void-retry",
+				text: "initial-timeout",
+				targetMemberIds: [member],
+			});
+			await turn.started.promise;
+			turn.finish.resolve();
+			await send;
+			vi.mocked(fixture.runtime.retry).mockImplementation(async (id) => {
+				fixture.appendHistory(id, {
+					...createAssistantMessage({ api: "openai-responses", provider: "openai", model: "test" }),
+					content: [{ type: "text", text: "Dispatching work" }],
+				});
+				fixture.history.set(id, [
+					...(fixture.history.get(id) ?? []),
+					{
+						type: "error",
+						entryId: "retry-failure",
+						code: "AI_TIMEOUT",
+						message: "timeout",
+						retryable: true,
+						origin: "provider",
+						timestamp: "2",
+					},
+				]);
+			});
+			await vi.advanceTimersByTimeAsync(1_000);
+			const state = await fixture.service.readCollaborationState(fixture.session.id);
+			expect(fixture.runtime.retry).toHaveBeenCalledWith(runtimeId);
+			expect(state.workItems[0]).toMatchObject({ state: "waiting", recovery: { automaticRetries: 1 } });
+			expect(state.workItems[0]?.resultMessageId).toBeUndefined();
+			expect(state.attempts.at(-1)).toMatchObject({ state: "waiting-retry", issue: { code: "AI_TIMEOUT" } });
+			await fixture.service.abort(fixture.session.id);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("reconciles an orphan and its missing retry timer while the team stays loaded", async () => {
+		vi.useFakeTimers();
+		try {
+			const fixture = await createFixture();
+			const member = fixture.members[0];
+			const first = fixture.turn(member, "start monitor");
+			const send = fixture.service.send(fixture.session.id, {
+				requestId: "monitor",
+				text: "start monitor",
+				targetMemberIds: [member],
+			});
+			await first.started.promise;
+			first.finish.resolve();
+			await send;
+			const coordinationId = fixture.session.coordinationRuntime!.sessionId;
+			const workItemId = `work:orphan-scan:${member}`;
+			const attemptId = `attempt:${workItemId}:1`;
+			await fixture.runtime.appendSessionMetadataEntry(coordinationId, "agent-team.work-item.v1", {
+				id: workItemId,
+				requestTurnId: "orphan-scan",
+				createdByParticipantId: "local-user",
+				assignedToParticipantId: member,
+				objective: "orphan",
+				contextEntryIds: [],
+				state: "running",
+				currentAttemptId: attemptId,
+				createdAt: 1,
+				updatedAt: 1,
+				revision: 1,
+				recovery: { maxAutomaticRetries: 2, automaticRetries: 0 },
+			});
+			await fixture.runtime.appendSessionMetadataEntry(coordinationId, "agent-team.member-attempt.v1", {
+				id: attemptId,
+				workItemId,
+				participantConversationId: fixture.session.memberRuntime[member]!.sessionId,
+				sourceTurnId: "orphan",
+				attempt: 1,
+				mode: "initial",
+				state: "running",
+				lastProgressAt: 1,
+			});
+			const retry = fixture.turn(member, "retry");
+			await vi.advanceTimersByTimeAsync(30_001);
+			await retry.started.promise;
+			const completed = fixture.workState(workItemId, "completed");
+			retry.finish.resolve();
+			await completed;
+			const state = await fixture.service.readCollaborationState(fixture.session.id);
+			expect(state.workItems.find((item) => item.id === workItemId)).toMatchObject({
+				state: "completed",
+				recovery: { automaticRetries: 1 },
+			});
+			expect(fixture.runtime.retry).toHaveBeenCalledTimes(1);
+			await fixture.service.abort(fixture.session.id);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("retries a lost initiator notification on the next local scan without rerunning the completed member", async () => {
+		vi.useFakeTimers();
+		try {
+			const fixture = await createFixture();
+			const [leader, member] = fixture.members;
+			const leaderRuntime = fixture.session.memberRuntime[leader]!.sessionId;
+			const initial = fixture.turn(leader, "plan");
+			const send = fixture.service.send(fixture.session.id, {
+				requestId: "plan",
+				text: "plan",
+				targetMemberIds: [leader],
+			});
+			await initial.started.promise;
+			initial.finish.resolve();
+			await send;
+			continueLeaderWith(fixture, leaderRuntime, "Integrated after notification recovery");
+			const append = fixture.runtime.appendSessionMetadataEntry;
+			let unavailable = true;
+			vi.spyOn(fixture.runtime, "appendSessionMetadataEntry").mockImplementation(async (id, type, data) => {
+				if (unavailable && type === "agent-team.task-notification.v1")
+					throw new Error("notification storage unavailable");
+				await append(id, type, data);
+			});
+			const turn = fixture.turn(member, "review");
+			const tasks = fixture.service.taskControls(fixture.session.id);
+			const caller = taskCaller(fixture, leader);
+			const task = await tasks.delegateTask({
+				...caller,
+				requestId: "review",
+				targetHandle: fixture.session.memberHandles[member]!,
+				objective: "review",
+			});
+			await turn.started.promise;
+			turn.finish.resolve();
+			await vi.advanceTimersByTimeAsync(0);
+			expect((await tasks.getTask({ ...caller, teamTaskId: task.teamTaskId })).workItem.state).toBe("completed");
+			unavailable = false;
+			const integrated = fixture.workState(`work:plan:continuation:1:${leader}`, "completed");
+			await vi.advanceTimersByTimeAsync(30_000);
+			await integrated;
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(fixture.runtime.prompt).toHaveBeenCalledTimes(2);
+			expect(
+				vi.mocked(fixture.runtime.deliverSessionContext).mock.calls.filter((call) => call[2] === "triggerTurn"),
+			).toHaveLength(1);
+			await fixture.service.abort(fixture.session.id);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("stops after two automatic recoveries and does not let the model bypass the budget", async () => {
+		vi.useFakeTimers();
+		try {
+			const fixture = await createFixture();
+			const [leader, member] = fixture.members;
+			continueLeaderWith(fixture, fixture.session.memberRuntime[leader]!.sessionId, "Recovery limit reached");
+			const failure = { code: "AI_TIMEOUT", message: "timeout", retryable: true, origin: "provider" };
+			const turn = fixture.turn(member, "unstable");
+			turn.failure = failure;
+			vi.mocked(fixture.runtime.retry).mockRejectedValue(failure);
+			const tasks = fixture.service.taskControls(fixture.session.id);
+			const caller = taskCaller(fixture, leader);
+			const task = await tasks.delegateTask({
+				...caller,
+				requestId: "unstable",
+				targetHandle: fixture.session.memberHandles[member]!,
+				objective: "unstable",
+			});
+			await turn.started.promise;
+			turn.finish.resolve();
+			await vi.advanceTimersByTimeAsync(3_001);
+			expect(fixture.runtime.retry).toHaveBeenCalledTimes(2);
+			const exhausted = await tasks.getTask({ ...caller, teamTaskId: task.teamTaskId });
+			expect(exhausted.workItem).toMatchObject({
+				state: "attention-required",
+				recovery: { automaticRetries: 2 },
+				lastIssue: { code: "TEAM_RECOVERY_EXHAUSTED" },
+			});
+			expect(exhausted.attempt?.nextRetryAt).toBeUndefined();
+			await tasks.resumeTask({ ...caller, teamTaskId: task.teamTaskId, mode: "retry" });
+			await vi.advanceTimersByTimeAsync(90_000);
+			expect(fixture.runtime.retry).toHaveBeenCalledTimes(2);
+			await fixture.service.recoverWorkItem(fixture.session.id, task.teamTaskId, "retry");
+			expect((await tasks.getTask({ ...caller, teamTaskId: task.teamTaskId })).workItem).toMatchObject({
+				state: "waiting",
+				recovery: { automaticRetries: 0 },
+			});
+			await fixture.service.abort(fixture.session.id);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it("leaves durable Team task scheduling as the only automatic retry owner", async () => {
 		const fixture = await createFixture();
 		for (const memberId of fixture.members) {
@@ -486,7 +762,11 @@ describe("Team member concurrency", () => {
 		await Promise.all(responded);
 		const state = await fixture.service.readCollaborationState(fixture.session.id);
 		expect(state.deliveries).toHaveLength(2);
-		expect(state.workItems.every((item) => item.originToolCallId === caller.toolCallId)).toBe(true);
+		expect(
+			state.workItems
+				.filter((item) => item.kind === "question")
+				.every((item) => item.originToolCallId === caller.toolCallId),
+		).toBe(true);
 		expect(state.deliveries.every((delivery) => delivery.state === "responded" && !!delivery.replyMessageId)).toBe(
 			true,
 		);
@@ -1512,6 +1792,54 @@ describe("Team member concurrency", () => {
 		expect(await reopened.readSnapshot(fixture.session.id)).toEqual(snapshot);
 	});
 
+	it("keeps the team stopped when a new send is still cancelling old notification records", async () => {
+		const fixture = await createFixture();
+		const [leader, member] = fixture.members;
+		const coordinationId = fixture.session.coordinationRuntime!.sessionId;
+		await fixture.runtime.appendSessionMetadataEntry(coordinationId, "agent-team.work-item.v1", {
+			id: "finished-before-stop",
+			requestTurnId: "old-request",
+			createdByParticipantId: leader,
+			assignedToParticipantId: member,
+			objective: "old work",
+			contextEntryIds: [],
+			state: "completed",
+			resultMessageId: "old-result",
+			recovery: { maxAutomaticRetries: 2, automaticRetries: 0 },
+			createdAt: 1,
+			updatedAt: 2,
+			revision: 1,
+		});
+		await fixture.service.abort(fixture.session.id);
+		const append = fixture.runtime.appendSessionMetadataEntry;
+		const cleanupStarted = deferred();
+		const releaseCleanup = deferred();
+		vi.spyOn(fixture.runtime, "appendSessionMetadataEntry").mockImplementation(async (id, type, data) => {
+			if (type === "agent-team.task-notification.v1") {
+				cleanupStarted.resolve();
+				await releaseCleanup.promise;
+			}
+			await append(id, type, data);
+		});
+		const send = fixture.service.send(fixture.session.id, {
+			requestId: "stopped-during-resume",
+			text: "new work",
+			targetMemberIds: [leader],
+		});
+		await cleanupStarted.promise;
+		await fixture.service.abort(fixture.session.id);
+		releaseCleanup.resolve();
+		await expect(send).resolves.toBeDefined();
+		const stopRecords = fixture.runtime
+			.readSessionDocument(coordinationId)
+			?.entries.filter((entry) => entry.type === "custom" && entry.customType === "agent-team.recovery-stop.v1");
+		expect(stopRecords?.at(-1)).toMatchObject({ data: true });
+		const restored = fixture.restartService();
+		await restored.read(fixture.session.id, fixture.session.coordinationRuntime!.sessionPath);
+		expect(fixture.runtime.prompt).not.toHaveBeenCalled();
+		expect((await restored.readCollaborationState(fixture.session.id)).workItems).toHaveLength(1);
+	});
+
 	it("keeps a user message when stop races with Team admission", async () => {
 		const fixture = await createFixture();
 		const [member] = fixture.members;
@@ -1909,6 +2237,7 @@ async function createFixture(
 				conversations.set(sessionId, createEmptyConversationDocument({ sessionId, createdAt: 1 }));
 			return { sessionId };
 		}),
+		getState: (id: string) => ({ isStreaming: running.has(id) }),
 		getSessionPath: (id: string) => (activeSessions.has(id) ? `C:/runtime/${id}.jsonl` : undefined),
 		setExecutionMode: vi.fn(async () => undefined),
 		updateSettings: vi.fn(async () => undefined),

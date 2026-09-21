@@ -1,4 +1,5 @@
-import { isAbsolute, relative } from "node:path";
+import nodePath from "node:path";
+import type { ToolPathSyntax } from "../../shared/path-resolution.js";
 
 type TreeNodeType = "dir" | "file";
 
@@ -140,13 +141,15 @@ export function buildFdArgs(
 	return args;
 }
 
-export function parseFdOutput(stdout: string, searchPath: string): string[] {
+export function parseFdOutput(stdout: string, searchPath: string, path: ToolPathSyntax = nodePath): string[] {
 	const paths: string[] = [];
 	for (const rawLine of stdout.split("\n")) {
 		const trimmed = rawLine.replace(/\r$/, "").trim();
 		if (!trimmed) continue;
 		let normalized = trimmed;
-		if (isAbsolute(normalized) || normalized.startsWith(searchPath)) normalized = relative(searchPath, normalized);
+		if (path.isAbsolute(normalized) || normalized.startsWith(searchPath)) {
+			normalized = path.relative(searchPath, normalized);
+		}
 		normalized = normalized
 			.replace(/\\/g, "/")
 			.replace(/^\.\/+/, "")

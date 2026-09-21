@@ -560,7 +560,7 @@
 				},
 				"install-from-path": {
 					"title": "Install Plugin from Local Path Confirmation",
-					"summary": "Install the local zip, grant declared permissions once, and enable the plugin.",
+					"summary": "Install the local plugin package, grant declared permissions once, and enable the plugin.",
 					"confirm": "Install and authorize",
 					"badge": "Install",
 					"impact": "The local plugin package will be installed, granted its declared permissions, and enabled."

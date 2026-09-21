@@ -3,10 +3,12 @@ import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
+import type { SshHost } from "@vetta/ssh-transport";
 import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
 import { isLanguagePreference, type LanguagePreference } from "../../shared/i18n/config.js";
 import { normalizeShortcutsConfig, type ShortcutsConfig } from "../../shared/shortcuts.js";
 import { isAgentMode } from "../agent-modes/index.js";
+import { DEFAULT_PROXY_CONFIG, type DesktopProxyConfig, normalizeProxyConfig } from "../proxy/proxy-settings.js";
 
 export interface ProjectEntry {
 	path: string;
@@ -44,6 +46,8 @@ export interface DesktopConfig {
 	/** 新建会话的默认工作模式（合法值来自 main/agent-modes 模式注册表，ADR-0071）。会话创建时固化进会话，改这里只影响之后新建的会话。 */
 	defaultAgentMode?: string;
 	experimental?: ExperimentalConfig;
+	/** 应用代理（设置 → 通用设置 → 网络代理）。缺省不启用。 */
+	proxy?: DesktopProxyConfig;
 	imageGeneration?: ImageGenerationConfig;
 	knowledgeBase?: KnowledgeBaseConfig;
 	shortcuts?: ShortcutsConfig;
@@ -54,6 +58,16 @@ export interface DesktopConfig {
 		pairingId?: string;
 		inputEnabled?: boolean;
 	};
+	/**
+	 * 可作为远程项目宿主的 SSH 主机（ADR-0124）。
+	 *
+	 * 注意与上面的 `remoteControl` 是两件事：那个是「手机遥控本机」，这个是
+	 * 「本机连到远端主机上开发」，方向相反。
+	 *
+	 * 只读投影：真身在 `ssh-hosts.json`（见 {@link writeSshHosts}），
+	 * {@link writeDesktopConfig} 会忽略这个字段。
+	 */
+	sshHosts?: SshHost[];
 }
 
 export type AppshotGesture = "both-shift" | "both-mod" | "both-alt";
@@ -87,6 +101,15 @@ export const KB_PROCESSING_CWD = join(getVettaHomePath(), "knowledges", "process
 export const KB_PROCESSING_SESSION_DIR = join(KB_PROCESSING_CWD, ".vetta", "sessions");
 
 const CONFIG_PATH = join(getVettaHomePath(), "desktop-config.json");
+/**
+ * SSH 主机单独成文件，而不是 desktop-config.json 的一个字段。
+ *
+ * 开发版与已安装的正式版共用 `~/.vetta`。0.5.58 及更早版本按自己的字段白名单整份重写
+ * desktop-config.json，不认识的 sshHosts 随之消失——它们被 vetta:// 链接、通知之类
+ * 顺手拉起一次就够了，写回代码里再怎么保留未知字段也管不到已经发出去的旧版本。
+ * 旧版本不知道这个文件，也就碰不到它。
+ */
+const SSH_HOSTS_PATH = join(getVettaHomePath(), "ssh-hosts.json");
 const DEFAULT_CONFIG: DesktopConfig = {
 	projects: [],
 	archivedProjects: [],
@@ -96,6 +119,7 @@ const DEFAULT_CONFIG: DesktopConfig = {
 	debugMode: false,
 	notificationsEnabled: true,
 	experimental: { vettaCli: true, agentSkills: true },
+	proxy: { ...DEFAULT_PROXY_CONFIG },
 	imageGeneration: {},
 	shortcuts: { bindings: {} },
 	quickPanel: { trigger: "none", postSendBehavior: "foreground" },
@@ -246,13 +270,41 @@ function parseDesktopConfig(parsed: Record<string, unknown>): DesktopConfig {
 		notificationsEnabled: typeof parsed.notificationsEnabled === "boolean" ? parsed.notificationsEnabled : true,
 		language: isLanguagePreference(parsed.language) ? parsed.language : undefined,
 		experimental: normalizeExperimental(parsed.experimental),
+		proxy: normalizeProxyConfig(parsed.proxy),
 		imageGeneration: normalizeImageGeneration(parsed.imageGeneration),
 		knowledgeBase: normalizeKnowledgeBase(parsed.knowledgeBase),
 		shortcuts: normalizeShortcuts(parsed.shortcuts),
 		quickPanel: normalizeQuickPanel(parsed.quickPanel),
 		appshot: normalizeAppshot(parsed.appshot),
 		remoteControl: normalizeRemoteControl(parsed.remoteControl),
+		sshHosts: readSshHostsSync(parsed.sshHosts),
 	};
+}
+
+/**
+ * 读 `ssh-hosts.json`；文件还不存在时从 desktop-config 里的旧字段迁出。
+ *
+ * 迁移在读路径上立刻落盘，而不是等下一次写：两次启动之间旧版本随时可能把旧字段抹掉。
+ */
+function readSshHostsSync(legacy: unknown): SshHost[] | undefined {
+	try {
+		const parsed = JSON.parse(readFileSync(SSH_HOSTS_PATH, "utf8")) as { hosts?: unknown };
+		return normalizeSshHosts(parsed.hosts) ?? [];
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code !== "ENOENT") return [];
+	}
+	const migrated = normalizeSshHosts(legacy);
+	if (migrated !== undefined) writeSshHostsSync(migrated);
+	return migrated;
+}
+
+function writeSshHostsSync(hosts: readonly SshHost[]): void {
+	atomicWriteJSON(SSH_HOSTS_PATH, { version: 1, hosts });
+}
+
+/** SSH 主机列表的唯一写入口；调用方应是 SshHostService。 */
+export async function writeSshHosts(hosts: readonly SshHost[]): Promise<void> {
+	writeSshHostsSync(hosts);
 }
 
 function normalizeRemoteControl(value: unknown): DesktopConfig["remoteControl"] {
@@ -265,8 +317,66 @@ function normalizeRemoteControl(value: unknown): DesktopConfig["remoteControl"] 
 	};
 }
 
+/**
+ * 逐条校验持久化的 SSH 主机。
+ *
+ * 配置文件可能被用户手工编辑，也可能来自更旧的版本。缺 id 或缺连接目标的条目直接
+ * 丢弃而不是补默认值——一个指向错误主机的条目会让远程项目静默连到别的机器上。
+ */
+function normalizeSshHosts(value: unknown): SshHost[] | undefined {
+	if (!Array.isArray(value)) return undefined;
+	const hosts: SshHost[] = [];
+	for (const raw of value) {
+		if (typeof raw !== "object" || raw === null) continue;
+		const input = raw as Record<string, unknown>;
+		const id = typeof input.id === "string" ? input.id.trim() : "";
+		const target = typeof input.target === "string" ? input.target.trim() : "";
+		if (id.length === 0 || target.length === 0) continue;
+		const port = typeof input.port === "number" && Number.isInteger(input.port) ? input.port : undefined;
+		hosts.push({
+			id,
+			label: typeof input.label === "string" && input.label.trim().length > 0 ? input.label.trim() : target,
+			target,
+			...(port !== undefined && port > 0 && port <= 65535 ? { port } : {}),
+			...(typeof input.identityFile === "string" && input.identityFile.trim().length > 0
+				? { identityFile: input.identityFile.trim() }
+				: {}),
+			source: input.source === "ssh-config" ? "ssh-config" : "manual",
+			...(typeof input.credentialRef === "string" && input.credentialRef.length > 0
+				? { credentialRef: input.credentialRef }
+				: {}),
+		});
+	}
+	return hosts;
+}
+
+/**
+ * 整文件写回，但保留磁盘上本版本不认识的字段。
+ *
+ * 新旧版本共用同一份 `~/.vetta`（开发版与已安装的正式版、或升级后又回退）。读路径
+ * {@link parseDesktopConfig} 是字段白名单，不认识的字段不进内存；若写回时整份覆盖，
+ * 旧版任何一次保存都会把新版的字段抹掉——0.5.58 启动时顺手写回 CLI 路径，就这样清空了
+ * sshHosts，远程项目随之全部报「Unknown SSH host」。已知字段仍以传入值为准：显式给
+ * `undefined` 的键在序列化时被丢掉，删除语义不变。
+ */
 export async function writeDesktopConfig(config: DesktopConfig): Promise<void> {
-	atomicWriteJSON(CONFIG_PATH, config);
+	const raw = readRawConfigSync();
+	// 迁移没来得及发生时（文件由外部写入、本进程还没读过）先把旧字段迁出，再从这里删掉。
+	readSshHostsSync(raw.sshHosts);
+	// sshHosts 由 writeSshHosts 独占：调用方手里的是读配置那一刻的快照，拿它写回会盖掉
+	// 期间刚增删的主机。
+	atomicWriteJSON(CONFIG_PATH, { ...raw, ...config, sshHosts: undefined });
+}
+
+function readRawConfigSync(): Record<string, unknown> {
+	try {
+		const parsed: unknown = JSON.parse(readFileSync(CONFIG_PATH, "utf8"));
+		return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
+			? (parsed as Record<string, unknown>)
+			: {};
+	} catch {
+		return {};
+	}
 }
 
 export async function persistVettaCliPaths(paths: { vettaAppPath: string; vettaCliAppPath: string }): Promise<void> {

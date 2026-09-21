@@ -35,6 +35,9 @@ function getPluginTabComponent(pluginId: string, tabId: string): ComponentType {
 	return Comp;
 }
 
+/** 插件标签卡能自报的最靠前位置：紧随「文件」(0) 与批量进度 (10)。 */
+const PLUGIN_TAB_MIN_ORDER = 10;
+
 export function toPluginDefinition(
 	tab: RegisteredActivityTab,
 	trPlugin: (pluginId: string, text: string) => string,
@@ -42,7 +45,9 @@ export function toPluginDefinition(
 	const id = `plugin:${tab.pluginId}:${tab.tabId}`;
 	return {
 		id,
-		order: 100,
+		// 插件可以自报位置（缺省 100，排在内置之后），但钳住下限：否则任何插件都能
+		// 声明一个负数把「文件」挤到第二位。用户拖出来的顺序仍然优先于它。
+		order: Math.max(PLUGIN_TAB_MIN_ORDER, tab.order ?? 100),
 		removable: true,
 		source: "plugin",
 		pluginId: tab.pluginId,

@@ -47,10 +47,12 @@ Panel-style slots (file preview, activity tab, workspace view) must not use view
 | --- | --- | --- |
 | Context menu action | `registerContextMenuAction` | `ui.file-explorer.context-menu` |
 | Toolbar action | `registerToolbarAction` | `ui.file-explorer.toolbar` |
-| File decoration (badges, colors) | `registerDecorationProvider` | `ui.file-explorer.decorations` |
+| File status decoration (badges, semantic colors, fading, strike-through, parent propagation) | `registerDecorationProvider` | `ui.file-explorer.decorations` |
+| File icon theme (names, extensions, folders, and color modes) | `registerIconTheme` | `ui.file-explorer.decorations` |
 | Read roots, selection, reveal, refresh | `getWorkspaceRoots`, `getSelection`, `reveal`, `refresh`, `onDidChangeSelection`, `onDidChangeFiles` | `workspace.read` |
 
 Keep parsing separate from UI rendering. A parse failure should become an understandable error state rather than crashing the whole session view.
+Invalidate dynamic status through `onDidChangeDecorations` instead of refreshing the filesystem. Users choose an icon theme in the file explorer; plugins may use semantic colors and declarative icon associations, but cannot replace row CSS, layout, or sorting. These additions require Plugin API `^2.7.0`.
 
 ## Agent capabilities
 

@@ -13,7 +13,8 @@ import {
 	runtimeFailureFromAIErrorDetails,
 	type SessionEvent,
 } from "@vetta/runtime-core";
-import { sanitizeRuntimeErrorMessage } from "@vetta/runtime-desktop";
+import { resolveProjectExecutionMode, sanitizeRuntimeErrorMessage } from "@vetta/runtime-desktop";
+import { isSshProjectUri, normalizeProjectCwd } from "@vetta/ssh-transport";
 import { type DesktopSessionHistoryInfo, UNAVAILABLE_RUNTIME_SESSION_ACCESS } from "../../shared/session-access.js";
 import { agentTeamStore } from "../agent-teams/agent-team-store.js";
 import { ensureLegacyAgentTeamOwnershipCatalog } from "../agent-teams/team-ownership-backfill.js";
@@ -200,6 +201,10 @@ export class DesktopConversationService {
 					});
 				}
 			}
+			// 远程项目没有沙箱可言，先把模式定下来：否则默认开着沙箱的用户会在这里被
+			// 「本机沙箱不可用」挡住，或者带着一套不存在的沙箱工具集进入会话。
+			const executionMode = resolveProjectExecutionMode(config?.cwd, config?.executionMode);
+			if (config && executionMode !== config.executionMode) config = { ...config, executionMode };
 			await trace.measure("sandbox-check", () =>
 				assertSandboxAvailableForMode(config?.executionMode, async () => {
 					const desktopConfig = await readDesktopConfig();
@@ -378,10 +383,13 @@ export class DesktopConversationService {
 	}
 
 	async listSessions(cwd: string): Promise<DesktopSessionHistoryInfo[]> {
-		if (!isAbsolute(cwd)) {
+		// 远程项目的 cwd 是 `ssh://<hostId>/<绝对路径>`，本身就是一个完整标识，不能拿
+		// isAbsolute 判、也不能 resolve——两者都会把它当成本地相对路径处理。
+		// 会话记录始终落在本机（按 cwd 编码的分片目录），所以这里只放行标识，不碰远端。
+		if (!isSshProjectUri(cwd) && !isAbsolute(cwd)) {
 			throw new DesktopConversationError("INVALID_SESSION_PATH", "cwd must be an absolute path.");
 		}
-		const absoluteCwd = resolve(cwd);
+		const absoluteCwd = normalizeProjectCwd(cwd, resolve);
 		allowProjectRoot(absoluteCwd);
 		await this.ensureOwnershipReady?.();
 		const catalogSessions = await this.runtime.listSessions(absoluteCwd, resolveSessionDirForCwd(absoluteCwd));

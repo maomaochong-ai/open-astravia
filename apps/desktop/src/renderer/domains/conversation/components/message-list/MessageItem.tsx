@@ -92,7 +92,7 @@ export const DefaultMessageItem = memo(function DefaultMessageItem({
 	);
 });
 
-export const ExportMessageList = forwardRef<HTMLDivElement, { messages: ChatConversationItem[] }>(
+export const ExportMessageList = forwardRef<HTMLDivElement, { messages: readonly ChatConversationItem[] }>(
 	function ExportMessageList({ messages }, ref) {
 		const tailMessageId = messages.at(-1)?.id ?? null;
 		return (

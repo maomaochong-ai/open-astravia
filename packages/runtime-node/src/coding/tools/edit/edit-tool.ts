@@ -111,7 +111,7 @@ export function createEditTool(cwd: string, options: EditToolOptions): RuntimeTo
 		inputSchema: EditToolInputSchema,
 		async execute(request) {
 			const { path, oldText, newText, edits } = request.input;
-			const absolutePath = resolveExistingPath(path, cwd);
+			const absolutePath = resolveExistingPath(path, cwd, options.pathHost);
 			const rejectionReason = pathPolicy.getRejectionReason(absolutePath);
 			if (rejectionReason !== undefined) throw new Error(rejectionReason);
 			if (edits !== undefined && (oldText !== undefined || newText !== undefined)) {

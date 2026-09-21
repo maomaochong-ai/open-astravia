@@ -58,6 +58,10 @@ a Windows artifact is staged. After `bun run build:main`, run `bun run verify:sp
 exercise the real Electron utility process with the bundled Sherpa runtime and model through
 initialize, start, audio, and stop.
 
+## Agent Team recovery
+
+See [team task recovery](docs/agent-team-recovery.md) for automatic recovery limits, initiator notifications, and stop behavior.
+
 ## Development
 
 ### Sidebar conversation search

@@ -106,6 +106,7 @@ interface PluginGlobalSlotContribution {
 - 导航入口默认落在侧边栏的「更多」收纳里；用户可以拖动排序，也可以 **pin 到左上方置顶区**（含「新会话」最多 5 个），布局按 key 持久化
 - 组件收到 `{ pluginId, viewId }`，一个组件可以服务多个注册
 - `icon` 是 **iconify class 字符串**（如 `"icon-[solar--widget-4-linear]"`），不是 ReactNode——宿主要把它渲染进自己的导航按钮，并按 key 持久化布局
+- **图标 class 必须由你自己的 CSS 生成**：宿主只是把字符串挂到按钮上，Tailwind 只生成它扫得到的字面量，而你的源码不在宿主扫描范围内——漏了这步导航项就是个空格子，且不会有任何报错。在插件的 CSS 里加一行 `@plugin "@iconify/tailwind4";`（并把用到的图标集如 `@iconify-json/mdi` 装成 devDependency），规则会连同内联 SVG 一起进入 `dist/style.css`，宿主激活插件时加载。另外图标名要在图标集里**真实存在**：例如 solar 没有任何 git 图标，写 `solar:git-branch-bold` 同样是空格子
 - **不写 `icon` 就用插件自己的 Logo**：宿主回落到 `plugin.json` 的 `icon`。包内图片（`svg` / `png` / `webp` 等）默认按主题前景色 mask 成**单色**，因此自带图形的插件不必去图标集里找一个近似的；Iconify 名照常当 class 用。两者都不存在时才落到宿主默认图标
 - **`iconTint: false` 保留原图色彩**：导航项改用 `<img>` 渲染。选之前先掂量：入口只有 16px、与内置单色图标并排，且固定色彩无法跟随主题——深色 logo 会在深色侧边栏里消失。**只对彩色 logo 有意义**：单色图形 tint 后反而更清晰统一，而整块不透明的彩色图 tint 后会糊成一个纯色块。对 Iconify class 图标无效（它们始终跟随主题色）
 - **`sidebar: false` 不占导航位**：视图只出现在「设置 → 更多选项」，宿主在设置壳内打开它（两层侧栏保留，切换其它插件页面是一次点击）。配置页、安装引导、诊断台这类「装完就不常回来」的 surface 应该选它——侧边栏是用户自己策划的稀缺空间，每个插件都常驻一格，会把用户真正高频的入口挤进收纳菜单
@@ -344,6 +345,7 @@ pdfjs.getDocument({ url: file.getUrl() });
 
 向活动面板注册一个 tab。
 
+- **`order` 决定默认排位**（越小越靠前，缺省 100 即排在全部内置之后）。内置取值可作标尺：文件 0、批量 10、浏览器 15、计划 18、待办 20、后台任务 30。宿主把下限钳到 10，「文件」永远第一；用户拖出来的顺序优先于它
 - 权限：`ui.slot.activity-tab`（注册 **warn+noop**；`openActivityTab` / `setActivityTabVisible` **抛错**）
 - **`scope_use` fail-closed**（必写，否则任何场景不显示）
 - **默认注册即上栏**（`initiallyVisible` 缺省 `true`）。声明 `initiallyVisible: false` 表示「出现条件我自己管」：注册只入池，之后用 `setActivityTabVisible` 静默上栏/下栏（如 git 只在仓库目录上栏、工作台跟随输入栏 toggle），或用 `openActivityTab` 上栏并抢焦点打开（如图像生成完成后跳到历史）
@@ -356,7 +358,7 @@ pdfjs.getDocument({ url: file.getUrl() });
 interface PluginActivityTabContribution {
   id: string;
   label: string;              // 可用 %catalogKey%（见 i18n）
-  icon?: ReactNode;
+  icon?: ReactNode;              // 省略时用插件自己的图标
   component: ComponentType;   // 零 props
   scope_use?: readonly ConversationScenario[]; // fail-closed
   initiallyVisible?: boolean;  // 缺省 true：注册即上栏；false = 出现条件由插件自己驱动
@@ -435,6 +437,69 @@ ctx.ui.registerInputAction({
 
 上栏记录按 cwd 持久化，所以**只需在条件变化时调用**；用户之后用减号手动隐藏的结果不会被重复调用覆盖。当前没有活动会话时是 no-op（无处记录），插件应在会话就绪后重新判定。异步判定要注意丢弃过期结果：写入落在**调用时**的活动会话上，探测期间切走了就别再写。
 
+## 会话底部面板 registerBottomPanel
+
+向会话页底部面板注册一个可打开的组件。
+
+**和活动面板 Tab 怎么选**：活动面板在右侧、一个贡献只有一个实例，适合「看某个东西的当前状态」；底部面板横跨会话页下沿、可上下左右分屏、**同一个贡献可以开多个实例**，适合终端、日志跟随这类长驻的工作面。
+
+- 权限：`ui.slot.bottom-panel`（注册 **warn+noop**）
+- **`scope_use` fail-closed**（必写，否则任何场景都不出现）
+- **注册只入池**，不直接渲染：用户从面板的「+」菜单开出实例。`order` 决定菜单里的位置（缺省 100，宿主把下限钳到 10，内置终端永远在前）
+- **多实例**：缺省不限，`maxInstances: 1` 表示单例（开过一个之后菜单项禁用）
+- **布局与结构按会话持久化**（分屏、比例、面板高度、哪些 tab 开着）。进程与组件状态不跨应用重启保活
+- **折叠不卸载**：面板收起时组件仍然挂着，只是 `active` 变成 `false`；此时它的名字和状态点会以药丸的形式排在输入框下方。昂贵的轮询和动画应在 `active === false` 时主动暂停
+- **布局边界（面板内）**：与 file-preview / activity-tab 相同——UI 留在自己的分格矩形内，禁止 viewport 级 `fixed` / 超高 z-index / portal 到 `document.body`。**关闭确认由宿主弹**，插件不要自己画对话框。见 [styling-and-pitfalls.md → 面板类 slot 布局边界](./styling-and-pitfalls.md#面板类-slot-布局边界禁止-viewport-级浮层)
+
+```ts
+interface PluginBottomPanelContribution {
+  id: string;
+  label: string;              // 「+」菜单里的名字，也是新实例的初始名；可用 %catalogKey%
+  icon?: ReactNode;           // 省略时用插件自己的图标
+  component: ComponentType;   // 零 props
+  scope_use?: readonly ConversationScenario[]; // fail-closed
+  order?: number;             // 缺省 100
+  maxInstances?: number;      // 缺省不限
+}
+```
+
+```tsx
+ctx.ui.registerBottomPanel({
+  id: "logs",
+  label: "%panel.logs%",
+  component: LogsPanel,
+  scope_use: ["project", "conversation"],
+});
+```
+
+### useBottomPanel
+
+组件零 props，实例身份与控制面用 `useBottomPanel()` 取。**名字、图标、状态点都是命令式设置的**，不是「每帧返回 meta」——同一个贡献可以有多个实例，每帧 hook 拿不到实例身份。
+
+```tsx
+import { useBottomPanel } from "@vetta-org/plugin-sdk";
+
+function LogsPanel() {
+  const { instanceId, cwd, active, setMeta, setCloseGuard } = useBottomPanel();
+
+  // 名字与状态点随运行情况变：空闲是灰点，活动是脉冲绿点。
+  useEffect(() => {
+    setMeta({ label: `logs — ${basename(cwd ?? "")}`, status: running ? "active" : "idle" });
+  }, [cwd, running, setMeta]);
+
+  // 有东西在跑时先让宿主问一句；空闲时把守卫撤掉，免得每次关都弹窗。
+  useEffect(() => {
+    setCloseGuard(
+      running
+        ? async () => ({ title: "还在跟随日志", message: "关闭会断开跟随。", destructive: true })
+        : null,
+    );
+  }, [running, setCloseGuard]);
+}
+```
+
+`setCloseGuard` 的裁决：`true` 直接关、`false` 取消、返回文案则请宿主弹一次确认。允许 async（真实判断常常要问后端）。**3 秒内给不出裁决按「需要确认」处理**，不会静默关掉——丢东西的方向必须是保守的。`reason` 为 `session-switch` / `app-quit` 时仍会调用守卫（给你收尾的机会），但返回值被忽略：退出流程上挂一个能阻塞的对话框会把用户卡住。
+
 ## 输入栏动作 registerInputAction
 
 在 AI 输入栏下方加一个**开关型动作按钮**（toggle）。激活时，宿主在每次发送前调用 `decoratePrompt()`，把元数据和插件隐藏指令合并进外发 prompt。
@@ -446,7 +511,7 @@ ctx.ui.registerInputAction({
 interface PluginInputActionContribution {
   id: string;
   label: string;
-  icon?: ReactNode;
+  icon?: ReactNode;              // 省略时用插件自己的图标
   defaultActive?: boolean;
   requiresActiveTool?: string;   // 仅当该 agent 工具在本会话激活时显示
   scope_use?: readonly ConversationScenario[];

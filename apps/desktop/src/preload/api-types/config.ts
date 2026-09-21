@@ -1,5 +1,27 @@
 import type { ProjectEntry } from "./shared.js";
 
+export type DesktopProxyProtocol = "http" | "https";
+
+/** 读取形态：不含口令，只说明「存过没有」。 */
+export interface DesktopProxyConfigData {
+	enabled: boolean;
+	protocol: DesktopProxyProtocol;
+	host: string;
+	port: number;
+	username: string;
+	passwordConfigured: boolean;
+}
+
+/** 写入形态：省略 `password` 表示沿用已存口令，空串表示清除。 */
+export interface DesktopProxyConfigPatchData {
+	enabled?: boolean;
+	protocol?: DesktopProxyProtocol;
+	host?: string;
+	port?: number;
+	username?: string;
+	password?: string;
+}
+
 export interface DesktopConfigData {
 	projects: ProjectEntry[];
 	archivedProjects: ProjectEntry[];
@@ -102,7 +124,14 @@ export interface DesktopConfigData {
 		pairingId?: string;
 		inputEnabled?: boolean;
 	};
+	/** 应用代理（「通用设置 → 网络代理」）。缺省不启用。 */
+	proxy?: DesktopProxyConfigData;
 }
+
+/** `config.set` 的补丁形态：proxy 走补丁语义，其余字段整体覆盖。 */
+export type DesktopConfigPatchData = Partial<Omit<DesktopConfigData, "proxy">> & {
+	proxy?: DesktopProxyConfigPatchData;
+};
 
 export interface ShortcutsBindingsChangedEvent {
 	bindings: Record<string, string>;
@@ -110,7 +139,7 @@ export interface ShortcutsBindingsChangedEvent {
 
 export interface DesktopConfigApi {
 	get(): Promise<DesktopConfigData>;
-	set(config: Partial<DesktopConfigData>): Promise<void>;
+	set(config: DesktopConfigPatchData): Promise<void>;
 	/** 全局快捷键绑定被 GUI 或 Action 更新后广播。 */
 	onShortcutsChanged(handler: (event: ShortcutsBindingsChangedEvent) => void): () => void;
 	/**

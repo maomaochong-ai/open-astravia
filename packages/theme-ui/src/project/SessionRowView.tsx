@@ -4,6 +4,10 @@ import { SessionStatusIcon } from "../sidebar/SessionStatusIcon";
 import { AvatarStackView } from "../shared/AvatarStackView";
 import { IMMEDIATE_SESSION_SELECTION_STYLE } from "./session-row-transition";
 import { SessionRenameInputView } from "./SessionRenameInputView";
+import {
+	SESSION_ROW_CONTENT_FADE_CLASS,
+	SessionRowMoreButton,
+} from "./SessionRowMoreButton";
 import { prepareSidebarSelection } from "./useActiveSessionAutoScroll";
 
 export interface SessionRowViewProps {
@@ -19,6 +23,8 @@ export interface SessionRowViewProps {
 	titleExtra?: string;
 	/** Session was forked from another session. */
 	forked?: boolean;
+	/** Accessible name for the hover "more" trigger. */
+	moreLabel?: string;
 	onOpenContextMenu: (event: React.MouseEvent) => void;
 	onRename: (name: string) => void;
 	onRenameDone: () => void;
@@ -41,6 +47,7 @@ export const SessionRowView = memo(function SessionRowView({
 	sessionPath,
 	titleExtra,
 	forked,
+	moreLabel,
 	onOpenContextMenu,
 	onRename,
 	onRenameDone,
@@ -52,70 +59,84 @@ export const SessionRowView = memo(function SessionRowView({
 }: SessionRowViewProps): JSX.Element {
 	const title = renaming ? undefined : titleExtra ? `${label}\n${titleExtra}` : label;
 	return (
-		<button
-			type="button"
-			data-session-active={active ? "true" : undefined}
-			data-session-path={sessionPath || undefined}
-			onClick={(event) => {
-				if (renaming) return;
-				prepareSidebarSelection(event.currentTarget);
-				onSelect();
-			}}
-			onContextMenu={onOpenContextMenu}
-			className={cn(
-				"relative flex w-full items-center gap-2 rounded-lg py-[6px] pr-2.5 pl-[30px] text-left",
-				active ? "bg-accent text-foreground" : "hover:bg-accent/50",
-			)}
-			style={IMMEDIATE_SESSION_SELECTION_STYLE}
-			title={title}
-		>
-			{renaming ? (
-				<SessionRenameInputView
-					className="min-w-0 flex-1 truncate rounded-[3px] border border-input bg-accent/50 pl-[20px] text-[13px] text-foreground outline-none"
-					initialValue={label}
-					onCancel={onRenameDone}
-					onCommit={onRename}
-				/>
-			) : (
-				<>
-					{pinned ? (
-						<span className="icon-[solar--pin-linear] h-3.5 w-3.5 shrink-0 text-primary/80" />
-					) : null}
-					{forked && !running && !scheduled ? (
-						<span
-							data-session-leading-icon="true"
-							className={cn(
-								"icon-[mdi--source-fork] h-3.5 w-3.5 shrink-0",
-								active ? "text-primary/80" : "text-muted-foreground/60",
-							)}
-						/>
-					) : iconClassName && !running && !scheduled ? (
-						<span
-							data-session-leading-icon="true"
-							aria-hidden="true"
-							className={cn(
-								iconClassName,
-								"h-3.5 w-3.5 shrink-0",
-								active ? "text-foreground/70" : "text-muted-foreground/50",
-							)}
-						/>
-					) : (
-						<SessionStatusIcon active={active} running={running} scheduled={scheduled} />
-					)}
-					<span
+		<div className="group/session-row relative">
+			<button
+				type="button"
+				data-session-active={active ? "true" : undefined}
+				data-session-path={sessionPath || undefined}
+				onClick={(event) => {
+					if (renaming) return;
+					prepareSidebarSelection(event.currentTarget);
+					onSelect();
+				}}
+				onContextMenu={onOpenContextMenu}
+				className={cn(
+					"relative flex w-full items-center gap-2 rounded-lg py-[6px] pr-2.5 pl-[30px] text-left",
+					active ? "bg-accent text-foreground" : "hover:bg-accent/50",
+				)}
+				style={IMMEDIATE_SESSION_SELECTION_STYLE}
+				title={title}
+			>
+				{renaming ? (
+					<SessionRenameInputView
+						className="min-w-0 flex-1 truncate rounded-[3px] border border-input bg-accent/50 pl-[20px] text-[13px] text-foreground outline-none"
+						initialValue={label}
+						onCancel={onRenameDone}
+						onCommit={onRename}
+					/>
+				) : (
+					<div
 						className={cn(
-							"min-w-0 flex-1 truncate text-[13px]",
-							running && "pl-1",
-							active ? "font-semibold text-foreground" : "text-foreground",
+							"flex min-w-0 flex-1 items-center gap-2",
+							SESSION_ROW_CONTENT_FADE_CLASS,
 						)}
 					>
-						{label}
-					</span>
-					{trailingAvatarUrls && trailingAvatarUrls.length > 0 ? (
-						<AvatarStackView avatarUrls={trailingAvatarUrls} />
-					) : null}
-				</>
+						{pinned ? (
+							<span className="icon-[solar--pin-linear] h-3.5 w-3.5 shrink-0 text-primary/80" />
+						) : null}
+						{forked && !running && !scheduled ? (
+							<span
+								data-session-leading-icon="true"
+								className={cn(
+									"icon-[mdi--source-fork] h-3.5 w-3.5 shrink-0",
+									active ? "text-primary/80" : "text-muted-foreground/60",
+								)}
+							/>
+						) : iconClassName && !running && !scheduled ? (
+							<span
+								data-session-leading-icon="true"
+								aria-hidden="true"
+								className={cn(
+									iconClassName,
+									"h-3.5 w-3.5 shrink-0",
+									active ? "text-foreground/70" : "text-muted-foreground/50",
+								)}
+							/>
+						) : (
+							<SessionStatusIcon active={active} running={running} scheduled={scheduled} />
+						)}
+						<span
+							className={cn(
+								"min-w-0 flex-1 truncate text-[13px]",
+								running && "pl-1",
+								active ? "font-semibold text-foreground" : "text-foreground",
+							)}
+						>
+							{label}
+						</span>
+						{trailingAvatarUrls && trailingAvatarUrls.length > 0 ? (
+							<AvatarStackView avatarUrls={trailingAvatarUrls} />
+						) : null}
+					</div>
+				)}
+			</button>
+			{renaming ? null : (
+				<SessionRowMoreButton
+					className="rounded-r-lg"
+					label={moreLabel}
+					onOpen={onOpenContextMenu}
+				/>
 			)}
-		</button>
+		</div>
 	);
 });

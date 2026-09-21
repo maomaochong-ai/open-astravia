@@ -138,6 +138,7 @@ export function resolveDesktopReleaseConfig(request = {}) {
 	const serverUrl = cloudEnabled === "true" ? pick("server_url", "VETTA_SERVER_URL") : "";
 	const siteUrl = cloudEnabled === "true" ? pick("site_url", "VETTA_SITE_URL") : "";
 	const marketplaceRepository = pick("marketplace_repository", "VETTA_OPEN_MARKETPLACE_REPOSITORY");
+	const marketplaceRef = pick("marketplace_ref", "VETTA_OPEN_MARKETPLACE_REF", "main");
 	const tenant = pick("tenant", "VETTA_TENANT");
 	const notes = acceptInputs ? normalizeToken(inputs.notes).replaceAll(/\s+/g, " ") : "";
 
@@ -163,6 +164,7 @@ export function resolveDesktopReleaseConfig(request = {}) {
 		channel,
 		cloudEnabled,
 		marketplaceRepository,
+		marketplaceRef,
 		notes,
 		r2Bucket,
 		r2Prefix,
@@ -186,6 +188,7 @@ export function toGithubOutput(config) {
 		`channel=${config.channel}`,
 		`cloud_enabled=${config.cloudEnabled}`,
 		`marketplace_repository=${config.marketplaceRepository}`,
+		`marketplace_ref=${config.marketplaceRef}`,
 		`notes=${config.notes}`,
 		`r2_bucket=${config.r2Bucket}`,
 		`r2_prefix=${config.r2Prefix}`,
@@ -211,6 +214,7 @@ export function toGithubEnv(config) {
 		["VETTA_SERVER_URL", config.serverUrl],
 		["VETTA_SITE_URL", config.siteUrl],
 		["VETTA_OPEN_MARKETPLACE_REPOSITORY", config.marketplaceRepository],
+		["VETTA_OPEN_MARKETPLACE_REF", config.marketplaceRef],
 		["VETTA_TENANT", config.tenant],
 		["VETTA_SPEECH_INPUT_ENABLED", config.speechInput],
 		["VETTA_UPDATE_PROVIDER", config.updateProvider],
@@ -235,6 +239,7 @@ export function toSummaryMarkdown(config) {
 		["server_url", config.serverUrl || "(unset)"],
 		["site_url", config.siteUrl || "(unset)"],
 		["marketplace_repository", config.marketplaceRepository || "(unset)"],
+		["marketplace_ref", config.marketplaceRef],
 		["tenant", config.tenant || "(unset)"],
 		["speech_input", config.speechInput || "(unset)"],
 		["release_target", config.releaseTarget],
@@ -258,6 +263,7 @@ function readRequestFromEnv(env = process.env) {
 			channel: env.INPUT_CHANNEL,
 			cloud_enabled: env.INPUT_CLOUD_ENABLED,
 			marketplace_repository: env.INPUT_MARKETPLACE_REPOSITORY,
+			marketplace_ref: env.INPUT_MARKETPLACE_REF,
 			notes: env.INPUT_NOTES,
 			r2_bucket: env.INPUT_R2_BUCKET,
 			r2_prefix: env.INPUT_R2_PREFIX,
@@ -272,6 +278,7 @@ function readRequestFromEnv(env = process.env) {
 			VETTA_TEST_BUILD_VERSION: env.VAR_TEST_BUILD_VERSION,
 			VETTA_CLOUD_ENABLED: env.VAR_CLOUD_ENABLED,
 			VETTA_OPEN_MARKETPLACE_REPOSITORY: env.VAR_MARKETPLACE_REPOSITORY,
+			VETTA_OPEN_MARKETPLACE_REF: env.VAR_MARKETPLACE_REF,
 			VETTA_R2_BUCKET: env.VAR_R2_BUCKET,
 			VETTA_R2_PREFIX: env.VAR_R2_PREFIX,
 			VETTA_R2_PREFIX_STABLE: env.VAR_R2_PREFIX_STABLE,
@@ -295,6 +302,7 @@ function readConfigFromOutputs(env = process.env) {
 		channel: normalizeToken(env.OUTPUT_CHANNEL) || "default",
 		cloudEnabled: normalizeToken(env.OUTPUT_CLOUD_ENABLED),
 		marketplaceRepository: normalizeToken(env.OUTPUT_MARKETPLACE_REPOSITORY),
+		marketplaceRef: normalizeToken(env.OUTPUT_MARKETPLACE_REF) || "main",
 		notes: normalizeToken(env.OUTPUT_NOTES),
 		r2Bucket: normalizeToken(env.OUTPUT_R2_BUCKET),
 		r2Prefix: normalizeToken(env.OUTPUT_R2_PREFIX),

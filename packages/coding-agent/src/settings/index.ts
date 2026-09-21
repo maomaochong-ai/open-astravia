@@ -30,6 +30,12 @@ export type { HostSettingsDefaults } from "./views/host-settings.js";
 
 export type SettingsRuntime = SettingsRuntimeContract;
 
+export {
+	CODING_AGENT_COMPACTION_CONFIGURATION,
+	CODING_AGENT_COMPACTION_CONFIGURATION_ID,
+	type CodingAgentCompactionConfiguration,
+} from "./configuration/compaction-configuration.js";
+
 export const SettingsRuntime = {
 	fromStorage: createSettingsRuntimeFromStorage,
 	inMemory: createInMemorySettingsRuntime,

@@ -514,6 +514,24 @@ describe("DesktopConversationService agent binding", () => {
 	});
 });
 
+describe("DesktopConversationService remote projects", () => {
+	it("opens a remote project in full-access even when the user's default is sandbox", async () => {
+		// 沙箱只约束本机进程。带着 sandbox 进入远程会话，读写与命令工具会整组消失且不报错。
+		const root = await createTemporaryRoot();
+		const createSession = vi.fn(async () => ({ sessionId: "session-1" }));
+		const runtime = {
+			createSession,
+			getSessionPath: vi.fn(() => join(root, "session-1.jsonl")),
+			subscribe: vi.fn(() => () => undefined),
+		} as unknown as RuntimeHost;
+		const service = new DesktopConversationService(runtime);
+
+		await service.createSession({ cwd: "ssh://host-1/srv/app", executionMode: "sandbox" }, "other", "interactive");
+
+		expect(createSession).toHaveBeenCalledWith(expect.objectContaining({ executionMode: "full-access" }));
+	});
+});
+
 async function createTemporaryRoot(): Promise<string> {
 	const root = await mkdtemp(join(tmpdir(), "vetta-desktop-session-access-"));
 	temporaryRoots.push(root);

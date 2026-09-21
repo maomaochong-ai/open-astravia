@@ -24,11 +24,11 @@ async function createPackageTarball(): Promise<string> {
 				schemaVersion: 1,
 				type: "desktop-plugin",
 				pluginId: "demo",
-				archive: "release/vetta-plugin.zip",
+				archive: "release/vetta-plugin.vettapkg",
 			},
 		}),
 	);
-	await writeFile(join(fixtureRoot, "package", "release", "vetta-plugin.zip"), "zip-fixture");
+	await writeFile(join(fixtureRoot, "package", "release", "vetta-plugin.vettapkg"), "package-fixture");
 	const tarball = join(fixtureRoot, "package.tgz");
 	await createTar({ cwd: fixtureRoot, file: tarball, gzip: true }, ["package"]);
 	return tarball;

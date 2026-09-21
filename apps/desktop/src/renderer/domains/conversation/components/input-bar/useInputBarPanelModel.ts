@@ -1,6 +1,5 @@
-import { activityPanelOpenAtom, activityPanelTabByProjectAtom } from "@shared/store/atoms";
-import { useSetAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
+import { useOpenActivityTab } from "../../hooks/useOpenActivityTab";
 
 /** 输入栏抽屉和活动面板的组合状态。 */
 export function useInputBarPanelModel(
@@ -8,24 +7,17 @@ export function useInputBarPanelModel(
 	activityWorkspaceId?: string,
 ) {
 	const [drawerActiveTab, setDrawerActiveTab] = useState<string | null>(null);
-	const setActivityPanelOpen = useSetAtom(activityPanelOpenAtom);
-	const setTabByProject = useSetAtom(activityPanelTabByProjectAtom);
+	const openActivityTab = useOpenActivityTab(activityWorkspaceId ?? activeSession?.cwd);
 
 	useEffect(() => {
 		if (!activeSession) setDrawerActiveTab(null);
 	}, [activeSession]);
 
 	const openTodoPanel = useCallback(() => {
-		const workspaceId = activityWorkspaceId ?? activeSession?.cwd;
-		if (!workspaceId) return;
+		if (!(activityWorkspaceId ?? activeSession?.cwd)) return;
 		setDrawerActiveTab(null);
-		setActivityPanelOpen(true);
-		setTabByProject((prev) => {
-			const map = new Map(prev);
-			map.set(workspaceId, "todo");
-			return map;
-		});
-	}, [activityWorkspaceId, activeSession?.cwd, setActivityPanelOpen, setTabByProject]);
+		openActivityTab("todo");
+	}, [activityWorkspaceId, activeSession?.cwd, openActivityTab]);
 
 	return { drawerActiveTab, openTodoPanel, setDrawerActiveTab };
 }

@@ -11,6 +11,7 @@ import { createModelCallMetadataFromMessage } from "../../runtime/model-call-res
 import type { Model, StreamOptions } from "../../types.js";
 import { GeminiEventReducer } from "./events.js";
 import { geminiResponseChunkSchema } from "./response-schema.js";
+import { sendGoogleSdkRequestWithRetries } from "./retry.js";
 
 export type GoogleGenerateContentSender<TApi extends Api, TOptions extends StreamOptions> = (
 	params: GenerateContentParameters,
@@ -55,7 +56,7 @@ async function produceGoogleSdkStream<TApi extends Api, TOptions extends StreamO
 		if (options?.signal?.aborted) throw new AIAbortedError();
 		const params = config.buildParams(request);
 		options?.onPayload?.(params);
-		const source = await config.send(params, request);
+		const source = await sendGoogleSdkRequestWithRetries(() => config.send(params, request), request);
 		const reducer = new GeminiEventReducer(output, model, stream);
 		let receivedProviderEvent = false;
 		stream.push({ type: "start", partial: output });
@@ -75,19 +76,14 @@ async function produceGoogleSdkStream<TApi extends Api, TOptions extends StreamO
 		}
 		stream.push({ type: "done", reason: output.stopReason, message: output });
 	} catch (error) {
-		failLanguageModelStream(
-			stream,
-			model,
-			options?.signal?.aborted
-				? new AIAbortedError(undefined, { provider: model.provider, modelId: model.id, cause: error })
-				: normalizeProviderError(error, model),
-			options?.signal?.aborted ? "aborted" : "error",
-			{
-				...output,
-				stopReason: options?.signal?.aborted ? "aborted" : "error",
-				errorMessage: error instanceof Error ? error.message : String(error),
-			},
-		);
+		const normalizedError = options?.signal?.aborted
+			? new AIAbortedError(undefined, { provider: model.provider, modelId: model.id, cause: error })
+			: normalizeProviderError(error, model);
+		failLanguageModelStream(stream, model, normalizedError, options?.signal?.aborted ? "aborted" : "error", {
+			...output,
+			stopReason: options?.signal?.aborted ? "aborted" : "error",
+			errorMessage: normalizedError.message,
+		});
 	}
 }
 

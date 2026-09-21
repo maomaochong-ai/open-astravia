@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
 import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
 import type { McpServerDetail, McpServerSummary, McpServerUpsertData } from "@vetta-org/capability-sdk";
+import type { AppMonitorEvent, AppMonitorResourceSource } from "../../preload/api-types/app-monitor.js";
 import type {
 	McpConfigData,
 	McpHttpServerConfigData,
@@ -11,12 +12,14 @@ import type {
 } from "../../preload/api-types/mcp.js";
 import { recordAbilityInstall, removeAbilityLedgerEntry } from "../abilities/ability-ledger.js";
 import { stopOpenMarketplaceManagedMcpRuntime } from "../abilities/open-marketplace/open-marketplace-mcp-runtime-host.js";
+import { recordAppMonitorEvent } from "../app-monitor/app-monitor-service.js";
 import { validateMcpConfig } from "../mcp-config-validation.js";
 import { ensureMcpFileMigrations } from "./migrations/index.js";
 
 export interface McpSettingsServiceOptions {
 	readonly readConfig: () => Promise<McpConfigData>;
 	readonly writeConfig: (config: McpConfigData) => Promise<void>;
+	readonly recordEvent?: (event: Extract<AppMonitorEvent, { type: "resource.lifecycle" }>) => void;
 }
 
 const MCP_CONFIG_PATH = join(getVettaHomePath(), "agent", "mcp.json");
@@ -188,6 +191,11 @@ export class McpSettingsService {
 				}),
 			);
 			if (options?.abilityVersion) recordAbilityInstall("mcp", name, options.abilityVersion);
+			this.recordLifecycle(
+				name,
+				existing ? "updated" : "installed",
+				options?.abilityVersion ? "market" : existing ? undefined : "custom",
+			);
 			return redactServer(name, next);
 		});
 	}
@@ -197,6 +205,7 @@ export class McpSettingsService {
 			const config = await this.options.readConfig();
 			const existing = config.mcpServers[name];
 			if (!existing) throw new Error(`MCP server not found: ${name}`);
+			const wasEnabled = !existing.disabled;
 			await this.options.writeConfig(
 				validateMcpConfig({
 					mcpServers: {
@@ -205,6 +214,7 @@ export class McpSettingsService {
 					},
 				}),
 			);
+			if (wasEnabled !== enabled) this.recordLifecycle(name, enabled ? "enabled" : "disabled");
 		});
 	}
 
@@ -216,7 +226,26 @@ export class McpSettingsService {
 			delete mcpServers[name];
 			await this.options.writeConfig({ mcpServers });
 			removeAbilityLedgerEntry("mcp", name);
+			this.recordLifecycle(name, "uninstalled");
 		});
+	}
+
+	private recordLifecycle(
+		resourceId: string,
+		operation: "installed" | "updated" | "uninstalled" | "enabled" | "disabled",
+		source?: AppMonitorResourceSource,
+	): void {
+		try {
+			this.options.recordEvent?.({
+				type: "resource.lifecycle",
+				resourceKind: "mcp",
+				resourceId,
+				operation,
+				...(source ? { source } : {}),
+			});
+		} catch {
+			// Monitoring and logging must not affect MCP configuration changes.
+		}
 	}
 
 	private runMutation<Result>(mutation: () => Promise<Result>): Promise<Result> {
@@ -235,6 +264,7 @@ export function getDesktopMcpSettingsService(): McpSettingsService {
 	desktopMcpSettingsService ??= new McpSettingsService({
 		readConfig: readMcpConfig,
 		writeConfig: writeMcpConfig,
+		recordEvent: recordAppMonitorEvent,
 	});
 	return desktopMcpSettingsService;
 }

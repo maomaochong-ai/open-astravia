@@ -1,48 +1,84 @@
 import { MessageFeed, MessageFeedLayout } from "@vetta-org/theme-ui/chat";
 import { useMessageFeedActiveItem } from "@shared/components/message-feed/useMessageFeedActiveItem";
-import { useCallback, useMemo, useRef } from "react";
+import { PerfMessageScrollProfiler } from "@shared/lib/perf-message-scroll-profiler";
+import {
+	perfMessageScrollAttach,
+	perfMessageScrollEnabled,
+	perfMessageScrollRecordItemSize,
+	perfMessageScrollRecordRange,
+	perfMessageScrollRecordRenderedItems,
+	perfMessageScrollRecordTotalHeight,
+} from "@shared/lib/perf-message-scroll";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
+import type { ListItem, ListRange, SizeFunction } from "react-virtuoso";
 import type { Usage } from "@vetta/ai/protocol";
 import { conversationItemRenderKey } from "@shared/conversation";
 import { MessageRow } from "./MessageRendering";
 import { MessageItem, ModelSwitchBoundary, ExportMessageList } from "./MessageItem";
 import { collectAgentUsages } from "./message-list-derived";
 import { MessageTimeline } from "./MessageTimeline";
+import {
+	buildMessageHeightEstimates,
+	createMessageItemSizeRecorder,
+} from "./message-height-estimates";
 import type { ChatConversationItem, MessageListModel, MessageListProps } from "./types";
 
 export { ExportMessageList };
 
-const STREAMING_OVERSCAN = 80;
-const IDLE_OVERSCAN = 400;
-const INITIAL_OVERSCAN = 0;
-// 动态高度消息仅靠像素 overscan 时，短消息/长工具消息会让 Virtuoso 在滚动阈值处反复换批。
-// 保留固定数量的历史行，确保首次恢复会话后向上滚动时已有足够锚点可测量。
-const STREAMING_MIN_OVERSCAN_ITEM_COUNT = { top: 8, bottom: 2 };
-const IDLE_MIN_OVERSCAN_ITEM_COUNT = { top: 12, bottom: 4 };
-const INITIAL_MIN_OVERSCAN_ITEM_COUNT = { top: 0, bottom: 0 };
-// 向上滚动时提前挂载一段消息，避免 Virtuoso 在滚动阈值处一次性替换整批行并重算 padding-top。
-// 流式期间保守一些，空闲时扩大缓冲以优先保证历史消息滚动稳定性。
-const STREAMING_INCREASE_VIEWPORT_BY = { top: 400, bottom: 80 };
-const IDLE_INCREASE_VIEWPORT_BY = { top: 600, bottom: 200 };
-const INITIAL_INCREASE_VIEWPORT_BY = { top: 0, bottom: 0 };
-/**
- * 未测量条目的高度估算。原值 80 远低于真实中位数（带工具调用的回复动辄几百 px），
- * 往上滚时 Virtuoso 每渲染一批就要大幅修正总高度与 scrollTop，滚动条抖且反复重测量。
- */
-const DEFAULT_ITEM_HEIGHT = 200;
+const VIEWPORT_BUFFER = { top: 320, bottom: 80 };
+
+interface VirtualizerIdentityState {
+	readonly sessionId: string | null;
+	readonly itemIdentity: string;
+	readonly generation: number;
+}
+
+function messageCollectionIdentity(messages: readonly ChatConversationItem[]): string {
+	const first = messages.at(0);
+	const last = messages.at(-1);
+	return `${messages.length}:${first ? conversationItemRenderKey(first) : ""}:${last ? conversationItemRenderKey(last) : ""}`;
+}
+
+function useMessageVirtualizerKey(
+	sessionId: string | null | undefined,
+	messages: readonly ChatConversationItem[],
+): number {
+	const normalizedSessionId = sessionId ?? null;
+	const itemIdentity = messageCollectionIdentity(messages);
+	const identityRef = useRef<VirtualizerIdentityState | null>(null);
+	const previous = identityRef.current;
+	if (previous === null) {
+		identityRef.current = { sessionId: normalizedSessionId, itemIdentity, generation: 0 };
+		return 0;
+	}
+	if (previous.sessionId === normalizedSessionId) {
+		identityRef.current = { ...previous, itemIdentity };
+		return previous.generation;
+	}
+
+	// A newly created conversation first has no durable path. Resolving that path must not
+	// remount the same visible rows; switching between two actual conversations must reset
+	// Virtuoso's index-based size tree so measurements cannot leak across sessions.
+	const resolvesPendingSession =
+		previous.sessionId === null && normalizedSessionId !== null && previous.itemIdentity === itemIdentity;
+	const generation = resolvesPendingSession ? previous.generation : previous.generation + 1;
+	identityRef.current = { sessionId: normalizedSessionId, itemIdentity, generation };
+	return generation;
+}
 
 export function MessageListView({
 	model,
 	onAbort,
 	children,
-	viewportPhase,
+	deferredContentReady,
 	sessionId = null,
 	pendingLabel,
 }: {
 	model: MessageListModel;
 	onAbort: MessageListProps["onAbort"];
 	children?: ReactNode;
-	viewportPhase: "initial" | "expanded";
+	deferredContentReady: boolean;
 	sessionId?: MessageListProps["sessionId"];
 	pendingLabel?: MessageListProps["pendingLabel"];
 }): JSX.Element {
@@ -57,14 +93,53 @@ export function MessageListView({
 		onTeamMemberOpen,
 	} = model;
 	const scrollerElement = scroll.scrollerElement;
-	// 有历史消息时不能先用空列表的零缓冲配置再异步扩大；会话恢复期间这会让 Virtuoso
-	// 重新挂载整批历史行并修正总高度。只有真正的空会话才使用轻量首屏配置。
-	const useInitialViewport = viewportPhase === "initial" && messages.length === 0;
+	const diagnosticsEnabled = perfMessageScrollEnabled();
+	const virtualizerKey = useMessageVirtualizerKey(sessionId, messages);
+	const heightEstimates = useMemo(
+		() => buildMessageHeightEstimates(messages, sessionId),
+		[messages, sessionId],
+	);
+	const itemSize = useMemo<SizeFunction>(() => {
+		const measure = createMessageItemSizeRecorder(messages, sessionId);
+		if (!diagnosticsEnabled) return measure;
+		return (element, field) => {
+			const measured = measure(element, field);
+			if (field !== "offsetHeight") return measured;
+			const index = Number.parseInt(element.dataset.itemIndex ?? "", 10);
+			const estimated = Number.isInteger(index) ? heightEstimates[index] : undefined;
+			if (estimated !== undefined) perfMessageScrollRecordItemSize(index, estimated, measured);
+			return measured;
+		};
+	}, [diagnosticsEnabled, heightEstimates, messages, sessionId]);
 	const activeItem = useMessageFeedActiveItem<ChatConversationItem>({
 		scrollerElement,
 		resetKey: sessionId,
 		initialIndex: Math.max(0, messages.length - 1),
 	});
+	useEffect(() => {
+		if (!diagnosticsEnabled || !scrollerElement) return;
+		return perfMessageScrollAttach(scrollerElement);
+	}, [diagnosticsEnabled, scrollerElement]);
+	const handleItemsRendered = useCallback(
+		(items: ListItem<ChatConversationItem>[]) => {
+			activeItem.onItemsRendered(items);
+			if (diagnosticsEnabled) perfMessageScrollRecordRenderedItems(items);
+		},
+		[activeItem.onItemsRendered, diagnosticsEnabled],
+	);
+	const handleRangeChanged = useCallback(
+		(range: ListRange) => {
+			if (diagnosticsEnabled) perfMessageScrollRecordRange(range);
+		},
+		[diagnosticsEnabled],
+	);
+	const handleTotalListHeightChange = useCallback(
+		(height: number) => {
+			scroll.onTotalListHeightChange(height);
+			if (diagnosticsEnabled) perfMessageScrollRecordTotalHeight(height);
+		},
+		[diagnosticsEnabled, scroll.onTotalListHeightChange],
+	);
 	const lastUserMessageId = useMemo(() => {
 		for (let index = messages.length - 1; index >= 0; index--) {
 			const message = messages[index];
@@ -72,7 +147,10 @@ export function MessageListView({
 		}
 		return null;
 	}, [messages]);
-	const sessionUsages = useMemo<readonly Usage[]>(() => collectAgentUsages(messages), [messages]);
+	const sessionUsages = useMemo<readonly Usage[]>(
+		() => collectAgentUsages(deferredContentReady ? messages : messages.slice(-4)),
+		[deferredContentReady, messages],
+	);
 	const sessionUsagesRef = useRef(sessionUsages);
 	sessionUsagesRef.current = sessionUsages;
 	const itemContent = useCallback(
@@ -115,51 +193,40 @@ export function MessageListView({
 		<>
 			<MessageFeed.Root>
 				<MessageFeedLayout.Frame asChild>
-					<div data-message-viewport={viewportPhase}>
+					<div data-message-viewport="stable">
 						<MessageFeedLayout.Viewport>
-							<MessageFeedLayout.Virtualizer asChild>
-								<MessageFeed.VirtualList
-									// 不通过 React key 强制卸载列表。runtime 建立时 sessionId
-									// 可能从过渡值切到真实路径；强制 remount 会造成整屏闪烁。
-									// 会话切换的滚动重置由 useMessageFeedActiveItem.resetKey 负责。
-									virtuosoRef={scroll.virtuosoRef}
-									restoreStateFrom={scroll.restoreStateFrom}
-									scrollerRef={scroll.scrollerRef}
-									items={messages}
-									getKey={conversationItemRenderKey}
-									atBottomStateChange={scroll.onAtBottomChange}
-									atBottomThreshold={80}
-									itemsRendered={activeItem.onItemsRendered}
-									overscan={
-										useInitialViewport ? INITIAL_OVERSCAN : isStreaming ? STREAMING_OVERSCAN : IDLE_OVERSCAN
-									}
-									minOverscanItemCount={
-										useInitialViewport
-											? INITIAL_MIN_OVERSCAN_ITEM_COUNT
-											: isStreaming
-												? STREAMING_MIN_OVERSCAN_ITEM_COUNT
-												: IDLE_MIN_OVERSCAN_ITEM_COUNT
-									}
-									increaseViewportBy={
-										useInitialViewport
-											? INITIAL_INCREASE_VIEWPORT_BY
-											: isStreaming
-												? STREAMING_INCREASE_VIEWPORT_BY
-												: IDLE_INCREASE_VIEWPORT_BY
-									}
-									defaultItemHeight={DEFAULT_ITEM_HEIGHT}
-									initialTopMostItemIndex={messages.length > 0 ? messages.length - 1 : 0}
-								>
-									{(message, index) => itemContent(index, message)}
-								</MessageFeed.VirtualList>
-							</MessageFeedLayout.Virtualizer>
+							<PerfMessageScrollProfiler>
+								<MessageFeedLayout.Virtualizer asChild>
+									<MessageFeed.VirtualList
+										key={virtualizerKey}
+										virtuosoRef={scroll.virtuosoRef}
+										restoreStateFrom={scroll.restoreStateFrom}
+										scrollerRef={scroll.scrollerRef}
+										items={messages}
+										getKey={conversationItemRenderKey}
+										atBottomStateChange={scroll.onAtBottomChange}
+										totalListHeightChanged={handleTotalListHeightChange}
+										followOutput={scroll.followOutput}
+										atBottomThreshold={80}
+										itemsRendered={handleItemsRendered}
+										{...(diagnosticsEnabled ? { rangeChanged: handleRangeChanged } : {})}
+										overscan={0}
+										increaseViewportBy={VIEWPORT_BUFFER}
+										heightEstimates={heightEstimates}
+										itemSize={itemSize}
+										initialTopMostItemIndex={scroll.initialTopMostItemIndex}
+									>
+										{(message, index) => itemContent(index, message)}
+									</MessageFeed.VirtualList>
+								</MessageFeedLayout.Virtualizer>
+							</PerfMessageScrollProfiler>
 						</MessageFeedLayout.Viewport>
 						<MessageFeed.Footer>
 							<div className="pb-16">{children}</div>
 						</MessageFeed.Footer>
 						{/* 悬浮在会话区域左缘，不占消息列宽度；窄于 52rem 时消息列铺满整个会话区，
 						    目录会压住气泡，直接整条隐藏。 */}
-						<MessageFeedLayout.LeftRail>
+						{deferredContentReady ? <MessageFeedLayout.LeftRail>
 							<MessageFeedLayout.RailContent>
 								<MessageTimeline
 									key={sessionId ?? "message-timeline"}
@@ -168,7 +235,7 @@ export function MessageListView({
 									onNavigate={scroll.scrollToMessage}
 								/>
 							</MessageFeedLayout.RailContent>
-						</MessageFeedLayout.LeftRail>
+						</MessageFeedLayout.LeftRail> : null}
 					</div>
 				</MessageFeedLayout.Frame>
 			</MessageFeed.Root>

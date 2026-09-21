@@ -117,6 +117,26 @@ describe("TabBar pointer drag", () => {
 		expect(container.querySelector("[data-active-tab-indicator]")).toBeNull();
 	});
 
+	it("does not synchronously read the active indicator width", () => {
+		const offsetWidth = vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(80);
+
+		try {
+			act(() => {
+				root.render(
+					createElement(TabBar, {
+						items: [{ key: "a", label: "A" }],
+						value: "a",
+						onChange: vi.fn(),
+						suppressLayoutAnimation: true,
+					}),
+				);
+			});
+			expect(offsetWidth).not.toHaveBeenCalled();
+		} finally {
+			offsetWidth.mockRestore();
+		}
+	});
+
 	it("keeps a click below the drag threshold", () => {
 		const onChange = vi.fn();
 		const onDragStart = vi.fn();

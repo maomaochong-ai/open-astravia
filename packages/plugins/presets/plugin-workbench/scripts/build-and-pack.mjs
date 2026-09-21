@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * Install deps, bump patch, vite build, zip plugin for Vetta install.
+ * Install deps, bump patch, vite build, and create a Vetta plugin package.
  * Uses managed Node/npm (ADR-0011). Does not assume bun.
  *
  * Usage: node build-and-pack.mjs <pluginRoot> [--skip-install] [--no-bump]
  *
- * Output JSON: { ok, zipPath, id, version }
+ * Output JSON: { ok, packagePath, id, version }
  */
 import { spawn } from "node:child_process";
 import { access, stat } from "node:fs/promises";
@@ -52,7 +52,9 @@ function parsePackResult(stdout) {
 	for (const line of stdout.trim().split(/\r?\n/).reverse()) {
 		try {
 			const parsed = JSON.parse(line);
-			if (parsed?.ok === true && typeof parsed.zipPath === "string") return parsed;
+			if (parsed?.ok === true && typeof (parsed.packagePath ?? parsed.zipPath) === "string") {
+				return { ...parsed, packagePath: parsed.packagePath ?? parsed.zipPath };
+			}
 		} catch {
 			// npm may write non-JSON informational lines before the CLI result.
 		}
@@ -87,12 +89,12 @@ try {
 		args.root,
 	);
 	const result = parsePackResult(packRun.stdout);
-	const archive = await stat(result.zipPath);
+	const archive = await stat(result.packagePath);
 	console.log(
 		JSON.stringify(
 			{
 				ok: true,
-				zipPath: result.zipPath,
+				packagePath: result.packagePath,
 				id: result.id,
 				version: result.version,
 				bytes: archive.size,

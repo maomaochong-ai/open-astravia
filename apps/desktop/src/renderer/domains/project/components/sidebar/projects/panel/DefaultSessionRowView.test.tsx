@@ -50,7 +50,9 @@ describe("DefaultSessionRowView leading icon", () => {
 				</div>,
 			);
 			const row = view.getByRole("button", { name: "Conversation" });
-			const scrollParent = row.parentElement;
+			const scrollParent = view.container.querySelector<HTMLElement>(
+				'[data-sidebar-selection-scroll="true"]',
+			);
 			if (!scrollParent) throw new Error("missing scroll parent");
 			Object.defineProperties(scrollParent, {
 				clientHeight: { configurable: true, value: 100 },
@@ -310,7 +312,7 @@ describe("SessionRowView Team identity", () => {
 			/>,
 		);
 
-		expect(view.getByRole("button").className).toContain("pl-[30px]");
+		expect(view.getAllByRole("button")[0]?.className).toContain("pl-[30px]");
 		expect(view.container.querySelector('[data-session-leading-icon="true"]')?.className).not.toContain(
 			"ml-[20px]",
 		);
@@ -334,7 +336,7 @@ describe("SessionRowView Team identity", () => {
 		);
 
 		expect(view.getByText("Review deployment plan")).toBeTruthy();
-		expect(view.getByRole("button").className).toContain("pl-[30px]");
+		expect(view.getAllByRole("button")[0]?.className).toContain("pl-[30px]");
 		expect(view.queryByText("Dev Team")).toBeNull();
 		expect(view.queryByText("now")).toBeNull();
 		expect(view.container.querySelector('[data-session-leading-icon="true"]')?.className).toContain(
@@ -365,5 +367,65 @@ describe("SessionRowView Team identity", () => {
 		);
 		expect(view.container.querySelector('[data-session-leading-icon="true"]')?.className).toContain("animate-spin");
 		expect(view.container.querySelector('[data-avatar-stack="true"]')?.querySelectorAll("img")).toHaveLength(2);
+	});
+});
+
+describe("session row hover more trigger", () => {
+	function moreTrigger(container: HTMLElement): HTMLElement | null {
+		return container.querySelector<HTMLElement>('[data-session-more-trigger="true"]');
+	}
+
+	it("opens the same context menu as a right click, without selecting the conversation", () => {
+		const onOpenContextMenu = vi.fn();
+		const onSelect = vi.fn();
+		const view = render(
+			<DefaultSessionRowView
+				{...props({ contextMenuEnabled: true, onOpenContextMenu, onSelect })}
+			/>,
+		);
+		const trigger = moreTrigger(view.container);
+		if (!trigger) throw new Error("missing more trigger");
+
+		fireEvent.click(trigger, { clientX: 120, clientY: 64 });
+
+		expect(onOpenContextMenu).toHaveBeenCalledOnce();
+		expect(onSelect).not.toHaveBeenCalled();
+	});
+
+	it("stays out of the way while the row is being renamed", () => {
+		const view = render(
+			<DefaultSessionRowView {...props({ contextMenuEnabled: true, renaming: true })} />,
+		);
+
+		expect(moreTrigger(view.container)).toBeNull();
+	});
+
+	it("is absent on rows whose context menu is disabled", () => {
+		const view = render(<DefaultSessionRowView {...props({ contextMenuEnabled: false })} />);
+
+		expect(moreTrigger(view.container)).toBeNull();
+	});
+
+	it("forwards the project session row trigger to the context menu handler", () => {
+		const onOpenContextMenu = vi.fn();
+		const view = render(
+			<SessionRowView
+				active={false}
+				label="Conversation"
+				onOpenContextMenu={onOpenContextMenu}
+				onRename={vi.fn()}
+				onRenameDone={vi.fn()}
+				onSelect={vi.fn()}
+				renaming={false}
+				running={false}
+				scheduled={false}
+			/>,
+		);
+		const trigger = moreTrigger(view.container);
+		if (!trigger) throw new Error("missing more trigger");
+
+		fireEvent.click(trigger, { clientX: 32, clientY: 48 });
+
+		expect(onOpenContextMenu).toHaveBeenCalledOnce();
 	});
 });

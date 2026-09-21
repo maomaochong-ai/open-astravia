@@ -43,7 +43,14 @@ export interface ToolCallUiDetails {
 	diff?: string;
 	firstChangedLine?: number;
 	askUserQuestion?: AskUserQuestionResolution;
+	planReview?: PlanReviewResolution;
 	knowledge?: KnowledgeToolUiDetails;
+}
+
+/** exit_plan_mode 的审批结论；`plan` 是用户批准的定稿（可能与模型提交的不同）。 */
+export interface PlanReviewResolution {
+	decision: "approve" | "revise" | "cancelled";
+	plan?: string;
 }
 
 export type KnowledgeToolUiDetails =

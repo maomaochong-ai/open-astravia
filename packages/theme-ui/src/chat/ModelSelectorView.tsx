@@ -194,7 +194,9 @@ export function ModelSelectorView({
 	};
 
 	return (
-		<DropdownMenu open={open} onOpenChange={handleOpenChange}>
+		// 搜索型选择器不需要锁住页面；modal 模式会改写 body 的滚动与 pointer-events，
+		// 在长会话页面触发整棵 DOM 的同步样式重算。
+		<DropdownMenu open={open} modal={false} onOpenChange={handleOpenChange}>
 			<DropdownMenuTrigger asChild>
 				<button
 					type="button"

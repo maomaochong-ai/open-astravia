@@ -247,6 +247,13 @@ export interface PluginFilePreviewContribution {
 export type PluginActivityTabRetention = "active-only" | "warm" | "pinned";
 
 export interface PluginActivityTabContribution {
+	/**
+	 * 标签栏上的默认相对位置，越小越靠前；缺省 100（排在全部内置标签卡之后）。
+	 *
+	 * 内置的取值可作标尺：文件 0、批量 10、浏览器 15、计划 18、待办 20、后台任务 30。
+	 * 下限被宿主钳到 10，「文件」永远是第一枚；用户拖拽出来的顺序优先于这个值。
+	 */
+	order?: number;
 	id: string;
 	label: string;
 	/**
@@ -282,6 +289,40 @@ export interface PluginActivityTabContribution {
 	 * maps to `"pinned"`; `false` maps to `"active-only"`.
 	 */
 	keepAliveWhenAvailable?: boolean;
+}
+
+/**
+ * 会话底部面板的组件贡献。
+ *
+ * 与 {@link PluginActivityTabContribution} 的分工：活动面板在右侧、一个贡献只有一个
+ * 实例、适合「看某个东西的当前状态」；底部面板横跨会话页下沿、可分屏、**同一个贡献
+ * 可以开多个实例**，适合终端、日志跟随这类长驻的工作面。
+ *
+ * meta 走命令式的 {@link PluginBottomPanelContextValue.setMeta} 而不是「每帧返回 meta
+ * 的 hook」：多实例场景下 hook 拿不到实例身份，两套 meta 事实源会在改名后打架。
+ */
+export interface PluginBottomPanelContribution {
+	/** Unique within the plugin; the host namespaces it as `plugin:<pluginId>:<id>`. */
+	id: string;
+	/** 「+」菜单里的名字，也是新实例的初始名。Supports `%catalogKey%` i18n lookup. */
+	label: string;
+	/**
+	 * Tab icon as a React node or an iconify class string.
+	 * Omit to inherit the host-resolved brand icon from `plugin.json#icon`.
+	 */
+	icon?: ReactNode;
+	/** Zero-props；实例上下文经 {@link useBottomPanel} 取。 */
+	component: ComponentType;
+	/**
+	 * 允许出现的对话场景 slug 列表。**fail-closed**：未声明/空数组 = 任何会话都不出现。
+	 */
+	scope_use?: readonly ConversationScenario[];
+	/** 「+」菜单里的相对位置，越小越靠前；缺省 100（排在内置之后）。 */
+	order?: number;
+	/**
+	 * 同一会话里最多能开几个实例；缺省不限。单例面板给 1，终端一类不设。
+	 */
+	maxInstances?: number;
 }
 
 /** Explicit conversation scope for an activity-tab command. */
@@ -334,7 +375,7 @@ export interface PluginPromptDecoration {
 export interface PluginInputActionContribution {
 	id: string;
 	label: string;
-	/** Button icon as a React node (not an iconify class string). */
+	/** Button icon as a React node. Omit to inherit the plugin's `plugin.json#icon`. */
 	icon?: ReactNode;
 	/** Whether the action begins in the active state. Defaults to false. */
 	defaultActive?: boolean;
@@ -407,7 +448,7 @@ export interface PluginCardProps {
 /**
  * A card renderer registered by a plugin, keyed by `type`. A descriptor whose
  * `type` matches is rendered by `component`. `title`/`icon` are the default tab
- * label/icon (a descriptor may override `title`). `pendingFor`, given an
+ * label/icon (a descriptor may override either). `pendingFor`, given an
  * in-flight tool call, returns a provisional descriptor so a skeleton card
  * appears (and claims a tab) before the tool's result lands — or null when this
  * renderer doesn't handle that tool. The `type` must be globally unique across
@@ -417,7 +458,7 @@ export interface PluginCardRendererContribution {
 	type: string;
 	component: ComponentType<PluginCardProps>;
 	title?: string;
-	/** Default tab icon as a React node (not an iconify class string). */
+	/** Default tab icon as a React node. Omit to inherit the plugin's `plugin.json#icon`. */
 	icon?: ReactNode;
 	pendingFor?: (toolCall: PluginPendingToolCall) => CardDescriptor | null;
 }
@@ -652,6 +693,13 @@ export interface PluginUiApi {
 	 * session cwd.
 	 */
 	registerActivityTab(contribution: PluginActivityTabContribution): Disposable;
+	/**
+	 * Register a component into the session's bottom panel addable pool. The user
+	 * opens instances from the panel's "+" menu; one contribution can have several
+	 * instances in the same session, and each instance renames itself through
+	 * {@link useBottomPanel}.
+	 */
+	registerBottomPanel(contribution: PluginBottomPanelContribution): Disposable;
 	/**
 	 * Register a toggle action shown beneath the AI input bar. While active,
 	 * its `decoratePrompt()` annotates the next outgoing prompt.

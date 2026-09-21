@@ -6,13 +6,13 @@
 
 ## 项目概览
 
-Vetta 是一套 AI Agent 产品栈。**本仓库是客户端侧的开源仓库**：TypeScript/Bun monorepo、Electron 桌面应用、Kotlin 移动端、Next.js 文档站，以及 Go 写的 IM 旁路网关。面向外部贡献者的入口是 [`CONTRIBUTING.md`](CONTRIBUTING.md)，不要把本文件当成对外贡献指南。
+Vetta 是一套 AI Agent 产品栈。**本仓库是客户端侧的开源仓库**：TypeScript/Bun monorepo、Electron 桌面应用、Expo/React Native 与 Kotlin 移动端、Next.js 文档站，以及 Go 写的 IM 旁路网关。面向外部贡献者的入口是 [`CONTRIBUTING.md`](CONTRIBUTING.md)，不要把本文件当成对外贡献指南。
 
 服务端（业务 API、管理控制台、官网）在独立的私有仓库 `vetta-serv`，不在此处。涉及计费、配额、订阅、权益的决策文档（ADR-0016/0017/0019/0038/0039/0051/0052/0056）同样只存在于那边——本仓库的 `docs/adr/` 会有对应的编号空洞，这是刻意的，见 `docs/adr/README.md`。
 
 顶层目录按「是否被别的包依赖」划分，新增目录必须遵守：
 
-- `apps/`：可交付的应用，依赖图的叶子节点，不被任何包 import。`desktop`、`cli-host`、`docs-site`、`mobile`（Kotlin Multiplatform，仅 Android）与 `im-gateway`（Go）。
+- `apps/`：可交付的应用，依赖图的叶子节点，不被任何包 import。`desktop`、`cli-host`、`docs-site`、`mobile`（Expo/React Native）、`kotlin`（Kotlin Multiplatform，仅 Android）、`im-gateway`（Go）与 `ssh-helper`（Go，远程项目的远端 helper，见 ADR-0124）。
 - `packages/`：可复用模块，只能被 `apps/` 或其它 `packages/` 依赖。
 
 主要分层：
@@ -26,7 +26,7 @@ Vetta 是一套 AI Agent 产品栈。**本仓库是客户端侧的开源仓库**
 核心依赖方向：
 
 ```text
-apps/*  (desktop / cli-host / docs-site / mobile / im-gateway)
+apps/*  (desktop / cli-host / docs-site / mobile / kotlin / im-gateway / ssh-helper)
                       |
                       v
        coding-agent / runtime-* / capability-*

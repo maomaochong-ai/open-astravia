@@ -223,19 +223,13 @@ export function useCommandPanelModel({
 
 	const actions = useMemo(
 		() => [
-			...(actionBar.knowledge
-				? [
-						{
-							id: "__builtin_knowledge_retrieval__",
-							label: actionBar.knowledge.label,
-							icon: (
-								<span className="icon-[mdi--book-search-outline] flex h-3.5 w-3.5 items-center justify-center" />
-							),
-							active: actionBar.knowledge.active,
-							onToggle: actionBar.actions.toggleKnowledge,
-						},
-					]
-				: []),
+			...actionBar.builtins.map((builtin) => ({
+				id: builtin.id,
+				label: builtin.label,
+				icon: <span className={`${builtin.iconClass} flex h-3.5 w-3.5 items-center justify-center`} />,
+				active: builtin.active,
+				onToggle: builtin.onToggle,
+			})),
 			...actionBar.items.map((item) => ({
 				id: item.id,
 				label: item.label,

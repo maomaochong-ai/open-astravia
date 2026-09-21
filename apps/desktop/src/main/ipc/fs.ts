@@ -3,6 +3,7 @@ import { watch } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { resolveNodeConfigurationValue } from "@vetta/runtime-node/host";
+import { isSshProjectUri } from "@vetta/ssh-transport";
 import { BrowserWindow, clipboard, ipcMain } from "electron";
 import type {
 	McpConfigData,
@@ -65,6 +66,7 @@ import {
 	statFilesystemPath,
 	writeFilesystemFile,
 } from "../filesystem/filesystem-service.js";
+import { watchRemoteDirectory } from "../filesystem/remote-directory-watch.js";
 import { getDesktopMcpOAuthService } from "../mcp/mcp-oauth-service.js";
 import { getDesktopMcpSettingsService, readMcpConfig, writeMcpConfig } from "../mcp/mcp-settings-service.js";
 import { getDesktopMcpSetupLoginService } from "../mcp/mcp-setup-login-service.js";
@@ -72,6 +74,8 @@ import { fetchProviderModels } from "../models/fetch-models.js";
 import { getDesktopModelSettingsService, onDesktopModelSettingsChanged } from "../models/model-settings-host.js";
 import type { ModelsConfig } from "../models/model-settings-service.js";
 import { probeModelProvider } from "../models/probe.js";
+import { refreshDesktopProxy } from "../proxy/proxy-host.js";
+import { type DesktopProxyConfigSnapshot, mergeProxyConfigPatch, redactProxyConfig } from "../proxy/proxy-settings.js";
 import { getLinuxSandboxCapability, getSandboxCapability, type SandboxCapability } from "../sandbox/capability.js";
 import { getDesktopShortcutService } from "../shortcuts/shortcut-service.js";
 
@@ -83,7 +87,9 @@ export interface LinuxSandboxConfigState {
 	checkedAt?: number;
 }
 
-export interface DesktopConfigSnapshot extends DesktopConfig {
+export interface DesktopConfigSnapshot extends Omit<DesktopConfig, "proxy"> {
+	/** 代理口令不进快照，只留「存过没有」。 */
+	proxy: DesktopProxyConfigSnapshot;
 	sandbox: SandboxCapability;
 	linuxSandbox: LinuxSandboxConfigState;
 	/** 默认「对话」项目的绝对路径（~/.vetta/conversation），主进程已确保目录存在。 */
@@ -319,6 +325,7 @@ export function registerFsIpc(): () => void {
 	// same directory. Only close the underlying watcher when the last releases it.
 	const watchers = new Map<string, { watcher: FSWatcher; count: number }>();
 	const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+	const remoteWatchers = new Map<string, { stop: () => void; count: number }>();
 
 	function broadcastDirChanged(dirPath: string): void {
 		for (const win of BrowserWindow.getAllWindows()) {
@@ -328,6 +335,20 @@ export function registerFsIpc(): () => void {
 
 	ipcMain.handle(CHANNELS.WATCH_DIR, async (_event, dirPath: unknown) => {
 		assertNonEmptyString(dirPath, "dirPath");
+		if (isSshProjectUri(dirPath)) {
+			const existingRemote = remoteWatchers.get(dirPath);
+			if (existingRemote) {
+				existingRemote.count++;
+				return;
+			}
+			try {
+				const stop = watchRemoteDirectory(dirPath, () => broadcastDirChanged(dirPath));
+				remoteWatchers.set(dirPath, { stop, count: 1 });
+			} catch {
+				// 与本机分支一致：监听不上不算错误，文件树仍可手动刷新。
+			}
+			return;
+		}
 		const resolved = resolve(dirPath);
 		const existing = watchers.get(resolved);
 		if (existing) {
@@ -360,6 +381,14 @@ export function registerFsIpc(): () => void {
 
 	ipcMain.handle(CHANNELS.UNWATCH_DIR, async (_event, dirPath: unknown) => {
 		assertNonEmptyString(dirPath, "dirPath");
+		if (isSshProjectUri(dirPath)) {
+			const remote = remoteWatchers.get(dirPath);
+			if (remote && --remote.count <= 0) {
+				remote.stop();
+				remoteWatchers.delete(dirPath);
+			}
+			return;
+		}
 		const resolved = resolve(dirPath);
 		const entry = watchers.get(resolved);
 		if (entry) {
@@ -387,6 +416,8 @@ export function registerFsIpc(): () => void {
 		allowProjectRoot(KB_PROCESSING_CWD);
 		return {
 			...config,
+			// 代理口令与 API Key 同级，绝不下发渲染层。
+			proxy: redactProxyConfig(config.proxy),
 			sandbox: getSandboxCapability(),
 			linuxSandbox: getLinuxSandboxCapability(),
 			defaultConversationCwd: DEFAULT_CONVERSATION_CWD,
@@ -398,8 +429,15 @@ export function registerFsIpc(): () => void {
 	ipcMain.handle(CHANNELS.CONFIG_SET, async (_event, config: unknown) => {
 		if (typeof config !== "object" || config === null) throw new Error("Invalid config");
 		const current = await readDesktopConfig();
-		const patch = config as Partial<DesktopConfig>;
+		// proxy 走补丁语义（口令可省略），与其余整体覆盖的字段不同，故单独放宽为 unknown。
+		const patch = config as Partial<Omit<DesktopConfig, "proxy">> & { proxy?: unknown };
 		const next: DesktopConfig = {
+			// 先摊开 current 打底。下面是一张字段白名单，而 writeDesktopConfig 是整文件覆盖：
+			// 白名单漏掉哪个字段，哪个字段就会在用户每次保存设置时被从磁盘上抹掉。sshHosts
+			// 和 remoteControl 就是这么丢的——它们晚于这个处理器加入 DesktopConfig，而两者
+			// 都是可选字段，TypeScript 不会提示缺失。打底之后白名单只决定「哪些字段允许被
+			// 补丁改写」，不再决定「哪些字段能活下来」。
+			...current,
 			projects: patch.projects ?? current.projects,
 			archivedProjects: patch.archivedProjects ?? current.archivedProjects,
 			workspacePath: patch.workspacePath ?? current.workspacePath,
@@ -436,6 +474,8 @@ export function registerFsIpc(): () => void {
 					: current.quickPanel,
 			appshot:
 				patch.appshot !== undefined ? normalizeAppshot({ ...current.appshot, ...patch.appshot }) : current.appshot,
+			// 补丁省略 password 即沿用已存口令，渲染层不必回传明文。
+			proxy: patch.proxy !== undefined ? mergeProxyConfigPatch(current.proxy, patch.proxy) : current.proxy,
 		};
 		// Allow all known roots for file operations
 		for (const p of next.projects) allowProjectRoot(p.path);
@@ -446,6 +486,8 @@ export function registerFsIpc(): () => void {
 			const bindings = next.shortcuts?.bindings ?? {};
 			shortcuts.notifyBindingsChanged(bindings as Record<string, string>);
 		}
+		// 代理改动必须立刻生效：用户改完地址不该还得重启应用。
+		if (patch.proxy !== undefined) await refreshDesktopProxy();
 	});
 
 	ipcMain.handle(CHANNELS.MODELS_GET, async (): Promise<ModelsConfig> => {

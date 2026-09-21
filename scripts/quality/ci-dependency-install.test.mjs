@@ -24,10 +24,10 @@ describe("CI dependency installation", () => {
 		expect(installAction).toContain("run: node scripts/quality/install-ci-dependencies.mjs");
 	});
 
-	it("clears the cache and retries a failed frozen install", async () => {
+	it("reuses completed downloads when a transient frozen install fails", async () => {
 		const commands = [];
 		const delays = [];
-		const exitCodes = [1, 0, 0];
+		const exitCodes = [1, 0];
 
 		await installCiDependencies({
 			runCommand: async (command, args) => {
@@ -40,7 +40,6 @@ describe("CI dependency installation", () => {
 
 		expect(commands).toEqual([
 			["bun", "install", "--frozen-lockfile"],
-			["bun", "pm", "cache", "rm"],
 			["bun", "install", "--frozen-lockfile"],
 		]);
 		expect(delays).toEqual([2_000]);
@@ -61,6 +60,11 @@ describe("CI dependency installation", () => {
 		).rejects.toThrow("failed after 3 attempts");
 
 		expect(commands.filter(([, operation]) => operation === "install")).toHaveLength(3);
-		expect(commands.filter(([, operation]) => operation === "pm")).toHaveLength(2);
+		expect(commands).toEqual([
+			["bun", "install", "--frozen-lockfile"],
+			["bun", "install", "--frozen-lockfile"],
+			["bun", "pm", "cache", "rm"],
+			["bun", "install", "--frozen-lockfile"],
+		]);
 	});
 });

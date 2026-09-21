@@ -1,4 +1,5 @@
 import type { Project, ProjectType } from "@shared/store/atoms";
+import { isSshProjectUri } from "@vetta/ssh-transport/project-uri";
 import type { ProjectRowViewProps } from "@vetta-org/theme-ui/project";
 
 interface Args {
@@ -41,6 +42,7 @@ export function useProjectRowModel({
 		newSessionTitle,
 		projectCwd: project.cwd,
 		projectType,
+		remote: isSshProjectUri(project.cwd),
 		onCollapse: () => onCollapse(project.cwd),
 		onExpand: () => onExpand(project.cwd),
 		onNavigateProject: () => onNavigateProject(project.cwd),

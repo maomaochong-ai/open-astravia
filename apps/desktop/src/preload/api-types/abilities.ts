@@ -15,6 +15,8 @@ export interface GitHubMarketplaceOrigin {
 	marketplace: string;
 	marketplaceVersion: string;
 	repository: string;
+	/** Marketplace source Git ref (branch, tag, or commit); older ledger entries may omit it. */
+	ref?: string;
 }
 
 export type AbilityInstallOrigin = { kind: "server" } | GitHubMarketplaceOrigin;

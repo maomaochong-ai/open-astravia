@@ -18,7 +18,11 @@ const execFileAsync = promisify(execFile);
 let home = "";
 let runCount = 0;
 
-/** 只实现被测模块用到的那一个方法；其余成员不该被碰到。 */
+/**
+ * 只实现被测模块用到的那一个方法；其余成员不该被碰到。
+ *
+ * `cwd` 只用于让宿主决定在哪台机器上执行，这组测试全在本机，忽略即可。
+ */
 function fakeContext(): PluginContext {
 	const command = {
 		async run(file: string, args: string[] = [], options: { env?: Record<string, string> } = {}) {
@@ -56,7 +60,7 @@ describe("runner 物化", () => {
 	it("首次调用把 runner 解压落位，并且真的能执行", async () => {
 		const { ensureRunner } = await import("../src/history/runner-host");
 		const ctx = fakeContext();
-		const runner = await ensureRunner(ctx);
+		const runner = await ensureRunner(ctx, home);
 
 		expect(runner.startsWith(`${home}/.vetta/plugin-data/vetta-ui-design/history-runner/`)).toBe(true);
 		expect(existsSync(runner)).toBe(true);
@@ -70,12 +74,12 @@ describe("runner 物化", () => {
 
 	it("已经物化过就不再重写，只探测一次", async () => {
 		const { ensureRunner } = await import("../src/history/runner-host");
-		const first = await ensureRunner(fakeContext());
+		const first = await ensureRunner(fakeContext(), home);
 		const callsAfterFirst = runCount;
 
 		vi.resetModules();
 		const reloaded = await import("../src/history/runner-host");
-		const second = await reloaded.ensureRunner(fakeContext());
+		const second = await reloaded.ensureRunner(fakeContext(), home);
 
 		expect(second).toBe(first);
 		// 第二次只有 homedir + 存在性探测两次调用，没有任何分块写。
@@ -85,7 +89,7 @@ describe("runner 物化", () => {
 	it("并发调用共用同一次物化", async () => {
 		const { ensureRunner } = await import("../src/history/runner-host");
 		const ctx = fakeContext();
-		const [a, b, c] = await Promise.all([ensureRunner(ctx), ensureRunner(ctx), ensureRunner(ctx)]);
+		const [a, b, c] = await Promise.all([ensureRunner(ctx, home), ensureRunner(ctx, home), ensureRunner(ctx, home)]);
 		expect(b).toBe(a);
 		expect(c).toBe(a);
 	});

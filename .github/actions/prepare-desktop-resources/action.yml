@@ -1,0 +1,39 @@
+name: Prepare Desktop release resources
+description: Restore and prepare raw runtime archives and offline models before compilation, then save immediately.
+runs:
+  using: composite
+  steps:
+    - name: Locate runtime download cache
+      id: paths
+      shell: bash
+      run: node --input-type=module -e 'import { VENDOR_CACHE_DIR } from "./apps/desktop/scripts/fetch-vendor-runtimes.mjs"; console.log(`vendor-path=${VENDOR_CACHE_DIR}`)' >> "${GITHUB_OUTPUT}"
+    # No prefix fallback: OCR currently only checks presence, so changed model inputs
+    # must never restore an older model under the same filename.
+    - name: Restore runtime and model downloads
+      id: resources
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          ${{ steps.paths.outputs.vendor-path }}
+          apps/desktop/resources/ocr-models
+          apps/desktop/resources/speech-models
+        key: desktop-resources-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('apps/desktop/src/main/runtimes/manifest.json', 'apps/desktop/src/main/speech-input/model-manifest.json', 'apps/desktop/scripts/fetch-*.mjs', 'apps/desktop/scripts/fetch-ocr-models.js', 'apps/desktop/scripts/speech-input-build-config.js', '.github/actions/prepare-desktop-resources/action.yml') }}
+    - name: Download release resources
+      shell: bash
+      # Warm the complete platform set even if this particular release disables speech.
+      # Feature selection remains in the packaging code; cached models are not staged automatically.
+      env:
+        VETTA_SPEECH_INPUT_ENABLED: "true"
+      run: |
+        node apps/desktop/scripts/fetch-vendor-runtimes.mjs
+        node apps/desktop/scripts/fetch-ocr-models.js
+        node apps/desktop/scripts/fetch-speech-models.mjs
+    - name: Save runtime and model downloads
+      if: steps.resources.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          ${{ steps.paths.outputs.vendor-path }}
+          apps/desktop/resources/ocr-models
+          apps/desktop/resources/speech-models
+        key: ${{ steps.resources.outputs.cache-primary-key }}

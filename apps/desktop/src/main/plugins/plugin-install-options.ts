@@ -60,6 +60,8 @@ export function parsePluginInstallOptions(value: unknown): PluginInstallOptions 
 	}
 	return {
 		source,
+		initiator:
+			input.initiator === "plugin-cli" || input.initiator === "plugin-workbench" ? input.initiator : undefined,
 		grantedPermissions,
 		enable: input.enable === true ? true : input.enable === false ? false : undefined,
 		expectedSha256,

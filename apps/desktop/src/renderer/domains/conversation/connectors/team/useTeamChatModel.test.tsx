@@ -25,6 +25,11 @@ import { peekTeamSessionHandoff, stageTeamSessionHandoff, takeTeamSessionHandoff
 import { waitForCommittedPaint } from "@shared/lib/committed-paint";
 import { writeCachedContextComposition } from "../../services/context-composition-cache";
 
+const translate = vi.hoisted(
+	() => (key: string, values?: Record<string, string>) =>
+		values ? `${key}:${Object.values(values).join(":")}` : key,
+);
+
 vi.mock("@shared/hooks/useRendererMarkdownModel", () => ({
 	useRendererMarkdownModel: () => ({
 		theme: "light",
@@ -36,8 +41,7 @@ vi.mock("@shared/hooks/useRendererMarkdownModel", () => ({
 }));
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({
-		t: (key: string, values?: Record<string, string>) =>
-			values ? `${key}:${Object.values(values).join(":")}` : key,
+		t: translate,
 	}),
 }));
 vi.mock("./team-chat-session-service", async (importOriginal) => ({
@@ -208,6 +212,21 @@ describe("useTeamChatModel streaming flow", () => {
 			resolveSend?.(baseSnapshot);
 			await sendPromise;
 		});
+	});
+
+	it("keeps feed, workspace and session slices stable while editing the draft", async () => {
+		const { result } = renderHook(() => useTeamChatModel(team.id));
+		await waitFor(() => expect(result.current.model.status).toBe("ready"));
+		const before = result.current.model;
+
+		act(() => result.current.actions.setDraft("next question"));
+
+		expect(result.current.model).not.toBe(before);
+		expect(result.current.model.feedItems).toBe(before.feedItems);
+		expect(result.current.model.members).toBe(before.members);
+		expect(result.current.model.workspace).toBe(before.workspace);
+		expect(result.current.model.runtimeSessionIds).toBe(before.runtimeSessionIds);
+		expect(result.current.model.sessions).toBe(before.sessions);
 	});
 
 	it("refreshes Team conversation lists when the automatic title arrives", async () => {

@@ -12,6 +12,7 @@ import {
 } from "../components/message-list/messageBlockModel";
 import { groupBlocksForWork } from "../components/message-list/progressGroupModel";
 import type { AssistantMessageModel } from "../components/message-list/types";
+import { isApprovedPlanBlock, pinApprovedPlanBlocks } from "../services/plan-review";
 
 interface AssistantMessageModelInput {
 	expanded: boolean;
@@ -31,10 +32,18 @@ export function useAssistantMessageModel({
 	const { narration, predicting: isRuntimePredicting } = useAssistantRendering();
 	const toolCallSlots = useAtomValue(pluginToolCallSlotsAtom);
 	const customToolNames = useMemo(() => new Set(toolCallSlots.map((slot) => slot.toolName)), [toolCallSlots]);
-	const persistentToolCallIds = useMemo(
+	const presentationToolCallIds = useMemo(
 		() => new Set(message.toolCallPresentations?.map((presentation) => presentation.toolCallId) ?? []),
 		[message.toolCallPresentations],
 	);
+	// 已批准的计划在列表里是独立卡片、不并入工具组；但不参与折叠分界（见 pinApprovedPlanBlocks）。
+	const standaloneToolCallIds = useMemo(() => {
+		const ids = new Set(presentationToolCallIds);
+		for (const block of message.blocks) {
+			if (block.type === "tool_call" && isApprovedPlanBlock(block)) ids.add(block.toolCallId);
+		}
+		return ids;
+	}, [message.blocks, presentationToolCallIds]);
 	const isCurrentlyStreaming =
 		message.phase === "pending" ||
 		message.phase === "streaming" ||
@@ -43,32 +52,38 @@ export function useAssistantMessageModel({
 	// mode id（新增模式对本渲染层零改动）。未指定模式回退 staged（与历史会话按 work 恢复口径一致）。
 	const stagedNarration = narration === "staged";
 	const foldData = useMemo(
-		() => getAssistantFoldData(message.blocks, customToolNames, persistentToolCallIds),
-		[message.blocks, customToolNames, persistentToolCallIds],
+		() => getAssistantFoldData(message.blocks, customToolNames),
+		[message.blocks, customToolNames],
 	);
 	const visibleBlocks = useMemo(() => {
 		// 收起时渲染整个答案区（含插件产物卡片），而不是只留文本。
 		if (exportMode && foldData) return foldData.answerBlocks;
 		if (!foldData || expanded || isCurrentlyStreaming) return message.blocks;
-		return foldData.answerBlocks;
+		return pinApprovedPlanBlocks(foldData.processBlocks, foldData.answerBlocks);
 	}, [expanded, exportMode, foldData, isCurrentlyStreaming, message.blocks]);
 	const segments = useMemo(
 		() =>
 			stagedNarration
-				? groupBlocksForWork(visibleBlocks, customToolNames, isCurrentlyStreaming, persistentToolCallIds)
-				: groupBlocks(visibleBlocks, customToolNames, persistentToolCallIds),
-		[stagedNarration, visibleBlocks, customToolNames, isCurrentlyStreaming, persistentToolCallIds],
+				? groupBlocksForWork(visibleBlocks, customToolNames, isCurrentlyStreaming, standaloneToolCallIds)
+				: groupBlocks(visibleBlocks, customToolNames, standaloneToolCallIds),
+		[stagedNarration, visibleBlocks, customToolNames, isCurrentlyStreaming, standaloneToolCallIds],
 	);
 	// Work 折叠条按「阶段数」计数，而不是 coding 的原始 block 数——用户看到的单位就是阶段。
 	const workFoldCount = useMemo(() => {
 		if (!stagedNarration || !foldData) return 0;
-		const processSegments = groupBlocksForWork(foldData.processBlocks, customToolNames, false, persistentToolCallIds);
+		const processSegments = groupBlocksForWork(
+			foldData.processBlocks,
+			customToolNames,
+			false,
+			presentationToolCallIds,
+		);
 		return processSegments.filter((segment) => segment.type === "progress_group" || segment.type === "tool_group")
 			.length;
-	}, [stagedNarration, foldData, customToolNames, persistentToolCallIds]);
+	}, [stagedNarration, foldData, customToolNames, presentationToolCallIds]);
 	const exportProcessSegments = useMemo(
-		() => (exportMode && foldData ? groupBlocks(foldData.processBlocks, customToolNames, persistentToolCallIds) : []),
-		[customToolNames, exportMode, foldData, persistentToolCallIds],
+		() =>
+			exportMode && foldData ? groupBlocks(foldData.processBlocks, customToolNames, presentationToolCallIds) : [],
+		[customToolNames, exportMode, foldData, presentationToolCallIds],
 	);
 	const liveThinkingId = useMemo(
 		() => selectLiveThinkingId(message.blocks, isCurrentlyStreaming),
@@ -95,13 +110,13 @@ export function useAssistantMessageModel({
 				.filter(Boolean)
 				.join("\n\n");
 		}
-		if (findLastProcessBlockIndex(blocks, customToolNames, persistentToolCallIds) !== -1) return "";
+		if (findLastProcessBlockIndex(blocks, customToolNames) !== -1) return "";
 		return blocks
 			.filter((block): block is TextBlock => block.type === "text")
 			.map((block) => block.text.trim())
 			.filter(Boolean)
 			.join("\n\n");
-	}, [message.blocks, message.text, foldData, customToolNames, persistentToolCallIds]);
+	}, [message.blocks, message.text, foldData, customToolNames]);
 
 	return {
 		conclusionText,

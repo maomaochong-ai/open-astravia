@@ -41,6 +41,10 @@ export {
 	type NodeForegroundCommandHostOptions,
 	type NodeShellCommand,
 } from "./host/index.js";
+export {
+	createNodeSpecializedToolRegistrations,
+	type NodeSpecializedToolRegistrationOptions,
+} from "./host/specialized-tool-registrations.js";
 export { nodeModelInputImageProcessor } from "./model-input-image-processor.js";
 export {
 	createNodeCodingToolEnvironment,
@@ -101,8 +105,20 @@ export {
 	type ForegroundCommandOperations,
 	type ForegroundCommandToolDetails,
 } from "./shared/foreground-command-executor.js";
-export { resolveExistingPath } from "./shared/path-resolution.js";
+export {
+	localToolPathHost,
+	remotePosixToolPathHost,
+	resolveExistingPath,
+	type ToolPathHost,
+	type ToolPathSyntax,
+} from "./shared/path-resolution.js";
 export { decodeTextBuffer, sanitizeBinaryOutput } from "./shared/text-decoding.js";
+export {
+	collectToolProcess,
+	spawnLocalToolProcess,
+	type ToolProcess,
+	type ToolProcessSpawner,
+} from "./shared/tool-process.js";
 export {
 	DEFAULT_MAX_BYTES,
 	DEFAULT_MAX_LINES,
@@ -217,9 +233,11 @@ export {
 	convertToPng,
 	createReadTool,
 	createReadToolRegistration,
+	detectSupportedImageMimeTypeFromBuffer,
 	detectSupportedImageMimeTypeFromFile,
 	formatDimensionNote,
 	formatImageResizeFailureNote,
+	IMAGE_SNIFF_BYTES,
 	type ImageResizeFailure,
 	type ImageResizeOptions,
 	type ImageResizeResult,

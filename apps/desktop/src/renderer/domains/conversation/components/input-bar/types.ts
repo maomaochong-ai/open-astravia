@@ -2,6 +2,8 @@ import type { SkillInfo } from "@preload/api";
 import type { InputSegment } from "@shared/lib/input-tokens";
 import type { AppshotAttachment } from "@shared/store/atoms";
 import type { TodoItem } from "@shared/store/todo-atoms";
+import type { CodingAgentPlanReviewRequest } from "@vetta/coding-agent/function-extensions";
+import type { BottomPanelTabViewModel } from "@vetta-org/theme-ui/bottom-panel";
 import type { InputBarContextMenuViewProps, SessionDropZoneViewProps } from "@vetta-org/theme-ui/chat";
 import type { ComponentProps, MouseEvent, ReactNode } from "react";
 import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
@@ -149,6 +151,8 @@ export interface InputBarModel {
 	sendPending?: { readonly label: string };
 	pendingQuestion: ComponentProps<typeof QuestionPanel>["pending"] | undefined;
 	pendingMcpElicitation: ComponentProps<typeof McpElicitationPanel>["request"] | undefined;
+	/** exit_plan_mode 提交的计划在等用户审批；不支持计划模式的 Connector 不提供。 */
+	pendingPlanReview?: CodingAgentPlanReviewRequest;
 	/** 输入卡片上方的图片缩略图行；label 与文本流里的「图 N」胶囊同源。 */
 	imageAttachments: ReadonlyArray<{ path: string; name: string; url: string; label: string }>;
 	/** 已激活的 input action；全量开关在命令面板里，这里只留激活提示。 */
@@ -172,6 +176,11 @@ export interface InputBarModel {
 	drawerActiveTab: string | null;
 	/** 输入卡片外部下方的待办条。 */
 	todo: InputBarTodoModel | null;
+	/**
+	 * 底部面板缩起时排在待办条右侧的 tab pill。
+	 * 只传数据不传节点：视觉由 theme-ui 的 `BottomPanelPillsView` 统一提供。
+	 */
+	bottomPanelPills: InputBarBottomPanelPillsModel | null;
 	/** Windows 本地流式语音输入；其他平台不渲染入口。 */
 	speechInput: SpeechInputModel | null;
 	hasPromptAttachment: boolean;
@@ -234,6 +243,8 @@ export interface InputBarModel {
 		setDrawerActiveTab: (tabId: string | null) => void;
 		/** 回车键；返回 true 表示已当作发送处理，编辑器不再插换行。 */
 		handleEnter: (event?: KeyboardEvent) => boolean;
+		/** 输入区内的附加键盘入口（如切换计划模式）；返回 true 表示已处理。 */
+		handleKeyDown?: (event: KeyboardEvent) => boolean;
 		handleContextMenu: (e: MouseEvent<HTMLDivElement>) => void;
 		/** 从文本流里删掉该图片的 token（缩略图行的 × 按钮）。 */
 		removeImage: (path: string) => void;
@@ -262,4 +273,12 @@ export interface InputBarViewProps {
 	model: InputBarModel;
 	className?: string;
 	classNames?: InputBarViewClassNames;
+}
+
+export interface InputBarBottomPanelPillsModel {
+	readonly pills: readonly BottomPanelTabViewModel[];
+	/** 这一组 pill 的可访问名称。 */
+	readonly groupLabel: string;
+	/** 点 pill：展开底部面板并激活那个 tab。 */
+	readonly onSelect: (tabId: string) => void;
 }

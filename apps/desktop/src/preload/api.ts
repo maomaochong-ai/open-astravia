@@ -29,6 +29,7 @@ import type { DesktopSchedulerApi } from "./api-types/scheduler.js";
 import type { DesktopSessionApi } from "./api-types/session.js";
 import type { DesktopSkillsApi } from "./api-types/skills.js";
 import type { DesktopSpeechInputApi } from "./api-types/speech-input.js";
+import type { DesktopSshApi } from "./api-types/ssh.js";
 import type {
 	DesktopClipboardApi,
 	DesktopPermissionsApi,
@@ -40,6 +41,7 @@ import type {
 	DesktopWindowApi,
 } from "./api-types/system.js";
 import type { DesktopTelemetryApi } from "./api-types/telemetry.js";
+import type { DesktopTerminalApi } from "./api-types/terminal.js";
 import type { DesktopThemeApi } from "./api-types/theme.js";
 import type { DesktopThemesApi } from "./api-types/themes.js";
 import type { DesktopUpdaterApi } from "./api-types/updater.js";
@@ -74,8 +76,10 @@ export type * from "./api-types/session.js";
 export type * from "./api-types/shared.js";
 export type * from "./api-types/skills.js";
 export type * from "./api-types/speech-input.js";
+export type * from "./api-types/ssh.js";
 export type * from "./api-types/system.js";
 export type * from "./api-types/telemetry.js";
+export type * from "./api-types/terminal.js";
 export type * from "./api-types/theme.js";
 export type * from "./api-types/themes.js";
 export type * from "./api-types/updater.js";
@@ -123,6 +127,8 @@ export interface DesktopApi {
 	debug: DesktopDebugApi;
 	diagnostics: DesktopDiagnosticsApi;
 	project: DesktopProjectApi;
+	ssh: DesktopSshApi;
+	terminal: DesktopTerminalApi;
 	webhook: DesktopWebhookApi;
 	runtimes: DesktopRuntimesApi;
 	permissions: DesktopPermissionsApi;

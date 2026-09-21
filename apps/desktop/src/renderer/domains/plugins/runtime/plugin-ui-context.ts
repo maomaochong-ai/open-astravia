@@ -1,5 +1,6 @@
 import type { InstalledPlugin } from "@preload/api";
 import { readSidebarState, subscribeSidebarState } from "@shared/app-shell/sidebar-state";
+import { resolvePluginContributionIcon } from "@shared/lib/plugin-icon";
 import type { ActivityTabKey } from "@shared/lib/project-profile";
 import {
 	activeInputActionIdsAtom,
@@ -19,11 +20,13 @@ import {
 	workspaceViewHeaderKey,
 } from "@shared/store/atoms";
 import { showToast } from "@shared/store/toast-atoms";
+import { isSshProjectUri } from "@vetta/ssh-transport/project-uri";
 import type {
 	Disposable,
 	PluginAbilityDetailSlotContribution,
 	PluginActivityTabContribution,
 	PluginActivityTabTargetOptions,
+	PluginBottomPanelContribution,
 	PluginCardRendererContribution,
 	PluginContext,
 	PluginFilePreviewContribution,
@@ -44,7 +47,7 @@ import type {
 } from "@vetta-org/plugin-sdk";
 import { getDefaultStore } from "jotai";
 import QRCode from "qrcode";
-import { type ComponentType, createElement, type ReactNode } from "react";
+import type { ComponentType } from "react";
 import { explicitTabVisibility, withPluginTabVisibility } from "./attached-tabs";
 import type { PluginAgentApiRegistration } from "./plugin-agent-context";
 import { copyTextToClipboard, formatPluginErrorDetail, resolvePluginDisplayText } from "./plugin-host-apis";
@@ -54,7 +57,7 @@ import type {
 	ResolvedPluginNewSessionContextContribution,
 	ResolvedPluginWorkspaceViewContribution,
 } from "./plugin-local-contributions";
-import { classifyPluginNavIcon, resolveNavIcon } from "./plugin-nav-icon";
+import { resolveNavIcon } from "./plugin-nav-icon";
 import {
 	createPluginPermissionApi,
 	hasPluginPermission,
@@ -186,24 +189,6 @@ function openPluginActivityTab(pluginId: string, tabId: string, options?: Plugin
 }
 
 /**
- * Map host-resolved `InstalledPlugin.iconUrl` into an activity-tab icon. Unlike the
- * sidebar (class strings only), a tab icon is a ReactNode, so a packaged image renders
- * as a plain `<img>` and keeps its own colors.
- * Protocol stays host-private; plugins only see the opaque `iconUrl` string.
- */
-function resolvePluginBrandIcon(iconUrl: string): ReactNode {
-	const icon = classifyPluginNavIcon(iconUrl);
-	if (!icon) return undefined;
-	if (icon.kind === "class") return icon.value;
-	return createElement("img", {
-		src: icon.url,
-		alt: "",
-		className: "h-3.5 w-3.5 object-contain",
-		draggable: false,
-	});
-}
-
-/**
  * 把插件递来的 `PluginPreviewFileRef` 归一化成全局预览 atom 认的 `FilePreviewItem`。
  * 预览器按 **name 的扩展名**分发渲染器（不是 mime），所以 name 是必须补齐的那一项：
  * 缺省时从本地路径的 basename 取，取不到才退到 mime 推导。
@@ -218,8 +203,9 @@ function toFilePreviewItem(ref: PluginPreviewFileRef): FilePreviewItem {
 		throw new Error("previewFile() requires either a path or a url");
 	}
 	// 相对路径在渲染进程没有可靠的 base 可解析——与其让预览器弹一个含糊的读取失败，
-	// 不如在边界上直接告诉插件它给错了。
-	if (path && !path.startsWith("/") && !/^[a-zA-Z]:[\\/]/.test(path)) {
+	// 不如在边界上直接告诉插件它给错了。远程项目里的文件用 `ssh://<hostId>/<路径>` 标识，
+	// 它同样是一个确定的位置：媒体协议与目录监听都认得它，拒掉只会让远端文件预览不了。
+	if (path && !path.startsWith("/") && !/^[a-zA-Z]:[\\/]/.test(path) && !isSshProjectUri(path)) {
 		throw new Error(`previewFile() requires an absolute path, got: ${path}`);
 	}
 	const declaredName = typeof ref.name === "string" ? ref.name.trim() : "";
@@ -247,6 +233,7 @@ export function createPluginUiApi({
 		abilityDetailSlots,
 		filePreviews,
 		activityTabs,
+		bottomPanels,
 		inputActions,
 		newSessionContexts,
 		cardRenderers,
@@ -355,12 +342,10 @@ export function createPluginUiApi({
 		) {
 			throw new Error("Activity tab retention is invalid");
 		}
-		const brandIcon =
-			contribution.icon === undefined && plugin.iconUrl ? resolvePluginBrandIcon(plugin.iconUrl) : undefined;
 		const normalized: PluginActivityTabContribution = {
 			id: contribution.id,
 			label: contribution.label,
-			icon: contribution.icon ?? brandIcon,
+			icon: resolvePluginContributionIcon(contribution.icon, plugin.iconUrl, "h-4 w-4"),
 			component: contribution.component,
 			scope_use: contribution.scope_use,
 			initiallyVisible: contribution.initiallyVisible,
@@ -384,6 +369,45 @@ export function createPluginUiApi({
 				console.debug(
 					`[activity-tab-debug] disposed ${JSON.stringify({ pluginId: plugin.id, tabId: normalized.id })}`,
 				);
+				onChanged();
+			},
+		};
+	};
+	const registerBottomPanel = (contribution: PluginBottomPanelContribution): Disposable => {
+		if (!hasPluginPermission(plugin, "ui.slot.bottom-panel")) {
+			warnSkippedPluginContribution(plugin, "ui.slot.bottom-panel", "bottom panel");
+			return noopDisposable;
+		}
+		if (typeof contribution.id !== "string" || contribution.id.trim().length === 0) {
+			throw new Error("Bottom panel id is required");
+		}
+		if (typeof contribution.label !== "string" || contribution.label.trim().length === 0) {
+			throw new Error("Bottom panel label is required");
+		}
+		if (typeof contribution.component !== "function" && typeof contribution.component !== "object") {
+			throw new Error("Bottom panel component is invalid");
+		}
+		if (
+			contribution.maxInstances !== undefined &&
+			(!Number.isInteger(contribution.maxInstances) || contribution.maxInstances < 1)
+		) {
+			throw new Error("Bottom panel maxInstances must be a positive integer");
+		}
+		const normalized: PluginBottomPanelContribution = {
+			id: contribution.id,
+			label: contribution.label,
+			icon: resolvePluginContributionIcon(contribution.icon, plugin.iconUrl, "h-3.5 w-3.5"),
+			component: contribution.component,
+			scope_use: contribution.scope_use,
+			order: contribution.order,
+			maxInstances: contribution.maxInstances,
+		};
+		bottomPanels.push(normalized);
+		onChanged();
+		return {
+			dispose: () => {
+				const index = bottomPanels.indexOf(normalized);
+				if (index >= 0) bottomPanels.splice(index, 1);
 				onChanged();
 			},
 		};
@@ -415,7 +439,7 @@ export function createPluginUiApi({
 		const normalized: ResolvedPluginNewSessionContextContribution = {
 			id: `${plugin.id}:${contribution.id}`,
 			label: contribution.label,
-			icon: contribution.icon,
+			icon: resolvePluginContributionIcon(contribution.icon, plugin.iconUrl),
 			activateWhen,
 			width: contribution.width === "wide" ? "wide" : "input",
 			render: contribution.render,
@@ -455,7 +479,7 @@ export function createPluginUiApi({
 		const normalized: PluginInputActionContribution = {
 			id: namespacedId,
 			label: contribution.label,
-			icon: contribution.icon,
+			icon: resolvePluginContributionIcon(contribution.icon, plugin.iconUrl),
 			defaultActive: contribution.defaultActive,
 			requiresActiveTool: contribution.requiresActiveTool,
 			scope_use: contribution.scope_use,
@@ -497,7 +521,7 @@ export function createPluginUiApi({
 			type: contribution.type,
 			component: contribution.component,
 			title: contribution.title,
-			icon: contribution.icon,
+			icon: resolvePluginContributionIcon(contribution.icon, plugin.iconUrl),
 			pendingFor: contribution.pendingFor,
 		};
 		cardRenderers.push(normalized);
@@ -718,7 +742,11 @@ export function createPluginUiApi({
 	};
 	const validateActivityTabCwd = (cwd: string | undefined): void => {
 		if (cwd === undefined) return;
-		if (typeof cwd !== "string" || cwd.trim().length === 0 || !(cwd.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(cwd))) {
+		// 远程项目的 cwd 是 `ssh://<hostId>/<路径>`：它同样是一个确定的工作区标识，
+		// 拒掉它会让所有按会话 cwd 定位标签卡的插件在远程会话里直接抛错。
+		const isWorkspaceIdentity =
+			typeof cwd === "string" && (cwd.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(cwd) || isSshProjectUri(cwd));
+		if (!isWorkspaceIdentity) {
 			throw new Error("Activity tab cwd must be an absolute path");
 		}
 	};
@@ -914,6 +942,7 @@ export function createPluginUiApi({
 		},
 		registerFilePreview,
 		registerActivityTab,
+		registerBottomPanel,
 		registerInputAction,
 		registerNewSessionContext,
 		registerCardRenderer,

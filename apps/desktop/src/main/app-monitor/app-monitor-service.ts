@@ -1,5 +1,6 @@
 import type { RuntimeHost, SessionEvent } from "@vetta/runtime-core";
 import type { AppMonitorEvent, AppMonitorInputImageAttachment } from "../../preload/api-types/app-monitor.js";
+import { type AbilityLifecycleLogContext, logAbilityLifecycleEvent } from "../abilities/ability-lifecycle-log.js";
 import { getAppLogger } from "../logger.js";
 import { formatDayKey, getDayBounds, getPreviousDayKey, getPreviousMonthKey } from "./app-monitor-calendar.js";
 import { type AppMonitorData, createDefaultAppMonitorData } from "./app-monitor-data.js";
@@ -804,7 +805,12 @@ function recordResourceLifecycle(
 	const kind = normalizeMetricKey(event.resourceKind);
 	const id = normalizeResourceId(event.resourceId);
 	const operation = normalizeMetricKey(event.operation);
-	if ((kind !== "skill" && kind !== "scene" && kind !== "plugin") || id === "" || operation === "unknown") return;
+	if (
+		(kind !== "skill" && kind !== "scene" && kind !== "plugin" && kind !== "mcp") ||
+		id === "" ||
+		operation === "unknown"
+	)
+		return;
 	const source = event.source ? normalizeMetricKey(event.source) : "";
 	data.resources.events += 1;
 	data.resources.byOperation[operation] = (data.resources.byOperation[operation] ?? 0) + 1;
@@ -1089,8 +1095,15 @@ export function recordAppMonitorUserActivity(): void {
 	appMonitor.recordUserActivity();
 }
 
-export function recordAppMonitorEvent(event: AppMonitorEvent): void {
+export function recordAppMonitorEvent(event: AppMonitorEvent, logContext?: AbilityLifecycleLogContext): void {
 	appMonitor.recordEvent(event);
+	if (event.type === "resource.lifecycle") {
+		try {
+			logAbilityLifecycleEvent(event, logContext);
+		} catch {
+			// Logging must not affect the lifecycle operation or monitoring data.
+		}
+	}
 }
 
 export function recordBatchProjectCreated(): void {

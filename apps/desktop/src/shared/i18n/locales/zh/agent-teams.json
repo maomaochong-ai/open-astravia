@@ -169,7 +169,9 @@
     "renameTeam": "重命名团队",
     "description": "团队简介",
     "descriptionPlaceholder": "补充这支团队的定位与协作方式…",
-    "identity": "团队信息"
+    "identity": "团队信息",
+    "automaticRetries": "自动恢复次数",
+    "automaticRetriesHelp": "每项新任务最多自动恢复 0–10 次，默认 2 次；设为 0 可关闭。达到上限后保留进度，等待你处理。"
   },
   "chat": {
     "hint": "未指定成员时由负责人处理。",

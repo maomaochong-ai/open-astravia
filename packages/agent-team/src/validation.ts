@@ -148,6 +148,7 @@ const createTeamMember = Type.Object(
 );
 export const CreateTeamInputSchema = Type.Object(
 	{
+		maxAutomaticRetries: Type.Optional(Type.Integer({ minimum: 0, maximum: 10 })),
 		name: Type.String({ minLength: 1, maxLength: 128, pattern: "\\S" }),
 		description: Type.Optional(text),
 		members: Type.Array(createTeamMember, { minItems: 1, maxItems: 32 }),
@@ -179,6 +180,7 @@ const updateTeamMember = Type.Union([
 ]);
 export const UpdateTeamInputSchema = Type.Object(
 	{
+		maxAutomaticRetries: Type.Optional(Type.Integer({ minimum: 0, maximum: 10 })),
 		expectedRevision: Type.Integer({ minimum: 1, maximum: Number.MAX_SAFE_INTEGER }),
 		name: Type.String({ minLength: 1, maxLength: 128, pattern: "\\S" }),
 		description: text,
@@ -212,6 +214,7 @@ export const UpdateTeamSessionModelSettingsInputSchema = Type.Object(
 );
 const team = Type.Object(
 	{
+		maxAutomaticRetries: Type.Optional(Type.Integer({ minimum: 0, maximum: 10 })),
 		id,
 		revision: Type.Integer({ minimum: 1, maximum: Number.MAX_SAFE_INTEGER }),
 		name: Type.String({ minLength: 1, maxLength: 128, pattern: "\\S" }),

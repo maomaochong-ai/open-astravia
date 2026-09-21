@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import type { ModelCallRequest } from "../../runtime/language-model-adapter.js";
-import { resolveProviderMaxAttempts } from "../retry-policy.js";
+import { resolveProviderMaxRetries } from "../retry-policy.js";
 import type { GoogleVertexOptions } from "./options.js";
 
 const API_VERSION = "v1";
@@ -8,6 +8,8 @@ const API_VERSION = "v1";
 export function createGoogleVertexClient(request: ModelCallRequest<"google-vertex", GoogleVertexOptions>): GoogleGenAI {
 	const { model, options } = request;
 	const headers = model.headers || options?.headers ? { ...model.headers, ...options?.headers } : undefined;
+	// Retry outside the SDK so its final response parser can preserve error details.
+	resolveProviderMaxRetries(options?.maxRetries);
 	return new GoogleGenAI({
 		vertexai: true,
 		project: resolveProject(options),
@@ -15,7 +17,6 @@ export function createGoogleVertexClient(request: ModelCallRequest<"google-verte
 		apiVersion: API_VERSION,
 		httpOptions: {
 			...(headers ? { headers } : {}),
-			retryOptions: { attempts: resolveProviderMaxAttempts(options?.maxRetries) },
 		},
 	});
 }

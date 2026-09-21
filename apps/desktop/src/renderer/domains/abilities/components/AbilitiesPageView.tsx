@@ -53,7 +53,7 @@ export function AbilitiesPageView({
 			<input
 				ref={pluginFileInputRef}
 				type="file"
-				accept=".zip,application/zip"
+				accept=".vettapkg,application/vnd.vetta.plugin+zip,.zip,application/zip"
 				className="hidden"
 				onChange={(event) => {
 					const file = event.target.files?.[0];

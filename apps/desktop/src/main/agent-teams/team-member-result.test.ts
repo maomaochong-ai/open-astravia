@@ -2,7 +2,7 @@ import { createAssistantMessage } from "@vetta/ai";
 import type { HistoryEntry } from "@vetta/runtime-core";
 import { describe, expect, it } from "vitest";
 import { collectPublishedToolExecutions } from "./team-conversation-display.js";
-import { findTeamAttemptResult } from "./team-member-result.js";
+import { findTeamAttemptFailure, findTeamAttemptResult } from "./team-member-result.js";
 
 const assistant = createAssistantMessage(
 	{ api: "openai-responses", provider: "openai", model: "model" },
@@ -83,5 +83,49 @@ describe("Team attempt result identity", () => {
 				isError: false,
 			},
 		]);
+	});
+});
+
+describe("Team attempt terminal failure", () => {
+	const failure = {
+		type: "error" as const,
+		entryId: "failed",
+		turnId: "turn",
+		code: "AI_TIMEOUT",
+		retryable: true,
+		origin: "provider" as const,
+		message: "timeout",
+		timestamp: "2",
+	};
+	it("reads a persisted failure after progress text for continue/retry without a receipt", () => {
+		expect(
+			findTeamAttemptFailure(
+				[
+					{
+						type: "message",
+						entryId: "progress",
+						message: { ...assistant, content: [{ type: "text", text: "Dispatched" }] },
+					},
+					failure,
+				],
+				new Set(),
+			),
+		).toMatchObject({ code: "AI_TIMEOUT", retryable: true });
+	});
+	it("does not reuse historical failures or override a later successful result", () => {
+		expect(findTeamAttemptFailure([failure], new Set(["failed"]))).toBeUndefined();
+		expect(
+			findTeamAttemptFailure(
+				[
+					failure,
+					{
+						type: "message",
+						entryId: "done",
+						message: { ...assistant, content: [{ type: "text", text: "Done" }] },
+					},
+				],
+				new Set(),
+			),
+		).toBeUndefined();
 	});
 });

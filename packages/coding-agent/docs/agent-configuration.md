@@ -28,6 +28,8 @@ Composition 的 Session Options 接受 `agentConfiguration: { template, override
 
 配置仅向 Runtime/SDK 与宿主代码开放。Desktop 不提供新会话或会话内的 Agent 配置编辑器，也不暴露专用 preload/IPC；原有模型选择与工作模式控件保持不变。模板由调用方提供完整快照，Desktop 不再读写编辑器使用的 `agent-templates.json`，已有会话的内嵌快照不受影响。配置不是凭证容器，也不安装资源；MCP、插件和模型仍需先在宿主中配置。
 
+Desktop「Agent 配置」设置页中的上下文压缩选项属于全局运行策略，不是本节的会话 Agent Configuration。它写入全局 `settings.json#compaction`，在下一次 Turn 准入时捕获并生效；已经开始的 Turn 保持原快照。自动压缩开关不影响用户主动发起的手动压缩。
+
 宿主已发布 Coding Agent Definition 并创建 `runtime` 后，可通过公开入口为每个会话分别配置：
 
 ```ts

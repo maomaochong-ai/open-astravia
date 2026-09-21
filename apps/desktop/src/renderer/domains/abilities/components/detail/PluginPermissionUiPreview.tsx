@@ -299,10 +299,34 @@ function FileToolbarScene(): JSX.Element {
 	);
 }
 
+function BottomPanelScene(): JSX.Element {
+	return (
+		<div className="flex h-full flex-col">
+			<div className="flex flex-1 flex-col gap-2 p-3">
+				<div className="ml-auto h-4 w-[55%] rounded-lg bg-muted/60" />
+				<div className="h-5 w-[64%] self-end rounded-lg bg-muted/45" />
+			</div>
+			<div className="mx-2 h-6 rounded-lg border border-border/40 bg-card/40" />
+			<div className="m-2 mt-1.5 rounded-lg border border-primary/40 bg-primary/5">
+				<div className="flex h-5 items-end gap-1 border-b border-border/50 px-1.5">
+					<span className="h-3.5 w-10 rounded-t bg-muted/55" />
+					<span className="flex h-4 w-12 items-center justify-center rounded-t border border-b-0 border-primary/50 bg-primary/15">
+						<span className="icon-[solar--plug-circle-linear] h-2.5 w-2.5 text-primary" />
+					</span>
+				</div>
+				<div className="p-1.5">
+					<MiniLines widths={["w-[86%]", "w-[62%]"]} />
+				</div>
+			</div>
+		</div>
+	);
+}
+
 function UiPreviewScene({ preview }: { preview: PluginUiPreview }): JSX.Element {
 	if (preview === "global") return <GlobalScene />;
 	if (preview === "filePreview") return <FilePreviewScene />;
 	if (preview === "activityTab") return <ActivityTabScene />;
+	if (preview === "bottomPanel") return <BottomPanelScene />;
 	if (preview === "inputAction") return <InputActionScene />;
 	if (preview === "message") return <MessageScene />;
 	if (preview === "toolCall") return <ToolCallScene />;

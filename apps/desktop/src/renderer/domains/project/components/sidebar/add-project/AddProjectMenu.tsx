@@ -1,6 +1,7 @@
 import { NewProjectDialog } from "@shared/components/NewProjectDialog";
 import { cn } from "@shared/lib/utils";
 import { AddProjectMenuPopover } from "./AddProjectMenuPopover";
+import { RemoteProjectPickerDialog } from "./RemoteProjectPickerDialog";
 import { AddProjectMenuTrigger } from "./AddProjectMenuTrigger";
 import { useAddProjectMenuModel } from "./useAddProjectMenuModel";
 import type { AddProjectMenuProps } from "./types";
@@ -27,6 +28,13 @@ export function AddProjectMenu({ className, variant = "icon" }: AddProjectMenuPr
 					onConfirm={model.confirmNewProject}
 					onCancel={model.closeNewProjectDialog}
 					isNameTaken={model.isProjectNameTaken}
+				/>
+			)}
+			{/* 挂在 Popover 外面：Popover 一关就会卸载，对话框会跟着消失。 */}
+			{model.showRemotePicker && (
+				<RemoteProjectPickerDialog
+					onConfirm={model.confirmRemoteProject}
+					onCancel={model.closeRemotePicker}
 				/>
 			)}
 		</>

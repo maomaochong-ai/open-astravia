@@ -62,6 +62,7 @@ describe("team assembly draft", () => {
 
 	it("reads an existing team into a draft with the leader resolved to its Agent", () => {
 		expect(assemblyDraftFromTeam(team)).toEqual({
+			maxAutomaticRetries: 2,
 			teamId: "team",
 			name: "Existing",
 			description: "desc",
@@ -105,6 +106,17 @@ describe("team assembly submission", () => {
 		["a", agent("a", "shared")],
 		["b", agent("b", "shared")],
 	]);
+
+	it("carries the chosen automatic recovery limit through create and update", () => {
+		const draft = { ...assemblyDraftFromTeam(team), maxAutomaticRetries: 0 };
+		const agents = [agent("a"), agent("b")];
+		expect(buildCreateTeamInput(draft, new Map(agents.map((agent) => [agent.id, agent]))).maxAutomaticRetries).toBe(
+			0,
+		);
+		expect(
+			buildUpdateTeamInput(draft, team, new Map(agents.map((agent) => [agent.id, agent]))).maxAutomaticRetries,
+		).toBe(0);
+	});
 
 	it("creates a team with unique member handles and a single leader", () => {
 		const input = buildCreateTeamInput({ name: " Squad ", memberIds: ["a", "b"], leaderId: "b" }, agentsById);

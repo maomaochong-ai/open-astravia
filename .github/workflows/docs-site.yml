@@ -51,12 +51,6 @@ jobs:
         with:
           bun-version-file: package.json
 
-      - name: Restore Bun dependencies
-        uses: actions/cache@v6
-        with:
-          path: ~/.bun/install/cache
-          key: quality-bun-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock', 'package.json') }}
-
       - name: Install dependencies
         uses: ./.github/actions/install-bun-dependencies
 

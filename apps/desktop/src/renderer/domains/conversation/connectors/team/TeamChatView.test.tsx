@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import type { TeamChatActions, TeamChatViewModel } from "./teamChatModel";
 import { TeamChatView } from "./TeamChatView";
 
-const captured = vi.hoisted(() => ({ view: vi.fn(), feed: vi.fn() }));
+const captured = vi.hoisted(() => ({ view: vi.fn(), feed: vi.fn(), composer: vi.fn() }));
 
 vi.mock("../../components/chat-view/DefaultChatView", () => ({
 	DefaultChatView: (props: { children: ReactNode }) => {
@@ -23,13 +23,17 @@ vi.mock("../../components/MessageList", () => ({
 	},
 }));
 vi.mock("./TeamComposerConnector", () => ({
-	TeamComposerConnector: () => <div data-testid="team-input-bar" />,
+	TeamComposerConnector: (props: unknown) => {
+		captured.composer(props);
+		return <div data-testid="team-input-bar" />;
+	},
 }));
 
 afterEach(() => {
 	cleanup();
 	captured.view.mockReset();
 	captured.feed.mockReset();
+	captured.composer.mockReset();
 });
 
 function actions(): TeamChatActions {
@@ -125,6 +129,38 @@ describe("TeamChatView shared conversation UI", () => {
 				onTeamMemberOpen: onOpenMember,
 			}),
 		);
+		expect(captured.view.mock.calls[0]?.[0].messages).toBe(viewModel.feedItems);
+		expect(captured.feed.mock.calls[0]?.[0].messages).toBe(viewModel.feedItems);
+	});
+
+	it("keeps feed and roster work isolated when only the composer draft changes", () => {
+		const viewModel = model();
+		const viewActions = actions();
+		const onOpenMember = vi.fn();
+		const onBackToTeam = vi.fn();
+		const onOpenSettings = vi.fn();
+		const { rerender } = render(
+			<TeamChatView
+				model={viewModel}
+				actions={viewActions}
+				onOpenMember={onOpenMember}
+				onBackToTeam={onBackToTeam}
+				onOpenSettings={onOpenSettings}
+			/>,
+		);
+
+		rerender(
+			<TeamChatView
+				model={{ ...viewModel, draft: "next question" }}
+				actions={viewActions}
+				onOpenMember={onOpenMember}
+				onBackToTeam={onBackToTeam}
+				onOpenSettings={onOpenSettings}
+			/>,
+		);
+
+		expect(captured.feed).toHaveBeenCalledTimes(1);
+		expect(captured.composer).toHaveBeenCalledTimes(2);
 	});
 
 	// A Team session drives the ordinary activity panel: plugin tabs stay enabled and the

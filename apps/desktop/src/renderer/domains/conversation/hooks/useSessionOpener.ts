@@ -9,6 +9,7 @@ import {
 	perfSessionSwitchMark,
 } from "@shared/lib/perf-session-switch";
 import {
+	type ActiveSession,
 	activeSessionAtom,
 	activeSessionStreamingAtom,
 	activeToolNamesAtom,
@@ -17,15 +18,12 @@ import {
 	chatMessagesAtom,
 	claimExistingSessionInputDraft,
 	claimNewSessionInputDraft,
-	contextUsageAtom,
 	conversationBucketCwd,
 	currentScenarioAtom,
 	defaultConversationCwdAtom,
 	inlineFilePreviewAtom,
 	isCompactingAtom,
 	lastActiveSessionAtom,
-	lastTurnUsageAtom,
-	modelSupportsImagesAtom,
 	newSessionInputDraftKey,
 	type OpenSessionOptions,
 	type Project,
@@ -37,14 +35,13 @@ import {
 	type SessionExecutionMode,
 	selectedModelAtom,
 	sessionAgentModeAtom,
-	sessionExecutionModeAtom,
 	sessionsMapAtom,
 } from "@shared/store/atoms";
 import { setQueueForSessionAtom, setQueuePausedAtom } from "@shared/store/message-queue-atoms";
 import { useNavigate } from "@tanstack/react-router";
 import type { ConversationScenario } from "@vetta-org/plugin-sdk";
-import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
-import { type MutableRefObject, useCallback, useRef } from "react";
+import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
+import { type MutableRefObject, startTransition, useCallback, useRef } from "react";
 import { preserveMessagesAddedAfterSnapshot, shareChatMessageSnapshot } from "../services/chat-message-snapshot";
 import {
 	appendError,
@@ -60,6 +57,7 @@ import {
 } from "../services/chat-service";
 import { resolveSessionContextComposition } from "../services/context-composition-cache";
 import { reconcileOptimisticUserMessages } from "../services/optimistic-user-message-cache";
+import { applySessionHydrationStateAtom } from "../services/session-hydration-state";
 import { useSessionEventController } from "./useSessionEventController";
 
 export interface SessionOpenerController {
@@ -77,6 +75,38 @@ function getProjects(): Project[] {
 	return getDefaultStore().get(projectsAtom);
 }
 
+const HISTORY_BACKFILL_IDLE_TIMEOUT_MS = 1_500;
+
+function scheduleHistoryBackfill(task: () => void): void {
+	if (typeof window.requestIdleCallback === "function") {
+		window.requestIdleCallback(task, { timeout: HISTORY_BACKFILL_IDLE_TIMEOUT_MS });
+		return;
+	}
+	window.setTimeout(task, 0);
+}
+
+/**
+ * 会话建不起来，是因为远程项目指向的主机已不在列表里吗。
+ *
+ * 只能认报错文案：IPC 只把异常的 message 带到渲染进程，SshTransportError 的类型信息在
+ * 半路就丢了。文案出自 ssh-transport 的 `SshConnectionManager.connection`。
+ */
+export function isUnknownSshHostError(message: string): boolean {
+	return message.includes("Unknown SSH host:");
+}
+
+function sameActiveSession(left: ActiveSession | null, right: ActiveSession): boolean {
+	return (
+		left !== null &&
+		left.cwd === right.cwd &&
+		left.sessionPath === right.sessionPath &&
+		left.runtimeId === right.runtimeId &&
+		left.parentSessionPath === right.parentSessionPath &&
+		left.parentEntryId === right.parentEntryId &&
+		left.agentProfileId === right.agentProfileId
+	);
+}
+
 export function useSessionOpener(): SessionOpenerController {
 	const setActiveSession = useSetAtom(activeSessionAtom);
 	const setPendingSessionCreation = useSetAtom(pendingSessionCreationAtom);
@@ -84,17 +114,14 @@ export function useSessionOpener(): SessionOpenerController {
 	const setChatMessages = useSetAtom(chatMessagesAtom);
 	const setActiveSessionStreaming = useSetAtom(activeSessionStreamingAtom);
 	const navigate = useNavigate();
-	const setLastTurnUsage = useSetAtom(lastTurnUsageAtom);
 	const setLastActiveSession = useSetAtom(lastActiveSessionAtom);
-	const setContextUsage = useSetAtom(contextUsageAtom);
-	const [selectedModel, setSelectedModel] = useAtom(selectedModelAtom);
+	const selectedModel = useAtomValue(selectedModelAtom);
 	const selectedModelRef = useRef(selectedModel);
 	selectedModelRef.current = selectedModel;
-	const setModelSupportsImages = useSetAtom(modelSupportsImagesAtom);
-	const setSessionExecutionMode = useSetAtom(sessionExecutionModeAtom);
 	const setActiveToolNames = useSetAtom(activeToolNamesAtom);
 	const setCurrentScenario = useSetAtom(currentScenarioAtom);
 	const setSessionAgentMode = useSetAtom(sessionAgentModeAtom);
+	const applySessionHydrationState = useSetAtom(applySessionHydrationStateAtom);
 	const setIsCompacting = useSetAtom(isCompactingAtom);
 	const setRetryProgress = useSetAtom(retryProgressAtom);
 	const setInlineFilePreview = useSetAtom(inlineFilePreviewAtom);
@@ -139,6 +166,10 @@ export function useSessionOpener(): SessionOpenerController {
 			// 取自己的调用令牌；每个异步边界都执行 newest-wins 校验。
 			// subscribe() 若已完成还会立即释放旧操作刚建好的 IPC 订阅，避免泄漏。
 			const myOpenToken = bumpOpenSessionToken();
+			const commitActiveSession = (session: ActiveSession): void => {
+				if (!sameActiveSession(activeSessionRef.current, session)) setActiveSession(session);
+				activeSessionRef.current = session;
+			};
 			// 消息流所有权即刻释放：下面的 navigate / session.create 都是 await，
 			// 期间上一个会话仍在流式输出，而视图（乐观用户气泡 + 路由）已经切到新会话。
 			// 不在这里断开归属，旧会话的 tool.phase / delta 会写进新会话的消息流。
@@ -253,7 +284,7 @@ export function useSessionOpener(): SessionOpenerController {
 			if (stageExistingSessionOpen) {
 				markSessionSwitch("session-preview-history-start");
 				previewPresentation = window.vetta.session
-					.openViewer(sessionPath)
+					.openViewer(sessionPath, { tailTurns: 2 })
 					.then(async (snapshot) => {
 						markSessionSwitch("session-preview-history-loaded");
 						if (myOpenToken !== getOpenSessionToken()) {
@@ -358,7 +389,13 @@ export function useSessionOpener(): SessionOpenerController {
 						params: { cwd: encodeURIComponent(cwd) },
 					});
 				} else if (shouldNavigate) {
-					void navigate({ to: "/" });
+					// 主机已不在列表里的远程项目，退回欢迎页等于把人扔在一个看不出原因的地方；
+					// 带回这个项目的新会话页，那里会换成「重新绑定主机」的卡片。
+					if (isUnknownSshHostError(message)) {
+						void navigate({ to: "/new-session", search: { cwd: encodeURIComponent(cwd) } });
+					} else {
+						void navigate({ to: "/" });
+					}
 				}
 				return;
 			}
@@ -367,6 +404,18 @@ export function useSessionOpener(): SessionOpenerController {
 				markSessionSwitch("session-create-superseded");
 				finishCancelledOpen();
 				return;
+			}
+			if (isExistingSessionOpen && previewMessagesSnapshot) {
+				const reconciledPreview = reconcileOptimisticUserMessages(sessionId, previewMessagesSnapshot);
+				const sharedPreview = shareChatMessageSnapshot(previewMessagesSnapshot, reconciledPreview).messages;
+				if (sharedPreview !== previewMessagesSnapshot) {
+					const previousPreview = previewMessagesSnapshot;
+					previewMessagesSnapshot = sharedPreview;
+					setChatMessages((current) =>
+						preserveMessagesAddedAfterSnapshot(previousPreview, sharedPreview, current),
+					);
+					markSessionSwitch("session-preview-optimistic-reconciled");
+				}
 			}
 			const canonicalSessionPath = createResult.sessionPath || sessionPath || "";
 			// ADR-0007: 「对话」项目下 main 会把 cwd 改写成 per-session 子目录，
@@ -385,10 +434,13 @@ export function useSessionOpener(): SessionOpenerController {
 				runtimeId: sessionId,
 				...(createResult.agentProfileId ? { agentProfileId: createResult.agentProfileId } : {}),
 			};
-			setActiveSession(earlySessionInfo);
-			activeSessionRef.current = earlySessionInfo;
+			// Existing-session UI already follows pendingSessionOpen and the tail preview.
+			// Keep Runtime identity out of presentation state until getState can commit the
+			// complete session snapshot once. New sessions still need the early identity to
+			// enter ChatView and dispatch their first prompt immediately.
+			if (!isExistingSessionOpen) commitActiveSession(earlySessionInfo);
 			setChatStreamOwner(sessionId);
-			markSessionSwitch("active-session-set");
+			markSessionSwitch(isExistingSessionOpen ? "runtime-handle-ready" : "active-session-set");
 			if (shouldNavigate && !navigateBeforeCreate && !stageExistingSessionOpen) {
 				void navigate({ to: "/" });
 				markSessionSwitch("navigation-dispatched");
@@ -465,73 +517,29 @@ export function useSessionOpener(): SessionOpenerController {
 				if (!(await subscribeForPrompt())) return;
 			}
 
-			// Fetch history + state in parallel, then commit both in one renderer job.
-			// They normally land within a few milliseconds of each other; committing
-			// history first caused an expensive intermediate render of the message tree.
-			// allSettled preserves stage-specific diagnostics without unhandled rejection.
+			// Start canonical history and Runtime state together, but only state belongs to
+			// readiness. Full-history mapping and presentation are deferred until after the
+			// session is interactive; the tail preview already owns the first screen.
 			perfSendMark("session-state-load-start", interactionId);
 			markSessionSwitch("session-hydration-start");
 			const historyPromise =
 				sessionPath === undefined ? Promise.resolve([]) : window.vetta.session.getFullHistory(sessionId);
 			const statePromise = window.vetta.session.getState(sessionId);
-			const [historyResult, stateResult] = await Promise.allSettled([historyPromise, statePromise]);
-			if (historyResult.status === "rejected") {
-				failSessionHydration("history", historyResult.reason);
-				return;
-			}
-			if (stateResult.status === "rejected") {
-				failSessionHydration("state", stateResult.reason);
+			let state: Awaited<typeof statePromise>;
+			try {
+				state = await statePromise;
+			} catch (error) {
+				failSessionHydration("state", error);
 				return;
 			}
 			if (myOpenToken !== getOpenSessionToken()) {
 				finishCancelledOpen();
 				return;
 			}
-			const history = historyResult.value;
-			const state = stateResult.value;
-			perfSendMark("session-history-loaded", interactionId);
-			markSessionSwitch("session-history-loaded");
-			const mapped = reconcileOptimisticUserMessages(sessionId, fullHistoryToChat(history));
-			markSessionSwitch("session-history-mapped");
-			// 新会话在 subscribe 后已经允许首条消息直发，此时 sendMessage 可能已经
-			// 写入乐观用户气泡。空历史没有需要恢复的内容，不能再用 [] 覆盖该气泡。
-			if (sessionPath !== undefined) {
-				const previewSnapshot = previewMessagesSnapshot;
-				if (!previewSnapshot) {
-					setChatMessages(mapped);
-				} else {
-					const sharedSnapshot = shareChatMessageSnapshot(previewSnapshot, mapped);
-					if (sharedSnapshot.messages === previewSnapshot) {
-						markSessionSwitch("session-history-commit-skipped-equivalent");
-					} else {
-						if (sharedSnapshot.reusedCount > 0) {
-							markSessionSwitch("session-history-commit-structural-share");
-						}
-						setChatMessages((current) =>
-							preserveMessagesAddedAfterSnapshot(previewSnapshot, sharedSnapshot.messages, current),
-						);
-					}
-				}
-			}
 
 			perfSendMark("session-state-loaded", interactionId);
 			markSessionSwitch("session-state-loaded");
 			const contextComposition = resolveSessionContextComposition(resolvedSessionPath, state.contextComposition);
-			setContextUsage({
-				percent: state.contextPercent,
-				contextTokens: state.contextTokens ?? null,
-				contextWindow: state.contextWindow,
-				...(contextComposition ? { composition: contextComposition } : {}),
-			});
-			setModelSupportsImages(state.model?.input?.includes("image") ?? false);
-			setSessionExecutionMode(state.executionMode);
-			// 激活工具集 → 输入栏 badge 按工具 scope 跟随显示（单一真相源）。
-			setActiveToolNames(new Set(state.activeToolNames));
-			// 对话场景 → 会话页插件插槽按对话类型 fail-closed 显隐。
-			setCurrentScenario(state.scenario);
-			// 本会话固化的工作模式 → 按会话而非全局默认值渲染（见 ADR-0046 修订）。
-			// 合法值由主进程按模式注册表固化（ADR-0071），renderer 只区分「有/无」。
-			setSessionAgentMode(typeof state.agentMode === "string" && state.agentMode ? state.agentMode : null);
 			// Fork lineage from session header (parentSession / parentEntryId).
 			const parentSessionPath = state.parentSessionPath;
 			const parentEntryId = state.parentEntryId;
@@ -548,14 +556,23 @@ export function useSessionOpener(): SessionOpenerController {
 				if (desired && desired !== backendModelKey) {
 					void window.vetta.session.updateSettings(sessionId, { modelKey: desired });
 				}
-			} else if (backendModelKey) {
-				setSelectedModel(backendModelKey);
 			}
 
-			// Resolve the on-disk session path so that downstream features (turn
-			// stats cache, auto-title rename) can key off the actual file path even
-			// for sessions that were just created by the runtime.
-			setLastTurnUsage(turnStatsCache.get(cachedKey) ?? null);
+			applySessionHydrationState({
+				activeToolNames: state.activeToolNames,
+				agentMode: typeof state.agentMode === "string" && state.agentMode ? state.agentMode : null,
+				contextUsage: {
+					percent: state.contextPercent,
+					contextTokens: state.contextTokens ?? null,
+					contextWindow: state.contextWindow,
+					...(contextComposition ? { composition: contextComposition } : {}),
+				},
+				executionMode: state.executionMode,
+				lastTurnUsage: turnStatsCache.get(cachedKey) ?? null,
+				modelSupportsImages: state.model?.input?.includes("image") ?? false,
+				scenario: state.scenario,
+				...(sessionPath !== undefined && backendModelKey ? { selectedModel: backendModelKey } : {}),
+			});
 
 			// If session is still streaming, adopt the last history assistant message as draft
 			// so that incoming streaming events append to it instead of creating a duplicate.
@@ -572,10 +589,10 @@ export function useSessionOpener(): SessionOpenerController {
 				setActiveSessionStreaming(true);
 			}
 
-			// 补一次写入：真实 sessionPath + fork 血缘（parentSession/parentEntryId）。
-			// 早写入用的是 sessionPath ?? "" 且无 lineage；state 落地后统一覆写。
+			// 现有会话到这里才一次性发布完整 Runtime identity；新会话若血缘等字段
+			// 未变化则复用早期 identity，不制造第二次全局订阅更新。
 			{
-				const sessionInfo = {
+				const sessionInfo: ActiveSession = {
 					cwd: effectiveCwd,
 					sessionPath: cachedKey,
 					runtimeId: sessionId,
@@ -583,8 +600,7 @@ export function useSessionOpener(): SessionOpenerController {
 					parentEntryId,
 					...(createResult.agentProfileId ? { agentProfileId: createResult.agentProfileId } : {}),
 				};
-				setActiveSession(sessionInfo);
-				activeSessionRef.current = sessionInfo;
+				commitActiveSession(sessionInfo);
 			}
 
 			// 输入草稿按 sessionPath 隔离：打开已有会话装入该会话草稿；
@@ -598,6 +614,54 @@ export function useSessionOpener(): SessionOpenerController {
 			markSessionSwitch("session-hydration-committed");
 			if (stageExistingSessionOpen) clearOwnPendingTransition();
 			if (isExistingSessionOpen) perfSessionSwitchComplete("completed", interactionId);
+
+			if (sessionPath !== undefined) {
+				void historyPromise
+					.then((history) => {
+						perfSendMark("session-history-loaded", interactionId);
+						markSessionSwitch("session-history-loaded");
+						if (myOpenToken !== getOpenSessionToken()) return;
+						scheduleHistoryBackfill(() => {
+							if (myOpenToken !== getOpenSessionToken()) return;
+							const canonical = fullHistoryToChat(history);
+							const reconciled = reconcileOptimisticUserMessages(sessionId, canonical);
+							const canonicalIds = new Set(canonical.map((message) => message.id));
+							const mapped = reconciled.filter((message) => canonicalIds.has(message.id));
+							const unresolvedOptimistic = reconciled.filter((message) => !canonicalIds.has(message.id));
+							markSessionSwitch("session-history-mapped");
+							const previewSnapshot = previewMessagesSnapshot ?? [];
+							const sharedSnapshot = shareChatMessageSnapshot(previewSnapshot, mapped);
+							if (sharedSnapshot.messages === previewSnapshot) {
+								markSessionSwitch("session-history-commit-skipped-equivalent");
+								return;
+							}
+							if (sharedSnapshot.reusedCount > 0) {
+								markSessionSwitch("session-history-commit-structural-share");
+							}
+							startTransition(() => {
+								setChatMessages((current) => {
+									const merged = preserveMessagesAddedAfterSnapshot(
+										previewSnapshot,
+										sharedSnapshot.messages,
+										current,
+									);
+									const mergedIds = new Set(merged.map((message) => message.id));
+									const missingOptimistic = unresolvedOptimistic.filter(
+										(message) => !mergedIds.has(message.id),
+									);
+									return missingOptimistic.length > 0 ? [...merged, ...missingOptimistic] : merged;
+								});
+							});
+						});
+					})
+					.catch((error: unknown) => {
+						if (myOpenToken !== getOpenSessionToken()) return;
+						console.error("[useSessionOpener] session history backfill failed", { interactionId, error });
+						markSessionSwitch("session-history-backfill-failed");
+						const message = error instanceof Error ? error.message : String(error);
+						setChatMessages((current) => appendError(current, message));
+					});
+			}
 
 			// kernel 队列镜像初始化（ADR-0060）：整体替换、不做消费差分——后台期间被
 			// 消费的条目由历史重放呈现，这里只要拿到当前真实队列与 paused 状态。
@@ -632,7 +696,9 @@ export function useSessionOpener(): SessionOpenerController {
 					if (!cachedKey) return;
 					const listed = getDefaultStore().get(sessionsMapAtom).get(bucketCwd) ?? [];
 					if (listed.some((s) => s.path === cachedKey)) return;
-					const firstUser = mapped.find((m) => m.kind === "user");
+					const firstUser = getDefaultStore()
+						.get(chatMessagesAtom)
+						.find((message) => message.kind === "user");
 					const firstMessage =
 						(firstUser?.text ?? "").trim().slice(0, 80) || i18n.t("chat:session.emptyMessageLabel");
 					ensureLocalSession(bucketCwd, {
@@ -660,15 +726,11 @@ export function useSessionOpener(): SessionOpenerController {
 			navigate,
 			loadSessions,
 			ensureLocalSession,
-			setLastTurnUsage,
 			setLastActiveSession,
-			setContextUsage,
-			setModelSupportsImages,
-			setSessionExecutionMode,
 			setActiveToolNames,
 			setCurrentScenario,
 			setSessionAgentMode,
-			setSelectedModel,
+			applySessionHydrationState,
 			createSessionEventHandler,
 			setInlineFilePreview,
 			resetEventBuffers,

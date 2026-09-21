@@ -2,6 +2,7 @@ import "./providers/register-builtins.js";
 import "./utils/http-proxy.js";
 
 import { getApiProvider, getApiProviderSource } from "./api-registry.js";
+import { withProviderFetch } from "./provider-fetch.js";
 import { projectLanguageModelAdapter, projectLanguageModelSimpleAdapter } from "./providers/legacy-adapter-stream.js";
 import { getDefaultAdapterRegistry } from "./runtime/default-adapter-registry.js";
 import type {
@@ -48,12 +49,13 @@ export function stream<TApi extends Api>(
 	context: Context,
 	options?: ProviderStreamOptions,
 ): AssistantMessageEventStream {
+	const resolved = withProviderFetch(model, options as StreamOptions | undefined);
 	const nativeAdapter = resolveNativeAdapter(model.api);
 	if (nativeAdapter && shouldUseNativeAdapter(model.api)) {
-		return projectLanguageModelAdapter(nativeAdapter, model, context, options as StreamOptions);
+		return projectLanguageModelAdapter(nativeAdapter, model, context, resolved);
 	}
 	const provider = resolveApiProvider(model.api);
-	return provider.stream(model, context, options as StreamOptions);
+	return provider.stream(model, context, resolved);
 }
 
 export async function complete<TApi extends Api>(
@@ -70,12 +72,13 @@ export function streamSimple<TApi extends Api>(
 	context: Context,
 	options?: SimpleStreamOptions,
 ): AssistantMessageEventStream {
+	const resolved = withProviderFetch(model, options);
 	const nativeAdapter = resolveNativeAdapter(model.api);
 	if (nativeAdapter?.streamSimple && shouldUseNativeSimpleAdapter(model.api)) {
-		return projectLanguageModelSimpleAdapter(nativeAdapter, model, context, options);
+		return projectLanguageModelSimpleAdapter(nativeAdapter, model, context, resolved);
 	}
 	const provider = resolveApiProvider(model.api);
-	return provider.streamSimple(model, context, options);
+	return provider.streamSimple(model, context, resolved);
 }
 
 export async function completeSimple<TApi extends Api>(

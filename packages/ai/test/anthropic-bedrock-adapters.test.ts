@@ -100,6 +100,7 @@ describe("Anthropic native adapter", () => {
 				options: { apiKey: "test", fetch: transport.fetch },
 			}),
 			AI_ERROR_CODES.RATE_LIMITED,
+			{ message: "slow down", providerCode: "rate_limit_error" },
 		);
 	});
 
@@ -285,14 +286,23 @@ describe("Amazon Bedrock native adapter", () => {
 			send: senderFor([{ throttlingException: { message: "slow down" } }]),
 		});
 
-		await expectNativeFailure(adapter.stream({ model: bedrockModel, context }), AI_ERROR_CODES.RATE_LIMITED);
+		await expectNativeFailure(adapter.stream({ model: bedrockModel, context }), AI_ERROR_CODES.RATE_LIMITED, {
+			message: "Throttling error: slow down",
+			providerCode: "ThrottlingException",
+		});
 	});
 
 	it("maps AWS SDK response metadata to the stable permission error", async () => {
-		const sdkError = Object.assign(new Error("denied"), { $metadata: { httpStatusCode: 403 } });
+		const sdkError = Object.assign(new Error("denied"), {
+			name: "AccessDeniedException",
+			$metadata: { httpStatusCode: 403 },
+		});
 		const adapter = createBedrockAdapter({ send: vi.fn().mockRejectedValue(sdkError) });
 
-		await expectNativeFailure(adapter.stream({ model: bedrockModel, context }), AI_ERROR_CODES.PERMISSION_DENIED);
+		await expectNativeFailure(adapter.stream({ model: bedrockModel, context }), AI_ERROR_CODES.PERMISSION_DENIED, {
+			message: "denied",
+			providerCode: "AccessDeniedException",
+		});
 	});
 
 	it("does not call the sender when already aborted", async () => {
@@ -342,10 +352,11 @@ async function settleNative(response: ModelStreamResponse): Promise<void> {
 async function expectNativeFailure(
 	responsePromise: Promise<ModelStreamResponse>,
 	code: AIError["code"],
+	details: Partial<AIError> = {},
 ): Promise<void> {
 	const response = await responsePromise;
 	const settlement = Promise.all([collectEvents(response.events), response.result]);
-	await expect(settlement).rejects.toMatchObject({ code } satisfies Partial<AIError>);
+	await expect(settlement).rejects.toMatchObject({ code, ...details } satisfies Partial<AIError>);
 }
 
 async function collectEvents(events: AsyncIterable<LanguageModelStreamEvent>): Promise<LanguageModelStreamEvent[]> {

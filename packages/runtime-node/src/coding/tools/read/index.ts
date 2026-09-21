@@ -1,6 +1,10 @@
 export { READ_TOOL_DESCRIPTION } from "./description.js";
 export { convertToPng } from "./image-convert.js";
-export { detectSupportedImageMimeTypeFromFile } from "./image-mime.js";
+export {
+	detectSupportedImageMimeTypeFromBuffer,
+	detectSupportedImageMimeTypeFromFile,
+	IMAGE_SNIFF_BYTES,
+} from "./image-mime.js";
 export type {
 	ImageResizeFailure,
 	ImageResizeOptions,

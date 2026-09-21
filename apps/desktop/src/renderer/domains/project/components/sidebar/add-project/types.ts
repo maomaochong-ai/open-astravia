@@ -3,11 +3,11 @@ export interface AddProjectMenuProps {
 	variant?: "icon" | "navItem";
 }
 
-export type AddProjectMenuAction = "newProject" | "openProject" | "importProject";
+export type AddProjectMenuAction = "newProject" | "openProject" | "importProject" | "addFromRemoteHost";
 
 export interface AddProjectMenuItemModel {
 	action: AddProjectMenuAction;
 	icon: string;
-	labelKey: "actions.newProject" | "actions.openProject" | "actions.importProject";
+	labelKey: "actions.newProject" | "actions.openProject" | "actions.importProject" | "actions.addFromRemoteHost";
 	onSelect: () => void;
 }

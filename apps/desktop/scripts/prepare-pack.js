@@ -5,12 +5,13 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { resolveBuildResourceFilters } from "./build-resource-filters.mjs";
 import { validateDesktopBuildEnvironment } from "./desktop-build-environment.mjs";
-import { DESKTOP_BUILD_OUTPUTS } from "./desktop-packaging-layout.mjs";
+import { DESKTOP_BUILD_OUTPUTS, VETTA_PLUGIN_FILE_ASSOCIATION } from "./desktop-packaging-layout.mjs";
 import { LINUX_PACKAGE_METADATA, LINUX_RELEASE_TARGETS } from "./linux-packaging-contract.mjs";
 import { loadBuildEnv } from "./load-build-env.mjs";
 import { resolvePackagedNativeDependencies } from "./packaged-native-dependencies.mjs";
 import { resolveReleaseInfo } from "./resolve-release-info.mjs";
 import { prepareSpeechModels, SPEECH_MODEL_RESOURCE_ROOT } from "./fetch-speech-models.mjs";
+import { prepareVendorRuntimes } from "./fetch-vendor-runtimes.mjs";
 import {
 	resolveSpeechInputBuildConfig,
 	resolveSpeechInputTargetTags,
@@ -30,7 +31,6 @@ const macSigning = buildEnvironment.macSigning;
 
 const projectRoot = join(import.meta.dirname, "..");
 const buildStageDir = join(tmpdir(), "vetta-desktop-build");
-const vendorCacheDir = join(tmpdir(), "vetta-desktop-vendor-cache");
 const imGatewayDir = join(projectRoot, "..", "im-gateway");
 const imGatewayDistDir = join(imGatewayDir, "dist");
 const codingAgentDir = join(projectRoot, "..", "..", "packages", "coding-agent");
@@ -232,6 +232,24 @@ for (const dep of optionalExternalDeps) {
 	}
 }
 
+// 终端的 pty.node 按「平台-架构」拆包，同一 OS 的另一个架构在本机装不到，所以那些包
+// 只能是 optional。但**本次目标**的那个必须在：缺了它应用照样启动，只是终端一开就报
+// require 失败——这种故障只在安装包里复现，必须在构建阶段就拦下来。
+function assertTerminalPtyBinaryStaged() {
+	const staged = new Set(externalDepInfos.map((info) => info.dep));
+	const missing = resolvePlatformTagsFromEnv()
+		.map((platformTag) => `@lydell/node-pty-${platformTag}`)
+		.filter((dep) => optionalExternalDeps.includes(dep) && !staged.has(dep));
+	if (missing.length > 0) {
+		throw new Error(
+			`[prepare-pack] terminal PTY binary missing for this target: ${missing.join(", ")}. ` +
+				`Install it on the build host (it ships as an optionalDependency of @lydell/node-pty).`,
+		);
+	}
+}
+
+assertTerminalPtyBinaryStaged();
+
 function assertPackagedMainHasNoWorkspaceImports(mainOutputDir) {
 	const workspaceImportPattern = /^\s*import(?:\s+.+\s+from)?\s+["']@vetta\//;
 	const invalidImports = [];
@@ -391,6 +409,56 @@ if (existsSync(imGatewayDistDir)) {
 }
 
 // =============================================================================
+// ssh-helper: remote-project helper binaries (extraResources) —— ADR-0124
+// =============================================================================
+//
+// The helper runs on the REMOTE host of an SSH project, so its targets have
+// nothing to do with the desktop platform being packaged: a Windows build of
+// the app still needs the linux/arm64 helper to upload. Every supported remote
+// platform therefore ships in every package (~3 MB each, static, CGO off).
+//
+// A missing helper is not fatal at runtime — remote projects fall back to plain
+// `ssh exec` — but a packaging run that silently ships without it would turn
+// "background tasks survive a disconnect" into a per-build lottery, so fail here.
+
+const sshHelperDir = join(projectRoot, "..", "ssh-helper");
+const SSH_HELPER_TARGETS = [
+	{ os: "linux", arch: "amd64" },
+	{ os: "linux", arch: "arm64" },
+	{ os: "darwin", arch: "amd64" },
+	{ os: "darwin", arch: "arm64" },
+];
+
+console.log("[prepare-pack] cross-building ssh-helper...");
+const stagedSshHelperDir = join(buildStageDir, "ssh-helper");
+rmSync(stagedSshHelperDir, { recursive: true, force: true });
+for (const target of SSH_HELPER_TARGETS) {
+	const outputDir = join(stagedSshHelperDir, `${target.os}-${target.arch}`);
+	const outputPath = join(outputDir, "vetta-ssh-helper");
+	mkdirSync(outputDir, { recursive: true });
+	console.log(`  -> ${outputPath}`);
+	try {
+		execFileSync(
+			process.platform === "win32" ? "go.exe" : "go",
+			["build", "-trimpath", "-ldflags", "-s -w", "-o", outputPath, "./cmd/vetta-ssh-helper"],
+			{
+				cwd: sshHelperDir,
+				env: { ...process.env, CGO_ENABLED: "0", GOARCH: target.arch, GOOS: target.os },
+				stdio: "inherit",
+			},
+		);
+	} catch (err) {
+		console.error("[prepare-pack] ssh-helper cross-build failed");
+		throw err;
+	}
+	try {
+		chmodSync(outputPath, 0o755);
+	} catch {
+		// best effort on Windows / FAT; the desktop app chmods it again after upload
+	}
+}
+
+// =============================================================================
 // coding-agent runtime assets (extraResources)
 // =============================================================================
 //
@@ -543,53 +611,13 @@ async function stageVendorRuntimes() {
 		console.warn("[prepare-pack] VETTA_SKIP_VENDOR=1 —— 跳过内置运行时,产物将依赖面板手动下载");
 		return;
 	}
-	const manifestPath = join(projectRoot, "src", "main", "runtimes", "manifest.json");
-	const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
 	const platformTag = process.env.VETTA_VENDOR_PLATFORM || `${process.platform}-${process.arch}`;
 	const stagedVendorDir = join(buildStageDir, "vendor");
-
-	for (const type of ["node", "python"]) {
-		const def = manifest[type];
-		const entry = def.platforms[platformTag];
-		if (!entry) {
-			throw new Error(
-				`[prepare-pack] manifest 缺少 ${type} 平台 ${platformTag};跨平台打包请设 VETTA_VENDOR_PLATFORM`,
-			);
-		}
+	const archives = await prepareVendorRuntimes({ platformTag });
+	for (const { type, def, entry, archivePath } of archives) {
 		const destTypeDir = join(stagedVendorDir, type);
 		rmSync(destTypeDir, { recursive: true, force: true });
 		mkdirSync(destTypeDir, { recursive: true });
-
-		const urls = def.sources.map((tpl) =>
-			tpl
-				.replace("{version}", def.version)
-				.replace("{release}", def.release ?? "")
-				.replace("{filename}", entry.filename),
-		);
-		const cacheTypeDir = join(vendorCacheDir, platformTag, type);
-		const archivePath = join(cacheTypeDir, entry.filename);
-		mkdirSync(cacheTypeDir, { recursive: true });
-
-		let readyArchive = existsSync(archivePath);
-		if (readyArchive) {
-			console.log(`[prepare-pack] using cached vendor ${type} archive -> ${archivePath}`);
-		}
-		for (const url of urls) {
-			if (readyArchive) break;
-			try {
-				console.log(`[prepare-pack] downloading vendor ${type} <- ${url}`);
-				const res = await fetch(url, { redirect: "follow" });
-				if (!res.ok) throw new Error(`HTTP ${res.status}`);
-				writeFileSync(archivePath, Buffer.from(await res.arrayBuffer()));
-				readyArchive = true;
-				break;
-			} catch (err) {
-				console.warn(`[prepare-pack] download failed (${url}): ${err.message}`);
-			}
-		}
-		if (!readyArchive) {
-			throw new Error(`[prepare-pack] 无法下载 vendor ${type}(${platformTag});检查构建机网络或设 VETTA_SKIP_VENDOR=1`);
-		}
 
 		// macOS 必须内置解压目录：electron-builder 只签得到文件系统上可见的 Mach-O，
 		// 而 Apple 公证服务会解开归档递归校验，归档内的 python/node 二进制一律被判
@@ -620,7 +648,7 @@ await stageVendorRuntimes();
 // 系统插件（extraResources）—— ADR-0024
 // =============================================================================
 //
-// build:presets 已为每个 preset 生成 release/<id>-<version>.zip。打包阶段只消费
+// build:presets 已为每个 preset 生成 release/<id>-<version>.vettapkg。打包阶段只消费
 // zip 制品，校验后解压到 Resources/system-plugins/<id>/，不读取源码 dist。
 // 按 profile + 租户筛选打包进 App 的系统插件。
 console.log(
@@ -640,6 +668,11 @@ function resolveExtraResources() {
 			from: "im-gateway",
 			to: "im-gateway",
 			filter: ["im-gateway-*"],
+		},
+		{
+			from: "ssh-helper",
+			to: "ssh-helper",
+			filter: ["**/*"],
 		},
 		{
 			from: "coding-agent",
@@ -721,6 +754,7 @@ const builderConfig = {
 		name: "Vetta",
 		schemes: ["vetta"],
 	},
+	fileAssociations: [VETTA_PLUGIN_FILE_ASSOCIATION],
 	mac: {
 		target: ["dmg", "zip"],
 		category: "public.app-category.productivity",

@@ -16,6 +16,11 @@ export interface ProjectContextMenuViewLabels {
 }
 
 export interface ProjectContextMenuViewProps {
+	/**
+	 * False when the project has no counterpart on this computer (a remote project):
+	 * there is nothing for the system file manager to show. Defaults to true.
+	 */
+	canOpenInFolder?: boolean;
 	clearClawDisabled?: boolean;
 	clearConversationDisabled?: boolean;
 	defaultScope?: ProjectContextMenuScope;
@@ -34,6 +39,7 @@ export interface ProjectContextMenuViewProps {
 }
 
 export function ProjectContextMenuView({
+	canOpenInFolder = true,
 	clearClawDisabled,
 	clearConversationDisabled,
 	defaultScope,
@@ -94,7 +100,7 @@ export function ProjectContextMenuView({
 				className="fixed z-[1000] w-[160px] overflow-hidden rounded-lg border border-border bg-popover p-1 shadow-xl"
 				style={{ left: `${adjustedPos.x}px`, top: `${adjustedPos.y}px` }}
 			>
-				{!isDefault && (
+				{!isDefault && canOpenInFolder && (
 					<button
 						type="button"
 						onClick={onOpenInFolder}

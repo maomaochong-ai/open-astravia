@@ -42,6 +42,7 @@ import {
 	isSessionPathInDirectory,
 	logRuntimeSessionError,
 	PathFilteredRuntimeSessionCatalog,
+	setDesktopSshConnectionResolver,
 } from "@vetta/runtime-desktop";
 import { FileConversationRuntimeSessionFileHistoryReader } from "@vetta/runtime-node/conversation";
 import {
@@ -66,8 +67,10 @@ import { getDesktopMcpTaskCoordinator } from "../mcp/mcp-task-runtime.js";
 import { createDesktopPluginHookAdapterFactory } from "../plugins/coding-agent-hook-adapter.js";
 import { pluginAgentContributionService } from "../plugins/plugin-catalog.js";
 import { getDesktopCodingAgentPluginRuntimeSource } from "../plugins/plugin-runtime-service.js";
+import { getDesktopRuntimeConfigurationService } from "../runtime-configuration/runtime-configuration-composition.js";
 import { getAvailableLinuxBubblewrapPath, getAvailableMacosSandboxExecPath } from "../sandbox/capability.js";
 import { resolveWindowsSandboxHostBinary } from "../sandbox/windows-binary-resolver.js";
+import { getSshConnection } from "../ssh/ssh-runtime.js";
 import { createCodingAgentObservationLogPort } from "./coding-agent-observation-log-port.js";
 import { createDesktopCodingAgentFunctionSource } from "./function-extension-source.js";
 import { getOrCreateSharedModelRuntime, readDesktopMcpDebug } from "./host-services.js";
@@ -81,6 +84,9 @@ import { createSessionInitializationLogPort } from "./session-initialization-log
 const log = getAppLogger("runtime");
 
 export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
+	// 远程项目的工具环境要按 hostId 取 SSH 连接，而主机配置属于应用层，
+	// runtime-desktop 不能反向依赖它，所以在这里把实现注册进去。
+	setDesktopSshConnectionResolver(getSshConnection);
 	const observability = createDesktopAgentObservability(getAgentDir(), log);
 	const observationHub = new RuntimeObservationHub({
 		onIssue: (issue) => log.warn("[runtime-observation] application hub issue", issue),
@@ -117,6 +123,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 	const mcpTaskCoordinator = getDesktopMcpTaskCoordinator();
 	const mcpAppHost = getDesktopMcpAppRegistry();
 	const providerObservationRuntime = getDesktopProviderObservationRuntime();
+	const runtimeConfiguration = getDesktopRuntimeConfigurationService();
 	const modelStream = createLoopbackSessionAffinityStream(providerObservationRuntime?.streamFn);
 	const getDefaultExecutionMode = async () => (await readDesktopConfig()).defaultExecutionMode;
 	const sandboxHostPath = resolveWindowsSandboxHostBinary()?.path;
@@ -147,6 +154,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 				tracing: { captureContent: false, detail: "standard" },
 				agentRuntime: { runtime: agentRuntime },
 				modelRegistry: modelRuntime,
+				resolveCompactionSettings: () => runtimeConfiguration.readCompactionSettings(),
 				createPromptRuntimeSources: createDesktopPromptRuntimeSources,
 				createPluginRuntime: () => getDesktopCodingAgentPluginRuntimeSource(),
 				// 工作模式注册表归 desktop 所有（ADR-0071 修订）：coding-agent 只保留 core.mode

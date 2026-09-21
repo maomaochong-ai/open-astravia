@@ -1,3 +1,4 @@
+import { logAbilityInstallFailed, logAbilityInstallStarted } from "../abilities/ability-lifecycle-log.js";
 import { recordAppMonitorEvent } from "../app-monitor/app-monitor-service.js";
 import { stopAllSpawnsForPlugin } from "./command-spawner.js";
 import { destroyOffscreenSessionsForPlugin } from "./offscreen-capture-service.js";
@@ -59,6 +60,8 @@ const dependencies: PluginLifecycleDependencies = {
 	},
 	refreshRuntime: refreshAgentPlugins,
 	recordEvent: recordAppMonitorEvent,
+	logInstallStarted: logAbilityInstallStarted,
+	logInstallFailed: logAbilityInstallFailed,
 };
 
 export function createPluginLifecycleService(pluginActionService: PluginActionService): PluginLifecycleService {

@@ -135,6 +135,8 @@ export interface AppearanceSettingsModel {
 	uiThemes: AppearanceUiThemeOption[];
 }
 
+type AppearanceSettingsActions = AppearanceSettingsModel["actions"];
+
 const MODE_OPTIONS = [
 	{
 		value: "light",
@@ -354,9 +356,8 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 		}),
 		[t],
 	);
-
-	return {
-		actions: {
+	const actions = useMemo<AppearanceSettingsActions>(
+		() => ({
 			changeLanguage: (nextLanguage) => {
 				void setLanguage(nextLanguage);
 				recordSettingsUsage({ tab: "appearance", action: "changed", target: "language", value: nextLanguage });
@@ -399,7 +400,12 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 					value: style,
 				});
 			},
-		},
+		}),
+		[selectTheme, setCursorStyle, setLanguage, setMode, setOrnament, setSidebarStyle, setTexture, setThemeName],
+	);
+
+	return {
+		actions,
 		activeUiThemeId: activeThemeId,
 		cursorOptions,
 		cursorStyle,

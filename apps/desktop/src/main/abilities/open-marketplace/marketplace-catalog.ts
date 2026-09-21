@@ -61,7 +61,7 @@ export function loadMarketplaceCatalog(root: string, manifest: MarketplaceManife
 		if (ability.type === "mcp") {
 			ability.config = validateOpenMarketplaceMcp(sourceDir, ability);
 		} else if (ability.type === "plugin") {
-			ability.config = validateOpenMarketplacePlugin(sourceDir, ability);
+			if (!ability.releases) ability.config = validateOpenMarketplacePlugin(sourceDir, ability);
 		} else if (ability.type !== "bundle") {
 			validateSkillPackage(sourceDir, ability);
 		}

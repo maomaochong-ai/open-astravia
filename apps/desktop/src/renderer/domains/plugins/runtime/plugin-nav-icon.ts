@@ -9,11 +9,9 @@
  * the built-in navigation entries.
  */
 
-const ICONIFY_NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$/i;
+import { type ClassifiedPluginIcon, classifyPluginIcon } from "@shared/lib/plugin-icon";
 
-export type PluginNavIcon =
-	| { readonly kind: "class"; readonly value: string }
-	| { readonly kind: "image"; readonly url: string };
+export type PluginNavIcon = ClassifiedPluginIcon;
 
 /**
  * Classify an icon reference the way the host already classifies plugin manifest icons:
@@ -21,14 +19,7 @@ export type PluginNavIcon =
  * (`vetta-plugin://` / `http(s)://` / `data:`) the host must render itself.
  */
 export function classifyPluginNavIcon(icon: string | undefined): PluginNavIcon | null {
-	const trimmed = icon?.trim();
-	if (!trimmed) return null;
-	if (trimmed.startsWith("icon-[")) return { kind: "class", value: trimmed };
-	if (ICONIFY_NAME_PATTERN.test(trimmed) && !trimmed.includes("://")) {
-		const separator = trimmed.indexOf(":");
-		return { kind: "class", value: `icon-[${trimmed.slice(0, separator)}--${trimmed.slice(separator + 1)}]` };
-	}
-	return { kind: "image", url: trimmed };
+	return classifyPluginIcon(icon);
 }
 
 export interface ResolvedNavIcon {

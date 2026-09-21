@@ -91,6 +91,7 @@
 	"actions": {
 		"newProject": "New Project",
 		"openProject": "Open Project",
+		"addFromRemoteHost": "Add from remote host",
 		"importProject": "Import Project",
 		"more": "More"
 	},
@@ -218,5 +219,32 @@
 		"loading": "Loading plugins…",
 		"missing": "This workspace view no longer exists. Returning to home.",
 		"failed": "This workspace view failed to render. Check DevTools for details."
+	},
+	"remotePicker": {
+		"title": "Add a project from a remote host",
+		"pickHost": "Pick a registered host",
+		"loading": "Loading…",
+		"noHosts": "No remote hosts registered yet",
+		"noHostsHint": "Add one under Settings → SSH hosts, or import the aliases you already have in ~/.ssh/config.",
+		"parent": "Parent folder",
+		"emptyDir": "No sub-folders here. You can add this folder as the project.",
+		"browseFailed": "Could not read this folder. The connection may be down, or this account may lack permission.",
+		"details": "Technical details",
+		"backToHosts": "Pick another host",
+		"cancel": "Cancel",
+		"confirm": "Add this folder as a project",
+		"failedTitle": "Could not add this project"
+	},
+	"orphanRemote": {
+		"title": "This project's host is no longer in your host list",
+		"description": "The SSH host it points to was removed, or got a new identity when it was added again. Pick the matching host to reconnect the project; its sessions stay intact.",
+		"pickHost": "Which host was it on?",
+		"noHosts": "No hosts are registered yet. Add this host first, then come back to bind it.",
+		"addHost": "Add a host",
+		"rebind": "Bind to this host",
+		"rebinding": "Binding…",
+		"hostInUse": "This host already has {{count}} project(s); binding here would disconnect them. Pick another host, or add this machine again separately for this project.",
+		"notOrphaned": "This project no longer needs rebinding. Try refreshing.",
+		"footnote": "The host takes over the identity recorded in the project. If you had chosen to remember a password, you may be asked for it once more."
 	}
 }

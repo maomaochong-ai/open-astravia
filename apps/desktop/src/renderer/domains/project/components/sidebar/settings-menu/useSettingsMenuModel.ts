@@ -1,6 +1,6 @@
 import { cloudEnabled } from "@shared/components/cloud-slots";
 import { useImOnline } from "@shared/hooks/useImOnline";
-import { useTheme } from "@shared/hooks/useTheme";
+import { useThemeActions } from "@shared/hooks/useTheme";
 import { authUserAtom, loginPopoverOpenAtom, type ThemeMode, themeModeAtom } from "@shared/store/atoms";
 import { cloudLogoutAtom, subscriptionStatusAtom } from "@shared/store/auth-atoms";
 import { useNavigate } from "@tanstack/react-router";
@@ -13,7 +13,7 @@ export function useSettingsMenuModel(open: boolean, setOpen: (open: boolean) => 
 	const { t } = useTranslation("settings");
 	const { t: tProject } = useTranslation("project");
 	const mode = useAtomValue(themeModeAtom);
-	const { setMode } = useTheme();
+	const { setMode } = useThemeActions();
 	const navigate = useNavigate();
 	const setLoginOpen = useSetAtom(loginPopoverOpenAtom);
 	// 不再经 useAuth 取登录态：那个 hook 同时挂载整套云会话 effects，属于

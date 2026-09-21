@@ -82,6 +82,7 @@ describe("installOpenMarketplaceAbility", () => {
 			marketplace: "vetta-open-abilities",
 			marketplaceVersion: "2026.07.1",
 			repository: "https://github.com/example/vetta-abilities",
+			ref: "refa/market-v3",
 		};
 
 		await installOpenMarketplaceAbility(fixture.snapshotRoot, fixture.ability, origin, deps);
@@ -96,6 +97,19 @@ describe("installOpenMarketplaceAbility", () => {
 			catalogId: "github:https://github.com/example/vetta-abilities:skill:demo-skill",
 			slug: "demo-skill",
 		});
+		expect(deps.recordEvent).toHaveBeenCalledWith(
+			expect.objectContaining({ name: "demo-skill", operation: "installed" }),
+		);
+		expect(deps.recordEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				logContext: expect.objectContaining({
+					version: "1.0.0",
+					installMode: "marketplace",
+					artifactKind: "snapshot-source",
+					marketplaceRef: "refa/market-v3",
+				}),
+			}),
+		);
 	});
 
 	it("restores the previous directory and manifest when ledger recording fails", async () => {

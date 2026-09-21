@@ -7,7 +7,9 @@
 			"backgroundTasks": "后台任务",
 			"debug": "调试",
 			"knowledgeHistory": "知识库加工历史",
-			"workflow": "工作流"
+			"workflow": "工作流",
+			"plan": "计划",
+			"ports": "端口映射"
 		},
 		"backgroundTasks": {
 			"statusRunning": "运行中",
@@ -50,6 +52,52 @@
 			"statusDone": "已完成",
 			"statusInProgress": "进行中",
 			"statusPending": "待办"
+		},
+		"ports": {
+			"heading": "远端服务",
+			"runningStat": "{{count}} 运行中",
+			"forwardedStat": "{{count}} 已映射",
+			"sectionForwarded": "已映射",
+			"sectionRunning": "运行中",
+			"manualTitle": "手动映射",
+			"remotePortLabel": "远端端口",
+			"localPortLabel": "本机端口",
+			"empty": "远端还没有在运行的服务",
+			"emptyHint": "在远端起一个服务（比如 npm run dev），它会出现在这里；点「映射」就能在本机打开。",
+			"remotePortPlaceholder": "如 3000",
+			"localPortPlaceholder": "同号",
+			"localPortPrefix": "localhost:",
+			"add": "映射",
+			"addManual": "手动填端口号",
+			"forward": "映射",
+			"preview": "预览",
+			"openExternal": "用系统浏览器打开",
+			"copyAddress": "复制地址",
+			"copied": "已复制",
+			"changeLocalPort": "改本机端口",
+			"stop": "取消映射",
+			"retry": "重试",
+			"refresh": "重新扫描",
+			"statusActive": "已映射",
+			"statusReconnecting": "重连中",
+			"statusFailed": "映射已断开",
+			"scanUnsupported": "这台主机上没有可用的端口扫描工具（ss / netstat / lsof），直接填端口号即可映射。",
+			"scanFailed": "没能查看远端的端口",
+			"fromOutput": "任务输出",
+			"notListening": "远端已没有进程在监听这个端口",
+			"publicBind": "监听所有网卡：远端网络里的其他机器也能访问",
+			"justNow": "刚刚",
+			"terminate": "终止进程",
+			"forceTerminate": "强制终止",
+			"terminateConfirm": "终止 {{name}}？",
+			"terminateStubborn": "{{name}} 没有响应终止信号，还在运行；可以再点一次「强制终止」。",
+			"terminateFailed": "没能终止 {{name}}：{{reason}}",
+			"sensitiveToggle": "{{count}} 个系统端口",
+			"sensitiveHint": "特权端口（1024 以下）与当前 SSH 连接所用的端口。停掉它们可能断开连接，因此不提供终止。",
+			"unnamedToggle": "{{count}} 个未识别进程的端口",
+			"unnamedHint": "读不到占用进程的名字，通常是因为进程属于其他用户。",
+			"ephemeralToggle": "另有 {{count}} 个临时端口（32768 以上）",
+			"invalidPort": "请填 1 到 65535 之间的端口号"
 		},
 		"toolCalls": {
 			"filterAll": "全部",
@@ -109,9 +157,25 @@
 			"statusInterrupted": "已中断",
 			"processingTitle": "有 {{count}} 个工作流正在处理",
 			"doneTitle": "工作流已全部结束"
+		},
+		"plan": {
+			"headline": "当前计划"
 		}
 	},
 	"fileExplorer": {
+		"display": {
+			"invalidPatterns": "最多可填写 100 条规则，每条不超过 1024 个字符",
+			"title": "文件显示设置",
+			"showHidden": "显示以点开头的文件和文件夹",
+			"exclude": "隐藏规则",
+			"excludeHint": "每行一条，按项目相对路径匹配，例如 **/node_modules 或 **/*.log。清空可显示全部普通文件。",
+			"iconTheme": "文件图标主题",
+			"builtin": "内置图标",
+			"unavailable": "所选主题不可用（暂用内置图标）",
+			"apply": "应用隐藏规则",
+			"reset": "恢复默认显示",
+			"saveFailed": "无法保存显示设置，请重试"
+		},
 		"clearArtifactsTitle": "清空产物",
 		"clearArtifactsMessage": "将删除 {{label}} 项目 cwd 下的全部产物文件（保留会话记录），此操作不可恢复。",
 		"clearArtifactsConfirm": "清空",
@@ -245,6 +309,47 @@
 		"copyCommand": "复制命令",
 		"metaDescription": "本地元数据，仅 UI 展示，不发送给大模型"
 	},
+	"bottomPanel": {
+		"tablist": "底部面板标签",
+		"closeTab": "关闭",
+		"tabFailed": "该面板渲染失败",
+		"pillsGroup": "底部面板",
+		"empty": {
+			"title": "底部面板是空的",
+			"description": "选一个面板加进来。",
+			"pickerLabel": "可添加的面板"
+		},
+		"actions": {
+			"add": "新建面板",
+			"splitRight": "向右分屏",
+			"splitDown": "向下分屏",
+			"splitLimit": "分屏数量已达上限",
+			"collapse": "收起底部面板"
+		},
+		"addMenu": {
+			"builtinGroup": "内置",
+			"pluginGroup": "插件",
+			"instanceLimit": "已达该面板的实例上限"
+		},
+		"closeConfirm": {
+			"title": "关闭这个面板？",
+			"message": "关闭后面板里正在进行的工作会中断。",
+			"confirm": "关闭"
+		},
+		"terminal": {
+			"title": "终端",
+			"exited": "[进程已退出，退出码 {{code}}]",
+			"previousOutput": "—— 以上是上次会话的输出（进程已结束）——",
+			"unavailable": "当前环境无法启动终端",
+			"noResize": "此主机未安装 helper，终端尺寸固定，无法随窗口自适应。",
+			"replayTruncated": "[较早的输出已省略]",
+			"closeConfirm": {
+				"title": "关闭终端？",
+				"message": "「{{process}}」还在运行，关闭终端会结束它。",
+				"confirm": "关闭并结束进程"
+			}
+		}
+	},
 	"browser": {
 		"addressPlaceholder": "输入网址并回车",
 		"back": "后退",
@@ -269,6 +374,10 @@
 	},
 	"chatView": {
 		"defaultSessionTitle": "Vetta 会话",
+		"bottomPanelButton": {
+			"closed": "打开底部面板",
+			"open": "关闭底部面板"
+		},
 		"exportButton": {
 			"title": "导出完整会话 HTML"
 		},
@@ -282,7 +391,8 @@
 		"pinButton": {
 			"pinned": "取消窗口置顶",
 			"unpinned": "窗口置顶（钉在屏幕上）"
-		}
+		},
+		"remoteBadge": "远程"
 	},
 	"contextRing": {
 		"tooltip": {
@@ -358,7 +468,8 @@
 			"label": "沙盒受限",
 			"title": "仅允许工作区受限访问"
 		},
-		"sandboxUnavailable": "{{platform}} 沙盒不可用：{{reason}}"
+		"sandboxUnavailable": "{{platform}} 沙盒不可用：{{reason}}",
+		"sandboxUnavailableRemote": "远程项目没有沙盒：沙盒只能约束这台电脑上的进程，而远程项目的命令在远端主机上执行"
 	},
 	"export": {
 		"shareNavDescription": "分享了一个会话",
@@ -388,6 +499,9 @@
 		"knowledgeRetrieval": {
 			"label": "知识检索",
 			"tooltip": "开启后本轮才能调用知识库工具，并优先用知识库回答"
+		},
+		"planMode": {
+			"label": "计划模式"
 		}
 	},
 	"inputBar": {
@@ -770,6 +884,41 @@
 			"pick": "切换智能体",
 			"pickTitle": "指定一个团队或单个智能体来完成这次任务",
 			"switchTitle": "更换本次会话的团队或智能体"
+		}
+	},
+	"planMode": {
+		"entryCard": {
+			"moreSteps": "还有 {{count}} 步",
+			"open": "查看计划",
+			"stepCount": "共 {{count}} 步",
+			"title": "实施计划"
+		},
+		"review": {
+			"approve": "批准并开始",
+			"back": "返回",
+			"commentOnStep": "对步骤 {{number}} 提意见",
+			"dismiss": "稍后再说",
+			"doneEditing": "完成编辑",
+			"edit": "编辑计划",
+			"edited": "已编辑",
+			"editorLabel": "计划内容",
+			"feedbackLabel": "需要怎么改？",
+			"feedbackPlaceholder": "例如：先不要动数据库迁移；把步骤 3 拆成两步…",
+			"requestChanges": "要求修改",
+			"resetEdits": "还原",
+			"sendFeedback": "发送修改意见",
+			"sendFeedbackWithComments": "发送修改意见（{{count}}）",
+			"stepCommentPlaceholder": "这一步要怎么改…",
+			"subtitle": "批准后 Vetta 会按这份计划开始执行；在此之前不会改动任何内容。",
+			"title": "计划待你批准"
+		},
+		"switchFailed": "无法切换计划模式",
+		"toolCard": {
+			"approved": "已批准",
+			"changesRequested": "已退回修改",
+			"dismissed": "尚未决定",
+			"pending": "等待你批准",
+			"title": "计划"
 		}
 	},
 	"questionPanel": {

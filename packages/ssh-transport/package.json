@@ -1,0 +1,31 @@
+{
+	"name": "@vetta/ssh-transport",
+	"version": "0.0.1",
+	"description": "SSH transport for remote Vetta projects: host model, connection reuse, remote exec and file operations.",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		},
+		"./project-uri": {
+			"types": "./dist/project-uri.d.ts",
+			"import": "./dist/project-uri.js"
+		},
+		"./testing": {
+			"types": "./dist/testing.d.ts",
+			"import": "./dist/testing.js"
+		}
+	},
+	"files": ["dist"],
+	"scripts": {
+		"clean": "rm -rf dist",
+		"build": "tsgo -p tsconfig.build.json"
+	},
+	"devDependencies": {
+		"@types/node": "^22.10.5",
+		"typescript": "^5.9.2"
+	}
+}

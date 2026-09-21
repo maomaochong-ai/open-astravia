@@ -1,12 +1,11 @@
-import { type ChildProcess, execFile } from "node:child_process";
 import { createServer } from "node:net";
+import { isSshProjectUri } from "@vetta/ssh-transport";
 import { webContents } from "electron";
 import type { InstalledPlugin, PluginCommandSpawnStatus } from "../../preload/api-types/plugins.js";
 import { PLUGIN_EXECUTION_CHANNELS } from "../../shared/plugin-ipc.js";
 import { getAppLogger } from "../logger.js";
-import { createPluginCommandEnvironment } from "./command-environment.js";
-import { spawnCrossPlatformCommand } from "./command-launcher.js";
 import { listPlugins } from "./plugin-catalog.js";
+import { allocateRemotePort, forwardRemotePort, type SpawnedProcess, startProcess } from "./spawned-process.js";
 
 const spawnLog = getAppLogger("plugin");
 
@@ -26,8 +25,9 @@ interface SpawnRecord {
 	spawnId: string;
 	pluginId: string;
 	file: string;
-	child: ChildProcess;
+	process: SpawnedProcess;
 	port?: number;
+	cancelForward?: () => void;
 	output: string[];
 	outputBytes: number;
 	exit?: { exitCode: number | null; signal: string | null };
@@ -87,28 +87,6 @@ function appendOutput(record: SpawnRecord, chunk: Buffer): void {
 	while (record.outputBytes > MAX_OUTPUT_BYTES && record.output.length > 1) {
 		const removed = record.output.shift();
 		record.outputBytes -= removed?.length ?? 0;
-	}
-}
-
-/** Kill the whole process tree (vite spawns esbuild children that outlive a plain SIGTERM). */
-function killTree(record: SpawnRecord, signal: NodeJS.Signals): void {
-	const { child } = record;
-	if (child.pid === undefined || child.exitCode !== null || child.signalCode !== null) return;
-	if (process.platform === "win32") {
-		execFile("taskkill", ["/pid", String(child.pid), "/T", "/F"], () => {
-			// best-effort; the exit listener owns state transitions
-		});
-		return;
-	}
-	try {
-		// Negative pid targets the detached process group (POSIX).
-		process.kill(-child.pid, signal);
-	} catch {
-		try {
-			child.kill(signal);
-		} catch {
-			// already gone
-		}
 	}
 }
 
@@ -180,61 +158,62 @@ export async function spawnPluginCommand(
 	let normalizedArgs = sanitizeArgs(args);
 	let env = sanitizeEnv(options?.env);
 	const cwd = typeof options?.cwd === "string" && options.cwd.trim().length > 0 ? options.cwd : undefined;
-
+	// 长驻进程（dev server、预览引擎）靠本机端口与渲染进程通信，项目在远端时它读不到项目
+	// 文件，搬到远端执行则本机连不上它的端口。明确拒绝，而不是让 spawn 以一句看似「本机
+	// 没装 node」的 ENOENT 失败。
+	// 插件拿到的 port 永远是一个**本机**可连的端口——界面只能连本机。进程在远端时，端口在
+	// 远端分配、`{{PORT}}` 替换成远端那个，再把它转发回本机；插件不必知道这些。
+	const remote = options?.allocatePort === true && cwd !== undefined && isSshProjectUri(cwd) ? cwd : undefined;
 	let port: number | undefined;
+	let cancelForward: (() => void) | undefined;
 	if (options?.allocatePort === true) {
 		port = await allocateFreePort();
-		const portText = String(port);
+		const processPort = remote ? await allocateRemotePort(remote) : port;
+		const portText = String(processPort);
 		normalizedArgs = normalizedArgs.map((arg) => arg.split(PORT_PLACEHOLDER).join(portText));
 		if (env) {
 			env = Object.fromEntries(
 				Object.entries(env).map(([key, value]) => [key, value.split(PORT_PLACEHOLDER).join(portText)]),
 			);
 		}
+		if (remote) cancelForward = await forwardRemotePort(remote, port, processPort);
 	}
 
-	const child = spawnCrossPlatformCommand(file, normalizedArgs, {
-		cwd,
-		env: createPluginCommandEnvironment(env),
-		windowsHide: true,
-		// Own process group so killTree can signal children (esbuild etc.) too.
-		detached: process.platform !== "win32",
-		stdio: ["ignore", "pipe", "pipe"],
-	});
+	const spawned = startProcess({ file, args: normalizedArgs, cwd, env });
 
 	const spawnId = `spawn-${++counter}-${Date.now().toString(36)}`;
 	const record: SpawnRecord = {
 		spawnId,
 		pluginId,
 		file,
-		child,
+		process: spawned,
 		port,
+		cancelForward,
 		output: [],
 		outputBytes: 0,
 	};
 	records.set(spawnId, record);
 
-	child.stdout?.on("data", (chunk: Buffer) => appendOutput(record, chunk));
-	child.stderr?.on("data", (chunk: Buffer) => appendOutput(record, chunk));
-	child.on("exit", (exitCode, signal) => {
+	spawned.onOutput((chunk: Buffer) => appendOutput(record, chunk));
+	spawned.onExit((exitCode, signal) => {
 		record.exit = { exitCode, signal };
+		record.cancelForward?.();
 		spawnLog.info("plugin spawn exited", { pluginId, spawnId, file, exitCode, signal });
 		broadcastSpawnExit(record);
 		record.cleanupTimer = setTimeout(() => records.delete(spawnId), EXITED_RECORD_TTL_MS);
 		record.cleanupTimer.unref();
 	});
 
-	return new Promise<SpawnPluginCommandResult>((resolvePromise, rejectPromise) => {
-		child.once("spawn", () => {
-			spawnLog.info("plugin spawn started", { pluginId, spawnId, file, pid: child.pid, port });
-			resolvePromise({ spawnId, pid: child.pid ?? -1, port });
-		});
-		child.once("error", (error: NodeJS.ErrnoException) => {
-			records.delete(spawnId);
-			spawnLog.warn("plugin spawn failed", { pluginId, file, code: error.code });
-			rejectPromise(new Error(`Command failed to start: ${file} (${error.code ?? error.message})`));
-		});
-	});
+	try {
+		await spawned.whenStarted();
+	} catch (error) {
+		records.delete(spawnId);
+		cancelForward?.();
+		spawnLog.warn("plugin spawn failed", { pluginId, file, error: String(error) });
+		throw error;
+	}
+	spawnLog.info("plugin spawn started", { pluginId, spawnId, file, pid: spawned.pid, port });
+	return { spawnId, pid: spawned.pid, port };
 }
 
 /** SIGTERM, then SIGKILL after a grace period. Resolves once the process is gone. */
@@ -243,13 +222,13 @@ export async function stopPluginCommandSpawn(pluginId: string, spawnId: string):
 	if (!record || record.pluginId !== pluginId) return;
 	if (record.exit !== undefined) return;
 	await new Promise<void>((resolveStop) => {
-		const killTimer = setTimeout(() => killTree(record, "SIGKILL"), KILL_GRACE_MS);
+		const killTimer = setTimeout(() => record.process.kill("SIGKILL"), KILL_GRACE_MS);
 		killTimer.unref();
-		record.child.once("exit", () => {
+		record.process.onExit(() => {
 			clearTimeout(killTimer);
 			resolveStop();
 		});
-		killTree(record, "SIGTERM");
+		record.process.kill("SIGTERM");
 	});
 }
 
@@ -260,7 +239,7 @@ export function getPluginCommandSpawnStatus(pluginId: string, spawnId: string): 
 	}
 	return {
 		running: record.exit === undefined,
-		pid: record.child.pid ?? -1,
+		pid: record.process.pid,
 		port: record.port,
 		exit: record.exit,
 		recentOutput: record.output.join(""),
@@ -279,6 +258,6 @@ export function stopAllSpawnsForPlugin(pluginId: string): void {
 export function stopAllPluginSpawns(): void {
 	for (const record of records.values()) {
 		if (record.exit !== undefined) continue;
-		killTree(record, "SIGKILL");
+		record.process.kill("SIGKILL");
 	}
 }

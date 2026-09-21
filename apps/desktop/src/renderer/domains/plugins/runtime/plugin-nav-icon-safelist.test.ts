@@ -11,6 +11,10 @@ import { classifyPluginNavIcon } from "./plugin-nav-icon";
  *
  * 这个守卫把「插件声明了图标」和「宿主生成了规则」绑在一起：新增会注册工作区视图的
  * 系统插件时，忘了补 styles.css 会在这里失败，而不是等到有人截图才发现。
+ *
+ * 例外：插件若在自己的 CSS 里引入 iconify（`@plugin "@iconify/tailwind4"`），图标规则
+ * 会连同内联 SVG 一起进入它自己的 dist/style.css，宿主激活插件时加载——这条路更好，
+ * 因为它对仓库外的插件同样成立，此时无需（也不应）再在宿主清单里占一行。
  */
 
 const repoRoot = resolve(import.meta.dirname, "../../../../../../..");
@@ -32,11 +36,22 @@ function readSourceFiles(dir: string, files: string[] = []): string[] {
 	return files;
 }
 
+/** 插件自带 iconify：图标规则由它自己的样式表提供，不需要宿主放行。 */
+function shipsOwnIconCss(presetDir: string): boolean {
+	const srcDir = join(presetDir, "src");
+	for (const entry of readdirSync(srcDir, { withFileTypes: true })) {
+		if (!entry.isFile() || !entry.name.endsWith(".css")) continue;
+		if (readFileSync(join(srcDir, entry.name), "utf8").includes('@plugin "@iconify/tailwind4"')) return true;
+	}
+	return false;
+}
+
 /** iconify class strings a preset hands to the host for its sidebar nav entry. */
 function navIconClassesOf(presetDir: string): string[] {
 	const srcDir = join(presetDir, "src");
 	const sources = readSourceFiles(srcDir).map((file) => readFileSync(file, "utf8"));
 	if (!sources.some((source) => source.includes("registerWorkspaceView"))) return [];
+	if (shipsOwnIconCss(presetDir)) return [];
 
 	const candidates: string[] = [];
 	// 未声明 icon 时宿主回落到 plugin.json 的图标，所以它同样要能渲染。

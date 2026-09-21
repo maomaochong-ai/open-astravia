@@ -137,3 +137,88 @@ export function SyncIcon({ className }: IconProps): JSX.Element {
 		</svg>
 	);
 }
+
+/** Disclosure chevron; points down, rotated by callers when collapsed. */
+export function ChevronIcon({ className }: IconProps): JSX.Element {
+	return (
+		<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+			<path d="m6 9 6 6 6-6" />
+		</svg>
+	);
+}
+
+/** Stage: a plus, matching the "add to index" mental model. */
+export function StageIcon({ className }: IconProps): JSX.Element {
+	return (
+		<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+			<path d="M12 5v14M5 12h14" />
+		</svg>
+	);
+}
+
+/** Unstage: a minus, the exact inverse of {@link StageIcon}. */
+export function UnstageIcon({ className }: IconProps): JSX.Element {
+	return (
+		<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+			<path d="M5 12h14" />
+		</svg>
+	);
+}
+
+/** Sparkle: AI generation. */
+export function SparkleIcon({ className }: IconProps): JSX.Element {
+	return (
+		<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+			<path d="M12 3l1.8 4.9L18.7 9.7l-4.9 1.8L12 16.4l-1.8-4.9L5.3 9.7l4.9-1.8L12 3Z" />
+			<path d="M18 16l.8 2.2L21 19l-2.2.8L18 22l-.8-2.2L15 19l2.2-.8L18 16Z" />
+		</svg>
+	);
+}
+
+/** Stop: cancel an in-flight generation. */
+export function StopIcon({ className }: IconProps): JSX.Element {
+	return (
+		<svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+			<rect x="7" y="7" width="10" height="10" rx="1.5" />
+		</svg>
+	);
+}
+
+/** Side-by-side diff layout. */
+export function SplitViewIcon({ className }: IconProps): JSX.Element {
+	return (
+		<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+			<rect x="3" y="4" width="18" height="16" rx="2" />
+			<path d="M12 4v16" />
+		</svg>
+	);
+}
+
+/** Single-column (unified) diff layout. */
+export function UnifiedViewIcon({ className }: IconProps): JSX.Element {
+	return (
+		<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+			<rect x="3" y="4" width="18" height="16" rx="2" />
+			<path d="M3 12h18" />
+		</svg>
+	);
+}
+
+/** Check mark, used for the "already staged" hint. */
+export function CheckIcon({ className }: IconProps): JSX.Element {
+	return (
+		<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
+			<path d="m5 13 4 4L19 7" />
+		</svg>
+	);
+}
+
+/** Git commit glyph: a node on a line, used on the commit button. */
+export function CommitIcon({ className }: IconProps): JSX.Element {
+	return (
+		<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+			<circle cx="12" cy="12" r="3.5" />
+			<path d="M2 12h6.5M15.5 12H22" />
+		</svg>
+	);
+}

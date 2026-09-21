@@ -23,6 +23,10 @@ interface PluginPackageLogger {
 	warn(message: string, error?: unknown): void;
 }
 
+export const VETTA_PLUGIN_PACKAGE_EXTENSION = ".vettapkg";
+export const VETTA_PLUGIN_PACKAGE_MIME_TYPE = "application/vnd.vetta.plugin+zip";
+const MAX_PLUGIN_MANIFEST_BYTES = 1024 * 1024;
+
 export function resolvePluginIcon(
 	icon: string | undefined,
 	toUrl: (relativePath: string) => string,
@@ -219,6 +223,36 @@ export async function findPluginManifest(extractDir: string): Promise<{ manifest
 		}
 	}
 	throw new Error("plugin.json not found at archive root");
+}
+
+/**
+ * Read the identity and requested capabilities before installing a package.
+ * The accepted layouts intentionally match findPluginManifest(): plugin.json
+ * may be at the archive root or inside one top-level directory.
+ */
+export function readPluginManifestFromArchive(buffer: Buffer): PluginManifest {
+	const archive = new AdmZip(buffer);
+	const direct = archive.getEntry("plugin.json");
+	if (direct && !direct.isDirectory) {
+		if (direct.header.size > MAX_PLUGIN_MANIFEST_BYTES) throw new Error("plugin.json exceeds the 1 MB limit");
+		return parsePluginManifest(JSON.parse(archive.readAsText(direct)) as unknown);
+	}
+	const entries = archive.getEntries();
+	const directories = new Set(
+		entries.flatMap((entry) => {
+			const normalized = entry.entryName.replaceAll("\\", "/");
+			const separator = normalized.indexOf("/");
+			return separator > 0 ? [normalized.slice(0, separator)] : [];
+		}),
+	);
+	const nested = entries.filter((entry) => !entry.isDirectory && /^[^/\\]+[/\\]plugin\.json$/u.test(entry.entryName));
+	if (directories.size !== 1 || nested.length !== 1) {
+		throw new Error("plugin.json not found at archive root");
+	}
+	if (nested[0].header.size > MAX_PLUGIN_MANIFEST_BYTES) {
+		throw new Error("plugin.json exceeds the 1 MB limit");
+	}
+	return parsePluginManifest(JSON.parse(archive.readAsText(nested[0])) as unknown);
 }
 
 export function validatePluginPackageResources(sourceDir: string, manifest: PluginManifest): void {

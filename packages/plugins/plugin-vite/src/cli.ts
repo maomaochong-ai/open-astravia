@@ -71,6 +71,8 @@ async function packPlugin(rootDir: string): Promise<void> {
 			ok: true,
 			id: manifest.id,
 			version: manifest.version,
+			packagePath: result.outputPath,
+			// Compatibility for workbench scripts built before .vettapkg became the public format.
 			zipPath: result.outputPath,
 			files: result.files.map((file) => file.archivePath),
 		})}\n`,

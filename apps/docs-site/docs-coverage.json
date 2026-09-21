@@ -145,7 +145,7 @@
 		},
 		{
 			"id": "mobile-client",
-			"source": "apps/mobile",
+			"source": "apps/kotlin",
 			"status": "developer-preview",
 			"platforms": ["android"],
 			"pages": ["/product/remote-control/", "/reference/compatibility/"]

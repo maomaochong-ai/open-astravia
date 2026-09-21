@@ -21,11 +21,12 @@ function RuntimeConfigurationControl({
 				placeholder={pleaseSelect}
 				triggerClassName="min-w-[220px]"
 				options={field.options ?? []}
+				aria-label={field.title}
 			/>
 		);
 	}
 	if (schema.type === "boolean") {
-		return <Switch checked={value === true} onCheckedChange={onChange} />;
+		return <Switch checked={value === true} onCheckedChange={onChange} aria-label={field.title} />;
 	}
 	if (schema.type === "enum") {
 		return (
@@ -35,6 +36,7 @@ function RuntimeConfigurationControl({
 				placeholder={pleaseSelect}
 				triggerClassName="min-w-[160px]"
 				options={field.options ?? (schema.enum ?? []).map((option) => ({ value: option, label: option }))}
+				aria-label={field.title}
 			/>
 		);
 	}
@@ -45,6 +47,7 @@ function RuntimeConfigurationControl({
 			min={numeric ? schema.minimum : undefined}
 			max={numeric ? schema.maximum : undefined}
 			step={schema.type === "integer" ? 1 : undefined}
+			aria-label={field.title}
 			className="h-8 w-[200px] min-w-0 rounded-lg border border-border bg-transparent px-2.5 text-right text-[12px] tabular-nums outline-none transition-colors focus:border-primary/50"
 			value={typeof value === "string" || typeof value === "number" ? String(value) : ""}
 			onChange={(event) => {
@@ -58,7 +61,7 @@ function RuntimeConfigurationControl({
 	);
 }
 
-/** 内置运行时配置分区（当前为「图片处理」），挂在 Agent 配置页下方。 */
+/** 内置运行时配置分区，挂在 Agent 配置页下方。 */
 export function RuntimeConfigurationSections({ model }: { model: RuntimeConfigurationModel }): JSX.Element | null {
 	if (model.sections.length === 0) return null;
 	return (

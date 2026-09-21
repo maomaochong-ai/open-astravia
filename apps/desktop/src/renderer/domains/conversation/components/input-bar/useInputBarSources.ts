@@ -8,6 +8,7 @@ import {
 	mentionedFilesAtom,
 	pendingMcpElicitationsAtom,
 	pendingMessageEditAtom,
+	pendingPlanReviewsAtom,
 	pendingQuestionsAtom,
 	promptAttachmentAtom,
 	promptSuggestionsAtom,
@@ -22,11 +23,18 @@ import {
 	messageQueuePausedBySessionAtom,
 } from "@shared/store/message-queue-atoms";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { selectAtom } from "jotai/utils";
 import { useMemo } from "react";
 import { inputBlankAtom, inputImagePathsAtom, inputPlaceholderVisibleAtom } from "./editor/tokens/projectionAtoms";
 
+const inputActiveSessionAtom = selectAtom(
+	activeSessionAtom,
+	(session) => (session ? { cwd: session.cwd, runtimeId: session.runtimeId } : null),
+	(left, right) => left?.cwd === right?.cwd && left?.runtimeId === right?.runtimeId,
+);
+
 export function useInputBarSessionSource(cwdOverride?: string) {
-	const activeSession = useAtomValue(activeSessionAtom);
+	const activeSession = useAtomValue(inputActiveSessionAtom);
 	const isStreaming = useAtomValue(isConversationBusyAtom);
 	const isBlank = useAtomValue(inputBlankAtom);
 	const placeholderVisible = useAtomValue(inputPlaceholderVisibleAtom);
@@ -68,6 +76,7 @@ export function useInputBarDraftSource() {
 export function useInputBarInteractionSource(runtimeId?: string | readonly string[]) {
 	const pendingQuestions = useAtomValue(pendingQuestionsAtom);
 	const pendingMcpElicitations = useAtomValue(pendingMcpElicitationsAtom);
+	const pendingPlanReviews = useAtomValue(pendingPlanReviewsAtom);
 	const sandboxPermission = useAtomValue(sandboxPermissionDrawerAtom);
 	const runtimeIds =
 		runtimeId === undefined ? undefined : new Set(typeof runtimeId === "string" ? [runtimeId] : runtimeId);
@@ -75,7 +84,9 @@ export function useInputBarInteractionSource(runtimeId?: string | readonly strin
 	const primaryRuntimeId = typeof runtimeId === "string" ? runtimeId : scopedRuntimeIds[0];
 	const pendingQuestionRuntimeId = scopedRuntimeIds.find((id) => pendingQuestions[id]);
 	const pendingMcpRuntimeId = scopedRuntimeIds.find((id) => pendingMcpElicitations[id]);
+	const pendingPlanReviewRuntimeId = scopedRuntimeIds.find((id) => pendingPlanReviews[id]);
 	return {
+		pendingPlanReview: pendingPlanReviewRuntimeId ? pendingPlanReviews[pendingPlanReviewRuntimeId] : undefined,
 		pendingMcpElicitation: runtimeIds
 			? pendingMcpRuntimeId
 				? pendingMcpElicitations[pendingMcpRuntimeId]

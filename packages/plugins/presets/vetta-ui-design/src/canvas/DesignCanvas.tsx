@@ -50,6 +50,7 @@ import { byCanvasOrder } from "./frame-order";
 import { type FrameMenuAnchor, FrameContextMenu } from "./FrameContextMenu";
 import { refreshCover } from "./cover-compose";
 import { useFrameRasters } from "./frame-raster";
+import { setOffscreenStorageSeed } from "./offscreen-raster";
 import { type FrameDragEdge, FrameView } from "./FrameView";
 import { GapHandles } from "./GapHandles";
 import { HistoryDrawer } from "../history/HistoryDrawer";
@@ -532,7 +533,8 @@ export function DesignCanvas({
 		withCaptureLock,
 		refreshAll,
 		reloadAll,
-		reloadNonce,
+		storageChanged,
+		reloadNonceOf,
 	} = useFrameRasters({
 		bridge,
 		cacheKey: session.vetdPath,
@@ -775,9 +777,16 @@ export function DesignCanvas({
 			// 缩放/平移只能从这条路进来。
 			onFrameWheel: view.applyWheel,
 			onFrameSpace: setSpaceHeld,
+			// 画布这一侧的 localStorage 才是用户看到的状态，离屏截图照它出图。只有用户
+			// 操作引起的变化才重截全部位图：页面启动时自己写的那些，离屏窗口加载时同样
+			// 会写，不值得为它把整块画布重截一遍。
+			onStorage: (frameId, entries, byUser) => {
+				const changed = setOffscreenStorageSeed(port, entries);
+				if (changed && byUser) storageChanged(frameId);
+			},
 		});
 		return () => bridge.stop();
-	}, [bridge, invalidateRaster, notifyRendered, openFrameMenu, view.applyWheel]);
+	}, [bridge, invalidateRaster, notifyRendered, openFrameMenu, view.applyWheel, port, storageChanged]);
 
 	/** Click / shift-click a frame. Shift toggles membership; a plain click replaces. */
 	const selectFrame = useCallback((frameId: string, additive: boolean): void => {
@@ -1468,7 +1477,7 @@ export function DesignCanvas({
 						mounted={isMounted(frame.id)}
 						live={isLive(frame.id)}
 						raster={rasterOf(frame.id)}
-						reloadNonce={reloadNonce}
+						reloadNonce={reloadNonceOf(frame.id)}
 						paintTick={paintTicks.get(frame.id) ?? 0}
 						moveDelta={dragRef.current?.origins.has(frame.id) ? moveDelta : null}
 						resizeRect={resizeRect?.frameId === frame.id ? resizeRect.rect : null}

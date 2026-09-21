@@ -6,7 +6,7 @@ export interface ApplyPluginOptions {
 	/** When set, skip list() lookup for workbench scripts. */
 	workbenchRoot?: string;
 	/**
-	 * Force build-and-pack even if a zip already exists.
+	 * Force build-and-pack even if a package already exists.
 	 * Reinstall paths always force so permissions/commands land in the package.
 	 */
 	forceBuild?: boolean;
@@ -24,14 +24,14 @@ export interface ApplyPluginOptions {
  * Build (optional) → installFromPath → enable → grant → optional hot reload / full app refresh.
  * Shared by panel buttons and the reinstall message card.
  */
-export async function applyPluginToVetta(options: ApplyPluginOptions): Promise<{ zipPath: string }> {
+export async function applyPluginToVetta(options: ApplyPluginOptions): Promise<{ packagePath: string }> {
 	const { project, forceBuild = false, refreshApp = false, startHotReload = true } = options;
 	const workbenchRoot = options.workbenchRoot ?? (await resolveWorkbenchRoot());
 	const command = getWorkbenchCommand();
 	const plugins = getWorkbenchPlugins();
 
-	let zip = project.zipPath;
-	if (forceBuild || !zip) {
+	let packagePath = project.packagePath;
+	if (forceBuild || !packagePath) {
 		const script = joinPath(workbenchRoot, "scripts", "build-and-pack.mjs");
 		const result = await command.run("node", [script, project.dir], {
 			cwd: project.dir,
@@ -42,14 +42,15 @@ export async function applyPluginToVetta(options: ApplyPluginOptions): Promise<{
 		}
 		const manifest = await readJson(joinPath(project.dir, "plugin.json"));
 		const version = typeof manifest?.version === "string" ? manifest.version : project.version;
-		zip = joinPath(project.dir, "release", `${project.id}-${version}.zip`);
+		packagePath = joinPath(project.dir, "release", `${project.id}-${version}.vettapkg`);
 	}
 
 	// 构建期间 dev-watch 可能已触发插件重载，必须用重载后的 fs session。
-	const st = await withWorkbenchFs((fs) => fs.stat(zip));
-	if (!st) throw new Error(`Zip not found: ${zip}`);
+	const st = await withWorkbenchFs((fs) => fs.stat(packagePath));
+	if (!st) throw new Error(`Package not found: ${packagePath}`);
 
-	await plugins.installFromPath(zip, {
+	await plugins.installFromPath(packagePath, {
+		initiator: "plugin-workbench",
 		grantedPermissions: project.permissions,
 		enable: true,
 	});
@@ -68,21 +69,21 @@ export async function applyPluginToVetta(options: ApplyPluginOptions): Promise<{
 		window.setTimeout(() => {
 			window.location.reload();
 		}, 150);
-		return { zipPath: zip };
+		return { packagePath };
 	}
 
 	if (startHotReload) {
 		await plugins.startDevWatch(project.id, project.dir);
 	}
 	window.dispatchEvent(new Event("vetta:plugins-changed"));
-	return { zipPath: zip };
+	return { packagePath };
 }
 
 /** Reinstall = force rebuild + re-apply + full app refresh. */
 export async function reinstallPluginToVetta(
 	project: ProjectInfo,
 	workbenchRoot?: string,
-): Promise<{ zipPath: string }> {
+): Promise<{ packagePath: string }> {
 	return applyPluginToVetta({
 		project,
 		workbenchRoot,

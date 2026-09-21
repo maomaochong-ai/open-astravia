@@ -80,6 +80,7 @@ export type { ChatExportHostViewProps } from "./ChatExportHostView";
 export { ChatExportHostView } from "./ChatExportHostView";
 export {
 	ChatHeaderActions,
+	ChatHeaderBottomPanelAction,
 	ChatHeaderExportAction,
 	ChatHeaderPanelAction,
 	ChatHeaderPinAction,
@@ -389,6 +390,8 @@ export type {
 export { QueueCardView } from "./QueueCardView";
 export type { ReadImageViewProps } from "./ReadImageView";
 export { ReadImageView } from "./ReadImageView";
+export type { RemoteSessionBadgeViewProps } from "./RemoteSessionBadgeView";
+export { RemoteSessionBadgeView } from "./RemoteSessionBadgeView";
 export type {
 	SandboxGrantsBadgeViewLabels,
 	SandboxGrantsBadgeViewProps,

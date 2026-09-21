@@ -1,5 +1,7 @@
 import {
+	canAutomaticallyRecoverTeamTask,
 	type classifyTeamAttemptTerminal,
+	DEFAULT_TEAM_AUTOMATIC_RETRIES,
 	isTeamContextProjectionReceipt,
 	isTeamMemberTurnAttempt,
 	isTeamMessageDelivery,
@@ -7,6 +9,7 @@ import {
 	isTeamSharedContextCheckpoint,
 	isTeamSharedContextGeneration,
 	isTeamWorkItem,
+	TEAM_RECOVERY_EXHAUSTED,
 	type TeamContextProjectionReceipt,
 	type TeamMemberTurnAttempt,
 	type TeamMemberTurnAttemptMode,
@@ -16,6 +19,8 @@ import {
 	type TeamSharedContextCheckpoint,
 	type TeamSharedContextGeneration,
 	type TeamWorkItem,
+	teamAutomaticRetryDelay,
+	teamTaskRecovery,
 	transitionTeamMessageDelivery,
 	transitionTeamWorkItem,
 } from "@vetta/agent-team";
@@ -46,13 +51,17 @@ export interface TeamWorkItemInput {
 	readonly objective: string;
 	readonly attachments?: readonly PromptAttachmentRef[];
 	readonly kind?: "task" | "question";
+	readonly notificationIds?: readonly string[];
 }
 
 export class TeamCollaborationStore {
 	private readonly mutations = new TeamOperationQueue();
 	private readonly listeners = new Map<string, Set<() => void>>();
 
-	constructor(private readonly conversation: TeamCollaborationConversationPort) {}
+	constructor(
+		private readonly conversation: TeamCollaborationConversationPort,
+		private readonly readRetryLimit?: (session: TeamSessionDocument) => Promise<number | undefined>,
+	) {}
 
 	readDocument(session: TeamSessionDocument): ConversationDocument {
 		const coordination = session.coordinationRuntime;
@@ -182,6 +191,11 @@ export class TeamCollaborationStore {
 				contextEntryIds: [],
 				...(input.attachments?.length ? { artifactRefs: [...input.attachments] } : {}),
 				state: "queued",
+				recovery: {
+					maxAutomaticRetries: (await this.readRetryLimit?.(input.session)) ?? DEFAULT_TEAM_AUTOMATIC_RETRIES,
+					automaticRetries: 0,
+				},
+				...(input.notificationIds?.length ? { notificationIds: input.notificationIds } : {}),
 				createdAt: now,
 				updatedAt: now,
 				revision: 0,
@@ -338,15 +352,33 @@ export class TeamCollaborationStore {
 			if (!current || current.currentAttemptId !== attempt.id) {
 				throw new Error(`Team attempt no longer owns the work item: ${attempt.id}`);
 			}
+			const exhausted =
+				(terminal.state === "waiting-retry" || terminal.state === "interrupted") &&
+				!canAutomaticallyRecoverTeamTask(current);
 			const nextAttempt: TeamMemberTurnAttempt = {
 				...attempt,
 				...terminal,
-				...(terminal.state === "waiting-retry"
-					? { nextRetryAt: Date.now() + automaticRetryDelay(attempt.attempt, terminal.issue?.retryAfter) }
+				...(exhausted
+					? {
+							state: "interrupted" as const,
+							issue: {
+								...terminal.issue,
+								category: terminal.issue?.category ?? "host-interrupted",
+								retryability: "manual" as const,
+								code: TEAM_RECOVERY_EXHAUSTED,
+							},
+						}
+					: {}),
+				...(terminal.state === "waiting-retry" && !exhausted
+					? {
+							nextRetryAt:
+								Date.now() +
+								teamAutomaticRetryDelay(teamTaskRecovery(current).automaticRetries, terminal.issue?.retryAfter),
+						}
 					: {}),
 				lastProgressAt: Date.now(),
 			};
-			const workItemState = workItemStateForAttempt(nextAttempt);
+			const workItemState = exhausted ? "attention-required" : workItemStateForAttempt(nextAttempt);
 			if (current.state !== "running") {
 				if (current.state === workItemState && current.resultMessageId === resultMessageId) return current;
 				throw new Error(`Team attempt is already settled: ${attempt.id}`);
@@ -399,27 +431,54 @@ export class TeamCollaborationStore {
 		});
 	}
 
-	recoverOrphanedAttempt(session: TeamSessionDocument, workItemId: string): Promise<TeamWorkItem | undefined> {
+	recoverOrphanedAttempt(
+		session: TeamSessionDocument,
+		workItemId: string,
+		expectedRevision?: number,
+	): Promise<TeamWorkItem | undefined> {
 		return this.mutations.run(session.id, async () => {
 			const state = this.read(session);
 			const item = state.workItems.find((candidate) => candidate.id === workItemId);
-			if (!item || item.state !== "running" || !item.currentAttemptId) return item;
+			if (
+				!item ||
+				item.state !== "running" ||
+				!item.currentAttemptId ||
+				(expectedRevision !== undefined && item.revision !== expectedRevision)
+			)
+				return item;
 			const attempt = state.attempts.find((candidate) => candidate.id === item.currentAttemptId);
-			if (!attempt || attempt.state !== "running") return item;
+			if (attempt && attempt.state !== "running") {
+				const next = transitionTeamWorkItem(item, {
+					state:
+						attempt.issue?.code === TEAM_RECOVERY_EXHAUSTED || attempt.state === "completed"
+							? "attention-required"
+							: workItemStateForAttempt(attempt),
+					...(attempt.issue ? { issue: attempt.issue } : {}),
+					updatedAt: Date.now(),
+				});
+				await this.append(session, "agent-team.work-item.v1", next);
+				return next;
+			}
+			const exhausted = !canAutomaticallyRecoverTeamTask(item);
 			const issue = {
 				category: "host-interrupted" as const,
-				retryability: "automatic" as const,
-				code: "team_host_interrupted",
+				retryability: exhausted ? ("manual" as const) : ("automatic" as const),
+				code: exhausted ? TEAM_RECOVERY_EXHAUSTED : "team_host_interrupted",
 			};
 			const now = Date.now();
-			await this.append(session, "agent-team.member-attempt.v1", {
-				...attempt,
-				state: "waiting-retry",
+			if (attempt)
+				await this.append(session, "agent-team.member-attempt.v1", {
+					...attempt,
+					state: exhausted ? "interrupted" : "waiting-retry",
+					issue,
+					...(exhausted ? {} : { nextRetryAt: now }),
+					lastProgressAt: now,
+				});
+			const next = transitionTeamWorkItem(item, {
+				state: exhausted || !attempt ? "attention-required" : "waiting",
 				issue,
-				nextRetryAt: now,
-				lastProgressAt: now,
+				updatedAt: now,
 			});
-			const next = transitionTeamWorkItem(item, { state: "waiting", issue, updatedAt: now });
 			await this.append(session, "agent-team.work-item.v1", next);
 			return next;
 		});
@@ -466,6 +525,8 @@ export class TeamCollaborationStore {
 		session: TeamSessionDocument,
 		workItemId: string,
 		expectedRevision: number,
+		recoveryTrigger?: "automatic" | "user" | "external-change",
+		notificationIds?: readonly string[],
 	): Promise<{ readonly workItem: TeamWorkItem; readonly requeued: boolean }> {
 		return this.mutations.run(session.id, async () => {
 			const item = this.read(session).workItems.find((candidate) => candidate.id === workItemId);
@@ -473,7 +534,23 @@ export class TeamCollaborationStore {
 			if (item.revision !== expectedRevision) return { workItem: item, requeued: false };
 			if (item.state !== "waiting" && item.state !== "attention-required")
 				throw new Error(`Team task cannot resume from state: ${item.state}`);
-			const next = transitionTeamWorkItem(item, { state: "queued", updatedAt: Date.now() });
+			if (recoveryTrigger === "automatic" && !canAutomaticallyRecoverTeamTask(item))
+				return { workItem: item, requeued: false };
+			const recovery = teamTaskRecovery(item);
+			const next = {
+				...transitionTeamWorkItem(item, { state: "queued", updatedAt: Date.now() }),
+				...(recoveryTrigger
+					? {
+							recovery: {
+								...recovery,
+								automaticRetries: recoveryTrigger === "automatic" ? recovery.automaticRetries + 1 : 0,
+							},
+						}
+					: {}),
+				...(notificationIds?.length
+					? { notificationIds: [...new Set([...(item.notificationIds ?? []), ...notificationIds])] }
+					: {}),
+			};
 			await this.append(session, "agent-team.work-item.v1", next);
 			return { workItem: next, requeued: true };
 		});
@@ -523,9 +600,4 @@ function workItemStateForAttempt(attempt: TeamMemberTurnAttempt): TeamWorkItem["
 		default:
 			return "waiting";
 	}
-}
-
-function automaticRetryDelay(attempt: number, providerDelay: number | undefined): number {
-	if (providerDelay !== undefined) return Math.max(0, Math.min(providerDelay, 60_000));
-	return Math.min(1_000 * 2 ** Math.max(0, attempt - 1), 30_000);
 }

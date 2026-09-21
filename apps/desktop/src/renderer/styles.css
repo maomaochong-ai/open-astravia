@@ -12,16 +12,15 @@
    desktop-app no longer contain className literals for Tailwind to see. */
 @source "../../../../packages/ui/src/**/*.{ts,tsx}";
 
-/* 系统插件贡献的侧边栏图标。
+/* 早期系统插件贡献的侧边栏图标。
  *
- * 工作区视图的 icon 是插件在自己的源码里声明的 iconify class 字符串，宿主只是把它
- * 原样挂到导航按钮上——而 Tailwind 只生成**它扫得到的字面量**，插件源码不在宿主的
- * 扫描范围内，于是那条 class 没有规则、图标是个空格子。
+ * 工作区视图的 icon 是插件声明的 iconify class 字符串，宿主只是把它原样挂到导航
+ * 按钮上——而 Tailwind 只生成**它扫得到的字面量**，插件源码不在宿主的扫描范围内。
  *
- * 不整目录 @source 进插件源码：那会把 preset 里成百上千个只有插件自己用的工具类
- * 一并生成进宿主 CSS。这里按图标逐条放行，与 SOLAR_SKILL_ICON_CLASS 同一个思路
- * （让编译器看见字面量），新增系统插件的导航图标时在这儿补一行。
- * 第三方插件仍然只能拿到默认图标，那需要运行时渲染，不在本清单能解决的范围内。 */
+ * 新插件不要再往这里加：在插件自己的 CSS 里 `@plugin "@iconify/tailwind4"` 即可，
+ * 图标规则会连同内联的 SVG 一起进入插件的 dist/style.css，宿主激活插件时加载它，
+ * class 自然存在。这条路对第三方插件同样成立，而本清单只能覆盖仓库内的插件。
+ * 下面几条是尚未迁移的旧插件，迁走一个就删一行。 */
 @source inline("icon-[solar--ruler-pen-linear]");
 @source inline("icon-[solar--archive-minimalistic-outline]");
 @source inline("icon-[solar--smartphone-2-linear]");
@@ -102,6 +101,26 @@
 		var(--foreground) 72%,
 		var(--primary)
 	);
+
+	/* 终端 ANSI 16 色。终端语义色不能复用 UI 的 token（前景/主色只有几档），
+	   但同样必须是 token 而不是散落在组件里的字面量：xterm 只吃具体色值，
+	   由 `terminal-theme.ts` 把这些变量解析后喂给它。 */
+	--term-black: rgb(45, 48, 58);
+	--term-red: rgb(237, 118, 118);
+	--term-green: rgb(129, 199, 132);
+	--term-yellow: rgb(229, 192, 123);
+	--term-blue: rgb(122, 162, 247);
+	--term-magenta: rgb(187, 154, 247);
+	--term-cyan: rgb(125, 207, 255);
+	--term-white: rgb(192, 197, 209);
+	--term-bright-black: rgb(90, 95, 110);
+	--term-bright-red: rgb(247, 145, 145);
+	--term-bright-green: rgb(158, 216, 161);
+	--term-bright-yellow: rgb(239, 210, 150);
+	--term-bright-blue: rgb(151, 184, 255);
+	--term-bright-magenta: rgb(205, 180, 250);
+	--term-bright-cyan: rgb(160, 223, 255);
+	--term-bright-white: rgb(230, 234, 243);
 }
 
 
@@ -164,6 +183,24 @@
 		var(--foreground) 72%,
 		var(--primary)
 	);
+
+	/* 终端 ANSI 16 色（浅色）：整体压暗以保证白底上的对比度。 */
+	--term-black: rgb(60, 64, 76);
+	--term-red: rgb(193, 60, 60);
+	--term-green: rgb(45, 138, 62);
+	--term-yellow: rgb(158, 118, 20);
+	--term-blue: rgb(38, 96, 204);
+	--term-magenta: rgb(130, 78, 196);
+	--term-cyan: rgb(23, 130, 176);
+	--term-white: rgb(110, 116, 130);
+	--term-bright-black: rgb(130, 136, 150);
+	--term-bright-red: rgb(214, 84, 84);
+	--term-bright-green: rgb(58, 158, 76);
+	--term-bright-yellow: rgb(178, 138, 32);
+	--term-bright-blue: rgb(58, 116, 224);
+	--term-bright-magenta: rgb(150, 98, 216);
+	--term-bright-cyan: rgb(30, 150, 200);
+	--term-bright-white: rgb(40, 44, 54);
 }
 
 @theme inline {
@@ -228,6 +265,16 @@
 		box-shadow 180ms ease !important;
 }
 
+/* View Transition 已经用根快照完成整页过渡。捕获和播放期间暂停页面内部的普通 transition，
+   避免主题 token 变化让 transition-all / transition-colors 元素各自启动非合成颜色动画。
+   fallback 路径带 theme-transitioning class，需要继续使用上面的颜色渐变。 */
+:root[data-theme-transition]:not(.theme-transitioning),
+:root[data-theme-transition]:not(.theme-transitioning) *,
+:root[data-theme-transition]:not(.theme-transitioning) *::before,
+:root[data-theme-transition]:not(.theme-transitioning) *::after {
+	transition: none !important;
+}
+
 ::view-transition-old(root),
 ::view-transition-new(root) {
 	animation: none;
@@ -235,22 +282,7 @@
 }
 
 ::view-transition-new(root) {
-	animation: theme-reveal 620ms ease-in-out both;
 	z-index: 1;
-}
-
-@keyframes theme-reveal {
-	from {
-		clip-path: circle(
-			0 at var(--theme-transition-x, 50%) var(--theme-transition-y, 50%)
-		);
-	}
-	to {
-		clip-path: circle(
-			var(--theme-transition-radius, 150vmax) at var(--theme-transition-x, 50%)
-				var(--theme-transition-y, 50%)
-		);
-	}
 }
 
 :root {

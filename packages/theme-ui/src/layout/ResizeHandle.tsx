@@ -1,20 +1,74 @@
 import { useCallback, useRef, type JSX, type PointerEvent as ReactPointerEvent } from "react";
 
+/**
+ * `side` 是「把手贴在被拉伸元素的哪条边上」，不是拖拽方向。
+ * 语义统一为：正的 delta 让元素变大，所以贴在起始边（left / top）上的把手要取反。
+ */
+export type ResizeHandleSide = "left" | "right" | "top" | "bottom";
+
 export interface ResizeHandleProps {
-	side: "left" | "right";
+	side: ResizeHandleSide;
 	onResizeStart?: () => void;
 	onResize: (delta: number) => void;
 	onResizeEnd?: () => void;
 }
 
+export interface ResizeHandleAxis {
+	readonly vertical: boolean;
+	/** Tailwind 类名必须是字面量，所以光标分成类名与 overlay 用的原始值两份。 */
+	readonly cursorClass: string;
+	readonly overlayCursor: string;
+	readonly edge: string;
+	readonly track: string;
+	readonly line: string;
+	readonly glow: string;
+	readonly gradientDirection: string;
+}
+
+export function resolveResizeHandleAxis(side: ResizeHandleSide): ResizeHandleAxis {
+	if (side === "top" || side === "bottom") {
+		return {
+			vertical: true,
+			cursorClass: "cursor-row-resize",
+			overlayCursor: "row-resize",
+			edge: side === "top" ? "top-0" : "bottom-0",
+			track: "left-0 right-0 h-[8px]",
+			line: "h-px w-[60%] left-1/2 -translate-x-1/2",
+			glow: "h-[5px] w-[55%] left-1/2 -translate-x-1/2 blur-[4px]",
+			gradientDirection: "to right",
+		};
+	}
+	return {
+		vertical: false,
+		cursorClass: "cursor-col-resize",
+		overlayCursor: "col-resize",
+		edge: side === "right" ? "right-0" : "left-0",
+		track: "top-0 bottom-0 w-[8px]",
+		line: "w-px h-[60%] top-1/2 -translate-y-1/2",
+		glow: "w-[5px] h-[55%] top-1/2 -translate-y-1/2 blur-[4px]",
+		gradientDirection: "to bottom",
+	};
+}
+
+/**
+ * 把指针位移折算成「元素该变大多少」。
+ * 贴在起始边（left / top）上的把手要取反：往左/上拖才是变大。
+ */
+export function resizeHandleDelta(side: ResizeHandleSide, pointerDelta: number): number {
+	return side === "right" || side === "bottom" ? pointerDelta : -pointerDelta;
+}
+
 export function ResizeHandle({ side, onResizeStart, onResize, onResizeEnd }: ResizeHandleProps): JSX.Element {
-	const startXRef = useRef(0);
+	const startRef = useRef(0);
+	const axis = resolveResizeHandleAxis(side);
 
 	const onPointerDown = useCallback(
 		(e: ReactPointerEvent) => {
 			e.preventDefault();
 			onResizeStart?.();
-			startXRef.current = e.clientX;
+			const readPosition = (event: { clientX: number; clientY: number }) =>
+				axis.vertical ? event.clientY : event.clientX;
+			startRef.current = readPosition(e);
 			let pendingDelta = 0;
 			let animationFrame: number | null = null;
 
@@ -32,14 +86,14 @@ export function ResizeHandle({ side, onResizeStart, onResize, onResizeEnd }: Res
 			overlay.style.position = "fixed";
 			overlay.style.inset = "0";
 			overlay.style.zIndex = "9999";
-			overlay.style.cursor = "col-resize";
+			overlay.style.cursor = axis.overlayCursor;
 			document.body.appendChild(overlay);
 
 			const onPointerMove = (ev: PointerEvent) => {
-				const delta = ev.clientX - startXRef.current;
-				startXRef.current = ev.clientX;
-				// "right" handle: drag right grows panel; "left" handle: invert.
-				pendingDelta += side === "right" ? delta : -delta;
+				const position = readPosition(ev);
+				const delta = position - startRef.current;
+				startRef.current = position;
+				pendingDelta += resizeHandleDelta(side, delta);
 				if (animationFrame === null) animationFrame = requestAnimationFrame(flushResize);
 			};
 
@@ -57,14 +111,11 @@ export function ResizeHandle({ side, onResizeStart, onResize, onResizeEnd }: Res
 			document.addEventListener("pointerup", onPointerUp);
 			document.body.style.userSelect = "none";
 		},
-		[side, onResizeStart, onResize, onResizeEnd],
+		[axis.overlayCursor, axis.vertical, side, onResizeStart, onResize, onResizeEnd],
 	);
 
-	const edge = side === "right" ? "right-0" : "left-0";
-	const lineGradient =
-		"linear-gradient(to bottom, transparent, color-mix(in srgb, var(--primary) 28%, transparent) 50%, transparent)";
-	const glowGradient =
-		"linear-gradient(to bottom, transparent, color-mix(in srgb, var(--primary) 15%, transparent) 50%, transparent)";
+	const lineGradient = `linear-gradient(${axis.gradientDirection}, transparent, color-mix(in srgb, var(--primary) 28%, transparent) 50%, transparent)`;
+	const glowGradient = `linear-gradient(${axis.gradientDirection}, transparent, color-mix(in srgb, var(--primary) 15%, transparent) 50%, transparent)`;
 	const fadeStyle = {
 		transition: "opacity 380ms cubic-bezier(0.22, 0.61, 0.36, 1)",
 		willChange: "opacity",
@@ -74,16 +125,16 @@ export function ResizeHandle({ side, onResizeStart, onResize, onResizeEnd }: Res
 		<div
 			data-resize-handle={side}
 			onPointerDown={onPointerDown}
-			className={`group absolute top-0 bottom-0 z-30 w-[8px] cursor-col-resize ${edge}`}
+			className={`group absolute z-30 ${axis.cursorClass} ${axis.track} ${axis.edge}`}
 		>
 			<div
 				aria-hidden
-				className={`pointer-events-none absolute ${edge} top-1/2 h-[55%] w-[5px] -translate-y-1/2 rounded-full opacity-0 blur-[4px] group-hover:opacity-100 group-active:opacity-100`}
+				className={`pointer-events-none absolute ${axis.edge} ${axis.glow} rounded-full opacity-0 group-hover:opacity-100 group-active:opacity-100`}
 				style={{ ...fadeStyle, background: glowGradient }}
 			/>
 			<div
 				aria-hidden
-				className={`pointer-events-none absolute ${edge} top-1/2 h-[60%] w-px -translate-y-1/2 opacity-0 group-hover:opacity-100 group-active:opacity-100`}
+				className={`pointer-events-none absolute ${axis.edge} ${axis.line} opacity-0 group-hover:opacity-100 group-active:opacity-100`}
 				style={{ ...fadeStyle, background: lineGradient }}
 			/>
 		</div>

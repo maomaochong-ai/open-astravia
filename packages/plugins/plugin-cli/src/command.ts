@@ -70,7 +70,7 @@ export type PluginAddCommandDependencies = PluginCommandDependencies;
 const HELP_TEXT = `Vetta plugin manager
 
 Usage:
-  vetta-plugin-cli add <npm-package|zip-path|http-url> [--json]
+  vetta-plugin-cli add <npm-package|package-path|http-url> [--json]
   vetta-plugin-cli reload <plugin-id> [--json]
   vetta-plugin-cli docs [--check-latest] [--json]
   vetta-plugin-cli init --id <plugin-id> [--name <display>] [dir] [--json]
@@ -84,7 +84,7 @@ Examples:
   npx @vetta-org/plugin-cli add @example/vetta-plugin-demo
   npx @vetta-org/plugin-cli add @example/vetta-plugin-demo@1.2.0
   npx @vetta-org/plugin-cli add .                      # 当前插件工程（先 pack）
-  npx @vetta-org/plugin-cli add ./release/demo-1.2.0.zip
+  npx @vetta-org/plugin-cli add ./release/demo-1.2.0.vettapkg
   npx @vetta-org/plugin-cli reload demo
   npx @vetta-org/plugin-cli docs
   npx @vetta-org/plugin-cli init --id my-plugin --name "My Plugin"
@@ -109,7 +109,7 @@ export function parsePluginAddCommand(argv: string[]): PluginAddCommand | undefi
 		return { type: "error", message: formatParseError(error) };
 	}
 	const [source, unexpected] = parsed.positionals;
-	if (!source) return { type: "error", message: "Missing <npm-package|zip-path|http-url>" };
+	if (!source) return { type: "error", message: "Missing <npm-package|package-path|http-url>" };
 	if (unexpected) return { type: "error", message: `Unexpected argument: ${unexpected}` };
 	return { type: "add", source, json: parsed.values.json === true };
 }
@@ -331,8 +331,9 @@ function isHttpUrl(source: string): boolean {
 	}
 }
 
-function isLocalZip(source: string): boolean {
-	if (source.toLowerCase().endsWith(".zip")) return true;
+function isLocalPackage(source: string): boolean {
+	const lower = source.toLowerCase();
+	if (lower.endsWith(".vettapkg") || lower.endsWith(".zip")) return true;
 	const path = resolve(source);
 	// 目录不是压缩包：它是一个插件工程，走 resolveProjectArchive 先找它打出来的产物。
 	return existsSync(path) && !statSync(path).isDirectory();
@@ -362,7 +363,7 @@ function resolveProjectArchive(source: string): { archivePath: string; project: 
 		}
 		throw new Error(`No plugin.json found in ${from} or any parent directory.`);
 	}
-	const archivePath = join(project.root, "release", `${project.pluginId}-${project.version}.zip`);
+	const archivePath = join(project.root, "release", `${project.pluginId}-${project.version}.vettapkg`);
 	if (!existsSync(archivePath)) {
 		throw new Error(
 			`Packaged archive not found: ${archivePath}\nBuild it first: npm run build && npx vetta-plugin pack`,
@@ -386,6 +387,7 @@ function indexDriftHint(project: PluginProject): string | undefined {
 function npmInstallInput(resolved: ResolvedNpmPluginArchive): Record<string, unknown> {
 	return {
 		operation: "install-from-path",
+		initiator: "plugin-cli",
 		path: resolved.archivePath,
 		enable: true,
 		source: "npm",
@@ -498,19 +500,22 @@ export async function runPluginCommand(
 		} else if (isHttpUrl(command.source)) {
 			result = await dependencies.runAction("plugins.manage", {
 				operation: "install-from-url",
+				initiator: "plugin-cli",
 				url: command.source,
 			});
 		} else if (isDirectorySource(command.source)) {
 			const { archivePath, project } = resolveProjectArchive(command.source);
 			result = await dependencies.runAction("plugins.manage", {
 				operation: "install-from-path",
+				initiator: "plugin-cli",
 				path: archivePath,
 				enable: true,
 			});
 			driftHint = indexDriftHint(project);
-		} else if (isLocalZip(command.source)) {
+		} else if (isLocalPackage(command.source)) {
 			result = await dependencies.runAction("plugins.manage", {
 				operation: "install-from-path",
+				initiator: "plugin-cli",
 				path: resolve(command.source),
 				enable: true,
 			});

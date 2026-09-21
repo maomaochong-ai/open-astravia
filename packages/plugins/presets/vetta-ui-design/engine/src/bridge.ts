@@ -10,9 +10,11 @@
  *                    | resolve-element
  *   iframe → parent: ready | rendered | selected | exit-inspect | captured | hmr-updated
  *                    | frame-error | context-menu | navigated | wheel | space | element-resolved
+ *                    | storage
  */
 import { toJpeg, toPng } from "html-to-image";
 import { pathOfFrame } from "./routes";
+import { watchLocalStorage } from "./storage-sync";
 
 type InspectMode = "off" | "inspect";
 
@@ -636,4 +638,6 @@ export function installBridge(host: BridgeHost): void {
 	}
 
 	post({ type: "ready", frameId: host.getFrameId() });
+	// 只有嵌在画布里才报：离屏窗口是顶层页面，它的存储本来就是画布灌进去的。
+	if (window.parent !== window) watchLocalStorage(post);
 }

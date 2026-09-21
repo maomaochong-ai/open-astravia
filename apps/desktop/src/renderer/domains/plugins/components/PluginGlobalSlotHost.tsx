@@ -2,11 +2,13 @@ import {
 	activeInputActionIdsAtom,
 	pluginAbilityDetailSlotsAtom,
 	pluginActivityTabsAtom,
+	pluginBottomPanelsAtom,
 	pluginCardRenderersAtom,
 	pluginFilePreviewsAtom,
 	pluginFileExplorerContextMenuActionsAtom,
 	pluginFileExplorerDecorationProvidersAtom,
 	pluginFileExplorerToolbarActionsAtom,
+	pluginFileIconThemesAtom,
 	type PluginI18nEntry,
 	pluginI18nByIdAtom,
 	pluginInputActionsAtom,
@@ -16,11 +18,11 @@ import {
 	pluginTurnCardsAtom,
 	pluginWorkspaceViewsAtom,
 	type RegisteredActivityTab,
+	type RegisteredBottomPanel,
 	type RegisteredAbilityDetailSlot,
 	type RegisteredCardRenderer,
 	type RegisteredFilePreview,
 	type RegisteredFileExplorerContextMenuAction,
-	type RegisteredFileExplorerDecorationProvider,
 	type RegisteredFileExplorerToolbarAction,
 	type RegisteredInputAction,
 	type RegisteredToolCallSlot,
@@ -31,7 +33,7 @@ import type { PluginsChangedEvent } from "@preload/api";
 import { getDefaultStore, useSetAtom } from "jotai";
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { PluginGlobalSlotContribution } from "@vetta-org/plugin-sdk";
-import { markPluginHostLoading, markPluginHostReady, PLUGINS_CHANGED_EVENT } from "../runtime/plugin-events";
+import { markPluginHostLoading, markPluginHostReady } from "../runtime/plugin-events";
 import { installPluginHostBridge } from "../runtime/plugin-host-bridge";
 import { installPluginHostShim } from "../runtime/plugin-host-shim";
 import { PluginI18nBoundary } from "../runtime/plugin-i18n";
@@ -39,6 +41,7 @@ import { loadPlugin, type LoadedPlugin } from "../runtime/plugin-loader";
 import { loadPluginSnapshot } from "./plugin-snapshot";
 import { publishWorkspaceViews } from "./plugin-workspace-view-publication";
 import { PluginSlotErrorBoundary } from "./PluginSlotErrorBoundary";
+import { collectFileExplorerContributions } from "./plugin-file-explorer-publication";
 
 // 串行加载插件快照，避免并发 reload 交叉提交 activation。
 let pluginHostLifecycle = Promise.resolve();
@@ -54,7 +57,9 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 	const setFileExplorerContextMenuActions = useSetAtom(pluginFileExplorerContextMenuActionsAtom);
 	const setFileExplorerToolbarActions = useSetAtom(pluginFileExplorerToolbarActionsAtom);
 	const setFileExplorerDecorationProviders = useSetAtom(pluginFileExplorerDecorationProvidersAtom);
+	const setFileIconThemes = useSetAtom(pluginFileIconThemesAtom);
 	const setActivityTabs = useSetAtom(pluginActivityTabsAtom);
+	const setBottomPanels = useSetAtom(pluginBottomPanelsAtom);
 	const setInputActions = useSetAtom(pluginInputActionsAtom);
 	const setNewSessionContexts = useSetAtom(pluginNewSessionContextsAtom);
 	const setCardRenderers = useSetAtom(pluginCardRenderersAtom);
@@ -87,13 +92,9 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 			for (const pluginId of event.pluginIds) pendingPluginIdsRef.current.add(pluginId);
 			reloadPlugins();
 		};
-		window.addEventListener(PLUGINS_CHANGED_EVENT, requestFullReload);
 		// Main process install/enable/reload (Action / workbench) → re-load remotes.
 		const unsubMain = window.vetta.plugins.onPluginsChanged(requestMainReload);
-		return () => {
-			window.removeEventListener(PLUGINS_CHANGED_EVENT, requestFullReload);
-			unsubMain();
-		};
+		return unsubMain;
 	}, [reloadPlugins]);
 
 	useEffect(() => {
@@ -221,15 +222,10 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 	}, [plugins, revision, hostLoading, setFileExplorerToolbarActions]);
 
 	useEffect(() => {
-		const providers: RegisteredFileExplorerDecorationProvider[] = plugins.flatMap((plugin) =>
-			plugin.fileExplorerDecorationProviders.map((provider) => ({
-				...provider,
-				pluginId: plugin.id,
-				providerId: provider.id,
-			})),
-		);
-		if (providers.length > 0 || !hostLoading) setFileExplorerDecorationProviders(providers);
-	}, [plugins, revision, hostLoading, setFileExplorerDecorationProviders]);
+		const { decorations, themes } = collectFileExplorerContributions(plugins);
+		if (decorations.length > 0 || !hostLoading) setFileExplorerDecorationProviders(decorations);
+		if (themes.length > 0 || !hostLoading) setFileIconThemes(themes);
+	}, [plugins, revision, hostLoading, setFileExplorerDecorationProviders, setFileIconThemes]);
 
 	// Publish activity-tab contributions (the addable pool) so ActivityPanel
 	// can render attached tabs and the "+" picker.
@@ -242,6 +238,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 				label: tab.label,
 				icon: tab.icon,
 				component: tab.component,
+				order: tab.order,
 				scope_use: tab.scope_use,
 				initiallyVisible: tab.initiallyVisible,
 				retention: tab.retention,
@@ -250,6 +247,25 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 		);
 		if (tabs.length > 0 || !hostLoading) setActivityTabs(tabs);
 	}, [plugins, revision, hostLoading, setActivityTabs]);
+
+	// Publish bottom-panel contributions (the addable pool) so the session's
+	// bottom panel can render opened instances and its "+" menu.
+	useEffect(() => {
+		const panels: RegisteredBottomPanel[] = plugins.flatMap((plugin) =>
+			plugin.bottomPanels.map((panel) => ({
+				pluginId: plugin.id,
+				pluginName: plugin.name,
+				panelId: panel.id,
+				label: panel.label,
+				icon: panel.icon,
+				component: panel.component,
+				order: panel.order,
+				scope_use: panel.scope_use,
+				maxInstances: panel.maxInstances,
+			})),
+		);
+		if (panels.length > 0 || !hostLoading) setBottomPanels(panels);
+	}, [plugins, revision, hostLoading, setBottomPanels]);
 
 	// Publish input-action toggles (rendered beneath the AI input bar).
 	useEffect(() => {
@@ -364,7 +380,9 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 			setFileExplorerContextMenuActions([]);
 			setFileExplorerToolbarActions([]);
 			setFileExplorerDecorationProviders([]);
+			setFileIconThemes([]);
 			setActivityTabs([]);
+			setBottomPanels([]);
 			setInputActions([]);
 			setCardRenderers([]);
 			setToolCallSlots([]);
@@ -378,7 +396,9 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 		setFileExplorerContextMenuActions,
 		setFileExplorerToolbarActions,
 		setFileExplorerDecorationProviders,
+		setFileIconThemes,
 		setActivityTabs,
+		setBottomPanels,
 		setInputActions,
 		setCardRenderers,
 		setToolCallSlots,

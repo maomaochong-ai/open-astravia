@@ -29,10 +29,13 @@ import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
 import { nodeModelInputImageProcessor, nodeWorkspaceFactsFileSource } from "@vetta/runtime-node/coding";
 import { createFileConversationPersistence, resolveSessionIdFromPath } from "@vetta/runtime-node/conversation";
 import type { CodingToolResultPolicy } from "@vetta/runtime-tools";
+import { normalizeProjectCwd, parseProjectLocation } from "@vetta/ssh-transport";
 import {
 	createDesktopCodingAgentSessionExecutionEnvironment,
 	createDesktopCodingAgentToolEnvironment,
 } from "./coding-agent-tool-environment.js";
+import { resolveProjectExecutionMode } from "./remote-execution-mode.js";
+import { renderRemoteWorkspaceFacts } from "./remote-workspace-facts.js";
 
 type CompositionFixedOption =
 	| "agentDir"
@@ -283,9 +286,7 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 			...(managedMcpSource ? { mcpSource: managedMcpSource.source } : {}),
 			conversationDir: scope.conversationDir,
 			cwd: scope.cwd,
-			workspaceFacts: detectWorkspaceFacts(scope.cwd, (cwd) =>
-				probeWorkspaceSignals(cwd, nodeWorkspaceFactsFileSource),
-			),
+			workspaceFacts: resolveWorkspaceFacts(scope.cwd),
 			agentDir: scope.agentDir,
 			scenario: scope.scenario,
 			enableSubagents: scope.enableSubagents,
@@ -346,7 +347,7 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 	private mcpKeyFor(scope: DesktopMcpRuntimeScope): string {
 		const resolvedScope = this.options.resolveMcpRuntimeScope?.(scope) ?? scope;
 		return mcpRuntimeScopeKey({
-			cwd: resolve(resolvedScope.cwd),
+			cwd: normalizeProjectCwd(resolvedScope.cwd, resolve),
 			agentDir: resolvedScope.agentDir ? resolve(resolvedScope.agentDir) : undefined,
 		});
 	}
@@ -357,7 +358,7 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 		if (!this.options.createMcpRuntimeSource) return undefined;
 		const resolvedScope = this.options.resolveMcpRuntimeScope?.(scope) ?? scope;
 		const normalizedScope = {
-			cwd: resolve(resolvedScope.cwd),
+			cwd: normalizeProjectCwd(resolvedScope.cwd, resolve),
 			agentDir: resolvedScope.agentDir ? resolve(resolvedScope.agentDir) : undefined,
 		};
 		const key = mcpRuntimeScopeKey(normalizedScope);
@@ -423,7 +424,7 @@ function toCodingAgentRuntimeSessionRequest(
 		cwd: request.cwd ?? scope.cwd,
 		model: request.model,
 		thinkingLevel: request.thinkingLevel,
-		executionMode: request.executionMode,
+		executionMode: resolveProjectExecutionMode(request.cwd ?? scope.cwd, request.executionMode),
 		env: request.env,
 		sandboxHostPath: request.sandboxHostPath,
 		linuxBubblewrapPath: request.linuxBubblewrapPath,
@@ -452,7 +453,9 @@ function resolveCompositionObservationOptions(
 
 function resolveRuntimeScope(request: RuntimeSessionCreateRequest): DesktopRuntimeScope {
 	const sessionOptions = readCodingAgentRequestConfiguration(request);
-	const cwd = resolve(request.cwd ?? process.cwd());
+	// 远程项目的 cwd 是 `ssh://…` URI，不能交给 resolve()——那会把它变成一个本地路径，
+	// 下游的位置判断随即把远程会话当成本地会话，工具悄悄换回本地实现。
+	const cwd = normalizeProjectCwd(request.cwd ?? process.cwd(), resolve);
 	const sessionPath = request.sessionPath?.trim();
 	// 缺省落点是 agent 目录下按 cwd 编码分片的全局目录，**不是** `<cwd>/.vetta/sessions`：
 	// 会话产物是宿主状态，不该在用户工程里长出未跟踪文件（还会被 `git add -A` 误提交）。
@@ -507,4 +510,17 @@ function runtimeScopeKey(scope: DesktopRuntimeScope): string {
 
 function mcpRuntimeScopeKey(scope: DesktopMcpRuntimeScope): string {
 	return JSON.stringify([scope.cwd, scope.agentDir ?? null]);
+}
+
+/**
+ * 会话创建时固化的工作区说明。
+ *
+ * 远程项目不能走本地探测：`probeWorkspaceSignals` 同步读本机磁盘，对着一个
+ * `ssh://…` 的 cwd 只会什么都探不到，然后静默给出「没有任何事实」——模型于是
+ * 默认自己在一个空目录里，可能另起一个新工程。
+ */
+function resolveWorkspaceFacts(cwd: string): string | undefined {
+	const location = parseProjectLocation(cwd);
+	if (location.kind === "ssh") return renderRemoteWorkspaceFacts(location.remotePath);
+	return detectWorkspaceFacts(cwd, (root) => probeWorkspaceSignals(root, nodeWorkspaceFactsFileSource));
 }

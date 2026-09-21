@@ -36,6 +36,7 @@ export function useSessionRowModel({
 		sessionPath: session.path,
 		forked,
 		titleExtra: forked ? t("sidebar.session.forkedTooltip") : undefined,
+		moreLabel: t("actions.more"),
 		renaming,
 		running,
 		scheduled,

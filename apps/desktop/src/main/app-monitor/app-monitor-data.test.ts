@@ -14,4 +14,29 @@ describe("app monitor extension failures", () => {
 	it("merges the historical MCP bucket while loading persisted data", () => {
 		expect(normalizeAppMonitorData({ errors: { extension: 3, mcp: 2 } }).errors.extension).toBe(5);
 	});
+
+	it("preserves MCP ability lifecycle summaries", () => {
+		const data = normalizeAppMonitorData({
+			resources: {
+				byResource: {
+					"mcp:demo": {
+						kind: "mcp",
+						id: "demo",
+						events: 1,
+						installed: 1,
+						lastOperation: "installed",
+						lastOperationAt: 10,
+					},
+				},
+			},
+		});
+
+		expect(data.resources.byResource["mcp:demo"]).toMatchObject({
+			kind: "mcp",
+			id: "demo",
+			installed: 1,
+			lastOperation: "installed",
+		});
+		expect(data.resources.recentByKind.mcp).toMatchObject({ kind: "mcp", id: "demo" });
+	});
 });

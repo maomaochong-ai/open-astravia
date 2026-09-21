@@ -224,7 +224,7 @@ for (const name of entries) {
 	const hash = await hashPlugin(name, sharedBuildHash, siblingWorkspacePackages);
 	nextPresetHashes[name] = hash;
 	const manifest = JSON.parse(await readFile(join(presetsDir, name, "plugin.json"), "utf8"));
-	const archivePath = join(presetsDir, name, "release", `${manifest.id}-${manifest.version}.zip`);
+	const archivePath = join(presetsDir, name, "release", `${manifest.id}-${manifest.version}.vettapkg`);
 	if (cache.presets?.[name] !== hash || !existsSync(archivePath)) {
 		changedEntries.push(name);
 	} else {

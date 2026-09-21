@@ -2,10 +2,13 @@ import type { InstalledPlugin } from "@preload/api";
 import type {
 	PluginAbilityDetailSlotContribution,
 	PluginActivityTabContribution,
+	PluginBottomPanelContribution,
 	PluginCardRendererContribution,
 	PluginFileExplorerContextMenuContribution,
 	PluginFileExplorerDecorationProvider,
+	PluginFileExplorerEntry,
 	PluginFileExplorerToolbarContribution,
+	PluginFileIconTheme,
 	PluginFilePreviewContribution,
 	PluginGlobalSlotContribution,
 	PluginInputActionContribution,
@@ -44,8 +47,10 @@ export interface LoadedPlugin {
 	filePreviews: PluginFilePreviewContribution[];
 	fileExplorerContextMenuActions: PluginFileExplorerContextMenuContribution[];
 	fileExplorerToolbarActions: PluginFileExplorerToolbarContribution[];
-	fileExplorerDecorationProviders: PluginFileExplorerDecorationProvider[];
+	fileExplorerDecorationProviders: ResolvedFileExplorerDecorationProvider[];
+	fileIconThemes: PluginFileIconTheme[];
 	activityTabs: PluginActivityTabContribution[];
+	bottomPanels: PluginBottomPanelContribution[];
 	inputActions: PluginInputActionContribution[];
 	newSessionContexts: ResolvedPluginNewSessionContextContribution[];
 	cardRenderers: PluginCardRendererContribution[];
@@ -55,14 +60,21 @@ export interface LoadedPlugin {
 	dispose(): Promise<void>;
 }
 
+export interface ResolvedFileExplorerDecorationProvider extends PluginFileExplorerDecorationProvider {
+	/** Entries explicitly announced by the provider, including unexpanded descendants. */
+	changedEntries: Map<string, PluginFileExplorerEntry>;
+}
+
 export class PluginLocalContributions {
 	readonly slots: PluginGlobalSlotContribution[] = [];
 	readonly abilityDetailSlots: PluginAbilityDetailSlotContribution[] = [];
 	readonly filePreviews: PluginFilePreviewContribution[] = [];
 	readonly fileExplorerContextMenuActions: PluginFileExplorerContextMenuContribution[] = [];
 	readonly fileExplorerToolbarActions: PluginFileExplorerToolbarContribution[] = [];
-	readonly fileExplorerDecorationProviders: PluginFileExplorerDecorationProvider[] = [];
+	readonly fileExplorerDecorationProviders: ResolvedFileExplorerDecorationProvider[] = [];
+	readonly fileIconThemes: PluginFileIconTheme[] = [];
 	readonly activityTabs: PluginActivityTabContribution[] = [];
+	readonly bottomPanels: PluginBottomPanelContribution[] = [];
 	readonly inputActions: PluginInputActionContribution[] = [];
 	readonly newSessionContexts: ResolvedPluginNewSessionContextContribution[] = [];
 	readonly cardRenderers: PluginCardRendererContribution[] = [];
@@ -77,7 +89,9 @@ export class PluginLocalContributions {
 		this.fileExplorerContextMenuActions.length = 0;
 		this.fileExplorerToolbarActions.length = 0;
 		this.fileExplorerDecorationProviders.length = 0;
+		this.fileIconThemes.length = 0;
 		this.activityTabs.length = 0;
+		this.bottomPanels.length = 0;
 		this.inputActions.length = 0;
 		this.newSessionContexts.length = 0;
 		this.cardRenderers.length = 0;
@@ -99,7 +113,9 @@ export class PluginLocalContributions {
 			fileExplorerContextMenuActions: this.fileExplorerContextMenuActions,
 			fileExplorerToolbarActions: this.fileExplorerToolbarActions,
 			fileExplorerDecorationProviders: this.fileExplorerDecorationProviders,
+			fileIconThemes: this.fileIconThemes,
 			activityTabs: this.activityTabs,
+			bottomPanels: this.bottomPanels,
 			inputActions: this.inputActions,
 			newSessionContexts: this.newSessionContexts,
 			cardRenderers: this.cardRenderers,

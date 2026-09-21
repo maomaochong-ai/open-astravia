@@ -55,7 +55,7 @@ describe("createVettaPluginPackage", () => {
 			"locales/en.json",
 			"plugin.json",
 		]);
-		expect(result.outputPath).toBe(join(rootDir, "release", "pack-test-0.1.0.zip"));
+		expect(result.outputPath).toBe(join(rootDir, "release", "pack-test-0.1.0.vettapkg"));
 	});
 
 	it("packages ability details and presentation files", async () => {
@@ -95,14 +95,14 @@ describe("createVettaPluginPackage", () => {
 					schemaVersion: 1,
 					type: "desktop-plugin",
 					pluginId: "npm-pack-test",
-					archive: "release/vetta-plugin.zip",
+					archive: "release/vetta-plugin.vettapkg",
 				},
 			}),
 		);
 
 		const result = await createVettaPluginPackage({ rootDir, npmArchive: true });
 
-		expect(result.npmOutputPath).toBe(join(rootDir, "release", "vetta-plugin.zip"));
+		expect(result.npmOutputPath).toBe(join(rootDir, "release", "vetta-plugin.vettapkg"));
 		expect(await readFile(result.npmOutputPath!)).toEqual(await readFile(result.outputPath));
 	});
 
@@ -117,7 +117,7 @@ describe("createVettaPluginPackage", () => {
 					schemaVersion: 1,
 					type: "desktop-plugin",
 					pluginId: "identity-test",
-					archive: "release/vetta-plugin.zip",
+					archive: "release/vetta-plugin.vettapkg",
 				},
 			}),
 		);
@@ -137,6 +137,6 @@ describe("createVettaPluginPackage", () => {
 		});
 
 		await expect(createVettaPluginPackage({ rootDir })).rejects.toThrow('requires "agent.tools.control"');
-		await expect(readFile(join(rootDir, "release", "permission-test-1.0.0.zip"))).rejects.toThrow();
+		await expect(readFile(join(rootDir, "release", "permission-test-1.0.0.vettapkg"))).rejects.toThrow();
 	});
 });

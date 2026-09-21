@@ -11,6 +11,7 @@ import { reconcileMarketplaceSources } from "./marketplace-source-policy.js";
 import {
 	DEFAULT_MARKETPLACE_SOURCE_ID,
 	OFFICIAL_MARKETPLACE_NAME,
+	OFFICIAL_MARKETPLACE_REF,
 	OFFICIAL_MARKETPLACE_REPOSITORY,
 } from "./official-marketplace-source.js";
 
@@ -60,8 +61,8 @@ export function marketplaceArchiveUrl(repository: string, ref: string): string {
 	return `${repository}/archive/refs/heads/${ref.split("/").map(encodeURIComponent).join("/")}.zip`;
 }
 
-function validateRef(value: string | undefined): string {
-	const ref = value?.trim() || "main";
+function validateRef(value: string | undefined, fallback = "main"): string {
+	const ref = value?.trim() || fallback;
 	if (!REF_PATTERN.test(ref) || ref.includes("..") || ref.startsWith("/") || ref.endsWith("/")) {
 		throw new Error("Marketplace ref is invalid");
 	}
@@ -130,7 +131,8 @@ function createDefaultSources(now: Date): MarketplaceSource[] {
 	const configuredRepository = process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY?.trim();
 	// 发行方可用 fork 仓库替换官方源；未配置时始终注册 Vetta 官方源。
 	const normalizedRepository = normalizeGitHubRepository(configuredRepository || OFFICIAL_MARKETPLACE_REPOSITORY);
-	const ref = validateRef(process.env.VETTA_OPEN_MARKETPLACE_REF);
+	const defaultRef = normalizedRepository === OFFICIAL_MARKETPLACE_REPOSITORY ? OFFICIAL_MARKETPLACE_REF : "main";
+	const ref = validateRef(process.env.VETTA_OPEN_MARKETPLACE_REF, defaultRef);
 	const timestamp = now.toISOString();
 	return [
 		{

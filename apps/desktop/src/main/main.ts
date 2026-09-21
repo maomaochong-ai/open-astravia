@@ -49,6 +49,7 @@ import {
 	teardownAllIpc,
 } from "./ipc/index.js";
 import { syncQuickPanelTrigger } from "./ipc/quickpanel.js";
+import { disposeAllTerminals } from "./ipc/terminal.js";
 import { registerKnowledgeIpc } from "./knowledge/ipc.js";
 import { reloadKnowledgePoller, shutdownKnowledgePoller } from "./knowledge/poller.js";
 import { getLocalRpcServerEndpointFilePath } from "./local-rpc/endpoint-file.js";
@@ -64,7 +65,9 @@ import { discoverSystemPlugins } from "./plugins/plugin-catalog.js";
 import { startConfiguredPluginDevWatches } from "./plugins/plugin-dev-bootstrap.js";
 import { stopAllPluginDevWatches } from "./plugins/plugin-dev-watch.js";
 import { migrateLegacyPluginSettings } from "./plugins/plugin-legacy-settings-migration.js";
+import { createDesktopPluginPackageOpenService } from "./plugins/plugin-package-open.js";
 import { PLUGIN_PROTOCOL_PRIVILEGES, registerPluginProtocols } from "./plugins/plugin-protocol.js";
+import { refreshDesktopProxy } from "./proxy/proxy-host.js";
 import { stopAllUiohookConsumers } from "./quickpanel-trigger.js";
 import { createQuickPanelWindow } from "./quickpanel-window.js";
 import { isQuitCleanupStarted, runQuitCleanup, setQuitCleanup } from "./quit-cleanup.js";
@@ -337,6 +340,16 @@ app.on("open-url", (event, url) => {
 
 // Windows/Linux: second instance passes URL via argv
 const gotSingleLock = isCliMode ? true : app.requestSingleInstanceLock();
+const pluginPackageOpenService = isCliMode ? undefined : createDesktopPluginPackageOpenService();
+pluginPackageOpenService?.enqueueFromArgv(process.argv);
+
+// macOS Finder sends associated files through open-file. The service queues
+// startup events until language, window, and plugin infrastructure are ready.
+app.on("open-file", (event, filePath) => {
+	if (!pluginPackageOpenService?.enqueue(filePath)) return;
+	event.preventDefault();
+});
+
 if (!gotSingleLock) {
 	app.exit(0);
 } else {
@@ -345,6 +358,7 @@ if (!gotSingleLock) {
 		if (protocolUrl) {
 			handleProtocolUrl(protocolUrl);
 		}
+		pluginPackageOpenService?.enqueueFromArgv(argv);
 		showMainWindow();
 	});
 	app.whenReady().then(async () => {
@@ -659,6 +673,13 @@ if (!gotSingleLock) {
 		// 首帧之后执行，避免这些维护工作阻塞窗口出现。
 		const runtimeManager = getRuntimeManager();
 		runtimeManager.applyEnv();
+		// 应用代理紧跟托管运行时的 env 注入：它既装 Provider 传输解析器，也写代理
+		// 环境变量，必须早于 im sidecar bootstrap 和任何模型请求。
+		try {
+			await refreshDesktopProxy();
+		} catch (err) {
+			mainLog.error("failed to apply application proxy", err);
+		}
 		if (remoteControlUrl && remotePairingToken) {
 			void startDesktopRemoteAccess({
 				controlUrl: remoteControlUrl,
@@ -736,6 +757,7 @@ if (!gotSingleLock) {
 		// 后台 poller 等真实内容绘制后再启动。
 		registerKnowledgeIpc();
 		appLifecycle.markReady();
+		pluginPackageOpenService?.markReady();
 		void remotePairingService.restore();
 		if (!app.isPackaged) {
 			void startConfiguredPluginDevWatches(appRoot)
@@ -901,6 +923,11 @@ setQuitCleanup(async () => {
 	// 停掉插件开发会话和插件命令拉起的长驻进程。
 	stopAllPluginDevWatches();
 	stopAllPluginSpawns();
+
+	// 终端里跑着的东西同样是我们拉起来的进程，退出时必须收掉：不收的话用户看到应用关了、
+	// 面板没了，dev server 还占着端口在后台跑。同步、且排在所有 await 之前——后面任何
+	// 一步卡住，都不该连累到「关掉我启动的进程」这件事。
+	disposeAllTerminals();
 
 	const consumerShutdownResults = await Promise.allSettled([
 		shutdownScheduler(),

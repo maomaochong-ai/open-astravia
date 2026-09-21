@@ -84,6 +84,7 @@ export const ProjectGroup = memo(function ProjectGroup(props: ProjectGroupProps)
 				onOpenContextMenu: model.actions.openProjectContextMenu,
 				projectCwd: model.project.cwd,
 				projectType: model.projectType,
+				remote: model.remote,
 			}}
 			emptySessions={
 				<p className="px-2.5 py-1.5 pl-[36px] text-[12px] text-muted-foreground">

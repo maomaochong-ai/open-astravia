@@ -9,6 +9,7 @@ import { initializeHostedRoutes } from "./initialize-hosted-routes";
 import { desktopThemeHost } from "./shared/theme/desktopThemeHost";
 import { ThemeRuntimeProvider } from "./shared/theme/runtime";
 import { ThemeColorOverrideBridge } from "./shared/theme/ThemeColorOverrideBridge";
+import { ThemeController } from "./shared/theme/ThemeController";
 import { initializeProductAnalytics } from "./telemetry/product-analytics";
 
 export function renderApp(root: Root): void {
@@ -21,6 +22,7 @@ export function renderApp(root: Root): void {
 			<I18nextProvider i18n={i18n}>
 				<ThemeHostProvider host={desktopThemeHost}>
 					<ThemeRuntimeProvider>
+						<ThemeController />
 						<ThemeColorOverrideBridge />
 						<RouterProvider router={router} />
 					</ThemeRuntimeProvider>

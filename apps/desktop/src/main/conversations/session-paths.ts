@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { type FileHandle, mkdir, open } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
+import { isSshProjectUri } from "@vetta/ssh-transport";
 import {
 	DEFAULT_CONVERSATION_CWD,
 	DEFAULT_CONVERSATION_SESSION_DIR,
@@ -62,6 +63,9 @@ export async function ensureConversationSubCwd(requestedCwd: string | undefined)
 
 export async function ensureSessionWorkingCwd(cwd: string | undefined): Promise<void> {
 	if (!cwd) return;
+	// 远程项目的目录在远端，而且登记时已经校验过它存在。拿 `ssh://…` 去 mkdir 会在
+	// 本机建出一个名叫 `ssh:` 的空目录，既没用也会让人以为项目落在本地。
+	if (isSshProjectUri(cwd)) return;
 	await mkdir(cwd, { recursive: true });
 }
 
@@ -82,11 +86,13 @@ export async function readDesktopSessionHeader(sessionPath: string): Promise<Des
 			cwd?: unknown;
 		};
 		const supportedHeader = header.type === "session" || header.recordType === "conversation.header";
+		// 远程会话的 cwd 是 `ssh://…`，同样是完整标识；按本地绝对路径判会把这些会话
+		// 整条丢掉，表现为远程项目的历史会话列不出来。
 		if (
 			!supportedHeader ||
 			typeof header.cwd !== "string" ||
 			header.cwd.trim().length === 0 ||
-			!isAbsolute(header.cwd)
+			!(isAbsolute(header.cwd) || isSshProjectUri(header.cwd))
 		) {
 			return undefined;
 		}

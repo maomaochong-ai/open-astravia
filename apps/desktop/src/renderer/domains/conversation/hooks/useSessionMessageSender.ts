@@ -62,7 +62,9 @@ import {
 	startAssistantTurn,
 	toChatErrorDetails,
 } from "../services/chat-service";
+import { planFailedResendRollback } from "../services/failed-resend-rollback";
 import { rememberOptimisticUserMessage } from "../services/optimistic-user-message-cache";
+import { applyDraftPlanMode } from "../services/plan-mode-draft";
 import { getSessionRuntimeWhenReady } from "../services/session-runtime-readiness";
 import {
 	restoreStagedPendingSessionSend,
@@ -332,30 +334,17 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 					[],
 				);
 			} else if (!streaming) {
-				// 失败重发去重（ADR-0060）：上一轮以错误收尾且最后一条用户消息与本次
-				// 文本相同时，先 replaceLastUserMessage 回退再发，避免 jsonl 双份 user
-				// 记录、也避免下一轮模型上下文里出现两条相同消息。
+				// 失败重发去重（ADR-0060）：上一轮在 prompt 前置阶段就失败、什么都没产出，
+				// 且本次原样重发时，先 replaceLastUserMessage 回退再发，避免 jsonl 双份
+				// user 记录、也避免下一轮模型上下文里出现两条相同消息。
+				// 判据见 planFailedResendRollback——后端是硬删子树，收不紧会连带销毁
+				// 「跑了很久才失败」那一轮的全部产出。
 				if (!pendingEdit) {
-					const currentMsgs = store.get(chatMessagesAtom);
-					const lastMsg = currentMsgs.at(-1);
-					let lastUserIdx = -1;
-					for (let i = currentMsgs.length - 1; i >= 0; i--) {
-						if (currentMsgs[i].kind === "user") {
-							lastUserIdx = i;
-							break;
-						}
-					}
-					const lastUserCandidate = lastUserIdx >= 0 ? currentMsgs[lastUserIdx] : undefined;
-					const lastUser = lastUserCandidate?.kind === "user" ? lastUserCandidate : undefined;
-					if (
-						lastMsg?.kind === "agent" &&
-						lastMsg.blocks.some((block) => block.type === "error") &&
-						lastUser?.entryId &&
-						lastUser.text === text
-					) {
+					const rollback = planFailedResendRollback(store.get(chatMessagesAtom), text);
+					if (rollback) {
 						try {
-							await window.vetta.session.replaceLastUserMessage(session.runtimeId, lastUser.entryId);
-							setChatMessages((prev) => prev.slice(0, lastUserIdx));
+							await window.vetta.session.replaceLastUserMessage(session.runtimeId, rollback.entryId);
+							setChatMessages((prev) => prev.slice(0, rollback.truncateFrom));
 						} catch (err) {
 							// 回退失败就按普通追加发送；宁可重复也不丢消息。
 							console.warn("[useSessionManager.sendMessage] resend dedupe failed:", err);
@@ -455,6 +444,16 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 						}
 					}
 				}
+			}
+
+			// 新会话页上选的计划模式要赶在第一条消息之前落到 Runtime；落不上就不发，
+			// 不能把「先出计划」静默降级成直接执行。
+			try {
+				await applyDraftPlanMode(session.runtimeId);
+			} catch (err) {
+				console.error("[useSessionManager.sendMessage] applyDraftPlanMode failed:", err);
+				setChatMessages((prev) => appendError(prev, err instanceof Error ? err.message : String(err)));
+				return;
 			}
 
 			const promptReq: PromptRequest = {

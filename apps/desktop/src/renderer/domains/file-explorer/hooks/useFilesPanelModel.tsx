@@ -49,6 +49,7 @@ import { ConfirmDeleteDialog } from "../components/ConfirmDeleteDialog";
 import { FileContextMenu } from "../components/FileContextMenu";
 import { FileTransferDialog } from "../components/FileTransferDialog";
 import { FileTree } from "../components/FileTree";
+import { FileExplorerSettings } from "../components/FileExplorerSettings";
 import { type FileExplorerClipboard, resolvePasteDirectory } from "../services/clipboard";
 import { resolveCreateParentDirectory } from "../services/create-entry";
 import { isProjectInternalDrop } from "../services/file-drop";
@@ -690,6 +691,7 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 				<span className="icon-[solar--minimize-square-linear] h-3.5 w-3.5" />
 			</Button>
 			{pluginToolbarActionNodes}
+			<FileExplorerSettings />
 		</>
 	);
 

@@ -1,13 +1,30 @@
 # GitHub 开源能力市场格式
 
-Desktop 从 GitHub 下载完整仓库归档，并在本地读取 `.vetta/marketplace.json`。GitHub 不承担搜索、筛选或分页；这些操作全部基于客户端已校验的本地快照完成。
+Desktop 从 GitHub 下载配置 ref 的归档，并在本地读取 `.vetta/marketplace.json`。GitHub 不承担搜索、筛选或分页；这些操作全部基于客户端已校验的本地快照完成。
+
+## 推荐发布模式：静态分发分支
+
+市场源码与可安装分发分开：新仓库通常由 main 保存能力源码；已有官方市场为避免影响仍读取
+schema v2 的旧版 Desktop，使用独立的 marketplace-source 保存 `.vetta/marketplace.source.json`，并冻结 main 作为兼容来源；
+普通源码 PR 审核通过后，CI 构建未发布的插件版本并上传不可变 `.vettapkg`，
+再生成 gh-pages 上的 `.vetta/marketplace.json`、展示资源和非插件安装文件。
+Desktop 的市场来源 ref 配置为 gh-pages，无需另建注册服务或启用 GitHub Pages。
+
+源码配置省略 marketplaceVersion 与插件 releases，插件条目声明 minAppVersion；
+发布工具派生版本历史、API、权限、命令和摘要。市场版本仅在分发内容变化时生成。
+提高能力版本的普通 PR 合并即允许发布，不再为生成索引创建第二个 PR。
+
+客户端继续读取精简的分发归档，插件包按需下载；Skill、MCP、Bundle 保持既有目录合同。
+它不会从源码分支读取 marketplace.source.json。已有用户来源不会自动切换，
+新 gh-pages 验证成功后由维护者安排新版迁移；旧版本客户端继续读取原有 main。
+详见 [ADR-0122](adr/0122-marketplaces-publish-generated-static-distributions.md)。
 
 ## 客户端来源管理
 
 云市场与 GitHub 来源独立启用：开源版只不包含云服务，仍可配置多个 GitHub 仓库；云版可同时浏览两类来源。
-商业版默认不包含 GitHub 仓库。发行方通过 `VETTA_OPEN_MARKETPLACE_REPOSITORY` 声明可选内置来源，
-未设置、空串或纯空白都不注册。开源发行版要随包提供官方源时同样配置这个变量，代码没有仓库地址兜底。
-分支由 `VETTA_OPEN_MARKETPLACE_REF` 指定，省略时为 `main`；归档 URL 可单独配置，否则从仓库与分支推导。
+内置官方 GitHub 来源与云市场独立存在。发行方可以通过 `VETTA_OPEN_MARKETPLACE_REPOSITORY` 替换其仓库；
+未配置时使用 OpenVetta 官方仓库。分支由 `VETTA_OPEN_MARKETPLACE_REF` 指定；官方仓库省略时使用
+`gh-pages`，自定义仓库省略时保留 `main` 兼容行为。归档 URL 可单独配置，否则从仓库与分支推导。
 
 在「能力 → 市场来源」可添加多个仓库，分别设置启用、自动更新和分支，并单独刷新。
 内置来源可启停及设置自动更新，但不能在界面修改坐标或删除；自定义来源支持编辑和删除。
@@ -51,7 +68,7 @@ Vetta 服务；界面只显示“已配置”，不会回显令牌。更新或�
 
 版本字段职责不同：
 
-- `schemaVersion`：JSON 结构版本。支持 `1` 与 `2`；包路径 bundle 成员需要 `2`。
+- `schemaVersion`：JSON 结构版本。支持 `1`、`2` 与 `3`；包路径 bundle 成员需要 `2` 或更新版本，远程插件版本目录需要 `3`。
 - `marketplaceVersion`：仓库内容发布版本；同一版本的归档内容不得变化。
 - `minAppVersion`：必填，能够读取该内容的最低 Desktop SemVer 版本。
 - `abilities[].version`：单个能力的产物版本。
@@ -78,6 +95,76 @@ Vetta 服务；界面只显示“已配置”，不会回显令牌。更新或�
 ## Plugin、MCP 与 Bundle
 
 Plugin 的 `source.path` 指向一个可直接安装的插件目录。目录至少包含 `plugin.json` 以及清单声明的已构建入口文件。客户端同步时校验 `plugin.json` 的 `id`、`version`、入口、样式路径，并从清单派生权限和命令展示信息；安装时复用 Desktop Plugin Store，默认保持禁用且不授予权限。
+
+上述是 schema v1/v2 的目录包合同。schema v3 的插件可以把 ZIP 放在独立的
+不可变制品存储中；此时 `source.path` 只放 `ability.json`、详情、图片等展示文件，
+不需要提交 `plugin.json`、`dist/` 或 `release/`。例如：
+
+```json
+{
+  "schemaVersion": 3,
+  "minAppVersion": "0.5.59",
+  "abilities": [{
+    "type": "plugin",
+    "slug": "demo-plugin",
+    "name": "Demo Plugin",
+    "version": "1.2.0",
+    "source": { "path": "abilities/plugins/demo-plugin" },
+    "releases": [
+      {
+        "version": "1.0.0",
+        "minAppVersion": "0.5.59",
+        "pluginApiVersion": "^2.4.0",
+        "permissions": [],
+        "commands": [],
+        "artifact": {
+          "url": "https://github.com/example/market/releases/download/demo-1.0.0/demo-1.0.0.zip",
+          "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        }
+      },
+      {
+        "version": "1.2.0",
+        "minAppVersion": "0.5.60",
+        "pluginApiVersion": "^2.5.0",
+        "permissions": ["storage.read"],
+        "commands": [],
+        "artifact": {
+          "url": "https://github.com/example/market/releases/download/demo-1.2.0/demo-1.2.0.zip",
+          "sha256": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+        }
+      }
+    ]
+  }]
+}
+```
+
+上例省略了市场顶层其它必填字段；版本和摘要只展示格式，必须替换成真实发布值。
+`version` 必须等于 `releases[]` 中最高的稳定版本。每个 `minAppVersion` 通常必须是已经
+正式发布且包含相应 Plugin API 的 App 版本。首次联调新协议时，市场发布配置可以把该
+版本显式钉到 OpenVetta 的 40 位不可变 commit；门禁会核对 Desktop 版本、Plugin API
+与 schema，并在稳定 Release 存在后自动优先检查正式版本。
+客户端按当前 App 版本和 Plugin API 版本选最高兼容版本；没有兼容版本的插件及依赖
+它的 Bundle 暂不展示。下载安装前后都会检查 ZIP 的摘要与身份，下载后还核对
+`pluginApiVersion`、权限和命令是否与目录一致。私有来源可使用同仓库的 GitHub
+Release asset API URL；令牌只送到匹配来源的 GitHub API，不跟随资源重定向。
+
+只在 Bundle 中出现的插件，把同样的 `releases` 数组写在
+`config.members[]` 的该插件成员上，并保留 `source.path`。成员目录的
+`ability.json` 用最高版本作为展示身份；目录不需构建文件。发布门禁也会检查
+这些成员的每个版本。多个 Bundle 引用同一个成员时，版本记录应保持一致。
+
+发布 ZIP 后，在将其引用加入正式市场 ref 前运行：
+
+```bash
+node tools/open-vetta/scripts/release/check-plugin-marketplace-publication.mjs .vetta/marketplace.json
+```
+
+上述示例假定市场 CI 已将一个固定版本的 `open-vetta` 检出到 `tools/open-vetta/`；
+同时运行与该版本配套的 `vetta-plugin-cli sync --check`。它核实每个最低 App 版本的
+稳定 GitHub Release 或显式固定的首次联调 commit、对应宿主的 Plugin API 和 ZIP 摘要。
+候选配置只在稳定 Release 返回 404 时生效，不能绕过不完整的正式发布。已发布的插件版本不得
+覆盖制品或改变摘要；建议对承载插件 ZIP 的 GitHub 仓库启用 Immutable releases。
+回滚应把目录指针退回此前的版本记录。
 
 ```json
 {
@@ -365,7 +452,9 @@ abilities/mcp/context7/
 - 新增字段应优先设计为可选字段，不改变已有字段含义。
 - 客户端版本低于 `minAppVersion` 时不会激活新快照；存在旧的兼容快照时继续使用旧快照。
 - 开发期不兼容缺少 `minAppVersion` 或使用旧字段名的 Manifest；直接修改仓库中的 `.vetta/marketplace.json`。
-- 当前不使用 `marketplace-index.json`。只有同一仓库确实需要并存互不兼容的 Schema 时才重新评估。
+- 旧 Desktop 不理解 schema v3，且会拒绝整个来源并沿用已有缓存。v3 来源应使用
+  单独 ref 或仓库；旧来源保持 v1/v2 和目录构建文件，直到旧客户端退出支持。
+- 当前不使用 `marketplace-index.json`。多版本选择发生在插件条目中，不依赖第二份索引。
 
 ## 发布规则
 
@@ -373,6 +462,27 @@ abilities/mcp/context7/
 2. 每个 Manifest 都必须设置对应的 `minAppVersion`。
 3. 不从 GitHub 仓库执行 JavaScript、shell、PowerShell 或其它安装/迁移脚本。
 4. 发布前必须校验 Manifest、能力目录、能力版本和来源路径。
+
+### 不接触线上来源的候选验证
+
+先在市场源码分支生成本地候选分发：
+
+```powershell
+$env:VETTA_PYTHON = python -c "import sys; print(sys.executable)"
+node scripts/marketplace.mjs build --output .marketplace-build/local-e2e
+```
+
+再在 Desktop 仓库把候选目录和制品目录分别传给隔离测试：
+
+```powershell
+$env:VETTA_MARKETPLACE_CANDIDATE_ROOT = 'C:\path\to\marketplace\.marketplace-build\local-e2e\site'
+$env:VETTA_MARKETPLACE_CANDIDATE_ARTIFACTS = 'C:\path\to\marketplace\.marketplace-build\local-e2e\artifacts'
+bun scripts/quality/run-vitest.mjs --run apps/desktop/src/main/abilities/open-marketplace/marketplace-candidate.local.test.ts
+```
+
+该检查读取生成的精简分发目录和真实 `.vettapkg`，
+以临时 `VETTA_HOME` 走 Desktop 同步、版本选择、下载校验和插件安装，再检查旧版客户端的升级提示。
+所有网络请求都由本地文件响应替代；不启动日常 Desktop，也不发布仓库或制品。未设置环境变量时该测试跳过。
 
 ## 本地缓存身份
 

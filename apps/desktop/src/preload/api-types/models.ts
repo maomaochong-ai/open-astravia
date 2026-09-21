@@ -22,6 +22,8 @@ export interface ModelsConfigData {
 			icon?: string;
 			/** 预设服务商模型列表最近一次从上游 /models 同步的时间(ISO)。 */
 			modelsSyncedAt?: string;
+			/** 该服务商是否经应用代理出网；缺省跟随全局，显式 false 才排除。 */
+			useProxy?: boolean;
 			models?: Array<{
 				id: string;
 				/** 上游 API 真实模型名。远程渠道下 id=网关路由 key、modelId=上游真名；缺省回退 id。 */

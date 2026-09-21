@@ -4,5 +4,18 @@ description: Install the frozen workspace dependencies with bounded retries for 
 runs:
   using: composite
   steps:
+    - name: Restore Bun package downloads
+      id: bun-cache
+      uses: actions/cache/restore@v4
+      with:
+        path: ~/.bun/install/cache
+        key: bun-downloads-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock', 'package.json') }}
     - shell: bash
       run: node scripts/quality/install-ci-dependencies.mjs
+    # Save before tests/builds: their failure must not discard a successful install.
+    - name: Save Bun package downloads
+      if: steps.bun-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ~/.bun/install/cache
+        key: ${{ steps.bun-cache.outputs.cache-primary-key }}

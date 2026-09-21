@@ -6,6 +6,7 @@ import {
 	renamingSessionPathAtom,
 	setSessionPinnedAtom,
 } from "@shared/store/atoms";
+import { isSshProjectUri } from "@vetta/ssh-transport/project-uri";
 import type { SessionContextMenuViewProps } from "@vetta-org/theme-ui/project";
 import type { ContextMenuNode } from "@vetta-org/theme-ui/shared";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -109,6 +110,8 @@ export function useSessionContextMenuModel(
 
 	return {
 		canDelete: allowMutations && session.access?.delete !== false,
+		// 远程项目下的会话，工作目录在远端，系统文件管理器无从显示。
+		canOpenInFolder: !isSshProjectUri(session.cwd),
 		canRename: allowMutations && session.access?.rename !== false,
 		extraItems,
 		labels: {

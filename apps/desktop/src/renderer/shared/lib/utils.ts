@@ -1,6 +1,19 @@
+import { isSshProjectUri } from "@vetta/ssh-transport/project-uri";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { createLocalFileUrl } from "@/shared/file-protocol";
+
+/**
+ * 远程项目的路径是 `ssh://<hostId>/<远端绝对路径>`。开头的 `ssh://<hostId>` 是归属，不是
+ * 路径的一部分：按 `/` 切开再拼回去会把 `//` 折叠成 `/`，主进程随即认不出它是远程路径。
+ * 下面的函数因此都先把这一段摘出来，只对后面的远端路径做运算。
+ */
+function splitRemoteOrigin(path: string): { origin: string; remotePath: string } | undefined {
+	if (!isSshProjectUri(path)) return undefined;
+	const hostEnd = path.indexOf("/", "ssh://".length);
+	if (hostEnd < 0) return { origin: path, remotePath: "/" };
+	return { origin: path.slice(0, hostEnd), remotePath: path.slice(hostEnd) };
+}
 
 export function cn(...inputs: ClassValue[]): string {
 	return twMerge(clsx(inputs));
@@ -8,11 +21,16 @@ export function cn(...inputs: ClassValue[]): string {
 
 /** Extract display name from a project path, handling both / and \ separators */
 export function pathBasename(path: string): string {
+	const remote = splitRemoteOrigin(path);
+	// 远端根目录没有名字；退回主机标识总比把它当成一个叫 `ssh:` 的目录好。
+	if (remote) return remote.remotePath.split("/").filter(Boolean).pop() ?? remote.origin.slice("ssh://".length);
 	return path.split(/[/\\]/).filter(Boolean).pop() ?? path;
 }
 
 /** Extract parent directory from a path, handling both / and \ separators. */
 export function pathDirname(path: string): string {
+	const remote = splitRemoteOrigin(path);
+	if (remote) return `${remote.origin}${pathDirname(remote.remotePath)}`;
 	const slash = path.lastIndexOf("/");
 	const backslash = path.lastIndexOf("\\");
 	const idx = Math.max(slash, backslash);
@@ -50,6 +68,8 @@ export function isSubPath(path: string, parent: string): boolean {
  */
 export function pathNormalize(path: string): string {
 	if (!path) return path;
+	const remote = splitRemoteOrigin(path);
+	if (remote) return `${remote.origin}${pathNormalize(remote.remotePath)}`;
 	const unified = path.replace(/\\/g, "/");
 	const isAbsolutePosix = unified.startsWith("/");
 	const driveMatch = unified.match(/^([A-Za-z]:)\//);

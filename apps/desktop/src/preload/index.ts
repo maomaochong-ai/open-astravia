@@ -15,14 +15,17 @@ import { createImApi } from "./apis/im.js";
 import { createNotificationApi } from "./apis/notification.js";
 import { createPetApi } from "./apis/pet.js";
 import { createPluginsApi } from "./apis/plugins.js";
+import { createProjectApi } from "./apis/project.js";
 import { createQuickPanelApi } from "./apis/quick-panel.js";
 import { createRemotePairingApi } from "./apis/remote-pairing.js";
 import { createRuntimeConfigurationApi } from "./apis/runtime-configuration.js";
 import { createSchedulerApi } from "./apis/scheduler.js";
 import { createSessionApi } from "./apis/session.js";
 import { createSpeechInputApi } from "./apis/speech-input.js";
+import { createSshApi } from "./apis/ssh.js";
 import { createSystemApi } from "./apis/system.js";
 import { createTelemetryApi } from "./apis/telemetry.js";
+import { createTerminalApi } from "./apis/terminal.js";
 import { createThemesApi } from "./apis/themes.js";
 import { createWebhookApi } from "./apis/webhook.js";
 import { createHostAccessGate } from "./host-access.js";
@@ -52,6 +55,9 @@ const rawApi: Omit<DesktopApi, "hostAccess"> = {
 	...createThemesApi(ipcRenderer),
 	...createPetApi(ipcRenderer),
 	...createConversationTagsApi(ipcRenderer),
+	...createProjectApi(ipcRenderer),
+	...createSshApi(ipcRenderer),
+	...createTerminalApi(ipcRenderer),
 	...createQuickPanelApi(ipcRenderer),
 	...createRuntimeConfigurationApi(ipcRenderer),
 	remotePairing: createRemotePairingApi(ipcRenderer),

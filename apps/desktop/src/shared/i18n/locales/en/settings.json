@@ -247,7 +247,25 @@
   "language": "Language",
   "proxy": {
     "title": "Proxy",
-    "placeholder": "Example: http://127.0.0.1:7890"
+    "placeholder": "Example: http://127.0.0.1:7890",
+    "sectionTitle": "Network proxy",
+    "enableTitle": "Enable app proxy",
+    "enableDescription": "Model requests, local commands and downloads go through this proxy by default. Loopback addresses (localhost / 127.0.0.1) always connect directly.",
+    "protocolTitle": "Proxy type",
+    "hostTitle": "Proxy host",
+    "hostPlaceholder": "e.g. 127.0.0.1",
+    "portTitle": "Port",
+    "usernameTitle": "Username",
+    "usernamePlaceholder": "Optional",
+    "passwordTitle": "Password",
+    "passwordPlaceholder": "Optional",
+    "passwordStoredPlaceholder": "Saved \u2014 leave blank to keep it",
+    "providersTitle": "Per provider",
+    "providersDescription": "Every provider uses the proxy by default. Turn it off for providers you can reach faster directly.",
+    "noProviders": "No providers configured yet.",
+    "invalidConfig": "The proxy host or port is invalid. Model requests will fail rather than silently falling back to a direct connection.",
+    "providerLocal": "The upstream is on this machine or your LAN, so this hop never leaves the network and always connects directly. How that service reaches the internet is its own configuration.",
+    "providerFollowsGlobal": "This provider's vendor SDK issues its own requests and cannot see the injected transport, so it always follows the global proxy and cannot be excluded on its own."
   },
   "workspace": {
     "title": "Workspace",
@@ -324,6 +342,10 @@
     },
     "configurations": {
       "coding": {
+        "compaction": {
+          "title": "Context compaction",
+          "description": "Control how much context a conversation uses before automatic compaction and how much recent conversation remains unchanged. Manual compaction is unaffected."
+        },
         "images": {
           "title": "Image processing",
           "description": "Configure image normalization, safety limits, compression, and model request budgets."
@@ -337,6 +359,10 @@
       }
     },
     "fields": {
+      "enabled": { "title": "Automatic compaction", "description": "Compact long conversations as they approach the model limit. Manual compaction remains available when this is off." },
+      "reserveTokens": { "title": "Remaining-space threshold (tokens)", "description": "Compact automatically when less than this much context remains and context usage has reached the percentage threshold." },
+      "contextThresholdPercent": { "title": "Context compaction threshold (%)", "description": "Compact automatically when context usage reaches this percentage and the remaining space is also below the token threshold above." },
+      "keepRecentTokens": { "title": "Recent conversation kept after compaction (tokens)", "description": "Keep approximately this much of the most recent conversation unchanged and summarize older content. Higher values preserve more recent detail." },
       "autoResize": { "title": "Automatic resize", "description": "Resize and compress images when they exceed configured limits." },
       "blockImages": { "title": "Block images", "description": "Prevent images from entering model context." },
       "resize": {
@@ -1074,6 +1100,7 @@
   "section_remote-pairing": "Phone pairing",
   "section_remote-permissions": "Control permissions",
   "section_general-basics": "Basics",
+  "section_general-network": "Network proxy",
   "section_general-app": "App",
   "section_general-developer": "Developer",
   "section_appearance-mode": "Appearance Mode",
@@ -1515,6 +1542,8 @@
   "shortcutNewSessionDesc": "Create a new chat session in the current project",
   "shortcutSteerMessageLabel": "Prioritize Message",
   "shortcutSteerMessageDesc": "Handle the editor message after the current model call or tool execution finishes",
+  "shortcutTogglePlanModeLabel": "Toggle Plan Mode",
+  "shortcutTogglePlanModeDesc": "Turn plan mode on or off from the message box: plan first, execute after you approve",
   "shortcutOpenProjectLabel": "Open Project",
   "shortcutOpenProjectDesc": "Select and open a project folder",
   "shortcutOpenSettingsLabel": "Open Settings",
@@ -2066,5 +2095,43 @@
   "feishuManual": "Enter App ID / App Secret manually",
   "feishuUnbindApp": "Unbind app",
   "feishuQrExpired": "The QR code expired — scan again",
-  "pleaseBindFeishu": "Set up the Feishu bot by QR first"
+  "pleaseBindFeishu": "Set up the Feishu bot by QR first",
+  "tabSshHosts": "SSH hosts",
+  "section_ssh-hosts-list": "Host list",
+  "sshHostsDescription": "Register remote machines that can host your projects. Once registered, you can pick a directory on that machine in Add project, and the agent's commands and file edits will happen there.",
+  "sshHostsEmpty": "No hosts yet",
+  "sshHostsEmptyHint": "If you already ssh into servers, import the aliases from ~/.ssh/config. You can also add one by hand.",
+  "sshAddHost": "Add host",
+  "sshEditHost": "Edit",
+  "sshSaveHost": "Save host",
+  "sshRemove": "Delete host",
+  "sshRemoveTitle": "Delete this host?",
+  "sshRemoveConfirm": "“{{name}}” will be removed from the list. Files on the remote machine are untouched. If projects still live on this host, remove those projects first.",
+  "sshFieldTarget": "Connection target",
+  "sshFieldTargetHint": "An alias from ~/.ssh/config (recommended), or user@host. If ssh reaches it in your terminal, Vetta will too.",
+  "sshFieldLabel": "Display name",
+  "sshFieldLabelHint": "Defaults to the connection target.",
+  "sshFieldPort": "Port",
+  "sshFieldIdentityFile": "Private key",
+  "sshFieldIdentityFileHint": "Leave empty to use ssh-agent and OpenSSH's default identities.",
+  "sshTest": "Test connection",
+  "sshTesting": "Connecting",
+  "sshTestOk": "Connected ({{platform}})",
+  "sshTestFailed": "Could not connect. What you entered is saved — check the target and port, then try again.",
+  "sshTestDetails": "Technical details",
+  "sshStatusConnected": "Connected",
+  "sshStatusUnverifiable": "Unreachable",
+  "sshStatusUnknown": "Not connected",
+  "sshImportFromConfig": "Import from ssh config",
+  "sshImportNone": "No new aliases found. Existing hosts are never overwritten.",
+  "sshImportDone": "Imported {{count}} host(s).",
+  "sshPromptConfirmTitle": "Confirm this host's identity",
+  "sshPromptSecretTitle": "Credentials needed to connect",
+  "sshPromptHost": "Host: {{host}}",
+  "sshPromptSecretLabel": "Secret",
+  "sshPromptCodeLabel": "Verification code",
+  "sshPromptRemember": "Remember it (encrypted on this machine, filled in next time)",
+  "sshPromptSubmit": "Continue connecting",
+  "sshPromptAccept": "Confirm and connect",
+  "sshPromptReject": "Cancel connection"
 }

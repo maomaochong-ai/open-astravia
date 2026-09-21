@@ -1,5 +1,6 @@
 export type {
 	BranchSummarySettings,
+	CodingAgentCompactionConfiguration,
 	CompactionSettings,
 	HostSettingsPort,
 	ImageSettings,
@@ -18,6 +19,8 @@ export type {
 	SettingsStoragePort,
 } from "../settings/index.js";
 export {
+	CODING_AGENT_COMPACTION_CONFIGURATION,
+	CODING_AGENT_COMPACTION_CONFIGURATION_ID,
 	createInMemorySettingsRuntime,
 	createSettingsRuntimeFromStorage,
 	MemorySettingsStorage,

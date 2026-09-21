@@ -1,13 +1,15 @@
+import { createFileExplorerVisibility } from "@shared/lib/file-explorer-preferences";
 import { isSubPath, pathBasename, pathDirname, pathJoin } from "@shared/lib/utils";
 import {
 	activeSessionAtom,
 	expandedDirsAtom,
 	type FsEntry,
+	fileExplorerPreferencesAtom,
 	fileTreeCacheAtom,
 	loadingDirsAtom,
 } from "@shared/store/atoms";
 import { useAtom, useAtomValue } from "jotai";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { emitPluginFileExplorerFilesChanged } from "../../plugins/runtime/plugin-file-explorer-host";
 import { createDirectoryReloadScheduler } from "./file-tree-watch-coalesce";
 
@@ -22,6 +24,16 @@ export function useFileTree(cwdOverride?: string | null) {
 	const activeSession = useAtomValue(activeSessionAtom);
 	const rootCwd = cwdOverride ?? activeSession?.cwd ?? null;
 	const prevCwdRef = useRef<string | null>(null);
+	const preferences = useAtomValue(fileExplorerPreferencesAtom);
+	const visibleCache = useMemo(() => {
+		if (!rootCwd) return cache;
+		const visible = createFileExplorerVisibility(rootCwd, preferences);
+		return new Map(
+			[...cache]
+				.filter(([directory]) => directory === rootCwd || visible(directory))
+				.map(([directory, entries]) => [directory, entries.filter((entry) => visible(entry.path))]),
+		);
+	}, [cache, rootCwd, preferences]);
 
 	const loadDir = useCallback(
 		async (dirPath: string) => {
@@ -176,6 +188,9 @@ export function useFileTree(cwdOverride?: string | null) {
 			if (!rootCwd || !isSubPath(entryPath, rootCwd)) {
 				throw new Error(`Path is outside the active workspace: ${entryPath}`);
 			}
+			if (entryPath !== rootCwd && !createFileExplorerVisibility(rootCwd, preferences)(entryPath)) {
+				throw new Error("Path is hidden by the file explorer display settings");
+			}
 			const directories: string[] = [rootCwd];
 			let parent = pathDirname(entryPath);
 			while (parent !== rootCwd && isSubPath(parent, rootCwd)) {
@@ -191,7 +206,7 @@ export function useFileTree(cwdOverride?: string | null) {
 				return next;
 			});
 		},
-		[rootCwd, loadDir, setExpandedDirs],
+		[rootCwd, loadDir, setExpandedDirs, preferences],
 	);
 
 	// When the resolved cwd changes, clear cache and load new root
@@ -259,7 +274,7 @@ export function useFileTree(cwdOverride?: string | null) {
 	}, [loadDir]);
 
 	return {
-		cache,
+		cache: visibleCache,
 		expandedDirs,
 		loadingDirs,
 		rootDir: rootCwd,

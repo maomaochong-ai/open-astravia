@@ -1,5 +1,6 @@
 import type { CSSProperties, JSX } from "react";
 import { cn } from "@vetta-org/ui";
+import { ActivityStatusDot, ActivityStatusDotStyles } from "../shared/ActivityStatusDot";
 
 export interface TodoStatusItem {
 	readonly id: number;
@@ -41,28 +42,25 @@ export interface TodoTimelineLabels {
 }
 
 /**
- * 待办视觉基元共用的关键帧：
- * - `todo-dot-halo` / `todo-dot-core`：未完成时的呼吸点
+ * 待办专属的关键帧：
  * - `todo-label-sheen`：标签上扫过的光斑
  * - `todo-marker-spin`：进行中条目的转动弧
+ *
+ * 状态点的呼吸动画不在这里——它和底部面板共用 `ActivityStatusDotStyles`。
  */
 export const TODO_PROGRESS_CSS = `
-@keyframes todo-dot-halo {
-	0% { transform: scale(0.7); opacity: 0.55; }
-	70% { transform: scale(2.1); opacity: 0; }
-	100% { transform: scale(2.1); opacity: 0; }
-}
-@keyframes todo-dot-core {
-	0%, 100% { opacity: 1; }
-	50% { opacity: 0.55; }
-}
 @keyframes todo-label-sheen { from { background-position: 160% 0; } to { background-position: -160% 0; } }
 @keyframes todo-marker-spin { to { transform: rotate(360deg); } }
 `;
 
 /** 关键帧注入点：每个待办根节点渲染一次，样式内容相同不会互相干扰。 */
 export function TodoProgressStyles(): JSX.Element {
-	return <style>{TODO_PROGRESS_CSS}</style>;
+	return (
+		<>
+			<style>{TODO_PROGRESS_CSS}</style>
+			<ActivityStatusDotStyles />
+		</>
+	);
 }
 
 const SHEEN_BASE = "var(--primary)";
@@ -86,24 +84,7 @@ export function todoLabelSheenStyle(active: boolean): CSSProperties {
  * 取代了原先的数字徽标。
  */
 export function TodoStatusDot({ allDone, className }: { allDone: boolean; className?: string }): JSX.Element {
-	return (
-		<span aria-hidden className={cn("relative flex h-2 w-2 shrink-0 items-center justify-center", className)}>
-			{allDone ? (
-				<span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-emerald-500)_18%,transparent)]" />
-			) : (
-				<>
-					<span
-						className="absolute h-1.5 w-1.5 rounded-full bg-primary"
-						style={{ animation: "todo-dot-halo 2.2s ease-out infinite" }}
-					/>
-					<span
-						className="relative h-1.5 w-1.5 rounded-full bg-primary"
-						style={{ animation: "todo-dot-core 2.2s ease-in-out infinite" }}
-					/>
-				</>
-			)}
-		</span>
-	);
+	return <ActivityStatusDot pulse={!allDone} tone={allDone ? "emerald" : "primary"} className={className} />;
 }
 
 /** 细进度条：popover 头部与活动面板头部共用。 */

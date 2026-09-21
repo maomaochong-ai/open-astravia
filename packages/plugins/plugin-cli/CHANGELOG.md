@@ -2,6 +2,16 @@
 
 All notable changes to `@vetta-org/plugin-cli` are documented in this file.
 
+## Unreleased
+
+### Changed
+
+- `add` and `add .` now use the dedicated `.vettapkg` plugin package format. Existing `.zip` files remain accepted as a compatibility import path.
+
+- `add` now identifies itself to Desktop so ability lifecycle logs distinguish CLI installs from manual package imports and marketplace installs.
+
+- `sync --check` accepts schema v3 plugin releases without local `dist/` and validates release metadata for independently listed and bundle-only plugins. The marketplace publication gate separately verifies the referenced App releases and artifact digests.
+
 ## [0.1.6] — 2026-09-14
 
 ### Fixed

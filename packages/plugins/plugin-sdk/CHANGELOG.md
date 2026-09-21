@@ -4,6 +4,14 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ## [Unreleased]
 
+- 新增会话底部面板贡献点 `ctx.ui.registerBottomPanel()` 与配套权限 `ui.slot.bottom-panel`，要求 Plugin API `^2.7.0`。它与活动面板标签卡的分工是：活动面板在右侧、一个贡献一个实例，适合看某个东西的当前状态；底部面板横跨会话页下沿、可分屏、**同一个贡献可以开多个实例**，适合终端、日志跟随这类长驻工作面。实例的名字、图标、状态点与关闭前裁决都走命令式的 `useBottomPanel()`——多实例下「每帧返回 meta 的 hook」拿不到实例身份，会让改名在两份事实源之间打架。
+
+- 文件浏览器装饰新增语义 `color`、`faded`、`strikethrough`、父目录 `propagate` 与 `onDidChangeDecorations` 精确失效事件；新增用户可选的 `registerIconTheme`，支持精确文件名、复合扩展名、文件夹展开态及浅色/深色/高对比覆盖。旧 `icon` / `badge` / `tooltip` provider 保持兼容。使用新合同的插件应声明 Plugin API `^2.7.0`。
+
+- Activity Tab、新会话上下文、输入动作、消息卡片 renderer 与文件浏览器操作在未声明 `icon` 时统一继承 `plugin.json#icon`；各贡献仍可用自己的 `icon` 覆盖，显式 `null` 保持无图标。`CardDescriptor.icon` 现在也会按既有合同覆盖 renderer 默认图标。纯运行期默认行为调整，不涉及清单字段，`pluginApiVersion` 不变。
+
+- Official plugin installation options accept the reserved `initiator` diagnostic marker used by `plugin-cli` and Plugin Workbench. Desktop records it in local ability lifecycle logs; third-party plugins should leave it unset.
+
 - `PluginModelDefinition` exposes `reasoningLevels` and `defaultReasoningLevel`, so model providers can publish their native reasoning choices without losing them at the host's write boundary. Requires the corresponding Desktop capability schema fix.
 
 - 新增 `@vetta-org/plugin-sdk/logger`。配套 `plugin-vite` 会从已校验的 `plugin.json` 为每个插件生成不可变的 `id@version` logger；插件无需持有或传递 `ctx`，日志仍由 Desktop 统一持久化、轮转并纳入诊断信息。使用该入口的插件要求 Plugin API `^2.5.0`。

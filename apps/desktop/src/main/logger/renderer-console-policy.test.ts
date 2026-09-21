@@ -5,6 +5,7 @@ describe("shouldPersistRendererConsoleMessage", () => {
 	it("filters low-signal development diagnostics at info level", () => {
 		expect(shouldPersistRendererConsoleMessage("info", "[plugin-agent] load start", false)).toBe(false);
 		expect(shouldPersistRendererConsoleMessage("info", "[activity-tab-debug] resolved {}", false)).toBe(false);
+		expect(shouldPersistRendererConsoleMessage("info", "[skills] loaded {}", false)).toBe(false);
 		expect(shouldPersistRendererConsoleMessage("info", "[vite] hot updated: /App.tsx", false)).toBe(false);
 		expect(shouldPersistRendererConsoleMessage("info", '[theme-runtime] module load start "dark"', false)).toBe(
 			false,

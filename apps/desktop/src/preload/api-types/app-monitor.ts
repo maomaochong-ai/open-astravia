@@ -46,7 +46,7 @@ export interface AppMonitorInputPromptRefUsage {
 	name: string;
 }
 
-export type AppMonitorResourceKind = "skill" | "scene" | "plugin";
+export type AppMonitorResourceKind = "skill" | "scene" | "plugin" | "mcp";
 
 export type AppMonitorResourceOperation =
 	| "installed"

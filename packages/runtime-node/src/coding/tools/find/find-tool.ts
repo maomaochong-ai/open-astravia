@@ -1,10 +1,15 @@
-import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { basename, relative } from "node:path";
 import { type Static, Type } from "@sinclair/typebox";
 import type { RuntimeToolDefinition, RuntimeToolResult } from "@vetta/runtime-core/kernel";
 import type { CodingToolExecutableResolver } from "../../host/executable-resolver.js";
-import { formatNotFoundPath, resolveExistingPath } from "../../shared/path-resolution.js";
+import {
+	formatNotFoundPath,
+	localToolPathHost,
+	resolveExistingPath,
+	type ToolPathHost,
+	type ToolPathSyntax,
+} from "../../shared/path-resolution.js";
+import { collectToolProcess, spawnLocalToolProcess, type ToolProcessSpawner } from "../../shared/tool-process.js";
 import { formatSize, type TruncationResult, truncateHead } from "../../shared/truncation.js";
 import { FIND_TOOL_DESCRIPTION } from "./description.js";
 
@@ -45,6 +50,10 @@ export interface FindToolOptions {
 	readonly operations?: FindOperations;
 	readonly fdPath?: string;
 	readonly executableResolver?: CodingToolExecutableResolver;
+	/** 路径在哪台机器上解析；缺省为本机。 */
+	readonly pathHost?: ToolPathHost;
+	/** 外部程序在哪台机器上启动；缺省为本机。远端项目必须与 `pathHost` 一起换掉。 */
+	readonly spawnProcess?: ToolProcessSpawner;
 }
 
 const defaultFindOperations: FindOperations = {
@@ -55,6 +64,8 @@ const defaultFindOperations: FindOperations = {
 export function createFindTool(cwd: string, options: FindToolOptions = {}): RuntimeToolDefinition<FindToolInput> {
 	const operations = options.operations ?? defaultFindOperations;
 	const fdPath = options.fdPath ?? "fd";
+	const pathHost = options.pathHost ?? localToolPathHost;
+	const spawnProcess = options.spawnProcess ?? spawnLocalToolProcess;
 
 	return {
 		name: "find",
@@ -63,17 +74,17 @@ export function createFindTool(cwd: string, options: FindToolOptions = {}): Runt
 		inputSchema: FindToolInputSchema,
 		async execute(request) {
 			if (request.signal.aborted) throw new Error("Operation aborted");
-			const searchPath = resolveExistingPath(request.input.path ?? ".", cwd);
+			const searchPath = resolveExistingPath(request.input.path ?? ".", cwd, pathHost);
 			const limit = request.input.limit ?? DEFAULT_LIMIT;
 			if (options.operations) {
 				if (!(await operations.exists(searchPath))) {
-					throw new Error(formatNotFoundPath(searchPath, cwd));
+					throw new Error(formatNotFoundPath(searchPath, cwd, pathHost));
 				}
 				const results = await operations.glob(request.input.pattern, searchPath, {
 					ignore: IGNORE_PATTERNS,
 					limit,
 				});
-				return formatResults(results, searchPath, limit);
+				return formatResults(results, searchPath, limit, pathHost.path);
 			}
 			const resolvedFdPath = options.executableResolver ? await options.executableResolver.resolve("fd") : fdPath;
 			if (!resolvedFdPath) {
@@ -81,6 +92,8 @@ export function createFindTool(cwd: string, options: FindToolOptions = {}): Runt
 			}
 			return runFd({
 				fdPath: resolvedFdPath,
+				spawnProcess,
+				path: pathHost.path,
 				pattern: request.input.pattern,
 				searchPath,
 				limit,
@@ -92,59 +105,36 @@ export function createFindTool(cwd: string, options: FindToolOptions = {}): Runt
 
 interface RunFdInput {
 	readonly fdPath: string;
+	readonly spawnProcess: ToolProcessSpawner;
+	readonly path: ToolPathSyntax;
 	readonly pattern: string;
 	readonly searchPath: string;
 	readonly limit: number;
 	readonly signal: AbortSignal;
 }
 
-function runFd(input: RunFdInput): Promise<RuntimeToolResult> {
-	return new Promise((resolve, reject) => {
-		const child = spawn(
-			input.fdPath,
-			["--glob", "--color=never", "--hidden", "--max-results", String(input.limit), input.pattern, input.searchPath],
-			{ stdio: ["ignore", "pipe", "pipe"] },
-		);
-		const output: string[] = [];
-		let stderr = "";
-		let aborted = false;
-		const onAbort = () => {
-			aborted = true;
-			if (!child.killed) child.kill();
-		};
-		const cleanup = () => input.signal.removeEventListener("abort", onAbort);
-		input.signal.addEventListener("abort", onAbort, { once: true });
-		child.stdout.setEncoding("utf8");
-		child.stdout.on("data", (chunk: string) => {
-			output.push(...chunk.split(/\r?\n/).filter(Boolean));
-		});
-		child.stderr.setEncoding("utf8");
-		child.stderr.on("data", (chunk: string) => {
-			stderr += chunk;
-		});
-		child.on("error", (error) => {
-			cleanup();
-			reject(new Error(`Failed to run fd: ${error.message}`));
-		});
-		child.on("close", (code) => {
-			cleanup();
-			if (aborted) {
-				reject(new Error("Operation aborted"));
-				return;
-			}
-			if (code !== 0 && code !== 1 && output.length === 0) {
-				reject(new Error(stderr.trim() || `fd exited with code ${code}`));
-				return;
-			}
-			void formatResults(output, input.searchPath, input.limit).then(resolve, reject);
-		});
+async function runFd(input: RunFdInput): Promise<RuntimeToolResult> {
+	const result = await collectToolProcess(
+		input.spawnProcess,
+		input.fdPath,
+		["--glob", "--color=never", "--hidden", "--max-results", String(input.limit), input.pattern, input.searchPath],
+		input.signal,
+	).catch((error: Error) => {
+		if (error.message === "Operation aborted") throw error;
+		throw new Error(`Failed to run fd: ${error.message}`);
 	});
+	const output = result.stdout.split(/\r?\n/).filter(Boolean);
+	if (result.code !== 0 && result.code !== 1 && output.length === 0) {
+		throw new Error(result.stderr.trim() || `fd exited with code ${result.code}`);
+	}
+	return formatResults(output, input.searchPath, input.limit, input.path);
 }
 
 async function formatResults(
 	results: readonly string[],
 	searchPath: string,
 	limit: number,
+	path: ToolPathSyntax,
 ): Promise<RuntimeToolResult> {
 	if (results.length === 0) {
 		return { content: [{ type: "text", text: "No files found matching pattern" }] };
@@ -153,9 +143,11 @@ async function formatResults(
 	const relativized = results.map((result) => {
 		const line = result.trim();
 		const hadTrailingSlash = line.endsWith("/") || line.endsWith("\\");
-		const relativePath = line.startsWith(searchPath) ? line.slice(searchPath.length + 1) : relative(searchPath, line);
+		const relativePath = line.startsWith(searchPath)
+			? line.slice(searchPath.length + 1)
+			: path.relative(searchPath, line);
 		const normalized = relativePath.replace(/\\/g, "/");
-		return hadTrailingSlash && !normalized.endsWith("/") ? `${normalized}/` : normalized || basename(line);
+		return hadTrailingSlash && !normalized.endsWith("/") ? `${normalized}/` : normalized || path.basename(line);
 	});
 	const resultLimitReached = relativized.length >= limit;
 	const rawOutput = relativized.join("\n");

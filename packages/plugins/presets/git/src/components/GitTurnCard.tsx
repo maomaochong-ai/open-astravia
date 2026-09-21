@@ -1,17 +1,22 @@
 import { useActiveConversation, useTranslation } from "@vetta-org/plugin-sdk";
-import { useEffect, useRef, useState } from "react";
-import { diffStatForEntries, resolveRepoRoot, statusPorcelain } from "../git/run";
-import { parseStatus } from "../git/parseStatus";
+import { Button } from "@vetta-org/ui";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { diffStatForEntries, resolveRepoRoot, stagePaths, statusPorcelain, unstageAll } from "../git/run";
+import { collapseByPath, parseStatus } from "../git/parseStatus";
 import {
+	emitRefreshSignal,
 	getTurnBaseline,
 	getTurnDelta,
 	onTurnPhase,
-	resizePanel,
+	requestCommit,
+	openPanel,
 	setTurnBaseline,
 	setTurnDelta,
 } from "../git/runtime";
 import type { ChangeCode, TurnChangeDelta } from "../git/types";
-import { FileIcon, GitIcon } from "./icons";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { FileTypeIcon } from "./FileTypeIcon";
+import { GitIcon } from "./icons";
 import { StatusBadge } from "./StatusBadge";
 
 /** Most items the card shows inline; beyond this it collapses to a "view all" row. */
@@ -32,6 +37,9 @@ export function GitTurnCard(): JSX.Element | null {
 	const { cwd } = useActiveConversation();
 	const { t } = useTranslation();
 	const [data, setData] = useState<TurnChangeDelta | null>(null);
+	const [busy, setBusy] = useState(false);
+	// 暂存区里已经有别的文件，等用户裁决是「一并提交」还是「只提交本轮」。
+	const [askMixed, setAskMixed] = useState<{ root: string; paths: string[] } | null>(null);
 	const tokenRef = useRef(0);
 
 	useEffect(() => {
@@ -47,7 +55,7 @@ export function GitTurnCard(): JSX.Element | null {
 			const root = await resolveRepoRoot(cwd);
 			if (!root) return null;
 			try {
-				return new Map(parseStatus(await statusPorcelain(root)).map((e) => [e.path, e.code]));
+				return new Map(collapseByPath(parseStatus(await statusPorcelain(root))).map((e) => [e.path, e.code]));
 			} catch {
 				return null;
 			}
@@ -70,7 +78,7 @@ export function GitTurnCard(): JSX.Element | null {
 					setData(null);
 					return;
 				}
-				const current = parseStatus(await statusPorcelain(root));
+				const current = collapseByPath(parseStatus(await statusPorcelain(root)));
 				if (myToken !== tokenRef.current) return;
 				const currentMap = new Map(current.map((e) => [e.path, e.code]));
 				// 没基线（挂载快照尚未就绪/失败）：本轮不显示，仅把当前状态记为基线，下轮再比。
@@ -112,30 +120,68 @@ export function GitTurnCard(): JSX.Element | null {
 		return off;
 	}, [cwd]);
 
+	/**
+	 * Stage exactly this turn's files, then hand over to the panel's commit box.
+	 *
+	 * The turn card is the only surface that knows which files belong to THIS turn
+	 * (the panel only sees every uncommitted file), which is what makes a one-click
+	 * atomic commit possible here.
+	 */
+	const stageAndCommit = useCallback(
+		async (root: string, paths: string[], resetIndexFirst: boolean): Promise<void> => {
+			setBusy(true);
+			try {
+				if (resetIndexFirst) await unstageAll(root);
+				await stagePaths(root, paths);
+				emitRefreshSignal();
+				openPanel();
+				requestCommit(root);
+			} finally {
+				setBusy(false);
+			}
+		},
+		[],
+	);
+
+	const commitThisTurn = useCallback((): void => {
+		if (!cwd || !data || busy) return;
+		const paths = data.entries.map((entry) => entry.path);
+		void (async () => {
+			const root = await resolveRepoRoot(cwd);
+			if (!root) return;
+			const groups = parseStatus(await statusPorcelain(root));
+			// 暂存区里已经躺着别的文件：直接提交会把它们一起带走，违背原子提交。
+			if (groups.staged.length > 0) {
+				setAskMixed({ root, paths });
+				return;
+			}
+			await stageAndCommit(root, paths, false);
+		})();
+	}, [cwd, data, busy, stageAndCommit]);
+
 	if (!data) return null;
 
 	const sorted = [...data.entries].sort((a, b) => a.path.localeCompare(b.path));
 	const overflow = sorted.length > MAX_ITEMS;
 	const shown = overflow ? sorted.slice(0, MAX_ITEMS - 1) : sorted;
 	const remaining = sorted.length - shown.length;
-	const open = (): void => resizePanel("max");
+	const open = (): void => openPanel();
 
 	return (
-		<div className="overflow-hidden rounded-lg border border-border bg-card text-[12px]">
-			<button
-				type="button"
-				onClick={open}
-				title={t("turnCard.open")}
-				className="flex w-full items-center gap-2 border-b border-border px-3 py-2 text-left transition-colors hover:bg-accent"
-			>
+		// 去线留白：卡片只保留一层淡边与内边距，内部各区靠间距分隔，不再用分隔线切块。
+		<div className="rounded-lg border border-border/60 bg-card/60 p-2 text-[12px]">
+			<div className="flex items-center gap-2 px-1 py-0.5">
 				<GitIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-				<span className="font-medium text-foreground">{t("turnCard.summary", { count: sorted.length })}</span>
-				<span className="ml-auto flex items-center gap-1.5 font-medium tabular-nums">
-					<span className="text-emerald-500">+{data.additions}</span>
-					<span className="text-rose-500">−{data.deletions}</span>
+				<button type="button" onClick={open} title={t("turnCard.open")} className="min-w-0 truncate text-left font-medium text-foreground hover:underline">
+					{t("turnCard.summary", { count: sorted.length })}
+				</button>
+				<span className="ml-auto flex shrink-0 items-center gap-1.5 font-medium tabular-nums">
+					<span className="text-emerald-500/90">+{data.additions}</span>
+					<span className="text-rose-500/90">−{data.deletions}</span>
 				</span>
-			</button>
-			<div className="flex flex-col py-1">
+			</div>
+
+			<div className="mt-1.5 flex flex-col">
 				{shown.map((entry) => {
 					const slash = entry.path.lastIndexOf("/");
 					const dir = slash < 0 ? "" : entry.path.slice(0, slash + 1);
@@ -146,12 +192,12 @@ export function GitTurnCard(): JSX.Element | null {
 							key={entry.path}
 							onClick={open}
 							title={entry.origPath ? `${entry.origPath} → ${entry.path}` : entry.path}
-							className="flex items-center gap-1.5 px-3 py-1 text-left text-foreground transition-colors hover:bg-accent/50"
+							className="flex items-center gap-2 rounded-md px-1 py-1 text-left text-foreground transition-colors hover:bg-accent/40"
 						>
-							<FileIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
+							<FileTypeIcon path={entry.path} className="h-4 w-4 shrink-0" />
 							<span className="min-w-0 flex-1 truncate">
 								<span>{name}</span>
-								{dir && <span className="text-muted-foreground/60"> {dir}</span>}
+								{dir && <span className="text-muted-foreground/50"> {dir}</span>}
 							</span>
 							<StatusBadge code={entry.code} />
 						</button>
@@ -161,12 +207,46 @@ export function GitTurnCard(): JSX.Element | null {
 					<button
 						type="button"
 						onClick={open}
-						className="flex items-center gap-1.5 px-3 py-1 text-left font-medium text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+						className="rounded-md px-1 py-1 text-left text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
 					>
 						{t("turnCard.viewAll", { count: remaining })}
 					</button>
 				)}
 			</div>
+
+			<div className="mt-1.5 flex justify-end px-1">
+				<Button type="button" size="xs" variant="ghost" className="px-2 text-sky-500 hover:bg-sky-500/10 hover:text-sky-400" disabled={busy} onClick={commitThisTurn}>
+					{t("turnCard.commitTurn")}
+				</Button>
+			</div>
+
+			{/* 默认「仅提交本轮」：取消暂存只动索引、不丢改动，错了点两下就回来；
+			    「一并提交」错了则要改历史。默认值必须站在可逆的那一侧。 */}
+			<ConfirmDialog
+				open={askMixed !== null}
+				title={t("turnCard.mixedTitle")}
+				description={t("turnCard.mixedDescription")}
+				confirmLabel={t("turnCard.mixedOnlyTurn")}
+				detail={
+					<button
+						type="button"
+						className="w-full rounded border border-border px-2 py-1.5 text-left text-[12px] text-muted-foreground transition-colors hover:bg-accent"
+						onClick={() => {
+							const target = askMixed;
+							setAskMixed(null);
+							if (target) void stageAndCommit(target.root, target.paths, false);
+						}}
+					>
+						{t("turnCard.mixedIncludeAll")}
+					</button>
+				}
+				onConfirm={() => {
+					const target = askMixed;
+					setAskMixed(null);
+					if (target) void stageAndCommit(target.root, target.paths, true);
+				}}
+				onCancel={() => setAskMixed(null)}
+			/>
 		</div>
 	);
 }

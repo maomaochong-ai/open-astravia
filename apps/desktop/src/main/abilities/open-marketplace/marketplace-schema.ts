@@ -1,10 +1,11 @@
 import { posix } from "node:path";
 import { z } from "zod";
-import { isValidAppVersion } from "./marketplace-compatibility.js";
+import { compareAppVersions, isValidAppVersion } from "./marketplace-compatibility.js";
 
 const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const VERSION_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const appVersionSchema = z.string().trim().refine(isValidAppVersion, "Must be a semantic app version");
+const stableVersionSchema = z.string().regex(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/);
 
 export const marketplaceMetaEntrySchema = z
 	.object({
@@ -137,6 +138,23 @@ export const marketplaceDetailSchema = detailLocaleSchema.extend({
 });
 
 const sourceSchema = z.object({ path: z.string().min(1) }).passthrough();
+const pluginReleaseSchema = z.object({
+	version: stableVersionSchema,
+	minAppVersion: stableVersionSchema,
+	pluginApiVersion: z.string().regex(/^\^\d+\.\d+\.\d+$/),
+	permissions: z.array(z.string()).default([]),
+	commands: z.array(z.string()).default([]),
+	artifact: z.object({
+		url: z
+			.string()
+			.url()
+			.refine((value) => {
+				const url = new URL(value);
+				return url.protocol === "https:" && !url.username && !url.password && !url.hash;
+			}, "Plugin artifact must use HTTPS without credentials or fragment"),
+		sha256: z.string().regex(/^[a-f0-9]{64}$/),
+	}),
+});
 const abilityBaseSchema = z
 	.object({
 		slug: z.string().regex(SLUG_PATTERN),
@@ -167,6 +185,8 @@ const sceneAbilitySchema = abilityBaseSchema.extend({
 const pluginAbilitySchema = abilityBaseSchema.extend({
 	type: z.literal("plugin"),
 	source: sourceSchema,
+	/** Schema v3: immutable archives; source.path contains presentation assets only. */
+	releases: z.array(pluginReleaseSchema).min(1).optional(),
 	config: z
 		.object({
 			api_version: z.string().optional(),
@@ -188,6 +208,8 @@ const bundleMemberSchema = z.object({
 	type: z.enum(["skill", "scene", "mcp", "plugin"]),
 	slug: z.string().regex(SLUG_PATTERN),
 	source: sourceSchema.optional(),
+	/** Schema v3 bundle-only plugins keep release metadata in the index. */
+	releases: z.array(pluginReleaseSchema).min(1).optional(),
 });
 const bundleAbilitySchema = abilityBaseSchema.extend({
 	type: z.literal("bundle"),
@@ -203,9 +225,11 @@ export const marketplaceAbilitySchema = z.discriminatedUnion("type", [
 	bundleAbilitySchema,
 ]);
 
+export const MARKETPLACE_SCHEMA_VERSION = 3;
+
 export const marketplaceManifestSchema = z
 	.object({
-		schemaVersion: z.union([z.literal(1), z.literal(2)]),
+		schemaVersion: z.union([z.literal(1), z.literal(2), z.literal(MARKETPLACE_SCHEMA_VERSION)]),
 		name: z.string().regex(SLUG_PATTERN),
 		displayName: z.string().min(1).optional(),
 		marketplaceVersion: z.string().regex(VERSION_PATTERN),
@@ -217,6 +241,7 @@ export const marketplaceManifestSchema = z
 
 export type MarketplaceManifest = z.infer<typeof marketplaceManifestSchema>;
 export type MarketplaceAbilityManifest = z.infer<typeof marketplaceAbilitySchema>;
+export type MarketplacePluginRelease = z.infer<typeof pluginReleaseSchema>;
 export type MarketplaceBundleMember = z.infer<typeof bundleMemberSchema>;
 
 export function normalizeMarketplaceSourcePath(value: string): string {
@@ -253,26 +278,80 @@ export function parseMarketplaceManifest(input: unknown): MarketplaceManifest {
 	for (const ability of manifest.abilities) {
 		if (seen.has(ability.slug)) throw new Error(`Duplicate ability slug in marketplace: ${ability.slug}`);
 		seen.add(ability.slug);
+		if (ability.type === "plugin") {
+			assertPluginReleases(
+				manifest.schemaVersion,
+				manifest.minAppVersion,
+				ability.slug,
+				ability.releases,
+				ability.version,
+			);
+		}
 		const source = ability.source;
 		if (source) source.path = normalizeMarketplaceSourcePath(source.path);
 	}
 	const bySlug = new Map(manifest.abilities.map((ability) => [ability.slug, ability]));
+	const bundlePluginReleases = new Map<string, string>();
 	for (const ability of manifest.abilities) {
 		if (ability.type !== "bundle") continue;
 		const memberIds = new Set<string>();
 		for (const member of ability.config.members) {
+			if (member.releases && (member.type !== "plugin" || !member.source)) {
+				throw new Error(`Only bundle-only plugin members can declare releases: ${member.slug}`);
+			}
+			if (member.type === "plugin" && member.source) {
+				assertPluginReleases(manifest.schemaVersion, manifest.minAppVersion, member.slug, member.releases);
+			}
 			if (member.source) {
-				if (manifest.schemaVersion !== 2) throw new Error("Package bundle members require schemaVersion 2");
+				if (manifest.schemaVersion === 1)
+					throw new Error("Package bundle members require schemaVersion 2 or newer");
 				member.source.path = normalizeMarketplaceSourcePath(member.source.path);
 			}
 			const memberId = `${member.type}:${member.slug}`;
 			if (memberIds.has(memberId)) throw new Error(`Duplicate bundle member: ${memberId}`);
 			memberIds.add(memberId);
 			const target = bySlug.get(member.slug);
+			if (member.releases) {
+				if (target) throw new Error(`Listed plugin must keep releases on its own entry: ${member.slug}`);
+				const signature = JSON.stringify(member.releases);
+				const previous = bundlePluginReleases.get(member.slug);
+				if (previous && previous !== signature)
+					throw new Error(`Conflicting bundle plugin releases: ${member.slug}`);
+				bundlePluginReleases.set(member.slug, signature);
+			}
 			if ((!target && !member.source) || (target && target.type !== member.type)) {
 				throw new Error(`Bundle member not found in marketplace: ${memberId}`);
 			}
 		}
 	}
 	return manifest;
+}
+
+function assertPluginReleases(
+	schemaVersion: number,
+	minAppVersion: string,
+	slug: string,
+	releases: MarketplacePluginRelease[] | undefined,
+	catalogVersion?: string,
+): void {
+	if (schemaVersion !== 3) {
+		if (releases) throw new Error("Plugin releases require schemaVersion 3");
+		return;
+	}
+	if (!releases) throw new Error(`Plugin ${slug} has no versioned releases`);
+	const versions = new Set<string>();
+	for (const release of releases) {
+		if (versions.has(release.version)) throw new Error(`Duplicate plugin release: ${slug}@${release.version}`);
+		versions.add(release.version);
+		if (compareAppVersions(release.minAppVersion, minAppVersion) < 0) {
+			throw new Error(`Plugin release requires an app older than its marketplace: ${slug}@${release.version}`);
+		}
+	}
+	if (catalogVersion) {
+		const latest = releases.reduce((left, right) =>
+			compareAppVersions(left.version, right.version) >= 0 ? left : right,
+		);
+		if (catalogVersion !== latest.version)
+			throw new Error(`Plugin catalog version does not match latest release: ${slug}`);
+	}
 }

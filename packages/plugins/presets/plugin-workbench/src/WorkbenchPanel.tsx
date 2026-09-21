@@ -212,11 +212,11 @@ export function WorkbenchPanel() {
 		setError(null);
 		try {
 			if (!workbenchRoot) throw new Error("plugin-workbench rootPath missing");
-			if (!project.zipPath) setBusy(`build:${project.id}`);
+			if (!project.packagePath) setBusy(`build:${project.id}`);
 			await applyPluginToVetta({
 				project,
 				workbenchRoot,
-				forceBuild: !project.zipPath,
+				forceBuild: !project.packagePath,
 				refreshApp: false,
 				startHotReload: true,
 			});
@@ -320,18 +320,18 @@ export function WorkbenchPanel() {
 	};
 
 	const runExport = async (project: ProjectInfo) => {
-		if (!project.zipPath) {
+		if (!project.packagePath) {
 			setError(t("panel.exportNeedsZip"));
 			return;
 		}
 		setBusy(`export:${project.id}`);
 		setError(null);
 		try {
-			const defaultFileName = `${project.id}-${project.version}.zip`;
-			const saved = await getWorkbenchDialog().saveCopy(project.zipPath, {
+			const defaultFileName = `${project.id}-${project.version}.vettapkg`;
+			const saved = await getWorkbenchDialog().saveCopy(project.packagePath, {
 				defaultFileName,
 				title: t("panel.exportTitle"),
-				filters: [{ name: "Zip", extensions: ["zip"] }],
+				filters: [{ name: "Vetta Plugin Package", extensions: ["vettapkg"] }],
 			});
 			// null = user cancelled the save dialog; no error.
 			if (saved == null) return;
@@ -477,7 +477,7 @@ export function WorkbenchPanel() {
 
 							{/* Meta chips */}
 							<div className="flex flex-wrap gap-1.5">
-								{project.zipPath ? (
+								{project.packagePath ? (
 									<span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
 										{t("panel.zipReady")}
 									</span>
@@ -597,8 +597,8 @@ export function WorkbenchPanel() {
 									variant="secondary"
 									size="sm"
 									onClick={() => void runExport(project)}
-									disabled={isBusy || !project.zipPath}
-									title={!project.zipPath ? t("panel.exportNeedsZip") : t("panel.export")}
+									disabled={isBusy || !project.packagePath}
+									title={!project.packagePath ? t("panel.exportNeedsZip") : t("panel.export")}
 								>
 									{projectBusy && busy?.startsWith("export") ? (
 										<RefreshIcon className="h-3 w-3 animate-spin" />

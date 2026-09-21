@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { readFile, readdir } from "node:fs/promises";
+import { join } from "node:path";
 import test from "node:test";
-import { resolveSystemPluginSelection } from "./stage-system-plugins.mjs";
+import { presetsDir, resolveSystemPluginSelection } from "./stage-system-plugins.mjs";
 
 // 清单的真源是 packages/plugins/tenants.json。这里不再抄一份：每加一个 preset 都要同步改
 // 两处，而这个测试要验的本来就是「按租户与 profile 取到正确的那一份、顺序不乱」，不是清单内容。
@@ -39,6 +41,23 @@ test("rejects an unknown system plugin profile", () => {
 		() => resolveSystemPluginSelection("common", "preview"),
 		/未知系统插件 profile：preview/,
 	);
+});
+
+test("preset ability descriptors match their plugin manifest identity", async () => {
+	const entries = await readdir(presetsDir, { withFileTypes: true });
+	for (const entry of entries) {
+		if (!entry.isDirectory()) continue;
+		const pluginDir = join(presetsDir, entry.name);
+		const abilityPath = join(pluginDir, "ability.json");
+		if (!existsSync(abilityPath)) continue;
+		const [manifest, ability] = await Promise.all([
+			readFile(join(pluginDir, "plugin.json"), "utf8").then(JSON.parse),
+			readFile(abilityPath, "utf8").then(JSON.parse),
+		]);
+
+		assert.equal(ability.slug, manifest.id, `${entry.name}: ability slug must match plugin id`);
+		assert.equal(ability.version, manifest.version, `${entry.name}: ability version must match plugin version`);
+	}
 });
 
 test("development and packaging scripts pin their system plugin profiles without a recursive lifecycle hook", async () => {

@@ -213,6 +213,20 @@ export function useActivityPanelModel({
 	}, [windowWidth, syncWidthToWindow]);
 
 	/**
+	 * 打开面板时按**当下**的窗口宽度再解析一次。
+	 *
+	 * 像素宽度是在写入那一刻用 window.innerWidth 算出来的，而上面那次同步只在面板挂载
+	 * 期间跑。面板关着时窗口若变过尺寸（或宽度意图是「拉满」而上次解析用的是更窄的窗口），
+	 * 重新打开就会沿用过期宽度：面板比该占的位置窄，右侧露出一条空白，直到用户拖一下分隔条
+	 * 才恢复。这里直接读 window.innerWidth 而不是 windowWidth——后者本身可能就是那个过期值。
+	 * 宽度没变时 atom 内部会跳过写入，因此重复触发无代价。
+	 */
+	useEffect(() => {
+		if (!isOpen) return;
+		syncWidthToWindow(window.innerWidth);
+	}, [isOpen, syncWidthToWindow]);
+
+	/**
 	 * 当前窗口宽度下面板**应有**的宽度。侧边栏联动必须用它而不是 `width`：`width` 由上面的
 	 * effect 异步写回，窗口刚变宽的那一轮里它还是旧值，用旧宽度会误判成「面板不再过宽」而
 	 * 展开侧边栏，下一轮又把面板压回 openLimit——拉满态会因此被打回固定宽度。

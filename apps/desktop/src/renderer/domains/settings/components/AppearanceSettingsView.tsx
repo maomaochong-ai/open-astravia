@@ -12,7 +12,8 @@ import {
 } from "@shared/theme/new-session-texture";
 import type { OrnamentId } from "@shared/theme/ornament";
 import type { ThemeDef } from "@shared/theme/tokens";
-import type { CSSProperties, MouseEvent, ReactNode } from "react";
+import { memo } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { SettingsAiAssist } from "../ai-assist";
 import appearanceMascot from "../assets/appearance-mascot.webp";
 import themeLock from "../assets/theme-lock.webp";
@@ -31,6 +32,7 @@ import type {
 } from "./useAppearanceSettingsModel";
 
 type ThemeMode = AppearanceModeOption["value"];
+type SelectionPoint = { x: number; y: number };
 
 function languageOptionLabel(option: AppearanceLanguageOption): JSX.Element {
 	return (
@@ -49,7 +51,7 @@ function languageOptionLabel(option: AppearanceLanguageOption): JSX.Element {
 	);
 }
 
-function LanguageSelect({
+const LanguageSelect = memo(function LanguageSelect({
 	language,
 	languages,
 	onSelect,
@@ -69,7 +71,7 @@ function LanguageSelect({
 			}))}
 		/>
 	);
-}
+});
 
 function SelectionCheckBadge(): JSX.Element {
 	return (
@@ -86,7 +88,7 @@ function SelectionCheckBadge(): JSX.Element {
 const SELECTION_ACTIVE = "border-primary/50 bg-primary/10";
 const SELECTION_IDLE = "border-border/60 hover:border-primary/40 hover:bg-accent/40";
 
-function ModeCard({
+const ModeCard = memo(function ModeCard({
 	mode,
 	label,
 	icon,
@@ -99,12 +101,12 @@ function ModeCard({
 	icon: string;
 	hint: string;
 	active: boolean;
-	onSelect: (value: ThemeMode, event: MouseEvent<HTMLButtonElement>) => void;
+	onSelect: (value: ThemeMode, point: SelectionPoint) => void;
 }): JSX.Element {
 	return (
 		<button
 			type="button"
-			onClick={(event) => onSelect(mode, event)}
+			onClick={(event) => onSelect(mode, { x: event.clientX, y: event.clientY })}
 			className={cn(
 				"group relative flex items-center gap-2.5 rounded-lg border bg-card px-3 py-2 text-left transition-all",
 				active ? SELECTION_ACTIVE : SELECTION_IDLE,
@@ -118,7 +120,7 @@ function ModeCard({
 			{active && <SelectionCheckBadge />}
 		</button>
 	);
-}
+});
 
 const BLOB_LAYOUT: { left: string; top: string; w: string; h: string; rotate: number }[] = [
 	{ left: "-15%", top: "-20%", w: "75%", h: "75%", rotate: -8 },
@@ -128,21 +130,21 @@ const BLOB_LAYOUT: { left: string; top: string; w: string; h: string; rotate: nu
 	{ left: "25%", top: "20%", w: "55%", h: "60%", rotate: 6 },
 ];
 
-function ThemeCard({
+const ThemeCard = memo(function ThemeCard({
 	theme,
 	active,
 	onSelect,
 }: {
 	theme: ThemeDef;
 	active: boolean;
-	onSelect: (id: string, event: MouseEvent<HTMLButtonElement>) => void;
+	onSelect: (id: string, point: SelectionPoint) => void;
 }): JSX.Element {
 	const palette = theme.dark;
 	const colors = [palette.primary, palette.accent, palette.ring, palette.chart1, palette.chart2];
 	return (
 		<button
 			type="button"
-			onClick={(event) => onSelect(theme.id, event)}
+			onClick={(event) => onSelect(theme.id, { x: event.clientX, y: event.clientY })}
 			className="group flex flex-col items-stretch gap-2 text-left"
 		>
 			<div
@@ -210,24 +212,25 @@ function ThemeCard({
 			</span>
 		</button>
 	);
-}
+});
 
-function UiThemeCard({
+const UiThemeCard = memo(function UiThemeCard({
 	active,
 	disabled,
 	hint,
+	id,
 	label,
 	onSelect,
 	preview,
 	unavailable,
 }: AppearanceUiThemeOption & {
-	onSelect: () => void;
+	onSelect: (id: string) => void;
 }): JSX.Element {
 	return (
 		<button
 			type="button"
 			disabled={disabled}
-			onClick={onSelect}
+			onClick={() => onSelect(id)}
 			className={cn(
 				"group relative rounded-xl border bg-card text-left transition-all",
 				active ? SELECTION_ACTIVE : SELECTION_IDLE,
@@ -251,7 +254,7 @@ function UiThemeCard({
 			{active && !unavailable && <SelectionCheckBadge />}
 		</button>
 	);
-}
+});
 
 /** 迷你窗口示意图：经典=侧栏贴边仅右侧分隔线；悬浮=侧栏四周留白带圆角边框。 */
 function SidebarStylePreview({ style }: { style: SidebarStyle }): JSX.Element {
@@ -274,7 +277,7 @@ function SidebarStylePreview({ style }: { style: SidebarStyle }): JSX.Element {
 	);
 }
 
-function SidebarStyleCard({
+const SidebarStyleCard = memo(function SidebarStyleCard({
 	active,
 	hint,
 	id,
@@ -300,9 +303,9 @@ function SidebarStyleCard({
 			{active && <SelectionCheckBadge />}
 		</button>
 	);
-}
+});
 
-function CursorStyleCard({
+const CursorStyleCard = memo(function CursorStyleCard({
 	active,
 	hint,
 	icon,
@@ -337,7 +340,7 @@ function CursorStyleCard({
 			{active && <SelectionCheckBadge />}
 		</button>
 	);
-}
+});
 
 /**
  * 装饰件预览：一枚 1:1 的方格，装饰件居中摆着，别的什么都不画。
@@ -470,7 +473,7 @@ function TexturePreview({ id }: { id: NewSessionTextureId }): JSX.Element {
 	);
 }
 
-function OrnamentCard({
+const OrnamentCard = memo(function OrnamentCard({
 	active,
 	hint,
 	id,
@@ -485,9 +488,9 @@ function OrnamentCard({
 			<OrnamentPreview id={id} preview={preview} />
 		</DecorCard>
 	);
-}
+});
 
-function TextureCard({
+const TextureCard = memo(function TextureCard({
 	active,
 	hint,
 	id,
@@ -501,7 +504,7 @@ function TextureCard({
 			<TexturePreview id={id} />
 		</DecorCard>
 	);
-}
+});
 
 export function AppearanceSettingsView({ model }: { model: AppearanceSettingsModel }): JSX.Element {
 	return (
@@ -542,7 +545,7 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 							icon={mode.icon}
 							hint={mode.hint}
 							active={model.mode === mode.value}
-							onSelect={(value, event) => model.actions.changeMode(value, { x: event.clientX, y: event.clientY })}
+							onSelect={model.actions.changeMode}
 						/>
 					))}
 				</div>
@@ -553,7 +556,7 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 					<SettingHeading title={model.labels.sections.uiTheme} section={SETTINGS_SECTION["appearance-ui-theme"]} className="mb-3" />
 					<div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-3">
 						{model.uiThemes.map((theme) => (
-							<UiThemeCard key={theme.id} {...theme} onSelect={() => model.actions.selectUiTheme(theme.id)} />
+							<UiThemeCard key={theme.id} {...theme} onSelect={model.actions.selectUiTheme} />
 						))}
 					</div>
 				</div>
@@ -568,7 +571,7 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 								key={theme.id}
 								theme={theme}
 								active={model.themeName === theme.id}
-								onSelect={(id, event) => model.actions.changeThemeName(id, { x: event.clientX, y: event.clientY })}
+								onSelect={model.actions.changeThemeName}
 							/>
 						))}
 					</div>

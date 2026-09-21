@@ -26,6 +26,7 @@ const SETTINGS_CONTENT: Record<Exclude<SettingsTab, "mcp">, LazyExoticComponent<
 	knowledge: lazy(SETTINGS_TAB_LOADERS.knowledge),
 	pet: lazy(SETTINGS_TAB_LOADERS.pet),
 	remote: lazy(SETTINGS_TAB_LOADERS.remote),
+	sshHosts: lazy(SETTINGS_TAB_LOADERS.sshHosts),
 };
 
 export function SettingsPage(): JSX.Element {

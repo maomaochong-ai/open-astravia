@@ -2,7 +2,9 @@ import { useUpdateCheckerModel } from "@shared/hooks/useUpdateCheckerModel";
 import { UpdateCheckerAction, UpdateCheckerDetail } from "@vetta-org/theme-ui/overlays";
 import { GeneralSettingsView as ThemeGeneralSettingsView } from "@vetta-org/theme-ui/settings";
 import { SETTINGS_SECTION } from "../registry";
+import { ProxySettingsSection } from "./ProxySettingsSection";
 import type { GeneralSettingsModel } from "./useGeneralSettingsModel";
+import { useProxySettingsModel } from "./useProxySettingsModel";
 
 export interface GeneralSettingsViewProps {
 	model: GeneralSettingsModel;
@@ -11,6 +13,7 @@ export interface GeneralSettingsViewProps {
 /** Thin host adapter: model + updater pieces for SettingRow (no components/ui host chrome). */
 export function GeneralSettingsView({ model }: GeneralSettingsViewProps): JSX.Element {
 	const updates = useUpdateCheckerModel();
+	const proxy = useProxySettingsModel();
 	const showUpdateDetail =
 		updates.phase === "available" || updates.phase === "downloading" || updates.phase === "ready";
 
@@ -58,6 +61,7 @@ export function GeneralSettingsView({ model }: GeneralSettingsViewProps): JSX.El
 			exportingDiagnostics={model.exportingDiagnostics}
 			onExportDiagnostics={() => void model.actions.exportDiagnostics()}
 			onStartAppGuide={model.actions.startAppGuide}
+			networkSection={<ProxySettingsSection model={proxy} />}
 		/>
 	);
 }

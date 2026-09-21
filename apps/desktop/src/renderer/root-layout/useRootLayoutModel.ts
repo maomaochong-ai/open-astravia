@@ -1,12 +1,11 @@
 import type {
 	DesktopMcpElicitationRequest,
-	DesktopMcpElicitationResolvedEvent,
 	DesktopMcpTask,
 	DesktopMcpTasksChangedEvent,
 	DesktopUserQuestionRequest,
-	DesktopUserQuestionResolvedEvent,
 } from "@preload/api";
 import { useMatches, useNavigate } from "@tanstack/react-router";
+import type { CodingAgentPlanReviewRequest } from "@vetta/coding-agent/function-extensions";
 import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FILE_EDITOR_SAVE_EVENT } from "@/shared/shortcuts";
@@ -19,7 +18,6 @@ import { useModelCatalogSync } from "../shared/hooks/useModelCatalogSync";
 import { useNarrowScreen } from "../shared/hooks/useNarrowScreen";
 import { useRunningSessionsSync } from "../shared/hooks/useRunningSessionsSync";
 import { useGlobalShortcuts } from "../shared/hooks/useShortcuts";
-import { useTheme } from "../shared/hooks/useTheme";
 import { useUpdaterInit } from "../shared/hooks/useUpdaterInit";
 import { i18n } from "../shared/i18n";
 import {
@@ -33,6 +31,7 @@ import {
 	lastActiveSessionAtom,
 	mcpTasksBySessionAtom,
 	pendingMcpElicitationsAtom,
+	pendingPlanReviewsAtom,
 	pendingQuestionsAtom,
 	pendingSessionCreationAtom,
 	pendingSessionOpenAtom,
@@ -44,6 +43,7 @@ import {
 } from "../shared/store/atoms";
 import { showToast } from "../shared/store/toast-atoms";
 import { shouldShowChatRoutePending } from "./chat-route-pending";
+import { syncPendingInteractions } from "./pending-interaction-sync";
 import type { RootLayoutModel } from "./types";
 
 type SessionRestoreState = "pending" | "restoring" | "complete";
@@ -103,7 +103,6 @@ export function useRootLayoutModel(): RootLayoutModel {
 		}
 	}, [narrow, cancelOverlayClose]);
 
-	useTheme();
 	// 云会话生命周期已上移到 App 根部的 <CloudAuthBoot />（lite 构建不挂载）
 	useAppInit();
 	useNotificationInit();
@@ -264,89 +263,51 @@ export function useRootLayoutModel(): RootLayoutModel {
 		};
 	}, [currentPath, defaultConversationCwd, navigate]);
 
-	// ask_user_question：主进程持有待答真相源。Renderer 先订阅增量事件，再读取快照，
-	// 让用户或 Debug Agent 回答、重载以及晚打开窗口都收敛到同一面板状态。
+	// 主进程持有「等待用户处理」的真相源；三类请求共用同一套订阅 + 快照收敛。
 	const setPendingQuestions = useSetAtom(pendingQuestionsAtom);
-	useEffect(() => {
-		let active = true;
-		const liveRequests = new Map<string, DesktopUserQuestionRequest>();
-		const resolvedRequestIds = new Set<string>();
-
-		const unsubscribeRequest = window.vetta.session.onQuestionRequest((request) => {
-			liveRequests.set(request.requestId, request);
-			setPendingQuestions((prev) => ({ ...prev, [request.sessionId]: request }));
-		});
-		const unsubscribeResolved = window.vetta.session.onQuestionResolved((event: DesktopUserQuestionResolvedEvent) => {
-			resolvedRequestIds.add(event.requestId);
-			liveRequests.delete(event.requestId);
-			setPendingQuestions((prev) => {
-				const pending = prev[event.sessionId];
-				if (!pending || pending.requestId !== event.requestId) return prev;
-				const next = { ...prev };
-				delete next[event.sessionId];
-				return next;
-			});
-		});
-
-		void window.vetta.session
-			.listPendingQuestions()
-			.then((snapshot) => {
-				if (!active) return;
-				const pendingByRequestId = new Map(snapshot.map((request) => [request.requestId, request]));
-				for (const [requestId, request] of liveRequests) pendingByRequestId.set(requestId, request);
-				for (const requestId of resolvedRequestIds) pendingByRequestId.delete(requestId);
-				const next: Record<string, DesktopUserQuestionRequest> = {};
-				for (const request of pendingByRequestId.values()) next[request.sessionId] = request;
-				setPendingQuestions(next);
-			})
-			.catch((error: unknown) => console.warn("[RootLayout] sync pending questions failed", error));
-
-		return () => {
-			active = false;
-			unsubscribeRequest();
-			unsubscribeResolved();
-		};
-	}, [setPendingQuestions]);
+	useEffect(
+		() =>
+			syncPendingInteractions<DesktopUserQuestionRequest>(
+				{
+					onRequest: (handler) => window.vetta.session.onQuestionRequest(handler),
+					onResolved: (handler) => window.vetta.session.onQuestionResolved(handler),
+					listPending: () => window.vetta.session.listPendingQuestions(),
+				},
+				setPendingQuestions,
+				(error) => console.warn("[RootLayout] sync pending questions failed", error),
+			),
+		[setPendingQuestions],
+	);
 
 	const setPendingMcpElicitations = useSetAtom(pendingMcpElicitationsAtom);
-	useEffect(() => {
-		let active = true;
-		const live = new Map<string, DesktopMcpElicitationRequest>();
-		const resolved = new Set<string>();
-		const unsubscribeRequest = window.vetta.session.onMcpElicitationRequest((request) => {
-			live.set(request.requestId, request);
-			setPendingMcpElicitations((previous) => ({ ...previous, [request.sessionId]: request }));
-		});
-		const unsubscribeResolved = window.vetta.session.onMcpElicitationResolved(
-			(event: DesktopMcpElicitationResolvedEvent) => {
-				resolved.add(event.requestId);
-				live.delete(event.requestId);
-				setPendingMcpElicitations((previous) => {
-					if (previous[event.sessionId]?.requestId !== event.requestId) return previous;
-					const next = { ...previous };
-					delete next[event.sessionId];
-					return next;
-				});
-			},
-		);
-		void window.vetta.session
-			.listPendingMcpElicitations()
-			.then((snapshot) => {
-				if (!active) return;
-				const byId = new Map(snapshot.map((request) => [request.requestId, request]));
-				for (const [requestId, request] of live) byId.set(requestId, request);
-				for (const requestId of resolved) byId.delete(requestId);
-				const next: Record<string, DesktopMcpElicitationRequest> = {};
-				for (const request of byId.values()) next[request.sessionId] = request;
-				setPendingMcpElicitations(next);
-			})
-			.catch((error: unknown) => console.warn("[RootLayout] sync pending MCP elicitations failed", error));
-		return () => {
-			active = false;
-			unsubscribeRequest();
-			unsubscribeResolved();
-		};
-	}, [setPendingMcpElicitations]);
+	useEffect(
+		() =>
+			syncPendingInteractions<DesktopMcpElicitationRequest>(
+				{
+					onRequest: (handler) => window.vetta.session.onMcpElicitationRequest(handler),
+					onResolved: (handler) => window.vetta.session.onMcpElicitationResolved(handler),
+					listPending: () => window.vetta.session.listPendingMcpElicitations(),
+				},
+				setPendingMcpElicitations,
+				(error) => console.warn("[RootLayout] sync pending MCP elicitations failed", error),
+			),
+		[setPendingMcpElicitations],
+	);
+
+	const setPendingPlanReviews = useSetAtom(pendingPlanReviewsAtom);
+	useEffect(
+		() =>
+			syncPendingInteractions<CodingAgentPlanReviewRequest>(
+				{
+					onRequest: (handler) => window.vetta.session.onPlanReviewRequest(handler),
+					onResolved: (handler) => window.vetta.session.onPlanReviewResolved(handler),
+					listPending: () => window.vetta.session.listPendingPlanReviews(),
+				},
+				setPendingPlanReviews,
+				(error) => console.warn("[RootLayout] sync pending plan reviews failed", error),
+			),
+		[setPendingPlanReviews],
+	);
 
 	const setMcpTasks = useSetAtom(mcpTasksBySessionAtom);
 	useEffect(() => {

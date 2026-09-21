@@ -70,7 +70,11 @@ describe("createOfficialPluginsApi", () => {
 		expect(pluginSystem.list).toHaveBeenCalledTimes(2);
 		expect(pluginSystem.list).toHaveBeenCalledWith("capability-session");
 		expect(pluginSystem.setEnabled).toHaveBeenCalledWith("capability-session", "target", false);
-		expect(pluginSystem.installFromUrl).toHaveBeenCalledWith("capability-session", "https://example.com/plugin.zip");
+		expect(pluginSystem.installFromUrl).toHaveBeenCalledWith(
+			"capability-session",
+			"https://example.com/plugin.zip",
+			undefined,
+		);
 		expect(pluginSystem.installFromPath).toHaveBeenCalledWith("capability-session", "C:/plugin.zip", {
 			grantedPermissions: ["network.fetch"],
 			enable: true,

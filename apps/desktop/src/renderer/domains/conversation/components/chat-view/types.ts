@@ -13,6 +13,8 @@ export interface ChatViewHeaderModel {
 	exportTitle: string;
 	panelOpen: boolean;
 	panelTitle: string;
+	bottomPanelOpen: boolean;
+	bottomPanelTitle: string;
 	pinTitle: string;
 	pinned: boolean;
 }
@@ -32,6 +34,7 @@ export interface ChatViewActions {
 	finishExport: () => void;
 	openExport: () => void;
 	togglePanel: () => void;
+	toggleBottomPanel: () => void;
 	togglePin: () => Promise<void>;
 }
 

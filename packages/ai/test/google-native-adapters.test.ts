@@ -18,6 +18,40 @@ const cliModel = createModel("google-gemini-cli", "google-gemini-cli");
 const cliApiKey = JSON.stringify({ token: "test-token", projectId: "test-project" });
 
 describe("Google Generative AI native adapter", () => {
+	it("uses the normalized provider message in the terminal error event", async () => {
+		const payload = {
+			error: {
+				code: 503,
+				message: "No capacity available for model gpt-oss-120b-medium",
+				details: [{ reason: "MODEL_CAPACITY_EXHAUSTED" }],
+			},
+		};
+		const source = Object.assign(new Error(JSON.stringify(payload)), { status: 503 });
+		const adapter = createGoogleAdapter({
+			send: async () => {
+				throw source;
+			},
+		});
+		const response = await adapter.stream({ model: googleModel, context });
+		const iterator = response.events[Symbol.asyncIterator]();
+		const terminal = await iterator.next();
+
+		expect(terminal.value).toMatchObject({
+			type: "error",
+			error: { errorMessage: "No capacity available for model gpt-oss-120b-medium" },
+			failure: {
+				message: "No capacity available for model gpt-oss-120b-medium",
+				statusCode: 503,
+				providerCode: "MODEL_CAPACITY_EXHAUSTED",
+			},
+		});
+		await expect(iterator.next()).rejects.toMatchObject({
+			message: "No capacity available for model gpt-oss-120b-medium",
+			statusCode: 503,
+			providerCode: "MODEL_CAPACITY_EXHAUSTED",
+		});
+	});
+
 	it("streams thinking, text, tools, signatures, usage, and request parameters", async () => {
 		let observedParams: Parameters<GoogleContentSender>[0] | undefined;
 		const send: GoogleContentSender = async (params) => {

@@ -6,6 +6,7 @@ import type {
 	OpenMarketplaceDetailBlock,
 	OpenMarketplaceDetailLocale,
 } from "../../../preload/api-types/abilities.js";
+import { compareAppVersions } from "./marketplace-compatibility.js";
 import type { MarketplaceAbilityManifest, MarketplaceBundleMember } from "./marketplace-schema.js";
 import {
 	marketplaceAbilitySchema,
@@ -307,7 +308,7 @@ function loadDetailSource(
 	}
 }
 
-/** Unlisted members keep their catalog metadata next to the installable package. */
+/** Unlisted members keep presentation metadata in their marketplace directory. */
 export function readMarketplaceMemberMetadata(
 	sourceDir: string,
 	member: MarketplaceBundleMember,
@@ -321,8 +322,21 @@ export function readMarketplaceMemberMetadata(
 	if ("config" in descriptor || "source" in descriptor) {
 		throw new Error("Member installation configuration must stay in its package manifest");
 	}
+	if (member.releases) {
+		const latest = member.releases.reduce((left, right) =>
+			compareAppVersions(left.version, right.version) >= 0 ? left : right,
+		);
+		if (descriptor.version !== latest.version) {
+			throw new Error(`Bundle member version does not match latest release: ${member.slug}`);
+		}
+	}
 	// Referenced details are resolved separately, with the same path/size limits as listed abilities.
-	return marketplaceAbilitySchema.parse({ ...descriptor, detail: {}, source: member.source });
+	return marketplaceAbilitySchema.parse({
+		...descriptor,
+		detail: {},
+		source: member.source,
+		releases: member.releases,
+	});
 }
 
 function isReferencedDetail(

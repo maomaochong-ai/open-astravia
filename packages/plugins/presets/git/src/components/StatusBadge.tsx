@@ -7,6 +7,7 @@ const CODE_META: Record<ChangeCode, { label: string; color: string; titleKey: st
 	D: { label: "D", color: "text-rose-500", titleKey: "status.deleted" },
 	R: { label: "R", color: "text-sky-500", titleKey: "status.renamed" },
 	U: { label: "U", color: "text-violet-400", titleKey: "status.untracked" },
+	C: { label: "C", color: "text-orange-500", titleKey: "status.conflict" },
 };
 
 export function StatusBadge({ code }: { code: ChangeCode }): JSX.Element {

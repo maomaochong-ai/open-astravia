@@ -74,6 +74,8 @@ export type {
 export { SessionContextMenuView } from "./SessionContextMenuView";
 export type { SessionRenameInputViewProps } from "./SessionRenameInputView";
 export { SessionRenameInputView } from "./SessionRenameInputView";
+export type { SessionRowMoreButtonProps } from "./SessionRowMoreButton";
+export { SessionRowMoreButton } from "./SessionRowMoreButton";
 export type { SessionRowViewProps } from "./SessionRowView";
 export { SessionRowView } from "./SessionRowView";
 export type { SidebarProjectsSectionViewProps } from "./SidebarProjectsSectionView";
@@ -82,6 +84,7 @@ export type { ProjectSessionRowItem, ProjectTypeIconKey } from "./types";
 export {
 	DEFAULT_VISIBLE_SESSIONS,
 	PROJECT_TYPE_ICONS,
+	REMOTE_PROJECT_ICON,
 	VIRTUAL_SESSION_OVERSCAN,
 	VIRTUAL_SESSION_ROW_HEIGHT,
 } from "./types";

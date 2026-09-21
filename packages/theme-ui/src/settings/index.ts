@@ -140,6 +140,12 @@ export type {
 } from "./PresetProvidersSectionView";
 export { PresetProvidersSectionView } from "./PresetProvidersSectionView";
 export type {
+	ProxyProviderRowView,
+	ProxySettingsSectionViewLabels,
+	ProxySettingsSectionViewProps,
+} from "./ProxySettingsSectionView";
+export { ProxySettingsSectionView } from "./ProxySettingsSectionView";
+export type {
 	QrBindDialogBodyKind,
 	QrBindDialogDetail,
 	QrBindDialogViewLabels,

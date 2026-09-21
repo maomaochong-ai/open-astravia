@@ -14,5 +14,6 @@ export * from "./shared-context.js";
 export * from "./shared-history.js";
 export * from "./shared-history-tool.js";
 export * from "./task-control.js";
+export * from "./task-recovery.js";
 export * from "./task-runtime-tools.js";
 export * from "./validation.js";

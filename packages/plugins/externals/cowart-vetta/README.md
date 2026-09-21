@@ -40,7 +40,7 @@ bun run build
 The installable archive is written to:
 
 ```text
-packages/plugins/externals/cowart-vetta/release/cowart-vetta-<version>.zip
+packages/plugins/externals/cowart-vetta/release/cowart-vetta-<version>.vettapkg
 ```
 
 Install the zip from Desktop → Plugins, **restart App** if needed, open a **new conversation**.

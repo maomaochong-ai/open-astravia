@@ -2,10 +2,13 @@ import type {
 	ConversationScenario,
 	PluginAbilityDetailSlotContribution,
 	PluginActivityTabContribution,
+	PluginBottomPanelContribution,
 	PluginCardRendererContribution,
 	PluginFileExplorerContextMenuContribution,
 	PluginFileExplorerDecorationProvider,
+	PluginFileExplorerEntry,
 	PluginFileExplorerToolbarContribution,
+	PluginFileIconTheme,
 	PluginFilePreviewContribution,
 	PluginInputActionContribution,
 	PluginLocales,
@@ -68,11 +71,16 @@ export interface RegisteredFileExplorerToolbarAction extends PluginFileExplorerT
 export interface RegisteredFileExplorerDecorationProvider extends PluginFileExplorerDecorationProvider {
 	pluginId: string;
 	providerId: string;
+	changedEntries?: ReadonlyMap<string, PluginFileExplorerEntry>;
 }
 
 export const pluginFileExplorerContextMenuActionsAtom = atom<RegisteredFileExplorerContextMenuAction[]>([]);
 export const pluginFileExplorerToolbarActionsAtom = atom<RegisteredFileExplorerToolbarAction[]>([]);
 export const pluginFileExplorerDecorationProvidersAtom = atom<RegisteredFileExplorerDecorationProvider[]>([]);
+export interface RegisteredFileIconTheme extends PluginFileIconTheme {
+	pluginId: string;
+}
+export const pluginFileIconThemesAtom = atom<RegisteredFileIconTheme[]>([]);
 
 /** An activity-tab contribution registered by a loaded plugin（可添加池条目）. */
 export interface RegisteredActivityTab {
@@ -85,6 +93,8 @@ export interface RegisteredActivityTab {
 	component: PluginActivityTabContribution["component"];
 	/** 允许出现的对话场景（fail-closed：缺省/空 = 任何会话都不显示）。见契约。 */
 	scope_use?: PluginActivityTabContribution["scope_use"];
+	/** 标签栏默认相对位置，越小越靠前；缺省 100。 */
+	order?: PluginActivityTabContribution["order"];
 	/** 注册后是否默认上栏（缺省 true）；false = 出现条件由插件自己驱动。 */
 	initiallyVisible?: PluginActivityTabContribution["initiallyVisible"];
 	/** 未激活时的驻留策略；缺省 warm。 */
@@ -98,6 +108,29 @@ export interface RegisteredActivityTab {
  * 消费。注册不直接渲染——attach 记录 ∩ 此池才渲染为 tab。
  */
 export const pluginActivityTabsAtom = atom<RegisteredActivityTab[]>([]);
+
+/** A bottom-panel contribution registered by a loaded plugin（可添加池条目）. */
+export interface RegisteredBottomPanel {
+	pluginId: string;
+	/** Owning plugin display name, shown as the "+" menu row subtitle. */
+	pluginName: string;
+	panelId: string;
+	label: string;
+	icon?: PluginBottomPanelContribution["icon"];
+	component: PluginBottomPanelContribution["component"];
+	/** 允许出现的对话场景（fail-closed：缺省/空 = 任何会话都不显示）。 */
+	scope_use?: PluginBottomPanelContribution["scope_use"];
+	/** 「+」菜单里的相对位置，越小越靠前；缺省 100。 */
+	order?: PluginBottomPanelContribution["order"];
+	/** 同一会话最多几个实例；缺省不限。 */
+	maxInstances?: PluginBottomPanelContribution["maxInstances"];
+}
+
+/**
+ * 底部面板插件组件的「可添加池」，由 PluginGlobalSlotHost 发布、BottomPanel 消费。
+ * 注册不直接渲染——用户从「+」菜单开出实例才渲染。
+ */
+export const pluginBottomPanelsAtom = atom<RegisteredBottomPanel[]>([]);
 
 /**
  * 一个插件贡献的**工作区视图**（整页 surface，与自动化/知识库等内置页同级）。

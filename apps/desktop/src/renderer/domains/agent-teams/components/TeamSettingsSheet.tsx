@@ -3,6 +3,7 @@ import { ModelSelect } from "@shared/components/ModelSelect";
 import { useModelOptions } from "@shared/components/ModelSelect/useModelOptions";
 import type { TeamMemberModelPreference, TeamMemberModelSelection } from "../../../../shared/agent-team-member-model";
 import { resolveReasoning } from "@shared/components/ModelSelect/resolveReasoning";
+import { DEFAULT_TEAM_AUTOMATIC_RETRIES } from "@vetta/agent-team";
 import type { AgentProfile, TeamDefinition, TeamMemberAssignment } from "@vetta/agent-team";
 import { AgentAvatarView } from "@vetta-org/theme-ui/chat";
 import { DetailDrawer, DetailDrawerEnter } from "@vetta-org/theme-ui/overlays";
@@ -269,6 +270,18 @@ export function TeamSettingsSheet({
 											aria-label={t("settings.description")}
 											className="min-h-20 w-full resize-none rounded-xl border border-border/60 bg-background/50 px-3.5 py-2.5 text-[12px] leading-relaxed text-foreground caret-primary outline-none transition-colors placeholder:text-muted-foreground/50 hover:border-border focus:border-primary/50 focus:bg-background"
 										/>
+									</label>
+									<label className="flex flex-col gap-1.5">
+										<span className="text-[12px] font-medium text-foreground">{t("settings.automaticRetries")}</span>
+										<Input
+											type="number" min={0} max={10} step={1}
+											value={Number.isNaN(draft.maxAutomaticRetries) ? "" : draft.maxAutomaticRetries ?? DEFAULT_TEAM_AUTOMATIC_RETRIES}
+											onChange={(event) => setDraft((current) => ({ ...current, maxAutomaticRetries: event.target.valueAsNumber }))}
+											aria-label={t("settings.automaticRetries")}
+											aria-describedby="team-automatic-retries-help"
+											className="h-9"
+										/>
+										<span id="team-automatic-retries-help" className="text-[11px] text-muted-foreground">{t("settings.automaticRetriesHelp")}</span>
 									</label>
 								</>
 							)}
@@ -671,6 +684,7 @@ function SectionTitle({ children }: { readonly children: string }): JSX.Element 
 function sameDraft(left: TeamAssemblyDraft, right: TeamAssemblyDraft): boolean {
 	return (
 		left.name === right.name &&
+		left.maxAutomaticRetries === right.maxAutomaticRetries &&
 		(left.description ?? "") === (right.description ?? "") &&
 		left.leaderId === right.leaderId &&
 		left.memberIds.length === right.memberIds.length &&

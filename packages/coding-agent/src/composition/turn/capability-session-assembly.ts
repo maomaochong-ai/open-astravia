@@ -28,6 +28,11 @@ import type { CodingAgentSessionExecutionRuntime } from "../../execution/session
 import type { CodingAgentExtensionRunBridge } from "../../extensions/runtime/extension-run-bridge.js";
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
 import { CodingAgentStopHookContinuationSource } from "../../extensions/runtime/stop-hook-continuation-source.js";
+import {
+	type CodingAgentPlanModeExtensionRuntime,
+	composePlanModeToolSelection,
+	createPlanModeToolInterceptor,
+} from "../../features/plan-mode/index.js";
 import type { CodingAgentTodoRuntime } from "../../features/todo/contracts.js";
 import { DynamicContributionCatalog } from "../../interception/contribution-catalog.js";
 import {
@@ -123,6 +128,7 @@ export interface CodingAgentTurnCapabilitySessionAssemblyOptions {
 	readonly specializedToolRegistrations: readonly CodingAgentRuntimeToolRegistration[];
 	readonly continuationSources: readonly SessionExtensionContinuationSource[];
 	readonly todoRuntime: CodingAgentTodoRuntime;
+	readonly planModeRuntime: CodingAgentPlanModeExtensionRuntime;
 	readonly todoToolRegistration?: CodingAgentRuntimeToolRegistration;
 	readonly memoryRuntime?: CodingAgentMemoryRolloverRuntime;
 	readonly subagentRuntime?: CodingAgentSubagentRuntime;
@@ -291,6 +297,16 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		order: CODING_AGENT_TOOL_INTERCEPTION_ORDER.ecosystem,
 		value: createEcosystemToolInterceptor(options.hookRuntime),
 	});
+	toolInterceptionCatalog.register({
+		sourceId: "plan-mode",
+		localId: "permission-gate",
+		revision: "session",
+		order: CODING_AGENT_TOOL_INTERCEPTION_ORDER.planMode,
+		// 未经 Turn 绑定的路径没有准入捕获，直接读取实时权限模式。
+		value: createPlanModeToolInterceptor({
+			isPlanActive: () => options.planModeRuntime.readPermissionMode() === "plan",
+		}),
+	});
 	if (options.extensionEvents) {
 		toolInterceptionCatalog.register({
 			sourceId: "coding-extension",
@@ -351,7 +367,13 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 			.map((model) => ({ key: `${model.provider}/${model.id}`, name: model.name })),
 	}));
 	const bindToolSelection = () =>
-		createAgentToolSelection(options.agentConfiguration.readAdmitted(), options.mcpController?.readCatalog() ?? []);
+		composePlanModeToolSelection(
+			options.planModeRuntime.bindForTurn().isPlanActive,
+			createAgentToolSelection(
+				options.agentConfiguration.readAdmitted(),
+				options.mcpController?.readCatalog() ?? [],
+			),
+		);
 	const modelCallFrameComposer = new CodingAgentModelCallFrameComposer({
 		promptCacheKey: options.session.promptCacheKey,
 		allowsTool: (name) => bindToolSelection()(name),
@@ -375,6 +397,13 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		bindToolWrapper: (context) => {
 			const boundExtensionEvents = options.extensionEvents.bindAdapterForTurn(context);
 			const catalog = new DynamicContributionCatalog<CodingAgentToolInterceptor>();
+			catalog.register({
+				sourceId: "plan-mode",
+				localId: "permission-gate",
+				revision: "turn",
+				order: CODING_AGENT_TOOL_INTERCEPTION_ORDER.planMode,
+				value: createPlanModeToolInterceptor(options.planModeRuntime.bindForTurn()),
+			});
 			catalog.register({
 				sourceId: "ecosystem",
 				localId: "tool-hooks",

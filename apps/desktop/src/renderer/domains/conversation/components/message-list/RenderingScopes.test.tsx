@@ -100,4 +100,44 @@ describe("feed rendering boundaries", () => {
 		expect(scoped.result.current.stagedNarration).toBe(false);
 		expect(standalone.result.current.isPredicting).toBe(false);
 	});
+
+	it("collapses team execution cards while keeping the leader's final summary visible", () => {
+		const inspectBlock = {
+			type: "tool_call" as const,
+			toolCallId: "inspect",
+			toolName: "read",
+			args: {},
+			status: "success" as const,
+		};
+		const delegateBlock = {
+			type: "tool_call" as const,
+			toolCallId: "delegate",
+			toolName: "team_delegate_task",
+			args: {},
+			status: "success" as const,
+		};
+		const summaryBlock = { type: "text" as const, id: "summary", text: "负责人最终总结" };
+		const message = {
+			...createConversationAgentMessage({
+				id: "leader-continuation",
+				text: summaryBlock.text,
+				blocks: [inspectBlock, delegateBlock, summaryBlock],
+			}),
+			toolCallPresentations: [{ toolCallId: delegateBlock.toolCallId, activities: [] }],
+		};
+
+		const model = renderHook(() =>
+			useAssistantMessageModel({
+				message,
+				expanded: false,
+				exportMode: false,
+				isStreaming: false,
+				isTailMessage: false,
+			}),
+		);
+
+		expect(model.result.current.foldData?.processBlocks).toEqual([inspectBlock, delegateBlock]);
+		expect(model.result.current.foldData?.answerBlocks).toEqual([summaryBlock]);
+		expect(model.result.current.segments).toEqual([{ type: "single", block: summaryBlock }]);
+	});
 });

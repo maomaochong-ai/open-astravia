@@ -1,17 +1,22 @@
+import { useSshHost } from "@shared/hooks/useSshHost";
 import {
 	activeSessionAtom,
+	activeSessionCwdAtom,
 	activityPanelOpenAtom,
 	applyInputActionWorkingState,
+	bottomPanelStateAtom,
 	captureInputActionWorkingState,
 	chatMessagesAtom,
 	closeInlineFilePreviewAtom,
 	defaultConversationCwdAtom,
+	dispatchBottomPanelAtom,
 	emptySessionInputActionState,
 	getProjectDisplayName,
 	inlineFilePreviewContextReadonlyAtom,
 	isConversationBusyAtom,
 	loadInputActionStateForSession,
 	pageHeaderTitleAtom,
+	pageHeaderTitleBadgeAtom,
 	pendingSessionOpenAtom,
 	persistCurrentInputActionState,
 	persistInputActionStateForSession,
@@ -20,10 +25,12 @@ import {
 	sessionsMapAtom,
 	syncHardIsolationContributionModes,
 } from "@shared/store/atoms";
+import { parseProjectLocation } from "@vetta/ssh-transport/project-uri";
 import { useThemeSurface } from "@vetta-org/theme-sdk/appearance";
+import { RemoteSessionBadgeView } from "@vetta-org/theme-ui/chat";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectAtom } from "jotai/utils";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ChatViewModelResult } from "../components/chat-view/types";
 
@@ -33,7 +40,6 @@ import type { ChatViewModelResult } from "../components/chat-view/types";
  * 一起重跑，低配机上发送时的级联提交主要来自这里。
  */
 const activeSessionPathAtom = selectAtom(activeSessionAtom, (session) => session?.sessionPath ?? null);
-const activeSessionCwdAtom = selectAtom(activeSessionAtom, (session) => session?.cwd ?? null);
 
 export function useChatViewModel(): ChatViewModelResult {
 	const { t } = useTranslation("chat");
@@ -45,6 +51,7 @@ export function useChatViewModel(): ChatViewModelResult {
 	const isStreaming = useAtomValue(isConversationBusyAtom);
 	const [panelOpen, setPanelOpen] = useAtom(activityPanelOpenAtom);
 	const setHeaderTitle = useSetAtom(pageHeaderTitleAtom);
+	const setHeaderTitleBadge = useSetAtom(pageHeaderTitleBadgeAtom);
 	const inlinePreviewActive = useAtomValue(inlineFilePreviewContextReadonlyAtom) !== null;
 	const closeInlinePreview = useSetAtom(closeInlineFilePreviewAtom);
 	const defaultCwd = useAtomValue(defaultConversationCwdAtom);
@@ -113,6 +120,15 @@ export function useChatViewModel(): ChatViewModelResult {
 	}, []);
 	const finishExport = useCallback(() => setExporting(false), []);
 	const openExport = useCallback(() => setExporting(true), []);
+	// 底部面板的展开态是会话级持久化状态，所以读写都走它自己的 atom，
+	// 不在这里再存一份 useState。
+	const bottomPanelState = useAtomValue(bottomPanelStateAtom);
+	const dispatchBottomPanel = useSetAtom(dispatchBottomPanelAtom);
+	const bottomPanelOpen = !bottomPanelState.collapsed;
+	const toggleBottomPanel = useCallback(() => {
+		dispatchBottomPanel({ type: "set-collapsed", collapsed: bottomPanelOpen });
+	}, [dispatchBottomPanel, bottomPanelOpen]);
+
 	const togglePanel = useCallback(() => {
 		if (inlinePreviewActive) {
 			closeInlinePreview();
@@ -136,6 +152,35 @@ export function useChatViewModel(): ChatViewModelResult {
 		return () => setHeaderTitle(null);
 	}, [sessionTitle, setHeaderTitle]);
 
+	// 远程（SSH）会话在标题右侧挂一枚徽标：会话名本身不带主机信息，用户切来切去时很容易
+	// 把远端会话当成本地会话误操作。徽标上直接写主机名——同时开着好几台远端时，只写「远程」
+	// 等于没说，而用户真正要确认的是「这条命令要跑在哪台机器上」。
+	const remoteLocation = useMemo(() => {
+		if (!activeSessionCwd) return null;
+		const location = parseProjectLocation(activeSessionCwd);
+		return location.kind === "ssh" ? location : null;
+	}, [activeSessionCwd]);
+	const remoteHost = useSshHost(remoteLocation?.hostId);
+
+	useEffect(() => {
+		if (!remoteLocation) {
+			setHeaderTitleBadge(null);
+			return;
+		}
+		// 主机名要等主进程回话；这一瞬以及主机已被删除时退回「远程」，不把 hostId 那串
+		// UUID 摆给用户看。
+		const label = remoteHost?.label ?? t("chatView.remoteBadge");
+		// 名字可以重复也可以改，连接目标才是唯一没有歧义的那个，所以两者都进悬停提示。
+		const origin = remoteHost === undefined ? remoteLocation.hostId : `${remoteHost.label} (${remoteHost.target})`;
+		setHeaderTitleBadge(
+			createElement(RemoteSessionBadgeView, {
+				label,
+				title: `${origin}:${remoteLocation.remotePath}`,
+			}),
+		);
+		return () => setHeaderTitleBadge(null);
+	}, [remoteHost, remoteLocation, setHeaderTitleBadge, t]);
+
 	// actions / header 保持引用稳定：ChatView 用它们 memo 出 header slot 元素并写进
 	// 全局 pageHeader atom；若每次渲染都换引用，发送/流式期间每条消息都会级联一次
 	// RootLayout header 提交。
@@ -144,9 +189,10 @@ export function useChatViewModel(): ChatViewModelResult {
 			finishExport,
 			openExport,
 			togglePanel,
+			toggleBottomPanel,
 			togglePin,
 		}),
-		[finishExport, openExport, togglePanel, togglePin],
+		[finishExport, openExport, togglePanel, toggleBottomPanel, togglePin],
 	);
 
 	const hasMessages = messages.length > 0;
@@ -157,10 +203,14 @@ export function useChatViewModel(): ChatViewModelResult {
 			exportTitle: t("chatView.exportButton.title"),
 			panelOpen,
 			panelTitle: panelOpen ? t("chatView.panelButton.open") : t("chatView.panelButton.closed"),
+			bottomPanelOpen,
+			bottomPanelTitle: bottomPanelOpen
+				? t("chatView.bottomPanelButton.open")
+				: t("chatView.bottomPanelButton.closed"),
 			pinTitle: pinned ? t("chatView.pinButton.pinned") : t("chatView.pinButton.unpinned"),
 			pinned,
 		}),
-		[exporting, hasMessages, isStreaming, panelOpen, pinned, t],
+		[bottomPanelOpen, exporting, hasMessages, isStreaming, panelOpen, pinned, t],
 	);
 
 	return {

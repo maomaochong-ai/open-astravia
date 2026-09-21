@@ -1,3 +1,4 @@
+import { useBottomPanelPills } from "@domains/bottom-panel/hooks/useBottomPanelPills";
 import { pathBasename, toVettaFileUrl } from "@shared/lib/utils";
 import type { InputBarContextMenuViewProps } from "@vetta-org/theme-ui/chat";
 import { memo, useMemo } from "react";
@@ -21,6 +22,7 @@ import { useSessionDropZoneModel } from "../../hooks/useSessionDropZoneModel";
 import { useInputActionBarModel } from "../useInputActionBarModel";
 import { useDefaultContextRingModel } from "../../hooks/useContextRingModel";
 import { useDefaultExecutionModeSelectorModel } from "../../hooks/useExecutionModeSelectorModel";
+import { usePlanModeModel } from "../../hooks/usePlanModeModel";
 
 /** 普通 Chat 的默认配方；每项能力由独立 source/model 提供，其他 Connector 可自行取舍。 */
 export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(props: ConnectedInputBarProps): JSX.Element {
@@ -35,6 +37,7 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 	const actionBar = useInputActionBarModel();
 	const speechInput = useSpeechInput(session.hasSession);
 	const executionModeModel = useDefaultExecutionModeSelectorModel();
+	const planMode = usePlanModeModel();
 	const contextUsageModel = useDefaultContextRingModel(true);
 	const canSend =
 		session.hasSession &&
@@ -75,9 +78,9 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 	});
 	const activeActions = useMemo<ActiveActionCapsule[]>(
 		() => [
-			...(actionBar.knowledge?.active
-				? [{ id: "__builtin_knowledge_retrieval__", label: actionBar.knowledge.label, icon: <span className="icon-[mdi--book-search-outline] h-3 w-3" />, onToggle: actionBar.actions.toggleKnowledge }]
-				: []),
+			...actionBar.builtins
+				.filter((builtin) => builtin.active)
+				.map((builtin) => ({ id: builtin.id, label: builtin.label, icon: <span className={`${builtin.iconClass} h-3 w-3`} />, onToggle: builtin.onToggle })),
 			...actionBar.items.filter((item) => item.active).map((item) => ({ id: item.id, label: item.label, icon: item.icon, onToggle: () => actionBar.actions.toggleItem(item.id) })),
 		],
 		[actionBar],
@@ -94,6 +97,7 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 		}
 		return items;
 	}, [props.onSendQueued, session.activeSession, queue.items.length, queue.paused, interactions.sandboxPermission, t]);
+	const bottomPanelPills = useBottomPanelPills();
 	const todo = useMemo<InputBarTodoModel | null>(() => todoItems.length > 0 ? { items: todoItems, onOpenPanel: trigger.openTodoPanel } : null, [todoItems, trigger.openTodoPanel]);
 	const defaultPlaceholders = useMemo(() => {
 		const raw = t("inputBar.placeholder.defaults", { returnObjects: true });
@@ -118,6 +122,7 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 		sendPending: props.sendPending,
 		pendingQuestion: interactions.pendingQuestion,
 		pendingMcpElicitation: interactions.pendingMcpElicitation,
+		pendingPlanReview: interactions.pendingPlanReview,
 		imageAttachments,
 		activeActions,
 		appshotAttachment: draft.appshotAttachment,
@@ -148,6 +153,7 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 		drawerItems,
 		drawerActiveTab: trigger.drawerActiveTab,
 		todo,
+		bottomPanelPills,
 		speechInput: speechInput,
 		hasPromptAttachment: Boolean(draft.promptAttachment),
 		promptAttachmentIcon: draft.promptAttachment?.icon,
@@ -168,6 +174,7 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 			setFocused: trigger.setIsFocused,
 			setDrawerActiveTab: trigger.setDrawerActiveTab,
 			handleEnter: trigger.handleEnter,
+			handleKeyDown: planMode.handleKeyDown,
 			handleContextMenu: contextMenuModel.onContextMenu,
 			removeImage: attachments.removeImage,
 			openImagePreview: attachments.openImagePreview,

@@ -32,6 +32,7 @@ export interface PluginAgentContributionServiceDependencies {
 	logger: PluginAgentContributionLogger;
 	hooks: DesktopPluginHookRegistry;
 	handlers: DesktopPluginAgentHandlerRegistry;
+	onRuntimeLoaded?: (plugin: InstalledPlugin, activationId: string) => void;
 }
 
 type ServiceMcpResolver = (plugin: InstalledPlugin, serviceId: string, path: string) => string | undefined;
@@ -158,12 +159,17 @@ export class PluginAgentContributionService {
 	}
 
 	commitLoad(pluginId: string, activationId: string): void {
-		this.requirePlugin(pluginId);
+		const plugin = this.requirePlugin(pluginId);
 		if (!this.registry.commit(pluginId, activationId)) {
 			throw new Error(`Plugin Agent contribution activation is stale: ${pluginId}/${activationId}`);
 		}
 		this.syncPublishedHandlers(pluginId);
 		this.debug("dynamic agent contribution activation committed", { pluginId, activationId });
+		try {
+			this.dependencies.onRuntimeLoaded?.(plugin, activationId);
+		} catch {
+			// Runtime logging must not turn a successful activation into a failed load.
+		}
 	}
 
 	registerTool(pluginId: string, tool: RegisteredAgentTool): void {

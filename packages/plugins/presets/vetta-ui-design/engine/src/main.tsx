@@ -22,6 +22,14 @@ import {
 	onBuildError,
 } from "./bridge";
 import { HOME_FRAME_ID, frameOfPath, homeFrameId, isFrameFile, pathOfFrame } from "./routes";
+import { applyStorageSeed } from "./storage-sync";
+
+/**
+ * 离屏截图窗口带着画布那侧的 localStorage 快照来（见 storage-sync.ts）。frame 与外壳
+ * 都是懒加载的，这里又早于首次渲染，设计稿代码读存储时拿到的已经是画布上的状态。
+ * 只在 dev server 下认这个参数：导出与部署出去的站点不该被一个查询串清空存储。
+ */
+if (import.meta.env.DEV) applyStorageSeed(window);
 
 interface FrameModule {
 	default?: ComponentType;

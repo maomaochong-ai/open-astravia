@@ -3,7 +3,7 @@ title: 清单与权限
 description: 声明插件身份、加载入口、样式、权限、命令、网络范围和 Agent 贡献，并理解授权与校验流程。
 ---
 
-`plugin.json` 位于插件归档根目录（或归档内唯一的顶层文件夹里）。宿主在加载代码前用它校验身份、兼容性和权限，因此清单必须与构建产物一致。
+`plugin.json` 位于 `.vettapkg` 插件包的 ZIP 容器根目录（或归档内唯一的顶层文件夹里）。宿主在加载代码前用它校验身份、兼容性和权限，因此清单必须与构建产物一致。
 
 清单结构的唯一实现是 `@vetta-org/plugin-sdk/manifest` 导出的 TypeBox Schema：`PluginManifestSchema` 可直接序列化为 JSON Schema，`parsePluginManifest()` 负责校验、默认值、去重、相对路径归一化和跨字段约束。Schema 有意允许未知字段，这样更高版本清单不会被旧宿主直接拒绝。
 
@@ -201,7 +201,7 @@ description: 声明插件身份、加载入口、样式、权限、命令、网�
   <Step>
     ### 检查归档结构
 
-    解压最终 ZIP，确认 `plugin.json` 在根目录或唯一的顶层文件夹里，清单引用的入口、样式、技能和提示词文件都存在。
+    解压最终 `.vettapkg`，确认 `plugin.json` 在 ZIP 容器根目录或唯一的顶层文件夹里，清单引用的入口、样式、技能和提示词文件都存在。
   </Step>
   <Step>
     ### 验证权限提示

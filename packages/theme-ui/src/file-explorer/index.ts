@@ -9,6 +9,8 @@ export type {
 	FileContextMenuViewProps,
 } from "./FileContextMenuView";
 export { FileContextMenuView } from "./FileContextMenuView";
+export type { FileExplorerSettingsViewProps } from "./FileExplorerSettingsView";
+export { FileExplorerSettingsView } from "./FileExplorerSettingsView";
 export type { FilesPanelViewLabels, FilesPanelViewProps } from "./FilesPanelView";
 export { FilesPanelView } from "./FilesPanelView";
 export type { FileTreeCreateRowProps } from "./FileTreeCreateRow";

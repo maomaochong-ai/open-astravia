@@ -22,8 +22,12 @@ export function ActivityPanelView({
 }: ActivityPanelViewProps): JSX.Element {
 	const { t } = useTranslation("project");
 	const removeLabel = t("tabPicker.hideTab");
+	// A closed docked panel must not keep its measurement-heavy visual tree alive.
+	// Floating tabs are independent windows and remain mounted below.
+	const renderDockedPanel = model.isOpen;
 	const tabBar =
-		model.tabItems.length > 0 || model.floatingTabs.length > 0 || model.showTabPicker ? (
+		renderDockedPanel &&
+		(model.tabItems.length > 0 || model.floatingTabs.length > 0 || model.showTabPicker) ? (
 				<TabBar
 					className="min-w-0 flex-1"
 					items={model.tabItems}
@@ -42,7 +46,7 @@ export function ActivityPanelView({
 				/>
 			) : null;
 
-	const tabPicker = model.showTabPicker ? (
+	const tabPicker = renderDockedPanel && model.showTabPicker ? (
 				<PluginTabPicker
 					hiddenTabs={model.restorableTabs}
 					onRestore={actions.onRestoreTab}
@@ -54,7 +58,7 @@ export function ActivityPanelView({
 			) : null;
 	const [dockedOutlet, registerDockedOutlet] = useDockedOutlet();
 
-	const panelBody = (
+	const panelBody = renderDockedPanel ? (
 		<>
 			{tabBar || tabPicker ? (
 				<ActivityPanelPrimitive.Header>
@@ -68,7 +72,7 @@ export function ActivityPanelView({
 				</ActivityPanelPrimitive.Body>
 			</Frame>
 		</>
-	);
+	) : null;
 
 	return (
 		<>
@@ -107,6 +111,7 @@ export function ActivityPanelView({
 			)}
 			{model.mountedTabs.map((tab) => {
 				const floating = model.floatingTabs.find((placement) => placement.key === tab.id) ?? null;
+				if (!renderDockedPanel && floating === null) return null;
 				return (
 					<ActivityTabSurface
 						key={`${model.workspaceId}:${tab.id}`}

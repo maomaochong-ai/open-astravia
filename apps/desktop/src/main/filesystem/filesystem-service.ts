@@ -1,8 +1,8 @@
-import { createHash } from "node:crypto";
-import type { Dirent, Stats } from "node:fs";
+import type { Dirent } from "node:fs";
 import { cp, lstat, mkdir, open, readdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
+import { isSshProjectUri } from "@vetta/ssh-transport";
 import {
 	FILE_EXPLORER_ENTRY_EXISTS_ERROR,
 	getFileExplorerEntryNameIssue,
@@ -19,7 +19,30 @@ import {
 	type FsTextPreviewResult,
 } from "../../preload/fs-types.js";
 import { isConversationWorkspaceDirEntry } from "../conversations/session-paths.js";
-import { decodeProbableUtf8Prefix, decodeProbableUtf8Text, decodeUtf8Text } from "./text-content.js";
+import {
+	decodeEditableText,
+	encodeEditableText,
+	getFileRevision,
+	MAX_EDITABLE_TEXT_FILE_SIZE,
+} from "./editable-text.js";
+import type { PreviewFileSource } from "./preview-file-source.js";
+import {
+	allowRemoteProjectRoot,
+	assertRemotePathWithinProject,
+	createRemoteDirectory,
+	createRemoteEntry,
+	deleteRemotePath,
+	listRemoteFilesRecursive,
+	moveRemotePath,
+	openRemotePreviewSource,
+	readRemoteDirectory,
+	readRemoteEditableTextFile,
+	renameRemotePath,
+	saveRemoteEditableTextFile,
+	statRemotePath,
+	writeRemoteFile,
+} from "./remote-filesystem.js";
+import { decodeProbableUtf8Prefix, decodeProbableUtf8Text } from "./text-content.js";
 
 const BINARY_EXTENSIONS = new Set([
 	"png",
@@ -42,7 +65,6 @@ const BINARY_EXTENSIONS = new Set([
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_TEXT_PROBE_SIZE = 64 * 1024;
 const MAX_BINARY_FILE_SIZE = 32 * 1024 * 1024;
-const MAX_EDITABLE_TEXT_FILE_SIZE = 2 * 1024 * 1024;
 const HIDDEN_FILES = new Set([".DS_Store", "Thumbs.db", "desktop.ini"]);
 const RECURSIVE_IGNORED_DIRS = new Set([
 	"node_modules",
@@ -82,6 +104,12 @@ function isWithinAllowedRoots(targetPath: string): boolean {
 }
 
 export function assertFilesystemPathWithinProject(targetPath: string): void {
+	// 与 {@link assertFilesystemRealPathWithinProject} 同理：远程路径有自己的授权根，
+	// 落到本机那套里只会把合法的远程路径一律拒掉。
+	if (isSshProjectUri(targetPath)) {
+		assertRemotePathWithinProject(targetPath);
+		return;
+	}
 	if (!isWithinAllowedRoots(targetPath)) {
 		throw new Error("Path is outside any known project directory");
 	}
@@ -89,6 +117,12 @@ export function assertFilesystemPathWithinProject(targetPath: string): void {
 
 /** 同时解析现有祖先路径，阻止项目目录内的符号链接跳出授权根。 */
 export async function assertFilesystemRealPathWithinProject(targetPath: string): Promise<void> {
+	// 远程路径有自己的授权根。不能落到下面的本机检查：那里会把 URI resolve 到本机进程
+	// cwd 之下，要么把合法的远程路径拒掉，要么（开发态）对着本机的幽灵路径放行。
+	if (isSshProjectUri(targetPath)) {
+		assertRemotePathWithinProject(targetPath);
+		return;
+	}
 	assertFilesystemPathWithinProject(targetPath);
 	let existingPath = resolve(targetPath);
 	while (true) {
@@ -115,22 +149,35 @@ export async function assertFilesystemRealPathWithinProject(targetPath: string):
 }
 
 export function allowProjectRoot(cwd: string): void {
+	// 远程项目走另一套授权根：远端路径是 POSIX 且大小写敏感，混进本地这套按本机规则
+	// 归一化的集合里，`/srv/App` 和 `/srv/app` 会互相授权。
+	if (isSshProjectUri(cwd)) {
+		allowRemoteProjectRoot(cwd);
+		return;
+	}
 	allowedRoots.add(resolve(cwd));
 }
 
 export function assertPathReadableForPreview(targetPath: string): void {
+	// 远端文件只按远程项目的授权根判定。本机这套里「家目录一律可预览」的放行在远端没有
+	// 对应物，拿本机规则去判远端路径只会把合法的远端文件一概拒掉。
+	if (isSshProjectUri(targetPath)) {
+		assertRemotePathWithinProject(targetPath);
+		return;
+	}
 	if (isWithinAllowedRoots(targetPath)) return;
 	if (isPathWithin(homedir(), targetPath)) return;
 	throw new Error("Path is outside any previewable directory");
 }
 
 export async function readFilesystemDirectory(dirPath: string): Promise<FsEntry[]> {
+	if (isSshProjectUri(dirPath)) return readRemoteDirectory(dirPath);
 	assertFilesystemPathWithinProject(dirPath);
 	const resolved = resolve(dirPath);
 	const entries = await readdir(resolved, { withFileTypes: true });
 	const results: FsEntry[] = [];
 	for (const entry of entries) {
-		if (HIDDEN_FILES.has(entry.name) || entry.name.startsWith(".")) continue;
+		// Presentation filters belong to the file explorer; dotfiles are ordinary project files.
 		// 「对话」根下的会话工作区目录是内部状态，不进入 UI 列举（ADR-0007 修订）。
 		if (entry.isDirectory() && isConversationWorkspaceDirEntry(resolved, entry.name)) continue;
 		const fullPath = join(resolved, entry.name);
@@ -154,23 +201,45 @@ export async function readFilesystemDirectory(dirPath: string): Promise<FsEntry[
 	return results;
 }
 
-export async function readFilesystemFile(filePath: string): Promise<{ content: string; encoding: "utf8" | "base64" }> {
+function openPreviewSource(filePath: string): PreviewFileSource {
+	if (isSshProjectUri(filePath)) return openRemotePreviewSource(filePath);
 	assertPathReadableForPreview(filePath);
 	const resolved = resolve(filePath);
-	let stats: Stats;
-	try {
-		stats = await stat(resolved);
-	} catch (error: unknown) {
-		if ((error as NodeJS.ErrnoException).code === "ENOENT") return { content: "", encoding: "utf8" };
-		throw error;
-	}
+	return {
+		path: resolved,
+		stat: async () => {
+			try {
+				const stats = await stat(resolved);
+				return { size: stats.size, isFile: stats.isFile() };
+			} catch (error: unknown) {
+				if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+				throw error;
+			}
+		},
+		read: () => readFile(resolved),
+		readHead: async (byteCount) => {
+			const buffer = Buffer.allocUnsafe(byteCount);
+			const handle = await open(resolved, "r");
+			try {
+				const { bytesRead } = await handle.read(buffer, 0, byteCount, 0);
+				return buffer.subarray(0, bytesRead);
+			} finally {
+				await handle.close();
+			}
+		},
+	};
+}
+
+export async function readFilesystemFile(filePath: string): Promise<{ content: string; encoding: "utf8" | "base64" }> {
+	const source = openPreviewSource(filePath);
+	const stats = await source.stat();
+	if (!stats) return { content: "", encoding: "utf8" };
 	if (stats.size > MAX_FILE_SIZE) throw new Error("File too large to preview (>10 MB)");
-	const extension = extname(resolved).slice(1).toLowerCase();
-	if (BINARY_EXTENSIONS.has(extension)) {
-		const buffer = await readFile(resolved);
-		return { content: buffer.toString("base64"), encoding: "base64" };
-	}
-	return { content: await readFile(resolved, "utf8"), encoding: "utf8" };
+	const extension = extname(source.path).slice(1).toLowerCase();
+	const buffer = await source.read();
+	return BINARY_EXTENSIONS.has(extension)
+		? { content: buffer.toString("base64"), encoding: "base64" }
+		: { content: buffer.toString("utf8"), encoding: "utf8" };
 }
 
 /**
@@ -179,47 +248,24 @@ export async function readFilesystemFile(filePath: string): Promise<{ content: s
  * replacement-character-filled text.
  */
 export async function readTextPreviewFile(filePath: string): Promise<FsTextPreviewResult> {
-	assertPathReadableForPreview(filePath);
-	const resolved = resolve(filePath);
-	const stats = await stat(resolved);
-	if (!stats.isFile()) throw new Error("Path is not a file");
+	const source = openPreviewSource(filePath);
+	const stats = await source.stat();
+	if (!stats) throw new Error("Path does not exist");
+	if (!stats.isFile) throw new Error("Path is not a file");
 
-	const probeSize = Math.min(stats.size, MAX_TEXT_PROBE_SIZE);
-	const probeBuffer = Buffer.allocUnsafe(probeSize);
-	const handle = await open(resolved, "r");
-	let bytesRead = 0;
-	try {
-		({ bytesRead } = await handle.read(probeBuffer, 0, probeSize, 0));
-	} finally {
-		await handle.close();
-	}
-	const probe = probeBuffer.subarray(0, bytesRead);
+	const probe = await source.readHead(Math.min(stats.size, MAX_TEXT_PROBE_SIZE));
 	const decodedProbe = stats.size > probe.byteLength ? decodeProbableUtf8Prefix(probe) : decodeProbableUtf8Text(probe);
 	if (!decodedProbe) return { status: "binary", size: stats.size };
 	if (stats.size > MAX_FILE_SIZE) throw new Error("File too large to preview (>10 MB)");
 
-	const buffer = await readFile(resolved);
+	const buffer = await source.read();
 	const decoded = decodeProbableUtf8Text(buffer);
 	if (!decoded) return { status: "binary", size: buffer.byteLength };
 	return { status: "text", content: decoded.content, size: buffer.byteLength };
 }
 
-function getFileRevision(buffer: Buffer): string {
-	return createHash("sha256").update(buffer).digest("hex");
-}
-
-function decodeEditableText(buffer: Buffer): { content: string; hasBom: boolean; lineEnding: "lf" | "crlf" } {
-	const decoded = decodeUtf8Text(buffer);
-	if (!decoded) throw new Error(FS_EDITABLE_TEXT_ERROR.NOT_UTF8);
-	const { content, hasBom } = decoded;
-	return {
-		content,
-		hasBom,
-		lineEnding: content.includes("\r\n") ? "crlf" : "lf",
-	};
-}
-
 export async function readEditableTextFile(filePath: string): Promise<FsEditableTextSnapshot> {
+	if (isSshProjectUri(filePath)) return readRemoteEditableTextFile(filePath);
 	assertFilesystemPathWithinProject(filePath);
 	const resolved = resolve(filePath);
 	const stats = await stat(resolved);
@@ -240,6 +286,7 @@ export async function saveEditableTextFile(
 	content: string,
 	options: FsSaveEditableTextOptions,
 ): Promise<FsSaveEditableTextResult> {
+	if (isSshProjectUri(filePath)) return saveRemoteEditableTextFile(filePath, content, options);
 	assertFilesystemPathWithinProject(filePath);
 	const resolved = resolve(filePath);
 	const current = await readFile(resolved);
@@ -248,8 +295,7 @@ export async function saveEditableTextFile(
 		return { status: "conflict", revision: currentRevision };
 	}
 
-	const contentBuffer = Buffer.from(content, "utf8");
-	const nextBuffer = options.hasBom ? Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), contentBuffer]) : contentBuffer;
+	const nextBuffer = encodeEditableText(content, options.hasBom);
 	if (nextBuffer.byteLength > MAX_EDITABLE_TEXT_FILE_SIZE) {
 		throw new Error(FS_EDITABLE_TEXT_ERROR.TOO_LARGE);
 	}
@@ -286,15 +332,14 @@ function detectBinaryMimeType(buffer: Buffer, filePath: string): string {
 export async function readFilesystemBinaryFile(
 	filePath: string,
 ): Promise<{ data: string; mimeType: string; size: number }> {
-	assertPathReadableForPreview(filePath);
-	const resolved = resolve(filePath);
-	const stats = await stat(resolved);
-	if (!stats.isFile()) throw new Error("Path is not a file");
+	const source = openPreviewSource(filePath);
+	const stats = await source.stat();
+	if (!stats?.isFile) throw new Error("Path is not a file");
 	if (stats.size > MAX_BINARY_FILE_SIZE) throw new Error("Binary file too large (>32 MB)");
-	const buffer = await readFile(resolved);
+	const buffer = await source.read();
 	return {
 		data: buffer.toString("base64"),
-		mimeType: detectBinaryMimeType(buffer, resolved),
+		mimeType: detectBinaryMimeType(buffer, source.path),
 		size: buffer.byteLength,
 	};
 }
@@ -304,6 +349,9 @@ export async function writeFilesystemFile(
 	content: string,
 	encoding: "utf8" | "base64" = "utf8",
 ): Promise<void> {
+	if (isSshProjectUri(filePath)) {
+		return writeRemoteFile(filePath, Buffer.from(content, encoding === "base64" ? "base64" : "utf8"));
+	}
 	assertFilesystemPathWithinProject(filePath);
 	const resolved = resolve(filePath);
 	await mkdir(dirname(resolved), { recursive: true });
@@ -315,6 +363,7 @@ export async function writeFilesystemFile(
 }
 
 export async function statFilesystemPath(filePath: string): Promise<FsStatResult | null> {
+	if (isSshProjectUri(filePath)) return statRemotePath(filePath);
 	assertFilesystemPathWithinProject(filePath);
 	try {
 		const stats = await stat(resolve(filePath));
@@ -325,17 +374,22 @@ export async function statFilesystemPath(filePath: string): Promise<FsStatResult
 }
 
 export async function renameFilesystemPath(oldPath: string, newPath: string): Promise<void> {
+	if (isSshProjectUri(oldPath) || isSshProjectUri(newPath)) return renameRemotePath(oldPath, newPath);
 	assertFilesystemPathWithinProject(oldPath);
 	assertFilesystemPathWithinProject(newPath);
 	await rename(resolve(oldPath), resolve(newPath));
 }
 
 export async function deleteFilesystemPath(targetPath: string): Promise<void> {
+	if (isSshProjectUri(targetPath)) return deleteRemotePath(targetPath);
 	assertFilesystemPathWithinProject(targetPath);
 	await rm(resolve(targetPath), { recursive: true, force: true });
 }
 
 export async function moveFilesystemPath(sourcePath: string, destinationDirectory: string): Promise<void> {
+	if (isSshProjectUri(sourcePath) || isSshProjectUri(destinationDirectory)) {
+		return moveRemotePath(sourcePath, destinationDirectory);
+	}
 	assertFilesystemPathWithinProject(sourcePath);
 	assertFilesystemPathWithinProject(destinationDirectory);
 	const resolvedSource = resolve(sourcePath);
@@ -350,6 +404,7 @@ export async function moveFilesystemPath(sourcePath: string, destinationDirector
 }
 
 export async function createFilesystemDirectory(dirPath: string): Promise<void> {
+	if (isSshProjectUri(dirPath)) return createRemoteDirectory(dirPath);
 	await mkdir(resolve(expandTilde(dirPath)), { recursive: true });
 }
 
@@ -358,6 +413,7 @@ export async function createFilesystemEntry(
 	name: string,
 	kind: FileExplorerEntryKind,
 ): Promise<FsEntry> {
+	if (isSshProjectUri(parentDirectory)) return createRemoteEntry(parentDirectory, name, kind);
 	assertFilesystemPathWithinProject(parentDirectory);
 	const issue = getFileExplorerEntryNameIssue(name, { windows: process.platform === "win32" });
 	if (issue) throw new Error(`FILE_EXPLORER_INVALID_ENTRY_NAME:${issue}`);
@@ -392,6 +448,12 @@ export async function createFilesystemEntry(
 }
 
 export async function listFilesystemFilesRecursive(rootPath: string): Promise<FsFileRef[]> {
+	if (isSshProjectUri(rootPath)) {
+		return listRemoteFilesRecursive(rootPath, {
+			ignoredDirectoryNames: [...RECURSIVE_IGNORED_DIRS],
+			limit: MAX_RECURSIVE_FILES,
+		});
+	}
 	assertFilesystemPathWithinProject(rootPath);
 	const root = resolve(rootPath);
 	const results: FsFileRef[] = [];

@@ -180,4 +180,96 @@ describe("projectTeamConversationDisplay", () => {
 			}),
 		]);
 	});
+
+	it("does not copy a completed turn's tools onto an automatic continuation result", async () => {
+		const session = {
+			id: "team-session",
+			memberRuntime: {
+				leader: { sessionId: "runtime-leader", sessionPath: "C:/sessions/leader.jsonl" },
+			},
+		} as unknown as TeamSessionDocument;
+		const assistant = createAssistantMessage(
+			{ api: "openai-responses", provider: "test", model: "fixture" },
+			{ timestamp: 1 },
+		);
+		const display = await projectTeamConversationDisplay({
+			session,
+			readHistory: async () => [
+				{ type: "message", entryId: "prompt", message: { role: "user", content: "Build", timestamp: 1 } },
+				{
+					type: "message",
+					entryId: "first-tool-call",
+					message: {
+						...assistant,
+						content: [
+							{
+								type: "toolCall",
+								id: "delegate-call",
+								name: "team_delegate_task",
+								arguments: { memberId: "researcher" },
+							},
+						],
+					},
+				},
+				{
+					type: "message",
+					entryId: "first-tool-result",
+					message: {
+						role: "toolResult",
+						toolCallId: "delegate-call",
+						toolName: "team_delegate_task",
+						content: [{ type: "text", text: "Delegated" }],
+						isError: false,
+						timestamp: 2,
+					},
+				},
+				{
+					type: "message",
+					entryId: "first-final",
+					message: { ...assistant, content: [{ type: "text", text: "First turn complete" }] },
+				},
+				{
+					type: "custom_marker",
+					customType: "agent-team.compaction-reference.v1",
+					timestamp: new Date(3).toISOString(),
+				},
+				{
+					type: "message",
+					entryId: "continuation-final",
+					message: { ...assistant, content: [{ type: "text", text: "Final deliverables" }] },
+				},
+			],
+			publications: [
+				{
+					customType: "agent-team.publication-operation.v1",
+					operationId: "first-publication",
+					workItemId: "first-work-item",
+					sourceParticipantConversationId: "runtime-leader",
+					sourceTurnId: "first-turn",
+					sourceMessageEntryId: "first-final",
+					publicMessageEntryId: "first-public-result",
+					state: "completed",
+					generation: 1,
+				},
+				{
+					customType: "agent-team.publication-operation.v1",
+					operationId: "continuation-publication",
+					workItemId: "continuation-work-item",
+					sourceParticipantConversationId: "runtime-leader",
+					sourceTurnId: "continuation-turn",
+					sourceMessageEntryId: "continuation-final",
+					publicMessageEntryId: "continuation-public-result",
+					state: "completed",
+					generation: 1,
+				},
+			],
+		});
+
+		expect(display.toolExecutions).toEqual([
+			expect.objectContaining({
+				messageId: "first-public-result",
+				toolCallId: "delegate-call",
+			}),
+		]);
+	});
 });

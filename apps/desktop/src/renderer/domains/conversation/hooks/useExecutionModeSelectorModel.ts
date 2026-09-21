@@ -4,6 +4,8 @@ import {
 	type SessionExecutionMode,
 	sessionExecutionModeAtom,
 } from "@shared/store/atoms";
+import { useSearch } from "@tanstack/react-router";
+import { isSshProjectUri } from "@vetta/ssh-transport/project-uri";
 import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -21,6 +23,12 @@ const MODE_OPTIONS: Array<{
 ];
 
 export interface ExecutionModeSelectorBinding {
+	/**
+	 * 当前会话或待建会话所在的项目。远程项目（`ssh://…`）没有沙箱——沙箱只能约束本机进程，
+	 * 主进程会把这类会话固定为完全访问；选择器据此如实显示并禁用沙箱选项，而不是让用户
+	 * 选了沙箱再吃一条报错。
+	 */
+	readonly cwd?: string | null;
 	readonly mode: SessionExecutionMode;
 	readonly isStreaming: boolean;
 	readonly onSelectMode: (mode: SessionExecutionMode) => Promise<void> | void;
@@ -46,7 +54,9 @@ export function useDefaultExecutionModeSelectorModel(): ExecutionModeSelectorVie
 		},
 		[activeSession, mode, setMode],
 	);
-	return useExecutionModeSelectorModel({ mode, isStreaming, onSelectMode });
+	const search = useSearch({ strict: false }) as { cwd?: string };
+	const cwd = activeSession?.cwd ?? (search.cwd ? decodeURIComponent(search.cwd) : null);
+	return useExecutionModeSelectorModel({ cwd, mode, isStreaming, onSelectMode });
 }
 
 export function useExecutionModeSelectorModel(binding: ExecutionModeSelectorBinding): ExecutionModeSelectorViewProps {
@@ -55,6 +65,8 @@ export function useExecutionModeSelectorModel(binding: ExecutionModeSelectorBind
 	const [isSwitching, setIsSwitching] = useState(false);
 	const [sandboxUnavailableReason, setSandboxUnavailableReason] = useState<string | null>(null);
 	const disabled = binding.isStreaming || isSwitching;
+	const isRemoteProject = typeof binding.cwd === "string" && isSshProjectUri(binding.cwd);
+	const effectiveMode: SessionExecutionMode = isRemoteProject ? "full-access" : binding.mode;
 
 	useEffect(() => {
 		void window.vetta.config.get().then((config) => {
@@ -68,6 +80,10 @@ export function useExecutionModeSelectorModel(binding: ExecutionModeSelectorBind
 			setSandboxUnavailableReason(null);
 		});
 	}, [t]);
+
+	const sandboxBlockedReason = isRemoteProject
+		? t("executionModeSelector.sandboxUnavailableRemote")
+		: sandboxUnavailableReason;
 
 	const labelFor = useCallback(
 		(m: SessionExecutionMode): string =>
@@ -85,20 +101,19 @@ export function useExecutionModeSelectorModel(binding: ExecutionModeSelectorBind
 			MODE_OPTIONS.map((option) => ({
 				...option,
 				label: labelFor(option.mode),
-				title:
-					option.mode === "sandbox" && sandboxUnavailableReason ? sandboxUnavailableReason : titleFor(option.mode),
-				disabled: option.mode === "sandbox" && !!sandboxUnavailableReason,
-				selected: option.mode === binding.mode,
+				title: option.mode === "sandbox" && sandboxBlockedReason ? sandboxBlockedReason : titleFor(option.mode),
+				disabled: option.mode === "sandbox" && !!sandboxBlockedReason,
+				selected: option.mode === effectiveMode,
 			})),
-		[sandboxUnavailableReason, labelFor, titleFor, binding.mode],
+		[sandboxBlockedReason, labelFor, titleFor, effectiveMode],
 	);
 
-	const selectedOption = options.find((option) => option.mode === binding.mode) ?? options[0];
+	const selectedOption = options.find((option) => option.mode === effectiveMode) ?? options[0];
 
 	const handleSelect = useCallback(
 		async (nextMode: SessionExecutionMode) => {
-			if (disabled || nextMode === binding.mode) return;
-			if (nextMode === "sandbox" && sandboxUnavailableReason) return;
+			if (disabled || nextMode === effectiveMode) return;
+			if (nextMode === "sandbox" && sandboxBlockedReason) return;
 			setIsSwitching(true);
 			try {
 				await binding.onSelectMode(nextMode);
@@ -106,7 +121,7 @@ export function useExecutionModeSelectorModel(binding: ExecutionModeSelectorBind
 				setIsSwitching(false);
 			}
 		},
-		[binding, disabled, sandboxUnavailableReason],
+		[binding, disabled, effectiveMode, sandboxBlockedReason],
 	);
 
 	return {
