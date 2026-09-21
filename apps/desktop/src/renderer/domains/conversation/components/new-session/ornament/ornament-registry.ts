@@ -1,11 +1,6 @@
 import type { OrnamentId } from "@shared/theme/ornament";
 import type { ComponentType } from "react";
-import { BlazeOrnament } from "./presets/BlazeOrnament";
-import { EnergyWellOrnament } from "./presets/EnergyWellOrnament";
-import { HandOrnament } from "./presets/HandOrnament";
 import { MarioOrnament } from "./presets/MarioOrnament";
-import { OrbitOrnament } from "./presets/OrbitOrnament";
-import { TorchOrnament } from "./presets/TorchOrnament";
 import { ViviOrnament } from "./presets/ViviOrnament";
 
 export interface OrnamentProps {
@@ -22,12 +17,7 @@ export interface OrnamentProps {
  * 再在这里挂上组件（决定新会话页怎么画）。两处都以 id 对齐，漏一处会有类型报错。
  */
 export const ORNAMENT_COMPONENTS: Record<OrnamentId, ComponentType<OrnamentProps> | null> = {
-	blaze: BlazeOrnament,
-	hand: HandOrnament,
 	mario: MarioOrnament,
 	none: null,
-	orbit: OrbitOrnament,
-	torch: TorchOrnament,
 	vivi: ViviOrnament,
-	well: EnergyWellOrnament,
 };

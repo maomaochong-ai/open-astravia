@@ -8,7 +8,7 @@ import { useOrnamentSlot } from "../useOrnamentSlot";
 /** 每个像素格 2.5px：一块砖 40px、整排 120px，比 Vivi 的 144 窄一点。 */
 const MARIO_UNIT = 2.5;
 const MARIO_BLOCK = SPRITE_SIZE * MARIO_UNIT;
-/** 整排 120px，介于 Vivi（144/480）与星轨（96/360）之间，门槛也按宽度取中间一档。 */
+/** 整排 120px，比 Vivi（144/480）窄一档，门槛也按宽度相应收一档。 */
 const MARIO_MIN_SLOT_WIDTH = 420;
 /** 顶没顶过记在本地：换台机器重新顶一次无所谓，不值得占一条设置项。 */
 const MARIO_POPPED_STORAGE_KEY = "vetta-new-session-mario-popped";
@@ -22,7 +22,7 @@ interface MarioOrnamentProps {
  * 马里奥装饰件：一排插在输入框右上角的像素砖块，顶一下中间的问号砖块蹦出蘑菇，
  * 再顶一下把蘑菇收回去。
  *
- * 与 Vivi / 星轨同一套插槽约定：容器锚在 hero 上、下探 75px（hero mb-3 + 选项行 h-7 +
+ * 与 Vivi 同一套插槽约定：容器锚在 hero 上、下探 75px（hero mb-3 + 选项行 h-7 +
  * 行 mb-4 = 56，再加 19），所以 `bottom-[19px]` 正好让整排砖块坐在输入框顶边上，不进框。
  * 命中区只盖住中间那块问号砖：两侧的砖块在游戏里也顶不出东西来，给它们做成可点的会骗人。
  */

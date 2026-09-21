@@ -8,12 +8,12 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { AppearanceSettingsModel } from "./useAppearanceSettingsModel";
 
-const { renderOrbitPreview } = vi.hoisted(() => ({ renderOrbitPreview: vi.fn() }));
+const { renderMarioPreview } = vi.hoisted(() => ({ renderMarioPreview: vi.fn() }));
 
-vi.mock("@shared/components/orb/OrbitOrb", () => ({
-	OrbitOrb: () => {
-		renderOrbitPreview();
-		return <div data-testid="orbit-preview" />;
+vi.mock("@shared/components/mario/PixelMarioBlocks", () => ({
+	PixelMarioBlocks: () => {
+		renderMarioPreview();
+		return <div data-testid="mario-preview" />;
 	},
 }));
 
@@ -119,17 +119,17 @@ describe("AppearanceSettingsView 的新会话页装饰区域", () => {
 		expect(none.querySelector('[class*="mdi--check"]')).toBeNull();
 	});
 
-	it("切换外观模式时不会重新渲染无关的动态装饰预览", () => {
+	it("切换外观模式时不会重新渲染无关的装饰预览", () => {
 		const initial = model({
-			ornamentId: "orbit",
-			ornamentOptions: [{ active: true, hint: "orbitHint", id: "orbit", label: "星轨" }],
+			ornamentId: "mario",
+			ornamentOptions: [{ active: true, hint: "marioHint", id: "mario", label: "马里奥" }],
 		});
-		renderOrbitPreview.mockClear();
+		renderMarioPreview.mockClear();
 		const view = render(<AppearanceSettingsView model={initial} />);
-		expect(renderOrbitPreview).toHaveBeenCalledTimes(1);
+		expect(renderMarioPreview).toHaveBeenCalledTimes(1);
 
 		view.rerender(<AppearanceSettingsView model={{ ...initial, mode: "light" }} />);
 
-		expect(renderOrbitPreview).toHaveBeenCalledTimes(1);
+		expect(renderMarioPreview).toHaveBeenCalledTimes(1);
 	});
 });

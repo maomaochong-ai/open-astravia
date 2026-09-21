@@ -844,17 +844,9 @@
 			"showMascot": "显示吉祥物",
 			"playOnce": "播放一次当前吉祥物动画"
 		},
-		"torch": {
-			"light": "点亮火把",
-			"extinguish": "熄灭火把"
-		},
 		"mario": {
 			"hit": "顶出蘑菇",
 			"reset": "把蘑菇收回砖块"
-		},
-		"hand": {
-			"rest": "让手歇一会儿",
-			"tap": "让手接着敲"
 		},
 		"projectSelector": {
 			"placeholder": "选择项目",

@@ -24,6 +24,16 @@ describe("新会话页装饰件", () => {
 		expect(getStoredOrnamentId()).toBe(DEFAULT_ORNAMENT_ID);
 	});
 
+	it("从未选过装饰件的用户默认不挂装饰件", () => {
+		expect(getStoredOrnamentId()).toBe("none");
+	});
+
+	it.each(["blaze", "torch", "orbit", "hand", "well"])("此前选了已移除的「%s」的用户回落到不挂装饰件", (removed) => {
+		window.localStorage.setItem(ORNAMENT_STORAGE_KEY, removed);
+
+		expect(getStoredOrnamentId()).toBe("none");
+	});
+
 	it.each(ORNAMENT_CATALOG)("保存并读回 $id", ({ id }) => {
 		setStoredOrnamentId(id);
 
