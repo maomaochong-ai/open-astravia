@@ -126,3 +126,28 @@ describe("设计引擎跟着设计稿走", () => {
 		expect(calls.every((cwd) => cwd === undefined)).toBe(true);
 	});
 });
+
+describe("引擎命令的工作目录只用于分流", () => {
+	it("不拿「还没建出来的引擎目录」当工作目录——远端执行会先 cd 进去", async () => {
+		// 回归：engineReady 要回答的正是「引擎目录在不在」，拿它当 cwd 会让首次检查必然
+		// 失败在 `cd: 没有那个文件或目录` 上，画布永远起不来。
+		const { ensureEngine } = await import("../src/engine/engine-manager");
+		const cwds: (string | undefined)[] = [];
+		const ctx = {
+			command: {
+				run: async (_file: string, args: string[], options?: { cwd?: string }) => {
+					cwds.push(options?.cwd);
+					if (args[0] === "-p") return { stdout: "/home/dev\n", stderr: "", exitCode: 0 };
+					// 引擎已就绪，让 ensureEngine 走最短路径。
+					return { stdout: '{"engine":true,"vite":true}', stderr: "", exitCode: 0 };
+				},
+			},
+		} as never;
+
+		await ensureEngine(ctx, () => {}, REMOTE_DESIGN).catch(() => undefined);
+
+		expect(cwds.length).toBeGreaterThan(0);
+		// 每一条都应该指向设计稿（它一定存在），而不是引擎目录。
+		for (const cwd of cwds) expect(cwd).toBe(REMOTE_DESIGN);
+	});
+});

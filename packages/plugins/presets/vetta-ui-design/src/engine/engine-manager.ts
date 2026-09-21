@@ -169,10 +169,12 @@ function base64FromText(text: string): string {
 	return btoa(binary);
 }
 
-async function materializeEngine(ctx: PluginContext, engineRoot: string): Promise<void> {
+async function materializeEngine(ctx: PluginContext, engineRoot: string, route: string): Promise<void> {
 	const payload = base64FromText(JSON.stringify(ENGINE_FILES));
 	const result = await ctx.command.run("node", ["-e", BOOTSTRAP_SCRIPT], {
-		cwd: routeOf(engineRoot),
+		// 用设计稿的位置而不是 engineRoot：cwd 在这里只负责把命令发到对的机器上，而远端执行
+		// 会先 `cd` 进去——引擎目录正是这条命令要创建的东西，此刻它还不存在。
+		cwd: routeOf(route),
 		env: {
 			VETD_ENGINE_ROOT: machineLocalPath(engineRoot),
 			VETD_ENGINE_FILES: payload,
@@ -297,9 +299,11 @@ async function pruneOldEngines(ctx: PluginContext, route: string): Promise<void>
 	});
 }
 
-export async function engineReady(ctx: PluginContext, engineRoot: string): Promise<boolean> {
+export async function engineReady(ctx: PluginContext, engineRoot: string, route: string): Promise<boolean> {
 	const result = await ctx.command.run("node", ["-e", ENGINE_READY_SCRIPT], {
-		cwd: routeOf(engineRoot),
+		// 同 materializeEngine：这条命令要回答的正是「引擎目录在不在」，拿它当工作目录会让
+		// 首次检查必然失败在 `cd` 上。
+		cwd: routeOf(route),
 		env: { VETD_ENGINE_ROOT: machineLocalPath(engineRoot) },
 		timeoutMs: 30_000,
 	});
@@ -335,20 +339,20 @@ export function ensureEngine(
 	const run = async (): Promise<string> => {
 		onProgress({ phase: "checking" });
 		const engineRoot = await engineRootDir(ctx, route);
-		if (await engineReady(ctx, engineRoot)) {
+		if (await engineReady(ctx, engineRoot, route)) {
 			await pruneOldEngines(ctx, route).catch(() => {
 				// 清不掉只是占着磁盘，不该拦住画布。
 			});
 			return engineRoot;
 		}
 		onProgress({ phase: "materializing" });
-		await materializeEngine(ctx, engineRoot);
-		const viteInstalled = await engineReady(ctx, engineRoot);
+		await materializeEngine(ctx, engineRoot, route);
+		const viteInstalled = await engineReady(ctx, engineRoot, route);
 		if (!viteInstalled) {
 			onProgress({ phase: "installing", outputTail: "" });
 			await installDependencies(ctx, engineRoot, onProgress);
 		}
-		if (!(await engineReady(ctx, engineRoot))) {
+		if (!(await engineReady(ctx, engineRoot, route))) {
 			throw new Error("engine install incomplete (vite missing after npm install)");
 		}
 		await pruneOldEngines(ctx, route).catch(() => {

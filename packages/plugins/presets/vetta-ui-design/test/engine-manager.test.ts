@@ -84,9 +84,9 @@ describe("design engine data migration", () => {
 		await writeFile(join(engineRoot, ".files-hash"), engineFilesHash());
 		await writeFile(join(engineRoot, "node_modules", "vite", "package.json"), "{}");
 
-		await expect(engineReady(pluginContext(), engineRoot)).resolves.toBe(true);
+		await expect(engineReady(pluginContext(), engineRoot, engineRoot)).resolves.toBe(true);
 		await rm(join(engineRoot, "node_modules", "vite", "package.json"));
-		await expect(engineReady(pluginContext(), engineRoot)).resolves.toBe(false);
+		await expect(engineReady(pluginContext(), engineRoot, engineRoot)).resolves.toBe(false);
 	});
 });
 
