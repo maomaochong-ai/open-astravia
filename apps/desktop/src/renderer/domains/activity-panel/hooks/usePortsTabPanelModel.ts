@@ -52,7 +52,7 @@ function toCandidateViewItem(port: RemoteListeningPort): PortCandidateViewItem {
  * 那个号。
  */
 export function usePortsTabPanelModel(): PortsTabPanelViewProps {
-	const { t } = useTranslation("chat");
+	const { t } = useTranslation(["chat", "common"]);
 	const workspace = useActivityWorkspace();
 	const hostId = useRemoteProjectHostId(workspace.cwd);
 	const forwards = useSshPortForwards(hostId);
@@ -63,9 +63,12 @@ export function usePortsTabPanelModel(): PortsTabPanelViewProps {
 	const [listeners, setListeners] = useState<readonly RemoteListeningPort[]>([]);
 	const [scanState, setScanState] = useState<PortScanState>("loading");
 	const [scanError, setScanError] = useState<string | undefined>(undefined);
-	const [draftPort, setDraftPort] = useState("");
-	const [addError, setAddError] = useState<string | undefined>(undefined);
+	const [draftRemotePort, setDraftRemotePort] = useState("");
+	const [draftLocalPort, setDraftLocalPort] = useState("");
+	const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
 	const [copiedPort, setCopiedPort] = useState<number | undefined>(undefined);
+	const [editingRemotePort, setEditingRemotePort] = useState<number | undefined>(undefined);
+	const [editingLocalPort, setEditingLocalPort] = useState("");
 	const copiedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 	const scanGeneration = useRef(0);
 
@@ -98,30 +101,54 @@ export function usePortsTabPanelModel(): PortsTabPanelViewProps {
 	useEffect(() => () => clearTimeout(copiedTimer.current), []);
 
 	const forwardPort = useCallback(
-		async (remotePort: number, label?: string, source: "manual" | "detected" = "manual") => {
+		async (
+			remotePort: number,
+			options: { label?: string; localPort?: number; source?: "manual" | "detected" } = {},
+		) => {
 			if (!hostId) return;
-			setAddError(undefined);
+			setErrorMessage(undefined);
 			try {
-				await window.vetta.ssh.openPortForward({ hostId, remotePort, label, source });
+				await window.vetta.ssh.openPortForward({
+					hostId,
+					remotePort,
+					localPort: options.localPort,
+					label: options.label,
+					source: options.source ?? "manual",
+				});
 			} catch (error) {
-				setAddError(error instanceof Error ? error.message : String(error));
+				setErrorMessage(error instanceof Error ? error.message : String(error));
 			}
 		},
 		[hostId],
 	);
 
+	/** 端口号在界面上一律先当字符串收，由这里判一次：空串、字母和越界都在这里挡掉。 */
+	const parsePort = useCallback(
+		(raw: string): number | undefined => {
+			const port = Number.parseInt(raw.trim(), 10);
+			if (!Number.isInteger(port) || port <= 0 || port > 65535) {
+				setErrorMessage(t("activityPanel.ports.invalidPort"));
+				return undefined;
+			}
+			return port;
+		},
+		[t],
+	);
+
 	const onAddDraftPort = useCallback(
 		(event: FormEvent) => {
 			event.preventDefault();
-			const port = Number.parseInt(draftPort.trim(), 10);
-			if (!Number.isInteger(port) || port <= 0 || port > 65535) {
-				setAddError(t("activityPanel.ports.invalidPort"));
-				return;
-			}
-			setDraftPort("");
-			void forwardPort(port);
+			const remotePort = parsePort(draftRemotePort);
+			if (remotePort === undefined) return;
+			// 本机端口留空就是「跟远端同号，被占用了再换」；填了就按填的来。
+			const wantsLocalPort = draftLocalPort.trim() !== "";
+			const localPort = wantsLocalPort ? parsePort(draftLocalPort) : undefined;
+			if (wantsLocalPort && localPort === undefined) return;
+			setDraftRemotePort("");
+			setDraftLocalPort("");
+			void forwardPort(remotePort, { localPort });
 		},
-		[draftPort, forwardPort, t],
+		[draftLocalPort, draftRemotePort, forwardPort, parsePort],
 	);
 
 	const findForward = useCallback(
@@ -159,6 +186,28 @@ export function usePortsTabPanelModel(): PortsTabPanelViewProps {
 		[findForward],
 	);
 
+	const onStartEditLocalPort = useCallback(
+		(remotePort: number) => {
+			setErrorMessage(undefined);
+			setEditingRemotePort(remotePort);
+			setEditingLocalPort(String(findForward(remotePort)?.localPort ?? remotePort));
+		},
+		[findForward],
+	);
+
+	const onSubmitLocalPort = useCallback(
+		(event: FormEvent) => {
+			event.preventDefault();
+			if (editingRemotePort === undefined) return;
+			const localPort = parsePort(editingLocalPort);
+			if (localPort === undefined) return;
+			setEditingRemotePort(undefined);
+			// 主进程先接通新号再撤旧的，所以换号失败时用户手上那条仍然好用。
+			void forwardPort(editingRemotePort, { localPort, label: findForward(editingRemotePort)?.label });
+		},
+		[editingLocalPort, editingRemotePort, findForward, forwardPort, parsePort],
+	);
+
 	const onStop = useCallback(
 		(remotePort: number) => {
 			if (hostId) void window.vetta.ssh.closePortForward({ hostId, remotePort });
@@ -168,27 +217,32 @@ export function usePortsTabPanelModel(): PortsTabPanelViewProps {
 
 	const labels = useMemo(
 		(): PortsTabPanelViewLabels => ({
-			forwardedHeading: t("activityPanel.ports.forwardedHeading"),
+			heading: t("activityPanel.ports.heading"),
 			candidatesHeading: t("activityPanel.ports.candidatesHeading"),
 			empty: t("activityPanel.ports.empty"),
 			emptyHint: t("activityPanel.ports.emptyHint"),
-			addPlaceholder: t("activityPanel.ports.addPlaceholder"),
+			remotePortPlaceholder: t("activityPanel.ports.remotePortPlaceholder"),
+			localPortPlaceholder: t("activityPanel.ports.localPortPlaceholder"),
+			localPortPrefix: t("activityPanel.ports.localPortPrefix"),
 			add: t("activityPanel.ports.add"),
 			forward: t("activityPanel.ports.forward"),
 			preview: t("activityPanel.ports.preview"),
 			openExternal: t("activityPanel.ports.openExternal"),
 			copyAddress: t("activityPanel.ports.copyAddress"),
 			copied: t("activityPanel.ports.copied"),
+			changeLocalPort: t("activityPanel.ports.changeLocalPort"),
+			save: t("common:actions.save"),
+			cancel: t("common:actions.cancel"),
 			stop: t("activityPanel.ports.stop"),
 			retry: t("activityPanel.ports.retry"),
 			refresh: t("activityPanel.ports.refresh"),
+			statusActive: t("activityPanel.ports.statusActive"),
 			statusReconnecting: t("activityPanel.ports.statusReconnecting"),
 			statusFailed: t("activityPanel.ports.statusFailed"),
 			scanning: t("activityPanel.ports.scanning"),
 			scanUnsupported: t("activityPanel.ports.scanUnsupported"),
 			scanFailed: t("activityPanel.ports.scanFailed"),
 			fromOutput: t("activityPanel.ports.fromOutput"),
-			portChanged: (remotePort, localPort) => t("activityPanel.ports.portChanged", { remotePort, localPort }),
 		}),
 		[t],
 	);
@@ -235,20 +289,28 @@ export function usePortsTabPanelModel(): PortsTabPanelViewProps {
 		scanState,
 		scanError,
 		labels,
-		draftPort,
-		addError,
+		draftRemotePort,
+		draftLocalPort,
+		errorMessage,
 		copiedPort,
-		onDraftPortChange: setDraftPort,
+		editingRemotePort,
+		editingLocalPort,
+		onDraftRemotePortChange: setDraftRemotePort,
+		onDraftLocalPortChange: setDraftLocalPort,
 		onAddDraftPort,
 		onForwardCandidate: (port) => {
 			const listener = listeners.find((candidate) => candidate.port === port);
-			void forwardPort(port, listener?.processName, "detected");
+			void forwardPort(port, { label: listener?.processName, source: "detected" });
 		},
 		onPreview,
 		onOpenExternal,
 		onCopyAddress,
+		onStartEditLocalPort,
+		onEditingLocalPortChange: setEditingLocalPort,
+		onSubmitLocalPort,
+		onCancelEditLocalPort: () => setEditingRemotePort(undefined),
 		onStop,
-		onRetry: (remotePort) => void forwardPort(remotePort, findForward(remotePort)?.label),
+		onRetry: (remotePort) => void forwardPort(remotePort, { label: findForward(remotePort)?.label }),
 		onRefresh: () => void runScan(),
 	};
 }

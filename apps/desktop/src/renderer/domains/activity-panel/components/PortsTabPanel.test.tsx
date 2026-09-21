@@ -28,11 +28,11 @@ function notify(): void {
 const ssh = {
 	listListeningPorts: vi.fn(async () => scan),
 	listPortForwards: vi.fn(async () => ledger),
-	openPortForward: vi.fn(async (request: { hostId: string; remotePort: number; label?: string }) => {
+	openPortForward: vi.fn(async (request: { hostId: string; remotePort: number; localPort?: number; label?: string }) => {
 		const forward: PortForward = {
 			hostId: request.hostId,
 			remotePort: request.remotePort,
-			localPort: request.remotePort,
+			localPort: request.localPort ?? request.remotePort,
 			label: request.label,
 			source: "manual",
 			status: "active",
@@ -93,6 +93,7 @@ describe("端口面板", () => {
 		expect(ssh.openPortForward).toHaveBeenCalledWith({
 			hostId: "host-1",
 			remotePort: 3000,
+			localPort: undefined,
 			label: "next-server",
 			source: "detected",
 		});
@@ -156,6 +157,7 @@ describe("端口面板", () => {
 		expect(ssh.openPortForward).toHaveBeenCalledWith({
 			hostId: "host-1",
 			remotePort: 5173,
+			localPort: undefined,
 			label: undefined,
 			source: "detected",
 		});
@@ -166,7 +168,7 @@ describe("端口面板", () => {
 	it("手动填一个端口号也能转发，非法输入就地提示且不发请求", async () => {
 		const user = userEvent.setup();
 		renderPanel();
-		const input = await screen.findByPlaceholderText("activityPanel.ports.addPlaceholder");
+		const input = await screen.findByPlaceholderText("activityPanel.ports.remotePortPlaceholder");
 
 		await user.type(input, "99999");
 		await user.click(screen.getByRole("button", { name: "activityPanel.ports.add" }));
@@ -181,6 +183,7 @@ describe("端口面板", () => {
 		expect(ssh.openPortForward).toHaveBeenCalledWith({
 			hostId: "host-1",
 			remotePort: 5173,
+			localPort: undefined,
 			label: undefined,
 			source: "manual",
 		});
@@ -194,7 +197,7 @@ describe("端口面板", () => {
 		const user = userEvent.setup();
 		renderPanel();
 
-		await user.type(await screen.findByPlaceholderText("activityPanel.ports.addPlaceholder"), "3000");
+		await user.type(await screen.findByPlaceholderText("activityPanel.ports.remotePortPlaceholder"), "3000");
 		await user.click(screen.getByRole("button", { name: "activityPanel.ports.add" }));
 
 		expect(await screen.findByText(/AllowTcpForwarding/)).toBeTruthy();
@@ -244,6 +247,7 @@ describe("端口面板", () => {
 		expect(ssh.openPortForward).toHaveBeenCalledWith({
 			hostId: "host-1",
 			remotePort: 3000,
+			localPort: undefined,
 			label: undefined,
 			source: "manual",
 		});
@@ -254,24 +258,80 @@ describe("端口面板", () => {
 		renderPanel();
 
 		expect(await screen.findByText("activityPanel.ports.scanUnsupported")).toBeTruthy();
-		expect(screen.getByPlaceholderText("activityPanel.ports.addPlaceholder")).toBeTruthy();
+		expect(screen.getByPlaceholderText("activityPanel.ports.remotePortPlaceholder")).toBeTruthy();
 	});
 
-	it("本机端口被占用而换了号时明确提示按本机那个号访问", async () => {
+	it("本机端口能由用户自己改：远端 5173 想落在本机 5174 就填 5174", async () => {
+		// 本机 5173 被别的东西占着时，系统自动换的那个随机号用户并没得选，而框架常把端口号写进
+		// HMR 与绝对 URL 里，所以「我要它落在这个号」是真实需求。
+		const user = userEvent.setup();
+		renderPanel();
+
+		await user.type(await screen.findByPlaceholderText("activityPanel.ports.remotePortPlaceholder"), "5173");
+		await user.type(screen.getByPlaceholderText("activityPanel.ports.localPortPlaceholder"), "5174");
+		await user.click(screen.getByRole("button", { name: "activityPanel.ports.add" }));
+
+		expect(ssh.openPortForward).toHaveBeenCalledWith({
+			hostId: "host-1",
+			remotePort: 5173,
+			localPort: 5174,
+			label: undefined,
+			source: "manual",
+		});
+		expect(await screen.findByText("localhost:5174")).toBeTruthy();
+	});
+
+	it("已转发的那条也能就地改本机端口", async () => {
 		ledger = [
 			{
 				hostId: "host-1",
 				remotePort: 5173,
 				localPort: 52341,
+				label: "vite",
 				source: "manual",
 				status: "active",
 				createdAt: 0,
 			},
 		];
+		const user = userEvent.setup();
 		renderPanel();
 
-		expect(await screen.findByText("localhost:52341")).toBeTruthy();
-		expect(screen.getByText("activityPanel.ports.portChanged")).toBeTruthy();
+		// 自动换号后的地址就摆在那里，点它即可改。
+		await user.click(await screen.findByRole("button", { name: "activityPanel.ports.changeLocalPort" }));
+		const input = screen.getByLabelText("activityPanel.ports.changeLocalPort");
+		await user.clear(input);
+		await user.type(input, "5174");
+		await user.click(screen.getByRole("button", { name: "common:actions.save" }));
+
+		expect(ssh.openPortForward).toHaveBeenCalledWith({
+			hostId: "host-1",
+			remotePort: 5173,
+			localPort: 5174,
+			label: "vite",
+			source: "manual",
+		});
+		expect(await screen.findByText("localhost:5174")).toBeTruthy();
+	});
+
+	it("改号时点取消就什么都不做", async () => {
+		ledger = [
+			{
+				hostId: "host-1",
+				remotePort: 5173,
+				localPort: 5173,
+				source: "manual",
+				status: "active",
+				createdAt: 0,
+			},
+		];
+		const user = userEvent.setup();
+		renderPanel();
+
+		await user.click(await screen.findByRole("button", { name: "activityPanel.ports.changeLocalPort" }));
+		await user.click(screen.getByRole("button", { name: "common:actions.cancel" }));
+
+		expect(ssh.openPortForward).not.toHaveBeenCalled();
+		expect(screen.getByText("localhost:5173")).toBeTruthy();
 	});
 
 	it("用系统浏览器打开的是转发后的本机地址", async () => {
