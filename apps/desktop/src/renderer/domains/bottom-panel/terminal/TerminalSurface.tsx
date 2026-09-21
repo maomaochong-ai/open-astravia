@@ -241,8 +241,9 @@ export function TerminalSurface(): JSX.Element {
 
 	return (
 		<div className="relative flex min-h-0 flex-1 flex-col">
-			{/* 不留内边距：终端自己就是一块字符网格，四周的留白只会白占可用行列。 */}
-			<div ref={containerRef} className="min-h-0 flex-1" data-terminal-surface={tabId} />
+			{/* 内边距放在终端容器自己身上，而不是外面包一层留白：xterm 按容器尺寸算行列，
+			    外边距会让面板底色在终端四周露出一圈，看着像终端没铺满。 */}
+			<div ref={containerRef} className="min-h-0 flex-1 px-2 py-1.5" data-terminal-surface={tabId} />
 			{status === "unavailable" ? (
 				<p className="px-3 pb-2 text-[12px] text-destructive">
 					{message ?? t("bottomPanel.terminal.unavailable")}
