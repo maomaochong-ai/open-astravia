@@ -83,9 +83,9 @@ export {
 	PluginTabPickerView,
 } from "./PluginTabPickerView";
 export type {
-	PortCandidateViewItem,
 	PortForwardViewItem,
 	PortForwardViewStatus,
+	PortRowViewItem,
 	PortScanState,
 	PortsTabPanelViewLabels,
 	PortsTabPanelViewProps,

@@ -7,8 +7,7 @@ import {
 import type { RemoteListeningPort } from "@vetta/ssh-transport";
 import { parseProjectLocation } from "@vetta/ssh-transport/project-uri";
 import type {
-	PortCandidateViewItem,
-	PortForwardViewItem,
+	PortRowViewItem,
 	PortScanState,
 	PortsTabPanelViewLabels,
 	PortsTabPanelViewProps,
@@ -24,35 +23,61 @@ import { useRemoteProjectHostId, useSshPortForwards } from "./useSshPortForwards
 /** 「已复制」的提示留多久。 */
 const COPIED_FEEDBACK_MS = 1_500;
 
+/** 「3 分钟前」多久刷新一次：精度只到分钟，更勤只是白白重渲染。 */
+const RELATIVE_TIME_TICK_MS = 30_000;
+
+/**
+ * 临时端口的起点（Linux 默认 ip_local_port_range 的下界）。
+ *
+ * 这个区间里在听的基本都是内核派给连接的临时端口，不是任何人想转发的服务——远端随便
+ * 一台机器就能扫出几十个，混在一起时用户要找的 3000 会被它们淹掉。所以默认折叠起来，
+ * 但仍然给出数量和展开入口：判断依据只是端口号，总有例外。
+ */
+const EPHEMERAL_PORT_FLOOR = 32768;
+
+/** 绑在这些地址上，远端网络里的其他机器也能连到它。 */
+const PUBLIC_BIND_ADDRESSES = new Set(["*", "0.0.0.0", "::", "[::]"]);
+
 /** 转发到本机之后，用户要打开的那个地址。 */
 export function formatForwardedUrl(localPort: number): string {
 	return `http://localhost:${localPort}`;
 }
 
-function toForwardViewItem(forward: PortForward): PortForwardViewItem {
-	return {
-		remotePort: forward.remotePort,
-		localPort: forward.localPort,
-		localAddress: `localhost:${forward.localPort}`,
-		processName: forward.label,
-		status: forward.status,
-		error: forward.error,
-	};
+/** 「刚刚 / 3 分钟前 / 2 小时前 / 3 天前」。 */
+function formatStartedAgo(startedAt: number, now: number, locale: string | undefined, justNow: string): string {
+	const seconds = Math.max(0, Math.round((now - startedAt) / 1000));
+	if (seconds < 60) return justNow;
+	const format = new Intl.RelativeTimeFormat(locale, { numeric: "auto", style: "narrow" });
+	if (seconds < 3600) return format.format(-Math.floor(seconds / 60), "minute");
+	if (seconds < 86_400) return format.format(-Math.floor(seconds / 3600), "hour");
+	return format.format(-Math.floor(seconds / 86_400), "day");
 }
 
-function toCandidateViewItem(port: RemoteListeningPort): PortCandidateViewItem {
-	return { port: port.port, processName: port.processName, origin: "scan" };
+interface RowDraft {
+	readonly port: number;
+	listener?: RemoteListeningPort;
+	/** 从任务输出认出它的那个任务的启动时间。 */
+	outputStartedAt?: number;
+	forward?: PortForward;
+}
+
+/**
+ * 排序键：进程启动时间；没有扫描信息时退回任务启动时间，再退回映射建立的时间。
+ * 三者都描述「这个服务是什么时候出现在用户面前的」，所以可以放在同一条时间线上比。
+ */
+function sortTime(row: RowDraft): number | undefined {
+	return row.listener?.startedAt ?? row.outputStartedAt ?? row.forward?.createdAt;
 }
 
 /**
  * 活动面板端口页。
  *
- * 面板做的事只有一件：把远端跑着的服务变成一个本机能打开的地址。因此已转发的地址排在最前，
- * 「远端还有哪些端口在听」是次要的候选，手动输入端口号放在最后——多数时候用户并不需要记住
- * 那个号。
+ * 面板回答两件事：远端跑着哪些服务，哪些已经映射到本机能打开。两者合成一张按启动时间
+ * 排序的列表，映射只是某一行的状态；手动输入端口号收在「+」后面——多数时候用户并不需要
+ * 记住那个号。
  */
 export function usePortsTabPanelModel(): PortsTabPanelViewProps {
-	const { t } = useTranslation(["chat", "common"]);
+	const { t, i18n } = useTranslation(["chat", "common"]);
 	const workspace = useActivityWorkspace();
 	const hostId = useRemoteProjectHostId(workspace.cwd);
 	const forwards = useSshPortForwards(hostId);
@@ -69,6 +94,10 @@ export function usePortsTabPanelModel(): PortsTabPanelViewProps {
 	const [copiedPort, setCopiedPort] = useState<number | undefined>(undefined);
 	const [editingRemotePort, setEditingRemotePort] = useState<number | undefined>(undefined);
 	const [editingLocalPort, setEditingLocalPort] = useState("");
+	const [terminatingPort, setTerminatingPort] = useState<number | undefined>(undefined);
+	/** SIGTERM 没收掉的进程：下一次终止改发 SIGKILL。 */
+	const [stubbornPids, setStubbornPids] = useState<ReadonlySet<number>>(() => new Set());
+	const [now, setNow] = useState(() => Date.now());
 	const copiedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 	const scanGeneration = useRef(0);
 
@@ -99,6 +128,11 @@ export function usePortsTabPanelModel(): PortsTabPanelViewProps {
 	useEffect(() => void runScan(), [runScan]);
 
 	useEffect(() => () => clearTimeout(copiedTimer.current), []);
+
+	useEffect(() => {
+		const timer = setInterval(() => setNow(Date.now()), RELATIVE_TIME_TICK_MS);
+		return () => clearInterval(timer);
+	}, []);
 
 	const forwardPort = useCallback(
 		async (
@@ -215,16 +249,59 @@ export function usePortsTabPanelModel(): PortsTabPanelViewProps {
 		[hostId],
 	);
 
+	/**
+	 * 终止占着这个端口的远端进程。
+	 *
+	 * 进程退了就顺手撤掉它的映射——留着只是一条指向空处的转发——再重扫一遍让列表如实反映。
+	 * SIGTERM 没收掉时不假装成功：记下这个 pid，下一次同一个按钮改发 SIGKILL。
+	 */
+	const onTerminate = useCallback(
+		async (port: number) => {
+			const listener = listeners.find((candidate) => candidate.port === port);
+			const pid = listener?.pid;
+			if (!hostId || pid === undefined) return;
+			setErrorMessage(undefined);
+			setTerminatingPort(port);
+			const name = listener?.processName ?? String(port);
+			try {
+				const result = await window.vetta.ssh.terminateRemoteProcess({
+					hostId,
+					pid,
+					force: stubbornPids.has(pid),
+				});
+				if (!result.exited) {
+					setStubbornPids((previous) => new Set(previous).add(pid));
+					setErrorMessage(t("activityPanel.ports.terminateStubborn", { name }));
+					return;
+				}
+				if (findForward(port)) await window.vetta.ssh.closePortForward({ hostId, remotePort: port });
+				await runScan();
+			} catch (error) {
+				setErrorMessage(
+					t("activityPanel.ports.terminateFailed", {
+						name,
+						reason: error instanceof Error ? error.message : String(error),
+					}),
+				);
+			} finally {
+				setTerminatingPort(undefined);
+			}
+		},
+		[findForward, hostId, listeners, runScan, stubbornPids, t],
+	);
+
 	const labels = useMemo(
 		(): PortsTabPanelViewLabels => ({
 			heading: t("activityPanel.ports.heading"),
-			candidatesHeading: t("activityPanel.ports.candidatesHeading"),
+			summary: (running: number, forwarded: number) =>
+				forwarded > 0
+					? t("activityPanel.ports.summaryWithForwards", { running, forwarded })
+					: t("activityPanel.ports.summary", { running }),
 			empty: t("activityPanel.ports.empty"),
 			emptyHint: t("activityPanel.ports.emptyHint"),
 			remotePortPlaceholder: t("activityPanel.ports.remotePortPlaceholder"),
 			localPortPlaceholder: t("activityPanel.ports.localPortPlaceholder"),
 			localPortPrefix: t("activityPanel.ports.localPortPrefix"),
-			remoteLabel: t("activityPanel.ports.remoteLabel"),
 			add: t("activityPanel.ports.add"),
 			addManual: t("activityPanel.ports.addManual"),
 			forward: t("activityPanel.ports.forward"),
@@ -241,10 +318,16 @@ export function usePortsTabPanelModel(): PortsTabPanelViewProps {
 			statusActive: t("activityPanel.ports.statusActive"),
 			statusReconnecting: t("activityPanel.ports.statusReconnecting"),
 			statusFailed: t("activityPanel.ports.statusFailed"),
-			scanning: t("activityPanel.ports.scanning"),
 			scanUnsupported: t("activityPanel.ports.scanUnsupported"),
 			scanFailed: t("activityPanel.ports.scanFailed"),
 			fromOutput: t("activityPanel.ports.fromOutput"),
+			notListening: t("activityPanel.ports.notListening"),
+			publicBind: t("activityPanel.ports.publicBind"),
+			terminate: t("activityPanel.ports.terminate"),
+			forceTerminate: t("activityPanel.ports.forceTerminate"),
+			terminateConfirm: (name: string) => t("activityPanel.ports.terminateConfirm", { name }),
+			sensitiveToggle: (count: number) => t("activityPanel.ports.sensitiveToggle", { count }),
+			sensitiveHint: t("activityPanel.ports.sensitiveHint"),
 			ephemeralToggle: (count: number) => t("activityPanel.ports.ephemeralToggle", { count }),
 		}),
 		[t],
@@ -261,34 +344,83 @@ export function usePortsTabPanelModel(): PortsTabPanelViewProps {
 		const tasks = collectRuntimeItems(runtimeIds, (runtimeId) =>
 			getBackgroundTasksForSession(backgroundTasksMap, runtimeId),
 		);
-		const ports: number[] = [];
+		const ports = new Map<number, number>();
 		for (const task of tasks) {
 			const location = parseProjectLocation(task.cwd);
 			if (location.kind !== "ssh" || location.hostId !== hostId) continue;
-			for (const port of detectPortsInOutput(task.tail)) if (!ports.includes(port)) ports.push(port);
+			for (const port of detectPortsInOutput(task.tail)) if (!ports.has(port)) ports.set(port, task.startedAt);
 		}
 		return ports;
 	}, [backgroundTasksMap, hostId, runtimeIds]);
 
-	const candidates = useMemo((): PortCandidateViewItem[] => {
-		const forwarded = new Set(forwards.map((forward) => forward.remotePort));
-		const scanned = listeners.filter((port) => !forwarded.has(port.port));
-		const scannedByPort = new Map(scanned.map((port) => [port.port, port]));
-		// 从输出认出来的排在前面：那是用户刚刚起的那个服务，也是他此刻想看的。
-		const fromOutput = detectedPorts
-			.filter((port) => !forwarded.has(port))
-			.map((port) => ({
-				port,
-				processName: scannedByPort.get(port)?.processName,
-				origin: "output" as const,
-			}));
-		const shown = new Set(fromOutput.map((candidate) => candidate.port));
-		return [...fromOutput, ...scanned.filter((port) => !shown.has(port.port)).map(toCandidateViewItem)];
-	}, [detectedPorts, forwards, listeners]);
+	/**
+	 * 在跑的服务、任务输出里认出的地址、已建立的映射，三路按端口合成一行。
+	 *
+	 * 顺序是启动时间从新到旧：刚起的 dev server 是用户此刻最想找的，它总在最上面；
+	 * 说不出时间的（远端 ps 不可用）排在最后，彼此按端口号。
+	 */
+	const rows = useMemo((): PortRowViewItem[] => {
+		const drafts = new Map<number, RowDraft>();
+		const draftFor = (port: number): RowDraft => {
+			const existing = drafts.get(port);
+			if (existing) return existing;
+			const created: RowDraft = { port };
+			drafts.set(port, created);
+			return created;
+		};
+		for (const listener of listeners) draftFor(listener.port).listener = listener;
+		for (const [port, startedAt] of detectedPorts) draftFor(port).outputStartedAt = startedAt;
+		for (const forward of forwards) draftFor(forward.remotePort).forward = forward;
+
+		// 只有扫描确实跑通过，「扫描里没有它」才说明远端没人在听；扫描工具缺失或失败时不下这个结论。
+		const scanKnown = scanState === "ready";
+		const sorted = [...drafts.values()].sort((left, right) => {
+			const leftTime = sortTime(left);
+			const rightTime = sortTime(right);
+			if (leftTime !== undefined && rightTime !== undefined && leftTime !== rightTime) return rightTime - leftTime;
+			if (leftTime !== undefined && rightTime === undefined) return -1;
+			if (leftTime === undefined && rightTime !== undefined) return 1;
+			return left.port - right.port;
+		});
+		return sorted.map((draft): PortRowViewItem => {
+			const { listener, forward } = draft;
+			const fromOutput = draft.outputStartedAt !== undefined;
+			const sensitive = listener?.sensitive === true;
+			const pid = listener?.pid;
+			return {
+				port: draft.port,
+				processName: listener?.processName ?? forward?.label,
+				command: listener?.command,
+				pid,
+				startedLabel:
+					listener?.startedAt === undefined
+						? undefined
+						: formatStartedAgo(listener.startedAt, now, i18n?.language, t("activityPanel.ports.justNow")),
+				startedTitle:
+					listener?.startedAt === undefined
+						? undefined
+						: new Date(listener.startedAt).toLocaleString(i18n?.language),
+				publicBind: listener !== undefined && PUBLIC_BIND_ADDRESSES.has(listener.address),
+				fromOutput,
+				sensitive,
+				ephemeral: !fromOutput && draft.port >= EPHEMERAL_PORT_FLOOR,
+				listening: listener ? true : fromOutput ? undefined : scanKnown ? false : undefined,
+				forward: forward
+					? {
+							localPort: forward.localPort,
+							localAddress: `localhost:${forward.localPort}`,
+							status: forward.status,
+							error: forward.error,
+						}
+					: undefined,
+				killable: pid !== undefined && !sensitive,
+				needsForceKill: pid !== undefined && stubbornPids.has(pid),
+			};
+		});
+	}, [detectedPorts, forwards, i18n?.language, listeners, now, scanState, stubbornPids, t]);
 
 	return {
-		forwards: forwards.map(toForwardViewItem),
-		candidates,
+		rows,
 		scanState,
 		scanError,
 		labels,
@@ -298,10 +430,11 @@ export function usePortsTabPanelModel(): PortsTabPanelViewProps {
 		copiedPort,
 		editingRemotePort,
 		editingLocalPort,
+		terminatingPort,
 		onDraftRemotePortChange: setDraftRemotePort,
 		onDraftLocalPortChange: setDraftLocalPort,
 		onAddDraftPort,
-		onForwardCandidate: (port) => {
+		onForward: (port) => {
 			const listener = listeners.find((candidate) => candidate.port === port);
 			void forwardPort(port, { label: listener?.processName, source: "detected" });
 		},
@@ -314,6 +447,7 @@ export function usePortsTabPanelModel(): PortsTabPanelViewProps {
 		onCancelEditLocalPort: () => setEditingRemotePort(undefined),
 		onStop,
 		onRetry: (remotePort) => void forwardPort(remotePort, { label: findForward(remotePort)?.label }),
+		onTerminate: (port) => void onTerminate(port),
 		onRefresh: () => void runScan(),
 	};
 }

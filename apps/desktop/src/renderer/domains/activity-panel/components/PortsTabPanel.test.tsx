@@ -46,6 +46,9 @@ const ssh = {
 		ledger = ledger.filter((entry) => entry.remotePort !== remotePort);
 		notify();
 	}),
+	terminateRemoteProcess: vi.fn(async (_input: { hostId: string; pid: number; force?: boolean }) => {
+		return { exited: true };
+	}),
 	onPortForwardsChanged: vi.fn((listener: () => void) => {
 		listeners.push(listener);
 		return () => {
@@ -161,8 +164,10 @@ describe("端口面板", () => {
 			label: undefined,
 			source: "detected",
 		});
-		// 转发之后它不再作为候选重复出现。
-		await waitFor(() => expect(screen.queryByText("activityPanel.ports.fromOutput")).toBeNull());
+		// 映射之后还是同一行，只是多了本机地址——不会在别处重复出现一次。
+		expect(await screen.findByText("localhost:5173")).toBeTruthy();
+		expect(screen.getAllByText("5173")).toHaveLength(1);
+		expect(screen.queryByRole("button", { name: "activityPanel.ports.forward" })).toBeNull();
 	});
 
 	it("手动填一个端口号也能转发，非法输入就地提示且不发请求", async () => {
@@ -358,5 +363,120 @@ describe("端口面板", () => {
 
 		await waitFor(() => expect(ssh.listListeningPorts).not.toHaveBeenCalled());
 		expect(ssh.listPortForwards).not.toHaveBeenCalled();
+	});
+
+	it("一行列出端口、进程名与命令行，按启动时间从新到旧排", async () => {
+		const now = Date.now();
+		scan = {
+			tool: "helper",
+			ports: [
+				{ port: 5432, address: "127.0.0.1", processName: "postgres", pid: 10, startedAt: now - 86_400_000 },
+				{
+					port: 5173,
+					address: "0.0.0.0",
+					processName: "node",
+					pid: 11,
+					command: "node /srv/app/node_modules/.bin/vite",
+					startedAt: now - 120_000,
+				},
+				{ port: 8000, address: "127.0.0.1", processName: "python3", pid: 12, startedAt: now - 3_600_000 },
+			],
+		};
+		renderPanel();
+
+		expect(await screen.findByText("node /srv/app/node_modules/.bin/vite")).toBeTruthy();
+		const order = screen.getAllByRole("listitem").map((item) => item.textContent ?? "");
+		expect(order[0]).toContain("5173");
+		expect(order[1]).toContain("8000");
+		expect(order[2]).toContain("5432");
+		// 绑在所有网卡上的那个标出来：远端网络里的别人也能连到它。
+		expect(screen.getByLabelText("activityPanel.ports.publicBind")).toBeTruthy();
+	});
+
+	it("22 这类系统端口折叠在末尾，展开后也不给终止", async () => {
+		scan = {
+			tool: "ss",
+			ports: [
+				{ port: 22, address: "0.0.0.0", processName: "sshd", pid: 800, sensitive: true },
+				{ port: 3000, address: "127.0.0.1", processName: "node", pid: 1234 },
+			],
+		};
+		const user = userEvent.setup();
+		renderPanel();
+
+		await screen.findByText("3000");
+		expect(screen.queryByText("sshd")).toBeNull();
+		// 只有 3000 那一行能终止。
+		expect(screen.getAllByRole("button", { name: "activityPanel.ports.terminate" })).toHaveLength(1);
+
+		await user.click(screen.getByRole("button", { name: "activityPanel.ports.sensitiveToggle" }));
+
+		expect(screen.getByText("sshd")).toBeTruthy();
+		expect(screen.getAllByRole("button", { name: "activityPanel.ports.terminate" })).toHaveLength(1);
+	});
+
+	it("终止要先确认；进程退了就撤掉它的映射并重新扫描", async () => {
+		scan = { tool: "ss", ports: [{ port: 3000, address: "127.0.0.1", processName: "node", pid: 1234 }] };
+		ledger = [
+			{ hostId: "host-1", remotePort: 3000, localPort: 3000, source: "manual", status: "active", createdAt: 0 },
+		];
+		const user = userEvent.setup();
+		renderPanel();
+
+		await screen.findByText("localhost:3000");
+		await user.click(screen.getByRole("button", { name: "activityPanel.ports.terminate" }));
+		// 第一下只是问一句，还没发出去。
+		expect(ssh.terminateRemoteProcess).not.toHaveBeenCalled();
+		expect(screen.getByText("activityPanel.ports.terminateConfirm")).toBeTruthy();
+
+		scan = { tool: "ss", ports: [] };
+		await user.click(screen.getByRole("button", { name: "activityPanel.ports.terminate" }));
+
+		expect(ssh.terminateRemoteProcess).toHaveBeenCalledWith({ hostId: "host-1", pid: 1234, force: false });
+		expect(ssh.closePortForward).toHaveBeenCalledWith({ hostId: "host-1", remotePort: 3000 });
+		await waitFor(() => expect(screen.queryByText("3000")).toBeNull());
+		expect(ssh.listListeningPorts).toHaveBeenCalledTimes(2);
+	});
+
+	it("SIGTERM 没收掉时如实告知，下一次改发 SIGKILL", async () => {
+		scan = { tool: "ss", ports: [{ port: 3000, address: "127.0.0.1", processName: "node", pid: 1234 }] };
+		ssh.terminateRemoteProcess.mockResolvedValueOnce({ exited: false });
+		const user = userEvent.setup();
+		renderPanel();
+
+		await screen.findByText("3000");
+		await user.click(screen.getByRole("button", { name: "activityPanel.ports.terminate" }));
+		await user.click(screen.getByRole("button", { name: "activityPanel.ports.terminate" }));
+
+		expect(await screen.findByText("activityPanel.ports.terminateStubborn")).toBeTruthy();
+		// 行还在，按钮换成了强制终止。
+		await user.click(screen.getByRole("button", { name: "activityPanel.ports.forceTerminate" }));
+		await user.click(screen.getByRole("button", { name: "activityPanel.ports.forceTerminate" }));
+
+		expect(ssh.terminateRemoteProcess).toHaveBeenLastCalledWith({ hostId: "host-1", pid: 1234, force: true });
+	});
+
+	it("没权限终止时把原因摆出来，行保持原样", async () => {
+		scan = { tool: "ss", ports: [{ port: 3000, address: "127.0.0.1", processName: "node", pid: 1234 }] };
+		ssh.terminateRemoteProcess.mockRejectedValueOnce(new Error("Operation not permitted"));
+		const user = userEvent.setup();
+		renderPanel();
+
+		await screen.findByText("3000");
+		await user.click(screen.getByRole("button", { name: "activityPanel.ports.terminate" }));
+		await user.click(screen.getByRole("button", { name: "activityPanel.ports.terminate" }));
+
+		expect(await screen.findByText("activityPanel.ports.terminateFailed")).toBeTruthy();
+		expect(screen.getByText("3000")).toBeTruthy();
+	});
+
+	it("映射还在但远端已没人监听那个端口时标出来，而不是装作一切正常", async () => {
+		scan = { tool: "ss", ports: [] };
+		ledger = [
+			{ hostId: "host-1", remotePort: 3000, localPort: 3000, source: "manual", status: "active", createdAt: 0 },
+		];
+		renderPanel();
+
+		expect(await screen.findByText("activityPanel.ports.notListening")).toBeTruthy();
 	});
 });

@@ -1,26 +1,49 @@
 import { Button, cn } from "@vetta-org/ui";
-import { type FormEvent, type JSX, useState } from "react";
+import { type FormEvent, type JSX, type ReactNode, useState } from "react";
 
 export type PortForwardViewStatus = "active" | "reconnecting" | "failed";
 
-/** 一条已经建立的转发。 */
+/** 一条已经建立的转发（映射）。 */
 export interface PortForwardViewItem {
-	readonly remotePort: number;
 	readonly localPort: number;
 	/** 用户要复制或打开的那个地址，例如 `localhost:3000`。 */
 	readonly localAddress: string;
-	readonly processName?: string;
 	readonly status: PortForwardViewStatus;
 	/** status 为 failed 时的技术原因，原样来自 ssh。 */
 	readonly error?: string;
 }
 
-/** 远端在听、但还没转发的端口。 */
-export interface PortCandidateViewItem {
+/**
+ * 列表里的一行：远端的一个端口，连同占着它的进程与它的映射状态。
+ *
+ * 在跑的服务与已建立的映射合成一行，而不是分两块列：用户关心的是「那个服务」，映射只是
+ * 它的一个状态。分开列的话同一个 3000 会在上下两处各出现一次。
+ */
+export interface PortRowViewItem {
 	readonly port: number;
 	readonly processName?: string;
-	/** `output` 表示从任务输出里认出的地址，`scan` 表示扫描远端得到的。 */
-	readonly origin: "scan" | "output";
+	/** 完整命令行，两个都叫 `node` 的进程靠它分清。 */
+	readonly command?: string;
+	readonly pid?: number;
+	/** 进程启动了多久，例如「3 分钟前」。 */
+	readonly startedLabel?: string;
+	/** 悬停时给出的完整启动时间。 */
+	readonly startedTitle?: string;
+	/** 绑在所有网卡上：远端网络里的其他机器也连得到它。 */
+	readonly publicBind: boolean;
+	/** 来自后台任务输出——用户刚起的那个服务。 */
+	readonly fromOutput: boolean;
+	/** 系统端口（特权端口或这条连接的 sshd）：单独折叠、置灰、不给终止。 */
+	readonly sensitive: boolean;
+	/** 临时端口（32768 以上且不是用户刚起的）：默认折叠。 */
+	readonly ephemeral: boolean;
+	/** false 表示上一次扫描时远端这个端口已经没人在听了（映射还在，但指向空处）。 */
+	readonly listening?: boolean;
+	readonly forward?: PortForwardViewItem;
+	/** 知道 pid 且不是系统端口时才能终止。 */
+	readonly killable: boolean;
+	/** 上一次 SIGTERM 没把它收掉，这次该给 SIGKILL。 */
+	readonly needsForceKill: boolean;
 }
 
 /** 扫描远端端口的结果。`unsupported` 是远端没有可用的扫描工具。 */
@@ -28,14 +51,13 @@ export type PortScanState = "loading" | "ready" | "unsupported" | "failed";
 
 export interface PortsTabPanelViewLabels {
 	readonly heading: string;
-	readonly candidatesHeading: string;
+	/** 标题旁的摘要，例如「4 个在运行 · 1 个已映射」。 */
+	readonly summary: (running: number, forwarded: number) => string;
 	readonly empty: string;
 	readonly emptyHint: string;
 	readonly remotePortPlaceholder: string;
 	readonly localPortPlaceholder: string;
 	readonly localPortPrefix: string;
-	/** 端口号前面的「远端」前缀，例如「远端 3000」。 */
-	readonly remoteLabel: string;
 	readonly add: string;
 	/** 展开手动填端口那一行的按钮。 */
 	readonly addManual: string;
@@ -53,17 +75,23 @@ export interface PortsTabPanelViewLabels {
 	readonly statusActive: string;
 	readonly statusReconnecting: string;
 	readonly statusFailed: string;
-	readonly scanning: string;
 	readonly scanUnsupported: string;
 	readonly scanFailed: string;
 	readonly fromOutput: string;
+	readonly notListening: string;
+	readonly publicBind: string;
+	readonly terminate: string;
+	readonly forceTerminate: string;
+	readonly terminateConfirm: (name: string) => string;
+	readonly sensitiveToggle: (count: number) => string;
+	readonly sensitiveHint: string;
 	/** 折叠起来的临时端口那一行；数量只有视图知道，所以这条是函数而不是成品字符串。 */
 	readonly ephemeralToggle: (count: number) => string;
 }
 
 export interface PortsTabPanelViewProps {
-	readonly forwards: readonly PortForwardViewItem[];
-	readonly candidates: readonly PortCandidateViewItem[];
+	/** 已按启动时间从新到旧排好。 */
+	readonly rows: readonly PortRowViewItem[];
 	readonly scanState: PortScanState;
 	/** scanState 为 failed 时的原因。 */
 	readonly scanError?: string;
@@ -74,65 +102,68 @@ export interface PortsTabPanelViewProps {
 	readonly draftLocalPort: string;
 	/** 最近一次操作的失败原因，例如本机端口已被占用。 */
 	readonly errorMessage?: string;
-	/** 刚复制过地址的那条转发的远端端口号。 */
+	/** 刚复制过地址的那一行的端口号。 */
 	readonly copiedPort?: number;
-	/** 正在改本机端口的那条转发的远端端口号。 */
+	/** 正在改本机端口的那一行的端口号。 */
 	readonly editingRemotePort?: number;
 	readonly editingLocalPort: string;
+	/** 正在终止的那一行：等远端确认进程退出。 */
+	readonly terminatingPort?: number;
 	readonly onDraftRemotePortChange: (value: string) => void;
 	readonly onDraftLocalPortChange: (value: string) => void;
 	readonly onAddDraftPort: (event: FormEvent) => void;
-	readonly onForwardCandidate: (port: number) => void;
-	readonly onPreview: (remotePort: number) => void;
-	readonly onOpenExternal: (remotePort: number) => void;
-	readonly onCopyAddress: (remotePort: number) => void;
-	readonly onStartEditLocalPort: (remotePort: number) => void;
+	readonly onForward: (port: number) => void;
+	readonly onPreview: (port: number) => void;
+	readonly onOpenExternal: (port: number) => void;
+	readonly onCopyAddress: (port: number) => void;
+	readonly onStartEditLocalPort: (port: number) => void;
 	readonly onEditingLocalPortChange: (value: string) => void;
 	readonly onSubmitLocalPort: (event: FormEvent) => void;
 	readonly onCancelEditLocalPort: () => void;
-	readonly onStop: (remotePort: number) => void;
-	readonly onRetry: (remotePort: number) => void;
+	readonly onStop: (port: number) => void;
+	readonly onRetry: (port: number) => void;
+	readonly onTerminate: (port: number) => void;
 	readonly onRefresh: () => void;
 }
 
-/**
- * 格子最小宽度。
- *
- * `localhost:65535` 在 12px 等宽字体下约 110px，加上状态点与内边距取 8.5rem：比这更窄
- * 地址就得截断，而地址正是用户要复制、要打开的那个东西，截了这张格子就没有意义了。
- * 面板默认 400px 上下正好两列，拉宽自动变三列四列。
- */
-const GRID = "grid gap-1.5 [grid-template-columns:repeat(auto-fill,minmax(8.5rem,1fr))]";
+const CHIP_TONE: Record<PortForwardViewStatus, string> = {
+	active: "bg-primary/10 text-primary hover:bg-primary/15",
+	reconnecting: "bg-amber-500/10 text-amber-600 hover:bg-amber-500/15 dark:text-amber-400",
+	failed: "bg-destructive/10 text-destructive hover:bg-destructive/15",
+};
 
-/** 候选格子只有端口号和进程名，不必按地址的宽度留位置。 */
-const CANDIDATE_GRID = "grid gap-1.5 [grid-template-columns:repeat(auto-fill,minmax(5.5rem,1fr))]";
-
-/**
- * 临时端口的起点（Linux 默认 ip_local_port_range 的下界）。
- *
- * 这个区间里在听的基本都是内核派给连接的临时端口，不是任何人想转发的服务——远端随便
- * 一台机器就能扫出几十个，混在一起时用户要找的 3000 会被它们淹掉。所以默认折叠起来，
- * 但仍然给出数量和展开入口：判断依据只是端口号，总有例外。
- */
-const EPHEMERAL_PORT_FLOOR = 32768;
-
-const STATUS_DOT: Record<PortForwardViewStatus, string> = {
-	active: "bg-emerald-400",
-	reconnecting: "bg-amber-400 animate-pulse",
+const CHIP_DOT: Record<PortForwardViewStatus, string> = {
+	active: "bg-emerald-500",
+	reconnecting: "bg-amber-500 animate-pulse",
 	failed: "bg-destructive",
 };
+
+/** 端口号那一列的宽度：放得下五位数，所有行的名字因此左对齐成一条线。 */
+const PORT_COLUMN = "w-[3.25rem] shrink-0";
 
 function IconButton({
 	icon,
 	title,
 	onClick,
+	tone = "default",
 }: {
 	icon: string;
 	title: string;
 	onClick: () => void;
+	tone?: "default" | "danger";
 }): JSX.Element {
 	return (
-		<Button variant="ghost" size="icon-xs" title={title} aria-label={title} onClick={onClick} className="shrink-0">
+		<Button
+			variant="ghost"
+			size="icon-xs"
+			title={title}
+			aria-label={title}
+			onClick={onClick}
+			className={cn(
+				"shrink-0 text-muted-foreground",
+				tone === "danger" ? "hover:bg-destructive/10 hover:text-destructive" : "hover:text-foreground",
+			)}
+		>
 			<span aria-hidden className={`${icon} h-3.5 w-3.5`} />
 		</Button>
 	);
@@ -168,7 +199,7 @@ function PortInput({
 				placeholder={placeholder}
 				onChange={(event) => onChange(event.target.value)}
 				className={cn(
-					"h-7 rounded-lg border border-border/60 bg-input/40 px-2 text-center font-mono text-[12px] text-foreground tabular-nums outline-none transition-colors placeholder:font-sans placeholder:text-[11px] placeholder:text-muted-foreground/40 focus:border-primary/40 focus:bg-input/70",
+					"h-7 rounded-md bg-muted/60 px-2 text-center font-mono text-[12px] text-foreground tabular-nums outline-none ring-primary/30 transition-shadow placeholder:font-sans placeholder:text-[11px] placeholder:text-muted-foreground/50 focus:ring-2",
 					className,
 				)}
 			/>
@@ -176,133 +207,96 @@ function PortInput({
 	);
 }
 
-function SectionHeading({ label, count }: { label: string; count?: number }): JSX.Element {
-	return (
-		<div className="flex items-center gap-1.5 px-0.5">
-			<h3 className="font-medium text-[11px] text-muted-foreground tracking-wide">{label}</h3>
-			{count === undefined ? null : (
-				<span className="rounded-full bg-accent/60 px-1.5 text-[10px] text-muted-foreground tabular-nums">
-					{count}
-				</span>
-			)}
-		</div>
-	);
-}
-
-/**
- * 已转发的一格。
- *
- * 整张格子就是「打开它」——预览是这里九成的意图，把它做成主按钮，用户不用先找按钮再点。
- * 其余四个动作平时不占位置：悬停时盖在副行上淡入，格子高度因此始终一致，鼠标扫过一片
- * 格子时不会有东西在跳。
- */
-function ForwardTile({
-	item,
+/** 映射状态那枚胶囊：点它就是这一行最常见的意图——打开（断开时则是重试）。 */
+function ForwardChip({
+	forward,
 	labels,
 	copied,
 	onPreview,
-	onOpenExternal,
-	onCopyAddress,
-	onStartEdit,
-	onStop,
 	onRetry,
 }: {
-	item: PortForwardViewItem;
+	forward: PortForwardViewItem;
 	labels: PortsTabPanelViewLabels;
 	copied: boolean;
 	onPreview: () => void;
-	onOpenExternal: () => void;
-	onCopyAddress: () => void;
-	onStartEdit: () => void;
-	onStop: () => void;
 	onRetry: () => void;
 }): JSX.Element {
-	const failed = item.status === "failed";
+	const failed = forward.status === "failed";
 	const statusText =
-		item.status === "active"
+		forward.status === "active"
 			? labels.statusActive
-			: item.status === "reconnecting"
+			: forward.status === "reconnecting"
 				? labels.statusReconnecting
 				: labels.statusFailed;
 	return (
-		<div className="group relative min-w-0">
-			<button
+		<button
+			type="button"
+			// 断开的那条点下去是重试：对着一个连不上的地址点「预览」只会再失败一次。
+			aria-label={failed ? labels.retry : labels.preview}
+			title={failed ? (forward.error ?? labels.statusFailed) : `${labels.preview} ${forward.localAddress}`}
+			onClick={failed ? onRetry : onPreview}
+			className={cn(
+				"inline-flex h-5 max-w-full shrink-0 items-center gap-1.5 rounded-full px-2 font-mono text-[11px] transition-colors",
+				CHIP_TONE[forward.status],
+			)}
+		>
+			<span aria-hidden className={cn("h-1.5 w-1.5 shrink-0 rounded-full", CHIP_DOT[forward.status])} />
+			<span className="sr-only">{statusText}</span>
+			<span className={cn("truncate", failed && "line-through decoration-destructive/40")}>
+				{copied ? labels.copied : forward.localAddress}
+			</span>
+		</button>
+	);
+}
+
+/** 行内确认终止：终止是不可撤销的，但为它弹一个对话框又太重。 */
+function TerminateConfirm({
+	row,
+	labels,
+	busy,
+	onConfirm,
+	onCancel,
+}: {
+	row: PortRowViewItem;
+	labels: PortsTabPanelViewLabels;
+	busy: boolean;
+	onConfirm: () => void;
+	onCancel: () => void;
+}): JSX.Element {
+	const name = row.processName ?? String(row.port);
+	return (
+		<div className="flex min-w-0 items-center gap-1.5 pt-0.5">
+			<span className="min-w-0 flex-1 truncate text-[11px] text-destructive">
+				{labels.terminateConfirm(row.pid === undefined ? name : `${name} (PID ${row.pid})`)}
+			</span>
+			<Button
 				type="button"
-				// 断开的那条点下去是重试：对着一个连不上的地址点「预览」只会再失败一次。
-				aria-label={failed ? labels.retry : labels.preview}
-				title={failed ? (item.error ?? labels.statusFailed) : item.localAddress}
-				onClick={failed ? onRetry : onPreview}
-				className={cn(
-					"flex w-full min-w-0 flex-col items-start gap-0.5 rounded-lg border px-2 py-1.5 text-left transition-colors",
-					failed
-						? "border-destructive/40 bg-destructive/5 hover:bg-destructive/10"
-						: "border-border/50 bg-card/30 hover:border-primary/40 hover:bg-card/60",
-				)}
+				size="xs"
+				variant="ghost"
+				disabled={busy}
+				onClick={onConfirm}
+				className="h-6 bg-destructive/10 text-destructive hover:bg-destructive/15 hover:text-destructive"
 			>
-				<span className="flex w-full min-w-0 items-center gap-1.5">
-					<span aria-hidden className={cn("h-1.5 w-1.5 shrink-0 rounded-full", STATUS_DOT[item.status])} />
-					<span className="sr-only">{statusText}</span>
-					<span
-						className={cn(
-							"min-w-0 truncate font-mono text-[12px]",
-							failed ? "text-muted-foreground line-through decoration-destructive/40" : "text-foreground",
-						)}
-					>
-						{item.localAddress}
-					</span>
-				</span>
-				<span className="flex w-full min-w-0 items-center gap-1 text-[10px] text-muted-foreground/70">
-					{copied ? (
-						<span className="truncate text-primary">{labels.copied}</span>
-					) : (
-						<>
-							<span className="shrink-0 tabular-nums">
-								{labels.remoteLabel} {item.remotePort}
-							</span>
-							{item.processName ? (
-								<>
-									<span aria-hidden className="text-muted-foreground/30">
-										·
-									</span>
-									<span className="min-w-0 truncate">{item.processName}</span>
-								</>
-							) : null}
-						</>
-					)}
-				</span>
-			</button>
-			{/*
-			 * 动作条盖在副行上，而不是排在格子里：四个图标按钮排开就是一整行的高度，
-			 * 每张格子都留着它，一屏能看到的端口直接少一半。
-			 */}
-			<div className="pointer-events-none absolute inset-x-[3px] bottom-[3px] flex items-center justify-end rounded-b-[7px] bg-gradient-to-l from-card via-card to-transparent pl-6 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
-				<IconButton icon="icon-[solar--pen-2-linear]" title={labels.changeLocalPort} onClick={onStartEdit} />
-				<IconButton icon="icon-[solar--copy-linear]" title={labels.copyAddress} onClick={onCopyAddress} />
-				<IconButton
-					icon="icon-[solar--square-top-down-linear]"
-					title={labels.openExternal}
-					onClick={onOpenExternal}
-				/>
-				<IconButton icon="icon-[solar--close-circle-linear]" title={labels.stop} onClick={onStop} />
-			</div>
+				{busy ? <span aria-hidden className="icon-[solar--refresh-linear] h-3 w-3 animate-spin" /> : null}
+				{row.needsForceKill ? labels.forceTerminate : labels.terminate}
+			</Button>
+			<Button type="button" size="xs" variant="ghost" disabled={busy} onClick={onCancel} className="h-6">
+				{labels.cancel}
+			</Button>
 		</div>
 	);
 }
 
-/**
- * 改本机端口时那一格铺满整行。
- *
- * 输入框加两个按钮在一格的宽度里放不下，而这是个瞬时状态——占一行换来不必缩写任何东西。
- */
-function EditTile({
-	item,
+/** 改本机端口：就地替换这一行的第二行，不另开表单。 */
+function EditLocalPort({
+	row,
 	labels,
 	value,
 	onChange,
 	onSubmit,
 	onCancel,
 }: {
-	item: PortForwardViewItem;
+	row: PortRowViewItem;
 	labels: PortsTabPanelViewLabels;
 	value: string;
 	onChange: (value: string) => void;
@@ -310,78 +304,271 @@ function EditTile({
 	onCancel: () => void;
 }): JSX.Element {
 	return (
-		<form
-			onSubmit={onSubmit}
-			className="col-span-full flex min-w-0 items-center gap-1.5 rounded-lg border border-primary/40 bg-card/60 px-2 py-1.5"
-		>
-			<span className="shrink-0 font-mono text-[11px] text-muted-foreground tabular-nums">{item.remotePort}</span>
-			<span aria-hidden className="icon-[solar--arrow-right-linear] h-3 w-3 shrink-0 text-muted-foreground/50" />
-			<span className="shrink-0 font-mono text-[12px] text-muted-foreground">{labels.localPortPrefix}</span>
+		<form onSubmit={onSubmit} className="flex min-w-0 items-center gap-1.5 pt-1">
+			<span className="shrink-0 font-mono text-[11px] text-muted-foreground">{labels.localPortPrefix}</span>
 			<PortInput
-				id={`ports-edit-${item.remotePort}`}
+				id={`ports-edit-${row.port}`}
 				value={value}
 				label={labels.changeLocalPort}
 				placeholder={labels.localPortPlaceholder}
 				className="w-[4.5rem]"
 				onChange={onChange}
 			/>
-			<Button type="submit" size="xs" variant="outline" className="ml-auto">
+			<span className="flex-1" />
+			<Button type="submit" size="xs" variant="ghost" className="h-6 bg-primary/10 text-primary hover:bg-primary/15">
 				{labels.save}
 			</Button>
-			<Button type="button" size="xs" variant="ghost" onClick={onCancel}>
+			<Button type="button" size="xs" variant="ghost" className="h-6" onClick={onCancel}>
 				{labels.cancel}
 			</Button>
 		</form>
 	);
 }
 
-/** 远端在听、还没转发的一格：整张就是「转发它」。 */
-function CandidateTile({
-	candidate,
+interface RowHandlers {
+	readonly onForward: () => void;
+	readonly onPreview: () => void;
+	readonly onOpenExternal: () => void;
+	readonly onCopyAddress: () => void;
+	readonly onStartEdit: () => void;
+	readonly onStop: () => void;
+	readonly onRetry: () => void;
+	readonly onRequestTerminate: () => void;
+}
+
+/**
+ * 一个远端服务。
+ *
+ * 两行：上面是「哪个端口、谁在用、映射到了哪」，下面是命令行与启动时间。动作平时不占位置，
+ * 悬停时盖在第二行右侧的时间上淡入——每行都常驻一排按钮的话，列表就成了按钮墙。
+ */
+function PortRow({
+	row,
 	labels,
-	onForward,
+	copied,
+	editing,
+	editingLocalPort,
+	confirming,
+	terminating,
+	handlers,
+	onEditingLocalPortChange,
+	onSubmitLocalPort,
+	onCancelEditLocalPort,
+	onConfirmTerminate,
+	onCancelTerminate,
 }: {
-	candidate: PortCandidateViewItem;
+	row: PortRowViewItem;
 	labels: PortsTabPanelViewLabels;
-	onForward: () => void;
+	copied: boolean;
+	editing: boolean;
+	editingLocalPort: string;
+	confirming: boolean;
+	terminating: boolean;
+	handlers: RowHandlers;
+	onEditingLocalPortChange: (value: string) => void;
+	onSubmitLocalPort: (event: FormEvent) => void;
+	onCancelEditLocalPort: () => void;
+	onConfirmTerminate: () => void;
+	onCancelTerminate: () => void;
+}): JSX.Element {
+	const forward = row.forward;
+	const idle = !editing && !confirming && !terminating;
+	let detail: ReactNode;
+	if (editing) {
+		detail = (
+			<EditLocalPort
+				row={row}
+				labels={labels}
+				value={editingLocalPort}
+				onChange={onEditingLocalPortChange}
+				onSubmit={onSubmitLocalPort}
+				onCancel={onCancelEditLocalPort}
+			/>
+		);
+	} else if (confirming || terminating) {
+		detail = (
+			<TerminateConfirm
+				row={row}
+				labels={labels}
+				busy={terminating}
+				onConfirm={onConfirmTerminate}
+				onCancel={onCancelTerminate}
+			/>
+		);
+	} else {
+		detail = (
+			<div className="relative flex h-5 min-w-0 items-center gap-2">
+				<span
+					className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground/70"
+					title={row.command}
+				>
+					{row.listening === false ? (
+						<span className="font-sans text-muted-foreground/60 italic">{labels.notListening}</span>
+					) : (
+						(row.command ?? (row.pid === undefined ? "" : `PID ${row.pid}`))
+					)}
+				</span>
+				{row.startedLabel ? (
+					<span
+						title={row.startedTitle}
+						className="shrink-0 text-[11px] text-muted-foreground/50 tabular-nums transition-opacity group-focus-within:opacity-0 group-hover:opacity-0"
+					>
+						{row.startedLabel}
+					</span>
+				) : null}
+				{/* 动作盖在时间上：底色与悬停态一致，从右往左渐隐，不露出下面的字。 */}
+				<div className="pointer-events-none absolute inset-y-[-2px] right-0 flex items-center gap-0.5 bg-gradient-to-l from-60% from-accent to-transparent pl-6 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
+					{forward ? (
+						<>
+							<IconButton
+								icon="icon-[solar--square-top-down-linear]"
+								title={labels.openExternal}
+								onClick={handlers.onOpenExternal}
+							/>
+							<IconButton icon="icon-[solar--copy-linear]" title={labels.copyAddress} onClick={handlers.onCopyAddress} />
+							<IconButton icon="icon-[solar--pen-2-linear]" title={labels.changeLocalPort} onClick={handlers.onStartEdit} />
+							<IconButton icon="icon-[solar--link-broken-linear]" title={labels.stop} onClick={handlers.onStop} />
+						</>
+					) : null}
+					{row.killable ? (
+						<IconButton
+							icon="icon-[solar--stop-circle-linear]"
+							title={row.needsForceKill ? labels.forceTerminate : labels.terminate}
+							tone="danger"
+							onClick={handlers.onRequestTerminate}
+						/>
+					) : null}
+				</div>
+			</div>
+		);
+	}
+
+	return (
+		<li
+			className={cn(
+				"group relative rounded-lg px-2 py-1.5 transition-colors hover:bg-accent focus-within:bg-accent",
+				confirming && "bg-destructive/[0.04] hover:bg-destructive/[0.06]",
+				row.sensitive && "opacity-60 hover:opacity-100",
+			)}
+		>
+			<div className="flex min-w-0 items-center gap-2">
+				<span
+					className={cn(
+						PORT_COLUMN,
+						"font-medium font-mono text-[13px] tabular-nums",
+						row.listening === false ? "text-muted-foreground line-through" : "text-foreground",
+					)}
+				>
+					{row.port}
+				</span>
+				<span className="flex min-w-0 flex-1 items-center gap-1.5">
+					<span className={cn("truncate text-[13px]", row.processName ? "text-foreground" : "text-muted-foreground/50")}>
+						{row.processName ?? "—"}
+					</span>
+					{row.fromOutput ? (
+						<span
+							title={labels.fromOutput}
+							className="shrink-0 rounded-full bg-primary/10 px-1.5 text-[10px] text-primary leading-4"
+						>
+							{labels.fromOutput}
+						</span>
+					) : null}
+					{row.publicBind ? (
+						<span
+							aria-label={labels.publicBind}
+							title={labels.publicBind}
+							className="icon-[solar--global-linear] h-3 w-3 shrink-0 text-muted-foreground/40"
+						/>
+					) : null}
+				</span>
+				{forward ? (
+					<ForwardChip
+						forward={forward}
+						labels={labels}
+						copied={copied}
+						onPreview={handlers.onPreview}
+						onRetry={handlers.onRetry}
+					/>
+				) : row.listening === false ? null : (
+					<button
+						type="button"
+						aria-label={labels.forward}
+						title={`${labels.forward} ${row.port} → localhost`}
+						onClick={handlers.onForward}
+						className={cn(
+							"inline-flex h-5 shrink-0 items-center gap-1 rounded-full px-2 text-[11px] text-muted-foreground transition-all hover:bg-primary/10 hover:text-primary focus-visible:opacity-100",
+							idle ? "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100" : "hidden",
+						)}
+					>
+						<span aria-hidden className="icon-[solar--arrow-right-up-linear] h-3 w-3" />
+						{labels.forward}
+					</button>
+				)}
+			</div>
+			<div className={cn("min-w-0", "pl-[calc(3.25rem+0.5rem)]")}>{detail}</div>
+		</li>
+	);
+}
+
+/** 折叠组：系统端口与临时端口各一个，一行灰字，点开才列出。 */
+function FoldedGroup({
+	label,
+	title,
+	open,
+	onToggle,
+	children,
+}: {
+	label: string;
+	title?: string;
+	open: boolean;
+	onToggle: () => void;
+	children: ReactNode;
 }): JSX.Element {
 	return (
-		<button
-			type="button"
-			aria-label={labels.forward}
-			title={`${labels.forward} ${candidate.port}`}
-			onClick={onForward}
-			className="group flex min-w-0 items-center gap-1 rounded-lg border border-border/40 border-dashed px-2 py-1.5 text-left transition-colors hover:border-primary/50 hover:border-solid hover:bg-card/50"
-		>
-			{candidate.origin === "output" ? (
-				<>
-					{/* 来自任务输出的排在最前，也标出来：那是用户刚起的服务，与扫到的一堆系统端口不同。 */}
-					<span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary/70" />
-					<span className="sr-only">{labels.fromOutput}</span>
-				</>
-			) : null}
-			<span className="shrink-0 font-mono text-[12px] text-foreground tabular-nums">{candidate.port}</span>
-			{candidate.processName ? (
-				<span className="min-w-0 truncate text-[10px] text-muted-foreground/70">{candidate.processName}</span>
-			) : null}
-			<span
-				aria-hidden
-				className="icon-[solar--add-circle-linear] ml-auto h-3.5 w-3.5 shrink-0 text-muted-foreground/30 transition-colors group-hover:text-primary"
-			/>
-		</button>
+		<div>
+			<button
+				type="button"
+				aria-expanded={open}
+				title={title}
+				onClick={onToggle}
+				className="flex w-full items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground/60 transition-colors hover:text-muted-foreground"
+			>
+				<span
+					aria-hidden
+					className={cn("icon-[solar--alt-arrow-right-linear] h-3 w-3 transition-transform", open && "rotate-90")}
+				/>
+				{label}
+			</button>
+			{open ? <ul className="mt-0.5 space-y-0.5">{children}</ul> : null}
+		</div>
+	);
+}
+
+function SkeletonRows(): JSX.Element {
+	return (
+		<ul aria-hidden className="space-y-0.5">
+			{[0, 1, 2].map((index) => (
+				<li key={index} className="flex items-start gap-2 px-2 py-2">
+					<span className={cn(PORT_COLUMN, "h-3.5 animate-pulse rounded bg-muted")} />
+					<span className="flex flex-1 flex-col gap-1.5">
+						<span className="h-3.5 w-24 animate-pulse rounded bg-muted" />
+						<span className="h-2.5 w-40 animate-pulse rounded bg-muted/70" />
+					</span>
+				</li>
+			))}
+		</ul>
 	);
 }
 
 /**
- * 活动面板端口页：远程项目里，把远端跑着的服务接到本机来看。
+ * 活动面板「端口映射」页：远程项目里，远端有哪些服务在跑、哪些已经映射到本机。
  *
- * 排成格子而不是列表：一条转发真正要显示的只有「本机地址 + 它是哪个远端端口」两行字，
- * 摊成整行宽的卡片后每条占掉 80px，开五六个服务就得翻页；两列格子把同样的信息压到一半
- * 高度，而端口这种东西多是扫一眼找目标，密度比每条的表现力更要紧。
+ * 一行一个服务，按启动时间从新到旧：刚起的那个 dev server 总在最上面。系统端口（22 这类）
+ * 与内核派出的临时端口各自折叠在列表末尾——它们总在，但几乎从来不是用户要找的东西。
+ * 去掉分隔线和卡片边框，只靠留白与悬停底色分组：这一页要扫的是端口号和名字，线条只会抢眼。
  */
 export function PortsTabPanelView({
-	forwards,
-	candidates,
+	rows,
 	scanState,
 	scanError,
 	labels,
@@ -391,10 +578,11 @@ export function PortsTabPanelView({
 	copiedPort,
 	editingRemotePort,
 	editingLocalPort,
+	terminatingPort,
 	onDraftRemotePortChange,
 	onDraftLocalPortChange,
 	onAddDraftPort,
-	onForwardCandidate,
+	onForward,
 	onPreview,
 	onOpenExternal,
 	onCopyAddress,
@@ -404,25 +592,71 @@ export function PortsTabPanelView({
 	onCancelEditLocalPort,
 	onStop,
 	onRetry,
+	onTerminate,
 	onRefresh,
 }: PortsTabPanelViewProps): JSX.Element {
 	const [manualOpen, setManualOpen] = useState(false);
+	const [sensitiveOpen, setSensitiveOpen] = useState(false);
 	const [ephemeralOpen, setEphemeralOpen] = useState(false);
-	const ephemeral = candidates.filter(
-		(candidate) => candidate.origin !== "output" && candidate.port >= EPHEMERAL_PORT_FLOOR,
-	);
-	const shownCandidates = ephemeralOpen ? candidates : candidates.filter((candidate) => !ephemeral.includes(candidate));
-	const nothingToShow = forwards.length === 0 && candidates.length === 0 && scanState !== "loading";
+	const [confirmingPort, setConfirmingPort] = useState<number | undefined>(undefined);
+
+	// 已映射的无论什么端口都留在主列表：那是用户亲手接过来的，折起来等于藏起他正在用的东西。
+	const sensitive = rows.filter((row) => row.sensitive && !row.forward);
+	const ephemeral = rows.filter((row) => !row.sensitive && row.ephemeral && !row.forward);
+	const main = rows.filter((row) => row.forward || (!row.sensitive && !row.ephemeral));
+	const running = rows.filter((row) => row.listening !== false).length;
+	const forwarded = rows.filter((row) => row.forward).length;
+	const nothingToShow = rows.length === 0 && scanState !== "loading";
 	// 没有任何东西可点时手动那行自己展开：此时它是唯一的入口，藏在「+」后面等于没有入口。
 	// 远端没有扫描工具（scanUnsupported）走的正是这条路。
 	const showManual = manualOpen || nothingToShow;
 
+	const renderRow = (row: PortRowViewItem): JSX.Element => (
+		<PortRow
+			key={row.port}
+			row={row}
+			labels={labels}
+			copied={copiedPort === row.port}
+			editing={editingRemotePort === row.port}
+			editingLocalPort={editingLocalPort}
+			confirming={confirmingPort === row.port}
+			terminating={terminatingPort === row.port}
+			handlers={{
+				onForward: () => onForward(row.port),
+				onPreview: () => onPreview(row.port),
+				onOpenExternal: () => onOpenExternal(row.port),
+				onCopyAddress: () => onCopyAddress(row.port),
+				onStartEdit: () => onStartEditLocalPort(row.port),
+				onStop: () => onStop(row.port),
+				onRetry: () => onRetry(row.port),
+				onRequestTerminate: () => setConfirmingPort(row.port),
+			}}
+			onEditingLocalPortChange={onEditingLocalPortChange}
+			onSubmitLocalPort={onSubmitLocalPort}
+			onCancelEditLocalPort={onCancelEditLocalPort}
+			onConfirmTerminate={() => {
+				setConfirmingPort(undefined);
+				onTerminate(row.port);
+			}}
+			onCancelTerminate={() => setConfirmingPort(undefined)}
+		/>
+	);
+
 	return (
 		<div className="flex min-h-0 flex-1 flex-col">
-			<div className="flex shrink-0 items-center gap-1.5 border-border/60 border-b px-2.5 py-1.5">
-				<SectionHeading label={labels.heading} count={forwards.length || undefined} />
+			<div className="flex shrink-0 items-center gap-2 px-4 pt-3 pb-1.5">
+				<h3 className="font-medium text-[12px] text-foreground">{labels.heading}</h3>
+				{rows.length > 0 ? (
+					<span className="truncate text-[11px] text-muted-foreground/60 tabular-nums">
+						{labels.summary(running, forwarded)}
+					</span>
+				) : null}
 				<div className="ml-auto flex shrink-0 items-center gap-0.5">
-					<IconButton icon="icon-[solar--refresh-linear]" title={labels.refresh} onClick={onRefresh} />
+					<IconButton
+						icon={cn("icon-[solar--refresh-linear]", scanState === "loading" && "animate-spin")}
+						title={labels.refresh}
+						onClick={onRefresh}
+					/>
 					<Button
 						variant="ghost"
 						size="icon-xs"
@@ -430,16 +664,16 @@ export function PortsTabPanelView({
 						aria-label={labels.addManual}
 						aria-pressed={showManual}
 						onClick={() => setManualOpen((open) => !open)}
-						className={cn("shrink-0", showManual && "bg-accent text-foreground")}
+						className={cn("shrink-0 text-muted-foreground hover:text-foreground", showManual && "text-foreground")}
 					>
 						<span aria-hidden className="icon-[solar--add-circle-linear] h-3.5 w-3.5" />
 					</Button>
 				</div>
 			</div>
 
-			<div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-2.5 py-2.5">
+			<div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-2 pb-4">
 				{showManual ? (
-					<form onSubmit={onAddDraftPort} className="flex items-center gap-1.5">
+					<form onSubmit={onAddDraftPort} className="flex items-center gap-1.5 px-2 pt-1">
 						<PortInput
 							id="ports-add-remote"
 							value={draftRemotePort}
@@ -448,7 +682,7 @@ export function PortsTabPanelView({
 							className="min-w-0 flex-1"
 							onChange={onDraftRemotePortChange}
 						/>
-						<span aria-hidden className="icon-[solar--arrow-right-linear] h-3 w-3 shrink-0 text-muted-foreground/50" />
+						<span aria-hidden className="icon-[solar--arrow-right-linear] h-3 w-3 shrink-0 text-muted-foreground/40" />
 						<PortInput
 							id="ports-add-local"
 							value={draftLocalPort}
@@ -457,107 +691,77 @@ export function PortsTabPanelView({
 							className="min-w-0 flex-1"
 							onChange={onDraftLocalPortChange}
 						/>
-						<Button type="submit" size="xs" variant="outline" disabled={draftRemotePort.trim() === ""}>
+						<Button
+							type="submit"
+							size="xs"
+							variant="ghost"
+							disabled={draftRemotePort.trim() === ""}
+							className="h-7 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary"
+						>
 							{labels.add}
 						</Button>
 					</form>
 				) : null}
-				{errorMessage ? <p className="px-0.5 text-[11px] text-destructive">{errorMessage}</p> : null}
+
+				{errorMessage ? (
+					<p className="mx-2 rounded-lg bg-destructive/[0.06] px-3 py-2 text-[11px] text-destructive leading-relaxed">
+						{errorMessage}
+					</p>
+				) : null}
+
+				{rows.length === 0 && scanState === "loading" ? <SkeletonRows /> : null}
 
 				{nothingToShow ? (
-					<div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
-						<span aria-hidden className="icon-[solar--link-round-linear] h-8 w-8 text-muted-foreground/40" />
-						<span className="text-[13px] text-foreground">{labels.empty}</span>
-						<span className="max-w-[22rem] text-[11px] text-muted-foreground/70 leading-relaxed">
+					<div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
+						<span aria-hidden className="icon-[solar--server-square-linear] h-7 w-7 text-muted-foreground/30" />
+						<span className="text-[13px] text-foreground/80">{labels.empty}</span>
+						<span className="max-w-[20rem] text-[11px] text-muted-foreground/60 leading-relaxed">
 							{labels.emptyHint}
 						</span>
 					</div>
 				) : null}
 
-				{forwards.length > 0 ? (
-					<section className={GRID}>
-						{forwards.map((item) =>
-							editingRemotePort === item.remotePort ? (
-								<EditTile
-									key={item.remotePort}
-									item={item}
-									labels={labels}
-									value={editingLocalPort}
-									onChange={onEditingLocalPortChange}
-									onSubmit={onSubmitLocalPort}
-									onCancel={onCancelEditLocalPort}
-								/>
-							) : (
-								<ForwardTile
-									key={item.remotePort}
-									item={item}
-									labels={labels}
-									copied={copiedPort === item.remotePort}
-									onPreview={() => onPreview(item.remotePort)}
-									onOpenExternal={() => onOpenExternal(item.remotePort)}
-									onCopyAddress={() => onCopyAddress(item.remotePort)}
-									onStartEdit={() => onStartEditLocalPort(item.remotePort)}
-									onStop={() => onStop(item.remotePort)}
-									onRetry={() => onRetry(item.remotePort)}
-								/>
-							),
-						)}
-					</section>
-				) : null}
+				{main.length > 0 ? <ul className="space-y-0.5">{main.map(renderRow)}</ul> : null}
 
-				{/* 断开的原因排在格子下面：格子里只放得下地址，而原因常常是一整句 ssh 的报错。 */}
-				{forwards
-					.filter((item) => item.status === "failed" && item.error)
-					.map((item) => (
-						<p key={item.remotePort} className="px-0.5 text-[11px] text-destructive/80">
-							<span className="font-mono tabular-nums">{item.remotePort}</span>
-							{`: ${item.error}`}
+				{/* 断开的原因排在列表下面：行里只放得下地址，而原因常常是一整句 ssh 的报错。 */}
+				{rows
+					.filter((row) => row.forward?.status === "failed" && row.forward.error)
+					.map((row) => (
+						<p key={row.port} className="px-2 text-[11px] text-destructive/80 leading-relaxed">
+							<span className="font-mono tabular-nums">{row.port}</span>
+							{`: ${row.forward?.error}`}
 						</p>
 					))}
 
-				{candidates.length > 0 ? (
-					<section className="space-y-1.5">
-						<SectionHeading label={labels.candidatesHeading} count={candidates.length} />
-						<div className={CANDIDATE_GRID}>
-							{shownCandidates.map((candidate) => (
-								<CandidateTile
-									key={candidate.port}
-									candidate={candidate}
-									labels={labels}
-									onForward={() => onForwardCandidate(candidate.port)}
-								/>
-							))}
-						</div>
+				{ephemeral.length > 0 || sensitive.length > 0 ? (
+					<div className="space-y-0.5">
 						{ephemeral.length > 0 ? (
-							<button
-								type="button"
-								onClick={() => setEphemeralOpen((open) => !open)}
-								className="flex w-full items-center gap-1 px-0.5 py-0.5 text-[11px] text-muted-foreground/70 transition-colors hover:text-foreground"
+							<FoldedGroup
+								label={labels.ephemeralToggle(ephemeral.length)}
+								open={ephemeralOpen}
+								onToggle={() => setEphemeralOpen((open) => !open)}
 							>
-								<span
-									aria-hidden
-									className={cn(
-										"icon-[solar--alt-arrow-right-linear] h-3 w-3 transition-transform",
-										ephemeralOpen && "rotate-90",
-									)}
-								/>
-								{labels.ephemeralToggle(ephemeral.length)}
-							</button>
+								{ephemeral.map(renderRow)}
+							</FoldedGroup>
 						) : null}
-					</section>
+						{sensitive.length > 0 ? (
+							<FoldedGroup
+								label={labels.sensitiveToggle(sensitive.length)}
+								title={labels.sensitiveHint}
+								open={sensitiveOpen}
+								onToggle={() => setSensitiveOpen((open) => !open)}
+							>
+								{sensitive.map(renderRow)}
+							</FoldedGroup>
+						) : null}
+					</div>
 				) : null}
 
-				{scanState === "loading" ? (
-					<p className="flex items-center gap-1.5 px-0.5 text-[11px] text-muted-foreground">
-						<span aria-hidden className="icon-[solar--refresh-linear] h-3 w-3 animate-spin" />
-						{labels.scanning}
-					</p>
-				) : null}
 				{scanState === "unsupported" ? (
-					<p className="px-0.5 text-[11px] text-muted-foreground/70 leading-relaxed">{labels.scanUnsupported}</p>
+					<p className="px-2 text-[11px] text-muted-foreground/60 leading-relaxed">{labels.scanUnsupported}</p>
 				) : null}
 				{scanState === "failed" ? (
-					<p className="px-0.5 text-[11px] text-muted-foreground/70 leading-relaxed">
+					<p className="px-2 text-[11px] text-muted-foreground/60 leading-relaxed">
 						{labels.scanFailed}
 						{scanError ? `：${scanError}` : ""}
 					</p>
