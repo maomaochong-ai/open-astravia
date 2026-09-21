@@ -42,8 +42,9 @@ export function BottomPanelHost(): JSX.Element | null {
 		<div
 			ref={containerRef}
 			hidden={collapsed}
-			// 不留外边距：面板直接铺满消息列的底部，两侧和底边都顶到容器边缘。
-			className="relative shrink-0"
+			// 负边距把 AppFrame 的 p-2 和消息列与活动面板之间的 gap-2（各 8px）抵消掉：
+			// 面板要贴死窗口下沿、右侧顶到活动面板，中间留缝就又成了一张浮层。
+			className="-mr-2 -mb-2 relative shrink-0"
 			style={{ height: `${Math.round(state.heightRatio * 100)}%` }}
 			data-bottom-panel-root
 		>

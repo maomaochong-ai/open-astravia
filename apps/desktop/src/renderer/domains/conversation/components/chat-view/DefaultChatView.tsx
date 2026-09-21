@@ -84,7 +84,12 @@ export function DefaultChatView({
 					<ChatExportHost messages={messages} title={exportState.title} onFinished={exportState.onFinished} />
 				) : null}
 				<div className="flex min-h-0 flex-1 gap-2 overflow-visible">
-					<div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+					{/*
+					 * 用 clip + 8px clip-margin 代替 overflow-hidden：底部面板要贴到窗口下沿、
+					 * 右侧要顶到活动面板，得越过 AppFrame 的 p-2 和这一行的 gap-2（各 8px），
+					 * 而消息流本身仍然需要被裁住。
+					 */}
+					<div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-clip [overflow-clip-margin:8px]">
 						{subHeader}
 						{children}
 						{/*
