@@ -173,7 +173,7 @@ describe("buildRemoteScript", () => {
 describe("buildListDirectoryCommand", () => {
 	it("按远端 stat 方言选格式，不在远端用 || 试错", () => {
 		// 试错会在第一条命令部分成功时给出半截输出，解析不出来也发现不了。
-		expect(buildListDirectoryCommand("/srv", "gnu")).toContain("--printf=");
+		expect(buildListDirectoryCommand("/srv", "gnu")).toContain("stat -c '");
 		expect(buildListDirectoryCommand("/srv", "bsd")).toContain("-f ");
 		expect(buildListDirectoryCommand("/srv", "gnu")).not.toContain("||");
 	});
@@ -235,6 +235,27 @@ describe("buildWriteFileCommand（在真实 /bin/sh 上执行）", () => {
 		const dir = mkdtempSync(join(tmpdir(), "vetta-write-"));
 		expect(() => write(join(dir, "missing", "a.txt"), "x")).toThrow();
 		expect(readdirSync(dir)).toEqual([]);
+	});
+});
+
+describe("stat 的格式串对精简系统同样有效", () => {
+	const gnuCommands = [buildStatCommand("/srv/app", "gnu"), buildListDirectoryCommand("/srv/app", "gnu")];
+
+	it("GNU 侧用 -c 而不是 --printf——busybox 的 stat 不认后者", () => {
+		// 回归：远端是 Alpine 这类 busybox 系统时，`--printf` 报 unrecognized option，
+		// 文件树全空、读写全报文件不存在。`-c` 两家都认。
+		for (const command of gnuCommands) {
+			expect(command).not.toContain("--printf");
+			expect(command).toMatch(/stat(?: -L)? -c '/);
+		}
+	});
+
+	it("字段分隔用真实制表符，而不是反斜杠 t——只有 --printf 会解释转义", () => {
+		for (const command of [...gnuCommands, buildStatCommand("/srv/app", "bsd")]) {
+			expect(command).toContain("\t");
+			// 字面的反斜杠加 t 会被 -c 与 -f 原样输出，整行随即解析不出字段。
+			expect(command).not.toContain("\\t");
+		}
 	});
 });
 

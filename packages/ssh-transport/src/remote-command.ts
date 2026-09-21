@@ -137,12 +137,16 @@ const FORCE_C_LOCALE = "env LC_ALL=C LANG=C";
 /**
  * stat 的格式串。名字放最后一个字段，因为文件名可以包含制表符。
  *
- * 两家对转义的处理不同：GNU `--printf` 解释 `\\t`，BSD `-f` **不解释**，会原样输出
- * 反斜杠加 t，整行随即解析不出任何字段。BSD 这边因此直接嵌入真正的制表符；换行由
- * BSD stat 自己在每条记录后补上。
+ * 两处都嵌入**真正的制表符**，不写反斜杠 t：只有 GNU 的 `--printf` 会解释反斜杠转义，
+ * BSD 的 `-f` 与 busybox 的 `-c` 都原样输出反斜杠加 t，整行随即解析不出任何字段。
+ *
+ * GNU 侧用 `-c` 而不是 `--printf`：busybox 的 stat 只认 `-c`，`--printf` 会直接报
+ * unrecognized option——远端是 Alpine 这类精简系统时，文件树全空、读写全报文件不存在。
+ * 两者的差别只有「不解释转义」和「每条记录后自带换行」，在这里都正合适。已在 GNU
+ * coreutils 9.1 与 busybox 1.37 上核对过两种写法的输出逐字节一致。
  */
 function statFormat(flavor: RemoteStatFlavor): string {
-	return flavor === "gnu" ? `--printf='%F\\t%s\\t%Y\\t%n\\n'` : `-f '%HT\t%z\t%m\t%N'`;
+	return flavor === "gnu" ? `-c '%F	%s	%Y	%n'` : `-f '%HT	%z	%m	%N'`;
 }
 
 /**
