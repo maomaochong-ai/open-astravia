@@ -11,6 +11,14 @@ import type {
 } from "./types";
 
 const DRAG_MIME = "application/vetta-path";
+const DECORATION_COLORS = {
+	foreground: "text-foreground",
+	muted: "text-muted-foreground",
+	accent: "text-primary",
+	success: "text-emerald-400",
+	warning: "text-amber-400",
+	error: "text-destructive",
+} as const;
 
 export interface FileTreeNodeViewProps {
 	/** DOM id referenced by the tree's `aria-activedescendant`; rows themselves are not focusable. */
@@ -252,6 +260,7 @@ export function FileTreeNodeView({
 			)}
 			style={{ paddingLeft: `${depth * 16 + 6}px` }}
 			title={decoration?.tooltip}
+			aria-description={decoration?.tooltip}
 		>
 			{entry.isDirectory ? (
 				<span
@@ -293,9 +302,9 @@ export function FileTreeNodeView({
 				/>
 			) : (
 				<>
-					<span className="min-w-0 flex-1 truncate">{entry.name}</span>
+					<span className={cn("min-w-0 flex-1 truncate", decoration?.color && DECORATION_COLORS[decoration.color], decoration?.faded && "opacity-60", decoration?.strikethrough && "line-through")}>{entry.name}</span>
 					{decoration?.badge ? (
-						<span className="max-w-8 shrink-0 truncate rounded-full bg-accent px-1.5 text-[10px] text-muted-foreground">
+						<span className={cn("max-w-8 shrink-0 truncate rounded-full bg-accent px-1.5 text-[10px]", decoration?.color ? DECORATION_COLORS[decoration.color] : "text-muted-foreground")}>
 							{decoration.badge}
 						</span>
 					) : null}

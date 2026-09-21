@@ -4,6 +4,8 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ## [Unreleased]
 
+- 文件浏览器装饰新增语义 `color`、`faded`、`strikethrough`、父目录 `propagate` 与 `onDidChangeDecorations` 精确失效事件；新增用户可选的 `registerIconTheme`，支持精确文件名、复合扩展名、文件夹展开态及浅色/深色/高对比覆盖。旧 `icon` / `badge` / `tooltip` provider 保持兼容。使用新合同的插件应声明 Plugin API `^2.7.0`。
+
 - Activity Tab、新会话上下文、输入动作、消息卡片 renderer 与文件浏览器操作在未声明 `icon` 时统一继承 `plugin.json#icon`；各贡献仍可用自己的 `icon` 覆盖，显式 `null` 保持无图标。`CardDescriptor.icon` 现在也会按既有合同覆盖 renderer 默认图标。纯运行期默认行为调整，不涉及清单字段，`pluginApiVersion` 不变。
 
 - Official plugin installation options accept the reserved `initiator` diagnostic marker used by `plugin-cli` and Plugin Workbench. Desktop records it in local ability lifecycle logs; third-party plugins should leave it unset.

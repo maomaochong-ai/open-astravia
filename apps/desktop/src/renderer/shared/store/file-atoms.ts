@@ -1,4 +1,20 @@
 import { atom } from "jotai";
+import {
+	FILE_EXPLORER_PREFERENCES_KEY,
+	type FileExplorerPreferences,
+	normalizeFileExplorerPreferences,
+	readFileExplorerPreferences,
+} from "../lib/file-explorer-preferences";
+
+const fileExplorerPreferencesStateAtom = atom(readFileExplorerPreferences());
+export const fileExplorerPreferencesAtom = atom(
+	(get) => get(fileExplorerPreferencesStateAtom),
+	(_get, set, value: FileExplorerPreferences) => {
+		const preferences = normalizeFileExplorerPreferences(value);
+		localStorage.setItem(FILE_EXPLORER_PREFERENCES_KEY, JSON.stringify(preferences));
+		set(fileExplorerPreferencesStateAtom, preferences);
+	},
+);
 
 export interface FsEntry {
 	name: string;

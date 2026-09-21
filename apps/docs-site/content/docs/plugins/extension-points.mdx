@@ -47,10 +47,12 @@ description: 按产品目标选择界面、文件、Agent、Provider 或 App Act
 | --- | --- | --- |
 | 右键菜单动作 | `registerContextMenuAction` | `ui.file-explorer.context-menu` |
 | 工具栏动作 | `registerToolbarAction` | `ui.file-explorer.toolbar` |
-| 文件装饰（角标、颜色） | `registerDecorationProvider` | `ui.file-explorer.decorations` |
+| 文件状态装饰（角标、语义色、淡化、删除线、父目录聚合） | `registerDecorationProvider` | `ui.file-explorer.decorations` |
+| 文件图标主题（文件名、扩展名、文件夹与明暗模式） | `registerIconTheme` | `ui.file-explorer.decorations` |
 | 读取根目录、选择、定位与刷新 | `getWorkspaceRoots`、`getSelection`、`reveal`、`refresh`、`onDidChangeSelection`、`onDidChangeFiles` | `workspace.read` |
 
 文件解析和界面渲染应分离，解析失败时返回可理解的错误状态，不要让单个文件使整个会话视图崩溃。
+动态状态通过 `onDidChangeDecorations` 精确失效，不需要刷新文件系统。图标主题由用户在文件列表里选择；插件只能使用宿主语义色和声明式图标关联，不能改文件行的任意 CSS、布局或排序。新装饰能力要求 Plugin API `^2.7.0`。
 
 ## Agent 扩展点
 

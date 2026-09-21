@@ -177,7 +177,7 @@ export async function readFilesystemDirectory(dirPath: string): Promise<FsEntry[
 	const entries = await readdir(resolved, { withFileTypes: true });
 	const results: FsEntry[] = [];
 	for (const entry of entries) {
-		if (HIDDEN_FILES.has(entry.name) || entry.name.startsWith(".")) continue;
+		// Presentation filters belong to the file explorer; dotfiles are ordinary project files.
 		// 「对话」根下的会话工作区目录是内部状态，不进入 UI 列举（ADR-0007 修订）。
 		if (entry.isDirectory() && isConversationWorkspaceDirEntry(resolved, entry.name)) continue;
 		const fullPath = join(resolved, entry.name);

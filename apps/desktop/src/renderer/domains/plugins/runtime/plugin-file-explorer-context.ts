@@ -6,6 +6,7 @@ import type {
 	PluginFileExplorerContextMenuContribution,
 	PluginFileExplorerDecorationProvider,
 	PluginFileExplorerToolbarContribution,
+	PluginFileIconTheme,
 } from "@vetta-org/plugin-sdk";
 import {
 	getPluginFileExplorerSelection,
@@ -15,7 +16,8 @@ import {
 	refreshPluginFileExplorer,
 	revealPluginFileExplorerPath,
 } from "./plugin-file-explorer-host";
-import type { PluginLocalContributions } from "./plugin-local-contributions";
+import { validateFileExplorerWhen, validateFileIconTheme } from "./plugin-file-explorer-validation";
+import type { PluginLocalContributions, ResolvedFileExplorerDecorationProvider } from "./plugin-local-contributions";
 import { createPluginPermissionApi as createPermissionApi } from "./plugin-permissions";
 
 export interface CreatePluginFileExplorerApiOptions {
@@ -48,6 +50,7 @@ export function createPluginFileExplorerApi({
 		}
 		const normalized: PluginFileExplorerContextMenuContribution = {
 			...contribution,
+			when: validateFileExplorerWhen(contribution.when),
 			id: `${plugin.id}:${contribution.id.trim()}`,
 			label: contribution.label.trim(),
 			icon: resolvePluginContributionIcon(contribution.icon, plugin.iconUrl),
@@ -97,19 +100,72 @@ export function createPluginFileExplorerApi({
 		if (typeof contribution.provideDecoration !== "function") {
 			throw new Error("File explorer decoration provider is required");
 		}
-		const normalized: PluginFileExplorerDecorationProvider = {
+		if (contribution.priority !== undefined && !Number.isFinite(contribution.priority))
+			throw new Error("Invalid decoration priority");
+		if (
+			contribution.onDidChangeDecorations !== undefined &&
+			typeof contribution.onDidChangeDecorations !== "function"
+		)
+			throw new Error("Invalid decoration change event");
+		const normalized: ResolvedFileExplorerDecorationProvider = {
 			...contribution,
+			when: validateFileExplorerWhen(contribution.when),
+			changedEntries: new Map(),
 			id: `${plugin.id}:${contribution.id.trim()}`,
 		};
+		let disposed = false;
+		const subscription = contribution.onDidChangeDecorations?.((entries) => {
+			if (disposed) return;
+			if (entries === undefined) normalized.changedEntries.clear();
+			else {
+				if (!Array.isArray(entries)) throw new Error("Invalid decoration change entries");
+				for (const entry of entries) {
+					if (
+						!entry ||
+						typeof entry.path !== "string" ||
+						typeof entry.name !== "string" ||
+						typeof entry.isDirectory !== "boolean" ||
+						!Number.isFinite(entry.size) ||
+						!Number.isFinite(entry.modifiedAt)
+					)
+						throw new Error("Invalid decoration change entry");
+				}
+				for (const entry of entries) normalized.changedEntries.set(entry.path, { ...entry });
+			}
+			onChanged();
+		});
+		if (contribution.onDidChangeDecorations && (!subscription || typeof subscription.dispose !== "function"))
+			throw new Error("Decoration change subscription must be disposable");
 		fileExplorerDecorationProviders.push(normalized);
 		onChanged();
-		return {
-			dispose: () => {
-				const index = fileExplorerDecorationProviders.indexOf(normalized);
-				if (index >= 0) fileExplorerDecorationProviders.splice(index, 1);
-				onChanged();
-			},
+		const dispose = () => {
+			if (disposed) return;
+			disposed = true;
+			subscription?.dispose();
+			normalized.changedEntries.clear();
+			const index = fileExplorerDecorationProviders.indexOf(normalized);
+			if (index >= 0) fileExplorerDecorationProviders.splice(index, 1);
+			onChanged();
 		};
+		disposers.push(dispose);
+		return { dispose };
+	};
+	const registerIconTheme = (contribution: PluginFileIconTheme): Disposable => {
+		createPermissionApi(plugin).require("ui.file-explorer.decorations");
+		const theme = validateFileIconTheme(contribution);
+		theme.id = `${plugin.id}:${theme.id}`;
+		if (contributions.fileIconThemes.some((item) => item.id === theme.id))
+			throw new Error("Duplicate file icon theme id");
+		contributions.fileIconThemes.push(theme);
+		onChanged();
+		const dispose = () => {
+			const index = contributions.fileIconThemes.indexOf(theme);
+			if (index < 0) return;
+			contributions.fileIconThemes.splice(index, 1);
+			onChanged();
+		};
+		disposers.push(dispose);
+		return { dispose };
 	};
 	return {
 		getWorkspaceRoots: () => {
@@ -143,5 +199,6 @@ export function createPluginFileExplorerApi({
 		registerContextMenuAction: registerFileExplorerContextMenuAction,
 		registerToolbarAction: registerFileExplorerToolbarAction,
 		registerDecorationProvider: registerFileExplorerDecorationProvider,
+		registerIconTheme,
 	};
 }

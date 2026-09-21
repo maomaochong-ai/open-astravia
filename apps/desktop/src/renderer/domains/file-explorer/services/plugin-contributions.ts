@@ -1,3 +1,4 @@
+import { isSubPath, pathDirname } from "@shared/lib/utils";
 import type {
 	RegisteredFileExplorerContextMenuAction,
 	RegisteredFileExplorerDecorationProvider,
@@ -8,6 +9,7 @@ import type {
 	PluginFileExplorerEntry,
 	PluginFileExplorerWhen,
 } from "@vetta-org/plugin-sdk";
+import { validateFileExplorerDecoration } from "../../plugins/runtime/plugin-file-explorer-validation";
 
 function extensionOf(name: string): string {
 	const index = name.lastIndexOf(".");
@@ -41,16 +43,56 @@ export function sortFileExplorerActions<
 export function resolveFileExplorerDecoration(
 	entry: PluginFileExplorerEntry,
 	providers: readonly RegisteredFileExplorerDecorationProvider[],
-): { pluginId: string; decoration: PluginFileExplorerDecoration } | null {
+): { pluginId: string; priority: number; decoration: PluginFileExplorerDecoration } | null {
 	const ordered = [...providers].sort((left, right) => (right.priority ?? 0) - (left.priority ?? 0));
 	for (const provider of ordered) {
 		if (!matchesFileExplorerWhen(entry, provider.when)) continue;
 		try {
-			const decoration = provider.provideDecoration({ ...entry });
-			if (decoration) return { pluginId: provider.pluginId, decoration };
+			const decoration = validateFileExplorerDecoration(provider.provideDecoration({ ...entry }));
+			if (decoration) return { pluginId: provider.pluginId, priority: provider.priority ?? 0, decoration };
 		} catch (error) {
 			console.error(`Plugin ${provider.pluginId} file decoration provider failed`, error);
 		}
 	}
 	return null;
+}
+
+/** Resolve status once per snapshot; propagation never scans disk or crosses workspace roots. */
+export function createFileExplorerDecorations(
+	root: string,
+	cache: ReadonlyMap<string, readonly PluginFileExplorerEntry[]>,
+	providers: readonly RegisteredFileExplorerDecorationProvider[],
+): Map<string, NonNullable<ReturnType<typeof resolveFileExplorerDecoration>>> {
+	const entries = new Map<string, PluginFileExplorerEntry>();
+	for (const provider of providers)
+		for (const entry of provider.changedEntries?.values() ?? []) {
+			if (isSubPath(entry.path, root)) entries.set(entry.path, entry);
+		}
+	for (const children of cache.values()) for (const entry of children) entries.set(entry.path, entry);
+	const result = new Map<string, NonNullable<ReturnType<typeof resolveFileExplorerDecoration>>>();
+	for (const entry of entries.values()) {
+		const resolved = resolveFileExplorerDecoration(entry, providers);
+		if (resolved) result.set(entry.path, resolved);
+	}
+	const propagated = new Map<string, NonNullable<ReturnType<typeof resolveFileExplorerDecoration>>>();
+	for (const [path, resolved] of result) {
+		if (!resolved.decoration.propagate) continue;
+		let parent = pathDirname(path);
+		while (parent !== root && isSubPath(parent, root)) {
+			const previous = propagated.get(parent);
+			if (!previous || resolved.priority > previous.priority) {
+				const { badge, color, tooltip } = resolved.decoration;
+				propagated.set(parent, {
+					pluginId: resolved.pluginId,
+					priority: resolved.priority,
+					decoration: { badge, color, tooltip },
+				});
+			}
+			const next = pathDirname(parent);
+			if (next === parent) break;
+			parent = next;
+		}
+	}
+	for (const [path, decoration] of propagated) if (!result.has(path)) result.set(path, decoration);
+	return result;
 }

@@ -5,7 +5,9 @@ import type {
 	PluginCardRendererContribution,
 	PluginFileExplorerContextMenuContribution,
 	PluginFileExplorerDecorationProvider,
+	PluginFileExplorerEntry,
 	PluginFileExplorerToolbarContribution,
+	PluginFileIconTheme,
 	PluginFilePreviewContribution,
 	PluginInputActionContribution,
 	PluginLocales,
@@ -68,11 +70,16 @@ export interface RegisteredFileExplorerToolbarAction extends PluginFileExplorerT
 export interface RegisteredFileExplorerDecorationProvider extends PluginFileExplorerDecorationProvider {
 	pluginId: string;
 	providerId: string;
+	changedEntries?: ReadonlyMap<string, PluginFileExplorerEntry>;
 }
 
 export const pluginFileExplorerContextMenuActionsAtom = atom<RegisteredFileExplorerContextMenuAction[]>([]);
 export const pluginFileExplorerToolbarActionsAtom = atom<RegisteredFileExplorerToolbarAction[]>([]);
 export const pluginFileExplorerDecorationProvidersAtom = atom<RegisteredFileExplorerDecorationProvider[]>([]);
+export interface RegisteredFileIconTheme extends PluginFileIconTheme {
+	pluginId: string;
+}
+export const pluginFileIconThemesAtom = atom<RegisteredFileIconTheme[]>([]);
 
 /** An activity-tab contribution registered by a loaded plugin（可添加池条目）. */
 export interface RegisteredActivityTab {

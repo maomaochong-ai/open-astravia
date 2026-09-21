@@ -10,7 +10,7 @@
 | --- | --- |
 | `ui.file-explorer.context-menu` | 注册文件或目录右键菜单动作 |
 | `ui.file-explorer.toolbar` | 注册文件列表顶部工具栏动作 |
-| `ui.file-explorer.decorations` | 注册图标、徽标和提示信息提供者 |
+| `ui.file-explorer.decorations` | 注册状态装饰和可选文件图标主题 |
 | `workspace.read` | 查询根目录/选中项、定位、刷新和订阅事件 |
 
 上述 API 缺权限时会抛 `Plugin permission denied: <permission>`。它们不会隐式授予 `fs.read` 或 `fs.write`。
@@ -64,8 +64,9 @@ ctx.fileExplorer.registerToolbarAction({
 
 ## 文件装饰
 
-文件装饰不是插件入口：它的 `icon` 会替换某个具体文件或目录的内置图标，因此不会从
-`plugin.json#icon` 自动继承；只有 provider 明确返回 `icon` 时才替换。
+文件装饰不是插件入口：它不会从 `plugin.json#icon` 自动继承。它适合表达 Git、诊断、同步等
+会动态变化的状态；图标主题则负责文件类型与文件夹外观。两者独立解析，所以用户选择图标主题后，
+状态徽标、颜色和提示仍会保留。
 
 ```tsx
 ctx.fileExplorer.registerDecorationProvider({
@@ -78,18 +79,61 @@ ctx.fileExplorer.registerDecorationProvider({
     return {
       badge: status,
       tooltip: `%explorer.gitStatus.${status}%`,
+      color: status === "M" ? "warning" : "success",
+      propagate: true,
     };
+  },
+  onDidChangeDecorations(listener) {
+    return gitStatusStore.subscribe((entries) => listener(entries));
   },
 });
 ```
 
-`provideDecoration` 在文件树渲染时同步调用，必须快速且无副作用。网络、命令和文件读取应提前完成并缓存在插件内；状态变化后可调用 `ctx.fileExplorer.refresh()` 触发目录刷新。多个提供者命中时，宿主采用 `priority` 最高且返回非空结果的提供者。
+`provideDecoration` 在文件树渲染时同步调用，必须快速且无副作用。网络、命令和文件读取应提前完成并缓存在插件内。状态变化时用 `onDidChangeDecorations` 通知宿主重新计算，不需要为改一个徽标刷新文件系统；事件也可以携带尚未展开的后代条目，让父目录提前显示聚合状态。传 `undefined` 表示全部失效。多个提供者命中时，宿主采用 `priority` 最高且返回非空结果的提供者。
 
 装饰可返回：
 
-- `icon`: 替换内置文件/文件夹图标的 React 节点
+- `icon`: 兼容旧插件的单条目图标覆盖；新插件优先注册图标主题
 - `badge`: 文件名后的紧凑状态文本，建议一到两个字符
 - `tooltip`: 文件行提示信息
+- `color`: `foreground`、`muted`、`accent`、`success`、`warning` 或 `error` 语义色
+- `faded`: 降低文件名透明度
+- `strikethrough`: 给文件名加删除线
+- `propagate`: 将该状态聚合到当前工作区内的父目录
+
+插件不能注入任意 CSS，也不能改变行高、字体、缩进、排序或交互区域；这些仍由宿主控制，以保证主题、可访问性和虚拟列表稳定。
+
+## 文件图标主题
+
+图标主题采用类似 VS Code 的声明式关联，但图标值仍是共享 React 运行时中的节点。主题可以为默认文件/文件夹、精确文件名、扩展名、文件夹名和展开状态设置图标，并为浅色、深色和高对比模式提供覆盖。用户在文件列表的显示设置中显式选择主题；插件停用后宿主回退到内置图标，重新启用时会恢复用户原来的选择。
+
+```tsx
+ctx.fileExplorer.registerIconTheme({
+  id: "product-icons",
+  label: "Product Icons",
+  iconDefinitions: {
+    file: <FileIcon />,
+    folder: <FolderIcon />,
+    folderOpen: <FolderOpenIcon />,
+    typescript: <TypeScriptIcon />,
+    config: <ConfigIcon />,
+  },
+  file: "file",
+  folder: "folder",
+  folderExpanded: "folderOpen",
+  fileNames: {
+    "package.json": "config",
+  },
+  fileExtensions: {
+    ts: "typescript",
+    "d.ts": "typescript",
+  },
+});
+```
+
+关联优先级为精确文件名、最长复合扩展名（如 `d.ts`）、普通扩展名、默认文件图标；文件夹按精确名称后回退默认图标。名称匹配不区分大小写。所有引用必须指向同一主题的 `iconDefinitions`，无效输入会在注册边界直接报错。
+
+状态装饰事件、语义样式和 `registerIconTheme` 要求插件声明 `pluginApiVersion: ^2.7.0`，旧的 `icon` / `badge` / `tooltip` provider 保持兼容。
 
 ## 工作区、选择与定位
 

@@ -15,6 +15,7 @@ function loadedPlugin(): LoadedPlugin {
 		fileExplorerContextMenuActions: [],
 		fileExplorerToolbarActions: [],
 		fileExplorerDecorationProviders: [],
+		fileIconThemes: [],
 		activityTabs: [],
 		inputActions: [],
 		newSessionContexts: [],

@@ -116,6 +116,19 @@
 		}
 	},
 	"fileExplorer": {
+		"display": {
+			"invalidPatterns": "最多可填写 100 条规则，每条不超过 1024 个字符",
+			"title": "文件显示设置",
+			"showHidden": "显示以点开头的文件和文件夹",
+			"exclude": "隐藏规则",
+			"excludeHint": "每行一条，按项目相对路径匹配，例如 **/node_modules 或 **/*.log。清空可显示全部普通文件。",
+			"iconTheme": "文件图标主题",
+			"builtin": "内置图标",
+			"unavailable": "所选主题不可用（暂用内置图标）",
+			"apply": "应用隐藏规则",
+			"reset": "恢复默认显示",
+			"saveFailed": "无法保存显示设置，请重试"
+		},
 		"clearArtifactsTitle": "清空产物",
 		"clearArtifactsMessage": "将删除 {{label}} 项目 cwd 下的全部产物文件（保留会话记录），此操作不可恢复。",
 		"clearArtifactsConfirm": "清空",
