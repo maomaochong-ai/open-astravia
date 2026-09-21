@@ -30,6 +30,48 @@ export interface SpawnProcessOptions {
 	readonly env: Record<string, string> | undefined;
 }
 
+/**
+ * 在远程项目所在的机器上找一个空闲端口。
+ *
+ * 用 node 而不是 shell：要可靠地判断「这个端口现在没人用」，只有真的 bind 一次才算数，
+ * 而 POSIX 工具里没有可移植的办法做到。会走到这里的场景（预览服务器）本来就需要远端有 node。
+ */
+export async function allocateRemotePort(projectUri: string): Promise<number> {
+	const location = parseProjectLocation(projectUri);
+	if (location.kind !== "ssh") throw new Error(`Not a remote project path: ${projectUri}`);
+	const chunks: Uint8Array[] = [];
+	const script =
+		"const s=require('net').createServer();" +
+		"s.listen(0,'127.0.0.1',()=>{const p=s.address().port;s.close(()=>{process.stdout.write(String(p))})})";
+	const result = await getSshConnection(location.hostId).exec(`node -e ${quote(script)}`, {
+		cwd: location.remotePath,
+		onStdout: (chunk) => chunks.push(chunk),
+	});
+	const port = Number.parseInt(Buffer.concat(chunks).toString("utf8").trim(), 10);
+	if (result.exitCode !== 0 || !Number.isInteger(port) || port <= 0) {
+		throw new Error(`Cannot allocate a port on the remote host; is node installed there? (exit ${result.exitCode})`);
+	}
+	return port;
+}
+
+/**
+ * 把远端端口接到本机端口上，返回撤销函数。
+ *
+ * 插件拿到的始终是一个**本机**可连的端口号——界面只能连本机。远端跑着的预览服务器由这条
+ * 转发接过来，插件不必知道自己的进程在哪台机器上。
+ */
+export async function forwardRemotePort(
+	projectUri: string,
+	localPort: number,
+	remotePort: number,
+): Promise<() => void> {
+	const location = parseProjectLocation(projectUri);
+	if (location.kind !== "ssh") throw new Error(`Not a remote project path: ${projectUri}`);
+	const connection = getSshConnection(location.hostId);
+	await connection.forwardPort(localPort, remotePort);
+	return () => void connection.cancelPortForward(localPort, remotePort);
+}
+
 /** 按 cwd 的归属决定进程在哪台机器上启动。 */
 export function startProcess(options: SpawnProcessOptions): SpawnedProcess {
 	return options.cwd !== undefined && isSshProjectUri(options.cwd)

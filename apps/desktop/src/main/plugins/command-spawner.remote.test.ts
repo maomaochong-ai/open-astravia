@@ -55,15 +55,40 @@ describe("插件的长驻进程与远程项目", () => {
 		);
 	});
 
-	it("要本机端口的进程仍然明确拒绝：搬到远端则界面连不上它", async () => {
+	it("要端口的进程：端口在远端分配，再转发回本机——插件拿到的始终是本机可连的那个", async () => {
+		// 界面只能连本机端口，而服务器必须跑在项目所在的机器上。宿主把这两件事接起来，
+		// 插件不必知道自己的进程在哪。
 		const project = createRemoteProject();
+		const forwards: { localPort: number; remotePort: number }[] = [];
+		const cancelled: { localPort: number; remotePort: number }[] = [];
+		connection.forwardPort = async (localPort: number, remotePort: number) => {
+			forwards.push({ localPort, remotePort });
+		};
+		connection.cancelPortForward = async (localPort: number, remotePort: number) => {
+			cancelled.push({ localPort, remotePort });
+		};
 
-		await expect(
-			spawnPluginCommand("demo", "npm", ["run", "dev", "--port", "{{PORT}}"], {
-				cwd: project.uri,
-				allocatePort: true,
-			}),
-		).rejects.toThrow(/needs a local port.*does not support remote projects|does not support remote projects/);
+		const started = await spawnPluginCommand("demo", "sh", ["-c", "echo port=$MY_PORT; sleep 30"], {
+			cwd: project.uri,
+			allocatePort: true,
+			env: { MY_PORT: "{{PORT}}" },
+		});
+
+		expect(started.port).toBeGreaterThan(0);
+		expect(forwards).toHaveLength(1);
+		expect(forwards[0].localPort).toBe(started.port);
+		// 进程拿到的是远端那个端口，与插件看到的本机端口不是同一个。
+		expect(forwards[0].remotePort).not.toBe(started.port);
+		await vi.waitFor(
+			() =>
+				expect(getPluginCommandSpawnStatus("demo", started.spawnId).recentOutput).toContain(
+					`port=${forwards[0].remotePort}`,
+				),
+			{ timeout: 15_000 },
+		);
+
+		await stopPluginCommandSpawn("demo", started.spawnId);
+		expect(cancelled).toEqual(forwards);
 	});
 
 	it("停止远端进程后状态转为已结束", async () => {

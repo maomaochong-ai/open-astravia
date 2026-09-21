@@ -1,11 +1,11 @@
 import { createServer } from "node:net";
-import { isSshProjectUri, RemoteProjectNotSupportedError } from "@vetta/ssh-transport";
+import { isSshProjectUri } from "@vetta/ssh-transport";
 import { webContents } from "electron";
 import type { InstalledPlugin, PluginCommandSpawnStatus } from "../../preload/api-types/plugins.js";
 import { PLUGIN_EXECUTION_CHANNELS } from "../../shared/plugin-ipc.js";
 import { getAppLogger } from "../logger.js";
 import { listPlugins } from "./plugin-catalog.js";
-import { type SpawnedProcess, startProcess } from "./spawned-process.js";
+import { allocateRemotePort, forwardRemotePort, type SpawnedProcess, startProcess } from "./spawned-process.js";
 
 const spawnLog = getAppLogger("plugin");
 
@@ -27,6 +27,7 @@ interface SpawnRecord {
 	file: string;
 	process: SpawnedProcess;
 	port?: number;
+	cancelForward?: () => void;
 	output: string[];
 	outputBytes: number;
 	exit?: { exitCode: number | null; signal: string | null };
@@ -160,23 +161,22 @@ export async function spawnPluginCommand(
 	// 长驻进程（dev server、预览引擎）靠本机端口与渲染进程通信，项目在远端时它读不到项目
 	// 文件，搬到远端执行则本机连不上它的端口。明确拒绝，而不是让 spawn 以一句看似「本机
 	// 没装 node」的 ENOENT 失败。
-	// 只有声明要本机端口的才真的没法远程：那类进程（dev server、预览引擎）靠端口与界面
-	// 通信，搬到远端则本机连不上。其余长跑命令（npm install、构建）必须在项目所在的机器
-	// 上执行，否则它看不到任何项目文件——交给下面按 cwd 归属分流。
-	if (options?.allocatePort === true && cwd !== undefined && isSshProjectUri(cwd)) {
-		throw new RemoteProjectNotSupportedError(`plugin command "${file}" (needs a local port)`, cwd);
-	}
-
+	// 插件拿到的 port 永远是一个**本机**可连的端口——界面只能连本机。进程在远端时，端口在
+	// 远端分配、`{{PORT}}` 替换成远端那个，再把它转发回本机；插件不必知道这些。
+	const remote = options?.allocatePort === true && cwd !== undefined && isSshProjectUri(cwd) ? cwd : undefined;
 	let port: number | undefined;
+	let cancelForward: (() => void) | undefined;
 	if (options?.allocatePort === true) {
 		port = await allocateFreePort();
-		const portText = String(port);
+		const processPort = remote ? await allocateRemotePort(remote) : port;
+		const portText = String(processPort);
 		normalizedArgs = normalizedArgs.map((arg) => arg.split(PORT_PLACEHOLDER).join(portText));
 		if (env) {
 			env = Object.fromEntries(
 				Object.entries(env).map(([key, value]) => [key, value.split(PORT_PLACEHOLDER).join(portText)]),
 			);
 		}
+		if (remote) cancelForward = await forwardRemotePort(remote, port, processPort);
 	}
 
 	const spawned = startProcess({ file, args: normalizedArgs, cwd, env });
@@ -188,6 +188,7 @@ export async function spawnPluginCommand(
 		file,
 		process: spawned,
 		port,
+		cancelForward,
 		output: [],
 		outputBytes: 0,
 	};
@@ -196,6 +197,7 @@ export async function spawnPluginCommand(
 	spawned.onOutput((chunk: Buffer) => appendOutput(record, chunk));
 	spawned.onExit((exitCode, signal) => {
 		record.exit = { exitCode, signal };
+		record.cancelForward?.();
 		spawnLog.info("plugin spawn exited", { pluginId, spawnId, file, exitCode, signal });
 		broadcastSpawnExit(record);
 		record.cleanupTimer = setTimeout(() => records.delete(spawnId), EXITED_RECORD_TTL_MS);
@@ -206,6 +208,7 @@ export async function spawnPluginCommand(
 		await spawned.whenStarted();
 	} catch (error) {
 		records.delete(spawnId);
+		cancelForward?.();
 		spawnLog.warn("plugin spawn failed", { pluginId, file, error: String(error) });
 		throw error;
 	}
