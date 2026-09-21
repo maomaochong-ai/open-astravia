@@ -1,5 +1,6 @@
 import { AppBootLoadingView } from "@vetta-org/theme-ui/app-boot";
 import { createRoot } from "react-dom/client";
+import { installInactiveWindowAnimationPause } from "./shared/lib/inactive-window-animations";
 import { applyPlatformAttribute } from "./shared/lib/platform";
 import { applyInitialTheme } from "./shared/theme/apply";
 import { applyStoredCursorStyle } from "./shared/theme/cursor";
@@ -16,6 +17,8 @@ applyPlatformAttribute();
 applyInitialTheme();
 applyStoredCursorStyle();
 applyStoredSidebarStyle();
+// 窗口不在前台时停掉无限循环的动画：毛玻璃窗口每出一帧都很贵，没人看的时候不该为它付费。
+installInactiveWindowAnimationPause();
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {
