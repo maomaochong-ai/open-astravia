@@ -7,7 +7,7 @@ import type { SshProcessChannel } from "./process-runner.js";
  * 协议版本是语义化版本号而不是构建哈希（ADR-0124）：远端可能还留着旧版本 helper 起的
  * 任务，新客户端必须仍能连上去接管它们。
  */
-export const HELPER_PROTOCOL_VERSION = "1.0.0";
+export const HELPER_PROTOCOL_VERSION = "1.1.0";
 
 /** helper 明确回答了「不行」。与「问不到」（通道断了）是两种失败。 */
 export class SshHelperError extends Error {

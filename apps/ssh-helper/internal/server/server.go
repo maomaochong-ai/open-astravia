@@ -26,6 +26,7 @@ type Options struct {
 type Server struct {
 	stateDir string
 	watcher  *watcher
+	ptys     *ptyManager
 	writeMu  sync.Mutex
 	out      *bufio.Writer
 	methods  map[string]func(json.RawMessage) (any, *protocol.Error)
@@ -40,6 +41,7 @@ func New(options Options) *Server {
 	s.watcher = newWatcher(interval, func(path string) {
 		s.send(protocol.Notification{Method: "watch.changed", Params: map[string]string{"path": path}})
 	})
+	s.ptys = newPtyManager(s.send)
 	s.methods = map[string]func(json.RawMessage) (any, *protocol.Error){
 		"hello":             bind(s.hello),
 		"fs.stat":           bind(fsStat),
@@ -61,6 +63,11 @@ func New(options Options) *Server {
 		"proc.read":         bind(s.procRead),
 		"proc.kill":         bind(s.procKill),
 		"proc.remove":       bind(s.procRemove),
+		"pty.open":          bind(s.ptys.open),
+		"pty.write":         bind(s.ptys.write),
+		"pty.resize":        bind(s.ptys.resize),
+		"pty.close":         bind(s.ptys.close),
+		"pty.list":          bind(s.ptys.list),
 	}
 	return s
 }
@@ -95,6 +102,8 @@ func (s *Server) hello(_ struct{}) (any, *protocol.Error) {
 func (s *Server) Serve(in io.Reader, out io.Writer) error {
 	s.out = bufio.NewWriter(out)
 	defer s.watcher.close()
+	// 通道断了就回收全部终端：pty 是连接作用域的，留着只会在远端变成孤儿 shell。
+	defer s.ptys.closeAll()
 	scanner := bufio.NewScanner(in)
 	scanner.Buffer(make([]byte, 0, 64<<10), maxFrameBytes)
 	var pending sync.WaitGroup

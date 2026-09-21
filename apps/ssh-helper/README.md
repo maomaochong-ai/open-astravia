@@ -12,7 +12,7 @@
 
 ## 设计约束
 
-- **零依赖、零安装**：只用 Go 标准库，`CGO_ENABLED=0` 静态链接，不要求远端有 Node、glibc 特定版本或任何运行时。
+- **零安装、无运行时依赖**：`CGO_ENABLED=0` 静态链接，不要求远端有 Node、glibc 特定版本或任何运行时。Go 模块依赖只有 `github.com/creack/pty`（纯 Go、无 cgo），它负责分配伪终端——各系统的 `grantpt`/`unlockpt` ioctl 差异抄一份进仓库只是把维护成本搬了个位置。
 - **不监听端口、不提权**：以登录用户身份运行，只经 stdio 通信。
 - **没有守护进程**：后台任务的全部状态落在 `~/.cache/vetta/helper/state/tasks/<id>/`（`meta.json`、`output.log`、`exit`）。任何一次之后启动的 helper 进程都能据此列出、续读、终止任务。守护进程会多出一个会崩溃的东西、一个要保护的 socket，以及守护进程与新客户端之间的版本偏差问题。
 - **任务状态固定三态** `live` / `exited` / `unverifiable`：判定 `exited` 必须有 `exit` 文件这一正面证据；进程不见了又没有 `exit` 文件（主机重启、被外部杀掉）是 `unverifiable`，不并入任何一侧。
@@ -31,6 +31,18 @@
 | `watch.subscribe` `watch.unsubscribe` | 订阅目录；变化时推送 `watch.changed` |
 | `proc.spawn` `proc.status` `proc.list` `proc.read` `proc.kill` `proc.remove` | 后台任务。`proc.read` 支持 `waitMs` 长轮询 |
 | `net.listeners` | 正在 LISTEN 的 TCP 端口，供端口转发挑选。只在 Linux 上实现（读 `/proc`）；其他系统返回 `ENOSYS`，由调用方退回 `lsof` |
+| `pty.open` `pty.write` `pty.resize` `pty.close` `pty.list` | 交互式终端。输出走 `pty.data` 通知推送，结束推 `pty.exit` |
+
+### pty 与 proc 的生命周期刻意相反
+
+`proc.*` 是「无守护进程、状态全落盘」：`setsid` 脱离 SSH 会话、输出写 `output.log`，任何后续 helper 进程都能接管。那对后台任务是对的，对终端是错的：
+
+- 终端是交互流。把它写进日志会把每个 `\r`、光标移动和全屏重绘都持久化下来——`htop` 跑几分钟就是几百 MB——而且回放不等于交互。
+- 桌面端刻意**不**让终端进程跨会话保活，没有需要接管的东西。
+
+所以一个 pty 的寿命就是打开它的那条通道：helper 退出 → 主端关闭 → 子进程收到 SIGHUP → 会话消失。重连后的 helper 报告没有任何 pty 会话，客户端据此如实告知「已断开」，而不是假装旧终端还在。
+
+通知里的 `dropped` 是远端积压超限时丢掉的字节数：读循环永不阻塞（它和所有 `fs.*` 回复共用同一把写锁），刷屏的终端只会丢最旧的输出并如实上报。
 
 错误码：`ENOENT`、`EEXIST`、`EINVAL`、`ECONFLICT`、`ENOSYS`、`EIO`。
 

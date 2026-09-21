@@ -14,7 +14,11 @@ import "encoding/json"
 // release, so an upgraded client could never reattach to a daemon that is still
 // supervising the user's running tasks. Bump the major only for changes an
 // older peer cannot ignore.
-const Version = "1.0.0"
+//
+// 1.1.0 added pty.* (interactive terminals). It is additive: an older helper
+// answers ENOSYS and the client falls back to `ssh -tt`, the same capability
+// probe net.listeners already relies on.
+const Version = "1.1.0"
 
 // Request is a client-to-helper call. ID is echoed in the matching Response.
 type Request struct {

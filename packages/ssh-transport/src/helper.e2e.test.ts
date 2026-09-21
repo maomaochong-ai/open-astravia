@@ -5,6 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { SshHelperClient } from "./helper-client.js";
+import { HELPER_PROTOCOL_VERSION } from "./helper-client.js";
 import { createLoopbackSshConnection } from "./testing.js";
 
 const helperSource = resolve(dirname(fileURLToPath(import.meta.url)), "../../../apps/ssh-helper");
@@ -43,7 +44,10 @@ describe.skipIf(!hasGo)("远端 helper（真实二进制，经回环 SSH）", ()
 		const connection = connect(diagnostics);
 		const helper = await requireHelper(connection);
 
-		await expect(helper.call("hello")).resolves.toMatchObject({ protocolVersion: "1.0.0" });
+		// 断言常量而不是字面量：协议版本每次升级都改一遍测试，只会让人顺手改掉不看。
+		await expect(helper.call("hello")).resolves.toMatchObject({
+			protocolVersion: HELPER_PROTOCOL_VERSION,
+		});
 		expect(diagnostics.filter((line) => line.includes("installed helper"))).toHaveLength(1);
 
 		// 同一连接复用同一个客户端；断开后重连也不需要再传一遍。
