@@ -365,6 +365,88 @@ describe("team chat stream state", () => {
 		]);
 	});
 
+	it("keeps a leader continuation separate without inheriting the previous execution process", () => {
+		const items = projectTeamConversationTimeline({
+			snapshot: snapshot({
+				messages: [
+					agentMessage("leader-work", "request", "leader", "第一轮总结", 2, {
+						id: "delegate-call",
+						name: "team_delegate_task",
+						arguments: { memberId: "executor" },
+					}),
+					agentMessage("leader-final", "request:continuation:1", "leader", "最终总结", 3),
+				],
+				display: { memberConversations: [] },
+			}),
+			pending: undefined,
+			streams: {},
+			members: [member],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		const leaderTurns = items.filter((item) => item.kind === "agent");
+		expect(leaderTurns).toHaveLength(2);
+		expect(leaderTurns.map((item) => item.renderKey)).toEqual([
+			"team:agent-turn:leader:request",
+			"team:agent-turn:leader:request:continuation:1",
+		]);
+		expect(leaderTurns[1]).toMatchObject({
+			text: "最终总结",
+			blocks: [{ type: "text", text: "最终总结" }],
+		});
+	});
+
+	it("splits an automatically resumed member turn at its Team context boundary", () => {
+		const firstTurn = agentMessage("member-work", "runtime-turn", "leader", "第一轮总结", 2, {
+			id: "delegate-call",
+			name: "team_delegate_task",
+			arguments: { memberId: "executor" },
+		}).message;
+		const continuation = agentMessage("member-final", "runtime-continuation", "leader", "最终总结", 4).message;
+		const items = projectTeamConversationTimeline({
+			snapshot: snapshot({
+				display: {
+					memberConversations: [
+						{
+							memberId: "leader",
+							runtimeSessionId: "leader-runtime",
+							history: [
+								{
+									type: "message",
+									entryId: "member-user",
+									message: { role: "user", content: "执行任务", timestamp: 1 },
+								},
+								{ type: "message", entryId: "member-work", message: firstTurn },
+								{
+									type: "custom_marker",
+									customType: "agent-team.compaction-reference.v1",
+									timestamp: new Date(3).toISOString(),
+								},
+								{ type: "message", entryId: "member-final", message: continuation },
+							],
+						},
+					],
+				},
+			}),
+			pending: undefined,
+			streams: {},
+			members: [member],
+			memberId: "leader",
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		const leaderTurns = items.filter((item) => item.kind === "agent");
+		expect(leaderTurns).toHaveLength(2);
+		expect(leaderTurns[0]?.blocks).toEqual(
+			expect.arrayContaining([expect.objectContaining({ type: "tool_call", toolCallId: "delegate-call" })]),
+		);
+		expect(leaderTurns[1]).toMatchObject({
+			id: "member-final",
+			text: "最终总结",
+			blocks: [{ type: "text", text: "最终总结" }],
+		});
+	});
+
 	it("keeps one member-page turn while native tool history overlaps the live stream and after reopen", () => {
 		const toolMessage = agentMessage("runtime-tool-step", "runtime-turn", "leader", "", 2, {
 			id: "delegate-call",
