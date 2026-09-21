@@ -75,6 +75,13 @@ export {
 	type SelectForwardablePortsOptions,
 	selectForwardablePorts,
 } from "./remote-listeners.js";
+export type {
+	OpenRemotePtyOptions,
+	RemotePtyDataNotification,
+	RemotePtyExitNotification,
+	RemotePtySession,
+} from "./remote-pty.js";
+export { buildTtyShellCommand } from "./remote-pty.js";
 export {
 	buildControlPath,
 	buildPortForwardArgv,

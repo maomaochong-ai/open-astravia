@@ -24,6 +24,19 @@ const DEFINITIONS = [
 	// Windows 远程输入注入通过 koffi 调用 user32.dll：原生模块（dlopen），必须 unpack。
 	// 只有 win32 产物会走到这条路径（createRequire 懒加载）。
 	{ name: "koffi", platforms: ["win32"], unpack: true },
+	// 底部面板终端的 PTY。`@lydell/node-pty` 本身是纯 JS 壳，真正的 pty.node 在按
+	// 平台+架构拆分的包里，而 prepare-pack 的 stageDepTree 只走 `dependencies`、
+	// 不走 `optionalDependencies`——所以每个平台包都必须在这里显式声明，否则打出来的
+	// 应用里只有壳，require 到二进制就失败。
+	{ name: "@lydell/node-pty", platforms: "all", unpack: false },
+	// 同一 OS 的两个架构都列上（platforms 只区分 OS，不区分 arch），但标成 optional：
+	// 发布矩阵里每个架构都在同架构 runner 上原生构建，另一个架构的包本机装不到，
+	// 对该产物也不需要。真正该有的那个缺失时由 verify-packaging-contract 拦下。
+	{ name: "@lydell/node-pty-darwin-arm64", platforms: ["darwin"], unpack: true, optional: true },
+	{ name: "@lydell/node-pty-darwin-x64", platforms: ["darwin"], unpack: true, optional: true },
+	{ name: "@lydell/node-pty-linux-x64", platforms: ["linux"], unpack: true, optional: true },
+	{ name: "@lydell/node-pty-win32-x64", platforms: ["win32"], unpack: true, optional: true },
+	{ name: "@lydell/node-pty-win32-arm64", platforms: ["win32"], unpack: true, optional: true },
 ];
 
 function matchesPlatform(definition, platformFamilies) {

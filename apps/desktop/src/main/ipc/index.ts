@@ -35,6 +35,7 @@ import { registerSettingsIpc } from "./settings.js";
 import { registerSkillsIpc } from "./skills.js";
 import { registerSpeechInputIpc } from "./speech-input.js";
 import { registerSshIpc } from "./ssh.js";
+import { registerTerminalIpc } from "./terminal.js";
 import { registerThemesIpc } from "./themes.js";
 import { registerUpdaterIpc } from "./updater.js";
 import { registerWebhookIpc } from "./webhook.js";
@@ -71,6 +72,7 @@ interface IpcTeardown {
 	teardownPluginOcrProviders: () => void;
 	teardownNotifications: () => void;
 	teardownPet: () => void;
+	teardownTerminal: () => void;
 	teardownConversationTags: () => void;
 	teardownQuickPanel: () => void;
 	teardownAppshot: () => void;
@@ -119,6 +121,7 @@ export function registerAllIpc(
 		teardownPluginOcrProviders: registerPluginOcrProvidersIpc(),
 		teardownNotifications: registerNotificationIpc(webContents),
 		teardownPet: registerPetIpc(),
+		teardownTerminal: registerTerminalIpc(),
 		teardownConversationTags: registerConversationTagsIpc(webContents),
 		teardownQuickPanel: registerQuickPanelIpc(),
 		teardownAppshot: registerAppshotIpc(),
@@ -160,6 +163,7 @@ export function teardownAllIpc(teardown: IpcTeardown): void {
 	teardown.teardownPluginOcrProviders();
 	teardown.teardownNotifications();
 	teardown.teardownPet();
+	teardown.teardownTerminal();
 	teardown.teardownConversationTags();
 	teardown.teardownQuickPanel();
 	teardown.teardownAppshot();

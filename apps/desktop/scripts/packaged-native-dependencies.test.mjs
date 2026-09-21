@@ -23,10 +23,33 @@ test("omits sherpa from a speech-disabled Windows artifact", () => {
 test("keeps darwin-only glass out of Windows and Linux artifacts", () => {
 	for (const platform of ["win32", "linux"]) {
 		const result = resolvePackagedNativeDependencies(new Set([platform]));
-		assert.deepEqual(result.optional, []);
+		assert.ok(!result.optional.includes("electron-liquid-glass"));
+		assert.ok(!result.required.includes("electron-liquid-glass"));
 	}
 	const mac = resolvePackagedNativeDependencies(new Set(["darwin"]));
-	assert.deepEqual(mac.optional, ["electron-liquid-glass"]);
+	assert.ok(mac.optional.includes("electron-liquid-glass"));
+});
+
+test("stages the node-pty wrapper everywhere and only matching-OS binary packages", () => {
+	// 壳是纯 JS、三平台都要；二进制包按 OS 分，串平台就等于把别的系统的 .node 带进产物。
+	const byPlatform = {
+		darwin: ["@lydell/node-pty-darwin-arm64", "@lydell/node-pty-darwin-x64"],
+		win32: ["@lydell/node-pty-win32-x64", "@lydell/node-pty-win32-arm64"],
+		linux: ["@lydell/node-pty-linux-x64"],
+	};
+	const all = Object.values(byPlatform).flat();
+
+	for (const [platform, expected] of Object.entries(byPlatform)) {
+		const result = resolvePackagedNativeDependencies(new Set([platform]));
+		assert.ok(result.required.includes("@lydell/node-pty"), `${platform} 产物缺少 node-pty 壳`);
+		for (const dep of expected) {
+			assert.ok(result.optional.includes(dep), `${platform} 产物缺少 ${dep}`);
+			assert.ok(result.asarUnpack.includes(`node_modules/${dep}/**/*`), `${dep} 的 pty.node 没有被 unpack`);
+		}
+		for (const dep of all.filter((name) => !expected.includes(name))) {
+			assert.ok(!result.optional.includes(dep), `${platform} 产物带上了别的系统的 ${dep}`);
+		}
+	}
 });
 
 test("stages every dependency the main bundle marks external", () => {

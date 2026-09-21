@@ -92,5 +92,8 @@
 			"downloadFailed": "Failed to download the update",
 			"installFailed": "Failed to install the update"
 		}
+	},
+	"terminal": {
+		"remoteOutputDropped": "[remote output too fast; {{bytes}} bytes omitted]"
 	}
 }

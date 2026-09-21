@@ -232,6 +232,24 @@ for (const dep of optionalExternalDeps) {
 	}
 }
 
+// 终端的 pty.node 按「平台-架构」拆包，同一 OS 的另一个架构在本机装不到，所以那些包
+// 只能是 optional。但**本次目标**的那个必须在：缺了它应用照样启动，只是终端一开就报
+// require 失败——这种故障只在安装包里复现，必须在构建阶段就拦下来。
+function assertTerminalPtyBinaryStaged() {
+	const staged = new Set(externalDepInfos.map((info) => info.dep));
+	const missing = resolvePlatformTagsFromEnv()
+		.map((platformTag) => `@lydell/node-pty-${platformTag}`)
+		.filter((dep) => optionalExternalDeps.includes(dep) && !staged.has(dep));
+	if (missing.length > 0) {
+		throw new Error(
+			`[prepare-pack] terminal PTY binary missing for this target: ${missing.join(", ")}. ` +
+				`Install it on the build host (it ships as an optionalDependency of @lydell/node-pty).`,
+		);
+	}
+}
+
+assertTerminalPtyBinaryStaged();
+
 function assertPackagedMainHasNoWorkspaceImports(mainOutputDir) {
 	const workspaceImportPattern = /^\s*import(?:\s+.+\s+from)?\s+["']@vetta\//;
 	const invalidImports = [];

@@ -92,5 +92,8 @@
 			"downloadFailed": "下载更新失败",
 			"installFailed": "安装更新失败"
 		}
+	},
+	"terminal": {
+		"remoteOutputDropped": "[远端输出过快，已省略 {{bytes}} 字节]"
 	}
 }

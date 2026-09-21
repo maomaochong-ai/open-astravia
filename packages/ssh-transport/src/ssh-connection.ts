@@ -31,6 +31,13 @@ import {
 	type RemoteListeningPort,
 	selectForwardablePorts,
 } from "./remote-listeners.js";
+import {
+	buildTtyShellCommand,
+	isRemotePtyDataNotification,
+	isRemotePtyExitNotification,
+	type OpenRemotePtyOptions,
+	type RemotePtySession,
+} from "./remote-pty.js";
 import { buildPortForwardArgv, buildSshArgv } from "./ssh-argv.js";
 import type { SshHost } from "./ssh-host.js";
 
@@ -502,14 +509,130 @@ export class SshConnection {
 	 * 打开一条保持连接的通道，远端命令的 stdin/stdout 交给调用方。执行器不支持时返回
 	 * undefined，调用方据此走一问一答的降级路径。
 	 */
-	openChannel(remoteCommand: string, onStdout: (chunk: Uint8Array) => void): SshProcessChannel | undefined {
+	openChannel(
+		remoteCommand: string,
+		onStdout: (chunk: Uint8Array) => void,
+		options: { readonly requestTty?: boolean } = {},
+	): SshProcessChannel | undefined {
 		if (!this.options.runner.open) return undefined;
 		const argv = buildSshArgv(
 			this.host,
-			{ controlPath: this.options.controlPath, connectTimeoutSeconds: this.options.connectTimeoutSeconds },
+			{
+				controlPath: this.options.controlPath,
+				connectTimeoutSeconds: this.options.connectTimeoutSeconds,
+				requestTty: options.requestTty,
+			},
 			remoteCommand,
 		);
 		return this.options.runner.open({ argv, onStdout, env: this.options.env });
+	}
+
+	/**
+	 * 开一个远端交互式终端。
+	 *
+	 * helper 在就用 `pty.*`：真伪终端、能改尺寸、输出走通知推送。helper 不在或版本旧
+	 * （`ENOSYS`）就退回 `ssh -tt`——能用，但送不进窗口尺寸变化，所以会把
+	 * `canResize: false` 报给上层，由界面如实告知用户。
+	 *
+	 * 与 `proc.*` 刻意不同：终端是连接作用域的，通道断了这个会话就结束，不做落盘接管。
+	 */
+	async openPty(options: OpenRemotePtyOptions): Promise<RemotePtySession> {
+		const viaHelper = await this.viaHelper(async (helper) => {
+			try {
+				const opened = await helper.call<{ id: string }>("pty.open", {
+					cwd: options.cwd,
+					shell: options.shell,
+					env: options.env,
+					cols: Math.trunc(options.cols),
+					rows: Math.trunc(options.rows),
+				});
+				return this.helperPtySession(helper, opened.id);
+			} catch (error) {
+				// 旧 helper 不认识 pty.*：这不是远端的否定答复，退回 `ssh -tt` 才对。
+				if (error instanceof SshHelperError && error.code === "ENOSYS") return undefined;
+				throw error;
+			}
+		});
+		if (viaHelper?.value) return viaHelper.value;
+		return this.ttyPtySession(options);
+	}
+
+	private helperPtySession(helper: SshHelperClient, ptyId: string): RemotePtySession {
+		const dataListeners = new Set<(chunk: string, dropped: number) => void>();
+		const exit = createExitLatch();
+		const offData = helper.on("pty.data", (params) => {
+			if (!isRemotePtyDataNotification(params) || params.id !== ptyId) return;
+			const chunk = decode(Uint8Array.from(Buffer.from(params.dataB64, "base64")));
+			const dropped = typeof params.dropped === "number" ? params.dropped : 0;
+			for (const listener of dataListeners) listener(chunk, dropped);
+		});
+		const offExit = helper.on("pty.exit", (params) => {
+			if (!isRemotePtyExitNotification(params) || params.id !== ptyId) return;
+			exit.emit({ exitCode: typeof params.exitCode === "number" ? params.exitCode : null });
+		});
+		const detach = (): void => {
+			offData();
+			offExit();
+		};
+		return {
+			backend: "helper",
+			canResize: true,
+			write: (data) => {
+				void helper
+					.call("pty.write", { id: ptyId, dataB64: Buffer.from(data, "utf8").toString("base64") })
+					.catch(() => {});
+			},
+			resize: (cols, rows) => {
+				void helper
+					.call("pty.resize", { id: ptyId, cols: Math.trunc(cols), rows: Math.trunc(rows) })
+					.catch(() => {});
+			},
+			close: () => {
+				detach();
+				void helper.call("pty.close", { id: ptyId }).catch(() => {});
+			},
+			onData: (listener) => {
+				dataListeners.add(listener);
+				return () => dataListeners.delete(listener);
+			},
+			onExit: exit.subscribe,
+		};
+	}
+
+	private ttyPtySession(options: OpenRemotePtyOptions): RemotePtySession {
+		const dataListeners = new Set<(chunk: string, dropped: number) => void>();
+		const exit = createExitLatch();
+		const channel = this.openChannel(
+			buildTtyShellCommand(options),
+			(chunk) => {
+				const text = decode(chunk);
+				// `ssh -tt` 这条路没有远端缓冲，不会丢块。
+				for (const listener of dataListeners) listener(text, 0);
+			},
+			{ requestTty: true },
+		);
+		if (!channel) {
+			throw new SshRemoteCommandError(
+				`This runner cannot open an interactive terminal on ${this.host.label}`,
+				this.host.id,
+				-1,
+				"",
+			);
+		}
+		void channel.exited.then(({ exitCode }) => exit.emit({ exitCode }));
+		return {
+			backend: "tty",
+			// 本机 stdin 不是 tty，窗口尺寸变化没有渠道送过去，也没法补发 SIGWINCH。
+			canResize: false,
+			write: (data) => channel.write(new TextEncoder().encode(data)),
+			resize: () => {},
+			close: () => channel.kill(),
+			onData: (listener) => {
+				dataListeners.add(listener);
+				return () => dataListeners.delete(listener);
+			},
+			onExit: exit.subscribe,
+		};
 	}
 
 	/**
@@ -617,6 +740,37 @@ function fromHelperEntry(entry: HelperEntry): RemoteDirectoryEntry {
 		kind: entry.kind,
 		sizeBytes: entry.size,
 		modifiedAtSeconds: Math.floor(entry.modifiedMs / 1000),
+	};
+}
+
+/**
+ * 退出事件的锁存转发器。
+ *
+ * 会话可能在调用方注册 `onExit` 之前就结束了（shell 起不来、helper 立刻回 exit），
+ * 那时直接广播等于把事件丢掉，界面会永远停在「启动中」。这里记住已发生的退出，
+ * 后注册的监听者立刻补到。
+ */
+function createExitLatch(): {
+	emit: (event: { exitCode: number | null }) => void;
+	subscribe: (listener: (event: { exitCode: number | null }) => void) => () => void;
+} {
+	const listeners = new Set<(event: { exitCode: number | null }) => void>();
+	let settled: { exitCode: number | null } | undefined;
+	return {
+		emit: (event) => {
+			if (settled) return;
+			settled = event;
+			for (const listener of [...listeners]) listener(event);
+			listeners.clear();
+		},
+		subscribe: (listener) => {
+			if (settled) {
+				listener(settled);
+				return () => {};
+			}
+			listeners.add(listener);
+			return () => listeners.delete(listener);
+		},
 	};
 }
 
