@@ -59,6 +59,21 @@ make clean        # 清 bin/；dist/ 用 make dist-clean
 SSH 时，有没有 helper 都会卡在第一步探测，也就没有可降级的余地。（远端 SSH 的 shell 若是 WSL，
 它自报 `Linux`，走的就是普通 Linux 主机那条路。）
 
+## 在真机上验证
+
+仓库里的自动化测试都跑在回环夹具上（假 ssh 脚本把命令交给本机 `/bin/sh`），证明不了真实
+sshd、真实网络和目标机器的内核与 shell。对着一台真机跑这个：
+
+```bash
+make cross-build
+scripts/verify-on-host.sh user@host                    # 复用 ~/.ssh/config 的别名也行
+scripts/verify-on-host.sh build-01 -p 2222 -i ~/.ssh/id_ed25519
+```
+
+它按 Vetta 自己的方式部署（同样的目录、权限与 sha256 校验），然后依次验证：握手、写入保留
+权限位、以及**断开连接后后台任务是否仍在运行**——最后这条是 helper 存在的全部理由，每一步都
+用一条全新的 SSH 连接发起。全绿就说明这台主机可以作为远程项目使用。
+
 手工调协议时逐行敲 JSON：
 
 ```bash
