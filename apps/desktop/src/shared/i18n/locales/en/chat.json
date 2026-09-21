@@ -286,7 +286,8 @@
 		"pinButton": {
 			"pinned": "Unpin window",
 			"unpinned": "Pin window (keep on top)"
-		}
+		},
+		"remoteBadge": "Remote"
 	},
 	"contextRing": {
 		"tooltip": {

@@ -10,6 +10,7 @@ import {
 	sessionContextMenuAtom,
 	sessionDisplayLabel,
 } from "@shared/store/atoms";
+import { isSshProjectUri } from "@vetta/ssh-transport/project-uri";
 import { DEFAULT_VISIBLE_SESSIONS } from "@vetta-org/theme-ui/project";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -119,6 +120,7 @@ export function useProjectGroupModel({
 	const displayName = project.name ?? pathBasename(project.cwd);
 	const projectType = project.type;
 	const projectBadge = getProjectBadge(project, projectType, t);
+	const isRemoteProject = isSshProjectUri(project.cwd);
 
 	// t 在 changeLanguage 后可能保持同一引用；读 i18n.language 强制语言切换时重算未命名团队会话文案。
 	const sessionViews: ProjectGroupSessionView[] = useMemo(() => {
@@ -223,6 +225,7 @@ export function useProjectGroupModel({
 		project,
 		projectBadge,
 		projectType,
+		remote: isRemoteProject,
 		sessionViews,
 		showAllSessions,
 		showMoreLabels: {

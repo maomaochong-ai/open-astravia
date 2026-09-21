@@ -12,6 +12,7 @@ import {
 	isConversationBusyAtom,
 	loadInputActionStateForSession,
 	pageHeaderTitleAtom,
+	pageHeaderTitleBadgeAtom,
 	pendingSessionOpenAtom,
 	persistCurrentInputActionState,
 	persistInputActionStateForSession,
@@ -20,10 +21,12 @@ import {
 	sessionsMapAtom,
 	syncHardIsolationContributionModes,
 } from "@shared/store/atoms";
+import { parseProjectLocation } from "@vetta/ssh-transport/project-uri";
 import { useThemeSurface } from "@vetta-org/theme-sdk/appearance";
+import { RemoteSessionBadgeView } from "@vetta-org/theme-ui/chat";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectAtom } from "jotai/utils";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ChatViewModelResult } from "../components/chat-view/types";
 
@@ -45,6 +48,7 @@ export function useChatViewModel(): ChatViewModelResult {
 	const isStreaming = useAtomValue(isConversationBusyAtom);
 	const [panelOpen, setPanelOpen] = useAtom(activityPanelOpenAtom);
 	const setHeaderTitle = useSetAtom(pageHeaderTitleAtom);
+	const setHeaderTitleBadge = useSetAtom(pageHeaderTitleBadgeAtom);
 	const inlinePreviewActive = useAtomValue(inlineFilePreviewContextReadonlyAtom) !== null;
 	const closeInlinePreview = useSetAtom(closeInlineFilePreviewAtom);
 	const defaultCwd = useAtomValue(defaultConversationCwdAtom);
@@ -135,6 +139,28 @@ export function useChatViewModel(): ChatViewModelResult {
 		setHeaderTitle(sessionTitle);
 		return () => setHeaderTitle(null);
 	}, [sessionTitle, setHeaderTitle]);
+
+	// 远程（SSH）会话在标题右侧挂一枚「远程」徽标：会话名本身不带主机信息，
+	// 用户切来切去时很容易把远端会话当成本地会话误操作。
+	const remoteLocation = useMemo(() => {
+		if (!activeSessionCwd) return null;
+		const location = parseProjectLocation(activeSessionCwd);
+		return location.kind === "ssh" ? location : null;
+	}, [activeSessionCwd]);
+
+	useEffect(() => {
+		if (!remoteLocation) {
+			setHeaderTitleBadge(null);
+			return;
+		}
+		setHeaderTitleBadge(
+			createElement(RemoteSessionBadgeView, {
+				label: t("chatView.remoteBadge"),
+				title: `${remoteLocation.hostId}:${remoteLocation.remotePath}`,
+			}),
+		);
+		return () => setHeaderTitleBadge(null);
+	}, [remoteLocation, setHeaderTitleBadge, t]);
 
 	// actions / header 保持引用稳定：ChatView 用它们 memo 出 header slot 元素并写进
 	// 全局 pageHeader atom；若每次渲染都换引用，发送/流式期间每条消息都会级联一次

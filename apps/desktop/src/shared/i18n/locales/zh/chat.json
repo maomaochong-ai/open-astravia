@@ -286,7 +286,8 @@
 		"pinButton": {
 			"pinned": "取消窗口置顶",
 			"unpinned": "窗口置顶（钉在屏幕上）"
-		}
+		},
+		"remoteBadge": "远程"
 	},
 	"contextRing": {
 		"tooltip": {

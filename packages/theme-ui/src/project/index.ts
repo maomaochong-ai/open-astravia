@@ -84,6 +84,7 @@ export type { ProjectSessionRowItem, ProjectTypeIconKey } from "./types";
 export {
 	DEFAULT_VISIBLE_SESSIONS,
 	PROJECT_TYPE_ICONS,
+	REMOTE_PROJECT_ICON,
 	VIRTUAL_SESSION_OVERSCAN,
 	VIRTUAL_SESSION_ROW_HEIGHT,
 } from "./types";

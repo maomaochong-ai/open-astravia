@@ -389,6 +389,8 @@ export type {
 export { QueueCardView } from "./QueueCardView";
 export type { ReadImageViewProps } from "./ReadImageView";
 export { ReadImageView } from "./ReadImageView";
+export type { RemoteSessionBadgeViewProps } from "./RemoteSessionBadgeView";
+export { RemoteSessionBadgeView } from "./RemoteSessionBadgeView";
 export type {
 	SandboxGrantsBadgeViewLabels,
 	SandboxGrantsBadgeViewProps,
