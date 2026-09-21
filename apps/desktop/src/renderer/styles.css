@@ -992,3 +992,11 @@ a {
 		animation: none;
 	}
 }
+
+/* 窗口不在前台时暂停无限动画：标记由 shared/lib/inactive-window-animations.ts 打在宿主元素上。
+   必须走样式而不是脚本的 pause()——原因见那个文件开头。 */
+[data-inactive-paused],
+[data-inactive-paused]::before,
+[data-inactive-paused]::after {
+	animation-play-state: paused !important;
+}

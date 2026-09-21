@@ -8,12 +8,20 @@
  * 只动 iterations 为 Infinity 的动画：入场/退场这类有限动画一旦被暂停，元素会卡在
  * 起始帧（常常是 opacity: 0），失焦期间弹出的提示就再也看不见了。
  *
- * 覆盖 CSS 动画与 Web Animations；motion 用 rAF 逐帧改写样式的那一类拿不到句柄，
- * 需要组件自己处理。确实要在后台继续动的元素，标上 data-animate-when-inactive。
+ * CSS 动画一律用样式暂停（给宿主元素打标记，由 styles.css 里的规则设
+ * animation-play-state），**绝不能调它的 pause()/play()**：Chromium 里 CSS 动画一旦被
+ * 脚本碰过，就不再随 animation-name 的移除而取消——任务跑完、转圈图标换成普通图标后，
+ * 那段动画会脱离样式永远转下去，反而造出一个常驻动画（实测确认过）。
+ * 脚本创建的 Web Animations 没有这层归属问题，直接 pause()/play()。
+ *
+ * motion 用 rAF 逐帧改写样式的那一类拿不到句柄，需要组件自己处理。
+ * 确实要在后台继续动的元素，标上 data-animate-when-inactive。
  */
 
 const KEEP_ATTRIBUTE = "data-animate-when-inactive";
 const ROOT_ATTRIBUTE = "data-window-active";
+/** 与 styles.css 里那条 animation-play-state 规则对应。 */
+export const PAUSED_ATTRIBUTE = "data-inactive-paused";
 /** 失焦期间新挂载的无限动画靠定期补扫兜住；间隔只影响「多久后停下」，不影响正确性。 */
 const RESCAN_INTERVAL_MS = 2000;
 
@@ -25,54 +33,46 @@ function isInfinite(animation: Animation): boolean {
 	return animation.effect?.getComputedTiming().iterations === Number.POSITIVE_INFINITY;
 }
 
-function isKept(animation: Animation): boolean {
-	// 伪元素动画的 target 是宿主元素，同样适用。
+/** 伪元素动画的 target 是宿主元素，标记打在宿主上同样管用。 */
+function targetOf(animation: Animation): Element | null {
 	const target = (animation.effect as KeyframeEffect | null)?.target;
-	return target instanceof Element && target.closest(`[${KEEP_ATTRIBUTE}]`) !== null;
+	return target instanceof Element ? target : null;
 }
 
-/** CSS 动画的宿主元素已经不再声明这段动画（或已离开文档）。 */
-function isOrphanedCssAnimation(animation: Animation): boolean {
-	const name = (animation as CSSAnimation).animationName;
-	if (typeof name !== "string") return false;
-	const effect = animation.effect as KeyframeEffect | null;
-	const target = effect?.target;
-	if (!(target instanceof Element) || !target.isConnected) return true;
-	const declared = getComputedStyle(target, effect?.pseudoElement ?? null).animationName;
-	return !declared.split(",").some((entry) => entry.trim() === name);
+function isCssAnimation(animation: Animation): boolean {
+	return typeof (animation as CSSAnimation).animationName === "string";
 }
 
 /** 安装后立即按当前状态生效；返回卸载函数（恢复被本模块暂停的动画）。 */
 export function installInactiveWindowAnimationPause(): () => void {
-	// 只恢复自己停掉的：别处主动 pause 的动画不该被这里放出来。
-	const pausedByUs = new Set<Animation>();
+	// 只恢复自己停掉的：别处主动暂停的动画不该被这里放出来。
+	const markedElements = new Set<Element>();
+	const pausedScriptAnimations = new Set<Animation>();
 	let rescanTimer: number | null = null;
 
 	const pauseInfiniteAnimations = () => {
-		// 先清掉暂停期间被样式撤掉的动画：不取消的话，它会把元素冻在暂停那一刻的姿态上
-		// （换成普通图标后还歪着一个角度）。
-		for (const animation of pausedByUs) {
-			if (animation.playState === "paused" && isOrphanedCssAnimation(animation)) {
-				animation.cancel();
-				pausedByUs.delete(animation);
-			}
-		}
 		for (const animation of document.getAnimations()) {
-			if (animation.playState !== "running" || !isInfinite(animation) || isKept(animation)) continue;
-			animation.pause();
-			pausedByUs.add(animation);
+			if (animation.playState !== "running" || !isInfinite(animation)) continue;
+			const target = targetOf(animation);
+			if (target?.closest(`[${KEEP_ATTRIBUTE}]`)) continue;
+			if (isCssAnimation(animation)) {
+				if (!target) continue;
+				target.setAttribute(PAUSED_ATTRIBUTE, "");
+				markedElements.add(target);
+			} else {
+				animation.pause();
+				pausedScriptAnimations.add(animation);
+			}
 		}
 	};
 
 	const resumeAnimations = () => {
-		for (const animation of pausedByUs) {
-			if (animation.playState !== "paused") continue;
-			// 暂停期间样式可能已经把这段动画撤掉了（转圈图标换成了普通图标）。被脚本暂停过的
-			// CSS 动画不会随样式一起取消，这时再 play() 会让它脱离样式永远转下去——取消而不是恢复。
-			if (isOrphanedCssAnimation(animation)) animation.cancel();
-			else animation.play();
+		for (const element of markedElements) element.removeAttribute(PAUSED_ATTRIBUTE);
+		markedElements.clear();
+		for (const animation of pausedScriptAnimations) {
+			if (animation.playState === "paused") animation.play();
 		}
-		pausedByUs.clear();
+		pausedScriptAnimations.clear();
 	};
 
 	const sync = () => {

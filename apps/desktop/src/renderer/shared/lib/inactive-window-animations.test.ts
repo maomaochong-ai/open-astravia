@@ -1,33 +1,38 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { installInactiveWindowAnimationPause } from "./inactive-window-animations";
+import { installInactiveWindowAnimationPause, PAUSED_ATTRIBUTE } from "./inactive-window-animations";
 
 interface FakeAnimation {
+	/** 只有 CSS 动画才有这个字段；脚本创建的 Web Animations 没有。 */
 	animationName?: string;
-	cancelled?: boolean;
-	playState: "running" | "paused" | "idle";
+	playState: "running" | "paused";
 	effect: { getComputedTiming: () => { iterations: number }; target?: Element };
-	pause: () => void;
-	play: () => void;
-	cancel: () => void;
+	pause: ReturnType<typeof vi.fn>;
+	play: ReturnType<typeof vi.fn>;
 }
 
-function fakeAnimation(iterations: number, playState: FakeAnimation["playState"] = "running"): FakeAnimation {
+function fakeAnimation(
+	iterations: number,
+	options: { css?: Element; target?: Element; playState?: FakeAnimation["playState"] } = {},
+): FakeAnimation {
 	const animation: FakeAnimation = {
-		playState,
-		effect: { getComputedTiming: () => ({ iterations }) },
-		pause: () => {
+		animationName: options.css ? "spin" : undefined,
+		playState: options.playState ?? "running",
+		effect: { getComputedTiming: () => ({ iterations }), target: options.css ?? options.target },
+		pause: vi.fn(() => {
 			animation.playState = "paused";
-		},
-		play: () => {
+		}),
+		play: vi.fn(() => {
 			animation.playState = "running";
-		},
-		cancel: () => {
-			animation.playState = "idle";
-			animation.cancelled = true;
-		},
+		}),
 	};
 	return animation;
+}
+
+function mount(): HTMLElement {
+	const element = document.createElement("span");
+	document.body.appendChild(element);
+	return element;
 }
 
 let animations: FakeAnimation[] = [];
@@ -41,7 +46,7 @@ function setWindowFocused(focused: boolean): void {
 beforeEach(() => {
 	vi.useFakeTimers();
 	animations = [];
-	// jsdom 没有 Web Animations；这里只关心本模块对动画句柄做了什么。
+	// jsdom 没有 Web Animations；这里只关心本模块对动画与宿主元素做了什么。
 	Object.defineProperty(document, "getAnimations", { configurable: true, value: () => animations });
 	vi.spyOn(document, "hasFocus").mockReturnValue(true);
 });
@@ -49,109 +54,96 @@ beforeEach(() => {
 afterEach(() => {
 	uninstall?.();
 	uninstall = undefined;
+	document.body.replaceChildren();
 	vi.useRealTimers();
 	vi.restoreAllMocks();
 });
 
-it("用户切到别的应用后，无限循环的动画停下，切回来后继续", () => {
-	const spinner = fakeAnimation(Number.POSITIVE_INFINITY);
-	animations = [spinner];
+it("用户切到别的应用后，转圈图标停下，切回来后继续", () => {
+	const icon = mount();
+	animations = [fakeAnimation(Number.POSITIVE_INFINITY, { css: icon })];
 	uninstall = installInactiveWindowAnimationPause();
-	expect(spinner.playState).toBe("running");
+	expect(icon.hasAttribute(PAUSED_ATTRIBUTE)).toBe(false);
 
 	setWindowFocused(false);
-	expect(spinner.playState).toBe("paused");
+	expect(icon.hasAttribute(PAUSED_ATTRIBUTE)).toBe(true);
 	expect(document.documentElement.getAttribute("data-window-active")).toBe("false");
 
 	setWindowFocused(true);
-	expect(spinner.playState).toBe("running");
+	expect(icon.hasAttribute(PAUSED_ATTRIBUTE)).toBe(false);
 	expect(document.documentElement.getAttribute("data-window-active")).toBe("true");
 });
 
+it("任务期间切出去再切回来，任务停止后转圈图标不会永远转下去", () => {
+	// Chromium 里 CSS 动画一旦被脚本 pause()/play() 过，就不再随样式移除而取消，
+	// 会脱离样式一直转。所以对 CSS 动画只能用样式暂停，绝不能碰它的播放接口。
+	const icon = mount();
+	const spinner = fakeAnimation(Number.POSITIVE_INFINITY, { css: icon });
+	animations = [spinner];
+	uninstall = installInactiveWindowAnimationPause();
+
+	setWindowFocused(false);
+	setWindowFocused(true);
+
+	expect(spinner.pause).not.toHaveBeenCalled();
+	expect(spinner.play).not.toHaveBeenCalled();
+});
+
+it("脚本创建的无限动画同样会停下并恢复", () => {
+	const scripted = fakeAnimation(Number.POSITIVE_INFINITY, { target: mount() });
+	animations = [scripted];
+	uninstall = installInactiveWindowAnimationPause();
+
+	setWindowFocused(false);
+	expect(scripted.playState).toBe("paused");
+
+	setWindowFocused(true);
+	expect(scripted.playState).toBe("running");
+});
+
 it("窗口失焦时弹出的提示仍能播完入场动画", () => {
-	const toastEnter = fakeAnimation(1);
-	animations = [toastEnter];
+	const toast = mount();
+	const enter = fakeAnimation(1, { css: toast });
+	animations = [enter];
 	uninstall = installInactiveWindowAnimationPause();
 
 	setWindowFocused(false);
 
-	expect(toastEnter.playState).toBe("running");
+	expect(toast.hasAttribute(PAUSED_ATTRIBUTE)).toBe(false);
+	expect(enter.pause).not.toHaveBeenCalled();
 });
 
 it("失焦期间新出现的无限动画也会被停下", () => {
 	uninstall = installInactiveWindowAnimationPause();
 	setWindowFocused(false);
 
-	const lateSpinner = fakeAnimation(Number.POSITIVE_INFINITY);
-	animations = [lateSpinner];
+	const lateIcon = mount();
+	animations = [fakeAnimation(Number.POSITIVE_INFINITY, { css: lateIcon })];
 	vi.advanceTimersByTime(2000);
 
-	expect(lateSpinner.playState).toBe("paused");
+	expect(lateIcon.hasAttribute(PAUSED_ATTRIBUTE)).toBe(true);
 });
 
-it("别处主动暂停的动画，回到前台时不会被放出来", () => {
-	const pausedElsewhere = fakeAnimation(Number.POSITIVE_INFINITY, "paused");
+it("别处主动暂停的脚本动画，回到前台时不会被放出来", () => {
+	const pausedElsewhere = fakeAnimation(Number.POSITIVE_INFINITY, { target: mount(), playState: "paused" });
 	animations = [pausedElsewhere];
 	uninstall = installInactiveWindowAnimationPause();
 
 	setWindowFocused(false);
 	setWindowFocused(true);
 
-	expect(pausedElsewhere.playState).toBe("paused");
+	expect(pausedElsewhere.play).not.toHaveBeenCalled();
 });
 
 it("标了 data-animate-when-inactive 的元素在后台继续动", () => {
-	const host = document.createElement("div");
+	const host = mount();
 	host.setAttribute("data-animate-when-inactive", "");
 	const child = document.createElement("span");
 	host.appendChild(child);
-	document.body.appendChild(host);
-	const kept = fakeAnimation(Number.POSITIVE_INFINITY);
-	kept.effect.target = child;
-	animations = [kept];
+	animations = [fakeAnimation(Number.POSITIVE_INFINITY, { css: child })];
 	uninstall = installInactiveWindowAnimationPause();
 
 	setWindowFocused(false);
 
-	expect(kept.playState).toBe("running");
-	host.remove();
-});
-
-it("失焦期间转圈图标已经换成普通图标时，回到前台不会让它重新转起来", () => {
-	const icon = document.createElement("span");
-	icon.style.animationName = "spin";
-	document.body.appendChild(icon);
-	const spinner = fakeAnimation(Number.POSITIVE_INFINITY);
-	spinner.animationName = "spin";
-	spinner.effect.target = icon;
-	animations = [spinner];
-	uninstall = installInactiveWindowAnimationPause();
-
-	setWindowFocused(false);
-	expect(spinner.playState).toBe("paused");
-	// 任务在后台跑完，图标不再声明转圈动画。
-	icon.style.animationName = "none";
-	setWindowFocused(true);
-
-	expect(spinner.playState).toBe("idle");
-	expect(spinner.cancelled).toBe(true);
-	icon.remove();
-});
-
-it("失焦期间转圈图标换成普通图标后，图标不会被冻在转到一半的角度上", () => {
-	const icon = document.createElement("span");
-	icon.style.animationName = "spin";
-	document.body.appendChild(icon);
-	const spinner = fakeAnimation(Number.POSITIVE_INFINITY);
-	spinner.animationName = "spin";
-	spinner.effect.target = icon;
-	animations = [spinner];
-	uninstall = installInactiveWindowAnimationPause();
-	setWindowFocused(false);
-
-	icon.style.animationName = "none";
-	vi.advanceTimersByTime(2000);
-
-	expect(spinner.cancelled).toBe(true);
-	icon.remove();
+	expect(child.hasAttribute(PAUSED_ATTRIBUTE)).toBe(false);
 });
