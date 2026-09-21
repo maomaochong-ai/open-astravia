@@ -7,6 +7,7 @@
  * runner 压缩后仍有上百 KB，而 Windows 单个环境变量上限 32767 字符。所以分块写。
  */
 import type { PluginContext } from "@vetta-org/plugin-sdk";
+import { machineLocalPath, machineOf } from "./machine";
 
 /*
  * runner 源码 ~380KB，改为首次执行历史命令时动态 import（?raw 独立成 chunk）。
@@ -75,42 +76,53 @@ async function gzipBase64(text: string): Promise<string> {
 	return btoa(binary);
 }
 
-let cachedHome: string | null = null;
+// 按机器缓存：远程项目的 runner 物化在远端，本机那份用不上，反之亦然。
+const homeByMachine = new Map<string, string>();
 
-async function resolveHome(ctx: PluginContext): Promise<string> {
-	if (cachedHome) return cachedHome;
-	const result = await ctx.command.run("node", ["-p", "require('os').homedir()"]);
+async function resolveHome(ctx: PluginContext, cwd: string): Promise<string> {
+	const machine = machineOf(cwd);
+	const cached = homeByMachine.get(machine);
+	if (cached) return cached;
+	const result = await ctx.command.run("node", ["-p", "require('os').homedir()"], { cwd });
 	const home = result.stdout.trim();
-	if (result.exitCode !== 0 || !home) throw new Error(`resolve homedir failed: ${result.stderr || result.stdout}`);
-	cachedHome = home;
+	if (result.exitCode !== 0 || !home) {
+		// 远端没装 node 时也走这里。说清是哪台机器，否则看起来像本机坏了。
+		const where = machine === "local" ? "this computer" : machine;
+		throw new Error(`history needs node on ${where}: ${result.stderr || result.stdout}`);
+	}
+	homeByMachine.set(machine, home);
 	return home;
 }
 
-let runnerPromise: Promise<string> | null = null;
+const runnerByMachine = new Map<string, Promise<string>>();
 
-/** runner.mjs 的绝对路径，必要时先物化。并发调用共用同一次物化。 */
-export function ensureRunner(ctx: PluginContext): Promise<string> {
-	if (!runnerPromise) {
-		runnerPromise = materialize(ctx).catch((error: unknown) => {
-			runnerPromise = null;
+/** runner.mjs 在 `cwd` 所属机器上的绝对路径，必要时先物化。并发调用共用同一次物化。 */
+export function ensureRunner(ctx: PluginContext, cwd: string): Promise<string> {
+	const machine = machineOf(cwd);
+	let pending = runnerByMachine.get(machine);
+	if (!pending) {
+		pending = materialize(ctx, cwd).catch((error: unknown) => {
+			runnerByMachine.delete(machine);
 			throw error;
 		});
+		runnerByMachine.set(machine, pending);
 	}
-	return runnerPromise;
+	return pending;
 }
 
-async function materialize(ctx: PluginContext): Promise<string> {
-	const [home, runnerSource] = await Promise.all([resolveHome(ctx), loadRunnerSource()]);
+async function materialize(ctx: PluginContext, cwd: string): Promise<string> {
+	const [home, runnerSource] = await Promise.all([resolveHome(ctx, cwd), loadRunnerSource()]);
 	const hash = sourceHash(runnerSource);
 	const dir = `${home}/.vetta/plugin-data/vetta-ui-design/history-runner/${hash}`;
 	const file = `${dir}/runner.mjs`;
-	const probe = await ctx.command.run("node", ["-e", PROBE_SCRIPT], { env: { VETD_RUNNER_FILE: file } });
+	const probe = await ctx.command.run("node", ["-e", PROBE_SCRIPT], { cwd, env: { VETD_RUNNER_FILE: file } });
 	if (probe.stdout.trim() === "yes") return file;
 
 	const payload = await gzipBase64(runnerSource);
 	const tmp = `${dir}.download`;
 	for (let offset = 0, index = 0; offset < payload.length; offset += CHUNK_CHARS, index++) {
 		const result = await ctx.command.run("node", ["-e", APPEND_SCRIPT], {
+			cwd,
 			env: {
 				VETD_RUNNER_TMP: tmp,
 				VETD_RUNNER_CHUNK: payload.slice(offset, offset + CHUNK_CHARS),
@@ -121,6 +133,7 @@ async function materialize(ctx: PluginContext): Promise<string> {
 		if (result.exitCode !== 0) throw new Error(`runner write failed: ${result.stderr || result.stdout}`);
 	}
 	const finalize = await ctx.command.run("node", ["-e", FINALIZE_SCRIPT], {
+		cwd,
 		env: { VETD_RUNNER_TMP: tmp, VETD_RUNNER_DIR: dir },
 		timeoutMs: 30_000,
 	});
@@ -128,10 +141,19 @@ async function materialize(ctx: PluginContext): Promise<string> {
 	return file;
 }
 
-/** 发一条指令给 runner。返回它的 JSON；`ok:false` 抬成异常。 */
+/**
+ * 发一条指令给 runner。返回它的 JSON；`ok:false` 抬成异常。
+ *
+ * `request.dir` 是设计稿的位置，这里拿它当 cwd：历史仓库住在设计包内部，必须建在设计稿
+ * 所在的那台机器上，而宿主正是按 cwd 决定命令在哪执行的。交给 runner 的那份 `dir` 要去掉
+ * 归属前缀——runner 是跑在那台机器上的 node 进程，`ssh://…` 对它不是一条路径。
+ */
 export async function runHistoryCommand<T>(ctx: PluginContext, request: Record<string, unknown>): Promise<T> {
-	const runner = await ensureRunner(ctx);
-	const result = await ctx.command.run("node", [runner, JSON.stringify(request)], { timeoutMs: 60_000 });
+	const dir = typeof request.dir === "string" ? request.dir : "";
+	if (!dir) throw new Error("history command requires a design directory");
+	const runner = await ensureRunner(ctx, dir);
+	const payload = JSON.stringify({ ...request, dir: machineLocalPath(dir) });
+	const result = await ctx.command.run("node", [runner, payload], { cwd: dir, timeoutMs: 60_000 });
 	const line = result.stdout.trim().split("\n").pop() ?? "";
 	let parsed: unknown;
 	try {
@@ -139,7 +161,7 @@ export async function runHistoryCommand<T>(ctx: PluginContext, request: Record<s
 	} catch {
 		throw new Error(`history runner returned no JSON: ${result.stderr || result.stdout}`);
 	}
-	const payload = parsed as { ok?: boolean; error?: string };
-	if (!payload.ok) throw new Error(payload.error ?? "history runner failed");
-	return payload as T;
+	const response = parsed as { ok?: boolean; error?: string };
+	if (!response.ok) throw new Error(response.error ?? "history runner failed");
+	return response as T;
 }
