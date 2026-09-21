@@ -2,8 +2,10 @@ import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { extname } from "node:path";
 import { Readable } from "node:stream";
+import { isSshProjectUri } from "@vetta/ssh-transport";
 import { type CustomScheme, protocol } from "electron";
 import { FILE_PROTOCOL_SCHEME } from "../shared/file-protocol.js";
+import { openRemoteMediaSource } from "./filesystem/remote-filesystem.js";
 import { assertPathReadableForPreview } from "./ipc/fs.js";
 
 /**
@@ -52,18 +54,38 @@ export const FILE_PROTOCOL_PRIVILEGE: CustomScheme = {
 	privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true },
 };
 
-export function registerFileProtocolHandler(): void {
-	protocol.handle(FILE_PROTOCOL_SCHEME, async (request) => {
+/** 协议处理的主体，与 Electron 的注册解耦以便测试。 */
+export async function handleFileRequest(request: Request): Promise<Response> {
+	{
 		let filePath: string;
 		try {
 			const url = new URL(request.url);
 			filePath = decodeURIComponent(url.pathname);
 			// Windows 形态 "/C:/..." → "C:/..."
 			if (/^\/[A-Za-z]:\//.test(filePath)) filePath = filePath.slice(1);
+			// 远程项目形态 "/ssh://host/..." → "ssh://host/..."：路径被放进 URL 的 pathname，
+			// 总会多一个前导斜杠，留着它就不再是一个可识别的远程路径了。
+			if (filePath.startsWith("/ssh://")) filePath = filePath.slice(1);
 			// 与 fs IPC 预览读取同一道沙箱边界：防止渲染进程借本协议任意读取磁盘文件
 			assertPathReadableForPreview(filePath);
 		} catch {
 			return new Response("Forbidden", { status: 403 });
+		}
+
+		const ext = extname(filePath).slice(1).toLowerCase();
+		// 远程项目里的文件由 SSH 取回。`vetta-media://` 早就支持远端，这里若不支持，同一个
+		// 插件用前者能播、用后者只得到一张破图，而且没有任何提示。
+		if (isSshProjectUri(filePath)) {
+			const remote = await openRemoteMediaSource(filePath).catch(() => null);
+			if (!remote) return new Response("Not found", { status: 404 });
+			return new Response(remote.size === 0 ? null : remote.stream(0, remote.size - 1), {
+				status: 200,
+				headers: {
+					"Content-Type": FILE_MIME[ext] ?? "application/octet-stream",
+					"Content-Length": String(remote.size),
+					"Access-Control-Allow-Origin": "*",
+				},
+			});
 		}
 
 		let size: number;
@@ -75,7 +97,6 @@ export function registerFileProtocolHandler(): void {
 			return new Response("Not found", { status: 404 });
 		}
 
-		const ext = extname(filePath).slice(1).toLowerCase();
 		const stream = createReadStream(filePath);
 		return new Response(Readable.toWeb(stream) as ReadableStream, {
 			status: 200,
@@ -85,5 +106,9 @@ export function registerFileProtocolHandler(): void {
 				"Access-Control-Allow-Origin": "*",
 			},
 		});
-	});
+	}
+}
+
+export function registerFileProtocolHandler(): void {
+	protocol.handle(FILE_PROTOCOL_SCHEME, handleFileRequest);
 }
