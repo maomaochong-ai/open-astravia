@@ -140,8 +140,8 @@ const CHIP_DOT: Record<PortForwardViewStatus, string> = {
 	failed: "bg-destructive",
 };
 
-/** 骨架屏里占位的端口列，与徽标同宽。 */
-const PORT_COLUMN = "w-[3.5rem] shrink-0";
+/** 骨架屏里占位的端口徽标。 */
+const PORT_COLUMN = "w-10 shrink-0";
 
 function IconButton({
 	icon,
@@ -338,17 +338,21 @@ interface RowHandlers {
 	readonly onRequestTerminate: () => void;
 }
 
-/** 端口号徽标：列表靠它扫读，已映射的换成实心主色，一眼分得出哪些已经接到本机。 */
+/**
+ * 端口号徽标，贴在进程名左边：列表靠它扫读，已映射的换成实心主色。
+ *
+ * 默认态用前景色叠一层而不是 `bg-muted`：有的主题里 muted 与面板底色相同，徽标会整个消失。
+ */
 function PortBadge({ row }: { row: PortRowViewItem }): JSX.Element {
 	return (
 		<span
 			className={cn(
-				"inline-flex h-6 min-w-[3.5rem] shrink-0 items-center justify-center rounded-md px-1.5 font-mono font-semibold text-[12px] tabular-nums",
+				"inline-flex h-5 shrink-0 items-center rounded-md px-1.5 font-mono font-semibold text-[11px] tabular-nums",
 				row.listening === false
-					? "bg-muted/60 text-muted-foreground line-through"
+					? "bg-foreground/[0.05] text-muted-foreground line-through"
 					: row.forward
 						? "bg-primary text-primary-foreground"
-						: "bg-muted text-foreground",
+						: "bg-foreground/10 text-foreground",
 			)}
 		>
 			{row.port}
@@ -359,7 +363,7 @@ function PortBadge({ row }: { row: PortRowViewItem }): JSX.Element {
 /**
  * 一个远端服务。
  *
- * 主行是「端口徽标 · 进程名 · 启动时间 · 映射地址」，命令行有内容时才多一行——没有就不留
+ * 主行是「端口徽标 + 进程名 · 启动时间 · 映射地址」，命令行有内容时才多一行——没有就不留
  * 空行，列表因此不会被一排排空白撑开。动作平时不占位置，悬停时盖在时间上淡入。
  * 已映射的整行描一圈主色边：它是用户亲手接到本机、正在用的东西。
  */
@@ -436,8 +440,8 @@ function PortRow({
 			)}
 		>
 			<div className="flex min-w-0 items-center gap-2.5">
-				<PortBadge row={row} />
 				<span className="flex min-w-0 flex-1 items-center gap-1.5">
+					<PortBadge row={row} />
 					<span
 						className={cn(
 							"truncate text-[13px]",
@@ -523,7 +527,7 @@ function PortRow({
 					/>
 				) : null}
 			</div>
-			{detail ? <div className="mt-1 min-w-0 pl-[4.125rem]">{detail}</div> : null}
+			{detail ? <div className="mt-1 min-w-0">{detail}</div> : null}
 		</li>
 	);
 }
