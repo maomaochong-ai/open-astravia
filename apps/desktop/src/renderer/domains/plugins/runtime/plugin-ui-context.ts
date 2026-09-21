@@ -26,6 +26,7 @@ import type {
 	PluginAbilityDetailSlotContribution,
 	PluginActivityTabContribution,
 	PluginActivityTabTargetOptions,
+	PluginBottomPanelContribution,
 	PluginCardRendererContribution,
 	PluginContext,
 	PluginFilePreviewContribution,
@@ -232,6 +233,7 @@ export function createPluginUiApi({
 		abilityDetailSlots,
 		filePreviews,
 		activityTabs,
+		bottomPanels,
 		inputActions,
 		newSessionContexts,
 		cardRenderers,
@@ -367,6 +369,45 @@ export function createPluginUiApi({
 				console.debug(
 					`[activity-tab-debug] disposed ${JSON.stringify({ pluginId: plugin.id, tabId: normalized.id })}`,
 				);
+				onChanged();
+			},
+		};
+	};
+	const registerBottomPanel = (contribution: PluginBottomPanelContribution): Disposable => {
+		if (!hasPluginPermission(plugin, "ui.slot.bottom-panel")) {
+			warnSkippedPluginContribution(plugin, "ui.slot.bottom-panel", "bottom panel");
+			return noopDisposable;
+		}
+		if (typeof contribution.id !== "string" || contribution.id.trim().length === 0) {
+			throw new Error("Bottom panel id is required");
+		}
+		if (typeof contribution.label !== "string" || contribution.label.trim().length === 0) {
+			throw new Error("Bottom panel label is required");
+		}
+		if (typeof contribution.component !== "function" && typeof contribution.component !== "object") {
+			throw new Error("Bottom panel component is invalid");
+		}
+		if (
+			contribution.maxInstances !== undefined &&
+			(!Number.isInteger(contribution.maxInstances) || contribution.maxInstances < 1)
+		) {
+			throw new Error("Bottom panel maxInstances must be a positive integer");
+		}
+		const normalized: PluginBottomPanelContribution = {
+			id: contribution.id,
+			label: contribution.label,
+			icon: resolvePluginContributionIcon(contribution.icon, plugin.iconUrl, "h-3.5 w-3.5"),
+			component: contribution.component,
+			scope_use: contribution.scope_use,
+			order: contribution.order,
+			maxInstances: contribution.maxInstances,
+		};
+		bottomPanels.push(normalized);
+		onChanged();
+		return {
+			dispose: () => {
+				const index = bottomPanels.indexOf(normalized);
+				if (index >= 0) bottomPanels.splice(index, 1);
 				onChanged();
 			},
 		};
@@ -901,6 +942,7 @@ export function createPluginUiApi({
 		},
 		registerFilePreview,
 		registerActivityTab,
+		registerBottomPanel,
 		registerInputAction,
 		registerNewSessionContext,
 		registerCardRenderer,

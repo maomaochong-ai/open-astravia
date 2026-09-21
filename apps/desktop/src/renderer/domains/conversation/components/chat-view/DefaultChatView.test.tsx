@@ -10,6 +10,10 @@ vi.mock("@domains/activity-panel/components/ActivityPanel", () => ({
 	CurrentScenarioActivityPanel: () => createElement("aside", { "data-testid": "activity-panel" }),
 }));
 
+vi.mock("@domains/bottom-panel/components/BottomPanelHost", () => ({
+	BottomPanelHost: () => createElement("section", { "data-testid": "bottom-panel" }),
+}));
+
 vi.mock("../ChatExportHost", () => ({
 	ChatExportHost: () => null,
 }));
@@ -34,6 +38,24 @@ describe("DefaultChatView layout", () => {
 		expect(html.indexOf('role="alert"')).toBeGreaterThan(messageList);
 		expect(html.indexOf('role="alert"')).toBeLessThan(inputBar);
 		expect(inputBar).toBeLessThan(activityPanel);
+	});
+
+	it("底部面板排在消息列与活动面板之后：它横跨整页，不属于消息列", () => {
+		const html = renderToStaticMarkup(
+			<DefaultChatView messages={[]} workspace={workspace}>
+				<div data-testid="message-list" />
+				<ChatComposer>
+					<div data-testid="input-bar" />
+				</ChatComposer>
+			</DefaultChatView>,
+		);
+
+		const activityPanel = html.indexOf('data-testid="activity-panel"');
+		const bottomPanel = html.indexOf('data-testid="bottom-panel"');
+
+		// 在活动面板之后 = 它是那一整行的纵向兄弟；放进消息列里会被右侧面板挤窄，
+		// 终端可用列数就会随侧栏开合变化。
+		expect(bottomPanel).toBeGreaterThan(activityPanel);
 	});
 
 	it("can compose a read-only feed without mounting a composer", () => {

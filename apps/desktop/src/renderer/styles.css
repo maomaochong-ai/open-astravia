@@ -101,6 +101,26 @@
 		var(--foreground) 72%,
 		var(--primary)
 	);
+
+	/* 终端 ANSI 16 色。终端语义色不能复用 UI 的 token（前景/主色只有几档），
+	   但同样必须是 token 而不是散落在组件里的字面量：xterm 只吃具体色值，
+	   由 `terminal-theme.ts` 把这些变量解析后喂给它。 */
+	--term-black: rgb(45, 48, 58);
+	--term-red: rgb(237, 118, 118);
+	--term-green: rgb(129, 199, 132);
+	--term-yellow: rgb(229, 192, 123);
+	--term-blue: rgb(122, 162, 247);
+	--term-magenta: rgb(187, 154, 247);
+	--term-cyan: rgb(125, 207, 255);
+	--term-white: rgb(192, 197, 209);
+	--term-bright-black: rgb(90, 95, 110);
+	--term-bright-red: rgb(247, 145, 145);
+	--term-bright-green: rgb(158, 216, 161);
+	--term-bright-yellow: rgb(239, 210, 150);
+	--term-bright-blue: rgb(151, 184, 255);
+	--term-bright-magenta: rgb(205, 180, 250);
+	--term-bright-cyan: rgb(160, 223, 255);
+	--term-bright-white: rgb(230, 234, 243);
 }
 
 
@@ -163,6 +183,24 @@
 		var(--foreground) 72%,
 		var(--primary)
 	);
+
+	/* 终端 ANSI 16 色（浅色）：整体压暗以保证白底上的对比度。 */
+	--term-black: rgb(60, 64, 76);
+	--term-red: rgb(193, 60, 60);
+	--term-green: rgb(45, 138, 62);
+	--term-yellow: rgb(158, 118, 20);
+	--term-blue: rgb(38, 96, 204);
+	--term-magenta: rgb(130, 78, 196);
+	--term-cyan: rgb(23, 130, 176);
+	--term-white: rgb(110, 116, 130);
+	--term-bright-black: rgb(130, 136, 150);
+	--term-bright-red: rgb(214, 84, 84);
+	--term-bright-green: rgb(58, 158, 76);
+	--term-bright-yellow: rgb(178, 138, 32);
+	--term-bright-blue: rgb(58, 116, 224);
+	--term-bright-magenta: rgb(150, 98, 216);
+	--term-bright-cyan: rgb(30, 150, 200);
+	--term-bright-white: rgb(40, 44, 54);
 }
 
 @theme inline {

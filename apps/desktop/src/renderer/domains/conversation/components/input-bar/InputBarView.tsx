@@ -6,6 +6,7 @@ import {
 	InputBarContextMenuView,
 	InputBarPlaceholder,
 } from "@vetta-org/theme-ui/chat";
+import { BottomPanelPillsView } from "@vetta-org/theme-ui/bottom-panel";
 import { useDelayedUnmount } from "@vetta-org/theme-ui/shared";
 import { AnimatePresence, motion } from "motion/react";
 import { createPortal } from "react-dom";
@@ -301,7 +302,22 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 						) : null}
 					</InputBarFooter.Item>
 					<InputBarFooter.Item>
-						{model.todo ? <InputBarTodoStatus todo={model.todo} /> : null}
+						{/*
+						 * 待办条与底部面板 pill 同属一行：放进两个 Item 会变成纵向堆叠，
+						 * 而它们是同一类「这个会话现在有什么在跑」的指示物。
+						 */}
+						{model.todo || model.bottomPanelPills ? (
+							<div className="flex min-w-0 items-center gap-2">
+								{model.todo ? <InputBarTodoStatus todo={model.todo} /> : null}
+								{model.bottomPanelPills ? (
+									<BottomPanelPillsView
+										pills={model.bottomPanelPills.pills}
+										onSelect={model.bottomPanelPills.onSelect}
+										labels={{ group: model.bottomPanelPills.groupLabel }}
+									/>
+								) : null}
+							</div>
+						) : null}
 					</InputBarFooter.Item>
 					<InputBarFooter.Item>
 						{model.speechInput?.statusText ? (

@@ -1,3 +1,4 @@
+import { useBottomPanelPills } from "@domains/bottom-panel/hooks/useBottomPanelPills";
 import { pathBasename, toVettaFileUrl } from "@shared/lib/utils";
 import type { InputBarContextMenuViewProps } from "@vetta-org/theme-ui/chat";
 import { memo, useMemo } from "react";
@@ -96,6 +97,7 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 		}
 		return items;
 	}, [props.onSendQueued, session.activeSession, queue.items.length, queue.paused, interactions.sandboxPermission, t]);
+	const bottomPanelPills = useBottomPanelPills();
 	const todo = useMemo<InputBarTodoModel | null>(() => todoItems.length > 0 ? { items: todoItems, onOpenPanel: trigger.openTodoPanel } : null, [todoItems, trigger.openTodoPanel]);
 	const defaultPlaceholders = useMemo(() => {
 		const raw = t("inputBar.placeholder.defaults", { returnObjects: true });
@@ -151,6 +153,7 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 		drawerItems,
 		drawerActiveTab: trigger.drawerActiveTab,
 		todo,
+		bottomPanelPills,
 		speechInput: speechInput,
 		hasPromptAttachment: Boolean(draft.promptAttachment),
 		promptAttachmentIcon: draft.promptAttachment?.icon,

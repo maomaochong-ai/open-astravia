@@ -21,6 +21,10 @@
 			"types": "./src/action-approval/index.ts",
 			"import": "./src/action-approval/index.ts"
 		},
+		"./bottom-panel": {
+			"types": "./src/bottom-panel/index.ts",
+			"import": "./src/bottom-panel/index.ts"
+		},
 		"./activity": {
 			"types": "./src/activity/index.ts",
 			"import": "./src/activity/index.ts"

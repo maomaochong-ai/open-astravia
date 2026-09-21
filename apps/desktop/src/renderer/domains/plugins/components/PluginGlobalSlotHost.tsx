@@ -2,6 +2,7 @@ import {
 	activeInputActionIdsAtom,
 	pluginAbilityDetailSlotsAtom,
 	pluginActivityTabsAtom,
+	pluginBottomPanelsAtom,
 	pluginCardRenderersAtom,
 	pluginFilePreviewsAtom,
 	pluginFileExplorerContextMenuActionsAtom,
@@ -16,6 +17,7 @@ import {
 	pluginTurnCardsAtom,
 	pluginWorkspaceViewsAtom,
 	type RegisteredActivityTab,
+	type RegisteredBottomPanel,
 	type RegisteredAbilityDetailSlot,
 	type RegisteredCardRenderer,
 	type RegisteredFilePreview,
@@ -55,6 +57,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 	const setFileExplorerToolbarActions = useSetAtom(pluginFileExplorerToolbarActionsAtom);
 	const setFileExplorerDecorationProviders = useSetAtom(pluginFileExplorerDecorationProvidersAtom);
 	const setActivityTabs = useSetAtom(pluginActivityTabsAtom);
+	const setBottomPanels = useSetAtom(pluginBottomPanelsAtom);
 	const setInputActions = useSetAtom(pluginInputActionsAtom);
 	const setNewSessionContexts = useSetAtom(pluginNewSessionContextsAtom);
 	const setCardRenderers = useSetAtom(pluginCardRenderersAtom);
@@ -248,6 +251,25 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 		if (tabs.length > 0 || !hostLoading) setActivityTabs(tabs);
 	}, [plugins, revision, hostLoading, setActivityTabs]);
 
+	// Publish bottom-panel contributions (the addable pool) so the session's
+	// bottom panel can render opened instances and its "+" menu.
+	useEffect(() => {
+		const panels: RegisteredBottomPanel[] = plugins.flatMap((plugin) =>
+			plugin.bottomPanels.map((panel) => ({
+				pluginId: plugin.id,
+				pluginName: plugin.name,
+				panelId: panel.id,
+				label: panel.label,
+				icon: panel.icon,
+				component: panel.component,
+				order: panel.order,
+				scope_use: panel.scope_use,
+				maxInstances: panel.maxInstances,
+			})),
+		);
+		if (panels.length > 0 || !hostLoading) setBottomPanels(panels);
+	}, [plugins, revision, hostLoading, setBottomPanels]);
+
 	// Publish input-action toggles (rendered beneath the AI input bar).
 	useEffect(() => {
 		const actions: RegisteredInputAction[] = plugins.flatMap((plugin) =>
@@ -362,6 +384,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 			setFileExplorerToolbarActions([]);
 			setFileExplorerDecorationProviders([]);
 			setActivityTabs([]);
+			setBottomPanels([]);
 			setInputActions([]);
 			setCardRenderers([]);
 			setToolCallSlots([]);
@@ -376,6 +399,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 		setFileExplorerToolbarActions,
 		setFileExplorerDecorationProviders,
 		setActivityTabs,
+		setBottomPanels,
 		setInputActions,
 		setCardRenderers,
 		setToolCallSlots,

@@ -353,6 +353,8 @@ export function TeamComposerConnector({
 			: [],
 		drawerActiveTab: null,
 		todo: null,
+		// Team 的输入栏不挂底部面板：面板绑在普通会话的 cwd 上。
+		bottomPanelPills: null,
 		speechInput,
 		hasPromptAttachment: Boolean(promptAttachment),
 		promptAttachmentIcon: promptAttachment?.icon,

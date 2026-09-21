@@ -3,6 +3,7 @@ import type { InputSegment } from "@shared/lib/input-tokens";
 import type { AppshotAttachment } from "@shared/store/atoms";
 import type { TodoItem } from "@shared/store/todo-atoms";
 import type { CodingAgentPlanReviewRequest } from "@vetta/coding-agent/function-extensions";
+import type { BottomPanelTabViewModel } from "@vetta-org/theme-ui/bottom-panel";
 import type { InputBarContextMenuViewProps, SessionDropZoneViewProps } from "@vetta-org/theme-ui/chat";
 import type { ComponentProps, MouseEvent, ReactNode } from "react";
 import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
@@ -175,6 +176,11 @@ export interface InputBarModel {
 	drawerActiveTab: string | null;
 	/** 输入卡片外部下方的待办条。 */
 	todo: InputBarTodoModel | null;
+	/**
+	 * 底部面板缩起时排在待办条右侧的 tab pill。
+	 * 只传数据不传节点：视觉由 theme-ui 的 `BottomPanelPillsView` 统一提供。
+	 */
+	bottomPanelPills: InputBarBottomPanelPillsModel | null;
 	/** Windows 本地流式语音输入；其他平台不渲染入口。 */
 	speechInput: SpeechInputModel | null;
 	hasPromptAttachment: boolean;
@@ -267,4 +273,12 @@ export interface InputBarViewProps {
 	model: InputBarModel;
 	className?: string;
 	classNames?: InputBarViewClassNames;
+}
+
+export interface InputBarBottomPanelPillsModel {
+	readonly pills: readonly BottomPanelTabViewModel[];
+	/** 这一组 pill 的可访问名称。 */
+	readonly groupLabel: string;
+	/** 点 pill：展开底部面板并激活那个 tab。 */
+	readonly onSelect: (tabId: string) => void;
 }

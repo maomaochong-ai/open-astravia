@@ -35,6 +35,7 @@ describe("conversation controls", () => {
 			finishExport: vi.fn(),
 			openExport: vi.fn(),
 			togglePanel: vi.fn(),
+			toggleBottomPanel: vi.fn(),
 			togglePin: vi.fn(async () => {}),
 		};
 		render(
@@ -47,6 +48,8 @@ describe("conversation controls", () => {
 						exportTitle: "Export",
 						panelOpen: false,
 						panelTitle: "Panel",
+						bottomPanelOpen: false,
+						bottomPanelTitle: "Bottom panel",
 						pinTitle: "Pin",
 						pinned: false,
 					}}

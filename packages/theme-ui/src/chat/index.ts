@@ -80,6 +80,7 @@ export type { ChatExportHostViewProps } from "./ChatExportHostView";
 export { ChatExportHostView } from "./ChatExportHostView";
 export {
 	ChatHeaderActions,
+	ChatHeaderBottomPanelAction,
 	ChatHeaderExportAction,
 	ChatHeaderPanelAction,
 	ChatHeaderPinAction,

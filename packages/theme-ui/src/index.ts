@@ -6,6 +6,7 @@ export * from "./activity";
 export * from "./app-shell";
 export * from "./appearance";
 export * from "./batch-tasks";
+export * from "./bottom-panel";
 export * from "./chat";
 export * from "./file-explorer";
 export * from "./file-preview";

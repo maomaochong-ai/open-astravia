@@ -1,12 +1,15 @@
 import { useSshHost } from "@shared/hooks/useSshHost";
 import {
 	activeSessionAtom,
+	activeSessionCwdAtom,
 	activityPanelOpenAtom,
 	applyInputActionWorkingState,
+	bottomPanelStateAtom,
 	captureInputActionWorkingState,
 	chatMessagesAtom,
 	closeInlineFilePreviewAtom,
 	defaultConversationCwdAtom,
+	dispatchBottomPanelAtom,
 	emptySessionInputActionState,
 	getProjectDisplayName,
 	inlineFilePreviewContextReadonlyAtom,
@@ -37,7 +40,6 @@ import type { ChatViewModelResult } from "../components/chat-view/types";
  * 一起重跑，低配机上发送时的级联提交主要来自这里。
  */
 const activeSessionPathAtom = selectAtom(activeSessionAtom, (session) => session?.sessionPath ?? null);
-const activeSessionCwdAtom = selectAtom(activeSessionAtom, (session) => session?.cwd ?? null);
 
 export function useChatViewModel(): ChatViewModelResult {
 	const { t } = useTranslation("chat");
@@ -118,6 +120,15 @@ export function useChatViewModel(): ChatViewModelResult {
 	}, []);
 	const finishExport = useCallback(() => setExporting(false), []);
 	const openExport = useCallback(() => setExporting(true), []);
+	// 底部面板的展开态是会话级持久化状态，所以读写都走它自己的 atom，
+	// 不在这里再存一份 useState。
+	const bottomPanelState = useAtomValue(bottomPanelStateAtom);
+	const dispatchBottomPanel = useSetAtom(dispatchBottomPanelAtom);
+	const bottomPanelOpen = !bottomPanelState.collapsed;
+	const toggleBottomPanel = useCallback(() => {
+		dispatchBottomPanel({ type: "set-collapsed", collapsed: bottomPanelOpen });
+	}, [dispatchBottomPanel, bottomPanelOpen]);
+
 	const togglePanel = useCallback(() => {
 		if (inlinePreviewActive) {
 			closeInlinePreview();
@@ -178,9 +189,10 @@ export function useChatViewModel(): ChatViewModelResult {
 			finishExport,
 			openExport,
 			togglePanel,
+			toggleBottomPanel,
 			togglePin,
 		}),
-		[finishExport, openExport, togglePanel, togglePin],
+		[finishExport, openExport, togglePanel, toggleBottomPanel, togglePin],
 	);
 
 	const hasMessages = messages.length > 0;
@@ -191,10 +203,14 @@ export function useChatViewModel(): ChatViewModelResult {
 			exportTitle: t("chatView.exportButton.title"),
 			panelOpen,
 			panelTitle: panelOpen ? t("chatView.panelButton.open") : t("chatView.panelButton.closed"),
+			bottomPanelOpen,
+			bottomPanelTitle: bottomPanelOpen
+				? t("chatView.bottomPanelButton.open")
+				: t("chatView.bottomPanelButton.closed"),
 			pinTitle: pinned ? t("chatView.pinButton.pinned") : t("chatView.pinButton.unpinned"),
 			pinned,
 		}),
-		[exporting, hasMessages, isStreaming, panelOpen, pinned, t],
+		[bottomPanelOpen, exporting, hasMessages, isStreaming, panelOpen, pinned, t],
 	);
 
 	return {

@@ -277,6 +277,46 @@
 		"copyCommand": "Copy command",
 		"metaDescription": "Local metadata, UI only, not sent to the model"
 	},
+	"bottomPanel": {
+		"tablist": "Bottom panel tabs",
+		"closeTab": "Close",
+		"tabFailed": "This panel failed to render",
+		"pillsGroup": "Bottom panel",
+		"empty": {
+			"title": "The bottom panel is empty",
+			"description": "Use the “+” in the top right to add a terminal or a plugin panel."
+		},
+		"actions": {
+			"add": "New panel",
+			"splitRight": "Split right",
+			"splitDown": "Split down",
+			"splitLimit": "Split limit reached",
+			"collapse": "Collapse bottom panel"
+		},
+		"addMenu": {
+			"builtinGroup": "Built-in",
+			"pluginGroup": "Plugins",
+			"instanceLimit": "Instance limit reached for this panel"
+		},
+		"closeConfirm": {
+			"title": "Close this panel?",
+			"message": "Work in progress inside the panel will be interrupted.",
+			"confirm": "Close"
+		},
+		"terminal": {
+			"title": "Terminal",
+			"exited": "[process exited with code {{code}}]",
+			"previousOutput": "-- output above is from the previous session (process ended) --",
+			"unavailable": "A terminal cannot be started in this environment",
+			"noResize": "This host has no helper installed, so the terminal size is fixed and will not follow the window.",
+			"replayTruncated": "[earlier output omitted]",
+			"closeConfirm": {
+				"title": "Close the terminal?",
+				"message": "“{{process}}” is still running; closing the terminal ends it.",
+				"confirm": "Close and end process"
+			}
+		}
+	},
 	"browser": {
 		"addressPlaceholder": "Enter a URL and press Enter",
 		"back": "Back",
@@ -301,6 +341,10 @@
 	},
 	"chatView": {
 		"defaultSessionTitle": "Vetta Session",
+		"bottomPanelButton": {
+			"closed": "Open bottom panel",
+			"open": "Close bottom panel"
+		},
 		"exportButton": {
 			"title": "Export full session as HTML"
 		},

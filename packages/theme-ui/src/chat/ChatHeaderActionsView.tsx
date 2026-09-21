@@ -68,8 +68,33 @@ export function ChatHeaderPanelAction({
 	);
 }
 
+export function ChatHeaderBottomPanelAction({
+	onClick,
+	open,
+	title,
+}: {
+	readonly onClick: () => void;
+	readonly open: boolean;
+	readonly title: string;
+}): JSX.Element {
+	return (
+		<Button
+			size="icon-xs"
+			variant="ghost"
+			title={title}
+			aria-label={title}
+			aria-pressed={open}
+			onClick={onClick}
+			className={open ? "bg-accent text-foreground" : ""}
+		>
+			<span className="icon-[solar--window-frame-linear] text-[14px]" />
+		</Button>
+	);
+}
+
 export const ChatHeaderActions = {
 	Export: ChatHeaderExportAction,
 	Pin: ChatHeaderPinAction,
 	Panel: ChatHeaderPanelAction,
+	BottomPanel: ChatHeaderBottomPanelAction,
 } as const;

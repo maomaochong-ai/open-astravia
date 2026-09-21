@@ -1,4 +1,5 @@
 import { ActivityPanel, CurrentScenarioActivityPanel } from "@domains/activity-panel/components/ActivityPanel";
+import { BottomPanelHost } from "@domains/bottom-panel/components/BottomPanelHost";
 import { cn } from "@shared/lib/utils";
 import { PerfSendProfiler } from "@shared/lib/perf-send";
 import type { ChatConversationItem } from "@shared/store/atoms";
@@ -89,6 +90,11 @@ export function DefaultChatView({
 					</div>
 					<ActivityColumn workspace={workspace} activity={activity} />
 				</div>
+				{/*
+				 * 底部面板是上面那一行的纵向兄弟，所以横跨整页宽度、压在活动面板下方。
+				 * 放进消息列里会被活动面板挤窄，终端可用列数会随侧栏开合变化。
+				 */}
+				<BottomPanelHost />
 			</div>
 		</PerfSendProfiler>
 	);
