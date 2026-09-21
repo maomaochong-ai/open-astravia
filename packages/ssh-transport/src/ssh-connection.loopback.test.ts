@@ -1,4 +1,5 @@
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { it as baseIt, describe, expect } from "vitest";
@@ -107,5 +108,33 @@ describe.each(modes)("SshConnection 的文件操作（回环 SSH，$name）", ({
 
 	it("拒绝删除远端根目录", async () => {
 		await expect((await connect()).remove("/")).rejects.toThrow(/root directory/);
+	});
+});
+
+/**
+ * 端口扫描只能在真实的机器上验证：用哪个工具、输出长什么样，都由那台机器决定。回环夹具把
+ * 「远端」指向本机，于是这里起一个真的监听端口，再看扫描能不能认出它——测的是命令与解析
+ * 在这个平台上确实对得上，而不是我们拼出了预期的字符串。
+ */
+describe("列出远端正在监听的端口（回环 SSH）", () => {
+	baseIt("认出一个刚起的监听端口，并且不列出 sshd 的 22", async () => {
+		const server = createServer();
+		const port = await new Promise<number>((resolve, reject) => {
+			server.once("error", reject);
+			server.listen(0, "127.0.0.1", () => {
+				const address = server.address();
+				if (address && typeof address === "object") resolve(address.port);
+				else reject(new Error("no port"));
+			});
+		});
+		try {
+			const ports = await createLoopbackSshConnection().listListeningPorts();
+			expect(ports.map((entry) => entry.port)).toContain(port);
+			expect(ports.map((entry) => entry.port)).not.toContain(22);
+			// 端口号升序是界面直接用的顺序，不能只保证集合正确。
+			expect(ports.map((entry) => entry.port)).toEqual([...ports.map((entry) => entry.port)].sort((a, b) => a - b));
+		} finally {
+			await new Promise<void>((resolve) => server.close(() => resolve()));
+		}
 	});
 });

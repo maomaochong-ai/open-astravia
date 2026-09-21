@@ -66,6 +66,16 @@ export {
 	type RemoteStatFlavor,
 } from "./remote-command.js";
 export {
+	buildListListeningPortsCommand,
+	isForwardableListenerAddress,
+	parseRemoteListeners,
+	type RemoteListenerScan,
+	type RemoteListenerTool,
+	type RemoteListeningPort,
+	type SelectForwardablePortsOptions,
+	selectForwardablePorts,
+} from "./remote-listeners.js";
+export {
 	buildControlPath,
 	buildPortForwardArgv,
 	buildSshArgv,
