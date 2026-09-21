@@ -8,6 +8,7 @@
  */
 import type { PluginContext } from "@vetta-org/plugin-sdk";
 import { machineLocalPath, machineOf } from "./machine";
+import { transferPayload } from "../shared/payload-transfer";
 
 /*
  * runner 源码 ~380KB，改为首次执行历史命令时动态 import（?raw 独立成 chunk）。
@@ -23,19 +24,6 @@ function loadRunnerSource(): Promise<string> {
 	runnerSourcePromise ??= import("../../history-runner/dist/runner.mjs?raw").then((m) => m.default);
 	return runnerSourcePromise;
 }
-
-/** 一块 base64 的大小。留足余量给脚本本身与其它环境变量。 */
-const CHUNK_CHARS = 16_000;
-
-const APPEND_SCRIPT = [
-	"const fs=require('fs'),p=require('path');",
-	"const target=process.env.VETD_RUNNER_TMP;",
-	"if(!target)throw new Error('VETD_RUNNER_TMP missing');",
-	"fs.mkdirSync(p.dirname(target),{recursive:true});",
-	"if(process.env.VETD_RUNNER_FIRST==='1'&&fs.existsSync(target))fs.rmSync(target);",
-	"fs.appendFileSync(target,Buffer.from(process.env.VETD_RUNNER_CHUNK??'','base64'));",
-	"process.stdout.write('ok');",
-].join("");
 
 /**
  * 解压落位。先写进临时目录再整目录改名：中途失败留下的是一个残缺的 tmp 目录，
@@ -118,20 +106,13 @@ async function materialize(ctx: PluginContext, cwd: string): Promise<string> {
 	const probe = await ctx.command.run("node", ["-e", PROBE_SCRIPT], { cwd, env: { VETD_RUNNER_FILE: file } });
 	if (probe.stdout.trim() === "yes") return file;
 
-	const payload = await gzipBase64(runnerSource);
 	const tmp = `${dir}.download`;
-	for (let offset = 0, index = 0; offset < payload.length; offset += CHUNK_CHARS, index++) {
-		const result = await ctx.command.run("node", ["-e", APPEND_SCRIPT], {
-			cwd,
-			env: {
-				VETD_RUNNER_TMP: tmp,
-				VETD_RUNNER_CHUNK: payload.slice(offset, offset + CHUNK_CHARS),
-				VETD_RUNNER_FIRST: index === 0 ? "1" : "0",
-			},
-			timeoutMs: 30_000,
-		});
-		if (result.exitCode !== 0) throw new Error(`runner write failed: ${result.stderr || result.stdout}`);
-	}
+	await transferPayload(ctx, {
+		route: cwd,
+		target: tmp,
+		payload: await gzipBase64(runnerSource),
+		label: "runner",
+	});
 	const finalize = await ctx.command.run("node", ["-e", FINALIZE_SCRIPT], {
 		cwd,
 		env: { VETD_RUNNER_TMP: tmp, VETD_RUNNER_DIR: dir },

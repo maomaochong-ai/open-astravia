@@ -20,6 +20,7 @@ import { sanitizeDesignName } from "../vetd/scaffold";
 import { ENGINE_FILES, engineFilesHash } from "./engine-files";
 import { ENGINE_VERSION } from "./engine-version";
 import { machineLocalPath, machineOf, qualifyLike, routeOf } from "../history/machine";
+import { base64FromText, transferPayload } from "../shared/payload-transfer";
 
 export type EngineProgress =
 	| { phase: "checking" }
@@ -41,11 +42,14 @@ const BOOTSTRAP_SCRIPT = [
 	"const fs=require('fs'),p=require('path');",
 	"const root=process.env.VETD_ENGINE_ROOT;",
 	"if(!root)throw new Error('VETD_ENGINE_ROOT missing');",
-	"const files=JSON.parse(Buffer.from(process.env.VETD_ENGINE_FILES,'base64').toString('utf8'));",
+	"const payload=process.env.VETD_ENGINE_PAYLOAD;",
+	"if(!payload)throw new Error('VETD_ENGINE_PAYLOAD missing');",
+	"const files=JSON.parse(fs.readFileSync(payload,'utf8'));",
 	"for(const[rel,content]of Object.entries(files)){",
 	"const t=p.join(root,rel);fs.mkdirSync(p.dirname(t),{recursive:true});fs.writeFileSync(t,content,'utf8');",
 	"}",
 	"fs.writeFileSync(p.join(root,'.files-hash'),process.env.VETD_ENGINE_HASH??'','utf8');",
+	"fs.rmSync(payload,{force:true});",
 	"console.log('ok');",
 ].join("");
 
@@ -159,25 +163,27 @@ export async function migrateLegacyEngine(ctx: PluginContext, home: string, rout
 	}
 }
 
-function base64FromText(text: string): string {
-	const bytes = new TextEncoder().encode(text);
-	let binary = "";
-	const chunk = 0x8000;
-	for (let i = 0; i < bytes.length; i += chunk) {
-		binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-	}
-	return btoa(binary);
-}
+
+/** 仅供测试：模板体量与传输方式的回归点，见 test/payload-transfer.test.ts。 */
+export const materializeEngineForTest = (ctx: PluginContext, engineRoot: string, route: string): Promise<void> =>
+	materializeEngine(ctx, engineRoot, route);
 
 async function materializeEngine(ctx: PluginContext, engineRoot: string, route: string): Promise<void> {
-	const payload = base64FromText(JSON.stringify(ENGINE_FILES));
+	// 模板有几百 KB，塞不进一个环境变量（Linux 单个字符串上限 128 KB），先分块送成一个文件。
+	const payloadPath = `${machineLocalPath(engineRoot)}.files.json`;
+	await transferPayload(ctx, {
+		route,
+		target: payloadPath,
+		payload: base64FromText(JSON.stringify(ENGINE_FILES)),
+		label: "engine materialize",
+	});
 	const result = await ctx.command.run("node", ["-e", BOOTSTRAP_SCRIPT], {
 		// 用设计稿的位置而不是 engineRoot：cwd 在这里只负责把命令发到对的机器上，而远端执行
 		// 会先 `cd` 进去——引擎目录正是这条命令要创建的东西，此刻它还不存在。
 		cwd: routeOf(route),
 		env: {
 			VETD_ENGINE_ROOT: machineLocalPath(engineRoot),
-			VETD_ENGINE_FILES: payload,
+			VETD_ENGINE_PAYLOAD: payloadPath,
 			VETD_ENGINE_HASH: engineFilesHash(),
 		},
 		timeoutMs: 30_000,
