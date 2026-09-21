@@ -1,3 +1,4 @@
+import { useSshHost } from "@shared/hooks/useSshHost";
 import {
 	activeSessionAtom,
 	activityPanelOpenAtom,
@@ -140,27 +141,34 @@ export function useChatViewModel(): ChatViewModelResult {
 		return () => setHeaderTitle(null);
 	}, [sessionTitle, setHeaderTitle]);
 
-	// 远程（SSH）会话在标题右侧挂一枚「远程」徽标：会话名本身不带主机信息，
-	// 用户切来切去时很容易把远端会话当成本地会话误操作。
+	// 远程（SSH）会话在标题右侧挂一枚徽标：会话名本身不带主机信息，用户切来切去时很容易
+	// 把远端会话当成本地会话误操作。徽标上直接写主机名——同时开着好几台远端时，只写「远程」
+	// 等于没说，而用户真正要确认的是「这条命令要跑在哪台机器上」。
 	const remoteLocation = useMemo(() => {
 		if (!activeSessionCwd) return null;
 		const location = parseProjectLocation(activeSessionCwd);
 		return location.kind === "ssh" ? location : null;
 	}, [activeSessionCwd]);
+	const remoteHost = useSshHost(remoteLocation?.hostId);
 
 	useEffect(() => {
 		if (!remoteLocation) {
 			setHeaderTitleBadge(null);
 			return;
 		}
+		// 主机名要等主进程回话；这一瞬以及主机已被删除时退回「远程」，不把 hostId 那串
+		// UUID 摆给用户看。
+		const label = remoteHost?.label ?? t("chatView.remoteBadge");
+		// 名字可以重复也可以改，连接目标才是唯一没有歧义的那个，所以两者都进悬停提示。
+		const origin = remoteHost === undefined ? remoteLocation.hostId : `${remoteHost.label} (${remoteHost.target})`;
 		setHeaderTitleBadge(
 			createElement(RemoteSessionBadgeView, {
-				label: t("chatView.remoteBadge"),
-				title: `${remoteLocation.hostId}:${remoteLocation.remotePath}`,
+				label,
+				title: `${origin}:${remoteLocation.remotePath}`,
 			}),
 		);
 		return () => setHeaderTitleBadge(null);
-	}, [remoteLocation, setHeaderTitleBadge, t]);
+	}, [remoteHost, remoteLocation, setHeaderTitleBadge, t]);
 
 	// actions / header 保持引用稳定：ChatView 用它们 memo 出 header slot 元素并写进
 	// 全局 pageHeader atom；若每次渲染都换引用，发送/流式期间每条消息都会级联一次
