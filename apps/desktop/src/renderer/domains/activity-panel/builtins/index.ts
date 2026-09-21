@@ -6,6 +6,7 @@ import { debugTabDefinition } from "./debug-tab";
 import { fileTabDefinition } from "./file-tab";
 import { knowledgeHistoryTabDefinition } from "./knowledge-history-tab";
 import { planTabDefinition } from "./plan-tab";
+import { portsTabDefinition } from "./ports-tab";
 import { todoTabDefinition } from "./todo-tab";
 import { workflowTabDefinition } from "./workflow-tab";
 
@@ -19,6 +20,7 @@ export const BUILTIN_ACTIVITY_TABS: readonly ActivityTabDefinition[] = [
 	browserTabDefinition,
 	planTabDefinition,
 	todoTabDefinition,
+	portsTabDefinition,
 	backgroundTasksTabDefinition,
 	workflowTabDefinition,
 	debugTabDefinition,

@@ -83,6 +83,15 @@ export {
 	PluginTabPickerView,
 } from "./PluginTabPickerView";
 export type {
+	PortCandidateViewItem,
+	PortForwardViewItem,
+	PortForwardViewStatus,
+	PortScanState,
+	PortsTabPanelViewLabels,
+	PortsTabPanelViewProps,
+} from "./PortsTabPanelView";
+export { PortsTabPanelView } from "./PortsTabPanelView";
+export type {
 	RequestHistoryItem,
 	RequestHistorySubTabViewLabels,
 	RequestHistorySubTabViewProps,

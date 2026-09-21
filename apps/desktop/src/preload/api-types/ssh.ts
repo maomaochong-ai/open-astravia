@@ -3,6 +3,9 @@ import type { PortForward } from "../../main/ssh/port-forward-service.js";
 import type { SshHostStatusEvent } from "../../shared/ssh-ipc.js";
 import type { SshPromptRequestEvent, SshPromptResponse } from "../../shared/ssh-prompt-ipc.js";
 
+// 渲染进程按这条契约读转发，不直接 import 主进程模块。
+export type { PortForward, PortForwardStatus } from "../../main/ssh/port-forward-service.js";
+
 // ─── 远程项目宿主（SSH） ───
 //
 // 对应 `src/main/ipc/ssh.ts`。注意与 `remote-pairing` 不是一回事：那个是「手机遥控

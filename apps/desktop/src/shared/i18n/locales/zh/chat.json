@@ -8,7 +8,8 @@
 			"debug": "调试",
 			"knowledgeHistory": "知识库加工历史",
 			"workflow": "工作流",
-			"plan": "计划"
+			"plan": "计划",
+			"ports": "端口"
 		},
 		"backgroundTasks": {
 			"statusRunning": "运行中",
@@ -51,6 +52,30 @@
 			"statusDone": "已完成",
 			"statusInProgress": "进行中",
 			"statusPending": "待办"
+		},
+		"ports": {
+			"forwardedHeading": "已转发到本机",
+			"candidatesHeading": "远端正在监听",
+			"empty": "还没有转发任何端口",
+			"emptyHint": "远端跑起服务后，把它的端口转发到本机，就能在这里直接打开预览。",
+			"addPlaceholder": "远端端口号，如 3000",
+			"add": "转发",
+			"forward": "转发",
+			"preview": "预览",
+			"openExternal": "用系统浏览器打开",
+			"copyAddress": "复制地址",
+			"copied": "已复制",
+			"stop": "停止转发",
+			"retry": "重试",
+			"refresh": "重新扫描",
+			"statusReconnecting": "重连中",
+			"statusFailed": "转发已断开",
+			"scanning": "正在查看远端有哪些端口在监听…",
+			"scanUnsupported": "这台主机上没有可用的端口扫描工具（ss / netstat / lsof），直接填端口号即可转发。",
+			"scanFailed": "没能查看远端的端口",
+			"fromOutput": "来自任务输出",
+			"portChanged": "本机 {{localPort}} 与远端 {{remotePort}} 不同号，按本机这个号访问",
+			"invalidPort": "请填 1 到 65535 之间的端口号"
 		},
 		"toolCalls": {
 			"filterAll": "全部",
