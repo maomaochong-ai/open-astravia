@@ -151,7 +151,7 @@ const ThemeCard = memo(function ThemeCard({
 				style={{ background: palette.background }}
 			>
 				<div className="absolute inset-0 flex items-center justify-center">
-					<div className={cn("relative aspect-square w-[180%]", active && "theme-blob-spin")} style={{ filter: "blur(28px) saturate(115%)" }}>
+					<div className="relative aspect-square w-[180%]" style={{ filter: "blur(28px) saturate(115%)" }}>
 						{BLOB_LAYOUT.map((b, i) => (
 							<div
 								key={`${theme.id}-${i}`}
@@ -165,7 +165,7 @@ const ThemeCard = memo(function ThemeCard({
 								}}
 							>
 								<div
-									className={cn("h-full w-full rounded-full", active && "theme-blob-ripple")}
+									className="h-full w-full rounded-full"
 									style={{
 										background: colors[i],
 										animationDuration: `${5 + i * 1.3}s`,

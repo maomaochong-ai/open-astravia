@@ -43,13 +43,13 @@ export interface TodoTimelineLabels {
 
 /**
  * 待办专属的关键帧：
- * - `todo-label-sheen`：标签上扫过的光斑
+ * - `todo-label-sheen`：标签的呼吸（只动 opacity；别改回 background-position 扫光，那会每帧重绘文字）
  * - `todo-marker-spin`：进行中条目的转动弧
  *
  * 状态点的呼吸动画不在这里——它和底部面板共用 `ActivityStatusDotStyles`。
  */
 export const TODO_PROGRESS_CSS = `
-@keyframes todo-label-sheen { from { background-position: 160% 0; } to { background-position: -160% 0; } }
+@keyframes todo-label-sheen { from { opacity: 0.6; } to { opacity: 1; } }
 @keyframes todo-marker-spin { to { transform: rotate(360deg); } }
 `;
 
@@ -63,19 +63,12 @@ export function TodoProgressStyles(): JSX.Element {
 	);
 }
 
-const SHEEN_BASE = "var(--primary)";
-const SHEEN_HIGHLIGHT = "color-mix(in srgb, var(--primary) 35%, white)";
-
-/** 标签光斑：以主色为底、高光横向扫过；静态时退回纯色，避免完成态还在闪。 */
+/** 标签呼吸：进行中用主色轻微呼吸；静态时退回纯色，避免完成态还在闪。 */
 export function todoLabelSheenStyle(active: boolean): CSSProperties {
 	if (!active) return { color: "var(--muted-foreground)" };
 	return {
-		backgroundImage: `linear-gradient(90deg, ${SHEEN_BASE} 0%, ${SHEEN_BASE} 38%, ${SHEEN_HIGHLIGHT} 50%, ${SHEEN_BASE} 62%, ${SHEEN_BASE} 100%)`,
-		backgroundSize: "160% 100%",
-		WebkitBackgroundClip: "text",
-		backgroundClip: "text",
-		color: "transparent",
-		animation: "todo-label-sheen 2.6s linear infinite",
+		color: "var(--primary)",
+		animation: "todo-label-sheen 1.3s ease-in-out infinite alternate",
 	};
 }
 

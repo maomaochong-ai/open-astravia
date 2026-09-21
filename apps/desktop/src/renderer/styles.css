@@ -828,83 +828,28 @@ a {
 	}
 }
 
-@keyframes tool-call-text-shimmer {
+/* 运行中的工具名/状态文字：整段轻微呼吸。
+   早先是 background-clip: text 的渐变光斑横扫（对 background-position 做无限动画）——
+   那种写法每帧都要重绘文字层，一个任务里常有好几段同时在跑，还贯穿整个任务时长；
+   在毛玻璃窗口上每帧重绘都很贵。opacity 由合成器直接处理，不触发重绘。 */
+@keyframes tool-call-text-breathe {
 	from {
-		background-position: 200% 0;
+		opacity: 0.55;
 	}
 	to {
-		background-position: -200% 0;
+		opacity: 1;
 	}
 }
 
 .tool-call-shimmer-text {
-	background: linear-gradient(
-		90deg,
-		var(--tool-call-shimmer-base) 0%,
-		var(--tool-call-shimmer-base) 42%,
-		var(--tool-call-shimmer-peak) 50%,
-		var(--tool-call-shimmer-base) 58%,
-		var(--tool-call-shimmer-base) 100%
-	);
-	background-size: 220% 100%;
-	background-position: 200% 0;
-	-webkit-background-clip: text;
-	background-clip: text;
-	-webkit-text-fill-color: transparent;
-	animation: tool-call-text-shimmer 2.4s linear infinite;
-	will-change: background-position;
-}
-
-/* 主题色卡（active）blob 漂移缩放，叠加容器重模糊后呈现混沌涟漪流转感。
-   旋转交给外层 wrapper，这里只动 translate/scale，避免与内联 transform 冲突。 */
-.theme-blob-ripple {
-	animation-name: theme-blob-drift;
-	animation-timing-function: ease-in-out;
-	animation-iteration-count: infinite;
-	animation-direction: alternate;
-	will-change: transform;
-}
-
-@keyframes theme-blob-drift {
-	0% {
-		transform: translate(0%, 0%) scale(1);
-	}
-	25% {
-		transform: translate(22%, -16%) scale(1.22);
-	}
-	50% {
-		transform: translate(-14%, 20%) scale(0.82);
-	}
-	75% {
-		transform: translate(16%, 14%) scale(1.12);
-	}
-	100% {
-		transform: translate(-20%, -10%) scale(0.94);
-	}
-}
-
-/* 整个 blob 层绕中心缓慢 360° 无限旋转，让背景颜色不停绕圈流转。 */
-.theme-blob-spin {
-	animation: theme-blob-spin 36s linear infinite;
-	will-change: transform;
-}
-
-@keyframes theme-blob-spin {
-	to {
-		transform: rotate(360deg);
-	}
+	color: var(--tool-call-shimmer-peak);
+	animation: tool-call-text-breathe 1.2s ease-in-out infinite alternate;
+	will-change: opacity;
 }
 
 @media (prefers-reduced-motion: reduce) {
 	.tool-call-shimmer-text {
 		color: var(--muted-foreground);
-		background: none;
-		-webkit-text-fill-color: currentColor;
-		animation: none;
-	}
-
-	.theme-blob-ripple,
-	.theme-blob-spin {
 		animation: none;
 	}
 }
@@ -1014,7 +959,7 @@ a {
 		color-mix(in srgb, var(--primary) 30%, transparent) 50%,
 		transparent 100%
 	);
-	filter: blur(6px);
+	/* 不挂 filter: blur——渐变两端本就淡到全透，模糊只是让无限动画每帧多跑一遍滤镜。 */
 	animation: team-pill-sweep 2.6s ease-in-out infinite;
 	will-change: transform;
 }

@@ -273,12 +273,8 @@ export const BotAvatar = memo(function BotAvatar({
 			className={`no-drag relative flex shrink-0 items-center justify-center focus:outline-none ${cfg.wrapper} ${className}`}
 		>
 			{active && (
-				<motion.span
-					aria-hidden
-					className={`absolute ${cfg.glowInset} rounded-[20px] bg-primary/30 ${cfg.glowBlur}`}
-					animate={{ opacity: [0.35, 0.65, 0.35], scale: [0.95, 1.05, 0.95] }}
-					transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-				/>
+				// 光晕是静态的：模糊层一旦跟着无限动画缩放/变透明，流式全程每帧都要重新模糊一遍。
+				<span aria-hidden className={`absolute ${cfg.glowInset} rounded-[20px] bg-primary/30 opacity-50 ${cfg.glowBlur}`} />
 			)}
 			<motion.div
 				className={`relative flex items-center justify-center ${cfg.body} bg-gradient-to-br from-primary to-primary/85 text-primary-foreground ${cfg.shadow}`}
