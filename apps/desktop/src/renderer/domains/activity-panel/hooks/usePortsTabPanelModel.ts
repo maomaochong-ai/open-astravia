@@ -305,10 +305,13 @@ export function usePortsTabPanelModel(): PortsTabPanelViewProps {
 	const labels = useMemo(
 		(): PortsTabPanelViewLabels => ({
 			heading: t("activityPanel.ports.heading"),
-			summary: (running: number, forwarded: number) =>
-				forwarded > 0
-					? t("activityPanel.ports.summaryWithForwards", { running, forwarded })
-					: t("activityPanel.ports.summary", { running }),
+			runningStat: (count: number) => t("activityPanel.ports.runningStat", { count }),
+			forwardedStat: (count: number) => t("activityPanel.ports.forwardedStat", { count }),
+			sectionForwarded: t("activityPanel.ports.sectionForwarded"),
+			sectionRunning: t("activityPanel.ports.sectionRunning"),
+			manualTitle: t("activityPanel.ports.manualTitle"),
+			remotePortLabel: t("activityPanel.ports.remotePortLabel"),
+			localPortLabel: t("activityPanel.ports.localPortLabel"),
 			empty: t("activityPanel.ports.empty"),
 			emptyHint: t("activityPanel.ports.emptyHint"),
 			remotePortPlaceholder: t("activityPanel.ports.remotePortPlaceholder"),

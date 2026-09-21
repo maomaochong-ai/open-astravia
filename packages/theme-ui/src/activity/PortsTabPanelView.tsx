@@ -51,8 +51,16 @@ export type PortScanState = "loading" | "ready" | "unsupported" | "failed";
 
 export interface PortsTabPanelViewLabels {
 	readonly heading: string;
-	/** 标题旁的摘要，例如「4 个在运行 · 1 个已映射」。 */
-	readonly summary: (running: number, forwarded: number) => string;
+	/** 标题下的两枚统计，例如「12 运行中」「1 已映射」。 */
+	readonly runningStat: (count: number) => string;
+	readonly forwardedStat: (count: number) => string;
+	/** 列表的两段标题。 */
+	readonly sectionForwarded: string;
+	readonly sectionRunning: string;
+	/** 手动映射卡片的标题与两个输入框的标签。 */
+	readonly manualTitle: string;
+	readonly remotePortLabel: string;
+	readonly localPortLabel: string;
 	readonly empty: string;
 	readonly emptyHint: string;
 	readonly remotePortPlaceholder: string;
@@ -171,13 +179,19 @@ function IconButton({
 	);
 }
 
-/** 端口号输入框：面板里出现三次（改本机端口、手动那行两个），视觉必须是同一个。 */
+/**
+ * 端口号输入框：面板里出现三次（改本机端口、手动映射两个），视觉必须是同一个。
+ *
+ * 实底而不是描边：这一页没有线条，输入框靠一块比面板亮一档的底色立住。
+ */
 function PortInput({
 	id,
 	value,
 	label,
 	placeholder,
 	className,
+	size = "md",
+	showLabel = false,
 	onChange,
 }: {
 	id: string;
@@ -185,27 +199,41 @@ function PortInput({
 	label: string;
 	placeholder: string;
 	className: string;
+	size?: "sm" | "md";
+	/** 为真时标签显示在输入框上方，否则只给读屏。 */
+	showLabel?: boolean;
 	onChange: (value: string) => void;
 }): JSX.Element {
+	const input = (
+		<input
+			id={id}
+			type="text"
+			inputMode="numeric"
+			value={value}
+			spellCheck={false}
+			placeholder={placeholder}
+			onChange={(event) => onChange(event.target.value)}
+			className={cn(
+				"w-full rounded-lg bg-foreground/[0.07] px-3 font-mono text-foreground tabular-nums outline-none ring-primary/40 transition-[box-shadow,background-color] placeholder:font-sans placeholder:text-muted-foreground/50 hover:bg-foreground/[0.09] focus:bg-foreground/[0.09] focus:ring-2",
+				size === "md" ? "h-9 text-[13px] placeholder:text-[12px]" : "h-8 text-[12px] placeholder:text-[11px]",
+			)}
+		/>
+	);
+	if (showLabel) {
+		return (
+			<label htmlFor={id} className={cn("flex flex-col gap-1.5", className)}>
+				<span className="px-0.5 text-[11px] text-muted-foreground">{label}</span>
+				{input}
+			</label>
+		);
+	}
 	return (
-		<>
+		<span className={className}>
 			<label className="sr-only" htmlFor={id}>
 				{label}
 			</label>
-			<input
-				id={id}
-				type="text"
-				inputMode="numeric"
-				value={value}
-				spellCheck={false}
-				placeholder={placeholder}
-				onChange={(event) => onChange(event.target.value)}
-				className={cn(
-					"h-7 rounded-md bg-muted/60 px-2 text-center font-mono text-[12px] text-foreground tabular-nums outline-none ring-primary/30 transition-shadow placeholder:font-sans placeholder:text-[11px] placeholder:text-muted-foreground/50 focus:ring-2",
-					className,
-				)}
-			/>
-		</>
+			{input}
+		</span>
 	);
 }
 
@@ -306,21 +334,22 @@ function EditLocalPort({
 	onCancel: () => void;
 }): JSX.Element {
 	return (
-		<form onSubmit={onSubmit} className="flex min-w-0 items-center gap-1.5 pt-1">
-			<span className="shrink-0 font-mono text-[11px] text-muted-foreground">{labels.localPortPrefix}</span>
+		<form onSubmit={onSubmit} className="flex min-w-0 items-center gap-2 pt-1.5">
+			<span className="shrink-0 font-mono text-[12px] text-muted-foreground">{labels.localPortPrefix}</span>
 			<PortInput
 				id={`ports-edit-${row.port}`}
 				value={value}
 				label={labels.changeLocalPort}
 				placeholder={labels.localPortPlaceholder}
-				className="w-[4.5rem]"
+				size="sm"
+				className="w-24"
 				onChange={onChange}
 			/>
 			<span className="flex-1" />
-			<Button type="submit" size="xs" variant="ghost" className="h-6 bg-primary/10 text-primary hover:bg-primary/15">
+			<Button type="submit" size="sm" className="h-8 rounded-lg px-3">
 				{labels.save}
 			</Button>
-			<Button type="button" size="xs" variant="ghost" className="h-6" onClick={onCancel}>
+			<Button type="button" size="sm" variant="ghost" className="h-8 rounded-lg px-3" onClick={onCancel}>
 				{labels.cancel}
 			</Button>
 		</form>
@@ -433,7 +462,7 @@ function PortRow({
 	return (
 		<li
 			className={cn(
-				"group relative rounded-xl px-2.5 py-2 transition-colors hover:bg-accent focus-within:bg-accent",
+				"group relative rounded-xl px-3 py-2.5 transition-colors hover:bg-accent focus-within:bg-accent",
 				forward && (forward.status === "failed" ? "ring-2 ring-destructive/70 ring-inset" : "ring-2 ring-primary ring-inset"),
 				confirming && "bg-destructive/[0.04] hover:bg-destructive/[0.06]",
 				row.sensitive && "opacity-60 hover:opacity-100",
@@ -534,12 +563,14 @@ function PortRow({
 
 /** 折叠组：一行灰字，点开才列出。 */
 function FoldedGroup({
+	icon,
 	label,
 	title,
 	open,
 	onToggle,
 	children,
 }: {
+	icon: string;
 	label: string;
 	title?: string;
 	open: boolean;
@@ -553,13 +584,17 @@ function FoldedGroup({
 				aria-expanded={open}
 				title={title}
 				onClick={onToggle}
-				className="flex w-full items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground/60 transition-colors hover:text-muted-foreground"
+				className="flex h-9 w-full items-center gap-2 rounded-xl px-3 text-[12px] text-muted-foreground/70 transition-colors hover:bg-accent hover:text-foreground"
 			>
+				<span aria-hidden className={cn(icon, "h-4 w-4 shrink-0 text-muted-foreground/50")} />
+				<span className="min-w-0 flex-1 truncate text-left">{label}</span>
 				<span
 					aria-hidden
-					className={cn("icon-[solar--alt-arrow-right-linear] h-3 w-3 transition-transform", open && "rotate-90")}
+					className={cn(
+						"icon-[solar--alt-arrow-down-linear] h-3.5 w-3.5 shrink-0 transition-transform",
+						!open && "-rotate-90",
+					)}
 				/>
-				{label}
 			</button>
 			{open ? <ul className="mt-1 space-y-1">{children}</ul> : null}
 		</div>
@@ -579,6 +614,25 @@ function SkeletonRows(): JSX.Element {
 				</li>
 			))}
 		</ul>
+	);
+}
+
+/** 一段列表的标题：小号灰字加数量，靠留白而不是分隔线把两段分开。 */
+function SectionLabel({ label, count }: { label: string; count: number }): JSX.Element {
+	return (
+		<div className="flex items-center gap-1.5 px-3 pb-1.5">
+			<h4 className="font-medium text-[11px] text-muted-foreground/70 tracking-wide">{label}</h4>
+			<span className="text-[11px] text-muted-foreground/40 tabular-nums">{count}</span>
+		</div>
+	);
+}
+
+function Stat({ dot, text }: { dot: string; text: string }): JSX.Element {
+	return (
+		<span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground tabular-nums">
+			<span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", dot)} />
+			{text}
+		</span>
 	);
 }
 
@@ -651,6 +705,9 @@ export function PortsTabPanelView({
 
 	const groups = groupRows(rows);
 	const { main, unnamed, ephemeral, sensitive } = groups;
+	// 已映射的单独成段放在最上面：那是用户正在用的，其余是「还可以接过来的」。
+	const mapped = main.filter((row) => row.forward);
+	const unmapped = main.filter((row) => !row.forward);
 	const running = rows.filter((row) => row.listening !== false).length;
 	const forwarded = rows.filter((row) => row.forward).length;
 	const nothingToShow = rows.length === 0 && scanState !== "loading";
@@ -691,14 +748,17 @@ export function PortsTabPanelView({
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col">
-			<div className="flex shrink-0 items-center gap-2 px-4 pt-3 pb-1.5">
-				<h3 className="font-medium text-[12px] text-foreground">{labels.heading}</h3>
-				{rows.length > 0 ? (
-					<span className="truncate text-[11px] text-muted-foreground/60 tabular-nums">
-						{labels.summary(running, forwarded)}
-					</span>
-				) : null}
-				<div className="ml-auto flex shrink-0 items-center gap-0.5">
+			<header className="flex shrink-0 items-start gap-3 px-5 pt-4 pb-3">
+				<div className="min-w-0 flex-1 space-y-1">
+					<h3 className="font-semibold text-[14px] text-foreground tracking-tight">{labels.heading}</h3>
+					{rows.length > 0 ? (
+						<div className="flex items-center gap-3">
+							<Stat dot="bg-emerald-500" text={labels.runningStat(running)} />
+							{forwarded > 0 ? <Stat dot="bg-primary" text={labels.forwardedStat(forwarded)} /> : null}
+						</div>
+					) : null}
+				</div>
+				<div className="flex shrink-0 items-center gap-1 pt-0.5">
 					<IconButton
 						icon={cn("icon-[solar--refresh-linear]", scanState === "loading" && "animate-spin")}
 						title={labels.refresh}
@@ -706,52 +766,58 @@ export function PortsTabPanelView({
 					/>
 					<Button
 						variant="ghost"
-						size="icon-xs"
+						size="xs"
 						title={labels.addManual}
 						aria-label={labels.addManual}
 						aria-pressed={showManual}
 						onClick={() => setManualOpen((open) => !open)}
-						className={cn("shrink-0 text-muted-foreground hover:text-foreground", showManual && "text-foreground")}
+						className={cn(
+							"h-7 gap-1 rounded-lg px-2.5 text-[12px] text-muted-foreground hover:text-foreground",
+							showManual && "bg-accent text-foreground",
+						)}
 					>
 						<span aria-hidden className="icon-[solar--add-circle-linear] h-3.5 w-3.5" />
+						{labels.manualTitle}
 					</Button>
 				</div>
-			</div>
+			</header>
 
-			<div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-2 pb-4">
+			<div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-2.5 pb-6">
 				{showManual ? (
-					<form onSubmit={onAddDraftPort} className="flex items-center gap-1.5 px-2 pt-1">
-						<PortInput
-							id="ports-add-remote"
-							value={draftRemotePort}
-							label={labels.remotePortPlaceholder}
-							placeholder={labels.remotePortPlaceholder}
-							className="min-w-0 flex-1"
-							onChange={onDraftRemotePortChange}
-						/>
-						<span aria-hidden className="icon-[solar--arrow-right-linear] h-3 w-3 shrink-0 text-muted-foreground/40" />
-						<PortInput
-							id="ports-add-local"
-							value={draftLocalPort}
-							label={labels.localPortPlaceholder}
-							placeholder={labels.localPortPlaceholder}
-							className="min-w-0 flex-1"
-							onChange={onDraftLocalPortChange}
-						/>
-						<Button
-							type="submit"
-							size="xs"
-							variant="ghost"
-							disabled={draftRemotePort.trim() === ""}
-							className="h-7 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary"
-						>
-							{labels.add}
-						</Button>
+					<form onSubmit={onAddDraftPort} className="mx-0.5 rounded-2xl bg-foreground/[0.035] p-3.5">
+						<div className="flex items-end gap-2">
+							<PortInput
+								id="ports-add-remote"
+								value={draftRemotePort}
+								label={labels.remotePortLabel}
+								placeholder={labels.remotePortPlaceholder}
+								showLabel
+								className="min-w-0 flex-1"
+								onChange={onDraftRemotePortChange}
+							/>
+							<span
+								aria-hidden
+								className="icon-[solar--arrow-right-linear] mb-2.5 h-4 w-4 shrink-0 text-muted-foreground/40"
+							/>
+							<PortInput
+								id="ports-add-local"
+								value={draftLocalPort}
+								label={labels.localPortLabel}
+								placeholder={labels.localPortPlaceholder}
+								showLabel
+								className="min-w-0 flex-1"
+								onChange={onDraftLocalPortChange}
+							/>
+							<Button type="submit" disabled={draftRemotePort.trim() === ""} className="h-9 shrink-0 rounded-lg px-4">
+								{labels.add}
+							</Button>
+						</div>
 					</form>
 				) : null}
 
 				{errorMessage ? (
-					<p className="mx-2 rounded-lg bg-destructive/[0.06] px-3 py-2 text-[11px] text-destructive leading-relaxed">
+					<p className="mx-0.5 flex gap-2 rounded-xl bg-destructive/[0.07] px-3.5 py-2.5 text-[12px] text-destructive leading-relaxed">
+						<span aria-hidden className="icon-[solar--danger-circle-linear] mt-0.5 h-3.5 w-3.5 shrink-0" />
 						{errorMessage}
 					</p>
 				) : null}
@@ -768,22 +834,35 @@ export function PortsTabPanelView({
 					</div>
 				) : null}
 
-				{main.length > 0 ? <ul className="space-y-1">{main.map(renderRow)}</ul> : null}
+				{mapped.length > 0 ? (
+					<section>
+						<SectionLabel label={labels.sectionForwarded} count={mapped.length} />
+						<ul className="space-y-1.5">{mapped.map(renderRow)}</ul>
+					</section>
+				) : null}
+
+				{unmapped.length > 0 ? (
+					<section>
+						<SectionLabel label={labels.sectionRunning} count={unmapped.length} />
+						<ul className="space-y-1">{unmapped.map(renderRow)}</ul>
+					</section>
+				) : null}
 
 				{/* 断开的原因排在列表下面：行里只放得下地址，而原因常常是一整句 ssh 的报错。 */}
 				{rows
 					.filter((row) => row.forward?.status === "failed" && row.forward.error)
 					.map((row) => (
-						<p key={row.port} className="px-2 text-[11px] text-destructive/80 leading-relaxed">
+						<p key={row.port} className="px-3 text-[11px] text-destructive/80 leading-relaxed">
 							<span className="font-mono tabular-nums">{row.port}</span>
 							{`: ${row.forward?.error}`}
 						</p>
 					))}
 
 				{unnamed.length + ephemeral.length + sensitive.length > 0 ? (
-					<div className="space-y-0.5">
+					<div className="space-y-1">
 						{unnamed.length > 0 ? (
 							<FoldedGroup
+								icon="icon-[solar--question-circle-linear]"
 								label={labels.unnamedToggle(unnamed.length)}
 								title={labels.unnamedHint}
 								open={unnamedOpen}
@@ -794,6 +873,7 @@ export function PortsTabPanelView({
 						) : null}
 						{ephemeral.length > 0 ? (
 							<FoldedGroup
+								icon="icon-[solar--hourglass-line-linear]"
 								label={labels.ephemeralToggle(ephemeral.length)}
 								open={ephemeralOpen}
 								onToggle={() => setEphemeralOpen((open) => !open)}
@@ -803,6 +883,7 @@ export function PortsTabPanelView({
 						) : null}
 						{sensitive.length > 0 ? (
 							<FoldedGroup
+								icon="icon-[solar--shield-keyhole-linear]"
 								label={labels.sensitiveToggle(sensitive.length)}
 								title={labels.sensitiveHint}
 								open={sensitiveOpen}
@@ -815,10 +896,10 @@ export function PortsTabPanelView({
 				) : null}
 
 				{scanState === "unsupported" ? (
-					<p className="px-2 text-[11px] text-muted-foreground/60 leading-relaxed">{labels.scanUnsupported}</p>
+					<p className="px-3 text-[11px] text-muted-foreground/60 leading-relaxed">{labels.scanUnsupported}</p>
 				) : null}
 				{scanState === "failed" ? (
-					<p className="px-2 text-[11px] text-muted-foreground/60 leading-relaxed">
+					<p className="px-3 text-[11px] text-muted-foreground/60 leading-relaxed">
 						{labels.scanFailed}
 						{scanError ? `：${scanError}` : ""}
 					</p>
