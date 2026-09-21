@@ -89,6 +89,8 @@
 			"terminateFailed": "Could not stop {{name}}: {{reason}}",
 			"sensitiveToggle": "{{count}} system ports",
 			"sensitiveHint": "Privileged ports (below 1024) and the port this SSH connection uses. Stopping them could drop the connection, so they cannot be stopped from here.",
+			"unnamedToggle": "{{count}} ports with an unknown process",
+			"unnamedHint": "The owning process could not be read, usually because it belongs to another user.",
 			"ephemeralToggle": "{{count}} more ephemeral ports (above 32768)",
 			"invalidPort": "Enter a port number between 1 and 65535"
 		},

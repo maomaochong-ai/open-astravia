@@ -85,6 +85,8 @@ export interface PortsTabPanelViewLabels {
 	readonly terminateConfirm: (name: string) => string;
 	readonly sensitiveToggle: (count: number) => string;
 	readonly sensitiveHint: string;
+	readonly unnamedToggle: (count: number) => string;
+	readonly unnamedHint: string;
 	/** 折叠起来的临时端口那一行；数量只有视图知道，所以这条是函数而不是成品字符串。 */
 	readonly ephemeralToggle: (count: number) => string;
 }
@@ -138,8 +140,8 @@ const CHIP_DOT: Record<PortForwardViewStatus, string> = {
 	failed: "bg-destructive",
 };
 
-/** 端口号那一列的宽度：放得下五位数，所有行的名字因此左对齐成一条线。 */
-const PORT_COLUMN = "w-[3.25rem] shrink-0";
+/** 骨架屏里占位的端口列，与徽标同宽。 */
+const PORT_COLUMN = "w-[3.5rem] shrink-0";
 
 function IconButton({
 	icon,
@@ -336,11 +338,30 @@ interface RowHandlers {
 	readonly onRequestTerminate: () => void;
 }
 
+/** 端口号徽标：列表靠它扫读，已映射的换成实心主色，一眼分得出哪些已经接到本机。 */
+function PortBadge({ row }: { row: PortRowViewItem }): JSX.Element {
+	return (
+		<span
+			className={cn(
+				"inline-flex h-6 min-w-[3.5rem] shrink-0 items-center justify-center rounded-md px-1.5 font-mono font-semibold text-[12px] tabular-nums",
+				row.listening === false
+					? "bg-muted/60 text-muted-foreground line-through"
+					: row.forward
+						? "bg-primary text-primary-foreground"
+						: "bg-muted text-foreground",
+			)}
+		>
+			{row.port}
+		</span>
+	);
+}
+
 /**
  * 一个远端服务。
  *
- * 两行：上面是「哪个端口、谁在用、映射到了哪」，下面是命令行与启动时间。动作平时不占位置，
- * 悬停时盖在第二行右侧的时间上淡入——每行都常驻一排按钮的话，列表就成了按钮墙。
+ * 主行是「端口徽标 · 进程名 · 启动时间 · 映射地址」，命令行有内容时才多一行——没有就不留
+ * 空行，列表因此不会被一排排空白撑开。动作平时不占位置，悬停时盖在时间上淡入。
+ * 已映射的整行描一圈主色边：它是用户亲手接到本机、正在用的东西。
  */
 function PortRow({
 	row,
@@ -373,7 +394,7 @@ function PortRow({
 }): JSX.Element {
 	const forward = row.forward;
 	const idle = !editing && !confirming && !terminating;
-	let detail: ReactNode;
+	let detail: ReactNode = null;
 	if (editing) {
 		detail = (
 			<EditLocalPort
@@ -395,81 +416,39 @@ function PortRow({
 				onCancel={onCancelTerminate}
 			/>
 		);
-	} else {
+	} else if (row.listening === false) {
+		detail = <p className="truncate text-[11px] text-muted-foreground/60 italic">{labels.notListening}</p>;
+	} else if (row.command) {
 		detail = (
-			<div className="relative flex h-5 min-w-0 items-center gap-2">
-				<span
-					className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground/70"
-					title={row.command}
-				>
-					{row.listening === false ? (
-						<span className="font-sans text-muted-foreground/60 italic">{labels.notListening}</span>
-					) : (
-						(row.command ?? (row.pid === undefined ? "" : `PID ${row.pid}`))
-					)}
-				</span>
-				{row.startedLabel ? (
-					<span
-						title={row.startedTitle}
-						className="shrink-0 text-[11px] text-muted-foreground/50 tabular-nums transition-opacity group-focus-within:opacity-0 group-hover:opacity-0"
-					>
-						{row.startedLabel}
-					</span>
-				) : null}
-				{/* 动作盖在时间上：底色与悬停态一致，从右往左渐隐，不露出下面的字。 */}
-				<div className="pointer-events-none absolute inset-y-[-2px] right-0 flex items-center gap-0.5 bg-gradient-to-l from-60% from-accent to-transparent pl-6 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
-					{forward ? (
-						<>
-							<IconButton
-								icon="icon-[solar--square-top-down-linear]"
-								title={labels.openExternal}
-								onClick={handlers.onOpenExternal}
-							/>
-							<IconButton icon="icon-[solar--copy-linear]" title={labels.copyAddress} onClick={handlers.onCopyAddress} />
-							<IconButton icon="icon-[solar--pen-2-linear]" title={labels.changeLocalPort} onClick={handlers.onStartEdit} />
-							<IconButton icon="icon-[solar--link-broken-linear]" title={labels.stop} onClick={handlers.onStop} />
-						</>
-					) : null}
-					{row.killable ? (
-						<IconButton
-							icon="icon-[solar--stop-circle-linear]"
-							title={row.needsForceKill ? labels.forceTerminate : labels.terminate}
-							tone="danger"
-							onClick={handlers.onRequestTerminate}
-						/>
-					) : null}
-				</div>
-			</div>
+			<p className="truncate font-mono text-[11px] text-muted-foreground/60" title={row.command}>
+				{row.command}
+			</p>
 		);
 	}
 
 	return (
 		<li
 			className={cn(
-				"group relative rounded-lg px-2 py-1.5 transition-colors hover:bg-accent focus-within:bg-accent",
+				"group relative rounded-xl px-2.5 py-2 transition-colors hover:bg-accent focus-within:bg-accent",
+				forward && (forward.status === "failed" ? "ring-2 ring-destructive/70 ring-inset" : "ring-2 ring-primary ring-inset"),
 				confirming && "bg-destructive/[0.04] hover:bg-destructive/[0.06]",
 				row.sensitive && "opacity-60 hover:opacity-100",
 			)}
 		>
-			<div className="flex min-w-0 items-center gap-2">
-				<span
-					className={cn(
-						PORT_COLUMN,
-						"font-medium font-mono text-[13px] tabular-nums",
-						row.listening === false ? "text-muted-foreground line-through" : "text-foreground",
-					)}
-				>
-					{row.port}
-				</span>
+			<div className="flex min-w-0 items-center gap-2.5">
+				<PortBadge row={row} />
 				<span className="flex min-w-0 flex-1 items-center gap-1.5">
-					<span className={cn("truncate text-[13px]", row.processName ? "text-foreground" : "text-muted-foreground/50")}>
+					<span
+						className={cn(
+							"truncate text-[13px]",
+							row.processName ? "font-medium text-foreground" : "text-muted-foreground/50",
+						)}
+						title={row.pid === undefined ? undefined : `PID ${row.pid}`}
+					>
 						{row.processName ?? "—"}
 					</span>
 					{row.fromOutput ? (
-						<span
-							title={labels.fromOutput}
-							className="shrink-0 rounded-full bg-primary/10 px-1.5 text-[10px] text-primary leading-4"
-						>
+						<span className="shrink-0 rounded-full bg-primary/10 px-1.5 text-[10px] text-primary leading-4">
 							{labels.fromOutput}
 						</span>
 					) : null}
@@ -481,6 +460,59 @@ function PortRow({
 						/>
 					) : null}
 				</span>
+				<span className="relative flex shrink-0 items-center">
+					{row.startedLabel ? (
+						<span
+							title={row.startedTitle}
+							className={cn(
+								"text-[11px] text-muted-foreground/50 tabular-nums transition-opacity",
+								idle && "group-focus-within:opacity-0 group-hover:opacity-0",
+							)}
+						>
+							{row.startedLabel}
+						</span>
+					) : null}
+					{idle ? (
+						// 动作盖在时间上：底色与悬停态一致，从右往左渐隐，不露出下面的名字。
+						<span className="pointer-events-none absolute inset-y-[-4px] right-0 flex items-center gap-0.5 bg-gradient-to-l from-70% from-accent to-transparent pl-8 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
+							{forward ? (
+								<>
+									<IconButton
+										icon="icon-[solar--square-top-down-linear]"
+										title={labels.openExternal}
+										onClick={handlers.onOpenExternal}
+									/>
+									<IconButton icon="icon-[solar--copy-linear]" title={labels.copyAddress} onClick={handlers.onCopyAddress} />
+									<IconButton
+										icon="icon-[solar--pen-2-linear]"
+										title={labels.changeLocalPort}
+										onClick={handlers.onStartEdit}
+									/>
+									<IconButton icon="icon-[solar--link-broken-linear]" title={labels.stop} onClick={handlers.onStop} />
+								</>
+							) : row.listening === false ? null : (
+								<button
+									type="button"
+									aria-label={labels.forward}
+									title={`${labels.forward} ${row.port} → localhost`}
+									onClick={handlers.onForward}
+									className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md bg-primary/10 px-2 font-medium text-[11px] text-primary transition-colors hover:bg-primary/20"
+								>
+									<span aria-hidden className="icon-[solar--arrow-right-up-linear] h-3 w-3" />
+									{labels.forward}
+								</button>
+							)}
+							{row.killable ? (
+								<IconButton
+									icon="icon-[solar--stop-circle-linear]"
+									title={row.needsForceKill ? labels.forceTerminate : labels.terminate}
+									tone="danger"
+									onClick={handlers.onRequestTerminate}
+								/>
+							) : null}
+						</span>
+					) : null}
+				</span>
 				{forward ? (
 					<ForwardChip
 						forward={forward}
@@ -489,28 +521,14 @@ function PortRow({
 						onPreview={handlers.onPreview}
 						onRetry={handlers.onRetry}
 					/>
-				) : row.listening === false ? null : (
-					<button
-						type="button"
-						aria-label={labels.forward}
-						title={`${labels.forward} ${row.port} → localhost`}
-						onClick={handlers.onForward}
-						className={cn(
-							"inline-flex h-5 shrink-0 items-center gap-1 rounded-full px-2 text-[11px] text-muted-foreground transition-all hover:bg-primary/10 hover:text-primary focus-visible:opacity-100",
-							idle ? "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100" : "hidden",
-						)}
-					>
-						<span aria-hidden className="icon-[solar--arrow-right-up-linear] h-3 w-3" />
-						{labels.forward}
-					</button>
-				)}
+				) : null}
 			</div>
-			<div className={cn("min-w-0", "pl-[calc(3.25rem+0.5rem)]")}>{detail}</div>
+			{detail ? <div className="mt-1 min-w-0 pl-[4.125rem]">{detail}</div> : null}
 		</li>
 	);
 }
 
-/** 折叠组：系统端口与临时端口各一个，一行灰字，点开才列出。 */
+/** 折叠组：一行灰字，点开才列出。 */
 function FoldedGroup({
 	label,
 	title,
@@ -539,7 +557,7 @@ function FoldedGroup({
 				/>
 				{label}
 			</button>
-			{open ? <ul className="mt-0.5 space-y-0.5">{children}</ul> : null}
+			{open ? <ul className="mt-1 space-y-1">{children}</ul> : null}
 		</div>
 	);
 }
@@ -558,6 +576,32 @@ function SkeletonRows(): JSX.Element {
 			))}
 		</ul>
 	);
+}
+
+interface RowGroups {
+	readonly main: PortRowViewItem[];
+	readonly unnamed: PortRowViewItem[];
+	readonly ephemeral: PortRowViewItem[];
+	readonly sensitive: PortRowViewItem[];
+}
+
+/**
+ * 分组：主列表之外，系统端口、临时端口、认不出进程的端口各自折叠。
+ *
+ * 已映射的与任务输出里认出的一律留在主列表：前者是用户亲手接过来、正在用的，后者是他刚起
+ * 的服务，折起来等于把他要找的东西藏了。认不出进程的端口（多半属于别的用户，读不到名字）
+ * 一行只有一个号，摊在主列表里就是一整屏的「—」。
+ */
+function groupRows(rows: readonly PortRowViewItem[]): RowGroups {
+	const groups: RowGroups = { main: [], unnamed: [], ephemeral: [], sensitive: [] };
+	for (const row of rows) {
+		if (row.forward || row.fromOutput) groups.main.push(row);
+		else if (row.sensitive) groups.sensitive.push(row);
+		else if (row.ephemeral) groups.ephemeral.push(row);
+		else if (!row.processName) groups.unnamed.push(row);
+		else groups.main.push(row);
+	}
+	return groups;
 }
 
 /**
@@ -598,12 +642,11 @@ export function PortsTabPanelView({
 	const [manualOpen, setManualOpen] = useState(false);
 	const [sensitiveOpen, setSensitiveOpen] = useState(false);
 	const [ephemeralOpen, setEphemeralOpen] = useState(false);
+	const [unnamedOpen, setUnnamedOpen] = useState(false);
 	const [confirmingPort, setConfirmingPort] = useState<number | undefined>(undefined);
 
-	// 已映射的无论什么端口都留在主列表：那是用户亲手接过来的，折起来等于藏起他正在用的东西。
-	const sensitive = rows.filter((row) => row.sensitive && !row.forward);
-	const ephemeral = rows.filter((row) => !row.sensitive && row.ephemeral && !row.forward);
-	const main = rows.filter((row) => row.forward || (!row.sensitive && !row.ephemeral));
+	const groups = groupRows(rows);
+	const { main, unnamed, ephemeral, sensitive } = groups;
 	const running = rows.filter((row) => row.listening !== false).length;
 	const forwarded = rows.filter((row) => row.forward).length;
 	const nothingToShow = rows.length === 0 && scanState !== "loading";
@@ -721,7 +764,7 @@ export function PortsTabPanelView({
 					</div>
 				) : null}
 
-				{main.length > 0 ? <ul className="space-y-0.5">{main.map(renderRow)}</ul> : null}
+				{main.length > 0 ? <ul className="space-y-1">{main.map(renderRow)}</ul> : null}
 
 				{/* 断开的原因排在列表下面：行里只放得下地址，而原因常常是一整句 ssh 的报错。 */}
 				{rows
@@ -733,8 +776,18 @@ export function PortsTabPanelView({
 						</p>
 					))}
 
-				{ephemeral.length > 0 || sensitive.length > 0 ? (
+				{unnamed.length + ephemeral.length + sensitive.length > 0 ? (
 					<div className="space-y-0.5">
+						{unnamed.length > 0 ? (
+							<FoldedGroup
+								label={labels.unnamedToggle(unnamed.length)}
+								title={labels.unnamedHint}
+								open={unnamedOpen}
+								onToggle={() => setUnnamedOpen((open) => !open)}
+							>
+								{unnamed.map(renderRow)}
+							</FoldedGroup>
+						) : null}
 						{ephemeral.length > 0 ? (
 							<FoldedGroup
 								label={labels.ephemeralToggle(ephemeral.length)}

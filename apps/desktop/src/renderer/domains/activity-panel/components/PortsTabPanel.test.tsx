@@ -209,7 +209,7 @@ describe("端口面板", () => {
 	});
 
 	it("停止转发后它回到候选里，不必重新扫描", async () => {
-		scan = { tool: "ss", ports: [{ port: 3000, address: "0.0.0.0" }] };
+		scan = { tool: "ss", ports: [{ port: 3000, address: "0.0.0.0", processName: "node" }] };
 		ledger = [
 			{
 				hostId: "host-1",
@@ -478,5 +478,46 @@ describe("端口面板", () => {
 		renderPanel();
 
 		expect(await screen.findByText("activityPanel.ports.notListening")).toBeTruthy();
+	});
+
+	it("认不出进程的端口折叠起来，已映射的那个除外", async () => {
+		scan = {
+			tool: "ss",
+			ports: [
+				{ port: 3000, address: "127.0.0.1", processName: "node", pid: 1 },
+				{ port: 1200, address: "0.0.0.0" },
+				{ port: 4321, address: "0.0.0.0" },
+				{ port: 5001, address: "0.0.0.0" },
+			],
+		};
+		ledger = [
+			{ hostId: "host-1", remotePort: 5001, localPort: 5001, source: "manual", status: "active", createdAt: 0 },
+		];
+		const user = userEvent.setup();
+		renderPanel();
+
+		await screen.findByText("3000");
+		expect(screen.getByText("5001")).toBeTruthy();
+		expect(screen.queryByText("1200")).toBeNull();
+		expect(screen.queryByText("4321")).toBeNull();
+
+		await user.click(screen.getByRole("button", { name: "activityPanel.ports.unnamedToggle" }));
+
+		expect(screen.getByText("1200")).toBeTruthy();
+		expect(screen.getByText("4321")).toBeTruthy();
+	});
+
+	it("被内核截断的进程名换成命令行里的完整名字，且不重复成两行", async () => {
+		scan = {
+			tool: "helper",
+			ports: [
+				{ port: 28028, address: "127.0.0.1", processName: "sglang::schedul", pid: 9, command: "sglang::scheduler_TP1" },
+			],
+		};
+		renderPanel();
+
+		expect(await screen.findByText("sglang::scheduler_TP1")).toBeTruthy();
+		expect(screen.getAllByText("sglang::scheduler_TP1")).toHaveLength(1);
+		expect(screen.queryByText("sglang::schedul")).toBeNull();
 	});
 });

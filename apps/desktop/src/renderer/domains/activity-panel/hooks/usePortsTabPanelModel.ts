@@ -53,6 +53,18 @@ function formatStartedAgo(startedAt: number, now: number, locale: string | undef
 	return format.format(-Math.floor(seconds / 86_400), "day");
 }
 
+/**
+ * 显示用的进程名。
+ *
+ * Linux 的进程名（comm）被内核截在 15 个字符，`sglang::scheduler_TP1` 只剩 `sglang::schedul`。
+ * 命令行第一段的文件名以它开头时说明是同一个名字的完整版，换成它。
+ */
+export function displayProcessName(processName: string | undefined, command: string | undefined): string | undefined {
+	const program = command?.trim().split(/\s+/)[0]?.split("/").pop();
+	if (processName && program && program.length > processName.length && program.startsWith(processName)) return program;
+	return processName;
+}
+
 interface RowDraft {
 	readonly port: number;
 	listener?: RemoteListeningPort;
@@ -328,6 +340,8 @@ export function usePortsTabPanelModel(): PortsTabPanelViewProps {
 			terminateConfirm: (name: string) => t("activityPanel.ports.terminateConfirm", { name }),
 			sensitiveToggle: (count: number) => t("activityPanel.ports.sensitiveToggle", { count }),
 			sensitiveHint: t("activityPanel.ports.sensitiveHint"),
+			unnamedToggle: (count: number) => t("activityPanel.ports.unnamedToggle", { count }),
+			unnamedHint: t("activityPanel.ports.unnamedHint"),
 			ephemeralToggle: (count: number) => t("activityPanel.ports.ephemeralToggle", { count }),
 		}),
 		[t],
@@ -387,10 +401,12 @@ export function usePortsTabPanelModel(): PortsTabPanelViewProps {
 			const fromOutput = draft.outputStartedAt !== undefined;
 			const sensitive = listener?.sensitive === true;
 			const pid = listener?.pid;
+			const name = displayProcessName(listener?.processName, listener?.command) ?? forward?.label;
 			return {
 				port: draft.port,
-				processName: listener?.processName ?? forward?.label,
-				command: listener?.command,
+				processName: name,
+				// 命令行就是名字本身（进程改写过自己的标题）时不再重复一行。
+				command: listener?.command === name ? undefined : listener?.command,
 				pid,
 				startedLabel:
 					listener?.startedAt === undefined
