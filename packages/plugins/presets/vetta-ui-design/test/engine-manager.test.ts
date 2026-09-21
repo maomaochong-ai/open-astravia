@@ -51,7 +51,7 @@ describe("design engine data migration", () => {
 		await mkdir(join(legacyRoot, "0.3.0"), { recursive: true });
 		await writeFile(join(legacyRoot, "0.3.0", "marker.txt"), "legacy");
 
-		await migrateLegacyEngine(pluginContext(), home);
+		await migrateLegacyEngine(pluginContext(), home, home);
 
 		await expect(readFile(join(targetRoot, "0.3.0", "marker.txt"), "utf8")).resolves.toBe("legacy");
 		await expect(readFile(join(legacyRoot, "0.3.0", "marker.txt"), "utf8")).rejects.toMatchObject({
@@ -70,7 +70,7 @@ describe("design engine data migration", () => {
 		await writeFile(join(legacyRoot, "0.3.0", "marker.txt"), "legacy-current");
 		await writeFile(join(targetRoot, "0.3.0", "marker.txt"), "existing-current");
 
-		await migrateLegacyEngine(pluginContext(), home);
+		await migrateLegacyEngine(pluginContext(), home, home);
 
 		await expect(readFile(join(targetRoot, "0.2.0", "marker.txt"), "utf8")).resolves.toBe("migrate");
 		await expect(readFile(join(targetRoot, "0.3.0", "marker.txt"), "utf8")).resolves.toBe("existing-current");

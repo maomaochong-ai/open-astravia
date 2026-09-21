@@ -87,12 +87,42 @@ describe("历史命令跟着设计稿走", () => {
 	});
 });
 
-describe("设计引擎与远端设计稿", () => {
-	it("设计稿在远端时明确拒绝启动，而不是给一块空画布", async () => {
-		// 引擎是跑在本机的 vite，读不到远端文件；此前它照常启动，只是什么都渲染不出来。
-		const { startDesignServer } = await import("../src/engine/engine-manager");
-		const ctx = { command: { run: async () => ({ stdout: "", stderr: "", exitCode: 0 }) } } as never;
+describe("设计引擎跟着设计稿走", () => {
+	it("引擎装在设计稿所在的机器上，返回的路径带着归属好让宿主继续分流", async () => {
+		// 预览服务器要读设计稿，两者必须同机：引擎装到本机而设计稿在远端，画布只会一片空白。
+		const { engineRootDir } = await import("../src/engine/engine-manager");
+		const calls: (string | undefined)[] = [];
+		const ctx = {
+			command: {
+				run: async (_file: string, _args: string[], options?: { cwd?: string }) => {
+					calls.push(options?.cwd);
+					return { stdout: "/home/dev\n", stderr: "", exitCode: 0 };
+				},
+			},
+		} as never;
 
-		await expect(startDesignServer(ctx, REMOTE_DESIGN, () => {})).rejects.toThrow(/local preview server/);
+		const root = await engineRootDir(ctx, REMOTE_DESIGN);
+
+		expect(root.startsWith("ssh://host-1/home/dev/")).toBe(true);
+		// 探测家目录与迁移都必须发到那台机器上。
+		expect(calls.every((cwd) => cwd === REMOTE_DESIGN)).toBe(true);
+	});
+
+	it("本地设计稿照旧：路径不带归属，命令不指定工作目录", async () => {
+		const { engineRootDir } = await import("../src/engine/engine-manager");
+		const calls: (string | undefined)[] = [];
+		const ctx = {
+			command: {
+				run: async (_file: string, _args: string[], options?: { cwd?: string }) => {
+					calls.push(options?.cwd);
+					return { stdout: "/Users/me\n", stderr: "", exitCode: 0 };
+				},
+			},
+		} as never;
+
+		const root = await engineRootDir(ctx, LOCAL_DESIGN);
+
+		expect(root.startsWith("/Users/me/")).toBe(true);
+		expect(calls.every((cwd) => cwd === undefined)).toBe(true);
 	});
 });

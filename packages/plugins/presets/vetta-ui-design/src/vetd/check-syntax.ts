@@ -16,6 +16,7 @@
 import type { PluginContext } from "@vetta-org/plugin-sdk";
 import { engineRootDir } from "../engine/engine-manager";
 import type { SourceIssue } from "./check-sources";
+import { machineLocalPath, routeOf } from "../history/machine";
 
 /** 语法错误用的规则名，与 check-sources 的规则同池，一起走 `issues`。 */
 export const SYNTAX_RULE = "syntax-error";
@@ -77,16 +78,18 @@ function parseScanOutput(stdout: string): RawSyntaxError[] {
 export async function checkSyntax(ctx: PluginContext, dirPath: string): Promise<SourceIssue[]> {
 	let engineRoot: string;
 	try {
-		engineRoot = await engineRootDir(ctx);
+		engineRoot = await engineRootDir(ctx, dirPath);
 	} catch {
 		return [];
 	}
 	let stdout: string;
 	try {
 		const result = await ctx.command.run("node", ["-e", SCAN_SCRIPT], {
+			// 扫描要在设计稿所在的机器上做：本机的 esbuild 看不到远端的文件。
+			cwd: routeOf(dirPath),
 			env: {
-				VETD_ESBUILD: `${engineRoot}/node_modules/esbuild`,
-				VETD_DIR: dirPath,
+				VETD_ESBUILD: `${machineLocalPath(engineRoot)}/node_modules/esbuild`,
+				VETD_DIR: machineLocalPath(dirPath),
 			},
 			timeoutMs: 15_000,
 		});

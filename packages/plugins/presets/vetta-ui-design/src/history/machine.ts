@@ -23,3 +23,19 @@ export function machineLocalPath(path: string): string {
 	const separator = path.indexOf("/", SSH_SCHEME.length);
 	return separator < 0 ? "/" : path.slice(separator);
 }
+
+/**
+ * 交给宿主用于分流的 cwd。
+ *
+ * 远端给带归属的路径，宿主据此把命令发到那台机器；本机给 undefined，沿用进程默认工作目录
+ * ——与引入远程项目之前的行为一致，不给本地项目引入新的变量。
+ */
+export function routeOf(path: string): string | undefined {
+	return path.startsWith(SSH_SCHEME) ? path : undefined;
+}
+
+/** 把「那台机器上的绝对路径」重新带上归属，好让宿主继续按它分流。 */
+export function qualifyLike(reference: string, absolutePath: string): string {
+	const machine = machineOf(reference);
+	return machine === "local" ? absolutePath : `${machine}${absolutePath}`;
+}
