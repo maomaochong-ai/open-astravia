@@ -10,8 +10,11 @@ export interface RemoteListeningPort {
 	readonly pid?: number;
 }
 
-/** 实际用上的扫描工具。`none` 表示远端一个都没有，与「扫到 0 个端口」不是一回事。 */
-export type RemoteListenerTool = "ss" | "netstat" | "lsof" | "none";
+/**
+ * 实际用上的扫描手段。`none` 表示远端一个可用的工具都没有——它与「扫到 0 个端口」不是一回事，
+ * 界面要据此提示用户手动输入端口号，而不是说「远端没有端口在听」。
+ */
+export type RemoteListenerTool = "helper" | "ss" | "netstat" | "lsof" | "none";
 
 export interface RemoteListenerScan {
 	readonly tool: RemoteListenerTool;
@@ -34,14 +37,15 @@ const TOOL_MARKER = "@vetta-listeners";
  * 与状态名会让解析全部落空。
  */
 export function buildListListeningPortsCommand(flavor: RemoteStatFlavor): string {
-	const commands: Record<Exclude<RemoteListenerTool, "none">, string> = {
+	const commands: Record<Exclude<RemoteListenerTool, "none" | "helper">, string> = {
 		ss: "LC_ALL=C ss -ltnp 2>/dev/null",
 		netstat: "LC_ALL=C netstat -ltnp 2>/dev/null",
 		lsof: "LC_ALL=C lsof -nP -iTCP -sTCP:LISTEN 2>/dev/null",
 	};
 	// BSD 家族只用 lsof：那里的 netstat 用 `.` 而不是 `:` 分隔端口、`-p` 还要跟协议名，
-	// 等于第四种格式；而 lsof 是 macOS 的自带命令，缺它的情况留给 `none` 分支去报错。
-	const order: Exclude<RemoteListenerTool, "none">[] = flavor === "bsd" ? ["lsof"] : ["ss", "netstat", "lsof"];
+	// 等于第四种格式；而 lsof 是 macOS 的自带命令，缺它的情况由 `none` 分支如实回答。
+	const order: Exclude<RemoteListenerTool, "none" | "helper">[] =
+		flavor === "bsd" ? ["lsof"] : ["ss", "netstat", "lsof"];
 	const branches = order.map(
 		(tool, index) =>
 			`${index === 0 ? "if" : "elif"} command -v ${tool} >/dev/null 2>&1; then ` +

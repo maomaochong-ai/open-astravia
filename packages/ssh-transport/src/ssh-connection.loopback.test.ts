@@ -128,11 +128,13 @@ describe("列出远端正在监听的端口（回环 SSH）", () => {
 			});
 		});
 		try {
-			const ports = await createLoopbackSshConnection().listListeningPorts();
-			expect(ports.map((entry) => entry.port)).toContain(port);
-			expect(ports.map((entry) => entry.port)).not.toContain(22);
+			const scan = await createLoopbackSshConnection().listListeningPorts();
+			expect(scan.tool).not.toBe("none");
+			const ports = scan.ports.map((entry) => entry.port);
+			expect(ports).toContain(port);
+			expect(ports).not.toContain(22);
 			// 端口号升序是界面直接用的顺序，不能只保证集合正确。
-			expect(ports.map((entry) => entry.port)).toEqual([...ports.map((entry) => entry.port)].sort((a, b) => a - b));
+			expect(ports).toEqual([...ports].sort((a, b) => a - b));
 		} finally {
 			await new Promise<void>((resolve) => server.close(() => resolve()));
 		}

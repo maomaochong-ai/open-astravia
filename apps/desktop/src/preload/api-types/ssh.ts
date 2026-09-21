@@ -1,4 +1,4 @@
-import type { RemoteDirectoryEntry, RemoteListeningPort, SshConnectionStatus, SshHost } from "@vetta/ssh-transport";
+import type { RemoteDirectoryEntry, RemoteListenerScan, SshConnectionStatus, SshHost } from "@vetta/ssh-transport";
 import type { PortForward } from "../../main/ssh/port-forward-service.js";
 import type { SshHostStatusEvent } from "../../shared/ssh-ipc.js";
 import type { SshPromptRequestEvent, SshPromptResponse } from "../../shared/ssh-prompt-ipc.js";
@@ -67,10 +67,10 @@ export interface DesktopSshApi {
 	/**
 	 * 远端正在监听、且可以转发回本机的 TCP 端口。
 	 *
-	 * 远端一个扫描工具都没有时会失败——那是「问不到」，不是「没有端口」，界面必须把两者
-	 * 分开显示。
+	 * 结果带上实际用了哪种手段：`tool` 为 `none` 是「远端没有可用的扫描工具」，与「没有端口
+	 * 在听」不是一回事，界面要据此改成让用户手动输入端口号。
 	 */
-	listListeningPorts(hostId: string): Promise<RemoteListeningPort[]>;
+	listListeningPorts(hostId: string): Promise<RemoteListenerScan>;
 	/** 已建立的端口转发。省略 hostId 时给出全部主机的。 */
 	listPortForwards(hostId?: string): Promise<PortForward[]>;
 	/**

@@ -27,6 +27,7 @@ import {
 import {
 	buildListListeningPortsCommand,
 	parseRemoteListeners,
+	type RemoteListenerScan,
 	type RemoteListeningPort,
 	selectForwardablePorts,
 } from "./remote-listeners.js";
@@ -470,33 +471,31 @@ export class SshConnection {
 	 * 用户要转发的是「我刚起的那个开发服务器」，但他记不住端口，也不该为了查它去开一个
 	 * 终端。这里直接问远端，界面就能把候选摆出来。
 	 *
+	 * 返回值带上实际用了哪种手段：「远端一个扫描工具都没装」是远端给出的明确答复，不是
+	 * 传输故障，界面要据此改成让用户手动输入端口号，所以不能用抛错表达。
+	 *
 	 * 结果按端口去重并滤掉转不过去的地址；这条连接自己用的 sshd 端口也不列——它总在，
 	 * 且转发它没有意义。
 	 */
-	async listListeningPorts(signal?: AbortSignal): Promise<RemoteListeningPort[]> {
+	async listListeningPorts(signal?: AbortSignal): Promise<RemoteListenerScan> {
 		const excludePorts = [22, ...(this.host.port === undefined ? [] : [this.host.port])];
 		const viaHelper = await this.viaHelper(async (helper) => {
 			try {
 				return (await helper.call<{ ports: RemoteListeningPort[] }>("net.listeners")).ports;
 			} catch (error) {
-				// 远端可能还留着不认识这个方法的旧 helper。那不是远端的否定答复，
-				// 退回 `ssh exec` 扫一遍才是对的。
+				// 远端可能还留着不认识这个方法的旧 helper，或者 helper 在这个系统上没实现它。
+				// 那不是远端的否定答复，退回 `ssh exec` 扫一遍才是对的。
 				if (error instanceof SshHelperError && error.code === "ENOSYS") return undefined;
 				throw error;
 			}
 		});
-		if (viaHelper?.value) return selectForwardablePorts(viaHelper.value, { excludePorts });
+		if (viaHelper?.value) {
+			return { tool: "helper", ports: selectForwardablePorts(viaHelper.value, { excludePorts }) };
+		}
 		const platform = await this.probePlatform(signal);
 		const result = await this.runChecked(buildListListeningPortsCommand(platform.statFlavor), { signal });
 		const scan = parseRemoteListeners(decode(result.stdout));
-		if (scan.tool === "none") {
-			throw new SshTransportError(
-				`Cannot list listening ports on ${this.host.label}: none of ss, netstat or lsof is installed there.`,
-				this.host.id,
-				"",
-			);
-		}
-		return selectForwardablePorts(scan.ports, { excludePorts });
+		return { tool: scan.tool, ports: selectForwardablePorts(scan.ports, { excludePorts }) };
 	}
 
 	/**
