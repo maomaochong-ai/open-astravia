@@ -140,8 +140,19 @@ export interface FrameRasterState {
 	 * 这正是「刷新按钮点了没反应」。按钮是热更新失效时的兜底出路，必须真的重载。
 	 */
 	reloadAll(): void;
-	/** reloadAll 自增，由 FrameView 拼进 iframe 的 URL 以触发重新导航。 */
-	reloadNonce: number;
+	/**
+	 * 用户在 `sourceFrameId` 里的操作改了 localStorage（切主题、改设置这类持久化状态）。
+	 *
+	 * 这种状态整个设计共用，不止属于那一帧：所有位图都按旧状态截的，全部重截；此刻
+	 * 还挂着的其他 iframe 内存里也是旧状态（多数页面只在启动时读一次存储），重新加载
+	 * 它们。来源那一帧本身就是新状态，不动它。
+	 */
+	storageChanged(sourceFrameId: string): void;
+	/**
+	 * 该 frame 的 iframe 地址上的重载计数，由 FrameView 拼进 URL 以触发重新导航。
+	 * reloadAll 让所有 frame 一起变，storageChanged 只让被波及的那几个变。
+	 */
+	reloadNonceOf(frameId: string): number;
 }
 
 /**
@@ -247,6 +258,8 @@ export function useFrameRasters({
 	const lastActiveRef = useRef<string | null>(null);
 	if (activeFrameId !== null) lastActiveRef.current = activeFrameId;
 	const [reloadNonce, setReloadNonce] = useState(0);
+	/** storageChanged 对单个 frame 的重载计数，与 reloadNonce 相加后进 URL。 */
+	const [frameReloads, setFrameReloads] = useState<ReadonlyMap<string, number>>(new Map());
 	const frameIdsRef = useRef(frameIds);
 	frameIdsRef.current = frameIds;
 
@@ -388,6 +401,32 @@ export function useFrameRasters({
 		}
 		return allowed;
 	}, [frameIds, rasters, dirty, activeFrameId, forced, offscreenActive]);
+
+	const mountedRef = useRef(mounted);
+	mountedRef.current = mounted;
+	const activeFrameIdRef = useRef(activeFrameId);
+	activeFrameIdRef.current = activeFrameId;
+
+	const storageChanged = useCallback(
+		(sourceFrameId: string): void => {
+			refreshAll();
+			const stale = [...mountedRef.current].filter(
+				(frameId) => frameId !== sourceFrameId && frameId !== activeFrameIdRef.current,
+			);
+			if (stale.length === 0) return;
+			setFrameReloads((current) => {
+				const next = new Map(current);
+				for (const frameId of stale) next.set(frameId, (next.get(frameId) ?? 0) + 1);
+				return next;
+			});
+		},
+		[refreshAll],
+	);
+
+	const reloadNonceOf = useCallback(
+		(frameId: string): number => reloadNonce + (frameReloads.get(frameId) ?? 0),
+		[reloadNonce, frameReloads],
+	);
 
 	// iframe 卸掉后 rendered 门禁作废：下次挂载是一次全新加载，要等新的 rendered。
 	useEffect(() => {
@@ -596,6 +635,7 @@ export function useFrameRasters({
 		withCaptureLock,
 		refreshAll,
 		reloadAll,
-		reloadNonce,
+		storageChanged,
+		reloadNonceOf,
 	};
 }

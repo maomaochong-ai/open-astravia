@@ -3,6 +3,7 @@
  * DOM inspection happens inside it (engine/src/bridge.ts) and this hub routes
  * postMessage traffic per frame iframe.
  */
+import { parseStorageEntries, type StorageEntries } from "../../engine/src/storage-sync";
 
 export interface SelectedElementPayload {
 	tag: string;
@@ -44,6 +45,11 @@ export interface BridgeHubEvents {
 	onFrameWheel(event: FrameWheel): void;
 	/** frame 内按下/松开空格（临时托手工具）。焦点在 iframe 里时只能从这里过来。 */
 	onFrameSpace(down: boolean): void;
+	/**
+	 * 画布这一侧 localStorage 的整份快照（挂载时一次、之后每批写入一次）。`byUser`
+	 * 为 true 表示这批写入发生在用户操作里，见 engine/src/storage-sync.ts 的 watchLocalStorage。
+	 */
+	onStorage(frameId: string, entries: StorageEntries, byUser: boolean): void;
 }
 
 export interface FrameWheel {
@@ -141,6 +147,12 @@ export class BridgeHub {
 			case "hmr-updated":
 				this.events?.onHmrUpdated(frameId);
 				return;
+			case "storage": {
+				if (!frameId) return;
+				const entries = parseStorageEntries(data.entries);
+				if (entries) this.events?.onStorage(frameId, entries, data.user === true);
+				return;
+			}
 			case "element-resolved": {
 				const requestId = typeof data.requestId === "string" ? data.requestId : "";
 				const pending = this.resolves.get(requestId);

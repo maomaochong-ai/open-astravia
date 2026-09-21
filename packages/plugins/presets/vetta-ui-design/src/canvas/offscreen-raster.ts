@@ -10,6 +10,7 @@
  * html-to-image 老路。
  */
 import { HOME_FRAME_ID } from "../../engine/src/routes";
+import { STORAGE_SEED_PARAM, type StorageEntries } from "../../engine/src/storage-sync";
 import { getPluginCtx } from "../plugin-context";
 import { LAYOUT_PROBE_SCRIPT } from "../vetd/layout-probe";
 
@@ -51,6 +52,40 @@ export function offscreenRasterSupported(): boolean {
 	} catch {
 		return false;
 	}
+}
+
+/**
+ * 快照序列化后的上限。地址里装得下远比这大的东西，但设计稿的存储正常只有几 KB；
+ * 超出说明页面在往里塞大块数据，整份搬进每次截图的地址不划算，退回不同步。
+ */
+const MAX_STORAGE_SEED_CHARS = 256 * 1024;
+
+/** 引擎端口 → 画布那侧 localStorage 的快照（已序列化）。null 表示不同步。 */
+const storageSeeds = new Map<number, string | null>();
+
+/**
+ * 记下画布那侧的 localStorage 快照，之后这个引擎的离屏截图都按它的状态出图
+ * （为什么需要见 engine/src/storage-sync.ts）。返回快照是否与上次不同。
+ *
+ * 快照进的是截图地址：内容一变地址就变，宿主按地址判断要不要重新加载，离屏窗口
+ * 于是自然地整页重开、在设计稿读存储之前拿到新状态；内容不变则继续复用窗口。
+ */
+export function setOffscreenStorageSeed(port: number, entries: StorageEntries): boolean {
+	const serialized = JSON.stringify(entries);
+	const next = serialized.length > MAX_STORAGE_SEED_CHARS ? null : serialized;
+	if (next === null && storageSeeds.get(port) !== null) {
+		console.warn(`[vetd] localStorage 快照过大（${serialized.length} 字符），离屏截图不再同步画布状态`);
+	}
+	const changed = !storageSeeds.has(port) || storageSeeds.get(port) !== next;
+	storageSeeds.set(port, next);
+	return changed;
+}
+
+/** 离屏窗口要加载的引擎地址：恒为根路径，带上画布状态的快照（有的话）。 */
+export function offscreenEngineUrl(port: number): string {
+	const base = `http://127.0.0.1:${port}/`;
+	const seed = storageSeeds.get(port);
+	return seed ? `${base}?${STORAGE_SEED_PARAM}=${encodeURIComponent(seed)}` : base;
 }
 
 function sessionKeyOf(port: number, slot: number | null): string {
@@ -149,8 +184,8 @@ export async function captureFrameOffscreen(request: OffscreenRasterRequest): Pr
 	if (!capture) throw new Error("offscreen capture unavailable");
 	const result = await capture.offscreen({
 		// 恒定加载根路径，切帧走 show-frame 消息（bridge 的既有协议）：url 不变
-		// 才能命中宿主的窗口复用，免掉每帧一次整页加载。
-		url: `http://127.0.0.1:${request.port}/`,
+		// 才能命中宿主的窗口复用，免掉每帧一次整页加载。只有存储快照变了地址才变。
+		url: offscreenEngineUrl(request.port),
 		width: request.width,
 		height: request.height,
 		sessionKey: sessionKeyOf(request.port, request.slot ?? null),
