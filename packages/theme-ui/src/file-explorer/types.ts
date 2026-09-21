@@ -20,6 +20,9 @@ export interface FileExplorerNodeDecoration {
 	icon?: ReactNode;
 	badge?: string;
 	tooltip?: string;
+	color?: "foreground" | "muted" | "accent" | "success" | "warning" | "error";
+	faded?: boolean;
+	strikethrough?: boolean;
 }
 
 export type FileExplorerEntryKind = "file" | "directory";

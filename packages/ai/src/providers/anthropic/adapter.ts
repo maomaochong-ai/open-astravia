@@ -8,7 +8,6 @@ import {
 import {
 	EmptyProviderStreamError,
 	isSdkEmptyStreamError,
-	normalizeProviderError,
 	requireProviderCredential,
 	validateWirePayload,
 } from "../../provider-kit/index.js";
@@ -22,6 +21,7 @@ import {
 import { createModelCallMetadata, type ModelWarning } from "../../runtime/model-call-result.js";
 import type { Model, SimpleStreamOptions } from "../../types.js";
 import { buildCopilotDynamicHeaders, hasCopilotVisionInput } from "../github-copilot-headers.js";
+import { normalizeAnthropicSdkError } from "../sdk-connection-errors.js";
 import { adjustMaxTokensForThinking, buildBaseOptions } from "../simple-options.js";
 import { createAnthropicClient } from "./client.js";
 import { AnthropicEventReducer } from "./events.js";
@@ -164,12 +164,18 @@ async function produceAnthropicStream(
 		const normalizedSdkError = normalizeAnthropicSdkStreamError(error, receivedProviderEvent, model);
 		const normalizedError = options?.signal?.aborted
 			? new AIAbortedError(undefined, { provider: model.provider, modelId: model.id, cause: normalizedSdkError })
-			: normalizeProviderError(normalizedSdkError, model);
-		failLanguageModelStream(stream, model, normalizedError, options?.signal?.aborted ? "aborted" : "error", {
-			...output,
-			stopReason: options?.signal?.aborted ? "aborted" : "error",
-			errorMessage: normalizedError.message,
-		});
+			: normalizeAnthropicSdkError(normalizedSdkError, model);
+		failLanguageModelStream(
+			stream,
+			model,
+			normalizedError,
+			normalizedError.code === "AI_ABORTED" ? "aborted" : "error",
+			{
+				...output,
+				stopReason: normalizedError.code === "AI_ABORTED" ? "aborted" : "error",
+				errorMessage: normalizedError.message,
+			},
+		);
 	}
 }
 

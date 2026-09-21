@@ -78,7 +78,7 @@ describe("reconfigureTeamMemberRuntime", () => {
 	it("does nothing when the live runtime already uses the current profile revision", async () => {
 		const session = sessionDocument();
 		const runtime: TeamMemberRuntimeReconfigurationHost = {
-			getSessionPath: vi.fn(),
+			getSessionPath: vi.fn(() => "C:/sessions/leader.jsonl"),
 			createSession: vi.fn(),
 			disposeSession: vi.fn(),
 		};
@@ -96,6 +96,33 @@ describe("reconfigureTeamMemberRuntime", () => {
 			}),
 		).resolves.toBe(session);
 		expect(runtime.createSession).not.toHaveBeenCalled();
+	});
+
+	it("restores a missing runtime even when its persisted configuration is unchanged", async () => {
+		const paths = new Map<string, string>();
+		const runtime: TeamMemberRuntimeReconfigurationHost = {
+			getSessionPath: (id) => paths.get(id),
+			disposeSession: vi.fn(async () => undefined),
+			createSession: vi.fn(async (config) => {
+				paths.set("restored", String(config.sessionPath));
+				return { sessionId: "restored" };
+			}),
+		};
+		const persist = vi.fn(async () => undefined);
+		const next = await reconfigureTeamMemberRuntime({
+			session: sessionDocument(),
+			memberId: "leader",
+			agentProfileId: "agent",
+			agentProfileRevision: 1,
+			runtime,
+			resolveConfig: async (sessionPath) => ({ cwd: "C:/workspace", sessionPath }),
+			persist,
+			logger,
+		});
+		expect(next.memberRuntime.leader?.sessionId).toBe("restored");
+		expect(paths.get("restored")).toBe("C:/sessions/leader.jsonl");
+		expect(persist).toHaveBeenCalledWith(next);
+		expect(runtime.disposeSession).not.toHaveBeenCalled();
 	});
 
 	it("reopens the member when only its team assignment changed", async () => {

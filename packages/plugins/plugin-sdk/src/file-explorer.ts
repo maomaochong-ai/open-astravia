@@ -61,6 +61,12 @@ export interface PluginFileExplorerDecoration {
 	/** Compact status text rendered after the filename. Keep to one or two characters. */
 	badge?: string;
 	tooltip?: string;
+	/** Host theme token, never arbitrary CSS. */
+	color?: "foreground" | "muted" | "accent" | "success" | "warning" | "error";
+	faded?: boolean;
+	strikethrough?: boolean;
+	/** Apply status to parent directories inside the active workspace. */
+	propagate?: boolean;
 }
 
 export interface PluginFileExplorerDecorationProvider {
@@ -68,9 +74,31 @@ export interface PluginFileExplorerDecorationProvider {
 	when?: PluginFileExplorerWhen;
 	/** Higher values win when multiple providers return a decoration. Defaults to 0. */
 	priority?: number;
+	/** Announce changed entries (including unexpanded descendants), or undefined to invalidate all. */
+	onDidChangeDecorations?: (listener: (entries?: readonly PluginFileExplorerEntry[]) => void) => Disposable;
 	provideDecoration(
 		entry: PluginFileExplorerEntry,
 	): PluginFileExplorerDecoration | null;
+}
+
+/** Declarative associations; values reference iconDefinitions. Exact names are case-insensitive. */
+export interface PluginFileIconAssociations {
+	file?: string;
+	folder?: string;
+	folderExpanded?: string;
+	fileNames?: Readonly<Record<string, string>>;
+	fileExtensions?: Readonly<Record<string, string>>;
+	folderNames?: Readonly<Record<string, string>>;
+	folderNamesExpanded?: Readonly<Record<string, string>>;
+}
+
+export interface PluginFileIconTheme extends PluginFileIconAssociations {
+	id: string;
+	label: string;
+	iconDefinitions: Readonly<Record<string, ReactNode>>;
+	light?: PluginFileIconAssociations;
+	dark?: PluginFileIconAssociations;
+	highContrast?: PluginFileIconAssociations;
 }
 
 export type PluginFileExplorerChange =
@@ -94,4 +122,6 @@ export interface PluginFileExplorerApi {
 	registerContextMenuAction(contribution: PluginFileExplorerContextMenuContribution): Disposable;
 	registerToolbarAction(contribution: PluginFileExplorerToolbarContribution): Disposable;
 	registerDecorationProvider(contribution: PluginFileExplorerDecorationProvider): Disposable;
+	/** Requires ui.file-explorer.decorations. Users explicitly select one theme. */
+	registerIconTheme(contribution: PluginFileIconTheme): Disposable;
 }

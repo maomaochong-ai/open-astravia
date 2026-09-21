@@ -163,6 +163,19 @@
 		}
 	},
 	"fileExplorer": {
+		"display": {
+			"invalidPatterns": "Use up to 100 patterns, each no longer than 1024 characters",
+			"title": "File display settings",
+			"showHidden": "Show dotfiles and folders",
+			"exclude": "Exclude patterns",
+			"excludeHint": "One workspace-relative pattern per line, e.g. **/node_modules or **/*.log. Clear to show all ordinary files.",
+			"iconTheme": "File icon theme",
+			"builtin": "Built-in icons",
+			"unavailable": "Selected theme unavailable (using built-in icons)",
+			"apply": "Apply exclude patterns",
+			"reset": "Restore default display",
+			"saveFailed": "Could not save display settings. Try again."
+		},
 		"clearArtifactsTitle": "Clear artifacts",
 		"clearArtifactsMessage": "This will delete all artifact files under the {{label}} project cwd (session records are kept). This cannot be undone.",
 		"clearArtifactsConfirm": "Clear",

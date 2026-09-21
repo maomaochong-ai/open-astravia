@@ -34,7 +34,7 @@ export type ChatTimelineEventViewModel =
 	| { readonly kind: "delegation"; readonly label: string; readonly requestId: string; readonly timestamp: number }
 	| TeamMemberSummaryEventViewModel;
 
-/** Display-only content kept beside a specific tool row and outside process folding. */
+/** Display-only content kept beside a specific tool row and rendered independently while the process is expanded. */
 export interface ChatToolCallPresentationViewModel {
 	readonly toolCallId: string;
 	readonly activities: readonly TeamMemberSummaryEventViewModel[];

@@ -4,7 +4,7 @@
  * - 2.4.0：Media Provider v5 的模型目录与受控输入读取。
  * - 2.5.0：构建期绑定插件身份的持久化 logger。
  * - 2.6.0：活动面板标签卡自报默认排位（`registerActivityTab` 的 `order`）。
- * - 2.7.0：会话底部面板贡献点（`registerBottomPanel`）与 `ui.slot.bottom-panel` 权限。
+ * - 2.7.0：会话底部面板贡献点（`registerBottomPanel`）与 `ui.slot.bottom-panel` 权限；文件装饰状态、变更事件和独立文件图标主题。
  *
  * 清单校验对未知字段 fail-closed。作者把 `pluginApiVersion` 写成用到的那一档，
  * 旧宿主才能给出明确的版本错误。

@@ -7,6 +7,7 @@ import type {
 	UpdateTeamInput,
 	UpdateTeamMemberInput,
 } from "@vetta/agent-team";
+import { DEFAULT_TEAM_AUTOMATIC_RETRIES, isTeamRetryLimit } from "@vetta/agent-team";
 
 /**
  * 「拉拢」编队时的草稿。它只按 Agent 身份记录阵容，成员绑定与 leader 归属
@@ -17,6 +18,7 @@ export interface TeamAssemblyDraft {
 	readonly teamId?: string;
 	readonly name: string;
 	readonly description?: string;
+	readonly maxAutomaticRetries?: number;
 	readonly memberIds: readonly string[];
 	/** 队长的 Agent Profile ID；成员被移除时自动顺延到第一位。 */
 	readonly leaderId?: string;
@@ -40,6 +42,7 @@ export function assemblyDraftFromTeam(team: TeamDefinition): TeamAssemblyDraft {
 		teamId: team.id,
 		name: team.name,
 		description: team.description,
+		maxAutomaticRetries: team.maxAutomaticRetries ?? DEFAULT_TEAM_AUTOMATIC_RETRIES,
 		memberIds,
 		leaderId: leader?.binding.agentProfileId ?? memberIds[0],
 		assignments,
@@ -91,7 +94,11 @@ export function assemblyLeaderId(draft: TeamAssemblyDraft): string | undefined {
 }
 
 export function canSubmitAssembly(draft: TeamAssemblyDraft): boolean {
-	return draft.name.trim().length > 0 && draft.memberIds.length > 0;
+	return (
+		draft.name.trim().length > 0 &&
+		draft.memberIds.length > 0 &&
+		(draft.maxAutomaticRetries === undefined || isTeamRetryLimit(draft.maxAutomaticRetries))
+	);
 }
 
 export function buildCreateTeamInput(
@@ -112,7 +119,12 @@ export function buildCreateTeamInput(
 			...(draft.assignments?.[agent.id] ? { assignment: draft.assignments[agent.id] } : {}),
 		});
 	}
-	return { name: draft.name.trim(), description: draft.description?.trim() ?? "", members };
+	return {
+		name: draft.name.trim(),
+		description: draft.description?.trim() ?? "",
+		members,
+		...(draft.maxAutomaticRetries !== undefined ? { maxAutomaticRetries: draft.maxAutomaticRetries } : {}),
+	};
 }
 
 export function buildUpdateTeamInput(
@@ -145,6 +157,7 @@ export function buildUpdateTeamInput(
 	}
 	return {
 		expectedRevision: team.revision,
+		...(draft.maxAutomaticRetries !== undefined ? { maxAutomaticRetries: draft.maxAutomaticRetries } : {}),
 		name: draft.name.trim(),
 		description: draft.description?.trim() ?? team.description,
 		members,

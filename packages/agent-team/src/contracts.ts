@@ -67,6 +67,8 @@ export interface TeamMember {
 }
 
 export interface TeamDefinition {
+	/** Automatic recoveries per task; 0 disables them. Defaults to 2, maximum 10. */
+	readonly maxAutomaticRetries?: number;
 	readonly id: string;
 	readonly revision: number;
 	readonly name: string;
@@ -245,6 +247,8 @@ export interface CreateTeamMemberInput {
 	readonly assignment?: TeamMemberAssignment;
 }
 export interface CreateTeamInput {
+	/** Automatic recoveries per task; 0 disables them. Defaults to 2, maximum 10. */
+	readonly maxAutomaticRetries?: number;
 	readonly name: string;
 	readonly description?: string;
 	readonly members: readonly CreateTeamMemberInput[];
@@ -268,6 +272,8 @@ export type UpdateTeamMemberInput =
 	  };
 
 export interface UpdateTeamInput {
+	/** Automatic recoveries per task; 0 disables them. Defaults to 2, maximum 10. */
+	readonly maxAutomaticRetries?: number;
 	readonly expectedRevision: number;
 	readonly name: string;
 	readonly description: string;

@@ -11,7 +11,7 @@ import type {
 	TeamWaitTasksResult,
 	TeamWorkItem,
 } from "@vetta/agent-team";
-import { matchesTeamExternalConditionChange } from "@vetta/agent-team";
+import { canAutomaticallyRecoverTeamTask, matchesTeamExternalConditionChange } from "@vetta/agent-team";
 import type { ConversationDocument } from "@vetta/runtime-core";
 import { getAppLogger } from "../logger.js";
 import type { TeamCollaborationStore } from "./team-collaboration-store.js";
@@ -30,6 +30,7 @@ export interface TeamTaskControlHost {
 	isStopped(teamSessionId: string): boolean;
 	/** Changes on every stop, so work admitted before a stop stays stale after a later user send. */
 	stopGeneration(teamSessionId: string): number;
+	isRuntimeActive?(session: TeamSessionDocument, memberId: string): boolean;
 	authorizeTask(
 		session: TeamSessionDocument,
 		sourceMemberId: string,
@@ -62,8 +63,6 @@ interface PendingExternalChanges {
 	readonly teamSessionId: string;
 	readonly changes: readonly TeamExternalConditionChange[];
 }
-
-const MAX_AUTOMATIC_ATTEMPTS = 3;
 
 /** Owns accepted task lifetimes, independently of the model call that dispatched them. */
 export class TeamTaskControlService {
@@ -124,14 +123,21 @@ export class TeamTaskControlService {
 	async recoverSession(session: TeamSessionDocument): Promise<void> {
 		if (this.host.isStopped(session.id)) return;
 		for (const item of this.store.read(session).workItems) {
-			if (item.state === "running") await this.store.recoverOrphanedAttempt(session, item.id);
+			if (
+				item.state === "running" &&
+				!this.executions.has(executionKey(session.id, item.id)) &&
+				!this.scheduler.hasMemberPending(session.id, item.assignedToParticipantId) &&
+				!this.host.isRuntimeActive?.(session, item.assignedToParticipantId)
+			)
+				await this.store.recoverOrphanedAttempt(session, item.id, item.revision);
 		}
 		for (const item of this.store.read(session).workItems) {
-			if (item.state === "queued") {
+			if (item.state === "queued" && !this.scheduler.hasMemberPending(session.id, item.assignedToParticipantId)) {
 				this.start(item.currentAttemptId ? "recovery" : "initial", session, item);
 				continue;
 			}
 			this.scheduleAutomaticRetry(session, item);
+			if (item.state !== "running" && item.state !== "queued") await this.host.onSettled(session, item);
 		}
 	}
 
@@ -273,7 +279,7 @@ export class TeamTaskControlService {
 		if (item.state === "queued" || item.state === "running") return snapshot;
 		if (item.state !== "waiting" && item.state !== "attention-required")
 			throw new Error(`Team task cannot resume from state: ${item.state}`);
-		await this.requeueAndStart(session, item, input.mode, "manual");
+		await this.requeueAndStart(session, item, input.mode, "automatic");
 		return this.snapshot(session, item.id);
 	}
 
@@ -363,7 +369,7 @@ export class TeamTaskControlService {
 		const attempt = this.store.read(session).attempts.find((candidate) => candidate.id === item.currentAttemptId);
 		if (
 			attempt?.state !== "waiting-retry" ||
-			attempt.attempt >= MAX_AUTOMATIC_ATTEMPTS ||
+			!canAutomaticallyRecoverTeamTask(item) ||
 			attempt.nextRetryAt === undefined
 		) {
 			return;
@@ -404,7 +410,12 @@ export class TeamTaskControlService {
 	): Promise<boolean> {
 		if (this.host.isStopped(session.id)) return false;
 		const stopGeneration = this.host.stopGeneration(session.id);
-		const result = await this.store.requeue(session, item.id, item.revision);
+		const result = await this.store.requeue(
+			session,
+			item.id,
+			item.revision,
+			trigger === "external-change" ? "external-change" : "automatic",
+		);
 		if (!result.requeued) return false;
 		if (!this.isAdmissionCurrent(session.id, stopGeneration)) {
 			await this.store.cancelWorkItemForTeamStop(session, result.workItem.id);

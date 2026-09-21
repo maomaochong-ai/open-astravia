@@ -135,11 +135,15 @@ export class AgentTeamSessionService {
 			maxCharacters: 48_000,
 			keepRecentCharacters: 16_000,
 		};
-		this.collaborationStore = new TeamCollaborationStore({
-			readSessionDocument: (sessionId) => this.getRuntime().readSessionDocument(sessionId),
-			appendSessionMetadataEntry: (sessionId, customType, data) =>
-				this.getRuntime().appendSessionMetadataEntry(sessionId, customType, data),
-		});
+		this.collaborationStore = new TeamCollaborationStore(
+			{
+				readSessionDocument: (sessionId) => this.getRuntime().readSessionDocument(sessionId),
+				appendSessionMetadataEntry: (sessionId, customType, data) =>
+					this.getRuntime().appendSessionMetadataEntry(sessionId, customType, data),
+			},
+			async (session) =>
+				(await this.readDocument()).teams.find((team) => team.id === session.teamId)?.maxAutomaticRetries,
+		);
 		this.sessionState = new TeamSessionStateRepository({
 			runtime: () => this.getRuntime(),
 			...(this.ownershipCatalog ? { ownershipCatalog: this.ownershipCatalog } : {}),

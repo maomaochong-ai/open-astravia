@@ -14,7 +14,8 @@ export interface AssistantFoldData {
 	trailingBlocks: ContentBlock[];
 	/**
 	 * 收起时渲染的完整答案区（含插件产物卡片与其后的工具调用），而非只有文本。
-	 * 插件自定义 UI 工具是作者主动要给用户看的产物，必须活过大折叠。
+	 * 插件自定义 UI 工具是作者主动要给用户看的产物，必须活过大折叠；团队成员卡
+	 * 只是执行过程的独立展示形式，不属于答案产物。
 	 */
 	answerBlocks: ContentBlock[];
 	/** 答案区中的文本，供复制按钮与 conclusionText 使用。 */
@@ -52,20 +53,24 @@ export function segmentKey(segment: BlockSegment): string {
 	return `group-${blockKey(segment.blocks[0])}`;
 }
 
-function isPersistentToolUiBlock(
+function isStandaloneToolUiBlock(
 	block: ContentBlock,
 	customToolNames: ReadonlySet<string>,
-	persistentToolCallIds: ReadonlySet<string>,
+	standaloneToolCallIds: ReadonlySet<string>,
 ): boolean {
 	return (
-		block.type === "tool_call" && (customToolNames.has(block.toolName) || persistentToolCallIds.has(block.toolCallId))
+		block.type === "tool_call" && (customToolNames.has(block.toolName) || standaloneToolCallIds.has(block.toolCallId))
 	);
+}
+
+function isArtifactToolUiBlock(block: ContentBlock, customToolNames: ReadonlySet<string>): boolean {
+	return block.type === "tool_call" && customToolNames.has(block.toolName);
 }
 
 export function groupBlocks(
 	blocks: ContentBlock[],
 	customToolNames: ReadonlySet<string>,
-	persistentToolCallIds: ReadonlySet<string> = new Set(),
+	standaloneToolCallIds: ReadonlySet<string> = new Set(),
 ): BlockSegment[] {
 	const segments: BlockSegment[] = [];
 	let batch: (ToolCallBlock | ThinkingBlock)[] = [];
@@ -80,7 +85,7 @@ export function groupBlocks(
 		if (block.type === "tool_call" && block.toolName === PROGRESS_TOOL_NAME) {
 			flushBatch();
 			segments.push({ type: "progress_divider", block });
-		} else if (isPersistentToolUiBlock(block, customToolNames, persistentToolCallIds)) {
+		} else if (isStandaloneToolUiBlock(block, customToolNames, standaloneToolCallIds)) {
 			flushBatch();
 			segments.push({ type: "single", block });
 		} else if (block.type === "tool_call" || block.type === "thinking") {
@@ -99,11 +104,10 @@ export function groupBlocks(
 export function findLastProcessBlockIndex(
 	blocks: ContentBlock[],
 	customToolNames: ReadonlySet<string> = new Set(),
-	persistentToolCallIds: ReadonlySet<string> = new Set(),
 ): number {
 	for (let index = blocks.length - 1; index >= 0; index--) {
 		const block = blocks[index];
-		if (isPersistentToolUiBlock(block, customToolNames, persistentToolCallIds)) continue;
+		if (isArtifactToolUiBlock(block, customToolNames)) continue;
 		if (block.type === "tool_call" || block.type === "thinking") return index;
 	}
 	return -1;
@@ -142,32 +146,26 @@ function findPreviousPrimaryAnswerIndex(blocks: ContentBlock[], beforeIndex: num
 export function getAssistantFoldData(
 	blocks: ContentBlock[],
 	customToolNames: ReadonlySet<string>,
-	persistentToolCallIds: ReadonlySet<string> = new Set(),
 ): AssistantFoldData | null {
-	const lastProcessIndex = findLastProcessBlockIndex(blocks, customToolNames, persistentToolCallIds);
+	const lastProcessIndex = findLastProcessBlockIndex(blocks, customToolNames);
 	if (lastProcessIndex === -1) return null;
 
 	// 答案区起点：默认是最后一个过程块之后；一旦出现插件产物，则退到「该产物之前最后一次
 	// 真实工具调用」之后——否则产物上方那段引出它的结论文字会被划进过程区一起折走，产物
 	// 就成了没有上下文的孤块。产物之后的过程块因此落进答案区、不再被折叠（见 docs/adr/0047）。
-	const firstArtifactIndex = blocks.findIndex((block) =>
-		isPersistentToolUiBlock(block, customToolNames, persistentToolCallIds),
-	);
+	const firstArtifactIndex = blocks.findIndex((block) => isArtifactToolUiBlock(block, customToolNames));
 	const answerStart =
 		firstArtifactIndex === -1
 			? lastProcessIndex + 1
 			: Math.min(
-					findLastProcessBlockIndex(blocks.slice(0, firstArtifactIndex), customToolNames, persistentToolCallIds) +
-						1,
+					findLastProcessBlockIndex(blocks.slice(0, firstArtifactIndex), customToolNames) + 1,
 					lastProcessIndex + 1,
 				);
 	const answerBlocks = blocks.slice(answerStart);
 	const trailingTextBlocks = answerBlocks.filter(
 		(block): block is TextBlock => block.type === "text" && block.text.trim().length > 0,
 	);
-	const hasArtifact = answerBlocks.some((block) =>
-		isPersistentToolUiBlock(block, customToolNames, persistentToolCallIds),
-	);
+	const hasArtifact = answerBlocks.some((block) => isArtifactToolUiBlock(block, customToolNames));
 	// 光有产物、没有收尾文字也算有答案，照样值得折叠出来。
 	if (trailingTextBlocks.length === 0 && !hasArtifact) return null;
 

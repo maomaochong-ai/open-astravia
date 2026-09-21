@@ -21,5 +21,6 @@ export interface TeamMemberTurnRequest {
 	readonly directContextEntryIds?: readonly string[];
 	readonly workItemKind?: "task" | "question";
 	/** Model-visible notifications that wake this attempt instead of a prompt or plain continue. */
+	readonly notificationIds?: readonly string[];
 	readonly continuationContext?: readonly SessionContextRecord[];
 }

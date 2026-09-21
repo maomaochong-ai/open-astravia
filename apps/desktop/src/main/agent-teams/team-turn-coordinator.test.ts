@@ -42,6 +42,7 @@ describe("TeamTurnCoordinator", () => {
 		} as unknown as TeamCollaborationStore;
 		const sessionState = {
 			get: () => undefined,
+			values: () => [],
 		} as unknown as TeamSessionStateRepository;
 		const coordinator = new TeamTurnCoordinator({
 			runtime: () => runtime,
@@ -86,6 +87,7 @@ describe("TeamTurnCoordinator", () => {
 		const collaborationStore = {
 			enqueueAssignment,
 			cancelForTeamStop: vi.fn(async () => undefined),
+			append: vi.fn(async () => undefined),
 		} as unknown as TeamCollaborationStore;
 		const runtime = {
 			abort: vi.fn(async () => undefined),
@@ -107,6 +109,7 @@ describe("TeamTurnCoordinator", () => {
 			collaborationStore,
 			sessionState: {
 				get: () => session,
+				values: () => [session],
 			} as unknown as TeamSessionStateRepository,
 			eventHub: {} as TeamSessionEventHub,
 			readSession,

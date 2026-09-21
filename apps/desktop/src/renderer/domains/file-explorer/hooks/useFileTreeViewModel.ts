@@ -1,4 +1,11 @@
-import { type FsEntry, pluginFileExplorerDecorationProvidersAtom, renamingPathAtom } from "@shared/store/atoms";
+import {
+	type FsEntry,
+	fileExplorerPreferencesAtom,
+	pluginFileExplorerDecorationProvidersAtom,
+	pluginFileIconThemesAtom,
+	renamingPathAtom,
+	resolvedThemeAtom,
+} from "@shared/store/atoms";
 import type {
 	FileExplorerCreatingEntry,
 	FileExplorerDragEntry,
@@ -6,10 +13,21 @@ import type {
 	FileTreeViewProps,
 } from "@vetta-org/theme-ui/file-explorer";
 import { useAtom, useAtomValue } from "jotai";
-import { createElement, type KeyboardEvent, useCallback } from "react";
+import { createElement, type KeyboardEvent, useCallback, useMemo, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { PluginInlineI18nBoundary, usePluginTextResolver } from "../../plugins/runtime/plugin-i18n";
-import { resolveFileExplorerDecoration } from "../services/plugin-contributions";
+import { resolveFileIconTheme } from "../services/file-icon-theme";
+import { createFileExplorerDecorations } from "../services/plugin-contributions";
+
+const contrastQuery = "(forced-colors: active), (prefers-contrast: more)";
+function subscribeContrast(listener: () => void): () => void {
+	const query = window.matchMedia?.(contrastQuery);
+	query?.addEventListener("change", listener);
+	return () => query?.removeEventListener("change", listener);
+}
+function getContrast(): boolean {
+	return window.matchMedia?.(contrastQuery).matches ?? false;
+}
 
 export function useFileTreeViewModel(input: {
 	rootDir: string;
@@ -38,6 +56,15 @@ export function useFileTreeViewModel(input: {
 	const [renamingPath, setRenamingPath] = useAtom(renamingPathAtom);
 	const decorationProviders = useAtomValue(pluginFileExplorerDecorationProvidersAtom);
 	const resolvePluginText = usePluginTextResolver();
+	const themes = useAtomValue(pluginFileIconThemesAtom);
+	const preferences = useAtomValue(fileExplorerPreferencesAtom);
+	const mode = useAtomValue(resolvedThemeAtom);
+	const highContrast = useSyncExternalStore(subscribeContrast, getContrast, () => false);
+	const iconTheme = themes.find((theme) => theme.id === preferences.iconTheme);
+	const decorations = useMemo(
+		() => createFileExplorerDecorations(input.rootDir, input.cache, decorationProviders),
+		[input.rootDir, input.cache, decorationProviders],
+	);
 
 	const onRenameSubmit = useCallback(
 		(oldPath: string, newName: string) => {
@@ -53,18 +80,27 @@ export function useFileTreeViewModel(input: {
 
 	const getDecoration = useCallback(
 		(entry: FsEntry) => {
-			const resolved = resolveFileExplorerDecoration(entry, decorationProviders);
-			if (!resolved) return null;
-			const { decoration } = resolved;
+			const resolved = decorations.get(entry.path);
+			const decoration = resolved?.decoration;
+			const themeIcon = iconTheme
+				? resolveFileIconTheme(
+						iconTheme,
+						entry,
+						input.expandedDirs.has(entry.path),
+						highContrast ? "highContrast" : mode,
+					)
+				: undefined;
+			const icon = themeIcon ?? decoration?.icon;
+			const iconPlugin = themeIcon != null ? iconTheme?.pluginId : resolved?.pluginId;
 			return {
 				...decoration,
-				tooltip: decoration.tooltip ? resolvePluginText(resolved.pluginId, decoration.tooltip) : undefined,
-				icon: decoration.icon
-					? createElement(PluginInlineI18nBoundary, { pluginId: resolved.pluginId }, decoration.icon)
-					: undefined,
+				tooltip:
+					decoration?.tooltip && resolved ? resolvePluginText(resolved.pluginId, decoration.tooltip) : undefined,
+				icon:
+					icon && iconPlugin ? createElement(PluginInlineI18nBoundary, { pluginId: iconPlugin }, icon) : undefined,
 			};
 		},
-		[decorationProviders, resolvePluginText],
+		[decorations, resolvePluginText, iconTheme, input.expandedDirs, mode, highContrast],
 	);
 
 	return {

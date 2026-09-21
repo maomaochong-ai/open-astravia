@@ -8,6 +8,7 @@ import {
 	pluginFileExplorerContextMenuActionsAtom,
 	pluginFileExplorerDecorationProvidersAtom,
 	pluginFileExplorerToolbarActionsAtom,
+	pluginFileIconThemesAtom,
 	type PluginI18nEntry,
 	pluginI18nByIdAtom,
 	pluginInputActionsAtom,
@@ -22,7 +23,6 @@ import {
 	type RegisteredCardRenderer,
 	type RegisteredFilePreview,
 	type RegisteredFileExplorerContextMenuAction,
-	type RegisteredFileExplorerDecorationProvider,
 	type RegisteredFileExplorerToolbarAction,
 	type RegisteredInputAction,
 	type RegisteredToolCallSlot,
@@ -41,6 +41,7 @@ import { loadPlugin, type LoadedPlugin } from "../runtime/plugin-loader";
 import { loadPluginSnapshot } from "./plugin-snapshot";
 import { publishWorkspaceViews } from "./plugin-workspace-view-publication";
 import { PluginSlotErrorBoundary } from "./PluginSlotErrorBoundary";
+import { collectFileExplorerContributions } from "./plugin-file-explorer-publication";
 
 // 串行加载插件快照，避免并发 reload 交叉提交 activation。
 let pluginHostLifecycle = Promise.resolve();
@@ -56,6 +57,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 	const setFileExplorerContextMenuActions = useSetAtom(pluginFileExplorerContextMenuActionsAtom);
 	const setFileExplorerToolbarActions = useSetAtom(pluginFileExplorerToolbarActionsAtom);
 	const setFileExplorerDecorationProviders = useSetAtom(pluginFileExplorerDecorationProvidersAtom);
+	const setFileIconThemes = useSetAtom(pluginFileIconThemesAtom);
 	const setActivityTabs = useSetAtom(pluginActivityTabsAtom);
 	const setBottomPanels = useSetAtom(pluginBottomPanelsAtom);
 	const setInputActions = useSetAtom(pluginInputActionsAtom);
@@ -220,15 +222,10 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 	}, [plugins, revision, hostLoading, setFileExplorerToolbarActions]);
 
 	useEffect(() => {
-		const providers: RegisteredFileExplorerDecorationProvider[] = plugins.flatMap((plugin) =>
-			plugin.fileExplorerDecorationProviders.map((provider) => ({
-				...provider,
-				pluginId: plugin.id,
-				providerId: provider.id,
-			})),
-		);
-		if (providers.length > 0 || !hostLoading) setFileExplorerDecorationProviders(providers);
-	}, [plugins, revision, hostLoading, setFileExplorerDecorationProviders]);
+		const { decorations, themes } = collectFileExplorerContributions(plugins);
+		if (decorations.length > 0 || !hostLoading) setFileExplorerDecorationProviders(decorations);
+		if (themes.length > 0 || !hostLoading) setFileIconThemes(themes);
+	}, [plugins, revision, hostLoading, setFileExplorerDecorationProviders, setFileIconThemes]);
 
 	// Publish activity-tab contributions (the addable pool) so ActivityPanel
 	// can render attached tabs and the "+" picker.
@@ -383,6 +380,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 			setFileExplorerContextMenuActions([]);
 			setFileExplorerToolbarActions([]);
 			setFileExplorerDecorationProviders([]);
+			setFileIconThemes([]);
 			setActivityTabs([]);
 			setBottomPanels([]);
 			setInputActions([]);
@@ -398,6 +396,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 		setFileExplorerContextMenuActions,
 		setFileExplorerToolbarActions,
 		setFileExplorerDecorationProviders,
+		setFileIconThemes,
 		setActivityTabs,
 		setBottomPanels,
 		setInputActions,

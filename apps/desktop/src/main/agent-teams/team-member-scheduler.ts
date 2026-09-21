@@ -3,11 +3,16 @@ import { TeamOperationQueue } from "./team-operation-queue.js";
 /** A member owns one execution lane, independent of every other member's lane. */
 export class TeamMemberScheduler {
 	private readonly lanes = new TeamOperationQueue();
+	private readonly pendingByMember = new Map<string, number>();
 	private readonly pendingByTeam = new Map<string, number>();
 	private readonly waits = new Map<string, Map<string, number>>();
 
 	hasPending(teamSessionId: string): boolean {
 		return (this.pendingByTeam.get(teamSessionId) ?? 0) > 0;
+	}
+
+	hasMemberPending(teamSessionId: string, memberId: string): boolean {
+		return (this.pendingByMember.get(memberKey(teamSessionId, memberId)) ?? 0) > 0;
 	}
 
 	async whileWaiting<T>(
@@ -45,6 +50,7 @@ export class TeamMemberScheduler {
 			return Promise.reject(new Error("Team delegation would create a circular member wait"));
 		}
 		if (source) this.addWait(source, target);
+		this.pendingByMember.set(target, (this.pendingByMember.get(target) ?? 0) + 1);
 		this.pendingByTeam.set(input.teamSessionId, (this.pendingByTeam.get(input.teamSessionId) ?? 0) + 1);
 		return new Promise<T>((resolve, reject) => {
 			let finished = false;
@@ -53,6 +59,9 @@ export class TeamMemberScheduler {
 				finished = true;
 				input.signal?.removeEventListener("abort", cancelQueued);
 				if (source) this.removeWait(source, target);
+				const memberCount = (this.pendingByMember.get(target) ?? 1) - 1;
+				if (memberCount === 0) this.pendingByMember.delete(target);
+				else this.pendingByMember.set(target, memberCount);
 				const count = (this.pendingByTeam.get(input.teamSessionId) ?? 1) - 1;
 				if (count === 0) this.pendingByTeam.delete(input.teamSessionId);
 				else this.pendingByTeam.set(input.teamSessionId, count);

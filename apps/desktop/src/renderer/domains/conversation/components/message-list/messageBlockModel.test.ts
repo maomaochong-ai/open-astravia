@@ -25,13 +25,13 @@ describe("getAssistantFoldData 的答案区分界", () => {
 		expect(fold?.hiddenCount).toBe(2);
 	});
 
-	it("团队工具的成员结果属于答案区，消息级收起时仍保持可见", () => {
+	it("团队成员卡属于执行过程，消息级收起时只保留负责人总结", () => {
 		const delegated = tool("team_send_message");
 		const blocks = [tool("read"), delegated, text("负责人总结")];
-		const fold = getAssistantFoldData(blocks, ARTIFACT, new Set([delegated.toolCallId]));
+		const fold = getAssistantFoldData(blocks, ARTIFACT);
 
-		expect(fold?.processBlocks).toEqual([blocks[0]]);
-		expect(fold?.answerBlocks).toEqual([delegated, blocks[2]]);
+		expect(fold?.processBlocks).toEqual([blocks[0], delegated]);
+		expect(fold?.answerBlocks).toEqual([blocks[2]]);
 	});
 
 	it("产物之后还有普通工具调用时，产物不再被折走", () => {

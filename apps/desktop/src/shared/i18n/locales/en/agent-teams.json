@@ -169,7 +169,9 @@
     "renameTeam": "Rename team",
     "description": "Team description",
     "descriptionPlaceholder": "Describe what this team does and how it collaborates…",
-    "identity": "Team identity"
+    "identity": "Team identity",
+    "automaticRetries": "Automatic recovery attempts",
+    "automaticRetriesHelp": "Allow 0–10 automatic recoveries per new task (default: 2). Set to 0 to disable. Progress is preserved when the limit is reached and your attention is needed."
   },
   "chat": {
     "hint": "The team lead handles requests when no member is selected.",

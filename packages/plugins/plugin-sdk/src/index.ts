@@ -43,6 +43,7 @@ export type {
 	PluginFileExplorerRevealOptions,
 	PluginFileExplorerApi,
 } from "./file-explorer.js";
+export type { PluginFileIconAssociations, PluginFileIconTheme } from "./file-explorer.js";
 
 // Conversation
 export type {

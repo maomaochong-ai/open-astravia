@@ -132,10 +132,11 @@ function createResumeTool(port: TeamTaskControlPort, mode: "continue" | "retry")
 	return {
 		name: `team_${mode}_task`,
 		label: `team_${mode}_task`,
-		description:
+		description: `${
 			mode === "continue"
 				? "Continue a waiting Team task in its existing member conversation when execution ended without a publishable final answer. Only the leader or assigned member may resume it. Returns after admission, not completion. Do not manufacture a final result or repeatedly resume while credits, credentials or another external resource remain unavailable."
-				: "Retry a waiting Team task after a transient problem or after its external resource issue has been resolved. Only the leader or assigned member may retry it. Keeps the same teamTaskId and creates a new attempt in the existing conversation. Returns after admission; use team_wait_tasks for results. Do not blindly retry insufficient credits or invalid credentials.",
+				: "Retry a waiting Team task after a transient problem or after its external resource issue has been resolved. Only the leader or assigned member may retry it. Keeps the same teamTaskId and creates a new attempt in the existing conversation. Returns after admission; use team_wait_tasks for results. Do not blindly retry insufficient credits or invalid credentials."
+		} This action consumes the task automatic recovery budget. If TEAM_RECOVERY_EXHAUSTED is returned, explain the blocker and wait for user action; do not create replacement tasks to evade the limit.`,
 		inputSchema: TeamTaskInputSchema,
 		async execute({ sessionId, turnId, toolCallId, input, signal }) {
 			const task = await port.resumeTask({

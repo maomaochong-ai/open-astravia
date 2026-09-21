@@ -814,7 +814,8 @@ function dedupeTeamUserItems(items: readonly ChatConversationItem[]): ChatConver
 }
 
 function projectMemberConversation(memberId: string, history: readonly HistoryEntry[]) {
-	return fullHistoryToChat([...history]).map((item, index) => {
+	const projected = splitTeamMemberHistoryTurns(history).flatMap((turn) => fullHistoryToChat([...turn]));
+	return projected.map((item, index) => {
 		const renderKey = `team:member:${memberId}:${index}:${item.entryId ?? item.id}`;
 		if (item.kind === "agent") {
 			return { ...item, authorId: memberId, renderKey };
@@ -824,6 +825,26 @@ function projectMemberConversation(memberId: string, history: readonly HistoryEn
 		}
 		return { ...item, renderKey };
 	});
+}
+
+function splitTeamMemberHistoryTurns(history: readonly HistoryEntry[]): HistoryEntry[][] {
+	const turns: HistoryEntry[][] = [];
+	let current: HistoryEntry[] = [];
+	for (const entry of history) {
+		// Automatic Team continuations do not append a synthetic user message. The
+		// request-scoped context marker is therefore the durable boundary between the
+		// completed member turn and the newly awakened one. Ordinary chat projection
+		// intentionally merges consecutive assistant records, so preserve this Team
+		// boundary before delegating each turn to fullHistoryToChat.
+		if (entry.type === "custom_marker" && entry.customType === "agent-team.compaction-reference.v1") {
+			if (current.length > 0) turns.push(current);
+			current = [entry];
+			continue;
+		}
+		current.push(entry);
+	}
+	if (current.length > 0) turns.push(current);
+	return turns;
 }
 
 /** Compatibility for legacy Team snapshots that predate member histories. */
