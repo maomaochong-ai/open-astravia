@@ -366,7 +366,9 @@ export const BotAvatar = memo(function BotAvatar({
 							y: [0, -3 * f, -7 * f, -11 * f],
 							x: [0, 1 * f, -1 * f, 1 * f],
 						}}
-						exit={{ opacity: 0 }}
+						// 退场必须自带有限 transition：否则会继承下方的 repeat: Infinity，
+						// 退场永远结束不了，「z」不卸载并一直以 60fps 驱动整窗重绘。
+						exit={{ opacity: 0, transition: { duration: 0.2 } }}
 						transition={{
 							duration: 1.4,
 							ease: "easeOut",
