@@ -29,6 +29,18 @@ function terminalService(): TerminalService {
 	return service;
 }
 
+/**
+ * 退出前回收所有 PTY。
+ *
+ * 不能只靠 `registerTerminalIpc` 返回的 teardown：那个只在窗口 `closed` 时跑，而
+ * `before-quit` 是 `preventDefault()` → 清理 → `app.exit(0)`，窗口根本没被关过，
+ * `closed` 不会触发。结果是退出时没有任何人给终端里的进程发信号，用户看到应用关了，
+ * 服务还在后台跑着。
+ */
+export function disposeAllTerminals(): void {
+	service?.disposeAll();
+}
+
 /** 仅供测试注入 fake service。 */
 export function setTerminalServiceForTests(next: TerminalService | undefined): void {
 	service = next;
@@ -79,6 +91,9 @@ export function registerTerminalIpc(): () => void {
 		};
 		sender.once("destroyed", release);
 		sender.once("did-navigate", release);
+		// 渲染进程崩溃时 WebContents 还活着，既不 destroyed 也不 navigate；不接这一条的话
+		// 那一批 PTY 要挂到用户手动刷新为止。
+		sender.once("render-process-gone", release);
 	};
 
 	ipcMain.handle(TERMINAL_CHANNELS.CAPABILITIES, (): TerminalCapabilities => terminalService().capabilities());

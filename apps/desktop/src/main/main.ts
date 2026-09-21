@@ -49,6 +49,7 @@ import {
 	teardownAllIpc,
 } from "./ipc/index.js";
 import { syncQuickPanelTrigger } from "./ipc/quickpanel.js";
+import { disposeAllTerminals } from "./ipc/terminal.js";
 import { registerKnowledgeIpc } from "./knowledge/ipc.js";
 import { reloadKnowledgePoller, shutdownKnowledgePoller } from "./knowledge/poller.js";
 import { getLocalRpcServerEndpointFilePath } from "./local-rpc/endpoint-file.js";
@@ -922,6 +923,11 @@ setQuitCleanup(async () => {
 	// 停掉插件开发会话和插件命令拉起的长驻进程。
 	stopAllPluginDevWatches();
 	stopAllPluginSpawns();
+
+	// 终端里跑着的东西同样是我们拉起来的进程，退出时必须收掉：不收的话用户看到应用关了、
+	// 面板没了，dev server 还占着端口在后台跑。同步、且排在所有 await 之前——后面任何
+	// 一步卡住，都不该连累到「关掉我启动的进程」这件事。
+	disposeAllTerminals();
 
 	const consumerShutdownResults = await Promise.allSettled([
 		shutdownScheduler(),

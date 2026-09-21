@@ -14,7 +14,7 @@ vi.mock("electron", () => ({
 
 import { TERMINAL_CHANNELS, type TerminalEvent, type TerminalEventEnvelope } from "../../shared/terminal-ipc.js";
 import type { TerminalService } from "../terminal/terminal-service.js";
-import { registerTerminalIpc, setTerminalServiceForTests } from "./terminal.js";
+import { disposeAllTerminals, registerTerminalIpc, setTerminalServiceForTests } from "./terminal.js";
 
 interface FakeSender {
 	readonly id: number;
@@ -23,6 +23,7 @@ interface FakeSender {
 	once(event: string, listener: () => void): void;
 	send(channel: string, envelope: TerminalEventEnvelope): void;
 	destroy(): void;
+	emit(event: string): void;
 }
 
 function fakeSender(id = 1): FakeSender {
@@ -40,7 +41,10 @@ function fakeSender(id = 1): FakeSender {
 		},
 		destroy() {
 			destroyed = true;
-			for (const listener of listeners.get("destroyed") ?? []) listener();
+			this.emit("destroyed");
+		},
+		emit(event: string) {
+			for (const listener of listeners.get(event) ?? []) listener();
 		},
 	};
 }
@@ -169,6 +173,25 @@ describe("terminal ipc 合同", () => {
 		expect(invoke(TERMINAL_CHANNELS.FOREGROUND, sender, "t1")).toBeNull();
 		session.foreground = "vim";
 		expect(invoke(TERMINAL_CHANNELS.FOREGROUND, sender, "t1")).toBe("vim");
+	});
+
+	it("渲染进程崩溃时也整批回收：WebContents 还在，既不 destroyed 也不 navigate", async () => {
+		const sender = fakeSender(9);
+		await invoke(TERMINAL_CHANNELS.OPEN, sender, { cwd: "/repo", cols: 80, rows: 24 });
+
+		sender.emit("render-process-gone");
+
+		expect(service.disposedOwners).toContain(9);
+	});
+
+	it("退出清理不经过 teardown 也能杀光终端", async () => {
+		// `before-quit` 是 preventDefault → 清理 → app.exit(0)，窗口没被关过，
+		// teardown 挂的那个 `closed` 不会触发；这条路必须自己能收尸。
+		await invoke(TERMINAL_CHANNELS.OPEN, fakeSender(), { cwd: "/repo", cols: 80, rows: 24 });
+
+		disposeAllTerminals();
+
+		expect(service.disposeAllCalls).toBe(1);
 	});
 
 	it("teardown 摘掉 handler 并杀光残留终端", () => {
