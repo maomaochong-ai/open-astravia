@@ -1,10 +1,10 @@
 import { ResizeHandle } from "@shared/components/ResizeHandle";
 import { collectBottomPanelLeaves } from "@shared/store/atoms";
-import { BottomPanelEmptyState, BottomPanelFrame } from "@vetta-org/theme-ui/bottom-panel";
+import { BottomPanelEmptyPicker, BottomPanelEmptyState, BottomPanelFrame } from "@vetta-org/theme-ui/bottom-panel";
 import { type JSX, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useBottomPanelModel } from "../hooks/useBottomPanelModel";
-import { BottomPanelAddMenu } from "./BottomPanelAddMenu";
+import { canOpenBottomPanelComponent } from "../registry/resolve-bottom-panel-tabs";
 import { BottomPanelLeaf } from "./BottomPanelLeaf";
 import { BottomPanelSplitView } from "./BottomPanelSplitView";
 
@@ -41,7 +41,8 @@ export function BottomPanelHost(): JSX.Element | null {
 		<div
 			ref={containerRef}
 			hidden={collapsed}
-			className="relative shrink-0 px-2 pb-2"
+			// 不留外边距：面板直接铺满消息列的底部，两侧和底边都顶到容器边缘。
+			className="relative shrink-0"
 			style={{ height: `${Math.round(state.heightRatio * 100)}%` }}
 			data-bottom-panel-root
 		>
@@ -62,10 +63,20 @@ export function BottomPanelHost(): JSX.Element | null {
 						title={t("bottomPanel.empty.title")}
 						description={t("bottomPanel.empty.description")}
 						action={
-							<BottomPanelAddMenu
-								definitions={definitions}
-								state={state}
-								onPick={(definition) => tabs.openComponent(definition)}
+							<BottomPanelEmptyPicker
+								label={t("bottomPanel.empty.pickerLabel")}
+								choices={definitions.map((definition) => ({
+									id: definition.id,
+									label: definition.defaultMeta.label,
+									icon: definition.defaultMeta.icon,
+									hint: definition.pluginName,
+									disabled: !canOpenBottomPanelComponent(state, definition),
+									disabledReason: t("bottomPanel.addMenu.instanceLimit"),
+								}))}
+								onPick={(id) => {
+									const definition = definitions.find((entry) => entry.id === id);
+									if (definition) tabs.openComponent(definition);
+								}}
 							/>
 						}
 					/>

@@ -32,20 +32,21 @@ export interface BottomPanelFrameProps extends ComponentPropsWithoutRef<"div"> {
 	readonly children: ReactNode;
 }
 
-/** 面板外框：与活动面板同一套分层（1px 边框 + muted 面），不加阴影。 */
+/**
+ * 面板外框：贴着消息列底边铺满，不做卡片。
+ *
+ * 只留上边框当作与消息流的分界——左右和下方都顶到容器边缘，再画边框会变成悬浮卡片的观感。
+ */
 export function BottomPanelFrame({ children, className, ...props }: BottomPanelFrameProps): JSX.Element {
 	return (
 		<div
-			className={cn(
-				"relative flex min-h-0 w-full flex-col overflow-hidden rounded-xl border border-border bg-muted",
-				className,
-			)}
+			className={cn("relative flex min-h-0 w-full flex-col overflow-hidden border-border border-t bg-muted", className)}
 			data-theme-surface-root="bottomPanel.panel"
 			{...props}
 		>
 			<ThemeSurface slot="bottomPanel.panel" />
 			<ActivityStatusDotStyles />
-			<div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[inherit]">{children}</div>
+			<div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
 		</div>
 	);
 }
@@ -75,8 +76,9 @@ export function BottomPanelTabStripView({
 	actions,
 	className,
 }: BottomPanelTabStripViewProps): JSX.Element {
+	// tab 条与内容之间不画分割线：同一个格子内部再分层会把一格看成两块。
 	return (
-		<div className={cn("flex h-9 shrink-0 items-center gap-1 border-b border-border/60 px-1.5", className)}>
+		<div className={cn("flex h-9 shrink-0 items-center gap-1 px-1.5", className)}>
 			{/* 包一层 presentation：tab 与关闭键是两个按钮，嵌套 button 是非法结构。 */}
 			<div role="tablist" aria-label={labels.tablist} className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
 				{tabs.map((tab) => {
@@ -164,11 +166,59 @@ export interface BottomPanelEmptyStateProps {
 
 export function BottomPanelEmptyState({ title, description, action }: BottomPanelEmptyStateProps): JSX.Element {
 	return (
-		<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 px-4 py-6 text-center">
+		<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 overflow-y-auto px-4 py-6 text-center">
 			<span aria-hidden className="icon-[solar--window-frame-linear] h-8 w-8 text-muted-foreground/60" />
 			<p className="text-[13px] text-foreground">{title}</p>
 			{description ? <p className="text-[12px] text-muted-foreground">{description}</p> : null}
 			{action}
+		</div>
+	);
+}
+
+export interface BottomPanelEmptyChoice {
+	readonly id: string;
+	readonly label: string;
+	readonly icon?: ReactNode;
+	/** 插件来源名，显示在标签右侧当副标题。 */
+	readonly hint?: string;
+	readonly disabled?: boolean;
+	readonly disabledReason?: string;
+}
+
+export interface BottomPanelEmptyPickerProps {
+	readonly choices: readonly BottomPanelEmptyChoice[];
+	readonly onPick: (id: string) => void;
+	readonly label: string;
+	readonly className?: string;
+}
+
+/**
+ * 空屏时把能添加的面板直接摊平成一排可点的项。
+ *
+ * 空面板里唯一能做的事就是添加第一个 tab，再让用户先点开一层「+」菜单纯属多余。
+ */
+export function BottomPanelEmptyPicker({
+	choices,
+	onPick,
+	label,
+	className,
+}: BottomPanelEmptyPickerProps): JSX.Element {
+	return (
+		<div aria-label={label} className={cn("flex max-w-full flex-wrap items-center justify-center gap-1.5", className)}>
+			{choices.map((choice) => (
+				<button
+					key={choice.id}
+					type="button"
+					disabled={choice.disabled}
+					title={choice.disabled ? choice.disabledReason : undefined}
+					onClick={() => onPick(choice.id)}
+					className="flex min-w-0 items-center gap-1.5 rounded-lg border border-border/60 px-2.5 py-1.5 text-[12px] transition-colors hover:border-border hover:bg-accent/50 disabled:opacity-40 disabled:hover:border-border/60 disabled:hover:bg-transparent"
+				>
+					<TabIcon icon={choice.icon} />
+					<span className="max-w-[160px] truncate text-foreground">{choice.label}</span>
+					{choice.hint ? <span className="shrink-0 text-[11px] text-muted-foreground">{choice.hint}</span> : null}
+				</button>
+			))}
 		</div>
 	);
 }

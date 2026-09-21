@@ -7,6 +7,8 @@ declare module "@vetta-org/theme-sdk" {
 }
 
 export type {
+	BottomPanelEmptyChoice,
+	BottomPanelEmptyPickerProps,
 	BottomPanelEmptyStateProps,
 	BottomPanelFrameProps,
 	BottomPanelPillsViewProps,
@@ -16,6 +18,7 @@ export type {
 	BottomPanelTabViewModel,
 } from "./BottomPanelView";
 export {
+	BottomPanelEmptyPicker,
 	BottomPanelEmptyState,
 	BottomPanelFrame,
 	BottomPanelPillsView,

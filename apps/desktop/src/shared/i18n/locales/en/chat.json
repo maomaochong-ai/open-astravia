@@ -284,7 +284,8 @@
 		"pillsGroup": "Bottom panel",
 		"empty": {
 			"title": "The bottom panel is empty",
-			"description": "Use the “+” in the top right to add a terminal or a plugin panel."
+			"description": "Pick a panel to add.",
+			"pickerLabel": "Panels you can add"
 		},
 		"actions": {
 			"add": "New panel",

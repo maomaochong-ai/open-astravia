@@ -111,6 +111,19 @@ function leafCount(store: ReturnType<typeof createStore>): number {
 	return collectBottomPanelLeaves(store.get(bottomPanelStateAtom).root).length;
 }
 
+/**
+ * 空态直接把可添加的面板摊平成一排，点一下就加——面板空着时唯一能做的事就是添加第一个 tab，
+ * 再套一层「+」菜单纯属多余。面板非空之后才走 tab 条右侧的「+」菜单。
+ */
+async function addFromEmptyState(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+	await user.click(await screen.findByRole("button", { name: /^日志/ }));
+}
+
+async function addFromMenu(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+	await user.click(screen.getAllByRole("button", { name: "bottomPanel.actions.add" })[0]!);
+	await user.click(await screen.findByRole("button", { name: /^日志/ }));
+}
+
 beforeEach(() => {
 	mountCounts = {};
 	const storage = new Map<string, string>();
@@ -126,15 +139,14 @@ beforeEach(() => {
 });
 
 describe("底部面板：常见使用流程", () => {
-	it("默认收起，点右上角按钮出现空态，从空态能添加第一个面板", async () => {
+	it("默认收起，点右上角按钮出现空态，空态里列出可添加的面板、点一下即添加", async () => {
 		const { user, store } = setup();
 		expect(screen.queryByText("bottomPanel.empty.title")).toBeNull();
 
 		await user.click(screen.getByRole("button", { name: "toggle-bottom-panel" }));
 		expect(screen.getByText("bottomPanel.empty.title")).not.toBeNull();
 
-		await user.click(screen.getAllByRole("button", { name: "bottomPanel.actions.add" })[0]!);
-		await user.click(await screen.findByRole("button", { name: /^日志/ }));
+		await addFromEmptyState(user);
 
 		expect(await screen.findByRole("tab", { name: /日志/ })).not.toBeNull();
 		expect(leafCount(store)).toBe(1);
@@ -143,10 +155,8 @@ describe("底部面板：常见使用流程", () => {
 	it("同一个面板可以开多个实例，各自独立", async () => {
 		const { user, store } = setup();
 		await user.click(screen.getByRole("button", { name: "toggle-bottom-panel" }));
-		await user.click(screen.getAllByRole("button", { name: "bottomPanel.actions.add" })[0]!);
-		await user.click(await screen.findByRole("button", { name: /^日志/ }));
-		await user.click(screen.getAllByRole("button", { name: "bottomPanel.actions.add" })[0]!);
-		await user.click(await screen.findByRole("button", { name: /^日志/ }));
+		await addFromEmptyState(user);
+		await addFromMenu(user);
 
 		expect(screen.getAllByRole("tab")).toHaveLength(2);
 		const tabs = store.get(bottomPanelStateAtom).root;
@@ -156,8 +166,7 @@ describe("底部面板：常见使用流程", () => {
 	it("实例能实时改名与点亮状态点，tab 条立刻跟上", async () => {
 		const { user } = setup();
 		await user.click(screen.getByRole("button", { name: "toggle-bottom-panel" }));
-		await user.click(screen.getAllByRole("button", { name: "bottomPanel.actions.add" })[0]!);
-		await user.click(await screen.findByRole("button", { name: /^日志/ }));
+		await addFromEmptyState(user);
 
 		await user.click(screen.getByRole("button", { name: "rename" }));
 
@@ -168,8 +177,7 @@ describe("底部面板：常见使用流程", () => {
 	it("分屏后两格并存，关掉一格树会塌缩回单格", async () => {
 		const { user, store } = setup();
 		await user.click(screen.getByRole("button", { name: "toggle-bottom-panel" }));
-		await user.click(screen.getAllByRole("button", { name: "bottomPanel.actions.add" })[0]!);
-		await user.click(await screen.findByRole("button", { name: /^日志/ }));
+		await addFromEmptyState(user);
 
 		await user.click(screen.getAllByRole("button", { name: "bottomPanel.actions.splitRight" })[0]!);
 		expect(leafCount(store)).toBe(2);
@@ -183,8 +191,7 @@ describe("底部面板：常见使用流程", () => {
 	it("贡献方装了关闭守卫时先弹确认：取消保留，确认才关", async () => {
 		const { user, store } = setup();
 		await user.click(screen.getByRole("button", { name: "toggle-bottom-panel" }));
-		await user.click(screen.getAllByRole("button", { name: "bottomPanel.actions.add" })[0]!);
-		await user.click(await screen.findByRole("button", { name: /^日志/ }));
+		await addFromEmptyState(user);
 		await user.click(screen.getByRole("button", { name: "guard" }));
 
 		await user.click(screen.getByRole("button", { name: /bottomPanel.closeTab/ }));
@@ -202,8 +209,7 @@ describe("底部面板：常见使用流程", () => {
 	it("折叠只是藏起来：布局留着，内容组件不重挂", async () => {
 		const { user, store } = setup();
 		await user.click(screen.getByRole("button", { name: "toggle-bottom-panel" }));
-		await user.click(screen.getAllByRole("button", { name: "bottomPanel.actions.add" })[0]!);
-		await user.click(await screen.findByRole("button", { name: /^日志/ }));
+		await addFromEmptyState(user);
 		const tabId = collectBottomPanelLeaves(store.get(bottomPanelStateAtom).root)[0]?.tabs[0]?.tabId ?? "";
 		expect(mountCounts[tabId]).toBe(1);
 
@@ -222,27 +228,25 @@ describe("底部面板：常见使用流程", () => {
 	it("布局写进了 localStorage，按会话主键分桶", async () => {
 		const { user } = setup();
 		await user.click(screen.getByRole("button", { name: "toggle-bottom-panel" }));
-		await user.click(screen.getAllByRole("button", { name: "bottomPanel.actions.add" })[0]!);
-		await user.click(await screen.findByRole("button", { name: /^日志/ }));
+		await addFromEmptyState(user);
 
 		const raw = localStorage.getItem("vetta-bottom-panel-layout");
 		expect(raw).toContain("/session.json");
 		expect(raw).toContain("plugin:demo:logs");
 	});
 
-	it("场景不匹配的插件面板不出现在菜单里（fail-closed）", async () => {
+	it("场景不匹配的插件面板不出现在可添加列表里（fail-closed）", async () => {
 		const { user } = setup([makePanel({ scope_use: ["batch"] })]);
 		await user.click(screen.getByRole("button", { name: "toggle-bottom-panel" }));
-		await user.click(screen.getAllByRole("button", { name: "bottomPanel.actions.add" })[0]!);
 
+		expect(screen.getByText("bottomPanel.empty.title")).not.toBeNull();
 		expect(screen.queryByRole("button", { name: /^日志/ })).toBeNull();
 	});
 
 	it("单例面板开过一个之后菜单项被禁用", async () => {
 		const { user } = setup([makePanel({ maxInstances: 1 })]);
 		await user.click(screen.getByRole("button", { name: "toggle-bottom-panel" }));
-		await user.click(screen.getAllByRole("button", { name: "bottomPanel.actions.add" })[0]!);
-		await user.click(await screen.findByRole("button", { name: /^日志/ }));
+		await addFromEmptyState(user);
 
 		await user.click(screen.getAllByRole("button", { name: "bottomPanel.actions.add" })[0]!);
 

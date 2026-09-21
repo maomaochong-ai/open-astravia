@@ -284,7 +284,8 @@
 		"pillsGroup": "底部面板",
 		"empty": {
 			"title": "底部面板是空的",
-			"description": "从右上角的「+」添加一个终端或插件面板。"
+			"description": "选一个面板加进来。",
+			"pickerLabel": "可添加的面板"
 		},
 		"actions": {
 			"add": "新建面板",

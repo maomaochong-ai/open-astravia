@@ -63,10 +63,15 @@ function SplitGroup({
 			className={`flex min-h-0 min-w-0 flex-1 ${horizontal ? "flex-row" : "flex-col"}`}
 			data-bottom-panel-group={node.id}
 		>
-			{node.children.map((child, index) => (
+			{node.children.map((child, index) => {
+				const last = index === node.children.length - 1;
+				return (
 				<div
 					key={child.id}
-					className="relative flex min-h-0 min-w-0 flex-col"
+					// 格子之间不留间距，用 1px 边框分界：留白会让每个格子看起来像独立的浮层。
+					className={`relative flex min-h-0 min-w-0 flex-col ${
+						last ? "" : horizontal ? "border-border border-r" : "border-border border-b"
+					}`}
 					style={{ flexGrow: node.sizes[index] ?? 1, flexBasis: 0 }}
 				>
 					<BottomPanelSplitView
@@ -76,7 +81,7 @@ function SplitGroup({
 						onResize={onResize}
 						onResizeEnd={onResizeEnd}
 					/>
-					{index < node.children.length - 1 ? (
+					{last ? null : (
 						// 把手贴在本格子的结束边上：往那个方向拖就是把本格子拉大。
 						<ResizeHandle
 							side={horizontal ? "right" : "bottom"}
@@ -84,9 +89,10 @@ function SplitGroup({
 							onResize={(delta) => handleResize(index, delta)}
 							onResizeEnd={onResizeEnd}
 						/>
-					) : null}
+					)}
 				</div>
-			))}
+				);
+			})}
 		</div>
 	);
 }
