@@ -85,6 +85,16 @@ function scheduleHistoryBackfill(task: () => void): void {
 	window.setTimeout(task, 0);
 }
 
+/**
+ * 会话建不起来，是因为远程项目指向的主机已不在列表里吗。
+ *
+ * 只能认报错文案：IPC 只把异常的 message 带到渲染进程，SshTransportError 的类型信息在
+ * 半路就丢了。文案出自 ssh-transport 的 `SshConnectionManager.connection`。
+ */
+export function isUnknownSshHostError(message: string): boolean {
+	return message.includes("Unknown SSH host:");
+}
+
 function sameActiveSession(left: ActiveSession | null, right: ActiveSession): boolean {
 	return (
 		left !== null &&
@@ -379,7 +389,13 @@ export function useSessionOpener(): SessionOpenerController {
 						params: { cwd: encodeURIComponent(cwd) },
 					});
 				} else if (shouldNavigate) {
-					void navigate({ to: "/" });
+					// 主机已不在列表里的远程项目，退回欢迎页等于把人扔在一个看不出原因的地方；
+					// 带回这个项目的新会话页，那里会换成「重新绑定主机」的卡片。
+					if (isUnknownSshHostError(message)) {
+						void navigate({ to: "/new-session", search: { cwd: encodeURIComponent(cwd) } });
+					} else {
+						void navigate({ to: "/" });
+					}
 				}
 				return;
 			}

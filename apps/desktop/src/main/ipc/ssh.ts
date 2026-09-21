@@ -2,6 +2,7 @@ import type { SshHostInput } from "@vetta/ssh-transport";
 import { ipcMain } from "electron";
 import { getSshPortForwardService } from "../ssh/port-forward-service.js";
 import { probeSshHost } from "../ssh/ssh-host-probe.js";
+import { SshHostRebindError } from "../ssh/ssh-host-service.js";
 import { getSshHostService, listSshConfigAliases } from "../ssh/ssh-host-service-instance.js";
 import { getSshConnection, getSshHostStatus } from "../ssh/ssh-runtime.js";
 
@@ -10,6 +11,7 @@ const CHANNELS = {
 	CREATE_HOST: "vetta:ssh:create-host",
 	UPDATE_HOST: "vetta:ssh:update-host",
 	REMOVE_HOST: "vetta:ssh:remove-host",
+	REBIND_HOST: "vetta:ssh:rebind-host",
 	IMPORT_CONFIG: "vetta:ssh:import-config",
 	LIST_CONFIG_ALIASES: "vetta:ssh:list-config-aliases",
 	TEST_HOST: "vetta:ssh:test-host",
@@ -59,6 +61,23 @@ export function registerSshIpc(): () => void {
 		await getSshHostService().remove(id);
 		// 主机没了，它的转发也就指不到任何地方；留着只会在端口面板里当一条撤不掉的死条目。
 		await getSshPortForwardService().closeHost(id);
+	});
+
+	// 结果而非异常：IPC 只把异常的 message 带过去，界面要按拒绝原因给出不同的说明。
+	ipcMain.handle(CHANNELS.REBIND_HOST, async (_event, input: unknown) => {
+		const raw = (input ?? {}) as Record<string, unknown>;
+		const hostId = asString(raw.hostId);
+		try {
+			const host = await getSshHostService().rebind(hostId, asString(raw.orphanId));
+			// 转发账本按 hostId 记账，换了 id 的主机上那些转发再也对不上号。
+			await getSshPortForwardService().closeHost(hostId);
+			return { ok: true, host };
+		} catch (error) {
+			if (error instanceof SshHostRebindError) {
+				return { ok: false, reason: error.reason, projectCount: error.projectCount };
+			}
+			throw error;
+		}
 	});
 
 	ipcMain.handle(CHANNELS.LIST_CONFIG_ALIASES, () => listSshConfigAliases());

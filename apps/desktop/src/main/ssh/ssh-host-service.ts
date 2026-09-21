@@ -29,6 +29,22 @@ export class SshHostInUseError extends Error {
 	}
 }
 
+export type SshHostRebindFailure = "not-orphaned" | "host-in-use";
+
+export class SshHostRebindError extends Error {
+	constructor(
+		readonly reason: SshHostRebindFailure,
+		readonly projectCount = 0,
+	) {
+		super(
+			reason === "host-in-use"
+				? `SSH host still has ${projectCount} project(s) of its own.`
+				: "No orphaned project refers to that host id.",
+		);
+		this.name = "SshHostRebindError";
+	}
+}
+
 /**
  * SSH 主机的唯一写入者。
  *
@@ -91,6 +107,33 @@ export class SshHostService {
 		}
 		await this.commit(hosts);
 		this.dependencies.invalidateConnection(hostId);
+	}
+
+	/**
+	 * 让一台已登记的主机顶替孤儿项目指向的旧 id。
+	 *
+	 * 主机被删掉再重加会拿到新 id，而项目路径、会话 cwd 与会话目录名里写死的都是旧 id。
+	 * 改主机这一侧的 id，那些引用原样就能接上；反过来改项目那一侧，要迁一整片会话文件。
+	 *
+	 * 两条护栏：旧 id 必须真有项目在用、且不属于任何登记着的主机（否则只是一串随手填的
+	 * 字符，或会造出两条同 id 主机）；这台主机自己不能已经有项目（否则那些项目变成新孤儿）。
+	 */
+	async rebind(hostId: string, orphanId: string): Promise<SshHost> {
+		const hosts = await this.list();
+		const index = hosts.findIndex((host) => host.id === hostId);
+		if (index < 0) throw new Error(`SSH host not found: ${hostId}`);
+		const orphaned =
+			!hosts.some((host) => host.id === orphanId) && (await this.dependencies.countProjectsOnHost(orphanId)) > 0;
+		if (!orphaned) throw new SshHostRebindError("not-orphaned");
+		const ownProjects = await this.dependencies.countProjectsOnHost(hostId);
+		if (ownProjects > 0) throw new SshHostRebindError("host-in-use", ownProjects);
+		const rebound: SshHost = { ...hosts[index], id: orphanId };
+		hosts[index] = rebound;
+		await this.commit(hosts);
+		// 旧 id 上可能缓存着一次「主机不存在」的连接尝试，新 id 上的连接也不再对应任何主机。
+		this.dependencies.invalidateConnection(hostId);
+		this.dependencies.invalidateConnection(orphanId);
+		return rebound;
 	}
 
 	/**

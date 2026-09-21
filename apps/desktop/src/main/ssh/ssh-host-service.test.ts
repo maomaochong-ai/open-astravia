@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import type { DesktopConfig } from "../config/desktop-config-store.js";
-import { SshHostAlreadyExistsError, SshHostInUseError, SshHostService } from "./ssh-host-service.js";
+import {
+	SshHostAlreadyExistsError,
+	SshHostInUseError,
+	SshHostRebindError,
+	SshHostService,
+} from "./ssh-host-service.js";
 
 function createFixture(initial?: Partial<DesktopConfig>) {
 	let config: DesktopConfig = {
@@ -118,5 +123,67 @@ describe("从 ssh config 导入", () => {
 		await fixture.service.importFromSshConfig(["lab"]);
 
 		expect(fixture.broadcastChanged).not.toHaveBeenCalled();
+	});
+});
+
+describe("把孤儿项目重新绑到一台主机上", () => {
+	// 删掉再重加主机会拿到新 id，而项目路径与会话 cwd 里写死的是旧 id。改主机 id 而不是改
+	// 项目：会话目录、会话头里的 cwd 全都按旧 id 存着，改项目那一侧要迁一整片会话文件。
+	const orphanId = "lost-host";
+
+	function withOrphanProject() {
+		const fixture = createFixture();
+		fixture.getConfig().projects.push({ path: `ssh://${orphanId}/srv/app`, name: "app" });
+		return fixture;
+	}
+
+	it("主机换上孤儿项目的旧 id，其余字段不变，并作废两边的连接", async () => {
+		const fixture = withOrphanProject();
+		const host = await fixture.service.create({ label: "构建机", target: "build-01", port: 2222 });
+		fixture.broadcastChanged.mockClear();
+
+		const rebound = await fixture.service.rebind(host.id, orphanId);
+
+		expect(rebound).toEqual({ ...host, id: orphanId });
+		expect(fixture.getConfig().sshHosts).toEqual([rebound]);
+		expect(fixture.invalidateConnection).toHaveBeenCalledWith(host.id);
+		expect(fixture.invalidateConnection).toHaveBeenCalledWith(orphanId);
+		expect(fixture.broadcastChanged).toHaveBeenCalledTimes(1);
+	});
+
+	it("没有项目在用的 id 不接受——那只是随手填的一串字符", async () => {
+		const fixture = createFixture();
+		const host = await fixture.service.create({ label: "构建机", target: "build-01" });
+
+		await expect(fixture.service.rebind(host.id, "whatever")).rejects.toMatchObject({
+			name: "SshHostRebindError",
+			reason: "not-orphaned",
+		});
+		expect(fixture.getConfig().sshHosts?.[0]?.id).toBe(host.id);
+	});
+
+	it("旧 id 仍属于一台登记着的主机时拒绝，否则会出现两条同 id 主机", async () => {
+		const fixture = withOrphanProject();
+		const a = await fixture.service.create({ label: "A", target: "build-01" });
+		fixture.getConfig().sshHosts?.push({ id: orphanId, label: "B", target: "build-02", source: "manual" });
+
+		await expect(fixture.service.rebind(a.id, orphanId)).rejects.toMatchObject({ reason: "not-orphaned" });
+	});
+
+	it("这台主机自己已经有项目时拒绝，否则那些项目会变成新的孤儿", async () => {
+		const fixture = withOrphanProject();
+		const host = await fixture.service.create({ label: "构建机", target: "build-01" });
+		fixture.getConfig().projects.push({ path: `ssh://${host.id}/srv/other`, name: "other" });
+
+		const error = await fixture.service.rebind(host.id, orphanId).catch((e: unknown) => e);
+		expect(error).toBeInstanceOf(SshHostRebindError);
+		expect(error).toMatchObject({ reason: "host-in-use", projectCount: 1 });
+		expect(fixture.getConfig().sshHosts?.[0]?.id).toBe(host.id);
+	});
+
+	it("主机不存在时报错", async () => {
+		const fixture = withOrphanProject();
+
+		await expect(fixture.service.rebind("nope", orphanId)).rejects.toThrow("SSH host not found");
 	});
 });

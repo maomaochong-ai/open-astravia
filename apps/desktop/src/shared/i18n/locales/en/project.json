@@ -234,5 +234,17 @@
 		"cancel": "Cancel",
 		"confirm": "Add this folder as a project",
 		"failedTitle": "Could not add this project"
+	},
+	"orphanRemote": {
+		"title": "This project's host is no longer in your host list",
+		"description": "The SSH host it points to was removed, or got a new identity when it was added again. Pick the matching host to reconnect the project; its sessions stay intact.",
+		"pickHost": "Which host was it on?",
+		"noHosts": "No hosts are registered yet. Add this host first, then come back to bind it.",
+		"addHost": "Add a host",
+		"rebind": "Bind to this host",
+		"rebinding": "Binding…",
+		"hostInUse": "This host already has {{count}} project(s); binding here would disconnect them. Pick another host, or add this machine again separately for this project.",
+		"notOrphaned": "This project no longer needs rebinding. Try refreshing.",
+		"footnote": "The host takes over the identity recorded in the project. If you had chosen to remember a password, you may be asked for it once more."
 	}
 }

@@ -52,12 +52,25 @@ export interface SshPortForwardRequest {
 	source?: "manual" | "detected";
 }
 
+export type SshHostRebindResult =
+	| { ok: true; host: SshHost }
+	/**
+	 * `not-orphaned`：那个旧 id 已没有项目在用，或已属于另一台主机；
+	 * `host-in-use`：选中的主机自己已有 `projectCount` 个项目，换 id 会让它们变成孤儿。
+	 */
+	| { ok: false; reason: "not-orphaned" | "host-in-use"; projectCount: number };
+
 export interface DesktopSshApi {
 	listHosts(): Promise<SshHostSummary[]>;
 	createHost(input: SshHostFormInput): Promise<SshHost>;
 	updateHost(input: SshHostFormInput & { id: string }): Promise<SshHost>;
 	/** 仍有项目指向该主机时会失败——那些项目会变成永远打不开的悬空条目。 */
 	removeHost(hostId: string): Promise<void>;
+	/**
+	 * 把孤儿远程项目接回一台已登记的主机：那台主机改用项目里写着的旧 id。
+	 * 项目与会话都不动，它们按旧 id 存着，改完即可直接打开。
+	 */
+	rebindHost(input: { hostId: string; orphanId: string }): Promise<SshHostRebindResult>;
 	/** 读取 `~/.ssh/config` 中可直接连接的别名（不含通配条目）。 */
 	listConfigAliases(): Promise<string[]>;
 	/** 按别名导入，只新增不覆盖已有条目。返回本次新增的主机。 */
