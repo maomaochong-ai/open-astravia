@@ -251,3 +251,65 @@ describe("用户命令执行", () => {
 		expect(userCommand).toBe(buildRemoteCommand("npm test", { cwd: "/srv/app", processToken }));
 	});
 });
+
+describe("远端端口与进程", () => {
+	it("ssh exec 路径下多问一次 ps 补上启动时间，22 照样列出但标成敏感", async () => {
+		const { connection, calls } = connect((command) => {
+			if (command.startsWith("uname")) return ok("Linux\nx86_64\n");
+			if (command.includes("@vetta-listeners")) {
+				return ok(
+					[
+						"@vetta-listeners ss",
+						'LISTEN 0 511 127.0.0.1:3000 0.0.0.0:* users:(("node",pid=1234,fd=23))',
+						'LISTEN 0 128 0.0.0.0:22 0.0.0.0:* users:(("sshd",pid=800,fd=3))',
+					].join("\n"),
+				);
+			}
+			if (command.includes("ps -o pid=")) return ok("1234 00:10 node server.js\n");
+			return ok("");
+		});
+
+		const scan = await connection.listListeningPorts();
+
+		// 一次 ps 问完所有 pid，不按端口逐个往返。
+		expect(calls.filter((call) => String(call.argv.at(-1)).includes("ps -o pid="))).toHaveLength(1);
+		const app = scan.ports.find((port) => port.port === 3000);
+		expect(app).toMatchObject({ command: "node server.js", sensitive: false });
+		expect(app?.startedAt).toBeLessThanOrEqual(Date.now() - 10_000);
+		expect(scan.ports.find((port) => port.port === 22)).toMatchObject({ sensitive: true, processName: "sshd" });
+	});
+
+	it("ps 失败只是少了时间，扫描本身照常返回", async () => {
+		const { connection } = connect((command) => {
+			if (command.startsWith("uname")) return ok("Linux\nx86_64\n");
+			if (command.includes("@vetta-listeners")) {
+				return ok('@vetta-listeners ss\nLISTEN 0 511 127.0.0.1:3000 0.0.0.0:* users:(("node",pid=1234,fd=23))\n');
+			}
+			return { exitCode: 127, stdout: encode(""), stderr: "ps: not found", aborted: false };
+		});
+
+		const scan = await connection.listListeningPorts();
+
+		expect(scan.ports).toHaveLength(1);
+		expect(scan.ports[0]).toMatchObject({ port: 3000, processName: "node", sensitive: false });
+		expect(scan.ports[0]?.startedAt).toBeUndefined();
+	});
+
+	it("终止进程：退出、还活着、没权限三种结局分得开", async () => {
+		const exited = connect(() => ok(""));
+		await expect(exited.connection.terminateProcess(1234)).resolves.toEqual({ exited: true });
+		expect(String(exited.calls[0].argv.at(-1))).toContain("kill -s TERM 1234");
+
+		const alive = connect(() => ({ exitCode: 3, stdout: encode(""), stderr: "", aborted: false }));
+		await expect(alive.connection.terminateProcess(1234, { force: true })).resolves.toEqual({ exited: false });
+		expect(String(alive.calls[0].argv.at(-1))).toContain("kill -s KILL 1234");
+
+		const denied = connect(() => ({
+			exitCode: 1,
+			stdout: encode(""),
+			stderr: "kill: (800) - Operation not permitted",
+			aborted: false,
+		}));
+		await expect(denied.connection.terminateProcess(800)).rejects.toThrow(/Operation not permitted/);
+	});
+});

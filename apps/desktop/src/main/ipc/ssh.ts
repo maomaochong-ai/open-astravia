@@ -21,6 +21,7 @@ const CHANNELS = {
 	LIST_FORWARDS: "vetta:ssh:list-port-forwards",
 	OPEN_FORWARD: "vetta:ssh:open-port-forward",
 	CLOSE_FORWARD: "vetta:ssh:close-port-forward",
+	TERMINATE_PROCESS: "vetta:ssh:terminate-process",
 } as const;
 
 function asString(value: unknown): string {
@@ -106,6 +107,14 @@ export function registerSshIpc(): () => void {
 	ipcMain.handle(CHANNELS.LIST_LISTENING_PORTS, (_event, hostId: unknown) =>
 		getSshConnection(asString(hostId)).listListeningPorts(),
 	);
+
+	// 端口面板里「停掉这个服务」。pid 由界面从扫描结果里带回来，非法值交给连接层拒绝。
+	ipcMain.handle(CHANNELS.TERMINATE_PROCESS, (_event, input: unknown) => {
+		const raw = (input ?? {}) as Record<string, unknown>;
+		return getSshConnection(asString(raw.hostId)).terminateProcess(typeof raw.pid === "number" ? raw.pid : -1, {
+			force: raw.force === true,
+		});
+	});
 
 	ipcMain.handle(CHANNELS.LIST_FORWARDS, (_event, hostId: unknown) => {
 		const scope = asString(hostId);

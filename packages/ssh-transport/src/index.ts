@@ -67,11 +67,16 @@ export {
 } from "./remote-command.js";
 export {
 	buildListListeningPortsCommand,
+	buildProcessInfoCommand,
+	buildTerminateProcessCommand,
 	isForwardableListenerAddress,
+	isSensitiveListenerPort,
+	parseProcessInfo,
 	parseRemoteListeners,
 	type RemoteListenerScan,
 	type RemoteListenerTool,
 	type RemoteListeningPort,
+	type RemoteProcessInfo,
 	type SelectForwardablePortsOptions,
 	selectForwardablePorts,
 } from "./remote-listeners.js";

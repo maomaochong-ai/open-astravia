@@ -95,6 +95,13 @@ export interface DesktopSshApi {
 	 */
 	openPortForward(request: SshPortForwardRequest): Promise<PortForward>;
 	closePortForward(input: { hostId: string; remotePort: number }): Promise<void>;
+	/**
+	 * 终止远端一个进程（端口面板里的「终止」）。`force` 发 SIGKILL。
+	 *
+	 * `exited` 为 false 表示信号发出去了但进程约 2 秒内没退，界面据此提供强制终止；
+	 * 权限不够等情况直接失败，原因是 `kill` 的原话。
+	 */
+	terminateRemoteProcess(input: { hostId: string; pid: number; force?: boolean }): Promise<{ exited: boolean }>;
 	onPortForwardsChanged(listener: () => void): () => void;
 	onHostsChanged(listener: () => void): () => void;
 	onHostStatusChanged(listener: (event: SshHostStatusEvent) => void): () => void;

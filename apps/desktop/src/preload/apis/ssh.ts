@@ -18,6 +18,7 @@ const CHANNELS = {
 	LIST_FORWARDS: "vetta:ssh:list-port-forwards",
 	OPEN_FORWARD: "vetta:ssh:open-port-forward",
 	CLOSE_FORWARD: "vetta:ssh:close-port-forward",
+	TERMINATE_PROCESS: "vetta:ssh:terminate-process",
 } as const;
 
 export function createSshApi(ipc: IpcRenderer): Pick<DesktopApi, "ssh"> {
@@ -37,6 +38,7 @@ export function createSshApi(ipc: IpcRenderer): Pick<DesktopApi, "ssh"> {
 			listPortForwards: (hostId) => ipc.invoke(CHANNELS.LIST_FORWARDS, hostId ?? ""),
 			openPortForward: (request) => ipc.invoke(CHANNELS.OPEN_FORWARD, request),
 			closePortForward: (input) => ipc.invoke(CHANNELS.CLOSE_FORWARD, input),
+			terminateRemoteProcess: (input) => ipc.invoke(CHANNELS.TERMINATE_PROCESS, input),
 			onPortForwardsChanged: (listener) => {
 				const handler = (): void => listener();
 				ipc.on(SSH_CHANNELS.PORT_FORWARDS_CHANGED, handler);

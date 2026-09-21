@@ -8,6 +8,17 @@ export interface RemoteListeningPort {
 	/** 占用端口的进程名。远端工具不给、或进程属于别的用户时为空。 */
 	readonly processName?: string;
 	readonly pid?: number;
+	/** 占用进程的完整命令行，用来分清两个都叫 `node` 的进程。 */
+	readonly command?: string;
+	/** 占用进程的启动时间（Unix 毫秒）。界面按它排序：刚起的服务排在最上面。 */
+	readonly startedAt?: number;
+	/**
+	 * 系统端口：特权端口（< 1024）或这条连接自己用的 sshd 端口。
+	 *
+	 * 它们照样列出——用户确实可能想看 22 上跑着什么——但界面会单独折叠、置灰，并且不给
+	 * 「终止」：停掉 sshd 等于把自己脚下这条连接拆了。
+	 */
+	readonly sensitive?: boolean;
 }
 
 /**
@@ -140,6 +151,8 @@ export interface HelperListener {
 	readonly address: string;
 	readonly process?: string;
 	readonly pid?: number;
+	readonly command?: string;
+	readonly startedAt?: number;
 }
 
 /**
@@ -154,7 +167,82 @@ export function fromHelperListener(listener: HelperListener): RemoteListeningPor
 		address: listener.address,
 		processName: listener.process || undefined,
 		pid: listener.pid || undefined,
+		command: listener.command || undefined,
+		startedAt: listener.startedAt || undefined,
 	};
+}
+
+/**
+ * 端口是否属于系统：特权端口，或 `sshPort` 这条连接自己用的端口。
+ *
+ * 特权端口只有 root 能绑，上面跑的是 sshd、DNS、邮件这类系统服务；普通登录用户本来也
+ * 杀不掉它们，摆在候选里只会把用户自己起的服务挤到下面去。
+ */
+export function isSensitiveListenerPort(port: number, sshPort?: number): boolean {
+	return port < 1024 || port === sshPort;
+}
+
+/** `ps` 查出来的进程信息。 */
+export interface RemoteProcessInfo {
+	readonly command?: string;
+	readonly startedAt?: number;
+}
+
+/**
+ * 查一批进程的命令行与已运行时长。
+ *
+ * 只在 helper 不可用时走这条路（helper 直接读 `/proc`）。`etime` 而不是 `lstart`：后者的
+ * 日期格式跟着 locale 和实现走，`etime` 在 procps 与 BSD ps 上都是 `[[dd-]hh:]mm:ss`。
+ * busybox 的 ps 不认 `-p`，失败时静默返回空——少的只是时间和命令行，端口照样能列。
+ */
+export function buildProcessInfoCommand(pids: readonly number[]): string {
+	const list = pids.filter((pid) => Number.isInteger(pid) && pid > 0).join(",");
+	return `LC_ALL=C ps -o pid= -o etime= -o args= -p ${list} 2>/dev/null; true`;
+}
+
+/** 解析 {@link buildProcessInfoCommand} 的输出；`now` 用来把已运行时长换成启动时间。 */
+export function parseProcessInfo(output: string, now: number): Map<number, RemoteProcessInfo> {
+	const result = new Map<number, RemoteProcessInfo>();
+	for (const line of output.split("\n")) {
+		const match = /^\s*(\d+)\s+(\S+)\s+(.*)$/.exec(line);
+		if (!match) continue;
+		const elapsed = parseElapsedSeconds(match[2] ?? "");
+		result.set(Number.parseInt(match[1] ?? "", 10), {
+			command: match[3]?.trim() || undefined,
+			startedAt: elapsed === undefined ? undefined : now - elapsed * 1000,
+		});
+	}
+	return result;
+}
+
+/** `ps -o etime` 的 `[[dd-]hh:]mm:ss`。 */
+function parseElapsedSeconds(value: string): number | undefined {
+	const match = /^(?:(\d+)-)?(?:(\d+):)?(\d+):(\d+)$/.exec(value);
+	if (!match) return undefined;
+	const [, days = "0", hours = "0", minutes = "0", seconds = "0"] = match;
+	return ((Number(days) * 24 + Number(hours)) * 60 + Number(minutes)) * 60 + Number(seconds);
+}
+
+/** {@link buildTerminateProcessCommand} 表示「信号发出去了、进程还没退」的退出码。 */
+export const PROCESS_STILL_ALIVE_EXIT_CODE = 3;
+
+/**
+ * 终止远端一个进程，并等它真的退出（最多约 2 秒）。
+ *
+ * 只发信号就返回的话，界面紧接着重新扫描时端口多半还在，用户会以为点了没用。`force`
+ * 发 SIGKILL，留给不理 SIGTERM 的进程。权限不够时 `kill` 自己报错、退出码非零。
+ *
+ * 僵尸进程算已退出：它的套接字已经关了，只是父进程还没回收，`kill -0` 对它照样成功。
+ * 不认这一条的话，父进程不收尸时用户点多少次「强制终止」都显示还活着。
+ */
+export function buildTerminateProcessCommand(pid: number, force: boolean): string {
+	if (!Number.isInteger(pid) || pid <= 1) throw new Error(`Refusing to signal pid ${pid}`);
+	return (
+		`kill -s ${force ? "KILL" : "TERM"} ${pid} || exit $?; ` +
+		`i=0; while [ $i -lt 20 ]; do kill -0 ${pid} 2>/dev/null || exit 0; ` +
+		`case "$(ps -o stat= -p ${pid} 2>/dev/null)" in *Z*) exit 0;; esac; sleep 0.1; i=$((i+1)); done; ` +
+		`exit ${PROCESS_STILL_ALIVE_EXIT_CODE}`
+	);
 }
 
 /**

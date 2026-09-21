@@ -117,7 +117,7 @@ describe.each(modes)("SshConnection 的文件操作（回环 SSH，$name）", ({
  * 在这个平台上确实对得上，而不是我们拼出了预期的字符串。
  */
 describe("列出远端正在监听的端口（回环 SSH）", () => {
-	baseIt("认出一个刚起的监听端口，并且不列出 sshd 的 22", async () => {
+	baseIt("认出一个刚起的监听端口并带上启动时间，sshd 的 22 只标成敏感", async () => {
 		const server = createServer();
 		const port = await new Promise<number>((resolve, reject) => {
 			server.once("error", reject);
@@ -132,7 +132,11 @@ describe("列出远端正在监听的端口（回环 SSH）", () => {
 			expect(scan.tool).not.toBe("none");
 			const ports = scan.ports.map((entry) => entry.port);
 			expect(ports).toContain(port);
-			expect(ports).not.toContain(22);
+			for (const entry of scan.ports) if (entry.port === 22) expect(entry.sensitive).toBe(true);
+			const mine = scan.ports.find((entry) => entry.port === port);
+			expect(mine?.sensitive).toBe(false);
+			// 这个监听者就是测试进程自己：它的启动时间必然早于现在。
+			if (mine?.pid) expect(mine.startedAt).toBeLessThanOrEqual(Date.now());
 			// 端口号升序是界面直接用的顺序，不能只保证集合正确。
 			expect(ports).toEqual([...ports].sort((a, b) => a - b));
 		} finally {

@@ -26,10 +26,17 @@ import {
 } from "./remote-command.js";
 import {
 	buildListListeningPortsCommand,
+	buildProcessInfoCommand,
+	buildTerminateProcessCommand,
 	fromHelperListener,
 	type HelperListener,
+	isSensitiveListenerPort,
+	PROCESS_STILL_ALIVE_EXIT_CODE,
+	parseProcessInfo,
 	parseRemoteListeners,
 	type RemoteListenerScan,
+	type RemoteListeningPort,
+	type RemoteProcessInfo,
 	selectForwardablePorts,
 } from "./remote-listeners.js";
 import {
@@ -482,11 +489,10 @@ export class SshConnection {
 	 * 返回值带上实际用了哪种手段：「远端一个扫描工具都没装」是远端给出的明确答复，不是
 	 * 传输故障，界面要据此改成让用户手动输入端口号，所以不能用抛错表达。
 	 *
-	 * 结果按端口去重并滤掉转不过去的地址；这条连接自己用的 sshd 端口也不列——它总在，
-	 * 且转发它没有意义。
+	 * 结果按端口去重并滤掉转不过去的地址。sshd 与其他特权端口照样列出、但标上
+	 * `sensitive`，由界面决定怎么收起来——藏掉的话用户想看「22 上是谁」也没处看。
 	 */
 	async listListeningPorts(signal?: AbortSignal): Promise<RemoteListenerScan> {
-		const excludePorts = [22, ...(this.host.port === undefined ? [] : [this.host.port])];
 		const viaHelper = await this.viaHelper(async (helper) => {
 			try {
 				return (await helper.call<{ ports: HelperListener[] }>("net.listeners")).ports.map(fromHelperListener);
@@ -497,13 +503,73 @@ export class SshConnection {
 				throw error;
 			}
 		});
+		let scan: RemoteListenerScan;
 		if (viaHelper?.value) {
-			return { tool: "helper", ports: selectForwardablePorts(viaHelper.value, { excludePorts }) };
+			scan = { tool: "helper", ports: selectForwardablePorts(viaHelper.value) };
+		} else {
+			const platform = await this.probePlatform(signal);
+			const result = await this.runChecked(buildListListeningPortsCommand(platform.statFlavor), { signal });
+			const parsed = parseRemoteListeners(decode(result.stdout));
+			scan = { tool: parsed.tool, ports: selectForwardablePorts(parsed.ports) };
 		}
-		const platform = await this.probePlatform(signal);
-		const result = await this.runChecked(buildListListeningPortsCommand(platform.statFlavor), { signal });
-		const scan = parseRemoteListeners(decode(result.stdout));
-		return { tool: scan.tool, ports: selectForwardablePorts(scan.ports, { excludePorts }) };
+		const ports = await this.withProcessInfo(scan.ports, signal);
+		const sshPort = this.host.port ?? 22;
+		return {
+			tool: scan.tool,
+			ports: ports.map((port) => ({ ...port, sensitive: isSensitiveListenerPort(port.port, sshPort) })),
+		};
+	}
+
+	/**
+	 * 给缺启动时间的端口补上进程信息。
+	 *
+	 * helper 已经从 `/proc` 读好的不再问；旧版 helper 与 `ssh exec` 路径拿不到，多一次 `ps`
+	 * 往返补齐。这一步失败只是少了排序依据，不能让整次扫描跟着失败。
+	 */
+	private async withProcessInfo(
+		ports: readonly RemoteListeningPort[],
+		signal?: AbortSignal,
+	): Promise<RemoteListeningPort[]> {
+		const pids = [
+			...new Set(ports.filter((port) => port.pid && port.startedAt === undefined).map((port) => port.pid ?? 0)),
+		];
+		if (pids.length === 0) return [...ports];
+		let info: Map<number, RemoteProcessInfo>;
+		try {
+			const result = await this.run(buildProcessInfoCommand(pids), { signal });
+			info = parseProcessInfo(decode(result.stdout), Date.now());
+		} catch (error) {
+			if (error instanceof SshOperationAbortedError) throw error;
+			return [...ports];
+		}
+		return ports.map((port) => {
+			const found = port.pid === undefined ? undefined : info.get(port.pid);
+			if (!found) return port;
+			return { ...port, command: port.command ?? found.command, startedAt: port.startedAt ?? found.startedAt };
+		});
+	}
+
+	/**
+	 * 终止远端一个进程——端口面板里「停掉这个服务」。
+	 *
+	 * 返回进程是否已经退出：发了 SIGTERM 却还活着时界面要能给出「强制终止」，而不是装作
+	 * 成功。权限不够（别人的进程）时抛错，原因照 `kill` 的原话带出来。
+	 */
+	async terminateProcess(
+		pid: number,
+		options: { readonly force?: boolean; readonly signal?: AbortSignal } = {},
+	): Promise<{ exited: boolean }> {
+		const result = await this.run(buildTerminateProcessCommand(pid, options.force === true), {
+			signal: options.signal,
+		});
+		if (result.exitCode === 0) return { exited: true };
+		if (result.exitCode === PROCESS_STILL_ALIVE_EXIT_CODE) return { exited: false };
+		throw new SshRemoteCommandError(
+			`Could not stop process ${pid} on ${this.host.label}: ${result.stderr.trim()}`,
+			this.host.id,
+			result.exitCode ?? -1,
+			result.stderr,
+		);
 	}
 
 	/**
