@@ -110,6 +110,10 @@ export function collectPublishedToolExecutions(
 	while (startIndex > 0) {
 		const previous = history[startIndex - 1];
 		if (previous?.type === "message" && previous.message.role === "user") break;
+		// Automatic Team continuations do not append another user message. Their
+		// compaction reference is the durable turn boundary, so crossing it would
+		// attach the completed turn's tools after the continuation's final output.
+		if (previous?.type === "custom_marker" && previous.customType === "agent-team.compaction-reference.v1") break;
 		startIndex -= 1;
 	}
 	const executions = new Map<string, DesktopTeamToolExecutionProjection>();
