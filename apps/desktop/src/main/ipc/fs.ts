@@ -432,6 +432,12 @@ export function registerFsIpc(): () => void {
 		// proxy 走补丁语义（口令可省略），与其余整体覆盖的字段不同，故单独放宽为 unknown。
 		const patch = config as Partial<Omit<DesktopConfig, "proxy">> & { proxy?: unknown };
 		const next: DesktopConfig = {
+			// 先摊开 current 打底。下面是一张字段白名单，而 writeDesktopConfig 是整文件覆盖：
+			// 白名单漏掉哪个字段，哪个字段就会在用户每次保存设置时被从磁盘上抹掉。sshHosts
+			// 和 remoteControl 就是这么丢的——它们晚于这个处理器加入 DesktopConfig，而两者
+			// 都是可选字段，TypeScript 不会提示缺失。打底之后白名单只决定「哪些字段允许被
+			// 补丁改写」，不再决定「哪些字段能活下来」。
+			...current,
 			projects: patch.projects ?? current.projects,
 			archivedProjects: patch.archivedProjects ?? current.archivedProjects,
 			workspacePath: patch.workspacePath ?? current.workspacePath,
