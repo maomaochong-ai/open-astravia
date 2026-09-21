@@ -63,6 +63,9 @@ export interface DesktopConfig {
 	 *
 	 * 注意与上面的 `remoteControl` 是两件事：那个是「手机遥控本机」，这个是
 	 * 「本机连到远端主机上开发」，方向相反。
+	 *
+	 * 只读投影：真身在 `ssh-hosts.json`（见 {@link writeSshHosts}），
+	 * {@link writeDesktopConfig} 会忽略这个字段。
 	 */
 	sshHosts?: SshHost[];
 }
@@ -98,6 +101,15 @@ export const KB_PROCESSING_CWD = join(getVettaHomePath(), "knowledges", "process
 export const KB_PROCESSING_SESSION_DIR = join(KB_PROCESSING_CWD, ".vetta", "sessions");
 
 const CONFIG_PATH = join(getVettaHomePath(), "desktop-config.json");
+/**
+ * SSH 主机单独成文件，而不是 desktop-config.json 的一个字段。
+ *
+ * 开发版与已安装的正式版共用 `~/.vetta`。0.5.58 及更早版本按自己的字段白名单整份重写
+ * desktop-config.json，不认识的 sshHosts 随之消失——它们被 vetta:// 链接、通知之类
+ * 顺手拉起一次就够了，写回代码里再怎么保留未知字段也管不到已经发出去的旧版本。
+ * 旧版本不知道这个文件，也就碰不到它。
+ */
+const SSH_HOSTS_PATH = join(getVettaHomePath(), "ssh-hosts.json");
 const DEFAULT_CONFIG: DesktopConfig = {
 	projects: [],
 	archivedProjects: [],
@@ -265,8 +277,34 @@ function parseDesktopConfig(parsed: Record<string, unknown>): DesktopConfig {
 		quickPanel: normalizeQuickPanel(parsed.quickPanel),
 		appshot: normalizeAppshot(parsed.appshot),
 		remoteControl: normalizeRemoteControl(parsed.remoteControl),
-		sshHosts: normalizeSshHosts(parsed.sshHosts),
+		sshHosts: readSshHostsSync(parsed.sshHosts),
 	};
+}
+
+/**
+ * 读 `ssh-hosts.json`；文件还不存在时从 desktop-config 里的旧字段迁出。
+ *
+ * 迁移在读路径上立刻落盘，而不是等下一次写：两次启动之间旧版本随时可能把旧字段抹掉。
+ */
+function readSshHostsSync(legacy: unknown): SshHost[] | undefined {
+	try {
+		const parsed = JSON.parse(readFileSync(SSH_HOSTS_PATH, "utf8")) as { hosts?: unknown };
+		return normalizeSshHosts(parsed.hosts) ?? [];
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code !== "ENOENT") return [];
+	}
+	const migrated = normalizeSshHosts(legacy);
+	if (migrated !== undefined) writeSshHostsSync(migrated);
+	return migrated;
+}
+
+function writeSshHostsSync(hosts: readonly SshHost[]): void {
+	atomicWriteJSON(SSH_HOSTS_PATH, { version: 1, hosts });
+}
+
+/** SSH 主机列表的唯一写入口；调用方应是 SshHostService。 */
+export async function writeSshHosts(hosts: readonly SshHost[]): Promise<void> {
+	writeSshHostsSync(hosts);
 }
 
 function normalizeRemoteControl(value: unknown): DesktopConfig["remoteControl"] {
@@ -322,7 +360,12 @@ function normalizeSshHosts(value: unknown): SshHost[] | undefined {
  * `undefined` 的键在序列化时被丢掉，删除语义不变。
  */
 export async function writeDesktopConfig(config: DesktopConfig): Promise<void> {
-	atomicWriteJSON(CONFIG_PATH, { ...readRawConfigSync(), ...config });
+	const raw = readRawConfigSync();
+	// 迁移没来得及发生时（文件由外部写入、本进程还没读过）先把旧字段迁出，再从这里删掉。
+	readSshHostsSync(raw.sshHosts);
+	// sshHosts 由 writeSshHosts 独占：调用方手里的是读配置那一刻的快照，拿它写回会盖掉
+	// 期间刚增删的主机。
+	atomicWriteJSON(CONFIG_PATH, { ...raw, ...config, sshHosts: undefined });
 }
 
 function readRawConfigSync(): Record<string, unknown> {

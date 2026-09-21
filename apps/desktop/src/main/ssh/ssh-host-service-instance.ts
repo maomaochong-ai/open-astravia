@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { parseProjectLocation, parseSshConfigAliases } from "@vetta/ssh-transport";
-import { readDesktopConfig, writeDesktopConfig } from "../config/desktop-config-store.js";
+import { readDesktopConfig, writeSshHosts } from "../config/desktop-config-store.js";
 import { broadcastSshHostsChanged } from "./ssh-events.js";
 import { SshHostService } from "./ssh-host-service.js";
 import { getSshConnectionManager } from "./ssh-runtime.js";
@@ -13,8 +13,8 @@ let service: SshHostService | undefined;
 /** 进程内唯一的 SSH 主机服务，理由同 {@link getDesktopProjectService}。 */
 export function getSshHostService(): SshHostService {
 	service ??= new SshHostService({
-		readConfig: readDesktopConfig,
-		writeConfig: writeDesktopConfig,
+		readHosts: async () => (await readDesktopConfig()).sshHosts ?? [],
+		writeHosts: writeSshHosts,
 		broadcastChanged: broadcastSshHostsChanged,
 		invalidateConnection: (hostId) => getSshConnectionManager().invalidate(hostId),
 		countProjectsOnHost: async (hostId) => {

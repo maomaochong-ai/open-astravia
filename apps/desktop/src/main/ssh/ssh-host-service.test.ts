@@ -14,9 +14,9 @@ function createFixture(initial?: Partial<DesktopConfig>) {
 	const invalidateConnection = vi.fn();
 	let nextId = 0;
 	const service = new SshHostService({
-		readConfig: async () => structuredClone(config),
-		writeConfig: async (next) => {
-			config = structuredClone(next);
+		readHosts: async () => structuredClone(config.sshHosts ?? []),
+		writeHosts: async (hosts) => {
+			config = { ...config, sshHosts: structuredClone(hosts) };
 		},
 		broadcastChanged,
 		invalidateConnection,
