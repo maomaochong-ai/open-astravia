@@ -37,6 +37,7 @@ ctx.permissions.require("fs.read");  // 缺则抛 Plugin permission denied: fs.r
 | `ui.slot.workspace-view` | `ctx.ui.registerWorkspaceView()` / `openWorkspaceView()` / `setWorkspaceViewBadge()` | [ui-slots](./ui-slots.md#工作区视图-registerworkspaceview) |
 | `ui.slot.file-preview` | `ctx.ui.registerFilePreview()` | [ui-slots](./ui-slots.md#文件预览-registerfilepreview) |
 | `ui.slot.activity-tab` | `registerActivityTab` / `openActivityTab` / `setActivityTabVisible` | [ui-slots](./ui-slots.md#活动面板-tab-registeractivitytab) |
+| `ui.slot.bottom-panel` | `registerBottomPanel` | [ui-slots](./ui-slots.md#会话底部面板-registerbottompanel) |
 | `ui.slot.input-action` | `registerInputAction` / `setPromptAttachment` | [ui-slots](./ui-slots.md#输入栏动作-registerinputaction) |
 | `ui.slot.new-session-context` | `ctx.ui.registerNewSessionContext()` | [ui-slots](./ui-slots.md#新会话上下文区-registernewsessioncontext) |
 | `conversation.draft.read` | 新会话上下文区的 `context.draft`（未授予恒为空串） | 同上 |

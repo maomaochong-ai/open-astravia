@@ -9,6 +9,7 @@ export const PLUGIN_PERMISSION_LABEL_KEYS = {
 	"ui.slot.ability-detail": "permission.uiSlotAbilityDetail",
 	"ui.slot.file-preview": "permission.uiSlotFilePreview",
 	"ui.slot.activity-tab": "permission.uiSlotActivityTab",
+	"ui.slot.bottom-panel": "permission.uiSlotBottomPanel",
 	"ui.slot.input-action": "permission.uiSlotInputAction",
 	"ui.slot.message": "permission.uiSlotMessage",
 	"ui.slot.tool-call": "permission.uiSlotToolCall",
@@ -74,6 +75,7 @@ export type PluginUiPreview =
 	| "global"
 	| "filePreview"
 	| "activityTab"
+	| "bottomPanel"
 	| "inputAction"
 	| "message"
 	| "toolCall"
@@ -129,6 +131,13 @@ export const PLUGIN_PERMISSION_PRESENTATIONS = {
 		risk: "low",
 		visual: "interface",
 		uiPreview: "activityTab",
+	},
+	"ui.slot.bottom-panel": {
+		descriptionKey: "permission.description.uiSlotBottomPanel",
+		group: "interface",
+		risk: "low",
+		visual: "interface",
+		uiPreview: "bottomPanel",
 	},
 	"ui.slot.input-action": {
 		descriptionKey: "permission.description.uiSlotInputAction",

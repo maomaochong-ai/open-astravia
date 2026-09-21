@@ -72,6 +72,7 @@ Agent 写插件时可以按普通 React 项目使用 `className` 或 CSS；不�
 | --- | --- |
 | **`registerFilePreview`** | 内容铺满预览区；所有 UI 留在预览壳内 |
 | **`registerActivityTab`** | 内容铺满 Tab 面板；所有 UI 留在面板内 |
+| **`registerBottomPanel`** | 内容铺满自己的分格；关闭确认交给宿主，不要自己画对话框 |
 | **`registerInputAction` 面板内容**（若有） | 同面板约束 |
 | **`registerGlobalSlot`** | **例外**：这是全局浮层扩展点，可相对视口布局 |
 | **`ctx.ui.notify`** | **例外**：全局 Toast，由宿主渲染，不要自己造右上角固定条 |

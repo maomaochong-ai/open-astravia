@@ -63,6 +63,7 @@
 | 文件预览 | `ctx.ui.registerFilePreview` | `ui.slot.file-preview` | [ui-slots](./ui-slots.md#文件预览-registerfilepreview) |
 | 文件列表扩展 | `ctx.fileExplorer.*` | `ui.file-explorer.*` / `workspace.read` | [file-explorer](./file-explorer.md) |
 | 活动面板 Tab | `ctx.ui.registerActivityTab` / `openActivityTab` | `ui.slot.activity-tab` | [ui-slots](./ui-slots.md#活动面板-tab-registeractivitytab) |
+| 会话底部面板 | `ctx.ui.registerBottomPanel` | `ui.slot.bottom-panel` | [ui-slots](./ui-slots.md#会话底部面板-registerbottompanel) |
 | 输入栏动作（toggle） | `ctx.ui.registerInputAction` | `ui.slot.input-action` | [ui-slots](./ui-slots.md#输入栏动作-registerinputaction) |
 | **新会话上下文区**（输入框下方的素材区） | `ctx.ui.registerNewSessionContext` | `ui.slot.new-session-context` | [ui-slots](./ui-slots.md#新会话上下文区-registernewsessioncontext) |
 | 消息卡片渲染器 | `ctx.ui.registerCardRenderer` | `ui.slot.message` | [message-cards](./message-cards.md) |

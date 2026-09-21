@@ -437,6 +437,69 @@ ctx.ui.registerInputAction({
 
 上栏记录按 cwd 持久化，所以**只需在条件变化时调用**；用户之后用减号手动隐藏的结果不会被重复调用覆盖。当前没有活动会话时是 no-op（无处记录），插件应在会话就绪后重新判定。异步判定要注意丢弃过期结果：写入落在**调用时**的活动会话上，探测期间切走了就别再写。
 
+## 会话底部面板 registerBottomPanel
+
+向会话页底部面板注册一个可打开的组件。
+
+**和活动面板 Tab 怎么选**：活动面板在右侧、一个贡献只有一个实例，适合「看某个东西的当前状态」；底部面板横跨会话页下沿、可上下左右分屏、**同一个贡献可以开多个实例**，适合终端、日志跟随这类长驻的工作面。
+
+- 权限：`ui.slot.bottom-panel`（注册 **warn+noop**）
+- **`scope_use` fail-closed**（必写，否则任何场景都不出现）
+- **注册只入池**，不直接渲染：用户从面板的「+」菜单开出实例。`order` 决定菜单里的位置（缺省 100，宿主把下限钳到 10，内置终端永远在前）
+- **多实例**：缺省不限，`maxInstances: 1` 表示单例（开过一个之后菜单项禁用）
+- **布局与结构按会话持久化**（分屏、比例、面板高度、哪些 tab 开着）。进程与组件状态不跨应用重启保活
+- **折叠不卸载**：面板收起时组件仍然挂着，只是 `active` 变成 `false`；此时它的名字和状态点会以药丸的形式排在输入框下方。昂贵的轮询和动画应在 `active === false` 时主动暂停
+- **布局边界（面板内）**：与 file-preview / activity-tab 相同——UI 留在自己的分格矩形内，禁止 viewport 级 `fixed` / 超高 z-index / portal 到 `document.body`。**关闭确认由宿主弹**，插件不要自己画对话框。见 [styling-and-pitfalls.md → 面板类 slot 布局边界](./styling-and-pitfalls.md#面板类-slot-布局边界禁止-viewport-级浮层)
+
+```ts
+interface PluginBottomPanelContribution {
+  id: string;
+  label: string;              // 「+」菜单里的名字，也是新实例的初始名；可用 %catalogKey%
+  icon?: ReactNode;           // 省略时用插件自己的图标
+  component: ComponentType;   // 零 props
+  scope_use?: readonly ConversationScenario[]; // fail-closed
+  order?: number;             // 缺省 100
+  maxInstances?: number;      // 缺省不限
+}
+```
+
+```tsx
+ctx.ui.registerBottomPanel({
+  id: "logs",
+  label: "%panel.logs%",
+  component: LogsPanel,
+  scope_use: ["project", "conversation"],
+});
+```
+
+### useBottomPanel
+
+组件零 props，实例身份与控制面用 `useBottomPanel()` 取。**名字、图标、状态点都是命令式设置的**，不是「每帧返回 meta」——同一个贡献可以有多个实例，每帧 hook 拿不到实例身份。
+
+```tsx
+import { useBottomPanel } from "@vetta-org/plugin-sdk";
+
+function LogsPanel() {
+  const { instanceId, cwd, active, setMeta, setCloseGuard } = useBottomPanel();
+
+  // 名字与状态点随运行情况变：空闲是灰点，活动是脉冲绿点。
+  useEffect(() => {
+    setMeta({ label: `logs — ${basename(cwd ?? "")}`, status: running ? "active" : "idle" });
+  }, [cwd, running, setMeta]);
+
+  // 有东西在跑时先让宿主问一句；空闲时把守卫撤掉，免得每次关都弹窗。
+  useEffect(() => {
+    setCloseGuard(
+      running
+        ? async () => ({ title: "还在跟随日志", message: "关闭会断开跟随。", destructive: true })
+        : null,
+    );
+  }, [running, setCloseGuard]);
+}
+```
+
+`setCloseGuard` 的裁决：`true` 直接关、`false` 取消、返回文案则请宿主弹一次确认。允许 async（真实判断常常要问后端）。**3 秒内给不出裁决按「需要确认」处理**，不会静默关掉——丢东西的方向必须是保守的。`reason` 为 `session-switch` / `app-quit` 时仍会调用守卫（给你收尾的机会），但返回值被忽略：退出流程上挂一个能阻塞的对话框会把用户卡住。
+
 ## 输入栏动作 registerInputAction
 
 在 AI 输入栏下方加一个**开关型动作按钮**（toggle）。激活时，宿主在每次发送前调用 `decoratePrompt()`，把元数据和插件隐藏指令合并进外发 prompt。
