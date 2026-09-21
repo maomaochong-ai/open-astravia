@@ -86,3 +86,13 @@ describe("历史命令跟着设计稿走", () => {
 		expect(calls).toHaveLength(0);
 	});
 });
+
+describe("设计引擎与远端设计稿", () => {
+	it("设计稿在远端时明确拒绝启动，而不是给一块空画布", async () => {
+		// 引擎是跑在本机的 vite，读不到远端文件；此前它照常启动，只是什么都渲染不出来。
+		const { startDesignServer } = await import("../src/engine/engine-manager");
+		const ctx = { command: { run: async () => ({ stdout: "", stderr: "", exitCode: 0 }) } } as never;
+
+		await expect(startDesignServer(ctx, REMOTE_DESIGN, () => {})).rejects.toThrow(/local preview server/);
+	});
+});

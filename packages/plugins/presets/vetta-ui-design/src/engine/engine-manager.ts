@@ -19,6 +19,7 @@ import { designPackageJson, needsDependencyInstall, PACKAGE_FILE } from "../vetd
 import { sanitizeDesignName } from "../vetd/scaffold";
 import { ENGINE_FILES, engineFilesHash } from "./engine-files";
 import { ENGINE_VERSION } from "./engine-version";
+import { machineOf } from "../history/machine";
 
 export type EngineProgress =
 	| { phase: "checking" }
@@ -402,6 +403,15 @@ export async function startDesignServer(
 		const status = await existing.handle.status();
 		if (status.running) return existing;
 		servers.delete(designDir);
+	}
+	// 引擎是跑在**本机**的 vite（cwd 是本机的 engineRoot），只能读本机的文件。设计稿在远端
+	// 时，把远端路径经 VETD_SRC 交给它，它会去读一个本机并不存在的路径，然后给出一块空画布
+	// ——用户完全看不出原因。宁可在这里说清楚。
+	if (machineOf(designDir) !== "local") {
+		throw new Error(
+			"The design canvas renders with a local preview server, which cannot read a design that lives on a remote host. " +
+				"Open this design from a local project, or copy it to this computer first.",
+		);
 	}
 	const engineRoot = await ensureEngine(ctx, onProgress);
 	await ensureDesignDependencies(ctx, designDir, onProgress);
