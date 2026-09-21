@@ -77,10 +77,8 @@ export function SidebarTopBar({
 							classNames?.clawButton,
 						)}
 					>
-						<span className="relative flex h-1 w-1">
-							<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-secondary-foreground opacity-70" />
-							<span className="relative inline-flex h-1 w-1 rounded-full bg-secondary-foreground" />
-						</span>
+						{/* 在线是常驻状态：用静态圆点，不要 animate-ping（无限动画会让空闲窗口持续重绘）。 */}
+						<span className="inline-flex h-1 w-1 shrink-0 rounded-full bg-secondary-foreground" />
 						Claw
 					</button>
 				)}

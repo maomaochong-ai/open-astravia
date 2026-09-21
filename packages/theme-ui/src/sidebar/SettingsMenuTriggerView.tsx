@@ -3,7 +3,7 @@ import { cn } from "@vetta-org/ui";
 
 export interface SettingsMenuTriggerViewProps extends ComponentPropsWithoutRef<"button"> {
 	readonly avatar?: ReactNode;
-	/** Claw 在线状态徽章（脉冲点 + "Claw"），仅在线时展示。取代原工作模式 badge 位。 */
+	/** Claw 在线状态徽章（圆点 + "Claw"），仅在线时展示。取代原工作模式 badge 位。 */
 	readonly clawOnline?: boolean;
 	readonly clawTitle?: string;
 	readonly open: boolean;
@@ -18,10 +18,8 @@ function ClawBadge({ title }: { title?: string }): JSX.Element {
 			className="relative flex h-5 max-w-full shrink-0 items-center gap-1 rounded-full bg-secondary px-1.5 text-[10px] font-medium leading-none text-secondary-foreground"
 			title={title}
 		>
-			<span className="relative flex h-1 w-1 shrink-0">
-				<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-secondary-foreground opacity-70" />
-				<span className="relative inline-flex h-1 w-1 rounded-full bg-secondary-foreground" />
-			</span>
+			{/* 在线是常驻状态：用静态圆点，不要 animate-ping（无限动画会让空闲窗口持续重绘）。 */}
+			<span className="inline-flex h-1 w-1 shrink-0 rounded-full bg-secondary-foreground" />
 			<span className="truncate">Claw</span>
 		</span>
 	);
