@@ -65,7 +65,13 @@ export {
 	type RemoteCommandOptions,
 	type RemoteStatFlavor,
 } from "./remote-command.js";
-export { buildControlPath, buildSshArgv, CONTROL_PERSIST_SECONDS, type SshArgvOptions } from "./ssh-argv.js";
+export {
+	buildControlPath,
+	buildPortForwardArgv,
+	buildSshArgv,
+	CONTROL_PERSIST_SECONDS,
+	type SshArgvOptions,
+} from "./ssh-argv.js";
 export { parseSshConfigAliases } from "./ssh-config-aliases.js";
 export {
 	type RemotePlatform,

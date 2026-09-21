@@ -24,7 +24,7 @@ import {
 	REMOTE_ENTRY_EXISTS_EXIT_CODE,
 	type RemoteStatFlavor,
 } from "./remote-command.js";
-import { buildSshArgv } from "./ssh-argv.js";
+import { buildPortForwardArgv, buildSshArgv } from "./ssh-argv.js";
 import type { SshHost } from "./ssh-host.js";
 
 /**
@@ -413,6 +413,49 @@ export class SshConnection {
 			this.helperClient = attempt;
 		}
 		return this.helperClient;
+	}
+
+	/**
+	 * 把远端的一个端口转发到本机端口上。
+	 *
+	 * 远程项目里的预览服务器（设计画布的 vite）必须跑在项目所在的机器上才读得到项目文件，
+	 * 而界面只能连本机的端口——转发是把这两件事接起来的唯一办法。
+	 *
+	 * 服务端可能关掉了转发（`AllowTcpForwarding no`，精简镜像与加固过的堡垒机上很常见）。
+	 * 那种情况下 `-O forward` 会失败，这里如实抛出：否则界面会连上一个转发不过去的本机端口，
+	 * 表现为莫名其妙的 connection reset。
+	 */
+	async forwardPort(localPort: number, remotePort: number, signal?: AbortSignal): Promise<void> {
+		// 先确保 master 在：`-O forward` 只对已建立的控制连接有效。
+		await this.probePlatform(signal);
+		const result = await this.options.runner.run({
+			argv: buildPortForwardArgv(this.host, { controlPath: this.options.controlPath }, { localPort, remotePort }),
+			signal,
+			env: this.options.env,
+		});
+		if (result.exitCode !== 0) {
+			const detail = result.stderr.trim();
+			throw new SshTransportError(
+				`Cannot forward port ${remotePort} from ${this.host.label}` +
+					`${detail ? `: ${detail}` : "."} The SSH server may have TCP forwarding disabled (AllowTcpForwarding).`,
+				this.host.id,
+				result.stderr,
+			);
+		}
+	}
+
+	/** 撤掉一条转发。失败不抛：转发会随 master 一起消失，清理不掉不该拖累调用方收尾。 */
+	async cancelPortForward(localPort: number, remotePort: number): Promise<void> {
+		await this.options.runner
+			.run({
+				argv: buildPortForwardArgv(
+					this.host,
+					{ controlPath: this.options.controlPath },
+					{ localPort, remotePort, cancel: true },
+				),
+				env: this.options.env,
+			})
+			.catch(() => undefined);
 	}
 
 	/**

@@ -67,3 +67,29 @@ export function buildControlPath(baseDirectory: string, hostId: string): string 
 	}
 	return path;
 }
+
+/**
+ * 往已经建立的 ControlMaster 上加/撤一条本地端口转发。
+ *
+ * 走控制通道而不是再起一个 `ssh -L -N` 常驻进程：复用同一条已认证的连接，不必再过一次
+ * 口令或 2FA，也不会多出一个需要盯生命周期的进程。转发随 master 一起消失。
+ */
+export function buildPortForwardArgv(
+	host: SshHost,
+	options: SshArgvOptions,
+	forward: { readonly localPort: number; readonly remotePort: number; readonly cancel?: boolean },
+): string[] {
+	return [
+		"-o",
+		`ControlPath=${options.controlPath}`,
+		"-O",
+		forward.cancel ? "cancel" : "forward",
+		"-L",
+		// 远端一侧固定 127.0.0.1：预览服务器只需本机可达，绑到远端的公网接口等于把它暴露出去。
+		`${forward.localPort}:127.0.0.1:${forward.remotePort}`,
+		...(host.port === undefined ? [] : ["-p", String(host.port)]),
+		...(host.identityFile ? ["-i", host.identityFile] : []),
+		"--",
+		host.target,
+	];
+}
