@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildListListeningPortsCommand, parseRemoteListeners, selectForwardablePorts } from "./remote-listeners.js";
+import {
+	buildListListeningPortsCommand,
+	fromHelperListener,
+	parseRemoteListeners,
+	selectForwardablePorts,
+} from "./remote-listeners.js";
 
 describe("远端 LISTEN 端口的扫描命令", () => {
 	it("Linux 上按 ss → netstat → lsof 退让，并把选中的工具名打在第一行", () => {
@@ -116,5 +121,25 @@ describe("整理成可以摆给用户的候选清单", () => {
 			{ port: 5173, address: "::", processName: "vite" },
 			{ port: 8080, address: "127.0.0.1", processName: "api" },
 		]);
+	});
+});
+
+describe("helper 的线上格式", () => {
+	it("进程名在 helper 那边叫 process，要换成 processName", () => {
+		expect(fromHelperListener({ port: 3000, address: "127.0.0.1", process: "node", pid: 42 })).toEqual({
+			port: 3000,
+			address: "127.0.0.1",
+			processName: "node",
+			pid: 42,
+		});
+	});
+
+	it("别人的进程读不到 pid 与进程名时两项都留空", () => {
+		expect(fromHelperListener({ port: 22, address: "0.0.0.0" })).toEqual({
+			port: 22,
+			address: "0.0.0.0",
+			processName: undefined,
+			pid: undefined,
+		});
 	});
 });

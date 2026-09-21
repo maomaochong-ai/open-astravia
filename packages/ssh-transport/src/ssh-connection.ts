@@ -26,9 +26,10 @@ import {
 } from "./remote-command.js";
 import {
 	buildListListeningPortsCommand,
+	fromHelperListener,
+	type HelperListener,
 	parseRemoteListeners,
 	type RemoteListenerScan,
-	type RemoteListeningPort,
 	selectForwardablePorts,
 } from "./remote-listeners.js";
 import {
@@ -488,7 +489,7 @@ export class SshConnection {
 		const excludePorts = [22, ...(this.host.port === undefined ? [] : [this.host.port])];
 		const viaHelper = await this.viaHelper(async (helper) => {
 			try {
-				return (await helper.call<{ ports: RemoteListeningPort[] }>("net.listeners")).ports;
+				return (await helper.call<{ ports: HelperListener[] }>("net.listeners")).ports.map(fromHelperListener);
 			} catch (error) {
 				// 远端可能还留着不认识这个方法的旧 helper，或者 helper 在这个系统上没实现它。
 				// 那不是远端的否定答复，退回 `ssh exec` 扫一遍才是对的。

@@ -134,6 +134,29 @@ function splitHostPort(value: string): { address: string; port: number } | undef
 	return { address: address === "" ? "*" : address, port };
 }
 
+/** helper `net.listeners` 回来的一条，字段名以 Go 那边的 JSON tag 为准。 */
+export interface HelperListener {
+	readonly port: number;
+	readonly address: string;
+	readonly process?: string;
+	readonly pid?: number;
+}
+
+/**
+ * 把 helper 的线上格式换成 {@link RemoteListeningPort}。
+ *
+ * 两边字段名不一样（`process` / `processName`），不能拿 helper 的结果直接当本类型用——
+ * 类型上看不出差别，界面上的表现是 helper 路径下进程名永远是空的。
+ */
+export function fromHelperListener(listener: HelperListener): RemoteListeningPort {
+	return {
+		port: listener.port,
+		address: listener.address,
+		processName: listener.process || undefined,
+		pid: listener.pid || undefined,
+	};
+}
+
 /**
  * 转发只可能连到远端的 `127.0.0.1`（见 `buildPortForwardArgv`），所以只有绑在回环或
  * 通配地址上的端口才转得过去。绑死在某张外网卡上的端口摆到界面上只会得到一条连不通的
