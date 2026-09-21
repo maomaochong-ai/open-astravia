@@ -120,6 +120,7 @@ Vetta 提供不同重量的扩展入口，简单流程不必被做成完整插�
 | [`apps/desktop`](apps/desktop) | Electron 桌面宿主与渲染层 |
 | [`apps/cli-host`](apps/cli-host) | Coding Agent 的 CLI 宿主 |
 | [`apps/docs-site`](apps/docs-site) | 发布到 `docs.openvetta.com` 的 Next.js 文档站 |
+| [`apps/mobile`](apps/mobile) | Expo/React Native 移动客户端 |
 | [`apps/kotlin`](apps/kotlin) | Kotlin Multiplatform Android 客户端 |
 | [`apps/im-gateway`](apps/im-gateway) | Go 编写的 IM 旁路网关 |
 | [`packages/ai`](packages/ai) · [`packages/agent`](packages/agent) | Provider 抽象与 Agent Loop |
