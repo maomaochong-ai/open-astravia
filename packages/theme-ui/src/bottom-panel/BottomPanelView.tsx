@@ -33,20 +33,21 @@ export interface BottomPanelFrameProps extends ComponentPropsWithoutRef<"div"> {
 }
 
 /**
- * 面板外框：贴着消息列底边铺满，不做卡片。
+ * 面板外框：只负责分层与主题面，边框和圆角由消费方按当前形态给。
  *
- * 只留上边框当作与消息流的分界——左右和下方都顶到容器边缘，再画边框会变成悬浮卡片的观感。
+ * 面板有两种形态：铺到窗口边缘时只需要一条上边框当分界，收成卡片时才画整圈边框和圆角。
+ * 两者写死在这里就得多一个布尔参数，而调用方本来就知道自己是哪一种。
  */
 export function BottomPanelFrame({ children, className, ...props }: BottomPanelFrameProps): JSX.Element {
 	return (
 		<div
-			className={cn("relative flex min-h-0 w-full flex-col overflow-hidden border-border border-t bg-muted", className)}
+			className={cn("relative flex min-h-0 w-full flex-col overflow-hidden bg-muted", className)}
 			data-theme-surface-root="bottomPanel.panel"
 			{...props}
 		>
 			<ThemeSurface slot="bottomPanel.panel" />
 			<ActivityStatusDotStyles />
-			<div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
+			<div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[inherit]">{children}</div>
 		</div>
 	);
 }

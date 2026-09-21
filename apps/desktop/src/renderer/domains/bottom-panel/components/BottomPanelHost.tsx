@@ -1,6 +1,9 @@
+import { useSidebarState } from "@shared/app-shell/sidebar-state";
 import { ResizeHandle } from "@shared/components/ResizeHandle";
-import { collectBottomPanelLeaves } from "@shared/store/atoms";
+import { cn } from "@shared/lib/utils";
+import { activityPanelOpenAtom, collectBottomPanelLeaves } from "@shared/store/atoms";
 import { BottomPanelEmptyPicker, BottomPanelEmptyState, BottomPanelFrame } from "@vetta-org/theme-ui/bottom-panel";
+import { useAtomValue } from "jotai";
 import { type JSX, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useBottomPanelModel } from "../hooks/useBottomPanelModel";
@@ -18,6 +21,10 @@ import { BottomPanelSplitView } from "./BottomPanelSplitView";
 export function BottomPanelHost(): JSX.Element | null {
 	const { t } = useTranslation("chat");
 	const model = useBottomPanelModel();
+	const activityPanelOpen = useAtomValue(activityPanelOpenAtom);
+	// 左缘是否已经被侧边栏占住，决定那 8px 是要补还是要抵消。读 useSidebarState 而不是
+	// sidebarCollapsedAtom：窄屏时侧边栏改走悬浮层、同样不占左栏，两个来源合成才是真相。
+	const sidebarVisible = useSidebarState().visible;
 	const containerRef = useRef<HTMLDivElement | null>(null);
 
 	const onHeightResize = useCallback(
@@ -42,9 +49,16 @@ export function BottomPanelHost(): JSX.Element | null {
 		<div
 			ref={containerRef}
 			hidden={collapsed}
-			// 负边距把 AppFrame 的 p-2 和消息列与活动面板之间的 gap-2（各 8px）抵消掉：
-			// 面板要贴死窗口下沿、右侧顶到活动面板，中间留缝就又成了一张浮层。
-			className="-mr-2 -mb-2 relative shrink-0"
+			className={cn(
+				"relative shrink-0",
+				// 消息列四周的留白本来就不对称：下和右各有 8px（AppFrame 的 p-2、这一行的
+				// gap-2），左边只有侧边栏不在位时才有那 8px。所以左边总要单独处理一次。
+				activityPanelOpen
+					// 活动面板展开时收成卡片，四边留白与活动面板到窗口的距离对齐。
+					? sidebarVisible && "ml-2"
+					// 活动面板收起时铺到窗口边缘：此时这一行只剩底部面板，留白会让它看着像浮层。
+					: cn("-mr-2 -mb-2", !sidebarVisible && "-ml-2"),
+			)}
 			style={{ height: `${Math.round(state.heightRatio * 100)}%` }}
 			data-bottom-panel-root
 		>
@@ -55,7 +69,13 @@ export function BottomPanelHost(): JSX.Element | null {
 				onResize={onHeightResize}
 				onResizeEnd={sizing.onHeightResizeEnd}
 			/>
-			<BottomPanelFrame className="h-full">
+			<BottomPanelFrame
+				className={cn(
+					"h-full border-border",
+					// 铺到边缘时只画与消息流之间那条分界线；收成卡片才需要整圈边框和圆角。
+					activityPanelOpen ? "rounded-xl border" : "border-t",
+				)}
+			>
 				{/*
 				 * 没有任何 tab 时也要把面板画出来：不然用户点了右上角按钮什么都没发生，
 				 * 也就没有地方添加第一个 tab。
