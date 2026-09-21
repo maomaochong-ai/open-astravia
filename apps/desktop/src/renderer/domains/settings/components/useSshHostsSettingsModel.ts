@@ -172,19 +172,14 @@ export function useSshHostsSettingsModel(): SshHostsSettingsModel {
 			});
 			try {
 				const outcome = classifyProbe(await window.vetta.ssh.testHost(host.id));
-				setRowMessage((previous) => ({
-					...previous,
-					[host.id]:
-						outcome.kind === "failed"
-							? { tone: "error", text: t("sshTestFailed"), details: outcome.details }
-							: {
-									tone: "success",
-									text:
-										outcome.kind === "ok"
-											? t("sshTestOk", { platform: outcome.platform })
-											: t("sshTestOkMissing", { platform: outcome.platform, tools: outcome.tools }),
-								},
-				}));
+				// 连上了就只说连上了。远端缺 rg / fd 不在这里提——测连接的时刻对此无从下手，
+				// 而真正用到搜索工具时，远端执行层会点名是哪台主机缺了哪个命令
+				// （packages/runtime-ssh/src/ssh-tool-process.ts）。
+				const message: SshHostRowMessage =
+					outcome.kind === "failed"
+						? { tone: "error", text: t("sshTestFailed"), details: outcome.details }
+						: { tone: "success", text: t("sshTestOk", { platform: outcome.platform }) };
+				setRowMessage((previous) => ({ ...previous, [host.id]: message }));
 			} catch (error) {
 				setRowMessage((previous) => ({
 					...previous,
