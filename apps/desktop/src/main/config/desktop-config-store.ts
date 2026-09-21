@@ -312,8 +312,28 @@ function normalizeSshHosts(value: unknown): SshHost[] | undefined {
 	return hosts;
 }
 
+/**
+ * 整文件写回，但保留磁盘上本版本不认识的字段。
+ *
+ * 新旧版本共用同一份 `~/.vetta`（开发版与已安装的正式版、或升级后又回退）。读路径
+ * {@link parseDesktopConfig} 是字段白名单，不认识的字段不进内存；若写回时整份覆盖，
+ * 旧版任何一次保存都会把新版的字段抹掉——0.5.58 启动时顺手写回 CLI 路径，就这样清空了
+ * sshHosts，远程项目随之全部报「Unknown SSH host」。已知字段仍以传入值为准：显式给
+ * `undefined` 的键在序列化时被丢掉，删除语义不变。
+ */
 export async function writeDesktopConfig(config: DesktopConfig): Promise<void> {
-	atomicWriteJSON(CONFIG_PATH, config);
+	atomicWriteJSON(CONFIG_PATH, { ...readRawConfigSync(), ...config });
+}
+
+function readRawConfigSync(): Record<string, unknown> {
+	try {
+		const parsed: unknown = JSON.parse(readFileSync(CONFIG_PATH, "utf8"));
+		return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
+			? (parsed as Record<string, unknown>)
+			: {};
+	} catch {
+		return {};
+	}
 }
 
 export async function persistVettaCliPaths(paths: { vettaAppPath: string; vettaCliAppPath: string }): Promise<void> {
