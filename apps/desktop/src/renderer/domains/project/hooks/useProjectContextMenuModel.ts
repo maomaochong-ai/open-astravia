@@ -1,4 +1,5 @@
 import type { Project } from "@shared/store/atoms";
+import { isSshProjectUri } from "@vetta/ssh-transport/project-uri";
 import type { ProjectContextMenuViewProps } from "@vetta-org/theme-ui/project";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
@@ -71,6 +72,8 @@ export function useProjectContextMenuModel({
 	}, [cwd, onClose, onRemove]);
 
 	return {
+		// 远程项目在这台电脑上没有对应的位置，系统文件管理器无从显示。
+		canOpenInFolder: !isSshProjectUri(cwd),
 		clearClawDisabled,
 		clearConversationDisabled,
 		defaultScope,
