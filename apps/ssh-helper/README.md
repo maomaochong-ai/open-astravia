@@ -36,17 +36,28 @@
 ## 开发
 
 ```bash
-make test         # go test -race
-make vet
 make build        # 本机平台 → bin/
+make smoke        # 构建后握手一次，确认产物能应答
+make test         # go test -race -count=1
+make vet
+make lint         # 需要 golangci-lint：brew install golangci-lint
+make tidy
 make cross-build  # 四个远端平台 → dist/<os>-<arch>/vetta-ssh-helper
+make clean        # 清 bin/；dist/ 用 make dist-clean
 ```
 
 根目录的 `bun run check` 不覆盖 Go；改动本目录后请运行 `make vet test`。
 
-手工试一下：
+`cross-build` 的产物是给**开发态**用的：Desktop 会按 `dist/<os>-<arch>/vetta-ssh-helper`
+这个布局找 helper（也可以用 `VETTA_SSH_HELPER_DIR` 指向别处）。安装包里的那份由
+`apps/desktop/scripts/prepare-pack.js` 自己交叉编译，不走本 Makefile——改目标平台列表时
+两处要一起改。
+
+没有 windows 目标：进程托管用了 `setsid` 与进程组信号，Windows 上这些 syscall 不存在，
+`GOOS=windows` 直接编译不过；远端是 Windows 时 Desktop 会降级到 `ssh exec`。
+
+手工调协议时逐行敲 JSON：
 
 ```bash
-make build
-printf '{"id":1,"method":"hello"}\n' | bin/vetta-ssh-helper serve
+go run ./cmd/vetta-ssh-helper serve
 ```
