@@ -89,13 +89,17 @@ export class SshPortForwardService {
 	 * 建立一条转发，返回它最终用上的本机端口。
 	 *
 	 * 同一台主机的同一个远端端口重复请求时复用已有的那条：调用方可能是界面、插件和模型三处，
-	 * 各自都以为自己是第一个；重复建立会让后来者撤掉前面那条正在被用的转发。
+	 * 各自都以为自己是第一个；重复建立会让后来者撤掉前面那条正在被用的转发。例外是显式点名了
+	 * 另一个本机端口——那是「换个号」，见 {@link remap}。
 	 */
 	async open(request: PortForwardRequest): Promise<PortForward> {
 		const remotePort = assertPort(request.remotePort, "remote port");
 		const key = forwardKey(request.hostId, remotePort);
 		const existing = this.forwards.get(key);
-		if (existing && existing.status !== "failed") return existing;
+		if (existing && existing.status !== "failed") {
+			if (request.localPort === undefined || request.localPort === existing.localPort) return existing;
+			return this.remap(existing, assertPort(request.localPort, "local port"));
+		}
 
 		const localPort =
 			request.localPort === undefined
@@ -115,6 +119,23 @@ export class SshPortForwardService {
 		this.startHealthChecks();
 		this.changed();
 		return forward;
+	}
+
+	/**
+	 * 把一条已有的转发换到另一个本机端口上。
+	 *
+	 * 顺序是「先占新的、再接通、最后撤旧的」：新端口被占用或接不通时，用户原来那条还在正常
+	 * 工作。反过来先撤再建，一旦新端口不可用，用户就在一次「改个号」里把能用的转发弄丢了。
+	 */
+	private async remap(existing: PortForward, localPort: number): Promise<PortForward> {
+		await this.claimLocalPort(localPort);
+		const connection = this.options.connect(existing.hostId);
+		await connection.forwardPort(localPort, existing.remotePort);
+		const next: PortForward = { ...existing, localPort, status: "active", error: undefined };
+		this.forwards.set(forwardKey(existing.hostId, existing.remotePort), next);
+		this.changed();
+		await connection.cancelPortForward(existing.localPort, existing.remotePort).catch(() => undefined);
+		return next;
 	}
 
 	/** 撤掉一条转发。不存在时什么都不做——调用方不必先查一遍。 */

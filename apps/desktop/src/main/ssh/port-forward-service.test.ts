@@ -87,6 +87,58 @@ describe("远端端口转发的账本", () => {
 		expect(service.list()).toHaveLength(1);
 	});
 
+	describe("换本机端口", () => {
+		it("换到另一个号上：先接通新的再撤旧的", async () => {
+			const service = createService();
+			await service.open({ hostId: "host-1", remotePort: 5173 });
+
+			const moved = await service.open({ hostId: "host-1", remotePort: 5173, localPort: 5174 });
+
+			expect(moved.localPort).toBe(5174);
+			expect(service.list()).toHaveLength(1);
+			expect(connection.forwarded).toEqual([
+				{ localPort: 5173, remotePort: 5173 },
+				{ localPort: 5174, remotePort: 5173 },
+			]);
+			// 旧的那条在新的接通之后才撤。
+			expect(connection.cancelled).toEqual([{ localPort: 5173, remotePort: 5173 }]);
+		});
+
+		it("新端口被占用时原来那条仍然好用——不能在一次改号里把能用的转发弄丢", async () => {
+			busyPorts.add(8080);
+			const service = createService();
+			await service.open({ hostId: "host-1", remotePort: 5173 });
+
+			await expect(service.open({ hostId: "host-1", remotePort: 5173, localPort: 8080 })).rejects.toThrow(
+				/8080 is already in use/,
+			);
+
+			expect(service.list()[0]).toMatchObject({ localPort: 5173, status: "active" });
+			expect(connection.cancelled).toEqual([]);
+		});
+
+		it("新端口接不通时同样保留原来那条", async () => {
+			const service = createService();
+			await service.open({ hostId: "host-1", remotePort: 5173 });
+			connection.failWith = new Error("bind: Address already in use");
+
+			await expect(service.open({ hostId: "host-1", remotePort: 5173, localPort: 5174 })).rejects.toThrow(/bind/);
+
+			expect(service.list()[0]).toMatchObject({ localPort: 5173, status: "active" });
+			expect(connection.cancelled).toEqual([]);
+		});
+
+		it("点名的号与现用的相同时什么都不做", async () => {
+			const service = createService();
+			await service.open({ hostId: "host-1", remotePort: 5173 });
+
+			await service.open({ hostId: "host-1", remotePort: 5173, localPort: 5173 });
+
+			expect(connection.forwarded).toHaveLength(1);
+			expect(connection.cancelled).toEqual([]);
+		});
+	});
+
 	it("转发失败时不进账本，错误原样交给调用方（可能是 AllowTcpForwarding 关着）", async () => {
 		const service = createService();
 		connection.failWith = new Error("The SSH server may have TCP forwarding disabled (AllowTcpForwarding).");

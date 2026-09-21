@@ -98,6 +98,7 @@ export function registerSshIpc(): () => void {
 		return getSshPortForwardService().open({
 			hostId: asString(raw.hostId),
 			remotePort: asPort(raw.remotePort),
+			// 给了就按用户点名的号来，包括「把已有的这条换到这个号上」。
 			localPort: typeof raw.localPort === "number" ? raw.localPort : undefined,
 			label: typeof raw.label === "string" ? raw.label : undefined,
 			source: raw.source === "detected" ? "detected" : "manual",
