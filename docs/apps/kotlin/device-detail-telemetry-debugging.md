@@ -31,9 +31,9 @@ Desktop diagnostics()
 涉及的主要源码：
 
 - `apps/desktop/src/main/remote-control/desktop-conversation-remote-operations.ts`
-- `apps/mobile/shared/src/commonMain/kotlin/org/vetta/android/domain/remote/connection/RemoteConnection.kt`
-- `apps/mobile/shared/src/commonMain/kotlin/org/vetta/android/domain/conversation/RelayRemoteConversationGateway.kt`
-- `apps/mobile/shared/src/commonMain/kotlin/org/vetta/android/ui/connect/ConnectScreens.kt`
+- `apps/kotlin/shared/src/commonMain/kotlin/org/vetta/android/domain/remote/connection/RemoteConnection.kt`
+- `apps/kotlin/shared/src/commonMain/kotlin/org/vetta/android/domain/conversation/RelayRemoteConversationGateway.kt`
+- `apps/kotlin/shared/src/commonMain/kotlin/org/vetta/android/ui/connect/ConnectScreens.kt`
 
 `device.host` 是控制 Relay 目标，同时用于推导 WebRTC viewer 地址。它是连接配置，不是系统信息，不能直接出现在系统信息卡片中。
 
@@ -43,7 +43,7 @@ Desktop diagnostics()
 
 ```powershell
 rg -n "连接时长|延迟|系统信息|暂无|latencyMs|connectedDuration|osLabel|device.host" `
-  apps/mobile/shared/src -g '*.kt'
+  apps/kotlin/shared/src -g '*.kt'
 ```
 
 这一步确认了三个事实：
@@ -56,7 +56,7 @@ rg -n "连接时长|延迟|系统信息|暂无|latencyMs|connectedDuration|osLab
 
 ```powershell
 rg -n "lastRttMs|DiagnosticsSnapshot|diagnostics.snapshot|diagnostics\(\)" `
-  apps/mobile/shared/src apps/desktop/src/main/remote-control packages/remote-control
+  apps/kotlin/shared/src apps/desktop/src/main/remote-control packages/remote-control
 ```
 
 已有 `diagnostics.snapshot` 请求和 `RemoteConnectionSnapshot.lastRttMs`，因此不需要新增 ping 协议。`RemoteConnection` 会在请求响应时计算 RTT，手机只需定期发出轻量诊断请求并读取快照。
@@ -120,7 +120,7 @@ Desktop 的 `diagnostics()` 原本只返回活动会话数和工作目录。即�
 执行：
 
 ```powershell
-Set-Location apps/mobile
+Set-Location apps/kotlin
 ./gradlew.bat :shared:testAndroidHostTest --no-daemon
 ```
 
@@ -142,7 +142,7 @@ bun run check:quick
 bun run check
 bun run --cwd apps/desktop build:dev-processes
 
-Set-Location apps/mobile
+Set-Location apps/kotlin
 ./gradlew.bat :androidApp:assembleDebug --no-daemon
 ```
 
@@ -154,7 +154,7 @@ Set-Location apps/mobile
 
 ```powershell
 $adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
-$apk = "C:\develop\yiyun\vetta\open-vetta\apps\mobile\androidApp\build\outputs\apk\debug\androidApp-debug.apk"
+$apk = "C:\develop\yiyun\vetta\open-vetta\apps\kotlin\androidApp\build\outputs\apk\debug\androidApp-debug.apk"
 
 & $adb devices
 & $adb install -r $apk

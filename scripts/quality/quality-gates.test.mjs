@@ -373,7 +373,7 @@ describe("affected package selection", () => {
 describe("CI unit test coverage", () => {
 	const workflow = readFileSync(join(repoRoot, ".github/workflows/quality.yml"), "utf8");
 	const imGatewayWorkflow = readFileSync(join(repoRoot, ".github/workflows/im-gateway.yml"), "utf8");
-	const mobileWorkflow = readFileSync(join(repoRoot, ".github/workflows/mobile.yml"), "utf8");
+	const kotlinWorkflow = readFileSync(join(repoRoot, ".github/workflows/kotlin.yml"), "utf8");
 	const rootManifest = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
 
 	it("runs affected workspace tests on Linux, macOS, and Windows with complete Git history", () => {
@@ -403,14 +403,14 @@ describe("CI unit test coverage", () => {
 		expect(rootManifest.scripts["test:unit"]).toBe("bun run scripts/quality/test-pkg.mjs --all");
 	});
 
-	it("builds the Android app and runs host tests when Mobile changes", () => {
-		expect(mobileWorkflow).toContain('      - "apps/mobile/**"');
-		expect(mobileWorkflow).toContain(":shared:testAndroidHostTest");
-		expect(mobileWorkflow).toContain(":androidApp:assembleDebug");
+	it("builds the Android app and runs host tests when Kotlin changes", () => {
+		expect(kotlinWorkflow).toContain('      - "apps/kotlin/**"');
+		expect(kotlinWorkflow).toContain(":shared:testAndroidHostTest");
+		expect(kotlinWorkflow).toContain(":androidApp:assembleDebug");
 	});
 
 	it("limits path-filtered app checks to branch pushes", () => {
-		for (const appWorkflow of [imGatewayWorkflow, mobileWorkflow]) {
+		for (const appWorkflow of [imGatewayWorkflow, kotlinWorkflow]) {
 			expect(appWorkflow).toMatch(/push:\r?\n {4}branches:\r?\n {6}- "\*\*"\r?\n {4}paths:/);
 		}
 	});

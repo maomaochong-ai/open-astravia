@@ -42,7 +42,7 @@ Worker 测试必须覆盖：
 ## 3. Android 构建和测试
 
 ```powershell
-Set-Location "C:\develop\yiyun\vetta\open-vetta\apps\mobile"
+Set-Location "C:\develop\yiyun\vetta\open-vetta\apps\kotlin"
 .\gradlew.bat :shared:testAndroidHostTest :androidApp:assembleDebug --no-daemon
 ```
 
