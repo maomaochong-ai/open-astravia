@@ -6,7 +6,11 @@ import { describe, expect, it, vi } from "vitest";
 
 const connection = createLoopbackSshConnection("build-01");
 vi.mock("../ssh/ssh-runtime.js", () => ({ getSshConnection: () => connection }));
-vi.mock("electron", () => ({ webContents: { getAllWebContents: () => [] } }));
+// 端口转发经统一账本建立，而账本变化会广播给窗口：没有窗口的测试里也要有 BrowserWindow。
+vi.mock("electron", () => ({
+	webContents: { getAllWebContents: () => [] },
+	BrowserWindow: { getAllWindows: () => [] },
+}));
 vi.mock("../logger.js", () => ({
 	getAppLogger: () => ({ debug: () => {}, info: () => {}, warn: () => {}, error: () => {} }),
 }));

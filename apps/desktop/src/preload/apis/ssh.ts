@@ -13,6 +13,10 @@ const CHANNELS = {
 	TEST_HOST: "vetta:ssh:test-host",
 	HOST_STATUS: "vetta:ssh:get-host-status",
 	LIST_REMOTE_DIR: "vetta:ssh:list-remote-dir",
+	LIST_LISTENING_PORTS: "vetta:ssh:list-listening-ports",
+	LIST_FORWARDS: "vetta:ssh:list-port-forwards",
+	OPEN_FORWARD: "vetta:ssh:open-port-forward",
+	CLOSE_FORWARD: "vetta:ssh:close-port-forward",
 } as const;
 
 export function createSshApi(ipc: IpcRenderer): Pick<DesktopApi, "ssh"> {
@@ -27,6 +31,15 @@ export function createSshApi(ipc: IpcRenderer): Pick<DesktopApi, "ssh"> {
 			testHost: (hostId) => ipc.invoke(CHANNELS.TEST_HOST, hostId),
 			getHostStatus: (hostId) => ipc.invoke(CHANNELS.HOST_STATUS, hostId),
 			listRemoteDirectory: (input) => ipc.invoke(CHANNELS.LIST_REMOTE_DIR, input),
+			listListeningPorts: (hostId) => ipc.invoke(CHANNELS.LIST_LISTENING_PORTS, hostId),
+			listPortForwards: (hostId) => ipc.invoke(CHANNELS.LIST_FORWARDS, hostId ?? ""),
+			openPortForward: (request) => ipc.invoke(CHANNELS.OPEN_FORWARD, request),
+			closePortForward: (input) => ipc.invoke(CHANNELS.CLOSE_FORWARD, input),
+			onPortForwardsChanged: (listener) => {
+				const handler = (): void => listener();
+				ipc.on(SSH_CHANNELS.PORT_FORWARDS_CHANGED, handler);
+				return () => ipc.removeListener(SSH_CHANNELS.PORT_FORWARDS_CHANGED, handler);
+			},
 			onHostsChanged: (listener) => {
 				const handler = (): void => listener();
 				ipc.on(SSH_CHANNELS.HOSTS_CHANGED, handler);

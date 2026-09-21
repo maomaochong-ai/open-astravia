@@ -12,6 +12,8 @@ export const SSH_CHANNELS = {
 	HOSTS_CHANGED: "vetta:ssh:hosts-changed",
 	/** main → renderer：单台主机的连接状态变化。 */
 	HOST_STATUS: "vetta:ssh:host-status",
+	/** main → renderer：无载荷，通知「端口转发清单已变，去重读」。 */
+	PORT_FORWARDS_CHANGED: "vetta:ssh:port-forwards-changed",
 } as const;
 
 export interface SshHostStatusEvent {

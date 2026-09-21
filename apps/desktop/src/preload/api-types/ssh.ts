@@ -1,4 +1,5 @@
-import type { RemoteDirectoryEntry, SshConnectionStatus, SshHost } from "@vetta/ssh-transport";
+import type { RemoteDirectoryEntry, RemoteListeningPort, SshConnectionStatus, SshHost } from "@vetta/ssh-transport";
+import type { PortForward } from "../../main/ssh/port-forward-service.js";
 import type { SshHostStatusEvent } from "../../shared/ssh-ipc.js";
 import type { SshPromptRequestEvent, SshPromptResponse } from "../../shared/ssh-prompt-ipc.js";
 
@@ -38,6 +39,16 @@ export interface SshRemoteListing {
 	entries: RemoteDirectoryEntry[];
 }
 
+export interface SshPortForwardRequest {
+	hostId: string;
+	remotePort: number;
+	/** 省略时优先用与远端同号的本机端口，被占用再换号。 */
+	localPort?: number;
+	label?: string;
+	/** `detected` 表示这一条来自自动发现的候选，用户只是点了确认。 */
+	source?: "manual" | "detected";
+}
+
 export interface DesktopSshApi {
 	listHosts(): Promise<SshHostSummary[]>;
 	createHost(input: SshHostFormInput): Promise<SshHost>;
@@ -53,6 +64,22 @@ export interface DesktopSshApi {
 	getHostStatus(hostId: string): Promise<SshConnectionStatus>;
 	/** 远端目录浏览器。`remotePath` 省略时从远端家目录开始。 */
 	listRemoteDirectory(input: { hostId: string; remotePath?: string }): Promise<SshRemoteListing>;
+	/**
+	 * 远端正在监听、且可以转发回本机的 TCP 端口。
+	 *
+	 * 远端一个扫描工具都没有时会失败——那是「问不到」，不是「没有端口」，界面必须把两者
+	 * 分开显示。
+	 */
+	listListeningPorts(hostId: string): Promise<RemoteListeningPort[]>;
+	/** 已建立的端口转发。省略 hostId 时给出全部主机的。 */
+	listPortForwards(hostId?: string): Promise<PortForward[]>;
+	/**
+	 * 建立一条转发，返回它最终用上的本机端口——请求的那个可能已被占用。
+	 * 远端 sshd 关掉了转发（`AllowTcpForwarding no`）时失败，原因照原样带出来。
+	 */
+	openPortForward(request: SshPortForwardRequest): Promise<PortForward>;
+	closePortForward(input: { hostId: string; remotePort: number }): Promise<void>;
+	onPortForwardsChanged(listener: () => void): () => void;
 	onHostsChanged(listener: () => void): () => void;
 	onHostStatusChanged(listener: (event: SshHostStatusEvent) => void): () => void;
 	/**

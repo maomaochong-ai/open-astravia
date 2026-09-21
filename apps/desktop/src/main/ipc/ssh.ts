@@ -1,5 +1,6 @@
 import type { SshHostInput } from "@vetta/ssh-transport";
 import { ipcMain } from "electron";
+import { getSshPortForwardService } from "../ssh/port-forward-service.js";
 import { probeSshHost } from "../ssh/ssh-host-probe.js";
 import { getSshHostService, listSshConfigAliases } from "../ssh/ssh-host-service-instance.js";
 import { getSshConnection, getSshHostStatus } from "../ssh/ssh-runtime.js";
@@ -14,10 +15,19 @@ const CHANNELS = {
 	TEST_HOST: "vetta:ssh:test-host",
 	HOST_STATUS: "vetta:ssh:get-host-status",
 	LIST_REMOTE_DIR: "vetta:ssh:list-remote-dir",
+	LIST_LISTENING_PORTS: "vetta:ssh:list-listening-ports",
+	LIST_FORWARDS: "vetta:ssh:list-port-forwards",
+	OPEN_FORWARD: "vetta:ssh:open-port-forward",
+	CLOSE_FORWARD: "vetta:ssh:close-port-forward",
 } as const;
 
 function asString(value: unknown): string {
 	return typeof value === "string" ? value : "";
+}
+
+function asPort(value: unknown): number {
+	// 端口号的合法区间由服务判定并给出可读错误，这里只负责把非数字挡成一个必然被拒的值。
+	return typeof value === "number" ? value : -1;
 }
 
 function toHostInput(value: unknown): SshHostInput {
@@ -44,7 +54,12 @@ export function registerSshIpc(): () => void {
 		return getSshHostService().update(asString(raw.id), toHostInput(raw));
 	});
 
-	ipcMain.handle(CHANNELS.REMOVE_HOST, (_event, hostId: unknown) => getSshHostService().remove(asString(hostId)));
+	ipcMain.handle(CHANNELS.REMOVE_HOST, async (_event, hostId: unknown) => {
+		const id = asString(hostId);
+		await getSshHostService().remove(id);
+		// 主机没了，它的转发也就指不到任何地方；留着只会在端口面板里当一条撤不掉的死条目。
+		await getSshPortForwardService().closeHost(id);
+	});
 
 	ipcMain.handle(CHANNELS.LIST_CONFIG_ALIASES, () => listSshConfigAliases());
 
@@ -66,6 +81,32 @@ export function registerSshIpc(): () => void {
 		const remotePath = await connection.expandRemotePath(asString(raw.remotePath) || "~");
 		const entries = await connection.listDirectory(remotePath);
 		return { remotePath, entries };
+	});
+
+	// 远端正在监听的端口：端口面板据此给出「要不要转发它」的候选。
+	ipcMain.handle(CHANNELS.LIST_LISTENING_PORTS, (_event, hostId: unknown) =>
+		getSshConnection(asString(hostId)).listListeningPorts(),
+	);
+
+	ipcMain.handle(CHANNELS.LIST_FORWARDS, (_event, hostId: unknown) => {
+		const scope = asString(hostId);
+		return getSshPortForwardService().list(scope === "" ? undefined : scope);
+	});
+
+	ipcMain.handle(CHANNELS.OPEN_FORWARD, (_event, input: unknown) => {
+		const raw = (input ?? {}) as Record<string, unknown>;
+		return getSshPortForwardService().open({
+			hostId: asString(raw.hostId),
+			remotePort: asPort(raw.remotePort),
+			localPort: typeof raw.localPort === "number" ? raw.localPort : undefined,
+			label: typeof raw.label === "string" ? raw.label : undefined,
+			source: raw.source === "detected" ? "detected" : "manual",
+		});
+	});
+
+	ipcMain.handle(CHANNELS.CLOSE_FORWARD, (_event, input: unknown) => {
+		const raw = (input ?? {}) as Record<string, unknown>;
+		return getSshPortForwardService().close(asString(raw.hostId), asPort(raw.remotePort));
 	});
 
 	return () => {

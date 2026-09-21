@@ -1,5 +1,6 @@
 import { type ChildProcess, execFile } from "node:child_process";
 import { isSshProjectUri, parseProjectLocation } from "@vetta/ssh-transport";
+import { getSshPortForwardService } from "../ssh/port-forward-service.js";
 import { getSshConnection } from "../ssh/ssh-runtime.js";
 import { createPluginCommandEnvironment } from "./command-environment.js";
 import { spawnCrossPlatformCommand } from "./command-launcher.js";
@@ -59,6 +60,9 @@ export async function allocateRemotePort(projectUri: string): Promise<number> {
  *
  * 插件拿到的始终是一个**本机**可连的端口号——界面只能连本机。远端跑着的预览服务器由这条
  * 转发接过来，插件不必知道自己的进程在哪台机器上。
+ *
+ * 经端口转发服务而不是直接调连接：转发一旦建立就只是一个本机监听端口，账本只有一份时，
+ * 用户才能在端口面板里看到插件转了什么，断线重建也才有人负责。
  */
 export async function forwardRemotePort(
 	projectUri: string,
@@ -67,9 +71,9 @@ export async function forwardRemotePort(
 ): Promise<() => void> {
 	const location = parseProjectLocation(projectUri);
 	if (location.kind !== "ssh") throw new Error(`Not a remote project path: ${projectUri}`);
-	const connection = getSshConnection(location.hostId);
-	await connection.forwardPort(localPort, remotePort);
-	return () => void connection.cancelPortForward(localPort, remotePort);
+	const service = getSshPortForwardService();
+	await service.open({ hostId: location.hostId, remotePort, localPort, source: "plugin" });
+	return () => void service.close(location.hostId, remotePort);
 }
 
 /** 按 cwd 的归属决定进程在哪台机器上启动。 */
