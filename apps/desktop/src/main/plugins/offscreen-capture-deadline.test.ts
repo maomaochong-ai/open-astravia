@@ -13,6 +13,7 @@ vi.mock("electron", () => ({
 			loadURL: hooks.loadURL,
 			executeJavaScript: hooks.executeJavaScript,
 			capturePage: hooks.capturePage,
+			stopPainting: vi.fn(),
 			on: vi.fn(),
 		};
 		loadURL = hooks.loadURL;
