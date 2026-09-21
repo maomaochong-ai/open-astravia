@@ -104,6 +104,12 @@ function isWithinAllowedRoots(targetPath: string): boolean {
 }
 
 export function assertFilesystemPathWithinProject(targetPath: string): void {
+	// 与 {@link assertFilesystemRealPathWithinProject} 同理：远程路径有自己的授权根，
+	// 落到本机那套里只会把合法的远程路径一律拒掉。
+	if (isSshProjectUri(targetPath)) {
+		assertRemotePathWithinProject(targetPath);
+		return;
+	}
 	if (!isWithinAllowedRoots(targetPath)) {
 		throw new Error("Path is outside any known project directory");
 	}
@@ -153,6 +159,12 @@ export function allowProjectRoot(cwd: string): void {
 }
 
 export function assertPathReadableForPreview(targetPath: string): void {
+	// 远端文件只按远程项目的授权根判定。本机这套里「家目录一律可预览」的放行在远端没有
+	// 对应物，拿本机规则去判远端路径只会把合法的远端文件一概拒掉。
+	if (isSshProjectUri(targetPath)) {
+		assertRemotePathWithinProject(targetPath);
+		return;
+	}
 	if (isWithinAllowedRoots(targetPath)) return;
 	if (isPathWithin(homedir(), targetPath)) return;
 	throw new Error("Path is outside any previewable directory");
