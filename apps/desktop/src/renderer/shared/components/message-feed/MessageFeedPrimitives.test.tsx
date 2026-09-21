@@ -16,6 +16,8 @@ import { createContext, createRef, useContext } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { MessageFeedNavigation } from "./MessageFeedNavigation";
 
+const capturedVirtualizer = vi.hoisted(() => ({ props: undefined as Record<string, unknown> | undefined }));
+
 vi.mock("@shared/shortcuts", () => ({ useShortcutScope: () => undefined }));
 
 vi.mock("react-virtuoso", () => ({
@@ -33,6 +35,7 @@ vi.mock("react-virtuoso", () => ({
 		readonly className?: string;
 		readonly style?: HTMLAttributes<HTMLDivElement>["style"];
 	}) => {
+		capturedVirtualizer.props = props as unknown as Record<string, unknown>;
 		const List = props.components?.List ?? "div";
 		const Footer = props.components?.Footer;
 		return (
@@ -82,6 +85,7 @@ describe("MessageFeed compound primitives", () => {
 	});
 
 	it("composes virtual mechanics with an explicit feed layout", () => {
+		const onTotalListHeightChange = vi.fn();
 		render(
 			<MessageFeed.Root>
 				<MessageFeedLayout.Frame>
@@ -93,6 +97,7 @@ describe("MessageFeed compound primitives", () => {
 									{ key: "second", text: "Second" },
 								]}
 								getKey={(item) => item.key}
+								totalListHeightChanged={onTotalListHeightChange}
 							>
 								{(item) => <div>{item.text}</div>}
 							</MessageFeed.VirtualList>
@@ -109,6 +114,7 @@ describe("MessageFeed compound primitives", () => {
 		expect(screen.getByTestId("virtualizer").className).toContain("pt-4");
 		expect(screen.getByTestId("virtualizer").className).toContain("min-h-0");
 		expect(document.querySelector("[data-message-feed-layout-part='list']")).toBeTruthy();
+		expect(capturedVirtualizer.props?.totalListHeightChanged).toBe(onTotalListHeightChange);
 	});
 
 	it("merges a chosen frame and state layout into caller-owned elements", () => {

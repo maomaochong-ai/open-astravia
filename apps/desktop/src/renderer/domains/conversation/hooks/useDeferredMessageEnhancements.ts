@@ -1,15 +1,14 @@
 import { startTransition, useEffect, useRef, useState } from "react";
 
-const VIEWPORT_STABILIZATION_MS = 400;
-const EXPANDED_VIEWPORT_IDLE_TIMEOUT_MS = 1_500;
+const DEFERRED_STABILIZATION_MS = 400;
+const DEFERRED_IDLE_TIMEOUT_MS = 1_500;
 
 /**
- * Render the target session's real visible rows immediately, then pre-render
- * the surrounding off-screen rows when the browser has idle budget. Content
- * and row identity never change between phases, so Virtuoso has no visible
- * height correction to perform.
+ * Delay non-critical conversation derivations until the first visible message
+ * frame has settled. Virtual-list buffering is intentionally not controlled
+ * here; it follows explicit history-browsing intent in the scroll model.
  */
-export function useProgressiveMessageViewport(sessionId: string | null, hasMessages: boolean): "initial" | "expanded" {
+export function useDeferredMessageEnhancements(sessionId: string | null, hasMessages: boolean): boolean {
 	const sessionRef = useRef(sessionId);
 	const generationRef = useRef(0);
 	if (sessionRef.current !== sessionId) {
@@ -17,42 +16,32 @@ export function useProgressiveMessageViewport(sessionId: string | null, hasMessa
 		generationRef.current += 1;
 	}
 	const generation = generationRef.current;
-	const [expandedViewport, setExpandedViewport] = useState(() => ({
-		generation,
-		expanded: false,
-	}));
-	const phase = !hasMessages
-		? "initial"
-		: expandedViewport.generation === generation && expandedViewport.expanded
-			? "expanded"
-			: "initial";
+	const [readyState, setReadyState] = useState(() => ({ generation, ready: false }));
+	const ready = hasMessages && readyState.generation === generation && readyState.ready;
 
 	useEffect(() => {
-		if (!hasMessages) return;
-		if (phase === "expanded") return;
+		if (!hasMessages || ready) return;
 		let cancelled = false;
 		let firstFrameId: number | null = null;
 		let secondFrameId: number | null = null;
 		let stabilizationTimerId: number | null = null;
 		let idleCallbackId: number | null = null;
-		const expand = (): void => {
+		const markReady = (): void => {
 			if (cancelled) return;
 			startTransition(() => {
-				setExpandedViewport((current) =>
-					generationRef.current === generation ? { generation, expanded: true } : current,
-				);
+				setReadyState((current) => (generationRef.current === generation ? { generation, ready: true } : current));
 			});
 		};
-		const scheduleIdleExpansion = (): void => {
+		const scheduleIdleWork = (): void => {
 			stabilizationTimerId = null;
 			if (typeof window.requestIdleCallback === "function") {
-				idleCallbackId = window.requestIdleCallback(expand, { timeout: EXPANDED_VIEWPORT_IDLE_TIMEOUT_MS });
+				idleCallbackId = window.requestIdleCallback(markReady, { timeout: DEFERRED_IDLE_TIMEOUT_MS });
 				return;
 			}
-			stabilizationTimerId = window.setTimeout(expand, 0);
+			stabilizationTimerId = window.setTimeout(markReady, 0);
 		};
 		const waitForStability = (): void => {
-			stabilizationTimerId = window.setTimeout(scheduleIdleExpansion, VIEWPORT_STABILIZATION_MS);
+			stabilizationTimerId = window.setTimeout(scheduleIdleWork, DEFERRED_STABILIZATION_MS);
 		};
 
 		if (typeof window.requestAnimationFrame === "function") {
@@ -74,7 +63,7 @@ export function useProgressiveMessageViewport(sessionId: string | null, hasMessa
 			if (stabilizationTimerId !== null) window.clearTimeout(stabilizationTimerId);
 			if (idleCallbackId !== null) window.cancelIdleCallback(idleCallbackId);
 		};
-	}, [generation, hasMessages, phase]);
+	}, [generation, hasMessages, ready]);
 
-	return phase;
+	return ready;
 }

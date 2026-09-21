@@ -56,7 +56,7 @@ $adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
 从仓库根目录进入移动端：
 
 ```powershell
-Set-Location "C:\develop\yiyun\vetta\open-vetta\apps\mobile"
+Set-Location "C:\develop\yiyun\vetta\open-vetta\apps\kotlin"
 .\gradlew.bat :androidApp:assembleDebug --no-daemon
 ```
 
@@ -64,7 +64,7 @@ Set-Location "C:\develop\yiyun\vetta\open-vetta\apps\mobile"
 
 ```powershell
 $repo = "C:\develop\yiyun\vetta\open-vetta"
-$apk = "$repo\apps\mobile\androidApp\build\outputs\apk\debug\androidApp-debug.apk"
+$apk = "$repo\apps\kotlin\androidApp\build\outputs\apk\debug\androidApp-debug.apk"
 & $adb install -r $apk
 & $adb shell am force-stop org.vetta.android
 & $adb shell monkey -p org.vetta.android -c android.intent.category.LAUNCHER 1
@@ -87,7 +87,7 @@ $serial = "你的真机序列号"
 
 ```powershell
 .\gradlew.bat :shared:assembleAndroidTest --no-daemon
-$testApk = "$repo\apps\mobile\shared\build\outputs\apk\androidTest\shared-androidTest.apk"
+$testApk = "$repo\apps\kotlin\shared\build\outputs\apk\androidTest\shared-androidTest.apk"
 & $adb -s $serial install -r $testApk
 & $adb -s $serial shell am instrument -w -r `
   -e class 'org.vetta.android.ui.EntryAndProfileScreenTest,org.vetta.android.ui.MainScreenInteractionsTest,org.vetta.android.ui.DesktopConversationScreenTest' `

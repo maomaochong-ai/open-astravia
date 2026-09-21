@@ -8,7 +8,7 @@ import { useMemo } from "react";
 import { MessageCardsScope } from "../hooks/useMessageCardsHostModel";
 import { useMessageListModel } from "../hooks/useMessageListModel";
 import { useMessageListScrollModel } from "../hooks/useMessageListScrollModel";
-import { useProgressiveMessageViewport } from "../hooks/useProgressiveMessageViewport";
+import { useDeferredMessageEnhancements } from "../hooks/useDeferredMessageEnhancements";
 import { MessageListView, ExportMessageList } from "./message-list/MessageListView";
 import type { MessageListProps } from "./message-list/types";
 import { MessageExpansionScope } from "./message-list/expansionStore";
@@ -33,16 +33,14 @@ export function MessageList(props: MessageListProps): JSX.Element {
 		initialTargetKey: props.initialTargetKey,
 		onInitialTargetHandled: props.onInitialTargetHandled,
 	});
-	const viewportPhase = useProgressiveMessageViewport(
+	const deferredContentReady = useDeferredMessageEnhancements(
 		props.sessionId ?? null,
 		props.messages.length > 0,
 	);
 	const derivationMessages = useMemo(
 		() =>
-			viewportPhase === "initial"
-				? props.messages.slice(-INITIAL_DERIVATION_MESSAGE_COUNT)
-				: props.messages,
-		[props.messages, viewportPhase],
+			deferredContentReady ? props.messages : props.messages.slice(-INITIAL_DERIVATION_MESSAGE_COUNT),
+		[deferredContentReady, props.messages],
 	);
 	const model = useMessageListModel(props, scroll, derivationMessages);
 	return (
@@ -50,10 +48,10 @@ export function MessageList(props: MessageListProps): JSX.Element {
 			<SubagentCardsScope sessionId={subagentSessionId}>
 				<MessageCardsScope scope={props.sessionId ?? null} messages={derivationMessages}>
 					<MessageExpansionScope scope={props.sessionId ?? null}>
-						<PerfSessionSwitchProfiler id={`MessageList:${viewportPhase}-viewport`}>
+						<PerfSessionSwitchProfiler id={`MessageList:${deferredContentReady ? "deferred-ready" : "tail-first"}`}>
 							<MessageListView
 								model={model}
-								viewportPhase={viewportPhase}
+								deferredContentReady={deferredContentReady}
 								onAbort={props.onAbort}
 								sessionId={props.sessionId}
 								pendingLabel={props.pendingLabel}

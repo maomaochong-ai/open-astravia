@@ -6,38 +6,40 @@ on:
       - "**"
     paths:
       - "apps/mobile/**"
+      - "package.json"
+      - "bun.lock"
+      - ".github/actions/install-bun-dependencies/**"
       - ".github/workflows/mobile.yml"
   pull_request:
     paths:
       - "apps/mobile/**"
+      - "package.json"
+      - "bun.lock"
+      - ".github/actions/install-bun-dependencies/**"
       - ".github/workflows/mobile.yml"
 
 jobs:
-  build-test:
-    name: Android build + host tests
+  check-build:
+    name: Typecheck + web export
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    defaults:
-      run:
-        working-directory: apps/mobile
+    timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          distribution: temurin
-          java-version: "21"
+          bun-version-file: package.json
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Install dependencies
+        uses: ./.github/actions/install-bun-dependencies
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+      - name: Typecheck Expo app
+        run: bun run --cwd apps/mobile typecheck
 
-      - name: Test shared Android host logic
-        run: bash ./gradlew --no-daemon :shared:testAndroidHostTest
+      - name: Lint Expo app
+        run: bun run --cwd apps/mobile lint
 
-      - name: Assemble Android debug app
-        run: bash ./gradlew --no-daemon :androidApp:assembleDebug
+      - name: Export web app
+        run: bun run --cwd apps/mobile export:web

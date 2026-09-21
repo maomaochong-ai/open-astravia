@@ -113,7 +113,9 @@ export async function refreshPresetCatalog(): Promise<{
  * 不必让用户盯着 0 个模型手动重试。
  */
 async function refreshCatalogInBackground(): Promise<void> {
-	const before = catalogMemo;
+	// 比较用户当前实际看到的目录，而不是只比较内存/磁盘缓存槽。无缓存时可见值是随包快照，
+	// 若在线刷新失败仍返回同一快照，就不该把它广播成“目录已更新”并触发设置页重新加载。
+	const before = await getCachedCatalog();
 	const catalog = await ensureCatalog();
 	if (!catalog || catalog === before) return;
 	for (const win of BrowserWindow.getAllWindows()) {

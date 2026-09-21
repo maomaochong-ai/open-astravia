@@ -4,11 +4,14 @@ import { collectModelSwitchLabels, userModelSwitchFingerprint } from "../compone
 import type { MessageListModel, MessageListProps } from "../components/message-list/types";
 import type { MessageListScrollModel } from "./useMessageListScrollModel";
 
+const EMPTY_PARTICIPANTS: NonNullable<MessageListProps["participants"]> = [];
+
 export function useMessageListModel(
-	{ messages, isStreaming, participants = [], onTeamMemberOpen }: MessageListProps,
+	{ messages, isStreaming, participants, onTeamMemberOpen }: MessageListProps,
 	scroll: MessageListScrollModel,
 	derivationMessages: MessageListProps["messages"],
 ): MessageListModel {
+	const resolvedParticipants = participants ?? EMPTY_PARTICIPANTS;
 	const { options } = useModelOptions();
 	const modelNames = useMemo(() => new Map(options.map((option) => [option.key, option.displayName])), [options]);
 	const modelSwitchFingerprint = userModelSwitchFingerprint(derivationMessages);
@@ -28,17 +31,20 @@ export function useMessageListModel(
 	const modelSwitchLabels = modelSwitchCacheRef.current.labels;
 
 	const participantsById = useMemo(
-		() => new Map(participants.map((participant) => [participant.id, participant])),
-		[participants],
+		() => new Map(resolvedParticipants.map((participant) => [participant.id, participant])),
+		[resolvedParticipants],
 	);
-	return {
-		isStreaming,
-		messages,
-		modelSwitchLabels,
-		scroll,
-		tailMessageId: messages.at(-1)?.id ?? null,
-		participantsById,
-		participants,
-		onTeamMemberOpen,
-	};
+	return useMemo(
+		() => ({
+			isStreaming,
+			messages,
+			modelSwitchLabels,
+			scroll,
+			tailMessageId: messages.at(-1)?.id ?? null,
+			participantsById,
+			participants: resolvedParticipants,
+			onTeamMemberOpen,
+		}),
+		[isStreaming, messages, modelSwitchLabels, onTeamMemberOpen, participantsById, resolvedParticipants, scroll],
+	);
 }

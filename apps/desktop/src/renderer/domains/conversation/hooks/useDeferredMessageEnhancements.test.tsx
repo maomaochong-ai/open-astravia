@@ -2,7 +2,7 @@
 
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { useProgressiveMessageViewport } from "./useProgressiveMessageViewport";
+import { useDeferredMessageEnhancements } from "./useDeferredMessageEnhancements";
 
 const frames: FrameRequestCallback[] = [];
 const idleCallbacks = new Map<number, IdleRequestCallback>();
@@ -32,62 +32,54 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
-it("冷、热会话都先收窄预渲染，并在首屏稳定后的空闲期扩大", () => {
-	const { result } = renderHook(() => useProgressiveMessageViewport("session-a", true));
-	expect(result.current).toBe("initial");
+it("首屏绘制并稳定后才启用非关键消息派生", () => {
+	const { result } = renderHook(() => useDeferredMessageEnhancements("session-a", true));
+	expect(result.current).toBe(false);
 
 	act(() => frames.shift()?.(0));
 	act(() => frames.shift()?.(16));
 	act(() => vi.advanceTimersByTime(399));
 	expect(idleCallbacks).toHaveLength(0);
-	expect(result.current).toBe("initial");
+	expect(result.current).toBe(false);
 
 	act(() => vi.advanceTimersByTime(1));
 	expect(idleCallbacks).toHaveLength(1);
 	act(() => idleCallbacks.values().next().value?.({ didTimeout: false, timeRemaining: () => 8 }));
-	expect(result.current).toBe("expanded");
+	expect(result.current).toBe(true);
 });
 
-it("空壳异步接入缓存历史后仍等待首屏稳定再扩大视口", () => {
+it("空壳异步接入消息后仍先给首屏两帧绘制机会", () => {
 	const { result, rerender } = renderHook(
-		({ hasMessages }) => useProgressiveMessageViewport("session-a", hasMessages),
-		{
-			initialProps: { hasMessages: false },
-		},
+		({ hasMessages }) => useDeferredMessageEnhancements("session-a", hasMessages),
+		{ initialProps: { hasMessages: false } },
 	);
-	expect(result.current).toBe("initial");
+	expect(result.current).toBe(false);
 
 	rerender({ hasMessages: true });
-	expect(result.current).toBe("initial");
+	expect(result.current).toBe(false);
 
 	act(() => frames.shift()?.(0));
 	act(() => frames.shift()?.(16));
-	act(() => vi.advanceTimersByTime(399));
-	expect(idleCallbacks).toHaveLength(0);
-	expect(result.current).toBe("initial");
-
-	act(() => vi.advanceTimersByTime(1));
+	act(() => vi.advanceTimersByTime(400));
 	const idleCallback = [...idleCallbacks.values()].at(-1);
 	act(() => idleCallback?.({ didTimeout: false, timeRemaining: () => 8 }));
-	expect(result.current).toBe("expanded");
+	expect(result.current).toBe(true);
 });
 
-it("快速连续切换会取消旧会话的扩大任务", () => {
+it("快速连续切换会取消旧会话的非关键任务", () => {
 	const { result, rerender } = renderHook(
-		({ sessionId, hasMessages }) => useProgressiveMessageViewport(sessionId, hasMessages),
-		{
-			initialProps: { sessionId: "session-a", hasMessages: true },
-		},
+		({ sessionId, hasMessages }) => useDeferredMessageEnhancements(sessionId, hasMessages),
+		{ initialProps: { sessionId: "session-a", hasMessages: true } },
 	);
 
 	rerender({ sessionId: "session-b", hasMessages: true });
 	act(() => frames.shift()?.(0));
 	rerender({ sessionId: "session-a", hasMessages: true });
-	expect(result.current).toBe("initial");
+	expect(result.current).toBe(false);
 
 	act(() => vi.runAllTimers());
 	for (const callback of idleCallbacks.values()) {
 		act(() => callback({ didTimeout: false, timeRemaining: () => 8 }));
 	}
-	expect(result.current).toBe("initial");
+	expect(result.current).toBe(false);
 });

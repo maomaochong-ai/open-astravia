@@ -8,6 +8,7 @@ All notable changes to `@vetta-org/theme-ui` are documented in this file.
 
 - 新增 `./markdown` 公开入口：局部 Markdown definition、remark/rehype 与元素扩展，以及可组合的 `CodeBlock`。Chat 与活动面板预览共享扩展定义，原 `chat/TextBlockView` 保留转导出。
 - 流式 Markdown 只把已经闭合的代码围栏冻成稳定块，后续 token 只重跑尾块；空行不再拆段，避免把松散列表和缩进代码拆进多个文档。代码高亮在围栏仍在增长或滚出视口时改为等宽纯文本，避免热路径反复跑 Shiki。
+- `MessageFeed.VirtualList` 开放 `totalListHeightChanged` 事件，宿主可以在动态消息完成测量后维护自己的滚动锚点策略。
 
 ### Changed
 
