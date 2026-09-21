@@ -75,6 +75,36 @@ func TestSocketInodeFromLink(t *testing.T) {
 	}
 }
 
+func TestFormatCmdlineJoinsArguments(t *testing.T) {
+	got := formatCmdline([]byte("node\x00server.js\x00--port\x003000\x00"))
+	if got != "node server.js --port 3000" {
+		t.Errorf("got %q", got)
+	}
+}
+
+func TestParseBootTime(t *testing.T) {
+	content := "cpu  1 2 3 4\nintr 5\nbtime 1700000000\nprocesses 42\n"
+	if got := parseBootTime(content); got != 1700000000 {
+		t.Errorf("got %d, want 1700000000", got)
+	}
+	if got := parseBootTime("cpu 1 2 3\n"); got != 0 {
+		t.Errorf("expected 0 without a btime line, got %d", got)
+	}
+}
+
+func TestParseProcessStartedAtSkipsParenthesisedComm(t *testing.T) {
+	// comm contains a space and a `)`, which must not shift the field count.
+	stat := "1234 (my (odd) proc) S 1 1234 1234 0 -1 4194560 100 0 0 0 5 3 0 0 20 0 1 0 250 1000 10"
+	got := parseProcessStartedAt(stat, 1700000000)
+	// 250 ticks at USER_HZ 100 is 2.5s after boot.
+	if got != 1700000002500 {
+		t.Errorf("got %d, want 1700000002500", got)
+	}
+	if got := parseProcessStartedAt("garbage", 1700000000); got != 0 {
+		t.Errorf("expected 0 for malformed stat, got %d", got)
+	}
+}
+
 // The listener scan is the one method whose answer comes from the kernel rather
 // than from files the test can lay out, so on Linux assert against the real /proc
 // and elsewhere assert the documented refusal that sends callers to their fallback.

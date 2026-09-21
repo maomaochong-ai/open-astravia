@@ -30,7 +30,7 @@
 | `fs.mkdir` `fs.rename` `fs.remove` `fs.createEntry` | 写。`createEntry` 从不覆盖（`EEXIST`） |
 | `watch.subscribe` `watch.unsubscribe` | 订阅目录；变化时推送 `watch.changed` |
 | `proc.spawn` `proc.status` `proc.list` `proc.read` `proc.kill` `proc.remove` | 后台任务。`proc.read` 支持 `waitMs` 长轮询 |
-| `net.listeners` | 正在 LISTEN 的 TCP 端口，供端口转发挑选。只在 Linux 上实现（读 `/proc`）；其他系统返回 `ENOSYS`，由调用方退回 `lsof` |
+| `net.listeners` | 正在 LISTEN 的 TCP 端口，连同占用进程的命令行与启动时间，供端口面板列出与排序。只在 Linux 上实现（读 `/proc`）；其他系统返回 `ENOSYS`，由调用方退回 `lsof` |
 | `pty.open` `pty.write` `pty.resize` `pty.close` `pty.list` | 交互式终端。输出走 `pty.data` 通知推送，结束推 `pty.exit` |
 
 ### pty 与 proc 的生命周期刻意相反

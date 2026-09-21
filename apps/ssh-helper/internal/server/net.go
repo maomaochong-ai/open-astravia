@@ -19,7 +19,18 @@ type Listener struct {
 	Address     string `json:"address"`
 	ProcessName string `json:"process,omitempty"`
 	Pid         int    `json:"pid,omitempty"`
+	// Command is the full command line, so the desktop can tell two `node`
+	// processes apart. Empty when the process is unreadable.
+	Command string `json:"command,omitempty"`
+	// StartedAt is when the owning process started, in Unix milliseconds. The
+	// ports panel orders by it: the service the user just launched belongs on top.
+	StartedAt int64 `json:"startedAt,omitempty"`
 }
+
+// clockTicksPerSecond is USER_HZ, the unit of /proc/<pid>/stat's starttime. It
+// is 100 on every architecture Linux ships today; reading it properly would take
+// sysconf(3) and therefore cgo, which the static build rules out.
+const clockTicksPerSecond = 100
 
 // procTCPState marks a LISTEN socket in /proc/net/tcp.
 const procTCPState = "0A"
@@ -55,9 +66,15 @@ func netListeners(struct{}) (any, *protocol.Error) {
 			}
 		}
 	}
+	bootTime := readBootTime()
 	for inode, owner := range findSocketOwners(inodes) {
-		listeners[inodes[inode]].Pid = owner.pid
-		listeners[inodes[inode]].ProcessName = owner.name
+		listener := &listeners[inodes[inode]]
+		listener.Pid = owner.pid
+		listener.ProcessName = owner.name
+		listener.Command = processCommand(strconv.Itoa(owner.pid))
+		if bootTime > 0 {
+			listener.StartedAt = processStartedAt(strconv.Itoa(owner.pid), bootTime)
+		}
 	}
 	sort.Slice(listeners, func(i, j int) bool { return listeners[i].Port < listeners[j].Port })
 	return listenersResult{Ports: listeners}, nil
@@ -200,4 +217,70 @@ func processName(pid string) string {
 		return ""
 	}
 	return strings.TrimSpace(string(content))
+}
+
+// processCommand reads the NUL-separated argv of a process as one line.
+func processCommand(pid string) string {
+	content, err := os.ReadFile(filepath.Join("/proc", pid, "cmdline"))
+	if err != nil {
+		return ""
+	}
+	return formatCmdline(content)
+}
+
+func formatCmdline(content []byte) string {
+	return strings.TrimSpace(strings.ReplaceAll(string(content), "\x00", " "))
+}
+
+// readBootTime is the `btime` line of /proc/stat: the Unix second the kernel
+// booted, which /proc/<pid>/stat's starttime is relative to.
+func readBootTime() int64 {
+	content, err := os.ReadFile("/proc/stat")
+	if err != nil {
+		return 0
+	}
+	return parseBootTime(string(content))
+}
+
+func parseBootTime(content string) int64 {
+	for line := range strings.SplitSeq(content, "\n") {
+		value, ok := strings.CutPrefix(line, "btime ")
+		if !ok {
+			continue
+		}
+		seconds, err := strconv.ParseInt(strings.TrimSpace(value), 10, 64)
+		if err != nil {
+			return 0
+		}
+		return seconds
+	}
+	return 0
+}
+
+func processStartedAt(pid string, bootTime int64) int64 {
+	content, err := os.ReadFile(filepath.Join("/proc", pid, "stat"))
+	if err != nil {
+		return 0
+	}
+	return parseProcessStartedAt(string(content), bootTime)
+}
+
+// parseProcessStartedAt reads field 22 (starttime) of /proc/<pid>/stat. The
+// comm field is parenthesised and may itself contain spaces or parentheses, so
+// counting starts after the last `)`.
+func parseProcessStartedAt(stat string, bootTime int64) int64 {
+	closing := strings.LastIndex(stat, ")")
+	if closing < 0 {
+		return 0
+	}
+	// After `comm)` come: state(3) ppid(4) ... starttime(22) → index 19.
+	fields := strings.Fields(stat[closing+1:])
+	if len(fields) < 20 {
+		return 0
+	}
+	ticks, err := strconv.ParseInt(fields[19], 10, 64)
+	if err != nil {
+		return 0
+	}
+	return bootTime*1000 + ticks*1000/clockTicksPerSecond
 }
