@@ -51,13 +51,14 @@ export function BottomPanelHost(): JSX.Element | null {
 			hidden={collapsed}
 			className={cn(
 				"relative shrink-0",
-				// 消息列四周的留白本来就不对称：下和右各有 8px（AppFrame 的 p-2、这一行的
-				// gap-2），左边只有侧边栏不在位时才有那 8px。所以左边总要单独处理一次。
+				// 消息列到窗口的距离三边都不一样：下面是 AppFrame 的 p-2（8px）；右边是
+				// p-2 再加这一行的 gap-2，两者叠起来是 16px；左边侧边栏在位时贴着它、是 0，
+				// 不在位时才是 p-2 那 8px。铺满形态要逐边抵消，卡片形态只需补左边。
 				activityPanelOpen
 					// 活动面板展开时收成卡片，四边留白与活动面板到窗口的距离对齐。
 					? sidebarVisible && "ml-2"
 					// 活动面板收起时铺到窗口边缘：此时这一行只剩底部面板，留白会让它看着像浮层。
-					: cn("-mr-2 -mb-2", !sidebarVisible && "-ml-2"),
+					: cn("-mr-4 -mb-2", !sidebarVisible && "-ml-2"),
 			)}
 			style={{ height: `${Math.round(state.heightRatio * 100)}%` }}
 			data-bottom-panel-root
