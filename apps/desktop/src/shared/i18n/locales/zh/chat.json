@@ -80,6 +80,7 @@
 			"scanUnsupported": "这台主机上没有可用的端口扫描工具（ss / netstat / lsof），直接填端口号即可转发。",
 			"scanFailed": "没能查看远端的端口",
 			"fromOutput": "来自任务输出",
+			"ephemeralToggle": "另有 {{count}} 个临时端口（32768 以上）",
 			"invalidPort": "请填 1 到 65535 之间的端口号"
 		},
 		"toolCalls": {

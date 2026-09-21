@@ -57,6 +57,8 @@ export interface PortsTabPanelViewLabels {
 	readonly scanUnsupported: string;
 	readonly scanFailed: string;
 	readonly fromOutput: string;
+	/** 折叠起来的临时端口那一行；数量只有视图知道，所以这条是函数而不是成品字符串。 */
+	readonly ephemeralToggle: (count: number) => string;
 }
 
 export interface PortsTabPanelViewProps {
@@ -101,6 +103,18 @@ export interface PortsTabPanelViewProps {
  * 面板默认 400px 上下正好两列，拉宽自动变三列四列。
  */
 const GRID = "grid gap-1.5 [grid-template-columns:repeat(auto-fill,minmax(8.5rem,1fr))]";
+
+/** 候选格子只有端口号和进程名，不必按地址的宽度留位置。 */
+const CANDIDATE_GRID = "grid gap-1.5 [grid-template-columns:repeat(auto-fill,minmax(5.5rem,1fr))]";
+
+/**
+ * 临时端口的起点（Linux 默认 ip_local_port_range 的下界）。
+ *
+ * 这个区间里在听的基本都是内核派给连接的临时端口，不是任何人想转发的服务——远端随便
+ * 一台机器就能扫出几十个，混在一起时用户要找的 3000 会被它们淹掉。所以默认折叠起来，
+ * 但仍然给出数量和展开入口：判断依据只是端口号，总有例外。
+ */
+const EPHEMERAL_PORT_FLOOR = 32768;
 
 const STATUS_DOT: Record<PortForwardViewStatus, string> = {
 	active: "bg-emerald-400",
@@ -393,6 +407,11 @@ export function PortsTabPanelView({
 	onRefresh,
 }: PortsTabPanelViewProps): JSX.Element {
 	const [manualOpen, setManualOpen] = useState(false);
+	const [ephemeralOpen, setEphemeralOpen] = useState(false);
+	const ephemeral = candidates.filter(
+		(candidate) => candidate.origin !== "output" && candidate.port >= EPHEMERAL_PORT_FLOOR,
+	);
+	const shownCandidates = ephemeralOpen ? candidates : candidates.filter((candidate) => !ephemeral.includes(candidate));
 	const nothingToShow = forwards.length === 0 && candidates.length === 0 && scanState !== "loading";
 	// 没有任何东西可点时手动那行自己展开：此时它是唯一的入口，藏在「+」后面等于没有入口。
 	// 远端没有扫描工具（scanUnsupported）走的正是这条路。
@@ -499,8 +518,8 @@ export function PortsTabPanelView({
 				{candidates.length > 0 ? (
 					<section className="space-y-1.5">
 						<SectionHeading label={labels.candidatesHeading} count={candidates.length} />
-						<div className={GRID}>
-							{candidates.map((candidate) => (
+						<div className={CANDIDATE_GRID}>
+							{shownCandidates.map((candidate) => (
 								<CandidateTile
 									key={candidate.port}
 									candidate={candidate}
@@ -509,7 +528,23 @@ export function PortsTabPanelView({
 								/>
 							))}
 						</div>
-						</section>
+						{ephemeral.length > 0 ? (
+							<button
+								type="button"
+								onClick={() => setEphemeralOpen((open) => !open)}
+								className="flex w-full items-center gap-1 px-0.5 py-0.5 text-[11px] text-muted-foreground/70 transition-colors hover:text-foreground"
+							>
+								<span
+									aria-hidden
+									className={cn(
+										"icon-[solar--alt-arrow-right-linear] h-3 w-3 transition-transform",
+										ephemeralOpen && "rotate-90",
+									)}
+								/>
+								{labels.ephemeralToggle(ephemeral.length)}
+							</button>
+						) : null}
+					</section>
 				) : null}
 
 				{scanState === "loading" ? (

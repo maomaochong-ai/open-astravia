@@ -80,6 +80,7 @@
 			"scanUnsupported": "This host has no port scanner available (ss / netstat / lsof). Enter the port number to forward it.",
 			"scanFailed": "Could not read the remote host's ports",
 			"fromOutput": "From task output",
+			"ephemeralToggle": "{{count}} more ephemeral ports (above 32768)",
 			"invalidPort": "Enter a port number between 1 and 65535"
 		},
 		"toolCalls": {

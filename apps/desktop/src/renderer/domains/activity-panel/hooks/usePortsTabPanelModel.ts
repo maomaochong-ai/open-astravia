@@ -245,6 +245,7 @@ export function usePortsTabPanelModel(): PortsTabPanelViewProps {
 			scanUnsupported: t("activityPanel.ports.scanUnsupported"),
 			scanFailed: t("activityPanel.ports.scanFailed"),
 			fromOutput: t("activityPanel.ports.fromOutput"),
+			ephemeralToggle: (count: number) => t("activityPanel.ports.ephemeralToggle", { count }),
 		}),
 		[t],
 	);
