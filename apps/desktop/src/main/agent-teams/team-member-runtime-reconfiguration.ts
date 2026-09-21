@@ -33,18 +33,18 @@ export async function reconfigureTeamMemberRuntime(input: {
 }): Promise<TeamSessionDocument> {
 	const current = input.session.memberRuntime[input.memberId];
 	if (!current) throw new Error(`Team member runtime not found: ${input.memberId}`);
+	const activePath = input.runtime.getSessionPath(current.sessionId);
+	if (activePath && activePath !== current.sessionPath) {
+		throw new Error(`Runtime session id is already bound to another path: ${current.sessionId}`);
+	}
 	if (
+		activePath &&
 		current.agentProfileId === input.agentProfileId &&
 		current.agentProfileRevision === input.agentProfileRevision &&
 		current.assignmentFingerprint === input.assignmentFingerprint &&
 		current.rosterFingerprint === input.rosterFingerprint
 	) {
 		return input.session;
-	}
-
-	const activePath = input.runtime.getSessionPath(current.sessionId);
-	if (activePath && activePath !== current.sessionPath) {
-		throw new Error(`Runtime session id is already bound to another path: ${current.sessionId}`);
 	}
 
 	const config = await input.resolveConfig(current.sessionPath);

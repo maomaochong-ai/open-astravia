@@ -1,5 +1,24 @@
 import type { AssistantMessage } from "@vetta/ai";
 import type { HistoryEntry } from "@vetta/runtime-core";
+import { type RuntimeFailure, readRuntimeFailure } from "@vetta/runtime-core/failures";
+
+/** Read only this attempt's durable outcome, including turns whose host call returns void. */
+export function findTeamAttemptFailure(
+	history: readonly HistoryEntry[],
+	previousEntryIds: ReadonlySet<string>,
+): RuntimeFailure | undefined {
+	for (let index = history.length - 1; index >= 0; index -= 1) {
+		const entry = history[index];
+		if (!entry || !("entryId" in entry) || !entry.entryId || previousEntryIds.has(entry.entryId)) continue;
+		if (entry.type === "error") {
+			const failure = readRuntimeFailure(entry);
+			if (failure) return failure;
+		}
+		if (entry.type === "message" && entry.message.role === "assistant" && isTeamAttemptFinalResult(entry.message))
+			return undefined;
+	}
+	return undefined;
+}
 
 /** Model-visible message counts shrink on compaction; durable entry ids do not. */
 export function findTeamAttemptResult(

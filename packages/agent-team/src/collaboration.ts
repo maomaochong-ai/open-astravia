@@ -8,6 +8,7 @@ import type {
 	TeamUserMessageMention,
 } from "./contracts.js";
 import { resolveMemberProfile, resolveMemberResponsibility } from "./domain.js";
+import { isTeamTaskRecovery, type TeamTaskRecovery } from "./task-recovery.js";
 
 export type TeamCapabilityKind = "skill" | "scene" | "mcp" | "plugin" | "tool" | (string & {});
 
@@ -143,6 +144,9 @@ export interface TeamExternalConditionChange {
 }
 
 export interface TeamWorkItem {
+	readonly recovery?: TeamTaskRecovery;
+	/** Durable notification handoff; recovered attempts can reconstruct their context. */
+	readonly notificationIds?: readonly string[];
 	readonly id: string;
 	readonly requestTurnId: string;
 	/** Tool call that admitted this work, when it originated from Team collaboration tooling. */
@@ -475,6 +479,10 @@ export function isTeamWorkItem(value: unknown): value is TeamWorkItem {
 		(value.kind === undefined || value.kind === "task" || value.kind === "question") &&
 		Array.isArray(value.contextEntryIds) &&
 		isTeamWorkItemState(value.state) &&
+		(value.recovery === undefined || isTeamTaskRecovery(value.recovery)) &&
+		(value.notificationIds === undefined ||
+			(Array.isArray(value.notificationIds) &&
+				value.notificationIds.every((id: unknown) => typeof id === "string"))) &&
 		(value.lastIssue === undefined || isTeamExecutionIssue(value.lastIssue)) &&
 		typeof value.createdAt === "number" &&
 		typeof value.updatedAt === "number" &&

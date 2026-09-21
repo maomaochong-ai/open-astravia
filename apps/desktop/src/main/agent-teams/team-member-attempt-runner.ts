@@ -21,8 +21,9 @@ import {
 } from "@vetta/runtime-core";
 import { getAppLogger } from "../logger.js";
 import type { TeamCollaborationStore } from "./team-collaboration-store.js";
-import { findTeamAttemptResult, isTeamAttemptFinalResult } from "./team-member-result.js";
+import { findTeamAttemptFailure, findTeamAttemptResult, isTeamAttemptFinalResult } from "./team-member-result.js";
 import type { TeamMemberTurnRequest } from "./team-member-turn-request.js";
+import { TeamNotificationJournal, undeliveredTeamNotifications } from "./team-notification-journal.js";
 import { publicAssistantMessage } from "./team-public-message.js";
 import type { TeamPublicationWorkflow } from "./team-publication-workflow.js";
 import type { TeamRuntimeManager } from "./team-runtime-manager.js";
@@ -79,6 +80,7 @@ export class TeamMemberAttemptRunner {
 			sourceTurnId,
 			createdByParticipantId,
 			objective: promptText,
+			notificationIds: input.notificationIds,
 			...(attachments?.length ? { attachments } : {}),
 			...(input.workItemKind ? { kind: input.workItemKind } : {}),
 			mode,
@@ -131,6 +133,7 @@ export class TeamMemberAttemptRunner {
 		readonly attachments?: readonly PromptAttachmentRef[];
 		readonly mode: TeamMemberTurnAttemptMode;
 		readonly kind?: "task" | "question";
+		readonly notificationIds?: readonly string[];
 	}): Promise<{ workItem: TeamWorkItem; attempt: TeamMemberTurnAttempt }> {
 		const result = await this.options.collaborationStore.begin(input);
 		const observations = this.options.observations(input.session);
@@ -278,11 +281,19 @@ export class TeamMemberAttemptRunner {
 				});
 			}
 			let promptOutcome: Awaited<ReturnType<RuntimeHost["prompt"]>> | undefined;
-			if (input.continuationContext?.length) {
+			const continuationContext = undeliveredTeamNotifications(
+				input.continuationContext ??
+					new TeamNotificationJournal(this.options.collaborationStore).contexts(
+						configuredSession,
+						collaboration.workItem.notificationIds ?? [],
+					),
+				this.options.runtime().readSessionDocument(runtimeState.sessionId),
+			);
+			if (continuationContext.length) {
 				// Resolves after the Runtime continuation turn that consumes these records.
 				await this.options
 					.runtime()
-					.deliverSessionContext(runtimeState.sessionId, input.continuationContext, "triggerTurn");
+					.deliverSessionContext(runtimeState.sessionId, continuationContext, "triggerTurn");
 			} else if (mode === "continue" || mode === "recovery") {
 				await this.options.runtime().continue(runtimeState.sessionId);
 			} else if (mode === "retry") {
@@ -301,6 +312,11 @@ export class TeamMemberAttemptRunner {
 				promptFailure = readRuntimeFailure(promptOutcome.error);
 				promptFailureMessage = promptOutcome.error?.message ?? "Team member turn failed";
 			}
+			promptFailure ??= findTeamAttemptFailure(
+				this.options.runtime().getFullHistory(runtimeState.sessionId),
+				previousEntryIds,
+			);
+			promptFailureMessage ??= promptFailure?.message;
 			log.info("team member runtime call returned", {
 				teamSessionId: configuredSession.id,
 				memberId,
@@ -338,7 +354,7 @@ export class TeamMemberAttemptRunner {
 				sourceTurnId,
 				cancelled || !recoverable ? "terminal-partial" : undefined,
 			);
-			await this.options.settleAttempt(
+			const settled = await this.options.settleAttempt(
 				configuredSession,
 				collaboration.workItem,
 				collaboration.attempt,
@@ -357,8 +373,8 @@ export class TeamMemberAttemptRunner {
 			}
 			this.options.eventHub.discard(
 				activeTurn,
-				cancelled ? "aborted" : recoverable ? "waiting" : "failed",
-				cancelled || recoverable ? undefined : errorMessage(error),
+				cancelled ? "aborted" : recoverable && settled.state === "waiting" ? "waiting" : "failed",
+				cancelled || (recoverable && settled.state === "waiting") ? undefined : errorMessage(error),
 			);
 			if (cancelled) {
 				log.info("team member runtime call cancelled", {
@@ -426,7 +442,12 @@ export class TeamMemberAttemptRunner {
 				this.options.eventHub.discard(activeTurn, "aborted");
 				return this.options.sessionState.get(configuredSession.id) ?? configuredSession;
 			}
-			await this.options.settleAttempt(configuredSession, collaboration.workItem, collaboration.attempt, terminal);
+			const settled = await this.options.settleAttempt(
+				configuredSession,
+				collaboration.workItem,
+				collaboration.attempt,
+				terminal,
+			);
 			if (partialMessageId && !waitingRetry) {
 				await this.publishTerminalPartial({
 					session: configuredSession,
@@ -439,8 +460,8 @@ export class TeamMemberAttemptRunner {
 			}
 			this.options.eventHub.discard(
 				activeTurn,
-				waitingRetry ? "waiting" : "failed",
-				waitingRetry ? undefined : promptFailureMessage,
+				waitingRetry && settled.state === "waiting" ? "waiting" : "failed",
+				waitingRetry && settled.state === "waiting" ? undefined : promptFailureMessage,
 			);
 			log[waitingRetry ? "warn" : "error"]("team member runtime returned failed outcome", {
 				teamSessionId: configuredSession.id,

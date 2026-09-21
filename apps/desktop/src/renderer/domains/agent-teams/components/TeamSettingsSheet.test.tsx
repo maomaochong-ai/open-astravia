@@ -126,6 +126,20 @@ function renderSheet(
 }
 
 describe("TeamSettingsSheet", () => {
+	it("saves automatic recovery limits and prevents invalid values from being submitted", async () => {
+		const { onSave } = renderSheet();
+		const user = userEvent.setup();
+		const input = screen.getByRole("spinbutton", { name: "settings.automaticRetries" });
+		expect((input as HTMLInputElement).value).toBe("2");
+		await user.clear(input);
+		await user.type(input, "11");
+		expect((screen.getByRole("button", { name: /settings.saveChanges/ }) as HTMLButtonElement).disabled).toBe(true);
+		await user.clear(input);
+		await user.type(input, "0");
+		await user.click(screen.getByRole("button", { name: /settings.saveChanges/ }));
+		expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ maxAutomaticRetries: 0 }));
+	});
+
 	it("lets a plugin team's member pin and clear a model without editing its definition", async () => {
 		renderSheet({ team: { ...team, source: { kind: "plugin", pluginId: "preset" } } });
 		const user = userEvent.setup();

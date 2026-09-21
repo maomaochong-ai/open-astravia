@@ -2,6 +2,7 @@ import {
 	classifyTeamAttemptTerminal,
 	createTeamSharedContextCheckpoint,
 	createTeamSharedContextGeneration,
+	TEAM_RECOVERY_EXHAUSTED,
 	type TeamSessionDocument,
 } from "@vetta/agent-team";
 import { type ConversationDocument, createEmptyConversationDocument } from "@vetta/runtime-core";
@@ -9,6 +10,52 @@ import { describe, expect, it } from "vitest";
 import { TeamCollaborationStore } from "./team-collaboration-store.js";
 
 describe("TeamCollaborationStore", () => {
+	it("bounds automatic recovery independently of attempt history and resets only on explicit user recovery", async () => {
+		const store = createStore();
+		const terminal = classifyTeamAttemptTerminal({
+			hasPublishableMessage: false,
+			cancelled: false,
+			issue: { category: "network", code: "AI_TIMEOUT", retryability: "automatic" },
+		});
+		let latest = await store.begin({ ...workInput(), sourceTurnId: "first", mode: "initial" });
+		for (let used = 0; used <= 2; used += 1) {
+			const item = await store.settle(session(), latest.workItem, latest.attempt, terminal);
+			expect(item.recovery).toEqual({ maxAutomaticRetries: 2, automaticRetries: used });
+			if (used < 2) {
+				const admitted = await Promise.all([
+					store.requeue(session(), item.id, item.revision, "automatic"),
+					store.requeue(session(), item.id, item.revision, "automatic"),
+				]);
+				expect(admitted.filter((entry) => entry.requeued)).toHaveLength(1);
+				latest = await store.begin({ ...workInput(), sourceTurnId: `retry-${used}`, mode: "retry" });
+			} else {
+				expect(item).toMatchObject({ state: "attention-required", lastIssue: { code: TEAM_RECOVERY_EXHAUSTED } });
+				expect(store.read(session()).attempts.at(-1)?.nextRetryAt).toBeUndefined();
+				expect((await store.requeue(session(), item.id, item.revision, "automatic")).requeued).toBe(false);
+				const resumed = await store.requeue(session(), item.id, item.revision, "user");
+				expect(resumed.workItem.recovery?.automaticRetries).toBe(0);
+				latest = await store.begin({ ...workInput(), sourceTurnId: "user-retry", mode: "retry" });
+				const next = await store.settle(session(), latest.workItem, latest.attempt, terminal);
+				expect(next.state).toBe("waiting");
+				expect(store.read(session()).attempts.at(-1)?.nextRetryAt).toEqual(expect.any(Number));
+			}
+		}
+	});
+
+	it("captures a custom limit per task and disables automatic retries when zero", async () => {
+		const store = createStore(0);
+		const first = await store.begin({ ...workInput(), sourceTurnId: "turn", mode: "initial" });
+		const settled = await store.settle(session(), first.workItem, first.attempt, {
+			state: "waiting-retry",
+			issue: { category: "network", code: "AI_TIMEOUT", retryability: "automatic" },
+		});
+		expect(settled).toMatchObject({
+			state: "attention-required",
+			recovery: { maxAutomaticRetries: 0, automaticRetries: 0 },
+		});
+		expect(store.read(session()).attempts[0]?.nextRetryAt).toBeUndefined();
+	});
+
 	it("stores one independently evolving delivery per recipient", async () => {
 		const store = createStore();
 		const deliveries = await store.createDeliveries(
@@ -251,30 +298,33 @@ function workInput() {
 	};
 }
 
-function createStore(): TeamCollaborationStore {
+function createStore(maxAutomaticRetries?: number): TeamCollaborationStore {
 	let document = createEmptyConversationDocument({ sessionId: "coordination", createdAt: 1 });
-	return new TeamCollaborationStore({
-		readSessionDocument: () => document,
-		appendSessionMetadataEntry: async (_sessionId, customType, data) => {
-			await Promise.resolve();
-			const id = `entry-${document.entries.length}`;
-			document = {
-				...document,
-				entries: [
-					...document.entries,
-					{
-						id,
-						type: "custom",
-						customType,
-						data,
-						parentId: document.activeLeafId,
-						timestamp: new Date(1).toISOString(),
-					},
-				],
-				activeLeafId: id,
-			};
+	return new TeamCollaborationStore(
+		{
+			readSessionDocument: () => document,
+			appendSessionMetadataEntry: async (_sessionId, customType, data) => {
+				await Promise.resolve();
+				const id = `entry-${document.entries.length}`;
+				document = {
+					...document,
+					entries: [
+						...document.entries,
+						{
+							id,
+							type: "custom",
+							customType,
+							data,
+							parentId: document.activeLeafId,
+							timestamp: new Date(1).toISOString(),
+						},
+					],
+					activeLeafId: id,
+				};
+			},
 		},
-	});
+		async () => maxAutomaticRetries,
+	);
 }
 
 function session(): TeamSessionDocument {

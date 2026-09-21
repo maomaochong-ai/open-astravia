@@ -19,7 +19,6 @@ import {
 	validateTeamMessageMentions,
 } from "@vetta/agent-team";
 import type { PromptAttachmentRef, RuntimeHost } from "@vetta/runtime-core";
-import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import { stopSessionBackgroundWork } from "../agent-runtime/stop-session-work.js";
 import { getAppLogger } from "../logger.js";
 import { resolveTeamMemberModel } from "./resolve-team-member-model.js";
@@ -30,13 +29,11 @@ import type { TeamMemberModelPreference } from "./team-member-model-preferences.
 import { TeamMemberScheduler } from "./team-member-scheduler.js";
 import type { TeamMemberTurnRequest } from "./team-member-turn-request.js";
 import { TeamMessageControlService } from "./team-message-control-service.js";
+import { TeamNotificationJournal } from "./team-notification-journal.js";
+import { TeamRecoveryMonitor } from "./team-recovery-monitor.js";
 import type { TeamSessionEventHub } from "./team-session-event-hub.js";
 import type { TeamSessionStateRepository } from "./team-session-state-repository.js";
 import { TeamTaskControlService } from "./team-task-control-service.js";
-import {
-	createTeamTaskCompletionNotification,
-	deliverTeamTaskCompletionNotification,
-} from "./team-task-notification.js";
 
 const log = getAppLogger("agent-team-turns");
 
@@ -60,17 +57,35 @@ export interface TeamTurnCoordinatorOptions {
 export class TeamTurnCoordinator {
 	private readonly memberScheduler = new TeamMemberScheduler();
 	private readonly memberCancellations = new Map<string, Map<string, AbortController>>();
+	private readonly userRecoveries = new Map<string, Promise<TeamSessionDocument>>();
 	private readonly activeSends = new Map<string, Set<AbortController>>();
 	/** Sessions the user stopped. Cleared only by the next user send. */
 	private readonly stopped = new Set<string>();
 	private readonly stopGenerations = new Map<string, number>();
 	/** Completion notices waiting for an initiator's lane, keyed by Team session and member. */
-	private readonly pendingContinuations = new Map<string, SessionContextRecord[]>();
+	private readonly pendingContinuations = new Set<string>();
+	private readonly notificationJournal: TeamNotificationJournal;
+	private readonly recoveryMonitor: TeamRecoveryMonitor;
 	private readonly taskControl: TeamTaskControlService;
 	private readonly messageControl: TeamMessageControlService;
 	private memberAttemptRunner: TeamMemberAttemptRunner | undefined;
 
 	constructor(private readonly options: TeamTurnCoordinatorOptions) {
+		this.notificationJournal = new TeamNotificationJournal(options.collaborationStore);
+		this.recoveryMonitor = new TeamRecoveryMonitor(async () => {
+			const sessions = options.sessionState.values().filter((session) => !this.stopped.has(session.id));
+			for (const session of sessions) {
+				try {
+					await this.recoverSession(session);
+				} catch (error) {
+					log.warn("Team recovery scan could not reconcile session", {
+						teamSessionId: session.id,
+						errorName: error instanceof Error ? error.name : "UnknownError",
+					});
+				}
+			}
+			return sessions.length > 0;
+		});
 		this.taskControl = new TeamTaskControlService(options.collaborationStore, this.memberScheduler, {
 			readSession: options.readSession,
 			readConversation: (id) => options.runtime().readSessionDocument(id),
@@ -78,6 +93,14 @@ export class TeamTurnCoordinator {
 			cancelMemberTurn: (sessionId, workItemId) => this.memberCancellations.get(sessionId)?.get(workItemId)?.abort(),
 			isStopped: (sessionId) => this.stopped.has(sessionId),
 			stopGeneration: (sessionId) => this.stopGenerations.get(sessionId) ?? 0,
+			isRuntimeActive: (session, memberId) => {
+				const id = session.memberRuntime[memberId]?.sessionId;
+				return (
+					!!id &&
+					(options.eventHub.isTurnActive(id) ||
+						(!!options.runtime().getSessionPath(id) && options.runtime().getState(id).isStreaming))
+				);
+			},
 			resolveTarget: (session, handle) => resolveMemberByHandle(this.syntheticTeam(session), handle)?.id,
 			authorizeTask: (session, sourceMemberId, targetMemberId, action) => {
 				const team = this.syntheticTeam(session);
@@ -93,7 +116,10 @@ export class TeamTurnCoordinator {
 						});
 			},
 			onAdmitted: (session, item, created) => this.recordTaskAdmission(session.id, item, created),
-			onSettled: (session, item) => this.messageControl.reconcileWorkItem(session, item),
+			onSettled: async (session, item) => {
+				await this.messageControl.reconcileWorkItem(session, item);
+				await this.notifyTaskInitiator(session, item);
+			},
 			onRequeued: (session, item, trigger) => this.publishTaskRecovery(session, item, trigger),
 		});
 		this.messageControl = new TeamMessageControlService(options.collaborationStore, {
@@ -137,8 +163,15 @@ export class TeamTurnCoordinator {
 
 	async recoverSession(session: TeamSessionDocument): Promise<void> {
 		if (this.stopped.has(session.id)) return;
+		if (this.notificationJournal.isStopped(session)) {
+			this.stopped.add(session.id);
+			return;
+		}
+		this.recoveryMonitor.start();
 		await this.messageControl.recoverSession(session);
 		await this.taskControl.recoverSession(session);
+		for (const notice of this.notificationJournal.pending(session))
+			this.scheduleNotification(session.id, notice.workItem.createdByParticipantId);
 	}
 
 	hasPending(sessionId: string): boolean {
@@ -166,10 +199,13 @@ export class TeamTurnCoordinator {
 			modelKey: input.modelKey,
 			reasoning: input.reasoning,
 		});
-		let controller: AbortController | undefined;
+		const controller = this.trackRequest(sessionId);
 		try {
-			await this.options.readSession(sessionId);
-			controller = this.trackRequest(sessionId);
+			const loaded = await this.options.readSession(sessionId);
+			await this.notificationJournal.resume(loaded, controller.signal);
+			controller.signal.throwIfAborted();
+			this.stopped.delete(sessionId);
+			this.recoveryMonitor.start();
 			const result = await this.sendInternal(sessionId, input, controller.signal);
 			log.info("team message send completed", {
 				teamSessionId: sessionId,
@@ -178,7 +214,7 @@ export class TeamTurnCoordinator {
 			});
 			return result;
 		} catch (error) {
-			if (controller?.signal.aborted) {
+			if (controller.signal.aborted) {
 				log.info("team message send cancelled", {
 					teamSessionId: sessionId,
 					requestId: input.requestId,
@@ -194,7 +230,7 @@ export class TeamTurnCoordinator {
 			});
 			throw error;
 		} finally {
-			if (controller) this.untrackRequest(sessionId, controller);
+			this.untrackRequest(sessionId, controller);
 		}
 	}
 
@@ -206,6 +242,8 @@ export class TeamTurnCoordinator {
 	 */
 	async abort(sessionId: string): Promise<void> {
 		this.stopped.add(sessionId);
+		if (this.options.sessionState.values().every((session) => this.stopped.has(session.id)))
+			this.recoveryMonitor.stop();
 		this.stopGenerations.set(sessionId, (this.stopGenerations.get(sessionId) ?? 0) + 1);
 		for (const key of this.pendingContinuations.keys()) {
 			if (key.startsWith(continuationKey(sessionId, ""))) this.pendingContinuations.delete(key);
@@ -214,7 +252,9 @@ export class TeamTurnCoordinator {
 		for (const controller of this.memberCancellations.get(sessionId)?.values() ?? []) controller.abort();
 		const session = this.options.sessionState.get(sessionId);
 		await Promise.all([
-			session ? this.taskControl.stopTeam(session) : Promise.resolve(),
+			session
+				? this.notificationJournal.stop(session).finally(() => this.taskControl.stopTeam(session))
+				: Promise.resolve(),
 			this.abortRuntimes(session),
 		]);
 		log.info("team session stopped", { teamSessionId: sessionId });
@@ -408,7 +448,22 @@ export class TeamTurnCoordinator {
 		return resumed;
 	}
 
-	async recoverWorkItem(
+	recoverWorkItem(
+		sessionId: string,
+		workItemId: string,
+		mode: Extract<TeamMemberTurnAttemptMode, "continue" | "retry" | "recovery">,
+	): Promise<TeamSessionDocument> {
+		const key = continuationKey(sessionId, workItemId);
+		const existing = this.userRecoveries.get(key);
+		if (existing) return existing;
+		const recovery = this.recoverUserWorkItem(sessionId, workItemId, mode).finally(() => {
+			if (this.userRecoveries.get(key) === recovery) this.userRecoveries.delete(key);
+		});
+		this.userRecoveries.set(key, recovery);
+		return recovery;
+	}
+
+	private async recoverUserWorkItem(
 		sessionId: string,
 		workItemId: string,
 		mode: Extract<TeamMemberTurnAttemptMode, "continue" | "retry" | "recovery">,
@@ -424,6 +479,14 @@ export class TeamTurnCoordinator {
 		const attemptNumber = state.attempts.filter((attempt) => attempt.workItemId === workItemId).length + 1;
 		const controller = this.trackRequest(sessionId);
 		try {
+			const requeued = await this.options.collaborationStore.requeue(
+				session,
+				workItem.id,
+				workItem.revision,
+				"user",
+			);
+			if (!requeued.requeued) return this.options.sessionState.get(sessionId) ?? session;
+			this.publishTaskRecovery(session, requeued.workItem, "manual");
 			return await this.scheduleMemberTurn({
 				teamSessionId: session.id,
 				memberId: workItem.assignedToParticipantId,
@@ -434,7 +497,7 @@ export class TeamTurnCoordinator {
 				signal: controller.signal,
 				attachments: workItem.artifactRefs,
 				mode,
-				expectedWorkItemRevision: workItem.revision,
+				expectedWorkItemRevision: requeued.workItem.revision,
 			});
 		} finally {
 			this.untrackRequest(sessionId, controller);
@@ -477,100 +540,78 @@ export class TeamTurnCoordinator {
 		});
 		this.options.publishSessionUpdated(session);
 		await this.taskControl.onWorkItemSettled(session, nextWorkItem);
-		if (nextWorkItem.state === "completed" && resultMessageId) {
-			// `triggerTurn` resolves only after the initiator's continuation finishes.
-			// The completed assignee must release its scheduler lane independently;
-			// otherwise that continuation cannot delegate fresh work back to it.
-			void this.notifyTaskInitiator(session, nextWorkItem, resultMessageId);
-		}
+		await this.notifyTaskInitiator(session, nextWorkItem);
 		return nextWorkItem;
 	}
 
-	private async notifyTaskInitiator(
-		session: TeamSessionDocument,
-		workItem: TeamWorkItem,
-		resultMessageId: string,
-	): Promise<void> {
-		// A completion racing the user's stop remains durable, but it must not
-		// resurrect the leader through an automatic continuation after the stop.
+	private async notifyTaskInitiator(session: TeamSessionDocument, item: TeamWorkItem): Promise<void> {
 		if (this.stopped.has(session.id)) return;
-		const initiator = session.memberRuntime[workItem.createdByParticipantId];
-		if (!initiator) return;
-		const coordination = session.coordinationRuntime;
-		if (!coordination) return;
-		const resultEntry = this.options
-			.runtime()
-			.readSessionDocument(coordination.sessionId)
-			.entries.find((entry) => entry.type === "message" && entry.id === resultMessageId);
-		const resultText = resultEntry?.type === "message" ? extractMessageText(resultEntry.message) : "";
-		const completion = {
-			teamTaskId: workItem.id,
-			assignedToParticipantId: workItem.assignedToParticipantId,
-			requestTurnId: workItem.requestTurnId,
-			resultMessageId,
-			resultText,
-		};
-		const initiatorId = workItem.createdByParticipantId;
-		try {
-			const ownsTeamWork = this.options.collaborationStore
-				.read(session)
-				.workItems.some((item) => item.assignedToParticipantId === initiatorId);
-			if (!ownsTeamWork) {
-				// An initiator without Team work has no attempt to continue.
-				await deliverTeamTaskCompletionNotification(this.options.runtime(), initiator.sessionId, completion);
-				return;
-			}
-			const key = continuationKey(session.id, initiatorId);
-			const notification = createTeamTaskCompletionNotification(completion);
-			const pending = this.pendingContinuations.get(key);
-			if (pending) {
-				// An already scheduled continuation has not drained yet; it carries this notice too.
-				pending.push(notification);
-				return;
-			}
-			this.pendingContinuations.set(key, [notification]);
-			await this.scheduleInitiatorContinuation(session.id, initiatorId);
-		} catch (error) {
-			// A closed or recovering initiator can still observe the durable result later.
-			log.warn("Team task completion notification could not wake initiator", {
-				teamSessionId: session.id,
-				teamTaskId: workItem.id,
-				initiatorParticipantId: initiatorId,
-				errorName: error instanceof Error ? error.name : "UnknownError",
-			});
+		await this.notificationJournal.record(session, item);
+		if (this.notificationJournal.pending(session, item.createdByParticipantId).length) {
+			this.scheduleNotification(session.id, item.createdByParticipantId);
 		}
 	}
 
-	/**
-	 * Runs the initiator's wake-up in its own lane as a Team attempt, after whatever
-	 * attempt currently owns that lane. The runtime continuation is then streamed and
-	 * published like any other Team turn instead of running unobserved beside it.
-	 */
+	private scheduleNotification(sessionId: string, memberId: string): void {
+		const key = continuationKey(sessionId, memberId);
+		if (this.pendingContinuations.has(key) || this.stopped.has(sessionId)) return;
+		this.pendingContinuations.add(key);
+		// Never hold an assignee's execution lane while its initiator handles the notice.
+		void this.scheduleInitiatorContinuation(sessionId, memberId)
+			.catch((error: unknown) => {
+				log.warn("Team task notification awaits recovery", {
+					teamSessionId: sessionId,
+					memberId,
+					errorName: error instanceof Error ? error.name : "UnknownError",
+				});
+			})
+			.finally(() => {
+				this.pendingContinuations.delete(key);
+			});
+	}
+
 	private async scheduleInitiatorContinuation(sessionId: string, memberId: string): Promise<void> {
 		const stopGeneration = this.stopGenerations.get(sessionId) ?? 0;
 		await this.memberScheduler.schedule({
 			teamSessionId: sessionId,
 			memberId,
 			run: async () => {
-				const key = continuationKey(sessionId, memberId);
-				const records = this.pendingContinuations.get(key) ?? [];
-				this.pendingContinuations.delete(key);
-				if (records.length === 0 || !this.isAdmissionCurrent(sessionId, stopGeneration)) return;
+				if (!this.isAdmissionCurrent(sessionId, stopGeneration)) return;
 				const session = this.options.sessionState.get(sessionId) ?? (await this.options.readSession(sessionId));
-				const plan = planTeamInitiatorContinuation({
-					session,
-					state: this.options.collaborationStore.read(session),
+				const notices = this.notificationJournal.pending(session, memberId);
+				if (!notices.length) return;
+				const ids = notices.map((notice) => notice.id);
+				const records = this.notificationJournal.contexts(session, ids);
+				const state = this.options.collaborationStore.read(session);
+				const plan = planTeamInitiatorContinuation({ session, state, memberId, records });
+				if (!plan && state.workItems.some((item) => item.assignedToParticipantId === memberId)) return;
+				const requestId = `notification:${ids[0]}`;
+				const request: TeamMemberTurnRequest = plan?.request ?? {
+					teamSessionId: session.id,
 					memberId,
-					records,
-				});
-				if (!plan) {
-					const runtimeSessionId = session.memberRuntime[memberId]?.sessionId;
-					if (runtimeSessionId) {
-						await this.options.runtime().deliverSessionContext(runtimeSessionId, records, "triggerTurn");
-					}
-					return;
+					requestId,
+					sourceTurnId: requestId,
+					createdByParticipantId: "local-user",
+					promptText: "Integrate Agent Team task status and results",
+					mode: "continue",
+					continuationContext: records,
+				};
+				const existing = plan ? state.workItems.find((item) => item.id === plan.workItemId) : undefined;
+				if (existing) {
+					const admitted = await this.options.collaborationStore.requeue(
+						session,
+						existing.id,
+						existing.revision,
+						"automatic",
+						ids,
+					);
+					if (!admitted.requeued) return;
 				}
-				await this.runCancellableMemberTurn(plan.workItemId, plan.request);
+				if (!this.isAdmissionCurrent(sessionId, stopGeneration)) return;
+				await this.runCancellableMemberTurn(plan?.workItemId ?? `work:${requestId}:${memberId}`, {
+					...request,
+					notificationIds: ids,
+				});
 			},
 		});
 	}
@@ -741,6 +782,7 @@ export class TeamTurnCoordinator {
 	}
 
 	private async recordTaskAdmission(sessionId: string, item: TeamWorkItem, created: boolean): Promise<void> {
+		if (!this.stopped.has(sessionId)) this.recoveryMonitor.start();
 		await this.options.sessionState.coordinateLoaded(sessionId, async (session) => {
 			this.options.publishSessionUpdated(session);
 			if (created)
@@ -843,20 +885,6 @@ function sameMemberMentions(
 			);
 		})
 	);
-}
-
-function extractMessageText(message: unknown): string {
-	if (!isRecord(message)) return "";
-	const content = message.content;
-	if (typeof content === "string") return content;
-	if (!Array.isArray(content)) return "";
-	return content
-		.flatMap((item) => (isRecord(item) && item.type === "text" && typeof item.text === "string" ? [item.text] : []))
-		.join("\n");
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function errorMessage(error: unknown): string {

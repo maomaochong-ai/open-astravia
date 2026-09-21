@@ -16,6 +16,7 @@ import {
 } from "../../runtime/language-model-adapter.js";
 import { createModelCallMetadataFromMessage } from "../../runtime/model-call-result.js";
 import type { Model, StreamOptions } from "../../types.js";
+import { normalizeOpenAISdkError } from "../sdk-connection-errors.js";
 import type { ResponsesEventSink } from "./events.js";
 import { processResponsesStream } from "./events.js";
 import type { OpenAIResponsesOptions } from "./options.js";
@@ -55,11 +56,13 @@ export const openAIResponsesAdapter = createResponsesAdapter<"openai-responses",
 			applyServiceTierPricing,
 		});
 	},
+	normalizeOpenAISdkError,
 );
 
 export function createResponsesAdapter<TApi extends Api, TOptions extends StreamOptions>(
 	api: TApi,
 	execute: ResponsesAdapterExecutor<TApi, TOptions>,
+	normalizeError: typeof normalizeProviderError = normalizeProviderError,
 ): LanguageModelAdapter<TApi, TOptions> {
 	return {
 		api,
@@ -71,7 +74,7 @@ export function createResponsesAdapter<TApi extends Api, TOptions extends Stream
 			parallelToolCalls: true,
 		},
 		async stream(request) {
-			return createResponsesModelStream(request, execute);
+			return createResponsesModelStream(request, execute, normalizeError);
 		},
 	};
 }
@@ -79,9 +82,10 @@ export function createResponsesAdapter<TApi extends Api, TOptions extends Stream
 function createResponsesModelStream<TApi extends Api, TOptions extends StreamOptions>(
 	request: ModelCallRequest<TApi, TOptions>,
 	execute: ResponsesAdapterExecutor<TApi, TOptions>,
+	normalizeError: typeof normalizeProviderError,
 ): ModelStreamResponse {
 	const stream = new LanguageModelStream();
-	void produceResponses(request, execute, stream);
+	void produceResponses(request, execute, stream, normalizeError);
 	const result = stream.result();
 	return { events: stream, result, metadata: result.then(createModelCallMetadataFromMessage, () => ({})) };
 }
@@ -90,6 +94,7 @@ async function produceResponses<TApi extends Api, TOptions extends StreamOptions
 	request: ModelCallRequest<TApi, TOptions>,
 	execute: ResponsesAdapterExecutor<TApi, TOptions>,
 	stream: LanguageModelStream,
+	normalizeError: typeof normalizeProviderError,
 ): Promise<void> {
 	const { model, options } = request;
 	const output = createAssistantMessage(model);
@@ -117,12 +122,18 @@ async function produceResponses<TApi extends Api, TOptions extends StreamOptions
 	} catch (error) {
 		const normalizedError = signal?.aborted
 			? new AIAbortedError(undefined, { provider: model.provider, modelId: model.id, cause: error })
-			: normalizeProviderError(error, model);
-		failLanguageModelStream(stream, model, normalizedError, signal?.aborted ? "aborted" : "error", {
-			...output,
-			stopReason: signal?.aborted ? "aborted" : "error",
-			errorMessage: normalizedError.message,
-		});
+			: normalizeError(error, model);
+		failLanguageModelStream(
+			stream,
+			model,
+			normalizedError,
+			normalizedError.code === "AI_ABORTED" ? "aborted" : "error",
+			{
+				...output,
+				stopReason: normalizedError.code === "AI_ABORTED" ? "aborted" : "error",
+				errorMessage: normalizedError.message,
+			},
+		);
 	}
 }
 

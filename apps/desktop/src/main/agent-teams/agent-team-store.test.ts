@@ -71,6 +71,28 @@ describe("AgentTeamStore transaction boundary", () => {
 	// master / developer / researcher 的人设住在「预设智能体」插件里，装机档案要靠它解析。
 	beforeEach(() => registerPresetPluginBlueprints());
 
+	it("persists recovery configuration through create, update and reload", async () => {
+		const repository = new MemoryRepository();
+		const store = new AgentTeamStore({ repository, createId: createIdSequence(), now: () => 10 });
+		const profile = await store.createAgent(agentInput("Recovery"));
+		const team = await store.createTeam({
+			name: "Recovery Team",
+			maxAutomaticRetries: 0,
+			members: [{ agentProfileId: profile.id, handle: "recovery", bindingKind: "reference", leader: true }],
+		});
+		expect(team.maxAutomaticRetries).toBe(0);
+		const updated = await store.updateTeam(team.id, {
+			expectedRevision: team.revision,
+			name: team.name,
+			description: "",
+			maxAutomaticRetries: 4,
+			members: [{ kind: "existing", memberId: team.members[0]!.id, leader: true }],
+		});
+		expect(updated.maxAutomaticRetries).toBe(4);
+		const restored = new AgentTeamStore({ repository });
+		expect((await restored.read()).teams.find((item) => item.id === team.id)?.maxAutomaticRetries).toBe(4);
+	});
+
 	it("serializes concurrent mutations without losing either profile", async () => {
 		const repository = new MemoryRepository();
 		const store = new AgentTeamStore({ repository, createId: createIdSequence(), now: () => 10 });

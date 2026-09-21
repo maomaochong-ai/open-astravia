@@ -14,6 +14,22 @@ import {
 } from "../src/validation.js";
 
 describe("Agent Team IPC input validation", () => {
+	it("validates optional automatic recovery limits without breaking legacy definitions", () => {
+		const input = {
+			expectedRevision: 1,
+			name: "Team",
+			description: "",
+			members: [{ kind: "existing", memberId: "member", leader: true }],
+		};
+		for (const limit of [0, 2, 10])
+			expect(parseUpdateTeamInput({ ...input, maxAutomaticRetries: limit }).maxAutomaticRetries).toBe(limit);
+		for (const limit of [-1, 11, 1.5, "2", null])
+			expect(() => parseUpdateTeamInput({ ...input, maxAutomaticRetries: limit })).toThrow();
+		expect(parseUpdateTeamInput(input).maxAutomaticRetries).toBeUndefined();
+		const document = createAgentTeamFixture();
+		expect(parseAgentTeamDocument(document)).toEqual(document);
+	});
+
 	it("accepts complete profile and team inputs", () => {
 		expect(
 			parseCreateAgentProfileInput({

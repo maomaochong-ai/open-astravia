@@ -6,12 +6,7 @@ import {
 	type Api,
 	createAssistantMessage as createProtocolAssistantMessage,
 } from "../../protocol/index.js";
-import {
-	EmptyProviderStreamError,
-	normalizeProviderError,
-	requireProviderCredential,
-	validateWirePayload,
-} from "../../provider-kit/index.js";
+import { EmptyProviderStreamError, requireProviderCredential, validateWirePayload } from "../../provider-kit/index.js";
 import {
 	failLanguageModelStream,
 	type LanguageModelAdapter,
@@ -31,6 +26,7 @@ import type {
 } from "../../types.js";
 import { parseStreamingJson } from "../../utils/json-parse.js";
 import { createLinkedAbortSignal } from "../../utils/linked-abort-signal.js";
+import { normalizeOpenAISdkError } from "../sdk-connection-errors.js";
 import { buildBaseOptions } from "../simple-options.js";
 import { type ThinkingTagSegment, ThinkingTagSplitter } from "../thinking-tag-splitter.js";
 import type { OpenAICompletionsOptions } from "./options.js";
@@ -281,14 +277,14 @@ async function produceOpenAICompletions(
 		for (const block of output.content) Reflect.deleteProperty(block, "index");
 		const normalized = options?.signal?.aborted
 			? new AIAbortedError(undefined, { cause: error })
-			: normalizeProviderError(error, model);
+			: normalizeOpenAISdkError(error, model);
 		resolveMetadata({
-			finishReason: { unified: options?.signal?.aborted ? "aborted" : "error" },
+			finishReason: { unified: normalized.code === "AI_ABORTED" ? "aborted" : "error" },
 			response: responseId ? { responseId } : undefined,
 		});
-		failLanguageModelStream(stream, model, normalized, options?.signal?.aborted ? "aborted" : "error", {
+		failLanguageModelStream(stream, model, normalized, normalized.code === "AI_ABORTED" ? "aborted" : "error", {
 			...output,
-			stopReason: options?.signal?.aborted ? "aborted" : "error",
+			stopReason: normalized.code === "AI_ABORTED" ? "aborted" : "error",
 			errorMessage: normalized instanceof Error ? normalized.message : String(normalized),
 		});
 	} finally {

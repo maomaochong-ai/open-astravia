@@ -307,6 +307,7 @@ export class AgentTeamStore {
 				members: members.map(({ leader: _leader, ...member }) => member),
 				orchestrationPolicyId: input.orchestrationPolicyId ?? "leader-delegates-v1",
 				contextPolicyId: input.contextPolicyId ?? "public-results-v1",
+				...(input.maxAutomaticRetries === undefined ? {} : { maxAutomaticRetries: input.maxAutomaticRetries }),
 				createdAt: now,
 				updatedAt: now,
 			};
@@ -399,6 +400,7 @@ export class AgentTeamStore {
 			const next: TeamDefinition = {
 				...current,
 				revision: current.revision + 1,
+				...(input.maxAutomaticRetries !== undefined ? { maxAutomaticRetries: input.maxAutomaticRetries } : {}),
 				name: input.name.trim(),
 				description: input.description.trim(),
 				leaderMemberId: leaders[0].id,
