@@ -31,6 +31,17 @@ function isKept(animation: Animation): boolean {
 	return target instanceof Element && target.closest(`[${KEEP_ATTRIBUTE}]`) !== null;
 }
 
+/** CSS 动画的宿主元素已经不再声明这段动画（或已离开文档）。 */
+function isOrphanedCssAnimation(animation: Animation): boolean {
+	const name = (animation as CSSAnimation).animationName;
+	if (typeof name !== "string") return false;
+	const effect = animation.effect as KeyframeEffect | null;
+	const target = effect?.target;
+	if (!(target instanceof Element) || !target.isConnected) return true;
+	const declared = getComputedStyle(target, effect?.pseudoElement ?? null).animationName;
+	return !declared.split(",").some((entry) => entry.trim() === name);
+}
+
 /** 安装后立即按当前状态生效；返回卸载函数（恢复被本模块暂停的动画）。 */
 export function installInactiveWindowAnimationPause(): () => void {
 	// 只恢复自己停掉的：别处主动 pause 的动画不该被这里放出来。
@@ -38,6 +49,14 @@ export function installInactiveWindowAnimationPause(): () => void {
 	let rescanTimer: number | null = null;
 
 	const pauseInfiniteAnimations = () => {
+		// 先清掉暂停期间被样式撤掉的动画：不取消的话，它会把元素冻在暂停那一刻的姿态上
+		// （换成普通图标后还歪着一个角度）。
+		for (const animation of pausedByUs) {
+			if (animation.playState === "paused" && isOrphanedCssAnimation(animation)) {
+				animation.cancel();
+				pausedByUs.delete(animation);
+			}
+		}
 		for (const animation of document.getAnimations()) {
 			if (animation.playState !== "running" || !isInfinite(animation) || isKept(animation)) continue;
 			animation.pause();
@@ -47,7 +66,11 @@ export function installInactiveWindowAnimationPause(): () => void {
 
 	const resumeAnimations = () => {
 		for (const animation of pausedByUs) {
-			if (animation.playState === "paused") animation.play();
+			if (animation.playState !== "paused") continue;
+			// 暂停期间样式可能已经把这段动画撤掉了（转圈图标换成了普通图标）。被脚本暂停过的
+			// CSS 动画不会随样式一起取消，这时再 play() 会让它脱离样式永远转下去——取消而不是恢复。
+			if (isOrphanedCssAnimation(animation)) animation.cancel();
+			else animation.play();
 		}
 		pausedByUs.clear();
 	};

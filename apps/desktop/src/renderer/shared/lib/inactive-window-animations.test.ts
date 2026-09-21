@@ -3,10 +3,13 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { installInactiveWindowAnimationPause } from "./inactive-window-animations";
 
 interface FakeAnimation {
-	playState: "running" | "paused";
+	animationName?: string;
+	cancelled?: boolean;
+	playState: "running" | "paused" | "idle";
 	effect: { getComputedTiming: () => { iterations: number }; target?: Element };
 	pause: () => void;
 	play: () => void;
+	cancel: () => void;
 }
 
 function fakeAnimation(iterations: number, playState: FakeAnimation["playState"] = "running"): FakeAnimation {
@@ -18,6 +21,10 @@ function fakeAnimation(iterations: number, playState: FakeAnimation["playState"]
 		},
 		play: () => {
 			animation.playState = "running";
+		},
+		cancel: () => {
+			animation.playState = "idle";
+			animation.cancelled = true;
 		},
 	};
 	return animation;
@@ -108,4 +115,43 @@ it("标了 data-animate-when-inactive 的元素在后台继续动", () => {
 
 	expect(kept.playState).toBe("running");
 	host.remove();
+});
+
+it("失焦期间转圈图标已经换成普通图标时，回到前台不会让它重新转起来", () => {
+	const icon = document.createElement("span");
+	icon.style.animationName = "spin";
+	document.body.appendChild(icon);
+	const spinner = fakeAnimation(Number.POSITIVE_INFINITY);
+	spinner.animationName = "spin";
+	spinner.effect.target = icon;
+	animations = [spinner];
+	uninstall = installInactiveWindowAnimationPause();
+
+	setWindowFocused(false);
+	expect(spinner.playState).toBe("paused");
+	// 任务在后台跑完，图标不再声明转圈动画。
+	icon.style.animationName = "none";
+	setWindowFocused(true);
+
+	expect(spinner.playState).toBe("idle");
+	expect(spinner.cancelled).toBe(true);
+	icon.remove();
+});
+
+it("失焦期间转圈图标换成普通图标后，图标不会被冻在转到一半的角度上", () => {
+	const icon = document.createElement("span");
+	icon.style.animationName = "spin";
+	document.body.appendChild(icon);
+	const spinner = fakeAnimation(Number.POSITIVE_INFINITY);
+	spinner.animationName = "spin";
+	spinner.effect.target = icon;
+	animations = [spinner];
+	uninstall = installInactiveWindowAnimationPause();
+	setWindowFocused(false);
+
+	icon.style.animationName = "none";
+	vi.advanceTimersByTime(2000);
+
+	expect(spinner.cancelled).toBe(true);
+	icon.remove();
 });
