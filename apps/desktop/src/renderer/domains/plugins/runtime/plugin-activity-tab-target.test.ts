@@ -25,9 +25,9 @@ function installedPlugin(permissions: PluginPermission[]): InstalledPlugin {
 	} as unknown as InstalledPlugin;
 }
 
-function createUi() {
+function createUi(permissions: readonly string[] = ["ui.slot.activity-tab"]) {
 	return createPluginUiApi({
-		plugin: installedPlugin(["ui.slot.activity-tab"]),
+		plugin: installedPlugin(permissions as never),
 		contributions: new PluginLocalContributions(),
 		onChanged: () => {},
 		disposers: [],
@@ -115,6 +115,14 @@ describe("activity-tab command target cwd", () => {
 		const ui = createUi();
 		expect(() => ui.setActivityTabVisible("canvas", false, { cwd: "ssh://host-1/srv/app" })).not.toThrow();
 		expect(() => ui.openActivityTab("canvas", { cwd: "ssh://host-1/srv/app" })).not.toThrow();
+	});
+
+	it("previewFile accepts a file in a remote project", () => {
+		// 媒体协议与目录监听都认得 `ssh://` 这个形态；在边界上拒掉只会让远端文件预览不了。
+		const ui = createUi(["ui.slot.activity-tab", "fs.read"]);
+		expect(() => ui.previewFile({ path: "ssh://host-1/srv/app/logo.png" })).not.toThrow();
+		// 相对路径仍然要挡：渲染进程没有可靠的 base 去解析它。
+		expect(() => ui.previewFile({ path: "relative/logo.png" })).toThrow(/requires an absolute path/);
 	});
 
 	it("rejects a relative cwd instead of creating an unreachable persistence key", () => {

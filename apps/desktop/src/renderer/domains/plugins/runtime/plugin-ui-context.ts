@@ -202,8 +202,9 @@ function toFilePreviewItem(ref: PluginPreviewFileRef): FilePreviewItem {
 		throw new Error("previewFile() requires either a path or a url");
 	}
 	// 相对路径在渲染进程没有可靠的 base 可解析——与其让预览器弹一个含糊的读取失败，
-	// 不如在边界上直接告诉插件它给错了。
-	if (path && !path.startsWith("/") && !/^[a-zA-Z]:[\\/]/.test(path)) {
+	// 不如在边界上直接告诉插件它给错了。远程项目里的文件用 `ssh://<hostId>/<路径>` 标识，
+	// 它同样是一个确定的位置：媒体协议与目录监听都认得它，拒掉只会让远端文件预览不了。
+	if (path && !path.startsWith("/") && !/^[a-zA-Z]:[\\/]/.test(path) && !isSshProjectUri(path)) {
 		throw new Error(`previewFile() requires an absolute path, got: ${path}`);
 	}
 	const declaredName = typeof ref.name === "string" ? ref.name.trim() : "";
