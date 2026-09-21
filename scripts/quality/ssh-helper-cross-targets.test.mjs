@@ -41,7 +41,9 @@ describe("远端 helper 的目标平台", () => {
 	});
 
 	it("不包含 windows：进程托管用的 syscall 在那里不存在，根本编译不过", () => {
-		// 远端是 Windows 时 Desktop 会降级到 `ssh exec`，而不是指望一个不存在的二进制。
+		// 也不必去补：整条远程项目链路都是 POSIX 形状的（`uname` 探测、`/bin/sh` 外壳、
+		// coreutils 读写），远端用 cmd.exe / PowerShell 应答 SSH 时第一步探测就过不去，
+		// 有没有 helper 都一样。
 		expect(readMakefileTargets().filter((target) => target.startsWith("windows"))).toEqual([]);
 		expect(readPackagingTargets().filter((target) => target.startsWith("windows"))).toEqual([]);
 	});

@@ -53,8 +53,11 @@ make clean        # 清 bin/；dist/ 用 make dist-clean
 `apps/desktop/scripts/prepare-pack.js` 自己交叉编译，不走本 Makefile——改目标平台列表时
 两处要一起改。
 
-没有 windows 目标：进程托管用了 `setsid` 与进程组信号，Windows 上这些 syscall 不存在，
-`GOOS=windows` 直接编译不过；远端是 Windows 时 Desktop 会降级到 `ssh exec`。
+没有 windows 目标。直接原因是进程托管用了 `setsid` 与进程组信号，`GOOS=windows` 编译不过；
+不去补的原因是整条远程项目链路本来就是 POSIX 形状的——连上先用 `uname` 探测，每条命令外面套
+`/bin/sh -c`，文件读写靠 cat / head / tail / mv / find / stat。远端用 cmd.exe 或 PowerShell 应答
+SSH 时，有没有 helper 都会卡在第一步探测，也就没有可降级的余地。（远端 SSH 的 shell 若是 WSL，
+它自报 `Linux`，走的就是普通 Linux 主机那条路。）
 
 手工调协议时逐行敲 JSON：
 

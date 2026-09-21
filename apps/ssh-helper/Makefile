@@ -58,9 +58,15 @@ clean:
 # CGO is disabled, so the binaries pin neither glibc nor musl: they run on any
 # distro, and the remote host needs no runtime installed.
 #
-# No windows target: task supervision uses setsid and process-group signals
-# (internal/server/proc.go), neither of which exists on Windows — GOOS=windows
-# does not compile. Remote Windows hosts fall back to plain `ssh exec`.
+# No windows target. The immediate reason is that task supervision uses setsid
+# and process-group signals (internal/server/proc.go), so GOOS=windows does not
+# compile. The reason not to fix that: the remote-project transport is POSIX
+# shaped all the way down — it probes with `uname`, wraps every command in
+# `/bin/sh -c`, and reads and writes files with cat / head / tail / mv / find /
+# stat. A host answering SSH with cmd.exe or PowerShell fails at that first
+# probe whether or not this helper exists, so there is nothing for a Windows
+# build to fall back to. (A Windows host whose SSH shell is WSL reports itself
+# as Linux and uses the linux binary like any other Linux host.)
 #
 # Note: the binaries inside an installer are cross-built by
 # apps/desktop/scripts/prepare-pack.js itself, not by this Makefile (same as
