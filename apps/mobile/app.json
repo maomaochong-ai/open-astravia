@@ -1,22 +1,35 @@
 {
   "expo": {
-    "name": "Vetta Mobile",
+    "name": "Vetta",
     "slug": "vetta-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "vetta",
     "userInterfaceStyle": "automatic",
+    "backgroundColor": "#0a0b0d",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.openvetta.mobile",
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "Vetta 需要访问本地网络，才能在同一 Wi-Fi 下直接连接你的电脑。",
+        "NSCameraUsageDescription": "Vetta 需要使用相机扫描电脑端的二维码来完成配对。",
+        "NSBonjourServices": ["_vetta._tcp"],
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        }
+      }
     },
     "android": {
+      "package": "com.openvetta.mobile",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0a0b0d",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
+      "permissions": ["android.permission.CAMERA", "android.permission.ACCESS_NETWORK_STATE"],
+      "usesCleartextTraffic": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
@@ -25,10 +38,18 @@
     },
     "plugins": [
       "expo-router",
+      "expo-secure-store",
+      "expo-sqlite",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Vetta 需要使用相机扫描电脑端的二维码来完成配对。"
+        }
+      ],
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#0a0b0d",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
