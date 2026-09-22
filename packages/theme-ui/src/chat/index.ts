@@ -84,6 +84,7 @@ export {
 	ChatHeaderExportAction,
 	ChatHeaderPanelAction,
 	ChatHeaderPinAction,
+	ChatHeaderTerminalAction,
 } from "./ChatHeaderActionsView";
 export type { ContextRingViewProps } from "./ContextRingView";
 export { CIRCUMFERENCE as CONTEXT_RING_CIRCUMFERENCE, ContextRingView } from "./ContextRingView";

@@ -63,3 +63,11 @@ export const setBottomPanelCloseGuardAtom = atom(
 		set(bottomPanelCloseGuardsAtom, next);
 	},
 );
+
+/**
+ * 一次性的「把键盘焦点送进这个 tab」请求，值是 tabId。
+ *
+ * 发起方（头部终端入口）在改完布局的同一拍就写进来，但那时 tab 可能还没挂载、面板也可能还藏着，
+ * 所以不能当场调 `focus()`：由对应实例在自己变成可见的活动 tab 之后消费并清空。
+ */
+export const bottomPanelFocusRequestAtom = atom<string | null>(null);

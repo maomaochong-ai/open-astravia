@@ -7,9 +7,11 @@ import { WebglAddon } from "@xterm/addon-webgl";
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import { pathBasename } from "@shared/lib/utils";
+import { useAtom } from "jotai";
 import { type JSX, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TerminalEventEnvelope } from "../../../../shared/terminal-ipc";
+import { bottomPanelFocusRequestAtom } from "../registry/instance-atoms";
 import { useBottomPanelInstance } from "../registry/instance-context";
 import { detectWebgl2Support, selectTerminalRenderer } from "./select-terminal-renderer";
 import { buildTerminalTheme, createDocumentCssVariableReader } from "./terminal-theme";
@@ -48,6 +50,8 @@ export function TerminalSurface(): JSX.Element {
 	activeRef.current = active;
 	/** 由建终端的 effect 填上；折叠期间跳过的尺寸变化靠它在展开后补一次。 */
 	const refitRef = useRef<(() => void) | null>(null);
+	const terminalRef = useRef<Terminal | null>(null);
+	const [focusRequest, setFocusRequest] = useAtom(bottomPanelFocusRequestAtom);
 
 	useEffect(() => {
 		const container = containerRef.current;
@@ -78,6 +82,10 @@ export function TerminalSurface(): JSX.Element {
 		// 不开 unicode11 的话 CJK 宽度按 1 算，中文一多光标位置就全错。
 		terminal.unicode.activeVersion = "11";
 		terminal.open(container);
+		terminalRef.current = terminal;
+		cleanups.push(() => {
+			if (terminalRef.current === terminal) terminalRef.current = null;
+		});
 
 		const renderer = selectTerminalRenderer({
 			hasWebgl2: detectWebgl2Support(),
@@ -238,6 +246,14 @@ export function TerminalSurface(): JSX.Element {
 		const frame = requestAnimationFrame(() => refitRef.current?.());
 		return () => cancelAnimationFrame(frame);
 	}, [active]);
+
+	// 头部终端入口点过来的：等自己真正可见（面板展开、是所在格子的活动 tab）再接焦点。
+	// effect 在提交之后跑，此时 `hidden` 已经摘掉，可以同步 focus；不等 PTY——xterm 实例一建好就能接焦点。
+	useEffect(() => {
+		if (focusRequest !== tabId || !active) return;
+		terminalRef.current?.focus();
+		setFocusRequest(null);
+	}, [focusRequest, tabId, active, setFocusRequest]);
 
 	return (
 		<div className="relative flex min-h-0 flex-1 flex-col">

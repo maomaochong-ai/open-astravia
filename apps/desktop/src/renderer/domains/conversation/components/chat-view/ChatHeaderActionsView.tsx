@@ -24,6 +24,12 @@ export function ChatHeaderActionsView({ actions, model }: ChatHeaderActionsViewP
 				pinned={model.pinned}
 				onClick={actions.togglePin}
 			/>
+			<ChatHeaderActions.Terminal
+				title={model.terminalTitle}
+				focused={model.terminalFocused}
+				disabled={!model.terminalAvailable}
+				onClick={actions.openTerminal}
+			/>
 			<ChatHeaderActions.BottomPanel
 				title={model.bottomPanelTitle}
 				open={model.bottomPanelOpen}

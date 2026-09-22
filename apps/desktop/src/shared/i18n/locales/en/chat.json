@@ -378,6 +378,11 @@
 			"closed": "Open bottom panel",
 			"open": "Close bottom panel"
 		},
+		"terminalButton": {
+			"focused": "Terminal",
+			"open": "Open terminal",
+			"unavailable": "Local terminal is unavailable"
+		},
 		"exportButton": {
 			"title": "Export full session as HTML"
 		},
