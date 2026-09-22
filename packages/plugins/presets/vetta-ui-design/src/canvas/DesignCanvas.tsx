@@ -1104,6 +1104,7 @@ export function DesignCanvas({
 
 	/** FrameView 拖动/缩放要把指针位移换算成世界位移，但 zoom 不作为 prop 下发。 */
 	const getZoom = useCallback((): number => viewportRef.current.zoom, []);
+	const closeNoteDraft = useCallback((): void => setNoteDraft(null), []);
 
 	/**
 	 * 工具栏的缩放读数自己去订阅，不随画布的 state 下发。
@@ -1509,7 +1510,7 @@ export function DesignCanvas({
 					visible={notesVisible}
 					draft={noteDraft}
 					blockedReason={blockedReason}
-					onDraftClose={() => setNoteDraft(null)}
+					onDraftClose={closeNoteDraft}
 					openNoteId={openNoteId}
 					onOpenNote={setOpenNoteId}
 					getZoom={getZoom}
