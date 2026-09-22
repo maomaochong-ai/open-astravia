@@ -112,6 +112,8 @@ async function executeTaskInner(task: ScheduledTask, runtime: RuntimeHost, optio
 		});
 
 		let responseText = "";
+		// 失败的一轮同样以 agent_end 收尾，只看生命周期分不出成败；持久化为 turn.failed 的错误带 turnId。
+		let turnFailure: string | undefined;
 		let unsubscribed = false;
 		let unsubscribe: () => void = () => {};
 		const safeUnsubscribe = (): void => {
@@ -151,6 +153,11 @@ async function executeTaskInner(task: ScheduledTask, runtime: RuntimeHost, optio
 				}
 				return;
 			}
+			if (event.type === "error" && event.turnId) {
+				turnFailure = event.error.message;
+				return;
+			}
+
 			if (event.type === "message.delta") {
 				responseText += event.delta;
 				emitTaskStreamEvent({
@@ -211,13 +218,15 @@ async function executeTaskInner(task: ScheduledTask, runtime: RuntimeHost, optio
 				});
 
 				if (event.phase === "agent_end" || event.phase === "aborted") {
-					record.status = event.phase === "aborted" ? "aborted" : "success";
+					const status = event.phase === "aborted" ? "aborted" : turnFailure ? "failed" : "success";
+					record.status = status;
+					if (status === "failed") record.error = turnFailure;
 					record.completedAt = Date.now();
 					record.responsePreview = responseText.slice(0, 500);
 					record.durationMs = record.completedAt - record.startedAt;
 
 					await updateRecordMetadata(record);
-					await updateTaskLastRun(task.id, event.phase === "aborted" ? "failed" : "success");
+					await updateTaskLastRun(task.id, status === "success" ? "success" : "failed");
 					executingTasks.delete(task.id);
 					// 解除订阅，避免用户后续在同一 session 继续对话时误触发本
 					// 回调覆写历史记录。RuntimeHost 由 session IPC 与本模块
@@ -228,7 +237,7 @@ async function executeTaskInner(task: ScheduledTask, runtime: RuntimeHost, optio
 						type: "record.updated",
 						taskId: task.id,
 						sessionId,
-						status: event.phase === "aborted" ? "aborted" : "success",
+						status,
 					});
 
 					// Auto-disable one-time tasks after execution completes

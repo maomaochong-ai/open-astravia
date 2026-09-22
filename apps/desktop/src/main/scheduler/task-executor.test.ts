@@ -125,6 +125,37 @@ describe("scheduler RuntimeHost consumer", () => {
 		expect(disposeSession).not.toHaveBeenCalled();
 	});
 
+	it("records a turn that ends in failure as failed even though lifecycle reports agent_end", async () => {
+		const handlers = new Set<(event: SessionEvent) => void>();
+		const runtime = {
+			createSession: vi.fn(async () => ({ sessionId: "automation-session" })),
+			renameSessionById: vi.fn(async () => {}),
+			getSessionPath: () => "C:/desktop/conversations/.vetta/sessions/automation.jsonl",
+			subscribe: (_sessionId: string, handler: (event: SessionEvent) => void) => {
+				handlers.add(handler);
+				return () => handlers.delete(handler);
+			},
+			prompt: vi.fn(async () => {
+				emit(handlers, {
+					...eventBase("automation-session"),
+					type: "error",
+					turnId: "turn-1",
+					error: { message: "provider down" },
+				} as SessionEvent);
+				emit(handlers, lifecycle("automation-session", "agent_end"));
+			}),
+		} as unknown as RuntimeHost;
+		const task = scheduledTask();
+
+		await executeTask(task, runtime);
+		await vi.waitFor(() => expect(mocks.updateTaskLastRun).toHaveBeenCalledWith(task.id, "failed"));
+
+		expect(mocks.updateRecordMetadata.mock.calls.at(-1)?.[0]).toMatchObject({
+			status: "failed",
+			error: "provider down",
+		});
+	});
+
 	it("aborts active work, releases subscriptions, and rejects work after shutdown", async () => {
 		const handlers = new Set<(event: SessionEvent) => void>();
 		let finishPrompt: () => void = () => {};
