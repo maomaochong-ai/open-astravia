@@ -1,10 +1,12 @@
 // ─── System notifications ───
 /** 点击系统通知后主进程下发的路由意图（按 type 分流，见 CONTEXT.md「通知类型」）。 */
-export type NotificationNavigatePayload = {
-	type: "agent-turn-complete" | "agent-question-pending";
-	sessionPath: string;
-	cwd: string;
-};
+export type NotificationNavigatePayload =
+	| {
+			type: "agent-turn-complete" | "agent-question-pending";
+			sessionPath: string;
+			cwd: string;
+	  }
+	| { type: "remote-settings" };
 
 export interface DesktopNotificationApi {
 	/** 上报聊天页当前所在 session path；离开聊天页传 null。主进程据此 + 窗口聚焦态做抑制判定。 */

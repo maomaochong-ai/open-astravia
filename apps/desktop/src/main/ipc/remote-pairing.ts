@@ -1,22 +1,33 @@
 import { ipcMain } from "electron";
-import type { DesktopRemotePairingService } from "../remote-control/desktop-remote-pairing-service.js";
+import type { DesktopRemoteAccessManager } from "../remote-control/desktop-remote-access-manager.js";
 
-export function registerRemotePairingIpc(service: DesktopRemotePairingService): () => void {
-	ipcMain.handle("vetta:remote-pairing:get-state", () => service.getState());
-	ipcMain.handle("vetta:remote-pairing:create", async (_event, relayBaseUrl: unknown) =>
-		service.create(typeof relayBaseUrl === "string" ? relayBaseUrl : undefined),
+const CHANNELS = {
+	GET_STATE: "vetta:remote-pairing:get-state",
+	CREATE_INVITE: "vetta:remote-pairing:create-invite",
+	CANCEL_INVITE: "vetta:remote-pairing:cancel-invite",
+	SET_CLOUD_ENABLED: "vetta:remote-pairing:set-cloud-enabled",
+	APPROVE: "vetta:remote-pairing:approve",
+	REVOKE_DEVICE: "vetta:remote-pairing:revoke-device",
+	RENAME_DEVICE: "vetta:remote-pairing:rename-device",
+} as const;
+
+function asString(value: unknown): string {
+	return typeof value === "string" ? value : "";
+}
+
+export function registerRemotePairingIpc(manager: DesktopRemoteAccessManager): () => void {
+	ipcMain.handle(CHANNELS.GET_STATE, () => manager.getState());
+	ipcMain.handle(CHANNELS.CREATE_INVITE, () => manager.createInvite());
+	ipcMain.handle(CHANNELS.CANCEL_INVITE, () => manager.cancelInvite());
+	ipcMain.handle(CHANNELS.SET_CLOUD_ENABLED, (_event, enabled: unknown) => manager.setCloudEnabled(enabled === true));
+	ipcMain.handle(CHANNELS.APPROVE, (_event, id: unknown, allow: unknown) =>
+		manager.approvePairing(asString(id), allow === true),
 	);
-	ipcMain.handle("vetta:remote-pairing:set-input-enabled", async (_event, enabled: unknown) =>
-		service.setInputEnabled(enabled === true),
+	ipcMain.handle(CHANNELS.REVOKE_DEVICE, (_event, id: unknown) => manager.revokeDevice(asString(id)));
+	ipcMain.handle(CHANNELS.RENAME_DEVICE, (_event, id: unknown, name: unknown) =>
+		manager.renameDevice(asString(id), asString(name)),
 	);
-	ipcMain.handle("vetta:remote-pairing:revoke", async () => {
-		await service.revoke();
-		return service.getState();
-	});
 	return () => {
-		ipcMain.removeHandler("vetta:remote-pairing:get-state");
-		ipcMain.removeHandler("vetta:remote-pairing:create");
-		ipcMain.removeHandler("vetta:remote-pairing:set-input-enabled");
-		ipcMain.removeHandler("vetta:remote-pairing:revoke");
+		for (const channel of Object.values(CHANNELS)) ipcMain.removeHandler(channel);
 	};
 }

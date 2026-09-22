@@ -206,9 +206,13 @@ export function useRootLayoutModel(): RootLayoutModel {
 		return window.vetta.notification.onNavigate((payload) => {
 			if (payload.type === "agent-turn-complete" || payload.type === "agent-question-pending") {
 				void openSession(payload.cwd, payload.sessionPath);
+				return;
+			}
+			if (payload.type === "remote-settings") {
+				void navigate({ to: "/settings/$tab", params: { tab: "remote" } });
 			}
 		});
-	}, [openSession]);
+	}, [openSession, navigate]);
 
 	// 快捷面板回车 → 主进程已据 postSendBehavior 处理窗口聚焦，这里在默认「对话」目录下
 	// 新建会话并直接发送 prompt（复用通知路由同款 openSession + sendMessage）。

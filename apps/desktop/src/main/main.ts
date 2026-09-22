@@ -71,12 +71,14 @@ import { refreshDesktopProxy } from "./proxy/proxy-host.js";
 import { stopAllUiohookConsumers } from "./quickpanel-trigger.js";
 import { createQuickPanelWindow } from "./quickpanel-window.js";
 import { isQuitCleanupStarted, runQuitCleanup, setQuitCleanup } from "./quit-cleanup.js";
-import { startDesktopRemoteAccess, stopDesktopRemoteAccess } from "./remote-control/desktop-remote-access-service.js";
+import {
+	getDesktopRemoteAccessManager,
+	shutdownDesktopRemoteAccess,
+} from "./remote-control/desktop-remote-access-instance.js";
 import {
 	startDesktopRemoteDesktopHost,
 	stopDesktopRemoteDesktopHost,
 } from "./remote-control/desktop-remote-desktop-host.js";
-import { DesktopRemotePairingService } from "./remote-control/desktop-remote-pairing-service.js";
 import { startRendererAfterSessionPreparation } from "./renderer-startup.js";
 import { beginSharedRuntimeShutdown, disposeSharedRuntime, getSharedRuntime } from "./runtime.js";
 import { getRuntimeManager } from "./runtimes/manager.js";
@@ -194,6 +196,8 @@ if (agentRpcArgs) {
 	installMainDiagnostics();
 }
 const mainLog = getAppLogger("main");
+/** 项目自建的 Cloudflare 中继；用户可在配置里改成自己的部署。 */
+const DEFAULT_REMOTE_RELAY_BASE_URL = "wss://relay.flowerwine.dpdns.org";
 const rendererCdp = configureRendererCdp({
 	isCliMode,
 	isPackaged: app.isPackaged,
@@ -460,11 +464,8 @@ if (!gotSingleLock) {
 				return win;
 			},
 		});
-		const remoteControlUrl = process.env.VETTA_REMOTE_CONTROL_URL;
-		const remotePairingToken = process.env.VETTA_REMOTE_PAIRING_TOKEN;
-		const remoteDesktopTarget =
-			process.env.VETTA_REMOTE_DESKTOP_SIGNALING_URL ?? desktopSignalingTarget(remoteControlUrl);
-		const remoteDesktopToken = process.env.VETTA_REMOTE_DESKTOP_PAIRING_TOKEN ?? remotePairingToken;
+		const remoteDesktopTarget = process.env.VETTA_REMOTE_DESKTOP_SIGNALING_URL;
+		const remoteDesktopToken = process.env.VETTA_REMOTE_DESKTOP_PAIRING_TOKEN;
 		if (remoteDesktopTarget && remoteDesktopToken) {
 			void startDesktopRemoteDesktopHost({
 				signalingUrl: remoteDesktopTarget,
@@ -681,15 +682,6 @@ if (!gotSingleLock) {
 		} catch (err) {
 			mainLog.error("failed to apply application proxy", err);
 		}
-		if (remoteControlUrl && remotePairingToken) {
-			void startDesktopRemoteAccess({
-				controlUrl: remoteControlUrl,
-				pairingToken: remotePairingToken,
-				conversationCwd: join(getVettaHomePath(), "conversation"),
-			}).catch((error: unknown) => {
-				mainLog.error("remote access connector failed to start", error);
-			});
-		}
 		const initializeManagedRuntimeAndCli = async (): Promise<void> => {
 			try {
 				const runtimeStartedAt = Date.now();
@@ -735,19 +727,17 @@ if (!gotSingleLock) {
 		const schedulerService = initializeDesktopSchedulerService(createDesktopSchedulerDependencies(getSharedRuntime));
 		const actionSystem = createAppActionSystem(actionApprovalBroker);
 		const pluginActionService = new PluginActionService(mainWindow.webContents, actionSystem.catalog);
-		const remotePairingService = new DesktopRemotePairingService({
-			appRoot,
-			isPackaged: app.isPackaged,
-			devServerUrl: process.env.VETTA_DESKTOP_DEV_URL,
-			conversationCwd: join(getVettaHomePath(), "conversation"),
-			defaultRelayBaseUrl: process.env.VETTA_REMOTE_RELAY_BASE_URL,
-		});
+		// 手机接入：这里只构造，不开端口、不连中继。restore() 读到已配对设备才会
+		// 真正启动，没有手机时桌面端零负担。
+		const remoteAccessManager = getDesktopRemoteAccessManager(
+			process.env.VETTA_REMOTE_RELAY_BASE_URL ?? DEFAULT_REMOTE_RELAY_BASE_URL,
+		);
 
 		// Register IPC handlers
 		ipcTeardown = registerAllIpc(mainWindow.webContents, {
 			actionApprovalBroker,
 			pluginActionService,
-			remotePairingService,
+			remoteAccessManager,
 		});
 		teardownBatchTasksIpc = registerBatchTasksIpc(mainWindow.webContents, batchTaskService, batchTaskReadyPromise);
 		// 知识库手动操作 IPC 只做桥接，先注册以保证 renderer 不会遇到缺失 handler；
@@ -755,7 +745,9 @@ if (!gotSingleLock) {
 		registerKnowledgeIpc();
 		appLifecycle.markReady();
 		pluginPackageOpenService?.markReady();
-		void remotePairingService.restore();
+		void remoteAccessManager.restore().catch((error: unknown) => {
+			mainLog.error("remote access restore failed", error);
+		});
 		if (!app.isPackaged) {
 			void startConfiguredPluginDevWatches(appRoot)
 				.then(({ ready, failures }) => {
@@ -886,11 +878,6 @@ app.on("window-all-closed", () => {
 	}
 });
 
-function desktopSignalingTarget(controlUrl: string | undefined): string | undefined {
-	if (!controlUrl) return undefined;
-	return controlUrl.replace(/\/v1\/relay\/([A-Za-z0-9_-]{24,128})\/desktop$/, "/v1/desktop/$1/host");
-}
-
 // Critical: ensure IM sidecar is killed before the main process exits.
 // 先发起 Knowledge 中止，再等待本地 RPC 关闭。进行中的 `knowledge.manage`
 // Action 会因 Session abort 自然结束，避免 server.close() 等待活动请求而与
@@ -899,7 +886,7 @@ function desktopSignalingTarget(controlUrl: string | undefined): string | undefi
 // 之前先调用它——原因见该模块的注释。
 setQuitCleanup(async () => {
 	mainLog.info("quit cleanup started");
-	await stopDesktopRemoteAccess();
+	await shutdownDesktopRemoteAccess();
 	await stopDesktopRemoteDesktopHost();
 	beginSharedRuntimeShutdown();
 	const knowledgeShutdown = shutdownKnowledgePoller();

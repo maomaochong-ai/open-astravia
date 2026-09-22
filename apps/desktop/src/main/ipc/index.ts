@@ -86,7 +86,7 @@ export function registerAllIpc(
 	options: {
 		actionApprovalBroker: ActionApprovalBroker;
 		pluginActionService: PluginActionService;
-		remotePairingService: import("../remote-control/desktop-remote-pairing-service.js").DesktopRemotePairingService;
+		remoteAccessManager: import("../remote-control/desktop-remote-access-manager.js").DesktopRemoteAccessManager;
 	},
 ): IpcTeardown {
 	return {
@@ -127,7 +127,7 @@ export function registerAllIpc(
 		teardownAppshot: registerAppshotIpc(),
 		teardownDiagnostics: registerDiagnosticsIpc(),
 		teardownOnboarding: registerOnboardingIpc(),
-		teardownRemotePairing: registerRemotePairingIpc(options.remotePairingService),
+		teardownRemotePairing: registerRemotePairingIpc(options.remoteAccessManager),
 	};
 }
 
