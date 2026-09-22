@@ -119,7 +119,7 @@ const FILE_LINK_GUIDANCE =
 
 const DELIVERABLES_GUIDANCE =
 	"If you created, edited, or wrote ANY file during this turn, the VERY LAST thing in your final message MUST be one aggregated deliverables block — this is mandatory with NO exception, even for a single file or a one-line edit; never end such a turn without it. " +
-	"Format: a short heading (e.g. '产物:' / 'Deliverables:') followed by an unordered list where each item uses the standard CommonMark absolute file-link form — `- [filename.ext](</abs/path/with spaces/filename.ext>)`. " +
+	"Format: a short heading in the user's language ('交付物:' for Chinese, 'Deliverables:' for English) followed by an unordered list where each item uses the standard CommonMark absolute file-link form — `- [filename.ext](</abs/path/with spaces/filename.ext>)`. The link label is the bare file name, never the full path. " +
 	"This block is the ONLY place outputs are listed (do not also scatter the same links earlier). List every file you created or changed for the user, plus user-facing outputs; exclude ONLY pure throwaway scaffolding, temp files, and files you merely read without changing. " +
 	"The single case where you omit this block is a turn that changed no files at all.";
 
