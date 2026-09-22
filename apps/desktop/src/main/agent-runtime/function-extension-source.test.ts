@@ -23,13 +23,18 @@ describe("Desktop Coding Agent function source", () => {
 		const source = createDesktopCodingAgentFunctionSource({ logger: TEST_LOGGER });
 		expect(source.has(CODING_AGENT_ASK_USER_QUESTION_FUNCTION)).toBe(false);
 
-		const handler = vi.fn(async (request: CodingAgentQuestionFunctionRequest) => ({
-			cancelled: false,
-			answers: [{ question: request.questions[0]?.question ?? "", answers: ["允许"] }],
-		}));
+		let handlerSignal: AbortSignal | undefined;
+		const handler = vi.fn(async (request: CodingAgentQuestionFunctionRequest, signal?: AbortSignal) => {
+			handlerSignal = signal;
+			return {
+				cancelled: false,
+				answers: [{ question: request.questions[0]?.question ?? "", answers: ["允许"] }],
+			};
+		});
 		disposals.push(getDesktopUserQuestionBroker().setInteractiveHandler(handler));
 		expect(source.has(CODING_AGENT_ASK_USER_QUESTION_FUNCTION)).toBe(true);
-		const signal = new AbortController().signal;
+		const controller = new AbortController();
+		const signal = controller.signal;
 
 		await expect(
 			source.invoke(
@@ -50,8 +55,13 @@ describe("Desktop Coding Agent function source", () => {
 				requestId: "question-1",
 				questions: [{ question: "Choose?", header: "Choice", options: [] }],
 			}),
-			signal,
+			expect.any(AbortSignal),
 		);
+		// The broker hands every handler its own signal (so an answer from a
+		// paired phone can cancel the desktop prompt); it is settled once the
+		// question resolves, and never the caller's raw signal.
+		expect(handlerSignal).not.toBe(signal);
+		expect(handlerSignal?.aborted).toBe(true);
 	});
 
 	it("binds Sandbox authorization without exposing the product protocol to Runtime", async () => {
