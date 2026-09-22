@@ -57,6 +57,37 @@ describe("序列化往返", () => {
 	});
 });
 
+describe("最近激活记录", () => {
+	it("往返后保留", () => {
+		const state = reduceBottomPanel(oneTabState(), {
+			type: "open-tab",
+			tabId: "p1",
+			componentId: "plugin:p:logs",
+			newLeafId: "x",
+		});
+
+		expect(sanitizeBottomPanelState(JSON.parse(JSON.stringify(state)))?.lastActiveTabIds).toEqual({
+			terminal: "a",
+			"plugin:p:logs": "p1",
+		});
+	});
+
+	it("丢掉指向不存在或组件对不上的 tab 的记录", () => {
+		const raw = {
+			...JSON.parse(JSON.stringify(oneTabState())),
+			lastActiveTabIds: { terminal: "gone", "plugin:p:logs": "a", other: 42 },
+		};
+
+		expect(sanitizeBottomPanelState(raw)?.lastActiveTabIds).toBeUndefined();
+	});
+
+	it("旧数据没有这个字段也能读", () => {
+		const { lastActiveTabIds: _omitted, ...legacy } = oneTabState();
+
+		expect(sanitizeBottomPanelState(JSON.parse(JSON.stringify(legacy)))?.root).toEqual(oneTabState().root);
+	});
+});
+
 describe("读取不可信内容", () => {
 	it("空值与坏 JSON 读成空表", () => {
 		expect(parseBottomPanelStates(null).size).toBe(0);

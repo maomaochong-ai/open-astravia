@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	activeBottomPanelTab,
 	BOTTOM_PANEL_MAX_HEIGHT_RATIO,
 	BOTTOM_PANEL_MAX_LEAVES,
 	BOTTOM_PANEL_MIN_HEIGHT_RATIO,
@@ -10,6 +11,8 @@ import {
 	collectBottomPanelLeaves,
 	emptyBottomPanelState,
 	findBottomPanelTab,
+	isDefaultBottomPanelState,
+	latestBottomPanelTabOf,
 	reduceBottomPanel,
 } from "./bottom-panel-layout";
 
@@ -364,5 +367,72 @@ describe("prune", () => {
 		const before = withTwoTabs();
 
 		expect(run(before, { type: "prune", knownComponentIds: ["terminal"] })).toBe(before);
+	});
+});
+
+describe("最近激活的 tab", () => {
+	function openPlugin(id: string): BottomPanelAction {
+		return { type: "open-tab", tabId: id, componentId: "plugin:p:logs", newLeafId: `leaf-${id}` };
+	}
+
+	it("按组件分别记下最后在用的实例", () => {
+		const state = run(withTwoTabs(), { type: "activate-tab", tabId: "a" }, openPlugin("p1"));
+
+		expect(state.lastActiveTabIds).toEqual({ terminal: "a", "plugin:p:logs": "p1" });
+		expect(activeBottomPanelTab(state)?.tabId).toBe("p1");
+		expect(latestBottomPanelTabOf(state, "terminal")?.tabId).toBe("a");
+	});
+
+	it("聚焦分屏里的另一格也算用过那一格的激活 tab", () => {
+		const split = run(withTwoTabs(), {
+			type: "split-leaf",
+			leafId: "leaf-a",
+			direction: "row",
+			newLeafId: "right",
+			newGroupId: "g1",
+			content: { kind: "move-tab", tabId: "b" },
+		});
+		expect(latestBottomPanelTabOf(split, "terminal")?.tabId).toBe("b");
+
+		const state = run(split, { type: "focus-leaf", leafId: "leaf-a" });
+
+		expect(latestBottomPanelTabOf(state, "terminal")?.tabId).toBe("a");
+	});
+
+	it("记录的 tab 关掉后退回布局顺序里最后一个同类实例", () => {
+		const state = run(
+			withTwoTabs(),
+			openPlugin("p1"),
+			{ type: "activate-tab", tabId: "a" },
+			{ type: "activate-tab", tabId: "p1" },
+			{ type: "close-tab", tabId: "a" },
+		);
+
+		expect(state.lastActiveTabIds).toEqual({ "plugin:p:logs": "p1" });
+		expect(latestBottomPanelTabOf(state, "terminal")?.tabId).toBe("b");
+	});
+
+	it("没有同类实例时返回 null", () => {
+		expect(latestBottomPanelTabOf(run(emptyBottomPanelState(), openPlugin("p1")), "terminal")).toBeNull();
+	});
+
+	it("全部关掉后记录清空，状态回到默认形状", () => {
+		const state = run(
+			emptyBottomPanelState(),
+			openTerminal("a"),
+			{ type: "close-tab", tabId: "a" },
+			{ type: "set-collapsed", collapsed: true },
+		);
+
+		expect(state.lastActiveTabIds).toBeUndefined();
+		expect(isDefaultBottomPanelState(state)).toBe(true);
+	});
+
+	it("与在用 tab 无关的动作不换状态引用", () => {
+		const state = withTwoTabs();
+
+		expect(reduceBottomPanel(state, { type: "set-height-ratio", ratio: 0.5 }).lastActiveTabIds).toBe(
+			state.lastActiveTabIds,
+		);
 	});
 });
