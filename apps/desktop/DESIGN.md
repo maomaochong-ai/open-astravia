@@ -163,15 +163,16 @@ UI 是工具，不是 showroom。**hover 只反馈，不表演。**
 - 长于 0.6s 的进入动画
 - transition 写 `transition-all`；优先 `transition-colors` 或具体属性
 
-### 5.4 「进行中」指示动画走共享步进时钟
+### 5.4 「进行中」指示动画由宿主统一挂载，禁止自写 infinite 关键帧
 
-macOS 主窗口带毛玻璃，页面每出一帧系统都要整窗重新合成；一个 4px 的脉冲点用 60fps 关键帧逐帧插值，就足以让流式全程 GPU 不闲。表达「还在进行」的常驻动效（呼吸文字、状态点、波纹、转弧）**禁止自己写 `infinite` 关键帧**，一律读 `@vetta-org/theme-ui/styles.css` 里的共享时钟：
+macOS 主窗口带毛玻璃，页面每出一帧系统都要整窗重新合成；一个 4px 的脉冲点用平滑关键帧逐帧插值，就足以让流式全程 GPU 不闲。实测（Chromium 132）：opacity/transform 关键帧 + `steps(16)` 每秒画 12 帧、主线程≈0；平滑曲线 70 帧；用注册自定义属性做「时钟」画帧同样少，但 Blink 每帧都在主线程重算样式，挂在 `:root` 上时 300ms/s，**不要再走这条路**。
 
-- `--vetta-live-phase`：0→1 锯齿，每 100ms 走一步；`--vetta-live-wave`：由它派生的 0→1→0 三角波。用 `calc()` 把相位映射成自己的 opacity / scale / rotate，相位 0 必须是「亮」的静止态。
-- 元素带 `vetta-live-phase` 类（或用已登记的 `.processing-shimmer` / `.vetta-live-dot` / `.tool-call-shimmer-text` / `.send-button-ripple`），时钟才会因它启动；页面上没有消费者时时钟不跑。
-- 所有指示器锁在同一相位上，整页每秒最多因此多出 10 帧，而不是 60 帧 × N。
-- 流式期间的一次性动效（短语淡入、逐字入场）用 `steps()` 而不是平滑曲线；rAF 逐帧追随滚动只留给大跳，短距离直接落位。
-- `will-change` 只在元素常驻且数量有限时保留；成百上千的流式片段不要提升成合成层。
+表达「还在进行」的常驻动效（呼吸文字、状态点、波纹、转弧）：
+
+- CSS 只写静止态（相位 0 的外观必须就是正常外观，光晕这类没有动画就该看不见的元素写 `opacity: 0`），**不写 `animation` / `@keyframes … infinite`**。
+- 元素带登记在 `shared/lib/live-animations.ts` 里的类名（`.processing-shimmer`、`.tool-call-shimmer-text`、`.vetta-live-dot`、`.todo-label-sheen`、`.todo-marker-spin`、`.activity-dot-halo/-core`、`.send-button-ripple-1/-2`）。宿主用 Web Animations API 挂 `steps(16)` 的 opacity/transform 动画，并把 `startTime` 锁到文档时间线原点：所有指示器同拍，整页每秒最多因此多出 10 帧，主线程零开销。新增一种指示器就往登记表加一行。
+- 流式期间的内容动效不要用逐元素动画：短语渐亮靠「最新短语偏暗、下一次放出时变亮」，只随内容更新出帧；rAF 逐帧追随滚动只留给大跳，短距离直接落位；头像小动作在流式中关闭。
+- `will-change` 对这类动画没有额外收益（实测主线程提交次数不变），不要为它加。
 
 ---
 

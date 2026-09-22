@@ -42,19 +42,15 @@ export interface TodoTimelineLabels {
 }
 
 /**
- * 待办专属的动效，全部读 theme-ui styles.css 里的共享步进时钟（--vetta-live-phase /
- * --vetta-live-wave，每 100ms 一步），而不是各自跑 60fps 关键帧——毛玻璃窗口每出一帧都要
- * 整窗重合成，一个任务里同时亮着的标签和转弧各自逐帧插值会把 GPU 顶满。
+ * 待办专属的动效标记。CSS 里不写关键帧：毛玻璃窗口每出一帧都要整窗重合成，一个任务里同时亮着的
+ * 标签和转弧各自 60fps 逐帧插值会把 GPU 顶满。呼吸与转动由宿主（desktop 的 live-animations）
+ * 按类名挂 steps(16) 的合成器动画，并与其它「进行中」指示器锁同一相位；没有宿主动画时是静止外观。
  * - `todo-label-sheen`：标签的呼吸（只动 opacity；别改回 background-position 扫光，那会每帧重绘文字）
- * - `todo-marker-spin`：进行中条目的转动弧（16 步一圈的步进转动）
+ * - `todo-marker-spin`：进行中条目的转动弧
  *
- * 元素同时要带 `vetta-live-phase` 类，时钟才会因它们启动。
- * 状态点的呼吸动画不在这里——它和底部面板共用 `ActivityStatusDotStyles`。
+ * 状态点不在这里——它和底部面板共用 `ActivityStatusDotStyles`。
  */
-export const TODO_PROGRESS_CSS = `
-.todo-label-sheen { opacity: calc(1 - 0.4 * var(--vetta-live-wave)); }
-.todo-marker-spin { transform: rotate(calc(var(--vetta-live-phase) * 360deg)); }
-`;
+export const TODO_PROGRESS_CSS = "";
 
 /** 关键帧注入点：每个待办根节点渲染一次，样式内容相同不会互相干扰。 */
 export function TodoProgressStyles(): JSX.Element {
@@ -71,9 +67,9 @@ export function todoLabelSheenStyle(active: boolean): CSSProperties {
 	return { color: active ? "var(--primary)" : "var(--muted-foreground)" };
 }
 
-/** 与 `todoLabelSheenStyle(true)` 配套的类名：呼吸本身由共享时钟驱动，见 TODO_PROGRESS_CSS。 */
+/** 与 `todoLabelSheenStyle(true)` 配套的类名：呼吸由宿主的 live-animations 按类名挂上。 */
 export function todoLabelSheenClassName(active: boolean): string | undefined {
-	return active ? "vetta-live-phase todo-label-sheen" : undefined;
+	return active ? "todo-label-sheen" : undefined;
 }
 
 /**
@@ -108,7 +104,7 @@ function TodoMarker({ status }: { status: TodoStatusItem["status"] }): JSX.Eleme
 		return (
 			<span className="relative flex h-[15px] w-[15px] items-center justify-center">
 				<span className="absolute inset-0 rounded-full border border-primary/25" />
-				<span className="vetta-live-phase todo-marker-spin absolute inset-0 rounded-full border border-transparent border-t-primary border-r-primary" />
+				<span className="todo-marker-spin absolute inset-0 rounded-full border border-transparent border-t-primary border-r-primary" />
 				<span className="h-1 w-1 rounded-full bg-primary" />
 			</span>
 		);
