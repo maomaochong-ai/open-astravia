@@ -60,6 +60,24 @@ describe("local Markdown extensions", () => {
 		expect(open).toHaveBeenCalledWith("https://example.test");
 	});
 
+	it("shows only the file name when a local file link's label is the absolute path", () => {
+		const openFile = vi.fn();
+		render(
+			<MarkdownContent
+				{...environment}
+				onOpenFile={openFile}
+				text={
+					"- [/Users/me/app/src/topics.tsx](</Users/me/app/src/topics.tsx>) — edited\n- [lib/index.ts](</Users/me/app/lib/index.ts>) — added"
+				}
+			/>,
+		);
+		const chip = screen.getByRole("button", { name: "topics.tsx" });
+		expect(chip.getAttribute("title")).toBe("/Users/me/app/src/topics.tsx");
+		expect(screen.getByRole("button", { name: "lib/index.ts" })).toBeTruthy();
+		fireEvent.click(chip);
+		expect(openFile).toHaveBeenCalledWith("/Users/me/app/src/topics.tsx");
+	});
+
 	it("replaces a table and code block while retaining Markdown, link actions and sibling isolation", async () => {
 		const writeText = vi.fn(async () => undefined);
 		Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });

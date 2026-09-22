@@ -60,6 +60,9 @@ export interface MarkdownContentProps {
 	inlineTokens?: InlineTokenSupport;
 }
 
+/** 绝对路径形式的链接文字（POSIX、Windows 盘符、UNC、~/）。相对路径保留原样，用于同名文件的区分。 */
+const ABSOLUTE_PATH_LABEL = /^(?:\/|[A-Za-z]:[\\/]|\\\\|~\/)/;
+
 function basename(path: string): string {
 	const normalized = path.replace(/[\\/]+$/, "");
 	const idx = Math.max(normalized.lastIndexOf("/"), normalized.lastIndexOf("\\"));
@@ -219,6 +222,9 @@ export const MarkdownContent = memo(function MarkdownContent({
 				const kind = classifyMarkdownLink(href);
 				if (kind.type === "file") {
 					const fileName = basename(kind.path);
+					// 模型偶尔把整条绝对路径写成 label，徽标里只留文件名，完整路径仍在 title 里。
+					const label =
+						typeof children === "string" && ABSOLUTE_PATH_LABEL.test(children.trim()) ? basename(children.trim()) : children;
 					return (
 						<button
 							type="button"
@@ -227,7 +233,7 @@ export const MarkdownContent = memo(function MarkdownContent({
 							onClick={() => onOpenFileRef.current(kind.path)}
 						>
 							<span className={cn(getFileIconClassRef.current(fileName), "h-3.5 w-3.5 shrink-0")} />
-							<span className="truncate">{children}</span>
+							<span className="truncate">{label}</span>
 						</button>
 					);
 				}
