@@ -5,11 +5,11 @@ on:
     branches:
       - "**"
     paths:
-      - "apps/kotlin/**"
+      - "apps/mobile/client-android/**"
       - ".github/workflows/kotlin.yml"
   pull_request:
     paths:
-      - "apps/kotlin/**"
+      - "apps/mobile/client-android/**"
       - ".github/workflows/kotlin.yml"
 
 jobs:
@@ -19,7 +19,7 @@ jobs:
     timeout-minutes: 30
     defaults:
       run:
-        working-directory: apps/kotlin
+        working-directory: apps/mobile/client-android
 
     steps:
       - uses: actions/checkout@v4

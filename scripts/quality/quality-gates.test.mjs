@@ -404,7 +404,7 @@ describe("CI unit test coverage", () => {
 	});
 
 	it("builds the Android app and runs host tests when Kotlin changes", () => {
-		expect(kotlinWorkflow).toContain('      - "apps/kotlin/**"');
+		expect(kotlinWorkflow).toContain('      - "apps/mobile/client-android/**"');
 		expect(kotlinWorkflow).toContain(":shared:testAndroidHostTest");
 		expect(kotlinWorkflow).toContain(":androidApp:assembleDebug");
 	});
