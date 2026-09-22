@@ -30,7 +30,13 @@ import {
 	type Placement,
 } from "./arrange";
 import { ArrangeToolbar } from "./ArrangeToolbar";
-import { BridgeHub, type ElementQuery, type FrameWheel, type SelectedElementPayload } from "./bridge-client";
+import {
+	BridgeHub,
+	type BridgeHubEvents,
+	type ElementQuery,
+	type FrameWheel,
+	type SelectedElementPayload,
+} from "./bridge-client";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ControlBar, type CanvasTool } from "./ControlBar";
 import {
@@ -50,6 +56,7 @@ import { byCanvasOrder } from "./frame-order";
 import { type FrameMenuAnchor, FrameContextMenu } from "./FrameContextMenu";
 import { refreshCover } from "./cover-compose";
 import { useFrameRasters } from "./frame-raster";
+import { useBridgeEvents } from "./use-bridge-events";
 import { setOffscreenStorageSeed } from "./offscreen-raster";
 import { type FrameDragEdge, FrameView } from "./FrameView";
 import { GapHandles } from "./GapHandles";
@@ -749,8 +756,8 @@ export function DesignCanvas({
 		setMenuAnchor({ frameId, x: clientX - (bounds?.left ?? 0), y: clientY - (bounds?.top ?? 0) });
 	}, []);
 
-	useEffect(() => {
-		bridge.start({
+	const bridgeEvents = useMemo<BridgeHubEvents>(
+		() => ({
 			onSelected: (frameId, payload) => {
 				setSelection(payload ? { kind: "dom", frameId, payload } : { kind: "frames", ids: [frameId] });
 			},
@@ -787,9 +794,10 @@ export function DesignCanvas({
 				const changed = setOffscreenStorageSeed(port, entries);
 				if (changed && byUser) storageChanged(frameId);
 			},
-		});
-		return () => bridge.stop();
-	}, [bridge, invalidateRaster, notifyRendered, openFrameMenu, view.applyWheel, port, storageChanged]);
+		}),
+		[invalidateRaster, notifyRendered, openFrameMenu, view.applyWheel, port, storageChanged],
+	);
+	useBridgeEvents(bridge, bridgeEvents);
 
 	/** Click / shift-click a frame. Shift toggles membership; a plain click replaces. */
 	const selectFrame = useCallback((frameId: string, additive: boolean): void => {
