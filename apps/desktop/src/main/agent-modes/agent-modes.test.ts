@@ -61,6 +61,16 @@ describe("注册表校验入口", () => {
 	});
 });
 
+describe("模式间只有提示词正文不同", () => {
+	// 叙事、Deliverables 文件清单、写代码底线纪律对所有模式一致；各写一遍会漂移，只能引用同一份 partial。
+	const SHARED_PARTIALS = ["narration", "deliverables-placement", "deliverables-list", "code-discipline"];
+
+	it.each(modeFiles.map((mode) => mode.id))("%s 模式引用全部共享 partial", (id) => {
+		const raw = readFileSync(join(modesDir, `${id}.md`), "utf-8");
+		for (const name of SHARED_PARTIALS) expect(raw, `${id}.md 缺少 {{> ${name}}}`).toContain(`{{> ${name}}}`);
+	});
+});
+
 describe("路径声明（方案 1.3）", () => {
 	it("coding 模式声明 UI 工作默认走代码库，设计探索工具需用户明确要求", () => {
 		const coding = getModePrompt("coding");
