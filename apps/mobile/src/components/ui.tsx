@@ -1,9 +1,14 @@
 import type { LucideIcon } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { Pressable, Text, View, type ViewProps } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView as RawSafeAreaView } from "react-native-safe-area-context";
+import { withUniwind } from "uniwind";
 import { palette } from "../theme/colors";
 import { useTheme } from "../theme/use-theme";
+
+// Uniwind only maps className on React Native core components; without this the
+// screen root silently loses `flex-1` and every flex-1 child collapses to 0 height.
+const SafeAreaView = withUniwind(RawSafeAreaView);
 
 export function Screen({ children, className, ...props }: ViewProps & { children: ReactNode }) {
 	return (
