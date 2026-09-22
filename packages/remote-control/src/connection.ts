@@ -203,6 +203,16 @@ export class RemoteConnection {
 		return event;
 	}
 
+	/**
+	 * Delivers an event that another component already sequenced through the
+	 * shared journal (a hub fanning one event out to several links). Offline
+	 * links skip it; the journal replays it when they resume.
+	 */
+	async deliverEvent(event: RemoteEvent): Promise<void> {
+		if (this.state !== "online") return;
+		await this.sendSealed(event);
+	}
+
 	private buildHello(): RemoteHello {
 		if (!this.ephemeral) throw new Error("remote connection has no ephemeral key");
 		return {
@@ -455,10 +465,10 @@ export class RemoteConnection {
 				await this.emitEvent("session.resync");
 				return;
 			}
-			for (const event of events) {
-				if (this.state !== "online") return;
-				await this.sendSealed(event);
-			}
+			// Keys exist as soon as the handshake derived them, which can be a
+			// moment before the state flips to online on an acceptor; sending
+			// is what matters, so do not gate on the state here.
+			for (const event of events) await this.sendSealed(event);
 		} catch (error) {
 			this.logger.warn("remote event replay failed", { error: describe(error) });
 		}
