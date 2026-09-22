@@ -116,6 +116,8 @@ export type {
 } from "./websocket-transport.js";
 export {
 	buildProtocols,
+	KEEPALIVE_PING,
+	KEEPALIVE_PONG,
 	MANUAL_PAIRING_PROTOCOL,
 	PAIRING_PROTOCOL_PREFIX,
 	PEER_HASH_PROTOCOL_PREFIX,

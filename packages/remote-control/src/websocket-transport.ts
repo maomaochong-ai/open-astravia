@@ -33,12 +33,23 @@ export interface WebSocketRemoteTransportOptions {
 	readonly manual?: boolean;
 	readonly peerCredentialHash?: string;
 	readonly createSocket?: RemoteWebSocketFactory;
+	/**
+	 * Sends the text `ping` at this interval while open. Relays and the desktop
+	 * LAN server answer `pong` without waking any frame handling, which keeps a
+	 * hibernating Durable Object asleep and NAT mappings alive.
+	 */
+	readonly keepaliveIntervalMs?: number;
 }
+
+/** Application-level keepalive texts; never parsed as frames. */
+export const KEEPALIVE_PING = "ping";
+export const KEEPALIVE_PONG = "pong";
 
 /** WebSocket adapter with no dependency on DOM, Electron, or a specific runtime. */
 export class WebSocketRemoteTransport implements RemoteTransport {
 	private socket: RemoteWebSocket | undefined;
 	private handlers: RemoteTransportHandlers | undefined;
+	private keepalive: ReturnType<typeof setInterval> | undefined;
 	private readonly createSocket: RemoteWebSocketFactory;
 
 	constructor(
@@ -60,12 +71,17 @@ export class WebSocketRemoteTransport implements RemoteTransport {
 		const socket = this.socket ?? this.createSocket(this.url, buildProtocols(this.options));
 		this.socket = socket;
 		socket.onmessage = (event) => this.handleMessage(event.data);
-		socket.onclose = (event) => this.handlers?.onClose(event.reason);
-		if (socket.readyState === WEBSOCKET_OPEN) return;
-		await new Promise<void>((resolve, reject) => {
-			socket.onopen = () => resolve();
-			socket.onerror = () => reject(new Error("remote websocket connection failed"));
-		});
+		socket.onclose = (event) => {
+			this.stopKeepalive();
+			this.handlers?.onClose(event.reason);
+		};
+		if (socket.readyState !== WEBSOCKET_OPEN) {
+			await new Promise<void>((resolve, reject) => {
+				socket.onopen = () => resolve();
+				socket.onerror = () => reject(new Error("remote websocket connection failed"));
+			});
+		}
+		this.startKeepalive(socket);
 	}
 
 	async send(frame: RemoteFrame): Promise<void> {
@@ -74,6 +90,7 @@ export class WebSocketRemoteTransport implements RemoteTransport {
 	}
 
 	async close(reason?: string): Promise<void> {
+		this.stopKeepalive();
 		const socket = this.socket;
 		this.socket = undefined;
 		if (!socket) return;
@@ -87,6 +104,7 @@ export class WebSocketRemoteTransport implements RemoteTransport {
 			return;
 		}
 		for (const line of data.split("\n").filter(Boolean)) {
+			if (line === KEEPALIVE_PONG || line === KEEPALIVE_PING) continue;
 			try {
 				this.handlers?.onFrame(parseRemoteFrame(line));
 			} catch {
@@ -94,6 +112,26 @@ export class WebSocketRemoteTransport implements RemoteTransport {
 				return;
 			}
 		}
+	}
+
+	private startKeepalive(socket: RemoteWebSocket): void {
+		const interval = this.options.keepaliveIntervalMs;
+		if (!interval || interval <= 0) return;
+		this.stopKeepalive();
+		this.keepalive = setInterval(() => {
+			if (socket.readyState !== WEBSOCKET_OPEN) return;
+			try {
+				socket.send(KEEPALIVE_PING);
+			} catch {
+				// A failing send surfaces through onclose; nothing to do here.
+			}
+		}, interval);
+		(this.keepalive as { unref?: () => void }).unref?.();
+	}
+
+	private stopKeepalive(): void {
+		if (this.keepalive) clearInterval(this.keepalive);
+		this.keepalive = undefined;
 	}
 }
 
