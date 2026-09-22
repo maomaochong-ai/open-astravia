@@ -233,6 +233,7 @@ export {
 	type SchedulerNotRunReason,
 	type SchedulerRecordStatus,
 	type SchedulerRunTarget,
+	type SchedulerRunTargetInput,
 	type SchedulerRunTargetMode,
 	type SchedulerSchedule,
 	type SchedulerSuspendReason,

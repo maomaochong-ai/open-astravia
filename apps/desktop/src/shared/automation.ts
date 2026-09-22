@@ -40,6 +40,11 @@ export type AutomationRunTarget =
 
 export type AutomationRunTargetMode = AutomationRunTarget["mode"];
 
+/** 外部输入（插件 / Agent）里 projectCwd 可省略，省略即默认「对话」，由主进程补齐。 */
+export type AutomationRunTargetInput =
+	| { readonly mode: "new-session"; readonly projectCwd?: string }
+	| { readonly mode: "same-session"; readonly projectCwd?: string; readonly sessionPath: string | null };
+
 /** 显式选择的模型；缺省即「跟随默认」，每次触发时解析。 */
 export interface AutomationModel {
 	readonly key: string;
@@ -78,6 +83,14 @@ export type AutomationTaskInput = Pick<
 	ScheduledTask,
 	"name" | "prompt" | "schedule" | "runTarget" | "model" | "notification" | "enabled"
 >;
+
+export type AutomationTaskCreateRequest = Omit<AutomationTaskInput, "runTarget"> & {
+	readonly runTarget: AutomationRunTargetInput;
+};
+
+export type AutomationTaskUpdateRequest = Omit<AutomationTaskPatch, "runTarget"> & {
+	readonly runTarget?: AutomationRunTargetInput;
+};
 
 export type AutomationTaskPatch = {
 	readonly [Key in keyof AutomationTaskInput]?: Key extends "model" | "notification"

@@ -243,12 +243,12 @@ export type PluginOfficialSchedulerSchedule =
 	| { kind: "custom"; cron: string };
 
 /**
- * 运行会话策略：projectCwd 为会话所属项目（默认对话即对话 cwd）。
+ * 运行会话策略：projectCwd 为会话所属项目的路径，省略即落在默认「对话」里。
  * same-session 的 sessionPath 为 null 表示首次执行时新建一个会话，之后一直复用。
  */
 export type PluginOfficialSchedulerRunTarget =
-	| { mode: "new-session"; projectCwd: string }
-	| { mode: "same-session"; projectCwd: string; sessionPath: string | null };
+	| { mode: "new-session"; projectCwd?: string }
+	| { mode: "same-session"; projectCwd?: string; sessionPath: string | null };
 
 /** 省略即「跟随默认模型」。 */
 export interface PluginOfficialSchedulerModel {

@@ -32,5 +32,6 @@ export function createDesktopSchedulerDependencies(getRuntime: () => RuntimeHost
 		unscheduleTask: unscheduleTaskInCron,
 		isKnownProject,
 		sameProjectPath,
+		conversationCwd: DEFAULT_CONVERSATION_CWD,
 	};
 }

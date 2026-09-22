@@ -2,8 +2,10 @@ import { existsSync } from "node:fs";
 import type { RuntimeHost } from "@vetta/runtime-core";
 import {
 	type AutomationSessionLink,
+	type AutomationTaskCreateRequest,
 	type AutomationTaskInput,
 	type AutomationTaskPatch,
+	type AutomationTaskUpdateRequest,
 	isAutomationModel,
 	isAutomationNotification,
 	isAutomationRunTarget,
@@ -39,6 +41,8 @@ export interface SchedulerServiceDependencies {
 	/** 判断项目是否仍在侧边栏（含归档）；「对话」恒为 true。 */
 	isKnownProject: (cwd: string) => Promise<boolean>;
 	sameProjectPath: (first: string, second: string) => boolean;
+	/** 默认「对话」的 cwd：外部输入省略项目时落在这里。 */
+	conversationCwd: string;
 }
 
 export class SchedulerServiceError extends Error {
@@ -126,6 +130,14 @@ function applyPatch(task: ScheduledTask, patch: AutomationTaskPatch, now: number
 	return cleaned;
 }
 
+/** 省略或留空的 projectCwd 补成默认「对话」，其余字段原样交给结构校验。 */
+function withDefaultProject<T extends { runTarget?: unknown }>(input: T, conversationCwd: string): T {
+	if (!input || typeof input !== "object" || !input.runTarget || typeof input.runTarget !== "object") return input;
+	const target = input.runTarget as Record<string, unknown>;
+	if (typeof target.projectCwd === "string" && target.projectCwd.trim().length > 0) return input;
+	return { ...input, runTarget: { ...target, projectCwd: conversationCwd } };
+}
+
 export class SchedulerService {
 	private readonly changeHandlers = new Set<() => void>();
 
@@ -155,7 +167,8 @@ export class SchedulerService {
 		return await loadAutomationSessionLinks(await loadTasks());
 	}
 
-	async createTask(data: AutomationTaskInput): Promise<ScheduledTask> {
+	async createTask(request: AutomationTaskCreateRequest): Promise<ScheduledTask> {
+		const data = withDefaultProject(request, this.dependencies.conversationCwd) as unknown;
 		assertCreateInput(data);
 		await this.assertTargetUsable(data);
 		const now = Date.now();
@@ -180,7 +193,8 @@ export class SchedulerService {
 		return task;
 	}
 
-	async updateTask(taskId: string, patch: AutomationTaskPatch): Promise<ScheduledTask> {
+	async updateTask(taskId: string, request: AutomationTaskUpdateRequest): Promise<ScheduledTask> {
+		const patch = withDefaultProject(request, this.dependencies.conversationCwd) as unknown;
 		assertPatchInput(patch);
 		const current = await this.requireTask(taskId);
 		const now = Date.now();

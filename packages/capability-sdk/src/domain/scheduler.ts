@@ -149,6 +149,25 @@ const schedulerRunTargetType = Type.Union([
 	),
 ]);
 
+/** 输入侧：projectCwd 可省略，省略即落在默认「对话」里（表单里项目选「无」）。 */
+const schedulerRunTargetInputType = Type.Union([
+	Type.Object(
+		{
+			mode: Type.Literal(SCHEDULER_RUN_TARGET_MODES.NEW_SESSION),
+			projectCwd: Type.Optional(schedulerNonBlankInputStringType),
+		},
+		{ additionalProperties: false },
+	),
+	Type.Object(
+		{
+			mode: Type.Literal(SCHEDULER_RUN_TARGET_MODES.SAME_SESSION),
+			projectCwd: Type.Optional(schedulerNonBlankInputStringType),
+			sessionPath: Type.Union([schedulerNonBlankInputStringType, Type.Null()]),
+		},
+		{ additionalProperties: false },
+	),
+]);
+
 /** 省略即「跟随默认模型」，每次触发时解析。 */
 const schedulerModelType = Type.Object(
 	{ key: schedulerNonBlankInputStringType, reasoning: Type.Optional(schedulerNonBlankInputStringType) },
@@ -190,7 +209,7 @@ const schedulerTaskCreateDataType = rejectCapabilitySchemaExcess(
 			name: schedulerNonBlankInputStringType,
 			prompt: schedulerNonBlankInputStringType,
 			schedule: schedulerScheduleType,
-			runTarget: schedulerRunTargetType,
+			runTarget: schedulerRunTargetInputType,
 			model: Type.Optional(schedulerModelType),
 			notification: Type.Optional(schedulerNotificationType),
 			enabled: Type.Boolean(),
@@ -206,7 +225,7 @@ const schedulerTaskUpdateDataType = rejectCapabilitySchemaExcess(
 			name: Type.Optional(schedulerNonBlankInputStringType),
 			prompt: Type.Optional(schedulerNonBlankInputStringType),
 			schedule: Type.Optional(schedulerScheduleType),
-			runTarget: Type.Optional(schedulerRunTargetType),
+			runTarget: Type.Optional(schedulerRunTargetInputType),
 			model: Type.Optional(Type.Union([schedulerModelType, Type.Null()])),
 			notification: Type.Optional(Type.Union([schedulerNotificationType, Type.Null()])),
 			enabled: Type.Optional(Type.Boolean()),
@@ -285,6 +304,7 @@ export type SchedulerRecordStatus = (typeof SCHEDULER_RECORD_STATUSES)[keyof typ
 export type SchedulerCommandStatus = (typeof SCHEDULER_COMMAND_STATUSES)[keyof typeof SCHEDULER_COMMAND_STATUSES];
 export type SchedulerSchedule = Readonly<Static<typeof schedulerScheduleType>>;
 export type SchedulerRunTarget = Readonly<Static<typeof schedulerRunTargetType>>;
+export type SchedulerRunTargetInput = Readonly<Static<typeof schedulerRunTargetInputType>>;
 export type SchedulerModel = Readonly<Static<typeof schedulerModelType>>;
 export type SchedulerNotification = Readonly<Static<typeof schedulerNotificationType>>;
 export type SchedulerTask = Readonly<Static<typeof schedulerTaskType>>;

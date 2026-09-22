@@ -10950,8 +10950,7 @@
                     "additionalProperties": false,
                     "type": "object",
                     "required": [
-                      "mode",
-                      "projectCwd"
+                      "mode"
                     ],
                     "properties": {
                       "mode": {
@@ -10969,7 +10968,6 @@
                     "type": "object",
                     "required": [
                       "mode",
-                      "projectCwd",
                       "sessionPath"
                     ],
                     "properties": {
@@ -11649,8 +11647,7 @@
                     "additionalProperties": false,
                     "type": "object",
                     "required": [
-                      "mode",
-                      "projectCwd"
+                      "mode"
                     ],
                     "properties": {
                       "mode": {
@@ -11668,7 +11665,6 @@
                     "type": "object",
                     "required": [
                       "mode",
-                      "projectCwd",
                       "sessionPath"
                     ],
                     "properties": {

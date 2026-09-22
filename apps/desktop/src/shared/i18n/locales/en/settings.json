@@ -1291,7 +1291,7 @@
       "knowledge": "e.g. Enable knowledge processing every 10 minutes…",
       "knowledgeBase": "e.g. Create a knowledge base and import a local folder…",
       "batchTasks": "e.g. Create a batch project that runs on multiple folders…",
-      "automation": "e.g. Run a cleanup job every morning at 9…",
+      "automation": "e.g. Every weekday at 9am, run a morning brief in the openvetta project and ping Feishu if it fails…",
       "im": "e.g. Enable Claw and set up Feishu…",
       "webhook": "e.g. Add a channel that notifies me when a task finishes…",
       "appearance": "e.g. Switch to dark mode and use the stoat cursor…",
@@ -1321,7 +1321,7 @@
       "knowledge": "I want to configure the knowledge base. Please check current processing settings, then guide me through setup.",
       "knowledgeBase": "I want to manage knowledge bases. Please check existing bases and processing status, then guide me.",
       "batchTasks": "I want to create or manage batch tasks. Please check current projects and task status, then guide me.",
-      "automation": "I want to create or manage scheduled tasks. Please check existing tasks, then guide me.",
+      "automation": "I want to create or manage automations. Look at my existing automations and projects first, then help me choose the project, whether it runs in a new session each time or in one session, the repeat schedule, and notifications.",
       "im": "I want to configure Claw (IM bridge). Please check current status and channels, then guide me through setup.",
       "webhook": "I want to configure message push / webhooks. Please check current channels, then guide me through setup.",
       "appearance": "I want to adjust appearance. Please check current theme and related settings, then guide me through setup.",
@@ -1358,9 +1358,10 @@
         "status": "Show where my batch tasks stand"
       },
       "automation": {
-        "create": "Create a task that runs on a daily schedule",
-        "enable": "Enable or pause a scheduled task",
-        "list": "Show my current automation tasks"
+        "create": "Every weekday at 9am, start a new session in a project for a morning brief",
+        "interval": "Every 30 minutes, check the build in the same session",
+        "notify": "Add a webhook notification on failure to an automation",
+        "list": "Show which automations are paused and why"
       },
       "im": {
         "enable": "Enable the Claw IM bridge",
