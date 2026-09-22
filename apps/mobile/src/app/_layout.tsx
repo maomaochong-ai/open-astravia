@@ -9,7 +9,6 @@ import { useEffect } from "react";
 import { Platform, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Uniwind } from "uniwind";
-import { installCryptoPolyfill } from "../remote/platform/crypto-polyfill";
 import { describeDevice, loadDeviceId } from "../remote/platform/device";
 import { SqliteSessionCache } from "../remote/platform/sqlite-cache";
 import { SecureKeyValueStore, SettingsKeyValueStore } from "../remote/platform/stores";
@@ -17,7 +16,6 @@ import { createNativeTransport } from "../remote/platform/websocket";
 import { type AppPlatform, useAppStore } from "../store/app-store";
 import { useTheme } from "../theme/use-theme";
 
-installCryptoPolyfill();
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 function buildPlatform(): AppPlatform {
