@@ -11,20 +11,20 @@ function ruleBody(selector: string): string {
 }
 
 /**
- * 毛玻璃窗口每出一帧都要整窗重合成。流式期间的装饰动效要么挂到 theme-ui 的共享步进时钟上，
- * 要么自己走 steps()，不能再各自 60fps 逐帧插值。
+ * 毛玻璃窗口每出一帧都要整窗重合成。流式期间的装饰动效要么由 live-animations 挂同相位的
+ * steps() 合成器动画，要么干脆只随内容更新变化，不能再各自逐帧插值。
  */
 describe("streaming-time animations stay low-rate", () => {
-	it("tool-call shimmer text breathes off the shared clock instead of its own infinite keyframes", () => {
+	it("tool-call shimmer text has no animation of its own; the host animates it in lockstep", () => {
 		const body = ruleBody(".tool-call-shimmer-text");
-		expect(body).toContain("opacity: calc(1 - 0.45 * var(--vetta-live-wave));");
 		expect(body).not.toMatch(/animation\s*:/);
 		expect(stylesCss).not.toContain("@keyframes tool-call-text-breathe");
 	});
 
-	it("streaming chunk fade-in is stepped rather than interpolated every frame", () => {
-		expect(ruleBody(".markdown-streaming-tail .streaming-chunk")).toContain(
-			"animation: streaming-chunk-fade 400ms steps(6, end) both;",
-		);
+	it("streaming chunks dim the newest phrases instead of running a fade-in animation", () => {
+		expect(stylesCss).not.toContain("@keyframes streaming-chunk-fade");
+		expect(stylesCss).not.toMatch(/\.streaming-chunk \{[^}]*animation/);
+		expect(ruleBody(".markdown-streaming-tail .streaming-chunk-latest")).toContain("opacity: 0.55;");
+		expect(ruleBody(".markdown-streaming-tail .streaming-chunk-recent")).toContain("opacity: 0.8;");
 	});
 });

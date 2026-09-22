@@ -4,9 +4,14 @@ import { planReveal, STREAMING_SETTLE_MS, STREAMING_STALL_FLUSH_MS, splitStreami
 
 const WHITESPACE_ONLY = /^\s+$/;
 
-/** 把流式尾块的正文按短语包成 `.streaming-chunk`，新 mount 的片段由 CSS 淡入。 */
+/**
+ * 把流式尾块的正文按短语包成 `.streaming-chunk`，最新的两个短语再加 `-latest` / `-recent`：
+ * 宿主 CSS 让它们略暗，下一次放出短语时随重渲染一起变亮。不用 CSS 淡入动画——每个短语各跑一段
+ * 动画意味着流式全程连续出帧，毛玻璃窗口每帧都要整窗重合成；这样亮度只随放出节奏变，不多一帧。
+ */
 export function rehypeStreamingChunks() {
 	return (tree: HastRoot): void => {
+		const chunks: HastElement[] = [];
 		function visit(node: HastRoot | HastElement, inCode: boolean): void {
 			const newChildren: Array<(typeof node.children)[number]> = [];
 			for (const child of node.children) {
@@ -16,12 +21,14 @@ export function rehypeStreamingChunks() {
 							newChildren.push({ type: "text", value: segment } as HastText);
 							continue;
 						}
-						newChildren.push({
+						const chunk: HastElement = {
 							type: "element",
 							tagName: "span",
 							properties: { className: ["streaming-chunk"] },
 							children: [{ type: "text", value: segment } as HastText],
-						});
+						};
+						chunks.push(chunk);
+						newChildren.push(chunk);
 					}
 				} else {
 					newChildren.push(child);
@@ -37,6 +44,10 @@ export function rehypeStreamingChunks() {
 		}
 
 		visit(tree, false);
+		const latest = chunks.at(-1);
+		const recent = chunks.at(-2);
+		if (latest) latest.properties = { className: ["streaming-chunk", "streaming-chunk-latest"] };
+		if (recent) recent.properties = { className: ["streaming-chunk", "streaming-chunk-recent"] };
 	};
 }
 
