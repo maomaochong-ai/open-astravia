@@ -341,6 +341,10 @@ export const MarkdownContent = memo(function MarkdownContent({
 		[theme],
 	);
 
+	// 分段 span 一旦挂上就保留到实例卸载：结束时若把 rehype 插件撤掉，整个尾块会重建 DOM，
+	// 表现为回复结尾「卡一下」。「最新短语略暗」只挂在包裹类上，撤掉包裹类就恢复全亮，DOM 不动。
+	const chunkedRef = useRef(false);
+	if (animateChunks) chunkedRef.current = true;
 	// 切块一旦启用就保持到实例卸载：流式结束时 `animateChunks` 要等 settle 才关，若此刻把
 	// 已冻结块并回单一文档，已上屏的节点会整段重挂并再包成 `.streaming-chunk` 重放淡入。
 	// 稳定块只按已闭合的顶层围栏切分，分块与整篇渲染结果一致，因此结束后不需要再合并。
@@ -366,7 +370,7 @@ export const MarkdownContent = memo(function MarkdownContent({
 			{showTail ? (
 				<MarkdownDocument
 					key="tail"
-					animateChunks={animateChunks}
+					animateChunks={chunkedRef.current}
 					components={components}
 					definition={definition}
 					inlineTokens={inlineTokens}

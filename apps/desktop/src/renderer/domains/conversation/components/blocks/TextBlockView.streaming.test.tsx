@@ -127,17 +127,21 @@ describe("TextBlockView streaming tail", () => {
 		expect(shownText(container)).toBe("See [report](/tmp/rep");
 	});
 
-	it("finishes the remaining text after the tail ends, then drops the segments", () => {
+	it("shows the rest at once when the tail ends, then only lifts the dimming without rebuilding", () => {
 		const { container, rerender } = renderView(FULL_TEXT, true);
 		advance(1);
-		rerender(`${FULL_TEXT} The end`, false);
-		const shownAtEnd = shownText(container);
-		expect(shownAtEnd.length).toBeLessThan(FULL_TEXT.length);
-		expect(FULL_TEXT.startsWith(shownAtEnd)).toBe(true);
+		expect(shownText(container).length).toBeLessThan(FULL_TEXT.length);
 
-		advance(3000);
+		rerender(`${FULL_TEXT} The end`, false);
 		expect(shownText(container)).toBe(`${FULL_TEXT} The end`);
-		expect(container.querySelector(".streaming-chunk")).toBeNull();
+		const lastChunk = container.querySelector(".streaming-chunk-latest");
+		expect(lastChunk).not.toBeNull();
+		expect(container.querySelector(".markdown-streaming-tail")).not.toBeNull();
+
+		advance(200);
+		// 分段 span 留在原地（不重建 DOM），只是包裹类没了，暗色随之消失。
+		expect(container.querySelector(".markdown-streaming-tail")).toBeNull();
+		expect(container.querySelector(".streaming-chunk-latest")).toBe(lastChunk);
 	});
 
 	it("renders non-streaming text immediately without segments", () => {

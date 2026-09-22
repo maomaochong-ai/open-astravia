@@ -149,10 +149,10 @@ describe("planReveal", () => {
 		expect(huge?.end).toBe(2000);
 	});
 
-	test("drains the remainder within the drain window once the stream is final", () => {
-		const text = "a ".repeat(100);
-		const step = planReveal({ ...base, text, revealed: 0, final: true, ratePerMs: 0.01, elapsedMs: 300 });
-		expect(step?.end).toBeGreaterThanOrEqual(100);
+	test("reveals everything at once when the stream is final, ignoring holds", () => {
+		const text = "a ".repeat(100) + "[open](/tmp/li";
+		const step = planReveal({ ...base, text, revealed: 0, final: true, ratePerMs: 0.01, elapsedMs: 1 });
+		expect(step).toEqual({ end: text.length, held: false });
 	});
 
 	test("holds back an open link and reports it, then releases after the hold timeout", () => {

@@ -23,8 +23,6 @@ const SNAP_BACKLOG_CHARS = 1500;
 export const DEFAULT_RATE_PER_MS = 0.06;
 /** 速率下限，慢速流也保持可见的推进。 */
 const MIN_RATE_PER_MS = 0.02;
-/** 流结束后剩余文本至多用这么久放完。 */
-const DRAIN_MAX_MS = 600;
 /** 未闭合行内语法最多扣这么久 / 这么长，之后当普通文字放出。 */
 export const HOLD_MAX_MS = 800;
 const HOLD_MAX_CHARS = 240;
@@ -33,8 +31,8 @@ const MAX_PHRASE_LENGTH = 48;
 /** 按上限切分时，优先在这个长度之后的最后一个空白处断开。 */
 const MIN_SOFT_BREAK_LENGTH = 16;
 
-/** 最后一个片放出后，等这么久再撤掉分段 span。 */
-export const STREAMING_SETTLE_MS = 450;
+/** 最后一个片放出后，等这么久再撤掉「最新短语略暗」的包裹类。 */
+export const STREAMING_SETTLE_MS = 150;
 /** 尾部未完成的词超过这么久没有新内容，就不再等，直接放出，避免模型停顿时文字「卡住」。 */
 export const STREAMING_STALL_FLUSH_MS = 800;
 
@@ -210,15 +208,14 @@ export function planReveal(input: RevealPlanInput): RevealStep | null {
 	const { text, revealed, final, stalled, heldMs } = input;
 	const backlog = text.length - revealed;
 	if (backlog <= 0) return null;
+	// 流已结束：剩下的一次放完。按速率再分几个 tick 只会让结尾拖成慢动作，用户看到的是「卡一下」。
+	if (final) return { end: text.length, held: false };
 
 	const rate = Math.max(MIN_RATE_PER_MS, input.ratePerMs);
 	const elapsed = Math.max(0, input.elapsedMs);
 	let budget: number;
 	if (backlog >= SNAP_BACKLOG_CHARS) {
 		budget = backlog;
-	} else if (final) {
-		// 流已结束：按速率放，但保证 DRAIN_MAX_MS 内放完。
-		budget = Math.max(rate * elapsed, (backlog * elapsed) / DRAIN_MAX_MS);
 	} else {
 		budget = rate * elapsed * CATCH_UP_RATIO;
 		const maxLag = rate * MAX_LAG_MS;
@@ -227,14 +224,14 @@ export function planReveal(input: RevealPlanInput): RevealStep | null {
 	let end = snapToTokenBoundary(text, revealed + Math.max(1, Math.ceil(budget)));
 
 	// 尾部未写完的词先不显示：等它写完，或停顿太久。
-	if (!final && !stalled && end === text.length && isWordChar(text[end - 1])) {
+	if (!stalled && end === text.length && isWordChar(text[end - 1])) {
 		let back = end;
 		while (back > revealed && isWordChar(text[back - 1])) back -= 1;
 		end = back;
 	}
 
 	let held = false;
-	if (!final && heldMs < HOLD_MAX_MS) {
+	if (heldMs < HOLD_MAX_MS) {
 		const safe = holdBackUnclosedInline(text, end);
 		if (safe < end && end - safe < HOLD_MAX_CHARS) {
 			end = Math.max(safe, revealed);
