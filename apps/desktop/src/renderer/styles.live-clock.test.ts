@@ -21,4 +21,10 @@ describe("streaming-time animations stay low-rate", () => {
 		expect(body).not.toMatch(/animation\s*:/);
 		expect(stylesCss).not.toContain("@keyframes tool-call-text-breathe");
 	});
+
+	it("streaming chunk fade-in is stepped rather than interpolated every frame", () => {
+		expect(ruleBody(".markdown-streaming-tail .streaming-chunk")).toContain(
+			"animation: streaming-chunk-fade 400ms steps(6, end) both;",
+		);
+	});
 });
