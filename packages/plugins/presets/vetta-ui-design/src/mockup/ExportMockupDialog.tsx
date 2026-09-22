@@ -167,7 +167,13 @@ export function ExportMockupDialog() {
 
 	const close = useCallback(() => requestMockupExport(null), []);
 
-	/** 截一帧并填进对应的格子，布局不因此重排。受 PREVIEW_CAPTURE_TIMEOUT_MS 约束。 */
+	/**
+	 * 取一帧预览图并填进对应的格子，布局不因此重排。
+	 *
+	 * 优先用画布此刻显示的位图：立即可用，也与画布上看到的一致。没有位图（还没截到）
+	 * 才现截，并受 PREVIEW_CAPTURE_TIMEOUT_MS 约束。导出时 composePage 会按最终倍率重截，
+	 * 预览用画布位图不影响成品清晰度。
+	 */
 	const captureInto = useCallback(
 		async (frameId: string): Promise<void> => {
 			const active = requestRef.current;
@@ -179,13 +185,18 @@ export function ExportMockupDialog() {
 			const superseded = (): boolean => requestRef.current !== active || inFlight.get(frameId) !== controller;
 			setCaptures((current) => new Map(current).set(frameId, { image: null, error: null }));
 			try {
-				const dataUrl = await withTimeout(
-					active.capture(frameId, PREVIEW_PIXEL_RATIO, controller.signal),
-					PREVIEW_CAPTURE_TIMEOUT_MS,
-					() => controller.abort(),
-					t("mockup.shot.timeout"),
-				);
-				const image = await loadImage(dataUrl);
+				let image: HTMLImageElement | null = null;
+				const cached = active.cachedImage?.(frameId) ?? null;
+				if (cached) image = await loadImage(cached).catch(() => null);
+				if (!image) {
+					const dataUrl = await withTimeout(
+						active.capture(frameId, PREVIEW_PIXEL_RATIO, controller.signal),
+						PREVIEW_CAPTURE_TIMEOUT_MS,
+						() => controller.abort(),
+						t("mockup.shot.timeout"),
+					);
+					image = await loadImage(dataUrl);
+				}
 				if (superseded()) return;
 				setCaptures((current) => new Map(current).set(frameId, { image, error: null }));
 			} catch (error) {

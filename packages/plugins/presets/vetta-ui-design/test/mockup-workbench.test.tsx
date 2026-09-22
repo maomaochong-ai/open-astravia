@@ -303,6 +303,42 @@ describe("ExportMockupDialog", () => {
 		expect(staged()).toEqual(["A", "B", "C"]);
 	});
 
+	/**
+	 * 预览加载慢/加载不出来的根因：每加一帧都排进画布的串行截图锁、临时拉起活体 iframe
+	 * 重截一遍。画布已经有这一帧的位图时直接用，一次截图都不排。
+	 */
+	it("previews with the canvas raster instead of queueing a capture", async () => {
+		const capture = vi.fn(() => Promise.resolve("data:image/png;base64,AA=="));
+		act(() => root.render(<ExportMockupDialog />));
+		act(() =>
+			requestMockupExport({
+				...makeRequest(["a", "b"]),
+				cachedImage: () => "data:image/jpeg;base64,AA==",
+				capture,
+			}),
+		);
+		await flush();
+
+		expect(capture).not.toHaveBeenCalled();
+		expect(document.body.textContent).not.toContain("mockup.shot.failed");
+	});
+
+	it("falls back to a live capture only for frames the canvas has no raster for", async () => {
+		const capture = vi.fn(() => Promise.resolve("data:image/png;base64,AA=="));
+		act(() => root.render(<ExportMockupDialog />));
+		act(() =>
+			requestMockupExport({
+				...makeRequest(["a", "b"]),
+				cachedImage: (frameId) => (frameId === "a" ? "data:image/jpeg;base64,AA==" : null),
+				capture,
+			}),
+		);
+		await flush();
+
+		expect(capture).toHaveBeenCalledTimes(1);
+		expect(capture.mock.calls[0]?.[0]).toBe("b");
+	});
+
 	// 截图卡住（锁上排着、rAF 停摆）时不能永远显示「截图中」：到点给错误和重试。
 	it("gives up on a stuck capture with a retry instead of spinning forever", async () => {
 		vi.useFakeTimers();

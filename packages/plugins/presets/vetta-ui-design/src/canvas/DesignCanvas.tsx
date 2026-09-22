@@ -550,6 +550,9 @@ export function DesignCanvas({
 			},
 		},
 	});
+	/** 渲染图工作台读画布位图用，见 openExport。 */
+	const rasterOfRef = useRef(rasterOf);
+	rasterOfRef.current = rasterOf;
 
 
 	/**
@@ -1289,6 +1292,8 @@ export function DesignCanvas({
 		requestMockupExport({
 			session,
 			initialFrameIds: orderedSelection.map((frame) => frame.id),
+			// 经 ref 读：工作台开着期间位图还会更新，闭包住打开那一刻的 rasterOf 就读不到了。
+			cachedImage: (frameId) => rasterOfRef.current(frameId),
 			capture: (frameId, pixelRatio, signal) => captureFaithfully(frameId, { pixelRatio, signal }),
 		});
 	};

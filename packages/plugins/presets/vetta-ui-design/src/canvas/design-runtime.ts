@@ -86,6 +86,12 @@ export interface MockupExportRequest {
 	 * 先选中任何东西，用户在工作台里自己往里加。
 	 */
 	initialFrameIds: string[];
+	/**
+	 * 画布此刻显示的这一帧位图，没有就 null。工作台的预览先用它：它就是画布上看到的
+	 * 样子，而逐帧重截要排进画布的串行截图锁、每帧还得临时拉起一个活体 iframe。
+	 * 最终导出仍按需要的倍率走 capture。
+	 */
+	cachedImage?(frameId: string): string | null;
 	/** signal 中止后，还在排队的这次截图不再执行（已经开始的截完为止）。 */
 	capture(frameId: string, pixelRatio: number, signal?: AbortSignal): Promise<string>;
 }
