@@ -11,6 +11,7 @@ import { CreateDesignDialog } from "./CreateDesignDialog";
 import { DesignSystemDetailDialog } from "./DesignSystemDetailDialog";
 import { DesignSystemGrid } from "./DesignSystemGrid";
 import { GalleryCard } from "./GalleryCard";
+import { GalleryCardSkeleton } from "./GalleryCardSkeleton";
 import { GalleryHero } from "./GalleryHero";
 import { GalleryToolbarLeft, GalleryToolbarRight } from "./GalleryToolbar";
 import { SectionHeader } from "./SectionHeader";
@@ -229,6 +230,8 @@ export function GalleryView() {
 	const cards = useMemo(() => filterGalleryProjects(snapshot?.cards ?? [], keyword), [snapshot, keyword]);
 	const designCount = useMemo(() => cards.reduce((total, card) => total + card.designs.length, 0), [cards]);
 	const empty = !loading && (snapshot?.cards.length ?? 0) === 0;
+	/** 没有缓存可先画的首次扫描：项目多时要等几秒，这段时间铺骨架而不是「0 个项目」。 */
+	const initialLoading = loading && snapshot === null;
 
 	/** 首页资产宫格：量出实际列数，只铺前 3 行，其余收进列表页。 */
 	const { ref: homeGridRef, columns } = useGalleryColumns();
@@ -347,7 +350,7 @@ export function GalleryView() {
 						<section>
 							<SectionHeader
 								title={t("gallery.section.mine")}
-								badge={t("gallery.count", { count: cards.length })}
+								badge={initialLoading ? undefined : t("gallery.count", { count: cards.length })}
 								action={
 									overflowing ? (
 										<button
@@ -370,18 +373,28 @@ export function GalleryView() {
 									) : null
 								}
 							/>
-							<div ref={homeGridRef} className={PROJECT_GRID_CLASS}>
-								{cards.slice(0, homeCount).map((card) => (
-									<GalleryCard
-										key={card.cwd}
-										card={card}
-										onOpen={() => openCard(card)}
-										onContextMenu={(event) => openCardMenu(event, card)}
-									/>
-								))}
+							<div
+								ref={homeGridRef}
+								className={PROJECT_GRID_CLASS}
+								aria-busy={initialLoading || undefined}
+								aria-label={initialLoading ? t("gallery.loading") : undefined}
+							>
+								{initialLoading
+									? // 按实测列数铺满一行即可，不假装有多少个项目。
+										Array.from({ length: columns }, (_, index) => (
+											<GalleryCardSkeleton key={`skeleton-${index}`} />
+										))
+									: cards.slice(0, homeCount).map((card) => (
+											<GalleryCard
+												key={card.cwd}
+												card={card}
+												onOpen={() => openCard(card)}
+												onContextMenu={(event) => openCardMenu(event, card)}
+											/>
+										))}
 							</div>
 						</section>
-						{cards.length === 0 ? (
+						{!initialLoading && cards.length === 0 ? (
 							<p className="mt-8 text-center text-xs text-muted-foreground">{t("gallery.search.noMatch")}</p>
 						) : null}
 
