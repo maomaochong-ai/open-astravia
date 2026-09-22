@@ -81,12 +81,12 @@ describe("Team member concurrency", () => {
 			expect(snapshot.workItem.state).toBe(expected);
 			expect(fixture.runtime.deliverSessionContext).toHaveBeenCalledWith(
 				leaderRuntime,
-				[
+				expect.arrayContaining([
 					expect.objectContaining({
 						type: "agent-team.task-status.v1",
 						metadata: expect.objectContaining({ state: expected, teamTaskId: task.teamTaskId }),
 					}),
-				],
+				]),
 				"triggerTurn",
 			);
 			await fixture.service.abort(fixture.session.id);
@@ -877,7 +877,7 @@ describe("Team member concurrency", () => {
 
 		expect(fixture.runtime.deliverSessionContext).toHaveBeenCalledWith(
 			leaderRuntime,
-			[expect.objectContaining({ type: "agent-team.task-completed.v1" })],
+			expect.arrayContaining([expect.objectContaining({ type: "agent-team.task-completed.v1" })]),
 			"triggerTurn",
 		);
 		const leaderMessages = publicAgentMessagesBy(fixture, leader);
@@ -1353,24 +1353,34 @@ describe("Team member concurrency", () => {
 		expect(fixture.runtime.prompt).not.toHaveBeenCalled();
 	});
 
-	it("surfaces an unclassified context delivery interruption instead of silently completing the send", async () => {
+	it("admits shared context with the member prompt instead of writing it through a competing runtime path", async () => {
 		const fixture = await createFixture();
-		vi.mocked(fixture.runtime.deliverSessionContext).mockRejectedValueOnce(
-			new Error("Session already has an active turn"),
-		);
+		const member = fixture.members[0];
+		const turn = fixture.turn(member, "follow up");
 
-		await expect(
-			fixture.service.send(fixture.session.id, {
-				requestId: "busy-context",
-				text: "follow up",
-				targetMemberIds: [fixture.members[0]],
-			}),
-		).rejects.toThrow("Session already has an active turn");
+		const send = fixture.service.send(fixture.session.id, {
+			requestId: "busy-context",
+			text: "follow up",
+			targetMemberIds: [member],
+		});
+		await turn.started.promise;
+		turn.finish.resolve();
+		await send;
 		const state = await fixture.service.readCollaborationState(fixture.session.id);
 
-		expect(state.workItems[0]?.state).toBe("waiting");
-		expect(state.attempts[0]?.state).toBe("interrupted");
-		expect(fixture.runtime.prompt).not.toHaveBeenCalled();
+		expect(state.workItems[0]?.state).toBe("completed");
+		expect(state.attempts[0]?.state).toBe("completed");
+		expect(fixture.runtime.promptWhenAvailable).toHaveBeenCalledWith(
+			fixture.session.memberRuntime[member]!.sessionId,
+			expect.objectContaining({
+				text: "follow up",
+				context: [expect.objectContaining({ type: "agent-team.compaction-reference.v1" })],
+			}),
+			expect.any(AbortSignal),
+		);
+		expect(vi.mocked(fixture.runtime.deliverSessionContext).mock.calls.some((call) => call[2] === "record")).toBe(
+			false,
+		);
 	});
 
 	it("publishes a failed attempt's delegation without completing its work item, even after restart", async () => {
@@ -1911,7 +1921,7 @@ describe("Team member concurrency", () => {
 				new Set([checkpoint.id]),
 			);
 			const delivered = new Map(
-				vi.mocked(fixture.runtime.deliverSessionContext).mock.calls.map((call) => [call[0], call[1]]),
+				vi.mocked(fixture.runtime.promptWhenAvailable).mock.calls.map((call) => [call[0], call[1].context ?? []]),
 			);
 			const visiblePrefix = (memberId: string) =>
 				fixture.pinnedContexts.get(saved.memberRuntime[memberId]!.sessionId)?.records;
@@ -2225,7 +2235,8 @@ async function createFixture(
 		}
 	};
 	const activeSessions = new Set<string>();
-	const runtime = {
+	let runtime!: RuntimeHost;
+	runtime = {
 		createSession: vi.fn(async (config: DesktopCodingAgentSessionConfig) => {
 			const sessionId = config.sessionPath
 				? /([^/]+)\.jsonl$/.exec(config.sessionPath)?.[1]
@@ -2279,6 +2290,24 @@ async function createFixture(
 		getFullHistory: (id: string) => history.get(id) ?? [],
 		retry: vi.fn(async (id: string) => runtime.prompt(id, { text: "retry" })),
 		queuePromptIfRunning: vi.fn(async () => ({ status: "idle" as const })),
+		promptWhenAvailable: vi.fn(
+			async (
+				id: string,
+				input: { text: string; context?: readonly SessionContextRecord[] },
+				signal?: AbortSignal,
+			) => {
+				signal?.throwIfAborted();
+				const abort = () => {
+					void runtime.abort(id);
+				};
+				signal?.addEventListener("abort", abort, { once: true });
+				try {
+					return await runtime.prompt(id, input);
+				} finally {
+					signal?.removeEventListener("abort", abort);
+				}
+			},
+		),
 		prompt: vi.fn(async (id: string, input: { text: string }) => {
 			const turn = turns.get(`${id}:${input.text}`);
 			if (!turn) throw new Error(`Unexpected member prompt: ${id}:${input.text}`);

@@ -156,6 +156,37 @@ export class AgentSession {
 	}
 
 	/**
+	 * Waits behind the actual active Turn instead of treating a transient busy state
+	 * as a failed request. Admission remains owned by this Session: once the previous
+	 * Turn releases, the state check and start happen without an intervening await.
+	 *
+	 * An abort while waiting only cancels this request. After admission, the same
+	 * signal owns and cancels the newly-started Turn.
+	 */
+	async sendRequestWhenAvailable(
+		request: SessionInputRequest,
+		preparer?: RuntimeInputRequestPreparer,
+		signal?: AbortSignal,
+	): Promise<SessionSendResult> {
+		if (preparer) this.inputRequestPreparer = preparer;
+		while (true) {
+			await this.contextWrite;
+			signal?.throwIfAborted();
+			if (this.currentState === "closed" || this.currentState === "closing") throw sessionClosedError();
+			if (this.currentState === "recovery_required") throw turnPersistenceError();
+			if (this.currentState === "idle") {
+				return this.startRequest(request, preparer ?? this.inputRequestPreparer, signal);
+			}
+			const activeTurn = this.activeTurn;
+			if (!activeTurn) {
+				await Promise.resolve();
+				continue;
+			}
+			await waitForTurnRelease(activeTurn, signal);
+		}
+	}
+
+	/**
 	 * 原子地把输入加入正在运行的 Turn；空闲时不启动新 Turn。
 	 * 宿主据此可在返回 idle 后走自己的正常 admission，避免先读状态再 prompt 的竞态。
 	 */
@@ -463,10 +494,19 @@ export class AgentSession {
 	private async startRequest(
 		request: SessionInputRequest,
 		preparer?: RuntimeInputRequestPreparer,
+		signal?: AbortSignal,
 	): Promise<SessionSendResult> {
+		signal?.throwIfAborted();
 		this.currentState = "running";
 		const controller = new AbortController();
 		this.activeController = controller;
+		const abort = () => {
+			if (this.activeController !== controller) return;
+			this.currentState = "cancelling";
+			controller.abort(signal?.reason);
+		};
+		signal?.addEventListener("abort", abort, { once: true });
+		if (signal?.aborted) abort();
 		const turn = this.pipeline.runRequest(this.identity, request, controller.signal, this.inputQueue, preparer);
 		this.activeTurn = turn;
 		try {
@@ -482,6 +522,7 @@ export class AgentSession {
 			if (this.inputQueue.pendingCount > 0) this.inputQueue.pause();
 			throw error;
 		} finally {
+			signal?.removeEventListener("abort", abort);
 			this.finishActiveTurn();
 		}
 	}
@@ -602,6 +643,27 @@ export class AgentSession {
 
 function continuationCancelledError(): KernelError {
 	return new KernelError(KERNEL_ERROR_CODES.TURN_INTERRUPTED, "Pending continuation was cancelled");
+}
+
+async function waitForTurnRelease(turn: Promise<SessionSendResult>, signal?: AbortSignal): Promise<void> {
+	if (!signal) {
+		await turn.then(
+			() => undefined,
+			() => undefined,
+		);
+		return;
+	}
+	signal.throwIfAborted();
+	await new Promise<void>((resolve, reject) => {
+		const abort = () => reject(signal.reason);
+		signal.addEventListener("abort", abort, { once: true });
+		void turn
+			.then(
+				() => resolve(),
+				() => resolve(),
+			)
+			.finally(() => signal.removeEventListener("abort", abort));
+	});
 }
 
 class MutableTurnSessionIdentity implements TurnSessionIdentity {

@@ -96,6 +96,7 @@ export class RuntimeHostSessionOperations {
 			}
 			const outcome = await handle.turnControl.prompt({
 				text: request.text,
+				context: request.context,
 				images: request.images,
 				streamingBehavior: request.streamingBehavior,
 				promptRef: request.promptRef,
@@ -104,6 +105,61 @@ export class RuntimeHostSessionOperations {
 				reasoning: request.reasoning,
 				metadata: request.metadata,
 			});
+			return outcome ?? { status: "completed" };
+		} catch (error) {
+			const message = isSessionError(error) ? error.message : error instanceof Error ? error.message : String(error);
+			const failure = isTurnPersistenceError(error) ? error.failure : undefined;
+			if (failure && isTurnPersistenceError(error)) {
+				return {
+					status: "failed",
+					turnId: error.turnId,
+					error: { ...failure, retryable: false },
+				};
+			}
+			this.options.events.broadcastSyntheticEvent(sessionKey, {
+				...baseSessionEvent(handle.lifecycle.sessionId, "agent"),
+				type: "error",
+				...(isTurnPersistenceError(error) && error.turnId ? { turnId: error.turnId } : {}),
+				error:
+					failure ?? (isSessionError(error) ? error : runtimeError("INTERNAL_ERROR", message, false, "runtime")),
+			});
+			throw error;
+		} finally {
+			this.options.synchronizeSessionIdentity(sessionKey, handle);
+		}
+	}
+
+	async promptWhenAvailable(
+		sessionId: string,
+		request: PromptRequest,
+		signal?: AbortSignal,
+	): Promise<RuntimeTurnPromptOutcome> {
+		const sessionKey = this.options.directory.resolveSessionKey(sessionId);
+		const handle = this.requireSession(sessionId);
+		await this.applyPendingExecutionMode(handle.lifecycle.sessionId, handle);
+
+		const sessionCwd = handle.workspaceView.readWorkingDirectory();
+		if (sessionCwd && this.options.pathServices) {
+			try {
+				await this.options.pathServices.ensureDirectory(sessionCwd);
+			} catch (error) {
+				this.options.reportWorkspacePreparationFailure(error, handle.lifecycle.sessionId);
+			}
+		}
+
+		try {
+			const prompt = {
+				text: request.text,
+				context: request.context,
+				images: request.images,
+				streamingBehavior: request.streamingBehavior,
+				promptRef: request.promptRef,
+				attachments: request.attachments,
+				modelKey: request.modelKey,
+				reasoning: request.reasoning,
+				metadata: request.metadata,
+			};
+			const outcome = await handle.turnControl.promptWhenAvailable(prompt, signal);
 			return outcome ?? { status: "completed" };
 		} catch (error) {
 			const message = isSessionError(error) ? error.message : error instanceof Error ? error.message : String(error);

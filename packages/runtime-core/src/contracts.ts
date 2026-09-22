@@ -2,6 +2,7 @@ import type { ThinkingLevel, ToolPhase } from "@vetta/agent-core";
 import type { AssistantMessageEvent, CacheUsageReporting, Message, Model } from "@vetta/ai";
 import type { ContextCompositionReport } from "./context-composition/contracts.js";
 import type { RuntimeFailure, RuntimeFailureDetails, RuntimeFailureOrigin } from "./failure-contract.js";
+import type { SessionContextRecord } from "./kernel/contracts.js";
 import type { SessionContextState, SessionContextStateEvent } from "./session-context-state.js";
 import type { SessionExtensionEndpointToken, SessionExtensionObservation } from "./session-extensions/contracts.js";
 
@@ -396,6 +397,11 @@ export interface SessionConfig {
 
 export interface PromptRequest {
 	text: string;
+	/**
+	 * Product-authored context committed in the same Turn as this prompt. Keeping it
+	 * on the request prevents a separate context write from racing with admission.
+	 */
+	context?: readonly SessionContextRecord[];
 	/** Structured extension resource selection. Kept separate from prompt text. */
 	promptRef?: PromptResourceRef;
 	/** Absolute filesystem references attached to this turn. Read by the agent on demand. */
@@ -502,6 +508,12 @@ export interface SessionFacade {
 	setExecutionMode(sessionId: string, mode: SessionExecutionMode): Promise<void>;
 	setGlobalExecutionMode(mode: SessionExecutionMode): Promise<void>;
 	prompt(sessionId: string, request: PromptRequest): Promise<RuntimeTurnPromptOutcome>;
+	/** Waits for the current Turn to release, then atomically admits this prompt. */
+	promptWhenAvailable(
+		sessionId: string,
+		request: PromptRequest,
+		signal?: AbortSignal,
+	): Promise<RuntimeTurnPromptOutcome>;
 	queuePromptIfRunning(sessionId: string, request: PromptRequest): Promise<RuntimeQueuePromptIfRunningOutcome>;
 	continue(sessionId: string): Promise<void>;
 	abort(sessionId: string): Promise<void>;

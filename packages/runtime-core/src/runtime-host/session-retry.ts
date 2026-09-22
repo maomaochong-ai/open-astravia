@@ -66,6 +66,8 @@ export function withRuntimeHostSessionRetry(
 			...assembly.corePorts,
 			turnControl: {
 				prompt: async (request: RuntimeTurnPrompt) => mapPromptOutcome(await run(() => session.prompt(request))),
+				promptWhenAvailable: async (request: RuntimeTurnPrompt, signal?: AbortSignal) =>
+					mapPromptOutcome(await run(() => session.promptWhenAvailable(request, signal))),
 				continue: async () => {
 					await run(() => session.continue());
 				},

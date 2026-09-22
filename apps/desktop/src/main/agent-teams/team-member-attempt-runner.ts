@@ -29,7 +29,7 @@ import type { TeamPublicationWorkflow } from "./team-publication-workflow.js";
 import type { TeamRuntimeManager } from "./team-runtime-manager.js";
 import type { TeamSessionEventHub } from "./team-session-event-hub.js";
 import type { TeamSessionStateRepository } from "./team-session-state-repository.js";
-import { TeamSharedContextRuntimeDeliveryError, type TeamSharedContextService } from "./team-shared-context-service.js";
+import type { TeamSharedContextService } from "./team-shared-context-service.js";
 
 const log = getAppLogger("agent-team-member-turns");
 
@@ -191,8 +191,7 @@ export class TeamMemberAttemptRunner {
 				...(signal ? { signal } : {}),
 			});
 		} catch (error) {
-			const failureSource = error instanceof TeamSharedContextRuntimeDeliveryError ? error.runtimeCause : error;
-			const failure = readRuntimeFailure(failureSource);
+			const failure = readRuntimeFailure(error);
 			const cancelled = this.isCancelled(configuredSession, collaboration.workItem.id, signal);
 			const terminal = classifyTeamAttemptTerminal({
 				hasPublishableMessage: false,
@@ -200,11 +199,7 @@ export class TeamMemberAttemptRunner {
 				...(failure ? { issue: classifyTeamExecutionIssue(failure) } : {}),
 			});
 			await this.options.settleAttempt(configuredSession, collaboration.workItem, collaboration.attempt, terminal);
-			const recoverable = terminal.state === "waiting-retry" || terminal.state === "awaiting-resource";
-			if (recoverable && error instanceof TeamSharedContextRuntimeDeliveryError) {
-				return this.options.sessionState.get(configuredSession.id) ?? configuredSession;
-			}
-			throw failureSource;
+			throw error;
 		}
 		configuredSession = preparedContext.session;
 		const runtimeState = configuredSession.memberRuntime[memberId];
@@ -259,7 +254,6 @@ export class TeamMemberAttemptRunner {
 			toolExecutionEvents: [],
 		};
 		this.options.eventHub.beginTurn(runtimeState.sessionId, activeTurn);
-		signal?.addEventListener("abort", abortTarget, { once: true });
 		let promptFailure: ReturnType<typeof readRuntimeFailure>;
 		let promptFailureMessage: string | undefined;
 		const runtimeOperation = mode === "initial" ? "prompt" : mode;
@@ -290,22 +284,38 @@ export class TeamMemberAttemptRunner {
 				this.options.runtime().readSessionDocument(runtimeState.sessionId),
 			);
 			if (continuationContext.length) {
+				signal?.addEventListener("abort", abortTarget, { once: true });
 				// Resolves after the Runtime continuation turn that consumes these records.
 				await this.options
 					.runtime()
-					.deliverSessionContext(runtimeState.sessionId, continuationContext, "triggerTurn");
+					.deliverSessionContext(
+						runtimeState.sessionId,
+						[...preparedContext.contextRecords, ...continuationContext],
+						"triggerTurn",
+					);
 			} else if (mode === "continue" || mode === "recovery") {
-				await this.options.runtime().continue(runtimeState.sessionId);
+				signal?.addEventListener("abort", abortTarget, { once: true });
+				if (preparedContext.contextRecords.length > 0) {
+					await this.options
+						.runtime()
+						.deliverSessionContext(runtimeState.sessionId, preparedContext.contextRecords, "triggerTurn");
+				} else {
+					await this.options.runtime().continue(runtimeState.sessionId);
+				}
 			} else if (mode === "retry") {
+				signal?.addEventListener("abort", abortTarget, { once: true });
 				await this.options.runtime().retry(runtimeState.sessionId);
 			} else {
-				promptOutcome = await this.options.runtime().prompt(runtimeState.sessionId, {
+				const runtime = this.options.runtime();
+				const request = {
 					text: promptText,
+					...(preparedContext.contextRecords.length ? { context: preparedContext.contextRecords } : {}),
 					...(attachments?.length ? { attachments: [...attachments] } : {}),
 					...(input.modelKey ? { modelKey: input.modelKey } : {}),
 					...(input.reasoning ? { reasoning: input.reasoning } : {}),
 					...(streamingBehavior ? { streamingBehavior } : {}),
-				});
+				};
+				promptOutcome = await runtime.promptWhenAvailable(runtimeState.sessionId, request, signal);
 			}
 			if (signal?.aborted) throw new Error("Team member turn was cancelled");
 			if (promptOutcome?.status === "failed") {

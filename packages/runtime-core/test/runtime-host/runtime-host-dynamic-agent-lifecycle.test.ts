@@ -215,6 +215,7 @@ function assembly(sessionId: string, dispose: () => Promise<void> = async () => 
 		corePorts: {
 			turnControl: {
 				prompt: async () => undefined,
+				promptWhenAvailable: async () => undefined,
 				continue: async () => {},
 				retry: async () => {},
 				abort: async () => {},

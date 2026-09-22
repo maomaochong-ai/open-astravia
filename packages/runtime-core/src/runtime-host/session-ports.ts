@@ -31,6 +31,7 @@ export interface RuntimeSessionIdentityLifecycle {
 /** RuntimeHost 完成宿主预处理后交给 Turn 执行边界的输入。 */
 export interface RuntimeTurnPrompt {
 	readonly text: string;
+	readonly context?: PromptRequest["context"];
 	readonly promptRef?: PromptRequest["promptRef"];
 	readonly attachments?: PromptRequest["attachments"];
 	readonly images?: PromptRequest["images"];
@@ -43,6 +44,7 @@ export interface RuntimeTurnPrompt {
 /** 只负责启动、继续和中止 Turn。 */
 export interface RuntimeSessionTurnControl {
 	prompt(request: RuntimeTurnPrompt): Promise<RuntimeTurnPromptOutcome | undefined>;
+	promptWhenAvailable(request: RuntimeTurnPrompt, signal?: AbortSignal): Promise<RuntimeTurnPromptOutcome | undefined>;
 	queuePromptIfRunning?(request: RuntimeTurnPrompt): Promise<RuntimeQueuePromptIfRunningOutcome>;
 	continue(): Promise<void>;
 	retry(): Promise<void>;

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
 	createAgentSession,
 	type SessionContextRecord,
+	type SessionInputRequest,
 	type StoredConversation,
 	type TurnPipeline,
 	type TurnResult,
@@ -99,6 +100,55 @@ describe("AgentSession asynchronous continuation", () => {
 		expect(fixture.runTurn).not.toHaveBeenCalled();
 		expect(fixture.continueTurn).not.toHaveBeenCalled();
 	});
+
+	it("admits a requested prompt after a bounded cancellation fully releases the active turn", async () => {
+		const first = deferredTurn();
+		const second = deferredTurn();
+		const runRequest = vi
+			.fn<TurnPipeline["runRequest"]>()
+			.mockImplementationOnce(() => first.promise)
+			.mockImplementationOnce(() => second.promise);
+		const fixture = createFixture();
+		const session = await createAgentSession({
+			id: "session-waiting-admission",
+			pipeline: { ...fixture.pipeline, runRequest } as unknown as TurnPipeline,
+		});
+		const active = session.sendRequest(inputRequest("first"));
+		await vi.waitFor(() => expect(runRequest).toHaveBeenCalledOnce());
+
+		await session.cancel("bounded stop", { waitMs: 0 });
+		expect(session.state).toBe("cancelling");
+		const admitted = session.sendRequestWhenAvailable(inputRequest("second"));
+		expect(runRequest).toHaveBeenCalledOnce();
+
+		first.resolve(abortedTurn("turn-first"));
+		await active;
+		await vi.waitFor(() => expect(runRequest).toHaveBeenCalledTimes(2));
+		second.resolve(completedTurn("turn-second"));
+		await expect(admitted).resolves.toMatchObject({ status: "completed", turnId: "turn-second" });
+	});
+
+	it("cancels a prompt that is still waiting without aborting the active turn", async () => {
+		const first = deferredTurn();
+		const runRequest = vi.fn<TurnPipeline["runRequest"]>(() => first.promise);
+		const fixture = createFixture();
+		const session = await createAgentSession({
+			id: "session-cancel-waiter",
+			pipeline: { ...fixture.pipeline, runRequest } as unknown as TurnPipeline,
+		});
+		const active = session.sendRequest(inputRequest("first"));
+		await vi.waitFor(() => expect(runRequest).toHaveBeenCalledOnce());
+		const controller = new AbortController();
+		const waiting = session.sendRequestWhenAvailable(inputRequest("second"), undefined, controller.signal);
+
+		controller.abort("cancel only the waiting prompt");
+		await expect(waiting).rejects.toBe("cancel only the waiting prompt");
+
+		expect(runRequest).toHaveBeenCalledOnce();
+		expect(runRequest.mock.calls[0]?.[2].aborted).toBe(false);
+		first.resolve(completedTurn("turn-first"));
+		await active;
+	});
 });
 
 function createFixture(options: { readonly blockRun?: boolean } = {}) {
@@ -137,6 +187,18 @@ function contextRecord(text: string): SessionContextRecord {
 		content: [{ type: "text", text }],
 		modelVisible: true,
 	};
+}
+
+function inputRequest(text: string): SessionInputRequest {
+	return { payload: { text }, displayText: text };
+}
+
+function deferredTurn() {
+	let resolve!: (result: TurnResult) => void;
+	const promise = new Promise<TurnResult>((done) => {
+		resolve = done;
+	});
+	return { promise, resolve };
 }
 
 function completedTurn(turnId: string): TurnResult {

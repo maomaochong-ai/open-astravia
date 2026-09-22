@@ -132,6 +132,7 @@ export class DefaultCodingAgentPromptRequestRuntime implements CodingAgentPrompt
 		// （排队路径经 appendQueuedContext 落盘 context.appended），user 消息
 		// 保持与队列条目 displayText 一致的纯文本（ADR-0060 遗留优化）。
 		const contextRecords = [
+			...(request.context ?? []),
 			...hookContexts.map((content) => hiddenContext("ecosystem_hook_context", content)),
 			...this.buildContext(request, expansion, pluginPromptContexts),
 		];
