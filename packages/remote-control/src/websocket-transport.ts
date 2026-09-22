@@ -18,6 +18,12 @@ export const REMOTE_WEBSOCKET_PROTOCOL = "vetta.remote.v2";
 export const PAIRING_PROTOCOL_PREFIX = "vetta.pairing.";
 /** Declares a manual pairing that must be approved at the desktop instead of presenting a secret. */
 export const MANUAL_PAIRING_PROTOCOL = "vetta.manual";
+/**
+ * Offered by the desktop when it registers a relay room: the SHA-256 hex of
+ * the phone's secret, so the relay can admit the phone without ever holding
+ * the secret itself.
+ */
+export const PEER_HASH_PROTOCOL_PREFIX = "vetta.peer.";
 /** Close code used by an endpoint that rejected the peer at the protocol level. */
 export const REMOTE_CLOSE_CODE_REJECTED = 4003;
 const WEBSOCKET_OPEN = 1;
@@ -25,6 +31,7 @@ const WEBSOCKET_OPEN = 1;
 export interface WebSocketRemoteTransportOptions {
 	readonly pairingSecret?: string;
 	readonly manual?: boolean;
+	readonly peerCredentialHash?: string;
 	readonly createSocket?: RemoteWebSocketFactory;
 }
 
@@ -90,10 +97,13 @@ export class WebSocketRemoteTransport implements RemoteTransport {
 	}
 }
 
-export function buildProtocols(options: Pick<WebSocketRemoteTransportOptions, "pairingSecret" | "manual">): string[] {
+export function buildProtocols(
+	options: Pick<WebSocketRemoteTransportOptions, "pairingSecret" | "manual" | "peerCredentialHash">,
+): string[] {
 	const protocols = [REMOTE_WEBSOCKET_PROTOCOL];
 	if (options.pairingSecret) protocols.push(`${PAIRING_PROTOCOL_PREFIX}${options.pairingSecret}`);
 	else if (options.manual) protocols.push(MANUAL_PAIRING_PROTOCOL);
+	if (options.peerCredentialHash) protocols.push(`${PEER_HASH_PROTOCOL_PREFIX}${options.peerCredentialHash}`);
 	return protocols;
 }
 
@@ -101,6 +111,7 @@ export interface OfferedProtocols {
 	readonly remote: boolean;
 	readonly pairingSecret?: string;
 	readonly manual: boolean;
+	readonly peerCredentialHash?: string;
 }
 
 /** Parses the `Sec-WebSocket-Protocol` offer on the accepting side. */
@@ -108,6 +119,7 @@ export function parseOfferedProtocols(header: string | readonly string[] | null 
 	const raw: readonly string[] = typeof header === "string" ? header.split(",") : (header ?? []);
 	const entries = raw.map((entry) => entry.trim()).filter(Boolean);
 	let pairingSecret: string | undefined;
+	let peerCredentialHash: string | undefined;
 	let manual = false;
 	let remote = false;
 	for (const entry of entries) {
@@ -115,8 +127,10 @@ export function parseOfferedProtocols(header: string | readonly string[] | null 
 		else if (entry === MANUAL_PAIRING_PROTOCOL) manual = true;
 		else if (entry.startsWith(PAIRING_PROTOCOL_PREFIX))
 			pairingSecret = entry.slice(PAIRING_PROTOCOL_PREFIX.length) || undefined;
+		else if (entry.startsWith(PEER_HASH_PROTOCOL_PREFIX))
+			peerCredentialHash = entry.slice(PEER_HASH_PROTOCOL_PREFIX.length) || undefined;
 	}
-	return { remote, pairingSecret, manual };
+	return { remote, pairingSecret, manual, peerCredentialHash };
 }
 
 function defaultWebSocketFactory(url: string, protocols?: readonly string[]): RemoteWebSocket {

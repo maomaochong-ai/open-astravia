@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	MANUAL_PAIRING_PROTOCOL,
 	PAIRING_PROTOCOL_PREFIX,
+	PEER_HASH_PROTOCOL_PREFIX,
 	parseOfferedProtocols,
 	REMOTE_CLOSE_CODE_REJECTED,
 	REMOTE_WEBSOCKET_PROTOCOL,
@@ -65,17 +66,23 @@ describe("WebSocketRemoteTransport", () => {
 	});
 
 	it("parses the offered protocols on the accepting side", () => {
-		expect(parseOfferedProtocols(`${REMOTE_WEBSOCKET_PROTOCOL}, ${PAIRING_PROTOCOL_PREFIX}secret`)).toEqual({
-			remote: true,
-			pairingSecret: "secret",
-			manual: false,
-		});
+		expect(
+			parseOfferedProtocols(
+				`${REMOTE_WEBSOCKET_PROTOCOL}, ${PAIRING_PROTOCOL_PREFIX}secret, ${PEER_HASH_PROTOCOL_PREFIX}abc`,
+			),
+		).toEqual({ remote: true, pairingSecret: "secret", manual: false, peerCredentialHash: "abc" });
 		expect(parseOfferedProtocols([REMOTE_WEBSOCKET_PROTOCOL, MANUAL_PAIRING_PROTOCOL])).toEqual({
 			remote: true,
 			pairingSecret: undefined,
 			manual: true,
+			peerCredentialHash: undefined,
 		});
-		expect(parseOfferedProtocols(null)).toEqual({ remote: false, pairingSecret: undefined, manual: false });
+		expect(parseOfferedProtocols(null)).toEqual({
+			remote: false,
+			pairingSecret: undefined,
+			manual: false,
+			peerCredentialHash: undefined,
+		});
 	});
 });
 
