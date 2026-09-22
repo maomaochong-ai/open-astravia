@@ -1,0 +1,84 @@
+name: Vetta
+options:
+  bundleIdPrefix: com.openvetta
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+  developmentLanguage: zh-Hans
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+    SWIFT_APPROACHABLE_CONCURRENCY: YES
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+packages:
+  VettaKit:
+    path: VettaKit
+targets:
+  Vetta:
+    type: application
+    platform: iOS
+    sources:
+      - path: Vetta
+    dependencies:
+      - package: VettaKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.openvetta.mobile
+        PRODUCT_NAME: Vetta
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        INFOPLIST_FILE: Vetta/Resources/Info.plist
+        ENABLE_PREVIEWS: YES
+    info:
+      path: Vetta/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: Vetta
+        CFBundleDevelopmentRegion: zh-Hans
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSRequiresIPhoneOS: true
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        CFBundleURLTypes:
+          - CFBundleURLName: com.openvetta.mobile.pair
+            CFBundleURLSchemes:
+              - vetta
+        NSCameraUsageDescription: Vetta 需要使用相机扫描电脑端的二维码来完成配对。
+        NSLocalNetworkUsageDescription: Vetta 需要访问本地网络，才能在同一 Wi-Fi 下直接连接你的电脑。
+        NSBonjourServices:
+          - _vetta._tcp
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+  VettaUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: VettaUITests
+    dependencies:
+      - target: Vetta
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.openvetta.mobile.uitests
+        TEST_TARGET_NAME: Vetta
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+schemes:
+  Vetta:
+    build:
+      targets:
+        Vetta: all
+        VettaUITests: [test]
+    test:
+      targets:
+        - VettaUITests
+      gatherCoverageData: false

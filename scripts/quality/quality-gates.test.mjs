@@ -374,6 +374,7 @@ describe("CI unit test coverage", () => {
 	const workflow = readFileSync(join(repoRoot, ".github/workflows/quality.yml"), "utf8");
 	const imGatewayWorkflow = readFileSync(join(repoRoot, ".github/workflows/im-gateway.yml"), "utf8");
 	const kotlinWorkflow = readFileSync(join(repoRoot, ".github/workflows/kotlin.yml"), "utf8");
+	const appleWorkflow = readFileSync(join(repoRoot, ".github/workflows/mobile-apple.yml"), "utf8");
 	const rootManifest = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
 
 	it("runs affected workspace tests on Linux, macOS, and Windows with complete Git history", () => {
@@ -409,8 +410,16 @@ describe("CI unit test coverage", () => {
 		expect(kotlinWorkflow).toContain(":androidApp:assembleDebug");
 	});
 
+	it("tests VettaKit, the desktop interop and the iOS build when the Apple client or the protocol changes", () => {
+		expect(appleWorkflow).toContain('      - "apps/mobile/client-apple/**"');
+		expect(appleWorkflow).toContain('      - "packages/remote-control/**"');
+		expect(appleWorkflow).toContain("swift test --no-parallel");
+		expect(appleWorkflow).toContain("scripts/interop.sh");
+		expect(appleWorkflow).toContain("xcodebuild build");
+	});
+
 	it("limits path-filtered app checks to branch pushes", () => {
-		for (const appWorkflow of [imGatewayWorkflow, kotlinWorkflow]) {
+		for (const appWorkflow of [imGatewayWorkflow, kotlinWorkflow, appleWorkflow]) {
 			expect(appWorkflow).toMatch(/push:\r?\n {4}branches:\r?\n {6}- "\*\*"\r?\n {4}paths:/);
 		}
 	});
