@@ -1,13 +1,16 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://openvetta.com/schemas/remote-frame.v1.json",
-  "title": "Vetta Remote Control Frame v1",
+  "$id": "https://openvetta.com/schemas/remote-frame.v2.json",
+  "title": "Vetta Remote Control Frame v2",
+  "description": "Handshake frames travel in clear; every other frame must be carried inside a sealed envelope after the handshake.",
   "oneOf": [
-    { "$ref": "#/$defs/hello" }, { "$ref": "#/$defs/helloAck" }, { "$ref": "#/$defs/request" },
-    { "$ref": "#/$defs/response" }, { "$ref": "#/$defs/event" }, { "$ref": "#/$defs/ack" }, { "$ref": "#/$defs/resume" }
+    { "$ref": "#/$defs/hello" }, { "$ref": "#/$defs/helloAck" }, { "$ref": "#/$defs/pairingPending" }, { "$ref": "#/$defs/peerStatus" },
+    { "$ref": "#/$defs/sealed" }, { "$ref": "#/$defs/request" }, { "$ref": "#/$defs/response" }, { "$ref": "#/$defs/event" },
+    { "$ref": "#/$defs/ack" }, { "$ref": "#/$defs/resume" }
   ],
   "$defs": {
     "id": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "publicKey": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" },
     "sequence": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
     "nonNegativeSequence": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
     "capabilities": {
@@ -20,28 +23,51 @@
     "error": {
       "type": "object", "additionalProperties": false, "required": ["code", "message", "retryable"],
       "properties": {
-        "code": { "enum": ["invalid_frame", "unsupported_version", "unauthorized", "not_found", "busy", "request_timeout", "transport_closed", "internal_error"] },
+        "code": { "enum": ["invalid_frame", "unsupported_version", "unauthorized", "approval_rejected", "not_found", "busy", "request_timeout", "transport_closed", "internal_error"] },
         "message": { "type": "string", "minLength": 1, "maxLength": 512 }, "retryable": { "type": "boolean" }
       }
     },
     "hello": {
       "type": "object", "additionalProperties": false,
-      "required": ["type", "protocolVersion", "role", "deviceId", "deviceName", "capabilities", "connectionId"],
+      "required": ["type", "protocolVersion", "role", "deviceId", "deviceName", "capabilities", "connectionId", "identityKey", "ephemeralKey"],
       "properties": {
-        "type": { "const": "hello" }, "protocolVersion": { "const": 1 }, "role": { "enum": ["mobile", "desktop"] },
+        "type": { "const": "hello" }, "protocolVersion": { "const": 2 }, "role": { "enum": ["mobile", "desktop"] },
         "deviceId": { "$ref": "#/$defs/id" }, "deviceName": { "type": "string", "minLength": 1, "maxLength": 128 },
-        "capabilities": { "$ref": "#/$defs/capabilities" }, "connectionId": { "$ref": "#/$defs/id" }
+        "capabilities": { "$ref": "#/$defs/capabilities" }, "connectionId": { "$ref": "#/$defs/id" },
+        "identityKey": { "$ref": "#/$defs/publicKey" }, "ephemeralKey": { "$ref": "#/$defs/publicKey" }
       }
     },
     "helloAck": {
-      "type": "object", "additionalProperties": false, "required": ["type", "protocolVersion", "connectionId", "peerDeviceId"],
-      "properties": { "type": { "const": "hello_ack" }, "protocolVersion": { "const": 1 }, "connectionId": { "$ref": "#/$defs/id" }, "peerDeviceId": { "$ref": "#/$defs/id" } }
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "protocolVersion", "connectionId", "peerDeviceId", "peerIdentityKey", "peerEphemeralKey"],
+      "properties": {
+        "type": { "const": "hello_ack" }, "protocolVersion": { "const": 2 }, "connectionId": { "$ref": "#/$defs/id" }, "peerDeviceId": { "$ref": "#/$defs/id" },
+        "peerIdentityKey": { "$ref": "#/$defs/publicKey" }, "peerEphemeralKey": { "$ref": "#/$defs/publicKey" }
+      }
+    },
+    "pairingPending": {
+      "type": "object", "additionalProperties": false, "required": ["type", "connectionId", "peerDeviceId", "peerIdentityKey"],
+      "properties": {
+        "type": { "const": "pairing_pending" }, "connectionId": { "$ref": "#/$defs/id" }, "peerDeviceId": { "$ref": "#/$defs/id" },
+        "peerIdentityKey": { "$ref": "#/$defs/publicKey" }
+      }
+    },
+    "peerStatus": {
+      "type": "object", "additionalProperties": false, "required": ["type", "online"],
+      "properties": { "type": { "const": "peer_status" }, "online": { "type": "boolean" } }
+    },
+    "sealed": {
+      "type": "object", "additionalProperties": false, "required": ["type", "nonce", "ciphertext"],
+      "properties": {
+        "type": { "const": "sealed" }, "nonce": { "type": "string", "pattern": "^[A-Za-z0-9_-]{32}$" },
+        "ciphertext": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$", "maxLength": 1400000 }
+      }
     },
     "request": {
       "type": "object", "additionalProperties": false, "required": ["type", "requestId", "method"],
       "properties": {
         "type": { "const": "request" }, "requestId": { "$ref": "#/$defs/id" },
-        "method": { "enum": ["session.list", "session.open", "session.prompt", "session.respond", "session.abort", "session.resume", "diagnostics.snapshot"] },
+        "method": { "enum": ["project.list", "session.list", "session.create", "session.open", "session.history", "session.prompt", "session.respond", "session.abort", "session.resume", "diagnostics.snapshot"] },
         "sessionId": { "$ref": "#/$defs/id" }, "payload": true
       }
     },
@@ -53,7 +79,7 @@
       "type": "object", "additionalProperties": false, "required": ["type", "eventId", "sequence", "name"],
       "properties": {
         "type": { "const": "event" }, "eventId": { "$ref": "#/$defs/id" }, "sequence": { "$ref": "#/$defs/sequence" },
-        "name": { "enum": ["device.status", "session.state", "session.message", "session.tool", "session.input", "diagnostics.updated"] },
+        "name": { "enum": ["device.status", "device.paired", "session.list", "session.state", "session.message", "session.tool", "session.input", "session.resync", "diagnostics.updated"] },
         "sessionId": { "$ref": "#/$defs/id" }, "payload": true
       }
     },

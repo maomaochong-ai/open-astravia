@@ -1,4 +1,5 @@
 import type { RemoteFrame, RemoteHello, RemoteRole, RemoteTransport, RemoteTransportHandlers } from "./types.js";
+import { REMOTE_PROTOCOL_VERSION } from "./types.js";
 
 type ClientRole = Exclude<RemoteRole, "relay">;
 
@@ -13,7 +14,12 @@ interface RelayRoom {
 	desktop?: RelayEndpoint;
 }
 
-/** Deterministic in-memory relay used by connector and recovery integration tests. */
+/**
+ * Deterministic in-memory relay used by connector and recovery integration
+ * tests. Mirrors the Cloudflare relay contract: it consumes `hello`, answers
+ * both sides with `hello_ack` carrying the peer's keys, forwards sealed frames
+ * unchanged and announces peer presence.
+ */
 export class FakeRelay {
 	private readonly rooms = new Map<string, RelayRoom>();
 
@@ -39,8 +45,12 @@ export class FakeRelay {
 			this.acknowledgePair(room);
 			return;
 		}
+		if (frame.type !== "sealed") throw new Error(`relay refuses plaintext ${frame.type} frame`);
 		const peer = transport.role === "mobile" ? room.desktop : room.mobile;
-		if (!peer?.hello) throw new Error("relay peer is offline");
+		if (!peer?.hello) {
+			endpoint.transport.deliver({ type: "peer_status", online: false });
+			return;
+		}
 		peer.transport.deliver(frame);
 	}
 
@@ -50,7 +60,7 @@ export class FakeRelay {
 		delete room[transport.role];
 		transport.notifyClose("fake relay transport closed");
 		const peer = transport.role === "mobile" ? room.desktop : room.mobile;
-		peer?.transport.notifyClose("fake relay peer disconnected");
+		peer?.transport.deliver({ type: "peer_status", online: false });
 		if (!room.mobile && !room.desktop) this.rooms.delete(transport.pairingId);
 	}
 
@@ -60,15 +70,19 @@ export class FakeRelay {
 		if (!mobile?.hello || !desktop?.hello) return;
 		mobile.transport.deliver({
 			type: "hello_ack",
-			protocolVersion: 1,
+			protocolVersion: REMOTE_PROTOCOL_VERSION,
 			connectionId: mobile.hello.connectionId,
 			peerDeviceId: desktop.hello.deviceId,
+			peerIdentityKey: desktop.hello.identityKey,
+			peerEphemeralKey: desktop.hello.ephemeralKey,
 		});
 		desktop.transport.deliver({
 			type: "hello_ack",
-			protocolVersion: 1,
+			protocolVersion: REMOTE_PROTOCOL_VERSION,
 			connectionId: desktop.hello.connectionId,
 			peerDeviceId: mobile.hello.deviceId,
+			peerIdentityKey: mobile.hello.identityKey,
+			peerEphemeralKey: mobile.hello.ephemeralKey,
 		});
 	}
 }
@@ -76,6 +90,8 @@ export class FakeRelay {
 class FakeRelayTransport implements RemoteTransport {
 	private handlers: RemoteTransportHandlers | undefined;
 	private connected = false;
+	private readonly inbox: RemoteFrame[] = [];
+	private draining = false;
 
 	constructor(
 		private readonly relay: FakeRelay,
@@ -100,8 +116,20 @@ class FakeRelayTransport implements RemoteTransport {
 		this.relay.disconnect(this);
 	}
 
+	/**
+	 * Frames are delivered asynchronously in per-socket order, like a real
+	 * socket: a `hello_ack` queued for this endpoint is always seen before a
+	 * frame the peer sends in reaction to its own acknowledgement.
+	 */
 	deliver(frame: RemoteFrame): void {
-		if (this.connected) this.handlers?.onFrame(frame);
+		if (!this.connected) return;
+		this.inbox.push(frame);
+		if (this.draining) return;
+		this.draining = true;
+		queueMicrotask(() => {
+			this.draining = false;
+			while (this.inbox.length > 0 && this.connected) this.handlers?.onFrame(this.inbox.shift()!);
+		});
 	}
 
 	notifyClose(reason: string): void {

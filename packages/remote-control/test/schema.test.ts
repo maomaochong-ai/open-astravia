@@ -20,6 +20,22 @@ describe("remote control JSON Schema", () => {
 		expect(
 			validate({
 				type: "hello",
+				protocolVersion: 2,
+				role: "mobile",
+				deviceId: "mobile-1",
+				deviceName: "Phone",
+				capabilities: { chat: true, sessionRead: true },
+				connectionId: "connection-1",
+				identityKey: "A".repeat(43),
+				ephemeralKey: "B".repeat(43),
+			}),
+		).toBe(true);
+	});
+
+	it("rejects protocol v1 handshakes and plaintext frames with unknown types", () => {
+		expect(
+			validate({
+				type: "hello",
 				protocolVersion: 1,
 				role: "mobile",
 				deviceId: "mobile-1",
@@ -27,7 +43,9 @@ describe("remote control JSON Schema", () => {
 				capabilities: { chat: true, sessionRead: true },
 				connectionId: "connection-1",
 			}),
-		).toBe(true);
+		).toBe(false);
+		expect(validate({ type: "sealed", nonce: "C".repeat(32), ciphertext: "abc" })).toBe(true);
+		expect(validate({ type: "sealed", nonce: "C".repeat(32), ciphertext: "a b" })).toBe(false);
 	});
 
 	it("rejects authority-expanding unknown fields", () => {
