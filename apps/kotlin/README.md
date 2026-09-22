@@ -1,3 +1,5 @@
+> **已冻结**：本 Kotlin Multiplatform 客户端停留在远程协议 v1，自 ADR-0128 起桌面端只接受 v2（端到端加密），它已无法连接新版本 Vetta Desktop。手机端请使用 [`../mobile`](../mobile)（Expo，iOS 与 Android）。代码保留仅供参考，不再维护。
+
 This is a Kotlin Multiplatform project targeting Android.
 
 * [/shared](./shared/src) is for code that will be shared across your Compose Multiplatform applications.

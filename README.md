@@ -149,8 +149,8 @@ This is a Bun/TypeScript monorepo with additional Kotlin and Go applications. De
 | [`apps/desktop`](apps/desktop) | Electron desktop host and renderer |
 | [`apps/cli-host`](apps/cli-host) | CLI host for the coding agent |
 | [`apps/docs-site`](apps/docs-site) | Next.js documentation site published at `docs.openvetta.com` |
-| [`apps/mobile`](apps/mobile) | Expo/React Native mobile client |
-| [`apps/kotlin`](apps/kotlin) | Kotlin Multiplatform Android client |
+| [`apps/mobile`](apps/mobile) | Expo/React Native mobile client (pairs with the desktop over LAN or relay, end-to-end encrypted) |
+| [`apps/kotlin`](apps/kotlin) | Kotlin Multiplatform Android client (frozen at protocol v1, kept for reference) |
 | [`apps/im-gateway`](apps/im-gateway) | Go IM sidecar gateway |
 | [`packages/ai`](packages/ai) · [`packages/agent`](packages/agent) | Provider abstraction and the agent loop |
 | [`packages/coding-agent`](packages/coding-agent) · `packages/runtime-*` | Product composition, runtime contracts, tools, storage, MCP, and host adapters |
