@@ -1,20 +1,15 @@
 /* ─── 流光 ───
-   页面正中那团流动的光：几层柔边色斑在底下缓慢漂移，上面压一张点阵——点是页面底色，
-   点与点之间的空隙才漏出光，于是这团光看着像半调网点里流过来的。
+   页面正中那团光：几团柔边色斑铺在底下，上面压一张点阵——点是页面底色，
+   点与点之间的空隙才漏出光，于是这团光看着像半调网点里透出来的。
 
    只在中间露出一团圆的：遮罩给的是固定半径的圆而不是按比例的椭圆，窗口拉大也仍是
    一团光晕，不会摊成一整屏网点。四周淡到全透，因此不需要页面为它让出边距或掀掉页头。
 
-   性能约束（改这份样式前先读）：这团光会一直动，所以**动的部分只允许用 transform 和
-   opacity**——这两样由合成器直接搬运已经画好的纹理，每帧几乎不花 GPU。早先的写法是
-   整页大小的一层挂 filter: blur(3em)，再对 filter 的色相和 background-position 做无限
-   动画，外加一层 backdrop-filter：每帧都要把约 450 万像素重新模糊一遍，实测单这一项
-   就占满一台 M3 的 GPU。因此这里：
-   - 不用 filter / backdrop-filter。柔边直接画进渐变里（色斑本来就是淡到全透的径向渐变）。
-   - 不对 background-position 做动画。每层色斑是一张比可见区多出一个平铺周期的静态图，
-     用 translate 整张平移恰好一个周期后循环，首尾无缝。
-   - 换色用第三层的 opacity 呼吸来做，不转色相。
-   - 整个元素只有那团圆的外接方框大，而不是铺满页面：遮罩、合成都只在这一小块上发生。
+   性能约束（改这份样式前先读）：这团光是**静态**的，不要给它加任何动画。新会话页会长时间
+   停着不动，任何常驻动效都会让窗口一直逐帧重新合成：最早的写法是整页 filter: blur 加色相
+   与 background-position 动画，单这一项就占满一台 M3 的 GPU；改成只动 transform / opacity
+   后仍要每帧把三层色斑、点阵与圆形遮罩重新合成一遍，GPU 依旧明显抬高。静态画面只在首帧
+   栅格化一次，之后不再产生帧。同理也不要用 filter / backdrop-filter，柔边直接画进渐变里。
 
    尺寸一律写成 var(名, 默认值)，不在这里声明这几个变量：自身声明会盖过继承，
    外面那枚小方格（设置页预览卡）就再也调不动了。
@@ -28,7 +23,8 @@
 	--ns-aurora-opacity: 0.15;
 	--ns-aurora-color-a: color-mix(in srgb, var(--primary), #fff var(--ns-aurora-lift));
 	--ns-aurora-color-b: color-mix(in srgb, #09f, #fff var(--ns-aurora-lift));
-	--ns-aurora-color-c: color-mix(in srgb, #a5f, #fff var(--ns-aurora-lift));
+	/* 紫色压在最上面，只给六成，让三色交叠处能透出底下的主色与蓝。 */
+	--ns-aurora-color-c: color-mix(in srgb, color-mix(in srgb, #a5f, #fff var(--ns-aurora-lift)) 60%, transparent);
 	position: absolute;
 	/* 只占那团圆的外接方框：圆心与网格那档的光晕同高（50% 45%）。 */
 	top: 45%;
@@ -56,59 +52,30 @@
 	--ns-aurora-opacity: 0.2;
 }
 
-/* 色斑层：每层是一张静态的平铺渐变，只在「平移过来的那一侧」比可见区多出一个平铺周期
-   （四周都多留会让三张纹理白占一倍显存），整张平移一个周期后循环。
-   三层周期、方向、时长各不相同，叠起来才像几团各走各的光。 */
-.ns-aurora-blob {
-	--ns-aurora-tile-x: calc(var(--ns-aurora-tile-w) * var(--ns-aurora-field-scale, 0.45));
-	--ns-aurora-tile-y: calc(var(--ns-aurora-tile-h) * var(--ns-aurora-field-scale, 0.45));
+/* 色斑层：主色、蓝、紫三组平铺渐变，各自的平铺周期不同，叠起来才像几团散开的光
+   而不是一张规整的花纹。尺寸乘 --ns-aurora-field-scale，预览方格里按比例缩小。 */
+.ns-aurora-glow {
+	--ns-aurora-scale: var(--ns-aurora-field-scale, 0.45);
 	position: absolute;
-	background-size: var(--ns-aurora-tile-x) var(--ns-aurora-tile-y);
-	will-change: transform;
-	animation: ns-aurora-slide var(--ns-aurora-slide-duration) linear infinite;
-}
-
-.ns-aurora-blob-a {
-	--ns-aurora-tile-w: 560px;
-	--ns-aurora-tile-h: 440px;
-	--ns-aurora-slide-duration: 19s;
-	--ns-aurora-slide-x: -1;
-	--ns-aurora-slide-y: -1;
-	inset: 0 calc(var(--ns-aurora-tile-x) * -1) calc(var(--ns-aurora-tile-y) * -1) 0;
-	background-image:
-		radial-gradient(ellipse 34% 30% at 28% 32%, var(--ns-aurora-color-a) 0%, transparent 100%),
-		radial-gradient(ellipse 26% 36% at 76% 74%, var(--ns-aurora-color-a) 0%, transparent 100%);
-}
-
-.ns-aurora-blob-b {
-	--ns-aurora-tile-w: 700px;
-	--ns-aurora-tile-h: 520px;
-	--ns-aurora-slide-duration: 27s;
-	--ns-aurora-slide-x: 1;
-	--ns-aurora-slide-y: -1;
-	inset: 0 0 calc(var(--ns-aurora-tile-y) * -1) calc(var(--ns-aurora-tile-x) * -1);
-	background-image:
-		radial-gradient(ellipse 30% 34% at 66% 30%, var(--ns-aurora-color-b) 0%, transparent 100%),
-		radial-gradient(ellipse 36% 26% at 22% 72%, var(--ns-aurora-color-b) 0%, transparent 100%);
-}
-
-/* 第三层兼管「换色」：一层紫在另两层之上缓慢呼吸，光走过时颜色跟着变。 */
-.ns-aurora-blob-c {
-	--ns-aurora-tile-w: 820px;
-	--ns-aurora-tile-h: 640px;
-	--ns-aurora-slide-duration: 37s;
-	--ns-aurora-slide-x: -1;
-	--ns-aurora-slide-y: 1;
-	inset: calc(var(--ns-aurora-tile-y) * -1) calc(var(--ns-aurora-tile-x) * -1) 0 0;
+	inset: 0;
 	background-image:
 		radial-gradient(ellipse 32% 32% at 40% 60%, var(--ns-aurora-color-c) 0%, transparent 100%),
-		radial-gradient(ellipse 24% 30% at 84% 18%, var(--ns-aurora-color-c) 0%, transparent 100%);
-	animation:
-		ns-aurora-slide var(--ns-aurora-slide-duration) linear infinite,
-		ns-aurora-breathe 11s ease-in-out infinite alternate;
+		radial-gradient(ellipse 24% 30% at 84% 18%, var(--ns-aurora-color-c) 0%, transparent 100%),
+		radial-gradient(ellipse 30% 34% at 66% 30%, var(--ns-aurora-color-b) 0%, transparent 100%),
+		radial-gradient(ellipse 36% 26% at 22% 72%, var(--ns-aurora-color-b) 0%, transparent 100%),
+		radial-gradient(ellipse 34% 30% at 28% 32%, var(--ns-aurora-color-a) 0%, transparent 100%),
+		radial-gradient(ellipse 26% 36% at 76% 74%, var(--ns-aurora-color-a) 0%, transparent 100%);
+	background-size:
+		calc(820px * var(--ns-aurora-scale)) calc(640px * var(--ns-aurora-scale)),
+		calc(820px * var(--ns-aurora-scale)) calc(640px * var(--ns-aurora-scale)),
+		calc(700px * var(--ns-aurora-scale)) calc(520px * var(--ns-aurora-scale)),
+		calc(700px * var(--ns-aurora-scale)) calc(520px * var(--ns-aurora-scale)),
+		calc(560px * var(--ns-aurora-scale)) calc(440px * var(--ns-aurora-scale)),
+		calc(560px * var(--ns-aurora-scale)) calc(440px * var(--ns-aurora-scale));
+	background-position: center;
 }
 
-/* 点阵层：点画的是页面底色，因此深浅两套外观下都自动成立。静态，不参与动画。 */
+/* 点阵层：点画的是页面底色，因此深浅两套外观下都自动成立。 */
 .ns-aurora-field {
 	position: absolute;
 	inset: 0;
@@ -120,29 +87,4 @@
 	);
 	/* 点阵格距：点越大漏光越少，8px/2px 是原始配方。 */
 	background-size: var(--ns-aurora-cell, 8px) var(--ns-aurora-cell, 8px);
-}
-
-@keyframes ns-aurora-slide {
-	to {
-		transform: translate3d(
-			calc(var(--ns-aurora-tile-x) * var(--ns-aurora-slide-x)),
-			calc(var(--ns-aurora-tile-y) * var(--ns-aurora-slide-y)),
-			0
-		);
-	}
-}
-
-@keyframes ns-aurora-breathe {
-	from {
-		opacity: 0.15;
-	}
-	to {
-		opacity: 1;
-	}
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.ns-aurora .ns-aurora-blob {
-		animation: none;
-	}
 }

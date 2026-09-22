@@ -1127,7 +1127,7 @@
   "textureGridTitle": "Grid",
   "textureGridHint": "A faint square grid fading out toward the edges, with a soft accent glow at the center.",
   "textureAuroraTitle": "Aurora",
-  "textureAuroraHint": "A halftone glow at the center of the page: light drifts behind the dots, shifting hue as it goes, and fades out at the edges.",
+  "textureAuroraHint": "A halftone glow at the center of the page: a few colors of light blend behind the dots and fade out at the edges.",
   "textureRippleTitle": "Ripple",
   "textureRippleHint": "Same layout as the grid, with the pattern swapped for fine concentric rings.",
   "newSessionDecorTitle": "New session page decoration",
