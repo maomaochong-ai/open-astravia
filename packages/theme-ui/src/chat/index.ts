@@ -473,6 +473,7 @@ export {
 	TodoProgressStyles,
 	TodoStatusDot,
 	TodoTimeline,
+	todoLabelSheenClassName,
 	todoLabelSheenStyle,
 } from "./TodoProgress";
 export type { TodoStatusBarLabels, TodoStatusBarViewProps } from "./TodoStatusBarView";

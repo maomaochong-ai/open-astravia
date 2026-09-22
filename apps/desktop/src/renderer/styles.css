@@ -831,26 +831,18 @@ a {
 /* 运行中的工具名/状态文字：整段轻微呼吸。
    早先是 background-clip: text 的渐变光斑横扫（对 background-position 做无限动画）——
    那种写法每帧都要重绘文字层，一个任务里常有好几段同时在跑，还贯穿整个任务时长；
-   在毛玻璃窗口上每帧重绘都很贵。opacity 由合成器直接处理，不触发重绘。 */
-@keyframes tool-call-text-breathe {
-	from {
-		opacity: 0.55;
-	}
-	to {
-		opacity: 1;
-	}
-}
-
+   在毛玻璃窗口上每帧重绘都很贵。后来改成 opacity 关键帧，合成器不重绘了，但每段仍各自
+   60fps 出帧，毛玻璃窗口照样整窗重合成。现在读 theme-ui 的共享步进时钟
+   --vetta-live-wave（每 100ms 一步、全页同拍），呼吸幅度不变。 */
 .tool-call-shimmer-text {
 	color: var(--tool-call-shimmer-peak);
-	animation: tool-call-text-breathe 1.2s ease-in-out infinite alternate;
+	opacity: calc(1 - 0.45 * var(--vetta-live-wave));
 	will-change: opacity;
 }
 
 @media (prefers-reduced-motion: reduce) {
 	.tool-call-shimmer-text {
 		color: var(--muted-foreground);
-		animation: none;
 	}
 }
 

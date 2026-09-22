@@ -163,6 +163,16 @@ UI 是工具，不是 showroom。**hover 只反馈，不表演。**
 - 长于 0.6s 的进入动画
 - transition 写 `transition-all`；优先 `transition-colors` 或具体属性
 
+### 5.4 「进行中」指示动画走共享步进时钟
+
+macOS 主窗口带毛玻璃，页面每出一帧系统都要整窗重新合成；一个 4px 的脉冲点用 60fps 关键帧逐帧插值，就足以让流式全程 GPU 不闲。表达「还在进行」的常驻动效（呼吸文字、状态点、波纹、转弧）**禁止自己写 `infinite` 关键帧**，一律读 `@vetta-org/theme-ui/styles.css` 里的共享时钟：
+
+- `--vetta-live-phase`：0→1 锯齿，每 100ms 走一步；`--vetta-live-wave`：由它派生的 0→1→0 三角波。用 `calc()` 把相位映射成自己的 opacity / scale / rotate，相位 0 必须是「亮」的静止态。
+- 元素带 `vetta-live-phase` 类（或用已登记的 `.processing-shimmer` / `.vetta-live-dot` / `.tool-call-shimmer-text` / `.send-button-ripple`），时钟才会因它启动；页面上没有消费者时时钟不跑。
+- 所有指示器锁在同一相位上，整页每秒最多因此多出 10 帧，而不是 60 帧 × N。
+- 流式期间的一次性动效（短语淡入、逐字入场）用 `steps()` 而不是平滑曲线；rAF 逐帧追随滚动只留给大跳，短距离直接落位。
+- `will-change` 只在元素常驻且数量有限时保留；成百上千的流式片段不要提升成合成层。
+
 ---
 
 ## 6. 图标（`@iconify/tailwind4`）

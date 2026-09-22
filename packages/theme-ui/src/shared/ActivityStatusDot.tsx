@@ -30,16 +30,19 @@ const TONE_COLOR: Record<ActivityStatusDotTone, string> = {
 	muted: "var(--muted-foreground)",
 };
 
+/**
+ * 光晕在前 70% 相位里扩散并淡出、后 30% 停住，核心点同拍呼吸。两者都读 theme-ui
+ * styles.css 里的共享步进时钟（--vetta-live-phase / --vetta-live-wave，每 100ms 一步），
+ * 而不是各自跑 60fps 关键帧：毛玻璃窗口每出一帧都要整窗重合成，一个 6px 的点逐帧
+ * 插值就足以让 GPU 常年不闲。元素带 `vetta-live-phase` 类，时钟才会因它启动。
+ */
 export const ACTIVITY_STATUS_DOT_CSS = `
-@keyframes activity-dot-halo {
-	0% { transform: scale(0.7); opacity: 0.55; }
-	70% { transform: scale(2.1); opacity: 0; }
-	100% { transform: scale(2.1); opacity: 0; }
+.activity-dot-halo {
+	--activity-dot-progress: min(1, var(--vetta-live-phase) / 0.7);
+	transform: scale(calc(0.7 + 1.4 * var(--activity-dot-progress)));
+	opacity: calc(0.55 * (1 - var(--activity-dot-progress)));
 }
-@keyframes activity-dot-core {
-	0%, 100% { opacity: 1; }
-	50% { opacity: 0.55; }
-}
+.activity-dot-core { opacity: calc(1 - 0.45 * var(--vetta-live-wave)); }
 `;
 
 /** 关键帧注入点：每个用到状态点的根节点渲染一次，内容相同不会互相干扰。 */
@@ -57,14 +60,8 @@ export function ActivityStatusDot({ pulse, tone, className }: ActivityStatusDotP
 		>
 			{pulse ? (
 				<>
-					<span
-						className={cn("absolute h-1.5 w-1.5 rounded-full", background)}
-						style={{ animation: "activity-dot-halo 2.2s ease-out infinite" }}
-					/>
-					<span
-						className={cn("relative h-1.5 w-1.5 rounded-full", background)}
-						style={{ animation: "activity-dot-core 2.2s ease-in-out infinite" }}
-					/>
+					<span className={cn("vetta-live-phase activity-dot-halo absolute h-1.5 w-1.5 rounded-full", background)} />
+					<span className={cn("vetta-live-phase activity-dot-core relative h-1.5 w-1.5 rounded-full", background)} />
 				</>
 			) : (
 				<span

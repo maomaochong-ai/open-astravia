@@ -25,20 +25,62 @@
 	}
 }
 
-@keyframes processing-shimmer {
-	0%,
-	100% {
-		opacity: 0.58;
+/* ─── 「进行中」指示动画的共享低频时钟 ───
+   macOS 主窗口带毛玻璃，页面每出一帧系统都要整窗重新合成。流式期间同时在跑的呼吸文字、
+   发送按钮波纹、待办状态点各自 60fps 逐帧插值，任意一个都足以把 GPU 顶到几成；而它们
+   只表达「还在进行」，根本不需要 60fps。
+
+   统一由 :root 上一条步进动画驱动 --vetta-live-phase（0→1 锯齿，每 100ms 走一步），
+   --vetta-live-wave 是由它派生的 0→1→0 三角波；各指示器用 calc() 把相位映射成自己的
+   透明度 / 缩放 / 旋转。所有指示器锁在同一相位上，整页每秒最多因此多出 10 帧，而不是
+   60 帧 × N。时钟只在页面上存在消费者时才跑（:has 列表）：新增消费者要么带
+   .vetta-live-phase 类，要么把自己的类名加进那条选择器。失焦暂停沿用
+   [data-inactive-paused]（打在 <html> 上就停住整个时钟）。 */
+@property --vetta-live-phase {
+	syntax: "<number>";
+	inherits: true;
+	initial-value: 0;
+}
+
+@property --vetta-live-wave {
+	syntax: "<number>";
+	inherits: true;
+	initial-value: 0;
+}
+
+@keyframes vetta-live-clock {
+	from {
+		--vetta-live-phase: 0;
 	}
-	50% {
-		opacity: 1;
+	to {
+		--vetta-live-phase: 1;
 	}
 }
 
+:root {
+	--vetta-live-wave: calc(1 - abs(2 * var(--vetta-live-phase) - 1));
+}
+
+:root:has(.vetta-live-phase, .vetta-live-dot, .processing-shimmer, .tool-call-shimmer-text, .send-button-ripple) {
+	animation: vetta-live-clock 1.6s steps(16, end) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	:root:has(.vetta-live-phase, .vetta-live-dot, .processing-shimmer, .tool-call-shimmer-text, .send-button-ripple) {
+		animation: none;
+	}
+}
+
+/* 相位 0 是「亮」的静止态：时钟停下（减少动态偏好、失焦）时文字保持全亮。 */
 .processing-shimmer {
 	color: var(--foreground);
-	animation: processing-shimmer 1.6s ease-in-out infinite;
+	opacity: calc(1 - 0.42 * var(--vetta-live-wave));
 	will-change: opacity;
+}
+
+/* 进行中的小圆点：1 ↔ 0.4 呼吸，取代原先各处内联的 `pulse 1.5s infinite`。 */
+.vetta-live-dot {
+	opacity: calc(1 - 0.6 * var(--vetta-live-wave));
 }
 
 textarea::placeholder {

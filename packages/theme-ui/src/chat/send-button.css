@@ -19,40 +19,27 @@
 
 /* Streaming-state ripple: two staggered rings expand outward from the
    button. Sits in the wrapper (not the button) so it isn't clipped by
-   the button's overflow-hidden. */
+   the button's overflow-hidden.
+   两圈不各自跑 60fps 的关键帧，而是读共享时钟 --vetta-live-phase（见 styles.css）：
+   第二圈相位错开半周。流式全程整页因此每秒只多 10 帧，且与其它指示器同拍。 */
 .send-button-ripple {
+	--send-button-ripple-progress: var(--vetta-live-phase);
 	position: absolute;
 	inset: 0;
 	border-radius: 9999px;
 	border: 1.5px solid color-mix(in srgb, var(--primary) 55%, transparent);
 	pointer-events: none;
-	opacity: 0;
-	transform: scale(1);
-	animation: send-button-ripple 1.8s ease-out infinite;
+	opacity: calc(0.55 * (1 - var(--send-button-ripple-progress)));
+	transform: scale(calc(1 + 0.35 * var(--send-button-ripple-progress)));
 	will-change: transform, opacity;
 }
 
 .send-button-ripple-2 {
-	animation-delay: 0.9s;
-}
-
-@keyframes send-button-ripple {
-	0% {
-		transform: scale(1);
-		opacity: 0.55;
-	}
-	80% {
-		opacity: 0.05;
-	}
-	100% {
-		transform: scale(1.35);
-		opacity: 0;
-	}
+	--send-button-ripple-progress: mod(calc(var(--vetta-live-phase) + 0.5), 1);
 }
 
 @media (prefers-reduced-motion: reduce) {
 	.send-button-ripple {
-		animation: none;
 		display: none;
 	}
 }
