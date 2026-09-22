@@ -152,7 +152,9 @@ async function runLoop(
 				}
 
 				modelCallCount += 1;
-				assertWithinAgentLoopLimit("model_calls", modelCallCount, limits.maxModelCalls);
+				if (limits.maxModelCalls !== undefined) {
+					assertWithinAgentLoopLimit("model_calls", modelCallCount, limits.maxModelCalls);
+				}
 				const message = await streamAssistantResponse(
 					currentContext,
 					config,
@@ -196,7 +198,9 @@ async function runLoop(
 
 				const toolCalls = message.content.filter((content) => content.type === "toolCall");
 				toolCallCount += toolCalls.length;
-				assertWithinAgentLoopLimit("tool_calls", toolCallCount, limits.maxToolCalls);
+				if (limits.maxToolCalls !== undefined) {
+					assertWithinAgentLoopLimit("tool_calls", toolCallCount, limits.maxToolCalls);
+				}
 				hasMoreToolCalls = toolCalls.length > 0;
 				const toolResults: ToolResultMessage[] = [];
 				if (hasMoreToolCalls) {

@@ -11,7 +11,7 @@ export interface AgentCoreTurnEngineOptions {
 	readonly tracer?: AgentLoopConfig["tracer"];
 	/** Shared tracing policy; execute supplies the concrete session identity. */
 	readonly tracing?: AgentLoopConfig["tracing"];
-	/** Finite model, tool, and checkpoint budgets applied to every turn. */
+	/** Optional model/tool-call caps and the checkpoint budget applied to every turn. */
 	readonly limits?: AgentLoopConfig["limits"];
 	/** Resolves credentials for the exact model bound to the current turn. */
 	readonly resolveApiKey?: (model: Model<Api>) => Promise<string | undefined> | string | undefined;

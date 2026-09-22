@@ -63,7 +63,29 @@ function tool(execute: () => void): AgentTool {
 	};
 }
 
-describe("agent loop finite execution limits", () => {
+describe("agent loop execution limits", () => {
+	it("allows more than 100 model calls and 1000 tool calls when neither budget is configured", async () => {
+		const toolRounds = 1_001;
+		let modelCalls = 0;
+		let toolExecutions = 0;
+		const repeatTool = tool(() => {
+			toolExecutions += 1;
+		});
+		const stream = agentLoopContinue(context([repeatTool]), config(), undefined, () => {
+			modelCalls += 1;
+			if (modelCalls <= toolRounds) {
+				return response([{ type: "toolCall", id: `call-${modelCalls}`, name: "repeat", arguments: {} }], "toolUse");
+			}
+			return response([{ type: "text", text: "completed after the legacy default" }], "stop");
+		});
+		const iteration = collect(stream);
+
+		await expect(within(stream.result(), 5_000)).resolves.toHaveLength(toolRounds * 2 + 1);
+		await expect(within(iteration, 5_000)).resolves.toBeUndefined();
+		expect(modelCalls).toBe(toolRounds + 1);
+		expect(toolExecutions).toBe(toolRounds);
+	});
+
 	it("ends a checkpoint that the host never completes", async () => {
 		const stream = agentLoopContinue(
 			context(),

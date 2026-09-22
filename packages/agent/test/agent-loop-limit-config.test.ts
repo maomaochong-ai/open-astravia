@@ -3,8 +3,13 @@ import { assertWithinAgentLoopLimit, DEFAULT_AGENT_LOOP_LIMITS, resolveAgentLoop
 import type { AgentLoopLimits } from "../src/types.js";
 
 describe("agent loop limit configuration", () => {
-	it("uses finite defaults without sharing mutable input", () => {
+	it("leaves model and tool calls uncapped while retaining a finite checkpoint default", () => {
 		expect(resolveAgentLoopLimits(undefined)).toEqual(DEFAULT_AGENT_LOOP_LIMITS);
+		expect(resolveAgentLoopLimits(undefined).maxModelCalls).toBeUndefined();
+		expect(resolveAgentLoopLimits(undefined).maxToolCalls).toBeUndefined();
+		expect(DEFAULT_AGENT_LOOP_LIMITS).toEqual({
+			contextCheckpointTimeoutMs: 300_000,
+		});
 	});
 
 	it("applies partial overrides and preserves other defaults", () => {

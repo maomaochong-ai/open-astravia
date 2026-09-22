@@ -1,5 +1,7 @@
 # Phase 0B：测试模型基线与有限执行预算
 
+> 本文记录 Phase 0B 实施当时的默认值。现行行为已由 [ADR-0126](../../adr/0126-model-and-tool-call-budgets-are-opt-in.md) 调整：`maxModelCalls` 和 `maxToolCalls` 改为显式配置，默认仍保留 checkpoint timeout 和有限的 Provider 错误恢复预算。
+
 ## 1. 阶段目标
 
 本阶段处理 Phase 0A 暴露的两类基础问题：

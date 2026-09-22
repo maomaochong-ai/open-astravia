@@ -67,6 +67,8 @@ Agent Engine 直接 await；Runtime Pipeline 在回调中持久化、压缩或�
 
 ## 3. Stop Budget
 
+> 后续决策：[ADR-0126](../../adr/0126-model-and-tool-call-budgets-are-opt-in.md) 将 `maxModelCalls` 和 `maxToolCalls` 改为显式配置；默认错误恢复和 checkpoint 预算仍然有限。下文保留为本重构方案当时的设计要求。
+
 默认必须有限，至少包括：
 
 - `maxModelCalls`
@@ -177,4 +179,3 @@ Agent 不生成 sessionId、repository version 或 UI event。Runtime 为事件�
 | `StreamFn` | `@vetta/ai` model runtime | Agent 依赖模型调用端口，不暴露 Provider stream function |
 
 迁移后，`coding-agent` 对 `@vetta/agent-core` 的直接 import 应只出现在 Runtime Engine 组装或专门适配层，不能散落在 compaction、memory、session、RPC 和扩展 public API。
-

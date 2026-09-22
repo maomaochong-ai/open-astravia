@@ -1,8 +1,12 @@
 import type { AgentLoopLimits } from "../types.js";
 
-export const DEFAULT_AGENT_LOOP_LIMITS: Required<AgentLoopLimits> = {
-	maxModelCalls: 100,
-	maxToolCalls: 1_000,
+export interface ResolvedAgentLoopLimits {
+	readonly maxModelCalls?: number;
+	readonly maxToolCalls?: number;
+	readonly contextCheckpointTimeoutMs: number;
+}
+
+export const DEFAULT_AGENT_LOOP_LIMITS: ResolvedAgentLoopLimits = {
 	contextCheckpointTimeoutMs: 300_000,
 };
 
@@ -21,10 +25,12 @@ export class AgentLoopLimitError extends Error {
 	}
 }
 
-export function resolveAgentLoopLimits(limits: AgentLoopLimits | undefined): Required<AgentLoopLimits> {
+export function resolveAgentLoopLimits(limits: AgentLoopLimits | undefined): ResolvedAgentLoopLimits {
+	const maxModelCalls = optionalPositiveInteger(limits?.maxModelCalls, "maxModelCalls");
+	const maxToolCalls = optionalPositiveInteger(limits?.maxToolCalls, "maxToolCalls");
 	return {
-		maxModelCalls: positiveInteger(limits?.maxModelCalls, DEFAULT_AGENT_LOOP_LIMITS.maxModelCalls, "maxModelCalls"),
-		maxToolCalls: positiveInteger(limits?.maxToolCalls, DEFAULT_AGENT_LOOP_LIMITS.maxToolCalls, "maxToolCalls"),
+		...(maxModelCalls === undefined ? {} : { maxModelCalls }),
+		...(maxToolCalls === undefined ? {} : { maxToolCalls }),
 		contextCheckpointTimeoutMs: positiveInteger(
 			limits?.contextCheckpointTimeoutMs,
 			DEFAULT_AGENT_LOOP_LIMITS.contextCheckpointTimeoutMs,
@@ -35,6 +41,12 @@ export function resolveAgentLoopLimits(limits: AgentLoopLimits | undefined): Req
 
 export function assertWithinAgentLoopLimit(kind: AgentLoopLimitKind, observed: number, limit: number): void {
 	if (observed > limit) throw new AgentLoopLimitError(kind, limit, observed);
+}
+
+function optionalPositiveInteger(value: number | undefined, name: keyof AgentLoopLimits): number | undefined {
+	if (value === undefined) return undefined;
+	if (Number.isSafeInteger(value) && value > 0) return value;
+	throw new RangeError(`Agent loop limit ${name} must be a positive safe integer`);
 }
 
 function positiveInteger(value: number | undefined, fallback: number, name: keyof AgentLoopLimits): number {

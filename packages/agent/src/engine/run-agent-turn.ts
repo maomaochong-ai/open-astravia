@@ -71,7 +71,7 @@ async function executeRun(
 				appendInput(state, pendingInput, emit);
 				pendingInput = undefined;
 			}
-			if (state.modelCalls >= request.limits.maxModelCalls) {
+			if (request.limits.maxModelCalls !== undefined && state.modelCalls >= request.limits.maxModelCalls) {
 				finish("max_model_calls", state, emit);
 				return;
 			}
@@ -188,7 +188,10 @@ async function executeRun(
 				finish("completed", state, emit);
 				return;
 			}
-			if (state.toolCalls + toolCalls.length > request.limits.maxToolCalls) {
+			if (
+				request.limits.maxToolCalls !== undefined &&
+				state.toolCalls + toolCalls.length > request.limits.maxToolCalls
+			) {
 				finish("max_tool_calls", state, emit);
 				return;
 			}
