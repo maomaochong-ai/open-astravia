@@ -3,15 +3,20 @@ import { createCapabilityCatalog } from "../catalog.js";
 import { CAPABILITY_LAYERS, defineCapability } from "../contracts.js";
 import { defineCapabilityInputSchema, defineCapabilityOutputSchema, rejectCapabilitySchemaExcess } from "../schema.js";
 
-export const SCHEDULER_EXECUTION_MODES = {
-	INHERIT: "inherit",
-	SANDBOX: "sandbox",
-	FULL_ACCESS: "full-access",
+export const SCHEDULER_RUN_TARGET_MODES = {
+	NEW_SESSION: "new-session",
+	SAME_SESSION: "same-session",
 } as const;
 
-export const SCHEDULER_SKILL_TYPES = {
-	SKILL: "skill",
-	SCENE: "scene",
+export const SCHEDULER_NOTIFY_WHEN = {
+	ALWAYS: "always",
+	SUCCESS: "success",
+	FAILURE: "failure",
+} as const;
+
+export const SCHEDULER_SUSPEND_REASONS = {
+	SESSION_DELETED: "session-deleted",
+	PROJECT_REMOVED: "project-removed",
 } as const;
 
 export const SCHEDULER_LAST_RUN_STATUSES = {
@@ -24,6 +29,14 @@ export const SCHEDULER_RECORD_STATUSES = {
 	SUCCESS: "success",
 	FAILED: "failed",
 	ABORTED: "aborted",
+	SKIPPED: "skipped",
+	MISSED: "missed",
+} as const;
+
+export const SCHEDULER_NOT_RUN_REASONS = {
+	PREVIOUS_RUNNING: "previous-running",
+	APP_NOT_RUNNING: "app-not-running",
+	SYSTEM_SLEEP: "system-sleep",
 } as const;
 
 export const SCHEDULER_COMMAND_STATUSES = {
@@ -33,20 +46,20 @@ export const SCHEDULER_COMMAND_STATUSES = {
 
 const schedulerEmptyInputType = Type.Object({}, { additionalProperties: false });
 
-const schedulerExecutionModeType = Type.Union([
-	Type.Literal(SCHEDULER_EXECUTION_MODES.INHERIT),
-	Type.Literal(SCHEDULER_EXECUTION_MODES.SANDBOX),
-	Type.Literal(SCHEDULER_EXECUTION_MODES.FULL_ACCESS),
+const schedulerRunTargetModeType = Type.Union([
+	Type.Literal(SCHEDULER_RUN_TARGET_MODES.NEW_SESSION),
+	Type.Literal(SCHEDULER_RUN_TARGET_MODES.SAME_SESSION),
 ]);
 
-const schedulerRecordExecutionModeType = Type.Union([
-	Type.Literal(SCHEDULER_EXECUTION_MODES.SANDBOX),
-	Type.Literal(SCHEDULER_EXECUTION_MODES.FULL_ACCESS),
+const schedulerNotifyWhenType = Type.Union([
+	Type.Literal(SCHEDULER_NOTIFY_WHEN.ALWAYS),
+	Type.Literal(SCHEDULER_NOTIFY_WHEN.SUCCESS),
+	Type.Literal(SCHEDULER_NOTIFY_WHEN.FAILURE),
 ]);
 
-const schedulerSkillTypeType = Type.Union([
-	Type.Literal(SCHEDULER_SKILL_TYPES.SKILL),
-	Type.Literal(SCHEDULER_SKILL_TYPES.SCENE),
+const schedulerSuspendReasonType = Type.Union([
+	Type.Literal(SCHEDULER_SUSPEND_REASONS.SESSION_DELETED),
+	Type.Literal(SCHEDULER_SUSPEND_REASONS.PROJECT_REMOVED),
 ]);
 
 const schedulerLastRunStatusType = Type.Union([
@@ -59,6 +72,14 @@ const schedulerRecordStatusType = Type.Union([
 	Type.Literal(SCHEDULER_RECORD_STATUSES.SUCCESS),
 	Type.Literal(SCHEDULER_RECORD_STATUSES.FAILED),
 	Type.Literal(SCHEDULER_RECORD_STATUSES.ABORTED),
+	Type.Literal(SCHEDULER_RECORD_STATUSES.SKIPPED),
+	Type.Literal(SCHEDULER_RECORD_STATUSES.MISSED),
+]);
+
+const schedulerNotRunReasonType = Type.Union([
+	Type.Literal(SCHEDULER_NOT_RUN_REASONS.PREVIOUS_RUNNING),
+	Type.Literal(SCHEDULER_NOT_RUN_REASONS.APP_NOT_RUNNING),
+	Type.Literal(SCHEDULER_NOT_RUN_REASONS.SYSTEM_SLEEP),
 ]);
 
 const schedulerCommandStatusType = Type.Union([
@@ -67,21 +88,98 @@ const schedulerCommandStatusType = Type.Union([
 ]);
 
 const schedulerNonBlankInputStringType = Type.String({ pattern: "\\S" });
+const minuteType = Type.Integer({ minimum: 0, maximum: 59 });
+const hourType = Type.Integer({ minimum: 0, maximum: 23 });
 
-const schedulerSkillInputType = Type.Object(
-	{
-		name: schedulerNonBlankInputStringType,
-		alias: Type.Optional(schedulerNonBlankInputStringType),
-		type: schedulerSkillTypeType,
-	},
+/** 「重复」：精确到分钟，按本机时区；星期 0 = 周日。interval 从 startAt 起每 everyMinutes 分钟一次；custom 为 5 段 cron。 */
+const schedulerScheduleType = Type.Union([
+	Type.Object({ kind: Type.Literal("once"), at: Type.Number() }, { additionalProperties: false }),
+	Type.Object({ kind: Type.Literal("hourly"), minute: minuteType }, { additionalProperties: false }),
+	Type.Object({ kind: Type.Literal("daily"), hour: hourType, minute: minuteType }, { additionalProperties: false }),
+	Type.Object(
+		{
+			kind: Type.Literal("weekly"),
+			weekdays: Type.Array(Type.Integer({ minimum: 0, maximum: 6 }), { minItems: 1 }),
+			hour: hourType,
+			minute: minuteType,
+		},
+		{ additionalProperties: false },
+	),
+	Type.Object(
+		{
+			kind: Type.Literal("monthly"),
+			days: Type.Array(Type.Union([Type.Integer({ minimum: 1, maximum: 31 }), Type.Literal("last")]), {
+				minItems: 1,
+			}),
+			hour: hourType,
+			minute: minuteType,
+		},
+		{ additionalProperties: false },
+	),
+	Type.Object(
+		{
+			kind: Type.Literal("interval"),
+			everyMinutes: Type.Integer({ minimum: 1, maximum: 10080 }),
+			startAt: Type.Number(),
+		},
+		{ additionalProperties: false },
+	),
+	Type.Object(
+		{ kind: Type.Literal("custom"), cron: schedulerNonBlankInputStringType },
+		{ additionalProperties: false },
+	),
+]);
+
+/**
+ * 运行会话策略：projectCwd 为会话所属的项目（默认对话即对话 cwd）；
+ * same-session 的 sessionPath 为 null 表示首次执行时新建一个会话并一直复用。
+ */
+const schedulerRunTargetType = Type.Union([
+	Type.Object(
+		{ mode: Type.Literal(SCHEDULER_RUN_TARGET_MODES.NEW_SESSION), projectCwd: schedulerNonBlankInputStringType },
+		{ additionalProperties: false },
+	),
+	Type.Object(
+		{
+			mode: Type.Literal(SCHEDULER_RUN_TARGET_MODES.SAME_SESSION),
+			projectCwd: schedulerNonBlankInputStringType,
+			sessionPath: Type.Union([schedulerNonBlankInputStringType, Type.Null()]),
+		},
+		{ additionalProperties: false },
+	),
+]);
+
+/** 输入侧：projectCwd 可省略，省略即落在默认「对话」里（表单里项目选「无」）。 */
+const schedulerRunTargetInputType = Type.Union([
+	Type.Object(
+		{
+			mode: Type.Literal(SCHEDULER_RUN_TARGET_MODES.NEW_SESSION),
+			projectCwd: Type.Optional(schedulerNonBlankInputStringType),
+		},
+		{ additionalProperties: false },
+	),
+	Type.Object(
+		{
+			mode: Type.Literal(SCHEDULER_RUN_TARGET_MODES.SAME_SESSION),
+			projectCwd: Type.Optional(schedulerNonBlankInputStringType),
+			sessionPath: Type.Union([schedulerNonBlankInputStringType, Type.Null()]),
+		},
+		{ additionalProperties: false },
+	),
+]);
+
+/** 省略即「跟随默认模型」，每次触发时解析。 */
+const schedulerModelType = Type.Object(
+	{ key: schedulerNonBlankInputStringType, reasoning: Type.Optional(schedulerNonBlankInputStringType) },
 	{ additionalProperties: false },
 );
 
-const schedulerSkillOutputType = Type.Object(
+/** template 支持 {{name}} {{status}} {{startedAt}} {{duration}} {{reply}} {{error}}。 */
+const schedulerNotificationType = Type.Object(
 	{
-		name: Type.String(),
-		alias: Type.Optional(Type.String({ pattern: "\\S" })),
-		type: schedulerSkillTypeType,
+		webhookIds: Type.Array(schedulerNonBlankInputStringType, { minItems: 1 }),
+		when: schedulerNotifyWhenType,
+		template: schedulerNonBlankInputStringType,
 	},
 	{ additionalProperties: false },
 );
@@ -91,13 +189,12 @@ const schedulerTaskType = Type.Object(
 		id: Type.String(),
 		name: Type.String(),
 		prompt: Type.String(),
-		cron: Type.String(),
-		isOnce: Type.Boolean(),
+		schedule: schedulerScheduleType,
+		runTarget: schedulerRunTargetType,
+		model: Type.Optional(schedulerModelType),
+		notification: Type.Optional(schedulerNotificationType),
 		enabled: Type.Boolean(),
-		cwd: Type.String(),
-		modelKey: Type.Optional(Type.String()),
-		executionMode: Type.Optional(schedulerExecutionModeType),
-		skill: Type.Optional(schedulerSkillOutputType),
+		suspendedReason: Type.Optional(schedulerSuspendReasonType),
 		createdAt: Type.Number(),
 		updatedAt: Type.Number(),
 		lastRunAt: Type.Union([Type.Number(), Type.Null()]),
@@ -106,37 +203,35 @@ const schedulerTaskType = Type.Object(
 	{ additionalProperties: false },
 );
 
-const schedulerTaskDataFields = {
-	name: Type.Optional(schedulerNonBlankInputStringType),
-	prompt: Type.Optional(schedulerNonBlankInputStringType),
-	cron: Type.Optional(schedulerNonBlankInputStringType),
-	isOnce: Type.Optional(Type.Boolean()),
-	enabled: Type.Optional(Type.Boolean()),
-	cwd: Type.Optional(schedulerNonBlankInputStringType),
-	modelKey: Type.Optional(schedulerNonBlankInputStringType),
-	executionMode: Type.Optional(schedulerExecutionModeType),
-	skill: Type.Optional(schedulerSkillInputType),
-};
-
 const schedulerTaskCreateDataType = rejectCapabilitySchemaExcess(
 	Type.Object(
 		{
 			name: schedulerNonBlankInputStringType,
 			prompt: schedulerNonBlankInputStringType,
-			cron: schedulerNonBlankInputStringType,
-			isOnce: Type.Boolean(),
+			schedule: schedulerScheduleType,
+			runTarget: schedulerRunTargetInputType,
+			model: Type.Optional(schedulerModelType),
+			notification: Type.Optional(schedulerNotificationType),
 			enabled: Type.Boolean(),
-			cwd: schedulerNonBlankInputStringType,
-			modelKey: Type.Optional(schedulerNonBlankInputStringType),
-			executionMode: Type.Optional(schedulerExecutionModeType),
-			skill: Type.Optional(schedulerSkillInputType),
 		},
 		{ additionalProperties: false },
 	),
 );
 
+/** model / notification 传 null 清除。 */
 const schedulerTaskUpdateDataType = rejectCapabilitySchemaExcess(
-	Type.Object(schedulerTaskDataFields, { additionalProperties: false, minProperties: 1 }),
+	Type.Object(
+		{
+			name: Type.Optional(schedulerNonBlankInputStringType),
+			prompt: Type.Optional(schedulerNonBlankInputStringType),
+			schedule: Type.Optional(schedulerScheduleType),
+			runTarget: Type.Optional(schedulerRunTargetInputType),
+			model: Type.Optional(Type.Union([schedulerModelType, Type.Null()])),
+			notification: Type.Optional(Type.Union([schedulerNotificationType, Type.Null()])),
+			enabled: Type.Optional(Type.Boolean()),
+		},
+		{ additionalProperties: false, minProperties: 1 },
+	),
 );
 
 const schedulerTaskIdInputType = Type.Object(
@@ -173,9 +268,10 @@ const schedulerExecutionRecordType = Type.Object(
 	{
 		id: Type.String(),
 		taskId: Type.String(),
-		sessionId: Type.String(),
+		sessionId: Type.Optional(Type.String()),
 		sessionPath: Type.Optional(Type.String()),
 		cwd: Type.Optional(Type.String()),
+		mode: Type.Optional(schedulerRunTargetModeType),
 		startedAt: Type.Number(),
 		completedAt: Type.Union([Type.Number(), Type.Null()]),
 		status: schedulerRecordStatusType,
@@ -183,7 +279,10 @@ const schedulerExecutionRecordType = Type.Object(
 		responsePreview: Type.String(),
 		error: Type.Optional(Type.String()),
 		durationMs: Type.Optional(Type.Number()),
-		executionMode: Type.Optional(schedulerRecordExecutionModeType),
+		reason: Type.Optional(schedulerNotRunReasonType),
+		missedCount: Type.Optional(Type.Number()),
+		missedUntil: Type.Optional(Type.Number()),
+		notifyError: Type.Optional(Type.String()),
 	},
 	{ additionalProperties: false },
 );
@@ -196,12 +295,18 @@ const schedulerCommandResultType = Type.Object(
 	{ additionalProperties: false },
 );
 
-export type SchedulerExecutionMode = (typeof SCHEDULER_EXECUTION_MODES)[keyof typeof SCHEDULER_EXECUTION_MODES];
-export type SchedulerSkillType = (typeof SCHEDULER_SKILL_TYPES)[keyof typeof SCHEDULER_SKILL_TYPES];
+export type SchedulerRunTargetMode = (typeof SCHEDULER_RUN_TARGET_MODES)[keyof typeof SCHEDULER_RUN_TARGET_MODES];
+export type SchedulerNotifyWhen = (typeof SCHEDULER_NOTIFY_WHEN)[keyof typeof SCHEDULER_NOTIFY_WHEN];
+export type SchedulerSuspendReason = (typeof SCHEDULER_SUSPEND_REASONS)[keyof typeof SCHEDULER_SUSPEND_REASONS];
+export type SchedulerNotRunReason = (typeof SCHEDULER_NOT_RUN_REASONS)[keyof typeof SCHEDULER_NOT_RUN_REASONS];
 export type SchedulerLastRunStatus = (typeof SCHEDULER_LAST_RUN_STATUSES)[keyof typeof SCHEDULER_LAST_RUN_STATUSES];
 export type SchedulerRecordStatus = (typeof SCHEDULER_RECORD_STATUSES)[keyof typeof SCHEDULER_RECORD_STATUSES];
 export type SchedulerCommandStatus = (typeof SCHEDULER_COMMAND_STATUSES)[keyof typeof SCHEDULER_COMMAND_STATUSES];
-export type SchedulerSkillRef = Readonly<Static<typeof schedulerSkillOutputType>>;
+export type SchedulerSchedule = Readonly<Static<typeof schedulerScheduleType>>;
+export type SchedulerRunTarget = Readonly<Static<typeof schedulerRunTargetType>>;
+export type SchedulerRunTargetInput = Readonly<Static<typeof schedulerRunTargetInputType>>;
+export type SchedulerModel = Readonly<Static<typeof schedulerModelType>>;
+export type SchedulerNotification = Readonly<Static<typeof schedulerNotificationType>>;
 export type SchedulerTask = Readonly<Static<typeof schedulerTaskType>>;
 export type SchedulerTaskCreateData = Readonly<Static<typeof schedulerTaskCreateDataType>>;
 export type SchedulerTaskUpdateData = Readonly<Static<typeof schedulerTaskUpdateDataType>>;
@@ -234,7 +339,7 @@ export const DOMAIN_SCHEDULER_CAPABILITIES = {
 		id: "cap.domain.vetta.scheduler.task.list",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
-		version: 1,
+		version: 2,
 		input: schedulerEmptyInputSchema,
 		output: schedulerTasksOutputSchema,
 	}),
@@ -242,7 +347,7 @@ export const DOMAIN_SCHEDULER_CAPABILITIES = {
 		id: "cap.domain.vetta.scheduler.task.get",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
-		version: 1,
+		version: 2,
 		input: schedulerTaskIdInputSchema,
 		output: schedulerTaskOutputSchema,
 	}),
@@ -250,7 +355,7 @@ export const DOMAIN_SCHEDULER_CAPABILITIES = {
 		id: "cap.domain.vetta.scheduler.task.history.list",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
-		version: 1,
+		version: 2,
 		input: schedulerTaskIdInputSchema,
 		output: schedulerExecutionRecordsOutputSchema,
 	}),
@@ -258,7 +363,7 @@ export const DOMAIN_SCHEDULER_CAPABILITIES = {
 		id: "cap.domain.vetta.scheduler.task.create",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
-		version: 1,
+		version: 2,
 		input: schedulerTaskCreateInputSchema,
 		output: schedulerTaskOutputSchema,
 	}),
@@ -266,7 +371,7 @@ export const DOMAIN_SCHEDULER_CAPABILITIES = {
 		id: "cap.domain.vetta.scheduler.task.update",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
-		version: 1,
+		version: 2,
 		input: schedulerTaskUpdateInputSchema,
 		output: schedulerTaskOutputSchema,
 	}),
@@ -282,7 +387,7 @@ export const DOMAIN_SCHEDULER_CAPABILITIES = {
 		id: "cap.domain.vetta.scheduler.task.set-enabled",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
-		version: 1,
+		version: 2,
 		input: schedulerTaskSetEnabledInputSchema,
 		output: schedulerTaskOutputSchema,
 	}),

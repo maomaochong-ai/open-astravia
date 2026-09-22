@@ -19,7 +19,7 @@ import { watchPickedSystem } from "./new-session/picked-system";
 import { setPluginCtx } from "./plugin-context";
 import { CANVAS_TAB_ID, GALLERY_VIEW_ID } from "./tab-ids";
 import { registerDesignTools } from "./tools";
-import { claimCanvasAutoOpen } from "./vetd/auto-open";
+import { claimCanvasAutoOpen, openCanvasAfterWarmup } from "./vetd/auto-open";
 import { setDesignPresence } from "./vetd/design-presence";
 import { registerToolGate } from "./vetd/tool-gate";
 import { isPureDesignProject, pickDesignPaths } from "./vetd/discover";
@@ -41,7 +41,8 @@ function lazySurface<P extends object>(load: () => Promise<{ default: ComponentT
 	};
 }
 
-const CanvasTab = lazySurface(async () => ({ default: (await import("./canvas/CanvasTab")).CanvasTab }));
+const loadCanvasTab = () => import("./canvas/CanvasTab");
+const CanvasTab = lazySurface(async () => ({ default: (await loadCanvasTab()).CanvasTab }));
 const GalleryView = lazySurface(async () => ({ default: (await import("./gallery/GalleryView")).GalleryView }));
 const ExportMockupDialog = lazySurface(async () => ({
 	default: (await import("./mockup/ExportMockupDialog")).ExportMockupDialog,
@@ -128,13 +129,20 @@ export default definePlugin({
 					if (found === 0) return;
 					// 从画廊点进来的这一次，用户已经说清楚要看设计了：混合项目也铺开，
 					// 且不受「同一会话只弹一次」的去重影响（那是给自动判断兜底的）。
+					const openCanvas = (): void => {
+						void openCanvasAfterWarmup(
+							loadCanvasTab,
+							() => latestCwd !== cwd || latestSessionId !== sessionId,
+							() => ctx.ui.openActivityTab(CANVAS_TAB_ID, { width: "max" }),
+						);
+					};
 					if (claimCanvasReveal(cwd)) {
-						ctx.ui.openActivityTab(CANVAS_TAB_ID, { width: "max" });
+						openCanvas();
 						return;
 					}
 					if (!isPureDesignProject(files)) return;
 					if (!claimCanvasAutoOpen(sessionId)) return;
-					ctx.ui.openActivityTab(CANVAS_TAB_ID, { width: "max" });
+					openCanvas();
 				});
 		};
 
@@ -197,11 +205,11 @@ export default definePlugin({
 			// 生成阶段就点亮：edit/write 的时间几乎全花在生成参数上，等到执行事件
 			// 才亮的话，浮层是在活干完之后才出现的。
 			if (event.type === "tool-call-args") {
-				notifyAgentToolArgs(event.toolCallId, event.toolName, event.args);
+				notifyAgentToolArgs(event.toolCallId, event.toolName, event.args, latestCwd);
 				return;
 			}
 			if (event.type === "tool-call-start") {
-				notifyAgentToolStart(event.toolCallId, event.toolName, event.args);
+				notifyAgentToolStart(event.toolCallId, event.toolName, event.args, latestCwd);
 				return;
 			}
 			if (event.type === "tool-call-end") {

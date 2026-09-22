@@ -1,5 +1,4 @@
-import { useAgentModeNarration } from "@shared/agent-modes/agent-mode-registry";
-import { activeSessionAtom, promptPredictingAtom, sessionAgentModeAtom } from "@shared/store/atoms";
+import { activeSessionAtom, promptPredictingAtom } from "@shared/store/atoms";
 import { useAtomValue } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { useMemo } from "react";
@@ -15,7 +14,6 @@ export function SessionAssistantRendering({ children }: { children: ReactNode })
 		[runtimeId],
 	);
 	const predicting = useAtomValue(prediction);
-	const narration = useAgentModeNarration(useAtomValue(sessionAgentModeAtom));
-	const value = useMemo(() => ({ narration, predicting }), [narration, predicting]);
+	const value = useMemo(() => ({ predicting }), [predicting]);
 	return <AssistantRenderingProvider value={value}>{children}</AssistantRenderingProvider>;
 }

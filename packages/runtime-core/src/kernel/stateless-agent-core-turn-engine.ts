@@ -49,8 +49,7 @@ import { withPromptCacheDiagnostics } from "./model-call-diagnostics.js";
 import { composeModelCallSystemPrompt, resolveModelCallFrame } from "./model-call-frame.js";
 import { RuntimeToolExecutionError } from "./tool-execution-error.js";
 
-const DEFAULT_MAX_MODEL_CALLS = 100;
-const DEFAULT_MAX_TOOL_CALLS = 1_000;
+const DEFAULT_MAX_RECOVERY_ATTEMPTS = 100;
 const DEFAULT_CHECKPOINT_TIMEOUT_MS = 300_000;
 type RuntimeInputSchema = ReturnType<typeof Type.Unsafe<Record<string, unknown>>>;
 
@@ -734,11 +733,12 @@ function toModelTool(tool: AgentRuntimeToolDefinition): Tool {
 }
 
 function resolveLimits(limits: AgentCoreTurnEngineOptions["limits"]): AgentTurnRequest["limits"] {
-	const maxModelCalls = limits?.maxModelCalls ?? DEFAULT_MAX_MODEL_CALLS;
+	const maxModelCalls = limits?.maxModelCalls;
+	const maxToolCalls = limits?.maxToolCalls;
 	return {
-		maxModelCalls,
-		maxToolCalls: limits?.maxToolCalls ?? DEFAULT_MAX_TOOL_CALLS,
-		maxRecoveryAttempts: maxModelCalls,
+		...(maxModelCalls === undefined ? {} : { maxModelCalls }),
+		...(maxToolCalls === undefined ? {} : { maxToolCalls }),
+		maxRecoveryAttempts: maxModelCalls ?? DEFAULT_MAX_RECOVERY_ATTEMPTS,
 		checkpointTimeoutMs: limits?.contextCheckpointTimeoutMs ?? DEFAULT_CHECKPOINT_TIMEOUT_MS,
 	};
 }

@@ -29,7 +29,7 @@ export function useAssistantMessageModel({
 	isTailMessage,
 	message,
 }: AssistantMessageModelInput): AssistantMessageModel {
-	const { narration, predicting: isRuntimePredicting } = useAssistantRendering();
+	const { predicting: isRuntimePredicting } = useAssistantRendering();
 	const toolCallSlots = useAtomValue(pluginToolCallSlotsAtom);
 	const customToolNames = useMemo(() => new Set(toolCallSlots.map((slot) => slot.toolName)), [toolCallSlots]);
 	const presentationToolCallIds = useMemo(
@@ -48,9 +48,6 @@ export function useAssistantMessageModel({
 		message.phase === "pending" ||
 		message.phase === "streaming" ||
 		(isTailMessage && isStreaming && message.phase !== "failed" && message.phase !== "aborted");
-	// 按「本会话固化的模式」查注册表的 narration 能力位渲染，不是全局默认值，也不硬编码
-	// mode id（新增模式对本渲染层零改动）。未指定模式回退 staged（与历史会话按 work 恢复口径一致）。
-	const stagedNarration = narration === "staged";
 	const foldData = useMemo(
 		() => getAssistantFoldData(message.blocks, customToolNames),
 		[message.blocks, customToolNames],
@@ -62,15 +59,12 @@ export function useAssistantMessageModel({
 		return pinApprovedPlanBlocks(foldData.processBlocks, foldData.answerBlocks);
 	}, [expanded, exportMode, foldData, isCurrentlyStreaming, message.blocks]);
 	const segments = useMemo(
-		() =>
-			stagedNarration
-				? groupBlocksForWork(visibleBlocks, customToolNames, isCurrentlyStreaming, standaloneToolCallIds)
-				: groupBlocks(visibleBlocks, customToolNames, standaloneToolCallIds),
-		[stagedNarration, visibleBlocks, customToolNames, isCurrentlyStreaming, standaloneToolCallIds],
+		() => groupBlocksForWork(visibleBlocks, customToolNames, isCurrentlyStreaming, standaloneToolCallIds),
+		[visibleBlocks, customToolNames, isCurrentlyStreaming, standaloneToolCallIds],
 	);
-	// Work 折叠条按「阶段数」计数，而不是 coding 的原始 block 数——用户看到的单位就是阶段。
+	// 折叠条按「阶段数」计数，而不是原始 block 数——用户看到的单位就是阶段。
 	const workFoldCount = useMemo(() => {
-		if (!stagedNarration || !foldData) return 0;
+		if (!foldData) return 0;
 		const processSegments = groupBlocksForWork(
 			foldData.processBlocks,
 			customToolNames,
@@ -79,7 +73,7 @@ export function useAssistantMessageModel({
 		);
 		return processSegments.filter((segment) => segment.type === "progress_group" || segment.type === "tool_group")
 			.length;
-	}, [stagedNarration, foldData, customToolNames, presentationToolCallIds]);
+	}, [foldData, customToolNames, presentationToolCallIds]);
 	const exportProcessSegments = useMemo(
 		() =>
 			exportMode && foldData ? groupBlocks(foldData.processBlocks, customToolNames, presentationToolCallIds) : [],
@@ -125,7 +119,6 @@ export function useAssistantMessageModel({
 		isCurrentlyStreaming,
 		isPredicting: isTailMessage && !isCurrentlyStreaming && isRuntimePredicting,
 		liveThinkingId,
-		stagedNarration,
 		workFoldCount,
 		segments,
 		durationAvailable: Boolean(message.durationSeconds && message.durationSeconds > 0) && !isCurrentlyStreaming,

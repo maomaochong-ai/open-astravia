@@ -245,6 +245,7 @@ function assembly(sessionId: string): RuntimeHostSessionAssembly {
 		corePorts: {
 			turnControl: {
 				prompt: async () => undefined,
+				promptWhenAvailable: async () => undefined,
 				continue: async () => {},
 				retry: async () => {},
 				abort: async () => {},

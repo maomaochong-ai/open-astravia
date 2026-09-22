@@ -68,7 +68,8 @@
 			"clearConversationMessage": "将删除「对话」项目下 {{count}} 个会话（保留产物，Claw 会话不受影响），此操作不可恢复。",
 			"clearClawTitle": "清空 Claw 记录",
 			"clearClawMessage": "将删除 {{count}} 条 Claw 会话记录（保留产物），此操作不可恢复。",
-			"clearConfirm": "清空"
+			"clearConfirm": "清空",
+			"deleteBoundSessionHint": "自动化「{{task}}」绑定在这个会话上，删除后它会暂停，需要重新选择会话才能继续运行。"
 		},
 		"time": {
 			"justNow": "刚刚",
@@ -115,7 +116,8 @@
 			"label": "标签",
 			"new": "新标签…",
 			"manage": "管理标签…"
-		}
+		},
+		"createAutomation": "基于此会话创建自动化"
 	},
 	"tagEditor": {
 		"createTitle": "新建标签",

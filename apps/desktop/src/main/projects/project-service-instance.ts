@@ -2,6 +2,7 @@ import { stat } from "node:fs/promises";
 import { parseProjectLocation } from "@vetta/ssh-transport";
 import { readDesktopConfig, writeDesktopConfig } from "../config/desktop-config-store.js";
 import { allowProjectRoot, createFilesystemDirectory } from "../filesystem/filesystem-service.js";
+import { getDesktopSchedulerServiceIfReady } from "../scheduler/scheduler-service.js";
 import { getSshConnection } from "../ssh/ssh-runtime.js";
 import { broadcastProjectsChanged } from "./project-events.js";
 import { ProjectService } from "./project-service.js";
@@ -25,6 +26,9 @@ export function getDesktopProjectService(): ProjectService {
 		readConfig: readDesktopConfig,
 		writeConfig: writeDesktopConfig,
 		broadcastChanged: broadcastProjectsChanged,
+		onRemoved: (path) => {
+			void getDesktopSchedulerServiceIfReady()?.handleProjectRemoved(path);
+		},
 		isKnownSshHost: async (hostId) => {
 			const config = await readDesktopConfig();
 			return (config.sshHosts ?? []).some((host) => host.id === hostId);

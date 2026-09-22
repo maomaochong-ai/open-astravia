@@ -14,7 +14,7 @@ composition is Node-oriented and is not part of this portable boundary.
 
 ## What It Owns
 
-- session lifecycle facade (`createSession`, `prompt`, `continue`, `abort`)
+- session lifecycle facade (`createSession`, `prompt`, `promptWhenAvailable`, `continue`, `abort`)
 - runtime-safe event contract for hosts
 - product-neutral `session.extension` observations with typed in-process tokens and opaque host payloads
 - state snapshots and session history listing
@@ -149,6 +149,15 @@ for await (const event of conversation.stream("Summarize this project")) {
 Session lifecycle, queue, tool execution, usage, extensions, and Runtime errors
 remain separate `SessionEvent` variants. Live and replayed stream events carry a
 session-local `sequence`; subscription setup snapshots do not.
+
+Use ordinary `prompt()` for interactive input that should reject or follow the
+configured `steer` / `followUp` behavior while a Turn is active. Product
+orchestrators that must keep one durable task bound to one complete Runtime Turn
+can use `promptWhenAvailable()`: it waits for the real active Turn to release,
+then admits the request atomically. `PromptRequest.context` is committed with
+that same Turn before its user message; callers must not emulate this by issuing
+a separate context write followed by a prompt. Cancelling while still waiting
+only cancels the waiting request; after admission it cancels the admitted Turn.
 
 ## Multi-Agent Definition Example
 

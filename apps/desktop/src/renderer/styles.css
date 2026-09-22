@@ -673,26 +673,24 @@ textarea:focus {
 	margin-bottom: 0 !important;
 }
 
-/* Streaming tail: 逐短语淡入（参照 Gemini 网页端）。TextBlockView 只放出已写完的短语，一次一个、
+/* Streaming tail: 逐短语渐亮（参照 Gemini 网页端）。TextBlockView 只放出已写完的短语，一次一个、
    间隔 50~300ms 随积压变化；rehype 插件把流式末尾消息的文字按短语包成 .streaming-chunk，
-   只在「该 span 首次 mount」时跑一次动画 —— 依赖 React reconciliation 复用旧 span 的 DOM，
-   已上屏的片段停留在终态，只有新放出的短语淡入。淡入时长远大于放出间隔，多个短语叠在不同进度上。
+   并给最新的两个短语打上 -latest / -recent。
+   不用 CSS 动画：每个短语各跑一段淡入意味着流式全程连续出帧，而毛玻璃窗口每帧都要整窗重合成
+   （steps() 也只是打折）。改成「最新短语偏暗、次新略暗、再往前全亮」，亮度只在下一次放出短语时
+   随 React 重渲染一起变，出帧数与放出节奏完全一致，不多一帧。
    只动 opacity：保持 inline 排版，不用 inline-block / transform，避免换行位置变化和上下跳动；
-   也不加 will-change，免得长回复里几百个片段被永久提升成合成层。时长与 STREAMING_FADE_MS 一致。 */
-.markdown-streaming-tail .streaming-chunk {
-	animation: streaming-chunk-fade 400ms ease-out both;
+   也不加 will-change，免得长回复里几百个片段被永久提升成合成层。 */
+.markdown-streaming-tail .streaming-chunk-recent {
+	opacity: 0.8;
 }
-@keyframes streaming-chunk-fade {
-	from {
-		opacity: 0;
-	}
-	to {
-		opacity: 1;
-	}
+.markdown-streaming-tail .streaming-chunk-latest {
+	opacity: 0.55;
 }
 @media (prefers-reduced-motion: reduce) {
-	.markdown-streaming-tail .streaming-chunk {
-		animation: none;
+	.markdown-streaming-tail .streaming-chunk-recent,
+	.markdown-streaming-tail .streaming-chunk-latest {
+		opacity: 1;
 	}
 }
 
@@ -785,25 +783,6 @@ a {
 
 /* ─── InputBar visual effects ─── */
 
-@keyframes input-shimmer {
-	0% {
-		background-position: -200% 0;
-	}
-	100% {
-		background-position: 200% 0;
-	}
-}
-
-@keyframes input-focus-pulse {
-	0%,
-	100% {
-		opacity: 0.3;
-	}
-	50% {
-		opacity: 0.5;
-	}
-}
-
 @keyframes message-bell-swing {
 	0%,
 	28%,
@@ -847,116 +826,19 @@ a {
 	}
 }
 
-@keyframes tool-call-text-shimmer {
-	from {
-		background-position: 200% 0;
-	}
-	to {
-		background-position: -200% 0;
-	}
-}
-
+/* 运行中的工具名/状态文字：整段轻微呼吸。
+   早先是 background-clip: text 的渐变光斑横扫（对 background-position 做无限动画）——
+   那种写法每帧都要重绘文字层，一个任务里常有好几段同时在跑，还贯穿整个任务时长；
+   在毛玻璃窗口上每帧重绘都很贵。后来改成 opacity 关键帧，合成器不重绘了，但每段仍各自
+   60fps 出帧，毛玻璃窗口照样整窗重合成。现在 CSS 只写静止态，呼吸由 shared/lib/live-animations.ts
+   挂 steps(16) 的合成器动画并与其它进行中指示器锁同一相位（每 100ms 一步、全页同拍）。 */
 .tool-call-shimmer-text {
-	background: linear-gradient(
-		90deg,
-		var(--tool-call-shimmer-base) 0%,
-		var(--tool-call-shimmer-base) 42%,
-		var(--tool-call-shimmer-peak) 50%,
-		var(--tool-call-shimmer-base) 58%,
-		var(--tool-call-shimmer-base) 100%
-	);
-	background-size: 220% 100%;
-	background-position: 200% 0;
-	-webkit-background-clip: text;
-	background-clip: text;
-	-webkit-text-fill-color: transparent;
-	animation: tool-call-text-shimmer 2.4s linear infinite;
-	will-change: background-position;
-}
-
-/* Soft halo behind the card on focus. */
-.input-halo::after {
-	content: "";
-	position: absolute;
-	inset: -4px;
-	border-radius: inherit;
-	background: radial-gradient(
-		60% 80% at 50% 100%,
-		color-mix(in srgb, var(--primary) 14%, transparent),
-		transparent 70%
-	);
-	filter: blur(10px);
-	pointer-events: none;
-	z-index: -1;
-	animation: input-focus-pulse 4s ease-in-out infinite;
-}
-
-/* Shimmer text used as the streaming placeholder. */
-.input-shimmer-text {
-	background: linear-gradient(
-		90deg,
-		color-mix(in srgb, var(--muted-foreground) 50%, transparent) 0%,
-		var(--primary) 50%,
-		color-mix(in srgb, var(--muted-foreground) 50%, transparent) 100%
-	);
-	background-size: 200% 100%;
-	-webkit-background-clip: text;
-	background-clip: text;
-	-webkit-text-fill-color: transparent;
-	animation: input-shimmer 2s linear infinite;
-}
-
-/* 主题色卡（active）blob 漂移缩放，叠加容器重模糊后呈现混沌涟漪流转感。
-   旋转交给外层 wrapper，这里只动 translate/scale，避免与内联 transform 冲突。 */
-.theme-blob-ripple {
-	animation-name: theme-blob-drift;
-	animation-timing-function: ease-in-out;
-	animation-iteration-count: infinite;
-	animation-direction: alternate;
-	will-change: transform;
-}
-
-@keyframes theme-blob-drift {
-	0% {
-		transform: translate(0%, 0%) scale(1);
-	}
-	25% {
-		transform: translate(22%, -16%) scale(1.22);
-	}
-	50% {
-		transform: translate(-14%, 20%) scale(0.82);
-	}
-	75% {
-		transform: translate(16%, 14%) scale(1.12);
-	}
-	100% {
-		transform: translate(-20%, -10%) scale(0.94);
-	}
-}
-
-/* 整个 blob 层绕中心缓慢 360° 无限旋转，让背景颜色不停绕圈流转。 */
-.theme-blob-spin {
-	animation: theme-blob-spin 36s linear infinite;
-	will-change: transform;
-}
-
-@keyframes theme-blob-spin {
-	to {
-		transform: rotate(360deg);
-	}
+	color: var(--tool-call-shimmer-peak);
 }
 
 @media (prefers-reduced-motion: reduce) {
 	.tool-call-shimmer-text {
 		color: var(--muted-foreground);
-		background: none;
-		-webkit-text-fill-color: currentColor;
-		animation: none;
-	}
-
-	.theme-blob-ripple,
-	.theme-blob-spin {
-		animation: none;
 	}
 }
 
@@ -1065,7 +947,7 @@ a {
 		color-mix(in srgb, var(--primary) 30%, transparent) 50%,
 		transparent 100%
 	);
-	filter: blur(6px);
+	/* 不挂 filter: blur——渐变两端本就淡到全透，模糊只是让无限动画每帧多跑一遍滤镜。 */
 	animation: team-pill-sweep 2.6s ease-in-out infinite;
 	will-change: transform;
 }
@@ -1097,4 +979,12 @@ a {
 	.team-pill-live-dot::after {
 		animation: none;
 	}
+}
+
+/* 窗口不在前台时暂停无限动画：标记由 shared/lib/inactive-window-animations.ts 打在宿主元素上。
+   必须走样式而不是脚本的 pause()——原因见那个文件开头。 */
+[data-inactive-paused],
+[data-inactive-paused]::before,
+[data-inactive-paused]::after {
+	animation-play-state: paused !important;
 }

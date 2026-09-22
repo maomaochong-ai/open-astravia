@@ -120,7 +120,9 @@ export const BotAvatar = memo(function BotAvatar({
 		ro.observe(parent);
 	}, []);
 
-	const shouldSchedule = !pacing && (active || autoplay);
+	// 流式中（active）不再自动做小动作：每个动作都是 motion 逐帧改写 transform，毛玻璃窗口每帧都要
+	// 整窗重合成；「还在进行」由静态光晕表达。autoplay 仍用于欢迎页这类本就该活泼的场景。
+	const shouldSchedule = !pacing && autoplay;
 
 	const pickRandomMood = useCallback((): AvatarMood => {
 		const choices = ACTIVE_MOODS.filter((m) => m !== lastPlayedRef.current);
@@ -139,11 +141,13 @@ export const BotAvatar = memo(function BotAvatar({
 		return () => clearTimeout(id);
 	}, [mood]);
 
+	// 自动小动作（仅 autoplay）之间留 1.4~3s 的空档：每个动作都是 motion 逐帧改写 transform，
+	// 毛玻璃窗口每帧都要整窗重合成。
 	useEffect(() => {
 		if (!shouldSchedule || mood !== "idle") return;
 		const id = setTimeout(
 			() => triggerMood(pickRandomMood()),
-			280 + Math.random() * 420,
+			1400 + Math.random() * 1600,
 		);
 		return () => clearTimeout(id);
 	}, [shouldSchedule, mood, triggerMood, pickRandomMood]);
@@ -273,12 +277,8 @@ export const BotAvatar = memo(function BotAvatar({
 			className={`no-drag relative flex shrink-0 items-center justify-center focus:outline-none ${cfg.wrapper} ${className}`}
 		>
 			{active && (
-				<motion.span
-					aria-hidden
-					className={`absolute ${cfg.glowInset} rounded-[20px] bg-primary/30 ${cfg.glowBlur}`}
-					animate={{ opacity: [0.35, 0.65, 0.35], scale: [0.95, 1.05, 0.95] }}
-					transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-				/>
+				// 光晕是静态的：模糊层一旦跟着无限动画缩放/变透明，流式全程每帧都要重新模糊一遍。
+				<span aria-hidden className={`absolute ${cfg.glowInset} rounded-[20px] bg-primary/30 opacity-50 ${cfg.glowBlur}`} />
 			)}
 			<motion.div
 				className={`relative flex items-center justify-center ${cfg.body} bg-gradient-to-br from-primary to-primary/85 text-primary-foreground ${cfg.shadow}`}
@@ -366,7 +366,9 @@ export const BotAvatar = memo(function BotAvatar({
 							y: [0, -3 * f, -7 * f, -11 * f],
 							x: [0, 1 * f, -1 * f, 1 * f],
 						}}
-						exit={{ opacity: 0 }}
+						// 退场必须自带有限 transition：否则会继承下方的 repeat: Infinity，
+						// 退场永远结束不了，「z」不卸载并一直以 60fps 驱动整窗重绘。
+						exit={{ opacity: 0, transition: { duration: 0.2 } }}
 						transition={{
 							duration: 1.4,
 							ease: "easeOut",

@@ -73,6 +73,17 @@ describe("Amazon Bedrock request parameters", () => {
 		});
 	});
 
+	it("uses adaptive thinking for Claude models newer than 4.6", () => {
+		const input = buildBedrockCommandInput({ ...model, id: "global.anthropic.claude-opus-4-7-v1" }, context, {
+			reasoning: "xhigh",
+		});
+
+		expect(input.additionalModelRequestFields).toEqual({
+			thinking: { type: "adaptive" },
+			output_config: { effort: "max" },
+		});
+	});
+
 	it("uses custom budgets and interleaved thinking for older Claude models", () => {
 		const input = buildBedrockCommandInput({ ...model, id: "global.anthropic.claude-sonnet-4-5-v1" }, context, {
 			reasoning: "high",

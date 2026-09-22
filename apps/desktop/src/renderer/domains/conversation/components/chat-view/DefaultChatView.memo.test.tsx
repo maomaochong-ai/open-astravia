@@ -14,6 +14,7 @@ vi.mock("@domains/activity-panel/components/ActivityPanel", () => ({
 	},
 	CurrentScenarioActivityPanel: () => createElement("aside", { "data-testid": "current-activity-panel" }),
 }));
+vi.mock("@domains/bottom-panel/components/BottomPanelHost", () => ({ BottomPanelHost: () => null }));
 vi.mock("../ChatExportHost", () => ({ ChatExportHost: () => null }));
 
 describe("chat activity column", () => {

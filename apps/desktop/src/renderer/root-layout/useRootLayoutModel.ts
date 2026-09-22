@@ -23,6 +23,7 @@ import { i18n } from "../shared/i18n";
 import {
 	activeSessionAtom,
 	appshotAttachmentAtom,
+	automationSessionLinksAtom,
 	commandMenuOpenAtom,
 	defaultConversationCwdAtom,
 	fileEditorHasUnsavedChangesAtom,
@@ -37,7 +38,6 @@ import {
 	pendingSessionOpenAtom,
 	projectsAtom,
 	sandboxPermissionDrawerAtom,
-	scheduledSessionPathsAtom,
 	sidebarCollapsedAtom,
 	sidebarWidthAtom,
 } from "../shared/store/atoms";
@@ -383,26 +383,42 @@ export function useRootLayoutModel(): RootLayoutModel {
 	// 调度任务（自动化）"立即执行"时，session 在 main 进程已经建好，但 JSONL
 	// 要等 assistant 首个回复才落盘。这里订阅 task.started，乐观地把 session
 	// 插入 sidebar，避免必须等 agent 跑完才出现的延迟。
-	const setScheduledSessionPaths = useSetAtom(scheduledSessionPathsAtom);
+	const setAutomationSessionLinks = useSetAtom(automationSessionLinksAtom);
 	useEffect(() => {
-		// 启动时拉取已有定时 session 路径，供侧栏识别并挂图标。
-		void window.vetta.scheduler.getScheduledSessionPaths().then((paths) => {
-			setScheduledSessionPaths(new Set(paths));
-		});
+		// 会话与自动化的归属由主进程按执行记录与任务配置算出；任务或记录变化后整体重拉，
+		// 保证会话组、换绑后的旧会话、被删除的会话都与主进程一致。
+		const refreshLinks = (): void => {
+			void window.vetta.scheduler.getSessionLinks().then((links) => {
+				setAutomationSessionLinks(new Map(links.map((link) => [link.sessionPath, link])));
+			});
+		};
+		refreshLinks();
 		return window.vetta.scheduler.onTaskEvent((event) => {
-			if (event.type !== "task.started") return;
-			if (!event.sessionPath || !event.cwd) return;
-			setScheduledSessionPaths((prev) => new Set(prev).add(event.sessionPath));
-			ensureLocalSession(event.cwd, {
+			if (event.type !== "task.started") {
+				refreshLinks();
+				return;
+			}
+			if (!event.sessionPath || !event.listCwd) return;
+			setAutomationSessionLinks((prev) => {
+				const next = new Map(prev);
+				next.set(event.sessionPath, {
+					sessionPath: event.sessionPath,
+					taskId: event.taskId,
+					taskName: event.taskName,
+					mode: event.mode,
+				});
+				return next;
+			});
+			ensureLocalSession(event.listCwd, {
 				id: event.sessionId,
 				path: event.sessionPath,
-				cwd: event.cwd,
+				cwd: event.listCwd,
 				name: event.sessionName,
 				firstMessage: event.firstMessage,
 				modifiedAt: Date.now(),
 			});
 		});
-	}, [ensureLocalSession, setScheduledSessionPaths]);
+	}, [ensureLocalSession, setAutomationSessionLinks]);
 
 	// ─── Global keyboard shortcuts ───
 	const projectsRef = useRef(projects);

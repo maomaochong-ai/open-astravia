@@ -5,10 +5,9 @@ const task = {
 	id: "task",
 	name: "Daily",
 	prompt: "Run",
-	cron: "0 9 * * *",
-	isOnce: false,
+	schedule: { kind: "daily" as const, hour: 9, minute: 0 },
+	runTarget: { mode: "new-session" as const, projectCwd: "C:/workspace" },
 	enabled: true,
-	cwd: "C:/workspace",
 	createdAt: 1,
 	updatedAt: 1,
 	lastRunAt: null,
@@ -20,7 +19,7 @@ afterEach(() => {
 });
 
 describe("createOfficialSchedulerApi", () => {
-	it("uses the plugin capability session and keeps facade transformations", async () => {
+	it("uses the plugin capability session and forwards explicit clears unchanged", async () => {
 		const scheduler = {
 			listTasks: vi.fn().mockResolvedValue([task]),
 			updateTask: vi.fn().mockResolvedValue(task),
@@ -33,13 +32,13 @@ describe("createOfficialSchedulerApi", () => {
 		const api = createOfficialSchedulerApi(assertOfficial, "capability-session");
 
 		await expect(api.listTaskIds()).resolves.toEqual(["task"]);
-		await expect(api.updateTask("task", { modelKey: null, skill: null })).resolves.toEqual(task);
+		await expect(api.updateTask("task", { model: null, notification: null })).resolves.toEqual(task);
 
 		expect(assertOfficial).toHaveBeenCalledTimes(2);
 		expect(scheduler.listTasks).toHaveBeenCalledWith("capability-session");
 		expect(scheduler.updateTask).toHaveBeenCalledWith("capability-session", "task", {
-			modelKey: undefined,
-			skill: undefined,
+			model: null,
+			notification: null,
 		});
 	});
 });

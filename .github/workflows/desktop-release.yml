@@ -24,7 +24,7 @@ on:
         type: string
         required: false
       marketplace_ref:
-        description: "Optional marketplace Git ref. Empty keeps Environment / repo value, then main."
+        description: "Optional marketplace Git ref. Empty keeps Environment / repo value, then lets Desktop choose gh-pages for the official source and main for forks."
         type: string
         required: false
       tenant:

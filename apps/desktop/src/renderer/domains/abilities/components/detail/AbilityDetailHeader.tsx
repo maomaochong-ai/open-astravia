@@ -38,6 +38,7 @@ export function AbilityDetailHeader({
 	const primary = resolveAbilityPrimaryAction(item, status);
 	const secondaries = resolveAbilitySecondaryActions(item, status);
 	const hasActions = primary !== "none" || Boolean(primaryAside) || secondaries.length > 0;
+	const hasVersionUpdate = Boolean(item.localVersion && item.localVersion !== item.version);
 
 	return (
 		<div className="flex flex-col gap-4">
@@ -75,22 +76,24 @@ export function AbilityDetailHeader({
 								·
 							</span>
 						) : null}
-						{item.version ? (
+						{item.version && hasVersionUpdate ? (
+							<div className="inline-flex items-center gap-1.5">
+								<dt className="inline">{t("detail.meta.installedVersion")}</dt>
+								<dd className="inline-flex items-center gap-1.5 tabular-nums text-foreground/80">
+									{item.localVersion}
+									<span
+										aria-hidden
+										className="icon-[solar--arrow-right-linear] h-3 w-3 shrink-0 text-muted-foreground/50"
+									/>
+								</dd>
+								<dt className="inline">{t("detail.meta.availableVersion")}</dt>
+								<dd className="inline tabular-nums text-amber-400">{item.version}</dd>
+							</div>
+						) : item.version ? (
 							<span>
 								<dt className="sr-only">{t("detail.meta.version")}</dt>
 								<dd className="inline tabular-nums text-foreground/80">{item.version}</dd>
 							</span>
-						) : null}
-						{item.localVersion && item.localVersion !== item.version ? (
-							<>
-								<span aria-hidden className="text-muted-foreground/30">
-									·
-								</span>
-								<span>
-									<dt className="sr-only">{t("detail.meta.localVersion")}</dt>
-									<dd className="inline tabular-nums text-foreground/80">{item.localVersion}</dd>
-								</span>
-							</>
 						) : null}
 						{item.downloadCount > 0 ? (
 							<>

@@ -19,7 +19,10 @@
 
 /* Streaming-state ripple: two staggered rings expand outward from the
    button. Sits in the wrapper (not the button) so it isn't clipped by
-   the button's overflow-hidden. */
+   the button's overflow-hidden.
+   两圈不在这里写关键帧：扩散动画由宿主的 live-animations 用 steps(16) 挂上并与其它
+   「进行中」指示器锁同一相位（第二圈错开半周），流式全程整页因此每秒只多 10 帧。
+   没有宿主动画时保持不可见，不会留下两圈静止的描边。 */
 .send-button-ripple {
 	position: absolute;
 	inset: 0;
@@ -28,31 +31,10 @@
 	pointer-events: none;
 	opacity: 0;
 	transform: scale(1);
-	animation: send-button-ripple 1.8s ease-out infinite;
-	will-change: transform, opacity;
-}
-
-.send-button-ripple-2 {
-	animation-delay: 0.9s;
-}
-
-@keyframes send-button-ripple {
-	0% {
-		transform: scale(1);
-		opacity: 0.55;
-	}
-	80% {
-		opacity: 0.05;
-	}
-	100% {
-		transform: scale(1.35);
-		opacity: 0;
-	}
 }
 
 @media (prefers-reduced-motion: reduce) {
 	.send-button-ripple {
-		animation: none;
 		display: none;
 	}
 }

@@ -1,239 +1,293 @@
-import type { RuntimeHost, SessionEvent } from "@vetta/runtime-core";
+import type { RuntimeHost, RuntimeTurnPromptOutcome } from "@vetta/runtime-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ScheduledTask, TaskExecutionRecord } from "./task-storage.js";
+import type { ScheduledTask, TaskExecutionRecord } from "../../shared/automation.js";
+
+const CONVERSATION_CWD = "C:/home/.vetta/conversation";
+const PROJECT_CWD = "C:/workspace/project";
 
 const mocks = vi.hoisted(() => ({
-	createRecord: vi.fn(async (_record: TaskExecutionRecord) => {}),
+	createSession: vi.fn(),
+	openSession: vi.fn(),
 	emitTaskEvent: vi.fn(),
-	emitTaskStreamEvent: vi.fn(),
-	ensureConversationSubCwd: vi.fn(async (cwd: string) => cwd),
-	generateId: vi.fn(() => "record-1"),
-	monitorRuntimeSession: vi.fn(),
-	recordAutomationRunStarted: vi.fn(),
-	updateRecordMetadata: vi.fn(async (_record: TaskExecutionRecord) => {}),
-	updateTaskLastRun: vi.fn(async (_taskId: string, _status: "success" | "failed") => {}),
+	existing: new Set<string>(),
+	notify: vi.fn(async () => undefined as string | undefined),
+	projects: [] as Array<{ path: string }>,
+	records: [] as TaskExecutionRecord[],
+	updateTask: vi.fn(),
+	updateTaskLastRun: vi.fn(async () => {}),
 }));
 
-vi.mock("../app-monitor/app-monitor-service.js", () => ({
-	monitorRuntimeSession: mocks.monitorRuntimeSession,
-	recordAutomationRunStarted: mocks.recordAutomationRunStarted,
+vi.mock("node:fs", () => ({ existsSync: (path: string) => mocks.existing.has(path) }));
+vi.mock("../app-monitor/app-monitor-service.js", () => ({ recordAutomationRunStarted: vi.fn() }));
+vi.mock("../conversations/desktop-conversation-service.js", () => ({
+	getDesktopConversationService: () => ({ createSession: mocks.createSession, openSession: mocks.openSession }),
 }));
-vi.mock("../execution-mode.js", () => ({
-	resolveExecutionMode: () => "full-access",
+vi.mock("../conversations/session-paths.js", () => ({
+	isConversationCwd: (cwd: string) => cwd === CONVERSATION_CWD,
 }));
+vi.mock("../i18n/index.js", () => ({ mainT: (key: string) => key }));
 vi.mock("../ipc/fs.js", () => ({
-	DEFAULT_CONVERSATION_CWD: "C:/desktop/conversations",
-	DEFAULT_CONVERSATION_SESSION_DIR: "C:/desktop/conversations/.vetta/sessions",
-	readDesktopConfig: async () => ({ defaultExecutionMode: "full-access" }),
+	readDesktopConfig: async () => ({ projects: mocks.projects, archivedProjects: [], defaultExecutionMode: "sandbox" }),
 }));
-vi.mock("../ipc/scheduler.js", () => ({
-	emitTaskEvent: mocks.emitTaskEvent,
-	emitTaskStreamEvent: mocks.emitTaskStreamEvent,
+vi.mock("../ipc/scheduler.js", () => ({ emitTaskEvent: mocks.emitTaskEvent }));
+vi.mock("../logger.js", () => ({ getAppLogger: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn() }) }));
+vi.mock("../models/model-settings-host.js", () => ({
+	getDesktopModelSettingsService: () => ({ list: async () => ({ defaultModel: "default/model" }) }),
 }));
-vi.mock("../ipc/session.js", () => ({
-	ensureConversationSubCwd: mocks.ensureConversationSubCwd,
-}));
-vi.mock("../sandbox/capability.js", () => ({
-	assertSandboxAvailableForMode: async () => {},
-}));
-vi.mock("./task-storage", () => ({
-	createRecord: mocks.createRecord,
-	generateId: mocks.generateId,
-	updateRecordMetadata: mocks.updateRecordMetadata,
+vi.mock("../projects/project-path.js", () => ({ sameProjectPath: (a: string, b: string) => a === b }));
+vi.mock("./automation-notifier.js", () => ({ notifyAutomationFinished: mocks.notify }));
+vi.mock("./task-storage.js", () => ({
+	generateId: () => `record-${mocks.records.length + 1}`,
+	updateTask: mocks.updateTask,
 	updateTaskLastRun: mocks.updateTaskLastRun,
+	writeRecord: async (record: TaskExecutionRecord) => {
+		mocks.records.push(record);
+	},
 }));
 
 import { executeTask, isTaskRunning, shutdownSchedulerTaskExecutor } from "./task-executor.js";
 
-describe("scheduler RuntimeHost consumer", () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-	});
+interface FakeRuntimeOptions {
+	readonly outcome?: RuntimeTurnPromptOutcome;
+	readonly prompt?: () => Promise<RuntimeTurnPromptOutcome>;
+	readonly executionMode?: "sandbox" | "full-access";
+	readonly permissionMode?: "default" | "plan";
+}
 
-	it("maps one automation turn and records exactly one terminal result without disposing the shared session", async () => {
-		const handlers = new Set<(event: SessionEvent) => void>();
-		const createSession = vi.fn(async () => ({ sessionId: "automation-session" }));
-		let finishRename: () => void = () => {};
-		const renameSessionById = vi.fn(
-			() =>
-				new Promise<void>((resolve) => {
-					finishRename = resolve;
-				}),
-		);
-		const disposeSession = vi.fn();
-		const prompt = vi.fn(async () => {
-			emit(handlers, messageDelta("automation-session", "scheduled response"));
-			emit(handlers, toolCallStart("automation-session"));
-			emit(handlers, toolStart("automation-session"));
-			emit(handlers, toolEnd("automation-session"));
-			emit(handlers, lifecycle("automation-session", "agent_end"));
-		});
-		const runtime = {
-			createSession,
-			renameSessionById,
-			disposeSession,
-			getSessionPath: () => "C:/desktop/conversations/.vetta/sessions/automation.jsonl",
-			subscribe: (_sessionId: string, handler: (event: SessionEvent) => void) => {
-				handlers.add(handler);
-				return () => handlers.delete(handler);
+function fakeRuntime(options: FakeRuntimeOptions = {}) {
+	const calls: string[] = [];
+	let executionMode = options.executionMode ?? "full-access";
+	let permissionMode = options.permissionMode;
+	const runtime = {
+		prompt: vi.fn(async () => {
+			calls.push(`prompt:${executionMode}:${permissionMode ?? "none"}`);
+			return options.prompt ? await options.prompt() : (options.outcome ?? { status: "completed", turnId: "t1" });
+		}),
+		abort: vi.fn(async () => {}),
+		renameSessionById: vi.fn(async () => {}),
+		getState: vi.fn(() => ({ isStreaming: false, executionMode })),
+		setExecutionMode: vi.fn(async (_id: string, mode: "sandbox" | "full-access") => {
+			executionMode = mode;
+		}),
+		invokeSessionExtensionSync: vi.fn(
+			(_id: string, token: { endpoint?: string }, input?: { permissionMode: "default" | "plan" }) => {
+				if (permissionMode === undefined) throw new Error("plan mode unavailable");
+				if (input) permissionMode = input.permissionMode;
+				void token;
+				return { permissionMode };
 			},
-			prompt,
-		} as unknown as RuntimeHost;
-		const task = scheduledTask();
-
-		const execution = executeTask(task, runtime);
-		await vi.waitFor(() => expect(renameSessionById).toHaveBeenCalledOnce());
-		expect(prompt).not.toHaveBeenCalled();
-		finishRename();
-		await execution;
-		await vi.waitFor(() => expect(mocks.updateRecordMetadata).toHaveBeenCalledOnce());
-
-		expect(createSession).toHaveBeenCalledWith({
-			cwd: task.cwd,
-			agent: {
-				id: "coding-agent",
-				sessionConfiguration: {
-					scenario: "automation",
-					agentMode: "work",
-				},
-			},
-			executionMode: "full-access",
-			sessionDir: "C:/desktop/conversations/.vetta/sessions",
-		});
-		expect(prompt).toHaveBeenCalledWith("automation-session", {
-			text: task.prompt,
-			modelKey: "test/provider-model",
-			promptRef: { kind: "skill", name: "scheduled-skill" },
-		});
-		expect(mocks.createRecord).toHaveBeenCalledOnce();
-		expect(mocks.updateTaskLastRun).toHaveBeenCalledOnce();
-		expect(mocks.updateTaskLastRun).toHaveBeenCalledWith(task.id, "success");
-		expect(mocks.updateRecordMetadata.mock.calls[0]?.[0]).toMatchObject({
-			sessionId: "automation-session",
-			status: "success",
-			responsePreview: "scheduled response",
-		});
-		expect(mocks.emitTaskStreamEvent.mock.calls.map(([event]) => event.type)).toEqual([
-			"message.delta",
-			"toolcall.start",
-			"tool.start",
-			"tool.end",
-			"session.lifecycle",
-		]);
-		expect(isTaskRunning(task.id)).toBe(false);
-		expect(handlers.size).toBe(0);
-		expect(disposeSession).not.toHaveBeenCalled();
-	});
-
-	it("aborts active work, releases subscriptions, and rejects work after shutdown", async () => {
-		const handlers = new Set<(event: SessionEvent) => void>();
-		let finishPrompt: () => void = () => {};
-		const prompt = vi.fn(
-			() =>
-				new Promise<void>((resolve) => {
-					finishPrompt = resolve;
-				}),
-		);
-		const abort = vi.fn(async () => {
-			emit(handlers, lifecycle("automation-session", "aborted"));
-			finishPrompt();
-		});
-		const runtime = {
-			abort,
-			createSession: vi.fn(async () => ({ sessionId: "automation-session" })),
-			getSessionPath: () => "C:/desktop/conversations/.vetta/sessions/automation.jsonl",
-			prompt,
-			renameSessionById: vi.fn(),
-			subscribe: (_sessionId: string, handler: (event: SessionEvent) => void) => {
-				handlers.add(handler);
-				return () => handlers.delete(handler);
-			},
-		} as unknown as RuntimeHost;
-		const task = scheduledTask();
-		const execution = executeTask(task, runtime);
-		await vi.waitFor(() => expect(isTaskRunning(task.id)).toBe(true));
-
-		const firstShutdown = shutdownSchedulerTaskExecutor();
-		const secondShutdown = shutdownSchedulerTaskExecutor();
-		await Promise.all([firstShutdown, secondShutdown, execution]);
-
-		expect(abort).toHaveBeenCalledOnce();
-		expect(isTaskRunning(task.id)).toBe(false);
-		expect(handlers.size).toBe(0);
-		await expect(executeTask(task, runtime)).rejects.toThrowError("Scheduler task executor is shutting down");
-	});
-});
-
-function scheduledTask(): ScheduledTask {
+		),
+		getMessages: vi.fn(() => [
+			{ role: "user", content: "run" },
+			{ role: "assistant", content: [{ type: "text", text: "all done" }] },
+		]),
+		subscribe: vi.fn(() => () => {}),
+		getSessionPath: vi.fn(() => undefined),
+	};
 	return {
-		id: "scheduled-task",
-		name: "Scheduled Task",
-		prompt: "Run the scheduled task",
-		cron: "0 * * * *",
-		isOnce: false,
+		runtime: runtime as unknown as RuntimeHost & typeof runtime,
+		calls,
+		state: () => ({ executionMode, permissionMode }),
+	};
+}
+
+function task(overrides: Partial<ScheduledTask> = {}): ScheduledTask {
+	return {
+		id: "task-1",
+		name: "Daily report",
+		prompt: "Summarize today",
+		schedule: { kind: "daily", hour: 9, minute: 0 },
+		runTarget: { mode: "new-session", projectCwd: PROJECT_CWD },
 		enabled: true,
-		cwd: "C:/workspace/automation",
-		modelKey: "test/provider-model",
-		skill: { type: "skill", name: "scheduled-skill" },
 		createdAt: 1,
 		updatedAt: 1,
 		lastRunAt: null,
 		lastRunStatus: null,
+		...overrides,
 	};
 }
 
-function emit(handlers: ReadonlySet<(event: SessionEvent) => void>, event: SessionEvent): void {
-	for (const handler of handlers) handler(event);
+function session(sessionPath = "C:/sessions/new.jsonl") {
+	return { sessionId: "session-1", sessionPath, cwd: PROJECT_CWD, listCwd: PROJECT_CWD, source: "automation" };
 }
 
-function eventBase(sessionId: string) {
-	return {
-		schemaVersion: 1 as const,
-		sessionId,
-		eventId: `${sessionId}-event`,
-		timestamp: 1,
-		source: "runtime-core" as const,
-	};
-}
+describe("automation task executor", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mocks.records.length = 0;
+		mocks.existing.clear();
+		mocks.projects = [{ path: PROJECT_CWD }];
+		mocks.createSession.mockResolvedValue(session());
+		mocks.openSession.mockResolvedValue(session("C:/sessions/bound.jsonl"));
+		mocks.updateTask.mockImplementation(async (_id: string, update: (current: ScheduledTask) => ScheduledTask) =>
+			update(task()),
+		);
+	});
 
-function lifecycle(sessionId: string, phase: "agent_end" | "aborted"): SessionEvent {
-	return { ...eventBase(sessionId), type: "session.lifecycle", phase };
-}
+	it("runs a new-session automation in the chosen project as an unattended work turn", async () => {
+		const { runtime } = fakeRuntime();
+		await executeTask(task(), runtime, { trigger: "schedule" });
 
-function messageDelta(sessionId: string, delta: string): SessionEvent {
-	return { ...eventBase(sessionId), type: "message.delta", delta };
-}
+		expect(mocks.createSession).toHaveBeenCalledWith(
+			{ cwd: PROJECT_CWD, executionMode: "full-access", agentMode: "work", scenario: "automation" },
+			"other",
+			"automation",
+		);
+		expect(runtime.prompt).toHaveBeenCalledWith("session-1", {
+			text: "Summarize today",
+			modelKey: "default/model",
+			metadata: { unattended: true, automationTaskId: "task-1" },
+		});
+		expect(mocks.emitTaskEvent).toHaveBeenCalledWith(
+			expect.objectContaining({ type: "task.started", listCwd: PROJECT_CWD, mode: "new-session" }),
+		);
+		expect(mocks.records.at(-1)).toMatchObject({
+			status: "success",
+			sessionPath: "C:/sessions/new.jsonl",
+			responsePreview: "all done",
+			mode: "new-session",
+		});
+		expect(mocks.notify).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ status: "success" }),
+			"all done",
+		);
+		expect(mocks.updateTaskLastRun).toHaveBeenCalledWith("task-1", "success");
+		expect(isTaskRunning("task-1")).toBe(false);
+	});
 
-function toolCallStart(sessionId: string): SessionEvent {
-	return {
-		...eventBase(sessionId),
-		type: "toolcall.start",
-		toolCallId: "read-call",
-		toolName: "read",
-	};
-}
+	it("records a failed turn as failed instead of success", async () => {
+		const { runtime } = fakeRuntime({
+			outcome: { status: "failed", turnId: "t1", error: { message: "provider down" } } as RuntimeTurnPromptOutcome,
+		});
+		await executeTask(task(), runtime, { trigger: "schedule" });
 
-function toolStart(sessionId: string): SessionEvent {
-	return {
-		...eventBase(sessionId),
-		type: "tool.start",
-		toolCallId: "read-call",
-		toolName: "read",
-		args: { path: "message.txt" },
-		startedAt: 1,
-	};
-}
+		expect(mocks.records.at(-1)).toMatchObject({ status: "failed", error: "provider down" });
+		expect(mocks.updateTaskLastRun).toHaveBeenCalledWith("task-1", "failed");
+	});
 
-function toolEnd(sessionId: string): SessionEvent {
-	return {
-		...eventBase(sessionId),
-		type: "tool.end",
-		toolCallId: "read-call",
-		toolName: "read",
-		isError: false,
-		result: "content",
-		startedAt: 1,
-		durationMs: 1,
-		phases: [],
-	};
-}
+	it("passes the explicit model and reasoning and lifts the scene token into promptRef", async () => {
+		const { runtime } = fakeRuntime();
+		await executeTask(
+			task({ prompt: "@scene:review check the diff", model: { key: "anthropic/opus", reasoning: "high" } }),
+			runtime,
+			{ trigger: "manual" },
+		);
+
+		expect(runtime.prompt).toHaveBeenCalledWith(
+			"session-1",
+			expect.objectContaining({
+				text: "check the diff",
+				promptRef: { kind: "scene", name: "review" },
+				modelKey: "anthropic/opus",
+				reasoning: "high",
+			}),
+		);
+	});
+
+	it("skips a scheduled trigger while the previous run is still going", async () => {
+		let finish: (outcome: RuntimeTurnPromptOutcome) => void = () => {};
+		const { runtime } = fakeRuntime({
+			prompt: () =>
+				new Promise<RuntimeTurnPromptOutcome>((resolve) => {
+					finish = resolve;
+				}),
+		});
+		const first = executeTask(task(), runtime, { trigger: "schedule" });
+		await vi.waitFor(() => expect(runtime.prompt).toHaveBeenCalledOnce());
+
+		await executeTask(task(), runtime, { trigger: "schedule" });
+		await expect(executeTask(task(), runtime, { trigger: "manual" })).rejects.toThrow("already running");
+		finish({ status: "completed", turnId: "t1" });
+		await first;
+
+		expect(mocks.records.filter((record) => record.status === "skipped")).toEqual([
+			expect.objectContaining({ reason: "previous-running", completedAt: expect.any(Number) }),
+		]);
+		expect(runtime.prompt).toHaveBeenCalledOnce();
+	});
+
+	it("suspends instead of silently replacing a deleted bound session", async () => {
+		const { runtime } = fakeRuntime();
+		const onTaskChanged = vi.fn();
+		await executeTask(
+			task({ runTarget: { mode: "same-session", projectCwd: PROJECT_CWD, sessionPath: "C:/sessions/gone.jsonl" } }),
+			runtime,
+			{ trigger: "schedule", onTaskChanged },
+		);
+
+		expect(mocks.createSession).not.toHaveBeenCalled();
+		expect(mocks.openSession).not.toHaveBeenCalled();
+		expect(onTaskChanged).toHaveBeenCalledWith(
+			expect.objectContaining({ enabled: false, suspendedReason: "session-deleted" }),
+		);
+		expect(mocks.records.at(-1)).toMatchObject({ status: "failed", error: "automation:suspended.session-deleted" });
+	});
+
+	it("suspends when the target project left the sidebar", async () => {
+		mocks.projects = [];
+		const { runtime } = fakeRuntime();
+		const onTaskChanged = vi.fn();
+		await executeTask(task(), runtime, { trigger: "schedule", onTaskChanged });
+
+		expect(onTaskChanged).toHaveBeenCalledWith(expect.objectContaining({ suspendedReason: "project-removed" }));
+		expect(runtime.prompt).not.toHaveBeenCalled();
+	});
+
+	it("creates the same-session conversation once and binds it after it lands on disk", async () => {
+		mocks.existing.add("C:/sessions/new.jsonl");
+		const { runtime } = fakeRuntime();
+		const onTaskChanged = vi.fn();
+		const sameSessionTask = task({
+			runTarget: { mode: "same-session", projectCwd: CONVERSATION_CWD, sessionPath: null },
+		});
+		mocks.updateTask.mockImplementation(async (_id: string, update: (current: ScheduledTask) => ScheduledTask) =>
+			update(sameSessionTask),
+		);
+		await executeTask(sameSessionTask, runtime, { trigger: "schedule", onTaskChanged });
+
+		expect(mocks.createSession).toHaveBeenCalledWith(
+			{ cwd: CONVERSATION_CWD, executionMode: "full-access", agentMode: "work" },
+			"conversation",
+			"automation",
+		);
+		expect(runtime.renameSessionById).toHaveBeenCalledWith("session-1", "Daily report");
+		expect(onTaskChanged).toHaveBeenCalledWith(
+			expect.objectContaining({ runTarget: expect.objectContaining({ sessionPath: "C:/sessions/new.jsonl" }) }),
+		);
+	});
+
+	it("runs a bound session turn in full access outside plan mode and restores the session afterwards", async () => {
+		mocks.existing.add("C:/sessions/bound.jsonl");
+		const { runtime, calls, state } = fakeRuntime({ executionMode: "sandbox", permissionMode: "plan" });
+		await executeTask(
+			task({ runTarget: { mode: "same-session", projectCwd: PROJECT_CWD, sessionPath: "C:/sessions/bound.jsonl" } }),
+			runtime,
+			{ trigger: "schedule" },
+		);
+
+		expect(mocks.openSession).toHaveBeenCalledWith("C:/sessions/bound.jsonl", "sandbox", "automation");
+		expect(runtime.renameSessionById).not.toHaveBeenCalled();
+		expect(calls).toEqual(["prompt:full-access:default"]);
+		expect(state()).toEqual({ executionMode: "sandbox", permissionMode: "plan" });
+	});
+
+	it("aborts active work and rejects work after shutdown", async () => {
+		const { runtime } = fakeRuntime({
+			prompt: () =>
+				new Promise<RuntimeTurnPromptOutcome>((resolve) => {
+					runtime.abort.mockImplementation(async () => resolve({ status: "cancelled" }));
+				}),
+		});
+		const execution = executeTask(task(), runtime, { trigger: "schedule" });
+		await vi.waitFor(() => expect(runtime.prompt).toHaveBeenCalledOnce());
+
+		await Promise.all([shutdownSchedulerTaskExecutor(), shutdownSchedulerTaskExecutor(), execution]);
+
+		expect(runtime.abort).toHaveBeenCalledOnce();
+		expect(mocks.records.at(-1)).toMatchObject({ status: "aborted" });
+		await expect(executeTask(task(), runtime, { trigger: "schedule" })).rejects.toThrow(
+			"Scheduler task executor is shutting down",
+		);
+	});
+});

@@ -42,16 +42,15 @@ export interface TodoTimelineLabels {
 }
 
 /**
- * 待办专属的关键帧：
- * - `todo-label-sheen`：标签上扫过的光斑
+ * 待办专属的动效标记。CSS 里不写关键帧：毛玻璃窗口每出一帧都要整窗重合成，一个任务里同时亮着的
+ * 标签和转弧各自 60fps 逐帧插值会把 GPU 顶满。呼吸与转动由宿主（desktop 的 live-animations）
+ * 按类名挂 steps(16) 的合成器动画，并与其它「进行中」指示器锁同一相位；没有宿主动画时是静止外观。
+ * - `todo-label-sheen`：标签的呼吸（只动 opacity；别改回 background-position 扫光，那会每帧重绘文字）
  * - `todo-marker-spin`：进行中条目的转动弧
  *
- * 状态点的呼吸动画不在这里——它和底部面板共用 `ActivityStatusDotStyles`。
+ * 状态点不在这里——它和底部面板共用 `ActivityStatusDotStyles`。
  */
-export const TODO_PROGRESS_CSS = `
-@keyframes todo-label-sheen { from { background-position: 160% 0; } to { background-position: -160% 0; } }
-@keyframes todo-marker-spin { to { transform: rotate(360deg); } }
-`;
+export const TODO_PROGRESS_CSS = "";
 
 /** 关键帧注入点：每个待办根节点渲染一次，样式内容相同不会互相干扰。 */
 export function TodoProgressStyles(): JSX.Element {
@@ -63,20 +62,14 @@ export function TodoProgressStyles(): JSX.Element {
 	);
 }
 
-const SHEEN_BASE = "var(--primary)";
-const SHEEN_HIGHLIGHT = "color-mix(in srgb, var(--primary) 35%, white)";
-
-/** 标签光斑：以主色为底、高光横向扫过；静态时退回纯色，避免完成态还在闪。 */
+/** 标签呼吸：进行中用主色轻微呼吸；静态时退回纯色，避免完成态还在闪。 */
 export function todoLabelSheenStyle(active: boolean): CSSProperties {
-	if (!active) return { color: "var(--muted-foreground)" };
-	return {
-		backgroundImage: `linear-gradient(90deg, ${SHEEN_BASE} 0%, ${SHEEN_BASE} 38%, ${SHEEN_HIGHLIGHT} 50%, ${SHEEN_BASE} 62%, ${SHEEN_BASE} 100%)`,
-		backgroundSize: "160% 100%",
-		WebkitBackgroundClip: "text",
-		backgroundClip: "text",
-		color: "transparent",
-		animation: "todo-label-sheen 2.6s linear infinite",
-	};
+	return { color: active ? "var(--primary)" : "var(--muted-foreground)" };
+}
+
+/** 与 `todoLabelSheenStyle(true)` 配套的类名：呼吸由宿主的 live-animations 按类名挂上。 */
+export function todoLabelSheenClassName(active: boolean): string | undefined {
+	return active ? "todo-label-sheen" : undefined;
 }
 
 /**
@@ -111,10 +104,7 @@ function TodoMarker({ status }: { status: TodoStatusItem["status"] }): JSX.Eleme
 		return (
 			<span className="relative flex h-[15px] w-[15px] items-center justify-center">
 				<span className="absolute inset-0 rounded-full border border-primary/25" />
-				<span
-					className="absolute inset-0 rounded-full border border-transparent border-t-primary border-r-primary"
-					style={{ animation: "todo-marker-spin 1.1s linear infinite" }}
-				/>
+				<span className="todo-marker-spin absolute inset-0 rounded-full border border-transparent border-t-primary border-r-primary" />
 				<span className="h-1 w-1 rounded-full bg-primary" />
 			</span>
 		);
@@ -171,6 +161,7 @@ export function TodoTimeline({ items, labels, size = "sm", className }: TodoTime
 								text,
 								isDone && "text-muted-foreground line-through decoration-muted-foreground/40",
 								!isDone && !isActive && "text-foreground",
+								todoLabelSheenClassName(isActive),
 							)}
 							style={isActive ? todoLabelSheenStyle(true) : undefined}
 							title={item.content}

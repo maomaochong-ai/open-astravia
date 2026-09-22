@@ -58,13 +58,16 @@ export function createWindow(): BrowserWindow {
 		minWidth: 380,
 		minHeight: 600,
 		icon: iconPath[process.platform],
-		transparent: isMac,
+		// macOS 不开 transparent：vibrancy 不需要它，只要下面的 backgroundColor 全透明即可。
+		// 透明窗口无法被系统做遮挡剔除，旁边或背后的窗口一变化就要连带整窗重新合成，
+		// 实测窗口自己完全静止时 WindowServer 仍多占约 10% GPU。
+		transparent: false,
 		frame: isMac,
 		titleBarStyle: isMac ? "hiddenInset" : undefined,
 		trafficLightPosition: isMac ? { x: 16, y: 20 } : undefined,
 		vibrancy: isMac ? "sidebar" : undefined,
 		visualEffectState: isMac ? "active" : undefined,
-		backgroundColor: isMac ? undefined : nativeTheme.shouldUseDarkColors ? "#161616" : "#f5f5f7",
+		backgroundColor: isMac ? "#00000000" : nativeTheme.shouldUseDarkColors ? "#161616" : "#f5f5f7",
 		webPreferences: {
 			contextIsolation: true,
 			nodeIntegration: false,

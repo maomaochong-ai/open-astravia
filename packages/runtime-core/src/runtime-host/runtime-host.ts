@@ -297,6 +297,14 @@ export class RuntimeHost implements SessionFacade {
 		return this.sessionOperations.prompt(sessionId, request);
 	}
 
+	async promptWhenAvailable(
+		sessionId: string,
+		request: PromptRequest,
+		signal?: AbortSignal,
+	): Promise<RuntimeTurnPromptOutcome> {
+		return this.sessionOperations.promptWhenAvailable(sessionId, request, signal);
+	}
+
 	async queuePromptIfRunning(sessionId: string, request: PromptRequest): Promise<RuntimeQueuePromptIfRunningOutcome> {
 		return this.sessionOperations.queuePromptIfRunning(sessionId, request);
 	}

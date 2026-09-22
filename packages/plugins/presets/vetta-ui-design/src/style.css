@@ -195,18 +195,27 @@
 	}
 }
 
-/* frame「修改中」呼吸光效：描边静态、只动 opacity。这一层紧贴 iframe，
-   动 box-shadow 会让含跨源 iframe 的区域每帧重新光栅化。
-   用 inset 描边是因为宿主那层是 overflow:hidden，外扩的环会被裁掉。
-   --vetd-accent 只定义在浮层内部（不会向上继承到这里），所以这里取的是
-   fallback——正好是「修改中」的语义色，与浮层同调。 */
-.vetd-modifying::after {
-	content: "";
+/* ---------- frame 活动态（FrameActivityOverlay）与启动占位（FrameLoadingOverlay） ----------
+   活动态 = 呼吸描边 + canvas 流体背景 + 居中的头像与小件，「在干什么」同时由标题栏
+   徽标用文字说。除流体外全部只动 transform / opacity。
+
+   描边本身静态、只动 opacity：光栅化一次后交给合成器调透明度。用 inset 是因为
+   frame 容器 overflow:hidden，外扩的环会被裁掉；动 box-shadow 本身则会让紧贴
+   跨源 iframe 的区域逐帧重新光栅化。粗细按 --vetd-lscale 反向缩放，任何缩放下
+   屏幕上都是同样粗。
+
+   配色写死、不读宿主主题：mono 主题的 primary/ring 全是黑白灰，状态色就分不出来了。
+   三色与标题栏徽标对齐（sky / indigo / fuchsia），扫一眼就知道 agent 在干什么。 */
+
+/* 整层渐入渐出：opacity 由组件驱动（挂载下一帧置 1、卸载前归 0），
+   时长与 FrameActivityOverlay 的 FADE_MS 保持一致。 */
+.vetd-activity-overlay {
+	transition: opacity 300ms ease;
+}
+.vetd-activity-ring {
 	position: absolute;
 	inset: 0;
-	pointer-events: none;
-	border-radius: inherit;
-	box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--vetd-accent, #6366f1) 65%, transparent);
+	box-shadow: inset 0 0 0 calc(3px * var(--vetd-lscale, 1)) var(--vetd-accent, #6366f1);
 	animation: vetd-breathe 1.6s ease-in-out infinite;
 }
 @keyframes vetd-breathe {
@@ -215,24 +224,20 @@
 		opacity: 1;
 	}
 	50% {
-		opacity: 0.3;
+		opacity: 0.35;
 	}
 }
 
-@media (prefers-reduced-motion: reduce) {
-	.vetd-modifying::after {
-		animation: none;
-	}
+/* 混沌流体背景（FluidBackdrop）：画在一张最长边几十像素的小 canvas 上，由 CSS 拉伸
+   铺满 frame——放大时的双线性插值本身就是模糊，不需要 filter。四周浓、中心淡的遮罩
+   也直接画进 canvas，不走 mask-image。原来的做法（重模糊的父层里跑五个 blob 动画 +
+   mask + 整组 opacity）每帧都要对 180% 尺寸的区域重做高斯模糊，GPU 随 frame 数飙升。 */
+.vetd-fluid {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
 }
-
-/* ---------- frame 活动态浮层（FrameActivityOverlay） ----------
-   全部只动 transform / opacity：这一层压着跨源 iframe，动布局属性或
-   box-shadow 会让整个区域逐帧重新光栅化（同 vetd-modifying 的教训）。
-
-   配色一律走 --vetd-accent（由组件按活动态设在浮层根上）与固定色板，不读宿主
-   主题变量：mono 主题的 primary/ring/accent/chart-4 全是黑白灰，读它们的话
-   五个 blob 一模糊就互相抵消成中性灰，动画彻底糊掉。浮层是系统状态语言而非
-   内容，本就该有自己的一套语义色（同标题栏三色徽标）。 */
 
 /* 迷你 Bot 头像：theme-ui BotAvatar（sm）的纯 CSS 复刻。 */
 .vetd-bot {
@@ -337,79 +342,9 @@
 	}
 }
 
-/* 浮层整体渐入渐出：opacity 由组件驱动（挂载下一帧置 1、卸载前归 0），
-   时长与 FrameActivityOverlay 的 FADE_MS 保持一致。 */
-.vetd-activity-overlay {
-	transition: opacity 300ms ease;
-}
-
-/* 混沌流体背景（对齐 image-gen 生成骨架）：实色 blob 漂移缩放 + 旋转层，
-   叠加重模糊融成流动渐变。60% 不透明度，底下的稿子仍隐约可见。
-
-   径向遮罩让它四周浓、中心淡：边缘紧贴 frame 边框，与画布背景对比最强、
-   存在感够；中心留出通透区，稿子主体始终读得到，动画不挡看稿。 */
-.vetd-fluid {
-	position: absolute;
-	inset: 0;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	overflow: hidden;
-	opacity: 0.6;
-	--vetd-fluid-mask: radial-gradient(
-		ellipse 72% 62% at 50% 50%,
-		transparent 0%,
-		rgb(0 0 0 / 0.22) 42%,
-		rgb(0 0 0 / 0.72) 72%,
-		#000 100%
-	);
-	-webkit-mask-image: var(--vetd-fluid-mask);
-	mask-image: var(--vetd-fluid-mask);
-}
-/* 居中大正方形旋转层：180% 宽，任意旋转角内切圆都盖满 frame。 */
-.vetd-fluid-spin {
-	position: relative;
-	width: 180%;
-	aspect-ratio: 1;
-	filter: blur(26px) saturate(120%);
-	animation: vetd-fluid-spin 36s linear infinite;
-	will-change: transform;
-}
-@keyframes vetd-fluid-spin {
-	to {
-		transform: rotate(360deg);
-	}
-}
-.vetd-fluid-blob {
-	width: 100%;
-	height: 100%;
-	border-radius: 9999px;
-	animation-name: vetd-fluid-drift;
-	animation-timing-function: ease-in-out;
-	animation-iteration-count: infinite;
-	animation-direction: alternate;
-	will-change: transform;
-}
-@keyframes vetd-fluid-drift {
-	0% {
-		transform: translate(0%, 0%) scale(1);
-	}
-	25% {
-		transform: translate(22%, -16%) scale(1.22);
-	}
-	50% {
-		transform: translate(-14%, 20%) scale(0.82);
-	}
-	75% {
-		transform: translate(16%, 14%) scale(1.12);
-	}
-	100% {
-		transform: translate(-20%, -10%) scale(0.94);
-	}
-}
-
-/* 毛玻璃胶囊：把头像与效果托在画面中央，避免细节淹没在 frame 内容里。
-   底色同上固定白色，不跟宿主主题。 */
+/* 胶囊：把头像与效果托在画面中央，避免细节淹没在 frame 内容里。底色固定白色、
+   不跟宿主主题。不加 backdrop-filter：底下的流体每帧都在变，背景模糊得逐帧重算，
+   而 0.88 的白底上它本来就看不出来。 */
 .vetd-activity-chip {
 	display: flex;
 	align-items: center;
@@ -418,7 +353,6 @@
 	border-radius: 9999px;
 	background: rgb(255 255 255 / 0.88);
 	border: 1px solid color-mix(in oklab, var(--vetd-accent, #6366f1) 25%, transparent);
-	backdrop-filter: blur(6px);
 	box-shadow: 0 4px 16px -8px rgb(0 0 0 / 0.25);
 }
 
@@ -561,7 +495,8 @@
 	}
 }
 
-/* 启动占位：三点等待，与打字骨架线同一套节奏（错开相位、循环）。 */
+
+/* 启动占位：三点等待（错开相位、循环）。 */
 .vetd-loading-dots {
 	display: flex;
 	align-items: center;
@@ -571,7 +506,7 @@
 	width: 5px;
 	height: 5px;
 	border-radius: 9999px;
-	background: color-mix(in oklab, var(--vetd-accent, #64748b) 60%, transparent);
+	background: color-mix(in oklab, var(--muted-foreground, #64748b) 60%, transparent);
 	animation: vetd-loading-dot 1.2s ease-in-out infinite;
 }
 .vetd-loading-dot:nth-child(2) {
@@ -592,19 +527,10 @@
 	}
 }
 
-/* 缩放/平移进行中把画布拍平（.vetd-interacting 由 useViewport 的 interacting 驱动）。
-   ——————————————————————————————————————————————————————————
-   画布上每一帧只要还没截到位图，就盖着一层启动占位，里面是 26px 高斯模糊 + 无限旋转的
-   流体背景（.vetd-fluid-spin 及其 5 个 blob，各自还带 will-change: transform）。冷启动
-   时这种帧是**全部**，于是一屏几十个持续动画的模糊层全都套在 world 的 scale 底下：缩放
-   每变一档，每一层的有效尺度都变了，模糊必须整层重新光栅化——这就是「刚启动时缩放移动
-   卡顿、预热后就好一点」（位图到齐后占位卸掉，只剩静态 img）。
-   操作期间直接把流体层摘掉、其余无限动画就地暂停；占位自身的底色与胶囊还在，帧不会变空。
-   松手 220ms 后恢复。 */
-.vetd-interacting .vetd-fluid {
-	display: none;
-}
-.vetd-interacting .vetd-modifying::after,
+/* 缩放/平移进行中（.vetd-interacting 由 useViewport 的 interacting 驱动）把无限动画
+   就地暂停，松手 220ms 后恢复：操作期间 world 的 scale 每帧都在变，少一件在动的
+   东西就少一份合成。 */
+.vetd-interacting .vetd-activity-ring,
 .vetd-interacting .vetd-bot-think .vetd-bot-head,
 .vetd-interacting .vetd-bot-bubble,
 .vetd-interacting .vetd-bot-write .vetd-bot-head,
@@ -612,12 +538,13 @@
 .vetd-interacting .vetd-scan-beam,
 .vetd-interacting .vetd-magnifier,
 .vetd-interacting .vetd-typing-line,
-.vetd-interacting .vetd-loading-dot,
-.vetd-interacting .vetd-spark {
+.vetd-interacting .vetd-spark,
+.vetd-interacting .vetd-loading-dot {
 	animation-play-state: paused;
 }
 
 @media (prefers-reduced-motion: reduce) {
+	.vetd-activity-ring,
 	.vetd-bot-think .vetd-bot-head,
 	.vetd-bot-bubble,
 	.vetd-bot-write .vetd-bot-head,
@@ -625,8 +552,6 @@
 	.vetd-scan-beam,
 	.vetd-magnifier,
 	.vetd-typing-line,
-	.vetd-fluid-spin,
-	.vetd-fluid-blob,
 	.vetd-loading-dot,
 	.vetd-spark {
 		animation: none;

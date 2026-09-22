@@ -47,6 +47,12 @@ export interface BottomPanelSessionState {
 	readonly heightRatio: number;
 	readonly root: BottomPanelNode | null;
 	readonly activeLeafId: string | null;
+	/**
+	 * 每种组件最近一次成为「激活格子里的激活 tab」的实例，键是 componentId。
+	 * 头部终端入口据此回到用户刚才用的那个终端，而不是布局里排在最后的那个。
+	 * 可选：旧数据没有这个字段，没有任何记录时也不写这个键，好让默认状态保持原样。
+	 */
+	readonly lastActiveTabIds?: Readonly<Record<BottomPanelComponentId, string>>;
 }
 
 export const BOTTOM_PANEL_MIN_HEIGHT_RATIO = 0.15;
@@ -84,7 +90,8 @@ export function isDefaultBottomPanelState(state: BottomPanelSessionState): boole
 		state.root === null &&
 		state.collapsed &&
 		state.heightRatio === BOTTOM_PANEL_DEFAULT_HEIGHT_RATIO &&
-		state.activeLeafId === null
+		state.activeLeafId === null &&
+		state.lastActiveTabIds === undefined
 	);
 }
 
@@ -307,9 +314,63 @@ export function clampBottomPanelHeightRatio(ratio: number): number {
 	return Math.min(BOTTOM_PANEL_MAX_HEIGHT_RATIO, Math.max(BOTTOM_PANEL_MIN_HEIGHT_RATIO, ratio));
 }
 
+/** 激活格子里的激活 tab，也就是用户此刻「在用」的那个。 */
+export function activeBottomPanelTab(state: BottomPanelSessionState): BottomPanelTabState | null {
+	const leaf = collectBottomPanelLeaves(state.root).find((entry) => entry.id === state.activeLeafId);
+	if (!leaf) return null;
+	return leaf.tabs.find((tab) => tab.tabId === leaf.activeTabId) ?? null;
+}
+
+/**
+ * 某种组件「最近用过」的实例：优先取记录，记录的 tab 已不在树里时退回布局顺序里最后一个。
+ */
+export function latestBottomPanelTabOf(
+	state: BottomPanelSessionState,
+	componentId: BottomPanelComponentId,
+): BottomPanelTabState | null {
+	const tabs = collectBottomPanelLeaves(state.root).flatMap((leaf) =>
+		leaf.tabs.filter((tab) => tab.componentId === componentId),
+	);
+	const recordedId = state.lastActiveTabIds?.[componentId];
+	return tabs.find((tab) => tab.tabId === recordedId) ?? tabs[tabs.length - 1] ?? null;
+}
+
+/**
+ * 把当前在用的 tab 记进 `lastActiveTabIds`，同时摘掉已经不在树里的记录。
+ * 放在 reducer 出口统一做，而不是在每个 case 里各记一次：open / activate / focus-leaf /
+ * move / split / close 都会改变「在用的是谁」，漏掉任何一处记录就会悄悄过期。
+ */
+function trackLastActiveTab(state: BottomPanelSessionState): BottomPanelSessionState {
+	const present = new Map<string, BottomPanelComponentId>();
+	for (const leaf of collectBottomPanelLeaves(state.root)) {
+		for (const tab of leaf.tabs) present.set(tab.tabId, tab.componentId);
+	}
+	const next: Record<BottomPanelComponentId, string> = {};
+	for (const [componentId, tabId] of Object.entries(state.lastActiveTabIds ?? {})) {
+		if (present.get(tabId) === componentId) next[componentId] = tabId;
+	}
+	const active = activeBottomPanelTab(state);
+	if (active) next[active.componentId] = active.tabId;
+
+	const prev = state.lastActiveTabIds ?? {};
+	const prevKeys = Object.keys(prev);
+	const nextKeys = Object.keys(next);
+	if (prevKeys.length === nextKeys.length && nextKeys.every((key) => prev[key] === next[key])) return state;
+	if (nextKeys.length === 0) {
+		const { lastActiveTabIds: _dropped, ...rest } = state;
+		return rest;
+	}
+	return { ...state, lastActiveTabIds: next };
+}
+
 // ─── reducer ──────────────────────────────────────────────────────
 
 export function reduceBottomPanel(state: BottomPanelSessionState, action: BottomPanelAction): BottomPanelSessionState {
+	const next = reduceBottomPanelLayout(state, action);
+	return next === state ? state : trackLastActiveTab(next);
+}
+
+function reduceBottomPanelLayout(state: BottomPanelSessionState, action: BottomPanelAction): BottomPanelSessionState {
 	switch (action.type) {
 		case "open-tab": {
 			const tab: BottomPanelTabState = { tabId: action.tabId, componentId: action.componentId };
@@ -332,7 +393,14 @@ export function reduceBottomPanel(state: BottomPanelSessionState, action: Bottom
 			if (!state.root) return state;
 			const { node, removed } = removeTabFromNode(state.root, action.tabId);
 			if (!removed) return state;
-			return { ...state, root: node, activeLeafId: resolveActiveLeafId(node, state.activeLeafId) };
+			// 关掉最后一个 tab 就顺手收起：留一块只有「添加」空态的面板占着半屏没有用处，
+			// 用户要的是「这里的事做完了」。下次点底部面板按钮照样展开空态再添加。
+			return {
+				...state,
+				root: node,
+				collapsed: node === null ? true : state.collapsed,
+				activeLeafId: resolveActiveLeafId(node, state.activeLeafId),
+			};
 		}
 
 		case "activate-tab": {

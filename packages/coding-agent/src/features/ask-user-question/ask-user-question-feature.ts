@@ -1,4 +1,5 @@
 import type { AgentFeatureDefinition, ModelCallContributionProvider } from "@vetta/runtime-core/kernel";
+import { CODING_AGENT_UNATTENDED_TURN_METADATA_KEY } from "./contracts.js";
 import { CODING_AGENT_ASK_USER_QUESTION_TOOL_NAME, createAskUserQuestionToolRegistration } from "./tool/index.js";
 
 export { CODING_AGENT_ASK_USER_QUESTION_TOOL_NAME };
@@ -25,6 +26,7 @@ export function createCodingAgentAskUserQuestionFeature(
 				id: "coding-agent.ask-user-question",
 				async contribute(callContext) {
 					callContext.signal.throwIfAborted();
+					if (isUnattendedRequest(callContext.request?.payload)) return {};
 					return options.isEnabled() ? { tools: [tool] } : {};
 				},
 			};
@@ -37,4 +39,14 @@ export function createCodingAgentAskUserQuestionFeature(
 			};
 		},
 	};
+}
+
+function isUnattendedRequest(payload: unknown): boolean {
+	if (!payload || typeof payload !== "object") return false;
+	const metadata = Reflect.get(payload, "metadata");
+	return Boolean(
+		metadata &&
+			typeof metadata === "object" &&
+			Reflect.get(metadata, CODING_AGENT_UNATTENDED_TURN_METADATA_KEY) === true,
+	);
 }

@@ -244,6 +244,7 @@ function assembly(
 		corePorts: {
 			turnControl: {
 				prompt: async () => undefined,
+				promptWhenAvailable: async () => undefined,
 				continue: options.continueTurn ?? (async () => {}),
 				retry: async () => {},
 				abort: async () => {},

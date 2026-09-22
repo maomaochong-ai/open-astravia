@@ -109,13 +109,12 @@ it("shows the size badge only while selected, under the frame", () => {
 
 it("covers a frame that has nothing painted yet with the loading overlay", () => {
 	const pending = renderFrame(false);
-	// 通用 spinner 换成了活动态同款的流体 + 头像（见 FrameLoadingOverlay）。
-	expect(pending.host.querySelector(".vetd-fluid")).not.toBeNull();
-	expect(pending.host.querySelector(".vetd-bot-think")).not.toBeNull();
+	// 静态底 + 三点（见 FrameLoadingOverlay）。
+	expect(pending.host.querySelector(".vetd-loading-dots")).not.toBeNull();
 	pending.cleanup();
 
 	// 有位图就说明这一帧已经画得出来了，占位不该再出现（位图自己盖在上面）。
 	const painted = renderFrame(false, false, "data:image/png;base64,AAAA");
-	expect(painted.host.querySelector(".vetd-fluid")).toBeNull();
+	expect(painted.host.querySelector(".vetd-loading-dots")).toBeNull();
 	painted.cleanup();
 });

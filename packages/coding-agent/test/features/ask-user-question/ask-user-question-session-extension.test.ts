@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	CODING_AGENT_ASK_USER_QUESTION_FUNCTION,
 	CODING_AGENT_ASK_USER_QUESTION_RUNTIME,
+	CODING_AGENT_UNATTENDED_TURN_METADATA_KEY,
 	createCodingAgentAskUserQuestionSessionExtension,
 } from "../../../src/features/ask-user-question/index.js";
 
@@ -83,6 +84,29 @@ describe("Coding Agent ask-user-question session extension", () => {
 
 		unregister();
 		expect(await readTool(provider.contribute.bind(provider))).toBeUndefined();
+	});
+
+	it("withholds the tool for a single unattended turn without disabling it for later turns", async () => {
+		const functions = new SessionExtensionFunctionRegistry();
+		functions.register(CODING_AGENT_ASK_USER_QUESTION_FUNCTION, async () => ({ cancelled: true, answers: [] }));
+		disposals.push(() => functions.close());
+		const composition = await SessionExtensionComposition.create({
+			functions,
+			definitions: [createCodingAgentAskUserQuestionSessionExtension({ scenario: "project" })],
+		});
+		disposals.push(() => composition.dispose());
+		const prepared = await composition.features[0]!.prepare({ signal });
+		disposals.push(() => prepared.dispose());
+		const contribution = await prepared.contribute({ signal });
+		const provider = contribution.modelCallProviders?.[0];
+		if (!provider) throw new Error("Expected ask-user-question model-call provider");
+
+		const unattended = await provider.contribute({
+			signal,
+			request: { payload: { text: "run", metadata: { [CODING_AGENT_UNATTENDED_TURN_METADATA_KEY]: true } } },
+		} as unknown as ModelCallContributionContext);
+		expect(unattended.tools).toBeUndefined();
+		expect(await readTool(provider.contribute.bind(provider))).toBeDefined();
 	});
 
 	it("does not expose an interaction tool in non-interactive product scenarios", async () => {

@@ -4,6 +4,7 @@ import { getDesktopProviderObservationRuntime } from "../agent-runtime/provider-
 import { getBatchTaskExecutorState } from "../batch-tasks/batch-task-executor.js";
 import { getDesktopBatchTaskService } from "../batch-tasks/batch-task-service.js";
 import { getDesktopConversationService } from "../conversations/desktop-conversation-service.js";
+import { DEFAULT_CONVERSATION_CWD } from "../ipc/fs.js";
 import { getDesktopSchedulerService } from "../scheduler/scheduler-service.js";
 import { getSchedulerTaskExecutorState } from "../scheduler/task-executor.js";
 import { AppDebugCatalog } from "./catalog.js";
@@ -44,6 +45,7 @@ export function createAppDebugRuntime(options: AppDebugRuntimeOptions): AppDebug
 		batch: getDesktopBatchTaskService(),
 		readSchedulerState: getSchedulerTaskExecutorState,
 		readBatchState: getBatchTaskExecutorState,
+		conversationCwd: DEFAULT_CONVERSATION_CWD,
 	})) {
 		catalog.register(definition);
 	}

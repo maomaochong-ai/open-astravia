@@ -1,6 +1,5 @@
-import { describeSchedule, parseCronExpression } from "@domains/scheduler/components/schedule-picker/cron-utils";
+import { describeSchedule } from "@domains/scheduler/components/schedule-picker/describe-schedule";
 import { useScheduledTasks } from "@domains/scheduler/hooks/useScheduledTasks";
-import type { ScheduledTask } from "@shared/store/atoms";
 import type { ScheduleStatusViewProps, ScheduleTaskItemView } from "@vetta-org/theme-ui/project";
 import type { TFunction } from "i18next";
 import { useEffect, useMemo } from "react";
@@ -13,12 +12,6 @@ function formatLastRun(timestamp: number | null, t: TFunction<"automation">): st
 	if (diff < 3_600_000) return t("list.minutesAgo", { n: Math.floor(diff / 60_000) });
 	if (diff < 86_400_000) return t("list.hoursAgo", { n: Math.floor(diff / 3_600_000) });
 	return t("list.daysAgo", { n: Math.floor(diff / 86_400_000) });
-}
-
-function scheduleLabel(task: ScheduledTask, t: TFunction<"automation">): string {
-	const parsed = parseCronExpression(task.cron, task.isOnce);
-	if (parsed) return describeSchedule(parsed, t);
-	return task.cron;
 }
 
 export function useScheduleStatusModel(cwd: string): ScheduleStatusViewProps | null {
@@ -36,7 +29,7 @@ export function useScheduleStatusModel(cwd: string): ScheduleStatusViewProps | n
 		return unsubscribe;
 	}, [refreshTasks]);
 
-	const projectTasks = useMemo(() => tasks.filter((task) => task.cwd === cwd), [cwd, tasks]);
+	const projectTasks = useMemo(() => tasks.filter((task) => task.runTarget.projectCwd === cwd), [cwd, tasks]);
 
 	const viewTasks: ScheduleTaskItemView[] = useMemo(
 		() =>
@@ -44,7 +37,7 @@ export function useScheduleStatusModel(cwd: string): ScheduleStatusViewProps | n
 				id: task.id,
 				name: task.name,
 				enabled: task.enabled,
-				scheduleLabel: scheduleLabel(task, t),
+				scheduleLabel: describeSchedule(task.schedule, t),
 				lastRunLabel: formatLastRun(task.lastRunAt, t),
 				lastRunStatus: task.lastRunStatus ?? null,
 			})),

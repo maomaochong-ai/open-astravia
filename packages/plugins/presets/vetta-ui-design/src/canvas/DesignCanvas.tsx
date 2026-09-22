@@ -30,7 +30,13 @@ import {
 	type Placement,
 } from "./arrange";
 import { ArrangeToolbar } from "./ArrangeToolbar";
-import { BridgeHub, type ElementQuery, type FrameWheel, type SelectedElementPayload } from "./bridge-client";
+import {
+	BridgeHub,
+	type BridgeHubEvents,
+	type ElementQuery,
+	type FrameWheel,
+	type SelectedElementPayload,
+} from "./bridge-client";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ControlBar, type CanvasTool } from "./ControlBar";
 import {
@@ -50,6 +56,7 @@ import { byCanvasOrder } from "./frame-order";
 import { type FrameMenuAnchor, FrameContextMenu } from "./FrameContextMenu";
 import { refreshCover } from "./cover-compose";
 import { useFrameRasters } from "./frame-raster";
+import { useBridgeEvents } from "./use-bridge-events";
 import { setOffscreenStorageSeed } from "./offscreen-raster";
 import { type FrameDragEdge, FrameView } from "./FrameView";
 import { GapHandles } from "./GapHandles";
@@ -550,6 +557,9 @@ export function DesignCanvas({
 			},
 		},
 	});
+	/** 渲染图工作台读画布位图用，见 openExport。 */
+	const rasterOfRef = useRef(rasterOf);
+	rasterOfRef.current = rasterOf;
 
 
 	/**
@@ -746,8 +756,8 @@ export function DesignCanvas({
 		setMenuAnchor({ frameId, x: clientX - (bounds?.left ?? 0), y: clientY - (bounds?.top ?? 0) });
 	}, []);
 
-	useEffect(() => {
-		bridge.start({
+	const bridgeEvents = useMemo<BridgeHubEvents>(
+		() => ({
 			onSelected: (frameId, payload) => {
 				setSelection(payload ? { kind: "dom", frameId, payload } : { kind: "frames", ids: [frameId] });
 			},
@@ -784,9 +794,10 @@ export function DesignCanvas({
 				const changed = setOffscreenStorageSeed(port, entries);
 				if (changed && byUser) storageChanged(frameId);
 			},
-		});
-		return () => bridge.stop();
-	}, [bridge, invalidateRaster, notifyRendered, openFrameMenu, view.applyWheel, port, storageChanged]);
+		}),
+		[invalidateRaster, notifyRendered, openFrameMenu, view.applyWheel, port, storageChanged],
+	);
+	useBridgeEvents(bridge, bridgeEvents);
 
 	/** Click / shift-click a frame. Shift toggles membership; a plain click replaces. */
 	const selectFrame = useCallback((frameId: string, additive: boolean): void => {
@@ -1104,6 +1115,7 @@ export function DesignCanvas({
 
 	/** FrameView 拖动/缩放要把指针位移换算成世界位移，但 zoom 不作为 prop 下发。 */
 	const getZoom = useCallback((): number => viewportRef.current.zoom, []);
+	const closeNoteDraft = useCallback((): void => setNoteDraft(null), []);
 
 	/**
 	 * 工具栏的缩放读数自己去订阅，不随画布的 state 下发。
@@ -1127,10 +1139,18 @@ export function DesignCanvas({
 	 * 一个从没兑现过的兜底不值这个价，关掉。
 	 */
 	const captureFaithfully = useCallback(
-		(frameId: string, options?: { keepHighlight?: boolean; pixelRatio?: number }): Promise<string> =>
+		(
+			frameId: string,
+			{ signal, ...options }: { keepHighlight?: boolean; pixelRatio?: number; signal?: AbortSignal } = {},
+		): Promise<string> =>
 			// 锁在最外层：runLive 的拉活体 + 静置也算这次截图的一部分，放进去等于让后台
 			// 队列在这段时间里插一张进来，撞的还是同一个 iframe。
-			withCaptureLock(() => runLive(frameId, () => bridge.capture(frameId, { ...options, timeoutMs: 30_000 }))),
+			// 拿到锁时先看调用方是否已经不要了（工作台关掉、画框移出渲染区）：排在锁上的
+			// 废任务照跑的话，下一次打开工作台得先等上一轮整队截完。
+			withCaptureLock(() => {
+				if (signal?.aborted) return Promise.reject(signal.reason ?? new Error("capture aborted"));
+				return runLive(frameId, () => bridge.capture(frameId, { ...options, timeoutMs: 30_000 }));
+			}),
 		[bridge, runLive, withCaptureLock],
 	);
 
@@ -1280,7 +1300,9 @@ export function DesignCanvas({
 		requestMockupExport({
 			session,
 			initialFrameIds: orderedSelection.map((frame) => frame.id),
-			capture: (frameId, pixelRatio) => captureFaithfully(frameId, { pixelRatio }),
+			// 经 ref 读：工作台开着期间位图还会更新，闭包住打开那一刻的 rasterOf 就读不到了。
+			cachedImage: (frameId) => rasterOfRef.current(frameId),
+			capture: (frameId, pixelRatio, signal) => captureFaithfully(frameId, { pixelRatio, signal }),
 		});
 	};
 
@@ -1509,7 +1531,7 @@ export function DesignCanvas({
 					visible={notesVisible}
 					draft={noteDraft}
 					blockedReason={blockedReason}
-					onDraftClose={() => setNoteDraft(null)}
+					onDraftClose={closeNoteDraft}
 					openNoteId={openNoteId}
 					onOpenNote={setOpenNoteId}
 					getZoom={getZoom}

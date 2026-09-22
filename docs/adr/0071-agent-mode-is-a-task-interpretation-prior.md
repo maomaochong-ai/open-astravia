@@ -1,5 +1,8 @@
 # 工作模式是任务解释的先验，资源侧 agent_mode 声明废弃
 
+> **差异收敛修订（2026-09-22）**：注册表不再携带 `narration` 渲染能力位，模式之间只剩提示词正文差异，
+> 叙事、Deliverables 清单与写代码底线纪律由共享 partial 统一，见文末修订。
+
 > **执行策略修订（2026-08-30）**：工具副作用分级与会话首调确认已完整移除，见文末修订。
 > 本文原有的“可回收兜底”不再作为当前系统保证。
 
@@ -211,3 +214,34 @@ store、session store）等多处的 `"work" | "coding"` 硬编码联合类型�
 
 回归验证覆盖原受拦截的产品/插件工具在无确认宿主时正常执行、旧分级不进入 IPC 合同，以及独立提问、
 沙盒授权、Hook、工具错误与取消行为继续有效。
+
+## 修订：模式之间只剩提示词正文差异（2026-09-22）
+
+### 背景
+
+归属修订把 `narration` 留在注册表 frontmatter 里，作为渲染层按模式查表的能力位：Work 为 `staged`（agent 用
+`progress` 声明阶段，会话流按阶段折叠），Coding 为 `inline`（工具行逐条展开）。实际使用下来，Coding 的逐行
+展开没有带来额外价值；两份 md 的 Deliverables 写法也各不相同（Work 列交付物名称，Coding 列改动文件链接），
+Work 在切到代码路线时则完全没有 Coding 的 git 安全等底线约束。
+
+### 决策
+
+**模式之间只有提示词正文不同。** 身份、默认路线与各自的专业纪律留在各自 md；以下内容由共享 partial 统一，
+每个模式 md 必须全部引用：
+
+- `partials/narration.md`：所有模式都用 `progress` 分阶段叙事。只有面向用户的成品（文档、图片、PDF、
+  附件、卡片）放在阶段外；为完成任务而改动源码、配置等工作文件属于过程，留在阶段内。
+- `partials/deliverables-list.md`：本轮改动过任何文件就必须附改动文件清单（绝对路径链接 + 改动说明），
+  Work 原先的交付物名称清单废弃。
+- `partials/code-discipline.md`：改动精准、先验证后下结论、git 安全。Work 在代码路线小节引用。
+
+`narration` 字段从 frontmatter、生成脚本、注册表类型与 `GET_AGENT_MODES` IPC 中移除，renderer 固定走阶段
+分组渲染，按会话记录模式的 `sessionAgentModeAtom`（唯一读取方就是 narration）一并删除。正文第 5 条的承诺
+收紧为：**新增一个模式 = 一份只含提示词差异的 md + i18n 文案**，不能再携带任何渲染层差异。
+
+### 后果
+
+- **行为变化**：Coding 会话改为阶段折叠；两种模式在改动文件时都会列出可点击的文件清单。历史 Coding
+  会话没有 `progress` 调用，按启发式合组显示。
+- **回归防线**：`agent-modes.test.ts` 断言每个模式 md 都引用全部共享 partial。
+- 会话持久化格式、`agentMode` 的传递链路、新会话页模式开关与插件 `ctx.getAgentMode()` 均不变。

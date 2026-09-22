@@ -257,10 +257,12 @@ export function ControlBar({
 						{peakLabel}
 					</div>
 				) : null}
+				{/* 不透明底、不加 backdrop-blur：底下是一直在平移缩放、还有活体 iframe 在动的画布，
+				    背景模糊每帧都得重读背后像素再做一遍高斯，画布上的其他浮层同理。 */}
 				{/* biome-ignore lint/a11y/noStaticElementInteractions: swallow canvas gestures under the bar */}
 				<div
 					ref={dockRef}
-					className="pointer-events-auto relative inline-flex items-end overflow-visible rounded-2xl border border-border/80 bg-popover/90 px-2 py-1.5 shadow-md backdrop-blur-md"
+					className="pointer-events-auto relative inline-flex items-end overflow-visible rounded-2xl border border-border/80 bg-popover px-2 py-1.5 shadow-md"
 					style={{ gap: DOCK_GAP }}
 					// 托手/空格态下画布根节点会在 pointerdown 时 setPointerCapture 接管平移，
 					// 指针捕获会把 click 改派给画布根，工具栏按钮就永远点不动了（切不回选择工具）。

@@ -128,6 +128,19 @@ it("stays quiet for generated files — screenshots and the manifest are not sou
 	expect(seen.size).toBe(0);
 });
 
+it("resolves paths relative to the conversation cwd", () => {
+	// agent 常传相对于会话 cwd 的路径；只认绝对路径时这类调用一个 frame 都点不亮。
+	notifyAgentToolArgs("c1", "write", { path: "demo.vetd/frames/home.tsx" }, "/w");
+	expect(seen.get("home")).toBe("creating");
+	notifyAgentToolStart("c2", "read", { path: "./demo.vetd/frames/detail.tsx" }, "/w/");
+	expect(seen.get("detail")).toBe("reading");
+});
+
+it("ignores relative paths when the conversation cwd is unknown", () => {
+	notifyAgentToolStart("c1", "edit", { path: "demo.vetd/frames/home.tsx" });
+	expect(seen.size).toBe(0);
+});
+
 it("ignores paths outside the open design", () => {
 	notifyAgentToolStart("c1", "edit", { file_path: "/w/other/src/app.tsx" });
 	expect(seen.size).toBe(0);
@@ -146,7 +159,7 @@ it("keeps the overlay alive through a long generation", () => {
 	vi.stubGlobal("cancelAnimationFrame", () => {});
 
 	act(() => {
-		root.render(<FrameActivityOverlay activity="creating" />);
+		root.render(<FrameActivityOverlay activity="creating" frameWidth={390} frameHeight={844} />);
 	});
 	act(() => {
 		vi.advanceTimersByTime(30_000);
@@ -162,7 +175,7 @@ it("keeps the overlay alive through a long generation", () => {
 	vi.unstubAllGlobals();
 });
 
-it("renders the overlay with the per-kind decorations", () => {
+it("renders the per-kind decorations over a canvas fluid backdrop", () => {
 	const host = document.createElement("div");
 	document.body.append(host);
 	const root = createRoot(host);
@@ -174,7 +187,7 @@ it("renders the overlay with the per-kind decorations", () => {
 	vi.stubGlobal("cancelAnimationFrame", () => {});
 
 	act(() => {
-		root.render(<FrameActivityOverlay activity="reading" />);
+		root.render(<FrameActivityOverlay activity="reading" frameWidth={390} frameHeight={844} />);
 	});
 	act(() => {
 		for (const cb of rafs.splice(0)) cb(0);
@@ -183,13 +196,19 @@ it("renders the overlay with the per-kind decorations", () => {
 	const overlay = host.querySelector(".vetd-activity-overlay") as HTMLElement | null;
 	expect(overlay).not.toBeNull();
 	expect(overlay?.style.opacity).toBe("1");
-	expect(host.querySelector(".vetd-fluid-blob")).not.toBeNull();
+	expect(overlay?.style.getPropertyValue("--vetd-accent")).toBe("#0ea5e9");
+	// 流体是一张按 frame 宽高比缩小的 canvas，不是一堆带 filter 的 DOM 层。
+	const fluid = host.querySelector("canvas.vetd-fluid") as HTMLCanvasElement | null;
+	expect(fluid?.width).toBe(30);
+	expect(fluid?.height).toBe(64);
+	expect(host.querySelector(".vetd-activity-ring")).not.toBeNull();
 	expect(host.querySelector(".vetd-scan-beam")).not.toBeNull();
 	expect(host.querySelector(".vetd-bot-think")).not.toBeNull();
 
 	act(() => {
-		root.render(<FrameActivityOverlay activity="creating" />);
+		root.render(<FrameActivityOverlay activity="creating" frameWidth={390} frameHeight={844} />);
 	});
+	expect(overlay?.style.getPropertyValue("--vetd-accent")).toBe("#d946ef");
 	expect(host.querySelectorAll(".vetd-spark").length).toBe(4);
 
 	act(() => {

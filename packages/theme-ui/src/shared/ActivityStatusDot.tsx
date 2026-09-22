@@ -30,16 +30,14 @@ const TONE_COLOR: Record<ActivityStatusDotTone, string> = {
 	muted: "var(--muted-foreground)",
 };
 
+/**
+ * 光晕（.activity-dot-halo）扩散淡出、核心点（.activity-dot-core）同拍呼吸——动画不写在 CSS 里：
+ * 毛玻璃窗口每出一帧都要整窗重合成，一个 6px 的点 60fps 逐帧插值就足以让 GPU 常年不闲。
+ * 由宿主（desktop 的 live-animations）按类名挂 steps(16) 的合成器动画并与其它指示器锁同一相位；
+ * 没有宿主动画时光晕保持不可见、核心点全亮。
+ */
 export const ACTIVITY_STATUS_DOT_CSS = `
-@keyframes activity-dot-halo {
-	0% { transform: scale(0.7); opacity: 0.55; }
-	70% { transform: scale(2.1); opacity: 0; }
-	100% { transform: scale(2.1); opacity: 0; }
-}
-@keyframes activity-dot-core {
-	0%, 100% { opacity: 1; }
-	50% { opacity: 0.55; }
-}
+.activity-dot-halo { opacity: 0; }
 `;
 
 /** 关键帧注入点：每个用到状态点的根节点渲染一次，内容相同不会互相干扰。 */
@@ -57,14 +55,8 @@ export function ActivityStatusDot({ pulse, tone, className }: ActivityStatusDotP
 		>
 			{pulse ? (
 				<>
-					<span
-						className={cn("absolute h-1.5 w-1.5 rounded-full", background)}
-						style={{ animation: "activity-dot-halo 2.2s ease-out infinite" }}
-					/>
-					<span
-						className={cn("relative h-1.5 w-1.5 rounded-full", background)}
-						style={{ animation: "activity-dot-core 2.2s ease-in-out infinite" }}
-					/>
+					<span className={cn("activity-dot-halo absolute h-1.5 w-1.5 rounded-full", background)} />
+					<span className={cn("activity-dot-core relative h-1.5 w-1.5 rounded-full", background)} />
 				</>
 			) : (
 				<span

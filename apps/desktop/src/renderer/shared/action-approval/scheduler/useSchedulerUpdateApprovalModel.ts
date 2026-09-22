@@ -1,3 +1,6 @@
+import { automationDraftFrom } from "@domains/scheduler/automation-draft";
+import { useAutomationDraftDefaults } from "@domains/scheduler/hooks/useAutomationDraftDefaults";
+import type { AutomationTaskPatch } from "@preload/api";
 import { type ScheduledTask, scheduledTasksAtom } from "@shared/store/atoms";
 import { useAtomValue } from "jotai";
 import { useEffect, useMemo, useState } from "react";
@@ -6,14 +9,10 @@ import { useActionApproval } from "../useActionApproval";
 import { type SchedulerEditableData, toSchedulerApprovalJsonData } from "./SchedulerApprovalFields";
 import type { SchedulerEditApprovalDrawerViewProps } from "./SchedulerEditApprovalDrawerView";
 
-interface UpdateTaskData extends SchedulerEditableData {
-	skill?: { name: string; alias?: string; type: "skill" | "scene" } | null;
-}
-
 interface UpdateTaskInput {
 	operation: "update";
 	taskId: string;
-	data: UpdateTaskData;
+	data: AutomationTaskPatch;
 	approvalUi?: string;
 }
 
@@ -29,27 +28,27 @@ export function useSchedulerUpdateApprovalModel(): SchedulerUpdateApprovalModel 
 	const approval = useActionApproval("scheduler.update");
 	const tasks = useAtomValue(scheduledTasksAtom);
 	const { t } = useTranslation("common");
+	const defaults = useAutomationDraftDefaults();
 	const input = (approval?.request.input as unknown as UpdateTaskInput | undefined) ?? null;
 	const cachedTask = input ? tasks.find((candidate) => candidate.id === input.taskId) : undefined;
 	const [task, setTask] = useState<ScheduledTask | undefined>(cachedTask);
 	const [loading, setLoading] = useState(!cachedTask && !!approval);
 	const [loadError, setLoadError] = useState<string | null>(null);
 
-	const initialData = useMemo<UpdateTaskData | null>(() => {
+	// 当前任务叠加 agent 提交的补丁；补丁里的 null 表示清除该可选项。
+	const initialData = useMemo<SchedulerEditableData | null>(() => {
 		if (!task || !input) return null;
-		return {
-			name: task.name,
-			prompt: task.prompt,
-			cron: task.cron,
-			isOnce: task.isOnce,
-			enabled: task.enabled,
-			cwd: task.cwd,
-			modelKey: task.modelKey,
-			executionMode: task.executionMode,
-			skill: task.skill,
-			...input.data,
-		};
-	}, [input, task]);
+		const { model, notification, ...rest } = input.data;
+		return automationDraftFrom(
+			{
+				...task,
+				...rest,
+				model: model === null ? undefined : (model ?? task.model),
+				notification: notification === null ? undefined : (notification ?? task.notification),
+			},
+			defaults,
+		);
+	}, [defaults, input, task]);
 
 	const [data, setData] = useState<SchedulerEditableData | null>(null);
 
@@ -194,7 +193,7 @@ export function useSchedulerUpdateApprovalModel(): SchedulerUpdateApprovalModel 
 				const approvedInput = {
 					operation: "update" as const,
 					taskId: input.taskId,
-					data: toSchedulerApprovalJsonData({ ...initialData, ...data }),
+					data: toSchedulerApprovalJsonData(data, "update"),
 					approvalUi: input.approvalUi ?? "scheduler.update",
 				};
 				console.info(

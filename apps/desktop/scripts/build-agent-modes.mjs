@@ -84,13 +84,6 @@ for (const file of files) {
 	}
 	// icon 是 UI 遍历注册表渲染 toggle 的必填项（ADR-0071）：缺了会让新模式在新会话页无图标可用。
 	if (!icon) throw new Error(`[build-agent-modes] ${file} 缺少 icon（iconify class，如 icon-[solar--case-linear]）`);
-	// narration 是渲染层的模式能力位：staged = 会话流按 progress 阶段折叠（提示词须配套指示模型
-	// 调 progress），inline = 工具行内联展示。必填，让新模式在一份 md 里完整自描述，
-	// 渲染层据此查表而不是硬编码 mode id 判断。
-	const narration = typeof fm.narration === "string" ? fm.narration.trim() : "";
-	if (narration !== "staged" && narration !== "inline") {
-		throw new Error(`[build-agent-modes] ${file} 的 narration 必须是 staged 或 inline，当前: ${narration || "(缺失)"}`);
-	}
 	if (!body.trim()) throw new Error(`[build-agent-modes] ${file} 的提示词正文为空`);
 	if (seenIds.has(id)) throw new Error(`[build-agent-modes] mode id 重复: ${id}`);
 	seenIds.add(id);
@@ -99,7 +92,6 @@ for (const file of files) {
 		label,
 		description: typeof fm.description === "string" ? fm.description.trim() : "",
 		icon,
-		narration,
 		prompt: body.trim(),
 	});
 }
@@ -116,8 +108,6 @@ export interface RawMode {
 	description: string;
 	/** iconify class（如 icon-[solar--case-linear]），供 UI 遍历注册表渲染。 */
 	icon: string;
-	/** 渲染层能力位：staged = 会话流按 progress 阶段折叠；inline = 工具行内联展示。 */
-	narration: "staged" | "inline";
 	prompt: string;
 }
 

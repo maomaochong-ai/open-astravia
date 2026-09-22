@@ -1,142 +1,177 @@
-import type { SessionExecutionMode } from "@shared/store/atoms";
-import { defaultConversationCwdAtom, getProjectDisplayName, projectsAtom } from "@shared/store/atoms";
+import { defaultConversationCwdAtom, projectsAtom, type SelectedSkill } from "@shared/store/atoms";
+import { useNavigate } from "@tanstack/react-router";
 import { useAtomValue } from "jotai";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { SchedulerTaskDraft } from "../components/SchedulerTaskFields";
-import {
-	describeSchedule,
-	getDefaultDailySchedule,
-	parseCronExpression,
-	type Schedule,
-	toCronExpression,
-} from "../components/schedule-picker/cron-utils";
+import type { AutomationScheduleKind, AutomationTemplateVariable } from "../../../../shared/automation";
+import { AUTOMATION_TEMPLATE_VARIABLES } from "../../../../shared/automation";
+import { type AutomationDraft, joinLeadingSkillToken, splitLeadingSkillToken } from "../automation-draft";
+import { defaultScheduleFor, SCHEDULE_KINDS } from "../components/schedule-picker/automation-schedule";
+import { describeSchedule } from "../components/schedule-picker/describe-schedule";
 
-export interface WorkDirOption {
-	readonly cwd: string;
-	readonly name: string;
-}
-
-export interface ScheduleModeOption {
-	readonly key: CompactScheduleMode;
+export interface AutomationOption {
+	readonly value: string;
 	readonly label: string;
 }
 
-export type CompactScheduleMode = "once" | "daily" | "interval";
-
-export interface SchedulerTaskFieldsModel {
-	readonly defaultExecutionMode: SessionExecutionMode;
-	readonly executionIcon: string;
-	readonly executionLabel: string;
-	readonly executionMode: SchedulerTaskDraft["executionMode"] | "inherit";
-	readonly mode: CompactScheduleMode;
-	readonly namePlaceholderText: string;
-	readonly sandboxUnavailableReason: string | null;
-	readonly schedule: Schedule;
-	readonly scheduleLabel: string;
-	readonly scheduleModes: readonly ScheduleModeOption[];
-	readonly workDirOptions: readonly WorkDirOption[];
-	readonly onFieldChange: <Key extends keyof SchedulerTaskDraft>(key: Key, nextValue: SchedulerTaskDraft[Key]) => void;
-	readonly onScheduleChange: (nextSchedule: Schedule) => void;
+export interface AutomationWebhookOption {
+	readonly id: string;
+	readonly name: string;
+	readonly enabled: boolean;
 }
 
+export interface SchedulerTaskFieldsModel {
+	readonly draft: AutomationDraft;
+	readonly namePlaceholder: string;
+	readonly promptBody: string;
+	readonly promptSkill: SelectedSkill | null;
+	readonly projectOptions: readonly AutomationOption[];
+	/** 「同一个会话」可选的会话；首项固定是「开启一个新会话」。 */
+	readonly sessionOptions: readonly AutomationOption[];
+	readonly sessionsLoading: boolean;
+	readonly scheduleKinds: readonly { readonly kind: AutomationScheduleKind; readonly label: string }[];
+	readonly scheduleSummary: string;
+	readonly webhooks: readonly AutomationWebhookOption[];
+	readonly templateVariables: readonly { readonly key: AutomationTemplateVariable; readonly label: string }[];
+	readonly showEnabled: boolean;
+	readonly onChange: (patch: Partial<AutomationDraft>) => void;
+	readonly onPromptChange: (body: string, skill: SelectedSkill | null) => void;
+	readonly onScheduleKindChange: (kind: AutomationScheduleKind) => void;
+	readonly onOpenWebhookSettings: () => void;
+}
+
+/** 「开启一个新会话」在下拉里的取值；真实会话路径不会是空串。 */
+export const NEW_SESSION_OPTION = "";
+
 interface UseSchedulerTaskFieldsModelOptions {
+	readonly value: AutomationDraft;
+	readonly onChange: (value: AutomationDraft) => void;
 	readonly namePlaceholder: string | undefined;
-	readonly onChange: (value: SchedulerTaskDraft) => void;
-	readonly value: SchedulerTaskDraft;
+	readonly showEnabled: boolean;
 }
 
 export function useSchedulerTaskFieldsModel({
-	namePlaceholder,
-	onChange,
 	value,
+	onChange,
+	namePlaceholder,
+	showEnabled,
 }: UseSchedulerTaskFieldsModelOptions): SchedulerTaskFieldsModel {
 	const { t } = useTranslation("automation");
+	const navigate = useNavigate();
 	const projects = useAtomValue(projectsAtom);
-	const defaultCwd = useAtomValue(defaultConversationCwdAtom);
-	const projectName = useCallback((cwd: string) => getProjectDisplayName(cwd, defaultCwd), [defaultCwd]);
-	const [schedule, setSchedule] = useState<Schedule>(
-		() => parseCronExpression(value.cron ?? "", value.isOnce ?? false) ?? getDefaultDailySchedule(),
-	);
-	const [defaultExecutionMode, setDefaultExecutionMode] = useState<SessionExecutionMode>("full-access");
-	const [sandboxUnavailableReason, setSandboxUnavailableReason] = useState<string | null>(null);
+	const conversationCwd = useAtomValue(defaultConversationCwdAtom);
+	const [sessions, setSessions] = useState<readonly AutomationOption[]>([]);
+	const [sessionsLoading, setSessionsLoading] = useState(false);
+	const [webhooks, setWebhooks] = useState<readonly AutomationWebhookOption[]>([]);
 
+	const sameSession = value.runMode === "same-session";
+	const { projectCwd } = value;
 	useEffect(() => {
-		const parsed = parseCronExpression(value.cron ?? "", value.isOnce ?? false);
-		if (parsed && parsed.mode !== "weekly") setSchedule(parsed);
-	}, [value.cron, value.isOnce]);
-
-	useEffect(() => {
-		void window.vetta.config.get().then((config) => {
-			setDefaultExecutionMode(config.defaultExecutionMode ?? "full-access");
-			const capability = config.sandbox ?? config.linuxSandbox;
-			if (capability?.status === "unavailable") {
-				const reason = capability.reason ?? "unknown_error";
-				const platform = "platform" in capability ? capability.platform : "linux";
-				setSandboxUnavailableReason(t("form.sandboxUnavailable", { platform, reason }));
-				return;
-			}
-			setSandboxUnavailableReason(null);
-		});
-	}, [t]);
-
-	const workDirOptions = useMemo(() => {
-		const seen = new Set<string>();
-		const options: WorkDirOption[] = [];
-		const add = (cwd: string | undefined, name?: string): void => {
-			if (!cwd || seen.has(cwd)) return;
-			seen.add(cwd);
-			options.push({ cwd, name: name ?? projectName(cwd) });
+		if (!sameSession || !projectCwd) {
+			setSessions([]);
+			return;
+		}
+		let cancelled = false;
+		setSessionsLoading(true);
+		void window.vetta.session
+			.listSessions(projectCwd)
+			.then((listed) => {
+				if (cancelled) return;
+				setSessions(
+					listed
+						.filter((session) => session.access.resume)
+						.sort((a, b) => b.modifiedAt - a.modifiedAt)
+						.map((session) => ({
+							value: session.path,
+							label: session.name?.trim() || session.firstMessage.trim() || session.id,
+						})),
+				);
+			})
+			.catch(() => {
+				if (!cancelled) setSessions([]);
+			})
+			.finally(() => {
+				if (!cancelled) setSessionsLoading(false);
+			});
+		return () => {
+			cancelled = true;
 		};
-		add(defaultCwd, t("form.conversation"));
-		add(value.cwd);
-		for (const project of projects) add(project.cwd, project.name);
-		return options;
-	}, [defaultCwd, projects, projectName, value.cwd, t]);
+	}, [projectCwd, sameSession]);
+
+	useEffect(() => {
+		void window.vetta.webhook
+			.list()
+			.then((endpoints) =>
+				setWebhooks(
+					endpoints.map((endpoint) => ({ id: endpoint.id, name: endpoint.name, enabled: endpoint.enabled })),
+				),
+			)
+			.catch(() => setWebhooks([]));
+	}, []);
 
 	return useMemo(() => {
-		const mode = schedule.mode === "weekly" ? "daily" : schedule.mode;
-		const executionMode = value.executionMode ?? "inherit";
+		const { skill, body } = splitLeadingSkillToken(value.prompt);
+		const projectOptions: AutomationOption[] = [];
+		const seen = new Set<string>();
+		const addProject = (cwd: string | undefined, label: string): void => {
+			if (!cwd || seen.has(cwd)) return;
+			seen.add(cwd);
+			projectOptions.push({ value: cwd, label });
+		};
+		addProject(conversationCwd, t("form.projectNone"));
+		for (const project of projects) addProject(project.cwd, project.name ?? project.cwd);
+		// 编辑的任务指向已移除的项目时仍显示出来，让用户看清并改选。
+		addProject(value.projectCwd, value.projectCwd);
+
+		const sessionOptions: AutomationOption[] = [{ value: NEW_SESSION_OPTION, label: t("form.sessionNew") }];
+		for (const session of sessions) sessionOptions.push(session);
+		if (value.sessionPath && !sessions.some((session) => session.value === value.sessionPath) && !sessionsLoading) {
+			sessionOptions.push({ value: value.sessionPath, label: t("form.sessionMissing") });
+		}
 
 		return {
-			defaultExecutionMode,
-			executionIcon:
-				executionMode === "sandbox"
-					? "icon-[mdi--shield-lock-outline]"
-					: executionMode === "full-access"
-						? "icon-[mdi--shield-check-outline]"
-						: "icon-[mdi--shield-outline]",
-			executionLabel:
-				executionMode === "sandbox"
-					? t("form.useSandbox")
-					: executionMode === "full-access"
-						? t("form.fullAccess")
-						: t("form.inherit", {
-								mode: defaultExecutionMode === "sandbox" ? t("form.sandbox") : t("form.fullAccess"),
-							}),
-			executionMode,
-			mode,
-			namePlaceholderText: namePlaceholder ?? t("form.namePlaceholder"),
-			sandboxUnavailableReason,
-			schedule,
-			scheduleLabel: describeSchedule(schedule, t),
-			scheduleModes: [
-				{ key: "once", label: t("scheduleMode.once") },
-				{ key: "daily", label: t("scheduleMode.daily") },
-				{ key: "interval", label: t("scheduleMode.interval") },
-			],
-			workDirOptions,
-			onFieldChange: <Key extends keyof SchedulerTaskDraft>(key: Key, nextValue: SchedulerTaskDraft[Key]): void => {
-				onChange({ ...value, [key]: nextValue });
+			draft: value,
+			namePlaceholder: namePlaceholder ?? t("form.namePlaceholder"),
+			promptBody: body,
+			promptSkill: skill,
+			projectOptions,
+			sessionOptions,
+			sessionsLoading,
+			scheduleKinds: SCHEDULE_KINDS.map((kind) => ({ kind, label: t(`scheduleMode.${kind}`) })),
+			scheduleSummary: describeSchedule(value.schedule, t),
+			webhooks,
+			templateVariables: AUTOMATION_TEMPLATE_VARIABLES.map((key) => ({ key, label: t(`form.variables.${key}`) })),
+			showEnabled,
+			onChange: (patch) => {
+				const next = { ...value, ...patch };
+				// 换项目后原来选的会话不再属于它，回到「开启一个新会话」。
+				if (patch.projectCwd !== undefined && patch.projectCwd !== value.projectCwd) {
+					onChange({ ...next, sessionPath: null });
+					return;
+				}
+				onChange(next);
 			},
-			onScheduleChange: (nextSchedule: Schedule): void => {
-				setSchedule(nextSchedule);
-				onChange({
-					...value,
-					cron: toCronExpression(nextSchedule),
-					isOnce: nextSchedule.mode === "once",
-				});
+			onPromptChange: (nextBody, nextSkill) =>
+				onChange({ ...value, prompt: joinLeadingSkillToken(nextSkill, nextBody) }),
+			onScheduleKindChange: (kind) => {
+				if (kind === value.schedule.kind) return;
+				onChange({ ...value, schedule: defaultScheduleFor(kind, Date.now(), value.schedule) });
+			},
+			onOpenWebhookSettings: () => {
+				void navigate({ to: "/settings/$tab", params: { tab: "webhook" }, search: {} });
 			},
 		};
-	}, [defaultExecutionMode, namePlaceholder, onChange, sandboxUnavailableReason, schedule, t, value, workDirOptions]);
+	}, [
+		conversationCwd,
+		namePlaceholder,
+		navigate,
+		onChange,
+		projects,
+		sessions,
+		sessionsLoading,
+		showEnabled,
+		t,
+		value,
+		webhooks,
+	]);
 }

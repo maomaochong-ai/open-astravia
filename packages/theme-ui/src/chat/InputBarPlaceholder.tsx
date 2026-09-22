@@ -23,6 +23,26 @@ export interface InputBarPlaceholderProps {
 	classNames?: InputBarPlaceholderClassNames;
 }
 
+/** 窗口可见且持有焦点。失焦或被遮挡时为 false，用来停掉纯装饰性的周期动效。 */
+function useWindowActive(): boolean {
+	const [active, setActive] = useState(() => document.visibilityState === "visible" && document.hasFocus());
+
+	useEffect(() => {
+		const sync = () => setActive(document.visibilityState === "visible" && document.hasFocus());
+		sync();
+		window.addEventListener("focus", sync);
+		window.addEventListener("blur", sync);
+		document.addEventListener("visibilitychange", sync);
+		return () => {
+			window.removeEventListener("focus", sync);
+			window.removeEventListener("blur", sync);
+			document.removeEventListener("visibilitychange", sync);
+		};
+	}, []);
+
+	return active;
+}
+
 /**
  * 输入框占位文案纯视图：覆盖在 textarea 上，不可选中、不拦截点击。
  * 文案与是否轮播由 host model 决定；本组件不访问 store / i18n。
@@ -47,13 +67,16 @@ export function InputBarPlaceholder({
 		setIndex(0);
 	}, [textsKey]);
 
+	// 窗口失焦时停止轮播：用户不在看，而每次切换都会让（macOS 毛玻璃）整窗重新合成。
+	const windowActive = useWindowActive();
+
 	useEffect(() => {
-		if (!visible || !canRotate) return;
+		if (!visible || !canRotate || !windowActive) return;
 		const id = window.setInterval(() => {
 			setIndex((i) => (i + 1) % safeTexts.length);
 		}, intervalMs);
 		return () => window.clearInterval(id);
-	}, [visible, canRotate, safeTexts.length, intervalMs]);
+	}, [visible, canRotate, windowActive, safeTexts.length, intervalMs]);
 
 	if (!visible || safeTexts.length === 0) return null;
 

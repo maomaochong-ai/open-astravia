@@ -12,8 +12,10 @@ import type {
 } from "@vetta/ai";
 
 export interface AgentRunLimits {
-	readonly maxModelCalls: number;
-	readonly maxToolCalls: number;
+	/** Optional model-call cap. Omit it to let the run continue until another terminal condition. */
+	readonly maxModelCalls?: number;
+	/** Optional tool-call cap. Omit it to let the run continue until another terminal condition. */
+	readonly maxToolCalls?: number;
 	readonly maxRecoveryAttempts: number;
 	readonly checkpointTimeoutMs: number;
 	readonly deadlineMs?: number;

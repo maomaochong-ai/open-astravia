@@ -2,12 +2,11 @@
 	"page": {
 		"title": "Automation",
 		"subtitle": "Let AI run tasks on schedule and free your hands",
-		"newTask": "New Task",
-		"newTaskTitle": "New scheduled task"
+		"create": "Create",
+		"searchPlaceholder": "Search automations"
 	},
 	"recommend": {
 		"title": "Recommended",
-		"use": "Use template",
 		"items": {
 			"morningBrief": {
 				"name": "Morning briefing",
@@ -29,52 +28,106 @@
 			}
 		}
 	},
-
-	"dialog": {
-		"namePlaceholderEdit": "Task name",
-		"namePlaceholderNew": "New task",
-		"cancel": "Cancel",
-		"save": "Save",
-		"create": "Create"
-	},
 	"form": {
-		"namePlaceholder": "Task name",
-		"promptPlaceholder": "Enter a prompt... type / to invoke skills/scenes",
-		"selectWorkDir": "Select working directory",
-		"conversation": "Conversation",
-		"modelEmpty": "No models",
-		"modelSelect": "Select model",
-		"defaultTag": "Default",
-		"enabled": "Enabled",
-		"disabled": "Disabled",
-		"fullAccess": "Full access",
-		"useSandbox": "Use sandbox",
-		"inherit": "Follow default ({{mode}})",
-		"sandbox": "sandbox",
-		"sandboxUnavailable": "{{platform}} sandbox unavailable: {{reason}}",
-		"every": "Every",
-		"unitHours": "hours",
-		"unitDays": "days"
+		"name": "Task title",
+		"namePlaceholder": "Task title",
+		"promptPlaceholder": "Describe the task and tell Vetta what to do (type / for skills)",
+		"runTarget": "Run in",
+		"runMode": {
+			"new-session": "New session each time",
+			"same-session": "Same session"
+		},
+		"project": "Project",
+		"projectNone": "None (Conversation)",
+		"session": "Session",
+		"sessionHint": "Every run continues in this session, so its context keeps building up",
+		"sessionNew": "Start a new session",
+		"sessionMissing": "The bound session no longer exists",
+		"model": "Model",
+		"modelFollowDefault": "Follow default model",
+		"repeat": "Repeat",
+		"time": "Time",
+		"atMinutePrefix": "At minute",
+		"atMinuteSuffix": "of every hour",
+		"monthlyShortMonthHint": "Months without the chosen date (e.g. Feb 30) are skipped; pick \"Last day\" to run at month end",
+		"cronExpression": "Cron expression",
+		"cronHint": "minute hour day month weekday, in local time; edit the expression directly and it stays in sync with the pickers",
+		"cronAny": "Any",
+		"cronTextOnly": "This part uses syntax the pickers can't show; edit the expression directly",
+		"cronField": {
+			"minute": "Min",
+			"hour": "Hour",
+			"day": "Day",
+			"month": "Month",
+			"weekday": "Weekday"
+		},
+		"notify": "Webhook notification",
+		"notifyEndpoints": "Notify",
+		"notifyGoSettings": "No webhooks yet — add one in Settings",
+		"notifyEndpointDisabled": "This webhook is disabled and won't send",
+		"notifyWhen": "Send when",
+		"notifyWhenOption": {
+			"always": "Always",
+			"success": "Only on success",
+			"failure": "Only on failure"
+		},
+		"notifyTemplate": "Message",
+		"notifyTemplateDefault": "{{name}} {{status}} ({{duration}})\n\n{{reply}}",
+		"variables": {
+			"name": "Task",
+			"status": "Status",
+			"startedAt": "Started",
+			"duration": "Duration",
+			"reply": "Reply",
+			"error": "Error"
+		},
+		"enabledLabel": "Enabled",
+		"intervalPrefix": "Every",
+		"intervalSuffix": "minutes",
+		"intervalHint": "Counted from when you save; changing the interval restarts the count",
+		"sectionDetails": "Details",
+		"sectionFrequency": "Frequency",
+		"sectionNotify": "Notification",
+		"intervalLabel": "Interval",
+		"minuteLabel": "Minute",
+		"weekdays": "Weekdays",
+		"monthDays": "Days"
 	},
 	"scheduleMode": {
 		"once": "Once",
+		"interval": "Interval",
+		"hourly": "Hourly",
 		"daily": "Daily",
-		"interval": "Interval"
+		"weekly": "Weekly",
+		"monthly": "Monthly",
+		"custom": "Custom"
 	},
 	"schedule": {
-		"once": "{{month}}/{{day}}/{{year}} {{time}}, once",
+		"once": "Once at {{date}} {{time}}",
+		"hourly": "Hourly at :{{minute}}",
 		"daily": "Daily at {{time}}",
-		"weekly": "Weekly on {{days}} at {{time}}",
-		"intervalOne": "Every hour",
-		"interval": "Every {{hours}} hours",
+		"weekly": "Every {{days}} at {{time}}",
+		"monthly": "Monthly on {{days}} at {{time}}",
+		"monthDay": "day {{day}}",
+		"lastDay": "Last day",
+		"custom": "Custom",
 		"weekdayJoin": ", ",
-		"weekdayNames": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+		"weekdayNames": [
+			"Sun",
+			"Mon",
+			"Tue",
+			"Wed",
+			"Thu",
+			"Fri",
+			"Sat"
+		],
+		"intervalMinutes": "Every {{minutes}} min",
+		"intervalHours": "Every {{hours}} h"
 	},
 	"list": {
 		"running": "Running",
 		"pending": "Pending",
 		"disabled": "Disabled",
-		"once": "One-time",
 		"runNow": "Run now",
 		"run": "Run",
 		"sectionTitle": "Automation tasks",
@@ -89,9 +142,21 @@
 		"minutesAgo": "{{n}} min ago",
 		"hoursAgo": "{{n}} hr ago",
 		"daysAgo": "{{n}} d ago",
-		"fullAccess": "Full access",
-		"useSandbox": "Use sandbox",
-		"inheritDefault": "Follow default"
+		"suspended": "Paused",
+		"target": "{{mode}} · {{project}}",
+		"filter": {
+			"all": "All",
+			"enabled": "Active",
+			"paused": "Paused",
+			"done": "Done"
+		},
+		"emptySearch": "No matching automations",
+		"emptyFilter": "Nothing here yet",
+		"done": "Done",
+		"nextRun": "next run {{when}}",
+		"inMinutes": "in {{n}} min",
+		"inHours": "in {{n}} h",
+		"inDays": "in {{n}} days"
 	},
 	"confirm": {
 		"deleteTitle": "Delete task \"{{name}}\"?",
@@ -99,20 +164,56 @@
 		"delete": "Delete",
 		"cancel": "Cancel"
 	},
-	"drawer": {
+	"history": {
+		"title": "Run history",
+		"refresh": "Refresh",
+		"empty": "No runs yet",
+		"status": {
+			"success": "Succeeded",
+			"failed": "Failed",
+			"running": "Running",
+			"aborted": "Aborted",
+			"skipped": "Skipped",
+			"missed": "Missed"
+		},
+		"reason": {
+			"previous-running": "The previous run was still going",
+			"app-not-running": "The app wasn't running",
+			"system-sleep": "The computer was asleep"
+		},
+		"missedMany": "Missed {{times}} times, until {{until}} · {{reason}}",
+		"notifyFailed": "Notification failed: {{error}}"
+	},
+	"suspended": {
+		"session-deleted": "The bound session was deleted. Pick a session again, then enable it.",
+		"project-removed": "The target project was removed from the sidebar. Pick a project again, then enable it."
+	},
+	"notify": {
+		"status": {
+			"success": "succeeded",
+			"failed": "failed",
+			"aborted": "aborted"
+		},
+		"noEndpoint": "All selected webhooks are disabled or deleted"
+	},
+	"detail": {
+		"status": {
+			"active": "Active",
+			"running": "Running",
+			"paused": "Paused",
+			"suspended": "Paused · target unavailable",
+			"done": "Done",
+			"draft": "New automation"
+		},
 		"close": "Close",
 		"runNow": "Run now",
 		"pause": "Pause",
 		"enable": "Enable",
-		"edit": "Edit"
-	},
-	"history": {
-		"title": "Execution history",
-		"refresh": "Refresh",
-		"empty": "No execution records",
-		"success": "Success",
-		"failed": "Failed",
-		"running": "Running",
-		"aborted": "Aborted"
+		"more": "More",
+		"delete": "Delete",
+		"openChat": "Open chat",
+		"discard": "Discard",
+		"save": "Save",
+		"create": "Create"
 	}
 }

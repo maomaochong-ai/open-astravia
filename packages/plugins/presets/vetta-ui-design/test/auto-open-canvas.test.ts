@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { claimCanvasAutoOpen, resetCanvasAutoOpenCache } from "../src/vetd/auto-open";
+import { claimCanvasAutoOpen, openCanvasAfterWarmup, resetCanvasAutoOpenCache } from "../src/vetd/auto-open";
 import { isPureDesignProject, pickDesignPaths } from "../src/vetd/discover";
 
 function ref(relPath: string): { name: string; path: string; relPath: string } {
@@ -91,5 +91,48 @@ describe("claimCanvasAutoOpen", () => {
 
 	it("没有会话 id 时不自动打开", () => {
 		expect(claimCanvasAutoOpen(null)).toBe(false);
+	});
+});
+
+describe("openCanvasAfterWarmup", () => {
+	it("画布代码取回后才打开面板，打开动画不再和 chunk 求值抢主线程", async () => {
+		const order: string[] = [];
+		let release: () => void = () => undefined;
+		const warm = () =>
+			new Promise<void>((resolve) => {
+				release = () => {
+					order.push("warm");
+					resolve();
+				};
+			});
+		const done = openCanvasAfterWarmup(warm, () => false, () => order.push("open"));
+		expect(order).toEqual([]);
+		release();
+		await done;
+		expect(order).toEqual(["warm", "open"]);
+	});
+
+	it("预热失败照样打开面板", async () => {
+		let opened = false;
+		await openCanvasAfterWarmup(
+			() => Promise.reject(new Error("offline")),
+			() => false,
+			() => {
+				opened = true;
+			},
+		);
+		expect(opened).toBe(true);
+	});
+
+	it("预热期间会话已切走则不打开", async () => {
+		let opened = false;
+		await openCanvasAfterWarmup(
+			() => Promise.resolve(),
+			() => true,
+			() => {
+				opened = true;
+			},
+		);
+		expect(opened).toBe(false);
 	});
 });

@@ -276,6 +276,26 @@ describe("Coding Agent model call and prompt runtime", () => {
 		});
 	});
 
+	it("keeps product context attached to the same prepared turn as its prompt", async () => {
+		const adapter = new CodingAgentPromptRequestAdapter({ now: () => 42 });
+		const context = [
+			{
+				type: "agent-team.compaction-reference.v1",
+				content: [{ type: "text" as const, text: "checkpoint-1" }],
+				modelVisible: false,
+			},
+		];
+
+		const prepared = await preparePrompt(
+			adapter,
+			{ text: "continue", context },
+			{ sessionId: "session-1", queueing: false },
+		);
+
+		expect(prepared.input.message.content).toEqual([{ type: "text", text: "continue" }]);
+		expect(prepared.input.context).toEqual(context);
+	});
+
 	it("preserves prompt images when model capability metadata only declares text", async () => {
 		const adapter = new CodingAgentPromptRequestAdapter({ now: () => 42 });
 		const request = adapter.createRequest({

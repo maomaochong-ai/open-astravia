@@ -14,7 +14,7 @@
  */
 
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import type { NotesStore } from "../notes/notes-store";
 import type { VetdFrameEntry } from "../vetd/manifest-types";
 import type { CanvasSelection } from "./DesignCanvas";
@@ -52,7 +52,7 @@ interface SelectionAskBadgeProps {
 	onSubmitted(): void;
 }
 
-export function SelectionAskBadge({
+function SelectionAskBadgeView({
 	notes,
 	selection,
 	frames,
@@ -158,3 +158,6 @@ export function SelectionAskBadge({
 		</>
 	);
 }
+
+/** memo：同 NotesLayer，拖动/框选途中画布每帧重渲染，选中与备注都没变。 */
+export const SelectionAskBadge = memo(SelectionAskBadgeView);

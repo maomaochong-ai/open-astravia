@@ -8,6 +8,7 @@ import { validateDesktopBuildEnvironment } from "./desktop-build-environment.mjs
 import { DESKTOP_BUILD_OUTPUTS, VETTA_PLUGIN_FILE_ASSOCIATION } from "./desktop-packaging-layout.mjs";
 import { LINUX_PACKAGE_METADATA, LINUX_RELEASE_TARGETS } from "./linux-packaging-contract.mjs";
 import { loadBuildEnv } from "./load-build-env.mjs";
+import { resolveInstalledPackageRoot } from "./installed-package-root.mjs";
 import { resolvePackagedNativeDependencies } from "./packaged-native-dependencies.mjs";
 import { resolveReleaseInfo } from "./resolve-release-info.mjs";
 import { prepareSpeechModels, SPEECH_MODEL_RESOURCE_ROOT } from "./fetch-speech-models.mjs";
@@ -163,9 +164,9 @@ function resolveSandboxResourceFilters() {
 //
 // Some packages (e.g. modern node-cron) restrict their `exports` map and no
 // longer allow `require.resolve("<pkg>/package.json")`. Resolve the package's
-// main entry instead and trim the path back to the package root inside
-// node_modules. This works regardless of how the package author configured
-// `exports`.
+// main entry first. Binary-only packages such as @lydell/node-pty-* have no
+// JavaScript entry, so those fall back to package.json. In both cases, trim the
+// resolved path back to the package root inside node_modules.
 // 与 vite.main.config.ts 的 rollupOptions.external 保持同步。photon-node 在
 // 主 bundle 被 external 后，代码里 createRequire("@silvia-odwyer/photon-node")
 // 在 packaged AppImage 中找不到包就降级到原图（image-resize 早期日志的
@@ -185,16 +186,6 @@ const packagedNativeDependencies = resolvePackagedNativeDependencies(resolvePlat
 const externalDeps = packagedNativeDependencies.required;
 const optionalExternalDeps = packagedNativeDependencies.optional;
 
-function resolvePackageRoot(dep, fromDir = projectRoot) {
-	const entry = require.resolve(dep, { paths: [fromDir] });
-	const marker = `${join("node_modules", dep)}${process.platform === "win32" ? "\\" : "/"}`;
-	const idx = entry.lastIndexOf(marker);
-	if (idx < 0) {
-		throw new Error(`prepare-pack: cannot locate ${dep} package root in ${entry}`);
-	}
-	return entry.slice(0, idx + marker.length - 1);
-}
-
 // Copy an external dep plus its full production-dependency closure into the
 // staged node_modules. app-builder-lib 26's bun collector walks each package's
 // declared `dependencies` and hard-fails when one is missing from the staged
@@ -209,13 +200,13 @@ function stageDepTree(dep, sourceDir, destDir, seen = new Set()) {
 		const key = `${dep}>${transDep}`;
 		if (seen.has(key)) continue;
 		seen.add(key);
-		const transDir = resolvePackageRoot(transDep, sourceDir);
+		const transDir = resolveInstalledPackageRoot(transDep, sourceDir);
 		stageDepTree(transDep, transDir, join(destDir, "node_modules", transDep), seen);
 	}
 }
 
 function toExternalDepInfo(dep) {
-	const dir = resolvePackageRoot(dep);
+	const dir = resolveInstalledPackageRoot(dep, projectRoot);
 	const pkg = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
 	if (typeof pkg.version !== "string" || !pkg.version) {
 		throw new Error(`prepare-pack: ${dep} package.json is missing a version`);

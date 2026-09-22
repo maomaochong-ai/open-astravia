@@ -4,6 +4,7 @@ import {
 	type SchedulerEditApprovalDrawerViewProps as ThemeProps,
 } from "@vetta-org/theme-ui/action-approval";
 import {
+	canSubmitSchedulerApproval,
 	SchedulerApprovalFields,
 	type SchedulerEditableData,
 } from "./SchedulerApprovalFields";
@@ -23,7 +24,7 @@ export function SchedulerEditApprovalDrawerView({
 	onSubmit,
 	...rest
 }: SchedulerEditApprovalDrawerViewProps): JSX.Element {
-	const canSubmit = Boolean(value && onSubmit);
+	const canSubmit = Boolean(value && onSubmit && canSubmitSchedulerApproval(value));
 	return (
 		<ThemeSchedulerEditApprovalDrawerView
 			{...rest}

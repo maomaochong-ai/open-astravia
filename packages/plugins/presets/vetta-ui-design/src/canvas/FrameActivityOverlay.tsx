@@ -4,13 +4,14 @@ import type { FrameActivity } from "./design-runtime";
 
 /**
  * frame 活动态浮层：浏览（扫描仪+放大镜+思考头像）、修改（疾书头像+打字骨架线）、
- * 创作（流光+星光+蹦跳头像），衬在混沌流体背景（image-gen 生成骨架同款）上。
- * 纯 CSS 动画（keyframes 见 style.css 的 vetd-activity 段），不引入 motion——
- * 插件与宿主只共享 react / @vetta-org/ui。
+ * 创作（星光+蹦跳头像），衬在混沌流体背景上，外圈一道状态色呼吸描边。「在干什么」
+ * 同时由标题栏徽标用文字说。
+ *
+ * 流体画在小 canvas 上（见 fluid-canvas.ts）；其余纯 CSS 动画，只动 transform / opacity，
+ * 紧贴跨源 iframe 的层动别的属性会逐帧重新光栅化。
  *
  * 整层 pointer-events-none：它盖在 iframe / 位图上，吃掉指针会让元素选择失效
- * （同一坑见 FrameView 里的位图注释）。所有元素只动 transform / opacity，
- * 紧贴跨源 iframe 的层动别的属性会逐帧重新光栅化。
+ * （同一坑见 FrameView 里的位图注释）。
  */
 
 type ActiveKind = Exclude<FrameActivity, "updated">;
@@ -32,10 +33,12 @@ const FADE_MS = 300;
 export function FrameActivityOverlay({
 	activity,
 	frameWidth,
+	frameHeight,
 }: {
 	activity: FrameActivity | undefined;
-	/** 钳住浮层里居中件的反向缩放，见 overlayScale。 */
+	/** 流体 canvas 按 frame 宽高比取尺寸；居中件的反向缩放也按宽度钳住（见 overlayScale）。 */
 	frameWidth: number;
+	frameHeight: number;
 }): JSX.Element | null {
 	const [expired, setExpired] = useState(false);
 	useEffect(() => {
@@ -71,11 +74,12 @@ export function FrameActivityOverlay({
 		<div
 			aria-hidden
 			className="vetd-activity-overlay pointer-events-none absolute inset-0 overflow-hidden"
-			// --vetd-accent 驱动浮层里所有装饰元素（扫描线/放大镜/打字线/星光/头像）
+			// --vetd-accent 驱动浮层里所有装饰元素（描边/扫描线/放大镜/打字线/星光/头像）
 			// 的着色，只定义在这一层，不外泄到 frame 容器。
 			style={{ opacity: visible ? 1 : 0, "--vetd-accent": PALETTES[kind].accent } as CSSProperties}
 		>
-			<FluidBackdrop kind={kind} />
+			<FluidBackdrop kind={kind} frameWidth={frameWidth} frameHeight={frameHeight} />
+			<div className="vetd-activity-ring" />
 			{kind === "reading" ? (
 				<>
 					<div className="vetd-scan-beam" />

@@ -1,5 +1,6 @@
 import type { SessionContextMenuSession } from "@shared/store/atoms";
 import {
+	automationSessionLinksAtom,
 	confirmDialogAtom,
 	conversationFilterSource,
 	projectContextMenuAtom,
@@ -16,6 +17,7 @@ export function useProjectsPanelMenusModel(model: ProjectsPanelModel) {
 	const [projectMenu, setProjectMenu] = useAtom(projectContextMenuAtom);
 	const runningSessionPaths = useAtomValue(runningSessionPathsAtom);
 	const setConfirm = useSetAtom(confirmDialogAtom);
+	const automationLinks = useAtomValue(automationSessionLinksAtom);
 	const { t } = useTranslation("project");
 
 	const clearConversationDisabled =
@@ -41,9 +43,15 @@ export function useProjectsPanelMenusModel(model: ProjectsPanelModel) {
 			deleteSession: (session: SessionContextMenuSession) => {
 				setContextMenu(null);
 				const name = isAgentTeamSession(session) ? session.sessionTitle : sessionDisplayLabel(session);
+				// 删掉「同一个会话」自动化绑定的会话会让该自动化暂停，删之前说清楚。
+				const boundAutomation = automationLinks.get(session.path);
+				const message = t("sidebar.dialogs.deleteSessionMessage", { name });
 				setConfirm({
 					title: t("sidebar.dialogs.deleteSessionTitle"),
-					message: t("sidebar.dialogs.deleteSessionMessage", { name }),
+					message:
+						boundAutomation?.mode === "same-session"
+							? `${message}\n\n${t("sidebar.dialogs.deleteBoundSessionHint", { task: boundAutomation.taskName })}`
+							: message,
 					confirmLabel: t("sidebar.dialogs.deleteConfirm"),
 					variant: "danger",
 					onConfirm: () => {

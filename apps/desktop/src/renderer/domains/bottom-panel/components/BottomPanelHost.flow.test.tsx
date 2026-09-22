@@ -206,6 +206,20 @@ describe("底部面板：常见使用流程", () => {
 		await waitFor(() => expect(store.get(bottomPanelStateAtom).root).toBeNull());
 	});
 
+	it("关掉最后一个 tab 后面板自动收起，再点按钮回到空态", async () => {
+		const { user, store } = setup();
+		await user.click(screen.getByRole("button", { name: "toggle-bottom-panel" }));
+		await addFromEmptyState(user);
+
+		await user.click(screen.getByRole("button", { name: /bottomPanel.closeTab/ }));
+
+		await waitFor(() => expect(document.querySelector("[data-bottom-panel-root]")).toBeNull());
+		expect(store.get(bottomPanelStateAtom).collapsed).toBe(true);
+
+		await user.click(screen.getByRole("button", { name: "toggle-bottom-panel" }));
+		expect(screen.getByText("bottomPanel.empty.title")).not.toBeNull();
+	});
+
 	it("折叠只是藏起来：布局留着，内容组件不重挂", async () => {
 		const { user, store } = setup();
 		await user.click(screen.getByRole("button", { name: "toggle-bottom-panel" }));

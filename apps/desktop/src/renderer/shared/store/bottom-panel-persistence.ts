@@ -85,6 +85,20 @@ function sanitizeNode(value: unknown): BottomPanelNode | null {
 	return null;
 }
 
+/** 只留指向树里仍存在、且组件对得上的 tab 的记录；一条都不剩时返回 undefined。 */
+function sanitizeLastActiveTabIds(value: unknown, root: BottomPanelNode): Readonly<Record<string, string>> | undefined {
+	if (!isRecord(value)) return undefined;
+	const present = new Map<string, string>();
+	for (const leaf of collectBottomPanelLeaves(root)) {
+		for (const tab of leaf.tabs) present.set(tab.tabId, tab.componentId);
+	}
+	const result: Record<string, string> = {};
+	for (const [componentId, tabId] of Object.entries(value)) {
+		if (typeof tabId === "string" && present.get(tabId) === componentId) result[componentId] = tabId;
+	}
+	return Object.keys(result).length > 0 ? result : undefined;
+}
+
 /** 结构不可信时返回 null；调用方按「这个会话没有面板」处理，而不是崩在渲染里。 */
 export function sanitizeBottomPanelState(value: unknown): BottomPanelSessionState | null {
 	if (!isRecord(value)) return null;
@@ -93,13 +107,15 @@ export function sanitizeBottomPanelState(value: unknown): BottomPanelSessionStat
 	if (!root) return null;
 	const leaves = collectBottomPanelLeaves(root);
 	const activeLeafId = typeof value.activeLeafId === "string" ? value.activeLeafId : null;
-	return {
+	const state: BottomPanelSessionState = {
 		schemaVersion: BOTTOM_PANEL_SCHEMA_VERSION,
 		collapsed: value.collapsed !== false,
 		heightRatio: clampBottomPanelHeightRatio(typeof value.heightRatio === "number" ? value.heightRatio : Number.NaN),
 		root,
 		activeLeafId: leaves.some((leaf) => leaf.id === activeLeafId) ? activeLeafId : (leaves[0]?.id ?? null),
 	};
+	const lastActiveTabIds = sanitizeLastActiveTabIds(value.lastActiveTabIds, root);
+	return lastActiveTabIds ? { ...state, lastActiveTabIds } : state;
 }
 
 export function parseBottomPanelStates(raw: string | null): Map<string, BottomPanelSessionState> {

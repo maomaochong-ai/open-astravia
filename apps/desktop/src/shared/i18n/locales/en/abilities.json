@@ -147,7 +147,8 @@
 		"meta": {
 			"author": "Author",
 			"version": "Version",
-			"localVersion": "Local version",
+			"installedVersion": "Installed",
+			"availableVersion": "Update to",
 			"downloads": "Downloads",
 			"license": "License"
 		},

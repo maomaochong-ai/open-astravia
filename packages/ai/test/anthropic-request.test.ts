@@ -68,6 +68,16 @@ describe("Anthropic request parameters", () => {
 		expect(params.output_config).toEqual({ effort: "medium" });
 	});
 
+	it("uses adaptive thinking for Claude models newer than 4.6", () => {
+		const params = buildAnthropicParams({ ...model, id: "claude-fable-5-1" }, context, false, {
+			thinkingEnabled: true,
+			effort: "high",
+		});
+
+		expect(params.thinking).toEqual({ type: "adaptive" });
+		expect(params.output_config).toEqual({ effort: "high" });
+	});
+
 	it("uses a token budget for older reasoning models", () => {
 		const params = buildAnthropicParams({ ...model, id: "claude-sonnet-4-5" }, context, false, {
 			thinkingEnabled: true,

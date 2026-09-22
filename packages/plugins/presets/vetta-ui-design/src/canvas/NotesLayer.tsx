@@ -1,5 +1,5 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { type PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import { memo, type PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { NotesStore } from "../notes/notes-store";
 import { type DesignNote, noteStatus, noteWorldPosition, pendingNotes } from "../notes/types";
 import type { VetdFrameEntry } from "../vetd/manifest-types";
@@ -47,7 +47,7 @@ interface NotesLayerProps {
  * frame 标题栏、整理工具条同一套办法。截图截不到这一层（它不在 iframe 文档里），
  * 这正是「例行截图保持干净」的实现方式；标注图由 notes/annotate.ts 二次合成。
  */
-export function NotesLayer({
+function NotesLayerView({
 	store,
 	frames,
 	interactive,
@@ -384,3 +384,9 @@ function NoteMessageRow({ author, text }: { author: "user" | "agent"; text: stri
 		</div>
 	);
 }
+
+/**
+ * memo：它挂在 world 层里，拖动/框选/改尺寸时画布每帧都会重渲染，而这些操作一样都
+ * 不改备注。备注本身的变化走 store.on 订阅，不靠父组件重渲染带进来。
+ */
+export const NotesLayer = memo(NotesLayerView);

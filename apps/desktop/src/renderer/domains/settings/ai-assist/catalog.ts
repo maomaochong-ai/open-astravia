@@ -89,7 +89,8 @@ const CATALOG = [
 		exampleKeys: [
 			WHAT_CAN_YOU_CONFIGURE,
 			"aiAssist.examples.automation.create",
-			"aiAssist.examples.automation.enable",
+			"aiAssist.examples.automation.interval",
+			"aiAssist.examples.automation.notify",
 			"aiAssist.examples.automation.list",
 		],
 	},

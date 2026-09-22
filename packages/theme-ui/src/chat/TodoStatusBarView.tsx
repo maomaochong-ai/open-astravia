@@ -10,6 +10,7 @@ import {
 	type TodoStatusItem,
 	TodoTimeline,
 	type TodoTimelineLabels,
+	todoLabelSheenClassName,
 	todoLabelSheenStyle,
 } from "./TodoProgress";
 
@@ -71,7 +72,10 @@ export function TodoStatusBarView({
 						<TodoStatusDot allDone={summary.allDone} />
 						<span className="shrink-0 tabular-nums text-muted-foreground">{summary.progressLabel}</span>
 						<span
-							className="min-w-0 flex-1 truncate text-left font-medium"
+							className={cn(
+								"min-w-0 flex-1 truncate text-left font-medium",
+								todoLabelSheenClassName(!summary.allDone),
+							)}
 							style={todoLabelSheenStyle(!summary.allDone)}
 						>
 							{label}

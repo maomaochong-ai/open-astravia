@@ -3,7 +3,7 @@ import { salvageTextToolCalls } from "../salvage-text-tool-calls.js";
 import type { AgentObservation, AgentObservationUpdate } from "../telemetry.js";
 import type { AgentContext, AgentEvent, AgentLoopConfig, AgentMessage, StreamFn } from "../types.js";
 import { requestContextCheckpoint } from "./context-checkpoint.js";
-import type { DEFAULT_AGENT_LOOP_LIMITS } from "./limits.js";
+import type { ResolvedAgentLoopLimits } from "./limits.js";
 import {
 	assistantTelemetryUpdate,
 	generationInput,
@@ -19,7 +19,7 @@ export async function streamAssistantResponse(
 	stream: EventStream<AgentEvent, AgentMessage[]>,
 	streamFn?: StreamFn,
 	traceParent?: AgentObservation,
-	limits?: typeof DEFAULT_AGENT_LOOP_LIMITS,
+	limits?: ResolvedAgentLoopLimits,
 ): Promise<AssistantMessage> {
 	if (config.resolveCallContext) {
 		signal?.throwIfAborted();

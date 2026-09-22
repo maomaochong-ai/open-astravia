@@ -1,6 +1,7 @@
 import type { JSX } from "react";
 
-export type ExecutionHistoryStatus = "success" | "failed" | "running" | "aborted";
+/** skipped / missed 是「未执行」：前者因上次仍在运行，后者因应用未运行或系统休眠。 */
+export type ExecutionHistoryStatus = "success" | "failed" | "running" | "aborted" | "skipped" | "missed";
 
 export interface ExecutionHistoryRecordView {
 	readonly durationLabel: string | null;
@@ -147,12 +148,11 @@ function StatusDot({ status }: { readonly status: ExecutionHistoryStatus }): JSX
 		failed: "bg-destructive",
 		running: "bg-primary",
 		aborted: "bg-amber-500",
+		skipped: "bg-muted-foreground/40",
+		missed: "bg-muted-foreground/40",
 	};
 	return (
 		<div className="relative flex h-2 w-2 shrink-0">
-			{status === "running" && (
-				<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-50" />
-			)}
 			<span className={`relative inline-flex h-2 w-2 rounded-full ${colors[status]}`} />
 		</div>
 	);
@@ -170,6 +170,8 @@ function StatusBadge({
 		failed: "text-destructive bg-destructive/10",
 		running: "text-primary bg-primary/10",
 		aborted: "text-amber-400 bg-amber-500/15",
+		skipped: "text-muted-foreground bg-muted",
+		missed: "text-muted-foreground bg-muted",
 	};
 	return (
 		<span className={`rounded-md px-1.5 py-0.5 text-[10px] font-medium ${styles[status]}`}>

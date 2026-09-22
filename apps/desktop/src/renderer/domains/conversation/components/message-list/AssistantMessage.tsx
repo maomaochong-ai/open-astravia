@@ -78,7 +78,6 @@ export const AssistantMessage = memo(function AssistantMessage({
 		isCurrentlyStreaming,
 		isPredicting,
 		liveThinkingId,
-		stagedNarration,
 		segments,
 		durationAvailable,
 		streamingTailIndex,
@@ -87,8 +86,6 @@ export const AssistantMessage = memo(function AssistantMessage({
 
 	const labels = useMemo(() => {
 		const phrases = t("messageList.streamingPhrases", { returnObjects: true });
-		// Work 折叠条说的是「阶段」，coding 说的是「过程条数」。
-		const foldNamespace = stagedNarration ? "messageList.assistantFoldTip.work" : "messageList.assistantFoldTip";
 		return {
 			processing: t("messageList.assistantMessage.processing"),
 			waiting: t("messageList.assistantMessage.waiting"),
@@ -103,16 +100,16 @@ export const AssistantMessage = memo(function AssistantMessage({
 				}),
 			// 被折走的过程里一个阶段都没有（例如只有零散的单次调用）时，不说数量。
 			expandFold: (count: number) =>
-				stagedNarration && count === 0
+				count === 0
 					? t("messageList.assistantFoldTip.work.expandZero")
-					: t(`${foldNamespace}.expand`, { count }),
+					: t("messageList.assistantFoldTip.work.expand", { count }),
 			collapseFold: (count: number) =>
-				stagedNarration && count === 0
+				count === 0
 					? t("messageList.assistantFoldTip.work.collapseZero")
-					: t(`${foldNamespace}.collapse`, { count }),
+					: t("messageList.assistantFoldTip.work.collapse", { count }),
 			streamingPhrases: Array.isArray(phrases) ? (phrases as string[]) : [],
 		};
-	}, [t, stagedNarration]);
+	}, [t]);
 
 	const hasBlocks = message.blocks.length > 0;
 	const toolCallPresentations = useMemo(
@@ -134,7 +131,7 @@ export const AssistantMessage = memo(function AssistantMessage({
 		: foldData
 			? {
 					kind: "complete" as const,
-					count: stagedNarration ? workFoldCount : foldData.hiddenCount,
+					count: workFoldCount,
 					expanded,
 					exportPanelId: exportFoldPanelId,
 				}
@@ -224,32 +221,19 @@ export const AssistantMessage = memo(function AssistantMessage({
 								))}
 							</div>
 						)}
-						{segments.map((segment, index) =>
-							stagedNarration ? (
-								<WorkSegmentRenderer
-									key={workSegmentKey(segment)}
-									segment={segment}
-									isStreamingTail={index === streamingTailIndex}
-									isLiveActivity={isCurrentlyStreaming && index === segments.length - 1}
-									liveThinkingId={liveThinkingId}
-									presentation={presentationFor(segment as BlockSegment)}
-									onTeamMemberOpen={onTeamMemberOpen}
-									animateIn={isCurrentlyStreaming && index === segments.length - 1}
-									exportMode={exportMode}
-								/>
-							) : (
-								<SegmentRenderer
-									key={workSegmentKey(segment)}
-									segment={segment as BlockSegment}
-									isStreamingTail={index === streamingTailIndex}
-									liveThinkingId={liveThinkingId}
-									presentation={presentationFor(segment as BlockSegment)}
-									onTeamMemberOpen={onTeamMemberOpen}
-									animateIn={isCurrentlyStreaming && index === segments.length - 1}
-									exportMode={exportMode}
-								/>
-							),
-						)}
+						{segments.map((segment, index) => (
+							<WorkSegmentRenderer
+								key={workSegmentKey(segment)}
+								segment={segment}
+								isStreamingTail={index === streamingTailIndex}
+								isLiveActivity={isCurrentlyStreaming && index === segments.length - 1}
+								liveThinkingId={liveThinkingId}
+								presentation={presentationFor(segment as BlockSegment)}
+								onTeamMemberOpen={onTeamMemberOpen}
+								animateIn={isCurrentlyStreaming && index === segments.length - 1}
+								exportMode={exportMode}
+							/>
+						))}
 							</div>
 						) : !isAwaitingFirstActivity ? (
 							<div

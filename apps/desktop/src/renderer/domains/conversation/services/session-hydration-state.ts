@@ -5,7 +5,6 @@ import {
 	modelSupportsImagesAtom,
 	type SessionExecutionMode,
 	selectedModelAtom,
-	sessionAgentModeAtom,
 	sessionExecutionModeAtom,
 	type TurnUsageData,
 } from "@shared/store/chat-atoms";
@@ -15,7 +14,6 @@ import { atom } from "jotai";
 
 export interface SessionHydrationState {
 	activeToolNames: readonly string[];
-	agentMode: string | null;
 	contextUsage: ContextUsageData;
 	executionMode: SessionExecutionMode;
 	lastTurnUsage: TurnUsageData | null;
@@ -31,7 +29,6 @@ export const applySessionHydrationStateAtom = atom(null, (_get, set, state: Sess
 	set(sessionExecutionModeAtom, state.executionMode);
 	set(activeToolNamesAtom, new Set(state.activeToolNames));
 	set(currentScenarioAtom, state.scenario);
-	set(sessionAgentModeAtom, state.agentMode);
 	set(lastTurnUsageAtom, state.lastTurnUsage);
 	if (state.selectedModel !== undefined) set(selectedModelAtom, state.selectedModel);
 });

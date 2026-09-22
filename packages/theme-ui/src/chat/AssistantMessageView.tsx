@@ -4,11 +4,14 @@ import { useEffect, useState } from "react";
 /**
  * 逐字符入场改为纯 CSS：原来每个字符一个 motion.span，流式全程 JS 每帧写内联
  * style + 触发样式重算；CSS animation-delay 错峰能给出一模一样的画面，主线程零参与。
+ *
+ * 只动 opacity 和 transform：早先每个字符还带一段 blur(6px)→0，流式全程有几十个滤镜
+ * 动画同时在跑，每一帧都要重新栅格化；毛玻璃窗口上这类每帧重绘代价很高。
  */
 const STREAM_CHAR_CSS = `
 @keyframes stream-char-in {
-	from { opacity: 0; filter: blur(6px); }
-	to { opacity: 1; filter: blur(0px); }
+	from { opacity: 0; transform: translateY(3px); }
+	to { opacity: 1; transform: translateY(0); }
 }
 .stream-char {
 	display: inline-block;
@@ -126,10 +129,7 @@ export function StreamingIndicator({ phrases }: { phrases: string[] }): JSX.Elem
 export function AssistantMessageStreamingStatus({ label }: { readonly label: string }): JSX.Element {
 	return (
 		<>
-			<span
-				className="h-1.5 w-1.5 rounded-full bg-primary/60"
-				style={{ animation: "pulse 1.5s infinite" }}
-			/>
+			<span className="vetta-live-dot h-1.5 w-1.5 rounded-full bg-primary/60" />
 			<span className="text-[11px] text-muted-foreground/35">{label}</span>
 		</>
 	);

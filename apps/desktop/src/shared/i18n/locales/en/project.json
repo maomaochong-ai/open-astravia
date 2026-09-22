@@ -68,7 +68,8 @@
 			"clearConversationMessage": "This will delete {{count}} conversation session(s) under Chat while keeping artifacts. Claw sessions are not affected. This cannot be undone.",
 			"clearClawTitle": "Clear Claw records",
 			"clearClawMessage": "This will delete {{count}} Claw record(s) while keeping artifacts. This cannot be undone.",
-			"clearConfirm": "Clear"
+			"clearConfirm": "Clear",
+			"deleteBoundSessionHint": "The automation \"{{task}}\" runs in this session. Deleting it pauses that automation until you pick another session."
 		},
 		"time": {
 			"justNow": "now",
@@ -115,7 +116,8 @@
 			"label": "Tags",
 			"new": "New tag…",
 			"manage": "Manage tags…"
-		}
+		},
+		"createAutomation": "Create automation from this session"
 	},
 	"tagEditor": {
 		"createTitle": "New tag",

@@ -710,6 +710,7 @@ describe("AgentTeamSessionService streaming contract", () => {
 			abort: vi.fn(async () => undefined),
 			updateSettings: vi.fn(async () => undefined),
 		} as unknown as RuntimeHost;
+		installWaitingPrompt(runtime);
 		const service = new AgentTeamSessionService({
 			runtime,
 			repository,
@@ -1012,6 +1013,7 @@ describe("AgentTeamSessionService streaming contract", () => {
 			readSessionDocument: () => ({ entries, activeLeafId: null }),
 			abort: vi.fn(async () => undefined),
 		} as unknown as RuntimeHost;
+		installWaitingPrompt(runtime);
 		const service = new AgentTeamSessionService({
 			runtime,
 			repository,
@@ -1129,6 +1131,7 @@ describe("AgentTeamSessionService streaming contract", () => {
 			readSessionDocument: () => ({ entries, activeLeafId: null }),
 			abort: vi.fn(async () => undefined),
 		} as unknown as RuntimeHost;
+		installWaitingPrompt(runtime);
 		const service = new AgentTeamSessionService({
 			runtime,
 			repository: { read: vi.fn(), list: vi.fn(async () => []) },
@@ -1189,6 +1192,7 @@ describe("AgentTeamSessionService streaming contract", () => {
 			readSessionDocument: () => ({ entries, activeLeafId: null }),
 			abort: vi.fn(async () => undefined),
 		} as unknown as RuntimeHost;
+		installWaitingPrompt(runtime);
 		const service = new AgentTeamSessionService({
 			runtime,
 			repository: { read: vi.fn(), list: vi.fn(async () => []) },
@@ -1255,15 +1259,7 @@ describe("AgentTeamSessionService streaming contract", () => {
 				getSessionPath: (sessionId: string) => `C:/runtime/${sessionId}.jsonl`,
 				disposeSession: vi.fn(async () => undefined),
 				subscribe: () => () => undefined,
-				prompt: vi.fn(async () => ({})),
-				getMessages: () => [],
-				getFullHistory: () => [],
-				appendConversationMessage: vi.fn(async () => ({ entryId: "entry" })),
-				appendSessionMetadataEntry: vi.fn(async (_sessionId: string, customType: string, data: unknown) => {
-					entries.push({ type: "custom", customType, data });
-				}),
-				readSessionDocument: () => ({ entries, activeLeafId: null, revision: 1 }),
-				deliverSessionContext: vi.fn(async () => {
+				prompt: vi.fn(async () => {
 					throw {
 						code: "provider_network_timeout",
 						message: "network timeout",
@@ -1271,8 +1267,17 @@ describe("AgentTeamSessionService streaming contract", () => {
 						origin: "provider",
 					};
 				}),
+				getMessages: () => [],
+				getFullHistory: () => [],
+				appendConversationMessage: vi.fn(async () => ({ entryId: "entry" })),
+				appendSessionMetadataEntry: vi.fn(async (_sessionId: string, customType: string, data: unknown) => {
+					entries.push({ type: "custom", customType, data });
+				}),
+				readSessionDocument: () => ({ entries, activeLeafId: null, revision: 1 }),
+				deliverSessionContext: vi.fn(async () => undefined),
 				abort: vi.fn(async () => undefined),
 			} as unknown as RuntimeHost;
+			installWaitingPrompt(runtime);
 			const service = new AgentTeamSessionService({
 				runtime,
 				repository,
@@ -1301,30 +1306,18 @@ describe("AgentTeamSessionService streaming contract", () => {
 			).resolves.toBeDefined();
 			const collaboration = await service.readCollaborationState(created.id);
 
-			if (!allowed) {
-				expect(runtime.deliverSessionContext).toHaveBeenCalledWith(
-					expect.any(String),
-					[
+			expect(runtime.deliverSessionContext).not.toHaveBeenCalled();
+			expect(runtime.prompt).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					context: [
 						expect.objectContaining({
 							type: "agent-team.compaction-reference.v1",
 							modelVisible: false,
 						}),
 					],
-					"record",
-				);
-			} else {
-				expect(runtime.deliverSessionContext).toHaveBeenCalledWith(
-					expect.any(String),
-					[
-						expect.objectContaining({
-							type: "agent-team.compaction-reference.v1",
-							modelVisible: false,
-						}),
-					],
-					"record",
-				);
-			}
-			expect(runtime.prompt).not.toHaveBeenCalled();
+				}),
+			);
 			expect(collaboration.workItems[0]).toMatchObject({
 				state: "waiting",
 				lastIssue: { category: "network", retryability: "automatic" },
@@ -1336,3 +1329,11 @@ describe("AgentTeamSessionService streaming contract", () => {
 		},
 	);
 });
+
+function installWaitingPrompt(runtime: RuntimeHost): void {
+	Object.assign(runtime, {
+		promptWhenAvailable: vi.fn((sessionId: string, request: Parameters<RuntimeHost["prompt"]>[1]) =>
+			runtime.prompt(sessionId, request),
+		),
+	});
+}

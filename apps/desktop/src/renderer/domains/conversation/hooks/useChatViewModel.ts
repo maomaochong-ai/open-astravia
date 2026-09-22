@@ -32,6 +32,7 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useOpenTerminal } from "../../bottom-panel/hooks/useOpenTerminal";
 import type { ChatViewModelResult } from "../components/chat-view/types";
 
 /**
@@ -128,6 +129,8 @@ export function useChatViewModel(): ChatViewModelResult {
 	const toggleBottomPanel = useCallback(() => {
 		dispatchBottomPanel({ type: "set-collapsed", collapsed: bottomPanelOpen });
 	}, [dispatchBottomPanel, bottomPanelOpen]);
+	const terminal = useOpenTerminal();
+	const openTerminal = terminal.open;
 
 	const togglePanel = useCallback(() => {
 		if (inlinePreviewActive) {
@@ -190,9 +193,10 @@ export function useChatViewModel(): ChatViewModelResult {
 			openExport,
 			togglePanel,
 			toggleBottomPanel,
+			openTerminal,
 			togglePin,
 		}),
-		[finishExport, openExport, togglePanel, toggleBottomPanel, togglePin],
+		[finishExport, openExport, togglePanel, toggleBottomPanel, openTerminal, togglePin],
 	);
 
 	const hasMessages = messages.length > 0;
@@ -207,10 +211,27 @@ export function useChatViewModel(): ChatViewModelResult {
 			bottomPanelTitle: bottomPanelOpen
 				? t("chatView.bottomPanelButton.open")
 				: t("chatView.bottomPanelButton.closed"),
+			terminalAvailable: terminal.available,
+			terminalFocused: terminal.focused,
+			terminalTitle: !terminal.available
+				? t("chatView.terminalButton.unavailable")
+				: terminal.focused
+					? t("chatView.terminalButton.focused")
+					: t("chatView.terminalButton.open"),
 			pinTitle: pinned ? t("chatView.pinButton.pinned") : t("chatView.pinButton.unpinned"),
 			pinned,
 		}),
-		[bottomPanelOpen, exporting, hasMessages, isStreaming, panelOpen, pinned, t],
+		[
+			bottomPanelOpen,
+			exporting,
+			hasMessages,
+			isStreaming,
+			panelOpen,
+			pinned,
+			t,
+			terminal.available,
+			terminal.focused,
+		],
 	);
 
 	return {

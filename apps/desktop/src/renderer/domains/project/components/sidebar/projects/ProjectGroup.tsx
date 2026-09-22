@@ -14,24 +14,33 @@ const ProjectSessionRow = memo(function ProjectSessionRow({
 	onRename,
 	onRenameDone,
 	onSelect,
+	onToggleGroup,
 }: {
 	item: ProjectGroupSessionView;
 	onOpenContextMenu: (event: React.MouseEvent, session: SidebarConversationInfo) => void;
 	onRename: (session: SidebarConversationInfo, name: string) => void;
 	onRenameDone: () => void;
 	onSelect: (session: SidebarConversationInfo) => void;
+	onToggleGroup: (taskId: string) => void;
 }): JSX.Element {
-	const { session } = item;
+	const { session, groupTaskId } = item;
 	const handleContextMenu = useCallback(
 		(event: React.MouseEvent) => onOpenContextMenu(event, session),
 		[onOpenContextMenu, session],
 	);
 	const handleRename = useCallback((name: string) => onRename(session, name), [onRename, session]);
-	const handleSelect = useCallback(() => onSelect(session), [onSelect, session]);
+	// 自动化会话组组头：点击展开/收起历次运行，不直接打开某一次。
+	const handleSelect = useCallback(
+		() => (groupTaskId ? onToggleGroup(groupTaskId) : onSelect(session)),
+		[groupTaskId, onSelect, onToggleGroup, session],
+	);
 
 	return (
 		<SessionRowView
 			active={item.active}
+			groupCount={item.groupCount}
+			groupExpanded={item.groupExpanded}
+			nested={item.nested}
 			iconClassName={item.iconClassName}
 			label={item.label}
 			pinned={item.pinned}
@@ -108,6 +117,7 @@ export const ProjectGroup = memo(function ProjectGroup(props: ProjectGroupProps)
 						onRename={model.actions.renameSession}
 						onRenameDone={model.actions.renameDone}
 						onSelect={model.actions.selectSession}
+						onToggleGroup={model.actions.toggleGroup}
 					/>
 				),
 			}}

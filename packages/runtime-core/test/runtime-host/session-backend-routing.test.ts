@@ -7,6 +7,7 @@ import {
 	type RuntimeSessionCatalog,
 	type RuntimeSessionCreateRequest,
 } from "../../src/index.js";
+import type { SessionContextRecord } from "../../src/kernel/index.js";
 
 describe("CatalogRoutedRuntimeHostSessionBackend", () => {
 	it("coalesces concurrent creation requests for the same persisted Session path", async () => {
@@ -68,6 +69,49 @@ describe("CatalogRoutedRuntimeHostSessionBackend", () => {
 		await session.dispose();
 		expect(dispose).toHaveBeenCalledOnce();
 		expect(() => session.readState()).toThrow("Session not found");
+	});
+
+	it("forwards waiting prompt admission with its context and cancellation owner", async () => {
+		const promptWhenAvailable = vi.fn(async () => ({ status: "completed" as const, turnId: "turn-1" }));
+		const base = assembly("session-waiting-prompt");
+		const sessionBackend: RuntimeHostSessionBackend = {
+			createAssembly: async () => ({
+				...base,
+				corePorts: {
+					...base.corePorts,
+					turnControl: { ...base.corePorts.turnControl, promptWhenAvailable },
+				},
+			}),
+		};
+		const runtime = new RuntimeHost({ sessionBackend });
+		const { sessionId } = await runtime.createSession();
+		const controller = new AbortController();
+		const context: readonly SessionContextRecord[] = [
+			{
+				type: "test.context",
+				content: [{ type: "text", text: "attached" }],
+				modelVisible: false,
+			},
+		];
+
+		await expect(
+			runtime.promptWhenAvailable(sessionId, { text: "continue", context }, controller.signal),
+		).resolves.toEqual({ status: "completed", turnId: "turn-1" });
+		expect(promptWhenAvailable).toHaveBeenCalledWith(
+			{
+				text: "continue",
+				context,
+				images: undefined,
+				streamingBehavior: undefined,
+				promptRef: undefined,
+				attachments: undefined,
+				modelKey: undefined,
+				reasoning: undefined,
+				metadata: undefined,
+			},
+			controller.signal,
+		);
+		await runtime.close();
 	});
 
 	it("uses the explicit default backend only for new sessions", async () => {
@@ -208,6 +252,7 @@ function assembly(sessionId: string): RuntimeHostSessionAssembly {
 		corePorts: {
 			turnControl: {
 				prompt: async () => undefined,
+				promptWhenAvailable: async () => undefined,
 				continue: async () => {},
 				retry: async () => {},
 				abort: async () => {},

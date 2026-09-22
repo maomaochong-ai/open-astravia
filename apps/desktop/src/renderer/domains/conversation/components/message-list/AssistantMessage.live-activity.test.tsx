@@ -19,7 +19,6 @@ vi.mock("../../hooks/useAssistantMessageModel", () => ({
 		isCurrentlyStreaming: true,
 		isPredicting: false,
 		liveThinkingId: "source-block",
-		stagedNarration: true,
 		segments: [
 			{
 				type: "progress_group",

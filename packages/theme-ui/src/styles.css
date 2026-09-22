@@ -25,20 +25,16 @@
 	}
 }
 
-@keyframes processing-shimmer {
-	0%,
-	100% {
-		opacity: 0.58;
-	}
-	50% {
-		opacity: 1;
-	}
-}
-
+/* ─── 「进行中」指示器 ───
+   .processing-shimmer / .vetta-live-dot / .tool-call-shimmer-text / .send-button-ripple-* /
+   .todo-label-sheen / .todo-marker-spin / .activity-dot-* 这些类在 CSS 里只写静止态，
+   不写 infinite 关键帧：macOS 主窗口带毛玻璃，页面每出一帧系统都要整窗重合成，各自 60fps 的
+   呼吸/波纹叠在一起足以把 GPU 顶到几成。呼吸由宿主（apps/desktop shared/lib/live-animations.ts）
+   用 Web Animations API 挂上 steps(16) 的合成器动画，并把所有指示器的 startTime 锁到同一相位，
+   整页每秒最多多出 10 帧（实测 4 个指示器合计约 20 帧/秒，主线程每步一次极轻的样式同步）。
+   没有宿主动画时它们就是静止的正常外观。 */
 .processing-shimmer {
 	color: var(--foreground);
-	animation: processing-shimmer 1.6s ease-in-out infinite;
-	will-change: opacity;
 }
 
 textarea::placeholder {

@@ -102,7 +102,7 @@ export function HistoryDrawer({ session, peekSha, onPeek, onRestored, offsetTop,
 
 	return (
 		<div
-			className="vetd-note vetd-note-surface vetd-note-drawer-enter pointer-events-auto absolute z-40 flex flex-col overflow-hidden rounded-xl border border-border/60 bg-popover/95 shadow-xl ring-1 ring-black/5 backdrop-blur-xl"
+			className="vetd-note vetd-note-surface vetd-note-drawer-enter pointer-events-auto absolute z-40 flex flex-col overflow-hidden rounded-xl border border-border/60 bg-popover shadow-xl ring-1 ring-black/5"
 			style={{ top: 52 + offsetTop, right: 12, width: PANEL_WIDTH, maxHeight: "min(70%, 560px)" }}
 			// 截断指针事件：画布根上的 onPointerDown 会 setPointerCapture 到容器，把后续
 			// 事件全部重定向走，落在这里的按钮就永远收不到 click。同 ControlBar。

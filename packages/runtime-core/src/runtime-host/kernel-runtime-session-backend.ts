@@ -272,6 +272,28 @@ export class RuntimeSession {
 		}
 	}
 
+	async promptWhenAvailable(request: PromptRequest, signal?: AbortSignal): Promise<RuntimePromptResult> {
+		this.assertOpen();
+		if (this.historyMutation) throw sessionBusyError();
+		try {
+			const inputRequest = this.promptAdapter.createRequest(request);
+			this.assertOpen();
+			return await this.session.sendRequestWhenAvailable(inputRequest, this.promptAdapter, signal);
+		} catch (error) {
+			if (this.session.state === "idle") {
+				try {
+					await this.appendEntry("prompt_rejected", {
+						text: request.text,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				} catch (persistError) {
+					console.warn("[runtime-core] failed to persist prompt_rejected entry", persistError);
+				}
+			}
+			throw error;
+		}
+	}
+
 	async queuePromptIfRunning(request: PromptRequest): Promise<RuntimeQueuePromptIfRunningOutcome> {
 		this.assertOpen();
 		const compacting = this.contextController?.readState().isCompacting ?? false;
@@ -600,6 +622,18 @@ export class RuntimeSession {
 				turnControl: {
 					prompt: async (request) => {
 						const result = await this.prompt(request);
+						if (result.status === "handled") return { status: "handled" as const };
+						if (result.status === "queued") {
+							return { status: "queued" as const, pendingCount: result.pendingCount, queueItemId: result.id };
+						}
+						return {
+							status: result.status,
+							...(result.status === "failed" ? { error: result.error, turnId: result.turnId } : {}),
+							...(result.status === "completed" ? { turnId: result.turnId } : {}),
+						};
+					},
+					promptWhenAvailable: async (request, signal) => {
+						const result = await this.promptWhenAvailable(request, signal);
 						if (result.status === "handled") return { status: "handled" as const };
 						if (result.status === "queued") {
 							return { status: "queued" as const, pendingCount: result.pendingCount, queueItemId: result.id };
