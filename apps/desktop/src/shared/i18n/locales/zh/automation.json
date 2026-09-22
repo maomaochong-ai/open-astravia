@@ -89,10 +89,14 @@
 			"reply": "回复",
 			"error": "错误"
 		},
-		"enabledLabel": "启用"
+		"enabledLabel": "启用",
+		"intervalPrefix": "每隔",
+		"intervalSuffix": "分钟执行一次",
+		"intervalHint": "从保存时起算；修改间隔会从修改时重新起算"
 	},
 	"scheduleMode": {
 		"once": "不重复",
+		"interval": "间隔",
 		"hourly": "每小时",
 		"daily": "每天",
 		"weekly": "每周",
@@ -117,7 +121,9 @@
 			"周四",
 			"周五",
 			"周六"
-		]
+		],
+		"intervalMinutes": "每隔 {{minutes}} 分钟",
+		"intervalHours": "每隔 {{hours}} 小时"
 	},
 	"list": {
 		"running": "运行中",

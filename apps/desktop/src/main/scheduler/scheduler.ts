@@ -5,7 +5,7 @@ import { type AutomationNotRunReason, automationScheduleToCron, type ScheduledTa
 import { emitTaskEvent } from "../ipc/scheduler.js";
 import { getAppLogger } from "../logger.js";
 import { getSharedRuntime } from "../runtime.js";
-import { isValidSchedule, localTimezone, summarizeFireTimes } from "./cron.js";
+import { isValidSchedule, localTimezone, nextFireTime, summarizeFireTimes } from "./cron.js";
 import { executeTask, shutdownSchedulerTaskExecutor } from "./task-executor.js";
 import {
 	generateId,
@@ -135,6 +135,19 @@ export function scheduleTaskInCron(task: ScheduledTask): void {
 	if (task.schedule.kind === "once") {
 		if (task.schedule.at <= Date.now()) return;
 		scheduledJobs.set(task.id, new Cron(new Date(task.schedule.at), options, handler));
+		return;
+	}
+	if (task.schedule.kind === "interval") {
+		// 间隔不是 cron：每次只排下一个触发点，触发后再排下一个，始终对齐 startAt。
+		const next = nextFireTime(task.schedule, Date.now());
+		if (next === null) return;
+		scheduledJobs.set(
+			task.id,
+			new Cron(new Date(next), options, () => {
+				if (acceptingSchedules) scheduleTaskInCron(task);
+				handler();
+			}),
+		);
 		return;
 	}
 	const cron = automationScheduleToCron(task.schedule);

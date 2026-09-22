@@ -12,6 +12,10 @@ export function describeSchedule(schedule: AutomationSchedule, t: TFunction<"aut
 				time: `${pad2(date.getHours())}:${pad2(date.getMinutes())}`,
 			});
 		}
+		case "interval":
+			return schedule.everyMinutes % 60 === 0
+				? t("schedule.intervalHours", { hours: schedule.everyMinutes / 60 })
+				: t("schedule.intervalMinutes", { minutes: schedule.everyMinutes });
 		case "hourly":
 			return t("schedule.hourly", { minute: pad2(schedule.minute) });
 		case "daily":

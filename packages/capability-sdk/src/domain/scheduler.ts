@@ -91,7 +91,7 @@ const schedulerNonBlankInputStringType = Type.String({ pattern: "\\S" });
 const minuteType = Type.Integer({ minimum: 0, maximum: 59 });
 const hourType = Type.Integer({ minimum: 0, maximum: 23 });
 
-/** 「重复」：精确到分钟，按本机时区；星期 0 = 周日。custom 为 5 段 cron。 */
+/** 「重复」：精确到分钟，按本机时区；星期 0 = 周日。interval 从 startAt 起每 everyMinutes 分钟一次；custom 为 5 段 cron。 */
 const schedulerScheduleType = Type.Union([
 	Type.Object({ kind: Type.Literal("once"), at: Type.Number() }, { additionalProperties: false }),
 	Type.Object({ kind: Type.Literal("hourly"), minute: minuteType }, { additionalProperties: false }),
@@ -113,6 +113,14 @@ const schedulerScheduleType = Type.Union([
 			}),
 			hour: hourType,
 			minute: minuteType,
+		},
+		{ additionalProperties: false },
+	),
+	Type.Object(
+		{
+			kind: Type.Literal("interval"),
+			everyMinutes: Type.Integer({ minimum: 1, maximum: 10080 }),
+			startAt: Type.Number(),
 		},
 		{ additionalProperties: false },
 	),

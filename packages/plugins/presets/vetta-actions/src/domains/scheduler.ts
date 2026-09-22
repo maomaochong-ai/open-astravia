@@ -50,7 +50,7 @@ const minuteSchema = { type: "integer", minimum: 0, maximum: 59 } as const;
 const hourSchema = { type: "integer", minimum: 0, maximum: 23 } as const;
 const scheduleSchema = {
 	description:
-		"重复规则，按本机时区。once.at 为毫秒时间戳；weekly.weekdays 取 0-6（0 为周日）；monthly.days 取 1-31 或 \"last\"；custom.cron 为 5 段 cron。",
+		"重复规则，按本机时区。once.at 为毫秒时间戳；weekly.weekdays 取 0-6（0 为周日）；monthly.days 取 1-31 或 \"last\"；interval 从 startAt（毫秒时间戳，通常取当前时间）起每 everyMinutes 分钟一次；custom.cron 为 5 段 cron。",
 	oneOf: [
 		{
 			type: "object",
@@ -94,6 +94,16 @@ const scheduleSchema = {
 				minute: minuteSchema,
 			},
 			required: ["kind", "days", "hour", "minute"],
+			additionalProperties: false,
+		},
+		{
+			type: "object",
+			properties: {
+				kind: { const: "interval" },
+				everyMinutes: { type: "integer", minimum: 1, maximum: 10080 },
+				startAt: { type: "number" },
+			},
+			required: ["kind", "everyMinutes", "startAt"],
 			additionalProperties: false,
 		},
 		{

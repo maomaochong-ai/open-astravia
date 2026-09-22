@@ -1,10 +1,11 @@
 import { Popover, PopoverContent, PopoverTrigger, cn } from "@vetta-org/ui";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type {
-	AutomationMonthDay,
-	AutomationSchedule,
-	AutomationScheduleKind,
+import {
+	AUTOMATION_INTERVAL_MAX_MINUTES,
+	type AutomationMonthDay,
+	type AutomationSchedule,
+	type AutomationScheduleKind,
 } from "../../../../../shared/automation";
 import {
 	CRON_FIELDS,
@@ -83,6 +84,30 @@ function KindEditor({
 				/>
 			);
 		}
+		case "interval":
+			return (
+				<div className="space-y-1">
+					<label className="flex items-center gap-2 text-[12px] text-muted-foreground">
+						{t("form.intervalPrefix")}
+						<input
+							type="number"
+							min={1}
+							max={AUTOMATION_INTERVAL_MAX_MINUTES}
+							value={schedule.everyMinutes}
+							onChange={(event) => {
+								const everyMinutes = Number.parseInt(event.target.value, 10);
+								// 改了间隔就从现在重新起算，下一次在 n 分钟后。
+								if (everyMinutes >= 1 && everyMinutes <= AUTOMATION_INTERVAL_MAX_MINUTES) {
+									onChange({ kind: "interval", everyMinutes, startAt: Date.now() });
+								}
+							}}
+							className={cn(inputClass, "w-20 text-center")}
+						/>
+						{t("form.intervalSuffix")}
+					</label>
+					<p className="text-[11px] text-muted-foreground/60">{t("form.intervalHint")}</p>
+				</div>
+			);
 		case "hourly":
 			return (
 				<label className="flex items-center gap-2 text-[12px] text-muted-foreground">

@@ -89,10 +89,14 @@
 			"reply": "Reply",
 			"error": "Error"
 		},
-		"enabledLabel": "Enabled"
+		"enabledLabel": "Enabled",
+		"intervalPrefix": "Every",
+		"intervalSuffix": "minutes",
+		"intervalHint": "Counted from when you save; changing the interval restarts the count"
 	},
 	"scheduleMode": {
 		"once": "Once",
+		"interval": "Interval",
 		"hourly": "Hourly",
 		"daily": "Daily",
 		"weekly": "Weekly",
@@ -117,7 +121,9 @@
 			"Thu",
 			"Fri",
 			"Sat"
-		]
+		],
+		"intervalMinutes": "Every {{minutes}} min",
+		"intervalHours": "Every {{hours}} h"
 	},
 	"list": {
 		"running": "Running",

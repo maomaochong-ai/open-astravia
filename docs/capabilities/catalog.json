@@ -10001,6 +10001,29 @@
                   "type": "object",
                   "required": [
                     "kind",
+                    "everyMinutes",
+                    "startAt"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "const": "interval",
+                      "type": "string"
+                    },
+                    "everyMinutes": {
+                      "minimum": 1,
+                      "maximum": 10080,
+                      "type": "integer"
+                    },
+                    "startAt": {
+                      "type": "number"
+                    }
+                  }
+                },
+                {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "kind",
                     "cron"
                   ],
                   "properties": {
@@ -10359,6 +10382,29 @@
                     "minimum": 0,
                     "maximum": 59,
                     "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "everyMinutes",
+                  "startAt"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "interval",
+                    "type": "string"
+                  },
+                  "everyMinutes": {
+                    "minimum": 1,
+                    "maximum": 10080,
+                    "type": "integer"
+                  },
+                  "startAt": {
+                    "type": "number"
                   }
                 }
               },
@@ -10860,6 +10906,29 @@
                     "type": "object",
                     "required": [
                       "kind",
+                      "everyMinutes",
+                      "startAt"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "const": "interval",
+                        "type": "string"
+                      },
+                      "everyMinutes": {
+                        "minimum": 1,
+                        "maximum": 10080,
+                        "type": "integer"
+                      },
+                      "startAt": {
+                        "type": "number"
+                      }
+                    }
+                  },
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "kind",
                       "cron"
                     ],
                     "properties": {
@@ -11155,6 +11224,29 @@
                     "minimum": 0,
                     "maximum": 59,
                     "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "everyMinutes",
+                  "startAt"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "interval",
+                    "type": "string"
+                  },
+                  "everyMinutes": {
+                    "minimum": 1,
+                    "maximum": 10080,
+                    "type": "integer"
+                  },
+                  "startAt": {
+                    "type": "number"
                   }
                 }
               },
@@ -11513,6 +11605,29 @@
                     "type": "object",
                     "required": [
                       "kind",
+                      "everyMinutes",
+                      "startAt"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "const": "interval",
+                        "type": "string"
+                      },
+                      "everyMinutes": {
+                        "minimum": 1,
+                        "maximum": 10080,
+                        "type": "integer"
+                      },
+                      "startAt": {
+                        "type": "number"
+                      }
+                    }
+                  },
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "kind",
                       "cron"
                     ],
                     "properties": {
@@ -11822,6 +11937,29 @@
                     "minimum": 0,
                     "maximum": 59,
                     "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "everyMinutes",
+                  "startAt"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "interval",
+                    "type": "string"
+                  },
+                  "everyMinutes": {
+                    "minimum": 1,
+                    "maximum": 10080,
+                    "type": "integer"
+                  },
+                  "startAt": {
+                    "type": "number"
                   }
                 }
               },
@@ -12235,6 +12373,29 @@
                     "minimum": 0,
                     "maximum": 59,
                     "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "everyMinutes",
+                  "startAt"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "interval",
+                    "type": "string"
+                  },
+                  "everyMinutes": {
+                    "minimum": 1,
+                    "maximum": 10080,
+                    "type": "integer"
+                  },
+                  "startAt": {
+                    "type": "number"
                   }
                 }
               },

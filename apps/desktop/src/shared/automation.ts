@@ -16,7 +16,11 @@ export type AutomationSchedule =
 			readonly hour: number;
 			readonly minute: number;
 	  }
+	| { readonly kind: "interval"; readonly everyMinutes: number; readonly startAt: number }
 	| { readonly kind: "custom"; readonly cron: string };
+
+/** 「间隔」的上限：一周。更长的周期用每周/每月表达更清楚。 */
+export const AUTOMATION_INTERVAL_MAX_MINUTES = 7 * 24 * 60;
 
 export type AutomationScheduleKind = AutomationSchedule["kind"];
 
@@ -150,10 +154,14 @@ export function renderAutomationTemplate(
 	);
 }
 
-/** 非 once 的计划对应的 5 段 cron；once 以绝对时刻调度，返回 null。 */
+/**
+ * 计划对应的 5 段 cron。once 以绝对时刻调度；interval 从 startAt 起每 everyMinutes 分钟一次，
+ * cron 表达不了不整除小时的间隔（如 45、90 分钟），两者都返回 null。
+ */
 export function automationScheduleToCron(schedule: AutomationSchedule): string | null {
 	switch (schedule.kind) {
 		case "once":
+		case "interval":
 			return null;
 		case "hourly":
 			return `${schedule.minute} * * * *`;

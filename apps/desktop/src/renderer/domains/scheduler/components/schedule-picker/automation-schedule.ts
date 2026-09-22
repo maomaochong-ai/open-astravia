@@ -2,6 +2,7 @@ import type { AutomationMonthDay, AutomationSchedule, AutomationScheduleKind } f
 
 export const SCHEDULE_KINDS: readonly AutomationScheduleKind[] = [
 	"once",
+	"interval",
 	"hourly",
 	"daily",
 	"weekly",
@@ -32,6 +33,8 @@ export function defaultScheduleFor(
 			if (at.getTime() <= now) at.setDate(at.getDate() + 1);
 			return { kind: "once", at: at.getTime() };
 		}
+		case "interval":
+			return { kind: "interval", everyMinutes: 30, startAt: now };
 		case "hourly":
 			return { kind: "hourly", minute };
 		case "daily":
@@ -52,6 +55,9 @@ function scheduleAsCron(schedule: AutomationSchedule): string | null {
 	switch (schedule.kind) {
 		case "once":
 			return null;
+		case "interval":
+			// 只有整除一小时的间隔能写成 cron；其余没有等价表达，交给用户自己写。
+			return 60 % schedule.everyMinutes === 0 ? `*/${schedule.everyMinutes} * * * *` : null;
 		case "hourly":
 			return `${schedule.minute} * * * *`;
 		case "daily":

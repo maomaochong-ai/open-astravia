@@ -4,7 +4,7 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ## [Unreleased]
 
-- **破坏性**：`official.scheduler` 的任务结构随桌面端自动化重做一起更换。`createTask` / `updateTask` 不再接受 `cron`、`isOnce`、`cwd`、`modelKey`、`executionMode`、`skill`，改为 `schedule`（不重复/每小时/每天/每周/每月/自定义 cron）、`runTarget`（每次新建会话或同一个会话，并指定所属项目）、可选的 `model`（含思考强度）与 `notification`（webhook 通知）；`updateTask` 里 `model` / `notification` 传 `null` 表示清除。技能改为写在任务正文里的 `@skill:` 行内引用。旧结构的调用会被宿主的输入校验拒绝，不会被误读成别的配置。
+- **破坏性**：`official.scheduler` 的任务结构随桌面端自动化重做一起更换。`createTask` / `updateTask` 不再接受 `cron`、`isOnce`、`cwd`、`modelKey`、`executionMode`、`skill`，改为 `schedule`（不重复/间隔/每小时/每天/每周/每月/自定义 cron）、`runTarget`（每次新建会话或同一个会话，并指定所属项目）、可选的 `model`（含思考强度）与 `notification`（webhook 通知）；`updateTask` 里 `model` / `notification` 传 `null` 表示清除。技能改为写在任务正文里的 `@skill:` 行内引用。旧结构的调用会被宿主的输入校验拒绝，不会被误读成别的配置。
 
 - 新增会话底部面板贡献点 `ctx.ui.registerBottomPanel()` 与配套权限 `ui.slot.bottom-panel`，要求 Plugin API `^2.7.0`。它与活动面板标签卡的分工是：活动面板在右侧、一个贡献一个实例，适合看某个东西的当前状态；底部面板横跨会话页下沿、可分屏、**同一个贡献可以开多个实例**，适合终端、日志跟随这类长驻工作面。实例的名字、图标、状态点与关闭前裁决都走命令式的 `useBottomPanel()`——多实例下「每帧返回 meta 的 hook」拿不到实例身份，会让改名在两份事实源之间打架。
 

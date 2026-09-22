@@ -231,13 +231,15 @@ export interface PluginOfficialBatchProjectUpdateData {
 	skill?: PluginOfficialSelectedSkill | null;
 }
 
-/** 「重复」：精确到分钟，按本机时区；星期 0 = 周日；custom 为 5 段 cron。 */
+/** 「重复」：精确到分钟，按本机时区；星期 0 = 周日；interval 为固定间隔；custom 为 5 段 cron。 */
 export type PluginOfficialSchedulerSchedule =
 	| { kind: "once"; at: number }
 	| { kind: "hourly"; minute: number }
 	| { kind: "daily"; hour: number; minute: number }
 	| { kind: "weekly"; weekdays: number[]; hour: number; minute: number }
 	| { kind: "monthly"; days: Array<number | "last">; hour: number; minute: number }
+	/** 从 startAt（毫秒时间戳）起每 everyMinutes 分钟一次，1–10080。 */
+	| { kind: "interval"; everyMinutes: number; startAt: number }
 	| { kind: "custom"; cron: string };
 
 /**

@@ -17,13 +17,23 @@ export function isValidCronExpression(cronExpression: string): boolean {
 }
 
 export function isValidSchedule(schedule: AutomationSchedule): boolean {
+	if (schedule.kind === "once") return Number.isFinite(schedule.at);
+	if (schedule.kind === "interval") return schedule.everyMinutes >= 1 && Number.isFinite(schedule.startAt);
 	const cron = automationScheduleToCron(schedule);
-	return cron === null ? Number.isFinite((schedule as { at: number }).at) : isValidCronExpression(cron);
+	return cron !== null && isValidCronExpression(cron);
+}
+
+/** 间隔计划在 after 之后的第一个触发点：startAt + k·间隔。 */
+function nextIntervalFire(schedule: { everyMinutes: number; startAt: number }, after: number): number {
+	const step = schedule.everyMinutes * 60_000;
+	if (after < schedule.startAt) return schedule.startAt + step;
+	return schedule.startAt + (Math.floor((after - schedule.startAt) / step) + 1) * step;
 }
 
 /** 下一次触发时刻；once 已过期或计划无效时返回 null。 */
 export function nextFireTime(schedule: AutomationSchedule, after: number): number | null {
 	if (schedule.kind === "once") return schedule.at > after ? schedule.at : null;
+	if (schedule.kind === "interval") return nextIntervalFire(schedule, after);
 	const cron = automationScheduleToCron(schedule);
 	if (!cron || !isValidCronExpression(cron)) return null;
 	const next = new Cron(cron, { paused: true, timezone: localTimezone() }).nextRun(new Date(after));
@@ -51,6 +61,13 @@ export function summarizeFireTimes(
 		return schedule.at > fromExclusive && schedule.at <= toInclusive
 			? { count: 1, first: schedule.at, last: schedule.at }
 			: null;
+	}
+	if (schedule.kind === "interval") {
+		const first = nextIntervalFire(schedule, fromExclusive);
+		if (first > toInclusive) return null;
+		const step = schedule.everyMinutes * 60_000;
+		const count = Math.min(cap, Math.floor((toInclusive - first) / step) + 1);
+		return { count, first, last: first + (count - 1) * step };
 	}
 	const cron = automationScheduleToCron(schedule);
 	if (!cron || !isValidCronExpression(cron)) return null;
