@@ -59,53 +59,45 @@ export function AutomationPageView<FilterKey extends string>({
 	detailPane,
 }: AutomationPageViewProps<FilterKey>): JSX.Element {
 	const paneOpen = Boolean(detailPane);
+	// 标题、切换、搜索与列表共用同一个容器：标题跟列表左边对齐，创建按钮跟列表右边对齐。
+	const column = cn("w-full", paneOpen ? "px-5" : "mx-auto max-w-4xl px-8");
 	return (
-		<div className="flex h-full w-full flex-1 flex-col overflow-hidden">
-			<div className="drag-region h-6 shrink-0" />
-			<header className="flex shrink-0 items-end justify-between gap-4 px-8 pb-4">
-				<div className="min-w-0">
-					<h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">{labels.title}</h1>
-					<p className="mt-1 text-[12px] text-muted-foreground/60">{labels.subtitle}</p>
-				</div>
-				<Button type="button" variant="primary" size="sm" onClick={onCreate}>
-					<span className="icon-[mdi--plus] h-3.5 w-3.5" />
-					{labels.create}
-				</Button>
-			</header>
-
-			<div className="flex min-h-0 flex-1 border-t border-border/60">
-				<section
-					className={cn(
-						"flex min-w-0 flex-col pt-4",
-						paneOpen ? "w-[400px] shrink-0 border-r border-border/60" : "flex-1",
-					)}
-				>
-					<div className={cn("flex w-full flex-col gap-3 px-8", paneOpen && "px-5", !paneOpen && "mx-auto max-w-4xl")}>
-						<SegmentedControl
-							className="self-start"
-							items={filters.map((filter) => ({ key: filter.key, label: filter.label }))}
-							value={activeFilter}
-							onChange={onFilterChange}
-							suppressLayoutAnimation
-						/>
-						<label className="relative block">
-							<span className="icon-[solar--magnifer-linear] absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/40" />
-							<input
-								type="search"
-								value={searchValue}
-								onChange={(event) => onSearchChange(event.target.value)}
-								placeholder={labels.searchPlaceholder}
-								className="h-8 w-full rounded-lg bg-secondary pl-8 pr-3 text-[12px] text-foreground placeholder:text-muted-foreground/40 transition-colors hover:bg-accent focus:bg-accent focus:outline-none"
-							/>
-						</label>
+		<div className="flex h-full w-full flex-1 overflow-hidden">
+			<section
+				className={cn("flex min-w-0 flex-col", paneOpen ? "w-[400px] shrink-0 border-r border-border/60" : "flex-1")}
+			>
+				<div className="drag-region h-6 shrink-0" />
+				<header className={cn(column, "flex shrink-0 items-end justify-between gap-4 pb-5")}>
+					<div className="min-w-0">
+						<h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">{labels.title}</h1>
+						<p className="mt-1 truncate text-[12px] text-muted-foreground/60">{labels.subtitle}</p>
 					</div>
-					<div
-						className={cn(
-							"mt-3 min-h-0 w-full flex-1 overflow-y-auto px-8 pb-6",
-							paneOpen && "px-5",
-							!paneOpen && "mx-auto max-w-4xl",
-						)}
-					>
+					<Button type="button" variant="primary" size="sm" className="shrink-0" onClick={onCreate}>
+						<span className="icon-[mdi--plus] h-3.5 w-3.5" />
+						{labels.create}
+					</Button>
+				</header>
+				<div className={cn(column, "flex shrink-0 flex-col gap-3")}>
+					<SegmentedControl
+						className="self-start"
+						items={filters.map((filter) => ({ key: filter.key, label: filter.label }))}
+						value={activeFilter}
+						onChange={onFilterChange}
+						suppressLayoutAnimation
+					/>
+					<label className="relative block">
+						<span className="icon-[solar--magnifer-linear] absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/40" />
+						<input
+							type="search"
+							value={searchValue}
+							onChange={(event) => onSearchChange(event.target.value)}
+							placeholder={labels.searchPlaceholder}
+							className="h-8 w-full rounded-lg bg-secondary pl-8 pr-3 text-[12px] text-foreground placeholder:text-muted-foreground/40 transition-colors hover:bg-accent focus:bg-accent focus:outline-none"
+						/>
+					</label>
+				</div>
+				<div className="mt-3 min-h-0 flex-1 overflow-y-auto pb-6">
+					<div className={column}>
 						{list}
 						{recommendations && recommendations.length > 0 ? (
 							<AutomationRecommendations
@@ -115,9 +107,14 @@ export function AutomationPageView<FilterKey extends string>({
 							/>
 						) : null}
 					</div>
+				</div>
+			</section>
+			{detailPane ? (
+				<section className="flex min-w-0 flex-1 flex-col">
+					<div className="drag-region h-6 shrink-0" />
+					{detailPane}
 				</section>
-				{detailPane ? <section className="flex min-w-0 flex-1 flex-col">{detailPane}</section> : null}
-			</div>
+			) : null}
 		</div>
 	);
 }
