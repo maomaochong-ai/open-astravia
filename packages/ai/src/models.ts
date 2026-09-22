@@ -1,4 +1,5 @@
 import { MODELS } from "./models.generated.js";
+import { supportsClaudeMaxEffort } from "./providers/claude-thinking.js";
 import type { Api, Model, Usage } from "./types.js";
 
 const modelRegistry: Map<string, Map<string, Model<Api>>> = new Map();
@@ -40,7 +41,7 @@ export function calculateCost<TApi extends Api>(model: Model<TApi>, usage: Usage
  *
  * Supported today:
  * - GPT-5.2 / GPT-5.3 model families
- * - Anthropic Messages API Opus 4.6 models (xhigh maps to adaptive effort "max")
+ * - Anthropic Messages API Opus 4.6 and later models (xhigh maps to adaptive effort "max")
  */
 export function supportsXhigh<TApi extends Api>(model: Model<TApi>): boolean {
 	if (!model.reasoning) return false;
@@ -50,7 +51,7 @@ export function supportsXhigh<TApi extends Api>(model: Model<TApi>): boolean {
 	}
 
 	if (model.api === "anthropic-messages") {
-		return model.id.includes("opus-4-6") || model.id.includes("opus-4.6");
+		return supportsClaudeMaxEffort(model.id);
 	}
 
 	return false;
