@@ -7,6 +7,12 @@ const VIEWPORT_HEIGHT = 64;
 const FADE_SIZE = 16;
 /** 每帧向目标位置逼近的比例，越小拖尾越长。 */
 const SCROLL_EASING = 0.14;
+/**
+ * 目标距离不超过这么多像素时直接落位，不做缓动。思考文本每 100ms 追加一两行（约 20~40px），
+ * 若每次都用 rAF 缓动逼近，一整段思考期间就是连续的 60fps 出帧；毛玻璃窗口每帧都要整窗
+ * 重合成。只有切换会话、大段补齐这类大跳才值得缓动。
+ */
+const SNAP_DISTANCE_PX = 48;
 
 function prefersReducedMotion(): boolean {
 	return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -28,6 +34,7 @@ function useTrailingScrollToBottom(el: HTMLDivElement | null, text: string): boo
 		const reduced = prefersReducedMotion();
 		let cancelled = false;
 		let frame = 0;
+		let easing = false;
 		const step = (): void => {
 			if (cancelled) return;
 			const target = el.scrollHeight - el.clientHeight;
@@ -35,15 +42,13 @@ function useTrailingScrollToBottom(el: HTMLDivElement | null, text: string): boo
 				const next = target > 1;
 				return prev === next ? prev : next;
 			});
-			if (reduced) {
-				el.scrollTop = target;
-				return;
-			}
 			const delta = target - el.scrollTop;
-			if (Math.abs(delta) < 0.5) {
+			// 只在第一帧决定要不要缓动：短距离直接落位；一旦开始缓动就走完，避免临近终点时突然跳一下。
+			if (reduced || (!easing && Math.abs(delta) <= SNAP_DISTANCE_PX) || Math.abs(delta) < 0.5) {
 				el.scrollTop = target;
 				return;
 			}
+			easing = true;
 			el.scrollTop += delta * SCROLL_EASING;
 			frame = requestAnimationFrame(step);
 		};
