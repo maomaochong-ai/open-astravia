@@ -1,131 +1,100 @@
-import type { ScheduledTask } from "@shared/store/atoms";
-import {
-	confirmDialogAtom,
-	defaultConversationCwdAtom,
-	getProjectDisplayName,
-	runningTaskIdsAtom,
-	scheduledTasksAtom,
-} from "@shared/store/atoms";
+import { runningTaskIdsAtom, scheduledTasksAtom } from "@shared/store/atoms";
 import type { TFunction } from "i18next";
-import { useAtomValue, useSetAtom } from "jotai";
-import { useMemo } from "react";
+import { useAtomValue } from "jotai";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { ScheduledTask } from "../../../../shared/automation";
+import { nextFireTime } from "../../../../shared/automation-timing";
+import {
+	type AutomationListFilter,
+	type AutomationTaskTone,
+	automationTaskTone,
+	matchesAutomationFilter,
+} from "../automation-status";
 import { describeSchedule } from "../components/schedule-picker/describe-schedule";
-import { useScheduledTasks } from "./useScheduledTasks";
 
 export interface TaskListItemModel {
-	readonly enabled: boolean;
 	readonly id: string;
-	readonly isRunning: boolean;
-	readonly isSelected: boolean;
-	readonly lastRunLabel: string;
-	readonly lastRunStatus: "success" | "failed" | null;
 	readonly name: string;
-	readonly prompt: string;
-	readonly scheduleLabel: string;
-	readonly scheduleDetail: string | null;
-	readonly statusLabel: string;
-	readonly suspendedLabel: string | null;
-	readonly targetLabel: string;
-	readonly task: ScheduledTask;
+	readonly subtitle: string;
+	readonly tone: AutomationTaskTone;
+	readonly isSelected: boolean;
 }
 
 export interface TaskListModel {
 	readonly items: readonly TaskListItemModel[];
-	readonly labels: {
-		readonly delete: string;
-		readonly edit: string;
-		readonly enable: string;
-		readonly failed: string;
-		readonly pause: string;
-		readonly runNow: string;
-		readonly success: string;
-	};
-	readonly onDeleteTask: (taskId: string) => void;
-	readonly onRunTask: (taskId: string) => void;
-	readonly onToggleTask: (taskId: string) => void;
+	readonly emptyLabel: string | undefined;
 }
 
 interface UseTaskListModelOptions {
 	readonly selectedTaskId: string | null;
+	readonly filter: AutomationListFilter;
+	readonly search: string;
 }
 
-export function useTaskListModel({ selectedTaskId }: UseTaskListModelOptions): TaskListModel {
+/** 「下次运行」按分钟刷新即可，不需要秒级重渲染。 */
+const CLOCK_TICK_MS = 60_000;
+
+export function useTaskListModel({ selectedTaskId, filter, search }: UseTaskListModelOptions): TaskListModel {
 	const { t } = useTranslation("automation");
 	const tasks = useAtomValue(scheduledTasksAtom);
 	const runningTaskIds = useAtomValue(runningTaskIdsAtom);
-	const defaultCwd = useAtomValue(defaultConversationCwdAtom);
-	const setConfirmDialog = useSetAtom(confirmDialogAtom);
-	const { deleteTask, toggleTask, runNow } = useScheduledTasks();
+	const [now, setNow] = useState(() => Date.now());
 
-	return useMemo(
-		() => ({
-			items: tasks.map((task) => {
-				const isRunning = runningTaskIds.has(task.id);
-				return {
-					enabled: task.enabled,
-					id: task.id,
-					isRunning,
-					isSelected: selectedTaskId === task.id,
-					lastRunLabel: formatLastRun(task.lastRunAt, t),
-					lastRunStatus:
-						task.lastRunStatus === "success" || task.lastRunStatus === "failed" ? task.lastRunStatus : null,
-					name: task.name,
-					prompt: task.prompt,
-					scheduleLabel: describeSchedule(task.schedule, t),
-					scheduleDetail: task.schedule.kind === "custom" ? task.schedule.cron : null,
-					statusLabel: isRunning
-						? t("list.running")
-						: task.suspendedReason
-							? t("list.suspended")
-							: task.enabled
-								? t("list.pending")
-								: t("list.disabled"),
-					suspendedLabel: task.suspendedReason ? t(`suspended.${task.suspendedReason}`) : null,
-					targetLabel: t("list.target", {
-						mode: t(`form.runMode.${task.runTarget.mode}`),
-						project: getProjectDisplayName(task.runTarget.projectCwd, defaultCwd),
-					}),
-					task,
-				};
-			}),
-			labels: {
-				delete: t("list.delete"),
-				edit: t("list.edit"),
-				enable: t("list.enable"),
-				failed: t("list.failed"),
-				pause: t("list.pause"),
-				runNow: t("list.runNow"),
-				success: t("list.success"),
-			},
-			onDeleteTask: (taskId: string): void => {
-				const task = tasks.find((candidate) => candidate.id === taskId);
-				if (!task) return;
-				setConfirmDialog({
-					title: t("confirm.deleteTitle", { name: task.name }),
-					message: t("confirm.deleteMsg"),
-					confirmLabel: t("confirm.delete"),
-					cancelLabel: t("confirm.cancel"),
-					variant: "danger",
-					onConfirm: () => deleteTask(task.id),
-				});
-			},
-			onRunTask: (taskId: string): void => {
-				void runNow(taskId);
-			},
-			onToggleTask: (taskId: string): void => {
-				void toggleTask(taskId);
-			},
-		}),
-		[defaultCwd, deleteTask, runNow, runningTaskIds, selectedTaskId, setConfirmDialog, t, tasks, toggleTask],
-	);
+	useEffect(() => {
+		const timer = setInterval(() => setNow(Date.now()), CLOCK_TICK_MS);
+		return () => clearInterval(timer);
+	}, []);
+
+	return useMemo(() => {
+		const query = search.trim().toLowerCase();
+		const items = tasks
+			.map((task) => ({ task, tone: automationTaskTone(task, runningTaskIds.has(task.id)) }))
+			.filter(({ task, tone }) => {
+				if (!matchesAutomationFilter(tone, filter)) return false;
+				if (!query) return true;
+				return task.name.toLowerCase().includes(query) || task.prompt.toLowerCase().includes(query);
+			})
+			.sort((a, b) => b.task.createdAt - a.task.createdAt)
+			.map(({ task, tone }) => ({
+				id: task.id,
+				name: task.name,
+				subtitle: subtitleFor(task, tone, now, t),
+				tone,
+				isSelected: task.id === selectedTaskId,
+			}));
+		return {
+			items,
+			// 一个任务都没有时由页面展示推荐模板；有任务但被筛掉时才提示。
+			emptyLabel: tasks.length === 0 ? undefined : query ? t("list.emptySearch") : t("list.emptyFilter"),
+		};
+	}, [filter, now, runningTaskIds, search, selectedTaskId, t, tasks]);
 }
 
-function formatLastRun(timestamp: number | null, t: TFunction<"automation">): string {
-	if (!timestamp) return t("list.neverRun");
-	const diff = Date.now() - timestamp;
-	if (diff < 60000) return t("list.justNow");
-	if (diff < 3600000) return t("list.minutesAgo", { n: Math.floor(diff / 60000) });
-	if (diff < 86400000) return t("list.hoursAgo", { n: Math.floor(diff / 3600000) });
-	return t("list.daysAgo", { n: Math.floor(diff / 86400000) });
+function subtitleFor(task: ScheduledTask, tone: AutomationTaskTone, now: number, t: TFunction<"automation">): string {
+	const schedule = describeSchedule(task.schedule, t);
+	switch (tone) {
+		case "running":
+			return `${schedule} · ${t("list.running")}`;
+		case "suspended":
+			return `${schedule} · ${t("list.suspended")}`;
+		case "paused":
+			return `${schedule} · ${t("list.disabled")}`;
+		case "done":
+			return `${schedule} · ${t("list.done")}`;
+		case "active": {
+			const next = nextFireTime(task.schedule, now);
+			return next === null
+				? schedule
+				: `${schedule} · ${t("list.nextRun", { when: formatRelative(next - now, t) })}`;
+		}
+	}
+}
+
+export function formatRelative(ms: number, t: TFunction<"automation">): string {
+	const minutes = Math.max(1, Math.round(ms / 60_000));
+	if (minutes < 60) return t("list.inMinutes", { n: minutes });
+	const hours = Math.round(minutes / 60);
+	if (hours < 48) return t("list.inHours", { n: hours });
+	return t("list.inDays", { n: Math.round(hours / 24) });
 }

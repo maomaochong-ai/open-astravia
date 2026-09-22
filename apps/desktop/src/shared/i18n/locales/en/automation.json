@@ -1,13 +1,10 @@
 {
 	"page": {
-		"title": "Automation",
-		"subtitle": "Let AI run tasks on schedule and free your hands",
-		"newTask": "New Task",
-		"newTaskTitle": "New scheduled task"
+		"create": "Create",
+		"searchPlaceholder": "Search automations"
 	},
 	"recommend": {
 		"title": "Recommended",
-		"use": "Use template",
 		"items": {
 			"morningBrief": {
 				"name": "Morning briefing",
@@ -28,13 +25,6 @@
 				"prompt": "Produce a weekly review for the current repository:\n1. Summarize major commits and feature progress this week\n2. Capture risks, tech debt, or recurring issues\n3. Recommend next-week priorities (up to 5 items)\nWrite it ready to paste into a weekly report. Do not modify repository files."
 			}
 		}
-	},
-	"dialog": {
-		"namePlaceholderEdit": "Task name",
-		"namePlaceholderNew": "New task",
-		"cancel": "Cancel",
-		"save": "Save",
-		"create": "Create"
 	},
 	"form": {
 		"name": "Task title",
@@ -92,7 +82,14 @@
 		"enabledLabel": "Enabled",
 		"intervalPrefix": "Every",
 		"intervalSuffix": "minutes",
-		"intervalHint": "Counted from when you save; changing the interval restarts the count"
+		"intervalHint": "Counted from when you save; changing the interval restarts the count",
+		"sectionDetails": "Details",
+		"sectionFrequency": "Frequency",
+		"sectionNotify": "Notification",
+		"intervalLabel": "Interval",
+		"minuteLabel": "Minute",
+		"weekdays": "Weekdays",
+		"monthDays": "Days"
 	},
 	"scheduleMode": {
 		"once": "Once",
@@ -144,20 +141,26 @@
 		"hoursAgo": "{{n}} hr ago",
 		"daysAgo": "{{n}} d ago",
 		"suspended": "Paused",
-		"target": "{{mode}} · {{project}}"
+		"target": "{{mode}} · {{project}}",
+		"filter": {
+			"all": "All",
+			"enabled": "Active",
+			"paused": "Paused",
+			"done": "Done"
+		},
+		"emptySearch": "No matching automations",
+		"emptyFilter": "Nothing here yet",
+		"done": "Done",
+		"nextRun": "next run {{when}}",
+		"inMinutes": "in {{n}} min",
+		"inHours": "in {{n}} h",
+		"inDays": "in {{n}} days"
 	},
 	"confirm": {
 		"deleteTitle": "Delete task \"{{name}}\"?",
 		"deleteMsg": "This cannot be undone. Please confirm to continue.",
 		"delete": "Delete",
 		"cancel": "Cancel"
-	},
-	"drawer": {
-		"close": "Close",
-		"runNow": "Run now",
-		"pause": "Pause",
-		"enable": "Enable",
-		"edit": "Edit"
 	},
 	"history": {
 		"title": "Run history",
@@ -190,5 +193,25 @@
 			"aborted": "aborted"
 		},
 		"noEndpoint": "All selected webhooks are disabled or deleted"
+	},
+	"detail": {
+		"status": {
+			"active": "Active",
+			"running": "Running",
+			"paused": "Paused",
+			"suspended": "Paused · target unavailable",
+			"done": "Done",
+			"draft": "New automation"
+		},
+		"close": "Close",
+		"runNow": "Run now",
+		"pause": "Pause",
+		"enable": "Enable",
+		"more": "More",
+		"delete": "Delete",
+		"openChat": "Open chat",
+		"discard": "Discard",
+		"save": "Save",
+		"create": "Create"
 	}
 }

@@ -1,80 +1,56 @@
-import type { ScheduledTask } from "@shared/store/scheduler-atoms";
-import {
-	AutomationPageView as ThemeAutomationPageView,
-	type AutomationRecommendationItem,
-} from "@vetta-org/theme-ui/scheduler";
+import { AutomationPageView as ThemeAutomationPageView } from "@vetta-org/theme-ui/scheduler";
 import { useTranslation } from "react-i18next";
 import { SettingsAiAssist } from "../../settings/ai-assist";
-import type { AutomationDraft } from "./SchedulerTaskFields";
-import { HistoryDrawer } from "./HistoryDrawer";
-import { TaskFormDialog } from "./TaskForm";
+import type { AutomationPageModel } from "../hooks/useAutomationPageModel";
+import { AutomationDetailPane } from "./AutomationDetailPane";
 import { TaskList } from "./TaskList";
 
-export interface AutomationPageViewProps {
-	readonly dialogOpen: boolean;
-	readonly editingTask: ScheduledTask | undefined;
-	readonly createDraft: Partial<AutomationDraft> | undefined;
-	readonly hasTasks: boolean;
-	readonly recommendations: readonly AutomationRecommendationItem[];
-	readonly selectedTask: ScheduledTask | null;
-	readonly selectedTaskId: string | null;
-	readonly onCloseDialog: () => void;
-	readonly onCloseHistory: () => void;
-	readonly onEditTask: (task: ScheduledTask) => void;
-	readonly onNewTask: () => void;
-	readonly onSelectRecommendation: (id: string) => void;
-	readonly onSelectTask: (id: string) => void;
-}
+export type AutomationPageViewProps = AutomationPageModel;
 
 export function AutomationPageView({
-	dialogOpen,
-	editingTask,
-	createDraft,
+	filters,
+	activeFilter,
+	search,
 	hasTasks,
 	recommendations,
-	selectedTask,
+	pane,
 	selectedTaskId,
-	onCloseDialog,
-	onCloseHistory,
-	onEditTask,
-	onNewTask,
+	onFilterChange,
+	onSearchChange,
+	onCreate,
 	onSelectRecommendation,
 	onSelectTask,
+	onClosePane,
+	onCreated,
 }: AutomationPageViewProps): JSX.Element {
 	const { t } = useTranslation("automation");
 
 	return (
 		<ThemeAutomationPageView
-			hasTasks={hasTasks}
+			labels={{
+				create: t("page.create"),
+				searchPlaceholder: t("page.searchPlaceholder"),
+				recommendTitle: t("recommend.title"),
+			}}
+			filters={filters}
+			activeFilter={activeFilter}
+			onFilterChange={onFilterChange}
+			searchValue={search}
+			onSearchChange={onSearchChange}
+			onCreate={onCreate}
 			headerTrailing={<SettingsAiAssist tabId="automation" />}
-			onNewTask={onNewTask}
+			list={<TaskList selectedTaskId={selectedTaskId} filter={activeFilter} search={search} onSelectTask={onSelectTask} />}
 			recommendations={hasTasks ? undefined : recommendations}
 			onSelectRecommendation={onSelectRecommendation}
-			labels={{
-				title: t("page.title"),
-				subtitle: t("page.subtitle"),
-				newTask: t("page.newTask"),
-				newTaskTitle: t("page.newTaskTitle"),
-				recommendTitle: t("recommend.title"),
-				recommendUse: t("recommend.use"),
-			}}
-			taskList={
-				<TaskList
-					selectedTaskId={selectedTaskId}
-					onSelectTask={onSelectTask}
-					onEditTask={onEditTask}
-				/>
-			}
-			historyDrawer={
-				<HistoryDrawer task={selectedTask} onClose={onCloseHistory} onEdit={onEditTask} />
-			}
-			taskFormDialog={
-				<TaskFormDialog
-					open={dialogOpen}
-					task={editingTask}
-					initialDraft={createDraft}
-					onClose={onCloseDialog}
-				/>
+			detailPane={
+				pane.kind === "none" ? null : (
+					<AutomationDetailPane
+						key={pane.kind === "task" ? `task:${pane.task.id}` : `create:${pane.key}`}
+						pane={pane}
+						onClose={onClosePane}
+						onCreated={onCreated}
+					/>
+				)
 			}
 		/>
 	);

@@ -1,27 +1,15 @@
-import type { ScheduledTask } from "@shared/store/atoms";
+import { TaskListView } from "@vetta-org/theme-ui/scheduler";
+import type { AutomationListFilter } from "../automation-status";
 import { useTaskListModel } from "../hooks/useTaskListModel";
-import { TaskListView } from "./TaskListView";
 
 interface TaskListProps {
 	selectedTaskId: string | null;
+	filter: AutomationListFilter;
+	search: string;
 	onSelectTask: (id: string) => void;
-	onEditTask: (task: ScheduledTask) => void;
 }
 
-export function TaskList({ selectedTaskId, onSelectTask, onEditTask }: TaskListProps): JSX.Element {
-	const model = useTaskListModel({ selectedTaskId });
-	return (
-		<TaskListView
-			items={model.items}
-			labels={model.labels}
-			onDeleteTask={model.onDeleteTask}
-			onEditTask={(taskId) => {
-				const item = model.items.find((candidate) => candidate.id === taskId);
-				if (item) onEditTask(item.task);
-			}}
-			onRunTask={model.onRunTask}
-			onSelectTask={onSelectTask}
-			onToggleTask={model.onToggleTask}
-		/>
-	);
+export function TaskList({ selectedTaskId, filter, search, onSelectTask }: TaskListProps): JSX.Element {
+	const model = useTaskListModel({ selectedTaskId, filter, search });
+	return <TaskListView items={model.items} emptyLabel={model.emptyLabel} onSelectTask={onSelectTask} />;
 }

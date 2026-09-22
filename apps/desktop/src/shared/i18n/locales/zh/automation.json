@@ -1,13 +1,10 @@
 {
 	"page": {
-		"title": "自动化",
-		"subtitle": "让 AI 按计划自动执行任务，解放双手",
-		"newTask": "新建任务",
-		"newTaskTitle": "新建定时任务"
+		"create": "创建",
+		"searchPlaceholder": "搜索自动化"
 	},
 	"recommend": {
 		"title": "推荐任务",
-		"use": "使用此模板",
 		"items": {
 			"morningBrief": {
 				"name": "每日晨间简报",
@@ -28,13 +25,6 @@
 				"prompt": "请基于当前仓库完成本周复盘：\n1. 汇总本周主要 commit 与功能进展\n2. 归纳风险、技术债或反复出现的问题\n3. 给出下周优先级建议（最多 5 条）\n输出适合直接粘贴到周报，用中文，不要改动仓库文件。"
 			}
 		}
-	},
-	"dialog": {
-		"namePlaceholderEdit": "任务名称",
-		"namePlaceholderNew": "新建任务",
-		"cancel": "取消",
-		"save": "保存",
-		"create": "创建"
 	},
 	"form": {
 		"name": "任务标题",
@@ -92,7 +82,14 @@
 		"enabledLabel": "启用",
 		"intervalPrefix": "每隔",
 		"intervalSuffix": "分钟执行一次",
-		"intervalHint": "从保存时起算；修改间隔会从修改时重新起算"
+		"intervalHint": "从保存时起算；修改间隔会从修改时重新起算",
+		"sectionDetails": "详情",
+		"sectionFrequency": "频率",
+		"sectionNotify": "通知",
+		"intervalLabel": "间隔",
+		"minuteLabel": "分钟",
+		"weekdays": "星期",
+		"monthDays": "日期"
 	},
 	"scheduleMode": {
 		"once": "不重复",
@@ -144,20 +141,26 @@
 		"hoursAgo": "{{n}}小时前",
 		"daysAgo": "{{n}}天前",
 		"suspended": "已暂停",
-		"target": "{{mode}} · {{project}}"
+		"target": "{{mode}} · {{project}}",
+		"filter": {
+			"all": "全部",
+			"enabled": "已开启",
+			"paused": "已暂停",
+			"done": "已完成"
+		},
+		"emptySearch": "没有匹配的自动化",
+		"emptyFilter": "这里还没有自动化",
+		"done": "已完成",
+		"nextRun": "下次运行 {{when}}",
+		"inMinutes": "{{n}} 分钟后",
+		"inHours": "{{n}} 小时后",
+		"inDays": "{{n}} 天后"
 	},
 	"confirm": {
 		"deleteTitle": "确认删除任务「{{name}}」",
 		"deleteMsg": "删除后无法撤回，请确认是否继续。",
 		"delete": "删除",
 		"cancel": "取消"
-	},
-	"drawer": {
-		"close": "关闭",
-		"runNow": "立即执行",
-		"pause": "暂停",
-		"enable": "启用",
-		"edit": "编辑"
 	},
 	"history": {
 		"title": "执行历史",
@@ -190,5 +193,25 @@
 			"aborted": "已中止"
 		},
 		"noEndpoint": "所选 webhook 均已停用或删除"
+	},
+	"detail": {
+		"status": {
+			"active": "活跃",
+			"running": "运行中",
+			"paused": "已暂停",
+			"suspended": "已暂停 · 目标失效",
+			"done": "已完成",
+			"draft": "新建自动化"
+		},
+		"close": "关闭",
+		"runNow": "立即运行",
+		"pause": "暂停",
+		"enable": "启用",
+		"more": "更多",
+		"delete": "删除",
+		"openChat": "打开聊天",
+		"discard": "放弃修改",
+		"save": "保存",
+		"create": "创建"
 	}
 }

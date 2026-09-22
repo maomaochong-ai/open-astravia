@@ -1,8 +1,5 @@
+import { cn } from "@vetta-org/ui";
 import type { JSX, ReactNode } from "react";
-import { motion } from "motion/react";
-import { Button } from "@vetta-org/ui";
-
-const easeOut = [0.22, 1, 0.36, 1] as const;
 
 export interface AutomationRecommendationItem {
 	readonly id: string;
@@ -12,148 +9,154 @@ export interface AutomationRecommendationItem {
 	readonly scheduleLabel: string;
 }
 
+export interface AutomationFilterTab<Key extends string = string> {
+	readonly key: Key;
+	readonly label: string;
+}
+
 export interface AutomationPageViewLabels {
-	readonly title: string;
-	readonly subtitle: string;
-	readonly newTask: string;
-	readonly newTaskTitle: string;
-	/** @deprecated Empty hero removed; kept optional for host compatibility. */
-	readonly emptyTitle?: string;
-	readonly emptyDesc?: string;
-	readonly emptyAction?: string;
+	readonly create: string;
+	readonly searchPlaceholder: string;
 	/** Section heading above recommended templates when the user has no tasks. */
 	readonly recommendTitle?: string;
-	/** Optional CTA on each recommendation card. */
-	readonly recommendUse?: string;
 }
 
-export interface AutomationPageViewProps {
-	readonly hasTasks: boolean;
-	/** Optional trailing header actions (e.g. AI assist), rendered before the primary CTA. */
-	readonly headerTrailing?: ReactNode;
+export interface AutomationPageViewProps<FilterKey extends string = string> {
 	readonly labels: AutomationPageViewLabels;
-	readonly onNewTask: () => void;
-	/** Host-owned TaskList / empty handled here when hasTasks. */
-	readonly taskList: ReactNode;
-	readonly historyDrawer: ReactNode;
-	readonly taskFormDialog: ReactNode;
-	/** Recommended templates shown only when `hasTasks` is false. */
+	readonly filters: readonly AutomationFilterTab<FilterKey>[];
+	readonly activeFilter: FilterKey;
+	readonly onFilterChange: (key: FilterKey) => void;
+	readonly searchValue: string;
+	readonly onSearchChange: (value: string) => void;
+	readonly onCreate: () => void;
+	/** Optional secondary action (e.g. AI assist), rendered beside the search box. */
+	readonly headerTrailing?: ReactNode;
+	/** Task list (or its empty state). */
+	readonly list: ReactNode;
+	/** Recommended templates shown under the list when the user has no tasks. */
 	readonly recommendations?: readonly AutomationRecommendationItem[];
 	readonly onSelectRecommendation?: (id: string) => void;
+	/** Right split pane (edit / create / history). The list narrows while it is open. */
+	readonly detailPane?: ReactNode;
 }
 
-export function AutomationPageView({
-	hasTasks,
-	headerTrailing,
+/**
+ * 自动化页：左列是可筛选、可搜索的任务列表，右侧是编辑与执行历史的分屏。
+ * 刻意不用入场动画、毛玻璃与模糊：这一页常驻在侧边栏入口里，每一帧的合成代价都要算。
+ */
+export function AutomationPageView<FilterKey extends string>({
 	labels,
-	onNewTask,
-	taskList,
-	historyDrawer,
-	taskFormDialog,
+	filters,
+	activeFilter,
+	onFilterChange,
+	searchValue,
+	onSearchChange,
+	onCreate,
+	headerTrailing,
+	list,
 	recommendations,
 	onSelectRecommendation,
-}: AutomationPageViewProps): JSX.Element {
+	detailPane,
+}: AutomationPageViewProps<FilterKey>): JSX.Element {
+	const paneOpen = Boolean(detailPane);
 	return (
-		<div className="relative flex h-full w-full flex-1 flex-col overflow-hidden">
-			<div className="drag-region h-6 shrink-0" />
-
-			<div className="relative shrink-0 px-8 pb-4">
-				<div className="flex items-end justify-between gap-4">
-					<motion.div
-						initial={{ opacity: 0, y: -8 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{ duration: 0.5, ease: easeOut }}
-					>
-						<h1 className="bg-gradient-to-br from-foreground via-foreground to-foreground/70 bg-clip-text text-[26px] font-bold leading-tight tracking-tight text-transparent">
-							{labels.title}
-						</h1>
-						<p className="mt-1 text-[12px] text-muted-foreground/60">{labels.subtitle}</p>
-					</motion.div>
-
-					<div className="flex items-center gap-2">
-						{headerTrailing}
-						<Button type="button" variant="primary" onClick={onNewTask} title={labels.newTaskTitle}>
-							<span className="icon-[mdi--plus] text-[15px]" />
-							{labels.newTask}
-						</Button>
+		<div className="flex h-full w-full flex-1 overflow-hidden">
+			<section
+				className={cn(
+					"flex min-w-0 flex-col",
+					paneOpen ? "w-[400px] shrink-0 border-r border-border/60" : "flex-1",
+				)}
+			>
+				<div className="drag-region h-6 shrink-0" />
+				<div className={cn("flex w-full flex-col px-5", !paneOpen && "mx-auto max-w-3xl")}>
+					<div className="flex items-center gap-1">
+						<div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto" role="tablist">
+							{filters.map((filter) => (
+								<button
+									key={filter.key}
+									type="button"
+									role="tab"
+									aria-selected={filter.key === activeFilter}
+									onClick={() => onFilterChange(filter.key)}
+									className={cn(
+										"h-7 shrink-0 rounded-md px-2.5 text-[13px] transition-colors",
+										filter.key === activeFilter
+											? "bg-accent font-medium text-foreground"
+											: "text-muted-foreground hover:text-foreground",
+									)}
+								>
+									{filter.label}
+								</button>
+							))}
+						</div>
+						<button
+							type="button"
+							onClick={onCreate}
+							className="flex h-7 shrink-0 items-center gap-1 rounded-md bg-foreground px-2.5 text-[13px] font-medium text-background transition-opacity hover:opacity-90"
+						>
+							<span className="icon-[mdi--plus] h-3.5 w-3.5" />
+							{labels.create}
+						</button>
+					</div>
+					<div className="mt-3 flex items-center gap-2">
+					<label className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-border/60 bg-card/40 px-3">
+						<span className="icon-[mdi--magnify] h-4 w-4 shrink-0 text-muted-foreground/60" />
+						<input
+							type="search"
+							value={searchValue}
+							onChange={(event) => onSearchChange(event.target.value)}
+							placeholder={labels.searchPlaceholder}
+							className="min-w-0 flex-1 bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
+						/>
+					</label>
+					{/* 次要入口放在搜索框旁：分屏打开时左列变窄，放进标签行会压住标签。 */}
+					{headerTrailing ? <div className="shrink-0">{headerTrailing}</div> : null}
 					</div>
 				</div>
-			</div>
-
-			<div className="flex flex-1 flex-col gap-5 overflow-y-auto px-8 pt-5 pb-6">
-				{hasTasks ? (
-					taskList
-				) : (
-					<AutomationRecommendations
-						recommendTitle={labels.recommendTitle}
-						recommendUse={labels.recommendUse}
-						recommendations={recommendations}
-						onSelectRecommendation={onSelectRecommendation}
-					/>
-				)}
-			</div>
-
-			{historyDrawer}
-			{taskFormDialog}
+				<div className={cn("mt-3 min-h-0 w-full flex-1 overflow-y-auto px-5 pb-6", !paneOpen && "mx-auto max-w-3xl")}>
+					{list}
+					{recommendations && recommendations.length > 0 ? (
+						<AutomationRecommendations
+							title={labels.recommendTitle}
+							recommendations={recommendations}
+							onSelect={onSelectRecommendation}
+						/>
+					) : null}
+				</div>
+			</section>
+			{detailPane ? <section className="flex min-w-0 flex-1 flex-col">{detailPane}</section> : null}
 		</div>
 	);
 }
 
 function AutomationRecommendations({
-	recommendTitle,
-	recommendUse,
+	title,
 	recommendations,
-	onSelectRecommendation,
+	onSelect,
 }: {
-	readonly recommendTitle?: string;
-	readonly recommendUse?: string;
-	readonly recommendations?: readonly AutomationRecommendationItem[];
-	readonly onSelectRecommendation?: (id: string) => void;
-}): JSX.Element | null {
-	if (!recommendations || recommendations.length === 0) return null;
-
+	readonly title?: string;
+	readonly recommendations: readonly AutomationRecommendationItem[];
+	readonly onSelect?: (id: string) => void;
+}): JSX.Element {
 	return (
-		<motion.div
-			className="flex w-full flex-col gap-3"
-			initial={{ opacity: 0, y: 12 }}
-			animate={{ opacity: 1, y: 0 }}
-			transition={{ duration: 0.5, ease: easeOut }}
-		>
-			{recommendTitle ? (
-				<p className="text-[12px] font-medium tracking-wide text-muted-foreground/70">{recommendTitle}</p>
-			) : null}
-			<div className="grid grid-cols-3 gap-4">
-				{recommendations.map((item, index) => (
-					<motion.button
-						key={item.id}
-						type="button"
-						initial={{ opacity: 0, y: 12 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{ duration: 0.4, delay: 0.05 * index, ease: easeOut }}
-						onClick={() => onSelectRecommendation?.(item.id)}
-						className="group flex cursor-pointer flex-col rounded-xl border border-border/50 bg-card/40 p-4 text-left backdrop-blur-sm transition-colors duration-200 hover:border-primary/40 hover:bg-card/60"
-					>
-						<div className="flex items-start gap-3">
-							<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-inset ring-primary/15">
-								<span className={`${item.icon} h-4 w-4 text-primary`} />
-							</div>
-							<div className="min-w-0 flex-1">
-								<p className="truncate text-[13px] font-semibold text-foreground">{item.title}</p>
-								<p className="mt-0.5 truncate text-[11px] text-muted-foreground/60">{item.scheduleLabel}</p>
-							</div>
-						</div>
-						<p className="mt-3 line-clamp-2 text-[12px] leading-relaxed text-muted-foreground/70">
-							{item.description}
-						</p>
-						{recommendUse && (
-							<span className="mt-3 inline-flex items-center gap-1 text-[11px] font-medium text-primary opacity-80 transition-opacity group-hover:opacity-100">
-								{recommendUse}
-								<span className="icon-[mdi--arrow-right] h-3.5 w-3.5" />
-							</span>
-						)}
-					</motion.button>
-				))}
-			</div>
-		</motion.div>
+		<div className="mt-6 flex flex-col gap-2">
+			{title ? <p className="px-1 text-[12px] text-muted-foreground/70">{title}</p> : null}
+			{recommendations.map((item) => (
+				<button
+					key={item.id}
+					type="button"
+					onClick={() => onSelect?.(item.id)}
+					className="flex items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-accent/60"
+				>
+					<span className={cn(item.icon, "mt-0.5 h-4 w-4 shrink-0 text-primary")} />
+					<span className="min-w-0 flex-1">
+						<span className="block truncate text-[13px] text-foreground">{item.title}</span>
+						<span className="mt-0.5 block truncate text-[12px] text-muted-foreground/70">
+							{item.scheduleLabel} · {item.description}
+						</span>
+					</span>
+				</button>
+			))}
+		</div>
 	);
 }

@@ -1,4 +1,4 @@
-import { Popover, PopoverContent, PopoverTrigger, cn } from "@vetta-org/ui";
+import { cn, Popover, PopoverContent, PopoverTrigger } from "@vetta-org/ui";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -7,6 +7,7 @@ import {
 	type AutomationSchedule,
 	type AutomationScheduleKind,
 } from "../../../../../shared/automation";
+import { chipClass, FieldRow, RowSelect, rowInputClass } from "../AutomationFieldRows";
 import {
 	CRON_FIELDS,
 	type CronFieldSpec,
@@ -19,47 +20,30 @@ import {
 export interface ScheduleEditorViewProps {
 	readonly kinds: readonly { readonly kind: AutomationScheduleKind; readonly label: string }[];
 	readonly schedule: AutomationSchedule;
+	readonly summary: string;
 	readonly onKindChange: (kind: AutomationScheduleKind) => void;
 	readonly onChange: (schedule: AutomationSchedule) => void;
 }
 
-const inputClass =
-	"h-8 rounded-md border border-border/50 bg-background/60 px-2 text-[12px] text-foreground focus:outline-none [color-scheme:light_dark]";
-
-function chipClass(selected: boolean): string {
-	return cn(
-		"flex h-7 min-w-7 items-center justify-center rounded-md px-1.5 text-[11px] tabular-nums transition-colors",
-		selected ? "bg-primary/15 text-primary" : "bg-muted/50 text-muted-foreground hover:text-foreground",
-	);
-}
-
-export function ScheduleEditorView({ kinds, schedule, onKindChange, onChange }: ScheduleEditorViewProps): JSX.Element {
+/** 「频率」分组里的几行：重复方式一行，其余按所选方式展开对应的行。 */
+export function ScheduleEditorView({ kinds, schedule, summary, onKindChange, onChange }: ScheduleEditorViewProps): JSX.Element {
+	const { t } = useTranslation("automation");
 	return (
-		<div className="space-y-2">
-			<div className="inline-flex flex-wrap gap-1 rounded-lg bg-muted/50 p-0.5">
-				{kinds.map((option) => (
-					<button
-						key={option.kind}
-						type="button"
-						aria-pressed={option.kind === schedule.kind}
-						onClick={() => onKindChange(option.kind)}
-						className={cn(
-							"h-7 rounded-md px-2.5 text-[12px] font-medium transition-colors",
-							option.kind === schedule.kind
-								? "bg-card text-foreground shadow-sm"
-								: "text-muted-foreground hover:text-foreground",
-						)}
-					>
-						{option.label}
-					</button>
-				))}
-			</div>
-			<KindEditor schedule={schedule} onChange={onChange} />
-		</div>
+		<>
+			<FieldRow label={t("form.repeat")} hint={summary}>
+				<RowSelect
+					ariaLabel={t("form.repeat")}
+					options={kinds.map((option) => ({ value: option.kind, label: option.label }))}
+					value={schedule.kind}
+					onChange={(kind) => onKindChange(kind as AutomationScheduleKind)}
+				/>
+			</FieldRow>
+			<KindRows schedule={schedule} onChange={onChange} />
+		</>
 	);
 }
 
-function KindEditor({
+function KindRows({
 	schedule,
 	onChange,
 }: {
@@ -72,21 +56,23 @@ function KindEditor({
 			const date = new Date(schedule.at);
 			const value = `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}T${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
 			return (
-				<input
-					type="datetime-local"
-					aria-label={t("scheduleMode.once")}
-					value={value}
-					onChange={(event) => {
-						const next = new Date(event.target.value);
-						if (!Number.isNaN(next.getTime())) onChange({ kind: "once", at: next.getTime() });
-					}}
-					className={inputClass}
-				/>
+				<FieldRow label={t("form.time")}>
+					<input
+						type="datetime-local"
+						aria-label={t("form.time")}
+						value={value}
+						onChange={(event) => {
+							const next = new Date(event.target.value);
+							if (!Number.isNaN(next.getTime())) onChange({ kind: "once", at: next.getTime() });
+						}}
+						className={rowInputClass}
+					/>
+				</FieldRow>
 			);
 		}
 		case "interval":
 			return (
-				<div className="space-y-1">
+				<FieldRow label={t("form.intervalLabel")} hint={t("form.intervalHint")}>
 					<label className="flex items-center gap-2 text-[12px] text-muted-foreground">
 						{t("form.intervalPrefix")}
 						<input
@@ -101,64 +87,67 @@ function KindEditor({
 									onChange({ kind: "interval", everyMinutes, startAt: Date.now() });
 								}
 							}}
-							className={cn(inputClass, "w-20 text-center")}
+							className={cn(rowInputClass, "w-20 text-center")}
 						/>
 						{t("form.intervalSuffix")}
 					</label>
-					<p className="text-[11px] text-muted-foreground/60">{t("form.intervalHint")}</p>
-				</div>
+				</FieldRow>
 			);
 		case "hourly":
 			return (
-				<label className="flex items-center gap-2 text-[12px] text-muted-foreground">
-					{t("form.atMinutePrefix")}
-					<input
-						type="number"
-						min={0}
-						max={59}
-						value={schedule.minute}
-						onChange={(event) => {
-							const minute = Number.parseInt(event.target.value, 10);
-							if (minute >= 0 && minute <= 59) onChange({ kind: "hourly", minute });
-						}}
-						className={cn(inputClass, "w-16 text-center")}
-					/>
-					{t("form.atMinuteSuffix")}
-				</label>
+				<FieldRow label={t("form.minuteLabel")}>
+					<label className="flex items-center gap-2 text-[12px] text-muted-foreground">
+						{t("form.atMinutePrefix")}
+						<input
+							type="number"
+							min={0}
+							max={59}
+							value={schedule.minute}
+							onChange={(event) => {
+								const minute = Number.parseInt(event.target.value, 10);
+								if (minute >= 0 && minute <= 59) onChange({ kind: "hourly", minute });
+							}}
+							className={cn(rowInputClass, "w-16 text-center")}
+						/>
+						{t("form.atMinuteSuffix")}
+					</label>
+				</FieldRow>
 			);
 		case "daily":
-			return <TimeInput schedule={schedule} onChange={(time) => onChange({ ...schedule, ...time })} />;
+			return <TimeRow schedule={schedule} onChange={(time) => onChange({ ...schedule, ...time })} />;
 		case "weekly": {
 			const names = t("schedule.weekdayNames", { returnObjects: true }) as string[];
 			// 周一在前，符合日常习惯；取值仍是 cron 的 0 = 周日。
 			const order = [1, 2, 3, 4, 5, 6, 0];
 			return (
-				<div className="space-y-2">
-					<div className="flex flex-wrap gap-1">
-						{order.map((day) => {
-							const selected = schedule.weekdays.includes(day);
-							return (
-								<button
-									key={day}
-									type="button"
-									aria-pressed={selected}
-									onClick={() =>
-										onChange({
-											...schedule,
-											weekdays: selected
-												? schedule.weekdays.filter((value) => value !== day)
-												: [...schedule.weekdays, day],
-										})
-									}
-									className={chipClass(selected)}
-								>
-									{names[day]}
-								</button>
-							);
-						})}
-					</div>
-					<TimeInput schedule={schedule} onChange={(time) => onChange({ ...schedule, ...time })} />
-				</div>
+				<>
+					<FieldRow label={t("form.weekdays")}>
+						<div className="flex flex-wrap justify-end gap-1">
+							{order.map((day) => {
+								const selected = schedule.weekdays.includes(day);
+								return (
+									<button
+										key={day}
+										type="button"
+										aria-pressed={selected}
+										onClick={() =>
+											onChange({
+												...schedule,
+												weekdays: selected
+													? schedule.weekdays.filter((value) => value !== day)
+													: [...schedule.weekdays, day],
+											})
+										}
+										className={chipClass(selected)}
+									>
+										{names[day]}
+									</button>
+								);
+							})}
+						</div>
+					</FieldRow>
+					<TimeRow schedule={schedule} onChange={(time) => onChange({ ...schedule, ...time })} />
+				</>
 			);
 		}
 		case "monthly": {
@@ -170,39 +159,44 @@ function KindEditor({
 				});
 			};
 			return (
-				<div className="space-y-2">
-					<div className="grid grid-cols-7 gap-1">
-						{Array.from({ length: 31 }, (_, index) => index + 1).map((day) => (
+				<>
+					<FieldRow label={t("form.monthDays")} hint={t("form.monthlyShortMonthHint")} stacked>
+						<div className="grid grid-cols-7 gap-1">
+							{Array.from({ length: 31 }, (_, index) => index + 1).map((day) => (
+								<button
+									key={day}
+									type="button"
+									aria-pressed={schedule.days.includes(day)}
+									onClick={() => toggle(day)}
+									className={chipClass(schedule.days.includes(day))}
+								>
+									{day}
+								</button>
+							))}
 							<button
-								key={day}
 								type="button"
-								aria-pressed={schedule.days.includes(day)}
-								onClick={() => toggle(day)}
-								className={chipClass(schedule.days.includes(day))}
+								aria-pressed={schedule.days.includes("last")}
+								onClick={() => toggle("last")}
+								className={cn(chipClass(schedule.days.includes("last")), "col-span-3")}
 							>
-								{day}
+								{t("schedule.lastDay")}
 							</button>
-						))}
-						<button
-							type="button"
-							aria-pressed={schedule.days.includes("last")}
-							onClick={() => toggle("last")}
-							className={cn(chipClass(schedule.days.includes("last")), "col-span-3")}
-						>
-							{t("schedule.lastDay")}
-						</button>
-					</div>
-					<p className="text-[11px] text-muted-foreground/60">{t("form.monthlyShortMonthHint")}</p>
-					<TimeInput schedule={schedule} onChange={(time) => onChange({ ...schedule, ...time })} />
-				</div>
+						</div>
+					</FieldRow>
+					<TimeRow schedule={schedule} onChange={(time) => onChange({ ...schedule, ...time })} />
+				</>
 			);
 		}
 		case "custom":
-			return <CustomCronEditor cron={schedule.cron} onChange={(cron) => onChange({ kind: "custom", cron })} />;
+			return (
+				<FieldRow label={t("form.cronExpression")} hint={t("form.cronHint")} stacked>
+					<CustomCronEditor cron={schedule.cron} onChange={(cron) => onChange({ kind: "custom", cron })} />
+				</FieldRow>
+			);
 	}
 }
 
-function TimeInput({
+function TimeRow({
 	schedule,
 	onChange,
 }: {
@@ -211,16 +205,18 @@ function TimeInput({
 }): JSX.Element {
 	const { t } = useTranslation("automation");
 	return (
-		<input
-			type="time"
-			aria-label={t("form.time")}
-			value={`${pad2(schedule.hour)}:${pad2(schedule.minute)}`}
-			onChange={(event) => {
-				const [hour, minute] = event.target.value.split(":").map(Number);
-				if (Number.isInteger(hour) && Number.isInteger(minute)) onChange({ hour, minute });
-			}}
-			className={inputClass}
-		/>
+		<FieldRow label={t("form.time")}>
+			<input
+				type="time"
+				aria-label={t("form.time")}
+				value={`${pad2(schedule.hour)}:${pad2(schedule.minute)}`}
+				onChange={(event) => {
+					const [hour, minute] = event.target.value.split(":").map(Number);
+					if (Number.isInteger(hour) && Number.isInteger(minute)) onChange({ hour, minute });
+				}}
+				className={rowInputClass}
+			/>
+		</FieldRow>
 	);
 }
 
@@ -263,10 +259,9 @@ function CustomCronEditor({
 					setText(event.target.value);
 					if (splitCron(event.target.value).length === 5) onChange(event.target.value.trim());
 				}}
-				className={cn(inputClass, "w-full font-mono", !valid && "border-destructive/60")}
+				className={cn(rowInputClass, "w-full font-mono", !valid && "border-destructive/60")}
 				placeholder="0 9 * * 1-5"
 			/>
-			<p className="text-[11px] text-muted-foreground/60">{t("form.cronHint")}</p>
 		</div>
 	);
 }
@@ -293,7 +288,7 @@ function CronFieldPicker({
 					type="button"
 					disabled={parsed === undefined}
 					title={parsed === undefined ? t("form.cronTextOnly") : undefined}
-					className="flex h-8 items-center gap-1.5 rounded-md border border-border/50 bg-card/40 px-2 text-[12px] text-muted-foreground hover:text-foreground disabled:opacity-60"
+					className="flex h-7 items-center gap-1.5 rounded-md border border-border/50 bg-background/60 px-2 text-[12px] text-muted-foreground hover:text-foreground disabled:opacity-60"
 				>
 					<span>{t(`form.cronField.${spec.key}`)}</span>
 					<span className="max-w-[90px] truncate font-mono text-foreground">{summary}</span>
