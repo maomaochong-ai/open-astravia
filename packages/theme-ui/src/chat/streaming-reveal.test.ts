@@ -150,7 +150,7 @@ describe("planReveal", () => {
 	});
 
 	test("reveals everything at once when the stream is final, ignoring holds", () => {
-		const text = "a ".repeat(100) + "[open](/tmp/li";
+		const text = `${"a ".repeat(100)}[open](/tmp/li`;
 		const step = planReveal({ ...base, text, revealed: 0, final: true, ratePerMs: 0.01, elapsedMs: 1 });
 		expect(step).toEqual({ end: text.length, held: false });
 	});
