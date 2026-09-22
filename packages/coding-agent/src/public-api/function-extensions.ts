@@ -7,6 +7,7 @@ export {
 export {
 	CODING_AGENT_ASK_USER_QUESTION_EXTENSION_ID,
 	CODING_AGENT_ASK_USER_QUESTION_FUNCTION,
+	CODING_AGENT_UNATTENDED_TURN_METADATA_KEY,
 	type CodingAgentQuestionAnswer,
 	type CodingAgentQuestionFunctionRequest,
 	type CodingAgentQuestionItem,
