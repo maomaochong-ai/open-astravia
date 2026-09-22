@@ -722,3 +722,8 @@ _Avoid_: 叫「页面」「artboard」；把 frame 理解为静态 HTML 文件�
 
 「Vetta UI Design」插件托管的**单一** vite + React + Tailwind v4 模板工程：锁死版本、预装 node_modules（随插件预置或首启一次性下载），内含 @iconify/tailwind4 与 JSX 源码插桩（dev 注入 `data-source` 文件:行号，生产构建不注入）。每个打开的 .vetd 由引擎挂载其 [[旁挂目录（.vetd.d)]] 源码起一个 vite dev server（依赖宿主长驻进程 SDK 与托管 Node 运行时），画布 iframe 指向 localhost 获得 HMR。设计文档自身永不携带依赖与工具链。
 _Avoid_: 每个 .vetd 各自一套 node_modules / 各自 npm install。
+
+### 工作模式（agent mode）
+
+用户在新会话页选择、在会话创建时固定下来的任务解释先验，目前有 Work 与 Coding 两个。模式之间**只有提示词正文不同**：身份、默认路线与各自的专业纪律；会话流的[[叙事阶段]]、Deliverables 改动文件清单、写代码时的底线纪律对所有模式一致，不随模式变化。模式不排除也不重排任何工具、Skill、MCP 或插件。
+_Avoid_: 「场景」（与 `scope_use` 会话场景混淆）；「执行模式」「权限模式」（那是 `permissionMode`，与工作模式正交）。
