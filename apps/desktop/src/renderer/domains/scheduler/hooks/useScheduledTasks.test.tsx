@@ -24,8 +24,7 @@ describe("useScheduledTasks", () => {
 			disableTask: vi.fn(async () => undefined),
 			getRecords: vi.fn(async () => []),
 			getRunningTaskIds: vi.fn(async () => []),
-			getScheduledSessionPaths: vi.fn(async () => []),
-			deleteRecordsBySession: vi.fn(async () => []),
+			getSessionLinks: vi.fn(async () => []),
 			runTaskNow: vi.fn(async () => undefined),
 			abortTask: vi.fn(async () => undefined),
 			onTaskEvent: vi.fn((handler) => {
@@ -53,30 +52,20 @@ describe("useScheduledTasks", () => {
 		expect(unsubscribe).toHaveBeenCalledOnce();
 	});
 
-	it("does not drop a task added while an update IPC call is in flight", async () => {
-		const first = task("first");
-		const added = task("added");
-		const pendingUpdate = deferred<void>();
-		vi.mocked(scheduler.updateTask).mockReturnValue(pendingUpdate.promise);
+	it("takes the host's task list after an update so main-side changes such as a cleared suspension show up", async () => {
+		const suspended = { ...task("first"), enabled: false, suspendedReason: "session-deleted" as const };
+		const resumed = { ...task("first"), name: "Updated" };
 		const store = createStore();
-		store.set(scheduledTasksAtom, [first]);
+		store.set(scheduledTasksAtom, [suspended]);
+		vi.mocked(scheduler.getTasks).mockResolvedValue([resumed]);
 		const { result } = renderHook(() => useScheduledTasks(), { wrapper: wrapperFor(store) });
-		let updatePromise: Promise<void> | undefined;
 
-		act(() => {
-			updatePromise = result.current.updateTask(first.id, { name: "Updated" });
-		});
-		await waitFor(() => expect(scheduler.updateTask).toHaveBeenCalledOnce());
-		act(() => store.set(scheduledTasksAtom, [first, added]));
 		await act(async () => {
-			pendingUpdate.resolve();
-			await updatePromise;
+			await result.current.updateTask("first", { name: "Updated", enabled: true });
 		});
 
-		expect(store.get(scheduledTasksAtom).map(({ id, name }) => ({ id, name }))).toEqual([
-			{ id: "first", name: "Updated" },
-			{ id: "added", name: "Task added" },
-		]);
+		expect(scheduler.updateTask).toHaveBeenCalledWith("first", { name: "Updated", enabled: true });
+		expect(store.get(scheduledTasksAtom)).toEqual([resumed]);
 	});
 
 	it("deletes from the latest task list after the host call completes", async () => {
@@ -109,10 +98,9 @@ function task(id: string): ScheduledTask {
 		id,
 		name: `Task ${id}`,
 		prompt: "Run it",
-		cron: "0 9 * * *",
-		isOnce: false,
+		schedule: { kind: "daily", hour: 9, minute: 0 },
+		runTarget: { mode: "new-session", projectCwd: "C:/workspace" },
 		enabled: true,
-		cwd: "C:/workspace",
 		createdAt: 1,
 		updatedAt: 1,
 		lastRunAt: null,

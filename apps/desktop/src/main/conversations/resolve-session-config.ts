@@ -15,7 +15,8 @@ import {
 	resolveSessionDirForCwd,
 } from "./session-paths.js";
 
-export type DesktopConversationSource = "interactive" | "debug";
+/** automation：定时自动化在无人值守时发起的会话/轮次（ADR-0127）。 */
+export type DesktopConversationSource = "interactive" | "debug" | "automation";
 export type DesktopSessionKind = "conversation" | "other";
 
 /** Desktop 的 Coding Agent 产品输入；产品字段不会进入 Runtime Core 的 SessionConfig。 */
@@ -51,7 +52,8 @@ export interface ResolvedDesktopSessionConfig {
 
 /**
  * 工作模式的唯一来源：
- * - 新建会话取 desktop-config 的 defaultAgentMode（新会话默认值）；
+ * - 新建会话优先取调用方显式指定的模式（如自动化固定 work），否则取 desktop-config 的
+ *   defaultAgentMode（新会话默认值）；
  * - 恢复已有会话取该会话创建时固化的记录，缺记录时回落常量，绝不回落当前默认值，
  *   否则改默认值会连带改写历史会话的模式。
  */
@@ -89,7 +91,10 @@ export async function resolveDesktopSessionConfig(
 				? `${config.appendSystemPrompt}\n\n${VETTA_CLI_GUIDANCE}`
 				: VETTA_CLI_GUIDANCE
 			: config?.appendSystemPrompt;
-	const agentMode = await resolveSessionAgentMode(config?.sessionPath, desktopConfig.defaultAgentMode ?? "work");
+	const agentMode = await resolveSessionAgentMode(
+		config?.sessionPath,
+		config?.agentMode ?? desktopConfig.defaultAgentMode ?? "work",
+	);
 	const {
 		scenario: _scenario,
 		agentMode: _agentMode,

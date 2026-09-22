@@ -140,7 +140,9 @@
 			"pause": "Pause",
 			"enable": "Enable",
 			"executionRecords": "Execution records",
-			"noRecords": "No execution records"
+			"noRecords": "No execution records",
+			"statusSkipped": "Skipped",
+			"statusMissed": "Missed"
 		},
 		"htmlPreview": {
 			"title": "HTML preview"

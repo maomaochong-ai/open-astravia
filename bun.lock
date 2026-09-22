@@ -114,6 +114,7 @@
         "canvas-confetti": "^1.9.4",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
+        "croner": "^8.1.2",
         "cross-spawn": "^7.0.6",
         "date-fns": "^4.1.0",
         "dbus-next": "^0.10.2",

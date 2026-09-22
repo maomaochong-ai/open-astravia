@@ -32,10 +32,9 @@ describe("useTaskFormModel", () => {
 			id: "paused-task",
 			name: "Paused",
 			prompt: "Run later",
-			cron: "0 9 * * *",
-			isOnce: false,
+			schedule: { kind: "daily", hour: 9, minute: 0 },
+			runTarget: { mode: "same-session", projectCwd: "C:/workspace", sessionPath: "C:/sessions/bound.jsonl" },
 			enabled: false,
-			cwd: "C:/workspace",
 			createdAt: 1,
 			updatedAt: 1,
 			lastRunAt: null,
@@ -51,7 +50,13 @@ describe("useTaskFormModel", () => {
 		await waitFor(() => expect(schedulerMocks.updateTask).toHaveBeenCalledOnce());
 		expect(schedulerMocks.updateTask).toHaveBeenCalledWith(
 			"paused-task",
-			expect.objectContaining({ enabled: false }),
+			expect.objectContaining({
+				enabled: false,
+				runTarget: { mode: "same-session", projectCwd: "C:/workspace", sessionPath: "C:/sessions/bound.jsonl" },
+				// 编辑保存整份提交：没选模型、没开通知即显式清除。
+				model: null,
+				notification: null,
+			}),
 		);
 		await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
 	});
@@ -62,7 +67,7 @@ describe("useTaskFormModel", () => {
 		const onClose = vi.fn();
 		const store = createStore();
 		store.set(defaultConversationCwdAtom, "C:/default");
-		const initialDraft = { name: "Daily", prompt: "Summarize", cwd: "C:/workspace", cron: "0 9 * * *" };
+		const initialDraft = { name: "Daily", prompt: "Summarize" };
 		const { result } = renderHook(
 			() =>
 				useTaskFormModel({
@@ -76,6 +81,13 @@ describe("useTaskFormModel", () => {
 		await waitFor(() => expect(result.current.canSubmit).toBe(true));
 
 		act(() => result.current.onSubmit());
+		expect(schedulerMocks.createTask).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: "Daily",
+				runTarget: { mode: "new-session", projectCwd: "C:/default" },
+				enabled: true,
+			}),
+		);
 		expect(onClose).not.toHaveBeenCalled();
 		await act(async () => pendingCreate.resolve());
 		await waitFor(() => expect(onClose).toHaveBeenCalledOnce());

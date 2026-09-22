@@ -20,7 +20,7 @@ const inputSchema = z
 export interface RuntimeCanarySchedulerState {
 	readonly activeTasks: Array<{
 		readonly taskId: string;
-		readonly sessionId: string;
+		readonly sessionId: string | undefined;
 		readonly sessionPath: string | undefined;
 	}>;
 }
@@ -39,6 +39,7 @@ export interface RuntimeCanaryConsumerDependencies {
 	readonly scheduler: Pick<SchedulerService, "createTask" | "runNow">;
 	readonly batch: Pick<BatchTaskService, "createProject" | "startProject">;
 	readonly readSchedulerState: () => RuntimeCanarySchedulerState;
+	readonly conversationCwd: string;
 	readonly readBatchState: () => RuntimeCanaryBatchState;
 }
 
@@ -85,12 +86,11 @@ export function createRuntimeCanaryConsumerDefinitions(
 				const schedulerTask = await dependencies.scheduler.createTask({
 					name: "Runtime Canary Scheduler",
 					prompt: RUNTIME_CANARY_SCHEDULER_PROMPT,
-					cron: "0 0 1 1 *",
-					isOnce: false,
+					schedule: { kind: "custom", cron: "0 0 1 1 *" },
+					// 自动化只能落在侧边栏已有的项目里；隔离 VETTA_HOME 下的「对话」即天然隔离。
+					runTarget: { mode: "new-session", projectCwd: dependencies.conversationCwd },
+					model: { key: parsed.modelKey },
 					enabled: false,
-					cwd: parsed.workspace,
-					modelKey: parsed.modelKey,
-					executionMode: "full-access",
 				});
 				void dependencies.scheduler.runNow(schedulerTask.id).catch((error: unknown) => {
 					schedulerFailure = error;

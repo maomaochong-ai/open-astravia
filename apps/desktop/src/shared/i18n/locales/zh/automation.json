@@ -29,7 +29,6 @@
 			}
 		}
 	},
-
 	"dialog": {
 		"namePlaceholderEdit": "任务名称",
 		"namePlaceholderNew": "新建任务",
@@ -38,43 +37,92 @@
 		"create": "创建"
 	},
 	"form": {
-		"namePlaceholder": "任务名称",
-		"promptPlaceholder": "输入提示词...使用 / 唤出技能/场景",
-		"selectWorkDir": "选择工作目录",
-		"conversation": "对话",
-		"modelEmpty": "暂无模型",
-		"modelSelect": "选择模型",
-		"defaultTag": "默认",
-		"enabled": "已启用",
-		"disabled": "已停用",
-		"fullAccess": "完全访问",
-		"useSandbox": "使用沙盒",
-		"inherit": "跟随默认（{{mode}}）",
-		"sandbox": "沙盒",
-		"sandboxUnavailable": "{{platform}} 沙盒不可用：{{reason}}",
-		"every": "每隔",
-		"unitHours": "小时",
-		"unitDays": "天"
+		"name": "任务标题",
+		"namePlaceholder": "任务标题",
+		"promptPlaceholder": "描述任务，告诉Vetta要做什么（输入 / 选择技能）",
+		"runTarget": "运行于",
+		"runMode": {
+			"new-session": "每次新建会话",
+			"same-session": "同一个会话"
+		},
+		"project": "项目",
+		"projectNone": "无（对话）",
+		"session": "会话",
+		"sessionHint": "之后每次都在这个会话里接着运行，上下文会一直累积",
+		"sessionNew": "开启一个新会话",
+		"sessionMissing": "绑定的会话已不存在",
+		"model": "模型",
+		"modelFollowDefault": "跟随默认模型",
+		"repeat": "重复",
+		"time": "时间",
+		"atMinutePrefix": "每小时的第",
+		"atMinuteSuffix": "分",
+		"monthlyShortMonthHint": "当月没有所选日期时（如 2 月 30 日）当月跳过；需要月底执行请选「最后一天」",
+		"cronExpression": "cron 表达式",
+		"cronHint": "分 时 日 月 星期，按本机时区；可直接编辑表达式，与上方选择实时同步",
+		"cronAny": "任意",
+		"cronTextOnly": "表达式里有无法可视化的写法，请直接编辑表达式",
+		"cronField": {
+			"minute": "分",
+			"hour": "时",
+			"day": "日",
+			"month": "月",
+			"weekday": "星期"
+		},
+		"notify": "Webhook 通知",
+		"notifyEndpoints": "通知到",
+		"notifyGoSettings": "还没有 webhook，去设置里新增",
+		"notifyEndpointDisabled": "该 webhook 已停用，不会发送",
+		"notifyWhen": "发送时机",
+		"notifyWhenOption": {
+			"always": "总是",
+			"success": "仅成功时",
+			"failure": "仅失败时"
+		},
+		"notifyTemplate": "通知文案",
+		"notifyTemplateDefault": "{{name}} {{status}}（{{duration}}）\n\n{{reply}}",
+		"variables": {
+			"name": "任务名",
+			"status": "状态",
+			"startedAt": "开始时间",
+			"duration": "耗时",
+			"reply": "回复",
+			"error": "错误"
+		},
+		"enabledLabel": "启用"
 	},
 	"scheduleMode": {
-		"once": "单次",
+		"once": "不重复",
+		"hourly": "每小时",
 		"daily": "每天",
-		"interval": "间隔"
+		"weekly": "每周",
+		"monthly": "每月",
+		"custom": "自定义"
 	},
 	"schedule": {
-		"once": "{{year}}年{{month}}月{{day}}日 {{time}} 执行一次",
-		"daily": "每天 {{time}} 执行",
-		"weekly": "每{{days}} {{time}} 执行",
-		"intervalOne": "每隔 1 小时执行",
-		"interval": "每隔 {{hours}} 小时执行",
+		"once": "{{date}} {{time}} 执行一次",
+		"hourly": "每小时第 {{minute}} 分",
+		"daily": "每天 {{time}}",
+		"weekly": "每{{days}} {{time}}",
+		"monthly": "每月 {{days}} {{time}}",
+		"monthDay": "{{day}} 日",
+		"lastDay": "最后一天",
+		"custom": "自定义",
 		"weekdayJoin": "、",
-		"weekdayNames": ["周日", "周一", "周二", "周三", "周四", "周五", "周六"]
+		"weekdayNames": [
+			"周日",
+			"周一",
+			"周二",
+			"周三",
+			"周四",
+			"周五",
+			"周六"
+		]
 	},
 	"list": {
 		"running": "运行中",
 		"pending": "待运行",
 		"disabled": "已停用",
-		"once": "一次性",
 		"runNow": "立即执行",
 		"run": "执行",
 		"sectionTitle": "自动化任务",
@@ -89,9 +137,8 @@
 		"minutesAgo": "{{n}}分钟前",
 		"hoursAgo": "{{n}}小时前",
 		"daysAgo": "{{n}}天前",
-		"fullAccess": "完全访问",
-		"useSandbox": "使用沙盒",
-		"inheritDefault": "跟随默认"
+		"suspended": "已暂停",
+		"target": "{{mode}} · {{project}}"
 	},
 	"confirm": {
 		"deleteTitle": "确认删除任务「{{name}}」",
@@ -110,9 +157,32 @@
 		"title": "执行历史",
 		"refresh": "刷新",
 		"empty": "暂无执行记录",
-		"success": "成功",
-		"failed": "失败",
-		"running": "执行中",
-		"aborted": "已中止"
+		"status": {
+			"success": "成功",
+			"failed": "失败",
+			"running": "执行中",
+			"aborted": "已中止",
+			"skipped": "已跳过",
+			"missed": "已错过"
+		},
+		"reason": {
+			"previous-running": "上次执行还没结束",
+			"app-not-running": "应用未运行",
+			"system-sleep": "系统休眠"
+		},
+		"missedMany": "错过 {{times}} 次，至 {{until}} · {{reason}}",
+		"notifyFailed": "通知发送失败：{{error}}"
+	},
+	"suspended": {
+		"session-deleted": "绑定的会话已删除，重新选择会话后再启用",
+		"project-removed": "目标项目已从侧边栏移除，重新选择项目后再启用"
+	},
+	"notify": {
+		"status": {
+			"success": "成功",
+			"failed": "失败",
+			"aborted": "已中止"
+		},
+		"noEndpoint": "所选 webhook 均已停用或删除"
 	}
 }

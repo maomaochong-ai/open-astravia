@@ -93,7 +93,6 @@ export function useProjectActions() {
 	const setProjectsInitialized = useSetAtom(projectsInitializedAtom);
 	const setSessionsMap = useSetAtom(sessionsMapAtom);
 	const setSessionLoadingCwds = useSetAtom(sessionLoadingCwdsAtom);
-	const setScheduledSessionPaths = useSetAtom(scheduledSessionPathsAtom);
 	const setScheduledRecordsVersion = useSetAtom(scheduledRecordsVersionAtom);
 	const setExpandedProjects = useSetAtom(expandedProjectsAtom);
 	const removePinnedSessions = useSetAtom(removePinnedSessionsAtom);
@@ -385,16 +384,9 @@ export function useProjectActions() {
 		async (_cwd: string, sessionPath: string) => {
 			await window.vetta.session.delete(sessionPath);
 			removePinnedSessions([sessionPath]);
-			// 定时任务 session：同步删掉「自动化」里的执行记录，否则历史列表会残留。
+			// 自动化的执行记录与绑定关系由主进程在删除会话时一并处理；这里只驱动
+			// 正在展示的执行历史重新拉取。
 			if (store.get(scheduledSessionPathsAtom).has(sessionPath)) {
-				await window.vetta.scheduler.deleteRecordsBySession(sessionPath);
-				setScheduledSessionPaths((prev) => {
-					if (!prev.has(sessionPath)) return prev;
-					const next = new Set(prev);
-					next.delete(sessionPath);
-					return next;
-				});
-				// 驱动正在展示的执行历史重新拉取。
 				setScheduledRecordsVersion((v) => v + 1);
 			}
 			setSessionsMap((prev) => {
@@ -409,7 +401,7 @@ export function useProjectActions() {
 				return next;
 			});
 		},
-		[removePinnedSessions, setSessionsMap, store, setScheduledSessionPaths, setScheduledRecordsVersion],
+		[removePinnedSessions, setSessionsMap, store, setScheduledRecordsVersion],
 	);
 
 	/**

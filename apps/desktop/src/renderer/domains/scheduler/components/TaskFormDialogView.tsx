@@ -1,8 +1,5 @@
 import { TaskFormDialogView as ThemeTaskFormDialogView } from "@vetta-org/theme-ui/scheduler";
-import {
-	SchedulerTaskFields,
-	type SchedulerTaskDraft,
-} from "./SchedulerTaskFields";
+import { type AutomationDraft, SchedulerTaskFields } from "./SchedulerTaskFields";
 
 export interface TaskFormDialogViewLabels {
 	readonly cancel: string;
@@ -14,11 +11,11 @@ export interface TaskFormDialogViewLabels {
 
 export interface TaskFormDialogViewProps {
 	readonly canSubmit: boolean;
-	readonly data: SchedulerTaskDraft;
+	readonly data: AutomationDraft;
 	readonly isEdit: boolean;
 	readonly labels: TaskFormDialogViewLabels;
 	readonly open: boolean;
-	readonly onChange: (value: SchedulerTaskDraft) => void;
+	readonly onChange: (value: AutomationDraft) => void;
 	readonly onClose: () => void;
 	readonly onSubmit: () => void;
 }
@@ -50,7 +47,6 @@ export function TaskFormDialogView({
 					value={data}
 					onChange={onChange}
 					namePlaceholder={isEdit ? labels.namePlaceholderEdit : labels.namePlaceholderNew}
-					showWorkDirSelector={false}
 				/>
 			}
 		/>

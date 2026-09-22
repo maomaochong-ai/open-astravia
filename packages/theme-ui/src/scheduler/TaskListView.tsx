@@ -2,11 +2,8 @@ import type { JSX, MouseEvent } from "react";
 import { motion } from "motion/react";
 
 export interface TaskListItemView {
-	readonly cron: string;
 	readonly enabled: boolean;
-	readonly executionModeLabel: string;
 	readonly id: string;
-	readonly isOnce: boolean;
 	readonly isRunning: boolean;
 	readonly isSelected: boolean;
 	readonly lastRunLabel: string;
@@ -14,7 +11,13 @@ export interface TaskListItemView {
 	readonly name: string;
 	readonly prompt: string;
 	readonly scheduleLabel: string;
+	/** 自定义计划下展示原始 cron，其余为 null。 */
+	readonly scheduleDetail: string | null;
 	readonly statusLabel: string;
+	/** 运行会话策略与所属项目，如「每次新建会话 · 对话」。 */
+	readonly targetLabel: string;
+	/** 目标失效导致暂停时的提示；正常为 null。 */
+	readonly suspendedLabel: string | null;
 }
 
 export interface TaskListViewLabels {
@@ -22,7 +25,6 @@ export interface TaskListViewLabels {
 	readonly edit: string;
 	readonly enable: string;
 	readonly failed: string;
-	readonly once: string;
 	readonly pause: string;
 	readonly runNow: string;
 	readonly success: string;
@@ -89,7 +91,6 @@ export function TaskListView({
 							<h3 className="truncate text-[14px] font-semibold tracking-tight text-foreground">{item.name}</h3>
 							<p className="mt-0.5 truncate text-[11px] text-muted-foreground/50">
 								{item.statusLabel}
-								{item.isOnce && ` · ${labels.once}`}
 							</p>
 						</div>
 
@@ -140,16 +141,27 @@ export function TaskListView({
 						</div>
 						<div className="min-w-0 flex-1">
 							<p className="truncate text-[12px] font-medium text-foreground">{item.scheduleLabel}</p>
-							<p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground/50">{item.cron}</p>
+							{item.scheduleDetail && (
+								<p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground/50">
+									{item.scheduleDetail}
+								</p>
+							)}
 						</div>
 					</div>
+
+					{item.suspendedLabel && (
+						<p className="relative mt-3 flex items-center gap-1.5 rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-500">
+							<span className="icon-[mdi--alert-outline] h-3.5 w-3.5 shrink-0" />
+							<span className="truncate">{item.suspendedLabel}</span>
+						</p>
+					)}
 
 					<div className="relative mt-3 flex-1">
 						<p className="line-clamp-2 text-[12px] leading-relaxed text-muted-foreground/70">{item.prompt}</p>
 					</div>
 
 					<div className="relative mt-4 flex flex-wrap items-center gap-1.5 border-t border-border/30 pt-3 text-[11px]">
-						<MetaPill icon="icon-[mdi--shield-outline]" text={item.executionModeLabel} />
+						<MetaPill icon="icon-[mdi--message-text-clock-outline]" text={item.targetLabel} />
 						<div className="ml-auto flex items-center gap-1.5">
 							{item.lastRunStatus && (
 								<span
@@ -183,7 +195,7 @@ function MetaPill({ icon, text }: { readonly icon: string; readonly text: string
 	return (
 		<span className="flex h-5 items-center gap-1 rounded-full bg-accent/40 px-2 text-[10px] text-muted-foreground/70">
 			<span className={`${icon} h-3 w-3 opacity-70`} />
-			<span className="max-w-[110px] truncate">{text}</span>
+			<span className="max-w-[180px] truncate">{text}</span>
 		</span>
 	);
 }

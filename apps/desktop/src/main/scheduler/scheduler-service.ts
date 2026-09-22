@@ -1,27 +1,30 @@
-import { stat } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import type { RuntimeHost } from "@vetta/runtime-core";
-import { recordAutomationTaskCreated } from "../app-monitor/app-monitor-service.js";
-import { isValidCronExpression } from "./cron.js";
-import { abortTask, executeTask, isTaskRunning } from "./task-executor.js";
 import {
+	type AutomationSessionLink,
+	type AutomationTaskInput,
+	type AutomationTaskPatch,
+	isAutomationModel,
+	isAutomationNotification,
+	isAutomationRunTarget,
+	isAutomationSchedule,
+	type ScheduledTask,
+	type TaskExecutionRecord,
+} from "../../shared/automation.js";
+import { recordAutomationTaskCreated } from "../app-monitor/app-monitor-service.js";
+import { isValidSchedule } from "./cron.js";
+import { AutomationAlreadyRunningError, abortTask, executeTask, isTaskRunning } from "./task-executor.js";
+import {
+	deleteRecordsBySessionPaths,
 	deleteTaskRecords,
 	generateId,
+	loadAutomationSessionLinks,
 	loadRecords,
 	loadTasks,
 	mutateTasks,
-	type ScheduledTask,
-	type TaskExecutionRecord,
-	updateTaskEnabled,
 } from "./task-storage.js";
 
-export type CreateScheduledTaskInput = Omit<
-	ScheduledTask,
-	"id" | "createdAt" | "updatedAt" | "lastRunAt" | "lastRunStatus"
->;
-
-export type UpdateScheduledTaskInput = Partial<
-	Omit<ScheduledTask, "id" | "createdAt" | "updatedAt" | "lastRunAt" | "lastRunStatus">
->;
+export type { AutomationTaskInput as CreateScheduledTaskInput, AutomationTaskPatch as UpdateScheduledTaskInput };
 
 export interface SchedulerCommandResult {
 	status: "accepted" | "noop";
@@ -30,8 +33,12 @@ export interface SchedulerCommandResult {
 
 export interface SchedulerServiceDependencies {
 	getRuntime: () => RuntimeHost;
-	scheduleTask: (task: ScheduledTask) => void;
+	/** 按任务当前配置同步调度作业（启用则排程，停用则撤下）。 */
+	syncTask: (task: ScheduledTask) => void;
 	unscheduleTask: (taskId: string) => void;
+	/** 判断项目是否仍在侧边栏（含归档）；「对话」恒为 true。 */
+	isKnownProject: (cwd: string) => Promise<boolean>;
+	sameProjectPath: (first: string, second: string) => boolean;
 }
 
 export class SchedulerServiceError extends Error {
@@ -45,78 +52,78 @@ export class SchedulerServiceError extends Error {
 	}
 }
 
-const SCHEDULER_TASK_KEYS = new Set([
-	"name",
-	"prompt",
-	"cron",
-	"isOnce",
-	"enabled",
-	"cwd",
-	"modelKey",
-	"executionMode",
-	"skill",
-]);
+const INPUT_KEYS = new Set(["name", "prompt", "schedule", "runTarget", "model", "notification", "enabled"]);
 
 function isNonBlankString(value: unknown): value is string {
 	return typeof value === "string" && value.trim().length > 0;
 }
 
-function isExecutionMode(value: unknown): boolean {
-	return value === "inherit" || value === "sandbox" || value === "full-access";
+function invalid(message: string): SchedulerServiceError {
+	return new SchedulerServiceError("SCHEDULER_TASK_INVALID_INPUT", message);
 }
 
-function isSelectedSkill(value: unknown): boolean {
-	if (value == null || typeof value !== "object" || Array.isArray(value)) return false;
-	const skill = value as Record<string, unknown>;
-	return (
-		isNonBlankString(skill.name) &&
-		(skill.alias === undefined || isNonBlankString(skill.alias)) &&
-		(skill.type === "skill" || skill.type === "scene") &&
-		Object.keys(skill).every((key) => key === "name" || key === "alias" || key === "type")
-	);
+function assertFieldShapes(input: Record<string, unknown>): void {
+	if (!Object.keys(input).every((key) => INPUT_KEYS.has(key))) throw invalid("Unknown scheduled task field.");
+	if (input.name !== undefined && !isNonBlankString(input.name)) throw invalid("Task name must not be blank.");
+	if (input.prompt !== undefined && !isNonBlankString(input.prompt)) throw invalid("Task prompt must not be blank.");
+	if (input.enabled !== undefined && typeof input.enabled !== "boolean") throw invalid("enabled must be a boolean.");
+	if (input.schedule !== undefined) {
+		if (!isAutomationSchedule(input.schedule) || !isValidSchedule(input.schedule)) {
+			throw new SchedulerServiceError("SCHEDULER_SCHEDULE_INVALID", "Invalid automation schedule.");
+		}
+	}
+	if (input.runTarget !== undefined && !isAutomationRunTarget(input.runTarget)) throw invalid("Invalid run target.");
+	if (input.model !== undefined && input.model !== null && !isAutomationModel(input.model)) {
+		throw invalid("Invalid model selection.");
+	}
+	if (
+		input.notification !== undefined &&
+		input.notification !== null &&
+		!isAutomationNotification(input.notification)
+	) {
+		throw invalid("Invalid notification settings.");
+	}
 }
 
-function assertCreateTaskInput(value: unknown): asserts value is CreateScheduledTaskInput {
+function assertCreateInput(value: unknown): asserts value is AutomationTaskInput {
 	if (value == null || typeof value !== "object" || Array.isArray(value)) {
-		throw new SchedulerServiceError("SCHEDULER_TASK_INVALID_INPUT", "Scheduled task input must be an object.");
+		throw invalid("Scheduled task input must be an object.");
 	}
 	const input = value as Record<string, unknown>;
-	const valid =
-		Object.keys(input).every((key) => SCHEDULER_TASK_KEYS.has(key)) &&
-		isNonBlankString(input.name) &&
-		isNonBlankString(input.prompt) &&
-		isNonBlankString(input.cron) &&
-		typeof input.isOnce === "boolean" &&
-		typeof input.enabled === "boolean" &&
-		isNonBlankString(input.cwd) &&
-		(input.modelKey === undefined || isNonBlankString(input.modelKey)) &&
-		(input.executionMode === undefined || isExecutionMode(input.executionMode)) &&
-		(input.skill === undefined || isSelectedSkill(input.skill));
-	if (!valid) {
-		throw new SchedulerServiceError("SCHEDULER_TASK_INVALID_INPUT", "Invalid scheduled task create input.");
+	assertFieldShapes(input);
+	if (
+		input.name === undefined ||
+		input.prompt === undefined ||
+		input.schedule === undefined ||
+		input.runTarget === undefined ||
+		input.enabled === undefined
+	) {
+		throw invalid("Missing required scheduled task fields.");
 	}
 }
 
-function assertUpdateTaskInput(value: unknown): asserts value is UpdateScheduledTaskInput {
-	if (value == null || typeof value !== "object" || Array.isArray(value)) {
-		throw new SchedulerServiceError("SCHEDULER_TASK_INVALID_INPUT", "Scheduled task update must be an object.");
+function assertPatchInput(value: unknown): asserts value is AutomationTaskPatch {
+	if (value == null || typeof value !== "object" || Array.isArray(value) || Object.keys(value).length === 0) {
+		throw invalid("Scheduled task update must be a non-empty object.");
 	}
-	const input = value as Record<string, unknown>;
-	const valid =
-		Object.keys(input).length > 0 &&
-		Object.keys(input).every((key) => SCHEDULER_TASK_KEYS.has(key)) &&
-		(input.name === undefined || isNonBlankString(input.name)) &&
-		(input.prompt === undefined || isNonBlankString(input.prompt)) &&
-		(input.cron === undefined || isNonBlankString(input.cron)) &&
-		(input.isOnce === undefined || typeof input.isOnce === "boolean") &&
-		(input.enabled === undefined || typeof input.enabled === "boolean") &&
-		(input.cwd === undefined || isNonBlankString(input.cwd)) &&
-		(input.modelKey === undefined || isNonBlankString(input.modelKey)) &&
-		(input.executionMode === undefined || isExecutionMode(input.executionMode)) &&
-		(input.skill === undefined || isSelectedSkill(input.skill));
-	if (!valid) {
-		throw new SchedulerServiceError("SCHEDULER_TASK_INVALID_INPUT", "Invalid scheduled task update input.");
+	assertFieldShapes(value as Record<string, unknown>);
+}
+
+/** 应用补丁：null 清除可选字段；目标（运行会话 / 项目）变化后清掉因目标失效产生的暂停原因。 */
+function applyPatch(task: ScheduledTask, patch: AutomationTaskPatch, now: number): ScheduledTask {
+	const { model, notification, ...rest } = patch;
+	const next: ScheduledTask = { ...task, ...rest, updatedAt: now };
+	const withOptional: ScheduledTask = {
+		...next,
+		...(model === null ? { model: undefined } : model !== undefined ? { model } : {}),
+		...(notification === null ? { notification: undefined } : notification !== undefined ? { notification } : {}),
+	};
+	const cleaned = JSON.parse(JSON.stringify(withOptional)) as ScheduledTask;
+	if (patch.runTarget !== undefined || (patch.enabled === true && cleaned.suspendedReason)) {
+		const { suspendedReason: _cleared, ...unsuspended } = cleaned;
+		return unsuspended;
 	}
+	return cleaned;
 }
 
 export class SchedulerService {
@@ -144,56 +151,50 @@ export class SchedulerService {
 		return await loadRecords(taskId);
 	}
 
-	async createTask(data: CreateScheduledTaskInput): Promise<ScheduledTask> {
-		assertCreateTaskInput(data);
-		this.assertCron(data.cron);
-		await this.assertDirectory(data.cwd);
+	async listSessionLinks(): Promise<AutomationSessionLink[]> {
+		return await loadAutomationSessionLinks(await loadTasks());
+	}
+
+	async createTask(data: AutomationTaskInput): Promise<ScheduledTask> {
+		assertCreateInput(data);
+		await this.assertTargetUsable(data);
 		const now = Date.now();
-		const task: ScheduledTask = {
-			...data,
-			id: generateId(),
-			createdAt: now,
-			updatedAt: now,
-			lastRunAt: null,
-			lastRunStatus: null,
-		};
+		const task = applyPatch(
+			{
+				...data,
+				id: generateId(),
+				createdAt: now,
+				updatedAt: now,
+				lastRunAt: null,
+				lastRunStatus: null,
+			},
+			{},
+			now,
+		);
 		await mutateTasks((tasks) => {
 			tasks.push(task);
 		});
-		if (task.enabled) {
-			this.dependencies.scheduleTask(task);
-		}
+		this.dependencies.syncTask(task);
 		this.emitTasksChanged();
 		recordAutomationTaskCreated();
 		return task;
 	}
 
-	async updateTask(taskId: string, patch: UpdateScheduledTaskInput): Promise<ScheduledTask> {
-		assertUpdateTaskInput(patch);
-		if (patch.cron !== undefined) {
-			this.assertCron(patch.cron);
-		}
-		if (patch.cwd !== undefined) {
-			await this.assertDirectory(patch.cwd);
-		}
+	async updateTask(taskId: string, patch: AutomationTaskPatch): Promise<ScheduledTask> {
+		assertPatchInput(patch);
+		const current = await this.requireTask(taskId);
+		const now = Date.now();
+		const preview = applyPatch(current, patch, now);
+		await this.assertTargetUsable(preview);
 		const task = await mutateTasks((tasks) => {
 			const index = tasks.findIndex((candidate) => candidate.id === taskId);
 			if (index < 0) {
 				throw new SchedulerServiceError("SCHEDULER_TASK_NOT_FOUND", "定时任务不存在。", { taskId });
 			}
-			const updated: ScheduledTask = {
-				...tasks[index],
-				...patch,
-				id: tasks[index].id,
-				createdAt: tasks[index].createdAt,
-				lastRunAt: tasks[index].lastRunAt,
-				lastRunStatus: tasks[index].lastRunStatus,
-				updatedAt: Date.now(),
-			};
-			tasks[index] = updated;
-			return updated;
+			tasks[index] = applyPatch(tasks[index], patch, now);
+			return tasks[index];
 		});
-		this.syncScheduledJob(task);
+		this.dependencies.syncTask(task);
 		this.emitTasksChanged();
 		return task;
 	}
@@ -222,34 +223,21 @@ export class SchedulerService {
 	}
 
 	async toggleTask(taskId: string): Promise<ScheduledTask> {
-		const task = await mutateTasks((tasks) => {
-			const index = tasks.findIndex((candidate) => candidate.id === taskId);
-			if (index < 0) {
-				throw new SchedulerServiceError("SCHEDULER_TASK_NOT_FOUND", "定时任务不存在。", { taskId });
-			}
-			const updated = {
-				...tasks[index],
-				enabled: !tasks[index].enabled,
-				updatedAt: Date.now(),
-			};
-			tasks[index] = updated;
-			return updated;
-		});
-		this.syncScheduledJob(task);
-		this.emitTasksChanged();
-		return task;
+		const task = await this.requireTask(taskId);
+		return await this.updateTask(taskId, { enabled: !task.enabled });
 	}
 
+	/** 「立即运行」：遵守同一时刻只跑一次，也会按配置发通知。 */
 	async runNow(taskId: string): Promise<SchedulerCommandResult> {
 		const task = await this.requireTask(taskId);
 		if (isTaskRunning(taskId)) {
 			throw new SchedulerServiceError("SCHEDULER_TASK_RUNNING", "定时任务已在运行。", { taskId });
 		}
-		await executeTask(task, this.dependencies.getRuntime(), {
-			onOneTimeCompleted: async () => {
-				this.dependencies.unscheduleTask(task.id);
-				await updateTaskEnabled(task.id, false);
-			},
+		void executeTask(task, this.dependencies.getRuntime(), {
+			trigger: "manual",
+			onTaskChanged: (changed) => this.dependencies.syncTask(changed),
+		}).catch((error) => {
+			if (!(error instanceof AutomationAlreadyRunningError)) throw error;
 		});
 		return { status: "accepted", taskId };
 	}
@@ -257,8 +245,42 @@ export class SchedulerService {
 	async abort(taskId: string): Promise<SchedulerCommandResult> {
 		await this.requireTask(taskId);
 		const aborted = await abortTask(taskId);
-		if (!aborted) return { status: "noop", taskId };
-		return { status: "accepted", taskId };
+		return { status: aborted ? "accepted" : "noop", taskId };
+	}
+
+	/**
+	 * 会话被删除：清掉指向它们的执行记录；绑定到它们的自动化暂停并标明原因，
+	 * 绝不悄悄换一个新会话顶上（ADR-0127）。
+	 */
+	async handleSessionsDeleted(isDeleted: (sessionPath: string) => boolean): Promise<void> {
+		const suspended = await mutateTasks((tasks) => {
+			const changed: ScheduledTask[] = [];
+			tasks.forEach((task, index) => {
+				if (task.runTarget.mode !== "same-session" || !task.runTarget.sessionPath) return;
+				if (!isDeleted(task.runTarget.sessionPath)) return;
+				tasks[index] = { ...task, enabled: false, suspendedReason: "session-deleted", updatedAt: Date.now() };
+				changed.push(tasks[index]);
+			});
+			return changed;
+		});
+		for (const task of suspended) this.dependencies.syncTask(task);
+		const affected = await deleteRecordsBySessionPaths(isDeleted);
+		if (suspended.length > 0 || affected.length > 0) this.emitTasksChanged();
+	}
+
+	/** 项目从侧边栏移除：以它为目标的自动化暂停并标明原因。 */
+	async handleProjectRemoved(projectCwd: string): Promise<void> {
+		const suspended = await mutateTasks((tasks) => {
+			const changed: ScheduledTask[] = [];
+			tasks.forEach((task, index) => {
+				if (!this.dependencies.sameProjectPath(task.runTarget.projectCwd, projectCwd)) return;
+				tasks[index] = { ...task, enabled: false, suspendedReason: "project-removed", updatedAt: Date.now() };
+				changed.push(tasks[index]);
+			});
+			return changed;
+		});
+		for (const task of suspended) this.dependencies.syncTask(task);
+		if (suspended.length > 0) this.emitTasksChanged();
 	}
 
 	private async requireTask(taskId: string): Promise<ScheduledTask> {
@@ -269,26 +291,22 @@ export class SchedulerService {
 		return task;
 	}
 
-	private async assertDirectory(path: string): Promise<void> {
-		const info = await stat(path).catch(() => undefined);
-		if (!info?.isDirectory()) {
-			throw new SchedulerServiceError("SCHEDULER_CWD_INVALID", "任务工作目录不存在或不是目录。", {
-				path,
+	/** 启用的自动化必须有可用的目标与仍在未来的一次性时刻。 */
+	private async assertTargetUsable(task: Pick<ScheduledTask, "runTarget" | "schedule" | "enabled">): Promise<void> {
+		if (!(await this.dependencies.isKnownProject(task.runTarget.projectCwd))) {
+			throw new SchedulerServiceError("SCHEDULER_PROJECT_INVALID", "目标项目不存在。", {
+				projectCwd: task.runTarget.projectCwd,
 			});
 		}
-	}
-
-	private assertCron(cron: string): void {
-		if (!isValidCronExpression(cron)) {
-			throw new SchedulerServiceError("SCHEDULER_CRON_INVALID", "Cron 表达式无效。", { cron });
+		if (task.enabled && task.runTarget.mode === "same-session" && task.runTarget.sessionPath) {
+			if (!existsSync(task.runTarget.sessionPath)) {
+				throw new SchedulerServiceError("SCHEDULER_SESSION_INVALID", "绑定的会话不存在。", {
+					sessionPath: task.runTarget.sessionPath,
+				});
+			}
 		}
-	}
-
-	private syncScheduledJob(task: ScheduledTask): void {
-		if (task.enabled) {
-			this.dependencies.scheduleTask(task);
-		} else {
-			this.dependencies.unscheduleTask(task.id);
+		if (task.enabled && task.schedule.kind === "once" && task.schedule.at <= Date.now()) {
+			throw new SchedulerServiceError("SCHEDULER_SCHEDULE_PAST", "一次性任务的执行时间已过去。");
 		}
 	}
 
@@ -307,5 +325,10 @@ export function initializeDesktopSchedulerService(dependencies: SchedulerService
 
 export function getDesktopSchedulerService(): SchedulerService {
 	if (!desktopSchedulerService) throw new Error("Desktop scheduler service is not initialized");
+	return desktopSchedulerService;
+}
+
+/** 其他模块（会话删除、项目移除）在服务可能尚未初始化时调用，未初始化即忽略。 */
+export function getDesktopSchedulerServiceIfReady(): SchedulerService | undefined {
 	return desktopSchedulerService;
 }

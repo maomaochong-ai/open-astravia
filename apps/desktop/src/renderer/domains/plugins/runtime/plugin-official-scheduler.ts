@@ -28,13 +28,7 @@ export function createOfficialSchedulerApi(
 		},
 		updateTask: async (taskId, data) => {
 			assertOfficial();
-			const { modelKey, skill, ...rest } = data;
-			const patch = {
-				...rest,
-				...("modelKey" in data ? { modelKey: modelKey ?? undefined } : {}),
-				...("skill" in data ? { skill: skill ?? undefined } : {}),
-			};
-			return scheduler.updateTask(capabilitySessionId, taskId, patch);
+			return scheduler.updateTask(capabilitySessionId, taskId, data);
 		},
 		deleteTask: async (taskId) => {
 			assertOfficial();

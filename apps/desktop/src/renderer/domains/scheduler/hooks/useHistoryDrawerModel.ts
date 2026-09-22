@@ -1,11 +1,10 @@
 import { useShortcutScope } from "@shared/shortcuts";
 import type { ScheduledTask } from "@shared/store/atoms";
 import { defaultConversationCwdAtom, getProjectDisplayName } from "@shared/store/atoms";
-import type { TFunction } from "i18next";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { describeSchedule, parseCronExpression } from "../components/schedule-picker/cron-utils";
+import { describeSchedule } from "../components/schedule-picker/describe-schedule";
 import { useScheduledTasks } from "./useScheduledTasks";
 
 export interface HistoryDrawerModel {
@@ -36,8 +35,8 @@ export function useHistoryDrawerModel({ task, onClose }: UseHistoryDrawerModelOp
 
 	return useMemo(
 		() => ({
-			projectLabel: task?.cwd ? getProjectDisplayName(task.cwd, defaultCwd) : null,
-			scheduleLabel: task ? scheduleLabel(task, t) : "",
+			projectLabel: task ? getProjectDisplayName(task.runTarget.projectCwd, defaultCwd) : null,
+			scheduleLabel: task ? describeSchedule(task.schedule, t) : "",
 			task,
 			onRunNow: (): void => {
 				if (task) void runNow(task.id);
@@ -48,10 +47,4 @@ export function useHistoryDrawerModel({ task, onClose }: UseHistoryDrawerModelOp
 		}),
 		[defaultCwd, runNow, t, task, toggleTask],
 	);
-}
-
-function scheduleLabel(task: ScheduledTask, t: TFunction<"automation">): string {
-	const parsed = parseCronExpression(task.cron, task.isOnce);
-	if (parsed) return describeSchedule(parsed, t);
-	return task.cron;
 }

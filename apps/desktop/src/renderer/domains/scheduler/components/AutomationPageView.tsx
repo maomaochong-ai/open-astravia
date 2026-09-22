@@ -5,7 +5,7 @@ import {
 } from "@vetta-org/theme-ui/scheduler";
 import { useTranslation } from "react-i18next";
 import { SettingsAiAssist } from "../../settings/ai-assist";
-import type { SchedulerTaskDraft } from "./SchedulerTaskFields";
+import type { AutomationDraft } from "./SchedulerTaskFields";
 import { HistoryDrawer } from "./HistoryDrawer";
 import { TaskFormDialog } from "./TaskForm";
 import { TaskList } from "./TaskList";
@@ -13,7 +13,7 @@ import { TaskList } from "./TaskList";
 export interface AutomationPageViewProps {
 	readonly dialogOpen: boolean;
 	readonly editingTask: ScheduledTask | undefined;
-	readonly createDraft: SchedulerTaskDraft | undefined;
+	readonly createDraft: Partial<AutomationDraft> | undefined;
 	readonly hasTasks: boolean;
 	readonly recommendations: readonly AutomationRecommendationItem[];
 	readonly selectedTask: ScheduledTask | null;

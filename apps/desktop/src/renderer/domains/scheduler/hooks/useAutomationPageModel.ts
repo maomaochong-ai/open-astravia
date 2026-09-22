@@ -9,7 +9,7 @@ import {
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { SchedulerTaskDraft } from "../components/SchedulerTaskFields";
+import type { AutomationDraft } from "../components/SchedulerTaskFields";
 import { RECOMMENDED_AUTOMATION_TASKS, type RecommendedAutomationTaskTemplate } from "../recommended-tasks";
 import { useScheduledTasks } from "./useScheduledTasks";
 
@@ -24,7 +24,7 @@ export interface AutomationRecommendationView {
 export interface AutomationPageModel {
 	readonly dialogOpen: boolean;
 	readonly editingTask: ScheduledTask | undefined;
-	readonly createDraft: SchedulerTaskDraft | undefined;
+	readonly createDraft: Partial<AutomationDraft> | undefined;
 	readonly hasTasks: boolean;
 	readonly recommendations: readonly AutomationRecommendationView[];
 	readonly selectedTask: ScheduledTask | null;
@@ -46,7 +46,7 @@ export function useAutomationPageModel(): AutomationPageModel {
 	const setRunningTaskIds = useSetAtom(runningTaskIdsAtom);
 	const setHeaderTitleHidden = useSetAtom(pageHeaderTitleHiddenAtom);
 	const [dialogOpen, setDialogOpen] = useState(false);
-	const [createDraft, setCreateDraft] = useState<SchedulerTaskDraft | undefined>(undefined);
+	const [createDraft, setCreateDraft] = useState<Partial<AutomationDraft> | undefined>(undefined);
 
 	useEffect(() => {
 		refreshTasks();
@@ -115,10 +115,7 @@ export function useAutomationPageModel(): AutomationPageModel {
 			setCreateDraft({
 				name: t(`recommend.items.${template.id}.name`),
 				prompt: t(`recommend.items.${template.id}.prompt`),
-				cron: template.cron,
-				isOnce: template.isOnce,
-				enabled: true,
-				executionMode: "full-access",
+				schedule: template.schedule,
 			});
 			setFormEditingTask(null);
 			setDialogOpen(true);

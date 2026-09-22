@@ -3,9 +3,9 @@ import { CAPABILITY_ERROR_CODES, CAPABILITY_PREFIXES } from "../../src/contracts
 import {
 	DOMAIN_SCHEDULER_CAPABILITIES,
 	DOMAIN_SCHEDULER_CAPABILITY_CATALOG,
-	SCHEDULER_EXECUTION_MODES,
+	SCHEDULER_NOT_RUN_REASONS,
 	SCHEDULER_RECORD_STATUSES,
-	SCHEDULER_SKILL_TYPES,
+	SCHEDULER_RUN_TARGET_MODES,
 } from "../../src/domain.js";
 
 describe("scheduler domain capabilities", () => {
@@ -29,12 +29,14 @@ describe("scheduler domain capabilities", () => {
 				data: {
 					name: "Daily",
 					prompt: "Run",
-					cron: "0 9 * * *",
-					isOnce: false,
+					schedule: { kind: "weekly", weekdays: [1, 3], hour: 9, minute: 30 },
+					runTarget: {
+						mode: SCHEDULER_RUN_TARGET_MODES.SAME_SESSION,
+						projectCwd: "C:/workspace",
+						sessionPath: null,
+					},
+					model: { key: "anthropic/claude", reasoning: "high" },
 					enabled: true,
-					cwd: "C:/workspace",
-					executionMode: SCHEDULER_EXECUTION_MODES.SANDBOX,
-					skill: { name: "review", type: SCHEDULER_SKILL_TYPES.SKILL, ignored: true },
 				},
 				ignored: true,
 			}),
@@ -42,48 +44,48 @@ describe("scheduler domain capabilities", () => {
 			data: {
 				name: "Daily",
 				prompt: "Run",
-				cron: "0 9 * * *",
-				isOnce: false,
+				schedule: { kind: "weekly", weekdays: [1, 3], hour: 9, minute: 30 },
+				runTarget: { mode: SCHEDULER_RUN_TARGET_MODES.SAME_SESSION, projectCwd: "C:/workspace", sessionPath: null },
+				model: { key: "anthropic/claude", reasoning: "high" },
 				enabled: true,
-				cwd: "C:/workspace",
-				executionMode: SCHEDULER_EXECUTION_MODES.SANDBOX,
-				skill: { name: "review", type: SCHEDULER_SKILL_TYPES.SKILL },
 			},
 		});
 		const update = DOMAIN_SCHEDULER_CAPABILITIES.UPDATE_TASK.parseInput({
 			taskId: "task",
-			data: { modelKey: undefined, skill: undefined },
+			data: { model: null, notification: null },
 		});
-		expect(update.data).toHaveProperty("modelKey", undefined);
-		expect(update.data).toHaveProperty("skill", undefined);
+		expect(update.data).toEqual({ model: null, notification: null });
 		expect(() => DOMAIN_SCHEDULER_CAPABILITIES.UPDATE_TASK.parseInput({ taskId: "task", data: {} })).toThrowError(
 			expect.objectContaining({ code: CAPABILITY_ERROR_CODES.INVALID_INPUT }),
 		);
-		expect(() =>
-			DOMAIN_SCHEDULER_CAPABILITIES.CREATE_TASK.parseInput({
-				data: {
-					name: "Daily",
-					prompt: "Run",
-					cron: "0 9 * * *",
-					isOnce: false,
-					enabled: true,
-					cwd: "C:/workspace",
-					ignored: true,
-				},
-			}),
-		).toThrowError(expect.objectContaining({ code: CAPABILITY_ERROR_CODES.INVALID_INPUT }));
+		for (const schedule of [
+			{ kind: "daily", hour: 24, minute: 0 },
+			{ kind: "monthly", days: [], hour: 9, minute: 0 },
+			{ kind: "weekly", weekdays: [7], hour: 9, minute: 0 },
+		]) {
+			expect(() =>
+				DOMAIN_SCHEDULER_CAPABILITIES.CREATE_TASK.parseInput({
+					data: {
+						name: "Daily",
+						prompt: "Run",
+						schedule,
+						runTarget: { mode: SCHEDULER_RUN_TARGET_MODES.NEW_SESSION, projectCwd: "C:/workspace" },
+						enabled: true,
+					},
+				}),
+			).toThrowError(expect.objectContaining({ code: CAPABILITY_ERROR_CODES.INVALID_INPUT }));
+		}
 	});
 
 	it("cleans task and history outputs while validating nested statuses", () => {
 		const task = {
 			id: "task",
-			name: "Daily",
+			name: "Monthly",
 			prompt: "Run",
-			cron: "0 9 * * *",
-			isOnce: false,
-			enabled: true,
-			cwd: "C:/workspace",
-			skill: { name: "review", type: SCHEDULER_SKILL_TYPES.SKILL, ignored: true },
+			schedule: { kind: "monthly", days: [1, "last"], hour: 9, minute: 0 },
+			runTarget: { mode: SCHEDULER_RUN_TARGET_MODES.NEW_SESSION, projectCwd: "C:/workspace" },
+			enabled: false,
+			suspendedReason: "project-removed",
 			createdAt: 1,
 			updatedAt: 2,
 			lastRunAt: null,
@@ -92,20 +94,21 @@ describe("scheduler domain capabilities", () => {
 		};
 		const parsedTask = DOMAIN_SCHEDULER_CAPABILITIES.GET_TASK.parseOutput(task);
 		expect(parsedTask).not.toHaveProperty("ignored");
-		expect(parsedTask).not.toHaveProperty("skill.ignored");
+		expect(parsedTask.schedule).toEqual({ kind: "monthly", days: [1, "last"], hour: 9, minute: 0 });
 
 		expect(
 			DOMAIN_SCHEDULER_CAPABILITIES.LIST_HISTORY.parseOutput([
 				{
 					id: "record",
 					taskId: "task",
-					sessionId: "session",
 					startedAt: 1,
-					completedAt: 2,
-					status: SCHEDULER_RECORD_STATUSES.SUCCESS,
+					completedAt: 1,
+					status: SCHEDULER_RECORD_STATUSES.MISSED,
+					reason: SCHEDULER_NOT_RUN_REASONS.APP_NOT_RUNNING,
+					missedCount: 3,
+					missedUntil: 3,
 					prompt: "Run",
-					responsePreview: "Done",
-					executionMode: SCHEDULER_EXECUTION_MODES.FULL_ACCESS,
+					responsePreview: "",
 					ignored: true,
 				},
 			]),
@@ -113,13 +116,14 @@ describe("scheduler domain capabilities", () => {
 			{
 				id: "record",
 				taskId: "task",
-				sessionId: "session",
 				startedAt: 1,
-				completedAt: 2,
-				status: SCHEDULER_RECORD_STATUSES.SUCCESS,
+				completedAt: 1,
+				status: SCHEDULER_RECORD_STATUSES.MISSED,
+				reason: SCHEDULER_NOT_RUN_REASONS.APP_NOT_RUNNING,
+				missedCount: 3,
+				missedUntil: 3,
 				prompt: "Run",
-				responsePreview: "Done",
-				executionMode: SCHEDULER_EXECUTION_MODES.FULL_ACCESS,
+				responsePreview: "",
 			},
 		]);
 		expect(() =>
@@ -127,13 +131,11 @@ describe("scheduler domain capabilities", () => {
 				{
 					id: "record",
 					taskId: "task",
-					sessionId: "session",
 					startedAt: 1,
 					completedAt: null,
-					status: SCHEDULER_RECORD_STATUSES.RUNNING,
+					status: "queued",
 					prompt: "Run",
 					responsePreview: "",
-					executionMode: SCHEDULER_EXECUTION_MODES.INHERIT,
 				},
 			]),
 		).toThrowError(expect.objectContaining({ code: CAPABILITY_ERROR_CODES.INVALID_OUTPUT }));
@@ -145,23 +147,7 @@ describe("scheduler domain capabilities", () => {
 			type: "array",
 			items: {
 				type: "object",
-				required: ["id", "taskId", "sessionId", "startedAt", "completedAt", "status", "prompt", "responsePreview"],
-				properties: {
-					status: {
-						anyOf: [
-							{ const: SCHEDULER_RECORD_STATUSES.RUNNING },
-							{ const: SCHEDULER_RECORD_STATUSES.SUCCESS },
-							{ const: SCHEDULER_RECORD_STATUSES.FAILED },
-							{ const: SCHEDULER_RECORD_STATUSES.ABORTED },
-						],
-					},
-					executionMode: {
-						anyOf: [
-							{ const: SCHEDULER_EXECUTION_MODES.SANDBOX },
-							{ const: SCHEDULER_EXECUTION_MODES.FULL_ACCESS },
-						],
-					},
-				},
+				required: ["id", "taskId", "startedAt", "completedAt", "status", "prompt", "responsePreview"],
 			},
 		});
 		expect(DOMAIN_SCHEDULER_CAPABILITY_CATALOG[3]?.inputSchema).toMatchObject({
@@ -171,7 +157,7 @@ describe("scheduler domain capabilities", () => {
 				data: {
 					type: "object",
 					additionalProperties: false,
-					required: ["name", "prompt", "cron", "isOnce", "enabled", "cwd"],
+					required: ["name", "prompt", "schedule", "runTarget", "enabled"],
 				},
 			},
 		});

@@ -4,6 +4,10 @@ All notable changes to `@vetta-org/capability-sdk` are documented in this file.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- Scheduler task capabilities (`task.list` / `get` / `history.list` / `create` / `update` / `set-enabled`) move to version 2 and a new task shape: `cron` + `isOnce` become a structured `schedule` (once / hourly / daily / weekly / monthly / custom cron), `cwd` becomes a `runTarget` (new session per run, or one bound session inside a project), `modelKey` becomes an optional `model` with reasoning level, and `executionMode` / `skill` are removed (automations always run with full access; skills are inline tokens in the prompt). Tasks gain optional webhook `notification` and a `suspendedReason`; history records add `skipped` / `missed` statuses with a reason. Old-shape input fails schema validation instead of being misread, and version-1 bindings no longer resolve.
+
 ### Fixed
 
 - Preserve `reasoningLevels` and `defaultReasoningLevel` when updating model providers, including plugin-owned model catalogs, instead of silently removing them during input parsing.

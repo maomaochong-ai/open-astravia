@@ -1,14 +1,14 @@
 import type { ScheduledTask } from "@shared/store/atoms";
 import { useTranslation } from "react-i18next";
 import { useTaskFormModel } from "../hooks/useTaskFormModel";
-import type { SchedulerTaskDraft } from "./SchedulerTaskFields";
+import type { AutomationDraft } from "./SchedulerTaskFields";
 import { TaskFormDialogView } from "./TaskFormDialogView";
 
 interface TaskFormDialogProps {
 	open: boolean;
 	task?: ScheduledTask;
 	/** Prefill for create mode (recommended templates). Ignored when editing. */
-	initialDraft?: SchedulerTaskDraft;
+	initialDraft?: Partial<AutomationDraft>;
 	onClose: () => void;
 }
 

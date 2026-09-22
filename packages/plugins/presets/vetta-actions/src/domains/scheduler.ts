@@ -46,15 +46,102 @@ const querySchema: PluginJsonSchema = {
 };
 
 const nonBlankStringSchema = { type: "string", minLength: 1, pattern: "\\S" } as const;
-const executionModeSchema = { enum: ["inherit", "sandbox", "full-access"] } as const;
-const skillSchema = {
+const minuteSchema = { type: "integer", minimum: 0, maximum: 59 } as const;
+const hourSchema = { type: "integer", minimum: 0, maximum: 23 } as const;
+const scheduleSchema = {
+	description:
+		"重复规则，按本机时区。once.at 为毫秒时间戳；weekly.weekdays 取 0-6（0 为周日）；monthly.days 取 1-31 或 \"last\"；custom.cron 为 5 段 cron。",
+	oneOf: [
+		{
+			type: "object",
+			properties: { kind: { const: "once" }, at: { type: "number" } },
+			required: ["kind", "at"],
+			additionalProperties: false,
+		},
+		{
+			type: "object",
+			properties: { kind: { const: "hourly" }, minute: minuteSchema },
+			required: ["kind", "minute"],
+			additionalProperties: false,
+		},
+		{
+			type: "object",
+			properties: { kind: { const: "daily" }, hour: hourSchema, minute: minuteSchema },
+			required: ["kind", "hour", "minute"],
+			additionalProperties: false,
+		},
+		{
+			type: "object",
+			properties: {
+				kind: { const: "weekly" },
+				weekdays: { type: "array", minItems: 1, items: { type: "integer", minimum: 0, maximum: 6 } },
+				hour: hourSchema,
+				minute: minuteSchema,
+			},
+			required: ["kind", "weekdays", "hour", "minute"],
+			additionalProperties: false,
+		},
+		{
+			type: "object",
+			properties: {
+				kind: { const: "monthly" },
+				days: {
+					type: "array",
+					minItems: 1,
+					items: { anyOf: [{ type: "integer", minimum: 1, maximum: 31 }, { const: "last" }] },
+				},
+				hour: hourSchema,
+				minute: minuteSchema,
+			},
+			required: ["kind", "days", "hour", "minute"],
+			additionalProperties: false,
+		},
+		{
+			type: "object",
+			properties: { kind: { const: "custom" }, cron: nonBlankStringSchema },
+			required: ["kind", "cron"],
+			additionalProperties: false,
+		},
+	],
+} as const;
+const runTargetSchema = {
+	description:
+		"运行会话策略。new-session：每次触发在 projectCwd 所属项目下新建会话；same-session：所有触发投进同一会话，sessionPath 为 null 时首次执行新建并一直复用。projectCwd 用项目路径，默认对话用对话 cwd。",
+	oneOf: [
+		{
+			type: "object",
+			properties: { mode: { const: "new-session" }, projectCwd: nonBlankStringSchema },
+			required: ["mode", "projectCwd"],
+			additionalProperties: false,
+		},
+		{
+			type: "object",
+			properties: {
+				mode: { const: "same-session" },
+				projectCwd: nonBlankStringSchema,
+				sessionPath: { anyOf: [nonBlankStringSchema, { type: "null" }] },
+			},
+			required: ["mode", "projectCwd", "sessionPath"],
+			additionalProperties: false,
+		},
+	],
+} as const;
+const modelSchema = {
+	description: "省略即跟随默认模型。key 形如 provider/modelId；reasoning 为思考强度。",
+	type: "object",
+	properties: { key: nonBlankStringSchema, reasoning: nonBlankStringSchema },
+	required: ["key"],
+	additionalProperties: false,
+} as const;
+const notificationSchema = {
+	description: "webhook 通知。template 支持 {{name}} {{status}} {{startedAt}} {{duration}} {{reply}} {{error}}。",
 	type: "object",
 	properties: {
-		name: nonBlankStringSchema,
-		alias: nonBlankStringSchema,
-		type: { enum: ["skill", "scene"] },
+		webhookIds: { type: "array", minItems: 1, items: nonBlankStringSchema },
+		when: { enum: ["always", "success", "failure"] },
+		template: nonBlankStringSchema,
 	},
-	required: ["name", "type"],
+	required: ["webhookIds", "when", "template"],
 	additionalProperties: false,
 } as const;
 const createTaskDataSchema = {
@@ -62,15 +149,13 @@ const createTaskDataSchema = {
 	properties: {
 		name: nonBlankStringSchema,
 		prompt: nonBlankStringSchema,
-		cron: nonBlankStringSchema,
-		isOnce: { type: "boolean" },
+		schedule: scheduleSchema,
+		runTarget: runTargetSchema,
+		model: modelSchema,
+		notification: notificationSchema,
 		enabled: { type: "boolean" },
-		cwd: nonBlankStringSchema,
-		modelKey: nonBlankStringSchema,
-		executionMode: executionModeSchema,
-		skill: skillSchema,
 	},
-	required: ["name", "prompt", "cron", "isOnce", "cwd"],
+	required: ["name", "prompt", "schedule", "runTarget"],
 	additionalProperties: false,
 } as const;
 const updateTaskDataSchema = {
@@ -78,13 +163,11 @@ const updateTaskDataSchema = {
 	properties: {
 		name: nonBlankStringSchema,
 		prompt: nonBlankStringSchema,
-		cron: nonBlankStringSchema,
-		isOnce: { type: "boolean" },
+		schedule: scheduleSchema,
+		runTarget: runTargetSchema,
+		model: { anyOf: [modelSchema, { type: "null" }] },
+		notification: { anyOf: [notificationSchema, { type: "null" }] },
 		enabled: { type: "boolean" },
-		cwd: nonBlankStringSchema,
-		modelKey: { anyOf: [nonBlankStringSchema, { type: "null" }] },
-		executionMode: executionModeSchema,
-		skill: { anyOf: [skillSchema, { type: "null" }] },
 	},
 	minProperties: 1,
 	additionalProperties: false,
@@ -154,9 +237,8 @@ const taskExamples: PluginAppActionExample<TaskInput>[] = [
 			data: {
 				name: "每日总结",
 				prompt: "总结今天的进展",
-				cron: "0 18 * * *",
-				isOnce: false,
-				cwd: "C:\\\\Users\\\\me\\\\.vetta\\\\conversation",
+				schedule: { kind: "daily", hour: 18, minute: 0 },
+				runTarget: { mode: "new-session", projectCwd: "C:\\\\Users\\\\me\\\\.vetta\\\\conversation" },
 			},
 		},
 	},
@@ -201,7 +283,7 @@ export function registerSchedulerActions(ctx: PluginContext): void {
 		title: "管理定时任务",
 		summary: "创建、更新、删除、启用或停用定时任务。",
 		description: '对象参数；operation 为 "create"、"update"、"delete"、"enable" 或 "disable"。',
-		keywords: ["定时", "cron", "create", "update", "delete", "enable", "disable", "prompt", "cwd"],
+		keywords: ["定时", "cron", "create", "update", "delete", "enable", "disable", "prompt", "project", "session"],
 		effect: "write",
 		approval: {
 			defaultPresentation: "scheduler.create",

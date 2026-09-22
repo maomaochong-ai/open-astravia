@@ -52,6 +52,10 @@ function statusLabel(status: TaskExecutionRecord["status"], t: TFunction<"chat">
 			return t("activityPanel.schedule.statusFailed");
 		case "aborted":
 			return t("activityPanel.schedule.statusAborted");
+		case "skipped":
+			return t("activityPanel.schedule.statusSkipped");
+		case "missed":
+			return t("activityPanel.schedule.statusMissed");
 	}
 }
 
@@ -65,6 +69,9 @@ function statusClass(status: TaskExecutionRecord["status"]): string {
 			return "bg-red-500/10 text-red-500";
 		case "aborted":
 			return "bg-amber-500/10 text-amber-500";
+		case "skipped":
+		case "missed":
+			return "bg-muted text-muted-foreground";
 	}
 }
 
@@ -82,7 +89,7 @@ export function useScheduleExecutionTabPanelModel(cwd: string): ScheduleExecutio
 	const { tasks, runNow, toggleTask, refreshTasks } = useScheduledTasks();
 	const [recordsByTaskId, setRecordsByTaskId] = useState<Record<string, TaskExecutionRecord[]>>({});
 
-	const projectTasks = useMemo(() => tasks.filter((task) => task.cwd === cwd), [tasks, cwd]);
+	const projectTasks = useMemo(() => tasks.filter((task) => task.runTarget.projectCwd === cwd), [tasks, cwd]);
 
 	const loadRecords = useCallback(async (targetTasks: ScheduledTask[]) => {
 		const entries = await Promise.all(
@@ -132,7 +139,7 @@ export function useScheduleExecutionTabPanelModel(cwd: string): ScheduleExecutio
 
 	const handleOpenSession = useCallback((record: TaskExecutionRecord) => {
 		if (!record.sessionPath || !record.cwd || !openSessionFnRef.current) return;
-		void openSessionFnRef.current(record.cwd, record.sessionPath, record.executionMode);
+		void openSessionFnRef.current(record.cwd, record.sessionPath);
 	}, []);
 
 	const labels: ScheduleExecutionTabPanelViewLabels = {

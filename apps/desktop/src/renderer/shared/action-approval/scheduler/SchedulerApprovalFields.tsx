@@ -1,11 +1,14 @@
 import {
-	SchedulerTaskFields,
-	type SchedulerTaskDraft,
-} from "@domains/scheduler/components/SchedulerTaskFields";
+	type AutomationDraft,
+	automationDraftToInput,
+	automationDraftToPatch,
+	canSubmitAutomationDraft,
+} from "@domains/scheduler/automation-draft";
+import { SchedulerTaskFields } from "@domains/scheduler/components/SchedulerTaskFields";
 import type { DesktopActionJsonValue } from "@preload/api";
 import { useTranslation } from "react-i18next";
 
-export type SchedulerEditableData = SchedulerTaskDraft;
+export type SchedulerEditableData = AutomationDraft;
 export type SchedulerApprovalJsonData = { [key: string]: DesktopActionJsonValue };
 
 interface SchedulerApprovalFieldsProps {
@@ -13,10 +16,7 @@ interface SchedulerApprovalFieldsProps {
 	onChange: (value: SchedulerEditableData) => void;
 }
 
-export function SchedulerApprovalFields({
-	value,
-	onChange,
-}: SchedulerApprovalFieldsProps): JSX.Element {
+export function SchedulerApprovalFields({ value, onChange }: SchedulerApprovalFieldsProps): JSX.Element {
 	const { t } = useTranslation("common");
 
 	return (
@@ -25,30 +25,20 @@ export function SchedulerApprovalFields({
 			onChange={onChange}
 			namePlaceholder={t("schedulerApproval.taskNamePlaceholder")}
 			showEnabled
-			showWorkDirSelector={false}
 			promptMinHeight={160}
 		/>
 	);
 }
 
-export function toSchedulerApprovalJsonData(value: SchedulerEditableData): SchedulerApprovalJsonData {
-	const data: SchedulerApprovalJsonData = {};
-	if (value.name !== undefined) data.name = value.name;
-	if (value.prompt !== undefined) data.prompt = value.prompt;
-	if (value.cron !== undefined) data.cron = value.cron;
-	if (value.isOnce !== undefined) data.isOnce = value.isOnce;
-	if (value.enabled !== undefined) data.enabled = value.enabled;
-	if (value.cwd !== undefined) data.cwd = value.cwd;
-	if (value.modelKey !== undefined) data.modelKey = value.modelKey;
-	if (value.executionMode !== undefined) data.executionMode = value.executionMode;
-	if (value.skill !== undefined) {
-		data.skill = value.skill
-			? {
-					name: value.skill.name,
-					...(value.skill.alias ? { alias: value.skill.alias } : {}),
-					type: value.skill.type,
-				}
-			: null;
-	}
-	return data;
+export function canSubmitSchedulerApproval(value: SchedulerEditableData): boolean {
+	return canSubmitAutomationDraft(value);
+}
+
+/** 审批通过后回填给 action 的 data：创建给完整输入，更新给显式清除可选项的整份补丁。 */
+export function toSchedulerApprovalJsonData(
+	value: SchedulerEditableData,
+	operation: "create" | "update",
+): SchedulerApprovalJsonData {
+	const data = operation === "create" ? automationDraftToInput(value) : automationDraftToPatch(value);
+	return JSON.parse(JSON.stringify(data)) as SchedulerApprovalJsonData;
 }

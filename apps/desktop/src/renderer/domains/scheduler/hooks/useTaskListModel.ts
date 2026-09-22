@@ -1,18 +1,21 @@
 import type { ScheduledTask } from "@shared/store/atoms";
-import { confirmDialogAtom, runningTaskIdsAtom, scheduledTasksAtom } from "@shared/store/atoms";
+import {
+	confirmDialogAtom,
+	defaultConversationCwdAtom,
+	getProjectDisplayName,
+	runningTaskIdsAtom,
+	scheduledTasksAtom,
+} from "@shared/store/atoms";
 import type { TFunction } from "i18next";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { describeSchedule, parseCronExpression } from "../components/schedule-picker/cron-utils";
+import { describeSchedule } from "../components/schedule-picker/describe-schedule";
 import { useScheduledTasks } from "./useScheduledTasks";
 
 export interface TaskListItemModel {
-	readonly cron: string;
 	readonly enabled: boolean;
-	readonly executionModeLabel: string;
 	readonly id: string;
-	readonly isOnce: boolean;
 	readonly isRunning: boolean;
 	readonly isSelected: boolean;
 	readonly lastRunLabel: string;
@@ -20,7 +23,10 @@ export interface TaskListItemModel {
 	readonly name: string;
 	readonly prompt: string;
 	readonly scheduleLabel: string;
+	readonly scheduleDetail: string | null;
 	readonly statusLabel: string;
+	readonly suspendedLabel: string | null;
+	readonly targetLabel: string;
 	readonly task: ScheduledTask;
 }
 
@@ -31,7 +37,6 @@ export interface TaskListModel {
 		readonly edit: string;
 		readonly enable: string;
 		readonly failed: string;
-		readonly once: string;
 		readonly pause: string;
 		readonly runNow: string;
 		readonly success: string;
@@ -49,6 +54,7 @@ export function useTaskListModel({ selectedTaskId }: UseTaskListModelOptions): T
 	const { t } = useTranslation("automation");
 	const tasks = useAtomValue(scheduledTasksAtom);
 	const runningTaskIds = useAtomValue(runningTaskIdsAtom);
+	const defaultCwd = useAtomValue(defaultConversationCwdAtom);
 	const setConfirmDialog = useSetAtom(confirmDialogAtom);
 	const { deleteTask, toggleTask, runNow } = useScheduledTasks();
 
@@ -57,11 +63,8 @@ export function useTaskListModel({ selectedTaskId }: UseTaskListModelOptions): T
 			items: tasks.map((task) => {
 				const isRunning = runningTaskIds.has(task.id);
 				return {
-					cron: task.cron,
 					enabled: task.enabled,
-					executionModeLabel: executionModeLabel(task, t),
 					id: task.id,
-					isOnce: task.isOnce,
 					isRunning,
 					isSelected: selectedTaskId === task.id,
 					lastRunLabel: formatLastRun(task.lastRunAt, t),
@@ -69,8 +72,20 @@ export function useTaskListModel({ selectedTaskId }: UseTaskListModelOptions): T
 						task.lastRunStatus === "success" || task.lastRunStatus === "failed" ? task.lastRunStatus : null,
 					name: task.name,
 					prompt: task.prompt,
-					scheduleLabel: scheduleLabel(task, t),
-					statusLabel: isRunning ? t("list.running") : task.enabled ? t("list.pending") : t("list.disabled"),
+					scheduleLabel: describeSchedule(task.schedule, t),
+					scheduleDetail: task.schedule.kind === "custom" ? task.schedule.cron : null,
+					statusLabel: isRunning
+						? t("list.running")
+						: task.suspendedReason
+							? t("list.suspended")
+							: task.enabled
+								? t("list.pending")
+								: t("list.disabled"),
+					suspendedLabel: task.suspendedReason ? t(`suspended.${task.suspendedReason}`) : null,
+					targetLabel: t("list.target", {
+						mode: t(`form.runMode.${task.runTarget.mode}`),
+						project: getProjectDisplayName(task.runTarget.projectCwd, defaultCwd),
+					}),
 					task,
 				};
 			}),
@@ -79,7 +94,6 @@ export function useTaskListModel({ selectedTaskId }: UseTaskListModelOptions): T
 				edit: t("list.edit"),
 				enable: t("list.enable"),
 				failed: t("list.failed"),
-				once: t("list.once"),
 				pause: t("list.pause"),
 				runNow: t("list.runNow"),
 				success: t("list.success"),
@@ -103,7 +117,7 @@ export function useTaskListModel({ selectedTaskId }: UseTaskListModelOptions): T
 				void toggleTask(taskId);
 			},
 		}),
-		[deleteTask, runNow, runningTaskIds, selectedTaskId, setConfirmDialog, t, tasks, toggleTask],
+		[defaultCwd, deleteTask, runNow, runningTaskIds, selectedTaskId, setConfirmDialog, t, tasks, toggleTask],
 	);
 }
 
@@ -114,16 +128,4 @@ function formatLastRun(timestamp: number | null, t: TFunction<"automation">): st
 	if (diff < 3600000) return t("list.minutesAgo", { n: Math.floor(diff / 60000) });
 	if (diff < 86400000) return t("list.hoursAgo", { n: Math.floor(diff / 3600000) });
 	return t("list.daysAgo", { n: Math.floor(diff / 86400000) });
-}
-
-function scheduleLabel(task: ScheduledTask, t: TFunction<"automation">): string {
-	const parsed = parseCronExpression(task.cron, task.isOnce);
-	if (parsed) return describeSchedule(parsed, t);
-	return task.cron;
-}
-
-function executionModeLabel(task: ScheduledTask, t: TFunction<"automation">): string {
-	if (task.executionMode === "sandbox") return t("list.useSandbox");
-	if (task.executionMode === "full-access") return t("list.fullAccess");
-	return t("list.inheritDefault");
 }

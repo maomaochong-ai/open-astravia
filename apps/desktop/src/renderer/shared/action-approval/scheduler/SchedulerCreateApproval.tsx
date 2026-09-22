@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useThemeComponent } from "@vetta-org/theme-sdk";
+import { automationDraftFrom } from "@domains/scheduler/automation-draft";
+import { useAutomationDraftDefaults } from "@domains/scheduler/hooks/useAutomationDraftDefaults";
+import type { AutomationTaskInput } from "@preload/api";
 import {
 	type SchedulerEditableData,
 	toSchedulerApprovalJsonData,
@@ -8,18 +11,9 @@ import {
 import { SchedulerEditApprovalDrawerView } from "./SchedulerEditApprovalDrawerView";
 import { useActionApproval, type ActiveActionApproval } from "../useActionApproval";
 
-interface CreateTaskData extends SchedulerEditableData {
-	name: string;
-	prompt: string;
-	cron: string;
-	isOnce: boolean;
-	cwd: string;
-	skill?: { name: string; alias?: string; type: "skill" | "scene" };
-}
-
 interface CreateTaskInput {
 	operation: "create";
-	data: CreateTaskData;
+	data: Partial<AutomationTaskInput>;
 	approvalUi?: string;
 }
 
@@ -33,7 +27,8 @@ function SchedulerCreateDrawer({ approval }: { approval: ActiveActionApproval })
 	const { t } = useTranslation("common");
 	const { request, responding, error, approve, reject } = approval;
 	const input = request.input as unknown as CreateTaskInput;
-	const [data, setData] = useState<SchedulerEditableData>(input.data);
+	const defaults = useAutomationDraftDefaults();
+	const [data, setData] = useState<SchedulerEditableData>(() => automationDraftFrom(input.data, defaults));
 	const ThemedSchedulerEditApprovalDrawerView = useThemeComponent(
 		"root.approval.schedulerEditView",
 		SchedulerEditApprovalDrawerView,
@@ -59,7 +54,7 @@ function SchedulerCreateDrawer({ approval }: { approval: ActiveActionApproval })
 			onSubmit={() =>
 				approve({
 					operation: "create",
-					data: toSchedulerApprovalJsonData({ ...input.data, ...data }),
+					data: toSchedulerApprovalJsonData(data, "create"),
 					approvalUi: input.approvalUi ?? "scheduler.create",
 				})
 			}

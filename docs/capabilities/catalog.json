@@ -9837,10 +9837,9 @@
             "id",
             "name",
             "prompt",
-            "cron",
-            "isOnce",
+            "schedule",
+            "runTarget",
             "enabled",
-            "cwd",
             "createdAt",
             "updatedAt",
             "lastRunAt",
@@ -9856,65 +9855,289 @@
             "prompt": {
               "type": "string"
             },
-            "cron": {
-              "type": "string"
+            "schedule": {
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "at"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "const": "once",
+                      "type": "string"
+                    },
+                    "at": {
+                      "type": "number"
+                    }
+                  }
+                },
+                {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "minute"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "const": "hourly",
+                      "type": "string"
+                    },
+                    "minute": {
+                      "minimum": 0,
+                      "maximum": 59,
+                      "type": "integer"
+                    }
+                  }
+                },
+                {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "hour",
+                    "minute"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "const": "daily",
+                      "type": "string"
+                    },
+                    "hour": {
+                      "minimum": 0,
+                      "maximum": 23,
+                      "type": "integer"
+                    },
+                    "minute": {
+                      "minimum": 0,
+                      "maximum": 59,
+                      "type": "integer"
+                    }
+                  }
+                },
+                {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "weekdays",
+                    "hour",
+                    "minute"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "const": "weekly",
+                      "type": "string"
+                    },
+                    "weekdays": {
+                      "minItems": 1,
+                      "type": "array",
+                      "items": {
+                        "minimum": 0,
+                        "maximum": 6,
+                        "type": "integer"
+                      }
+                    },
+                    "hour": {
+                      "minimum": 0,
+                      "maximum": 23,
+                      "type": "integer"
+                    },
+                    "minute": {
+                      "minimum": 0,
+                      "maximum": 59,
+                      "type": "integer"
+                    }
+                  }
+                },
+                {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "days",
+                    "hour",
+                    "minute"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "const": "monthly",
+                      "type": "string"
+                    },
+                    "days": {
+                      "minItems": 1,
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "minimum": 1,
+                            "maximum": 31,
+                            "type": "integer"
+                          },
+                          {
+                            "const": "last",
+                            "type": "string"
+                          }
+                        ]
+                      }
+                    },
+                    "hour": {
+                      "minimum": 0,
+                      "maximum": 23,
+                      "type": "integer"
+                    },
+                    "minute": {
+                      "minimum": 0,
+                      "maximum": 59,
+                      "type": "integer"
+                    }
+                  }
+                },
+                {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "cron"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "const": "custom",
+                      "type": "string"
+                    },
+                    "cron": {
+                      "pattern": "\\S",
+                      "type": "string"
+                    }
+                  }
+                }
+              ]
             },
-            "isOnce": {
-              "type": "boolean"
+            "runTarget": {
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "mode",
+                    "projectCwd"
+                  ],
+                  "properties": {
+                    "mode": {
+                      "const": "new-session",
+                      "type": "string"
+                    },
+                    "projectCwd": {
+                      "pattern": "\\S",
+                      "type": "string"
+                    }
+                  }
+                },
+                {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "mode",
+                    "projectCwd",
+                    "sessionPath"
+                  ],
+                  "properties": {
+                    "mode": {
+                      "const": "same-session",
+                      "type": "string"
+                    },
+                    "projectCwd": {
+                      "pattern": "\\S",
+                      "type": "string"
+                    },
+                    "sessionPath": {
+                      "anyOf": [
+                        {
+                          "pattern": "\\S",
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "model": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "key"
+              ],
+              "properties": {
+                "key": {
+                  "pattern": "\\S",
+                  "type": "string"
+                },
+                "reasoning": {
+                  "pattern": "\\S",
+                  "type": "string"
+                }
+              }
+            },
+            "notification": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "webhookIds",
+                "when",
+                "template"
+              ],
+              "properties": {
+                "webhookIds": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "pattern": "\\S",
+                    "type": "string"
+                  }
+                },
+                "when": {
+                  "anyOf": [
+                    {
+                      "const": "always",
+                      "type": "string"
+                    },
+                    {
+                      "const": "success",
+                      "type": "string"
+                    },
+                    {
+                      "const": "failure",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "template": {
+                  "pattern": "\\S",
+                  "type": "string"
+                }
+              }
             },
             "enabled": {
               "type": "boolean"
             },
-            "cwd": {
-              "type": "string"
-            },
-            "modelKey": {
-              "type": "string"
-            },
-            "executionMode": {
+            "suspendedReason": {
               "anyOf": [
                 {
-                  "const": "inherit",
+                  "const": "session-deleted",
                   "type": "string"
                 },
                 {
-                  "const": "sandbox",
-                  "type": "string"
-                },
-                {
-                  "const": "full-access",
+                  "const": "project-removed",
                   "type": "string"
                 }
               ]
-            },
-            "skill": {
-              "additionalProperties": false,
-              "type": "object",
-              "required": [
-                "name",
-                "type"
-              ],
-              "properties": {
-                "name": {
-                  "type": "string"
-                },
-                "alias": {
-                  "pattern": "\\S",
-                  "type": "string"
-                },
-                "type": {
-                  "anyOf": [
-                    {
-                      "const": "skill",
-                      "type": "string"
-                    },
-                    {
-                      "const": "scene",
-                      "type": "string"
-                    }
-                  ]
-                }
-              }
             },
             "createdAt": {
               "type": "number"
@@ -9954,7 +10177,7 @@
           }
         }
       },
-      "version": 1
+      "version": 2
     },
     {
       "id": "cap.domain.vetta.scheduler.task.get",
@@ -9980,10 +10203,9 @@
           "id",
           "name",
           "prompt",
-          "cron",
-          "isOnce",
+          "schedule",
+          "runTarget",
           "enabled",
-          "cwd",
           "createdAt",
           "updatedAt",
           "lastRunAt",
@@ -9999,65 +10221,289 @@
           "prompt": {
             "type": "string"
           },
-          "cron": {
-            "type": "string"
+          "schedule": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "at"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "once",
+                    "type": "string"
+                  },
+                  "at": {
+                    "type": "number"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "minute"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "hourly",
+                    "type": "string"
+                  },
+                  "minute": {
+                    "minimum": 0,
+                    "maximum": 59,
+                    "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "hour",
+                  "minute"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "daily",
+                    "type": "string"
+                  },
+                  "hour": {
+                    "minimum": 0,
+                    "maximum": 23,
+                    "type": "integer"
+                  },
+                  "minute": {
+                    "minimum": 0,
+                    "maximum": 59,
+                    "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "weekdays",
+                  "hour",
+                  "minute"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "weekly",
+                    "type": "string"
+                  },
+                  "weekdays": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "minimum": 0,
+                      "maximum": 6,
+                      "type": "integer"
+                    }
+                  },
+                  "hour": {
+                    "minimum": 0,
+                    "maximum": 23,
+                    "type": "integer"
+                  },
+                  "minute": {
+                    "minimum": 0,
+                    "maximum": 59,
+                    "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "days",
+                  "hour",
+                  "minute"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "monthly",
+                    "type": "string"
+                  },
+                  "days": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "minimum": 1,
+                          "maximum": 31,
+                          "type": "integer"
+                        },
+                        {
+                          "const": "last",
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  },
+                  "hour": {
+                    "minimum": 0,
+                    "maximum": 23,
+                    "type": "integer"
+                  },
+                  "minute": {
+                    "minimum": 0,
+                    "maximum": 59,
+                    "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "cron"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "custom",
+                    "type": "string"
+                  },
+                  "cron": {
+                    "pattern": "\\S",
+                    "type": "string"
+                  }
+                }
+              }
+            ]
           },
-          "isOnce": {
-            "type": "boolean"
+          "runTarget": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "mode",
+                  "projectCwd"
+                ],
+                "properties": {
+                  "mode": {
+                    "const": "new-session",
+                    "type": "string"
+                  },
+                  "projectCwd": {
+                    "pattern": "\\S",
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "mode",
+                  "projectCwd",
+                  "sessionPath"
+                ],
+                "properties": {
+                  "mode": {
+                    "const": "same-session",
+                    "type": "string"
+                  },
+                  "projectCwd": {
+                    "pattern": "\\S",
+                    "type": "string"
+                  },
+                  "sessionPath": {
+                    "anyOf": [
+                      {
+                        "pattern": "\\S",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          "model": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "key"
+            ],
+            "properties": {
+              "key": {
+                "pattern": "\\S",
+                "type": "string"
+              },
+              "reasoning": {
+                "pattern": "\\S",
+                "type": "string"
+              }
+            }
+          },
+          "notification": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "webhookIds",
+              "when",
+              "template"
+            ],
+            "properties": {
+              "webhookIds": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "pattern": "\\S",
+                  "type": "string"
+                }
+              },
+              "when": {
+                "anyOf": [
+                  {
+                    "const": "always",
+                    "type": "string"
+                  },
+                  {
+                    "const": "success",
+                    "type": "string"
+                  },
+                  {
+                    "const": "failure",
+                    "type": "string"
+                  }
+                ]
+              },
+              "template": {
+                "pattern": "\\S",
+                "type": "string"
+              }
+            }
           },
           "enabled": {
             "type": "boolean"
           },
-          "cwd": {
-            "type": "string"
-          },
-          "modelKey": {
-            "type": "string"
-          },
-          "executionMode": {
+          "suspendedReason": {
             "anyOf": [
               {
-                "const": "inherit",
+                "const": "session-deleted",
                 "type": "string"
               },
               {
-                "const": "sandbox",
-                "type": "string"
-              },
-              {
-                "const": "full-access",
+                "const": "project-removed",
                 "type": "string"
               }
             ]
-          },
-          "skill": {
-            "additionalProperties": false,
-            "type": "object",
-            "required": [
-              "name",
-              "type"
-            ],
-            "properties": {
-              "name": {
-                "type": "string"
-              },
-              "alias": {
-                "pattern": "\\S",
-                "type": "string"
-              },
-              "type": {
-                "anyOf": [
-                  {
-                    "const": "skill",
-                    "type": "string"
-                  },
-                  {
-                    "const": "scene",
-                    "type": "string"
-                  }
-                ]
-              }
-            }
           },
           "createdAt": {
             "type": "number"
@@ -10096,7 +10542,7 @@
           }
         }
       },
-      "version": 1
+      "version": 2
     },
     {
       "id": "cap.domain.vetta.scheduler.task.history.list",
@@ -10123,7 +10569,6 @@
           "required": [
             "id",
             "taskId",
-            "sessionId",
             "startedAt",
             "completedAt",
             "status",
@@ -10145,6 +10590,18 @@
             },
             "cwd": {
               "type": "string"
+            },
+            "mode": {
+              "anyOf": [
+                {
+                  "const": "new-session",
+                  "type": "string"
+                },
+                {
+                  "const": "same-session",
+                  "type": "string"
+                }
+              ]
             },
             "startedAt": {
               "type": "number"
@@ -10176,6 +10633,14 @@
                 {
                   "const": "aborted",
                   "type": "string"
+                },
+                {
+                  "const": "skipped",
+                  "type": "string"
+                },
+                {
+                  "const": "missed",
+                  "type": "string"
                 }
               ]
             },
@@ -10191,22 +10656,35 @@
             "durationMs": {
               "type": "number"
             },
-            "executionMode": {
+            "reason": {
               "anyOf": [
                 {
-                  "const": "sandbox",
+                  "const": "previous-running",
                   "type": "string"
                 },
                 {
-                  "const": "full-access",
+                  "const": "app-not-running",
+                  "type": "string"
+                },
+                {
+                  "const": "system-sleep",
                   "type": "string"
                 }
               ]
+            },
+            "missedCount": {
+              "type": "number"
+            },
+            "missedUntil": {
+              "type": "number"
+            },
+            "notifyError": {
+              "type": "string"
             }
           }
         }
       },
-      "version": 1
+      "version": 2
     },
     {
       "id": "cap.domain.vetta.scheduler.task.create",
@@ -10223,10 +10701,9 @@
             "required": [
               "name",
               "prompt",
-              "cron",
-              "isOnce",
-              "enabled",
-              "cwd"
+              "schedule",
+              "runTarget",
+              "enabled"
             ],
             "properties": {
               "name": {
@@ -10237,69 +10714,277 @@
                 "pattern": "\\S",
                 "type": "string"
               },
-              "cron": {
-                "pattern": "\\S",
-                "type": "string"
-              },
-              "isOnce": {
-                "type": "boolean"
-              },
-              "enabled": {
-                "type": "boolean"
-              },
-              "cwd": {
-                "pattern": "\\S",
-                "type": "string"
-              },
-              "modelKey": {
-                "pattern": "\\S",
-                "type": "string"
-              },
-              "executionMode": {
+              "schedule": {
                 "anyOf": [
                   {
-                    "const": "inherit",
-                    "type": "string"
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "kind",
+                      "at"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "const": "once",
+                        "type": "string"
+                      },
+                      "at": {
+                        "type": "number"
+                      }
+                    }
                   },
                   {
-                    "const": "sandbox",
-                    "type": "string"
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "kind",
+                      "minute"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "const": "hourly",
+                        "type": "string"
+                      },
+                      "minute": {
+                        "minimum": 0,
+                        "maximum": 59,
+                        "type": "integer"
+                      }
+                    }
                   },
                   {
-                    "const": "full-access",
-                    "type": "string"
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "kind",
+                      "hour",
+                      "minute"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "const": "daily",
+                        "type": "string"
+                      },
+                      "hour": {
+                        "minimum": 0,
+                        "maximum": 23,
+                        "type": "integer"
+                      },
+                      "minute": {
+                        "minimum": 0,
+                        "maximum": 59,
+                        "type": "integer"
+                      }
+                    }
+                  },
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "kind",
+                      "weekdays",
+                      "hour",
+                      "minute"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "const": "weekly",
+                        "type": "string"
+                      },
+                      "weekdays": {
+                        "minItems": 1,
+                        "type": "array",
+                        "items": {
+                          "minimum": 0,
+                          "maximum": 6,
+                          "type": "integer"
+                        }
+                      },
+                      "hour": {
+                        "minimum": 0,
+                        "maximum": 23,
+                        "type": "integer"
+                      },
+                      "minute": {
+                        "minimum": 0,
+                        "maximum": 59,
+                        "type": "integer"
+                      }
+                    }
+                  },
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "kind",
+                      "days",
+                      "hour",
+                      "minute"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "const": "monthly",
+                        "type": "string"
+                      },
+                      "days": {
+                        "minItems": 1,
+                        "type": "array",
+                        "items": {
+                          "anyOf": [
+                            {
+                              "minimum": 1,
+                              "maximum": 31,
+                              "type": "integer"
+                            },
+                            {
+                              "const": "last",
+                              "type": "string"
+                            }
+                          ]
+                        }
+                      },
+                      "hour": {
+                        "minimum": 0,
+                        "maximum": 23,
+                        "type": "integer"
+                      },
+                      "minute": {
+                        "minimum": 0,
+                        "maximum": 59,
+                        "type": "integer"
+                      }
+                    }
+                  },
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "kind",
+                      "cron"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "const": "custom",
+                        "type": "string"
+                      },
+                      "cron": {
+                        "pattern": "\\S",
+                        "type": "string"
+                      }
+                    }
                   }
                 ]
               },
-              "skill": {
+              "runTarget": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "mode",
+                      "projectCwd"
+                    ],
+                    "properties": {
+                      "mode": {
+                        "const": "new-session",
+                        "type": "string"
+                      },
+                      "projectCwd": {
+                        "pattern": "\\S",
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "mode",
+                      "projectCwd",
+                      "sessionPath"
+                    ],
+                    "properties": {
+                      "mode": {
+                        "const": "same-session",
+                        "type": "string"
+                      },
+                      "projectCwd": {
+                        "pattern": "\\S",
+                        "type": "string"
+                      },
+                      "sessionPath": {
+                        "anyOf": [
+                          {
+                            "pattern": "\\S",
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              },
+              "model": {
                 "additionalProperties": false,
                 "type": "object",
                 "required": [
-                  "name",
-                  "type"
+                  "key"
                 ],
                 "properties": {
-                  "name": {
+                  "key": {
                     "pattern": "\\S",
                     "type": "string"
                   },
-                  "alias": {
+                  "reasoning": {
                     "pattern": "\\S",
                     "type": "string"
+                  }
+                }
+              },
+              "notification": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "webhookIds",
+                  "when",
+                  "template"
+                ],
+                "properties": {
+                  "webhookIds": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "pattern": "\\S",
+                      "type": "string"
+                    }
                   },
-                  "type": {
+                  "when": {
                     "anyOf": [
                       {
-                        "const": "skill",
+                        "const": "always",
                         "type": "string"
                       },
                       {
-                        "const": "scene",
+                        "const": "success",
+                        "type": "string"
+                      },
+                      {
+                        "const": "failure",
                         "type": "string"
                       }
                     ]
+                  },
+                  "template": {
+                    "pattern": "\\S",
+                    "type": "string"
                   }
                 }
+              },
+              "enabled": {
+                "type": "boolean"
               }
             }
           }
@@ -10314,10 +10999,9 @@
           "id",
           "name",
           "prompt",
-          "cron",
-          "isOnce",
+          "schedule",
+          "runTarget",
           "enabled",
-          "cwd",
           "createdAt",
           "updatedAt",
           "lastRunAt",
@@ -10333,65 +11017,289 @@
           "prompt": {
             "type": "string"
           },
-          "cron": {
-            "type": "string"
+          "schedule": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "at"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "once",
+                    "type": "string"
+                  },
+                  "at": {
+                    "type": "number"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "minute"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "hourly",
+                    "type": "string"
+                  },
+                  "minute": {
+                    "minimum": 0,
+                    "maximum": 59,
+                    "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "hour",
+                  "minute"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "daily",
+                    "type": "string"
+                  },
+                  "hour": {
+                    "minimum": 0,
+                    "maximum": 23,
+                    "type": "integer"
+                  },
+                  "minute": {
+                    "minimum": 0,
+                    "maximum": 59,
+                    "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "weekdays",
+                  "hour",
+                  "minute"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "weekly",
+                    "type": "string"
+                  },
+                  "weekdays": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "minimum": 0,
+                      "maximum": 6,
+                      "type": "integer"
+                    }
+                  },
+                  "hour": {
+                    "minimum": 0,
+                    "maximum": 23,
+                    "type": "integer"
+                  },
+                  "minute": {
+                    "minimum": 0,
+                    "maximum": 59,
+                    "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "days",
+                  "hour",
+                  "minute"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "monthly",
+                    "type": "string"
+                  },
+                  "days": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "minimum": 1,
+                          "maximum": 31,
+                          "type": "integer"
+                        },
+                        {
+                          "const": "last",
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  },
+                  "hour": {
+                    "minimum": 0,
+                    "maximum": 23,
+                    "type": "integer"
+                  },
+                  "minute": {
+                    "minimum": 0,
+                    "maximum": 59,
+                    "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "cron"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "custom",
+                    "type": "string"
+                  },
+                  "cron": {
+                    "pattern": "\\S",
+                    "type": "string"
+                  }
+                }
+              }
+            ]
           },
-          "isOnce": {
-            "type": "boolean"
+          "runTarget": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "mode",
+                  "projectCwd"
+                ],
+                "properties": {
+                  "mode": {
+                    "const": "new-session",
+                    "type": "string"
+                  },
+                  "projectCwd": {
+                    "pattern": "\\S",
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "mode",
+                  "projectCwd",
+                  "sessionPath"
+                ],
+                "properties": {
+                  "mode": {
+                    "const": "same-session",
+                    "type": "string"
+                  },
+                  "projectCwd": {
+                    "pattern": "\\S",
+                    "type": "string"
+                  },
+                  "sessionPath": {
+                    "anyOf": [
+                      {
+                        "pattern": "\\S",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          "model": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "key"
+            ],
+            "properties": {
+              "key": {
+                "pattern": "\\S",
+                "type": "string"
+              },
+              "reasoning": {
+                "pattern": "\\S",
+                "type": "string"
+              }
+            }
+          },
+          "notification": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "webhookIds",
+              "when",
+              "template"
+            ],
+            "properties": {
+              "webhookIds": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "pattern": "\\S",
+                  "type": "string"
+                }
+              },
+              "when": {
+                "anyOf": [
+                  {
+                    "const": "always",
+                    "type": "string"
+                  },
+                  {
+                    "const": "success",
+                    "type": "string"
+                  },
+                  {
+                    "const": "failure",
+                    "type": "string"
+                  }
+                ]
+              },
+              "template": {
+                "pattern": "\\S",
+                "type": "string"
+              }
+            }
           },
           "enabled": {
             "type": "boolean"
           },
-          "cwd": {
-            "type": "string"
-          },
-          "modelKey": {
-            "type": "string"
-          },
-          "executionMode": {
+          "suspendedReason": {
             "anyOf": [
               {
-                "const": "inherit",
+                "const": "session-deleted",
                 "type": "string"
               },
               {
-                "const": "sandbox",
-                "type": "string"
-              },
-              {
-                "const": "full-access",
+                "const": "project-removed",
                 "type": "string"
               }
             ]
-          },
-          "skill": {
-            "additionalProperties": false,
-            "type": "object",
-            "required": [
-              "name",
-              "type"
-            ],
-            "properties": {
-              "name": {
-                "type": "string"
-              },
-              "alias": {
-                "pattern": "\\S",
-                "type": "string"
-              },
-              "type": {
-                "anyOf": [
-                  {
-                    "const": "skill",
-                    "type": "string"
-                  },
-                  {
-                    "const": "scene",
-                    "type": "string"
-                  }
-                ]
-              }
-            }
           },
           "createdAt": {
             "type": "number"
@@ -10430,7 +11338,7 @@
           }
         }
       },
-      "version": 1
+      "version": 2
     },
     {
       "id": "cap.domain.vetta.scheduler.task.update",
@@ -10459,69 +11367,291 @@
                 "pattern": "\\S",
                 "type": "string"
               },
-              "cron": {
-                "pattern": "\\S",
-                "type": "string"
-              },
-              "isOnce": {
-                "type": "boolean"
-              },
-              "enabled": {
-                "type": "boolean"
-              },
-              "cwd": {
-                "pattern": "\\S",
-                "type": "string"
-              },
-              "modelKey": {
-                "pattern": "\\S",
-                "type": "string"
-              },
-              "executionMode": {
+              "schedule": {
                 "anyOf": [
                   {
-                    "const": "inherit",
-                    "type": "string"
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "kind",
+                      "at"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "const": "once",
+                        "type": "string"
+                      },
+                      "at": {
+                        "type": "number"
+                      }
+                    }
                   },
                   {
-                    "const": "sandbox",
-                    "type": "string"
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "kind",
+                      "minute"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "const": "hourly",
+                        "type": "string"
+                      },
+                      "minute": {
+                        "minimum": 0,
+                        "maximum": 59,
+                        "type": "integer"
+                      }
+                    }
                   },
                   {
-                    "const": "full-access",
-                    "type": "string"
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "kind",
+                      "hour",
+                      "minute"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "const": "daily",
+                        "type": "string"
+                      },
+                      "hour": {
+                        "minimum": 0,
+                        "maximum": 23,
+                        "type": "integer"
+                      },
+                      "minute": {
+                        "minimum": 0,
+                        "maximum": 59,
+                        "type": "integer"
+                      }
+                    }
+                  },
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "kind",
+                      "weekdays",
+                      "hour",
+                      "minute"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "const": "weekly",
+                        "type": "string"
+                      },
+                      "weekdays": {
+                        "minItems": 1,
+                        "type": "array",
+                        "items": {
+                          "minimum": 0,
+                          "maximum": 6,
+                          "type": "integer"
+                        }
+                      },
+                      "hour": {
+                        "minimum": 0,
+                        "maximum": 23,
+                        "type": "integer"
+                      },
+                      "minute": {
+                        "minimum": 0,
+                        "maximum": 59,
+                        "type": "integer"
+                      }
+                    }
+                  },
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "kind",
+                      "days",
+                      "hour",
+                      "minute"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "const": "monthly",
+                        "type": "string"
+                      },
+                      "days": {
+                        "minItems": 1,
+                        "type": "array",
+                        "items": {
+                          "anyOf": [
+                            {
+                              "minimum": 1,
+                              "maximum": 31,
+                              "type": "integer"
+                            },
+                            {
+                              "const": "last",
+                              "type": "string"
+                            }
+                          ]
+                        }
+                      },
+                      "hour": {
+                        "minimum": 0,
+                        "maximum": 23,
+                        "type": "integer"
+                      },
+                      "minute": {
+                        "minimum": 0,
+                        "maximum": 59,
+                        "type": "integer"
+                      }
+                    }
+                  },
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "kind",
+                      "cron"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "const": "custom",
+                        "type": "string"
+                      },
+                      "cron": {
+                        "pattern": "\\S",
+                        "type": "string"
+                      }
+                    }
                   }
                 ]
               },
-              "skill": {
-                "additionalProperties": false,
-                "type": "object",
-                "required": [
-                  "name",
-                  "type"
-                ],
-                "properties": {
-                  "name": {
-                    "pattern": "\\S",
-                    "type": "string"
-                  },
-                  "alias": {
-                    "pattern": "\\S",
-                    "type": "string"
-                  },
-                  "type": {
-                    "anyOf": [
-                      {
-                        "const": "skill",
+              "runTarget": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "mode",
+                      "projectCwd"
+                    ],
+                    "properties": {
+                      "mode": {
+                        "const": "new-session",
                         "type": "string"
                       },
-                      {
-                        "const": "scene",
+                      "projectCwd": {
+                        "pattern": "\\S",
                         "type": "string"
                       }
-                    ]
+                    }
+                  },
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "mode",
+                      "projectCwd",
+                      "sessionPath"
+                    ],
+                    "properties": {
+                      "mode": {
+                        "const": "same-session",
+                        "type": "string"
+                      },
+                      "projectCwd": {
+                        "pattern": "\\S",
+                        "type": "string"
+                      },
+                      "sessionPath": {
+                        "anyOf": [
+                          {
+                            "pattern": "\\S",
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    }
                   }
-                }
+                ]
+              },
+              "model": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "key"
+                    ],
+                    "properties": {
+                      "key": {
+                        "pattern": "\\S",
+                        "type": "string"
+                      },
+                      "reasoning": {
+                        "pattern": "\\S",
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "notification": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "webhookIds",
+                      "when",
+                      "template"
+                    ],
+                    "properties": {
+                      "webhookIds": {
+                        "minItems": 1,
+                        "type": "array",
+                        "items": {
+                          "pattern": "\\S",
+                          "type": "string"
+                        }
+                      },
+                      "when": {
+                        "anyOf": [
+                          {
+                            "const": "always",
+                            "type": "string"
+                          },
+                          {
+                            "const": "success",
+                            "type": "string"
+                          },
+                          {
+                            "const": "failure",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "template": {
+                        "pattern": "\\S",
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "enabled": {
+                "type": "boolean"
               }
             }
           }
@@ -10536,10 +11666,9 @@
           "id",
           "name",
           "prompt",
-          "cron",
-          "isOnce",
+          "schedule",
+          "runTarget",
           "enabled",
-          "cwd",
           "createdAt",
           "updatedAt",
           "lastRunAt",
@@ -10555,65 +11684,289 @@
           "prompt": {
             "type": "string"
           },
-          "cron": {
-            "type": "string"
+          "schedule": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "at"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "once",
+                    "type": "string"
+                  },
+                  "at": {
+                    "type": "number"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "minute"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "hourly",
+                    "type": "string"
+                  },
+                  "minute": {
+                    "minimum": 0,
+                    "maximum": 59,
+                    "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "hour",
+                  "minute"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "daily",
+                    "type": "string"
+                  },
+                  "hour": {
+                    "minimum": 0,
+                    "maximum": 23,
+                    "type": "integer"
+                  },
+                  "minute": {
+                    "minimum": 0,
+                    "maximum": 59,
+                    "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "weekdays",
+                  "hour",
+                  "minute"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "weekly",
+                    "type": "string"
+                  },
+                  "weekdays": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "minimum": 0,
+                      "maximum": 6,
+                      "type": "integer"
+                    }
+                  },
+                  "hour": {
+                    "minimum": 0,
+                    "maximum": 23,
+                    "type": "integer"
+                  },
+                  "minute": {
+                    "minimum": 0,
+                    "maximum": 59,
+                    "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "days",
+                  "hour",
+                  "minute"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "monthly",
+                    "type": "string"
+                  },
+                  "days": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "minimum": 1,
+                          "maximum": 31,
+                          "type": "integer"
+                        },
+                        {
+                          "const": "last",
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  },
+                  "hour": {
+                    "minimum": 0,
+                    "maximum": 23,
+                    "type": "integer"
+                  },
+                  "minute": {
+                    "minimum": 0,
+                    "maximum": 59,
+                    "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "cron"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "custom",
+                    "type": "string"
+                  },
+                  "cron": {
+                    "pattern": "\\S",
+                    "type": "string"
+                  }
+                }
+              }
+            ]
           },
-          "isOnce": {
-            "type": "boolean"
+          "runTarget": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "mode",
+                  "projectCwd"
+                ],
+                "properties": {
+                  "mode": {
+                    "const": "new-session",
+                    "type": "string"
+                  },
+                  "projectCwd": {
+                    "pattern": "\\S",
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "mode",
+                  "projectCwd",
+                  "sessionPath"
+                ],
+                "properties": {
+                  "mode": {
+                    "const": "same-session",
+                    "type": "string"
+                  },
+                  "projectCwd": {
+                    "pattern": "\\S",
+                    "type": "string"
+                  },
+                  "sessionPath": {
+                    "anyOf": [
+                      {
+                        "pattern": "\\S",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          "model": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "key"
+            ],
+            "properties": {
+              "key": {
+                "pattern": "\\S",
+                "type": "string"
+              },
+              "reasoning": {
+                "pattern": "\\S",
+                "type": "string"
+              }
+            }
+          },
+          "notification": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "webhookIds",
+              "when",
+              "template"
+            ],
+            "properties": {
+              "webhookIds": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "pattern": "\\S",
+                  "type": "string"
+                }
+              },
+              "when": {
+                "anyOf": [
+                  {
+                    "const": "always",
+                    "type": "string"
+                  },
+                  {
+                    "const": "success",
+                    "type": "string"
+                  },
+                  {
+                    "const": "failure",
+                    "type": "string"
+                  }
+                ]
+              },
+              "template": {
+                "pattern": "\\S",
+                "type": "string"
+              }
+            }
           },
           "enabled": {
             "type": "boolean"
           },
-          "cwd": {
-            "type": "string"
-          },
-          "modelKey": {
-            "type": "string"
-          },
-          "executionMode": {
+          "suspendedReason": {
             "anyOf": [
               {
-                "const": "inherit",
+                "const": "session-deleted",
                 "type": "string"
               },
               {
-                "const": "sandbox",
-                "type": "string"
-              },
-              {
-                "const": "full-access",
+                "const": "project-removed",
                 "type": "string"
               }
             ]
-          },
-          "skill": {
-            "additionalProperties": false,
-            "type": "object",
-            "required": [
-              "name",
-              "type"
-            ],
-            "properties": {
-              "name": {
-                "type": "string"
-              },
-              "alias": {
-                "pattern": "\\S",
-                "type": "string"
-              },
-              "type": {
-                "anyOf": [
-                  {
-                    "const": "skill",
-                    "type": "string"
-                  },
-                  {
-                    "const": "scene",
-                    "type": "string"
-                  }
-                ]
-              }
-            }
           },
           "createdAt": {
             "type": "number"
@@ -10652,7 +12005,7 @@
           }
         }
       },
-      "version": 1
+      "version": 2
     },
     {
       "id": "cap.domain.vetta.scheduler.task.delete",
@@ -10726,10 +12079,9 @@
           "id",
           "name",
           "prompt",
-          "cron",
-          "isOnce",
+          "schedule",
+          "runTarget",
           "enabled",
-          "cwd",
           "createdAt",
           "updatedAt",
           "lastRunAt",
@@ -10745,65 +12097,289 @@
           "prompt": {
             "type": "string"
           },
-          "cron": {
-            "type": "string"
+          "schedule": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "at"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "once",
+                    "type": "string"
+                  },
+                  "at": {
+                    "type": "number"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "minute"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "hourly",
+                    "type": "string"
+                  },
+                  "minute": {
+                    "minimum": 0,
+                    "maximum": 59,
+                    "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "hour",
+                  "minute"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "daily",
+                    "type": "string"
+                  },
+                  "hour": {
+                    "minimum": 0,
+                    "maximum": 23,
+                    "type": "integer"
+                  },
+                  "minute": {
+                    "minimum": 0,
+                    "maximum": 59,
+                    "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "weekdays",
+                  "hour",
+                  "minute"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "weekly",
+                    "type": "string"
+                  },
+                  "weekdays": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "minimum": 0,
+                      "maximum": 6,
+                      "type": "integer"
+                    }
+                  },
+                  "hour": {
+                    "minimum": 0,
+                    "maximum": 23,
+                    "type": "integer"
+                  },
+                  "minute": {
+                    "minimum": 0,
+                    "maximum": 59,
+                    "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "days",
+                  "hour",
+                  "minute"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "monthly",
+                    "type": "string"
+                  },
+                  "days": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "minimum": 1,
+                          "maximum": 31,
+                          "type": "integer"
+                        },
+                        {
+                          "const": "last",
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  },
+                  "hour": {
+                    "minimum": 0,
+                    "maximum": 23,
+                    "type": "integer"
+                  },
+                  "minute": {
+                    "minimum": 0,
+                    "maximum": 59,
+                    "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "cron"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "custom",
+                    "type": "string"
+                  },
+                  "cron": {
+                    "pattern": "\\S",
+                    "type": "string"
+                  }
+                }
+              }
+            ]
           },
-          "isOnce": {
-            "type": "boolean"
+          "runTarget": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "mode",
+                  "projectCwd"
+                ],
+                "properties": {
+                  "mode": {
+                    "const": "new-session",
+                    "type": "string"
+                  },
+                  "projectCwd": {
+                    "pattern": "\\S",
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "mode",
+                  "projectCwd",
+                  "sessionPath"
+                ],
+                "properties": {
+                  "mode": {
+                    "const": "same-session",
+                    "type": "string"
+                  },
+                  "projectCwd": {
+                    "pattern": "\\S",
+                    "type": "string"
+                  },
+                  "sessionPath": {
+                    "anyOf": [
+                      {
+                        "pattern": "\\S",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          "model": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "key"
+            ],
+            "properties": {
+              "key": {
+                "pattern": "\\S",
+                "type": "string"
+              },
+              "reasoning": {
+                "pattern": "\\S",
+                "type": "string"
+              }
+            }
+          },
+          "notification": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "webhookIds",
+              "when",
+              "template"
+            ],
+            "properties": {
+              "webhookIds": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "pattern": "\\S",
+                  "type": "string"
+                }
+              },
+              "when": {
+                "anyOf": [
+                  {
+                    "const": "always",
+                    "type": "string"
+                  },
+                  {
+                    "const": "success",
+                    "type": "string"
+                  },
+                  {
+                    "const": "failure",
+                    "type": "string"
+                  }
+                ]
+              },
+              "template": {
+                "pattern": "\\S",
+                "type": "string"
+              }
+            }
           },
           "enabled": {
             "type": "boolean"
           },
-          "cwd": {
-            "type": "string"
-          },
-          "modelKey": {
-            "type": "string"
-          },
-          "executionMode": {
+          "suspendedReason": {
             "anyOf": [
               {
-                "const": "inherit",
+                "const": "session-deleted",
                 "type": "string"
               },
               {
-                "const": "sandbox",
-                "type": "string"
-              },
-              {
-                "const": "full-access",
+                "const": "project-removed",
                 "type": "string"
               }
             ]
-          },
-          "skill": {
-            "additionalProperties": false,
-            "type": "object",
-            "required": [
-              "name",
-              "type"
-            ],
-            "properties": {
-              "name": {
-                "type": "string"
-              },
-              "alias": {
-                "pattern": "\\S",
-                "type": "string"
-              },
-              "type": {
-                "anyOf": [
-                  {
-                    "const": "skill",
-                    "type": "string"
-                  },
-                  {
-                    "const": "scene",
-                    "type": "string"
-                  }
-                ]
-              }
-            }
           },
           "createdAt": {
             "type": "number"
@@ -10842,7 +12418,7 @@
           }
         }
       },
-      "version": 1
+      "version": 2
     },
     {
       "id": "cap.domain.vetta.scheduler.task.run",

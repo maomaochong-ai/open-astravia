@@ -140,7 +140,9 @@
 			"pause": "暂停",
 			"enable": "启用",
 			"executionRecords": "执行记录",
-			"noRecords": "暂无执行记录"
+			"noRecords": "暂无执行记录",
+			"statusSkipped": "已跳过",
+			"statusMissed": "已错过"
 		},
 		"htmlPreview": {
 			"title": "HTML 预览"

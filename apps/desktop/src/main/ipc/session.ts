@@ -85,6 +85,7 @@ import {
 } from "../plugins/system-prompt-operations.js";
 import { getSharedRuntime } from "../runtime.js";
 import { assertSandboxAvailableForMode } from "../sandbox/capability.js";
+import { getDesktopSchedulerServiceIfReady } from "../scheduler/scheduler-service.js";
 import {
 	DEFAULT_CONVERSATION_CWD,
 	DEFAULT_CONVERSATION_SESSION_DIR,
@@ -378,6 +379,13 @@ function normalizeMcpAppResourceRead(value: unknown): DesktopMcpAppResourceRead 
 
 function assertMcpAppSender(sender: WebContents, expected: WebContents): void {
 	if (sender !== expected || sender.isDestroyed()) throw new Error("Untrusted MCP App IPC sender");
+}
+
+/** 会话被删除后通知自动化：解绑并暂停相关任务、清理执行记录（ADR-0127）。失败不影响删除本身。 */
+function notifyAutomationSessionsDeleted(isDeleted: (sessionPath: string) => boolean): void {
+	void getDesktopSchedulerServiceIfReady()
+		?.handleSessionsDeleted(isDeleted)
+		.catch((error) => sessionLog.error("failed to update automations after session deletion", error));
 }
 
 export function registerSessionIpc(webContents: WebContents): () => void {
@@ -1216,6 +1224,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		// 连带回收子目录里的产物。读 header 先取 cwd，再 delete，最后 rm 子目录。
 		const cwdFromHeader = await readSessionCwdFromHeader(sessionPath);
 		await runtime.deleteSession(sessionPath);
+		notifyAutomationSessionsDeleted((path) => path === sessionPath);
 		if (cwdFromHeader && isConversationSubCwd(cwdFromHeader)) {
 			await rm(resolve(cwdFromHeader), { recursive: true, force: true }).catch((err) => {
 				sessionLog.error("failed to remove conversation sub cwd", cwdFromHeader, err);
@@ -1225,15 +1234,21 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 
 	ipcMain.handle(CHANNELS.DELETE_ALL_FOR_CWD, async (_event, cwd: unknown) => {
 		assertNonEmptyString(cwd, "cwd");
-		return purgeProjectSessions(cwd, {
+		const purged = new Set<string>();
+		const result = await purgeProjectSessions(cwd, {
 			listSessions: (target) => listSessionHistory(target),
-			deleteSession: (sessionPath) => runtime.deleteSession(sessionPath),
+			deleteSession: async (sessionPath) => {
+				await runtime.deleteSession(sessionPath);
+				purged.add(sessionPath);
+			},
 			// 分片目录是新会话的落点；`<项目>/.vetta/sessions` 是存量兼容位置，随项目目录
 			// 一起消失，这里不重复处理（见 composition.resolveDesktopRuntimeSessionRoots）。
 			resolveSessionDirs: (target) => [codingAgentSessionShardPath(target)],
 			removeDirectory: (dir) => rm(dir, { recursive: true, force: true }),
 			logError: (message, ...args) => sessionLog.error(message, ...args),
 		});
+		notifyAutomationSessionsDeleted((path) => purged.has(path));
+		return result;
 	});
 
 	ipcMain.handle(CHANNELS.RENAME, async (_event, sessionPath: unknown, name: unknown) => {
@@ -1354,6 +1369,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			throw err;
 		}
 		await mkdir(targetSessionDir, { recursive: true });
+		notifyAutomationSessionsDeleted((path) => resolve(path).startsWith(sessionDirWithSep));
 	});
 
 	ipcMain.handle(CHANNELS.CLEAR_DEFAULT_ARTIFACTS, async (_event, scope: unknown) => {
