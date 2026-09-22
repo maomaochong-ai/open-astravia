@@ -81,11 +81,18 @@ describe("close-tab", () => {
 		expect(collectBottomPanelLeaves(state.root)[0]?.activeTabId).toBe("b");
 	});
 
-	it("关掉最后一个 tab 后面板变空", () => {
+	it("关掉最后一个 tab 后面板变空并自动收起", () => {
 		const state = run(emptyBottomPanelState(), openTerminal("a"), { type: "close-tab", tabId: "a" });
 
 		expect(state.root).toBeNull();
 		expect(state.activeLeafId).toBeNull();
+		expect(state.collapsed).toBe(true);
+	});
+
+	it("还剩 tab 时关闭不改变展开态", () => {
+		const state = run(withTwoTabs(), { type: "close-tab", tabId: "a" });
+
+		expect(state.collapsed).toBe(false);
 	});
 
 	it("空掉的格子被回收，单子 group 塌缩回格子", () => {
@@ -417,12 +424,7 @@ describe("最近激活的 tab", () => {
 	});
 
 	it("全部关掉后记录清空，状态回到默认形状", () => {
-		const state = run(
-			emptyBottomPanelState(),
-			openTerminal("a"),
-			{ type: "close-tab", tabId: "a" },
-			{ type: "set-collapsed", collapsed: true },
-		);
+		const state = run(emptyBottomPanelState(), openTerminal("a"), { type: "close-tab", tabId: "a" });
 
 		expect(state.lastActiveTabIds).toBeUndefined();
 		expect(isDefaultBottomPanelState(state)).toBe(true);

@@ -393,7 +393,14 @@ function reduceBottomPanelLayout(state: BottomPanelSessionState, action: BottomP
 			if (!state.root) return state;
 			const { node, removed } = removeTabFromNode(state.root, action.tabId);
 			if (!removed) return state;
-			return { ...state, root: node, activeLeafId: resolveActiveLeafId(node, state.activeLeafId) };
+			// 关掉最后一个 tab 就顺手收起：留一块只有「添加」空态的面板占着半屏没有用处，
+			// 用户要的是「这里的事做完了」。下次点底部面板按钮照样展开空态再添加。
+			return {
+				...state,
+				root: node,
+				collapsed: node === null ? true : state.collapsed,
+				activeLeafId: resolveActiveLeafId(node, state.activeLeafId),
+			};
 		}
 
 		case "activate-tab": {
