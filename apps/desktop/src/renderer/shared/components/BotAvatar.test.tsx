@@ -1,11 +1,25 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { BotAvatar } from "./BotAvatar";
 
 afterEach(() => {
 	cleanup();
 	vi.restoreAllMocks();
+	vi.useRealTimers();
+});
+
+it("流式中的小动作之间至少空 1.4s，不再每半秒就逐帧驱动一次", () => {
+	// 只伪造 setTimeout：motion 会缓存 requestAnimationFrame 的引用，伪造它会让后面的用例卡死。
+	vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+	// ACTIVE_MOODS 最后一项是 sleep，它会渲染出可观察的「z」；同时把随机间隔顶到上限（2984ms）。
+	vi.spyOn(Math, "random").mockReturnValue(0.99);
+	render(<BotAvatar active title="流式中" />);
+
+	act(() => vi.advanceTimersByTime(1399));
+	expect(screen.queryByText("z")).toBeNull();
+	act(() => vi.advanceTimersByTime(1600));
+	expect(screen.queryByText("z")).toBeTruthy();
 });
 
 it("用户戳头像触发打瞌睡后，「z」会随姿态结束而消失，不留下常驻动画", async () => {

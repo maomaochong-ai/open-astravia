@@ -139,11 +139,13 @@ export const BotAvatar = memo(function BotAvatar({
 		return () => clearTimeout(id);
 	}, [mood]);
 
+	// 小动作之间留 1.4~3s 的空档：每个动作都是 motion 逐帧改写 transform，毛玻璃窗口每帧都要
+	// 整窗重合成。原先 0.3~0.7s 就来一下，等于流式全程连续 60fps 出帧。
 	useEffect(() => {
 		if (!shouldSchedule || mood !== "idle") return;
 		const id = setTimeout(
 			() => triggerMood(pickRandomMood()),
-			280 + Math.random() * 420,
+			1400 + Math.random() * 1600,
 		);
 		return () => clearTimeout(id);
 	}, [shouldSchedule, mood, triggerMood, pickRandomMood]);
