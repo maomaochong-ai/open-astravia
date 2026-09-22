@@ -1128,10 +1128,18 @@ export function DesignCanvas({
 	 * 一个从没兑现过的兜底不值这个价，关掉。
 	 */
 	const captureFaithfully = useCallback(
-		(frameId: string, options?: { keepHighlight?: boolean; pixelRatio?: number }): Promise<string> =>
+		(
+			frameId: string,
+			{ signal, ...options }: { keepHighlight?: boolean; pixelRatio?: number; signal?: AbortSignal } = {},
+		): Promise<string> =>
 			// 锁在最外层：runLive 的拉活体 + 静置也算这次截图的一部分，放进去等于让后台
 			// 队列在这段时间里插一张进来，撞的还是同一个 iframe。
-			withCaptureLock(() => runLive(frameId, () => bridge.capture(frameId, { ...options, timeoutMs: 30_000 }))),
+			// 拿到锁时先看调用方是否已经不要了（工作台关掉、画框移出渲染区）：排在锁上的
+			// 废任务照跑的话，下一次打开工作台得先等上一轮整队截完。
+			withCaptureLock(() => {
+				if (signal?.aborted) return Promise.reject(signal.reason ?? new Error("capture aborted"));
+				return runLive(frameId, () => bridge.capture(frameId, { ...options, timeoutMs: 30_000 }));
+			}),
 		[bridge, runLive, withCaptureLock],
 	);
 
@@ -1281,7 +1289,7 @@ export function DesignCanvas({
 		requestMockupExport({
 			session,
 			initialFrameIds: orderedSelection.map((frame) => frame.id),
-			capture: (frameId, pixelRatio) => captureFaithfully(frameId, { pixelRatio }),
+			capture: (frameId, pixelRatio, signal) => captureFaithfully(frameId, { pixelRatio, signal }),
 		});
 	};
 

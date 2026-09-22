@@ -302,4 +302,67 @@ describe("ExportMockupDialog", () => {
 		expect(byText("mockup.format.png")).toBeNull();
 		expect(staged()).toEqual(["A", "B", "C"]);
 	});
+
+	// 截图卡住（锁上排着、rAF 停摆）时不能永远显示「截图中」：到点给错误和重试。
+	it("gives up on a stuck capture with a retry instead of spinning forever", async () => {
+		vi.useFakeTimers();
+		try {
+			const signals: AbortSignal[] = [];
+			const capture = vi.fn((_frameId: string, _ratio: number, signal?: AbortSignal) => {
+				if (signal) signals.push(signal);
+				return new Promise<string>(() => {});
+			});
+			act(() => root.render(<ExportMockupDialog />));
+			act(() => requestMockupExport({ ...makeRequest(["a"]), capture }));
+			await flush();
+			expect(document.body.textContent).not.toContain("mockup.shot.failed");
+
+			act(() => vi.advanceTimersByTime(15_000));
+			await flush();
+
+			expect(document.body.textContent).toContain("mockup.shot.timeout");
+			expect(byText("mockup.shot.retry")).not.toBeNull();
+			// 超时同时中止：还排在锁上的话，这次截图就不再执行。
+			expect(signals[0]?.aborted).toBe(true);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	// 关掉工作台后，排在锁上的旧截图不能照跑——否则下次打开要先等上一轮整队截完。
+	it("aborts pending captures when the workbench closes", async () => {
+		const signals: AbortSignal[] = [];
+		const capture = vi.fn((_frameId: string, _ratio: number, signal?: AbortSignal) => {
+			if (signal) signals.push(signal);
+			return new Promise<string>(() => {});
+		});
+		act(() => root.render(<ExportMockupDialog />));
+		act(() => requestMockupExport({ ...makeRequest(["a", "b"]), capture }));
+		await flush();
+		expect(signals).toHaveLength(2);
+		expect(signals.some((signal) => signal.aborted)).toBe(false);
+
+		act(() => requestMockupExport(null));
+		await flush();
+
+		expect(signals.every((signal) => signal.aborted)).toBe(true);
+	});
+
+	it("aborts a frame's pending capture when it is removed from the stage", async () => {
+		const signals = new Map<string, AbortSignal>();
+		const capture = vi.fn((frameId: string, _ratio: number, signal?: AbortSignal) => {
+			if (signal) signals.set(frameId, signal);
+			return new Promise<string>(() => {});
+		});
+		act(() => root.render(<ExportMockupDialog />));
+		act(() => requestMockupExport({ ...makeRequest(["a", "b"]), capture }));
+		await flush();
+
+		click(document.body.querySelector<HTMLElement>("[aria-label='A']"));
+		click(byText("mockup.selected.remove"));
+		await flush();
+
+		expect(signals.get("a")?.aborted).toBe(true);
+		expect(signals.get("b")?.aborted).toBe(false);
+	});
 });

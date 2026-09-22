@@ -179,6 +179,7 @@
 	"mockup.preview.alt": "Mockup preview",
 	"mockup.shot.failed": "Capture failed",
 	"mockup.shot.retry": "Retry",
+	"mockup.shot.timeout": "Capture timed out — the page may still be loading",
 	"mockup.status.capturing": "Capturing frames…",
 	"mockup.status.failed": "{{count}} frames failed to capture — retry before exporting",
 	"mockup.status.pages": "{{count}} images · drag frames to swap",

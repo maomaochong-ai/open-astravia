@@ -179,6 +179,7 @@
 	"mockup.preview.alt": "渲染图预览",
 	"mockup.shot.failed": "截图失败",
 	"mockup.shot.retry": "重试",
+	"mockup.shot.timeout": "截图超时，页面可能还没加载完",
 	"mockup.status.capturing": "正在截图…",
 	"mockup.status.failed": "{{count}} 个画框截图失败，重试后才能导出",
 	"mockup.status.pages": "共 {{count}} 张图 · 拖动画框可交换位置",

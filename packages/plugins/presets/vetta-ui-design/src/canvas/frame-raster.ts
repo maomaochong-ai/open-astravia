@@ -196,10 +196,22 @@ function decodeRaster(dataUrl: string): Promise<void> {
 	return image.decode().catch(() => undefined);
 }
 
-/** 等 React 提交 + 浏览器完成一次布局与绘制。 */
+/**
+ * nextPaint 的兜底时长。窗口被遮挡、最小化时 rAF 会停，而等它的截图正攥着串行锁——
+ * 不兜底的话整条截图队列（导出工作台、旧宿主上的后台位图）都跟着卡死。
+ */
+const NEXT_PAINT_FALLBACK_MS = 1_000;
+
+/** 等 React 提交 + 浏览器完成一次布局与绘制（rAF 停摆时最多等 NEXT_PAINT_FALLBACK_MS）。 */
 function nextPaint(): Promise<void> {
 	return new Promise((resolve) => {
-		requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+		const fallback = setTimeout(resolve, NEXT_PAINT_FALLBACK_MS);
+		requestAnimationFrame(() =>
+			requestAnimationFrame(() => {
+				clearTimeout(fallback);
+				resolve();
+			}),
+		);
 	});
 }
 

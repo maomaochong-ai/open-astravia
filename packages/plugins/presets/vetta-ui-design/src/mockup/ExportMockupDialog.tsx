@@ -34,6 +34,11 @@ type ExportFormat = "image" | "pdf";
 
 /** Capture ratio used for the on-screen preview; export re-captures per shot. */
 const PREVIEW_PIXEL_RATIO = 2;
+/**
+ * 预览现截一帧的上限。截图排在画布的串行锁上，单帧最坏能卡半分钟以上（等 bridge 就绪
+ * + html-to-image 超时）；到点就给错误和重试，而不是一直显示「截图中」。
+ */
+const PREVIEW_CAPTURE_TIMEOUT_MS = 15_000;
 const MAX_PIXEL_RATIO = 4;
 /** 页与页之间的留白，按整叠图的宽度取——页本身已经自带内边距。 */
 const PAGE_GAP_RATIO = 0.04;
@@ -52,6 +57,26 @@ interface CaptureState {
 
 interface ShotEntry extends MockupShot {
 	error: string | null;
+}
+
+/** 超时就调 onTimeout（用来中止还在排队的截图），并以 message 拒绝。 */
+function withTimeout<T>(promise: Promise<T>, ms: number, onTimeout: () => void, message: string): Promise<T> {
+	return new Promise<T>((resolve, reject) => {
+		const timer = window.setTimeout(() => {
+			onTimeout();
+			reject(new Error(message));
+		}, ms);
+		promise.then(
+			(value) => {
+				window.clearTimeout(timer);
+				resolve(value);
+			},
+			(error: unknown) => {
+				window.clearTimeout(timer);
+				reject(error);
+			},
+		);
+	});
 }
 
 /**
@@ -98,8 +123,13 @@ export function ExportMockupDialog() {
 	 * 真正挂上时通知一次，这个时机才是对的。
 	 */
 	const [stage, setStage] = useState<HTMLDivElement | null>(null);
-	/** 正在截图的 frame，避免同一帧被重复排队。 */
-	const inFlightRef = useRef(new Set<string>());
+	/**
+	 * 正在截图的 frame 各自的中止器：键集合用来去重（同一帧不重复排队），移出渲染区时
+	 * 单独中止。换请求时整张表换新——旧请求的收尾只动旧表，不会误删新会话的标记。
+	 */
+	const inFlightRef = useRef(new Map<string, AbortController>());
+	/** 本次会话的中止器：关闭或换请求时中止，导出途中排在截图锁上的任务不再执行。 */
+	const sessionAbortRef = useRef(new AbortController());
 	/** 这次会话是否已经自动 fit 过一次：之后只听用户的缩放。 */
 	const fittedRef = useRef(false);
 	/**
@@ -116,6 +146,14 @@ export function ExportMockupDialog() {
 	);
 
 	useEffect(() => onMockupExport(setRequest), []);
+	// 卸载时把排在截图锁上的任务一并作废（换请求时的同样处理见下方的请求 effect）。
+	useEffect(
+		() => () => {
+			for (const controller of inFlightRef.current.values()) controller.abort();
+			sessionAbortRef.current.abort();
+		},
+		[],
+	);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -129,25 +167,37 @@ export function ExportMockupDialog() {
 
 	const close = useCallback(() => requestMockupExport(null), []);
 
-	/** 截一帧并填进对应的格子，布局不因此重排。 */
-	const captureInto = useCallback(async (frameId: string): Promise<void> => {
-		const active = requestRef.current;
-		if (!active || inFlightRef.current.has(frameId)) return;
-		inFlightRef.current.add(frameId);
-		setCaptures((current) => new Map(current).set(frameId, { image: null, error: null }));
-		try {
-			const dataUrl = await active.capture(frameId, PREVIEW_PIXEL_RATIO);
-			const image = await loadImage(dataUrl);
-			if (requestRef.current !== active) return;
-			setCaptures((current) => new Map(current).set(frameId, { image, error: null }));
-		} catch (error) {
-			if (requestRef.current !== active) return;
-			const message = error instanceof Error ? error.message : String(error);
-			setCaptures((current) => new Map(current).set(frameId, { image: null, error: message }));
-		} finally {
-			inFlightRef.current.delete(frameId);
-		}
-	}, []);
+	/** 截一帧并填进对应的格子，布局不因此重排。受 PREVIEW_CAPTURE_TIMEOUT_MS 约束。 */
+	const captureInto = useCallback(
+		async (frameId: string): Promise<void> => {
+			const active = requestRef.current;
+			const inFlight = inFlightRef.current;
+			if (!active || inFlight.has(frameId)) return;
+			const controller = new AbortController();
+			inFlight.set(frameId, controller);
+			/** 移出渲染区、关闭或换了请求：这一轮的结果不再归这个格子。 */
+			const superseded = (): boolean => requestRef.current !== active || inFlight.get(frameId) !== controller;
+			setCaptures((current) => new Map(current).set(frameId, { image: null, error: null }));
+			try {
+				const dataUrl = await withTimeout(
+					active.capture(frameId, PREVIEW_PIXEL_RATIO, controller.signal),
+					PREVIEW_CAPTURE_TIMEOUT_MS,
+					() => controller.abort(),
+					t("mockup.shot.timeout"),
+				);
+				const image = await loadImage(dataUrl);
+				if (superseded()) return;
+				setCaptures((current) => new Map(current).set(frameId, { image, error: null }));
+			} catch (error) {
+				if (superseded()) return;
+				const message = error instanceof Error ? error.message : String(error);
+				setCaptures((current) => new Map(current).set(frameId, { image: null, error: message }));
+			} finally {
+				if (inFlight.get(frameId) === controller) inFlight.delete(frameId);
+			}
+		},
+		[t],
+	);
 
 	/** 设计稿里的全部画框，按画布顺序——左侧列表和渲染顺序都以它为准。 */
 	const frames = useMemo(
@@ -157,7 +207,10 @@ export function ExportMockupDialog() {
 
 	// 新请求：接住初始选中集，读主题色与缩略图，选项按这份设计稿的历史设置还原。
 	useEffect(() => {
-		inFlightRef.current.clear();
+		for (const controller of inFlightRef.current.values()) controller.abort();
+		inFlightRef.current = new Map();
+		sessionAbortRef.current.abort();
+		sessionAbortRef.current = new AbortController();
 		fittedRef.current = false;
 		setCaptures(new Map());
 		setThumbnails(new Map());
@@ -313,6 +366,18 @@ export function ExportMockupDialog() {
 	}, []);
 
 	const detach = useCallback((frameId: string): void => {
+		// 还在截的直接取消，并清掉「截图中」的占位：否则它在锁上排着，拖慢后面加进来的，
+		// 再加回来时也会因为已有记录而不重截。
+		const controller = inFlightRef.current.get(frameId);
+		if (controller) {
+			controller.abort();
+			inFlightRef.current.delete(frameId);
+			setCaptures((current) => {
+				const next = new Map(current);
+				next.delete(frameId);
+				return next;
+			});
+		}
 		setAttached((current) => detachFrame(current, frameId));
 		setSelectedFrameId((current) => (current === frameId ? null : current));
 	}, []);
@@ -342,7 +407,7 @@ export function ExportMockupDialog() {
 		for (const shot of pageShots) {
 			const needed = (pageHeight / shot.cssHeight) * current.scale * layout.fit;
 			const ratio = Math.min(MAX_PIXEL_RATIO, Math.max(1, needed));
-			const dataUrl = await active.capture(shot.frameId, ratio);
+			const dataUrl = await active.capture(shot.frameId, ratio, sessionAbortRef.current.signal);
 			fresh.push({ ...shot, image: await loadImage(dataUrl) });
 		}
 		return renderMockupToCanvas(fresh, current, logo, slotsPerPage);

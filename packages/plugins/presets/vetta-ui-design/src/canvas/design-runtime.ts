@@ -86,7 +86,8 @@ export interface MockupExportRequest {
 	 * 先选中任何东西，用户在工作台里自己往里加。
 	 */
 	initialFrameIds: string[];
-	capture(frameId: string, pixelRatio: number): Promise<string>;
+	/** signal 中止后，还在排队的这次截图不再执行（已经开始的截完为止）。 */
+	capture(frameId: string, pixelRatio: number, signal?: AbortSignal): Promise<string>;
 }
 
 type MockupListener = (request: MockupExportRequest | null) => void;
