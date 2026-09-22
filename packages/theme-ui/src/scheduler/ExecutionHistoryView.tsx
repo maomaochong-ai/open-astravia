@@ -153,9 +153,6 @@ function StatusDot({ status }: { readonly status: ExecutionHistoryStatus }): JSX
 	};
 	return (
 		<div className="relative flex h-2 w-2 shrink-0">
-			{status === "running" && (
-				<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-50" />
-			)}
 			<span className={`relative inline-flex h-2 w-2 rounded-full ${colors[status]}`} />
 		</div>
 	);

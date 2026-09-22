@@ -1,4 +1,3 @@
-import { AnimatePresence, motion } from "motion/react";
 import type { ChangeEvent, JSX, KeyboardEvent, ReactNode, RefObject } from "react";
 
 export interface SkillPromptAreaViewLabels {
@@ -60,16 +59,8 @@ export function SkillPromptAreaView({
 			{slashPanel}
 
 			<div ref={cardRef} className="rounded-lg border border-border/60 bg-background/30">
-				<AnimatePresence initial={false}>
-					{hasSkill && (
-						<motion.div
-							key="skill-capsule-row"
-							initial={{ height: 0, opacity: 0 }}
-							animate={{ height: "auto", opacity: 1 }}
-							exit={{ height: 0, opacity: 0 }}
-							transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
-							className="overflow-hidden"
-						>
+				{hasSkill && (
+					<div>
 							<div className="flex flex-wrap items-center gap-1.5 px-3 pt-2.5">
 								<button
 									type="button"
@@ -93,9 +84,8 @@ export function SkillPromptAreaView({
 									<span className="icon-[mdi--close] h-3 w-3 opacity-50 transition-opacity group-hover:opacity-100" />
 								</button>
 							</div>
-						</motion.div>
-					)}
-				</AnimatePresence>
+					</div>
+				)}
 
 				<textarea
 					ref={textareaRef}
