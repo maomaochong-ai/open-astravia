@@ -37,8 +37,7 @@ flowchart LR
     D[workflow_dispatch] --> P
     P --> Q[check + quality + packaging tests]
     Q --> B[Windows + macOS arm64/x64 + Linux build]
-    B --> V[platform artifact checks + packaged updater E2E]
-    V --> A[Actions artifacts]
+    B --> A[Actions artifacts]
     A --> R{shouldPublish}
     R -->|false: default dispatch| E[结束，保留临时 Artifact]
     R -->|test| RT[desktop-test / R2 test]
@@ -68,7 +67,7 @@ flowchart LR
 `test` 是生产候选更新通道，不是降低质量标准的 debug 包。它应使用：
 
 - 商业版配置和真实构建流程；
-- 完整 `check`、质量测试、平台制品校验和 packaged E2E；
+- 完整 `check`、质量测试和打包测试；
 - macOS 签名与公证；
 - 独立的 `desktop-test` Environment、R2 prefix 和更新 URL；
 - 递增的 `build_version`，例如基线 `0.5.46`，候选 `0.5.47`。
@@ -155,7 +154,7 @@ APPLE_TEAM_ID
 
    例如 package 版本是 `0.5.47`，tag 必须是 `v0.5.47`。
 
-6. 等待 `desktop-release`：先看 `prepare` 的 resolved config，再看 quality、四个平台 build、制品校验、E2E 和最终公网 feed 校验。
+6. 等待 `desktop-release`：先看 `prepare` 的 resolved config，再看 quality、四个平台 build、发布和最终公网 feed 校验。
 
 不匹配的 `v*` tag 会被 scope job 忽略，不会打包或发布。正式 tag 不能携带 test channel 语义。
 
@@ -180,7 +179,7 @@ GitHub target 的手动发布会以当前 workflow SHA 创建对应版本 Releas
 
 1. 使用 `desktop-release` 手动运行发布 test 基线：选择 `release_target=r2`、`channel=test`，填写当前基线版本的 `build_version`，例如 `0.5.46`。
 2. 再运行一次相同 workflow，发布更高版本的 test 候选，例如 `0.5.47`。
-3. 确认两次运行都通过构建、平台制品校验、packaged updater E2E、R2 上传和公开 feed 校验，并且版本化安装包仍保留在 `VETTA_R2_PREFIX_TEST`。
+3. 确认两次运行都通过构建、R2 上传和公开 feed 校验，并且版本化安装包仍保留在 `VETTA_R2_PREFIX_TEST`。
 4. 确认 `desktop-test` Environment 的 `VETTA_UPDATE_URL_TEST` 与 `VETTA_R2_PREFIX_TEST` 对应同一个公开 feed。通常不需要在升级 workflow 中手动填写 `update_url`。
 
 ### 触发真实升级验证
@@ -219,7 +218,7 @@ workflow 会在 Windows、macOS、Linux runner 上并行执行，分别：
 - 更新源 URL 与 R2 test prefix；
 - 失败时的应用日志、升级状态文件和安装器日志。
 
-当前发布 workflow 中的 packaged E2E 仍然保留，用于发布前验证 `app-update.yml`、feed、版本解析、下载链路和 IPC；`desktop-upgrade-e2e` 则补充真实安装器、退出、重启和版本切换，不应相互替代。
+发布 workflow 已不再运行 packaged E2E；`app-update.yml`、feed、版本解析、下载链路和 IPC 由 PR 上的 `desktop-packaged` 覆盖，`desktop-upgrade-e2e` 则补充真实安装器、退出、重启和版本切换。
 
 ## 门禁顺序
 
@@ -230,13 +229,11 @@ workflow 会在 Windows、macOS、Linux runner 上并行执行，分别：
 3. `bun run verify:desktop:contracts`
 4. `bun run test:desktop:packaging`
 5. 每个平台构建
-6. 每个平台 `verify:updates:*`
-7. packaged app/updater E2E
-8. 上传 Actions Artifact
-9. 发布 job 再次合并 macOS metadata
-10. `verify-update-artifacts` 在 R2 发布前检查制品
-11. 先上传版本化安装包，再上传 `latest*.yml` metadata
-12. 通过公开 URL 验证 metadata 和其引用的包
+6. 上传 Actions Artifact
+7. 发布 job 合并 macOS metadata
+8. `verify-update-artifacts` 在 R2 发布前检查制品
+9. 先上传版本化安装包，再上传 `latest*.yml` metadata
+10. 通过公开 URL 验证 metadata 和其引用的包
 
 R2 的 `latest*.yml` 不能先于安装包公开。版本化安装包和旧版 blockmap 不要随意删除，否则会破坏差分更新和回退诊断。
 
