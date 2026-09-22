@@ -1,3 +1,37 @@
+export type {
+	RemoteDevicePaired,
+	RemoteDeviceStatus,
+	RemoteDiagnosticsSnapshot,
+	RemoteEventPayloads,
+	RemoteMessageEvent,
+	RemoteProjectSummary,
+	RemoteQuestionAnswer,
+	RemoteQuestionItem,
+	RemoteQuestionOption,
+	RemoteQuestionRequest,
+	RemoteRequestPayloads,
+	RemoteResponsePayloads,
+	RemoteSessionState,
+	RemoteSessionStatus,
+	RemoteSessionSummary,
+	RemoteToolCallSummary,
+	RemoteToolEvent,
+	RemoteToolPhase,
+	RemoteTranscriptEntry,
+} from "./api.js";
+export {
+	readDevicePaired,
+	readDeviceStatus,
+	readMessageEvent,
+	readProjectSummaries,
+	readQuestionRequest,
+	readSessionState,
+	readSessionStatus,
+	readSessionSummaries,
+	readSessionSummary,
+	readToolEvent,
+	readTranscriptEntries,
+} from "./api.js";
 export { diagnosticsFromSnapshot, RemoteConnection } from "./connection.js";
 export type { DeriveSessionKeysInput, RemoteRandomBytes, RemoteSessionKeys, SealOptions } from "./crypto.js";
 export {
