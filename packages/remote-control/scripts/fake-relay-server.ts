@@ -1,4 +1,5 @@
 import { encodeRemoteFrame, parseRemoteFrame } from "../src/protocol.ts";
+import { KEEPALIVE_PING, KEEPALIVE_PONG } from "../src/websocket-transport.ts";
 import type { RemoteHello, RemoteFrame, RemoteRole } from "../src/types.ts";
 
 type ClientRole = Exclude<RemoteRole, "relay">;
@@ -35,6 +36,11 @@ const server = Bun.serve<{ pairingId: string; role: ClientRole }>({
 		message(socket, message) {
 			if (typeof message !== "string") return closeInvalid(socket, "only text frames are supported");
 			for (const line of message.split("\n").filter(Boolean)) {
+				// The Cloudflare relay answers keepalives without waking the room; do the same.
+				if (line === KEEPALIVE_PING) {
+					socket.send(KEEPALIVE_PONG);
+					continue;
+				}
 				let frame: RemoteFrame;
 				try {
 					frame = parseRemoteFrame(line);
