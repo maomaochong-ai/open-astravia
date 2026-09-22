@@ -1,6 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { HastElement, HastRoot, HastText } from "./nodes";
-import { planReveal, STREAMING_SETTLE_MS, STREAMING_STALL_FLUSH_MS, splitStreamingSegments } from "./streaming-reveal";
+import {
+	DEFAULT_RATE_PER_MS,
+	planReveal,
+	REVEAL_TICK_MS,
+	STREAMING_SETTLE_MS,
+	STREAMING_STALL_FLUSH_MS,
+	splitStreamingSegments,
+} from "./streaming-reveal";
 
 const WHITESPACE_ONLY = /^\s+$/;
 
@@ -63,9 +70,26 @@ function clearTimeoutRef(ref: { current: number | null }): void {
 	}
 }
 
+/** 到达速率的采样窗口：只看最近这么久。 */
+const RATE_WINDOW_MS = 1500;
+
+interface ArrivalSample {
+	readonly at: number;
+	readonly length: number;
+}
+
+/** 最近窗口内的到达速率（字符/毫秒）；样本不够时用默认值。 */
+function estimateRate(samples: readonly ArrivalSample[], now: number): number {
+	const first = samples.find((sample) => now - sample.at <= RATE_WINDOW_MS) ?? samples[0];
+	const last = samples.at(-1);
+	if (!first || !last || last.at - first.at < 50 || last.length <= first.length) return DEFAULT_RATE_PER_MS;
+	return (last.length - first.length) / (last.at - first.at);
+}
+
 /**
- * 流式尾块：按短语把显示文本追向宿主文本，配合 rehype 分段做逐短语淡入（节奏见 streaming-reveal）。
- * 尾部没写完的片段先不显示；尾块结束后继续按节奏放完剩余短语，再撤掉分段。
+ * 流式尾块：把显示文本匀速追向宿主文本（节奏见 streaming-reveal），配合 rehype 分段做「最新短语略暗」。
+ * 放出由 `text` 变化（宿主每 100ms 一次的增量刷新）驱动，在布局效果里同步更新，与那次渲染落在同一帧；
+ * 没有新文本时由兜底 tick 收尾。尾部未写完的词、未闭合的行内语法先扣着；流结束后按节奏放完再撤掉分段。
  *
  * 从未作为尾块流式过的实例（历史消息、产品故事等由宿主自己驱动逐字的场景）直接镜像 `text`。
  */
@@ -76,11 +100,13 @@ export function useStreamingDisplayText(text: string, active: boolean): Streamin
 	const targetRef = useRef(text);
 	const activeRef = useRef(active);
 	const streamedRef = useRef(active);
-	/** 尾部停顿太久：不再等标点，把未完成片段也当作可放出的短语。 */
-	const stalledRef = useRef(false);
-	const nextRevealAtRef = useRef(0);
-	const revealTimerRef = useRef<number | null>(null);
-	const stallTimerRef = useRef<number | null>(null);
+	const samplesRef = useRef<ArrivalSample[]>([]);
+	/** 显示文本上次实际推进的时间：扣留、等词写完期间预算按它累计，闭合后能一次放出整段。 */
+	const lastAdvanceAtRef = useRef(0);
+	const lastArrivalAtRef = useRef(0);
+	/** 扣留开始的时间；null 表示当前没有扣留。 */
+	const heldSinceRef = useRef<number | null>(null);
+	const tickTimerRef = useRef<number | null>(null);
 	const settleTimerRef = useRef<number | null>(null);
 
 	const settle = useCallback((): void => {
@@ -94,38 +120,49 @@ export function useStreamingDisplayText(text: string, active: boolean): Streamin
 
 	const reveal = useCallback(
 		function reveal(): void {
-			revealTimerRef.current = null;
+			clearTimeoutRef(tickTimerRef);
+			const now = Date.now();
 			const target = targetRef.current;
-			const final = !activeRef.current || stalledRef.current;
-			const step = planReveal(target, displayRef.current.length, final);
-			if (!step) {
-				if (!activeRef.current) settle();
-				return;
+			const shown = displayRef.current.length;
+			const final = !activeRef.current;
+			const stalled = !final && now - lastArrivalAtRef.current >= STREAMING_STALL_FLUSH_MS;
+			const step = planReveal({
+				text: target,
+				revealed: shown,
+				final,
+				ratePerMs: estimateRate(samplesRef.current, now),
+				elapsedMs: lastAdvanceAtRef.current ? now - lastAdvanceAtRef.current : REVEAL_TICK_MS,
+				stalled,
+				heldMs: heldSinceRef.current === null ? 0 : now - heldSinceRef.current,
+			});
+			if (step?.held) heldSinceRef.current ??= now;
+			else heldSinceRef.current = null;
+			if (step && step.end > shown) {
+				const next = target.slice(0, step.end);
+				displayRef.current = next;
+				setDisplayText(next);
+				lastAdvanceAtRef.current = now;
 			}
-			const next = target.slice(0, step.end);
-			displayRef.current = next;
-			setDisplayText(next);
-			nextRevealAtRef.current = Date.now() + step.delayMs;
-			revealTimerRef.current = window.setTimeout(reveal, step.delayMs);
+			if (displayRef.current.length >= target.length) lastAdvanceAtRef.current = now;
+			if (displayRef.current.length < target.length) {
+				tickTimerRef.current = window.setTimeout(reveal, REVEAL_TICK_MS);
+			} else if (final) {
+				settle();
+			}
 		},
 		[settle],
 	);
 
-	const scheduleReveal = useCallback((): void => {
-		if (revealTimerRef.current !== null) return;
-		revealTimerRef.current = window.setTimeout(reveal, Math.max(0, nextRevealAtRef.current - Date.now()));
-	}, [reveal]);
-
 	useEffect(
 		() => () => {
-			clearTimeoutRef(revealTimerRef);
-			clearTimeoutRef(stallTimerRef);
+			clearTimeoutRef(tickTimerRef);
 			clearTimeoutRef(settleTimerRef);
 		},
 		[],
 	);
 
-	useEffect(() => {
+	// 用布局效果：放出后的 setState 会在浏览器绘制前同步重渲染，与宿主那次增量刷新落在同一帧。
+	useLayoutEffect(() => {
 		const textChanged = targetRef.current !== text;
 		targetRef.current = text;
 		activeRef.current = active;
@@ -134,10 +171,10 @@ export function useStreamingDisplayText(text: string, active: boolean): Streamin
 		const shown = displayRef.current;
 		if (!streamedRef.current || !text.startsWith(shown)) {
 			// 从未流式过，或宿主改写了已显示内容（不是追加）：直接对齐，不做节奏。
-			clearTimeoutRef(revealTimerRef);
-			clearTimeoutRef(stallTimerRef);
+			clearTimeoutRef(tickTimerRef);
 			clearTimeoutRef(settleTimerRef);
-			stalledRef.current = false;
+			samplesRef.current = [];
+			heldSinceRef.current = null;
 			displayRef.current = text;
 			setDisplayText(text);
 			setAnimateChunks(false);
@@ -147,17 +184,15 @@ export function useStreamingDisplayText(text: string, active: boolean): Streamin
 
 		clearTimeoutRef(settleTimerRef);
 		setAnimateChunks(true);
-		if (textChanged) stalledRef.current = false;
-		clearTimeoutRef(stallTimerRef);
-		if (active && shown.length < text.length) {
-			stallTimerRef.current = window.setTimeout(() => {
-				stallTimerRef.current = null;
-				stalledRef.current = true;
-				scheduleReveal();
-			}, STREAMING_STALL_FLUSH_MS);
+		const now = Date.now();
+		if (textChanged || lastArrivalAtRef.current === 0) {
+			lastArrivalAtRef.current = now;
+			const samples = samplesRef.current.filter((sample) => now - sample.at <= RATE_WINDOW_MS);
+			samples.push({ at: now, length: text.length });
+			samplesRef.current = samples;
 		}
-		scheduleReveal();
-	}, [text, active, scheduleReveal]);
+		reveal();
+	}, [text, active, reveal]);
 
 	return { displayText, animateChunks };
 }

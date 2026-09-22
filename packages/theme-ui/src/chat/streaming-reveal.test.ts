@@ -1,5 +1,12 @@
 import { describe, expect, test } from "vitest";
-import { nextPhraseEnd, planReveal, splitStreamingSegments } from "./streaming-reveal";
+import {
+	HOLD_MAX_MS,
+	holdBackUnclosedInline,
+	nextPhraseEnd,
+	planReveal,
+	snapToTokenBoundary,
+	splitStreamingSegments,
+} from "./streaming-reveal";
 
 describe("nextPhraseEnd", () => {
 	test("ends a phrase after latin punctuation followed by whitespace", () => {
@@ -67,27 +74,95 @@ describe("splitStreamingSegments", () => {
 	});
 });
 
+describe("snapToTokenBoundary", () => {
+	test("never splits a latin word or a number", () => {
+		expect(snapToTokenBoundary("hello world", 3)).toBe("hello".length);
+		expect(snapToTokenBoundary("pi is 3.14159 ok", 9)).toBe("pi is 3.14159".length);
+		expect(snapToTokenBoundary("hello world", 5)).toBe(5);
+		expect(snapToTokenBoundary("hello world", 6)).toBe(6);
+	});
+
+	test("treats every CJK character as a boundary", () => {
+		expect(snapToTokenBoundary("你好世界", 2)).toBe(2);
+	});
+
+	test("does not split a surrogate pair", () => {
+		expect(snapToTokenBoundary("a😀b", 2)).toBe(3);
+	});
+});
+
+describe("holdBackUnclosedInline", () => {
+	test("holds an open link until its url closes", () => {
+		const text = "See [report](/tmp/report.md) now";
+		expect(holdBackUnclosedInline(text, "See [rep".length)).toBe("See ".length);
+		expect(holdBackUnclosedInline(text, "See [report](/tmp/re".length)).toBe("See ".length);
+		expect(holdBackUnclosedInline(text, "See [report](/tmp/report.md)".length)).toBe(
+			"See [report](/tmp/report.md)".length,
+		);
+	});
+
+	test("brackets that are not followed by a url are not a link", () => {
+		const text = "array[0] is fine";
+		expect(holdBackUnclosedInline(text, text.length)).toBe(text.length);
+	});
+
+	test("holds open inline code and bold", () => {
+		expect(holdBackUnclosedInline("run `npm te", "run `npm te".length)).toBe("run ".length);
+		expect(holdBackUnclosedInline("run `npm test` now", "run `npm test` now".length)).toBe(
+			"run `npm test` now".length,
+		);
+		expect(holdBackUnclosedInline("a **bold wo", "a **bold wo".length)).toBe("a ".length);
+		expect(holdBackUnclosedInline("a **bold** b", "a **bold** b".length)).toBe("a **bold** b".length);
+	});
+
+	test("only looks at the current line", () => {
+		const text = "[broken\nnext line";
+		expect(holdBackUnclosedInline(text, text.length)).toBe(text.length);
+	});
+});
+
 describe("planReveal", () => {
-	test("returns null when only an unfinished tail is available", () => {
-		expect(planReveal("Hello there, gene", "Hello there,".length, false)).toBeNull();
+	const base = { final: false, ratePerMs: 0.1, elapsedMs: 100, stalled: false, heldMs: 0 };
+
+	test("returns null when everything is already shown", () => {
+		expect(planReveal({ ...base, text: "done", revealed: 4 })).toBeNull();
 	});
 
-	test("reveals one phrase at a time", () => {
-		expect(planReveal("One, two, three, four", 0, false)?.end).toBe("One,".length);
+	test("reveals a rate-sized slice aligned to a word boundary", () => {
+		// 0.1 字/ms × 100ms × 1.15 ≈ 12 字，落在 "sentence" 中间，向后推到词尾。
+		const text = "A short sentence that keeps going on and on";
+		expect(planReveal({ ...base, text, revealed: 0 })?.end).toBe("A short sentence".length);
 	});
 
-	test("waits longer as the backlog drains", () => {
-		const text = "a, b, c, d, e, f, g, h, i, ";
-		const busy = planReveal(text, 0, false);
-		const nearlyDone = planReveal(text, text.indexOf("h,"), false);
-		expect(busy?.delayMs).toBe(50);
-		expect(nearlyDone?.delayMs).toBeGreaterThan(busy?.delayMs ?? 0);
-		expect(planReveal("last one.", 0, true)?.delayMs).toBe(300);
+	test("keeps an unfinished trailing word until it completes or the stream stalls", () => {
+		const text = "Hello there, gene";
+		expect(planReveal({ ...base, text, revealed: 0, ratePerMs: 1 })?.end).toBe("Hello there, ".length);
+		expect(planReveal({ ...base, text, revealed: 0, ratePerMs: 1, stalled: true })?.end).toBe(text.length);
+		expect(planReveal({ ...base, text, revealed: 0, ratePerMs: 1, final: true })?.end).toBe(text.length);
 	});
 
-	test("reveals several phrases per step for a very large backlog", () => {
-		const text = "phrase, ".repeat(60);
-		const step = planReveal(text, 0, false);
-		expect(step?.end).toBeGreaterThan("phrase,".length);
+	test("catches up when the backlog exceeds the allowed lag and snaps when it is huge", () => {
+		const text = "word ".repeat(100);
+		const slow = planReveal({ ...base, text, revealed: 0, ratePerMs: 0.02 });
+		expect(slow?.end).toBeGreaterThan(0.02 * 100 * 1.15 + 5);
+		const huge = planReveal({ ...base, text: "x ".repeat(1000), revealed: 0 });
+		expect(huge?.end).toBe(2000);
+	});
+
+	test("drains the remainder within the drain window once the stream is final", () => {
+		const text = "a ".repeat(100);
+		const step = planReveal({ ...base, text, revealed: 0, final: true, ratePerMs: 0.01, elapsedMs: 300 });
+		expect(step?.end).toBeGreaterThanOrEqual(100);
+	});
+
+	test("holds back an open link and reports it, then releases after the hold timeout", () => {
+		const text = "See [report](/tmp/rep";
+		const held = planReveal({ ...base, text, revealed: 0, ratePerMs: 1 });
+		expect(held).toEqual({ end: "See ".length, held: true });
+		const waiting = planReveal({ ...base, text, revealed: "See ".length, ratePerMs: 1 });
+		expect(waiting).toEqual({ end: "See ".length, held: true });
+		const released = planReveal({ ...base, text, revealed: "See ".length, ratePerMs: 1, heldMs: HOLD_MAX_MS });
+		expect(released?.held).toBe(false);
+		expect(released?.end).toBeGreaterThan("See ".length);
 	});
 });
