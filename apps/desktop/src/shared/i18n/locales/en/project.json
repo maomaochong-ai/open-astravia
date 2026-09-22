@@ -115,7 +115,8 @@
 			"label": "Tags",
 			"new": "New tag…",
 			"manage": "Manage tags…"
-		}
+		},
+		"createAutomation": "Create automation from this session"
 	},
 	"tagEditor": {
 		"createTitle": "New tag",

@@ -15,6 +15,18 @@ export const selectedRecordIdAtom = atom<string | null>(null);
 export const formOpenAtom = atom<ScheduledTask | null | undefined>(undefined);
 
 /**
+ * 从别处（如会话右键菜单「基于此会话创建自动化」）带着预填内容打开新建表单。
+ * 自动化页消费后置回 null。字段含义同表单编辑态（AutomationDraft），这里只放可序列化的部分。
+ */
+export interface AutomationCreateRequest {
+	readonly name: string;
+	readonly runMode: "new-session" | "same-session";
+	readonly projectCwd: string;
+	readonly sessionPath: string | null;
+}
+export const automationCreateRequestAtom = atom<AutomationCreateRequest | null>(null);
+
+/**
  * 会话 → 自动化的归属（sessionPath 为键）。侧栏据此把「每次新建会话」产生的会话折叠成
  * 自动化会话组，并给绑定会话挂定时标记；数据源是主进程的执行记录与任务配置。
  */

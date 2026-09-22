@@ -1,5 +1,6 @@
 import type { ScheduledTask } from "@shared/store/atoms";
 import {
+	automationCreateRequestAtom,
 	formOpenAtom,
 	pageHeaderTitleHiddenAtom,
 	runningTaskIdsAtom,
@@ -42,6 +43,7 @@ export function useAutomationPageModel(): AutomationPageModel {
 	const tasks = useAtomValue(scheduledTasksAtom);
 	const [selectedTaskId, setSelectedTaskId] = useAtom(selectedTaskIdAtom);
 	const [formEditingTask, setFormEditingTask] = useAtom(formOpenAtom);
+	const [createRequest, setCreateRequest] = useAtom(automationCreateRequestAtom);
 	const { refreshTasks } = useScheduledTasks();
 	const setRunningTaskIds = useSetAtom(runningTaskIdsAtom);
 	const setHeaderTitleHidden = useSetAtom(pageHeaderTitleHiddenAtom);
@@ -77,6 +79,14 @@ export function useAutomationPageModel(): AutomationPageModel {
 			setDialogOpen(true);
 		}
 	}, [formEditingTask]);
+
+	useEffect(() => {
+		if (!createRequest) return;
+		setCreateRequest(null);
+		setFormEditingTask(null);
+		setCreateDraft(createRequest);
+		setDialogOpen(true);
+	}, [createRequest, setCreateRequest, setFormEditingTask]);
 
 	const recommendations = useMemo((): AutomationRecommendationView[] => {
 		return RECOMMENDED_AUTOMATION_TASKS.map((item) => ({

@@ -1,11 +1,16 @@
 import type { SessionContextMenuSession } from "@shared/store/atoms";
 import {
+	automationCreateRequestAtom,
+	conversationBucketCwd,
 	conversationTagEditorAtom,
 	conversationTagsAtom,
+	defaultConversationCwdAtom,
 	pinnedSessionPathsAtom,
 	renamingSessionPathAtom,
+	sessionDisplayLabel,
 	setSessionPinnedAtom,
 } from "@shared/store/atoms";
+import { useNavigate } from "@tanstack/react-router";
 import { isSshProjectUri } from "@vetta/ssh-transport/project-uri";
 import type { SessionContextMenuViewProps } from "@vetta-org/theme-ui/project";
 import type { ContextMenuNode } from "@vetta-org/theme-ui/shared";
@@ -29,7 +34,12 @@ export function useSessionContextMenuModel(
 	const setSessionPinned = useSetAtom(setSessionPinnedAtom);
 	const tags = useAtomValue(conversationTagsAtom);
 	const openTagEditor = useSetAtom(conversationTagEditorAtom);
+	const requestAutomation = useSetAtom(automationCreateRequestAtom);
+	const defaultCwd = useAtomValue(defaultConversationCwdAtom);
+	const navigate = useNavigate();
 	const pinned = pinnedSessionPaths.has(session.path);
+	// 只有能续写的普通会话才能作为自动化的绑定会话；团队会话由团队编排，不接受外部投递。
+	const canCreateAutomation = allowMutations && session.access?.resume !== false;
 
 	const handleRename = useCallback(() => {
 		setRenamingSessionPath(session.path);
@@ -49,7 +59,27 @@ export function useSessionContextMenuModel(
 		onClose();
 	}, [onClose, pinned, session.path, setSessionPinned]);
 
-	const extraItems = useMemo<readonly ContextMenuNode[] | undefined>(() => {
+	const automationItem = useMemo<ContextMenuNode | undefined>(() => {
+		if (!canCreateAutomation || ("kind" in session && session.kind === "agent-team")) return undefined;
+		return {
+			kind: "item",
+			id: "create-automation",
+			label: t("contextMenu.createAutomation"),
+			iconClassName: "icon-[solar--clock-circle-linear]",
+			onSelect: () => {
+				requestAutomation({
+					name: sessionDisplayLabel(session),
+					runMode: "same-session",
+					projectCwd: conversationBucketCwd(session.cwd, defaultCwd),
+					sessionPath: session.path,
+				});
+				void navigate({ to: "/automation" });
+				onClose();
+			},
+		};
+	}, [canCreateAutomation, defaultCwd, navigate, onClose, requestAutomation, session, t]);
+
+	const tagItems = useMemo<readonly ContextMenuNode[] | undefined>(() => {
 		if (!canTag) return undefined;
 		const assigned = new Set(conversationTagIds(tags, session.path));
 		const items: ContextMenuNode[] = [
@@ -107,6 +137,11 @@ export function useSessionContextMenuModel(
 			},
 		];
 	}, [canTag, onClose, openTagEditor, session.path, t, tags]);
+
+	const extraItems = useMemo<readonly ContextMenuNode[] | undefined>(() => {
+		const items = [...(tagItems ?? []), ...(automationItem ? [automationItem] : [])];
+		return items.length > 0 ? items : undefined;
+	}, [automationItem, tagItems]);
 
 	return {
 		canDelete: allowMutations && session.access?.delete !== false,

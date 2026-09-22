@@ -115,7 +115,8 @@
 			"label": "标签",
 			"new": "新标签…",
 			"manage": "管理标签…"
-		}
+		},
+		"createAutomation": "基于此会话创建自动化"
 	},
 	"tagEditor": {
 		"createTitle": "新建标签",
