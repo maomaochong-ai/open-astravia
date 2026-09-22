@@ -274,9 +274,14 @@ export class DesktopConversationService {
 		}
 	}
 
+	/**
+	 * 打开（或复用）一个已有会话。`executionMode` 传 `undefined` 表示"不要改动"：
+	 * 会话已在运行时活着就沿用它现在的模式，否则按默认模式打开——手机端镜像
+	 * 桌面会话时必须走这条路，否则会把电脑上正跑着的完全访问会话悄悄切成沙箱。
+	 */
 	async openSession(
 		sessionPath: string,
-		executionMode: "sandbox" | "full-access",
+		executionMode: "sandbox" | "full-access" | undefined,
 		source: DesktopConversationSource,
 	): Promise<DesktopConversationSession> {
 		if (!isAbsolute(sessionPath) || extname(sessionPath).toLowerCase() !== ".jsonl") {

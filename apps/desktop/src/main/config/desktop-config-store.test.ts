@@ -75,7 +75,7 @@ describe("写回配置不丢本版本不认识的字段", () => {
 	});
 
 	it("已知字段显式置空仍能删除", async () => {
-		const store = await loadStoreWithConfig({ projects: [], remoteControl: { pairingId: "p1" } });
+		const store = await loadStoreWithConfig({ projects: [], remoteControl: { cloudEnabled: true, devices: [] } });
 		const config = await store.readDesktopConfig();
 		await store.writeDesktopConfig({ ...config, remoteControl: undefined });
 		expect((await store.readDisk()).remoteControl).toBeUndefined();
