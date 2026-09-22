@@ -1124,7 +1124,6 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			label: m.label,
 			description: m.description,
 			icon: m.icon,
-			narration: m.narration,
 		}));
 	});
 

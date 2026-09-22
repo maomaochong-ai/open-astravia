@@ -3,7 +3,6 @@ id: work
 label: Work
 description: Work mode biased towards office and document processing
 icon: icon-[solar--case-minimalistic-linear]
-narration: staged
 ---
 
 # Role Definition

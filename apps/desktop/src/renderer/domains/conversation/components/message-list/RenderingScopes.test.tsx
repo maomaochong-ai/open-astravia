@@ -78,7 +78,7 @@ describe("feed rendering boundaries", () => {
 		expect(block.text).toBe("**Original**");
 	});
 
-	it("takes narration and prediction from its explicit scope, never from a different active feed", () => {
+	it("takes prediction from its explicit scope, never from a different active feed", () => {
 		const input = {
 			message: createConversationAgentMessage({ id: "assistant", text: "Done", blocks: [] }),
 			expanded: true,
@@ -88,16 +88,14 @@ describe("feed rendering boundaries", () => {
 		};
 		const standalone = renderHook(() => useAssistantMessageModel(input));
 		expect(standalone.result.current.isPredicting).toBe(false);
-		expect(standalone.result.current.stagedNarration).toBe(true);
 		const scoped = renderHook(() => useAssistantMessageModel(input), {
 			wrapper: ({ children }) => (
-				<AssistantRenderingProvider value={{ narration: "inline", predicting: true }}>
+				<AssistantRenderingProvider value={{ predicting: true }}>
 					{children}
 				</AssistantRenderingProvider>
 			),
 		});
 		expect(scoped.result.current.isPredicting).toBe(true);
-		expect(scoped.result.current.stagedNarration).toBe(false);
 		expect(standalone.result.current.isPredicting).toBe(false);
 	});
 

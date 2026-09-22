@@ -1,10 +1,10 @@
 /**
- * Work 模式的「组渲染」分段模型（见 docs/adr/0047）。
+ * 会话流的「组渲染」分段模型（见 docs/adr/0047）。所有工作模式共用，模式之间不切换渲染方式。
  *
  * Agent 通过 `progress` 工具（滑动窗口契约：一次调用 summary 关闭并改写上一阶段、
  * label 开启新阶段）显式声明阶段边界；本模块把 block 流切成阶段组。
  *
- * 与 coding 模式的 `groupBlocks` 的差别：
+ * 与平铺的 `groupBlocks`（导出、高度估算用）的差别：
  * - 组标题由 agent 写（label 进行中 / summary 完成态），而不是「已完成 N 个工具调用」。
  * - 没有任何 progress 调用时退回启发式合组（连续 tool_call/thinking 合成一组），
  *   标题交给渲染层的通用 i18n 文案。

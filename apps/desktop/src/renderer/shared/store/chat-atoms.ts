@@ -289,14 +289,6 @@ export type AgentMode = string;
 export const FACTORY_DEFAULT_AGENT_MODE: AgentMode = "work";
 export const defaultAgentModeAtom = atom<AgentMode>(FACTORY_DEFAULT_AGENT_MODE);
 
-/**
- * 当前打开会话的工作模式，来自 SessionStateSnapshot.agentMode（会话创建时固化）。
- * 与 defaultAgentModeAtom 的区别：这个是「本会话是什么」，那个是「下一个新会话用什么」。
- * 凡是按会话渲染的地方（如回答分组样式）都必须读这个，否则改默认值会串改已打开的会话。
- * null = 会话未打开或未指定模式。
- */
-export const sessionAgentModeAtom = atom<AgentMode | null>(null);
-
 /** Per-turn stats (speed, duration) for the last completed turn */
 export const lastTurnUsageAtom = atom<TurnUsageData | null>(null);
 

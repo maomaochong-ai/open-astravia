@@ -27,7 +27,6 @@ vi.mock("../../hooks/useAssistantMessageModel", () => ({
 		foldData: null,
 		isCurrentlyStreaming: true,
 		isPredicting: false,
-		stagedNarration: true,
 		segments: [],
 		durationAvailable: false,
 		streamingTailIndex: -1,

@@ -630,9 +630,7 @@
 			}
 		},
 		"assistantFoldTip": {
-			"collapse": "收起{{count}}条内容",
 			"collapseLabel": "收起",
-			"expand": "展开{{count}}条内容",
 			"expandLabel": "展开",
 			"streaming": "正在处理 · {{duration}}",
 			"waiting": "已等待 · {{duration}}",

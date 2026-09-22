@@ -34,7 +34,6 @@ import {
 	retryProgressAtom,
 	type SessionExecutionMode,
 	selectedModelAtom,
-	sessionAgentModeAtom,
 	sessionsMapAtom,
 } from "@shared/store/atoms";
 import { setQueueForSessionAtom, setQueuePausedAtom } from "@shared/store/message-queue-atoms";
@@ -120,7 +119,6 @@ export function useSessionOpener(): SessionOpenerController {
 	selectedModelRef.current = selectedModel;
 	const setActiveToolNames = useSetAtom(activeToolNamesAtom);
 	const setCurrentScenario = useSetAtom(currentScenarioAtom);
-	const setSessionAgentMode = useSetAtom(sessionAgentModeAtom);
 	const applySessionHydrationState = useSetAtom(applySessionHydrationStateAtom);
 	const setIsCompacting = useSetAtom(isCompactingAtom);
 	const setRetryProgress = useSetAtom(retryProgressAtom);
@@ -252,8 +250,6 @@ export function useSessionOpener(): SessionOpenerController {
 			setActiveToolNames(null);
 			// 场景同样置未知（null）→ 插件插槽 fail-closed 暂不显示，等 getState 回填后按场景显隐。
 			setCurrentScenario(null);
-			// 本会话工作模式同样置未知，等 getState 回填；绝不回退到全局默认值。
-			setSessionAgentMode(null);
 			if (stageExistingSessionOpen) {
 				setActiveSession(null);
 				activeSessionRef.current = null;
@@ -560,7 +556,6 @@ export function useSessionOpener(): SessionOpenerController {
 
 			applySessionHydrationState({
 				activeToolNames: state.activeToolNames,
-				agentMode: typeof state.agentMode === "string" && state.agentMode ? state.agentMode : null,
 				contextUsage: {
 					percent: state.contextPercent,
 					contextTokens: state.contextTokens ?? null,
@@ -729,7 +724,6 @@ export function useSessionOpener(): SessionOpenerController {
 			setLastActiveSession,
 			setActiveToolNames,
 			setCurrentScenario,
-			setSessionAgentMode,
 			applySessionHydrationState,
 			createSessionEventHandler,
 			setInlineFilePreview,
