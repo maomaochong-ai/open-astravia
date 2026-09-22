@@ -473,7 +473,7 @@ export const FrameView = memo(function FrameView({
 				{/* 活动态浮层放最后：DOM 顺序就是叠放顺序，放前面会被位图/遮罩盖住。
 				    自身 pointer-events-none，压在遮罩上也不影响选中/拖拽。
 				    无条件渲染：渐出发生在 activity 清空之后，组件得留着把过渡走完。 */}
-				<FrameActivityOverlay activity={activity} />
+				<FrameActivityOverlay activity={activity} frameWidth={rect.width} frameHeight={rect.height} />
 			</div>
 
 			{/* 尺寸标签（Figma 行为）：只在选中时出现在 frame 正下方，平时不占视觉噪音。

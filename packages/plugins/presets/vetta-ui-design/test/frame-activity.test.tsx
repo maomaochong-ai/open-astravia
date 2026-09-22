@@ -159,7 +159,7 @@ it("keeps the overlay alive through a long generation", () => {
 	vi.stubGlobal("cancelAnimationFrame", () => {});
 
 	act(() => {
-		root.render(<FrameActivityOverlay activity="creating" />);
+		root.render(<FrameActivityOverlay activity="creating" frameWidth={390} frameHeight={844} />);
 	});
 	act(() => {
 		vi.advanceTimersByTime(30_000);
@@ -175,7 +175,7 @@ it("keeps the overlay alive through a long generation", () => {
 	vi.unstubAllGlobals();
 });
 
-it("renders a breathing ring tinted per activity kind, with nothing covering the frame", () => {
+it("renders the per-kind decorations over a canvas fluid backdrop", () => {
 	const host = document.createElement("div");
 	document.body.append(host);
 	const root = createRoot(host);
@@ -187,7 +187,7 @@ it("renders a breathing ring tinted per activity kind, with nothing covering the
 	vi.stubGlobal("cancelAnimationFrame", () => {});
 
 	act(() => {
-		root.render(<FrameActivityOverlay activity="reading" />);
+		root.render(<FrameActivityOverlay activity="reading" frameWidth={390} frameHeight={844} />);
 	});
 	act(() => {
 		for (const cb of rafs.splice(0)) cb(0);
@@ -197,14 +197,19 @@ it("renders a breathing ring tinted per activity kind, with nothing covering the
 	expect(overlay).not.toBeNull();
 	expect(overlay?.style.opacity).toBe("1");
 	expect(overlay?.style.getPropertyValue("--vetd-accent")).toBe("#0ea5e9");
-	// 只有一圈描边：铺满 frame 的装饰层（原来的模糊流体）正是 GPU 飙高的来源。
-	expect(overlay?.children.length).toBe(1);
-	expect(overlay?.firstElementChild?.className).toBe("vetd-activity-ring");
+	// 流体是一张按 frame 宽高比缩小的 canvas，不是一堆带 filter 的 DOM 层。
+	const fluid = host.querySelector("canvas.vetd-fluid") as HTMLCanvasElement | null;
+	expect(fluid?.width).toBe(30);
+	expect(fluid?.height).toBe(64);
+	expect(host.querySelector(".vetd-activity-ring")).not.toBeNull();
+	expect(host.querySelector(".vetd-scan-beam")).not.toBeNull();
+	expect(host.querySelector(".vetd-bot-think")).not.toBeNull();
 
 	act(() => {
-		root.render(<FrameActivityOverlay activity="creating" />);
+		root.render(<FrameActivityOverlay activity="creating" frameWidth={390} frameHeight={844} />);
 	});
 	expect(overlay?.style.getPropertyValue("--vetd-accent")).toBe("#d946ef");
+	expect(host.querySelectorAll(".vetd-spark").length).toBe(4);
 
 	act(() => {
 		root.unmount();
