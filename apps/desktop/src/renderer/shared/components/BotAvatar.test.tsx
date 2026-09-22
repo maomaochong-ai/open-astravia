@@ -9,12 +9,22 @@ afterEach(() => {
 	vi.useRealTimers();
 });
 
-it("流式中的小动作之间至少空 1.4s，不再每半秒就逐帧驱动一次", () => {
+it("流式中（active）不再自动做小动作：静态光晕表达进行中，避免 motion 逐帧出帧", () => {
 	// 只伪造 setTimeout：motion 会缓存 requestAnimationFrame 的引用，伪造它会让后面的用例卡死。
 	vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-	// ACTIVE_MOODS 最后一项是 sleep，它会渲染出可观察的「z」；同时把随机间隔顶到上限（2984ms）。
+	// ACTIVE_MOODS 最后一项是 sleep，它会渲染出可观察的「z」。
 	vi.spyOn(Math, "random").mockReturnValue(0.99);
 	render(<BotAvatar active title="流式中" />);
+
+	act(() => vi.advanceTimersByTime(10_000));
+	expect(screen.queryByText("z")).toBeNull();
+});
+
+it("autoplay 的小动作之间至少空 1.4s", () => {
+	vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+	// 随机间隔顶到上限（2984ms）。
+	vi.spyOn(Math, "random").mockReturnValue(0.99);
+	render(<BotAvatar autoplay title="欢迎页" />);
 
 	act(() => vi.advanceTimersByTime(1399));
 	expect(screen.queryByText("z")).toBeNull();

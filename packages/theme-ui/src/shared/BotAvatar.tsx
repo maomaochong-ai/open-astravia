@@ -120,7 +120,9 @@ export const BotAvatar = memo(function BotAvatar({
 		ro.observe(parent);
 	}, []);
 
-	const shouldSchedule = !pacing && (active || autoplay);
+	// 流式中（active）不再自动做小动作：每个动作都是 motion 逐帧改写 transform，毛玻璃窗口每帧都要
+	// 整窗重合成；「还在进行」由静态光晕表达。autoplay 仍用于欢迎页这类本就该活泼的场景。
+	const shouldSchedule = !pacing && autoplay;
 
 	const pickRandomMood = useCallback((): AvatarMood => {
 		const choices = ACTIVE_MOODS.filter((m) => m !== lastPlayedRef.current);
@@ -139,8 +141,8 @@ export const BotAvatar = memo(function BotAvatar({
 		return () => clearTimeout(id);
 	}, [mood]);
 
-	// 小动作之间留 1.4~3s 的空档：每个动作都是 motion 逐帧改写 transform，毛玻璃窗口每帧都要
-	// 整窗重合成。原先 0.3~0.7s 就来一下，等于流式全程连续 60fps 出帧。
+	// 自动小动作（仅 autoplay）之间留 1.4~3s 的空档：每个动作都是 motion 逐帧改写 transform，
+	// 毛玻璃窗口每帧都要整窗重合成。
 	useEffect(() => {
 		if (!shouldSchedule || mood !== "idle") return;
 		const id = setTimeout(
