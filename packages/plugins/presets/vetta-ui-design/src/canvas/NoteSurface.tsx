@@ -33,7 +33,7 @@ export function NotePanel({ x, y, children }: { x: number; y: number; children: 
 			onKeyDown={(event) => event.stopPropagation()}
 			onKeyUp={(event) => event.stopPropagation()}
 		>
-			<div className="w-[17rem] overflow-hidden rounded-2xl border border-border/70 bg-popover/95 shadow-xl ring-1 ring-black/5 backdrop-blur-xl">
+			<div className="w-[17rem] overflow-hidden rounded-2xl border border-border/70 bg-popover shadow-xl ring-1 ring-black/5">
 				{children}
 			</div>
 		</div>

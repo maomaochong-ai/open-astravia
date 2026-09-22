@@ -110,7 +110,7 @@ export function CanvasCornerActions({
 	return (
 		<div
 			style={{ top: 12 + offsetTop }}
-			className="pointer-events-auto absolute right-3 z-40 flex items-center gap-0.5 rounded-lg border border-border bg-popover/90 p-0.5 backdrop-blur-xl"
+			className="pointer-events-auto absolute right-3 z-40 flex items-center gap-0.5 rounded-lg border border-border bg-popover p-0.5"
 			// 同历史抽屉：不截断的话画布根会捕获指针，按钮点不动。
 			onPointerDown={(event) => event.stopPropagation()}
 			onPointerMove={(event) => event.stopPropagation()}

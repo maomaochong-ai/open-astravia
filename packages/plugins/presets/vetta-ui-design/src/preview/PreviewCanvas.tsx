@@ -320,7 +320,7 @@ export function PreviewCanvas({ manifest, snapshotHtml }: PreviewCanvasProps) {
 					</div>
 				))}
 			</div>
-			<div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-lg border border-border bg-popover/95 p-1 shadow-lg backdrop-blur">
+			<div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-lg border border-border bg-popover p-1 shadow-lg">
 				<button
 					type="button"
 					title={t("controlbar.zoomOut")}
