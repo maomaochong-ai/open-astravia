@@ -24,7 +24,7 @@
 		"build:pack": "cross-env VETTA_SYSTEM_PLUGIN_PROFILE=production bun run build",
 		"snapshot:models-dev": "bun run scripts/update-models-dev-snapshot.ts",
 		"prepare:workspace": "turbo run build --cwd ../.. --filter=@vetta/desktop... --filter=@vetta-org/plugin-vite... --filter=@vetta-org/plugin-cli... --filter=!@vetta/desktop --force --summarize",
-		"prepare:workspace:dev": "turbo run build --cwd ../.. --filter=@vetta/desktop... --filter=@vetta-org/plugin-vite... --filter=@vetta-org/plugin-cli... --filter=!@vetta/desktop --summarize",
+		"prepare:workspace:dev": "bun scripts/ensure-workspace-install.mjs && turbo run build --cwd ../.. --filter=@vetta/desktop... --filter=@vetta-org/plugin-vite... --filter=@vetta-org/plugin-cli... --filter=!@vetta/desktop --summarize",
 		"prepare:ocr-models": "node scripts/fetch-ocr-models.js",
 		"prepare:speech-models": "node scripts/fetch-speech-models.mjs",
 		"prepare:speech-models:dev": "cross-env VETTA_BUILD_ENV=development node scripts/fetch-speech-models.mjs",
