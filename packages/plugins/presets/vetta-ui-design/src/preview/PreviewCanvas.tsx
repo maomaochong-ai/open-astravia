@@ -16,6 +16,17 @@ const FIT_PADDING = 24;
 const LOAD_WINDOW = 2;
 /** 可见区域外这么多屏之内的 frame 才建 iframe。 */
 const CULL_MARGIN_SCREENS = 0.5;
+/**
+ * 裁剪矩形的重算触发线（屏）：可见区域逼近已裁剪范围边缘、余量不足这么多时才重算。
+ * 同编辑态画布：onPaint 每帧都会调，每次都 setState 等于平移途中整棵预览每帧重渲染。
+ */
+const CULL_SLACK_SCREENS = 0.25;
+/**
+ * 同时留着的 iframe 上限。每个都是一份完整的 React 应用，进过可见范围就一直留着的话，
+ * 来回平移浏览一圈，内存和合成层数就跟着 frame 总数一起涨。超出时先卸掉最久没出现在
+ * 可见范围里的那个；回到它时重新加载一次，这是换内存的代价。
+ */
+const MAX_MOUNTED = 6;
 
 const icons = {
 	minus: (
@@ -51,8 +62,76 @@ function boundsOfFrames(frames: readonly VetdFrameEntry[]): Rect | null {
 	return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 }
 
+function inflate(rect: Rect, dx: number, dy: number): Rect {
+	return { x: rect.x - dx, y: rect.y - dy, width: rect.width + dx * 2, height: rect.height + dy * 2 };
+}
+
+function contains(outer: Rect, inner: Rect): boolean {
+	return (
+		inner.x >= outer.x &&
+		inner.y >= outer.y &&
+		inner.x + inner.width <= outer.x + outer.width &&
+		inner.y + inner.height <= outer.y + outer.height
+	);
+}
+
 function intersects(a: Rect, b: Rect): boolean {
 	return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+}
+
+/**
+ * 按视口给出新的裁剪矩形；现有的还够用时返回 null（调用方原地不动）。两种情况才重算：
+ * - 余量不足 CULL_SLACK_SCREENS：接着平移/缩小就要露出没建 iframe 的区域了。
+ * - 范围比需要的大一倍以上：放大之后旧矩形还按老比例留着，会一直多建一堆 iframe。
+ */
+export function nextCullRect(
+	current: Rect | null,
+	vp: { x: number; y: number; zoom: number },
+	size: { width: number; height: number },
+): Rect | null {
+	const worldWidth = size.width / vp.zoom;
+	const worldHeight = size.height / vp.zoom;
+	const visible: Rect = { x: -vp.x / vp.zoom, y: -vp.y / vp.zoom, width: worldWidth, height: worldHeight };
+	const next = inflate(visible, worldWidth * CULL_MARGIN_SCREENS, worldHeight * CULL_MARGIN_SCREENS);
+	if (current) {
+		const slack = inflate(current, -worldWidth * CULL_SLACK_SCREENS, -worldHeight * CULL_SLACK_SCREENS);
+		const oversized = current.width > next.width * 2 || current.height > next.height * 2;
+		if (contains(slack, visible) && !oversized) return null;
+	}
+	return next;
+}
+
+/**
+ * 该建 iframe 的 frame：可见的（已按画布顺序排好）依次放行，还没加载完的同时最多
+ * LOAD_WINDOW 个；已建的尽量保留，超过 MAX_MOUNTED 时先卸掉最久没出现在可见范围里的。
+ * 返回 null 表示与 mounted 相同。
+ */
+export function planMounted(
+	visibleIds: readonly string[],
+	mounted: ReadonlySet<string>,
+	loaded: ReadonlySet<string>,
+	lastSeen: ReadonlyMap<string, number>,
+): { mounted: Set<string>; evicted: string[] } | null {
+	const visible = new Set(visibleIds);
+	const next = new Set(mounted);
+	let pending = [...next].filter((id) => !loaded.has(id)).length;
+	for (const id of visibleIds) {
+		if (next.has(id)) continue;
+		if (pending >= LOAD_WINDOW) break;
+		next.add(id);
+		pending += 1;
+	}
+	const evictable = [...next]
+		.filter((id) => !visible.has(id))
+		.sort((a, b) => (lastSeen.get(a) ?? 0) - (lastSeen.get(b) ?? 0));
+	const evicted: string[] = [];
+	for (const id of evictable) {
+		if (next.size <= MAX_MOUNTED) break;
+		next.delete(id);
+		evicted.push(id);
+	}
+	if (next.size === mounted.size && evicted.length === 0) return null;
+	return { mounted: next, evicted };
 }
 
 /**
@@ -93,27 +172,31 @@ export function PreviewCanvas({ manifest, snapshotHtml }: PreviewCanvasProps) {
 	const { t } = useTranslation();
 	const frames = manifest.frames;
 	const contentBounds = useMemo(() => boundsOfFrames(frames), [frames]);
-	/** 已经建了 iframe 的 frame（进入过可见范围就一直留着，来回平移不必反复重启动）。 */
+	/** 已经建了 iframe 的 frame（离开可见范围后还留着，来回平移不必反复重启动；总数见 MAX_MOUNTED）。 */
 	const [mounted, setMounted] = useState<ReadonlySet<string>>(new Set());
 	/** 已经加载完的 frame，用来放行下一批（并发闸门）。 */
 	const [loaded, setLoaded] = useState<ReadonlySet<string>>(new Set());
 	const [cullRect, setCullRect] = useState<Rect | null>(null);
+	const cullRectRef = useRef<Rect | null>(null);
+	/** 每个 frame 最近一次落在可见范围里的序号，淘汰 iframe 时先挑最小的。 */
+	const lastSeenRef = useRef(new Map<string, number>());
+	const seenTickRef = useRef(0);
 	/** 首次量到容器尺寸时 fit 一次；之后由用户自己控制视口。 */
 	const fittedRef = useRef(false);
 	/** 容器尺寸已经量到——fit 要等它，首帧的 sizeRef 还是 0×0。 */
 	const [measured, setMeasured] = useState(false);
+	const measuredRef = useRef(false);
 
+	/** 按当前视口更新裁剪矩形，够用就原地不动（见 nextCullRect）。 */
 	const syncCullRect = useCallback((vp: { x: number; y: number; zoom: number }, size: { width: number; height: number }): void => {
 		if (size.width === 0 || size.height === 0) return;
-		setMeasured(true);
-		const worldWidth = size.width / vp.zoom;
-		const worldHeight = size.height / vp.zoom;
-		const next: Rect = {
-			x: -vp.x / vp.zoom - worldWidth * CULL_MARGIN_SCREENS,
-			y: -vp.y / vp.zoom - worldHeight * CULL_MARGIN_SCREENS,
-			width: worldWidth * (1 + CULL_MARGIN_SCREENS * 2),
-			height: worldHeight * (1 + CULL_MARGIN_SCREENS * 2),
-		};
+		if (!measuredRef.current) {
+			measuredRef.current = true;
+			setMeasured(true);
+		}
+		const next = nextCullRect(cullRectRef.current, vp, size);
+		if (!next) return;
+		cullRectRef.current = next;
 		setCullRect(next);
 	}, []);
 
@@ -152,27 +235,27 @@ export function PreviewCanvas({ manifest, snapshotHtml }: PreviewCanvasProps) {
 		return () => container.removeEventListener("wheel", onWheel);
 	}, [containerRef, view.applyWheel]);
 
-	/**
-	 * 该建 iframe 的 frame：可见范围内的按画布顺序排队，同时最多放行 LOAD_WINDOW 个
-	 * 还没加载完的。已建的一律保留。
-	 */
+	/** 该建 iframe 的 frame，见 planMounted。 */
 	useEffect(() => {
 		if (!snapshotHtml) return;
-		const visible = frames
+		const visibleIds = frames
 			.filter((frame) => !cullRect || intersects(cullRect, frame))
-			.sort((a, b) => (a.x === b.x ? a.y - b.y : a.x - b.x));
-		setMounted((current) => {
-			const next = new Set(current);
-			let pending = [...current].filter((id) => !loaded.has(id)).length;
-			for (const frame of visible) {
-				if (next.has(frame.id)) continue;
-				if (pending >= LOAD_WINDOW) break;
-				next.add(frame.id);
-				pending += 1;
-			}
-			return next.size === current.size ? current : next;
-		});
-	}, [frames, cullRect, loaded, snapshotHtml]);
+			.sort((a, b) => (a.x === b.x ? a.y - b.y : a.x - b.x))
+			.map((frame) => frame.id);
+		const tick = ++seenTickRef.current;
+		for (const id of visibleIds) lastSeenRef.current.set(id, tick);
+		const plan = planMounted(visibleIds, mounted, loaded, lastSeenRef.current);
+		if (!plan) return;
+		setMounted(plan.mounted);
+		// 卸掉的下次回来要重新加载，得重新占一个加载名额。
+		if (plan.evicted.length > 0) {
+			setLoaded((current) => {
+				const kept = new Set(current);
+				for (const id of plan.evicted) kept.delete(id);
+				return kept;
+			});
+		}
+	}, [frames, cullRect, loaded, mounted, snapshotHtml]);
 
 	const markLoaded = useCallback((frameId: string): void => {
 		setLoaded((current) => (current.has(frameId) ? current : new Set(current).add(frameId)));
@@ -220,7 +303,8 @@ export function PreviewCanvas({ manifest, snapshotHtml }: PreviewCanvasProps) {
 						>
 							{frame.title || frame.id}
 						</div>
-						<div className="h-full w-full overflow-hidden rounded-sm bg-white shadow ring-1 ring-border">
+						{/* 直角：圆角会让 iframe 的 overflow 裁剪走带遮罩的合成路径（同编辑态 FrameView）。 */}
+						<div className="h-full w-full overflow-hidden bg-white shadow ring-1 ring-border">
 							{snapshotHtml && mounted.has(frame.id) ? (
 								<SnapshotFrame
 									html={snapshotHtml}
