@@ -1,8 +1,9 @@
 import { TabBar } from "@shared/components/ui/tab-bar";
 import type { ActivityTabKey } from "@shared/lib/project-profile";
 import { ActivityPanel as ActivityPanelPrimitive } from "@vetta-org/theme-ui/activity";
-import type { ComponentType } from "react";
+import { type ComponentType, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { useDockedContentReady } from "../../hooks/useDockedContentReady";
 import { useDockedOutlet } from "../../hooks/useDockedOutlet";
 import { PluginTabPicker } from "../PluginTabPicker";
 import { ActivityTabSurface } from "./ActivityTabSurface";
@@ -25,6 +26,12 @@ export function ActivityPanelView({
 	// A closed docked panel must not keep its measurement-heavy visual tree alive.
 	// Floating tabs are independent windows and remain mounted below.
 	const renderDockedPanel = model.isOpen;
+	// 面板滑出是主线程上的 width 过渡，tab 内容的首次挂载（插件面板还要先取回并求值
+	// 懒加载 chunk）若与之同帧，长任务一来动画就卡在半路。壳与标签栏照常随开随挂，
+	// 内容等过渡结束再挂；浮出的标签不受影响。
+	const desktopRef = useRef<HTMLElement>(null);
+	const dockedContentReady = useDockedContentReady(model.isOpen, desktopRef);
+	const mountDockedContent = renderDockedPanel && dockedContentReady;
 	const tabBar =
 		renderDockedPanel &&
 		(model.tabItems.length > 0 || model.floatingTabs.length > 0 || model.showTabPicker) ? (
@@ -89,7 +96,7 @@ export function ActivityPanelView({
 				onResize={actions.onResize}
 				onResizeEnd={actions.onResizeEnd}
 			>
-				<ActivityPanelPrimitive.Desktop present={!model.narrowSheet}>
+				<ActivityPanelPrimitive.Desktop ref={desktopRef} present={!model.narrowSheet}>
 					<ActivityPanelPrimitive.Surface>{panelBody}</ActivityPanelPrimitive.Surface>
 					<ActivityPanelPrimitive.ResizeHandle />
 				</ActivityPanelPrimitive.Desktop>
@@ -111,7 +118,7 @@ export function ActivityPanelView({
 			)}
 			{model.mountedTabs.map((tab) => {
 				const floating = model.floatingTabs.find((placement) => placement.key === tab.id) ?? null;
-				if (!renderDockedPanel && floating === null) return null;
+				if (!mountDockedContent && floating === null) return null;
 				return (
 					<ActivityTabSurface
 						key={`${model.workspaceId}:${tab.id}`}

@@ -11,6 +11,7 @@ import {
 	type RegisteredActivityTab,
 } from "@shared/store/atoms";
 import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
+import { DOCKED_CONTENT_FALLBACK_MS } from "../hooks/useDockedContentReady";
 import { ActivityPanel } from "./ActivityPanel";
 
 vi.mock("motion/react", () => {
@@ -93,13 +94,42 @@ describe("activity panel plugin tabs outside the ordinary conversation host", ()
 	});
 
 	it("does not mount the docked tab bar or docked content while closed", () => {
+		vi.useFakeTimers();
 		const store = renderPanel("conversation", false);
 
 		expect(screen.queryByText("Demo panel")).toBeNull();
 		expect(screen.queryByText("file body")).toBeNull();
 
+		// 打开的那一帧只挂壳与标签栏；内容等滑出过渡结束（或兜底计时）再挂，
+		// 免得首次挂载的长任务把 width 过渡卡在半路。
 		act(() => store.set(activityPanelOpenAtom, true));
 		expect(screen.queryByText("Demo panel")).not.toBeNull();
+		expect(screen.queryByText("file body")).toBeNull();
+
+		act(() => vi.advanceTimersByTime(DOCKED_CONTENT_FALLBACK_MS));
+		expect(screen.queryByText("file body")).not.toBeNull();
+		vi.useRealTimers();
+	});
+
+	it("mounts docked content as soon as the panel's width transition ends", () => {
+		vi.useFakeTimers();
+		const store = renderPanel("conversation", false);
+		act(() => store.set(activityPanelOpenAtom, true));
+		expect(screen.queryByText("file body")).toBeNull();
+
+		const aside = document.querySelector("aside");
+		expect(aside).not.toBeNull();
+		const event = new Event("transitionend", { bubbles: true });
+		Object.defineProperty(event, "propertyName", { value: "width" });
+		act(() => {
+			aside?.dispatchEvent(event);
+		});
+		expect(screen.queryByText("file body")).not.toBeNull();
+		vi.useRealTimers();
+	});
+
+	it("mounts docked content immediately when the panel is already open on first render", () => {
+		renderPanel("conversation", true);
 		expect(screen.queryByText("file body")).not.toBeNull();
 	});
 
