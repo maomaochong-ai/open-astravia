@@ -35,12 +35,15 @@ describe("resolveDesktopReleaseConfig", () => {
 			channel: "default",
 			cloudEnabled: "false",
 			marketplaceRepository: "",
-			marketplaceRef: "main",
+			marketplaceRef: "",
 			releaseTarget: "github",
 			shouldPublish: true,
 			updateProvider: "github",
 			serverUrl: "",
 		});
+		expect(toGithubEnv(resolveDesktopReleaseConfig({ eventName: "push", refType: "tag", vars: {} }))).not.toContain(
+			"VETTA_OPEN_MARKETPLACE_REF=",
+		);
 	});
 
 	it("passes the selected marketplace ref through release outputs and build environment", () => {

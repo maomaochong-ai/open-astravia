@@ -138,7 +138,7 @@ export function resolveDesktopReleaseConfig(request = {}) {
 	const serverUrl = cloudEnabled === "true" ? pick("server_url", "VETTA_SERVER_URL") : "";
 	const siteUrl = cloudEnabled === "true" ? pick("site_url", "VETTA_SITE_URL") : "";
 	const marketplaceRepository = pick("marketplace_repository", "VETTA_OPEN_MARKETPLACE_REPOSITORY");
-	const marketplaceRef = pick("marketplace_ref", "VETTA_OPEN_MARKETPLACE_REF", "main");
+	const marketplaceRef = pick("marketplace_ref", "VETTA_OPEN_MARKETPLACE_REF");
 	const tenant = pick("tenant", "VETTA_TENANT");
 	const notes = acceptInputs ? normalizeToken(inputs.notes).replaceAll(/\s+/g, " ") : "";
 
@@ -302,7 +302,7 @@ function readConfigFromOutputs(env = process.env) {
 		channel: normalizeToken(env.OUTPUT_CHANNEL) || "default",
 		cloudEnabled: normalizeToken(env.OUTPUT_CLOUD_ENABLED),
 		marketplaceRepository: normalizeToken(env.OUTPUT_MARKETPLACE_REPOSITORY),
-		marketplaceRef: normalizeToken(env.OUTPUT_MARKETPLACE_REF) || "main",
+		marketplaceRef: normalizeToken(env.OUTPUT_MARKETPLACE_REF),
 		notes: normalizeToken(env.OUTPUT_NOTES),
 		r2Bucket: normalizeToken(env.OUTPUT_R2_BUCKET),
 		r2Prefix: normalizeToken(env.OUTPUT_R2_PREFIX),

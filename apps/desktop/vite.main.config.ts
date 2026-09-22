@@ -61,13 +61,14 @@ export default defineConfig(({ mode }) => {
 	define[`process.env.${SPEECH_INPUT_ENABLED_ENV}`] = JSON.stringify(String(speechInputBuildConfig.enabled));
 	// 未配置时按 false（lite）内联，保证 cloud 判断能被常量折叠掉。
 	define["process.env.VETTA_CLOUD_ENABLED"] = JSON.stringify(cloudEnabled ? "true" : "false");
-	// GitHub 来源只由显式配置注册；固化空值，防止打包后意外继承启动环境的默认源。
+	// 固化发行配置，防止打包后意外继承启动环境；空仓库由运行时解析为 Vetta 官方源。
 	define["process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY"] = JSON.stringify(
 		env.VETTA_OPEN_MARKETPLACE_REPOSITORY?.trim() || "",
 	);
-	define["process.env.VETTA_OPEN_MARKETPLACE_REF"] = JSON.stringify(
-		env.VETTA_OPEN_MARKETPLACE_REF?.trim() || "main",
-	);
+	// 未配置 ref 时保留“缺省”语义：官方仓库由运行时选择 gh-pages，发行方 fork 仍回退 main。
+	define["process.env.VETTA_OPEN_MARKETPLACE_REF"] = env.VETTA_OPEN_MARKETPLACE_REF?.trim()
+		? JSON.stringify(env.VETTA_OPEN_MARKETPLACE_REF.trim())
+		: "undefined";
 	define["process.env.VETTA_OPEN_MARKETPLACE_ARCHIVE_URL"] = JSON.stringify(
 		env.VETTA_OPEN_MARKETPLACE_ARCHIVE_URL?.trim() || "",
 	);

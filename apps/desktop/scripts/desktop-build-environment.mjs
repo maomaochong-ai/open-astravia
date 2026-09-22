@@ -90,8 +90,8 @@ function validateMarketplaceRepository(env, errors) {
 		}
 	}
 
-	const ref = readValue(env, "VETTA_OPEN_MARKETPLACE_REF") ?? "main";
-	if (!MARKETPLACE_REF_PATTERN.test(ref) || ref.includes("..") || ref.startsWith("/") || ref.endsWith("/")) {
+	const ref = readValue(env, "VETTA_OPEN_MARKETPLACE_REF");
+	if (ref && (!MARKETPLACE_REF_PATTERN.test(ref) || ref.includes("..") || ref.startsWith("/") || ref.endsWith("/"))) {
 		errors.push("VETTA_OPEN_MARKETPLACE_REF is invalid");
 	}
 	if (readValue(env, "VETTA_OPEN_MARKETPLACE_ARCHIVE_URL")) {

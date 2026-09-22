@@ -181,7 +181,7 @@ cd apps/desktop && bun run build:main
 
 - `VETTA_CLOUD_ENABLED` 必须明确为 `true`（商业版）或 `false`（开源版）；
 - 商业版必须有合法的服务端 URL，并使用 `generic` 更新源；开源版必须使用 GitHub 更新源；
-- 两种版本均仅在环境变量显式配置仓库时注册内置 GitHub Marketplace，配置必须通过 GitHub URL 校验；
+- 两种版本均注册内置 Vetta 官方 GitHub Marketplace；发行方可通过环境变量替换仓库与 ref，配置必须通过 GitHub URL 校验；
 - Windows、macOS、Linux 目标标签、语音开关、生产插件租户；
 - Sentry / PostHog 的 URL、布尔值、采样率及 Source Map 上传变量组合；
 - macOS 签名、公证与强制验签变量组合。
@@ -194,7 +194,7 @@ bun run dist:opensource
 bun run dist:opensource -- --target dir
 ```
 
-该入口读取 `.env.opensource`，固定关闭 cloud、使用 GitHub provider，并为客户端更新仓库提供默认值；fork 可在文件或 shell 中覆盖更新 owner、repo。能力 Marketplace 未配置 `VETTA_OPEN_MARKETPLACE_REPOSITORY` 时内置 Vetta 官方源；fork 可用该变量替换成自己的仓库。
+该入口读取 `.env.opensource`，固定关闭 cloud、使用 GitHub provider，并为客户端更新仓库提供默认值；fork 可在文件或 shell 中覆盖更新 owner、repo。能力 Marketplace 未配置 `VETTA_OPEN_MARKETPLACE_REPOSITORY` 时内置 Vetta 官方源并读取 `gh-pages` 分发；fork 可用该变量替换成自己的仓库，未显式配置 ref 时仍默认读取 `main`。
 
 需要只生成某一种 Linux 格式时，在 `apps/desktop` 使用独立的 `package:*` 入口；不带格式的入口一次生成正式发布使用的 AppImage、DEB 和 RPM：
 
