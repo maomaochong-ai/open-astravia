@@ -399,7 +399,7 @@ export const FrameView = memo(function FrameView({
 			<div
 				className={`relative h-full w-full overflow-hidden ring-offset-0 ${
 					selected ? "ring-2 ring-[var(--vetd-selected)]" : ""
-				} ${activity === "modifying" ? "vetd-modifying" : ""}`}
+				}`}
 			>
 				{/* 位图态下 iframe 根本不挂：留着 display:none 的 iframe 等于把整个
 				    React 应用连同大图留在内存里，合成器照样吃不消。 */}
@@ -473,7 +473,7 @@ export const FrameView = memo(function FrameView({
 				{/* 活动态浮层放最后：DOM 顺序就是叠放顺序，放前面会被位图/遮罩盖住。
 				    自身 pointer-events-none，压在遮罩上也不影响选中/拖拽。
 				    无条件渲染：渐出发生在 activity 清空之后，组件得留着把过渡走完。 */}
-				<FrameActivityOverlay activity={activity} frameWidth={rect.width} />
+				<FrameActivityOverlay activity={activity} />
 			</div>
 
 			{/* 尺寸标签（Figma 行为）：只在选中时出现在 frame 正下方，平时不占视觉噪音。

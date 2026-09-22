@@ -162,7 +162,7 @@ it("keeps the overlay alive through a long generation", () => {
 	vi.unstubAllGlobals();
 });
 
-it("renders the overlay with the per-kind decorations", () => {
+it("renders a breathing ring tinted per activity kind, with nothing covering the frame", () => {
 	const host = document.createElement("div");
 	document.body.append(host);
 	const root = createRoot(host);
@@ -183,14 +183,15 @@ it("renders the overlay with the per-kind decorations", () => {
 	const overlay = host.querySelector(".vetd-activity-overlay") as HTMLElement | null;
 	expect(overlay).not.toBeNull();
 	expect(overlay?.style.opacity).toBe("1");
-	expect(host.querySelector(".vetd-fluid-blob")).not.toBeNull();
-	expect(host.querySelector(".vetd-scan-beam")).not.toBeNull();
-	expect(host.querySelector(".vetd-bot-think")).not.toBeNull();
+	expect(overlay?.style.getPropertyValue("--vetd-accent")).toBe("#0ea5e9");
+	// 只有一圈描边：铺满 frame 的装饰层（原来的模糊流体）正是 GPU 飙高的来源。
+	expect(overlay?.children.length).toBe(1);
+	expect(overlay?.firstElementChild?.className).toBe("vetd-activity-ring");
 
 	act(() => {
 		root.render(<FrameActivityOverlay activity="creating" />);
 	});
-	expect(host.querySelectorAll(".vetd-spark").length).toBe(4);
+	expect(overlay?.style.getPropertyValue("--vetd-accent")).toBe("#d946ef");
 
 	act(() => {
 		root.unmount();

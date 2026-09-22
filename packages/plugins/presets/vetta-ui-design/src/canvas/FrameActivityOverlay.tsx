@@ -1,16 +1,14 @@
 import { type CSSProperties, type JSX, useEffect, useState } from "react";
-import { BotFace, FluidBackdrop, overlayScale, PALETTES } from "./activity-visuals";
+import { ACTIVITY_ACCENTS } from "./activity-visuals";
 import type { FrameActivity } from "./design-runtime";
 
 /**
- * frame 活动态浮层：浏览（扫描仪+放大镜+思考头像）、修改（疾书头像+打字骨架线）、
- * 创作（流光+星光+蹦跳头像），衬在混沌流体背景（image-gen 生成骨架同款）上。
- * 纯 CSS 动画（keyframes 见 style.css 的 vetd-activity 段），不引入 motion——
- * 插件与宿主只共享 react / @vetta-org/ui。
+ * frame 活动态浮层：浏览 / 修改 / 创作时沿 frame 内缘亮一圈状态色描边，呼吸闪烁。
+ * 「在干什么」由标题栏徽标用文字说，这一层只负责让人一眼找到是哪一屏在动。
+ * 纯 CSS 动画（keyframes 见 style.css 的 vetd-activity 段），描边静态、只动 opacity。
  *
  * 整层 pointer-events-none：它盖在 iframe / 位图上，吃掉指针会让元素选择失效
- * （同一坑见 FrameView 里的位图注释）。所有元素只动 transform / opacity，
- * 紧贴跨源 iframe 的层动别的属性会逐帧重新光栅化。
+ * （同一坑见 FrameView 里的位图注释）。
  */
 
 type ActiveKind = Exclude<FrameActivity, "updated">;
@@ -29,14 +27,7 @@ const OVERLAY_MAX_MS = 120_000;
 /** 渐入渐出时长，与 style.css 的 .vetd-activity-overlay transition 保持一致。 */
 const FADE_MS = 300;
 
-export function FrameActivityOverlay({
-	activity,
-	frameWidth,
-}: {
-	activity: FrameActivity | undefined;
-	/** 钳住浮层里居中件的反向缩放，见 overlayScale。 */
-	frameWidth: number;
-}): JSX.Element | null {
+export function FrameActivityOverlay({ activity }: { activity: FrameActivity | undefined }): JSX.Element | null {
 	const [expired, setExpired] = useState(false);
 	useEffect(() => {
 		setExpired(false);
@@ -66,67 +57,13 @@ export function FrameActivityOverlay({
 	}, [show, activity]);
 
 	if (kind === null) return null;
-	const scale = overlayScale(frameWidth);
 	return (
 		<div
 			aria-hidden
-			className="vetd-activity-overlay pointer-events-none absolute inset-0 overflow-hidden"
-			// --vetd-accent 驱动浮层里所有装饰元素（扫描线/放大镜/打字线/星光/头像）
-			// 的着色，只定义在这一层，不外泄到 frame 容器。
-			style={{ opacity: visible ? 1 : 0, "--vetd-accent": PALETTES[kind].accent } as CSSProperties}
+			className="vetd-activity-overlay pointer-events-none absolute inset-0"
+			style={{ opacity: visible ? 1 : 0, "--vetd-accent": ACTIVITY_ACCENTS[kind] } as CSSProperties}
 		>
-			<FluidBackdrop kind={kind} />
-			{kind === "reading" ? (
-				<>
-					<div className="vetd-scan-beam" />
-					<div
-						className="absolute left-2 top-2"
-						style={{ transform: `scale(${scale})`, transformOrigin: "left top" }}
-					>
-						<BotFace mood="think" />
-					</div>
-					<div
-						className="absolute left-1/2 top-1/2"
-						style={{ transform: `translate(-50%, -50%) scale(${scale})` }}
-					>
-						<div className="vetd-magnifier">
-							<span className="vetd-magnifier-glass" />
-							<span className="vetd-magnifier-handle" />
-						</div>
-					</div>
-				</>
-			) : null}
-			{kind === "modifying" ? (
-				<div
-					className="absolute left-1/2 top-1/2"
-					style={{ transform: `translate(-50%, -50%) scale(${scale})` }}
-				>
-					<div className="vetd-activity-chip">
-						<BotFace mood="write" />
-						<span className="vetd-typing-lines">
-							<span className="vetd-typing-line" />
-							<span className="vetd-typing-line" />
-							<span className="vetd-typing-line" />
-						</span>
-					</div>
-				</div>
-			) : null}
-			{kind === "creating" ? (
-				<>
-					<span className="vetd-spark" style={{ left: "18%", top: "22%" }} />
-					<span className="vetd-spark" style={{ left: "78%", top: "16%", animationDelay: "0.5s" }} />
-					<span className="vetd-spark" style={{ left: "68%", top: "72%", animationDelay: "1s" }} />
-					<span className="vetd-spark" style={{ left: "24%", top: "68%", animationDelay: "1.4s" }} />
-					<div
-						className="absolute left-1/2 top-1/2"
-						style={{ transform: `translate(-50%, -50%) scale(${scale})` }}
-					>
-						<div className="vetd-activity-chip">
-							<BotFace mood="bounce" />
-						</div>
-					</div>
-				</>
-			) : null}
+			<div className="vetd-activity-ring" />
 		</div>
 	);
 }
