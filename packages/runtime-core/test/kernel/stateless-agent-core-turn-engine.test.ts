@@ -56,6 +56,62 @@ describe("StatelessAgentCoreTurnEngine", () => {
 		expect(canonicalEvents(modern)).toEqual(canonicalEvents(legacy));
 	});
 
+	it("completes more than 100 model calls with the default limits", async () => {
+		const toolRounds = 101;
+		let toolExecutions = 0;
+		const responses = Array.from({ length: toolRounds }, (_, index) =>
+			assistant([{ type: "toolCall", id: `call-${index + 1}`, name: "repeat", arguments: {} }], "toolUse"),
+		);
+		responses.push(assistant([{ type: "text", text: "completed after the legacy default" }]));
+		const tool: RuntimeToolDefinition = {
+			name: "repeat",
+			label: "Repeat",
+			description: "Repeat",
+			inputSchema: { type: "object" },
+			async execute() {
+				toolExecutions += 1;
+				return { content: [{ type: "text", text: "done" }] };
+			},
+		};
+
+		const events = await run(new StatelessAgentCoreTurnEngine(options(responses)), snapshot([tool]));
+
+		expect(toolExecutions).toBe(toolRounds);
+		expect(events.at(-1)).toMatchObject({ type: "completed", stopReason: "stop" });
+	});
+
+	it("executes more than 1000 tool calls with the default limits", async () => {
+		const toolCalls = 1_001;
+		let toolExecutions = 0;
+		const responses = [
+			assistant(
+				Array.from({ length: toolCalls }, (_, index) => ({
+					type: "toolCall" as const,
+					id: `call-${index + 1}`,
+					name: "repeat",
+					arguments: {},
+				})),
+				"toolUse",
+			),
+			assistant([{ type: "text", text: "completed after the legacy tool-call default" }]),
+		];
+		const tool: RuntimeToolDefinition = {
+			name: "repeat",
+			label: "Repeat",
+			description: "Repeat",
+			inputSchema: { type: "object" },
+			async execute() {
+				toolExecutions += 1;
+				return { content: [{ type: "text", text: "done" }] };
+			},
+		};
+
+		const events = await run(new StatelessAgentCoreTurnEngine(options(responses)), snapshot([tool]));
+
+		expect(toolExecutions).toBe(toolCalls);
+		expect(events.at(-1)).toMatchObject({ type: "completed", stopReason: "stop" });
+	});
+
 	it("keeps checkpoint provider messages separate from subsequent Runtime context", async () => {
 		const contexts: Message[][] = [];
 		const responses = [

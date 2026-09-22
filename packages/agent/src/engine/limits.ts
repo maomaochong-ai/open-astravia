@@ -1,8 +1,8 @@
 import type { AgentRunLimits } from "./types.js";
 
 export function validateAgentRunLimits(limits: AgentRunLimits): void {
-	positiveInteger(limits.maxModelCalls, "maxModelCalls");
-	positiveInteger(limits.maxToolCalls, "maxToolCalls");
+	if (limits.maxModelCalls !== undefined) positiveInteger(limits.maxModelCalls, "maxModelCalls");
+	if (limits.maxToolCalls !== undefined) positiveInteger(limits.maxToolCalls, "maxToolCalls");
 	nonNegativeInteger(limits.maxRecoveryAttempts, "maxRecoveryAttempts");
 	positiveInteger(limits.checkpointTimeoutMs, "checkpointTimeoutMs");
 	if (limits.deadlineMs !== undefined) positiveInteger(limits.deadlineMs, "deadlineMs");

@@ -494,8 +494,8 @@ bun scripts/quality/run-vitest.mjs --run apps/desktop/src/main/abilities/open-ma
 
 ## 内置来源配置
 
-内置 GitHub 来源不在代码中设置仓库地址，完全由环境变量提供：
+客户端始终注册内置 GitHub 来源，发行方可以用环境变量替换其坐标：
 
-- `VETTA_OPEN_MARKETPLACE_REPOSITORY`：GitHub 仓库 URL；未设置时不创建内置来源。
-- `VETTA_OPEN_MARKETPLACE_REF`：分支或 ref，默认 `main`。
+- `VETTA_OPEN_MARKETPLACE_REPOSITORY`：GitHub 仓库 URL；未设置时使用 Vetta 官方市场仓库。
+- `VETTA_OPEN_MARKETPLACE_REF`：分支或 ref；官方仓库默认 `gh-pages`，发行方 fork 默认 `main`。
 - `VETTA_OPEN_MARKETPLACE_ARCHIVE_URL`：可选归档地址；未设置时根据仓库与 ref 推导。

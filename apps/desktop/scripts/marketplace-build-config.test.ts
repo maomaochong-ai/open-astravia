@@ -22,14 +22,14 @@ describe("independent marketplace build configuration", () => {
 		{ mode: "development", cloud: "false" },
 		{ mode: "production", cloud: "true" },
 		{ mode: "production", cloud: "false" },
-	])("does not inject a repository in $mode with cloud=$cloud when unconfigured", async ({ mode, cloud }) => {
+	])("leaves the official repository and ref to runtime defaults in $mode with cloud=$cloud", async ({ mode, cloud }) => {
 		vi.stubEnv("VETTA_CLOUD_ENABLED", cloud);
 		if (typeof mainConfig !== "function") throw new Error("Expected a main config factory");
 		const config = await mainConfig({ command: "build", mode });
 		expect(config.define).toMatchObject({
 			"process.env.VETTA_CLOUD_ENABLED": JSON.stringify(cloud),
 			"process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY": JSON.stringify(""),
-			"process.env.VETTA_OPEN_MARKETPLACE_REF": JSON.stringify("main"),
+			"process.env.VETTA_OPEN_MARKETPLACE_REF": "undefined",
 			"process.env.VETTA_OPEN_MARKETPLACE_ARCHIVE_URL": JSON.stringify(""),
 		});
 	});
@@ -40,6 +40,16 @@ describe("independent marketplace build configuration", () => {
 		if (typeof mainConfig !== "function") throw new Error("Expected a main config factory");
 		const config = await mainConfig({ command: "build", mode: "production" });
 		expect(config.define?.["process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY"]).toBe(JSON.stringify(""));
+	});
+
+	it("leaves a custom distribution ref unset so the runtime can fall back to main", async () => {
+		vi.stubEnv("VETTA_OPEN_MARKETPLACE_REPOSITORY", "example/fork");
+		if (typeof mainConfig !== "function") throw new Error("Expected a main config factory");
+		const config = await mainConfig({ command: "build", mode: "production" });
+		expect(config.define).toMatchObject({
+			"process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY": JSON.stringify("example/fork"),
+			"process.env.VETTA_OPEN_MARKETPLACE_REF": "undefined",
+		});
 	});
 
 	it("preserves explicit distribution overrides with cloud enabled", async () => {
