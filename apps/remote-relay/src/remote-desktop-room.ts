@@ -1,4 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
+import { KEEPALIVE_PING, KEEPALIVE_PONG } from "@vetta/remote-control";
 import {
 	encodeRemoteDesktopSignal,
 	parseRemoteDesktopSignal,
@@ -7,7 +8,6 @@ import {
 	type RemoteDesktopSignal,
 } from "@vetta/remote-desktop/protocol";
 import { relayInfo, relayWarn } from "./relay-log.js";
-import { RoomAuthorization } from "./room-authorization.js";
 
 interface Env {
 	readonly REMOTE_DESKTOP_ROOM: DurableObjectNamespace<RemoteDesktopRoom>;
@@ -26,7 +26,10 @@ const ROOM_IDLE_TTL_MS = 24 * 60 * 60 * 1_000;
 const MAX_SIGNAL_CHARS = 262_656;
 
 export class RemoteDesktopRoom extends DurableObject<Env> {
-	private readonly authorization = new RoomAuthorization(this.ctx);
+	constructor(ctx: DurableObjectState, env: Env) {
+		super(ctx, env);
+		this.ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair(KEEPALIVE_PING, KEEPALIVE_PONG));
+	}
 
 	async fetch(request: Request): Promise<Response> {
 		if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket")
@@ -35,11 +38,8 @@ export class RemoteDesktopRoom extends DurableObject<Env> {
 		const credentialHash = request.headers.get("X-Vetta-Credential-Hash");
 		const roomTag = request.headers.get("X-Vetta-Room-Tag");
 		if (!role || !credentialHash || !roomTag) return response("Invalid desktop relay request", 400);
-		const authorized =
-			role === "host"
-				? await this.authorization.authorizeDesktop(credentialHash)
-				: request.headers.get("X-Vetta-Preauthorized") === "mobile" ||
-					Boolean(await this.authorization.authorizeMobile(credentialHash));
+		// The Worker already asked the pair room to vouch for this credential.
+		const authorized = request.headers.get("X-Vetta-Preauthorized") === (role === "host" ? "desktop" : "mobile");
 		if (!authorized) {
 			relayWarn("desktop_connection_rejected", { roomTag, role, reason: "invalid_pairing" });
 			return response("Pairing authorization failed", 401);
@@ -70,6 +70,7 @@ export class RemoteDesktopRoom extends DurableObject<Env> {
 			this.reject(socket, attachment, "invalid_message_shape");
 			return;
 		}
+		if (message === KEEPALIVE_PING || message === KEEPALIVE_PONG) return;
 		let signal: RemoteDesktopSignal;
 		try {
 			signal = parseRemoteDesktopSignal(message);

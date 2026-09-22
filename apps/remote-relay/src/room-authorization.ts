@@ -1,59 +1,44 @@
+/**
+ * Persisted credential hashes for one pairing room. The desktop registers the
+ * room and is authoritative for the phone's hash; the relay never sees either
+ * secret in clear, only SHA-256 digests.
+ */
 export class RoomAuthorization {
-	private static readonly legacyCredentialKey = "credentialHash";
 	private static readonly desktopCredentialKey = "desktopCredentialHash";
-	private static readonly bootstrapCredentialKey = "bootstrapCredentialHash";
 	private static readonly mobileCredentialKey = "mobileCredentialHash";
 
 	constructor(private readonly state: DurableObjectState) {}
 
-	async authorizeDesktop(candidateHash: string, bootstrapHash?: string): Promise<boolean> {
+	/**
+	 * A fresh room is claimed by the first desktop that also brings the phone's
+	 * hash. A known desktop must present the same hash; when it does and brings
+	 * a peer hash, the stored phone hash is replaced (re-registration after
+	 * expiry, or a rotated phone credential).
+	 */
+	async authorizeDesktop(candidateHash: string, peerHash?: string): Promise<boolean> {
 		let authorized = false;
 		await this.state.blockConcurrencyWhile(async () => {
 			const storedHash = await this.state.storage.get<string>(RoomAuthorization.desktopCredentialKey);
-			const legacyHash = await this.state.storage.get<string>(RoomAuthorization.legacyCredentialKey);
-			if (storedHash === undefined && legacyHash === undefined) {
-				if (bootstrapHash) {
-					await this.state.storage.put(RoomAuthorization.desktopCredentialKey, candidateHash);
-					await this.state.storage.put(RoomAuthorization.bootstrapCredentialKey, bootstrapHash);
-				} else {
-					await this.state.storage.put(RoomAuthorization.legacyCredentialKey, candidateHash);
-				}
+			if (storedHash === undefined) {
+				if (!peerHash) return;
+				await this.state.storage.put(RoomAuthorization.desktopCredentialKey, candidateHash);
+				await this.state.storage.put(RoomAuthorization.mobileCredentialKey, peerHash);
 				authorized = true;
 				return;
 			}
-			authorized = storedHash === candidateHash || legacyHash === candidateHash;
+			if (storedHash !== candidateHash) return;
+			if (peerHash) await this.state.storage.put(RoomAuthorization.mobileCredentialKey, peerHash);
+			authorized = true;
 		});
 		return authorized;
 	}
 
-	async authorizeMobile(candidateHash: string): Promise<"bootstrap" | "resume" | "legacy" | false> {
-		let mode: "bootstrap" | "resume" | "legacy" | false = false;
+	async authorizeMobile(candidateHash: string): Promise<boolean> {
+		let authorized = false;
 		await this.state.blockConcurrencyWhile(async () => {
 			const mobileHash = await this.state.storage.get<string>(RoomAuthorization.mobileCredentialKey);
-			const bootstrapHash = await this.state.storage.get<string>(RoomAuthorization.bootstrapCredentialKey);
-			const desktopHash = await this.state.storage.get<string>(RoomAuthorization.desktopCredentialKey);
-			const legacyHash = await this.state.storage.get<string>(RoomAuthorization.legacyCredentialKey);
-			if (mobileHash === candidateHash) mode = "resume";
-			else if (bootstrapHash === candidateHash) mode = "bootstrap";
-			else if (
-				legacyHash === candidateHash ||
-				(mobileHash === undefined && bootstrapHash === undefined && desktopHash === candidateHash)
-			)
-				mode = "legacy";
+			authorized = mobileHash !== undefined && mobileHash === candidateHash;
 		});
-		return mode;
-	}
-
-	async consumeBootstrap(resumeHash?: string): Promise<boolean> {
-		let consumed = false;
-		await this.state.blockConcurrencyWhile(async () => {
-			const bootstrapHash = await this.state.storage.get<string>(RoomAuthorization.bootstrapCredentialKey);
-			if (bootstrapHash === undefined) return;
-			if (!resumeHash) return;
-			await this.state.storage.put(RoomAuthorization.mobileCredentialKey, resumeHash);
-			await this.state.storage.delete(RoomAuthorization.bootstrapCredentialKey);
-			consumed = true;
-		});
-		return consumed;
+		return authorized;
 	}
 }

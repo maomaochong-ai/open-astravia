@@ -1,33 +1,41 @@
 # Vetta Remote Relay
 
-Cloudflare Worker and Durable Object implementation for relaying the Vetta remote-control protocol between one mobile client and one desktop client.
+Cloudflare Worker and Durable Object implementation for relaying the Vetta remote-control protocol (v2) between one desktop and one paired phone. The relay is the cloud fallback; when both devices share a network the phone connects to the desktop's LAN server directly and the relay only holds an idle, hibernated desktop connection.
 
 ## Security model
 
-The desktop creates a random pairing identifier and a high-entropy pairing secret. The secret remains in the local pairing link fragment and is sent as a WebSocket subprotocol, rather than being placed in a URL query string. The Worker forwards it only to the owning Durable Object, which stores a SHA-256 hash and compares later connections against that hash. Neither the Worker nor the Durable Object logs secrets or frame payloads.
-
-The first connection for a room must be the desktop. A room expires after 24 hours without active WebSockets. Re-pairing requires a new desktop connection and secret.
-
-The production deployment uses `relay.flowerwine.dpdns.org`. The custom domain is configured in `wrangler.jsonc`; credentials and pairing identifiers are still generated locally by the desktop.
+- **One room per paired phone.** The desktop generates a pairing id, its own secret and the phone's secret. The phone receives its secret through the QR code (or a sealed `device.paired` event after a manual approval). The desktop registers the room first, offering its secret and the SHA-256 of the phone's secret; the Worker hashes the desktop secret too, so the Durable Object stores only two digests and can never present either secret.
+- **Secrets travel as WebSocket subprotocols**, never in URLs. Nothing about the offer is logged.
+- **The relay cannot read session traffic.** After each side's plaintext `hello` the room copies the two public keys (identity and ephemeral X25519) into the other side's `hello_ack` and from then on forwards only `sealed` envelopes. Encryption is end to end (`@vetta/remote-control`); a plaintext session frame after the handshake closes the socket with code 4002.
+- **Re-registration is desktop-owned.** A desktop that reconnects with its own secret may replace the stored phone hash (room expiry, rotated credential); a phone can only join a room the desktop already registered.
+- A room expires after 24 hours without any socket. The desktop re-registers on its next connection.
 
 ## Routes
 
-- `GET /health` returns relay health metadata.
-- `GET /v1/relay/:pairingId/:role` upgrades to WebSocket. `role` is `desktop` or `mobile`.
-- `GET /v1/desktop/:pairingId/:role` upgrades the independent WebRTC signaling channel. `role` is `host` or `viewer`.
+- `GET /health` returns `{ status, protocolVersion: 2 }`.
+- `GET /v2/relay/:pairingId/:role` upgrades the control WebSocket. `role` is `desktop` or `mobile`.
+- `GET /v2/desktop/:pairingId/:role` upgrades the independent WebRTC signaling channel. `role` is `host` or `viewer`; the pair room vouches for the credential, so the desktop must have registered the room over the control route first.
 
-Clients must offer both protocols:
+Control clients offer:
 
 ```text
-vetta.remote.v1
+vetta.remote.v2
 vetta.pairing.<base64url-secret>
+vetta.peer.<sha256-hex-of-phone-secret>    # desktop only
 ```
 
-WebRTC signaling uses `vetta.desktop.v1` plus the same pairing protocol. SDP and ICE are validated and forwarded, never logged. Screen pixels and input messages never pass through the Worker.
+The Worker answers with `vetta.remote.v2`. WebRTC signaling uses `vetta.desktop.v1` plus the `vetta.pairing.*` protocol. SDP and ICE are validated and forwarded, never logged; screen pixels and input never pass through the Worker.
 
-The host may connect before the viewer. Once both roles are online, the Worker sends a relay-owned `peer_ready` event to the host; clients cannot submit this event. The host creates or refreshes its WebRTC offer only after that event, so signaling does not require buffering SDP or ICE in Durable Object storage.
+## Framing
 
-The relay consumes the `hello` frames to validate the declared role and emits `hello_ack` only after both endpoints complete their handshake. All other valid protocol frames are forwarded unchanged.
+1. First frame on each socket must be a v2 `hello` whose role matches the route.
+2. When both sides are authenticated the room sends each a `hello_ack` carrying the peer's `deviceId`, `identityKey` and `ephemeralKey`. It does so again every time a new `hello` completes, so a reconnecting phone re-keys the parked desktop.
+3. Everything afterwards must be `sealed`. A sealed frame sent while the peer is absent is answered with `peer_status { online: false }`; the sender is not closed.
+4. When a side disconnects the remaining side receives `peer_status { online: false }` and stays connected.
+
+## Free plan
+
+Both rooms answer the text `ping` with `pong` through `setWebSocketAutoResponse`, so keepalives never wake a hibernated object and idle pairs accrue no billable duration. The Worker performs one SHA-256 per upgrade and no storage writes on the forwarding path.
 
 ## Local verification
 
@@ -37,12 +45,4 @@ bun run typecheck
 bun run dev
 ```
 
-`bun run dev` is intentionally an opt-in local Worker process; it is not started by the repository-wide development command.
-
-Generate a high-entropy local pairing after the Worker is running:
-
-```bash
-bun run pair http://127.0.0.1:8787
-```
-
-Apply the two printed environment variables to Desktop and paste the printed mobile target into Android. System input remains disabled unless `VETTA_REMOTE_DESKTOP_INPUT_ENABLED=true` is set locally on Desktop.
+`bun run dev` is intentionally an opt-in local Worker process; it is not started by the repository-wide development command. `bun run pair http://127.0.0.1:8787` prints hand-crafted v2 pairing material (URLs, subprotocols and the desktop's expected peer hash) for exercising a local relay without the desktop app.
