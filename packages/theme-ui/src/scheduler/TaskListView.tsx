@@ -21,7 +21,7 @@ export interface TaskListViewProps {
 }
 
 const TONE_ICON: Record<TaskListItemTone, string> = {
-	active: "icon-[mdi--circle-outline] text-muted-foreground",
+	active: "icon-[mdi--circle-outline] text-primary",
 	running: "icon-[mdi--progress-clock] text-primary",
 	paused: "icon-[mdi--pause-circle-outline] text-muted-foreground/60",
 	suspended: "icon-[mdi--alert-circle-outline] text-amber-500",
@@ -47,7 +47,7 @@ export function TaskListView({ items, emptyLabel, onSelectTask }: TaskListViewPr
 						onClick={() => onSelectTask(item.id)}
 						className={cn(
 							"flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors",
-							item.isSelected ? "bg-accent" : "hover:bg-accent/50",
+							item.isSelected ? "bg-primary/10" : "hover:bg-accent/50",
 						)}
 					>
 						<span aria-hidden="true" className={cn(TONE_ICON[item.tone], "mt-0.5 h-4 w-4 shrink-0")} />

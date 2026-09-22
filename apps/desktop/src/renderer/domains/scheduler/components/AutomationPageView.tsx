@@ -1,6 +1,5 @@
 import { AutomationPageView as ThemeAutomationPageView } from "@vetta-org/theme-ui/scheduler";
 import { useTranslation } from "react-i18next";
-import { SettingsAiAssist } from "../../settings/ai-assist";
 import type { AutomationPageModel } from "../hooks/useAutomationPageModel";
 import { AutomationDetailPane } from "./AutomationDetailPane";
 import { TaskList } from "./TaskList";
@@ -28,6 +27,8 @@ export function AutomationPageView({
 	return (
 		<ThemeAutomationPageView
 			labels={{
+				title: t("page.title"),
+				subtitle: t("page.subtitle"),
 				create: t("page.create"),
 				searchPlaceholder: t("page.searchPlaceholder"),
 				recommendTitle: t("recommend.title"),
@@ -38,7 +39,6 @@ export function AutomationPageView({
 			searchValue={search}
 			onSearchChange={onSearchChange}
 			onCreate={onCreate}
-			headerTrailing={<SettingsAiAssist tabId="automation" />}
 			list={<TaskList selectedTaskId={selectedTaskId} filter={activeFilter} search={search} onSelectTask={onSelectTask} />}
 			recommendations={hasTasks ? undefined : recommendations}
 			onSelectRecommendation={onSelectRecommendation}

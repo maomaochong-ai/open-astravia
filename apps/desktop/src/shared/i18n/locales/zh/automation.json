@@ -1,5 +1,7 @@
 {
 	"page": {
+		"title": "自动化",
+		"subtitle": "让 AI 按计划自动执行任务，解放双手",
 		"create": "创建",
 		"searchPlaceholder": "搜索自动化"
 	},

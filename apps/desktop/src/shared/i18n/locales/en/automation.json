@@ -1,5 +1,7 @@
 {
 	"page": {
+		"title": "Automation",
+		"subtitle": "Let AI run tasks on schedule and free your hands",
 		"create": "Create",
 		"searchPlaceholder": "Search automations"
 	},

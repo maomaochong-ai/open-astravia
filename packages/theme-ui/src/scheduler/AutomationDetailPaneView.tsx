@@ -40,8 +40,7 @@ export function AutomationDetailPaneView({
 }: AutomationDetailPaneViewProps): JSX.Element {
 	return (
 		<div className="flex h-full min-h-0 flex-col">
-			<div className="drag-region h-6 shrink-0" />
-			<header className="flex h-8 shrink-0 items-center gap-1 px-6">
+			<header className="flex h-12 shrink-0 items-center gap-1 px-6">
 				<span className={cn("flex-1 truncate text-[13px] font-medium", STATUS_CLASS[statusTone])}>
 					{statusLabel}
 				</span>
