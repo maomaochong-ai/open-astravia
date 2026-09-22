@@ -37,6 +37,11 @@ export interface DefaultSessionRowViewProps {
 	renaming: boolean;
 	running: boolean;
 	scheduled: boolean;
+	/** 自动化会话组组头：本组运行次数。存在时整行点击即展开/收起，不提供更多菜单。 */
+	groupCount?: number;
+	groupExpanded?: boolean;
+	/** 会话组展开后的组员行，缩进一级。 */
+	nested?: boolean;
 }
 
 /** memo：理由同 SessionRowView——切换会话只改两行，其余行 props 未变。 */
@@ -58,6 +63,9 @@ export const DefaultSessionRowView = memo(function DefaultSessionRowView({
 	renaming,
 	running,
 	scheduled,
+	groupCount,
+	groupExpanded,
+	nested = false,
 	tagColors,
 }: DefaultSessionRowViewProps): JSX.Element {
 	const title = renaming ? undefined : titleExtra ? `${label}\n${titleExtra}` : label;
@@ -78,6 +86,7 @@ export const DefaultSessionRowView = memo(function DefaultSessionRowView({
 			<button
 				type="button"
 				data-session-active={active ? "true" : undefined}
+				aria-expanded={groupCount !== undefined ? groupExpanded === true : undefined}
 				data-session-path={sessionPath || undefined}
 				onClick={(event) => {
 					if (renaming) return;
@@ -90,7 +99,8 @@ export const DefaultSessionRowView = memo(function DefaultSessionRowView({
 					onOpenContextMenu(event);
 				}}
 				className={cn(
-					"flex w-full items-center gap-2 rounded-md px-2.5 py-[6px] text-left",
+					"flex w-full items-center gap-2 rounded-md py-[6px] pr-2.5 text-left",
+					nested ? "pl-7" : "pl-2.5",
 					active ? "bg-primary/15 text-foreground" : "hover:bg-accent/50",
 				)}
 				style={IMMEDIATE_SESSION_SELECTION_STYLE}
@@ -133,10 +143,22 @@ export const DefaultSessionRowView = memo(function DefaultSessionRowView({
 						{trailingAvatarUrls && trailingAvatarUrls.length > 0 ? (
 							<AvatarStackView avatarUrls={trailingAvatarUrls} />
 						) : null}
+						{groupCount !== undefined ? (
+							<>
+								<span className="shrink-0 text-[11px] tabular-nums text-muted-foreground/60">{groupCount}</span>
+								<span
+									aria-hidden="true"
+									className={cn(
+										"icon-[mdi--chevron-right] h-3.5 w-3.5 shrink-0 text-muted-foreground/60 transition-transform",
+										groupExpanded && "rotate-90",
+									)}
+								/>
+							</>
+						) : null}
 					</div>
 				)}
 			</button>
-			{renaming || !contextMenuEnabled ? null : (
+			{renaming || !contextMenuEnabled || groupCount !== undefined ? null : (
 				<SessionRowMoreButton
 					className="rounded-r-md"
 					label={moreLabel}
