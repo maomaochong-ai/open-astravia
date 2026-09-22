@@ -147,7 +147,8 @@
 		"meta": {
 			"author": "作者",
 			"version": "版本",
-			"localVersion": "本地版本",
+			"installedVersion": "已安装",
+			"availableVersion": "可更新至",
 			"downloads": "下载量",
 			"license": "许可"
 		},

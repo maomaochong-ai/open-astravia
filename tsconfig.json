@@ -51,6 +51,7 @@
 			],
 			"@vetta/coding-agent/*": ["./packages/coding-agent/src/*"],
 			"@vetta/ai": ["./packages/ai/src/index.ts"],
+			"@vetta/ai/proxy": ["./packages/ai/src/utils/proxy-config.ts"],
 			"@vetta/ai/protocol": ["./packages/ai/src/protocol/index.ts"],
 			"@vetta/ai/reasoning-presets": ["./packages/ai/src/reasoning-presets.ts"],
 			"@vetta/ai/testkit": ["./packages/ai/src/testkit/index.ts"],
