@@ -128,6 +128,19 @@ it("stays quiet for generated files — screenshots and the manifest are not sou
 	expect(seen.size).toBe(0);
 });
 
+it("resolves paths relative to the conversation cwd", () => {
+	// agent 常传相对于会话 cwd 的路径；只认绝对路径时这类调用一个 frame 都点不亮。
+	notifyAgentToolArgs("c1", "write", { path: "demo.vetd/frames/home.tsx" }, "/w");
+	expect(seen.get("home")).toBe("creating");
+	notifyAgentToolStart("c2", "read", { path: "./demo.vetd/frames/detail.tsx" }, "/w/");
+	expect(seen.get("detail")).toBe("reading");
+});
+
+it("ignores relative paths when the conversation cwd is unknown", () => {
+	notifyAgentToolStart("c1", "edit", { path: "demo.vetd/frames/home.tsx" });
+	expect(seen.size).toBe(0);
+});
+
 it("ignores paths outside the open design", () => {
 	notifyAgentToolStart("c1", "edit", { file_path: "/w/other/src/app.tsx" });
 	expect(seen.size).toBe(0);

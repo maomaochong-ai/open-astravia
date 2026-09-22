@@ -197,11 +197,11 @@ export default definePlugin({
 			// 生成阶段就点亮：edit/write 的时间几乎全花在生成参数上，等到执行事件
 			// 才亮的话，浮层是在活干完之后才出现的。
 			if (event.type === "tool-call-args") {
-				notifyAgentToolArgs(event.toolCallId, event.toolName, event.args);
+				notifyAgentToolArgs(event.toolCallId, event.toolName, event.args, latestCwd);
 				return;
 			}
 			if (event.type === "tool-call-start") {
-				notifyAgentToolStart(event.toolCallId, event.toolName, event.args);
+				notifyAgentToolStart(event.toolCallId, event.toolName, event.args, latestCwd);
 				return;
 			}
 			if (event.type === "tool-call-end") {
