@@ -250,12 +250,12 @@ import Testing
 /// End-to-end over the fake desktop: pairing, session list, prompting with
 /// streamed replies, answering a question and unpairing.
 @Suite(.serialized) struct AppModelTests {
-	func scriptedDesktop(recording requests: RequestLog? = nil) -> FakeDesktop {
+	func scriptedDesktop(recording requests: RequestLog? = nil, moreSessions: [JSONValue] = []) -> FakeDesktop {
 		let desktop = FakeDesktop()
 		desktop.onHello = { _ in .approve }
 		var sessions: [JSONValue] = [
 			["id": "s1", "projectCwd": "/conv", "projectName": "对话", "title": "整理周报", "preview": "上周的", "updatedAt": 1_000, "status": "completed", "live": false],
-		]
+		] + moreSessions
 		var uploads = 0
 		var modelKey = "anthropic/claude-fable-5-1"
 		var thinkingLevel = "off"
@@ -454,6 +454,39 @@ import Testing
 		#expect(order == [.sessionCreate, .sessionConfigure, .sessionPrompt])
 		#expect(log.entries.first { $0.method == .sessionConfigure }?.sessionId == "s2")
 		#expect(model.transcript("s2").sessionState.modelKey == "zai/glm-5")
+	}
+
+	@Test func readiesNewSessionModelsFromAnOpenSessionAndKeepsThemAcrossLaunches() async throws {
+		let log = RequestLog()
+		let open: JSONValue = ["id": "s0", "projectCwd": "/conv", "projectName": "对话", "title": "开着的", "updatedAt": 500, "status": "idle", "live": true]
+		let desktop = scriptedDesktop(recording: log, moreSessions: [open])
+		let settings = MemoryKeyValueStore()
+		let secrets = MemoryKeyValueStore()
+		let cache = MemorySessionCache()
+		let platform = AppPlatform(settings: settings, secrets: secrets, cache: cache, createTransport: desktop.createTransport, deviceName: "Phone")
+		let model = AppModel(platform: platform)
+		model.start()
+		let invite = PairingURI.build(RemotePairingInvite(pairingId: "pair-1234567890abcdef", mobileSecret: "secret-1234567890abcdef", desktopIdentityKey: desktop.identityKey, desktopName: "MacBook Pro", lanEndpoints: ["192.168.1.20:43117"]))
+		#expect(await model.pairWithCode(invite))
+
+		let keys = ["anthropic/claude-fable-5-1", "zai/glm-5"]
+		#expect(await eventually { model.newSessionModels.map(\.key) == keys }, "fetched once the list is in, before New Session opens")
+		let borrowed = log.entries.filter { $0.method == .modelList }.map(\.sessionId)
+		#expect(borrowed == ["s0"], "the session the desktop already has open, not the more recent closed one")
+
+		let before = log.entries.count { $0.method == .modelList }
+		async let first: Void = model.loadNewSessionModels()
+		async let second: Void = model.loadNewSessionModels()
+		_ = await (first, second)
+		#expect(log.entries.count { $0.method == .modelList } - before <= 1, "concurrent loads share one request")
+
+		model.setActive(false)
+		let relaunched = AppModel(platform: platform)
+		relaunched.start()
+		#expect(relaunched.newSessionModels.map(\.key) == keys, "shown at once on the next launch")
+		relaunched.unpair()
+		#expect(relaunched.newSessionModels.isEmpty)
+		#expect(settings.get("vetta.models.\(desktop.identityKey)") == nil)
 	}
 
 	@Test func startsASessionAtOnceAndHandsTheChatOverToTheDesktopsId() async throws {

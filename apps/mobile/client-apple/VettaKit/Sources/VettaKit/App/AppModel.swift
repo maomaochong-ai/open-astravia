@@ -56,6 +56,7 @@ public final class AppModel {
 	static let preferencesKey = "vetta.preferences"
 	static let deviceIdKey = "vetta.device.id"
 	static let projectsKeyPrefix = "vetta.projects."
+	static let modelsKeyPrefix = "vetta.models."
 
 	public private(set) var ready = false
 	public private(set) var paired = false
@@ -68,7 +69,7 @@ public final class AppModel {
 	public private(set) var projects: [RemoteProjectSummary] = []
 	/// Models each opened session may switch to, fetched on demand.
 	public private(set) var models: [String: [RemoteModelOption]] = [:]
-	/// Models a new session may start with; see `loadNewSessionModels`.
+	/// Models a new session may start with, kept across launches; see `loadNewSessionModels`.
 	public private(set) var newSessionModels: [RemoteModelOption] = []
 	public private(set) var transcripts: [String: TranscriptState] = [:]
 	/// Sessions opened by `startSession`: the local id the chat opened on → the desktop's id.
@@ -87,6 +88,7 @@ public final class AppModel {
 	@ObservationIgnored private var unsubscribe: [() -> Void] = []
 	@ObservationIgnored private var transcriptSave: [String: Task<Void, Never>] = [:]
 	@ObservationIgnored private var active = true
+	@ObservationIgnored private var newSessionModelsLoad: Task<Void, Never>?
 
 	public init(platform: AppPlatform) {
 		self.platform = platform
@@ -158,6 +160,7 @@ public final class AppModel {
 			pairingStore.revoke(key)
 			platform.cache.clearDesktop(key)
 			platform.settings.remove(Self.projectsKeyPrefix + key)
+			platform.settings.remove(Self.modelsKeyPrefix + key)
 		}
 		desktopKey = nil
 		paired = false
@@ -166,6 +169,7 @@ public final class AppModel {
 		sessionsLoaded = false
 		projects = []
 		models = [:]
+		newSessionModels = []
 		transcripts = [:]
 		link = .offline
 	}
@@ -204,6 +208,8 @@ public final class AppModel {
 		sessions = cached
 		sessionsLoaded = !cached.isEmpty
 		projects = loadProjects(key)
+		models = [:]
+		newSessionModels = cachedNewSessionModels(key)
 		transcripts = [:]
 		link = .offline
 		var options = ChannelManagerOptions(desktop: record, link: identity, createTransport: platform.createTransport)
@@ -334,6 +340,9 @@ public final class AppModel {
 			sessions = list
 			sessionsLoaded = true
 			if let key = desktopKey { platform.cache.saveSessions(key, list) }
+			// Ready before New Session opens. Only when it is cheap or there is nothing yet:
+			// borrowing a session that is not open makes the desktop load it.
+			if newSessionModels.isEmpty || list.contains(where: \.live) { Task { await loadNewSessionModels() } }
 			await refreshProjects()
 		} catch {
 			if !(error is LinkOfflineError) { reportError(error) }
@@ -386,7 +395,10 @@ public final class AppModel {
 	public func loadModels(_ sessionId: String) async {
 		do {
 			let result = try await requireManager().request(.modelList, sessionId: sessionId)
-			models[sessionId] = RemoteAPI.readModelOptions(result)
+			let options = RemoteAPI.readModelOptions(result)
+			models[sessionId] = options
+			// Every session reads the same registry, so any list also serves New Session.
+			if !options.isEmpty { keepNewSessionModels(options) }
 		} catch {
 			// An older desktop does not know `model.list`; the title then just shows the model.
 			log.info("model.list unavailable: \(String(describing: type(of: error)), privacy: .public)")
@@ -394,11 +406,34 @@ public final class AppModel {
 	}
 
 	/// The desktop lists models per session and every session reads the same
-	/// registry, so a new session borrows the list of the most recent one.
+	/// registry, so a new session borrows another one's list. A session the desktop
+	/// already has open answers at once; any other one is loaded from disk first,
+	/// which takes seconds, so an open one is preferred and the last list is kept
+	/// for the next launch. Concurrent calls share one request.
 	public func loadNewSessionModels() async {
-		guard let recent = sessions.max(by: { $0.updatedAt < $1.updatedAt }) else { return }
-		await loadModels(recent.id)
-		if let options = models[recent.id] { newSessionModels = options }
+		if let running = newSessionModelsLoad { return await running.value }
+		let load = Task { [weak self] in
+			guard let self else { return }
+			let recent: (RemoteSessionSummary, RemoteSessionSummary) -> Bool = { $0.updatedAt < $1.updatedAt }
+			guard let donor = sessions.filter(\.live).max(by: recent) ?? sessions.max(by: recent) else { return }
+			await loadModels(donor.id)
+		}
+		newSessionModelsLoad = load
+		await load.value
+		newSessionModelsLoad = nil
+	}
+
+	private func keepNewSessionModels(_ options: [RemoteModelOption]) {
+		guard options != newSessionModels else { return }
+		newSessionModels = options
+		if let key = desktopKey, let data = try? JSONEncoder().encode(options), let text = String(data: data, encoding: .utf8) {
+			platform.settings.set(Self.modelsKeyPrefix + key, text)
+		}
+	}
+
+	private func cachedNewSessionModels(_ desktopKey: String) -> [RemoteModelOption] {
+		guard let text = platform.settings.get(Self.modelsKeyPrefix + desktopKey) else { return [] }
+		return (try? JSONDecoder().decode([RemoteModelOption].self, from: Data(text.utf8))) ?? []
 	}
 
 	/// Switches the session's model and/or thinking level on the desktop.

@@ -28,8 +28,9 @@ struct NewSessionView: View {
 		}
 		.task(id: model.online) {
 			guard model.online else { return }
-			await model.refreshProjects()
+			async let projects: Void = model.refreshProjects()
 			await model.loadNewSessionModels()
+			await projects
 		}
 	}
 
