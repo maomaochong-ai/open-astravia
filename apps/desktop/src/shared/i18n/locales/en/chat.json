@@ -1,4 +1,18 @@
 {
+	"markdown": {
+		"preview": "Preview",
+		"source": "Source",
+		"run": "Run JavaScript",
+		"stop": "Stop",
+		"waiting": "Preview will appear when generation finishes.",
+		"paused": "Preview stopped. Run again to restart the page.",
+		"tooLarge": "This content is too large to preview. You can still view and copy its source.",
+		"failed": "Could not render this content. Its source is shown instead.",
+		"staticHtml": "Static preview. Run JavaScript to enable interactions; external resources are blocked.",
+		"running": "Interactive preview. Automatically stops after 30 seconds.",
+		"svg": "SVG preview",
+		"html": "HTML preview"
+	},
 	"activityPanel": {
 		"tabs": {
 			"file": "Files",
@@ -646,7 +660,9 @@
 		"assistantMessage": {
 			"predicting": "Vetta is predicting…",
 			"processing": "Processing…",
-			"waiting": "Waiting for model response"
+			"waiting": "Waiting for model response",
+			"preparing": "Preparing request",
+			"creatingSession": "Creating conversation"
 		},
 		"duration": {
 			"seconds": "{{seconds}}s",

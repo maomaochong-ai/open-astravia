@@ -2,6 +2,7 @@ import type { SessionEvent } from "@vetta/runtime-core";
 
 const SESSION_EVENT_TYPES = new Set([
 	"session.lifecycle",
+	"model.request.started",
 	"session.path_changed",
 	"message.delta",
 	"thinking.delta",
@@ -101,6 +102,11 @@ export function decodeSessionEvent(value: unknown): SessionEvent {
 	}
 	if (event.channel !== undefined && event.channel !== "runtime") fail("runtime channel is invalid");
 	if (typeof event.type !== "string" || !SESSION_EVENT_TYPES.has(event.type)) fail("unknown event type");
+	if (event.type === "model.request.started") {
+		if (typeof event.turnId !== "string" || event.turnId.length === 0) fail("request turnId is missing");
+		if (!Number.isInteger(event.modelCallIndex) || Number(event.modelCallIndex) < 0)
+			fail("request modelCallIndex is invalid");
+	}
 	if (event.type === "session.context.state") {
 		const state = record(event.state);
 		if (!state || state.sessionId !== event.sessionId || !Number.isInteger(state.revision)) {

@@ -78,6 +78,7 @@ export function ChatView(props: ChatViewProps): JSX.Element {
 					messages={model.messages}
 					workspace={workspace}
 					isStreaming={model.isStreaming}
+					pendingLabel={model.pendingLabel}
 					sessionId={model.sessionId}
 					participants={participants}
 					onSend={props.onSend}

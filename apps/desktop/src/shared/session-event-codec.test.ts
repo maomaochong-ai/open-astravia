@@ -3,6 +3,24 @@ import { describe, expect, it } from "vitest";
 import { decodeSessionEvent } from "./session-event-codec";
 
 describe("decodeSessionEvent", () => {
+	it("preserves request boundaries and rejects missing or invalid model-call identity", () => {
+		const event = {
+			schemaVersion: 1,
+			channel: "runtime",
+			sessionId: "session-1",
+			eventId: "request-1",
+			timestamp: 10,
+			source: "agent",
+			type: "model.request.started",
+			turnId: "turn-1",
+			modelCallIndex: 0,
+		};
+		expect(decodeSessionEvent(event)).toBe(event);
+		for (const invalid of [{ turnId: "" }, { turnId: undefined }, { modelCallIndex: -1 }, { modelCallIndex: 0.5 }]) {
+			expect(() => decodeSessionEvent({ ...event, ...invalid })).toThrow();
+		}
+	});
+
 	it("keeps a valid raw assistant event structurally unchanged", () => {
 		const payload = {
 			schemaVersion: 1,

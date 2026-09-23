@@ -1,4 +1,18 @@
 {
+	"markdown": {
+		"preview": "预览",
+		"source": "源码",
+		"run": "运行 JavaScript",
+		"stop": "停止",
+		"waiting": "生成完成后显示预览。",
+		"paused": "预览已停止，重新运行将从头加载页面。",
+		"tooLarge": "内容过大，暂不生成预览。仍可查看和复制源码。",
+		"failed": "无法渲染此内容，已保留源码。",
+		"staticHtml": "当前为静态预览。运行 JavaScript 可启用交互；外部资源不可用。",
+		"running": "交互预览运行中，30 秒后自动停止。",
+		"svg": "SVG 预览",
+		"html": "HTML 预览"
+	},
 	"activityPanel": {
 		"tabs": {
 			"file": "文件",
@@ -646,7 +660,9 @@
 		"assistantMessage": {
 			"predicting": "Vetta 正在预测…",
 			"processing": "处理中…",
-			"waiting": "等待模型响应"
+			"waiting": "等待模型响应",
+			"preparing": "正在准备请求",
+			"creatingSession": "正在创建会话"
 		},
 		"duration": {
 			"seconds": "{{seconds}}秒",

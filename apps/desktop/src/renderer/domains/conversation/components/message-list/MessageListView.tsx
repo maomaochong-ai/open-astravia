@@ -167,7 +167,13 @@ export function MessageListView({
 						isLastUserMessage={message.id === lastUserMessageId}
 						onAbortEdit={onAbort}
 						participant={message.kind === "agent" ? participantsById.get(message.authorId) : undefined}
-						pendingLabel={message.kind === "agent" && message.phase === "pending" ? pendingLabel : undefined}
+						pendingLabel={
+							message.kind === "agent" &&
+							(message.phase === "pending" ||
+								(message.phase === "streaming" && message.blocks.length === 0 && !message.text))
+								? pendingLabel
+								: undefined
+						}
 						participants={participants}
 						sessionUsages={message.kind === "agent" ? sessionUsagesRef.current : undefined}
 						onTeamMemberOpen={onTeamMemberOpen}

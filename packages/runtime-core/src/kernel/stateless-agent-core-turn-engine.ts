@@ -132,9 +132,6 @@ export class StatelessAgentCoreTurnEngine implements TurnEnginePort {
 					input: request.input,
 				})
 			: undefined;
-		const streamFn: StreamFn = lifecycle
-			? wrapStreamFnWithModelCallLifecycle(lifecycle, this.options.streamFn)
-			: (this.options.streamFn ?? streamSimple);
 		const resolveFrame = async (modelCallIndex: number, frameMessages: readonly Message[], signal: AbortSignal) => {
 			const frame =
 				initialFrame ??
@@ -212,6 +209,16 @@ export class StatelessAgentCoreTurnEngine implements TurnEnginePort {
 					: this.options.resolveApiKey
 						? await this.options.resolveApiKey(model)
 						: await this.options.getApiKey?.(model.provider);
+				const providerStream: StreamFn = async (...args) => {
+					// Context reports and credentials are preparation; only this boundary
+					// means the provider is being invoked. Preserve lifecycle event order.
+					await eventDelivery.waitForCurrentDelivery(signal);
+					signal.throwIfAborted();
+					await request.reportObservation?.({ type: "model.request.started", modelCallIndex, source: "agent" });
+					signal.throwIfAborted();
+					return (this.options.streamFn ?? streamSimple)(...args);
+				};
+				const streamFn = lifecycle ? wrapStreamFnWithModelCallLifecycle(lifecycle, providerStream) : providerStream;
 				const response = await (async () => {
 					try {
 						const source = await streamFn(model, context, {

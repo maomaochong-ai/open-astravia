@@ -928,6 +928,8 @@ export interface TurnObserver {
 }
 
 export interface TurnEngineRequest {
+	/** Publish request-boundary observations through the owning Pipeline's event sink. */
+	readonly reportObservation?: (observation: RuntimeSessionObservationEvent) => Promise<void>;
 	readonly sessionId: string;
 	readonly turnId: string;
 	readonly snapshot: RuntimeSnapshot;

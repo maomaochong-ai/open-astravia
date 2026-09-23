@@ -46,6 +46,7 @@ export interface RuntimeSessionObservationSummary {
 	readonly modelApi?: string;
 	readonly modelProvider?: string;
 	readonly modelId?: string;
+	readonly modelCallIndex?: number;
 	readonly extensionId?: string;
 	readonly extensionEvent?: string;
 	readonly reason?: string;
@@ -78,6 +79,8 @@ export function projectRuntimeSessionObservation(
 ): RuntimeSessionObservationSummary {
 	const base = { eventType: event.type, source: event.source } as const;
 	switch (event.type) {
+		case "model.request.started":
+			return { ...base, modelCallIndex: event.modelCallIndex };
 		case "lifecycle":
 			return { ...base, phase: event.phase };
 		case "assistant.event": {

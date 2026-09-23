@@ -96,6 +96,8 @@ export class RuntimeHostSessionEventRelay {
 					else if (event.message.stopReason === "error") buffer.terminalReason = "error";
 					else buffer.terminalReason = undefined;
 				}
+			} else if (event.type === "model.request.started" && buffer.isActive) {
+				buffer.events.push(event);
 			} else if (event.channel === "assistant" && buffer.isActive) {
 				buffer.events.push(event);
 				if (event.type === "error") buffer.terminalReason = "error";

@@ -62,6 +62,25 @@ describe("RuntimeHostSessionEventRelay", () => {
 		const live: SessionEvent[] = [];
 		const unsubscribeLive = relay.subscribe("session-key", handle, (event) => live.push(event));
 		stream.emit(lifecycleSessionEvent("session-1", "agent_start", 100));
+		stream.emit(
+			mapRuntimeSessionObservationEvent(
+				"session-1",
+				{
+					type: "model.request.started",
+					modelCallIndex: 0,
+					source: "agent",
+					timestamp: 200,
+				},
+				undefined,
+				{ turnId: "turn-1" },
+			),
+		);
+		const waitingReplay: SessionEvent[] = [];
+		const unsubscribeWaiting = relay.subscribe("session-key", handle, (event) => waitingReplay.push(event));
+		expect(waitingReplay.filter((event) => event.type === "model.request.started")).toMatchObject([
+			{ timestamp: 200, turnId: "turn-1", modelCallIndex: 0 },
+		]);
+		unsubscribeWaiting();
 		for (const event of protocolEvents) stream.emit(assistantEvent(event));
 
 		const replayed: SessionEvent[] = [];
@@ -74,6 +93,14 @@ describe("RuntimeHostSessionEventRelay", () => {
 		for (let index = 0; index < replayedAssistant.length; index += 1) {
 			expect(replayedAssistant[index]).toMatchObject(protocolEvents[index] ?? {});
 		}
+		expect(replayed.filter((event) => event.type === "model.request.started")).toEqual(
+			live.filter((event) => event.type === "model.request.started"),
+		);
+		stream.emit(lifecycleSessionEvent("session-1", "agent_end", 500));
+		const endedReplay: SessionEvent[] = [];
+		const unsubscribeEnded = relay.subscribe("session-key", handle, (event) => endedReplay.push(event));
+		expect(endedReplay.some((event) => event.type === "model.request.started")).toBe(false);
+		unsubscribeEnded();
 
 		unsubscribeReplay();
 		unsubscribeLive();

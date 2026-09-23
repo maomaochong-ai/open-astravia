@@ -10,6 +10,7 @@ import {
 describe("Runtime Session observation bridge", () => {
 	it("projects content-bearing Session events to structural summaries", () => {
 		const summaries = [
+			projectRuntimeSessionObservation({ type: "model.request.started", source: "agent", modelCallIndex: 0 }),
 			projectRuntimeSessionObservation({
 				type: "message.delta",
 				source: "agent",
@@ -33,6 +34,7 @@ describe("Runtime Session observation bridge", () => {
 		];
 
 		expect(summaries).toEqual([
+			{ eventType: "model.request.started", source: "agent", modelCallIndex: 0 },
 			{ eventType: "message.delta", source: "agent", characterCount: 15 },
 			{ eventType: "tool.start", source: "tool", toolName: "review", startedAt: 10 },
 			{

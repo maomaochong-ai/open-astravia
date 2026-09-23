@@ -248,6 +248,11 @@ export interface RuntimeSandboxGrantInfo {
 }
 
 export type SessionEvent =
+	| (SessionEventBase & {
+			readonly type: "model.request.started";
+			readonly turnId: string;
+			readonly modelCallIndex: number;
+	  })
 	| SessionContextStateEvent
 	| SessionLifecycleEvent
 	| SessionPathChangedEvent

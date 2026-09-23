@@ -49,7 +49,7 @@ import { AssistantMessage } from "./AssistantMessage";
 describe("AssistantMessage first-response waiting state", () => {
 	beforeEach(() => useExpansionMock.mockClear());
 
-	it("projects an empty streaming draft as a waiting assistant message without an ellipsis body", () => {
+	it("shows preparation before the provider request instead of attributing initialization to the model", () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date(13_000));
 		render(
@@ -66,10 +66,31 @@ describe("AssistantMessage first-response waiting state", () => {
 			/>,
 		);
 
-		expect(screen.getByText("messageList.assistantMessage.waiting")).toBeTruthy();
+		expect(screen.getByText("messageList.assistantMessage.preparing")).toBeTruthy();
 		expect(screen.getByText("waited 12s")).toBeTruthy();
 		expect(screen.queryByText("…")).toBeNull();
 		expect(useExpansionMock).toHaveBeenCalledWith("fold:assistant-waiting", true);
+		vi.useRealTimers();
+	});
+
+	it("starts the model waiting timer at the request boundary, excluding preparation", () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date(13_000));
+		render(
+			<AssistantMessage
+				isStreaming
+				isTailMessage
+				message={createConversationAgentMessage({
+					id: "assistant-requested",
+					phase: "streaming",
+					blocks: [],
+					startedAt: 1_000,
+					modelRequestStartedAt: 11_000,
+				})}
+			/>,
+		);
+		expect(screen.getByText("messageList.assistantMessage.waiting")).toBeTruthy();
+		expect(screen.getByText("waited 2s")).toBeTruthy();
 		vi.useRealTimers();
 	});
 
