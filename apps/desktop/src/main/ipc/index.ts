@@ -31,6 +31,7 @@ import { registerRemotePairingIpc } from "./remote-pairing.js";
 import { registerRuntimeConfigurationIpc } from "./runtime-configuration.js";
 import { registerRuntimesIpc } from "./runtimes.js";
 import { registerSessionIpc } from "./session.js";
+import { registerSessionPinsIpc } from "./session-pins.js";
 import { registerSettingsIpc } from "./settings.js";
 import { registerSkillsIpc } from "./skills.js";
 import { registerSpeechInputIpc } from "./speech-input.js";
@@ -74,6 +75,7 @@ interface IpcTeardown {
 	teardownPet: () => void;
 	teardownTerminal: () => void;
 	teardownConversationTags: () => void;
+	teardownSessionPins: () => void;
 	teardownQuickPanel: () => void;
 	teardownAppshot: () => void;
 	teardownDiagnostics: () => void;
@@ -123,6 +125,7 @@ export function registerAllIpc(
 		teardownPet: registerPetIpc(),
 		teardownTerminal: registerTerminalIpc(),
 		teardownConversationTags: registerConversationTagsIpc(webContents),
+		teardownSessionPins: registerSessionPinsIpc(webContents),
 		teardownQuickPanel: registerQuickPanelIpc(),
 		teardownAppshot: registerAppshotIpc(),
 		teardownDiagnostics: registerDiagnosticsIpc(),
@@ -165,6 +168,7 @@ export function teardownAllIpc(teardown: IpcTeardown): void {
 	teardown.teardownPet();
 	teardown.teardownTerminal();
 	teardown.teardownConversationTags();
+	teardown.teardownSessionPins();
 	teardown.teardownQuickPanel();
 	teardown.teardownAppshot();
 	teardown.teardownDiagnostics();

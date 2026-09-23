@@ -2,6 +2,13 @@ import { isSubPath, pathBasename } from "@shared/lib/utils";
 import type { RuntimeSessionAccess } from "@vetta/runtime-core";
 import { atom } from "jotai";
 import { SCHEDULE_SESSION_MARKER } from "../../../shared/scheduled-session";
+import {
+	parseSessionPins,
+	removeSessionPins,
+	type SessionPins,
+	sessionPinsFromSnapshot,
+	setSessionPinned,
+} from "../../../shared/session-pins";
 
 export type ProjectType = "normal" | "batch";
 
@@ -105,85 +112,56 @@ export const expandedProjectsAtom = atom<Set<string>>(new Set<string>());
 export const sessionsMapAtom = atom<Map<string, SessionInfo[]>>(new Map<string, SessionInfo[]>());
 export const sessionLoadingCwdsAtom = atom<Set<string>>(new Set<string>());
 
-const SIDEBAR_SESSION_PINS_STORAGE_KEY = "vetta-sidebar-session-pins";
-const SIDEBAR_SESSION_PINS_SCHEMA_VERSION = 1;
+export type PinnedSessionPaths = SessionPins;
 
-interface StoredSidebarSessionPins {
-	schemaVersion: typeof SIDEBAR_SESSION_PINS_SCHEMA_VERSION;
-	pins: Array<{ path: string; pinnedAt: number }>;
-}
-
-export type PinnedSessionPaths = ReadonlyMap<string, number>;
-
-export function parseSidebarSessionPins(value: unknown): Map<string, number> {
-	if (typeof value !== "object" || value === null || Array.isArray(value)) return new Map();
-	const input = value as { schemaVersion?: unknown; pins?: unknown };
-	if (input.schemaVersion !== SIDEBAR_SESSION_PINS_SCHEMA_VERSION || !Array.isArray(input.pins)) {
-		return new Map();
-	}
-	const pins = new Map<string, number>();
-	for (const entry of input.pins) {
-		if (typeof entry !== "object" || entry === null || Array.isArray(entry)) continue;
-		const path = Reflect.get(entry, "path");
-		const pinnedAt = Reflect.get(entry, "pinnedAt");
-		if (typeof path !== "string" || path.trim().length === 0) continue;
-		if (typeof pinnedAt !== "number" || !Number.isFinite(pinnedAt) || pinnedAt <= 0) continue;
-		pins.set(path, pinnedAt);
-	}
-	return pins;
-}
-
-function loadSidebarSessionPins(): Map<string, number> {
-	try {
-		const raw = localStorage.getItem(SIDEBAR_SESSION_PINS_STORAGE_KEY);
-		return raw ? parseSidebarSessionPins(JSON.parse(raw) as unknown) : new Map();
-	} catch {
-		return new Map();
-	}
-}
-
-function persistSidebarSessionPins(pins: PinnedSessionPaths): void {
-	const stored: StoredSidebarSessionPins = {
-		schemaVersion: SIDEBAR_SESSION_PINS_SCHEMA_VERSION,
-		pins: Array.from(pins, ([path, pinnedAt]) => ({ path, pinnedAt })),
-	};
-	try {
-		localStorage.setItem(SIDEBAR_SESSION_PINS_STORAGE_KEY, JSON.stringify(stored));
-	} catch {
-		// 隐私模式或配额不足时保留当前内存态；置顶只是本机 UI 偏好。
-	}
-}
-
-export function updatePinnedSessionPaths(
-	current: PinnedSessionPaths,
-	input: { path: string; pinned: boolean; pinnedAt?: number },
-): Map<string, number> {
-	const next = new Map(current);
-	if (input.pinned) {
-		let latestPin = 0;
-		for (const pinnedAt of current.values()) latestPin = Math.max(latestPin, pinnedAt);
-		next.set(input.path, input.pinnedAt ?? Math.max(Date.now(), latestPin + 1));
-	} else next.delete(input.path);
-	return next;
-}
-
-export const pinnedSessionPathsAtom = atom<Map<string, number>>(loadSidebarSessionPins());
-export const setSessionPinnedAtom = atom(
-	null,
-	(get, set, input: { path: string; pinned: boolean; pinnedAt?: number }) => {
-		const next = updatePinnedSessionPaths(get(pinnedSessionPathsAtom), input);
-		persistSidebarSessionPins(next);
-		set(pinnedSessionPathsAtom, next);
-	},
-);
-export const removePinnedSessionsAtom = atom(null, (get, set, paths: Iterable<string>) => {
-	const next = new Map(get(pinnedSessionPathsAtom));
-	let changed = false;
-	for (const path of paths) changed = next.delete(path) || changed;
-	if (!changed) return;
-	persistSidebarSessionPins(next);
-	set(pinnedSessionPathsAtom, next);
+/**
+ * 会话置顶是主进程 `session-pins.json` 的镜像（配对的手机也读写同一份），由
+ * useSessionPinsSync 首屏拉取并跟随广播刷新。本地改动先乐观生效，再以主进程
+ * 返回的快照为准。
+ */
+export const pinnedSessionPathsAtom = atom<Map<string, number>>(new Map());
+export const setSessionPinnedAtom = atom(null, (get, set, input: { path: string; pinned: boolean }) => {
+	set(pinnedSessionPathsAtom, setSessionPinned(get(pinnedSessionPathsAtom), input));
+	void window.vetta.sessionPins
+		.set(input)
+		.then((snapshot) => set(pinnedSessionPathsAtom, sessionPinsFromSnapshot(snapshot)))
+		.catch(() => {
+			// 主进程写入失败时保留乐观值；下一次广播会把它校正回来。
+		});
 });
+export const removePinnedSessionsAtom = atom(null, (get, set, paths: Iterable<string>) => {
+	const list = [...paths];
+	const current = get(pinnedSessionPathsAtom);
+	const next = removeSessionPins(current, list);
+	if (next === current) return;
+	set(pinnedSessionPathsAtom, new Map(next));
+	void window.vetta.sessionPins
+		.forget(list)
+		.then((snapshot) => set(pinnedSessionPathsAtom, sessionPinsFromSnapshot(snapshot)))
+		.catch(() => {
+			// 同上：失败时保留乐观值。
+		});
+});
+
+/** 旧版本把置顶存在 localStorage；首次同步时交给主进程，之后删掉。 */
+const LEGACY_SIDEBAR_SESSION_PINS_STORAGE_KEY = "vetta-sidebar-session-pins";
+
+export function takeLegacySidebarSessionPins(): SessionPins {
+	try {
+		const raw = localStorage.getItem(LEGACY_SIDEBAR_SESSION_PINS_STORAGE_KEY);
+		return raw ? parseSessionPins(JSON.parse(raw) as unknown) : new Map();
+	} catch {
+		return new Map();
+	}
+}
+
+export function clearLegacySidebarSessionPins(): void {
+	try {
+		localStorage.removeItem(LEGACY_SIDEBAR_SESSION_PINS_STORAGE_KEY);
+	} catch {
+		// 删不掉也无妨：合并按「同一路径取较新时间」幂等，下次启动再交一次。
+	}
+}
 
 export const SIDEBAR_WIDTH_STORAGE_KEY = "vetta-sidebar-width";
 export const SIDEBAR_WIDTH_DEFAULT = 220;

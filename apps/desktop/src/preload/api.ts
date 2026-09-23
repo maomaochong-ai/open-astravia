@@ -27,6 +27,7 @@ import type { RemotePairingApi } from "./api-types/remote-pairing.js";
 import type { DesktopRuntimeConfigurationApi } from "./api-types/runtime-configuration.js";
 import type { DesktopSchedulerApi } from "./api-types/scheduler.js";
 import type { DesktopSessionApi } from "./api-types/session.js";
+import type { DesktopSessionPinsApi } from "./api-types/session-pins.js";
 import type { DesktopSkillsApi } from "./api-types/skills.js";
 import type { DesktopSpeechInputApi } from "./api-types/speech-input.js";
 import type { DesktopSshApi } from "./api-types/ssh.js";
@@ -136,6 +137,7 @@ export interface DesktopApi {
 	plugins: DesktopPluginsApi;
 	pet: DesktopPetApi;
 	conversationTags: DesktopConversationTagsApi;
+	sessionPins: DesktopSessionPinsApi;
 	quickPanel: DesktopQuickPanelApi;
 	runtimeConfiguration: DesktopRuntimeConfigurationApi;
 	appshot: DesktopAppshotApi;
