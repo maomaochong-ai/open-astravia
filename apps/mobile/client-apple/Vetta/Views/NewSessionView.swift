@@ -7,6 +7,8 @@ struct NewSessionView: View {
 	@Environment(Router.self) private var router
 	/// `nil` starts in the desktop's conversations.
 	@State private var projectCwd: String?
+	/// `nil` keeps the desktop's default model.
+	@State private var modelKey: String?
 	@State private var sending = false
 	@State private var draft = PromptDraft()
 
@@ -14,44 +16,67 @@ struct NewSessionView: View {
 
 	var body: some View {
 		welcome
-			.navigationTitle(L10n.NewSession.title)
-			.navigationBarTitleDisplayMode(.large)
+			.background { WelcomeBackdrop().ignoresSafeArea() }
+			.navigationBarTitleDisplayMode(.inline)
+			.toolbarBackground(.hidden, for: .navigationBar)
 			.toolbar(.hidden, for: .tabBar)
 		.task(id: model.online) {
-			if model.online { await model.refreshProjects() }
+			guard model.online else { return }
+			await model.refreshProjects()
+			await model.loadNewSessionModels()
 		}
 	}
 
 	private var welcome: some View {
-		VStack(spacing: 12) {
+		VStack(spacing: 0) {
 			Spacer()
-			Image(systemName: model.online ? "sparkles" : "laptopcomputer.slash")
-				.font(.system(size: 44))
-				.foregroundStyle(model.online ? Theme.green : .secondary)
-				.contentTransition(.symbolEffect(.replace))
+			BotAvatar(size: 52, asleep: !model.online)
 			Text(L10n.NewSession.greeting)
-				.font(.title2.bold())
+				.font(.title.weight(.semibold))
 				.multilineTextAlignment(.center)
-			if !model.online {
-				Text(L10n.NewSession.offline)
-					.font(.subheadline)
-					.foregroundStyle(.secondary)
-					.multilineTextAlignment(.center)
+				.padding(.top, 22)
+			Text(model.online ? L10n.NewSession.subtitle : L10n.NewSession.offline)
+				.font(.subheadline)
+				.foregroundStyle(.secondary)
+				.multilineTextAlignment(.center)
+				.padding(.top, 8)
+				.contentTransition(.opacity)
+			HStack(spacing: 10) {
+				modelMenu
+				locationMenu
 			}
+			.padding(.top, 28)
 			Spacer()
 		}
-		.padding(.horizontal, 32)
+		.padding(.horizontal, 24)
 		.frame(maxWidth: .infinity)
 		.contentShape(Rectangle())
 		.onTapGesture { dismissKeyboard() }
 		.safeAreaInset(edge: .bottom, spacing: 0) {
-			VStack(alignment: .leading, spacing: 8) {
-				locationMenu.padding(.horizontal, 16)
-				ChatInputBar(draft: $draft, placeholder: L10n.Chat.composerPlaceholder, disabled: !model.online || sending, busy: sending) { sent in
-					send(sent)
-				}
+			ChatInputBar(draft: $draft, placeholder: L10n.Chat.composerPlaceholder, disabled: !model.online || sending, busy: sending) { sent in
+				send(sent)
 			}
 		}
+	}
+
+	private var modelMenu: some View {
+		let options = model.newSessionModels
+		let current = options.first { $0.key == modelKey }
+		return Menu {
+			Picker(L10n.Chat.model, selection: $modelKey) {
+				Text(L10n.NewSession.defaultModel).tag(String?.none)
+				ForEach(options) { option in
+					Text(option.name).tag(Optional(option.key))
+				}
+			}
+		} label: {
+			MenuChip(symbol: "cpu", text: current?.name ?? L10n.NewSession.defaultModel)
+		}
+		.buttonStyle(.glass)
+		.disabled(!model.online || options.isEmpty)
+		.accessibilityLabel(L10n.Chat.model)
+		.accessibilityValue(current?.name ?? L10n.NewSession.defaultModel)
+		.accessibilityIdentifier("newSession.model")
 	}
 
 	private var locationMenu: some View {
@@ -68,13 +93,7 @@ struct NewSessionView: View {
 			}
 		} label: {
 			let project = projects.first { $0.cwd == projectCwd }
-			HStack(spacing: 5) {
-				Image(systemName: project == nil ? "bubble.left" : "folder")
-				Text(project?.name ?? L10n.Home.conversation).lineLimit(1)
-				Image(systemName: "chevron.up.chevron.down").font(.caption2.weight(.semibold))
-			}
-			.font(.subheadline.weight(.medium))
-			.padding(.horizontal, 2)
+			MenuChip(symbol: project == nil ? "bubble.left" : "folder", text: project?.name ?? L10n.Home.conversation)
 		}
 		.buttonStyle(.glass)
 		.disabled(!model.online)
@@ -86,12 +105,50 @@ struct NewSessionView: View {
 		sending = true
 		Task {
 			defer { sending = false }
-			guard let id = await model.sendPrompt(nil, sent.text, projectCwd: projectCwd, attachments: sent.attachments) else {
+			guard let id = await model.sendPrompt(nil, sent.text, projectCwd: projectCwd, modelKey: modelKey, attachments: sent.attachments) else {
 				// Keep what was typed so a failed send is not lost.
 				draft = sent
 				return
 			}
 			router.openSession(id)
 		}
+	}
+}
+
+/// A picker's label on New Session: icon, current choice, chevron.
+private struct MenuChip: View {
+	var symbol: String
+	var text: String
+
+	var body: some View {
+		HStack(spacing: 5) {
+			Image(systemName: symbol)
+			Text(text).lineLimit(1)
+			Image(systemName: "chevron.up.chevron.down").font(.caption2.weight(.semibold))
+		}
+		.font(.subheadline.weight(.medium))
+		.padding(.horizontal, 2)
+	}
+}
+
+/// The page fades from the plain background into a deep blue glow at the bottom,
+/// like dawn behind the composer. Static: nothing here needs to move.
+private struct WelcomeBackdrop: View {
+	var body: some View {
+		let base = Color(uiColor: .systemBackground)
+		MeshGradient(
+			width: 3,
+			height: 3,
+			points: [
+				[0, 0], [0.5, 0], [1, 0],
+				[0, 0.5], [0.5, 0.55], [1, 0.5],
+				[0, 1], [0.5, 1], [1, 1],
+			],
+			colors: [
+				base, base, base,
+				base, base, base,
+				Theme.dawnSide, Theme.dawn, Theme.dawn,
+			]
+		)
 	}
 }

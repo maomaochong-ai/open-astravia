@@ -180,3 +180,41 @@ func describeStatus(_ status: RemoteSessionStatus) -> (label: String, tone: Stat
 @MainActor func dismissKeyboard() {
 	UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
 }
+
+/// Vetta's face, drawn like the desktop's `BotAvatar` in its black-and-white
+/// theme: a rounded square with two round eyes. Asleep, the eyes close to slits.
+/// Static on purpose; a tap blinks it once.
+struct BotAvatar: View {
+	var size: CGFloat = 24
+	var asleep = false
+	@State private var blinking = false
+
+	var body: some View {
+		let eye = size * 0.15
+		RoundedRectangle(cornerRadius: size * 0.3, style: .continuous)
+			.fill(LinearGradient(colors: [Theme.botFace, Theme.botFace.opacity(0.85)], startPoint: .topLeading, endPoint: .bottomTrailing))
+			.frame(width: size, height: size)
+			.overlay {
+				HStack(spacing: eye) {
+					ForEach(0 ..< 2, id: \.self) { _ in
+						Circle()
+							.fill(Theme.botEye)
+							.frame(width: eye, height: eye)
+							.scaleEffect(x: 1, y: asleep || blinking ? 0.15 : 1)
+					}
+				}
+			}
+			.shadow(color: Theme.botFace.opacity(0.3), radius: size * 0.2, y: size * 0.1)
+			.animation(.easeInOut(duration: 0.15), value: blinking)
+			.animation(.easeInOut(duration: 0.3), value: asleep)
+			.onTapGesture {
+				guard !asleep, !blinking else { return }
+				blinking = true
+				Task {
+					try? await Task.sleep(for: .milliseconds(160))
+					blinking = false
+				}
+			}
+			.accessibilityHidden(true)
+	}
+}

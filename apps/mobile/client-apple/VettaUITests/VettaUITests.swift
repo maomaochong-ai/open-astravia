@@ -156,8 +156,10 @@ final class VettaUITests: XCTestCase {
 		let app = try launchPaired()
 		// New Session: start in a project and land straight in its chat.
 		app.buttons["work.newSession"].tap()
-		XCTAssertTrue(app.staticTexts["想让电脑做点什么？"].waitForExistence(timeout: 5))
+		XCTAssertTrue(app.staticTexts["让我们开始吧"].waitForExistence(timeout: 5))
+		XCTAssertTrue(app.staticTexts["我可以帮你处理工作，有什么可以帮助你的？"].exists)
 		XCTAssertFalse(app.tabBars.buttons["工作"].isHittable, "New Session hides the tab bar like a chat")
+		pick(app, "newSession.model", "GLM 5")
 		pick(app, "newSession.location", "vetta")
 		// The attach button opens a sheet: Photos and Camera lead the strip, Files is the list below.
 		app.buttons["composer.attach"].tap()
@@ -190,6 +192,7 @@ final class VettaUITests: XCTestCase {
 			app.staticTexts.containing(NSPredicate(format: "label CONTAINS '附件：photo-sample.jpg'")).firstMatch.waitForExistence(timeout: 5),
 			"the desktop received both uploads with the prompt"
 		)
+		XCTAssertTrue(app.buttons["chat.modelMenu"].label.contains("GLM 5"), "the session started on the chosen model")
 		shot(app, "7-question")
 
 		// Back lands on Work, where the session waiting on us sits on top.

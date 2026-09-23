@@ -68,6 +68,8 @@ public final class AppModel {
 	public private(set) var projects: [RemoteProjectSummary] = []
 	/// Models each opened session may switch to, fetched on demand.
 	public private(set) var models: [String: [RemoteModelOption]] = [:]
+	/// Models a new session may start with; see `loadNewSessionModels`.
+	public private(set) var newSessionModels: [RemoteModelOption] = []
 	public private(set) var transcripts: [String: TranscriptState] = [:]
 	public private(set) var preferences: Preferences = .defaults
 	public private(set) var pairing: PairingPhase = .idle
@@ -388,6 +390,14 @@ public final class AppModel {
 		}
 	}
 
+	/// The desktop lists models per session and every session reads the same
+	/// registry, so a new session borrows the list of the most recent one.
+	public func loadNewSessionModels() async {
+		guard let recent = sessions.max(by: { $0.updatedAt < $1.updatedAt }) else { return }
+		await loadModels(recent.id)
+		if let options = models[recent.id] { newSessionModels = options }
+	}
+
 	/// Switches the session's model and/or thinking level on the desktop.
 	@discardableResult
 	public func configure(_ sessionId: String, modelKey: String? = nil, thinkingLevel: String? = nil) async -> Bool {
@@ -407,9 +417,10 @@ public final class AppModel {
 
 	/// Sends a prompt; with no session a new one is created first, in `projectCwd`
 	/// or, without one, in the desktop's conversations. Attachments are uploaded one
-	/// per request first. Returns the session that received it, or nil when nothing was sent.
+	/// per request first. `modelKey` switches a newly created session before the prompt.
+	/// Returns the session that received it, or nil when nothing was sent.
 	@discardableResult
-	public func sendPrompt(_ sessionId: String?, _ text: String, projectCwd: String? = nil, attachments: [PromptAttachment] = []) async -> String? {
+	public func sendPrompt(_ sessionId: String?, _ text: String, projectCwd: String? = nil, modelKey: String? = nil, attachments: [PromptAttachment] = []) async -> String? {
 		let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
 		guard !trimmed.isEmpty else { return nil }
 		do {
@@ -424,6 +435,8 @@ public final class AppModel {
 				target = session.id
 				sessions = [session] + sessions.filter { $0.id != session.id }
 				dispatch(session.id, .history(entries: [], state: RemoteSessionState(status: .idle)))
+				// A failed switch is reported; the prompt still goes out on the default model.
+				if let modelKey { await configure(session.id, modelKey: modelKey) }
 			}
 			guard let target else { return sessionId }
 			var uploadIds: [JSONValue] = []

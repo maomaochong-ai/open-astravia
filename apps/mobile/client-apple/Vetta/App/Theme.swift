@@ -16,12 +16,20 @@ enum Theme {
 	/// Inverted surface for the user's own bubble and primary pills.
 	static let pill = dynamic(light: 0x0B0C0E, dark: 0xF4F5F6)
 	static let pillInk = dynamic(light: 0xFFFFFF, dark: 0x0A0B0D)
+	/// Switches are on in black, or mid grey in dark mode where a white track would hide the knob.
+	static let switchOn = dynamic(light: 0x0B0C0E, dark: 0x6B7077)
 	static let green = dynamic(light: 0x16A34A, dark: 0x22C55E)
 	static let greenSoft = Color(red: 34 / 255, green: 197 / 255, blue: 94 / 255).opacity(0.14)
 	static let orange = dynamic(light: 0xD97706, dark: 0xF59E0B)
 	static let orangeSoft = Color(red: 245 / 255, green: 158 / 255, blue: 11 / 255).opacity(0.14)
 	static let red = dynamic(light: 0xDC2626, dark: 0xF0524F)
-	static let avatarInk = Color(red: 8 / 255, green: 17 / 255, blue: 11 / 255)
+	/// The bot avatar in the desktop's black-and-white theme: a black face with
+	/// white eyes in light mode, a near-white face with grey eyes in dark mode.
+	static let botFace = dynamic(light: 0x000000, dark: 0xE4E4E4)
+	static let botEye = dynamic(light: 0xFFFFFF, dark: 0x969696)
+	/// The glow New Session fades into at the bottom of the screen.
+	static let dawn = dynamic(light: 0xD6E2FB, dark: 0x13235E)
+	static let dawnSide = dynamic(light: 0xE6DEFA, dark: 0x1C1A52)
 
 	/// UIKit resolves the colour on SwiftUI's render thread on device, so the
 	/// provider must not inherit the module's main-actor isolation: a main-actor

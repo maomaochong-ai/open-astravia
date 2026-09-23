@@ -436,6 +436,26 @@ import Testing
 		#expect(model.lastError == nil, "a desktop without model.list leaves the title as is, without an alert")
 	}
 
+	@Test func startsANewSessionOnTheChosenModel() async throws {
+		let log = RequestLog()
+		let desktop = scriptedDesktop(recording: log)
+		let model = AppModel(platform: .memory(createTransport: desktop.createTransport))
+		model.start()
+		let invite = PairingURI.build(RemotePairingInvite(pairingId: "pair-1234567890abcdef", mobileSecret: "secret-1234567890abcdef", desktopIdentityKey: desktop.identityKey, desktopName: "MacBook Pro", lanEndpoints: ["192.168.1.20:43117"]))
+		#expect(await model.pairWithCode(invite))
+		#expect(await eventually { model.sessions.map(\.id) == ["s1"] })
+
+		await model.loadNewSessionModels()
+		#expect(model.newSessionModels.map(\.key) == ["anthropic/claude-fable-5-1", "zai/glm-5"])
+		#expect(log.entries.last { $0.method == .modelList }?.sessionId == "s1", "borrowed from the most recent session")
+
+		#expect(await model.sendPrompt(nil, "你好", modelKey: "zai/glm-5") == "s2")
+		let order = log.entries.map(\.method).filter { [.sessionCreate, .sessionConfigure, .sessionPrompt].contains($0) }
+		#expect(order == [.sessionCreate, .sessionConfigure, .sessionPrompt])
+		#expect(log.entries.first { $0.method == .sessionConfigure }?.sessionId == "s2")
+		#expect(model.transcript("s2").sessionState.modelKey == "zai/glm-5")
+	}
+
 	@Test func reportsOfflineInsteadOfSendingAndHonoursLiveThinking() async {
 		let desktop = scriptedDesktop()
 		let model = AppModel(platform: .memory(createTransport: desktop.createTransport))
