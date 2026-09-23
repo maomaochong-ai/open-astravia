@@ -79,6 +79,9 @@ struct RootView: View {
 			PairView()
 				.environment(router)
 		}
+		// Content fades out under every bar, as on iOS 26; iOS 27 otherwise draws a hard edge.
+		// Outside the sheet above so it reaches every page, sheets included.
+		.scrollEdgeEffectStyle(.soft, for: .all)
 		.alert(model.lastError ?? "", isPresented: Binding(get: { model.lastError != nil }, set: { if !$0 { model.clearError() } })) {
 			Button(L10n.Common.confirm, role: .cancel) { model.clearError() }
 		}
