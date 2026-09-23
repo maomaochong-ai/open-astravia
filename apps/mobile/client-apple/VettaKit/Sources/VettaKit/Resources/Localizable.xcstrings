@@ -103,19 +103,70 @@
         }
       }
     },
-    "chat.questionSkip": {
+    "chat.questionMultiHint": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Skip for now"
+            "value": "Multiple choice"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "暂不回答"
+            "value": "可多选"
+          }
+        }
+      }
+    },
+    "chat.questionNext": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下一步"
+          }
+        }
+      }
+    },
+    "chat.questionOther": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Other (custom input)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "其它（自定义输入）"
+          }
+        }
+      }
+    },
+    "chat.questionOtherPlaceholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Type your answer…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "输入你的答案…"
           }
         }
       }
@@ -137,19 +188,36 @@
         }
       }
     },
+    "chat.questionTab %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Question %lld"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "问题 %lld"
+          }
+        }
+      }
+    },
     "chat.questionTitle": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Needs your input"
+            "value": "Vetta needs your choice"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "需要你确认"
+            "value": "Vetta 需要你的选择"
           }
         }
       }

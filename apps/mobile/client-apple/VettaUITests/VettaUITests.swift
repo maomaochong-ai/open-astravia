@@ -123,10 +123,23 @@ final class VettaUITests: XCTestCase {
 		XCTAssertTrue(first.staticTexts["vetta"].exists, "it was started in the chosen project")
 		shot(app, "8-waiting")
 		first.tap()
+		// The question replaces the composer: answer two questions, the second with Other.
 		XCTAssertTrue(option.waitForExistence(timeout: 10))
+		XCTAssertFalse(app.textFields["composer.field"].exists, "the question takes the composer's place")
+		XCTAssertFalse(app.buttons["question.next"].isEnabled, "Next waits for an answer")
 		option.tap()
+		app.buttons["question.next"].tap()
+		XCTAssertTrue(app.buttons["question.option.测试"].waitForExistence(timeout: 5))
+		XCTAssertFalse(app.buttons["question.submit"].isEnabled)
+		app.buttons["question.option.测试"].tap()
+		app.buttons["question.other"].tap()
+		let other = app.textFields["question.otherField"]
+		XCTAssertTrue(other.waitForExistence(timeout: 5))
+		other.typeText("设计")
+		shot(app, "8b-question-panel")
 		app.buttons["question.submit"].tap()
-		XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '已按你的选择继续'")).firstMatch.waitForExistence(timeout: 10))
+		XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '你的选择：继续；测试、设计'")).firstMatch.waitForExistence(timeout: 10))
+		XCTAssertTrue(app.textFields["composer.field"].waitForExistence(timeout: 5), "the composer comes back once answered")
 		app.navigationBars.buttons.element(boundBy: 0).tap()
 
 		// Scrolling the large title away hands over to the small one with the link icon.

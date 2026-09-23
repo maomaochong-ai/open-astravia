@@ -116,7 +116,11 @@ public enum L10n {
 		public static var copy: String { tr("chat.copy") }
 		public static var copied: String { tr("chat.copied") }
 		public static var questionTitle: String { tr("chat.questionTitle") }
-		public static var questionSkip: String { tr("chat.questionSkip") }
+		public static var questionNext: String { tr("chat.questionNext") }
+		public static var questionMultiHint: String { tr("chat.questionMultiHint") }
+		public static var questionOther: String { tr("chat.questionOther") }
+		public static var questionOtherPlaceholder: String { tr("chat.questionOtherPlaceholder") }
+		public static func questionTab(_ n: Int) -> String { tr("chat.questionTab \(n)") }
 		public static var questionSubmit: String { tr("chat.questionSubmit") }
 		public static var loadingHistory: String { tr("chat.loadingHistory") }
 		public static var errorPrefix: String { tr("chat.errorPrefix") }

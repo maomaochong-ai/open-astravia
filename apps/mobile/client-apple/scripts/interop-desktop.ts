@@ -143,7 +143,10 @@ async function streamReply(deviceId: string, sessionId: string, text: string, no
 	}
 	const request = {
 		requestId: `q-${Date.now()}`,
-		questions: [{ question: "继续执行下一步吗？", header: "确认", options: [{ label: "继续", description: "按计划执行" }, { label: "先停下", description: "" }] }],
+		questions: [
+			{ question: "继续执行下一步吗？", header: "确认", options: [{ label: "继续", description: "按计划执行" }, { label: "先停下", description: "" }] },
+			{ question: "完成后通知谁？", header: "通知", multiSelect: true, options: [{ label: "产品", description: "" }, { label: "测试", description: "" }] },
+		],
 	};
 	pendingQuestions.set(sessionId, request);
 	emitAll(deviceId, "session.input", { kind: "question", request }, sessionId);
@@ -226,8 +229,11 @@ function handleRequest(deviceId: string, connection: Connection, request: { requ
 				await delay(60);
 				const entries = histories.get(sessionId) ?? [];
 				const last = entries[entries.length - 1] as { kind?: string; text?: string } | undefined;
-				if (last?.kind === "assistant") last.text += "\n\n好的，已按你的选择继续。";
-				emitAll(deviceId, "session.message", { kind: "assistant_delta", text: "\n\n好的，已按你的选择继续。" }, sessionId);
+				const answers: Array<{ answers?: string[] }> = Array.isArray(request.payload?.answers) ? request.payload.answers : [];
+				const chosen = answers.map((answer) => (answer.answers ?? []).join("、")).filter(Boolean).join("；");
+				const reply = `\n\n你的选择：${chosen || "无"}\n\n好的，已按你的选择继续。`;
+				if (last?.kind === "assistant") last.text += reply;
+				emitAll(deviceId, "session.message", { kind: "assistant_delta", text: reply }, sessionId);
 				emitAll(deviceId, "session.message", { kind: "turn_end", at: Date.now() }, sessionId);
 				emitAll(deviceId, "session.state", { status: "completed", ...modelState(sessionId) }, sessionId);
 				const session = sessions.find((entry) => entry.id === sessionId);

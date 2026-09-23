@@ -4,13 +4,11 @@ import VettaKit
 private enum ChatRow: Identifiable {
 	case timestamp(Double)
 	case block(ChatBlock)
-	case question(RemoteQuestionRequest)
 
 	var id: String {
 		switch self {
 		case .timestamp: "ts"
 		case let .block(block): block.id
-		case let .question(request): "q-\(request.requestId)"
 		}
 	}
 }
@@ -25,7 +23,6 @@ struct SessionView: View {
 		var rows: [ChatRow] = []
 		if let first = transcript.items.first?.at { rows.append(.timestamp(first)) }
 		rows += ChatTurns.build(transcript.items).map(ChatRow.block)
-		if let question = transcript.pendingQuestion { rows.append(.question(question)) }
 		return rows
 	}
 
@@ -67,14 +64,25 @@ struct SessionView: View {
 		}
 		.background(Theme.page)
 		.safeAreaInset(edge: .bottom) {
-			Composer(
-				placeholder: L10n.Chat.composerPlaceholder,
-				disabled: !model.online,
-				busy: active,
-				onStop: { Task { await model.abort(sessionId) } },
-				onSend: { text in Task { await model.sendPrompt(sessionId, text) } }
-			)
+			// While the agent waits on an answer, the question takes the composer's place.
+			if let request = transcript.pendingQuestion {
+				QuestionPanel(
+					request: request,
+					onSubmit: { answers in Task { await model.respond(sessionId, requestId: request.requestId, answers: answers) } },
+					onCancel: { Task { await model.respond(sessionId, requestId: request.requestId, answers: [], cancelled: true) } }
+				)
+				.id(request.requestId)
+			} else {
+				Composer(
+					placeholder: L10n.Chat.composerPlaceholder,
+					disabled: !model.online,
+					busy: active,
+					onStop: { Task { await model.abort(sessionId) } },
+					onSend: { text in Task { await model.sendPrompt(sessionId, text) } }
+				)
+			}
 		}
+		.animation(.snappy, value: transcript.pendingQuestion?.requestId)
 		.navigationBarTitleDisplayMode(.inline)
 		// The composer takes the bottom edge; a tab bar under it would stack two glass bars.
 		.toolbar(.hidden, for: .tabBar)
@@ -101,13 +109,6 @@ struct SessionView: View {
 		switch row {
 		case let .timestamp(at):
 			MarkerRow(text: TimeFormat.clock(at))
-		case let .question(request):
-			QuestionCardView(
-				request: request,
-				onSubmit: { answers in Task { await model.respond(sessionId, requestId: request.requestId, answers: answers) } },
-				onSkip: { Task { await model.respond(sessionId, requestId: request.requestId, answers: [], cancelled: true) } }
-			)
-			.id(request.requestId)
 		case let .block(block):
 			switch block {
 			case let .user(_, text, _, attachments):
