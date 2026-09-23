@@ -133,5 +133,20 @@
 	"status.untracked": "untracked",
 	"turnCard.summary": "{{count}} files changed",
 	"turnCard.open": "View Git changes",
-	"turnCard.viewAll": "View all changes ({{count}} more)"
+	"turnCard.viewAll": "View all changes ({{count}} more)",
+	"commit.files": "Changed files ({{count}})",
+	"commit.noFiles": "No file changes against the first parent.",
+	"commit.actions": "Commit actions",
+	"commit.branch": "Create branch from commit…",
+	"commit.branch.description": "Create a branch at this commit without switching branches or changing the index or working tree.",
+	"commit.detach": "Checkout commit (detached HEAD)…",
+	"commit.detach.description": "Enter detached HEAD. Future commits will not belong to a branch unless you create one. Git refuses if local changes would be overwritten.",
+	"commit.reset.soft": "Reset Soft: keep index and working tree…",
+	"commit.reset.mixed": "Reset Mixed: keep working tree, reset index…",
+	"commit.reset.hard": "Reset Hard: discard index and working changes…",
+	"commit.reset.soft.description": "Move the current branch (or detached HEAD) to this commit, keeping the index and working tree. Rewrites local history; does not push to a remote.",
+	"commit.reset.mixed.description": "Move the current branch (or detached HEAD) to this commit and reset the index, keeping working files. Clears existing staging choices; does not push to a remote.",
+	"commit.reset.hard.description": "Reset the current branch (or detached HEAD), index and working tree to this commit. Uncommitted tracked changes are lost; untracked files or directories obstructing checkout may also be deleted. Does not push to a remote.",
+	"commit.reset.current": "Current: {{branch}} ({{hash}})",
+	"commit.execute": "Execute"
 }
