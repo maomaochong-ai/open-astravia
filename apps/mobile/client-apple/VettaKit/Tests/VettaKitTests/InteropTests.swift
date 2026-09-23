@@ -41,8 +41,8 @@ struct InteropTests {
 
 		await model.openSession("s-report")
 		let history = model.transcript("s-report")
-		#expect(history.items.count == 2)
-		if case let .assistant(turn) = history.items.last {
+		#expect(history.items.count == 3, "a user message and two replies in a row")
+		if case let .assistant(turn) = history.items[1] {
 			#expect(turn.text.contains("| 模块 | 数量 |"))
 			#expect(turn.tools.first?.toolName == "web_search")
 		} else {
