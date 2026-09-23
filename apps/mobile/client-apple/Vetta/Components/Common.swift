@@ -123,56 +123,54 @@ extension LinkIndicator {
 	}
 }
 
-/// A session's state as a small tinted capsule, e.g. on a list row.
-struct StatusBadge: View {
+/// A session's state in a list row's avatar slot, the way Mail shows the sender:
+/// a coloured disc with one glyph. Only the states that want a look move.
+struct StatusAvatar: View {
 	var status: RemoteSessionStatus
+	var size: CGFloat = 40
 
 	var body: some View {
-		let (label, tone) = describeStatus(status)
-		HStack(spacing: 4) {
-			switch status {
-			case .running, .thinking:
-				ProgressView().controlSize(.mini).tint(tone.color)
-			case .waitingInput:
-				Image(systemName: "questionmark.circle.fill")
-			case .error:
-				Image(systemName: "exclamationmark.triangle.fill")
-			case .aborted:
-				Image(systemName: "stop.circle")
-			case .idle, .completed:
-				EmptyView()
-			}
-			Text(label)
-		}
-		.font(.caption.weight(.medium))
-		.foregroundStyle(tone.color)
-		.padding(.horizontal, 8)
-		.padding(.vertical, 3)
-		.background(tone.color.opacity(0.15), in: .capsule)
+		let look = Self.look(status)
+		Circle()
+			.fill(look.fill)
+			.frame(width: size, height: size)
+			.overlay { glyph(look) }
+			.accessibilityElement()
+			.accessibilityLabel(look.label)
 	}
-}
 
-enum StatusTone {
-	case green, orange, dim, red
-
-	var color: Color {
-		switch self {
-		case .green: Theme.green
-		case .orange: Theme.orange
-		case .red: Theme.red
-		case .dim: Theme.dim
+	@ViewBuilder
+	private func glyph(_ look: Look) -> some View {
+		let image = Image(systemName: look.symbol)
+			.font(.system(size: size * 0.42, weight: .bold))
+			.foregroundStyle(look.ink)
+		switch status {
+		case .running, .thinking:
+			image.symbolEffect(.rotate, options: .repeat(.continuous))
+		case .waitingInput:
+			image.symbolEffect(.bounce.up, options: .repeat(.periodic(delay: 1)))
+		case .idle, .completed, .error, .aborted:
+			image
 		}
 	}
-}
 
-func describeStatus(_ status: RemoteSessionStatus) -> (label: String, tone: StatusTone) {
-	switch status {
-	case .running: (L10n.Home.statusRunning, .green)
-	case .thinking: (L10n.Home.statusThinking, .green)
-	case .waitingInput: (L10n.Home.statusWaiting, .orange)
-	case .error: (L10n.Home.statusError, .red)
-	case .aborted: (L10n.Home.statusAborted, .dim)
-	case .idle, .completed: (L10n.Home.statusDone, .dim)
+	private struct Look {
+		var symbol: String
+		var fill: Color
+		var ink: Color = .white
+		var label: String
+	}
+
+	private static func look(_ status: RemoteSessionStatus) -> Look {
+		switch status {
+		case .running: Look(symbol: "arrow.triangle.2.circlepath", fill: Theme.blue, label: L10n.Home.statusRunning)
+		case .thinking: Look(symbol: "arrow.triangle.2.circlepath", fill: Theme.blue, label: L10n.Home.statusThinking)
+		// Dark ink: white would wash out on yellow.
+		case .waitingInput: Look(symbol: "questionmark", fill: Theme.yellow, ink: .black, label: L10n.Home.statusWaiting)
+		case .error: Look(symbol: "exclamationmark", fill: Theme.red, label: L10n.Home.statusError)
+		case .aborted: Look(symbol: "stop.fill", fill: Theme.faint, label: L10n.Home.statusAborted)
+		case .idle, .completed: Look(symbol: "checkmark", fill: Theme.green, label: L10n.Home.statusDone)
+		}
 	}
 }
 

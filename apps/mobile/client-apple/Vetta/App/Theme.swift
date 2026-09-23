@@ -23,6 +23,8 @@ enum Theme {
 	static let orange = dynamic(light: 0xD97706, dark: 0xF59E0B)
 	static let orangeSoft = Color(red: 245 / 255, green: 158 / 255, blue: 11 / 255).opacity(0.14)
 	static let red = dynamic(light: 0xDC2626, dark: 0xF0524F)
+	/// A session that is working.
+	static let blue = dynamic(light: 0x2563EB, dark: 0x3B82F6)
 	/// The pin on a pinned session.
 	static let yellow = dynamic(light: 0xE0A100, dark: 0xFACC15)
 	/// The bot avatar's face in the desktop's black-and-white theme; its eyes are cut out.

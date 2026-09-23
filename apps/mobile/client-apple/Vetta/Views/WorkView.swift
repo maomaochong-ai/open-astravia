@@ -142,7 +142,8 @@ struct WorkView: View {
 	}
 }
 
-/// The GitHub-style row of menu chips above the list.
+/// Mail-style category row above the list: one coloured segment per status,
+/// the chosen one spelled out, then menu chips for kind and project.
 private struct FilterBar: View {
 	@Environment(AppModel.self) private var model
 	@Binding var filter: SessionFilter
@@ -150,62 +151,71 @@ private struct FilterBar: View {
 	var body: some View {
 		let projects = SessionFilter.projects(in: model.sessions, conversationCwd: model.conversationCwd)
 		ScrollView(.horizontal) {
-			GlassEffectContainer(spacing: 8) {
-				HStack(spacing: 8) {
-					if filter.isActive {
-						Button {
-							withAnimation { filter = SessionFilter() }
-						} label: {
-							Image(systemName: "xmark")
-								.font(.subheadline.weight(.semibold))
-						}
-						.buttonStyle(.glass)
-						.buttonBorderShape(.circle)
-						.accessibilityLabel(L10n.Home.clearFilters)
-						.accessibilityIdentifier("filter.clearChip")
-						.transition(.move(edge: .leading).combined(with: .opacity))
+			HStack(spacing: 8) {
+				if filter.isActive {
+					Button {
+						withAnimation(.snappy) { filter = SessionFilter() }
+					} label: {
+						Image(systemName: "xmark")
+							.font(.subheadline.weight(.bold))
+							.foregroundStyle(Theme.ink2)
+							.frame(width: FilterMetrics.height, height: FilterMetrics.height)
+							.background(Theme.card2, in: .circle)
 					}
-					FilterChip(
-						title: filter.status.map(L10n.Home.group) ?? L10n.Home.statusAll,
-						active: filter.status != nil,
-						alert: filter.status == nil && model.count(.waiting) > 0,
-						identifier: "filter.status"
-					) {
-						Picker(L10n.Home.filterStatus, selection: $filter.status.animation()) {
-							Text(L10n.Home.statusAll).tag(SessionStatusGroup?.none)
-							ForEach(SessionStatusGroup.allCases, id: \.self) { group in
-								Text("\(L10n.Home.group(group))  \(model.count(group))").tag(Optional(group))
-							}
-						}
-					}
-					FilterChip(title: kindTitle, active: filter.kind != nil, identifier: "filter.kind") {
-						Picker(L10n.Home.filterKind, selection: $filter.kind.animation()) {
-							Text(L10n.Home.kindAll).tag(SessionKind?.none)
-							Text(L10n.Home.kindConversation).tag(Optional(SessionKind.conversation))
-							Text(L10n.Home.kindProject).tag(Optional(SessionKind.project))
-						}
-					}
-					if filter.kind == .project {
-						FilterChip(
-							title: projects.first { $0.cwd == filter.projectCwd }?.name ?? L10n.Home.projectAll,
-							active: filter.projectCwd != nil,
-							identifier: "filter.project"
-						) {
-							Picker(L10n.Home.filterProject, selection: $filter.projectCwd.animation()) {
-								Text(L10n.Home.projectAll).tag(String?.none)
-								ForEach(projects, id: \.cwd) { project in
-									Text("\(project.name)  \(project.count)").tag(Optional(project.cwd))
-								}
-							}
-						}
-						.transition(.move(edge: .leading).combined(with: .opacity))
+					.buttonStyle(.plain)
+					.accessibilityLabel(L10n.Home.clearFilters)
+					.accessibilityIdentifier("filter.clearChip")
+					.transition(.move(edge: .leading).combined(with: .opacity))
+				}
+				StatusSegment(
+					title: L10n.Home.statusAll, symbol: "tray.fill", tint: Theme.pill, ink: Theme.pillInk,
+					selected: filter.status == nil, identifier: "filter.status.all"
+				) { filter.status = nil }
+				ForEach(SessionStatusGroup.allCases, id: \.self) { group in
+					let look = Self.look(group)
+					StatusSegment(
+						title: L10n.Home.group(group), symbol: look.symbol, tint: look.tint, ink: look.ink,
+						count: group == .waiting ? model.count(.waiting) : 0,
+						selected: filter.status == group, identifier: "filter.status.\(group)"
+					) { filter.status = group }
+				}
+				FilterChip(title: kindTitle, active: filter.kind != nil, identifier: "filter.kind") {
+					Picker(L10n.Home.filterKind, selection: $filter.kind.animation(.snappy)) {
+						Text(L10n.Home.kindAll).tag(SessionKind?.none)
+						Text(L10n.Home.kindConversation).tag(Optional(SessionKind.conversation))
+						Text(L10n.Home.kindProject).tag(Optional(SessionKind.project))
 					}
 				}
-				.padding(.horizontal, 16)
+				if filter.kind == .project {
+					FilterChip(
+						title: projects.first { $0.cwd == filter.projectCwd }?.name ?? L10n.Home.projectAll,
+						active: filter.projectCwd != nil,
+						identifier: "filter.project"
+					) {
+						Picker(L10n.Home.filterProject, selection: $filter.projectCwd.animation(.snappy)) {
+							Text(L10n.Home.projectAll).tag(String?.none)
+							ForEach(projects, id: \.cwd) { project in
+								Text("\(project.name)  \(project.count)").tag(Optional(project.cwd))
+							}
+						}
+					}
+					.transition(.move(edge: .leading).combined(with: .opacity))
+				}
 			}
+			.padding(.horizontal, 16)
 		}
 		.scrollIndicators(.hidden)
 		.scrollClipDisabled()
+		.sensoryFeedback(.selection, trigger: filter)
+	}
+
+	/// Same colours and glyphs as the row avatars, so a segment reads as "rows like these".
+	private static func look(_ group: SessionStatusGroup) -> (symbol: String, tint: Color, ink: Color) {
+		switch group {
+		case .waiting: ("questionmark", Theme.yellow, .black)
+		case .processing: ("arrow.triangle.2.circlepath", Theme.blue, .white)
+		case .done: ("checkmark", Theme.green, .white)
+		}
 	}
 
 	private var kindTitle: String {
@@ -217,33 +227,71 @@ private struct FilterBar: View {
 	}
 }
 
+private enum FilterMetrics {
+	static let height: CGFloat = 38
+}
+
+/// A status category: an icon in its colour on grey, or filled with its colour and named when chosen.
+private struct StatusSegment: View {
+	var title: String
+	var symbol: String
+	var tint: Color
+	var ink: Color
+	var count = 0
+	var selected: Bool
+	var identifier: String
+	var select: () -> Void
+
+	var body: some View {
+		Button {
+			withAnimation(.snappy) { select() }
+		} label: {
+			HStack(spacing: 6) {
+				Image(systemName: symbol).fontWeight(.bold)
+				if selected {
+					Text(title).lineLimit(1)
+				} else if count > 0 {
+					Text("\(count)").monospacedDigit()
+				}
+			}
+			.font(.subheadline.weight(.semibold))
+			.foregroundStyle(selected ? ink : tint)
+			.padding(.horizontal, selected ? 16 : 0)
+			.frame(minWidth: 60, minHeight: FilterMetrics.height)
+			.background(selected ? tint : Theme.card2, in: .capsule)
+			.contentShape(.capsule)
+		}
+		.buttonStyle(.plain)
+		.accessibilityLabel(title)
+		.accessibilityValue(count > 0 ? "\(count)" : "")
+		.accessibilityAddTraits(selected ? .isSelected : [])
+		.accessibilityIdentifier(identifier)
+	}
+}
+
 private struct FilterChip<Content: View>: View {
 	var title: String
 	var active: Bool
-	var alert = false
 	var identifier: String
 	@ViewBuilder var content: () -> Content
 
 	var body: some View {
-		let menu = Menu {
+		Menu {
 			content()
 		} label: {
 			HStack(spacing: 5) {
-				if alert {
-					Circle().fill(Theme.orange).frame(width: 7, height: 7)
-				}
 				Text(title)
-				Image(systemName: "chevron.down").font(.caption2.weight(.semibold))
+				Image(systemName: "chevron.down").font(.caption2.weight(.bold))
 			}
-			.font(.subheadline.weight(.medium))
-			.padding(.horizontal, 2)
+			.font(.subheadline.weight(.semibold))
+			.foregroundStyle(active ? Theme.pillInk : Theme.ink2)
+			.padding(.horizontal, 14)
+			.frame(minHeight: FilterMetrics.height)
+			.background(active ? Theme.pill : Theme.card2, in: .capsule)
+			.contentShape(.capsule)
 		}
+		.buttonStyle(.plain)
 		.accessibilityIdentifier(identifier)
-		if active {
-			menu.buttonStyle(.glassProminent).tint(Theme.pill).foregroundStyle(Theme.pillInk)
-		} else {
-			menu.buttonStyle(.glass)
-		}
 	}
 }
 
@@ -253,34 +301,31 @@ private struct SessionRow: View {
 
 	var body: some View {
 		let isConversation = session.projectCwd == conversationCwd
-		VStack(alignment: .leading, spacing: 4) {
-			HStack(alignment: .firstTextBaseline, spacing: 8) {
-				HStack(alignment: .firstTextBaseline, spacing: 4) {
-					if session.pinned {
-						Image(systemName: "pin.fill")
-							.font(.caption.weight(.semibold))
-							.foregroundStyle(Theme.yellow)
-							.accessibilityLabel(L10n.Session.pinned)
+		HStack(alignment: .top, spacing: 12) {
+			StatusAvatar(status: session.status)
+			VStack(alignment: .leading, spacing: 4) {
+				HStack(alignment: .firstTextBaseline, spacing: 8) {
+					HStack(alignment: .firstTextBaseline, spacing: 4) {
+						if session.pinned {
+							Image(systemName: "pin.fill")
+								.font(.caption.weight(.semibold))
+								.foregroundStyle(Theme.yellow)
+								.accessibilityLabel(L10n.Session.pinned)
+						}
+						Text(session.title.trimmingCharacters(in: .whitespaces).isEmpty ? L10n.Home.untitled : session.title)
+							.font(.headline)
+							.lineLimit(1)
 					}
-					Text(session.title.trimmingCharacters(in: .whitespaces).isEmpty ? L10n.Home.untitled : session.title)
-						.font(.headline)
-						.lineLimit(1)
+					Spacer(minLength: 0)
+					Text(TimeFormat.relative(session.updatedAt))
+						.font(.subheadline)
+						.foregroundStyle(.secondary)
 				}
-				Spacer(minLength: 0)
-				Text(TimeFormat.relative(session.updatedAt))
-					.font(.subheadline)
-					.foregroundStyle(.secondary)
-			}
-			if let preview = session.preview?.trimmingCharacters(in: .whitespacesAndNewlines), !preview.isEmpty {
-				Text(preview)
-					.font(.subheadline)
-					.foregroundStyle(.secondary)
-					.lineLimit(2)
-			}
-			HStack(spacing: 8) {
-				// Finished sessions stay quiet so the ones that need a look stand out.
-				if session.status != .idle, session.status != .completed {
-					StatusBadge(status: session.status)
+				if let preview = session.preview?.trimmingCharacters(in: .whitespacesAndNewlines), !preview.isEmpty {
+					Text(preview)
+						.font(.subheadline)
+						.foregroundStyle(.secondary)
+						.lineLimit(2)
 				}
 				HStack(spacing: 3) {
 					Image(systemName: isConversation ? "bubble.left" : "folder")
@@ -288,8 +333,8 @@ private struct SessionRow: View {
 				}
 				.font(.caption)
 				.foregroundStyle(.secondary)
+				.padding(.top, 2)
 			}
-			.padding(.top, 2)
 		}
 		.padding(.vertical, 10)
 	}
