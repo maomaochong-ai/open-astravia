@@ -54,6 +54,7 @@ targets:
             CFBundleURLSchemes:
               - vetta
         NSCameraUsageDescription: Vetta uses the camera to scan the pairing code on your computer and to take photos you send.
+        NSPhotoLibraryUsageDescription: Vetta shows your latest photos in the attach sheet so you can send one with a tap.
         NSMicrophoneUsageDescription: Vetta uses the microphone while you hold the message field to dictate.
         NSSpeechRecognitionUsageDescription: Vetta turns what you say into text for your message.
         NSLocalNetworkUsageDescription: Vetta needs local network access to connect directly to your computer on the same Wi-Fi.

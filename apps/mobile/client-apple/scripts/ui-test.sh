@@ -58,6 +58,8 @@ xcrun simctl boot "$udid" 2>/dev/null || true
 # One build for every appearance; each run below only installs and tests.
 xcodebuild build-for-testing -project "$project/Vetta.xcodeproj" -scheme Vetta \
 	-destination "id=$udid" -derivedDataPath "$derived" -quiet
+# The attach sheet lists the simulator's sample photos without a permission alert.
+xcrun simctl privacy "$udid" grant photos com.openvetta.mobile
 for appearance in $appearances; do
 	start_harness
 	invite="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["invite"])' "$info")"

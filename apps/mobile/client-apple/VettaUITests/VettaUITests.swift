@@ -159,16 +159,17 @@ final class VettaUITests: XCTestCase {
 		XCTAssertTrue(app.staticTexts["想让电脑做点什么？"].waitForExistence(timeout: 5))
 		XCTAssertFalse(app.tabBars.buttons["工作"].isHittable, "New Session hides the tab bar like a chat")
 		pick(app, "newSession.location", "vetta")
-		// The attach button opens a half sheet: Photos first, then Camera and Files in the glass tabs.
+		// The attach button opens a sheet: Photos and Camera lead the strip, Files is the list below.
 		app.buttons["composer.attach"].tap()
-		let photosTab = app.buttons["attach.tab.photos"]
-		XCTAssertTrue(photosTab.waitForExistence(timeout: 5))
-		XCTAssertTrue(photosTab.isSelected, "Photos is the first tab shown")
-		shot(app, "6a-attach-photos")
-		settledTap(app.buttons["attach.tab.camera"])
-		XCTAssertTrue(app.descendants(matching: .any)["attach.noCamera"].waitForExistence(timeout: 5), "the simulator has no camera")
-		settledTap(app.buttons["attach.tab.files"])
-		XCTAssertTrue(app.buttons["attach.browse"].waitForExistence(timeout: 5))
+		let photos = app.buttons["attach.photos"]
+		XCTAssertTrue(photos.waitForExistence(timeout: 5))
+		XCTAssertTrue(app.buttons["attach.camera"].exists)
+		XCTAssertTrue(app.buttons["attach.files"].exists)
+		XCTAssertTrue(app.buttons["attach.recent"].waitForExistence(timeout: 5), "recent photos follow Camera in the strip")
+		XCTAssertLessThan(photos.frame.maxY, app.buttons["attach.files"].frame.minY, "the strip sits above the list")
+		shot(app, "6a-attach")
+		settledTap(app.buttons["attach.camera"])
+		XCTAssertTrue(app.descendants(matching: .any)["attach.notice"].waitForExistence(timeout: 5), "the simulator has no camera")
 		settledTap(app.buttons["composer.attach.sample"])
 		XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "composer.attachment").firstMatch.waitForExistence(timeout: 5))
 		XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "composer.attachment").count, 2)

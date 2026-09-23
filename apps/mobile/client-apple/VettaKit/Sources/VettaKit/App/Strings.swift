@@ -93,6 +93,8 @@ public enum L10n {
 	public enum NewSession {
 		public static var title: String { tr("newSession.title") }
 		public static var greeting: String { tr("newSession.greeting") }
+		public static var subtitle: String { tr("newSession.subtitle") }
+		public static var defaultModel: String { tr("newSession.defaultModel") }
 		public static var offline: String { tr("newSession.offline") }
 		public static var location: String { tr("newSession.location") }
 	}
@@ -131,10 +133,9 @@ public enum L10n {
 		public static var attachPhotos: String { tr("chat.attachPhotos") }
 		public static var attachFiles: String { tr("chat.attachFiles") }
 		public static var attachCamera: String { tr("chat.attachCamera") }
-		public static var attachBrowse: String { tr("chat.attachBrowse") }
 		public static var attachFilesHint: String { tr("chat.attachFilesHint") }
+		public static var attachRecent: String { tr("chat.attachRecent") }
 		public static var cameraUnavailable: String { tr("chat.cameraUnavailable") }
-		public static func attachAdd(_ n: Int) -> String { tr("chat.attachAdd \(n)") }
 		public static var dictationHint: String { tr("chat.dictationHint") }
 		public static var dictationCancel: String { tr("chat.dictationCancel") }
 		public static var dictationListening: String { tr("chat.dictationListening") }

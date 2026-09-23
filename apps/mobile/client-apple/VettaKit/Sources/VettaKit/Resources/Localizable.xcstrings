@@ -18,40 +18,6 @@
         }
       }
     },
-    "chat.attachAdd %lld": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Add %lld"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "添加 %lld"
-          }
-        }
-      }
-    },
-    "chat.attachBrowse": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Browse Files"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "浏览文件"
-          }
-        }
-      }
-    },
     "chat.attachCamera": {
       "extractionState": "manual",
       "localizations": {
@@ -92,13 +58,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pick documents from the Files app. Each file must be under 700 KB."
+            "value": "Documents from the Files app, up to 700 KB each"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "从「文件」App 选择文档，单个文件不能超过 700 KB。"
+            "value": "从「文件」App 选取，单个不超过 700 KB"
           }
         }
       }
@@ -116,6 +82,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "相册"
+          }
+        }
+      }
+    },
+    "chat.attachRecent": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recent photo"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近的照片"
           }
         }
       }
@@ -1841,19 +1824,36 @@
         }
       }
     },
+    "newSession.defaultModel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default model"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "默认模型"
+          }
+        }
+      }
+    },
     "newSession.greeting": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "What should your computer work on?"
+            "value": "Let's get started"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "想让电脑做点什么？"
+            "value": "让我们开始吧"
           }
         }
       }
@@ -1888,6 +1888,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "电脑离线，重新连上后才能开始新会话。"
+          }
+        }
+      }
+    },
+    "newSession.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I can help with your work. What can I do for you?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我可以帮你处理工作，有什么可以帮助你的？"
           }
         }
       }
