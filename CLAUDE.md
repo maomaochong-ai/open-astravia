@@ -95,3 +95,11 @@
 **输出示例**：
 - `a1b2c3d`: feat: add user authentication middleware
 - `e4f5a6b`: test: add unit tests for token validation
+
+---
+### 七、移动端 i18n 与测试（强制执行）
+
+移动端（`apps/mobile/client-apple`、`apps/mobile/client-android`）与桌面端同等对待，具体规则见 `AGENTS.md`「TypeScript 与 UI」「测试与验证」：
+
+1. **i18n**：新增或修改任何用户可见文案，必须同时写英文与简体中文，跟随系统语言；严禁在视图里写死中文或英文字面量。iOS 在 `L10n` 加键、在 `Localizable.xcstrings` 加两种译文。
+2. **测试**：移动端改动不因“只是 UI”而免测。iOS 至少跑 `swift test --no-parallel`；改动界面或流程时同步更新 `VettaUITests` 并运行 `scripts/ui-test.sh`，失败时如实报告，不得跳过。
