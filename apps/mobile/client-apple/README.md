@@ -28,7 +28,7 @@ xcodegen generate
 open Vetta.xcodeproj
 ```
 
-真机运行需在 Xcode 的 Signing & Capabilities 里选择自己的 Team（免费 Apple ID 即可本机签名）。
+真机运行需要自己的 Team（免费 Apple ID 即可本机签名）。签名写在本地、不进仓库：复制 `Config/Local.xcconfig.example` 为 `Config/Local.xcconfig`，填入 Team ID。不要在 Xcode 的 Signing & Capabilities 里直接选 Team，那会写进 `project.pbxproj`。
 
 - iOS 首次连接电脑的局域网地址会弹「本地网络」权限，必须允许；`Info.plist` 已声明 `NSLocalNetworkUsageDescription` 与 `NSAllowsLocalNetworking`（局域网明文 `ws://`）。
 - 扫码需要相机权限；模拟器没有相机，可用下文的 `-VettaPairURI` 或手动输入 IP 配对。

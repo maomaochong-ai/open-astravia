@@ -41,6 +41,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		01B829A0AD28FC1C65D8E276 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		0CAE0C2229A7C06685973CFD /* Common.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Common.swift; sourceTree = "<group>"; };
 		14FB7C60CF7BBB386D64B42C /* NewSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewSessionView.swift; sourceTree = "<group>"; };
 		1571266B7208052D80E40A95 /* QuestionPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestionPanel.swift; sourceTree = "<group>"; };
@@ -89,6 +90,14 @@
 			path = Platform;
 			sourceTree = "<group>";
 		};
+		367AFB8A05AA6BAC48F41D4F /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				01B829A0AD28FC1C65D8E276 /* Signing.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
 		69A3FC572E58344E92287B38 /* Vetta */ = {
 			isa = PBXGroup;
 			children = (
@@ -126,6 +135,7 @@
 		D1E8B01CF6C70D7BA2D2900D = {
 			isa = PBXGroup;
 			children = (
+				367AFB8A05AA6BAC48F41D4F /* Config */,
 				E766375413A6BA08F9BC81C4 /* Packages */,
 				69A3FC572E58344E92287B38 /* Vetta */,
 				EEFE447349E9D6DB3D640B2B /* VettaUITests */,
@@ -232,12 +242,10 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					6B17FFF7D8EC56DB20D70966 = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 						TestTargetID = EFF47FAFC9162FC5F0E8FD23;
 					};
 					EFF47FAFC9162FC5F0E8FD23 = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -398,6 +406,7 @@
 		};
 		9FA0759C6B1223B375F8F64C /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 01B829A0AD28FC1C65D8E276 /* Signing.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -433,7 +442,6 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -460,6 +468,7 @@
 		};
 		EC650186AB77277F1F53C9B4 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 01B829A0AD28FC1C65D8E276 /* Signing.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -495,7 +504,6 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;

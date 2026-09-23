@@ -5,6 +5,9 @@ options:
     iOS: "26.0"
   createIntermediateGroups: true
   developmentLanguage: en
+configFiles:
+  Debug: Config/Signing.xcconfig
+  Release: Config/Signing.xcconfig
 settings:
   base:
     SWIFT_VERSION: "6.0"
@@ -12,7 +15,6 @@ settings:
     SWIFT_APPROACHABLE_CONCURRENCY: YES
     MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "1"
-    DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
 packages:
   VettaKit:

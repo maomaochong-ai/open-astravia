@@ -1,0 +1,3 @@
+// Copy to Local.xcconfig (ignored by git) to sign for your own device.
+// Your Team ID is in Xcode > Settings > Accounts, or developer.apple.com > Membership.
+DEVELOPMENT_TEAM = YOUR_TEAM_ID

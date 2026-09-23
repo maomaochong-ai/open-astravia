@@ -5,3 +5,4 @@ VettaKit/.swiftpm/
 *.xcodeproj/project.xcworkspace/xcuserdata/
 DerivedData/
 .DS_Store
+Config/Local.xcconfig
