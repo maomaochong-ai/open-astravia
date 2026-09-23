@@ -1,3 +1,5 @@
+import { InputBarToolbar } from "../../components/input-bar/InputBarToolbarActions";
+import { TeamModelSelector } from "./TeamModelSelector";
 import { type InputSegment, isImagePath, parseInputSegments } from "@shared/lib/input-tokens";
 import { pathBasename, toVettaFileUrl } from "@shared/lib/utils";
 import { filePreviewAtom } from "@shared/store/file-preview-atoms";
@@ -217,19 +219,6 @@ export function TeamComposerConnector({
 				})),
 		[model.attachments, t],
 	);
-	const modelScope = useMemo(
-		() => ({
-			modelKey: model.modelKey,
-			...(model.reasoning ? { reasoning: model.reasoning } : {}),
-			onModelSelect: (modelKey: string, defaultReasoning?: string) => {
-				void actions.selectModel(modelKey, defaultReasoning);
-			},
-			onReasoningSelect: (reasoning: string) => {
-				void actions.selectReasoning(reasoning);
-			},
-		}),
-		[actions, model.modelKey, model.reasoning],
-	);
 
 	const detectDragKind = useCallback((event: DragEvent): "files" | "internal" | null => {
 		const types = Array.from(event.dataTransfer.types);
@@ -390,7 +379,6 @@ export function TeamComposerConnector({
 			onOpen: trigger.handlePlusClick,
 		},
 		routing,
-		modelSelector: { updateActiveSession: false, scope: modelScope },
 		leadingTools: [{ kind: "execution-mode", model: executionModeModel }],
 		trailingTools: contextRingModel ? [{ kind: "context-usage", model: contextRingModel, render: renderContextRing }] : [],
 		sendBehavior: "direct",
@@ -430,5 +418,11 @@ export function TeamComposerConnector({
 		},
 	};
 
-	return <InputBar model={inputModel} />;
+	return (
+		<InputBar model={inputModel}>
+			<InputBarToolbar model={inputModel}>
+				<TeamModelSelector key={`${model.teamId}:${model.activeSessionId ?? "new"}`} model={model} actions={actions} />
+			</InputBarToolbar>
+		</InputBar>
+	);
 }

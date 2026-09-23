@@ -30,6 +30,7 @@ export type { ActionButtonBarItem, ActionButtonBarViewProps } from "./ActionButt
 export { ActionButtonBarView } from "./ActionButtonBarView";
 export type { AgentAvatarSize, AgentAvatarViewProps } from "./AgentAvatarView";
 export { AgentAvatarView } from "./AgentAvatarView";
+export { AnnotationComposer, AnnotationHistoryView, AnnotationTurnView } from "./AnnotationViews";
 export type { AppshotCardViewLabels, AppshotCardViewProps } from "./AppshotCardView";
 export { AppshotCardView } from "./AppshotCardView";
 export type {
@@ -126,6 +127,7 @@ export type {
 	GuideBadgeViewItem,
 } from "./GuideBadgeSwiperView";
 export { GuideBadgeSwiperView } from "./GuideBadgeSwiperView";
+export { InlineModelPicker } from "./InlineModelPicker";
 export type { InlineTokenChipProps } from "./InlineTokenChip";
 export { InlineTokenChip } from "./InlineTokenChip";
 export type {
@@ -297,6 +299,8 @@ export {
 	MessageVisualEventBubble,
 	MessageVisualOutgoingBubble,
 } from "./MessageVisualView";
+export type { ModelConfigurationGroup, ModelConfigurationMember } from "./ModelConfiguration";
+export { ModelConfigurationOverview, ModelConfigurationPopover } from "./ModelConfiguration";
 export type {
 	ModelSelectorLabels,
 	ModelSelectorOptionView,

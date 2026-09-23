@@ -1,3 +1,5 @@
+import { InputBarToolbar } from "./InputBarToolbarActions";
+import { InputBarModelAction } from "./InputBarToolbar";
 import { useBottomPanelPills } from "@domains/bottom-panel/hooks/useBottomPanelPills";
 import { pathBasename, toVettaFileUrl } from "@shared/lib/utils";
 import type { InputBarContextMenuViewProps } from "@vetta-org/theme-ui/chat";
@@ -165,7 +167,6 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 		cancelPendingEditLabel: t("messageList.interrupt.cancel"),
 		contextMenu,
 		editor: { namespace: "chat-input" },
-		modelSelector: { updateActiveSession: true },
 		leadingTools: [{ kind: "execution-mode", model: executionModeModel }],
 		trailingTools: contextUsageModel ? [{ kind: "context-usage", model: contextUsageModel }] : [],
 		sendBehavior: "queueable",
@@ -188,5 +189,11 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 		},
 	};
 
-	return <InputBar model={model} />;
+	return (
+		<InputBar model={model}>
+			<InputBarToolbar model={model}>
+				<InputBarModelAction visible={!model.commands?.slashOpen} />
+			</InputBarToolbar>
+		</InputBar>
+	);
 });

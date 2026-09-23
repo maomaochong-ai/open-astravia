@@ -123,7 +123,7 @@
     "members": "成员",
     "memberModel": "此成员使用的模型",
     "providedDefinitionReadOnly": "团队阵容和任务书由扩展维护；成员模型是你的个人设置，可在下方调整。",
-    "memberModelInherit": "跟随会话模型",
+    "memberModelInherit": "跟随会话默认",
     "memberModelInheritHint": "会话切换模型时，此成员的下一次任务也会跟随。",
     "memberModelFixedHint": "固定用于此成员的后续任务，切换会话模型不会改变它；推理档位可在模型菜单中设置。",
     "memberModelUnavailable": "{{model}} 已不在当前模型列表中。请重新选择，或改为跟随会话模型；系统不会自动替换。",
@@ -221,5 +221,27 @@
     "empty": "还没有可用团队",
     "loadError": "团队列表加载失败",
     "createSessionError": "新对话创建失败，请重试"
+  },
+  "models": {
+    "defaultHint_zero": "当前没有成员跟随默认模型。",
+    "fixedCount": "{{count}} 位单独设置",
+    "reasoning": "推理：{{level}}",
+    "custom": "单独指定的模型",
+    "title": "团队模型",
+    "configured": "按成员配置",
+    "scopeHint": "成员模型设置适用于此团队的所有会话；会话默认模型仅用于当前会话。",
+    "loading": "正在读取成员模型…",
+    "saving": "正在保存…",
+    "retry": "重新加载",
+    "loadOrSaveError": "成员模型读取或保存失败：{{error}}。未保存的选择没有生效，请重新加载后重试。",
+    "default": "会话默认",
+    "defaultHint": "切换仅影响跟随默认的 {{count}} 位成员。",
+    "unavailable": "{{model}} 当前不可用，请重新选择；系统不会自动替换。",
+    "memberLabel": "{{member}}的模型",
+    "expand": "按成员设置",
+    "collapse": "合并显示",
+    "back": "返回团队模型",
+    "memberScopeHint": "此成员的设置适用于团队所有会话，选择后立即保存。",
+    "mixedReasoning": "不同推理档位"
   }
 }

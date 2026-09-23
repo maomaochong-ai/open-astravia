@@ -8,6 +8,7 @@ const ipc = vi.hoisted(() => ({
 	handlers: new Map<string, (...args: unknown[]) => unknown>(),
 	removed: [] as string[],
 	sent: [] as string[],
+	payloads: [] as unknown[][],
 }));
 
 vi.mock("electron", () => ({
@@ -17,7 +18,13 @@ vi.mock("electron", () => ({
 	},
 	webContents: {
 		getAllWebContents: () => [
-			{ isDestroyed: () => false, send: (channel: string) => ipc.sent.push(channel) },
+			{
+				isDestroyed: () => false,
+				send: (channel: string, ...args: unknown[]) => {
+					ipc.sent.push(channel);
+					ipc.payloads.push(args);
+				},
+			},
 			// 已经关掉的窗口不该收到广播，也不该让这一轮广播抛出来。
 			{
 				isDestroyed: () => true,
@@ -88,6 +95,7 @@ describe("Agent Team IPC contract", () => {
 	beforeEach(() => {
 		ipc.handlers.clear();
 		ipc.removed.length = 0;
+		ipc.payloads.length = 0;
 		ipc.sent.length = 0;
 		vi.mocked(resolveTeamSessionWorkspace).mockClear();
 	});
@@ -387,10 +395,17 @@ describe("Agent Team IPC contract", () => {
 			modelKey: "provider/model",
 			reasoning: "high",
 		});
+		expect(ipc.sent).toEqual(["vetta:agent-teams:member-models-changed"]);
+		expect(ipc.payloads.at(-1)).toEqual([team.id]);
+		ipc.sent.length = 0;
 		await set({}, team.id, memberId, null);
+		expect(ipc.sent).toEqual(["vetta:agent-teams:member-models-changed"]);
+		expect(ipc.payloads.at(-1)).toEqual([team.id]);
+		ipc.sent.length = 0;
 		expect(deps.memberModels?.set).toHaveBeenLastCalledWith(team, memberId, null);
 		await expect(set({}, team.id, memberId, { modelKey: "invalid" })).rejects.toThrow();
 		await expect(set({}, "missing", memberId, null)).rejects.toThrow("Team not found");
+		expect(ipc.sent).toEqual([]);
 	});
 
 	it("validates and forwards the Team-scoped execution mode", async () => {

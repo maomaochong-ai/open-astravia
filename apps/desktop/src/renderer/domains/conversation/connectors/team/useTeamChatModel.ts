@@ -321,6 +321,7 @@ export function useTeamChatModel(
 				setSnapshot(next);
 			} catch (cause) {
 				setError({ message: errorMessage(cause) });
+				throw cause;
 			}
 		},
 		[session],
@@ -337,7 +338,7 @@ export function useTeamChatModel(
 	);
 	useEffect(() => {
 		if (!session || session.modelSettings || !selectedModel) return;
-		void updateModelSettings(selectedModel, reasoningByModel[selectedModel]);
+		void updateModelSettings(selectedModel, reasoningByModel[selectedModel]).catch(() => undefined);
 	}, [reasoningByModel, selectedModel, session, updateModelSettings]);
 
 	useEffect(() => {
@@ -929,6 +930,7 @@ export function useTeamChatModel(
 
 	const model = useMemo<TeamChatViewModel>(
 		() => ({
+			teamId,
 			feedKey,
 			title: team ? teamDisplayName(team, t) : t("teams.title"),
 			status: routeHandoff && !session ? "sending" : status,
@@ -966,6 +968,7 @@ export function useTeamChatModel(
 			labels,
 		}),
 		[
+			teamId,
 			feedKey,
 			team,
 			t,

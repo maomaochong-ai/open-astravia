@@ -98,6 +98,7 @@ export function TeamChatView({
 	const activity = useMemo(() => ({ pluginScenario: model.pluginScenario }), [model.pluginScenario]);
 	const composerModel = useMemo<TeamComposerViewModel>(
 		() => ({
+			teamId: model.teamId,
 			activeSessionId: model.activeSessionId,
 			attachments: model.attachments,
 			canSend: model.canSend,
@@ -121,6 +122,7 @@ export function TeamChatView({
 			workspace,
 		}),
 		[
+			model.teamId,
 			model.activeSessionId,
 			model.attachments,
 			model.canSend,

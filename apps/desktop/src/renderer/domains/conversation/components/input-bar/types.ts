@@ -8,7 +8,6 @@ import type { InputBarContextMenuViewProps, SessionDropZoneViewProps } from "@ve
 import type { ComponentProps, MouseEvent, ReactNode } from "react";
 import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
 import type { ContextRingModel } from "../../hooks/useContextRingModel";
-import type { ModelSelectorScope } from "../../hooks/useModelSelectorModel";
 import type { AtPanelItem, AtPanelSelection } from "../AtPanel";
 import type { ExecutionModeSelectorViewProps } from "../execution-mode-selector/types";
 import type { McpElicitationPanel } from "../McpElicitationPanel";
@@ -39,6 +38,7 @@ export interface ConnectedInputBarProps {
 
 export interface ControlledInputBarProps {
 	readonly model: InputBarModel;
+	readonly children?: ReactNode;
 }
 
 export type InputBarProps = ControlledInputBarProps;
@@ -229,10 +229,7 @@ export interface InputBarModel {
 			readonly onSelect: () => void;
 		}[];
 	};
-	modelSelector: {
-		readonly updateActiveSession: boolean;
-		readonly scope?: ModelSelectorScope;
-	};
+
 	/** 工具栏按真实组成项装配，避免用 showX/capability 布尔值扩展产品分支。 */
 	leadingTools: readonly InputBarLeadingTool[];
 	trailingTools: readonly InputBarTrailingTool[];
@@ -270,6 +267,8 @@ export interface InputBarViewClassNames {
 }
 
 export interface InputBarViewProps {
+	/** Toolbar composition supplied by the conversation connector. */
+	children?: ReactNode;
 	model: InputBarModel;
 	className?: string;
 	classNames?: InputBarViewClassNames;
