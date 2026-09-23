@@ -16,6 +16,7 @@ private enum ChatRow: Identifiable {
 struct SessionView: View {
 	let sessionId: String
 	@Environment(AppModel.self) private var model
+	@State private var draft = PromptDraft()
 
 	private var transcript: TranscriptState { model.transcript(sessionId) }
 
@@ -73,12 +74,18 @@ struct SessionView: View {
 				)
 				.id(request.requestId)
 			} else {
-				Composer(
+				ChatInputBar(
+					draft: $draft,
 					placeholder: L10n.Chat.composerPlaceholder,
 					disabled: !model.online,
 					busy: active,
 					onStop: { Task { await model.abort(sessionId) } },
-					onSend: { text in Task { await model.sendPrompt(sessionId, text) } }
+					onSend: { sent in
+						Task {
+							// Keep what was typed so a failed send is not lost.
+							if await model.sendPrompt(sessionId, sent.text, attachments: sent.attachments) == nil { draft = sent }
+						}
+					}
 				)
 			}
 		}
@@ -88,7 +95,7 @@ struct SessionView: View {
 		.toolbar(.hidden, for: .tabBar)
 		.toolbar {
 			ToolbarItem(placement: .principal) {
-				TitleWithStatus(title: L10n.Chat.assistant, subtitle: subtitle, online: model.online)
+				ModelMenu(sessionId: sessionId, busy: active)
 			}
 			ToolbarItem(placement: .topBarTrailing) {
 				Button { Task { await model.resync(sessionId) } } label: {
@@ -97,11 +104,10 @@ struct SessionView: View {
 				.accessibilityLabel(L10n.Chat.resync)
 			}
 		}
-		.task(id: sessionId) { await model.openSession(sessionId) }
-	}
-
-	private var subtitle: String {
-		[model.desktop?.desktopName, transcript.sessionState.model].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+		.task(id: sessionId) {
+			await model.openSession(sessionId)
+			await model.loadModels(sessionId)
+		}
 	}
 
 	@ViewBuilder
@@ -119,5 +125,72 @@ struct SessionView: View {
 				AgentTurnView(turn: turn)
 			}
 		}
+	}
+}
+
+/// The chat's title: what the session is about, with the model and thinking
+/// level underneath. Tapping it switches either one on the desktop.
+private struct ModelMenu: View {
+	let sessionId: String
+	var busy: Bool
+	@Environment(AppModel.self) private var model
+
+	var body: some View {
+		let state = model.transcript(sessionId).sessionState
+		let options = model.models[sessionId] ?? []
+		let current = options.first { $0.key == state.modelKey }
+		Menu {
+			if !options.isEmpty {
+				Picker(L10n.Chat.model, selection: Binding(
+					get: { state.modelKey ?? "" },
+					set: { key in Task { await model.configure(sessionId, modelKey: key) } }
+				)) {
+					ForEach(options) { option in
+						Text(option.name).tag(option.key)
+					}
+				}
+				.pickerStyle(.inline)
+			}
+			if let levels = current?.thinkingLevels, !levels.isEmpty {
+				Picker(L10n.Chat.thinkingLevel, selection: Binding(
+					get: { state.thinkingLevel ?? "" },
+					set: { level in Task { await model.configure(sessionId, thinkingLevel: level) } }
+				)) {
+					ForEach(levels, id: \.self) { level in
+						Text(L10n.Chat.level(level)).tag(level)
+					}
+				}
+				.pickerStyle(.inline)
+			}
+		} label: {
+			VStack(spacing: 1) {
+				Text(title).font(.headline).lineLimit(1)
+				HStack(spacing: 4) {
+					Circle().fill(model.online ? Theme.green : Color.secondary).frame(width: 6, height: 6)
+					Text(detail(state: state, current: current)).lineLimit(1)
+					if !options.isEmpty {
+						Image(systemName: "chevron.down").font(.caption2.weight(.semibold))
+					}
+				}
+				.font(.caption)
+				.foregroundStyle(.secondary)
+			}
+			.frame(maxWidth: 240)
+		}
+		.buttonStyle(.plain)
+		// Switching mid-turn would change the model under a running reply.
+		.disabled(options.isEmpty || busy || !model.online)
+		.accessibilityIdentifier("chat.modelMenu")
+	}
+
+	private var title: String {
+		let title = model.session(sessionId)?.title.trimmingCharacters(in: .whitespaces) ?? ""
+		return title.isEmpty ? L10n.Home.untitled : title
+	}
+
+	private func detail(state: RemoteSessionState, current: RemoteModelOption?) -> String {
+		let name = current?.name ?? state.model ?? model.desktop?.desktopName ?? ""
+		guard let level = state.thinkingLevel, let current, !current.thinkingLevels.isEmpty else { return name }
+		return "\(name) · \(L10n.Chat.level(level))"
 	}
 }

@@ -8,6 +8,7 @@ struct NewSessionView: View {
 	/// `nil` starts in the desktop's conversations.
 	@State private var projectCwd: String?
 	@State private var sending = false
+	@State private var draft = PromptDraft()
 
 	private var projects: [RemoteProjectSummary] { model.projects.filter { !$0.isConversation } }
 
@@ -44,10 +45,10 @@ struct NewSessionView: View {
 		.contentShape(Rectangle())
 		.onTapGesture { hideKeyboard() }
 		.safeAreaInset(edge: .bottom, spacing: 0) {
-			VStack(alignment: .leading, spacing: 0) {
+			VStack(alignment: .leading, spacing: 8) {
 				locationMenu.padding(.horizontal, 16)
-				Composer(placeholder: L10n.NewSession.placeholder, leadingIcon: true, disabled: !model.online || sending, busy: sending) { text in
-					send(text)
+				ChatInputBar(draft: $draft, placeholder: L10n.NewSession.placeholder, disabled: !model.online || sending, busy: sending) { sent in
+					send(sent)
 				}
 			}
 		}
@@ -81,11 +82,15 @@ struct NewSessionView: View {
 		.accessibilityIdentifier("newSession.location")
 	}
 
-	private func send(_ text: String) {
+	private func send(_ sent: PromptDraft) {
 		sending = true
 		Task {
 			defer { sending = false }
-			guard let id = await model.sendPrompt(nil, text, projectCwd: projectCwd) else { return }
+			guard let id = await model.sendPrompt(nil, sent.text, projectCwd: projectCwd, attachments: sent.attachments) else {
+				// Keep what was typed so a failed send is not lost.
+				draft = sent
+				return
+			}
 			router.openSession(id)
 		}
 	}

@@ -99,7 +99,6 @@ public enum L10n {
 	}
 
 	public enum Chat {
-		public static let assistant = "Vetta Assistant"
 		public static var composerPlaceholder: String { tr("chat.composerPlaceholder") }
 		public static var thinking: String { tr("chat.thinking") }
 		public static var thinkingLive: String { tr("chat.thinkingLive") }
@@ -116,6 +115,30 @@ public enum L10n {
 		public static var copy: String { tr("chat.copy") }
 		public static var copied: String { tr("chat.copied") }
 		public static var questionTitle: String { tr("chat.questionTitle") }
+		public static var attach: String { tr("chat.attach") }
+		public static var attachPhotos: String { tr("chat.attachPhotos") }
+		public static var attachFiles: String { tr("chat.attachFiles") }
+		public static func attachTooLarge(_ name: String) -> String { tr("chat.attachTooLarge \(name)") }
+		public static func attachTooMany(_ n: Int) -> String { tr("chat.attachTooMany \(n)") }
+		public static func removeAttachment(_ name: String) -> String { tr("chat.removeAttachment \(name)") }
+		public static var model: String { tr("chat.model") }
+		public static var thinkingLevel: String { tr("chat.thinkingLevel") }
+
+		/// Known provider effort values get a name; anything else shows as the desktop sent it.
+		public static func level(_ value: String) -> String {
+			switch value {
+			case "off": tr("chat.level.off")
+			case "none": tr("chat.level.none")
+			case "minimal": tr("chat.level.minimal")
+			case "low": tr("chat.level.low")
+			case "medium": tr("chat.level.medium")
+			case "high": tr("chat.level.high")
+			case "xhigh": tr("chat.level.xhigh")
+			case "max": tr("chat.level.max")
+			default: value
+			}
+		}
+
 		public static var questionNext: String { tr("chat.questionNext") }
 		public static var questionMultiHint: String { tr("chat.questionMultiHint") }
 		public static var questionOther: String { tr("chat.questionOther") }

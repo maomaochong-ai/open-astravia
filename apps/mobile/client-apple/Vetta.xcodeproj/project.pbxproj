@@ -14,6 +14,7 @@
 		31B8554CEA1268D8C84793F6 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 966CF05AA64EAAE95B6C18D2 /* Theme.swift */; };
 		3CBF8329E208C7686DE10D15 /* Common.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CAE0C2229A7C06685973CFD /* Common.swift */; };
 		3D463C9C2C3233BBCDE99B95 /* VettaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9958F311B813AAB23E9A6D69 /* VettaApp.swift */; };
+		553F60767299442FEB0D3C01 /* ChatInputBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC4528B8445F4DFE1B3DAC95 /* ChatInputBar.swift */; };
 		572D00AEA0B23590C52BE28A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A611A3DDE7F1EC89CAD12F7F /* SettingsView.swift */; };
 		5A35CD748B1B06EF47F0A3F2 /* VettaKit in Frameworks */ = {isa = PBXBuildFile; productRef = 96AFB1AF04EBBFA603F4F91B /* VettaKit */; };
 		8CB51BACBD63840B98FE330F /* QuestionPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1571266B7208052D80E40A95 /* QuestionPanel.swift */; };
@@ -55,6 +56,7 @@
 		A611A3DDE7F1EC89CAD12F7F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B43B0EEECDDBB2807AA280EF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B4DC1B7D2C79A79205B17759 /* VettaKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = VettaKit; path = VettaKit; sourceTree = SOURCE_ROOT; };
+		BC4528B8445F4DFE1B3DAC95 /* ChatInputBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatInputBar.swift; sourceTree = "<group>"; };
 		CA39B1C0456D27FC25D9A90B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		CC87D827140BB66CD638FD48 /* Vetta.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Vetta.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E33BB88AA6F56D2A00716432 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
@@ -154,6 +156,7 @@
 		FB55CFA84732B5320643FC02 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				BC4528B8445F4DFE1B3DAC95 /* ChatInputBar.swift */,
 				4AC44E052FBB4B681994D40B /* ChatViews.swift */,
 				0CAE0C2229A7C06685973CFD /* Common.swift */,
 				E7F30E48D0595CE66EF6B8A3 /* MarkdownView.swift */,
@@ -282,6 +285,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				553F60767299442FEB0D3C01 /* ChatInputBar.swift in Sources */,
 				9FE91382A8C78D491B30D92F /* ChatViews.swift in Sources */,
 				3CBF8329E208C7686DE10D15 /* Common.swift in Sources */,
 				BF4B6DCEF9D362F781317F6E /* KeychainStore.swift in Sources */,

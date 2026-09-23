@@ -41,6 +41,18 @@ import Testing
 		#expect(turn?.streaming == false)
 	}
 
+	@Test func keepsThisPhonesAttachmentsWhenHistoryIsRefetched() {
+		let photo = TranscriptAttachment(kind: .image, name: "photo-1.jpg")
+		let sent = run([.localUser(text: "看这张图", at: 1, attachments: [photo])])
+		let refetched = run([.history(entries: [
+			.user(id: "u0", text: "更早的", at: 0),
+			.user(id: "u1", text: "看这张图", at: 1),
+		], state: RemoteSessionState(status: .running))], from: sent)
+		#expect(refetched.items.map(\.id) == ["u0", "u1"])
+		if case let .user(_, _, _, attachments) = refetched.items[1] { #expect(attachments == [photo]) } else { Issue.record("expected the user message") }
+		if case let .user(_, _, _, attachments) = refetched.items[0] { #expect(attachments.isEmpty) }
+	}
+
 	@Test func replacesTheOptimisticLocalBubble() {
 		let state = run([.localUser(text: "同样的话", at: 1), .message(.user(text: "同样的话", at: 2))])
 		#expect(state.items.count == 1)
@@ -206,6 +218,8 @@ import Testing
 			case .sessionUpload:
 				uploads += 1
 				try? connection.respond(requestId: request.requestId, success: true, payload: ["uploadId": .string("up-\(uploads)")])
+			case .modelList where request.sessionId == "old-desktop":
+				try? connection.respond(requestId: request.requestId, success: false, error: RemoteError(code: .invalidFrame, message: "unknown method", retryable: false))
 			case .modelList:
 				try? connection.respond(requestId: request.requestId, success: true, payload: ["models": [
 					["key": "anthropic/claude-fable-5-1", "name": "Claude Fable 5.1", "provider": "anthropic", "thinkingLevels": ["off", "low", "medium", "high"], "supportsImage": true],
@@ -370,6 +384,9 @@ import Testing
 		#expect(model.transcript("s1").sessionState.modelKey == "zai/glm-5")
 		#expect(model.transcript("s1").sessionState.thinkingLevel == "max")
 		#expect(await model.configure("s1") == false, "nothing to change sends nothing")
+		await model.loadModels("old-desktop")
+		#expect(model.models["old-desktop"] == nil)
+		#expect(model.lastError == nil, "a desktop without model.list leaves the title as is, without an alert")
 	}
 
 	@Test func reportsOfflineInsteadOfSendingAndHonoursLiveThinking() async {
@@ -377,6 +394,7 @@ import Testing
 		let model = AppModel(platform: .memory(createTransport: desktop.createTransport))
 		model.start()
 		#expect(await model.sendPrompt(nil, "hi") == nil)
+		#expect(await model.sendPrompt("s1", "hi") == nil, "a failed send reports nothing sent, so the composer can keep the text")
 		#expect(model.lastError == L10n.Common.notConnected)
 		model.setPreferences { $0.liveThinking = false }
 		#expect(!model.preferences.liveThinking)

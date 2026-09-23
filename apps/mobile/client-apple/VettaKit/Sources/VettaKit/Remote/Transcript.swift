@@ -95,7 +95,7 @@ public enum TranscriptReducer {
 		var next = state
 		switch action {
 		case let .history(entries, sessionState):
-			var items = entries.map(fromHistoryEntry)
+			var items = keepingAttachments(entries.map(fromHistoryEntry), from: state.items)
 			// A snapshot taken mid-turn ends in the partial reply; later deltas must
 			// continue that bubble instead of opening a second one below it.
 			if sessionState.status.isActive, case var .assistant(turn) = items.last {
@@ -138,6 +138,22 @@ public enum TranscriptReducer {
 			reset.sessionState = state.sessionState
 			reset.stale = true
 			return reset
+		}
+	}
+
+	/// The desktop's history does not know what this phone attached; a refetch
+	/// keeps those attachments on the matching user messages, in order.
+	private static func keepingAttachments(_ items: [TranscriptItem], from previous: [TranscriptItem]) -> [TranscriptItem] {
+		var known: [(text: String, attachments: [TranscriptAttachment])] = previous.compactMap {
+			if case let .user(_, text, _, attachments) = $0, !attachments.isEmpty { return (text, attachments) }
+			return nil
+		}
+		guard !known.isEmpty else { return items }
+		return items.map { item in
+			guard case let .user(id, text, at, attachments) = item, attachments.isEmpty,
+			      let index = known.firstIndex(where: { $0.text == text })
+			else { return item }
+			return .user(id: id, text: text, at: at, attachments: known.remove(at: index).attachments)
 		}
 	}
 

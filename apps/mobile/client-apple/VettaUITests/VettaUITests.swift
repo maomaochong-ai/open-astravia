@@ -54,7 +54,7 @@ final class VettaUITests: XCTestCase {
 	@MainActor func testMirrorsADesktopSessionEndToEnd() throws {
 		let invite = try XCTUnwrap(invite, "run through scripts/ui-test.sh to provide a desktop")
 		let app = XCUIApplication()
-		app.launchArguments = ["-VettaEphemeralStorage", "-VettaPairURI", invite] + chinese
+		app.launchArguments = ["-VettaEphemeralStorage", "-VettaPairURI", invite, "-VettaUITestAttachments"] + chinese
 		app.launch()
 
 		let report = app.buttons["session.s-report"]
@@ -97,6 +97,16 @@ final class VettaUITests: XCTestCase {
 		XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'write_file'")).firstMatch.exists, "the second group stays folded")
 		XCTAssertFalse(app.tabBars.buttons["工作"].isHittable, "the chat page hides the tab bar")
 		shot(app, "5-history")
+
+		// The title switches the model, then the thinking levels that model offers.
+		let modelMenu = app.buttons["chat.modelMenu"]
+		XCTAssertTrue(modelMenu.waitForExistence(timeout: 5))
+		XCTAssertTrue(modelMenu.label.contains("Claude Opus 5 · 中"), "starts on the desktop's current model: \(modelMenu.label)")
+		pick(app, "chat.modelMenu", "GLM 5")
+		XCTAssertTrue(waitForLabel(modelMenu, containing: "GLM 5"))
+		pick(app, "chat.modelMenu", "最高")
+		XCTAssertTrue(waitForLabel(modelMenu, containing: "GLM 5 · 最高"))
+		shot(app, "5b-model")
 		app.navigationBars.buttons.element(boundBy: 0).tap()
 
 		// New Session: start in a project and land straight in its chat.
@@ -104,15 +114,26 @@ final class VettaUITests: XCTestCase {
 		XCTAssertTrue(app.staticTexts["想让电脑做点什么？"].waitForExistence(timeout: 5))
 		XCTAssertFalse(app.tabBars.buttons["工作"].isHittable, "New Session hides the tab bar like a chat")
 		pick(app, "newSession.location", "vetta")
-		let field = app.textFields["composer.field"]
+		// Attach a picture and a file, write two lines (Return adds a line), then send.
+		app.buttons["composer.attach"].tap()
+		app.buttons["composer.attach.sample"].tap()
+		XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "composer.attachment").count, 2)
+		let field = composerField(app)
 		XCTAssertTrue(field.waitForExistence(timeout: 5))
 		field.tap()
-		field.typeText("帮我检查一下构建")
+		field.typeText("帮我检查一下构建\n顺便看看附件")
+		XCTAssertTrue(app.buttons["composer.send"].isEnabled, "Return adds a line instead of sending")
 		shot(app, "6-new-session")
 		app.buttons["composer.send"].tap()
 
 		let option = app.buttons["question.option.继续"]
 		XCTAssertTrue(option.waitForExistence(timeout: 15), "the desktop's question should reach the phone")
+		XCTAssertTrue(app.descendants(matching: .any)["bubble.attachments"].exists, "the bubble lists what was attached")
+		XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'photo-sample.jpg'")).firstMatch.exists)
+		XCTAssertTrue(
+			app.staticTexts.containing(NSPredicate(format: "label CONTAINS '附件：photo-sample.jpg'")).firstMatch.waitForExistence(timeout: 5),
+			"the desktop received both uploads with the prompt"
+		)
 		shot(app, "7-question")
 
 		// Back lands on Work, where the session waiting on us sits on top.
@@ -125,7 +146,7 @@ final class VettaUITests: XCTestCase {
 		first.tap()
 		// The question replaces the composer: answer two questions, the second with Other.
 		XCTAssertTrue(option.waitForExistence(timeout: 10))
-		XCTAssertFalse(app.textFields["composer.field"].exists, "the question takes the composer's place")
+		XCTAssertFalse(composerField(app).exists, "the question takes the composer's place")
 		XCTAssertFalse(app.buttons["question.next"].isEnabled, "Next waits for an answer")
 		option.tap()
 		app.buttons["question.next"].tap()
@@ -139,7 +160,7 @@ final class VettaUITests: XCTestCase {
 		shot(app, "8b-question-panel")
 		app.buttons["question.submit"].tap()
 		XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '你的选择：继续；测试、设计'")).firstMatch.waitForExistence(timeout: 10))
-		XCTAssertTrue(app.textFields["composer.field"].waitForExistence(timeout: 5), "the composer comes back once answered")
+		XCTAssertTrue(composerField(app).waitForExistence(timeout: 5), "the composer comes back once answered")
 		app.navigationBars.buttons.element(boundBy: 0).tap()
 
 		// Scrolling the large title away hands over to the small one with the link icon.
@@ -161,6 +182,16 @@ final class VettaUITests: XCTestCase {
 		XCTAssertTrue(app.buttons["settings.scan"].waitForExistence(timeout: 5), "after unpairing Settings offers a fresh scan")
 		app.tabBars.buttons["工作"].tap()
 		XCTAssertTrue(app.buttons["home.pair"].waitForExistence(timeout: 5), "Work falls back to the pairing guide")
+	}
+
+	/// The multi-line composer shows up as a text view or a text field depending on the OS.
+	@MainActor private func composerField(_ app: XCUIApplication) -> XCUIElement {
+		app.descendants(matching: .any).matching(identifier: "composer.field").firstMatch
+	}
+
+	@MainActor private func waitForLabel(_ element: XCUIElement, containing text: String) -> Bool {
+		let predicate = NSPredicate(format: "label CONTAINS %@", text)
+		return XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: predicate, object: element)], timeout: 5) == .completed
 	}
 
 	/// Taps once the element stops moving, e.g. after a chat scrolls to its latest line.

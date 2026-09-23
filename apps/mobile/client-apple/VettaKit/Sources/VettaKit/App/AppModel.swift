@@ -382,7 +382,8 @@ public final class AppModel {
 			let result = try await requireManager().request(.modelList, sessionId: sessionId)
 			models[sessionId] = RemoteAPI.readModelOptions(result)
 		} catch {
-			if !(error is LinkOfflineError) { reportError(error) }
+			// An older desktop does not know `model.list`; the title then just shows the model.
+			log.info("model.list unavailable: \(String(describing: type(of: error)), privacy: .public)")
 		}
 	}
 
@@ -405,11 +406,11 @@ public final class AppModel {
 
 	/// Sends a prompt; with no session a new one is created first, in `projectCwd`
 	/// or, without one, in the desktop's conversations. Attachments are uploaded one
-	/// per request first. Returns the session that received it.
+	/// per request first. Returns the session that received it, or nil when nothing was sent.
 	@discardableResult
 	public func sendPrompt(_ sessionId: String?, _ text: String, projectCwd: String? = nil, attachments: [PromptAttachment] = []) async -> String? {
 		let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-		guard !trimmed.isEmpty else { return sessionId }
+		guard !trimmed.isEmpty else { return nil }
 		do {
 			let manager = try requireManager()
 			var target = sessionId
@@ -448,7 +449,7 @@ public final class AppModel {
 			return target
 		} catch {
 			reportError(error)
-			return sessionId
+			return nil
 		}
 	}
 
