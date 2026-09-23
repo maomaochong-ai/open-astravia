@@ -124,6 +124,26 @@ function recordTurn(sessionId: string, text: string) {
 	return turn;
 }
 
+/** A turn that never gets an answer: the provider fails, one automatic retry fails the same way. */
+async function failReply(deviceId: string, sessionId: string, text: string): Promise<void> {
+	const entries = histories.get(sessionId) ?? [];
+	histories.set(sessionId, entries);
+	entries.push({ kind: "user", id: `u-${Date.now()}`, text, at: Date.now() });
+	emitAll(deviceId, "session.message", { kind: "user", text, at: Date.now() }, sessionId);
+	emitAll(deviceId, "session.state", { status: "running", ...modelState(sessionId) }, sessionId);
+	await delay(4_000);
+	const failure = { status: "error", error: { code: "turn_failed", message: "Connection error." } };
+	emitAll(deviceId, "session.state", failure, sessionId);
+	emitAll(deviceId, "session.state", { status: "running", detail: "retry 1/2" }, sessionId);
+	await delay(300);
+	emitAll(deviceId, "session.state", failure, sessionId);
+	for (let attempt = 0; attempt < 2; attempt += 1) {
+		entries.push({ kind: "assistant", id: `a-${Date.now()}-${attempt}`, text: "", toolCalls: [], at: Date.now(), error: "Connection error." });
+	}
+	emitAll(deviceId, "session.message", { kind: "turn_end", at: Date.now() }, sessionId);
+	emitAll(deviceId, "session.state", { status: "completed" }, sessionId);
+}
+
 async function streamReply(deviceId: string, sessionId: string, text: string, note = ""): Promise<void> {
 	const turn = recordTurn(sessionId, text);
 	const session = sessions.find((entry) => entry.id === sessionId);
@@ -201,7 +221,9 @@ function handleRequest(deviceId: string, connection: Connection, request: { requ
 			for (const id of ids) uploads.delete(id);
 			ok({ accepted: true });
 			const note = attached.length ? `（附件：${attached.map((upload) => `${upload?.name} ${upload?.bytes}B`).join("、")}）` : "";
-			void streamReply(deviceId, sessionId, String(request.payload?.text ?? ""), note);
+			const text = String(request.payload?.text ?? "");
+			if (text.includes("模拟报错")) void failReply(deviceId, sessionId, text);
+			else void streamReply(deviceId, sessionId, text, note);
 			return;
 		}
 		case "session.upload": {

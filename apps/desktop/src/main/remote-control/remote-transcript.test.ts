@@ -63,4 +63,30 @@ describe("remote transcript conversion", () => {
 			{ kind: "marker", id: "m-1", text: "context compacted", at: Date.parse("2026-09-22T10:00:00.000Z") },
 		]);
 	});
+
+	it("keeps failures inside the turn they ended instead of splitting it with markers", () => {
+		const failed = (entryId: string, timestamp: number) => ({
+			type: "message",
+			entryId,
+			message: { role: "assistant", content: [], stopReason: "error", errorMessage: "Connection error.", timestamp },
+		});
+		const error = (timestamp: string) => ({ type: "error", message: "Connection error.", timestamp });
+		const history = [
+			{ type: "message", entryId: "u1", message: { role: "user", content: "这是个什么项目", timestamp: 1 } },
+			failed("a1", 2),
+			error("2026-09-23T05:45:01.000Z"),
+			failed("a2", 3),
+			error("2026-09-23T05:45:02.000Z"),
+			{ type: "message", entryId: "u2", message: { role: "user", content: "再试一次", timestamp: 4 } },
+			error("2026-09-23T05:46:00.000Z"),
+		] as unknown as HistoryEntry[];
+
+		const transcript = toTranscript(history);
+		expect(transcript.map((entry) => entry.kind)).toEqual(["user", "assistant", "assistant", "user", "assistant"]);
+		expect(transcript.filter((entry) => entry.kind === "assistant").map((entry) => [entry.id, entry.error])).toEqual([
+			["a1", "Connection error."],
+			["a2", "Connection error."],
+			["e-1", "Connection error."],
+		]);
+	});
 });

@@ -128,7 +128,14 @@ public enum TranscriptReducer {
 				next.sessionState.status = .waitingInput
 				next.sessionState.pendingQuestion = question
 			}
-			if finished { next.items = finalizeStreaming(state.items, sessionState) }
+			if finished {
+				let streaming = if case let .assistant(turn) = state.items.last { turn.streaming } else { false }
+				next.items = finalizeStreaming(state.items, sessionState)
+				// The turn failed before it wrote anything: the error is all there is to show.
+				if !streaming, sessionState.status == .error, let message = sessionState.error?.message, !message.isEmpty {
+					next.items.append(.assistant(AssistantTurn(id: nextLocalId("error"), text: "", thinking: "", tools: [], streaming: false, at: now(), error: message)))
+				}
+			}
 			return next
 		case let .question(request):
 			next.pendingQuestion = request

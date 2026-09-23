@@ -193,6 +193,8 @@ struct ThinkingBlock: View {
 /// copy button once the turn is over.
 struct AgentTurnView: View {
 	var turn: AgentTurn
+	/// What the live turn is doing that its content does not show, e.g. a retry.
+	var note: String?
 	@State private var copied = false
 
 	var body: some View {
@@ -209,7 +211,10 @@ struct AgentTurnView: View {
 				}
 				if turn.streaming {
 					ProgressView().controlSize(.mini)
-					Text(L10n.Chat.working).font(.caption).foregroundStyle(.secondary)
+					Text(note ?? (turn.segments.isEmpty ? L10n.Chat.waitingModel : L10n.Chat.working))
+						.font(.caption)
+						.foregroundStyle(.secondary)
+						.accessibilityIdentifier("turn.status")
 				}
 			}
 			ForEach(Array(turn.segments.enumerated()), id: \.element.id) { index, segment in
@@ -222,10 +227,24 @@ struct AgentTurnView: View {
 					)
 				case let .text(_, text):
 					MarkdownView(text: text)
-				case let .error(_, message):
-					Label(message, systemImage: "exclamationmark.triangle.fill")
-						.font(.subheadline)
-						.foregroundStyle(Theme.red)
+				case let .error(_, message, count):
+					HStack(alignment: .firstTextBaseline, spacing: 6) {
+						Label(message, systemImage: "exclamationmark.triangle.fill")
+						if count > 1 {
+							Text("×\(count)")
+								.font(.caption.weight(.semibold).monospacedDigit())
+								.padding(.horizontal, 6)
+								.padding(.vertical, 1)
+								.background(Theme.red.opacity(0.15), in: .capsule)
+						}
+					}
+					.font(.subheadline)
+					.foregroundStyle(Theme.red)
+					.padding(12)
+					.frame(maxWidth: .infinity, alignment: .leading)
+					.background(Theme.red.opacity(0.08), in: .rect(cornerRadius: 14))
+					.accessibilityElement(children: .combine)
+					.accessibilityIdentifier("turn.error")
 				}
 			}
 			if !turn.streaming, !turn.conclusion.isEmpty {

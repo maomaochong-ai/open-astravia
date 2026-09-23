@@ -107,6 +107,21 @@ final class VettaUITests: XCTestCase {
 		pick(app, "chat.modelMenu", "最高")
 		XCTAssertTrue(waitForLabel(modelMenu, containing: "GLM 5 · 最高"))
 		shot(app, "5b-model")
+
+		// A turn that fails: waiting feedback right away, then one error line that counts the retry.
+		let field = composerField(app)
+		field.tap()
+		field.typeText("模拟报错")
+		app.buttons["composer.send"].tap()
+		let status = app.descendants(matching: .any)["turn.status"]
+		XCTAssertTrue(status.waitForExistence(timeout: 3), "a sent message shows the turn working at once")
+		XCTAssertEqual(status.label, "等待模型响应")
+		let failure = app.descendants(matching: .any)["turn.error"]
+		XCTAssertTrue(failure.waitForExistence(timeout: 10), "the failure shows without reopening the chat")
+		XCTAssertTrue(failure.label.contains("Connection error.") && failure.label.contains("×2"), failure.label)
+		XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "turn.error").count, 1, "retries merge into one line")
+		XCTAssertTrue(app.buttons["composer.send"].waitForExistence(timeout: 5))
+		shot(app, "5c-error")
 		app.navigationBars.buttons.element(boundBy: 0).tap()
 
 		// New Session: start in a project and land straight in its chat.
@@ -118,10 +133,10 @@ final class VettaUITests: XCTestCase {
 		app.buttons["composer.attach"].tap()
 		app.buttons["composer.attach.sample"].tap()
 		XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "composer.attachment").count, 2)
-		let field = composerField(app)
-		XCTAssertTrue(field.waitForExistence(timeout: 5))
-		field.tap()
-		field.typeText("帮我检查一下构建\n顺便看看附件")
+		let newField = composerField(app)
+		XCTAssertTrue(newField.waitForExistence(timeout: 5))
+		newField.tap()
+		newField.typeText("帮我检查一下构建\n顺便看看附件")
 		XCTAssertTrue(app.buttons["composer.send"].isEnabled, "Return adds a line instead of sending")
 		shot(app, "6-new-session")
 		app.buttons["composer.send"].tap()

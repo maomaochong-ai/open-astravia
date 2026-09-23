@@ -23,7 +23,7 @@ struct SessionView: View {
 	private var rows: [ChatRow] {
 		var rows: [ChatRow] = []
 		if let first = transcript.items.first?.at { rows.append(.timestamp(first)) }
-		rows += ChatTurns.build(transcript.items).map(ChatRow.block)
+		rows += ChatTurns.build(transcript.items, waiting: transcript.sessionState.status.isActive).map(ChatRow.block)
 		return rows
 	}
 
@@ -122,7 +122,7 @@ struct SessionView: View {
 			case let .marker(_, text, _):
 				MarkerRow(text: text.isEmpty ? L10n.Chat.compacted : text)
 			case let .turn(turn):
-				AgentTurnView(turn: turn)
+				AgentTurnView(turn: turn, note: turn.streaming ? L10n.Chat.activity(transcript.sessionState.detail) : nil)
 			}
 		}
 	}

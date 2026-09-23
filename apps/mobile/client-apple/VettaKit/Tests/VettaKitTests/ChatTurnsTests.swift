@@ -44,13 +44,42 @@ import Testing
 
 	@Test func aMarkerEndsTheTurnButAnErrorStaysInside() {
 		let blocks = ChatTurns.build([
-			reply("a1", text: "第一段", error: "rate limited"),
-			reply("a2", text: "重试后成功"),
+			reply("a1", text: "第一段"),
+			reply("a2", error: "rate limited"),
 			.marker(id: "m1", text: "上下文已压缩", at: 3),
 			reply("a3", text: "继续"),
 		])
 		#expect(blocks.map(\.id) == ["a1", "m1", "a3"])
-		#expect(turns(blocks)[0].segments.map(\.id) == ["a1-text", "a1-error", "a2-text"])
+		#expect(turns(blocks)[0].segments == [.text(id: "a1-text", text: "第一段"), .error(id: "a2-error", message: "rate limited", count: 1)])
+	}
+
+	@Test func repeatedFailuresShowOnceWithACountAndARetryThatWorksHidesThem() {
+		let failing = ChatTurns.build([
+			.user(id: "u1", text: "这是个什么项目", at: 1),
+			reply("a1", error: "Connection error."),
+			reply("a2", error: "Connection error."),
+			reply("a3", error: "Connection error."),
+		])
+		#expect(failing.map(\.id) == ["u1", "a1"], "one turn, not one per attempt")
+		#expect(turns(failing)[0].segments == [.error(id: "a1-error", message: "Connection error.", count: 3)])
+
+		let recovered = ChatTurns.build([
+			reply("a1", error: "Connection error."),
+			reply("a2", error: "Connection error."),
+			reply("a3", text: "这是一个 Electron 项目"),
+		])
+		#expect(turns(recovered)[0].segments == [.text(id: "a3-text", text: "这是一个 Electron 项目")])
+	}
+
+	@Test func aWorkingSessionAlwaysShowsATurnToWatch() {
+		let justSent = ChatTurns.build([.user(id: "u1", text: "你好", at: 1)], waiting: true)
+		#expect(justSent.map(\.id) == ["u1", "pending-turn"])
+		#expect(turns(justSent)[0].streaming && turns(justSent)[0].segments.isEmpty)
+
+		let retrying = ChatTurns.build([.user(id: "u1", text: "你好", at: 1), reply("a1", error: "Connection error.")], waiting: true)
+		#expect(retrying.map(\.id) == ["u1", "a1"], "a retry keeps the same turn, now live again")
+		#expect(turns(retrying)[0].streaming)
+		#expect(ChatTurns.build([.user(id: "u1", text: "你好", at: 1)]).count == 1)
 	}
 
 	@Test func followsTheLiveStepWhileStreaming() {

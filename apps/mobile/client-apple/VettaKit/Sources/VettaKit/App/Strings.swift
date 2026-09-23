@@ -110,6 +110,19 @@ public enum L10n {
 		public static var send: String { tr("chat.send") }
 		public static var resync: String { tr("chat.resync") }
 		public static var working: String { tr("chat.working") }
+		public static var waitingModel: String { tr("chat.waitingModel") }
+		public static func retrying(_ attempt: Int, _ total: Int) -> String { tr("chat.retrying \(attempt) \(total)") }
+		public static var compacting: String { tr("chat.compacting") }
+
+		/// The desktop's `session.state.detail` ("retry 1/3", "compacting") in the phone's language.
+		public static func activity(_ detail: String?) -> String? {
+			guard let detail else { return nil }
+			if detail == "compacting" { return compacting }
+			if let match = detail.wholeMatch(of: /retry (\d+)\/(\d+)/), let attempt = Int(match.1), let total = Int(match.2) {
+				return retrying(attempt, total)
+			}
+			return nil
+		}
 		public static func stepsDone(_ n: Int) -> String { tr("chat.stepsDone \(n)") }
 		public static func thinkingActivity(_ text: String) -> String { tr("chat.thinkingActivity \(text)") }
 		public static var copy: String { tr("chat.copy") }

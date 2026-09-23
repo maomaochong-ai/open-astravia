@@ -94,6 +94,24 @@ import Testing
 		#expect(run([.questionResolved(requestId: "other")], from: asked).pendingQuestion?.requestId == "q1")
 	}
 
+	@Test func showsAFailureEvenWhenTheTurnWroteNothing() {
+		let failed = run([
+			.localUser(text: "这是个什么项目", at: 1),
+			.state(RemoteSessionState(status: .running)),
+			.state(RemoteSessionState(status: .error, error: RemoteSessionError(code: "turn_failed", message: "Connection error."))),
+			.state(RemoteSessionState(status: .running, detail: "retry 1/3")),
+			.state(RemoteSessionState(status: .error, error: RemoteSessionError(code: "turn_failed", message: "Connection error."))),
+			.message(.turnEnd(at: 3)),
+			.state(RemoteSessionState(status: .completed)),
+		])
+		let errors = failed.items.compactMap { item -> String? in
+			if case let .assistant(turn) = item { return turn.error }
+			return nil
+		}
+		#expect(errors == ["Connection error.", "Connection error."], "each attempt is recorded; the chat merges them into one line")
+		#expect(ChatTurns.build(failed.items).count == 2)
+	}
+
 	@Test func keepsAPendingQuestionWhileTheTurnReportsRunning() {
 		let request = RemoteQuestionRequest(requestId: "q1", questions: [RemoteQuestionItem(question: "继续？", header: "确认", options: [RemoteQuestionOption(label: "是", description: "")], multiSelect: false)])
 		let asked = run([.state(RemoteSessionState(status: .running)), .question(request)])

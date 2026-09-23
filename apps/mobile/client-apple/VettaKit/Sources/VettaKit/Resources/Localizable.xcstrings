@@ -115,6 +115,23 @@
         }
       }
     },
+    "chat.compacting": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compacting context"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在压缩上下文"
+          }
+        }
+      }
+    },
     "chat.composerPlaceholder": {
       "extractionState": "manual",
       "localizations": {
@@ -506,6 +523,23 @@
         }
       }
     },
+    "chat.retrying %lld %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retrying (%lld/%lld)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在重试（%lld/%lld）"
+          }
+        }
+      }
+    },
     "chat.send": {
       "extractionState": "manual",
       "localizations": {
@@ -701,6 +735,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "执行中"
+          }
+        }
+      }
+    },
+    "chat.waitingModel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waiting for model response"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等待模型响应"
           }
         }
       }

@@ -23,11 +23,12 @@ public enum WorkStep: Equatable, Identifiable, Sendable {
 public enum TurnSegment: Equatable, Identifiable, Sendable {
 	case work(id: String, steps: [WorkStep])
 	case text(id: String, text: String)
-	case error(id: String, message: String)
+	/// `count` > 1 when the same failure repeated, e.g. over automatic retries.
+	case error(id: String, message: String, count: Int)
 
 	public var id: String {
 		switch self {
-		case let .work(id, _), let .text(id, _), let .error(id, _): id
+		case let .work(id, _), let .text(id, _), let .error(id, _, _): id
 		}
 	}
 }
@@ -74,8 +75,10 @@ public enum ChatBlock: Equatable, Identifiable, Sendable {
 
 public enum ChatTurns {
 	/// Merges consecutive assistant items into one turn. A user message or a
-	/// marker (e.g. compaction) ends the turn; errors stay inside it.
-	public static func build(_ items: [TranscriptItem]) -> [ChatBlock] {
+	/// marker (e.g. compaction) ends the turn; errors stay inside it. `waiting`
+	/// means the session is working: a turn with nothing to show yet still
+	/// appears, so a sent message never sits there without feedback.
+	public static func build(_ items: [TranscriptItem], waiting: Bool = false) -> [ChatBlock] {
 		var blocks: [ChatBlock] = []
 		for item in items {
 			switch item {
@@ -96,6 +99,14 @@ public enum ChatTurns {
 				blocks.append(.turn(turn))
 			}
 		}
+		if waiting {
+			if case var .turn(turn) = blocks.last {
+				turn.streaming = true
+				blocks[blocks.count - 1] = .turn(turn)
+			} else {
+				blocks.append(.turn(AgentTurn(id: "pending-turn", segments: [], streaming: true, startedAt: nil)))
+			}
+		}
 		return blocks
 	}
 
@@ -105,6 +116,12 @@ public enum ChatTurns {
 			steps.append(.thinking(id: "\(reply.id)-thinking", text: reply.thinking))
 		}
 		steps += reply.tools.map(WorkStep.tool)
+		let text = reply.text.trimmingCharacters(in: .whitespacesAndNewlines)
+		if !steps.isEmpty || !text.isEmpty {
+			// New output means the attempts that failed before it were retried
+			// successfully; like the desktop, those failures are dropped.
+			while case .error = turn.segments.last { turn.segments.removeLast() }
+		}
 		if !steps.isEmpty {
 			if case let .work(id, previous) = turn.segments.last {
 				turn.segments[turn.segments.count - 1] = .work(id: id, steps: previous + steps)
@@ -112,11 +129,15 @@ public enum ChatTurns {
 				turn.segments.append(.work(id: "\(reply.id)-work", steps: steps))
 			}
 		}
-		if !reply.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+		if !text.isEmpty {
 			turn.segments.append(.text(id: "\(reply.id)-text", text: reply.text))
 		}
 		if let error = reply.error {
-			turn.segments.append(.error(id: "\(reply.id)-error", message: error))
+			if case let .error(id, message, count) = turn.segments.last, message == error {
+				turn.segments[turn.segments.count - 1] = .error(id: id, message: message, count: count + 1)
+			} else {
+				turn.segments.append(.error(id: "\(reply.id)-error", message: error, count: 1))
+			}
 		}
 	}
 }

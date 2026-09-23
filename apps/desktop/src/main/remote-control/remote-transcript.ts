@@ -28,7 +28,21 @@ export function toTranscript(history: readonly HistoryEntry[]): RemoteTranscript
 			continue;
 		}
 		if (entry.type === "error") {
-			entries.push({ kind: "marker", id: nextId("e"), text: entry.message, at: epochMs(entry.timestamp) });
+			// A failure belongs to the turn it ended, like on the desktop: attach it to that
+			// turn's reply instead of a marker, which would split the turn on the phone.
+			const last = entries[entries.length - 1];
+			if (last?.kind === "assistant" && (!last.error || last.error === entry.message)) {
+				entries[entries.length - 1] = { ...last, error: entry.message };
+			} else {
+				entries.push({
+					kind: "assistant",
+					id: entry.entryId ?? nextId("e"),
+					text: "",
+					toolCalls: [],
+					at: epochMs(entry.timestamp),
+					error: entry.message,
+				});
+			}
 			continue;
 		}
 		if (entry.type !== "message") continue;
