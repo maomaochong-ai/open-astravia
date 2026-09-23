@@ -179,7 +179,12 @@ private struct FilterBar: View {
 						selected: filter.status == group, identifier: "filter.status.\(group)"
 					) { filter.status = group }
 				}
-				FilterChip(title: kindTitle, active: filter.kind != nil, identifier: "filter.kind") {
+				FilterChip(
+					title: kindTitle,
+					sizedFor: [L10n.Home.kindAll, L10n.Home.kindConversation, L10n.Home.kindProject],
+					active: filter.kind != nil,
+					identifier: "filter.kind"
+				) {
 					Picker(L10n.Home.filterKind, selection: $filter.kind.animation(.snappy)) {
 						Text(L10n.Home.kindAll).tag(SessionKind?.none)
 						Text(L10n.Home.kindConversation).tag(Optional(SessionKind.conversation))
@@ -189,6 +194,7 @@ private struct FilterBar: View {
 				if filter.kind == .project {
 					FilterChip(
 						title: projects.first { $0.cwd == filter.projectCwd }?.name ?? L10n.Home.projectAll,
+						sizedFor: [L10n.Home.projectAll] + projects.map(\.name),
 						active: filter.projectCwd != nil,
 						identifier: "filter.project"
 					) {
@@ -269,8 +275,12 @@ private struct StatusSegment: View {
 	}
 }
 
+/// A menu chip whose width fits its widest option, not the current one: on iOS 26
+/// the closing menu shrinks back into the label's old frame, so a label that
+/// resized on selection would jump once the menu had gone.
 private struct FilterChip<Content: View>: View {
 	var title: String
+	var sizedFor: [String]
 	var active: Bool
 	var identifier: String
 	@ViewBuilder var content: () -> Content
@@ -280,7 +290,12 @@ private struct FilterChip<Content: View>: View {
 			content()
 		} label: {
 			HStack(spacing: 5) {
-				Text(title)
+				ZStack(alignment: .leading) {
+					ForEach(Array(Set(sizedFor)), id: \.self) { Text($0).hidden() }
+					Text(title)
+				}
+				.lineLimit(1)
+				.frame(maxWidth: 160, alignment: .leading)
 				Image(systemName: "chevron.down").font(.caption2.weight(.bold))
 			}
 			.font(.subheadline.weight(.semibold))
