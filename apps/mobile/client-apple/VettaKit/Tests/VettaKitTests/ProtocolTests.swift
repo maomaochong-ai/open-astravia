@@ -120,6 +120,35 @@ enum Vectors {
 		}
 		#expect(throws: RemoteProtocolError.self) { try RemoteFrame.decodeSession(.object(["type": "peer_status", "online": true])) }
 	}
+
+	@Test func speaksTheUploadAndModelMethodsLikeTheDesktop() throws {
+		for method in ["session.upload", "model.list", "session.configure"] {
+			let frame = try RemoteFrame.parse(line: #"{"type":"request","requestId":"r","method":"\#(method)","sessionId":"s"}"#)
+			if case let .request(request) = frame { #expect(request.method.rawValue == method) } else { Issue.record("\(method) should parse") }
+		}
+	}
+
+	@Test func readsModelOptionsAndTheSessionsCurrentChoice() throws {
+		let models = RemoteAPI.readModelOptions(try JSONValue.parse(#"""
+		{"models":[
+			{"key":"anthropic/claude-fable-5-1","name":"Claude Fable 5.1","provider":"anthropic","thinkingLevels":["off","low",3,"high"],"defaultThinkingLevel":"high","supportsImage":true},
+			{"key":"local/tiny"},
+			{"name":"no key"}
+		]}
+		"""#))
+		#expect(models == [
+			RemoteModelOption(key: "anthropic/claude-fable-5-1", name: "Claude Fable 5.1", provider: "anthropic", thinkingLevels: ["off", "low", "high"], defaultThinkingLevel: "high", supportsImage: true),
+			RemoteModelOption(key: "local/tiny", name: "local/tiny", provider: "local", thinkingLevels: [], supportsImage: false),
+		])
+		let state = RemoteAPI.readSessionState(try JSONValue.parse(#"{"status":"idle","model":"GLM 5","modelKey":"zai/glm-5","thinkingLevel":"max"}"#))
+		#expect(state.modelKey == "zai/glm-5")
+		#expect(state.thinkingLevel == "max")
+	}
+
+	@Test func keepsOneUploadInsideASealedFrame() {
+		// base64 grows by 4/3; the relay takes ~1.05 MB of sealed JSON per frame.
+		#expect((RemoteAPI.maxUploadBytes + 2) / 3 * 4 < 1_000_000)
+	}
 }
 
 @Suite struct PairingURITests {

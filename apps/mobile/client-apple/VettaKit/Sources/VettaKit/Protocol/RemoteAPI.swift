@@ -91,19 +91,48 @@ public struct RemoteSessionError: Equatable, Codable, Sendable {
 public struct RemoteSessionState: Equatable, Codable, Sendable {
 	public var status: RemoteSessionStatus
 	public var detail: String?
+	/// Display name of the session's model.
 	public var model: String?
+	/// `provider/modelId`, as `session.configure` takes it.
+	public var modelKey: String?
+	public var thinkingLevel: String?
 	public var contextPercent: Double?
 	public var error: RemoteSessionError?
 	/// Present while the desktop waits for an answer that the phone may give.
 	public var pendingQuestion: RemoteQuestionRequest?
 
-	public init(status: RemoteSessionStatus, detail: String? = nil, model: String? = nil, contextPercent: Double? = nil, error: RemoteSessionError? = nil, pendingQuestion: RemoteQuestionRequest? = nil) {
+	public init(status: RemoteSessionStatus, detail: String? = nil, model: String? = nil, modelKey: String? = nil, thinkingLevel: String? = nil, contextPercent: Double? = nil, error: RemoteSessionError? = nil, pendingQuestion: RemoteQuestionRequest? = nil) {
 		self.status = status
 		self.detail = detail
 		self.model = model
+		self.modelKey = modelKey
+		self.thinkingLevel = thinkingLevel
 		self.contextPercent = contextPercent
 		self.error = error
 		self.pendingQuestion = pendingQuestion
+	}
+}
+
+/// A model the session can switch to, with the thinking levels it accepts.
+public struct RemoteModelOption: Equatable, Codable, Sendable, Identifiable {
+	/// `provider/modelId`.
+	public var key: String
+	public var name: String
+	public var provider: String
+	/// Empty when the model has no thinking control; otherwise starts with "off" or "none".
+	public var thinkingLevels: [String]
+	public var defaultThinkingLevel: String?
+	public var supportsImage: Bool
+
+	public var id: String { key }
+
+	public init(key: String, name: String, provider: String, thinkingLevels: [String], defaultThinkingLevel: String? = nil, supportsImage: Bool) {
+		self.key = key
+		self.name = name
+		self.provider = provider
+		self.thinkingLevels = thinkingLevels
+		self.defaultThinkingLevel = defaultThinkingLevel
+		self.supportsImage = supportsImage
 	}
 }
 
@@ -238,6 +267,8 @@ public enum RemoteAPI {
 			status: readSessionStatus(value["status"]),
 			detail: value["detail"]?.stringValue,
 			model: value["model"]?.stringValue,
+			modelKey: value["modelKey"]?.stringValue,
+			thinkingLevel: value["thinkingLevel"]?.stringValue,
 			contextPercent: value["contextPercent"]?.numberValue,
 			error: error,
 			pendingQuestion: readQuestionRequest(value["pendingQuestion"])
@@ -348,6 +379,24 @@ public enum RemoteAPI {
 				name: entry["name"]?.stringValue ?? cwd,
 				kind: entry["kind"]?.stringValue == "conversation" ? "conversation" : "project",
 				sessionCount: entry["sessionCount"]?.numberValue ?? 0
+			)
+		}
+	}
+
+	/// Largest attachment one `session.upload` may carry, before base64: one
+	/// sealed frame holds ~1 MB of JSON, so attachments travel one per request.
+	public static let maxUploadBytes = 700 * 1024
+
+	public static func readModelOptions(_ value: JSONValue?) -> [RemoteModelOption] {
+		(value?["models"]?.arrayValue ?? []).compactMap { entry -> RemoteModelOption? in
+			guard entry.isObject, let key = nonEmpty(entry["key"]?.stringValue) else { return nil }
+			return RemoteModelOption(
+				key: key,
+				name: nonEmpty(entry["name"]?.stringValue) ?? key,
+				provider: entry["provider"]?.stringValue ?? String(key.split(separator: "/").first ?? ""),
+				thinkingLevels: (entry["thinkingLevels"]?.arrayValue ?? []).compactMap { nonEmpty($0.stringValue) },
+				defaultThinkingLevel: entry["defaultThinkingLevel"]?.stringValue,
+				supportsImage: entry["supportsImage"]?.boolValue == true
 			)
 		}
 	}

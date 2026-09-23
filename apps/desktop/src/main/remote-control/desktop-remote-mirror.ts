@@ -1,18 +1,28 @@
-import type { Message } from "@vetta/ai";
+import { randomUUID } from "node:crypto";
+import { type Api, getModelReasoningPreset, type Message, type Model } from "@vetta/ai";
 import type { CodingAgentQuestionFunctionRequest } from "@vetta/coding-agent/function-extensions";
 import type {
 	RemoteDeviceStatus,
 	RemoteDiagnosticsSnapshot,
 	RemoteEventName,
 	RemoteMessageEvent,
+	RemoteModelOption,
 	RemoteProjectSummary,
 	RemoteRequest,
 	RemoteSessionState,
 	RemoteSessionSummary,
 	RemoteToolEvent,
 	RemoteTranscriptEntry,
+	RemoteUploadKind,
 } from "@vetta/remote-control";
-import type { HistoryEntry, SessionEvent, SessionStateSnapshot } from "@vetta/runtime-core";
+import { REMOTE_MAX_UPLOAD_BYTES } from "@vetta/remote-control";
+import type {
+	HistoryEntry,
+	PromptAttachmentRef,
+	SessionEvent,
+	SessionStateSnapshot,
+	SettingsPatch,
+} from "@vetta/runtime-core";
 import type { DesktopSessionHistoryInfo } from "../../shared/session-access.js";
 import type {
 	DesktopConversationService,
@@ -45,7 +55,15 @@ export interface RemoteMirrorRuntime {
 	onRunningChanged(handler: (sessionPath: string, running: boolean, sessionId?: string) => void): () => void;
 	getSessionPath(sessionId: string): string | undefined;
 	abort(sessionId: string): Promise<void>;
+	readSessionAvailableModels(sessionId: string): readonly Model<Api>[];
+	updateSettings(sessionId: string, patch: SettingsPatch): Promise<void>;
 }
+
+/** Writes an attachment the phone uploaded and returns its absolute path. */
+export type RemoteUploadWriter = (
+	sessionKey: string,
+	upload: { kind: RemoteUploadKind; name: string; mimeType: string; bytes: Buffer },
+) => Promise<string>;
 
 export type RemoteMirrorConversations = Pick<
 	DesktopConversationService,
@@ -72,6 +90,7 @@ export interface DesktopRemoteMirrorOptions {
 	readonly isConversationCwd: (cwd: string) => boolean;
 	readonly emit: (name: RemoteEventName, payload?: unknown, sessionId?: string) => Promise<void>;
 	readonly deviceStatus: () => RemoteDeviceStatus;
+	readonly saveUpload: RemoteUploadWriter;
 	readonly hardware?: () => { cpu?: string; ram?: string };
 	/** Streamed text is batched at this interval so a long answer costs tens of frames, not thousands. */
 	readonly coalesceMs?: number;
@@ -104,8 +123,17 @@ interface TrackedSession {
 	pinned: boolean;
 }
 
+interface PendingUpload {
+	readonly sessionKey: string;
+	readonly ref: PromptAttachmentRef;
+	readonly at: number;
+}
+
 const log = getAppLogger("remote-mirror");
 const MAX_LIST = 80;
+/** An upload the phone never referenced in a prompt is forgotten after this long. */
+const UPLOAD_TTL_MS = 30 * 60 * 1000;
+const MAX_PENDING_UPLOADS = 32;
 
 /**
  * Presents the desktop's conversations to paired phones as a live mirror:
@@ -118,6 +146,7 @@ export class DesktopRemoteMirror {
 	private readonly handles = new Map<string, SessionHandle>();
 	private readonly handlesByPath = new Map<string, SessionHandle>();
 	private readonly tracked = new Map<string, TrackedSession>();
+	private readonly uploads = new Map<string, PendingUpload>();
 	private readonly unsubscribes: Array<() => void> = [];
 	private listTimer: ReturnType<typeof setTimeout> | undefined;
 	private summariesCache: { at: number; sessions: RemoteSessionSummary[] } | undefined;
@@ -198,8 +227,26 @@ export class DesktopRemoteMirror {
 				const payload = asRecord(request.payload);
 				const text = typeof payload.text === "string" ? payload.text : "";
 				if (!text.trim()) throw new RemoteOperationError("invalid_frame", "prompt text is required");
-				await this.prompt(handle, text);
+				const attachments = this.takeUploads(handle, payload.attachments);
+				await this.prompt(handle, text, attachments);
 				return { accepted: true };
+			}
+			case "session.upload": {
+				const handle = this.requireHandle(request.sessionId);
+				return { uploadId: await this.upload(handle, asRecord(request.payload)) };
+			}
+			case "model.list": {
+				const handle = this.requireHandle(request.sessionId);
+				const tracked = await this.ensureOpen(handle, false);
+				return { models: this.modelOptions(tracked.sessionId) };
+			}
+			case "session.configure": {
+				const handle = this.requireHandle(request.sessionId);
+				const tracked = await this.ensureOpen(handle, true);
+				await this.configure(tracked.sessionId, asRecord(request.payload));
+				const state = this.stateFor(handle);
+				await this.emitState(handle.key, state);
+				return { state };
 			}
 			case "session.respond": {
 				this.requireHandle(request.sessionId);
@@ -417,7 +464,88 @@ export class DesktopRemoteMirror {
 		if (forget) this.tracked.delete(tracked.sessionId);
 	}
 
-	private async prompt(handle: SessionHandle, text: string): Promise<void> {
+	// ---- uploads & settings ----
+
+	private async upload(handle: SessionHandle, payload: Record<string, unknown>): Promise<string> {
+		const kind = payload.kind === "image" || payload.kind === "file" ? payload.kind : undefined;
+		const name = typeof payload.name === "string" ? payload.name : "";
+		const mimeType = typeof payload.mimeType === "string" ? payload.mimeType : "application/octet-stream";
+		const data = typeof payload.data === "string" ? payload.data : "";
+		if (!kind || !data) throw new RemoteOperationError("invalid_frame", "upload kind and data are required");
+		const bytes = Buffer.from(data, "base64");
+		if (bytes.byteLength === 0 || bytes.byteLength > REMOTE_MAX_UPLOAD_BYTES) {
+			throw new RemoteOperationError("invalid_frame", "upload is empty or too large");
+		}
+		const path = await this.options.saveUpload(handle.key, { kind, name, mimeType, bytes });
+		this.dropStaleUploads();
+		const uploadId = randomUUID();
+		this.uploads.set(uploadId, { sessionKey: handle.key, ref: { kind, path }, at: this.now() });
+		return uploadId;
+	}
+
+	/** Resolves a prompt's upload ids; each id is used once and only for the session it was uploaded to. */
+	private takeUploads(handle: SessionHandle, value: unknown): PromptAttachmentRef[] {
+		if (value === undefined) return [];
+		if (!Array.isArray(value)) throw new RemoteOperationError("invalid_frame", "attachments must be upload ids");
+		const refs: PromptAttachmentRef[] = [];
+		for (const id of value) {
+			const upload = typeof id === "string" ? this.uploads.get(id) : undefined;
+			if (!upload || upload.sessionKey !== handle.key) {
+				throw new RemoteOperationError("not_found", "Attachment upload is unknown or expired");
+			}
+			refs.push(upload.ref);
+		}
+		for (const id of value) this.uploads.delete(id as string);
+		return refs;
+	}
+
+	private dropStaleUploads(): void {
+		const cutoff = this.now() - UPLOAD_TTL_MS;
+		for (const [id, upload] of this.uploads) {
+			if (upload.at < cutoff || this.uploads.size >= MAX_PENDING_UPLOADS) this.uploads.delete(id);
+		}
+	}
+
+	private modelOptions(sessionId: string): RemoteModelOption[] {
+		return this.options.runtime.readSessionAvailableModels(sessionId).map((model) => {
+			const preset = getModelReasoningPreset(model);
+			// Same menu as the desktop: "off" (or the model's own "none") comes first.
+			const levels = preset
+				? preset.levels.includes("none")
+					? ["none", ...preset.levels.filter((level) => level !== "none" && level !== "off")]
+					: ["off", ...preset.levels.filter((level) => level !== "off")]
+				: [];
+			return {
+				key: `${model.provider}/${model.id}`,
+				name: model.name || model.id,
+				provider: model.provider,
+				thinkingLevels: levels,
+				defaultThinkingLevel: preset?.default,
+				supportsImage: model.input.includes("image"),
+			};
+		});
+	}
+
+	private async configure(sessionId: string, payload: Record<string, unknown>): Promise<void> {
+		const patch: SettingsPatch = {};
+		if (typeof payload.modelKey === "string" && payload.modelKey) {
+			const known = this.modelOptions(sessionId).some((model) => model.key === payload.modelKey);
+			if (!known) throw new RemoteOperationError("not_found", "Model is not available on the desktop");
+			patch.modelKey = payload.modelKey;
+		}
+		if (typeof payload.thinkingLevel === "string" && payload.thinkingLevel) {
+			patch.thinkingLevel = payload.thinkingLevel;
+		}
+		if (!patch.modelKey && !patch.thinkingLevel) {
+			throw new RemoteOperationError("invalid_frame", "modelKey or thinkingLevel is required");
+		}
+		if (this.options.runtime.getState(sessionId).isStreaming) {
+			throw new RemoteOperationError("busy", "Finish or stop the current turn before switching", true);
+		}
+		await this.options.runtime.updateSettings(sessionId, patch);
+	}
+
+	private async prompt(handle: SessionHandle, text: string, attachments: PromptAttachmentRef[] = []): Promise<void> {
 		const tracked = await this.ensureOpen(handle, true);
 		if (this.options.runtime.getState(tracked.sessionId).isStreaming) {
 			throw new RemoteOperationError("busy", "Desktop session is already processing a turn", true);
@@ -427,7 +555,11 @@ export class DesktopRemoteMirror {
 		await this.emitMessage(handle.key, { kind: "user", text, at });
 		await this.emitState(handle.key, { status: "running" });
 		void this.options.conversations
-			.promptInteractiveSession(tracked.sessionId, { text }, handle.cwd)
+			.promptInteractiveSession(
+				tracked.sessionId,
+				attachments.length > 0 ? { text, attachments } : { text },
+				handle.cwd,
+			)
 			.catch(async (error: unknown) => {
 				log.warn("remote prompt failed", { error: describe(error) });
 				await this.emitState(handle.key, {
@@ -460,7 +592,7 @@ export class DesktopRemoteMirror {
 				// subscribed. Announce the turn now instead of waiting for it.
 				tracked.lastUserTimestamp = previousUserTimestamp(this.options.runtime.getMessages(sessionId));
 				this.emitDesktopUserMessage(tracked);
-				void this.emitState(handle.key, { status: "running", model: this.modelFor(sessionId) });
+				void this.emitState(handle.key, { status: "running", ...this.modelFor(sessionId) });
 			} else if (!sessionId) {
 				await this.ensureOpen(handle, false);
 			}
@@ -614,7 +746,7 @@ export class DesktopRemoteMirror {
 			case "agent_start": {
 				tracked.observedText = "";
 				this.emitDesktopUserMessage(tracked);
-				void this.emitState(key, { status: "running", model: this.modelFor(tracked.sessionId) });
+				void this.emitState(key, { status: "running", ...this.modelFor(tracked.sessionId) });
 				return;
 			}
 			case "turn_start":
@@ -749,7 +881,7 @@ export class DesktopRemoteMirror {
 			return {
 				status: "waiting_input",
 				pendingQuestion: toRemoteQuestion(pending),
-				model: this.modelFor(handle.sessionId),
+				...this.modelFor(handle.sessionId),
 			};
 		if (!handle.sessionId) {
 			return { status: this.options.runtime.getRunningSessionPaths().includes(handle.path) ? "running" : "idle" };
@@ -762,17 +894,17 @@ export class DesktopRemoteMirror {
 		}
 		return {
 			status: snapshot?.isStreaming ? "running" : "idle",
-			model: modelLabel(snapshot?.model),
+			...modelState(snapshot),
 			contextPercent: snapshot?.contextPercent ?? undefined,
 		};
 	}
 
-	private modelFor(sessionId: string | undefined): string | undefined {
-		if (!sessionId) return undefined;
+	private modelFor(sessionId: string | undefined): Pick<RemoteSessionState, "model" | "modelKey" | "thinkingLevel"> {
+		if (!sessionId) return {};
 		try {
-			return modelLabel(this.options.runtime.getState(sessionId).model);
+			return modelState(this.options.runtime.getState(sessionId));
 		} catch {
-			return undefined;
+			return {};
 		}
 	}
 
@@ -800,6 +932,18 @@ export class DesktopRemoteMirror {
 	private async emitState(key: string, payload: RemoteSessionState): Promise<void> {
 		await this.options.emit("session.state", payload, key);
 	}
+}
+
+function modelState(
+	snapshot: SessionStateSnapshot | undefined,
+): Pick<RemoteSessionState, "model" | "modelKey" | "thinkingLevel"> {
+	if (!snapshot) return {};
+	const model = snapshot.model;
+	return {
+		model: modelLabel(model),
+		modelKey: model?.provider && model.id ? `${model.provider}/${model.id}` : undefined,
+		thinkingLevel: snapshot.thinkingLevel,
+	};
 }
 
 function asRecord(value: unknown): Record<string, unknown> {

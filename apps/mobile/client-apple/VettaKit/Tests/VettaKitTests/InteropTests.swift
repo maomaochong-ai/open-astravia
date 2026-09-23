@@ -79,6 +79,19 @@ struct InteropTests {
 		#expect(await eventually(timeoutMs: 5_000) { !model.sessions.isEmpty })
 		await model.openSession("s-build")
 		#expect(model.transcript("s-build").items.count == 1)
+
+		// The largest attachment the phone sends must fit one sealed frame through the real relay.
+		await model.loadModels("s-report")
+		#expect(model.models["s-report"]?.map(\.key) == ["anthropic/claude-opus-5", "zai/glm-5"])
+		#expect(await model.configure("s-report", modelKey: "zai/glm-5", thinkingLevel: "max"))
+		#expect(model.transcript("s-report").sessionState.thinkingLevel == "max")
+		let largest = PromptAttachment(kind: .file, name: "largest.bin", mimeType: "application/octet-stream", data: Data((0 ..< RemoteAPI.maxUploadBytes).map { UInt8(truncatingIfNeeded: $0 &* 31) }))
+		#expect(await model.sendPrompt("s-report", "看附件", attachments: [largest]) == "s-report")
+		#expect(model.lastError == nil)
+		#expect(await eventually(timeoutMs: 8_000) {
+			if case let .assistant(turn) = model.transcript("s-report").items.last { return turn.text.contains("largest.bin \(RemoteAPI.maxUploadBytes)B") }
+			return false
+		})
 		model.unpair()
 	}
 

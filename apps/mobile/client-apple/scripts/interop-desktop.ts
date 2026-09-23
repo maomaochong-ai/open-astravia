@@ -97,6 +97,19 @@ function emitAll(deviceId: string, name: string, payload: unknown, sessionId?: s
 }
 
 const pendingQuestions = new Map<string, unknown>();
+const uploads = new Map<string, { sessionId: string; name: string; bytes: number }>();
+const models = [
+	{ key: "anthropic/claude-opus-5", name: "Claude Opus 5", provider: "anthropic", thinkingLevels: ["off", "low", "medium", "high"], defaultThinkingLevel: "medium", supportsImage: true },
+	{ key: "zai/glm-5", name: "GLM 5", provider: "zai", thinkingLevels: ["none", "minimal", "low", "medium", "high", "max"], defaultThinkingLevel: "high", supportsImage: false },
+];
+const settings = new Map<string, { modelKey: string; thinkingLevel: string }>();
+function settingsFor(sessionId: string) {
+	return settings.get(sessionId) ?? { modelKey: "anthropic/claude-opus-5", thinkingLevel: "medium" };
+}
+function modelState(sessionId: string) {
+	const current = settingsFor(sessionId);
+	return { model: models.find((entry) => entry.key === current.modelKey)?.name, ...current };
+}
 
 const delay = (ms: number) => new Promise((resolveDelay) => setTimeout(resolveDelay, ms));
 
@@ -110,19 +123,19 @@ function recordTurn(sessionId: string, text: string) {
 	return turn;
 }
 
-async function streamReply(deviceId: string, sessionId: string, text: string): Promise<void> {
+async function streamReply(deviceId: string, sessionId: string, text: string, note = ""): Promise<void> {
 	const turn = recordTurn(sessionId, text);
 	const session = sessions.find((entry) => entry.id === sessionId);
 	if (session) Object.assign(session, { status: "running", preview: text, updatedAt: Date.now(), title: session.title || text.slice(0, 60) });
 	emitAll(deviceId, "session.message", { kind: "user", text, at: Date.now() }, sessionId);
-	emitAll(deviceId, "session.state", { status: "running", model: "claude-opus-5" }, sessionId);
+	emitAll(deviceId, "session.state", { status: "running", ...modelState(sessionId) }, sessionId);
 	await delay(80);
 	turn.thinking = "先确认需求，";
 	emitAll(deviceId, "session.message", { kind: "thinking_delta", text: turn.thinking }, sessionId);
 	const tool = { toolCallId: `tool-${Date.now()}`, toolName: "bash", args: "{\"command\":\"ls -la\"}", result: "total 8\ndrwxr-xr-x  README.md", durationMs: 42 };
 	turn.toolCalls.push(tool);
 	emitAll(deviceId, "session.tool", { ...tool, phase: "completed" }, sessionId);
-	for (const chunk of ["收到：", text, "。\n\n", "- 第一步已完成\n", "- 需要你确认下一步"]) {
+	for (const chunk of ["收到：", text, note, "。\n\n", "- 第一步已完成\n", "- 需要你确认下一步"]) {
 		await delay(40);
 		turn.text += chunk;
 		emitAll(deviceId, "session.message", { kind: "assistant_delta", text: chunk }, sessionId);
@@ -134,7 +147,7 @@ async function streamReply(deviceId: string, sessionId: string, text: string): P
 	pendingQuestions.set(sessionId, request);
 	emitAll(deviceId, "session.input", { kind: "question", request }, sessionId);
 	if (session) session.status = "waiting_input";
-	emitAll(deviceId, "session.state", { status: "waiting_input", model: "claude-opus-5", pendingQuestion: request }, sessionId);
+	emitAll(deviceId, "session.state", { status: "waiting_input", ...modelState(sessionId), pendingQuestion: request }, sessionId);
 }
 
 function handleRequest(deviceId: string, connection: Connection, request: { requestId: string; method: string; sessionId?: string; payload?: any }): void {
@@ -168,13 +181,42 @@ function handleRequest(deviceId: string, connection: Connection, request: { requ
 			return;
 		case "session.history": {
 			const session = sessions.find((entry) => entry.id === sessionId);
-			ok({ entries: histories.get(sessionId) ?? [], state: { status: session?.status ?? "idle", model: "claude-opus-5", pendingQuestion: pendingQuestions.get(sessionId) } });
+			ok({ entries: histories.get(sessionId) ?? [], state: { status: session?.status ?? "idle", ...modelState(sessionId), pendingQuestion: pendingQuestions.get(sessionId) } });
 			return;
 		}
-		case "session.prompt":
+		case "session.prompt": {
+			const ids: string[] = Array.isArray(request.payload?.attachments) ? request.payload.attachments : [];
+			const attached = ids.map((id) => uploads.get(id));
+			if (attached.some((upload) => !upload || upload.sessionId !== sessionId)) {
+				void connection.respond(request.requestId, { success: false, error: { code: "not_found", message: "unknown upload", retryable: false } }).catch(() => undefined);
+				return;
+			}
+			for (const id of ids) uploads.delete(id);
 			ok({ accepted: true });
-			void streamReply(deviceId, sessionId, String(request.payload?.text ?? ""));
+			const note = attached.length ? `（附件：${attached.map((upload) => `${upload?.name} ${upload?.bytes}B`).join("、")}）` : "";
+			void streamReply(deviceId, sessionId, String(request.payload?.text ?? ""), note);
 			return;
+		}
+		case "session.upload": {
+			const bytes = Buffer.from(String(request.payload?.data ?? ""), "base64").byteLength;
+			const uploadId = `up-${rc.randomToken(6)}`;
+			uploads.set(uploadId, { sessionId, name: String(request.payload?.name ?? ""), bytes });
+			ok({ uploadId });
+			return;
+		}
+		case "model.list":
+			ok({ models });
+			return;
+		case "session.configure": {
+			const next = { ...settingsFor(sessionId) };
+			if (typeof request.payload?.modelKey === "string") next.modelKey = request.payload.modelKey;
+			if (typeof request.payload?.thinkingLevel === "string") next.thinkingLevel = request.payload.thinkingLevel;
+			settings.set(sessionId, next);
+			const state = { status: sessions.find((entry) => entry.id === sessionId)?.status ?? "idle", ...modelState(sessionId) };
+			ok({ state });
+			emitAll(deviceId, "session.state", state, sessionId);
+			return;
+		}
 		case "session.respond":
 			ok({ responded: true });
 			pendingQuestions.delete(sessionId);
@@ -186,7 +228,7 @@ function handleRequest(deviceId: string, connection: Connection, request: { requ
 				if (last?.kind === "assistant") last.text += "\n\n好的，已按你的选择继续。";
 				emitAll(deviceId, "session.message", { kind: "assistant_delta", text: "\n\n好的，已按你的选择继续。" }, sessionId);
 				emitAll(deviceId, "session.message", { kind: "turn_end", at: Date.now() }, sessionId);
-				emitAll(deviceId, "session.state", { status: "completed", model: "claude-opus-5" }, sessionId);
+				emitAll(deviceId, "session.state", { status: "completed", ...modelState(sessionId) }, sessionId);
 				const session = sessions.find((entry) => entry.id === sessionId);
 				if (session) session.status = "completed";
 			})();

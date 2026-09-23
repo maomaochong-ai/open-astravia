@@ -1,6 +1,12 @@
 import type { Message } from "@vetta/ai";
 import type { RemoteEventName, RemoteRequest } from "@vetta/remote-control";
-import type { HistoryEntry, SessionEvent, SessionStateSnapshot } from "@vetta/runtime-core";
+import type {
+	HistoryEntry,
+	PromptAttachmentRef,
+	SessionEvent,
+	SessionStateSnapshot,
+	SettingsPatch,
+} from "@vetta/runtime-core";
 import { describe, expect, it } from "vitest";
 import type { DesktopSessionHistoryInfo } from "../../shared/session-access.js";
 import type { DesktopConversationSession } from "../conversations/desktop-conversation-service.js";
@@ -27,18 +33,21 @@ class FakeRuntime implements RemoteMirrorRuntime {
 	readonly streaming = new Set<string>();
 	readonly aborted: string[] = [];
 	readonly running = new Set<string>();
+	readonly settings: Array<{ sessionId: string; patch: SettingsPatch }> = [];
+	model = { provider: "anthropic", id: "claude-fable-5-1", name: "Claude Fable 5.1" };
+	thinkingLevel = "off";
 
 	getState(sessionId: string): SessionStateSnapshot {
 		return {
 			sessionId,
-			thinkingLevel: "off",
+			thinkingLevel: this.thinkingLevel,
 			executionMode: "sandbox",
 			isStreaming: this.streaming.has(sessionId),
 			messageCount: this.messages.get(sessionId)?.length ?? 0,
 			contextPercent: 12,
 			contextWindow: 200_000,
 			activeToolNames: [],
-			model: { id: "claude-fable-5-1", name: "Claude Fable 5.1" } as unknown as SessionStateSnapshot["model"],
+			model: this.model as unknown as SessionStateSnapshot["model"],
 		};
 	}
 	subscribe(sessionId: string, handler: (event: SessionEvent) => void): () => void {
@@ -77,13 +86,43 @@ class FakeRuntime implements RemoteMirrorRuntime {
 	async abort(sessionId: string): Promise<void> {
 		this.aborted.push(sessionId);
 	}
+	readSessionAvailableModels() {
+		return [
+			{
+				provider: "anthropic",
+				id: "claude-fable-5-1",
+				name: "Claude Fable 5.1",
+				api: "anthropic-messages",
+				reasoning: true,
+				input: ["text", "image"],
+			},
+			{
+				provider: "zai",
+				id: "glm-5",
+				name: "GLM 5",
+				api: "zai-openai-completions",
+				reasoning: true,
+				input: ["text"],
+			},
+			{ provider: "local", id: "tiny", name: "", api: "openai-completions", reasoning: false, input: ["text"] },
+		] as never;
+	}
+	async updateSettings(sessionId: string, patch: SettingsPatch): Promise<void> {
+		this.settings.push({ sessionId, patch });
+		if (patch.modelKey) {
+			const [provider, id] = patch.modelKey.split("/");
+			this.model = { provider: provider ?? "", id: id ?? "", name: id ?? "" };
+		}
+		if (patch.thinkingLevel) this.thinkingLevel = patch.thinkingLevel;
+	}
 }
 
 function harness() {
 	const runtime = new FakeRuntime();
 	const broker = new DesktopUserQuestionBroker();
 	const emitted: Emitted[] = [];
-	const prompts: Array<{ sessionId: string; text: string }> = [];
+	const prompts: Array<{ sessionId: string; text: string; attachments?: PromptAttachmentRef[] }> = [];
+	const uploads: Array<{ sessionKey: string; kind: string; name: string; bytes: number }> = [];
 	const sessionIds = new Map<string, string>([
 		[CONVERSATION_PATH, "rt-chat"],
 		[PROJECT_PATH, "rt-work"],
@@ -133,7 +172,11 @@ function harness() {
 				return open(path);
 			},
 			promptInteractiveSession: async (sessionId, prompt) => {
-				prompts.push({ sessionId, text: prompt.text });
+				prompts.push(
+					prompt.attachments
+						? { sessionId, text: prompt.text, attachments: prompt.attachments }
+						: { sessionId, text: prompt.text },
+				);
 				return { status: "completed" } as never;
 			},
 		},
@@ -146,12 +189,16 @@ function harness() {
 			emitted.push({ name, payload, sessionId });
 		},
 		deviceStatus: () => ({ deviceName: "MacBook", lanEndpoints: [], relayEnabled: true, runningSessionCount: 0 }),
+		saveUpload: async (sessionKey, upload) => {
+			uploads.push({ sessionKey, kind: upload.kind, name: upload.name, bytes: upload.bytes.byteLength });
+			return `/uploads/${uploads.length}/${upload.name}`;
+		},
 		coalesceMs: 5,
 		listRefreshMs: 5,
 	});
 	const request = (method: RemoteRequest["method"], payload?: unknown, sessionId?: string) =>
 		mirror.handleRequest({ type: "request", requestId: "r", method, payload, sessionId });
-	return { runtime, broker, emitted, prompts, mirror, request };
+	return { runtime, broker, emitted, prompts, uploads, mirror, request };
 }
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 15));
@@ -289,6 +336,99 @@ describe("DesktopRemoteMirror", () => {
 
 		await request("session.abort", undefined, key);
 		expect(runtime.aborted).toEqual(["rt-work"]);
+		mirror.stop();
+	});
+
+	it("hands a prompt the pictures and files the phone uploaded first, each upload used once", async () => {
+		const { mirror, request, prompts, uploads } = harness();
+		await mirror.start();
+		await request("session.list");
+		const key = keyForPath(CONVERSATION_PATH);
+		const photo = (await request(
+			"session.upload",
+			{
+				kind: "image",
+				name: "photo.jpg",
+				mimeType: "image/jpeg",
+				data: Buffer.from("jpeg bytes").toString("base64"),
+			},
+			key,
+		)) as { uploadId: string };
+		const notes = (await request(
+			"session.upload",
+			{ kind: "file", name: "notes.txt", mimeType: "text/plain", data: Buffer.from("hello").toString("base64") },
+			key,
+		)) as { uploadId: string };
+		expect(uploads).toEqual([
+			{ sessionKey: key, kind: "image", name: "photo.jpg", bytes: 10 },
+			{ sessionKey: key, kind: "file", name: "notes.txt", bytes: 5 },
+		]);
+
+		await request("session.prompt", { text: "看看这些", attachments: [photo.uploadId, notes.uploadId] }, key);
+		expect(prompts).toEqual([
+			{
+				sessionId: "rt-chat",
+				text: "看看这些",
+				attachments: [
+					{ kind: "image", path: "/uploads/1/photo.jpg" },
+					{ kind: "file", path: "/uploads/2/notes.txt" },
+				],
+			},
+		]);
+		await expect(
+			request("session.prompt", { text: "again", attachments: [photo.uploadId] }, key),
+		).rejects.toMatchObject({ code: "not_found" });
+		mirror.stop();
+	});
+
+	it("refuses uploads that are empty, oversized, or used from another session", async () => {
+		const { mirror, request } = harness();
+		await mirror.start();
+		await request("session.list");
+		const chat = keyForPath(CONVERSATION_PATH);
+		const work = keyForPath(PROJECT_PATH);
+		await expect(request("session.upload", { kind: "file", name: "x", data: "" }, chat)).rejects.toMatchObject({
+			code: "invalid_frame",
+		});
+		const huge = Buffer.alloc(800 * 1024).toString("base64");
+		await expect(request("session.upload", { kind: "file", name: "x", data: huge }, chat)).rejects.toMatchObject({
+			code: "invalid_frame",
+		});
+		const upload = (await request(
+			"session.upload",
+			{ kind: "file", name: "a.txt", mimeType: "text/plain", data: Buffer.from("a").toString("base64") },
+			chat,
+		)) as { uploadId: string };
+		await expect(
+			request("session.prompt", { text: "hi", attachments: [upload.uploadId] }, work),
+		).rejects.toMatchObject({ code: "not_found" });
+		mirror.stop();
+	});
+
+	it("lists models with the desktop's thinking menu and switches model and level", async () => {
+		const { mirror, request, runtime } = harness();
+		await mirror.start();
+		await request("session.list");
+		const key = keyForPath(CONVERSATION_PATH);
+		const listed = (await request("model.list", undefined, key)) as { models: Array<Record<string, unknown>> };
+		expect(listed.models.map((model) => [model.key, model.name, model.thinkingLevels, model.supportsImage])).toEqual([
+			["anthropic/claude-fable-5-1", "Claude Fable 5.1", ["off", "low", "medium", "high"], true],
+			["zai/glm-5", "GLM 5", ["none", "minimal", "low", "medium", "high", "max"], false],
+			["local/tiny", "tiny", [], false],
+		]);
+
+		const configured = (await request("session.configure", { modelKey: "zai/glm-5", thinkingLevel: "max" }, key)) as {
+			state: Record<string, unknown>;
+		};
+		expect(runtime.settings).toEqual([
+			{ sessionId: "rt-chat", patch: { modelKey: "zai/glm-5", thinkingLevel: "max" } },
+		]);
+		expect(configured.state).toMatchObject({ modelKey: "zai/glm-5", thinkingLevel: "max" });
+		await expect(request("session.configure", { modelKey: "nope/none" }, key)).rejects.toMatchObject({
+			code: "not_found",
+		});
+		runtime.streaming.add("rt-chat");
+		await expect(request("session.configure", { thinkingLevel: "low" }, key)).rejects.toMatchObject({ code: "busy" });
 		mirror.stop();
 	});
 

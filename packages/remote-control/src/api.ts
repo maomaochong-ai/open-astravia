@@ -32,7 +32,12 @@ export interface RemoteSessionState {
 	readonly status: RemoteSessionStatus;
 	/** Human-readable detail such as "compacting" or a retry counter. */
 	readonly detail?: string;
+	/** Display name of the session's model. */
 	readonly model?: string;
+	/** `provider/modelId`, as `session.configure` takes it. */
+	readonly modelKey?: string;
+	/** The session's current thinking level, e.g. "off" or "high". */
+	readonly thinkingLevel?: string;
 	readonly contextPercent?: number;
 	readonly error?: { readonly code: string; readonly message: string };
 	/** Present while the desktop waits for an answer that the phone may give. */
@@ -101,6 +106,27 @@ export type RemoteTranscriptEntry =
 	  }
 	| { readonly kind: "marker"; readonly id: string; readonly text: string; readonly at?: number };
 
+/** A model the session can switch to, with the thinking levels it accepts. */
+export interface RemoteModelOption {
+	/** `provider/modelId`. */
+	readonly key: string;
+	readonly name: string;
+	readonly provider: string;
+	/** Empty when the model has no thinking control; otherwise includes "off" or "none". */
+	readonly thinkingLevels: readonly string[];
+	readonly defaultThinkingLevel?: string;
+	readonly supportsImage: boolean;
+}
+
+export type RemoteUploadKind = "image" | "file";
+
+/**
+ * Largest attachment the phone may upload in one `session.upload`, before
+ * base64. One sealed frame carries at most ~1 MB of JSON, so each attachment
+ * travels in its own request and prompts refer to it by `uploadId`.
+ */
+export const REMOTE_MAX_UPLOAD_BYTES = 700 * 1024;
+
 export interface RemoteDeviceStatus {
 	readonly deviceName: string;
 	readonly osLabel?: string;
@@ -130,7 +156,17 @@ export interface RemoteRequestPayloads {
 	readonly "session.create": { readonly projectCwd?: string } | undefined;
 	readonly "session.open": undefined;
 	readonly "session.history": undefined;
-	readonly "session.prompt": { readonly text: string };
+	/** `attachments` are `uploadId`s returned by `session.upload` for the same session. */
+	readonly "session.prompt": { readonly text: string; readonly attachments?: readonly string[] };
+	readonly "session.upload": {
+		readonly kind: RemoteUploadKind;
+		readonly name: string;
+		readonly mimeType: string;
+		/** base64, at most `REMOTE_MAX_UPLOAD_BYTES` once decoded. */
+		readonly data: string;
+	};
+	readonly "model.list": undefined;
+	readonly "session.configure": { readonly modelKey?: string; readonly thinkingLevel?: string };
 	readonly "session.respond": {
 		readonly requestId: string;
 		readonly cancelled: boolean;
@@ -151,6 +187,9 @@ export interface RemoteResponsePayloads {
 		readonly state: RemoteSessionState;
 	};
 	readonly "session.prompt": { readonly accepted: true };
+	readonly "session.upload": { readonly uploadId: string };
+	readonly "model.list": { readonly models: readonly RemoteModelOption[] };
+	readonly "session.configure": { readonly state: RemoteSessionState };
 	readonly "session.respond": { readonly responded: true };
 	readonly "session.abort": { readonly aborted: true };
 	readonly "session.resume": { readonly resumed: true };
@@ -250,6 +289,8 @@ export function readSessionState(value: unknown): RemoteSessionState {
 		status: readSessionStatus(value.status),
 		detail: str(value.detail),
 		model: str(value.model),
+		modelKey: str(value.modelKey),
+		thinkingLevel: str(value.thinkingLevel),
 		contextPercent: num(value.contextPercent),
 		error: errorRecord
 			? { code: str(errorRecord.code) ?? "internal_error", message: str(errorRecord.message) ?? "" }
@@ -383,6 +424,28 @@ export function readProjectSummaries(value: unknown): RemoteProjectSummary[] {
 				name: str(entry.name) ?? cwd,
 				kind: entry.kind === "conversation" ? "conversation" : "project",
 				sessionCount: num(entry.sessionCount) ?? 0,
+			},
+		];
+	});
+}
+
+export function readModelOptions(value: unknown): RemoteModelOption[] {
+	const list = isRecord(value) && Array.isArray(value.models) ? value.models : [];
+	return list.flatMap((entry): RemoteModelOption[] => {
+		if (!isRecord(entry)) return [];
+		const key = str(entry.key);
+		if (!key) return [];
+		const levels = Array.isArray(entry.thinkingLevels)
+			? entry.thinkingLevels.filter((level): level is string => typeof level === "string" && level.length > 0)
+			: [];
+		return [
+			{
+				key,
+				name: str(entry.name) ?? key,
+				provider: str(entry.provider) ?? key.split("/")[0] ?? "",
+				thinkingLevels: levels,
+				defaultThinkingLevel: str(entry.defaultThinkingLevel),
+				supportsImage: entry.supportsImage === true,
 			},
 		];
 	});

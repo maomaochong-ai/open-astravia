@@ -110,7 +110,7 @@ struct SessionView: View {
 			.id(request.requestId)
 		case let .item(item):
 			switch item {
-			case let .user(_, text, _):
+			case let .user(_, text, _, _):
 				UserBubble(text: text)
 			case let .marker(_, text, _):
 				MarkerRow(text: text.isEmpty ? L10n.Chat.compacted : text)

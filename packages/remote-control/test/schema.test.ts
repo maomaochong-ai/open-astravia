@@ -48,6 +48,12 @@ describe("remote control JSON Schema", () => {
 		expect(validate({ type: "sealed", nonce: "C".repeat(32), ciphertext: "a b" })).toBe(false);
 	});
 
+	it("lists the same request methods the TypeScript and Swift readers accept", () => {
+		for (const method of ["session.upload", "model.list", "session.configure"]) {
+			expect(validate({ type: "request", requestId: "r1", method, sessionId: "s1", payload: {} })).toBe(true);
+		}
+	});
+
 	it("rejects authority-expanding unknown fields", () => {
 		expect(validate({ type: "ack", sequence: 1, execute: "anything" })).toBe(false);
 	});

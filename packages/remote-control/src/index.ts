@@ -4,6 +4,7 @@ export type {
 	RemoteDiagnosticsSnapshot,
 	RemoteEventPayloads,
 	RemoteMessageEvent,
+	RemoteModelOption,
 	RemoteProjectSummary,
 	RemoteQuestionAnswer,
 	RemoteQuestionItem,
@@ -18,11 +19,14 @@ export type {
 	RemoteToolEvent,
 	RemoteToolPhase,
 	RemoteTranscriptEntry,
+	RemoteUploadKind,
 } from "./api.js";
 export {
+	REMOTE_MAX_UPLOAD_BYTES,
 	readDevicePaired,
 	readDeviceStatus,
 	readMessageEvent,
+	readModelOptions,
 	readProjectSummaries,
 	readQuestionRequest,
 	readSessionState,

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+	REMOTE_MAX_UPLOAD_BYTES,
 	readMessageEvent,
+	readModelOptions,
 	readQuestionRequest,
 	readSessionState,
 	readSessionSummaries,
@@ -51,6 +53,59 @@ describe("remote api payload readers", () => {
 			],
 		});
 		expect(readQuestionRequest({ requestId: "q" })).toBeUndefined();
+	});
+
+	it("reads the model and thinking level a session runs with", () => {
+		const state = readSessionState({
+			status: "idle",
+			model: "Claude Fable 5.1",
+			modelKey: "anthropic/claude-fable-5-1",
+			thinkingLevel: "high",
+		});
+		expect(state).toMatchObject({ modelKey: "anthropic/claude-fable-5-1", thinkingLevel: "high" });
+		expect(readSessionState({ status: "idle" }).modelKey).toBeUndefined();
+	});
+
+	it("keeps model options with a key and their thinking levels", () => {
+		expect(
+			readModelOptions({
+				models: [
+					{
+						key: "anthropic/claude-fable-5-1",
+						name: "Claude Fable 5.1",
+						provider: "anthropic",
+						thinkingLevels: ["off", "low", 3, "high"],
+						defaultThinkingLevel: "high",
+						supportsImage: true,
+					},
+					{ key: "local/llama" },
+					{ name: "no key" },
+				],
+			}),
+		).toEqual([
+			{
+				key: "anthropic/claude-fable-5-1",
+				name: "Claude Fable 5.1",
+				provider: "anthropic",
+				thinkingLevels: ["off", "low", "high"],
+				defaultThinkingLevel: "high",
+				supportsImage: true,
+			},
+			{
+				key: "local/llama",
+				name: "local/llama",
+				provider: "local",
+				thinkingLevels: [],
+				defaultThinkingLevel: undefined,
+				supportsImage: false,
+			},
+		]);
+		expect(readModelOptions(undefined)).toEqual([]);
+	});
+
+	it("caps one upload well inside a sealed frame", () => {
+		// base64 grows by 4/3 and the frame is sealed JSON; ~1.05 MB of plaintext fits the relay.
+		expect(Math.ceil(REMOTE_MAX_UPLOAD_BYTES / 3) * 4).toBeLessThan(1_000_000);
 	});
 
 	it("reads message, tool and transcript payloads", () => {

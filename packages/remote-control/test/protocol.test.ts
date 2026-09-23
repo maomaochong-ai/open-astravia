@@ -36,6 +36,14 @@ describe("remote protocol v2", () => {
 		);
 	});
 
+	it("accepts the upload and model requests", () => {
+		for (const method of ["session.upload", "model.list", "session.configure"]) {
+			expect(decodeRemoteFrame({ type: "request", requestId: "r1", method, sessionId: "s1" })).toMatchObject({
+				method,
+			});
+		}
+	});
+
 	it("requires well-formed X25519 keys in the handshake", () => {
 		expect(() => decodeRemoteFrame({ ...hello, identityKey: "short" })).toThrow(RemoteProtocolError);
 		expect(() => decodeRemoteFrame({ ...hello, ephemeralKey: `${ephemeral}=` })).toThrow(RemoteProtocolError);

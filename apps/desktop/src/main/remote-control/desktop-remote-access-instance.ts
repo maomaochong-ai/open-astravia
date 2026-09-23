@@ -12,6 +12,7 @@ import { desktopDeviceId, desktopDisplayName, desktopHardware, formatOsLabel } f
 import { DesktopRemoteAccessManager } from "./desktop-remote-access-manager.js";
 import { DesktopRemoteMirror } from "./desktop-remote-mirror.js";
 import { RemoteDeviceStore } from "./remote-device-store.js";
+import { saveRemoteUpload } from "./remote-upload-store.js";
 
 let manager: DesktopRemoteAccessManager | undefined;
 
@@ -53,6 +54,7 @@ export function getDesktopRemoteAccessManager(defaultRelayBaseUrl?: string): Des
 				isConversationCwd,
 				emit,
 				deviceStatus,
+				saveUpload: saveRemoteUpload,
 				hardware: desktopHardware,
 			}),
 	});

@@ -26,14 +26,25 @@ public struct AssistantTurn: Equatable, Codable, Sendable {
 	public var error: String?
 }
 
+/// A picture or file sent with a prompt from this phone, shown on its bubble.
+public struct TranscriptAttachment: Equatable, Codable, Sendable {
+	public var kind: PromptAttachment.Kind
+	public var name: String
+
+	public init(kind: PromptAttachment.Kind, name: String) {
+		self.kind = kind
+		self.name = name
+	}
+}
+
 public enum TranscriptItem: Equatable, Codable, Sendable, Identifiable {
-	case user(id: String, text: String, at: Double?)
+	case user(id: String, text: String, at: Double?, attachments: [TranscriptAttachment] = [])
 	case assistant(AssistantTurn)
 	case marker(id: String, text: String, at: Double?)
 
 	public var id: String {
 		switch self {
-		case let .user(id, _, _): id
+		case let .user(id, _, _, _): id
 		case let .assistant(turn): turn.id
 		case let .marker(id, _, _): id
 		}
@@ -41,7 +52,7 @@ public enum TranscriptItem: Equatable, Codable, Sendable, Identifiable {
 
 	public var at: Double? {
 		switch self {
-		case let .user(_, _, at): at
+		case let .user(_, _, at, _): at
 		case let .assistant(turn): turn.at
 		case let .marker(_, _, at): at
 		}
@@ -66,7 +77,7 @@ public enum TranscriptAction: Equatable, Sendable {
 	case state(RemoteSessionState)
 	case question(RemoteQuestionRequest)
 	case questionResolved(requestId: String)
-	case localUser(text: String, at: Double)
+	case localUser(text: String, at: Double, attachments: [TranscriptAttachment] = [])
 	case resync
 }
 
@@ -98,8 +109,8 @@ public enum TranscriptReducer {
 				stale: false,
 				loaded: true
 			)
-		case let .localUser(text, at):
-			next.items.append(.user(id: nextLocalId("local-user"), text: text, at: at))
+		case let .localUser(text, at, attachments):
+			next.items.append(.user(id: nextLocalId("local-user"), text: text, at: at, attachments: attachments))
 			return next
 		case let .message(event):
 			return applyMessage(state, event)
@@ -154,10 +165,12 @@ public enum TranscriptReducer {
 	private static func applyMessage(_ state: TranscriptState, _ event: RemoteMessageEvent) -> TranscriptState {
 		switch event {
 		case let .user(text, at):
-			// The optimistic bubble for our own prompt is replaced by the desktop's authoritative copy.
+			// The optimistic bubble for our own prompt is replaced by the desktop's
+			// authoritative copy, which keeps the attachments only this phone knows about.
 			var next = state
-			next.items = dropMatchingLocalUser(state.items, text)
-			next.items.append(.user(id: nextLocalId("user"), text: text, at: at))
+			let (items, attachments) = dropMatchingLocalUser(state.items, text)
+			next.items = items
+			next.items.append(.user(id: nextLocalId("user"), text: text, at: at, attachments: attachments))
 			return next
 		case let .assistantDelta(text):
 			return updateStreaming(state) { $0.text += text }
@@ -225,19 +238,19 @@ public enum TranscriptReducer {
 		return output
 	}
 
-	private static func dropMatchingLocalUser(_ items: [TranscriptItem], _ text: String) -> [TranscriptItem] {
+	private static func dropMatchingLocalUser(_ items: [TranscriptItem], _ text: String) -> ([TranscriptItem], [TranscriptAttachment]) {
 		for index in items.indices.reversed() {
 			switch items[index] {
 			case .assistant:
 				continue
-			case let .user(id, userText, _) where id.hasPrefix("local-user") && userText == text:
+			case let .user(id, userText, _, attachments) where id.hasPrefix("local-user") && userText == text:
 				var output = items
 				output.remove(at: index)
-				return output
+				return (output, attachments)
 			default:
-				return items
+				return (items, [])
 			}
 		}
-		return items
+		return (items, [])
 	}
 }

@@ -66,6 +66,8 @@ public final class AppModel {
 	/// The desktop's project list, the conversation bucket first. Kept across
 	/// launches so filtering by kind works before the link comes up.
 	public private(set) var projects: [RemoteProjectSummary] = []
+	/// Models each opened session may switch to, fetched on demand.
+	public private(set) var models: [String: [RemoteModelOption]] = [:]
 	public private(set) var transcripts: [String: TranscriptState] = [:]
 	public private(set) var preferences: Preferences = .defaults
 	public private(set) var pairing: PairingPhase = .idle
@@ -158,6 +160,7 @@ public final class AppModel {
 		sessions = []
 		sessionsLoaded = false
 		projects = []
+		models = [:]
 		transcripts = [:]
 		link = .offline
 	}
@@ -374,10 +377,37 @@ public final class AppModel {
 		}
 	}
 
-	/// Sends a prompt; with no session a new one is created first, in `projectCwd`
-	/// or, without one, in the desktop's conversations. Returns the session that received it.
+	public func loadModels(_ sessionId: String) async {
+		do {
+			let result = try await requireManager().request(.modelList, sessionId: sessionId)
+			models[sessionId] = RemoteAPI.readModelOptions(result)
+		} catch {
+			if !(error is LinkOfflineError) { reportError(error) }
+		}
+	}
+
+	/// Switches the session's model and/or thinking level on the desktop.
 	@discardableResult
-	public func sendPrompt(_ sessionId: String?, _ text: String, projectCwd: String? = nil) async -> String? {
+	public func configure(_ sessionId: String, modelKey: String? = nil, thinkingLevel: String? = nil) async -> Bool {
+		var payload: [String: JSONValue] = [:]
+		if let modelKey { payload["modelKey"] = .string(modelKey) }
+		if let thinkingLevel { payload["thinkingLevel"] = .string(thinkingLevel) }
+		guard !payload.isEmpty else { return false }
+		do {
+			let result = try await requireManager().request(.sessionConfigure, payload: .object(payload), sessionId: sessionId)
+			dispatch(sessionId, .state(RemoteAPI.readSessionState(result?["state"])))
+			return true
+		} catch {
+			reportError(error)
+			return false
+		}
+	}
+
+	/// Sends a prompt; with no session a new one is created first, in `projectCwd`
+	/// or, without one, in the desktop's conversations. Attachments are uploaded one
+	/// per request first. Returns the session that received it.
+	@discardableResult
+	public func sendPrompt(_ sessionId: String?, _ text: String, projectCwd: String? = nil, attachments: [PromptAttachment] = []) async -> String? {
 		let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
 		guard !trimmed.isEmpty else { return sessionId }
 		do {
@@ -394,8 +424,16 @@ public final class AppModel {
 				dispatch(session.id, .history(entries: [], state: RemoteSessionState(status: .idle)))
 			}
 			guard let target else { return sessionId }
+			var uploadIds: [JSONValue] = []
+			for attachment in attachments {
+				let uploaded = try await manager.request(.sessionUpload, payload: attachment.json, sessionId: target)
+				guard let uploadId = uploaded?["uploadId"]?.stringValue else {
+					throw RemoteRequestError("session.upload returned no uploadId")
+				}
+				uploadIds.append(.string(uploadId))
+			}
 			let now = WallClock.nowMs()
-			dispatch(target, .localUser(text: trimmed, at: now))
+			dispatch(target, .localUser(text: trimmed, at: now, attachments: attachments.map { TranscriptAttachment(kind: $0.kind, name: $0.name) }))
 			dispatch(target, .state(RemoteSessionState(status: .running)))
 			let title = currentTitle(target, fallback: trimmed)
 			patchSession(target) {
@@ -404,7 +442,9 @@ public final class AppModel {
 				$0.updatedAt = now
 				$0.title = title
 			}
-			_ = try await manager.request(.sessionPrompt, payload: ["text": .string(trimmed)], sessionId: target)
+			var payload: [String: JSONValue] = ["text": .string(trimmed)]
+			if !uploadIds.isEmpty { payload["attachments"] = .array(uploadIds) }
+			_ = try await manager.request(.sessionPrompt, payload: .object(payload), sessionId: target)
 			return target
 		} catch {
 			reportError(error)

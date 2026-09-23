@@ -191,14 +191,30 @@ import Testing
 /// End-to-end over the fake desktop: pairing, session list, prompting with
 /// streamed replies, answering a question and unpairing.
 @Suite(.serialized) struct AppModelTests {
-	func scriptedDesktop() -> FakeDesktop {
+	func scriptedDesktop(recording requests: RequestLog? = nil) -> FakeDesktop {
 		let desktop = FakeDesktop()
 		desktop.onHello = { _ in .approve }
 		var sessions: [JSONValue] = [
 			["id": "s1", "projectCwd": "/conv", "projectName": "对话", "title": "整理周报", "preview": "上周的", "updatedAt": 1_000, "status": "completed", "live": false],
 		]
+		var uploads = 0
+		var modelKey = "anthropic/claude-fable-5-1"
+		var thinkingLevel = "off"
 		desktop.onRequest = { connection, request in
+			requests?.entries.append(request)
 			switch request.method {
+			case .sessionUpload:
+				uploads += 1
+				try? connection.respond(requestId: request.requestId, success: true, payload: ["uploadId": .string("up-\(uploads)")])
+			case .modelList:
+				try? connection.respond(requestId: request.requestId, success: true, payload: ["models": [
+					["key": "anthropic/claude-fable-5-1", "name": "Claude Fable 5.1", "provider": "anthropic", "thinkingLevels": ["off", "low", "medium", "high"], "supportsImage": true],
+					["key": "zai/glm-5", "name": "GLM 5", "provider": "zai", "thinkingLevels": ["none", "high", "max"], "supportsImage": false],
+				]])
+			case .sessionConfigure:
+				modelKey = request.payload?["modelKey"]?.stringValue ?? modelKey
+				thinkingLevel = request.payload?["thinkingLevel"]?.stringValue ?? thinkingLevel
+				try? connection.respond(requestId: request.requestId, success: true, payload: ["state": ["status": "idle", "modelKey": .string(modelKey), "thinkingLevel": .string(thinkingLevel)]])
 			case .sessionList:
 				try? connection.respond(requestId: request.requestId, success: true, payload: ["sessions": .array(sessions)])
 			case .projectList:
@@ -256,7 +272,7 @@ import Testing
 		#expect(await eventually { model.transcript("s2").pendingQuestion?.requestId == "q1" })
 		let transcript = model.transcript("s2")
 		#expect(transcript.items.count == 2)
-		if case let .user(_, text, at) = transcript.items.first {
+		if case let .user(_, text, at, _) = transcript.items.first {
 			#expect(text == "帮我写周报")
 			#expect(at == 5)
 		} else {
@@ -311,6 +327,51 @@ import Testing
 		#expect(platform.settings.get(AppModel.projectsKeyPrefix + desktop.identityKey) == nil)
 	}
 
+	@Test func uploadsAttachmentsOneByOneBeforeThePromptAndKeepsThemOnTheBubble() async throws {
+		let log = RequestLog()
+		let desktop = scriptedDesktop(recording: log)
+		let model = AppModel(platform: .memory(createTransport: desktop.createTransport))
+		model.start()
+		let invite = PairingURI.build(RemotePairingInvite(pairingId: "pair-1234567890abcdef", mobileSecret: "secret-1234567890abcdef", desktopIdentityKey: desktop.identityKey, desktopName: "MacBook Pro", lanEndpoints: ["192.168.1.20:43117"]))
+		#expect(await model.pairWithCode(invite))
+		#expect(await eventually { model.online })
+
+		let photo = PromptAttachment(kind: .image, name: "photo-1.jpg", mimeType: "image/jpeg", data: Data([1, 2, 3]))
+		let notes = PromptAttachment(kind: .file, name: "notes.txt", mimeType: "text/plain", data: Data("hi".utf8))
+		let sessionId = await model.sendPrompt(nil, "看看这些", attachments: [photo, notes])
+		#expect(sessionId == "s2")
+		let sent = log.entries.filter { [.sessionUpload, .sessionPrompt].contains($0.method) }
+		#expect(sent.map(\.method) == [.sessionUpload, .sessionUpload, .sessionPrompt])
+		#expect(sent.first?.payload?["name"]?.stringValue == "photo-1.jpg")
+		#expect(sent.first?.payload?["data"]?.stringValue == Data([1, 2, 3]).base64EncodedString())
+		#expect(sent.last?.payload?["attachments"] == .array([.string("up-1"), .string("up-2")]))
+
+		// The desktop echoes the prompt without attachments; the bubble keeps what this phone sent.
+		#expect(await eventually {
+			if case let .user(id, _, _, attachments) = model.transcript("s2").items.first { return !id.hasPrefix("local") && attachments.count == 2 }
+			return false
+		})
+		if case let .user(_, _, _, attachments) = model.transcript("s2").items.first {
+			#expect(attachments == [TranscriptAttachment(kind: .image, name: "photo-1.jpg"), TranscriptAttachment(kind: .file, name: "notes.txt")])
+		}
+	}
+
+	@Test func listsModelsAndSwitchesModelAndThinkingLevel() async throws {
+		let desktop = scriptedDesktop()
+		let model = AppModel(platform: .memory(createTransport: desktop.createTransport))
+		model.start()
+		let invite = PairingURI.build(RemotePairingInvite(pairingId: "pair-1234567890abcdef", mobileSecret: "secret-1234567890abcdef", desktopIdentityKey: desktop.identityKey, desktopName: "MacBook Pro", lanEndpoints: ["192.168.1.20:43117"]))
+		#expect(await model.pairWithCode(invite))
+		#expect(await eventually { model.sessions.map(\.id) == ["s1"] })
+
+		await model.loadModels("s1")
+		#expect(model.models["s1"]?.map(\.key) == ["anthropic/claude-fable-5-1", "zai/glm-5"])
+		#expect(await model.configure("s1", modelKey: "zai/glm-5", thinkingLevel: "max"))
+		#expect(model.transcript("s1").sessionState.modelKey == "zai/glm-5")
+		#expect(model.transcript("s1").sessionState.thinkingLevel == "max")
+		#expect(await model.configure("s1") == false, "nothing to change sends nothing")
+	}
+
 	@Test func reportsOfflineInsteadOfSendingAndHonoursLiveThinking() async {
 		let desktop = scriptedDesktop()
 		let model = AppModel(platform: .memory(createTransport: desktop.createTransport))
@@ -337,6 +398,11 @@ import Testing
 		#expect(second.sessions.map(\.id) == ["s1"])
 		#expect(await eventually { second.online })
 	}
+}
+
+/// Every request the scripted desktop saw, in order.
+final class RequestLog {
+	var entries: [RemoteRequest] = []
 }
 
 extension AppModel {
