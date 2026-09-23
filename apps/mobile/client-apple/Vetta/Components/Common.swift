@@ -182,7 +182,8 @@ func describeStatus(_ status: RemoteSessionStatus) -> (label: String, tone: Stat
 }
 
 /// Vetta's face, drawn like the desktop's `BotAvatar` in its black-and-white
-/// theme: a rounded square with two round eyes. Asleep, the eyes close to slits.
+/// theme: a rounded square with two round eyes cut out of it, so whatever is
+/// behind shows through them. Asleep, the eyes close to slits.
 /// Static on purpose; a tap blinks it once.
 struct BotAvatar: View {
 	var size: CGFloat = 24
@@ -194,15 +195,19 @@ struct BotAvatar: View {
 		RoundedRectangle(cornerRadius: size * 0.3, style: .continuous)
 			.fill(LinearGradient(colors: [Theme.botFace, Theme.botFace.opacity(0.85)], startPoint: .topLeading, endPoint: .bottomTrailing))
 			.frame(width: size, height: size)
-			.overlay {
-				HStack(spacing: eye) {
-					ForEach(0 ..< 2, id: \.self) { _ in
-						Circle()
-							.fill(Theme.botEye)
-							.frame(width: eye, height: eye)
-							.scaleEffect(x: 1, y: asleep || blinking ? 0.15 : 1)
+			.mask {
+				ZStack {
+					Rectangle()
+					HStack(spacing: eye) {
+						ForEach(0 ..< 2, id: \.self) { _ in
+							Circle()
+								.frame(width: eye, height: eye)
+								.scaleEffect(x: 1, y: asleep || blinking ? 0.15 : 1)
+						}
 					}
+					.blendMode(.destinationOut)
 				}
+				.compositingGroup()
 			}
 			.shadow(color: Theme.botFace.opacity(0.3), radius: size * 0.2, y: size * 0.1)
 			.animation(.easeInOut(duration: 0.15), value: blinking)
