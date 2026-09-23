@@ -1006,6 +1006,57 @@
         }
       }
     },
+    "home.unpairedDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Vetta Desktop on your computer and click “Connect Phone” in the top-right corner. Once paired, your computer's sessions show up here."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开电脑上的 Vetta Desktop，点击右上角「手机扫码连接」，扫码配对后电脑上的会话会显示在这里。"
+          }
+        }
+      }
+    },
+    "home.unpairedScan": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan to pair"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "扫码配对"
+          }
+        }
+      }
+    },
+    "home.unpairedTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connect your computer"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接你的电脑"
+          }
+        }
+      }
+    },
     "home.untitled": {
       "extractionState": "manual",
       "localizations": {

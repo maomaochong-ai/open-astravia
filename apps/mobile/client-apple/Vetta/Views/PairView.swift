@@ -90,16 +90,12 @@ struct PairView: View {
 			.navigationTitle(L10n.Pair.title)
 			.navigationBarTitleDisplayMode(.inline)
 			.toolbar {
-				if model.paired {
-					ToolbarItem(placement: .topBarLeading) {
-						Button {
-							model.cancelPairing()
-							dismiss()
-						} label: {
-							Image(systemName: "xmark")
-						}
-						.accessibilityLabel(L10n.Common.close)
+				ToolbarItem(placement: .topBarLeading) {
+					Button { dismiss() } label: {
+						Image(systemName: "xmark")
 					}
+					.accessibilityLabel(L10n.Common.close)
+					.accessibilityIdentifier("pair.close")
 				}
 				ToolbarItem(placement: .topBarTrailing) {
 					Button { helpOpen = true } label: {
@@ -122,7 +118,6 @@ struct PairView: View {
 			}
 		}
 		.tint(Theme.ink)
-		.interactiveDismissDisabled(!model.paired)
 	}
 
 	@ViewBuilder

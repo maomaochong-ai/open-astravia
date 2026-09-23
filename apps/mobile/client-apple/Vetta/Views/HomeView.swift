@@ -25,6 +25,23 @@ struct HomeView: View {
 	}
 
 	var body: some View {
+		if model.paired {
+			sessionList
+		} else {
+			// Nothing to mirror until a desktop is paired, so the guide is the whole page.
+			PairingGuide { router.showPairing = true }
+				.opacity(model.ready ? 1 : 0)
+				.navigationBarTitleDisplayMode(.inline)
+				.toolbar {
+					ToolbarItem(placement: .principal) {
+						Text(L10n.appName).font(.system(size: 17, weight: .semibold)).foregroundStyle(Theme.ink)
+					}
+				}
+		}
+	}
+
+	@ViewBuilder
+	private var sessionList: some View {
 		let rows = visible
 		ScrollView {
 			LazyVStack(alignment: .leading, spacing: 0) {
@@ -141,6 +158,48 @@ struct HomeView: View {
 			}
 		}
 		.padding(.bottom, 4)
+	}
+}
+
+/// First-run home: explains what pairing unlocks and opens the scanner.
+private struct PairingGuide: View {
+	var onScan: () -> Void
+
+	var body: some View {
+		VStack(spacing: 0) {
+			Spacer(minLength: 24)
+			Image(systemName: "qrcode.viewfinder")
+				.font(.system(size: 44, weight: .regular))
+				.foregroundStyle(Theme.green)
+				.frame(width: 96, height: 96)
+				.glassEffect(.regular, in: .rect(cornerRadius: 28))
+			Text(L10n.Home.unpairedTitle)
+				.font(.system(size: 26, weight: .bold))
+				.foregroundStyle(Theme.ink)
+				.multilineTextAlignment(.center)
+				.padding(.top, 28)
+			Text(L10n.Home.unpairedDescription)
+				.font(.system(size: 14))
+				.foregroundStyle(Theme.dim)
+				.multilineTextAlignment(.center)
+				.lineSpacing(4)
+				.padding(.top, 10)
+			Spacer(minLength: 24)
+			Button(action: onScan) {
+				Label(L10n.Home.unpairedScan, systemImage: "qrcode.viewfinder")
+					.font(.system(size: 15, weight: .semibold))
+					.foregroundStyle(Theme.pillInk)
+					.frame(maxWidth: .infinity)
+					.padding(.vertical, 8)
+			}
+			.buttonStyle(.glassProminent)
+			.tint(Theme.pill)
+			.accessibilityIdentifier("home.pair")
+			.padding(.bottom, 16)
+		}
+		.padding(.horizontal, 24)
+		.frame(maxWidth: .infinity, maxHeight: .infinity)
+		.background(Theme.page)
 	}
 }
 

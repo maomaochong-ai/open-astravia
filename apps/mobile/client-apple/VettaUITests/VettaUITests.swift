@@ -3,7 +3,7 @@ import XCTest
 /// Drives the real app. The end-to-end flow needs the interop harness
 /// (`scripts/ui-test.sh` starts it and passes the invite through the
 /// `VETTA_UITEST_INVITE` environment variable); without it only the first-run
-/// pairing screen is checked. The app is pinned to Simplified Chinese because
+/// pairing guide and screen are checked. The app is pinned to Simplified Chinese because
 /// the assertions read its copy; it otherwise follows the system language.
 final class VettaUITests: XCTestCase {
 	private var shotDirectory: String? { ProcessInfo.processInfo.environment["VETTA_UITEST_SHOTS"] }
@@ -16,10 +16,22 @@ final class VettaUITests: XCTestCase {
 		continueAfterFailure = false
 	}
 
-	@MainActor func testShowsThePairingScreenOnFirstLaunch() {
+	@MainActor func testGuidesToPairingOnFirstLaunch() {
 		let app = XCUIApplication()
 		app.launchArguments = ["-VettaEphemeralStorage"] + chinese
 		app.launch()
+		let pair = app.buttons["home.pair"]
+		XCTAssertTrue(pair.waitForExistence(timeout: 10), "an unpaired home should guide to pairing")
+		XCTAssertTrue(app.staticTexts["连接你的电脑"].exists)
+		XCTAssertFalse(app.staticTexts["电脑正在做的事"].exists, "an unpaired home shows nothing but the guide")
+		shot(app, "0-guide")
+
+		pair.tap()
+		XCTAssertTrue(app.staticTexts["对准电脑端的二维码"].waitForExistence(timeout: 10))
+		app.buttons["pair.close"].tap()
+		XCTAssertTrue(pair.waitForExistence(timeout: 5), "closing the scanner returns to the guide")
+
+		pair.tap()
 		XCTAssertTrue(app.staticTexts["对准电脑端的二维码"].waitForExistence(timeout: 10))
 		XCTAssertTrue(app.buttons["pair.manual"].exists)
 		shot(app, "1-pair")

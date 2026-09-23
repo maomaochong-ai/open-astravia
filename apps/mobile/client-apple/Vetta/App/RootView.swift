@@ -10,7 +10,7 @@ enum Route: Hashable {
 @Observable
 final class Router {
 	var path: [Route] = []
-	/// The pairing screen opened on purpose (rescan) while a desktop is already paired.
+	/// The pairing screen, opened on purpose from the home guide or a rescan.
 	var showPairing = false
 }
 
@@ -30,11 +30,7 @@ struct RootView: View {
 		}
 		.tint(Theme.ink)
 		.environment(router)
-		.fullScreenCover(isPresented: Binding(get: { model.ready && !model.paired }, set: { _ in })) {
-			PairView()
-				.environment(router)
-		}
-		.sheet(isPresented: Binding(get: { router.showPairing && model.paired }, set: { router.showPairing = $0 })) {
+		.sheet(isPresented: $router.showPairing, onDismiss: { model.cancelPairing() }) {
 			PairView()
 				.environment(router)
 		}

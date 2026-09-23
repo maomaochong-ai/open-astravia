@@ -63,6 +63,9 @@ public enum L10n {
 		public static var statusError: String { tr("home.statusError") }
 		public static var statusAborted: String { tr("home.statusAborted") }
 		public static var untitled: String { tr("home.untitled") }
+		public static var unpairedTitle: String { tr("home.unpairedTitle") }
+		public static var unpairedDescription: String { tr("home.unpairedDescription") }
+		public static var unpairedScan: String { tr("home.unpairedScan") }
 	}
 
 	public enum Chat {
