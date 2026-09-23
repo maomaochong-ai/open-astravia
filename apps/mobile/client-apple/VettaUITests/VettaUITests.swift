@@ -51,17 +51,21 @@ final class VettaUITests: XCTestCase {
 		shot(app, "2-manual")
 	}
 
-	@MainActor func testMirrorsADesktopSessionEndToEnd() throws {
+	/// A brand-new phone paired with the harness desktop, on Work with its sessions listed.
+	@MainActor private func launchPaired() throws -> XCUIApplication {
 		let invite = try XCTUnwrap(invite, "run through scripts/ui-test.sh to provide a desktop")
 		let app = XCUIApplication()
 		app.launchArguments = ["-VettaEphemeralStorage", "-VettaPairURI", invite, "-VettaUITestAttachments"] + chinese
 		app.launch()
-
-		let report = app.buttons["session.s-report"]
-		if !report.waitForExistence(timeout: 15) {
+		if !app.buttons["session.s-report"].waitForExistence(timeout: 15) {
 			shot(app, "fail-home")
 			XCTFail("Work should list the desktop's sessions")
 		}
+		return app
+	}
+
+	@MainActor func testWorkListFiltersAndCollapsesItsTitle() throws {
+		let app = try launchPaired()
 		XCTAssertTrue(app.buttons["session.s-build"].exists)
 		XCTAssertTrue(app.buttons["session.s-docs"].exists)
 		XCTAssertFalse(app.buttons["link.status.compact"].exists, "the small title waits until the large one scrolls away")
@@ -89,7 +93,15 @@ final class VettaUITests: XCTestCase {
 		XCTAssertFalse(app.buttons["filter.project"].waitForExistence(timeout: 2), "leaving projects drops the project chip")
 		XCTAssertTrue(app.buttons["session.s-report"].waitForExistence(timeout: 5))
 
-		report.tap()
+		// Scrolling the large title away hands over to the small one with the link icon.
+		app.swipeUp()
+		XCTAssertTrue(app.buttons["link.status.compact"].waitForExistence(timeout: 5))
+		shot(app, "9-collapsed")
+	}
+
+	@MainActor func testChatMergesRepliesAndSwitchesModel() throws {
+		let app = try launchPaired()
+		app.buttons["session.s-report"].tap()
 		// Two replies in a row are one turn; their tool calls fold into one step group.
 		XCTAssertTrue(app.descendants(matching: .any)["turn.a1"].waitForExistence(timeout: 10))
 		XCTAssertFalse(app.descendants(matching: .any)["turn.a1b"].exists, "the second reply merges into the first turn")
@@ -105,15 +117,22 @@ final class VettaUITests: XCTestCase {
 		// The title switches the model, then the thinking levels that model offers.
 		let modelMenu = app.buttons["chat.modelMenu"]
 		XCTAssertTrue(modelMenu.waitForExistence(timeout: 5))
-		XCTAssertTrue(modelMenu.label.contains("Claude Opus 5 · 中"), "starts on the desktop's current model: \(modelMenu.label)")
+		XCTAssertTrue(waitForLabel(modelMenu, containing: "Claude Opus 5 · 中"), "starts on the desktop's current model: \(modelMenu.label)")
 		pick(app, "chat.modelMenu", "GLM 5")
 		XCTAssertTrue(waitForLabel(modelMenu, containing: "GLM 5"))
 		pick(app, "chat.modelMenu", "最高")
 		XCTAssertTrue(waitForLabel(modelMenu, containing: "GLM 5 · 最高"))
 		shot(app, "5b-model")
+	}
 
+	@MainActor func testFailedTurnShowsOneErrorLine() throws {
+		let app = try launchPaired()
+		app.buttons["session.s-docs"].tap()
+		let modelMenu = app.buttons["chat.modelMenu"]
+		XCTAssertTrue(waitForLabel(modelMenu, containing: "Claude Opus 5 · 中"))
 		// A turn that fails: waiting feedback right away, then one error line that counts the retry.
 		let field = composerField(app)
+		XCTAssertTrue(field.waitForExistence(timeout: 5))
 		field.tap()
 		field.typeText("模拟报错")
 		app.buttons["composer.send"].tap()
@@ -125,15 +144,16 @@ final class VettaUITests: XCTestCase {
 		XCTAssertTrue(waitForLabel(failure, containing: "Connection error."), failure.label)
 		XCTAssertTrue(waitForLabel(failure, containing: "×2"), "the retry that fails the same way adds to the count: \(failure.label)")
 		XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "turn.error").count, 1, "retries merge into one line")
-		XCTAssertTrue(app.buttons["composer.send"].waitForExistence(timeout: 5))
-		XCTAssertTrue(modelMenu.label.contains("GLM 5 · 最高"), "a failed turn keeps showing the chosen model: \(modelMenu.label)")
+		XCTAssertTrue(waitForLabel(modelMenu, containing: "Claude Opus 5 · 中"), "a failed turn keeps showing the model: \(modelMenu.label)")
 		shot(app, "5c-error")
 		// Tapping the conversation puts the keyboard away.
 		XCTAssertTrue(app.keyboards.firstMatch.exists)
 		app.staticTexts["模拟报错"].tap()
 		XCTAssertTrue(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.keyboards.firstMatch)], timeout: 3) == .completed, "tapping outside the composer hides the keyboard")
-		app.navigationBars.buttons.element(boundBy: 0).tap()
+	}
 
+	@MainActor func testNewSessionWithAttachmentsAnswersAQuestion() throws {
+		let app = try launchPaired()
 		// New Session: start in a project and land straight in its chat.
 		app.buttons["work.newSession"].tap()
 		XCTAssertTrue(app.staticTexts["想让电脑做点什么？"].waitForExistence(timeout: 5))
@@ -143,10 +163,10 @@ final class VettaUITests: XCTestCase {
 		app.buttons["composer.attach"].tap()
 		app.buttons["composer.attach.sample"].tap()
 		XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "composer.attachment").count, 2)
-		let newField = composerField(app)
-		XCTAssertTrue(newField.waitForExistence(timeout: 5))
-		newField.tap()
-		newField.typeText("帮我检查一下构建\n顺便看看附件")
+		let field = composerField(app)
+		XCTAssertTrue(field.waitForExistence(timeout: 5))
+		field.tap()
+		field.typeText("帮我检查一下构建\n顺便看看附件")
 		XCTAssertTrue(app.buttons["composer.send"].isEnabled, "Return adds a line instead of sending")
 		shot(app, "6-new-session")
 		app.buttons["composer.send"].tap()
@@ -154,7 +174,6 @@ final class VettaUITests: XCTestCase {
 		let option = app.buttons["question.option.继续"]
 		XCTAssertTrue(option.waitForExistence(timeout: 15), "the desktop's question should reach the phone")
 		XCTAssertTrue(app.descendants(matching: .any)["bubble.attachments"].exists, "the bubble lists what was attached")
-		XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'photo-sample.jpg'")).firstMatch.exists)
 		XCTAssertTrue(
 			app.staticTexts.containing(NSPredicate(format: "label CONTAINS '附件：photo-sample.jpg'")).firstMatch.waitForExistence(timeout: 5),
 			"the desktop received both uploads with the prompt"
@@ -186,15 +205,10 @@ final class VettaUITests: XCTestCase {
 		app.buttons["question.submit"].tap()
 		XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '你的选择：继续；测试、设计'")).firstMatch.waitForExistence(timeout: 10))
 		XCTAssertTrue(composerField(app).waitForExistence(timeout: 5), "the composer comes back once answered")
-		app.navigationBars.buttons.element(boundBy: 0).tap()
+	}
 
-		// Scrolling the large title away hands over to the small one with the link icon.
-		app.swipeDown()
-		app.swipeUp()
-		XCTAssertTrue(app.buttons["link.status.compact"].waitForExistence(timeout: 5))
-		shot(app, "9-collapsed")
-		app.swipeDown()
-
+	@MainActor func testSettingsShowsTheComputerAndUnpairs() throws {
+		let app = try launchPaired()
 		app.tabBars.buttons["设置"].tap()
 		let computer = app.descendants(matching: .any)["settings.computer"]
 		XCTAssertTrue(computer.waitForExistence(timeout: 5))

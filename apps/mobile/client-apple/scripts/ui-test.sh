@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # Builds the app once and runs the UI tests on a simulator against the interop
-# harness (the desktop's real LAN server + fake relay). Each appearance gets a
-# fresh harness: the desktop pins the first phone that claims an invite, and
-# every UI run is a brand-new phone. Screenshots of every screen land in
-# $VETTA_UITEST_SHOTS (default: ./build/ui-shots).
-#   scripts/ui-test.sh [--fast] [--only <test>] ["iPhone 17 Pro"]
-#     --fast         dark appearance only, no screenshots: the loop while iterating
-#     --only <test>  one test method, e.g. --only testGuidesToPairingOnFirstLaunch
-# Before committing, run it without --fast so both appearances are covered and captured.
+# harness (the desktop's real LAN server + fake relay). Each test is a
+# brand-new phone that pairs on its own, so tests run independently. Each
+# appearance gets a fresh harness. Screenshots land in $VETTA_UITEST_SHOTS
+# (default: ./build/ui-shots).
+#   scripts/ui-test.sh [--fast] [--only <tests>] ["iPhone 17 Pro"]
+#     --fast          dark appearance only, no screenshots
+#     --only <tests>  comma-separated test methods, e.g. --only testChatMergesRepliesAndSwitchesModel
+# While iterating, run --fast --only with the tests for the screen you changed;
+# run everything in both appearances once before a batch of UI work is done.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 project="$(cd "$here/.." && pwd)"
@@ -18,7 +19,11 @@ device="iPhone 17 Pro"
 while [[ $# -gt 0 ]]; do
 	case "$1" in
 	--fast) appearances="dark"; shots="" ;;
-	--only) only=("-only-testing:VettaUITests/VettaUITests/$2"); shift ;;
+	--only)
+		IFS=',' read -ra names <<<"$2"
+		for name in "${names[@]}"; do only+=("-only-testing:VettaUITests/VettaUITests/$name"); done
+		shift
+		;;
 	*) device="$1" ;;
 	esac
 	shift
@@ -40,7 +45,7 @@ start_harness() {
 	cleanup
 	info="$(mktemp -t vetta-interop).json"
 	local log="$logs/harness-$appearance.log"
-	bun "$here/interop-desktop.ts" "$info" >"$log" 2>&1 &
+	VETTA_INTEROP_REPIN=1 bun "$here/interop-desktop.ts" "$info" >"$log" 2>&1 &
 	harness=$!
 	for _ in $(seq 1 100); do [[ -s "$info" ]] && return 0; sleep 0.1; done
 	echo "interop harness did not start"

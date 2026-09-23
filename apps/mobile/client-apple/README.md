@@ -43,7 +43,7 @@ scripts/interop.sh                          # 与 apps/desktop 的真实 LAN 服
 scripts/ui-test.sh                          # 模拟器（默认 iPhone 17 Pro）上跑 UI 测试，深浅色各截一套图到 build/ui-shots
 ```
 
-UI 测试只构建一次，再按外观各跑一遍。改界面时用 `scripts/ui-test.sh --fast` 只跑深色、不截图，配合 `--only <测试方法名>` 只跑一个用例；提交前再完整跑一次，确认深浅两套截图。
+UI 测试只构建一次，再按外观各跑一遍。每个用例都是一部新手机、自己完成配对（夹具在 UI 测试里允许新手机顶替旧配对），彼此独立，按界面划分：工作列表、聊天与模型菜单、失败的一轮、新会话与附件及提问、设置。改哪块界面就只跑那块：`scripts/ui-test.sh --fast --only testChatMergesRepliesAndSwitchesModel`（逗号分隔可跑多个），只跑深色、不截图；一批界面改动完成时再完整跑一次深浅两套并看截图。
 
 `scripts/interop-desktop.ts` 也可以单独运行，作为模拟器调试用的"桌面端"：它打印配对链接，把链接通过 Debug 启动参数交给 App 即可跳过系统的"在 Vetta 中打开"确认：
 

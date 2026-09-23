@@ -298,7 +298,9 @@ const lan = new DesktopRemoteLanServer({
 	lookupDevice: (id: string) => devices.get(id),
 	onDeviceHello: (device: { id: string; mobileIdentityKey?: string }, hello: { identityKey: string }) => {
 		const stored = devices.get(device.id);
-		if (stored?.mobileIdentityKey && stored.mobileIdentityKey !== hello.identityKey) return { kind: "reject", reason: "peer identity does not match the pinned key" };
+		// UI tests launch a brand-new phone per test with the same invite; let it take the pairing over.
+		const repin = process.env.VETTA_INTEROP_REPIN === "1";
+		if (!repin && stored?.mobileIdentityKey && stored.mobileIdentityKey !== hello.identityKey) return { kind: "reject", reason: "peer identity does not match the pinned key" };
 		if (stored) stored.mobileIdentityKey = hello.identityKey;
 		return { kind: "approve" };
 	},
