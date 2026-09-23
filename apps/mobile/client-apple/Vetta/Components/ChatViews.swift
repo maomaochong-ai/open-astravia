@@ -110,7 +110,7 @@ struct ToolCardView: View {
 				HStack(spacing: 10) {
 					Image(systemName: toolSymbol(tool.toolName))
 						.font(.system(size: 14, weight: .medium))
-						.foregroundStyle(Theme.green)
+						.foregroundStyle(Theme.ink2)
 						.frame(width: 18)
 					Text("\(Text(tool.toolName).foregroundStyle(Theme.ink))\(Text(summary.isEmpty ? "" : ": \(summary)").foregroundStyle(Theme.ink2))")
 						.font(.mono(13))
@@ -200,11 +200,7 @@ struct AgentTurnView: View {
 	var body: some View {
 		VStack(alignment: .leading, spacing: 10) {
 			HStack(spacing: 8) {
-				Text("V")
-					.font(.system(size: 11, weight: .bold))
-					.foregroundStyle(Theme.avatarInk)
-					.frame(width: 24, height: 24)
-					.background(Circle().fill(Theme.green))
+				BotAvatar(size: 22)
 				Text("Vetta").font(.subheadline.weight(.semibold))
 				if let at = turn.startedAt {
 					Text(TimeFormat.relative(at)).font(.caption).foregroundStyle(.secondary)
