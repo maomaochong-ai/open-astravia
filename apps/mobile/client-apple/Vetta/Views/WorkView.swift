@@ -120,13 +120,26 @@ private struct FilterBar: View {
 		ScrollView(.horizontal) {
 			GlassEffectContainer(spacing: 8) {
 				HStack(spacing: 8) {
+					if filter.isActive {
+						Button {
+							withAnimation { filter = SessionFilter() }
+						} label: {
+							Image(systemName: "xmark")
+								.font(.subheadline.weight(.semibold))
+						}
+						.buttonStyle(.glass)
+						.buttonBorderShape(.circle)
+						.accessibilityLabel(L10n.Home.clearFilters)
+						.accessibilityIdentifier("filter.clearChip")
+						.transition(.move(edge: .leading).combined(with: .opacity))
+					}
 					FilterChip(
 						title: filter.status.map(L10n.Home.group) ?? L10n.Home.statusAll,
 						active: filter.status != nil,
 						alert: filter.status == nil && model.count(.waiting) > 0,
 						identifier: "filter.status"
 					) {
-						Picker(L10n.Home.filterStatus, selection: $filter.status) {
+						Picker(L10n.Home.filterStatus, selection: $filter.status.animation()) {
 							Text(L10n.Home.statusAll).tag(SessionStatusGroup?.none)
 							ForEach(SessionStatusGroup.allCases, id: \.self) { group in
 								Text("\(L10n.Home.group(group))  \(model.count(group))").tag(Optional(group))
@@ -146,7 +159,7 @@ private struct FilterBar: View {
 							active: filter.projectCwd != nil,
 							identifier: "filter.project"
 						) {
-							Picker(L10n.Home.filterProject, selection: $filter.projectCwd) {
+							Picker(L10n.Home.filterProject, selection: $filter.projectCwd.animation()) {
 								Text(L10n.Home.projectAll).tag(String?.none)
 								ForEach(projects, id: \.cwd) { project in
 									Text("\(project.name)  \(project.count)").tag(Optional(project.cwd))

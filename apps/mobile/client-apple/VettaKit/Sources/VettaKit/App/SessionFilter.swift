@@ -34,6 +34,9 @@ public struct SessionFilter: Equatable, Sendable {
 		self.projectCwd = kind == .project ? projectCwd : nil
 	}
 
+	/// Anything narrowed down; the default state shows every session.
+	public var isActive: Bool { self != SessionFilter() }
+
 	/// `conversationCwd` tells conversations from projects; while it is unknown
 	/// every session counts as a project.
 	public func matches(_ session: RemoteSessionSummary, conversationCwd: String?) -> Bool {

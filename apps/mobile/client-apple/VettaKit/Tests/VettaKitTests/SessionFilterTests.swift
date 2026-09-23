@@ -50,6 +50,16 @@ import Testing
 		#expect(SessionFilter(kind: .conversation, projectCwd: "/code/app").projectCwd == nil)
 	}
 
+	@Test func isActiveOnlyWhenSomethingIsNarrowed() {
+		#expect(!SessionFilter().isActive)
+		#expect(SessionFilter(status: .waiting).isActive)
+		#expect(SessionFilter(kind: .conversation).isActive)
+		var filter = SessionFilter(kind: .project, projectCwd: "/code/app")
+		#expect(filter.isActive)
+		filter.kind = nil
+		#expect(!filter.isActive, "clearing the kind also drops the project")
+	}
+
 	@Test func listsTheProjectsThatHaveSessionsWithTheirCounts() {
 		let projects = SessionFilter.projects(in: sessions, conversationCwd: "/conv")
 		#expect(projects.map(\.name) == ["app", "web"])
