@@ -225,7 +225,7 @@ Desktop 主进程部分目录还有更细规则；修改对应目录时必须继
 - 获得 UI 验证授权后，默认使用 `verify:ui:status:dev` / `attach:dev` / `pw:dev` 附着用户已运行的开发环境；只有验证首次启动、空状态、数据迁移、隔离性或用户明确要求新环境时才使用 Fresh。不得仅因 Fresh 是无后缀命令的默认 Profile 就优先启动它。
 - 只有任务或验证明确需要构建产物时才运行相应的 `bun run build:*`，不要把全量构建当作默认反馈循环。
 - 修改 Go 包时，使用该包 README/Makefile 定义的定向测试和检查；根 `bun run check` 不覆盖 Go。
-- 移动端改动同样适用本节全部测试要求，根 `bun run check` 与 Vitest 都不覆盖它们。iOS 修改 `VettaKit` 时运行 `(cd apps/mobile/client-apple/VettaKit && swift test --no-parallel)`，其中 `LocalizationTests` 会拦下缺译文或键不一致；改动界面或用户流程时在 `VettaUITests` 补充或更新对应流程，并运行 `apps/mobile/client-apple/scripts/ui-test.sh`。Android 使用 `./gradlew :shared:testAndroidHostTest`。
+- 移动端改动同样适用本节全部测试要求，根 `bun run check` 与 Vitest 都不覆盖它们。iOS 修改 `VettaKit` 时运行 `(cd apps/mobile/client-apple/VettaKit && swift test --no-parallel)`，其中 `LocalizationTests` 会拦下缺译文或键不一致；模拟器构建通过即可提交；界面效果由用户在真机上验收，`VettaUITests`（`scripts/ui-test.sh`）不是必做项，除非用户要求不运行。Android 使用 `./gradlew :shared:testAndroidHostTest`。
 - 文档任务至少核对链接、命令和引用路径；文档专用修改不要求为了形式运行完整 TypeScript 检查。
 
 详细质量门禁见 [`docs/dev/quality-gates.md`](docs/dev/quality-gates.md)，Desktop 验证流程见 [`docs/dev/README.md`](docs/dev/README.md)。
