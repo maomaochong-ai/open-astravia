@@ -14,7 +14,8 @@ import Testing
 	@Test func holdingListensAndReleasingInserts() {
 		var press = HoldToTalk()
 		_ = press.began(at: 0)
-		#expect(press.moved(dx: 0, dy: 0, at: 0.31) == .startListening, "a timer tick while holding still starts dictation")
+		#expect(press.moved(dx: 0, dy: 0, at: 0.19) == .none)
+		#expect(press.moved(dx: 0, dy: 0, at: 0.2) == .startListening, "a timer tick while holding still starts dictation")
 		#expect(press.moved(dx: 3, dy: -20, at: 1) == .none, "small drift while talking changes nothing")
 		#expect(press.ended(at: 2) == .finish(insert: true))
 	}

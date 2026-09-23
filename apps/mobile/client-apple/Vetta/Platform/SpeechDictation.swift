@@ -37,15 +37,18 @@ final class SpeechDictation {
 			listening = false
 			return
 		}
+		let onText: @Sendable (String, Bool) -> Void = { [weak self] text, isFinal in
+			Task { @MainActor in self?.receive(text, isFinal: isFinal) }
+		}
+		let onLevel: @Sendable (Double) -> Void = { [weak self] level in
+			Task { @MainActor in self?.level = level }
+		}
 		do {
-			engine = try SpeechEngine(
-				onText: { [weak self] text, isFinal in
-					Task { @MainActor in self?.receive(text, isFinal: isFinal) }
-				},
-				onLevel: { [weak self] level in
-					Task { @MainActor in self?.level = level }
-				}
-			)
+			// Activating the audio session blocks for a moment; off the main thread the glow keeps moving.
+			let started = try await Task.detached { try SpeechEngine(onText: onText, onLevel: onLevel) }.value
+			// Let go while it was starting: nothing to listen for any more.
+			guard listening else { return started.cancel() }
+			engine = started
 		} catch {
 			failure = .unavailable
 			listening = false
