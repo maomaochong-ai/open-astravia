@@ -34,6 +34,15 @@ final class VettaUITests: XCTestCase {
 		app.tabBars.buttons["新会话"].tap()
 		XCTAssertTrue(app.buttons["home.pair"].waitForExistence(timeout: 5), "New Session guides to pairing too")
 
+		app.tabBars.buttons["设置"].tap()
+		let scan = app.buttons["settings.scan"]
+		XCTAssertTrue(scan.waitForExistence(timeout: 5), "Settings offers a scan while unpaired")
+		XCTAssertFalse(app.buttons["settings.unpair"].exists)
+		scan.tap()
+		XCTAssertTrue(app.staticTexts["对准电脑端的二维码"].waitForExistence(timeout: 10))
+		app.buttons["pair.close"].tap()
+		app.tabBars.buttons["新会话"].tap()
+
 		app.buttons["home.pair"].tap()
 		XCTAssertTrue(app.staticTexts["对准电脑端的二维码"].waitForExistence(timeout: 10))
 		XCTAssertTrue(app.buttons["pair.manual"].exists)
@@ -122,7 +131,17 @@ final class VettaUITests: XCTestCase {
 		app.swipeDown()
 
 		app.tabBars.buttons["设置"].tap()
+		let computer = app.descendants(matching: .any)["settings.computer"]
+		XCTAssertTrue(computer.waitForExistence(timeout: 5))
+		XCTAssertTrue(computer.label.contains("Interop MacBook Pro"), "Settings names the paired computer")
+		XCTAssertTrue(app.buttons["settings.rescan"].exists, "rescanning lives in Settings now")
 		shot(app, "10-settings")
+
+		app.buttons["settings.unpair"].tap()
+		app.alerts.buttons["解除配对"].tap()
+		XCTAssertTrue(app.buttons["settings.scan"].waitForExistence(timeout: 5), "after unpairing Settings offers a fresh scan")
+		app.tabBars.buttons["工作"].tap()
+		XCTAssertTrue(app.buttons["home.pair"].waitForExistence(timeout: 5), "Work falls back to the pairing guide")
 	}
 
 	/// Opens a menu chip and chooses the option whose label starts with `option`.

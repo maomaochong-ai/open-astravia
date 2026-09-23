@@ -25,7 +25,6 @@ public enum L10n {
 		public static var cancel: String { tr("common.cancel") }
 		public static var confirm: String { tr("common.confirm") }
 		public static var retry: String { tr("common.retry") }
-		public static var comingSoon: String { tr("common.comingSoon") }
 		public static var offline: String { tr("common.offline") }
 		public static var connecting: String { tr("common.connecting") }
 		public static var online: String { tr("common.online") }
@@ -123,15 +122,9 @@ public enum L10n {
 
 	public enum Settings {
 		public static var title: String { tr("settings.title") }
-		public static var heading: String { tr("settings.heading") }
-		public static var subheading: String { tr("settings.subheading") }
-		public static var myComputer: String { tr("settings.myComputer") }
 		public static var rescan: String { tr("settings.rescan") }
-		public static var connectionState: String { tr("settings.connectionState") }
-		public static func excellent(_ ms: Int) -> String { tr("settings.excellent \(ms)") }
-		public static func good(_ ms: Int) -> String { tr("settings.good \(ms)") }
-		public static func fair(_ ms: Int) -> String { tr("settings.fair \(ms)") }
-		public static var offline: String { tr("settings.offline") }
+		public static var scanToConnect: String { tr("settings.scanToConnect") }
+		public static var latency: String { tr("settings.latency") }
 		public static var viaLan: String { tr("settings.viaLan") }
 		public static var viaRelay: String { tr("settings.viaRelay") }
 		public static var load: String { tr("settings.load") }
@@ -143,15 +136,10 @@ public enum L10n {
 		public static var policyImportant: String { tr("settings.policyImportant") }
 		public static var policyAuto: String { tr("settings.policyAuto") }
 		public static var liveThinking: String { tr("settings.liveThinking") }
-		public static var liveThinkingHint: String { tr("settings.liveThinkingHint") }
 		public static var haptics: String { tr("settings.haptics") }
-		public static var hapticsHint: String { tr("settings.hapticsHint") }
-		public static var biometric: String { tr("settings.biometric") }
-		public static var biometricHint: String { tr("settings.biometricHint") }
 		public static var unpair: String { tr("settings.unpair") }
 		public static var unpairHint: String { tr("settings.unpairHint") }
 		public static var unpairConfirm: String { tr("settings.unpairConfirm") }
-		public static var noComputer: String { tr("settings.noComputer") }
 	}
 
 	public enum Pair {

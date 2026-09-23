@@ -358,23 +358,6 @@
         }
       }
     },
-    "common.comingSoon": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Coming soon"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "即将推出"
-          }
-        }
-      }
-    },
     "common.confirm": {
       "extractionState": "manual",
       "localizations": {
@@ -1766,40 +1749,6 @@
         }
       }
     },
-    "settings.biometric": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Face ID / Touch ID approval"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "面容 / 指纹解锁确认"
-          }
-        }
-      }
-    },
-    "settings.biometricHint": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Use biometrics to approve deleting important files"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "批准删除重要文件时使用生物识别验证"
-          }
-        }
-      }
-    },
     "settings.confirmPolicy": {
       "extractionState": "manual",
       "localizations": {
@@ -1834,74 +1783,6 @@
         }
       }
     },
-    "settings.connectionState": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Connection"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "连接状态"
-          }
-        }
-      }
-    },
-    "settings.excellent %lld": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Excellent (%lldms)"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "极佳 (%lldms)"
-          }
-        }
-      }
-    },
-    "settings.fair %lld": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fair (%lldms)"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "一般 (%lldms)"
-          }
-        }
-      }
-    },
-    "settings.good %lld": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Good (%lldms)"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "良好 (%lldms)"
-          }
-        }
-      }
-    },
     "settings.haptics": {
       "extractionState": "manual",
       "localizations": {
@@ -1919,36 +1800,19 @@
         }
       }
     },
-    "settings.hapticsHint": {
+    "settings.latency": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Notifies you when a long task finishes or needs your input"
+            "value": "Latency"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "电脑办结长任务或需要你确认时通知"
-          }
-        }
-      }
-    },
-    "settings.heading": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Connection & Preferences"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "连接与偏好"
+            "value": "延迟"
           }
         }
       }
@@ -1966,23 +1830,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "实时看到电脑思考"
-          }
-        }
-      }
-    },
-    "settings.liveThinkingHint": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Text streams to your phone as the computer writes or analyzes"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "电脑打字或分析时，文字在手机上同步跳动"
           }
         }
       }
@@ -2046,57 +1893,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld 个任务处理中"
-          }
-        }
-      }
-    },
-    "settings.myComputer": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "My Computer"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "我的电脑"
-          }
-        }
-      }
-    },
-    "settings.noComputer": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No computer connected"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "尚未连接电脑"
-          }
-        }
-      }
-    },
-    "settings.offline": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Offline"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "离线"
           }
         }
       }
@@ -2169,19 +1965,19 @@
         }
       }
     },
-    "settings.subheading": {
+    "settings.scanToConnect": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Manage syncing with your computer and what your phone can approve"
+            "value": "Scan to Connect a Computer"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "管理与电脑的同步状态及手机操作权限"
+            "value": "扫码连接电脑"
           }
         }
       }
@@ -2243,13 +2039,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Removes this computer's credentials and the local cache"
+            "value": "Removes this computer's credentials and the sessions cached on this phone. You'll need to scan again to reconnect."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "删除这台电脑的连接凭据和本机缓存"
+            "value": "删除这台电脑的连接凭据和手机上缓存的会话，之后需要重新扫码才能连接。"
           }
         }
       }
