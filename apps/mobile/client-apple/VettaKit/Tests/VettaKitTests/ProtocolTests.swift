@@ -121,11 +121,19 @@ enum Vectors {
 		#expect(throws: RemoteProtocolError.self) { try RemoteFrame.decodeSession(.object(["type": "peer_status", "online": true])) }
 	}
 
-	@Test func speaksTheUploadAndModelMethodsLikeTheDesktop() throws {
-		for method in ["session.upload", "model.list", "session.configure"] {
+	@Test func speaksTheUploadModelAndSessionMethodsLikeTheDesktop() throws {
+		for method in ["session.upload", "model.list", "session.configure", "session.rename", "session.pin", "session.delete"] {
 			let frame = try RemoteFrame.parse(line: #"{"type":"request","requestId":"r","method":"\#(method)","sessionId":"s"}"#)
 			if case let .request(request) = frame { #expect(request.method.rawValue == method) } else { Issue.record("\(method) should parse") }
 		}
+	}
+
+	@Test func readsThePinTimeOnlyWhenItIsANumber() throws {
+		let sessions = RemoteAPI.readSessionSummaries(try JSONValue.parse(#"""
+		{"sessions":[{"id":"a","projectCwd":"/p","pinnedAt":42},{"id":"b","projectCwd":"/p","pinnedAt":"yesterday"}]}
+		"""#))
+		#expect(sessions.map(\.pinnedAt) == [42, nil])
+		#expect(sessions.map(\.pinned) == [true, false])
 	}
 
 	@Test func readsModelOptionsAndTheSessionsCurrentChoice() throws {

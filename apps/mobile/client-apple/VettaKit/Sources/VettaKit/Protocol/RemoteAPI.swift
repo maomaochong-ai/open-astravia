@@ -41,8 +41,12 @@ public struct RemoteSessionSummary: Equatable, Codable, Sendable, Identifiable {
 	public var status: RemoteSessionStatus
 	/// True when the desktop currently holds a live runtime instance for it.
 	public var live: Bool
+	/// Set while pinned, shared with the desktop sidebar; newer pins sort first.
+	public var pinnedAt: Double?
 
-	public init(id: String, projectCwd: String, projectName: String, title: String, preview: String? = nil, updatedAt: Double, status: RemoteSessionStatus, live: Bool) {
+	public var pinned: Bool { pinnedAt != nil }
+
+	public init(id: String, projectCwd: String, projectName: String, title: String, preview: String? = nil, updatedAt: Double, status: RemoteSessionStatus, live: Bool, pinnedAt: Double? = nil) {
 		self.id = id
 		self.projectCwd = projectCwd
 		self.projectName = projectName
@@ -51,6 +55,7 @@ public struct RemoteSessionSummary: Equatable, Codable, Sendable, Identifiable {
 		self.updatedAt = updatedAt
 		self.status = status
 		self.live = live
+		self.pinnedAt = pinnedAt
 	}
 }
 
@@ -226,7 +231,8 @@ public enum RemoteAPI {
 			preview: value["preview"]?.stringValue,
 			updatedAt: value["updatedAt"]?.numberValue ?? 0,
 			status: readSessionStatus(value["status"]),
-			live: value["live"]?.boolValue == true
+			live: value["live"]?.boolValue == true,
+			pinnedAt: value["pinnedAt"]?.numberValue
 		)
 	}
 

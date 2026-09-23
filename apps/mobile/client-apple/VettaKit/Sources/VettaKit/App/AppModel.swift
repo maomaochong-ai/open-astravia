@@ -595,6 +595,66 @@ public final class AppModel {
 		await refreshSessions()
 	}
 
+	/// Renames the session on the desktop; the sidebar there shows the new title too.
+	@discardableResult
+	public func rename(_ sessionId: String, to title: String) async -> Bool {
+		let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+		guard !trimmed.isEmpty else { return false }
+		do {
+			let result = try await requireManager().request(.sessionRename, payload: ["title": .string(trimmed)], sessionId: sessionId)
+			adopt(result?["session"])
+			return true
+		} catch {
+			reportError(error)
+			return false
+		}
+	}
+
+	/// Pins or unpins the session, the same pin as the desktop sidebar's. The list
+	/// moves at once; the desktop's pin time replaces the phone's when it answers.
+	@discardableResult
+	public func setPinned(_ sessionId: String, _ pinned: Bool) async -> Bool {
+		let before = session(sessionId)?.pinnedAt
+		patchSession(sessionId) { $0.pinnedAt = pinned ? WallClock.nowMs() : nil }
+		do {
+			let result = try await requireManager().request(.sessionPin, payload: ["pinned": .bool(pinned)], sessionId: sessionId)
+			adopt(result?["session"])
+			return true
+		} catch {
+			patchSession(sessionId) { $0.pinnedAt = before }
+			reportError(error)
+			return false
+		}
+	}
+
+	/// Deletes the session on the desktop, and with it everything kept here.
+	@discardableResult
+	public func deleteSession(_ sessionId: String) async -> Bool {
+		do {
+			_ = try await requireManager().request(.sessionDelete, sessionId: sessionId)
+			sessions.removeAll { $0.id == sessionId }
+			transcripts[sessionId] = nil
+			models[sessionId] = nil
+			// Saving the list without it drops its cached transcript too.
+			if let key = desktopKey { platform.cache.saveSessions(key, sessions) }
+			return true
+		} catch {
+			reportError(error)
+			return false
+		}
+	}
+
+	/// Takes the title and pin from a summary the desktop just returned; the status
+	/// stays as the live events left it.
+	private func adopt(_ value: JSONValue?) {
+		guard let summary = RemoteAPI.readSessionSummary(value) else { return }
+		patchSession(summary.id) {
+			$0.title = summary.title
+			$0.pinnedAt = summary.pinnedAt
+		}
+		if let key = desktopKey { platform.cache.saveSessions(key, sessions) }
+	}
+
 	public func setPreferences(_ update: (inout Preferences) -> Void) {
 		var next = preferences
 		update(&next)

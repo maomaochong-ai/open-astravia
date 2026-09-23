@@ -7,6 +7,8 @@ struct WorkView: View {
 	@State private var filter = SessionFilter()
 	/// True once the list has scrolled past the large title and the small centred one takes over.
 	@State private var titleCollapsed = false
+	/// The session whose delete is waiting on confirmation.
+	@State private var deleting: RemoteSessionSummary?
 
 	var body: some View {
 		Group {
@@ -65,9 +67,39 @@ struct WorkView: View {
 				.accessibilityIdentifier("session.\(session.id)")
 				// Rows are told apart by spacing alone, no hairlines between them.
 				.listRowSeparator(.hidden)
+				// Swiping right; delete asks first since it removes the session on the desktop too.
+				.swipeActions(edge: .leading, allowsFullSwipe: false) {
+					Button {
+						Task { await model.setPinned(session.id, !session.pinned) }
+					} label: {
+						Label(session.pinned ? L10n.Session.unpin : L10n.Session.pin, systemImage: session.pinned ? "pin.slash.fill" : "pin.fill")
+					}
+					.tint(Theme.yellow)
+					Button {
+						deleting = session
+					} label: {
+						Label(L10n.Session.delete, systemImage: "trash.fill")
+					}
+					.tint(Theme.red)
+				}
 			}
 		}
 		.listStyle(.plain)
+		// Pinning moves the row to the top; let it travel there.
+		.animation(.snappy, value: rows.map(\.id))
+		.confirmationDialog(
+			L10n.Session.deleteTitle,
+			isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+			titleVisibility: .visible,
+			presenting: deleting
+		) { session in
+			Button(L10n.Session.delete, role: .destructive) {
+				Task { await model.deleteSession(session.id) }
+			}
+			Button(L10n.Common.cancel, role: .cancel) {}
+		} message: { _ in
+			Text(L10n.Session.deleteMessage)
+		}
 		.onScrollGeometryChange(for: Bool.self, of: Self.scrolledPastTitle) { _, collapsed in
 			withAnimation(.easeInOut(duration: 0.15)) { titleCollapsed = collapsed }
 		}
@@ -223,9 +255,17 @@ private struct SessionRow: View {
 		let isConversation = session.projectCwd == conversationCwd
 		VStack(alignment: .leading, spacing: 4) {
 			HStack(alignment: .firstTextBaseline, spacing: 8) {
-				Text(session.title.trimmingCharacters(in: .whitespaces).isEmpty ? L10n.Home.untitled : session.title)
-					.font(.headline)
-					.lineLimit(1)
+				HStack(alignment: .firstTextBaseline, spacing: 4) {
+					if session.pinned {
+						Image(systemName: "pin.fill")
+							.font(.caption.weight(.semibold))
+							.foregroundStyle(Theme.yellow)
+							.accessibilityLabel(L10n.Session.pinned)
+					}
+					Text(session.title.trimmingCharacters(in: .whitespaces).isEmpty ? L10n.Home.untitled : session.title)
+						.font(.headline)
+						.lineLimit(1)
+				}
 				Spacer(minLength: 0)
 				Text(TimeFormat.relative(session.updatedAt))
 					.font(.subheadline)

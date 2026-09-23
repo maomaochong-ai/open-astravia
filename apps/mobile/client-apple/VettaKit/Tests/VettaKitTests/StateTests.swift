@@ -278,6 +278,20 @@ import Testing
 				try? connection.respond(requestId: request.requestId, success: true, payload: ["state": ["status": "idle", "modelKey": .string(modelKey), "thinkingLevel": .string(thinkingLevel)]])
 			case .sessionList:
 				try? connection.respond(requestId: request.requestId, success: true, payload: ["sessions": .array(sessions)])
+			case .sessionRename, .sessionPin:
+				guard let index = sessions.firstIndex(where: { $0["id"]?.stringValue == request.sessionId }),
+				      var fields = sessions[index].objectValue
+				else {
+					try? connection.respond(requestId: request.requestId, success: false, error: RemoteError(code: .notFound, message: "Desktop session was not found", retryable: false))
+					return
+				}
+				if let title = request.payload?["title"]?.stringValue { fields["title"] = .string(title) }
+				if let pinned = request.payload?["pinned"]?.boolValue { fields["pinnedAt"] = pinned ? 9_000 : nil }
+				sessions[index] = .object(fields)
+				try? connection.respond(requestId: request.requestId, success: true, payload: ["session": sessions[index]])
+			case .sessionDelete:
+				sessions.removeAll { $0["id"]?.stringValue == request.sessionId }
+				try? connection.respond(requestId: request.requestId, success: true, payload: ["deleted": true])
 			case .projectList:
 				try? connection.respond(requestId: request.requestId, success: true, payload: ["projects": [
 					["cwd": "/conv", "name": "对话", "kind": "conversation", "sessionCount": 1],
@@ -491,6 +505,33 @@ import Testing
 		relaunched.unpair()
 		#expect(relaunched.newSessionModels.isEmpty)
 		#expect(settings.get("vetta.models.\(desktop.identityKey)") == nil)
+	}
+
+	@Test func renamesPinsAndDeletesSessionsOnTheDesktop() async throws {
+		let desktop = scriptedDesktop()
+		let model = AppModel(platform: .memory(createTransport: desktop.createTransport))
+		model.start()
+		let invite = PairingURI.build(RemotePairingInvite(pairingId: "pair-1234567890abcdef", mobileSecret: "secret-1234567890abcdef", desktopIdentityKey: desktop.identityKey, desktopName: "MacBook Pro", lanEndpoints: ["192.168.1.20:43117"]))
+		#expect(await model.pairWithCode(invite))
+		#expect(await eventually { model.sessions.map(\.id) == ["s1"] })
+
+		#expect(await model.rename("s1", to: "  月报  "))
+		#expect(model.session("s1")?.title == "月报")
+		#expect(await model.rename("s1", to: "   ") == false, "a blank title is not sent")
+
+		#expect(await model.setPinned("s1", true))
+		#expect(model.session("s1")?.pinnedAt == 9_000, "the desktop's pin time wins")
+		#expect(await model.setPinned("s1", false))
+		#expect(model.session("s1")?.pinned == false)
+
+		#expect(await model.setPinned("ghost", true) == false)
+		#expect(model.lastError != nil)
+		model.clearError()
+
+		await model.openSession("s1")
+		#expect(await model.deleteSession("s1"))
+		#expect(model.sessions.isEmpty)
+		#expect(model.transcripts["s1"] == nil)
 	}
 
 	@Test func startsASessionAtOnceAndHandsTheChatOverToTheDesktopsId() async throws {

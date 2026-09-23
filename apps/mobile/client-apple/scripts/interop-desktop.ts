@@ -75,6 +75,9 @@ const sessions: Summary[] = [
 		live: false,
 	})),
 ];
+// `VETTA_INTEROP_PIN=<id>` starts with that session pinned, for screenshots of the pinned look.
+const pinnedAtStart = sessions.find((entry) => entry.id === process.env.VETTA_INTEROP_PIN);
+if (pinnedAtStart) pinnedAtStart.pinnedAt = Date.now();
 const conversationCwd = "/conversations";
 const projects = [
 	{ cwd: "/Users/dev/vetta", name: "vetta" },
@@ -244,6 +247,30 @@ function handleRequest(deviceId: string, connection: Connection, request: { requ
 			const state = { status: sessions.find((entry) => entry.id === sessionId)?.status ?? "idle", ...modelState(sessionId) };
 			ok({ state });
 			emitAll(deviceId, "session.state", state, sessionId);
+			return;
+		}
+		case "session.rename":
+		case "session.pin": {
+			const session = sessions.find((entry) => entry.id === sessionId);
+			if (!session) {
+				void connection.respond(request.requestId, { success: false, error: { code: "not_found", message: "Desktop session was not found", retryable: false } }).catch(() => undefined);
+				return;
+			}
+			if (typeof request.payload?.title === "string" && request.payload.title.trim()) session.title = request.payload.title.trim();
+			if (typeof request.payload?.pinned === "boolean") {
+				if (request.payload.pinned) session.pinnedAt = Date.now();
+				else delete session.pinnedAt;
+			}
+			ok({ session });
+			emitAll(deviceId, "session.list", { sessions });
+			return;
+		}
+		case "session.delete": {
+			const index = sessions.findIndex((entry) => entry.id === sessionId);
+			if (index >= 0) sessions.splice(index, 1);
+			histories.delete(sessionId);
+			ok({ deleted: true });
+			emitAll(deviceId, "session.list", { sessions });
 			return;
 		}
 		case "session.respond":

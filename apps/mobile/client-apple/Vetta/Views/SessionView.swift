@@ -19,6 +19,8 @@ struct SessionView: View {
 	@Environment(Router.self) private var router
 	@State private var draft = PromptDraft()
 	@State private var pageWidth: CGFloat = 0
+	@State private var renaming = false
+	@State private var newTitle = ""
 
 	/// The desktop's id; a chat opened by New Session starts on a local one.
 	private var id: String { model.resolve(sessionId) }
@@ -124,13 +126,31 @@ struct SessionView: View {
 				.accessibilityIdentifier("chat.newSession")
 				Menu {
 					Button(L10n.Chat.resync, systemImage: "arrow.clockwise") { Task { await model.resync(id) } }
-						.disabled(starting)
+					// The desktop's own sidebar actions, so it shows the same title and pin.
+					Button(L10n.Session.rename, systemImage: "pencil") {
+						newTitle = model.session(id)?.title ?? ""
+						renaming = true
+					}
+					.disabled(!model.online)
+					let pinned = model.session(id)?.pinned == true
+					Button(pinned ? L10n.Session.unpin : L10n.Session.pin, systemImage: pinned ? "pin.slash" : "pin") {
+						Task { await model.setPinned(id, !pinned) }
+					}
+					.disabled(!model.online)
 				} label: {
 					Image(systemName: "ellipsis")
 				}
 				.accessibilityLabel(L10n.Chat.more)
 				.accessibilityIdentifier("chat.more")
+				// A chat New Session is still starting has no desktop session to act on yet.
+				.disabled(starting)
 			}
+		}
+		.alert(L10n.Session.renameTitle, isPresented: $renaming) {
+			TextField(L10n.Session.renameTitle, text: $newTitle)
+			Button(L10n.Common.cancel, role: .cancel) {}
+			Button(L10n.Common.save) { Task { await model.rename(id, to: newTitle) } }
+				.disabled(newTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 		}
 		// A new session's history is fetched once its prompt is out; earlier, it would replace the prompt.
 		.task(id: "\(id) \(starting)") {

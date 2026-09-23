@@ -25,6 +25,7 @@ public enum L10n {
 		public static var cancel: String { tr("common.cancel") }
 		public static var confirm: String { tr("common.confirm") }
 		public static var done: String { tr("common.done") }
+		public static var save: String { tr("common.save") }
 		public static var retry: String { tr("common.retry") }
 		public static var offline: String { tr("common.offline") }
 		public static var connecting: String { tr("common.connecting") }
@@ -99,6 +100,18 @@ public enum L10n {
 		public static var defaultModelHint: String { tr("newSession.defaultModelHint") }
 		public static var offline: String { tr("newSession.offline") }
 		public static var location: String { tr("newSession.location") }
+	}
+
+	/// What can be done to a session, from the chat's More menu and the list's swipe.
+	public enum Session {
+		public static var rename: String { tr("session.rename") }
+		public static var renameTitle: String { tr("session.renameTitle") }
+		public static var pin: String { tr("session.pin") }
+		public static var unpin: String { tr("session.unpin") }
+		public static var pinned: String { tr("session.pinned") }
+		public static var delete: String { tr("session.delete") }
+		public static var deleteTitle: String { tr("session.deleteTitle") }
+		public static var deleteMessage: String { tr("session.deleteMessage") }
 	}
 
 	public enum Chat {

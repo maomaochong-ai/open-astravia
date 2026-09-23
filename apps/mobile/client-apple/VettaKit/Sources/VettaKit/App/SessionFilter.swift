@@ -50,13 +50,19 @@ public struct SessionFilter: Equatable, Sendable {
 		}
 	}
 
-	/// Filtered and ordered for display: waiting sessions first, then newest first.
+	/// Filtered and ordered for display: pinned sessions first (newest pin on top),
+	/// then those waiting on the user, then newest first.
 	public func apply(_ sessions: [RemoteSessionSummary], conversationCwd: String?) -> [RemoteSessionSummary] {
 		SessionFilter.ordered(sessions.filter { matches($0, conversationCwd: conversationCwd) })
 	}
 
 	public static func ordered(_ sessions: [RemoteSessionSummary]) -> [RemoteSessionSummary] {
 		sessions.sorted { a, b in
+			if a.pinnedAt != b.pinnedAt {
+				guard let aPin = a.pinnedAt else { return false }
+				guard let bPin = b.pinnedAt else { return true }
+				return aPin > bPin
+			}
 			let aWaiting = a.status == .waitingInput
 			let bWaiting = b.status == .waitingInput
 			if aWaiting != bWaiting { return aWaiting }

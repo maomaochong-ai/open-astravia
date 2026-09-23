@@ -34,6 +34,16 @@ import Testing
 		#expect(ids(SessionFilter()) == ["web-ask", "chat-ask", "web-stop", "chat-done", "app-think", "app-run", "app-fail", "web-idle"])
 	}
 
+	@Test func putsPinnedSessionsOnTopNewestPinFirstWithinTheFilter() {
+		var list = sessions
+		list[0].pinnedAt = 100 // chat-done
+		list[6].pinnedAt = 200 // web-stop
+		let all = SessionFilter().apply(list, conversationCwd: "/conv").map(\.id)
+		#expect(Array(all.prefix(4)) == ["web-stop", "chat-done", "web-ask", "chat-ask"])
+		let web = SessionFilter(kind: .project, projectCwd: "/code/web").apply(list, conversationCwd: "/conv").map(\.id)
+		#expect(web == ["web-stop", "web-ask", "web-idle"], "a pin only lifts the session where the filter shows it")
+	}
+
 	@Test func narrowsByStatusKindAndProject() {
 		#expect(ids(SessionFilter(status: .processing)) == ["app-think", "app-run"])
 		#expect(ids(SessionFilter(status: .done, kind: .conversation)) == ["chat-done"])
