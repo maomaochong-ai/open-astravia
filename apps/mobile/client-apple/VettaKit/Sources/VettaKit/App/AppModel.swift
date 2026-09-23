@@ -55,6 +55,7 @@ public struct AppPlatform {
 public final class AppModel {
 	static let preferencesKey = "vetta.preferences"
 	static let deviceIdKey = "vetta.device.id"
+	static let projectsKeyPrefix = "vetta.projects."
 
 	public private(set) var ready = false
 	public private(set) var paired = false
@@ -62,6 +63,9 @@ public final class AppModel {
 	public private(set) var link: LinkSnapshot = .offline
 	public private(set) var sessions: [RemoteSessionSummary] = []
 	public private(set) var sessionsLoaded = false
+	/// The desktop's project list, the conversation bucket first. Kept across
+	/// launches so filtering by kind works before the link comes up.
+	public private(set) var projects: [RemoteProjectSummary] = []
 	public private(set) var transcripts: [String: TranscriptState] = [:]
 	public private(set) var preferences: Preferences = .defaults
 	public private(set) var pairing: PairingPhase = .idle
@@ -85,6 +89,12 @@ public final class AppModel {
 	public var online: Bool { link.isUsable }
 
 	public var processingCount: Int { sessions.filter { $0.status.isActive }.count }
+
+	public var conversationCwd: String? { projects.first(where: \.isConversation)?.cwd }
+
+	public func count(_ group: SessionStatusGroup) -> Int {
+		sessions.count { SessionStatusGroup($0.status) == group }
+	}
 
 	public func transcript(_ sessionId: String) -> TranscriptState { transcripts[sessionId] ?? .empty }
 
@@ -142,12 +152,14 @@ public final class AppModel {
 		if let key {
 			pairingStore.revoke(key)
 			platform.cache.clearDesktop(key)
+			platform.settings.remove(Self.projectsKeyPrefix + key)
 		}
 		desktopKey = nil
 		paired = false
 		desktop = nil
 		sessions = []
 		sessionsLoaded = false
+		projects = []
 		transcripts = [:]
 		link = .offline
 	}
@@ -185,6 +197,7 @@ public final class AppModel {
 		desktop = record.stored
 		sessions = cached
 		sessionsLoaded = !cached.isEmpty
+		projects = loadProjects(key)
 		transcripts = [:]
 		link = .offline
 		var options = ChannelManagerOptions(desktop: record, link: identity, createTransport: platform.createTransport)
@@ -314,9 +327,29 @@ public final class AppModel {
 			sessions = list
 			sessionsLoaded = true
 			if let key = desktopKey { platform.cache.saveSessions(key, list) }
+			await refreshProjects()
 		} catch {
 			if !(error is LinkOfflineError) { reportError(error) }
 		}
+	}
+
+	public func refreshProjects() async {
+		do {
+			let result = try await requireManager().request(.projectList)
+			let list = RemoteAPI.readProjectSummaries(result)
+			guard !list.isEmpty else { return }
+			projects = list
+			if let key = desktopKey, let data = try? JSONEncoder().encode(list), let text = String(data: data, encoding: .utf8) {
+				platform.settings.set(Self.projectsKeyPrefix + key, text)
+			}
+		} catch {
+			if !(error is LinkOfflineError) { reportError(error) }
+		}
+	}
+
+	private func loadProjects(_ desktopKey: String) -> [RemoteProjectSummary] {
+		guard let text = platform.settings.get(Self.projectsKeyPrefix + desktopKey) else { return [] }
+		return (try? JSONDecoder().decode([RemoteProjectSummary].self, from: Data(text.utf8))) ?? []
 	}
 
 	public func openSession(_ sessionId: String) async {
@@ -343,16 +376,18 @@ public final class AppModel {
 		}
 	}
 
-	/// Sends a prompt; with no session a new one is created first. Returns the session that received it.
+	/// Sends a prompt; with no session a new one is created first, in `projectCwd`
+	/// or, without one, in the desktop's conversations. Returns the session that received it.
 	@discardableResult
-	public func sendPrompt(_ sessionId: String?, _ text: String) async -> String? {
+	public func sendPrompt(_ sessionId: String?, _ text: String, projectCwd: String? = nil) async -> String? {
 		let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
 		guard !trimmed.isEmpty else { return sessionId }
 		do {
 			let manager = try requireManager()
 			var target = sessionId
 			if target == nil {
-				let created = try await manager.request(.sessionCreate)
+				let payload: JSONValue? = projectCwd.map { ["projectCwd": .string($0)] }
+				let created = try await manager.request(.sessionCreate, payload: payload)
 				guard let session = RemoteAPI.readSessionSummary(created?["session"]) else {
 					throw RemoteRequestError("session.create returned no session")
 				}

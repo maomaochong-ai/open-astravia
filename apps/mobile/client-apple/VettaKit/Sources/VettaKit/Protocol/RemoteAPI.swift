@@ -14,11 +14,21 @@ public enum RemoteSessionStatus: String, Codable, Sendable, CaseIterable {
 	public var isActive: Bool { self == .running || self == .thinking || self == .waitingInput }
 }
 
-public struct RemoteProjectSummary: Equatable, Sendable {
+public struct RemoteProjectSummary: Equatable, Codable, Sendable {
 	public var cwd: String
 	public var name: String
+	/// "conversation" for the desktop's project-less chats, otherwise "project".
 	public var kind: String
 	public var sessionCount: Double
+
+	public init(cwd: String, name: String, kind: String, sessionCount: Double) {
+		self.cwd = cwd
+		self.name = name
+		self.kind = kind
+		self.sessionCount = sessionCount
+	}
+
+	public var isConversation: Bool { kind == "conversation" }
 }
 
 public struct RemoteSessionSummary: Equatable, Codable, Sendable, Identifiable {

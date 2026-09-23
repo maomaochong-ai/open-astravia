@@ -201,8 +201,14 @@ import Testing
 			switch request.method {
 			case .sessionList:
 				try? connection.respond(requestId: request.requestId, success: true, payload: ["sessions": .array(sessions)])
+			case .projectList:
+				try? connection.respond(requestId: request.requestId, success: true, payload: ["projects": [
+					["cwd": "/conv", "name": "对话", "kind": "conversation", "sessionCount": 1],
+					["cwd": "/code/vetta", "name": "vetta", "kind": "project", "sessionCount": 0],
+				]])
 			case .sessionCreate:
-				let created: JSONValue = ["id": "s2", "projectCwd": "/conv", "projectName": "对话", "title": "", "updatedAt": 2_000, "status": "idle", "live": true]
+				let cwd = request.payload?["projectCwd"]?.stringValue ?? "/conv"
+				let created: JSONValue = ["id": "s2", "projectCwd": .string(cwd), "projectName": cwd == "/conv" ? "对话" : "vetta", "title": "", "updatedAt": 2_000, "status": "idle", "live": true]
 				sessions.insert(created, at: 0)
 				try? connection.respond(requestId: request.requestId, success: true, payload: ["session": created])
 			case .sessionOpen:
@@ -277,6 +283,32 @@ import Testing
 		#expect(!model.paired)
 		#expect(model.sessions.isEmpty)
 		#expect(!model.link.isUsable)
+	}
+
+	@Test func startsANewSessionInTheChosenProjectAndRemembersTheProjects() async throws {
+		let desktop = scriptedDesktop()
+		let platform = AppPlatform.memory(createTransport: desktop.createTransport)
+		let model = AppModel(platform: platform)
+		model.start()
+		let invite = PairingURI.build(RemotePairingInvite(pairingId: "pair-1234567890abcdef", mobileSecret: "secret-1234567890abcdef", desktopIdentityKey: desktop.identityKey, desktopName: "MacBook Pro", lanEndpoints: ["192.168.1.20:43117"]))
+		#expect(await model.pairWithCode(invite))
+		#expect(await eventually { model.projects.map(\.cwd) == ["/conv", "/code/vetta"] })
+		#expect(model.conversationCwd == "/conv")
+
+		let sessionId = await model.sendPrompt(nil, "跑一下测试", projectCwd: "/code/vetta")
+		#expect(sessionId == "s2")
+		#expect(model.session("s2")?.projectCwd == "/code/vetta")
+		#expect(await eventually { model.count(.waiting) == 1 })
+		let visible = SessionFilter(kind: .project).apply(model.sessions, conversationCwd: model.conversationCwd)
+		#expect(visible.map(\.id) == ["s2"])
+
+		model.unpairKeepingData()
+		let relaunched = AppModel(platform: platform)
+		relaunched.start()
+		#expect(relaunched.conversationCwd == "/conv", "the project list survives a relaunch before the link is up")
+		relaunched.unpair()
+		#expect(relaunched.projects.isEmpty)
+		#expect(platform.settings.get(AppModel.projectsKeyPrefix + desktop.identityKey) == nil)
 	}
 
 	@Test func reportsOfflineInsteadOfSendingAndHonoursLiveThinking() async {
