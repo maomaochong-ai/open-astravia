@@ -1,7 +1,7 @@
 import SwiftUI
 import VettaKit
 
-/// The trailing tab: a blank page for starting a session in a conversation or a project.
+/// A blank page, pushed from Work, for starting a session in a conversation or a project.
 struct NewSessionView: View {
 	@Environment(AppModel.self) private var model
 	@Environment(Router.self) private var router
@@ -12,15 +12,10 @@ struct NewSessionView: View {
 	private var projects: [RemoteProjectSummary] { model.projects.filter { !$0.isConversation } }
 
 	var body: some View {
-		Group {
-			if model.paired {
-				welcome
-			} else {
-				UnpairedView().opacity(model.ready ? 1 : 0)
-			}
-		}
-		.navigationTitle(L10n.NewSession.title)
-		.navigationBarTitleDisplayMode(.large)
+		welcome
+			.navigationTitle(L10n.NewSession.title)
+			.navigationBarTitleDisplayMode(.large)
+			.toolbar(.hidden, for: .tabBar)
 		.task(id: model.online) {
 			if model.online { await model.refreshProjects() }
 		}
@@ -92,8 +87,6 @@ struct NewSessionView: View {
 			defer { sending = false }
 			guard let id = await model.sendPrompt(nil, text, projectCwd: projectCwd) else { return }
 			router.openSession(id)
-			// Next time the tab opens it is a blank page again.
-			projectCwd = nil
 		}
 	}
 

@@ -50,7 +50,7 @@ struct Pill: View {
 	}
 }
 
-/// Shown on Work and New Session until a desktop is paired.
+/// Shown on Work until a desktop is paired.
 struct UnpairedView: View {
 	@Environment(Router.self) private var router
 

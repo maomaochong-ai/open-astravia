@@ -2,11 +2,12 @@ import SwiftUI
 import VettaKit
 
 enum Route: Hashable {
+	case newSession
 	case session(String)
 }
 
 enum AppTab: Hashable {
-	case work, settings, newSession
+	case work, settings
 }
 
 /// Navigation state shared by every screen.
@@ -17,7 +18,12 @@ final class Router {
 	/// The pairing screen, opened on purpose from an empty state or Settings.
 	var showPairing = false
 
-	/// Lands straight in a session's chat, filed under Work, with no list flashing by.
+	func startNewSession() {
+		tab = .work
+		workPath = [.newSession]
+	}
+
+	/// Swaps New Session for the chat it just started, so Back goes to the list.
 	func openSession(_ sessionId: String) {
 		var transaction = Transaction()
 		transaction.disablesAnimations = true
@@ -39,6 +45,7 @@ struct RootView: View {
 					WorkView()
 						.navigationDestination(for: Route.self) { route in
 							switch route {
+							case .newSession: NewSessionView()
 							case let .session(id): SessionView(sessionId: id)
 							}
 						}
@@ -53,14 +60,6 @@ struct RootView: View {
 				}
 			}
 			.accessibilityIdentifier("tab.settings")
-
-			// The search role is the only way to get the separate round button at the trailing end.
-			Tab(L10n.NewSession.title, systemImage: "square.and.pencil", value: AppTab.newSession, role: .search) {
-				NavigationStack {
-					NewSessionView()
-				}
-			}
-			.accessibilityIdentifier("tab.newSession")
 		}
 		.tint(Theme.ink)
 		.environment(router)

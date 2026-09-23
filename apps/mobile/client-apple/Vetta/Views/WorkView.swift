@@ -31,6 +31,15 @@ struct WorkView: View {
 						Spacer(minLength: 0)
 					}
 				}
+				// Tab roles (.search, iOS 27's .prominent) are destinations that keep the tab bar,
+				// so starting a session is a toolbar action instead.
+				ToolbarItem(placement: .topBarTrailing) {
+					Button { router.startNewSession() } label: {
+						Image(systemName: "square.and.pencil")
+					}
+					.accessibilityLabel(L10n.NewSession.title)
+					.accessibilityIdentifier("work.newSession")
+				}
 				ToolbarItem(placement: .principal) {
 					// The system shows a principal item beside a large title too, so hand over on scroll.
 					if titleCollapsed {
@@ -86,7 +95,7 @@ struct WorkView: View {
 			} description: {
 				Text(L10n.Home.emptyDescription)
 			} actions: {
-				Button(L10n.NewSession.title) { router.tab = .newSession }
+				Button(L10n.NewSession.title) { router.startNewSession() }
 			}
 		} else {
 			ContentUnavailableView {

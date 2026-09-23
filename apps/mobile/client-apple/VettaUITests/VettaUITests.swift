@@ -31,9 +31,6 @@ final class VettaUITests: XCTestCase {
 		app.buttons["pair.close"].tap()
 		XCTAssertTrue(pair.waitForExistence(timeout: 5), "closing the scanner returns to the guide")
 
-		app.tabBars.buttons["新会话"].tap()
-		XCTAssertTrue(app.buttons["home.pair"].waitForExistence(timeout: 5), "New Session guides to pairing too")
-
 		app.tabBars.buttons["设置"].tap()
 		let scan = app.buttons["settings.scan"]
 		XCTAssertTrue(scan.waitForExistence(timeout: 5), "Settings offers a scan while unpaired")
@@ -41,7 +38,7 @@ final class VettaUITests: XCTestCase {
 		scan.tap()
 		XCTAssertTrue(app.staticTexts["对准电脑端的二维码"].waitForExistence(timeout: 10))
 		app.buttons["pair.close"].tap()
-		app.tabBars.buttons["新会话"].tap()
+		app.tabBars.buttons["工作"].tap()
 
 		app.buttons["home.pair"].tap()
 		XCTAssertTrue(app.staticTexts["对准电脑端的二维码"].waitForExistence(timeout: 10))
@@ -95,8 +92,9 @@ final class VettaUITests: XCTestCase {
 		app.navigationBars.buttons.element(boundBy: 0).tap()
 
 		// New Session: start in a project and land straight in its chat.
-		app.tabBars.buttons["新会话"].tap()
+		app.buttons["work.newSession"].tap()
 		XCTAssertTrue(app.staticTexts["想让电脑做点什么？"].waitForExistence(timeout: 5))
+		XCTAssertFalse(app.tabBars.buttons["工作"].isHittable, "New Session hides the tab bar like a chat")
 		pick(app, "newSession.location", "vetta")
 		let field = app.textFields["composer.field"]
 		XCTAssertTrue(field.waitForExistence(timeout: 5))
