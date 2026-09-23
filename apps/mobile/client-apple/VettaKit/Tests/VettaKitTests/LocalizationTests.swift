@@ -46,10 +46,12 @@ import Testing
 
 	@Test func codeAndCatalogUseTheSameKeys() throws {
 		let code = try String(contentsOf: Self.sources.appendingPathComponent("App/Strings.swift"), encoding: .utf8)
+		// An interpolation becomes %lld or %@ depending on its type, which the source
+		// text alone cannot tell; the argument check above covers the specifiers.
 		let used = Set(code.matches(of: /tr\("([^"]+)"\)/).map { match in
-			String(match.output.1).replacing(/\\\([^)]*\)/, with: "%lld")
+			String(match.output.1).replacing(/\\\([^)]*\)/, with: "%_")
 		})
-		let declared = Set(try catalog().keys)
+		let declared = Set(try catalog().keys.map { $0.replacing(/%(lld|@)/, with: "%_") })
 		#expect(used.subtracting(declared).sorted() == [], "keys missing from Localizable.xcstrings")
 		#expect(declared.subtracting(used).sorted() == [], "catalog keys no longer used")
 	}

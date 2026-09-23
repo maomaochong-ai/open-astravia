@@ -110,8 +110,11 @@ public enum L10n {
 		public static var stop: String { tr("chat.stop") }
 		public static var send: String { tr("chat.send") }
 		public static var resync: String { tr("chat.resync") }
-		public static var summaryDone: String { tr("chat.summaryDone") }
-		public static var summaryRunning: String { tr("chat.summaryRunning") }
+		public static var working: String { tr("chat.working") }
+		public static func stepsDone(_ n: Int) -> String { tr("chat.stepsDone \(n)") }
+		public static func thinkingActivity(_ text: String) -> String { tr("chat.thinkingActivity \(text)") }
+		public static var copy: String { tr("chat.copy") }
+		public static var copied: String { tr("chat.copied") }
 		public static var questionTitle: String { tr("chat.questionTitle") }
 		public static var questionSkip: String { tr("chat.questionSkip") }
 		public static var questionSubmit: String { tr("chat.questionSubmit") }

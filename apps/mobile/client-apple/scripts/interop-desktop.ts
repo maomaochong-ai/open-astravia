@@ -84,6 +84,7 @@ const histories = new Map<string, unknown[]>([
 	["s-report", [
 		{ kind: "user", id: "u1", text: "把上周 Jira 工单按模块汇总成周报", at: Date.now() - 3_600_000 },
 		{ kind: "assistant", id: "a1", text: "已汇总，共 **12** 个工单：\n\n| 模块 | 数量 |\n| --- | --- |\n| 桌面端 | 7 |\n| 手机端 | 5 |\n\n- 桌面端以打包问题为主\n- 手机端集中在配对流程\n\n```bash\njira export --week 38\n```", thinking: "先拉取工单列表，再按 component 分组。", toolCalls: [{ toolCallId: "t1", toolName: "web_search", args: "{\"query\":\"jira week 38\"}", result: "12 issues", durationMs: 820 }], at: Date.now() - 3_590_000 },
+		{ kind: "assistant", id: "a1b", text: "周报已同步到共享文档。", toolCalls: [{ toolCallId: "t1b", toolName: "write_file", args: "{\"path\":\"weekly.md\"}", result: "ok", durationMs: 12 }], at: Date.now() - 3_580_000 },
 	]],
 	["s-build", [{ kind: "user", id: "u2", text: "看看为什么打包签名失败", at: Date.now() - 120_000 }]],
 ]);

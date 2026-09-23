@@ -35,6 +35,40 @@
         }
       }
     },
+    "chat.copied": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copied"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已复制"
+          }
+        }
+      }
+    },
+    "chat.copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制"
+          }
+        }
+      }
+    },
     "chat.errorPrefix": {
       "extractionState": "manual",
       "localizations": {
@@ -154,6 +188,35 @@
         }
       }
     },
+    "chat.stepsDone %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Completed %lld step"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Completed %lld steps"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完成了 %lld 步操作"
+          }
+        }
+      }
+    },
     "chat.stop": {
       "extractionState": "manual",
       "localizations": {
@@ -171,40 +234,6 @@
         }
       }
     },
-    "chat.summaryDone": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "All lookups and summaries are done"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "已完成全部检索与汇总"
-          }
-        }
-      }
-    },
-    "chat.summaryRunning": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Working on it"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "正在处理"
-          }
-        }
-      }
-    },
     "chat.thinking": {
       "extractionState": "manual",
       "localizations": {
@@ -218,6 +247,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "思考过程"
+          }
+        }
+      }
+    },
+    "chat.thinkingActivity %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thinking: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "思考：%@"
           }
         }
       }
@@ -303,6 +349,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "执行中"
+          }
+        }
+      }
+    },
+    "chat.working": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Working on it…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在处理…"
           }
         }
       }

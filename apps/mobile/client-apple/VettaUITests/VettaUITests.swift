@@ -86,7 +86,15 @@ final class VettaUITests: XCTestCase {
 		XCTAssertTrue(app.buttons["session.s-report"].waitForExistence(timeout: 5))
 
 		report.tap()
-		XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'web_search'")).firstMatch.waitForExistence(timeout: 10))
+		// Two replies in a row are one turn; their tool calls fold into one step group.
+		XCTAssertTrue(app.descendants(matching: .any)["turn.a1"].waitForExistence(timeout: 10))
+		XCTAssertFalse(app.descendants(matching: .any)["turn.a1b"].exists, "the second reply merges into the first turn")
+		// Text between tool rounds closes a step group: thinking + web_search, then write_file.
+		let groups = app.buttons.matching(identifier: "turn.work")
+		XCTAssertEqual(groups.allElementsBoundByIndex.map(\.label), ["完成了 2 步操作", "完成了 1 步操作"])
+		settledTap(groups.firstMatch)
+		XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'web_search'")).firstMatch.waitForExistence(timeout: 5))
+		XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'write_file'")).firstMatch.exists, "the second group stays folded")
 		XCTAssertFalse(app.tabBars.buttons["工作"].isHittable, "the chat page hides the tab bar")
 		shot(app, "5-history")
 		app.navigationBars.buttons.element(boundBy: 0).tap()
@@ -140,6 +148,18 @@ final class VettaUITests: XCTestCase {
 		XCTAssertTrue(app.buttons["settings.scan"].waitForExistence(timeout: 5), "after unpairing Settings offers a fresh scan")
 		app.tabBars.buttons["工作"].tap()
 		XCTAssertTrue(app.buttons["home.pair"].waitForExistence(timeout: 5), "Work falls back to the pairing guide")
+	}
+
+	/// Taps once the element stops moving, e.g. after a chat scrolls to its latest line.
+	@MainActor private func settledTap(_ element: XCUIElement) {
+		XCTAssertTrue(element.waitForExistence(timeout: 5))
+		var frame = element.frame
+		for _ in 0 ..< 20 {
+			Thread.sleep(forTimeInterval: 0.15)
+			if element.frame == frame { break }
+			frame = element.frame
+		}
+		element.tap()
 	}
 
 	/// Opens a menu chip and chooses the option whose label starts with `option`.

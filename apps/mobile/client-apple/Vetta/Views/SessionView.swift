@@ -3,13 +3,13 @@ import VettaKit
 
 private enum ChatRow: Identifiable {
 	case timestamp(Double)
-	case item(TranscriptItem)
+	case block(ChatBlock)
 	case question(RemoteQuestionRequest)
 
 	var id: String {
 		switch self {
 		case .timestamp: "ts"
-		case let .item(item): item.id
+		case let .block(block): block.id
 		case let .question(request): "q-\(request.requestId)"
 		}
 	}
@@ -24,7 +24,7 @@ struct SessionView: View {
 	private var rows: [ChatRow] {
 		var rows: [ChatRow] = []
 		if let first = transcript.items.first?.at { rows.append(.timestamp(first)) }
-		rows += transcript.items.map(ChatRow.item)
+		rows += ChatTurns.build(transcript.items).map(ChatRow.block)
 		if let question = transcript.pendingQuestion { rows.append(.question(question)) }
 		return rows
 	}
@@ -43,8 +43,8 @@ struct SessionView: View {
 		ScrollViewReader { proxy in
 			ScrollView {
 				LazyVStack(alignment: .leading, spacing: 0) {
-					ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
-						rowView(row, index: index, rows: rows, active: active)
+					ForEach(rows) { row in
+						rowView(row)
 					}
 					if rows.isEmpty {
 						Text(transcript.loaded ? (model.session(sessionId)?.title ?? "") : L10n.Chat.loadingHistory)
@@ -97,7 +97,7 @@ struct SessionView: View {
 	}
 
 	@ViewBuilder
-	private func rowView(_ row: ChatRow, index: Int, rows: [ChatRow], active: Bool) -> some View {
+	private func rowView(_ row: ChatRow) -> some View {
 		switch row {
 		case let .timestamp(at):
 			MarkerRow(text: TimeFormat.clock(at))
@@ -108,19 +108,14 @@ struct SessionView: View {
 				onSkip: { Task { await model.respond(sessionId, requestId: request.requestId, answers: [], cancelled: true) } }
 			)
 			.id(request.requestId)
-		case let .item(item):
-			switch item {
-			case let .user(_, text, _, _):
-				UserBubble(text: text)
+		case let .block(block):
+			switch block {
+			case let .user(_, text, _, attachments):
+				UserBubble(text: text, attachments: attachments)
 			case let .marker(_, text, _):
 				MarkerRow(text: text.isEmpty ? L10n.Chat.compacted : text)
-			case let .assistant(turn):
-				let lastAssistant = index == rows.count - 1 || (index == rows.count - 2 && { if case .question = rows[rows.count - 1] { return true } else { return false } }())
-				AssistantTurnView(
-					turn: turn,
-					showThinking: model.preferences.liveThinking || !turn.streaming,
-					statusLine: lastAssistant ? (active ? L10n.Chat.summaryRunning : L10n.Chat.summaryDone) : nil
-				)
+			case let .turn(turn):
+				AgentTurnView(turn: turn)
 			}
 		}
 	}

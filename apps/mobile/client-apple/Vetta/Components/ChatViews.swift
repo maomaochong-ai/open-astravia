@@ -3,8 +3,30 @@ import VettaKit
 
 struct UserBubble: View {
 	var text: String
+	var attachments: [TranscriptAttachment] = []
 
 	var body: some View {
+		VStack(alignment: .trailing, spacing: 6) {
+			if !attachments.isEmpty {
+				HStack(spacing: 6) {
+					ForEach(Array(attachments.enumerated()), id: \.offset) { _, attachment in
+						Label(attachment.name, systemImage: attachment.kind == .image ? "photo" : "doc")
+							.font(.caption)
+							.lineLimit(1)
+							.padding(.horizontal, 10)
+							.padding(.vertical, 6)
+							.background(Theme.card2, in: .capsule)
+					}
+				}
+				.frame(maxWidth: .infinity, alignment: .trailing)
+				.accessibilityIdentifier("bubble.attachments")
+			}
+			bubble
+		}
+		.padding(.bottom, 16)
+	}
+
+	private var bubble: some View {
 		HStack {
 			Spacer(minLength: 48)
 			Text(text)
@@ -19,7 +41,6 @@ struct UserBubble: View {
 						.fill(Theme.pill)
 				)
 		}
-		.padding(.bottom, 16)
 	}
 }
 
@@ -167,46 +188,138 @@ struct ThinkingBlock: View {
 	}
 }
 
-struct AssistantTurnView: View {
-	var turn: AssistantTurn
-	var showThinking: Bool
-	var statusLine: String?
+/// Everything the agent did between two user messages, as the desktop shows it:
+/// one header, work folded into step groups, the answer as Markdown, and a
+/// copy button once the turn is over.
+struct AgentTurnView: View {
+	var turn: AgentTurn
+	@State private var copied = false
 
 	var body: some View {
-		VStack(alignment: .leading, spacing: 0) {
+		VStack(alignment: .leading, spacing: 10) {
 			HStack(spacing: 8) {
 				Text("V")
 					.font(.system(size: 11, weight: .bold))
 					.foregroundStyle(Theme.avatarInk)
 					.frame(width: 24, height: 24)
 					.background(Circle().fill(Theme.green))
-				Text("Vetta").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.ink)
-				if let statusLine {
-					Text(statusLine).font(.system(size: 12)).foregroundStyle(Theme.dim)
+				Text("Vetta").font(.subheadline.weight(.semibold))
+				if let at = turn.startedAt {
+					Text(TimeFormat.relative(at)).font(.caption).foregroundStyle(.secondary)
 				}
 				if turn.streaming {
 					ProgressView().controlSize(.mini)
+					Text(L10n.Chat.working).font(.caption).foregroundStyle(.secondary)
 				}
 			}
-			.padding(.bottom, 10)
-			if showThinking {
-				ThinkingBlock(text: turn.thinking, live: turn.streaming && turn.text.isEmpty)
+			ForEach(Array(turn.segments.enumerated()), id: \.element.id) { index, segment in
+				switch segment {
+				case let .work(_, steps):
+					WorkGroupView(
+						steps: steps,
+						live: turn.streaming && index == turn.segments.count - 1,
+						activity: turn.activity
+					)
+				case let .text(_, text):
+					MarkdownView(text: text)
+				case let .error(_, message):
+					Label(message, systemImage: "exclamationmark.triangle.fill")
+						.font(.subheadline)
+						.foregroundStyle(Theme.red)
+				}
 			}
-			ForEach(turn.tools) { tool in
-				ToolCardView(tool: tool)
-			}
-			if !turn.text.isEmpty {
-				MarkdownView(text: turn.text).padding(.top, 4)
-			}
-			if let error = turn.error {
-				Text(L10n.Chat.errorPrefix + error)
-					.font(.system(size: 13))
-					.foregroundStyle(Theme.red)
-					.padding(.top, 4)
+			if !turn.streaming, !turn.conclusion.isEmpty {
+				Button {
+					UIPasteboard.general.string = turn.conclusion
+					withAnimation { copied = true }
+					Task {
+						try? await Task.sleep(for: .seconds(1.5))
+						withAnimation { copied = false }
+					}
+				} label: {
+					Label(copied ? L10n.Chat.copied : L10n.Chat.copy, systemImage: copied ? "checkmark" : "doc.on.doc")
+						.font(.caption)
+						.foregroundStyle(.secondary)
+						.contentTransition(.symbolEffect(.replace))
+				}
+				.buttonStyle(.plain)
+				.accessibilityIdentifier("turn.copy")
 			}
 		}
 		.padding(.bottom, 20)
 		.frame(maxWidth: .infinity, alignment: .leading)
+		.accessibilityElement(children: .contain)
+		.accessibilityIdentifier("turn.\(turn.id)")
+	}
+}
+
+/// Consecutive thinking and tool calls folded into one row: while live it names
+/// the current step, afterwards it counts them; expanding lists every step.
+struct WorkGroupView: View {
+	var steps: [WorkStep]
+	var live: Bool
+	var activity: WorkStep?
+	@State private var open = false
+
+	private var title: String {
+		guard live else { return L10n.Chat.stepsDone(steps.count) }
+		switch activity {
+		case let .thinking(_, text)?:
+			let tail = text.split(whereSeparator: \.isNewline).last.map(String.init) ?? text
+			return L10n.Chat.thinkingActivity(String(tail.suffix(40)))
+		case let .tool(card)?:
+			let summary = summarizeArgs(card.args)
+			return card.label ?? (summary.isEmpty ? card.toolName : "\(card.toolName) · \(summary)")
+		case nil:
+			return L10n.Chat.working
+		}
+	}
+
+	var body: some View {
+		VStack(alignment: .leading, spacing: 0) {
+			Button {
+				withAnimation(.snappy) { open.toggle() }
+			} label: {
+				HStack(spacing: 8) {
+					if live {
+						ProgressView().controlSize(.mini)
+					} else {
+						Image(systemName: steps.contains { if case let .tool(card) = $0 { card.status == .failed } else { false } } ? "exclamationmark.circle" : "checkmark.circle")
+							.foregroundStyle(.secondary)
+					}
+					Text(title)
+						.lineLimit(1)
+						.frame(maxWidth: .infinity, alignment: .leading)
+					Image(systemName: "chevron.right")
+						.font(.caption.weight(.semibold))
+						.rotationEffect(.degrees(open ? 90 : 0))
+						.foregroundStyle(.tertiary)
+				}
+				.font(.subheadline)
+				.foregroundStyle(.secondary)
+				.padding(.horizontal, 12)
+				.padding(.vertical, 10)
+				.contentShape(Rectangle())
+			}
+			.buttonStyle(.plain)
+			.accessibilityIdentifier("turn.work")
+			if open {
+				VStack(alignment: .leading, spacing: 0) {
+					ForEach(steps) { step in
+						switch step {
+						case let .thinking(_, text):
+							ThinkingBlock(text: text, live: live && step.id == activity?.id)
+						case let .tool(card):
+							ToolCardView(tool: card)
+						}
+					}
+				}
+				.padding(.horizontal, 8)
+				.padding(.bottom, 4)
+				.transition(.opacity)
+			}
+		}
+		.background(Theme.card2.opacity(0.6), in: .rect(cornerRadius: 14))
 	}
 }
 
