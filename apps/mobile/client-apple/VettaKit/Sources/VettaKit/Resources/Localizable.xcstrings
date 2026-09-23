@@ -540,6 +540,23 @@
         }
       }
     },
+    "chat.more": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "More"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更多"
+          }
+        }
+      }
+    },
     "chat.questionMultiHint": {
       "extractionState": "manual",
       "localizations": {
@@ -682,13 +699,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Resync"
+            "value": "Refresh"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "重新同步"
+            "value": "刷新"
           }
         }
       }

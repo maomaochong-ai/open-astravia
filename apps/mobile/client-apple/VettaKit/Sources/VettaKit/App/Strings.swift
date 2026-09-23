@@ -112,6 +112,7 @@ public enum L10n {
 		public static var stop: String { tr("chat.stop") }
 		public static var send: String { tr("chat.send") }
 		public static var resync: String { tr("chat.resync") }
+		public static var more: String { tr("chat.more") }
 		public static var working: String { tr("chat.working") }
 		public static var waitingModel: String { tr("chat.waitingModel") }
 		public static func retrying(_ attempt: Int, _ total: Int) -> String { tr("chat.retrying \(attempt) \(total)") }

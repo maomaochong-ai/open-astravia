@@ -2,7 +2,8 @@ import SwiftUI
 import VettaKit
 
 enum Route: Hashable {
-	case newSession
+	/// `projectCwd` is chosen up front; `nil` starts in the desktop's conversations.
+	case newSession(projectCwd: String? = nil)
 	case session(String)
 }
 
@@ -20,7 +21,12 @@ final class Router {
 
 	func startNewSession() {
 		tab = .work
-		workPath = [.newSession]
+		workPath = [.newSession()]
+	}
+
+	/// New Session in the chat's own project, over the chat so Back returns to it.
+	func startNewSession(in projectCwd: String?) {
+		workPath.append(.newSession(projectCwd: projectCwd))
 	}
 
 	/// What New Session had when its start failed, put back when it reopens.
@@ -32,7 +38,7 @@ final class Router {
 		failedStart = start
 		var transaction = Transaction()
 		transaction.disablesAnimations = true
-		withTransaction(transaction) { workPath = [.newSession] }
+		withTransaction(transaction) { workPath = [.newSession()] }
 	}
 
 	/// Swaps New Session for the chat it just started, so Back goes to the list.
@@ -57,7 +63,7 @@ struct RootView: View {
 					WorkView()
 						.navigationDestination(for: Route.self) { route in
 							switch route {
-							case .newSession: NewSessionView()
+							case let .newSession(projectCwd): NewSessionView(projectCwd: projectCwd)
 							case let .session(id): SessionView(sessionId: id)
 							}
 						}

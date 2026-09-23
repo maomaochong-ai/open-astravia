@@ -12,6 +12,10 @@ struct NewSessionView: View {
 	@State private var pickingModel = false
 	@State private var draft = PromptDraft()
 
+	init(projectCwd: String? = nil) {
+		_projectCwd = State(initialValue: projectCwd)
+	}
+
 	private var projects: [RemoteProjectSummary] { model.projects.filter { !$0.isConversation } }
 
 	var body: some View {

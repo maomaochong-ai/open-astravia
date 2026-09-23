@@ -16,13 +16,20 @@ private enum ChatRow: Identifiable {
 struct SessionView: View {
 	let sessionId: String
 	@Environment(AppModel.self) private var model
+	@Environment(Router.self) private var router
 	@State private var draft = PromptDraft()
+	@State private var pageWidth: CGFloat = 0
 
 	/// The desktop's id; a chat opened by New Session starts on a local one.
 	private var id: String { model.resolve(sessionId) }
 	/// The first prompt of a new session is still on its way to the desktop.
 	private var starting: Bool { model.isStarting(sessionId) }
 	private var transcript: TranscriptState { model.transcript(id) }
+	/// New Session from here starts in this chat's project; `nil` is the conversations.
+	private var newSessionCwd: String? {
+		guard let cwd = model.session(id)?.projectCwd, cwd != model.conversationCwd else { return nil }
+		return cwd
+	}
 
 	private var rows: [ChatRow] {
 		var rows: [ChatRow] = []
@@ -71,6 +78,7 @@ struct SessionView: View {
 			}
 		}
 		.background(Theme.page)
+		.onGeometryChange(for: CGFloat.self, of: \.size.width) { pageWidth = $0 }
 		// A bar, not a plain inset: the conversation fades out under the composer like it
 		// does under the title, instead of running into it.
 		.safeAreaBar(edge: .bottom) {
@@ -103,15 +111,25 @@ struct SessionView: View {
 		// The composer takes the bottom edge; a tab bar under it would stack two glass bars.
 		.toolbar(.hidden, for: .tabBar)
 		.toolbar {
-			ToolbarItem(placement: .principal) {
-				ModelMenu(sessionId: id, busy: active || starting)
+			// Beside Back rather than centred, so a long title gets the width the buttons leave.
+			ToolbarItem(placement: .topBarLeading) {
+				ModelMenu(sessionId: id, busy: active || starting, pageWidth: pageWidth)
 			}
-			ToolbarItem(placement: .topBarTrailing) {
-				Button { Task { await model.resync(id) } } label: {
-					Image(systemName: "arrow.counterclockwise")
+			.sharedBackgroundVisibility(.hidden)
+			ToolbarItemGroup(placement: .topBarTrailing) {
+				Button { router.startNewSession(in: newSessionCwd) } label: {
+					Image(systemName: "square.and.pencil")
 				}
-				.disabled(starting)
-				.accessibilityLabel(L10n.Chat.resync)
+				.accessibilityLabel(L10n.NewSession.title)
+				.accessibilityIdentifier("chat.newSession")
+				Menu {
+					Button(L10n.Chat.resync, systemImage: "arrow.clockwise") { Task { await model.resync(id) } }
+						.disabled(starting)
+				} label: {
+					Image(systemName: "ellipsis")
+				}
+				.accessibilityLabel(L10n.Chat.more)
+				.accessibilityIdentifier("chat.more")
 			}
 		}
 		// A new session's history is fetched once its prompt is out; earlier, it would replace the prompt.
@@ -146,6 +164,7 @@ struct SessionView: View {
 private struct ModelMenu: View {
 	let sessionId: String
 	var busy: Bool
+	var pageWidth: CGFloat
 	@Environment(AppModel.self) private var model
 	@State private var picking = false
 
@@ -154,7 +173,7 @@ private struct ModelMenu: View {
 		let options = model.models[sessionId] ?? []
 		let current = options.first { $0.key == state.modelKey }
 		Button { picking = true } label: {
-			VStack(spacing: 1) {
+			VStack(alignment: .leading, spacing: 1) {
 				Text(title).font(.headline).lineLimit(1)
 				HStack(spacing: 4) {
 					Circle().fill(model.online ? Theme.green : Color.secondary).frame(width: 6, height: 6)
@@ -166,7 +185,8 @@ private struct ModelMenu: View {
 				.font(.caption)
 				.foregroundStyle(.secondary)
 			}
-			.frame(maxWidth: 240)
+			// A toolbar item only gets its ideal width; claim what Back and the two buttons leave.
+			.frame(width: max(120, pageWidth - 212), alignment: .leading)
 		}
 		.buttonStyle(.plain)
 		// Switching mid-turn would change the model under a running reply.
