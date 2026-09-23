@@ -36,6 +36,8 @@ export interface ModelSelectProps {
 	onChange: (key: string | null) => void;
 	/** Show an explicit "unset" entry so the selection can be cleared */
 	allowClear?: boolean;
+	clearLabel?: string;
+	ariaLabel?: string;
 	disabled?: boolean;
 	/** Trigger text when nothing is selected (defaults to common placeholder) */
 	placeholder?: string;
@@ -64,6 +66,8 @@ export function ModelSelect({
 	value,
 	onChange,
 	allowClear = false,
+	clearLabel,
+	ariaLabel,
 	disabled = false,
 	placeholder,
 	triggerClassName,
@@ -203,6 +207,7 @@ export function ModelSelect({
 			<DropdownMenuTrigger asChild disabled={disabled}>
 				<button
 					type="button"
+					aria-label={ariaLabel}
 					className={cn(
 						"flex min-w-0 max-w-full items-center gap-1.5 rounded-md border border-input bg-transparent px-2 py-1 text-[12px] text-foreground transition-colors hover:border-border/60 hover:bg-accent/50 disabled:cursor-not-allowed disabled:opacity-50 data-[state=open]:border-primary/30 data-[state=open]:bg-primary/10 data-[state=open]:text-primary",
 						triggerClassName,
@@ -210,7 +215,7 @@ export function ModelSelect({
 				>
 					{selectedOption && <ProviderIcon symbol={iconFor(selectedOption.provider)} className="h-3.5 w-3.5" />}
 					<span className="min-w-0 flex-1 truncate text-left">
-						{selectedOption?.displayName ?? placeholder ?? t("modelSelect.placeholder")}
+						{selectedOption?.displayName ?? value ?? placeholder ?? t("modelSelect.placeholder")}
 					</span>
 					{selectedOption && <MultiplierTag multiplier={selectedOption.multiplier} />}
 					{showReasoning && currentLevel && (
@@ -314,7 +319,7 @@ export function ModelSelect({
 										{allowClear && (
 											<DropdownMenuItem onSelect={() => onChange(null)}>
 												<span className="min-w-0 flex-1 truncate text-muted-foreground">
-													{t("modelSelect.unset")}
+													{clearLabel ?? t("modelSelect.unset")}
 												</span>
 												{value == null && (
 													<span className="icon-[solar--check-circle-linear] h-3.5 w-3.5 shrink-0" />

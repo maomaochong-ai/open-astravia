@@ -17,6 +17,7 @@ import {
 	loadInputActionStateForSession,
 	pageHeaderTitleAtom,
 	pageHeaderTitleBadgeAtom,
+	pendingSessionCreationAtom,
 	pendingSessionOpenAtom,
 	persistCurrentInputActionState,
 	persistInputActionStateForSession,
@@ -48,6 +49,7 @@ export function useChatViewModel(): ChatViewModelResult {
 	const activeSessionPath = useAtomValue(activeSessionPathAtom);
 	const activeSessionCwd = useAtomValue(activeSessionCwdAtom);
 	const pendingSessionOpen = useAtomValue(pendingSessionOpenAtom);
+	const pendingSessionCreation = useAtomValue(pendingSessionCreationAtom);
 	const messages = useAtomValue(chatMessagesAtom);
 	const isStreaming = useAtomValue(isConversationBusyAtom);
 	const [panelOpen, setPanelOpen] = useAtom(activityPanelOpenAtom);
@@ -243,6 +245,7 @@ export function useChatViewModel(): ChatViewModelResult {
 			header,
 			isStreaming,
 			messages,
+			pendingLabel: pendingSessionCreation ? t("messageList.assistantMessage.creatingSession") : undefined,
 			rootClassName: surface?.rootClassName,
 			// pending path is the visual identity. It avoids old -> null -> target
 			// Virtuoso resets while Runtime-bound activeSession is intentionally absent.

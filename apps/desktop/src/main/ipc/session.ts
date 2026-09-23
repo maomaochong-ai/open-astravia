@@ -70,6 +70,7 @@ import { type DebugRequestData, writeDebugRequest } from "../debug-writer.js";
 import { getAppLogger } from "../logger.js";
 import { getDesktopMcpAppRegistry } from "../mcp/mcp-app-runtime.js";
 import { getDesktopMcpTaskCoordinator, getDesktopMcpTaskRegistry } from "../mcp/mcp-task-runtime.js";
+import { forgetMessageAnnotations } from "../message-annotations/host.js";
 import { notify } from "../notifications/index.js";
 import { createPetBubbleCommand } from "../pet/pet-bubble-command.js";
 import { mapSessionEventToPetPresentation } from "../pet/session-event-action-policy.js";
@@ -391,6 +392,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	const sessionCommands = createDesktopSessionCommands({
 		runtime,
 		onSessionsDeleted: notifyAutomationSessionsDeleted,
+		forgetAnnotations: forgetMessageAnnotations,
 	});
 	const pluginRuntimeSource = getDesktopCodingAgentPluginRuntimeSource();
 	const conversationService = getDesktopConversationService();
@@ -1226,6 +1228,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			listSessions: (target) => listSessionHistory(target),
 			deleteSession: async (sessionPath) => {
 				await runtime.deleteSession(sessionPath);
+				await forgetMessageAnnotations(sessionPath);
 				purged.add(sessionPath);
 			},
 			// 分片目录是新会话的落点；`<项目>/.vetta/sessions` 是存量兼容位置，随项目目录

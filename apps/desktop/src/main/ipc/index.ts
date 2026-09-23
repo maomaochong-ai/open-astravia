@@ -1,5 +1,6 @@
 import type { WebContents } from "electron";
 import type { ActionApprovalBroker } from "../app-actions/approval-broker.js";
+import { getMessageAnnotationService } from "../message-annotations/host.js";
 import { registerNotificationIpc } from "../notifications/index.js";
 import type { PluginActionService } from "../plugins/plugin-action-service.js";
 import { registerAbilitiesIpc } from "./abilities.js";
@@ -16,7 +17,9 @@ import { registerDownloadsIpc } from "./downloads.js";
 import { registerFileTransferIpc } from "./file-transfer.js";
 import { registerFsIpc } from "./fs.js";
 import { registerImIpc } from "./im.js";
+import { registerMarkdownIpc } from "./markdown.js";
 import { registerMediaIpc } from "./media.js";
+import { registerMessageAnnotationsIpc } from "./message-annotations.js";
 import { registerOnboardingIpc } from "./onboarding.js";
 import { registerPermissionsIpc } from "./permissions.js";
 import { registerPetIpc } from "./pet.js";
@@ -42,7 +45,9 @@ import { registerUpdaterIpc } from "./updater.js";
 import { registerWebhookIpc } from "./webhook.js";
 
 interface IpcTeardown {
+	teardownMessageAnnotations: () => void;
 	teardownAbilities: () => void;
+	teardownMarkdown: () => void;
 	teardownAgentTeams: () => void;
 	teardownActionApproval: () => void;
 	teardownAppMonitor: () => void;
@@ -92,7 +97,9 @@ export function registerAllIpc(
 	},
 ): IpcTeardown {
 	return {
+		teardownMessageAnnotations: registerMessageAnnotationsIpc(webContents, getMessageAnnotationService()),
 		teardownAbilities: registerAbilitiesIpc(),
+		teardownMarkdown: registerMarkdownIpc(webContents),
 		teardownAgentTeams: registerAgentTeamsIpc(),
 		teardownActionApproval: registerActionApprovalIpc(options.actionApprovalBroker),
 		teardownAppMonitor: registerAppMonitorIpc(),
@@ -135,7 +142,9 @@ export function registerAllIpc(
 }
 
 export function teardownAllIpc(teardown: IpcTeardown): void {
+	teardown.teardownMessageAnnotations();
 	teardown.teardownAbilities();
+	teardown.teardownMarkdown();
 	teardown.teardownAgentTeams();
 	teardown.teardownActionApproval();
 	teardown.teardownAppMonitor();

@@ -53,6 +53,8 @@ const rendering: MessageRendering = {
 
 ## Markdown 定义
 
+默认渲染现已包含公式、SVG 与隔离 HTML 预览，语法、运行限制和性能预算见 [Markdown 富内容](markdown-rich-content.md)。自定义 `codeBlock` 仍优先于默认富代码块；需要保留内置预览时，应自行明确组合，不能假设覆盖后仍会自动运行默认代码块。
+
 ```tsx
 import { CodeBlock, defaultMarkdown, extendMarkdown, MarkdownProvider } from "@vetta-org/theme-ui/markdown";
 import type { MarkdownCodeBlockProps } from "@vetta-org/theme-ui/markdown";

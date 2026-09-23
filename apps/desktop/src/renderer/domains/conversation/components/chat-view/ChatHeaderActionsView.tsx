@@ -19,11 +19,7 @@ export function ChatHeaderActionsView({ actions, model }: ChatHeaderActionsViewP
 				exporting={model.exporting}
 				onClick={actions.openExport}
 			/>
-			<ChatHeaderActions.Pin
-				title={model.pinTitle}
-				pinned={model.pinned}
-				onClick={actions.togglePin}
-			/>
+			<ChatHeaderActions.Pin title={model.pinTitle} pinned={model.pinned} onClick={actions.togglePin} />
 			<ChatHeaderActions.Terminal
 				title={model.terminalTitle}
 				focused={model.terminalFocused}
@@ -35,11 +31,7 @@ export function ChatHeaderActionsView({ actions, model }: ChatHeaderActionsViewP
 				open={model.bottomPanelOpen}
 				onClick={actions.toggleBottomPanel}
 			/>
-			<ChatHeaderActions.Panel
-				title={model.panelTitle}
-				open={model.panelOpen}
-				onClick={actions.togglePanel}
-			/>
+			<ChatHeaderActions.Panel title={model.panelTitle} open={model.panelOpen} onClick={actions.togglePanel} />
 		</>
 	);
 }

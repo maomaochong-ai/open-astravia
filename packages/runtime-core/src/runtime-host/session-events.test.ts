@@ -3,6 +3,16 @@ import { describe, expect, it } from "vitest";
 import { mapRuntimeSessionObservationEvent } from "./session-events.js";
 
 describe("mapRuntimeSessionObservationEvent", () => {
+	it("requires turn identity for model request boundaries", () => {
+		expect(() =>
+			mapRuntimeSessionObservationEvent("session-1", {
+				type: "model.request.started",
+				modelCallIndex: 0,
+				source: "agent",
+			}),
+		).toThrow("requires Turn identity");
+	});
+
 	it("preserves the original assistant protocol event without field mapping", () => {
 		const partial = {
 			role: "assistant",

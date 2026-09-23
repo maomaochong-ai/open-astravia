@@ -1,4 +1,4 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import type { MouseEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { computeGraphLayout, type GraphLine } from "../../git/graphLayout";
 import type { CommitNode } from "../../git/types";
@@ -88,14 +88,15 @@ export function GitGraphCanvas({
 	selectedHash,
 	onSelect,
 	onReachEnd,
+	onContextMenu,
 }: {
 	nodes: readonly CommitNode[];
 	selectedHash: string | null;
 	onSelect: (hash: string) => void;
 	onReachEnd?: () => void;
+	onContextMenu?: (node: CommitNode, event: MouseEvent<HTMLElement>) => void;
 }): JSX.Element {
 	const mode = useHostMode();
-	const { locale } = useTranslation();
 	const layout = useMemo(() => computeGraphLayout(nodes, COLORS_COUNT), [nodes]);
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const onReachEndRef = useRef(onReachEnd);
@@ -116,7 +117,8 @@ export function GitGraphCanvas({
 			raf = requestAnimationFrame(() => {
 				raf = 0;
 				setView({ top: el.scrollTop, height: el.clientHeight });
-				if (el.scrollHeight - el.scrollTop - el.clientHeight < ROW_HEIGHT * REACH_END_ROWS) onReachEndRef.current?.();
+				if (el.scrollHeight - el.scrollTop - el.clientHeight < ROW_HEIGHT * REACH_END_ROWS)
+					onReachEndRef.current?.();
 			});
 		};
 		el.addEventListener("scroll", onScroll, { passive: true });
@@ -186,7 +188,7 @@ export function GitGraphCanvas({
 							graphWidth={graphWidth}
 							top={i * ROW_HEIGHT}
 							height={ROW_HEIGHT}
-							locale={locale}
+							onContextMenu={onContextMenu}
 							onSelect={onSelect}
 						/>
 					);

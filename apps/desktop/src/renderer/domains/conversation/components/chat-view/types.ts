@@ -28,6 +28,7 @@ export interface ChatViewModel {
 	exportTitle: string;
 	header: ChatViewHeaderModel;
 	isStreaming: boolean;
+	pendingLabel?: string;
 	messages: ChatConversationItem[];
 	rootClassName?: string;
 	sessionId: string | null;

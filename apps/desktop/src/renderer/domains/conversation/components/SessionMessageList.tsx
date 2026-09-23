@@ -2,6 +2,8 @@ import { activeSessionAtom, isCompactingAtom, pendingScrollToEntryAtom } from "@
 import { useAtom, useAtomValue } from "jotai";
 import { createContext, useCallback, useContext, useMemo } from "react";
 import { SessionSelection } from "./message-list/SessionSelection";
+import { AnnotationScope } from "./annotations/AnnotationScope";
+import { AnnotationMessageMenu } from "./annotations/AnnotationMenus";
 import type { ConversationUserMessageViewModel } from "@shared/conversation";
 import { MessageList } from "./MessageList";
 import { MessageListFooter } from "./message-list/MessageListFooter";
@@ -16,8 +18,7 @@ import type { MessageListProps } from "./message-list/types";
 const sessionRendering: MessageRendering = {
 	row: SessionMessageRow,
 	renderers: {
-		user: (props) =>
-			props.message.kind === "user" ? <SessionUserMessage {...props} message={props.message} /> : null,
+		user: (props) => (props.message.kind === "user" ? <SessionUserMessage {...props} message={props.message} /> : null),
 	},
 };
 
@@ -27,7 +28,14 @@ function SessionMessageRow(props: MessageRowProps) {
 	const showFork = fork.anchorId === props.message.id;
 	return (
 		<DefaultMessageRow {...props} isLast={props.isLast && !showFork}>
-			{props.children}
+			<div className="group/annotation relative">
+				{props.children}
+				{props.message.kind === "agent" ? (
+					<div className="pointer-events-none absolute right-0 top-0 opacity-0 group-hover/annotation:pointer-events-auto group-hover/annotation:opacity-100 group-focus-within/annotation:pointer-events-auto group-focus-within/annotation:opacity-100">
+						<AnnotationMessageMenu message={props.message} />
+					</div>
+				) : null}
+			</div>
 			{showFork ? <ForkOriginBanner sourceMessage={fork.source} /> : null}
 		</DefaultMessageRow>
 	);
@@ -51,15 +59,11 @@ export function SessionMessageList(props: MessageListProps & { onSend?: (overrid
 			source: source?.kind === "user" ? source : undefined,
 		};
 	}, [props.messages, session?.parentEntryId, session?.parentSessionPath]);
-	return (
+	const feed = (
 		<ForkContext.Provider value={fork}>
 			<MessageRenderingDefaults value={sessionRendering}>
 				<SessionSelection>
-					<MessageList
-						{...props}
-						initialTargetKey={pendingTarget?.entryId}
-						onInitialTargetHandled={clearPendingTarget}
-					>
+					<MessageList {...props} initialTargetKey={pendingTarget?.entryId} onInitialTargetHandled={clearPendingTarget}>
 						<MessageListFooter
 							isCompacting={isCompacting}
 							waiting={props.isStreaming && props.messages.at(-1)?.kind !== "agent"}
@@ -72,5 +76,17 @@ export function SessionMessageList(props: MessageListProps & { onSend?: (overrid
 				</SessionSelection>
 			</MessageRenderingDefaults>
 		</ForkContext.Provider>
+	);
+	// Feed identity is the durable session path; runtimeId is only used for host calls.
+	return session && session.sessionPath === props.sessionId ? (
+		<AnnotationScope
+			key={session.sessionPath}
+			session={session}
+			sourceEntryIds={props.messages.flatMap((message) => (message.entryId ? [message.entryId] : []))}
+		>
+			{feed}
+		</AnnotationScope>
+	) : (
+		feed
 	);
 }

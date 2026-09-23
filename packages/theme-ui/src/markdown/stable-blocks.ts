@@ -64,6 +64,7 @@ export function splitStableMarkdownBlocks(text: string): StableMarkdownSplit {
 	let fenceChar: FenceMarker["char"] = "`";
 	let fenceLen = 0;
 	let commitOnClose = false;
+	let literalEnd: RegExp | null = null;
 
 	const commitThrough = (end: number): void => {
 		if (end <= start || end > text.length) return;
@@ -92,6 +93,23 @@ export function splitStableMarkdownBlocks(text: string): StableMarkdownSplit {
 			continue;
 		}
 
+		// Do not freeze fence-looking text inside raw documents or display formulas.
+		// Track this while scanning so previously committed prefixes remain stable.
+		if (literalEnd) {
+			if (literalEnd.test(line)) literalEnd = null;
+			index = lineEnd;
+			continue;
+		}
+		const math = /^ {0,3}(\${2,})\s*$/.exec(line);
+		const html = /^ {0,3}<(svg|html|script|style|div|section|article|table|body|head)(?:\s|>)/i.exec(line);
+		if (math || html || /^ {0,3}<!doctype\s+html/i.test(line)) {
+			literalEnd = math
+				? new RegExp(`^ {0,3}\\${"$"}{${math[1].length},}\\s*$`)
+				: new RegExp(`</${html?.[1] ?? "html"}\\s*>`, "i");
+			if (!math && literalEnd.test(line)) literalEnd = null;
+			index = lineEnd;
+			continue;
+		}
 		const opening = isFenceOpeningLine(line);
 		if (opening) {
 			inFence = true;

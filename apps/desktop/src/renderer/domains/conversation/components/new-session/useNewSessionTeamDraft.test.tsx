@@ -2,7 +2,7 @@
 
 import { createAgentTeamFixture } from "@vetta/agent-team";
 import type { DesktopTeamSessionSnapshot } from "@preload/api-types/team-conversation-display";
-import { inputValueAtom } from "@shared/store/atoms";
+import { inputValueAtom, selectedModelAtom, reasoningByModelAtom } from "@shared/store/atoms";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { getDefaultStore } from "jotai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -40,12 +40,28 @@ describe("useNewSessionTeamDraft", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		getDefaultStore().set(inputValueAtom, "");
+		getDefaultStore().set(selectedModelAtom, null);
+		getDefaultStore().set(reasoningByModelAtom, {});
 		vi.spyOn(crypto, "randomUUID").mockReturnValue(reservedSessionId);
 		Object.defineProperty(window, "vetta", {
 			configurable: true,
 			value: { agentTeams: { list, createSessionRecord, setExecutionMode, sendMessage } },
 		});
 	});
+
+    it("keeps the chosen reasoning when the model is remembered globally, then sends that same selection", async () => {
+        const store = getDefaultStore();
+        store.set(selectedModelAtom, "p/old");
+        store.set(reasoningByModelAtom, {});
+        const { result } = renderHook(() => useNewSessionTeamDraft(options()));
+        await waitFor(() => expect(result.current.model?.members.length).toBeGreaterThan(0));
+        await act(async () => { await result.current.actions?.selectModel("p/new", "high"); });
+        act(() => { store.set(selectedModelAtom, "p/new"); });
+        expect(result.current.model).toMatchObject({ modelKey: "p/new", reasoning: "high" });
+        act(() => result.current.actions?.setDraft("use the selected model"));
+        await act(async () => { await result.current.actions?.send(); });
+        expect(takeTeamSessionHandoff(reservedSessionId)).toMatchObject({ modelKey: "p/new", reasoning: "high" });
+    });
 
 	it("keeps one shared draft when the user changes the new-session target", async () => {
 		const sharedDraft = "keep this task @C:/workspace/brief.md";

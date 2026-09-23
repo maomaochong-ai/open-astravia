@@ -13,4 +13,15 @@ describe("extractIconifyDataUrlFromCssValues", () => {
 	it("returns null when no icon image is present", () => {
 		expect(extractIconifyDataUrlFromCssValues(["none", "", "initial"])).toBeNull();
 	});
+
+	it("preserves quotes and parentheses embedded in an Iconify SVG data URL", () => {
+		const svg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' style='fill:rgb(255,0,0)'/%3E";
+		expect(extractIconifyDataUrlFromCssValues([`url("${svg}")`])).toBe(svg);
+		expect(extractIconifyDataUrlFromCssValues(["url('data:image/png;base64,AAAA')"])).toBe(
+			"data:image/png;base64,AAAA",
+		);
+		expect(extractIconifyDataUrlFromCssValues(["url(data:image/png;base64,AAAA)"])).toBe(
+			"data:image/png;base64,AAAA",
+		);
+	});
 });

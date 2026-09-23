@@ -1,4 +1,5 @@
 import { usePreviewNav } from "@domains/file-preview/components/FilePreviewView";
+import { waitForCommittedPaint } from "@shared/lib/committed-paint";
 import {
 	activityPanelPreviewAvailableAtom,
 	closeInlineFilePreviewAtom,
@@ -12,7 +13,6 @@ import { useCallback, useEffect, useState } from "react";
 const TREE_DEFAULT_WIDTH = 220;
 const TREE_MIN_WIDTH = 160;
 const TREE_MAX_WIDTH = 360;
-const PREVIEW_MOUNT_DELAY_MS = 240;
 
 export interface FileTabContentModel {
 	showTree: boolean;
@@ -51,8 +51,13 @@ export function useFileTabContentModel(): FileTabContentModel {
 			setPreviewMounted(false);
 			return;
 		}
-		const timer = setTimeout(() => setPreviewMounted(true), PREVIEW_MOUNT_DELAY_MS);
-		return () => clearTimeout(timer);
+		let cancelled = false;
+		void waitForCommittedPaint().then(() => {
+			if (!cancelled) setPreviewMounted(true);
+		});
+		return () => {
+			cancelled = true;
+		};
 	}, [showPreview]);
 
 	const [treeWidth, setTreeWidth] = useState(TREE_DEFAULT_WIDTH);

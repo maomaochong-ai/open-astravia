@@ -14,6 +14,7 @@ function setup(cwd: string | undefined) {
 			renameSession: vi.fn(async (path: string, name: string) => void calls.push(`rename ${path} ${name}`)),
 		},
 		onSessionsDeleted: (isDeleted) => deleted.push(isDeleted),
+		forgetAnnotations: async (path) => void calls.push(`annotations ${path}`),
 		assertOrdinary: async (path) => void calls.push(`assert ${path}`),
 		readSessionCwd: async () => cwd,
 		removeDirectory: vi.fn(async (dir: string) => void calls.push(`rm ${dir}`)),
@@ -28,7 +29,13 @@ describe("desktop session commands", () => {
 		const sub = join(DEFAULT_CONVERSATION_CWD, "0b6f4c2e-1d2a-4e0b-9c1a-2f3e4d5c6b7a");
 		const { commands, calls, events, deleted } = setup(sub);
 		await commands.delete("/s/a.jsonl");
-		expect(calls).toEqual(["assert /s/a.jsonl", "delete /s/a.jsonl", "forget /s/a.jsonl", `rm ${sub}`]);
+		expect(calls).toEqual([
+			"assert /s/a.jsonl",
+			"delete /s/a.jsonl",
+			"annotations /s/a.jsonl",
+			"forget /s/a.jsonl",
+			`rm ${sub}`,
+		]);
 		expect(deleted).toHaveLength(1);
 		expect(deleted[0]("/s/a.jsonl")).toBe(true);
 		expect(deleted[0]("/s/b.jsonl")).toBe(false);
@@ -54,6 +61,7 @@ describe("desktop session commands", () => {
 		const commands = createDesktopSessionCommands({
 			runtime: { deleteSession, renameSession: vi.fn(async () => undefined) },
 			onSessionsDeleted: vi.fn(),
+			forgetAnnotations: vi.fn(),
 			assertOrdinary: async () => {
 				throw new Error("Conversation is managed by Agent Team: t/s");
 			},

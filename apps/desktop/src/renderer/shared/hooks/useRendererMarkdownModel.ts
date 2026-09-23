@@ -15,7 +15,8 @@ import { getFileIcon } from "@vetta-org/theme-ui/file-explorer";
 import { atom, useAtomValue, useSetAtom } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { useCallback, useMemo } from "react";
-import { useTranslation } from "react-i18next";
+import { useMarkdownHost } from "./useMarkdownHost";
+import { useMarkdownLabels } from "./useMarkdownLabels";
 
 const activeCwdAtom = selectAtom(activeSessionAtom, (session) => session?.cwd ?? null);
 const noActiveCwdAtom = atom(null);
@@ -26,7 +27,7 @@ export function useRendererMarkdownModel(
 	preferInlinePreview = true,
 	workspaceIdOverride?: string,
 ): RendererMarkdownModel {
-	const { t } = useTranslation("chat");
+	const labels = useMarkdownLabels();
 	const theme = useAtomValue(resolvedThemeAtom);
 	const activeCwd = useAtomValue(cwdOverride === undefined ? activeCwdAtom : noActiveCwdAtom);
 	const setFilePreview = useSetAtom(filePreviewAtom);
@@ -37,6 +38,7 @@ export function useRendererMarkdownModel(
 	const narrow = useNarrowScreen();
 	const cwd = cwdOverride === undefined ? activeCwd : cwdOverride;
 	const workspaceId = workspaceIdOverride ?? cwd;
+	const host = useMarkdownHost(cwd);
 
 	const onOpenFile = useCallback(
 		(path: string) => {
@@ -70,22 +72,16 @@ export function useRendererMarkdownModel(
 		[openUrlInWorkspace, workspaceId],
 	);
 	const getFileIconClass = useCallback((fileName: string) => getFileIcon(fileName, false, false), []);
-	const labels = useMemo(
-		() => ({
-			copy: t("copyButton.label"),
-			copied: t("copyButton.copied"),
-		}),
-		[t],
-	);
 
 	return useMemo(
 		() => ({
 			theme: theme === "dark" ? "dark" : "light",
 			labels,
+			host,
 			getFileIconClass,
 			onOpenFile,
 			onOpenUrl,
 		}),
-		[theme, labels, getFileIconClass, onOpenFile, onOpenUrl],
+		[theme, labels, host, getFileIconClass, onOpenFile, onOpenUrl],
 	);
 }

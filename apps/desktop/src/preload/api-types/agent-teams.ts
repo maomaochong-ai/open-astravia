@@ -30,6 +30,7 @@ export interface DesktopAgentTeamsApi {
 	 * 事件不带文档，收到后自行 `list()`：一份完整配置每次都过 IPC 不值得，而这条事件本就少见。
 	 */
 	onChanged(listener: () => void): () => void;
+	onMemberModelsChanged(listener: (teamId: string) => void): () => void;
 	listBlueprints(): Promise<readonly AgentBlueprint[]>;
 	createAgent(input: CreateAgentProfileInput): Promise<AgentProfile>;
 	updateAgent(id: string, input: UpdateAgentProfileInput): Promise<AgentProfile>;

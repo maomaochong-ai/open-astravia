@@ -96,7 +96,7 @@ export function EditableTextFileView({
 			extension,
 			lineEnding: document.lineEnding,
 			previewContent: rendered ? (
-				<TextPreviewRenderer content={document.draftContent} extension={extension} />
+				<TextPreviewRenderer content={document.draftContent} extension={extension} sourcePath={item.path} />
 			) : undefined,
 		};
 	}

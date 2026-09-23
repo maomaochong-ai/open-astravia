@@ -67,6 +67,7 @@ function actions(): TeamChatActions {
 
 function model(overrides: Partial<TeamChatViewModel> = {}): TeamChatViewModel {
 	return {
+		teamId: "team-1",
 		feedKey: "session-1",
 		title: "Team",
 		status: "ready",
@@ -113,7 +114,6 @@ describe("TeamComposerConnector", () => {
 		if (!inputModel) throw new Error("InputBar model was not captured");
 
 		expect(inputModel.editor).toMatchObject({ value: "Ship it", history: ["Previous"] });
-		expect(inputModel.modelSelector.updateActiveSession).toBe(false);
 		expect(inputModel.editor.persistenceId).toBe("session-1");
 		expect(inputModel.commands).toBeDefined();
 		expect(inputModel.commands?.onOpen).toBeTypeOf("function");
@@ -152,7 +152,6 @@ describe("TeamComposerConnector", () => {
 			expect(inputModel.actions.handleEnter()).toBe(true);
 			inputModel.routing?.participants[0]?.onSelect();
 			inputModel.actions.removeImage("C:/workspace/brief.md");
-			inputModel.modelSelector.scope?.onModelSelect("anthropic/claude", "medium");
 		});
 
 		expect(viewActions.send).toHaveBeenCalledOnce();
@@ -165,7 +164,6 @@ describe("TeamComposerConnector", () => {
 			"@research",
 		);
 		expect(viewActions.removeAttachment).toHaveBeenCalledWith("C:/workspace/brief.md");
-		expect(viewActions.selectModel).toHaveBeenCalledWith("anthropic/claude", "medium");
 	});
 
 	it("maps Ctrl+Enter to steer while keeping Enter as followUp", () => {

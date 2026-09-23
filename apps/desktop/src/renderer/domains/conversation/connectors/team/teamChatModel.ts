@@ -38,6 +38,7 @@ export interface TeamChatLabels {
 }
 
 export interface TeamChatViewModel {
+	readonly teamId: string;
 	readonly feedKey: string;
 	readonly title: string;
 	readonly status: TeamChatStatus;
@@ -81,6 +82,7 @@ export interface TeamChatViewModel {
 /** Input-area slice kept independent from the high-frequency Team feed. */
 export type TeamComposerViewModel = Pick<
 	TeamChatViewModel,
+	| "teamId"
 	| "activeSessionId"
 	| "attachments"
 	| "canSend"

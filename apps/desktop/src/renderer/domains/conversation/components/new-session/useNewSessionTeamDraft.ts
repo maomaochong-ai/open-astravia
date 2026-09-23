@@ -72,10 +72,17 @@ export function useNewSessionTeamDraft({
 	const memberMentionsByTeamRef = useRef<Readonly<Record<string, TeamDraftMemberMentions>>>({});
 	const [, refreshMemberMentions] = useReducer((revision: number) => revision + 1, 0);
 	const [executionMode, setExecutionMode] = useState<SessionExecutionMode>("full-access");
-	const [modelKey, setModelKey] = useState<string | null>(selectedModel);
-	const [reasoning, setReasoning] = useState<string | undefined>(
-		selectedModel ? reasoningByModel[selectedModel] : undefined,
-	);
+	const [modelSelection, setModelSelection] = useState<{
+		readonly modelKey: string | null;
+		readonly reasoning?: string;
+	}>();
+	const modelKey = modelSelection ? modelSelection.modelKey : selectedModel;
+	const reasoning = modelSelection
+		? modelSelection.reasoning
+		: selectedModel
+			? reasoningByModel[selectedModel]
+			: undefined;
+
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const sendingRef = useRef(false);
@@ -168,11 +175,6 @@ export function useNewSessionTeamDraft({
 		}
 		void loadCatalog().catch(() => undefined);
 	}, [document, loadCatalog, t, team, teamId]);
-
-	useEffect(() => {
-		setModelKey(selectedModel);
-		setReasoning(selectedModel ? reasoningByModel[selectedModel] : undefined);
-	}, [reasoningByModel, selectedModel]);
 
 	const members = useMemo(
 		() =>
@@ -315,21 +317,21 @@ export function useNewSessionTeamDraft({
 			createSession: async () => undefined,
 			openSession: async () => undefined,
 			selectModel: async (next, defaultReasoning) => {
-				setModelKey(next);
-				setReasoning(reasoningByModel[next] ?? defaultReasoning);
+				setModelSelection({ modelKey: next, reasoning: reasoningByModel[next] ?? defaultReasoning });
 			},
 			selectReasoning: async (next) => {
-				setReasoning(next);
+				setModelSelection({ modelKey, reasoning: next });
 			},
 			setExecutionMode: async (next: SessionExecutionMode) => {
 				setExecutionMode(next);
 			},
 		};
-	}, [addAttachments, reasoningByModel, removeAttachment, send, setDraftAndAttachments, teamId]);
+	}, [addAttachments, modelKey, reasoningByModel, removeAttachment, send, setDraftAndAttachments, teamId]);
 
 	const model = useMemo<TeamChatViewModel | null>(() => {
 		if (!teamId) return null;
 		return {
+			teamId,
 			feedKey: `new:${teamTargetKey(teamId)}`,
 			title: team?.name ?? t("agent-teams:teams.title"),
 			// `pending` is an internal handoff guard only. It must not turn the

@@ -1,8 +1,15 @@
 import type { ResourceDiagnostic } from "../contracts/diagnostics.js";
-import type { ResourceAccessPort } from "../contracts/resource-access.js";
+import type { ResourceAccessPort, ResourceFileInfo } from "../contracts/resource-access.js";
 import { loadSkills, type Skill } from "../skills/index.js";
 
 const PROJECT_CONFIG_DIRECTORY = ".vetta";
+const FINGERPRINT_READ_CONCURRENCY = 8;
+
+interface SkillPathInspection {
+	readonly resolved: string;
+	readonly identity: string;
+	readonly info: PromiseSettledResult<ResourceFileInfo | undefined>;
+}
 
 export async function computeSkillsFingerprint(
 	access: ResourceAccessPort,
@@ -18,17 +25,28 @@ export async function computeSkillsFingerprint(
 ): Promise<string> {
 	const parts: string[] = [];
 	const visited = new Set<string>();
-	const walk = async (target: string): Promise<void> => {
+	const inspect = async (target: string, knownIdentity?: string): Promise<SkillPathInspection> => {
+		options.signal?.throwIfAborted();
 		const resolved = access.paths.resolve(target);
-		let identity = resolved;
-		try {
-			identity = await access.files.realPath(resolved, { signal: options.signal });
-		} catch {
-			options.signal?.throwIfAborted();
+		let identity = knownIdentity ?? resolved;
+		if (!knownIdentity) {
+			try {
+				identity = await access.files.realPath(resolved, { signal: options.signal });
+			} catch {
+				options.signal?.throwIfAborted();
+			}
 		}
+		const [info] = await Promise.allSettled([access.files.stat(resolved, { signal: options.signal })]);
+		return { resolved, identity, info };
+	};
+	const walk = async (target: string, inspected?: SkillPathInspection): Promise<void> => {
+		options.signal?.throwIfAborted();
+		const entry = inspected ?? (await inspect(target));
+		const { resolved, identity } = entry;
 		if (visited.has(identity)) return;
 		visited.add(identity);
-		const info = await access.files.stat(resolved, { signal: options.signal });
+		if (entry.info.status === "rejected") throw entry.info.reason;
+		const info = entry.info.value;
 		if (!info) {
 			parts.push(`X:${resolved}`);
 			return;
@@ -36,12 +54,31 @@ export async function computeSkillsFingerprint(
 		if (info.kind === "directory") {
 			parts.push(`D:${resolved}:${info.modifiedAtMs}`);
 			try {
-				const entries = [...(await access.files.readDirectory(resolved, { signal: options.signal }))].sort((a, b) =>
-					a.name.localeCompare(b.name),
-				);
-				for (const entry of entries) {
-					if (!entry.name.startsWith(".") && entry.name !== "node_modules") {
-						await walk(access.paths.join(resolved, entry.name));
+				const entries = [...(await access.files.readDirectory(resolved, { signal: options.signal }))]
+					.filter((entry) => !entry.name.startsWith(".") && entry.name !== "node_modules")
+					.sort((a, b) => a.name.localeCompare(b.name));
+				for (let offset = 0; offset < entries.length; offset += FINGERPRINT_READ_CONCURRENCY) {
+					options.signal?.throwIfAborted();
+					const batch = entries.slice(offset, offset + FINGERPRINT_READ_CONCURRENCY);
+					const paths = batch.map((entry) => access.paths.join(resolved, entry.name));
+					// Drain each bounded batch before descent or failure. Consume in discovery
+					// order so aliases, cycles and fingerprints never depend on I/O completion.
+					const results = await Promise.allSettled(
+						paths.map((path, index) => {
+							const child = batch[index];
+							// readdir already identifies regular files. Their parent is canonical;
+							// only roots, directories and symlinks need another realpath traversal.
+							return inspect(
+								path,
+								child.kind === "file" && !child.symbolicLink
+									? access.paths.join(identity, child.name)
+									: undefined,
+							);
+						}),
+					);
+					for (const [index, result] of results.entries()) {
+						if (result.status === "rejected") throw result.reason;
+						await walk(paths[index], result.value);
 					}
 				}
 			} catch {

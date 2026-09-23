@@ -2,6 +2,14 @@ import { describe, expect, it } from "vitest";
 import { splitStableMarkdownBlocks } from "./stable-blocks";
 
 describe("splitStableMarkdownBlocks", () => {
+	it.each(["$$\n```\nformula\n```\n$$", "<html>\n```\npage\n```\n</html>"])(
+		"rich blocks preserve parser context and previously frozen prefixes: %s",
+		(rich) => {
+			const prefix = "```ts\nconst x = 1;\n```\n";
+			const text = `${prefix}\n${rich}\nAfter`;
+			expect(splitStableMarkdownBlocks(text)).toEqual({ committed: [prefix], tail: `\n${rich}\nAfter` });
+		},
+	);
 	it("空文本没有已提交块", () => {
 		expect(splitStableMarkdownBlocks("")).toEqual({ committed: [], tail: "" });
 	});

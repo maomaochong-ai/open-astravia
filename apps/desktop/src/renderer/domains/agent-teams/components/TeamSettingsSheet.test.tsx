@@ -23,6 +23,7 @@ vi.mock("@shared/components/RendererMarkdownContent", () => ({
 	RendererMarkdownContent: ({ text }: { text: string }) => <div data-testid="markdown">{text}</div>,
 }));
 vi.mock("@vetta-org/theme-ui/chat", () => ({
+	NewSessionBackground: () => null,
 	AgentAvatarView: ({ name }: { name: string }) => <span data-testid="avatar">{name}</span>,
 }));
 vi.mock("@shared/components/ModelSelect/useModelOptions", () => ({
@@ -98,7 +99,7 @@ const setMemberModel = vi.fn(async (_teamId: string, memberId: string, selection
 beforeEach(() => {
 	savedModels = {};
 	setMemberModel.mockClear();
-	Object.defineProperty(window, "vetta", { configurable: true, value: { agentTeams: { listMemberModels: async () => ({ ...savedModels }), setMemberModel } } });
+	Object.defineProperty(window, "vetta", { configurable: true, value: { agentTeams: { onChanged: () => () => undefined, onMemberModelsChanged: () => () => undefined, listMemberModels: async () => ({ ...savedModels }), setMemberModel } } });
 });
 
 function renderSheet(

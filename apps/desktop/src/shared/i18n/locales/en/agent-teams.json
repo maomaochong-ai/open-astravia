@@ -123,7 +123,7 @@
     "members": "Members",
     "memberModel": "Model for this member",
     "providedDefinitionReadOnly": "The extension maintains this team's roster and assignments. Member models are your personal settings and can be changed below.",
-    "memberModelInherit": "Follow conversation model",
+    "memberModelInherit": "Follow conversation default",
     "memberModelInheritHint": "Future turns follow the conversation model when it changes.",
     "memberModelFixedHint": "Future turns use this model even when the conversation model changes. Set reasoning in the model menu.",
     "memberModelUnavailable": "{{model}} is no longer in the model list. Choose another model or follow the conversation model; it will not switch automatically.",
@@ -221,5 +221,27 @@
     "empty": "No teams available",
     "loadError": "Could not load teams",
     "createSessionError": "Failed to create a chat. Try again."
+  },
+  "models": {
+    "defaultHint_zero": "No members currently follow the default.",
+    "fixedCount": "{{count}} set individually",
+    "reasoning": "Reasoning: {{level}}",
+    "custom": "Member overrides",
+    "title": "Team models",
+    "configured": "Per member",
+    "scopeHint": "Member settings apply to all conversations in this team. The conversation default applies only here.",
+    "loading": "Loading member models…",
+    "saving": "Saving…",
+    "retry": "Reload",
+    "loadOrSaveError": "Could not load or save member models: {{error}}. Unsaved selections have not taken effect. Reload and try again.",
+    "default": "Conversation default",
+    "defaultHint": "Changing this affects only the {{count}} members following it.",
+    "unavailable": "{{model}} is unavailable. Choose another model; it will not be replaced automatically.",
+    "memberLabel": "Model for {{member}}",
+    "expand": "Customize members",
+    "collapse": "Group by model",
+    "back": "Back to team models",
+    "memberScopeHint": "Changes are saved immediately and apply to this member across all team conversations.",
+    "mixedReasoning": "Mixed reasoning levels"
   }
 }

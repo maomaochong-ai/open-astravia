@@ -89,7 +89,7 @@ The preset content is materialized into ordinary team files on first launch. Fro
   <Step>
     ### Describe the task and send
 
-    State the goal; with no member addressed, **the owner takes it**. To name a specific member, use `@` at the bottom left of the composer. Model, reasoning level, and execution mode belong to this team session, and each member captures the effective settings as its task is queued.
+    State the goal; with no member addressed, **the owner takes it**. To name a specific member, use `@` at the bottom left of the composer. The default model, reasoning level, and execution mode belong to this team session. Members can also have fixed models in team settings. Each member captures its effective settings as its task is queued.
   </Step>
 </Steps>
 
@@ -107,7 +107,21 @@ The preset content is materialized into ordinary team files on first launch. Fro
 | A `team_delegate_task` step | The owner handed a bounded objective to a member; the task is queued at that moment |
 | Gear icon | Team settings: members, owner, assignments, and capabilities |
 
-You can send another message mid-flight to add a requirement, and `@` it at someone specific. Drafts, attachments, input history, and model settings are isolated per team session, so one team can run several independent sessions at once; each appears in the sidebar conversation list with its members' stacked avatars.
+You can send another message mid-flight to add a requirement, and `@` it at someone specific. Drafts, attachments, input history, and conversation defaults are isolated per team session, so one team can run several independent sessions at once; each appears in the sidebar conversation list with its members' stacked avatars.
+
+## View and change member models
+
+Open the model control in the composer to see **Team models**. When everyone follows the default, the control shows only the model name. If a member has a fixed model, it shows **Per member**.
+
+The conversation default appears once at the top, with the number of members affected by a change. Rows for members following it show only **Follow conversation default**, without repeating the model name. Members using the same model share a group with every avatar visible. Members using other fixed models appear below: a single member gets a named model control, while several members sharing a model stay grouped. If everyone has a fixed model, the unused conversation default becomes a secondary control at the bottom.
+
+Click an avatar to edit that member, or use the single **Customize members** control to reveal all individual controls. **Group by model** collapses them again. At the top of the member editor, **Follow conversation default** appears beside a switch. Reasoning levels have explicit labels such as **Reasoning: Low**. Search and model selection replace the overview inside the existing panel, and the member editor retains their avatar. Reasoning levels use a stepped slider: clicking the track or a level label eases the thumb into place; dragging previews the level immediately and saves on release. Arrow keys work too. Back or Escape returns to the overview and preserves its expanded state.
+
+- **Conversation default** affects only members following it in this conversation. The panel shows how many members it affects.
+- **Fixed for this member** lets you choose a member's model and reasoning level. These preferences are shared with team settings and apply to every conversation in the team.
+- **Follow conversation default switch** clears the member's fixed preference when turned on. Turning it off pins the current conversation default for that member. Choosing a specific model below also turns the switch off.
+
+Changes apply to tasks queued afterwards. Queued and running tasks and historical messages keep their original model. Unavailable models remain selected with an explicit warning; they are never silently replaced. Failed saves preserve the previous settings; reload and try again.
 
 ## How it works: delegate, wait, accept
 
@@ -230,7 +244,7 @@ A member runtime is rebuilt based on the profile revision plus a fingerprint of 
 
 ### One team, many sessions
 
-A team is configuration; a session is one piece of work. The same team can run several sessions at once, each with its own workspace, drafts, attachments, model settings, and history.
+A team is configuration; a session is one piece of work. The same team can run several sessions at once, each with its own workspace, drafts, attachments, conversation defaults, and history.
 
 The workspace is fixed when the session is created:
 

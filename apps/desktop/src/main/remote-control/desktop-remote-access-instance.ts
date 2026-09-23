@@ -8,6 +8,7 @@ import { listSessionPins, onSessionPinsChanged, pinSession } from "../conversati
 import { getDesktopUserQuestionBroker } from "../conversations/user-question-broker.js";
 import { getDesktopCredentialVault } from "../credentials/desktop-credential-vault.js";
 import { mainT } from "../i18n/index.js";
+import { forgetMessageAnnotations } from "../message-annotations/host.js";
 import { notify } from "../notifications/index.js";
 import { getDesktopProjectService } from "../projects/project-service-instance.js";
 import { getSharedRuntime } from "../runtime.js";
@@ -62,6 +63,7 @@ export function getDesktopRemoteAccessManager(defaultRelayBaseUrl?: string): Des
 				sessionCommands: createDesktopSessionCommands({
 					runtime: getSharedRuntime(),
 					onSessionsDeleted: notifyAutomationSessionsDeleted,
+					forgetAnnotations: forgetMessageAnnotations,
 				}),
 				pins: {
 					list: () => listSessionPins(),

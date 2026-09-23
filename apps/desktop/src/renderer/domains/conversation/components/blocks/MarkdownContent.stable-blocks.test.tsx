@@ -66,13 +66,14 @@ describe("MarkdownContent 稳定块冻结", () => {
 		expect(screen.getByText(/Beta continues now/)).toBe(tail);
 		expect(view.container.querySelectorAll(".streaming-chunk").length).toBe(chunksBefore);
 
-		// settle 之后撤掉分段，冻结块依旧是同一实例。
+		// 已有实现保留分段 DOM，只撤掉流式样式，避免收尾重挂载和重排。
 		act(() => {
 			vi.advanceTimersByTime(4000);
 		});
 		expect(screen.getByText("Hello frozen paragraph.")).toBe(frozen);
 		expect(view.container.querySelector("pre, code")).toBe(frozenCode);
-		expect(view.container.querySelector(".streaming-chunk")).toBeNull();
+		expect(screen.getByText(/Beta continues now/)).toBe(tail);
+		expect(view.container.querySelectorAll(".streaming-chunk").length).toBe(chunksBefore);
 		expect(view.container.querySelector(".markdown-streaming-tail")).toBeNull();
 	});
 

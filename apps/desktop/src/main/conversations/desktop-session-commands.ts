@@ -16,6 +16,8 @@ export interface DesktopSessionCommandsDependencies {
 	};
 	/** 自动化在 scheduler 里，它反过来依赖本目录，所以由调用方接上（ADR-0127）。 */
 	readonly onSessionsDeleted: (isDeleted: (sessionPath: string) => boolean) => void;
+	/** 消息问答批注挂着模型运行时，同样由调用方接上。 */
+	readonly forgetAnnotations: (sessionPath: string) => Promise<void>;
 	readonly assertOrdinary?: (sessionPath: string) => Promise<unknown>;
 	readonly readSessionCwd?: (sessionPath: string) => Promise<string | undefined>;
 	readonly removeDirectory?: (dir: string) => Promise<void>;
@@ -24,7 +26,7 @@ export interface DesktopSessionCommandsDependencies {
 }
 
 export interface DesktopSessionCommands {
-	/** 删除会话文件及其附属：对话子目录、置顶、标签、自动化绑定，并通知会话列表。 */
+	/** 删除会话文件及其附属：对话子目录、置顶、标签、批注、自动化绑定，并通知会话列表。 */
 	delete(sessionPath: string): Promise<void>;
 	rename(sessionPath: string, name: string): Promise<void>;
 }
@@ -57,6 +59,7 @@ export function createDesktopSessionCommands(deps: DesktopSessionCommandsDepende
 			// 连带回收子目录里的产物。读 header 先取 cwd，再 delete，最后 rm 子目录。
 			const cwd = await readSessionCwd(sessionPath);
 			await deps.runtime.deleteSession(sessionPath);
+			await deps.forgetAnnotations(sessionPath);
 			deps.onSessionsDeleted((path) => path === sessionPath);
 			forgetUserMarks([sessionPath]);
 			if (cwd && isConversationSubCwd(cwd)) {

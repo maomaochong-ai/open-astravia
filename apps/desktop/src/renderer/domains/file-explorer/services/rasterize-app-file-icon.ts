@@ -3,6 +3,7 @@ import { getFileIcon } from "@vetta-org/theme-ui/file-explorer";
 const DRAG_ICON_SIZE = 32;
 /** Cache by iconify class so multi-file drags of the same type stay cheap. */
 const classPngCache = new Map<string, string>();
+const pendingClassPng = new Map<string, Promise<string | null>>();
 
 function loadImage(src: string): Promise<HTMLImageElement> {
 	return new Promise((resolve, reject) => {
@@ -34,30 +35,49 @@ async function imageUrlToPngDataUrl(src: string, size: number): Promise<string |
 export function extractIconifyDataUrlFromCssValues(values: readonly string[]): string | null {
 	for (const value of values) {
 		if (!value || value === "none") continue;
-		const match = /url\(\s*(['"]?)(data:image\/[^)'"]+)\1\s*\)/i.exec(value);
-		if (match?.[2]) return match[2];
+		const match = /url\(\s*(?:"(data:image\/[^"]+)"|'(data:image\/[^']+)'|(data:image\/[^\s)]+))\s*\)/i.exec(value);
+		const url = match?.[1] ?? match?.[2] ?? match?.[3];
+		if (url) return url;
 	}
 	return null;
 }
 
-/**
- * Pull the SVG/data URL already embedded by @iconify/tailwind4 for a tree icon class.
- * Avoids bundling the full vscode-icons JSON (~3.6MB).
- */
-export function extractIconifyDataUrlFromElement(el: HTMLElement): string | null {
-	const styles = [getComputedStyle(el), getComputedStyle(el, "::before"), getComputedStyle(el, "::after")];
-	const candidates: string[] = [];
-	for (const style of styles) {
-		candidates.push(
-			style.backgroundImage,
-			style.maskImage,
-			// WebKit prefix still used in Chromium for mask in some paths
-			style.getPropertyValue("-webkit-mask-image"),
-			style.getPropertyValue("mask-image"),
-			style.getPropertyValue("background-image"),
-		);
+function findIconDataUrl(rules: CSSRuleList, selector: string): string | null {
+	for (const rule of rules) {
+		if (rule instanceof CSSStyleRule && rule.selectorText === selector) {
+			const url = extractIconifyDataUrlFromCssValues([
+				rule.style.backgroundImage,
+				rule.style.maskImage,
+				rule.style.getPropertyValue("--svg"),
+			]);
+			if (url) return url;
+		}
+		if (rule instanceof CSSMediaRule && !matchMedia(rule.conditionText).matches) continue;
+		if (rule instanceof CSSSupportsRule && !CSS.supports(rule.conditionText)) continue;
+		if (rule instanceof CSSGroupingRule) {
+			const url = findIconDataUrl(rule.cssRules, selector);
+			if (url) return url;
+		}
 	}
-	return extractIconifyDataUrlFromCssValues(candidates);
+	return null;
+}
+
+/** Read the built-in Iconify utility without attaching a probe or forcing style/layout. */
+function readIconDataUrl(iconClass: string): string | null {
+	const selector = `.${CSS.escape(iconClass)}`;
+	for (const sheet of document.styleSheets) {
+		if (sheet.disabled || (sheet.media.mediaText && !matchMedia(sheet.media.mediaText).matches)) continue;
+		let rules: CSSRuleList;
+		try {
+			rules = sheet.cssRules;
+		} catch {
+			// A cross-origin plugin sheet is not readable; built-in icons live in host CSS.
+			continue;
+		}
+		const url = findIconDataUrl(rules, selector);
+		if (url) return url;
+	}
+	return null;
 }
 
 /**
@@ -67,42 +87,21 @@ export async function rasterizeAppFileIconClass(iconClass: string, size = DRAG_I
 	const cacheKey = `${iconClass}@${size}`;
 	const cached = classPngCache.get(cacheKey);
 	if (cached) return cached;
+	const pending = pendingClassPng.get(cacheKey);
+	if (pending) return pending;
 
 	if (typeof document === "undefined") return null;
 
-	const host = document.createElement("span");
-	host.className = iconClass;
-	host.setAttribute("aria-hidden", "true");
-	host.style.cssText = [
-		"position:fixed",
-		"left:-10000px",
-		"top:0",
-		`width:${size}px`,
-		`height:${size}px`,
-		"display:inline-block",
-		"box-sizing:border-box",
-		"line-height:0",
-		"overflow:hidden",
-		// Match tree default: colored vscode-icons use background; monochrome use currentColor mask
-		"color:rgb(120,120,120)",
-	].join(";");
-	document.documentElement.appendChild(host);
-
+	const dataUrl = readIconDataUrl(iconClass);
+	if (!dataUrl) return null;
+	const conversion = imageUrlToPngDataUrl(dataUrl, size);
+	pendingClassPng.set(cacheKey, conversion);
 	try {
-		// Let the stylesheet apply to the offscreen node.
-		await new Promise<void>((resolve) => {
-			requestAnimationFrame(() => resolve());
-		});
-
-		const dataUrl = extractIconifyDataUrlFromElement(host);
-		if (!dataUrl) return null;
-
-		const png = await imageUrlToPngDataUrl(dataUrl, size);
-		if (!png) return null;
-		classPngCache.set(cacheKey, png);
+		const png = await conversion;
+		if (png) classPngCache.set(cacheKey, png);
 		return png;
 	} finally {
-		host.remove();
+		pendingClassPng.delete(cacheKey);
 	}
 }
 
