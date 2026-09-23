@@ -56,6 +56,9 @@ struct SessionView: View {
 				.padding(.horizontal, 20)
 				.padding(.top, 8)
 				.padding(.bottom, 16)
+				// Tapping the conversation puts the keyboard away; buttons inside keep their own taps.
+				.contentShape(Rectangle())
+				.onTapGesture { dismissKeyboard() }
 			}
 			.defaultScrollAnchor(.bottom)
 			.scrollDismissesKeyboard(.interactively)

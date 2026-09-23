@@ -128,6 +128,10 @@ final class VettaUITests: XCTestCase {
 		XCTAssertTrue(app.buttons["composer.send"].waitForExistence(timeout: 5))
 		XCTAssertTrue(modelMenu.label.contains("GLM 5 · 最高"), "a failed turn keeps showing the chosen model: \(modelMenu.label)")
 		shot(app, "5c-error")
+		// Tapping the conversation puts the keyboard away.
+		XCTAssertTrue(app.keyboards.firstMatch.exists)
+		app.staticTexts["模拟报错"].tap()
+		XCTAssertTrue(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.keyboards.firstMatch)], timeout: 3) == .completed, "tapping outside the composer hides the keyboard")
 		app.navigationBars.buttons.element(boundBy: 0).tap()
 
 		// New Session: start in a project and land straight in its chat.

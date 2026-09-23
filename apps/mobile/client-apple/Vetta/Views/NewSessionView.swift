@@ -43,7 +43,7 @@ struct NewSessionView: View {
 		.padding(.horizontal, 32)
 		.frame(maxWidth: .infinity)
 		.contentShape(Rectangle())
-		.onTapGesture { hideKeyboard() }
+		.onTapGesture { dismissKeyboard() }
 		.safeAreaInset(edge: .bottom, spacing: 0) {
 			VStack(alignment: .leading, spacing: 8) {
 				locationMenu.padding(.horizontal, 16)
@@ -93,9 +93,5 @@ struct NewSessionView: View {
 			}
 			router.openSession(id)
 		}
-	}
-
-	private func hideKeyboard() {
-		UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
 	}
 }

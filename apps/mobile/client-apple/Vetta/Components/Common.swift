@@ -175,3 +175,8 @@ func describeStatus(_ status: RemoteSessionStatus) -> (label: String, tone: Stat
 	case .idle, .completed: (L10n.Home.statusDone, .dim)
 	}
 }
+
+/// Puts the keyboard away, e.g. when the user taps outside the composer.
+@MainActor func dismissKeyboard() {
+	UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+}
